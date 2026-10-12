@@ -209,6 +209,10 @@
   ## event compartments: those carrying a modeled alag/F/rate/dur
   ## (mv$alag plus stateProp bit flags; see .rxEventSensProp)
   .prop <- .rxEventSensProp(.mv)
+  ## Only physical states: a delay() model puts alag()/f() on its sensitivity
+  ## compartments, which the runtime would index as states.
+  .phys <- unname(.ord[.statesWithSens])
+  .prop <- lapply(.prop, function(.c) .c[.c %in% .phys])
   list(
     states = .statesWithSens,
     nState = length(.statesWithSens),

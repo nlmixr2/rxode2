@@ -165,7 +165,8 @@ sensitivities into the sensitivity states at each dosing event,
 \code{"fd"} keeps the legacy finite-difference behavior (the
 backward-compatible opt-out), and \code{"both"} computes both for
 cross-checking.  \code{NULL} (the default) uses
-\code{getOption("rxode2.eventSens", "fd")}.  When not \code{"fd"} and
+\code{getOption("rxode2.eventSens", "jump")} for any model with
+sensitivities.  When not \code{"fd"} and
 \code{calcSens} is supplied, \code{calcJac} is forced to \code{TRUE} so the
 Jacobian is available for the jump injection.}
 

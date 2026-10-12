@@ -100,17 +100,39 @@ rxTest({
     sp <- c("tlag", "tf", "ka")
     pars <- c(ka = 0.5, cl = 0.2, v = 10, tlag = log(0.5), tf = qlogis(0.7))
     mexp <- rxode2(rxSensMatExp(ode, calcSens = sp, calcSens2 = sp))
+    # indLin=TRUE used to expand the sensitivities twice and crash.
+    mil <- rxode2(ode, calcSens = sp, calcSens2 = sp, indLin = TRUE, eventSens = "jump")
+    expect_false(any(grepl("rx__sens_rx__sens", rxModelVars(mil)$state)))
     mode <- rxode2(ode, calcSens = sp, calcSens2 = sp, eventSens = "jump")
     for (.evid in c(5L, 6L)) {
       e <- et(amt = 50, cmt = "depot") |>
         et(amt = 2, cmt = "depot", time = 1.2, evid = .evid) |>
         et(seq(0.55, 10, by = 0.5))
       a <- rxSolve(mexp, e, pars, method = "indLin", atol = 1e-12, rtol = 1e-12)
+      il <- rxSolve(mil, e, pars, atol = 1e-12, rtol = 1e-12)
       b <- rxSolve(mode, e, pars, atol = 1e-12, rtol = 1e-12)
       for (.n in grep("^rx__sens_central_BY_", names(b), value = TRUE)) {
         expect_equal(a[[.n]], b[[.n]], tolerance = 1e-8, label = paste(.evid, .n))
+        expect_equal(il[[.n]], b[[.n]], tolerance = 1e-8, label = paste("indLin", .evid, .n))
       }
     }
+  })
+
+  test_that("jump sensitivities are the default for a model with sensitivities", {
+    ode <- "
+      alag(central) <- exp(tlag)
+      d/dt(central) = -k*central
+    "
+    m <- rxode2(ode, calcSens = c("tlag", "k"))
+    expect_equal(m$eventSens, "jump")
+    expect_false(is.null(m$eventSensInfo))
+    mf <- rxode2(ode, calcSens = c("tlag", "k"), eventSens = "fd")
+    expect_null(mf$eventSensInfo)
+    pars <- c(k = 0.3, tlag = log(0.5))
+    e <- et(amt = 10, cmt = "central") |> et(seq(0.55, 8, by = 0.5))
+    s <- rxSolve(m, e, pars)
+    .ex <- with(as.list(pars), 10 * k * exp(tlag) * exp(-k * (s$time - exp(tlag))))
+    expect_equal(s$rx__sens_central_BY_tlag__, .ex, tolerance = 1e-5)
   })
 
   test_that("a state-dependent alag() falls back to finite differences", {

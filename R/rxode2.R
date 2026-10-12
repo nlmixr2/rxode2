@@ -97,7 +97,8 @@ NA_LOGICAL <- NA # nolint
 #'     `"fd"` keeps the legacy finite-difference behavior (the
 #'     backward-compatible opt-out), and `"both"` computes both for
 #'     cross-checking.  `NULL` (the default) uses
-#'     `getOption("rxode2.eventSens", "fd")`.  When not `"fd"` and
+#'     `getOption("rxode2.eventSens", "jump")` for any model with
+#'     sensitivities.  When not `"fd"` and
 #'     `calcSens` is supplied, `calcJac` is forced to `TRUE` so the
 #'     Jacobian is available for the jump injection.
 #'
@@ -413,7 +414,9 @@ rxode2 <- # nolint
     ## needs the full state Jacobian, which is otherwise generated only on
     ## demand -- force it on.  See ~/src/rxode2-event-sensitivities-plan.md.
     .eventSensMode <- .rxEventSensMode(eventSens)
-    .eventSensActiveReq <- !missing(eventSens) && !identical(.eventSensMode, "fd")
+    ## Unspecified eventSens: jump whenever the model has sensitivities.
+    .eventSensActiveReq <- !identical(.eventSensMode, "fd") &&
+      (!missing(eventSens) || !is.null(calcSens))
     .eventSensNeedsJac <- .eventSensActiveReq && !is.null(calcSens)
     ## Fold the mode into the parsed md5/cache key for the duration of this build
     ## (reset after) so "fd" and "jump" of the same model do not collide in the
@@ -502,10 +505,12 @@ rxode2 <- # nolint
     if (.indLinSens) {
       .eventSensEffectiveMode <- "jump"
     }
-    if (.eventSensActiveReq || .indLinSens) {
+    .eventSensDefault <- missing(eventSens) && length(.env$.mv$sens) > 0L
+    if (.eventSensActiveReq || .indLinSens || .eventSensDefault) {
       .eventSensEffectiveMode <- .rxEventSensModeForMap(.eventSensEffectiveMode, .env$.mv)
     }
-    .eventSensActive <- (!missing(eventSens) && !identical(.eventSensEffectiveMode, "fd")) ||
+    .eventSensActive <- (!identical(.eventSensEffectiveMode, "fd") &&
+      (!missing(eventSens) || .eventSensDefault)) ||
       .indLinSens
     .eventSensNeedsJac <- .eventSensActive && !is.null(calcSens) && length(.rxEventSensOdeStates(.env$.mv)) > 0L
     .eventSensCacheKey <- if (.eventSensActive) .eventSensEffectiveMode else ""
@@ -935,6 +940,18 @@ rxGetModel <- function(
     model <- setNames(rxNorm(model), NULL)
   }
   .ret <- rxModelVars(model)
+  ## indLin=TRUE builds its sensitivities with rxSensMatExp() from the
+  ## unexpanded model; expanding here first nests rx__sens_rx__sens_* states.
+  if (indLin && !is.null(calcSens) && !isFALSE(calcSens)) {
+    if (isTRUE(calcSens)) {
+      calcSens <- .rxParams(model, TRUE)
+    }
+    .mexpCode <- rxSensMatExp(.ret, calcSens = calcSens, calcSens2 = calcSens2,
+                              calcSens3 = calcSens3)
+    .ret <- rxModelVars(.mexpCode)
+    .rxState$indLinInfo <- .ret$indLin
+    return(.ret)
+  }
   if (!is.null(calcSens)) {
     .calcSens <- TRUE
     if (is(calcSens, "logical")) {
@@ -1197,7 +1214,7 @@ rxGetModel <- function(
   if (indLin) {
     ## Convert the ODE model to a pure matrix exponential model using
     ## rxToIndLin() so it uses doIndLin == 1/2 (not the old 3/4 paths).
-    .mexpCode <- rxToIndLin(.ret, calcSens = calcSens)
+    .mexpCode <- rxToIndLin(.ret)
     .ret <- rxModelVars(.mexpCode)
     .rxState$indLinInfo <- .ret$indLin
   } else if (length(.ret$indLin) == 4L) {
