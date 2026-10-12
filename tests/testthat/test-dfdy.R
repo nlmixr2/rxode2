@@ -312,4 +312,39 @@ d/dt(cen) = ka*depot-k*cen
     expect_false(any(grepl("_ETA_", rxDfdy(mod), fixed = TRUE)))
     expect_false(any(grepl("_THETA_", rxDfdy(mod), fixed = TRUE)))
   })
+
+  test_that("a Jacobian on a dotted state name compiles", {
+    m <- rxode2("cl <- exp(tcl + eta.cl)\nd/dt(central) = -cl/v*central",
+                calcSens = "eta.cl", calcJac = TRUE)
+    s <- rxSolve(m, et(amt = 100) |> et(1:3), c(tcl = 0, eta.cl = 0.1, v = 10))
+    expect_equal(
+      s[["rx__sens_central_BY_eta.cl__"]],
+      -100 * exp(0.1) / 10 * (1:3) * exp(-exp(0.1) / 10 * (1:3)),
+      tolerance = 1e-5
+    )
+  })
+
+  test_that("lsoda reads the analytic Jacobian in column-major order", {
+    # calc_jac is row major; a transposed Jacobian made lsoda hit MXSTEP here.
+    .rob <- "d/dt(a) = -k1*a + k2*b*cc\nd/dt(b) = k1*a - k2*b*cc - k3*b*b\nd/dt(cc) = k3*b*b"
+    .cs <- c("k1", "k2", "k3")
+    .p <- c(k1 = 0.04, k2 = 1e4, k3 = 3e7)
+    .ini <- c(a = 1, b = 0, cc = 0)
+    .ev <- et(c(0.1, 1, 10, 100))
+    .ref <- rxSolve(
+      rxode2(.rob, calcSens = .cs, eventSens = "fd"),
+      .ev,
+      params = .p,
+      inits = .ini,
+      method = "lsoda",
+      atol = 1e-10,
+      rtol = 1e-10
+    )
+    .mj <- rxode2(.rob, calcSens = .cs, calcJac = TRUE, eventSens = "fd")
+    for (.m in c("lsoda", "bdf")) {
+      .s <- rxSolve(.mj, .ev, params = .p, inits = .ini, method = .m, atol = 1e-10, rtol = 1e-10)
+      expect_equal(.s$rx__sens_a_BY_k1__, .ref$rx__sens_a_BY_k1__, tolerance = 1e-6, label = .m)
+      expect_equal(.s$rx__sens_b_BY_k3__, .ref$rx__sens_b_BY_k3__, tolerance = 1e-6, label = .m)
+    }
+  })
 })

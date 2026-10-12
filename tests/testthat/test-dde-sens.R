@@ -373,6 +373,9 @@ k <- 0.2; kin <- 0.5; tau <- exp(ltau)")
     .g <- function(d) rxSolve(.mk(d), .ev, method = "dop853", atol = 1e-10, rtol = 1e-10)$cen
     .fd2 <- (.g(.h) - 2 * .g(0) + .g(-.h)) / .h^2
     .ms <- suppressMessages(.rxode2(.txt, calcSens = "L", calcSens2 = "L"))
+    ## jump is on, but the sens-compartment alag()/f() are not event compartments
+    expect_equal(.ms$eventSens, "jump")
+    expect_length(.ms$eventSensInfo$map$lagCmt, 0L)
     ## common F = JD*(dT/dL)^2 (magnitude comes from the mirrored dose amount)
     expect_true(any(grepl("f(rx__sens_cen_BY_L_BY_L__)=(0.5)*(exp(L))*(exp(L))", rxNorm(.ms), fixed = TRUE)))
     .an <- rxSolve(.ms, .ev, params = c(L = 0), method = "dop853", atol = 1e-10, rtol = 1e-10)[[

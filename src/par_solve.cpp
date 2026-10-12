@@ -812,7 +812,7 @@ t_dRate d2RateEs = NULL;
 t_dDur d2DurEs = NULL;
 t_dF d3FEs = NULL;
 // Phase H1's dtau/lag row: d(F)/dq (q in calcSens2's index space) and the
-// total derivative of the physical Jacobian column d(J[k][c])/dq.
+// total derivative of the physical right-hand side d(f_k)/dq (dLagJac).
 t_dF dFQEs = NULL;
 t_dLag dLagJacEs = NULL;
 // Safety guard for the dtau/lag row's 2nd-order piece: nonzero at (cmt,q)

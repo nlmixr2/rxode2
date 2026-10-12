@@ -2,6 +2,11 @@
 
 ## New features
 
+- `rxode2()` now uses jump event sensitivities by default for any model
+  with sensitivities; before, they were used only when `eventSens` was
+  given.  Use `eventSens = "fd"` for the old behavior.  `calcJac` is still
+  forced on only when `eventSens` is given.
+
 - New event bus (`rxEventListen()`, `rxEventEmit()`, `rxEventScope()` and
   friends) so packages such as nlmixr2log can be told when a top-level
   simulation, fit or result is finished.  Only the outermost operation
@@ -125,6 +130,31 @@
 
 ## Bug fixes
 
+- Event (`eventSens = "jump"`) sensitivities with a modeled `alag()` now use
+  the exact jump `f(x-) - f(x+)` at the dose time instead of its
+  linearization `J*(x- - x+)`, matching the fix in cOde.  The old jump was
+  wrong whenever the model is nonlinear in the dosed state, for example 3x
+  too large for a Michaelis-Menten model.  The second-order lag jumps were
+  also corrected for these models.
+- Event sensitivities of replace (`evid=5`) and multiply (`evid=6`) records
+  now include a modeled `f()` on the replaced value or factor, and their
+  second-order jumps now include the lag and `f()` terms.  The second-order
+  lag jumps of `rxSensMatExp()` models now include the dependence of the rate
+  constants on the parameter.
+- `rxode2(..., calcSens = , indLin = TRUE)` no longer expands the
+  sensitivities twice; with `calcSens2` it used to abort with
+  `free(): invalid next size`.
+- `calcJac = TRUE` with a dotted state or parameter name (e.g. a
+  sensitivity wrt `eta.cl`) no longer generates C that fails to compile.
+- `method = "lsoda"` now reads a model's analytic Jacobian (`calcJac = TRUE`
+  or `df()/dy()` lines) untransposed; it used to get the transpose, so stiff
+  sensitivity models could fail with too many steps.
+- Jump event sensitivities no longer treat the `alag()`/`f()` that a
+  `delay()` model puts on its sensitivity compartments as event
+  compartments; a 2nd-order `delay()` model with a dose used to abort.
+- `eventSens = "jump"` now falls back to `"fd"` for a model whose `alag()`
+  depends on the states; the lag is evaluated at the dose's own time, where
+  the jump runtime has no sensitivities.
 - An `x(0)` statement in a model no longer moves `alag()` and the
   `splitBolus()`-family directives onto the wrong compartment.  A
   steady-state dose with `alag()` then gave 0 before the lag time instead of

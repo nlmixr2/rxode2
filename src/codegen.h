@@ -69,10 +69,11 @@
 // show_ode == 31 event-sensitivity d(F)/dq, q in calcSens2's index space
 // (Phase H1's dtau/lag row: feeds d(delta)/dq = amt*dFQ[c][q])
 #define ode_dFQ 31
-// show_ode == 32 event-sensitivity d(J[k][c])/dq -- total derivative of the
-// PHYSICAL Jacobian column wrt a calcSens2 parameter (Phase H1's dtau/lag
-// row).  Buffer is (nState x nState x np2), NOT the usual (nState x nParam)
-// dosing-parameter shape -- see `.rxEventSensCLines()$lagJacQ`.
+// show_ode == 32 event-sensitivity d(f_k)/dq -- total derivative of the
+// PHYSICAL right-hand side wrt a calcSens2 parameter (Phase H1's dtau/lag
+// row; the name dLagJac is historical).  Buffer is (nState x nState x np2)
+// plus the calcSens2 -> calcSens map and a completeness flag -- see
+// `.rxEventSensCLines()$lagRhsQ`.
 #define ode_dLagJac 32
 // show_ode == 33 event-sensitivity d(alag)/dq, q in calcSens2's index space
 // (Phase H1's dtau/lag row SAFETY GUARD: nonzero here means q ALSO drives
@@ -129,11 +130,15 @@ static inline void printPDStateVar(int show_ode, int scenario) {
       buf2 = tb.ss.line[tb.dy[i]];
       // This is for dydt/ LHS/ or jacobian for df(state)/dy(parameter)
       if (show_ode == ode_dydt || show_ode == ode_lhs || tb.sdfdy[i] == 1){
-	if (scenario == print_double){
-	  sAppend(&sbOut,"  double __PDStateVar_%s_SeP_%s__;\n",buf1,buf2);
+	if (scenario == print_double) {
+	  sAppendN(&sbOut, "  double __PDStateVar_", 22);
 	} else {
-	  sAppend(&sbOut,"  (void)__PDStateVar_%s_SeP_%s__;\n",buf1,buf2);
+	  sAppendN(&sbOut, "  (void)__PDStateVar_", 21);
 	}
+	doDot(&sbOut, buf1);
+	sAppendN(&sbOut, "_SeP_", 5);
+	doDot(&sbOut, buf2);
+	sAppendN(&sbOut, "__;\n", 4);
       }
     }
   }
