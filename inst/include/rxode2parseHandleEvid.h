@@ -652,26 +652,14 @@ static inline void _esMoveDeferredToPending(rx_solving_options_ind *ind, double 
   if (_any) { ind->esHasPending = 1; ind->esPendingTau = tau; }
 }
 
-// Event ("jump") sensitivities: physical Jacobian column J[.,cmt] and
-// f_cmt = dydt(pre-event state)[cmt], needed by the dtau (event-time) jump
-// rows in the paper's replace/additive/multiplicative tables.  Source
-// depends on model type (see _rxEsUseCalcJac, set from mv$indLin):
-//   - matExp()/indLin() models: dydt() is a no-op stub (matrix-exponential
-//     primal solve, not RHS evaluation), so the column comes from calc_jac,
-//     and f_cmt from ME() and IndF() -- the rate matrix dotted with the
-//     current state plus the forcing.  NOT from the Jacobian row: that is
-//     f_cmt only while the whole right-hand side is A.X.
-//   - ordinary ODE models: calc_jac is normally an empty stub (only
-//     populated by explicit user-written df/dy lines) but dydt is fully
-//     functional, so the column comes from a central difference of dydt and
-//     f_cmt from the average of the two perturbed evaluations already
-//     computed for it (accurate to O(eps^2), avoids a third dydt call).
-// `_esJcol` (size >= ns) and `*_esFc` are left untouched if neither source
-// is available (caller must pre-zero/guard on the relevant function pointer).
-// Pass `_esFc = NULL` when the caller's jump row has no f_cmt term.
-// matExp()/indLin(): the column straight out of calc_jac, and the Jacobian row
-// dotted with the state as a provisional f_cmt (the right answer whenever the
-// model has no forcing; _esJacColMeF() replaces it when it does).
+// Event ("jump") sensitivities: physical Jacobian column J[.,cmt] (and
+// optionally f_cmt), the linearized fallback of _esDtauRow() and the
+// matExp() source of the 2nd-order rows.  matExp()/indLin() models
+// (_rxEsUseCalcJac) read it from calc_jac, with the Jacobian row dotted with
+// the state as f_cmt; ordinary ODE models take a central difference of dydt,
+// with f_cmt the average of the two evaluations.  `_esJcol` (size >= ns) and
+// `*_esFc` are left untouched if neither source is available; pass
+// `_esFc = NULL` when no f_cmt is needed.
 static inline void _esJacColCalcJac(int *_esNj, double xout, double *yp, int cmt,
                                     int ns, double *_esJcol, double *_esFc) {
   double *_esPD = (double*) calloc((size_t)ns * ns, sizeof(double));
@@ -684,39 +672,6 @@ static inline void _esJacColCalcJac(int *_esNj, double xout, double *yp, int cmt
   }
   if (_esFc != NULL) *_esFc = _f;
   free(_esPD);
-}
-
-// f_cmt for a matExp()/indLin() model, from the rate matrix and the forcing.
-//
-// The Jacobian row dotted with the state is f_cmt only for a model whose whole
-// right-hand side is A.X.  Once part of it lives in an indLin() forcing --
-// which is where rxode2#1186/#1187 put every nonlinear term -- J is A + dF/dX,
-// so that dot product both misses F(X) and double counts (dF/dX).X.  ME() is
-// the rate matrix (column major, A[i][j] = _mat[j*neq + i]) and IndF() is the
-// forcing, seeded with the infusion rate, which is part of the true right-hand
-// side at this instant too.  Leaves `*_esFc` alone if ME() is unavailable.
-static inline void _esJacColMeF(int id, double xout, double *yp, int cmt,
-                                int neq, double *_esFc,
-                                rx_solving_options_ind *ind) {
-  rx_solve *_esRx = (ind != NULL && ind->rx) ? ind->rx : &rx_global;
-  t_ME _esME = _esRx->fns.me;
-  if (_esME == NULL) return;
-  double *_esA = (double*) calloc((size_t)neq * neq, sizeof(double));
-  if (_esA == NULL) return;
-  _esME(id, xout, xout, _esA, yp);
-  double _fa = 0.0;
-  for (int _j = 0; _j < neq; _j++) _fa += _esA[_j * neq + cmt] * yp[_j];
-  free(_esA);
-  t_IndF _esIndF = _esRx->fns.indf;
-  if (_esIndF != NULL) {
-    double *_esFv = (double*) calloc((size_t)neq, sizeof(double));
-    if (_esFv != NULL) {
-      _esIndF(id, xout, xout, _esFv, yp);
-      _fa += _esFv[cmt];
-      free(_esFv);
-    }
-  }
-  *_esFc = _fa;
 }
 
 // Ordinary ODE: central difference of dydt about yp[cmt], which yields f_cmt as
@@ -748,9 +703,6 @@ static inline void _esJacColF(int id, double xout, double *yp, int cmt, int ns,
   int _esNj[2]; _esNj[0] = neq; _esNj[1] = id;
   if (_rxEsUseCalcJac) {
     _esJacColCalcJac(_esNj, xout, yp, cmt, ns, _esJcol, _esFc);
-    // Only the replace/multiply dtau rows need f_cmt; the additive-bolus rows
-    // pass NULL and skip the two extra evaluations.
-    if (_esFc != NULL) _esJacColMeF(id, xout, yp, cmt, neq, _esFc, ind);
   } else if (dydtEs != NULL) {
     _esJacColFd(_esNj, xout, yp, cmt, ns, neq, _esJcol, _esFc);
   }
@@ -760,6 +712,277 @@ static inline void _esJacColF(int id, double xout, double *yp, int cmt, int ns,
 // _esJacColF())?  Mirrors the guard the additive-bolus dtau row already used.
 static inline int _esHaveJacCol(void) {
   return _rxEsUseCalcJac ? (calc_jac != NULL) : (dydtEs != NULL);
+}
+
+// Physical right-hand side f(y) (rows 0..ns-1) into `fOut`: dydt for ODE
+// models, rate matrix times state plus forcing for matExp()/indLin() models.
+// Returns 0 (fOut untouched) when neither source is available.
+static inline int _esRhs(int id, double xout, double *y, int ns, int neq,
+                         double *fOut, rx_solving_options_ind *ind) {
+  if (_rxEsUseCalcJac) {
+    rx_solve *_esRx = (ind != NULL && ind->rx) ? ind->rx : &rx_global;
+    t_ME _esME = _esRx->fns.me;
+    if (_esME == NULL) return 0;
+    double *_esA = (double*) calloc((size_t)neq * neq, sizeof(double));
+    double *_esFv = (double*) calloc((size_t)neq, sizeof(double));
+    if (_esA == NULL || _esFv == NULL) {
+      if (_esA != NULL) free(_esA);
+      if (_esFv != NULL) free(_esFv);
+      return 0;
+    }
+    _esME(id, xout, xout, _esA, y);
+    t_IndF _esIndF = _esRx->fns.indf;
+    if (_esIndF != NULL) _esIndF(id, xout, xout, _esFv, y);
+    for (int _k = 0; _k < ns; _k++) {
+      double _fa = _esFv[_k];
+      for (int _j = 0; _j < neq; _j++) _fa += _esA[_j * neq + _k] * y[_j];
+      fOut[_k] = _fa;
+    }
+    free(_esA);
+    free(_esFv);
+    return 1;
+  }
+  if (dydtEs == NULL) return 0;
+  double *_esF = (double*) calloc((size_t)neq, sizeof(double));
+  if (_esF == NULL) return 0;
+  int _esNj[2]; _esNj[0] = neq; _esNj[1] = id;
+  dydtEs(_esNj, xout, y, _esF);
+  memcpy(fOut, _esF, (size_t)ns * sizeof(double));
+  free(_esF);
+  return 1;
+}
+
+// Event-time (dtau) saltation row for an event that sets x_cmt to `xcPost`:
+//   row[k] = f_k(x-) - f_k(x+) - fcCoef*[k==cmt]*f_cmt(x-)
+// (fcCoef: 0 additive, 1 replace, 1-alpha multiply).  Exact for a right-hand
+// side that is nonlinear in the states; the linearization J[k][cmt]*(x- - x+)
+// is used only when f itself cannot be evaluated (matExp() without ME()).
+// Returns 0 (row zeroed) when no source is available.
+static inline int _esDtauRow(int id, double xout, double *yp, int cmt, int ns,
+                             int neq, double xcPost, double fcCoef, double *row,
+                             rx_solving_options_ind *ind) {
+  for (int _k = 0; _k < ns; _k++) row[_k] = 0.0;
+  double *_esFPost = (double*) calloc((size_t)ns, sizeof(double));
+  if (_esFPost == NULL) return 0;
+  if (_esRhs(id, xout, yp, ns, neq, row, ind)) {
+    double _esFc = row[cmt];
+    double _esXc = yp[cmt];
+    yp[cmt] = xcPost;
+    int _ok = _esRhs(id, xout, yp, ns, neq, _esFPost, ind);
+    yp[cmt] = _esXc; // restore pre-event state
+    if (_ok) {
+      for (int _k = 0; _k < ns; _k++) row[_k] -= _esFPost[_k];
+      row[cmt] -= fcCoef * _esFc;
+      free(_esFPost);
+      return 1;
+    }
+    for (int _k = 0; _k < ns; _k++) row[_k] = 0.0;
+  }
+  free(_esFPost);
+  if (!_esHaveJacCol()) return 0;
+  double _esFc = 0.0;
+  _esJacColF(id, xout, yp, cmt, ns, neq, row, fcCoef != 0.0 ? &_esFc : NULL, ind);
+  double _esDx = yp[cmt] - xcPost;
+  for (int _k = 0; _k < ns; _k++) row[_k] *= _esDx;
+  row[cmt] -= fcCoef * _esFc;
+  return 1;
+}
+
+// d/dtau of the _esDtauRow() saltation along the trajectory (x- moves with
+// f(x-) and explicit time; x+_c = g(x-_c) moves with gx*f_c(x-), gx = dg/dx_c),
+// by a central difference.  The 2nd-order dtau rows need it when q also drives
+// the event time; it vanishes only for a linear, autonomous right-hand side.
+static inline int _esDtauRowDt(int id, double xout, double *yp, int cmt, int ns,
+                               int neq, double xcPost, double gx, double *out,
+                               rx_solving_options_ind *ind) {
+  double *_esFm = (double*) calloc((size_t)ns * 3, sizeof(double));
+  double *_esYs = (double*) malloc((size_t)neq * sizeof(double));
+  int _ok = 0;
+  if (_esFm != NULL && _esYs != NULL && _esRhs(id, xout, yp, ns, neq, _esFm, ind)) {
+    double *_esFa = _esFm + ns, *_esFb = _esFm + 2 * ns;
+    double _esAt = xout < 0 ? -xout : xout;
+    double _esEps = 6e-6 * (_esAt > 1.0 ? _esAt : 1.0);
+    _ok = 1;
+    for (int _s = 0; _s < 2 && _ok; _s++) {
+      double _esH = (_s == 0) ? _esEps : -_esEps;
+      memcpy(_esYs, yp, (size_t)neq * sizeof(double));
+      for (int _k = 0; _k < ns; _k++) _esYs[_k] += _esH * _esFm[_k];
+      _ok = _esRhs(id, xout + _esH, _esYs, ns, neq, _esFa, ind);
+      _esYs[cmt] = xcPost + _esH * gx * _esFm[cmt];
+      if (_ok) _ok = _esRhs(id, xout + _esH, _esYs, ns, neq, _esFb, ind);
+      if (_ok) {
+        double _esSgn = (_s == 0) ? 1.0 : -1.0;
+        for (int _k = 0; _k < ns; _k++) {
+          double _esD = _esFa[_k] - _esFb[_k];
+          if (_k == cmt) _esD -= (1.0 - gx) * _esFa[cmt];
+          out[_k] = (_s == 0 ? 0.0 : out[_k]) + _esSgn * _esD / (2.0 * _esEps);
+        }
+      }
+    }
+  }
+  if (_esFm != NULL) free(_esFm);
+  if (_esYs != NULL) free(_esYs);
+  return _ok;
+}
+
+// dLagJac output: G[k][q] = d(f_k)/dq (total) for each lag compartment
+// (cmt*(ns*np2) + k*np2 + q), then np2 slots mapping each calcSens2 index to
+// its calcSens index (-1 when absent), then a flag that is 1 when G is
+// complete (0 for matExp(), which has no symbolic right-hand side).  Caller
+// frees.
+static inline double *_esRhsQ(int id, double xout, double *y, int ns, int np2) {
+  size_t _n = (size_t)ns * ns * np2;
+  double *_esG = (double*) calloc(_n + (size_t)np2 + 1, sizeof(double));
+  if (_esG == NULL) return NULL;
+  for (int _q = 0; _q < np2; _q++) _esG[_n + _q] = -1.0;
+  dLagJacEs(id, xout, y, _esG);
+  return _esG;
+}
+
+static inline int _esRhsQOk(double *G, int ns, int np2) {
+  return G != NULL && G[(size_t)ns * ns * np2 + np2] == 1.0;
+}
+
+static inline int _esQToP(double *G, int ns, int np, int np2, int q) {
+  if (G == NULL) return -1;
+  int _p = (int) G[(size_t)ns * ns * np2 + q];
+  return (_p >= 0 && _p < np) ? _p : -1;
+}
+
+// Second-order jump of a replace (gx = 0) or multiply (gx = alpha) event at
+// tau, ODE models only (needs dydt for the sensitivity right-hand sides).  The
+// 1st-order map is S^p_c+ = gx*S^p_c- + gp_p + D_c*tau_p, S^p_k+ = S^p_k- +
+// D_k*tau_p with D the _esDtauRow() saltation and gp_p = d(F*amt)/dp (times
+// x_c for multiply).  Differentiating it wrt q at fixed time and adding the
+// moving-boundary term (when tau_q != 0) gives the S^{pq} increments added
+// here; the caller has already applied gx*S^{pq}_c-.  `yPre` is the full
+// pre-event state; `row` (D) may be NULL when the event time is fixed.
+static inline void _esReplMult2(int id, double xout, double *yp, double *yPre,
+                                int cmt, int ns, int np, int neq, double gx,
+                                double xcPost, double rawAmt, int isMult,
+                                double *row, rx_solving_options_ind *ind) {
+  int np2 = _rxEsNParam2;
+  if (_rxEsUseCalcJac || dydtEs == NULL || np2 <= 0 ||
+      ns * (1 + np) + ns * np * np2 > neq) return;
+  size_t _nsnp = (size_t)ns * np;
+  double *_esDLag = (double*) calloc(_nsnp, sizeof(double));
+  double *_esDF = (double*) calloc(_nsnp, sizeof(double));
+  double *_esD2Lag = (double*) calloc(_nsnp * np2, sizeof(double));
+  double *_esD2F = (double*) calloc(_nsnp * np2, sizeof(double));
+  double *_esDLagQ = (double*) calloc((size_t)ns * np2, sizeof(double));
+  double *_esDFQ = (double*) calloc((size_t)ns * np2, sizeof(double));
+  double *_esYG = (double*) malloc((size_t)neq * sizeof(double));
+  double *_esGm = (double*) calloc((size_t)neq * 2, sizeof(double));
+  double *_esDDt = (double*) calloc((size_t)ns * 2, sizeof(double));
+  double *_esGPre = NULL, *_esGPost = NULL;
+  if (_esDLag == NULL || _esDF == NULL || _esD2Lag == NULL || _esD2F == NULL ||
+      _esDLagQ == NULL || _esDFQ == NULL || _esYG == NULL || _esGm == NULL ||
+      _esDDt == NULL) goto done;
+  {
+    if (dLagEs != NULL) dLagEs(id, xout, yPre, _esDLag);
+    if (dF != NULL) dF(id, xout, yPre, _esDF);
+    if (d2LagEs != NULL) d2LagEs(id, xout, yPre, _esD2Lag);
+    if (d2FEs != NULL) d2FEs(id, xout, yPre, _esD2F);
+    if (dLagQEs != NULL) dLagQEs(id, xout, yPre, _esDLagQ);
+    if (dFQEs != NULL) dFQEs(id, xout, yPre, _esDFQ);
+    int _anyLag = 0, _anyLagQ = 0;
+    for (int _p = 0; _p < np; _p++) if (_esDLag[cmt * np + _p] != 0.0) _anyLag = 1;
+    for (int _q = 0; _q < np2; _q++) if (_esDLagQ[cmt * np2 + _q] != 0.0) _anyLagQ = 1;
+    if (row == NULL) _anyLag = _anyLagQ = 0;
+    double *_esD = (double*) calloc((size_t)ns, sizeof(double));
+    if (_esD == NULL) goto done;
+    if (row != NULL) memcpy(_esD, row, (size_t)ns * sizeof(double));
+    double _esXc = yPre[cmt];
+    double *_esFm = _esDDt + ns; // f(x-)
+    int _haveF = _esRhs(id, xout, yPre, ns, neq, _esFm, ind);
+    int _haveG = 0;
+    // G at (x-, S-) and at (x+, fixed-time S+ = gx*S_c- + gp on the event row)
+    if ((_anyLag || _anyLagQ) && dLagJacEs != NULL) {
+      _esGPre = _esRhsQ(id, xout, yPre, ns, np2);
+      memcpy(_esYG, yPre, (size_t)neq * sizeof(double));
+      _esYG[cmt] = xcPost;
+      for (int _p = 0; _p < np; _p++) {
+        double _gp = rawAmt * _esDF[cmt * np + _p] * (isMult ? _esXc : 1.0);
+        _esYG[ns + _p * ns + cmt] = gx * yPre[ns + _p * ns + cmt] + _gp;
+      }
+      _esGPost = _esRhsQ(id, xout, _esYG, ns, np2);
+      _haveG = _esRhsQOk(_esGPre, ns, np2) && _esGPost != NULL;
+    }
+    int _haveDt = 0;
+    double *_esGPlus = _esGm + neq;
+    if (_anyLagQ && _haveF) {
+      _haveDt = _esDtauRowDt(id, xout, yPre, cmt, ns, neq, xcPost, gx, _esDDt, ind);
+      // sensitivity right-hand sides before (yPre) and after the 1st-order jump
+      int _nj[2]; _nj[0] = neq; _nj[1] = id;
+      dydtEs(_nj, xout, yPre, _esGm);
+      memcpy(_esYG, yPre, (size_t)neq * sizeof(double));
+      _esYG[cmt] = xcPost;
+      for (int _p = 0; _p < np; _p++) {
+        double _tp = _esDLag[cmt * np + _p];
+        double _gp = rawAmt * _esDF[cmt * np + _p] * (isMult ? _esXc : 1.0);
+        for (int _k = 0; _k < ns; _k++) {
+          double _s = yPre[ns + _p * ns + _k];
+          if (_k == cmt) _s = gx * _s + _gp;
+          _esYG[ns + _p * ns + _k] = _s + _esD[_k] * _tp;
+        }
+      }
+      dydtEs(_nj, xout, _esYG, _esGPlus);
+    }
+    for (int _p = 0; _p < np; _p++) {
+      double _tp = _esDLag[cmt * np + _p];
+      double _dFp = _esDF[cmt * np + _p];
+      for (int _q = 0; _q < np2; _q++) {
+        double _tq = _esDLagQ[cmt * np2 + _q];
+        double _tpq = _esD2Lag[cmt * (np * np2) + _p * np2 + _q];
+        double _dFq = _esDFQ[cmt * np2 + _q];
+        double _d2F = _esD2F[cmt * (np * np2) + _p * np2 + _q];
+        int _pq = _esQToP(_esGPre, ns, np, np2, _q);
+        for (int _k = 0; _k < ns; _k++) {
+          double _t = 0.0;
+          if (_k == cmt) {
+            if (isMult) {
+              double _sqc = (_pq >= 0) ? yPre[ns + _pq * ns + cmt] : 0.0;
+              _t += rawAmt * (_dFq * yPre[ns + _p * ns + cmt] + _sqc * _dFp + _esXc * _d2F);
+            } else {
+              _t += rawAmt * _d2F;
+            }
+          }
+          if (_haveG) {
+            int _gi = cmt * (ns * np2) + _k * np2 + _q;
+            double _dDq = _esGPre[_gi] - _esGPost[_gi];
+            if (_k == cmt) {
+              _dDq -= (1.0 - gx) * _esGPre[_gi];
+              if (isMult && _haveF) _dDq += rawAmt * _dFq * _esFm[cmt];
+            }
+            _t += _dDq * _tp + _esD[_k] * _tpq;
+          } else {
+            _t += _esD[_k] * _tpq;
+          }
+          if (_tq != 0.0 && _haveDt) {
+            double _gm = _esGm[ns + _p * ns + _k];
+            double _gpl = _esGPlus[ns + _p * ns + _k];
+            double _l = (_k == cmt ? gx * _gm : _gm) - _gpl + _esDDt[_k] * _tp;
+            if (_k == cmt && isMult && _haveF) _l += rawAmt * _dFp * _esFm[cmt];
+            _t += _l * _tq;
+          }
+          if (_t != 0.0) yp[ns * (1 + np) + _k + ns * (_p + _q * np)] += _t;
+        }
+      }
+    }
+    free(_esD);
+  }
+done:
+  if (_esDLag != NULL) free(_esDLag);
+  if (_esDF != NULL) free(_esDF);
+  if (_esD2Lag != NULL) free(_esD2Lag);
+  if (_esD2F != NULL) free(_esD2F);
+  if (_esDLagQ != NULL) free(_esDLagQ);
+  if (_esDFQ != NULL) free(_esDFQ);
+  if (_esYG != NULL) free(_esYG);
+  if (_esGm != NULL) free(_esGm);
+  if (_esDDt != NULL) free(_esDDt);
+  if (_esGPre != NULL) free(_esGPre);
+  if (_esGPost != NULL) free(_esGPost);
 }
 
 // Second-order infusion-boundary jump (Phase F/H1's remaining infusion gap):
@@ -1683,17 +1906,23 @@ static inline int handle_evid(int evid, int neq,
     case EVIDF_REPLACE: // replace
       ind->on[cmt] = 1;
       // Event ("jump") sensitivities -- replacement (plan Section 0, Table 1).
-      // The replaced state is set to a value that (for a constant replacement)
-      // does not depend on the parameters, so its sensitivity wrt every
-      // parameter is reset to 0.  Done BEFORE the physical replace so the
-      // pre-event state is still available.  Sens compartment for (state k,
-      // param p) = nState + p*nState + k.
+      // The replaced state is set to xi = F*amt, so its sensitivity wrt p is
+      // reset to amt*dF/dp (0 without a modeled F).  Done BEFORE the physical
+      // replace so the pre-event state is still available.  Sens compartment
+      // for (state k, param p) = nState + p*nState + k.
       if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && _rxEsNState * (1 + _rxEsNParam) <= neq) {
         int _ns = _rxEsNState;
         int _np = _rxEsNParam;
+        double _esRawAmt = getDoseIndex(ind, ind->idx);
+        double *_esYPre = (double*) malloc((size_t)neq * sizeof(double));
+        if (_esYPre != NULL) memcpy(_esYPre, yp, (size_t)neq * sizeof(double));
+        double *_esDFB = (dF != NULL) ? (double*) calloc((size_t)_ns * _np, sizeof(double)) : NULL;
+        if (_esDFB != NULL) dF(id, xout, yp, _esDFB);
         for (int _p = 0; _p < _np; _p++) {
-          yp[_ns + _p * _ns + cmt] = 0.0;
+          yp[_ns + _p * _ns + cmt] = (_esDFB != NULL) ? _esRawAmt * _esDFB[cmt * _np + _p] : 0.0;
         }
+        if (_esDFB != NULL) free(_esDFB);
+        double *_esRow = NULL;
         // Second-order (Hessian path): a constant replacement value has an
         // identically zero second derivative wrt any parameter pair too (same
         // reasoning as the first-order row above) -- zero the 2nd-order
@@ -1728,35 +1957,41 @@ static inline int handle_evid(int evid, int neq,
         // compartment (raw event-table replace/multiply records, not the
         // in-model replace()/multiply() plugins, which route param-dependent
         // values through a different, already-correct captured-dosing path
-        // -- see the plan's Phase B "B2" note): dxk/dtau = J[k,c]*(x1-xi),
-        // with an extra -f_c term for k==c (paper Table 1).  x1 = pre-event
-        // state (BEFORE the physical replace just below), xi = replacement
-        // value.
-        if (dLagEs != NULL && _esHaveJacCol()) {
+        // -- see the plan's Phase B "B2" note): the saltation
+        // dxk/dtau = f_k(x-) - f_k(x+) - [k==c]*f_c(x-), x+ = x- with x_c = xi
+        // (exact for nonlinear f; paper Table 1 is its linearization).
+        double _esXi = getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);
+        if (dLagEs != NULL) {
           double *_esDLagB = (double*) calloc((size_t)_ns * _np, sizeof(double));
-          double *_esJcol = (double*) calloc((size_t)_ns, sizeof(double));
-          if (_esDLagB != NULL && _esJcol != NULL) {
+          _esRow = (double*) calloc((size_t)_ns, sizeof(double));
+          if (_esRow != NULL && !_esDtauRow(id, xout, yp, cmt, _ns, neq, _esXi, 1.0, _esRow, ind)) {
+            free(_esRow);
+            _esRow = NULL;
+          }
+          if (_esDLagB != NULL && _esRow != NULL) {
             dLagEs(id, xout, yp, _esDLagB);
-            double _esFc = 0.0;
-            _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol, &_esFc, ind);
-            double _esX1 = yp[cmt];
-            double _esXi = getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);
-            for (int _p = 0; _p < _np; _p++) {
-              double _esDLagP = _esDLagB[cmt * _np + _p];
-              if (_esDLagP != 0.0) {
-                for (int _esK = 0; _esK < _ns; _esK++) {
-                  double _esTerm = _esJcol[_esK] * (_esX1 - _esXi);
-                  if (_esK == cmt) _esTerm -= _esFc;
-                  // non-dosed compartments deferred to preSolve (coincident-time fix)
-                  _esApplyOrDeferJump(ind, yp, _ns + _p * _ns + _esK, _esK, cmt,
-                                      _esTerm * _esDLagP, xout);
+            {
+              for (int _p = 0; _p < _np; _p++) {
+                double _esDLagP = _esDLagB[cmt * _np + _p];
+                if (_esDLagP != 0.0) {
+                  for (int _esK = 0; _esK < _ns; _esK++) {
+                    // non-dosed compartments deferred to preSolve (coincident-time fix)
+                    _esApplyOrDeferJump(ind, yp, _ns + _p * _ns + _esK, _esK, cmt,
+                                        _esRow[_esK] * _esDLagP, xout);
+                  }
                 }
               }
             }
           }
           if (_esDLagB != NULL) free(_esDLagB);
-          if (_esJcol != NULL) free(_esJcol);
         }
+        // 2nd order: value (F) and event-time (alag) terms; gx = 0
+        if (_esYPre != NULL) {
+          _esReplMult2(id, xout, yp, _esYPre, cmt, _ns, _np, neq, 0.0, _esXi,
+                       _esRawAmt, 0, _esRow, ind);
+          free(_esYPre);
+        }
+        if (_esRow != NULL) free(_esRow);
       }
       yp[cmt] = getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);     //dosing before obs
       break;
@@ -1772,9 +2007,18 @@ static inline int handle_evid(int evid, int neq,
           int _ns = _rxEsNState;
           int _np = _rxEsNParam;
           double _esX1 = yp[cmt]; // pre-event state, before the *= alpha below
+          double _esRawAmt = getDoseIndex(ind, ind->idx);
+          double *_esYPre = (double*) malloc((size_t)neq * sizeof(double));
+          if (_esYPre != NULL) memcpy(_esYPre, yp, (size_t)neq * sizeof(double));
+          // alpha = F*amt: S^p_c+ = alpha*S^p_c- + x1*amt*dF/dp
+          double *_esDFB = (dF != NULL) ? (double*) calloc((size_t)_ns * _np, sizeof(double)) : NULL;
+          if (_esDFB != NULL) dF(id, xout, yp, _esDFB);
           for (int _p = 0; _p < _np; _p++) {
             yp[_ns + _p * _ns + cmt] *= _esAlpha;
+            if (_esDFB != NULL) yp[_ns + _p * _ns + cmt] += _esX1 * _esRawAmt * _esDFB[cmt * _np + _p];
           }
+          if (_esDFB != NULL) free(_esDFB);
+          double *_esRow = NULL;
           // Second-order (Hessian path): alpha is treated as parameter-fixed
           // for this row (same convention as first order -- a parameter-
           // dependent VALUE routes through the captured-dosing path instead,
@@ -1807,31 +2051,41 @@ static inline int handle_evid(int evid, int neq,
             }
           }
           // dtau row (event time), only if the lag is modeled (same B2 scope
-          // note as EVIDF_REPLACE above): dxk/dtau = (1-alpha)*J[k,c]*x1,
-          // with an extra -(1-alpha)*f_c term for k==c (paper Table 3).
-          if (dLagEs != NULL && _esHaveJacCol()) {
+          // note as EVIDF_REPLACE above): the saltation
+          // dxk/dtau = f_k(x-) - f_k(x+) - [k==c]*(1-alpha)*f_c(x-),
+          // x+ = x- with x_c = alpha*x1 (paper Table 3 is its linearization).
+          if (dLagEs != NULL) {
             double *_esDLagB = (double*) calloc((size_t)_ns * _np, sizeof(double));
-            double *_esJcol = (double*) calloc((size_t)_ns, sizeof(double));
-            if (_esDLagB != NULL && _esJcol != NULL) {
+            _esRow = (double*) calloc((size_t)_ns, sizeof(double));
+            if (_esRow != NULL && !_esDtauRow(id, xout, yp, cmt, _ns, neq, _esAlpha * _esX1,
+                                              1.0 - _esAlpha, _esRow, ind)) {
+              free(_esRow);
+              _esRow = NULL;
+            }
+            if (_esDLagB != NULL && _esRow != NULL) {
               dLagEs(id, xout, yp, _esDLagB);
-              double _esFc = 0.0;
-              _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol, &_esFc, ind);
-              double _esOneMAlpha = 1.0 - _esAlpha;
-              for (int _p = 0; _p < _np; _p++) {
-                double _esDLagP = _esDLagB[cmt * _np + _p];
-                if (_esDLagP != 0.0) {
-                  for (int _esK = 0; _esK < _ns; _esK++) {
-                    double _esTerm = _esOneMAlpha * (_esJcol[_esK] * _esX1 - (_esK == cmt ? _esFc : 0.0));
-                    // non-dosed compartments deferred to preSolve (coincident-time fix)
-                    _esApplyOrDeferJump(ind, yp, _ns + _p * _ns + _esK, _esK, cmt,
-                                        _esTerm * _esDLagP, xout);
+              {
+                for (int _p = 0; _p < _np; _p++) {
+                  double _esDLagP = _esDLagB[cmt * _np + _p];
+                  if (_esDLagP != 0.0) {
+                    for (int _esK = 0; _esK < _ns; _esK++) {
+                      // non-dosed compartments deferred to preSolve (coincident-time fix)
+                      _esApplyOrDeferJump(ind, yp, _ns + _p * _ns + _esK, _esK, cmt,
+                                          _esRow[_esK] * _esDLagP, xout);
+                    }
                   }
                 }
               }
             }
             if (_esDLagB != NULL) free(_esDLagB);
-            if (_esJcol != NULL) free(_esJcol);
           }
+          // 2nd order: value (F) and event-time (alag) terms; gx = alpha
+          if (_esYPre != NULL) {
+            _esReplMult2(id, xout, yp, _esYPre, cmt, _ns, _np, neq, _esAlpha,
+                         _esAlpha * _esX1, _esRawAmt, 1, _esRow, ind);
+            free(_esYPre);
+          }
+          if (_esRow != NULL) free(_esRow);
         }
         yp[cmt] *= _esAlpha;     //dosing before obs
       }
@@ -1891,6 +2145,18 @@ static inline int handle_evid(int evid, int neq,
           // 2nd/3rd-order Leibniz rows have read yp's post-jump 1st-order block.
           double *_esDeferBuf = (ind->esPendingJump != NULL) ?
             (double*) calloc((size_t)_ns * _np, sizeof(double)) : NULL;
+          // dtau saltation f(x-) - f(x+) (filled by the 1st-order dtau row) and
+          // the 2nd-order row's G[k][q] = d(f_k)/dq at the pre-event state
+          // (captured here, before ddelta/dtau mutate the sensitivities) and
+          // at the post-dose state (captured just before the dtau row).
+          double *_esSalt = NULL;
+          double *_esGPre = NULL;
+          double *_esGPost = NULL;
+          if (d2LagEs != NULL && dLagJacEs != NULL && dLagEs != NULL &&
+              _rxEsNParam2 > 0 &&
+              _ns * (1 + _np) + _ns * _np * _rxEsNParam2 <= neq) {
+            _esGPre = _esRhsQ(id, xout, yp, _ns, _rxEsNParam2);
+          }
           // ddelta row (bioavailability)
           if (dF != NULL) {
             double *_dFB = (double*) calloc((size_t)_ns * _np, sizeof(double));
@@ -1985,13 +2251,32 @@ static inline int handle_evid(int evid, int neq,
           // to match how those lines are emitted). Ordinary ODE models keep
           // the central-difference-of-dydt approach (calc_jac is normally an
           // empty stub for them -- only populated by user-written df/dy).
-          if (dLagEs != NULL && _esHaveJacCol()) {
+          // The saltation is exact: f(x-) - f(x+) with x+ = x- + delta*e_c
+          // (the paper's -J[k][c]*delta is its linearization, wrong once f is
+          // nonlinear in the states).
+          //
+          // Second-order prerequisite: G[k][q] = d(f_k)/dq (total, via S^q)
+          // at the post-dose state with the post-ddelta S^q, so the 2nd-order
+          // row can form d/dq [f_k(x-) - f_k(x+)] exactly.
+          if (_esGPre != NULL) {
+            double *_esYG = (double*) malloc((size_t)neq * sizeof(double));
+            if (_esYG != NULL) {
+              memcpy(_esYG, yp, (size_t)neq * sizeof(double));
+              _esYG[cmt] += _esDelta;
+              _esGPost = _esRhsQ(id, xout, _esYG, _ns, _rxEsNParam2);
+              free(_esYG);
+            }
+          }
+          if (dLagEs != NULL) {
             double *_esDLagB = (double*) calloc((size_t)_ns * _np, sizeof(double));
-            double *_esJcol = (double*) calloc((size_t)_ns, sizeof(double));
-            if (_esDLagB != NULL && _esJcol != NULL) {
+            _esSalt = (double*) calloc((size_t)_ns, sizeof(double));
+            if (_esSalt != NULL &&
+                !_esDtauRow(id, xout, yp, cmt, _ns, neq, yp[cmt] + _esDelta, 0.0, _esSalt, ind)) {
+              free(_esSalt);
+              _esSalt = NULL;
+            }
+            if (_esDLagB != NULL && _esSalt != NULL) {
               dLagEs(id, xout, yp, _esDLagB);
-              // NULL: the additive-bolus dtau row has no f_c term
-              _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol, NULL, ind);
               for (int _p = 0; _p < _np; _p++) {
                 double _esDLagP = _esDLagB[cmt * _np + _p];
                 if (_esDLagP != 0.0) {
@@ -2000,24 +2285,22 @@ static inline int handle_evid(int evid, int neq,
                     // non-dosed part recorded for deferral (coincident-time fix)
                     _esApplyJumpRecordNonDosed(yp, _esDeferBuf, _ns,
                                                _ns + _p * _ns + _esK, _esK, cmt,
-                                               -_esJcol[_esK] * _esDelta * _esDLagP);
+                                               _esSalt[_esK] * _esDLagP);
                   }
                 }
               }
             }
             if (_esDLagB != NULL) free(_esDLagB);
-            if (_esJcol != NULL) free(_esJcol);
           }
           // Second-order dtau row (Phase H1's dtau/lag row): d/dq of the
           // 1st-order dtau jump above, by the product rule applied to
-          // -J[k][c]*delta*dLag_p[c]:
-          //   -dJdq[k][c]*delta*dLag_p[c]              (Jacobian coupling)
-          //   -J[k][c]*(amt*dFQ[c][q])*dLag_p[c]        (delta = F*amt coupling)
-          //   -J[k][c]*delta*d2Lag[p][q][c]             (dLag itself coupling)
-          // dJdq[k][c] = d(J[k][c])/dq, the total derivative of the physical
-          // Jacobian column (`.rxEventSensDerivs()`'s "lagJacQ" table,
-          // computed symbolically from the model's own d/dt() RHS -- see the
-          // plan's Phase H1-dtau note).
+          // Salt[k]*dLag_p[c], Salt[k] = f_k(x-) - f_k(x+):
+          //   (G-[k][q] - G+[k][q])*dLag_p[c]   (d(Salt[k])/dq at fixed time)
+          //   Salt[k]*d2Lag[p][q][c]            (dLag itself coupling)
+          // G[k][q] = d(f_k)/dq, the total derivative of the physical RHS
+          // (`.rxEventSensDerivs()`'s "lagRhsQ" table, compiled as dLagJac);
+          // G- at (x-, S^q-), G+ at (x- + delta*e_c, S^q- + amt*dF_q*e_c), so
+          // the difference also carries the delta = F*amt coupling.
           //
           // PLUS a Leibniz/moving-boundary term whenever q ALSO drives this
           // same alag (dLag_q[c] != 0): the three terms above hold time FIXED
@@ -2061,16 +2344,21 @@ static inline int handle_evid(int evid, int neq,
           // added the full (p,q) result IS symmetric again, so getting the
           // per-model-type index right (rather than relying on symmetry to
           // paper over it) is what makes both model types correct together.
-          if (d2LagEs != NULL && dLagJacEs != NULL && _esHaveJacCol() &&
-              _rxEsNParam2 > 0 &&
-              _ns * (1 + _np) + _ns * _np * _rxEsNParam2 <= neq) {
+          if (_esSalt != NULL && _esGPre != NULL && _esGPost != NULL) {
             int _np2 = _rxEsNParam2;
             double *_esDLagB2 = (double*) calloc((size_t)_ns * _np, sizeof(double));
-            double *_esJcol2 = (double*) calloc((size_t)_ns, sizeof(double));
             double *_esD2LagB = (double*) calloc((size_t)_ns * _np * _np2, sizeof(double));
-            double *_esDFQB = (double*) calloc((size_t)_ns * _np2, sizeof(double));
-            double *_esJacQB = (double*) calloc((size_t)_ns * _ns * _np2, sizeof(double));
             double *_esDLagQB = (double*) calloc((size_t)_ns * _np2, sizeof(double));
+            // matExp(): no symbolic RHS, so d(Salt)/dq falls back to the
+            // linearization -J[k][c]*amt*dF/dq (exact for its linear system)
+            int _esGOk = _esRhsQOk(_esGPre, _ns, _np2);
+            double *_esJcolL = NULL, *_esDFQL = NULL;
+            if (!_esGOk && _esHaveJacCol()) {
+              _esJcolL = (double*) calloc((size_t)_ns, sizeof(double));
+              _esDFQL = (double*) calloc((size_t)_ns * _np2, sizeof(double));
+              if (_esJcolL != NULL) _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcolL, NULL, ind);
+              if (_esDFQL != NULL && dFQEs != NULL) dFQEs(id, xout, yp, _esDFQL);
+            }
             // matExp()/indLin() only: the full physical ns x ns Jacobian
             // (row-major, J[k][l] = _esFullJac[k*ns+l]), needed for the
             // Leibniz term's `sum_l J[k][l]*(S^p_l|post - S^p_l|pre)`.
@@ -2082,13 +2370,9 @@ static inline int handle_evid(int evid, int neq,
                 calc_jac(_esNjF, xout, yp, _esFullJac, (unsigned int) _ns);
               }
             }
-            if (_esDLagB2 != NULL && _esJcol2 != NULL && _esD2LagB != NULL &&
-                _esDFQB != NULL && _esJacQB != NULL && _esDLagQB != NULL) {
+            if (_esDLagB2 != NULL && _esD2LagB != NULL && _esDLagQB != NULL) {
               dLagEs(id, xout, yp, _esDLagB2);
-              _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol2, NULL, ind);
               d2LagEs(id, xout, yp, _esD2LagB);
-              if (dFQEs != NULL) dFQEs(id, xout, yp, _esDFQB);
-              dLagJacEs(id, xout, yp, _esJacQB);
               if (dLagQEs != NULL) dLagQEs(id, xout, yp, _esDLagQB);
               // Does ANY calcSens2 param also drive this event's alag? The
               // Leibniz term below needs dS^p_./dt regardless of whether p
@@ -2100,6 +2384,18 @@ static inline int handle_evid(int evid, int neq,
               int _esAnyLagQ = 0;
               for (int _qq = 0; _qq < _np2; _qq++) {
                 if (_esDLagQB[cmt * _np2 + _qq] != 0.0) { _esAnyLagQ = 1; break; }
+              }
+              // d(Salt)/dtau along the trajectory: the moving-boundary term's
+              // tau_p*tau_q piece (zero for a linear, autonomous RHS).
+              double *_esDSaltDt = NULL;
+              if (_esAnyLagQ) {
+                _esDSaltDt = (double*) calloc((size_t)_ns, sizeof(double));
+                if (_esDSaltDt != NULL &&
+                    !_esDtauRowDt(id, xout, yp, cmt, _ns, neq, yp[cmt] + _esDelta,
+                                  1.0, _esDSaltDt, ind)) {
+                  free(_esDSaltDt);
+                  _esDSaltDt = NULL;
+                }
               }
               for (int _p = 0; _p < _np; _p++) {
                 double _esDLagP2 = _esDLagB2[cmt * _np + _p];
@@ -2144,20 +2440,23 @@ static inline int handle_evid(int evid, int neq,
                 }
                 for (int _q = 0; _q < _np2; _q++) {
                   double _esD2LagPQ = _esD2LagB[cmt * (_np * _np2) + _p * _np2 + _q];
-                  double _esDFQc = _esDFQB[cmt * _np2 + _q];
                   double _esDLagQq = _esDLagQB[cmt * _np2 + _q];
                   for (int _esK = 0; _esK < _ns; _esK++) {
-                    double _esDJdq = _esJacQB[cmt * (_ns * _np2) + _esK * _np2 + _q];
+                    int _esGi = cmt * (_ns * _np2) + _esK * _np2 + _q;
+                    double _esDSaltQ = _esGOk ? _esGPre[_esGi] - _esGPost[_esGi] :
+                      ((_esJcolL != NULL && _esDFQL != NULL) ?
+                       -_esJcolL[_esK] * _esRawAmt * _esDFQL[cmt * _np2 + _q] : 0.0);
                     // Compartment layout is model-type-specific -- see the
                     // note above (rxSensMatExp: p-outer/q-inner; ordinary
                     // ODE models via rxExpandSens2_: q-outer/p-inner).
                     int _c2 = _rxEsUseCalcJac ?
                       (_ns * (1 + _np) + _esK + _ns * (_p * _np2 + _q)) :
                       (_ns * (1 + _np) + _esK + _ns * (_p + _q * _np));
-                    double _esTerm = -_esDJdq * _esDelta * _esDLagP2
-                      - _esJcol2[_esK] * (_esRawAmt * _esDFQc) * _esDLagP2
-                      - _esJcol2[_esK] * _esDelta * _esD2LagPQ;
+                    double _esTerm = _esDSaltQ * _esDLagP2 + _esSalt[_esK] * _esD2LagPQ;
                     if (_esDLagQq != 0.0) {
+                      if (_esDSaltDt != NULL) {
+                        _esTerm += _esDSaltDt[_esK] * _esDLagP2 * _esDLagQq;
+                      }
                       if (_esDydtPostP != NULL && _esDydtPre != NULL) {
                         double _esGpost = _esDydtPostP[_ns + _p * _ns + _esK];
                         double _esGpre = _esDydtPre[_ns + _p * _ns + _esK];
@@ -2172,14 +2471,14 @@ static inline int handle_evid(int evid, int neq,
                 if (_esDydtPostP != NULL) free(_esDydtPostP);
                 if (_esGdiff != NULL) free(_esGdiff);
               }
+              if (_esDSaltDt != NULL) free(_esDSaltDt);
             }
             if (_esFullJac != NULL) free(_esFullJac);
             if (_esDLagB2 != NULL) free(_esDLagB2);
-            if (_esJcol2 != NULL) free(_esJcol2);
             if (_esD2LagB != NULL) free(_esD2LagB);
-            if (_esDFQB != NULL) free(_esDFQB);
-            if (_esJacQB != NULL) free(_esJacQB);
             if (_esDLagQB != NULL) free(_esDLagQB);
+            if (_esJcolL != NULL) free(_esJcolL);
+            if (_esDFQL != NULL) free(_esDFQL);
           }
           // Now that the 2nd/3rd-order rows have read yp's post-jump 1st-order
           // block, defer the non-dosed 1st-order jump (coincident-time fix).
@@ -2187,6 +2486,9 @@ static inline int handle_evid(int evid, int neq,
           if (_esDeferBuf != NULL) free(_esDeferBuf);
           if (_esDydtPre != NULL) free(_esDydtPre);
           if (_esSensPre != NULL) free(_esSensPre);
+          if (_esSalt != NULL) free(_esSalt);
+          if (_esGPre != NULL) free(_esGPre);
+          if (_esGPost != NULL) free(_esGPost);
         }
         yp[cmt] += _esDelta;     //dosing before obs
       }

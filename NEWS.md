@@ -125,6 +125,18 @@
 
 ## Bug fixes
 
+- Event (`eventSens = "jump"`) sensitivities with a modeled `alag()` now use
+  the exact jump `f(x-) - f(x+)` at the dose time instead of its
+  linearization `J*(x- - x+)`, matching the fix in cOde.  The old jump was
+  wrong whenever the model is nonlinear in the dosed state, for example 3x
+  too large for a Michaelis-Menten model.  The second-order lag jumps were
+  also corrected for these models.
+- Event sensitivities of replace (`evid=5`) and multiply (`evid=6`) records
+  now include a modeled `f()` on the replaced value or factor, and their
+  second-order jumps now include the lag and `f()` terms.
+- `eventSens = "jump"` now falls back to `"fd"` for a model whose `alag()`
+  depends on the states; the lag is evaluated at the dose's own time, where
+  the jump runtime has no sensitivities.
 - An `x(0)` statement in a model no longer moves `alag()` and the
   `splitBolus()`-family directives onto the wrong compartment.  A
   steady-state dose with `alag()` then gave 0 before the lag time instead of

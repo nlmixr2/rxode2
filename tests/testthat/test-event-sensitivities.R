@@ -1612,7 +1612,7 @@ rxTest({
     m2 <- rxode2(ode_code, calcSens = c("tlag", "tvm"), calcSens2 = c("tlag", "tvm"),
                  eventSens = "jump")
     info <- m2$eventSensInfo
-    expect_true(nrow(info$derivs$lagJacQ) > 0L)
+    expect_true(nrow(info$derivs$lagRhsQ) > 0L)
     s2 <- rxSolve(m2, e, pars, atol = 1e-12, rtol = 1e-12)[["rx__sens_central_BY_tlag_BY_tvm__"]]
     eps <- 1e-5
     p1 <- pars

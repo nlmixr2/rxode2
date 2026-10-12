@@ -474,7 +474,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
         (show_ode == ode_d2Dur)?"d2(dur)/dp/dq" :
         (show_ode == ode_d3F)  ? "d3(F)/dp/dq/dr" :
         (show_ode == ode_dFQ)  ? "d(F)/dq" :
-        (show_ode == ode_dLagJac) ? "d(J[k][c])/dq" :
+        (show_ode == ode_dLagJac) ? "d(f_k)/dq" :
         (show_ode == ode_dLagQ) ? "d(alag)/dq" : "d(dur)/dq";
       const char *_esFun =
         (show_ode == ode_dLag) ? "dLag" :
@@ -816,7 +816,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
         }
         break;
       case ode_dLagJac:
-        // Event-sensitivity d(J[k][c])/dq assignment lines (may be empty)
+        // Event-sensitivity d(f_k)/dq assignment lines (may be empty)
         if (_es_dLagJacCode != NULL && _es_dLagJacCode[0] != '\0') {
           sAppend(&sbOut, "\n%s\n", _es_dLagJacCode);
         }
@@ -1189,7 +1189,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   gCode(ode_d2Dur);  // second-order event-sensitivity d2(dur)/dp/dq
   gCode(ode_d3F);    // third-order event-sensitivity d3(F)/dp/dq/dr
   gCode(ode_dFQ);    // event-sensitivity d(F)/dq (Phase H1 dtau/lag row)
-  gCode(ode_dLagJac);// event-sensitivity d(J[k][c])/dq (Phase H1 dtau/lag row)
+  gCode(ode_dLagJac);// event-sensitivity d(f_k)/dq (Phase H1 dtau/lag row)
   gCode(ode_dLagQ);  // event-sensitivity d(alag)/dq (Phase H1 dtau/lag row guard)
   gCode(ode_dDurQ);  // event-sensitivity d(dur)/dq (modeled-DUR continuous-forcing 2nd order)
   gCode(4); // Registration

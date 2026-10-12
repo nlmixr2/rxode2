@@ -456,7 +456,42 @@
   if (is.null(.rxEventSensFilterMap(obj, .map))) {
     return("fd")
   }
+  if (.rxEventSensStateLag(obj, .map)) {
+    return("fd")
+  }
   mode
+}
+
+#' Does a modeled alag() depend on the states?
+#'
+#' A state-dependent lag is evaluated at the dose's own time (or the initial
+#' state), so its d(tau)/dp needs the sensitivities at that time; the jump
+#' runtime only has them at the arrival time, so such models use "fd".
+#'
+#' @param obj rxode2 model (or model variables)
+#' @param map result of `.rxEventSensMap(obj)`
+#' @return `TRUE` when any modeled alag() depends on a state
+#' @author Matthew L. Fidler
+#' @noRd
+.rxEventSensStateLag <- function(obj, map) {
+  if (length(map$lagCmt) == 0L) {
+    return(FALSE)
+  }
+  .model <- .rxLoadPrune(obj)
+  for (.c in map$lagCmt) {
+    .symName <- paste0("rx_lag_", map$states[match(.c, map$stateCmt)], "_")
+    if (!exists(.symName, envir = .model)) {
+      next
+    }
+    .sym <- get(.symName, envir = .model)
+    for (.s in map$states) {
+      .d <- tryCatch(symengine::D(.sym, .rxSEres(.s)), error = function(e) NULL)
+      if (!is.null(.d) && !(rxFromSE(.d) %in% c("0", "0.0"))) {
+        return(TRUE)
+      }
+    }
+  }
+  FALSE
 }
 
 #' Decode which compartments carry modeled alag/F/rate/dur
@@ -1111,11 +1146,12 @@
     }
     do.call(rbind, .rows)
   }
-  ## d(J[k][c])/dq table: the total derivative of the physical Jacobian column
-  ## wrt a calcSens2 parameter; J[k][c] = d(rx__d_dt_<k>__)/dx_c is available
-  ## symbolically for every model type.  Indexed (cmt, k, q): cmt = the
+  ## d(f_k)/dq table: the total derivative of the physical right-hand side
+  ## rx__d_dt_<k>__ wrt a calcSens2 parameter (partial + sum_l df_k/dx_l * S^q_l).
+  ## The runtime evaluates it before and after the dose so the 2nd-order dtau
+  ## row gets d/dq [f_k(x-) - f_k(x+)] exactly.  Indexed (cmt, k, q): cmt = the
   ## lag-carrying compartment, k = 0-based physical-state row.
-  .buildJacQ <- function(cmts) {
+  .buildRhsQ <- function(cmts) {
     if (is.null(map$map2)) {
       return(data.frame(
         cmt = integer(0),
@@ -1128,7 +1164,6 @@
     .q2 <- unique(map$map2$q)
     .rows <- list()
     for (.c in cmts) {
-      .cName <- .cmtName(.c)
       for (.kIdx in seq_along(.states)) {
         .kName <- .states[.kIdx]
         .fSymName <- paste0("rx__d_dt_", .kName, "__")
@@ -1136,20 +1171,12 @@
           next
         }
         .fSym <- get(.fSymName, envir = .model)
-        .Jkc <- tryCatch(symengine::D(.fSym, .rxSEres(.cName)), error = function(e) NULL)
-        if (is.null(.Jkc)) {
-          next
-        }
-        .JkcTxt <- rxFromSE(.Jkc)
-        if (.JkcTxt == "0" || .JkcTxt == "0.0") {
-          next
-        }
         for (.q in .q2) {
-          .dJ <- .rxEventSensDSym(.Jkc, .q, .states)
-          if (is.null(.dJ)) {
+          .dF <- .rxEventSensDSym(.fSym, .q, .states)
+          if (is.null(.dF)) {
             next
           }
-          .e <- rxFromSE(.dJ)
+          .e <- rxFromSE(.dF)
           if (.e != "0" && .e != "0.0") {
             .rows[[length(.rows) + 1L]] <-
               data.frame(cmt = .c, k = .kIdx - 1L, q = .q, expr = .e, stringsAsFactors = FALSE)
@@ -1180,7 +1207,10 @@
     dur2 = .build2(map$durCmt, "dur"),
     f3 = .build3(map$fCmt, "f"),
     fq = .buildQ(map$fCmt, "f", .q2All),
-    lagJacQ = .buildJacQ(map$lagCmt),
+    lagRhsQ = .buildRhsQ(map$lagCmt),
+    ## FALSE when some state has no symbolic right-hand side (matExp()), so the
+    ## runtime falls back to the calc_jac linearization
+    lagRhsQOk = all(vapply(paste0("rx__d_dt_", .states, "__"), exists, logical(1), envir = .model)),
     ## d(alag)/dq safety guard: when q also drives the same event's alag,
     ## the product-rule 2nd-order dtau row misses a Leibniz/moving-boundary
     ## term (dS^p_k/dt * dLag_q[c]); this table lets the runtime skip those
@@ -1284,8 +1314,11 @@
     .idx <- .cmt0 * .np2 + .qIdx[tab$param]
     sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr, .pp))
   }
-  ## d(J[k][c])/dq buffer: (cmt0*(nState*np2) + k*np2 + qIdx), sized
-  ## nState*nState*np2 (every possible cmt slot, like the other buffers)
+  ## d(f_k)/dq buffer: (cmt0*(nState*np2) + k*np2 + qIdx), sized
+  ## nState*nState*np2 (every possible cmt slot, like the other buffers),
+  ## followed by np2 slots mapping each calcSens2 index to its calcSens index
+  ## (-1 when absent) so the runtime can read S^q from the 1st-order block, and
+  ## one flag that is 1 when the d(f_k)/dq table is complete.
   .ns <- info$map$nState
   .linesJacQ <- function(tab, buf) {
     if (is.null(tab) || nrow(tab) == 0L) {
@@ -1312,7 +1345,16 @@
     dur2 = .lines2(info$derivs$dur2, "_d2DurSave"),
     f3 = .lines3(info$derivs$f3, "_d3FSave"),
     fq = .linesQ(info$derivs$fq, "_dFQSave"),
-    lagJacQ = .linesJacQ(info$derivs$lagJacQ, "_dLagJacSave"),
+    lagRhsQ = c(
+      .linesJacQ(info$derivs$lagRhsQ, "_dLagJacSave"),
+      if (.np2 > 0L) {
+        .qp <- .pIdx[.q2]
+        c(
+          sprintf("  _dLagJacSave[%d] = %d;", .ns * .ns * .np2 + .qIdx, ifelse(is.na(.qp), -1L, .qp)),
+          sprintf("  _dLagJacSave[%d] = %d;", .ns * .ns * .np2 + .np2, as.integer(isTRUE(info$derivs$lagRhsQOk)))
+        )
+      }
+    ),
     lagQ = .linesQ(info$derivs$lagQ, "_dLagQSave"),
     durQ = .linesQ(info$derivs$durQ, "_dDurQSave")
   )
@@ -1342,7 +1384,7 @@
     .join(.cl$dur2),
     .join(.cl$f3),
     .join(.cl$fq),
-    .join(.cl$lagJacQ),
+    .join(.cl$lagRhsQ),
     .join(.cl$lagQ),
     .join(.cl$durQ)
   )
