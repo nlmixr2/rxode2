@@ -714,11 +714,12 @@ static inline int _esHaveJacCol(void) {
   return _rxEsUseCalcJac ? (calc_jac != NULL) : (dydtEs != NULL);
 }
 
-// Physical right-hand side f(y) (rows 0..ns-1) into `fOut`: dydt for ODE
-// models, rate matrix times state plus forcing for matExp()/indLin() models.
-// Returns 0 (fOut untouched) when neither source is available.
-static inline int _esRhs(int id, double xout, double *y, int ns, int neq,
-                         double *fOut, rx_solving_options_ind *ind) {
+// Full right-hand side (all neq rows, including the sensitivity equations)
+// into `fOut`: dydt for ODE models, the augmented rate matrix times the state
+// plus forcing for matExp()/indLin() models.  Returns 0 (fOut untouched) when
+// neither source is available.
+static inline int _esRhsFull(int id, double xout, double *y, int neq,
+                             double *fOut, rx_solving_options_ind *ind) {
   if (_rxEsUseCalcJac) {
     rx_solve *_esRx = (ind != NULL && ind->rx) ? ind->rx : &rx_global;
     t_ME _esME = _esRx->fns.me;
@@ -733,7 +734,7 @@ static inline int _esRhs(int id, double xout, double *y, int ns, int neq,
     _esME(id, xout, xout, _esA, y);
     t_IndF _esIndF = _esRx->fns.indf;
     if (_esIndF != NULL) _esIndF(id, xout, xout, _esFv, y);
-    for (int _k = 0; _k < ns; _k++) {
+    for (int _k = 0; _k < neq; _k++) {
       double _fa = _esFv[_k];
       for (int _j = 0; _j < neq; _j++) _fa += _esA[_j * neq + _k] * y[_j];
       fOut[_k] = _fa;
@@ -743,13 +744,20 @@ static inline int _esRhs(int id, double xout, double *y, int ns, int neq,
     return 1;
   }
   if (dydtEs == NULL) return 0;
+  int _esNj[2]; _esNj[0] = neq; _esNj[1] = id;
+  dydtEs(_esNj, xout, y, fOut);
+  return 1;
+}
+
+// Physical right-hand side f(y) (rows 0..ns-1) into `fOut`.
+static inline int _esRhs(int id, double xout, double *y, int ns, int neq,
+                         double *fOut, rx_solving_options_ind *ind) {
   double *_esF = (double*) calloc((size_t)neq, sizeof(double));
   if (_esF == NULL) return 0;
-  int _esNj[2]; _esNj[0] = neq; _esNj[1] = id;
-  dydtEs(_esNj, xout, y, _esF);
-  memcpy(fOut, _esF, (size_t)ns * sizeof(double));
+  int _ok = _esRhsFull(id, xout, y, neq, _esF, ind);
+  if (_ok) memcpy(fOut, _esF, (size_t)ns * sizeof(double));
   free(_esF);
-  return 1;
+  return _ok;
 }
 
 // Event-time (dtau) saltation row for an event that sets x_cmt to `xcPost`:
@@ -849,21 +857,42 @@ static inline int _esQToP(double *G, int ns, int np, int np2, int q) {
   return (_p >= 0 && _p < np) ? _p : -1;
 }
 
+// Overwrite G[cmt][.][q] with the sensitivity rows of the full right-hand side
+// (dS^q_k/dt = d(f_k)/dq) for every q that is also a calcSens parameter; this
+// covers matExp(), which has no symbolic d(f_k)/dq table.
+static inline void _esGOverlay(int id, double xout, double *y, int ns, int np,
+                               int np2, int neq, int cmt, double *G,
+                               rx_solving_options_ind *ind) {
+  if (G == NULL) return;
+  double *_esR = (double*) calloc((size_t)neq, sizeof(double));
+  if (_esR == NULL) return;
+  if (_esRhsFull(id, xout, y, neq, _esR, ind)) {
+    for (int _q = 0; _q < np2; _q++) {
+      int _p = _esQToP(G, ns, np, np2, _q);
+      if (_p < 0) continue;
+      for (int _k = 0; _k < ns; _k++) {
+        G[cmt * (ns * np2) + _k * np2 + _q] = _esR[ns + _p * ns + _k];
+      }
+    }
+  }
+  free(_esR);
+}
+
 // Second-order jump of a replace (gx = 0) or multiply (gx = alpha) event at
-// tau, ODE models only (needs dydt for the sensitivity right-hand sides).  The
-// 1st-order map is S^p_c+ = gx*S^p_c- + gp_p + D_c*tau_p, S^p_k+ = S^p_k- +
-// D_k*tau_p with D the _esDtauRow() saltation and gp_p = d(F*amt)/dp (times
-// x_c for multiply).  Differentiating it wrt q at fixed time and adding the
-// moving-boundary term (when tau_q != 0) gives the S^{pq} increments added
-// here; the caller has already applied gx*S^{pq}_c-.  `yPre` is the full
-// pre-event state; `row` (D) may be NULL when the event time is fixed.
+// tau.  The 1st-order map is S^p_c+ = gx*S^p_c- + gp_p + D_c*tau_p, S^p_k+ =
+// S^p_k- + D_k*tau_p with D the _esDtauRow() saltation and gp_p = d(F*amt)/dp
+// (times x_c for multiply).  Differentiating it wrt q at fixed time and adding
+// the moving-boundary term (when tau_q != 0) gives the S^{pq} increments added
+// here; the caller has already applied gx*S^{pq}_c-.  d(f_k)/dq and dS^p/dt
+// are sensitivity rows of the full right-hand side (_esRhsFull), so ODE and
+// matExp() models share the formula.  `yPre` is the full pre-event state;
+// `row` (D) may be NULL when the event time is fixed.
 static inline void _esReplMult2(int id, double xout, double *yp, double *yPre,
                                 int cmt, int ns, int np, int neq, double gx,
                                 double xcPost, double rawAmt, int isMult,
                                 double *row, rx_solving_options_ind *ind) {
   int np2 = _rxEsNParam2;
-  if (_rxEsUseCalcJac || dydtEs == NULL || np2 <= 0 ||
-      ns * (1 + np) + ns * np * np2 > neq) return;
+  if (np2 <= 0 || dLagJacEs == NULL || ns * (1 + np) + ns * np * np2 > neq) return;
   size_t _nsnp = (size_t)ns * np;
   double *_esDLag = (double*) calloc(_nsnp, sizeof(double));
   double *_esDF = (double*) calloc(_nsnp, sizeof(double));
@@ -871,63 +900,45 @@ static inline void _esReplMult2(int id, double xout, double *yp, double *yPre,
   double *_esD2F = (double*) calloc(_nsnp * np2, sizeof(double));
   double *_esDLagQ = (double*) calloc((size_t)ns * np2, sizeof(double));
   double *_esDFQ = (double*) calloc((size_t)ns * np2, sizeof(double));
-  double *_esYG = (double*) malloc((size_t)neq * sizeof(double));
-  double *_esGm = (double*) calloc((size_t)neq * 2, sizeof(double));
-  double *_esDDt = (double*) calloc((size_t)ns * 2, sizeof(double));
-  double *_esGPre = NULL, *_esGPost = NULL;
+  double *_esY = (double*) malloc((size_t)neq * sizeof(double));
+  // full RHS at: pre, post fixed-time (for d(f)/dq), post 1st-order jump
+  double *_esR = (double*) calloc((size_t)neq * 3, sizeof(double));
+  double *_esDDt = (double*) calloc((size_t)ns * 3, sizeof(double));
+  double *_esMap = _esRhsQ(id, xout, yPre, ns, np2);
   if (_esDLag == NULL || _esDF == NULL || _esD2Lag == NULL || _esD2F == NULL ||
-      _esDLagQ == NULL || _esDFQ == NULL || _esYG == NULL || _esGm == NULL ||
-      _esDDt == NULL) goto done;
+      _esDLagQ == NULL || _esDFQ == NULL || _esY == NULL || _esR == NULL ||
+      _esDDt == NULL || _esMap == NULL) goto done;
   {
+    double *_esRPre = _esR, *_esRFix = _esR + neq, *_esRPost = _esR + 2 * neq;
+    double *_esD = _esDDt + ns, *_esFm = _esDDt + 2 * ns;
     if (dLagEs != NULL) dLagEs(id, xout, yPre, _esDLag);
     if (dF != NULL) dF(id, xout, yPre, _esDF);
     if (d2LagEs != NULL) d2LagEs(id, xout, yPre, _esD2Lag);
     if (d2FEs != NULL) d2FEs(id, xout, yPre, _esD2F);
     if (dLagQEs != NULL) dLagQEs(id, xout, yPre, _esDLagQ);
     if (dFQEs != NULL) dFQEs(id, xout, yPre, _esDFQ);
-    int _anyLag = 0, _anyLagQ = 0;
-    for (int _p = 0; _p < np; _p++) if (_esDLag[cmt * np + _p] != 0.0) _anyLag = 1;
+    int _anyLagQ = 0;
     for (int _q = 0; _q < np2; _q++) if (_esDLagQ[cmt * np2 + _q] != 0.0) _anyLagQ = 1;
-    if (row == NULL) _anyLag = _anyLagQ = 0;
-    double *_esD = (double*) calloc((size_t)ns, sizeof(double));
-    if (_esD == NULL) goto done;
     if (row != NULL) memcpy(_esD, row, (size_t)ns * sizeof(double));
     double _esXc = yPre[cmt];
-    double *_esFm = _esDDt + ns; // f(x-)
-    int _haveF = _esRhs(id, xout, yPre, ns, neq, _esFm, ind);
-    int _haveG = 0;
-    // G at (x-, S-) and at (x+, fixed-time S+ = gx*S_c- + gp on the event row)
-    if ((_anyLag || _anyLagQ) && dLagJacEs != NULL) {
-      _esGPre = _esRhsQ(id, xout, yPre, ns, np2);
-      memcpy(_esYG, yPre, (size_t)neq * sizeof(double));
-      _esYG[cmt] = xcPost;
-      for (int _p = 0; _p < np; _p++) {
-        double _gp = rawAmt * _esDF[cmt * np + _p] * (isMult ? _esXc : 1.0);
-        _esYG[ns + _p * ns + cmt] = gx * yPre[ns + _p * ns + cmt] + _gp;
-      }
-      _esGPost = _esRhsQ(id, xout, _esYG, ns, np2);
-      _haveG = _esRhsQOk(_esGPre, ns, np2) && _esGPost != NULL;
+    int _haveR = _esRhsFull(id, xout, yPre, neq, _esRPre, ind);
+    if (_haveR) memcpy(_esFm, _esRPre, (size_t)ns * sizeof(double));
+    // post-event state with fixed-time S+ = gx*S_c- + gp on the event row
+    memcpy(_esY, yPre, (size_t)neq * sizeof(double));
+    _esY[cmt] = xcPost;
+    for (int _p = 0; _p < np; _p++) {
+      double _gp = rawAmt * _esDF[cmt * np + _p] * (isMult ? _esXc : 1.0);
+      _esY[ns + _p * ns + cmt] = gx * yPre[ns + _p * ns + cmt] + _gp;
     }
-    int _haveDt = 0;
-    double *_esGPlus = _esGm + neq;
-    if (_anyLagQ && _haveF) {
-      _haveDt = _esDtauRowDt(id, xout, yPre, cmt, ns, neq, xcPost, gx, _esDDt, ind);
-      // sensitivity right-hand sides before (yPre) and after the 1st-order jump
-      int _nj[2]; _nj[0] = neq; _nj[1] = id;
-      dydtEs(_nj, xout, yPre, _esGm);
-      memcpy(_esYG, yPre, (size_t)neq * sizeof(double));
-      _esYG[cmt] = xcPost;
-      for (int _p = 0; _p < np; _p++) {
-        double _tp = _esDLag[cmt * np + _p];
-        double _gp = rawAmt * _esDF[cmt * np + _p] * (isMult ? _esXc : 1.0);
-        for (int _k = 0; _k < ns; _k++) {
-          double _s = yPre[ns + _p * ns + _k];
-          if (_k == cmt) _s = gx * _s + _gp;
-          _esYG[ns + _p * ns + _k] = _s + _esD[_k] * _tp;
-        }
-      }
-      dydtEs(_nj, xout, _esYG, _esGPlus);
+    if (_haveR) _haveR = _esRhsFull(id, xout, _esY, neq, _esRFix, ind);
+    // ... and with the full 1st-order jump (dS^p/dt just after the event)
+    for (int _p = 0; _p < np; _p++) {
+      double _tp = _esDLag[cmt * np + _p];
+      for (int _k = 0; _k < ns; _k++) _esY[ns + _p * ns + _k] += _esD[_k] * _tp;
     }
+    if (_haveR) _haveR = _esRhsFull(id, xout, _esY, neq, _esRPost, ind);
+    int _haveDt = (row != NULL && _anyLagQ && _haveR) ?
+      _esDtauRowDt(id, xout, yPre, cmt, ns, neq, xcPost, gx, _esDDt, ind) : 0;
     for (int _p = 0; _p < np; _p++) {
       double _tp = _esDLag[cmt * np + _p];
       double _dFp = _esDF[cmt * np + _p];
@@ -936,7 +947,7 @@ static inline void _esReplMult2(int id, double xout, double *yp, double *yPre,
         double _tpq = _esD2Lag[cmt * (np * np2) + _p * np2 + _q];
         double _dFq = _esDFQ[cmt * np2 + _q];
         double _d2F = _esD2F[cmt * (np * np2) + _p * np2 + _q];
-        int _pq = _esQToP(_esGPre, ns, np, np2, _q);
+        int _pq = _esQToP(_esMap, ns, np, np2, _q);
         for (int _k = 0; _k < ns; _k++) {
           double _t = 0.0;
           if (_k == cmt) {
@@ -947,29 +958,34 @@ static inline void _esReplMult2(int id, double xout, double *yp, double *yPre,
               _t += rawAmt * _d2F;
             }
           }
-          if (_haveG) {
-            int _gi = cmt * (ns * np2) + _k * np2 + _q;
-            double _dDq = _esGPre[_gi] - _esGPost[_gi];
-            if (_k == cmt) {
-              _dDq -= (1.0 - gx) * _esGPre[_gi];
-              if (isMult && _haveF) _dDq += rawAmt * _dFq * _esFm[cmt];
-            }
-            _t += _dDq * _tp + _esD[_k] * _tpq;
-          } else {
+          if (row != NULL) {
             _t += _esD[_k] * _tpq;
+            if (_tp != 0.0 && _haveR && _pq >= 0) {
+              // d(D_k)/dq at fixed time from d(f_k)/dq = dS^q_k/dt
+              int _gi = ns + _pq * ns + _k;
+              double _dDq = _esRPre[_gi] - _esRFix[_gi];
+              if (_k == cmt) {
+                _dDq -= (1.0 - gx) * _esRPre[_gi];
+                if (isMult) _dDq += rawAmt * _dFq * _esFm[cmt];
+              }
+              _t += _dDq * _tp;
+            }
           }
           if (_tq != 0.0 && _haveDt) {
-            double _gm = _esGm[ns + _p * ns + _k];
-            double _gpl = _esGPlus[ns + _p * ns + _k];
-            double _l = (_k == cmt ? gx * _gm : _gm) - _gpl + _esDDt[_k] * _tp;
-            if (_k == cmt && isMult && _haveF) _l += rawAmt * _dFp * _esFm[cmt];
+            int _gi = ns + _p * ns + _k;
+            double _l = (_k == cmt ? gx : 1.0) * _esRPre[_gi] - _esRPost[_gi] +
+              _esDDt[_k] * _tp;
+            if (_k == cmt && isMult) _l += rawAmt * _dFp * _esFm[cmt];
             _t += _l * _tq;
           }
-          if (_t != 0.0) yp[ns * (1 + np) + _k + ns * (_p + _q * np)] += _t;
+          if (_t != 0.0) {
+            int _c2 = _rxEsUseCalcJac ? (ns * (1 + np) + _k + ns * (_p * np2 + _q)) :
+              (ns * (1 + np) + _k + ns * (_p + _q * np));
+            yp[_c2] += _t;
+          }
         }
       }
     }
-    free(_esD);
   }
 done:
   if (_esDLag != NULL) free(_esDLag);
@@ -978,11 +994,10 @@ done:
   if (_esD2F != NULL) free(_esD2F);
   if (_esDLagQ != NULL) free(_esDLagQ);
   if (_esDFQ != NULL) free(_esDFQ);
-  if (_esYG != NULL) free(_esYG);
-  if (_esGm != NULL) free(_esGm);
+  if (_esY != NULL) free(_esY);
+  if (_esR != NULL) free(_esR);
   if (_esDDt != NULL) free(_esDDt);
-  if (_esGPre != NULL) free(_esGPre);
-  if (_esGPost != NULL) free(_esGPost);
+  if (_esMap != NULL) free(_esMap);
 }
 
 // Second-order infusion-boundary jump (Phase F/H1's remaining infusion gap):
@@ -2111,29 +2126,18 @@ static inline int handle_evid(int evid, int neq,
           // Phase H1-dtau Leibniz term prerequisite: dS^p_k/dt BEFORE any of
           // this event's jumps are applied (captured now, before the ddelta/
           // dtau blocks below mutate yp's sensitivity compartments in place).
-          // ODE models only (dydtEs is a no-op stub for matExp/indLin).
-          double *_esDydtPre = NULL;
-          if (!_rxEsUseCalcJac && dydtEs != NULL) {
-            _esDydtPre = (double*) calloc((size_t)neq, sizeof(double));
-            if (_esDydtPre != NULL) {
-              int _esNjPre[2]; _esNjPre[0] = neq; _esNjPre[1] = id;
-              dydtEs(_esNjPre, xout, yp, _esDydtPre);
-            }
+          // Full right-hand side (dydt, or the augmented rate matrix for
+          // matExp()/indLin()).
+          double *_esDydtPre = (double*) calloc((size_t)neq, sizeof(double));
+          if (_esDydtPre != NULL && !_esRhsFull(id, xout, yp, neq, _esDydtPre, ind)) {
+            free(_esDydtPre);
+            _esDydtPre = NULL;
           }
-          // matExp()/indLin() models: dydtEs is a no-op stub, so g=dS^p_k/dt
-          // can't be read from it directly. But indLin's whole premise is a
-          // CONSTANT (time-invariant) Jacobian over the interval -- the
-          // k_from_to rate constants are parameter-functions only, never
-          // state-dependent -- so dS^p_k/dt = sum_l J[k][l]*S^p_l is LINEAR
-          // in S^p, meaning g+ - g- = sum_l J[k][l]*(S^p_l|post - S^p_l|pre)
-          // EXACTLY (no approximation, unlike the general nonlinear-ODE
-          // case). Capture the pre-jump 1st-order sensitivity block now
-          // (before ddelta/dtau mutate it) so the difference can be formed
-          // later from the (by-then-mutated) yp; the physical ns x ns
-          // Jacobian itself is already available via calc_jac (the same
-          // source `_esJacColF` uses for the 1st-order dtau row).
+          // Without a full right-hand side (calc_jac only), g+ - g- falls back
+          // to sum_l J[k][l]*(S^p_l|post - S^p_l|pre) from this pre-jump
+          // snapshot (exact when the rate matrix does not depend on p).
           double *_esSensPre = NULL;
-          if (_rxEsUseCalcJac) {
+          if (_rxEsUseCalcJac && _esDydtPre == NULL) {
             _esSensPre = (double*) calloc((size_t)_ns * _np, sizeof(double));
             if (_esSensPre != NULL) {
               memcpy(_esSensPre, yp + _ns, (size_t)_ns * _np * sizeof(double));
@@ -2156,6 +2160,7 @@ static inline int handle_evid(int evid, int neq,
               _rxEsNParam2 > 0 &&
               _ns * (1 + _np) + _ns * _np * _rxEsNParam2 <= neq) {
             _esGPre = _esRhsQ(id, xout, yp, _ns, _rxEsNParam2);
+            _esGOverlay(id, xout, yp, _ns, _np, _rxEsNParam2, neq, cmt, _esGPre, ind);
           }
           // ddelta row (bioavailability)
           if (dF != NULL) {
@@ -2264,6 +2269,7 @@ static inline int handle_evid(int evid, int neq,
               memcpy(_esYG, yp, (size_t)neq * sizeof(double));
               _esYG[cmt] += _esDelta;
               _esGPost = _esRhsQ(id, xout, _esYG, _ns, _rxEsNParam2);
+              _esGOverlay(id, xout, _esYG, _ns, _np, _rxEsNParam2, neq, cmt, _esGPost, ind);
               free(_esYG);
             }
           }
@@ -2418,9 +2424,10 @@ static inline int handle_evid(int evid, int neq,
                       memcpy(_esYTemp, yp, (size_t)neq * sizeof(double));
                       _esYTemp[cmt] += _esDelta;
                       _esDydtPostP = (double*) calloc((size_t)neq, sizeof(double));
-                      if (_esDydtPostP != NULL) {
-                        int _esNjPost[2]; _esNjPost[0] = neq; _esNjPost[1] = id;
-                        dydtEs(_esNjPost, xout, _esYTemp, _esDydtPostP);
+                      if (_esDydtPostP != NULL &&
+                          !_esRhsFull(id, xout, _esYTemp, neq, _esDydtPostP, ind)) {
+                        free(_esDydtPostP);
+                        _esDydtPostP = NULL;
                       }
                       free(_esYTemp);
                     }
@@ -2443,7 +2450,8 @@ static inline int handle_evid(int evid, int neq,
                   double _esDLagQq = _esDLagQB[cmt * _np2 + _q];
                   for (int _esK = 0; _esK < _ns; _esK++) {
                     int _esGi = cmt * (_ns * _np2) + _esK * _np2 + _q;
-                    double _esDSaltQ = _esGOk ? _esGPre[_esGi] - _esGPost[_esGi] :
+                    double _esDSaltQ = (_esGOk || _esQToP(_esGPre, _ns, _np, _np2, _q) >= 0) ?
+                      _esGPre[_esGi] - _esGPost[_esGi] :
                       ((_esJcolL != NULL && _esDFQL != NULL) ?
                        -_esJcolL[_esK] * _esRawAmt * _esDFQL[cmt * _np2 + _q] : 0.0);
                     // Compartment layout is model-type-specific -- see the

@@ -133,7 +133,9 @@
   also corrected for these models.
 - Event sensitivities of replace (`evid=5`) and multiply (`evid=6`) records
   now include a modeled `f()` on the replaced value or factor, and their
-  second-order jumps now include the lag and `f()` terms.
+  second-order jumps now include the lag and `f()` terms.  The second-order
+  lag jumps of `rxSensMatExp()` models now include the dependence of the rate
+  constants on the parameter.
 - `eventSens = "jump"` now falls back to `"fd"` for a model whose `alag()`
   depends on the states; the lag is evaluated at the dose's own time, where
   the jump runtime has no sensitivities.
