@@ -240,7 +240,8 @@ void print_aux_info(const char *prefix, const char *libname,
   sAppend(&sbOut,"extern void %sdydt_lsoda(int *neq, double *t, double *A, double *DADT)\n{\n  %sdydt(neq, *t, A, DADT);\n}\n", prefix, prefix);
   sAppend(&sbOut, "extern int %sdydt_liblsoda(double __t, double *y, double *ydot, void *data)\n{\n  int *neq = (int*)(data);\n  %sdydt(neq, __t, y, ydot);\n  return(0);\n}\n",
           prefix,prefix);
-  sAppend(&sbOut,"extern void %scalc_jac_lsoda(int *neq, double *t, double *A,int *ml, int *mu, double *JAC, int *nrowpd){\n  // Update all covariate parameters\n  %scalc_jac(neq, *t, A, JAC, *nrowpd);\n}\n",
+  // calc_jac is row major; DLSODA/DLSODE read PD(nrowpd, neq) column major.
+  sAppend(&sbOut,"extern void %scalc_jac_lsoda(int *neq, double *t, double *A,int *ml, int *mu, double *JAC, int *nrowpd){\n  %scalc_jac(neq, *t, A, JAC, *nrowpd);\n  int _n = neq[0], _r = *nrowpd;\n  for (int _i = 0; _i < _n; _i++) {\n    for (int _j = _i + 1; _j < _n; _j++) {\n      double _tmp = JAC[_i*_r + _j];\n      JAC[_i*_r + _j] = JAC[_j*_r + _i];\n      JAC[_j*_r + _i] = _tmp;\n    }\n  }\n}\n",
           prefix, prefix);
 
   printRInit(libname, libname2, prefix);

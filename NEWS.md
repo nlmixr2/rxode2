@@ -146,6 +146,9 @@
   `free(): invalid next size`.
 - `calcJac = TRUE` with a dotted state or parameter name (e.g. a
   sensitivity wrt `eta.cl`) no longer generates C that fails to compile.
+- `method = "lsoda"` now reads a model's analytic Jacobian (`calcJac = TRUE`
+  or `df()/dy()` lines) untransposed; it used to get the transpose, so stiff
+  sensitivity models could fail with too many steps.
 - Jump event sensitivities no longer treat the `alag()`/`f()` that a
   `delay()` model puts on its sensitivity compartments as event
   compartments; a 2nd-order `delay()` model with a dose used to abort.
