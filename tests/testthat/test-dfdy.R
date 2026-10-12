@@ -312,4 +312,12 @@ d/dt(cen) = ka*depot-k*cen
     expect_false(any(grepl("_ETA_", rxDfdy(mod), fixed = TRUE)))
     expect_false(any(grepl("_THETA_", rxDfdy(mod), fixed = TRUE)))
   })
+
+  test_that("a Jacobian on a dotted state name compiles", {
+    m <- rxode2("cl <- exp(tcl + eta.cl)\nd/dt(central) = -cl/v*central",
+                calcSens = "eta.cl", calcJac = TRUE)
+    s <- rxSolve(m, et(amt = 100) |> et(1:3), c(tcl = 0, eta.cl = 0.1, v = 10))
+    expect_equal(s[["rx__sens_central_BY_eta.cl__"]], -100 * exp(0.1) / 10 * (1:3) * exp(-exp(0.1) / 10 * (1:3)),
+                 tolerance = 1e-5)
+  })
 })

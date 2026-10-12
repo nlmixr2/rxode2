@@ -4,7 +4,8 @@
 
 - `rxode2()` now uses jump event sensitivities by default for any model
   with sensitivities; before, they were used only when `eventSens` was
-  given.  Use `eventSens = "fd"` for the old behavior.
+  given.  Use `eventSens = "fd"` for the old behavior.  `calcJac` is still
+  forced on only when `eventSens` is given.
 
 - New event bus (`rxEventListen()`, `rxEventEmit()`, `rxEventScope()` and
   friends) so packages such as nlmixr2log can be told when a top-level
@@ -143,6 +144,8 @@
 - `rxode2(..., calcSens = , indLin = TRUE)` no longer expands the
   sensitivities twice; with `calcSens2` it used to abort with
   `free(): invalid next size`.
+- `calcJac = TRUE` with a dotted state or parameter name (e.g. a
+  sensitivity wrt `eta.cl`) no longer generates C that fails to compile.
 - Jump event sensitivities no longer treat the `alag()`/`f()` that a
   `delay()` model puts on its sensitivity compartments as event
   compartments; a 2nd-order `delay()` model with a dose used to abort.

@@ -417,7 +417,8 @@ rxode2 <- # nolint
     ## Unspecified eventSens: jump whenever the model has sensitivities.
     .eventSensActiveReq <- !identical(.eventSensMode, "fd") &&
       (!missing(eventSens) || !is.null(calcSens))
-    .eventSensNeedsJac <- .eventSensActiveReq && !is.null(calcSens)
+    ## ODE jumps read dydt; only an explicit eventSens forces calcJac.
+    .eventSensNeedsJac <- .eventSensActiveReq && !missing(eventSens) && !is.null(calcSens)
     ## Fold the mode into the parsed md5/cache key for the duration of this build
     ## (reset after) so "fd" and "jump" of the same model do not collide in the
     ## compiled-DLL cache.  "fd" -> "" -> md5 unchanged.
@@ -512,7 +513,8 @@ rxode2 <- # nolint
     .eventSensActive <- (!identical(.eventSensEffectiveMode, "fd") &&
       (!missing(eventSens) || .eventSensDefault)) ||
       .indLinSens
-    .eventSensNeedsJac <- .eventSensActive && !is.null(calcSens) && length(.rxEventSensOdeStates(.env$.mv)) > 0L
+    .eventSensNeedsJac <- .eventSensActive && !missing(eventSens) && !is.null(calcSens) &&
+      length(.rxEventSensOdeStates(.env$.mv)) > 0L
     .eventSensCacheKey <- if (.eventSensActive) .eventSensEffectiveMode else ""
     .rxState$eventSensCacheKey <- .eventSensCacheKey
     ## Re-parse only when the decision above changed an input to the parse: the

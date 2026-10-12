@@ -130,11 +130,15 @@ static inline void printPDStateVar(int show_ode, int scenario) {
       buf2 = tb.ss.line[tb.dy[i]];
       // This is for dydt/ LHS/ or jacobian for df(state)/dy(parameter)
       if (show_ode == ode_dydt || show_ode == ode_lhs || tb.sdfdy[i] == 1){
-	if (scenario == print_double){
-	  sAppend(&sbOut,"  double __PDStateVar_%s_SeP_%s__;\n",buf1,buf2);
+	if (scenario == print_double) {
+	  sAppendN(&sbOut, "  double __PDStateVar_", 22);
 	} else {
-	  sAppend(&sbOut,"  (void)__PDStateVar_%s_SeP_%s__;\n",buf1,buf2);
+	  sAppendN(&sbOut, "  (void)__PDStateVar_", 21);
 	}
+	doDot(&sbOut, buf1);
+	sAppendN(&sbOut, "_SeP_", 5);
+	doDot(&sbOut, buf2);
+	sAppendN(&sbOut, "__;\n", 4);
       }
     }
   }

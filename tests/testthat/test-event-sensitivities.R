@@ -95,11 +95,12 @@ rxTest({
     })
   })
 
-  test_that("eventSens='jump' (default) is a no-op on rxode2()", {
+  test_that("eventSens='jump' is the default for a model with sensitivities", {
     m <- rxode2("d/dt(depot) <- -ka*depot\nka <- 1",
                 calcSens = "ka")
     expect_equal(m$eventSens, "jump")
-    expect_null(m$eventSensInfo)
+    expect_false(is.null(m$eventSensInfo))
+    expect_null(rxode2("d/dt(depot) <- -ka*depot\nka <- 1", calcSens = "ka", eventSens = "fd")$eventSensInfo)
   })
 
   test_that("eventSens='jump' forces calcJac and attaches Phase-A info", {
