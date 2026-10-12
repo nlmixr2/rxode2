@@ -513,7 +513,9 @@ rxode2 <- # nolint
     .eventSensActive <- (!identical(.eventSensEffectiveMode, "fd") &&
       (!missing(eventSens) || .eventSensDefault)) ||
       .indLinSens
-    .eventSensNeedsJac <- .eventSensActive && !missing(eventSens) && !is.null(calcSens) &&
+    .eventSensNeedsJac <- .eventSensActive &&
+      !missing(eventSens) &&
+      !is.null(calcSens) &&
       length(.rxEventSensOdeStates(.env$.mv)) > 0L
     .eventSensCacheKey <- if (.eventSensActive) .eventSensEffectiveMode else ""
     .rxState$eventSensCacheKey <- .eventSensCacheKey
@@ -949,8 +951,7 @@ rxGetModel <- function(
       calcSens <- .rxParams(model, TRUE)
     }
     .lhs0 <- .ret$lhs
-    .mexpCode <- rxSensMatExp(.ret, calcSens = calcSens, calcSens2 = calcSens2,
-                              calcSens3 = calcSens3)
+    .mexpCode <- rxSensMatExp(.ret, calcSens = calcSens, calcSens2 = calcSens2, calcSens3 = calcSens3)
     if (isTRUE(collapseModel) && length(.lhs0) > 0L) {
       ## The user's own outputs become local (~) assignments.
       .mexpCode <- rxNorm(rxModelVars(.mexpCode))
