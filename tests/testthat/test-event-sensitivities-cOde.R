@@ -103,6 +103,8 @@ rxTest({
     # indLin=TRUE used to expand the sensitivities twice and crash.
     mil <- rxode2(ode, calcSens = sp, calcSens2 = sp, indLin = TRUE, eventSens = "jump")
     expect_false(any(grepl("rx__sens_rx__sens", rxModelVars(mil)$state)))
+    mc <- rxode2(paste0("cl2 <- cl/v\n", ode), calcSens = sp, indLin = TRUE, collapseModel = TRUE)
+    expect_false("cl2" %in% rxModelVars(mc)$lhs)
     mode <- rxode2(ode, calcSens = sp, calcSens2 = sp, eventSens = "jump")
     for (.evid in c(5L, 6L)) {
       e <- et(amt = 50, cmt = "depot") |>

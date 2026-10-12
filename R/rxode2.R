@@ -946,8 +946,17 @@ rxGetModel <- function(
     if (isTRUE(calcSens)) {
       calcSens <- .rxParams(model, TRUE)
     }
+    .lhs0 <- .ret$lhs
     .mexpCode <- rxSensMatExp(.ret, calcSens = calcSens, calcSens2 = calcSens2,
                               calcSens3 = calcSens3)
+    if (isTRUE(collapseModel) && length(.lhs0) > 0L) {
+      ## The user's own outputs become local (~) assignments.
+      .mexpCode <- rxNorm(rxModelVars(.mexpCode))
+      for (.l in .lhs0) {
+        .re <- gsub(".", "\\.", .l, fixed = TRUE)
+        .mexpCode <- gsub(paste0("(^|\n)", .re, "="), paste0("\\1", .l, "~"), .mexpCode)
+      }
+    }
     .ret <- rxModelVars(.mexpCode)
     .rxState$indLinInfo <- .ret$indLin
     return(.ret)
