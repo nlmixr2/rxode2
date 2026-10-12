@@ -724,23 +724,35 @@ static inline int _esRhsFull(int id, double xout, double *y, int neq,
     rx_solve *_esRx = (ind != NULL && ind->rx) ? ind->rx : &rx_global;
     t_ME _esME = _esRx->fns.me;
     if (_esME == NULL) return 0;
-    double *_esA = (double*) calloc((size_t)neq * neq, sizeof(double));
-    double *_esFv = (double*) calloc((size_t)neq, sizeof(double));
-    if (_esA == NULL || _esFv == NULL) {
+    // ME()/IndF() write the compiled state count (op->neq, column major);
+    // pad the state to it and read the shared leading rows (indLinME() in
+    // expm.cpp does the same for an overridden neq).
+    int _nMe = (_esRx->op != NULL && _esRx->op->neq > 0) ? _esRx->op->neq : neq;
+    int _nY = _nMe > neq ? _nMe : neq;
+    double *_esA = (double*) calloc((size_t)_nMe * _nMe, sizeof(double));
+    double *_esFv = (double*) calloc((size_t)_nY, sizeof(double));
+    double *_esYa = (double*) calloc((size_t)_nY, sizeof(double));
+    if (_esA == NULL || _esFv == NULL || _esYa == NULL) {
       if (_esA != NULL) free(_esA);
       if (_esFv != NULL) free(_esFv);
+      if (_esYa != NULL) free(_esYa);
       return 0;
     }
-    _esME(id, xout, xout, _esA, y);
+    memcpy(_esYa, y, (size_t)neq * sizeof(double));
+    _esME(id, xout, xout, _esA, _esYa);
     t_IndF _esIndF = _esRx->fns.indf;
-    if (_esIndF != NULL) _esIndF(id, xout, xout, _esFv, y);
+    if (_esIndF != NULL) _esIndF(id, xout, xout, _esFv, _esYa);
     for (int _k = 0; _k < neq; _k++) {
-      double _fa = _esFv[_k];
-      for (int _j = 0; _j < neq; _j++) _fa += _esA[_j * neq + _k] * y[_j];
+      double _fa = 0.0;
+      if (_k < _nMe) {
+        _fa = _esFv[_k];
+        for (int _j = 0; _j < _nMe; _j++) _fa += _esA[_j * _nMe + _k] * _esYa[_j];
+      }
       fOut[_k] = _fa;
     }
     free(_esA);
     free(_esFv);
+    free(_esYa);
     return 1;
   }
   if (dydtEs == NULL) return 0;
