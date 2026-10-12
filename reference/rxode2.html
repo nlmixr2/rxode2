@@ -310,7 +310,8 @@ sensitivities into the sensitivity states at each dosing event,
 <code>"fd"</code> keeps the legacy finite-difference behavior (the
 backward-compatible opt-out), and <code>"both"</code> computes both for
 cross-checking.  <code>NULL</code> (the default) uses
-<code>getOption("rxode2.eventSens", "fd")</code>.  When not <code>"fd"</code> and
+<code>getOption("rxode2.eventSens", "jump")</code> for any model with
+sensitivities.  When not <code>"fd"</code> and
 <code>calcSens</code> is supplied, <code>calcJac</code> is forced to <code>TRUE</code> so the
 Jacobian is available for the jump injection.</p></dd>
 
