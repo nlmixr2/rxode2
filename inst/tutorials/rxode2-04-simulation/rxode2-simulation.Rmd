@@ -1,0 +1,159 @@
+---
+title: "rxode2 simulation"
+output:
+  learnr::tutorial:
+    progressive: true
+runtime: shiny_prerendered
+description: >
+  Learn how to perform simulations using rxSolve, including single-subject
+  solutions, population simulations with BSV, and simulations with uncertainty.
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+library(rxode2)
+library(ggplot2)
+knitr::opts_chunk$set(echo = FALSE)
+
+pkModel <- function() {
+  ini({
+    tka  <- log(1.57)
+    tcl  <- log(2.72)
+    tv   <- log(31.07)
+    eta.ka ~ 0.6
+    eta.cl ~ 0.09
+    eta.v  ~ 0.1
+    add.sd <- 0.7
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v  <- exp(tv  + eta.v)
+    d/dt(depot)  <- -ka * depot
+    d/dt(center) <- ka * depot - cl / v * center
+    cp <- center / v
+    cp ~ add(add.sd)
+  })
+}
+```
+
+## Review: Model Functions and Piping
+
+Before we simulate, let's make sure we can set up and modify a model.
+
+### Exercise: Modify and Prepare a Model
+
+Start with `pkModel` and:
+1. Update `tka` to `log(2.0)`.
+2. Remove the random effect `eta.ka` from the `ka` equation using `model()`.
+
+```{r simulationReview, exercise=TRUE}
+# Start with pkModel
+# 1. Update tka to log(2.0)
+# 2. Remove eta.ka from ka <- exp(tka + eta.ka)
+
+myMod <- pkModel |>
+  ini(tka = log(2.0)) |>
+  model(ka <- exp(tka))
+
+print(myMod)
+```
+
+```{r simulationReview-solution}
+myMod <- pkModel |>
+  ini(tka = log(2.0)) |>
+  model(ka <- exp(tka))
+
+print(myMod)
+```
+
+## Introduction to `rxSolve()`
+
+Once you have defined a model, you use `rxSolve()` to calculate the predicted values over time. To solve a model, you need:
+1. A **Model** (the UI object or function we created).
+2. An **Event Table** (defining doses and sampling times).
+
+## Creating Events with `et()`
+
+The `et()` function is a convenient way to create event tables.
+
+```r
+ev <- et(amt = 100) |>       # Dose of 100 at time 0
+  et(seq(0, 24, by = 0.5))   # Samples every 0.5h for 24h
+```
+
+### Exercise: Create an Event Table
+
+Create an event table with:
+- A dose of 250 mg at time 0.
+- Observations every hour for 48 hours.
+
+```{r etEx, exercise=TRUE}
+ev <- et(amt = 250) |>
+  et(0:48)
+
+print(ev)
+```
+
+## Solving for a Single Subject
+
+By default, if you don't specify between-subject variability, `rxode2` solves for a single subject using the initial estimates.
+
+```{r solveSingle, exercise=TRUE}
+ev <- et(amt = 100) |> et(0:24)
+res <- rxSolve(pkModel, ev)
+plot(res, cp)
+```
+
+## Population Simulation (`nSub`)
+
+If your model has random effects (`eta` parameters), you can simulate a population of subjects by specifying `nSub`. `rxode2` will automatically draw random values for the `etas` from the specified distribution.
+
+### Exercise: Simulate 100 Subjects
+
+Simulate the `pkModel` for 100 subjects and plot the results.
+
+```{r solvePop, exercise=TRUE}
+ev <- et(amt = 100) |> et(0:24)
+
+# Use nSub = 100
+res <- rxSolve(pkModel, ev, nSub = 100)
+
+plot(res, cp)
+```
+
+## Simulation with Parameter Uncertainty (`nStud`, `thetaMat`)
+
+In addition to between-subject variability, you can also simulate **parameter uncertainty** (uncertainty in the "fixed effects"). This is often used for clinical trial simulation.
+
+You provide a variance-covariance matrix for the parameters (`thetaMat`) and specify the number of "studies" (`nStud`).
+
+```{r solveUncert, exercise=TRUE}
+# Example Theta Variance-Covariance matrix
+thetaVcov <- lotri::lotri({
+  tka ~ 0.04
+  tcl ~ 0.02
+  tv  ~ 0.03
+})
+
+ev <- et(amt = 100) |> et(0:24)
+
+# Simulate 10 virtual studies with 20 subjects each
+res <- rxSolve(pkModel, ev, thetaMat = thetaVcov, nStud = 10, nSub = 20)
+
+# The confint() function can summarize across studies
+ci <- confint(res, "cp")
+plot(ci)
+```
+
+## Summary
+
+- Use `et()` to define your dosing and sampling.
+- Use `rxSolve()` to run the simulation.
+- `nSub` controls the number of subjects (BSV).
+- `nStud` and `thetaMat` control the number of parameter draws (Uncertainty).
+- Resulting objects can be easily plotted or summarized with `confint()`.
+
+## What's Next?
+
+Great progress! You can now run simulations for individuals and populations. But often, individual characteristics like weight or age affect drug behavior. In the next tutorial, **[rxode2 covariates and data](rxode2-covariates.Rmd)**, you'll learn how to incorporate these factors into your models and simulations.

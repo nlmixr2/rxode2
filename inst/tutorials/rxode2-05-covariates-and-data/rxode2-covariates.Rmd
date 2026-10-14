@@ -1,0 +1,127 @@
+---
+title: "rxode2 covariates and data"
+output:
+  learnr::tutorial:
+    progressive: true
+runtime: shiny_prerendered
+description: >
+  Learn how to include covariates in your rxode2 models, passing them as
+  individual data (iCov) or time-varying data in event tables.
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+library(rxode2)
+library(ggplot2)
+knitr::opts_chunk$set(echo = FALSE)
+
+modCov <- function() {
+  ini({
+    tka <- 0.5; tcl <- 1; tv <- 10
+    add.sd <- 0.1
+  })
+  model({
+    ka <- exp(tka)
+    cl <- exp(tcl) * (WT/70)^0.75
+    v  <- exp(tv)
+    d/dt(center) <- - cl/v * center
+    cp <- center/v
+    cp ~ add(add.sd)
+  })
+}
+```
+
+## Review: Simulation and Model Functions
+
+Before we add covariates, let's review how to run a basic population simulation.
+
+### Exercise: Population Simulation
+
+Using the `modCov` model (ignoring the `WT` part for a moment by setting it to 70), simulate 50 subjects with a 100 mg bolus dose.
+
+```{r simulationReviewCov, exercise=TRUE}
+# Set up event table ev (100 mg dose, 0-24h sampling)
+ev <- et(amt = 100) |> et(0:24)
+
+# Set WT to 70 in the event table to ignore the covariate effect for now
+ev$WT <- 70
+
+# Solve for 50 subjects
+res <- rxSolve(modCov, ev, nSub = 50)
+
+plot(res, cp)
+```
+
+## Introduction to Covariates
+
+Covariates are external variables that influence your model parameters (e.g., body weight, age, or smoking status). In `rxode2`, any variable in your model that is NOT defined as a parameter in `ini()` and NOT calculated as a LHS variable is assumed to be a **covariate**.
+
+## Individual Covariates (`iCov`)
+
+If you have covariates that are constant for each individual (like baseline weight), you can pass them using the `iCov` argument in `rxSolve()`.
+
+```r
+# Create individual covariate data frame
+myCovs <- data.frame(id = 1:5, WT = c(60, 70, 80, 90, 100))
+
+# Solve with iCov
+res <- rxSolve(modCov, ev, iCov = myCovs)
+```
+
+### Exercise: Simulate with Weight Covariate
+
+Simulate 4 subjects with weights 60, 70, 80, and 90 kg.
+
+```{r icovEx, exercise=TRUE}
+ev <- et(amt = 100) |> et(0:24)
+
+myCovs <- data.frame(id = 1:4, WT = c(60, 70, 80, 90))
+
+res <- rxSolve(modCov, ev, iCov = myCovs)
+
+plot(res, cp)
+```
+
+## Time-Varying Covariates
+
+If a covariate changes over time (like heart rate or a continuous infusion), you can include it directly in your event table.
+
+```r
+ev <- et(amt = 100) |> et(0:24)
+ev$WT <- 70  # Add WT to every row of the event table
+```
+
+### Covariate Interpolation
+
+When the solver needs a value for a covariate at a time point that is not in your data, it uses interpolation. You can control this with the `covsInterpolation` argument:
+- `"linear"`: Linear interpolation between points.
+- `"locf"`: Last Observation Carried Forward (constant until the next point).
+- `"nocb"`: Next Observation Carried Backward.
+
+### Exercise: Time-Varying Weight
+
+Suppose a subject starts at 70 kg and gains 10 kg over 24 hours.
+
+```{r tvCovEx, exercise=TRUE}
+ev <- et(amt = 100) |>
+  et(0) |>
+  et(24)
+
+# Define WT at time 0 and time 24
+ev$WT <- c(70, 80)
+
+# Solve with linear interpolation
+resLinear <- rxSolve(modCov, ev, covsInterpolation = "linear")
+plot(resLinear, cp)
+```
+
+## Summary
+
+- Covariates are automatically recognized if they are not defined in `ini()`.
+- Use `iCov` for subject-level constants.
+- Include columns in your event table for time-varying covariates.
+- Choose an interpolation method (`linear`, `locf`, `nocb`) that suits your data.
+
+## What's Next?
+
+You've now covered the core workflow of `rxode2`: defining, modifying, simulating, and adding data to models. In the final tutorial, **[rxode2 advanced features](rxode2-advanced.Rmd)**, we'll explore some specialized tools that can speed up your work, such as analytical solutions for standard PK models.
