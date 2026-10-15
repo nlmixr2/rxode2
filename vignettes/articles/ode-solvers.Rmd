@@ -804,9 +804,12 @@ the Runge-Kutta families often being faster on smooth outputs.
 - **Ecosystem**: both nlmixr2 and Monolix integrate with ggPMX for
   diagnostics; nlmixr2 also works with xpose4 and vpc.  Monolix has
   Datxplore and Pkanalix (could use PKNCA instead).
-- **Simulation platform**: `rxode2` / `RxODE` underpins `simulx()`
-  via the `RsSimulx` R package (PKPD simulations driven by Monolix
-  parameter estimates).
+- **Simulation platform**: Monolix models are simulated with Simulx, a
+  separate Monolix suite application (`RsSimulx` / `lixoftConnectors`
+  from R).  To simulate a Monolix model in rxode2 instead, convert the
+  project with `monolix2rx`, which translates Mlxtran to rxode2 and
+  validates PRED/IPRED against Monolix; see
+  [rxode2 and Simulx: A Feature Comparison](rxode2-simulx-comparison.html).
 
 ### Phoenix WinNonlin / Phoenix NLME crosswalk
 
