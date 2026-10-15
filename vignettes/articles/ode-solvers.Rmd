@@ -651,6 +651,10 @@ Rosenbrock-family secondary.
   same Hairer stiffness estimate (or a solve failure).  See *How rxode2
   AutoSwitch compares to Julia's `AutoSwitch`* under the AutoSwitch
   composite methods section above.
+- **Population estimation**: SciML itself does not do population
+  estimation; in Julia that is done by the closed-source Pumas or by
+  NoLimits.jl, the counterparts of nlmixr2.  Turing.jl is a general
+  Bayesian estimation routine, closer to nlmixr2bayes.
 - **Interoperability**: The `JuliaCall` or `JuliaConnectoR` packages
   allow calling Julia's ODE solvers from R.
 
@@ -857,9 +861,9 @@ and scientific computing platforms across key features.
 | Non-stiff solver | dop853, LSODA Adams | ode45 | ADVAN6/9 | ode45 | Tsit5, DP8 |
 | Analytical PK | linCmt (1-3 cmt) | Manual | ADVAN1-4 | PKanalix | ModelingToolkit |
 | Matrix exponential | `matExp()` / `indLin` | expm() | ADVAN5/7 | -- | LinearAlgebra.exp |
-| Parallel subjects | OpenMP (built-in) | PCT add-on | -- | -- | Threads.@threads |
+| Parallel subjects | OpenMP (built-in) | PCT add-on | MPI (parafile) | -- | Threads.@threads |
 | NONMEM datasets | Native | Manual | Native | Via import | Manual |
-| Population estimation | nlmixr2 | -- | Native | Native | Turing.jl |
+| Population estimation | nlmixr2 (Bayesian: nlmixr2bayes) | -- | Native | Native | Pumas (closed source), NoLimits.jl (Bayesian: Turing.jl) |
 | Sensitivity equations | Forward (liblsoda) | -- | -- | -- | ForwardDiff, adjoint |
 
 ## Complete accepted solver names in rxode2
