@@ -651,6 +651,10 @@ Rosenbrock-family secondary.
   same Hairer stiffness estimate (or a solve failure).  See *How rxode2
   AutoSwitch compares to Julia's `AutoSwitch`* under the AutoSwitch
   composite methods section above.
+- **Population estimation**: DifferentialEquations.jl itself does not
+  do population estimation; in Julia that is done by the closed-source
+  Pumas or by NoLimits.jl, the counterparts of nlmixr2.  Turing.jl is a
+  general Bayesian estimation routine, closer to nlmixr2bayes.
 - **Interoperability**: The `JuliaCall` or `JuliaConnectoR` packages
   allow calling Julia's ODE solvers from R.
 
@@ -681,8 +685,8 @@ general ODE solver at all.
 | ADVAN9 | Differential-algebraic / equilibrium-compartment model; NONMEM documents LSODI with BDF for stiff problems | `cvode` or stiff implicit methods in rxode2, but usually after rewriting the model into explicit ODE form if possible | Use this mental bucket for equilibrium or algebraic constraints rather than for ordinary PK models |
 | ADVAN13, ADVAN14 | General nonlinear stiff/nonstiff equations in later NONMEM versions | `liblsoda` first(ADVAN13), then `cvode`(ADVAN14). You can also use `ros4`, or `dop853` depending on observed stiffness | These are the closest "modern general-purpose ODE" ADVANs to rxode2's default ODE workflows |
 | ADVAN15 | Equilibrium-compartment extension of ADVAN13/14-style workflows | stiff implicit rxode2 workflows; sometimes custom model reformulation is the real comparison | Think "DAE-like/equilibrium-aware" rather than a one-name solver match |
-| ADVAN16, ADVAN17 | Delay-equation models using RADAR5 | no direct ODE-solver equivalent in this vignette | This is beyond ordinary ODE comparison and should be treated separately |
-| ADVAN18 | Delay-equation models using DDE solver | no direct ODE-solver equivalent in this vignette | Also outside the usual ODE-only solver menu |
+| ADVAN16, ADVAN17 | Delay-equation models using RADAR5 | `delay(state, T)` in the model; solved by default with `"dop853+ros4"` (or `dop853` / `ros4`) on the dense-output path | rxode2 interpolates the delayed state from the solver's dense history and generates forward sensitivities, so the model can be fit with nlmixr2 FOCEi; see [Delay differential equations (DDEs)](#delay-differential-equations-ddes) |
+| ADVAN18 | Delay-equation models using DDE solver | `delay(state, T)` with `dop853` (non-stiff) or `"dop853+ros4"` | Same rxode2 mechanism as ADVAN16/17; pick `dop853` when the delay model is clearly non-stiff |
 
 The key practical mapping is:
 
@@ -693,12 +697,16 @@ The key practical mapping is:
   `ros43`, `sdirk43`
 - NONMEM ADVAN13 -> `liblsoda` general-purpose adaptive workflow
 - NONMEM ADVAN14 -> `cvode` general-purpose adaptive workflows
+- NONMEM ADVAN16/17/18 -> `delay(state, T)` with `"dop853+ros4"`,
+  `dop853`, or `ros4`
 
 #### Key differences from NONMEM
 
 - **Open source**: rxode2 is GPL-3; NONMEM requires a commercial license.
 - **Simulation speed**: rxode2 simulates thousands of subjects in
-  seconds via OpenMP.  NONMEM simulation (`$SIM`) is single-threaded.
+  seconds via OpenMP threads within one process.  NONMEM simulation
+  (`$SIM`) can be parallelized with MPI (a parafile and the `nmfe`
+  `[nodes]=` option), which spreads the work across separate processes.
 - **Estimation**: rxode2 itself is a simulator; population estimation is
   done through `nlmixr2`, which wraps rxode2.  NONMEM integrates
   estimation and simulation in one tool.
@@ -779,21 +787,33 @@ the Runge-Kutta families often being faster on smooth outputs.
 - if you needed Monolix `stiff`, start in `rxode2` with `bdf`, `liblsoda`,
   `cvode`, `ros4`, or `ros43`
 
+- if your Mlxtran model uses `delay()`, the rxode2 `delay(state, T)`
+  function has the same semantics; it is solved on the dense-output path
+  with `"dop853+ros4"` by default
+
 #### Key differences from Monolix
 
 - **Free and open source**: rxode2 and nlmixr2 are freely available on
   CRAN; Monolix requires a commercial license (free academic licenses
   exist).
-- **Model language**: Monolix uses a proprietary model language
-  (Mlxtran); rxode2 uses an R-embedded mini-language that is a superset
-  of common PK notation.
-- **Customization**: rxode2 models can call arbitrary C/C++ functions
-  registered at the R level; Monolix has limited extensibility.
-- **Ecosystem**: nlmixr2 integrates with ggPMX, xpose4, and vpc for
-  diagnostics; Monolix has Datxplore and Pkanalix (could use PKNCA instead).
-- **Simulation platform**: `rxode2` / `RxODE` underpins `simulx()`
-  via the `RsSimulx` R package (PKPD simulations driven by Monolix
-  parameter estimates).
+- **Model language**: Monolix uses the Mlxtran model language,
+  which is publicly documented; rxode2 uses an R-embedded
+  mini-language that is a superset of common PK notation.
+- **Customization**: rxode2 models can call user-defined functions
+  written in plain R (often translated to C automatically), defined
+  inside the model function itself, written in C, or written as
+  functions that rewrite the model code; see
+  [Integrating User Defined Functions into rxode2](Integrating-User-Defined-Functions-into-rxode2.html).
+  Monolix has limited extensibility.
+- **Ecosystem**: both nlmixr2 and Monolix integrate with ggPMX for
+  diagnostics; nlmixr2 also works with xpose4 and vpc.  Monolix has
+  Datxplore and Pkanalix (could use PKNCA instead).
+- **Simulation platform**: Monolix models are simulated with Simulx, a
+  separate Monolix suite application (`RsSimulx` / `lixoftConnectors`
+  from R).  To simulate a Monolix model in rxode2 instead, convert the
+  project with `monolix2rx`, which translates Mlxtran to rxode2 and
+  validates PRED/IPRED against Monolix; see
+  [rxode2 and Simulx: A Feature Comparison](rxode2-simulx-comparison.html).
 
 ### Phoenix WinNonlin / Phoenix NLME crosswalk
 
@@ -833,17 +853,18 @@ So, for Phoenix users moving to `rxode2`, the practical sequence is:
 The table below compares rxode2 against other common pharmacometric
 and scientific computing platforms across key features.
 
-| Feature | rxode2 | MATLAB | NONMEM | Monolix | Julia (SciML) |
+| Feature | rxode2 | MATLAB | NONMEM | Monolix | Julia |
 |---|---|---|---|---|---|
-| Open source | Yes (GPL-3) | No | No | No (free academic) | Yes (MIT) |
+| Open source | Yes (GPL-3) | No | No | No (free academic) | Yes (MIT); Pumas is closed source |
 | Language | R + C | MATLAB | NONMEM7 | Mlxtran | Julia |
-| Stiff solver | LSODA (auto) | ode15s | ADVAN8/13 | ode23s | CVODE_BDF, Rodas5P |
-| Non-stiff solver | dop853, LSODA Adams | ode45 | ADVAN6/9 | ode45 | Tsit5, DP8 |
-| Analytical PK | linCmt (1-3 cmt) | Manual | ADVAN1-4 | PKanalix | ModelingToolkit |
+| Stiff solver | LSODA (auto) | ode15s | ADVAN8/13/14 | BDF (`odeType = stiff`) | CVODE_BDF, Rodas5P |
+| Non-stiff solver | dop853, LSODA Adams | ode45 | ADVAN6 | Adams (`odeType = nonStiff`) | Tsit5, DP8 |
+| Analytical PK | linCmt (1-3 cmt) | Manual | ADVAN1-4 | PK model library (`pkmodel()`) | ModelingToolkit |
 | Matrix exponential | `matExp()` / `indLin` | expm() | ADVAN5/7 | -- | LinearAlgebra.exp |
-| Parallel subjects | OpenMP (built-in) | PCT add-on | -- | -- | Threads.@threads |
+| Parallel subjects | OpenMP (built-in) | PCT add-on | MPI (parafile) | Multi-core; MPI on clusters | Threads.@threads |
 | NONMEM datasets | Native | Manual | Native | Via import | Manual |
-| Population estimation | nlmixr2 | -- | Native | Native | Turing.jl |
+| Population estimation | nlmixr2 (Bayesian: nlmixr2bayes) | -- | Native | Native | Pumas (closed source), NoLimits.jl (Bayesian: Turing.jl) |
+| Universal differential equations | nlmixr2nn | Deep Learning Toolbox (`dlode45`) | -- | -- | DiffEqFlux.jl |
 | Sensitivity equations | Forward (liblsoda) | -- | -- | -- | ForwardDiff, adjoint |
 
 ## Complete accepted solver names in rxode2
