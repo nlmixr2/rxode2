@@ -864,6 +864,7 @@ and scientific computing platforms across key features.
 | Parallel subjects | OpenMP (built-in) | PCT add-on | MPI (parafile) | Multi-core; MPI on clusters | Threads.@threads |
 | NONMEM datasets | Native | Manual | Native | Via import | Manual |
 | Population estimation | nlmixr2 (Bayesian: nlmixr2bayes) | -- | Native | Native | Pumas (closed source), NoLimits.jl (Bayesian: Turing.jl) |
+| Universal differential equations | nlmixr2nn | Deep Learning Toolbox (`dlode45`) | -- | -- | DiffEqFlux.jl |
 | Sensitivity equations | Forward (liblsoda) | -- | -- | -- | ForwardDiff, adjoint |
 
 ## Complete accepted solver names in rxode2
