@@ -681,8 +681,8 @@ general ODE solver at all.
 | ADVAN9 | Differential-algebraic / equilibrium-compartment model; NONMEM documents LSODI with BDF for stiff problems | `cvode` or stiff implicit methods in rxode2, but usually after rewriting the model into explicit ODE form if possible | Use this mental bucket for equilibrium or algebraic constraints rather than for ordinary PK models |
 | ADVAN13, ADVAN14 | General nonlinear stiff/nonstiff equations in later NONMEM versions | `liblsoda` first(ADVAN13), then `cvode`(ADVAN14). You can also use `ros4`, or `dop853` depending on observed stiffness | These are the closest "modern general-purpose ODE" ADVANs to rxode2's default ODE workflows |
 | ADVAN15 | Equilibrium-compartment extension of ADVAN13/14-style workflows | stiff implicit rxode2 workflows; sometimes custom model reformulation is the real comparison | Think "DAE-like/equilibrium-aware" rather than a one-name solver match |
-| ADVAN16, ADVAN17 | Delay-equation models using RADAR5 | no direct ODE-solver equivalent in this vignette | This is beyond ordinary ODE comparison and should be treated separately |
-| ADVAN18 | Delay-equation models using DDE solver | no direct ODE-solver equivalent in this vignette | Also outside the usual ODE-only solver menu |
+| ADVAN16, ADVAN17 | Delay-equation models using RADAR5 | `delay(state, T)` in the model; solved by default with `"dop853+ros4"` (or `dop853` / `ros4`) on the dense-output path | rxode2 interpolates the delayed state from the solver's dense history and generates forward sensitivities, so the model can be fit with nlmixr2 FOCEi; see [Delay differential equations (DDEs)](#delay-differential-equations-ddes) |
+| ADVAN18 | Delay-equation models using DDE solver | `delay(state, T)` with `dop853` (non-stiff) or `"dop853+ros4"` | Same rxode2 mechanism as ADVAN16/17; pick `dop853` when the delay model is clearly non-stiff |
 
 The key practical mapping is:
 
@@ -693,12 +693,16 @@ The key practical mapping is:
   `ros43`, `sdirk43`
 - NONMEM ADVAN13 -> `liblsoda` general-purpose adaptive workflow
 - NONMEM ADVAN14 -> `cvode` general-purpose adaptive workflows
+- NONMEM ADVAN16/17/18 -> `delay(state, T)` with `"dop853+ros4"`,
+  `dop853`, or `ros4`
 
 #### Key differences from NONMEM
 
 - **Open source**: rxode2 is GPL-3; NONMEM requires a commercial license.
 - **Simulation speed**: rxode2 simulates thousands of subjects in
-  seconds via OpenMP.  NONMEM simulation (`$SIM`) is single-threaded.
+  seconds via OpenMP threads within one process.  NONMEM simulation
+  (`$SIM`) can be parallelized with MPI (a parafile and the `nmfe`
+  `[nodes]=` option), which spreads the work across separate processes.
 - **Estimation**: rxode2 itself is a simulator; population estimation is
   done through `nlmixr2`, which wraps rxode2.  NONMEM integrates
   estimation and simulation in one tool.
@@ -779,18 +783,27 @@ the Runge-Kutta families often being faster on smooth outputs.
 - if you needed Monolix `stiff`, start in `rxode2` with `bdf`, `liblsoda`,
   `cvode`, `ros4`, or `ros43`
 
+- if your Mlxtran model uses `delay()`, the rxode2 `delay(state, T)`
+  function has the same semantics; it is solved on the dense-output path
+  with `"dop853+ros4"` by default
+
 #### Key differences from Monolix
 
 - **Free and open source**: rxode2 and nlmixr2 are freely available on
   CRAN; Monolix requires a commercial license (free academic licenses
   exist).
-- **Model language**: Monolix uses a proprietary model language
-  (Mlxtran); rxode2 uses an R-embedded mini-language that is a superset
-  of common PK notation.
-- **Customization**: rxode2 models can call arbitrary C/C++ functions
-  registered at the R level; Monolix has limited extensibility.
-- **Ecosystem**: nlmixr2 integrates with ggPMX, xpose4, and vpc for
-  diagnostics; Monolix has Datxplore and Pkanalix (could use PKNCA instead).
+- **Model language**: Monolix uses the Mlxtran model language,
+  which is publicly documented; rxode2 uses an R-embedded
+  mini-language that is a superset of common PK notation.
+- **Customization**: rxode2 models can call user-defined functions
+  written in plain R (often translated to C automatically), defined
+  inside the model function itself, written in C, or written as
+  functions that rewrite the model code; see
+  [Integrating User Defined Functions into rxode2](Integrating-User-Defined-Functions-into-rxode2.html).
+  Monolix has limited extensibility.
+- **Ecosystem**: both nlmixr2 and Monolix integrate with ggPMX for
+  diagnostics; nlmixr2 also works with xpose4 and vpc.  Monolix has
+  Datxplore and Pkanalix (could use PKNCA instead).
 - **Simulation platform**: `rxode2` / `RxODE` underpins `simulx()`
   via the `RsSimulx` R package (PKPD simulations driven by Monolix
   parameter estimates).
