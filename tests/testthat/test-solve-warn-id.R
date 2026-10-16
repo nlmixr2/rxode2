@@ -175,7 +175,7 @@ rxTest({
     expect_length(.line, 1L)
     expect_match(
       .line,
-      "^\\[intdy -- t illegal \\(outside the last step\\)\\]: [0-9]+ warning\\(s\\) for subject\\(s\\): 2$"
+      "^\\[intdy -- t illegal \\(outside the last step\\)\\]: [1-9][0-9]* warning\\(s\\) for subject\\(s\\): 2$"
     )
   })
 })

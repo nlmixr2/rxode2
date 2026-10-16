@@ -2520,47 +2520,63 @@ d/dt(depot) = -1.5*depot
 d/dt(central) = 1.5*depot - 0.2*central
 "
     )
-    .msg <- "'evid' is missing on a record with dose information ('amt', 'rate' or 'dur'); use 1 for a dose or 0 for an observation (id: 1 row: 1)"
+    # the whole message etTrans() stops with, or NULL
+    .etErr <- function(d) {
+      tryCatch(
+        {
+          etTrans(d, mod)
+          NULL
+        },
+        error = conditionMessage
+      )
+    }
+    .msg <- function(id, row) {
+      sprintf(
+        "'evid' is missing on a record with dose information ('amt', 'rate' or 'dur'); use 1 for a dose or 0 for an observation (id: %s row: %d)",
+        id,
+        row
+      )
+    }
     .d <- data.frame(ID = 1, TIME = c(0, 1), DV = c(NA, 1), AMT = c(100, 0), EVID = c(NA, 0), CMT = 2)
-    expect_error(etTrans(.d, mod), .msg, fixed = TRUE)
+    expect_identical(.etErr(.d), .msg(1, 1))
+    # lower-case columns, and no ID column (one subject, 1)
+    expect_identical(.etErr(setNames(.d, tolower(names(.d)))), .msg(1, 1))
+    expect_identical(.etErr(.d[names(.d) != "ID"]), .msg(1, 1))
     # a negative or NaN amount, or a DV on the record, does not make it an observation
     for (.amt in c(-5, NaN)) {
       .d$AMT[1] <- .amt
-      expect_error(etTrans(.d, mod), .msg, fixed = TRUE)
+      expect_identical(.etErr(.d), .msg(1, 1))
     }
     .d$DV[1] <- 3
-    expect_error(etTrans(.d, mod), .msg, fixed = TRUE)
+    expect_identical(.etErr(.d), .msg(1, 1))
     # nor does a fixed or modeled rate or duration with no amount, as a constant
     # infusion (ss = 1 with a rate) has
     .d <- data.frame(ID = 1, TIME = c(0, 1), DV = c(NA, 1), AMT = 0, EVID = c(NA, 0), CMT = 2)
     for (.rate in c(10, -1, -2)) {
       .r <- .d
       .r$RATE <- c(.rate, 0)
-      expect_error(etTrans(.r, mod), .msg, fixed = TRUE)
+      expect_identical(.etErr(.r), .msg(1, 1))
     }
     for (.dur in c(2, -1, -2)) {
       .r <- .d
       .r$DUR <- c(.dur, 0)
-      expect_error(etTrans(.r, mod), .msg, fixed = TRUE)
+      expect_identical(.etErr(.r), .msg(1, 1))
     }
     .r <- .d
     .r$RATE <- c(10, 0)
     .r$SS <- c(1, 0)
-    expect_error(etTrans(.r, mod), .msg, fixed = TRUE)
-    # the subject's ID and the record's row in the data as given
+    expect_identical(.etErr(.r), .msg(1, 1))
+    # the subject's ID and the record's row in the data as given: subjects in
+    # first-seen order that is not alphabetical, times out of order
     .m <- data.frame(
-      ID = c("a", "a", "b", "b"),
+      ID = c("b", "b", "a", "a"),
       TIME = c(0, 1, 1, 0),
       DV = c(NA, 1, NA, 2),
       AMT = c(100, 0, 100, 0),
       EVID = c(1, 0, NA, 0),
       CMT = 2
     )
-    expect_error(
-      etTrans(.m, mod),
-      "'evid' is missing on a record with dose information ('amt', 'rate' or 'dur'); use 1 for a dose or 0 for an observation (id: b row: 3)",
-      fixed = TRUE
-    )
+    expect_identical(.etErr(.m), .msg("a", 3))
     # with no amount, rate or duration a missing EVID is an observation
     for (.amt in c(0, NA)) {
       .d$AMT[1] <- .amt
@@ -2568,10 +2584,12 @@ d/dt(central) = 1.5*depot - 0.2*central
       expect_identical(etTrans(.d, mod)$EVID, c(0L, 0L))
     }
     # with no EVID column a nonzero AMT is a dose, and so is a missing MDV with an
-    # amount when the MDV column stands in for the EVID
+    # amount when the MDV column stands in for the EVID; with no amount too
     .d <- data.frame(ID = 1, TIME = c(0, 1), DV = c(NA, 1), AMT = c(100, 0), CMT = 2)
     expect_identical(etTrans(.d, mod)$EVID, c(201L, 0L))
     .d$MDV <- c(NA, 0)
+    expect_identical(etTrans(.d, mod)$EVID, c(201L, 0L))
+    .d$AMT[1] <- 0
     expect_identical(etTrans(.d, mod)$EVID, c(201L, 0L))
   })
 
