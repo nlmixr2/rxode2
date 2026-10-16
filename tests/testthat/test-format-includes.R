@@ -1,19 +1,25 @@
 test_that("rxode2's own sources take the sbuf writers from rxSbufFormat.h", {
   # rxSbufFormat.h redeclares sAppend(), sPrint() and addLine() with a printf
-  # format attribute, which covers only the calls after it; a source or header
-  # that includes rxode2parseSbuf.h itself would bring calls in unchecked
+  # format attribute, which covers only the calls after it, so no other source
+  # or header in src/ may name rxode2parseSbuf.h, however it includes it.  (The
+  # installed inst/include/rxode2.h includes it too; it calls no writer.)
   .src <- testthat::test_path("..", "..", "src")
-  # the installed package (R CMD check) has no sources to read
-  skip_if_not(dir.exists(.src))
+  skip_if(!dir.exists(.src), "source tree not available (installed package)")
   .f <- list.files(.src, pattern = "\\.(c|cpp|h)$", full.names = TRUE)
+  # the sources this test is about are there to read
+  expect_true(all(c("codegen.h", "tran.c", "rxSbufFormat.h") %in% basename(.f)))
   # sbuf.c is the generated copy of inst/include/sbuf.c, shipped to other packages
   .f <- .f[!(basename(.f) %in% c("rxSbufFormat.h", "sbuf.c"))]
-  .direct <- .f[vapply(
+  .names <- vapply(
     .f,
     function(.x) {
-      any(grepl("#include\\s*[\"<](\\.\\./inst/include/)?rxode2parseSbuf\\.h[\">]", readLines(.x, warn = FALSE)))
+      .t <- paste(readLines(.x, warn = FALSE), collapse = "\n")
+      # drop comments, block and line
+      .t <- gsub("/\\*.*?\\*/", "", .t, perl = TRUE)
+      .t <- gsub("//[^\n]*", "", .t, perl = TRUE)
+      grepl("rxode2parseSbuf", .t, fixed = TRUE)
     },
     logical(1)
-  )]
-  expect_identical(basename(.direct), character(0))
+  )
+  expect_identical(basename(.f[.names]), character(0))
 })
