@@ -193,12 +193,6 @@ extern "C" void par_rkb109(rx_solve *rx) {
       int _id = rx->ordId[solveid] - 1;
       setSeedEng1(seed0 + _id);
       ind_rkb109_0(rx, op, _id, neq, dydt, update_inis);
-      if (op->badSolve) {
-#ifdef _OPENMP
-#pragma omp atomic write
-#endif
-        abort = 1;
-      }
     }
   }
   // close the per-subject seed block: the loop consumed nsolve seeds, not
