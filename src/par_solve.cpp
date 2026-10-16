@@ -6496,6 +6496,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   double *yp;
   void *ctx = NULL;
   int istate = 0;
+  // this subject's own failure; op->badSolve is shared by every subject and thread
+  int localBadSolve = 0;
   static const char *err_msg[]=
     {
       "input is not consistent",
@@ -6558,10 +6560,11 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         *rc = idid;
         // Bad Solve => NA
         badSolveExit(i);
+        localBadSolve = 1;
       } else {
         if (handleExtraDose(neq, ind->BadDose, InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
-          if (!isSameTimeDop(ind->extraDoseNewXout, xp)) {
+          if (!localBadSolve && !isSameTimeDop(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             neq[0] = eff - op->numLin - op->numLinSens;
             idid = rxSegmentAutoSwitch(rx, op, ind, neq, c_dydt, xp,
@@ -6569,30 +6572,34 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            if (*rc < 0) localBadSolve = 1;
             xp = ind->extraDoseNewXout;
           }
-          int idx = ind->idx;
-          int ixds = ind->ixds;
-          int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
-          ind->idx = -1-trueIdx;
-          handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
-                      ind->BadDose, InfusionRate, ind->dose, yp, xout, neq[1], ind);
-          idid = 1;
-          ind->idx = idx;
-          ind->ixds = ixds;
-          ind->idxExtra++;
-          if (!isSameTimeDop(xout, ind->extraDoseNewXout)) {
-            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-            neq[0] = eff - op->numLin - op->numLinSens;
-            idid = rxSegmentAutoSwitch(rx, op, ind, neq, c_dydt,
-                                        ind->extraDoseNewXout, xout, yp, &istate, itol, eff, &i);
-            neq[0] = eff;
-            copyLinCmt(neq, ind, op, yp);
-            postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
-            xp = ind->extraDoseNewXout;
+          if (!localBadSolve) {
+            int idx = ind->idx;
+            int ixds = ind->ixds;
+            int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+            ind->idx = -1-trueIdx;
+            handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
+                        ind->BadDose, InfusionRate, ind->dose, yp, xout, neq[1], ind);
+            idid = 1;
+            ind->idx = idx;
+            ind->ixds = ixds;
+            ind->idxExtra++;
+            if (!isSameTimeDop(xout, ind->extraDoseNewXout)) {
+              preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
+              neq[0] = eff - op->numLin - op->numLinSens;
+              idid = rxSegmentAutoSwitch(rx, op, ind, neq, c_dydt,
+                                          ind->extraDoseNewXout, xout, yp, &istate, itol, eff, &i);
+              neq[0] = eff;
+              copyLinCmt(neq, ind, op, yp);
+              postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+              if (*rc < 0) localBadSolve = 1;
+              xp = ind->extraDoseNewXout;
+            }
           }
         }
-        if (!isSameTimeDop(xout, xp)) {
+        if (!localBadSolve && !isSameTimeDop(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
           neq[0] = eff - op->numLin - op->numLinSens;
           idid = rxSegmentAutoSwitch(rx, op, ind, neq, c_dydt, xp, xout, yp,
@@ -6600,12 +6607,13 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+          if (*rc < 0) localBadSolve = 1;
           xp = xout;
         }
         //dadt_counter = 0;
       }
     }
-    if (!op->badSolve) {
+    if (!localBadSolve) {
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(idid), u_inis);
@@ -7189,6 +7197,8 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
   double *yp;
   void *ctx = NULL;
   int istate = 0;
+  // this subject's own failure; op->badSolve is shared by every subject and thread
+  int localBadSolve = 0;
   static const char *err_msg[]=
     {
       "input is not consistent",
@@ -7309,6 +7319,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+          if (*rc < 0) localBadSolve = 1;
           xp = xout;
         }
       }
@@ -7317,6 +7328,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
         printErr(ind->err, ind->id);
         *rc = idid;
         badSolveExit(i);
+        localBadSolve = 1;
       } else {
         // extraDose loop: use dense output for each pre-dose sub-segment so
         // obs before every extra-dose time are filled via dopDenseSolout.
@@ -7335,6 +7347,10 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
             xp = ind->extraDoseNewXout;
+            if (*rc < 0) {
+              localBadSolve = 1;
+              break;
+            }
           }
           int idx  = ind->idx;
           int ixds = ind->ixds;
@@ -7351,7 +7367,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
         // Dense segment solve from xp to xout, filling all pending obs via callback.
         // For a key (non-obs) event: obs in segment are slots [last_key_i+1 .. i-1].
         // For last-obs case (need_seg): obs in segment are slots [last_key_i+1 .. i].
-        if (!isSameTimeDop(xout, xp)) {
+        if (!localBadSolve && !isSameTimeDop(xout, xp)) {
           dc.obs_next    = last_key_i + 1;
           dc.segment_end = need_seg ? i : i - 1;
 
@@ -7369,13 +7385,14 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+          if (*rc < 0) localBadSolve = 1;
           xp = xout;
         }
       }
     }
 
     // Handle the key event and updateSolve -- identical to ind_dop0
-    if (!op->badSolve) {
+    if (!localBadSolve) {
       ind->idx = i;
       if (this_evid == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout, yp, &(idid), u_inis);

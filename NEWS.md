@@ -32,6 +32,13 @@
 
 ### Solving
 
+- `rxSolve(method = "dop853")` no longer returns zeros, without a warning, for
+  the subjects solved after one whose solve failed on the same thread (with
+  `dense = TRUE` it skipped their doses instead).  Each subject now tracks its
+  own failure, so the others solve as they should and every failing subject is
+  reported.  The shared failure flag was read in every rxode2 release (the
+  dense path since 5.1.1); lsoda and liblsoda stopped reading it in 5.1.1.
+
 - `rxSolve()` and `etTrans()` no longer change the objects they are given:
   - with an occasion (nested) eta, `rxSolve()` turned the occasion column
     of the caller's data frame into a factor, so, for example, `simulate()`
