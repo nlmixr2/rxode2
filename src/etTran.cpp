@@ -34,6 +34,12 @@ extern int fastFactorDataHasNa;
 
 SEXP convertId_(SEXP x);
 
+// A rate or duration that is dose information, as the no-EVID-column path reads
+// it: positive, or modeled (-1, -2).  A NaN, 0 or other negative value is none.
+static inline bool etRateDurIsDose(double x) {
+  return x > 0.0 || x == -1.0 || x == -2.0;
+}
+
 static inline bool rxIsNumInt(RObject obj) {
   int type = obj.sexp_type();
   if (type == REALSXP || type == 13) {
@@ -2296,12 +2302,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         // a missing EVID is an observation, which would silently drop the
         // record's dose information, read as the no-EVID-column path reads it
         // (there such a record is a dose): a nonzero amount (NaN too), or a rate
-        // or duration that is positive or modeled (-1, -2), as a constant
-        // infusion has.  A NaN or other negative rate or duration is none.
+        // or duration etRateDurIsDose() takes, as a constant infusion has
         if (hasEvid &&
             ((!ISNA(camt) && camt != 0.0) ||
-             (rateCol != -1 && (inRate[i] > 0.0 || inRate[i] == -1.0 || inRate[i] == -2.0)) ||
-             (durCol != -1 && (inDur[i] > 0.0 || inDur[i] == -1.0 || inDur[i] == -2.0)))) {
+             (rateCol != -1 && etRateDurIsDose(inRate[i])) ||
+             (durCol != -1 && etRateDurIsDose(inDur[i])))) {
           stop(_("'evid' is missing on a record with dose information ('amt', 'rate' or 'dur'); use 1 for a dose or 0 for an observation (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
         }
         cevid=0;
