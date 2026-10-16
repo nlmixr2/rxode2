@@ -2294,13 +2294,14 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         cevid=1;
       } else {
         // a missing EVID is an observation, which would silently drop the
-        // record's dose information: an amount (NaN too), or a fixed or modeled
-        // rate or duration, as a constant infusion has (a missing EVID column
-        // instead makes such a record a dose)
+        // record's dose information, read as the no-EVID-column path reads it
+        // (there such a record is a dose): a nonzero amount (NaN too), or a rate
+        // or duration that is positive or modeled (-1, -2), as a constant
+        // infusion has.  A NaN or other negative rate or duration is none.
         if (hasEvid &&
             ((!ISNA(camt) && camt != 0.0) ||
-             (rateCol != -1 && !ISNA(inRate[i]) && inRate[i] != 0.0) ||
-             (durCol != -1 && !ISNA(inDur[i]) && inDur[i] != 0.0))) {
+             (rateCol != -1 && (inRate[i] > 0.0 || inRate[i] == -1.0 || inRate[i] == -2.0)) ||
+             (durCol != -1 && (inDur[i] > 0.0 || inDur[i] == -1.0 || inDur[i] == -2.0)))) {
           stop(_("'evid' is missing on a record with dose information ('amt', 'rate' or 'dur'); use 1 for a dose or 0 for an observation (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
         }
         cevid=0;

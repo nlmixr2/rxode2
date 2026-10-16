@@ -2566,6 +2566,18 @@ d/dt(central) = 1.5*depot - 0.2*central
     .r$RATE <- c(10, 0)
     .r$SS <- c(1, 0)
     expect_identical(.etErr(.r), .msg(1, 1))
+    # a NaN or other negative rate or duration is no dose information: the record
+    # is an observation, as it is with no EVID column
+    for (.col in c("RATE", "DUR")) {
+      for (.v in c(NaN, -3)) {
+        .r <- .d
+        .r$DV[1] <- 3
+        .r[[.col]] <- c(.v, 0)
+        .lab <- paste(.col, .v)
+        expect_identical(etTrans(.r, mod)$EVID, c(0L, 0L), label = .lab)
+        expect_identical(etTrans(.r[names(.r) != "EVID"], mod)$EVID, c(0L, 0L), label = .lab)
+      }
+    }
     # the subject's ID and the record's row in the data as given: subjects in
     # first-seen order that is not alphabetical, times out of order
     .m <- data.frame(

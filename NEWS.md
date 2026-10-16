@@ -3,7 +3,8 @@
 ## Bug fixes
 
 - `etTrans()` now stops on a record whose `evid` is missing but that carries
-  dose information (a nonzero `amt`, or a `rate` or `dur`).  It used to keep
+  dose information: a nonzero `amt`, or a `rate` or `dur` that is positive or
+  modeled (-1, -2), as a record with no `evid` column is read.  It used to keep
   the record as an observation and drop the dose or infusion silently; with no
   `evid` column at all such a record is still a dose.
 
