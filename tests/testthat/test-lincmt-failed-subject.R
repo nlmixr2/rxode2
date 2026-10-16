@@ -6,6 +6,7 @@ rxTest({
     # cl = 1 and v = 10 give cp(1) = 10 exp(-0.1); a modeled rate (rate = -1) in
     # a model with no rate() makes that subject's solve fail
     .cp1 <- 10 * exp(-0.1)
+    .msg <- "some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'"
     .d <- data.frame(
       ID = rep(1:3, each = 4),
       TIME = rep(c(0, 0.5, 1, 2), 3),
@@ -19,7 +20,10 @@ rxTest({
       .b$RATE[.b$ID == .bad & .b$EVID == 1] <- -1
       for (.cores in c(1L, 2L)) {
         .lab <- paste("bad", .bad, "cores", .cores)
-        capture.output(.s <- suppressWarnings(rxSolve(.m, .b, params = c(cl = 1, v = 10), cores = .cores)))
+        .w <- capture_warnings(
+          capture.output(.s <- rxSolve(.m, .b, params = c(cl = 1, v = 10), cores = .cores))
+        )
+        expect_identical(.w, .msg, label = .lab)
         .s <- as.data.frame(.s)
         .cp <- .s$cp[.s$time == 1]
         expect_true(is.na(.cp[.bad]), label = .lab)
