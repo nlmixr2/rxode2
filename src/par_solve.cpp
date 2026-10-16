@@ -5927,6 +5927,8 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
   double delta = 0.0;
   int n =0, nzero = 0;
 
+  // this subject's own failure; op->badSolve is shared by every subject and thread
+  int localBadSolve = 0;
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return NA_REAL;
 
   nx = ind->n_all_times;
@@ -5970,41 +5972,47 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
         *rc = idid;
         // Bad Solve => NA
         badSolveExit(i);
+        localBadSolve = 1;
       } else {
         if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
-          if (!isSameTime(ind->extraDoseNewXout, xp)) {
+          if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             linSolve(neq, ind, yp, &xp, ind->extraDoseNewXout);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            if (*rc < 0) localBadSolve = 1;
             xp = ind->extraDoseNewXout;
           }
-          int idx = ind->idx;
-          int ixds = ind->ixds;
-          int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
-          ind->idx = -1-trueIdx;
-          handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
-                      BadDose, InfusionRate, ind->dose, yp, xout, neq[1], ind);
-          ind->idx = idx;
-          ind->ixds = ixds;
-          ind->idxExtra++;
-          if (!isSameTime(xout, ind->extraDoseNewXout)) {
+          if (!localBadSolve) {
+            int idx = ind->idx;
+            int ixds = ind->ixds;
+            int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+            ind->idx = -1-trueIdx;
+            handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
+                        BadDose, InfusionRate, ind->dose, yp, xout, neq[1], ind);
+            ind->idx = idx;
+            ind->ixds = ixds;
+            ind->idxExtra++;
+          }
+          if (!localBadSolve && !isSameTime(xout, ind->extraDoseNewXout)) {
             preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
             linSolve(neq, ind, yp, &(ind->extraDoseNewXout), xout);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            if (*rc < 0) localBadSolve = 1;
             xp = ind->extraDoseNewXout;
           }
         }
-        if (!isSameTime(xout, xp)) {
+        if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
           linSolve(neq, ind, yp, &xp, xout);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+          if (*rc < 0) localBadSolve = 1;
           xp = xout;
         }
       }
     }
     ind->_newind = 2;
-    if (!op->badSolve){
+    if (!localBadSolve) {
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(idid), u_inis);
@@ -6181,6 +6189,8 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
   neq[1] = solveid;
   ind = &(rx->subjects[neq[1]]);
 
+  // this subject's own failure; op->badSolve is shared by every subject and thread
+  int localBadSolve = 0;
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
 
   nx = ind->n_all_times;
@@ -6220,41 +6230,47 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
         *rc = idid;
         // Bad Solve => NA
         badSolveExit(i);
+        localBadSolve = 1;
       } else {
         if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
-          if (!isSameTime(ind->extraDoseNewXout, xp)) {
+          if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             linSolve(neq, ind, yp, &xp, ind->extraDoseNewXout);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            if (*rc < 0) localBadSolve = 1;
             xp = ind->extraDoseNewXout;
           }
-          int idx = ind->idx;
-          int ixds = ind->ixds;
-          int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
-          ind->idx = -1-trueIdx;
-          handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
-                      ind->BadDose, ind->InfusionRate, ind->dose, yp, xout, neq[1], ind);
-          ind->idx = idx;
-          ind->ixds = ixds;
-          ind->idxExtra++;
-          if (!isSameTime(xout, ind->extraDoseNewXout)) {
+          if (!localBadSolve) {
+            int idx = ind->idx;
+            int ixds = ind->ixds;
+            int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+            ind->idx = -1-trueIdx;
+            handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
+                        ind->BadDose, ind->InfusionRate, ind->dose, yp, xout, neq[1], ind);
+            ind->idx = idx;
+            ind->ixds = ixds;
+            ind->idxExtra++;
+          }
+          if (!localBadSolve && !isSameTime(xout, ind->extraDoseNewXout)) {
             preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
             linSolve(neq, ind, yp, &(ind->extraDoseNewXout), xout);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            if (*rc < 0) localBadSolve = 1;
             xp = ind->extraDoseNewXout;
           }
         }
-        if (!isSameTime(xout, xp)) {
+        if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
           linSolve(neq, ind, yp, &xp, xout);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+          if (*rc < 0) localBadSolve = 1;
           xp = xout;
         }
       }
     }
     ind->_newind = 2;
-    if (!op->badSolve){
+    if (!localBadSolve) {
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(idid), u_inis);
