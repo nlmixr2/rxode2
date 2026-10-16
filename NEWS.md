@@ -9,6 +9,10 @@
   reported.  The shared failure flag was read in every rxode2 release (the
   dense path since 5.1.1); lsoda and liblsoda stopped reading it in 5.1.1.
 
+- The same held for `linCmt()` models: after a subject whose solve failed (a
+  data error such as a modeled rate in a model without `rate()`), the later
+  subjects on that thread returned zeros.  Their solves now run as usual.
+
 # rxode2 5.1.8
 
 ## New features
