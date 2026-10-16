@@ -2,6 +2,7 @@
 #define STRICT_R_HEADERS
 #include "parseLinCmt.h"
 #include "rxProtect.h"
+#include "rxSbufFormat.h"
 
 char errLin[errLinLen];
 int errOff = 0;

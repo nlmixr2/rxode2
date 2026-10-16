@@ -1,4 +1,10 @@
 rxTest({
+  # the printed syntax-error listing of a model that fails to parse (the
+  # condition itself says "see above")
+  .listing <- function(code) {
+    capture.output(expect_error(rxode2parse(code), "syntax errors", fixed = TRUE))
+  }
+
   test_that("test lhs string assign lhs expression information", {
     p <- rxode2parse('a="oh no"')
     expect_equal(p$lhs, "a")
@@ -494,10 +500,6 @@ b <- (a == \"<10\")*1 + (a == \">=10\")*2
   })
 
   test_that("an out-of-range string assignment names the allowed values", {
-    # the syntax-error listing is printed; the condition says "see above"
-    .listing <- function(code) {
-      capture.output(expect_error(rxode2parse(code), "syntax errors", fixed = TRUE))
-    }
     expect_match(
       .listing('a <- "matt"; a<- 2'),
       "the string variable 'a' can only be 1 or 'matt':",

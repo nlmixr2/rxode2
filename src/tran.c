@@ -11,6 +11,7 @@
 #include "getOption.h"
 #include "parseLinCmt.h"
 #include "tran.h"
+#include "rxSbufFormat.h"
 #include "genModelVars.h"
 #include "print_node.h"
 #include <errno.h>

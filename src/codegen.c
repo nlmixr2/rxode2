@@ -4,6 +4,7 @@
 #include "rxProtect.h"
 #include <stdlib.h>
 #include <string.h>
+#include "rxSbufFormat.h"
 
 /**
  * Generates a random string of 4 alphanumeric characters.

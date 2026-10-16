@@ -40,6 +40,7 @@
 #include "rxode2_altrep.h"
 #include "rxode2_df.h"
 #include "../inst/include/rxMemoryCalc.h"
+#include "rxSbufFormat.h"
 #define _(String) (String)
 #define rxModelVars(a) rxModelVars_(a)
 #define min2( a , b )  ( (a) < (b) ? (a) : (b) )
@@ -475,6 +476,7 @@ Function requireNamespace("requireNamespace", R_BaseNamespace);
 Environment cliNS = loadNamespace("cli");
 Function cliAlert0 = as<Function>(cliNS["cli_alert_info"]);
 
+extern "C" void cliAlert(const char *format, ...) R_PRINTF_FORMAT(1, 2);
 extern "C" void cliAlert(const char *format, ...) {
   va_list args;
   char buffer[256];

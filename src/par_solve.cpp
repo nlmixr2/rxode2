@@ -29,6 +29,7 @@
 
 // dop853 is same time
 #include "rxProtect.h"
+#include "rxSbufFormat.h"
 
 extern "C" uint32_t getRxSeed1(int ncores);
 extern "C" void setSeedEng1(uint32_t seed);
