@@ -492,4 +492,23 @@ b <- (a == \"<10\")*1 + (a == \">=10\")*2
     s <- as.data.frame(rxSolve(m3, data.frame(id = 1:2, time = 1, RACE = 1:2)))
     expect_equal(s$isB, c(0, 1))
   })
+
+  test_that("an out-of-range string assignment names the allowed values", {
+    # the syntax-error listing is printed; the condition says "see above"
+    .listing <- function(code) {
+      capture.output(expect_error(rxode2parse(code), "syntax errors", fixed = TRUE))
+    }
+    expect_match(
+      .listing('a <- "matt"; a<- 2'),
+      "the string variable 'a' can only be 1 or 'matt':",
+      fixed = TRUE,
+      all = FALSE
+    )
+    expect_match(
+      .listing('a <- "matt"; a <- "rxode2"; a<- 3'),
+      "the string variable 'a' can only be 1 to 2, or 'matt', 'rxode2':",
+      fixed = TRUE,
+      all = FALSE
+    )
+  })
 })

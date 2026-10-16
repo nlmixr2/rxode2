@@ -2538,6 +2538,23 @@ d/dt(central) = 1.5*depot - 0.2*central
     expect_identical(etTrans(.d, mod)$EVID, c(201L, 0L))
   })
 
+  test_that("the rate and duration errors name the subject by its ID", {
+    mod <- rxode2parse(
+      "
+d/dt(depot) = -1.5*depot
+d/dt(central) = 1.5*depot - 0.2*central
+"
+    )
+    .d <- data.frame(ID = "subjA", TIME = c(0, 1), AMT = c(100, 0), RATE = c(10, 0), DUR = c(2, 0), EVID = c(1, 0), CMT = 2, DV = c(NA, 1))
+    expect_error(etTrans(.d, mod), "'rate' and/or 'dur' are not specified correctly (id: subjA row: 1)", fixed = TRUE)
+    # a steady-state constant infusion with a fixed, then a modeled, duration
+    .d <- data.frame(ID = "subjA", TIME = c(0, 1), AMT = 0, SS = c(1, 0), II = 0, DUR = c(2, 0), EVID = c(1, 0), CMT = 2, DV = c(NA, 1))
+    .msg <- "specifying duration with a steady state constant infusion makes no sense (id: subjA row: 1)"
+    expect_error(etTrans(.d, mod), .msg, fixed = TRUE)
+    .d$DUR[1] <- -2
+    expect_error(etTrans(.d, mod), .msg, fixed = TRUE)
+  })
+
   test_that("etTrans lag ss", {
     mod <- rxode2parse(
       "

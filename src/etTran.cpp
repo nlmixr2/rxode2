@@ -2230,7 +2230,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       } else if (inDur[i] == -2.0){
         // duration is modeled
         if (flg == 40) {
-          stop(_("specifying duration with a steady state constant infusion makes no sense (id: %d row: %d)"), CHAR(idLvl[cid-1]), i+1);
+          stop(_("specifying duration with a steady state constant infusion makes no sense (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
         }
         if (cmtSupportsInfusion(cmt, numLin, numLinSens,
                                 depotLin, numCmt, numSens)) {
@@ -2241,7 +2241,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       } else if (inDur[i] > 0) {
         // Duration is fixed
         if (flg == 40){
-          stop(_("specifying duration with a steady state constant infusion makes no sense (id: %d row: %d)"), CHAR(idLvl[cid-1]), i+1);
+          stop(_("specifying duration with a steady state constant infusion makes no sense (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
         }
         if (evidCol == -1 || inEvid[i] == 1 || inEvid[i] == 4) {
           if (cmtSupportsInfusion(cmt, numLin, numLinSens,
@@ -2257,7 +2257,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
       }
     } else {
-      stop(_("'rate' and/or 'dur' are not specified correctly (id: %d row: %d)"), CHAR(idLvl[cid-1]), i+1);
+      stop(_("'rate' and/or 'dur' are not specified correctly (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
     }
     if (addlCol == -1) caddl=0;
     else caddl = inAddl[i];

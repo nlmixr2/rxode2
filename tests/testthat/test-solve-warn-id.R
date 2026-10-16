@@ -144,4 +144,16 @@ rxTest({
     .warnLabels(character(0), integer(0))
     expect_equal(.Call("_rxTestGetIdLabels", 0L, PACKAGE = "rxode2"), "Unknown")
   })
+
+  test_that("a dop853 step-limit warning gives its nmax and aggregates over subjects", {
+    .m <- rxode2({
+      d/dt(central) <- -0.1 * central
+    })
+    .ev <- et(amt = 100) |> et(seq(0, 200, by = 50)) |> et(id = 1:2)
+    .out <- capture.output(suppressWarnings(rxSolve(.m, .ev, method = "dop853", maxsteps = 5L)))
+    expect_identical(
+      grep("warning\\(s\\)", .out, value = TRUE),
+      "[exit of dop853, more than nmax = 5 steps are needed]: 2 warning(s) for subject(s): 1, 2"
+    )
+  })
 })

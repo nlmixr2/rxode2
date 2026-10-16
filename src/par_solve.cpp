@@ -562,7 +562,7 @@ extern "C" int par_progress(int c, int n, int d, int cores, clock_t t0, int stop
           }
           RSprintf("] ");
           if (nticks < 50) RSprintf(" ");
-          RSprintf("%02.f%%; ",100*progress,cores);
+          RSprintf("%02.f%%; ",100*progress);
           _lastT0 = clock();
           clock_t t = _lastT0 - t0;
           double ts = ((double)t)/CLOCKS_PER_SEC;

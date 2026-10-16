@@ -499,6 +499,11 @@
   nonzero.  It used to keep the record as an observation and drop the dose
   silently; with no `evid` column at all, a nonzero `amt` is still a dose.
 
+- The aggregated `dop853` step-limit warning now gives the real `nmax`, and it
+  and the `dop853` step-size and `intdy` warnings no longer print a number
+  read from no argument, so they aggregate over subjects as one line.  The
+  `etTrans()` rate and duration errors format the subject ID as a string.
+
 # rxode2 5.1.7.1
 
 Published on CRAN by Prof Brian Ripley on 2026-09-29, not released from this
