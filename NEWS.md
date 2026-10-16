@@ -1,4 +1,4 @@
-# rxode2 5.1.8.9000
+# rxode2 (development version)
 
 ## Bug fixes
 
@@ -11,7 +11,9 @@
   and the `dop853` step-size and `intdy` warnings no longer print a value read
   from no argument (an indeterminate number), so each aggregates over subjects
   as one line.  The `etTrans()` rate and duration errors format the subject ID
-  as a string.
+  as a string.  A model's `printf()` whose format does not match its arguments
+  (`printf("%d", x)` with a double `x`) now gives a `-Wformat` warning when the
+  model compiles; it compiles as before.
 
 # rxode2 5.1.8
 
