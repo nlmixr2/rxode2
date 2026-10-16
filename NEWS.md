@@ -5,9 +5,10 @@
 - `rxSolve(method = "dop853")` no longer returns zeros, without a warning, for
   the subjects solved after one whose solve failed on the same thread (with
   `dense = TRUE` it skipped their doses instead).  Each subject now tracks its
-  own failure, so the others solve as they should and every failing subject is
-  reported.  The shared failure flag was read in every rxode2 release (the
-  dense path since 5.1.1); lsoda and liblsoda stopped reading it in 5.1.1.
+  own failure, so the others solve as they should, and each subject that fails
+  in dop853 is named in its step-size message.  The shared failure flag was
+  read in every rxode2 release (the dense path since 5.1.1); lsoda and
+  liblsoda stopped reading it in 5.1.1.
 
 - The same held for `linCmt()` models: after a subject whose solve failed (a
   data error such as a modeled rate in a model without `rate()`), the later
