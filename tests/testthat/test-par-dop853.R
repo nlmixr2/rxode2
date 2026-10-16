@@ -120,25 +120,32 @@ rxTest({
     .ev <- et(amt = 0.2, time = 0.25, cmt = "y") |> et(seq(0, 2, by = 0.5)) |> et(id = 1:3)
     .p <- data.frame(y0 = c(1, 0.1, 0.1))
     .y05 <- 1 / (1 / (1 / 9.75 + 0.2) - 0.25)
+    .msg <- "some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'"
     for (.dense in c(FALSE, TRUE)) {
       for (.cores in c(1L, 2L)) {
         .lab <- paste("dense", .dense, "cores", .cores)
-        .out <- capture.output(
-          .s <- suppressWarnings(rxSolve(.m, .ev, params = .p, method = "dop853", dense = .dense, cores = .cores))
+        .w <- capture_warnings(
+          .out <- capture.output(
+            .s <- rxSolve(.m, .ev, params = .p, method = "dop853", dense = .dense, cores = .cores)
+          )
         )
+        expect_identical(.w, .msg, label = .lab)
         .d <- as.data.frame(.s)
         .y <- .d$y[.d$time == 0.5]
         expect_true(is.na(.y[1]), label = .lab)
-        expect_equal(.y[2:3], c(.y05, .y05), tolerance = 1e-5, label = .lab)
+        expect_equal(.y[2:3], c(.y05, .y05), tolerance = 1e-8, label = .lab)
         # the failing subject is still reported
         expect_true(any(grepl("for subject\\(s\\): 1$", grep("exit of dop853", .out, value = TRUE))), label = .lab)
       }
     }
     # a later failing subject after a good one is reported too, and no subject zeroed
     .p <- data.frame(y0 = c(0.1, 1, 1))
-    .out <- capture.output(.s <- suppressWarnings(rxSolve(.m, .ev, params = .p, method = "dop853", cores = 1L)))
+    .w <- capture_warnings(
+      .out <- capture.output(.s <- rxSolve(.m, .ev, params = .p, method = "dop853", cores = 1L))
+    )
+    expect_identical(.w, .msg)
     .d <- as.data.frame(.s)
-    expect_equal(.d$y[.d$time == 0.5][1], .y05, tolerance = 1e-5)
+    expect_equal(.d$y[.d$time == 0.5][1], .y05, tolerance = 1e-8)
     expect_true(all(is.na(.d$y[.d$time == 0.5][2:3])))
     expect_true(any(grepl("for subject\\(s\\): 2, 3$", grep("exit of dop853", .out, value = TRUE))))
   })
