@@ -495,6 +495,10 @@
   could use instead of its own.  A model now also finds its user function
   when an earlier model used a different one (#1409).
 
+- `etTrans()` now stops on a record whose `evid` is missing and whose `amt` is
+  nonzero.  It used to keep the record as an observation and drop the dose
+  silently; with no `evid` column at all, a nonzero `amt` is still a dose.
+
 # rxode2 5.1.7.1
 
 Published on CRAN by Prof Brian Ripley on 2026-09-29, not released from this
