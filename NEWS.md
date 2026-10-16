@@ -1,4 +1,4 @@
-# rxode2 5.1.8.9000
+# rxode2 (development version)
 
 ## Bug fixes
 
