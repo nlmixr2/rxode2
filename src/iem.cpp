@@ -253,12 +253,6 @@ extern "C" void par_iem(rx_solve *rx){
       setSeedEng1(seed0 + _id);
       ind_iem_0(rx, op, _id, neq, dydt, update_inis);
 
-      if (op->badSolve) {
-#ifdef _OPENMP
-#pragma omp atomic write
-#endif
-        abort = 1;
-      }
     }
   }
   // close the per-subject seed block: the loop consumed nsolve seeds, not

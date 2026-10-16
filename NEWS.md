@@ -13,6 +13,12 @@
   data error such as a modeled rate in a model without `rate()`), the later
   subjects on that thread returned zeros.  Their solves now run as usual.
 
+- With the boost odeint, fixed-step and other drivers added since 5.1.3 (`rk4`,
+  `ck54`, `ab`, `dop5`, `heun`, `euler`, `cvode`, `vern65`, `ros4` and most of
+  the others), one failing subject stopped the solve: the subjects after it
+  were left out of the output, with only "some ID(s) could not solve the ODEs
+  correctly".  Every subject is now solved and only the failing ones are `NA`.
+
 # rxode2 5.1.8
 
 ## New features
