@@ -2513,28 +2513,65 @@ d/dt(blood)     = a*intestine - b*blood
     expect_error(etTrans(dSimple, mod, addlDropSs = FALSE), "evid: 7")
   })
 
-  test_that("a missing EVID with a nonzero AMT is an error, not a dropped dose", {
+  test_that("a missing EVID on a record with dose information is an error, not a dropped dose", {
     mod <- rxode2parse(
       "
 d/dt(depot) = -1.5*depot
 d/dt(central) = 1.5*depot - 0.2*central
 "
     )
-    .msg <- "'evid' is missing on a record with a nonzero 'amt'; use 1 for a dose or 0 for an observation (id: 1 row: 1)"
+    .msg <- "'evid' is missing on a record with dose information ('amt', 'rate' or 'dur'); use 1 for a dose or 0 for an observation (id: 1 row: 1)"
     .d <- data.frame(ID = 1, TIME = c(0, 1), DV = c(NA, 1), AMT = c(100, 0), EVID = c(NA, 0), CMT = 2)
     expect_error(etTrans(.d, mod), .msg, fixed = TRUE)
-    # a negative amount, or a DV on the record, does not make it an observation
-    .d$AMT[1] <- -5
-    expect_error(etTrans(.d, mod), .msg, fixed = TRUE)
+    # a negative or NaN amount, or a DV on the record, does not make it an observation
+    for (.amt in c(-5, NaN)) {
+      .d$AMT[1] <- .amt
+      expect_error(etTrans(.d, mod), .msg, fixed = TRUE)
+    }
     .d$DV[1] <- 3
     expect_error(etTrans(.d, mod), .msg, fixed = TRUE)
-    # with no amount a missing EVID is an observation
+    # nor does a fixed or modeled rate or duration with no amount, as a constant
+    # infusion (ss = 1 with a rate) has
+    .d <- data.frame(ID = 1, TIME = c(0, 1), DV = c(NA, 1), AMT = 0, EVID = c(NA, 0), CMT = 2)
+    for (.rate in c(10, -1, -2)) {
+      .r <- .d
+      .r$RATE <- c(.rate, 0)
+      expect_error(etTrans(.r, mod), .msg, fixed = TRUE)
+    }
+    for (.dur in c(2, -1, -2)) {
+      .r <- .d
+      .r$DUR <- c(.dur, 0)
+      expect_error(etTrans(.r, mod), .msg, fixed = TRUE)
+    }
+    .r <- .d
+    .r$RATE <- c(10, 0)
+    .r$SS <- c(1, 0)
+    expect_error(etTrans(.r, mod), .msg, fixed = TRUE)
+    # the subject's ID and the record's row in the data as given
+    .m <- data.frame(
+      ID = c("a", "a", "b", "b"),
+      TIME = c(0, 1, 1, 0),
+      DV = c(NA, 1, NA, 2),
+      AMT = c(100, 0, 100, 0),
+      EVID = c(1, 0, NA, 0),
+      CMT = 2
+    )
+    expect_error(
+      etTrans(.m, mod),
+      "'evid' is missing on a record with dose information ('amt', 'rate' or 'dur'); use 1 for a dose or 0 for an observation (id: b row: 3)",
+      fixed = TRUE
+    )
+    # with no amount, rate or duration a missing EVID is an observation
     for (.amt in c(0, NA)) {
       .d$AMT[1] <- .amt
+      .d$DV[1] <- 3
       expect_identical(etTrans(.d, mod)$EVID, c(0L, 0L))
     }
-    # with no EVID column a nonzero AMT is a dose
+    # with no EVID column a nonzero AMT is a dose, and so is a missing MDV with an
+    # amount when the MDV column stands in for the EVID
     .d <- data.frame(ID = 1, TIME = c(0, 1), DV = c(NA, 1), AMT = c(100, 0), CMT = 2)
+    expect_identical(etTrans(.d, mod)$EVID, c(201L, 0L))
+    .d$MDV <- c(NA, 0)
     expect_identical(etTrans(.d, mod)$EVID, c(201L, 0L))
   })
 
