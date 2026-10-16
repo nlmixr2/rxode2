@@ -15,7 +15,8 @@
 #include <Rinternals.h>
 
 
-void RSprintf(const char *format, ...);
+#include "rxPrintfFormat.h"
+void RSprintf(const char *format, ...) R_PRINTF_FORMAT(1, 2);
 #include "solveWarn.h"
 
 int intdy(struct lsoda_context_t * ctx, double t, int k, double *dky)

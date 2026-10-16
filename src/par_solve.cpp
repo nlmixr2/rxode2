@@ -64,7 +64,8 @@ int _isRstudio = 0;
 #include "rxData.h"
 
 extern "C" void setRstudioPrint(int rstudio);
-extern "C" void RSprintf(const char *format, ...);
+#include "rxPrintfFormat.h"
+extern "C" void RSprintf(const char *format, ...) R_PRINTF_FORMAT(1, 2);
 
 // Pre-generated eta batch draw (defined in rxthreefry.cpp)
 extern "C" void rxPreGenEta(rx_solve *rx, int ncores);

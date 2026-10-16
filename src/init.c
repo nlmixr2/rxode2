@@ -371,7 +371,8 @@ SEXP setRxthreads(SEXP threads, SEXP percent, SEXP throttle);
 int getSilentErr(void);
 void setSilentErr(int silent);
 
-void rxSolveWarnPush(int id, const char *msg, ...);
+#include "rxPrintfFormat.h"
+void rxSolveWarnPush(int id, const char *msg, ...) R_PRINTF_FORMAT(2, 3);
 void rxSolveWarnFlush(int maxIds);
 void rxSolveWarnReset(void);
 void rxSetIdLvlFactors(SEXP idLvl);

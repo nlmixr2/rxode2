@@ -16,7 +16,8 @@
 #include <R.h>
 #include <Rinternals.h>
 
-extern "C" void RSprintf(const char *format, ...);
+#include "rxPrintfFormat.h"
+extern "C" void RSprintf(const char *format, ...) R_PRINTF_FORMAT(1, 2);
 extern "C" const char *rxGetId(int id);
 extern "C" const char *rxGetIdSim(int id, int *sim);
 extern "C" int getSilentErr(void);
