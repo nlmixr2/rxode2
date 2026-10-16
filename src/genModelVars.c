@@ -1,7 +1,6 @@
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 #include "genModelVars.h"
-#include "rxSbufFormat.h"
 
 SEXP _rxode2parse_getUdf(void);
 extern void calcLinCmt(void);

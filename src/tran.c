@@ -7,11 +7,10 @@
 #include <stdint.h>   /* dj: import intptr_t */
 //#include "ode.h"
 #include "../inst/include/rxode2.h"
-#include "../inst/include/rxode2parseSbuf.h"
+#include "rxSbufFormat.h"
 #include "getOption.h"
 #include "parseLinCmt.h"
 #include "tran.h"
-#include "rxSbufFormat.h"
 #include "genModelVars.h"
 #include "print_node.h"
 #include <errno.h>

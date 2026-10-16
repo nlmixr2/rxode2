@@ -2,8 +2,10 @@
 #define __RXODE2_SBUF_FORMAT_H__
 // The sbuf writers with a printf format attribute, so -Wformat checks rxode2's
 // own calls.  The installed declarations (inst/include/rxode2parseSbuf.h) stay
-// without it, as other packages include that header; include this one before
-// any dparser header that defines printf.
+// without it, as other packages include that header.  A redeclaration covers
+// only the calls parsed after it, so rxode2's headers include this one in place
+// of rxode2parseSbuf.h: it must come before every header whose inline functions
+// call the writers, and before any dparser header that defines printf.
 #include "../inst/include/rxode2parseSbuf.h"
 #include "rxPrintfFormat.h"
 #if defined(__cplusplus)

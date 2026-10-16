@@ -2,7 +2,6 @@
 #define STRICT_R_HEADERS
 #include "print_node.h"
 #include "tran.h"
-#include "rxSbufFormat.h"
 
 extern SEXP _goodFuns;
 
