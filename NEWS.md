@@ -1,3 +1,14 @@
+# rxode2 5.1.8.9000
+
+## Bug fixes
+
+- `rxSolve(method = "dop853")` no longer returns zeros, without a warning, for
+  the subjects solved after one whose solve failed on the same thread (with
+  `dense = TRUE` it skipped their doses instead).  Each subject now tracks its
+  own failure, so the others solve as they should and every failing subject is
+  reported.  The shared failure flag was read in every rxode2 release (the
+  dense path since 5.1.1); lsoda and liblsoda stopped reading it in 5.1.1.
+
 # rxode2 5.1.8
 
 ## New features
