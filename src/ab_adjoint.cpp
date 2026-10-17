@@ -32,7 +32,11 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   ind_ab_0(rx, op, solveid, neqF, c_dydt, u_inis);
   abAdjActive = false;
   // this subject's failure, not op->badSolve, which any subject's sets
-  if (ind->rc[0] < 0 || ind->err != 0 || abAdjCalls.empty()) return;
+  if (ind->rc[0] < 0 || ind->err != 0) return;
+  if (abAdjCalls.empty()) {             // no step taken: still at the initial conditions
+    rk4sIniOnlyFill(op, ind, cSub, nBase, np, sensOff);
+    return;
+  }
 
   // ---- reconstruct the interior state-jump event at each call's start (call c>=1
   // opens after an event at t0_c) from the event table: 0/none additive bolus
