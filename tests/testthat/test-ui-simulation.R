@@ -1,3 +1,43 @@
+# A ui with a subject eta and an occasion eta, and the same model without
+# etas, for population solves of a nested omega
+.pzIovUi <- function() {
+  ini({
+    tka <- 0.45
+    tcl <- 1
+    tv <- 3.45
+    add.sd <- 0.7
+    eta.v ~ 0.1
+    iov.cl ~ 0.1 | occ
+  })
+  model({
+    ka <- exp(tka)
+    cl <- exp(tcl + iov.cl)
+    v <- exp(tv + eta.v)
+    d / dt(depot) <- -ka * depot
+    d / dt(center) <- ka * depot - cl / v * center
+    cp <- center / v
+    cp ~ add(add.sd)
+  })
+}
+
+.pzNoEtaUi <- function() {
+  ini({
+    tka <- 0.45
+    tcl <- 1
+    tv <- 3.45
+    add.sd <- 0.7
+  })
+  model({
+    ka <- exp(tka)
+    cl <- exp(tcl)
+    v <- exp(tv)
+    d / dt(depot) <- -ka * depot
+    d / dt(center) <- ka * depot - cl / v * center
+    cp <- center / v
+    cp ~ add(add.sd)
+  })
+}
+
 rxTest({
   test_that("ordinal simulation", {
     # large simulation model #1
@@ -754,6 +794,29 @@ rxTest({
       expect_true(all(.rx3$params$eta.cl == 0))
       expect_true(all(.rx3$params$eta.v == 0))
     })
+  })
+
+  test_that(".rxParamsZero zeroes the etas of every level of a nested omega", {
+    .rxParamsZero <- getFromNamespace(".rxParamsZero", "rxode2")
+    .nested <- lotri::lotri(lotri::lotri(eta.v ~ 0.1) | id(nu = 100), lotri::lotri(iov.cl ~ 0.1) | occ(nu = 100))
+    expect_identical(.rxParamsZero(c(tcl = 1), .nested), c(tcl = 1, eta.v = 0, iov.cl = 0))
+    .df <- .rxParamsZero(data.frame(tcl = c(1, 2)), .nested)
+    expect_identical(.df, data.frame(tcl = c(1, 2), eta.v = c(0, 0), iov.cl = c(0, 0)))
+    .m <- .rxParamsZero(cbind(tcl = c(1, 2)), .nested)
+    expect_identical(colnames(.m), c("tcl", "eta.v", "iov.cl"))
+    expect_identical(unname(.m[, "iov.cl"]), c(0, 0))
+    # the same as a block-diagonal matrix of those etas
+    .mat <- lotri::lotriMat(.nested)
+    expect_identical(.rxParamsZero(c(tcl = 1), .nested), .rxParamsZero(c(tcl = 1), .mat))
+  })
+
+  test_that("a population solve of a nested omega sets every eta to zero", {
+    .d <- nlmixr2data::theo_sd
+    .d$occ <- ifelse(.d$TIME < 6, 1L, 2L)
+    .s <- suppressWarnings(suppressMessages(rxSolve(.pzIovUi, .d, omega = NA, sigma = NA)))
+    .s0 <- suppressWarnings(suppressMessages(rxSolve(.pzNoEtaUi, .d, omega = NA, sigma = NA)))
+    expect_identical(c(unique(.s$params$eta.v), unique(.s$params$iov.cl)), c(0, 0))
+    expect_identical(.s$cp, .s0$cp)
   })
 
   test_that(".rxParamsZero keeps a multi-row params data.frame rectangular", {
