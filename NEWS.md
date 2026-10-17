@@ -1,3 +1,18 @@
+# rxode2 (development version)
+
+## Bug fixes
+
+### Adjoint sensitivities
+
+- The continuous adjoint (`rxSolveAdjoint()` and the adjoint objective
+  gradient) now includes the initial-condition term, so a parameter that
+  enters through an initial condition such as `y(0) <- y0` gets its
+  sensitivity instead of 0.
+
+- The adjoint builders no longer constant-fold a numeric default such as
+  `k <- 0.5` in the model.  Before, a supplied `k` was ignored in the
+  derivatives and its sensitivity was 0.
+
 # rxode2 5.1.8
 
 ## New features
