@@ -6838,9 +6838,12 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
                          method == 235 || method == 236 || method == 237 ||
                          method == 238);
         if (_nSens > 0 || _nBase <= 0 || _stiffAdj) {
-          (Rf_error)("method='rk4s' requires the adjoint expansion in the "
-                     "expanded ODE (build with calcSens / rxode2::.rxAdjointExpand); "
-                     "the rx__adjFX_*/rx__adjFP_* Jacobian lhs were not found");
+          // 1: no ODE state; 2: sensitivity states without the Jacobian lhs;
+          // 3: a stiff adjoint method on a plain model
+          int _why = _nBase <= 0 ? 1 : (_nSens > 0 ? 2 : 3);
+          Function _msgFn = getRxFn(".rxAdjointRefuseMsg");
+          std::string _msg = as<std::string>(_msgFn(method, _why));
+          Rcpp::stop(_msg);
         }
         // plain explicit/multistep model: forward-only, leave op->adjoint == 0
       } else {
