@@ -133,25 +133,25 @@ rxTest({
     d <- .paramsRowsData()
     .p3 <- data.frame(k = c(0.5, 0.6, 0.7), v = 2)
     .p6 <- data.frame(k = seq(0.5, 1, by = 0.1), v = 2)
-    # the R builder, behind `$`
+    # behind `$`
     sp <- rxSolve(m, d, params = .p3)
     expect_identical(names(sp$params), c("id", "k", "v"))
     expect_identical(as.character(sp$params$id), c("11", "12", "13"))
-    expect_identical(names(sp$counts), c("slvr", "dadt", "jac"))
+    expect_identical(names(sp$counts), c("id", "slvr", "dadt", "jac"))
     sp6 <- rxSolve(m, d, params = .p6)
     expect_identical(names(sp6$params), c("sim.id", "id", "k", "v"))
     expect_identical(sp6$params$sim.id, rep(1:2, each = 3))
-    # the C builder, which .DollarNames() runs first, puts id (and sim.id) in
-    # $counts as well
+    expect_identical(names(sp6$counts), c("sim.id", "id", "slvr", "dadt", "jac"))
+    expect_identical(nrow(sp6$counts), 6L)
+    # .DollarNames() first builds them through C, which gives the same tables
     sm <- rxSolve(m, d, params = .p3)
     expect_true("params" %in% utils::.DollarNames(sm, ""))
-    expect_identical(names(sm$params), c("id", "k", "v"))
-    expect_identical(names(sm$counts), c("id", "slvr", "dadt", "jac"))
+    expect_identical(sm$params, sp$params)
+    expect_identical(sm$counts, sp$counts)
     sm6 <- rxSolve(m, d, params = .p6)
     expect_true("params" %in% utils::.DollarNames(sm6, ""))
-    expect_identical(names(sm6$params), c("sim.id", "id", "k", "v"))
-    expect_identical(names(sm6$counts), c("sim.id", "id", "slvr", "dadt", "jac"))
-    expect_identical(nrow(sm6$counts), 6L)
+    expect_identical(sm6$params, sp6$params)
+    expect_identical(sm6$counts, sp6$counts)
   })
 
   test_that("a one-row params with an id column refuses more subjects", {

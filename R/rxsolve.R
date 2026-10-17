@@ -4850,15 +4850,17 @@ solve.rxEt <- solve.rxSolve
       assign(".params.single", NULL, envir = .env)
     }
   }
-  assign(
-    "counts",
-    data.frame(
-      slvr = get(".slvr.counter", envir = .env, inherits = FALSE),
-      dadt = get(".dadt.counter", envir = .env, inherits = FALSE),
-      jac = get(".jac.counter", envir = .env, inherits = FALSE)
-    ),
-    envir = .env
+  # one row per solve; a multi-row params' sim.id and id columns lead it
+  .counts <- data.frame(
+    slvr = get(".slvr.counter", envir = .env, inherits = FALSE),
+    dadt = get(".dadt.counter", envir = .env, inherits = FALSE),
+    jac = get(".jac.counter", envir = .env, inherits = FALSE)
   )
+  .ids <- intersect(c("sim.id", "id"), names(get(".params.dat", envir = .env, inherits = FALSE)))
+  if (length(.ids) > 0L) {
+    .counts <- cbind(get(".params.dat", envir = .env, inherits = FALSE)[, .ids, drop = FALSE], .counts)
+  }
+  assign("counts", .counts, envir = .env)
   invisible(TRUE)
 }
 

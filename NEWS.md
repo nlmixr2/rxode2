@@ -39,6 +39,11 @@
   `rxInjectedPars()` returned `NULL` and a re-solve from the object used the
   parameters given instead of the injected ones.
 
+- A solve's `$params` and `$counts` are now built one way.  They had two
+  builders, one behind `$` and one that `.DollarNames()` (tab completion) ran
+  first, so with a multi-row `params` `$counts` had `sim.id` and `id`
+  columns or not depending on which ran; it now has them either way.
+
 - A one-row `params` data frame or matrix is now used for every subject, as
   a named vector is; with more than one subject, the subjects after the first
   were solved with `NA` parameters.  A one-row `params` with an id column
