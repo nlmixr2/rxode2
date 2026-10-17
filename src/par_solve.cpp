@@ -9062,3 +9062,17 @@ extern "C" SEXP _rxode2_rxApiErrTest_(SEXP inParallelS) {
   }
   return Rf_ScalarLogical(rxApiErrPendingImpl());
 }
+
+// For unit tests: push a line, then run par_solve() on the last set-up solve,
+// as SAEM does between its subjects' own ind_solve() calls.  par_solve()'s
+// flush prints the line only if par_solve() keeps what was pushed before it.
+extern "C" SEXP _rxTestParSolveAfterPush(void) {
+  rx_solve *rx = getRxSolve_();
+  if (rx == NULL || rx->subjects == NULL || rx->op == NULL ||
+      rxSolveIsSetup() == 0) {
+    return R_NilValue;
+  }
+  rxSolveWarnPush(-1, "rxTest -- pushed before par_solve()");
+  par_solve(rx);
+  return R_NilValue;
+}
