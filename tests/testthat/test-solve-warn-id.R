@@ -36,6 +36,26 @@ rxTest({
     expect_match(.warnLabels(c("101", "202"), c(1L, 7L)), "for subject\\(s\\): 202, internal #8")
   })
 
+  test_that("past 256 subjects for one message the remainder is a lower bound", {
+    # one message keeps at most 256 distinct subjects; the flush lists 64
+    .line <- function(n, rest) {
+      paste0(
+        "[rxTest -- solve warning]: ",
+        n,
+        " warning(s) for subject(s): ",
+        paste0("internal #", 1:64, collapse = ", "),
+        ", ... (",
+        rest,
+        " more)"
+      )
+    }
+    expect_identical(.warnLabels(character(0), 0:299), .line(300, "at least 193"))
+    expect_identical(.warnLabels(character(0), 0:255), .line(256, "192"))
+    expect_identical(.warnLabels(character(0), 0:99), .line(100, "36"))
+    # a repeat of a stored subject is not one more
+    expect_identical(.warnLabels(character(0), c(0:255, 0:255)), .line(512, "192"))
+  })
+
   test_that("a subject literally named Unknown is still printed as itself", {
     # The fallback must be driven by whether the id resolves, not by string
     # comparison against "Unknown" -- that is a legal subject id.

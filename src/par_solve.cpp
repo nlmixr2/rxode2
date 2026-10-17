@@ -273,6 +273,25 @@ extern "C" SEXP _rxTestSolveWarnLabels(SEXP idLvl, SEXP idsSEXP, SEXP setLvlSEXP
   return R_NilValue;
 }
 
+// Reset, push "rxTest -- warning <k>" (no subject) for each k in `ks`, then
+// flush `nFlush` times, so a test can fill the aggregator past its 64
+// distinct messages and see what each reset and flush leaves.
+extern "C" SEXP _rxTestSolveWarnMany(SEXP ksSEXP, SEXP nFlushSEXP) {
+  rxProtect rx_protect;
+  rxSolveWarnReset();
+  SEXP ks = rx_protect.protect(Rf_coerceVector(ksSEXP, INTSXP));
+  int n = Rf_length(ks);
+  int *pks = INTEGER(ks);
+  for (int i = 0; i < n; i++) {
+    rxSolveWarnPush(-1, "rxTest -- warning %d", pks[i]);
+  }
+  int nFlush = Rf_asInteger(nFlushSEXP);
+  for (int i = 0; i < nFlush; i++) {
+    rxSolveWarnFlush(64);
+  }
+  return R_NilValue;
+}
+
 static inline const char *getId(int id) {
   rx_solve *rx = &rx_global;
   int curLen=  rx->factorNs[0];
