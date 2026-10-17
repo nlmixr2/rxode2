@@ -273,6 +273,23 @@ extern "C" SEXP _rxTestSolveWarnLabels(SEXP idLvl, SEXP idsSEXP, SEXP setLvlSEXP
   return R_NilValue;
 }
 
+static void rxSolveErrPush(int id, int err);
+
+// Reset, push the reasons the bits of `err` stand for (no subject), and flush,
+// so a test can read each reason's line.
+extern "C" SEXP _rxTestSolveErrPush(SEXP errSEXP) {
+  rxSolveWarnReset();
+  rxSolveErrPush(-1, Rf_asInteger(errSEXP));
+  rxSolveWarnFlush(64);
+  return R_NilValue;
+}
+
+// Flush the aggregator, as an ind_solve() caller does after its solves.
+extern "C" SEXP _rxTestSolveWarnFlush(void) {
+  rxSolveWarnFlush(64);
+  return R_NilValue;
+}
+
 static inline const char *getId(int id) {
   rx_solve *rx = &rx_global;
   int curLen=  rx->factorNs[0];
@@ -390,19 +407,25 @@ static const rxSolveErrReason rxSolveErrReasons[] = {
   {rxErrSolverFail, "the ODE solver failed (an exception, or a step it could not take)"},
 };
 
-// Push the reasons a subject failed to the solve-warning aggregator, which
-// names the subjects whatever thread solved them; `id` is the subject's
-// ind->id.  A bit with no text is pushed as its code.
-extern "C" void rxSolveErrPush(int id, int err) {
+// Push the reasons a subject's solve failed to the solve-warning aggregator,
+// which names the subjects whatever thread solved them; `id` is the subject's
+// ind->id.  Each distinct text is pushed once; bits with no text, as their code.
+// "solve error", not "could not solve": nlmixr2est retries a failed subject.
+static void rxSolveErrPush(int id, int err) {
+  const size_t n = sizeof(rxSolveErrReasons) / sizeof(rxSolveErrReasons[0]);
   int known = 0;
-  for (size_t i = 0; i < sizeof(rxSolveErrReasons) / sizeof(rxSolveErrReasons[0]); i++) {
-    if (err & rxSolveErrReasons[i].flag) {
-      rxSolveWarnPush(id, "could not solve: %s", rxSolveErrReasons[i].text);
-      known |= rxSolveErrReasons[i].flag;
+  for (size_t i = 0; i < n; i++) {
+    if (!(err & rxSolveErrReasons[i].flag)) continue;
+    known |= rxSolveErrReasons[i].flag;
+    bool pushed = false;
+    for (size_t j = 0; j < i && !pushed; j++) {
+      pushed = (err & rxSolveErrReasons[j].flag) &&
+        strcmp(rxSolveErrReasons[j].text, rxSolveErrReasons[i].text) == 0;
     }
+    if (!pushed) rxSolveWarnPush(id, "solve error: %s", rxSolveErrReasons[i].text);
   }
   if (err & ~known) {
-    rxSolveWarnPush(id, "could not solve: error code %d", err & ~known);
+    rxSolveWarnPush(id, "solve error: code %d", err & ~known);
   }
 }
 
@@ -4913,7 +4936,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             lsoda(ctx, yp, &xp, ind->extraDoseNewXout);
             copyLinCmt(neq, ind, op, yp);
-            postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
+            postSolve(neq, &(ctx->state), rc, &i, yp, err_msg_ls, 7, false, ind, op, rx);
             if (*rc < 0) localBadSolve = 1;
           }
           if (!localBadSolve) {
@@ -4931,7 +4954,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
               preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
               lsoda(ctx,yp, &ind->extraDoseNewXout, xout);
               copyLinCmt(neq, ind, op, yp);
-              postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
+              postSolve(neq, &(ctx->state), rc, &i, yp, err_msg_ls, 7, false, ind, op, rx);
               if (*rc < 0) localBadSolve = 1;
             }
             xp =  ind->extraDoseNewXout;
@@ -4941,7 +4964,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
           preSolve(op, ind, xp, xout, yp);
           lsoda(ctx, yp, &xp, xout);
           copyLinCmt(neq, ind, op, yp);
-          postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
+          postSolve(neq, &(ctx->state), rc, &i, yp, err_msg_ls, 7, false, ind, op, rx);
           if (*rc < 0) localBadSolve = 1;
         }
         xp = xout;
