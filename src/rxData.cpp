@@ -5697,7 +5697,8 @@ static inline Environment rxSolve_genenv(const RObject &object,
   e[".jac.counter"] = jac_counterIv;
   // the parameters par-loaders injected into this solve, kept now: their
   // buffer holds the last solve's, so a later solve would overwrite them
-  e[".injectedPars.raw"] = _rxode2_rxGetInjectedPars();
+  RObject injectedPars = _rxode2_rxGetInjectedPars();
+  e[".injectedPars.raw"] = injectedPars;
   e[".nsub"] = (int)rx->nsub;
   e[".nsim"] = (int)rx->nsim;
   {
