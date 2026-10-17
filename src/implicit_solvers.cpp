@@ -23,23 +23,15 @@ static void par_implicit_tmpl(rx_solve *rx, const char *err_msg) {
   uint32_t nsub = rx->nsub, nsim = rx->nsim;
   int nsolve = (int)(nsim * nsub);
   uint32_t seed0 = getRxSeed1(cores);
-  int abort = 0;
 #ifdef _OPENMP
 #pragma omp parallel for num_threads(cores)
 #endif
   for (int solveid = 0; solveid < nsolve; solveid++) {
     int neq[2] = { op->neq, 0 };
-    int localAbort;
-#ifdef _OPENMP
-#pragma omp atomic read
-#endif
-    localAbort = abort;
-    if (localAbort == 0) {
-      // rx->ordId walks positions (sortIds); the drivers take subject ids.
-      int _id = rx->ordId[solveid] - 1;
-      setSeedEng1(seed0 + _id);
-      ind_implicit_0<OdeSolver>(rx, op, _id, neq, dydt, update_inis, err_msg);
-    }
+    // rx->ordId walks positions (sortIds); the drivers take subject ids.
+    int _id = rx->ordId[solveid] - 1;
+    setSeedEng1(seed0 + _id);
+    ind_implicit_0<OdeSolver>(rx, op, _id, neq, dydt, update_inis, err_msg);
   }
   // close the per-subject seed block: the loop consumed nsolve seeds, not
   // cores, and the next solve must not re-use any of them
