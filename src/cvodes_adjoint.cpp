@@ -523,7 +523,6 @@ extern "C" void par_cvodesadj(rx_solve *rx) {
     // stream was current -- seed per subject like every other par_*() loop
     setSeedEng1(seed0 + _id);
     ind_cvodesadj_0(rx, op, _id, neq, dydt, update_inis);
-    if (op->badSolve) break;
   }
   // close the per-subject seed block: the loop consumed nsolve seeds, not
   // cores, and the next solve must not re-use any of them
