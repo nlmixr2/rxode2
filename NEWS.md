@@ -1,3 +1,11 @@
+# rxode2 (development version)
+
+## New features
+
+- Packages linking to rxode2 can read the thread id they gave with
+  `setRxThreadId()` back through `getRxThreadId()`, a new entry of the C
+  pointer table (`rxode2ptr.h`).
+
 # rxode2 5.1.8
 
 ## New features
