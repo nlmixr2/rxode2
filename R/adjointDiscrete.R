@@ -283,29 +283,60 @@
 ## adjoint-expansion model builder for the in-engine discrete-adjoint `rk4s`
 ## method
 
+## `levels(name) <- c(...)` for one string-valued output of the original model
+.rxAdjointLevelsLine <- function(name, mv) {
+  sprintf(
+    "levels(%s) <- c(%s)",
+    name,
+    paste(vapply(mv$strAssign[[name]], deparse1, character(1)), collapse = ", ")
+  )
+}
+
+## the variable a carried assignment line defines (`mtime(t1)=...` defines t1)
+.rxAdjointLhsName <- function(line) {
+  ifelse(
+    grepl("^mtime[(]", line),
+    sub("^mtime[(]([^)]*)[)].*$", "\\1", line),
+    sub("[[:space:]]*(=|<-).*$", "", line)
+  )
+}
+
+## Carried output assignments in the original model's lhs order, each string
+## output's levels() just before its first assignment.  Internal lines (capture
+## variables, lag snapshots) stay right after the line they follow.
+.rxAdjointOutputLines <- function(lines, mv) {
+  if (length(lines) == 0L) {
+    return(character(0))
+  }
+  .nm <- .rxAdjointLhsName(lines)
+  .key <- match(.nm, mv$lhs)
+  for (.i in seq_along(.key)) {
+    if (is.na(.key[.i])) .key[.i] <- if (.i == 1L) 0 else .key[.i - 1L]
+  }
+  .ord <- order(.key, seq_along(lines))
+  lines <- lines[.ord]
+  .nm <- .nm[.ord]
+  .ret <- character(0)
+  .done <- character(0)
+  for (.i in seq_along(lines)) {
+    if (.nm[.i] %in% names(mv$strAssign) && !(.nm[.i] %in% .done)) {
+      .ret <- c(.ret, .rxAdjointLevelsLine(.nm[.i], mv))
+      .done <- c(.done, .nm[.i])
+    }
+    .ret <- c(.ret, lines[.i])
+  }
+  .ret
+}
+
 ## Statements of the original model (`mv`) that the expansion does not rebuild
 ## from the symengine derivatives of the pruned load (`model`): `head` precedes
-## the ODEs (param() in the original order, string levels, numeric defaults),
-## `ode` follows them
-## (initial conditions, past() histories), and `tail` follows the rx__adj* lhs
-## blocks so they keep starting at lhs index 0 (mtime(), output columns,
+## the ODEs (param() in the original order, numeric defaults), `ode` follows
+## them (initial conditions, past() histories), and `tail` follows the rx__adj*
+## lhs blocks so they keep starting at lhs index 0 (mtime(), output columns,
 ## adaptive dosing, dvid(), extra compartments).
 .rxAdjointCarryLines <- function(model, mv, st) {
-  .str <- names(mv$strAssign)
   .lhs0 <- model$..lhs0
-  .isStr <- names(.lhs0) %in% .str
-  .levels <- vapply(
-    .str,
-    function(.n) {
-      sprintf(
-        "levels(%s) <- c(%s)",
-        .n,
-        paste(vapply(mv$strAssign[[.n]], deparse1, character(1)), collapse = ", ")
-      )
-    },
-    character(1),
-    USE.NAMES = FALSE
-  )
+  .isStr <- names(.lhs0) %in% names(mv$strAssign)
   .norm <- strsplit(rxNorm(mv), "\n", fixed = TRUE)[[1]]
   .ini <- character(0)
   for (.s in st) {
@@ -316,13 +347,12 @@
   }
   .state <- .rxGenFunState(mv)
   .param <- if (length(mv$params)) sprintf("param(%s)", paste(mv$params, collapse = ", ")) else character(0)
+  .mtime <- sub(";[[:space:]]*$", "", grep("^mtime[(]", .norm, value = TRUE))
   list(
-    head = c(.param, .levels, unname(.lhs0[!.isStr])),
+    head = c(.param, unname(.lhs0[!.isStr])),
     ode = c(.ini, .rxPastBaseLinesFromEnv(model)),
     tail = c(
-      grep("^mtime[(]", .norm, value = TRUE),
-      unname(.lhs0[.isStr]),
-      model$..lhs,
+      .rxAdjointOutputLines(c(.mtime, unname(.lhs0[.isStr]), model$..lhs), mv),
       model$..restoreLines,
       .state[c("statef", "dvid")]
     )
