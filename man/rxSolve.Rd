@@ -743,7 +743,8 @@ against a default \code{rtol = 1e-6}.  Raise \code{sigdig}, or set
 \item{atol}{a numeric absolute tolerance (1e-8 by default) used
 by the ODE solver to determine if a good solution has been
 achieved;  This is also used in the solved linear model to check
-if prior doses do not add anything to the solution.}
+if prior doses do not add anything to the solution.  Must be
+\verb{> 0}.}
 
 \item{rtol}{a numeric relative tolerance (\code{1e-6} by default) used
 by the ODE solver to determine if a good solution has been
@@ -1255,7 +1256,7 @@ the parameters in the input dataset.}
 were not present.}
 
 \item{ssAtol}{Steady state atol convergence factor.  Can be
-a vector based on each state.}
+a vector based on each state.  Must be \verb{> 0}.}
 
 \item{ssRtol}{Steady state rtol convergence factor.  Can be a
 vector based on each state.}
@@ -1310,13 +1311,15 @@ Hence the default is \code{resampleID=TRUE}.}
 evaluated before exiting.  By default this is 100000}
 
 \item{atolSens}{Sensitivity atol, can be different than atol with
-liblsoda.  This allows a less accurate solve for gradients (if desired)}
+liblsoda.  This allows a less accurate solve for gradients (if
+desired).  Must be \verb{> 0}.}
 
 \item{rtolSens}{Sensitivity rtol, can be different than rtol with
 liblsoda.  This allows a less accurate solve for gradients (if desired)}
 
 \item{ssAtolSens}{Sensitivity absolute tolerance (atol) for
-calculating if steady state has been achieved for sensitivity compartments.}
+calculating if steady state has been achieved for sensitivity
+compartments.  Must be \verb{> 0}.}
 
 \item{ssRtolSens}{Sensitivity relative tolerance (rtol) for
 calculating if steady state has been achieved for sensitivity compartments.}
