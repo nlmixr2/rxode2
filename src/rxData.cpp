@@ -2575,7 +2575,7 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
 
   if (nSub > 1 && rxIsNull(omega)){
     // rxSolveFree();
-    warning(_("multi-subject simulation without without 'omega'"));
+    warning(_("multi-subject simulation without 'omega'"));
   }
   // "tnpri" draws every entry from the `thetaMat`, so an entry it carries
   // no variance for stays at its estimate rather than coming from the

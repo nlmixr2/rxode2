@@ -1205,7 +1205,7 @@ msgid "'params' must be a named vector"
 msgstr ""
 
 #: rxData.cpp:1937
-msgid "multi-subject simulation without without 'omega'"
+msgid "multi-subject simulation without 'omega'"
 msgstr ""
 
 #: rxData.cpp:2296
