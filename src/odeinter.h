@@ -4,6 +4,7 @@
 #include "odeint_bsd.h"
 #include <boost/numeric/odeint.hpp>
 #include <vector>
+#include <cmath>
 #include <stdexcept>
 
 struct zero_copy_state {
@@ -121,6 +122,16 @@ struct rxode2_system {
             }
         }
         dydt_(neq_, teval, const_cast<double*>(&x[0]), &dxdt[0]);
+        // a non-finite right-hand side is the solver's failure, as in the
+        // bridges; an adaptive stepper would otherwise reject the step and
+        // carry on with the state it had
+        for (size_t i = 0; i < dxdt.size(); ++i) {
+            if (!std::isfinite(dxdt[i])) {
+                rxSolverFail(ind_);
+                for (size_t j = 0; j < dxdt.size(); ++j) dxdt[j] = 0.0;
+                return;
+            }
+        }
     }
 };
 
@@ -209,10 +220,20 @@ struct error_checker {
 
     error_checker(rx_solving_options_ind* ind, int* rc, int max_steps) : ind_(ind), rc_(rc), max_steps_(max_steps), steps_(0) {}
 
+    // Called after every step: a step limit, or a state that is no longer
+    // finite (a non-finite right-hand side, which odeint's steppers carry on
+    // integrating), is the solver's own failure.
     template <class State>
     void operator()(const State& x, const double t) {
         steps_++;
-        if (steps_ > max_steps_) {
+        bool finite = true;
+        for (auto it = x.begin(); it != x.end(); ++it) {
+            if (!std::isfinite(*it)) {
+                finite = false;
+                break;
+            }
+        }
+        if (steps_ > max_steps_ || !finite) {
             *rc_ = -2019;
             rxSolverFail(ind_);
         } else if (ind_->err != 0) {
