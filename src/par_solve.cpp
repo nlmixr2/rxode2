@@ -7911,6 +7911,7 @@ void shi21ForwardH(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
   }
 }
 
+// reached only through nlmixr2est's ind_solve(), via setupLinH()
 double shiRC(double &h, double ef,
              int &idx,
              double &fp1, double &fm1,
@@ -7932,7 +7933,7 @@ double shiRC(double &h, double ef,
     return -1.0;
   }
   fm1 = ind_linCmtFH(-h, idx, rx, op, solveid, _neq, c_dydt, u_inis);
-  finiteFm1 = std::isfinite(fp1);
+  finiteFm1 = std::isfinite(fm1);
   if (!finiteFm1) {
     finiteFp3 = true;
     finiteFm3 = true;
@@ -7941,11 +7942,10 @@ double shiRC(double &h, double ef,
   double fp3 = ind_linCmtFH(3*h, idx, rx, op, solveid, _neq, c_dydt, u_inis);
   finiteFp3 = std::isfinite(fp3);
   if (!finiteFp3) {
-    finiteFp3 = true;
     return -1.0;
   }
   double fm3 = ind_linCmtFH(-3*h, idx, rx, op, solveid, _neq, c_dydt, u_inis);
-  finiteFm3 = std::isfinite(fp3);
+  finiteFm3 = std::isfinite(fm3);
   if (!finiteFm3) {
     return -1.0;
   }
