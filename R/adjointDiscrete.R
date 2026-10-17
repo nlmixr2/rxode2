@@ -283,6 +283,52 @@
 ## adjoint-expansion model builder for the in-engine discrete-adjoint `rk4s`
 ## method
 
+## Statements of the original model (`mv`) that the expansion does not rebuild
+## from the symengine derivatives of the pruned load (`model`): `head` precedes
+## the ODEs (param() in the original order, string levels, numeric defaults),
+## `ode` follows them
+## (initial conditions, past() histories), and `tail` follows the rx__adj* lhs
+## blocks so they keep starting at lhs index 0 (mtime(), output columns,
+## adaptive dosing, dvid(), extra compartments).
+.rxAdjointCarryLines <- function(model, mv, st) {
+  .str <- names(mv$strAssign)
+  .lhs0 <- model$..lhs0
+  .isStr <- names(.lhs0) %in% .str
+  .levels <- vapply(
+    .str,
+    function(.n) {
+      sprintf(
+        "levels(%s) <- c(%s)",
+        .n,
+        paste(vapply(mv$strAssign[[.n]], deparse1, character(1)), collapse = ", ")
+      )
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
+  .norm <- strsplit(rxNorm(mv), "\n", fixed = TRUE)[[1]]
+  .ini <- character(0)
+  for (.s in st) {
+    .iSE <- get0(paste0("rx_", .s, "_ini_0__"), envir = model, inherits = FALSE)
+    if (!is.null(.iSE)) {
+      .ini <- c(.ini, sprintf("%s(0)=%s", .s, rxFromSE(.iSE)))
+    }
+  }
+  .state <- .rxGenFunState(mv)
+  .param <- if (length(mv$params)) sprintf("param(%s)", paste(mv$params, collapse = ", ")) else character(0)
+  list(
+    head = c(.param, .levels, unname(.lhs0[!.isStr])),
+    ode = c(.ini, .rxPastBaseLinesFromEnv(model)),
+    tail = c(
+      grep("^mtime[(]", .norm, value = TRUE),
+      unname(.lhs0[.isStr]),
+      model$..lhs,
+      model$..restoreLines,
+      .state[c("statef", "dvid")]
+    )
+  )
+}
+
 #' Build the adjoint-expansion model text for an in-engine discrete-adjoint solve
 #'
 #' Exposes the state Jacobian `F_X = dF/dy` and parameter forcing
@@ -290,7 +336,8 @@
 #' C++ backward sweep can evaluate them at any stage state via `calc_lhs`.  The
 #' lhs are emitted in a fixed order: all `F_X` entries row-major
 #' (`rx__adjFX_i_j__` at index `i*ns + j`), then `F_p` (`rx__adjFP_i_p__` at
-#' `ns*ns + i*np + p`).
+#' `ns*ns + i*np + p`).  The rest of the model (initial conditions, dosing
+#' modifiers, output columns, etc.) is carried through unchanged.
 #'
 #' @inheritParams .rxDiscreteAdjointBuild
 #' @return list with `text` (expanded model text), `st`, `ns`, `np`,
@@ -301,14 +348,17 @@
 .rxAdjointExpand <- function(object, calcSens, stiff = FALSE) {
   # Prune if/else branches first (rxS cannot differentiate conditional-dosing
   # lines); the dosing modifiers (f/alag/rate/dur) remain as unconditional
-  # assignments, each activated only when the data flags that dose.
-  .model <- .rxLoadPrune(object, doConst = TRUE, promoteLinSens = FALSE)
+  # assignments, each activated only when the data flags that dose.  Numeric
+  # assignments stay symbolic (doConst = FALSE) so a model default such as
+  # `k <- 0.5` remains a parameter the solve can override.
+  .model <- .rxLoadPrune(object, doConst = FALSE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
   .ns <- length(.st)
   .np <- length(calcSens)
   if (.ns == 0L) {
     stop("discrete adjoint requires a model with ODE states", call. = FALSE)
   }
+  .carry <- .rxAdjointCarryLines(.model, rxode2::rxModelVars(object), .st)
   invisible(rxode2::.rxJacobian(.model, c(.st, calcSens)))
   .fromSE <- function(nm) {
     .d <- get0(nm, envir = .model, inherits = FALSE)
@@ -606,7 +656,8 @@
     }
   }
   # lhs layout (contiguous from 0): fx, fp, df, [jp, jy if stiff],
-  # [fxd, tau, dtau if DDE]  (dtau is the (i,j,p) dose-jump block)
+  # [fxd, tau, dtau if DDE]  (dtau is the (i,j,p) dose-jump block), [dlag],
+  # [drate]; the carried output columns follow
   .afterStiff <- if (isTRUE(stiff)) {
     .ns * .ns + 2L * .ns * .np + .ns * .ns * .np + .ns * .ns * .ns
   } else {
@@ -618,7 +669,9 @@
   list(
     text = paste(
       c(
+        .carry$head,
         .odeLines,
+        .carry$ode,
         .fLines,
         .sensLines,
         .jacLines,
@@ -631,7 +684,8 @@
         .tauLines,
         .dtauLines,
         .dlagLines,
-        .drateLines
+        .drateLines,
+        .carry$tail
       ),
       collapse = "\n"
     ),
@@ -735,6 +789,6 @@
 rxSolveAdjointRk4 <- function(object, events, params = NULL, calcSens, method = "rk4s", ...) {
   .b <- .rxAdjointModel(object, calcSens, stiff = .rxAdjointMethodStiff(method))
   .df <- as.data.frame(rxode2::rxSolve(.b$model, events, params = params, method = method, ...))
-  .drop <- grep("^rx__adj(FX|FP|dF|Jp|Jy)_", names(.df), value = TRUE)
+  .drop <- grep("^(rx__adj|rxCaptureId[0-9]+$)", names(.df), value = TRUE)
   .df[, setdiff(names(.df), .drop), drop = FALSE]
 }
