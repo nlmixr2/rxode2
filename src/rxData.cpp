@@ -36,6 +36,7 @@
 #include "rxomp.h"
 #include "rxode2lincmtLink.h"
 #include "rxMemAvail.h"
+#include "solveWarn.h"
 #include "strncmp.h"
 #include "rxode2_altrep.h"
 #include "rxode2_df.h"
@@ -6057,6 +6058,11 @@ static inline SEXP rxSolve_finalize(const RObject &obj,
       }
     }
   }
+  // An rxSolve() prints only its own solve warnings: an ind_solve() caller that
+  // has not flushed (babelmixr2's PopED) loses its lines rather than passing them
+  // to this solve's subjects.  SAEM calls par_solve() directly, so the reasons its
+  // subjects pushed in between survive until its flush.
+  rxSolveWarnReset();
   par_solve(rx);
 #ifdef rxSolveT
   RSprintf("  Time1: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
