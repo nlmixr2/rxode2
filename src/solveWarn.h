@@ -18,13 +18,14 @@ extern "C" {
    Flush: for every distinct message string seen since the last reset,
    print one summary line of the form
        [<msg>]: <count> warning(s) for subject(s): <id1>, <id2>, ..., (<N> more)
-   then, if new messages arrived after 64 distinct ones were held, one line
-       [more than 64 distinct messages]: <count> warning(s) not shown
-   and clear the buffers. `maxIds` caps how many subject labels are
-   listed before truncation; past 256 distinct subjects for one message
-   the count of the others is a lower bound, "(at least <N> more)". No-op
-   if no warnings accumulated. Safe to
-   call from serial code; uses an OpenMP critical region internally.
+   and clear the buffers.  `maxIds` caps how many subject labels are listed.
+   Each message keeps at most MAX_IDS (solveWarn.cpp) distinct solve ids
+   (subject x simulation); past that, the count of the ones not listed is a
+   lower bound, "(at least <N> more)".  The table holds MAX_MESSAGES distinct
+   messages; when new ones arrived after it filled, the summary ends with
+       [more than <MAX_MESSAGES> distinct messages]: <count> warning(s) not shown
+   No-op if no warnings accumulated.  Safe to call from serial code; uses an
+   OpenMP critical region internally.
 
    Reset: drop all state without printing.
 
