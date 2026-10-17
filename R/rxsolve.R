@@ -4783,7 +4783,8 @@ solve.rxEt <- solve.rxSolve
     if (.nsim > 1) {
       .dat[["sim.id"]] <- (seq_len(nrow(.parsDf)) - 1L) %/% .nsub + 1L
     }
-    if (.nsub > 1) {
+    # a one-row params is one set for every subject and has no id column
+    if (.nsub > 1 && nrow(.parsDf) > 1L) {
       .id <- (seq_len(nrow(.parsDf)) - 1L) %% .nsub + 1L
       if (length(.idLevels) > 0) {
         .id <- factor(.id, levels = seq_along(.idLevels), labels = .idLevels)
