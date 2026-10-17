@@ -2,10 +2,14 @@
 
 ## Bug fixes
 
-- `rxSolve()` of a model with an occasion (nested) eta no longer turns the
-  occasion column of the data it is given into a factor.  It changed the
-  caller's own data frame, so, for example, `simulate()` of an nlmixr2 fit
-  changed the fit's data.
+- `rxSolve()` and `etTrans()` no longer change the objects they are given:
+  - with an occasion (nested) eta, `rxSolve()` turned the occasion column
+    of the caller's data frame into a factor, so, for example, `simulate()`
+    of an nlmixr2 fit changed the fit's data;
+  - an unnamed `inits` vector (and the vector given to `rxInits()`) was
+    given the model's state names;
+  - a translated event table (`etTrans()`'s result) given to `rxSolve()` or
+    `etTrans()` had its hidden translation changed.
 
 # rxode2 5.1.8
 
