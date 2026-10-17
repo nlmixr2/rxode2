@@ -1,0 +1,194 @@
+rxTest({
+  # Keep the ODE adjoint path under test: the automatic ODE -> linCmt()
+  # translation would otherwise collapse these linear models onto linCmt().
+  withr::local_options(rxode2.useLinCmt = FALSE)
+
+  # Every kind of statement .rxAdjointExpand() must carry from the original
+  # model into the expansion, each with events and parameters to solve it.
+  .ev2 <- et(seq(0, 4, by = 0.5))
+  .evDose <- et(amt = 100, cmt = "depot") |> et(c(1, 2, 4, 8, 12))
+  .adjCarryKinds <- list(
+    ini = list(
+      txt = "y(0) <- 2\nd/dt(y) <- -k*y",
+      ev = .ev2, p = c(k = 0.5)
+    ),
+    lhs = list(
+      txt = "ka2 <- ka*2\nd/dt(depot) <- -ka2*depot\ncp <- center/v\nd/dt(center) <- ka2*depot - k*center\nauc <- cp*2",
+      ev = .evDose, p = c(ka = 1.2, v = 25, k = 0.14)
+    ),
+    dosing = list(
+      txt = "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\nf(depot) <- fd\nalag(depot) <- lg",
+      ev = .evDose, p = c(ka = 1.2, k = 0.14, fd = 0.7, lg = 0.7)
+    ),
+    rate = list(
+      txt = "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\nrate(depot) <- r",
+      ev = et(amt = 100, cmt = "depot", rate = -1) |> et(c(1, 2, 4, 8, 12)), p = c(ka = 1.2, k = 0.14, r = 40)
+    ),
+    dur = list(
+      txt = "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\ndur(depot) <- dd",
+      ev = et(amt = 100, cmt = "depot", rate = -2) |> et(c(1, 2, 4, 8, 12)), p = c(ka = 1.2, k = 0.14, dd = 2.5)
+    ),
+    ifelse = list(
+      txt = "if (t > 2) { kk <- k*2 } else { kk <- k }\nd/dt(y) <- -kk*y\ny(0) <- y0",
+      ev = .ev2, p = c(k = 0.5, y0 = 3)
+    ),
+    default = list(
+      txt = "k <- 0.5\nd/dt(y) <- -k*y\ny(0) <- 2",
+      ev = .ev2, p = c(k = 1)
+    ),
+    string = list(
+      txt = "d/dt(y) <- -k*y\nif (t > 1) {label <- \"a\"} else {label <- \"b\"}\nz <- y\ny(0) <- 1",
+      ev = .ev2, p = c(k = 1)
+    ),
+    mtime = list(
+      txt = "d/dt(y) <- -k*y\nmtime(t1) <- 1.5\nw <- t1*k\ny(0) <- 1",
+      ev = .ev2, p = c(k = 1)
+    ),
+    param = list(
+      txt = "param(zz, k)\nd/dt(y) <- -k*y\nz <- y*zz\ny(0) <- 2",
+      ev = .ev2, p = c(k = 0.5, zz = 2)
+    ),
+    order = list(
+      txt = "cmt(y)\nd/dt(x) <- -k*x\nd/dt(y) <- k*x - k2*y\nx(0) <- 4\ndvid(2, 1)",
+      ev = .ev2, p = c(k = 0.5, k2 = 0.3)
+    ),
+    extra = list(
+      txt = "d/dt(y) <- -k*y\ncmt(extra)\ny(0) <- 2",
+      ev = .ev2, p = c(k = 0.5)
+    ),
+    jac = list(
+      txt = "d/dt(y) <- -k*y\ndf(y)/dy(y) <- -k\ny(0) <- 2",
+      ev = .ev2, p = c(k = 0.5)
+    ),
+    adaptive = list(
+      txt = "d/dt(y) <- -k*y\nif (t < 1) {\n bolus(50, 1, 0, 0, 0)\n}",
+      ev = .ev2, p = c(k = 1)
+    ),
+    past = list(
+      txt = "d/dt(y) <- -k*delay(y, 1)\ny(0) <- 2\npast(y, 1) <- 3",
+      ev = et(c(0.5, 1.5, 2.5, 3.5)), p = c(k = 0.5), dense = TRUE
+    )
+  )
+
+  # How each rxModelVars() field of the expansion relates to the original's.
+  # A field not listed fails the test, so a new field must be classified.
+  .adjMvRules <- list(
+    identical = c(
+      "params", "ini", "normal.state", "normProp", "needSort", "nMtime",
+      "extraCmt", "stateExtra", "dvid", "indLin", "slhs", "alag", "udf",
+      "interp", "strAssign", "strCmpParams", "splitBolus", "splitInfusion",
+      "splitInfusionBolus", "splitBolusInfusion"
+    ),
+    # the base states come first, the rx__sens_* output slots after them
+    prefix = c("state", "state.ignore"),
+    byName = c("stateProp", "lhsStr"),
+    # extra cmt() states carry an NA name here; stateExtra covers them
+    stateOrd = "stateOrd",
+    # the rx__adj* lhs come first, the original output columns after them
+    lhs = "lhs",
+    lhsOrd = "lhsOrd",
+    # only the expansion has sensitivity slots
+    sens = c("sens", "sensProp"),
+    flags = "flags",
+    # the expansion supplies its own Jacobian, and only for the stiff methods
+    ignored = c("trans", "md5", "model", "version", "timeId", "dfdy")
+  )
+
+  test_that("every rxModelVars() field of the original model survives the adjoint expansion", {
+    for (.nm in names(.adjCarryKinds)) {
+      .k <- .adjCarryKinds[[.nm]]
+      .o <- rxModelVars(rxode2(.k$txt))
+      .ex <- .rxAdjointExpand(.k$txt, names(.k$p)[1])
+      .e <- rxModelVars(rxode2(.ex$text))
+      expect_identical(setdiff(names(.o), unlist(.adjMvRules)), character(0), label = .nm)
+      for (.f in .adjMvRules$identical) {
+        expect_identical(.e[[.f]], .o[[.f]], label = paste(.nm, .f))
+      }
+      for (.f in .adjMvRules$prefix) {
+        expect_identical(.e[[.f]][seq_along(.o[[.f]])], .o[[.f]], label = paste(.nm, .f))
+      }
+      for (.f in .adjMvRules$byName) {
+        expect_identical(.e[[.f]][names(.o[[.f]])], .o[[.f]], label = paste(.nm, .f))
+      }
+      expect_identical(.e$stateOrd[.o$state], .o$stateOrd[.o$state], label = paste(.nm, "stateOrd"))
+      .eLhs <- .e$lhs[!grepl("^(rx__adj|rxCaptureId[0-9]+$)", .e$lhs)]
+      expect_identical(.eLhs, .o$lhs, label = paste(.nm, "lhs"))
+      expect_identical(
+        order(.e$lhsOrd[names(.o$lhsOrd)]), order(.o$lhsOrd),
+        label = paste(.nm, "lhsOrd")
+      )
+      expect_identical(.e$sens, paste0("rx__sens_", .ex$st, "_BY_", names(.k$p)[1], "__"), label = paste(.nm, "sens"))
+      # pkTime only governs how `t` is read under rxControl(nonmem = TRUE), and
+      # the capture/past lines the expansion emits are classified differently
+      .fl <- setdiff(names(.o$flags), "pkTime")
+      expect_identical(.e$flags[.fl], .o$flags[.fl], label = paste(.nm, "flags"))
+    }
+  })
+
+  test_that("the adjoint solve reproduces rxSolve() for every carried statement kind", {
+    for (.nm in names(.adjCarryKinds)) {
+      .k <- .adjCarryKinds[[.nm]]
+      # delay() needs a dense method; the plain model then runs rk4s forward-only
+      .base <- if (isTRUE(.k$dense)) "rk4s" else "rk4"
+      .a <- rxSolveAdjointRk4(.k$txt, .k$ev, params = .k$p, calcSens = names(.k$p), hmin = 0.01)
+      .r <- as.data.frame(rxSolve(rxode2(.k$txt), .k$ev, params = .k$p, method = .base, hmin = 0.01))
+      expect_identical(setdiff(names(.r), names(.a)), character(0), label = .nm)
+      expect_identical(grep("^(rx__adj|rxCaptureId)", names(.a), value = TRUE), character(0), label = .nm)
+      for (.cn in setdiff(names(.r), "time")) {
+        if (is.numeric(.r[[.cn]])) {
+          expect_equal(.a[[.cn]], .r[[.cn]], tolerance = 1e-12, label = paste(.nm, .cn))
+        } else {
+          expect_identical(as.character(.a[[.cn]]), as.character(.r[[.cn]]), label = paste(.nm, .cn))
+        }
+      }
+    }
+  })
+
+  test_that("rxSolveAdjointRk4() solves from the model initial condition", {
+    .a <- rxSolveAdjointRk4("y(0) <- 1\nd/dt(y) <- -k * y", et(0:2), params = c(k = 1), calcSens = "k")
+    expect_equal(.a$y, exp(-(0:2)), tolerance = 1e-6)
+    expect_equal(.a$rx__sens_y_BY_k__, -(0:2) * exp(-(0:2)), tolerance = 1e-6)
+  })
+
+  # central finite difference of rxSolve() for every state and parameter
+  .adjFd <- function(txt, ev, p, method, tol = 1e-11) {
+    .m <- rxode2(txt)
+    .st <- rxStateOde(.m)
+    .ret <- list()
+    for (.pn in names(p)) {
+      .h <- p[[.pn]] * 1e-6
+      .pu <- p
+      .pd <- p
+      .pu[.pn] <- .pu[.pn] + .h
+      .pd[.pn] <- .pd[.pn] - .h
+      .u <- as.data.frame(rxSolve(.m, ev, params = .pu, method = method, atol = tol, rtol = tol))
+      .d <- as.data.frame(rxSolve(.m, ev, params = .pd, method = method, atol = tol, rtol = tol))
+      for (.s in .st) {
+        .ret[[paste0("rx__sens_", .s, "_BY_", .pn, "__")]] <- (.u[[.s]] - .d[[.s]]) / (2 * .h)
+      }
+    }
+    .ret
+  }
+
+  test_that("adjoint sensitivities of models with y(0), f() and alag() match finite differences", {
+    .mods <- list(
+      ini = list(txt = "y(0) <- 2\nd/dt(y) <- -k*y", ev = .ev2, p = c(k = 0.5)),
+      f = list(
+        txt = "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\nf(depot) <- fd\ncenter(0) <- 10",
+        ev = .evDose, p = c(ka = 1.2, k = 0.14, fd = 0.7)
+      ),
+      alag = list(
+        txt = "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\nalag(depot) <- lg\ncenter(0) <- 10",
+        ev = .evDose, p = c(ka = 1.2, k = 0.14, lg = 0.7)
+      )
+    )
+    for (.nm in names(.mods)) {
+      .k <- .mods[[.nm]]
+      .a <- rxSolveAdjointRk4(.k$txt, .k$ev, params = .k$p, calcSens = names(.k$p), atol = 1e-11, rtol = 1e-11)
+      .fd <- .adjFd(.k$txt, .k$ev, .k$p, "rk4")
+      for (.cn in names(.fd)) {
+        expect_lt(max(abs(.a[[.cn]] - .fd[[.cn]])), 1e-6, label = paste(.nm, .cn))
+      }
+    }
+  })
+})
