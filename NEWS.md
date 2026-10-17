@@ -1,3 +1,15 @@
+# rxode2 (development version)
+
+## Bug fixes
+
+### Solving
+
+- The aggregated solver warnings no longer drop what does not fit without a
+  word.  Past 64 distinct messages in one summary, a last line counts the
+  warnings not shown; past 256 subjects for one message, the subjects not
+  listed are given as a lower bound ("at least N more") instead of a count
+  that was too low.
+
 # rxode2 5.1.8
 
 ## New features
