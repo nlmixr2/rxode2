@@ -228,6 +228,12 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   # Split IDs into chunks
   .allIds <- .summary$id
   .nSub <- length(.allIds)
+  # each chunk sees only its own subjects, so a one-row params with an id is
+  # checked against all of them here
+  .msg <- .rxParamsOneRowIdMsg(params, .allIds)
+  if (!is.null(.msg)) {
+    stop(.msg, call. = FALSE)
+  }
   .nChunks <- ceiling(.nSub / .chunkSize)
   .chunkList <- split(.allIds, ceiling(seq_len(.nSub) / .chunkSize))
 

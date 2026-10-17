@@ -5445,50 +5445,11 @@ static inline void rxSolve_resample(const RObject &obj,
   }
 }
 
-// The solve's subjects for an error message: the first `maxIds` labels, then
-// how many more, as the solve-warning summary lists them.
-static inline std::string rxSolve_subjectList(rxSolve_t* rxSolveDat, uint32_t nsub,
-                                              uint32_t maxIds) {
-  CharacterVector lvl = rxSolveDat->idLevels;
-  bool useLvl = (uint32_t)lvl.size() == nsub;
-  uint32_t nShow = nsub < maxIds ? nsub : maxIds;
-  std::string ret;
-  for (uint32_t i = 0; i < nShow; ++i) {
-    if (i > 0) ret += ", ";
-    ret += useLvl ? std::string(CHAR(STRING_ELT(lvl, i))) : std::to_string(i + 1);
-  }
-  if (nsub > nShow) {
-    ret += ", ... (" + std::to_string(nsub - nShow) + " more)";
-  }
-  return ret;
-}
-
 // A one-row parameter data frame or matrix is one set for every subject, as a
-// named vector is, and is expanded here to a row per subject.  A row with an
-// id column names one subject, so with more subjects it is an error.
+// named vector is, and is expanded here to a row per subject.
 static inline void rxSolve_parOneRow(rxSolve_t* rxSolveDat, uint32_t nsub) {
   if (rxSolveDat->parType == 1 || rxSolveDat->nPopPar != 1 || nsub <= 1) return;
-  CharacterVector nm = rxSolveDat->nmP;
-  int ncol = nm.size();
-  for (int j = 0; j < ncol; ++j) {
-    std::string cur = as<std::string>(nm[j]);
-    std::transform(cur.begin(), cur.end(), cur.begin(), ::tolower);
-    if (cur == "id") {
-      SEXP col;
-      if (rxSolveDat->parType == 2) {
-        col = rxSolveDat->parDf[j];
-      } else {
-        col = NumericVector::create(rxSolveDat->parMat(0, j));
-      }
-      Function asCharacter("as.character", R_BaseEnv);
-      CharacterVector idC = asCharacter(col);
-      std::string idS = CHAR(STRING_ELT(idC, 0));
-      std::string subj = rxSolve_subjectList(rxSolveDat, nsub, 10);
-      rxSolveFree();
-      stop(_("'params' has one row, for id %s, but the data has %u subjects\nsubjects: %s\ngive one row per subject, or drop the id column to use the row for all"),
-           idS.c_str(), nsub, subj.c_str());
-    }
-  }
+  int ncol = rxSolveDat->nmP.size();
   NumericMatrix mat(nsub, ncol);
   for (int j = 0; j < ncol; ++j) {
     double v;
@@ -5499,10 +5460,33 @@ static inline void rxSolve_parOneRow(rxSolve_t* rxSolveDat, uint32_t nsub) {
     }
     std::fill_n(mat.begin() + (R_xlen_t)j * nsub, nsub, v);
   }
-  mat.attr("dimnames") = List::create(R_NilValue, nm);
   rxSolveDat->parMat = mat;
   rxSolveDat->parType = 3;
   rxSolveDat->nPopPar = nsub;
+}
+
+// A one-row parameter data frame or matrix with an id column names one
+// subject, so with more subjects in the data it is an error, whatever the
+// solve would do with the row (recycle it, or simulate from it).  Run on the
+// user's params, before simulation replaces them; the subjects are etTrans()'s
+// labels.  The message is .rxParamsOneRowIdMsg()'s, which a chunked solve also
+// uses.
+static inline void rxSolve_parOneRowIdCheck(rxSolve_t* rxSolveDat) {
+  SEXP p = rxSolveDat->par1;
+  bool oneRow = false;
+  if (Rf_inherits(p, "data.frame")) {
+    oneRow = Rf_length(p) > 0 && Rf_length(VECTOR_ELT(p, 0)) == 1;
+  } else if (Rf_isMatrix(p)) {
+    oneRow = Rf_nrows(p) == 1;
+  }
+  if (!oneRow || rxSolveDat->idLevels.size() <= 1) return;
+  Function msgFn = getRxFn(".rxParamsOneRowIdMsg");
+  RObject msg = msgFn(rxSolveDat->par1, rxSolveDat->idLevels);
+  if (!Rf_isNull(msg)) {
+    std::string m = as<std::string>(msg);
+    rxSolveFree();
+    stop(m);
+  }
 }
 
 // Normalizes parameter input
@@ -7231,6 +7215,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       rxSolveDat->covUnits = evT[RxTrans_covUnits];
       rxSolveDat->maxItemsPerId = evT[RxTrans_maxItemsPerId];
     }
+    rxSolve_parOneRowIdCheck(rxSolveDat);
     rxSolveDat->par1ini = rxSolveDat->par1;
     // This will update par1 with simulated values
 #ifdef rxSolveT
