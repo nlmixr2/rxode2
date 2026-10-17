@@ -1,3 +1,16 @@
+# rxode2 (development version)
+
+## Bug fixes
+
+### Solving
+
+- The aggregated solver warning summary no longer drops warnings silently.
+  Once it holds 64 distinct messages, the warnings of any further message are
+  counted in a last line, "[more than 64 distinct messages]: N warning(s) not
+  shown".  Past 256 distinct solve ids (subject x simulation) for one message,
+  the ids not listed are given as a lower bound, "(at least N more)", instead
+  of a count that was too low.
+
 # rxode2 5.1.8
 
 ## New features

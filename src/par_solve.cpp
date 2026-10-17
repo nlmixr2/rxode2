@@ -253,11 +253,13 @@ extern "C" void rxSetIdLvlFactors(SEXP idLvl) {
 // load-time initializer for buffers that do not exist yet) and would leak the
 // levels a previous call allocated.
 //
+// `maxIds` is the flush's cap on listed subjects.
+//
 // `setLvl=FALSE` skips the reset and flushes against whatever the last real
 // rxSolve() left behind, which is the only way to reach the multiple-
 // simulation branch of rxGetIdSim() (nsub/nsim come from the solve, not from
 // the levels).
-extern "C" SEXP _rxTestSolveWarnLabels(SEXP idLvl, SEXP idsSEXP, SEXP setLvlSEXP) {
+extern "C" SEXP _rxTestSolveWarnLabels(SEXP idLvl, SEXP idsSEXP, SEXP setLvlSEXP, SEXP maxIdsSEXP) {
   rxProtect rx_protect;
   rxSolveWarnReset();
   if (Rf_asLogical(setLvlSEXP) != FALSE) {
@@ -269,7 +271,26 @@ extern "C" SEXP _rxTestSolveWarnLabels(SEXP idLvl, SEXP idsSEXP, SEXP setLvlSEXP
   for (int i = 0; i < n; i++) {
     rxSolveWarnPush(pids[i], "rxTest -- solve warning");
   }
-  rxSolveWarnFlush(64);
+  rxSolveWarnFlush(Rf_asInteger(maxIdsSEXP));
+  return R_NilValue;
+}
+
+// Reset, push "rxTest -- warning <k>" (no subject) for each k in `ks`, then
+// flush `nFlush` times, so a test can fill the aggregator past its 64
+// distinct messages and see what each reset and flush leaves.
+extern "C" SEXP _rxTestSolveWarnMany(SEXP ksSEXP, SEXP nFlushSEXP) {
+  rxProtect rx_protect;
+  rxSolveWarnReset();
+  SEXP ks = rx_protect.protect(Rf_coerceVector(ksSEXP, INTSXP));
+  int n = Rf_length(ks);
+  int *pks = INTEGER(ks);
+  for (int i = 0; i < n; i++) {
+    rxSolveWarnPush(-1, "rxTest -- warning %d", pks[i]);
+  }
+  int nFlush = Rf_asInteger(nFlushSEXP);
+  for (int i = 0; i < nFlush; i++) {
+    rxSolveWarnFlush(64);
+  }
   return R_NilValue;
 }
 
