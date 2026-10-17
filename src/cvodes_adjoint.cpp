@@ -313,8 +313,8 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
             } else if (_whI == 0 && op->adjDlagOff >= 0) {
               // additive bolus in a model with a modeled alag(): record the
               // (lagged) dose time so the backward can add the transversality
-              // mu += -amt*dlag_c/dtheta*(lambda^T F_X[:,c]).
-              evJumps.push_back({xout, _cmt, 0, getDose(ind, ind->ix[i])});
+              // mu += -F*amt*dlag_c/dtheta*(lambda^T F_X[:,c]).
+              evJumps.push_back({xout, _cmt, 0, getAmt(ind, ind->id, _cmt, getDose(ind, ind->ix[i]), xout, yp)});
             } else if ((_whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON) && op->adjDrateOff >= 0) {
               double _amt = getDose(ind, ind->ix[i]);
               infusRec.push_back({xout, R_PosInf, _cmt, 0.0, _amt,

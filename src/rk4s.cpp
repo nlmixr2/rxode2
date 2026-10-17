@@ -31,7 +31,9 @@
 // A recorded forward state-jump event, tagged with the cumulative step index it
 // precedes.  type: 0 = additive bolus (amt = raw dose; F-jump quadrature), 3 =
 // reset (state -> inits), 5 = replace (cmt -> value), 6 = multiply (cmt *= amt).
-struct rk4s_dose { size_t step; int cmt; double amt; int type; };
+// amtF = F*amt, the amount that actually lands (type 0), which a moving dose
+// time carries; the dF dual uses the raw amt.
+struct rk4s_dose { size_t step; int cmt; double amt; int type; double amtF = 0.0; };
 
 // A modeled-rate infusion window: active over steps [onStep, offStep) delivering
 // rate R into compartment cmt (amt total).  Drives the two-term infusion dual --
@@ -74,7 +76,7 @@ static inline void rk4sAddIni(const double *dx0, const double *lam, double *mu, 
 // fx0 = F_X (df/dy) at this step's stage 0 (post-dose state), row-major i*nBase+j,
 // or NULL; dlag = d(lag)/dtheta block (c*np+p) or NULL.  When a bolus into cmt c has
 // a modeled lag, the dose time t_d+lag(theta) shifts with theta, adding the
-// transversality  mu += -amt * dlag[c][p] * (lambda^T F_X[:,c]).
+// transversality  mu += -F*amt * dlag[c][p] * (lambda^T F_X[:,c]).
 static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
     std::vector<double> &muR, const std::vector<rk4s_dose> &doses,
     const std::vector<double> &dFdp, bool haveDf, int nBase, int np,
@@ -90,7 +92,7 @@ static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
       if (dlag && fx0) {
         double sc = 0.0;                          // lambda^T F_X[:,c]
         for (int i = 0; i < nBase; ++i) sc += lamR[i] * fx0[i * nBase + d.cmt];
-        for (int p = 0; p < np; ++p) muR[p] += -d.amt * dlag[d.cmt * np + p] * sc;
+        for (int p = 0; p < np; ++p) muR[p] += -d.amtF * dlag[d.cmt * np + p] * sc;
       }
       break;
     case 3:
@@ -7575,7 +7577,7 @@ struct rk4s_dde {
     int ndt = nfx*np;
     for (size_t di = 0; di < doses.size(); ++di) {
       if (doses[di].type != 0) continue;   // DDE dose-jump is additive-bolus only
-      int jstate = doses[di].cmt; double a = doses[di].amt;
+      int jstate = doses[di].cmt; double a = doses[di].amtF;   // [y_j] = F*amt
       double tDose = btime(doses[di].step);
       size_t sd = (doses[di].step < rec->nStep()) ? doses[di].step : (rec->nStep()-1);
       for (int istate = 0; istate < nBase; ++istate) {
@@ -8760,6 +8762,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               if (op->adjDfOff >= 0 && _wh0 != EVID0_SS2 && _wh0 != EVID0_SS20) {
                 rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _cmtD;
                 _d.amt = getDose(ind, ind->ix[i]); _d.type = 0;
+                _d.amtF = getAmt(ind, ind->id, _cmtD, _d.amt, xout, yp);
                 doseRec.push_back(_d);
               }
               // ss=1 reset bolus: mark for one-period monodromy capture (the
