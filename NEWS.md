@@ -32,6 +32,12 @@
 
 ### Solving
 
+- A one-row `params` data frame or matrix is now used for every subject, as
+  a named vector is; with more than one subject, the subjects after the first
+  were solved with `NA` parameters.  A one-row `params` with an id column
+  names one subject, so with more subjects `rxSolve()` now stops, naming the
+  id and the subjects in the data.
+
 - The forward sensitivity with respect to a parameter-dependent `delay()`
   duration doubled the dose-induced jump at each breaking point when the
   solve needed an automatically generated Jacobian (the default method
