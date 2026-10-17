@@ -1,3 +1,12 @@
+# rxode2 (development version)
+
+## Bug fixes
+
+- `rxSolve()` of a model with an occasion (nested) eta no longer turns the
+  occasion column of the data it is given into a factor.  It changed the
+  caller's own data frame, so, for example, `simulate()` of an nlmixr2 fit
+  changed the fit's data.
+
 # rxode2 5.1.8
 
 ## New features
