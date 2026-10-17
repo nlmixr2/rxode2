@@ -24,7 +24,7 @@
 #' @keywords internal
 .rxDiscreteAdjointBuild <- function(object, calcSens) {
   calcSens <- .rxSensVarNames(calcSens, .rxParams(object, TRUE))
-  .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
+  .model <- rxode2::rxS(rxode2::rxGetModel(object), FALSE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
   .ns <- length(.st)
   .np <- length(calcSens)
@@ -81,6 +81,11 @@
   assign("Rx_pow", function(a, b) a^b, .env)
   assign("expit", function(x, a = 0, b = 1) a + (b - a) / (1 + exp(-x)), .env)
   assign("logit", function(x, a = 0, b = 1) log((x - a) / (b - x)), .env)
+  # model defaults such as `k <- 0.5` stay symbolic; supplied params override
+  .def <- .rxAdjDefaults(object)
+  for (.n in names(.def)) {
+    assign(.n, .def[[.n]], envir = .env)
+  }
   .setState <- function(x) {
     for (i in seq_len(.ns)) {
       assign(.st[i], x[i], envir = .env)
