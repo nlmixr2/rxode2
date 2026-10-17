@@ -13,14 +13,25 @@ rxTest({
     CMT = "depot",
     RATE = 0
   )
-  # the solve as a data frame and its warnings, or the error message
+  # the solve as a data frame, its warnings and its printed lines, or the error
+  # message
   .fsSolve <- function(m, d, method, cores) {
     tryCatch(
       {
-        .w <- capture_warnings(capture.output(.s <- rxSolve(m, d, params = .fsPar, method = method, cores = cores)))
-        list(d = as.data.frame(.s), w = .w)
+        .w <- capture_warnings(
+          .o <- capture.output(.s <- rxSolve(m, d, params = .fsPar, method = method, cores = cores))
+        )
+        list(d = as.data.frame(.s), w = .w, o = .o)
       },
       error = conditionMessage
+    )
+  }
+  .fsReason <- function(ids) {
+    paste0(
+      "[could not solve: Modeled rate requested in event table, but not in model; use 'rate(cmt) =']: ",
+      length(ids),
+      " warning(s) for subject(s): ",
+      paste(ids, collapse = ", ")
     )
   }
 
@@ -51,6 +62,8 @@ rxTest({
           next
         }
         expect_identical(.s$w, .msg, label = .lab)
+        # the failing subject's reason, once, whichever thread solved it
+        expect_identical(.s$o, .fsReason(1), label = .lab)
         # every observation row is there; the failing subject's states are NA
         # (a column of parameters alone is not), the others' exactly the solve
         # without it
@@ -66,6 +79,44 @@ rxTest({
     }
     # a method added to rxSolve() needs these counts raised
     expect_identical(.n, c(plain = 164L, adjoint = 10L))
+  })
+
+  test_that("each failed subject's reason names it, whichever thread solved it", {
+    .d <- .fsData[rep(seq_len(5), 4), ]
+    .d$ID <- rep(c(101, 102, 103, 104), each = 5)
+    .d$RATE[.d$ID %in% c(102, 104) & .d$EVID == 1] <- -1
+    .mOde <- rxode2(.fsText)
+    .mLin <- rxode2("cp <- linCmt(ka, cl, v)")
+    for (.meth in c("dop853", "liblsoda", "lsoda", "rk4", "linCmt")) {
+      .m <- if (.meth == "linCmt") .mLin else .mOde
+      for (.cores in c(1L, 2L)) {
+        .s <- .fsSolve(.m, .d, if (.meth == "linCmt") "liblsoda" else .meth, .cores)
+        expect_identical(.s$o, .fsReason(c(102, 104)), label = paste(.meth, "cores", .cores))
+      }
+    }
+  })
+
+  test_that("a solver's failure code gives its own text", {
+    # lsoda's istate -1 is its first message; a step limit only subject 103
+    # reaches gives it
+    .m <- rxode2("d/dt(y) <- -k * y\ny(0) <- 1")
+    .d <- data.frame(ID = rep(c(101, 102, 103), each = 4), TIME = rep(c(0, 1, 5, 10), 3), EVID = 0, CMT = "y")
+    .p <- data.frame(ID = c(101, 102, 103), k = c(1, 2, 1e5))
+    for (.cores in c(1L, 2L)) {
+      .o <- capture.output(suppressWarnings(rxSolve(
+        .m,
+        .d,
+        params = .p,
+        method = "lsoda",
+        maxsteps = 40,
+        cores = .cores
+      )))
+      expect_identical(
+        grep("^\\[IDID", .o, value = TRUE),
+        "[IDID=-1, excess work done on this call (perhaps wrong jt).]: 1 warning(s) for subject(s): 103",
+        label = paste("cores", .cores)
+      )
+    }
   })
 
   test_that("an adjoint method's backward sweep runs for the subjects after a failing one", {

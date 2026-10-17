@@ -112,7 +112,7 @@ static inline void sb3a_do_steps(rx_solving_options_ind *ind, rx_solving_options
       stepper.do_step(sys.get_pair(), state, t, current_dt);
     } catch(const std::exception& e) {
       if (ind->rc[0] == 0) ind->rc[0] = -2019;
-      ind->err = 1;
+      rxSolverFail(ind);
       break;
     }
 

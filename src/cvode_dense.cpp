@@ -154,7 +154,7 @@ extern "C" void ind_cvode_dense_0(rx_solve *rx, rx_solving_options *op, int solv
               while (cvode_ctx_dense_current_time(cvode_ctx) < xout) {
                 if (cvode_ctx_dense_do_step(cvode_ctx, yp, tout_dir) < 0) {
                   if (ind->rc[0] == 0) ind->rc[0] = -2019;
-                  ind->err = 1;
+                  rxSolverFail(ind);
                   break;
                 }
                 if (ind->err) {
@@ -165,7 +165,7 @@ extern "C" void ind_cvode_dense_0(rx_solve *rx, rx_solving_options *op, int solv
               if (!ind->err) {
                 if (cvode_ctx_dense_calc_state(cvode_ctx, xout, yp) < 0) {
                   if (ind->rc[0] == 0) ind->rc[0] = -2019;
-                  ind->err = 1;
+                  rxSolverFail(ind);
                 }
               }
               istate = ind->err ? -1 : 1;
