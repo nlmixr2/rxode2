@@ -32,14 +32,13 @@
 
 ### Solving
 
-- A subject whose solve fails no longer changes the other subjects' results.
-  With `method = "dop853"` the subjects solved after it on the same thread
-  returned zeros (with `dense = TRUE`, skipped their doses); the methods
-  first released in 5.1.3 (`rk4`, `ck54`, `ab`, `dop5`, `euler`, `cvode`,
-  `vern65`, `ros4` and the others) left them out of the output; and the adjoint
-  methods `liblsodaadj` and `abs` gave them sensitivities of 0, while
-  `cvodesadj` left them out.  Every method now solves the other subjects as it
-  does without the failing one, which is `NA`.
+- A subject whose solve fails no longer changes the other subjects' results,
+  for every method: `dop853` gave them zeros, the methods first released in
+  5.1.3 and `cvodesadj` left them out, and `liblsodaadj` and `abs` gave them
+  sensitivities of 0.
+
+- `ind_solve()` (as nlmixr2est uses it) no longer reads a failure left by the
+  previous solve of the same subject as a failure of the new one.
 
 - `rxSolve()` and `etTrans()` no longer change the objects they are given:
   - with an occasion (nested) eta, `rxSolve()` turned the occasion column
@@ -63,6 +62,10 @@
 - After a subject whose `linCmt()` solve failed (a data error such as a
   modeled rate in a model without `rate()`), the later subjects on that thread
   returned zeros, since 4.0.0.  They now solve as usual.
+
+- The finite-difference `linCmt()` sensitivities that nlmixr2est requests
+  return `NA` for a subject whose solve failed, in place of the mean of its
+  earlier time points.
 
 ### Model functions
 
