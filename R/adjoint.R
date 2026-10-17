@@ -144,6 +144,7 @@ rxSolveAdjoint <- function(
   }
 
   .out <- matrix(NA_real_, length(outTimes), length(.cols), dimnames = list(NULL, .cols))
+  .dx0 <- .rxAdjIniDx0(.rxAdjIniDerivs(.model, .st, calcSens), .st, calcSens, params)
   for (.ii in seq_along(outTimes)) {
     .ti <- outTimes[.ii]
     .idx <- which(.denseT <= .ti + 1e-12)
@@ -164,6 +165,11 @@ rxSolveAdjoint <- function(
       addDosing = FALSE
     ))
     .out[.ii, ] <- unlist(.sol[nrow(.sol), .cols])
+    ## initial-condition term lambda_k(t0)^T dX0/dtheta
+    for (k in adjStates) {
+      .lamT0 <- unlist(.sol[nrow(.sol), paste0("rx__adjLambda_", k, "_", .st, "__")])
+      .out[.ii, .nm(k, calcSens)] <- .out[.ii, .nm(k, calcSens)] + as.vector(.lamT0 %*% .dx0)
+    }
   }
   cbind(time = outTimes, as.data.frame(.out))
 }
@@ -326,6 +332,7 @@ rxSolveAdjoint <- function(
     dLagStr = .dLagStr,
     lagStr = .lagStr,
     ini = .rxAdjDefaults(object),
+    dx0Str = .rxAdjIniDerivs(.model, .st, calcSens),
     events = events
   )
 }
@@ -467,6 +474,9 @@ rxSolveAdjoint <- function(
     .dTau2 <- -(.z$amt / .z$R^2) * .z$dRdp
     .duals[[length(.duals) + 1L]] <- list(k = .k - 1L, w = .w, c = .dTau2)
   }
+  ## initial-condition term at t0
+  .dx0 <- .rxAdjIniDx0(build$dx0Str, .st, calcSens, params)
+  .duals <- c(.duals, .rxAdjIniDuals(.dx0, .cj, .ns))
   .dual <- if (length(.duals)) {
     list(
       as.integer(vapply(.duals, function(d) d$k, integer(1))),
@@ -834,6 +844,7 @@ rxSolveAdjoint <- function(
     lagStr = .lagStr,
     needF = .needF,
     ini = .rxAdjDefaults(object),
+    dx0Str = .rxAdjIniDerivs(.model, .st, calcSens),
     events = events
   )
 }
@@ -848,6 +859,49 @@ rxSolveAdjoint <- function(
 
 .rxAdjParams <- function(params, defaults) {
   c(params, defaults[setdiff(names(defaults), names(params))])
+}
+
+## d(initial condition)/dtheta for each state whose initial condition depends
+## on a calcSens parameter: named list (by state) of derivative strings.
+.rxAdjIniDerivs <- function(model, st, calcSens) {
+  .ret <- list()
+  for (.s in st) {
+    .iSE <- get0(paste0("rx_", .s, "_ini_0__"), envir = model, inherits = FALSE)
+    if (!inherits(.iSE, "Basic")) {
+      next
+    }
+    .d <- character(length(calcSens))
+    for (.p in seq_along(calcSens)) {
+      .x <- symengine::D(.iSE, .rxSEres(calcSens[.p]))
+      .d[.p] <- rxode2::rxFromSE(.x)
+    }
+    if (any(.d != "0")) {
+      .ret[[.s]] <- stats::setNames(.d, calcSens)
+    }
+  }
+  .ret
+}
+
+## numeric dX0/dtheta (states x calcSens) from .rxAdjIniDerivs()
+.rxAdjIniDx0 <- function(dx0Str, st, calcSens, params) {
+  .m <- matrix(0, length(st), length(calcSens))
+  for (.s in names(dx0Str)) {
+    .m[match(.s, st), ] <- vapply(dx0Str[[.s]], .rxAdjEvalNum, numeric(1), params = params)
+  }
+  .m
+}
+
+## The initial-condition term lambda(t0-)^T dX0/dtheta as dose duals at grid
+## index 0, which the sweeps apply with lambda(t0+); a replace/multiply at t0
+## (the cj list) maps lambda(t0+) to lambda(t0-) = alpha * lambda(t0+).
+.rxAdjIniDuals <- function(dx0, cj, ns) {
+  .ret <- list()
+  for (.i in which(rowSums(abs(dx0)) > 0)) {
+    .w <- numeric(ns)
+    .w[.i] <- prod(cj[[3]][cj[[1]] == 0L & cj[[2]] == .i - 1L])
+    .ret[[length(.ret) + 1L]] <- list(k = 0L, w = .w, c = dx0[.i, ])
+  }
+  .ret
 }
 
 ## numeric evaluation of an rxFromSE expression string at parameter values
@@ -1094,6 +1148,9 @@ rxSolveAdjoint <- function(
     }
   }
   .gTraj <- vapply(calcSens, function(p) .state[[paste0("rx__adjMu_", p, "__")]], numeric(1))
+  ## initial-condition term: lambda(t0-)^T dX0/dtheta
+  .lamT0 <- vapply(.st, function(i) .state[[.lam(i)]], numeric(1))
+  .gTraj <- .gTraj + as.vector(.lamT0 %*% .rxAdjIniDx0(build$dx0Str, .st, calcSens, params))
   .gExpl <- vapply(
     calcSens,
     function(p) {
@@ -1274,6 +1331,9 @@ rxSolveAdjoint <- function(
     .dTau2 <- -(.z$amt / .z$R^2) * .z$dRdp
     .duals[[length(.duals) + 1L]] <- list(k = .k - 1L, w = .w, c = .dTau2)
   }
+  ## initial-condition term at t0
+  .dx0 <- .rxAdjIniDx0(build$dx0Str, .st, calcSens, params)
+  .duals <- c(.duals, .rxAdjIniDuals(.dx0, .cj, .ns))
   .dual <- if (length(.duals)) {
     list(
       as.integer(vapply(.duals, function(d) d$k, integer(1))),
@@ -1309,5 +1369,8 @@ rxSolveAdjoint <- function(
     },
     numeric(1)
   )
-  stats::setNames(.gTraj + .gExpl + .gErr, calcSens)
+  ## an observation at t0 reads the initial conditions themselves; its covector
+  ## joins lambda after the sweep's duals at that grid index
+  .gIni <- as.vector(colSums(.cover[.oidx == 1L, , drop = FALSE]) %*% .dx0)
+  stats::setNames(.gTraj + .gExpl + .gErr + .gIni, calcSens)
 }
