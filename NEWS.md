@@ -32,11 +32,10 @@
   methods give it.
 
 - A state that is not finite after a step now fails the subject in every
-  method.  `liblsoda`,
-  `liblsodaadj` and `indLin` returned `NaN` with no warning (`liblsoda` with
-  its "intdy" texts).  A failed `cvodesadj` step now fails the subject, which
-  kept its last values with no warning, and `cvode` now gives its failure's
-  reason.
+  method.  `liblsoda`, `liblsodaadj` and `indLin` returned `NaN` with no
+  warning (`liblsoda` with its "intdy" texts).  A failed `cvodesadj` step now
+  fails the subject, which kept its last values with no warning, and `cvode`
+  now gives its failure's reason.
 
 - An adjoint method that `rxSolve()` cannot run on a model is now named in
   the error, with the reason, as in "method='ros4s' cannot solve a model
