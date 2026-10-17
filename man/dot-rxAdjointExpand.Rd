@@ -21,7 +21,8 @@ Exposes the state Jacobian \code{F_X = dF/dy} and parameter forcing
 C++ backward sweep can evaluate them at any stage state via \code{calc_lhs}.  The
 lhs are emitted in a fixed order: all \code{F_X} entries row-major
 (\code{rx__adjFX_i_j__} at index \code{i*ns + j}), then \code{F_p} (\code{rx__adjFP_i_p__} at
-\code{ns*ns + i*np + p}).
+\code{ns*ns + i*np + p}).  The rest of the model (initial conditions, dosing
+modifiers, output columns, etc.) is carried through unchanged.
 }
 \author{
 Matthew L. Fidler
