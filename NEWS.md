@@ -1,3 +1,18 @@
+# rxode2 (development version)
+
+## Bug fixes
+
+### Solving
+
+- Forward sensitivities through `alag()`, `f()`, `rate()`, `dur()` and a
+  parameter-dependent `delay()` are now right for a parameter that also
+  has a numeric default in the model (for example `lg <- 0.3` with
+  `alag(depot) <- lg` and `calcSens` including `lg`), and for a default
+  that the solve overrides with a supplied value or a data covariate.
+  Before, the default was folded into the event derivatives, so the
+  targeted parameter's sensitivity was 0 (or a defaulted delay lost its
+  jump term) and an overridden default kept its model value there.
+
 # rxode2 5.1.8
 
 ## New features
