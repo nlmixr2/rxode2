@@ -28,7 +28,7 @@ rxTest({
   }
   .fsReason <- function(ids) {
     paste0(
-      "[could not solve: Modeled rate requested in event table, but not in model; use 'rate(cmt) =']: ",
+      "[solve error: Modeled rate requested in event table, but not in model; use 'rate(cmt) =']: ",
       length(ids),
       " warning(s) for subject(s): ",
       paste(ids, collapse = ", ")
@@ -139,5 +139,146 @@ rxTest({
       rownames(.rest) <- NULL
       expect_equal(.rest, .ref[, .sens], tolerance = 1e-12, label = .meth)
     }
+  })
+
+  # the solve-error test hooks: _rxTestSolveErrPush(err) resets the aggregator,
+  # pushes the reasons err's bits stand for (no subject) and flushes;
+  # _rxTestSolveWarnFlush() flushes, as an ind_solve() caller does
+  .errPush <- function(err) {
+    capture.output(invisible(.Call("_rxTestSolveErrPush", as.integer(err), PACKAGE = "rxode2")))
+  }
+  .flush <- function() capture.output(invisible(.Call("_rxTestSolveWarnFlush", PACKAGE = "rxode2")))
+  .cap <- function(expr) capture.output(invisible(expr))
+  .solverFail <- "the ODE solver failed (an exception, or a step it could not take)"
+  .rateReason <- "[solve error: Modeled rate requested in event table, but not in model; use 'rate(cmt) =']: "
+
+  test_that("every error bit has its own reason text", {
+    # bit k is 2^k, as in inst/include/rxode2dataErr.h
+    .texts <- c(
+      "Corrupted event table during sort (1)",
+      "Rate is zero/negative",
+      "Modeled rate requested in event table, but not in model; use 'rate(cmt) ='",
+      "Corrupted event table during sort (2)",
+      "Duration is zero/negative",
+      "Modeled duration requested in event table, but not in model; use 'dur(cmt) ='",
+      "Data error 686: end of a modeled duration ('rate=-2') infusion is not preceded by its start",
+      "Data Error -6: end of a modeled duration ('rate=-2') infusion is the first record",
+      "Data Error 8: a modeled duration ('rate=-2') infusion starts on the last record, so it has no end",
+      "Data error 886: start of a modeled duration ('rate=-2') infusion is not followed by its end",
+      "Data error 797: end of a modeled rate ('rate=-1') infusion is not preceded by its start",
+      "Data Error -7: end of a modeled rate ('rate=-1') infusion is the first record",
+      "Data Error 9: a modeled rate ('rate=-1') infusion starts on the last record, so it has no end",
+      "Data error 997: start of a modeled rate ('rate=-1') infusion is not followed by its end",
+      "Corrupted event table during sort (3)",
+      "Corrupted event table",
+      "Supplied an invalid EVID",
+      "Corrupted events",
+      "Corrupted event table (during sync)",
+      "Corrupted event table (end of sync)",
+      "SS=2 & Modeled F does not work",
+      "SS=2 & Modeled F does not work",
+      "SS=2 & Modeled F does not work",
+      "Rate is zero/negative",
+      "Inductive linearization could not reach 'atol'/'rtol' within 'maxsteps' relinearization steps; loosen 'atol'/'rtol' or raise 'maxsteps'",
+      "Unsupported inductive linearization code; the model's 'indLin' descriptor does not match the solver",
+      "Inductive linearization failed with an unhandled exception (most likely out of memory)",
+      "the ODE solver failed (an exception, or a step it could not take)"
+    )
+    for (.k in seq_along(.texts)) {
+      expect_identical(
+        .errPush(bitwShiftL(1L, .k - 1L)),
+        paste0("[solve error: ", .texts[.k], "]: 1 warning(s)"),
+        label = .k - 1L
+      )
+    }
+    # a bit with no text is pushed as its code
+    expect_identical(.errPush(bitwShiftL(1L, 28L)), "[solve error: code 268435456]: 1 warning(s)")
+    # bits that share a text push it once
+    expect_identical(
+      .errPush(bitwShiftL(1L, 20L) + bitwShiftL(1L, 21L) + bitwShiftL(1L, 22L)),
+      "[solve error: SS=2 & Modeled F does not work]: 1 warning(s)"
+    )
+    expect_identical(.errPush(2L + bitwShiftL(1L, 23L)), "[solve error: Rate is zero/negative]: 1 warning(s)")
+  })
+
+  test_that("no solver failure sets an event-table bit", {
+    # err = 1 is "Corrupted event table during sort (1)"; a driver's own failure
+    # is rxSolverFail(), which sets rxErrSolverFail
+    .src <- testthat::test_path("..", "..", "src")
+    skip_if(!dir.exists(.src), "source tree not available (installed package)")
+    .f <- c(
+      list.files(.src, pattern = "\\.(c|cpp|h)$", full.names = TRUE),
+      list.files(testthat::test_path("..", "..", "inst", "include"), pattern = "\\.h$", full.names = TRUE)
+    )
+    expect_true("odeinter.h" %in% basename(.f))
+    .hit <- vapply(
+      .f,
+      function(f) any(grepl("(->|\\.)err *= *1\\b", readLines(f, warn = FALSE), perl = TRUE)),
+      logical(1)
+    )
+    expect_identical(basename(.f[.hit]), character(0))
+  })
+
+  test_that("a solver's own failure says so, for the bridges and the odeint checker", {
+    .m <- rxode2("y(0) <- 1\nd/dt(y) <- -k * y")
+    .d <- data.frame(ID = rep(101:104, each = 3), TIME = rep(c(0, 1, 2), 4), EVID = 0, CMT = "y")
+    # an infinite rate: the bridges' non-finite right-hand side
+    .p <- data.frame(ID = 101:104, k = c(1, 1, Inf, 1))
+    for (.meth in c("f45", "dop54")) {
+      .o <- .cap(suppressWarnings(rxSolve(.m, .d, params = .p, method = .meth)))
+      expect_identical(.o, paste0("[solve error: ", .solverFail, "]: 1 warning(s) for subject(s): 103"), label = .meth)
+    }
+    # a step limit every subject reaches: odeinter.h's checker (rk4, ab)
+    for (.meth in c("rk4", "ab")) {
+      .o <- .cap(suppressWarnings(rxSolve(.m, .d, params = data.frame(k = 1), method = .meth, maxsteps = 3L)))
+      expect_identical(
+        .o,
+        paste0("[solve error: ", .solverFail, "]: 4 warning(s) for subject(s): 101, 102, 103, 104"),
+        label = .meth
+      )
+    }
+    # liblsoda gives its istate text, as lsoda does
+    .p <- data.frame(ID = 101:104, k = c(1e5, 1, 1, 1))
+    .o <- .cap(suppressWarnings(rxSolve(.m, .d, params = .p, method = "liblsoda", maxsteps = 40L)))
+    expect_identical(
+      .o,
+      "[IDID=-1, excess work done on this call (perhaps wrong jt).]: 1 warning(s) for subject(s): 101"
+    )
+  })
+
+  test_that("reasons name the simulation, and a later clean solve prints none", {
+    .m <- rxode2(paste0("cl <- exp(tcl + eta.cl)\n", .fsText))
+    .d <- .fsData[rep(seq_len(5), 4), ]
+    .d$ID <- rep(c(101, 102, 103, 104), each = 5)
+    .d$RATE[.d$ID %in% c(102, 104) & .d$EVID == 1] <- -1
+    .par <- c(ka = 1.2, v = 25, tcl = log(3.5))
+    set.seed(1)
+    .o <- .cap(suppressWarnings(rxSolve(
+      .m,
+      .d,
+      params = .par,
+      omega = lotri::lotri(eta.cl ~ 0.1),
+      nStud = 2
+    )))
+    expect_identical(.o, paste0(.rateReason, "4 warning(s) for subject(s): 102, 104, 102 (sim 2), 104 (sim 2)"))
+    .o <- .cap(suppressWarnings(rxSolve(.m, .fsData, params = c(.par, eta.cl = 0))))
+    expect_identical(.o, character(0))
+  })
+
+  test_that("ind_solve() pushes a failed subject's reasons for its caller to flush", {
+    .m <- rxode2(.fsText)
+    .d <- .fsData[rep(seq_len(5), 4), ]
+    .d$ID <- rep(c(101, 102, 103, 104), each = 5)
+    .d$RATE[.d$ID %in% c(102, 104) & .d$EVID == 1] <- -1
+    .drive <- function() capture.output(invisible(.Call("_rxode2_rxIndLinDriveTeam", 2L, FALSE, PACKAGE = "rxode2")))
+    expect_identical(.fsSolve(.m, .d, "liblsoda", 2L)$o, paste0(.rateReason, "2 warning(s) for subject(s): 102, 104"))
+    # the drive solves every subject through ind_solve() and prints nothing ...
+    expect_identical(.drive(), character(0))
+    # ... until its caller flushes
+    expect_identical(.flush(), paste0(.rateReason, "2 warning(s) for subject(s): 102, 104"))
+    # an rxSolve() starts from an empty summary: an unflushed drive's lines are
+    # not this solve's
+    expect_identical(.drive(), character(0))
+    expect_identical(.fsSolve(.m, .fsData[.fsData$ID != 1, ], "liblsoda", 1L)$o, character(0))
   })
 })
