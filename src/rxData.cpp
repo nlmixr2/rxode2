@@ -3101,7 +3101,9 @@ void updateSolveEnvPost(Environment e){
           nrm++;
         }
       }
-      if (nsub > 1) extran++;
+      // a one-row params is one set for every subject and has no id column
+      bool idCol = nsub > 1 && parsdf.nrow() > 1;
+      if (idCol) extran++;
       if (nsim > 1) extran++;
       CharacterVector prsn(ppos.size() - nrm + extran);
       List prsl(ppos.size() - nrm + extran);
@@ -3115,7 +3117,7 @@ void updateSolveEnvPost(Environment e){
         prsl[j] = tmp;
         j++;
       }
-      if (nsub > 1) {
+      if (idCol) {
         IntegerVector tmp(parsdf.nrow());
         for (unsigned int k = parsdf.nrow(); k--;){
           tmp[k] = (k % nsub)+1;
@@ -3163,7 +3165,7 @@ void updateSolveEnvPost(Environment e){
         cnt[j] = prsl["sim.id"];
         j++;
       }
-      if (nsub > 1) {
+      if (idCol) {
         cntn[j]="id";
         cnt[j] = prsl["id"];
         j++;
@@ -3176,7 +3178,9 @@ void updateSolveEnvPost(Environment e){
       cnt[j++] = e[".jac.counter"];
       cnt.names() = cntn;
       cnt.attr("class") = "data.frame";
-      cnt.attr("row.names") = IntegerVector::create(NA_INTEGER,-parsdf.nrow());
+      // one row per solve: a one-row params serves every subject
+      cnt.attr("row.names") = IntegerVector::create(NA_INTEGER,
+                                                    -Rf_length(cnt[j - 1]));
       e["counts"] = cnt;
     }
   }
@@ -5411,6 +5415,66 @@ static inline void rxSolve_resample(const RObject &obj,
   }
 }
 
+// The solve's subjects for an error message: the first `maxIds` labels, then
+// how many more, as the solve-warning summary lists them.
+static inline std::string rxSolve_subjectList(rxSolve_t* rxSolveDat, uint32_t nsub,
+                                              uint32_t maxIds) {
+  CharacterVector lvl = rxSolveDat->idLevels;
+  bool useLvl = (uint32_t)lvl.size() == nsub;
+  uint32_t nShow = nsub < maxIds ? nsub : maxIds;
+  std::string ret;
+  for (uint32_t i = 0; i < nShow; ++i) {
+    if (i > 0) ret += ", ";
+    ret += useLvl ? std::string(CHAR(STRING_ELT(lvl, i))) : std::to_string(i + 1);
+  }
+  if (nsub > nShow) {
+    ret += ", ... (" + std::to_string(nsub - nShow) + " more)";
+  }
+  return ret;
+}
+
+// A one-row parameter data frame or matrix is one set for every subject, as a
+// named vector is, and is expanded here to a row per subject.  A row with an
+// id column names one subject, so with more subjects it is an error.
+static inline void rxSolve_parOneRow(rxSolve_t* rxSolveDat, uint32_t nsub) {
+  if (rxSolveDat->parType == 1 || rxSolveDat->nPopPar != 1 || nsub <= 1) return;
+  CharacterVector nm = rxSolveDat->nmP;
+  int ncol = nm.size();
+  for (int j = 0; j < ncol; ++j) {
+    std::string cur = as<std::string>(nm[j]);
+    std::transform(cur.begin(), cur.end(), cur.begin(), ::tolower);
+    if (cur == "id") {
+      SEXP col;
+      if (rxSolveDat->parType == 2) {
+        col = rxSolveDat->parDf[j];
+      } else {
+        col = NumericVector::create(rxSolveDat->parMat(0, j));
+      }
+      Function asCharacter("as.character", R_BaseEnv);
+      CharacterVector idC = asCharacter(col);
+      std::string idS = CHAR(STRING_ELT(idC, 0));
+      std::string subj = rxSolve_subjectList(rxSolveDat, nsub, 10);
+      rxSolveFree();
+      stop(_("'params' has one row, for id %s, but the data has %u subjects\nsubjects: %s\ngive one row per subject, or drop the id column to use the row for all"),
+           idS.c_str(), nsub, subj.c_str());
+    }
+  }
+  NumericMatrix mat(nsub, ncol);
+  for (int j = 0; j < ncol; ++j) {
+    double v;
+    if (rxSolveDat->parType == 2) {
+      v = NumericVector(rxSolveDat->parDf[j])[0];
+    } else {
+      v = rxSolveDat->parMat(0, j);
+    }
+    std::fill_n(mat.begin() + (R_xlen_t)j * nsub, nsub, v);
+  }
+  mat.attr("dimnames") = List::create(R_NilValue, nm);
+  rxSolveDat->parMat = mat;
+  rxSolveDat->parType = 3;
+  rxSolveDat->nPopPar = nsub;
+}
+
 // Normalizes parameter input
 // It will also load the parameters into the solving data structure.
 static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxControl,
@@ -5425,6 +5489,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
   rx_solving_options* op = rx->op;
   rx_solving_options_ind* ind;
   int64_t curEvent = 0, curSolve=0; int curIdx = 0;
+  rxSolve_parOneRow(rxSolveDat, rx->nsub);
   switch(rxSolveDat->parType) {
   case 1: // NumericVector
     {
