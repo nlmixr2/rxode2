@@ -1056,6 +1056,17 @@
   when the derivatives are nonlinear in the dosed compartment, and is no
   longer dropped for a bolus lagged onto the first time.
 
+- With both `f()` and `alag()` modeled on a compartment, the adjoint
+  lag-time sensitivity was `1/F` times too large; it now uses the dose
+  that lands.  The same applied to the delay-equation dose jump.
+
+- `method = "cvodesadj"` now includes the bioavailability (`f()`)
+  sensitivity; before, it was missing entirely.
+
+- `method = "abs"` now stops with an error when sensitivities are
+  requested for a model with `f()`, `alag()`, `rate()` or `dur()`, which it
+  does not support, instead of silently leaving those terms out.
+
 # rxode2 5.1.8
 
 ## New features
