@@ -12,6 +12,13 @@
 - `ind_solve()` (as nlmixr2est uses it) no longer reads a failure left by the
   previous solve of the same subject as a failure of the new one.
 
+- Every subject whose solve failed is now named with its reason after the
+  solve ("[could not solve: <reason>]: N warning(s) for subject(s): <ids>");
+  with more than one core the subjects off the main thread had none shown, and
+  `lsoda` and `liblsoda` showed none at all.  A solver's own failure and
+  `lsoda`'s step limit are no longer reported as "Corrupted event table during
+  sort (1)" and as an unhandled exception.
+
 ### linCmt() models
 
 - After a subject whose `linCmt()` solve failed (a data error such as a
