@@ -1126,8 +1126,11 @@ SEXP nestingInfoSingle_(SEXP col, IntegerVector id) { rxProtect rx_protect;
 
 //[[Rcpp::export]]
 SEXP nestingInfo_(SEXP omega, List data) { rxProtect rx_protect;
-  // Might need to clone...
-  CharacterVector lName = data.names();
+  // The nesting columns become factors in a shallow copy of the data (a new
+  // list holding the same columns), returned as `data`; the caller's data
+  // frame is left as it was.
+  List dataCopy(rx_protect.protect(Rf_shallow_duplicate(data)));
+  CharacterVector lName = dataCopy.names();
   int wid = -1;
   std::string tmpS;
   std::string idName;
@@ -1145,7 +1148,7 @@ SEXP nestingInfo_(SEXP omega, List data) { rxProtect rx_protect;
     // UNPROTECT
     rxError(_("cannot find 'id' column in dataset"));
   }
-  SEXP idS = rx_protect.protect(data[wid]);
+  SEXP idS = rx_protect.protect(dataCopy[wid]);
   SEXP id = rx_protect.protect(convertId_(idS));
   SEXP lotriOmega = R_NilValue;
   if (Rf_isNewList(omega)){
@@ -1186,7 +1189,7 @@ SEXP nestingInfo_(SEXP omega, List data) { rxProtect rx_protect;
         }
       }
       if (found == -1) rxError("could not find '%s' in data", CHAR(lvl));
-      s = nestingInfoSingle_(data[found], id);
+      s = nestingInfoSingle_(dataCopy[found], id);
       l1 = Rf_length(Rf_getAttrib(s, R_LevelsSymbol));
       dn = VECTOR_ELT(Rf_getAttrib(VECTOR_ELT(lotriOmega, i),
                                    R_DimNamesSymbol), 0);
@@ -1202,7 +1205,7 @@ SEXP nestingInfo_(SEXP omega, List data) { rxProtect rx_protect;
         belowN[belowI++] = lvl;
         extraEta += Rf_length(dn) * l1;
       }
-      data[found] = s;
+      dataCopy[found] = s;
     }
   }
   IntegerVector belowF(belowI);
@@ -1226,7 +1229,7 @@ SEXP nestingInfo_(SEXP omega, List data) { rxProtect rx_protect;
   aboveF.names() = aboveFN;
   aboveVars.names() = aboveFN;
   // UNPROTECT
-  return wrap(List::create(_["data"]=data,
+  return wrap(List::create(_["data"]=dataCopy,
                            _["omega"]=lotriOmega,
                            _["idName"]=CharacterVector::create(idName),
                            _["id"]=id,
