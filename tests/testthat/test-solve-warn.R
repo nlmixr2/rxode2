@@ -26,6 +26,8 @@ rxTest({
   })
 
   test_that("a flush and a reset each clear the count", {
+    # nothing this test leaves pending reaches the next one
+    withr::defer(.warnMany(integer(0), nFlush = 0L))
     .out <- .warnMany(1:65, nFlush = 2L)
     expect_identical(sum(.out == .notShown(1L)), 1L)
     expect_length(.out, 65L)

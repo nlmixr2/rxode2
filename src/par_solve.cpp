@@ -253,11 +253,13 @@ extern "C" void rxSetIdLvlFactors(SEXP idLvl) {
 // load-time initializer for buffers that do not exist yet) and would leak the
 // levels a previous call allocated.
 //
+// `maxIds` is the flush's cap on listed subjects.
+//
 // `setLvl=FALSE` skips the reset and flushes against whatever the last real
 // rxSolve() left behind, which is the only way to reach the multiple-
 // simulation branch of rxGetIdSim() (nsub/nsim come from the solve, not from
 // the levels).
-extern "C" SEXP _rxTestSolveWarnLabels(SEXP idLvl, SEXP idsSEXP, SEXP setLvlSEXP) {
+extern "C" SEXP _rxTestSolveWarnLabels(SEXP idLvl, SEXP idsSEXP, SEXP setLvlSEXP, SEXP maxIdsSEXP) {
   rxProtect rx_protect;
   rxSolveWarnReset();
   if (Rf_asLogical(setLvlSEXP) != FALSE) {
@@ -269,7 +271,7 @@ extern "C" SEXP _rxTestSolveWarnLabels(SEXP idLvl, SEXP idsSEXP, SEXP setLvlSEXP
   for (int i = 0; i < n; i++) {
     rxSolveWarnPush(pids[i], "rxTest -- solve warning");
   }
-  rxSolveWarnFlush(64);
+  rxSolveWarnFlush(Rf_asInteger(maxIdsSEXP));
   return R_NilValue;
 }
 
