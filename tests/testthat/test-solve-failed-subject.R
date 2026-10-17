@@ -184,12 +184,20 @@ rxTest({
       "Inductive linearization failed with an unhandled exception (most likely out of memory)",
       "the ODE solver failed (an exception, or a step it could not take)"
     )
-    for (.k in seq_along(.texts)) {
-      expect_identical(
-        .errPush(bitwShiftL(1L, .k - 1L)),
-        paste0("[solve error: ", .texts[.k], "]: 1 warning(s)"),
-        label = .k - 1L
-      )
+    # every rxErr bit in the installed header has a text: the NA-time codes
+    # (rxErrNaTime*, 1-5) are not bits
+    .hdr <- system.file("include", "rxode2dataErr.h", package = "rxode2")
+    skip_if(!nzchar(.hdr), "rxode2dataErr.h not installed")
+    .l <- readLines(.hdr, warn = FALSE)
+    .def <- regmatches(.l, regexec("^#define +(rxErr[A-Za-z0-9]+) +([0-9]+)", .l))
+    .def <- .def[lengths(.def) == 3L]
+    .bits <- setNames(as.numeric(vapply(.def, `[`, "", 3L)), vapply(.def, `[`, "", 2L))
+    .bits <- sort(.bits[!grepl("^rxErrNaTime", names(.bits))])
+    expect_identical(unname(.bits), 2^(seq_along(.texts) - 1))
+    for (.k in seq_along(.bits)) {
+      .line <- .errPush(.bits[[.k]])
+      expect_false(grepl("^\\[solve error: code [0-9]+\\]", .line), label = names(.bits)[.k])
+      expect_identical(.line, paste0("[solve error: ", .texts[.k], "]: 1 warning(s)"), label = names(.bits)[.k])
     }
     # a bit with no text is pushed as its code
     expect_identical(.errPush(bitwShiftL(1L, 28L)), "[solve error: code 268435456]: 1 warning(s)")
@@ -207,13 +215,21 @@ rxTest({
     .src <- testthat::test_path("..", "..", "src")
     skip_if(!dir.exists(.src), "source tree not available (installed package)")
     .f <- c(
-      list.files(.src, pattern = "\\.(c|cpp|h)$", full.names = TRUE),
-      list.files(testthat::test_path("..", "..", "inst", "include"), pattern = "\\.h$", full.names = TRUE)
+      list.files(.src, pattern = "\\.(c|cpp|h|hpp)$", full.names = TRUE, recursive = TRUE),
+      list.files(
+        testthat::test_path("..", "..", "inst", "include"),
+        pattern = "\\.(h|hpp)$",
+        full.names = TRUE,
+        recursive = TRUE
+      )
     )
-    expect_true("odeinter.h" %in% basename(.f))
+    expect_true(all(c("odeinter.h", "implicit_euler_rxode2.hpp") %in% basename(.f)))
+    expect_true(any(grepl("/ode/", .f, fixed = TRUE)))
+    # = 1, |= 1, += 1, = 1u, = (1) or = rxErrCorruptETSort on an err field
+    .gate <- "(->|\\.)err *(\\|=|\\+=|=) *(1u?\\b|\\(1\\))|(->|\\.)err *= *rxErrCorruptETSort\\b"
     .hit <- vapply(
       .f,
-      function(f) any(grepl("(->|\\.)err *= *1\\b", readLines(f, warn = FALSE), perl = TRUE)),
+      function(f) any(grepl(.gate, readLines(f, warn = FALSE), perl = TRUE)),
       logical(1)
     )
     expect_identical(basename(.f[.hit]), character(0))
@@ -287,5 +303,16 @@ rxTest({
     # not this solve's
     expect_identical(.drive(), character(0))
     expect_identical(.fsSolve(.m, .fsData[.fsData$ID != 1, ], "liblsoda", 1L)$o, character(0))
+  })
+
+  test_that("par_solve() keeps the lines pushed before it, as SAEM needs", {
+    # SAEM calls par_solve() between its subjects' ind_solve() calls and
+    # flushes after; a reset inside par_solve() would drop what they pushed
+    .m <- rxode2(.fsText)
+    expect_identical(.fsSolve(.m, .fsData, "liblsoda", 1L)$o, character(0))
+    expect_identical(
+      .cap(.Call("_rxTestParSolveAfterPush", PACKAGE = "rxode2")),
+      "[rxTest -- pushed before par_solve()]: 1 warning(s)"
+    )
   })
 })
