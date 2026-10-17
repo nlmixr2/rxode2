@@ -12,12 +12,14 @@
 - `ind_solve()` (as nlmixr2est uses it) no longer reads a failure left by the
   previous solve of the same subject as a failure of the new one.
 
-- Every subject whose solve failed is now named with its reason after the
-  solve ("[could not solve: <reason>]: N warning(s) for subject(s): <ids>");
-  with more than one core the subjects off the main thread had none shown, and
-  `lsoda` and `liblsoda` showed none at all.  A solver's own failure and
-  `lsoda`'s step limit are no longer reported as "Corrupted event table during
-  sort (1)" and as an unhandled exception.
+- A subject whose solve failed is now named with its reason once the solve is
+  over ("[solve error: <reason>]: N warning(s) for subject(s): <ids>", and the
+  `lsoda` and `liblsoda` "IDID=" texts likewise), whichever thread solved it.
+  A reason used to be printed only for the subjects solved on the main
+  thread, and not at all by `lsoda`, `liblsoda` or `rk4`.  A solver's own
+  failure (a non-finite right-hand side, a step limit) and `lsoda`'s step
+  limit are no longer reported as "Corrupted event table during sort (1)" and
+  as an unhandled exception.
 
 ### linCmt() models
 
