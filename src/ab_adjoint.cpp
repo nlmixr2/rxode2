@@ -108,6 +108,9 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
     for (int b=0;b<nBase;++b) lamIn[b] += sb[b] + tmp[b];
   };
 
+  std::vector<double> dx0V;                         // parameter-dependent initial conditions
+  rk4sIniDx0(op, ind, cSub, abAdjCalls[0].t0, eff, nBase, np, dx0V);
+  const double *dx0P = dx0V.empty() ? NULL : dx0V.data();
   std::vector<double> endCostate(nBase), lam;
   for (int i = 0; i < ind->n_all_times; ++i) {
     if (!isObs(getEvid(ind, ind->ix[i]))) continue;
@@ -146,11 +149,17 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
           for (int b = 0; b < nBase; ++b) endCostate[b] = lam[b];  // costate of call c's start
           // event jump dPhi/dy^T at t0_c -> costate of the pre-event state (call c-1 end).
           if (c >= 1) {
-            if (callEvType[c] == 3) { for (int b = 0; b < nBase; ++b) endCostate[b] = 0.0; }
+            if (callEvType[c] == 3) {          // reset restores the initial conditions
+              rk4sAddIni(dx0P, endCostate.data(), mu.data(), nBase, np);
+              for (int b = 0; b < nBase; ++b) endCostate[b] = 0.0;
+            }
             else if (callEvType[c] == 5 && callEvCmt[c] >= 0) { endCostate[callEvCmt[c]] = 0.0; }
             else if (callEvType[c] == 6 && callEvCmt[c] >= 0) { endCostate[callEvCmt[c]] *= callEvFac[c]; }
           }
         }
+        rk4sAddIni(dx0P, endCostate.data(), mu.data(), nBase, np);   // window start t0
+      } else if (dx0P) {                    // no step taken yet: the state is its initial condition
+        for (int p = 0; p < np; ++p) mu[p] = dx0P[k * np + p];
       }
       for (int p = 0; p < np; ++p) out[sensOff + k * np + p] = mu[p];
     }
