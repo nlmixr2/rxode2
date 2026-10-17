@@ -78,4 +78,39 @@ rxTest({
     expect_lt(.e2, .e1)
     expect_lt(.e2, 0.01)
   })
+
+  test_that("abs refuses sensitivities for modeled dosing and still solves everything else", {
+    .base <- "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center"
+    .msg <- "method='abs' cannot calculate sensitivities for a model with %s; use method='rk4s' or method='liblsodaadj'"
+    .kinds <- list(
+      list(txt = "f(depot) <- fd", p = c(fd = 0.7), ev = .faEv, what = "f()"),
+      list(txt = "alag(depot) <- lg", p = c(lg = 0.7), ev = .faEv, what = "alag()"),
+      list(txt = "rate(depot) <- r", p = c(r = 40), ev = et(amt = 100, cmt = "depot", rate = -1) |> et(c(1, 2, 4, 8, 12)), what = "rate()"),
+      list(txt = "dur(depot) <- dd", p = c(dd = 2.5), ev = et(amt = 100, cmt = "depot", rate = -2) |> et(c(1, 2, 4, 8, 12)), what = "dur()"),
+      list(txt = "f(depot) <- fd\nalag(depot) <- lg", p = c(fd = 0.7, lg = 0.7), ev = .faEv, what = "f(), alag()")
+    )
+    for (.k in .kinds) {
+      .p <- c(ka = 1.2, k = 0.14, .k$p)
+      expect_error(
+        rxSolveAdjointRk4(paste(.base, .k$txt, sep = "\n"), .k$ev, params = .p, calcSens = names(.p), method = "abs"),
+        sprintf(.msg, .k$what),
+        fixed = TRUE
+      )
+    }
+    # without modeled dosing abs still gives the sensitivities
+    .tt <- c(1, 2, 4, 8, 12)
+    .known <- .faKnown(c(ka = 1.2, k = 0.14, fd = 1), .tt)
+    .a <- rxSolveAdjointRk4(.base, .faEv, params = c(ka = 1.2, k = 0.14), calcSens = c("ka", "k"), method = "abs", hmin = 0.001)
+    .a <- .a[.a$time %in% .tt, , drop = FALSE]
+    for (.cn in grep("_BY_(ka|k)__$", names(.known), value = TRUE)) {
+      expect_lt(max(abs(.a[[.cn]] - .known[[.cn]])), 1e-6, label = .cn)
+    }
+    # and a plain solve (no sensitivities) of a model with f() and alag() is untouched
+    .m <- rxode2(.faTxt)
+    expect_equal(
+      as.data.frame(rxSolve(.m, .faEv, params = .faP, method = "abs", hmin = 0.001)),
+      as.data.frame(rxSolve(.m, .faEv, params = .faP, method = "ab", hmin = 0.001)),
+      tolerance = 1e-12
+    )
+  })
 })
