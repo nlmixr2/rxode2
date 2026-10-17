@@ -225,8 +225,6 @@ extern "C" void par_dop5(rx_solve *rx){
   int nsolve = (int)(nsim*nsub);
   
   uint32_t seed0 = getRxSeed1(cores);
-  int abort = 0;
-
 #ifdef _OPENMP
 #pragma omp parallel for num_threads(cores)
 #endif
@@ -234,18 +232,10 @@ extern "C" void par_dop5(rx_solve *rx){
     int neq[2];
     neq[0] = op->neq;
     neq[1] = 0;
-    int localAbort;
-#ifdef _OPENMP
-#pragma omp atomic read
-#endif
-    localAbort = abort;
-    if (localAbort == 0){
-      // rx->ordId walks positions (sortIds); the drivers take subject ids.
-      int _id = rx->ordId[solveid] - 1;
-      setSeedEng1(seed0 + _id);
-      ind_dop5_0(rx, op, _id, neq, dydt, update_inis);
-      
-    }
+    // rx->ordId walks positions (sortIds); the drivers take subject ids.
+    int _id = rx->ordId[solveid] - 1;
+    setSeedEng1(seed0 + _id);
+    ind_dop5_0(rx, op, _id, neq, dydt, update_inis);
   }
   // close the per-subject seed block: the loop consumed nsolve seeds, not
   // cores, and the next solve must not re-use any of them
