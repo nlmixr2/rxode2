@@ -1240,6 +1240,8 @@ NumericVector rxInits0(const RObject &obj,
     if (nvec.size() > 0){
       if (!nvec.hasAttribute("names")){
         if (!req.isNull() && nreq.size() == nvec.size()){
+          // name a copy: nvec is the caller's own vector (inits = , scale =)
+          nvec = clone(nvec);
           nvec.attr("names") = req;
           nvecNames = req;
           std::string wstr = "Assumed order of inputs: ";
