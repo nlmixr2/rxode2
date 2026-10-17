@@ -414,7 +414,8 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
       // (Rf_errorcall)(R_NilValue, "%s", _("'alag(.)'/'rate(.)'/'dur(.)' cannot depend on the state values"));
     }
     // rxode2#1185: par_solve() prints each failed subject's reasons through
-    // the aggregator, which suppressMessages()/rxSuppressMsg() silence, so a
+    // the aggregator, which a model compiled under suppressMessages() silences
+    // (rxode2() records the setting when it compiles the model), so a
     // non-converged inductive linearization also has to name itself in the
     // condition the user sees -- the generic message gives no hint that 'hmax'
     // is the knob.
