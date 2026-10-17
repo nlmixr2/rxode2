@@ -1,3 +1,13 @@
+# rxode2 (development version)
+
+## Bug fixes
+
+- A population solve (`omega = NA`) of a model with a nested omega, such as
+  an occasion eta (`iov.cl ~ 0.1 | occ`), now sets the etas of every level
+  to zero; it stopped with "The following parameter(s) are required for
+  solving".  nlmixr2est's population `predict()` of a fit with
+  inter-occasion variability goes through it.
+
 # rxode2 5.1.8
 
 ## New features
