@@ -822,7 +822,8 @@ SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS) {
                                control[Rxc_iCov]));
       rxModelsAssign(".nestEvents", events);
       RObject cls = Rf_getAttrib(events, R_ClassSymbol);
-      List rxLst = cls.attr(".rxode2.lst");
+      // a shallow copy: etTrans() hands back the caller's own translated table
+      List rxLst = Rf_shallow_duplicate(cls.attr(".rxode2.lst"));
       rxLst.attr("class") = R_NilValue;
       nid = rxLst[RxTrans_nid];
       if (nid <= 1) {
@@ -1004,6 +1005,9 @@ SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS) {
                                control[Rxc_iCov]));
       rxModelsAssign(".nestEvents", events);
     } else if (!Rf_inherits(events, "rxEtTrans")){
+      // No class is "rxEtTrans" (a translated table is "rxEtTran"), so this
+      // always holds; etTrans() re-translates a table made for another model
+      // and returns one made for this model as it is
       events = rx_protect.protect(etTrans(as<List>(events), nestObj,
                                (INTEGER(mv[RxMv_flags])[RxMvFlag_hasCmt] == 1),
                                false, false, true, R_NilValue,

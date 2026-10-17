@@ -1,3 +1,21 @@
+# A model with an eta and a time-varying covariate, and its events as a data
+# frame, for the tests that the caller's translated table is left alone
+.etCallerMod <- function() {
+  rxode2({
+    cl <- tcl * exp(eta.cl) * (WT / 70)
+    d / dt(depot) <- -ka * depot
+    d / dt(center) <- ka * depot - cl / v * center
+    cp <- center / v
+  })
+}
+
+.etCallerData <- function() {
+  .e <- as.data.frame(et(amt = 100) |> et(c(0.5, 1, 2, 4, 8)))
+  .e$id <- 1
+  .e$WT <- ifelse(.e$time > 3, 75, 70)
+  .e
+}
+
 rxTest({
   # mostly tested in 'rxode2et'
   test_that("warfarin model", {
@@ -3063,5 +3081,32 @@ rxTest({
 
     invisible(rxode2::etTrans(.fixedRows(50, 1000), mod)) # warm up
     expect_lt(.minElapsed(.many), 3 * .minElapsed(.few))
+  })
+
+  test_that("rxSolve() and etTrans() leave the caller's translated table as it was", {
+    # each reference is built apart, so it shares nothing an in-place write
+    # would change; identical() compares the class's hidden translation too
+    .m <- .etCallerMod()
+    .p <- c(ka = 1, tcl = 2, v = 10, eta.cl = 0)
+    .d <- etTrans(.etCallerData(), .m, allTimeVar = TRUE)
+    .ref <- etTrans(.etCallerData(), .m, allTimeVar = TRUE)
+    expect_identical(.d, .ref)
+    invisible(suppressWarnings(rxSolve(.m, .p, .d)))
+    expect_identical(.d, .ref)
+    # translating again without allTimeVar makes a new table
+    .x <- etTrans(.d, .m, allTimeVar = FALSE)
+    expect_identical(.d, .ref)
+    expect_false(attr(class(.x), ".rxode2.lst")$allTimeVar)
+    # a single-level lotri omega reads the translation on another path
+    .d2 <- etTrans(.etCallerData(), .m)
+    .ref2 <- etTrans(.etCallerData(), .m)
+    invisible(suppressWarnings(rxSolve(
+      .m,
+      .p[-4],
+      .d2,
+      omega = lotri::lotri(lotri::lotri(eta.cl ~ 0.1) | id(nu = 100)),
+      nSub = 1
+    )))
+    expect_identical(.d2, .ref2)
   })
 })
