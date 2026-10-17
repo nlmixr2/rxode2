@@ -5446,12 +5446,31 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
       rx->nsim=1;
     }
   case 2: // DataFrame
-    // Convert to NumericMatrix
+    // Convert to NumericMatrix.  A column no model parameter reads (an id, a
+    // label) is converted only when it is numeric, and is otherwise left NA,
+    // unread; a character column a parameter reads is an error naming it.
     {
       unsigned int parDfi = rxSolveDat->parDf.size();
       rxSolveDat->parMat = NumericMatrix(rxSolveDat->nPopPar,parDfi);
+      std::vector<bool> used(parDfi, false);
+      for (int k = 0; k < rx->npars; ++k) {
+        int pos = _globals.gParPos[k];
+        if (pos > 0 && pos <= (int)parDfi) used[pos - 1] = true;
+      }
+      CharacterVector parNames = rxSolveDat->parDf.names();
       while (parDfi--){
-        rxSolveDat->parMat(_,parDfi)=NumericVector(rxSolveDat->parDf[parDfi]);
+        SEXP col = rxSolveDat->parDf[parDfi];
+        if (!used[parDfi] && !Rf_isNumeric(col) && !Rf_isLogical(col)) {
+          NumericMatrix::Column unread = rxSolveDat->parMat(_, parDfi);
+          std::fill(unread.begin(), unread.end(), NA_REAL);
+          continue;
+        }
+        if (TYPEOF(col) == STRSXP) {
+          std::string nm = as<std::string>(parNames[parDfi]);
+          rxSolveFree();
+          stop(_("'params' column '%s' is character; a model parameter needs numbers"), nm.c_str());
+        }
+        rxSolveDat->parMat(_,parDfi)=NumericVector(col);
       }
       rxSolveDat->parMat.attr("dimnames") = List::create(R_NilValue, rxSolveDat->parDf.names());
     }
