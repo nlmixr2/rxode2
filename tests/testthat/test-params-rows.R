@@ -120,7 +120,7 @@ rxTest({
     expect_equal(sd$params, sv$params)
     expect_equal(names(sd$counts), c("slvr", "dadt", "jac"))
     expect_equal(nrow(sd$counts), 3L)
-    # .DollarNames() builds them in C before `$` reaches the R builder
+    # and after .DollarNames() first
     sm <- rxSolve(m, d, params = cbind(k = 0.5, v = 2))
     expect_true("params" %in% utils::.DollarNames(sm, ""))
     expect_equal(sm$params, data.frame(k = 0.5, v = 2))
@@ -143,7 +143,7 @@ rxTest({
     expect_identical(sp6$params$sim.id, rep(1:2, each = 3))
     expect_identical(names(sp6$counts), c("sim.id", "id", "slvr", "dadt", "jac"))
     expect_identical(nrow(sp6$counts), 6L)
-    # .DollarNames() first builds them through C, which gives the same tables
+    # .DollarNames() first gives the same tables
     sm <- rxSolve(m, d, params = .p3)
     expect_true("params" %in% utils::.DollarNames(sm, ""))
     expect_identical(sm$params, sp$params)
@@ -276,6 +276,27 @@ rxTest({
         "give one row per subject, or drop the id column to use the row for all"
       )
     )
+  })
+
+  test_that("a named vector of many parameters is one row of $params by either route", {
+    .np <- 1500L
+    .m <- rxode2(paste0("param(", paste0("p", seq_len(.np), collapse = ", "), ")\nd/dt(x) <- -p1 * x"))
+    .p <- stats::setNames(seq_len(.np) / 1000, paste0("p", seq_len(.np)))
+    .want <- as.data.frame(as.list(.p), check.names = FALSE)
+    .s1 <- rxSolve(.m, et(0:2), params = .p, inits = c(x = 1))
+    expect_identical(.s1$params, .want)
+    .s2 <- rxSolve(.m, et(0:2), params = .p, inits = c(x = 1))
+    expect_true("params" %in% utils::.DollarNames(.s2, ""))
+    expect_identical(.s2$params, .want)
+  })
+
+  test_that("a model with no parameters has a 0 x 0 $params by either route", {
+    .m <- rxode2("d/dt(x) <- -x")
+    .s1 <- rxSolve(.m, et(0:2), inits = c(x = 1))
+    expect_identical(dim(.s1$params), c(0L, 0L))
+    .s2 <- rxSolve(.m, et(0:2), inits = c(x = 1))
+    expect_true("params" %in% utils::.DollarNames(.s2, ""))
+    expect_identical(.s2$params, .s1$params)
   })
 
   test_that("one subject takes its one row whatever its id", {

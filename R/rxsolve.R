@@ -4803,20 +4803,23 @@ solve.rxEt <- solve.rxSolve
       ((is.numeric(.parso) || is.integer(.parso)) && is.null(dim(.parso)))
   ) {
     .parNumeric <- if (is.null(.parso)) numeric(0) else as.numeric(.parso)
-    .vals <- numeric(0)
-    .nms <- character(0)
-    for (.i in seq_along(.ppos)) {
-      if (.ppos[[.i]] > 0) {
-        .vals <- c(.vals, if (.isIni) .mvIni[[.ppos[[.i]]]] else .parNumeric[[.ppos[[.i]]]])
-        .nms <- c(.nms, .pars[[.i]])
-      } else if (.ppos[[.i]] < 0) {
-        .vals <- c(.vals, .mvIni[[-.ppos[[.i]]]])
-        .nms <- c(.nms, .pars[[.i]])
-      }
-    }
-    .nms <- .rxSolveUpdateParNames(.nms, .env)
+    # a positive position is in the params (or the model's ini), a negative
+    # one in the model's ini, and 0 is a covariate or simulated parameter
+    .keep <- .ppos != 0
+    .pos <- .ppos[.keep]
+    .user <- .pos > 0
+    .vals <- numeric(length(.pos))
+    .vals[.user] <- unname((if (.isIni) .mvIni else .parNumeric)[.pos[.user]])
+    .vals[!.user] <- unname(.mvIni[-.pos[!.user]])
+    .nms <- .rxSolveUpdateParNames(.pars[.keep], .env)
     .single <- stats::setNames(.vals, .nms)
-    .dat <- as.data.frame(as.list(.single), check.names = FALSE)
+    # as.data.frame() of thousands of parameters takes most of a first `$`;
+    # this is the same one-row frame
+    .dat <- if (length(.single) > 0L) {
+      structure(as.list(.single), class = "data.frame", row.names = c(NA_integer_, -1L))
+    } else {
+      as.data.frame(as.list(.single), check.names = FALSE)
+    }
     assign(".params.single", .single, envir = .env)
     assign(".params.dat", .dat, envir = .env)
   } else {
