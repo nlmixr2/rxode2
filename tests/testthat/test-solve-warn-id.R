@@ -144,4 +144,38 @@ rxTest({
     .warnLabels(character(0), integer(0))
     expect_equal(.Call("_rxTestGetIdLabels", 0L, PACKAGE = "rxode2"), "Unknown")
   })
+
+  test_that("a dop853 step-limit warning gives its nmax and aggregates over subjects", {
+    .m <- rxode2({
+      d/dt(central) <- -0.1 * central
+    })
+    .ev <- et(amt = 100) |> et(seq(0, 200, by = 50)) |> et(id = 1:2)
+    .out <- capture.output(suppressWarnings(rxSolve(.m, .ev, method = "dop853", maxsteps = 5L)))
+    expect_identical(
+      grep("warning\\(s\\)", .out, value = TRUE),
+      "[exit of dop853, more than nmax = 5 steps are needed]: 2 warning(s) for subject(s): 1, 2"
+    )
+  })
+
+  test_that("the dop853 step-size and intdy warnings give one line with no value in it", {
+    .m <- rxode2({
+      y(0) <- y0
+      d/dt(y) <- y^2
+    })
+    # subject 2 blows up at t = 1; subject 1 does not
+    .ev <- et(seq(0, 2, by = 0.5)) |> et(id = 1:2)
+    .p <- data.frame(y0 = c(0.1, 1))
+    .out <- capture.output(suppressWarnings(rxSolve(.m, .ev, params = .p, method = "dop853")))
+    expect_identical(
+      grep("warning\\(s\\)", .out, value = TRUE),
+      "[exit of dop853, step size too small]: 1 warning(s) for subject(s): 2"
+    )
+    .out <- capture.output(suppressWarnings(rxSolve(.m, .ev, params = .p, method = "liblsoda")))
+    .line <- grep("intdy", .out, value = TRUE)
+    expect_length(.line, 1L)
+    expect_match(
+      .line,
+      "^\\[intdy -- t illegal \\(outside the last step\\)\\]: [1-9][0-9]* warning\\(s\\) for subject\\(s\\): 2$"
+    )
+  })
 })

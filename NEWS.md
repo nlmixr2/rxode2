@@ -1,3 +1,21 @@
+# rxode2 (development version)
+
+## Bug fixes
+
+- `etTrans()` now stops on a record whose `evid` is missing but that carries
+  dose information: a nonzero `amt`, or a `rate` or `dur` that is positive or
+  modeled (-1, -2), as a record with no `evid` column is read.  It used to keep
+  the record as an observation and drop the dose or infusion silently; with no
+  `evid` column at all such a record is still a dose.
+
+- The aggregated `dop853` step-limit warning now gives the real `nmax`, and it
+  and the `dop853` step-size and `intdy` warnings no longer print a value read
+  from no argument (an indeterminate number), so each aggregates over subjects
+  as one line.  The `etTrans()` rate and duration errors format the subject ID
+  as a string.  A model's `printf()` whose format does not match its arguments
+  (`printf("%d", x)` with a double `x`) now gives a `-Wformat` warning when the
+  model compiles; it compiles as before.
+
 # rxode2 5.1.8
 
 ## New features

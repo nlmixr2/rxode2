@@ -1,6 +1,8 @@
 #ifndef __RXODE2_SOLVE_WARN_H__
 #define __RXODE2_SOLVE_WARN_H__
 
+#include "rxPrintfFormat.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -27,7 +29,7 @@ extern "C" {
    Intended for non-stop warnings only. Anything that aborts the solve
    (Rf_error, hardfailure, etc.) must NOT route through this aggregator --
    those need to surface immediately, not be batched. */
-void rxSolveWarnPush(int id, const char *msg, ...);
+void rxSolveWarnPush(int id, const char *msg, ...) R_PRINTF_FORMAT(2, 3);
 void rxSolveWarnFlush(int maxIds);
 void rxSolveWarnReset(void);
 

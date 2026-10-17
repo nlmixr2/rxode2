@@ -14,7 +14,8 @@
 
 #define _(String) (String)
 
-void RSprintf(const char *format, ...);
+#include "rxPrintfFormat.h"
+void RSprintf(const char *format, ...) R_PRINTF_FORMAT(1, 2);
 
 int prja(struct lsoda_context_t * ctx, double *y)
 {

@@ -40,6 +40,7 @@
 #include "rxode2_altrep.h"
 #include "rxode2_df.h"
 #include "../inst/include/rxMemoryCalc.h"
+#include "rxSbufFormat.h"
 #define _(String) (String)
 #define rxModelVars(a) rxModelVars_(a)
 #define min2( a , b )  ( (a) < (b) ? (a) : (b) )
@@ -65,7 +66,8 @@ extern "C" void ensureRworkPool(int nCores, int lrw, int liw);
 SEXP rxSaveState_();         // defined in rxSerialize.cpp
 SEXP rxRestoreState_(SEXP pathSexp);      // defined in rxSerialize.cpp
 bool rxIsSerializeFile_(SEXP pathSexp);   // defined in rxSerialize.cpp
-extern "C" void RSprintf(const char *format, ...);
+#include "rxPrintfFormat.h"
+extern "C" void RSprintf(const char *format, ...) R_PRINTF_FORMAT(1, 2);
 extern "C" int getRxThreads(const int64_t n, const bool throttle);
 extern "C" double *global_InfusionRate(unsigned int mx);
 extern "C" void rxOptionsFree();
@@ -474,6 +476,7 @@ Function requireNamespace("requireNamespace", R_BaseNamespace);
 Environment cliNS = loadNamespace("cli");
 Function cliAlert0 = as<Function>(cliNS["cli_alert_info"]);
 
+extern "C" void cliAlert(const char *format, ...) R_PRINTF_FORMAT(1, 2);
 extern "C" void cliAlert(const char *format, ...) {
   va_list args;
   char buffer[256];
