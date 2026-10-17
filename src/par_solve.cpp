@@ -6116,6 +6116,9 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
     }
     ind->solvedIdx = i;
   }
+  // a failed subject has no mean: what accumulated before the failure is partial
+  // (reached only through nlmixr2est's ind_solve(), via setupLinH())
+  if (localBadSolve) return NA_REAL; // # nocov
   double correction;
   switch (rx->linCmtHmeanO) {
   case 1: // arithmetic mean
