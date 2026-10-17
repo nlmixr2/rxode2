@@ -7,31 +7,47 @@ rxTest({
   .faP <- c(ka = 1.2, k = 0.14, fd = 0.7, lg = 0.7)
   .faEv <- et(amt = 100, cmt = "depot") |> et(c(1, 2, 4, 8, 12))
 
-  test_that("f() and alag() sensitivities match the closed form for every driver with their duals", {
-    # closed form for a bolus F*amt landing at lg (every observation is after it)
-    .tt <- .faEv$time[is.na(.faEv$evid) | .faEv$evid == 0]
-    .depot <- deriv(~ fd * 100 * exp(-ka * (t - lg)), names(.faP), function.arg = c(names(.faP), "t"))
-    .center <- deriv(~ fd * 100 * ka / (ka - k) * (exp(-k * (t - lg)) - exp(-ka * (t - lg))),
-      names(.faP), function.arg = c(names(.faP), "t"))
-    .gD <- attr(do.call(.depot, c(as.list(.faP), list(t = .tt))), "gradient")
-    .gC <- attr(do.call(.center, c(as.list(.faP), list(t = .tt))), "gradient")
-    .known <- list()
-    for (.pn in names(.faP)) {
-      .known[[paste0("rx__sens_depot_BY_", .pn, "__")]] <- unname(.gD[, .pn])
-      .known[[paste0("rx__sens_center_BY_", .pn, "__")]] <- unname(.gC[, .pn])
+  # closed form for a bolus fd*100 landing at lg (every observation is after it)
+  .faKnown <- function(p, tt) {
+    .lg <- if ("lg" %in% names(p)) "lg" else "0"
+    .depot <- deriv(stats::as.formula(sprintf("~ fd * 100 * exp(-ka * (t - %s))", .lg)), names(p),
+      function.arg = c(names(p), "t"))
+    .center <- deriv(
+      stats::as.formula(sprintf("~ fd * 100 * ka / (ka - k) * (exp(-k * (t - %s)) - exp(-ka * (t - %s)))", .lg, .lg)),
+      names(p),
+      function.arg = c(names(p), "t")
+    )
+    .gD <- attr(do.call(.depot, c(as.list(p), list(t = tt))), "gradient")
+    .gC <- attr(do.call(.center, c(as.list(p), list(t = tt))), "gradient")
+    .ret <- list()
+    for (.pn in names(p)) {
+      .ret[[paste0("rx__sens_depot_BY_", .pn, "__")]] <- unname(.gD[, .pn])
+      .ret[[paste0("rx__sens_center_BY_", .pn, "__")]] <- unname(.gC[, .pn])
     }
-    # abs has no f()/alag() dual
-    for (.meth in c("rk4s", "dop853s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj")) {
-      .a <- rxSolveAdjointRk4(
-        .faTxt, .faEv,
-        params = .faP, calcSens = names(.faP), method = .meth,
-        atol = 1e-10, rtol = 1e-10, hmin = if (.meth == "rk4s") 0.001 else 0
-      )
-      .a <- .a[.a$time %in% .tt, , drop = FALSE]
-      # cvodesadj has no dF/dtheta dual
-      .cols <- if (.meth == "cvodesadj") grep("_BY_fd__$", names(.known), value = TRUE, invert = TRUE) else names(.known)
-      for (.cn in .cols) {
-        expect_lt(max(abs(.a[[.cn]] - .known[[.cn]])), 1e-6, label = paste(.meth, .cn))
+    .ret
+  }
+
+  test_that("f() and alag() sensitivities match the closed form for every driver with their duals", {
+    .tt <- .faEv$time[is.na(.faEv$evid) | .faEv$evid == 0]
+    .mods <- list(
+      # the dose lands inside the sweep
+      fAlag = list(txt = .faTxt, p = .faP),
+      # the dose lands at t0, where the backward sweep stops
+      f = list(txt = "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\nf(depot) <- fd", p = .faP[c("ka", "k", "fd")])
+    )
+    for (.nm in names(.mods)) {
+      .known <- .faKnown(.mods[[.nm]]$p, .tt)
+      # abs has no f()/alag() dual
+      for (.meth in c("rk4s", "dop853s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj")) {
+        .a <- rxSolveAdjointRk4(
+          .mods[[.nm]]$txt, .faEv,
+          params = .mods[[.nm]]$p, calcSens = names(.mods[[.nm]]$p), method = .meth,
+          atol = 1e-10, rtol = 1e-10, hmin = if (.meth == "rk4s") 0.001 else 0
+        )
+        .a <- .a[.a$time %in% .tt, , drop = FALSE]
+        for (.cn in names(.known)) {
+          expect_lt(max(abs(.a[[.cn]] - .known[[.cn]])), 1e-6, label = paste(.nm, .meth, .cn))
+        }
       }
     }
   })

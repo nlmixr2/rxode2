@@ -205,7 +205,8 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   std::vector<double> resetT;   // evid-3 reset times (costate jump: lambda := 0)
   // replace (type 5: lambda[c]:=0) / multiply (type 6: lambda[c]*=factor) events;
   // the backward sweep stops at each and applies the transpose costate jump.
-  struct cvEvent { double t; int cmt; int type; double factor; };
+  // type 0 (additive bolus): factor = F*amt (the landed amount), raw = amt
+  struct cvEvent { double t; int cmt; int type; double factor; double raw = 0.0; };
   std::vector<cvEvent> evJumps;
   std::vector<cvInfus> infusRec;   // modeled-rate infusion windows (rate dual)
   int _infusOnCmt = -1;
@@ -310,11 +311,12 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
             } else if (_whI == EVIDF_MULT) {
               evJumps.push_back({xout, _cmt, 6,
                 getAmt(ind, ind->id, _cmt, getDoseIndex(ind, ind->idx), xout, yp)});
-            } else if (_whI == 0 && op->adjDlagOff >= 0) {
-              // additive bolus in a model with a modeled alag(): record the
-              // (lagged) dose time so the backward can add the transversality
-              // mu += -F*amt*dlag_c/dtheta*(lambda^T F_X[:,c]).
-              evJumps.push_back({xout, _cmt, 0, getAmt(ind, ind->id, _cmt, getDose(ind, ind->ix[i]), xout, yp)});
+            } else if (_whI == 0 && (op->adjDlagOff >= 0 || op->adjDfOff >= 0)) {
+              // additive bolus: record the (lagged) dose time so the backward can
+              // add the modeled-F dual mu += amt*dF/dtheta*lambda_c and the alag
+              // transversality mu += -F*amt*dlag_c/dtheta*(lambda^T F_X[:,c]).
+              double _raw = getDose(ind, ind->ix[i]);
+              evJumps.push_back({xout, _cmt, 0, getAmt(ind, ind->id, _cmt, _raw, xout, yp), _raw});
             } else if ((_whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON) && op->adjDrateOff >= 0) {
               double _amt = getDose(ind, ind->ix[i]);
               infusRec.push_back({xout, R_PosInf, _cmt, 0.0, _amt,
@@ -412,6 +414,28 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   std::vector<double> dx0V;                         // parameter-dependent initial conditions
   rk4sIniDx0(op, ind, cSub, t0, eff, nBase, np, dx0V);
   const double *dx0P = dx0V.empty() ? NULL : dx0V.data();
+  // Duals of an additive bolus at te, with B holding the post-dose costate
+  // (dPhi/dy = I): modeled F adds amt*dF/dtheta*lambda_c, and a modeled alag
+  // adds -F*amt*dlag_c/dtheta*(lambda^T F_X[:,c]) at the post-dose primal.
+  auto bolusDual = [&](const cvEvent &ev) {
+    double *yq = bu.yq.data(), *A = bu.A.data();
+    hist.interp(ev.t, yq);
+    for (int ii = 0; ii < eff; ++ii) A[ii] = 0.0;
+    for (int ii = 0; ii < nBase; ++ii) A[ii] = yq[ii];
+    calc_lhs(cSub, ev.t, A, ind->lhs);
+    int c = ev.cmt;
+    if (op->adjDfOff >= 0) {
+      const double *dF = &ind->lhs[op->adjDfOff];
+      for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += ev.raw * dF[c * np + p] * NV_Ith_S(B, c);
+    }
+    if (op->adjDlagOff >= 0) {
+      const double *fx = &ind->lhs[bu.fxOff];
+      const double *dlag = &ind->lhs[op->adjDlagOff];
+      double sc = 0.0;
+      for (int ii = 0; ii < nBase; ++ii) sc += NV_Ith_S(B, ii) * fx[ii * nBase + c];
+      for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += -ev.factor * dlag[c * np + p] * sc;
+    }
+  };
   for (int oi = (int)obsT.size() - 1; bok && oi >= 0; --oi) {
     double ti = obsT[oi]; int solveIdx = obsIx[oi];
     double *out = getSolve(solveIdx);
@@ -446,18 +470,8 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
         int c = evJumps[segEv[s]].cmt; int ty = evJumps[segEv[s]].type;
         if (ty == 5) NV_Ith_S(B, c) = 0.0;                             // replace
         else if (ty == 6) NV_Ith_S(B, c) *= evJumps[segEv[s]].factor;  // multiply
-        else if (ty == 0) {                                            // additive-alag transversality
-          // F_X and dlag at the post-dose primal y(te+); lambda unchanged (dPhi/dy=I).
-          double *yq = bu.yq.data(), *A = bu.A.data();
-          hist.interp((double)te, yq);
-          for (int ii = 0; ii < eff; ++ii) A[ii] = 0.0;
-          for (int ii = 0; ii < nBase; ++ii) A[ii] = yq[ii];
-          calc_lhs(cSub, (double)te, A, ind->lhs);
-          const double *fx = &ind->lhs[bu.fxOff];
-          const double *dlag = &ind->lhs[op->adjDlagOff];
-          double amt = evJumps[segEv[s]].factor, sc = 0.0;
-          for (int ii = 0; ii < nBase; ++ii) sc += NV_Ith_S(B, ii) * fx[ii * nBase + c];
-          for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += -amt * dlag[c * np + p] * sc;
+        else if (ty == 0) {                                            // additive bolus duals
+          bolusDual(evJumps[segEv[s]]);
         } else {                                                       // ty==7: infusion off-boundary
           // mu += -(amt/R) * dR/dtheta * lambda_c(t_off).  factor = -(amt/R).
           double *yq = bu.yq.data(), *A = bu.A.data();
@@ -474,6 +488,10 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       if (!bok) break;
       CVodeSetStopTime(bmem, (sunrealtype)tStop);
       if (CVode(bmem, (sunrealtype)tStop, B, &tret, CV_NORMAL) < 0) { bok = 0; break; }
+      // a bolus at tStop itself (the t0 dose, or one right after a reset)
+      for (size_t e = 0; e < evJumps.size(); ++e)
+        if (evJumps[e].type == 0 && isSameTime(evJumps[e].t, tStop) && evJumps[e].t < ti - 1e-12)
+          bolusDual(evJumps[e]);
       // tStop is t0 or a reset; either way the state there is the initial condition
       for (int p = 0; p < np; ++p) {
         double ini = 0.0;
