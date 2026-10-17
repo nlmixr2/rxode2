@@ -26,6 +26,16 @@ rxTest({
       error = conditionMessage
     )
   }
+  # a solve with its own params, as .fsSolve() gives it
+  .nfSolve <- function(m, d, params, method) {
+    tryCatch(
+      {
+        .w <- capture_warnings(.o <- capture.output(.s <- rxSolve(m, d, params = params, method = method)))
+        list(d = as.data.frame(.s), w = .w, o = .o)
+      },
+      error = conditionMessage
+    )
+  }
   .fsReason <- function(ids) {
     paste0(
       "[solve error: Modeled rate requested in event table, but not in model; use 'rate(cmt) =']: ",
@@ -272,6 +282,32 @@ rxTest({
     expect_identical(
       grep("^\\[IDID", .o, value = TRUE),
       "[IDID=-2, larger nmax is needed]: 4 warning(s) for subject(s): 101, 102, 103, 104"
+    )
+  })
+
+  test_that("an adjoint method rxSolve() cannot run is named, with the reason", {
+    .d <- data.frame(ID = 1, TIME = c(0, 0, 1), EVID = c(1, 0, 0), AMT = c(1, 0, 0), CMT = "y")
+    .build <- "; build it with calcSens or rxode2::.rxAdjointExpand()"
+    # the stiff adjoint methods (and cvodesadj) size their factorization from
+    # the expanded system, so they cannot solve a plain model forward-only
+    .m <- rxode2("d/dt(y) <- -k * y")
+    for (.meth in c(.rxAdjointStiffMethods, "cvodesadj")) {
+      expect_identical(
+        .nfSolve(.m, .d, c(k = 1), .meth),
+        paste0("method='", .meth, "' cannot solve a model without the adjoint expansion", .build),
+        label = .meth
+      )
+    }
+    # the other adjoint methods solve it forward-only
+    expect_true(is.list(.nfSolve(.m, .d, c(k = 1), "rk4s")))
+    # sensitivity states without the expansion's Jacobian lhs
+    .ms <- rxode2("d/dt(y) <- -k * y\nd/dt(rx__sens_y_BY_k__) <- -k * rx__sens_y_BY_k__ - y")
+    expect_identical(
+      .nfSolve(.ms, .d, c(k = 1), "rk4s"),
+      paste0(
+        "method='rk4s' needs the adjoint expansion's Jacobian lhs (rx__adjFX_*, rx__adjFP_*) for the model's sensitivities",
+        .build
+      )
     )
   })
 
