@@ -191,4 +191,51 @@ rxTest({
       }
     }
   })
+
+  # One method per backward sweep: explicit RK, Rosenbrock, implicit RK, the
+  # explicit/Rosenbrock composite, liblsoda, CVODES and Adams-Bashforth.
+  .adjIniMethods <- c("rk4s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj", "abs")
+  .adjIniMods <- list(
+    one = list(
+      txt = "y(0) <- y0\nd/dt(y) <- -k*y",
+      ev = et(c(0, 0.5, 1, 2, 3)), p = c(k = 0.7, y0 = 3)
+    ),
+    two = list(
+      txt = "x(0) <- a*b\nd/dt(x) <- -k*x\nd/dt(z) <- k*x - k2*z",
+      ev = et(c(0, 0.5, 1, 2, 3)), p = c(a = 2, b = 1.5, k = 0.7, k2 = 0.3)
+    ),
+    reset = list(
+      txt = "y(0) <- y0\nd/dt(y) <- -k*y",
+      ev = et(c(0, 0.5, 1, 2.5, 3)) |> et(time = 2, evid = 3), p = c(k = 0.7, y0 = 3)
+    )
+  )
+
+  test_that("parameter-dependent initial conditions get their adjoint sensitivity", {
+    for (.nm in names(.adjIniMods)) {
+      .k <- .adjIniMods[[.nm]]
+      .fd <- .adjFd(.k$txt, .k$ev, .k$p, "liblsoda", tol = 1e-13)
+      for (.m in .adjIniMethods) {
+        # hmin sets the fixed step; it would only constrain the adaptive methods
+        .a <- rxSolveAdjointRk4(
+          .k$txt, .k$ev,
+          params = .k$p, calcSens = names(.k$p), method = .m,
+          atol = 1e-10, rtol = 1e-10, hmin = if (.m %in% c("rk4s", "abs")) 0.001 else 0
+        )
+        .a <- .a[.a$time %in% .k$ev$time[is.na(.k$ev$evid) | .k$ev$evid == 0], , drop = FALSE]
+        for (.cn in names(.fd)) {
+          expect_lt(max(abs(.a[[.cn]] - .fd[[.cn]])), 1e-6, label = paste(.nm, .m, .cn))
+        }
+      }
+    }
+  })
+
+  test_that("the initial-condition sensitivity matches its closed form", {
+    .tt <- c(0, 0.5, 1, 2, 3)
+    .a <- rxSolveAdjointRk4("y(0) <- y0\nd/dt(y) <- -k*y", et(.tt), params = c(k = 0.7, y0 = 3), calcSens = c("k", "y0"))
+    expect_equal(.a$rx__sens_y_BY_y0__, exp(-0.7 * .tt), tolerance = 1e-6)
+    expect_equal(.a$rx__sens_y_BY_k__, -.tt * 3 * exp(-0.7 * .tt), tolerance = 1e-6)
+    # no initial condition depends on a calcSens parameter: no extra lhs block
+    expect_identical(.rxAdjointExpand("y(0) <- 2\nd/dt(y) <- -k*y", "k")$dx0Off, -1L)
+    expect_gt(.rxAdjointExpand("y(0) <- y0\nd/dt(y) <- -k*y", "y0")$dx0Off, 0L)
+  })
 })

@@ -546,7 +546,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
                 }
         } }
       if (getEvid(ind, ind->ix[i]) == 3) {
-        // A reset wipes the state to (parameter-independent) inits, so dPhi/dy = 0
+        // A reset wipes the state to its initial conditions, so dPhi/dy = 0
         // and the backward costate zeroes here.  Record before handleEvid3 mutates
         // xout.
         resetT.push_back(xout); resetSeq.push_back(seq);
@@ -670,6 +670,9 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     }
   }
 
+  std::vector<double> dx0V;                         // parameter-dependent initial conditions
+  rk4sIniDx0(op, ind, cSub, t0, eff, nBase, np, dx0V);
+  const double *dx0P = dx0V.empty() ? NULL : dx0V.data();
   for (int oi = (int)obsT.size() - 1; bok && oi >= 0; --oi) {
     double ti = obsT[oi]; int solveIdx = obsIx[oi], si = obsSeq[oi];
     double *out = getSolve(solveIdx);
@@ -681,8 +684,8 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       if (resetSeq[r] < si && resetSeq[r] > stopSeq) {
         tStop = resetT[r]; stopSeq = resetSeq[r]; hasReset = 1;
       }
-    if (hasReset && isSameTime(ti, tStop)) {
-      for (int q = 0; q < nBase * np; ++q) out[sensOff + q] = 0.0;
+    if (hasReset && isSameTime(ti, tStop)) {   // the state is still its initial condition
+      for (int q = 0; q < nBase * np; ++q) out[sensOff + q] = dx0P ? dx0P[q] : 0.0;
       continue;
     }
     // events processed between the reset and the observation (at either end's
@@ -768,7 +771,12 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       if (!isSameTime(tStop, tCur)) {
         if (cvB_bwdTo(bmem, B, dkyB, &bu, tCur, tStop, bps) < 0) { bok = 0; break; }
       }
-      for (int p = 0; p < np; ++p) out[sensOff + k * np + p] = NV_Ith_S(B, nBase + p);
+      // tStop is t0 or a reset; either way the state there is the initial condition
+      for (int p = 0; p < np; ++p) {
+        double ini = 0.0;
+        if (dx0P) for (int q = 0; q < nBase; ++q) ini += NV_Ith_S(B, q) * dx0P[q * np + p];
+        out[sensOff + k * np + p] = NV_Ith_S(B, nBase + p) + ini;
+      }
       // Parameter-dependent delay: a jump [y_j] at t_e (bolus, replace,
       // multiply) jumps delay(y_j, tau_ij), and so f_i, at xi = t_e + tau_ij:
       //   mu += -lambda_i(xi) [f_i(xi+) - f_i(xi-)] dtau_ij/dp.
