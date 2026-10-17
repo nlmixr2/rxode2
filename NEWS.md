@@ -1,3 +1,14 @@
+# rxode2 (development version)
+
+## Bug fixes
+
+### Solving
+
+- A `params` data frame with a character column no parameter reads (a label,
+  a character id) now solves; it failed with "Not compatible with requested
+  type".  A character column that a parameter does read stops with an error
+  naming it.
+
 # rxode2 5.1.8
 
 ## New features
