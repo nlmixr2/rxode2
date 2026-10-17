@@ -678,7 +678,8 @@
 #' @export
 #' @keywords internal
 .rxDelaySensJumpMap <- function(model, calcSens) {
-  .m <- rxode2::rxS(rxode2::rxGetModel(model), TRUE, promoteLinSens = FALSE)
+  # numeric defaults (`tau <- 1.5`) stay symbolic so their derivatives survive
+  .m <- rxode2::rxS(rxode2::rxGetModel(model), FALSE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.m)
   .ns <- length(.st)
   .findDelays <- function(e, acc = list()) {
@@ -886,7 +887,8 @@
   if (length(.cmts) == 0L) {
     return(NULL)
   }
-  .m <- rxode2::rxS(rxode2::rxGetModel(model), TRUE, promoteLinSens = FALSE)
+  # numeric defaults (`tau <- 1.5`) stay symbolic so their derivatives survive
+  .m <- rxode2::rxS(rxode2::rxGetModel(model), FALSE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.m)
   .fjTxt <- function(s) {
     .f <- get0(paste0("rx__d_dt_", s, "__"), envir = .m, inherits = FALSE)
