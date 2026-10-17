@@ -1,3 +1,15 @@
+# rxode2 (development version)
+
+## Bug fixes
+
+### Solving
+
+- A one-row `params` data frame or matrix is now used for every subject, as
+  a named vector is; with more than one subject, the subjects after the first
+  were solved with `NA` parameters.  A one-row `params` with an id column
+  names one subject, so with more subjects `rxSolve()` now stops, naming the
+  id and the subjects in the data.
+
 # rxode2 5.1.8
 
 ## New features
