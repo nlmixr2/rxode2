@@ -38,7 +38,7 @@ rxTest({
         .m <- .mAdj
         .ref <- .fsSolve(.m, .fsData[.fsData$ID != 1, ], .meth, 1L)
       }
-      expect_true(is.list(.ref), label = paste(.meth, .ref))
+      expect_true(is.list(.ref), label = .meth)
       if (!is.list(.ref)) {
         next
       }
@@ -63,8 +63,8 @@ rxTest({
       }
       .kind <- if (identical(.m, .mAdj)) "adjoint" else "plain"
       .n[[.kind]] <- .n[[.kind]] + 1L
-      1L
     }
+    # a method added to rxSolve() needs these counts raised
     expect_identical(.n, c(plain = 164L, adjoint = 10L))
   })
 
