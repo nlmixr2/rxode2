@@ -11,6 +11,16 @@ static int cvode_rhs_trampoline(double t, double *y, double *ydot, void *data) {
   return dydt_liblsoda(t, y, ydot, data);
 }
 
+// cvode_ctx_integrate() for a subject: a CVode failure (a step it could not
+// take, a failed right-hand side) is the solver's failure, named after the
+// solve.  cvode_dense.cpp, included after this file, uses it too.
+static inline int cvodeIntegrateInd(cvode_ctx_t *ctx, double *yp, double t0, double tout,
+                                    rx_solving_options_ind *ind) {
+  int ret = cvode_ctx_integrate(ctx, yp, t0, tout);
+  if (ret < 0) rxSolverFail(ind);
+  return ret;
+}
+
 // Called from the handleSS dispatch (case 21).
 extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double xout,
                                     int *istate, rx_solving_options *op,
@@ -19,7 +29,7 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
   cvode_ctx_t *ctx = (cvode_ctx_t *)ctx_ptr;
   int neqOde = neq[0] - op->numLin - op->numLinSens;
   if (neqOde <= 0) { *xp_ptr = xout; *istate = 1; return; }
-  *istate = cvode_ctx_integrate(ctx, yp, *xp_ptr, xout);
+  *istate = cvodeIntegrateInd(ctx, yp, *xp_ptr, xout, ind);
   if (*istate >= 0) *xp_ptr = xout;
 }
 
@@ -118,7 +128,7 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
             if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
               preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
               if (neqOde > 0 && cvode_ctx) {
-                istate = cvode_ctx_integrate(cvode_ctx, yp, xp, ind->extraDoseNewXout);
+                istate = cvodeIntegrateInd(cvode_ctx, yp, xp, ind->extraDoseNewXout, ind);
               }
               copyLinCmt(neq, ind, op, yp);
               postSolve(neq, &istate, ind->rc, &i, yp, NULL, 0, false, ind, op, rx);
@@ -140,8 +150,8 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
               if (!isSameTime(xout, ind->extraDoseNewXout)) {
                 preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
                 if (neqOde > 0 && cvode_ctx) {
-                  istate = cvode_ctx_integrate(cvode_ctx, yp,
-                                               ind->extraDoseNewXout, xout);
+                  istate = cvodeIntegrateInd(cvode_ctx, yp,
+                                               ind->extraDoseNewXout, xout, ind);
                 }
                 copyLinCmt(neq, ind, op, yp);
                 postSolve(neq, &istate, ind->rc, &i, yp, NULL, 0, false, ind, op, rx);
@@ -156,7 +166,7 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
           if (neqOde > 0 && cvode_ctx) {
-            istate = cvode_ctx_integrate(cvode_ctx, yp, xp, xout);
+            istate = cvodeIntegrateInd(cvode_ctx, yp, xp, xout, ind);
           }
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &istate, ind->rc, &i, yp, NULL, 0, false, ind, op, rx);

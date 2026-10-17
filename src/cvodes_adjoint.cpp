@@ -141,19 +141,21 @@ static void cvB_record(cvHist *hist, cvFwdUser *u, double t, const double *yp) {
 
 // Step the forward primal from the integrator's current time to xout using
 // CV_ONE_STEP, recording each accepted step into the current history segment.
+// A CVode failure or the step guard fails the subject, which postSolve() then
+// replaces with NA.
 static void cvB_step(void *mem, cvFwdUser *u, N_Vector y, double *yp,
-                     double xout, int *rc, cvHist *hist) {
+                     double xout, rx_solving_options_ind *ind, cvHist *hist) {
   for (int k = 0; k < u->nBase; ++k) NV_Ith_S(y, k) = yp[k];
   CVodeSetStopTime(mem, (sunrealtype)xout);
   sunrealtype tcur = 0.0;
   int guard = 0, maxit = 10000000;
   while (true) {
     int flag = CVode(mem, (sunrealtype)xout, y, &tcur, CV_ONE_STEP);
-    if (flag < 0) { if (*rc == 0) *rc = -2019; return; }
+    if (flag < 0) { if (ind->rc[0] == 0) ind->rc[0] = -2019; rxSolverFail(ind); return; }
     for (int k = 0; k < u->nBase; ++k) yp[k] = NV_Ith_S(y, k);
     cvB_record(hist, u, (double)tcur, yp);
     if (flag == CV_TSTOP_RETURN || tcur >= xout) break;
-    if (++guard > maxit) { if (*rc == 0) *rc = -2019; return; }
+    if (++guard > maxit) { if (ind->rc[0] == 0) ind->rc[0] = -2019; rxSolverFail(ind); return; }
   }
 }
 
@@ -249,7 +251,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
                             xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
-            if (neqOde > 0) cvB_step(mem, &fu, y, yp, ind->extraDoseNewXout, ind->rc, &hist);
+            if (neqOde > 0) cvB_step(mem, &fu, y, yp, ind->extraDoseNewXout, ind, &hist);
             copyLinCmt(neq, ind, op, yp);
             const char *err_msg = "cvodesadj failed";
             postSolve(neq, &istate, ind->rc, &i, yp, &err_msg, 10, true, ind, op, rx);
@@ -275,7 +277,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
             didEvent = 0;
             if (!isSameTime(xout, ind->extraDoseNewXout)) {
               preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-              if (neqOde > 0) cvB_step(mem, &fu, y, yp, xout, ind->rc, &hist);
+              if (neqOde > 0) cvB_step(mem, &fu, y, yp, xout, ind, &hist);
               copyLinCmt(neq, ind, op, yp);
               const char *err_msg = "cvodesadj failed";
               postSolve(neq, &istate, ind->rc, &idx, yp, &err_msg, 10, false, ind, op, rx);
@@ -287,7 +289,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
         }
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
-          if (neqOde > 0) cvB_step(mem, &fu, y, yp, xout, ind->rc, &hist);
+          if (neqOde > 0) cvB_step(mem, &fu, y, yp, xout, ind, &hist);
           copyLinCmt(neq, ind, op, yp);
           const char *err_msg = "cvodesadj failed";
           postSolve(neq, &istate, ind->rc, &i, yp, &err_msg, 10, true, ind, op, rx);

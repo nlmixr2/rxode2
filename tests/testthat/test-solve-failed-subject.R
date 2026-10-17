@@ -295,18 +295,20 @@ rxTest({
     .p <- data.frame(ID = 101:104, k = c(1, 1, Inf, 1))
     .msg <- "some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'"
     .line <- paste0("[solve error: ", .solverFail, "]: 1 warning(s) for subject(s): 103")
-    # the solvers that print their own text first
+    # the solvers that print their own text first; those in .ownReason end
+    # with the solver's failure as well, since they carried the state on
     .own <- c(
       lsoda = "^DLSODA-",
       lsode = "^DLSODE-",
       bdf = "^DLSODE-",
+      liblsoda = "^\\[intdy -- t = 0 illegal\\]: 1 warning\\(s\\) for subject\\(s\\): 103$",
+      liblsodaadj = "^\\[intdy -- t = 0 illegal\\]: 1 warning\\(s\\) for subject\\(s\\): 103$",
       dop853 = "^\\[IDID=-3, step size becomes too small\\]: 1 warning\\(s\\) for subject\\(s\\): 103$"
     )
-    # solvers that do not fail the subject, or print no reason: liblsoda and
-    # liblsodaadj return NaN with their istate texts; cvode prints no reason;
-    # cvodesadj keeps the values; indLin returns NaN silently; vv integrates
-    # coordinate-momentum pairs, so a first-order model keeps its dose
-    .skip <- c("liblsoda", "liblsodaadj", "cvode", "cvodesadj", "indLin", "vv")
+    .ownReason <- c("lsoda", "liblsoda", "liblsodaadj")
+    # vv integrates coordinate-momentum pairs, so a first-order model keeps
+    # its dose
+    .skip <- "vv"
     .meths <- eval(formals(rxode2::rxSolve)$method)
     expect_true(all(.skip %in% .meths))
     .n <- 0L
@@ -339,6 +341,7 @@ rxTest({
       expect_identical(unique(.s$w), .msg, label = .meth)
       if (.meth %in% names(.own)) {
         expect_true(grepl(.own[[.meth]], .s$o[1]), label = .meth)
+        expect_identical(.s$o[length(.s$o)] == .line, .meth %in% .ownReason, label = .meth)
       } else {
         expect_identical(.s$o, .line, label = .meth)
       }

@@ -106,7 +106,7 @@ extern "C" void ind_cvode_dense_0(rx_solve *rx, rx_solving_options *op, int solv
             if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
               preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
               if (neqOde > 0 && cvode_ctx) {
-                istate = cvode_ctx_integrate(cvode_ctx, yp, xp, ind->extraDoseNewXout);
+                istate = cvodeIntegrateInd(cvode_ctx, yp, xp, ind->extraDoseNewXout, ind);
                 dense_initialized = false;
               }
               copyLinCmt(neq, ind, op, yp);
@@ -129,8 +129,8 @@ extern "C" void ind_cvode_dense_0(rx_solve *rx, rx_solving_options *op, int solv
               if (!isSameTime(xout, ind->extraDoseNewXout)) {
                 preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
                 if (neqOde > 0 && cvode_ctx) {
-                  istate = cvode_ctx_integrate(cvode_ctx, yp,
-                                               ind->extraDoseNewXout, xout);
+                  istate = cvodeIntegrateInd(cvode_ctx, yp,
+                                               ind->extraDoseNewXout, xout, ind);
                   dense_initialized = false;
                 }
                 copyLinCmt(neq, ind, op, yp);
@@ -170,7 +170,7 @@ extern "C" void ind_cvode_dense_0(rx_solve *rx, rx_solving_options *op, int solv
               }
               istate = ind->err ? -1 : 1;
             } else {
-              istate = cvode_ctx_integrate(cvode_ctx, yp, xp, xout);
+              istate = cvodeIntegrateInd(cvode_ctx, yp, xp, xout, ind);
               dense_initialized = false;
             }
           }
