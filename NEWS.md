@@ -32,6 +32,13 @@
 
 ### Solving
 
+- The parameters a par-loader injects into a solve are kept with that solve.
+  They were read from the loaders' buffer, which holds the last solve's, only
+  when the object's `$params` was first built, so after another solve, or
+  after `.DollarNames()` (tab completion) built `$params` first,
+  `rxInjectedPars()` returned `NULL` and a re-solve from the object used the
+  parameters given instead of the injected ones.
+
 - A one-row `params` data frame or matrix is now used for every subject, as
   a named vector is; with more than one subject, the subjects after the first
   were solved with `NA` parameters.  A one-row `params` with an id column

@@ -4859,17 +4859,6 @@ solve.rxEt <- solve.rxSolve
     ),
     envir = .env
   )
-  ## Parameters injected by par-loaders on this solve (e.g. trained neural-network
-  ## weights supplied through a loader hook rather than the params vector).  Saved
-  ## on the object so re-solving restores them even in a session without the
-  ## injecting package's buffer.  Indices are 0-based into the model params.
-  .inj <- tryCatch(.Call(`_rxode2_rxGetInjectedPars`), error = function(e) NULL)
-  if (!is.null(.inj) && length(.inj[[1L]]) > 0L) {
-    .injNames <- .pars[.inj[[1L]] + 1L]
-    assign(".injectedPars", stats::setNames(.inj[[2L]], .injNames), envir = .env)
-  } else {
-    assign(".injectedPars", NULL, envir = .env)
-  }
   invisible(TRUE)
 }
 
@@ -4888,12 +4877,17 @@ rxInjectedPars <- function(obj) {
   if (is.null(.env)) {
     return(NULL)
   }
-  .rxSolveMaterializeParams(obj, .env) # ensure materialized
-  if (exists(".injectedPars", envir = .env, inherits = FALSE)) {
-    get(".injectedPars", envir = .env, inherits = FALSE)
-  } else {
-    NULL
+  # list(index0 = <0-based model parameter indices>, value = <values>), kept on
+  # the solve's environment when the solve finished
+  .inj <- get0(".injectedPars.raw", envir = .env, inherits = FALSE)
+  if (is.null(.inj)) {
+    # an object solved by an rxode2 that read them when $params was first built
+    return(get0(".injectedPars", envir = .env, inherits = FALSE))
   }
+  if (length(.inj[[1L]]) == 0L) {
+    return(NULL)
+  }
+  stats::setNames(.inj[[2L]], rxModelVars(.env)$params[.inj[[1L]] + 1L])
 }
 
 #' Forced parameters carried by a model / ui
