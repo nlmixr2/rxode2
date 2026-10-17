@@ -40,6 +40,11 @@ rxTest({
       txt = "d/dt(y) <- -k*y\nif (t > 1) {label <- \"a\"} else {label <- \"b\"}\nz <- y\ny(0) <- 1",
       ev = .ev2, p = c(k = 1)
     ),
+    # a string output after a numeric one keeps its column position
+    stringLate = list(
+      txt = "d/dt(y) <- -k*y\nz <- y*2\nif (t > 1) {label <- \"a\"} else {label <- \"b\"}\nw <- z + 1\ny(0) <- 1",
+      ev = .ev2, p = c(k = 1)
+    ),
     mtime = list(
       txt = "d/dt(y) <- -k*y\nmtime(t1) <- 1.5\nw <- t1*k\ny(0) <- 1",
       ev = .ev2, p = c(k = 1)
@@ -132,7 +137,7 @@ rxTest({
       .base <- if (isTRUE(.k$dense)) "rk4s" else "rk4"
       .a <- rxSolveAdjointRk4(.k$txt, .k$ev, params = .k$p, calcSens = names(.k$p), hmin = 0.01)
       .r <- as.data.frame(rxSolve(rxode2(.k$txt), .k$ev, params = .k$p, method = .base, hmin = 0.01))
-      expect_identical(setdiff(names(.r), names(.a)), character(0), label = .nm)
+      expect_identical(names(.a)[!grepl("^rx__sens_", names(.a))], names(.r), label = .nm)
       expect_identical(grep("^(rx__adj|rxCaptureId)", names(.a), value = TRUE), character(0), label = .nm)
       for (.cn in setdiff(names(.r), "time")) {
         if (is.numeric(.r[[.cn]])) {
@@ -170,9 +175,31 @@ rxTest({
     .ret
   }
 
-  test_that("adjoint sensitivities of models with y(0), f() and alag() match finite differences", {
+  # closed form of a one-dose model with center(0) = c0, bolus fd*amt landing
+  # at lg; the gradient over the parameters in `p`
+  .pkClosed <- function(p, tt, fd = "1", lg = "0", c0 = "10") {
+    .e <- sprintf(
+      "~ %s * 100 * ka / (ka - k) * (exp(-k * (t - %s)) - exp(-ka * (t - %s))) + %s * exp(-k * t)",
+      fd, lg, lg, c0
+    )
+    .eD <- sprintf("~ %s * 100 * exp(-ka * (t - %s))", fd, lg)
+    .gC <- attr(do.call(deriv(stats::as.formula(.e), names(p), function.arg = c(names(p), "t")), c(as.list(p), list(t = tt))), "gradient")
+    .gD <- attr(do.call(deriv(stats::as.formula(.eD), names(p), function.arg = c(names(p), "t")), c(as.list(p), list(t = tt))), "gradient")
+    .ret <- list()
+    for (.pn in names(p)) {
+      .ret[[paste0("rx__sens_depot_BY_", .pn, "__")]] <- unname(.gD[, .pn])
+      .ret[[paste0("rx__sens_center_BY_", .pn, "__")]] <- unname(.gC[, .pn])
+    }
+    .ret
+  }
+
+  test_that("adjoint sensitivities of models with y(0), f() and alag() match the closed form", {
+    .tt <- c(1, 2, 4, 8, 12)
     .mods <- list(
-      ini = list(txt = "y(0) <- 2\nd/dt(y) <- -k*y", ev = .ev2, p = c(k = 0.5)),
+      ini = list(
+        txt = "y(0) <- 2\nd/dt(y) <- -k*y", ev = et(.tt), p = c(k = 0.5),
+        known = list(rx__sens_y_BY_k__ = -.tt * 2 * exp(-0.5 * .tt))
+      ),
       f = list(
         txt = "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\nf(depot) <- fd\ncenter(0) <- 10",
         ev = .evDose, p = c(ka = 1.2, k = 0.14, fd = 0.7)
@@ -182,12 +209,22 @@ rxTest({
         ev = .evDose, p = c(ka = 1.2, k = 0.14, lg = 0.7)
       )
     )
+    .mods$f$known <- .pkClosed(.mods$f$p, .tt, fd = "fd")
+    .mods$alag$known <- .pkClosed(.mods$alag$p, .tt, lg = "lg")
+    # one method per backward sweep; abs refuses f()/alag() sensitivities and
+    # cvodesadj gains its f() term separately
     for (.nm in names(.mods)) {
       .k <- .mods[[.nm]]
-      .a <- rxSolveAdjointRk4(.k$txt, .k$ev, params = .k$p, calcSens = names(.k$p), atol = 1e-11, rtol = 1e-11)
-      .fd <- .adjFd(.k$txt, .k$ev, .k$p, "rk4")
-      for (.cn in names(.fd)) {
-        expect_lt(max(abs(.a[[.cn]] - .fd[[.cn]])), 1e-6, label = paste(.nm, .cn))
+      for (.m in c("rk4s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj")) {
+        .a <- rxSolveAdjointRk4(
+          .k$txt, .k$ev,
+          params = .k$p, calcSens = names(.k$p), method = .m,
+          atol = 1e-10, rtol = 1e-10, hmin = if (.m == "rk4s") 0.001 else 0
+        )
+        .a <- .a[.a$time %in% .tt, , drop = FALSE]
+        for (.cn in names(.k$known)) {
+          expect_lt(max(abs(.a[[.cn]] - .k$known[[.cn]])), 1e-6, label = paste(.nm, .m, .cn))
+        }
       }
     }
   })
@@ -226,6 +263,30 @@ rxTest({
           expect_lt(max(abs(.a[[.cn]] - .fd[[.cn]])), 1e-6, label = paste(.nm, .m, .cn))
         }
       }
+    }
+  })
+
+  test_that("a subject observed only at its first time reads dX0/dtheta", {
+    .txt <- "y(0) <- y0\nd/dt(y) <- -k*y"
+    .p <- c(k = 0.7, y0 = 3)
+    # one subject, observed only at t0 (once and twice)
+    for (.ev in list(et(0), et(c(0, 0)))) {
+      for (.m in .adjIniMethods) {
+        .a <- rxSolveAdjointRk4(.txt, .ev, params = .p, calcSens = c("k", "y0"), method = .m)
+        expect_equal(.a$rx__sens_y_BY_y0__, rep(1, nrow(.a)), tolerance = 1e-12, label = .m)
+        expect_equal(.a$rx__sens_y_BY_k__, rep(0, nrow(.a)), tolerance = 1e-12, label = .m)
+      }
+    }
+    # three subjects, the second observed only at baseline
+    .ev <- rbind(
+      data.frame(id = 1L, time = c(0, 1, 2), evid = 0L),
+      data.frame(id = 2L, time = 0, evid = 0L),
+      data.frame(id = 3L, time = c(0, 0.5, 3), evid = 0L)
+    )
+    for (.m in .adjIniMethods) {
+      .a <- rxSolveAdjointRk4(.txt, .ev, params = .p, calcSens = c("k", "y0"), method = .m,
+        atol = 1e-10, rtol = 1e-10, hmin = if (.m %in% c("rk4s", "abs")) 0.001 else 0)
+      expect_equal(.a$rx__sens_y_BY_y0__, exp(-0.7 * .a$time), tolerance = 1e-6, label = .m)
     }
   })
 
