@@ -135,7 +135,7 @@ static inline void ab_do_steps(rx_solving_options_ind *ind, rx_solving_options *
     steps_taken++;
     if (steps_taken > max_steps) {
       ind->rc[0] = -2019;
-      ind->err = 1;
+      rxSolverFail(ind);
       break;
     }
     if (ind->err != 0) { ind->rc[0] = -2019; break; }

@@ -22,7 +22,7 @@ try {
     solver->solve_fixed(std::fabs(tint), std::fabs(dt), false);
   } catch (...) {
     if (ind->rc[0] == 0) ind->rc[0] = -2019;
-    ind->err = 1;
+    rxSolverFail(ind);
   }
 }
 

@@ -141,7 +141,7 @@ static inline void implicit_do_steps(rx_solving_options_ind *ind, rx_solving_opt
         solver.solve_adaptive(std::fabs(tint), std::fabs(dt), true);
     } catch (...) {
         if (ind->rc[0] == 0) ind->rc[0] = -2019;
-        ind->err = 1;
+        rxSolverFail(ind);
     }
     // Copy final state back to yp (required because we used set_sol instead of
     // set_sol_external to avoid Newton bridge cache staleness).

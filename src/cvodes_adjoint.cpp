@@ -493,12 +493,12 @@ extern "C" void ind_cvodesadj_0(rx_solve *rx, rx_solving_options *op, int solvei
   SUNContext sunctx = NULL;
   if (SUNContext_Create(SUN_COMM_NULL, &sunctx) != 0) {
     if (ind->rc[0] == 0) ind->rc[0] = -2019;
-    ind->err = 1;
+    rxSolverFail(ind);
     return;
   }
   if (!cvodesAdjSolveSubject(rx, op, ind, neq, 1, c_dydt, u_inis, sunctx)) {
     if (ind->rc[0] == 0) ind->rc[0] = -2019;
-    ind->err = 1;
+    rxSolverFail(ind);
   }
   SUNContext_Free(&sunctx);
   ind->solveTime += ((double)(clock() - tclk)) / CLOCKS_PER_SEC;

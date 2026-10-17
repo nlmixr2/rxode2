@@ -20,7 +20,7 @@ try {
     solver->solve_adaptive(std::fabs(tint), std::fabs(dt), true);
   } catch (...) {
     if (ind->rc[0] == 0) ind->rc[0] = -2019;
-    ind->err = 1;
+    rxSolverFail(ind);
   }
 }
 

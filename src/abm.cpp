@@ -42,7 +42,7 @@ static inline void abm_do_steps_N(rx_solving_options_ind *ind, rx_solving_option
       }
     } catch(const std::exception& e) {
       if (ind->rc[0] == 0) ind->rc[0] = -2019;
-      ind->err = 1;
+      rxSolverFail(ind);
       break;
     }
 
