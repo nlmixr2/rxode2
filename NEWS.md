@@ -2,23 +2,22 @@
 
 ## Bug fixes
 
-- `rxSolve(method = "dop853")` no longer returns zeros, without a warning, for
-  the subjects solved after one whose solve failed on the same thread (with
-  `dense = TRUE` it skipped their doses instead).  Each subject now tracks its
-  own failure, so the others solve as they should, and each subject that fails
-  in dop853 is named in its step-size message.  The shared failure flag was
-  read in every rxode2 release (the dense path since 5.1.1); lsoda and
-  liblsoda stopped reading it in 5.1.1.
+### Solving
 
-- The same held for `linCmt()` models: after a subject whose solve failed (a
-  data error such as a modeled rate in a model without `rate()`), the later
-  subjects on that thread returned zeros.  Their solves now run as usual.
+- A subject whose solve fails no longer changes the other subjects' results.
+  With `method = "dop853"` the subjects solved after it on the same thread
+  returned zeros (with `dense = TRUE`, skipped their doses); the methods
+  first released in 5.1.3 (`rk4`, `ck54`, `ab`, `dop5`, `euler`, `cvode`,
+  `vern65`, `ros4` and the others) left them out of the output; and the adjoint
+  methods `liblsodaadj` and `abs` gave them sensitivities of 0, while
+  `cvodesadj` left them out.  Every method now solves the other subjects as it
+  does without the failing one, which is `NA`.
 
-- With the boost odeint, fixed-step and other drivers added since 5.1.3 (`rk4`,
-  `ck54`, `ab`, `dop5`, `heun`, `euler`, `cvode`, `vern65`, `ros4` and most of
-  the others), one failing subject stopped the solve: the subjects after it
-  were left out of the output, with only "some ID(s) could not solve the ODEs
-  correctly".  Every subject is now solved and only the failing ones are `NA`.
+### linCmt() models
+
+- After a subject whose `linCmt()` solve failed (a data error such as a
+  modeled rate in a model without `rate()`), the later subjects on that thread
+  returned zeros, since 4.0.0.  They now solve as usual.
 
 # rxode2 5.1.8
 
