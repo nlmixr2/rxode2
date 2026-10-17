@@ -31,6 +31,19 @@
   `NA`, with the "could not solve" warning and its reason, as the other
   methods give it.
 
+- A state that is not finite after a step (and after any `stateTrimU` or
+  `stateTrimL`) now fails the subject in every method.  `liblsoda`,
+  `liblsodaadj` and `indLin` returned `NaN` with no warning (`liblsoda` with
+  its "intdy" texts).  A failed `cvodesadj` step now fails the subject, which
+  kept its last values with no warning, and `cvode` now gives its failure's
+  reason.
+
+- An adjoint method that `rxSolve()` cannot run on a model is now named in
+  the error, with the reason, as in "method='ros4s' cannot solve a model
+  without the adjoint expansion; build it with calcSens or
+  rxode2::.rxAdjointExpand()".  The error said "method='rk4s'" whatever the
+  method, and blamed missing Jacobian lhs.
+
 ### linCmt() models
 
 - After a subject whose `linCmt()` solve failed (a data error such as a
