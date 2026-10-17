@@ -341,7 +341,8 @@
 #'
 #' @inheritParams .rxDiscreteAdjointBuild
 #' @return list with `text` (expanded model text), `st`, `ns`, `np`,
-#'   `calcSens`, and lhs layout `fxOff` (=0), `fpOff` (=ns*ns), `nlhsAdj`.
+#'   `calcSens`, and lhs layout `fxOff` (=0), `fpOff` (=ns*ns), `nlhsAdj`, and
+#'   `dx0Off` (the initial-condition derivative block, -1 if none).
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
@@ -625,6 +626,31 @@
       }
     }
   }
+  # d(initial condition)/dtheta as lhs (rx__adjDx0_k_p__), for the term
+  # mu += lambda^T dX0/dtheta at the window start and at each reset (which
+  # restores the initial conditions); only emitted when one is nonzero.
+  .dx0 <- matrix("0", .ns, .np)
+  for (k in seq_len(.ns)) {
+    .iSE <- get0(paste0("rx_", .st[k], "_ini_0__"), envir = .model, inherits = FALSE)
+    if (!inherits(.iSE, "Basic")) {
+      next
+    }
+    for (p in seq_len(.np)) {
+      .d <- symengine::D(.iSE, .rxSEres(calcSens[p]))
+      .dx0[k, p] <- rxode2::rxFromSE(.d)
+    }
+  }
+  .hasDx0Adj <- any(.dx0 != "0")
+  .dx0Lines <- if (.hasDx0Adj) {
+    sprintf(
+      "rx__adjDx0_%d_%d__=%s",
+      rep(seq_len(.ns) - 1L, each = .np),
+      rep(seq_len(.np) - 1L, times = .ns),
+      as.vector(t(.dx0))
+    )
+  } else {
+    character(0)
+  }
   # STIFF (Rosenbrock) only: the stage matrix W = I/(h*gamma) - J depends on theta
   # and y through J, so the exact discrete adjoint needs rx__adjJp_ = dJ/dtheta
   # and rx__adjJy_ = dJ/dy (d2f/dy2, zero for state-linear f).
@@ -657,7 +683,7 @@
   }
   # lhs layout (contiguous from 0): fx, fp, df, [jp, jy if stiff],
   # [fxd, tau, dtau if DDE]  (dtau is the (i,j,p) dose-jump block), [dlag],
-  # [drate]; the carried output columns follow
+  # [drate], [dx0]; the carried output columns follow
   .afterStiff <- if (isTRUE(stiff)) {
     .ns * .ns + 2L * .ns * .np + .ns * .ns * .np + .ns * .ns * .ns
   } else {
@@ -666,6 +692,7 @@
   # dlag block is appended last (after the DDE blocks) so it shifts no offset
   .afterDelay <- .afterStiff + (if (.hasDelayAdj) 2L * .ns * .ns + .ns * .ns * .np else 0L)
   .dlagLen <- if (.hasLagAdj) .ns * .np else 0L
+  .drateLen <- if (.hasRateAdj) .ns * .np else 0L
   list(
     text = paste(
       c(
@@ -685,6 +712,7 @@
         .dtauLines,
         .dlagLines,
         .drateLines,
+        .dx0Lines,
         .carry$tail
       ),
       collapse = "\n"
@@ -704,6 +732,7 @@
     dtauOff = if (.hasDelayAdj) .afterStiff + 2L * .ns * .ns else -1L,
     dlagOff = if (.hasLagAdj) .afterDelay else -1L,
     drateOff = if (.hasRateAdj) .afterDelay + .dlagLen else -1L,
+    dx0Off = if (.hasDx0Adj) .afterDelay + .dlagLen + .drateLen else -1L,
     hasDelay = .hasDelayAdj,
     nlhsAdj = .ns * .ns + .ns * .np,
     sensOff = .ns

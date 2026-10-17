@@ -333,7 +333,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
               if (infusRec[w].cmt == _cmt && infusRec[w].tOff == R_PosInf) { infusRec[w].tOff = xout; break; }
         } }
       if (getEvid(ind, ind->ix[i]) == 3) {
-        // A reset wipes the state to (parameter-independent) inits, so dPhi/dy = 0
+        // A reset wipes the state to its initial conditions, so dPhi/dy = 0
         // and the backward costate zeroes here.  Record before handleEvid3 mutates
         // xout.
         resetT.push_back(xout);
@@ -409,6 +409,9 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   if (bok && (!BM || !BLS || CVodeSetLinearSolver(bmem, BLS, BM) < 0)) bok = 0;
   if (bok) CVodeSetMaxNumSteps(bmem, (long int)(op->mxstep > 0 ? op->mxstep : 50000));
 
+  std::vector<double> dx0V;                         // parameter-dependent initial conditions
+  rk4sIniDx0(op, ind, cSub, t0, eff, nBase, np, dx0V);
+  const double *dx0P = dx0V.empty() ? NULL : dx0V.data();
   for (int oi = (int)obsT.size() - 1; bok && oi >= 0; --oi) {
     double ti = obsT[oi]; int solveIdx = obsIx[oi];
     double *out = getSolve(solveIdx);
@@ -418,8 +421,8 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     double tStop = t0;
     for (size_t r = 0; r < resetT.size(); ++r)
       if (resetT[r] < ti - 1e-12 && resetT[r] > tStop) tStop = resetT[r];
-    if (ti <= tStop || isSameTime(ti, tStop)) {
-      for (int q = 0; q < nBase * np; ++q) out[sensOff + q] = 0.0;
+    if (ti <= tStop || isSameTime(ti, tStop)) {   // the state is still its initial condition
+      for (int q = 0; q < nBase * np; ++q) out[sensOff + q] = dx0P ? dx0P[q] : 0.0;
       continue;
     }
     // replace/multiply events strictly inside (tStop, ti), descending in time:
@@ -471,7 +474,12 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       if (!bok) break;
       CVodeSetStopTime(bmem, (sunrealtype)tStop);
       if (CVode(bmem, (sunrealtype)tStop, B, &tret, CV_NORMAL) < 0) { bok = 0; break; }
-      for (int p = 0; p < np; ++p) out[sensOff + k * np + p] = NV_Ith_S(B, nBase + p);
+      // tStop is t0 or a reset; either way the state there is the initial condition
+      for (int p = 0; p < np; ++p) {
+        double ini = 0.0;
+        if (dx0P) for (int q = 0; q < nBase; ++q) ini += NV_Ith_S(B, q) * dx0P[q * np + p];
+        out[sensOff + k * np + p] = NV_Ith_S(B, nBase + p) + ini;
+      }
     }
   }
 
