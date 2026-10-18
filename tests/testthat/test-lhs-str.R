@@ -492,4 +492,21 @@ b <- (a == \"<10\")*1 + (a == \">=10\")*2
     s <- as.data.frame(rxSolve(m3, data.frame(id = 1:2, time = 1, RACE = 1:2)))
     expect_equal(s$isB, c(0, 1))
   })
+
+  test_that("each string variable prunes to its own levels", {
+    # the levels are looked up by the variable's name, not the first entry
+    .sa <- list(lab0 = c("x"), label = c("a", "b"))
+    expect_equal(.rxPrune(str2lang("{lab0 <- 'x'; label <- 'b'}"), strAssign = .sa), "lab0<-1\nlabel<-2")
+    expect_equal(.rxPrune(str2lang("{z <- (label == 'b')}"), strAssign = .sa), "z<-(label==2)")
+    expect_equal(.rxPrune(str2lang("{z <- ('a' != label)}"), strAssign = .sa), "z<-(1!=label)")
+    # an unconditional string with an if/else string in one model
+    .m <- rxode2("d/dt(y) <- -k*y\nlab0 <- \"x\"\nif (t > 1) {label <- \"a\"} else {label <- \"b\"}\ny(0) <- 1")
+    # pruning gives valid model text (before, label kept its raw string)
+    .p <- rxode2(rxNorm(rxGetModel(rxPrune(.m))))
+    .ev <- et(c(0.5, 2))
+    .orig <- rxSolve(.m, .ev, params = c(k = 1))
+    .pruned <- rxSolve(.p, .ev, params = c(k = 1))
+    expect_equal(as.character(.orig$label), c("b", "a"))
+    expect_equal(as.numeric(.pruned$label), c(2, 1))
+  })
 })
