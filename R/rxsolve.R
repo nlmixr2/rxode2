@@ -3497,17 +3497,16 @@ rxSolve.default <- function(
     .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
   }
   # abs (Adams-Bashforth) has no adjoint duals for modeled dosing, so its
-  # sensitivities would leave out the f()/alag()/rate()/dur() terms.
+  # sensitivities would leave out the f()/alag()/rate()/dur() terms of a
+  # modifier that depends on a sensitivity parameter.
   if (.ctl$method == 208L && any(rxModelVars(object)$lhs == "rx__adjFX_0_0__")) {
-    .prop <- .rxEventSensProp(rxModelVars(object))
-    .bad <- c("f()", "alag()", "rate()", "dur()")[
-      lengths(.prop[c("fCmt", "lagCmt", "rateCmt", "durCmt")]) > 0L
-    ]
+    .bad <- .rxAdjointDoseDuals(object)
     if (length(.bad) > 0L) {
       stop(
         sprintf(
-          gettext("method='abs' cannot calculate sensitivities for a model with %s; use method='rk4s' or method='liblsodaadj'"),
-          paste(.bad, collapse = ", ")
+          gettext("method='abs' cannot calculate sensitivities through %s that depend on sensitivity parameters; use %s"),
+          paste(.bad, collapse = ", "),
+          if (any(.bad %in% c("rate()", "dur()"))) "method='rk4s'" else "method='rk4s' or method='liblsodaadj'"
         ),
         call. = FALSE
       )
