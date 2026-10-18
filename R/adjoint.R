@@ -93,6 +93,11 @@ rxSolveAdjoint <- function(
   atol = 1e-10,
   rtol = 1e-10
 ) {
+  .rxAdjRefuseEvents(events, c(3L, 4L), .rxAdjResetMsg)
+  .rxAdjRefuseEvents(
+    events, c(5L, 6L),
+    "the reference continuous adjoint (.rxAdjointSolve) does not apply replace/multiply events (evid = 5/6); use rxSolveAdjoint()"
+  )
   .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
   .model <- rxode2::rxS(rxode2::rxGetModel(object), FALSE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
@@ -186,6 +191,7 @@ rxSolveAdjoint <- function(
 #' @export
 #' @keywords internal
 .rxAdjointSolveBuild <- function(object, calcSens, events, adjStates = NULL) {
+  .rxAdjRefuseEvents(events, c(3L, 4L), .rxAdjResetMsg)
   .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
   .model <- rxode2::rxS(rxode2::rxGetModel(object), FALSE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
@@ -617,6 +623,7 @@ rxSolveAdjoint <- function(
 #' @export
 #' @keywords internal
 .rxAdjointGradBuild <- function(object, calcSens, pred, events, errModel = NULL) {
+  .rxAdjRefuseEvents(events, c(3L, 4L), .rxAdjResetMsg)
   .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
   .model <- rxode2::rxS(rxode2::rxGetModel(object), FALSE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
@@ -882,6 +889,37 @@ rxSolveAdjoint <- function(
   .ret
 }
 
+## Grid for rxode2AdjointSweep with one extra copy of a grid point for each
+## observation there, above the original.  An observation reads the
+## post-event state, but the sweep joins its covector after that index's jumps
+## and duals; on its own copy (a zero-width step above) it joins before them.
+## `ix` indexes the original grid, `obsK` is each observation's 0-based copy
+## index and `map` the 0-based new index of each original point.
+.rxAdjObsGrid <- function(nt, oidx) {
+  .cnt <- tabulate(oidx, nbins = nt)
+  .ix <- rep(seq_len(nt), times = 1L + .cnt)
+  .first <- match(seq_len(nt), .ix)
+  .used <- integer(nt)
+  .obsK <- integer(length(oidx))
+  for (.o in seq_along(oidx)) {
+    .j <- oidx[.o]
+    .used[.j] <- .used[.j] + 1L
+    .obsK[.o] <- .first[.j] + .used[.j] - 1L
+  }
+  list(ix = .ix, obsK = .obsK, map = .first - 1L)
+}
+
+## Stop for events a continuous-adjoint path cannot transpose
+.rxAdjRefuseEvents <- function(events, evids, msg) {
+  .ev <- as.data.frame(events)
+  if (!is.null(.ev$evid) && any(.ev$evid %in% evids, na.rm = TRUE)) {
+    stop(msg, call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+.rxAdjResetMsg <- "the continuous adjoint does not support a reset (evid = 3/4); use rxSolveAdjointRk4()"
+
 ## numeric dX0/dtheta (states x calcSens) from .rxAdjIniDerivs()
 .rxAdjIniDx0 <- function(dx0Str, st, calcSens, params) {
   .m <- matrix(0, length(st), length(calcSens))
@@ -1046,8 +1084,8 @@ rxSolveAdjoint <- function(
   }
 
   ## single backward sweep, descending piecewise between breakpoints
-  ## (observations and dose times): capture dose duals at lambda(tau+), then
-  ## apply the observation lambda jump, then integrate down.
+  ## (observations and dose times): join the observation covectors, capture
+  ## the dose duals at lambda(tau+), apply the event jumps, then integrate down.
   .breaks <- sort(unique(c(obsTimes, .doses$tau, .evR$time, .infT, 0)), decreasing = TRUE)
   .breaks <- .breaks[.breaks <= max(obsTimes) + 1e-12]
   .state <- numeric(0)
@@ -1060,6 +1098,14 @@ rxSolveAdjoint <- function(
   .gDose <- stats::setNames(numeric(length(calcSens)), calcSens)
   for (.bi in seq_along(.breaks)) {
     .tau <- .breaks[.bi]
+    ## an observation reads the post-event state: its covector joins lambda(tau+)
+    ## before this time's duals and jumps
+    for (.o in which(abs(obsTimes - .tau) < 1e-9)) {
+      .ci <- .cvec[[.o]]
+      for (i in .st) {
+        .state[.lam(i)] <- .state[.lam(i)] + .ci[[i]]
+      }
+    }
     ## bolus dose duals (skip infusions: rate != 0 handled separately)
     .dHere <- which(abs(.doses$tau - .tau) < 1e-9 & .doses$rate == 0)
     for (.j in .dHere) {
@@ -1100,12 +1146,6 @@ rxSolveAdjoint <- function(
         .state[.lam(.cc)] <- 0
       } else if (.evR$evid[.er] == 6L) {
         .state[.lam(.cc)] <- .evR$amt[.er] * .state[.lam(.cc)]
-      }
-    }
-    for (.o in which(abs(obsTimes - .tau) < 1e-9)) {
-      .ci <- .cvec[[.o]]
-      for (i in .st) {
-        .state[.lam(i)] <- .state[.lam(i)] + .ci[[i]]
       }
     }
     if (.bi < length(.breaks)) {
@@ -1149,7 +1189,7 @@ rxSolveAdjoint <- function(
   }
   .gTraj <- vapply(calcSens, function(p) .state[[paste0("rx__adjMu_", p, "__")]], numeric(1))
   ## initial-condition term: lambda(t0-)^T dX0/dtheta
-  .lamT0 <- vapply(.st, function(i) .state[[.lam(i)]], numeric(1))
+  .lamT0 <- .state[.lam(.st)]
   .gTraj <- .gTraj + as.vector(.lamT0 %*% .rxAdjIniDx0(build$dx0Str, .st, calcSens, params))
   .gExpl <- vapply(
     calcSens,
@@ -1343,13 +1383,16 @@ rxSolveAdjoint <- function(
   } else {
     list(integer(0), numeric(0), numeric(0))
   }
+  .g <- .rxAdjObsGrid(.nt, .oidx)
+  .cj[[1]] <- .g$map[.cj[[1]] + 1L]
+  .dual[[1]] <- .g$map[.dual[[1]] + 1L]
   .gTraj <- .Call(
     `_rxode2_rxAdjointSweep`,
-    .denseT,
-    .J,
-    .dP,
+    .denseT[.g$ix],
+    .J[.g$ix, , drop = FALSE],
+    .dP[.g$ix, , drop = FALSE],
     .cover,
-    as.integer(.oidx - 1L),
+    as.integer(.g$obsK),
     as.integer(.ns),
     as.integer(.np),
     .cj,
@@ -1369,8 +1412,5 @@ rxSolveAdjoint <- function(
     },
     numeric(1)
   )
-  ## an observation at t0 reads the initial conditions themselves; its covector
-  ## joins lambda after the sweep's duals at that grid index
-  .gIni <- as.vector(colSums(.cover[.oidx == 1L, , drop = FALSE]) %*% .dx0)
-  stats::setNames(.gTraj + .gExpl + .gErr + .gIni, calcSens)
+  stats::setNames(.gTraj + .gExpl + .gErr, calcSens)
 }
