@@ -211,11 +211,10 @@ rxTest({
     )
     .mods$f$known <- .pkClosed(.mods$f$p, .tt, fd = "fd")
     .mods$alag$known <- .pkClosed(.mods$alag$p, .tt, lg = "lg")
-    # one method per backward sweep; abs refuses f()/alag() sensitivities and
-    # cvodesadj gains its f() term separately
+    # one method per backward sweep; abs refuses f()/alag() sensitivities
     for (.nm in names(.mods)) {
       .k <- .mods[[.nm]]
-      for (.m in c("rk4s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj")) {
+      for (.m in c("rk4s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj")) {
         .a <- rxSolveAdjointRk4(
           .k$txt, .k$ev,
           params = .k$p, calcSens = names(.k$p), method = .m,
