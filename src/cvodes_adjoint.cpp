@@ -212,6 +212,17 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   int _infusOnCmt = -1;
   double *yp;
   hist.newSeg();   // segment 0 begins at t0
+  // Record boluses only when F or the lag time depends on a sensitivity
+  // parameter (a non-zero dF or dlag block); otherwise they add no dual.
+  bool bolusDuals = false;
+  if (op->adjDfOff >= 0 || op->adjDlagOff >= 0) {
+    std::vector<double> _a(eff, 0.0);
+    calc_lhs(cSub, t0, _a.data(), ind->lhs);
+    for (int q = 0; q < nBase * np && !bolusDuals; ++q) {
+      if (op->adjDfOff >= 0 && ind->lhs[op->adjDfOff + q] != 0.0) bolusDuals = true;
+      if (op->adjDlagOff >= 0 && ind->lhs[op->adjDlagOff + q] != 0.0) bolusDuals = true;
+    }
+  }
 
   // ================= forward primal loop (cloned from dop5.cpp) =================
   for (i = 0; i < ind->n_all_times; i++) {
@@ -311,7 +322,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
             } else if (_whI == EVIDF_MULT) {
               evJumps.push_back({xout, _cmt, 6,
                 getAmt(ind, ind->id, _cmt, getDoseIndex(ind, ind->idx), xout, yp)});
-            } else if (_whI == 0 && (op->adjDlagOff >= 0 || op->adjDfOff >= 0)) {
+            } else if (_whI == 0 && bolusDuals) {
               // additive bolus: record the (lagged) dose time so the backward can
               // add the modeled-F dual mu += amt*dF/dtheta*lambda_c and the alag
               // transversality mu += -F*amt*dlag_c/dtheta*(lambda^T F_X[:,c]).
@@ -445,8 +456,15 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     double tStop = t0;
     for (size_t r = 0; r < resetT.size(); ++r)
       if (resetT[r] < ti - 1e-12 && resetT[r] > tStop) tStop = resetT[r];
-    if (ti <= tStop || isSameTime(ti, tStop)) {   // the state is still its initial condition
-      for (int q = 0; q < nBase * np; ++q) out[sensOff + q] = dx0P ? dx0P[q] : 0.0;
+    if (ti <= tStop || isSameTime(ti, tStop)) {   // the initial conditions, plus a bolus at ti
+      for (int k = 0; k < nBase; ++k) {
+        for (int j = 0; j < nBase; ++j) NV_Ith_S(B, j) = (j == k) ? 1.0 : 0.0;
+        for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) = 0.0;
+        for (size_t e = 0; e < evJumps.size(); ++e)
+          if (evJumps[e].type == 0 && isSameTime(evJumps[e].t, ti)) bolusDual(evJumps[e]);
+        for (int p = 0; p < np; ++p)
+          out[sensOff + k * np + p] = (dx0P ? dx0P[k * np + p] : 0.0) + NV_Ith_S(B, nBase + p);
+      }
       continue;
     }
     // replace/multiply events strictly inside (tStop, ti), descending in time:
@@ -459,6 +477,9 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     for (int k = 0; bok && k < nBase; ++k) {
       for (int j = 0; j < nBase; ++j) NV_Ith_S(B, j) = (j == k) ? 1.0 : 0.0;
       for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) = 0.0;
+      // a bolus at ti itself: the observation reads the post-dose state
+      for (size_t e = 0; e < evJumps.size(); ++e)
+        if (evJumps[e].type == 0 && isSameTime(evJumps[e].t, ti)) bolusDual(evJumps[e]);
       if (CVodeReInit(bmem, (sunrealtype)ti, B) < 0) { bok = 0; break; }
       sunrealtype tret;
       // integrate ti -> each event (applying its costate jump) -> tStop; mu (the
