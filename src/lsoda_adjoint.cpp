@@ -50,7 +50,8 @@ struct lsAdjSeg {
   std::vector<double> y0;     // base state at segment start (post-event, yh[1])
   size_t stepBegin, stepEnd;  // [begin,end) range into lsAdjSteps
   // interior event that OPENED this segment (reconstructed from the event table):
-  //   0 additive bolus (dPhi/dy=I) | 3 reset (y:=inits, dPhi/dy=0) | 5 replace
+  //   0 additive bolus (dPhi/dy=I) | 3 reset (y:=inits, dPhi/dy=0) | 8 ss=1 bolus
+  //   (y:=Y_ss(p), dPhi/dy=0, adds lambda^T dY_ss/dp) | 5 replace
   //   (y[cmt]:=val, dPhi/dy row cmt=0) | 6 multiply (y[cmt]*=fac) | -1 none (seg 0).
   int evType, evCmt;
   double evFactor;           // multiply factor (type 6)
@@ -144,7 +145,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   // ---- forward: run the ordinary liblsoda solve, with recording hooks on -------
   lsAdjSteps.clear();
   lsAdjSegs.clear();
-  _lsSsKind = 0; _lsSsBolusIi = 0.0; _lsSsCmt = -1;   // reset the sticky ss snapshot
+  _lsSsKind = 0; _lsSsBolusIi = 0.0; _lsSsCmt = -1; _lsSsT = 0.0;   // reset the sticky ss snapshot
   _lsSsDur = _lsSsDur2 = _lsSsRate = _lsSsRate2 = 0.0;
   lsAdjNbase = nBase;
   lsAdjActive = true;                 // ind_liblsoda0 installs the ctx hooks
@@ -176,6 +177,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
         int _wh, _cmt, _wh100, _whI, _wh0; getWh(ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
         if (_cmt >= 0 && _cmt < nBase) {
           if (_whI == 0 && _wh0 == EVID0_PHANTOM) continue;   // a phantom dose is not applied
+          if (_whI == 0 && _wh0 == EVID0_SS) { lsAdjSegs[sg].evType = 8; break; }   // ss=1 bolus: state -> Y_ss(p)
           if (_whI == 0) {
             if (lsAdjSegs[sg].evType != 3) lsAdjSegs[sg].evType = 0;
             lsAdjSegs[sg].evCmt = _cmt; lsAdjSegs[sg].evAmt = getDose(ind, ind->ix[i]);
@@ -316,6 +318,8 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   std::vector<double> dx0V;                         // parameter-dependent initial conditions
   rk4sIniDx0(op, ind, cSub, lsAdjSegs[0].t0, eff, nBase, np, dx0V);
   const double *dx0P = dx0V.empty() ? NULL : dx0V.data();
+  // ss=1 steady-state IC term (built below, before any sweep runs)
+  rk4sSsIc lsIc; bool lsMono = false; rk4s_rec lsSsRec;
   auto sweepToStart = [&](int segIdx, double time) {
     for (int seg = segIdx; ; --seg) {
       const lsAdjSeg &Sg = lsAdjSegs[seg];
@@ -356,6 +360,10 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       } else if (Sg.evType == 6 && Sg.evCmt >= 0) {
         wSeed[Sg.evCmt] *= Sg.evFactor;
       }
+      else if (Sg.evType == 8) {            // interior ss=1: the state becomes Y_ss(p)
+        if (lsMono) lsIc.applyWindowIC(wSeed, mu);
+        for (int b = 0; b < nBase; ++b) wSeed[b] = 0.0;
+      }
       time = Sg.t0;
     }
   };
@@ -363,7 +371,10 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   // Continuous-infusion steady state (kind 2): seg-0 y0 is the constant Y_ss with
   // dY_ss/dp = -J^{-1} df/dp, so the missing IC contribution per observation is
   // -(J^{-T} wSeed)^T df/dp.
-  bool ssContLL = (_lsSsKind == 2) && nBase > 0 && !lsAdjSegs.empty();
+  // the steady state starts the window only when it was established at t0; an
+  // interior ss starts no window
+  bool ssAtStart = !lsAdjSegs.empty() && fabs(_lsSsT - lsAdjSegs[0].t0) < 1e-8;
+  bool ssContLL = (_lsSsKind == 2) && ssAtStart && nBase > 0 && !lsAdjSegs.empty();
   std::vector<double> ssFXc, ssFP; std::vector<int> ssPiv;
   if (ssContLL) {
     const double *fx0, *fp0;
@@ -377,12 +388,16 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   // ss==1 bolus / fixed-rate finite infusion: the missing IC is the monodromy
   // fixed point S_ss = (I-M)^{-1}B of one steady-state period.  Re-record that
   // period from y0 with a dop853 tableau and reuse the shared rk4sSsIc series.
-  rk4sSsIc lsIc; bool lsMono = false; rk4s_rec lsSsRec;
-  if (!ssContLL && op->adjoint && fxOff >= 0 && nBase > 0 && !lsAdjSegs.empty() && _lsSsKind == 1) {
+  // the segment the steady state opened (0 when it starts the window)
+  int lsSsSeg = -1;
+  for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg) {
+    if (fabs(lsAdjSegs[sg].t0 - _lsSsT) < 1e-8) { lsSsSeg = (int)sg; break; }
+  }
+  if (!ssContLL && lsSsSeg >= 0 && op->adjoint && fxOff >= 0 && nBase > 0 && _lsSsKind == 1) {
     int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
     int neq2[2]; neq2[0] = eff; neq2[1] = cSub;
     rksTableau Tss = rksGetTableau(200);            // dop853 explicit tableau
-    std::vector<double> y0(lsAdjSegs[0].y0.begin(), lsAdjSegs[0].y0.end()), ssScr;
+    std::vector<double> y0(lsAdjSegs[lsSsSeg].y0.begin(), lsAdjSegs[lsSsSeg].y0.end()), ssScr;
     y0.resize(eff, 0.0);
     bool recorded = false;
     if (_lsSsBolusIi > 0.0) {                        // bolus: flow from peak over ii
@@ -431,8 +446,8 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
         luSolveT(ssFXc.data(), nBase, ssPiv.data(), w.data());
         for (int p = 0; p < np; ++p) { double s = 0; for (int j = 0; j < nBase; ++j) s += w[j] * ssFP[j * np + p]; mu[p] -= s; }
       }
-      if (lsMono) lsIc.applyWindowIC(wSeed, mu);   // bolus / periodic-infusion monodromy IC
-      if (_lsSsKind == 0) rk4sAddIni(dx0P, wSeed.data(), mu.data(), nBase, np);   // window start t0
+      if (lsMono && ssAtStart) lsIc.applyWindowIC(wSeed, mu);   // bolus / periodic-infusion monodromy IC
+      if (_lsSsKind == 0 || !ssAtStart) rk4sAddIni(dx0P, wSeed.data(), mu.data(), nBase, np);   // window start t0
       for (int p = 0; p < np; ++p) out[sensOff + k * np + p] = mu[p];
     }
   }
