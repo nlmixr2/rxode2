@@ -1,3 +1,15 @@
+# rxode2 (development version)
+
+## Bug fixes
+
+### Solving
+
+- The forward sensitivity with respect to a parameter-dependent `delay()`
+  duration doubled the dose-induced jump at each breaking point when the
+  solve needed an automatically generated Jacobian (the default method
+  for a delay model), with the default or `eventSens = "fd"` event
+  sensitivities.  The jump is now applied once.
+
 # rxode2 5.1.8
 
 ## New features
