@@ -1085,6 +1085,11 @@
   that `f()` applies to a replace or multiply value is still missing from
   the adjoint sensitivities.
 
+- A steady-state (`ss = 1`) dose after the first record no longer gives
+  wrong adjoint sensitivities: in the `rk4s` family the observations
+  before it picked up the steady-state term, and in
+  `method = "liblsodaadj"` the observations after it lacked it.
+
 # rxode2 5.1.8
 
 ## New features
