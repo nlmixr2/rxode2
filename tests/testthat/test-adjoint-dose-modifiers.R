@@ -88,10 +88,10 @@ rxTest({
     .kinds <- list(
       list(txt = "f(depot) <- fd", p = c(fd = 0.7), ev = .faEv, what = "f()", use = .both),
       list(txt = "alag(depot) <- lg", p = c(lg = 0.7), ev = .faEv, what = "alag()", use = .both),
-      list(txt = "rate(depot) <- r", p = c(r = 40), ev = .rateEv, what = "rate()", use = "method='rk4s'"),
-      list(txt = "dur(depot) <- dd", p = c(dd = 2.5), ev = .durEv, what = "dur()", use = "method='rk4s'"),
+      list(txt = "rate(depot) <- r", p = c(r = 40), ev = .rateEv, what = "rate()", use = .both),
+      list(txt = "dur(depot) <- dd", p = c(dd = 2.5), ev = .durEv, what = "dur()", use = .both),
       list(txt = "f(depot) <- fd\nalag(depot) <- lg", p = c(fd = 0.7, lg = 0.7), ev = .faEv, what = "f(), alag()", use = .both),
-      list(txt = "f(depot) <- fd\nrate(depot) <- r", p = c(fd = 0.7, r = 40), ev = .rateEv, what = "f(), rate()", use = "method='rk4s'")
+      list(txt = "f(depot) <- fd\nrate(depot) <- r", p = c(fd = 0.7, r = 40), ev = .rateEv, what = "f(), rate()", use = .both)
     )
     for (.k in .kinds) {
       .p <- c(ka = 1.2, k = 0.14, .k$p)
@@ -198,6 +198,37 @@ rxTest({
         }
       }
     }
+  })
+
+  .infBase <- "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center"
+  .infTt <- c(0.5, 1, 1.5, 2, 4, 5.5, 8)
+  .infMeths <- c("rk4s", "dop853s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj")
+  .infCheck <- function(scen) {
+    for (.nm in names(scen)) {
+      .k <- scen[[.nm]]
+      .txt <- paste(.infBase, .k$txt, sep = "\n")
+      .ev <- .k$ev |> et(.infTt)
+      .fd <- .doseFd(.txt, .ev, .k$p, names(.k$p))
+      for (.meth in .infMeths) {
+        .a <- rxSolveAdjointRk4(.txt, .ev,
+          params = .k$p, calcSens = names(.k$p), method = .meth,
+          atol = 1e-11, rtol = 1e-11, hmin = if (.meth == "rk4s") 0.001 else 0
+        )
+        for (.cn in names(.fd)) {
+          expect_lt(max(abs(.a[[.cn]] - .fd[[.cn]])), 1e-6, label = paste(.nm, .meth, .cn))
+        }
+      }
+    }
+  }
+
+  test_that("f() with a modeled rate() or dur() infusion carries its dual in every driver", {
+    # F scales the rate of a dur() infusion and the duration of a rate() one
+    .infCheck(list(
+      fRate = list(txt = "f(depot) <- fd\nrate(depot) <- r", p = c(ka = 1.2, k = 0.14, fd = 0.7, r = 40),
+        ev = et(amt = 100, cmt = "depot", rate = -1)),
+      fDur = list(txt = "f(depot) <- fd\ndur(depot) <- dd", p = c(ka = 1.2, k = 0.14, fd = 0.7, dd = 2.5),
+        ev = et(amt = 100, cmt = "depot", rate = -2))
+    ))
   })
 
   test_that("the liblsodaadj self-check replay agrees with the adjoint for f() and alag()", {

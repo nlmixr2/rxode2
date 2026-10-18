@@ -58,10 +58,12 @@ struct lsAdjSeg {
   double evAmtF;             // F*amt, the amount that lands (for the modeled-alag mu)
   int infCmt;                // cmt of an active MODELED infusion window (-1 = none) -> the
                              // in-window forcing mu += h*durMult*dR/dp[cmt]*w[cmt] per step.
-  double infDurMult;         // forcing weight (1 for rate(), amt for dur())
+  double infDurMult;         // forcing weight (1 for rate(), F*amt for dur())
+  double infDfMult;          // dF forcing weight (raw amt/dur for dur(), 0 for rate())
   int offCmt;                // this segment STARTS at a modeled-infusion OFF boundary (-1
                              // none) -> off-transversality mu += offFac*dR/dp[cmt]*lam[cmt].
-  double offFac;             // -amt/R*durMult at the off boundary
+  double offFac;             // -F*amt/R*durMult at the off boundary
+  double offDfFac;           // dF off-boundary weight (raw amt for rate(), 0 for dur())
 };
 // Thread-local recording state (serial per subject; par is P6).
 static thread_local bool                 lsAdjActive = false;
@@ -86,7 +88,7 @@ extern "C" void lsAdjInitStep(struct lsoda_context_t *ctx) {
   s.stepBegin = lsAdjSteps.size();
   s.stepEnd = lsAdjSteps.size();
   s.evType = -1; s.evCmt = -1; s.evFactor = 1.0; s.evAmt = 0.0; s.evAmtF = 0.0; // from the event table
-  s.infCmt = -1; s.infDurMult = 0.0; s.offCmt = -1; s.offFac = 0.0;
+  s.infCmt = -1; s.infDurMult = 0.0; s.infDfMult = 0.0; s.offCmt = -1; s.offFac = 0.0; s.offDfFac = 0.0;
   lsAdjSegs.push_back(std::move(s));
 }
 
@@ -189,9 +191,11 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   }
 
   // Reconstruct modeled rate()/dur() infusion windows for the dR/dp dual: pair each
-  // ON event with its matching OFF and derive R = amt/(t_off-t_on).  Segments in
+  // ON event with its matching OFF and derive R = F*amt/(t_off-t_on).  Segments in
   // [t_on,t_off) get the in-window forcing; the segment at t_off gets the off-
-  // boundary transversality.  durMult = 1 for rate(), amt for dur().
+  // boundary transversality.  durMult = 1 for rate(), F*amt for dur().  A modeled F
+  // adds amtRaw/dur*dF to the dur() forcing and amtRaw*dF at the rate() off boundary
+  // (t_off = t_on + F*amt/rate).
   bool hasInfusion = false;
   for (int i = 0; i < ind->n_all_times; ++i) {
     int ev = getEvid(ind, ind->ix[i]);
@@ -202,7 +206,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
         _whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) hasInfusion = true;
     if ((_whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON) && _cmt >= 0 && _cmt < nBase && op->adjDrateOff >= 0) {
       double tOn = ind->timeThread[ind->ix[i]];
-      double amt = getDose(ind, ind->ix[i]);
+      double amtRaw = getDose(ind, ind->ix[i]);
       bool isDur = (_whI == EVIDF_MODEL_DUR_ON);
       // matching OFF event (same cmt, next off time > tOn)
       double tOff = R_PosInf;
@@ -214,12 +218,21 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
         }
       }
       if (!R_FINITE(tOff) || tOff - tOn < 1e-12) continue;
+      std::vector<double> _y(eff, 0.0);             // F evaluated at the window's start state
+      for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg)
+        if (fabs(lsAdjSegs[sg].t0 - tOn) < 1e-8) { for (int c = 0; c < nBase; ++c) _y[c] = lsAdjSegs[sg].y0[c]; break; }
+      double amt = getAmt(ind, ind->id, _cmt, amtRaw, tOn, _y.data());
       double R = amt / (tOff - tOn);
       double durMult = isDur ? amt : 1.0;
       for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg) {
         double t0s = lsAdjSegs[sg].t0;
-        if (t0s >= tOn - 1e-8 && t0s < tOff - 1e-8) { lsAdjSegs[sg].infCmt = _cmt; lsAdjSegs[sg].infDurMult = durMult; }
-        else if (fabs(t0s - tOff) < 1e-8) { lsAdjSegs[sg].offCmt = _cmt; lsAdjSegs[sg].offFac = -(amt / R) * durMult; }
+        if (t0s >= tOn - 1e-8 && t0s < tOff - 1e-8) {
+          lsAdjSegs[sg].infCmt = _cmt; lsAdjSegs[sg].infDurMult = durMult;
+          lsAdjSegs[sg].infDfMult = isDur ? amtRaw / (tOff - tOn) : 0.0;
+        } else if (fabs(t0s - tOff) < 1e-8) {
+          lsAdjSegs[sg].offCmt = _cmt; lsAdjSegs[sg].offFac = -(amt / R) * durMult;
+          lsAdjSegs[sg].offDfFac = isDur ? 0.0 : amtRaw;
+        }
       }
     }
   }
@@ -270,7 +283,10 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     // calc_lhs at this step's y, incl. the rx__adjDrate block).
     if (op->adjDrateOff >= 0) { int ic = lsAdjSegs[st.seg].infCmt;
       if (ic >= 0) { const double *dR = &lhs[op->adjDrateOff]; double dm = lsAdjSegs[st.seg].infDurMult;
-        for (int p = 0; p < np; ++p) mu[p] += h * dm * dR[ic * np + p] * w[ic]; } }
+        for (int p = 0; p < np; ++p) mu[p] += h * dm * dR[ic * np + p] * w[ic];
+        double dfm = lsAdjSegs[st.seg].infDfMult;
+        if (op->adjDfOff >= 0 && dfm != 0.0) { const double *dF = &lhs[op->adjDfOff];
+          for (int p = 0; p < np; ++p) mu[p] += h * dfm * dF[ic * np + p] * w[ic]; } } }
     for (int j = 1; j <= nq; ++j) for (int i1 = nq; i1 >= j; --i1) { double *dst = &adjPred[(size_t)(i1 + 1) * nBase]; const double *src = &adjPred[(size_t)i1 * nBase]; for (int c = 0; c < nBase; ++c) dst[c] += src[c]; }
     std::fill(lamFlat.begin(), lamFlat.end(), 0.0);
     for (int j = 1; j <= nq + 1; ++j) { double *lamj = &lamFlat[(size_t)j * nBase]; const double *pj = &adjPred[(size_t)j * nBase]; for (int c = 0; c < nBase; ++c) lamj[c] = pj[c]; }
@@ -322,7 +338,9 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       // with R -> mu += (-amt/R*durMult)*dR/dp[cmt]*lam_cmt(t_off).  (lhs holds calc_lhs
       // at this off segment's (t0,y0); lam_cmt(t_off) = lam_y0[cmt].)
       if (op->adjDrateOff >= 0 && Sg.offCmt >= 0) { const double *dR = &lhs[op->adjDrateOff]; int oc = Sg.offCmt;
-        for (int p = 0; p < np; ++p) mu[p] += Sg.offFac * dR[oc * np + p] * wSeed[oc]; }
+        for (int p = 0; p < np; ++p) mu[p] += Sg.offFac * dR[oc * np + p] * wSeed[oc];
+        if (op->adjDfOff >= 0 && Sg.offDfFac != 0.0) { const double *dF = &lhs[op->adjDfOff];
+          for (int p = 0; p < np; ++p) mu[p] += Sg.offDfFac * dF[oc * np + p] * wSeed[oc]; } }
       // event dPhi/dp explicit-parameter quadrature (every segment start): modeled
       // F -> mu += amt*dF/dp*lam_y0[c]; alag -> mu += -F*amt*dlag/dp*(lam_y0^T F_X[:,c]).
       if (Sg.evType == 0 && Sg.evCmt >= 0) {

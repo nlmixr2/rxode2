@@ -38,7 +38,7 @@ struct rk4s_dose { size_t step; int cmt; double amt; int type; double amtF = 0.0
 // A modeled-rate infusion window: active over steps [onStep, offStep) delivering
 // rate R into compartment cmt (amt total).  Drives the two-term infusion dual --
 // the in-window forcing quadrature and the off-boundary (offStep) transversality.
-struct rk4s_infus { size_t onStep, offStep; int cmt; double R, amt, durMult, amtRaw; };  // durMult: 1 (rate) or amt (dur); amtRaw = raw (non-F) dose for the dF dual
+struct rk4s_infus { size_t onStep, offStep; int cmt; double R, amt, durMult, amtRaw; bool isDur; };  // durMult: 1 (rate) or amt (dur); amtRaw = raw (non-F) dose for the dF dual
 
 // Model initial conditions y(0) = g(theta): the d g/dtheta block
 // (rx__adjDx0_k_p__, k*np+p) evaluated at the subject's first time t0, or empty
@@ -7640,7 +7640,7 @@ static const double *rk4sBuildInfusMaps(rx_solving_options *op, rx_solving_optio
   // dR/dtheta = durMult * (the emitted rx__adjDrate block).
   for (size_t w = 0; w < infus.size(); ++w) {
     const rk4s_infus &F = infus[w];
-    bool isDur = (F.durMult != 1.0);   // durMult = F*amt for dur, 1 for rate
+    bool isDur = F.isDur;
     double _dur = (F.R != 0.0) ? (F.amt / F.R) : 0.0;
     size_t off = (F.offStep == (size_t)-1) ? nStep : F.offStep;
     for (size_t _n = F.onStep; _n < off && _n < nStep; ++_n) {
@@ -8815,6 +8815,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               rk4s_infus _f; _f.onStep = rec.nStep(); _f.offStep = (size_t)-1;
               _f.cmt = _cmtD; _f.R = 0.0; _f.amt = _amt; _f.amtRaw = _amtRaw;
               _f.durMult = (_whI == EVIDF_MODEL_DUR_ON) ? _amt : 1.0;
+              _f.isDur = (_whI == EVIDF_MODEL_DUR_ON);
               infusRec.push_back(_f);
               _infusOnCmt = _cmtD;
             } else if ((_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) && op->adjDrateOff >= 0) {

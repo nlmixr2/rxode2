@@ -72,10 +72,11 @@ struct cvFwdUser {   // forward RHS user data
   std::vector<double> A, DADT;
 };
 // A modeled-rate infusion window (time-based) for the cvodesadj rate dual.
-struct cvInfus { double tOn, tOff; int cmt; double R, amt, durMult; };  // durMult: 1 (rate) or amt (dur)
+// amt is F*amt; durMult is 1 (rate) or F*amt (dur); amtRaw is the dose before F.
+struct cvInfus { double tOn, tOff; int cmt; double R, amt, durMult, amtRaw; bool isDur; };
 
 struct cvBwdUser {   // backward RHS user data
-  const cvHist *hist; int cSub, nBase, np, eff, fxOff, fpOff, drateOff;
+  const cvHist *hist; int cSub, nBase, np, eff, fxOff, fpOff, drateOff, dfOff;
   const std::vector<cvInfus> *infus;   // for the in-window forcing quadrature
   std::vector<double> A, yq;
   double *lhs;
@@ -124,6 +125,11 @@ static int cvB_bwd(sunrealtype t, N_Vector B, N_Vector Bd, void *ud) {
       if ((double)t >= F.tOn - 1e-12 && (double)t <= F.tOff + 1e-12) {
         double lc = NV_Ith_S(B, F.cmt);   // dR/dtheta = durMult * drate
         for (int p = 0; p < np; ++p) NV_Ith_S(Bd, n + p) += -F.durMult * drate[F.cmt * np + p] * lc;
+        // dur(): R = F*amt/dur also moves with a modeled F
+        if (u->dfOff >= 0 && F.isDur && F.tOff < R_PosInf && F.tOff > F.tOn) {
+          const double *dF = &u->lhs[u->dfOff]; double dfm = F.amtRaw / (F.tOff - F.tOn);
+          for (int p = 0; p < np; ++p) NV_Ith_S(Bd, n + p) += -dfm * dF[F.cmt * np + p] * lc;
+        }
       }
     }
   }
@@ -329,9 +335,11 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
               double _raw = getDose(ind, ind->ix[i]);
               evJumps.push_back({xout, _cmt, 0, getAmt(ind, ind->id, _cmt, _raw, xout, yp), _raw});
             } else if ((_whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON) && op->adjDrateOff >= 0) {
-              double _amt = getDose(ind, ind->ix[i]);
+              double _raw = getDose(ind, ind->ix[i]);
+              double _amt = getAmt(ind, ind->id, _cmt, _raw, xout, yp);
               infusRec.push_back({xout, R_PosInf, _cmt, 0.0, _amt,
-                                  (_whI == EVIDF_MODEL_DUR_ON) ? _amt : 1.0});
+                                  (_whI == EVIDF_MODEL_DUR_ON) ? _amt : 1.0, _raw,
+                                  _whI == EVIDF_MODEL_DUR_ON});
               _infusOnCmt = _cmt;   // R captured after handleEvid1
             } else if ((_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) && op->adjDrateOff >= 0) {
               for (size_t w = infusRec.size(); w-- > 0;)
@@ -403,13 +411,14 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   cvBwdUser bu;
   bu.hist = &hist; bu.cSub = cSub; bu.nBase = nBase; bu.np = np; bu.eff = eff;
   bu.fxOff = op->adjFxOff; bu.fpOff = op->adjFpOff; bu.lhs = ind->lhs;
-  bu.drateOff = op->adjDrateOff; bu.infus = &infusRec;
+  bu.drateOff = op->adjDrateOff; bu.dfOff = op->adjDfOff; bu.infus = &infusRec;
   bu.A.assign(eff, 0.0); bu.yq.assign(nBase, 0.0);
   // Off-boundary transversality events (type 7): stop at each infusion off-time.
   for (size_t w = 0; w < infusRec.size(); ++w)
     if (infusRec[w].tOff < R_PosInf && infusRec[w].R != 0.0)
       evJumps.push_back({infusRec[w].tOff, infusRec[w].cmt, 7,
-                         -(infusRec[w].amt / infusRec[w].R) * infusRec[w].durMult});
+                         -(infusRec[w].amt / infusRec[w].R) * infusRec[w].durMult,
+                         infusRec[w].isDur ? 0.0 : infusRec[w].amtRaw});
 
   N_Vector B = N_VNew_Serial(nAug, sunctx);
   void *bmem = CVodeCreate(CV_BDF, sunctx);
@@ -494,7 +503,8 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
         else if (ty == 0) {                                            // additive bolus duals
           bolusDual(evJumps[segEv[s]]);
         } else {                                                       // ty==7: infusion off-boundary
-          // mu += -(amt/R) * dR/dtheta * lambda_c(t_off).  factor = -(amt/R).
+          // mu += -(F*amt/R)*durMult * dR/dtheta * lambda_c(t_off) (factor), plus
+          // amtRaw*dF/dtheta*lambda_c for rate(), whose t_off = t_on + F*amt/R (raw).
           double *yq = bu.yq.data(), *A = bu.A.data();
           hist.interp((double)te, yq);
           for (int ii = 0; ii < eff; ++ii) A[ii] = 0.0;
@@ -503,6 +513,10 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
           const double *drate = &ind->lhs[op->adjDrateOff];
           double fac = evJumps[segEv[s]].factor, lc = NV_Ith_S(B, c);
           for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += fac * drate[c * np + p] * lc;
+          if (op->adjDfOff >= 0 && evJumps[segEv[s]].raw != 0.0) {
+            const double *dF = &ind->lhs[op->adjDfOff]; double raw = evJumps[segEv[s]].raw;
+            for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += raw * dF[c * np + p] * lc;
+          }
         }
         if (CVodeReInit(bmem, (sunrealtype)te, B) < 0) { bok = 0; break; }
       }
