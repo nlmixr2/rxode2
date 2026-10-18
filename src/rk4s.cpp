@@ -63,6 +63,21 @@ static inline void rk4sAddIni(const double *dx0, const double *lam, double *mu, 
   }
 }
 
+// A subject that took no forward step (only records at its first time) is
+// still at its initial conditions: every observation's sensitivity is dX0/dp
+// (left at 0 when no initial condition depends on a calcSens parameter).
+static inline void rk4sIniOnlyFill(rx_solving_options *op, rx_solving_options_ind *ind, int cSub,
+                                   int nBase, int np, int sensOff) {
+  std::vector<double> dx0;
+  rk4sIniDx0(op, ind, cSub, getAllTimes(ind, 0), rxEffNeq(ind, op), nBase, np, dx0);
+  if (dx0.empty()) return;
+  for (int i = 0; i < ind->n_all_times; ++i) {
+    if (!isObs(getEvid(ind, ind->ix[i]))) continue;
+    double *out = getSolve(i);
+    for (int q = 0; q < nBase * np; ++q) out[sensOff + q] = dx0[q];
+  }
+}
+
 // Apply the transpose event jumps at backward step n.  On entry lamR = lambda_n+
 // (post-RK-transpose, pre-jump); on exit lamR = lambda_n (= (dPhi/dy)^T lambda_n+).
 //   additive (dPhi/dy = I): lambda unchanged; mu += amt * dF/dp * lambda[c].
@@ -7899,7 +7914,7 @@ static void ros_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_o
                               const std::vector<rk4s_infus> &infus,
                               const std::vector<size_t> &boundaryDose,
                               rk4sSsIc *ssic = NULL) {
-  size_t nStep = rec.nStep(); if (nStep == 0) return;
+  size_t nStep = rec.nStep(); if (nStep == 0) { rk4sIniOnlyFill(op, ind, cSub, nBase, np, sensOff); return; }
   int eff = rxEffNeq(ind, op); int s = T.s; int nfx = nBase*nBase, nfp = nBase*np;
   // precompute per step: factored W (+piv); per stage: F_X(u_i), F_p(u_i).
   std::vector<double> Wf(nStep*nfx); std::vector<int> pivf(nStep*nBase);
@@ -8004,7 +8019,7 @@ static void radau_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving
                                 const std::vector<rk4s_infus> &infus,
                                 const std::vector<size_t> &boundaryDose,
                                 rk4sSsIc *ssic = NULL) {
-  size_t nStep = rec.nStep(); if (nStep == 0) return;
+  size_t nStep = rec.nStep(); if (nStep == 0) { rk4sIniOnlyFill(op, ind, cSub, nBase, np, sensOff); return; }
   int eff = rxEffNeq(ind, op); int s = T.s, n = nBase, sn = s*n; int nfx = n*n, nfp = n*np;
   std::vector<double> Mf(nStep*sn*sn); std::vector<int> pivf(nStep*sn);
   std::vector<double> FX(nStep*s*nfx), FP(nStep*s*nfp);
@@ -8084,7 +8099,7 @@ static void composite_backward_fill(rx_solve *rx, rx_solving_options *op, rx_sol
                                     const std::vector<rk4s_infus> &infus,
                                     const std::vector<size_t> &boundaryDose,
                                     rk4sSsIc *ssic = NULL) {
-  size_t nStep = rec.nStep(); if (nStep == 0) return;
+  size_t nStep = rec.nStep(); if (nStep == 0) { rk4sIniOnlyFill(op, ind, cSub, nBase, np, sensOff); return; }
   int eff = rxEffNeq(ind, op), n = nBase, nfx = n*n, nfp = n*np;
   int jpOff = op->adjJpOff, jyOff = op->adjJyOff, njp = nfx*np, njy = nfx*n;
   std::vector<double> Ascratch(eff, 0.0);
@@ -8189,7 +8204,10 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
                                int ssMdl = 0, double ssMdlAmt = 0.0, double ssMdlR = 0.0,
                                int ssMdlCmt = -1, size_t ssMdlOnSteps = 0, double ssMdlAmtRaw = 0.0) {
   size_t nStep = rec.nStep();
-  if (nStep == 0) return;
+  if (nStep == 0) {
+    rk4sIniOnlyFill(op, ind, cSub, nBase, np, sensOff);
+    return;
+  }
   if (rec.composite) {
     // Build the ss IC (recorded with the composite's primary explicit tableau T,
     // e.g. dop853) and hand it to the composite fill so ss dosing gets the same
