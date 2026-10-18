@@ -145,6 +145,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   lsAdjSteps.clear();
   lsAdjSegs.clear();
   _lsSsKind = 0; _lsSsBolusIi = 0.0; _lsSsCmt = -1; _lsSsT = 0.0;   // reset the sticky ss snapshot
+  _lsSsFixed = 0; _lsSsFixW = 0.0;
   _lsSsDur = _lsSsDur2 = _lsSsRate = _lsSsRate2 = 0.0;
   lsAdjNbase = nBase;
   lsAdjActive = true;                 // ind_liblsoda0 installs the ctx hooks
@@ -377,7 +378,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     rksTableau Tss = rksGetTableau(200);            // dop853 explicit tableau
     std::vector<double> y0(lsAdjSegs[lsSsSeg].y0.begin(), lsAdjSegs[lsSsSeg].y0.end()), ssScr;
     y0.resize(eff, 0.0);
-    bool recorded = false;
+    bool recorded = false; size_t lsSsOnSteps = 0;
     if (_lsSsBolusIi > 0.0) {                        // bolus: flow from peak over ii
       rks_step_interval(ind, op, c_dydt, neq2, Tss, neqOde, nBase, y0.data(), 0.0, _lsSsBolusIi, &lsSsRec, ssScr);
       recorded = true;
@@ -385,6 +386,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       double savedR = ind->InfusionRate[_lsSsCmt], t = 0.0;
       if (_lsSsDur > 0.0) { ind->InfusionRate[_lsSsCmt] = _lsSsRate;
         rks_step_interval(ind, op, c_dydt, neq2, Tss, neqOde, nBase, y0.data(), t, t + _lsSsDur, &lsSsRec, ssScr); t += _lsSsDur; }
+      lsSsOnSteps = lsSsRec.nStep();
       if (_lsSsDur2 > 0.0) { ind->InfusionRate[_lsSsCmt] = _lsSsRate2;
         rks_step_interval(ind, op, c_dydt, neq2, Tss, neqOde, nBase, y0.data(), t, t + _lsSsDur2, &lsSsRec, ssScr); }
       ind->InfusionRate[_lsSsCmt] = savedR;
@@ -395,6 +397,12 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       lsIc.build(cSub, ind, op, lsSsRec, fxOff, fpOff, eff, Asc,
                  &lsSsRec, NULL, NULL, NULL, NULL, NULL, NULL, NULL, Tss, nBase, np, 0);
       lsMono = lsIc.haveMono;
+      // a fixed-rate/duration ss infusion with a modeled F: the period's dF terms
+      if (lsMono && _lsSsBolusIi <= 0.0 && _lsSsFixed != 0) {
+        rk4s_ss1Ev E; E.inf = true; E.infCmt = _lsSsCmt; E.onSteps = lsSsOnSteps;
+        E.fixed = _lsSsFixed; E.fixW = _lsSsFixW;
+        lsIc.haveWsFC = lsIc.makeForce(cSub, ind, op, lsSsRec, E, Asc, lsIc.wsFC, false);
+      }
       // an ss bolus's bioavailability enters every period's dose (no separate
       // dose term here, so from the first)
       if (lsMono && _lsSsBolusIi > 0.0) {

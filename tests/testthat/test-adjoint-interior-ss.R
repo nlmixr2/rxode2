@@ -48,6 +48,14 @@ rxTest({
           et(c(1, 3, 4.5, 6, 8, 12, 17))),
       contSsOnly = list(txt = .txt, p = .p,
         ev = et(amt = 0, rate = 50, cmt = "depot", time = 5, ss = 1) |> et(c(0, 1, 3, 4.5, 6, 8, 12, 17))),
+      # a fixed-duration infusion, and one longer than its interval
+      durSsAtStart = list(txt = .txt, p = .p,
+        ev = et(amt = 100, dur = 2, cmt = "depot", ss = 1, ii = 12) |> et(c(1, 3, 4.5, 6, 7, 8, 12, 17))),
+      durSs = list(txt = .txt, p = .p,
+        ev = et(amt = 50, cmt = "depot") |> et(amt = 100, dur = 2, cmt = "depot", time = 5, ss = 1, ii = 12) |>
+          et(c(1, 3, 4.5, 6, 7, 8, 12, 17))),
+      longDurSs = list(txt = .txt, p = .p,
+        ev = et(amt = 100, dur = 15, cmt = "depot", ss = 1, ii = 12) |> et(c(1, 3, 4.5, 6, 7, 8, 12, 17))),
       # F scales every period's dose of an ss bolus
       ssF = list(txt = .txtF, p = .pF,
         ev = et(amt = 50, cmt = "depot") |> et(amt = 100, cmt = "depot", time = 5, ss = 1, ii = 12) |>

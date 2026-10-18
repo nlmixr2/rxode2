@@ -3017,6 +3017,11 @@ static thread_local double _adjSSinfDur = 0.0, _adjSSinfDur2 = 0.0, _adjSSinfRat
 static thread_local int    _adjSSinfModeled = 0;
 static thread_local double _adjSSinfAmt = 0.0;      // F-adjusted (F*amt)
 static thread_local double _adjSSinfAmtRaw = 0.0;   // raw (non-F) amt, for the dF dual
+// FIXED-rate (1) or fixed-duration (2) ss infusion with a modeled F: F stretches a
+// fixed-rate ON phase (dF weight: the raw amount at the ON->OFF boundary) and
+// scales a fixed-duration rate (dF weight: the raw rate over the ON phase).
+static thread_local int    _adjSSinfFixed = 0;
+static thread_local double _adjSSinfFixW = 0.0;
 // STICKY snapshot of the ss handoff for the liblsodaadj backward fill: the
 // forward loop calls handleSS again for every addl-expanded dose (even under
 // addlDropSs), and each entry RESETS the live handoff -- so the driver snapshots
@@ -3027,12 +3032,15 @@ static thread_local double _lsSsBolusIi = 0.0;
 static thread_local int    _lsSsCmt = -1;
 static thread_local double _lsSsDur = 0.0, _lsSsDur2 = 0.0, _lsSsRate = 0.0, _lsSsRate2 = 0.0;
 static thread_local double _lsSsT = 0.0;       // time the snapshot's steady state was established
+static thread_local int    _lsSsFixed = 0;     // _adjSSinfFixed / _adjSSinfFixW of the snapshot
+static thread_local double _lsSsFixW = 0.0;
 static inline void lsAdjSnapshotSs(double t) {
   // called right after an ss handleSS while liblsoda recording is active
   if (_lsSsKind == 0 && (_adjSSbolusIi > 0.0 || _adjSSinfKind != 0)) _lsSsT = t;
   if (_adjSSbolusIi > 0.0) { _lsSsKind = 1; _lsSsBolusIi = _adjSSbolusIi; }
   else if (_adjSSinfKind == 1) { _lsSsKind = 1; _lsSsBolusIi = 0.0; _lsSsCmt = _adjSSinfCmt;
-    _lsSsDur = _adjSSinfDur; _lsSsDur2 = _adjSSinfDur2; _lsSsRate = _adjSSinfRate; _lsSsRate2 = _adjSSinfRate2; }
+    _lsSsDur = _adjSSinfDur; _lsSsDur2 = _adjSSinfDur2; _lsSsRate = _adjSSinfRate; _lsSsRate2 = _adjSSinfRate2;
+    _lsSsFixed = _adjSSinfFixed; _lsSsFixW = _adjSSinfFixW; }
   else if (_adjSSinfKind == 2) { _lsSsKind = 2; _lsSsCmt = _adjSSinfCmt; }
 }
 // ss==2 (superposition): Y_after = Y_before + Y_ss_new(p).  handleSS publishes
@@ -3590,6 +3598,7 @@ void handleSS(int *neq,
   rx_solve *rx = &rx_global;
   _adjSSinfKind = 0; _adjSS2 = 0; _adjSSbolusIi = 0.0;   // reset adjoint ss handoffs
   _adjSSinfModeled = 0; _adjSSinfAmt = 0.0; _adjSSinfAmtRaw = 0.0;
+  _adjSSinfFixed = 0; _adjSSinfFixW = 0.0;
   _esSSDurOffCmt = -1; _esSSRateOffCmt = -1;   // forward eventSens: disarm the modeled ss off markers
   int j;
   int doSS2=0;
@@ -4119,8 +4128,10 @@ void handleSS(int *neq,
         if (op->adjoint && addTime > 0 && numDoseInf >= 1) {
           int _w, _c, _w100, _wI, _w0;
           getWh(getEvid(ind, ind->idose[infBixds]), &_w, &_c, &_w100, &_wI, &_w0);
-          if (_wI == EVIDF_INF_RATE) {
+          if (_wI == EVIDF_INF_RATE || _wI == EVIDF_INF_DUR) {
+            // a fixed duration's rate is F-scaled
             double _R = getDose(ind, ind->idose[infBixds]);
+            if (_wI == EVIDF_INF_DUR) _R *= getAmt(ind, ind->id, _c, 1.0, xout, yp);
             _adjSSinfKind = 1; _adjSSinfCmt = _c;
             _adjSSinfDur  = offTime; _adjSSinfRate  = (numDoseInf + 1) * _R;
             _adjSSinfDur2 = addTime; _adjSSinfRate2 = numDoseInf * _R;
@@ -4250,11 +4261,16 @@ void handleSS(int *neq,
         if (op->adjoint && dur > 0 && dur2 >= 0) {
           int _w, _c, _w100, _wI, _w0;
           getWh(getEvid(ind, ind->idose[infBixds]), &_w, &_c, &_w100, &_wI, &_w0);
-          if (_wI == EVIDF_INF_RATE) {
+          if (_wI == EVIDF_INF_RATE || _wI == EVIDF_INF_DUR) {
+            // a fixed duration's rate is F-scaled; a fixed rate's duration is
+            double _rawR = getDose(ind, ind->idose[infBixds]);
+            double _f = getAmt(ind, ind->id, _c, 1.0, xout, yp);
             _adjSSinfKind = 1; _adjSSinfCmt = _c;
             _adjSSinfDur = dur; _adjSSinfDur2 = dur2;
-            _adjSSinfRate = getDose(ind, ind->idose[infBixds]);
+            _adjSSinfRate = (_wI == EVIDF_INF_DUR) ? _f * _rawR : _rawR;
             _adjSSinfRate2 = 0.0;                 // OFF phase (dur<ii)
+            _adjSSinfFixed = (_wI == EVIDF_INF_DUR) ? 2 : 1;
+            _adjSSinfFixW = (_wI == EVIDF_INF_DUR) ? _rawR : ((_f != 0.0) ? _rawR * dur / _f : 0.0);
           } else if (_wI == EVIDF_MODEL_RATE_ON || _wI == EVIDF_MODEL_DUR_ON) {
             // modeled rate()/dur(): the effective ON rate is R = F*amt/D (the
             // bioavailability-adjusted amount, matching the non-ss dual's getAmt);
