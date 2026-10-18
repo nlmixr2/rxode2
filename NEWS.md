@@ -1,3 +1,14 @@
+# rxode2 (development version)
+
+## Bug fixes
+
+### Adjoint sensitivities
+
+- `rxSolveAdjointRk4()` now documents that, for a model with `delay()`,
+  the adjoint's delayed-state term is first order in the step size for
+  every method: an adaptive method such as `dop853s` needs `hmax` for
+  accurate sensitivities.
+
 # rxode2 5.1.8
 
 ## New features
