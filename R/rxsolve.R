@@ -2735,9 +2735,9 @@ rxSolve.function <- function(
   }
   .nms <- if (is.character(mat)) {
     mat
-  } else if (is.list(mat)) {
+  } else if (is.list(mat) && !is.data.frame(mat)) {
     # a nested omega (a lotri list, one block per level): the etas of every
-    # level
+    # level; a data frame keys off its names below, as a matrix does
     dimnames(lotri::lotriMat(mat))[[2]]
   } else {
     # the rest of .rxSolveFromUi() keys off the row names, so fall back to them

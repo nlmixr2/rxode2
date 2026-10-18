@@ -808,6 +808,8 @@ rxTest({
     # the same as a block-diagonal matrix of those etas
     .mat <- lotri::lotriMat(.nested)
     expect_identical(.rxParamsZero(c(tcl = 1), .nested), .rxParamsZero(c(tcl = 1), .mat))
+    # a data frame is not a nested omega: its names are the etas
+    expect_identical(.rxParamsZero(c(tcl = 1), as.data.frame(.mat)), c(tcl = 1, eta.v = 0, iov.cl = 0))
   })
 
   test_that("a population solve of a nested omega sets every eta to zero", {
