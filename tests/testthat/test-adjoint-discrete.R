@@ -2456,4 +2456,18 @@ rxTest({
       expect_equal(s1[[cn]], s4[[cn]])
     }
   })
+
+  test_that("two state jumps at the same time transpose in turn in every driver", {
+    # dose 10, then multiply by 0.5 and by 0.8 at t = 1: y = 4 exp(-k t) after
+    .ev <- et(amt = 10, cmt = "y") |> et(time = 1, evid = 6, amt = 0.5, cmt = "y") |>
+      et(time = 1, evid = 6, amt = 0.8, cmt = "y") |> et(c(0.5, 2, 3))
+    .tt <- c(0.5, 2, 3)
+    .dk <- -.tt * ifelse(.tt < 1, 10, 4) * exp(-0.7 * .tt)
+    for (.meth in c("rk4s", "dop853s", "ros4s", "cvodesadj")) {
+      .a <- rxSolveAdjointRk4("d/dt(y) <- -k*y", .ev, params = c(k = 0.7), calcSens = "k", method = .meth,
+        atol = 1e-11, rtol = 1e-11, hmin = if (.meth == "rk4s") 0.001 else 0)
+      .a <- .a[.a$time %in% .tt, , drop = FALSE]
+      expect_equal(.a$rx__sens_y_BY_k__, .dk, tolerance = 1e-7, label = .meth)
+    }
+  })
 })
