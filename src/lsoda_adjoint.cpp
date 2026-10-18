@@ -210,16 +210,16 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       for (int i = 0; i < ind->n_all_times; ++i) {
         if (fabs(ind->timeThread[ind->ix[i]] - Sg.t0) > 1e-8) continue;
         int ev = getEvid(ind, ind->ix[i]);
-        int c = rk4sInfusionEventCmt(ev, nBase);
+        int c = rk4sInfusionEventCmt(ev, nBase, true);
         if (c < 0) continue;
         double prev = (sg > 0 && (int)lsAdjSegs[sg - 1].infRate.size() == nBase) ? lsAdjSegs[sg - 1].infRate[c] : 0.0;
         double dR = Sg.infRate[c] - prev;
         if (dR == 0.0) continue;
-        if (op->adjDlagOff >= 0) {
+        int _wh, _c, _wh100, _whI, _wh0; getWh(ev, &_wh, &_c, &_wh100, &_whI, &_wh0);
+        if (op->adjDlagOff >= 0 && _wh0 == EVID0_REGULAR) {
           if (Sg.lagRate.empty()) Sg.lagRate.assign(nBase, 0.0);
           Sg.lagRate[c] = dR;
         }
-        int _wh, _c, _wh100, _whI, _wh0; getWh(ev, &_wh, &_c, &_wh100, &_whI, &_wh0);
         if (op->adjDfOff < 0 || (_whI != EVIDF_INF_RATE && _whI != EVIDF_INF_DUR)) continue;
         std::vector<double> _y(eff, 0.0);
         for (int b = 0; b < nBase; ++b) _y[b] = Sg.y0[b];

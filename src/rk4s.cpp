@@ -35,13 +35,14 @@
 // time carries; the dF dual uses the raw amt.
 struct rk4s_dose { size_t step; int cmt; double amt; int type; double amtF = 0.0; };
 
-// Compartment of an infusion start/stop event whose time a modeled alag() moves,
-// or -1.
-static inline int rk4sInfusionEventCmt(int evid, int nBase) {
+// Compartment of an infusion start/stop event whose time a modeled alag() moves
+// (or, with ss, also an ss = 1 infusion start, which opens the window after its
+// steady state), or -1.
+static inline int rk4sInfusionEventCmt(int evid, int nBase, bool ss = false) {
   if (isObs(evid) || evid == 3) return -1;
   int _wh, _cmt, _wh100, _whI, _wh0;
   getWh(evid, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
-  if (_wh0 != EVID0_REGULAR || _cmt < 0 || _cmt >= nBase) return -1;
+  if (!(_wh0 == EVID0_REGULAR || (ss && _wh0 == EVID0_SS)) || _cmt < 0 || _cmt >= nBase) return -1;
   if (_whI == EVIDF_NORMAL || _whI == EVIDF_REPLACE || _whI == EVIDF_MULT) return -1;
   return _cmt;
 }
@@ -70,9 +71,9 @@ static inline void rk4sFixedInfusionRecord(std::vector<rk4s_infus> &infus, rx_so
   }
   for (size_t w = infus.size(); w-- > 0;) {
     rk4s_infus &F = infus[w];
-    if (!F.fixed || F.cmt != cmt || F.offStep != (size_t)-1 || F.isDur != isDur) continue;
+    if (!F.fixed || F.cmt != cmt || F.offStep != (size_t)-1) continue;
     F.offStep = step;
-    if (!isDur && f != 0.0) F.dfW = -dR * (t - F.tOn) / f;
+    if (!F.isDur && f != 0.0) F.dfW = -dR * (t - F.tOn) / f;
     return;
   }
 }
@@ -8699,7 +8700,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   std::vector<rk4s_dose> doseRec;                     // additive boluses for the F-jump transpose
   std::vector<rk4s_infus> infusRec;                   // modeled-rate infusion windows (rate/dur dual)
   int _infusOnCmt = -1;                               // set when the current event opens an infusion
-  int _lagRateCmt = -1, _lagRateWhI = 0; double _lagRatePre = 0.0; size_t _lagRateStep = 0;  // infusion start/stop
+  int _lagRateCmt = -1, _lagRateWhI = 0, _lagRateWh0 = 0; double _lagRatePre = 0.0; size_t _lagRateStep = 0;  // infusion start/stop
   // Steady-state (ss=1 bolus) initial-condition sensitivity: after handleSS the
   // window starts from the converged TROUGH yp* = flow_tau(dose(yp*)).  Its
   // dY*/dp feeds the backward sweep's IC term via a one-period monodromy
@@ -8786,8 +8787,17 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               int ixds = ind->ixds;
               int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
               ind->idx = -1-trueIdx;
+              // a pushed fixed infusion stop (an ss = 1 infusion's OFF) closes its window
+              int _xWh, _xCmt, _xWh100, _xWhI, _xWh0;
+              getWh(ind->extraDoseEvid[trueIdx], &_xWh, &_xCmt, &_xWh100, &_xWhI, &_xWh0);
+              bool _xFix = adj && op->adjDfOff >= 0 && _xCmt >= 0 && _xCmt < op->adjNbase &&
+                (_xWhI == EVIDF_INF_RATE || _xWhI == EVIDF_INF_DUR);
+              double _xPre = _xFix ? ind->InfusionRate[_xCmt] : 0.0;
               handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
                           ind->BadDose, ind->InfusionRate, ind->dose, yp, xout, neq[1], ind);
+              if (_xFix && ind->InfusionRate[_xCmt] - _xPre < 0.0)
+                rk4sFixedInfusionRecord(infusRec, ind, _xCmt, _xWhI == EVIDF_INF_DUR, ind->InfusionRate[_xCmt] - _xPre,
+                                        rec.nStep(), ind->extraDoseNewXout, yp);
               istate = 1;
               ind->ixds = ixds;
               ind->idx = idx;
@@ -8828,9 +8838,9 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
       if (adj) {
         int _evCur = getEvid(ind, ind->ix[i]);
         if (op->adjDlagOff >= 0 || op->adjDfOff >= 0) {
-          _lagRateCmt = rk4sInfusionEventCmt(_evCur, op->adjNbase);
+          _lagRateCmt = rk4sInfusionEventCmt(_evCur, op->adjNbase, true);
           if (_lagRateCmt >= 0) {
-            int _wh, _c, _wh100, _wh0; getWh(_evCur, &_wh, &_c, &_wh100, &_lagRateWhI, &_wh0);
+            int _wh, _c, _wh100; getWh(_evCur, &_wh, &_c, &_wh100, &_lagRateWhI, &_lagRateWh0);
             _lagRatePre = ind->InfusionRate[_lagRateCmt]; _lagRateStep = rec.nStep();
           }
         }
@@ -8980,7 +8990,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
       }
       if (_lagRateCmt >= 0) {
         double _dR = ind->InfusionRate[_lagRateCmt] - _lagRatePre;
-        if (_dR != 0.0 && op->adjDlagOff >= 0) {
+        if (_dR != 0.0 && op->adjDlagOff >= 0 && _lagRateWh0 == EVID0_REGULAR) {
           rk4s_dose _d; _d.step = _lagRateStep; _d.cmt = _lagRateCmt; _d.amt = _dR; _d.type = 9;
           doseRec.push_back(_d);
         }
