@@ -9,6 +9,14 @@
   enters through an initial condition such as `y(0) <- y0` gets its
   sensitivity instead of 0.
 
+- The continuous adjoint's objective gradient now takes an observation at
+  the time of a replace or multiply event (`evid = 5`/`6`) after the
+  event, as the solve does; before, the gradient was off.
+
+- The continuous adjoint now stops with an error for a reset
+  (`evid = 3`/`4`), which it does not support, instead of returning wrong
+  sensitivities; use `rxSolveAdjointRk4()`.
+
 - The adjoint builders no longer constant-fold a numeric default such as
   `k <- 0.5` in the model.  Before, a supplied `k` was ignored in the
   derivatives and its sensitivity was 0.
