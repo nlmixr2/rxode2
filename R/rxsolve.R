@@ -3627,7 +3627,9 @@ rxSolve.default <- function(
     # .rxDelaySensAugment; here we add the doses that activate them).  Gated on the
     # model actually carrying rx__sens_* compartments, and a no-op unless a delay
     # duration depends on a sensitivity parameter (.rxDelaySensJump returns NULL).
-    if (!is.null(events)) {
+    # A recursive solve (e.g. after generating the Jacobian) receives events that
+    # already carry the mirrored doses; mirroring again would double each jump.
+    if (!is.null(events) && !isTRUE(attr(events, "rxDelaySensJumped"))) {
       # cheap gate: the jump alag() lines exist only for a param-dependent delay
       # forward-sens model, so skip the (symengine) analysis for every other solve.
       .sensCmts <- grep("^rx__sens_", rxModelVars(object)$state, value = TRUE)
@@ -3656,6 +3658,7 @@ rxSolve.default <- function(
             events <- tryCatch(.rxDelaySensJump2Events(.map2, events), error = function(e) events)
           }
         }
+        attr(events, "rxDelaySensJumped") <- TRUE
       }
     }
     # delay() history is recorded on the dense dop853 path (default, and the
