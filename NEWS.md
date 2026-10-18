@@ -24,11 +24,14 @@
   that lands.  The same applied to the delay-equation dose jump.
 
 - `method = "cvodesadj"` now includes the bioavailability (`f()`)
-  sensitivity; before, it was missing entirely.
+  sensitivity, also for an observation at a dose time; before, it was
+  missing entirely.  `f()` together with a modeled `rate()` or `dur()` is
+  still not right in `cvodesadj` and `liblsodaadj`.
 
 - `method = "abs"` now stops with an error when sensitivities are
-  requested for a model with `f()`, `alag()`, `rate()` or `dur()`, which it
-  does not support, instead of silently leaving those terms out.
+  requested through an `f()`, `alag()`, `rate()` or `dur()` that depends on
+  a sensitivity parameter, which it does not support, instead of silently
+  leaving those terms out.  Constant modifiers still solve.
 
 # rxode2 5.1.8
 
