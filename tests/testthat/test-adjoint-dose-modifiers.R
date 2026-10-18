@@ -247,6 +247,18 @@ rxTest({
     ))
   })
 
+  test_that("f() with a fixed-rate or fixed-duration infusion carries its dual in every driver", {
+    # F stretches a fixed-rate window and scales a fixed-duration rate
+    .infCheck(list(
+      fixRateTwice = list(txt = "f(depot) <- fd", p = c(ka = 1.2, k = 0.14, fd = 0.7),
+        ev = et(amt = 100, cmt = "depot", rate = 40) |> et(amt = 50, time = 4, cmt = "depot", rate = 40)),
+      fixDurTwice = list(txt = "f(depot) <- fd", p = c(ka = 1.2, k = 0.14, fd = 0.7),
+        ev = et(amt = 100, cmt = "depot", dur = 2.5) |> et(amt = 50, time = 4, cmt = "depot", dur = 2)),
+      fixRateLag = list(txt = "f(depot) <- fd\nalag(depot) <- lg", p = c(ka = 1.2, k = 0.14, fd = 0.7, lg = 0.7),
+        ev = et(amt = 100, cmt = "depot", rate = 40))
+    ))
+  })
+
   test_that("the liblsodaadj self-check replay agrees with the adjoint for f() and alag()", {
     withr::local_envvar(RX_LSADJ_SELFCHECK = "1")
     .out <- utils::capture.output(
