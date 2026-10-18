@@ -1,3 +1,14 @@
+# rxode2 (development version)
+
+## Bug fixes
+
+### Adjoint sensitivities
+
+- A steady-state (`ss = 1`) dose after the first record no longer gives
+  wrong adjoint sensitivities: in the `rk4s` family the observations
+  before it picked up the steady-state term, and in
+  `method = "liblsodaadj"` the observations after it lacked it.
+
 # rxode2 5.1.8
 
 ## New features
