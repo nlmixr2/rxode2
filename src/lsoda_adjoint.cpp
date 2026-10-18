@@ -379,6 +379,17 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     int segObs = 0;
     for (int sgi = (int)lsAdjSegs.size() - 1; sgi >= 0; --sgi) { if (lsAdjSegs[sgi].t0 <= ti + 1e-9) { segObs = sgi; break; } }
     double *out = getSolve(i);
+    // A reset recorded before this observation but after its segment opened
+    // means liblsoda took no step since the reset (e.g. an all-zero state),
+    // so no segment starts there: the observation still reads the reset state.
+    double tReset = R_NegInf;
+    for (int j = i - 1; j >= 0; --j) {
+      if (getEvid(ind, ind->ix[j]) == 3) { tReset = ind->timeThread[ind->ix[j]]; break; }
+    }
+    if (tReset > lsAdjSegs[segObs].t0 + 1e-9) {
+      for (int q = 0; q < nBase * np; ++q) out[sensOff + q] = 0.0;
+      continue;
+    }
     for (int k = 0; k < nBase; ++k) {
       std::fill(mu.begin(), mu.end(), 0.0);
       for (int c = 0; c < nBase; ++c) wSeed[c] = (c == k) ? 1.0 : 0.0;
