@@ -410,6 +410,17 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   int _infusOnCmt = -1;
   double *yp;
   hist.newSeg();   // segment 0 begins at t0
+  // Record boluses only when F or the lag time depends on a sensitivity
+  // parameter (a non-zero dF or dlag block); otherwise they add no dual.
+  bool bolusDuals = false;
+  if (op->adjDfOff >= 0 || op->adjDlagOff >= 0) {
+    std::vector<double> _a(eff, 0.0);
+    calc_lhs(cSub, t0, _a.data(), ind->lhs);
+    for (int q = 0; q < nBase * np && !bolusDuals; ++q) {
+      if (op->adjDfOff >= 0 && ind->lhs[op->adjDfOff + q] != 0.0) bolusDuals = true;
+      if (op->adjDlagOff >= 0 && ind->lhs[op->adjDlagOff + q] != 0.0) bolusDuals = true;
+    }
+  }
 
   // ================= forward primal loop (cloned from dop5.cpp) =================
   for (i = 0; i < ind->n_all_times; i++) {
@@ -512,7 +523,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
             } else if (_whI == EVIDF_MULT) {
               evJumps.push_back({xout, _cmt, 6,
                 getAmt(ind, ind->id, _cmt, getDoseIndex(ind, ind->idx), xout, yp), seq, -1});
-            } else if (_whI == 0 && (op->adjDlagOff >= 0 || op->adjDfOff >= 0)) {
+            } else if (_whI == 0 && bolusDuals) {
               // additive bolus: record the (lagged) dose time and raw amount so the
               // backward can add the modeled-F dual mu += amt*dF/dtheta*lambda_c and
               // the alag transversality mu += -dlag_c/dtheta*(lambda^T (F(y+)-F(y-))).
