@@ -7,7 +7,11 @@
 - A dose that follows a reset at the same time (`evid = 4`, or `evid = 3`
   and a dose at one time) lost its bioavailability (`f()`) adjoint
   sensitivity in the `rk4s` family of methods and in
-  `method = "liblsodaadj"`; it is now kept.
+  `method = "liblsodaadj"`; it is now kept.  Events at the same step are
+  now transposed in reverse order in the `rk4s` family, which also fixes a
+  dose together with a replace or multiply at one time.  The bioavailability
+  that `f()` applies to a replace or multiply value is still missing from
+  the adjoint sensitivities.
 
 # rxode2 5.1.8
 
