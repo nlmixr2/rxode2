@@ -7,7 +7,23 @@
 - A steady-state (`ss = 1`) dose after the first record no longer gives
   wrong adjoint sensitivities: in the `rk4s` family the observations
   before it picked up the steady-state term, and in
-  `method = "liblsodaadj"` the observations after it lacked it.
+  `method = "liblsodaadj"` the observations after it lacked it.  This
+  covers bolus, periodic and continuous infusion steady states.
+
+- Several `ss = 1` doses in one subject now each use their own regimen in
+  the `rk4s` family of adjoint methods; before, they all used one recorded
+  steady-state period, so a later dose with a different amount or interval
+  gave wrong sensitivities.  `method = "liblsodaadj"` carries one `ss = 1`
+  dose per subject and no longer refuses several subjects that have one
+  each at different times.
+
+- A fixed-duration (`dur =`) steady-state infusion got no steady-state
+  term at all in any adjoint method, so its sensitivities were wrong; it
+  now gets one.
+
+- The adjoint bioavailability (`f()`) sensitivity of an `ss = 1` bolus is
+  now carried through every steady-state period, at the window start and
+  later; before, only the last dose was counted.
 
 # rxode2 5.1.8
 
