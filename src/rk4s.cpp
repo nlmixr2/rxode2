@@ -7624,6 +7624,10 @@ struct rk4sSsIc {
   size_t ssN = 0, ss2N = 0;
   std::vector<std::vector<double> > ssFXs, ssFPs, ss2FXs, ss2FPs;  // period Jacobians
   bool haveMono = false;
+  // the first ss=1 event is at the window start (step 0), so the window starts
+  // from its steady state; a later (interior) one starts no window.  Without a
+  // step list the caller has already decided (liblsodaadj).
+  bool monoAtStart = false;
   std::vector<double> S2; std::vector<char> isSs2;                 // ss=2 superposition
   const std::vector<size_t> *ss2Steps = NULL, *boundarySs2 = NULL;
   std::vector<double> Sss1; std::vector<char> isSs1;               // interior ss=1 reset
@@ -7771,6 +7775,7 @@ struct rk4sSsIc {
              const rksTableau &Tss_, int nBase_, int np_, size_t nStep) {
     nBase = nBase_; np = np_; Tss = Tss_; sN = Tss.s; nfx = nBase*nBase; nfp = nBase*np;
     maxGeo = op->maxSS + 5; haveMono = false; haveCont = false;
+    monoAtStart = !ss1Steps_ || ss1Steps_->empty() || (*ss1Steps_)[0] == 0;
     ssRec = ssRec_; ss2Rec = ss2Rec_;
     ss2Steps = ss2Steps_; boundarySs2 = boundarySs2_; ss1Steps = ss1Steps_; boundarySs1 = boundarySs1_;
     Ybar.assign(nBase, 0.0); kbar.assign((size_t)sN*nBase, 0.0); abar.assign(nBase, 0.0);
@@ -7849,7 +7854,7 @@ struct rk4sSsIc {
   }
   // window-start IC: monodromy geometric series (bolus/periodic) OR continuous linear solve.
   void applyWindowIC(std::vector<double> &lam, std::vector<double> &mu) {
-    if (haveMono) { std::vector<double> nu(lam.begin(), lam.begin()+nBase), muAdd(np, 0.0);
+    if (haveMono && monoAtStart) { std::vector<double> nu(lam.begin(), lam.begin()+nBase), muAdd(np, 0.0);
       StiffPeriod *SP = stiff() ? &ssStiff : NULL;
       for (int git = 0; git < maxGeo; ++git) { periodT(ssRec, ssFXs, ssFPs, ssN, nu, muAdd, SP);
         double n2=0; for (int j=0;j<nBase;++j) n2+=fabs(nu[j]); if (n2<1e-14) break; }
@@ -8437,6 +8442,10 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
     }
   }
 
+  // The window starts from the ss=1 steady state only when the first ss=1 event
+  // is at step 0; an interior one is handled at its own step (Sss1 above).
+  bool ssMonoAtStart = !ss1Steps || ss1Steps->empty() || (*ss1Steps)[0] == 0;
+
   // Full-trajectory: for each observation and each base state k, an independent
   // reset sweep boundary[i]->0 with terminal covector e_k.
   for (int i = 0; i < ind->n_all_times; ++i) {
@@ -8493,7 +8502,7 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
         }
       }
       dde.applyDoseJumps(mu, doses);
-      if (ssN > 0) {                       // monodromy IC term (bolus / periodic infusion)
+      if (ssN > 0 && ssMonoAtStart) {      // monodromy IC term (bolus / periodic infusion)
         std::vector<double> nu = lam, muAdd(np, 0.0);
         for (int git = 0; git < op->maxSS + 5; ++git) {
           ssPeriodTranspose(nu, muAdd);
