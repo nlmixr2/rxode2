@@ -1,3 +1,21 @@
+# rxode2 (development version)
+
+## Bug fixes
+
+- `linCmt()` models now solve a time-varying covariate as the equivalent
+  ODE model does.  Each interval between records was advanced with the
+  covariates of the record that ends it, whatever `covsInterpolation` said:
+  under the default `"locf"` the solution was the `"nocb"` one, 6% off the
+  ODE solution at the records in a one-compartment example, and adding
+  records moved where a covariate change took effect.  An interval now takes
+  its own covariates (`"locf"` its start record's, `"nocb"` its end
+  record's, `"midpoint"` their mean), so `"locf"`, `"nocb"` and `"midpoint"`
+  match the ODE solution, sensitivities included.  This changes the results
+  of every `linCmt()` model with a time-varying covariate under `"locf"` or
+  `"midpoint"`, and so of fits of such models.  Under `"linear"`, where the
+  ODE follows the covariate's ramp, an interval takes the covariates at its
+  middle.
+
 # rxode2 5.1.8
 
 ## New features
