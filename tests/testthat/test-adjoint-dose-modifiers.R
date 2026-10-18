@@ -231,6 +231,22 @@ rxTest({
     ))
   })
 
+  test_that("alag() on an infusion shifts its whole window in every driver", {
+    .infCheck(list(
+      fixRate = list(txt = "alag(depot) <- lg", p = c(ka = 1.2, k = 0.14, lg = 0.7),
+        ev = et(amt = 100, cmt = "depot", rate = 40)),
+      fixDurTwice = list(txt = "alag(depot) <- lg", p = c(ka = 1.2, k = 0.14, lg = 0.7),
+        ev = et(amt = 100, cmt = "depot", dur = 2) |> et(amt = 50, time = 4, cmt = "depot", dur = 2)),
+      rate = list(txt = "alag(depot) <- lg\nrate(depot) <- r", p = c(ka = 1.2, k = 0.14, lg = 0.7, r = 40),
+        ev = et(amt = 100, cmt = "depot", rate = -1)),
+      dur = list(txt = "alag(depot) <- lg\ndur(depot) <- dd", p = c(ka = 1.2, k = 0.14, lg = 0.7, dd = 2.5),
+        ev = et(amt = 100, cmt = "depot", rate = -2)),
+      fRateTwice = list(txt = "alag(depot) <- lg\nf(depot) <- fd\nrate(depot) <- r",
+        p = c(ka = 1.2, k = 0.14, lg = 0.7, fd = 0.7, r = 40),
+        ev = et(amt = 100, cmt = "depot", rate = -1) |> et(amt = 50, time = 4, cmt = "depot", rate = -1))
+    ))
+  })
+
   test_that("the liblsodaadj self-check replay agrees with the adjoint for f() and alag()", {
     withr::local_envvar(RX_LSADJ_SELFCHECK = "1")
     .out <- utils::capture.output(

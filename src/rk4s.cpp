@@ -35,6 +35,17 @@
 // time carries; the dF dual uses the raw amt.
 struct rk4s_dose { size_t step; int cmt; double amt; int type; double amtF = 0.0; };
 
+// Compartment of a lagged infusion start/stop event (its time moves with a
+// modeled alag(), shifting the rate change), or -1.
+static inline int rk4sLagRateCmt(int evid, int nBase) {
+  if (isObs(evid) || evid == 3) return -1;
+  int _wh, _cmt, _wh100, _whI, _wh0;
+  getWh(evid, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
+  if (_wh0 != EVID0_REGULAR || _cmt < 0 || _cmt >= nBase) return -1;
+  if (_whI == EVIDF_NORMAL || _whI == EVIDF_REPLACE || _whI == EVIDF_MULT) return -1;
+  return _cmt;
+}
+
 // A modeled-rate infusion window: active over steps [onStep, offStep) delivering
 // rate R into compartment cmt (amt total).  Drives the two-term infusion dual --
 // the in-window forcing quadrature and the off-boundary (offStep) transversality.
@@ -86,6 +97,8 @@ static inline void rk4sIniOnlyFill(rx_solving_options *op, rx_solving_options_in
 //                            mu += lambda_n+^T dX0/dp (dx0, k*np+p, or NULL).
 //   replace  (state c := v): row c is 0         -> lambda[c] := 0.
 //   multiply (state c *= a): diag c is a        -> lambda[c] *= a.
+//   rate     (type 9, rate into c changes by amt at a lagged time): lambda
+//            unchanged; mu += -amt * dlag[c][p] * lambda[c].
 // A constant replace/multiply value contributes nothing to mu; a modeled value
 // would add mu += lambda_n+[c] * dvalue/dp (a later addition).
 // fx0 = F_X (df/dy) at this step's stage 0 (post-dose state), row-major i*nBase+j,
@@ -119,6 +132,9 @@ static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
       break;
     case 6:
       lamR[d.cmt] *= d.amt;
+      break;
+    case 9:
+      if (dlag) for (int p = 0; p < np; ++p) muR[p] += -d.amt * dlag[d.cmt * np + p] * lamR[d.cmt];
       break;
     }
   }
@@ -8639,6 +8655,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   std::vector<rk4s_dose> doseRec;                     // additive boluses for the F-jump transpose
   std::vector<rk4s_infus> infusRec;                   // modeled-rate infusion windows (rate/dur dual)
   int _infusOnCmt = -1;                               // set when the current event opens an infusion
+  int _lagRateCmt = -1; double _lagRatePre = 0.0; size_t _lagRateStep = 0;  // lagged rate change
   // Steady-state (ss=1 bolus) initial-condition sensitivity: after handleSS the
   // window starts from the converged TROUGH yp* = flow_tau(dose(yp*)).  Its
   // dY*/dp feeds the backward sweep's IC term via a one-period monodromy
@@ -8766,6 +8783,10 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
       // 0-based index == rec.nStep() at this point).
       if (adj) {
         int _evCur = getEvid(ind, ind->ix[i]);
+        if (op->adjDlagOff >= 0) {
+          _lagRateCmt = rk4sLagRateCmt(_evCur, op->adjNbase);
+          if (_lagRateCmt >= 0) { _lagRatePre = ind->InfusionRate[_lagRateCmt]; _lagRateStep = rec.nStep(); }
+        }
         if (_evCur == 3) {                                  // reset -> lambda := 0
           rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = 0; _d.amt = 0.0; _d.type = 3;
           doseRec.push_back(_d);
@@ -8909,6 +8930,14 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
       if (_infusOnCmt >= 0 && !infusRec.empty()) {
         infusRec.back().R = ind->InfusionRate[_infusOnCmt];
         _infusOnCmt = -1;
+      }
+      if (_lagRateCmt >= 0) {
+        double _dR = ind->InfusionRate[_lagRateCmt] - _lagRatePre;
+        if (_dR != 0.0) {
+          rk4s_dose _d; _d.step = _lagRateStep; _d.cmt = _lagRateCmt; _d.amt = _dR; _d.type = 9;
+          doseRec.push_back(_d);
+        }
+        _lagRateCmt = -1;
       }
       int _mtime_requeued = 0;
       if (rx->nMtime > 0) {

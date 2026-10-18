@@ -216,6 +216,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   std::vector<cvEvent> evJumps;
   std::vector<cvInfus> infusRec;   // modeled-rate infusion windows (rate dual)
   int _infusOnCmt = -1;
+  int _lagRateCmt = -1; double _lagRatePre = 0.0;   // lagged infusion start/stop
   double *yp;
   hist.newSeg();   // segment 0 begins at t0
   // Record boluses only when F or the lag time depends on a sensitivity
@@ -319,6 +320,10 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       ind->idx = i;
       // Record replace/multiply state jumps for the backward transpose jump.
       { int _ev = getEvid(ind, ind->ix[i]);
+        if (op->adjDlagOff >= 0) {
+          _lagRateCmt = rk4sLagRateCmt(_ev, nBase);
+          if (_lagRateCmt >= 0) _lagRatePre = ind->InfusionRate[_lagRateCmt];
+        }
         if (isDose(_ev)) {
           int _wh, _cmt, _wh100, _whI, _wh0;
           getWh(_ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
@@ -374,6 +379,11 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       if (_infusOnCmt >= 0 && !infusRec.empty()) {
         infusRec.back().R = ind->InfusionRate[_infusOnCmt];
         _infusOnCmt = -1;
+      }
+      if (_lagRateCmt >= 0) {   // type 9: the rate into cmt changes by factor at a lagged time
+        double _dR = ind->InfusionRate[_lagRateCmt] - _lagRatePre;
+        if (_dR != 0.0) evJumps.push_back({xout, _lagRateCmt, 9, _dR});
+        _lagRateCmt = -1;
       }
       // Resume the forward from the (possibly jumped) state and open a new segment.
       if (didEvent) {
@@ -506,6 +516,16 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
         else if (ty == 6) NV_Ith_S(B, c) *= evJumps[segEv[s]].factor;  // multiply
         else if (ty == 0) {                                            // additive bolus duals
           bolusDual(evJumps[segEv[s]]);
+        } else if (ty == 9) {                                          // lagged rate change
+          // mu += -dR * dlag_c/dtheta * lambda_c (factor = dR)
+          double *yq = bu.yq.data(), *A = bu.A.data();
+          hist.interp((double)te, yq);
+          for (int ii = 0; ii < eff; ++ii) A[ii] = 0.0;
+          for (int ii = 0; ii < nBase; ++ii) A[ii] = yq[ii];
+          calc_lhs(cSub, (double)te, A, ind->lhs);
+          const double *dlag = &ind->lhs[op->adjDlagOff];
+          double fac = evJumps[segEv[s]].factor, lc = NV_Ith_S(B, c);
+          for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += -fac * dlag[c * np + p] * lc;
         } else {                                                       // ty==7: infusion off-boundary
           // mu += -(F*amt/R)*durMult * dR/dtheta * lambda_c(t_off) (factor), plus
           // amtRaw*dF/dtheta*lambda_c for rate(), whose t_off = t_on + F*amt/R (raw).
