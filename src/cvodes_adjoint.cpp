@@ -436,10 +436,14 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       sunrealtype tret;
       // integrate ti -> each event (applying its costate jump) -> tStop; mu (the
       // quadrature) is a component of B, so it carries across the reinits.
+      double tCur = ti;
       for (size_t s = 0; s < segEv.size() && bok; ++s) {
         double te = evJumps[segEv[s]].t;
-        CVodeSetStopTime(bmem, (sunrealtype)te);
-        if (CVode(bmem, (sunrealtype)te, B, &tret, CV_NORMAL) < 0) { bok = 0; break; }
+        if (!isSameTime(te, tCur)) {   // events sharing a time jump in turn, without integrating
+          CVodeSetStopTime(bmem, (sunrealtype)te);
+          if (CVode(bmem, (sunrealtype)te, B, &tret, CV_NORMAL) < 0) { bok = 0; break; }
+          tCur = te;
+        }
         int c = evJumps[segEv[s]].cmt; int ty = evJumps[segEv[s]].type;
         if (ty == 5) NV_Ith_S(B, c) = 0.0;                             // replace
         else if (ty == 6) NV_Ith_S(B, c) *= evJumps[segEv[s]].factor;  // multiply
