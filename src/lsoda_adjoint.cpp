@@ -163,11 +163,17 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       int ev = getEvid(ind, ind->ix[i]);
       if (isObs(ev)) continue;
       if (fabs(ind->timeThread[ind->ix[i]] - t0) > 1e-8) continue;
-      if (ev == 3) { lsAdjSegs[sg].evType = 3; break; }
+      // a reset followed by a dose at the same time (evid = 4) keeps the
+      // reset's type and also records the dose for its F/alag duals
+      if (ev == 3) { lsAdjSegs[sg].evType = 3; continue; }
       if (isDose(ev)) {
         int _wh, _cmt, _wh100, _whI, _wh0; getWh(ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
         if (_cmt >= 0 && _cmt < nBase) {
-          if (_whI == 0)                  { lsAdjSegs[sg].evType = 0; lsAdjSegs[sg].evCmt = _cmt; lsAdjSegs[sg].evAmt = getDose(ind, ind->ix[i]); break; }
+          if (_whI == 0) {
+            if (lsAdjSegs[sg].evType != 3) lsAdjSegs[sg].evType = 0;
+            lsAdjSegs[sg].evCmt = _cmt; lsAdjSegs[sg].evAmt = getDose(ind, ind->ix[i]);
+            break;
+          }
           else if (_whI == EVIDF_REPLACE) { lsAdjSegs[sg].evType = 5; lsAdjSegs[sg].evCmt = _cmt; break; }
           else if (_whI == EVIDF_MULT)    { lsAdjSegs[sg].evType = 6; lsAdjSegs[sg].evCmt = _cmt; lsAdjSegs[sg].evFactor = getDose(ind, ind->ix[i]); break; }
           // (modeled rate/dur infusion on/off open a segment but are not a state jump;
@@ -311,7 +317,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
         for (int p = 0; p < np; ++p) mu[p] += Sg.offFac * dR[oc * np + p] * wSeed[oc]; }
       // event dPhi/dp explicit-parameter quadrature (every segment start): modeled
       // F -> mu += amt*dF/dp*lam_y0[c]; alag -> mu += -amt*dlag/dp*(lam_y0^T F_X[:,c]).
-      if (Sg.evType == 0 && Sg.evCmt >= 0) {
+      if ((Sg.evType == 0 || Sg.evType == 3) && Sg.evCmt >= 0) {   // a dose (after a reset for evid = 4)
         int c = Sg.evCmt; double amt = Sg.evAmt;
         if (op->adjDfOff >= 0) { const double *dF = &lhs[op->adjDfOff]; for (int p = 0; p < np; ++p) mu[p] += amt * dF[c * np + p] * wSeed[c]; }
         if (op->adjDlagOff >= 0) { const double *dlag = &lhs[op->adjDlagOff];
@@ -438,7 +444,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       if (Sg.evType == 3) { for (int c = 0; c < nBase; ++c) for (int p = 0; p < np; ++p) YHS[IDX(1, c, p)] = 0.0; }
       else if (Sg.evType == 5 && Sg.evCmt >= 0) { for (int p = 0; p < np; ++p) YHS[IDX(1, Sg.evCmt, p)] = 0.0; }
       else if (Sg.evType == 6 && Sg.evCmt >= 0) { for (int p = 0; p < np; ++p) YHS[IDX(1, Sg.evCmt, p)] *= Sg.evFactor; }
-      else if (Sg.evType == 0 && Sg.evCmt >= 0) {
+      if ((Sg.evType == 0 || Sg.evType == 3) && Sg.evCmt >= 0) {   // a dose (after a reset for evid = 4)
         // modeled F: y0[c] += F*amt -> dy0[c]/dp += amt*dF/dp.  modeled alag: the dose
         // time shifts -> S+ = S- + (f(y-)-f(y+))*dlag/dp = S- - amt*F_X[:,c]*dlag/dp.
         int c = Sg.evCmt; double amt = Sg.evAmt;
