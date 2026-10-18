@@ -13,6 +13,9 @@
   the time of a replace or multiply event (`evid = 5`/`6`) after the
   event, as the solve does; before, the gradient was off.
 
+- The continuous adjoint's objective gradient no longer drops duplicate
+  observation rows (several observations at one time).
+
 - The continuous adjoint now stops with an error for a reset
   (`evid = 3`/`4`), which it does not support, instead of returning wrong
   sensitivities; use `rxSolveAdjointRk4()`.
