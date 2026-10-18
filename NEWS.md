@@ -23,7 +23,8 @@
 
 - The adjoint bioavailability (`f()`) sensitivity of an `ss = 1` bolus is
   now carried through every steady-state period, at the window start and
-  later; before, only the last dose was counted.
+  later; before, only the dose at the event time counted, not the doses of
+  the earlier periods that make up the steady state.
 
 # rxode2 5.1.8
 
