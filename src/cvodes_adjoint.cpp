@@ -105,9 +105,13 @@ struct cvFwdUser {   // forward RHS user data
   N_Vector dky = NULL;              // delay() history samples (NULL: none)
   std::vector<double> nodes;        // 8 x eff
 };
-// A modeled-rate infusion window (time-based) for the cvodesadj rate dual.
-// amt is F*amt; durMult is 1 (rate) or F*amt (dur); amtRaw is the dose before F.
-struct cvInfus { double tOn, tOff; int cmt; double R, amt, durMult, amtRaw; bool isDur; int offSeq, offY; };
+// An infusion window (time-based) for the cvodesadj rate and F duals.  amt is
+// F*amt; durMult is 1 (rate) or F*amt (dur); amtRaw is the dose before F.  A
+// fixed-rate/duration window (fixed) carries only the dF dual, weighted by dfW: the
+// raw rate over a fixed-dur window, the raw amount at a fixed-rate off boundary.
+// offSeq/offY: the off record's seq and evY slot.
+struct cvInfus { double tOn, tOff; int cmt; double R, amt, durMult, amtRaw; bool isDur;
+                 int offSeq = 0, offY = -1; bool fixed = false; double dfW = 0.0; };
 
 struct cvBwdUser {   // backward RHS user data
   const cvHist *hist; int cSub, nBase, np, eff, fxOff, fpOff, drateOff, dfOff;
@@ -197,18 +201,21 @@ static int cvB_bwd(sunrealtype t, N_Vector B, N_Vector Bd, void *ud) {
     for (int i = 0; i < n; ++i) s += fp[i * np + p] * NV_Ith_S(B, i);
     NV_Ith_S(Bd, n + p) = -s;
   }
-  // modeled-rate infusion forcing: inside a window the RHS gains +R, so F_p[c] +=
-  // dR/dtheta -> d(mu_p)/dt += -dR/dtheta * lambda_c.
-  if (u->drateOff >= 0 && u->infus) {
-    const double *drate = &u->lhs[u->drateOff];
+  // infusion forcing: inside a window the RHS gains +R, so F_p[c] += dR/dtheta ->
+  // d(mu_p)/dt += -dR/dtheta * lambda_c.
+  if (u->infus) {
     for (size_t w = 0; w < u->infus->size(); ++w) {
       const cvInfus &F = (*u->infus)[w];
       if ((double)t >= F.tOn - 1e-12 && (double)t <= F.tOff + 1e-12) {
-        double lc = NV_Ith_S(B, F.cmt);   // dR/dtheta = durMult * drate
-        for (int p = 0; p < np; ++p) NV_Ith_S(Bd, n + p) += -F.durMult * drate[F.cmt * np + p] * lc;
-        // dur(): R = F*amt/dur also moves with a modeled F
+        double lc = NV_Ith_S(B, F.cmt);
+        if (u->drateOff >= 0 && !F.fixed) {   // dR/dtheta = durMult * drate
+          const double *drate = &u->lhs[u->drateOff];
+          for (int p = 0; p < np; ++p) NV_Ith_S(Bd, n + p) += -F.durMult * drate[F.cmt * np + p] * lc;
+        }
+        // a dur() or fixed-dur rate also moves with a modeled F
         if (u->dfOff >= 0 && F.isDur && F.tOff < R_PosInf && F.tOff > F.tOn) {
-          const double *dF = &u->lhs[u->dfOff]; double dfm = F.amtRaw / (F.tOff - F.tOn);
+          const double *dF = &u->lhs[u->dfOff];
+          double dfm = F.fixed ? F.dfW : F.amtRaw / (F.tOff - F.tOn);
           for (int p = 0; p < np; ++p) NV_Ith_S(Bd, n + p) += -dfm * dF[F.cmt * np + p] * lc;
         }
       }
@@ -414,7 +421,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   bool recJumps = op->hasDelay && op->adjDtauOff >= 0;
   std::vector<double> yPre(nBase);
   int _infusOnCmt = -1;
-  int _lagRateCmt = -1; double _lagRatePre = 0.0;   // lagged infusion start/stop
+  int _lagRateCmt = -1, _lagRateWhI = 0; double _lagRatePre = 0.0;   // infusion start/stop
   double *yp;
   hist.newSeg();   // segment 0 begins at t0
   // Record boluses only when F or the lag time depends on a sensitivity
@@ -521,9 +528,12 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       if (recJumps) std::copy(yp, yp + nBase, yPre.begin());
       // Record replace/multiply state jumps for the backward transpose jump.
       { int _ev = _evNow;
-        if (op->adjDlagOff >= 0) {
-          _lagRateCmt = rk4sLagRateCmt(_ev, nBase);
-          if (_lagRateCmt >= 0) _lagRatePre = ind->InfusionRate[_lagRateCmt];
+        if (op->adjDlagOff >= 0 || op->adjDfOff >= 0) {
+          _lagRateCmt = rk4sInfusionEventCmt(_ev, nBase);
+          if (_lagRateCmt >= 0) {
+            int _wh, _c, _wh100, _wh0; getWh(_ev, &_wh, &_c, &_wh100, &_lagRateWhI, &_wh0);
+            _lagRatePre = ind->InfusionRate[_lagRateCmt];
+          }
         }
         if (isDose(_ev)) {
           int _wh, _cmt, _wh100, _whI, _wh0;
@@ -552,7 +562,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
               _infusOnCmt = _cmt;   // R captured after handleEvid1
             } else if ((_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) && op->adjDrateOff >= 0) {
               for (size_t w = infusRec.size(); w-- > 0;)
-                if (infusRec[w].cmt == _cmt && infusRec[w].tOff == R_PosInf) {
+                if (infusRec[w].cmt == _cmt && !infusRec[w].fixed && infusRec[w].tOff == R_PosInf) {
                   infusRec[w].tOff = xout; infusRec[w].offSeq = seq;
                   infusRec[w].offY = _yOff = (int)evY.size(); evY.resize(evY.size() + nBase);
                   break;
@@ -564,7 +574,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
           getWh(_ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
           if ((_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) && _cmt >= 0 && _cmt < nBase)
             for (size_t w = infusRec.size(); w-- > 0;)
-              if (infusRec[w].cmt == _cmt && infusRec[w].tOff == R_PosInf) {
+              if (infusRec[w].cmt == _cmt && !infusRec[w].fixed && infusRec[w].tOff == R_PosInf) {
                   infusRec[w].tOff = xout; infusRec[w].offSeq = seq;
                   infusRec[w].offY = _yOff = (int)evY.size(); evY.resize(evY.size() + nBase);
                   break;
@@ -603,9 +613,29 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       }
       if (_lagRateCmt >= 0) {   // type 9: the rate into cmt changes by factor at a lagged time
         double _dR = ind->InfusionRate[_lagRateCmt] - _lagRatePre;
-        if (_dR != 0.0) {
+        if (_dR != 0.0 && op->adjDlagOff >= 0) {
           if (_yOff < 0) { _yOff = (int)evY.size(); evY.resize(evY.size() + nBase); }
           evJumps.push_back({xout, _lagRateCmt, 9, _dR, seq, _yOff});
+        }
+        if (_dR != 0.0 && op->adjDfOff >= 0 && (_lagRateWhI == EVIDF_INF_RATE || _lagRateWhI == EVIDF_INF_DUR)) {
+          // fixed rate/dur: F scales a fixed-dur rate and stretches a fixed-rate window
+          bool _isDur = (_lagRateWhI == EVIDF_INF_DUR);
+          double _f = getAmt(ind, ind->id, _lagRateCmt, 1.0, xout, yp);
+          if (_f != 0.0 && _dR > 0.0) {
+            cvInfus _w = {xout, R_PosInf, _lagRateCmt, _dR, 0.0, 0.0, 0.0, _isDur};
+            _w.fixed = true; _w.dfW = _isDur ? _dR / _f : 0.0;
+            infusRec.push_back(_w);
+          } else if (_f != 0.0) {
+            for (size_t w = infusRec.size(); w-- > 0;) {
+              cvInfus &F = infusRec[w];
+              if (!F.fixed || F.cmt != _lagRateCmt || F.isDur != _isDur || F.tOff != R_PosInf) continue;
+              F.tOff = xout; F.offSeq = seq;
+              if (_yOff < 0) { _yOff = (int)evY.size(); evY.resize(evY.size() + nBase); }
+              F.offY = _yOff;
+              if (!_isDur) F.dfW = -_dR * (xout - F.tOn) / _f;
+              break;
+            }
+          }
         }
         _lagRateCmt = -1;
       }
@@ -655,12 +685,12 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   bu.drateOff = op->adjDrateOff; bu.dfOff = op->adjDfOff; bu.infus = &infusRec;
   bu.A.assign(eff, 0.0); bu.yq.assign(nBase, 0.0);
   // Off-boundary transversality events (type 7): stop at each infusion off-time.
-  for (size_t w = 0; w < infusRec.size(); ++w)
-    if (infusRec[w].tOff < R_PosInf && infusRec[w].R != 0.0)
-      evJumps.push_back({infusRec[w].tOff, infusRec[w].cmt, 7,
-                         -(infusRec[w].amt / infusRec[w].R) * infusRec[w].durMult,
-                         infusRec[w].offSeq, infusRec[w].offY,
-                         infusRec[w].isDur ? 0.0 : infusRec[w].amtRaw});
+  for (size_t w = 0; w < infusRec.size(); ++w) {
+    const cvInfus &F = infusRec[w];
+    if (F.tOff == R_PosInf || F.R == 0.0 || (F.fixed && F.isDur)) continue;
+    evJumps.push_back({F.tOff, F.cmt, 7, F.fixed ? 0.0 : -(F.amt / F.R) * F.durMult,
+                       F.offSeq, F.offY, F.fixed ? F.dfW : (F.isDur ? 0.0 : F.amtRaw)});
+  }
 
   N_Vector B = N_VNew_Serial(nAug, sunctx);
   void *bmem = CVodeCreate(CV_BDF, sunctx);
@@ -812,9 +842,11 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
           for (int ii = 0; ii < eff; ++ii) A[ii] = 0.0;
           for (int ii = 0; ii < nBase; ++ii) A[ii] = yq[ii];
           calc_lhs(cSub, (double)te, A, ind->lhs);
-          const double *drate = &ind->lhs[op->adjDrateOff];
           double fac = evJumps[segEv[s]].factor, lc = NV_Ith_S(B, c);
-          for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += fac * drate[c * np + p] * lc;
+          if (op->adjDrateOff >= 0 && fac != 0.0) {
+            const double *drate = &ind->lhs[op->adjDrateOff];
+            for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += fac * drate[c * np + p] * lc;
+          }
           if (op->adjDfOff >= 0 && evJumps[segEv[s]].raw != 0.0) {
             const double *dF = &ind->lhs[op->adjDfOff]; double raw = evJumps[segEv[s]].raw;
             for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += raw * dF[c * np + p] * lc;
