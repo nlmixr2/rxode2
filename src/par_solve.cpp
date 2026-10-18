@@ -3026,8 +3026,10 @@ static thread_local int    _lsSsKind = 0;      // 0 none, 1 finite-infusion mono
 static thread_local double _lsSsBolusIi = 0.0;
 static thread_local int    _lsSsCmt = -1;
 static thread_local double _lsSsDur = 0.0, _lsSsDur2 = 0.0, _lsSsRate = 0.0, _lsSsRate2 = 0.0;
-static inline void lsAdjSnapshotSs() {
+static thread_local double _lsSsT = 0.0;       // time the snapshot's steady state was established
+static inline void lsAdjSnapshotSs(double t) {
   // called right after an ss handleSS while liblsoda recording is active
+  if (_lsSsKind == 0 && (_adjSSbolusIi > 0.0 || _adjSSinfKind != 0)) _lsSsT = t;
   if (_adjSSbolusIi > 0.0) { _lsSsKind = 1; _lsSsBolusIi = _adjSSbolusIi; }
   else if (_adjSSinfKind == 1) { _lsSsKind = 1; _lsSsBolusIi = 0.0; _lsSsCmt = _adjSSinfCmt;
     _lsSsDur = _adjSSinfDur; _lsSsDur2 = _adjSSinfDur2; _lsSsRate = _adjSSinfRate; _lsSsRate2 = _adjSSinfRate2; }
@@ -4999,7 +5001,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         if (_lsWasActive) lsAdjSetActive(0);
         handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, ind->n_all_times, &(ctx->state), op, ind, u_inis, ctx);
-        if (_lsWasActive) { lsAdjSetActive(1); lsAdjSnapshotSs(); }
+        if (_lsWasActive) { lsAdjSetActive(1); lsAdjSnapshotSs(xout); }
         if (ind->wh0 == EVID0_OFF){
           yp[ind->cmt] = op->inits[ind->cmt];
         }
