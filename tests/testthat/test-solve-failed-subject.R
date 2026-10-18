@@ -296,13 +296,16 @@ rxTest({
     .msg <- "some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'"
     .line <- paste0("[solve error: ", .solverFail, "]: 1 warning(s) for subject(s): 103")
     # the solvers that print their own text first; those in .ownReason end
-    # with the solver's failure as well, since they carried the state on
+    # with the solver's failure as well, since they carried the state on.
+    # The t liblsoda's intdy reports is 0 in some runs and the smallest
+    # subnormal (4.94066e-324) in others, so only its form is pinned.
+    .intdy <- "^\\[intdy -- t = [0-9.e+-]+ illegal\\]: 1 warning\\(s\\) for subject\\(s\\): 103$"
     .own <- c(
       lsoda = "^DLSODA-",
       lsode = "^DLSODE-",
       bdf = "^DLSODE-",
-      liblsoda = "^\\[intdy -- t = 0 illegal\\]: 1 warning\\(s\\) for subject\\(s\\): 103$",
-      liblsodaadj = "^\\[intdy -- t = 0 illegal\\]: 1 warning\\(s\\) for subject\\(s\\): 103$",
+      liblsoda = .intdy,
+      liblsodaadj = .intdy,
       dop853 = "^\\[IDID=-3, step size becomes too small\\]: 1 warning\\(s\\) for subject\\(s\\): 103$"
     )
     .ownReason <- c("lsoda", "liblsoda", "liblsodaadj")
