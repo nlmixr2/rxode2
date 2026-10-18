@@ -1,3 +1,14 @@
+# rxode2 (development version)
+
+## Bug fixes
+
+### Adjoint sensitivities
+
+- A dose that follows a reset at the same time (`evid = 4`, or `evid = 3`
+  and a dose at one time) lost its bioavailability (`f()`) adjoint
+  sensitivity in the `rk4s` family of methods and in
+  `method = "liblsodaadj"`; it is now kept.
+
 # rxode2 5.1.8
 
 ## New features
