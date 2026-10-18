@@ -1,3 +1,12 @@
+# rxode2 (development version)
+
+## Bug fixes
+
+- `rxPrune()` (and so the symengine loads used for sensitivities) no
+  longer produces invalid model code for a model with more than one
+  string-valued output, such as an unconditional string and one assigned
+  in `if`/`else`.
+
 # rxode2 5.1.8
 
 ## New features
