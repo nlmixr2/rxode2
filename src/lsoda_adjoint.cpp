@@ -184,8 +184,16 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
             lsAdjSegs[sg].evAmtF = getAmt(ind, ind->id, _cmt, lsAdjSegs[sg].evAmt, t0, _y.data());
             break;
           }
-          else if (_whI == EVIDF_REPLACE) { lsAdjSegs[sg].evType = 5; lsAdjSegs[sg].evCmt = _cmt; break; }
-          else if (_whI == EVIDF_MULT)    { lsAdjSegs[sg].evType = 6; lsAdjSegs[sg].evCmt = _cmt; lsAdjSegs[sg].evFactor = getDose(ind, ind->ix[i]); break; }
+          // a replace/multiply after a reset at the same time keeps the reset (its
+          // costate is zeroed either way)
+          else if (_whI == EVIDF_REPLACE) {
+            if (lsAdjSegs[sg].evType != 3) { lsAdjSegs[sg].evType = 5; lsAdjSegs[sg].evCmt = _cmt; }
+            break;
+          }
+          else if (_whI == EVIDF_MULT) {
+            if (lsAdjSegs[sg].evType != 3) { lsAdjSegs[sg].evType = 6; lsAdjSegs[sg].evCmt = _cmt; lsAdjSegs[sg].evFactor = getDose(ind, ind->ix[i]); }
+            break;
+          }
           // (modeled rate/dur infusion on/off open a segment but are not a state jump;
           //  their dR/dp dual is reconstructed as windows below, not here.)
         }
