@@ -20,29 +20,10 @@ rxTest({
     resetMultiply = et(amt = 100, cmt = "depot") |> et(time = 2, evid = 3) |>
       et(time = 2, evid = 6, amt = 0.5, cmt = "center") |> et(c(0, 1, 2, 3, 4))
   )
-  # central FD of rxSolve()
-  .fd <- function(ev) {
-    .m <- rxode2(.txt)
-    .ret <- list()
-    for (.pn in .cs) {
-      .h <- 1e-5
-      .pu <- .p
-      .pd <- .p
-      .pu[.pn] <- .pu[.pn] + .h
-      .pd[.pn] <- .pd[.pn] - .h
-      .u <- as.data.frame(rxSolve(.m, ev, params = .pu, atol = 1e-13, rtol = 1e-13))
-      .d <- as.data.frame(rxSolve(.m, ev, params = .pd, atol = 1e-13, rtol = 1e-13))
-      for (.s in c("depot", "center")) {
-        .ret[[paste0("rx__sens_", .s, "_BY_", .pn, "__")]] <- (.u[[.s]] - .d[[.s]]) / (2 * .h)
-      }
-    }
-    .ret
-  }
-
   .check <- function(scen) {
     for (.nm in names(scen)) {
       .ev <- scen[[.nm]]
-      .ref <- .fd(.ev)
+      .ref <- .adjFd(.txt, .ev, .p)
       # one method per backward sweep, and liblsodaadj
       for (.m in c("rk4s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj")) {
         .a <- rxSolveAdjointRk4(.txt, .ev,
@@ -61,7 +42,7 @@ rxTest({
     for (.nm in names(.scen)) {
       .ev <- .scen[[.nm]]
       # the post-reset dose's d/d(bio) is genuinely nonzero
-      expect_gt(max(abs(.fd(.ev)$rx__sens_depot_BY_bio__[.ev$time[is.na(.ev$evid) | .ev$evid == 0] > 6])), 10)
+      expect_gt(max(abs(.adjFd(.txt, .ev, .p)$rx__sens_depot_BY_bio__[.ev$time[is.na(.ev$evid) | .ev$evid == 0] > 6])), 10)
     }
     .check(.scen)
   })
