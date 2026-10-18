@@ -1,3 +1,14 @@
+# rxode2 (development version)
+
+## Bug fixes
+
+### Adjoint sensitivities
+
+- With `method = "cvodesadj"`, and with `method = "liblsodaadj"` when
+  nothing was integrated between resets, an observation recorded at the
+  time of a reset (`evid = 3`) returned the pre-reset sensitivity; it now
+  reads the post-reset state, as the other adjoint methods do.
+
 # rxode2 5.1.8
 
 ## New features
