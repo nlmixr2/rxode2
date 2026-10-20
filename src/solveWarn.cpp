@@ -7,16 +7,19 @@
 #include "rxomp.h"
 #include "solveWarn.h"
 
+#include <cmath>
 #include <map>
 #include <set>
 #include <string>
+#include <vector>
 
 #define _(String) (String)
 
 #include <R.h>
 #include <Rinternals.h>
 
-extern "C" void RSprintf(const char *format, ...);
+#include "rxPrintfFormat.h"
+extern "C" void RSprintf(const char *format, ...) R_PRINTF_FORMAT(1, 2);
 extern "C" const char *rxGetId(int id);
 extern "C" const char *rxGetIdSim(int id, int *sim);
 extern "C" int getSilentErr(void);
@@ -41,9 +44,30 @@ extern "C" int getSilentErr(void);
 static const std::size_t MAX_MESSAGES = 64;
 static const std::size_t MAX_IDS = 256;
 
+// Running mean/variance (Welford's method) with the range of one value a
+// message summarizes rather than keys on
+struct WarnStat {
+  int n;
+  double mean, m2, mn, mx;
+  WarnStat() : n(0), mean(0.0), m2(0.0), mn(0.0), mx(0.0) {}
+  void add(double x) {
+    n++;
+    if (n == 1) {
+      mn = mx = x;
+    } else {
+      if (x < mn) mn = x;
+      if (x > mx) mx = x;
+    }
+    double d = x - mean;
+    mean += d / n;
+    m2 += d * (x - mean);
+  }
+};
+
 struct WarnEntry {
   int count;
   std::set<int> ids;
+  std::vector<WarnStat> stats;
   bool idsFull; // an id arrived after `ids` reached MAX_IDS
   WarnEntry() : count(0), idsFull(false) {}
 };
@@ -51,6 +75,10 @@ struct WarnEntry {
 static std::map<std::string, WarnEntry> g_warn;
 /* pushes of a new message while the table was full, since the last flush */
 static int g_dropped = 0;
+
+// marker left in a message's key by "%%v" in its format; replaced at flush by
+// the summary of the matching value
+#define WARN_STAT_MARK "%v"
 
 extern "C" void rxSolveWarnReset(void) {
 #ifdef _OPENMP
@@ -62,6 +90,33 @@ extern "C" void rxSolveWarnReset(void) {
   }
 }
 
+static void rxSolveWarnPushV(int id, int nStat, const double *stat,
+                             const char *msg0, va_list args) {
+  char msg[1024];
+  vsnprintf(msg, 1023, msg0, args);
+  std::string key(msg);
+  std::map<std::string, WarnEntry>::iterator it = g_warn.find(key);
+  if (it == g_warn.end()) {
+    if (g_warn.size() >= MAX_MESSAGES) {
+      g_dropped++;
+      return;
+    }
+    it = g_warn.insert(std::make_pair(key, WarnEntry())).first;
+    it->second.stats.resize(nStat);
+  }
+  WarnEntry &e = it->second;
+  e.count++;
+  if (id >= 0) {
+    if (e.ids.size() < MAX_IDS) {
+      e.ids.insert(id);
+    } else if (e.ids.find(id) == e.ids.end()) {
+      e.idsFull = true;
+    }
+  }
+  int nUse = (int)e.stats.size() < nStat ? (int)e.stats.size() : nStat;
+  for (int k = 0; k < nUse; k++) e.stats[k].add(stat[k]);
+}
+
 extern "C" void rxSolveWarnPush(int id, const char *msg0, ...) {
   if (msg0 == NULL) return;
   if (getSilentErr() != 0) return;
@@ -69,34 +124,56 @@ extern "C" void rxSolveWarnPush(int id, const char *msg0, ...) {
 #pragma omp critical(rxSolveWarn)
 #endif
   {
-    char msg[1024];
     va_list args;
     va_start(args, msg0);
-    vsnprintf(msg, 1023, msg0, args);
+    rxSolveWarnPushV(id, 0, NULL, msg0, args);
     va_end(args);
-
-    std::string key(msg);
-    std::map<std::string, WarnEntry>::iterator it = g_warn.find(key);
-    if (it == g_warn.end()) {
-      if (g_warn.size() < MAX_MESSAGES) {
-        WarnEntry e;
-        e.count = 1;
-        if (id >= 0) e.ids.insert(id);
-        g_warn[key] = e;
-      } else {
-        g_dropped++;
-      }
-    } else {
-      it->second.count++;
-      if (id >= 0) {
-        if (it->second.ids.size() < MAX_IDS) {
-          it->second.ids.insert(id);
-        } else if (it->second.ids.find(id) == it->second.ids.end()) {
-          it->second.idsFull = true;
-        }
-      }
-    }
   }
+}
+
+extern "C" void rxSolveWarnPushStat(int id, int nStat, const double *stat,
+                                    const char *msg0, ...) {
+  if (msg0 == NULL) return;
+  if (getSilentErr() != 0) return;
+#ifdef _OPENMP
+#pragma omp critical(rxSolveWarn)
+#endif
+  {
+    va_list args;
+    va_start(args, msg0);
+    rxSolveWarnPushV(id, nStat, stat, msg0, args);
+    va_end(args);
+  }
+}
+
+// one summarized value: itself when seen once, else mean +/- sd (min/max)
+static std::string rxSolveWarnStatStr(const WarnStat &st) {
+  char buf[128];
+  if (st.n <= 1) {
+    snprintf(buf, sizeof(buf), "%g", st.mean);
+  } else {
+    snprintf(buf, sizeof(buf), "%g +/- %g (%g/%g)", st.mean,
+             std::sqrt(st.m2 / (st.n - 1)), st.mn, st.mx);
+  }
+  return std::string(buf);
+}
+
+// the message with each marker replaced by its value's summary, in order
+static std::string rxSolveWarnMsg(const std::string &key, const WarnEntry &e) {
+  if (e.stats.empty()) return key;
+  std::string out;
+  std::size_t pos = 0;
+  std::size_t k = 0;
+  const std::size_t markLen = sizeof(WARN_STAT_MARK) - 1;
+  while (k < e.stats.size()) {
+    std::size_t f = key.find(WARN_STAT_MARK, pos);
+    if (f == std::string::npos) break;
+    out.append(key, pos, f - pos);
+    out.append(rxSolveWarnStatStr(e.stats[k++]));
+    pos = f + markLen;
+  }
+  out.append(key, pos, std::string::npos);
+  return out;
 }
 
 extern "C" void rxSolveWarnFlush(int maxIds) {
@@ -117,8 +194,8 @@ extern "C" void rxSolveWarnFlush(int maxIds) {
   }
   for (std::map<std::string, WarnEntry>::const_iterator it = snap.begin();
        it != snap.end(); ++it) {
-    const std::string &msg = it->first;
     const WarnEntry &e = it->second;
+    const std::string msg = rxSolveWarnMsg(it->first, e);
     int nIds = (int)e.ids.size();
     int nShow = (nIds < maxIds) ? nIds : maxIds;
     RSprintf("[%s]: %d warning(s)", msg.c_str(), e.count);

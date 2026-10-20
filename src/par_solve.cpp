@@ -29,6 +29,7 @@
 
 // dop853 is same time
 #include "rxProtect.h"
+#include "rxSbufFormat.h"
 
 extern "C" uint32_t getRxSeed1(int ncores);
 extern "C" void setSeedEng1(uint32_t seed);
@@ -64,7 +65,8 @@ int _isRstudio = 0;
 #include "rxData.h"
 
 extern "C" void setRstudioPrint(int rstudio);
-extern "C" void RSprintf(const char *format, ...);
+#include "rxPrintfFormat.h"
+extern "C" void RSprintf(const char *format, ...) R_PRINTF_FORMAT(1, 2);
 
 // Pre-generated eta batch draw (defined in rxthreefry.cpp)
 extern "C" void rxPreGenEta(rx_solve *rx, int ncores);
@@ -291,6 +293,21 @@ extern "C" SEXP _rxTestSolveWarnMany(SEXP ksSEXP, SEXP nFlushSEXP) {
   for (int i = 0; i < nFlush; i++) {
     rxSolveWarnFlush(64);
   }
+  return R_NilValue;
+}
+
+// push one summarized warning per value of `x` (and its negative), no subject
+extern "C" SEXP _rxTestSolveWarnStat(SEXP xSEXP) {
+  rxProtect rx_protect;
+  rxSolveWarnReset();
+  SEXP x = rx_protect.protect(Rf_coerceVector(xSEXP, REALSXP));
+  int n = Rf_length(x);
+  double *px = REAL(x);
+  for (int i = 0; i < n; i++) {
+    double v[2] = {px[i], -px[i]};
+    rxSolveWarnPushStat(-1, 2, v, "rxTest -- x = %%v, -x = %%v, n = %d", 3);
+  }
+  rxSolveWarnFlush(64);
   return R_NilValue;
 }
 
@@ -583,7 +600,7 @@ extern "C" int par_progress(int c, int n, int d, int cores, clock_t t0, int stop
           }
           RSprintf("] ");
           if (nticks < 50) RSprintf(" ");
-          RSprintf("%02.f%%; ",100*progress,cores);
+          RSprintf("%02.f%%; ",100*progress);
           _lastT0 = clock();
           clock_t t = _lastT0 - t0;
           double ts = ((double)t)/CLOCKS_PER_SEC;

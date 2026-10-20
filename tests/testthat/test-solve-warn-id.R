@@ -173,4 +173,81 @@ rxTest({
     .warnLabels(character(0), integer(0))
     expect_equal(.Call("_rxTestGetIdLabels", 0L, PACKAGE = "rxode2"), "Unknown")
   })
+
+  test_that("a summarized warning value gives mean +/- sd (min/max), or itself once", {
+    .stat <- function(x) {
+      .out <- capture.output(.Call("_rxTestSolveWarnStat", x, PACKAGE = "rxode2"))
+      grep("warning\\(s\\)", .out, value = TRUE)
+    }
+    .x <- c(1, 2, 4, 8)
+    expect_identical(
+      .stat(.x),
+      sprintf(
+        "[rxTest -- x = %g +/- %g (%g/%g), -x = %g +/- %g (%g/%g), n = 3]: 4 warning(s)",
+        mean(.x),
+        sd(.x),
+        min(.x),
+        max(.x),
+        -mean(.x),
+        sd(.x),
+        -max(.x),
+        -min(.x)
+      )
+    )
+    expect_identical(.stat(2.5), "[rxTest -- x = 2.5, -x = -2.5, n = 3]: 1 warning(s)")
+    # a large offset does not lose the spread (Welford, not sum of squares)
+    .x <- 1e8 + c(1, 2, 3)
+    expect_identical(
+      .stat(.x),
+      sprintf(
+        "[rxTest -- x = %g +/- %g (%g/%g), -x = %g +/- %g (%g/%g), n = 3]: 3 warning(s)",
+        mean(.x),
+        sd(.x),
+        min(.x),
+        max(.x),
+        -mean(.x),
+        sd(.x),
+        -max(.x),
+        -min(.x)
+      )
+    )
+  })
+
+  test_that("a dop853 step-limit warning keys on nmax and summarizes x over subjects", {
+    .m <- rxode2({
+      d/dt(central) <- -0.1 * central
+    })
+    .ev <- et(amt = 100) |> et(seq(0, 200, by = 50)) |> et(id = 1:2)
+    .out <- capture.output(suppressWarnings(rxSolve(.m, .ev, method = "dop853", maxsteps = 5L)))
+    .line <- grep("warning\\(s\\)", .out, value = TRUE)
+    expect_length(.line, 1L)
+    expect_match(
+      .line,
+      "^\\[exit of dop853 at x = [-0-9.e+]+ \\+/- [-0-9.e+]+ \\([-0-9.e+]+/[-0-9.e+]+\\), more than nmax = 5 are needed\\]: 2 warning\\(s\\) for subject\\(s\\): 1, 2$"
+    )
+  })
+
+  test_that("the dop853 step-size and intdy warnings give their x, h and t", {
+    .m <- rxode2({
+      y(0) <- y0
+      d/dt(y) <- y^2
+    })
+    # subject 2 blows up at t = 1; subject 1 does not
+    .ev <- et(seq(0, 2, by = 0.5)) |> et(id = 1:2)
+    .p <- data.frame(y0 = c(0.1, 1))
+    .out <- capture.output(suppressWarnings(rxSolve(.m, .ev, params = .p, method = "dop853")))
+    .line <- grep("warning\\(s\\)", .out, value = TRUE)
+    expect_length(.line, 1L)
+    expect_match(
+      .line,
+      "^\\[exit of dop853 at x = [-0-9.e+]+, step size too small h = [-0-9.e+]+\\]: 1 warning\\(s\\) for subject\\(s\\): 2$"
+    )
+    .out <- capture.output(suppressWarnings(rxSolve(.m, .ev, params = .p, method = "liblsoda")))
+    .line <- grep("intdy", .out, value = TRUE)
+    expect_length(.line, 1L)
+    expect_match(
+      .line,
+      "^\\[intdy -- t = ([-0-9.e+]+|[-0-9.e+]+ \\+/- [-0-9.e+]+ \\([-0-9.e+]+/[-0-9.e+]+\\)) illegal\\]: [1-9][0-9]* warning\\(s\\) for subject\\(s\\): 2$"
+    )
+  })
 })
