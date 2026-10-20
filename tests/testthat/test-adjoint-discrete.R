@@ -289,20 +289,20 @@ rxTest({
     chk2(evC, "rk4s", "rk4", 1e-4)
     chk2(evC, "vern98s", "vern98", 1e-4)
     # ss=2 fixed-rate PERIODIC infusion superposition (dur = 50/10 = 5 < ii = 12)
-    evD <- et(amt = 100, cmt = "central") %>%
-      et(amt = 50, rate = 10, cmt = "central", ss = 2, ii = 12, time = 12) %>%
+    evD <- et(amt = 100, cmt = "center") %>%
+      et(amt = 50, rate = 10, cmt = "center", ss = 2, ii = 12, time = 12) %>%
       et(c(1, 8, 12, 16, 24, 30))
     chk2(evD, "rk4s", "rk4", 1e-4)
     chk2(evD, "vern98s", "vern98", 1e-4)
     # ss=2 LARGE-duration infusion (dur = 100/10 = 10 > ii = 8; two-phase monodromy)
-    evE <- et(amt = 80, cmt = "central") %>%
-      et(amt = 100, rate = 10, cmt = "central", ss = 2, ii = 8, time = 8) %>%
+    evE <- et(amt = 80, cmt = "center") %>%
+      et(amt = 100, rate = 10, cmt = "center", ss = 2, ii = 8, time = 8) %>%
       et(c(1, 8, 12, 16, 24, 30))
     chk2(evE, "rk4s", "rk4", 1e-4)
     chk2(evE, "vern98s", "vern98", 1e-4)
     # ss=2 FULL-interval infusion (dur = 120/10 = 12 == ii = 12; -J^-1 df/dp IC)
-    evF <- et(amt = 80, cmt = "central") %>%
-      et(amt = 120, rate = 10, cmt = "central", ss = 2, ii = 12, time = 12) %>%
+    evF <- et(amt = 80, cmt = "center") %>%
+      et(amt = 120, rate = 10, cmt = "center", ss = 2, ii = 12, time = 12) %>%
       et(c(1, 8, 12, 16, 24, 30))
     chk2(evF, "rk4s", "rk4", 1e-4)
     chk2(evF, "vern98s", "vern98", 1e-4)
@@ -327,12 +327,12 @@ rxTest({
     }
     smp <- c(1, 4, 8, 12, 16, 24)
     chkC(et(amt = 100, cmt = "depot", ss = 1, ii = 12) %>% et(smp), 1e-4) # ss1 bolus
-    chkC(et(amt = 100, rate = 25, cmt = "central", ss = 1, ii = 12) %>% et(smp), 1e-4) # ss1 periodic infusion
-    chkC(et(amt = 120, rate = 10, cmt = "central", ss = 1, ii = 12) %>% et(smp), 1e-4) # ss1 full-interval infusion
+    chkC(et(amt = 100, rate = 25, cmt = "center", ss = 1, ii = 12) %>% et(smp), 1e-4) # ss1 periodic infusion
+    chkC(et(amt = 120, rate = 10, cmt = "center", ss = 1, ii = 12) %>% et(smp), 1e-4) # ss1 full-interval infusion
     chkC(et(amt = 100, cmt = "depot") %>% et(amt = 50, cmt = "depot", ss = 2, ii = 12, time = 12) %>% et(smp), 1e-4) # ss2 bolus
     chkC(
-      et(amt = 100, cmt = "central") %>%
-        et(amt = 50, rate = 10, cmt = "central", ss = 2, ii = 12, time = 12) %>%
+      et(amt = 100, cmt = "center") %>%
+        et(amt = 50, rate = 10, cmt = "center", ss = 2, ii = 12, time = 12) %>%
         et(smp),
       1e-4
     ) # ss2 infusion
@@ -414,10 +414,10 @@ rxTest({
     }
     smp <- c(1, 4, 8, 12, 16, 24)
     chkL(et(amt = 100, cmt = "depot", ss = 1, ii = 12, addl = 2) %>% et(smp), 1e-4) # bolus (addl)
-    chkL(et(amt = 100, rate = 25, cmt = "central", ss = 1, ii = 12, addl = 2) %>% et(smp), 1e-4) # periodic infusion
-    chkL(et(amt = 100, rate = 10, cmt = "central", ss = 1, ii = 8) %>% et(smp), 1e-4) # large-dur infusion
-    chkL(et(amt = 120, rate = 10, cmt = "central", ss = 1, ii = 12) %>% et(smp), 1e-4) # full-interval infusion
-    chkL(et(amt = 0, rate = 8, cmt = "central", ss = 1) %>% et(smp), 1e-4) # continuous infusion
+    chkL(et(amt = 100, rate = 25, cmt = "center", ss = 1, ii = 12, addl = 2) %>% et(smp), 1e-4) # periodic infusion
+    chkL(et(amt = 100, rate = 10, cmt = "center", ss = 1, ii = 8) %>% et(smp), 1e-4) # large-dur infusion
+    chkL(et(amt = 120, rate = 10, cmt = "center", ss = 1, ii = 12) %>% et(smp), 1e-4) # full-interval infusion
+    chkL(et(amt = 0, rate = 8, cmt = "center", ss = 1) %>% et(smp), 1e-4) # continuous infusion
   })
 
   test_that("modeled rate()/dur() steady-state: adjoint sensitivities match FINITE DIFFERENCES", {
