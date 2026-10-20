@@ -153,6 +153,12 @@ rxTest({
     expect_equal(expit(c(-Inf, Inf)), c(0, 1))
     expect_equal(expit(c(-Inf, Inf), -0.5, 1.5), c(-0.5, 1.5))
     expect_equal(expit(logit(1) + 1), 1)
+    expect_identical(expit(Inf, -1, 0.1), 0.1)
+    expect_identical(expit(Inf, -100, 1e-15), 1e-15)
+    expect_true(is.finite(.rxTransform(1 - .Machine$double.eps / 2, low = -100, high = 1, transform = "logit")))
+    expect_equal(.rxTransform(c(0, 1), lambda = 2, transform = "logit"), c(-Inf, Inf))
+    expect_equal(.rxTransform(1 - 1e-12, transform = "logit + yeoJohnson"), qlogis(1 - 1e-12), tolerance = 1e-14)
+    expect_true(is.finite(.rxTransform(1 - .Machine$double.eps / 2, low = -100, high = 1, transform = "logit + yeoJohnson")))
 
     m <- rxode2({
       bio <- expit(logit(fsc) + eta.f)
@@ -161,5 +167,11 @@ rxTest({
     s <- rxSolve(m, params = data.frame(fsc = c(0.8, 1, 0, 1 - 1e-12), eta.f = 0.1), events = et(0))
     expect_equal(s$bio, c(plogis(qlogis(0.8) + 0.1), 1, 0, plogis(qlogis(1 - 1e-12) + 0.1)))
     expect_equal(s$lp, qlogis(c(0.8, 1, 0, 1 - 1e-12)), tolerance = 1e-14)
+
+    m2 <- rxode2({
+      lp <- logit(x, lo, hi)
+    })
+    s2 <- rxSolve(m2, params = data.frame(x = c(1, 0, 1), lo = c(NA, 0, 1), hi = c(1, NA, 1)), events = et(0))
+    expect_true(all(is.na(s2$lp)))
   })
 })

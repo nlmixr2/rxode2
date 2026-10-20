@@ -284,9 +284,7 @@ static inline double _powerD(double x, double lambda, int yj0, double low, doubl
     /* REprintf("%f %f %f\n", x, p, -log(1/p-1)); */
     return Rf_qnorm5(p, 0, 1, 1, 0);
   case 5: // logit followed by yeo-johnson
-    p = (x-low)/(high-low);
-    if (p >= 1) return R_NaN;
-    if (p <= 0) return R_NaN;
+    if (!(x > low && x < high)) return R_NaN;
     p = log(x-low) - log(high-x);
     if (lambda == 1.0) return p;
     if (p >= 0){
@@ -298,9 +296,7 @@ static inline double _powerD(double x, double lambda, int yj0, double low, doubl
       return (1.0 - pow(1.0 - p, l2))/l2;
     }
   case 4: // logitNorm
-    p = (x-low)/(high-low);
-    if (p >= 1) return R_NaN;
-    if (p <= 0) return R_NaN;
+    if (!(x > low && x < high)) return R_NaN;
     return log(x-low) - log(high-x);
   case 3: // logNorm
     if (x <= _eps) x0= _eps;
@@ -478,7 +474,7 @@ static inline double _powerDLambda(double x, double lambda, int yj0, double low,
   case 1: return _yjDL(x, lambda);                     // yeoJohnson
   case 2: case 3: case 4: case 6: return 0.0;          // norm/logNorm/logit/probit: no lambda
   case 5: // logit then yeoJohnson
-    p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = -log(1/p-1);
+    if (!(x > low && x < high)) return R_NaN; p = log(x-low) - log(high-x);
     return _yjDL(p, lambda);
   case 7: // probit then yeoJohnson
     p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = Rf_qnorm5(p, 0, 1, 1, 0);
@@ -497,7 +493,7 @@ static inline double _powerDLambda2(double x, double lambda, int yj0, double low
   case 1: return _yjDL2(x, lambda);
   case 2: case 3: case 4: case 6: return 0.0;
   case 5:
-    p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = -log(1/p-1);
+    if (!(x > low && x < high)) return R_NaN; p = log(x-low) - log(high-x);
     return _yjDL2(p, lambda);
   case 7:
     p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = Rf_qnorm5(p, 0, 1, 1, 0);
@@ -517,7 +513,7 @@ static inline double _powerDLambdaX(double x, double lambda, int yj0, double low
   case 1: return _yjDLx(x, lambda);
   case 2: case 3: case 4: case 6: return 0.0;
   case 5:
-    p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = -log(1/p-1);
+    if (!(x > low && x < high)) return R_NaN; p = log(x-low) - log(high-x);
     return _yjDLx(p, lambda)*_powerDD(x, lambda, 4, low, high);
   case 7:
     p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = Rf_qnorm5(p, 0, 1, 1, 0);

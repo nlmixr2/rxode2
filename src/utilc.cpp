@@ -585,6 +585,7 @@ extern "C" SEXP _gammaqInva(SEXP a, SEXP z) {
 // log(x-low)-log(high-x) keeps precision near the bounds; -Inf/Inf at them, like qlogis()
 extern "C" double logit(double x, double low, double high) {
   if (ISNAN(x)) return x;
+  if (!(low < high)) return R_NaN;
   if (x == low) return R_NegInf;
   if (x == high) return R_PosInf;
   if (x < low || x > high) return R_NaN;
@@ -594,6 +595,8 @@ extern "C" double logit(double x, double low, double high) {
 // expit(-Inf)=low and expit(Inf)=high, like plogis()
 extern "C" double expit(double alpha, double low, double high) {
   if (ISNAN(alpha)) return alpha;
+  if (alpha == R_PosInf) return high;
+  if (alpha == R_NegInf) return low;
   return (high-low)/(1+exp(-alpha))+low;
 }
 
@@ -923,8 +926,8 @@ extern "C" SEXP _rxode2_powerD(SEXP xS, SEXP lowS, SEXP highS, SEXP lambdaS, SEX
   }
   SEXP ret = rx_protect.protect(Rf_allocVector(REALSXP, lenx));
   double *retD = REAL(ret);
-  if (yj == 4 && lambda == 1.0) {
-    // logit()/expit(): same code as the compiled model functions
+  if (yj == 4) {
+    // logit()/expit() (no lambda): same code as the compiled model functions
     for (int i = lenx; i--;){
       double cur = isD ? xD[i] : (xI[i] == NA_INTEGER ? NA_REAL : (double)(xI[i]));
       retD[i] = inverse ? expit(cur, low, high) : logit(cur, low, high);
