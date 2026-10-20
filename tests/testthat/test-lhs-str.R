@@ -1,4 +1,10 @@
 rxTest({
+  # the printed syntax-error listing of a model that fails to parse (the
+  # condition itself says "see above")
+  .listing <- function(code) {
+    capture.output(expect_error(rxode2parse(code), "syntax errors", fixed = TRUE))
+  }
+
   test_that("test lhs string assign lhs expression information", {
     p <- rxode2parse('a="oh no"')
     expect_equal(p$lhs, "a")
@@ -491,6 +497,21 @@ b <- (a == \"<10\")*1 + (a == \">=10\")*2
     })
     s <- as.data.frame(rxSolve(m3, data.frame(id = 1:2, time = 1, RACE = 1:2)))
     expect_equal(s$isB, c(0, 1))
+  })
+
+  test_that("an out-of-range string assignment names the allowed values", {
+    expect_match(
+      .listing('a <- "matt"; a<- 2'),
+      "the string variable 'a' can only be 1 or 'matt':",
+      fixed = TRUE,
+      all = FALSE
+    )
+    expect_match(
+      .listing('a <- "matt"; a <- "rxode2"; a<- 3'),
+      "the string variable 'a' can only be 1 to 2, or 'matt', 'rxode2':",
+      fixed = TRUE,
+      all = FALSE
+    )
   })
 
   test_that("each string variable prunes to its own levels", {

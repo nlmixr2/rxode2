@@ -14,7 +14,8 @@ void     cfode(struct lsoda_context_t * ctx, int meth);
 void     cfode_static(struct lsoda_context_t * ctx, int meth);
 void     scaleh(struct lsoda_context_t * ctx, double rh);
 
-char * _strdup_printf(char * fmt, ...);
+#include "rxPrintfFormat.h"
+char * _strdup_printf(char * fmt, ...) R_PRINTF_FORMAT(1, 2);
 #ifdef CFODE_STATIC
 	#define cfode cfode_static
 #endif
