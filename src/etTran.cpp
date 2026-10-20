@@ -34,6 +34,12 @@ extern int fastFactorDataHasNa;
 
 SEXP convertId_(SEXP x);
 
+// A rate or duration that is dose information, as the no-EVID-column path reads
+// it: positive, or modeled (-1, -2).  A NaN, 0 or other negative value is none.
+static inline bool etRateDurIsDose(double x) {
+  return x > 0.0 || x == -1.0 || x == -2.0;
+}
+
 static inline bool rxIsNumInt(RObject obj) {
   int type = obj.sexp_type();
   if (type == REALSXP || type == 13) {
@@ -2232,7 +2238,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       } else if (inDur[i] == -2.0){
         // duration is modeled
         if (flg == 40) {
-          stop(_("specifying duration with a steady state constant infusion makes no sense (id: %d row: %d)"), CHAR(idLvl[cid-1]), i+1);
+          stop(_("specifying duration with a steady state constant infusion makes no sense (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
         }
         if (cmtSupportsInfusion(cmt, numLin, numLinSens,
                                 depotLin, numCmt, numSens)) {
@@ -2243,7 +2249,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       } else if (inDur[i] > 0) {
         // Duration is fixed
         if (flg == 40){
-          stop(_("specifying duration with a steady state constant infusion makes no sense (id: %d row: %d)"), CHAR(idLvl[cid-1]), i+1);
+          stop(_("specifying duration with a steady state constant infusion makes no sense (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
         }
         if (evidCol == -1 || inEvid[i] == 1 || inEvid[i] == 4) {
           if (cmtSupportsInfusion(cmt, numLin, numLinSens,
@@ -2259,7 +2265,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
       }
     } else {
-      stop(_("'rate' and/or 'dur' are not specified correctly (id: %d row: %d)"), CHAR(idLvl[cid-1]), i+1);
+      stop(_("'rate' and/or 'dur' are not specified correctly (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
     }
     if (addlCol == -1) caddl=0;
     else caddl = inAddl[i];
@@ -2295,6 +2301,16 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       if (evidIsMDV) {
         cevid=1;
       } else {
+        // a missing EVID is an observation, which would silently drop the
+        // record's dose information, read as the no-EVID-column path reads it
+        // (there such a record is a dose): a nonzero amount (NaN too), or a rate
+        // or duration etRateDurIsDose() takes, as a constant infusion has
+        if (hasEvid &&
+            ((!ISNA(camt) && camt != 0.0) ||
+             (rateCol != -1 && etRateDurIsDose(inRate[i])) ||
+             (durCol != -1 && etRateDurIsDose(inDur[i])))) {
+          stop(_("'evid' is missing on a record with dose information ('amt', 'rate' or 'dur'); use 1 for a dose or 0 for an observation (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
+        }
         cevid=0;
       }
     }
