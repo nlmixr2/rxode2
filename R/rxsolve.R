@@ -4775,12 +4775,9 @@ solve.rxEt <- solve.rxSolve
       .map <- get(.what, envir = .env, inherits = FALSE)
       .mapNames <- names(.map)
       if (!is.null(.mapNames)) {
-        for (.i in seq_along(.ret)) {
-          .w <- match(.ret[[.i]], .mapNames)
-          if (!is.na(.w)) {
-            .ret[[.i]] <- .map[[.w]]
-          }
-        }
+        .w <- match(.ret, .mapNames)
+        .ok <- !is.na(.w)
+        .ret[.ok] <- .map[.w[.ok]]
       }
     }
   }
@@ -4826,25 +4823,28 @@ solve.rxEt <- solve.rxSolve
     .parsDf <- as.data.frame(.parso, check.names = FALSE)
     .nsub <- get(".nsub", envir = .env, inherits = FALSE)
     .nsim <- get(".nsim", envir = .env, inherits = FALSE)
-    .dat <- as.data.frame(matrix(nrow = nrow(.parsDf), ncol = 0))
+    .n <- nrow(.parsDf)
+    .lead <- list()
     if (.nsim > 1) {
-      .dat[["sim.id"]] <- (seq_len(nrow(.parsDf)) - 1L) %/% .nsub + 1L
+      .lead[["sim.id"]] <- (seq_len(.n) - 1L) %/% .nsub + 1L
     }
     # a one-row params is one set for every subject and has no id column
-    if (.nsub > 1 && nrow(.parsDf) > 1L) {
-      .id <- (seq_len(nrow(.parsDf)) - 1L) %% .nsub + 1L
+    if (.nsub > 1 && .n > 1L) {
+      .id <- (seq_len(.n) - 1L) %% .nsub + 1L
       if (length(.idLevels) > 0) {
         .id <- factor(.id, levels = seq_along(.idLevels), labels = .idLevels)
       }
-      .dat[["id"]] <- .id
+      .lead[["id"]] <- .id
     }
-    for (.i in seq_along(.ppos)) {
-      if (.ppos[[.i]] > 0) {
-        .dat[[.rxSolveUpdateParNames(.pars[[.i]], .env)]] <- .parsDf[[.ppos[[.i]]]]
-      } else if (.ppos[[.i]] < 0) {
-        .dat[[.rxSolveUpdateParNames(.pars[[.i]], .env)]] <- rep(.mvIni[[-.ppos[[.i]]]], nrow(.parsDf))
-      }
-    }
+    .keep <- .ppos != 0
+    .pos <- .ppos[.keep]
+    .user <- .pos > 0
+    .cols <- vector("list", length(.pos))
+    .cols[.user] <- unname(as.list(.parsDf)[.pos[.user]])
+    .cols[!.user] <- lapply(unname(.mvIni[-.pos[!.user]]), rep, .n)
+    names(.cols) <- .rxSolveUpdateParNames(.pars[.keep], .env)
+    # adding thousands of columns one at a time takes most of a first access
+    .dat <- structure(c(.lead, .cols), class = "data.frame", row.names = .set_row_names(.n))
     assign(".params.dat", .dat, envir = .env)
     if (nrow(.dat) == 1L) {
       .single <- stats::setNames(as.numeric(.dat[1, , drop = TRUE]), names(.dat))

@@ -290,6 +290,24 @@ rxTest({
     expect_identical(.s2$params, .want)
   })
 
+  test_that("a multi-row params' $params fills the model's ini values by either route", {
+    .m <- rxode2({
+      k <- 0.3
+      v <- 2
+      d / dt(central) <- -k * central
+      cp <- central / (v * wt)
+    })
+    d <- .paramsRowsData()
+    .p <- data.frame(k = c(0.5, 0.6, 0.7))
+    .s1 <- rxSolve(.m, d, params = .p)
+    expect_identical(names(.s1$params), c("id", "k", "v"))
+    expect_identical(.s1$params$k, .p$k)
+    expect_identical(.s1$params$v, rep(2, 3))
+    .s2 <- rxSolve(.m, d, params = .p)
+    expect_true("params" %in% utils::.DollarNames(.s2, ""))
+    expect_identical(.s2$params, .s1$params)
+  })
+
   test_that("a model with no parameters has a 0 x 0 $params by either route", {
     .m <- rxode2("d/dt(x) <- -x")
     .s1 <- rxSolve(.m, et(0:2), inits = c(x = 1))
