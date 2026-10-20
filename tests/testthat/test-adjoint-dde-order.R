@@ -14,10 +14,20 @@ rxTest({
   .pu["k"] <- .pu["k"] + .h
   .pd["k"] <- .pd["k"] - .h
   .truth <- (rxSolve(.m, .ev, params = .pu, method = "dop853", atol = 1e-13, rtol = 1e-13)$central -
-    rxSolve(.m, .ev, params = .pd, method = "dop853", atol = 1e-13, rtol = 1e-13)$central) / (2 * .h)
+    rxSolve(.m, .ev, params = .pd, method = "dop853", atol = 1e-13, rtol = 1e-13)$central) /
+    (2 * .h)
   .adj <- rxode2(.rxAdjointExpand(.txt, "k")$text)
   .errAt <- function(hmax) {
-    .s <- as.data.frame(rxSolve(.adj, .ev, params = .p, method = "dop853s", atol = 1e-10, rtol = 1e-10, hmax = hmax, cores = 1))
+    .s <- as.data.frame(rxSolve(
+      .adj,
+      .ev,
+      params = .p,
+      method = "dop853s",
+      atol = 1e-10,
+      rtol = 1e-10,
+      hmax = hmax,
+      cores = 1
+    ))
     max(abs(.s$rx__sens_central_BY_k__ - .truth))
   }
 
