@@ -173,5 +173,12 @@ rxTest({
     })
     s2 <- rxSolve(m2, params = data.frame(x = c(1, 0, 1), lo = c(NA, 0, 1), hi = c(1, NA, 1)), events = et(0))
     expect_true(all(is.na(s2$lp)))
+
+    m3 <- rxode2({
+      p <- expit(a, lo, hi)
+    })
+    s3 <- rxSolve(m3, params = data.frame(a = c(Inf, -Inf, Inf), lo = c(NA, 0, -1), hi = c(1, NA, 2)), events = et(0))
+    expect_true(all(is.na(s3$p[1:2])))
+    expect_equal(s3$p[3], 2)
   })
 })

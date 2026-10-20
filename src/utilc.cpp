@@ -595,8 +595,7 @@ extern "C" double logit(double x, double low, double high) {
 // expit(-Inf)=low and expit(Inf)=high, like plogis()
 extern "C" double expit(double alpha, double low, double high) {
   if (ISNAN(alpha)) return alpha;
-  if (alpha == R_PosInf) return high;
-  if (alpha == R_NegInf) return low;
+  if (!R_finite(alpha) && !ISNAN(low) && !ISNAN(high)) return alpha > 0 ? high : low;
   return (high-low)/(1+exp(-alpha))+low;
 }
 
