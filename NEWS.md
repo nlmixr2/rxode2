@@ -1,5 +1,13 @@
 # rxode2 (development version)
 
+## New features
+
+- A package that includes rxode2's `rxode2parseSbuf.h` can define
+  `RXODE2_SBUF_FORMAT` (`PKG_CPPFLAGS = -DRXODE2_SBUF_FORMAT`) to have its
+  `sAppend()`, `sPrint()` and `addLine()` calls checked by `-Wformat`.  Under
+  R's default `-Werror=format-security` a format that is not a literal and
+  has no arguments then fails to compile.  Without the macro nothing changes.
+
 ## Bug fixes
 
 - `etTrans()` now stops on a record whose `evid` is missing but that carries
