@@ -2,6 +2,16 @@
 
 ## Bug fixes
 
+### Model functions
+
+- `logit()` (in R and in models) is now computed as
+  `log(x - low) - log(high - x)`, so it keeps full precision as `x`
+  approaches `high`, and it returns `-Inf`/`Inf` at `x == low`/`x == high`
+  (like `qlogis()`) instead of `NaN`.  `expit()` returns `low`/`high` for
+  `-Inf`/`Inf`, so `expit(logit(1) + eta)` is 1 instead of `NA`.  The
+  `logitNorm()` and `logit + yeoJohnson` residual transforms use the same
+  form (#1474).
+
 ### Solving
 
 - The aggregated solver warning summary no longer drops warnings silently.
