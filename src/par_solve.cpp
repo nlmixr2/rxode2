@@ -414,6 +414,7 @@ struct rxSolveErrReason {
   int flag;
   const char *text;
 };
+#define rxSolverFailText "the ODE solver failed (an exception, or a step it could not take)"
 static const rxSolveErrReason rxSolveErrReasons[] = {
   {rxErrCorruptETSort, "Corrupted event table during sort (1)"},
   {rxErrRate0, "Rate is zero/negative"},
@@ -442,7 +443,7 @@ static const rxSolveErrReason rxSolveErrReasons[] = {
   {rxErrIndLinConverge, "Inductive linearization could not reach 'atol'/'rtol' within 'maxsteps' relinearization steps; loosen 'atol'/'rtol' or raise 'maxsteps'"},
   {rxErrIndLinCode, "Unsupported inductive linearization code; the model's 'indLin' descriptor does not match the solver"},
   {rxErrIndLinExcept, "Inductive linearization failed with an unhandled exception (most likely out of memory)"},
-  {rxErrSolverFail, "the ODE solver failed (an exception, or a step it could not take)"},
+  {rxErrSolverFail, rxSolverFailText},
 };
 
 // Push the reasons a subject's solve failed to the solve-warning aggregator,
@@ -1205,6 +1206,10 @@ static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, c
       else {
         rxSolveWarnPush(ind->id, "IDID=%d, unhandled exception", *idid);
       }
+    } else if (ind->err == 0) {
+      // no IDID texts (cvode, indLin): name the failure here, as the err walk
+      // only reports subjects with err set
+      rxSolveWarnPush(ind->id, "solve error: %s", rxSolverFailText);
     }
     *rc = *idid;
     badSolveExit(*i);

@@ -240,12 +240,13 @@ rxTest({
     .d <- data.frame(ID = rep(101:104, each = 3), TIME = rep(c(0, 1, 2), 4), EVID = 0, CMT = "y")
     # an infinite rate: the bridges' non-finite right-hand side
     .p <- data.frame(ID = 101:104, k = c(1, 1, Inf, 1))
-    for (.meth in c("f45", "dop54")) {
+    for (.meth in c("f45", "dop54", "cvode")) {
       .o <- .cap(suppressWarnings(rxSolve(.m, .d, params = .p, method = .meth)))
       expect_identical(.o, paste0("[solve error: ", .solverFail, "]: 1 warning(s) for subject(s): 103"), label = .meth)
     }
-    # a step limit every subject reaches: odeinter.h's checker (rk4, ab)
-    for (.meth in c("rk4", "ab")) {
+    # a step limit every subject reaches: odeinter.h's checker (rk4, ab), and
+    # cvode's negative return, which has no IDID text
+    for (.meth in c("rk4", "ab", "cvode")) {
       .o <- .cap(suppressWarnings(rxSolve(.m, .d, params = c(k = 1), method = .meth, maxsteps = 3L)))
       expect_identical(
         .o,

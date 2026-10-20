@@ -63,6 +63,7 @@ extern "C" void ind_cvode_dense_0(rx_solve *rx, rx_solving_options *op, int solv
                                  (void *)neq, cvodeLinSolver);
     if (!cvode_ctx) {
       ind->rc[0] = -2019;
+      rxSolverFail(ind);
       ind->solveTime += ((double)(clock() - t0_clock)) / CLOCKS_PER_SEC;
       return;
     }

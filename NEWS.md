@@ -44,10 +44,10 @@
   over ("[solve error: <reason>]: N warning(s) for subject(s): <ids>", and the
   `lsoda` and `liblsoda` "IDID=" texts likewise), whichever thread solved it.
   A reason used to be printed only for the subjects solved on the main
-  thread, and not at all by `lsoda`, `liblsoda` or `rk4`.  A solver's own
-  failure (a non-finite right-hand side, a step limit) and `lsoda`'s step
-  limit are no longer reported as "Corrupted event table during sort (1)" and
-  as an unhandled exception.
+  thread, and not at all by `lsoda`, `liblsoda`, `rk4` or `cvode`.  A
+  solver's own failure (a non-finite right-hand side, a step limit) and
+  `lsoda`'s step limit are no longer reported as "Corrupted event table
+  during sort (1)" and as an unhandled exception.
 
 - `rxSolve()` and `etTrans()` no longer change the objects they are given:
   - with an occasion (nested) eta, `rxSolve()` turned the occasion column
