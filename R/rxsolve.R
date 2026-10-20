@@ -2724,8 +2724,9 @@ rxSolve.function <- function(
 #'
 #' @param params parameter `data.frame`/`matrix` (one row per id) or named
 #'   numeric vector
-#' @param mat the omega/sigma matrix naming the parameters to zero, or the
-#'   names themselves; when `NULL` the model has no such random effects and
+#' @param mat the omega/sigma matrix naming the parameters to zero, a nested
+#'   omega (`lotri` list) whose blocks name them, or the names themselves; when
+#'   `NULL` the model has no such random effects and
 #'   `params` is returned unchanged
 #' @return `params` with each parameter named by `mat` set to zero
 #' @noRd
