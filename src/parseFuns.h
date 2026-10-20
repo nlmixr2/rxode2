@@ -585,8 +585,8 @@ static inline int handleBadFunctions(transFunctions *tf) {
       trans_syntax_error_report_fn(_gbuf.s);
     } else {
       if (udf == -42) {
-        sAppend(&sb, "_udf(\".rxUiUdfNone\", (double *) NULL, -42, (double) ");
-        sAppend(&sbDt, "_udf(\".rxUiUdfNone\",(double *) NULL, -42, (double) ");
+        sAppendN(&sb, "_udf(\".rxUiUdfNone\", (double *) NULL, -42, (double) ", 52);
+        sAppendN(&sbDt, "_udf(\".rxUiUdfNone\",(double *) NULL, -42, (double) ", 51);
         sAppend(&sbt, "%s(", tf->v);
         tb.thread = notThreadSafe;
         tf->i[0] = 1;// Parse next arguments
