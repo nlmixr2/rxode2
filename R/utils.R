@@ -536,15 +536,17 @@ gammapInva <- function(x, p) {
 #'
 #' logit is given by:
 #'
-#' logit(p) = -log(1/p-1)
+#' logit(x, low, high) = log(x-low) - log(high-x)
 #'
-#' where:
-#'
-#' p = x-low/high-low
+#' which equals `-log(1/p-1)` with `p = (x-low)/(high-low)` but keeps
+#' precision near the bounds; it is `-Inf` at `x = low`, `Inf` at
+#' `x = high` (like `qlogis()`) and `NaN` outside `[low, high]`.
 #'
 #'  expit is given by:
 #'
 #' expit(p, low, high) = (high-low)/(1+exp(-alpha)) + low
+#'
+#' so `expit(-Inf) = low` and `expit(Inf) = high`.
 #'
 #' The `logitNormInfo()` gives the mean, variance and coefficient of
 #' variability on the untransformed scale.
