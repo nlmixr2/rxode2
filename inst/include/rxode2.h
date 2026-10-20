@@ -287,7 +287,7 @@ static inline double _powerD(double x, double lambda, int yj0, double low, doubl
     p = (x-low)/(high-low);
     if (p >= 1) return R_NaN;
     if (p <= 0) return R_NaN;
-    p = -log(1/p-1);
+    p = log(x-low) - log(high-x);
     if (lambda == 1.0) return p;
     if (p >= 0){
       if (lambda == 0) return log1p(p);
@@ -301,8 +301,7 @@ static inline double _powerD(double x, double lambda, int yj0, double low, doubl
     p = (x-low)/(high-low);
     if (p >= 1) return R_NaN;
     if (p <= 0) return R_NaN;
-    /* REprintf("%f %f %f\n", x, p, -log(1/p-1)); */
-    return -log(1/p-1);
+    return log(x-low) - log(high-x);
   case 3: // logNorm
     if (x <= _eps) x0= _eps;
     return log(x0);

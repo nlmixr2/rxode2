@@ -140,3 +140,26 @@ rxTest({
     expect_equal(expit(1:10, 0L, 11L), expit(as.double(1:10), 0.0, 11.0))
   })
 })
+
+rxTest({
+  test_that("logit keeps precision near the bounds and is +/-Inf at them (#1474)", {
+    p <- c(0.01, 0.5, 0.99, 0.999, 0.999999, 1 - 1e-12, 1e-12)
+    expect_equal(logit(p), qlogis(p), tolerance = 1e-14)
+    expect_equal(logit(c(0, 1)), c(-Inf, Inf))
+    expect_equal(logit(c(-0.5, 1.5), -0.5, 1.5), c(-Inf, Inf))
+    expect_equal(logit(1 - 1e-12, -0.5, 1.5), log(1.5 - 1e-12) - log(0.5 + 1e-12))
+    expect_true(is.nan(logit(1.5)))
+    expect_true(is.na(logit(NA_real_)))
+    expect_equal(expit(c(-Inf, Inf)), c(0, 1))
+    expect_equal(expit(c(-Inf, Inf), -0.5, 1.5), c(-0.5, 1.5))
+    expect_equal(expit(logit(1) + 1), 1)
+
+    m <- rxode2({
+      bio <- expit(logit(fsc) + eta.f)
+      lp <- logit(fsc)
+    })
+    s <- rxSolve(m, params = data.frame(fsc = c(0.8, 1, 0, 1 - 1e-12), eta.f = 0.1), events = et(0))
+    expect_equal(s$bio, c(plogis(qlogis(0.8) + 0.1), 1, 0, plogis(qlogis(1 - 1e-12) + 0.1)))
+    expect_equal(s$lp, qlogis(c(0.8, 1, 0, 1 - 1e-12)), tolerance = 1e-14)
+  })
+})
