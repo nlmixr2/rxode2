@@ -51,7 +51,7 @@ static inline void errorStrAssign(const char *v) {
   if (n > 1) {
     sPrint(&_gbuf,"the string variable '%s' can only be 1 to %d, or '",v, n);
   } else {
-    sPrint(&_gbuf,"the string variable '%s' can only be 1 or '",v, n);
+    sPrint(&_gbuf,"the string variable '%s' can only be 1 or '",v);
   }
   for (int i=0; i<tb.strVal.n; i++) {
     if (tb.strValI[i] == tb.id) {
