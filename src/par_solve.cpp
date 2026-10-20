@@ -275,6 +275,21 @@ extern "C" SEXP _rxTestSolveWarnLabels(SEXP idLvl, SEXP idsSEXP, SEXP setLvlSEXP
   return R_NilValue;
 }
 
+// push one summarized warning per value of `x` (and its negative), no subject
+extern "C" SEXP _rxTestSolveWarnStat(SEXP xSEXP) {
+  rxProtect rx_protect;
+  rxSolveWarnReset();
+  SEXP x = rx_protect.protect(Rf_coerceVector(xSEXP, REALSXP));
+  int n = Rf_length(x);
+  double *px = REAL(x);
+  for (int i = 0; i < n; i++) {
+    double v[2] = {px[i], -px[i]};
+    rxSolveWarnPushStat(-1, 2, v, "rxTest -- x = %%v, -x = %%v, n = %d", 3);
+  }
+  rxSolveWarnFlush(64);
+  return R_NilValue;
+}
+
 static inline const char *getId(int id) {
   rx_solve *rx = &rx_global;
   int curLen=  rx->factorNs[0];

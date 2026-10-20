@@ -58,7 +58,7 @@ int intdy(struct lsoda_context_t * ctx, double t, int k, double *dky)
 	  /* Integrator asked to interpolate at a time outside [tcur - hu, tcur].
 	     Aggregate by message text; par_solve / nlmixr2est emits one
 	     summary line per distinct message at iteration boundaries. */
-	  rxSolveWarnPush(_rxC(id), "intdy -- t illegal (outside the last step)");
+	  rxSolveWarnPushStat(_rxC(id), 1, &t, "intdy -- t = %%v illegal");
 	  return -2;
 	}
 	s = (t - _rxC(tn)) / _rxC(h);

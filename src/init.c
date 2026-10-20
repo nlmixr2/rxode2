@@ -378,6 +378,7 @@ void rxSolveWarnReset(void);
 void rxSetIdLvlFactors(SEXP idLvl);
 const char *rxGetIdSim(int id, int *sim);
 SEXP _rxTestSolveWarnLabels(SEXP idLvl, SEXP ids, SEXP setLvl);
+SEXP _rxTestSolveWarnStat(SEXP x);
 SEXP _rxTestGetIdLabels(SEXP ids);
 
 int iniSubjectE(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
@@ -891,6 +892,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxSetActiveParLoader", (DL_FUNC) &_rxode2_rxSetActiveParLoader, 1},
     {"_rxode2_rxClearActiveParLoader", (DL_FUNC) &_rxode2_rxClearActiveParLoader, 0},
     {"_rxTestSolveWarnLabels", (DL_FUNC) &_rxTestSolveWarnLabels, 3},
+    {"_rxTestSolveWarnStat", (DL_FUNC) &_rxTestSolveWarnStat, 1},
     {"_rxTestGetIdLabels", (DL_FUNC) &_rxTestGetIdLabels, 1},
     {"_rxode2_qsDes", (DL_FUNC) &_rxode2_qsDes, 1},
     {"_rxode2_rxGetSerialType_", (DL_FUNC) &_rxode2_rxGetSerialType_, 1},

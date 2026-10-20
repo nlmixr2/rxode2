@@ -463,7 +463,7 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
       if (ctx->nstep > nmax)
         {
           /* if (fileout) */
-	  rxSolveWarnPush(ctx->subject_id, "exit of dop853, more than nmax = %li steps are needed", nmax);
+	  rxSolveWarnPushStat(ctx->subject_id, 1, &x, "exit of dop853 at x = %%v, more than nmax = %li are needed", nmax);
           ctx->xout = x;
           ctx->hout = h;
           DOPCOR_RETURN(-2);
@@ -472,7 +472,10 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
       if (0.1 * fabs(h) <= fabs(x) * uround)
         {
           /* if (fileout) */
-	  rxSolveWarnPush(ctx->subject_id, "exit of dop853, step size too small");
+	  {
+	    double xh[2] = {x, h};
+	    rxSolveWarnPushStat(ctx->subject_id, 2, xh, "exit of dop853 at x = %%v, step size too small h = %%v");
+	  }
           ctx->xout = x;
           ctx->hout = h;
           DOPCOR_RETURN(-3);

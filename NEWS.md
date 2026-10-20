@@ -8,10 +8,10 @@
   the record as an observation and drop the dose or infusion silently; with no
   `evid` column at all such a record is still a dose.
 
-- The aggregated `dop853` step-limit warning now gives the real `nmax`, and it
-  and the `dop853` step-size and `intdy` warnings no longer print a value read
-  from no argument (an indeterminate number), so each aggregates over subjects
-  as one line.  The `etTrans()` rate and duration errors format the subject ID
+- The aggregated `dop853` step-limit and step-size warnings and the `intdy`
+  warning used to print values read from no argument (indeterminate numbers).
+  They now aggregate on their fixed text (with the real `nmax`) and give the
+  `x`, `h` and `t` they saw as mean +/- sd (min/max).  The `etTrans()` rate and duration errors format the subject ID
   as a string.  A model's `printf()` whose format does not match its arguments
   (`printf("%d", x)` with a double `x`) now gives a `-Wformat` warning when the
   model compiles; it compiles as before.
