@@ -172,11 +172,13 @@ high]</p></dd>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>logit is given by:</p>
-<p>logit(p) = -log(1/p-1)</p>
-<p>where:</p>
-<p>p = x-low/high-low</p>
+<p>logit(x, low, high) = log(x-low) - log(high-x)</p>
+<p>which equals <code>-log(1/p-1)</code> with <code>p = (x-low)/(high-low)</code> but keeps
+precision near the bounds; it is <code>-Inf</code> at <code>x = low</code>, <code>Inf</code> at
+<code>x = high</code> (like <code><a href="https://rdrr.io/r/stats/Logistic.html" class="external-link">qlogis()</a></code>) and <code>NaN</code> outside <code>[low, high]</code>.</p>
 <p>expit is given by:</p>
 <p>expit(p, low, high) = (high-low)/(1+exp(-alpha)) + low</p>
+<p>so <code>expit(-Inf) = low</code> and <code>expit(Inf) = high</code>.</p>
 <p>The <code>logitNormInfo()</code> gives the mean, variance and coefficient of
 variability on the untransformed scale.</p>
     </div>

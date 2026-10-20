@@ -112,6 +112,14 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="development version" id="rxode2-development-version">rxode2 (development version)<a class="anchor" aria-label="anchor" href="#rxode2-development-version"></a></h2>
+<div class="section level3">
+<h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
+<ul><li>
+<code><a href="../reference/logit.html">logit()</a></code> (in R and in models) is now computed as <code>log(x - low) - log(high - x)</code>, so it keeps full precision as <code>x</code> approaches <code>high</code>, and it returns <code>-Inf</code>/<code>Inf</code> at <code>x == low</code>/<code>x == high</code> (like <code><a href="https://rdrr.io/r/stats/Logistic.html" class="external-link">qlogis()</a></code>) instead of <code>NaN</code>. <code><a href="../reference/logit.html">expit()</a></code> returns <code>low</code>/<code>high</code> for <code>-Inf</code>/<code>Inf</code>, so <code>expit(logit(1) + eta)</code> is 1 instead of <code>NA</code>. The <code>logitNorm()</code> and <code>logit + yeoJohnson</code> residual transforms use the same form (<a href="https://github.com/nlmixr2/rxode2/issues/1474" class="external-link">#1474</a>).</li>
+</ul></div>
+</div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="5.1.8" id="rxode2-518">rxode2 5.1.8<a class="anchor" aria-label="anchor" href="#rxode2-518"></a></h2><p class="text-muted">CRAN release: 2026-10-13</p>
 <div class="section level3">
 <h3 id="new-features-5-1-8">New features<a class="anchor" aria-label="anchor" href="#new-features-5-1-8"></a></h3>

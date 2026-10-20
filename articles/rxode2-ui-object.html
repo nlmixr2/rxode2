@@ -287,7 +287,7 @@ and a residual error to see the difference</p>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `Kout` to `1`</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> promote `EC50` to population parameter with initial estimate 5</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `EC50` to `5`</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tfdepot` to `4.59511985013458`</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tfdepot` to `4.59511985013459`</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tDurDepot` to `2.07944154167984`</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `tRateDepot` to `7.13089883029635`</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> change initial estimate of `c2.pow.sd` to `0.1`</span></span>
@@ -1093,7 +1093,7 @@ to reconstruct or inspect the initialisation block programmatically:</p>
 <span><span class="co">#&gt;     tv2 &lt;- 3.69386699562498</span></span>
 <span><span class="co">#&gt;     tq &lt;- 2.35137525716348</span></span>
 <span><span class="co">#&gt;     tv3 &lt;- 5.6937321388027</span></span>
-<span><span class="co">#&gt;     tfdepot &lt;- 4.59511985013458</span></span>
+<span><span class="co">#&gt;     tfdepot &lt;- 4.59511985013459</span></span>
 <span><span class="co">#&gt;     tDurDepot &lt;- 2.07944154167984</span></span>
 <span><span class="co">#&gt;     tRateDepot &lt;- 7.13089883029635</span></span>
 <span><span class="co">#&gt;     c2.pow.sd &lt;- c(0, 0.1)</span></span>
@@ -1156,7 +1156,7 @@ assignments, then the <code><a href="../reference/ini.html">ini()</a></code> blo
 <span><span class="co">#&gt;         tv2 &lt;- 3.69386699562498</span></span>
 <span><span class="co">#&gt;         tq &lt;- 2.35137525716348</span></span>
 <span><span class="co">#&gt;         tv3 &lt;- 5.6937321388027</span></span>
-<span><span class="co">#&gt;         tfdepot &lt;- 4.59511985013458</span></span>
+<span><span class="co">#&gt;         tfdepot &lt;- 4.59511985013459</span></span>
 <span><span class="co">#&gt;         tDurDepot &lt;- 2.07944154167984</span></span>
 <span><span class="co">#&gt;         tRateDepot &lt;- 7.13089883029635</span></span>
 <span><span class="co">#&gt;         c2.pow.sd &lt;- c(0, 0.1)</span></span>
@@ -1191,7 +1191,7 @@ assignments, then the <code><a href="../reference/ini.html">ini()</a></code> blo
 <span><span class="co">#&gt;         eff ~ add(eff.sd)</span></span>
 <span><span class="co">#&gt;     })</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x5647567b8720&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;environment: 0x55d0900cbcb8&gt;</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -1223,7 +1223,7 @@ object that appends the error-sampling code to the base ODE model, ready
 for stochastic simulation:</p>
 <div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m2</span><span class="op">$</span><span class="va">simulationModel</span></span>
-<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.1.8 model named <span style="color: #BBBB00; font-weight: bold;">rx_ae66975a8b21c7c6412ab2af575701f5</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.1.8 model named <span style="color: #BBBB00; font-weight: bold;">rx_d74f1d5c31821eae9c6f7218ddd18698</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$state</span>: depot, centr, peri, eff</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$stateExtra</span>: C2</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span>: tka, tcl, covClWt, tv2, tq, tv3, tfdepot, tDurDepot, tRateDepot, c2.pow.sd, c2.pow, eff.sd, Kin, Kout, EC50, eta.ka, eta.cl, WT, CMT, rxerr.C2, rxerr.eff</span></span>
@@ -1240,7 +1240,7 @@ prepended as parameter assignments, so the model is self-contained and
 can be run without supplying a parameter vector:</p>
 <div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m2</span><span class="op">$</span><span class="va">simulationIniModel</span></span>
-<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.1.8 model named <span style="color: #BBBB00; font-weight: bold;">rx_021763bad7e0c4dac4be7cd085efbe68</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.1.8 model named <span style="color: #BBBB00; font-weight: bold;">rx_aa59b83d6749497b7c597adcf68fef9a</span> model (<span style="color: #00BB00;">✔</span> <span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$state</span>: depot, centr, peri, eff</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$stateExtra</span>: C2</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span>: tka, tcl, covClWt, tv2, tq, tv3, tfdepot, tDurDepot, tRateDepot, c2.pow.sd, c2.pow, eff.sd, Kin, Kout, EC50, eta.ka, eta.cl, WT, rxerr.C2, rxerr.eff, CMT</span></span>
@@ -1256,11 +1256,11 @@ rxode2 version) and are suitable for caching or comparing models:</p>
 <div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># MD5 hash</span></span>
 <span><span class="va">m2</span><span class="op">$</span><span class="va">md5</span></span>
-<span><span class="co">#&gt; [1] "79651a47c472951cf99f24a1080736c8"</span></span>
+<span><span class="co">#&gt; [1] "cdc2d7787f40531b6a7a42de8cf3c724"</span></span>
 <span></span>
 <span><span class="co"># SHA-1 hash</span></span>
 <span><span class="va">m2</span><span class="op">$</span><span class="va">sha1</span></span>
-<span><span class="co">#&gt; [1] "f0f058f3703271ec191093858b37018d5622ea9a"</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "6e0b4e13b8f824a6d56d9597596cb8d5dfd211a5"</span></span></code></pre></div>
 <p>These hashes change whenever the model equations, initial estimates,
 or error specification change, but are insensitive to label or comment
 differences.</p>
