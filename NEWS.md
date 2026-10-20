@@ -30,6 +30,11 @@
   `-Inf`/`Inf`, so `expit(logit(1) + eta)` is 1 instead of `NA`.  The
   `logitNorm()` and `logit + yeoJohnson` residual transforms use the same
   form (#1474).
+- A continuous steady-state infusion (`ss=1`, `amt=0`, `rate>0`) into a
+  compartment the model does not have wrote past the infusion-rate buffer
+  (crashing R on macOS and Windows); it is now ignored with the usual
+  "dose to compartment ... ignored" warning, like any other dose to a
+  missing compartment.
 
 # rxode2 5.1.8
 
