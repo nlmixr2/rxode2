@@ -158,7 +158,12 @@ rxTest({
     expect_true(is.finite(.rxTransform(1 - .Machine$double.eps / 2, low = -100, high = 1, transform = "logit")))
     expect_equal(.rxTransform(c(0, 1), lambda = 2, transform = "logit"), c(-Inf, Inf))
     expect_equal(.rxTransform(1 - 1e-12, transform = "logit + yeoJohnson"), qlogis(1 - 1e-12), tolerance = 1e-14)
-    expect_true(is.finite(.rxTransform(1 - .Machine$double.eps / 2, low = -100, high = 1, transform = "logit + yeoJohnson")))
+    expect_true(is.finite(.rxTransform(
+      1 - .Machine$double.eps / 2,
+      low = -100,
+      high = 1,
+      transform = "logit + yeoJohnson"
+    )))
 
     m <- rxode2({
       bio <- expit(logit(fsc) + eta.f)
