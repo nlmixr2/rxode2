@@ -124,9 +124,12 @@
 </div>
 <div class="section level3">
 <h3 id="bug-fixes-development-version-1">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version-1"></a></h3>
+<div class="section level4">
+<h4 id="event-tables-development-version-1">Event tables<a class="anchor" aria-label="anchor" href="#event-tables-development-version-1"></a></h4>
 <ul><li>
 <code><a href="../reference/etTrans.html">etTrans()</a></code> now stops on a record whose <code>evid</code> is missing but that carries dose information: a nonzero <code>amt</code>, or a <code>rate</code> or <code>dur</code> that is positive or modeled (-1, -2), as a record with no <code>evid</code> column is read. It used to keep the record as an observation and drop the dose or infusion silently; with no <code>evid</code> column at all such a record is still a dose.</li>
-</ul><div class="section level4">
+</ul></div>
+<div class="section level4">
 <h4 id="solving-development-version">Solving<a class="anchor" aria-label="anchor" href="#solving-development-version"></a></h4>
 <ul><li>
 <code><a href="../reference/rxSolve.html">rxSolve()</a></code> and <code><a href="../reference/etTrans.html">etTrans()</a></code> no longer change the objects they are given:
@@ -142,9 +145,10 @@
 <code><a href="../reference/logit.html">logit()</a></code> (in R and in models) is now computed as <code>log(x - low) - log(high - x)</code>, so it keeps full precision as <code>x</code> approaches <code>high</code>, and it returns <code>-Inf</code>/<code>Inf</code> at <code>x == low</code>/<code>x == high</code> (like <code><a href="https://rdrr.io/r/stats/Logistic.html" class="external-link">qlogis()</a></code>) instead of <code>NaN</code>. <code><a href="../reference/logit.html">expit()</a></code> returns <code>low</code>/<code>high</code> for <code>-Inf</code>/<code>Inf</code>, so <code>expit(logit(1) + eta)</code> is 1 instead of <code>NA</code>. The <code>logitNorm()</code> and <code>logit + yeoJohnson</code> residual transforms use the same form (<a href="https://github.com/nlmixr2/rxode2/issues/1474" class="external-link">#1474</a>).</li>
 </ul></div>
 <div class="section level4">
-<h4 id="adjoint-sensitivities-development-version">Adjoint sensitivities<a class="anchor" aria-label="anchor" href="#adjoint-sensitivities-development-version"></a></h4>
-<ul><li>
-<code><a href="../reference/rxSolveAdjointRk4.html">rxSolveAdjointRk4()</a></code> now documents that, for a model with <code><a href="../reference/delay.html">delay()</a></code>, the adjoint’s delayed-state term is first order in the step size for every method: an adaptive method such as <code>dop853s</code> needs <code>hmax</code> for accurate sensitivities.</li>
+<h4 id="solving-development-version-1">Solving<a class="anchor" aria-label="anchor" href="#solving-development-version-1"></a></h4>
+<ul><li><p>The aggregated <code>dop853</code> step-limit and step-size warnings and the <code>intdy</code> warning used to print values read from no argument (indeterminate numbers). They now aggregate on their fixed text (with the real <code>nmax</code>) and give the <code>x</code>, <code>h</code> and <code>t</code> they saw as mean +/- sd (min/max). The <code><a href="../reference/etTrans.html">etTrans()</a></code> rate and duration errors format the subject ID as a string. A model’s <code>printf()</code> whose format does not match its arguments (<code>printf("%d", x)</code> with a double <code>x</code>) now gives a <code>-Wformat</code> warning when the model compiles; it compiles as before.</p></li>
+<li><p>The aggregated solver warning summary no longer drops warnings silently. Once it holds 64 distinct messages, the warnings of any further message are counted in a last line, “[more than 64 distinct messages]: N warning(s) not shown”. Past 256 distinct solve ids (subject x simulation) for one message, the ids not listed are given as a lower bound, “(at least N more)”, instead of a count that was too low. ### Adjoint sensitivities</p></li>
+<li><p><code><a href="../reference/rxSolveAdjointRk4.html">rxSolveAdjointRk4()</a></code> now documents that, for a model with <code><a href="../reference/delay.html">delay()</a></code>, the adjoint’s delayed-state term is first order in the step size for every method: an adaptive method such as <code>dop853s</code> needs <code>hmax</code> for accurate sensitivities.</p></li>
 </ul></div>
 </div>
 </div>
