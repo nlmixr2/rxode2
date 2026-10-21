@@ -425,6 +425,14 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
         break;
       }
     }
+    // rxode2#1469: a model 'vv' cannot integrate is refused, not NA-filled
+    for (int solveid = 0; solveid < (int)(rx->nsub * rx->nsim); solveid++){
+      if (rx->subjects[solveid].err & rxErrVvNotPairs) {
+        rxSolveFreeC();
+        (Rf_errorcall)(R_NilValue, "%s",
+                       _("method='vv' (Velocity Verlet) needs the ODE states ordered as coordinate-momentum pairs: with N=ceiling(nstates/2), d/dt(state i) must equal state N+i for i=1..N (an odd last coordinate must have d/dt()=0); use another method"));
+      }
+    }
     if (nidCols == 0){
       if (rx->extraPushAbort) {
         rxSolveFreeC();

@@ -5538,9 +5538,11 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   controlled by `hmin`).
 #'
 #' * `"vv"` -- Velocity Verlet stepper using Boost's odeint library.
-#'   Requires splitting the state into coordinate-momentum pairs (and
-#'   automatically pads odd-dimensional systems).  Is a fixed-step
-#'   method (step size controlled by `hmin`).
+#'   Requires the ODE states to be coordinate-momentum pairs: with
+#'   `N = ceiling(nstates/2)`, `d/dt(state i)` must equal `state N+i`
+#'   (an odd last coordinate must have a zero derivative); other models
+#'   are refused with an error.  Is a fixed-step method (step size
+#'   controlled by `hmin`).
 #'
 #' * `"mm"` -- Modified Midpoint stepper using Boost's odeint library.
 #'   Is a fixed-step method (step size controlled by `hmin`) and uses

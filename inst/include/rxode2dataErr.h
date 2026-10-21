@@ -28,6 +28,7 @@
 #define rxErrIndLinConverge   16777216
 #define rxErrIndLinCode       33554432
 #define rxErrIndLinExcept     67108864
+#define rxErrVvNotPairs       134217728
 
 #define rxErrNaTimeLag   1
 #define rxErrNaTimeRate  2

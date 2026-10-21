@@ -454,6 +454,9 @@ extern "C" void printErr(int err, int id){
   if (err & rxErrIndLinExcept){
     RSprintf("  Inductive linearization failed with an unhandled exception (most likely out of memory)\n");
   }
+  if (err & rxErrVvNotPairs){
+    RSprintf("  method='vv' needs coordinate-momentum state pairs with d/dt(q_i) = p_i\n");
+  }
 }
 
 rx_solving_options op_global;
