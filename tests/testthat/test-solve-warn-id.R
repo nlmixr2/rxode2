@@ -1,10 +1,10 @@
 rxTest({
-  # `_rxTestSolveWarnLabels(idLvl, ids, setLvl)`: set rx_global's ID factor
-  # levels from `idLvl` (unless `setLvl` is FALSE), push one aggregated warning
-  # per internal solve id in `ids`, then flush.
-  .warnLabels <- function(idLvl, ids, setLvl = TRUE) {
+  # `_rxTestSolveWarnLabels(idLvl, ids, setLvl, maxIds)`: set rx_global's ID
+  # factor levels from `idLvl` (unless `setLvl` is FALSE), push one aggregated
+  # warning per internal solve id in `ids`, then flush listing `maxIds` subjects.
+  .warnLabels <- function(idLvl, ids, setLvl = TRUE, maxIds = 64L) {
     .out <- capture.output(
-      .Call("_rxTestSolveWarnLabels", idLvl, ids, setLvl, PACKAGE = "rxode2")
+      .Call("_rxTestSolveWarnLabels", idLvl, ids, setLvl, as.integer(maxIds), PACKAGE = "rxode2")
     )
     grep("warning\\(s\\)", .out, value = TRUE)
   }
@@ -34,6 +34,35 @@ rxTest({
     # nsub/nsim are whatever the last solve left; the levels here are not a
     # simulation's worth of subjects, so there is nothing to resolve.
     expect_match(.warnLabels(c("101", "202"), c(1L, 7L)), "for subject\\(s\\): 202, internal #8")
+  })
+
+  test_that("past 256 subjects for one message the remainder is a lower bound", {
+    # one message keeps at most 256 distinct subjects; the flush lists 64
+    .line <- function(n, rest) {
+      paste0(
+        "[rxTest -- solve warning]: ",
+        n,
+        " warning(s) for subject(s): ",
+        paste0("internal #", 1:64, collapse = ", "),
+        ", ... (",
+        rest,
+        " more)"
+      )
+    }
+    expect_identical(.warnLabels(character(0), 0:299), .line(300, "at least 193"))
+    expect_identical(.warnLabels(character(0), 0:255), .line(256, "192"))
+    expect_identical(.warnLabels(character(0), 0:99), .line(100, "36"))
+    # a repeat of a stored subject is not one more
+    expect_identical(.warnLabels(character(0), c(0:255, 0:255)), .line(512, "192"))
+    # listing every stored subject still says one more was seen
+    expect_identical(
+      .warnLabels(character(0), 0:299, maxIds = 300L),
+      paste0(
+        "[rxTest -- solve warning]: 300 warning(s) for subject(s): ",
+        paste0("internal #", 1:256, collapse = ", "),
+        ", ... (at least 1 more)"
+      )
+    )
   })
 
   test_that("a subject literally named Unknown is still printed as itself", {

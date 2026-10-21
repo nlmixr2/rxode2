@@ -34,9 +34,10 @@ extern "C" int getSilentErr(void);
    solver hot path.
 
    MAX_MESSAGES caps the number of distinct message strings tracked at
-   once (overflow drops new messages but doesn't crash); MAX_IDS caps the
-   distinct-subject set per message (overflow drops ids but keeps
-   counting). Both bound memory; both also bound the per-flush print
+   once (a push of a new message past it is counted, and the flush reports
+   the count); MAX_IDS caps the distinct-subject set per message (an id
+   past it is not stored, and the flush prints a lower bound for the ids
+   it did not list). Both bound memory; both also bound the per-flush print
    length. The caps are deliberately generous -- overflow under normal
    workloads is a sign something pathological is happening, not a routine
    case to optimise. */
@@ -67,10 +68,13 @@ struct WarnEntry {
   int count;
   std::set<int> ids;
   std::vector<WarnStat> stats;
-  WarnEntry() : count(0) {}
+  bool idsFull; // an id arrived after `ids` reached MAX_IDS
+  WarnEntry() : count(0), idsFull(false) {}
 };
 
 static std::map<std::string, WarnEntry> g_warn;
+/* pushes of a new message while the table was full, since the last flush */
+static int g_dropped = 0;
 
 // marker left in a message's key by "%%v" in its format; replaced at flush by
 // the summary of the matching value
@@ -82,6 +86,7 @@ extern "C" void rxSolveWarnReset(void) {
 #endif
   {
     g_warn.clear();
+    g_dropped = 0;
   }
 }
 
@@ -93,8 +98,7 @@ static void rxSolveWarnPushV(int id, int nStat, const double *stat,
   std::map<std::string, WarnEntry>::iterator it = g_warn.find(key);
   if (it == g_warn.end()) {
     if (g_warn.size() >= MAX_MESSAGES) {
-      /* Silently drop new messages once the dedup table is full. The
-         existing entries continue to aggregate their own occurrences. */
+      g_dropped++;
       return;
     }
     it = g_warn.insert(std::make_pair(key, WarnEntry())).first;
@@ -102,8 +106,12 @@ static void rxSolveWarnPushV(int id, int nStat, const double *stat,
   }
   WarnEntry &e = it->second;
   e.count++;
-  if (id >= 0 && e.ids.size() < MAX_IDS) {
-    e.ids.insert(id);
+  if (id >= 0) {
+    if (e.ids.size() < MAX_IDS) {
+      e.ids.insert(id);
+    } else if (e.ids.find(id) == e.ids.end()) {
+      e.idsFull = true;
+    }
   }
   int nUse = (int)e.stats.size() < nStat ? (int)e.stats.size() : nStat;
   for (int k = 0; k < nUse; k++) e.stats[k].add(stat[k]);
@@ -175,11 +183,14 @@ extern "C" void rxSolveWarnFlush(int maxIds) {
      from serial code, but the critical region is cheap and bounds the
      race against a stray concurrent Push. */
   std::map<std::string, WarnEntry> snap;
+  int dropped = 0;
 #ifdef _OPENMP
 #pragma omp critical(rxSolveWarn)
 #endif
   {
     snap.swap(g_warn);
+    dropped = g_dropped;
+    g_dropped = 0;
   }
   for (std::map<std::string, WarnEntry>::const_iterator it = snap.begin();
        it != snap.end(); ++it) {
@@ -214,10 +225,17 @@ extern "C" void rxSolveWarnFlush(int maxIds) {
           RSprintf("%s", idStr);
         }
       }
-      if (nIds > nShow) {
+      if (e.idsFull) {
+        /* at least one id beyond the MAX_IDS stored was seen */
+        RSprintf(_(", ... (at least %d more)"), nIds + 1 - nShow);
+      } else if (nIds > nShow) {
         RSprintf(_(", ... (%d more)"), nIds - nShow);
       }
     }
     RSprintf("\n");
+  }
+  if (dropped > 0) {
+    RSprintf(_("[more than %d distinct messages]: %d warning(s) not shown\n"),
+             (int)MAX_MESSAGES, dropped);
   }
 }

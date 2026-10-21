@@ -22,6 +22,8 @@
 
 ## Bug fixes
 
+### Event tables
+
 - `etTrans()` now stops on a record whose `evid` is missing but that carries
   dose information: a nonzero `amt`, or a `rate` or `dur` that is positive or
   modeled (-1, -2), as a record with no `evid` column is read.  It used to keep
@@ -57,6 +59,22 @@
   `logitNorm()` and `logit + yeoJohnson` residual transforms use the same
   form (#1474).
 
+### Solving
+
+- The aggregated `dop853` step-limit and step-size warnings and the `intdy`
+  warning used to print values read from no argument (indeterminate numbers).
+  They now aggregate on their fixed text (with the real `nmax`) and give the
+  `x`, `h` and `t` they saw as mean +/- sd (min/max).  The `etTrans()` rate and duration errors format the subject ID
+  as a string.  A model's `printf()` whose format does not match its arguments
+  (`printf("%d", x)` with a double `x`) now gives a `-Wformat` warning when the
+  model compiles; it compiles as before.
+
+- The aggregated solver warning summary no longer drops warnings silently.
+  Once it holds 64 distinct messages, the warnings of any further message are
+  counted in a last line, "[more than 64 distinct messages]: N warning(s) not
+  shown".  Past 256 distinct solve ids (subject x simulation) for one message,
+  the ids not listed are given as a lower bound, "(at least N more)", instead
+  of a count that was too low.
 ### Adjoint sensitivities
 
 - `rxSolveAdjointRk4()` now documents that, for a model with `delay()`,
