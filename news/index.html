@@ -114,16 +114,22 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="rxode2-development-version">rxode2 (development version)<a class="anchor" aria-label="anchor" href="#rxode2-development-version"></a></h2>
 <div class="section level3">
-<h3 id="new-features-development-version">New features<a class="anchor" aria-label="anchor" href="#new-features-development-version"></a></h3>
-<ul><li><p>Packages linking to rxode2 can read the thread id they gave with <code>setRxThreadId()</code> back through <code>getRxThreadId()</code>, a new entry of the C pointer table (<code>rxode2ptr.h</code>).</p></li>
+<h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
+<ul><li><p>A simulation that stops with an error no longer leaves its draws for the next solve. The residuals, simulated thetas and per-study draws it had made stayed behind, and the next solve without residuals of its own used them: after a failed <code>rxSolve(m, params, ev, sigma = ...)</code>, a plain solve of a model with that residual gave values up to 2.6 off. ## New features</p></li>
+<li><p>Packages linking to rxode2 can read the thread id they gave with <code>setRxThreadId()</code> back through <code>getRxThreadId()</code>, a new entry of the C pointer table (<code>rxode2ptr.h</code>).</p></li>
 <li><p>A package that includes rxode2’s <code>rxode2parseSbuf.h</code> can define <code>RXODE2_SBUF_FORMAT</code> (<code>PKG_CPPFLAGS = -DRXODE2_SBUF_FORMAT</code>) to have its <code>sAppend()</code>, <code>sPrint()</code> and <code>addLine()</code> calls checked by <code>-Wformat</code>. Under R’s default <code>-Werror=format-security</code> a format that is not a literal and has no arguments then fails to compile. Without the macro nothing changes.</p></li>
 </ul></div>
 <div class="section level3">
-<h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
+<h3 id="bug-fixes-development-version-1">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version-1"></a></h3>
 <ul><li><p><code><a href="../reference/etTrans.html">etTrans()</a></code> now stops on a record whose <code>evid</code> is missing but that carries dose information: a nonzero <code>amt</code>, or a <code>rate</code> or <code>dur</code> that is positive or modeled (-1, -2), as a record with no <code>evid</code> column is read. It used to keep the record as an observation and drop the dose or infusion silently; with no <code>evid</code> column at all such a record is still a dose.</p></li>
 <li><p>The aggregated <code>dop853</code> step-limit and step-size warnings and the <code>intdy</code> warning used to print values read from no argument (indeterminate numbers). They now aggregate on their fixed text (with the real <code>nmax</code>) and give the <code>x</code>, <code>h</code> and <code>t</code> they saw as mean +/- sd (min/max). The <code><a href="../reference/etTrans.html">etTrans()</a></code> rate and duration errors format the subject ID as a string. A model’s <code>printf()</code> whose format does not match its arguments (<code>printf("%d", x)</code> with a double <code>x</code>) now gives a <code>-Wformat</code> warning when the model compiles; it compiles as before.</p></li>
 <li><p><code><a href="../reference/logit.html">logit()</a></code> (in R and in models) is now computed as <code>log(x - low) - log(high - x)</code>, so it keeps full precision as <code>x</code> approaches <code>high</code>, and it returns <code>-Inf</code>/<code>Inf</code> at <code>x == low</code>/<code>x == high</code> (like <code><a href="https://rdrr.io/r/stats/Logistic.html" class="external-link">qlogis()</a></code>) instead of <code>NaN</code>. <code><a href="../reference/logit.html">expit()</a></code> returns <code>low</code>/<code>high</code> for <code>-Inf</code>/<code>Inf</code>, so <code>expit(logit(1) + eta)</code> is 1 instead of <code>NA</code>. The <code>logitNorm()</code> and <code>logit + yeoJohnson</code> residual transforms use the same form (<a href="https://github.com/nlmixr2/rxode2/issues/1474" class="external-link">#1474</a>).</p></li>
+</ul><div class="section level4">
+<h4 id="adjoint-sensitivities-development-version">Adjoint sensitivities<a class="anchor" aria-label="anchor" href="#adjoint-sensitivities-development-version"></a></h4>
+<ul><li>
+<code><a href="../reference/rxSolveAdjointRk4.html">rxSolveAdjointRk4()</a></code> now documents that, for a model with <code><a href="../reference/delay.html">delay()</a></code>, the adjoint’s delayed-state term is first order in the step size for every method: an adaptive method such as <code>dop853s</code> needs <code>hmax</code> for accurate sensitivities.</li>
 </ul></div>
+</div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="5.1.8" id="rxode2-518">rxode2 5.1.8<a class="anchor" aria-label="anchor" href="#rxode2-518"></a></h2><p class="text-muted">CRAN release: 2026-10-13</p>
