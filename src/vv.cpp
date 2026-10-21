@@ -41,8 +41,9 @@ struct vv_system {
         // (the padded momentum of an odd system is 0).
         for (int i = 0; i < N_; ++i) {
             double dq = dy_temp_[i], p = y_temp_[N_ + i];
-            if (R_FINITE(dq) && R_FINITE(p) &&
-                std::abs(dq - p) > 64.0 * DBL_EPSILON * std::max(std::abs(dq), std::abs(p))) {
+            if (dq != p && !(std::isnan(dq) && std::isnan(p)) &&
+                !(R_FINITE(dq) && R_FINITE(p) &&
+                  std::abs(dq - p) <= 64.0 * DBL_EPSILON * std::max(std::abs(dq), std::abs(p)))) {
                 ind_->err |= rxErrVvNotPairs;
                 break;
             }

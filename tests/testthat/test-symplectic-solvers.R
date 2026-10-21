@@ -85,6 +85,15 @@ rxTest({
       rxode2::rxSolve(.mod2, rxode2::et(0:2), inits = c(q = 1, p = 0), method = "vv"),
       "coordinate-momentum"
     )
+    # a non-finite coordinate derivative is not a pair either
+    .mod4 <- rxode2::rxode2({
+      y(0) <- 1
+      d/dt(y) <- Inf
+    })
+    expect_error(
+      rxode2::rxSolve(.mod4, rxode2::et(0:2), method = "vv"),
+      "coordinate-momentum"
+    )
     # an infusion into a coordinate breaks d/dt(q) = p
     .mod3 <- rxode2::rxode2({
       d/dt(q) <- p
