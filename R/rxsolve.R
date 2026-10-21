@@ -3247,6 +3247,9 @@ rxSolve.default <- function(
       rxUdfUiReset()
       .clearPipe()
       .asFunctionEnv$rx <- NULL
+      # a solve that stopped before moving its draws into its result would
+      # leave them for the next solve to read as its own residuals and thetas
+      .rxOomClearDrawn(.rxSolveDrawn)
     },
     add = TRUE
   )
