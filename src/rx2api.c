@@ -1,5 +1,6 @@
 #include "../inst/include/rxode2.h"
 #include "rx2api.h"
+#include "rxPrintfFormat.h"
 
 rx_solve *getRxSolve_(void);
 
@@ -63,6 +64,7 @@ extern int rxInParallel(void);
 // reason -- no OpenMP pragmas are available here.
 extern void rxApiErrRecord(const char *msg);
 
+static void rxApiError(const char *fmt, ...) R_PRINTF_FORMAT(1, 2);
 static void rxApiError(const char *fmt, ...) {
   char buf[512];
   va_list ap;
