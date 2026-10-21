@@ -76,6 +76,12 @@ rxTest({
     expect_equal(.stem(var[.keep]), .stem(names(p)[idx[.keep] + 1L]))
   })
 
+  test_that("getRxThreadId() reads back the id setRxThreadId() set, through the table", {
+    # slots 65 and 99 called as a package linking to rxode2 calls them
+    expect_identical(names(.rxode2ptrs())[c(66L, 100L)], c("rxode2setRxThreadId", "rxode2getRxThreadId"))
+    expect_identical(.Call("_rxTestThreadIdSlots", .rxode2ptrs(), PACKAGE = "rxode2"), c(5L, -1L))
+  })
+
   test_that("the function-pointer table's existing names never change", {
     # A released downstream package may compare the names it snapshotted at build
     # time against the live table and refuse to load on any difference, and it

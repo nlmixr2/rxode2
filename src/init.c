@@ -485,6 +485,7 @@ void rxGetSolveAtolRtol(double *atol, double *rtol);
 
 // Cross-DLL OpenMP thread-id override (defined in rxData.cpp); see comment there.
 void setRxThreadId(int id);
+int getRxThreadId(void);
 
 // threefry RNG engine entry points shared with downstream packages
 // (nlmixr2est importance sampling); defined in rxthreefry.cpp.
@@ -505,6 +506,7 @@ void setIndSolveLast(rx_solving_options_ind* ind, double* solveLast);
 double *getIndSolveLast2(rx_solving_options_ind* ind);
 void setIndSolveLast2(rx_solving_options_ind* ind, double* solveLast2);
 
+SEXP _rxTestThreadIdSlots(SEXP ptrs);
 SEXP _rxode2_rxode2Ptr(void) {
   int pro = 0;  // Counter for the number of PROTECT calls
   // Create an external pointer for _lotriLstToMat
@@ -618,8 +620,9 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2rxRegisterParLoaderNamed = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRegisterParLoaderNamed, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxPriorLogDensityEval = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxPriorLogDensityEval, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxPriorOmegaToCholOmegaInvGrad = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxPriorOmegaToCholOmegaInvGrad, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2getRxThreadId = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getRxThreadId, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 99
+#define nVec 100
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -720,6 +723,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 96, rxode2rxRegisterParLoaderNamed);
   SET_VECTOR_ELT(ret, 97, rxode2rxPriorLogDensityEval);
   SET_VECTOR_ELT(ret, 98, rxode2rxPriorOmegaToCholOmegaInvGrad);
+  SET_VECTOR_ELT(ret, 99, rxode2getRxThreadId);
 
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
@@ -829,6 +833,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 96, Rf_mkChar("rxode2rxRegisterParLoaderNamed"));
   SET_STRING_ELT(retN, 97, Rf_mkChar("rxPriorLogDensityEval"));
   SET_STRING_ELT(retN, 98, Rf_mkChar("rxPriorOmegaToCholOmegaInvGrad"));
+  SET_STRING_ELT(retN, 99, Rf_mkChar("rxode2getRxThreadId"));
 
   // Nothing is validated here.  Every reverse dependency calls this at load, so a
   // check that fails takes them all down at once and they cannot be patched
@@ -914,6 +919,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_powerD", (DL_FUNC) &_rxode2_powerD, 6},
     {"_rxode2_powerLDL", (DL_FUNC) &_rxode2_powerLDL, 6},
     {"_rxode2_rxode2Ptr", (DL_FUNC) &_rxode2_rxode2Ptr, 0},
+    {"_rxTestThreadIdSlots", (DL_FUNC) &_rxTestThreadIdSlots, 1},
     {"_rxode2_iniDparserPtr", (DL_FUNC) &_rxode2_iniDparserPtr, 1},
     {"_iniPreciseSumsPtr", (DL_FUNC) &iniPreciseSumsPtr, 1},
     {"_iniLotriPtr", (DL_FUNC) &iniLotriPtr, 1},

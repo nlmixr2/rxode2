@@ -1,3 +1,31 @@
+# A model with a subject eta and an occasion eta, for the data-mutation test
+.occNoMutateUi <- function() {
+  ini({
+    tka <- 0.45
+    tcl <- 1
+    tv <- 3.45
+    add.sd <- 0.7
+    eta.v ~ 0.1
+    iov.cl ~ 0.1 | occ
+  })
+  model({
+    ka <- exp(tka)
+    cl <- exp(tcl + iov.cl)
+    v <- exp(tv + eta.v)
+    linCmt() ~ add(add.sd)
+  })
+}
+
+# The first three theo_sd subjects, with two occasions (before and after 6 h)
+# in an integer or a character column
+.occNoMutateData <- function(type) {
+  .d <- nlmixr2data::theo_sd
+  .d <- .d[.d$ID %in% 1:3, ]
+  .occ <- ifelse(.d$TIME < 6, 1L, 2L)
+  .d$occ <- if (type == "integer") .occ else c("a", "b")[.occ]
+  .d
+}
+
 rxTest({
   test_that("occasions", {
     # Nesting tests
@@ -452,5 +480,25 @@ rxTest({
     .d <- as.data.frame(sim)
     .nOcc <- tapply(.d$iov.cl, .d$sim.id, function(x) length(unique(x)))
     expect_true(all(.nOcc == 2))
+  })
+
+  test_that("rxSolve() and nestingInfo_() leave the caller's data as it was", {
+    # nestingInfo_() makes the nesting columns factors in its own copy of the
+    # data; it used to write them into the caller's data frame
+    for (.type in c("integer", "character")) {
+      # built apart: `.d0 <- .d` shares .d's columns, which an in-place
+      # write would change too
+      .d <- .occNoMutateData(.type)
+      .d0 <- .occNoMutateData(.type)
+      .s <- suppressMessages(rxSolve(.occNoMutateUi, .d))
+      expect_identical(.d, .d0, label = .type)
+      expect_identical(nrow(as.data.frame(.s)), sum(.d$EVID == 0), label = .type)
+    }
+    .d <- .occNoMutateData("integer")
+    .d0 <- .occNoMutateData("integer")
+    .ni <- nestingInfo_(lotri(lotri(eta.v ~ 0.1) | id(nu = 100), lotri(iov.cl ~ 0.1) | occ(nu = 100)), .d)
+    expect_identical(.d, .d0)
+    expect_s3_class(.ni$data$occ, "factor")
+    expect_identical(levels(.ni$data$occ), c("1", "2"))
   })
 })

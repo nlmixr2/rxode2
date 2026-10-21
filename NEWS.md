@@ -1,6 +1,18 @@
 # rxode2 (development version)
 
+## Bug fixes
+
+### Event tables
+- A simulation that stops with an error no longer leaves its draws for the
+  next solve.  The residuals, simulated thetas and per-study draws it had
+  made stayed behind, and the next solve without residuals of its own used
+  them: after a failed `rxSolve(m, params, ev, sigma = ...)`, a plain solve
+  of a model with that residual gave values up to 2.6 off.
 ## New features
+
+- Packages linking to rxode2 can read the thread id they gave with
+  `setRxThreadId()` back through `getRxThreadId()`, a new entry of the C
+  pointer table (`rxode2ptr.h`).
 
 - A package that includes rxode2's `rxode2parseSbuf.h` can define
   `RXODE2_SBUF_FORMAT` (`PKG_CPPFLAGS = -DRXODE2_SBUF_FORMAT`) to have its
@@ -17,6 +29,25 @@
   modeled (-1, -2), as a record with no `evid` column is read.  It used to keep
   the record as an observation and drop the dose or infusion silently; with no
   `evid` column at all such a record is still a dose.
+
+### Solving
+
+- `rxSolve()` and `etTrans()` no longer change the objects they are given:
+  - with an occasion (nested) eta, `rxSolve()` turned the occasion column
+    of the caller's data frame into a factor, so, for example, `simulate()`
+    of an nlmixr2 fit changed the fit's data;
+  - an unnamed `inits` vector (and the vector given to `rxInits()`) was
+    given the model's state names;
+  - a translated event table (`etTrans()`'s result) given to `rxSolve()` or
+    `etTrans()` had its hidden translation changed.
+
+- The aggregated `dop853` step-limit and step-size warnings and the `intdy`
+  warning used to print values read from no argument (indeterminate numbers).
+  They now aggregate on their fixed text (with the real `nmax`) and give the
+  `x`, `h` and `t` they saw as mean +/- sd (min/max).  The `etTrans()` rate and duration errors format the subject ID
+  as a string.  A model's `printf()` whose format does not match its arguments
+  (`printf("%d", x)` with a double `x`) now gives a `-Wformat` warning when the
+  model compiles; it compiles as before.
 
 ### Model functions
 
@@ -44,6 +75,12 @@
   shown".  Past 256 distinct solve ids (subject x simulation) for one message,
   the ids not listed are given as a lower bound, "(at least N more)", instead
   of a count that was too low.
+### Adjoint sensitivities
+
+- `rxSolveAdjointRk4()` now documents that, for a model with `delay()`,
+  the adjoint's delayed-state term is first order in the step size for
+  every method: an adaptive method such as `dop853s` needs `hmax` for
+  accurate sensitivities.
 
 # rxode2 5.1.8
 
