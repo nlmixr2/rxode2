@@ -85,6 +85,15 @@ rxTest({
       rxode2::rxSolve(.mod2, rxode2::et(0:2), inits = c(q = 1, p = 0), method = "vv"),
       "coordinate-momentum"
     )
+    # an infusion into a coordinate breaks d/dt(q) = p
+    .mod3 <- rxode2::rxode2({
+      d/dt(q) <- p
+      d/dt(p) <- -q
+    })
+    expect_error(
+      rxode2::rxSolve(.mod3, rxode2::et(amt = 1, rate = 1, cmt = "q") |> rxode2::et(0:2), method = "vv"),
+      "infusion"
+    )
   })
 
   test_that("vv accepts pairs whose coordinate derivative uses an intermediate", {

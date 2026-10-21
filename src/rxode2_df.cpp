@@ -430,7 +430,7 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
       if (rx->subjects[solveid].err & rxErrVvNotPairs) {
         rxSolveFreeC();
         (Rf_errorcall)(R_NilValue, "%s",
-                       _("method='vv' (Velocity Verlet) needs the ODE states ordered as coordinate-momentum pairs: with N=ceiling(nstates/2), d/dt(state i) must equal state N+i for i=1..N (an odd last coordinate must have d/dt()=0); use another method"));
+                       _("method='vv' (Velocity Verlet) needs the ODE states ordered as coordinate-momentum pairs: with N=ceiling(nstates/2), d/dt(state i) must equal state N+i for i=1..N (an odd last coordinate must have d/dt()=0), and no infusion or turning off may change a coordinate's derivative; use another method"));
       }
     }
     if (nidCols == 0){

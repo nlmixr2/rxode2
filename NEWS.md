@@ -8,12 +8,6 @@
   them: after a failed `rxSolve(m, params, ev, sigma = ...)`, a plain solve
   of a model with that residual gave values up to 2.6 off.
 
-- `rxSolve(..., method = "vv")` now stops with an error naming the
-  requirement when the model's states are not coordinate-momentum pairs
-  (`d/dt(q_i) = p_i`).  Velocity Verlet ignores the coordinate derivatives,
-  so such a model, e.g. a first-order `d/dt(y) <- -k*y`, used to return its
-  initial state at every time (#1469).
-
 ## New features
 
 - Packages linking to rxode2 can read the thread id they gave with
@@ -48,6 +42,12 @@
   `-Inf`/`Inf`, so `expit(logit(1) + eta)` is 1 instead of `NA`.  The
   `logitNorm()` and `logit + yeoJohnson` residual transforms use the same
   form (#1474).
+
+- `rxSolve(..., method = "vv")` now stops with an error naming the
+  requirement when the model's states are not coordinate-momentum pairs
+  (`d/dt(q_i) = p_i`).  Velocity Verlet ignores the coordinate derivatives,
+  so such a model, e.g. a first-order `d/dt(y) <- -k*y`, used to return its
+  initial state at every time (#1469).
 
 ### Adjoint sensitivities
 

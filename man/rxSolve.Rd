@@ -416,9 +416,10 @@ controlled by \code{hmin}).
 \item \code{"vv"} -- Velocity Verlet stepper using Boost's odeint library.
 Requires the ODE states to be coordinate-momentum pairs: with
 \code{N = ceiling(nstates/2)}, \verb{d/dt(state i)} must equal \verb{state N+i}
-(an odd last coordinate must have a zero derivative); other models
-are refused with an error.  Is a fixed-step method (step size
-controlled by \code{hmin}).
+(an odd last coordinate must have a zero derivative).  Other models,
+or an infusion or turning off of a coordinate that breaks this, are
+refused with an error.  Is a fixed-step method (step size controlled
+by \code{hmin}).
 \item \code{"mm"} -- Modified Midpoint stepper using Boost's odeint library.
 Is a fixed-step method (step size controlled by \code{hmin}) and uses
 the \code{order} parameter to configure the number of intermediate
