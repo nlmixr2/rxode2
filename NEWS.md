@@ -1,5 +1,12 @@
 # rxode2 (development version)
 
+## Bug fixes
+
+- A simulation that stops with an error no longer leaves its draws for the
+  next solve.  The residuals, simulated thetas and per-study draws it had
+  made stayed behind, and the next solve without residuals of its own used
+  them: after a failed `rxSolve(m, params, ev, sigma = ...)`, a plain solve
+  of a model with that residual gave values up to 2.6 off.
 ## New features
 
 - Packages linking to rxode2 can read the thread id they gave with
