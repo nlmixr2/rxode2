@@ -516,7 +516,7 @@ b <- (a == \"<10\")*1 + (a == \">=10\")*2
 
   test_that("each string variable prunes to its own levels", {
     # the levels are looked up by the variable's name, not the first entry
-    .sa <- list(lab0 = c("x"), label = c("a", "b"))
+    .sa <- list(lab0 = "x", label = c("a", "b"))
     expect_equal(.rxPrune(str2lang("{lab0 <- 'x'; label <- 'b'}"), strAssign = .sa), "lab0<-1\nlabel<-2")
     expect_equal(.rxPrune(str2lang("{z <- (label == 'b')}"), strAssign = .sa), "z<-(label==2)")
     expect_equal(.rxPrune(str2lang("{z <- ('a' != label)}"), strAssign = .sa), "z<-(1!=label)")
