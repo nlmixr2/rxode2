@@ -115,7 +115,8 @@
 <h2 class="pkg-version" data-toc-text="development version" id="rxode2-development-version">rxode2 (development version)<a class="anchor" aria-label="anchor" href="#rxode2-development-version"></a></h2>
 <div class="section level3">
 <h3 id="new-features-development-version">New features<a class="anchor" aria-label="anchor" href="#new-features-development-version"></a></h3>
-<ul><li>A package that includes rxode2’s <code>rxode2parseSbuf.h</code> can define <code>RXODE2_SBUF_FORMAT</code> (<code>PKG_CPPFLAGS = -DRXODE2_SBUF_FORMAT</code>) to have its <code>sAppend()</code>, <code>sPrint()</code> and <code>addLine()</code> calls checked by <code>-Wformat</code>. Under R’s default <code>-Werror=format-security</code> a format that is not a literal and has no arguments then fails to compile. Without the macro nothing changes.</li>
+<ul><li><p>Packages linking to rxode2 can read the thread id they gave with <code>setRxThreadId()</code> back through <code>getRxThreadId()</code>, a new entry of the C pointer table (<code>rxode2ptr.h</code>).</p></li>
+<li><p>A package that includes rxode2’s <code>rxode2parseSbuf.h</code> can define <code>RXODE2_SBUF_FORMAT</code> (<code>PKG_CPPFLAGS = -DRXODE2_SBUF_FORMAT</code>) to have its <code>sAppend()</code>, <code>sPrint()</code> and <code>addLine()</code> calls checked by <code>-Wformat</code>. Under R’s default <code>-Werror=format-security</code> a format that is not a literal and has no arguments then fails to compile. Without the macro nothing changes.</p></li>
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
