@@ -106,6 +106,12 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   .l
 }
 
+# What a solve's draws put in `.rxModels` for that solve to read: the
+# residuals, the simulated thetas, the per-study theta, omega and sigma lists
+# and the nested thetas and etas.  A finished solve moves each into its result
+# (`rxSolve_()`, src/rxData.cpp); one that stops first leaves them behind.
+.rxSolveDrawn <- c(".sigma", ".theta", ".thetaL", ".omegaL", ".sigmaL", ".nestEta", ".nestTheta")
+
 # Drop what an earlier solve in this session left in `.rxModels`, so what the
 # pre-draw reads back is what the pre-draw itself made.
 .rxOomClearDrawn <- function(what) {
