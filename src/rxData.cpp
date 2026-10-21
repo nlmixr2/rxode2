@@ -1568,6 +1568,25 @@ extern "C" {
 static thread_local int _rxThreadIdOverride = -1;
 extern "C" void setRxThreadId(int id) { _rxThreadIdOverride = id; }
 extern "C" int getRxThreadId(void) { return _rxThreadIdOverride; }
+
+// Test hook: setRxThreadId() and getRxThreadId() called through the pointer
+// table's slots 65 and 99, as a package linking to rxode2 calls them; returns
+// the ids read after setting 5 and then -1
+extern "C" SEXP _rxTestThreadIdSlots(SEXP ptrs) {
+  void (*set)(int) = (void (*)(int)) R_ExternalPtrAddrFn(VECTOR_ELT(ptrs, 65));
+  int (*get)(void) = (int (*)(void)) R_ExternalPtrAddrFn(VECTOR_ELT(ptrs, 99));
+  int old = get();
+  set(5);
+  int a = get();
+  set(-1);
+  int b = get();
+  set(old);
+  SEXP ret = PROTECT(Rf_allocVector(INTSXP, 2));
+  INTEGER(ret)[0] = a;
+  INTEGER(ret)[1] = b;
+  UNPROTECT(1);
+  return ret;
+}
 static inline int _rxTid(void) {
   int t = _rxThreadIdOverride;
   if (t < 0) t = omp_get_thread_num();
