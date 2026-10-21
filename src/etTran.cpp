@@ -1318,7 +1318,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   }
   CharacterVector trans = mv[RxMv_trans];
   if (Rf_inherits(inData,"rxEtTran")){
-    CharacterVector cls = Rf_getAttrib(inData, R_ClassSymbol);
+    // a shallow copy of the class, which holds the translation's list: the
+    // table returned below gets its own, and inData keeps the caller's
+    CharacterVector cls = Rf_shallow_duplicate(Rf_getAttrib(inData, R_ClassSymbol));
     List e0 = cls.attr(".rxode2.lst");
     if (as<std::string>(trans[RxMvTrans_lib_name]) ==
         as<std::string>(e0[RxTrans_lib_name])){

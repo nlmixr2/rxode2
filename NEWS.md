@@ -2,6 +2,7 @@
 
 ## Bug fixes
 
+### Event tables
 - A simulation that stops with an error no longer leaves its draws for the
   next solve.  The residuals, simulated thetas and per-study draws it had
   made stayed behind, and the next solve without residuals of its own used
@@ -28,6 +29,17 @@
   the record as an observation and drop the dose or infusion silently; with no
   `evid` column at all such a record is still a dose.
 
+### Solving
+
+- `rxSolve()` and `etTrans()` no longer change the objects they are given:
+  - with an occasion (nested) eta, `rxSolve()` turned the occasion column
+    of the caller's data frame into a factor, so, for example, `simulate()`
+    of an nlmixr2 fit changed the fit's data;
+  - an unnamed `inits` vector (and the vector given to `rxInits()`) was
+    given the model's state names;
+  - a translated event table (`etTrans()`'s result) given to `rxSolve()` or
+    `etTrans()` had its hidden translation changed.
+
 - The aggregated `dop853` step-limit and step-size warnings and the `intdy`
   warning used to print values read from no argument (indeterminate numbers).
   They now aggregate on their fixed text (with the real `nmax`) and give the
@@ -35,6 +47,9 @@
   as a string.  A model's `printf()` whose format does not match its arguments
   (`printf("%d", x)` with a double `x`) now gives a `-Wformat` warning when the
   model compiles; it compiles as before.
+
+### Model functions
+
 - `logit()` (in R and in models) is now computed as
   `log(x - low) - log(high - x)`, so it keeps full precision as `x`
   approaches `high`, and it returns `-Inf`/`Inf` at `x == low`/`x == high`

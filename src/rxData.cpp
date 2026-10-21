@@ -1243,6 +1243,8 @@ NumericVector rxInits0(const RObject &obj,
     if (nvec.size() > 0){
       if (!nvec.hasAttribute("names")){
         if (!req.isNull() && nreq.size() == nvec.size()){
+          // name a copy: nvec is the caller's own vector (inits = , scale =)
+          nvec = clone(nvec);
           nvec.attr("names") = req;
           nvecNames = req;
           std::string wstr = "Assumed order of inputs: ";
@@ -3757,6 +3759,11 @@ static inline void rxSolve_ev1Update(const RObject &obj,
                      R_NilValue);
     }
   }
+  // No class is "rxEtTrans" (a translated table is "rxEtTran"), so every data
+  // frame, translated or not, goes through etTransR(): it re-translates a
+  // table made for another model and returns one made for this model as it
+  // is.  Skipping translated tables here would solve one made for another
+  // model with that model's layout.
   if (rxIs(ev1, "data.frame") && !rxIs(ev1, "rxEtTrans")) {
     List ev1k = etTransR(ev1, obj, rxSolveDat->hasCmt,
                          false, false, true, R_NilValue,
@@ -7147,7 +7154,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rxSolveDat->addTimeUnits = false;
     if (rxIs(ev1, "rxEtTran")){
       CharacterVector cls = ev1.attr("class");
-      List evT = cls.attr(".rxode2.lst");
+      // a shallow copy: ev1 can be the caller's own translated table
+      List evT = Rf_shallow_duplicate(cls.attr(".rxode2.lst"));
       evT.attr("class") = R_NilValue;
       rxSolveDat->covUnits = evT[RxTrans_covUnits];
       rxSolveDat->maxItemsPerId = evT[RxTrans_maxItemsPerId];
