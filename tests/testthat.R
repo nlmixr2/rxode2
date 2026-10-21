@@ -16,9 +16,5 @@ if (!identical(Sys.getenv("NOT_CRAN"), "true")) {
 ## test_check("rxode2", reporter = testthat::LocationReporter,
 ##            stop_on_failure = TRUE)
 withr::with_options(list(rxode2.useLinCmt = FALSE), {
-  if (.Platform$OS.type == "windows") {
-    test_check("rxode2", reporter = testthat::LocationReporter)
-  } else {
-    test_check("rxode2")
-  }
+  test_check("rxode2")
 })
