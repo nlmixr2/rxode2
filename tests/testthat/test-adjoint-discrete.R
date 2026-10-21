@@ -2161,9 +2161,9 @@ rxTest({
     pd <- data.frame(id = 1:4, ka = c(1.0, 1.2, 1.4, 1.6), cl = c(3, 3.5, 4, 4.5), v = c(20, 25, 30, 22))
     evp <- et(amt = 100, cmt = "depot", ii = 6, addl = 2) %>% et(c(1, 4, 7, 10, 16)) %>% et(id = 1:4)
     s1 <- as.data.frame(rxode2::rxSolve(madj, evp, pd, method = "liblsodaadj", cores = 1, atol = 1e-9, rtol = 1e-9))
-    s4 <- as.data.frame(rxode2::rxSolve(madj, evp, pd, method = "liblsodaadj", cores = 4, atol = 1e-9, rtol = 1e-9))
+    s2 <- as.data.frame(rxode2::rxSolve(madj, evp, pd, method = "liblsodaadj", cores = 2, atol = 1e-9, rtol = 1e-9))
     for (cn in grep("rx__sens", names(s1), value = TRUE)) {
-      expect_equal(s1[[cn]], s4[[cn]])
+      expect_equal(s1[[cn]], s2[[cn]])
     }
   })
 
@@ -2403,12 +2403,12 @@ rxTest({
       rxode2::rxSolve,
       c(list(madj, evp, pd, method = "abs"), list(hmin = 0.02, maxordn = 4L, cores = 1))
     ))
-    s4 <- as.data.frame(do.call(
+    s2 <- as.data.frame(do.call(
       rxode2::rxSolve,
-      c(list(madj, evp, pd, method = "abs"), list(hmin = 0.02, maxordn = 4L, cores = 4))
+      c(list(madj, evp, pd, method = "abs"), list(hmin = 0.02, maxordn = 4L, cores = 2))
     ))
     for (cn in grep("rx__sens", names(s1), value = TRUE)) {
-      expect_equal(s1[[cn]], s4[[cn]])
+      expect_equal(s1[[cn]], s2[[cn]])
     }
   })
 })
