@@ -131,13 +131,20 @@
 </ul></div>
 <div class="section level4">
 <h4 id="solving-development-version">Solving<a class="anchor" aria-label="anchor" href="#solving-development-version"></a></h4>
-<ul><li>
-<code><a href="../reference/rxSolve.html">rxSolve()</a></code> and <code><a href="../reference/etTrans.html">etTrans()</a></code> no longer change the objects they are given:
+<ul><li><p>A subject whose solve fails no longer changes the other subjects’ results, for every method: <code>dop853</code> gave them zeros, the methods first released in 5.1.3 and <code>cvodesadj</code> left them out, and <code>liblsodaadj</code> and <code>abs</code> gave them sensitivities of 0.</p></li>
+<li><p><code>ind_solve()</code> (as nlmixr2est uses it) no longer reads a failure left by the previous solve of the same subject as a failure of the new one.</p></li>
+<li>
+<p><code><a href="../reference/rxSolve.html">rxSolve()</a></code> and <code><a href="../reference/etTrans.html">etTrans()</a></code> no longer change the objects they are given:</p>
 <ul><li>with an occasion (nested) eta, <code><a href="../reference/rxSolve.html">rxSolve()</a></code> turned the occasion column of the caller’s data frame into a factor, so, for example, <code><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate()</a></code> of an nlmixr2 fit changed the fit’s data;</li>
 <li>an unnamed <code>inits</code> vector (and the vector given to <code><a href="../reference/rxInits.html">rxInits()</a></code>) was given the model’s state names;</li>
 <li>a translated event table (<code><a href="../reference/etTrans.html">etTrans()</a></code>’s result) given to <code><a href="../reference/rxSolve.html">rxSolve()</a></code> or <code><a href="../reference/etTrans.html">etTrans()</a></code> had its hidden translation changed.</li>
 </ul></li>
-<li>The aggregated <code>dop853</code> step-limit and step-size warnings and the <code>intdy</code> warning used to print values read from no argument (indeterminate numbers). They now aggregate on their fixed text (with the real <code>nmax</code>) and give the <code>x</code>, <code>h</code> and <code>t</code> they saw as mean +/- sd (min/max). The <code><a href="../reference/etTrans.html">etTrans()</a></code> rate and duration errors format the subject ID as a string. A model’s <code>printf()</code> whose format does not match its arguments (<code>printf("%d", x)</code> with a double <code>x</code>) now gives a <code>-Wformat</code> warning when the model compiles; it compiles as before.</li>
+<li><p>The aggregated <code>dop853</code> step-limit and step-size warnings and the <code>intdy</code> warning used to print values read from no argument (indeterminate numbers). They now aggregate on their fixed text (with the real <code>nmax</code>) and give the <code>x</code>, <code>h</code> and <code>t</code> they saw as mean +/- sd (min/max). The <code><a href="../reference/etTrans.html">etTrans()</a></code> rate and duration errors format the subject ID as a string. A model’s <code>printf()</code> whose format does not match its arguments (<code>printf("%d", x)</code> with a double <code>x</code>) now gives a <code>-Wformat</code> warning when the model compiles; it compiles as before.</p></li>
+</ul></div>
+<div class="section level4">
+<h4 id="lincmt-models-development-version">linCmt() models<a class="anchor" aria-label="anchor" href="#lincmt-models-development-version"></a></h4>
+<ul><li><p>After a subject whose <code>linCmt()</code> solve failed (a data error such as a modeled rate in a model without <code>rate()</code>), the later subjects on that thread returned zeros, since 4.0.0. They now solve as usual.</p></li>
+<li><p>The finite-difference <code>linCmt()</code> sensitivities that nlmixr2est requests return <code>NA</code> for a subject whose solve failed, in place of the mean of its earlier time points.</p></li>
 </ul></div>
 <div class="section level4">
 <h4 id="model-functions-development-version">Model functions<a class="anchor" aria-label="anchor" href="#model-functions-development-version"></a></h4>
