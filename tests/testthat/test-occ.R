@@ -501,4 +501,88 @@ rxTest({
     expect_s3_class(.ni$data$occ, "factor")
     expect_identical(levels(.ni$data$occ), c("1", "2"))
   })
+
+  test_that("occasion variables always step (locf), whatever covsInterpolation is (#1483)", {
+    .f <- function() {
+      ini({
+        e0 <- 0.3
+        eta.e ~ 0.0001
+        iov.e ~ 0.04 | occ
+      })
+      model({
+        e <- e0 + eta.e + iov.e
+        d/dt(x) <- e
+      })
+    }
+    .ev <- data.frame(
+      id = 1, time = c(0, 4, 6, 10), evid = 0, amt = 0,
+      occ = c(1, 1, 2, 2)
+    )
+    for (.ci in c("locf", "linear", "midpoint", "nocb")) {
+      set.seed(1)
+      .s <- expect_no_warning(
+        rxSolve(.f(), .ev, covsInterpolation = .ci, returnType = "data.frame")
+      )
+      # (4, 6] belongs to the first occasion
+      expect_equal(.s$x[3] - .s$x[2], 2 * .s$e[2], tolerance = 1e-5)
+      expect_false(isTRUE(all.equal(.s$e[2], .s$e[3])))
+    }
+    # an explicit locf() declaration is kept
+    .fl <- .f |> model(locf(occ), append = NA)
+    set.seed(1)
+    .s <- rxSolve(.fl, .ev, covsInterpolation = "nocb", returnType = "data.frame")
+    expect_equal(.s$x[3] - .s$x[2], 2 * .s$e[2], tolerance = 1e-5)
+  })
+
+  test_that("an occasion variable cannot declare a non-locf interpolation (#1483)", {
+    .f <- function() {
+      ini({
+        e0 <- 0.3
+        eta.e ~ 0.0001
+        iov.e ~ 0.04 | occ
+      })
+      model({
+        nocb(occ)
+        e <- e0 + eta.e + iov.e + 0 * occ
+        d/dt(x) <- e
+      })
+    }
+    expect_error(.f(), "'occ' \\(nocb\\) must use 'locf'")
+    .f2 <- function() {
+      ini({
+        e0 <- 0.3
+        eta.e ~ 0.0001
+        iov.e ~ 0.04 | occ
+      })
+      model({
+        e <- e0 + eta.e + iov.e + 0 * occ
+        d/dt(x) <- e
+      })
+    }
+    for (.m in c("linear", "midpoint")) {
+      expect_error(
+        eval(str2lang(paste0(".f2 |> model(", .m, "(occ), append = NA)"))),
+        paste0("'occ' \\(", .m, "\\) must use 'locf'")
+      )
+    }
+
+    # rxSolve() with a nested omega and no ui
+    .m <- rxode2({
+      midpoint(occ)
+      e <- 0.3 + eta.e + iov.e + 0 * occ
+      d/dt(x) <- e
+    })
+    .om <- lotri::lotri(
+      lotri::lotri(eta.e ~ 0.0001) | id,
+      lotri::lotri(iov.e ~ 0.04) | occ(nu = 100)
+    )
+    .ev <- data.frame(
+      id = 1, time = c(0, 4, 6, 10), evid = 0, amt = 0,
+      occ = c(1, 1, 2, 2)
+    )
+    expect_error(
+      rxSolve(.m, .ev, omega = .om),
+      "occasion variable 'occ' must use 'locf' interpolation, not 'midpoint'"
+    )
+  })
 })

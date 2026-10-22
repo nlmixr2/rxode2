@@ -793,7 +793,13 @@ SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS) {
       IntegerVector flags = as<IntegerVector>(mv[RxMv_flags]);
       int cureta = flags[RxMvFlag_maxeta]+1;
       int curtheta = flags[RxMvFlag_maxtheta]+1;
-      List en = rxExpandNesting(objectRO, ni, true);
+      List en;
+      try {
+        en = rxExpandNesting(objectRO, ni, true);
+      } catch (...) {
+        rxSolveFree();
+        throw;
+      }
       aboveSEXP = rx_protect.protect(as<SEXP>(ni["above"]));
       belowSEXP = rx_protect.protect(as<SEXP>(ni["below"]));
       List lotriSepMat = as<List>(rx_protect.protect(lotriSep(omegaLotri,aboveSEXP,

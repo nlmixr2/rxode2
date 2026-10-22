@@ -32,6 +32,12 @@
 
 ### Solving
 
+- Occasion (inter-occasion variability) variables now always step (locf)
+  whatever `covsInterpolation` is; under `"nocb"` a simulated occasion eta
+  used to switch at the previous record.  A model that declares `linear()`,
+  `nocb()` or `midpoint()` for an occasion variable now stops with an error
+  (#1483).
+
 - The forward sensitivity with respect to a parameter-dependent `delay()`
   duration doubled the dose-induced jump at each breaking point when the
   solve needed an automatically generated Jacobian (the default method
