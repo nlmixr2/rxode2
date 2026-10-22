@@ -593,8 +593,15 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     if (is.null(.pars) || nrow(.pars) == 0L) {
       return(NA_character_)
     }
-    if (!("id" %in% names(.pars)) && nrow(.pars) == length(.chunkIds)) {
-      .pars <- cbind(id = .chunkIds, .pars)
+    if (!("id" %in% names(.pars))) {
+      # a one-row table is one set for every subject of the chunk
+      if (nrow(.pars) == 1L && length(.chunkIds) > 1L) {
+        .pars <- .pars[rep(1L, length(.chunkIds)), , drop = FALSE]
+        rownames(.pars) <- NULL
+      }
+      if (nrow(.pars) == length(.chunkIds)) {
+        .pars <- cbind(id = .chunkIds, .pars)
+      }
     }
     if (.rxOomHasArrow()) {
       .f <- tempfile(fileext = ".parquet")
