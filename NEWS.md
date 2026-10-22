@@ -2,6 +2,34 @@
 
 ## Bug fixes
 
+### Event tables
+- A simulation that stops with an error no longer leaves its draws for the
+  next solve.  The residuals, simulated thetas and per-study draws it had
+  made stayed behind, and the next solve without residuals of its own used
+  them: after a failed `rxSolve(m, params, ev, sigma = ...)`, a plain solve
+  of a model with that residual gave values up to 2.6 off.
+## New features
+
+- Packages linking to rxode2 can read the thread id they gave with
+  `setRxThreadId()` back through `getRxThreadId()`, a new entry of the C
+  pointer table (`rxode2ptr.h`).
+
+- A package that includes rxode2's `rxode2parseSbuf.h` can define
+  `RXODE2_SBUF_FORMAT` (`PKG_CPPFLAGS = -DRXODE2_SBUF_FORMAT`) to have its
+  `sAppend()`, `sPrint()` and `addLine()` calls checked by `-Wformat`.  Under
+  R's default `-Werror=format-security` a format that is not a literal and
+  has no arguments then fails to compile.  Without the macro nothing changes.
+
+## Bug fixes
+
+### Event tables
+
+- `etTrans()` now stops on a record whose `evid` is missing but that carries
+  dose information: a nonzero `amt`, or a `rate` or `dur` that is positive or
+  modeled (-1, -2), as a record with no `evid` column is read.  It used to keep
+  the record as an observation and drop the dose or infusion silently; with no
+  `evid` column at all such a record is still a dose.
+
 ### Solving
 
 - The forward sensitivity with respect to a parameter-dependent `delay()`
@@ -9,6 +37,95 @@
   solve needed an automatically generated Jacobian (the default method
   for a delay model), with the default or `eventSens = "fd"` event
   sensitivities.  The jump is now applied once.
+
+- A subject whose solve fails no longer changes the other subjects' results,
+  for every method: `dop853` gave them zeros, the methods first released in
+  5.1.3 and `cvodesadj` left them out, and `liblsodaadj` and `abs` gave them
+  sensitivities of 0.
+
+- `ind_solve()` (as nlmixr2est uses it) no longer reads a failure left by the
+  previous solve of the same subject as a failure of the new one.
+
+- A subject whose solve failed is now named with its reason once the solve is
+  over ("[solve error: <reason>]: N warning(s) for subject(s): <ids>", and the
+  `lsoda` and `liblsoda` "IDID=" texts likewise), whichever thread solved it.
+  A reason used to be printed only for the subjects solved on the main
+  thread, and not at all by `lsoda`, `liblsoda`, `rk4` or `cvode`.  A
+  solver's own failure (a non-finite right-hand side, a step limit) and
+  `lsoda`'s step limit are no longer reported as "Corrupted event table
+  during sort (1)" and as an unhandled exception.
+
+- `rxSolve()` and `etTrans()` no longer change the objects they are given:
+  - with an occasion (nested) eta, `rxSolve()` turned the occasion column
+    of the caller's data frame into a factor, so, for example, `simulate()`
+    of an nlmixr2 fit changed the fit's data;
+  - an unnamed `inits` vector (and the vector given to `rxInits()`) was
+    given the model's state names;
+  - a translated event table (`etTrans()`'s result) given to `rxSolve()` or
+    `etTrans()` had its hidden translation changed.
+
+- The aggregated `dop853` step-limit and step-size warnings and the `intdy`
+  warning used to print values read from no argument (indeterminate numbers).
+  They now aggregate on their fixed text (with the real `nmax`) and give the
+  `x`, `h` and `t` they saw as mean +/- sd (min/max).  The `etTrans()` rate and duration errors format the subject ID
+  as a string.  A model's `printf()` whose format does not match its arguments
+  (`printf("%d", x)` with a double `x`) now gives a `-Wformat` warning when the
+  model compiles; it compiles as before.
+
+### linCmt() models
+
+- After a subject whose `linCmt()` solve failed (a data error such as a
+  modeled rate in a model without `rate()`), the later subjects on that thread
+  returned zeros, since 4.0.0.  They now solve as usual.
+
+- The finite-difference `linCmt()` sensitivities that nlmixr2est requests
+  return `NA` for a subject whose solve failed, in place of the mean of its
+  earlier time points.
+
+### Model functions
+
+- `logit()` (in R and in models) is now computed as
+  `log(x - low) - log(high - x)`, so it keeps full precision as `x`
+  approaches `high`, and it returns `-Inf`/`Inf` at `x == low`/`x == high`
+  (like `qlogis()`) instead of `NaN`.  `expit()` returns `low`/`high` for
+  `-Inf`/`Inf`, so `expit(logit(1) + eta)` is 1 instead of `NA`.  The
+  `logitNorm()` and `logit + yeoJohnson` residual transforms use the same
+  form (#1474).
+
+- A population solve (`omega = NA`) of a model with a nested omega, such as
+  an occasion eta (`iov.cl ~ 0.1 | occ`), now sets the etas of every level
+  to zero; it stopped with "The following parameter(s) are required for
+  solving".  nlmixr2est's population `predict()` of a fit with
+  inter-occasion variability goes through it.
+### Symbolic derivatives
+
+- The derivative of a function of `abs()` of a sum (`exp(2 * abs(k - 0.9))`)
+  keeps `abs()`'s argument.  It was written `abs(+)` (since 5.1.7), so a
+  sensitivity model or an nlm-family gradient of such a model failed with
+  an rxode2 syntax error.  `rxFromSE()` likewise writes a sum inside `!()`
+  or `lgamma()` whole.
+### Solving
+
+- The aggregated `dop853` step-limit and step-size warnings and the `intdy`
+  warning used to print values read from no argument (indeterminate numbers).
+  They now aggregate on their fixed text (with the real `nmax`) and give the
+  `x`, `h` and `t` they saw as mean +/- sd (min/max).  The `etTrans()` rate and duration errors format the subject ID
+  as a string.  A model's `printf()` whose format does not match its arguments
+  (`printf("%d", x)` with a double `x`) now gives a `-Wformat` warning when the
+  model compiles; it compiles as before.
+
+- The aggregated solver warning summary no longer drops warnings silently.
+  Once it holds 64 distinct messages, the warnings of any further message are
+  counted in a last line, "[more than 64 distinct messages]: N warning(s) not
+  shown".  Past 256 distinct solve ids (subject x simulation) for one message,
+  the ids not listed are given as a lower bound, "(at least N more)", instead
+  of a count that was too low.
+### Adjoint sensitivities
+
+- `rxSolveAdjointRk4()` now documents that, for a model with `delay()`,
+  the adjoint's delayed-state term is first order in the step size for
+  every method: an adaptive method such as `dop853s` needs `hmax` for
+  accurate sensitivities.
 
 # rxode2 5.1.8
 

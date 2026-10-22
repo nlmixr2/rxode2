@@ -34,7 +34,11 @@ the solved data frame with \verb{rx__sens_<state>_BY_<param>__} columns.
 Applies the (cached) adjoint expansion, solves with the requested adjoint
 method, and drops the internal \verb{rx__adj*} lhs, returning the full-trajectory
 \verb{rx__sens_<state>_BY_<param>__} columns.  The stiff analytic Jacobian is
-emitted into the expansion automatically, inferred from \code{method}.
+emitted into the expansion automatically, inferred from \code{method}.  For a
+model with \code{delay()}, the delayed-state term of the adjoint is first order
+in the step size whatever the method's order, and an adaptive method's
+error control does not limit it: cap the step with \code{hmax} (or use a
+fixed-step method with a small \code{hmin}) for accurate sensitivities.
 }
 \author{
 Matthew L. Fidler

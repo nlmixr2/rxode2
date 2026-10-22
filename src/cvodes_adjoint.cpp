@@ -493,12 +493,12 @@ extern "C" void ind_cvodesadj_0(rx_solve *rx, rx_solving_options *op, int solvei
   SUNContext sunctx = NULL;
   if (SUNContext_Create(SUN_COMM_NULL, &sunctx) != 0) {
     if (ind->rc[0] == 0) ind->rc[0] = -2019;
-    ind->err = 1;
+    rxSolverFail(ind);
     return;
   }
   if (!cvodesAdjSolveSubject(rx, op, ind, neq, 1, c_dydt, u_inis, sunctx)) {
     if (ind->rc[0] == 0) ind->rc[0] = -2019;
-    ind->err = 1;
+    rxSolverFail(ind);
   }
   SUNContext_Free(&sunctx);
   ind->solveTime += ((double)(clock() - tclk)) / CLOCKS_PER_SEC;
@@ -523,7 +523,6 @@ extern "C" void par_cvodesadj(rx_solve *rx) {
     // stream was current -- seed per subject like every other par_*() loop
     setSeedEng1(seed0 + _id);
     ind_cvodesadj_0(rx, op, _id, neq, dydt, update_inis);
-    if (op->badSolve) break;
   }
   // close the per-subject seed block: the loop consumed nsolve seeds, not
   // cores, and the next solve must not re-use any of them

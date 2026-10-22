@@ -336,6 +336,12 @@ extern "C" {
   typedef void (*setRxThreadId_t)(int id);
   extern setRxThreadId_t setRxThreadId;
 
+  // The id setRxThreadId() last set on the calling thread, or -1 when none
+  // is (rxode2 then takes omp_get_thread_num() from its own OpenMP runtime),
+  // so a caller can check the id rxode2 will use.
+  typedef int (*getRxThreadId_t)(void);
+  extern getRxThreadId_t getRxThreadId;
+
   // Register / remove an external parameter-block loader (t_rxParLoader from
   // rxode2.h); rxode2 calls registered loaders once per solve so a package can
   // fill reserved par_ptr slots with externally-owned values.
@@ -459,6 +465,7 @@ extern "C" {
       rxRegisterParLoaderNamed = (rxRegisterParLoaderNamed_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 96));
       rxPriorLogDensityEval = (rxPriorLogDensityEval_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 97));
       rxPriorOmegaToCholOmegaInvGrad = (rxPriorOmegaToCholOmegaInvGrad_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 98));
+      getRxThreadId = (getRxThreadId_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 99));
     }
     return R_NilValue;
   }
@@ -563,6 +570,7 @@ extern "C" {
   rxRegisterParLoaderNamed_t rxRegisterParLoaderNamed = NULL; \
   rxPriorLogDensityEval_t rxPriorLogDensityEval = NULL; \
   rxPriorOmegaToCholOmegaInvGrad_t rxPriorOmegaToCholOmegaInvGrad = NULL; \
+  getRxThreadId_t getRxThreadId = NULL;                 \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \

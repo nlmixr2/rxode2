@@ -9,6 +9,12 @@
  * output on worker threads so the model can compile printf() statements
  * safely even when subjects are solved in parallel. */
 #include <stdarg.h>
+/* the format of a model's printf() is a string literal, so -Wformat checks its
+ * arguments; R_PRINTF_FORMAT is R's (R_ext/Print.h) */
+#ifndef R_PRINTF_FORMAT
+#define R_PRINTF_FORMAT(M, N)
+#endif
+static inline void _rxPrintf(const char *fmt, ...) R_PRINTF_FORMAT(1, 2);
 #ifdef _OPENMP
 /* R's `match` macro breaks the `declare variant match(...)` pragma in LLVM's omp.h */
 #pragma push_macro("match")

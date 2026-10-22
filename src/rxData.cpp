@@ -36,10 +36,12 @@
 #include "rxomp.h"
 #include "rxode2lincmtLink.h"
 #include "rxMemAvail.h"
+#include "solveWarn.h"
 #include "strncmp.h"
 #include "rxode2_altrep.h"
 #include "rxode2_df.h"
 #include "../inst/include/rxMemoryCalc.h"
+#include "rxSbufFormat.h"
 #define _(String) (String)
 #define rxModelVars(a) rxModelVars_(a)
 #define min2( a , b )  ( (a) < (b) ? (a) : (b) )
@@ -65,7 +67,8 @@ extern "C" void ensureRworkPool(int nCores, int lrw, int liw);
 SEXP rxSaveState_();         // defined in rxSerialize.cpp
 SEXP rxRestoreState_(SEXP pathSexp);      // defined in rxSerialize.cpp
 bool rxIsSerializeFile_(SEXP pathSexp);   // defined in rxSerialize.cpp
-extern "C" void RSprintf(const char *format, ...);
+#include "rxPrintfFormat.h"
+extern "C" void RSprintf(const char *format, ...) R_PRINTF_FORMAT(1, 2);
 extern "C" int getRxThreads(const int64_t n, const bool throttle);
 extern "C" double *global_InfusionRate(unsigned int mx);
 extern "C" void rxOptionsFree();
@@ -474,6 +477,7 @@ Function requireNamespace("requireNamespace", R_BaseNamespace);
 Environment cliNS = loadNamespace("cli");
 Function cliAlert0 = as<Function>(cliNS["cli_alert_info"]);
 
+extern "C" void cliAlert(const char *format, ...) R_PRINTF_FORMAT(1, 2);
 extern "C" void cliAlert(const char *format, ...) {
   va_list args;
   char buffer[256];
@@ -1240,6 +1244,8 @@ NumericVector rxInits0(const RObject &obj,
     if (nvec.size() > 0){
       if (!nvec.hasAttribute("names")){
         if (!req.isNull() && nreq.size() == nvec.size()){
+          // name a copy: nvec is the caller's own vector (inits = , scale =)
+          nvec = clone(nvec);
           nvec.attr("names") = req;
           nvecNames = req;
           std::string wstr = "Assumed order of inputs: ";
@@ -1565,6 +1571,25 @@ extern "C" {
 static thread_local int _rxThreadIdOverride = -1;
 extern "C" void setRxThreadId(int id) { _rxThreadIdOverride = id; }
 extern "C" int getRxThreadId(void) { return _rxThreadIdOverride; }
+
+// Test hook: setRxThreadId() and getRxThreadId() called through the pointer
+// table's slots 65 and 99, as a package linking to rxode2 calls them; returns
+// the ids read after setting 5 and then -1
+extern "C" SEXP _rxTestThreadIdSlots(SEXP ptrs) {
+  void (*set)(int) = (void (*)(int)) R_ExternalPtrAddrFn(VECTOR_ELT(ptrs, 65));
+  int (*get)(void) = (int (*)(void)) R_ExternalPtrAddrFn(VECTOR_ELT(ptrs, 99));
+  int old = get();
+  set(5);
+  int a = get();
+  set(-1);
+  int b = get();
+  set(old);
+  SEXP ret = PROTECT(Rf_allocVector(INTSXP, 2));
+  INTEGER(ret)[0] = a;
+  INTEGER(ret)[1] = b;
+  UNPROTECT(1);
+  return ret;
+}
 static inline int _rxTid(void) {
   int t = _rxThreadIdOverride;
   if (t < 0) t = omp_get_thread_num();
@@ -3735,6 +3760,11 @@ static inline void rxSolve_ev1Update(const RObject &obj,
                      R_NilValue);
     }
   }
+  // No class is "rxEtTrans" (a translated table is "rxEtTran"), so every data
+  // frame, translated or not, goes through etTransR(): it re-translates a
+  // table made for another model and returns one made for this model as it
+  // is.  Skipping translated tables here would solve one made for another
+  // model with that model's layout.
   if (rxIs(ev1, "data.frame") && !rxIs(ev1, "rxEtTrans")) {
     List ev1k = etTransR(ev1, obj, rxSolveDat->hasCmt,
                          false, false, true, R_NilValue,
@@ -6028,6 +6058,11 @@ static inline SEXP rxSolve_finalize(const RObject &obj,
       }
     }
   }
+  // An rxSolve() prints only its own solve warnings: an ind_solve() caller that
+  // has not flushed (babelmixr2's PopED) loses its lines rather than passing them
+  // to this solve's subjects.  SAEM calls par_solve() directly, so the reasons its
+  // subjects pushed in between survive until its flush.
+  rxSolveWarnReset();
   par_solve(rx);
 #ifdef rxSolveT
   RSprintf("  Time1: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
@@ -7125,7 +7160,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rxSolveDat->addTimeUnits = false;
     if (rxIs(ev1, "rxEtTran")){
       CharacterVector cls = ev1.attr("class");
-      List evT = cls.attr(".rxode2.lst");
+      // a shallow copy: ev1 can be the caller's own translated table
+      List evT = Rf_shallow_duplicate(cls.attr(".rxode2.lst"));
       evT.attr("class") = R_NilValue;
       rxSolveDat->covUnits = evT[RxTrans_covUnits];
       rxSolveDat->maxItemsPerId = evT[RxTrans_maxItemsPerId];

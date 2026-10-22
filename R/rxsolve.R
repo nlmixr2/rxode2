@@ -2724,8 +2724,9 @@ rxSolve.function <- function(
 #'
 #' @param params parameter `data.frame`/`matrix` (one row per id) or named
 #'   numeric vector
-#' @param mat the omega/sigma matrix naming the parameters to zero, or the
-#'   names themselves; when `NULL` the model has no such random effects and
+#' @param mat the omega/sigma matrix naming the parameters to zero, a nested
+#'   omega (`lotri` list) whose blocks name them, or the names themselves; when
+#'   `NULL` the model has no such random effects and
 #'   `params` is returned unchanged
 #' @return `params` with each parameter named by `mat` set to zero
 #' @noRd
@@ -2735,6 +2736,10 @@ rxSolve.function <- function(
   }
   .nms <- if (is.character(mat)) {
     mat
+  } else if (is.list(mat) && !is.data.frame(mat)) {
+    # a nested omega (a lotri list, one block per level): the etas of every
+    # level; a data frame keys off its names below, as a matrix does
+    dimnames(lotri::lotriMat(mat))[[2]]
   } else {
     # the rest of .rxSolveFromUi() keys off the row names, so fall back to them
     .matNms <- dimnames(mat)[[2]]
@@ -3247,6 +3252,9 @@ rxSolve.default <- function(
       rxUdfUiReset()
       .clearPipe()
       .asFunctionEnv$rx <- NULL
+      # a solve that stopped before moving its draws into its result would
+      # leave them for the next solve to read as its own residuals and thetas
+      .rxOomClearDrawn(.rxSolveDrawn)
     },
     add = TRUE
   )
