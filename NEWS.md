@@ -32,6 +32,14 @@
 
 ### Solving
 
+- A subject whose solve fails no longer changes the other subjects' results,
+  for every method: `dop853` gave them zeros, the methods first released in
+  5.1.3 and `cvodesadj` left them out, and `liblsodaadj` and `abs` gave them
+  sensitivities of 0.
+
+- `ind_solve()` (as nlmixr2est uses it) no longer reads a failure left by the
+  previous solve of the same subject as a failure of the new one.
+
 - `rxSolve()` and `etTrans()` no longer change the objects they are given:
   - with an occasion (nested) eta, `rxSolve()` turned the occasion column
     of the caller's data frame into a factor, so, for example, `simulate()`
@@ -48,6 +56,16 @@
   as a string.  A model's `printf()` whose format does not match its arguments
   (`printf("%d", x)` with a double `x`) now gives a `-Wformat` warning when the
   model compiles; it compiles as before.
+
+### linCmt() models
+
+- After a subject whose `linCmt()` solve failed (a data error such as a
+  modeled rate in a model without `rate()`), the later subjects on that thread
+  returned zeros, since 4.0.0.  They now solve as usual.
+
+- The finite-difference `linCmt()` sensitivities that nlmixr2est requests
+  return `NA` for a subject whose solve failed, in place of the mean of its
+  earlier time points.
 
 ### Model functions
 
