@@ -86,6 +86,13 @@
   `logitNorm()` and `logit + yeoJohnson` residual transforms use the same
   form (#1474).
 
+### Symbolic derivatives
+
+- The derivative of a function of `abs()` of a sum (`exp(2 * abs(k - 0.9))`)
+  keeps `abs()`'s argument.  It was written `abs(+)` (since 5.1.7), so a
+  sensitivity model or an nlm-family gradient of such a model failed with
+  an rxode2 syntax error.  `rxFromSE()` likewise writes a sum inside `!()`
+  or `lgamma()` whole.
 ### Solving
 
 - The aggregated `dop853` step-limit and step-size warnings and the `intdy`
