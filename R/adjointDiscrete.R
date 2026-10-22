@@ -721,7 +721,11 @@
 #' Applies the (cached) adjoint expansion, solves with the requested adjoint
 #' method, and drops the internal `rx__adj*` lhs, returning the full-trajectory
 #' `rx__sens_<state>_BY_<param>__` columns.  The stiff analytic Jacobian is
-#' emitted into the expansion automatically, inferred from `method`.
+#' emitted into the expansion automatically, inferred from `method`.  For a
+#' model with `delay()`, the delayed-state term of the adjoint is first order
+#' in the step size whatever the method's order, and an adaptive method's
+#' error control does not limit it: cap the step with `hmax` (or use a
+#' fixed-step method with a small `hmin`) for accurate sensitivities.
 #'
 #' @inheritParams .rxDiscreteAdjointBuild
 #' @param events an rxode2 event table / data set.
