@@ -86,6 +86,11 @@
   `logitNorm()` and `logit + yeoJohnson` residual transforms use the same
   form (#1474).
 
+- A population solve (`omega = NA`) of a model with a nested omega, such as
+  an occasion eta (`iov.cl ~ 0.1 | occ`), now sets the etas of every level
+  to zero; it stopped with "The following parameter(s) are required for
+  solving".  nlmixr2est's population `predict()` of a fit with
+  inter-occasion variability goes through it.
 ### Symbolic derivatives
 
 - The derivative of a function of `abs()` of a sum (`exp(2 * abs(k - 0.9))`)
