@@ -219,7 +219,7 @@ rxTest({
     })
     .ev <- et(amt = 100) |> et(seq(0, 200, by = 50)) |> et(id = 1:2)
     .out <- capture.output(suppressWarnings(rxSolve(.m, .ev, method = "dop853", maxsteps = 5L)))
-    .line <- grep("warning\\(s\\)", .out, value = TRUE)
+    .line <- grep("^\\[exit of dop853", .out, value = TRUE)
     expect_length(.line, 1L)
     expect_match(
       .line,
@@ -236,7 +236,7 @@ rxTest({
     .ev <- et(seq(0, 2, by = 0.5)) |> et(id = 1:2)
     .p <- data.frame(y0 = c(0.1, 1))
     .out <- capture.output(suppressWarnings(rxSolve(.m, .ev, params = .p, method = "dop853")))
-    .line <- grep("warning\\(s\\)", .out, value = TRUE)
+    .line <- grep("^\\[exit of dop853", .out, value = TRUE)
     expect_length(.line, 1L)
     expect_match(
       .line,

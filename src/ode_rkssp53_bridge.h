@@ -11,7 +11,7 @@ protected:
     void ode_fun(double * __restrict__ solin, double * __restrict__ fout) override {
         if (ind_->err != 0) { for (unsigned long i=0;i<neq_;i++) fout[i]=0.0; return; }
         dydt_(full_neq_, t_stage_, solin, fout);
-        for (unsigned long i=0;i<neq_;i++) { if (!std::isfinite(fout[i])) { ind_->err=1; for (unsigned long j=0;j<neq_;j++) fout[j]=0.0; return; } }
+        for (unsigned long i=0;i<neq_;i++) { if (!std::isfinite(fout[i])) { rxSolverFail(ind_); for (unsigned long j=0;j<neq_;j++) fout[j]=0.0; return; } }
     }
     void step_(double dt) override {
         // k_[0]=xs, k_[1]=fs
