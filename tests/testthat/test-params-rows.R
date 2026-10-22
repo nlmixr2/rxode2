@@ -250,6 +250,21 @@ rxTest({
     }
   })
 
+  test_that("a parallel chunked solve's $params has a row per subject for one shared row", {
+    skip_if_not_installed("mirai")
+    m <- .paramsRowsModel()
+    d <- .paramsRowsData()
+    .old <- options(rxode2.oom.backend = "rds")
+    on.exit(options(.old), add = TRUE)
+    .want <- data.frame(id = c(11, 12, 13), k = 0.5, v = 2)
+    for (.p in list(c(k = 0.5, v = 2), data.frame(k = 0.5, v = 2))) {
+      .s <- rxSolve(m, d, params = .p, file = tempfile("pr"), chunkSize = 2, parallel = 2)
+      .pars <- as.data.frame(.s$params)
+      .pars$id <- as.numeric(as.character(.pars$id))
+      expect_equal(.pars, .want, label = class(.p)[1])
+    }
+  })
+
   test_that("the refusal lists the first ten subjects", {
     m <- .paramsRowsModel()
     d <- .paramsRowsData(ids = 1:40)

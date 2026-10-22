@@ -593,16 +593,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     if (is.null(.pars) || nrow(.pars) == 0L) {
       return(NA_character_)
     }
-    if (!("id" %in% names(.pars))) {
-      # a one-row table is one set for every subject of the chunk
-      if (nrow(.pars) == 1L && length(.chunkIds) > 1L) {
-        .pars <- .pars[rep(1L, length(.chunkIds)), , drop = FALSE]
-        rownames(.pars) <- NULL
-      }
-      if (nrow(.pars) == length(.chunkIds)) {
-        .pars <- cbind(id = .chunkIds, .pars)
-      }
-    }
+    .pars <- .rxOomParamsIds(.pars, .chunkIds)
     if (.rxOomHasArrow()) {
       .f <- tempfile(fileext = ".parquet")
       arrow::write_parquet(.pars, .f)
@@ -671,7 +662,8 @@ rxMemSummary.rxEtFile <- function(x, ...) {
         .fwdCtlArgs,
         .mainTmp,
         .backendOpt,
-        .useArrowWrite
+        .useArrowWrite,
+        .paramsIds
       ) {
         library(rxode2)
         options(rxode2.oom.backend = .backendOpt)
@@ -732,8 +724,8 @@ rxMemSummary.rxEtFile <- function(x, ...) {
         # Per-subject parameter table; stamp id so chunks concatenate cleanly.
         .pars <- tryCatch(as.data.frame(.result$params), error = function(e) NULL)
         .ids <- .chunkIdsList[[.i]]
-        if (!is.null(.pars) && nrow(.pars) > 0L && !("id" %in% names(.pars)) && nrow(.pars) == length(.ids)) {
-          .pars <- cbind(id = .ids, .pars)
+        if (!is.null(.pars) && nrow(.pars) > 0L) {
+          .pars <- .paramsIds(.pars, .ids)
         }
         if (.useArrowWrite) {
           .f <- tempfile(fileext = ".parquet", tmpdir = .mainTmp)
@@ -775,7 +767,8 @@ rxMemSummary.rxEtFile <- function(x, ...) {
         .fwdCtlArgs = .fwdCtlArgs,
         .mainTmp = tempdir(),
         .backendOpt = .backendOpt,
-        .useArrowWrite = .useArrowWrite
+        .useArrowWrite = .useArrowWrite,
+        .paramsIds = .rxOomParamsIds
       )
     )
     for (.i in seq_len(.nChunks)) {
@@ -935,6 +928,23 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
   .tbl <- paste0("read_parquet(", .rxOomDuckFileList(files), ")")
   DBI::dbGetQuery(con, gsub("{tbl}", .tbl, sql, fixed = TRUE))
+}
+
+# Stamp a chunk's parameter table with its subject ids so the chunk tables
+# concatenate cleanly; a one-row table is one set for every subject of the
+# chunk.  Base R only: it is also sent to the mirai daemons.
+.rxOomParamsIds <- function(pars, ids) {
+  if ("id" %in% names(pars)) {
+    return(pars)
+  }
+  if (nrow(pars) == 1L && length(ids) > 1L) {
+    pars <- pars[rep(1L, length(ids)), , drop = FALSE]
+    rownames(pars) <- NULL
+  }
+  if (nrow(pars) == length(ids)) {
+    pars <- cbind(id = ids, pars)
+  }
+  pars
 }
 
 # Read the persisted per-subject parameter table (res$params).
