@@ -32,6 +32,12 @@
 
 ### Solving
 
+- The forward sensitivity with respect to a parameter-dependent `delay()`
+  duration doubled the dose-induced jump at each breaking point when the
+  solve needed an automatically generated Jacobian (the default method
+  for a delay model), with the default or `eventSens = "fd"` event
+  sensitivities.  The jump is now applied once.
+
 - A subject whose solve fails no longer changes the other subjects' results,
   for every method: `dop853` gave them zeros, the methods first released in
   5.1.3 and `cvodesadj` left them out, and `liblsodaadj` and `abs` gave them

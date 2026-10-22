@@ -3350,6 +3350,9 @@ rxSolve.default <- function(
     events <- params
     params <- .tmp
   }
+  # The Jacobian recursion gets the events from before the delay() sensitivity
+  # jump doses are mirrored onto them, so it mirrors them once itself.
+  .eventsUnmirrored <- events
   if (inherits(inits, "rxControl")) {
     stop(
       "'rxControl()' cannot be passed as 'inits'; pass control options as named arguments instead, e.g. rxSolve(object, params, events, method='dop853+ros4')", # nolint: line_length_linter.
@@ -3772,7 +3775,6 @@ rxSolve.default <- function(
           # Model changed (Jacobian equations were added); recurse with new model.
           object <- .jacObject
           force(params)
-          force(events)
           force(inits)
           force(indOwnAlloc)
           force(theta)
@@ -3781,7 +3783,7 @@ rxSolve.default <- function(
           return(rxSolve.default(
             object,
             params = params,
-            events = events,
+            events = .eventsUnmirrored,
             inits = inits,
             ...,
             indOwnAlloc = indOwnAlloc,
