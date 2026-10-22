@@ -3350,6 +3350,9 @@ rxSolve.default <- function(
     events <- params
     params <- .tmp
   }
+  # The Jacobian recursion gets the events from before the delay() sensitivity
+  # jump doses are mirrored onto them, so it mirrors them once itself.
+  .eventsUnmirrored <- events
   if (inherits(inits, "rxControl")) {
     stop(
       "'rxControl()' cannot be passed as 'inits'; pass control options as named arguments instead, e.g. rxSolve(object, params, events, method='dop853+ros4')", # nolint: line_length_linter.
@@ -3635,9 +3638,7 @@ rxSolve.default <- function(
     # .rxDelaySensAugment; here we add the doses that activate them).  Gated on the
     # model actually carrying rx__sens_* compartments, and a no-op unless a delay
     # duration depends on a sensitivity parameter (.rxDelaySensJump returns NULL).
-    # A recursive solve (e.g. after generating the Jacobian) receives events that
-    # already carry the mirrored doses; mirroring again would double each jump.
-    if (!is.null(events) && !isTRUE(attr(events, "rxDelaySensJumped"))) {
+    if (!is.null(events)) {
       # cheap gate: the jump alag() lines exist only for a param-dependent delay
       # forward-sens model, so skip the (symengine) analysis for every other solve.
       .sensCmts <- grep("^rx__sens_", rxModelVars(object)$state, value = TRUE)
@@ -3666,7 +3667,6 @@ rxSolve.default <- function(
             events <- tryCatch(.rxDelaySensJump2Events(.map2, events), error = function(e) events)
           }
         }
-        attr(events, "rxDelaySensJumped") <- TRUE
       }
     }
     # delay() history is recorded on the dense dop853 path (default, and the
@@ -3775,7 +3775,6 @@ rxSolve.default <- function(
           # Model changed (Jacobian equations were added); recurse with new model.
           object <- .jacObject
           force(params)
-          force(events)
           force(inits)
           force(indOwnAlloc)
           force(theta)
@@ -3784,7 +3783,7 @@ rxSolve.default <- function(
           return(rxSolve.default(
             object,
             params = params,
-            events = events,
+            events = .eventsUnmirrored,
             inits = inits,
             ...,
             indOwnAlloc = indOwnAlloc,
