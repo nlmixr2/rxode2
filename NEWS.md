@@ -40,7 +40,9 @@
   or simulate from it (`omega`, a model with etas) and in a chunked solve.
   Such a solve's `$params` is one row with no id column, as a named vector's
   is, and its `$counts` has one row per subject (it was a malformed one-row
-  frame).
+  frame).  A chunked solve (`file =`, `chunkSize =`) given one shared row
+  (also a named vector) gives that row for every subject, with its id, in
+  `$params`; with chunks of unequal size reading `$params` failed.
 
 - The forward sensitivity with respect to a parameter-dependent `delay()`
   duration doubled the dose-induced jump at each breaking point when the
