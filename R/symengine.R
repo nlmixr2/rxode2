@@ -3589,7 +3589,6 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
                     ))
                   }
                 }
-                return(paste0(.xc[1], .x2[[1]], .xc[2]))
               }
             }
             return(paste0(.xc[1], .rxFromSE(x[[2]]), .xc[2]))
