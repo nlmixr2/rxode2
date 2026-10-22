@@ -515,7 +515,10 @@ rxTest({
       })
     }
     .ev <- data.frame(
-      id = 1, time = c(0, 4, 6, 10), evid = 0, amt = 0,
+      id = 1,
+      time = c(0, 4, 6, 10),
+      evid = 0,
+      amt = 0,
       occ = c(1, 1, 2, 2)
     )
     for (.ci in c("locf", "linear", "midpoint", "nocb")) {
@@ -577,7 +580,10 @@ rxTest({
       lotri::lotri(iov.e ~ 0.04) | occ(nu = 100)
     )
     .ev <- data.frame(
-      id = 1, time = c(0, 4, 6, 10), evid = 0, amt = 0,
+      id = 1,
+      time = c(0, 4, 6, 10),
+      evid = 0,
+      amt = 0,
       occ = c(1, 1, 2, 2)
     )
     expect_error(

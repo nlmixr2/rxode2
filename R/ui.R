@@ -246,11 +246,12 @@
   .occ <- intersect(.occ, names(.interp))
   .bad <- .occ[!(as.character(.interp[.occ]) %in% c("default", "locf"))]
   if (length(.bad) > 0L) {
-    stop("occasion variable(s) ",
-         paste0("'", .bad, "' (", as.character(.interp[.bad]), ")",
-                collapse = ", "),
-         " must use 'locf' interpolation",
-         call. = FALSE)
+    stop(
+      "occasion variable(s) ",
+      paste0("'", .bad, "' (", as.character(.interp[.bad]), ")", collapse = ", "),
+      " must use 'locf' interpolation",
+      call. = FALSE
+    )
   }
   invisible()
 }
