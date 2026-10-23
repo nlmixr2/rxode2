@@ -8,6 +8,7 @@
   made stayed behind, and the next solve without residuals of its own used
   them: after a failed `rxSolve(m, params, ev, sigma = ...)`, a plain solve
   of a model with that residual gave values up to 2.6 off.
+
 ## New features
 
 - Packages linking to rxode2 can read the thread id they gave with
@@ -155,6 +156,13 @@
   shown".  Past 256 distinct solve ids (subject x simulation) for one message,
   the ids not listed are given as a lower bound, "(at least N more)", instead
   of a count that was too low.
+
+- `rxSolve(..., method = "vv")` now stops with an error naming the
+  requirement when the model's states are not coordinate-momentum pairs
+  (`d/dt(q_i) = p_i`).  Velocity Verlet ignores the coordinate derivatives,
+  so such a model, e.g. a first-order `d/dt(y) <- -k*y`, used to return its
+  initial state at every time (#1469).
+
 ### Adjoint sensitivities
 
 - `rxSolveAdjointRk4()` now documents that, for a model with `delay()`,

@@ -32,6 +32,7 @@
 // set only when no more specific reason is
 #define rxErrSolverFail       134217728
 #define rxSolverFail(ind) do { if ((ind)->err == 0) (ind)->err = rxErrSolverFail; } while (0)
+#define rxErrVvNotPairs       268435456
 
 #define rxErrNaTimeLag   1
 #define rxErrNaTimeRate  2

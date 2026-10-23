@@ -444,6 +444,7 @@ static const rxSolveErrReason rxSolveErrReasons[] = {
   {rxErrIndLinCode, "Unsupported inductive linearization code; the model's 'indLin' descriptor does not match the solver"},
   {rxErrIndLinExcept, "Inductive linearization failed with an unhandled exception (most likely out of memory)"},
   {rxErrSolverFail, rxSolverFailText},
+  {rxErrVvNotPairs, "method='vv' needs coordinate-momentum state pairs with d/dt(q_i) = p_i"},
 };
 
 // Push the reasons a subject's solve failed to the solve-warning aggregator,
