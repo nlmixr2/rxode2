@@ -43,6 +43,10 @@ rxTest({
     .msg <- "some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'"
     .n <- c(plain = 0L, adjoint = 0L)
     for (.meth in eval(formals(rxode2::rxSolve)$method)) {
+      # vv refuses a model whose states are not coordinate-momentum pairs (#1469)
+      if (.meth == "vv") {
+        next
+      }
       .m <- .mPlain
       .ref <- .fsSolve(.m, .fsData[.fsData$ID != 1, ], .meth, 1L)
       if (is.character(.ref) && grepl("adjoint expansion", .ref, fixed = TRUE)) {
@@ -78,7 +82,7 @@ rxTest({
       .n[[.kind]] <- .n[[.kind]] + 1L
     }
     # a method added to rxSolve() needs these counts raised
-    expect_identical(.n, c(plain = 164L, adjoint = 10L))
+    expect_identical(.n, c(plain = 163L, adjoint = 10L))
   })
 
   test_that("each failed subject's reason names it, whichever thread solved it", {
@@ -182,7 +186,8 @@ rxTest({
       "Inductive linearization could not reach 'atol'/'rtol' within 'maxsteps' relinearization steps; loosen 'atol'/'rtol' or raise 'maxsteps'",
       "Unsupported inductive linearization code; the model's 'indLin' descriptor does not match the solver",
       "Inductive linearization failed with an unhandled exception (most likely out of memory)",
-      "the ODE solver failed (an exception, or a step it could not take)"
+      "the ODE solver failed (an exception, or a step it could not take)",
+      "method='vv' needs coordinate-momentum state pairs with d/dt(q_i) = p_i"
     )
     # every rxErr bit in the installed header has a text: the NA-time codes
     # (rxErrNaTime*, 1-5) are not bits
@@ -200,7 +205,7 @@ rxTest({
       expect_identical(.line, paste0("[solve error: ", .texts[.k], "]: 1 warning(s)"), label = names(.bits)[.k])
     }
     # a bit with no text is pushed as its code
-    expect_identical(.errPush(bitwShiftL(1L, 28L)), "[solve error: code 268435456]: 1 warning(s)")
+    expect_identical(.errPush(bitwShiftL(1L, 29L)), "[solve error: code 536870912]: 1 warning(s)")
     # bits that share a text push it once
     expect_identical(
       .errPush(bitwShiftL(1L, 20L) + bitwShiftL(1L, 21L) + bitwShiftL(1L, 22L)),

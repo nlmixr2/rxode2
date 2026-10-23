@@ -8,6 +8,7 @@
   made stayed behind, and the next solve without residuals of its own used
   them: after a failed `rxSolve(m, params, ev, sigma = ...)`, a plain solve
   of a model with that residual gave values up to 2.6 off.
+
 ## New features
 
 - Packages linking to rxode2 can read the thread id they gave with
@@ -37,6 +38,23 @@
   used to switch at the previous record.  A model that declares `linear()`,
   `nocb()` or `midpoint()` for an occasion variable now stops with an error
   (#1483).
+- The parameters a par-loader (or `rxForcedPars()`) injects into a solve are
+  kept with that solve.  They were read from the loaders' buffer, which holds
+  the last solve's, only when the object's `$params` was first built through
+  `$`.  After another solve, `rxInjectedPars()` gave that solve's injected
+  values (or `NULL`), and a re-solve from the object used them; and when
+  `.DollarNames()` (tab completion), `$counts`, `.params.single` or
+  `$add.dosing` built `$params` first, they were never recorded.
+
+- A solve's `$params` and `$counts` are now built one way.  They had two
+  builders, one behind `$` and one that `.DollarNames()` (tab completion),
+  `$counts` and other first accesses ran, so with a multi-row `params`
+  `$counts` had `sim.id` and `id` columns or not depending on which ran (it
+  now has them either way), and a model with no parameters had a 1 x 0
+  `$params` or a 0 x 0 one (now 0 x 0).  The first `$params` of a solve with
+  thousands of parameters is also much faster, and a solve's first
+  `$params`, `$counts`, `.DollarNames()` or event-table method builds only
+  what it uses rather than all of them and the event table.
 
 - A one-row `params` data frame or matrix is now used for every subject, as
   a named vector is; with more than one subject, the subjects after the first
@@ -143,6 +161,13 @@
   shown".  Past 256 distinct solve ids (subject x simulation) for one message,
   the ids not listed are given as a lower bound, "(at least N more)", instead
   of a count that was too low.
+
+- `rxSolve(..., method = "vv")` now stops with an error naming the
+  requirement when the model's states are not coordinate-momentum pairs
+  (`d/dt(q_i) = p_i`).  Velocity Verlet ignores the coordinate derivatives,
+  so such a model, e.g. a first-order `d/dt(y) <- -k*y`, used to return its
+  initial state at every time (#1469).
+
 ### Adjoint sensitivities
 
 - `rxSolveAdjointRk4()` now documents that, for a model with `delay()`,

@@ -7,6 +7,7 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#include <cfloat>
 
 struct vv_system {
     rx_solving_options_ind *ind_;
@@ -35,6 +36,18 @@ struct vv_system {
         }
 
         c_dydt_(neq_, t, y_temp_.data(), dy_temp_.data());
+
+        // Velocity Verlet takes d/dt(q_i) = p_i; refuse models that do not
+        // (the padded momentum of an odd system is 0).
+        for (int i = 0; i < N_; ++i) {
+            double dq = dy_temp_[i], p = y_temp_[N_ + i];
+            if (dq != p && !(std::isnan(dq) && std::isnan(p)) &&
+                !(R_FINITE(dq) && R_FINITE(p) &&
+                  std::abs(dq - p) <= 64.0 * DBL_EPSILON * std::max(std::abs(dq), std::abs(p)))) {
+                ind_->err |= rxErrVvNotPairs;
+                break;
+            }
+        }
 
         std::copy(dy_temp_.begin() + N_, dy_temp_.end(), a.data_);
     }
