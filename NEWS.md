@@ -33,6 +33,11 @@
 
 ### Solving
 
+- Occasion (inter-occasion variability) variables now always step (locf)
+  whatever `covsInterpolation` is; under `"nocb"` a simulated occasion eta
+  used to switch at the previous record.  A model that declares `linear()`,
+  `nocb()` or `midpoint()` for an occasion variable now stops with an error
+  (#1483).
 - The parameters a par-loader (or `rxForcedPars()`) injects into a solve are
   kept with that solve.  They were read from the loaders' buffer, which holds
   the last solve's, only when the object's `$params` was first built through

@@ -228,6 +228,34 @@
   .fun2
 }
 
+#' Make sure occasion (IOV) variables use locf interpolation
+#'
+#' @param iniDf ini data frame of the model
+#' @param mv model variables of the model
+#' @return nothing, errors when an occasion variable declares a
+#'   non-locf interpolation
+#' @noRd
+#' @author Matthew L. Fidler
+.rxUiIovLocf <- function(iniDf, mv) {
+  .interp <- mv$interp
+  if (!is.factor(.interp) || length(.interp) == 0L) {
+    return(invisible())
+  }
+  .w <- which(!is.na(iniDf$condition) & is.na(iniDf$err))
+  .occ <- setdiff(unique(.lotriBaseCondition(iniDf$condition[.w])), "id")
+  .occ <- intersect(.occ, names(.interp))
+  .bad <- .occ[!(as.character(.interp[.occ]) %in% c("default", "locf"))]
+  if (length(.bad) > 0L) {
+    stop(
+      "occasion variable(s) ",
+      paste0("'", .bad, "' (", as.character(.interp[.bad]), ")", collapse = ", "),
+      " must use 'locf' interpolation",
+      call. = FALSE
+    )
+  }
+  invisible()
+}
+
 .rxFunction2ui <- function(fun) {
   .fun <- .rxEtaDistIniToModel(
     .rxFunctionRearrange(eval(parse(text = paste(.rxFunction2string(fun), collapse = "\n"))))
@@ -510,6 +538,7 @@ model <- function(
         call. = FALSE
       )
     }
+    .rxUiIovLocf(.mod$iniDf, .mod$mv0)
     assign("modelName", .funName, envir = .mod)
     class(.mod) <- "rxUi"
     ## let packages attach parse-time state to the freshly assembled ui.  This
