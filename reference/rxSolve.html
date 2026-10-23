@@ -464,7 +464,13 @@ model specification.</p></dd>
 <dt id="arg-params">params<a class="anchor" aria-label="anchor" href="#arg-params"></a></dt>
 <dd><p>a numeric named vector with values for every
 parameter in the ODE system; the names must correspond to the
-parameter identifiers used in the ODE specification;</p></dd>
+parameter identifiers used in the ODE specification.  A data
+frame or matrix gives one row per subject (or per subject and
+simulation), matched to the subjects by position in data order;
+an <code>id</code> column is not used to match them.  A one-row data frame
+or matrix is used for every subject, unless it has an <code>id</code>
+column and the data has more than one subject, which is an
+error;</p></dd>
 
 
 <dt id="arg-events">events<a class="anchor" aria-label="anchor" href="#arg-events"></a></dt>
@@ -860,7 +866,8 @@ against a default <code>rtol = 1e-6</code>.  Raise <code>sigdig</code>, or set
 <dd><p>a numeric absolute tolerance (1e-8 by default) used
 by the ODE solver to determine if a good solution has been
 achieved;  This is also used in the solved linear model to check
-if prior doses do not add anything to the solution.</p></dd>
+if prior doses do not add anything to the solution.  Must be
+<code>&gt; 0</code>.</p></dd>
 
 
 <dt id="arg-rtol">rtol<a class="anchor" aria-label="anchor" href="#arg-rtol"></a></dt>
@@ -1490,7 +1497,7 @@ were not present.</p></dd>
 
 <dt id="arg-ssatol">ssAtol<a class="anchor" aria-label="anchor" href="#arg-ssatol"></a></dt>
 <dd><p>Steady state atol convergence factor.  Can be
-a vector based on each state.</p></dd>
+a vector based on each state.  Must be <code>&gt; 0</code>.</p></dd>
 
 
 <dt id="arg-ssrtol">ssRtol<a class="anchor" aria-label="anchor" href="#arg-ssrtol"></a></dt>
@@ -1558,7 +1565,8 @@ evaluated before exiting.  By default this is 100000</p></dd>
 
 <dt id="arg-atolsens">atolSens<a class="anchor" aria-label="anchor" href="#arg-atolsens"></a></dt>
 <dd><p>Sensitivity atol, can be different than atol with
-liblsoda.  This allows a less accurate solve for gradients (if desired)</p></dd>
+liblsoda.  This allows a less accurate solve for gradients (if
+desired).  Must be <code>&gt; 0</code>.</p></dd>
 
 
 <dt id="arg-rtolsens">rtolSens<a class="anchor" aria-label="anchor" href="#arg-rtolsens"></a></dt>
@@ -1568,7 +1576,8 @@ liblsoda.  This allows a less accurate solve for gradients (if desired)</p></dd>
 
 <dt id="arg-ssatolsens">ssAtolSens<a class="anchor" aria-label="anchor" href="#arg-ssatolsens"></a></dt>
 <dd><p>Sensitivity absolute tolerance (atol) for
-calculating if steady state has been achieved for sensitivity compartments.</p></dd>
+calculating if steady state has been achieved for sensitivity
+compartments.  Must be <code>&gt; 0</code>.</p></dd>
 
 
 <dt id="arg-ssrtolsens">ssRtolSens<a class="anchor" aria-label="anchor" href="#arg-ssrtolsens"></a></dt>

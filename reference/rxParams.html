@@ -204,7 +204,13 @@ without recompiling the rxode2 model.</p></dd>
 <dt id="arg-params">params<a class="anchor" aria-label="anchor" href="#arg-params"></a></dt>
 <dd><p>a numeric named vector with values for every
 parameter in the ODE system; the names must correspond to the
-parameter identifiers used in the ODE specification;</p></dd>
+parameter identifiers used in the ODE specification.  A data
+frame or matrix gives one row per subject (or per subject and
+simulation), matched to the subjects by position in data order;
+an <code>id</code> column is not used to match them.  A one-row data frame
+or matrix is used for every subject, unless it has an <code>id</code>
+column and the data has more than one subject, which is an
+error;</p></dd>
 
 
 <dt id="arg-inits">inits<a class="anchor" aria-label="anchor" href="#arg-inits"></a></dt>
