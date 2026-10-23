@@ -38,6 +38,18 @@
   `nocb()` or `midpoint()` for an occasion variable now stops with an error
   (#1483).
 
+- A one-row `params` data frame or matrix is now used for every subject, as
+  a named vector is; with more than one subject, the subjects after the first
+  were solved with `NA` parameters.  A one-row `params` with an id column
+  names one subject, so with more subjects `rxSolve()` now stops, naming the
+  id and the subjects in the data, whether the solve would recycle the row
+  or simulate from it (`omega`, a model with etas) and in a chunked solve.
+  Such a solve's `$params` is one row with no id column, as a named vector's
+  is, and its `$counts` has one row per subject (it was a malformed one-row
+  frame).  A chunked solve (`file =`, `chunkSize =`) given one shared row
+  (also a named vector) gives that row for every subject, with its id, in
+  `$params`; with chunks of unequal size reading `$params` failed.
+
 - The forward sensitivity with respect to a parameter-dependent `delay()`
   duration doubled the dose-induced jump at each breaking point when the
   solve needed an automatically generated Jacobian (the default method
