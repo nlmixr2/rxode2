@@ -3126,7 +3126,9 @@ void updateSolveEnvPost(Environment e){
           nrm++;
         }
       }
-      if (nsub > 1) extran++;
+      // a one-row params is one set for every subject and has no id column
+      bool idCol = nsub > 1 && parsdf.nrow() > 1;
+      if (idCol) extran++;
       if (nsim > 1) extran++;
       CharacterVector prsn(ppos.size() - nrm + extran);
       List prsl(ppos.size() - nrm + extran);
@@ -3140,7 +3142,7 @@ void updateSolveEnvPost(Environment e){
         prsl[j] = tmp;
         j++;
       }
-      if (nsub > 1) {
+      if (idCol) {
         IntegerVector tmp(parsdf.nrow());
         for (unsigned int k = parsdf.nrow(); k--;){
           tmp[k] = (k % nsub)+1;
@@ -3188,7 +3190,7 @@ void updateSolveEnvPost(Environment e){
         cnt[j] = prsl["sim.id"];
         j++;
       }
-      if (nsub > 1) {
+      if (idCol) {
         cntn[j]="id";
         cnt[j] = prsl["id"];
         j++;
@@ -3201,7 +3203,9 @@ void updateSolveEnvPost(Environment e){
       cnt[j++] = e[".jac.counter"];
       cnt.names() = cntn;
       cnt.attr("class") = "data.frame";
-      cnt.attr("row.names") = IntegerVector::create(NA_INTEGER,-parsdf.nrow());
+      // one row per solve: a one-row params serves every subject
+      cnt.attr("row.names") = IntegerVector::create(NA_INTEGER,
+                                                    -Rf_length(cnt[j - 1]));
       e["counts"] = cnt;
     }
   }
@@ -5441,6 +5445,50 @@ static inline void rxSolve_resample(const RObject &obj,
   }
 }
 
+// A one-row parameter data frame or matrix is one set for every subject, as a
+// named vector is, and is expanded here to a row per subject.
+static inline void rxSolve_parOneRow(rxSolve_t* rxSolveDat, uint32_t nsub) {
+  if (rxSolveDat->parType == 1 || rxSolveDat->nPopPar != 1 || nsub <= 1) return;
+  int ncol = rxSolveDat->nmP.size();
+  NumericMatrix mat(nsub, ncol);
+  for (int j = 0; j < ncol; ++j) {
+    double v;
+    if (rxSolveDat->parType == 2) {
+      v = NumericVector(rxSolveDat->parDf[j])[0];
+    } else {
+      v = rxSolveDat->parMat(0, j);
+    }
+    std::fill_n(mat.begin() + (R_xlen_t)j * nsub, nsub, v);
+  }
+  rxSolveDat->parMat = mat;
+  rxSolveDat->parType = 3;
+  rxSolveDat->nPopPar = nsub;
+}
+
+// A one-row parameter data frame or matrix with an id column names one
+// subject, so with more subjects in the data it is an error, whatever the
+// solve would do with the row (recycle it, or simulate from it).  Run on the
+// user's params, before simulation replaces them; the subjects are etTrans()'s
+// labels.  The message is .rxParamsOneRowIdMsg()'s, which a chunked solve also
+// uses.
+static inline void rxSolve_parOneRowIdCheck(rxSolve_t* rxSolveDat) {
+  SEXP p = rxSolveDat->par1;
+  bool oneRow = false;
+  if (Rf_inherits(p, "data.frame")) {
+    oneRow = Rf_length(p) > 0 && Rf_length(VECTOR_ELT(p, 0)) == 1;
+  } else if (Rf_isMatrix(p)) {
+    oneRow = Rf_nrows(p) == 1;
+  }
+  if (!oneRow || rxSolveDat->idLevels.size() <= 1) return;
+  Function msgFn = getRxFn(".rxParamsOneRowIdMsg");
+  RObject msg = msgFn(rxSolveDat->par1, rxSolveDat->idLevels);
+  if (!Rf_isNull(msg)) {
+    std::string m = as<std::string>(msg);
+    rxSolveFree();
+    stop(m);
+  }
+}
+
 // Normalizes parameter input
 // It will also load the parameters into the solving data structure.
 static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxControl,
@@ -5455,6 +5503,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
   rx_solving_options* op = rx->op;
   rx_solving_options_ind* ind;
   int64_t curEvent = 0, curSolve=0; int curIdx = 0;
+  rxSolve_parOneRow(rxSolveDat, rx->nsub);
   switch(rxSolveDat->parType) {
   case 1: // NumericVector
     {
@@ -7166,6 +7215,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       rxSolveDat->covUnits = evT[RxTrans_covUnits];
       rxSolveDat->maxItemsPerId = evT[RxTrans_maxItemsPerId];
     }
+    rxSolve_parOneRowIdCheck(rxSolveDat);
     rxSolveDat->par1ini = rxSolveDat->par1;
     // This will update par1 with simulated values
 #ifdef rxSolveT

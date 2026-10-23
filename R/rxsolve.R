@@ -40,7 +40,13 @@
 #'
 #' @param params a numeric named vector with values for every
 #'     parameter in the ODE system; the names must correspond to the
-#'     parameter identifiers used in the ODE specification;
+#'     parameter identifiers used in the ODE specification.  A data
+#'     frame or matrix gives one row per subject (or per subject and
+#'     simulation), matched to the subjects by position in data order;
+#'     an `id` column is not used to match them.  A one-row data frame
+#'     or matrix is used for every subject, unless it has an `id`
+#'     column and the data has more than one subject, which is an
+#'     error;
 #'
 #' @param events an `eventTable` object describing the input
 #'     (e.g., doses) to the dynamic system and observation sampling
@@ -2674,6 +2680,44 @@ rxSolve.function <- function(
   }
 }
 
+#' The error for a one-row `params` whose id column names one subject
+#'
+#' A one-row data frame or matrix is used for every subject, but one with an id
+#' column names a single subject, so with more subjects in the data it is an
+#' error.  rxSolve() asks this before simulation, and a chunked solve before it
+#' splits the data, with every subject's label.
+#'
+#' @param params the `params` given to `rxSolve()`
+#' @param subjects the data's subject labels, in data order
+#' @return the message, or `NULL` when there is nothing to refuse
+#' @noRd
+.rxParamsOneRowIdMsg <- function(params, subjects) {
+  if (!(is.data.frame(params) || is.matrix(params)) || NROW(params) != 1L || length(subjects) <= 1L) {
+    return(NULL)
+  }
+  .w <- which(tolower(colnames(params)) == "id")
+  if (length(.w) == 0L) {
+    return(NULL)
+  }
+  .id <- if (is.data.frame(params)) params[[.w[1]]] else params[1, .w[1]]
+  .n <- length(subjects)
+  .list <- paste(utils::head(as.character(subjects), 10L), collapse = ", ")
+  if (.n > 10L) {
+    .list <- paste0(.list, ", ... (", .n - 10L, " more)")
+  }
+  paste0(
+    "'params' has one row, for id ",
+    as.character(.id),
+    ", but the data has ",
+    .n,
+    " subjects\n",
+    "subjects: ",
+    .list,
+    "\n",
+    "give one row per subject, or drop the id column to use the row for all"
+  )
+}
+
 #' Which zero variance omega/sigma items to fix at zero in `params`
 #'
 #' An omega/sigma item whose variance is zero is dropped from the matrix that is
@@ -4783,7 +4827,8 @@ solve.rxEt <- solve.rxSolve
     if (.nsim > 1) {
       .dat[["sim.id"]] <- (seq_len(nrow(.parsDf)) - 1L) %/% .nsub + 1L
     }
-    if (.nsub > 1) {
+    # a one-row params is one set for every subject and has no id column
+    if (.nsub > 1 && nrow(.parsDf) > 1L) {
       .id <- (seq_len(nrow(.parsDf)) - 1L) %% .nsub + 1L
       if (length(.idLevels) > 0) {
         .id <- factor(.id, levels = seq_along(.idLevels), labels = .idLevels)

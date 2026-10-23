@@ -335,7 +335,13 @@ model specification.}
 
 \item{params}{a numeric named vector with values for every
 parameter in the ODE system; the names must correspond to the
-parameter identifiers used in the ODE specification;}
+parameter identifiers used in the ODE specification.  A data
+frame or matrix gives one row per subject (or per subject and
+simulation), matched to the subjects by position in data order;
+an \code{id} column is not used to match them.  A one-row data frame
+or matrix is used for every subject, unless it has an \code{id}
+column and the data has more than one subject, which is an
+error;}
 
 \item{events}{an \code{eventTable} object describing the input
 (e.g., doses) to the dynamic system and observation sampling
