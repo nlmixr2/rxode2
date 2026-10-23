@@ -4775,12 +4775,9 @@ solve.rxEt <- solve.rxSolve
       .map <- get(.what, envir = .env, inherits = FALSE)
       .mapNames <- names(.map)
       if (!is.null(.mapNames)) {
-        for (.i in seq_along(.ret)) {
-          .w <- match(.ret[[.i]], .mapNames)
-          if (!is.na(.w)) {
-            .ret[[.i]] <- .map[[.w]]
-          }
-        }
+        .w <- match(.ret, .mapNames)
+        .ok <- !is.na(.w)
+        .ret[.ok] <- .map[.w[.ok]]
       }
     }
   }
@@ -4797,51 +4794,40 @@ solve.rxEt <- solve.rxSolve
   .parso <- get(".args.params", envir = .env, inherits = FALSE)
   .ppos <- get(".par.pos", envir = .env, inherits = FALSE)
   .isIni <- isTRUE(get(".par.pos.ini", envir = .env, inherits = FALSE))
-  .idLevels <- get(".idLevels", envir = .env, inherits = FALSE)
-  if (
-    is.null(.parso) ||
-      ((is.numeric(.parso) || is.integer(.parso)) && is.null(dim(.parso)))
-  ) {
+  if (.rxSolveParamsIsVector(.parso)) {
     .parNumeric <- if (is.null(.parso)) numeric(0) else as.numeric(.parso)
-    .vals <- numeric(0)
-    .nms <- character(0)
-    for (.i in seq_along(.ppos)) {
-      if (.ppos[[.i]] > 0) {
-        .vals <- c(.vals, if (.isIni) .mvIni[[.ppos[[.i]]]] else .parNumeric[[.ppos[[.i]]]])
-        .nms <- c(.nms, .pars[[.i]])
-      } else if (.ppos[[.i]] < 0) {
-        .vals <- c(.vals, .mvIni[[-.ppos[[.i]]]])
-        .nms <- c(.nms, .pars[[.i]])
-      }
-    }
-    .nms <- .rxSolveUpdateParNames(.nms, .env)
+    # a positive position is in the params (or the model's ini), a negative
+    # one in the model's ini, and 0 is a covariate or simulated parameter
+    .keep <- .ppos != 0
+    .pos <- .ppos[.keep]
+    .user <- .pos > 0
+    .vals <- numeric(length(.pos))
+    .vals[.user] <- unname((if (.isIni) .mvIni else .parNumeric)[.pos[.user]])
+    .vals[!.user] <- unname(.mvIni[-.pos[!.user]])
+    .nms <- .rxSolveUpdateParNames(.pars[.keep], .env)
     .single <- stats::setNames(.vals, .nms)
-    .dat <- as.data.frame(as.list(.single), check.names = FALSE)
+    # as.data.frame() of thousands of parameters takes most of a first `$`;
+    # this is the same one-row frame
+    .dat <- if (length(.single) > 0L) {
+      structure(as.list(.single), class = "data.frame", row.names = c(NA_integer_, -1L))
+    } else {
+      as.data.frame(as.list(.single), check.names = FALSE)
+    }
     assign(".params.single", .single, envir = .env)
     assign(".params.dat", .dat, envir = .env)
   } else {
     .parsDf <- as.data.frame(.parso, check.names = FALSE)
-    .nsub <- get(".nsub", envir = .env, inherits = FALSE)
-    .nsim <- get(".nsim", envir = .env, inherits = FALSE)
-    .dat <- as.data.frame(matrix(nrow = nrow(.parsDf), ncol = 0))
-    if (.nsim > 1) {
-      .dat[["sim.id"]] <- (seq_len(nrow(.parsDf)) - 1L) %/% .nsub + 1L
-    }
-    # a one-row params is one set for every subject and has no id column
-    if (.nsub > 1 && nrow(.parsDf) > 1L) {
-      .id <- (seq_len(nrow(.parsDf)) - 1L) %% .nsub + 1L
-      if (length(.idLevels) > 0) {
-        .id <- factor(.id, levels = seq_along(.idLevels), labels = .idLevels)
-      }
-      .dat[["id"]] <- .id
-    }
-    for (.i in seq_along(.ppos)) {
-      if (.ppos[[.i]] > 0) {
-        .dat[[.rxSolveUpdateParNames(.pars[[.i]], .env)]] <- .parsDf[[.ppos[[.i]]]]
-      } else if (.ppos[[.i]] < 0) {
-        .dat[[.rxSolveUpdateParNames(.pars[[.i]], .env)]] <- rep(.mvIni[[-.ppos[[.i]]]], nrow(.parsDf))
-      }
-    }
+    .n <- nrow(.parsDf)
+    .lead <- .rxSolveParamsIdCols(.env, .n)
+    .keep <- .ppos != 0
+    .pos <- .ppos[.keep]
+    .user <- .pos > 0
+    .cols <- vector("list", length(.pos))
+    .cols[.user] <- unname(as.list(.parsDf)[.pos[.user]])
+    .cols[!.user] <- lapply(unname(.mvIni[-.pos[!.user]]), rep, .n)
+    names(.cols) <- .rxSolveUpdateParNames(.pars[.keep], .env)
+    # adding thousands of columns one at a time takes most of a first access
+    .dat <- structure(c(.lead, .cols), class = "data.frame", row.names = .set_row_names(.n))
     assign(".params.dat", .dat, envir = .env)
     if (nrow(.dat) == 1L) {
       .single <- stats::setNames(as.numeric(.dat[1, , drop = TRUE]), names(.dat))
@@ -4850,26 +4836,53 @@ solve.rxEt <- solve.rxSolve
       assign(".params.single", NULL, envir = .env)
     }
   }
-  assign(
-    "counts",
-    data.frame(
-      slvr = get(".slvr.counter", envir = .env, inherits = FALSE),
+  invisible(TRUE)
+}
+
+# Whether a solve's params are a named vector (or none), not a data frame or
+# matrix with a row per subject
+.rxSolveParamsIsVector <- function(.parso) {
+  is.null(.parso) || ((is.numeric(.parso) || is.integer(.parso)) && is.null(dim(.parso)))
+}
+
+# The sim.id and id columns that lead a multi-row params' $params and $counts
+.rxSolveParamsIdCols <- function(.env, .n) {
+  .nsub <- get(".nsub", envir = .env, inherits = FALSE)
+  .nsim <- get(".nsim", envir = .env, inherits = FALSE)
+  .ret <- list()
+  if (.nsim > 1) {
+    .ret[["sim.id"]] <- (seq_len(.n) - 1L) %/% .nsub + 1L
+  }
+  # a one-row params is one set for every subject and has no id column
+  if (.nsub > 1 && .n > 1L) {
+    .id <- (seq_len(.n) - 1L) %% .nsub + 1L
+    .idLevels <- get(".idLevels", envir = .env, inherits = FALSE)
+    if (length(.idLevels) > 0) {
+      .id <- factor(.id, levels = seq_along(.idLevels), labels = .idLevels)
+    }
+    .ret[["id"]] <- .id
+  }
+  .ret
+}
+
+# $counts, built on its first access: one row per solve, led by a multi-row
+# params' sim.id and id columns
+.rxSolveMaterializeCounts <- function(.env) {
+  if (exists("counts", envir = .env, inherits = FALSE)) {
+    return(invisible(TRUE))
+  }
+  .slvr <- get(".slvr.counter", envir = .env, inherits = FALSE)
+  .parso <- get(".args.params", envir = .env, inherits = FALSE)
+  .lead <- if (.rxSolveParamsIsVector(.parso)) list() else .rxSolveParamsIdCols(.env, NROW(.parso))
+  .counts <- c(
+    .lead,
+    list(
+      slvr = .slvr,
       dadt = get(".dadt.counter", envir = .env, inherits = FALSE),
       jac = get(".jac.counter", envir = .env, inherits = FALSE)
-    ),
-    envir = .env
+    )
   )
-  ## Parameters injected by par-loaders on this solve (e.g. trained neural-network
-  ## weights supplied through a loader hook rather than the params vector).  Saved
-  ## on the object so re-solving restores them even in a session without the
-  ## injecting package's buffer.  Indices are 0-based into the model params.
-  .inj <- tryCatch(.Call(`_rxode2_rxGetInjectedPars`), error = function(e) NULL)
-  if (!is.null(.inj) && length(.inj[[1L]]) > 0L) {
-    .injNames <- .pars[.inj[[1L]] + 1L]
-    assign(".injectedPars", stats::setNames(.inj[[2L]], .injNames), envir = .env)
-  } else {
-    assign(".injectedPars", NULL, envir = .env)
-  }
+  assign("counts", structure(.counts, class = "data.frame", row.names = .set_row_names(length(.slvr))), envir = .env)
   invisible(TRUE)
 }
 
@@ -4888,12 +4901,18 @@ rxInjectedPars <- function(obj) {
   if (is.null(.env)) {
     return(NULL)
   }
-  .rxSolveMaterializeParams(obj, .env) # ensure materialized
-  if (exists(".injectedPars", envir = .env, inherits = FALSE)) {
-    get(".injectedPars", envir = .env, inherits = FALSE)
-  } else {
-    NULL
+  # list(index0 = <0-based model parameter indices>, value = <values>), kept on
+  # the solve's environment when the solve finished and something was injected
+  .inj <- get0(".injectedPars.raw", envir = .env, inherits = FALSE)
+  if (is.null(.inj)) {
+    # nothing injected, or an object solved by an rxode2 that read them when
+    # $params was first built
+    return(get0(".injectedPars", envir = .env, inherits = FALSE))
   }
+  if (length(.inj[[1L]]) == 0L) {
+    return(NULL)
+  }
+  stats::setNames(.inj[[2L]], rxModelVars(.env)$params[.inj[[1L]] + 1L])
 }
 
 #' Forced parameters carried by a model / ui
@@ -5318,6 +5337,10 @@ rxRemoveUiAssembled <- function(name) {
     if (arg %in% c("params", "par", "pars", "param")) {
       .rxSolveMaterializeParams(obj, .env)
       return(get(".params.dat", envir = .env, inherits = FALSE))
+    }
+    if (arg == "counts") {
+      .rxSolveMaterializeCounts(.env)
+      return(get("counts", envir = .env, inherits = FALSE))
     }
     .init <- .rxSolveGetInit(.env, arg)
     if (!is.null(.init)) {

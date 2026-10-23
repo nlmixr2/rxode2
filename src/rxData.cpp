@@ -3029,187 +3029,35 @@ List getEtRxsolve(Environment e) {
   return e[".et"];
 }
 
-inline void updateParNames0(CharacterVector &ret, Environment &e,
-                            const std::string& what){
-  if (e.exists(what)) {
-    CharacterVector out = e[what];
-    CharacterVector in = out.names();
-    for (unsigned int i = ret.size(); i--;){
-      for (int j = in.size(); j--;){
-        if (as<std::string>(ret[i]) == as<std::string>(in[j])){
-          ret[i] = out[j];
-          break;
-        }
-      }
-    }
-  }
-}
-
-CharacterVector updateParNames(CharacterVector parNames, Environment e){
-  CharacterVector ret = parNames;
-  updateParNames0(ret, e, ".nestTheta");
-  updateParNames0(ret, e, ".nestEta");
-  return parNames;
-}
-
-// This updates the evironment post solve after running.  Defers some
-// computational cost until the rxSolve is looked at by the user.
-void updateSolveEnvPost(Environment e){
+// A solve's $params (with .params.single), $counts and event table are each
+// built, in R or by getEtRxsolve(), on the first access that needs them
+static inline void rxSolveEnsureParams(Environment e){
   if (!e.exists(".params.dat")) {
-    List mv = rxModelVars(as<RObject>(e));
-    NumericVector mvIni = mv[RxMv_ini];
-    CharacterVector pars = mv[RxMv_params];
-    RObject parso = e[".args.params"];
-    IntegerVector ppos = e[".par.pos"];
-    bool IsIni = e[".par.pos.ini"];
-    CharacterVector idLevels = as<CharacterVector>(e[".idLevels"]);
-    if (rxIsNumInt(parso) || rxIsNull(parso)) {
-      double *tmp=(double*)calloc(ppos.size(),sizeof(double));
-      if (tmp == NULL){
-        rxSolveFree();
-        stop(_("ran out of memory during 'updateSolveEnvPost'"));
-      }
-      // NumericVector   prs(ppos.size()-nrm);
-      // CharacterVector prsn(ppos.size()-nrm+1);
-      NumericVector parNumeric;
-      if (!rxIsNull(parso)){
-        parNumeric= as<NumericVector>(parso);
-      }
-      unsigned int i, j=0;
-      for (i = 0; i < ppos.size(); i++){
-        if (ppos[i] > 0){ // User specified parameter
-          if (IsIni){
-            tmp[j] = mvIni[ppos[i]-1];
-          } else {
-            tmp[j] = parNumeric[ppos[i]-1];
-          }
-          // prsn[j] = pars[i];
-          j++;
-        } else if (ppos[i] < 0) { // ini specified parameter.
-          tmp[j] = mvIni[-ppos[i]-1];
-          // prsn[j] = pars[i];
-          j++;
-        }
-      }
-      NumericVector prs(j);
-      CharacterVector prsn(j);
-      std::copy(&tmp[0],&tmp[0]+j,prs.begin());
-      free(tmp);
-      j=0;
-      for (i = 0; i < ppos.size(); i++){
-        if (ppos[i] != 0){ // User specified parameter
-          prsn[j] = pars[i];
-          j++;
-        }
-      }
-      prsn = updateParNames(prsn, e);
-      prs.names() = prsn;
-      e[".params.single"] = prs;
-      List pd(prs.size());
-      for (unsigned int j = prs.size();j--;){
-        pd[j] = NumericVector::create(prs[j]);
-      }
-      pd.names() = prsn;
-      pd.attr("class") = "data.frame";
-      pd.attr("row.names") = IntegerVector::create(NA_INTEGER,-1);
-      e[".params.dat"] = pd;
-      e["counts"] = DataFrame::create(_["slvr"]=e[".slvr.counter"],
-                                      _["dadt"]=e[".dadt.counter"],
-                                      _["jac"]=e[".jac.counter"]);
-    } else {
-      DataFrame parsdf = as<DataFrame>(parso);
-      int extran = 0;
-      int nsub = e[".nsub"], nsim=e[".nsim"];
-      int nrm=0;
-      for (unsigned int i = ppos.size(); i--;){
-        if (ppos[i] == 0){ // Covariate or simulated variable.
-          nrm++;
-        }
-      }
-      // a one-row params is one set for every subject and has no id column
-      bool idCol = nsub > 1 && parsdf.nrow() > 1;
-      if (idCol) extran++;
-      if (nsim > 1) extran++;
-      CharacterVector prsn(ppos.size() - nrm + extran);
-      List prsl(ppos.size() - nrm + extran);
-      unsigned int i, j=0;
-      if (nsim > 1) {
-        IntegerVector tmp(parsdf.nrow());
-        for (unsigned int k = parsdf.nrow(); k--;){
-          tmp[k] = (k / nsub)+1;
-        }
-        prsn[j]="sim.id";
-        prsl[j] = tmp;
-        j++;
-      }
-      if (idCol) {
-        IntegerVector tmp(parsdf.nrow());
-        for (unsigned int k = parsdf.nrow(); k--;){
-          tmp[k] = (k % nsub)+1;
-        }
-        if (idLevels.size() > 0){
-          tmp.attr("class") = CharacterVector::create("factor");
-          tmp.attr("levels") = idLevels;
-        }
-        prsl[j] = tmp;
-        prsn[j]="id";
-        j++;
-      }
-      for (i = 0; i < ppos.size();i++){
-        if (ppos[i] > 0) { // User specified parameter
-          prsl[j] = parsdf[ppos[i]-1];
-          prsn[j] = pars[i];
-          j++;
-        } else if (ppos[i] < 0) { // ini specified parameter.
-          NumericVector tmp(parsdf.nrow(), mvIni[-ppos[i]-1]);
-          prsl[j] = tmp;
-          prsn[j] = pars[i];
-          j++;
-        }
-      }
-      prsn = updateParNames(prsn, e);
-      prsl.names() = prsn;
-      prsl.attr("class") = "data.frame";
-      prsl.attr("row.names") = IntegerVector::create(NA_INTEGER,-parsdf.nrow());
-      e[".params.dat"] = prsl;
-      if (parsdf.nrow() == 1){
-        NumericVector prsnv(prsl.size());
-        for (j = prsl.size(); j--;){
-          prsnv[j] = (as<NumericVector>(prsl[j]))[0];
-        }
-        prsnv.names() = prsn;
-        e[".params.single"] = prsnv;
-      } else {
-        e[".params.single"] = R_NilValue;
-      }
-      List cnt(extran+3);
-      CharacterVector cntn(extran+3);
-      j = 0;
-      if (nsim > 1) {
-        cntn[j]="sim.id";
-        cnt[j] = prsl["sim.id"];
-        j++;
-      }
-      if (idCol) {
-        cntn[j]="id";
-        cnt[j] = prsl["id"];
-        j++;
-      }
-      cntn[j] = "slvr";
-      cnt[j++] = e[".slvr.counter"];
-      cntn[j] = "dadt";
-      cnt[j++] = e[".dadt.counter"];
-      cntn[j] = "jac";
-      cnt[j++] = e[".jac.counter"];
-      cnt.names() = cntn;
-      cnt.attr("class") = "data.frame";
-      // one row per solve: a one-row params serves every subject
-      cnt.attr("row.names") = IntegerVector::create(NA_INTEGER,
-                                                    -Rf_length(cnt[j - 1]));
-      e["counts"] = cnt;
-    }
+    Function materialize = getRxFn(".rxSolveMaterializeParams");
+    materialize(e, e);
   }
-  getEtRxsolve(e);
+}
+
+static inline void rxSolveEnsureCounts(Environment e){
+  if (!e.exists("counts")) {
+    Function materialize = getRxFn(".rxSolveMaterializeCounts");
+    materialize(e);
+  }
+}
+
+// The event table and the eventTable-style methods getEtRxsolve() adds
+static const char* etCacheNames[] = {
+  ".et", "add.dosing", "clear.dosing", "add.sampling",
+  "clear.sampling", ".replace.sampling", "get.dosing",
+  "get.sampling", "get.obs.rec", "get.EventTable",
+  "import.EventTable", "get.units", "get.nobs", nullptr
+};
+
+static inline bool rxSolveIsEtName(const std::string& sarg){
+  for (int i = 0; etCacheNames[i] != nullptr; i++) {
+    if (sarg == etCacheNames[i]) return true;
+  }
+  return false;
 }
 
 extern "C" void freeExtraDosingC() {
@@ -3590,13 +3438,10 @@ static inline SEXP rxSolve_update(const RObject &object,
   if (e.exists(".params.dat")){
     e.remove(".params.dat");
   }
+  if (e.exists("counts")){
+    e.remove("counts");
+  }
   // Remove cached event-table functions to be re-created from .args.events
-  static const char* etCacheNames[] = {
-    ".et", "add.dosing", "clear.dosing", "add.sampling",
-    "clear.sampling", ".replace.sampling", "get.dosing",
-    "get.sampling", "get.obs.rec", "get.EventTable",
-    "import.EventTable", "get.units", "get.nobs", nullptr
-  };
   for (int _i = 0; etCacheNames[_i] != nullptr; _i++) {
     if (e.exists(etCacheNames[_i])) e.remove(etCacheNames[_i]);
   }
@@ -5867,6 +5712,12 @@ static inline Environment rxSolve_genenv(const RObject &object,
   e[".slvr.counter"] = slvr_counterIv;
   e[".dadt.counter"] = dadt_counterIv;
   e[".jac.counter"] = jac_counterIv;
+  // the parameters par-loaders injected into this solve, if any, kept now:
+  // their buffer holds the last solve's, so a later solve would overwrite them
+  if (!_rxInjIdx.empty()) {
+    RObject injectedPars = _rxode2_rxGetInjectedPars();
+    e[".injectedPars.raw"] = injectedPars;
+  }
   e[".nsub"] = (int)rx->nsub;
   e[".nsim"] = (int)rx->nsim;
   {
@@ -7568,11 +7419,18 @@ RObject rxSolveGet_rxSolve(RObject &obj, std::string &sarg, LogicalVector &exact
     retS.attr("class") = "rxModelText";
     return(retS);
   }
-  updateSolveEnvPost(e);
+  if (sarg == "counts") {
+    rxSolveEnsureCounts(e);
+  } else if (sarg == ".params.dat" || sarg == ".params.single") {
+    rxSolveEnsureParams(e);
+  } else if (rxSolveIsEtName(sarg)) {
+    getEtRxsolve(e);
+  }
   if (e.exists(sarg)){
     return e[sarg];
   }
   if (sarg == "params" || sarg == "par" || sarg == "pars" || sarg == "param"){
+    rxSolveEnsureParams(e);
     List ret = clone(as<List>(e[".params.dat"]));
     return ret;
   } else if (sarg == "inits" || sarg == "init"){
@@ -7593,6 +7451,7 @@ RObject rxSolveGet_rxSolve(RObject &obj, std::string &sarg, LogicalVector &exact
     return e[".thetaL"];
   }
   // Now parameters
+  rxSolveEnsureParams(e);
   List pars = clone(List(e[".params.dat"]));
   CharacterVector nmp = pars.names();
   n = pars.size();
@@ -7697,8 +7556,16 @@ CharacterVector rxSolveDollarNames(RObject obj){
   List lst = as<List>(obj);
   CharacterVector cls = lst.attr("class");
   Environment e = as<Environment>(cls.attr(".rxode2.env"));
-  updateSolveEnvPost(e);
-  int nExtra = 7;
+  rxSolveEnsureParams(e);
+  // $counts and the eventTable-style methods are listed before they are built
+  std::vector<std::string> lazyNames;
+  if (!e.exists("counts")) lazyNames.push_back("counts");
+  for (int i = 0; etCacheNames[i] != nullptr; i++) {
+    if (etCacheNames[i][0] != '.' && !e.exists(etCacheNames[i])) {
+      lazyNames.push_back(etCacheNames[i]);
+    }
+  }
+  int nExtra = 7 + (int)lazyNames.size();
   if (e.exists(".theta")) nExtra++;
   if (e.exists(".sigmaL")) nExtra++;
   if (e.exists(".thetaL")) nExtra++;
@@ -7735,6 +7602,9 @@ CharacterVector rxSolveDollarNames(RObject obj){
 
   for (unsigned int i = envl.size(); i--;){
     ret[j++] = envl[i];
+  }
+  for (unsigned int i = 0; i < lazyNames.size(); i++){
+    ret[j++] = lazyNames[i];
   }
 
   ret[j++] = "env";
@@ -7848,13 +7718,13 @@ RObject rxSolveUpdate(RObject obj,
         } else if (sarg == "t" || sarg == "time"){
           CharacterVector classattr = obj.attr("class");
           Environment e = as<Environment>(classattr.attr(".rxode2.env"));
-          updateSolveEnvPost(e);
+          getEtRxsolve(e);
           Function f = as<Function>(e[".replace.sampling"]);
           return f(value);
         } else {
           CharacterVector classattr = obj.attr("class");
           Environment e = as<Environment>(classattr.attr(".rxode2.env"));
-          updateSolveEnvPost(e);
+          rxSolveEnsureParams(e);
           if (rxIsNull(e[".params.dat"])) {
             rxSolveFree();
             stop(_("cannot update nonexistent parameters"));

@@ -120,7 +120,7 @@ rxTest({
     expect_equal(sd$params, sv$params)
     expect_equal(names(sd$counts), c("slvr", "dadt", "jac"))
     expect_equal(nrow(sd$counts), 3L)
-    # .DollarNames() builds them in C before `$` reaches the R builder
+    # and after .DollarNames() first
     sm <- rxSolve(m, d, params = cbind(k = 0.5, v = 2))
     expect_true("params" %in% utils::.DollarNames(sm, ""))
     expect_equal(sm$params, data.frame(k = 0.5, v = 2))
@@ -133,25 +133,25 @@ rxTest({
     d <- .paramsRowsData()
     .p3 <- data.frame(k = c(0.5, 0.6, 0.7), v = 2)
     .p6 <- data.frame(k = seq(0.5, 1, by = 0.1), v = 2)
-    # the R builder, behind `$`
+    # behind `$`
     sp <- rxSolve(m, d, params = .p3)
     expect_identical(names(sp$params), c("id", "k", "v"))
     expect_identical(as.character(sp$params$id), c("11", "12", "13"))
-    expect_identical(names(sp$counts), c("slvr", "dadt", "jac"))
+    expect_identical(names(sp$counts), c("id", "slvr", "dadt", "jac"))
     sp6 <- rxSolve(m, d, params = .p6)
     expect_identical(names(sp6$params), c("sim.id", "id", "k", "v"))
     expect_identical(sp6$params$sim.id, rep(1:2, each = 3))
-    # the C builder, which .DollarNames() runs first, puts id (and sim.id) in
-    # $counts as well
+    expect_identical(names(sp6$counts), c("sim.id", "id", "slvr", "dadt", "jac"))
+    expect_identical(nrow(sp6$counts), 6L)
+    # .DollarNames() first gives the same tables
     sm <- rxSolve(m, d, params = .p3)
     expect_true("params" %in% utils::.DollarNames(sm, ""))
-    expect_identical(names(sm$params), c("id", "k", "v"))
-    expect_identical(names(sm$counts), c("id", "slvr", "dadt", "jac"))
+    expect_identical(sm$params, sp$params)
+    expect_identical(sm$counts, sp$counts)
     sm6 <- rxSolve(m, d, params = .p6)
     expect_true("params" %in% utils::.DollarNames(sm6, ""))
-    expect_identical(names(sm6$params), c("sim.id", "id", "k", "v"))
-    expect_identical(names(sm6$counts), c("sim.id", "id", "slvr", "dadt", "jac"))
-    expect_identical(nrow(sm6$counts), 6L)
+    expect_identical(sm6$params, sp6$params)
+    expect_identical(sm6$counts, sp6$counts)
   })
 
   test_that("a one-row params with an id column refuses more subjects", {
@@ -276,6 +276,70 @@ rxTest({
         "give one row per subject, or drop the id column to use the row for all"
       )
     )
+  })
+
+  test_that("a named vector of many parameters is one row of $params by either route", {
+    .np <- 1500L
+    .m <- rxode2(paste0("param(", paste0("p", seq_len(.np), collapse = ", "), ")\nd/dt(x) <- -p1 * x"))
+    .p <- stats::setNames(seq_len(.np) / 1000, paste0("p", seq_len(.np)))
+    .want <- as.data.frame(as.list(.p), check.names = FALSE)
+    .s1 <- rxSolve(.m, et(0:2), params = .p, inits = c(x = 1))
+    expect_identical(.s1$params, .want)
+    .s2 <- rxSolve(.m, et(0:2), params = .p, inits = c(x = 1))
+    expect_true("params" %in% utils::.DollarNames(.s2, ""))
+    expect_identical(.s2$params, .want)
+  })
+
+  test_that("a multi-row params' $params fills the model's ini values by either route", {
+    .m <- rxode2({
+      k <- 0.3
+      v <- 2
+      d / dt(central) <- -k * central
+      cp <- central / (v * wt)
+    })
+    d <- .paramsRowsData()
+    .p <- data.frame(k = c(0.5, 0.6, 0.7))
+    .s1 <- rxSolve(.m, d, params = .p)
+    expect_identical(names(.s1$params), c("id", "k", "v"))
+    expect_identical(.s1$params$k, .p$k)
+    expect_identical(.s1$params$v, rep(2, 3))
+    .s2 <- rxSolve(.m, d, params = .p)
+    expect_true("params" %in% utils::.DollarNames(.s2, ""))
+    expect_identical(.s2$params, .s1$params)
+  })
+
+  test_that("a solve builds $params, $counts and its event table only when they are used", {
+    m <- .paramsRowsModel()
+    d <- .paramsRowsData()
+    .p <- data.frame(k = c(0.5, 0.6, 0.7), v = 2)
+    .built <- function(s) {
+      .e <- attr(class(s), ".rxode2.env")
+      vapply(c(".params.dat", "counts", ".et", ".injectedPars.raw"), exists, logical(1), envir = .e, inherits = FALSE)
+    }
+    .s <- rxSolve(m, d, params = .p)
+    expect_identical(unname(.built(.s)), c(FALSE, FALSE, FALSE, FALSE))
+    expect_identical(names(.s$counts), c("id", "slvr", "dadt", "jac"))
+    expect_identical(unname(.built(.s)), c(FALSE, TRUE, FALSE, FALSE))
+    .s <- rxSolve(m, d, params = .p)
+    .dn <- utils::.DollarNames(.s, "")
+    expect_true(all(c("params", "counts", "k", "add.dosing", "get.EventTable") %in% .dn))
+    expect_identical(unname(.built(.s)), c(TRUE, FALSE, FALSE, FALSE))
+    .s <- rxSolve(m, d, params = .p)
+    expect_identical(.s$k, .p$k)
+    expect_identical(unname(.built(.s)), c(TRUE, FALSE, FALSE, FALSE))
+    .s <- rxSolve(m, d, params = .p)
+    expect_true(is.function(.s$add.dosing))
+    expect_identical(unname(.built(.s)), c(FALSE, FALSE, TRUE, FALSE))
+    expect_identical(.s$counts, rxSolve(m, d, params = .p)$counts)
+  })
+
+  test_that("a model with no parameters has a 0 x 0 $params by either route", {
+    .m <- rxode2("d/dt(x) <- -x")
+    .s1 <- rxSolve(.m, et(0:2), inits = c(x = 1))
+    expect_identical(dim(.s1$params), c(0L, 0L))
+    .s2 <- rxSolve(.m, et(0:2), inits = c(x = 1))
+    expect_true("params" %in% utils::.DollarNames(.s2, ""))
+    expect_identical(.s2$params, .s1$params)
   })
 
   test_that("one subject takes its one row whatever its id", {
