@@ -211,9 +211,12 @@ state into coordinate-momentum pairs (and automatically pads
 odd-dimensional systems).  Is a fixed-step method (step size
 controlled by <code>hmin</code>).</p></li>
 <li><p><code>"vv"</code> – Velocity Verlet stepper using Boost's odeint library.
-Requires splitting the state into coordinate-momentum pairs (and
-automatically pads odd-dimensional systems).  Is a fixed-step
-method (step size controlled by <code>hmin</code>).</p></li>
+Requires the ODE states to be coordinate-momentum pairs: with
+<code>N = ceiling(nstates/2)</code>, <code>d/dt(state i)</code> must equal <code>state N+i</code>
+(an odd last coordinate must have a zero derivative).  Other models,
+or an infusion or turning off of a coordinate that breaks this, are
+refused with an error.  Is a fixed-step method (step size controlled
+by <code>hmin</code>).</p></li>
 <li><p><code>"mm"</code> – Modified Midpoint stepper using Boost's odeint library.
 Is a fixed-step method (step size controlled by <code>hmin</code>) and uses
 the <code>order</code> parameter to configure the number of intermediate
