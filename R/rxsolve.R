@@ -4794,11 +4794,7 @@ solve.rxEt <- solve.rxSolve
   .parso <- get(".args.params", envir = .env, inherits = FALSE)
   .ppos <- get(".par.pos", envir = .env, inherits = FALSE)
   .isIni <- isTRUE(get(".par.pos.ini", envir = .env, inherits = FALSE))
-  .idLevels <- get(".idLevels", envir = .env, inherits = FALSE)
-  if (
-    is.null(.parso) ||
-      ((is.numeric(.parso) || is.integer(.parso)) && is.null(dim(.parso)))
-  ) {
+  if (.rxSolveParamsIsVector(.parso)) {
     .parNumeric <- if (is.null(.parso)) numeric(0) else as.numeric(.parso)
     # a positive position is in the params (or the model's ini), a negative
     # one in the model's ini, and 0 is a covariate or simulated parameter
@@ -4821,21 +4817,8 @@ solve.rxEt <- solve.rxSolve
     assign(".params.dat", .dat, envir = .env)
   } else {
     .parsDf <- as.data.frame(.parso, check.names = FALSE)
-    .nsub <- get(".nsub", envir = .env, inherits = FALSE)
-    .nsim <- get(".nsim", envir = .env, inherits = FALSE)
     .n <- nrow(.parsDf)
-    .lead <- list()
-    if (.nsim > 1) {
-      .lead[["sim.id"]] <- (seq_len(.n) - 1L) %/% .nsub + 1L
-    }
-    # a one-row params is one set for every subject and has no id column
-    if (.nsub > 1 && .n > 1L) {
-      .id <- (seq_len(.n) - 1L) %% .nsub + 1L
-      if (length(.idLevels) > 0) {
-        .id <- factor(.id, levels = seq_along(.idLevels), labels = .idLevels)
-      }
-      .lead[["id"]] <- .id
-    }
+    .lead <- .rxSolveParamsIdCols(.env, .n)
     .keep <- .ppos != 0
     .pos <- .ppos[.keep]
     .user <- .pos > 0
@@ -4853,17 +4836,53 @@ solve.rxEt <- solve.rxSolve
       assign(".params.single", NULL, envir = .env)
     }
   }
-  # one row per solve; a multi-row params' sim.id and id columns lead it
-  .counts <- data.frame(
-    slvr = get(".slvr.counter", envir = .env, inherits = FALSE),
-    dadt = get(".dadt.counter", envir = .env, inherits = FALSE),
-    jac = get(".jac.counter", envir = .env, inherits = FALSE)
-  )
-  .ids <- intersect(c("sim.id", "id"), names(get(".params.dat", envir = .env, inherits = FALSE)))
-  if (length(.ids) > 0L) {
-    .counts <- cbind(get(".params.dat", envir = .env, inherits = FALSE)[, .ids, drop = FALSE], .counts)
+  invisible(TRUE)
+}
+
+# Whether a solve's params are a named vector (or none), not a data frame or
+# matrix with a row per subject
+.rxSolveParamsIsVector <- function(.parso) {
+  is.null(.parso) || ((is.numeric(.parso) || is.integer(.parso)) && is.null(dim(.parso)))
+}
+
+# The sim.id and id columns that lead a multi-row params' $params and $counts
+.rxSolveParamsIdCols <- function(.env, .n) {
+  .nsub <- get(".nsub", envir = .env, inherits = FALSE)
+  .nsim <- get(".nsim", envir = .env, inherits = FALSE)
+  .ret <- list()
+  if (.nsim > 1) {
+    .ret[["sim.id"]] <- (seq_len(.n) - 1L) %/% .nsub + 1L
   }
-  assign("counts", .counts, envir = .env)
+  # a one-row params is one set for every subject and has no id column
+  if (.nsub > 1 && .n > 1L) {
+    .id <- (seq_len(.n) - 1L) %% .nsub + 1L
+    .idLevels <- get(".idLevels", envir = .env, inherits = FALSE)
+    if (length(.idLevels) > 0) {
+      .id <- factor(.id, levels = seq_along(.idLevels), labels = .idLevels)
+    }
+    .ret[["id"]] <- .id
+  }
+  .ret
+}
+
+# $counts, built on its first access: one row per solve, led by a multi-row
+# params' sim.id and id columns
+.rxSolveMaterializeCounts <- function(.env) {
+  if (exists("counts", envir = .env, inherits = FALSE)) {
+    return(invisible(TRUE))
+  }
+  .slvr <- get(".slvr.counter", envir = .env, inherits = FALSE)
+  .parso <- get(".args.params", envir = .env, inherits = FALSE)
+  .lead <- if (.rxSolveParamsIsVector(.parso)) list() else .rxSolveParamsIdCols(.env, NROW(.parso))
+  .counts <- c(
+    .lead,
+    list(
+      slvr = .slvr,
+      dadt = get(".dadt.counter", envir = .env, inherits = FALSE),
+      jac = get(".jac.counter", envir = .env, inherits = FALSE)
+    )
+  )
+  assign("counts", structure(.counts, class = "data.frame", row.names = .set_row_names(length(.slvr))), envir = .env)
   invisible(TRUE)
 }
 
@@ -4883,10 +4902,11 @@ rxInjectedPars <- function(obj) {
     return(NULL)
   }
   # list(index0 = <0-based model parameter indices>, value = <values>), kept on
-  # the solve's environment when the solve finished
+  # the solve's environment when the solve finished and something was injected
   .inj <- get0(".injectedPars.raw", envir = .env, inherits = FALSE)
   if (is.null(.inj)) {
-    # an object solved by an rxode2 that read them when $params was first built
+    # nothing injected, or an object solved by an rxode2 that read them when
+    # $params was first built
     return(get0(".injectedPars", envir = .env, inherits = FALSE))
   }
   if (length(.inj[[1L]]) == 0L) {
@@ -5317,6 +5337,10 @@ rxRemoveUiAssembled <- function(name) {
     if (arg %in% c("params", "par", "pars", "param")) {
       .rxSolveMaterializeParams(obj, .env)
       return(get(".params.dat", envir = .env, inherits = FALSE))
+    }
+    if (arg == "counts") {
+      .rxSolveMaterializeCounts(.env)
+      return(get("counts", envir = .env, inherits = FALSE))
     }
     .init <- .rxSolveGetInit(.env, arg)
     if (!is.null(.init)) {

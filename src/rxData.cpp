@@ -3029,15 +3029,35 @@ List getEtRxsolve(Environment e) {
   return e[".et"];
 }
 
-// This updates the evironment post solve after running.  Defers some
-// computational cost until the rxSolve is looked at by the user.
-void updateSolveEnvPost(Environment e){
+// A solve's $params (with .params.single), $counts and event table are each
+// built, in R or by getEtRxsolve(), on the first access that needs them
+static inline void rxSolveEnsureParams(Environment e){
   if (!e.exists(".params.dat")) {
-    // $params, $counts and .params.single have one builder, in R
     Function materialize = getRxFn(".rxSolveMaterializeParams");
     materialize(e, e);
   }
-  getEtRxsolve(e);
+}
+
+static inline void rxSolveEnsureCounts(Environment e){
+  if (!e.exists("counts")) {
+    Function materialize = getRxFn(".rxSolveMaterializeCounts");
+    materialize(e);
+  }
+}
+
+// The event table and the eventTable-style methods getEtRxsolve() adds
+static const char* etCacheNames[] = {
+  ".et", "add.dosing", "clear.dosing", "add.sampling",
+  "clear.sampling", ".replace.sampling", "get.dosing",
+  "get.sampling", "get.obs.rec", "get.EventTable",
+  "import.EventTable", "get.units", "get.nobs", nullptr
+};
+
+static inline bool rxSolveIsEtName(const std::string& sarg){
+  for (int i = 0; etCacheNames[i] != nullptr; i++) {
+    if (sarg == etCacheNames[i]) return true;
+  }
+  return false;
 }
 
 extern "C" void freeExtraDosingC() {
@@ -3418,13 +3438,10 @@ static inline SEXP rxSolve_update(const RObject &object,
   if (e.exists(".params.dat")){
     e.remove(".params.dat");
   }
+  if (e.exists("counts")){
+    e.remove("counts");
+  }
   // Remove cached event-table functions to be re-created from .args.events
-  static const char* etCacheNames[] = {
-    ".et", "add.dosing", "clear.dosing", "add.sampling",
-    "clear.sampling", ".replace.sampling", "get.dosing",
-    "get.sampling", "get.obs.rec", "get.EventTable",
-    "import.EventTable", "get.units", "get.nobs", nullptr
-  };
   for (int _i = 0; etCacheNames[_i] != nullptr; _i++) {
     if (e.exists(etCacheNames[_i])) e.remove(etCacheNames[_i]);
   }
@@ -5695,10 +5712,12 @@ static inline Environment rxSolve_genenv(const RObject &object,
   e[".slvr.counter"] = slvr_counterIv;
   e[".dadt.counter"] = dadt_counterIv;
   e[".jac.counter"] = jac_counterIv;
-  // the parameters par-loaders injected into this solve, kept now: their
-  // buffer holds the last solve's, so a later solve would overwrite them
-  RObject injectedPars = _rxode2_rxGetInjectedPars();
-  e[".injectedPars.raw"] = injectedPars;
+  // the parameters par-loaders injected into this solve, if any, kept now:
+  // their buffer holds the last solve's, so a later solve would overwrite them
+  if (!_rxInjIdx.empty()) {
+    RObject injectedPars = _rxode2_rxGetInjectedPars();
+    e[".injectedPars.raw"] = injectedPars;
+  }
   e[".nsub"] = (int)rx->nsub;
   e[".nsim"] = (int)rx->nsim;
   {
@@ -7400,11 +7419,18 @@ RObject rxSolveGet_rxSolve(RObject &obj, std::string &sarg, LogicalVector &exact
     retS.attr("class") = "rxModelText";
     return(retS);
   }
-  updateSolveEnvPost(e);
+  if (sarg == "counts") {
+    rxSolveEnsureCounts(e);
+  } else if (sarg == ".params.dat" || sarg == ".params.single") {
+    rxSolveEnsureParams(e);
+  } else if (rxSolveIsEtName(sarg)) {
+    getEtRxsolve(e);
+  }
   if (e.exists(sarg)){
     return e[sarg];
   }
   if (sarg == "params" || sarg == "par" || sarg == "pars" || sarg == "param"){
+    rxSolveEnsureParams(e);
     List ret = clone(as<List>(e[".params.dat"]));
     return ret;
   } else if (sarg == "inits" || sarg == "init"){
@@ -7425,6 +7451,7 @@ RObject rxSolveGet_rxSolve(RObject &obj, std::string &sarg, LogicalVector &exact
     return e[".thetaL"];
   }
   // Now parameters
+  rxSolveEnsureParams(e);
   List pars = clone(List(e[".params.dat"]));
   CharacterVector nmp = pars.names();
   n = pars.size();
@@ -7529,8 +7556,16 @@ CharacterVector rxSolveDollarNames(RObject obj){
   List lst = as<List>(obj);
   CharacterVector cls = lst.attr("class");
   Environment e = as<Environment>(cls.attr(".rxode2.env"));
-  updateSolveEnvPost(e);
-  int nExtra = 7;
+  rxSolveEnsureParams(e);
+  // $counts and the eventTable-style methods are listed before they are built
+  std::vector<std::string> lazyNames;
+  if (!e.exists("counts")) lazyNames.push_back("counts");
+  for (int i = 0; etCacheNames[i] != nullptr; i++) {
+    if (etCacheNames[i][0] != '.' && !e.exists(etCacheNames[i])) {
+      lazyNames.push_back(etCacheNames[i]);
+    }
+  }
+  int nExtra = 7 + (int)lazyNames.size();
   if (e.exists(".theta")) nExtra++;
   if (e.exists(".sigmaL")) nExtra++;
   if (e.exists(".thetaL")) nExtra++;
@@ -7567,6 +7602,9 @@ CharacterVector rxSolveDollarNames(RObject obj){
 
   for (unsigned int i = envl.size(); i--;){
     ret[j++] = envl[i];
+  }
+  for (unsigned int i = 0; i < lazyNames.size(); i++){
+    ret[j++] = lazyNames[i];
   }
 
   ret[j++] = "env";
@@ -7680,13 +7718,13 @@ RObject rxSolveUpdate(RObject obj,
         } else if (sarg == "t" || sarg == "time"){
           CharacterVector classattr = obj.attr("class");
           Environment e = as<Environment>(classattr.attr(".rxode2.env"));
-          updateSolveEnvPost(e);
+          getEtRxsolve(e);
           Function f = as<Function>(e[".replace.sampling"]);
           return f(value);
         } else {
           CharacterVector classattr = obj.attr("class");
           Environment e = as<Environment>(classattr.attr(".rxode2.env"));
-          updateSolveEnvPost(e);
+          rxSolveEnsureParams(e);
           if (rxIsNull(e[".params.dat"])) {
             rxSolveFree();
             stop(_("cannot update nonexistent parameters"));

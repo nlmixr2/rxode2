@@ -46,7 +46,9 @@
   `$counts` had `sim.id` and `id` columns or not depending on which ran (it
   now has them either way), and a model with no parameters had a 1 x 0
   `$params` or a 0 x 0 one (now 0 x 0).  The first `$params` of a solve with
-  thousands of parameters is also much faster.
+  thousands of parameters is also much faster, and a solve's first
+  `$params`, `$counts`, `.DollarNames()` or event-table method builds only
+  what it uses rather than all of them and the event table.
 
 - A one-row `params` data frame or matrix is now used for every subject, as
   a named vector is; with more than one subject, the subjects after the first

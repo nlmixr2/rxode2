@@ -308,6 +308,31 @@ rxTest({
     expect_identical(.s2$params, .s1$params)
   })
 
+  test_that("a solve builds $params, $counts and its event table only when they are used", {
+    m <- .paramsRowsModel()
+    d <- .paramsRowsData()
+    .p <- data.frame(k = c(0.5, 0.6, 0.7), v = 2)
+    .built <- function(s) {
+      .e <- attr(class(s), ".rxode2.env")
+      vapply(c(".params.dat", "counts", ".et", ".injectedPars.raw"), exists, logical(1), envir = .e, inherits = FALSE)
+    }
+    .s <- rxSolve(m, d, params = .p)
+    expect_identical(unname(.built(.s)), c(FALSE, FALSE, FALSE, FALSE))
+    expect_identical(names(.s$counts), c("id", "slvr", "dadt", "jac"))
+    expect_identical(unname(.built(.s)), c(FALSE, TRUE, FALSE, FALSE))
+    .s <- rxSolve(m, d, params = .p)
+    .dn <- utils::.DollarNames(.s, "")
+    expect_true(all(c("params", "counts", "k", "add.dosing", "get.EventTable") %in% .dn))
+    expect_identical(unname(.built(.s)), c(TRUE, FALSE, FALSE, FALSE))
+    .s <- rxSolve(m, d, params = .p)
+    expect_identical(.s$k, .p$k)
+    expect_identical(unname(.built(.s)), c(TRUE, FALSE, FALSE, FALSE))
+    .s <- rxSolve(m, d, params = .p)
+    expect_true(is.function(.s$add.dosing))
+    expect_identical(unname(.built(.s)), c(FALSE, FALSE, TRUE, FALSE))
+    expect_identical(.s$counts, rxSolve(m, d, params = .p)$counts)
+  })
+
   test_that("a model with no parameters has a 0 x 0 $params by either route", {
     .m <- rxode2("d/dt(x) <- -x")
     .s1 <- rxSolve(.m, et(0:2), inits = c(x = 1))
