@@ -11,6 +11,13 @@
 
 ## New features
 
+- `rxRmvt()` simulates from the multivariate t distribution, truncated to
+  `lower`/`upper` by the exponential tilting method of Botev and L'Ecuyer
+  (2015), with the threefry engine.  Packages linking to rxode2 can solve the
+  tilting once with `rxRmvtSetup()` and draw from the current thread's engine,
+  thread safely, with `rxRmvtDraw()` (new C pointer table entries in
+  `rxode2ptr.h`, along with `rxRmvtSEXP` and `rxRmvtFree`).
+
 - Packages linking to rxode2 can read the thread id they gave with
   `setRxThreadId()` back through `getRxThreadId()`, a new entry of the C
   pointer table (`rxode2ptr.h`).
@@ -30,6 +37,13 @@
   modeled (-1, -2), as a record with no `evid` column is read.  It used to keep
   the record as an observation and drop the dose or infusion silently; with no
   `evid` column at all such a record is still a dose.
+
+### Simulation
+
+- Truncated multivariate normal draws (`rxRmvn()` with `lower`/`upper`, and
+  truncated simulated etas) now have the right distribution.  The draws were
+  left in the standardized scale and mis-permuted, so their covariance ignored
+  `sigma`, and `isChol = TRUE` used the wrong product of the factor.
 
 ### Solving
 

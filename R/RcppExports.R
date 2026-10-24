@@ -1052,6 +1052,14 @@ rxOptRep_ <- function(input) {
     .Call(`_rxode2_rxOptRep_`, input)
 }
 
+rxRmvtTilt_ <- function(sigma, lower, upper, df) {
+    .Call(`_rxode2_rxRmvtTilt_`, sigma, lower, upper, df)
+}
+
+rxRmvtTeamDraw_ <- function(mu, sigma, df, lower, upper, n, nid, nthreads, seed) {
+    .Call(`_rxode2_rxRmvtTeamDraw_`, mu, sigma, df, lower, upper, n, nid, nthreads, seed)
+}
+
 #' Save the pre-integration rxode2 solver state to a binary file
 #'
 #' Called internally after event-table and parameter setup but before ODE
@@ -1193,6 +1201,10 @@ rxRmvn0 <- function(A_, mu, sigma, lower, upper, ncores = 1L, isChol = FALSE, a 
 
 rxRmvnSEXP <- function(nS, muS, sigmaS, lowerS, upperS, ncoresS, isCholS, keepNamesS, aS, tolS, nlTolS, nlMaxiterS) {
     .Call(`_rxode2_rxRmvnSEXP`, nS, muS, sigmaS, lowerS, upperS, ncoresS, isCholS, keepNamesS, aS, tolS, nlTolS, nlMaxiterS)
+}
+
+rxRmvtSEXP <- function(nS, muS, sigmaS, dfS, lowerS, upperS, ncoresS, isCholS, keepNamesS, aS, tolS, nlTolS, nlMaxiterS) {
+    .Call(`_rxode2_rxRmvtSEXP`, nS, muS, sigmaS, dfS, lowerS, upperS, ncoresS, isCholS, keepNamesS, aS, tolS, nlTolS, nlMaxiterS)
 }
 
 rpp_ <- function(nS, lambdaS, gammaS, probS, t0S, tmaxS, randomOrderS) {

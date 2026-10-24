@@ -1441,6 +1441,77 @@ rxRmvn <- function(
   return(.ret)
 }
 
+#' Simulate from a (truncated) multivariate t distribution
+#'
+#' Draws from the multivariate t with location `mu`, scale matrix `sigma` and
+#' `df` degrees of freedom using the thread-safe threefry simulator; when
+#' `lower`/`upper` are finite, draws are exact by the exponential tilting
+#' acceptance-rejection method of Botev and L'Ecuyer (2015).
+#'
+#' @inheritParams rxRmvn
+#'
+#' @param sigma Scale matrix of the multivariate t, or a list of scale
+#'   matrices (as in [rxRmvn()]).
+#'
+#' @param mu location vector
+#'
+#' @param df degrees of freedom; `Inf` gives the multivariate normal
+#'   ([rxRmvn()]).  Truncated draws require `df >= 1`.
+#'
+#' @return Same as [rxRmvn()]
+#'
+#' @references Botev ZI and L'Ecuyer P (2015) Efficient estimation and
+#'   simulation of the truncated multivariate student-t distribution.
+#'   2015 Winter Simulation Conference \doi{10.1109/WSC.2015.7408180}
+#'
+#' @author Matthew Fidler
+#'
+#' @examples
+#'
+#' sigma <- matrix(c(4, 1.8, 1.8, 1), 2)
+#'
+#' rxRmvt(4, c(0, 0), sigma, df = 5)
+#'
+#' rxRmvt(4, c(0, 0), sigma, df = 5, lower = c(-1, 0), upper = c(2, Inf))
+#'
+#' @export
+rxRmvt <- function(
+  n,
+  mu = NULL,
+  sigma,
+  df,
+  lower = -Inf,
+  upper = Inf,
+  ncores = 1,
+  isChol = FALSE,
+  keepNames = TRUE,
+  a = 0.4,
+  tol = 2.05,
+  nlTol = 1e-10,
+  nlMaxiter = 100L
+) {
+  .ret <- .Call(
+    `_rxode2_rxRmvtSEXP`,
+    n,
+    mu,
+    sigma,
+    df,
+    lower,
+    upper,
+    ncores,
+    isChol,
+    keepNames,
+    a,
+    tol,
+    nlTol,
+    nlMaxiter
+  )
+  if (is.matrix(n)) {
+    return(invisible())
+  }
+  .ret
+}
+
 #' @export
 rxUdfUi.rxpois <- function(fun) {
   .fun <- fun
