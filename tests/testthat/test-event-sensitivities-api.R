@@ -105,6 +105,13 @@ rxTest({
     )
   })
 
+  test_that("multivariate t entry points occupy slots 100-103", {
+    expect_identical(
+      names(.rxode2ptrs())[101:104],
+      c("rxode2rxRmvtSEXP", "rxode2rxRmvtSetup", "rxode2rxRmvtDraw", "rxode2rxRmvtFree")
+    )
+  })
+
   test_that("linCmt entry points never occupy a slot in this table", {
     # they live in rxode2lincmt's own table (src/rxode2lincmtLink.cpp)
     expect_false(any(grepl("linCmt", names(.rxode2ptrs()), fixed = TRUE)))

@@ -112,6 +112,12 @@ SEXP _rxode2_expandTheta_(SEXP, SEXP, SEXP, SEXP, SEXP,
 SEXP _rxode2_rxRmvnSEXP(SEXP, SEXP, SEXP, SEXP, SEXP,
                         SEXP, SEXP, SEXP, SEXP, SEXP,
                         SEXP, SEXP);
+SEXP _rxode2_rxRmvtSEXP(SEXP, SEXP, SEXP, SEXP, SEXP,
+                        SEXP, SEXP, SEXP, SEXP, SEXP,
+                        SEXP, SEXP, SEXP);
+SEXP _rxode2_rxRmvtTilt_(SEXP, SEXP, SEXP, SEXP);
+SEXP _rxode2_rxRmvtTeamDraw_(SEXP, SEXP, SEXP, SEXP, SEXP,
+                             SEXP, SEXP, SEXP, SEXP);
 
 SEXP _rxode2_itostr(SEXP, SEXP);
 SEXP _rxode2_itoletter(SEXP, SEXP);
@@ -497,6 +503,11 @@ void setSeedEng1(uint32_t seed);
 void seedEng(int ncores);
 double rxNormEng(double mean, double sd);
 double rxUnifEng(double low, double hi);
+int rxRmvtSetup(void **handle, int d, const double *mu, const double *sigma,
+                int isChol, const double *lower, const double *upper, double nu,
+                double a, double tol, double nlTol, int nlMaxiter);
+int rxRmvtDraw(void *handle, double *out, int n);
+void rxRmvtFree(void *handle);
 
 // per-individual ODE solve buffer-pointer accessors (defined in rx2api.c); let a
 // downstream caller swap in private, larger solve buffers for a higher-state
@@ -624,8 +635,12 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2rxPriorLogDensityEval = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxPriorLogDensityEval, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxPriorOmegaToCholOmegaInvGrad = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxPriorOmegaToCholOmegaInvGrad, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2getRxThreadId = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getRxThreadId, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxRmvtSEXP = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&_rxode2_rxRmvtSEXP, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxRmvtSetup = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRmvtSetup, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxRmvtDraw = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRmvtDraw, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxRmvtFree = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRmvtFree, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 100
+#define nVec 104
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -727,6 +742,10 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 97, rxode2rxPriorLogDensityEval);
   SET_VECTOR_ELT(ret, 98, rxode2rxPriorOmegaToCholOmegaInvGrad);
   SET_VECTOR_ELT(ret, 99, rxode2getRxThreadId);
+  SET_VECTOR_ELT(ret, 100, rxode2rxRmvtSEXP);
+  SET_VECTOR_ELT(ret, 101, rxode2rxRmvtSetup);
+  SET_VECTOR_ELT(ret, 102, rxode2rxRmvtDraw);
+  SET_VECTOR_ELT(ret, 103, rxode2rxRmvtFree);
 
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
@@ -837,6 +856,10 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 97, Rf_mkChar("rxPriorLogDensityEval"));
   SET_STRING_ELT(retN, 98, Rf_mkChar("rxPriorOmegaToCholOmegaInvGrad"));
   SET_STRING_ELT(retN, 99, Rf_mkChar("rxode2getRxThreadId"));
+  SET_STRING_ELT(retN, 100, Rf_mkChar("rxode2rxRmvtSEXP"));
+  SET_STRING_ELT(retN, 101, Rf_mkChar("rxode2rxRmvtSetup"));
+  SET_STRING_ELT(retN, 102, Rf_mkChar("rxode2rxRmvtDraw"));
+  SET_STRING_ELT(retN, 103, Rf_mkChar("rxode2rxRmvtFree"));
 
   // Nothing is validated here.  Every reverse dependency calls this at load, so a
   // check that fails takes them all down at once and they cannot be patched
@@ -1078,6 +1101,9 @@ void R_init_rxode2(DllInfo *info){
     {"_vecDF", (DL_FUNC) _vecDF, 2},
     {"_cbindOme", (DL_FUNC) _cbindOme, 3},
     {"_rxode2_rxRmvnSEXP", (DL_FUNC) _rxode2_rxRmvnSEXP, 12},
+    {"_rxode2_rxRmvtSEXP", (DL_FUNC) _rxode2_rxRmvtSEXP, 13},
+    {"_rxode2_rxRmvtTilt_", (DL_FUNC) _rxode2_rxRmvtTilt_, 4},
+    {"_rxode2_rxRmvtTeamDraw_", (DL_FUNC) _rxode2_rxRmvtTeamDraw_, 9},
     {"_rxode2_expandPars_", (DL_FUNC) _rxode2_expandPars_, 4},
     {"_rxode2_convertId_", (DL_FUNC) _rxode2_convertId_, 1},
     {"_rxode2_nestingInfo_", (DL_FUNC) _rxode2_nestingInfo_, 2},

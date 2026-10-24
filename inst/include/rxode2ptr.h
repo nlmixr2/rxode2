@@ -49,6 +49,21 @@ extern "C" {
   extern rxNormEng_t rxNormEng;
   typedef double (*rxUnifEng_t)(double low, double hi);
   extern rxUnifEng_t rxUnifEng;
+  // Multivariate t (truncated by Botev and L'Ecuyer 2015 tilting): rxRmvtSetup()
+  // solves the tilting once into *handle (sigma column-major d x d, the upper
+  // Cholesky factor when isChol; NULL mu/lower/upper mean 0/-Inf/Inf; truncation
+  // needs a finite nu >= 1).  rxRmvtDraw() writes n draws column-major (n x d)
+  // from the current thread's engine (setRxThreadId() + setSeedEng1() as for
+  // rxNormEng()); threads may share one handle.  Both return an RXMVT_* status
+  // (rxode2.h).  Free with rxRmvtFree().
+  typedef SEXP (*_rxode2_rxRmvtSEXP_t)(SEXP nS, SEXP muS, SEXP sigmaS, SEXP dfS, SEXP lowerS, SEXP upperS, SEXP ncoresS, SEXP isCholS, SEXP keepNamesS, SEXP aS, SEXP tolS, SEXP nlTolS, SEXP nlMaxiterS);
+  extern _rxode2_rxRmvtSEXP_t _rxode2_rxRmvtSEXP_;
+  typedef int (*rxRmvtSetup_t)(void **handle, int d, const double *mu, const double *sigma, int isChol, const double *lower, const double *upper, double nu, double a, double tol, double nlTol, int nlMaxiter);
+  extern rxRmvtSetup_t rxRmvtSetup;
+  typedef int (*rxRmvtDraw_t)(void *handle, double *out, int n);
+  extern rxRmvtDraw_t rxRmvtDraw;
+  typedef void (*rxRmvtFree_t)(void *handle);
+  extern rxRmvtFree_t rxRmvtFree;
   // Per-observation CMT.  Returns 1 when the model has no CMT covariate (every
   // observation is compartment 1) but NA_INTEGER when the covariate is present and
   // this row's value is missing -- so "no compartment recorded" is distinguishable
@@ -466,6 +481,10 @@ extern "C" {
       rxPriorLogDensityEval = (rxPriorLogDensityEval_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 97));
       rxPriorOmegaToCholOmegaInvGrad = (rxPriorOmegaToCholOmegaInvGrad_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 98));
       getRxThreadId = (getRxThreadId_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 99));
+      _rxode2_rxRmvtSEXP_ = (_rxode2_rxRmvtSEXP_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 100));
+      rxRmvtSetup = (rxRmvtSetup_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 101));
+      rxRmvtDraw = (rxRmvtDraw_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 102));
+      rxRmvtFree = (rxRmvtFree_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 103));
     }
     return R_NilValue;
   }
@@ -571,6 +590,10 @@ extern "C" {
   rxPriorLogDensityEval_t rxPriorLogDensityEval = NULL; \
   rxPriorOmegaToCholOmegaInvGrad_t rxPriorOmegaToCholOmegaInvGrad = NULL; \
   getRxThreadId_t getRxThreadId = NULL;                 \
+  _rxode2_rxRmvtSEXP_t _rxode2_rxRmvtSEXP_ = NULL;      \
+  rxRmvtSetup_t rxRmvtSetup = NULL;                     \
+  rxRmvtDraw_t rxRmvtDraw = NULL;                       \
+  rxRmvtFree_t rxRmvtFree = NULL;                       \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \

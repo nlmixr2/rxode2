@@ -114,6 +114,29 @@ typedef void (*t_rxParLoader)(rx_solve *rx, double *gpars, int npars, int ncols)
 // Defined outside the __RXODE2PTR_H__ guard so downstream packages see the typedef.
 typedef void (*t_rxDydtForce)(int *neq, double t, double *y, double *dydt);
 
+// Status codes of the multivariate t sampler (rxRmvtSetup/rxRmvtDraw); >0 are
+// warnings (the handle is usable), <0 are errors.  Outside the __RXODE2PTR_H__
+// guard so downstream packages see them.
+#define RXMVT_OK 0
+#define RXMVT_WARN_INFEASIBLE 1
+#define RXMVT_WARN_SINGULAR 2
+#define RXMVT_BAD_ARGS -1
+#define RXMVT_BAD_BOUNDS -2
+#define RXMVT_NOT_PD -3
+#define RXMVT_BAD_DF -4
+#define RXMVT_NLEQ_FAIL -5
+#define RXMVT_ACCEPT_FAIL -6
+#define RXMVT_NO_ENGINE -7
+#define RXMVT_ALLOC_FAIL -8
+
+#ifndef __RXODE2PTR_H__
+int rxRmvtSetup(void **handle, int d, const double *mu, const double *sigma,
+                int isChol, const double *lower, const double *upper, double nu,
+                double a, double tol, double nlTol, int nlMaxiter);
+int rxRmvtDraw(void *handle, double *out, int n);
+void rxRmvtFree(void *handle);
+#endif
+
 // Adjoint objective-gradient backward sweep (src/adjoint.cpp).  Its address is
 // exported to downstream packages through the rxode2 function-pointer table
 // (see _rxode2_rxode2Ptr in src/init.c and rxode2ptr.h); this direct declaration
