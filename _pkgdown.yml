@@ -114,6 +114,7 @@ reference:
   - rxUiEtaDistAnchors
   - rxUiEtaDists
   - rxRmvn
+  - rxRmvt
   - rxSimThetaOmega
   - cvPost
   - dfWishart

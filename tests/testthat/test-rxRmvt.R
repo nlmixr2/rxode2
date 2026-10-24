@@ -82,8 +82,7 @@ rxTest({
     expect_error(rxRmvt(5, c(0, 0), s, df = 0.5, lower = -1, upper = 1), "df")
     expect_error(rxRmvt(5, c(0, 0), s, df = -1))
     expect_error(rxRmvt(5, c(0, 0), s, df = 3, lower = 1, upper = 1))
-    expect_error(rxRmvt(5, c(0, 0), matrix(c(1, 2, 2, 1), 2), df = 3, lower = -1, upper = 1),
-                 "positive")
+    expect_error(rxRmvt(5, c(0, 0), matrix(c(1, 2, 2, 1), 2), df = 3, lower = -1, upper = 1), "positive")
   })
 
   test_that("C handle draws are thread safe and reproducible per id", {
@@ -93,6 +92,6 @@ rxTest({
     a2 <- rxRmvtTeamDraw_(c(0, 0), s, 5, c(-Inf, -0.5), c(Inf, Inf), 10L, 8L, 2L, 42)
     expect_identical(a1, a2)
     expect_true(all(a1[, 2, ] > -0.5))
-    expect_false(isTRUE(all.equal(a1[, , 1], a1[, , 2])))
+    expect_false(isTRUE(all.equal(a1[,, 1], a1[,, 2])))
   })
 })

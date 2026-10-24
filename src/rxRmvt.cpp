@@ -60,51 +60,48 @@ static inline double rxMills(double eta) {
   return exp(R::dnorm(eta, 0.0, 1.0, 1) - R::pnorm(eta, 0.0, 1.0, 1, 1));
 }
 
-// Gradient (eq. 7) and optionally the Jacobian of psi with respect to
-// x = [z_1..z_{d-1}, r, mu_1..mu_{d-1}, eta].
-static void rxRmvtGrad(const arma::vec& x, const arma::mat& L, const arma::vec& l,
-                       const arma::vec& u, double nu, arma::vec& g, arma::mat* J) {
-  int d = l.n_elem, dm = d - 1, n2 = 2*d;
-  double sn = sqrt(nu);
-  double r = x[dm], eta = x[n2 - 1];
-  arma::vec z(d, arma::fill::zeros), m(d, arma::fill::zeros);
-  for (int i = 0; i < dm; ++i) {
+// Splits x = [z_1..z_{d-1}, r, mu_1..mu_{d-1}, eta] into z and mu (z_d = mu_d = 0)
+static inline void rxRmvtUnpack(const arma::vec& x, int d, arma::vec& z, arma::vec& m) {
+  z.zeros(d);
+  m.zeros(d);
+  for (int i = 0; i < d - 1; ++i) {
     z[i] = x[i];
     m[i] = x[d + i];
   }
-  arma::vec c = L * z;
-  arma::vec Psi(d), rho(d), Dk(d), Ek(d), Fk(d);
-  for (int k = 0; k < d; ++k) {
-    double lt = r*l[k]/sn - m[k] - c[k];
-    double ut = r*u[k]/sn - m[k] - c[k];
-    double w = lnNpr(lt, ut);
-    bool fl = R_FINITE(lt), fu = R_FINITE(ut);
-    double pl = fl ? exp(-0.5*lt*lt - w)*M_1_SQRT_2PI : 0.0;
-    double pu = fu ? exp(-0.5*ut*ut - w)*M_1_SQRT_2PI : 0.0;
-    double lpl = fl ? l[k]*pl : 0.0;
-    double upu = fu ? u[k]*pu : 0.0;
-    Psi[k] = pl - pu;
-    rho[k] = (upu - lpl)/sn;
-    if (J != NULL) {
-      double ltpl = fl ? lt*pl : 0.0;
-      double utpu = fu ? ut*pu : 0.0;
-      Dk[k] = ltpl - utpu - Psi[k]*Psi[k];
-      Ek[k] = ((fu ? ut*upu : 0.0) - (fl ? lt*lpl : 0.0))/sn - Psi[k]*rho[k];
-      Fk[k] = ((fl ? l[k]*lt*lpl : 0.0) - (fu ? u[k]*ut*upu : 0.0))/nu - rho[k]*rho[k];
-    }
+}
+
+// Per-dimension gradient terms (Psi, rho) and, when jac, Jacobian terms (D, E, F);
+// an infinite bound contributes 0.
+static inline void rxRmvtTerm(double lt, double ut, double lk, double uk, double sn,
+                              double nu, bool jac, double& Psi, double& rho,
+                              double& Dk, double& Ek, double& Fk) {
+  double w = lnNpr(lt, ut);
+  double l0 = 0.0, lt0 = 0.0, pl = 0.0;
+  double u0 = 0.0, ut0 = 0.0, pu = 0.0;
+  if (R_FINITE(lt)) {
+    l0 = lk;
+    lt0 = lt;
+    pl = exp(-0.5*lt*lt - w)*M_1_SQRT_2PI;
   }
-  double mills = rxMills(eta);
-  g.set_size(n2);
-  for (int i = 0; i < dm; ++i) {
-    double acc = -m[i];
-    for (int k = i + 1; k < d; ++k) acc += L.at(k, i)*Psi[k];
-    g[i] = acc;
-    g[d + i] = m[i] - z[i] + Psi[i];
+  if (R_FINITE(ut)) {
+    u0 = uk;
+    ut0 = ut;
+    pu = exp(-0.5*ut*ut - w)*M_1_SQRT_2PI;
   }
-  g[dm] = (nu - 1.0)/r - eta + arma::accu(rho);
-  g[n2 - 1] = eta - r + mills;
-  if (J == NULL) return;
-  arma::mat& H = *J;
+  double lpl = l0*pl, upu = u0*pu;
+  Psi = pl - pu;
+  rho = (upu - lpl)/sn;
+  if (!jac) return;
+  Dk = lt0*pl - ut0*pu - Psi*Psi;
+  Ek = (ut0*upu - lt0*lpl)/sn - Psi*rho;
+  Fk = (l0*lt0*lpl - u0*ut0*upu)/nu - rho*rho;
+}
+
+// Symmetric Jacobian of the system (7) from the per-dimension terms
+static void rxRmvtJac(const arma::mat& L, const arma::vec& Dk, const arma::vec& Ek,
+                      const arma::vec& Fk, double nu, double r, double eta,
+                      double mills, arma::mat& H) {
+  int d = L.n_rows, dm = d - 1, n2 = 2*d;
   H.zeros(n2, n2);
   for (int i = 0; i < dm; ++i) {
     for (int j = 0; j < dm; ++j) {
@@ -127,17 +124,41 @@ static void rxRmvtGrad(const arma::vec& x, const arma::mat& L, const arma::vec& 
   H.at(n2 - 1, n2 - 1) = 1.0 - mills*(eta + mills);
 }
 
+// Gradient (eq. 7) and optionally the Jacobian of psi with respect to x
+static void rxRmvtGrad(const arma::vec& x, const arma::mat& L, const arma::vec& l,
+                       const arma::vec& u, double nu, arma::vec& g, arma::mat* J) {
+  int d = l.n_elem, dm = d - 1, n2 = 2*d;
+  double sn = sqrt(nu);
+  double r = x[dm], eta = x[n2 - 1];
+  arma::vec z, m;
+  rxRmvtUnpack(x, d, z, m);
+  arma::vec c = L * z;
+  arma::vec Psi(d), rho(d), Dk(d), Ek(d), Fk(d);
+  for (int k = 0; k < d; ++k) {
+    rxRmvtTerm(r*l[k]/sn - m[k] - c[k], r*u[k]/sn - m[k] - c[k], l[k], u[k], sn,
+               nu, J != NULL, Psi[k], rho[k], Dk[k], Ek[k], Fk[k]);
+  }
+  double mills = rxMills(eta);
+  g.set_size(n2);
+  for (int i = 0; i < dm; ++i) {
+    double acc = -m[i];
+    for (int k = i + 1; k < d; ++k) acc += L.at(k, i)*Psi[k];
+    g[i] = acc;
+    g[d + i] = m[i] - z[i] + Psi[i];
+  }
+  g[dm] = (nu - 1.0)/r - eta + arma::accu(rho);
+  g[n2 - 1] = eta - r + mills;
+  if (J != NULL) rxRmvtJac(L, Dk, Ek, Fk, nu, r, eta, mills, *J);
+}
+
 // psi(r, z; eta, mu) including the chi density constant
 static double rxRmvtPsi(const arma::vec& x, const arma::mat& L, const arma::vec& l,
                         const arma::vec& u, double nu) {
   int d = l.n_elem, dm = d - 1;
   double sn = sqrt(nu);
   double r = x[dm], eta = x[2*d - 1];
-  arma::vec z(d, arma::fill::zeros), m(d, arma::fill::zeros);
-  for (int i = 0; i < dm; ++i) {
-    z[i] = x[i];
-    m[i] = x[d + i];
-  }
+  arma::vec z, m;
+  rxRmvtUnpack(x, d, z, m);
   arma::vec c = L * z;
   double p = 0.5*eta*eta - r*eta + (nu - 1.0)*log(r) +
     R::pnorm(eta, 0.0, 1.0, 1, 1) + rxRmvtConst(nu);
@@ -148,6 +169,25 @@ static double rxRmvtPsi(const arma::vec& x, const arma::mat& L, const arma::vec&
   return p;
 }
 
+// Backtracking line search on ||g||^2 that keeps r > 0; returns the new ||g||^2
+static double rxRmvtLineSearch(const arma::vec& x, const arma::vec& del, double err,
+                               const arma::mat& L, const arma::vec& l,
+                               const arma::vec& u, double nu, arma::vec& xn) {
+  int dm = l.n_elem - 1;
+  double t = 1.0;
+  while (x[dm] + t*del[dm] <= 0.0 && t > 1e-12) t *= 0.5;
+  arma::vec gn;
+  double errn = R_PosInf;
+  for (int ls = 0; ls < 40; ++ls) {
+    xn = x + t*del;
+    rxRmvtGrad(xn, L, l, u, nu, gn, NULL);
+    errn = arma::accu(gn % gn);
+    if (std::isfinite(errn) && errn < err) break;
+    t *= 0.5;
+  }
+  return errn;
+}
+
 // Newton solve of the nonlinear system (7); returns an RXMVT_* status
 static int rxRmvtNleq(arma::vec& x, const arma::mat& L, const arma::vec& l,
                       const arma::vec& u, double nu, double nlTol, int nlMaxiter) {
@@ -155,26 +195,18 @@ static int rxRmvtNleq(arma::vec& x, const arma::mat& L, const arma::vec& l,
   x.zeros(n2);
   x[dm] = sqrt(nu);
   x[n2 - 1] = sqrt(nu);
-  arma::vec g, gn, del, xn;
+  arma::vec g, del, xn;
   arma::mat J;
   rxRmvtGrad(x, L, l, u, nu, g, &J);
   double err = arma::accu(g % g);
   int iter = 0;
   while (!(err < nlTol)) {
     if (!std::isfinite(err) || ++iter > nlMaxiter) return RXMVT_NLEQ_FAIL;
-    if (!arma::solve(del, J, -g, arma::solve_opts::no_approx)) {
-      if (!arma::solve(del, J, -g)) return RXMVT_NLEQ_FAIL;
+    if (!arma::solve(del, J, -g, arma::solve_opts::no_approx) &&
+        !arma::solve(del, J, -g)) {
+      return RXMVT_NLEQ_FAIL;
     }
-    double t = 1.0;
-    while (x[dm] + t*del[dm] <= 0.0 && t > 1e-12) t *= 0.5;
-    double errn = R_PosInf;
-    for (int ls = 0; ls < 40; ++ls) {
-      xn = x + t*del;
-      rxRmvtGrad(xn, L, l, u, nu, gn, NULL);
-      errn = arma::accu(gn % gn);
-      if (std::isfinite(errn) && errn < err) break;
-      t *= 0.5;
-    }
+    double errn = rxRmvtLineSearch(x, del, err, L, l, u, nu, xn);
     if (!std::isfinite(errn) || xn[dm] <= 0.0) return RXMVT_NLEQ_FAIL;
     x = xn;
     rxRmvtGrad(x, L, l, u, nu, g, &J);
@@ -183,18 +215,9 @@ static int rxRmvtNleq(arma::vec& x, const arma::mat& L, const arma::vec& l,
   return RXMVT_OK;
 }
 
-static int rxRmvtSetupCore(rxRmvtHandle& h, int d, const double* mu,
-                           const double* sigma, int isChol, const double* lower,
-                           const double* upper, double nu, double a, double tol,
-                           double nlTol, int nlMaxiter) {
-  if (d < 1 || sigma == NULL || ISNAN(nu) || !(nu > 0.0) || nlMaxiter < 1 ||
-      ISNAN(nlTol)) {
-    return RXMVT_BAD_ARGS;
-  }
-  h.d = d;
-  h.nu = nu;
-  h.a = a;
-  h.tol = tol;
+// Fills mu and the bounds of h; returns an RXMVT_* status
+static int rxRmvtSetBounds(rxRmvtHandle& h, int d, const double* mu,
+                           const double* lower, const double* upper) {
   h.mu.set_size(d);
   h.lower.set_size(d);
   h.upper.set_size(d);
@@ -207,9 +230,14 @@ static int rxRmvtSetupCore(rxRmvtHandle& h, int d, const double* mu,
     if (ISNAN(h.lower[j]) || ISNAN(h.upper[j]) || !(h.upper[j] > h.lower[j])) {
       return RXMVT_BAD_BOUNDS;
     }
-    if (R_FINITE(h.lower[j]) || R_FINITE(h.upper[j])) h.trunc = true;
+    h.trunc = h.trunc || R_FINITE(h.lower[j]) || R_FINITE(h.upper[j]);
   }
-  arma::mat S(d, d);
+  return RXMVT_OK;
+}
+
+// Reads the scale matrix (or its upper Cholesky factor) into S
+static int rxRmvtReadSigma(arma::mat& S, int d, const double* sigma, int isChol) {
+  S.set_size(d, d);
   for (int i = 0; i < d*d; ++i) {
     if (!R_FINITE(sigma[i])) return RXMVT_BAD_ARGS;
     S[i] = sigma[i];
@@ -218,18 +246,14 @@ static int rxRmvtSetupCore(rxRmvtHandle& h, int d, const double* mu,
     arma::mat U = arma::trimatu(S);
     S = U.t() * U;
   }
-  h.zero = S.is_zero();
-  if (h.zero) {
-    for (int j = 0; j < d; ++j) {
-      if (h.mu[j] < h.lower[j] || h.mu[j] > h.upper[j]) return RXMVT_BAD_BOUNDS;
-    }
-    return RXMVT_OK;
-  }
-  if (!h.trunc) {
-    if (!arma::chol(h.Lfull, S, "lower")) return RXMVT_NOT_PD;
-    return RXMVT_OK;
-  }
-  if (!R_FINITE(nu) || nu < 1.0) return RXMVT_BAD_DF;
+  return RXMVT_OK;
+}
+
+// Solves the tilting saddle point for a truncated scale S
+static int rxRmvtTilt(rxRmvtHandle& h, const arma::mat& S, double nlTol,
+                      int nlMaxiter) {
+  int d = h.d, dm = d - 1;
+  double nu = h.nu;
   int ret = RXMVT_OK;
   int status = 0;
   rx_cholperms cp = cholpermCore(S, h.lower - h.mu, h.upper - h.mu, 1e-10, status);
@@ -246,15 +270,10 @@ static int rxRmvtSetupCore(rxRmvtHandle& h, int d, const double* mu,
   // psistar must be the supremum of psi, so a loose tolerance is tightened
   int st = rxRmvtNleq(x, h.L, h.l, h.u, nu, std::min(nlTol, 1e-6), nlMaxiter);
   if (st != RXMVT_OK) return st;
-  int dm = d - 1;
   double r = x[dm], sn = sqrt(nu);
   h.eta = x[2*d - 1];
-  h.tmu.zeros(d);
-  arma::vec z(d, arma::fill::zeros);
-  for (int i = 0; i < dm; ++i) {
-    z[i] = x[i];
-    h.tmu[i] = x[d + i];
-  }
+  arma::vec z;
+  rxRmvtUnpack(x, d, z, h.tmu);
   // The saddle point solves (6) only when it lies in the region R
   arma::vec c = h.L * z;
   for (int k = 0; k < dm; ++k) {
@@ -269,70 +288,123 @@ static int rxRmvtSetupCore(rxRmvtHandle& h, int d, const double* mu,
   return ret;
 }
 
+static int rxRmvtSetupCore(rxRmvtHandle& h, int d, const double* mu,
+                           const double* sigma, int isChol, const double* lower,
+                           const double* upper, double nu, double a, double tol,
+                           double nlTol, int nlMaxiter) {
+  if (d < 1 || sigma == NULL || ISNAN(nu) || !(nu > 0.0) || nlMaxiter < 1 ||
+      ISNAN(nlTol)) {
+    return RXMVT_BAD_ARGS;
+  }
+  h.d = d;
+  h.nu = nu;
+  h.a = a;
+  h.tol = tol;
+  int st = rxRmvtSetBounds(h, d, mu, lower, upper);
+  if (st != RXMVT_OK) return st;
+  arma::mat S;
+  st = rxRmvtReadSigma(S, d, sigma, isChol);
+  if (st != RXMVT_OK) return st;
+  h.zero = S.is_zero();
+  if (h.zero) {
+    bool in = all(h.mu >= h.lower) && all(h.mu <= h.upper);
+    return in ? RXMVT_OK : RXMVT_BAD_BOUNDS;
+  }
+  if (!h.trunc) {
+    return arma::chol(h.Lfull, S, "lower") ? RXMVT_OK : RXMVT_NOT_PD;
+  }
+  if (!R_FINITE(nu) || nu < 1.0) return RXMVT_BAD_DF;
+  return rxRmvtTilt(h, S, nlTol, nlMaxiter);
+}
+
+// Untruncated draws: mu + Lfull z sqrt(nu/W), W ~ chi^2_nu
+static void rxRmvtDrawFree(const rxRmvtHandle& h, double* out, int n,
+                           sitmo::threefry& eng) {
+  int d = h.d;
+  std::vector<double> Z(d);
+  boost::random::normal_distribution<double> snorm(0.0, 1.0);
+  bool fin = R_FINITE(h.nu);
+  boost::random::chi_squared_distribution<double> chisq(fin ? h.nu : 1.0);
+  for (int i = 0; i < n; ++i) {
+    for (int k = 0; k < d; ++k) Z[k] = snorm(eng);
+    double s = fin ? sqrt(h.nu/chisq(eng)) : 1.0;
+    for (int j = 0; j < d; ++j) {
+      double acc = 0.0;
+      for (int k = 0; k <= j; ++k) acc += h.Lfull.at(j, k)*Z[k];
+      out[i + n*j] = h.mu[j] + s*acc;
+    }
+  }
+}
+
+// One proposal of Algorithm 2 into Z; returns its log likelihood ratio and
+// sets R (R <= 0 or non-finite means reject).
+static double rxRmvtPropose(const rxRmvtHandle& h, sitmo::threefry& eng,
+                            std::vector<double>& Z, double& R) {
+  int d = h.d;
+  double sn = sqrt(h.nu);
+  R = h.eta + trandn(-h.eta, R_PosInf, eng, h.a, h.tol);
+  if (!(R > 0.0) || !R_FINITE(R)) return R_PosInf;
+  double lr = 0.5*h.eta*h.eta - R*h.eta + (h.nu - 1.0)*log(R) + h.lnPhiEta + h.cnst;
+  for (int k = 0; k < d; ++k) {
+    double c = 0.0;
+    for (int j = 0; j < k; ++j) c += h.L.at(k, j)*Z[j];
+    double lt = R*h.l[k]/sn - c - h.tmu[k];
+    double ut = R*h.u[k]/sn - c - h.tmu[k];
+    Z[k] = h.tmu[k] + trandn(lt, ut, eng, h.a, h.tol);
+    lr += lnNpr(lt, ut) + 0.5*h.tmu[k]*h.tmu[k] - h.tmu[k]*Z[k];
+  }
+  return lr;
+}
+
+// Back-transforms Z into Y (original order, shifted by mu); false if out of bounds
+static bool rxRmvtAccept(const rxRmvtHandle& h, const std::vector<double>& Z,
+                         double R, std::vector<double>& Y) {
+  rxTruncBackTransform(h.Lfull, Z.data(), h.perm, sqrt(h.nu)/R, Y.data());
+  for (int j = 0; j < h.d; ++j) {
+    Y[j] += h.mu[j];
+    if (!(Y[j] >= h.lower[j] && Y[j] <= h.upper[j])) return false;
+  }
+  return true;
+}
+
+// Truncated draws by Algorithm 2
+static int rxRmvtDrawTrunc(const rxRmvtHandle& h, double* out, int n,
+                           sitmo::threefry& eng) {
+  int d = h.d;
+  std::vector<double> Z(d), Y(d);
+  std::uniform_real_distribution<double> unif(0.0, 1.0);
+  int ret = RXMVT_OK;
+  for (int i = 0; i < n; ++i) {
+    int tries = 0;
+    bool done = false;
+    while (!done) {
+      if (++tries > RXMVT_MAX_TRIES) return RXMVT_ACCEPT_FAIL;
+      double R;
+      double lr = rxRmvtPropose(h, eng, Z, R);
+      if (!R_FINITE(lr)) continue;
+      if (lr > h.psistar + 1e-8) ret = RXMVT_WARN_INFEASIBLE;
+      if (-log(unif(eng)) <= h.psistar - lr) continue;
+      done = rxRmvtAccept(h, Z, R, Y);
+    }
+    for (int j = 0; j < d; ++j) out[i + n*j] = Y[j];
+  }
+  return ret;
+}
+
 // Draws n vectors into the column-major n x d matrix out; returns
 // RXMVT_WARN_INFEASIBLE when a proposal exceeded the psistar envelope.
 static int rxRmvtDrawCore(const rxRmvtHandle& h, double* out, int n,
                           sitmo::threefry& eng) {
-  int d = h.d;
   if (n < 0 || (n > 0 && out == NULL)) return RXMVT_BAD_ARGS;
   if (h.zero) {
-    for (int j = 0; j < d; ++j) {
-      for (int i = 0; i < n; ++i) out[i + n*j] = h.mu[j];
-    }
+    for (int j = 0; j < h.d; ++j) std::fill_n(out + (ptrdiff_t)n*j, n, h.mu[j]);
     return RXMVT_OK;
   }
-  std::vector<double> Z(d), Y(d);
-  boost::random::normal_distribution<double> snorm(0.0, 1.0);
   if (!h.trunc) {
-    // mu + Lfull z sqrt(nu/W), W ~ chi^2_nu
-    boost::random::chi_squared_distribution<double> chisq(R_FINITE(h.nu) ? h.nu : 1.0);
-    for (int i = 0; i < n; ++i) {
-      for (int k = 0; k < d; ++k) Z[k] = snorm(eng);
-      double s = R_FINITE(h.nu) ? sqrt(h.nu/chisq(eng)) : 1.0;
-      for (int j = 0; j < d; ++j) {
-        double acc = 0.0;
-        for (int k = 0; k <= j; ++k) acc += h.Lfull.at(j, k)*Z[k];
-        out[i + n*j] = h.mu[j] + s*acc;
-      }
-    }
+    rxRmvtDrawFree(h, out, n, eng);
     return RXMVT_OK;
   }
-  // Algorithm 2
-  std::uniform_real_distribution<double> unif(0.0, 1.0);
-  double sn = sqrt(h.nu);
-  int ret = RXMVT_OK;
-  for (int i = 0; i < n; ++i) {
-    int tries = 0;
-    while (true) {
-      if (++tries > RXMVT_MAX_TRIES) return RXMVT_ACCEPT_FAIL;
-      double R = h.eta + trandn(-h.eta, R_PosInf, eng, h.a, h.tol);
-      if (!(R > 0.0) || !R_FINITE(R)) continue;
-      double lr = 0.5*h.eta*h.eta - R*h.eta + (h.nu - 1.0)*log(R) + h.lnPhiEta + h.cnst;
-      for (int k = 0; k < d; ++k) {
-        double c = 0.0;
-        for (int j = 0; j < k; ++j) c += h.L.at(k, j)*Z[j];
-        double lt = R*h.l[k]/sn - c - h.tmu[k];
-        double ut = R*h.u[k]/sn - c - h.tmu[k];
-        Z[k] = h.tmu[k] + trandn(lt, ut, eng, h.a, h.tol);
-        lr += lnNpr(lt, ut) + 0.5*h.tmu[k]*h.tmu[k] - h.tmu[k]*Z[k];
-      }
-      if (lr > h.psistar + 1e-8) ret = RXMVT_WARN_INFEASIBLE;
-      if (-log(unif(eng)) <= h.psistar - lr) continue;
-      rxTruncBackTransform(h.Lfull, Z.data(), h.perm, sn/R, Y.data());
-      bool ok = true;
-      for (int j = 0; j < d; ++j) {
-        Y[j] += h.mu[j];
-        if (!(Y[j] >= h.lower[j] && Y[j] <= h.upper[j])) {
-          ok = false;
-          break;
-        }
-      }
-      if (!ok) continue;
-      for (int j = 0; j < d; ++j) out[i + n*j] = Y[j];
-      break;
-    }
-  }
-  return ret;
+  return rxRmvtDrawTrunc(h, out, n, eng);
 }
 
 // Thread-safe C interface (exported through the rxode2 function-pointer table)
