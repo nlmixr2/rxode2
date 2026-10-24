@@ -122,7 +122,8 @@
 </div>
 <div class="section level3">
 <h3 id="new-features-development-version">New features<a class="anchor" aria-label="anchor" href="#new-features-development-version"></a></h3>
-<ul><li><p>Packages linking to rxode2 can read the thread id they gave with <code>setRxThreadId()</code> back through <code>getRxThreadId()</code>, a new entry of the C pointer table (<code>rxode2ptr.h</code>).</p></li>
+<ul><li><p><code><a href="../reference/rxRmvt.html">rxRmvt()</a></code> simulates from the multivariate t distribution, truncated to <code>lower</code>/<code>upper</code> by the exponential tilting method of Botev and L’Ecuyer (2015), with the threefry engine. Packages linking to rxode2 can solve the tilting once with <code>rxRmvtSetup()</code> and draw from the current thread’s engine, thread safely, with <code>rxRmvtDraw()</code> (new C pointer table entries in <code>rxode2ptr.h</code>, along with <code>rxRmvtSEXP</code> and <code>rxRmvtFree</code>).</p></li>
+<li><p>Packages linking to rxode2 can read the thread id they gave with <code>setRxThreadId()</code> back through <code>getRxThreadId()</code>, a new entry of the C pointer table (<code>rxode2ptr.h</code>).</p></li>
 <li><p>A package that includes rxode2’s <code>rxode2parseSbuf.h</code> can define <code>RXODE2_SBUF_FORMAT</code> (<code>PKG_CPPFLAGS = -DRXODE2_SBUF_FORMAT</code>) to have its <code>sAppend()</code>, <code>sPrint()</code> and <code>addLine()</code> calls checked by <code>-Wformat</code>. Under R’s default <code>-Werror=format-security</code> a format that is not a literal and has no arguments then fails to compile. Without the macro nothing changes.</p></li>
 </ul></div>
 <div class="section level3">
@@ -131,6 +132,10 @@
 <h4 id="event-tables-development-version-1">Event tables<a class="anchor" aria-label="anchor" href="#event-tables-development-version-1"></a></h4>
 <ul><li>
 <code><a href="../reference/etTrans.html">etTrans()</a></code> now stops on a record whose <code>evid</code> is missing but that carries dose information: a nonzero <code>amt</code>, or a <code>rate</code> or <code>dur</code> that is positive or modeled (-1, -2), as a record with no <code>evid</code> column is read. It used to keep the record as an observation and drop the dose or infusion silently; with no <code>evid</code> column at all such a record is still a dose.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="simulation-development-version">Simulation<a class="anchor" aria-label="anchor" href="#simulation-development-version"></a></h4>
+<ul><li>Truncated multivariate normal draws (<code><a href="../reference/rxRmvn.html">rxRmvn()</a></code> with <code>lower</code>/<code>upper</code>, and truncated simulated etas) now have the right distribution. The draws were left in the standardized scale and mis-permuted, so their covariance ignored <code>sigma</code>, and <code>isChol = TRUE</code> used the wrong product of the factor.</li>
 </ul></div>
 <div class="section level4">
 <h4 id="solving-development-version">Solving<a class="anchor" aria-label="anchor" href="#solving-development-version"></a></h4>
