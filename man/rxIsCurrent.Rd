@@ -15,3 +15,18 @@ boolean indicating if this was built with current rxode2
 \description{
 Checks if the rxode2 object was built with the current build
 }
+\examples{
+\donttest{
+f <- function() {
+  ini({
+    ka <- 0.5; cl <- 1; v <- 10
+  })
+  model({
+    d/dt(depot) <- -ka * depot
+    d/dt(central) <- ka * depot - cl / v * central
+    cp <- central / v
+  })
+}
+rxIsCurrent(f()$simulationModel)
+}
+}

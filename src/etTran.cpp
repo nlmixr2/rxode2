@@ -554,6 +554,11 @@ bool _ini0=true;
 //' @return the boolean ini0, though this is called for its side effects
 //'
 //' @export
+//' @examples
+//' # initial conditions at the first record time rather than time zero
+//' rxSetIni0(FALSE)
+//' # restore the default
+//' rxSetIni0(TRUE)
 //[[Rcpp::export]]
 bool rxSetIni0(bool ini0 = true) {
   _ini0=ini0;

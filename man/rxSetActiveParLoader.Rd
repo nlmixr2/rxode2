@@ -29,6 +29,11 @@ its own parameters without touching an unrelated model's \code{par_ptr}.  Activa
 for as short a span as possible and clear afterwards (\code{on.exit()}), because
 the flag is global to the session, not attached to a model.
 }
+\examples{
+rxSetActiveParLoader("myPkg:myLoader")
+# ... internal solves here ...
+rxClearActiveParLoader()
+}
 \seealso{
 \code{\link[=rxParLoader]{rxParLoader()}}, \code{\link[=rxForcedPars]{rxForcedPars()}}
 }

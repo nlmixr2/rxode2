@@ -37,3 +37,22 @@ are not split.
 The source compartment may also appear in the target list, but the
 target compartments in \code{...} must be unique.
 }
+\examples{
+\donttest{
+# a depot infusion split between two compartments
+f <- function() {
+  ini({
+    fr <- 0.6; k1 <- 0.5; k2 <- 0.05
+  })
+  model({
+    splitInfusion(depot, c1, c2)
+    f(c1) <- fr
+    f(c2) <- 1 - fr
+    d/dt(depot) <- 0
+    d/dt(c1) <- -k1 * c1
+    d/dt(c2) <- -k2 * c2
+  })
+}
+rxSolve(f, et(amt = 100, rate = 20, cmt = "depot") |> et(0:24))
+}
+}

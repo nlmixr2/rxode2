@@ -26,3 +26,21 @@ state from serializable ui slots (so a ui saved to disk and reloaded in a
 fresh session solves correctly).  The hook must be cheap and a no-op for
 models it does not own.
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    k <- 0.1
+  })
+  model({
+    d/dt(A) <- -k * A
+  })
+}
+seen <- new.env()
+seen$n <- 0L
+rxRegisterUiPrep("myPkg:count", function(ui) seen$n <- seen$n + 1L)
+s <- rxSolve(mod, et(amt = 100) |> et(0:4))
+seen$n
+rxRemoveUiPrep("myPkg:count")
+}
+}

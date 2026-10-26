@@ -1270,6 +1270,30 @@
 #' @seealso [rxode2()]
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     tka <- log(1); tcl <- log(0.1); tv <- log(10)
+#'     eta.cl ~ 0.1
+#'   })
+#'   model({
+#'     ka <- exp(tka); cl <- exp(tcl + eta.cl); v <- exp(tv)
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(center) <- ka * depot - cl / v * center
+#'     cp <- center / v
+#'   })
+#' }
+#' ev <- et(amt = 100, ii = 24, addl = 2) |> et(0:72)
+#' # typical subject (between-subject variability removed)
+#' s <- rxSolve(mod, ev, omega = NA)
+#' head(s)
+#' # change a parameter on the solved object; it re-solves
+#' s$tka <- log(2)
+#' head(s)
+#' # 10 subjects with between-subject variability
+#' s2 <- rxSolve(mod, ev, nSub = 10, seed = 42)
+#' }
 rxSolve <- function(
   object,
   params = NULL,
@@ -4895,6 +4919,7 @@ solve.rxEt <- solve.rxSolve
 #' @param obj a solved rxode2 object.
 #' @return a named numeric vector, or `NULL` if nothing was injected.
 #' @export
+#' @inherit rxForcedPars examples
 rxInjectedPars <- function(obj) {
   .cls <- attr(obj, "class")
   .env <- attr(.cls, ".rxode2.env")
@@ -4939,6 +4964,27 @@ rxInjectedPars <- function(obj) {
 #'   returns the (modified) ui.
 #' @export
 #' @author Matthew L. Fidler
+#' @examples
+#' \donttest{
+#' f <- function() {
+#'   ini({
+#'     tcl <- -2
+#'   })
+#'   model({
+#'     cl <- exp(tcl) * WT
+#'     d/dt(depot) <- -cl * depot
+#'   })
+#' }
+#' u <- rxode2(f)
+#' rxForcedPars(u) <- c(WT = 2)
+#' rxForcedPars(u)
+#' ev <- et(amt = 100) |> et(1:8)
+#' ev$WT <- 1
+#' # the forced WT = 2 overrides the data WT = 1
+#' s <- rxSolve(u, ev)
+#' rxInjectedPars(s)
+#' rxForcedPars(u) <- NULL
+#' }
 rxForcedPars <- function(ui) {
   .ui <- rxUiDecompress(ui)
   if (!inherits(.ui, "rxUi")) {
@@ -5072,6 +5118,21 @@ rxForcedPars <- function(ui) {
 #' @return the getter returns the name (or `NULL`); the setter returns the ui.
 #' @export
 #' @author Matthew L. Fidler
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     k <- 0.1
+#'   })
+#'   model({
+#'     d/dt(A) <- -k * A
+#'   })
+#' }
+#' u <- rxode2(mod)
+#' rxParLoader(u) <- "myPkg:myLoader"
+#' rxParLoader(u)
+#' rxParLoader(u) <- NULL
+#' }
 rxParLoader <- function(ui) {
   .ui <- rxUiDecompress(ui)
   if (!inherits(.ui, "rxUi")) {
@@ -5134,6 +5195,10 @@ rxParLoader <- function(ui) {
 #' @seealso [rxParLoader()], [rxForcedPars()]
 #' @export
 #' @author Matthew L. Fidler
+#' @examples
+#' rxSetActiveParLoader("myPkg:myLoader")
+#' # ... internal solves here ...
+#' rxClearActiveParLoader()
 rxSetActiveParLoader <- function(name) {
   if (!is.character(name) || length(name) != 1L || is.na(name)) {
     stop("'name' must be a single loader name", call. = FALSE)
@@ -5187,6 +5252,23 @@ rxClearActiveParLoader <- function() {
 #'   unrelated solves.
 #' @return Invisibly, the hook name (register) or `NULL` (remove).
 #' @export
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     k <- 0.1
+#'   })
+#'   model({
+#'     d/dt(A) <- -k * A
+#'   })
+#' }
+#' seen <- new.env()
+#' seen$n <- 0L
+#' rxRegisterUiPrep("myPkg:count", function(ui) seen$n <- seen$n + 1L)
+#' s <- rxSolve(mod, et(amt = 100) |> et(0:4))
+#' seen$n
+#' rxRemoveUiPrep("myPkg:count")
+#' }
 rxRegisterUiPrep <- function(name, fn) {
   if (!is.character(name) || length(name) != 1L) {
     stop("'name' must be a single string", call. = FALSE)
@@ -5261,6 +5343,24 @@ rxRemoveUiPrep <- function(name) {
 #' @return Invisibly, the hook name (register) or `NULL` (remove).
 #' @export
 #' @author Matthew L. Fidler
+#' @examples
+#' \donttest{
+#' rxRegisterUiAssembled("myPkg:tag", function(ui) {
+#'   assign("myTag", "built", envir = ui)
+#'   assign("sticky", unique(c(ui$sticky, "myTag")), envir = ui)
+#' })
+#' mod <- function() {
+#'   ini({
+#'     k <- 0.1
+#'   })
+#'   model({
+#'     d/dt(A) <- -k * A
+#'   })
+#' }
+#' u <- rxode2(mod)
+#' rxUiDecompress(u)$myTag
+#' rxRemoveUiAssembled("myPkg:tag")
+#' }
 rxRegisterUiAssembled <- function(name, fn) {
   if (!is.character(name) || length(name) != 1L) {
     stop("'name' must be a single string", call. = FALSE)
@@ -5989,6 +6089,9 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   see the details)
 #'
 #' @export
+#' @examples
+#' odeMethodToInt("liblsoda")
+#' odeMethodToInt("dop853")
 odeMethodToInt <- function(
   method = c(
     "liblsoda",

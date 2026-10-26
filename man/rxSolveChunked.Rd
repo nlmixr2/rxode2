@@ -52,3 +52,19 @@ controlled by the \code{rxode2.oom.backend} option:
 A requested engine that is not installed silently degrades
 (duckdb \eqn{\to} arrow \eqn{\to} rds).
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    k <- 0.1
+  })
+  model({
+    d/dt(A) <- -k * A
+  })
+}
+# 6 subjects solved 3 at a time; chunks are written to tempdir()
+s <- rxSolveChunked(mod, et(amt = 100) |> et(0:24) |> et(id = 1:6), chunkSize = 3)
+dim(s)
+head(as.data.frame(s))
+}
+}

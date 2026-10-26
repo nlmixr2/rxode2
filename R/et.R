@@ -2021,6 +2021,8 @@ rep.rxEt <- function(x, ...) {
 #' @param ... Other parameters
 #' @return An event table
 #' @export
+#' @examples
+#' as.et(data.frame(time = c(0, 12), amt = c(100, 50), evid = 1))
 as.et <- function(x, ...) {
   UseMethod("as.et")
 }

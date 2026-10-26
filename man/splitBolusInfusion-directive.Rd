@@ -56,3 +56,23 @@ the bolus (first-order input scaled by \code{1 - f1}) and \code{central}
 input over \code{tk0}, scaled by \code{f1}).
 }
 
+\examples{
+\donttest{
+f <- function() {
+  ini({
+    tk0 <- 4; fr <- 0.7; ka2 <- 1.2; cl <- 0.1; v <- 10
+  })
+  model({
+    splitBolusInfusion(depot, depot2, central)
+    dur(central) <- tk0
+    f(central) <- fr
+    f(depot2) <- 1 - fr
+    d/dt(depot) <- 0
+    d/dt(depot2) <- -ka2 * depot2
+    d/dt(central) <- ka2 * depot2 - cl / v * central
+  })
+}
+# the depot bolus becomes a central infusion plus a depot2 bolus
+rxSolve(f, et(amt = 100, cmt = "depot") |> et(0:24))
+}
+}

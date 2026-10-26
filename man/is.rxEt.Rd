@@ -15,3 +15,7 @@ logical
 \description{
 Check if object is an rxEt event table
 }
+\examples{
+is.rxEt(et(amt = 100))
+is.rxEt(data.frame(time = 0))
+}

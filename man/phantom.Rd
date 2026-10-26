@@ -56,6 +56,26 @@ Past-time pushes (where \code{time < t}) are silently ignored and counted;
 a warning is issued after solving.
 }
 }
+\examples{
+\donttest{
+# phantom dose at t = 12 resets tad() without adding drug
+f <- function() {
+  ini({
+    ka <- 0.5; cl <- 1; v <- 10
+  })
+  model({
+    mtime(at) <- 12
+    d/dt(depot) <- -ka * depot
+    d/dt(central) <- ka * depot - cl / v * central
+    cp <- central / v
+    td <- tad(depot)
+    if (t >= at && t < at + 0.5) phantom(100, depot)
+  })
+}
+s <- rxSolve(f, et(amt = 100) |> et(0:24))
+s[s$time >= 11 & s$time <= 14, ]
+}
+}
 \author{
 Matthew L. Fidler
 }

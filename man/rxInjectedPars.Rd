@@ -17,3 +17,25 @@ Returns the parameters (e.g. trained neural-network weights) that a
 registered par-loader wrote into the solve parameter vector, saved on the
 solved object so re-solving from it restores them.
 }
+\examples{
+\donttest{
+f <- function() {
+  ini({
+    tcl <- -2
+  })
+  model({
+    cl <- exp(tcl) * WT
+    d/dt(depot) <- -cl * depot
+  })
+}
+u <- rxode2(f)
+rxForcedPars(u) <- c(WT = 2)
+rxForcedPars(u)
+ev <- et(amt = 100) |> et(1:8)
+ev$WT <- 1
+# the forced WT = 2 overrides the data WT = 1
+s <- rxSolve(u, ev)
+rxInjectedPars(s)
+rxForcedPars(u) <- NULL
+}
+}

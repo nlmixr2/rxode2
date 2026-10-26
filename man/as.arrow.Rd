@@ -27,3 +27,19 @@ the \code{arrow} package.
 This is an rxode2 generic: \pkg{arrow} provides \code{open_dataset()} but no
 lazy-dataset coercion generic to dispatch on, so rxode2 defines its own.
 }
+\examples{
+\donttest{
+if (requireNamespace("arrow", quietly = TRUE)) {
+mod <- function() {
+  ini({
+    k <- 0.1
+  })
+  model({
+    d/dt(A) <- -k * A
+  })
+}
+s <- rxSolveChunked(mod, et(amt = 100) |> et(0:24) |> et(id = 1:6), chunkSize = 3)
+as.arrow(s)
+}
+}
+}

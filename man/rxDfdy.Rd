@@ -16,6 +16,20 @@ object.
 \description{
 Return Jacobain and parameter derivatives
 }
+\examples{
+\donttest{
+f <- function() {
+  ini({
+    k <- 0.1
+  })
+  model({
+    d/dt(x) <- -k * x
+    df(x)/dy(x) <- -k
+  })
+}
+rxDfdy(f())
+}
+}
 \seealso{
 Other Query model information:
 \code{\link[=rxInits]{rxInits()}},

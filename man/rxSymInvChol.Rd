@@ -49,6 +49,13 @@ matrixes calculated in variables \code{omega}, \code{omegaInv}, \code{dOmega},
 \description{
 Get Omega^-1 and derivatives
 }
+\examples{
+omega <- lotri::lotri(a + b ~ c(1, 0.5, 1))
+x <- rxSymInvCholCreate(omega, create.env = FALSE)
+rxSymInvChol(x, x$ini, "omegaInv")
+# derivative of Omega^-1 with respect to the first theta
+rxSymInvChol(x, x$ini, "d(omegaInv)", 1L)
+}
 \author{
 Matthew L. Fidler
 }

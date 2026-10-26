@@ -20,6 +20,23 @@ If state is a string, return the compartment number of the named state.
 \description{
 This returns the model's compartments or states.
 }
+\examples{
+\donttest{
+f <- function() {
+  ini({
+    ka <- 0.5; cl <- 1; v <- 10
+  })
+  model({
+    d/dt(depot) <- -ka * depot
+    d/dt(central) <- ka * depot - cl / v * central
+    cp <- central / v
+  })
+}
+m <- f()
+rxState(m)
+rxState(m, "central")
+}
+}
 \seealso{
 \code{\link[=rxode2]{rxode2()}}
 

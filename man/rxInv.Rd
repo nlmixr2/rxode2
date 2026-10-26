@@ -15,3 +15,6 @@ inverse or pseudo inverse of matrix.
 \description{
 Invert matrix using RcppArmadillo.
 }
+\examples{
+rxInv(matrix(c(2, 1, 1, 2), 2))
+}

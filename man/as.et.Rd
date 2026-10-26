@@ -20,3 +20,6 @@ An event table
 \description{
 Coerce object to data.frame
 }
+\examples{
+as.et(data.frame(time = c(0, 12), amt = c(100, 50), evid = 1))
+}

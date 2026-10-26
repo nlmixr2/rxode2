@@ -228,6 +228,14 @@ a data frame with the simulated subjects
 \description{
 Simulate Parameters from a Theta/Omega specification
 }
+\examples{
+rxWithSeed(42, {
+  rxSimThetaOmega(
+    params = c(tka = 1, tcl = 2),
+    omega = lotri::lotri(eta.ka ~ 0.1), nSub = 3
+  )
+})
+}
 \author{
 Matthew L.Fidler
 }

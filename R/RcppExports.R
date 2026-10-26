@@ -143,6 +143,11 @@ getCmtNum_ <- function(cmt, mv, sens = TRUE) {
 #' @return the boolean ini0, though this is called for its side effects
 #'
 #' @export
+#' @examples
+#' # initial conditions at the first record time rather than time zero
+#' rxSetIni0(FALSE)
+#' # restore the default
+#' rxSetIni0(TRUE)
 rxSetIni0 <- function(ini0 = TRUE) {
     .Call(`_rxode2_rxSetIni0`, ini0)
 }
@@ -556,6 +561,22 @@ rxModelVars_ <- function(obj) {
 #' @family Query model information
 #' @author Matthew L.Fidler
 #' @export
+#' @examples
+#' \donttest{
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'   })
+#' }
+#' m <- f()
+#' rxState(m)
+#' rxState(m, "central")
+#' }
 rxState <- function(obj = NULL, state = NULL) {
     .Call(`_rxode2_rxState`, obj, state)
 }
@@ -577,6 +598,19 @@ rxParams_ <- function(obj) {
 #'
 #' @family Query model information
 #' @export
+#' @examples
+#' \donttest{
+#' f <- function() {
+#'   ini({
+#'     k <- 0.1
+#'   })
+#'   model({
+#'     d/dt(x) <- -k * x
+#'     df(x)/dy(x) <- -k
+#'   })
+#' }
+#' rxDfdy(f())
+#' }
 rxDfdy <- function(obj) {
     .Call(`_rxode2_rxDfdy`, obj)
 }
@@ -592,6 +626,20 @@ rxDfdy <- function(obj) {
 #' @family Query model information
 #' @author Matthew L.Fidler
 #' @export
+#' @examples
+#' \donttest{
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'   })
+#' }
+#' rxLhs(f())
+#' }
 rxLhs <- function(obj) {
     .Call(`_rxode2_rxLhs`, obj)
 }
@@ -674,6 +722,13 @@ atolRtolFactor_ <- function(factor) {
 #' @author Matthew L.Fidler
 #'
 #' @export
+#' @examples
+#' rxWithSeed(42, {
+#'   rxSimThetaOmega(
+#'     params = c(tka = 1, tcl = 2),
+#'     omega = lotri::lotri(eta.ka ~ 0.1), nSub = 3
+#'   )
+#' })
 rxSimThetaOmega <- function(params = NULL, omega = NULL, omegaDf = NULL, omegaLower = as.numeric( c(R_NegInf)), omegaUpper = as.numeric( c(R_PosInf)), omegaIsChol = FALSE, omegaSeparation = "auto", omegaXform = 1L, nSub = 1L, thetaMat = NULL, thetaLower = as.numeric( c(R_NegInf)), thetaUpper = as.numeric( c(R_PosInf)), thetaDf = NULL, thetaIsChol = FALSE, nStud = 1L, sigma = NULL, sigmaLower = as.numeric( c(R_NegInf)), sigmaUpper = as.numeric( c(R_PosInf)), sigmaDf = NULL, sigmaIsChol = FALSE, sigmaSeparation = "auto", sigmaXform = 1L, nCoresRV = 1L, nObs = 1L, dfSub = 0, dfObs = 0, simSubjects = TRUE, simVariability = as.logical( c(NA_LOGICAL))) {
     .Call(`_rxode2_rxSimThetaOmega`, params, omega, omegaDf, omegaLower, omegaUpper, omegaIsChol, omegaSeparation, omegaXform, nSub, thetaMat, thetaLower, thetaUpper, thetaDf, thetaIsChol, nStud, sigma, sigmaLower, sigmaUpper, sigmaDf, sigmaIsChol, sigmaSeparation, sigmaXform, nCoresRV, nObs, dfSub, dfObs, simSubjects, simVariability)
 }
@@ -750,6 +805,20 @@ rxGetrxode2 <- function(obj) {
 #' @return boolean indicating if this was built with current rxode2
 #'
 #' @export
+#' @examples
+#' \donttest{
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'   })
+#' }
+#' rxIsCurrent(f()$simulationModel)
+#' }
 rxIsCurrent <- function(obj) {
     .Call(`_rxode2_rxIsCurrent`, obj)
 }
@@ -830,6 +899,22 @@ rxDynLoad <- function(obj) {
 #' @return nothing; called for side effects
 #'
 #' @export
+#' @examples
+#' \donttest{
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'   })
+#' }
+#' m <- f()$simulationModel
+#' rxLock(m)
+#' rxUnlock(m)
+#' }
 rxLock <- function(obj) {
     .Call(`_rxode2_rxLock`, obj)
 }
@@ -887,6 +972,21 @@ rxDynUnload <- function(obj) {
 #'
 #' @author Matthew L.Fidler
 #' @export
+#' @examples
+#' \donttest{
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'   })
+#' }
+#' m <- f()$simulationModel
+#' rxDelete(m)
+#' }
 rxDelete <- function(obj) {
     .Call(`_rxode2_rxDelete`, obj)
 }
@@ -929,6 +1029,8 @@ rxSetSilentErr <- function(silent) {
 #' @return inverse or pseudo inverse of matrix.
 #'
 #' @export
+#' @examples
+#' rxInv(matrix(c(2, 1, 1, 2), 2))
 rxInv <- function(matrix) {
     .Call(`_rxode2_rxInv`, matrix)
 }
@@ -970,6 +1072,12 @@ rxInv <- function(matrix) {
 #' @author Matthew L. Fidler
 #'
 #' @export
+#' @examples
+#' omega <- lotri::lotri(a + b ~ c(1, 0.5, 1))
+#' x <- rxSymInvCholCreate(omega, create.env = FALSE)
+#' rxSymInvChol(x, x$ini, "omegaInv")
+#' # derivative of Omega^-1 with respect to the first theta
+#' rxSymInvChol(x, x$ini, "d(omegaInv)", 1L)
 rxSymInvChol <- function(invObjOrMatrix, theta = NULL, type = "cholOmegaInv", thetaNumber = 0L) {
     .Call(`_rxode2_rxSymInvChol`, invObjOrMatrix, theta, type, thetaNumber)
 }
