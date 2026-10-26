@@ -263,66 +263,11 @@ drug-disease modeling, etc.
 
 \subsection{Creating rxode2 models}{
 
-The ODE-based model specification may be coded inside four places:
-\itemize{
-\item Inside a \code{rxode2({})} block statements:
-}
+The recommended way to write an \code{rxode2} model is a model function with
+an \code{ini({})} block (parameter values) and a \code{model({})} block
+(equations):
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{library(rxode2)
-mod <- rxode2(\{
-  # simple assignment
-  C2 <- centr/V2
-
-  # time-derivative assignment
-  d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
-\})
-}\if{html}{\out{</div>}}
-\itemize{
-\item Inside a \code{rxode2("")} string statement:
-}
-
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{mod <- rxode2("
-  # simple assignment
-  C2 <- centr/V2
-
-  # time-derivative assignment
-  d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
-")
-}\if{html}{\out{</div>}}
-\itemize{
-\item In a file name to be loaded by rxode2:
-}
-
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{writeLines("
-  # simple assignment
-  C2 <- centr/V2
-
-  # time-derivative assignment
-  d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
-", "modelFile.rxode2")
-mod <- rxode2(filename='modelFile.rxode2')
-unlink("modelFile.rxode2")
-}\if{html}{\out{</div>}}
-\itemize{
-\item In a model function which can be parsed by \code{rxode2}:
-}
-
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{mod <- function() \{
-  model(\{
-    # simple assignment
-    C2 <- centr/V2
-
-    # time-derivative assignment
-    d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
-  \})
-\}
-
-mod <- rxode2(mod) # or simply mod() if the model is at the end of the function
-
-# These model functions often have residual components and initial
-# (`ini(\{\})`) conditions attached as well. For example the
-# theophylline model can be written as:
-
 one.compartment <- function() \{
   ini(\{
     tka <- 0.45 # Log Ka
@@ -344,19 +289,17 @@ one.compartment <- function() \{
   \})
 \}
 
-# after parsing the model
-mod <- one.compartment()
+# parse the model into a rxode2 ui object
+mod <- one.compartment() # or rxode2(one.compartment)
 }\if{html}{\out{</div>}}
 
-For the block statement, character string or text file an internal
-\code{rxode2} compilation manager translates the ODE system into C, compiles
-it and loads it into the R session. The call to \code{rxode2} produces an
-object of class \code{rxode2} which consists of a list-like structure
-(environment) with various member functions.
+The parameter values in \code{ini({})} are used when solving, so the model
+can be solved directly with \code{rxSolve(mod, events)}. Initial conditions
+of the states can be set in the model block with \code{state(0) <- value}.
 
-For the last type of model (a model function), a call to \code{rxode2}
-creates a parsed \code{rxode2} ui that can be translated to the \code{rxode2}
-compilation model.
+Calling the function creates a parsed \code{rxode2} user interface object
+(\code{rxUi}) which is translated into an \code{rxode2} compiled model when
+solved:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{mod$simulationModel
 
@@ -365,8 +308,21 @@ mod$simulationIniModel
 }\if{html}{\out{</div>}}
 
 This is the same type of function required for \code{nlmixr2} estimation and
-can be extended and modified by model piping. For this reason will be
-focused on in the documentation.
+can be extended and modified by model piping. For this reason it is the
+form used throughout the documentation.
+
+The model equations can also be given directly to \code{rxode2()}, without an
+\code{ini({})} block:
+\itemize{
+\item a \code{rxode2({})} block of statements;
+\item a \code{rxode2("")} character string;
+\item a file, \code{rxode2(filename="modelFile.rxode2")}.
+}
+
+These low-level forms create an \code{rxode2} compiled model object; the
+parameters are then supplied when solving with \verb{params=}. See
+\url{https://nlmixr2.github.io/rxode2/articles/rxode2-classic-models.html}
+for these forms and when to use them.
 }
 
 This basic model specification consists of one or more statements

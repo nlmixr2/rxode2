@@ -1,0 +1,273 @@
+---
+title: "Low-level models and other input styles"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(rxode2)
+```
+
+Most of the `rxode2` documentation writes models as model functions,
+with an `ini({})` block for the parameter values and a `model({})`
+block for the equations, and builds dosing with `et()`.  `rxode2` also
+supports other styles, mostly kept from earlier versions and from
+other tools.  This page collects them and shows how they behave
+differently.
+
+## Low-level models
+
+### Writing a low-level model
+
+A low-level model gives `rxode2()` the model equations only, without
+`ini({})`.  It can be written as a block of statements:
+
+```{r low-level-block}
+mod <- rxode2({
+  ka <- exp(tka)
+  cl <- exp(tcl)
+  v <- exp(tv)
+  d/dt(depot) <- -ka * depot
+  d/dt(center) <- ka * depot - cl / v * center
+  cp <- center / v
+})
+mod
+```
+
+as a character string:
+
+```{r low-level-string}
+modStr <- rxode2("
+  d/dt(center) <- -cl / v * center
+  cp <- center / v
+")
+```
+
+or as a file:
+
+```{r low-level-file}
+modFile <- tempfile(fileext = ".rxode2")
+writeLines(c("d/dt(center) <- -cl / v * center",
+             "cp <- center / v"), modFile)
+modFile <- rxode2(filename = modFile)
+modFile
+```
+
+Each call translates the model to C, compiles it and returns an
+`rxode2` object.
+
+### Solving: `params=` and `inits=`
+
+A low-level model has no parameter values, so every parameter must be
+supplied when solving, with `params=` (a named vector, or a data frame
+with one row per subject):
+
+```{r low-level-solve}
+ev <- et(amt = 300) |> et(seq(0, 24, by = 2))
+s <- rxSolve(mod, ev, params = c(tka = 0.45, tcl = 1, tv = 3.45))
+head(s)
+```
+
+A missing parameter is an error:
+
+```{r low-level-missing}
+try(rxSolve(mod, ev))
+```
+
+The state values at time 0 can be given with `inits=` (or with
+`state(0) <-` in the model, as in a model function):
+
+```{r low-level-inits}
+s <- rxSolve(mod, ev, params = c(tka = 0.45, tcl = 1, tv = 3.45),
+             inits = c(depot = 10))
+head(s)
+```
+
+### How they differ from model functions
+
+The same model as a model function:
+
+```{r fun-form}
+modFun <- function() {
+  ini({
+    tka <- 0.45
+    tcl <- 1
+    tv <- 3.45
+    eta.cl ~ 0.1
+    add.sd <- 0.7
+  })
+  model({
+    ka <- exp(tka)
+    cl <- exp(tcl + eta.cl)
+    v <- exp(tv)
+    d/dt(depot) <- -ka * depot
+    d/dt(center) <- ka * depot - cl / v * center
+    cp <- center / v
+    cp ~ add(add.sd)
+  })
+}
+ui <- modFun()
+```
+
+- **Parameter values.** A model function takes its parameter values
+  from `ini({})`, so it solves with `rxSolve(ui, ev)`.  `params=` still
+  works and overrides the `ini({})` values.  A low-level model only
+  has the values supplied with `params=`.
+
+- **Between-subject variability.** The `eta.cl ~ 0.1` line in
+  `ini({})` is used to simulate the etas.  A low-level model has no
+  omega; it has to be given with `omega=` in `rxSolve()`.
+
+- **Residual error.** `cp ~ add(add.sd)` defines an endpoint with
+  residual error; solving simulates it in the `sim` column (`ipredSim`
+  is the prediction).  The low-level language does not have endpoints:
+  there `~` is an assignment that is not included in the output, and
+  residual error terms have to be written by hand with `sigma=` in
+  `rxSolve()`.
+
+```{r fun-solve}
+rxSolve(ui, ev, seed = 42)
+```
+
+```{r low-level-tilde}
+hidden <- rxode2({
+  a ~ 3
+  b <- a + 1
+})
+hidden$lhs # `a` is not output
+```
+
+```{r low-level-no-endpoint}
+try(rxode2({
+  cp <- center / v
+  cp ~ add(add.sd)
+}))
+```
+
+- **Turning the variability off.** For a model function, `omega = NA`
+  and `sigma = NA` give the typical-value prediction (in the `pred`
+  column):
+
+```{r fun-typical}
+rxSolve(ui, ev, params = c(tcl = 2), omega = NA, sigma = NA)
+```
+
+- **Model piping.** `model()` and `ini()` piping work on the model
+  function form.  Piping a low-level model first converts it to a
+  model function:
+
+```{r low-level-pipe}
+mod |> ini(tka = 0.45, tcl = 1, tv = 3.45)
+```
+
+### Converting between forms
+
+- `ui$simulationModel` (or `ui$simulationIniModel`, which also includes
+  the `ini({})` values) gives the low-level model that `rxode2` solves
+  for a model function, including the generated code for the endpoints:
+
+```{r sim-model}
+ui$simulationModel
+```
+
+- `as.rxUi()` converts a low-level model to a model function object
+  (`rxUi`); it has no `ini({})` values:
+
+```{r as-rxui}
+modUi <- as.rxUi(mod)
+modUi$iniDf
+```
+
+- `as.function()` (or `$fun`) gives back the model function itself:
+
+```{r as-function}
+as.function(modUi)
+```
+
+### When a low-level model is still the right tool
+
+- **Models in packages.** `rxPkg()` and `rxUse()` store compiled
+  low-level models in a package (see
+  [Pre-compiled models in packages](https://nlmixr2.github.io/rxode2/articles/rxode2-rxUse.html)).
+- **Generated code.** When a tool writes the model text, the string
+  and file forms take it directly.
+- **Options of the compiled model.** Options such as `calcJac=` (a
+  symbolic Jacobian, see
+  [stiff ODEs](https://nlmixr2.github.io/rxode2/articles/rxode2-stiff.html))
+  are arguments of `rxode2()`.
+- **All parameters per subject.** When every parameter comes from a
+  data frame with `params=`, an `ini({})` block adds nothing.
+- **C-level functions.** Packages that provide C functions to
+  `rxode2` models
+  ([custom C/C++ functions](rxode2-pkg-exported-funs.html)) document
+  the low-level form.
+
+## Other event-table styles
+
+The main way to build dosing and sampling is `et()` (see
+[event tables](https://nlmixr2.github.io/rxode2/articles/rxode2-event-table.html)).
+`rxSolve()` also accepts the styles below.
+
+### `eventTable()` methods
+
+The classic `RxODE` interface creates an event table and then calls
+methods on it:
+
+```{r event-table}
+evt <- eventTable(amount.units = "mg", time.units = "hours")
+evt$add.dosing(dose = 300, nbr.doses = 3, dosing.interval = 12)
+evt$add.sampling(seq(0, 36, by = 4))
+evt
+```
+
+The same methods are functions that can be piped:
+
+```{r event-table-pipe}
+evt2 <- eventTable() |>
+  add.dosing(dose = 300, nbr.doses = 3, dosing.interval = 12) |>
+  add.sampling(seq(0, 36, by = 4))
+rxSolve(ui, evt2, omega = NA, sigma = NA)
+```
+
+### NONMEM-style data frames
+
+A data frame with NONMEM columns (`ID`, `TIME`, `AMT`, `EVID`, `CMT`,
+`RATE`, `II`, `ADDL`, `SS`, `DV`, ...) is used directly (see
+[dataset columns](https://nlmixr2.github.io/rxode2/articles/rxode2-dataset-columns.html)):
+
+```{r nonmem-df}
+nmData <- data.frame(ID = 1,
+                     TIME = c(0, 1, 2, 4, 8, 12),
+                     AMT = c(300, 0, 0, 0, 0, 0),
+                     EVID = c(1, 0, 0, 0, 0, 0),
+                     CMT = 1)
+rxSolve(ui, nmData, omega = NA, sigma = NA)
+```
+
+### deSolve-style event data frames
+
+A `deSolve` event data frame (columns `var`, `time`, `value` and
+`method`, with `method` one of `"add"`, `"mult"` or `"rep"`) is
+converted by `et()` to dose (`evid=1`), multiply (`evid=6`) and replace
+(`evid=5`) events:
+
+```{r desolve-df}
+eventdat <- data.frame(var = c("depot", "center", "center"),
+                       time = c(0, 6, 12),
+                       value = c(300, 2, 0),
+                       method = c("add", "mult", "rep"))
+ev3 <- et(eventdat) |> et(seq(0, 24, by = 2))
+rxSolve(ui, ev3, omega = NA, sigma = NA)
+```
+
+### Classic RxODE `evid` codes
+
+`rxode2` also accepts the classic `RxODE` event ids, which combine the
+compartment, the dose type and the infusion flags in one number.  They
+are described in
+[classic RxODE events](https://nlmixr2.github.io/rxode2/articles/rxode2-events-classic.html).

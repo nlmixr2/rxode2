@@ -42,26 +42,30 @@ maximum concentration seen so far and the time it occurred.
 Here is how you can do this in an `rxode2` model:
 
 ```{r cmax_model}
-m <- rxode2({
-  v  <- 10
-  cl <- 1
-  ka <- 1
-  d/dt(depot) <- -ka * depot
-  d/dt(centr) <- ka * depot - cl/v * centr
-  cp <- centr / v
+m <- function() {
+  ini({
+    v <- 10
+    cl <- 1
+    ka <- 1
+  })
+  model({
+    d/dt(depot) <- -ka * depot
+    d/dt(centr) <- ka * depot - cl/v * centr
+    cp <- centr / v
 
-  # Initialize sticky variables if they are NA
-  if (is.na(C_max)) {
-    C_max <- 0
-    T_max <- 0
-  }
+    # Initialize sticky variables if they are NA
+    if (is.na(C_max)) {
+      C_max <- 0
+      T_max <- 0
+    }
 
-  # Update C_max and T_max
-  if (cp > C_max) {
-    C_max <- cp
-    T_max <- time
-  }
-})
+    # Update C_max and T_max
+    if (cp > C_max) {
+      C_max <- cp
+      T_max <- time
+    }
+  })
+}
 ```
 
 In this model, `C_max` and `T_max` are checked with
@@ -76,31 +80,35 @@ Let's look at a more complete example that calculates both peaks and
 troughs.
 
 ```{r comprehensive}
-m <- rxode2({
-  v  <- 10
-  cl <- 1
-  ka <- 1
-  d/dt(depot) <- -ka * depot
-  d/dt(centr) <- ka * depot - cl/v * centr
-  cp <- centr / v
+m <- function() {
+  ini({
+    v <- 10
+    cl <- 1
+    ka <- 1
+  })
+  model({
+    d/dt(depot) <- -ka * depot
+    d/dt(centr) <- ka * depot - cl/v * centr
+    cp <- centr / v
 
-  if (is.na(C_max)) {
-    C_max <- 0
-    C_min <- Inf
-    T_max <- 0
-    T_min <- Inf
-  }
+    if (is.na(C_max)) {
+      C_max <- 0
+      C_min <- Inf
+      T_max <- 0
+      T_min <- Inf
+    }
 
-  if (cp > C_max) {
-    C_max <- cp
-    T_max <- time
-  }
+    if (cp > C_max) {
+      C_max <- cp
+      T_max <- time
+    }
 
-  if (cp < C_min) {
-    C_min <- cp
-    T_min <- time
-  }
-})
+    if (cp < C_min) {
+      C_min <- cp
+      T_min <- time
+    }
+  })
+}
 
 ev <- et(amt=100) |>
   et(seq(0, 24, length.out=100))
@@ -118,20 +126,24 @@ also implement it using sticky variables and the `is.na(amt)` check
 (which is true when no dose is administered at the current time).
 
 ```{r tad_example}
-m <- rxode2({
-  cl <- 1
-  v <- 10
-  d/dt(centr) <- -cl/v * centr
-  cp <- centr/v
+m <- function() {
+  ini({
+    cl <- 1
+    v <- 10
+  })
+  model({
+    d/dt(centr) <- -cl/v * centr
+    cp <- centr/v
 
-  if (!is.na(amt)) {
-    # A dose is happening
-    tdose <- time
-  }
+    if (!is.na(amt)) {
+      # A dose is happening
+      tdose <- time
+    }
 
-  # tad is sticky because tdose is sticky
-  tad <- time - tdose
-})
+    # tad is sticky because tdose is sticky
+    tad <- time - tdose
+  })
+}
 
 ev <- et(amt=100, time=0) |>
   et(amt=100, time=12) |>

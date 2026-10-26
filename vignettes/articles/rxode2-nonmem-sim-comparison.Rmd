@@ -83,29 +83,31 @@ The same simulation in rxode2 stays entirely within R:
 ```{r}
 library(rxode2)
 
-mod <- rxode2({
-  KA  <- exp(tka)
-  CL  <- exp(tcl + eta.cl)
-  V   <- exp(tv  + eta.v)
-  d/dt(depot) <- -KA * depot
-  d/dt(centr) <- KA * depot - CL / V * centr
-  cp          <- centr / V
-  cp_obs      <- cp * (1 + prop.err)
-})
-
-theta <- c(tka = log(1), tcl = log(4), tv = log(20))
-omega <- lotri(eta.cl ~ 0.09, eta.v ~ 0.09)
-sigma <- matrix(0.04)
+mod <- function() {
+  ini({
+    tka <- log(1)
+    tcl <- log(4)
+    tv <- log(20)
+    eta.cl ~ 0.09
+    eta.v ~ 0.09
+    prop.sd <- 0.2 # SD; variance 0.04
+  })
+  model({
+    KA  <- exp(tka)
+    CL  <- exp(tcl + eta.cl)
+    V   <- exp(tv  + eta.v)
+    d/dt(depot) <- -KA * depot
+    d/dt(centr) <- KA * depot - CL / V * centr
+    cp          <- centr / V
+    cp ~ prop(prop.sd)
+  })
+}
 
 ev <- et(amt = 100, ii = 24, addl = 3) |>
   et(seq(0, 96, by = 1))
 
-sim_result <- rxSolve(mod, ev,
-                      params  = theta,
-                      omega   = omega,
-                      sigma   = sigma,
-                      nSub    = 200,
-                      nStud   = 1)
+# the simulated observations are in the `sim` column
+sim_result <- rxSolve(mod, ev, nSub = 200, nStud = 1)
 ```
 
 No external process, no file I/O, no parsing step.
@@ -132,10 +134,8 @@ minutes even for simple models -- making rapid exploration impractical.
 
 ```{r}
 # Instant parameter sweep -- no file I/O, no process launch
-rxSolve(mod, ev, params = c(tka = log(1), tcl = log(4), tv = log(20)),
-        omega = omega, nSub = 200)
-rxSolve(mod, ev, params = c(tka = log(1), tcl = log(6), tv = log(20)),
-        omega = omega, nSub = 200)
+rxSolve(mod, ev, nSub = 200)
+rxSolve(mod |> ini(tcl = log(6)), ev, nSub = 200)
 ```
 
 ### OpenMP parallelism across subjects
@@ -147,7 +147,7 @@ across subjects via OpenMP within a single R process.  Simulating
 ```{r}
 getRxThreads()   # inspect active thread count
 
-rxSolve(mod, ev, params = theta, omega = omega, nSub = 10000)
+rxSolve(mod, ev, nSub = 10000)
 ```
 
 NONMEM's `$SIMULATION` step can also be parallelized, via a parafile
@@ -168,7 +168,7 @@ library(vpc)
 sim_result |>
   vpc(obs_data = obs_data,
       obs_cols  = list(idv = "time", dv = "cp_obs"),
-      sim_cols  = list(idv = "time", dv = "cp_obs"))
+      sim_cols  = list(idv = "time", dv = "sim"))
 ```
 
 With NONMEM, each step -- preparing the input CSV, running the model,
@@ -200,12 +200,21 @@ structural model.  The simulated and predicted values are both returned
 in the same output data frame:
 
 ```{r}
-mod_err <- rxode2({
-  d/dt(depot) <- -KA * depot
-  d/dt(centr) <- KA * depot - CL / V * centr
-  cp          <- centr / V
-  cp_obs      <- cp * (1 + prop.err) + add.err   # combined error
-})
+mod_err <- function() {
+  ini({
+    KA <- 1
+    CL <- 4
+    V <- 20
+    add.sd <- 0.1
+    prop.sd <- 0.2
+  })
+  model({
+    d/dt(depot) <- -KA * depot
+    d/dt(centr) <- KA * depot - CL / V * centr
+    cp          <- centr / V
+    cp ~ add(add.sd) + prop(prop.sd)   # combined error
+  })
+}
 ```
 
 ### Importing a NONMEM model via nonmem2rx
@@ -303,17 +312,16 @@ dispatched to `mirai` daemons (`rxSolve(..., parallel = n)`) for
 distributed/HPC execution, all from pure R.
 
 ```{r}
-rxSolve(mod, params, ev, file = tempfile("rx"), parallel = 4)
+rxSolve(mod, ev, nSub = 10000, file = tempfile("rx"), parallel = 4)
 ```
 
 ### Reproducible seeds in R
 
-Random seeds for stochastic simulations are set with standard R
-conventions and are fully reproducible across platforms:
+Random seeds for stochastic simulations are set with the `seed` argument
+(or `rxWithSeed()`) and are fully reproducible across platforms:
 
 ```{r}
-set.seed(12345)
-rxSolve(mod, ev, params = theta, omega = omega, nSub = 200)
+rxSolve(mod, ev, nSub = 200, seed = 12345)
 ```
 
 NONMEM's `$SIMULATION (seed)` syntax is platform-dependent: the same
@@ -409,7 +417,7 @@ supports its own extended EVID codes (5 = replace, 6 = multiply,
 ### Between-subject variability (omega)
 
 Both tools sample ETAs from an omega matrix for population simulation.
-rxode2 accepts the omega matrix directly in `rxSolve()`; NONMEM
+rxode2 specifies it in the `ini({})` block (or `omega=` in `rxSolve()`); NONMEM
 specifies it in `$OMEGA` and draws automatically during `$SIMULATION`.
 
 ### Residual variability (sigma)

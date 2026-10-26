@@ -50,7 +50,14 @@ Below is a commented example to quickly show the capabilities of
 ``` r
 f <- function() {
   ini({
-
+    KA <- 0.29
+    CL <- 18.6
+    V2 <- 40.2
+    Q <- 10.5
+    V3 <- 297
+    Kin <- 1
+    Kout <- 1
+    EC50 <- 200
   })
   model({
     # An rxode2 model specification (this line is a comment).
@@ -80,27 +87,24 @@ f <- function() {
 ## Interface and data handling between R and the generated C code
 
 Users specify which variables are the dynamic system's state variables
-via the `d/dt(identifier)` operator as part of the model specification,
-and which are model parameters via the `params=` argument in `rxode2`
-`solve()` method:
+via the `d/dt(identifier)` operator as part of the model specification.
+The model parameters and their values are given in the `ini({})` block,
+and the state values at time 0 with `state(0) <-` (like `eff(0) <- 1`
+above):
 
 ``` r
-m1 <- rxode2(model = ode, modName = "m1")
-
-# model parameters -- a named vector is required
-theta <-
-   c(KA=0.29, CL=18.6, V2=40.2, Q=10.5, V3=297, Kin=1, Kout=1, EC50=200)
-
-# state variables and their amounts at time 0 (the use of names is
-# encouraged, but not required)
-inits <- c(depot=0, centr=0, peri=0, eff=1)
-
 # qd1 is an eventTable specification with a set of dosing and sampling
 # records (code not shown here)
 
-solve(theta, event = qd1, inits = inits)
+rxSolve(f, qd1, params = c(comed = 0))
 ```
 
+Variables that are neither states nor defined in `ini({})` (like
+`comed` above) are covariates or parameters supplied with the event
+data or with `params=`.  The low-level `rxode2({})` form, where all
+parameters are supplied with `params=` and the initial conditions with
+`inits=`, is described in
+<https://nlmixr2.github.io/rxode2/articles/rxode2-classic-models.html>.
 
 The values of these variables at pre-specified time points are saved
 during model fitting/integration and returned as part of the fitted

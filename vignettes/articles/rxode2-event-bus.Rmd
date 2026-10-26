@@ -72,13 +72,19 @@ them:
 A recording listener keeps every event it receives:
 
 ```{r listen}
-mod <- rxode2({
-  d/dt(depot) <- -ka * depot
-  d/dt(center) <- ka * depot - cl / v * center
-  cp <- center / v
-})
+mod <- function() {
+  ini({
+    ka <- 1
+    cl <- 1
+    v <- 10
+  })
+  model({
+    d/dt(depot) <- -ka * depot
+    d/dt(center) <- ka * depot - cl / v * center
+    cp <- center / v
+  })
+}
 ev <- et(amt = 100) |> et(0:24)
-p <- c(ka = 1, cl = 1, v = 10)
 
 rec <- list()
 rxEventListen("demo", function(event, ...) {
@@ -86,7 +92,7 @@ rxEventListen("demo", function(event, ...) {
 })
 rxEventListeners()
 
-s <- rxSolve(mod, p, ev)
+s <- rxSolve(mod, ev)
 length(rec)
 rec[[1]]$event
 names(rec[[1]]$payload)
@@ -100,7 +106,7 @@ constants (such as `nSub = 10`) are kept, and larger values are replaced by `` `
 single `` `<...>` ``) so a recorded call never embeds a large data set:
 
 ```{r do-call}
-s <- do.call(rxSolve, list(mod, p, ev))
+s <- do.call(rxSolve, list(mod, ev))
 rec[[2]]$payload$call
 ```
 
@@ -133,11 +139,11 @@ You can silence any code yourself with `rxEventScope()`:
 rec <- list()
 rxEventListen("demo", function(event, ...) rec[[length(rec) + 1L]] <<- event)
 
-f <- function() rxEventScope(rxSolve(mod, p, ev))
+f <- function() rxEventScope(rxSolve(mod, ev))
 s <- f()
 length(rec)
 
-s <- rxSolve(mod, p, ev)
+s <- rxSolve(mod, ev)
 unlist(rec)
 ```
 
@@ -147,8 +153,8 @@ is restored on error, since scopes are left with `on.exit()`:
 
 ```{r errors}
 ctl <- rxControl()
-## cl and v are missing, so this solve fails
-out <- capture.output(res <- try(rxSolve(mod, c(ka = 1), ev), silent = TRUE))
+## the solver is unknown, so this solve fails
+out <- capture.output(res <- try(rxSolve(mod, ev, method = "notASolver"), silent = TRUE))
 inherits(res, "try-error")
 unlist(rec)
 rxEventDepth()
@@ -184,9 +190,9 @@ link an assignment `fit := nlmixr2(...)` to the fit it produced:
 
 ```{r seq}
 s0 <- rxEventSeq()
-s <- rxSolve(mod, p, ev)
+s <- rxSolve(mod, ev)
 rxEventSeq() - s0
-s <- rxEventScope(rxSolve(mod, p, ev))
+s <- rxEventScope(rxSolve(mod, ev))
 rxEventSeq() - s0
 rxEventUnlisten("demo")
 ```
@@ -276,7 +282,7 @@ returned its value (`returnValue()`) and is not emitted on error
 (`returnValue()` is then `NULL`):
 
 ```{r emitter}
-mySimulation <- function(model, params, events) {
+mySimulation <- function(model, events) {
   force(model)
   .myEventEnter()
   .call <- sys.call()
@@ -290,7 +296,7 @@ mySimulation <- function(model, params, events) {
     }
   }, add = TRUE)
   ## the solves in here are silent
-  .s <- lapply(1:3, function(i) rxSolve(model, params, events))
+  .s <- lapply(1:3, function(i) rxSolve(model, events))
   .s[[3]]
 }
 
@@ -298,7 +304,7 @@ rec <- list()
 rxEventListen("demo", function(event, kind = NULL, ...) {
   rec[[length(rec) + 1L]] <<- paste(event, kind)
 })
-s <- mySimulation(mod, p, ev)
+s <- mySimulation(mod, ev)
 unlist(rec)
 ```
 
@@ -347,7 +353,7 @@ mySolve <- function(object, ...) {
 mySolve.default <- function(object, ...) rxSolve(object, ...)
 
 rec <- list()
-s <- mySolve(mod, p, ev)
+s <- mySolve(mod, ev)
 unlist(rec)
 rxEventUnlisten("demo")
 ```
