@@ -2901,6 +2901,100 @@ static inline int canHandleSSLinear(rx_solving_options *op, rx_solving_options_i
   return 0;
 }
 
+// steady-state bolus from the linear solution; returns 1 when it applies
+static inline int handleSSbolusLinear(int *neq,
+                                      int *BadDose,
+                                      double *InfusionRate,
+                                      double *dose,
+                                      double *yp,
+                                      double *xout, int id,
+                                      int *i, int nx,
+                                      int *istate,
+                                      rx_solving_options *op,
+                                      rx_solving_options_ind *ind,
+                                      t_update_inis u_inis,
+                                      void *ctx,
+                                      double *xout2,
+                                      double *xp2,
+                                      double *curIi,
+                                      int adjustEvidBolusLag) {
+  if (!canHandleSSLinear(op, ind, ind->ix[*i])) return 0;
+  // only a linear solved, use calculated steady state instead of
+  // solved steady state.
+  //
+  // First set the steady state options for linCmtA or linCmtB
+  ind->linSS = 3;
+  ind->linSStau = *curIi;
+
+  // use handle evid to figure out what dose is applied
+
+  double ydum[2];
+  ydum[0] = ydum[1] = 0;
+
+  // here dose can be to the depot or central compartment
+  ind->idx=*i;
+  *xout2 = *xp2 + *curIi;
+  int evid = getEvid(ind, ind->ix[*i])-adjustEvidBolusLag;
+  int wh, cmt, wh100, whI, wh0;
+  getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
+  ind->linSSbolusCmt = cmt;
+  // Use "real" xout for handle_evid functions.
+  handle_evid(getEvid(ind, ind->ix[*i])-adjustEvidBolusLag, neq[0],
+              BadDose, InfusionRate, dose, ydum,
+              *xout, neq[1], ind);
+  ind->ixds--; // This dose stays in place
+
+  ind->linSSvar = ydum[cmt];
+  solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+               *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+  ind->linSS = 0; // reset to normal solve
+
+  if (yp[cmt] > 0) {
+    // now advance system by the bolus time to get the right derivatives
+    // and use the trough concentrations (as expected in this function)
+    *xp2 = *xout2;
+    *xout2 = *xp2 + *curIi;
+    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    return 1;
+  }
+  return 0;
+}
+
+// test one iterated steady-state bolus; returns 1 to stop iterating
+static inline int ssBolusDone(int nDose, int minSS, int maxSS, int *neq,
+                              double *yp, int *i,
+                              rx_solving_options *op,
+                              rx_solving_options_ind *ind,
+                              int *canBreak) {
+  *canBreak=1;
+  if (nDose < minSS || (nDose == 1 && ind->rc[0] == -2019)) {
+    if (ind->rc[0]== -2019){
+      badSolveExit(*i);
+      return 1;
+    }
+    for (int k = rxEffNeq(ind, op); k--;) {
+      ind->solveLast[k] = yp[k];
+    }
+    *canBreak=0;
+    return 0;
+  }
+  if (ind->rc[0] == -2019){
+    for (int k = neq[0]; k--;) {
+      yp[k] = ind->solveLast[k];
+    }
+    ind->rc[0] = 2019;
+    return 1;
+  }
+  for (int k = neq[0]; k--;){
+    if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
+      *canBreak=0;
+    }
+    ind->solveLast[k] = yp[k];
+  }
+  return *canBreak || nDose >= maxSS;
+}
+
 extern "C" void handleSSbolus(int *neq,
                               int *BadDose,
                               double *InfusionRate,
@@ -2920,48 +3014,11 @@ extern "C" void handleSSbolus(int *neq,
                               int *canBreak,
                               int adjustEvidBolusLag) {
   ind->ssTime = *xp2;
-  if (canHandleSSLinear(op, ind, ind->ix[*i])) {
-
-    // only a linear solved, use calculated steady state instead of
-    // solved steady state.
-    //
-    // First set the steady state options for linCmtA or linCmtB
-    ind->linSS = 3;
-    ind->linSStau = *curIi;
-
-    // use handle evid to figure out what dose is applied
-
-    double ydum[2];
-    ydum[0] = ydum[1] = 0;
-
-    // here dose can be to the depot or central compartment
-    ind->idx=*i;
-    *xout2 = *xp2 + *curIi;
-    int evid = getEvid(ind, ind->ix[*i])-adjustEvidBolusLag;
-    int wh, cmt, wh100, whI, wh0;
-    getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
-    ind->linSSbolusCmt = cmt;
-    // Use "real" xout for handle_evid functions.
-    handle_evid(getEvid(ind, ind->ix[*i])-adjustEvidBolusLag, neq[0],
-                BadDose, InfusionRate, dose, ydum,
-                *xout, neq[1], ind);
-    ind->ixds--; // This dose stays in place
-
-    ind->linSSvar = ydum[cmt];
-    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-    ind->linSS = 0; // reset to normal solve
-
-    if (yp[cmt] > 0) {
-      // now advance system by the bolus time to get the right derivatives
-      // and use the trough concentrations (as expected in this function)
-      *xp2 = *xout2;
-      *xout2 = *xp2 + *curIi;
-      solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                   *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-      ind->ssTime = NA_REAL;
-      return;
-    }
+  if (handleSSbolusLinear(neq, BadDose, InfusionRate, dose, yp, xout, id, i,
+                          nx, istate, op, ind, u_inis, ctx, xout2, xp2,
+                          curIi, adjustEvidBolusLag)) {
+    ind->ssTime = NA_REAL;
+    return;
   }
   // advance to trough
   ind->idx=*i;
@@ -2980,33 +3037,8 @@ extern "C" void handleSSbolus(int *neq,
   *xp2 = *xout2;
   int evid=0;
   for (int nDose = 1; ; nDose++) {
-    *canBreak=1;
-    if (nDose < minSS || (nDose == 1 && ind->rc[0] == -2019)) {
-      if (ind->rc[0]== -2019){
-        badSolveExit(*i);
-        break;
-      }
-      for (int k = rxEffNeq(ind, op); k--;) {
-        ind->solveLast[k] = yp[k];
-      }
-      *canBreak=0;
-    } else {
-      if (ind->rc[0] == -2019){
-        for (int k = neq[0]; k--;) {
-          yp[k] = ind->solveLast[k];
-        }
-        ind->rc[0] = 2019;
-        break;
-      }
-      for (int k = neq[0]; k--;){
-        if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
-          *canBreak=0;
-        }
-        ind->solveLast[k] = yp[k];
-      }
-      if (*canBreak || nDose >= maxSS){
-        break;
-      }
+    if (ssBolusDone(nDose, minSS, maxSS, neq, yp, i, op, ind, canBreak)) {
+      break;
     }
     ind->idx=*i;
     *xout2 = *xp2 + *curIi;
