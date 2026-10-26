@@ -2979,6 +2979,8 @@ extern "C" void handleSSbolus(int *neq,
     handle_evid(evid, neq[0],
                 BadDose, InfusionRate, dose, yp,
                 *xout, neq[1], ind);
+    // restart so lsoda integrates from the dosed yp, not its internal state
+    *istate=1;
     // yp is last solve or y0
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
