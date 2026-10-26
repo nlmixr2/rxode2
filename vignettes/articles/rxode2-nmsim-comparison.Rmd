@@ -71,14 +71,20 @@ interactive model development.
 library(rxode2)
 
 # Compile once; re-solve in milliseconds
-mod <- rxode2({
-  C2 <- centr / V
-  d/dt(centr) <- -CL * C2
-})
+mod <- function() {
+  ini({
+    CL <- 2
+    V <- 10
+  })
+  model({
+    C2 <- centr / V
+    d/dt(centr) <- -CL * C2
+  })
+}
 et <- et(seq(0, 24, by = 1))
 # Parameter sweeps are instant
-rxSolve(mod, et, params = c(CL = 2, V = 10))
-rxSolve(mod, et, params = c(CL = 5, V = 10))
+rxSolve(mod, et)
+rxSolve(mod, et, params = c(CL = 5))
 ```
 
 ### OpenMP parallelism across subjects
@@ -100,10 +106,12 @@ rxode2 model objects support the native R pipe operator (`|>`) to
 clone and modify a model without rewriting the full specification.
 
 ```{r}
-base <- rxode2({
-  d/dt(depot) <- -KA * depot
-  d/dt(centr) <- KA * depot - CL / V * centr
-})
+base <- function() {
+  model({
+    d/dt(depot) <- -KA * depot
+    d/dt(centr) <- KA * depot - CL / V * centr
+  })
+}
 
 # Add population structure incrementally
 full <- base |>
@@ -195,7 +203,7 @@ rxode2 can scale beyond a single machine, but does so from pure R and
 without a NONMEM license.
 
 ```{r}
-rxSolve(mod, params, ev, file = tempfile("rx"), parallel = 4)
+rxSolve(mod, ev, nSub = 10000, file = tempfile("rx"), parallel = 4)
 ```
 
 ### Runs anywhere without infrastructure

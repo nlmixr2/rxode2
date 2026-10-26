@@ -566,7 +566,10 @@ m3 <- function() {
 ```
 
 Note that plain `rxode2({...})` (low-level, without ui) does **not**
-call `rxUdfUi` methods and still requires positional arguments.
+call `rxUdfUi` methods and still requires positional arguments.  The
+examples on this page use that low-level form to show the C-level
+interface directly (see
+[Low-level models and other input styles](rxode2-classic-models.html)).
 
 ## Using the package
 

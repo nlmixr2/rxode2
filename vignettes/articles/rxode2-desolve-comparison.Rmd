@@ -56,13 +56,22 @@ fast execution.
 ```{r}
 library(rxode2)
 
-mod <- rxode2({
-  KA   <- exp(tka + eta.ka)
-  CL   <- exp(tcl + eta.cl)
-  d/dt(depot) <- -KA * depot
-  d/dt(centr) <- KA * depot - CL / V * centr
-  cp          <- centr / V
-})
+mod <- function() {
+  ini({
+    tka <- -0.5
+    tcl <- 1
+    V <- 10
+    eta.ka ~ 0.09
+    eta.cl ~ 0.09
+  })
+  model({
+    KA   <- exp(tka + eta.ka)
+    CL   <- exp(tcl + eta.cl)
+    d/dt(depot) <- -KA * depot
+    d/dt(centr) <- KA * depot - CL / V * centr
+    cp          <- centr / V
+  })
+}
 ```
 
 In deSolve the equivalent is an R function (slow by default) or a
@@ -109,7 +118,7 @@ and sampling schedules without writing a raw data frame:
 ev <- et(amt = 100, ii = 24, addl = 6) |>   # 7 doses, q24 h
   et(seq(0, 168, by = 1))                    # hourly observations
 
-rxSolve(mod, ev, params = c(tka = -0.5, tcl = 1, V = 10))
+rxSolve(mod, ev) # parameters come from ini({})
 ```
 
 deSolve supports events via a separate `events` list argument, but it
@@ -124,7 +133,7 @@ OpenMP.  A 1000-subject simulation automatically uses all available
 cores with no extra code.
 
 ```{r}
-rxSolve(mod, ev, omega = omega_mat, nSub = 1000)  # parallel by default
+rxSolve(mod, ev, nSub = 1000)  # parallel by default
 ```
 
 deSolve integrates a single trajectory per call.  Parallelism across
@@ -133,16 +142,12 @@ subjects must be implemented by the user, typically with `parallel`,
 
 ### Between-subject variability and population simulation
 
-rxode2 natively draws random effects from an omega matrix, applies them
+rxode2 natively draws random effects from an omega matrix (here the
+`eta.ka ~ 0.09` and `eta.cl ~ 0.09` lines in `ini({})`), applies them
 per subject, and returns a combined data frame ready for analysis:
 
 ```{r}
-omega <- lotri(eta.ka ~ 0.09, eta.cl ~ 0.09)
-
-sim <- rxSolve(mod, ev,
-               params  = c(tka = -0.5, tcl = 1, V = 10),
-               omega   = omega,
-               nSub    = 200)
+sim <- rxSolve(mod, ev, nSub = 200)
 ```
 
 deSolve has no concept of omega matrices, random effects, or
@@ -156,14 +161,25 @@ models specified directly inside the model block, with the result
 returned alongside the deterministic prediction:
 
 ```{r}
-mod_err <- rxode2({
-  KA <- exp(tka + eta.ka)
-  CL <- exp(tcl + eta.cl)
-  d/dt(depot) <- -KA * depot
-  d/dt(centr) <- KA * depot - CL / V * centr
-  cp          <- centr / V
-  cp_obs      <- cp * (1 + prop.err) + add.err
-})
+mod_err <- function() {
+  ini({
+    tka <- -0.5
+    tcl <- 1
+    V <- 10
+    eta.ka ~ 0.09
+    eta.cl ~ 0.09
+    add.sd <- 0.1
+    prop.sd <- 0.1
+  })
+  model({
+    KA <- exp(tka + eta.ka)
+    CL <- exp(tcl + eta.cl)
+    d/dt(depot) <- -KA * depot
+    d/dt(centr) <- KA * depot - CL / V * centr
+    cp          <- centr / V
+    cp ~ add(add.sd) + prop(prop.sd)
+  })
+}
 ```
 
 deSolve returns only the deterministic ODE trajectory; residual error
@@ -204,11 +220,13 @@ rxode2 model objects support R's native pipe (`|>`) to copy and
 modify a model without rewriting the full specification:
 
 ```{r}
-base <- rxode2({
-  d/dt(depot) <- -KA * depot
-  d/dt(centr) <- KA * depot - CL / V * centr
-  cp          <- centr / V
-})
+base <- function() {
+  model({
+    d/dt(depot) <- -KA * depot
+    d/dt(centr) <- KA * depot - CL / V * centr
+    cp          <- centr / V
+  })
+}
 
 full <- base |>
   model({ KA <- exp(tka + eta.ka); CL <- exp(tcl + eta.cl) },
@@ -298,7 +316,7 @@ to be materialized.  deSolve returns an in-memory matrix or data frame
 only.
 
 ```{r}
-res <- rxSolve(mod, params, ev, file = tempfile("rx")) # disk-backed chunks
+res <- rxSolve(mod, ev, nSub = 1000, file = tempfile("rx")) # disk-backed chunks
 res |> as.arrow() |> dplyr::filter(time > 24) |> dplyr::collect()
 ```
 
@@ -380,9 +398,11 @@ deSolve::dede(y0, times, func = dde_model, parms = parms,
               lag = 1.5, method = "dde23")
 
 # rxode2: delay() on an ODE right-hand side
-mod_dde <- rxode2({
-  d/dt(y) <- -r * y * (1 - delay(y, tau) / K)
-})
+mod_dde <- function() {
+  model({
+    d/dt(y) <- -r * y * (1 - delay(y, tau) / K)
+  })
+}
 ```
 
 ### Differential-algebraic equations (DAEs)

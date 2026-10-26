@@ -390,6 +390,8 @@ navbar:
           href: articles/Integrating-User-Defined-Functions-into-rxode2.html
         - text: "Package-exported rxode2 functions"
           href: articles/rxode2-pkg-exported-funs.html
+        - text: "Low-level models and other input styles"
+          href: articles/rxode2-classic-models.html
   - text: "Events"
     icon: fas fa-stethoscope
     menu:
