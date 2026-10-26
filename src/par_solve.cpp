@@ -2966,12 +2966,48 @@ extern "C" void handleSSbolus(int *neq,
   // advance to trough
   ind->idx=*i;
   *xout2 = *xp2 + *curIi;
+  // yp holds the first dose and an ss lag adds one after this, so minSS and
+  // maxSS count every dose before the steady-state one
+  int isSsLag = ind->wh0 == EVID0_SS20 || ind->wh0 == EVID0_SS0;
+  int minSS = max2(op->minSS - isSsLag, 1);
+  int maxSS = max2(op->maxSS - isSsLag, minSS);
+  for (int k = rxEffNeq(ind, op); k--;) {
+    ind->solveLast[k] = yp[k];
+  }
   // yp is last solve or y0
   solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
   *xp2 = *xout2;
   int evid=0;
-  for (int j = 0; j < op->maxSS; j++) {
+  for (int nDose = 1; ; nDose++) {
+    *canBreak=1;
+    if (nDose < minSS || (nDose == 1 && ind->rc[0] == -2019)) {
+      if (ind->rc[0]== -2019){
+        badSolveExit(*i);
+        break;
+      }
+      for (int k = rxEffNeq(ind, op); k--;) {
+        ind->solveLast[k] = yp[k];
+      }
+      *canBreak=0;
+    } else {
+      if (ind->rc[0] == -2019){
+        for (int k = neq[0]; k--;) {
+          yp[k] = ind->solveLast[k];
+        }
+        ind->rc[0] = 2019;
+        break;
+      }
+      for (int k = neq[0]; k--;){
+        if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
+          *canBreak=0;
+        }
+        ind->solveLast[k] = yp[k];
+      }
+      if (*canBreak || nDose >= maxSS){
+        break;
+      }
+    }
     ind->idx=*i;
     *xout2 = *xp2 + *curIi;
     // Use "real" xout for handle_evid functions.
@@ -2986,34 +3022,6 @@ extern "C" void handleSSbolus(int *neq,
                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
     ind->ixds--; // This dose stays in place
     // REprintf("ixds-- #2\n");
-    *canBreak=1;
-    if (j <= op->minSS -1){
-      if (ind->rc[0]== -2019){
-        badSolveExit(*i);
-        break;
-      }
-      for (int k = rxEffNeq(ind, op); k--;) {
-        ind->solveLast[k] = yp[k];
-      }
-      *canBreak=0;
-    } else if (j >= op->minSS){
-      if (ind->rc[0] == -2019){
-        for (int k = neq[0]; k--;) {
-          yp[k] = ind->solveLast[k];
-        }
-        ind->rc[0] = 2019;
-        break;
-      }
-      for (int k = neq[0]; k--;){
-        if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
-          *canBreak=0;
-        }
-        ind->solveLast[k] = yp[k];
-      }
-      if (*canBreak){
-        break;
-      }
-    }
     *istate=1;
     *xp2 = *xout2;
   }
