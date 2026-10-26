@@ -47,6 +47,10 @@
 
 ### Solving
 
+- A steady-state bolus solved with `lsoda`/`liblsoda` no longer drops its
+  first iterated dose: the solver restarted from its internal state instead of
+  the dosed one, so a steady state stopped by `minSS` (with `ssAtol`/`ssRtol`
+  disabled) was not a whole number of doses (#1492).
 - Occasion (inter-occasion variability) variables now always step (locf)
   whatever `covsInterpolation` is; under `"nocb"` a simulated occasion eta
   used to switch at the previous record.  A model that declares `linear()`,
