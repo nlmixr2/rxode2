@@ -17,6 +17,23 @@ The value or an error
 \description{
 Verify that a compartment would be new to the model
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    tcl <- log(3)
+    tv <- log(30)
+  })
+  model({
+    cl <- exp(tcl)
+    v <- exp(tv)
+    d/dt(central) <- -cl / v * central
+  })
+}
+assertCompartmentNew(mod, "peripheral")
+try(assertCompartmentNew(mod, "central")) # already a compartment
+}
+}
 \seealso{
 Other Assertions:
 \code{\link[=assertCompartmentExists]{assertCompartmentExists()}},

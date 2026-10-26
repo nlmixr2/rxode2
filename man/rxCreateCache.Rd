@@ -13,6 +13,12 @@ nothing
 When run, if the \code{R_user_dir} for rxode2's cache isn't present,
 create the cache
 }
+\examples{
+# writes to the user cache directory, so only run interactively
+if (interactive()) {
+  rxCreateCache()
+}
+}
 \author{
 Matthew Fidler
 }

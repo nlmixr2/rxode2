@@ -7,6 +7,23 @@
 #' @return object is returned
 #' @author Matthew L.Fidler
 #' @export
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     tcl <- log(3)
+#'     tv <- log(30)
+#'   })
+#'   model({
+#'     cl <- exp(tcl)
+#'     v <- exp(tv)
+#'     d/dt(central) <- -cl / v * central
+#'     cp <- central / v
+#'   })
+#' }
+#' # the compiled simulation model of the ui
+#' summary(rxode2(mod)$simulationModel)
+#' }
 summary.rxode2 <- function(object, ...) {
   print.rxode2(object, rxSuppress = TRUE)
   summary.rxDll(object$cmpMgr$rxDll(), noprint = TRUE)

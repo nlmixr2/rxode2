@@ -6,4 +6,6 @@
 #' \item{Meaning}{Reserved Keyword Meaning}
 #' \item{Alias}{Keyword Alias}
 #' }
+#' @examples
+#' head(rxReservedKeywords)
 "rxReservedKeywords"

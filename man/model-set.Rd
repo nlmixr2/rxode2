@@ -19,6 +19,29 @@ rxode2 related object
 \description{
 Assign the model block in the rxode2 related object
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    tcl <- log(3)
+    tv <- log(30)
+  })
+  model({
+    cl <- exp(tcl)
+    v <- exp(tv)
+    d/dt(central) <- -cl / v * central
+  })
+}
+ui <- rxode2(mod)
+model(ui) <- quote(model({
+  cl <- exp(tcl)
+  v <- exp(tv)
+  d/dt(central) <- -cl / v * central
+  cp <- central / v
+}))
+ui
+}
+}
 \author{
 Matthew L. Fidler
 }

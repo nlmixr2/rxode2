@@ -53,3 +53,10 @@ number of threads that rxode2 uses
 \description{
 Get/Set the number of threads that rxode2 uses
 }
+\examples{
+getRxThreads()
+.old <- getRxThreads()
+setRxThreads(1) # solve single threaded
+getRxThreads()
+setRxThreads(.old) # restore
+}

@@ -46,6 +46,19 @@ sensitivity analysis.  Same column names and output structure as
 \code{rxSolve(object, ..., calcSens=)}.  Prefer \code{\link[=.rxAdjointGrad]{.rxAdjointGrad()}} when only a
 scalar objective gradient is needed.
 }
+\examples{
+\donttest{
+pk <- function() {
+  model({
+    d/dt(depot) <- -ka * depot
+    d/dt(central) <- ka * depot - cl / v * central
+  })
+}
+ev <- et(amt = 100, cmt = "depot") |> et(c(1, 2, 4, 8, 12))
+rxSolveAdjoint(rxode2(pk), c(ka = 1.2, cl = 3.5, v = 25), ev,
+               calcSens = c("ka", "cl"))
+}
+}
 \author{
 Matthew L. Fidler
 }

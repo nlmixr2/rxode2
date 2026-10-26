@@ -32,6 +32,12 @@ derivatives with respect to each free lower-triangular element
 
 where \eqn{E_{ab}} is the symmetric single-entry basis matrix.
 }
+\examples{
+omega <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.2))
+d <- rxOmegaVarCovDeriv(omega, order = 1L)
+d$elements
+d$dLogDet
+}
 \author{
 Hidde van de Beek
 }

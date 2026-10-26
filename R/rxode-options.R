@@ -252,6 +252,8 @@
 #'
 #' @return rxode2 temporary directory.
 #' @export
+#' @examples
+#' rxTempDir()
 rxTempDir <- function() {
   if (is.null(getFromNamespace(".rxTempDir0", "rxode2"))) {
     .tmp <- Sys.getenv("rxTempDir")
@@ -294,6 +296,11 @@ rxTempDir <- function() {
 #' @author Matthew Fidler
 #'
 #' @export
+#' @examples
+#' # writes to the user cache directory, so only run interactively
+#' if (interactive()) {
+#'   rxCreateCache()
+#' }
 rxCreateCache <- function() {
   .tmp <- R_user_dir("rxode2", "cache")
   assignInMyNamespace(".cacheDefault", R_user_dir("rxode2", "cache"))

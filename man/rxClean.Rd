@@ -18,6 +18,12 @@ TRUE if successful
 \description{
 This cleans up any rxode2 loaded DLLs
 }
+\examples{
+# unloads all model DLLs and empties the rxode2 cache directory
+if (interactive()) {
+  rxClean()
+}
+}
 \author{
 Matthew L. Fidler
 }

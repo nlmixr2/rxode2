@@ -16,6 +16,28 @@ logical, \code{TRUE} if any endpoint carries an \code{ar()} correlation
 \description{
 Test if a model uses an autoregressive (\code{ar()}) residual
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    tcl <- log(1)
+    tv <- log(10)
+    add.sd <- 0.5
+    ar1.cor <- 0.5
+  })
+  model({
+    cl <- exp(tcl)
+    v <- exp(tv)
+    d/dt(central) <- -cl / v * central
+    cp <- central / v
+    cp ~ add(add.sd) + ar(ar1.cor)
+  })
+}
+rxHasAr(mod)
+# without ar() there is no autocorrelated residual
+rxHasAr(mod |> model(cp ~ add(add.sd)))
+}
+}
 \author{
 Matthew L. Fidler
 }

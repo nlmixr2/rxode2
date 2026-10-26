@@ -27,6 +27,13 @@ scalar \code{TRUE}/\code{FALSE} value, otherwise an error is thrown.
 This is useful when writing replacement
 UI functions
 }
+\examples{
+# in a rxUdfUi handler for dnorm(x, log=...), check the parsed `log` argument
+args <- as.list(quote(dnorm(x, log = TRUE)))[-1]
+rxUdfUiFlag(args$log, arg = "log", funName = "dnorm")
+rxUdfUiFlag(quote(0), arg = "log", funName = "dnorm")
+try(rxUdfUiFlag(quote(y), arg = "log", funName = "dnorm"))
+}
 \author{
 Matthew L. Fidler
 }

@@ -17,6 +17,12 @@ nothing, used for side effects
 \description{
 Set timing for progress bar
 }
+\examples{
+# draw a progress bar segment at most every 5 seconds
+rxSetProgressBar(5)
+# restore the default of 1 second
+rxSetProgressBar(1)
+}
 \author{
 Matthew Fidler
 }

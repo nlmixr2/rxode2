@@ -12,3 +12,6 @@ rxode2 temporary directory.
 \description{
 Get the rxode2 temporary directory
 }
+\examples{
+rxTempDir()
+}

@@ -108,6 +108,12 @@ rxUdfUiNum <- function() {
 #'
 #' @author Matthew L. Fidler
 #'
+#' @examples
+#' # in a rxUdfUi handler for dnorm(x, log=...), check the parsed `log` argument
+#' args <- as.list(quote(dnorm(x, log = TRUE)))[-1]
+#' rxUdfUiFlag(args$log, arg = "log", funName = "dnorm")
+#' rxUdfUiFlag(quote(0), arg = "log", funName = "dnorm")
+#' try(rxUdfUiFlag(quote(y), arg = "log", funName = "dnorm"))
 rxUdfUiFlag <- function(expr, arg = "arg", funName = "fun", env = baseenv()) {
   checkmate::assertCharacter(arg, len = 1L, any.missing = FALSE)
   checkmate::assertCharacter(funName, len = 1L, any.missing = FALSE)
@@ -176,6 +182,11 @@ rxUdfUiIniLhs <- function() {
 #' @export
 #'
 #' @author Matthew L. Fidler
+#' @examples
+#' # in a rxUdfUi handler for dnorm(x, mean, sd), is `sd` the default of 1?
+#' args <- as.list(quote(dnorm(x, mean = 0, sd = s)))[-1]
+#' rxUdfUiIsValue(args$mean, 0)
+#' rxUdfUiIsValue(args$sd, 1) # a model variable, so not known to be 1
 rxUdfUiIsValue <- function(expr, value, env = baseenv()) {
   .val <- try(eval(expr, envir = env), silent = TRUE)
   if (
@@ -256,6 +267,12 @@ rxUdfUiData <- function(value) {
 #'
 #' @author Matthew L. Fidler
 #'
+#' @examples
+#' # in a rxUdfUi handler, collapse arguments that evaluate to a value
+#' rxUdfUiExpr(quote(2 * 3))
+#' n <- "cp"
+#' rxUdfUiExpr(quote(n)) # a character value becomes the variable cp
+#' rxUdfUiExpr(quote(ka * depot)) # unevaluable expressions are kept
 rxUdfUiExpr <- function(expr, env = parent.frame()) {
   .val <- suppressWarnings(try(eval(expr, envir = env), silent = TRUE))
   if (

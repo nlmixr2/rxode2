@@ -20,6 +20,26 @@ html code for rxSolve object
 \description{
 Format rxSolve and related objects as html.
 }
+\examples{
+\donttest{
+if (requireNamespace("knitr", quietly = TRUE)) {
+mod <- function() {
+  ini({
+    tcl <- log(3)
+    tv <- log(30)
+  })
+  model({
+    cl <- exp(tcl)
+    v <- exp(tv)
+    d/dt(central) <- -cl / v * central
+    cp <- central / v
+  })
+}
+s <- rxSolve(mod, et(amt = 100, cmt = "central") |> et(0:4))
+rxHtml(s)
+}
+}
+}
 \author{
 Matthew L. Fidler
 }

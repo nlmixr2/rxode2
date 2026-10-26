@@ -49,6 +49,11 @@ g.y.log10 <- function(
 #' @return Nothing; Starts a shiny server
 #' @author Zufar Mulyukov and Matthew L. Fidler
 #' @export
+#' @examples
+#' if (interactive()) {
+#'   # explore the default indirect effect model
+#'   rxShiny()
+#' }
 rxShiny <- function(object, params = NULL, events = NULL, inits = NULL, ..., data = data.frame()) {
   UseMethod("rxShiny")
 }

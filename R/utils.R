@@ -93,6 +93,11 @@ rxCat <- function(a, ...) {
 #'
 #' @author Matthew L. Fidler
 #' @export
+#' @examples
+#' # unloads all model DLLs and empties the rxode2 cache directory
+#' if (interactive()) {
+#'   rxClean()
+#' }
 rxClean <- function(wd) {
   if (!missing(wd)) {
     warning("'wd' is depreciated")
@@ -109,6 +114,9 @@ rxClean <- function(wd) {
 #' @return nothing
 #'
 #' @export
+#' @examples
+#' # defunct: choose the summation with rxSolve(..., sumType=) instead
+#' try(rxSetSum("kahan"))
 rxSetSum <- function(type = c("pairwise", "fsum", "kahan", "neumaier", "c")) {
   stop("'rxSetSum' has been moved to rxSolve(...,sum=)", call. = FALSE)
 }
@@ -119,6 +127,9 @@ rxSetSum <- function(type = c("pairwise", "fsum", "kahan", "neumaier", "c")) {
 #' @return nothing
 #'
 #' @export
+#' @examples
+#' # defunct: choose the product with rxSolve(..., prodType=) instead
+#' try(rxSetProd("logify"))
 rxSetProd <- function(type = c("long double", "double", "logify")) {
   stop("'rxSetProd' has been moved to rxSolve(...,sum=)", call. = FALSE)
 }
@@ -133,6 +144,11 @@ rxSetProd <- function(type = c("long double", "double", "logify")) {
 #'
 #' @export
 #' @author Matthew Fidler
+#' @examples
+#' # draw a progress bar segment at most every 5 seconds
+#' rxSetProgressBar(5)
+#' # restore the default of 1 second
+#' rxSetProgressBar(1)
 rxSetProgressBar <- function(seconds = 1.0) {
   invisible(.Call(`_rxParProgress`, as.double(seconds)))
 }
@@ -723,6 +739,12 @@ yeoJohnsonInv <- function(x, lambda = 1.0) {
 #' @param verbose Display the value of relevant OpenMP settings
 #' @return number of threads that rxode2 uses
 #' @export
+#' @examples
+#' getRxThreads()
+#' .old <- getRxThreads()
+#' setRxThreads(1) # solve single threaded
+#' getRxThreads()
+#' setRxThreads(.old) # restore
 getRxThreads <- function(verbose = FALSE) {
   .Call(`getRxThreads_R`, verbose)
 }

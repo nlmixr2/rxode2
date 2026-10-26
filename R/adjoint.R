@@ -28,6 +28,18 @@
 #'   `rx__sens_<state>_BY_<param>__` columns appended.
 #' @author Matthew L. Fidler
 #' @export
+#' @examples
+#' \donttest{
+#' pk <- function() {
+#'   model({
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'   })
+#' }
+#' ev <- et(amt = 100, cmt = "depot") |> et(c(1, 2, 4, 8, 12))
+#' rxSolveAdjoint(rxode2(pk), c(ka = 1.2, cl = 3.5, v = 25), ev,
+#'                calcSens = c("ka", "cl"))
+#' }
 rxSolveAdjoint <- function(
   object,
   params,

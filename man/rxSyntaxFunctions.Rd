@@ -18,4 +18,7 @@ rxSyntaxFunctions
 \description{
 A list and description of Rode supported syntax functions
 }
+\examples{
+head(rxSyntaxFunctions)
+}
 \keyword{datasets}

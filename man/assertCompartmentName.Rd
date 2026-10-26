@@ -42,6 +42,27 @@ nlmixr2 parameter value
 \item \code{testExists()}: Test compartment/variable exists
 
 }}
+\examples{
+assertCompartmentName("central")
+assertVariableName("cl")
+assertParameterValue(0.5)
+try(assertCompartmentName("1central")) # invalid name
+\donttest{
+mod <- function() {
+  ini({
+    tcl <- log(3)
+    tv <- log(30)
+  })
+  model({
+    cl <- exp(tcl)
+    v <- exp(tv)
+    d/dt(central) <- -cl / v * central
+  })
+}
+assertExists(mod, "central")
+testExists(mod, "ka")
+}
+}
 \seealso{
 Other Assertions:
 \code{\link[=assertCompartmentExists]{assertCompartmentExists()}},

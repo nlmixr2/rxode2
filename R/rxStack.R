@@ -55,6 +55,26 @@ is.rxStackData <- function(object) {
 #'
 #' @author Matthew Fidler
 #' @export
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     tka <- log(1.1)
+#'     tcl <- log(3)
+#'     tv <- log(30)
+#'   })
+#'   model({
+#'     ka <- exp(tka)
+#'     cl <- exp(tcl)
+#'     v <- exp(tv)
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'   })
+#' }
+#' s <- rxSolve(mod, et(amt = 100) |> et(0:24))
+#' head(rxStack(s, c("depot", "cp")))
+#' }
 rxStack <- function(data, vars = NULL, doSim = TRUE, doIpredSim = TRUE) {
   if (!is.rxStackData(data)) {
     stop("this data cannot be used with `rxStack`", call. = FALSE)

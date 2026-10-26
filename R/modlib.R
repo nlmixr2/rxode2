@@ -100,6 +100,19 @@
 #' @inheritParams usethis::use_data
 #' @return Nothing; This is used for its side effects and shouldn't be called by a user
 #' @export
+#' @examples
+#' # run from the root of a package source tree; writes into data/ and src/
+#' if (interactive() && file.exists("DESCRIPTION")) {
+#'   pk <- function() {
+#'     model({
+#'       d/dt(depot) <- -ka * depot
+#'       d/dt(central) <- ka * depot - cl / v * central
+#'     })
+#'   }
+#'   rxUse(pk)
+#'   # regenerate the compiled code for every model in data/
+#'   rxUse()
+#' }
 rxUse <- function(obj, overwrite = TRUE, compress = "bzip2", internal = FALSE) {
   rxReq("usethis")
   rxReq("devtools")
@@ -332,6 +345,17 @@ rxUse <- function(obj, overwrite = TRUE, compress = "bzip2", internal = FALSE) {
 #' @author Matthew Fidler
 #' @return this function returns nothing and is used for its side effects
 #' @export
+#' @examples
+#' if (interactive()) {
+#'   pk <- function() {
+#'     model({
+#'       d/dt(depot) <- -ka * depot
+#'       d/dt(central) <- ka * depot - cl / v * central
+#'     })
+#'   }
+#'   # create (but do not install) the package rxModels in tempdir()
+#'   rxPkg(pk, package = "rxModels", wd = tempdir(), action = "create")
+#' }
 rxPkg <- function(
   ...,
   package,

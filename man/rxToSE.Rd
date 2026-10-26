@@ -53,6 +53,14 @@ An rxode2 symengine environment
 \description{
 rxode2 to symengine environment
 }
+\examples{
+if (requireNamespace("symengine", quietly = TRUE)) {
+  # rxode2 syntax -> symengine syntax
+  print(rxToSE("central / v * exp(-ke * t)"))
+  # and back
+  print(rxFromSE("exp(-ke*t)*central/v"))
+}
+}
 \author{
 Matthew L. Fidler
 }

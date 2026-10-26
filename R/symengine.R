@@ -778,6 +778,13 @@ rxD <- function(name, derivatives) {
 #' @return An rxode2 symengine environment
 #' @author Matthew L. Fidler
 #' @export
+#' @examples
+#' if (requireNamespace("symengine", quietly = TRUE)) {
+#'   # rxode2 syntax -> symengine syntax
+#'   print(rxToSE("central / v * exp(-ke * t)"))
+#'   # and back
+#'   print(rxFromSE("exp(-ke*t)*central/v"))
+#' }
 rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, parent = parent.frame()) {
   .udfEnvLocal(parent)
   .rxToSE.envir$parent <- parent
@@ -4279,6 +4286,20 @@ local({
 #' @return rxode2/symengine environment
 #' @author Matthew Fidler
 #' @export
+#' @examples
+#' \donttest{
+#' pk <- function() {
+#'   model({
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'   })
+#' }
+#' s <- rxS(pk)
+#' # the d/dt() lines as loaded
+#' s$..ddt
+#' # each derivative is a symengine expression; differentiate it in the env
+#' with(s, D(rx__d_dt_central__, ka))
+#' }
 rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame(), pkTime = FALSE) {
   .udfEnvLocal(envir)
   rxReq("symengine")

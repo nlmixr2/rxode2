@@ -22,6 +22,12 @@ This is used to determine if the location and scale parameters are
 actually equal to their default values, which allows for more
 efficient translation to expit expressions when possible.
 }
+\examples{
+# in a rxUdfUi handler for dnorm(x, mean, sd), is `sd` the default of 1?
+args <- as.list(quote(dnorm(x, mean = 0, sd = s)))[-1]
+rxUdfUiIsValue(args$mean, 0)
+rxUdfUiIsValue(args$sd, 1) # a model variable, so not known to be 1
+}
 \author{
 Matthew L. Fidler
 }

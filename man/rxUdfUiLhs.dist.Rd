@@ -44,6 +44,29 @@ picture rather than one line: the latent normals, the Gaussian copula that
 correlates them, and the \verb{rxCor.*} thetas.  Those are prepended, so the
 \verb{rxN.*} this line reads are defined above it.
 }
+\examples{
+\donttest{
+if (requireNamespace("lotri", quietly = TRUE) &&
+      "lotriEtaDists" \%in\% getNamespaceExports("lotri")) {
+# called for you when a model() line declares dist(<eta>)
+mod <- function() {
+  ini({
+    lclm <- 1.63
+    lclrv <- -2.4
+    prop.sd <- 0.1
+  })
+  model({
+    dist(cl) ~ dgamma(shape = 1 / exp(lclrv),
+                      rate = 1 / (exp(lclrv) * exp(lclm)))
+    v <- 5
+    linCmt() ~ prop(prop.sd)
+  })
+}
+ui <- mod()
+rxUiEtaDists(ui)
+}
+}
+}
 \author{
 Matthew L. Fidler
 }

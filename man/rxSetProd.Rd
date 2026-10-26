@@ -15,3 +15,7 @@ nothing
 \description{
 Defunct setting of product
 }
+\examples{
+# defunct: choose the product with rxSolve(..., prodType=) instead
+try(rxSetProd("logify"))
+}

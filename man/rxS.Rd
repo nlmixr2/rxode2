@@ -35,6 +35,21 @@ rxode2/symengine environment
 \description{
 Load a model into a symengine environment
 }
+\examples{
+\donttest{
+pk <- function() {
+  model({
+    d/dt(depot) <- -ka * depot
+    d/dt(central) <- ka * depot - cl / v * central
+  })
+}
+s <- rxS(pk)
+# the d/dt() lines as loaded
+s$..ddt
+# each derivative is a symengine expression; differentiate it in the env
+with(s, D(rx__d_dt_central__, ka))
+}
+}
 \author{
 Matthew Fidler
 }

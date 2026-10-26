@@ -129,3 +129,15 @@ converted to \code{lower}/\code{upper}.
 
 Will add boxes representing the areas of the fit that were censored.
 }
+\examples{
+# the last two observations are below the limit of quantification (1)
+d <- data.frame(
+  time = 1:6,
+  dv = c(8, 5, 3, 1.5, 1, 1),
+  cens = c(0, 0, 0, 0, 1, 1),
+  limit = c(NA, NA, NA, NA, 0, 0)
+)
+ggplot2::ggplot(d, ggplot2::aes(time, dv, cens = cens, limit = limit)) +
+  ggplot2::geom_point() +
+  geom_cens()
+}

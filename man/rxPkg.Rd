@@ -45,6 +45,18 @@ this function returns nothing and is used for its side effects
 \description{
 Creates a package from compiled rxode2 models
 }
+\examples{
+if (interactive()) {
+  pk <- function() {
+    model({
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    })
+  }
+  # create (but do not install) the package rxModels in tempdir()
+  rxPkg(pk, package = "rxModels", wd = tempdir(), action = "create")
+}
+}
 \author{
 Matthew Fidler
 }

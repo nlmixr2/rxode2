@@ -17,6 +17,22 @@ Nothing, called for side effects
 \description{
 rxSetControl options for UI object
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    tcl <- log(3)
+  })
+  model({
+    cl <- exp(tcl)
+    d/dt(central) <- -cl * central
+  })
+}
+ui <- rxUiDecompress(rxode2(mod))
+rxSetControl(ui, list(addProp = "combined1"))
+rxGetControl(ui, "addProp", "combined2")
+}
+}
 \author{
 Matthew L. Fidler
 }

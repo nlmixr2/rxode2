@@ -18,4 +18,7 @@ rxReservedKeywords
 \description{
 A list and description of rxode2 supported reserved keywords
 }
+\examples{
+head(rxReservedKeywords)
+}
 \keyword{datasets}

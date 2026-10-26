@@ -6,4 +6,6 @@
 #' \item{Description}{Description of function}
 #' \item{Aliases}{Function Aliases}
 #' }
+#' @examples
+#' head(rxSyntaxFunctions)
 "rxSyntaxFunctions"

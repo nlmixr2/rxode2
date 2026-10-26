@@ -59,6 +59,12 @@ Nothing; Starts a shiny server
 \description{
 Use Shiny to help develop an rxode2 model
 }
+\examples{
+if (interactive()) {
+  # explore the default indirect effect model
+  rxShiny()
+}
+}
 \author{
 Zufar Mulyukov and Matthew L. Fidler
 }

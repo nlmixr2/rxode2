@@ -15,6 +15,23 @@ Nothing, called for side effects
 \description{
 rxRemoveControl options for UI object
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    tcl <- log(3)
+  })
+  model({
+    cl <- exp(tcl)
+    d/dt(central) <- -cl * central
+  })
+}
+ui <- rxUiDecompress(rxode2(mod))
+rxSetControl(ui, list(addProp = "combined1"))
+rxRemoveControl(ui)
+rxGetControl(ui, "addProp", "combined2") # back to the default
+}
+}
 \author{
 Matthew L. Fidler
 }

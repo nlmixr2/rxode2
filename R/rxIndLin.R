@@ -24,6 +24,10 @@
 #' @return Nothing
 #' @author Matthew L. Fidler
 #' @export
+#' @examples
+#' .old <- utils::getFromNamespace(".rxIndLinStrategy", "rxode2")
+#' rxIndLinStrategy("split")
+#' rxIndLinStrategy(.old) # restore
 rxIndLinStrategy <- function(strategy = c("curState", "split")) {
   assignInMyNamespace(".rxIndLinStrategy", match.arg(strategy))
 }
@@ -43,6 +47,11 @@ rxIndLinStrategy <- function(strategy = c("curState", "split")) {
 #' @return Nothing
 #' @author Matthew Fidler
 #' @export
+#' @examples
+#' .old <- utils::getFromNamespace(".rxIndLinState", "rxode2")
+#' # factor terms of the central equation by central, then depot
+#' rxIndLinState(list(central = c("central", "depot")))
+#' rxIndLinState(.old) # restore
 rxIndLinState <- function(preferred = NULL) {
   if (is.null(preferred)) {
     return(assignInMyNamespace(".rxIndLinState", preferred))
