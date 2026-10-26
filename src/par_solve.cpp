@@ -3482,13 +3482,17 @@ extern "C" void handleSSinf8(int *neq,
   *xp2 = 0.0;
   double infStep = op->infSSstep, a1=1.0, t1=*xp2+1.0;
   // Based on http://www.rxkinetics.com/theo.html -- Chiou method
-  for (int j = 0; j < op->maxSS; j++) {
+  // These are convergence steps, not doses, so a small dose count cannot
+  // stop them early
+  int minSS = max2(op->minSS, 5);
+  int maxSS = max2(op->maxSS, 10000);
+  for (int j = 0; j < maxSS; j++) {
     if (j == 0) *xout2 = *xp2+1.; // the first level drawn one hour after infusion
     else *xout2 = *xp2+infStep;
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
     *canBreak=1;
-    if (j <= op->minSS -1){
+    if (j <= minSS -1){
       for (int k = neq[0]; k--;) {
         ind->solveLast[k] = yp[k];
       }
