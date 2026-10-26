@@ -225,3 +225,8 @@ And plot this with `plot`
 ```{r}
 plot(s2)
 ```
+
+## Next steps
+
+- [Summarizing simulations with confint()](rxode2-confint.html)
+- [Working with solved data frames](rxode2-data-frame.html)

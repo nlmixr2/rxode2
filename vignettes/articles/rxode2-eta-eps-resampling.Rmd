@@ -157,3 +157,8 @@ filtering or replacing values after `rxSolve()`:
    variables.
 2. **Parallelism**: resampling happens inside the C solver loop,
    so OpenMP parallelism across subjects is fully preserved.
+
+## Next steps
+
+- [Simulating populations](rxode2-sim-var.html)
+- [Phase 1 vs phase 3 residual error](rxode2-phase-residual-error.html)

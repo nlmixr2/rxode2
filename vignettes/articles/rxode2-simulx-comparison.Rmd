@@ -312,3 +312,9 @@ allowing estimation in Monolix and fast scripted simulation in rxode2.
 - [rxode2 user manual](https://nlmixr2.github.io/rxode2-manual/)
 - [monolix2rx package](https://nlmixr2.github.io/monolix2rx/)
 - [nlmixr2 package](https://nlmixr2.github.io/nlmixr2/)
+
+## Next steps
+
+- [Introduction to rxode2](rxode2-intro.html)
+- [How do I...?](rxode2-cookbook.html)
+- [Simulating populations](rxode2-sim-var.html)

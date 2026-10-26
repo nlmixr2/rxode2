@@ -635,3 +635,8 @@ rxode2::rxFromSE("Derivative(mm_dKm(C, Vmax, Km), Km)")
 - [Integrating User Defined Functions into rxode2](Integrating-User-Defined-Functions-into-rxode2.html) -- the inline / R-function approach
 - [Writing R Extensions 5.4](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Registering-native-routines) -- `R_RegisterCCallable`, `R_GetCCallable`
 - `?rxode2parseAssignTranslation`, `?rxode2parseGetTranslation`, `?rxD`
+
+## Next steps
+
+- [User-defined functions](Integrating-User-Defined-Functions-into-rxode2.html)
+- [Compiled models in packages](rxode2-rxUse.html)

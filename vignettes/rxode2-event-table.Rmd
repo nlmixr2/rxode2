@@ -19,3 +19,8 @@ Sys.setenv(RSTUDIO_CONSOLE_WIDTH=80)
 
 ```{r child='events-et.Rmdh'}
 ```
+
+## Next steps
+
+- [Combining event tables](rxode2-event-table-combine.html)
+- [Simulating populations](rxode2-sim-var.html)

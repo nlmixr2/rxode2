@@ -1012,3 +1012,9 @@ the start.
 
 - Beal S, Sheiner LB, Boeckmann A, Bauer RJ (2009). NONMEM Users
   Guides. (1989--2009). Icon Development Solutions, Ellicott City, MD.
+
+## Next steps
+
+- [Stiff systems and Jacobians](rxode2-stiff.html)
+- [Speeding up solving](rxode2-speed.html)
+- [Dense output for fast solving](rxode2-dense-output.html)

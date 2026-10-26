@@ -14,3 +14,8 @@ Sys.setenv(RSTUDIO_CONSOLE_WIDTH=80)
 ```
 ```{r child='../man-roxygen/rmdhunks/shiny.Rmd'}
 ```
+
+# Next steps
+
+- [Simulating populations](rxode2-sim-var.html)
+- [Plotting results](rxode2-plot.html)

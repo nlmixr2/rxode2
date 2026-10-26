@@ -25,3 +25,9 @@ You can create other types of models with rxode2:
 
 ```{r child='../man-roxygen/rmdhunks/model-types.Rmd'}
 ```
+
+## Next steps
+
+- [Model syntax](rxode2-syntax.html)
+- [Matrix exponential solving](rxode2-ind-lin.html)
+- [Choosing an ODE solver](ode-solvers.html)

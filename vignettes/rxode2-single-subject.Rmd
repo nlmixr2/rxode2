@@ -14,3 +14,8 @@ knitr::opts_chunk$set(
 ```
 ```{r child='../man-roxygen/rmdhunks/single-subject.Rmdh'}
 ```
+
+# Next steps
+
+- [Simulating populations](rxode2-sim-var.html)
+- [Working with solved data frames](rxode2-data-frame.html)

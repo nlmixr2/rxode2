@@ -520,3 +520,8 @@ m2$meta$myTag
 # also accessible via the $ operator (falls through to meta via rxUiGet.default):
 m2$myTag
 ```
+
+## Next steps
+
+- [Modifying models](Modifying-Models.html)
+- [Simulating populations](rxode2-sim-var.html)

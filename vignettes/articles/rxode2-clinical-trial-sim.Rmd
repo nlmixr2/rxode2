@@ -261,3 +261,8 @@ ggplot(pedCI, aes(x = time)) +
 - The [`nlmixr2lib`](https://nlmixr2.github.io/nlmixr2lib/) package
   provides published models ready for use in clinical trial
   simulations.
+
+## Next steps
+
+- [Exposure-response simulation](rxode2-exposure-response.html)
+- [Out-of-memory solving](rxode2-oom-solve.html)

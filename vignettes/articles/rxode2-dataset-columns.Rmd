@@ -219,3 +219,8 @@ examples.
    are also accepted.
  - The classic RxODE `EVID` encoding is also supported (see
    [Classic rxode2 Events](rxode2-events-classic.html)).
+
+## Next steps
+
+- [Dosing event types](rxode2-event-types.html)
+- [Building event tables with et()](rxode2-event-table.html)

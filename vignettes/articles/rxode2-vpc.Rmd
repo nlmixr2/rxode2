@@ -217,3 +217,8 @@ ggplot() +
 - Binning strategy (equal-width, equal-count, or user-defined)
   strongly affects VPC appearance; the `vpc` package provides several
   options via the `bins` argument.
+
+## Next steps
+
+- [Summarizing simulations with confint()](rxode2-confint.html)
+- [Clinical trial simulation](rxode2-clinical-trial-sim.html)

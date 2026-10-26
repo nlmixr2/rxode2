@@ -177,3 +177,8 @@ calculations within your `rxode2` models. By using `is.na()` to
 initialize these variables, you can ensure they persist throughout the
 simulation for each individual, enabling real-time calculation of NCA
 metrics, time-since-event markers, and more.
+
+## Next steps
+
+- [Model syntax](rxode2-syntax.html)
+- [Dosing from inside the model](adaptive-dosing.html)

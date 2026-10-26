@@ -330,3 +330,8 @@ See also the function reference for `?delay` and the companion article
 ```{r sessioninfo}
 sessionInfo()
 ```
+
+## Next steps
+
+- [Choosing an ODE solver](ode-solvers.html)
+- [Model syntax](rxode2-syntax.html)

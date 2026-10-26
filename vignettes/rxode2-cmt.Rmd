@@ -28,3 +28,8 @@ Sys.setenv(RSTUDIO_CONSOLE_WIDTH=80)
 
 ```{r child='../man/rmdhunks/rxode2-cmt-preassign-2.Rmd'}
 ```
+
+# Next steps
+
+- [Model syntax](rxode2-syntax.html)
+- [Dataset columns](rxode2-dataset-columns.html)

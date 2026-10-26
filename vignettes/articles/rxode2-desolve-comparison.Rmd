@@ -526,3 +526,9 @@ compiled C code and OpenMP parallelism.
 - [rxode2 user manual](https://nlmixr2.github.io/rxode2-manual/)
 - [nlmixr2 package](https://nlmixr2.github.io/nlmixr2/)
 - [FME: Flexible Modelling Environment](https://cran.r-project.org/package=FME)
+
+## Next steps
+
+- [Introduction to rxode2](rxode2-intro.html)
+- [How do I...?](rxode2-cookbook.html)
+- [Low-level models and other input styles](rxode2-classic-models.html)

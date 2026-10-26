@@ -9,3 +9,8 @@ output:
 
 ```{r child='../man-roxygen/rmdhunks/packages.Rmdh'}
 ```
+
+# Next steps
+
+- [C/C++ functions from a package](rxode2-pkg-exported-funs.html)
+- [Low-level models and other input styles](rxode2-classic-models.html)

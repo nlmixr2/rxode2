@@ -265,3 +265,9 @@ modelExtract(mod, cl)
 ### ...use a low-level `rxode2()` model or classic event table?
 
 More: [Low-level models and other input styles](rxode2-classic-models.html).
+
+## Next steps
+
+- [Introduction to rxode2](rxode2-intro.html)
+- [Which dosing page do I need?](rxode2-dosing-overview.html)
+- [Simulating populations](rxode2-sim-var.html)

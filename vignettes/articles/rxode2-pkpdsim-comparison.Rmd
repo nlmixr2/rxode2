@@ -441,3 +441,9 @@ for further details.
 - [`pkpdsim_to_nlmixr()` reference](https://insightrx.github.io/PKPDsim/reference/pkpdsim_to_nlmixr.html)
 - [rxode2 user manual](https://nlmixr2.github.io/rxode2-manual/)
 - [nlmixr2 package](https://nlmixr2.github.io/nlmixr2/)
+
+## Next steps
+
+- [Introduction to rxode2](rxode2-intro.html)
+- [How do I...?](rxode2-cookbook.html)
+- [Simulating populations](rxode2-sim-var.html)

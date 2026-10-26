@@ -220,3 +220,8 @@ arguments; the rxode2 `parallel` path works unchanged with remote daemons.
 ```{r session}
 sessionInfo()
 ```
+
+## Next steps
+
+- [Speeding up solving](rxode2-speed.html)
+- [Out-of-memory solving](rxode2-oom-solve.html)

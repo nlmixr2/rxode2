@@ -268,3 +268,8 @@ error.
 - The split is not limited to two, and not limited to study phase --
   assay version, matrix (plasma versus dried blood spot), and site are
   all handled the same way.
+
+## Next steps
+
+- [ETA and EPS resampling](rxode2-eta-eps-resampling.html)
+- [Simulating populations](rxode2-sim-var.html)

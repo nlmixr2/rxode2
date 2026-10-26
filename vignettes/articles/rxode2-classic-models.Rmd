@@ -271,3 +271,9 @@ rxSolve(ui, ev3, omega = NA, sigma = NA)
 compartment, the dose type and the infusion flags in one number.  They
 are described in
 [classic RxODE events](https://nlmixr2.github.io/rxode2/articles/rxode2-events-classic.html).
+
+## Next steps
+
+- [Model syntax](rxode2-syntax.html)
+- [Classic evid codes](rxode2-events-classic.html)
+- [Building event tables with et()](rxode2-event-table.html)

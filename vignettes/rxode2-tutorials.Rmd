@@ -30,3 +30,8 @@ learnr::run_tutorial("rxode2-00-syntax", "rxode2")
 
 learnr::run_tutorial("rxode2-00-events", "rxode2")
 ```
+
+# Next steps
+
+- [Introduction to rxode2](rxode2-intro.html)
+- [How do I...?](rxode2-cookbook.html)

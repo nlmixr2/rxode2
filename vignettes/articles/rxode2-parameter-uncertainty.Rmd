@@ -200,3 +200,8 @@ ggplot(forest, aes(x = ratio, y = scenario)) +
        subtitle = "Points: median ratio; bars: 90% CI from parameter uncertainty\nDotted red: 0.8-1.25 no-effect boundary") +
   theme_bw()
 ```
+
+## Next steps
+
+- [Summarizing simulations with confint()](rxode2-confint.html)
+- [Visual predictive checks](rxode2-vpc.html)

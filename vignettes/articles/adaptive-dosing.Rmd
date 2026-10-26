@@ -588,3 +588,8 @@ protocol simulation.
 The tests in `tests/testthat/test-evid-push.R` provide concrete
 regression coverage for these event types, and the same patterns can be
 used in practical pharmacometric workflows.
+
+## Next steps
+
+- [Dosing event types](rxode2-event-types.html)
+- [Sticky variables](rxode2-sticky.html)

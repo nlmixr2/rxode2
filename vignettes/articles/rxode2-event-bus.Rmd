@@ -368,3 +368,8 @@ should not emit (like `rxSolve()`'s `rxControl()` shortcut) *before*
 * `?rxEventListen` for the reference documentation.
 * [nlmixr2log](https://github.com/nlmixr2/nlmixr2log), the logger built on
   these events.
+
+## Next steps
+
+- [Solve-time hooks](rxode2-solve-hooks.html)
+- [Compiled models in packages](rxode2-rxUse.html)

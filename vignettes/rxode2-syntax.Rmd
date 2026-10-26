@@ -114,3 +114,9 @@ modeling output.
 
 The ODE specification mini-language is parsed with the help of the
 open source tool *DParser*, Plevyak (2015).
+
+# Next steps
+
+- [Model types: ODEs, linCmt() and mixed](rxode2-model-types.html)
+- [The rxode2 model object](rxode2-ui-object.html)
+- [Which dosing page do I need?](rxode2-dosing-overview.html)

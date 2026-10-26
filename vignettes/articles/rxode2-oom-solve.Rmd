@@ -315,3 +315,8 @@ custom parallel workflows.
 ```{r session}
 sessionInfo()
 ```
+
+## Next steps
+
+- [Speeding up solving](rxode2-speed.html)
+- [Parallel solving with mirai](rxode2-mirai-parallel.html)

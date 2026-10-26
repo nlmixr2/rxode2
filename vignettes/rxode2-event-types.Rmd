@@ -16,3 +16,9 @@ Sys.setenv(RSTUDIO_CONSOLE_WIDTH=80)
 
 ```{r child='rxode2-event-types.Rmdh'}
 ```
+
+# Next steps
+
+- [Building event tables with et()](rxode2-event-table.html)
+- [Combining event tables](rxode2-event-table-combine.html)
+- [Dataset columns](rxode2-dataset-columns.html)

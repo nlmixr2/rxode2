@@ -183,3 +183,8 @@ et <- etRbind(bid,qd, id="unique") |>
 library(ggplot2)
 rxSolve(m1, et) |> plot(C2) + facet_wrap( ~ id)
 ```
+
+## Next steps
+
+- [Dosing from inside the model](adaptive-dosing.html)
+- [Simulating populations](rxode2-sim-var.html)

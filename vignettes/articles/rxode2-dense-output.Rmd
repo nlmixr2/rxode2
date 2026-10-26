@@ -282,3 +282,8 @@ Use `dense = TRUE` when **all** of the following hold:
 ```{r sessioninfo}
 sessionInfo()
 ```
+
+## Next steps
+
+- [Choosing an ODE solver](ode-solvers.html)
+- [Speeding up solving](rxode2-speed.html)

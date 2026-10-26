@@ -12,3 +12,8 @@ options(knitr.table.format = "html")
 
 ```{r child='../man-roxygen/rmdhunks/stiff.Rmdh'}
 ```
+
+# Next steps
+
+- [Choosing an ODE solver](ode-solvers.html)
+- [Speeding up solving](rxode2-speed.html)

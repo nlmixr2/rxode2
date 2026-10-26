@@ -7,3 +7,9 @@ output:
 ---
 ```{r child='../man-roxygen/rmdhunks/covariates.Rmd'}
 ```
+
+# Next steps
+
+- [Weight-based dosing](rxode2-wt.html)
+- [Simulating populations](rxode2-sim-var.html)
+- [Dataset columns](rxode2-dataset-columns.html)

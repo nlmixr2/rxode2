@@ -616,3 +616,8 @@ Full matrix exponential support during estimation is upcoming.
 - Beal S, Sheiner LB, Boeckmann A, Bauer RJ (2009). NONMEM Users Guides
   (1989--2009). Icon Development Solutions, Ellicott City, MD. (ADVAN5/7
   documentation for K(i,j) rate-constant specification.)
+
+## Next steps
+
+- [Choosing an ODE solver](ode-solvers.html)
+- [Model types: ODEs, linCmt() and mixed](rxode2-model-types.html)

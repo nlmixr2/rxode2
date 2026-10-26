@@ -31,3 +31,8 @@ The same table as a NONMEM-style data frame is what `rxSolve()` sees:
 ```{r}
 head(as.data.frame(ev))
 ```
+
+## Next steps
+
+- [Dataset columns](rxode2-dataset-columns.html)
+- [Building event tables with et()](rxode2-event-table.html)

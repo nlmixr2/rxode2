@@ -8,3 +8,8 @@ date: "`r Sys.Date()`"
 
 ```{r child='../man-roxygen/rmdhunks/rxode2-wt.Rmd'}
 ```
+
+# Next steps
+
+- [Covariates](rxode2-covariates.html)
+- [Simulating populations](rxode2-sim-var.html)

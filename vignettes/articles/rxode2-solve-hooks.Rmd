@@ -195,3 +195,8 @@ neural-network weights.
 * `nlmixr2est`: *"Extending nlmixr2est"* -- creating estimation methods,
   intercepting estimations, and contributing to the objective, which build on
   these solve hooks.
+
+## Next steps
+
+- [The event bus](rxode2-event-bus.html)
+- [Compiled models in packages](rxode2-rxUse.html)

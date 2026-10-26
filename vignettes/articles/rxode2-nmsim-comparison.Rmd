@@ -368,3 +368,9 @@ common workflow is:
 - [rxode2 user manual](https://nlmixr2.github.io/rxode2-manual/)
 - [nonmem2rx package](https://nlmixr2.github.io/nonmem2rx/)
 - [nlmixr2 package](https://nlmixr2.github.io/nlmixr2/)
+
+## Next steps
+
+- [Introduction to rxode2](rxode2-intro.html)
+- [How do I...?](rxode2-cookbook.html)
+- [Dataset columns](rxode2-dataset-columns.html)

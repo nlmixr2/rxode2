@@ -17,3 +17,8 @@ Sys.setenv(RSTUDIO_CONSOLE_WIDTH=80)
 
 ```{r child='../man-roxygen/rmdhunks/nesting.Rmdh'}
 ```
+
+## Next steps
+
+- [Simulating populations](rxode2-sim-var.html)
+- [Parameter uncertainty](rxode2-parameter-uncertainty.html)

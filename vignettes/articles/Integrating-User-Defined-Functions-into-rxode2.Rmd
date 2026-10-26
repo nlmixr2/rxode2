@@ -576,3 +576,8 @@ linMod
 
 rxode2:::rxUdfUi.linMod
 ```
+
+## Next steps
+
+- [C/C++ functions from a package](rxode2-pkg-exported-funs.html)
+- [Model syntax](rxode2-syntax.html)

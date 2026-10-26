@@ -480,3 +480,9 @@ passed to the `vpc` R package or Xpose for VPC plots.
 - [rxode2 user manual](https://nlmixr2.github.io/rxode2-manual/)
 - [nlmixr2 package](https://nlmixr2.github.io/nlmixr2/)
 - [vpc R package](https://cran.r-project.org/package=vpc)
+
+## Next steps
+
+- [Introduction to rxode2](rxode2-intro.html)
+- [How do I...?](rxode2-cookbook.html)
+- [Dataset columns](rxode2-dataset-columns.html)

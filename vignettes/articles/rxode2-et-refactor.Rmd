@@ -450,3 +450,8 @@ lazy design.
 ```{r}
 sessionInfo()
 ```
+
+## Next steps
+
+- [Building event tables with et()](rxode2-event-table.html)
+- [Combining event tables](rxode2-event-table-combine.html)

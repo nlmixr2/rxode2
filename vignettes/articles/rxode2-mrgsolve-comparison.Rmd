@@ -753,3 +753,9 @@ conversion.
 - [EventSensitivities (event/jump sensitivities)](https://github.com/dkaschek/EventSensitivities)
 - [rxode2mrgsolvebridge package (CRAN)](https://cran.r-project.org/package=rxode2mrgsolvebridge)
 - [rxode2mrgsolvebridge source (GitLab)](https://gitlab.com/fiha1/rxode2-mrgsolve-bridge)
+
+## Next steps
+
+- [Introduction to rxode2](rxode2-intro.html)
+- [How do I...?](rxode2-cookbook.html)
+- [Low-level models and other input styles](rxode2-classic-models.html)

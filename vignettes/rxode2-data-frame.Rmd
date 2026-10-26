@@ -20,3 +20,8 @@ knitr::opts_chunk$set(
 
 ```{r child='df.Rmdh'}
 ```
+
+# Next steps
+
+- [Plotting results](rxode2-plot.html)
+- [Solving a single subject](rxode2-single-subject.html)
