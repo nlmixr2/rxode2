@@ -1,0 +1,33 @@
+---
+title: "Which dosing page do I need?"
+---
+
+rxode2 accepts doses and observation times in several ways.  Pick the
+row that matches what you are trying to do:
+
+| You want to...                                                  | Use                                   | Read                                                          |
+|-----------------------------------------------------------------|---------------------------------------|---------------------------------------------------------------|
+| Solve with an existing NONMEM-style (or deSolve-style) dataset  | a data frame                          | [Dataset columns](rxode2-dataset-columns.html)                |
+| See how a bolus, infusion, steady state or reset behaves        | `et()` or a data frame                | [Dosing event types](rxode2-event-types.html)                 |
+| Build a regimen and sampling times in R                         | `et()`                                | [Building event tables with et()](rxode2-event-table.html)    |
+| Chain, repeat or stack regimens (e.g. bid then qd, cycles)      | `seq()`, `rep()`, `rbind()` on `et()` | [Combining event tables](rxode2-event-table-combine.html)     |
+| Dose based on the model state (e.g. adaptive or TDM dosing)     | `bolus()`, `infuse()`, ... in `model()` | [Dosing from inside the model](adaptive-dosing.html)        |
+| Dose by body weight                                             | covariate-scaled dose                 | [Weight-based dosing](rxode2-wt.html)                         |
+| Split one dose across two absorption routes                     | `splitBolus()`                        | [Dual absorption with splitBolus()](rxode2-split-bolus.html)  |
+| Read or write old RxODE `evid` codes (100s, 10000s)             | classic `evid`                        | [Classic evid codes](rxode2-events-classic.html)              |
+
+A quick example of the most common case -- a twice-daily dose with
+observation times -- built with `et()`:
+
+```{r}
+library(rxode2)
+ev <- et(amt = 100, ii = 12, until = 72) |>
+  et(seq(0, 72, by = 1))
+head(ev)
+```
+
+The same table as a NONMEM-style data frame is what `rxSolve()` sees:
+
+```{r}
+head(as.data.frame(ev))
+```
