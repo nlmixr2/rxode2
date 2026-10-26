@@ -1,31 +1,57 @@
 rxTest({
-  # With ssAtol/ssRtol disabled the steady state stops at minSS, so it must be
-  # a whole number of doses for every solver (rxode2#1492)
-  test_that("minSS with disabled tolerances gives a whole number of bolus doses", {
-    .k <- 0.01
-    .ii <- 12
-    .r <- exp(-.k * .ii)
-    .m <- rxode2({
-      d / dt(c) <- -k * c
-    })
-    .e <- et(amt = 100, ss = 1, ii = .ii) |> et(0.5)
-    # amount at t=0.5 after n doses every ii, the last at t=0
-    .nDose <- function(n) 100 * (1 - .r^n) / (1 - .r) * exp(-.k * 0.5)
+  # With ssAtol/ssRtol disabled the steady state stops at minSS, which is the
+  # number of doses before the steady-state dose (rxode2#1492)
+  .ssMinSSMod <- rxode2({
+    d / dt(depot) <- -ka * depot
+    d / dt(c) <- ka * depot - k * c
+    alag(depot) <- lag
+  })
+  .ii <- 12
+  .tobs <- c(0.5, 3, 7)
+  # steady state stopped at minSS
+  .ssMinSS <- function(minSS, extra = list(), ss = 1, lag = 0, cmt = "depot", method = "liblsoda") {
+    .e <- do.call(et, c(list(amt = 100, ss = ss, ii = .ii, cmt = cmt), extra))
+    .s <- rxSolve(
+      .ssMinSSMod,
+      et(.e, .tobs),
+      params = c(k = 0.05, ka = 0.7, lag = lag),
+      minSS = minSS,
+      maxSS = minSS + 2,
+      ssAtol = 1e8,
+      ssRtol = 1e8,
+      method = method,
+      returnType = "data.frame"
+    )
+    .s$c
+  }
+  # the same after n explicit doses before the observed one
+  .nDose <- function(n, extra = list(), lag = 0, cmt = "depot") {
+    .e <- do.call(et, c(list(amt = 100, ii = .ii, addl = n, cmt = cmt), extra))
+    .s <- rxSolve(
+      .ssMinSSMod,
+      et(.e, .tobs + n * .ii),
+      params = c(k = 0.05, ka = 0.7, lag = lag),
+      atol = 1e-10,
+      rtol = 1e-10,
+      returnType = "data.frame"
+    )
+    .s$c
+  }
+
+  test_that("minSS with disabled tolerances is the number of prior bolus doses", {
     for (.meth in c("liblsoda", "lsoda", "cvode", "rk4")) {
-      for (.n in c(5, 7, 10)) {
-        .s <- rxSolve(
-          .m,
-          .e,
-          params = c(k = .k),
-          minSS = .n,
-          maxSS = .n + 2,
-          ssAtol = 100,
-          ssRtol = 100,
-          method = .meth,
-          returnType = "data.frame"
+      for (.n in c(5, 8)) {
+        expect_equal(
+          .ssMinSS(.n, method = .meth),
+          .nDose(.n),
+          tolerance = 1e-5
         )
-        expect_equal(.s$c[.s$time == 0.5], .nDose(.n + 3), tolerance = 1e-5)
       }
+    }
+    for (.n in c(5, 8)) {
+      expect_equal(.ssMinSS(.n, cmt = "c"), .nDose(.n, cmt = "c"), tolerance = 1e-5)
+      expect_equal(.ssMinSS(.n, ss = 2), .nDose(.n), tolerance = 1e-5)
+      expect_equal(.ssMinSS(.n, lag = 2), .nDose(.n, lag = 2), tolerance = 1e-5)
     }
   })
 })
