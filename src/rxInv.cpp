@@ -22,6 +22,7 @@ extern "C" SEXP _rxCholInv(SEXP dms, SEXP theta, SEXP tn);
 //' @return inverse or pseudo inverse of matrix.
 //'
 //' @export
+//' @family Utilities
 // [[Rcpp::export]]
 NumericVector rxInv(SEXP matrix){
   mat smatrix= as<mat>(matrix);
@@ -98,6 +99,7 @@ arma::mat rxToCholOmega(arma::mat cholMat){
 //' @author Matthew L. Fidler
 //'
 //' @export
+//' @family Utilities
 // [[Rcpp::export]]
 RObject rxSymInvChol(RObject invObjOrMatrix, Nullable<NumericVector> theta = R_NilValue, std::string type = "cholOmegaInv", int thetaNumber = 0){
   if (invObjOrMatrix.isObject()){

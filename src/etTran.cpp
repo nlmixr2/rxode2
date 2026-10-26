@@ -554,6 +554,7 @@ bool _ini0=true;
 //' @return the boolean ini0, though this is called for its side effects
 //'
 //' @export
+//' @family Solving
 //[[Rcpp::export]]
 bool rxSetIni0(bool ini0 = true) {
   _ini0=ini0;

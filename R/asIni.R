@@ -85,6 +85,7 @@
 #'
 #' as.ini(ini)
 #'
+#' @family Model UI and piping
 as.ini <- function(x) {
   UseMethod("as.ini")
 }

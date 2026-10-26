@@ -36,6 +36,20 @@ survives model piping.  Names must be model parameters; names that are not
 model parameters are ignored at solve time.  Set to \code{NULL} (or an empty
 vector) to clear.
 }
+\seealso{
+Other Solving:
+\code{\link[=as.arrow]{as.arrow()}},
+\code{\link[=rxCbindStudyIndividual]{rxCbindStudyIndividual()}},
+\code{\link[=rxInjectedPars]{rxInjectedPars()}},
+\code{\link[=rxParLoader]{rxParLoader()}},
+\code{\link[=rxRegisterUiAssembled]{rxRegisterUiAssembled()}},
+\code{\link[=rxRegisterUiPrep]{rxRegisterUiPrep()}},
+\code{\link[=rxSetActiveParLoader]{rxSetActiveParLoader()}},
+\code{\link[=rxSetIni0]{rxSetIni0()}},
+\code{\link[=rxSolve]{rxSolve()}},
+\code{\link[=rxSolveChunked]{rxSolveChunked()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Solving}

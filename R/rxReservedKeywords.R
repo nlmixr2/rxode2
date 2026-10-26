@@ -6,4 +6,5 @@
 #' \item{Meaning}{Reserved Keyword Meaning}
 #' \item{Alias}{Keyword Alias}
 #' }
+#' @family Model definition
 "rxReservedKeywords"

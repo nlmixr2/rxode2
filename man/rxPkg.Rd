@@ -45,6 +45,11 @@ this function returns nothing and is used for its side effects
 \description{
 Creates a package from compiled rxode2 models
 }
+\seealso{
+Other Packaging:
+\code{\link[=rxUse]{rxUse()}}
+}
 \author{
 Matthew Fidler
 }
+\concept{Packaging}

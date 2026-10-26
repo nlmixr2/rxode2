@@ -46,6 +46,14 @@ sensitivity analysis.  Same column names and output structure as
 \code{rxSolve(object, ..., calcSens=)}.  Prefer \code{\link[=.rxAdjointGrad]{.rxAdjointGrad()}} when only a
 scalar objective gradient is needed.
 }
+\seealso{
+Other Sensitivities:
+\code{\link[=rxControlUpdateSens]{rxControlUpdateSens()}},
+\code{\link[=rxDfdy]{rxDfdy()}},
+\code{\link[=rxSensMatExp]{rxSensMatExp()}},
+\code{\link[=rxSolveAdjointRk4]{rxSolveAdjointRk4()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Sensitivities}

@@ -23,3 +23,8 @@ Nothing; This is used for its side effects and shouldn't be called by a user
 \description{
 Use model object in your package
 }
+\seealso{
+Other Packaging:
+\code{\link[=rxPkg]{rxPkg()}}
+}
+\concept{Packaging}

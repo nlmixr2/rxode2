@@ -13,6 +13,21 @@ nothing
 When run, if the \code{R_user_dir} for rxode2's cache isn't present,
 create the cache
 }
+\seealso{
+Other Model definition:
+\code{\link[=rxClean]{rxClean()}},
+\code{\link[=rxCompile]{rxCompile()}},
+\code{\link[=rxDelete]{rxDelete()}},
+\code{\link[=rxLastCompile]{rxLastCompile()}},
+\code{\link[=rxNorm]{rxNorm()}},
+\code{\link{rxReservedKeywords}},
+\code{\link[=rxSupportedFuns]{rxSupportedFuns()}},
+\code{\link{rxSyntaxFunctions}},
+\code{\link[=rxUnloadAll]{rxUnloadAll()}},
+\code{\link[=rxode2]{rxode2()}},
+\code{\link[=summary.rxode2]{summary.rxode2()}}
+}
 \author{
 Matthew Fidler
 }
+\concept{Model definition}

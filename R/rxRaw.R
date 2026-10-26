@@ -30,6 +30,7 @@
 #'
 #' rxGetDefaultSerialize()
 #'
+#' @family Utilities
 rxGetDefaultSerialize <- function() {
   op <- getOption("rxode2.serialize.type", "bzip2")
   if (!op %in% c("base", "bzip2", "xz")) {

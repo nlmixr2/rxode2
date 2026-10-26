@@ -15,3 +15,17 @@ boolean indicating if this was built with current rxode2
 \description{
 Checks if the rxode2 object was built with the current build
 }
+\seealso{
+Other Utilities:
+\code{\link[=rxDerived]{rxDerived()}},
+\code{\link[=rxGetDefaultSerialize]{rxGetDefaultSerialize()}},
+\code{\link[=rxHtml]{rxHtml()}},
+\code{\link[=rxInv]{rxInv()}},
+\code{\link[=rxLock]{rxLock()}},
+\code{\link[=rxNumLoaded]{rxNumLoaded()}},
+\code{\link[=rxOmegaVarCovDeriv]{rxOmegaVarCovDeriv()}},
+\code{\link[=rxSuppressMsg]{rxSuppressMsg()}},
+\code{\link[=rxSymInvChol]{rxSymInvChol()}},
+\code{\link[=rxTempDir]{rxTempDir()}}
+}
+\concept{Utilities}

@@ -201,6 +201,7 @@ assertRxUi <- function(ui, extra = "", .var.name = .vname(ui)) {
 #'
 #' testRxLinCmt(one.cmt)
 #'
+#' @family Assertions
 testRxLinCmt <- function(ui, extra = "", .var.name = .vname(ui)) {
   .ui <- assertRxUi(ui, extra = extra, .var.name = .var.name)
   if (!is.null(.ui$.linCmtM)) {
@@ -277,6 +278,7 @@ assertRxUiNoMix <- function(ui, extra = "", .var.name = .vname(ui)) {
 #'   (either an estimated correlation or a modeled/literal one)
 #' @author Matthew L. Fidler
 #' @export
+#' @family Assertions
 rxHasAr <- function(ui) {
   ui <- assertRxUi(ui)
   .iniDf <- ui$iniDf

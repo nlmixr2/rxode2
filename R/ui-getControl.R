@@ -6,6 +6,7 @@
 #' @return Nothing, called for side effects
 #' @author Matthew L. Fidler
 #' @export
+#' @family Model UI and piping
 rxRemoveControl <- function(ui) {
   if (is.list(ui) || inherits(ui, "raw")) {
     stop("cannot remove from compressed 'rxUi'\nfirst decompress with `rxode2::rxUiDecompress()'", call. = FALSE)
@@ -25,6 +26,7 @@ rxRemoveControl <- function(ui) {
 #' @return Nothing, called for side effects
 #' @author Matthew L. Fidler
 #' @export
+#' @family Model UI and piping
 rxSetControl <- function(ui, control) {
   if (inherits(control, "list")) {
     assign("control", control, envir = ui)
@@ -64,6 +66,7 @@ rxAssignControlValue <- function(ui, option, value) {
 #' @return Option (if present) or default value
 #' @author Matthew L. Fidler
 #' @export
+#' @family Model UI and piping
 rxGetControl <- function(ui, option, default) {
   ui <- rxUiDecompress(ui)
   if (!exists("control", envir = ui)) {

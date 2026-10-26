@@ -5,6 +5,7 @@
 #' @return html code for rxSolve object
 #' @author Matthew L. Fidler
 #' @export
+#' @family Utilities
 rxHtml <- function(x, ...) {
   UseMethod("rxHtml")
 }

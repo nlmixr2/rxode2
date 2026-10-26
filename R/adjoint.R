@@ -28,6 +28,7 @@
 #'   `rx__sens_<state>_BY_<param>__` columns appended.
 #' @author Matthew L. Fidler
 #' @export
+#' @family Sensitivities
 rxSolveAdjoint <- function(
   object,
   params,

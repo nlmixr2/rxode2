@@ -119,7 +119,21 @@ files.
 }
 \seealso{
 \code{\link[=rxode2]{rxode2()}}
+
+Other Model definition:
+\code{\link[=rxClean]{rxClean()}},
+\code{\link[=rxCreateCache]{rxCreateCache()}},
+\code{\link[=rxDelete]{rxDelete()}},
+\code{\link[=rxLastCompile]{rxLastCompile()}},
+\code{\link[=rxNorm]{rxNorm()}},
+\code{\link{rxReservedKeywords}},
+\code{\link[=rxSupportedFuns]{rxSupportedFuns()}},
+\code{\link{rxSyntaxFunctions}},
+\code{\link[=rxUnloadAll]{rxUnloadAll()}},
+\code{\link[=rxode2]{rxode2()}},
+\code{\link[=summary.rxode2]{summary.rxode2()}}
 }
 \author{
 Matthew L.Fidler
 }
+\concept{Model definition}

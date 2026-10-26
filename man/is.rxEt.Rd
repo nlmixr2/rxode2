@@ -15,3 +15,22 @@ logical
 \description{
 Check if object is an rxEt event table
 }
+\seealso{
+Other Event tables:
+\code{\link[=add.dosing]{add.dosing()}},
+\code{\link[=add.sampling]{add.sampling()}},
+\code{\link[=as.et]{as.et()}},
+\code{\link[=et]{et()}},
+\code{\link[=etExpand]{etExpand()}},
+\code{\link[=etRbind]{etRbind()}},
+\code{\link[=etRep]{etRep()}},
+\code{\link[=etSeq]{etSeq()}},
+\code{\link[=eventTable]{eventTable()}},
+\code{\link[=rxEventTableFile]{rxEventTableFile()}},
+\code{\link[=splitBolus]{splitBolus()}},
+\code{\link{splitBolusInfusion-directive}},
+\code{\link[=splitInfusion]{splitInfusion()}},
+\code{\link{splitInfusionBolus-directive}},
+\code{\link[=toTrialDuration]{toTrialDuration()}}
+}
+\concept{Event tables}

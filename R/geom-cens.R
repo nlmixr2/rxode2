@@ -138,6 +138,7 @@ StatCens <- ggplot2::ggproto(
 #' @inheritParams ggplot2::stat_identity
 #' @return This returns a ggplot2 stat
 #' @export
+#' @family rxode2 plotting
 stat_cens <- function(
   mapping = NULL,
   data = NULL,

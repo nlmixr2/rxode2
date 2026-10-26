@@ -6,4 +6,5 @@
 #' \item{Description}{Description of function}
 #' \item{Aliases}{Function Aliases}
 #' }
+#' @family Model definition
 "rxSyntaxFunctions"

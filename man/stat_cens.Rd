@@ -129,3 +129,12 @@ converted to \code{lower}/\code{upper}.
 
 Will add boxes representing the areas of the fit that were censored.
 }
+\seealso{
+Other rxode2 plotting:
+\code{\link[=is.rxStackData]{is.rxStackData()}},
+\code{\link[=plot.rxSolve]{plot.rxSolve()}},
+\code{\link[=rxStack]{rxStack()}},
+\code{\link[=rxTheme]{rxTheme()}},
+\code{\link[=stat_amt]{stat_amt()}}
+}
+\concept{rxode2 plotting}

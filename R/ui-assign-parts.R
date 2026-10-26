@@ -6,6 +6,7 @@
 #' @return rxode2 related object
 #' @export
 #' @author Matthew L. Fidler
+#' @family Model UI and piping
 `model<-` <- function(x, envir = environment(x), value) {
   UseMethod("model<-")
 }
@@ -31,6 +32,7 @@
 #' @return rxode2 related object
 #' @export
 #' @author Matthew L. Fidler
+#' @family Model UI and piping
 `ini<-` <- function(x, envir = environment(x), value) {
   UseMethod("ini<-")
 }
@@ -253,6 +255,7 @@
 #'
 #' rxode2(ui) <- two.compartment
 #'
+#' @family Model UI and piping
 `rxode2<-` <- function(x, envir = environment(x), value) {
   UseMethod("rxode2<-")
 }

@@ -44,6 +44,27 @@ picture rather than one line: the latent normals, the Gaussian copula that
 correlates them, and the \verb{rxCor.*} thetas.  Those are prepended, so the
 \verb{rxN.*} this line reads are defined above it.
 }
+\seealso{
+Other User functions:
+\code{\link[=linMod]{linMod()}},
+\code{\link[=mix]{mix()}},
+\code{\link[=rxD]{rxD()}},
+\code{\link[=rxFun]{rxFun()}},
+\code{\link[=rxIntToBase]{rxIntToBase()}},
+\code{\link[=rxIntToLetter]{rxIntToLetter()}},
+\code{\link[=rxUdfUiControl]{rxUdfUiControl()}},
+\code{\link[=rxUdfUiData]{rxUdfUiData()}},
+\code{\link[=rxUdfUiEst]{rxUdfUiEst()}},
+\code{\link[=rxUdfUiExpr]{rxUdfUiExpr()}},
+\code{\link[=rxUdfUiFlag]{rxUdfUiFlag()}},
+\code{\link[=rxUdfUiIniDf]{rxUdfUiIniDf()}},
+\code{\link[=rxUdfUiIniLhs]{rxUdfUiIniLhs()}},
+\code{\link[=rxUdfUiIsValue]{rxUdfUiIsValue()}},
+\code{\link[=rxUdfUiMv]{rxUdfUiMv()}},
+\code{\link[=rxUdfUiNum]{rxUdfUiNum()}},
+\code{\link[=rxUdfUiParsing]{rxUdfUiParsing()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{User functions}

@@ -27,3 +27,17 @@ the \code{arrow} package.
 This is an rxode2 generic: \pkg{arrow} provides \code{open_dataset()} but no
 lazy-dataset coercion generic to dispatch on, so rxode2 defines its own.
 }
+\seealso{
+Other Solving:
+\code{\link[=rxCbindStudyIndividual]{rxCbindStudyIndividual()}},
+\code{\link[=rxForcedPars]{rxForcedPars()}},
+\code{\link[=rxInjectedPars]{rxInjectedPars()}},
+\code{\link[=rxParLoader]{rxParLoader()}},
+\code{\link[=rxRegisterUiAssembled]{rxRegisterUiAssembled()}},
+\code{\link[=rxRegisterUiPrep]{rxRegisterUiPrep()}},
+\code{\link[=rxSetActiveParLoader]{rxSetActiveParLoader()}},
+\code{\link[=rxSetIni0]{rxSetIni0()}},
+\code{\link[=rxSolve]{rxSolve()}},
+\code{\link[=rxSolveChunked]{rxSolveChunked()}}
+}
+\concept{Solving}

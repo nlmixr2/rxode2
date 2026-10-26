@@ -119,6 +119,7 @@
 #' rxUiEtaDistAnchors(rxEtaDistExpand(mod(), param = "direct"), .d)
 #' }
 #' }
+#' @family Variability and uncertainty
 rxUiEtaDistAnchors <- function(ui, d = NULL) {
   if (is.function(ui) || inherits(ui, c("rxode2", "rxode2tos"))) {
     ui <- .rxEtaDistAsUiQuietly(ui)
@@ -284,6 +285,7 @@ rxUiEtaDistAnchors <- function(ui, d = NULL) {
 #'   none
 #' @export
 #' @author Matthew L. Fidler
+#' @family Variability and uncertainty
 rxUiEtaDists <- function(ui) {
   ## accepts a model function as well as a built ui, the way the rest of
   ## the rxUi accessors do
@@ -716,6 +718,7 @@ assertRxUiNoEtaDist <- function(ui, extra = "") {
 #'   not have, so `"direct"` refuses a correlated declared block by name rather
 #'   than dropping the correlation silently.
 #' @author Matthew L. Fidler
+#' @family Variability and uncertainty
 rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
   param <- match.arg(param)
   if (is.function(ui) || inherits(ui, c("rxode2", "rxode2tos"))) {
@@ -1588,6 +1591,7 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
 #' rxEtaDistMuRef(mod)
 #' }
 #' }
+#' @family Variability and uncertainty
 rxEtaDistMuRef <- function(ui, variance = 0.1) {
   .ui <- rxUiDecompress(assertRxUi(ui))
   if (nrow(rxUiEtaDists(.ui)) == 0L) {
@@ -1709,6 +1713,7 @@ rxEtaDistMuRef <- function(ui, variance = 0.1) {
 #'   that replaces the declaration
 #' @export
 #' @author Matthew L. Fidler
+#' @family User functions
 rxUdfUiLhs.dist <- function(fun, rhs) {
   if (length(fun) != 2L) {
     stop("'dist()' takes exactly one random effect, as in 'dist(eta.cl)'", call. = FALSE)

@@ -32,6 +32,20 @@ derivatives with respect to each free lower-triangular element
 
 where \eqn{E_{ab}} is the symmetric single-entry basis matrix.
 }
+\seealso{
+Other Utilities:
+\code{\link[=rxDerived]{rxDerived()}},
+\code{\link[=rxGetDefaultSerialize]{rxGetDefaultSerialize()}},
+\code{\link[=rxHtml]{rxHtml()}},
+\code{\link[=rxInv]{rxInv()}},
+\code{\link[=rxIsCurrent]{rxIsCurrent()}},
+\code{\link[=rxLock]{rxLock()}},
+\code{\link[=rxNumLoaded]{rxNumLoaded()}},
+\code{\link[=rxSuppressMsg]{rxSuppressMsg()}},
+\code{\link[=rxSymInvChol]{rxSymInvChol()}},
+\code{\link[=rxTempDir]{rxTempDir()}}
+}
 \author{
 Hidde van de Beek
 }
+\concept{Utilities}

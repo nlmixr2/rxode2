@@ -5,6 +5,7 @@
 #' @param id name of the subject ID column
 #' @return An \code{rxEtFile} object
 #' @export
+#' @family Event tables
 rxEventTableFile <- function(path, format = c("auto", "parquet", "csv", "fst", "rds"), id = "id") {
   format <- match.arg(format)
   if (format == "auto") {
@@ -1088,6 +1089,7 @@ as_arrow_table.rxSolveOom <- function(x, ...) {
 #' @param ... Ignored.
 #' @return An \code{arrow::Dataset}.
 #' @export
+#' @family Solving
 as.arrow <- function(x, ...) UseMethod("as.arrow")
 
 #' @rdname as.arrow
@@ -1261,6 +1263,7 @@ dim.rxSolveOom <- function(x) {
 #' @param parallel number of mirai daemons for parallel chunk solving (0 = serial)
 #' @return An \code{rxSolveOom} object
 #' @export
+#' @family Solving
 rxSolveChunked <- function(
   object,
   params = NULL,

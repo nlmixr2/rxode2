@@ -26,3 +26,17 @@ state from serializable ui slots (so a ui saved to disk and reloaded in a
 fresh session solves correctly).  The hook must be cheap and a no-op for
 models it does not own.
 }
+\seealso{
+Other Solving:
+\code{\link[=as.arrow]{as.arrow()}},
+\code{\link[=rxCbindStudyIndividual]{rxCbindStudyIndividual()}},
+\code{\link[=rxForcedPars]{rxForcedPars()}},
+\code{\link[=rxInjectedPars]{rxInjectedPars()}},
+\code{\link[=rxParLoader]{rxParLoader()}},
+\code{\link[=rxRegisterUiAssembled]{rxRegisterUiAssembled()}},
+\code{\link[=rxSetActiveParLoader]{rxSetActiveParLoader()}},
+\code{\link[=rxSetIni0]{rxSetIni0()}},
+\code{\link[=rxSolve]{rxSolve()}},
+\code{\link[=rxSolveChunked]{rxSolveChunked()}}
+}
+\concept{Solving}

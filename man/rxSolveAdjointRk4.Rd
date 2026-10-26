@@ -40,6 +40,14 @@ in the step size whatever the method's order, and an adaptive method's
 error control does not limit it: cap the step with \code{hmax} (or use a
 fixed-step method with a small \code{hmin}) for accurate sensitivities.
 }
+\seealso{
+Other Sensitivities:
+\code{\link[=rxControlUpdateSens]{rxControlUpdateSens()}},
+\code{\link[=rxDfdy]{rxDfdy()}},
+\code{\link[=rxSensMatExp]{rxSensMatExp()}},
+\code{\link[=rxSolveAdjoint]{rxSolveAdjoint()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Sensitivities}

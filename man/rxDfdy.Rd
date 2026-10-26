@@ -22,9 +22,17 @@ Other Query model information:
 \code{\link[=rxLhs]{rxLhs()}},
 \code{\link[=rxModelVars]{rxModelVars()}},
 \code{\link[=rxParams]{rxParams()}},
-\code{\link[=rxState]{rxState()}}
+\code{\link[=rxState]{rxState()}},
+\code{\link[=rxStateOde]{rxStateOde()}}
+
+Other Sensitivities:
+\code{\link[=rxControlUpdateSens]{rxControlUpdateSens()}},
+\code{\link[=rxSensMatExp]{rxSensMatExp()}},
+\code{\link[=rxSolveAdjoint]{rxSolveAdjoint()}},
+\code{\link[=rxSolveAdjointRk4]{rxSolveAdjointRk4()}}
 }
 \author{
 Matthew L. Fidler
 }
 \concept{Query model information}
+\concept{Sensitivities}

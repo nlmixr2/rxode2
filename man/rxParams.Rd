@@ -141,7 +141,8 @@ Other Query model information:
 \code{\link[=rxInits]{rxInits()}},
 \code{\link[=rxLhs]{rxLhs()}},
 \code{\link[=rxModelVars]{rxModelVars()}},
-\code{\link[=rxState]{rxState()}}
+\code{\link[=rxState]{rxState()}},
+\code{\link[=rxStateOde]{rxStateOde()}}
 }
 \author{
 Matthew L.Fidler

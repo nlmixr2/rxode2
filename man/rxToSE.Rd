@@ -53,6 +53,11 @@ An rxode2 symengine environment
 \description{
 rxode2 to symengine environment
 }
+\seealso{
+Other Symbolic tools:
+\code{\link[=rxS]{rxS()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Symbolic tools}

@@ -24,6 +24,7 @@
 #' @return Nothing
 #' @author Matthew L. Fidler
 #' @export
+#' @family Solver options and performance
 rxIndLinStrategy <- function(strategy = c("curState", "split")) {
   assignInMyNamespace(".rxIndLinStrategy", match.arg(strategy))
 }
@@ -43,6 +44,7 @@ rxIndLinStrategy <- function(strategy = c("curState", "split")) {
 #' @return Nothing
 #' @author Matthew Fidler
 #' @export
+#' @family Solver options and performance
 rxIndLinState <- function(preferred = NULL) {
   if (is.null(preferred)) {
     return(assignInMyNamespace(".rxIndLinState", preferred))

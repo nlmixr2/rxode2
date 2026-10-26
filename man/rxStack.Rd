@@ -40,6 +40,15 @@ and \code{trt} is the state and \code{lhs} variables.
 \description{
 Stack a solved object for things like default ggplot2 plot
 }
+\seealso{
+Other rxode2 plotting:
+\code{\link[=is.rxStackData]{is.rxStackData()}},
+\code{\link[=plot.rxSolve]{plot.rxSolve()}},
+\code{\link[=rxTheme]{rxTheme()}},
+\code{\link[=stat_amt]{stat_amt()}},
+\code{\link[=stat_cens]{stat_cens()}}
+}
 \author{
 Matthew Fidler
 }
+\concept{rxode2 plotting}

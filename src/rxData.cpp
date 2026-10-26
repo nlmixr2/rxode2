@@ -1187,6 +1187,7 @@ CharacterVector rxParams_(const RObject &obj){
 //'
 //' @family Query model information
 //' @export
+//' @family Sensitivities
 //[[Rcpp::export]]
 CharacterVector rxDfdy(const RObject &obj){
   List modVar = rxModelVars(obj);
@@ -2903,6 +2904,7 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
 //' @author Matthew L.Fidler
 //'
 //' @export
+//' @family Variability and uncertainty
 //[[Rcpp::export]]
 List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
                      const RObject &omega= R_NilValue,
@@ -8005,6 +8007,7 @@ RObject rxGetrxode2(RObject obj){
 //' @return boolean indicating if this was built with current rxode2
 //'
 //' @export
+//' @family Utilities
 //[[Rcpp::export]]
 bool rxIsCurrent(RObject obj){
   List mv = rxModelVars(obj);
@@ -8231,6 +8234,7 @@ bool rxDynLoad(RObject obj){
 //' @return nothing; called for side effects
 //'
 //' @export
+//' @family Utilities
 //[[Rcpp::export]]
 RObject rxLock(RObject obj){
   getRxModels();
@@ -8402,6 +8406,7 @@ bool rxDynUnload(RObject obj){
 //'
 //' @author Matthew L.Fidler
 //' @export
+//' @family Model definition
 //[[Rcpp::export]]
 bool rxDelete(RObject obj){
   if (rxIs(obj, "rxode2")){

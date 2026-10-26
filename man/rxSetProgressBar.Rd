@@ -17,6 +17,27 @@ nothing, used for side effects
 \description{
 Set timing for progress bar
 }
+\seealso{
+Other Solver options and performance:
+\code{\link[=forderForceBase]{forderForceBase()}},
+\code{\link[=getRxThreads]{getRxThreads()}},
+\code{\link[=odeMethodToInt]{odeMethodToInt()}},
+\code{\link[=rxIndLinState]{rxIndLinState()}},
+\code{\link[=rxIndLinStrategy]{rxIndLinStrategy()}},
+\code{\link[=rxIsAutoSwitch]{rxIsAutoSwitch()}},
+\code{\link[=rxIsDense]{rxIsDense()}},
+\code{\link[=rxIsImplicit]{rxIsImplicit()}},
+\code{\link[=rxIsNonStiff]{rxIsNonStiff()}},
+\code{\link[=rxIsStiff]{rxIsStiff()}},
+\code{\link[=rxMemSummary]{rxMemSummary()}},
+\code{\link[=rxMemoryEstimate]{rxMemoryEstimate()}},
+\code{\link[=rxOptExpr]{rxOptExpr()}},
+\code{\link[=rxProgress]{rxProgress()}},
+\code{\link[=rxSetProd]{rxSetProd()}},
+\code{\link[=rxSetSum]{rxSetSum()}},
+\code{\link[=rxSumProdModel]{rxSumProdModel()}}
+}
 \author{
 Matthew Fidler
 }
+\concept{Solver options and performance}

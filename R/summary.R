@@ -7,6 +7,7 @@
 #' @return object is returned
 #' @author Matthew L.Fidler
 #' @export
+#' @family Model definition
 summary.rxode2 <- function(object, ...) {
   print.rxode2(object, rxSuppress = TRUE)
   summary.rxDll(object$cmpMgr$rxDll(), noprint = TRUE)

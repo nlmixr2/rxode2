@@ -21,6 +21,27 @@ multi-state product cannot yield a state-free rate constant whichever state
 is factored out, so it becomes an \code{indLin()} forcing instead.  The setting is
 kept so existing code keeps working.
 }
+\seealso{
+Other Solver options and performance:
+\code{\link[=forderForceBase]{forderForceBase()}},
+\code{\link[=getRxThreads]{getRxThreads()}},
+\code{\link[=odeMethodToInt]{odeMethodToInt()}},
+\code{\link[=rxIndLinStrategy]{rxIndLinStrategy()}},
+\code{\link[=rxIsAutoSwitch]{rxIsAutoSwitch()}},
+\code{\link[=rxIsDense]{rxIsDense()}},
+\code{\link[=rxIsImplicit]{rxIsImplicit()}},
+\code{\link[=rxIsNonStiff]{rxIsNonStiff()}},
+\code{\link[=rxIsStiff]{rxIsStiff()}},
+\code{\link[=rxMemSummary]{rxMemSummary()}},
+\code{\link[=rxMemoryEstimate]{rxMemoryEstimate()}},
+\code{\link[=rxOptExpr]{rxOptExpr()}},
+\code{\link[=rxProgress]{rxProgress()}},
+\code{\link[=rxSetProd]{rxSetProd()}},
+\code{\link[=rxSetProgressBar]{rxSetProgressBar()}},
+\code{\link[=rxSetSum]{rxSetSum()}},
+\code{\link[=rxSumProdModel]{rxSumProdModel()}}
+}
 \author{
 Matthew Fidler
 }
+\concept{Solver options and performance}

@@ -1712,10 +1712,24 @@ Plevyak, J.
 }
 \seealso{
 \code{\link[=eventTable]{eventTable()}}, \code{\link[=et]{et()}}, \code{\link[=add.sampling]{add.sampling()}}, \code{\link[=add.dosing]{add.dosing()}}
+
+Other Model definition:
+\code{\link[=rxClean]{rxClean()}},
+\code{\link[=rxCompile]{rxCompile()}},
+\code{\link[=rxCreateCache]{rxCreateCache()}},
+\code{\link[=rxDelete]{rxDelete()}},
+\code{\link[=rxLastCompile]{rxLastCompile()}},
+\code{\link[=rxNorm]{rxNorm()}},
+\code{\link{rxReservedKeywords}},
+\code{\link[=rxSupportedFuns]{rxSupportedFuns()}},
+\code{\link{rxSyntaxFunctions}},
+\code{\link[=rxUnloadAll]{rxUnloadAll()}},
+\code{\link[=summary.rxode2]{summary.rxode2()}}
 }
 \author{
 Melissa Hallow, Wenping Wang and Matthew Fidler
 }
+\concept{Model definition}
 \concept{Nonlinear regression}
 \concept{ODE models}
 \concept{Ordinary differential equations}

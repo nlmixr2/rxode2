@@ -736,6 +736,7 @@
 #' @return the solved data frame with `rx__sens_<state>_BY_<param>__` columns.
 #' @author Matthew L. Fidler
 #' @export
+#' @family Sensitivities
 rxSolveAdjointRk4 <- function(object, events, params = NULL, calcSens, method = "rk4s", ...) {
   .b <- .rxAdjointModel(object, calcSens, stiff = .rxAdjointMethodStiff(method))
   .df <- as.data.frame(rxode2::rxSolve(.b$model, events, params = params, method = method, ...))

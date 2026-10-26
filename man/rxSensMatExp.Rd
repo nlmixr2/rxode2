@@ -42,6 +42,14 @@ constant in the states, expressed as \code{k_from_to} micro-constants, plus an
 gets the same rate matrix, the \verb{(dA/dp).X} cross terms as non-depleting
 transfers, and its own forcing \verb{d(f)/dp + (df/dy).S^p}.
 }
+\seealso{
+Other Sensitivities:
+\code{\link[=rxControlUpdateSens]{rxControlUpdateSens()}},
+\code{\link[=rxDfdy]{rxDfdy()}},
+\code{\link[=rxSolveAdjoint]{rxSolveAdjoint()}},
+\code{\link[=rxSolveAdjointRk4]{rxSolveAdjointRk4()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Sensitivities}

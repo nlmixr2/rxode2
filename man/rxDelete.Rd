@@ -16,6 +16,21 @@ A boolean stating if the operation was successful.
 This function deletes the DLL, but doesn't delete the model
 information in the object.
 }
+\seealso{
+Other Model definition:
+\code{\link[=rxClean]{rxClean()}},
+\code{\link[=rxCompile]{rxCompile()}},
+\code{\link[=rxCreateCache]{rxCreateCache()}},
+\code{\link[=rxLastCompile]{rxLastCompile()}},
+\code{\link[=rxNorm]{rxNorm()}},
+\code{\link{rxReservedKeywords}},
+\code{\link[=rxSupportedFuns]{rxSupportedFuns()}},
+\code{\link{rxSyntaxFunctions}},
+\code{\link[=rxUnloadAll]{rxUnloadAll()}},
+\code{\link[=rxode2]{rxode2()}},
+\code{\link[=summary.rxode2]{summary.rxode2()}}
+}
 \author{
 Matthew L.Fidler
 }
+\concept{Model definition}

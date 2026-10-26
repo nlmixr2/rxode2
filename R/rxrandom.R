@@ -39,6 +39,7 @@
 #'
 #' }
 #' @export
+#' @family Random variables
 rxnormV <- function(mean = 0, sd = 1, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(mean, len = 1)
   checkmate::assertNumeric(sd, lower = 0, len = 1)
@@ -84,6 +85,7 @@ rxnorm <- rxnormV
 #'
 #' }
 #' @export
+#' @family Random variables
 rxpois <- function(lambda, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(lambda, len = 1)
   checkmate::assertCount(n)
@@ -122,6 +124,7 @@ rxpois <- function(lambda, n = 1L, ncores = 1L) {
 #' s <- rxSolve(rx, et)
 #' }
 #' @export
+#' @family Random variables
 rxt <- function(df, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(df, len = 1, lower = 0)
   if (df == 0) {
@@ -167,6 +170,7 @@ rxt <- function(df, n = 1L, ncores = 1L) {
 #' }
 #'
 #' @export
+#' @family Random variables
 rxunif <- function(min = 0, max = 1, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(min, len = 1)
   checkmate::assertNumeric(max, len = 1)
@@ -213,6 +217,7 @@ rxunif <- function(min = 0, max = 1, n = 1L, ncores = 1L) {
 #'
 #' }
 #' @export
+#' @family Random variables
 rxweibull <- function(shape, scale = 1, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(shape, len = 1)
   checkmate::assertNumeric(scale, len = 1)
@@ -257,6 +262,7 @@ rxweibull <- function(shape, scale = 1, n = 1L, ncores = 1L) {
 #' }
 #'
 #' @export
+#' @family Random variables
 rxgeom <- function(prob, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(prob, len = 1, lower = 0, upper = 1)
   checkmate::assertCount(n)
@@ -301,6 +307,7 @@ rxgeom <- function(prob, n = 1L, ncores = 1L) {
 #'
 #' }
 #' @export
+#' @family Random variables
 rxbeta <- function(shape1, shape2, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(shape1, len = 1, lower = 0)
   if (shape1 == 0) {
@@ -354,6 +361,7 @@ rxbeta <- function(shape1, shape2, n = 1L, ncores = 1L) {
 #' }
 #'
 #' @export
+#' @family Random variables
 rxgamma <- function(shape, rate = 1, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(shape, len = 1, lower = 0)
   if (shape == 0) {
@@ -404,6 +412,7 @@ rxgamma <- function(shape, rate = 1, n = 1L, ncores = 1L) {
 #' }
 #'
 #' @export
+#' @family Random variables
 rxf <- function(df1, df2, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(df1, len = 1, lower = 0)
   if (df1 == 0) {
@@ -455,6 +464,7 @@ rxf <- function(df1, df2, n = 1L, ncores = 1L) {
 #' }
 #'
 #' @export
+#' @family Random variables
 rxexp <- function(rate, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(rate, len = 1, lower = 0)
   if (rate == 0) {
@@ -503,6 +513,7 @@ rxexp <- function(rate, n = 1L, ncores = 1L) {
 #' }
 #'
 #' @export
+#' @family Random variables
 rxchisq <- function(df, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(df, len = 1, lower = 0)
   if (df == 0) {
@@ -549,6 +560,7 @@ rxchisq <- function(df, n = 1L, ncores = 1L) {
 #' }
 #'
 #' @export
+#' @family Random variables
 rxcauchy <- function(location = 0, scale = 1, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(location, len = 1)
   checkmate::assertNumeric(scale, len = 1, lower = 0)
@@ -589,6 +601,7 @@ rxcauchy <- function(location = 0, scale = 1, n = 1L, ncores = 1L) {
 #' rxord(0.3, 0.3)
 #'
 #' @export
+#' @family Random variables
 rxord <- function(...) {
   .args <- c(...)
   if (any(.args < 0)) {
@@ -640,6 +653,7 @@ rxord <- function(...) {
 #' }
 #'
 #' @export
+#' @family Random variables
 rxbinom <- function(size, prob, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(prob, len = 1, lower = 0, upper = 1)
   checkmate::assertCount(size)
@@ -697,6 +711,7 @@ rxbinom <- function(size, prob, n = 1L, ncores = 1L) {
 #'
 #' }
 #' @export
+#' @family Random variables
 rxnbinom <- function(size, prob, mu, n = 1L, ncores = 1L) {
   if (!missing(mu)) {
     if (!missing(prob)) {
@@ -783,6 +798,7 @@ rxnbinomMu <- function(size, mu, n = 1L, ncores = 1L) {
 #'   1/(1+abs(x))
 #' })
 #'
+#' @family Variability and uncertainty
 rxPp <- function(n, lambda, gamma = 1.0, prob = NULL, t0 = 0.0, tmax = Inf, randomOrder = FALSE) {
   checkmate::assertNumeric(t0, len = 1, any.missing = FALSE)
   checkmate::assertNumeric(tmax, len = 1, any.missing = FALSE, lower = t0)
@@ -827,6 +843,7 @@ rxPp <- function(n, lambda, gamma = 1.0, prob = NULL, t0 = 0.0, tmax = Inf, rand
 #'
 #' # This is provided for NONMEM-like compatibility in rxode2 models
 #' @export
+#' @family Special functions
 phi <- function(q) {
   .Call(`_phi`, q)
 }
@@ -1012,6 +1029,7 @@ phi <- function(q) {
 #' returnChol = TRUE
 #' )
 #' @export
+#' @family Variability and uncertainty
 cvPost <- function(
   nu,
   omega,
@@ -1084,6 +1102,7 @@ cvPost <- function(
 #'
 #' rxGetSeed()
 #'
+#' @family Random seeds
 rxGetSeed <- function() {
   .Call(`_rxode2_rxGetSeed`)
 }
@@ -1167,6 +1186,7 @@ rxGetSeed <- function() {
 #' \url{https://www.johndcook.com/blog/2016/01/29/random-number-generator-seed-mistakes/}
 #'
 #' @export
+#' @family Random seeds
 rxSetSeed <- function(seed) {
   .Call(`_rxSetSeed`, seed)
   invisible()
@@ -1253,6 +1273,7 @@ rxSetSeed <- function(seed) {
 #' }, rxseed=3)
 #'
 #' @export
+#' @family Random seeds
 rxWithSeed <- function(
   seed,
   code,
@@ -1406,6 +1427,7 @@ rxWithPreserveSeed <- function(code) {
 #'   converted to thread safe simulation;
 #'
 #' @export
+#' @family Variability and uncertainty
 rxRmvn <- function(
   n,
   mu = NULL,
@@ -1475,6 +1497,7 @@ rxRmvn <- function(
 #' rxRmvt(4, c(0, 0), sigma, df = 5, lower = c(-1, 0), upper = c(2, Inf))
 #'
 #' @export
+#' @family Variability and uncertainty
 rxRmvt <- function(
   n,
   mu = NULL,

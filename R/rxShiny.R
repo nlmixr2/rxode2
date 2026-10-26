@@ -49,6 +49,7 @@ g.y.log10 <- function(
 #' @return Nothing; Starts a shiny server
 #' @author Zufar Mulyukov and Matthew L. Fidler
 #' @export
+#' @family Shiny
 rxShiny <- function(object, params = NULL, events = NULL, inits = NULL, ..., data = data.frame()) {
   UseMethod("rxShiny")
 }

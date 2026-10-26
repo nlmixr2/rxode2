@@ -7,6 +7,7 @@
 #' @examples
 #'
 #' is.rxStackData(NULL)
+#' @family rxode2 plotting
 is.rxStackData <- function(object) {
   if (!inherits(object, "data.frame")) {
     return(FALSE)
@@ -55,6 +56,7 @@ is.rxStackData <- function(object) {
 #'
 #' @author Matthew Fidler
 #' @export
+#' @family rxode2 plotting
 rxStack <- function(data, vars = NULL, doSim = TRUE, doIpredSim = TRUE) {
   if (!is.rxStackData(data)) {
     stop("this data cannot be used with `rxStack`", call. = FALSE)

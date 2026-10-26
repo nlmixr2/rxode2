@@ -1287,6 +1287,7 @@
 #' @return logical
 #'
 #' @export
+#' @family Event tables
 is.rxEt <- function(x) {
   if (!inherits(x, "rxEt")) {
     return(FALSE)

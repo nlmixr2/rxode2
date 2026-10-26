@@ -21,6 +21,7 @@
 #'   `d2OmegaInv` / `d2LogDet`.
 #' @author Hidde van de Beek
 #' @export
+#' @family Utilities
 rxOmegaVarCovDeriv <- function(omega, order = 2L) {
   omega <- as.matrix(omega)
   storage.mode(omega) <- "double"

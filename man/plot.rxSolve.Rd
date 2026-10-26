@@ -33,7 +33,11 @@ Plot rxode2 objects
 }
 \seealso{
 Other rxode2 plotting:
-\code{\link[=rxTheme]{rxTheme()}}
+\code{\link[=is.rxStackData]{is.rxStackData()}},
+\code{\link[=rxStack]{rxStack()}},
+\code{\link[=rxTheme]{rxTheme()}},
+\code{\link[=stat_amt]{stat_amt()}},
+\code{\link[=stat_cens]{stat_cens()}}
 }
 \concept{rxode2 plotting}
 \keyword{Internal}

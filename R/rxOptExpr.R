@@ -1118,6 +1118,7 @@
 #'
 #' @author Matthew L. Fidler
 #' @export
+#' @family Solver options and performance
 rxOptExpr <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
   .chunkLines <- as.integer(chunkLines)
   if (!is.na(.chunkLines) && .chunkLines > 0L) {

@@ -28,7 +28,8 @@ Other Query model information:
 \code{\link[=rxInits]{rxInits()}},
 \code{\link[=rxLhs]{rxLhs()}},
 \code{\link[=rxModelVars]{rxModelVars()}},
-\code{\link[=rxParams]{rxParams()}}
+\code{\link[=rxParams]{rxParams()}},
+\code{\link[=rxStateOde]{rxStateOde()}}
 }
 \author{
 Matthew L.Fidler

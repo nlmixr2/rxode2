@@ -20,6 +20,7 @@
 #'   errors when called directly from R.
 #'
 #' @export
+#' @family Event tables
 splitBolus <- function(cmt, ...) {
   stop("'splitBolus()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -55,6 +56,7 @@ splitBolus <- function(cmt, ...) {
 #'   errors when called directly from R.
 #'
 #' @export
+#' @family Event tables
 splitInfusion <- function(cmt, ...) {
   stop("'splitInfusion()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -111,6 +113,7 @@ splitInfusion <- function(cmt, ...) {
 #'
 #' @name splitInfusionBolus-directive
 #' @aliases splitInfusionBolus splitInfusionBolus()
+#' @family Event tables
 NULL
 
 #' Split bolus doses into bolus and infusion paths (model directive)
@@ -165,4 +168,5 @@ NULL
 #'
 #' @name splitBolusInfusion-directive
 #' @aliases splitBolusInfusion splitBolusInfusion()
+#' @family Event tables
 NULL

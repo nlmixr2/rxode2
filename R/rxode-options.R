@@ -252,6 +252,7 @@
 #'
 #' @return rxode2 temporary directory.
 #' @export
+#' @family Utilities
 rxTempDir <- function() {
   if (is.null(getFromNamespace(".rxTempDir0", "rxode2"))) {
     .tmp <- Sys.getenv("rxTempDir")
@@ -294,6 +295,7 @@ rxTempDir <- function() {
 #' @author Matthew Fidler
 #'
 #' @export
+#' @family Model definition
 rxCreateCache <- function() {
   .tmp <- R_user_dir("rxode2", "cache")
   assignInMyNamespace(".cacheDefault", R_user_dir("rxode2", "cache"))
@@ -367,6 +369,7 @@ rxForget <- function() {
 #'
 #' # If you  want to suppress messages from rxode2 in other packages, you can use
 #' # this function
+#' @family Utilities
 rxSuppressMsg <- function() {
   if (requireNamespace("knitr", quietly = TRUE)) {
     if (!is.null(knitr::opts_knit$get("rmarkdown.pandoc.to"))) {

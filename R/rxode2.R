@@ -307,6 +307,7 @@ NA_LOGICAL <- NA # nolint
 #' @import tools
 #' @import data.table
 #' @export
+#' @family Model definition
 rxode2 <- # nolint
   function(
     model,
@@ -1901,6 +1902,7 @@ rxDllLoaded <- rxIsLoaded
 #' @author Matthew L.Fidler
 #' @importFrom sys exec_internal
 #' @export
+#' @family Model definition
 rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL, package = NULL, ...) {
   UseMethod("rxCompile")
 }
@@ -1995,6 +1997,7 @@ rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL, package
 #' })
 #' rxLastCompile()
 #' }
+#' @family Model definition
 rxLastCompile <- function(what = c("msg", "stderr", "stdout", "c")) {
   what <- intersect(what, names(.rxCompileEnv$lst))
   lapply(what, function(nm) {
@@ -2185,6 +2188,7 @@ rxLastCompile <- function(what = c("msg", "stderr", "stdout", "c")) {
 #' @author Matthew L. Fidler
 #' @examples
 #' rxNumLoaded()
+#' @family Utilities
 rxNumLoaded <- function() {
   .dlls <- getLoadedDLLs()
   length(grep(rex::rex(start, "rx_", n_times(any, 32), or("_x64", "_i386", "_", "")), names(.dlls)))
@@ -2790,6 +2794,7 @@ rxCondition <- function(obj, condition = NULL) {
 #' @return Normalized Normal syntax (no comments)
 #' @author Matthew L. Fidler
 #' @export
+#' @family Model definition
 rxNorm <- function(obj, condition = NULL, removeInis, removeJac, removeSens) {
   if (!missing(removeInis) || !missing(removeJac) || !missing(removeSens)) {
     .ret <- strsplit(rxNorm(obj, condition), "\n")[[1]]

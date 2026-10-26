@@ -35,6 +35,11 @@ rxode2/symengine environment
 \description{
 Load a model into a symengine environment
 }
+\seealso{
+Other Symbolic tools:
+\code{\link[=rxToSE]{rxToSE()}}
+}
 \author{
 Matthew Fidler
 }
+\concept{Symbolic tools}

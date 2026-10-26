@@ -690,6 +690,7 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"), verbose = FALS
 #'
 #' @author Matthew Fidler
 #' @export
+#' @family Model UI and piping
 linToOde <- function(ui) {
   .ui <- as.rxUi(ui) # nolint
   .ui <- rxUiDecompress(.ui) # nolint
@@ -762,6 +763,7 @@ linToOde <- function(ui) {
 #'
 #' @author Matthew L. Fidler
 #' @export
+#' @family Model UI and piping
 linCmtMicro <- function(ui) {
   .ui <- rxUiDecompress(as.rxUi(ui)) # nolint
   lapply(.linToOdeLinExpr(.ui), .linToOdeBuildMicro)

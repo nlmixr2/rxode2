@@ -93,6 +93,7 @@ rxCat <- function(a, ...) {
 #'
 #' @author Matthew L. Fidler
 #' @export
+#' @family Model definition
 rxClean <- function(wd) {
   if (!missing(wd)) {
     warning("'wd' is depreciated")
@@ -109,6 +110,7 @@ rxClean <- function(wd) {
 #' @return nothing
 #'
 #' @export
+#' @family Solver options and performance
 rxSetSum <- function(type = c("pairwise", "fsum", "kahan", "neumaier", "c")) {
   stop("'rxSetSum' has been moved to rxSolve(...,sum=)", call. = FALSE)
 }
@@ -119,6 +121,7 @@ rxSetSum <- function(type = c("pairwise", "fsum", "kahan", "neumaier", "c")) {
 #' @return nothing
 #'
 #' @export
+#' @family Solver options and performance
 rxSetProd <- function(type = c("long double", "double", "logify")) {
   stop("'rxSetProd' has been moved to rxSolve(...,sum=)", call. = FALSE)
 }
@@ -133,6 +136,7 @@ rxSetProd <- function(type = c("long double", "double", "logify")) {
 #'
 #' @export
 #' @author Matthew Fidler
+#' @family Solver options and performance
 rxSetProgressBar <- function(seconds = 1.0) {
   invisible(.Call(`_rxParProgress`, as.double(seconds)))
 }
@@ -147,6 +151,7 @@ rxSetProgressBar <- function(seconds = 1.0) {
 #' @examples
 #' erf(1.0)
 #' @export
+#' @family Special functions
 erf <- function(x) {
   checkmate::assertNumeric(x)
   .Call(`_rxode2_rxErf`, x, PACKAGE = "rxode2")
@@ -175,6 +180,7 @@ erf <- function(x) {
 #' gammap(1:3, 3)
 #' gammap(1, 1:3)
 #' @export
+#' @family Special functions
 gammap <- function(a, z) {
   .Call(`_gammap`, a, z, PACKAGE = "rxode2")
 }
@@ -203,6 +209,7 @@ gammap <- function(a, z) {
 #' gammaq(1:3, 3)
 #' gammaq(1, 1:3)
 #' @export
+#' @family Special functions
 gammaq <- function(a, z) {
   .Call(`_gammaq`, a, z, PACKAGE = "rxode2")
 }
@@ -234,6 +241,7 @@ gammaq <- function(a, z) {
 #'
 #' uppergamma(1, 1:3)
 #' @export
+#' @family Special functions
 uppergamma <- function(a, z) {
   .Call(`_uppergamma`, a, z, PACKAGE = "rxode2")
 }
@@ -266,6 +274,7 @@ uppergamma <- function(a, z) {
 #'
 #' lowergamma(1, 1:3)
 #' @export
+#' @family Special functions
 lowergamma <- function(a, z) {
   .Call(`_lowergamma`, a, z, PACKAGE = "rxode2")
 }
@@ -290,6 +299,7 @@ lowergamma <- function(a, z) {
 #'
 #' gammapDer(1, 1:3)
 #' @export
+#' @family Special functions
 gammapDer <- function(a, z) {
   .Call(`_gammapDer`, a, z, PACKAGE = "rxode2")
 }
@@ -332,6 +342,7 @@ gammapDer <- function(a, z) {
 #'
 #' gammaqInva(1:3, 1:3 / 3.1)
 #' @export
+#' @family Special functions
 gammaqInv <- function(a, q) {
   .Call(`_gammaqInv`, a, q, PACKAGE = "rxode2")
 }
@@ -380,6 +391,7 @@ gammaqInva <- function(x, q) {
 #'
 #' gammapInva(1:3, 1:3 / 3.1)
 #' @export
+#' @family Special functions
 gammapInv <- function(a, p) {
   .Call(`_gammapInv`, a, p, PACKAGE = "rxode2")
 }
@@ -562,6 +574,7 @@ gammapInva <- function(x, p) {
 #' logitNormInfo(logit(1, 0, 10), sd = 1, low = 0, high = 10)
 #'
 #' @export
+#' @family Special functions
 logit <- function(x, low = 0, high = 1) {
   .rxTransform(x, 1.0, low, high, 4L, FALSE)
 }
@@ -630,6 +643,7 @@ logitNormInfo <- function(mean = 0, sd = 1, low = 0, high = 1, abs.tol = 1e-6, .
 #'
 #' probitNormInfo(probit(1, 0, 10), sd = 1, low = 0, high = 10)
 #' @export
+#' @family Special functions
 probit <- function(x, low = 0, high = 1) {
   .rxTransform(x, 1.0, low, high, 6L, FALSE)
 }
@@ -667,6 +681,7 @@ probitNormInfo <- function(mean = 0, sd = 1, low = 0, high = 1, abs.tol = 1e-6, 
 #'
 #' yeoJohnsonInv(4.32, 0.5)
 #'
+#' @family Special functions
 boxCox <- function(x, lambda = 1.0) {
   checkmate::assertNumeric(x, lower = 0.0, any.missing = FALSE)
   .rxTransform(x, lambda, low = 0.0, high = 1.0, 0L, FALSE)
@@ -723,6 +738,7 @@ yeoJohnsonInv <- function(x, lambda = 1.0) {
 #' @param verbose Display the value of relevant OpenMP settings
 #' @return number of threads that rxode2 uses
 #' @export
+#' @family Solver options and performance
 getRxThreads <- function(verbose = FALSE) {
   .Call(`getRxThreads_R`, verbose)
 }
@@ -767,6 +783,7 @@ rxCores <- getRxThreads
 #' # print(rxUnloadAll())
 #' @export
 #'
+#' @family Model definition
 rxUnloadAll <- function(set = TRUE) {
   if (missing(set) && !.rxUnloadAllEnv$reallyUnload) {
     return(invisible(FALSE))
@@ -1141,6 +1158,7 @@ is.latex <- function() {
 #'
 #' meanProbs(x, useT=FALSE)
 #'
+#' @family Random variables
 meanProbs <- function(x, ...) {
   UseMethod("meanProbs")
 }
@@ -1293,6 +1311,7 @@ meanProbs.default <- function(
 #'
 #' binomProbs(x, na.rm=TRUE)
 #'
+#' @family Random variables
 binomProbs <- function(x, ...) {
   UseMethod("binomProbs")
 }
@@ -1591,6 +1610,7 @@ binomProbs.default <- function(
 #'
 #' params <- rxDerived(CL = 29.4, V = 1:3, digits = 2)
 #' @export
+#' @family Utilities
 rxDerived <- function(..., verbose = FALSE, digits = 0) {
   .lst <- list(...)
   if (inherits(.lst[[1]], "data.frame")) {
@@ -1802,6 +1822,7 @@ rxDerived <- function(..., verbose = FALSE, digits = 0) {
 #' rxState(mod)
 #' }
 #'
+#' @family Query model information
 rxStateOde <- function(obj) {
   .state <- rxState(obj)
   .mv <- rxModelVars(obj)
@@ -1857,6 +1878,7 @@ rxStateOde <- function(obj) {
 #' studentTInv(0.975, 6) ## == qt(0.975, 6)
 #'
 #' @export
+#' @family Special functions
 phiU <- function(q) {
   .Call(`_rxode2_phiU`, q, PACKAGE = "rxode2")
 }

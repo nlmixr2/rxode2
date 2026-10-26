@@ -59,6 +59,11 @@ Nothing; Starts a shiny server
 \description{
 Use Shiny to help develop an rxode2 model
 }
+\seealso{
+Other Shiny:
+\code{\link[=genShinyApp.template]{genShinyApp.template()}}
+}
 \author{
 Zufar Mulyukov and Matthew L. Fidler
 }
+\concept{Shiny}

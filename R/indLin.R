@@ -6,6 +6,7 @@
 #' @return A character string representing the matrix exponential model code
 #' @author Matthew L. Fidler
 #' @export
+#' @family Model UI and piping
 indLin <- function(model, doConst = FALSE, calcSens = NULL) {
   rxReq("symengine")
   if (!is.null(calcSens)) {
@@ -434,6 +435,7 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
 #' @return A character string representing the matrix exponential sensitivity-expanded model code
 #' @author Matthew L. Fidler
 #' @export
+#' @family Sensitivities
 rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, doConst = FALSE, env = NULL) {
   rxReq("symengine")
   if (!is.character(calcSens)) {

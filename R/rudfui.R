@@ -108,6 +108,7 @@ rxUdfUiNum <- function() {
 #'
 #' @author Matthew L. Fidler
 #'
+#' @family User functions
 rxUdfUiFlag <- function(expr, arg = "arg", funName = "fun", env = baseenv()) {
   checkmate::assertCharacter(arg, len = 1L, any.missing = FALSE)
   checkmate::assertCharacter(funName, len = 1L, any.missing = FALSE)
@@ -137,6 +138,7 @@ rxUdfUiFlag <- function(expr, arg = "arg", funName = "fun", env = baseenv()) {
 #'
 #' rxUdfUiIniDf()
 #'
+#' @family User functions
 rxUdfUiIniDf <- function() {
   if (testIniDf(.udfUiEnv$iniDf)) {
     .udfUiEnv$iniDf
@@ -176,6 +178,7 @@ rxUdfUiIniLhs <- function() {
 #' @export
 #'
 #' @author Matthew L. Fidler
+#' @family User functions
 rxUdfUiIsValue <- function(expr, value, env = baseenv()) {
   .val <- try(eval(expr, envir = env), silent = TRUE)
   if (
@@ -256,6 +259,7 @@ rxUdfUiData <- function(value) {
 #'
 #' @author Matthew L. Fidler
 #'
+#' @family User functions
 rxUdfUiExpr <- function(expr, env = parent.frame()) {
   .val <- suppressWarnings(try(eval(expr, envir = env), silent = TRUE))
   if (
@@ -662,6 +666,7 @@ rxUdfUi <- function(fun) {
 #'
 #' rxIntToLetter(1:100)
 #'
+#' @family User functions
 rxIntToLetter <- function(x, base = 26L) {
   checkmate::testIntegerish(x, lower = 0L, any.missing = FALSE)
   checkmate::testIntegerish(base, lower = 2L, upper = 26L, any.missing = FALSE, len = 1L)
@@ -679,6 +684,7 @@ rxIntToLetter <- function(x, base = 26L) {
 #'
 #' rxIntToBase(1:100)
 #'
+#' @family User functions
 rxIntToBase <- function(x, base = 36L) {
   checkmate::testIntegerish(x, lower = 0L, any.missing = FALSE)
   checkmate::testIntegerish(base, lower = 2L, upper = 36L, any.missing = FALSE, len = 1L)

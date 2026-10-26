@@ -16,6 +16,7 @@
 #' rinvchisq(3, 4, 1) ## Scale = 1, degrees of freedom = 4
 #' rinvchisq(2, 4, 2) ## Scale = 2, degrees of freedom = 4
 #' @export
+#' @family Variability and uncertainty
 rinvchisq <- function(n = 1L, nu = 1.0, scale = 1) {
     .Call(`_rxode2_rinvchisq`, n, nu, scale)
 }
@@ -143,6 +144,7 @@ getCmtNum_ <- function(cmt, mv, sens = TRUE) {
 #' @return the boolean ini0, though this is called for its side effects
 #'
 #' @export
+#' @family Solving
 rxSetIni0 <- function(ini0 = TRUE) {
     .Call(`_rxode2_rxSetIni0`, ini0)
 }
@@ -577,6 +579,7 @@ rxParams_ <- function(obj) {
 #'
 #' @family Query model information
 #' @export
+#' @family Sensitivities
 rxDfdy <- function(obj) {
     .Call(`_rxode2_rxDfdy`, obj)
 }
@@ -674,6 +677,7 @@ atolRtolFactor_ <- function(factor) {
 #' @author Matthew L.Fidler
 #'
 #' @export
+#' @family Variability and uncertainty
 rxSimThetaOmega <- function(params = NULL, omega = NULL, omegaDf = NULL, omegaLower = as.numeric( c(R_NegInf)), omegaUpper = as.numeric( c(R_PosInf)), omegaIsChol = FALSE, omegaSeparation = "auto", omegaXform = 1L, nSub = 1L, thetaMat = NULL, thetaLower = as.numeric( c(R_NegInf)), thetaUpper = as.numeric( c(R_PosInf)), thetaDf = NULL, thetaIsChol = FALSE, nStud = 1L, sigma = NULL, sigmaLower = as.numeric( c(R_NegInf)), sigmaUpper = as.numeric( c(R_PosInf)), sigmaDf = NULL, sigmaIsChol = FALSE, sigmaSeparation = "auto", sigmaXform = 1L, nCoresRV = 1L, nObs = 1L, dfSub = 0, dfObs = 0, simSubjects = TRUE, simVariability = as.logical( c(NA_LOGICAL))) {
     .Call(`_rxode2_rxSimThetaOmega`, params, omega, omegaDf, omegaLower, omegaUpper, omegaIsChol, omegaSeparation, omegaXform, nSub, thetaMat, thetaLower, thetaUpper, thetaDf, thetaIsChol, nStud, sigma, sigmaLower, sigmaUpper, sigmaDf, sigmaIsChol, sigmaSeparation, sigmaXform, nCoresRV, nObs, dfSub, dfObs, simSubjects, simVariability)
 }
@@ -750,6 +754,7 @@ rxGetrxode2 <- function(obj) {
 #' @return boolean indicating if this was built with current rxode2
 #'
 #' @export
+#' @family Utilities
 rxIsCurrent <- function(obj) {
     .Call(`_rxode2_rxIsCurrent`, obj)
 }
@@ -830,6 +835,7 @@ rxDynLoad <- function(obj) {
 #' @return nothing; called for side effects
 #'
 #' @export
+#' @family Utilities
 rxLock <- function(obj) {
     .Call(`_rxode2_rxLock`, obj)
 }
@@ -887,6 +893,7 @@ rxDynUnload <- function(obj) {
 #'
 #' @author Matthew L.Fidler
 #' @export
+#' @family Model definition
 rxDelete <- function(obj) {
     .Call(`_rxode2_rxDelete`, obj)
 }
@@ -929,6 +936,7 @@ rxSetSilentErr <- function(silent) {
 #' @return inverse or pseudo inverse of matrix.
 #'
 #' @export
+#' @family Utilities
 rxInv <- function(matrix) {
     .Call(`_rxode2_rxInv`, matrix)
 }
@@ -970,6 +978,7 @@ rxInv <- function(matrix) {
 #' @author Matthew L. Fidler
 #'
 #' @export
+#' @family Utilities
 rxSymInvChol <- function(invObjOrMatrix, theta = NULL, type = "cholOmegaInv", thetaNumber = 0L) {
     .Call(`_rxode2_rxSymInvChol`, invObjOrMatrix, theta, type, thetaNumber)
 }

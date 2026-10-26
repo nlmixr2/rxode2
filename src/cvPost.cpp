@@ -134,6 +134,7 @@ NumericMatrix cvPost0(double nu, NumericMatrix omega, bool omegaIsChol = false,
 //' rinvchisq(3, 4, 1) ## Scale = 1, degrees of freedom = 4
 //' rinvchisq(2, 4, 2) ## Scale = 2, degrees of freedom = 4
 //' @export
+//' @family Variability and uncertainty
 //[[Rcpp::export]]
 NumericVector rinvchisq(const int n = 1, const double &nu = 1.0, const double &scale = 1){
   NumericVector ret(n);

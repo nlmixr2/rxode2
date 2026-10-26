@@ -49,6 +49,20 @@ matrixes calculated in variables \code{omega}, \code{omegaInv}, \code{dOmega},
 \description{
 Get Omega^-1 and derivatives
 }
+\seealso{
+Other Utilities:
+\code{\link[=rxDerived]{rxDerived()}},
+\code{\link[=rxGetDefaultSerialize]{rxGetDefaultSerialize()}},
+\code{\link[=rxHtml]{rxHtml()}},
+\code{\link[=rxInv]{rxInv()}},
+\code{\link[=rxIsCurrent]{rxIsCurrent()}},
+\code{\link[=rxLock]{rxLock()}},
+\code{\link[=rxNumLoaded]{rxNumLoaded()}},
+\code{\link[=rxOmegaVarCovDeriv]{rxOmegaVarCovDeriv()}},
+\code{\link[=rxSuppressMsg]{rxSuppressMsg()}},
+\code{\link[=rxTempDir]{rxTempDir()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Utilities}

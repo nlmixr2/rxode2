@@ -31,3 +31,15 @@ Past-time pushes (where \code{time < t}) are silently ignored and counted;
 a warning is issued after solving.
 }
 }
+\seealso{
+Other In-model dosing:
+\code{\link[=bolus]{bolus()}},
+\code{\link[=evid_]{evid_()}},
+\code{\link[=infuse]{infuse()}},
+\code{\link[=infuseDur]{infuseDur()}},
+\code{\link[=multiply]{multiply()}},
+\code{\link[=obs]{obs()}},
+\code{\link[=phantom]{phantom()}},
+\code{\link[=replace]{replace()}}
+}
+\concept{In-model dosing}

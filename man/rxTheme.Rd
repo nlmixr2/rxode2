@@ -32,6 +32,10 @@ rxTheme is the ggplot2 theme for rxode2 plots
 }
 \seealso{
 Other rxode2 plotting:
-\code{\link[=plot.rxSolve]{plot.rxSolve()}}
+\code{\link[=is.rxStackData]{is.rxStackData()}},
+\code{\link[=plot.rxSolve]{plot.rxSolve()}},
+\code{\link[=rxStack]{rxStack()}},
+\code{\link[=stat_amt]{stat_amt()}},
+\code{\link[=stat_cens]{stat_cens()}}
 }
 \concept{rxode2 plotting}

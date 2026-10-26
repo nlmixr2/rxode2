@@ -16,6 +16,23 @@ logical, \code{TRUE} if any endpoint carries an \code{ar()} correlation
 \description{
 Test if a model uses an autoregressive (\code{ar()}) residual
 }
+\seealso{
+Other Assertions:
+\code{\link[=assertCompartmentExists]{assertCompartmentExists()}},
+\code{\link[=assertCompartmentName]{assertCompartmentName()}},
+\code{\link[=assertCompartmentNew]{assertCompartmentNew()}},
+\code{\link[=assertRxUi]{assertRxUi()}},
+\code{\link[=assertVariableExists]{assertVariableExists()}},
+\code{\link[=assertVariableNew]{assertVariableNew()}},
+\code{\link[=rxPriorBuildSpec]{rxPriorBuildSpec()}},
+\code{\link[=rxPriorLogDensity]{rxPriorLogDensity()}},
+\code{\link[=rxPriorOmegaToCholOmegaInvGrad]{rxPriorOmegaToCholOmegaInvGrad()}},
+\code{\link[=rxUiPriors]{rxUiPriors()}},
+\code{\link[=testIniDf]{testIniDf()}},
+\code{\link[=testRxLinCmt]{testRxLinCmt()}},
+\code{\link[=testRxUnbounded]{testRxUnbounded()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Assertions}

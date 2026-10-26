@@ -100,6 +100,7 @@
 #' @inheritParams usethis::use_data
 #' @return Nothing; This is used for its side effects and shouldn't be called by a user
 #' @export
+#' @family Packaging
 rxUse <- function(obj, overwrite = TRUE, compress = "bzip2", internal = FALSE) {
   rxReq("usethis")
   rxReq("devtools")
@@ -332,6 +333,7 @@ rxUse <- function(obj, overwrite = TRUE, compress = "bzip2", internal = FALSE) {
 #' @author Matthew Fidler
 #' @return this function returns nothing and is used for its side effects
 #' @export
+#' @family Packaging
 rxPkg <- function(
   ...,
   package,

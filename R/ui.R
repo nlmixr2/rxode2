@@ -681,6 +681,7 @@ print.rxUi <- function(x, ...) {
 #' print(class(f))
 #' print(is.environment(f))
 #'
+#' @family Model UI and piping
 rxUiDecompress <- function(ui) {
   if (!inherits(ui, "rxUi")) {
     return(ui)

@@ -574,6 +574,7 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
 #' rxRmFun("fun")
 #'
 #' }
+#' @family User functions
 rxFun <- function(name, args, cCode) {
   if (missing(args) && missing(cCode)) {
     .funName <- as.character(substitute(name))
@@ -698,6 +699,7 @@ rxRmFun <- function(name) {
 #'     return(y)
 #'   }
 #' ))
+#' @family User functions
 rxD <- function(name, derivatives) {
   if (!inherits(derivatives, "list") || length(derivatives) == 0L) {
     stop("derivatives must be a list of functions with at least 1 element", call. = FALSE)
@@ -778,6 +780,7 @@ rxD <- function(name, derivatives) {
 #' @return An rxode2 symengine environment
 #' @author Matthew L. Fidler
 #' @export
+#' @family Symbolic tools
 rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, parent = parent.frame()) {
   .udfEnvLocal(parent)
   .rxToSE.envir$parent <- parent
@@ -4279,6 +4282,7 @@ local({
 #' @return rxode2/symengine environment
 #' @author Matthew Fidler
 #' @export
+#' @family Symbolic tools
 rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame(), pkTime = FALSE) {
   .udfEnvLocal(envir)
   rxReq("symengine")
@@ -5531,6 +5535,7 @@ rxSplitPlusQ <- function(x, level = 0, mult = FALSE) {
 #' @examples
 #' rxSupportedFuns()
 #' @export
+#' @family Model definition
 rxSupportedFuns <- function() {
   .rxSupportedFuns(FALSE)
 }

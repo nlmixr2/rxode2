@@ -1270,6 +1270,7 @@
 #' @seealso [rxode2()]
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
+#' @family Solving
 rxSolve <- function(
   object,
   params = NULL,
@@ -4895,6 +4896,7 @@ solve.rxEt <- solve.rxSolve
 #' @param obj a solved rxode2 object.
 #' @return a named numeric vector, or `NULL` if nothing was injected.
 #' @export
+#' @family Solving
 rxInjectedPars <- function(obj) {
   .cls <- attr(obj, "class")
   .env <- attr(.cls, ".rxode2.env")
@@ -4939,6 +4941,7 @@ rxInjectedPars <- function(obj) {
 #'   returns the (modified) ui.
 #' @export
 #' @author Matthew L. Fidler
+#' @family Solving
 rxForcedPars <- function(ui) {
   .ui <- rxUiDecompress(ui)
   if (!inherits(.ui, "rxUi")) {
@@ -5072,6 +5075,7 @@ rxForcedPars <- function(ui) {
 #' @return the getter returns the name (or `NULL`); the setter returns the ui.
 #' @export
 #' @author Matthew L. Fidler
+#' @family Solving
 rxParLoader <- function(ui) {
   .ui <- rxUiDecompress(ui)
   if (!inherits(.ui, "rxUi")) {
@@ -5134,6 +5138,7 @@ rxParLoader <- function(ui) {
 #' @seealso [rxParLoader()], [rxForcedPars()]
 #' @export
 #' @author Matthew L. Fidler
+#' @family Solving
 rxSetActiveParLoader <- function(name) {
   if (!is.character(name) || length(name) != 1L || is.na(name)) {
     stop("'name' must be a single loader name", call. = FALSE)
@@ -5187,6 +5192,7 @@ rxClearActiveParLoader <- function() {
 #'   unrelated solves.
 #' @return Invisibly, the hook name (register) or `NULL` (remove).
 #' @export
+#' @family Solving
 rxRegisterUiPrep <- function(name, fn) {
   if (!is.character(name) || length(name) != 1L) {
     stop("'name' must be a single string", call. = FALSE)
@@ -5261,6 +5267,7 @@ rxRemoveUiPrep <- function(name) {
 #' @return Invisibly, the hook name (register) or `NULL` (remove).
 #' @export
 #' @author Matthew L. Fidler
+#' @family Solving
 rxRegisterUiAssembled <- function(name, fn) {
   if (!is.character(name) || length(name) != 1L) {
     stop("'name' must be a single string", call. = FALSE)
@@ -5989,6 +5996,7 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   see the details)
 #'
 #' @export
+#' @family Solver options and performance
 odeMethodToInt <- function(
   method = c(
     "liblsoda",
@@ -6394,6 +6402,7 @@ odeMethodToInt <- function(
 #'
 #' @seealso [odeMethodToInt()]
 #' @export
+#' @family Solver options and performance
 rxIsImplicit <- function(method) {
   .implicitCodes <- c(13L, 14L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L)
   .methodIdx <- c(
@@ -6612,6 +6621,7 @@ rxIsImplicit <- function(method) {
 #'
 #' @seealso [rxIsNonStiff()], [rxIsImplicit()], [odeMethodToInt()]
 #' @export
+#' @family Solver options and performance
 rxIsStiff <- function(method) {
   .stiffCodes <- c(
     13L,
@@ -6852,6 +6862,7 @@ rxIsStiff <- function(method) {
 #'
 #' @seealso [rxIsStiff()], [rxIsImplicit()], [odeMethodToInt()]
 #' @export
+#' @family Solver options and performance
 rxIsNonStiff <- function(method) {
   .switcherCodes <- c(1L, 2L, 3L)
   .stiffCodes <- c(
@@ -7100,6 +7111,7 @@ rxIsNonStiff <- function(method) {
 #'
 #' @seealso [rxIsStiff()], [rxIsNonStiff()], [odeMethodToInt()]
 #' @export
+#' @family Solver options and performance
 rxIsDense <- function(method) {
   .denseCodes <- c(0L, 10L, 11L, 13L)
   .methodIdx <- c(
@@ -7380,6 +7392,7 @@ rxIsDense <- function(method) {
 #'
 #' @seealso [odeMethodToInt()], [rxIsNonStiff()], [rxIsStiff()]
 #' @export
+#' @family Solver options and performance
 rxIsAutoSwitch <- function(method) {
   if (is.character(method)) {
     return(grepl("+", method, fixed = TRUE))
@@ -7412,6 +7425,7 @@ rxIsAutoSwitch <- function(method) {
 #' tmp2$rtol
 #' tmp2$ssAtol
 #' tmp2$ssRtol
+#' @family Sensitivities
 rxControlUpdateSens <- function(rxControl, sensCmt = NULL, ncmt = NULL) {
   checkmate::assertIntegerish(sensCmt, lower = 1, len = 1)
   checkmate::assertIntegerish(ncmt, lower = 2, len = 1)

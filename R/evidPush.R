@@ -111,6 +111,7 @@
 #' }
 #'
 #' @export
+#' @family In-model dosing
 evid_ <- function(time, evid, amt, cmt = 1, rate = 0, ii = 0, addl = 0, ss = 0.0) {
   stop("'evid_()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -195,6 +196,7 @@ rxUdfUi.evid_ <- function(fun) {
 #'
 #' @export
 #' @author Matthew L. Fidler
+#' @family In-model dosing
 bolus <- function(amt, cmt = 1, ii = 0, addl = 0, ss = 0) {
   stop("'bolus()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -252,6 +254,7 @@ rxUdfUi.bolus <- function(fun) {
 #'
 #' @export
 #' @author Matthew L. Fidler
+#' @family In-model dosing
 infuse <- function(amt, rate, cmt = 1, ii = 0, addl = 0, ss = 0) {
   stop("'infuse()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -308,6 +311,7 @@ rxUdfUi.infuse <- function(fun) {
 #'
 #' @export
 #' @author Matthew L. Fidler
+#' @family In-model dosing
 infuseDur <- function(amt, dur, cmt = 1, ii = 0, addl = 0, ss = 0) {
   stop("'infuseDur()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -358,6 +362,7 @@ rxUdfUi.infuseDur <- function(fun) {
 #' Past-time pushes (where `time < t`) are silently ignored and counted;
 #' a warning is issued after solving.
 #'
+#' @family In-model dosing
 reset <- function() {
   stop("'reset()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -386,6 +391,7 @@ reset <- function() {
 #' Past-time pushes (where `time < t`) are silently ignored and counted;
 #' a warning is issued after solving.
 #'
+#' @family In-model dosing
 replace <- function(amt, cmt = 1) {
   stop("'replace()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -427,6 +433,7 @@ rxUdfUi.replace <- function(fun) {
 #' Past-time pushes (where `time < t`) are silently ignored and counted;
 #' a warning is issued after solving.
 #'
+#' @family In-model dosing
 multiply <- function(amt, cmt = 1) {
   stop("'multiply()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -469,6 +476,7 @@ rxUdfUi.multiply <- function(fun) {
 #'
 #' @export
 #' @author Matthew L. Fidler
+#' @family In-model dosing
 phantom <- function(amt, cmt = 1, ii = 0, addl = 0, ss = 0) {
   stop("'phantom()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -536,6 +544,7 @@ rxUdfUi.phantom <- function(fun) {
 #'
 #' @export
 #' @author Matthew L. Fidler
+#' @family In-model dosing
 obs <- function(...) {
   stop("'obs()' can only be used inside an rxode2 model block", call. = FALSE)
 }
