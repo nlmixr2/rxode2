@@ -15,6 +15,10 @@ logical
 \description{
 Check if object is an rxEt event table
 }
+\examples{
+is.rxEt(et(amt = 100))
+is.rxEt(data.frame(time = 0))
+}
 \seealso{
 Other Event tables:
 \code{\link[=add.dosing]{add.dosing()}},

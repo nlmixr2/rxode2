@@ -16,6 +16,22 @@ A boolean stating if the operation was successful.
 This function deletes the DLL, but doesn't delete the model
 information in the object.
 }
+\examples{
+\donttest{
+f <- function() {
+  ini({
+    ka <- 0.5; cl <- 1; v <- 10
+  })
+  model({
+    d/dt(depot) <- -ka * depot
+    d/dt(central) <- ka * depot - cl / v * central
+    cp <- central / v
+  })
+}
+m <- f()$simulationModel
+rxDelete(m)
+}
+}
 \seealso{
 Other Model definition:
 \code{\link[=rxClean]{rxClean()}},

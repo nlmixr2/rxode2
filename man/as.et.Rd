@@ -20,6 +20,9 @@ An event table
 \description{
 Coerce object to data.frame
 }
+\examples{
+as.et(data.frame(time = c(0, 12), amt = c(100, 50), evid = 1))
+}
 \seealso{
 Other Event tables:
 \code{\link[=add.dosing]{add.dosing()}},

@@ -64,6 +64,25 @@ Past-time pushes (where \code{time < t}) are silently ignored and counted;
 a warning is issued after solving.
 }
 }
+\examples{
+\donttest{
+# 50 unit infusion at rate 10 into central at t = 12
+f <- function() {
+  ini({
+    ka <- 0.5; cl <- 1; v <- 10
+  })
+  model({
+    mtime(at) <- 12
+    d/dt(depot) <- -ka * depot
+    d/dt(central) <- ka * depot - cl / v * central
+    cp <- central / v
+    if (t >= at && t < at + 0.5) infuse(50, 10, central)
+  })
+}
+s <- rxSolve(f, et(amt = 100) |> et(0:24))
+s[s$time >= 11 & s$time <= 14, ]
+}
+}
 \seealso{
 Other In-model dosing:
 \code{\link[=bolus]{bolus()}},

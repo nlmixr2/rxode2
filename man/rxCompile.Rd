@@ -117,6 +117,20 @@ using the \code{\link[=.Call]{.Call()}} function.
 This is the compilation workhorse creating the rxode2 model DLL
 files.
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    k <- 0.1
+  })
+  model({
+    d/dt(A) <- -k * A
+  })
+}
+dll <- rxCompile(rxModelVars(mod()), dir = file.path(tempdir(), "rxCompile"))
+dll
+}
+}
 \seealso{
 \code{\link[=rxode2]{rxode2()}}
 

@@ -17,6 +17,12 @@ the boolean ini0, though this is called for its side effects
 \description{
 Set Initial conditions to time zero instead of the first observed/dosed time
 }
+\examples{
+# initial conditions at the first record time rather than time zero
+rxSetIni0(FALSE)
+# restore the default
+rxSetIni0(TRUE)
+}
 \seealso{
 Other Solving:
 \code{\link[=as.arrow]{as.arrow()}},

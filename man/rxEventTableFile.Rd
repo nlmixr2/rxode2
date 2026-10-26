@@ -23,6 +23,24 @@ An \code{rxEtFile} object
 \description{
 Create a file-backed event table reference
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    k <- 0.1
+  })
+  model({
+    d/dt(A) <- -k * A
+  })
+}
+f <- tempfile(fileext = ".rds")
+saveRDS(as.data.frame(et(amt = 100) |> et(0:24) |> et(id = 1:4)), f)
+etf <- rxEventTableFile(f)
+s <- rxSolve(mod, etf, file = tempfile("rxChunk"), chunkSize = 2)
+head(as.data.frame(s))
+unlink(f)
+}
+}
 \seealso{
 Other Event tables:
 \code{\link[=add.dosing]{add.dosing()}},

@@ -15,6 +15,21 @@ a character vector listing the calculated parameters
 \description{
 This returns the model calculated variables
 }
+\examples{
+\donttest{
+f <- function() {
+  ini({
+    ka <- 0.5; cl <- 1; v <- 10
+  })
+  model({
+    d/dt(depot) <- -ka * depot
+    d/dt(central) <- ka * depot - cl / v * central
+    cp <- central / v
+  })
+}
+rxLhs(f())
+}
+}
 \seealso{
 \code{\link{rxode2}}
 

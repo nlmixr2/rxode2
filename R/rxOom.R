@@ -6,6 +6,23 @@
 #' @return An \code{rxEtFile} object
 #' @export
 #' @family Event tables
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     k <- 0.1
+#'   })
+#'   model({
+#'     d/dt(A) <- -k * A
+#'   })
+#' }
+#' f <- tempfile(fileext = ".rds")
+#' saveRDS(as.data.frame(et(amt = 100) |> et(0:24) |> et(id = 1:4)), f)
+#' etf <- rxEventTableFile(f)
+#' s <- rxSolve(mod, etf, file = tempfile("rxChunk"), chunkSize = 2)
+#' head(as.data.frame(s))
+#' unlink(f)
+#' }
 rxEventTableFile <- function(path, format = c("auto", "parquet", "csv", "fst", "rds"), id = "id") {
   format <- match.arg(format)
   if (format == "auto") {
@@ -1090,6 +1107,21 @@ as_arrow_table.rxSolveOom <- function(x, ...) {
 #' @return An \code{arrow::Dataset}.
 #' @export
 #' @family Solving
+#' @examples
+#' \donttest{
+#' if (requireNamespace("arrow", quietly = TRUE)) {
+#' mod <- function() {
+#'   ini({
+#'     k <- 0.1
+#'   })
+#'   model({
+#'     d/dt(A) <- -k * A
+#'   })
+#' }
+#' s <- rxSolveChunked(mod, et(amt = 100) |> et(0:24) |> et(id = 1:6), chunkSize = 3)
+#' as.arrow(s)
+#' }
+#' }
 as.arrow <- function(x, ...) UseMethod("as.arrow")
 
 #' @rdname as.arrow
@@ -1264,6 +1296,21 @@ dim.rxSolveOom <- function(x) {
 #' @return An \code{rxSolveOom} object
 #' @export
 #' @family Solving
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     k <- 0.1
+#'   })
+#'   model({
+#'     d/dt(A) <- -k * A
+#'   })
+#' }
+#' # 6 subjects solved 3 at a time; chunks are written to tempdir()
+#' s <- rxSolveChunked(mod, et(amt = 100) |> et(0:24) |> et(id = 1:6), chunkSize = 3)
+#' dim(s)
+#' head(as.data.frame(s))
+#' }
 rxSolveChunked <- function(
   object,
   params = NULL,

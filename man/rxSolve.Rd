@@ -1854,6 +1854,31 @@ handling options, rxode2's numerical stability options, rxode2's
 output options, and finally internal rxode2 options or compatibility
 options.
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    tka <- log(1); tcl <- log(0.1); tv <- log(10)
+    eta.cl ~ 0.1
+  })
+  model({
+    ka <- exp(tka); cl <- exp(tcl + eta.cl); v <- exp(tv)
+    d/dt(depot) <- -ka * depot
+    d/dt(center) <- ka * depot - cl / v * center
+    cp <- center / v
+  })
+}
+ev <- et(amt = 100, ii = 24, addl = 2) |> et(0:72)
+# typical subject (between-subject variability removed)
+s <- rxSolve(mod, ev, omega = NA)
+head(s)
+# change a parameter on the solved object; it re-solves
+s$tka <- log(2)
+head(s)
+# 10 subjects with between-subject variability
+s2 <- rxSolve(mod, ev, nSub = 10, seed = 42)
+}
+}
 \references{
 "New Scaling and Squaring Algorithm for the Matrix Exponential", by
 Awad H. Al-Mohy and Nicholas J. Higham, August 2009

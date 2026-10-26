@@ -18,6 +18,23 @@ nothing; called for side effects
 \description{
 Lock/unlocking of rxode2 dll file
 }
+\examples{
+\donttest{
+f <- function() {
+  ini({
+    ka <- 0.5; cl <- 1; v <- 10
+  })
+  model({
+    d/dt(depot) <- -ka * depot
+    d/dt(central) <- ka * depot - cl / v * central
+    cp <- central / v
+  })
+}
+m <- f()$simulationModel
+rxLock(m)
+rxUnlock(m)
+}
+}
 \seealso{
 Other Utilities:
 \code{\link[=rxDerived]{rxDerived()}},

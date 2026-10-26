@@ -1903,6 +1903,19 @@ rxDllLoaded <- rxIsLoaded
 #' @importFrom sys exec_internal
 #' @export
 #' @family Model definition
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     k <- 0.1
+#'   })
+#'   model({
+#'     d/dt(A) <- -k * A
+#'   })
+#' }
+#' dll <- rxCompile(rxModelVars(mod()), dir = file.path(tempdir(), "rxCompile"))
+#' dll
+#' }
 rxCompile <- function(model, dir, prefix, force = FALSE, modName = NULL, package = NULL, ...) {
   UseMethod("rxCompile")
 }
@@ -2795,6 +2808,18 @@ rxCondition <- function(obj, condition = NULL) {
 #' @author Matthew L. Fidler
 #' @export
 #' @family Model definition
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     k <- 0.1
+#'   })
+#'   model({
+#'     d/dt(A) <- -k * A
+#'   })
+#' }
+#' cat(rxNorm(mod()))
+#' }
 rxNorm <- function(obj, condition = NULL, removeInis, removeJac, removeSens) {
   if (!missing(removeInis) || !missing(removeJac) || !missing(removeSens)) {
     .ret <- strsplit(rxNorm(obj, condition), "\n")[[1]]

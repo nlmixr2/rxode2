@@ -1137,6 +1137,22 @@ List rxModelVars_(const RObject &obj){
 //' @family Query model information
 //' @author Matthew L.Fidler
 //' @export
+//' @examples
+//' \donttest{
+//' f <- function() {
+//'   ini({
+//'     ka <- 0.5; cl <- 1; v <- 10
+//'   })
+//'   model({
+//'     d/dt(depot) <- -ka * depot
+//'     d/dt(central) <- ka * depot - cl / v * central
+//'     cp <- central / v
+//'   })
+//' }
+//' m <- f()
+//' rxState(m)
+//' rxState(m, "central")
+//' }
 // [[Rcpp::export]]
 RObject rxState(const RObject &obj = R_NilValue, RObject state = R_NilValue){
   List modVar = rxModelVars(obj);
@@ -1188,6 +1204,19 @@ CharacterVector rxParams_(const RObject &obj){
 //' @family Query model information
 //' @export
 //' @family Sensitivities
+//' @examples
+//' \donttest{
+//' f <- function() {
+//'   ini({
+//'     k <- 0.1
+//'   })
+//'   model({
+//'     d/dt(x) <- -k * x
+//'     df(x)/dy(x) <- -k
+//'   })
+//' }
+//' rxDfdy(f())
+//' }
 //[[Rcpp::export]]
 CharacterVector rxDfdy(const RObject &obj){
   List modVar = rxModelVars(obj);
@@ -1206,6 +1235,20 @@ CharacterVector rxDfdy(const RObject &obj){
 //' @family Query model information
 //' @author Matthew L.Fidler
 //' @export
+//' @examples
+//' \donttest{
+//' f <- function() {
+//'   ini({
+//'     ka <- 0.5; cl <- 1; v <- 10
+//'   })
+//'   model({
+//'     d/dt(depot) <- -ka * depot
+//'     d/dt(central) <- ka * depot - cl / v * central
+//'     cp <- central / v
+//'   })
+//' }
+//' rxLhs(f())
+//' }
 //[[Rcpp::export]]
 CharacterVector rxLhs(const RObject &obj){
   List modVar = rxModelVars(obj);
@@ -2905,6 +2948,13 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
 //'
 //' @export
 //' @family Variability and uncertainty
+//' @examples
+//' rxWithSeed(42, {
+//'   rxSimThetaOmega(
+//'     params = c(tka = 1, tcl = 2),
+//'     omega = lotri::lotri(eta.ka ~ 0.1), nSub = 3
+//'   )
+//' })
 //[[Rcpp::export]]
 List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
                      const RObject &omega= R_NilValue,
@@ -8008,6 +8058,20 @@ RObject rxGetrxode2(RObject obj){
 //'
 //' @export
 //' @family Utilities
+//' @examples
+//' \donttest{
+//' f <- function() {
+//'   ini({
+//'     ka <- 0.5; cl <- 1; v <- 10
+//'   })
+//'   model({
+//'     d/dt(depot) <- -ka * depot
+//'     d/dt(central) <- ka * depot - cl / v * central
+//'     cp <- central / v
+//'   })
+//' }
+//' rxIsCurrent(f()$simulationModel)
+//' }
 //[[Rcpp::export]]
 bool rxIsCurrent(RObject obj){
   List mv = rxModelVars(obj);
@@ -8235,6 +8299,22 @@ bool rxDynLoad(RObject obj){
 //'
 //' @export
 //' @family Utilities
+//' @examples
+//' \donttest{
+//' f <- function() {
+//'   ini({
+//'     ka <- 0.5; cl <- 1; v <- 10
+//'   })
+//'   model({
+//'     d/dt(depot) <- -ka * depot
+//'     d/dt(central) <- ka * depot - cl / v * central
+//'     cp <- central / v
+//'   })
+//' }
+//' m <- f()$simulationModel
+//' rxLock(m)
+//' rxUnlock(m)
+//' }
 //[[Rcpp::export]]
 RObject rxLock(RObject obj){
   getRxModels();
@@ -8407,6 +8487,21 @@ bool rxDynUnload(RObject obj){
 //' @author Matthew L.Fidler
 //' @export
 //' @family Model definition
+//' @examples
+//' \donttest{
+//' f <- function() {
+//'   ini({
+//'     ka <- 0.5; cl <- 1; v <- 10
+//'   })
+//'   model({
+//'     d/dt(depot) <- -ka * depot
+//'     d/dt(central) <- ka * depot - cl / v * central
+//'     cp <- central / v
+//'   })
+//' }
+//' m <- f()$simulationModel
+//' rxDelete(m)
+//' }
 //[[Rcpp::export]]
 bool rxDelete(RObject obj){
   if (rxIs(obj, "rxode2")){

@@ -391,6 +391,10 @@ see the details)
 If \code{NULL} is given as the method, all choices are returned as a named
 vector.
 }
+\examples{
+odeMethodToInt("liblsoda")
+odeMethodToInt("dop853")
+}
 \seealso{
 Other Solver options and performance:
 \code{\link[=forderForceBase]{forderForceBase()}},

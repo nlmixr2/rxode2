@@ -28,6 +28,26 @@ and to future doses scheduled during solving with \code{\link[=evid_]{evid_()}}.
 The source compartment may also appear in the target list, but the
 target compartments in \code{...} must be unique.
 }
+\examples{
+\donttest{
+# a depot bolus split into fast and slow absorption paths
+f <- function() {
+  ini({
+    ka1 <- 1; ka2 <- 0.2; fr <- 0.6; cl <- 1; v <- 10
+  })
+  model({
+    splitBolus(depot, depot1, depot2)
+    f(depot1) <- fr
+    f(depot2) <- 1 - fr
+    d/dt(depot) <- 0
+    d/dt(depot1) <- -ka1 * depot1
+    d/dt(depot2) <- -ka2 * depot2
+    d/dt(central) <- ka1 * depot1 + ka2 * depot2 - cl / v * central
+  })
+}
+rxSolve(f, et(amt = 100, cmt = "depot") |> et(0:24))
+}
+}
 \seealso{
 Other Event tables:
 \code{\link[=add.dosing]{add.dosing()}},

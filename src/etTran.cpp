@@ -555,6 +555,11 @@ bool _ini0=true;
 //'
 //' @export
 //' @family Solving
+//' @examples
+//' # initial conditions at the first record time rather than time zero
+//' rxSetIni0(FALSE)
+//' # restore the default
+//' rxSetIni0(TRUE)
 //[[Rcpp::export]]
 bool rxSetIni0(bool ini0 = true) {
   _ini0=ini0;
