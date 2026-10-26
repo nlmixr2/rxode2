@@ -23,6 +23,20 @@ Nothing; This is used for its side effects and shouldn't be called by a user
 \description{
 Use model object in your package
 }
+\examples{
+# run from the root of a package source tree; writes into data/ and src/
+if (interactive() && file.exists("DESCRIPTION")) {
+  pk <- function() {
+    model({
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    })
+  }
+  rxUse(pk)
+  # regenerate the compiled code for every model in data/
+  rxUse()
+}
+}
 \seealso{
 Other Packaging:
 \code{\link[=rxPkg]{rxPkg()}}

@@ -19,6 +19,27 @@ rxode2 related object
 \description{
 Assign the ini block in the rxode2 related object
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    tcl <- log(3)
+    tv <- log(30)
+  })
+  model({
+    cl <- exp(tcl)
+    v <- exp(tv)
+    d/dt(central) <- -cl / v * central
+  })
+}
+ui <- rxode2(mod)
+ini(ui) <- quote(ini({
+  tcl <- log(4)
+  tv <- log(40)
+}))
+ui
+}
+}
 \seealso{
 Other Model UI and piping:
 \code{\link[=as.ini]{as.ini()}},

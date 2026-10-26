@@ -26,6 +26,27 @@ Verify that the compartment exists in a model
 \item \code{testCompartmentExists()}: Test if compartment exists
 
 }}
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    tka <- log(1.1)
+    tcl <- log(3)
+    tv <- log(30)
+  })
+  model({
+    ka <- exp(tka)
+    cl <- exp(tcl)
+    v <- exp(tv)
+    d/dt(depot) <- -ka * depot
+    d/dt(central) <- ka * depot - cl / v * central
+  })
+}
+# returns the first compartment that exists
+assertCompartmentExists(mod, c("gut", "depot"))
+testCompartmentExists(mod, "gut")
+}
+}
 \seealso{
 Other Assertions:
 \code{\link[=assertCompartmentName]{assertCompartmentName()}},

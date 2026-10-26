@@ -15,6 +15,10 @@ nothing
 \description{
 Defunct setting of sum
 }
+\examples{
+# defunct: choose the summation with rxSolve(..., sumType=) instead
+try(rxSetSum("kahan"))
+}
 \seealso{
 Other Solver options and performance:
 \code{\link[=forderForceBase]{forderForceBase()}},

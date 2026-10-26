@@ -18,6 +18,9 @@ rxSyntaxFunctions
 \description{
 A list and description of Rode supported syntax functions
 }
+\examples{
+head(rxSyntaxFunctions)
+}
 \seealso{
 Other Model definition:
 \code{\link[=rxClean]{rxClean()}},

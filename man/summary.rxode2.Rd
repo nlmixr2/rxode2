@@ -17,6 +17,24 @@ object is returned
 \description{
 This prints the expanded information about the rxode2 object.
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    tcl <- log(3)
+    tv <- log(30)
+  })
+  model({
+    cl <- exp(tcl)
+    v <- exp(tv)
+    d/dt(central) <- -cl / v * central
+    cp <- central / v
+  })
+}
+# the compiled simulation model of the ui
+summary(rxode2(mod)$simulationModel)
+}
+}
 \seealso{
 Other Model definition:
 \code{\link[=rxClean]{rxClean()}},

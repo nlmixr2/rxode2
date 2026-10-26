@@ -59,6 +59,12 @@ Nothing; Starts a shiny server
 \description{
 Use Shiny to help develop an rxode2 model
 }
+\examples{
+if (interactive()) {
+  # explore the default indirect effect model
+  rxShiny()
+}
+}
 \seealso{
 Other Shiny:
 \code{\link[=genShinyApp.template]{genShinyApp.template()}}

@@ -21,6 +21,12 @@ multi-state product cannot yield a state-free rate constant whichever state
 is factored out, so it becomes an \code{indLin()} forcing instead.  The setting is
 kept so existing code keeps working.
 }
+\examples{
+.old <- utils::getFromNamespace(".rxIndLinState", "rxode2")
+# factor terms of the central equation by central, then depot
+rxIndLinState(list(central = c("central", "depot")))
+rxIndLinState(.old) # restore
+}
 \seealso{
 Other Solver options and performance:
 \code{\link[=forderForceBase]{forderForceBase()}},

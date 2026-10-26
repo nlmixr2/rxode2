@@ -22,6 +22,17 @@ operations.
 \description{
 Recast model in terms of sum/prod
 }
+\examples{
+\donttest{
+pk <- function() {
+  model({
+    d/dt(depot) <- -ka * depot
+    d/dt(central) <- ka * depot - cl / v * central
+  })
+}
+writeLines(rxSumProdModel(pk))
+}
+}
 \seealso{
 Other Solver options and performance:
 \code{\link[=forderForceBase]{forderForceBase()}},

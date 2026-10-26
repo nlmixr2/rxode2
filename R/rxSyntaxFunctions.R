@@ -7,4 +7,6 @@
 #' \item{Aliases}{Function Aliases}
 #' }
 #' @family Model definition
+#' @examples
+#' head(rxSyntaxFunctions)
 "rxSyntaxFunctions"

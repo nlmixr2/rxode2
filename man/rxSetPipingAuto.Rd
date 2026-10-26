@@ -33,6 +33,14 @@ This is called once at startup to set the defaults, though you can
 change this if you wish so that piping can work differently for
 your individual setup
 }
+\examples{
+.vs <- utils::getFromNamespace(".varSelect", "rxode2")
+.old <- list(.vs$thetamodelVars, .vs$covariateExceptions, .vs$etaParts)
+# also always treat `age` as a covariate when piping
+rxSetPipingAuto(covariateExceptions = "^(wt|sex|crcl|kout|age)$")
+# restore the previous settings
+do.call(rxSetPipingAuto, .old)
+}
 \seealso{
 Other Model UI and piping:
 \code{\link[=as.ini]{as.ini()}},

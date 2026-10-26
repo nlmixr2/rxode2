@@ -27,6 +27,31 @@ The \code{etaDist} column only exists when the installed 'lotri' supports
 declared random effect distributions AND the model uses one, so its
 absence means "no declarations" rather than an error.
 }
+\examples{
+\donttest{
+if (requireNamespace("lotri", quietly = TRUE) &&
+      "lotriEtaDists" \%in\% getNamespaceExports("lotri")) {
+mod <- function() {
+  ini({
+    lclm <- log(5)
+    lclrv <- log(0.09)
+    tv <- 3.45
+    dist(eta.cl) ~ dgamma(shape = 1 / exp(lclrv),
+                          rate = 1 / (exp(lclrv) * exp(lclm)))
+    add.sd <- 0.7
+  })
+  model({
+    cl <- eta.cl
+    v <- exp(tv)
+    linCmt() ~ add(add.sd)
+  })
+}
+print(rxUiEtaDists(mod))
+print(testRxUiEtaDist(mod))
+try(assertRxUiNoEtaDist(mod, extra = " in this example"))
+}
+}
+}
 \seealso{
 Other Variability and uncertainty:
 \code{\link[=confint.rxSolve]{confint.rxSolve()}},

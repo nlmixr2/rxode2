@@ -726,6 +726,16 @@ rxSumProd <- function(x) {
 #' @author Matthew L. Fidler
 #' @export
 #' @family Solver options and performance
+#' @examples
+#' \donttest{
+#' pk <- function() {
+#'   model({
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'   })
+#' }
+#' writeLines(rxSumProdModel(pk))
+#' }
 rxSumProdModel <- function(model, expand = FALSE, sum = TRUE, prod = TRUE) {
   ## Sum for pairwise is equivalent to regular sum under 8 elements.
   rxReq("symengine")

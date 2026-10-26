@@ -279,6 +279,27 @@ assertRxUiNoMix <- function(ui, extra = "", .var.name = .vname(ui)) {
 #' @author Matthew L. Fidler
 #' @export
 #' @family Assertions
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     tcl <- log(1)
+#'     tv <- log(10)
+#'     add.sd <- 0.5
+#'     ar1.cor <- 0.5
+#'   })
+#'   model({
+#'     cl <- exp(tcl)
+#'     v <- exp(tv)
+#'     d/dt(central) <- -cl / v * central
+#'     cp <- central / v
+#'     cp ~ add(add.sd) + ar(ar1.cor)
+#'   })
+#' }
+#' rxHasAr(mod)
+#' # without ar() there is no autocorrelated residual
+#' rxHasAr(mod |> model(cp ~ add(add.sd)))
+#' }
 rxHasAr <- function(ui) {
   ui <- assertRxUi(ui)
   .iniDf <- ui$iniDf
@@ -921,6 +942,26 @@ assertRxUiRandomOnIdOnly <- function(ui, extra = "", .var.name = .vname(ui)) {
 #' @family Assertions
 #' @author Bill Denney
 #' @export
+#' @examples
+#' assertCompartmentName("central")
+#' assertVariableName("cl")
+#' assertParameterValue(0.5)
+#' try(assertCompartmentName("1central")) # invalid name
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     tcl <- log(3)
+#'     tv <- log(30)
+#'   })
+#'   model({
+#'     cl <- exp(tcl)
+#'     v <- exp(tv)
+#'     d/dt(central) <- -cl / v * central
+#'   })
+#' }
+#' assertExists(mod, "central")
+#' testExists(mod, "ka")
+#' }
 assertCompartmentName <- function(x) {
   checkmate::assertCharacter(
     x,
@@ -940,6 +981,22 @@ assertCompartmentName <- function(x) {
 #' @family Assertions
 #' @author Matthew Fidler & Bill Denney
 #' @export
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     tcl <- log(3)
+#'     tv <- log(30)
+#'   })
+#'   model({
+#'     cl <- exp(tcl)
+#'     v <- exp(tv)
+#'     d/dt(central) <- -cl / v * central
+#'   })
+#' }
+#' assertCompartmentNew(mod, "peripheral")
+#' try(assertCompartmentNew(mod, "central")) # already a compartment
+#' }
 assertCompartmentNew <- function(ui, x) {
   .vn <- as.character(substitute(x))
   .tmp <- try(force(x), silent = TRUE)
@@ -973,6 +1030,26 @@ assertCompartmentNew <- function(ui, x) {
 #' @family Assertions
 #' @author Matthew Fidler & Bill Denney
 #' @export
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     tka <- log(1.1)
+#'     tcl <- log(3)
+#'     tv <- log(30)
+#'   })
+#'   model({
+#'     ka <- exp(tka)
+#'     cl <- exp(tcl)
+#'     v <- exp(tv)
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'   })
+#' }
+#' # returns the first compartment that exists
+#' assertCompartmentExists(mod, c("gut", "depot"))
+#' testCompartmentExists(mod, "gut")
+#' }
 assertCompartmentExists <- function(ui, x) {
   .all <- as.character(substitute(x))
   .tmp <- try(force(x), silent = TRUE)
@@ -1036,6 +1113,25 @@ assertVariableName <- assertCompartmentName
 #' @export
 #' @family Assertions
 #' @author Matthew L. Fidler
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     tcl <- log(3)
+#'     tv <- log(30)
+#'     add.sd <- 0.7
+#'   })
+#'   model({
+#'     cl <- exp(tcl)
+#'     v <- exp(tv)
+#'     d/dt(central) <- -cl / v * central
+#'     cp <- central / v
+#'     cp ~ add(add.sd)
+#'   })
+#' }
+#' assertVariableExists(mod, "cp")
+#' testVariableExists(mod, "kel")
+#' }
 assertVariableExists <- function(ui, x) {
   .all <- as.character(substitute(x))
   .tmp <- try(force(x), silent = TRUE)
@@ -1097,6 +1193,25 @@ testVariableExists <- function(ui, x) {
 #' @export
 #' @family Assertions
 #' @author Matthew L. Fidler
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     tcl <- log(3)
+#'     tv <- log(30)
+#'     add.sd <- 0.7
+#'   })
+#'   model({
+#'     cl <- exp(tcl)
+#'     v <- exp(tv)
+#'     d/dt(central) <- -cl / v * central
+#'     cp <- central / v
+#'     cp ~ add(add.sd)
+#'   })
+#' }
+#' assertVariableNew(mod, "kel")
+#' try(assertVariableNew(mod, "cp")) # already in the model
+#' }
 assertVariableNew <- function(ui, x) {
   .vn <- as.character(substitute(x))
   .tmp <- try(force(x), silent = TRUE)

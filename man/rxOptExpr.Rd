@@ -51,6 +51,19 @@ modified.
 This optimizes rxode2 code for computer evaluation by only
 calculating redundant expressions once.
 }
+\examples{
+\donttest{
+pk <- function() {
+  model({
+    d/dt(depot) <- -exp(lka) * depot
+    d/dt(central) <- exp(lka) * depot - exp(lcl) / exp(lv) * central
+    cp <- central / exp(lv)
+  })
+}
+# exp(lka) and exp(lv) are computed once
+writeLines(rxOptExpr(pk))
+}
+}
 \seealso{
 Other Solver options and performance:
 \code{\link[=forderForceBase]{forderForceBase()}},

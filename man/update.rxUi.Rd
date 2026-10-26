@@ -19,6 +19,30 @@ a new rxode2 updated UI object
 \description{
 Update for rxUi
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    tka <- log(1.1)
+    tcl <- log(3)
+    tv <- log(30)
+    add.sd <- 0.7
+  })
+  model({
+    ka <- exp(tka)
+    cl <- exp(tcl)
+    v <- exp(tv)
+    d/dt(depot) <- -ka * depot
+    d/dt(central) <- ka * depot - cl / v * central
+    cp <- central / v
+    cp ~ add(add.sd)
+  })
+}
+ui <- rxode2(mod)
+# change an initial estimate and a model line in one call
+update(ui, tka = log(2), v <- exp(tv) * 1.1)
+}
+}
 \seealso{
 Other Model UI and piping:
 \code{\link[=as.ini]{as.ini()}},

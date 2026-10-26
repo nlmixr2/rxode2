@@ -1001,6 +1001,13 @@ attr(rxUiGet.errParams, "rstudio") <- "character"
 #' your individual setup
 #'
 #' @family Model UI and piping
+#' @examples
+#' .vs <- utils::getFromNamespace(".varSelect", "rxode2")
+#' .old <- list(.vs$thetamodelVars, .vs$covariateExceptions, .vs$etaParts)
+#' # also always treat `age` as a covariate when piping
+#' rxSetPipingAuto(covariateExceptions = "^(wt|sex|crcl|kout|age)$")
+#' # restore the previous settings
+#' do.call(rxSetPipingAuto, .old)
 rxSetPipingAuto <- function(
   thetamodelVars = rex::rex(or("tv", "t", "pop", "POP", "Pop", "TV", "T", "cov", "err", "eff")),
   covariateExceptions = rex::rex(start, or("wt", "sex", "crcl", "kout"), end),

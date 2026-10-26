@@ -28,6 +28,26 @@ Assert a variable exists in the model
 \item \code{testVariableExists()}: Test if variable exists
 
 }}
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    tcl <- log(3)
+    tv <- log(30)
+    add.sd <- 0.7
+  })
+  model({
+    cl <- exp(tcl)
+    v <- exp(tv)
+    d/dt(central) <- -cl / v * central
+    cp <- central / v
+    cp ~ add(add.sd)
+  })
+}
+assertVariableExists(mod, "cp")
+testVariableExists(mod, "kel")
+}
+}
 \seealso{
 Other Assertions:
 \code{\link[=assertCompartmentExists]{assertCompartmentExists()}},

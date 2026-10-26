@@ -19,6 +19,23 @@ Option (if present) or default value
 \description{
 rxGetControl option from ui
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    tcl <- log(3)
+  })
+  model({
+    cl <- exp(tcl)
+    d/dt(central) <- -cl * central
+  })
+}
+ui <- rxUiDecompress(rxode2(mod))
+rxGetControl(ui, "addProp", "combined2") # no control yet: the default
+rxSetControl(ui, list(addProp = "combined1"))
+rxGetControl(ui, "addProp", "combined2")
+}
+}
 \seealso{
 Other Model UI and piping:
 \code{\link[=as.ini]{as.ini()}},

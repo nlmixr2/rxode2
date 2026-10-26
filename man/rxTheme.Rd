@@ -30,6 +30,12 @@ ggplot2 theme used in rxode2
 \description{
 rxTheme is the ggplot2 theme for rxode2 plots
 }
+\examples{
+d <- data.frame(time = 0:10, cp = exp(-0.3 * (0:10)))
+ggplot2::ggplot(d, ggplot2::aes(time, cp)) +
+  ggplot2::geom_line() +
+  rxTheme(grid = "y")
+}
 \seealso{
 Other rxode2 plotting:
 \code{\link[=is.rxStackData]{is.rxStackData()}},

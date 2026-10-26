@@ -17,6 +17,13 @@ expression
 \description{
 Here it means that it evaluates to a variable or a number.
 }
+\examples{
+# in a rxUdfUi handler, collapse arguments that evaluate to a value
+rxUdfUiExpr(quote(2 * 3))
+n <- "cp"
+rxUdfUiExpr(quote(n)) # a character value becomes the variable cp
+rxUdfUiExpr(quote(ka * depot)) # unevaluable expressions are kept
+}
 \seealso{
 Other User functions:
 \code{\link[=linMod]{linMod()}},

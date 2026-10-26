@@ -31,6 +31,11 @@ product always leaves a coefficient that still reads a state, so such a term
 goes to the \code{indLin()} forcing whichever state is preferred.  The setting is
 kept so existing code keeps working.
 }
+\examples{
+.old <- utils::getFromNamespace(".rxIndLinStrategy", "rxode2")
+rxIndLinStrategy("split")
+rxIndLinStrategy(.old) # restore
+}
 \seealso{
 Other Solver options and performance:
 \code{\link[=forderForceBase]{forderForceBase()}},

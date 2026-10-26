@@ -7,6 +7,16 @@
 #' @author Matthew L. Fidler
 #' @export
 #' @family Model UI and piping
+#' @examples
+#' \donttest{
+#' pk <- function() {
+#'   model({
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'   })
+#' }
+#' writeLines(indLin(pk))
+#' }
 indLin <- function(model, doConst = FALSE, calcSens = NULL) {
   rxReq("symengine")
   if (!is.null(calcSens)) {
@@ -436,6 +446,21 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
 #' @author Matthew L. Fidler
 #' @export
 #' @family Sensitivities
+#' @examples
+#' \donttest{
+#' pk <- function() {
+#'   model({
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'   })
+#' }
+#' sens <- rxSensMatExp(pk, calcSens = c("ka", "cl"))
+#' writeLines(sens)
+#' # solve the sensitivity model with the matrix exponential
+#' m <- rxode2(sens)
+#' ev <- et(amt = 100, cmt = "depot") |> et(c(1, 4, 12))
+#' rxSolve(m, ev, params = c(ka = 1.2, cl = 3.5, v = 25), method = "indLin")
+#' }
 rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, doConst = FALSE, env = NULL) {
   rxReq("symengine")
   if (!is.character(calcSens)) {

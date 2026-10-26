@@ -25,6 +25,17 @@ A character string representing the matrix exponential model code
 \description{
 Transition ODEs written in d/dt() format to matrix exponential / inductive linearization format
 }
+\examples{
+\donttest{
+pk <- function() {
+  model({
+    d/dt(depot) <- -ka * depot
+    d/dt(central) <- ka * depot - cl / v * central
+  })
+}
+writeLines(indLin(pk))
+}
+}
 \seealso{
 Other Model UI and piping:
 \code{\link[=as.ini]{as.ini()}},
