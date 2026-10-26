@@ -54,4 +54,24 @@ rxTest({
       expect_equal(.ssMinSS(.n, lag = 2), .nDose(.n, lag = 2), tolerance = 1e-5)
     }
   })
+
+  test_that("minSS with disabled tolerances is the number of prior infusions", {
+    # rate, dur < ii, and dur > ii with one and two overlapping infusions
+    for (.extra in list(list(rate = 50), list(dur = 3), list(dur = 18), list(dur = 30))) {
+      for (.lag in c(0, 2, 14)) {
+        for (.n in c(5, 8)) {
+          expect_equal(
+            .ssMinSS(.n, extra = .extra, lag = .lag),
+            .nDose(.n, extra = .extra, lag = .lag),
+            tolerance = 1e-5
+          )
+        }
+      }
+      expect_equal(
+        .ssMinSS(5, extra = .extra, cmt = "c"),
+        .nDose(5, extra = .extra, cmt = "c"),
+        tolerance = 1e-5
+      )
+    }
+  })
 })

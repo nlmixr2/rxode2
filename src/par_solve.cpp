@@ -3138,7 +3138,8 @@ extern "C" void solveSSinf(int *neq,
                            double *curIi,
                            double *dur,
                            double *dur2,
-                           int *canBreak) {
+                           int *canBreak,
+                           int nAfter) {
   double ssStart = *xp2;
   double ssStop = *xp2 + *dur;
   if (canHandleSSLinear(op, ind, ind->idose[*infBixds])) {
@@ -3179,7 +3180,14 @@ extern "C" void solveSSinf(int *neq,
       return;
     }
   }
-  for (int j = 0; j < op->maxSS; j++) {
+  // minSS/maxSS count every dose before the steady-state one, including the
+  // nAfter that handleSS() gives after this loop
+  int minSS = max2(op->minSS - nAfter, 1);
+  int maxSS = max2(op->maxSS - nAfter, minSS);
+  for (int k = neq[0]; k--;) {
+    ind->solveLast[k] = ind->solveLast2[k] = yp[k];
+  }
+  for (int j = 0; j < maxSS; j++) {
     // Turn on Infusion, solve (0-dur)
     *canBreak=1;
     *xout2 = *xp2+*dur;
@@ -3203,7 +3211,7 @@ extern "C" void solveSSinf(int *neq,
     handle_evid(getEvid(ind, ind->idose[*infEixds]), neq[0],
                 BadDose, InfusionRate, dose, yp,
                 *xout+*dur, neq[1], ind);
-    if (j <= op->minSS -1){
+    if (j + 1 < minSS){
       if (ind->rc[0]== -2019){
         badSolveExit(*i);
         break;
@@ -3212,7 +3220,7 @@ extern "C" void solveSSinf(int *neq,
         ind->solveLast[k] = yp[k];
       }
       *canBreak=0;
-    } else if (j >= op->minSS){
+    } else {
       if (ind->rc[0]== -2019){
         if (op->strictSS){
           badSolveExit(*i);
@@ -3235,7 +3243,7 @@ extern "C" void solveSSinf(int *neq,
     ind->ssTime = ssStop;
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-    if (j <= op->minSS -1){
+    if (j + 1 < minSS){
       if (ind->rc[0]== -2019){
         badSolveExit(*i);
         break;
@@ -3244,7 +3252,7 @@ extern "C" void solveSSinf(int *neq,
         ind->solveLast2[k] = yp[k];
       }
       *canBreak=0;
-    } else if (j >= op->minSS){
+    } else {
       if (ind->rc[0]== -2019){
         if (op->strictSS){
           badSolveExit(*i);
@@ -3295,7 +3303,8 @@ extern "C" void solveSSinfLargeDur(int *neq,
                                    int *numDoseInf,
                                    double *offTime,
                                    double *addTime,
-                                   int *canBreak) {
+                                   int *canBreak,
+                                   int nAfter) {
   *numDoseInf = (int)(*dur / *curIi);
   *offTime = *dur - (*numDoseInf)*(*curIi);
   *addTime = *curIi - *offTime;
@@ -3311,14 +3320,24 @@ extern "C" void solveSSinfLargeDur(int *neq,
     handle_evid(getEvid(ind, ind->ix[*bi]), neq[0],
                 BadDose, InfusionRate, dose, yp,
                 *xout, neq[1], ind);
+    // restart so lsoda integrates each interval from the dosed yp
+    *istate=1;
     // yp is last solve or y0
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
   }
+  // minSS/maxSS count every dose before the steady-state one: the
+  // numDoseInf started above, one per period and the nAfter that handleSS()
+  // gives after this loop.  Convergence is checked from the first period.
+  int minSS = max2(op->minSS - nAfter - *numDoseInf, 1);
+  int maxSS = max2(op->maxSS - nAfter - *numDoseInf, minSS);
+  for (int k = neq[0]; k--;) {
+    ind->solveLast[k] = ind->solveLast2[k] = yp[k];
+  }
   int nDup = 0;
   double time2 = *xp2;
   double time3 = *xp2 + *addTime;
-  for (int j = 0; j < op->maxSS; j++) {
+  for (int j = 0; j < maxSS; j++) {
     // Turn on Infusion, solve (0-dur)
     *canBreak =1;
     *xout2    = *xp2 + *offTime;
@@ -3341,16 +3360,10 @@ extern "C" void solveSSinfLargeDur(int *neq,
     handle_evid(getEvid(ind, ind->idose[*infEixds]), neq[0],
                 BadDose, InfusionRate, dose, yp,
                 *xout + *dur, neq[1], ind);
-    if (j <= op->minSS -1){
-      if (ind->rc[0]== -2019){
-        badSolveExit(*i);
-        break;
-      }
-      for (int k = neq[0]; k--;) {
-        ind->solveLast[k] = yp[k];
-      }
-      *canBreak=0;
-    } else if (j >= op->minSS){
+    if (j + 1 < minSS && ind->rc[0]== -2019){
+      badSolveExit(*i);
+      break;
+    } else {
       if (ind->rc[0]== -2019){
         if (op->strictSS){
           badSolveExit(*i);
@@ -3373,16 +3386,10 @@ extern "C" void solveSSinfLargeDur(int *neq,
     ind->ssTime = time3;
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-    if (j <= op->minSS -1){
-      if (ind->rc[0]== -2019){
-        badSolveExit(*i);
-        break;
-      }
-      for (int k = neq[0]; k--;){
-        ind->solveLast2[k] = yp[k];
-      }
-      *canBreak=0;
-    } else if (j >= op->minSS){
+    if (j + 1 < minSS && ind->rc[0]== -2019){
+      badSolveExit(*i);
+      break;
+    } else {
       if (ind->rc[0]== -2019){
         if (op->strictSS){
           badSolveExit(*i);
@@ -3402,9 +3409,10 @@ extern "C" void solveSSinfLargeDur(int *neq,
       }
       if (*canBreak){
         nDup++;
-        if (nDup >= 7) {
-          break;
-        }
+      }
+      // 7 converged periods, or every one when minSS is smaller
+      if (j + 1 >= minSS && (nDup >= 7 || nDup == j + 1)) {
+        break;
       }
     }
     *xp2 = *xout2;
@@ -4180,7 +4188,8 @@ void handleSS(int *neq,
                            &numDoseInf,
                            &offTime,
                            &addTime,
-                           &canBreak);
+                           &canBreak,
+                           (isSsLag && curLagExtra > 0) ? 1 + overIi : 0);
         // Adjoint handoff: large-duration fixed-rate infusion (dur>=ii) reaches
         // a periodic steady state with numDoseInf overlapping infusions -- the
         // period effective rate is (numDoseInf+1)*R for offTime then numDoseInf*R
@@ -4311,7 +4320,8 @@ void handleSS(int *neq,
                    &curIi,
                    &dur,
                    &dur2,
-                   &canBreak);
+                   &canBreak,
+                   (isSsLag && curLagExtra > 0) ? 1 + overIi : 0);
         // Adjoint handoff: a fixed-rate (whI == EVIDF_INF_RATE) infusion with a
         // single on/off window per period (dur < ii, this solveSSinf branch)
         // has dR/dp == 0, so the rk4s driver can record its steady-state period
