@@ -1,11 +1,11 @@
 ---
-title: "Choosing ODE solvers in rxode2"
+title: "Choosing an ODE solver"
 output:
   rmarkdown::html_vignette:
     toc: true
     number_sections: true
 vignette: >
-  %\VignetteIndexEntry{Choosing ODE solvers in rxode2}
+  %\VignetteIndexEntry{Choosing an ODE solver}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
 ---

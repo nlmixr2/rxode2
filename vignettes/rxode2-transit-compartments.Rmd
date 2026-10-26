@@ -1,5 +1,5 @@
 ---
-title: "rxode2 Transit Compartment Models"
+title: "Transit compartments"
 date: "`r Sys.Date()`"
 output:
   html_document:

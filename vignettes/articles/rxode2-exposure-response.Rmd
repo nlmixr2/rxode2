@@ -1,5 +1,5 @@
 ---
-title: "Exposure-Response Simulation with rxode2"
+title: "Exposure-response simulation"
 ---
 
 ```{r, include = FALSE}

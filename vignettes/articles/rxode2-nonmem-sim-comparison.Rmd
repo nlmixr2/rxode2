@@ -1,5 +1,5 @@
 ---
-title: "rxode2 and NONMEM: A Simulation Workflow Comparison"
+title: "Comparing rxode2 with NONMEM"
 ---
 
 ```{r, include = FALSE}

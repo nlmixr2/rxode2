@@ -1,5 +1,5 @@
 ---
-title: "Adaptive Dosing with rxode2"
+title: "Dosing from inside the model"
 ---
 
 ```{r, include = FALSE}

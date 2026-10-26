@@ -1,5 +1,5 @@
 ---
-title: "Simulation with Parameter Uncertainty in rxode2"
+title: "Parameter uncertainty"
 ---
 
 ```{r, include = FALSE}

@@ -1,5 +1,5 @@
 ---
-title: "Sticky variables in rxode2"
+title: "Sticky variables"
 ---
 
 ```{r, include = FALSE}

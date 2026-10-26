@@ -1,8 +1,8 @@
 ---
-title: "Interactive Tutorials"
+title: "Interactive tutorials"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Interactive Tutorials}
+  %\VignetteIndexEntry{Interactive tutorials}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

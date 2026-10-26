@@ -1,5 +1,5 @@
 ---
-title: "Integrating User Defined Functions into rxode2"
+title: "User-defined functions"
 ---
 
 ```{r, include = FALSE}

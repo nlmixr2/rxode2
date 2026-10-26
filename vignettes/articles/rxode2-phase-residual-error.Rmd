@@ -1,5 +1,5 @@
 ---
-title: "Separating phase 1 and phase 3 residual error"
+title: "Phase 1 vs phase 3 residual error"
 ---
 
 ```{r, include = FALSE}

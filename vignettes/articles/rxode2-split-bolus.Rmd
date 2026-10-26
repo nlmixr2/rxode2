@@ -1,5 +1,5 @@
 ---
-title: "Dual Absorption Models with splitBolus()"
+title: "Dual absorption with splitBolus()"
 date: "`r Sys.Date()`"
 output:
   html_document:

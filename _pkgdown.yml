@@ -152,6 +152,7 @@ articles:
 - title: Get started
   desc: Learn the basics of rxode2 and its model language.
   contents:
+  - articles/rxode2-cookbook
   - rxode2-intro
   - rxode2-syntax
   - rxode2-model-types
@@ -169,7 +170,6 @@ articles:
   desc: Build and modify models.
   contents:
   - articles/rxode2-ui-object
-  - rxode2-pipeline
   - articles/Modifying-Models
   - rxode2-covariates
   - rxode2-cmt
@@ -180,9 +180,11 @@ articles:
 - title: Dosing and events
   desc: Describe doses and observations with datasets, event tables or in-model dosing.
   contents:
+  - articles/rxode2-dosing-overview
+  - articles/rxode2-dataset-columns
   - rxode2-event-types
   - rxode2-event-table
-  - rxode2-events-classic
+  - articles/rxode2-event-table-combine
   - articles/adaptive-dosing
   - rxode2-wt
   - articles/rxode2-split-bolus
@@ -191,6 +193,7 @@ articles:
   contents:
   - rxode2-single-subject
   - rxode2-sim-var
+  - rxode2-pipeline
   - rxode2-prior-data
   - rxode2-nesting
   - articles/rxode2-parameter-uncertainty
@@ -224,82 +227,93 @@ articles:
   - articles/rxode2-event-bus
   - articles/rxode2-solve-hooks
   - articles/rxode2-et-refactor
+- title: Legacy input styles
+  desc: Low-level models, classic event tables and classic evid codes.
+  contents:
+  - articles/rxode2-classic-models
+  - rxode2-events-classic
 redirects:
-- ["articles/rxode2-datasets.html", "articles/rxode2-event-types.html"]
+- ["articles/rxode2-datasets.html", "articles/rxode2-dataset-columns.html"]
 navbar:
   left:
   - text: "Start"
     icon: fas fa-rocket
     menu:
+    - text: "How do I...?"
+      href: articles/rxode2-cookbook.html
     - text: "Introduction to rxode2"
       href: articles/rxode2-intro.html
-    - text: "rxode2 mini-language syntax"
+    - text: "Model syntax"
       href: articles/rxode2-syntax.html
-    - text: "Model types (linCmt, ODEs, mixed)"
+    - text: "Model types: ODEs, linCmt() and mixed"
       href: articles/rxode2-model-types.html
     - text: "Interactive tutorials"
       href: articles/rxode2-tutorials.html
     - text: "---------"
     - text: "Coming from another tool?"
-    - text: "rxode2 vs deSolve"
+    - text: "Comparing rxode2 with deSolve"
       href: articles/rxode2-desolve-comparison.html
-    - text: "rxode2 vs mrgsolve"
+    - text: "Comparing rxode2 with mrgsolve"
       href: articles/rxode2-mrgsolve-comparison.html
-    - text: "rxode2 vs NMsim"
+    - text: "Comparing rxode2 with NMsim"
       href: articles/rxode2-nmsim-comparison.html
-    - text: "rxode2 vs NONMEM simulation"
+    - text: "Comparing rxode2 with NONMEM"
       href: articles/rxode2-nonmem-sim-comparison.html
-    - text: "rxode2 vs Simulx"
+    - text: "Comparing rxode2 with Simulx"
       href: articles/rxode2-simulx-comparison.html
-    - text: "rxode2 vs PKPDsim"
+    - text: "Comparing rxode2 with PKPDsim"
       href: articles/rxode2-pkpdsim-comparison.html
   - text: "Model"
     icon: fas fa-code
     menu:
-    - text: "rxode2 UI object reference"
+    - text: "The rxode2 model object"
       href: articles/rxode2-ui-object.html
-    - text: "Model piping with |>"
-      href: articles/rxode2-pipeline.html
     - text: "Modifying models"
       href: articles/Modifying-Models.html
-    - text: "Covariates and covariate models"
+    - text: "Covariates"
       href: articles/rxode2-covariates.html
     - text: "Changing compartment numbers"
       href: articles/rxode2-cmt.html
-    - text: "Transit compartment models"
+    - text: "Transit compartments"
       href: articles/rxode2-transit-compartments.html
     - text: "Sticky variables"
       href: articles/rxode2-sticky.html
     - text: "Delay differential equations"
       href: articles/rxode2-delay-differential-equations.html
-    - text: "Integrating user-defined functions"
+    - text: "User-defined functions"
       href: articles/Integrating-User-Defined-Functions-into-rxode2.html
   - text: "Dosing"
     icon: fas fa-syringe
     menu:
-    - text: "Dataset format and event types"
+    - text: "Which dosing page do I need?"
+      href: articles/rxode2-dosing-overview.html
+    - text: "Dataset columns"
+      href: articles/rxode2-dataset-columns.html
+    - text: "Dosing event types"
       href: articles/rxode2-event-types.html
-    - text: "Easy event tables (et())"
+    - text: "Building event tables with et()"
       href: articles/rxode2-event-table.html
-    - text: "Classic rxode2 events explained"
-      href: articles/rxode2-events-classic.html
-    - text: "Adaptive dosing inside the model"
+    - text: "Combining event tables"
+      href: articles/rxode2-event-table-combine.html
+    - text: "Dosing from inside the model"
       href: articles/adaptive-dosing.html
     - text: "Weight-based dosing"
       href: articles/rxode2-wt.html
-    - text: "Multi-peak absorption with splitBolus()"
+    - text: "Dual absorption with splitBolus()"
       href: articles/rxode2-split-bolus.html
   - text: "Simulate"
     icon: fas fa-desktop
     menu:
     - text: "Core simulation"
-    - text: "Single-subject ODE solving"
+    - text: "Solving a single subject"
       href: articles/rxode2-single-subject.html
-    - text: "Population simulation (multiple subjects)"
+    - text: "Simulating populations"
       href: articles/rxode2-sim-var.html
-    - text: "Simulation from observed data"
+    - text: "Simulating in a pipeline"
+      href: articles/rxode2-pipeline.html
+    - text: "Simulating from observed data"
       href: articles/rxode2-prior-data.html
-    - text: "Multiple levels of nesting (IOV, between-study)"
+    - text: "Nesting levels (IOV and beyond)"
       href: articles/rxode2-nesting.html
     - text: "---------"
     - text: "Variability and uncertainty"
@@ -307,15 +321,15 @@ navbar:
       href: articles/rxode2-parameter-uncertainty.html
     - text: "Summarizing simulations with confint()"
       href: articles/rxode2-confint.html
-    - text: "ETA/EPS resampling"
+    - text: "ETA and EPS resampling"
       href: articles/rxode2-eta-eps-resampling.html
-    - text: "Separating phase 1 and phase 3 residual error"
+    - text: "Phase 1 vs phase 3 residual error"
       href: articles/rxode2-phase-residual-error.html
     - text: "---------"
     - text: "Output"
-    - text: "Adaptive data frames"
+    - text: "Working with solved data frames"
       href: articles/rxode2-data-frame.html
-    - text: "Plotting with rxode2"
+    - text: "Plotting results"
       href: articles/rxode2-plot.html
     - text: "---------"
     - text: "Worked examples"
@@ -323,20 +337,20 @@ navbar:
       href: articles/rxode2-exposure-response.html
     - text: "Clinical trial simulation"
       href: articles/rxode2-clinical-trial-sim.html
-    - text: "Visual predictive checks (VPC)"
+    - text: "Visual predictive checks"
       href: articles/rxode2-vpc.html
   - text: "Solve"
     icon: fas fa-gauge-high
     menu:
-    - text: "Choosing ODE solvers"
+    - text: "Choosing an ODE solver"
       href: articles/ode-solvers.html
-    - text: "Stiff systems and Jacobian specification"
+    - text: "Stiff systems and Jacobians"
       href: articles/rxode2-stiff.html
     - text: "Matrix exponential solving"
       href: articles/rxode2-ind-lin.html
-    - text: "Dense output for fast dense-grid solves"
+    - text: "Dense output for fast solving"
       href: articles/rxode2-dense-output.html
-    - text: "Speeding up ODE solving"
+    - text: "Speeding up solving"
       href: articles/rxode2-speed.html
     - text: "Parallel solving with mirai"
       href: articles/rxode2-mirai-parallel.html
@@ -349,18 +363,24 @@ navbar:
     icon: fas fa-ellipsis
     menu:
     - text: "For developers"
-    - text: "Adding compiled models to a package"
+    - text: "Compiled models in packages"
       href: articles/rxode2-rxUse.html
-    - text: "Providing C/C++ functions from a package"
+    - text: "C/C++ functions from a package"
       href: articles/rxode2-pkg-exported-funs.html
-    - text: "Interactive model explorer (Shiny)"
+    - text: "Exploring models with Shiny"
       href: articles/rxode2-shiny.html
-    - text: "The event bus (for loggers and emitters)"
+    - text: "The event bus"
       href: articles/rxode2-event-bus.html
     - text: "Solve-time hooks"
       href: articles/rxode2-solve-hooks.html
-    - text: "Event tables after 5.0.2: architecture and benchmark"
+    - text: "Event table architecture"
       href: articles/rxode2-et-refactor.html
+    - text: "---------"
+    - text: "Legacy input styles"
+    - text: "Low-level models and other input styles"
+      href: articles/rxode2-classic-models.html
+    - text: "Classic evid codes"
+      href: articles/rxode2-events-classic.html
     - text: "---------"
     - text: "News (changelog)"
       href: news/index.html

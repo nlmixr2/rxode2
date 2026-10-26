@@ -1,5 +1,5 @@
 ---
-title: "Dense Output in rxode2: Continuous Interpolation for Fast Solving"
+title: "Dense output for fast solving"
 date: "`r Sys.Date()`"
 output:
   html_document:

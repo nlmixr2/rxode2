@@ -426,6 +426,18 @@ nlmixr2est's `src/init.c`.)
   both to the `articles:` index and to a navbar menu in `_pkgdown.yml`. Keep
   top-level navbar labels to one short word; long labels push the search box
   off-screen.
+- Article titles: sentence case, task-oriented, no "rxode2" prefix unless it
+  disambiguates (comparisons are "Comparing rxode2 with X"), at most ~45
+  characters, set only in the YAML `title:` (and `VignetteIndexEntry`). The
+  navbar item text must equal the article title.
+- Every article ends with a `Next steps` section (2-3 links along the reading
+  path), written in the `.Rmd` wrapper, never in a shared `.Rmdh`/rmdhunk.
+- Examples, articles and rmdhunks use the function form
+  (`function() { ini({}); model({}) }`). Low-level `rxode2({})`/`rxode2("")`
+  models and classic event tables are documented only in
+  `vignettes/articles/rxode2-classic-models.Rmd` (and where a page is about
+  them, e.g. C functions from a package). Examples that compile a model go in
+  `\donttest{}`.
 - Shorten multi-paragraph roxygen descriptions to a single compact paragraph,
   but keep every `@param`, `@return`, `@author`, `@export`, and `@keywords` tag.
 - Organize `NEWS.md` per version (`# rxode2 X.Y.Z`): user-facing changes first

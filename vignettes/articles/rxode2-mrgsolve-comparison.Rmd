@@ -1,5 +1,5 @@
 ---
-title: "rxode2 and mrgsolve: A Feature Comparison"
+title: "Comparing rxode2 with mrgsolve"
 ---
 
 ```{r, include = FALSE}

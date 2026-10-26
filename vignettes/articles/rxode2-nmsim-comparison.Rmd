@@ -1,5 +1,5 @@
 ---
-title: "rxode2 and NMsim: A Feature Comparison"
+title: "Comparing rxode2 with NMsim"
 ---
 
 ```{r, include = FALSE}

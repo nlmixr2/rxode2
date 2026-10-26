@@ -1,5 +1,5 @@
 ---
-title: "Matrix Exponential Solving in rxode2"
+title: "Matrix exponential solving"
 ---
 
 ```{r, include = FALSE}

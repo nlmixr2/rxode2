@@ -1,5 +1,5 @@
 ---
-title: "rxode2 Data Frames"
+title: "Working with solved data frames"
 date: "`r Sys.Date()`"
 output:
   html_document:

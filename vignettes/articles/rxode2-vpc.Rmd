@@ -1,5 +1,5 @@
 ---
-title: "Visual Predictive Checks (VPC) with rxode2"
+title: "Visual predictive checks"
 ---
 
 ```{r, include = FALSE}

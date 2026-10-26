@@ -1,5 +1,5 @@
 ---
-title: "Weight Based Dosing in rxode2"
+title: "Weight-based dosing"
 output:
   html_document:
     self_contained: no

@@ -1,5 +1,5 @@
 ---
-title: "rxode2 Jacobian specification and Stiff Systems"
+title: "Stiff systems and Jacobians"
 date: "`r Sys.Date()`"
 output:
   html_document:

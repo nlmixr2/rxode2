@@ -1,5 +1,5 @@
 ---
-title: "rxode2 model functions"
+title: "The rxode2 model object"
 ---
 
 ```{r, include = FALSE}

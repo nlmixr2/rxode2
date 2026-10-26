@@ -1,9 +1,9 @@
 ---
-title: "rxode2 ODE solving syntax"
+title: "Model syntax"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{rxode2 ODE solving syntax}
+  %\VignetteIndexEntry{Model syntax}
   %\VignetteEngine{knitr::rmarkdown_notangle}
   %\VignetteEncoding{UTF-8}
 ---

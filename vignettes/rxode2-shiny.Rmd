@@ -1,5 +1,5 @@
 ---
-title: "rxode2 and Shiny"
+title: "Exploring models with Shiny"
 date: "`r Sys.Date()`"
 output:
   html_document:

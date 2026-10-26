@@ -1,5 +1,5 @@
 ---
-title: "Single Subject ODE solving -- differences from multiple subject"
+title: "Solving a single subject"
 date: "`r Sys.Date()`"
 output:
   html_document:

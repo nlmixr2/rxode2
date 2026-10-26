@@ -1,5 +1,5 @@
 ---
-title: "rxode2 and PKPDsim: A Feature Comparison"
+title: "Comparing rxode2 with PKPDsim"
 ---
 
 ```{r, include = FALSE}

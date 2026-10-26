@@ -1,5 +1,5 @@
 ---
-title: "ETA and EPS Resampling in rxode2"
+title: "ETA and EPS resampling"
 ---
 
 ```{r, include = FALSE}

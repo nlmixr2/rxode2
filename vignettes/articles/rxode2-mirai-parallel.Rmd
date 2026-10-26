@@ -1,5 +1,5 @@
 ---
-title: "Parallel rxode2 solving with mirai"
+title: "Parallel solving with mirai"
 ---
 
 ```{r, include = FALSE}

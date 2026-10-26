@@ -1,5 +1,5 @@
 ---
-title: "Modifying Models"
+title: "Modifying models"
 ---
 
 ```{r, include = FALSE}

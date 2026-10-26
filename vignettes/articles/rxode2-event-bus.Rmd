@@ -1,5 +1,5 @@
 ---
-title: "The rxode2 event bus"
+title: "The event bus"
 ---
 
 ```{r, include = FALSE}

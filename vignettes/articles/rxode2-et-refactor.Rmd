@@ -1,5 +1,5 @@
 ---
-title: "Event Tables after 5.0.2: Architecture and Benchmark"
+title: "Event table architecture"
 date: "`r Sys.Date()`"
 output:
   html_document:

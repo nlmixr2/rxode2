@@ -1,5 +1,5 @@
 ---
-title: "Clinical Trial Simulation with rxode2"
+title: "Clinical trial simulation"
 ---
 
 ```{r, include = FALSE}

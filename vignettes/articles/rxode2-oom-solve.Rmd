@@ -1,5 +1,5 @@
 ---
-title: "Out-of-memory solving with rxode2"
+title: "Out-of-memory solving"
 ---
 
 ```{r, include = FALSE}

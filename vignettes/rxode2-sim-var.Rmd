@@ -1,5 +1,5 @@
 ---
-title: "rxode2 Simulation"
+title: "Simulating populations"
 date: "`r Sys.Date()`"
 output:
   html_document:
