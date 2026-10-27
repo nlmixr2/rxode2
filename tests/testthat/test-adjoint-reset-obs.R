@@ -30,4 +30,24 @@ rxTest({
       }
     }
   })
+
+  test_that("an observation at a stepless reset reads the initial-condition sensitivity", {
+    # the state is 0 after each reset, so liblsoda takes no step between them,
+    # but d center/d c0 is 1 there
+    .txtIc <- paste0(.txt, "\ncenter(0) <- c0 - 1")
+    .pIc <- c(.p, c0 = 1)
+    .ev <- et(amt = 100, cmt = "depot") |> et(time = 2, evid = 3) |> et(time = 3, evid = 3) |> et(c(0, 1, 2, 3))
+    .ref <- .adjFd(.txtIc, .ev, .pIc)
+    expect_equal(.ref$rx__sens_center_BY_c0__[.ev$time[.ev$evid == 0] == 3], 1, tolerance = 1e-8)
+    for (.m in c("rk4s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj", "abs")) {
+      .a <- rxSolveAdjointRk4(.txtIc, .ev,
+        params = .pIc, calcSens = names(.pIc), method = .m,
+        atol = 1e-10, rtol = 1e-10, hmin = if (.m %in% c("rk4s", "abs")) 0.001 else 0
+      )
+      expect_equal(nrow(.a), length(.ref[[1]]), label = paste(.m, "rows"))
+      for (.cn in names(.ref)) {
+        expect_lt(max(abs(.a[[.cn]] - .ref[[.cn]])), 1e-6, label = paste(.m, .cn))
+      }
+    }
+  })
 })
