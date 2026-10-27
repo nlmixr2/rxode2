@@ -50,6 +50,34 @@ rxTest({
     }
   })
 
+  test_that("an ss = 1 dose replaces the state of the jumps recorded before it in liblsodaadj", {
+    # the jumps at the ss time sort before the ss dose, which resets the state to
+    # its steady state, so they do not reach later observations
+    .ss <- list(
+      bolusMultiply0 = et(amt = 100, ii = 12, ss = 1, cmt = "depot") |>
+        et(time = 0, evid = 6, amt = 0.5, cmt = "center") |> et(c(1, 4, 8)),
+      bolusReplace0 = et(amt = 100, ii = 12, ss = 1, cmt = "depot") |>
+        et(time = 0, evid = 5, amt = 30, cmt = "center") |> et(c(1, 4, 8)),
+      infusionMultiply0 = et(amt = 100, rate = 20, ii = 12, ss = 1, cmt = "depot") |>
+        et(time = 0, evid = 6, amt = 0.5, cmt = "center") |> et(c(1, 4, 8)),
+      infusionMultiply10 = et(amt = 100, cmt = "depot") |> et(time = 10, amt = 100, rate = 20, ii = 12, ss = 1, cmt = "depot") |>
+        et(time = 10, evid = 6, amt = 0.5, cmt = "center") |> et(c(1, 5, 11, 14, 18)),
+      bolusMultiply5 = et(amt = 100, cmt = "depot") |> et(time = 5, amt = 100, ii = 12, ss = 1, cmt = "depot") |>
+        et(time = 5, evid = 6, amt = 0.5, cmt = "center") |> et(c(1, 4, 6, 9)),
+      resetBolus5 = et(amt = 100, cmt = "depot") |> et(time = 5, evid = 3) |>
+        et(time = 5, amt = 100, ii = 12, ss = 1, cmt = "depot") |> et(c(1, 4, 6, 9))
+    )
+    for (.nm in names(.ss)) {
+      .ref <- .adjFd(.base, .ss[[.nm]], .p0)
+      .a <- rxSolveAdjointRk4(.base, .ss[[.nm]], params = .p0, calcSens = names(.p0), method = "liblsodaadj",
+        atol = 1e-10, rtol = 1e-10, ssAtol = 1e-13, ssRtol = 1e-13, maxSS = 50000)
+      expect_equal(nrow(.a), length(.ref[[1]]), label = paste(.nm, "rows"))
+      for (.cn in names(.ref)) {
+        expect_lt(max(abs(.a[[.cn]] - .ref[[.cn]])), 1e-6, label = paste(.nm, .cn))
+      }
+    }
+  })
+
   test_that("the liblsodaadj self-check replay applies same-time events and the initial conditions", {
     # a parameter-dependent initial condition, a reset that restores it, and a
     # replace with a dose at one time
