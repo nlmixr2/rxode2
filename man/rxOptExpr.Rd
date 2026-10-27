@@ -51,6 +51,40 @@ modified.
 This optimizes rxode2 code for computer evaluation by only
 calculating redundant expressions once.
 }
+\examples{
+\donttest{
+pk <- function() {
+  model({
+    d/dt(depot) <- -exp(lka) * depot
+    d/dt(central) <- exp(lka) * depot - exp(lcl) / exp(lv) * central
+    cp <- central / exp(lv)
+  })
+}
+# exp(lka) and exp(lv) are computed once
+writeLines(rxOptExpr(pk))
+}
+}
+\seealso{
+Other Solver options and performance:
+\code{\link[=forderForceBase]{forderForceBase()}},
+\code{\link[=getRxThreads]{getRxThreads()}},
+\code{\link[=odeMethodToInt]{odeMethodToInt()}},
+\code{\link[=rxIndLinState]{rxIndLinState()}},
+\code{\link[=rxIndLinStrategy]{rxIndLinStrategy()}},
+\code{\link[=rxIsAutoSwitch]{rxIsAutoSwitch()}},
+\code{\link[=rxIsDense]{rxIsDense()}},
+\code{\link[=rxIsImplicit]{rxIsImplicit()}},
+\code{\link[=rxIsNonStiff]{rxIsNonStiff()}},
+\code{\link[=rxIsStiff]{rxIsStiff()}},
+\code{\link[=rxMemSummary]{rxMemSummary()}},
+\code{\link[=rxMemoryEstimate]{rxMemoryEstimate()}},
+\code{\link[=rxProgress]{rxProgress()}},
+\code{\link[=rxSetProd]{rxSetProd()}},
+\code{\link[=rxSetProgressBar]{rxSetProgressBar()}},
+\code{\link[=rxSetSum]{rxSetSum()}},
+\code{\link[=rxSumProdModel]{rxSumProdModel()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Solver options and performance}

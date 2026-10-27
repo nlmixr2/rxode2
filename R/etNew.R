@@ -1287,6 +1287,10 @@
 #' @return logical
 #'
 #' @export
+#' @family Event tables
+#' @examples
+#' is.rxEt(et(amt = 100))
+#' is.rxEt(data.frame(time = 0))
 is.rxEt <- function(x) {
   if (!inherits(x, "rxEt")) {
     return(FALSE)

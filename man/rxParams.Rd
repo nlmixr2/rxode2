@@ -135,13 +135,32 @@ character vector listing the parameters in the model.
 This returns the model's parameters that are required to solve the
 ODE system, and can be used to pipe parameters into an rxode2 solve
 }
+\examples{
+\donttest{
+pk <- function() {
+  model({
+    d/dt(depot) <- -ka * depot
+    d/dt(central) <- ka * depot - cl / v * central
+    cp <- central / v
+  })
+}
+rxParams(pk)
+# pipe the parameter values into a solve
+rxode2(pk)$simulationModel |>
+  rxParams(params = c(ka = 1.2, cl = 3.5, v = 25)) |>
+  et(amt = 100) |>
+  et(0:24) |>
+  rxSolve()
+}
+}
 \seealso{
 Other Query model information:
 \code{\link[=rxDfdy]{rxDfdy()}},
 \code{\link[=rxInits]{rxInits()}},
 \code{\link[=rxLhs]{rxLhs()}},
 \code{\link[=rxModelVars]{rxModelVars()}},
-\code{\link[=rxState]{rxState()}}
+\code{\link[=rxState]{rxState()}},
+\code{\link[=rxStateOde]{rxStateOde()}}
 }
 \author{
 Matthew L.Fidler

@@ -90,6 +90,22 @@ Botev ZI and L'Ecuyer P (2015) Efficient estimation and
 simulation of the truncated multivariate student-t distribution.
 2015 Winter Simulation Conference \doi{10.1109/WSC.2015.7408180}
 }
+\seealso{
+Other Variability and uncertainty:
+\code{\link[=confint.rxSolve]{confint.rxSolve()}},
+\code{\link[=cvPost]{cvPost()}},
+\code{\link[=dfWishart]{dfWishart()}},
+\code{\link[=rinvchisq]{rinvchisq()}},
+\code{\link[=rxEtaDistExpand]{rxEtaDistExpand()}},
+\code{\link[=rxEtaDistMuRef]{rxEtaDistMuRef()}},
+\code{\link[=rxPp]{rxPp()}},
+\code{\link[=rxRmvn]{rxRmvn()}},
+\code{\link[=rxSimThetaOmega]{rxSimThetaOmega()}},
+\code{\link[=rxUiEtaDistAnchors]{rxUiEtaDistAnchors()}},
+\code{\link[=rxUiEtaDists]{rxUiEtaDists()}},
+\code{\link[=swapMatListWithCube]{swapMatListWithCube()}}
+}
 \author{
 Matthew Fidler
 }
+\concept{Variability and uncertainty}

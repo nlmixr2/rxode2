@@ -643,6 +643,7 @@ print.rxSymInvCholEnv <- function(x, ...) {
 
 #' @inherit base::print
 #' @return This returns invisibly the model variables object
+#' @family Developer API
 #' @export
 print.rxModelVars <- function(x, ...) {
   .bound <- .getBound(x, parent.frame(2))

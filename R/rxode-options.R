@@ -32,6 +32,7 @@
 #' used to allow rxode2 to have binary linkage to nlmixr2est.
 #'
 #' @return a list of function pointers
+#' @family Developer API
 #' @export
 #' @author Matthew L. Fidler
 #' @examples
@@ -252,6 +253,9 @@
 #'
 #' @return rxode2 temporary directory.
 #' @export
+#' @family Utilities
+#' @examples
+#' rxTempDir()
 rxTempDir <- function() {
   if (is.null(getFromNamespace(".rxTempDir0", "rxode2"))) {
     .tmp <- Sys.getenv("rxTempDir")
@@ -294,6 +298,12 @@ rxTempDir <- function() {
 #' @author Matthew Fidler
 #'
 #' @export
+#' @family Model definition
+#' @examples
+#' # writes to the user cache directory, so only run interactively
+#' if (interactive()) {
+#'   rxCreateCache()
+#' }
 rxCreateCache <- function() {
   .tmp <- R_user_dir("rxode2", "cache")
   assignInMyNamespace(".cacheDefault", R_user_dir("rxode2", "cache"))
@@ -367,6 +377,7 @@ rxForget <- function() {
 #'
 #' # If you  want to suppress messages from rxode2 in other packages, you can use
 #' # this function
+#' @family Utilities
 rxSuppressMsg <- function() {
   if (requireNamespace("knitr", quietly = TRUE)) {
     if (!is.null(knitr::opts_knit$get("rmarkdown.pandoc.to"))) {
@@ -393,6 +404,7 @@ rxSuppressMsg <- function() {
 #'
 #' @author Matthew L. Fidler
 #' @return nothing; called for side effects
+#' @family Developer API
 #' @export
 rxSyncOptions <- function(setDefaults = c("none", "permissive", "strict")) {
   setDefaults <- match.arg(setDefaults)

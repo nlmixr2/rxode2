@@ -736,6 +736,19 @@
 #' @return the solved data frame with `rx__sens_<state>_BY_<param>__` columns.
 #' @author Matthew L. Fidler
 #' @export
+#' @family Sensitivities
+#' @examples
+#' \donttest{
+#' pk <- function() {
+#'   model({
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'   })
+#' }
+#' ev <- et(amt = 100, cmt = "depot") |> et(c(1, 2, 4, 8, 12))
+#' rxSolveAdjointRk4(rxode2(pk), ev, params = c(ka = 1.2, cl = 3.5, v = 25),
+#'                   calcSens = c("ka", "cl"))
+#' }
 rxSolveAdjointRk4 <- function(object, events, params = NULL, calcSens, method = "rk4s", ...) {
   .b <- .rxAdjointModel(object, calcSens, stiff = .rxAdjointMethodStiff(method))
   .df <- as.data.frame(rxode2::rxSolve(.b$model, events, params = params, method = method, ...))

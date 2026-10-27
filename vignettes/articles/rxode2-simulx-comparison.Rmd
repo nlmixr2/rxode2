@@ -1,5 +1,5 @@
 ---
-title: "rxode2 and Simulx: A Feature Comparison"
+title: "Comparing rxode2 with Simulx"
 ---
 
 ```{r, include = FALSE}
@@ -70,19 +70,25 @@ and R scripts are partially coupled.
 library(rxode2)
 
 # Entirely self-contained R script -- no GUI, no license file
-mod <- rxode2({
-  KA <- exp(tka + eta.ka)
-  CL <- exp(tcl + eta.cl)
-  d/dt(depot) <- -KA * depot
-  d/dt(centr) <- KA * depot - CL / V * centr
-  cp          <- centr / V
-})
+mod <- function() {
+  ini({
+    tka <- log(0.5)
+    tcl <- log(4)
+    V <- 10
+    eta.ka ~ 0.09
+    eta.cl ~ 0.09
+  })
+  model({
+    KA <- exp(tka + eta.ka)
+    CL <- exp(tcl + eta.cl)
+    d/dt(depot) <- -KA * depot
+    d/dt(centr) <- KA * depot - CL / V * centr
+    cp          <- centr / V
+  })
+}
 
 et  <- et(amt = 100, time = 0) |> et(seq(0, 24, by = 1))
-sim <- rxSolve(mod, et,
-               params = c(tka = log(0.5), tcl = log(4), V = 10),
-               omega  = lotri(eta.ka ~ 0.09, eta.cl ~ 0.09),
-               nSub   = 100)
+sim <- rxSolve(mod, et, nSub = 100)
 ```
 
 ### Parameter estimation via nlmixr2
@@ -106,11 +112,13 @@ rxode2 model objects support the native R pipe (`|>`) to clone and
 modify a model incrementally without rewriting the full specification.
 
 ```{r}
-base <- rxode2({
-  d/dt(depot) <- -KA * depot
-  d/dt(centr) <- KA * depot - CL / V * centr
-  cp          <- centr / V
-})
+base <- function() {
+  model({
+    d/dt(depot) <- -KA * depot
+    d/dt(centr) <- KA * depot - CL / V * centr
+    cp          <- centr / V
+  })
+}
 
 # Add population structure and residual error
 full <- base |>
@@ -122,9 +130,9 @@ full <- base |>
     tka <- log(0.5); eta.ka ~ 0.09
     tcl <- log(4);   eta.cl ~ 0.09
     V   <- 10
-    add.sd <- 0.5
   }) |>
-  model(cp ~ add(add.sd), append = TRUE)
+  model(cp ~ add(add.sd), append = TRUE) |>
+  ini(add.sd = 0.5)
 
 # Sensitivity run: fix BSV on KA
 sens <- full |> ini(fix(eta.ka))
@@ -185,7 +193,7 @@ can be dispatched to `mirai` daemons (`rxSolve(..., parallel = n)`) for
 distributed/HPC execution, all controlled directly from R.
 
 ```{r}
-rxSolve(mod, params, ev, file = tempfile("rx"), parallel = 4)
+rxSolve(mod, ev, nSub = 10000, file = tempfile("rx"), parallel = 4)
 ```
 
 ### Runs anywhere without infrastructure
@@ -304,3 +312,9 @@ allowing estimation in Monolix and fast scripted simulation in rxode2.
 - [rxode2 user manual](https://nlmixr2.github.io/rxode2-manual/)
 - [monolix2rx package](https://nlmixr2.github.io/monolix2rx/)
 - [nlmixr2 package](https://nlmixr2.github.io/nlmixr2/)
+
+## Next steps
+
+- [Introduction to rxode2](rxode2-intro.html)
+- [How do I...?](rxode2-cookbook.html)
+- [Simulating populations](rxode2-sim-var.html)

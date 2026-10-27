@@ -1137,6 +1137,22 @@ List rxModelVars_(const RObject &obj){
 //' @family Query model information
 //' @author Matthew L.Fidler
 //' @export
+//' @examples
+//' \donttest{
+//' f <- function() {
+//'   ini({
+//'     ka <- 0.5; cl <- 1; v <- 10
+//'   })
+//'   model({
+//'     d/dt(depot) <- -ka * depot
+//'     d/dt(central) <- ka * depot - cl / v * central
+//'     cp <- central / v
+//'   })
+//' }
+//' m <- f()
+//' rxState(m)
+//' rxState(m, "central")
+//' }
 // [[Rcpp::export]]
 RObject rxState(const RObject &obj = R_NilValue, RObject state = R_NilValue){
   List modVar = rxModelVars(obj);
@@ -1187,6 +1203,20 @@ CharacterVector rxParams_(const RObject &obj){
 //'
 //' @family Query model information
 //' @export
+//' @family Sensitivities
+//' @examples
+//' \donttest{
+//' f <- function() {
+//'   ini({
+//'     k <- 0.1
+//'   })
+//'   model({
+//'     d/dt(x) <- -k * x
+//'     df(x)/dy(x) <- -k
+//'   })
+//' }
+//' rxDfdy(f())
+//' }
 //[[Rcpp::export]]
 CharacterVector rxDfdy(const RObject &obj){
   List modVar = rxModelVars(obj);
@@ -1205,6 +1235,20 @@ CharacterVector rxDfdy(const RObject &obj){
 //' @family Query model information
 //' @author Matthew L.Fidler
 //' @export
+//' @examples
+//' \donttest{
+//' f <- function() {
+//'   ini({
+//'     ka <- 0.5; cl <- 1; v <- 10
+//'   })
+//'   model({
+//'     d/dt(depot) <- -ka * depot
+//'     d/dt(central) <- ka * depot - cl / v * central
+//'     cp <- central / v
+//'   })
+//' }
+//' rxLhs(f())
+//' }
 //[[Rcpp::export]]
 CharacterVector rxLhs(const RObject &obj){
   List modVar = rxModelVars(obj);
@@ -2903,6 +2947,14 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
 //' @author Matthew L.Fidler
 //'
 //' @export
+//' @family Variability and uncertainty
+//' @examples
+//' rxWithSeed(42, {
+//'   rxSimThetaOmega(
+//'     params = c(tka = 1, tcl = 2),
+//'     omega = lotri::lotri(eta.ka ~ 0.1), nSub = 3
+//'   )
+//' })
 //[[Rcpp::export]]
 List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
                      const RObject &omega= R_NilValue,
@@ -7983,6 +8035,7 @@ Nullable<Environment> rxrxode2env(RObject obj){
 //' Get rxode2 model from object
 //' @param obj rxode2 family of objects
 //' @return rxode2 model
+//' @family Developer API
 //' @export
 //[[Rcpp::export]]
 RObject rxGetrxode2(RObject obj){
@@ -8005,6 +8058,21 @@ RObject rxGetrxode2(RObject obj){
 //' @return boolean indicating if this was built with current rxode2
 //'
 //' @export
+//' @family Utilities
+//' @examples
+//' \donttest{
+//' f <- function() {
+//'   ini({
+//'     ka <- 0.5; cl <- 1; v <- 10
+//'   })
+//'   model({
+//'     d/dt(depot) <- -ka * depot
+//'     d/dt(central) <- ka * depot - cl / v * central
+//'     cp <- central / v
+//'   })
+//' }
+//' rxIsCurrent(f()$simulationModel)
+//' }
 //[[Rcpp::export]]
 bool rxIsCurrent(RObject obj){
   List mv = rxModelVars(obj);
@@ -8025,6 +8093,7 @@ bool rxIsCurrent(RObject obj){
 //' Assign pointer based on model variables
 //' @param object rxode2 family of objects
 //' @return nothing, called for side effects
+//' @family Developer API
 //' @export
 //[[Rcpp::export]]
 void rxAssignPtr(SEXP object = R_NilValue){
@@ -8231,6 +8300,23 @@ bool rxDynLoad(RObject obj){
 //' @return nothing; called for side effects
 //'
 //' @export
+//' @family Utilities
+//' @examples
+//' \donttest{
+//' f <- function() {
+//'   ini({
+//'     ka <- 0.5; cl <- 1; v <- 10
+//'   })
+//'   model({
+//'     d/dt(depot) <- -ka * depot
+//'     d/dt(central) <- ka * depot - cl / v * central
+//'     cp <- central / v
+//'   })
+//' }
+//' m <- f()$simulationModel
+//' rxLock(m)
+//' rxUnlock(m)
+//' }
 //[[Rcpp::export]]
 RObject rxLock(RObject obj){
   getRxModels();
@@ -8308,6 +8394,7 @@ bool rxUnload_ = true;
 //'
 //' # Garbage collection will unload unused rxode2 dlls
 //' rxAllowUnload(TRUE);
+//' @family Developer API
 //' @export
 //' @author Matthew Fidler
 //[[Rcpp::export]]
@@ -8402,6 +8489,22 @@ bool rxDynUnload(RObject obj){
 //'
 //' @author Matthew L.Fidler
 //' @export
+//' @family Model definition
+//' @examples
+//' \donttest{
+//' f <- function() {
+//'   ini({
+//'     ka <- 0.5; cl <- 1; v <- 10
+//'   })
+//'   model({
+//'     d/dt(depot) <- -ka * depot
+//'     d/dt(central) <- ka * depot - cl / v * central
+//'     cp <- central / v
+//'   })
+//' }
+//' m <- f()$simulationModel
+//' rxDelete(m)
+//' }
 //[[Rcpp::export]]
 bool rxDelete(RObject obj){
   if (rxIs(obj, "rxode2")){

@@ -134,6 +134,7 @@ NumericMatrix cvPost0(double nu, NumericMatrix omega, bool omegaIsChol = false,
 //' rinvchisq(3, 4, 1) ## Scale = 1, degrees of freedom = 4
 //' rinvchisq(2, 4, 2) ## Scale = 2, degrees of freedom = 4
 //' @export
+//' @family Variability and uncertainty
 //[[Rcpp::export]]
 NumericVector rinvchisq(const int n = 1, const double &nu = 1.0, const double &scale = 1){
   NumericVector ret(n);
@@ -176,6 +177,7 @@ void rgbeta(int d, double shape, double* out){
 //' @return A correlation sample from the LKJ distribution
 //'
 //' @author Matthew Fidler (translated to RcppArmadillo) and Emma Schwager
+//' @family Developer API
 //' @export
 //' @keywords internal
 //[[Rcpp::export]]
@@ -253,6 +255,7 @@ arma::mat rLKJcvLsd1(arma::vec logSd, arma::vec logSdSD, double eta = 1.0){
 //'
 //' @author Matthew Fidler
 //' @keywords internal
+//' @family Developer API
 //' @export
 //[[Rcpp::export]]
 arma::mat invWR1d(int d, double nu, bool omegaIsChol = false){

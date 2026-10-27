@@ -71,11 +71,46 @@ Chapman & Hall, London.
 ISBN 9780412830402.}
 }
 \seealso{
-The default method \code{\link[base]{print.default}}, and help for the
-  methods above; further \code{\link[base]{options}}, \code{\link[base]{noquote}}.
-
-  For more customizable (but cumbersome) printing, see
-  \code{\link[base]{cat}}, \code{\link[base]{format}} or also \code{\link[base]{write}}.
-  For a simple prototypical print method, see
-  \code{\link[tools]{.print.via.format}} in package \pkg{tools}.
+Other Developer API:
+\code{\link[=.cbindOme]{.cbindOme()}},
+\code{\link[=.collectWarnings]{.collectWarnings()}},
+\code{\link[=.copyUi]{.copyUi()}},
+\code{\link[=.handleSingleErrTypeNormOrTFoceiBase]{.handleSingleErrTypeNormOrTFoceiBase()}},
+\code{\link[=.matchesLangTemplate]{.matchesLangTemplate()}},
+\code{\link[=.modelHandleModelLines]{.modelHandleModelLines()}},
+\code{\link[=.quoteCallInfoLines]{.quoteCallInfoLines()}},
+\code{\link[=.rxLinCmtGen]{.rxLinCmtGen()}},
+\code{\link[=.rxSensStrippable]{.rxSensStrippable()}},
+\code{\link[=.rxWithOptions]{.rxWithOptions()}},
+\code{\link[=.rxWithWd]{.rxWithWd()}},
+\code{\link[=.rxode2ptrs]{.rxode2ptrs()}},
+\code{\link[=.toClassicEvid]{.toClassicEvid()}},
+\code{\link[=.vecDf]{.vecDf()}},
+\code{\link[=as.data.table.rxEt]{as.data.table.rxEt()}},
+\code{\link[=as_tibble.rxEt]{as_tibble.rxEt()}},
+\code{\link[=invWR1d]{invWR1d()}},
+\code{\link[=rLKJ1]{rLKJ1()}},
+\code{\link[=rxAllowUnload]{rxAllowUnload()}},
+\code{\link[=rxAssignControlValue]{rxAssignControlValue()}},
+\code{\link[=rxAssignPtr]{rxAssignPtr()}},
+\code{\link[=rxChain]{rxChain()}},
+\code{\link[=rxEtDispatchSolve]{rxEtDispatchSolve()}},
+\code{\link[=rxEvid]{rxEvid()}},
+\code{\link[=rxGetLin]{rxGetLin()}},
+\code{\link[=rxGetrxode2]{rxGetrxode2()}},
+\code{\link[=rxParseSuppressMsg]{rxParseSuppressMsg()}},
+\code{\link[=rxPreferredDistributionName]{rxPreferredDistributionName()}},
+\code{\link[=rxRateDur]{rxRateDur()}},
+\code{\link[=rxSyncOptions]{rxSyncOptions()}},
+\code{\link[=rxTrans]{rxTrans()}},
+\code{\link[=rxUiDeparse]{rxUiDeparse()}},
+\code{\link[=rxUiDevelop]{rxUiDevelop()}},
+\code{\link[=rxUiGet.cmtLines]{rxUiGet.cmtLines()}},
+\code{\link[=rxode2parse]{rxode2parse()}},
+\code{\link[=rxode2parseAssignTranslation]{rxode2parseAssignTranslation()}},
+\code{\link[=rxode2parseD]{rxode2parseD()}},
+\code{\link[=rxode2parseGetPackagesToLoad]{rxode2parseGetPackagesToLoad()}},
+\code{\link[=rxode2parseGetPointerAssignment]{rxode2parseGetPointerAssignment()}},
+\code{\link[=rxode2parseGetTranslation]{rxode2parseGetTranslation()}}
 }
+\concept{Developer API}

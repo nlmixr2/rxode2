@@ -22,6 +22,9 @@ rxResidualError
 \description{
 A description of Rode2 supported residual errors
 }
+\examples{
+head(rxResidualError)
+}
 \references{
 The transformation-based and autocorrelated (\code{ar()}, AR(1)) residual
 error models follow Karlsson MO, Beal SL, Sheiner LB. Three new residual

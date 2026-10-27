@@ -69,3 +69,22 @@ logitNormInfo(logit(0.25), sd = 0.1)
 logitNormInfo(logit(1, 0, 10), sd = 1, low = 0, high = 10)
 
 }
+\seealso{
+Other Special functions:
+\code{\link[=boxCox]{boxCox()}},
+\code{\link[=delay]{delay()}},
+\code{\link[=erf]{erf()}},
+\code{\link[=gammap]{gammap()}},
+\code{\link[=gammapDer]{gammapDer()}},
+\code{\link[=gammapInv]{gammapInv()}},
+\code{\link[=gammaq]{gammaq()}},
+\code{\link[=gammaqInv]{gammaqInv()}},
+\code{\link[=lowergamma]{lowergamma()}},
+\code{\link[=mexpit]{mexpit()}},
+\code{\link[=mlogit]{mlogit()}},
+\code{\link[=phi]{phi()}},
+\code{\link[=phiU]{phiU()}},
+\code{\link[=probit]{probit()}},
+\code{\link[=uppergamma]{uppergamma()}}
+}
+\concept{Special functions}

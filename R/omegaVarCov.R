@@ -21,6 +21,12 @@
 #'   `d2OmegaInv` / `d2LogDet`.
 #' @author Hidde van de Beek
 #' @export
+#' @family Utilities
+#' @examples
+#' omega <- lotri::lotri(eta.ka + eta.cl ~ c(0.1, 0.01, 0.2))
+#' d <- rxOmegaVarCovDeriv(omega, order = 1L)
+#' d$elements
+#' d$dLogDet
 rxOmegaVarCovDeriv <- function(omega, order = 2L) {
   omega <- as.matrix(omega)
   storage.mode(omega) <- "double"

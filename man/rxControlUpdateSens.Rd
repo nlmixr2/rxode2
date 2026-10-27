@@ -35,6 +35,14 @@ tmp2$rtol
 tmp2$ssAtol
 tmp2$ssRtol
 }
+\seealso{
+Other Sensitivities:
+\code{\link[=rxDfdy]{rxDfdy()}},
+\code{\link[=rxSensMatExp]{rxSensMatExp()}},
+\code{\link[=rxSolveAdjoint]{rxSolveAdjoint()}},
+\code{\link[=rxSolveAdjointRk4]{rxSolveAdjointRk4()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Sensitivities}

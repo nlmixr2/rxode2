@@ -1118,6 +1118,19 @@
 #'
 #' @author Matthew L. Fidler
 #' @export
+#' @family Solver options and performance
+#' @examples
+#' \donttest{
+#' pk <- function() {
+#'   model({
+#'     d/dt(depot) <- -exp(lka) * depot
+#'     d/dt(central) <- exp(lka) * depot - exp(lcl) / exp(lv) * central
+#'     cp <- central / exp(lv)
+#'   })
+#' }
+#' # exp(lka) and exp(lv) are computed once
+#' writeLines(rxOptExpr(pk))
+#' }
 rxOptExpr <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
   .chunkLines <- as.integer(chunkLines)
   if (!is.na(.chunkLines) && .chunkLines > 0L) {
