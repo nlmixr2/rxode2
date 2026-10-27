@@ -38,28 +38,24 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
     return;
   }
 
-  // ---- reconstruct the interior state-jump event at each call's start (call c>=1
-  // opens after an event at t0_c) from the event table: 0/none additive bolus
-  // (dPhi/dy=I) | 3 reset (->0) | 5 replace[c] (->0) | 6 multiply[c] (*=factor).
+  // ---- reconstruct the state-jump events at each call's start from the event
+  // table, in the order the forward solve applied them: 3 reset (->0) | 5
+  // replace[c] (->0) | 6 multiply[c] (*=factor); an additive bolus is dPhi/dy=I.
+  struct abJump { int type, cmt; double factor; };
   size_t nCalls = abAdjCalls.size();
-  std::vector<int> callEvType(nCalls, 0), callEvCmt(nCalls, -1);
-  std::vector<double> callEvFac(nCalls, 1.0);
-  for (size_t c = 1; c < nCalls; ++c) {
+  std::vector<std::vector<abJump> > callEv(nCalls);
+  for (size_t c = 0; c < nCalls; ++c) {
     double t0c = abAdjCalls[c].t0;
     for (int i = 0; i < ind->n_all_times; ++i) {
       int ev = getEvid(ind, ind->ix[i]);
       if (isObs(ev)) continue;
       if (fabs(ind->timeThread[ind->ix[i]] - t0c) > 1e-9) continue;
-      if (ev == 3) { callEvType[c] = 3; break; }
-      if (isDose(ev)) {
-        int _wh, _cmt, _wh100, _whI, _wh0; getWh(ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
-        if (_cmt >= 0 && _cmt < nBase) {
-          if (_whI == EVIDF_REPLACE) { callEvType[c] = 5; callEvCmt[c] = _cmt; break; }
-          else if (_whI == EVIDF_MULT) { callEvType[c] = 6; callEvCmt[c] = _cmt; callEvFac[c] = getDose(ind, ind->ix[i]); break; }
-          // whI==0 additive bolus -> identity (dose amt constant here); modeled
-          // F/alag/rate/dur duals are a follow-up.
-        }
-      }
+      if (ev == 3) { if (c >= 1) callEv[c].push_back({3, -1, 1.0}); continue; }
+      if (!isDose(ev)) continue;
+      int _wh, _cmt, _wh100, _whI, _wh0; getWh(ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
+      if (_cmt < 0 || _cmt >= nBase) continue;
+      if (_whI == EVIDF_REPLACE) callEv[c].push_back({5, _cmt, 0.0});
+      else if (_whI == EVIDF_MULT) callEv[c].push_back({6, _cmt, getDose(ind, ind->ix[i])});
     }
   }
 
@@ -152,14 +148,16 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
             }
           }
           for (int b = 0; b < nBase; ++b) endCostate[b] = lam[b];  // costate of call c's start
-          // event jump dPhi/dy^T at t0_c -> costate of the pre-event state (call c-1 end).
-          if (c >= 1) {
-            if (callEvType[c] == 3) {          // reset restores the initial conditions
+          // the jumps dPhi/dy^T at t0_c, last first -> costate of the pre-event state
+          // (call c-1's end, or the initial conditions for call 0)
+          for (size_t e = callEv[c].size(); e-- > 0;) {
+            const abJump &E = callEv[c][e];
+            if (E.type == 3) {                 // reset restores the initial conditions
               rk4sAddIni(dx0P, endCostate.data(), mu.data(), nBase, np);
               for (int b = 0; b < nBase; ++b) endCostate[b] = 0.0;
             }
-            else if (callEvType[c] == 5 && callEvCmt[c] >= 0) { endCostate[callEvCmt[c]] = 0.0; }
-            else if (callEvType[c] == 6 && callEvCmt[c] >= 0) { endCostate[callEvCmt[c]] *= callEvFac[c]; }
+            else if (E.type == 5) { endCostate[E.cmt] = 0.0; }
+            else if (E.type == 6) { endCostate[E.cmt] *= E.factor; }
           }
         }
         rk4sAddIni(dx0P, endCostate.data(), mu.data(), nBase, np);   // window start t0
