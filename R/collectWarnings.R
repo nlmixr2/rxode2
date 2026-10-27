@@ -8,6 +8,7 @@
 #' @return The value of the expression or a list with the value of
 #'     the expression and a list of warning messages
 #' @author Matthew L. Fidler
+#' @family Developer API
 #' @export
 .collectWarnings <- function(expr, lst = FALSE) {
   .ws <- NULL

@@ -20,6 +20,10 @@
 #'   errors when called directly from R.
 #'
 #' @export
+#' @family Event tables
+#' @template splitExamples
+#' rxSolve(f, et(amt = 100, cmt = "depot") |> et(0:24))
+#' }
 splitBolus <- function(cmt, ...) {
   stop("'splitBolus()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -55,6 +59,10 @@ splitBolus <- function(cmt, ...) {
 #'   errors when called directly from R.
 #'
 #' @export
+#' @family Event tables
+#' @template splitExamples
+#' rxSolve(f, et(amt = 100, rate = 20, cmt = "depot") |> et(0:24))
+#' }
 splitInfusion <- function(cmt, ...) {
   stop("'splitInfusion()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -109,8 +117,13 @@ splitInfusion <- function(cmt, ...) {
 #' `tk0`, scaled by `f1`) and `depot2` receives the bolus (first-order
 #' input scaled by `1 - f1`).
 #'
+#' @template splitExamples
+#' # the depot bolus becomes a central infusion plus a depot2 bolus
+#' rxSolve(f, et(amt = 100, cmt = "depot") |> et(0:24))
+#' }
 #' @name splitInfusionBolus-directive
 #' @aliases splitInfusionBolus splitInfusionBolus()
+#' @family Event tables
 NULL
 
 #' Split bolus doses into bolus and infusion paths (model directive)
@@ -163,6 +176,11 @@ NULL
 #' (last target) receives a modeled-duration infusion (zero-order
 #' input over `tk0`, scaled by `f1`).
 #'
+#' @template splitExamples
+#' # the depot bolus becomes a central infusion plus a depot2 bolus
+#' rxSolve(f, et(amt = 100, cmt = "depot") |> et(0:24))
+#' }
 #' @name splitBolusInfusion-directive
 #' @aliases splitBolusInfusion splitBolusInfusion()
+#' @family Event tables
 NULL

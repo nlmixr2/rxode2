@@ -56,6 +56,37 @@ Past-time pushes (where \code{time < t}) are silently ignored and counted;
 a warning is issued after solving.
 }
 }
+\examples{
+\donttest{
+# extra 50 unit bolus into the depot at t = 12
+f <- function() {
+  ini({
+    ka <- 0.5; cl <- 1; v <- 10
+  })
+  model({
+    mtime(at) <- 12
+    d/dt(depot) <- -ka * depot
+    d/dt(central) <- ka * depot - cl / v * central
+    cp <- central / v
+    if (t >= at && t < at + 0.5) bolus(50, depot)
+  })
+}
+s <- rxSolve(f, et(amt = 100) |> et(0:24))
+s[s$time >= 11 & s$time <= 14, ]
+}
+}
+\seealso{
+Other In-model dosing:
+\code{\link[=evid_]{evid_()}},
+\code{\link[=infuse]{infuse()}},
+\code{\link[=infuseDur]{infuseDur()}},
+\code{\link[=multiply]{multiply()}},
+\code{\link[=obs]{obs()}},
+\code{\link[=phantom]{phantom()}},
+\code{\link[=replace]{replace()}},
+\code{\link[=reset]{reset()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{In-model dosing}

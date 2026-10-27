@@ -43,15 +43,17 @@ logit and inverse logit (expit) functions
 \details{
 logit is given by:
 
-logit(p) = -log(1/p-1)
+logit(x, low, high) = log(x-low) - log(high-x)
 
-where:
-
-p = x-low/high-low
+which equals \code{-log(1/p-1)} with \code{p = (x-low)/(high-low)} but keeps
+precision near the bounds; it is \code{-Inf} at \code{x = low}, \code{Inf} at
+\code{x = high} (like \code{qlogis()}) and \code{NaN} outside \verb{[low, high]}.
 
 expit is given by:
 
 expit(p, low, high) = (high-low)/(1+exp(-alpha)) + low
+
+so \code{expit(-Inf) = low} and \code{expit(Inf) = high}.
 
 The \code{logitNormInfo()} gives the mean, variance and coefficient of
 variability on the untransformed scale.
@@ -67,3 +69,22 @@ logitNormInfo(logit(0.25), sd = 0.1)
 logitNormInfo(logit(1, 0, 10), sd = 1, low = 0, high = 10)
 
 }
+\seealso{
+Other Special functions:
+\code{\link[=boxCox]{boxCox()}},
+\code{\link[=delay]{delay()}},
+\code{\link[=erf]{erf()}},
+\code{\link[=gammap]{gammap()}},
+\code{\link[=gammapDer]{gammapDer()}},
+\code{\link[=gammapInv]{gammapInv()}},
+\code{\link[=gammaq]{gammaq()}},
+\code{\link[=gammaqInv]{gammaqInv()}},
+\code{\link[=lowergamma]{lowergamma()}},
+\code{\link[=mexpit]{mexpit()}},
+\code{\link[=mlogit]{mlogit()}},
+\code{\link[=phi]{phi()}},
+\code{\link[=phiU]{phiU()}},
+\code{\link[=probit]{probit()}},
+\code{\link[=uppergamma]{uppergamma()}}
+}
+\concept{Special functions}

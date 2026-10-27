@@ -63,6 +63,7 @@ extern "C" void ind_cvode_dense_0(rx_solve *rx, rx_solving_options *op, int solv
                                  (void *)neq, cvodeLinSolver);
     if (!cvode_ctx) {
       ind->rc[0] = -2019;
+      rxSolverFail(ind);
       ind->solveTime += ((double)(clock() - t0_clock)) / CLOCKS_PER_SEC;
       return;
     }
@@ -154,7 +155,7 @@ extern "C" void ind_cvode_dense_0(rx_solve *rx, rx_solving_options *op, int solv
               while (cvode_ctx_dense_current_time(cvode_ctx) < xout) {
                 if (cvode_ctx_dense_do_step(cvode_ctx, yp, tout_dir) < 0) {
                   if (ind->rc[0] == 0) ind->rc[0] = -2019;
-                  ind->err = 1;
+                  rxSolverFail(ind);
                   break;
                 }
                 if (ind->err) {
@@ -165,7 +166,7 @@ extern "C" void ind_cvode_dense_0(rx_solve *rx, rx_solving_options *op, int solv
               if (!ind->err) {
                 if (cvode_ctx_dense_calc_state(cvode_ctx, xout, yp) < 0) {
                   if (ind->rc[0] == 0) ind->rc[0] = -2019;
-                  ind->err = 1;
+                  rxSolverFail(ind);
                 }
               }
               istate = ind->err ? -1 : 1;
@@ -241,8 +242,6 @@ extern "C" void par_cvode_dense(rx_solve *rx) {
   int      nsolve = (int)(nsim * nsub);
 
   uint32_t seed0 = getRxSeed1(cores);
-  int abort = 0;
-
 #ifdef _OPENMP
 #pragma omp parallel for num_threads(cores)
 #endif
@@ -250,23 +249,10 @@ extern "C" void par_cvode_dense(rx_solve *rx) {
     int neq[2];
     neq[0] = op->neq;
     neq[1] = 0;
-    int localAbort;
-#ifdef _OPENMP
-#pragma omp atomic read
-#endif
-    localAbort = abort;
-    if (localAbort == 0) {
-      // rx->ordId walks positions (sortIds); the drivers take subject ids.
-      int _id = rx->ordId[solveid] - 1;
-      setSeedEng1(seed0 + _id);
-      ind_cvode_dense_0(rx, op, _id, neq, update_inis);
-      if (op->badSolve) {
-#ifdef _OPENMP
-#pragma omp atomic write
-#endif
-        abort = 1;
-      }
-    }
+    // rx->ordId walks positions (sortIds); the drivers take subject ids.
+    int _id = rx->ordId[solveid] - 1;
+    setSeedEng1(seed0 + _id);
+    ind_cvode_dense_0(rx, op, _id, neq, update_inis);
   }
   // close the per-subject seed block: the loop consumed nsolve seeds, not
   // cores, and the next solve must not re-use any of them

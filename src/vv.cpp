@@ -7,6 +7,7 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#include <cfloat>
 
 struct vv_system {
     rx_solving_options_ind *ind_;
@@ -36,6 +37,18 @@ struct vv_system {
 
         c_dydt_(neq_, t, y_temp_.data(), dy_temp_.data());
 
+        // Velocity Verlet takes d/dt(q_i) = p_i; refuse models that do not
+        // (the padded momentum of an odd system is 0).
+        for (int i = 0; i < N_; ++i) {
+            double dq = dy_temp_[i], p = y_temp_[N_ + i];
+            if (dq != p && !(std::isnan(dq) && std::isnan(p)) &&
+                !(R_FINITE(dq) && R_FINITE(p) &&
+                  std::abs(dq - p) <= 64.0 * DBL_EPSILON * std::max(std::abs(dq), std::abs(p)))) {
+                ind_->err |= rxErrVvNotPairs;
+                break;
+            }
+        }
+
         std::copy(dy_temp_.begin() + N_, dy_temp_.end(), a.data_);
     }
 };
@@ -64,7 +77,7 @@ static inline void vv_do_steps(rx_solving_options_ind *ind, rx_solving_options *
       stepper.do_step(sys, state, t, current_dt);
     } catch(const std::exception& e) {
       if (ind->rc[0] == 0) ind->rc[0] = -2019;
-      ind->err = 1;
+      rxSolverFail(ind);
       break;
     }
 
@@ -274,8 +287,6 @@ extern "C" void par_vv(rx_solve *rx){
   int nsolve = (int)(nsim*nsub);
 
   uint32_t seed0 = getRxSeed1(cores);
-  int abort = 0;
-
 #ifdef _OPENMP
 #pragma omp parallel for num_threads(cores)
 #endif
@@ -283,24 +294,10 @@ extern "C" void par_vv(rx_solve *rx){
     int neq[2];
     neq[0] = op->neq;
     neq[1] = 0;
-    int localAbort;
-#ifdef _OPENMP
-#pragma omp atomic read
-#endif
-    localAbort = abort;
-    if (localAbort == 0){
-      // rx->ordId walks positions (sortIds); the drivers take subject ids.
-      int _id = rx->ordId[solveid] - 1;
-      setSeedEng1(seed0 + _id);
-      ind_vv_0(rx, op, _id, neq, dydt, update_inis);
-
-      if (op->badSolve) {
-#ifdef _OPENMP
-#pragma omp atomic write
-#endif
-        abort = 1;
-      }
-    }
+    // rx->ordId walks positions (sortIds); the drivers take subject ids.
+    int _id = rx->ordId[solveid] - 1;
+    setSeedEng1(seed0 + _id);
+    ind_vv_0(rx, op, _id, neq, dydt, update_inis);
   }
   // close the per-subject seed block: the loop consumed nsolve seeds, not
   // cores, and the next solve must not re-use any of them

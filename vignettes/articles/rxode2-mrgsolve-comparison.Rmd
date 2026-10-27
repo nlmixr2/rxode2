@@ -1,5 +1,5 @@
 ---
-title: "rxode2 and mrgsolve: A Feature Comparison"
+title: "Comparing rxode2 with mrgsolve"
 ---
 
 ```{r, include = FALSE}
@@ -334,10 +334,12 @@ gradient-based methods in nlmixr2.  mrgsolve does not solve delay
 differential equations.
 
 ```{r}
-mod_dde <- rxode2({
-  d/dt(depot)  <- -ka * depot
-  d/dt(central) <- ka * depot - ke * delay(central, tau) # delayed feedback
-})
+mod_dde <- function() {
+  model({
+    d/dt(depot)  <- -ka * depot
+    d/dt(central) <- ka * depot - ke * delay(central, tau) # delayed feedback
+  })
+}
 ```
 
 ### Automatic ODE-to-`linCmt()` conversion
@@ -400,10 +402,12 @@ untouched.
 ```{r}
 library(rxode2)
 
-base <- rxode2({
-  d / dt(depot) <- -KA * depot
-  d / dt(centr) <- KA * depot - CL / V * centr
-})
+base <- function() {
+  model({
+    d / dt(depot) <- -KA * depot
+    d / dt(centr) <- KA * depot - CL / V * centr
+  })
+}
 
 # Add population parameters and a covariate in one pipeline
 full <- base |>
@@ -459,9 +463,12 @@ library(rxode2)
 # Plain R function defined anywhere in the session
 Hill <- function(C, Emax, EC50) Emax * C / (EC50 + C)
 
-mod <- rxode2({
-  effect <- Hill(cp, Emax, EC50) # calls the R function above
-})
+mod <- function() {
+  model({
+    effect <- Hill(cp, Emax, EC50) # calls the R function above
+  })
+}
+mod <- mod()
 ```
 
 For performance, `rxFun()` can translate such R functions to C
@@ -571,9 +578,11 @@ triggers recompilation automatically.
 # Include a local header file; model recompiles if the file changes
 .extraC("mymodels/special_functions.h")
 
-mod <- rxode2({
-  cp <- mySpecialPK(dose, CL, V)
-})
+mod <- function() {
+  model({
+    cp <- mySpecialPK(dose, CL, V)
+  })
+}
 ```
 
 Full package-level registration (including analytic derivatives for
@@ -605,12 +614,17 @@ rxode2 you simply omit `d/dt()` statements:
 ```{r eval=TRUE}
 library(rxode2)
 
-mod_pred <- rxode2({
-  ipre <- 10 * exp(-ke * t)
-})
+mod_pred <- function() {
+  ini({
+    ke <- 0.5
+  })
+  model({
+    ipre <- 10 * exp(-ke * t)
+  })
+}
 
 et <- et(seq(0, 24, length.out = 20))
-rxSolve(mod_pred, et, params = c(ke = 0.5))
+rxSolve(mod_pred, et)
 ```
 
 This is equivalent to NONMEM's `$PRED` block or mrgsolve's `$PRED`
@@ -739,3 +753,9 @@ conversion.
 - [EventSensitivities (event/jump sensitivities)](https://github.com/dkaschek/EventSensitivities)
 - [rxode2mrgsolvebridge package (CRAN)](https://cran.r-project.org/package=rxode2mrgsolvebridge)
 - [rxode2mrgsolvebridge source (GitLab)](https://gitlab.com/fiha1/rxode2-mrgsolve-bridge)
+
+## Next steps
+
+- [Introduction to rxode2](rxode2-intro.html)
+- [How do I...?](rxode2-cookbook.html)
+- [Low-level models and other input styles](rxode2-classic-models.html)

@@ -577,6 +577,7 @@
 #' - `rx_r_` The transformed variance
 #'
 #' @author Matthew Fidler
+#' @family Developer API
 #' @export
 .handleSingleErrTypeNormOrTFoceiBase <- function(env, pred1, errNum = 1L, rxPredLlik = TRUE, arNorm = FALSE) {
   type <- pred1$distribution

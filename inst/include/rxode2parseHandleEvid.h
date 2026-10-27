@@ -1302,7 +1302,9 @@ static inline int handle_evid(int evid, int neq,
   double tmp;
   getWh(evid, &(ind->wh), &(ind->cmt), &(ind->wh100), &(ind->whI), &(ind->wh0));
   handleTlastInline(&xout, ind);
-  if (ind->wh0 == EVID0_SSINF) {
+  // An out-of-range cmt falls through to the bad-dose handling below so
+  // handleSS() never indexes InfusionRate[] past its end.
+  if (ind->wh0 == EVID0_SSINF && ind->cmt >= 0 && ind->cmt < neq) {
     ind->ixds++;
     ind->solved = ind->idx;
     return 1;
