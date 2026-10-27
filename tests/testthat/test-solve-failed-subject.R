@@ -266,12 +266,13 @@ rxTest({
       .o,
       "[IDID=-1, excess work done on this call (perhaps wrong jt).]: 1 warning(s) for subject(s): 101"
     )
-    # dop853's step limit gives its IDID text; its other line ("exit of dop853
-    # at x = ...") formats values it is not passed, so it is not compared
+    # dop853 reports its step limit itself, with the x it stopped at: one line,
+    # and no IDID line besides
     .o <- .cap(suppressWarnings(rxSolve(.m, .d, params = c(k = 1), method = "dop853", maxsteps = 1L)))
-    expect_identical(
-      grep("^\\[IDID", .o, value = TRUE),
-      "[IDID=-2, larger nmax is needed]: 4 warning(s) for subject(s): 101, 102, 103, 104"
+    expect_length(.o, 1L)
+    expect_match(
+      .o,
+      "^\\[exit of dop853 at x = [-0-9.e+]+ \\+/- [-0-9.e+]+ \\([-0-9.e+]+/[-0-9.e+]+\\), more than nmax = 1 are needed\\]: 4 warning\\(s\\) for subject\\(s\\): 101, 102, 103, 104$"
     )
   })
 

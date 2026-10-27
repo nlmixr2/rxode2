@@ -784,6 +784,7 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
 
       h = hnew;
       if (!R_FINITE(h)) {
+        rxSolveWarnPushStat(ctx->subject_id, 1, &x, "exit of dop853 at x = %%v, step size is not finite");
         ctx->xout = x;
         ctx->hout = h;
         DOPCOR_RETURN(-3);
