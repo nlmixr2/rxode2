@@ -247,7 +247,9 @@
 - The adjoint methods now refuse a steady-state dose solved with
   `minSS = maxSS`.  They differentiate the converged steady state, not the
   state after that fixed number of doses, so their sensitivities did not
-  match the solved state.
+  match the solved state.  The adjoint steady-state refusals now point to
+  `rxode2(model, calcSens = ...)` for forward sensitivities instead of a
+  `sensMethod` argument that does not exist.
 
 - A dose that follows a reset at the same time (`evid = 4`, or `evid = 3`
   and a dose at one time) lost its bioavailability (`f()`) adjoint
