@@ -54,7 +54,7 @@ arma::mat rxInvCholMat(const arma::vec &par, int dim) {
     Ri.fill(arma::datum::nan);
   }
   arma::mat ret = Ri * Ri.t();
-  return 0.5 * (ret + ret.t());
+  return 0.5 * ret + 0.5 * ret.t();
 }
 
 bool rxInvCholJac(arma::mat &jac, const arma::mat &omega) {
