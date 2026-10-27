@@ -34,6 +34,20 @@ extern int fastFactorDataHasNa;
 
 SEXP convertId_(SEXP x);
 
+// The first ten of `rows`, then "... (N more)", for a message naming rows
+static std::string etRowList(const std::vector<int> &rows) {
+  std::string ret;
+  size_t n = rows.size() < 10 ? rows.size() : 10;
+  for (size_t k = 0; k < n; ++k) {
+    if (k > 0) ret += ", ";
+    ret += std::to_string(rows[k]);
+  }
+  if (rows.size() > 10) {
+    ret += ", ... (" + std::to_string(rows.size() - 10) + " more)";
+  }
+  return ret;
+}
+
 // A rate or duration that is dose information, as the no-EVID-column path reads
 // it: positive, or modeled (-1, -2).  A NaN, 0 or other negative value is none.
 static inline bool etRateDurIsDose(double x) {
@@ -2026,6 +2040,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
 
   int ccens=0;
   bool warnCensNA=false;
+  // 1-based rows read differently from their face value, for the warnings
+  // after the loop
+  std::vector<int> obsAmtDoseRows, mdvNaNoDoseRows;
   bool censNone=true;
   bool swapDvLimit=false;
   // cens = NA_INTEGER with LIMIT is M2
@@ -2305,7 +2322,17 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     }
     if (IntegerVector::is_na(cevid)) {
       if (evidIsMDV) {
-        cevid=1;
+        // a missing MDV is read as a dose; with a zero amount and no rate or
+        // duration there is nothing to dose, so it is a record with no
+        // observation
+        if (amtCol != -1 && camt == 0.0 &&
+            !(rateCol != -1 && etRateDurIsDose(inRate[i])) &&
+            !(durCol != -1 && etRateDurIsDose(inDur[i]))) {
+          cevid = 2;
+          mdvNaNoDoseRows.push_back(i + 1);
+        } else {
+          cevid=1;
+        }
       } else {
         // a missing EVID is an observation, which would silently drop the
         // record's dose information, read as the no-EVID-column path reads it
@@ -2319,6 +2346,15 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
         cevid=0;
       }
+    }
+    // an observation with no DV but a dose amount is read as that dose; its
+    // MDV, if any, describes the observation it is not
+    bool obsAmtDose = false;
+    if (cevid == 0 && hasEvid && dvCol != -1 && ISNA(inDv[i]) &&
+        !ISNA(camt) && camt != 0.0 && !(mdvCol != -1 && inMdv[i] == 1)) {
+      cevid = 1;
+      obsAmtDose = true;
+      obsAmtDoseRows.push_back(i + 1);
     }
     if (cevid == 4 && nobs ==0 && ndose == 0) {
       // No reset here
@@ -2449,7 +2485,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       break;
     case 7:
     case 1:
-      if (mdvCol != -1 && (inMdv[i] == 0 || IntegerVector::is_na(inMdv[i]))){
+      if (!obsAmtDose && mdvCol != -1 && (inMdv[i] == 0 || IntegerVector::is_na(inMdv[i]))){
         stop(_("'mdv' cannot be 0 when 'evid'=%d id: %s row: %d"), cevid, CHAR(idLvl[cid-1]), i+1);
       }
       if (amtCol == -1) {
@@ -3007,6 +3043,16 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   }
   if (warnCensNA) Rf_warningcall(R_NilValue, "%s", _("censoring missing 'DV' values do not make sense"));
   if (warnNaTime) Rf_warningcall(R_NilValue, "%s", _("missing 'TIME' values do not make sense (ignored)"));
+  if (!obsAmtDoseRows.empty()) {
+    std::string msg = std::string(_("'evid' 0 with a missing 'dv' and a nonzero 'amt' is read as a dose")) +
+      "\nrows: " + etRowList(obsAmtDoseRows);
+    Rf_warningcall(R_NilValue, "%s", msg.c_str());
+  }
+  if (!mdvNaNoDoseRows.empty()) {
+    std::string msg = std::string(_("a missing 'mdv' with a zero 'amt' is read as 'evid' 2, not a dose")) +
+      "\nrows: " + etRowList(mdvNaNoDoseRows);
+    Rf_warningcall(R_NilValue, "%s", msg.c_str());
+  }
 #ifdef rxSolveT
   REprintf("  Time7: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
