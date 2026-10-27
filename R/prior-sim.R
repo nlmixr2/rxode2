@@ -724,25 +724,28 @@
   ## each prior entry as a name and, for an omega element, its position; a
   ## `multiNormal()` names its own members, which may include `om.`
   ## elements, and any other prior is on its own row
-  .ent <- do.call(rbind, lapply(.w, function(i) {
-    .cn <- .rxPriorCovNames(.iniDf$prior[i])
-    if (is.null(.cn)) {
-      if (is.na(.iniDf$neta1[i])) {
-        return(data.frame(name = .iniDf$name[i], neta1 = NA_integer_, neta2 = NA_integer_))
+  .ent <- do.call(
+    rbind,
+    lapply(.w, function(i) {
+      .cn <- .rxPriorCovNames(.iniDf$prior[i])
+      if (is.null(.cn)) {
+        if (is.na(.iniDf$neta1[i])) {
+          return(data.frame(name = .iniDf$name[i], neta1 = NA_integer_, neta2 = NA_integer_))
+        }
+        .n1 <- as.integer(.iniDf$neta1[i])
+        .n2 <- as.integer(.iniDf$neta2[i])
+        .nm <- if (.n1 == .n2) paste0("om.", .iniDf$name[i]) else .iniDf$name[i]
+        return(data.frame(name = .nm, neta1 = .n1, neta2 = .n2))
       }
-      .n1 <- as.integer(.iniDf$neta1[i])
-      .n2 <- as.integer(.iniDf$neta2[i])
-      .nm <- if (.n1 == .n2) paste0("om.", .iniDf$name[i]) else .iniDf$name[i]
-      return(data.frame(name = .nm, neta1 = .n1, neta2 = .n2))
-    }
-    .om <- startsWith(.cn, "om.")
-    .i <- match(substring(.cn, 4L), .etaNm)
-    data.frame(
-      name = .cn,
-      neta1 = ifelse(.om, .i, NA_integer_),
-      neta2 = ifelse(.om, .i, NA_integer_)
-    )
-  }))
+      .om <- startsWith(.cn, "om.")
+      .i <- match(substring(.cn, 4L), .etaNm)
+      data.frame(
+        name = .cn,
+        neta1 = ifelse(.om, .i, NA_integer_),
+        neta2 = ifelse(.om, .i, NA_integer_)
+      )
+    })
+  )
   .theta <- !startsWith(.ent$name, "om.") & is.na(.ent$neta1)
   .miss <- setdiff(.ent$name[.theta], .cols)
   .om <- .ent[!.theta, , drop = FALSE]
