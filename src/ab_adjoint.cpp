@@ -112,6 +112,19 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   std::vector<double> dx0V;                         // parameter-dependent initial conditions
   rk4sIniDx0(op, ind, cSub, abAdjCalls[0].t0, eff, nBase, np, dx0V);
   const double *dx0P = dx0V.empty() ? NULL : dx0V.data();
+  // the jumps dPhi/dy^T of one call start, last first: reset (adds the
+  // initial-condition term, then 0), replace[c] -> 0, multiply[c] *= factor
+  auto abJumpT = [&](const std::vector<abJump> &ev, double *cost, double *muP) {
+    for (size_t e = ev.size(); e-- > 0;) {
+      const abJump &E = ev[e];
+      if (E.type == 3) {
+        rk4sAddIni(dx0P, cost, muP, nBase, np);
+        for (int b = 0; b < nBase; ++b) cost[b] = 0.0;
+      }
+      else if (E.type == 5) { cost[E.cmt] = 0.0; }
+      else if (E.type == 6) { cost[E.cmt] *= E.factor; }
+    }
+  };
   std::vector<double> endCostate(nBase), lam;
   for (int i = 0; i < ind->n_all_times; ++i) {
     if (!isObs(getEvid(ind, ind->ix[i]))) continue;
@@ -123,6 +136,10 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
       std::fill(mu.begin(), mu.end(), 0.0);
       if (cObs >= 0) {
         std::fill(endCostate.begin(), endCostate.end(), 0.0); endCostate[k] = 1.0;
+        // an observation at the start of the next call reads the state after the
+        // jumps there (records sort the events before the observation)
+        if (cObs + 1 < (int)nCalls && fabs(abAdjCalls[cObs + 1].t0 - ti) < 1e-9)
+          abJumpT(callEv[cObs + 1], endCostate.data(), mu.data());
         for (int c = cObs; c >= 0; --c) {
           const abRecCall &call = abAdjCalls[c];
           int M = (int)(call.stepEnd - call.stepBegin), ord = call.order;
@@ -148,21 +165,19 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
             }
           }
           for (int b = 0; b < nBase; ++b) endCostate[b] = lam[b];  // costate of call c's start
-          // the jumps dPhi/dy^T at t0_c, last first -> costate of the pre-event state
-          // (call c-1's end, or the initial conditions for call 0)
-          for (size_t e = callEv[c].size(); e-- > 0;) {
-            const abJump &E = callEv[c][e];
-            if (E.type == 3) {                 // reset restores the initial conditions
-              rk4sAddIni(dx0P, endCostate.data(), mu.data(), nBase, np);
-              for (int b = 0; b < nBase; ++b) endCostate[b] = 0.0;
-            }
-            else if (E.type == 5) { endCostate[E.cmt] = 0.0; }
-            else if (E.type == 6) { endCostate[E.cmt] *= E.factor; }
-          }
+          // the jumps at t0_c -> costate of the pre-event state (call c-1's end, or
+          // the initial conditions for call 0)
+          abJumpT(callEv[c], endCostate.data(), mu.data());
         }
         rk4sAddIni(dx0P, endCostate.data(), mu.data(), nBase, np);   // window start t0
-      } else if (dx0P) {                    // no step taken yet: the state is its initial condition
-        for (int p = 0; p < np; ++p) mu[p] = dx0P[k * np + p];
+      } else {
+        // no call ends at ti: the observation is at t0, or at a reset (abs does not
+        // integrate up to a reset).  It reads the initial conditions after the
+        // jumps of the call that starts there.
+        std::fill(endCostate.begin(), endCostate.end(), 0.0); endCostate[k] = 1.0;
+        for (size_t c = 0; c < nCalls; ++c)
+          if (fabs(abAdjCalls[c].t0 - ti) < 1e-9) { abJumpT(callEv[c], endCostate.data(), mu.data()); break; }
+        rk4sAddIni(dx0P, endCostate.data(), mu.data(), nBase, np);
       }
       for (int p = 0; p < np; ++p) out[sensOff + k * np + p] = mu[p];
     }

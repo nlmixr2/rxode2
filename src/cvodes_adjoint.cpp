@@ -229,6 +229,8 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
 
   std::vector<double> obsT; std::vector<int> obsIx;
   std::vector<size_t> obsReset;   // resets processed before each observation was stored
+  std::vector<size_t> obsEv;      // evJumps recorded before it (the events it follows)
+  std::vector<size_t> resetEv;    // evJumps recorded before each reset
   std::vector<double> resetT;   // evid-3 reset times (costate jump: lambda := 0)
   // replace (type 5: lambda[c]:=0) / multiply (type 6: lambda[c]*=factor) events;
   // the backward sweep stops at each and applies the transpose costate jump.
@@ -390,7 +392,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
         // A reset wipes the state to its initial conditions, so dPhi/dy = 0
         // and the backward costate zeroes here.  Record before handleEvid3 mutates
         // xout.
-        resetT.push_back(xout);
+        resetT.push_back(xout); resetEv.push_back(evJumps.size());
         handleEvid3(ind, op, rx, neq, &xp, &xout, yp, &(istate), u_inis);
         didEvent = 1;
       } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
@@ -451,7 +453,9 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
         }
       }
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
-      if (isObs(getEvid(ind, ind->ix[i]))) { obsT.push_back(xout); obsIx.push_back(i); obsReset.push_back(resetT.size()); }
+      if (isObs(getEvid(ind, ind->ix[i]))) {
+        obsT.push_back(xout); obsIx.push_back(i); obsReset.push_back(resetT.size()); obsEv.push_back(evJumps.size());
+      }
       if (_mtime_requeued) i--;
     }
     ind->solvedIdx = i;
@@ -514,6 +518,19 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += -ev.factor * dlag[c * np + p] * sc;
     }
   };
+  // The events at time t among evJumps[lo, hi), last first: a bolus's F/alag dual
+  // (with the costate of its post-dose state), then replace[c] -> 0 and
+  // multiply[c] *= factor.  An observation at an event time reads the state after
+  // the events recorded before it.
+  auto applyAt = [&](double t, size_t lo, size_t hi) {
+    for (size_t e = hi; e-- > lo;) {
+      const cvEvent &E = evJumps[e];
+      if (!isSameTime(E.t, t)) continue;
+      if (E.type == 0) bolusDual(E);
+      else if (E.type == 5) NV_Ith_S(B, E.cmt) = 0.0;
+      else if (E.type == 6) NV_Ith_S(B, E.cmt) *= E.factor;
+    }
+  };
   for (int oi = (int)obsT.size() - 1; bok && oi >= 0; --oi) {
     double ti = obsT[oi]; int solveIdx = obsIx[oi];
     double *out = getSolve(solveIdx);
@@ -522,14 +539,18 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     // before this observation was stored -- including one at the observation's
     // own time, whose observation reads the post-reset state.
     double tStop = obsReset[oi] > 0 ? resetT[obsReset[oi] - 1] : t0;
-    if (ti <= tStop || isSameTime(ti, tStop)) {   // the initial conditions, plus a bolus at ti
+    // only events after that reset reach the observation
+    size_t evLo = obsReset[oi] > 0 ? resetEv[obsReset[oi] - 1] : 0, evHi = obsEv[oi];
+    if (ti <= tStop || isSameTime(ti, tStop)) {   // the initial conditions and the events at ti
       for (int k = 0; k < nBase; ++k) {
         for (int j = 0; j < nBase; ++j) NV_Ith_S(B, j) = (j == k) ? 1.0 : 0.0;
         for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) = 0.0;
-        for (size_t e = 0; e < evJumps.size(); ++e)
-          if (evJumps[e].type == 0 && isSameTime(evJumps[e].t, ti)) bolusDual(evJumps[e]);
-        for (int p = 0; p < np; ++p)
-          out[sensOff + k * np + p] = (dx0P ? dx0P[k * np + p] : 0.0) + NV_Ith_S(B, nBase + p);
+        applyAt(ti, evLo, evHi);
+        for (int p = 0; p < np; ++p) {
+          double ini = 0.0;
+          if (dx0P) for (int q = 0; q < nBase; ++q) ini += NV_Ith_S(B, q) * dx0P[q * np + p];
+          out[sensOff + k * np + p] = NV_Ith_S(B, nBase + p) + ini;
+        }
       }
       continue;
     }
@@ -544,9 +565,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     for (int k = 0; bok && k < nBase; ++k) {
       for (int j = 0; j < nBase; ++j) NV_Ith_S(B, j) = (j == k) ? 1.0 : 0.0;
       for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) = 0.0;
-      // a bolus at ti itself: the observation reads the post-dose state
-      for (size_t e = 0; e < evJumps.size(); ++e)
-        if (evJumps[e].type == 0 && isSameTime(evJumps[e].t, ti)) bolusDual(evJumps[e]);
+      applyAt(ti, evLo, evHi);   // the events at ti itself
       if (CVodeReInit(bmem, (sunrealtype)ti, B) < 0) { bok = 0; break; }
       sunrealtype tret;
       // integrate ti -> each event (applying its costate jump) -> tStop; mu (the
@@ -597,10 +616,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       if (!bok) break;
       CVodeSetStopTime(bmem, (sunrealtype)tStop);
       if (CVode(bmem, (sunrealtype)tStop, B, &tret, CV_NORMAL) < 0) { bok = 0; break; }
-      // a bolus at tStop itself (the t0 dose, or one right after a reset)
-      for (size_t e = 0; e < evJumps.size(); ++e)
-        if (evJumps[e].type == 0 && isSameTime(evJumps[e].t, tStop) && evJumps[e].t < ti - 1e-12)
-          bolusDual(evJumps[e]);
+      applyAt(tStop, evLo, evHi);   // the events at t0, or right after the reset
       // tStop is t0 or a reset; either way the state there is the initial condition
       for (int p = 0; p < np; ++p) {
         double ini = 0.0;
