@@ -187,6 +187,12 @@
   sensitivity model or an nlm-family gradient of such a model failed with
   an rxode2 syntax error.  `rxFromSE()` likewise writes a sum inside `!()`
   or `lgamma()` whole.
+
+- Forward sensitivities of a model written with `THETA[n]`/`ETA[n]` now
+  build: `rxode2(model, calcSens = )` accepts `"THETA[1]"` or `"THETA_1_"`,
+  and `calcSens = TRUE`, where before each stopped with "Aborted
+  calculation".  The adjoint solves accept both spellings too.  A `calcSens`
+  name that is not a model parameter is now an error that names it.
 ### Solving
 
 - The aggregated `dop853` step-limit and step-size warnings and the `intdy`

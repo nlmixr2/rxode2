@@ -23,6 +23,7 @@
 #' @export
 #' @keywords internal
 .rxDiscreteAdjointBuild <- function(object, calcSens) {
+  calcSens <- .rxSensNameSE(calcSens)
   .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
   .ns <- length(.st)
@@ -299,6 +300,7 @@
 #' @export
 #' @keywords internal
 .rxAdjointExpand <- function(object, calcSens, stiff = FALSE) {
+  calcSens <- .rxSensNameSE(calcSens)
   # Prune if/else branches first (rxS cannot differentiate conditional-dosing
   # lines); the dosing modifiers (f/alag/rate/dur) remain as unconditional
   # assignments, each activated only when the data flags that dose.
@@ -673,6 +675,7 @@
 #' @export
 #' @keywords internal
 .rxAdjointModel <- function(object, calcSens, stiff = FALSE) {
+  calcSens <- .rxSensNameSE(calcSens)
   .txt <- if (is.character(object) && length(object) == 1L) object else rxode2::rxNorm(rxode2::rxModelVars(object))
   .key <- paste0(.txt, "\n##adj", if (isTRUE(stiff)) "S" else "", "##", paste(calcSens, collapse = ","))
   .hit <- get0(.key, envir = .rxAdjointModelCache, inherits = FALSE)

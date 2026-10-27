@@ -106,6 +106,7 @@ rxSolveAdjoint <- function(
   atol = 1e-10,
   rtol = 1e-10
 ) {
+  calcSens <- .rxSensNameSE(calcSens)
   .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
   .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
@@ -192,6 +193,7 @@ rxSolveAdjoint <- function(
 #' @export
 #' @keywords internal
 .rxAdjointSolveBuild <- function(object, calcSens, events, adjStates = NULL) {
+  calcSens <- .rxSensNameSE(calcSens)
   .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
   .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
@@ -617,6 +619,7 @@ rxSolveAdjoint <- function(
 #' @export
 #' @keywords internal
 .rxAdjointGradBuild <- function(object, calcSens, pred, events, errModel = NULL) {
+  calcSens <- .rxSensNameSE(calcSens)
   .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
   .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
