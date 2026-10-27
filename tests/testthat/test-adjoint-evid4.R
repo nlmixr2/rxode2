@@ -51,6 +51,35 @@ rxTest({
     .check(.scenJump)
   })
 
+  test_that("a dose together with a replace or multiply at one time keeps its bioavailability", {
+    # Same-time records sort as multiply, replace, then dose.  A replace with 0
+    # or a multiply of an empty compartment leaves no f() term on the jump
+    # itself.  liblsodaadj keeps one event per segment and cvodesadj cannot
+    # yet transpose same-time events, so this covers the rk4s family.
+    .scenSame <- list(
+      replaceDose = et(amt = 100, cmt = "depot") |> et(time = 3, evid = 5, amt = 0, cmt = "depot") |>
+        et(time = 3, amt = 80, cmt = "depot") |> et(c(1, 3, 4, 6)),
+      multiplyDose = et(amt = 100, cmt = "depot") |> et(time = 3, evid = 6, amt = 0, cmt = "depot") |>
+        et(time = 3, amt = 80, cmt = "depot") |> et(c(1, 3, 4, 6)),
+      multiplyDoseT0 = et(time = 0, evid = 6, amt = 3, cmt = "depot") |> et(amt = 100, cmt = "depot") |>
+        et(c(0, 1, 3))
+    )
+    for (.nm in names(.scenSame)) {
+      .ev <- .scenSame[[.nm]]
+      .ref <- .adjFd(.txt, .ev, .p)
+      for (.m in c("rk4s", "ros4s", "radauiia5s", "dop853s+ros4s")) {
+        .a <- rxSolveAdjointRk4(.txt, .ev,
+          params = .p, calcSens = .cs, method = .m,
+          atol = 1e-10, rtol = 1e-10, hmin = if (.m == "rk4s") 0.001 else 0
+        )
+        expect_equal(nrow(.a), length(.ref[[1]]), label = paste(.nm, .m, "rows"))
+        for (.cn in names(.ref)) {
+          expect_lt(max(abs(.a[[.cn]] - .ref[[.cn]])), 1e-6, label = paste(.nm, .m, .cn))
+        }
+      }
+    }
+  })
+
   test_that("the liblsodaadj self-check replay agrees with the adjoint for a reset plus a dose", {
     withr::local_envvar(RX_LSADJ_SELFCHECK = "1")
     for (.nm in names(.scen)) {
