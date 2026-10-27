@@ -832,6 +832,8 @@
       )
     }
     ctl$thetaMat <- .spec$thetaMat
+    ## the prior matrix is a covariance, never a Cholesky factor
+    ctl$thetaIsChol <- FALSE
   }
   .omega <- .rxPriorOmegaLotri(ui, .spec$omegaNu)
   if (!is.null(.omega)) {

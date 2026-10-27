@@ -71,6 +71,16 @@ rxTest({
     expect_lt(sd(.s$thetaMat[, "tka"]), 0.5)
   })
 
+  test_that("usePrior=TRUE does not read the prior covariance as a Cholesky factor (#1502)", {
+    skipIfOldLotri()
+
+    .m <- matrix(1, 1, 1, dimnames = list("tka", "tka"))
+    .ctl <- rxControl(nStud = 5, thetaMat = .m, thetaIsChol = TRUE, usePrior = TRUE)
+    .ret <- suppressWarnings(.rxPriorApplyControl(.priorMapMod(centered = TRUE), .ctl))
+    expect_false(.ret$thetaIsChol)
+    expect_equal(.ret$thetaMat[["tka", "tka"]], 0.0625)
+  })
+
   test_that("a fit's covariance wins over a prior not centered on the estimate (#1502)", {
     skipIfOldLotri()
 
