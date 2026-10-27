@@ -1160,9 +1160,18 @@ generator should be initialized}
 you supply single subject event tables (created with
 \verb{[eventTable()]})}
 
-\item{minSS}{Minimum number of iterations for a steady-state dose}
+\item{minSS}{Minimum number of doses given before a steady-state dose,
+counting the extra dose a lag time adds; the steady state stops once
+this many doses are given and \code{ssAtol}/\code{ssRtol} are met.  It is raised
+to the fewest doses the regimen needs (2 with a lag time, more with
+overlapping infusions or a lag longer than \code{ii}).  \code{minSS = maxSS = n}
+gives exactly the state after \code{n} prior doses (Monolix
+\code{nbdoses = n}).  \code{linCmt()} steady states are exact, and a constant
+infusion (\code{ii = 0}), which has no doses, takes at least 5 and up to
+\code{max(maxSS, 10000)} convergence steps.}
 
-\item{maxSS}{Maximum number of iterations for a steady-state dose}
+\item{maxSS}{Maximum number of doses given before a steady-state dose (at
+least \code{minSS})}
 
 \item{infSSstep}{Step size for determining if a constant infusion
 has reached steady state.  By default this is large value,

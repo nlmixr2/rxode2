@@ -11,6 +11,12 @@
 
 ## New features
 
+- `minSS` and `maxSS` now accept any count from 1, and `maxSS` may equal
+  `minSS`, so `minSS = maxSS = n` gives exactly the state after `n` doses
+  before the steady-state one (Monolix `nbdoses = n`).  They used to require
+  `minSS >= 5`, `maxSS >= 7` and `maxSS > minSS`.  A constant infusion
+  (`ii = 0`) keeps iterating to convergence whatever the dose counts (#1492).
+
 - `rxRmvt()` simulates from the multivariate t distribution, truncated to
   `lower`/`upper` by the exponential tilting method of Botev and L'Ecuyer
   (2015), with the threefry engine.  Packages linking to rxode2 can solve the

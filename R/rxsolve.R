@@ -306,9 +306,18 @@
 #'
 #' @param indLinPhiM  the maximum size for the Krylov basis
 #'
-#' @param minSS Minimum number of iterations for a steady-state dose
+#' @param minSS Minimum number of doses given before a steady-state dose,
+#'     counting the extra dose a lag time adds; the steady state stops once
+#'     this many doses are given and `ssAtol`/`ssRtol` are met.  It is raised
+#'     to the fewest doses the regimen needs (2 with a lag time, more with
+#'     overlapping infusions or a lag longer than `ii`).  `minSS = maxSS = n`
+#'     gives exactly the state after `n` prior doses (Monolix
+#'     `nbdoses = n`).  `linCmt()` steady states are exact, and a constant
+#'     infusion (`ii = 0`), which has no doses, takes at least 5 and up to
+#'     `max(maxSS, 10000)` convergence steps.
 #'
-#' @param maxSS Maximum number of iterations for a steady-state dose
+#' @param maxSS Maximum number of doses given before a steady-state dose (at
+#'     least `minSS`)
 #'
 #' @param strictSS Boolean indicating if a strict steady-state is
 #'     required. If a strict steady-state is (`TRUE`) required
@@ -2091,10 +2100,10 @@ rxSolve <- function(
     checkmate::assertNumeric(indLinPhiTol, lower = 0, any.missing = FALSE, len = 1)
     checkmate::assertIntegerish(indLinPhiM, lower = 0L, any.missing = FALSE, len = 1)
     indLinPhiM <- as.integer(indLinPhiM)
-    checkmate::assertIntegerish(minSS, lower = 5L, any.missing = FALSE, len = 1)
-    checkmate::assertIntegerish(maxSS, lower = 7L, any.missing = FALSE, len = 1)
-    if (maxSS <= minSS) {
-      stop("'maxSS' must be larger than 'minSS'", call. = FALSE)
+    checkmate::assertIntegerish(minSS, lower = 1L, any.missing = FALSE, len = 1)
+    checkmate::assertIntegerish(maxSS, lower = 1L, any.missing = FALSE, len = 1)
+    if (maxSS < minSS) {
+      stop("'maxSS' must be at least 'minSS'", call. = FALSE)
     }
     checkmate::assertNumeric(infSSstep, lower = 6, any.missing = FALSE, len = 1)
     checkmate::assertNumeric(

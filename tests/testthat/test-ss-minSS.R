@@ -9,16 +9,25 @@ rxTest({
   .ii <- 12
   .tobs <- c(0.5, 3, 7)
   # steady state stopped at minSS
-  .ssMinSS <- function(minSS, extra = list(), ss = 1, lag = 0, cmt = "depot", method = "liblsoda") {
+  .ssMinSS <- function(
+    minSS,
+    extra = list(),
+    ss = 1,
+    lag = 0,
+    cmt = "depot",
+    method = "liblsoda",
+    maxSS = minSS + 2,
+    ssTol = 1e8
+  ) {
     .e <- do.call(et, c(list(amt = 100, ss = ss, ii = .ii, cmt = cmt), extra))
     .s <- rxSolve(
       .ssMinSSMod,
       et(.e, .tobs),
       params = c(k = 0.05, ka = 0.7, lag = lag),
       minSS = minSS,
-      maxSS = minSS + 2,
-      ssAtol = 1e8,
-      ssRtol = 1e8,
+      maxSS = maxSS,
+      ssAtol = ssTol,
+      ssRtol = ssTol,
       method = method,
       returnType = "data.frame"
     )
@@ -73,5 +82,47 @@ rxTest({
         tolerance = 1e-5
       )
     }
+  })
+
+  test_that("minSS = maxSS fixes the number of prior doses", {
+    for (.extra in list(list(), list(dur = 3))) {
+      for (.n in c(1, 2, 3, 6)) {
+        expect_equal(
+          .ssMinSS(.n, extra = .extra, maxSS = .n, ssTol = 1e-8, cmt = "c"),
+          .nDose(.n, extra = .extra, cmt = "c"),
+          tolerance = 1e-5
+        )
+      }
+    }
+    # one overlapping infusion needs at least 2 prior doses
+    for (.n in c(2, 3)) {
+      expect_equal(
+        .ssMinSS(.n, extra = list(dur = 18), maxSS = .n, ssTol = 1e-8, cmt = "c"),
+        .nDose(.n, extra = list(dur = 18), cmt = "c"),
+        tolerance = 1e-5
+      )
+    }
+    # a lag time needs at least 2 prior doses
+    for (.n in c(2, 3)) {
+      expect_equal(
+        .ssMinSS(.n, maxSS = .n, ssTol = 1e-8, lag = 2),
+        .nDose(.n, lag = 2),
+        tolerance = 1e-5
+      )
+    }
+    expect_equal(.ssMinSS(1, maxSS = 1, lag = 2), .nDose(2, lag = 2), tolerance = 1e-5)
+  })
+
+  test_that("minSS and maxSS bounds", {
+    expect_error(rxControl(minSS = 0), "minSS")
+    expect_error(rxControl(minSS = 4, maxSS = 3), "maxSS")
+    expect_error(rxControl(minSS = 1, maxSS = 1), NA)
+  })
+
+  test_that("a constant infusion still converges with small minSS/maxSS", {
+    .e <- et(amt = 0, rate = 10, ss = 1, ii = 0, cmt = "c") |> et(.tobs)
+    .s1 <- rxSolve(.ssMinSSMod, .e, params = c(k = 0.05, ka = 0.7, lag = 0), minSS = 1, maxSS = 1)
+    .s2 <- rxSolve(.ssMinSSMod, .e, params = c(k = 0.05, ka = 0.7, lag = 0))
+    expect_equal(.s1$c, .s2$c, tolerance = 1e-6)
   })
 })
