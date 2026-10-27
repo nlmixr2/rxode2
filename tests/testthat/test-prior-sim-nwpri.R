@@ -218,6 +218,53 @@ rxTest({
     expect_lt(sd(.s$thetaMat[, "tka"]), 0.5)
   })
 
+  test_that("a meta thetaMat wins over a prior centered on the estimate (#1502)", {
+    skipIfOldLotri()
+
+    .ui <- .mod()
+    assign("thetaMat", lotri::lotri(tka ~ 1), envir = .ui$meta)
+    expect_no_warning(
+      withr::with_seed(1, {
+        .s <- rxSolve(.ui, .ev(), nSub = 2, nStud = 200)
+      }),
+      message = "prior|thetaMat"
+    )
+    expect_gt(sd(.s$thetaMat[, "tka"]), 0.5)
+  })
+
+  test_that("a meta thetaMat that misses a prior parameter says so (#1502)", {
+    skipIfOldLotri()
+
+    .ui <- .map(meta = TRUE)
+    assign("thetaMat", lotri::lotri(tcl ~ 0.02), envir = .ui$meta)
+    expect_warning(
+      rxSolve(.ui, .mapEv(), nSub = 2, nStud = 5),
+      "does not cover 'tka'"
+    )
+  })
+
+  test_that("a fit's covariance wins over a prior not centered on the estimate (#1502)", {
+    skipIfOldLotri()
+
+    ## a fit's covariance is added to the control only after the priors are
+    ## applied, so the priors have to step aside for it up front
+    .ui <- .map()
+    .env <- new.env(parent = emptyenv())
+    .env$cov <- .mapThetaMat()
+    .fit <- structure(list(env = .env, iniDf = .ui$iniDf), class = "nlmixr2FitCore")
+    .ctl <- rxControl(nStud = 5)
+    expect_no_warning(.ret <- .rxPriorApplyControl(.fit, .ctl))
+    expect_null(.ret$thetaMat)
+
+    ## and a covariance that misses a prior parameter says so
+    .env$cov <- lotri::lotri(tcl ~ 0.02)
+    expect_warning(.rxPriorApplyControl(.fit, .ctl), "does not cover 'tka'")
+
+    ## no covariance step: the prior is used, and has to be centered
+    rm("cov", envir = .env)
+    expect_error(.rxPriorApplyControl(.fit, .ctl), "is not the initial estimate")
+  })
+
   test_that("usePrior=TRUE says why when it cannot be honored", {
     skipIfOldLotri()
 

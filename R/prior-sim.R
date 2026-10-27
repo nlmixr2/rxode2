@@ -677,6 +677,67 @@
   isTRUE(all.equal(get(name, envir = .meta), value))
 }
 
+#' The covariance of a fit's estimates, if it has one
+#'
+#' @param ui rxode2 ui model or nlmixr2 fit
+#' @return the covariance matrix, or `NULL` when `ui` is not a fit with a
+#'   covariance step
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPriorFitCov <- function(ui) {
+  if (!inherits(ui, "nlmixr2FitCore")) {
+    return(NULL)
+  }
+  .env <- try(ui$env, silent = TRUE)
+  if (!is.environment(.env) || !exists("cov", envir = .env, inherits = FALSE)) {
+    return(NULL)
+  }
+  .cov <- get("cov", envir = .env)
+  if (!is.matrix(.cov)) {
+    return(NULL)
+  }
+  .cov
+}
+
+#' Say which normal priors a winning `thetaMat` leaves without a draw
+#'
+#' @param ui rxode2 ui model
+#' @param thetaMat the `thetaMat` that takes precedence
+#' @param callSite was it given at the call site (rather than from `meta`
+#'   or a fit's covariance)
+#' @return nothing, called for the warning
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPriorWarnThetaMatWins <- function(ui, thetaMat, callSite) {
+  .iniDf <- ui$iniDf
+  .w <- .rxPriorThetaRows(.iniDf)
+  if (length(.w) == 0L) {
+    return(invisible())
+  }
+  if (callSite) {
+    warning(
+      "'thetaMat' was given, so the normal prior distributions in ",
+      "'ini({})' were not used; drop it or set 'usePrior=FALSE' to keep ",
+      "it without this warning",
+      call. = FALSE
+    )
+    return(invisible())
+  }
+  ## a prior on an omega row is on its `om.` element
+  .nm <- ifelse(is.na(.iniDf$neta1[.w]), .iniDf$name[.w], paste0("om.", .iniDf$name[.w]))
+  .miss <- unique(setdiff(.nm, dimnames(thetaMat)[[1]]))
+  if (length(.miss) > 0L) {
+    warning(
+      "the 'thetaMat' of the model or fit takes precedence over the ",
+      "normal prior distributions in 'ini({})', but does not cover '",
+      paste(.miss, collapse = "', '"),
+      "', which is held at its estimate; set 'usePrior=TRUE' to use the priors",
+      call. = FALSE
+    )
+  }
+  invisible()
+}
+
 #' Put the model's priors into the solve control
 #'
 #' @param ui rxode2 ui model
@@ -693,18 +754,20 @@
   if (!isTRUE(.use) && !.simVar) {
     return(ctl)
   }
-  ## a supplied `thetaMat` (call site or `meta`) is the covariance of the
-  ## estimates actually in `ini({})`, so in auto mode it wins and the
-  ## normal priors are not even read: a MAP estimate is not its prior mean
-  .thetaMatWins <- !is.null(ctl$thetaMat) && !isTRUE(.use)
-  if (.thetaMatWins && length(.rxPriorThetaRows(ui$iniDf)) > 0L &&
-        !.rxPriorFromMeta(ui, "thetaMat", ctl$thetaMat)) {
-    warning(
-      "'thetaMat' was given, so the prior distributions on the ",
-      "population parameters were not used; drop it or set ",
-      "'usePrior=FALSE' to keep it without this warning",
-      call. = FALSE
-    )
+  ## a supplied `thetaMat` (call site, `meta`, or a fit's covariance) is
+  ## the covariance of the estimates actually in `ini({})`, so in auto mode
+  ## it wins and the normal priors are not even read: a MAP estimate is not
+  ## its prior mean
+  .given <- ctl$thetaMat
+  .fitCov <- NULL
+  if (is.null(.given)) {
+    ## a fit's covariance is only added to the control after this, so ask
+    ## the fit for it here
+    .fitCov <- .rxPriorFitCov(ui)
+  }
+  .thetaMatWins <- !isTRUE(.use) && (!is.null(.given) || !is.null(.fitCov))
+  if (.thetaMatWins) {
+    .rxPriorWarnThetaMatWins(ui, if (is.null(.given)) .fitCov else .given, !is.null(.given) && !.rxPriorFromMeta(ui, "thetaMat", .given))
   }
   .spec <- .rxPriorSimSpec(ui, ctl, theta = !.thetaMatWins)
   if (is.null(.spec)) {
