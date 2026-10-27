@@ -6,6 +6,23 @@
 #' @return Nothing, called for side effects
 #' @author Matthew L. Fidler
 #' @export
+#' @family Model UI and piping
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     tcl <- log(3)
+#'   })
+#'   model({
+#'     cl <- exp(tcl)
+#'     d/dt(central) <- -cl * central
+#'   })
+#' }
+#' ui <- rxUiDecompress(rxode2(mod))
+#' rxSetControl(ui, list(addProp = "combined1"))
+#' rxRemoveControl(ui)
+#' rxGetControl(ui, "addProp", "combined2") # back to the default
+#' }
 rxRemoveControl <- function(ui) {
   if (is.list(ui) || inherits(ui, "raw")) {
     stop("cannot remove from compressed 'rxUi'\nfirst decompress with `rxode2::rxUiDecompress()'", call. = FALSE)
@@ -25,6 +42,22 @@ rxRemoveControl <- function(ui) {
 #' @return Nothing, called for side effects
 #' @author Matthew L. Fidler
 #' @export
+#' @family Model UI and piping
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     tcl <- log(3)
+#'   })
+#'   model({
+#'     cl <- exp(tcl)
+#'     d/dt(central) <- -cl * central
+#'   })
+#' }
+#' ui <- rxUiDecompress(rxode2(mod))
+#' rxSetControl(ui, list(addProp = "combined1"))
+#' rxGetControl(ui, "addProp", "combined2")
+#' }
 rxSetControl <- function(ui, control) {
   if (inherits(control, "list")) {
     assign("control", control, envir = ui)
@@ -41,6 +74,7 @@ rxSetControl <- function(ui, control) {
 #' @param value Value of control to modify
 #' @return Nothing; called for the side effects
 #' @author Matthew L. Fidler
+#' @family Developer API
 #' @export
 rxAssignControlValue <- function(ui, option, value) {
   if (is.list(ui)) {
@@ -64,6 +98,23 @@ rxAssignControlValue <- function(ui, option, value) {
 #' @return Option (if present) or default value
 #' @author Matthew L. Fidler
 #' @export
+#' @family Model UI and piping
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     tcl <- log(3)
+#'   })
+#'   model({
+#'     cl <- exp(tcl)
+#'     d/dt(central) <- -cl * central
+#'   })
+#' }
+#' ui <- rxUiDecompress(rxode2(mod))
+#' rxGetControl(ui, "addProp", "combined2") # no control yet: the default
+#' rxSetControl(ui, list(addProp = "combined1"))
+#' rxGetControl(ui, "addProp", "combined2")
+#' }
 rxGetControl <- function(ui, option, default) {
   ui <- rxUiDecompress(ui)
   if (!exists("control", envir = ui)) {

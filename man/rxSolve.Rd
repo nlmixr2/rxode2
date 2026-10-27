@@ -335,7 +335,13 @@ model specification.}
 
 \item{params}{a numeric named vector with values for every
 parameter in the ODE system; the names must correspond to the
-parameter identifiers used in the ODE specification;}
+parameter identifiers used in the ODE specification.  A data
+frame or matrix gives one row per subject (or per subject and
+simulation), matched to the subjects by position in data order;
+an \code{id} column is not used to match them.  A one-row data frame
+or matrix is used for every subject, unless it has an \code{id}
+column and the data has more than one subject, which is an
+error;}
 
 \item{events}{an \code{eventTable} object describing the input
 (e.g., doses) to the dynamic system and observation sampling
@@ -414,9 +420,12 @@ state into coordinate-momentum pairs (and automatically pads
 odd-dimensional systems).  Is a fixed-step method (step size
 controlled by \code{hmin}).
 \item \code{"vv"} -- Velocity Verlet stepper using Boost's odeint library.
-Requires splitting the state into coordinate-momentum pairs (and
-automatically pads odd-dimensional systems).  Is a fixed-step
-method (step size controlled by \code{hmin}).
+Requires the ODE states to be coordinate-momentum pairs: with
+\code{N = ceiling(nstates/2)}, \verb{d/dt(state i)} must equal \verb{state N+i}
+(an odd last coordinate must have a zero derivative).  Other models,
+or an infusion or turning off of a coordinate that breaks this, are
+refused with an error.  Is a fixed-step method (step size controlled
+by \code{hmin}).
 \item \code{"mm"} -- Modified Midpoint stepper using Boost's odeint library.
 Is a fixed-step method (step size controlled by \code{hmin}) and uses
 the \code{order} parameter to configure the number of intermediate
@@ -743,7 +752,8 @@ against a default \code{rtol = 1e-6}.  Raise \code{sigdig}, or set
 \item{atol}{a numeric absolute tolerance (1e-8 by default) used
 by the ODE solver to determine if a good solution has been
 achieved;  This is also used in the solved linear model to check
-if prior doses do not add anything to the solution.}
+if prior doses do not add anything to the solution.  Must be
+\verb{> 0}.}
 
 \item{rtol}{a numeric relative tolerance (\code{1e-6} by default) used
 by the ODE solver to determine if a good solution has been
@@ -1150,9 +1160,18 @@ generator should be initialized}
 you supply single subject event tables (created with
 \verb{[eventTable()]})}
 
-\item{minSS}{Minimum number of iterations for a steady-state dose}
+\item{minSS}{Minimum number of doses given before a steady-state dose,
+counting the extra dose a lag time adds; the steady state stops once
+this many doses are given and \code{ssAtol}/\code{ssRtol} are met.  It is raised
+to the fewest doses the regimen needs (2 with a lag time, more with
+overlapping infusions or a lag longer than \code{ii}).  \code{minSS = maxSS = n}
+gives exactly the state after \code{n} prior doses (Monolix
+\code{nbdoses = n}).  \code{linCmt()} steady states are exact, and a constant
+infusion (\code{ii = 0}), which has no doses, takes at least 5 and up to
+\code{max(maxSS, 10000)} convergence steps.}
 
-\item{maxSS}{Maximum number of iterations for a steady-state dose}
+\item{maxSS}{Maximum number of doses given before a steady-state dose (at
+least \code{minSS})}
 
 \item{infSSstep}{Step size for determining if a constant infusion
 has reached steady state.  By default this is large value,
@@ -1255,7 +1274,7 @@ the parameters in the input dataset.}
 were not present.}
 
 \item{ssAtol}{Steady state atol convergence factor.  Can be
-a vector based on each state.}
+a vector based on each state.  Must be \verb{> 0}.}
 
 \item{ssRtol}{Steady state rtol convergence factor.  Can be a
 vector based on each state.}
@@ -1310,13 +1329,15 @@ Hence the default is \code{resampleID=TRUE}.}
 evaluated before exiting.  By default this is 100000}
 
 \item{atolSens}{Sensitivity atol, can be different than atol with
-liblsoda.  This allows a less accurate solve for gradients (if desired)}
+liblsoda.  This allows a less accurate solve for gradients (if
+desired).  Must be \verb{> 0}.}
 
 \item{rtolSens}{Sensitivity rtol, can be different than rtol with
 liblsoda.  This allows a less accurate solve for gradients (if desired)}
 
 \item{ssAtolSens}{Sensitivity absolute tolerance (atol) for
-calculating if steady state has been achieved for sensitivity compartments.}
+calculating if steady state has been achieved for sensitivity
+compartments.  Must be \verb{> 0}.}
 
 \item{ssRtolSens}{Sensitivity relative tolerance (rtol) for
 calculating if steady state has been achieved for sensitivity compartments.}
@@ -1842,6 +1863,31 @@ handling options, rxode2's numerical stability options, rxode2's
 output options, and finally internal rxode2 options or compatibility
 options.
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    tka <- log(1); tcl <- log(0.1); tv <- log(10)
+    eta.cl ~ 0.1
+  })
+  model({
+    ka <- exp(tka); cl <- exp(tcl + eta.cl); v <- exp(tv)
+    d/dt(depot) <- -ka * depot
+    d/dt(center) <- ka * depot - cl / v * center
+    cp <- center / v
+  })
+}
+ev <- et(amt = 100, ii = 24, addl = 2) |> et(0:72)
+# typical subject (between-subject variability removed)
+s <- rxSolve(mod, ev, omega = NA)
+head(s)
+# change a parameter on the solved object; it re-solves
+s$tka <- log(2)
+head(s)
+# 10 subjects with between-subject variability
+s2 <- rxSolve(mod, ev, nSub = 10, seed = 42)
+}
+}
 \references{
 "New Scaling and Squaring Algorithm for the Matrix Exponential", by
 Awad H. Al-Mohy and Nicholas J. Higham, August 2009
@@ -1867,7 +1913,20 @@ Springer-Verlag (1993).
 }
 \seealso{
 \code{\link[=rxode2]{rxode2()}}
+
+Other Solving:
+\code{\link[=as.arrow]{as.arrow()}},
+\code{\link[=rxCbindStudyIndividual]{rxCbindStudyIndividual()}},
+\code{\link[=rxForcedPars]{rxForcedPars()}},
+\code{\link[=rxInjectedPars]{rxInjectedPars()}},
+\code{\link[=rxParLoader]{rxParLoader()}},
+\code{\link[=rxRegisterUiAssembled]{rxRegisterUiAssembled()}},
+\code{\link[=rxRegisterUiPrep]{rxRegisterUiPrep()}},
+\code{\link[=rxSetActiveParLoader]{rxSetActiveParLoader()}},
+\code{\link[=rxSetIni0]{rxSetIni0()}},
+\code{\link[=rxSolveChunked]{rxSolveChunked()}}
 }
 \author{
 Matthew Fidler, Melissa Hallow and  Wenping Wang
 }
+\concept{Solving}

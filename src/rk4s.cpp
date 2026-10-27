@@ -7232,7 +7232,7 @@ static inline void rk4s_do_steps(rx_solving_options_ind *ind, rx_solving_options
       rk4s_step_record(dydt, neq, T, nAll, nRec, t, current_dt, yp, scratch.data(), rec);
     } catch (const std::exception &e) {
       if (ind->rc[0] == 0) ind->rc[0] = -2019;
-      ind->err = 1;
+      rxSolverFail(ind);
       break;
     }
     rk4s_hist_push(ind, op, dydt, neq, nAll, t, current_dt, y0h.data(), yp);
@@ -7300,7 +7300,7 @@ static inline void rks_do_steps_adaptive(rx_solving_options_ind *ind, rx_solving
     dt = rk4s_hist_cap(ind, dt, sign);
     double err;
     try { err = rks_try_step(dydt, neq, T, nAll, t, dt, yp, stages, kbuf, yhigh, ylow, atol, rtol); }
-    catch (const std::exception &e) { if (ind->rc[0] == 0) ind->rc[0] = -2019; ind->err = 1; break; }
+    catch (const std::exception &e) { if (ind->rc[0] == 0) ind->rc[0] = -2019; rxSolverFail(ind); break; }
     double fac = (err > 0.0) ? SAFE * pow(err, -1.0 / expo) : FACMAX;
     if (fac < FACMIN) fac = FACMIN; if (fac > FACMAX) fac = FACMAX;
     if (err <= 1.0 || fabs(dt) <= 1e-13 * span) {
@@ -7312,7 +7312,7 @@ static inline void rks_do_steps_adaptive(rx_solving_options_ind *ind, rx_solving
       dt *= fac; dt = rk4s_hist_cap(ind, dt, sign); nrej = 0;
     } else {
       dt *= fac;
-      if (++nrej > 50) { ind->err = 1; if (ind->rc[0] == 0) ind->rc[0] = -2019; break; }
+      if (++nrej > 50) { rxSolverFail(ind); if (ind->rc[0] == 0) ind->rc[0] = -2019; break; }
     }
   }
 }
@@ -7334,7 +7334,7 @@ static inline void ros_step_record(t_dydt dydt, int *neq, const rksTableau &T,
   double invhg = 1.0 / (dt * T.gamma);
   for (int i = 0; i < nBase; ++i)
     for (int j = 0; j < nBase; ++j) W[i*nBase+j] = (i==j ? invhg : 0.0) - ind->lhs[fxOff + i*nBase + j];
-  if (!luFactor(W, nBase, piv)) { ind->err = 1; if (ind->rc[0]==0) ind->rc[0] = -2019; return; }
+  if (!luFactor(W, nBase, piv)) { rxSolverFail(ind); if (ind->rc[0]==0) ind->rc[0] = -2019; return; }
   for (int i = 0; i < s; ++i) {
     for (int m = 0; m < nAll; ++m) u[m] = y[m];
     for (int j = 0; j < i; ++j) { double aij = T.A[i*s+j]; if (aij != 0.0) { const double *kj = kbuf + j*nBase; for (int m = 0; m < nBase; ++m) u[m] += aij * kj[m]; } }
@@ -7398,7 +7398,7 @@ static inline void radau_step_record(t_dydt dydt, int *neq, const rksTableau &T,
           M[(i*n+a)*sn + (j*n+b)] = ((i==j && a==b) ? 1.0 : 0.0) - dt*aij*ind->lhs[fxOff + a*n + b];
       }
     }
-    if (!luFactor(M.data(), sn, piv.data())) { ind->err = 1; if (ind->rc[0]==0) ind->rc[0] = -2019; return; }
+    if (!luFactor(M.data(), sn, piv.data())) { rxSolverFail(ind); if (ind->rc[0]==0) ind->rc[0] = -2019; return; }
     for (int q = 0; q < sn; ++q) G[q] = -G[q];              // solve M dK = -G
     luSolve(M.data(), sn, piv.data(), G.data());            // G is now dK
     double nrm = 0; for (int q = 0; q < sn; ++q) { K[q] += G[q]; double a = fabs(G[q]); if (a > nrm) nrm = a; }
@@ -8851,7 +8851,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         // continuous, flagged _adjSSinfModeled < 0) -- error rather than return
         // silently-wrong sensitivities.  Only periodic modeled (dur<ii) is covered.
         if (_adjSSinfModeled < 0) {
-          ind->err = 1; if (ind->rc[0] == 0) ind->rc[0] = -2020; localBadSolve = 1;
+          rxSolverFail(ind); if (ind->rc[0] == 0) ind->rc[0] = -2020; localBadSolve = 1;
         }
         // ss=2 superposition (interior, bolus OR fixed-rate infusion).  Caught
         // FIRST: an ss2 infusion also fires the _adjSSinfKind handoff, but it is
@@ -9039,8 +9039,6 @@ extern "C" void par_rk4s(rx_solve *rx){
   int nsolve = (int)(nsim*nsub);
 
   uint32_t seed0 = getRxSeed1(cores);
-  int abort = 0;
-
 #ifdef _OPENMP
 #pragma omp parallel for num_threads(cores)
 #endif
@@ -9048,24 +9046,10 @@ extern "C" void par_rk4s(rx_solve *rx){
     int neq[2];
     neq[0] = op->neq;
     neq[1] = 0;
-    int localAbort;
-#ifdef _OPENMP
-#pragma omp atomic read
-#endif
-    localAbort = abort;
-    if (localAbort == 0){
-      // rx->ordId walks positions (sortIds); the drivers take subject ids.
-      int _id = rx->ordId[solveid] - 1;
-      setSeedEng1(seed0 + _id);
-      ind_rk4s_0(rx, op, _id, neq, dydt, update_inis);
-
-      if (op->badSolve) {
-#ifdef _OPENMP
-#pragma omp atomic write
-#endif
-        abort = 1;
-      }
-    }
+    // rx->ordId walks positions (sortIds); the drivers take subject ids.
+    int _id = rx->ordId[solveid] - 1;
+    setSeedEng1(seed0 + _id);
+    ind_rk4s_0(rx, op, _id, neq, dydt, update_inis);
   }
   // close the per-subject seed block: the loop consumed nsolve seeds, not
   // cores, and the next solve must not re-use any of them

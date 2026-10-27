@@ -18,6 +18,23 @@
 #' @author Matthew L.Fidler
 #' @family Query model information
 #' @export
+#' @examples
+#' \donttest{
+#' pk <- function() {
+#'   model({
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'   })
+#' }
+#' rxParams(pk)
+#' # pipe the parameter values into a solve
+#' rxode2(pk)$simulationModel |>
+#'   rxParams(params = c(ka = 1.2, cl = 3.5, v = 25)) |>
+#'   et(amt = 100) |>
+#'   et(0:24) |>
+#'   rxSolve()
+#' }
 rxParams <- function(obj, ...) {
   UseMethod("rxParams")
 }

@@ -137,6 +137,22 @@ taken from Zdravko Botev Botev (2017) \doi{10.1111/rssb.12162}
 and Botev and L'Ecuyer (2015) \doi{10.1109/WSC.2015.7408180} and
 converted to thread safe simulation;
 }
+\seealso{
+Other Variability and uncertainty:
+\code{\link[=confint.rxSolve]{confint.rxSolve()}},
+\code{\link[=cvPost]{cvPost()}},
+\code{\link[=dfWishart]{dfWishart()}},
+\code{\link[=rinvchisq]{rinvchisq()}},
+\code{\link[=rxEtaDistExpand]{rxEtaDistExpand()}},
+\code{\link[=rxEtaDistMuRef]{rxEtaDistMuRef()}},
+\code{\link[=rxPp]{rxPp()}},
+\code{\link[=rxRmvt]{rxRmvt()}},
+\code{\link[=rxSimThetaOmega]{rxSimThetaOmega()}},
+\code{\link[=rxUiEtaDistAnchors]{rxUiEtaDistAnchors()}},
+\code{\link[=rxUiEtaDists]{rxUiEtaDists()}},
+\code{\link[=swapMatListWithCube]{swapMatListWithCube()}}
+}
 \author{
 Matthew Fidler, Zdravko Botev and some from Matteo Fasiolo
 }
+\concept{Variability and uncertainty}

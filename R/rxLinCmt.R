@@ -78,6 +78,7 @@ findLhs <- function(x) {
 #' @inheritParams rxode2
 #' @return model with linCmt() replaced with linCmtA()
 #' @author Matthew Fidler
+#' @family Developer API
 #' @export
 rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"), verbose = FALSE) {
   .mv <- rxGetModel(model) # nolint
@@ -690,6 +691,7 @@ rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"), verbose = FALS
 #'
 #' @author Matthew Fidler
 #' @export
+#' @family Model UI and piping
 linToOde <- function(ui) {
   .ui <- as.rxUi(ui) # nolint
   .ui <- rxUiDecompress(.ui) # nolint
@@ -762,6 +764,7 @@ linToOde <- function(ui) {
 #'
 #' @author Matthew L. Fidler
 #' @export
+#' @family Model UI and piping
 linCmtMicro <- function(ui) {
   .ui <- rxUiDecompress(as.rxUi(ui)) # nolint
   lapply(.linToOdeLinExpr(.ui), .linToOdeBuildMicro)

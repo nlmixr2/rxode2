@@ -57,6 +57,23 @@ one.cmt <- function() {
 testRxLinCmt(one.cmt)
 
 }
+\seealso{
+Other Assertions:
+\code{\link[=assertCompartmentExists]{assertCompartmentExists()}},
+\code{\link[=assertCompartmentName]{assertCompartmentName()}},
+\code{\link[=assertCompartmentNew]{assertCompartmentNew()}},
+\code{\link[=assertRxUi]{assertRxUi()}},
+\code{\link[=assertVariableExists]{assertVariableExists()}},
+\code{\link[=assertVariableNew]{assertVariableNew()}},
+\code{\link[=rxHasAr]{rxHasAr()}},
+\code{\link[=rxPriorBuildSpec]{rxPriorBuildSpec()}},
+\code{\link[=rxPriorLogDensity]{rxPriorLogDensity()}},
+\code{\link[=rxPriorOmegaToCholOmegaInvGrad]{rxPriorOmegaToCholOmegaInvGrad()}},
+\code{\link[=rxUiPriors]{rxUiPriors()}},
+\code{\link[=testIniDf]{testIniDf()}},
+\code{\link[=testRxUnbounded]{testRxUnbounded()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Assertions}

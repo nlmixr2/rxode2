@@ -8,6 +8,11 @@
 #' @return ggplot2 theme used in rxode2
 #' @family rxode2 plotting
 #' @export
+#' @examples
+#' d <- data.frame(time = 0:10, cp = exp(-0.3 * (0:10)))
+#' ggplot2::ggplot(d, ggplot2::aes(time, cp)) +
+#'   ggplot2::geom_line() +
+#'   rxTheme(grid = "y")
 rxTheme <- function(
   base_size = 11,
   base_family = "",
@@ -240,6 +245,27 @@ rxTheme <- function(
 #' @family rxode2 plotting
 #' @keywords Internal
 #' @export
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     tka <- log(1.1)
+#'     tcl <- log(3)
+#'     tv <- log(30)
+#'   })
+#'   model({
+#'     ka <- exp(tka)
+#'     cl <- exp(tcl)
+#'     v <- exp(tv)
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'   })
+#' }
+#' s <- rxSolve(mod, et(amt = 100) |> et(seq(0, 24, by = 0.5)))
+#' plot(s, cp)
+#' plot(s, c("depot", "central"), log = "y")
+#' }
 plot.rxSolve <- function(x, y, ..., log = "", xlab = "Time", ylab = "") {
   .data <- NULL
   .y <- as.character(substitute(y))

@@ -135,6 +135,26 @@ ISSN 0378-3758,
 https://doi.org/10.1016/j.jspi.2019.07.001.
 }
 }
+\seealso{
+Other Random variables:
+\code{\link[=meanProbs]{meanProbs()}},
+\code{\link[=rxbeta]{rxbeta()}},
+\code{\link[=rxbinom]{rxbinom()}},
+\code{\link[=rxcauchy]{rxcauchy()}},
+\code{\link[=rxchisq]{rxchisq()}},
+\code{\link[=rxexp]{rxexp()}},
+\code{\link[=rxf]{rxf()}},
+\code{\link[=rxgamma]{rxgamma()}},
+\code{\link[=rxgeom]{rxgeom()}},
+\code{\link[=rxnbinom]{rxnbinom()}},
+\code{\link[=rxnormV]{rxnormV()}},
+\code{\link[=rxord]{rxord()}},
+\code{\link[=rxpois]{rxpois()}},
+\code{\link[=rxt]{rxt()}},
+\code{\link[=rxunif]{rxunif()}},
+\code{\link[=rxweibull]{rxweibull()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Random variables}

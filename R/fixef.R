@@ -77,6 +77,7 @@ fixef.function <- function(object, ...) {
 #' coef(ui, level="omega")
 #' coef(ui, level="all")
 #' @export
+#' @family Model UI and piping
 coef.rxUi <- function(object, level = c("theta", "fixed", "omega", "random", "all", "both"), ...) {
   level <- match.arg(level)
   if (level %in% c("theta", "fixed")) {

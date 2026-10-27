@@ -174,6 +174,7 @@ rxAppendModel_ <- function(model1, model2, common = TRUE) {
 #'
 #' }
 #'
+#' @family Model UI and piping
 rxAppendModel <- function(..., common = TRUE) {
   .env <- new.env(parent = emptyenv())
   .env$ret <- NULL

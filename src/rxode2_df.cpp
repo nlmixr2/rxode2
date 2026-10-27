@@ -242,7 +242,6 @@ static inline void dfCountRowsForNmOutput(rx_solve *rx, int nsim, int nsub) {
   di = 0;
 }
 
-extern "C" void printErr(int err, int id);
 extern "C" void setupFkeepCache();
 SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) {
   rx_solve *rx;
@@ -414,15 +413,25 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
       }
       // (Rf_errorcall)(R_NilValue, "%s", _("'alag(.)'/'rate(.)'/'dur(.)' cannot depend on the state values"));
     }
-    // rxode2#1185: `printErr()` goes through `RSprintf()`, which is silenced
-    // outside an interactive session, so a non-converged inductive
-    // linearization also has to name itself in the condition the user sees --
-    // the generic message gives no hint that 'hmax' is the knob.
+    // rxode2#1185: par_solve() prints each failed subject's reasons through
+    // the aggregator, which a model compiled under suppressMessages() silences
+    // (rxode2() records the setting when it compiles the model), so a
+    // non-converged inductive linearization also has to name itself in the
+    // condition the user sees -- the generic message gives no hint that 'hmax'
+    // is the knob.
     int indLinNoConv = 0;
     for (int solveid = 0; solveid < (int)(rx->nsub * rx->nsim); solveid++){
       if (rx->subjects[solveid].err & rxErrIndLinConverge) {
         indLinNoConv = 1;
         break;
+      }
+    }
+    // rxode2#1469: a model 'vv' cannot integrate is refused, not NA-filled
+    for (int solveid = 0; solveid < (int)(rx->nsub * rx->nsim); solveid++){
+      if (rx->subjects[solveid].err & rxErrVvNotPairs) {
+        rxSolveFreeC();
+        (Rf_errorcall)(R_NilValue, "%s",
+                       _("method='vv' (Velocity Verlet) needs the ODE states ordered as coordinate-momentum pairs: with N=ceiling(nstates/2), d/dt(state i) must equal state N+i for i=1..N (an odd last coordinate must have d/dt()=0), and no infusion or turning off may change a coordinate's derivative; use another method"));
       }
     }
     if (nidCols == 0){
@@ -436,12 +445,6 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
         rxSolveFreeC();
         (Rf_errorcall)(R_NilValue, "%s",
           _("specifying duration with a steady state constant infusion makes no sense"));
-      }
-      for (int solveid = 0; solveid < (int)(rx->nsub * rx->nsim); solveid++){
-        rx_solving_options_ind *indE = &(rx->subjects[solveid]);
-        if (indE->err != 0) {
-          printErr(indE->err, indE->id);
-        }
       }
       rxSolveFreeC();
       if (indLinNoConv) {

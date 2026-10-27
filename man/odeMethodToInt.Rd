@@ -91,9 +91,12 @@ state into coordinate-momentum pairs (and automatically pads
 odd-dimensional systems).  Is a fixed-step method (step size
 controlled by \code{hmin}).
 \item \code{"vv"} -- Velocity Verlet stepper using Boost's odeint library.
-Requires splitting the state into coordinate-momentum pairs (and
-automatically pads odd-dimensional systems).  Is a fixed-step
-method (step size controlled by \code{hmin}).
+Requires the ODE states to be coordinate-momentum pairs: with
+\code{N = ceiling(nstates/2)}, \verb{d/dt(state i)} must equal \verb{state N+i}
+(an odd last coordinate must have a zero derivative).  Other models,
+or an infusion or turning off of a coordinate that breaks this, are
+refused with an error.  Is a fixed-step method (step size controlled
+by \code{hmin}).
 \item \code{"mm"} -- Modified Midpoint stepper using Boost's odeint library.
 Is a fixed-step method (step size controlled by \code{hmin}) and uses
 the \code{order} parameter to configure the number of intermediate
@@ -388,4 +391,29 @@ see the details)
 If \code{NULL} is given as the method, all choices are returned as a named
 vector.
 }
+\examples{
+odeMethodToInt("liblsoda")
+odeMethodToInt("dop853")
+}
+\seealso{
+Other Solver options and performance:
+\code{\link[=forderForceBase]{forderForceBase()}},
+\code{\link[=getRxThreads]{getRxThreads()}},
+\code{\link[=rxIndLinState]{rxIndLinState()}},
+\code{\link[=rxIndLinStrategy]{rxIndLinStrategy()}},
+\code{\link[=rxIsAutoSwitch]{rxIsAutoSwitch()}},
+\code{\link[=rxIsDense]{rxIsDense()}},
+\code{\link[=rxIsImplicit]{rxIsImplicit()}},
+\code{\link[=rxIsNonStiff]{rxIsNonStiff()}},
+\code{\link[=rxIsStiff]{rxIsStiff()}},
+\code{\link[=rxMemSummary]{rxMemSummary()}},
+\code{\link[=rxMemoryEstimate]{rxMemoryEstimate()}},
+\code{\link[=rxOptExpr]{rxOptExpr()}},
+\code{\link[=rxProgress]{rxProgress()}},
+\code{\link[=rxSetProd]{rxSetProd()}},
+\code{\link[=rxSetProgressBar]{rxSetProgressBar()}},
+\code{\link[=rxSetSum]{rxSetSum()}},
+\code{\link[=rxSumProdModel]{rxSumProdModel()}}
+}
+\concept{Solver options and performance}
 \keyword{Internal}

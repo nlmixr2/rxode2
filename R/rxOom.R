@@ -5,6 +5,24 @@
 #' @param id name of the subject ID column
 #' @return An \code{rxEtFile} object
 #' @export
+#' @family Event tables
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     k <- 0.1
+#'   })
+#'   model({
+#'     d/dt(A) <- -k * A
+#'   })
+#' }
+#' f <- tempfile(fileext = ".rds")
+#' saveRDS(as.data.frame(et(amt = 100) |> et(0:24) |> et(id = 1:4)), f)
+#' etf <- rxEventTableFile(f)
+#' s <- rxSolve(mod, etf, file = tempfile("rxChunk"), chunkSize = 2)
+#' head(as.data.frame(s))
+#' unlink(f)
+#' }
 rxEventTableFile <- function(path, format = c("auto", "parquet", "csv", "fst", "rds"), id = "id") {
   format <- match.arg(format)
   if (format == "auto") {
@@ -105,6 +123,12 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   }
   .l
 }
+
+# What a solve's draws put in `.rxModels` for that solve to read: the
+# residuals, the simulated thetas, the per-study theta, omega and sigma lists
+# and the nested thetas and etas.  A finished solve moves each into its result
+# (`rxSolve_()`, src/rxData.cpp); one that stops first leaves them behind.
+.rxSolveDrawn <- c(".sigma", ".theta", ".thetaL", ".omegaL", ".sigmaL", ".nestEta", ".nestTheta")
 
 # Drop what an earlier solve in this session left in `.rxModels`, so what the
 # pre-draw reads back is what the pre-draw itself made.
@@ -222,6 +246,12 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   # Split IDs into chunks
   .allIds <- .summary$id
   .nSub <- length(.allIds)
+  # each chunk sees only its own subjects, so a one-row params with an id is
+  # checked against all of them here
+  .msg <- .rxParamsOneRowIdMsg(params, .allIds)
+  if (!is.null(.msg)) {
+    stop(.msg, call. = FALSE)
+  }
   .nChunks <- ceiling(.nSub / .chunkSize)
   .chunkList <- split(.allIds, ceiling(seq_len(.nSub) / .chunkSize))
 
@@ -581,9 +611,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     if (is.null(.pars) || nrow(.pars) == 0L) {
       return(NA_character_)
     }
-    if (!("id" %in% names(.pars)) && nrow(.pars) == length(.chunkIds)) {
-      .pars <- cbind(id = .chunkIds, .pars)
-    }
+    .pars <- .rxOomParamsIds(.pars, .chunkIds)
     if (.rxOomHasArrow()) {
       .f <- tempfile(fileext = ".parquet")
       arrow::write_parquet(.pars, .f)
@@ -652,7 +680,8 @@ rxMemSummary.rxEtFile <- function(x, ...) {
         .fwdCtlArgs,
         .mainTmp,
         .backendOpt,
-        .useArrowWrite
+        .useArrowWrite,
+        .paramsIds
       ) {
         library(rxode2)
         options(rxode2.oom.backend = .backendOpt)
@@ -713,8 +742,8 @@ rxMemSummary.rxEtFile <- function(x, ...) {
         # Per-subject parameter table; stamp id so chunks concatenate cleanly.
         .pars <- tryCatch(as.data.frame(.result$params), error = function(e) NULL)
         .ids <- .chunkIdsList[[.i]]
-        if (!is.null(.pars) && nrow(.pars) > 0L && !("id" %in% names(.pars)) && nrow(.pars) == length(.ids)) {
-          .pars <- cbind(id = .ids, .pars)
+        if (!is.null(.pars) && nrow(.pars) > 0L) {
+          .pars <- .paramsIds(.pars, .ids)
         }
         if (.useArrowWrite) {
           .f <- tempfile(fileext = ".parquet", tmpdir = .mainTmp)
@@ -756,7 +785,8 @@ rxMemSummary.rxEtFile <- function(x, ...) {
         .fwdCtlArgs = .fwdCtlArgs,
         .mainTmp = tempdir(),
         .backendOpt = .backendOpt,
-        .useArrowWrite = .useArrowWrite
+        .useArrowWrite = .useArrowWrite,
+        .paramsIds = .rxOomParamsIds
       )
     )
     for (.i in seq_len(.nChunks)) {
@@ -918,6 +948,23 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   DBI::dbGetQuery(con, gsub("{tbl}", .tbl, sql, fixed = TRUE))
 }
 
+# Stamp a chunk's parameter table with its subject ids so the chunk tables
+# concatenate cleanly; a one-row table is one set for every subject of the
+# chunk.  Base R only: it is also sent to the mirai daemons.
+.rxOomParamsIds <- function(pars, ids) {
+  if ("id" %in% names(pars)) {
+    return(pars)
+  }
+  if (nrow(pars) == 1L && length(ids) > 1L) {
+    pars <- pars[rep(1L, length(ids)), , drop = FALSE]
+    rownames(pars) <- NULL
+  }
+  if (nrow(pars) == length(ids)) {
+    pars <- cbind(id = ids, pars)
+  }
+  pars
+}
+
 # Read the persisted per-subject parameter table (res$params).
 .rxOomParams <- function(manifest) {
   .pc <- manifest$paramChunks
@@ -1059,6 +1106,22 @@ as_arrow_table.rxSolveOom <- function(x, ...) {
 #' @param ... Ignored.
 #' @return An \code{arrow::Dataset}.
 #' @export
+#' @family Solving
+#' @examples
+#' \donttest{
+#' if (requireNamespace("arrow", quietly = TRUE)) {
+#' mod <- function() {
+#'   ini({
+#'     k <- 0.1
+#'   })
+#'   model({
+#'     d/dt(A) <- -k * A
+#'   })
+#' }
+#' s <- rxSolveChunked(mod, et(amt = 100) |> et(0:24) |> et(id = 1:6), chunkSize = 3)
+#' as.arrow(s)
+#' }
+#' }
 as.arrow <- function(x, ...) UseMethod("as.arrow")
 
 #' @rdname as.arrow
@@ -1232,6 +1295,22 @@ dim.rxSolveOom <- function(x) {
 #' @param parallel number of mirai daemons for parallel chunk solving (0 = serial)
 #' @return An \code{rxSolveOom} object
 #' @export
+#' @family Solving
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     k <- 0.1
+#'   })
+#'   model({
+#'     d/dt(A) <- -k * A
+#'   })
+#' }
+#' # 6 subjects solved 3 at a time; chunks are written to tempdir()
+#' s <- rxSolveChunked(mod, et(amt = 100) |> et(0:24) |> et(id = 1:6), chunkSize = 3)
+#' dim(s)
+#' head(as.data.frame(s))
+#' }
 rxSolveChunked <- function(
   object,
   params = NULL,

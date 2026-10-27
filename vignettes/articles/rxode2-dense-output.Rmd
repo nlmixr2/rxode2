@@ -1,5 +1,5 @@
 ---
-title: "Dense Output in rxode2: Continuous Interpolation for Fast Solving"
+title: "Dense output for fast solving"
 date: "`r Sys.Date()`"
 output:
   html_document:
@@ -282,3 +282,8 @@ Use `dense = TRUE` when **all** of the following hold:
 ```{r sessioninfo}
 sessionInfo()
 ```
+
+## Next steps
+
+- [Choosing an ODE solver](ode-solvers.html)
+- [Speeding up solving](rxode2-speed.html)
