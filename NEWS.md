@@ -67,6 +67,10 @@
   with the same `seed` differed; it is now suspended for that solve and left
   where it was (#1507).
 
+- `rxSolve(seed = )` now restores the caller's `.Random.seed` (or its
+  absence) when it returns, so it no longer replaces the session's random
+  stream.  The simulated values for a given `seed` are unchanged (#1503).
+
 ### Solving
 
 - The default `hmax = NA` no longer gives a `NaN` maximum step to a subject

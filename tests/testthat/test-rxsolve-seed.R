@@ -1,6 +1,6 @@
 rxTest({
   # An explicit rxSolve(seed=) must not depend on an earlier rxSetSeed()
-  # (#1507)
+  # (#1507) and must leave the caller's .Random.seed as it was (#1503)
 
   .modRef <- function() {
     model({
@@ -50,5 +50,35 @@ rxTest({
     rxSetSeed(2L)
     expect_equal(rxSolve(.m, .ev, seed = 7, returnType = "data.frame")$z, .ref)
     expect_equal(rxGetSeed(), 2L)
+  })
+
+  test_that("rxSolve(seed=) restores the caller's .Random.seed", {
+    set.seed(1)
+    .before <- .Random.seed
+    .a <- .solve(seed = 42)
+    expect_identical(.Random.seed, .before)
+    .u <- runif(1)
+    set.seed(1)
+    expect_equal(.u, runif(1))
+    # the draws for a given seed are what set.seed(seed) gives
+    set.seed(99)
+    expect_equal(.solve(seed = 42), .a)
+    set.seed(42)
+    expect_equal(.solve(), .a)
+  })
+
+  test_that("rxSolve(seed=) leaves no .Random.seed when there was none", {
+    .old <- .rxGetRandomSeed()
+    on.exit(.rxRestoreRandomSeed(.old), add = TRUE)
+    .rxRestoreRandomSeed(NULL)
+    .solve(seed = 42)
+    expect_false(exists(".Random.seed", envir = globalenv(), inherits = FALSE))
+  })
+
+  test_that("rxSolve() without seed= still follows set.seed()", {
+    set.seed(5)
+    .a <- .solve()
+    set.seed(5)
+    expect_equal(.solve(), .a)
   })
 })
