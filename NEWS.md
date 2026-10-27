@@ -58,6 +58,11 @@
   `IDID=-3` on a subject with one observation after its start.  `hmaxSd` now
   adds its standard deviation term to every subject, not only the last one
   (#1501).
+
+- An `rxParams()` pipeline now starts from a model function, an `rxUi` or
+  `rxode2(model)`, like `rxSolve()`; it used to stop with "need an rxode2
+  compiled model as the start of the pipeline" unless given the compiled
+  `$simulationModel` (#1505).
 - A steady-state bolus solved with `lsoda`/`liblsoda` no longer drops its
   first iterated dose: the solver restarted from its internal state instead of
   the dosed one, so a steady state stopped by `minSS` (with `ssAtol`/`ssRtol`
