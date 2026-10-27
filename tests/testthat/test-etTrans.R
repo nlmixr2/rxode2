@@ -3196,18 +3196,22 @@ rxTest({
     })
     # A single etTrans() on this data can run faster than the OS timer's
     # resolution (observed reading exactly 0 elapsed on a Windows CI runner),
-    # which would make any per-call comparison spuriously pass or fail.  Time
-    # a batch of calls inside one system.time() so the measured interval is
-    # always well above the clock granularity, on any platform.
-    .minElapsed <- function(d, batches = 3L, reps = 20L) {
-      min(vapply(
-        seq_len(batches),
+    # so each timing is a batch of calls.  The two inputs are timed in
+    # alternating pairs, and the median pair ratio is compared, so a burst of
+    # load from other processes falls on both sides of a pair instead of one.
+    .elapsed <- function(d, reps = 20L) {
+      system.time(
+        for (r in seq_len(reps)) {
+          invisible(rxode2::etTrans(d, mod))
+        }
+      )[["elapsed"]]
+    }
+    .medianRatio <- function(many, few, pairs = 5L) {
+      stats::median(vapply(
+        seq_len(pairs),
         function(i) {
-          system.time(
-            for (r in seq_len(reps)) {
-              invisible(rxode2::etTrans(d, mod))
-            }
-          )[["elapsed"]]
+          .f <- .elapsed(few)
+          .elapsed(many) / max(.f, 1e-3)
         },
         numeric(1)
       ))
@@ -3222,7 +3226,9 @@ rxTest({
     expect_equal(length(unique(.many$ID)), 5000L)
 
     invisible(rxode2::etTrans(.fixedRows(50, 1000), mod)) # warm up
-    expect_lt(.minElapsed(.many), 3 * .minElapsed(.few))
+    # about 2x when translation is linear in the rows; the O(rows * subjects)
+    # scan it guards against was 12.6x
+    expect_lt(.medianRatio(.many, .few), 5)
   })
 
   test_that("rxSolve() and etTrans() leave the caller's translated table as it was", {
