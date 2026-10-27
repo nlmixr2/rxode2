@@ -679,11 +679,12 @@
 #'   `TRUE` requires them, and is an error when the model has none or when
 #'   no variability would be simulated; `FALSE` ignores them and falls back
 #'   to a supplied `thetaMat`/`dfSub`.  In auto mode a `thetaMat` given at
-#'   the call site (with a warning), carried in the model's `meta` block, or
-#'   from an nlmixr2 fit's covariance takes precedence over the normal
-#'   priors, which are then not read, so an estimate that is not its prior
-#'   mean (a MAP estimate) still simulates; `TRUE` makes the priors replace
-#'   it.  The prior degrees of
+#'   the call site, carried in the model's `meta` block, or from an nlmixr2
+#'   fit's covariance takes precedence over the priors on the population
+#'   parameters, which are then not read, so an estimate that is not its
+#'   prior mean (a MAP estimate) still simulates; a prior entry it does not
+#'   draw is held at its estimate with a warning.  `TRUE` makes the priors
+#'   replace it.  The prior degrees of
 #'   freedom take precedence over a `dfSub` carried in `meta`, with a
 #'   warning; one given at the call site wins over them instead.
 #'

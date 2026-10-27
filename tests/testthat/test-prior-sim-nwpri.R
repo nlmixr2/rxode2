@@ -124,13 +124,12 @@ rxTest({
     skipIfOldLotri()
 
     .m <- matrix(1, 1, 1, dimnames = list("tka", "tka"))
-    expect_warning(
-      {
-        withr::with_seed(1, {
-          .s <- rxSolve(.mod(), .ev(), nSub = 2, nStud = 200, thetaMat = .m)
-        })
-      },
-      "were not used"
+    ## it covers the only prior parameter, so there is nothing to say
+    expect_no_warning(
+      withr::with_seed(1, {
+        .s <- rxSolve(.mod(), .ev(), nSub = 2, nStud = 200, thetaMat = .m)
+      }),
+      message = "prior|thetaMat"
     )
 
     ## an explicit argument is never silently discarded, so the spread is
@@ -171,13 +170,11 @@ rxTest({
   test_that("a call site thetaMat wins over a prior not centered on the estimate (#1502)", {
     skipIfOldLotri()
 
-    expect_warning(
-      {
-        withr::with_seed(1, {
-          .s <- rxSolve(.map(), .mapEv(), nSub = 2, nStud = 200, thetaMat = .mapThetaMat())
-        })
-      },
-      "were not used"
+    expect_no_warning(
+      withr::with_seed(1, {
+        .s <- rxSolve(.map(), .mapEv(), nSub = 2, nStud = 200, thetaMat = .mapThetaMat())
+      }),
+      message = "prior|thetaMat"
     )
     expect_equal(sort(colnames(.s$thetaMat)), c("tcl", "tka"))
     expect_equal(sd(.s$thetaMat[, "tka"]), 0.1, tolerance = 0.2)
@@ -239,8 +236,48 @@ rxTest({
     assign("thetaMat", lotri::lotri(tcl ~ 0.02), envir = .ui$meta)
     expect_warning(
       rxSolve(.ui, .mapEv(), nSub = 2, nStud = 5),
-      "does not cover 'tka'"
+      "does not draw 'tka'"
     )
+  })
+
+  test_that("a winning thetaMat says which omega element priors it leaves undrawn (#1502)", {
+    skipIfOldLotri()
+
+    .joint <- function() {
+      rxode2(function() {
+        ini({
+          tcl <- 1.0
+          add.sd <- 0.7
+          eta.cl ~ 0.3
+          tcl + om.eta.cl ~ c(0.02, 0.004, 0.005)
+        })
+        model({
+          cl <- exp(tcl + eta.cl)
+          v <- 1
+          linCmt() ~ add(add.sd)
+        })
+      })
+    }
+    .m <- lotri::lotri(tcl + om.eta.cl ~ c(0.02, 0.004, 0.005))
+    ## the om. column is pruned unless the separation draws it
+    expect_warning(
+      rxSolve(.joint(), .ev(), nSub = 2, nStud = 5, thetaMat = .m),
+      "does not draw 'om.eta.cl'"
+    )
+    expect_warning(
+      rxSolve(.joint(), .ev(), nSub = 2, nStud = 5, thetaMat = lotri::lotri(tcl ~ 0.02)),
+      "does not draw 'om.eta.cl'"
+    )
+    ## under tnpri any spelling of the element is drawn
+    for (.nm in c("om.eta.cl", "eta.cl", "omega1.1")) {
+      .t <- lotri::lotri(tcl ~ 0.02)
+      .t <- rbind(cbind(.t, 0), c(0, 0.005))
+      dimnames(.t) <- list(c("tcl", .nm), c("tcl", .nm))
+      expect_no_warning(
+        rxSolve(.joint(), .ev(), nSub = 2, nStud = 5, thetaMat = .t, omegaSeparation = "tnpri"),
+        message = "does not draw"
+      )
+    }
   })
 
   test_that("a fit's covariance wins over a prior not centered on the estimate (#1502)", {
@@ -258,7 +295,7 @@ rxTest({
 
     ## and a covariance that misses a prior parameter says so
     .env$cov <- lotri::lotri(tcl ~ 0.02)
-    expect_warning(.rxPriorApplyControl(.fit, .ctl), "does not cover 'tka'")
+    expect_warning(.rxPriorApplyControl(.fit, .ctl), "does not draw 'tka'")
 
     ## no covariance step: the prior is used, and has to be centered
     rm("cov", envir = .env)
