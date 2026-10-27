@@ -42,22 +42,26 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   // table, in the order the forward solve applied them: 3 reset (->0) | 5
   // replace[c] (->0) | 6 multiply[c] (*=factor); an additive bolus is dPhi/dy=I.
   struct abJump { int type, cmt; double factor; };
+  // the events at time t among the first `upTo` records (a reset only when it
+  // follows a solved interval, `reset`)
+  auto abEventsAt = [&](double t, int upTo, bool reset) {
+    std::vector<abJump> ev;
+    for (int i = 0; i < upTo; ++i) {
+      int e = getEvid(ind, ind->ix[i]);
+      if (isObs(e)) continue;
+      if (fabs(ind->timeThread[ind->ix[i]] - t) > 1e-9) continue;
+      if (e == 3) { if (reset) ev.push_back({3, -1, 1.0}); continue; }
+      if (!isDose(e)) continue;
+      int _wh, _cmt, _wh100, _whI, _wh0; getWh(e, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
+      if (_cmt < 0 || _cmt >= nBase) continue;
+      if (_whI == EVIDF_REPLACE) ev.push_back({5, _cmt, 0.0});
+      else if (_whI == EVIDF_MULT) ev.push_back({6, _cmt, getDose(ind, ind->ix[i])});
+    }
+    return ev;
+  };
   size_t nCalls = abAdjCalls.size();
   std::vector<std::vector<abJump> > callEv(nCalls);
-  for (size_t c = 0; c < nCalls; ++c) {
-    double t0c = abAdjCalls[c].t0;
-    for (int i = 0; i < ind->n_all_times; ++i) {
-      int ev = getEvid(ind, ind->ix[i]);
-      if (isObs(ev)) continue;
-      if (fabs(ind->timeThread[ind->ix[i]] - t0c) > 1e-9) continue;
-      if (ev == 3) { if (c >= 1) callEv[c].push_back({3, -1, 1.0}); continue; }
-      if (!isDose(ev)) continue;
-      int _wh, _cmt, _wh100, _whI, _wh0; getWh(ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
-      if (_cmt < 0 || _cmt >= nBase) continue;
-      if (_whI == EVIDF_REPLACE) callEv[c].push_back({5, _cmt, 0.0});
-      else if (_whI == EVIDF_MULT) callEv[c].push_back({6, _cmt, getDose(ind, ind->ix[i])});
-    }
-  }
+  for (size_t c = 0; c < nCalls; ++c) callEv[c] = abEventsAt(abAdjCalls[c].t0, ind->n_all_times, c >= 1);
 
   double *lhs = ind->lhs;
   std::vector<double> A(eff, 0.0), Aw(eff, 0.0);
@@ -136,10 +140,13 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
       std::fill(mu.begin(), mu.end(), 0.0);
       if (cObs >= 0) {
         std::fill(endCostate.begin(), endCostate.end(), 0.0); endCostate[k] = 1.0;
-        // an observation at the start of the next call reads the state after the
-        // jumps there (records sort the events before the observation)
+        // an observation at an event time reads the state after the jumps recorded
+        // before it: those that open the next call, or, after the last call, the
+        // ones at the last record time
         if (cObs + 1 < (int)nCalls && fabs(abAdjCalls[cObs + 1].t0 - ti) < 1e-9)
           abJumpT(callEv[cObs + 1], endCostate.data(), mu.data());
+        else
+          abJumpT(abEventsAt(ti, i, true), endCostate.data(), mu.data());
         for (int c = cObs; c >= 0; --c) {
           const abRecCall &call = abAdjCalls[c];
           int M = (int)(call.stepEnd - call.stepBegin), ord = call.order;
