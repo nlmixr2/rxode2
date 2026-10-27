@@ -2376,8 +2376,14 @@ static void rxInvCholThetaMat(rxInvCholJoint &ic, arma::mat &cov,
                               bool &haveCov,
                               const Nullable<NumericMatrix> &thetaMat,
                               const bool &thetaIsChol, const RObject &mat,
+                              const bool &matIsChol,
                               const RObject &priorEl, const char *what) {
   if (Rf_isNull(priorEl) || thetaMat.isNull() || !rxIs(mat, "matrix")) return;
+  if (matIsChol) {
+    rxSolveFree();
+    stop(_("'%sSeparation=\"invchol\"' needs '%s' as a covariance, not its Cholesky decomposition"),
+         what, what);
+  }
   IntegerMatrix el = as<IntegerMatrix>(priorEl);
   RObject elDn = el.attr("dimnames");
   NumericMatrix tm(thetaMat);
@@ -2666,22 +2672,24 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
   int i, j, k;
   rxInvCholJoint omegaIc, sigmaIc;
   Nullable<NumericMatrix> thetaMatUse = thetaMat;
+  // `Nullable` does not protect what it holds, so this does
+  NumericMatrix thetaMatHold;
   bool thetaIsCholUse = thetaIsChol;
   if (simVar) {
     arma::mat cov;
     bool haveCov = false;
     if (omegaSeparation == "invchol") {
       rxInvCholThetaMat(omegaIc, cov, haveCov, thetaMat, thetaIsChol, omega,
-                        priorOmegaEl, "omega");
+                        omegaIsChol, priorOmegaEl, "omega");
     }
     if (sigmaSeparation == "invchol") {
       rxInvCholThetaMat(sigmaIc, cov, haveCov, thetaMat, thetaIsChol, sigma,
-                        priorSigmaEl, "sigma");
+                        sigmaIsChol, priorSigmaEl, "sigma");
     }
     if (omegaIc.on || sigmaIc.on) {
-      NumericMatrix tm = wrap(cov);
-      tm.attr("dimnames") = NumericMatrix(thetaMat).attr("dimnames");
-      thetaMatUse = Nullable<NumericMatrix>(tm);
+      thetaMatHold = wrap(cov);
+      thetaMatHold.attr("dimnames") = NumericMatrix(thetaMat).attr("dimnames");
+      thetaMatUse = Nullable<NumericMatrix>(thetaMatHold);
       thetaIsCholUse = false;
     }
   }
