@@ -3621,8 +3621,10 @@ rxSolve.default <- function(
       if (.ctl$minSS == .ctl$maxSS) {
         stop(
           "adjoint sensitivities differentiate the converged steady state, not ",
-          "the state after a fixed number of doses (minSS = maxSS); use ",
-          "forward sensitivities or set maxSS above minSS",
+          "the state after a fixed number of doses (minSS = maxSS); set maxSS ",
+          "above minSS, or for forward sensitivities build the model with ",
+          "rxode2(model, calcSens = <parameters>) and solve it with a ",
+          "non-adjoint method",
           call. = FALSE
         )
       }
@@ -3633,7 +3635,7 @@ rxSolve.default <- function(
       # duration dur>ii via a two-phase monodromy; full-interval dur==ii via a
       # -J^{-1} df/dp linear solve), continuous infusion (rate, amt 0), and
       # interior ss==1 resets / multiple ss==2 superposition events.
-      # Still guarded (fall back to sensMethod="forward"): modeled-rate/dur
+      # Still guarded (fall back to forward sensitivities): modeled-rate/dur
       # infusion ss (dR/dp != 0, a moving period boundary) outside the explicit
       # non-composite fill; ss==2 and several ss==1 events in one subject on
       # liblsodaadj; and the abs / cvodesadj drivers (no ss IC term at all).
@@ -3701,7 +3703,9 @@ rxSolve.default <- function(
       if (.badSs) {
         stop(
           "adjoint sensitivities do not yet support this steady-state (ss) ",
-          "case; use sensMethod=\"forward\" for models with steady-state doses",
+          "case; for forward sensitivities build the model with ",
+          "rxode2(model, calcSens = <parameters>) and solve it with a ",
+          "non-adjoint method",
           call. = FALSE
         )
       }

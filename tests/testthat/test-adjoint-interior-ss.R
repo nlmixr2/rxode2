@@ -112,6 +112,12 @@ rxTest({
       "adjoint sensitivities do not yet support this steady-state (ss) case",
       fixed = TRUE
     )
+    # the advice names the real forward-sensitivity route
+    expect_error(
+      rxSolveAdjointRk4(.txt, .scen$diffAmt$ev, params = .p, calcSens = names(.p), method = "liblsodaadj"),
+      "build the model with rxode2(model, calcSens = <parameters>) and solve it with a non-adjoint method",
+      fixed = TRUE
+    )
   })
 
   test_that("a modeled rate() ss dose after the first record uses its own regimen on the explicit fill", {
@@ -154,7 +160,7 @@ rxTest({
     for (.m in .all) {
       expect_error(
         rxSolveAdjointRk4(.txt, .ev, params = .p, calcSens = names(.p), method = .m, minSS = 3, maxSS = 3),
-        "fixed number of doses \\(minSS = maxSS\\)", label = .m
+        "fixed number of doses \\(minSS = maxSS\\).*rxode2\\(model, calcSens = <parameters>\\)", label = .m
       )
       # minSS below maxSS still solves
       .a <- rxSolveAdjointRk4(.txt, .ev, params = .p, calcSens = names(.p), method = .m, minSS = 3, maxSS = 4000)
