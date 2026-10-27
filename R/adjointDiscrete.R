@@ -88,11 +88,8 @@
     }
   }
   .setParams <- function(params) {
-    # each call starts from the model defaults, so an earlier call's values
-    # never leak into one that leaves them out
-    for (.n in names(.def)) {
-      assign(.n, .def[[.n]], envir = .env)
-    }
+    # refill omitted defaults so an earlier call's override does not persist
+    params <- .rxAdjParams(params, .def)
     .nm <- names(params)
     for (i in seq_along(params)) {
       assign(.nm[i], params[[i]], envir = .env)

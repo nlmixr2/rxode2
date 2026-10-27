@@ -64,4 +64,11 @@ rxTest({
       }
     }
   })
+
+  test_that(".rxDiscreteAdjointBuild restores a default omitted after an override", {
+    .b <- .rxDiscreteAdjointBuild(.txt, .cs)
+    .x <- c(depot = 0, center = 1)
+    expect_equal(unname(.b$Fe(.x, .p)[2]), -1)
+    expect_equal(unname(.b$Fe(.x, .p[c("ka", "v")])[2]), -0.5)
+  })
 })
