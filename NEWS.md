@@ -53,6 +53,12 @@
 
 ### Solving
 
+- `liblsoda` (and `liblsodaadj`, whose forward solve it is) now fails a
+  subject whose interpolation to an output time fails ("intdy -- t = ...
+  illegal"), with "IDID=-3, illegal input detected (see printed message)".
+  It used to report success and return the last step's state at that time
+  (0 throughout for `d/dt(y) <- 1e308`), with no "could not solve" warning.
+
 - The default `hmax = NA` no longer gives a `NaN` maximum step to a subject
   with a single time difference, so `method = "dop853"` no longer fails with
   `IDID=-3` on a subject with one observation after its start.  `hmaxSd` now
