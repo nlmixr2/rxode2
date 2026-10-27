@@ -309,6 +309,11 @@ rxTest({
         .build
       )
     )
+    # a model with no ODE state
+    expect_identical(
+      .nfSolve(rxode2("y <- k * t"), data.frame(ID = 1, TIME = 0:2, EVID = 0), c(k = 1), "rk4s"),
+      "method='rk4s' needs a model with ODE states"
+    )
   })
 
   test_that("reasons name the simulation, and a later clean solve prints none", {
