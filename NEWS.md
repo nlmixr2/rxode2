@@ -9,13 +9,6 @@
   them: after a failed `rxSolve(m, params, ev, sigma = ...)`, a plain solve
   of a model with that residual gave values up to 2.6 off.
 
-### Solving
-
-- A `params` data frame with a character column no parameter reads (a label,
-  a character id) now solves; it failed with "Not compatible with requested
-  type".  A character column that a parameter does read stops with an error
-  naming it.
-
 ## New features
 
 - `minSS` and `maxSS` now accept any count from 1, and `maxSS` may equal
@@ -104,6 +97,12 @@
   thousands of parameters is also much faster, and a solve's first
   `$params`, `$counts`, `.DollarNames()` or event-table method builds only
   what it uses rather than all of them and the event table.
+
+- A `params` data frame with a character column no parameter reads (a label,
+  a character id) now solves, one row (used for every subject, or for the
+  subjects `nSub` asks for) or many; it failed with "Not compatible with
+  requested type".  A character column that a parameter does read stops with
+  an error naming it.
 
 - A one-row `params` data frame or matrix is now used for every subject, as
   a named vector is; with more than one subject, the subjects after the first

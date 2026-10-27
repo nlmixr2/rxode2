@@ -41,6 +41,27 @@ rxTest({
     expect_identical(as.data.frame(rxSolve(m, d, params = s$params))$cp, .want)
   })
 
+  test_that("a one-row params data frame may carry a column no parameter reads", {
+    m <- .paramsColsModel()
+    d <- .paramsColsData()
+    # the one row is used for both subjects
+    .want <- as.data.frame(rxSolve(m, d, params = data.frame(k = 0.5, v = 2)))$cp
+    expect_false(anyNA(.want))
+    expect_identical(as.data.frame(rxSolve(m, d, params = data.frame(k = 0.5, v = 2, label = "a")))$cp, .want)
+    # and for the subjects nSub asks for
+    .ev <- et(amt = 10, cmt = "central") |> et(c(1, 2))
+    .ns <- suppressWarnings(as.data.frame(rxSolve(m, .ev, params = data.frame(k = 0.5, v = 2), nSub = 2)))$cp
+    expect_identical(
+      suppressWarnings(as.data.frame(rxSolve(m, .ev, params = data.frame(k = 0.5, v = 2, label = "a"), nSub = 2)))$cp,
+      .ns
+    )
+    # a character column a parameter reads is refused there too
+    expect_identical(
+      .paramsColsErr(rxSolve(m, d, params = data.frame(k = "0.5", v = 2))),
+      "'params' column 'k' is character; a model parameter needs numbers"
+    )
+  })
+
   test_that("a character params column a parameter reads is refused by name", {
     m <- .paramsColsModel()
     d <- .paramsColsData()
