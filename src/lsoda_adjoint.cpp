@@ -402,9 +402,10 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     double *out = getSolve(i);
     // A reset recorded before this observation but after its segment opened
     // means liblsoda took no step since the reset (e.g. an all-zero state),
-    // so no segment starts there: the observation still reads the reset state.
+    // so no segment starts there: the observation still reads the reset state,
+    // which is the initial condition.
     if (tReset > lsAdjSegs[segObs].t0 + 1e-9) {
-      for (int q = 0; q < nBase * np; ++q) out[sensOff + q] = 0.0;
+      for (int q = 0; q < nBase * np; ++q) out[sensOff + q] = dx0P ? dx0P[q] : 0.0;
       continue;
     }
     for (int k = 0; k < nBase; ++k) {
