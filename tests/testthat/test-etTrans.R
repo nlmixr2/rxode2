@@ -2637,6 +2637,9 @@ d/dt(central) = 1.5*depot - 0.2*central
   .etObsDoseMsg <- function(rows) {
     paste0("'evid' 0 with a missing 'dv' and a nonzero 'amt' is read as a dose\nrows: ", rows)
   }
+  .etMdvObsDoseMsg <- function(rows) {
+    paste0("'mdv' 0 with a missing 'dv' and a nonzero 'amt' is read as a dose\nrows: ", rows)
+  }
   .etMdvNaMsg <- function(rows) {
     paste0("a missing 'mdv' with a zero 'amt' is read as 'evid' 2, not a dose\nrows: ", rows)
   }
@@ -2670,6 +2673,20 @@ cp = central
     .none$AMT[3] <- 0
     .s0 <- as.data.frame(rxSolve(mod, .none, atol = 1e-10, rtol = 1e-10, returnType = "data.frame"))
     expect_equal(.s$central[.s$time == 3] - .s0$central[.s0$time == 3], 50 * exp(-0.2), tolerance = 1e-8)
+    # with a fixed rate or duration it is the infusion an evid 1 record is
+    for (.col in c("RATE", "DUR")) {
+      .r <- .d
+      .r[[.col]] <- c(0, 0, if (.col == "RATE") 25 else 2, 0)
+      .rd <- .r
+      .rd$EVID[3] <- 1
+      expect_identical(capture_warnings(.e <- etTrans(.r, mod)), .etObsDoseMsg("3"), label = .col)
+      .ref <- etTrans(.rd, mod)
+      expect_identical(.e$EVID, .ref$EVID, label = .col)
+      expect_identical(.e$TIME, .ref$TIME, label = .col)
+      expect_identical(.e$AMT, .ref$AMT, label = .col)
+      # 10201 a fixed-rate infusion into central, 20201 a fixed-duration one
+      expect_true(any(.e$EVID == if (.col == "RATE") 10201L else 20201L), label = .col)
+    }
     # a negative amount too; MDV = 1, an observation that is missing, is left as it is
     .d$AMT[3] <- -5
     expect_identical(capture_warnings(etTrans(.d, mod)), .etObsDoseMsg("3"))
@@ -2711,7 +2728,7 @@ cp = central
       CMT = 2
     )
     .w <- capture_warnings(.e <- etTrans(.d, mod))
-    expect_identical(.w, c(.etObsDoseMsg("5"), .etMdvNaMsg("3")))
+    expect_identical(.w, c(.etMdvObsDoseMsg("5"), .etMdvNaMsg("3")))
     .d$MDV[3] <- 1
     .d$DV[5] <- 3
     expect_identical(capture_warnings(etTrans(.d, mod)), character(0))

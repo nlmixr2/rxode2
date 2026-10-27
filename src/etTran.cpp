@@ -2140,6 +2140,14 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     // Amt
     if (amtCol == -1) camt = 0.0;
     else camt = inAmt[i];
+    // An observation with no DV but a dose amount is read as that dose; its
+    // MDV, if any, describes the observation it is not.  Decided here, as
+    // the rate and duration below are read as a dose's only on a dose record;
+    // evidRow is the record's EVID as read, 1 for such a record.
+    bool obsAmtDose = hasEvid && inEvid[i] == 0 && dvCol != -1 && ISNA(inDv[i]) &&
+      !ISNA(camt) && camt != 0.0 && !(mdvCol != -1 && inMdv[i] == 1);
+    int evidRow = evidCol == -1 ? NA_INTEGER : (obsAmtDose ? 1 : inEvid[i]);
+    if (obsAmtDose) obsAmtDoseRows.push_back(i + 1);
 
     // SS flag
     flg=1;
@@ -2231,7 +2239,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         //durModeled = true;
       } else if (rate > 0){
         // Rate is fixed
-        if (evidCol == -1 || inEvid[i] == 1 || inEvid[i] == 4) {
+        if (evidCol == -1 || evidRow == 1 || evidRow == 4) {
           if (cmtSupportsInfusion(cmt, numLin, numLinSens,
                                   depotLin, numCmt, numSens)) {
             rateI = 1;
@@ -2274,7 +2282,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         if (flg == 40){
           stop(_("specifying duration with a steady state constant infusion makes no sense (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
         }
-        if (evidCol == -1 || inEvid[i] == 1 || inEvid[i] == 4) {
+        if (evidCol == -1 || evidRow == 1 || evidRow == 4) {
           if (cmtSupportsInfusion(cmt, numLin, numLinSens,
                                   depotLin, numCmt, numSens)) {
             rateI = 2;
@@ -2282,7 +2290,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             stop(_("specifying a fixed duration with a non-infusion compartment (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
           }
           rate = camt/inDur[i];
-        } else if (inEvid[i] > 4) {
+        } else if (evidRow > 4) {
           rateI=0;
           rate = 0.0;
         }
@@ -2315,7 +2323,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         allBolus=false;
       }
     } else {
-      cevid = inEvid[i];
+      cevid = evidRow;
     }
     if (evidIsMDV && cevid == 1 && camt == 0) {
       cevid=2;
@@ -2346,15 +2354,6 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
         cevid=0;
       }
-    }
-    // an observation with no DV but a dose amount is read as that dose; its
-    // MDV, if any, describes the observation it is not
-    bool obsAmtDose = false;
-    if (cevid == 0 && hasEvid && dvCol != -1 && ISNA(inDv[i]) &&
-        !ISNA(camt) && camt != 0.0 && !(mdvCol != -1 && inMdv[i] == 1)) {
-      cevid = 1;
-      obsAmtDose = true;
-      obsAmtDoseRows.push_back(i + 1);
     }
     if (cevid == 4 && nobs ==0 && ndose == 0) {
       // No reset here
@@ -3044,7 +3043,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   if (warnCensNA) Rf_warningcall(R_NilValue, "%s", _("censoring missing 'DV' values do not make sense"));
   if (warnNaTime) Rf_warningcall(R_NilValue, "%s", _("missing 'TIME' values do not make sense (ignored)"));
   if (!obsAmtDoseRows.empty()) {
-    std::string msg = std::string(_("'evid' 0 with a missing 'dv' and a nonzero 'amt' is read as a dose")) +
+    // with no evid column the mdv column stands in for it
+    std::string msg = std::string(evidIsMDV ?
+                                  _("'mdv' 0 with a missing 'dv' and a nonzero 'amt' is read as a dose") :
+                                  _("'evid' 0 with a missing 'dv' and a nonzero 'amt' is read as a dose")) +
       "\nrows: " + etRowList(obsAmtDoseRows);
     Rf_warningcall(R_NilValue, "%s", msg.c_str());
   }
