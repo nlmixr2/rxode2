@@ -258,8 +258,9 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
         badSolveExit(i);
         localBadSolve = 1;
       } else {
-        if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                            xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
+        while (!localBadSolve &&
+               handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                               xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             if (neqOde > 0) cvB_step(mem, &fu, y, yp, ind->extraDoseNewXout, ind->rc, &hist);
@@ -286,15 +287,6 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
             CVodeReInit(mem, (sunrealtype)ind->extraDoseNewXout, y);
             hist.newSeg(); cvB_record(&hist, &fu, ind->extraDoseNewXout, yp);
             didEvent = 0;
-            if (!isSameTime(xout, ind->extraDoseNewXout)) {
-              preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-              if (neqOde > 0) cvB_step(mem, &fu, y, yp, xout, ind->rc, &hist);
-              copyLinCmt(neq, ind, op, yp);
-              const char *err_msg = "cvodesadj failed";
-              postSolve(neq, &istate, ind->rc, &idx, yp, &err_msg, 10, false, ind, op, rx);
-              if (*(ind->rc) < 0) localBadSolve = 1;
-              ind->extraDoseNewXout = xout;
-            }
             xp = ind->extraDoseNewXout;
           }
         }
