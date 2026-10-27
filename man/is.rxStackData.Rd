@@ -19,6 +19,15 @@ Return if the object can be stacked
 
 is.rxStackData(NULL)
 }
+\seealso{
+Other rxode2 plotting:
+\code{\link[=plot.rxSolve]{plot.rxSolve()}},
+\code{\link[=rxStack]{rxStack()}},
+\code{\link[=rxTheme]{rxTheme()}},
+\code{\link[=stat_amt]{stat_amt()}},
+\code{\link[=stat_cens]{stat_cens()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{rxode2 plotting}

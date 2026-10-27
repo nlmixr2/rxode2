@@ -47,9 +47,20 @@ jobs:
             local::.
           needs: website
 
+      # pkgdown renders every top-level .md; keep agent instruction files off the site
+      - name: Remove agent instruction files
+        run: rm -f CLAUDE.md AGENTS.md .github/copilot-instructions.md
+
       - name: Build site
         run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
         shell: Rscript {0}
+
+      # deploy uses clean: false, so overwrite copies already published on gh-pages
+      - name: Replace previously published agent pages
+        run: |
+          for f in CLAUDE.html AGENTS.html copilot-instructions.html; do
+            printf '<!DOCTYPE html><html><head><meta name="robots" content="noindex"><meta http-equiv="refresh" content="0; url=index.html"></head><body></body></html>\n' > "docs/$f"
+          done
 
       - name: Deploy to GitHub pages
         if: github.event_name != 'pull_request'

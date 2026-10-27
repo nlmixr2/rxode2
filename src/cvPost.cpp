@@ -134,6 +134,7 @@ NumericMatrix cvPost0(double nu, NumericMatrix omega, bool omegaIsChol = false,
 //' rinvchisq(3, 4, 1) ## Scale = 1, degrees of freedom = 4
 //' rinvchisq(2, 4, 2) ## Scale = 2, degrees of freedom = 4
 //' @export
+//' @family Variability and uncertainty
 //[[Rcpp::export]]
 NumericVector rinvchisq(const int n = 1, const double &nu = 1.0, const double &scale = 1){
   NumericVector ret(n);
@@ -176,6 +177,7 @@ void rgbeta(int d, double shape, double* out){
 //' @return A correlation sample from the LKJ distribution
 //'
 //' @author Matthew Fidler (translated to RcppArmadillo) and Emma Schwager
+//' @family Developer API
 //' @export
 //' @keywords internal
 //[[Rcpp::export]]
@@ -253,6 +255,7 @@ arma::mat rLKJcvLsd1(arma::vec logSd, arma::vec logSdSD, double eta = 1.0){
 //'
 //' @author Matthew Fidler
 //' @keywords internal
+//' @family Developer API
 //' @export
 //[[Rcpp::export]]
 arma::mat invWR1d(int d, double nu, bool omegaIsChol = false){
@@ -793,7 +796,13 @@ SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS) {
       IntegerVector flags = as<IntegerVector>(mv[RxMv_flags]);
       int cureta = flags[RxMvFlag_maxeta]+1;
       int curtheta = flags[RxMvFlag_maxtheta]+1;
-      List en = rxExpandNesting(objectRO, ni, true);
+      List en;
+      try {
+        en = rxExpandNesting(objectRO, ni, true);
+      } catch (...) {
+        rxSolveFree();
+        throw;
+      }
       aboveSEXP = rx_protect.protect(as<SEXP>(ni["above"]));
       belowSEXP = rx_protect.protect(as<SEXP>(ni["below"]));
       List lotriSepMat = as<List>(rx_protect.protect(lotriSep(omegaLotri,aboveSEXP,
@@ -822,7 +831,8 @@ SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS) {
                                control[Rxc_iCov]));
       rxModelsAssign(".nestEvents", events);
       RObject cls = Rf_getAttrib(events, R_ClassSymbol);
-      List rxLst = cls.attr(".rxode2.lst");
+      // a shallow copy: etTrans() hands back the caller's own translated table
+      List rxLst = Rf_shallow_duplicate(cls.attr(".rxode2.lst"));
       rxLst.attr("class") = R_NilValue;
       nid = rxLst[RxTrans_nid];
       if (nid <= 1) {
@@ -1004,6 +1014,9 @@ SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS) {
                                control[Rxc_iCov]));
       rxModelsAssign(".nestEvents", events);
     } else if (!Rf_inherits(events, "rxEtTrans")){
+      // No class is "rxEtTrans" (a translated table is "rxEtTran"), so this
+      // always holds; etTrans() re-translates a table made for another model
+      // and returns one made for this model as it is
       events = rx_protect.protect(etTrans(as<List>(events), nestObj,
                                (INTEGER(mv[RxMv_flags])[RxMvFlag_hasCmt] == 1),
                                false, false, true, R_NilValue,
@@ -1126,8 +1139,11 @@ SEXP nestingInfoSingle_(SEXP col, IntegerVector id) { rxProtect rx_protect;
 
 //[[Rcpp::export]]
 SEXP nestingInfo_(SEXP omega, List data) { rxProtect rx_protect;
-  // Might need to clone...
-  CharacterVector lName = data.names();
+  // The nesting columns become factors in a shallow copy of the data (a new
+  // list holding the same columns), returned as `data`; the caller's data
+  // frame is left as it was.
+  List dataCopy(rx_protect.protect(Rf_shallow_duplicate(data)));
+  CharacterVector lName = dataCopy.names();
   int wid = -1;
   std::string tmpS;
   std::string idName;
@@ -1145,7 +1161,7 @@ SEXP nestingInfo_(SEXP omega, List data) { rxProtect rx_protect;
     // UNPROTECT
     rxError(_("cannot find 'id' column in dataset"));
   }
-  SEXP idS = rx_protect.protect(data[wid]);
+  SEXP idS = rx_protect.protect(dataCopy[wid]);
   SEXP id = rx_protect.protect(convertId_(idS));
   SEXP lotriOmega = R_NilValue;
   if (Rf_isNewList(omega)){
@@ -1186,7 +1202,7 @@ SEXP nestingInfo_(SEXP omega, List data) { rxProtect rx_protect;
         }
       }
       if (found == -1) rxError("could not find '%s' in data", CHAR(lvl));
-      s = nestingInfoSingle_(data[found], id);
+      s = nestingInfoSingle_(dataCopy[found], id);
       l1 = Rf_length(Rf_getAttrib(s, R_LevelsSymbol));
       dn = VECTOR_ELT(Rf_getAttrib(VECTOR_ELT(lotriOmega, i),
                                    R_DimNamesSymbol), 0);
@@ -1202,7 +1218,7 @@ SEXP nestingInfo_(SEXP omega, List data) { rxProtect rx_protect;
         belowN[belowI++] = lvl;
         extraEta += Rf_length(dn) * l1;
       }
-      data[found] = s;
+      dataCopy[found] = s;
     }
   }
   IntegerVector belowF(belowI);
@@ -1226,7 +1242,7 @@ SEXP nestingInfo_(SEXP omega, List data) { rxProtect rx_protect;
   aboveF.names() = aboveFN;
   aboveVars.names() = aboveFN;
   // UNPROTECT
-  return wrap(List::create(_["data"]=data,
+  return wrap(List::create(_["data"]=dataCopy,
                            _["omega"]=lotriOmega,
                            _["idName"]=CharacterVector::create(idName),
                            _["id"]=id,

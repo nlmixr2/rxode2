@@ -5,6 +5,26 @@
 #' @return html code for rxSolve object
 #' @author Matthew L. Fidler
 #' @export
+#' @family Utilities
+#' @examples
+#' \donttest{
+#' if (requireNamespace("knitr", quietly = TRUE)) {
+#' mod <- function() {
+#'   ini({
+#'     tcl <- log(3)
+#'     tv <- log(30)
+#'   })
+#'   model({
+#'     cl <- exp(tcl)
+#'     v <- exp(tv)
+#'     d/dt(central) <- -cl / v * central
+#'     cp <- central / v
+#'   })
+#' }
+#' s <- rxSolve(mod, et(amt = 100, cmt = "central") |> et(0:4))
+#' rxHtml(s)
+#' }
+#' }
 rxHtml <- function(x, ...) {
   UseMethod("rxHtml")
 }

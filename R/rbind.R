@@ -4,6 +4,10 @@
   .cls <- class(v)
   .env1 <- attr(class(v), ".rxode2.env")
   .env2 <- attr(class(v2), ".rxode2.env")
+  # $add.dosing builds only the event table; the copy needs these too
+  .rxSolveMaterializeParams(v, .env1)
+  .rxSolveMaterializeParams(v2, .env2)
+  .rxSolveMaterializeCounts(.env1)
   if (
     length(.env1$.check.names) != length(.env2$.check.names) &&
       !all(.env1$.check.names == .env2$.check.names)

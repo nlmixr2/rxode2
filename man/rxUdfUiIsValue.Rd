@@ -22,6 +22,33 @@ This is used to determine if the location and scale parameters are
 actually equal to their default values, which allows for more
 efficient translation to expit expressions when possible.
 }
+\examples{
+# in a rxUdfUi handler for dnorm(x, mean, sd), is `sd` the default of 1?
+args <- as.list(quote(dnorm(x, mean = 0, sd = s)))[-1]
+rxUdfUiIsValue(args$mean, 0)
+rxUdfUiIsValue(args$sd, 1) # a model variable, so not known to be 1
+}
+\seealso{
+Other User functions:
+\code{\link[=linMod]{linMod()}},
+\code{\link[=mix]{mix()}},
+\code{\link[=rxD]{rxD()}},
+\code{\link[=rxFun]{rxFun()}},
+\code{\link[=rxIntToBase]{rxIntToBase()}},
+\code{\link[=rxIntToLetter]{rxIntToLetter()}},
+\code{\link[=rxUdfUiControl]{rxUdfUiControl()}},
+\code{\link[=rxUdfUiData]{rxUdfUiData()}},
+\code{\link[=rxUdfUiEst]{rxUdfUiEst()}},
+\code{\link[=rxUdfUiExpr]{rxUdfUiExpr()}},
+\code{\link[=rxUdfUiFlag]{rxUdfUiFlag()}},
+\code{\link[=rxUdfUiIniDf]{rxUdfUiIniDf()}},
+\code{\link[=rxUdfUiIniLhs]{rxUdfUiIniLhs()}},
+\code{\link[=rxUdfUiLhs.dist]{rxUdfUiLhs.dist()}},
+\code{\link[=rxUdfUiMv]{rxUdfUiMv()}},
+\code{\link[=rxUdfUiNum]{rxUdfUiNum()}},
+\code{\link[=rxUdfUiParsing]{rxUdfUiParsing()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{User functions}

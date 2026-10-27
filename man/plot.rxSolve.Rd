@@ -31,9 +31,35 @@ A ggplot2 object
 \description{
 Plot rxode2 objects
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    tka <- log(1.1)
+    tcl <- log(3)
+    tv <- log(30)
+  })
+  model({
+    ka <- exp(tka)
+    cl <- exp(tcl)
+    v <- exp(tv)
+    d/dt(depot) <- -ka * depot
+    d/dt(central) <- ka * depot - cl / v * central
+    cp <- central / v
+  })
+}
+s <- rxSolve(mod, et(amt = 100) |> et(seq(0, 24, by = 0.5)))
+plot(s, cp)
+plot(s, c("depot", "central"), log = "y")
+}
+}
 \seealso{
 Other rxode2 plotting:
-\code{\link[=rxTheme]{rxTheme()}}
+\code{\link[=is.rxStackData]{is.rxStackData()}},
+\code{\link[=rxStack]{rxStack()}},
+\code{\link[=rxTheme]{rxTheme()}},
+\code{\link[=stat_amt]{stat_amt()}},
+\code{\link[=stat_cens]{stat_cens()}}
 }
 \concept{rxode2 plotting}
 \keyword{Internal}

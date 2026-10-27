@@ -27,7 +27,7 @@ protected:
         dydt_(full_neq_, t_stage_, solin, fout);
         for (unsigned long i = 0; i < neq_; i++) {
             if (!std::isfinite(fout[i])) {
-                ind_->err = 1;
+                rxSolverFail(ind_);
                 for (unsigned long j = 0; j < neq_; j++) fout[j] = 0.0;
                 return;
             }

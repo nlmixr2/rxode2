@@ -27,6 +27,14 @@ Validate rxode2
 This allows easy validation/qualification of nlmixr by running the
 testing suite on your system.
 }
+\examples{
+\dontrun{
+# run the full test suite (slow)
+rxValidate(TRUE)
+# only the tests whose file names match "basic"
+rxValidate("basic")
+}
+}
 \author{
 Matthew L. Fidler
 }

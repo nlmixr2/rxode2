@@ -29,6 +29,7 @@
 
 // dop853 is same time
 #include "rxProtect.h"
+#include "rxSbufFormat.h"
 
 extern "C" uint32_t getRxSeed1(int ncores);
 extern "C" void setSeedEng1(uint32_t seed);
@@ -64,7 +65,8 @@ int _isRstudio = 0;
 #include "rxData.h"
 
 extern "C" void setRstudioPrint(int rstudio);
-extern "C" void RSprintf(const char *format, ...);
+#include "rxPrintfFormat.h"
+extern "C" void RSprintf(const char *format, ...) R_PRINTF_FORMAT(1, 2);
 
 // Pre-generated eta batch draw (defined in rxthreefry.cpp)
 extern "C" void rxPreGenEta(rx_solve *rx, int ncores);
@@ -253,11 +255,13 @@ extern "C" void rxSetIdLvlFactors(SEXP idLvl) {
 // load-time initializer for buffers that do not exist yet) and would leak the
 // levels a previous call allocated.
 //
+// `maxIds` is the flush's cap on listed subjects.
+//
 // `setLvl=FALSE` skips the reset and flushes against whatever the last real
 // rxSolve() left behind, which is the only way to reach the multiple-
 // simulation branch of rxGetIdSim() (nsub/nsim come from the solve, not from
 // the levels).
-extern "C" SEXP _rxTestSolveWarnLabels(SEXP idLvl, SEXP idsSEXP, SEXP setLvlSEXP) {
+extern "C" SEXP _rxTestSolveWarnLabels(SEXP idLvl, SEXP idsSEXP, SEXP setLvlSEXP, SEXP maxIdsSEXP) {
   rxProtect rx_protect;
   rxSolveWarnReset();
   if (Rf_asLogical(setLvlSEXP) != FALSE) {
@@ -269,6 +273,57 @@ extern "C" SEXP _rxTestSolveWarnLabels(SEXP idLvl, SEXP idsSEXP, SEXP setLvlSEXP
   for (int i = 0; i < n; i++) {
     rxSolveWarnPush(pids[i], "rxTest -- solve warning");
   }
+  rxSolveWarnFlush(Rf_asInteger(maxIdsSEXP));
+  return R_NilValue;
+}
+
+// Reset, push "rxTest -- warning <k>" (no subject) for each k in `ks`, then
+// flush `nFlush` times, so a test can fill the aggregator past its 64
+// distinct messages and see what each reset and flush leaves.
+extern "C" SEXP _rxTestSolveWarnMany(SEXP ksSEXP, SEXP nFlushSEXP) {
+  rxProtect rx_protect;
+  rxSolveWarnReset();
+  SEXP ks = rx_protect.protect(Rf_coerceVector(ksSEXP, INTSXP));
+  int n = Rf_length(ks);
+  int *pks = INTEGER(ks);
+  for (int i = 0; i < n; i++) {
+    rxSolveWarnPush(-1, "rxTest -- warning %d", pks[i]);
+  }
+  int nFlush = Rf_asInteger(nFlushSEXP);
+  for (int i = 0; i < nFlush; i++) {
+    rxSolveWarnFlush(64);
+  }
+  return R_NilValue;
+}
+
+// push one summarized warning per value of `x` (and its negative), no subject
+extern "C" SEXP _rxTestSolveWarnStat(SEXP xSEXP) {
+  rxProtect rx_protect;
+  rxSolveWarnReset();
+  SEXP x = rx_protect.protect(Rf_coerceVector(xSEXP, REALSXP));
+  int n = Rf_length(x);
+  double *px = REAL(x);
+  for (int i = 0; i < n; i++) {
+    double v[2] = {px[i], -px[i]};
+    rxSolveWarnPushStat(-1, 2, v, "rxTest -- x = %%v, -x = %%v, n = %d", 3);
+  }
+  rxSolveWarnFlush(64);
+  return R_NilValue;
+}
+
+static void rxSolveErrPush(int id, int err);
+
+// Reset, push the reasons the bits of `err` stand for (no subject), and flush,
+// so a test can read each reason's line.
+extern "C" SEXP _rxTestSolveErrPush(SEXP errSEXP) {
+  rxSolveWarnReset();
+  rxSolveErrPush(-1, Rf_asInteger(errSEXP));
+  rxSolveWarnFlush(64);
+  return R_NilValue;
+}
+
+// Flush the aggregator, as an ind_solve() caller does after its solves.
+extern "C" SEXP _rxTestSolveWarnFlush(void) {
   rxSolveWarnFlush(64);
   return R_NilValue;
 }
@@ -353,89 +408,64 @@ extern "C" SEXP _rxTestGetIdLabels(SEXP idsSEXP) {
   return ans;
 }
 
-extern "C" void printErr(int err, int id){
-  RSprintf("Recovered solving errors for internal ID %s (%d):\n", getId(id), err);
-  if (err & rxErrCorruptETSort){
-    RSprintf("  Corrupted event table during sort (1)\n");
-  }
-  if (err & rxErrRate0){
-    RSprintf("  Rate is zero/negative\n");
-  }
-  if (err & rxErrModelRateAbsent){
-    RSprintf("  Modeled rate requested in event table, but not in model; use 'rate(cmt) ='\n");
-  }
-  if (err & rxErrCorruptETSort2){
-    RSprintf("  Corrupted event table during sort (2)\n");
-  }
-  if (err & rxErrDurNeg0){
-    RSprintf("  Duration is zero/negative\n");
-  }
-  if (err & rxErrModelDurAbsent){
-    RSprintf("  Modeled duration requested in event table, but not in model; use 'dur(cmt) ='\n");
-  }
-  if (err & rxErrModelData686){
-    RSprintf("  Data error 686: end of a modeled duration ('rate=-2') infusion is not preceded by its start\n");
-  }
-  if (err & rxErrModelDataNeg6){
-    RSprintf("  Data Error -6: end of a modeled duration ('rate=-2') infusion is the first record\n");
-  }
-  if (err & rxErrModelDataErr8){
-    RSprintf("  Data Error 8: a modeled duration ('rate=-2') infusion starts on the last record, so it has no end\n");
-  }
-  if (err & rxErrModelDataErr886){
-    RSprintf("  Data error 886: start of a modeled duration ('rate=-2') infusion is not followed by its end\n");
-  }
-  if (err & rxErrModelDataErr797){
-    RSprintf("  Data error 797: end of a modeled rate ('rate=-1') infusion is not preceded by its start\n");
-  }
-  if (err & rxErrModelDataNeg7){
-    RSprintf("  Data Error -7: end of a modeled rate ('rate=-1') infusion is the first record\n");
-  }
-  if (err & rxErrModelDataErr9){
-    RSprintf("  Data Error 9: a modeled rate ('rate=-1') infusion starts on the last record, so it has no end\n");
-  }
-  if (err & rxErrModelDataErr997){
-    RSprintf("  Data error 997: start of a modeled rate ('rate=-1') infusion is not followed by its end\n");
-  }
-  if (err & rxErrCorruptETSort3){
-    RSprintf("  Corrupted event table during sort (3)\n");
-  }
-  if (err & rxErrCorruptET) {
-    RSprintf("  Corrupted event table\n");
-  }
-  if (err & rxErrCorruptET2){
-    RSprintf("  Corrupted events\n");
-  }
-  if (err & rxErrNegCmt){
-    RSprintf("  Supplied an invalid EVID\n");
-  }
-  if (err & rxErrSync){
-    RSprintf("  Corrupted event table (during sync)\n");
-  }
-  if (err & rxErrSync2){
-    RSprintf("  Corrupted event table (end of sync)\n");
-  }
-  if (err & rxErrModeledFss2){
-    RSprintf("  SS=2 & Modeled F does not work\n");
-  }
+// The reasons a subject's `err` bits stand for.  Bits that share a text push
+// one aggregated line.
+struct rxSolveErrReason {
+  int flag;
+  const char *text;
+};
+#define rxSolverFailText "the ODE solver failed (an exception, or a step it could not take)"
+static const rxSolveErrReason rxSolveErrReasons[] = {
+  {rxErrCorruptETSort, "Corrupted event table during sort (1)"},
+  {rxErrRate0, "Rate is zero/negative"},
+  {rxErrModelRateAbsent, "Modeled rate requested in event table, but not in model; use 'rate(cmt) ='"},
+  {rxErrCorruptETSort2, "Corrupted event table during sort (2)"},
+  {rxErrDurNeg0, "Duration is zero/negative"},
+  {rxErrModelDurAbsent, "Modeled duration requested in event table, but not in model; use 'dur(cmt) ='"},
+  {rxErrModelData686, "Data error 686: end of a modeled duration ('rate=-2') infusion is not preceded by its start"},
+  {rxErrModelDataNeg6, "Data Error -6: end of a modeled duration ('rate=-2') infusion is the first record"},
+  {rxErrModelDataErr8, "Data Error 8: a modeled duration ('rate=-2') infusion starts on the last record, so it has no end"},
+  {rxErrModelDataErr886, "Data error 886: start of a modeled duration ('rate=-2') infusion is not followed by its end"},
+  {rxErrModelDataErr797, "Data error 797: end of a modeled rate ('rate=-1') infusion is not preceded by its start"},
+  {rxErrModelDataNeg7, "Data Error -7: end of a modeled rate ('rate=-1') infusion is the first record"},
+  {rxErrModelDataErr9, "Data Error 9: a modeled rate ('rate=-1') infusion starts on the last record, so it has no end"},
+  {rxErrModelDataErr997, "Data error 997: start of a modeled rate ('rate=-1') infusion is not followed by its end"},
+  {rxErrCorruptETSort3, "Corrupted event table during sort (3)"},
+  {rxErrCorruptET, "Corrupted event table"},
+  {rxErrCorruptET2, "Corrupted events"},
+  {rxErrNegCmt, "Supplied an invalid EVID"},
+  {rxErrSync, "Corrupted event table (during sync)"},
+  {rxErrSync2, "Corrupted event table (end of sync)"},
+  {rxErrModeledFss2, "SS=2 & Modeled F does not work"},
+  {rxErrModeledFss2n2, "SS=2 & Modeled F does not work"},
+  {rxErrModeledFss2n3, "SS=2 & Modeled F does not work"},
+  {rxErrRate02, "Rate is zero/negative"},
+  {rxErrIndLinConverge, "Inductive linearization could not reach 'atol'/'rtol' within 'maxsteps' relinearization steps; loosen 'atol'/'rtol' or raise 'maxsteps'"},
+  {rxErrIndLinCode, "Unsupported inductive linearization code; the model's 'indLin' descriptor does not match the solver"},
+  {rxErrIndLinExcept, "Inductive linearization failed with an unhandled exception (most likely out of memory)"},
+  {rxErrSolverFail, rxSolverFailText},
+  {rxErrVvNotPairs, "method='vv' needs coordinate-momentum state pairs with d/dt(q_i) = p_i"},
+};
 
-  if (err & rxErrModeledFss2n2){
-    RSprintf("  SS=2 & Modeled F does not work\n");
+// Push the reasons a subject's solve failed to the solve-warning aggregator,
+// which names the subjects whatever thread solved them; `id` is the subject's
+// ind->id.  Each distinct text is pushed once; bits with no text, as their code.
+// "solve error", not "could not solve": nlmixr2est retries a failed subject.
+static void rxSolveErrPush(int id, int err) {
+  const size_t n = sizeof(rxSolveErrReasons) / sizeof(rxSolveErrReasons[0]);
+  int known = 0;
+  for (size_t i = 0; i < n; i++) {
+    if (!(err & rxSolveErrReasons[i].flag)) continue;
+    known |= rxSolveErrReasons[i].flag;
+    bool pushed = false;
+    for (size_t j = 0; j < i && !pushed; j++) {
+      pushed = (err & rxSolveErrReasons[j].flag) &&
+        strcmp(rxSolveErrReasons[j].text, rxSolveErrReasons[i].text) == 0;
+    }
+    if (!pushed) rxSolveWarnPush(id, "solve error: %s", rxSolveErrReasons[i].text);
   }
-  if (err & rxErrModeledFss2n3){
-    RSprintf("  SS=2 & Modeled F does not work\n");
-  }
-  if (err & rxErrRate02){
-    RSprintf(" Rate is zero/negative\n");
-  }
-  if (err & rxErrIndLinConverge){
-    RSprintf("  Inductive linearization could not reach 'atol'/'rtol' within 'maxsteps' relinearization steps; loosen 'atol'/'rtol' or raise 'maxsteps'\n");
-  }
-  if (err & rxErrIndLinCode){
-    RSprintf("  Unsupported inductive linearization code; the model's 'indLin' descriptor does not match the solver\n");
-  }
-  if (err & rxErrIndLinExcept){
-    RSprintf("  Inductive linearization failed with an unhandled exception (most likely out of memory)\n");
+  if (err & ~known) {
+    rxSolveWarnPush(id, "solve error: code %d", err & ~known);
   }
 }
 
@@ -562,7 +592,7 @@ extern "C" int par_progress(int c, int n, int d, int cores, clock_t t0, int stop
           }
           RSprintf("] ");
           if (nticks < 50) RSprintf(" ");
-          RSprintf("%02.f%%; ",100*progress,cores);
+          RSprintf("%02.f%%; ",100*progress);
           _lastT0 = clock();
           clock_t t = _lastT0 - t0;
           double ts = ((double)t)/CLOCKS_PER_SEC;
@@ -1164,23 +1194,27 @@ static inline void copyLinCmt(int *neq,
   }
 }
 
-static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, const char** err_msg, int nerr, bool doPrint,
+// The bool is unused: a failed subject's reasons are pushed after the solve,
+// by par_solve() and ind_solve().
+static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, const char** err_msg, int nerr, bool,
                              rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx) {
   if (*idid <= 0) {
     if (err_msg != NULL) {
       int cid = -*idid-1;
-      if (cid > 0 && cid < nerr){
-        RSprintf("IDID=%d, %s\n", *idid, err_msg[-*idid-1]);
+      if (cid >= 0 && cid < nerr){
+        rxSolveWarnPush(ind->id, "IDID=%d, %s", *idid, err_msg[cid]);
       }
       else {
-        RSprintf("IDID=%d, unhandled exception\n", *idid);
+        rxSolveWarnPush(ind->id, "IDID=%d, unhandled exception", *idid);
       }
+    } else if (ind->err == 0) {
+      // no IDID texts (cvode, indLin): name the failure here, as the err walk
+      // only reports subjects with err set
+      rxSolveWarnPush(ind->id, "solve error: %s", rxSolverFailText);
     }
     *rc = *idid;
     badSolveExit(*i);
   } else if (ind->err) {
-    if (doPrint) printErr(ind->err, ind->id);
-    /* RSprintf("IDID=%d, %s\n", istate, err_msg_ls[-*istate-1]); */
     *rc = -2019;
     // Bad Solve => NA
     badSolveExit(*i);
@@ -2286,11 +2320,10 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
         copyLinCmt(neq, ind, op, yp);
       }
       if (*istate <= 0) {
-        RSprintf("IDID=%d, %s\n", *istate, err_msg_ls[-(*istate)-1]);
+        rxSolveWarnPush(ind->id, "IDID=%d, %s", *istate, err_msg_ls[-(*istate)-1]);
         ind->rc[0] = -2019;
         break;
       } else if (ind->err){
-        printErr(ind->err, ind->id);
         ind->rc[0] = -2019;
         *i = ind->n_all_times-1;
         break;
@@ -2298,304 +2331,304 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
       break;
     case 5:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkf78_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 6:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rk4_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 7:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); ck54_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 8:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); ab_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 9:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); abm_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 10:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); dop5_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 11:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); bs_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 13:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); ros4_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 14:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); iem_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 15:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); sem_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 16:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); sb3a_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 17:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); sb3am4_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 18:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); vv_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 19:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); mm_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 20:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); em_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 21:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); cvode_solveWith1Pt(neq, yp, xp, xout, istate, op, ind, ctx); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 22:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); trapz_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 23:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); ssp3_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 24:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkf32_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 25:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rk43_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 26:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); dop54_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 27:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); vern65_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 28:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); vern76_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 29:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); dop87_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 30:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); vern98_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 31:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); grk4a_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 32:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); ros6_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 33:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); backwardEuler_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 34:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); gauss6_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 35:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); iiic6_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 36:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); radauiia5_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 37:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); geng5_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 38:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); sdirk43_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 39:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); euler_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 40:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); midpoint_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 41:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); heun_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 42:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkssp22_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 43:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rk3_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 44:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkssp53_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 45:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rks4_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 46:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkr4_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 47:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkls44_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 48:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkls54_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 49:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkssp54_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 50:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rks5_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 51:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rk5_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 52:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkc5_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 53:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkl5_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 54:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rklk5a_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 55:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rklk5b_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 56:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkb6_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 57:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rk7_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 58:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rk8_10_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 59:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkcv8_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 60:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rk8_12_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 61:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rks10_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 62:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkz10_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 63:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rko10_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 64:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkh10_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 65:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkbs32_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 66:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkssp43_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 67:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkf45_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 68:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkt54_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 69:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rks54_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 70:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkpp54_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 71:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkpp54b_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 72:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkbs54_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 73:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkss54_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 74:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkdp65_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 75:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkc65_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 76:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rktp64_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 77:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkv65r_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 78:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkv65_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 79:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); dverk65_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 80:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rktf65_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 81:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rktp75_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 82:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rktmy7_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 83:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rktmy7s_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 84:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkv76r_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 85:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkss76_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 86:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkv78_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 87:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); dverk78_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 88:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkdp85_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 89:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rktp86_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 90:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkv87e_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 91:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkv87r_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 92:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkev87_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 93:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkk87_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 94:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkf89_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 95:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkv89_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 96:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkt98a_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 97:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkv98r_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 98:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rks98_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 99:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkf108_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 100:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkc108_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 101:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkb109_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 102:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rks1110a_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 103:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkf1210_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 104:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rko129_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 105:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkf1412_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
-      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; } break;
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 106:
       if (!isSameTime(xout, *xp)) {
         preSolve(op, ind, *xp, xout, yp);
@@ -2615,10 +2648,10 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
         copyLinCmt(neq, ind, op, yp);
       }
       if (*istate <= 0) {
-        RSprintf("IDID=%d, %s\n", *istate, err_msg_ls[-(*istate)-1]);
+        rxSolveWarnPush(ind->id, "IDID=%d, %s", *istate, err_msg_ls[-(*istate)-1]);
         ind->rc[0] = -2019;
         break;
-      } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; }
+      } else if (ind->err) { ind->rc[0] = -2019; break; }
       break;
     case 107:
       if (!isSameTime(xout, *xp)) {
@@ -2639,10 +2672,10 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
         copyLinCmt(neq, ind, op, yp);
       }
       if (*istate <= 0) {
-        RSprintf("IDID=%d, %s\n", *istate, err_msg_ls[-(*istate)-1]);
+        rxSolveWarnPush(ind->id, "IDID=%d, %s", *istate, err_msg_ls[-(*istate)-1]);
         ind->rc[0] = -2019;
         break;
-      } else if (ind->err) { printErr(ind->err, ind->id); ind->rc[0] = -2019; break; }
+      } else if (ind->err) { ind->rc[0] = -2019; break; }
       break;
     case 1:
       if (!isSameTime(xout, *xp)) {
@@ -2661,11 +2694,10 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
         copyLinCmt(neq, ind, op, yp);
       }
       if (*istate <= 0) {
-        RSprintf("IDID=%d, %s\n", *istate, err_msg_ls[-(*istate)-1]);
+        rxSolveWarnPush(ind->id, "IDID=%d, %s", *istate, err_msg_ls[-(*istate)-1]);
         ind->rc[0] = -2019;
         break;
       } else if (ind->err){
-        printErr(ind->err, ind->id);
         ind->rc[0] = -2019;
         break;
       }
@@ -2723,12 +2755,10 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
         ind->rc[0] = -2019;
         break;
       } else if (ind->err){
-        // As the composite's probe this is not a user-visible failure: the
-        // caller clears ind->err and re-solves with the stiff secondary.
-        // Reporting it here would also truncate the caller's event loop
-        // (*i) for an interval that is about to be solved successfully.
+        // As the composite's probe this is not a failure: the caller clears
+        // ind->err and re-solves with the stiff secondary, so the caller's
+        // event loop (*i) is not truncated for an interval about to succeed.
         if (!autoSwitchPrimary) {
-          printErr(ind->err, ind->id);
           *i = ind->n_all_times-1;
         }
         break;
@@ -2776,7 +2806,7 @@ static inline void solveWith1PtComposite(int *neq, double *yp, double xout, doub
   double *_ypSave = (eff <= 64) ? _ypStack
                                 : (_ypDyn = (double*)malloc((size_t)eff * sizeof(double)));
   if (_ypSave == NULL) {
-    ind->err = 1;
+    rxSolverFail(ind);
     if (ind->rc[0] == 0) ind->rc[0] = -2019;
     return;
   }
@@ -2871,6 +2901,100 @@ static inline int canHandleSSLinear(rx_solving_options *op, rx_solving_options_i
   return 0;
 }
 
+// steady-state bolus from the linear solution; returns 1 when it applies
+static inline int handleSSbolusLinear(int *neq,
+                                      int *BadDose,
+                                      double *InfusionRate,
+                                      double *dose,
+                                      double *yp,
+                                      double *xout, int id,
+                                      int *i, int nx,
+                                      int *istate,
+                                      rx_solving_options *op,
+                                      rx_solving_options_ind *ind,
+                                      t_update_inis u_inis,
+                                      void *ctx,
+                                      double *xout2,
+                                      double *xp2,
+                                      double *curIi,
+                                      int adjustEvidBolusLag) {
+  if (!canHandleSSLinear(op, ind, ind->ix[*i])) return 0;
+  // only a linear solved, use calculated steady state instead of
+  // solved steady state.
+  //
+  // First set the steady state options for linCmtA or linCmtB
+  ind->linSS = 3;
+  ind->linSStau = *curIi;
+
+  // use handle evid to figure out what dose is applied
+
+  double ydum[2];
+  ydum[0] = ydum[1] = 0;
+
+  // here dose can be to the depot or central compartment
+  ind->idx=*i;
+  *xout2 = *xp2 + *curIi;
+  int evid = getEvid(ind, ind->ix[*i])-adjustEvidBolusLag;
+  int wh, cmt, wh100, whI, wh0;
+  getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
+  ind->linSSbolusCmt = cmt;
+  // Use "real" xout for handle_evid functions.
+  handle_evid(getEvid(ind, ind->ix[*i])-adjustEvidBolusLag, neq[0],
+              BadDose, InfusionRate, dose, ydum,
+              *xout, neq[1], ind);
+  ind->ixds--; // This dose stays in place
+
+  ind->linSSvar = ydum[cmt];
+  solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+               *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+  ind->linSS = 0; // reset to normal solve
+
+  if (yp[cmt] > 0) {
+    // now advance system by the bolus time to get the right derivatives
+    // and use the trough concentrations (as expected in this function)
+    *xp2 = *xout2;
+    *xout2 = *xp2 + *curIi;
+    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    return 1;
+  }
+  return 0;
+}
+
+// test one iterated steady-state bolus; returns 1 to stop iterating
+static inline int ssBolusDone(int nDose, int minSS, int maxSS, int *neq,
+                              double *yp, int *i,
+                              rx_solving_options *op,
+                              rx_solving_options_ind *ind,
+                              int *canBreak) {
+  *canBreak=1;
+  if (nDose < minSS || (nDose == 1 && ind->rc[0] == -2019)) {
+    if (ind->rc[0]== -2019){
+      badSolveExit(*i);
+      return 1;
+    }
+    for (int k = rxEffNeq(ind, op); k--;) {
+      ind->solveLast[k] = yp[k];
+    }
+    *canBreak=0;
+    return 0;
+  }
+  if (ind->rc[0] == -2019){
+    for (int k = neq[0]; k--;) {
+      yp[k] = ind->solveLast[k];
+    }
+    ind->rc[0] = 2019;
+    return 1;
+  }
+  for (int k = neq[0]; k--;){
+    if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
+      *canBreak=0;
+    }
+    ind->solveLast[k] = yp[k];
+  }
+  return *canBreak || nDose >= maxSS;
+}
+
 extern "C" void handleSSbolus(int *neq,
                               int *BadDose,
                               double *InfusionRate,
@@ -2890,58 +3014,32 @@ extern "C" void handleSSbolus(int *neq,
                               int *canBreak,
                               int adjustEvidBolusLag) {
   ind->ssTime = *xp2;
-  if (canHandleSSLinear(op, ind, ind->ix[*i])) {
-
-    // only a linear solved, use calculated steady state instead of
-    // solved steady state.
-    //
-    // First set the steady state options for linCmtA or linCmtB
-    ind->linSS = 3;
-    ind->linSStau = *curIi;
-
-    // use handle evid to figure out what dose is applied
-
-    double ydum[2];
-    ydum[0] = ydum[1] = 0;
-
-    // here dose can be to the depot or central compartment
-    ind->idx=*i;
-    *xout2 = *xp2 + *curIi;
-    int evid = getEvid(ind, ind->ix[*i])-adjustEvidBolusLag;
-    int wh, cmt, wh100, whI, wh0;
-    getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
-    ind->linSSbolusCmt = cmt;
-    // Use "real" xout for handle_evid functions.
-    handle_evid(getEvid(ind, ind->ix[*i])-adjustEvidBolusLag, neq[0],
-                BadDose, InfusionRate, dose, ydum,
-                *xout, neq[1], ind);
-    ind->ixds--; // This dose stays in place
-
-    ind->linSSvar = ydum[cmt];
-    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-    ind->linSS = 0; // reset to normal solve
-
-    if (yp[cmt] > 0) {
-      // now advance system by the bolus time to get the right derivatives
-      // and use the trough concentrations (as expected in this function)
-      *xp2 = *xout2;
-      *xout2 = *xp2 + *curIi;
-      solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                   *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-      ind->ssTime = NA_REAL;
-      return;
-    }
+  if (handleSSbolusLinear(neq, BadDose, InfusionRate, dose, yp, xout, id, i,
+                          nx, istate, op, ind, u_inis, ctx, xout2, xp2,
+                          curIi, adjustEvidBolusLag)) {
+    ind->ssTime = NA_REAL;
+    return;
   }
   // advance to trough
   ind->idx=*i;
   *xout2 = *xp2 + *curIi;
+  // yp holds the first dose and an ss lag adds one after this, so minSS and
+  // maxSS count every dose before the steady-state one
+  int isSsLag = ind->wh0 == EVID0_SS20 || ind->wh0 == EVID0_SS0;
+  int minSS = max2(op->minSS - isSsLag, 1);
+  int maxSS = max2(op->maxSS - isSsLag, minSS);
+  for (int k = rxEffNeq(ind, op); k--;) {
+    ind->solveLast[k] = yp[k];
+  }
   // yp is last solve or y0
   solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
   *xp2 = *xout2;
   int evid=0;
-  for (int j = 0; j < op->maxSS; j++) {
+  for (int nDose = 1; ; nDose++) {
+    if (ssBolusDone(nDose, minSS, maxSS, neq, yp, i, op, ind, canBreak)) {
+      break;
+    }
     ind->idx=*i;
     *xout2 = *xp2 + *curIi;
     // Use "real" xout for handle_evid functions.
@@ -2949,39 +3047,13 @@ extern "C" void handleSSbolus(int *neq,
     handle_evid(evid, neq[0],
                 BadDose, InfusionRate, dose, yp,
                 *xout, neq[1], ind);
+    // restart so lsoda integrates from the dosed yp, not its internal state
+    *istate=1;
     // yp is last solve or y0
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
     ind->ixds--; // This dose stays in place
     // REprintf("ixds-- #2\n");
-    *canBreak=1;
-    if (j <= op->minSS -1){
-      if (ind->rc[0]== -2019){
-        badSolveExit(*i);
-        break;
-      }
-      for (int k = rxEffNeq(ind, op); k--;) {
-        ind->solveLast[k] = yp[k];
-      }
-      *canBreak=0;
-    } else if (j >= op->minSS){
-      if (ind->rc[0] == -2019){
-        for (int k = neq[0]; k--;) {
-          yp[k] = ind->solveLast[k];
-        }
-        ind->rc[0] = 2019;
-        break;
-      }
-      for (int k = neq[0]; k--;){
-        if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast[k])){
-          *canBreak=0;
-        }
-        ind->solveLast[k] = yp[k];
-      }
-      if (*canBreak){
-        break;
-      }
-    }
     *istate=1;
     *xp2 = *xout2;
   }
@@ -3066,7 +3138,8 @@ extern "C" void solveSSinf(int *neq,
                            double *curIi,
                            double *dur,
                            double *dur2,
-                           int *canBreak) {
+                           int *canBreak,
+                           int nAfter) {
   double ssStart = *xp2;
   double ssStop = *xp2 + *dur;
   if (canHandleSSLinear(op, ind, ind->idose[*infBixds])) {
@@ -3107,7 +3180,14 @@ extern "C" void solveSSinf(int *neq,
       return;
     }
   }
-  for (int j = 0; j < op->maxSS; j++) {
+  // minSS/maxSS count every dose before the steady-state one, including the
+  // nAfter that handleSS() gives after this loop
+  int minSS = max2(op->minSS - nAfter, 1);
+  int maxSS = max2(op->maxSS - nAfter, minSS);
+  for (int k = neq[0]; k--;) {
+    ind->solveLast[k] = ind->solveLast2[k] = yp[k];
+  }
+  for (int j = 0; j < maxSS; j++) {
     // Turn on Infusion, solve (0-dur)
     *canBreak=1;
     *xout2 = *xp2+*dur;
@@ -3131,7 +3211,7 @@ extern "C" void solveSSinf(int *neq,
     handle_evid(getEvid(ind, ind->idose[*infEixds]), neq[0],
                 BadDose, InfusionRate, dose, yp,
                 *xout+*dur, neq[1], ind);
-    if (j <= op->minSS -1){
+    if (j + 1 < minSS){
       if (ind->rc[0]== -2019){
         badSolveExit(*i);
         break;
@@ -3140,7 +3220,7 @@ extern "C" void solveSSinf(int *neq,
         ind->solveLast[k] = yp[k];
       }
       *canBreak=0;
-    } else if (j >= op->minSS){
+    } else {
       if (ind->rc[0]== -2019){
         if (op->strictSS){
           badSolveExit(*i);
@@ -3163,7 +3243,7 @@ extern "C" void solveSSinf(int *neq,
     ind->ssTime = ssStop;
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-    if (j <= op->minSS -1){
+    if (j + 1 < minSS){
       if (ind->rc[0]== -2019){
         badSolveExit(*i);
         break;
@@ -3172,7 +3252,7 @@ extern "C" void solveSSinf(int *neq,
         ind->solveLast2[k] = yp[k];
       }
       *canBreak=0;
-    } else if (j >= op->minSS){
+    } else {
       if (ind->rc[0]== -2019){
         if (op->strictSS){
           badSolveExit(*i);
@@ -3223,7 +3303,8 @@ extern "C" void solveSSinfLargeDur(int *neq,
                                    int *numDoseInf,
                                    double *offTime,
                                    double *addTime,
-                                   int *canBreak) {
+                                   int *canBreak,
+                                   int nAfter) {
   *numDoseInf = (int)(*dur / *curIi);
   *offTime = *dur - (*numDoseInf)*(*curIi);
   *addTime = *curIi - *offTime;
@@ -3239,14 +3320,24 @@ extern "C" void solveSSinfLargeDur(int *neq,
     handle_evid(getEvid(ind, ind->ix[*bi]), neq[0],
                 BadDose, InfusionRate, dose, yp,
                 *xout, neq[1], ind);
+    // restart so lsoda integrates each interval from the dosed yp
+    *istate=1;
     // yp is last solve or y0
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
   }
+  // minSS/maxSS count every dose before the steady-state one: the
+  // numDoseInf started above, one per period and the nAfter that handleSS()
+  // gives after this loop.  Convergence is checked from the first period.
+  int minSS = max2(op->minSS - nAfter - *numDoseInf, 1);
+  int maxSS = max2(op->maxSS - nAfter - *numDoseInf, minSS);
+  for (int k = neq[0]; k--;) {
+    ind->solveLast[k] = ind->solveLast2[k] = yp[k];
+  }
   int nDup = 0;
   double time2 = *xp2;
   double time3 = *xp2 + *addTime;
-  for (int j = 0; j < op->maxSS; j++) {
+  for (int j = 0; j < maxSS; j++) {
     // Turn on Infusion, solve (0-dur)
     *canBreak =1;
     *xout2    = *xp2 + *offTime;
@@ -3269,16 +3360,10 @@ extern "C" void solveSSinfLargeDur(int *neq,
     handle_evid(getEvid(ind, ind->idose[*infEixds]), neq[0],
                 BadDose, InfusionRate, dose, yp,
                 *xout + *dur, neq[1], ind);
-    if (j <= op->minSS -1){
-      if (ind->rc[0]== -2019){
-        badSolveExit(*i);
-        break;
-      }
-      for (int k = neq[0]; k--;) {
-        ind->solveLast[k] = yp[k];
-      }
-      *canBreak=0;
-    } else if (j >= op->minSS){
+    if (j + 1 < minSS && ind->rc[0]== -2019){
+      badSolveExit(*i);
+      break;
+    } else {
       if (ind->rc[0]== -2019){
         if (op->strictSS){
           badSolveExit(*i);
@@ -3301,16 +3386,10 @@ extern "C" void solveSSinfLargeDur(int *neq,
     ind->ssTime = time3;
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-    if (j <= op->minSS -1){
-      if (ind->rc[0]== -2019){
-        badSolveExit(*i);
-        break;
-      }
-      for (int k = neq[0]; k--;){
-        ind->solveLast2[k] = yp[k];
-      }
-      *canBreak=0;
-    } else if (j >= op->minSS){
+    if (j + 1 < minSS && ind->rc[0]== -2019){
+      badSolveExit(*i);
+      break;
+    } else {
       if (ind->rc[0]== -2019){
         if (op->strictSS){
           badSolveExit(*i);
@@ -3330,9 +3409,10 @@ extern "C" void solveSSinfLargeDur(int *neq,
       }
       if (*canBreak){
         nDup++;
-        if (nDup >= 7) {
-          break;
-        }
+      }
+      // 7 converged periods, or every one when minSS is smaller
+      if (j + 1 >= minSS && (nDup >= 7 || nDup == j + 1)) {
+        break;
       }
     }
     *xp2 = *xout2;
@@ -3402,13 +3482,17 @@ extern "C" void handleSSinf8(int *neq,
   *xp2 = 0.0;
   double infStep = op->infSSstep, a1=1.0, t1=*xp2+1.0;
   // Based on http://www.rxkinetics.com/theo.html -- Chiou method
-  for (int j = 0; j < op->maxSS; j++) {
+  // These are convergence steps, not doses, so a small dose count cannot
+  // stop them early
+  int minSS = max2(op->minSS, 5);
+  int maxSS = max2(op->maxSS, 10000);
+  for (int j = 0; j < maxSS; j++) {
     if (j == 0) *xout2 = *xp2+1.; // the first level drawn one hour after infusion
     else *xout2 = *xp2+infStep;
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
     *canBreak=1;
-    if (j <= op->minSS -1){
+    if (j <= minSS -1){
       for (int k = neq[0]; k--;) {
         ind->solveLast[k] = yp[k];
       }
@@ -4108,7 +4192,8 @@ void handleSS(int *neq,
                            &numDoseInf,
                            &offTime,
                            &addTime,
-                           &canBreak);
+                           &canBreak,
+                           (isSsLag && curLagExtra > 0) ? 1 + overIi : 0);
         // Adjoint handoff: large-duration fixed-rate infusion (dur>=ii) reaches
         // a periodic steady state with numDoseInf overlapping infusions -- the
         // period effective rate is (numDoseInf+1)*R for offTime then numDoseInf*R
@@ -4209,7 +4294,6 @@ void handleSS(int *neq,
           pushIgnoredDose(ignoreDoses[ii], ind);
         }
       } else if (ind->err) {
-        printErr(ind->err, ind->id);
         badSolveExit(*i);
       } else {
         // Infusion
@@ -4240,7 +4324,8 @@ void handleSS(int *neq,
                    &curIi,
                    &dur,
                    &dur2,
-                   &canBreak);
+                   &canBreak,
+                   (isSsLag && curLagExtra > 0) ? 1 + overIi : 0);
         // Adjoint handoff: a fixed-rate (whI == EVIDF_INF_RATE) infusion with a
         // single on/off window per period (dur < ii, this solveSSinf branch)
         // has dR/dp == 0, so the rk4s driver can record its steady-state period
@@ -4951,7 +5036,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             lsoda(ctx, yp, &xp, ind->extraDoseNewXout);
             copyLinCmt(neq, ind, op, yp);
-            postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
+            postSolve(neq, &(ctx->state), rc, &i, yp, err_msg_ls, 7, false, ind, op, rx);
             if (*rc < 0) localBadSolve = 1;
           }
           if (!localBadSolve) {
@@ -4969,7 +5054,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
               preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
               lsoda(ctx,yp, &ind->extraDoseNewXout, xout);
               copyLinCmt(neq, ind, op, yp);
-              postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
+              postSolve(neq, &(ctx->state), rc, &i, yp, err_msg_ls, 7, false, ind, op, rx);
               if (*rc < 0) localBadSolve = 1;
             }
             xp =  ind->extraDoseNewXout;
@@ -4979,7 +5064,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
           preSolve(op, ind, xp, xout, yp);
           lsoda(ctx, yp, &xp, xout);
           copyLinCmt(neq, ind, op, yp);
-          postSolve(neq, &(ctx->state), rc, &i, yp, NULL, 0, false, ind, op, rx);
+          postSolve(neq, &(ctx->state), rc, &i, yp, err_msg_ls, 7, false, ind, op, rx);
           if (*rc < 0) localBadSolve = 1;
         }
         xp = xout;
@@ -5889,6 +5974,8 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
   double delta = 0.0;
   int n =0, nzero = 0;
 
+  // this subject's own failure; op->badSolve is shared by every subject and thread
+  int localBadSolve = 0;
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return NA_REAL;
 
   nx = ind->n_all_times;
@@ -5928,45 +6015,50 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
     }
     if (getEvid(ind, ind->ix[i]) != 3) {
       if (ind->err) {
-        printErr(ind->err, ind->id);
         *rc = idid;
         // Bad Solve => NA
         badSolveExit(i);
+        localBadSolve = 1;
       } else {
         if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
-          if (!isSameTime(ind->extraDoseNewXout, xp)) {
+          if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             linSolve(neq, ind, yp, &xp, ind->extraDoseNewXout);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            if (*rc < 0) localBadSolve = 1;
             xp = ind->extraDoseNewXout;
           }
-          int idx = ind->idx;
-          int ixds = ind->ixds;
-          int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
-          ind->idx = -1-trueIdx;
-          handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
-                      BadDose, InfusionRate, ind->dose, yp, xout, neq[1], ind);
-          ind->idx = idx;
-          ind->ixds = ixds;
-          ind->idxExtra++;
-          if (!isSameTime(xout, ind->extraDoseNewXout)) {
+          if (!localBadSolve) {
+            int idx = ind->idx;
+            int ixds = ind->ixds;
+            int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+            ind->idx = -1-trueIdx;
+            handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
+                        BadDose, InfusionRate, ind->dose, yp, xout, neq[1], ind);
+            ind->idx = idx;
+            ind->ixds = ixds;
+            ind->idxExtra++;
+          }
+          if (!localBadSolve && !isSameTime(xout, ind->extraDoseNewXout)) {
             preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
             linSolve(neq, ind, yp, &(ind->extraDoseNewXout), xout);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            if (*rc < 0) localBadSolve = 1;
             xp = ind->extraDoseNewXout;
           }
         }
-        if (!isSameTime(xout, xp)) {
+        if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
           linSolve(neq, ind, yp, &xp, xout);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+          if (*rc < 0) localBadSolve = 1;
           xp = xout;
         }
       }
     }
     ind->_newind = 2;
-    if (!op->badSolve){
+    if (!localBadSolve) {
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(idid), u_inis);
@@ -6108,6 +6200,9 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
     }
     ind->solvedIdx = i;
   }
+  // a failed subject has no mean: what accumulated before the failure is partial
+  // (reached only through nlmixr2est's ind_solve(), via setupLinH())
+  if (localBadSolve) return NA_REAL; // # nocov
   double correction;
   switch (rx->linCmtHmeanO) {
   case 1: // arithmetic mean
@@ -6143,6 +6238,8 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
   neq[1] = solveid;
   ind = &(rx->subjects[neq[1]]);
 
+  // this subject's own failure; op->badSolve is shared by every subject and thread
+  int localBadSolve = 0;
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
 
   nx = ind->n_all_times;
@@ -6178,45 +6275,50 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
     }
     if (getEvid(ind, ind->ix[i]) != 3) {
       if (ind->err) {
-        printErr(ind->err, ind->id);
         *rc = idid;
         // Bad Solve => NA
         badSolveExit(i);
+        localBadSolve = 1;
       } else {
         if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
-          if (!isSameTime(ind->extraDoseNewXout, xp)) {
+          if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             linSolve(neq, ind, yp, &xp, ind->extraDoseNewXout);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            if (*rc < 0) localBadSolve = 1;
             xp = ind->extraDoseNewXout;
           }
-          int idx = ind->idx;
-          int ixds = ind->ixds;
-          int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
-          ind->idx = -1-trueIdx;
-          handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
-                      ind->BadDose, ind->InfusionRate, ind->dose, yp, xout, neq[1], ind);
-          ind->idx = idx;
-          ind->ixds = ixds;
-          ind->idxExtra++;
-          if (!isSameTime(xout, ind->extraDoseNewXout)) {
+          if (!localBadSolve) {
+            int idx = ind->idx;
+            int ixds = ind->ixds;
+            int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+            ind->idx = -1-trueIdx;
+            handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
+                        ind->BadDose, ind->InfusionRate, ind->dose, yp, xout, neq[1], ind);
+            ind->idx = idx;
+            ind->ixds = ixds;
+            ind->idxExtra++;
+          }
+          if (!localBadSolve && !isSameTime(xout, ind->extraDoseNewXout)) {
             preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
             linSolve(neq, ind, yp, &(ind->extraDoseNewXout), xout);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            if (*rc < 0) localBadSolve = 1;
             xp = ind->extraDoseNewXout;
           }
         }
-        if (!isSameTime(xout, xp)) {
+        if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
           linSolve(neq, ind, yp, &xp, xout);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+          if (*rc < 0) localBadSolve = 1;
           xp = xout;
         }
       }
     }
     ind->_newind = 2;
-    if (!op->badSolve){
+    if (!localBadSolve) {
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(idid), u_inis);
@@ -6352,7 +6454,7 @@ static int rxSegmentAutoSwitchGeneric(rx_solving_options *op,
   double *ypSave = (eff <= 64) ? _ypStack
                                : (_ypDyn = (double*)malloc((size_t)eff * sizeof(double)));
   if (ypSave == NULL) {
-    ind->err = 1;
+    rxSolverFail(ind);
     if (ind->rc[0] == 0) ind->rc[0] = -2019;
     return -4;
   }
@@ -6399,7 +6501,7 @@ static int rxSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
     double *ypSave = (eff <= 64) ? _ypStack
                                  : (_ypDyn = (double*)malloc((size_t)eff * sizeof(double)));
     if (ypSave == NULL) {
-      ind->err = 1;
+      rxSolverFail(ind);
       if (ind->rc[0] == 0) ind->rc[0] = -2019;
       return -4;
     }
@@ -6458,6 +6560,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   double *yp;
   void *ctx = NULL;
   int istate = 0;
+  // this subject's own failure; op->badSolve is shared by every subject and thread
+  int localBadSolve = 0;
   static const char *err_msg[]=
     {
       "input is not consistent",
@@ -6516,14 +6620,14 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
     }
     if (getEvid(ind, ind->ix[i]) != 3) {
       if (ind->err){
-        printErr(ind->err, ind->id);
         *rc = idid;
         // Bad Solve => NA
         badSolveExit(i);
+        localBadSolve = 1;
       } else {
         if (handleExtraDose(neq, ind->BadDose, InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
-          if (!isSameTimeDop(ind->extraDoseNewXout, xp)) {
+          if (!localBadSolve && !isSameTimeDop(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             neq[0] = eff - op->numLin - op->numLinSens;
             idid = rxSegmentAutoSwitch(rx, op, ind, neq, c_dydt, xp,
@@ -6531,30 +6635,34 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+            if (*rc < 0) localBadSolve = 1;
             xp = ind->extraDoseNewXout;
           }
-          int idx = ind->idx;
-          int ixds = ind->ixds;
-          int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
-          ind->idx = -1-trueIdx;
-          handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
-                      ind->BadDose, InfusionRate, ind->dose, yp, xout, neq[1], ind);
-          idid = 1;
-          ind->idx = idx;
-          ind->ixds = ixds;
-          ind->idxExtra++;
-          if (!isSameTimeDop(xout, ind->extraDoseNewXout)) {
-            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-            neq[0] = eff - op->numLin - op->numLinSens;
-            idid = rxSegmentAutoSwitch(rx, op, ind, neq, c_dydt,
-                                        ind->extraDoseNewXout, xout, yp, &istate, itol, eff, &i);
-            neq[0] = eff;
-            copyLinCmt(neq, ind, op, yp);
-            postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
-            xp = ind->extraDoseNewXout;
+          if (!localBadSolve) {
+            int idx = ind->idx;
+            int ixds = ind->ixds;
+            int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+            ind->idx = -1-trueIdx;
+            handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
+                        ind->BadDose, InfusionRate, ind->dose, yp, xout, neq[1], ind);
+            idid = 1;
+            ind->idx = idx;
+            ind->ixds = ixds;
+            ind->idxExtra++;
+            if (!isSameTimeDop(xout, ind->extraDoseNewXout)) {
+              preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
+              neq[0] = eff - op->numLin - op->numLinSens;
+              idid = rxSegmentAutoSwitch(rx, op, ind, neq, c_dydt,
+                                          ind->extraDoseNewXout, xout, yp, &istate, itol, eff, &i);
+              neq[0] = eff;
+              copyLinCmt(neq, ind, op, yp);
+              postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+              if (*rc < 0) localBadSolve = 1;
+              xp = ind->extraDoseNewXout;
+            }
           }
         }
-        if (!isSameTimeDop(xout, xp)) {
+        if (!localBadSolve && !isSameTimeDop(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
           neq[0] = eff - op->numLin - op->numLinSens;
           idid = rxSegmentAutoSwitch(rx, op, ind, neq, c_dydt, xp, xout, yp,
@@ -6562,12 +6670,13 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+          if (*rc < 0) localBadSolve = 1;
           xp = xout;
         }
         //dadt_counter = 0;
       }
     }
-    if (!op->badSolve) {
+    if (!localBadSolve) {
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(idid), u_inis);
@@ -7057,7 +7166,7 @@ static int denseSegmentSolve(rx_solve *rx, rx_solving_options *op,
     double *ypSave = (eff <= 64) ? _ypStack
                                  : (_ypDyn = (double*)malloc((size_t)eff * sizeof(double)));
     if (ypSave == NULL) {
-      ind->err = 1;
+      rxSolverFail(ind);
       if (ind->rc[0] == 0) ind->rc[0] = -2019;
       return -4;
     }
@@ -7151,6 +7260,8 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
   double *yp;
   void *ctx = NULL;
   int istate = 0;
+  // this subject's own failure; op->badSolve is shared by every subject and thread
+  int localBadSolve = 0;
   static const char *err_msg[]=
     {
       "input is not consistent",
@@ -7271,14 +7382,15 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+          if (*rc < 0) localBadSolve = 1;
           xp = xout;
         }
       }
     } else {
       if (ind->err) {
-        printErr(ind->err, ind->id);
         *rc = idid;
         badSolveExit(i);
+        localBadSolve = 1;
       } else {
         // extraDose loop: use dense output for each pre-dose sub-segment so
         // obs before every extra-dose time are filled via dopDenseSolout.
@@ -7297,6 +7409,10 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
             xp = ind->extraDoseNewXout;
+            if (*rc < 0) {
+              localBadSolve = 1;
+              break;
+            }
           }
           int idx  = ind->idx;
           int ixds = ind->ixds;
@@ -7313,7 +7429,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
         // Dense segment solve from xp to xout, filling all pending obs via callback.
         // For a key (non-obs) event: obs in segment are slots [last_key_i+1 .. i-1].
         // For last-obs case (need_seg): obs in segment are slots [last_key_i+1 .. i].
-        if (!isSameTimeDop(xout, xp)) {
+        if (!localBadSolve && !isSameTimeDop(xout, xp)) {
           dc.obs_next    = last_key_i + 1;
           dc.segment_end = need_seg ? i : i - 1;
 
@@ -7331,13 +7447,14 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
+          if (*rc < 0) localBadSolve = 1;
           xp = xout;
         }
       }
     }
 
     // Handle the key event and updateSolve -- identical to ind_dop0
-    if (!op->badSolve) {
+    if (!localBadSolve) {
       ind->idx = i;
       if (this_evid == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout, yp, &(idid), u_inis);
@@ -7875,6 +7992,7 @@ void shi21ForwardH(rx_solve *rx, rx_solving_options *op, int solveid, int *_neq,
   }
 }
 
+// reached only through nlmixr2est's ind_solve(), via setupLinH()
 double shiRC(double &h, double ef,
              int &idx,
              double &fp1, double &fm1,
@@ -7896,7 +8014,7 @@ double shiRC(double &h, double ef,
     return -1.0;
   }
   fm1 = ind_linCmtFH(-h, idx, rx, op, solveid, _neq, c_dydt, u_inis);
-  finiteFm1 = std::isfinite(fp1);
+  finiteFm1 = std::isfinite(fm1);
   if (!finiteFm1) {
     finiteFp3 = true;
     finiteFm3 = true;
@@ -7905,11 +8023,10 @@ double shiRC(double &h, double ef,
   double fp3 = ind_linCmtFH(3*h, idx, rx, op, solveid, _neq, c_dydt, u_inis);
   finiteFp3 = std::isfinite(fp3);
   if (!finiteFp3) {
-    finiteFp3 = true;
     return -1.0;
   }
   double fm3 = ind_linCmtFH(-3*h, idx, rx, op, solveid, _neq, c_dydt, u_inis);
-  finiteFm3 = std::isfinite(fp3);
+  finiteFm3 = std::isfinite(fm3);
   if (!finiteFm3) {
     return -1.0;
   }
@@ -8077,11 +8194,11 @@ void setupLinH(rx_solve *rx, int solveid,
 }
 
 // This is used by focei to optimize per individual
-extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
-                          t_dydt_liblsoda dydt_lls,
-                          t_dydt_lsoda_dum dydt_lsoda, t_jdum_lsoda jdum,
-                          t_dydt c_dydt, t_update_inis u_inis,
-                          int jt) {
+static void ind_solve0(rx_solve *rx, unsigned int cid,
+                       t_dydt_liblsoda dydt_lls,
+                       t_dydt_lsoda_dum dydt_lsoda, t_jdum_lsoda jdum,
+                       t_dydt c_dydt, t_update_inis u_inis,
+                       int jt) {
   // par_progress_1=0;
   // _isRstudio = isRstudio();
   // setRstudioPrint(_isRstudio);
@@ -8363,6 +8480,19 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
   par_progress_0=0;
 }
 
+// One subject's solve for a caller outside par_solve() (nlmixr2est's inner
+// problem), which flushes the aggregator itself: a failure's reasons are
+// pushed with the subject named, whichever thread solved it.
+extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
+                          t_dydt_liblsoda dydt_lls,
+                          t_dydt_lsoda_dum dydt_lsoda, t_jdum_lsoda jdum,
+                          t_dydt c_dydt, t_update_inis u_inis,
+                          int jt) {
+  ind_solve0(rx, cid, dydt_lls, dydt_lsoda, jdum, c_dydt, u_inis, jt);
+  rx_solving_options_ind *ind = &(rx->subjects[cid]);
+  if (ind->err != 0) rxSolveErrPush(ind->id, ind->err);
+}
+
 extern "C" void setRxThreadId(int id);
 extern "C" int rxSolveIsSetup(void);
 extern "C" void freeIndLinExpCache(void);
@@ -8528,7 +8658,6 @@ extern "C" void par_solve(rx_solve *rx) {
     if (op->neq == op->numLinSens + op->numLin) {
       // This only is linear compartment solving
       par_linCmt(rx);
-      return;
     } else {
 #ifdef _OPENMP
       int cores = op->cores;
@@ -8822,6 +8951,13 @@ extern "C" void par_solve(rx_solve *rx) {
   if (inds_threadCur != NULL) {
     for (int _t = inds_threadCurN; _t--;) inds_threadCur[_t] = NULL;
   }
+  // Each failed subject's reasons, pushed here on the main thread, so every
+  // subject is named whichever thread solved it.
+  uint32_t nsubErr = (uint32_t)rx->nsub * rx->nsim;
+  for (uint32_t _sid = 0; _sid < nsubErr; _sid++) {
+    rx_solving_options_ind *_indErr = &rx->subjects[_sid];
+    if (_indErr->err != 0) rxSolveErrPush(_indErr->id, _indErr->err);
+  }
   /* Standalone rxSolve users see one summary line per call instead of a
      flood. nlmixr2est does not enter through par_solve for inner iterations
      (it calls ind_solve per subject) and flushes from its own iteration
@@ -9025,4 +9161,18 @@ extern "C" SEXP _rxode2_rxApiErrTest_(SEXP inParallelS) {
     (void)getIndIx(ind, bad);
   }
   return Rf_ScalarLogical(rxApiErrPendingImpl());
+}
+
+// For unit tests: push a line, then run par_solve() on the last set-up solve,
+// as SAEM does between its subjects' own ind_solve() calls.  par_solve()'s
+// flush prints the line only if par_solve() keeps what was pushed before it.
+extern "C" SEXP _rxTestParSolveAfterPush(void) {
+  rx_solve *rx = getRxSolve_();
+  if (rx == NULL || rx->subjects == NULL || rx->op == NULL ||
+      rxSolveIsSetup() == 0) {
+    return R_NilValue;
+  }
+  rxSolveWarnPush(-1, "rxTest -- pushed before par_solve()");
+  par_solve(rx);
+  return R_NilValue;
 }

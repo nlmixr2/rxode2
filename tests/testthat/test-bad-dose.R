@@ -22,4 +22,16 @@ d/dt(blood)     = a*intestine - b*blood
 
     expect_warning(solve(mod, et), NA)
   })
+
+  test_that("continuous steady-state infusion to a missing compartment is ignored", {
+    # previously wrote past the per-thread infusion-rate buffer
+    ev <- et(amt = 0, rate = 2, cmt = 3, ss = 1) |> et(1:4)
+    for (meth in c("liblsoda", "lsoda", "dop853")) {
+      expect_warning(
+        s <- rxSolve(mod, ev, method = meth),
+        rex::rex("dose to compartment 3 ignored (not in system; 'id=1')")
+      )
+      expect_equal(s$blood, rep(0, 4))
+    }
+  })
 })
