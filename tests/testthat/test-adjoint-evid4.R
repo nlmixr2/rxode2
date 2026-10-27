@@ -24,8 +24,8 @@ rxTest({
     for (.nm in names(scen)) {
       .ev <- scen[[.nm]]
       .ref <- .adjFd(.txt, .ev, .p)
-      # one method per backward sweep, and liblsodaadj
-      for (.m in c("rk4s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj")) {
+      # one method per backward sweep, liblsodaadj and cvodesadj
+      for (.m in c("rk4s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj")) {
         .a <- rxSolveAdjointRk4(.txt, .ev,
           params = .p, calcSens = .cs, method = .m,
           atol = 1e-10, rtol = 1e-10, hmin = if (.m == "rk4s") 0.001 else 0
