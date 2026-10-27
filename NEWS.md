@@ -222,6 +222,42 @@
   for the shift of the whole infusion window; before, it was missing in
   every method.
 
+- A steady-state (`ss = 1`) dose after the first record no longer gives
+  wrong adjoint sensitivities: in the `rk4s` family the observations
+  before it picked up the steady-state term, and in
+  `method = "liblsodaadj"` the observations after it lacked it.  This
+  covers bolus, periodic and continuous infusion steady states.
+
+- Several `ss = 1` doses in one subject now each use their own regimen in
+  the `rk4s` family of adjoint methods; before, they all used one recorded
+  steady-state period, so a later dose with a different amount or interval
+  gave wrong sensitivities.  `method = "liblsodaadj"` carries one `ss = 1`
+  dose per subject and no longer refuses several subjects that have one
+  each at different times.
+
+- A fixed-duration (`dur =`) steady-state infusion got no steady-state
+  term at all in any adjoint method, so its sensitivities were wrong; it
+  now gets one.
+
+- The adjoint bioavailability (`f()`) sensitivity of an `ss = 1` bolus is
+  now carried through every steady-state period, at the window start and
+  later; before, only the dose at the event time counted, not the doses of
+  the earlier periods that make up the steady state.
+
+- A dose that follows a reset at the same time (`evid = 4`, or `evid = 3`
+  and a dose at one time) lost its bioavailability (`f()`) adjoint
+  sensitivity in the `rk4s` family of methods and in
+  `method = "liblsodaadj"`; it is now kept.  Events at the same step are
+  now transposed in reverse order in the `rk4s` family, which also fixes a
+  dose together with a replace or multiply at one time.  The bioavailability
+  that `f()` applies to a replace or multiply value is still missing from
+  the adjoint sensitivities.
+
+- With `method = "cvodesadj"`, and with `method = "liblsodaadj"` when
+  nothing was integrated between resets, an observation recorded at the
+  time of a reset (`evid = 3`) returned the pre-reset sensitivity; it now
+  reads the post-reset state, as the other adjoint methods do.
+
 - With both `f()` and `alag()` modeled on a compartment, the adjoint
   lag-time sensitivity was `1/F` times too large; it now uses the dose
   that lands.  The same applied to the delay-equation dose jump.
@@ -244,8 +280,8 @@
 
 - The adjoint solve methods now include the initial-condition term, so a
   parameter that enters through an initial condition (directly or after a
-  reset) gets its sensitivity instead of 0.  This does not yet cover a
-  subject with a steady-state (`ss = 1`) dose.
+  reset) gets its sensitivity instead of 0, also in a subject with a
+  steady-state (`ss = 1`) dose.
 
 - Adjoint solves of a model that pushes doses at run time (`bolus()`,
   `evid_()` and friends inside `if()`) no longer corrupt memory and crash

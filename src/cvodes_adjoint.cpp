@@ -214,6 +214,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   }
 
   std::vector<double> obsT; std::vector<int> obsIx;
+  std::vector<size_t> obsReset;   // resets processed before each observation was stored
   std::vector<double> resetT;   // evid-3 reset times (costate jump: lambda := 0)
   // replace (type 5: lambda[c]:=0) / multiply (type 6: lambda[c]*=factor) events;
   // the backward sweep stops at each and applies the transpose costate jump.
@@ -431,7 +432,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
         }
       }
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
-      if (isObs(getEvid(ind, ind->ix[i]))) { obsT.push_back(xout); obsIx.push_back(i); }
+      if (isObs(getEvid(ind, ind->ix[i]))) { obsT.push_back(xout); obsIx.push_back(i); obsReset.push_back(resetT.size()); }
       if (_mtime_requeued) i--;
     }
     ind->solvedIdx = i;
@@ -497,12 +498,11 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   for (int oi = (int)obsT.size() - 1; bok && oi >= 0; --oi) {
     double ti = obsT[oi]; int solveIdx = obsIx[oi];
     double *out = getSolve(solveIdx);
-    // A reset at tau<ti zeroes the costate (dy_k(ti)/dp depends only on the
-    // post-reset window), so the sweep only needs to reach the most recent reset
-    // before ti; below tReset the costate is 0 and mu is frozen.
-    double tStop = t0;
-    for (size_t r = 0; r < resetT.size(); ++r)
-      if (resetT[r] < ti - 1e-12 && resetT[r] > tStop) tStop = resetT[r];
+    // A reset zeroes the costate (dy_k(ti)/dp depends only on the post-reset
+    // window), so the sweep only needs to reach the most recent reset processed
+    // before this observation was stored -- including one at the observation's
+    // own time, whose observation reads the post-reset state.
+    double tStop = obsReset[oi] > 0 ? resetT[obsReset[oi] - 1] : t0;
     if (ti <= tStop || isSameTime(ti, tStop)) {   // the initial conditions, plus a bolus at ti
       for (int k = 0; k < nBase; ++k) {
         for (int j = 0; j < nBase; ++j) NV_Ith_S(B, j) = (j == k) ? 1.0 : 0.0;
