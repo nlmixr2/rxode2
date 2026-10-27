@@ -9,6 +9,10 @@
   them: after a failed `rxSolve(m, params, ev, sigma = ...)`, a plain solve
   of a model with that residual gave values up to 2.6 off.
 
+### Documentation
+- The pipeline article no longer saves its simulation into the installed
+  package directory (#1506).
+
 ## New features
 
 - `minSS` and `maxSS` now accept any count from 1, and `maxSS` may equal
