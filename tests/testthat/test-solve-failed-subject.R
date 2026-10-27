@@ -321,4 +321,22 @@ rxTest({
       "[rxTest -- pushed before par_solve()]: 1 warning(s)"
     )
   })
+
+  test_that("liblsoda fails a subject whose interpolation to an output time fails", {
+    # dy/dt = 1e308 overflows y after its first step, so intdy() cannot reach
+    # the outputs; the subject's state there was never computed
+    .m <- rxode2("d/dt(y) <- r")
+    .d <- data.frame(ID = rep(1:3, each = 4), TIME = rep(c(0.5, 1, 1.5, 2), 3), EVID = 0)
+    .p <- data.frame(ID = 1:3, r = c(1, 1e308, 2))
+    .w <- capture_warnings(.o <- .cap(.s <- as.data.frame(rxSolve(.m, .d, params = .p, method = "liblsoda"))))
+    expect_identical(unique(.w), "some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'")
+    expect_true(all(is.na(.s$y[.s$id == "2"])))
+    # the other subjects solve as they do alone
+    .ref <- as.data.frame(rxSolve(.m, .d[.d$ID != 2, ], params = .p[.p$ID != 2, ], method = "liblsoda"))
+    .ok <- .s[.s$id != "2", c("time", "y")]
+    rownames(.ok) <- NULL
+    expect_identical(.ok, .ref[, c("time", "y")])
+    expect_identical(.o[1], "[IDID=-3, illegal input detected (see printed message).]: 1 warning(s) for subject(s): 2")
+    expect_match(.o[2], "^\\[intdy -- t = [-0-9.e+]+ illegal\\]: 1 warning\\(s\\) for subject\\(s\\): 2$")
+  })
 })
