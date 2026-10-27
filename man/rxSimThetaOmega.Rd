@@ -228,6 +228,30 @@ a data frame with the simulated subjects
 \description{
 Simulate Parameters from a Theta/Omega specification
 }
+\examples{
+rxWithSeed(42, {
+  rxSimThetaOmega(
+    params = c(tka = 1, tcl = 2),
+    omega = lotri::lotri(eta.ka ~ 0.1), nSub = 3
+  )
+})
+}
+\seealso{
+Other Variability and uncertainty:
+\code{\link[=confint.rxSolve]{confint.rxSolve()}},
+\code{\link[=cvPost]{cvPost()}},
+\code{\link[=dfWishart]{dfWishart()}},
+\code{\link[=rinvchisq]{rinvchisq()}},
+\code{\link[=rxEtaDistExpand]{rxEtaDistExpand()}},
+\code{\link[=rxEtaDistMuRef]{rxEtaDistMuRef()}},
+\code{\link[=rxPp]{rxPp()}},
+\code{\link[=rxRmvn]{rxRmvn()}},
+\code{\link[=rxRmvt]{rxRmvt()}},
+\code{\link[=rxUiEtaDistAnchors]{rxUiEtaDistAnchors()}},
+\code{\link[=rxUiEtaDists]{rxUiEtaDists()}},
+\code{\link[=swapMatListWithCube]{swapMatListWithCube()}}
+}
 \author{
 Matthew L.Fidler
 }
+\concept{Variability and uncertainty}

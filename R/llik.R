@@ -43,6 +43,7 @@
 #' ret <- rxSolve(model, et)
 #' ret
 #' }
+#' @family Log-likelihood functions
 llikNorm <- function(x, mean = 0, sd = 1, full = FALSE) {
   rxode2ll::llikNorm(x, mean, sd, full)
 }
@@ -82,6 +83,7 @@ llikNorm <- function(x, mean = 0, sd = 1, full = FALSE) {
 #'
 #' rxSolve(model, et)
 #' }
+#' @family Log-likelihood functions
 llikPois <- function(x, lambda, full = FALSE) {
   rxode2ll::llikPois(x, lambda, full)
 }
@@ -126,6 +128,7 @@ llikPois <- function(x, lambda, full = FALSE) {
 #'
 #' rxSolve(model, et)
 #' }
+#' @family Log-likelihood functions
 llikBinom <- function(x, size, prob, full = FALSE) {
   rxode2ll::llikBinom(x, size, prob, full)
 }
@@ -168,6 +171,7 @@ llikBinom <- function(x, size, prob, full = FALSE) {
 #'
 #' rxSolve(model, et)
 #' }
+#' @family Log-likelihood functions
 llikNbinom <- function(x, size, prob, full = FALSE) {
   rxode2ll::llikNbinom(x, size, prob, full)
 }
@@ -214,6 +218,7 @@ llikNbinom <- function(x, size, prob, full = FALSE) {
 #'
 #' rxSolve(model, et)
 #' }
+#' @family Log-likelihood functions
 llikNbinomMu <- function(x, size, mu, full = FALSE) {
   rxode2ll::llikNbinomMu(x, size, mu, full)
 }
@@ -262,6 +267,7 @@ llikNbinomMu <- function(x, size, mu, full = FALSE) {
 #'
 #' rxSolve(model, et)
 #' }
+#' @family Log-likelihood functions
 llikBeta <- function(x, shape1, shape2, full = FALSE) {
   rxode2ll::llikBeta(x, shape1, shape2, full)
 }
@@ -307,6 +313,7 @@ llikBeta <- function(x, shape1, shape2, full = FALSE) {
 #' rxSolve(model, et)
 #' }
 #'
+#' @family Log-likelihood functions
 llikT <- function(x, df, mean = 0, sd = 1, full = FALSE) {
   rxode2ll::llikT(x, df, mean, sd)
 }
@@ -344,6 +351,7 @@ llikT <- function(x, df, mean = 0, sd = 1, full = FALSE) {
 #'
 #' rxSolve(model, et)
 #' }
+#' @family Log-likelihood functions
 llikChisq <- function(x, df, full = FALSE) {
   rxode2ll::llikChisq(x, df, full)
 }
@@ -386,6 +394,7 @@ llikChisq <- function(x, df, full = FALSE) {
 #'
 #' rxSolve(model, et)
 #' }
+#' @family Log-likelihood functions
 llikExp <- function(x, rate, full = FALSE) {
   rxode2ll::llikExp(x, rate, full)
 }
@@ -429,6 +438,7 @@ llikExp <- function(x, rate, full = FALSE) {
 #'
 #' rxSolve(model, et)
 #' }
+#' @family Log-likelihood functions
 llikF <- function(x, df1, df2, full = FALSE) {
   rxode2ll::llikF(x, df1, df2, full)
 }
@@ -470,6 +480,7 @@ llikF <- function(x, df1, df2, full = FALSE) {
 #'
 #' rxSolve(model, et)
 #' }
+#' @family Log-likelihood functions
 llikGeom <- function(x, prob, full = FALSE) {
   rxode2ll::llikGeom(x, prob, full)
 }
@@ -515,6 +526,7 @@ llikGeom <- function(x, prob, full = FALSE) {
 #'
 #' rxSolve(model, et)
 #' }
+#' @family Log-likelihood functions
 llikUnif <- function(x, alpha, beta, full = FALSE) {
   rxode2ll::llikUnif(x, alpha, beta, full)
 }
@@ -559,6 +571,7 @@ llikUnif <- function(x, alpha, beta, full = FALSE) {
 #'
 #' rxSolve(model, et)
 #' }
+#' @family Log-likelihood functions
 llikWeibull <- function(x, shape, scale, full = FALSE) {
   rxode2ll::llikWeibull(x, shape, scale, full)
 }
@@ -609,6 +622,7 @@ llikWeibull <- function(x, shape, scale, full = FALSE) {
 #'
 #' rxSolve(model, et)
 #' }
+#' @family Log-likelihood functions
 llikGamma <- function(x, shape, rate, full = FALSE) {
   rxode2ll::llikGamma(x, shape, rate, full)
 }
@@ -651,6 +665,7 @@ llikGamma <- function(x, shape, rate, full = FALSE) {
 #'
 #' rxSolve(model, et)
 #' }
+#' @family Log-likelihood functions
 llikCauchy <- function(x, location = 0, scale = 1, full = FALSE) {
   rxode2ll::llikCauchy(x, location, scale, full)
 }

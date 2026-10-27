@@ -34,6 +34,27 @@ rxD("fun", list(
   }
 ))
 }
+\seealso{
+Other User functions:
+\code{\link[=linMod]{linMod()}},
+\code{\link[=mix]{mix()}},
+\code{\link[=rxFun]{rxFun()}},
+\code{\link[=rxIntToBase]{rxIntToBase()}},
+\code{\link[=rxIntToLetter]{rxIntToLetter()}},
+\code{\link[=rxUdfUiControl]{rxUdfUiControl()}},
+\code{\link[=rxUdfUiData]{rxUdfUiData()}},
+\code{\link[=rxUdfUiEst]{rxUdfUiEst()}},
+\code{\link[=rxUdfUiExpr]{rxUdfUiExpr()}},
+\code{\link[=rxUdfUiFlag]{rxUdfUiFlag()}},
+\code{\link[=rxUdfUiIniDf]{rxUdfUiIniDf()}},
+\code{\link[=rxUdfUiIniLhs]{rxUdfUiIniLhs()}},
+\code{\link[=rxUdfUiIsValue]{rxUdfUiIsValue()}},
+\code{\link[=rxUdfUiLhs.dist]{rxUdfUiLhs.dist()}},
+\code{\link[=rxUdfUiMv]{rxUdfUiMv()}},
+\code{\link[=rxUdfUiNum]{rxUdfUiNum()}},
+\code{\link[=rxUdfUiParsing]{rxUdfUiParsing()}}
+}
 \author{
 Matthew Fidler
 }
+\concept{User functions}

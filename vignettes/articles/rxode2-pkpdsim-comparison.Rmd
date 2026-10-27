@@ -1,5 +1,5 @@
 ---
-title: "rxode2 and PKPDsim: A Feature Comparison"
+title: "Comparing rxode2 with PKPDsim"
 ---
 
 ```{r, include = FALSE}
@@ -56,13 +56,22 @@ writing:
 ```{r}
 library(rxode2)
 
-mod <- rxode2({
-  KA   <- exp(tka + eta.ka)
-  CL   <- exp(tcl + eta.cl)
-  d/dt(depot) <- -KA * depot
-  d/dt(centr) <- KA * depot - CL / V * centr
-  cp          <- centr / V
-})
+mod <- function() {
+  ini({
+    tka <- log(0.5)
+    tcl <- log(4)
+    V <- 10
+    eta.ka ~ 0.09
+    eta.cl ~ 0.09
+  })
+  model({
+    KA   <- exp(tka + eta.ka)
+    CL   <- exp(tcl + eta.cl)
+    d/dt(depot) <- -KA * depot
+    d/dt(centr) <- KA * depot - CL / V * centr
+    cp          <- centr / V
+  })
+}
 ```
 
 PKPDsim uses C++ array indexing (`A[1]`, `dAdt[1]`) which is more
@@ -110,7 +119,7 @@ user to manually manage the separation.
 ```{r}
 # rxode2: pre/post processing is separated by default
 # Iterative calls re-use the compiled model with minimal overhead
-rxSolve(mod, et, params = p)   # fast in any context
+rxSolve(mod, et)   # fast in any context
 
 # PKPDsim: use sim_core() for iterative use to avoid repeated overhead
 design <- sim(mod, regimen = r, return_design = TRUE)
@@ -123,11 +132,13 @@ rxode2 model objects support the native R pipe (`|>`) to clone and
 modify a model without rewriting the full specification.
 
 ```{r}
-base <- rxode2({
-  d/dt(depot) <- -KA * depot
-  d/dt(centr) <- KA * depot - CL / V * centr
-  cp          <- centr / V
-})
+base <- function() {
+  model({
+    d/dt(depot) <- -KA * depot
+    d/dt(centr) <- KA * depot - CL / V * centr
+    cp          <- centr / V
+  })
+}
 
 full <- base |>
   model({ KA <- exp(tka + eta.ka); CL <- exp(tcl + eta.cl) },
@@ -187,7 +198,7 @@ dispatched to `mirai` daemons (`rxSolve(..., parallel = n)`) for
 distributed/HPC execution, on top of the within-call OpenMP threading.
 
 ```{r}
-rxSolve(mod, params, ev, file = tempfile("rx"), parallel = 4)
+rxSolve(mod, ev, nSub = 10000, file = tempfile("rx"), parallel = 4)
 ```
 
 ## Features available in both tools (with different approaches)
@@ -430,3 +441,9 @@ for further details.
 - [`pkpdsim_to_nlmixr()` reference](https://insightrx.github.io/PKPDsim/reference/pkpdsim_to_nlmixr.html)
 - [rxode2 user manual](https://nlmixr2.github.io/rxode2-manual/)
 - [nlmixr2 package](https://nlmixr2.github.io/nlmixr2/)
+
+## Next steps
+
+- [Introduction to rxode2](rxode2-intro.html)
+- [How do I...?](rxode2-cookbook.html)
+- [Simulating populations](rxode2-sim-var.html)

@@ -17,6 +17,7 @@
 #'
 #' @author Omar Elashkar
 #' @export
+#' @family Event tables
 toTrialDuration <- function(ev, trialEnd, interval, writeDir = NULL) {
   checkmate::assertClass(ev, "rxEt")
   reg <- as.data.frame(ev[, c("id", "time")])

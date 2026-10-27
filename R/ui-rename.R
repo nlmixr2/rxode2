@@ -328,6 +328,7 @@
 #'
 #' ocmt |> rxRename(cpParent=cp)
 #'
+#' @family Model UI and piping
 rxRename <- function(.data, ..., envir = parent.frame()) {
   UseMethod("rxRename")
 }

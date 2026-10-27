@@ -118,6 +118,7 @@
 #'
 #' rxFixPop(m, returnNull=TRUE)
 #'
+#' @family Model UI and piping
 rxFixPop <- function(ui, returnNull = FALSE) {
   checkmate::assertLogical(returnNull, any.missing = FALSE, len = 1, null.ok = FALSE)
   .model <- rxUiDecompress(assertRxUi(ui))
@@ -196,6 +197,7 @@ rxFixPop <- function(ui, returnNull = FALSE) {
 #' }
 #'
 #' m <- rxFixRes(One.comp.transit.allo)
+#' @family Model UI and piping
 rxFixRes <- function(ui, returnNull = FALSE) {
   checkmate::assertLogical(returnNull, any.missing = FALSE, len = 1, null.ok = FALSE)
   .model <- rxUiDecompress(assertRxUi(ui))

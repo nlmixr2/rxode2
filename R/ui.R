@@ -228,6 +228,34 @@
   .fun2
 }
 
+#' Make sure occasion (IOV) variables use locf interpolation
+#'
+#' @param iniDf ini data frame of the model
+#' @param mv model variables of the model
+#' @return nothing, errors when an occasion variable declares a
+#'   non-locf interpolation
+#' @noRd
+#' @author Matthew L. Fidler
+.rxUiIovLocf <- function(iniDf, mv) {
+  .interp <- mv$interp
+  if (!is.factor(.interp) || length(.interp) == 0L) {
+    return(invisible())
+  }
+  .w <- which(!is.na(iniDf$condition) & is.na(iniDf$err))
+  .occ <- setdiff(unique(.lotriBaseCondition(iniDf$condition[.w])), "id")
+  .occ <- intersect(.occ, names(.interp))
+  .bad <- .occ[!(as.character(.interp[.occ]) %in% c("default", "locf"))]
+  if (length(.bad) > 0L) {
+    stop(
+      "occasion variable(s) ",
+      paste0("'", .bad, "' (", as.character(.interp[.bad]), ")", collapse = ", "),
+      " must use 'locf' interpolation",
+      call. = FALSE
+    )
+  }
+  invisible()
+}
+
 .rxFunction2ui <- function(fun) {
   .fun <- .rxEtaDistIniToModel(
     .rxFunctionRearrange(eval(parse(text = paste(.rxFunction2string(fun), collapse = "\n"))))
@@ -428,6 +456,33 @@ ini <- function(x, ..., envir = parent.frame(), append = NULL) {
 #' @author Matthew Fidler
 #'
 #' @export
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     tka <- log(1.1)
+#'     tcl <- log(3)
+#'     tv <- log(30)
+#'     eta.cl ~ 0.1
+#'     add.sd <- 0.7
+#'   })
+#'   model({
+#'     ka <- exp(tka)
+#'     cl <- exp(tcl + eta.cl)
+#'     v <- exp(tv)
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'     cp ~ add(add.sd)
+#'   })
+#' }
+#' # extract the model block
+#' model(mod)
+#' # replace a line; the new parameter tcl.wt is added to ini()
+#' mod |> model(cl <- exp(tcl + eta.cl) * (WT / 70)^tcl.wt)
+#' # append a line after cp
+#' mod |> model(auc <- cp * 12, append = cp)
+#' }
 model <- function(
   x,
   ...,
@@ -510,6 +565,7 @@ model <- function(
         call. = FALSE
       )
     }
+    .rxUiIovLocf(.mod$iniDf, .mod$mv0)
     assign("modelName", .funName, envir = .mod)
     class(.mod) <- "rxUi"
     ## let packages attach parse-time state to the freshly assembled ui.  This
@@ -652,6 +708,7 @@ print.rxUi <- function(x, ...) {
 #' print(class(f))
 #' print(is.environment(f))
 #'
+#' @family Model UI and piping
 rxUiDecompress <- function(ui) {
   if (!inherits(ui, "rxUi")) {
     return(ui)

@@ -114,6 +114,29 @@ typedef void (*t_rxParLoader)(rx_solve *rx, double *gpars, int npars, int ncols)
 // Defined outside the __RXODE2PTR_H__ guard so downstream packages see the typedef.
 typedef void (*t_rxDydtForce)(int *neq, double t, double *y, double *dydt);
 
+// Status codes of the multivariate t sampler (rxRmvtSetup/rxRmvtDraw); >0 are
+// warnings (the handle is usable), <0 are errors.  Outside the __RXODE2PTR_H__
+// guard so downstream packages see them.
+#define RXMVT_OK 0
+#define RXMVT_WARN_INFEASIBLE 1
+#define RXMVT_WARN_SINGULAR 2
+#define RXMVT_BAD_ARGS -1
+#define RXMVT_BAD_BOUNDS -2
+#define RXMVT_NOT_PD -3
+#define RXMVT_BAD_DF -4
+#define RXMVT_NLEQ_FAIL -5
+#define RXMVT_ACCEPT_FAIL -6
+#define RXMVT_NO_ENGINE -7
+#define RXMVT_ALLOC_FAIL -8
+
+#ifndef __RXODE2PTR_H__
+int rxRmvtSetup(void **handle, int d, const double *mu, const double *sigma,
+                int isChol, const double *lower, const double *upper, double nu,
+                double a, double tol, double nlTol, int nlMaxiter);
+int rxRmvtDraw(void *handle, double *out, int n);
+void rxRmvtFree(void *handle);
+#endif
+
 // Adjoint objective-gradient backward sweep (src/adjoint.cpp).  Its address is
 // exported to downstream packages through the rxode2 function-pointer table
 // (see _rxode2_rxode2Ptr in src/init.c and rxode2ptr.h); this direct declaration
@@ -284,10 +307,8 @@ static inline double _powerD(double x, double lambda, int yj0, double low, doubl
     /* REprintf("%f %f %f\n", x, p, -log(1/p-1)); */
     return Rf_qnorm5(p, 0, 1, 1, 0);
   case 5: // logit followed by yeo-johnson
-    p = (x-low)/(high-low);
-    if (p >= 1) return R_NaN;
-    if (p <= 0) return R_NaN;
-    p = -log(1/p-1);
+    if (!(x > low && x < high)) return R_NaN;
+    p = log(x-low) - log(high-x);
     if (lambda == 1.0) return p;
     if (p >= 0){
       if (lambda == 0) return log1p(p);
@@ -298,11 +319,8 @@ static inline double _powerD(double x, double lambda, int yj0, double low, doubl
       return (1.0 - pow(1.0 - p, l2))/l2;
     }
   case 4: // logitNorm
-    p = (x-low)/(high-low);
-    if (p >= 1) return R_NaN;
-    if (p <= 0) return R_NaN;
-    /* REprintf("%f %f %f\n", x, p, -log(1/p-1)); */
-    return -log(1/p-1);
+    if (!(x > low && x < high)) return R_NaN;
+    return log(x-low) - log(high-x);
   case 3: // logNorm
     if (x <= _eps) x0= _eps;
     return log(x0);
@@ -479,7 +497,7 @@ static inline double _powerDLambda(double x, double lambda, int yj0, double low,
   case 1: return _yjDL(x, lambda);                     // yeoJohnson
   case 2: case 3: case 4: case 6: return 0.0;          // norm/logNorm/logit/probit: no lambda
   case 5: // logit then yeoJohnson
-    p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = -log(1/p-1);
+    if (!(x > low && x < high)) return R_NaN; p = log(x-low) - log(high-x);
     return _yjDL(p, lambda);
   case 7: // probit then yeoJohnson
     p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = Rf_qnorm5(p, 0, 1, 1, 0);
@@ -498,7 +516,7 @@ static inline double _powerDLambda2(double x, double lambda, int yj0, double low
   case 1: return _yjDL2(x, lambda);
   case 2: case 3: case 4: case 6: return 0.0;
   case 5:
-    p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = -log(1/p-1);
+    if (!(x > low && x < high)) return R_NaN; p = log(x-low) - log(high-x);
     return _yjDL2(p, lambda);
   case 7:
     p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = Rf_qnorm5(p, 0, 1, 1, 0);
@@ -518,7 +536,7 @@ static inline double _powerDLambdaX(double x, double lambda, int yj0, double low
   case 1: return _yjDLx(x, lambda);
   case 2: case 3: case 4: case 6: return 0.0;
   case 5:
-    p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = -log(1/p-1);
+    if (!(x > low && x < high)) return R_NaN; p = log(x-low) - log(high-x);
     return _yjDLx(p, lambda)*_powerDD(x, lambda, 4, low, high);
   case 7:
     p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = Rf_qnorm5(p, 0, 1, 1, 0);

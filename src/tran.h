@@ -7,7 +7,8 @@ extern int needSort;
 void updateSyntaxCol(void);
 void trans_syntax_error_report_fn(char *err);
 void parseFree(int last);
-void RSprintf(const char *format, ...);
+#include "rxPrintfFormat.h"
+void RSprintf(const char *format, ...) R_PRINTF_FORMAT(1, 2);
 
 SEXP _rxode2parse_trans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
                         SEXP isEscIn, SEXP inME, SEXP goodFuns, SEXP fullPrintIn);
