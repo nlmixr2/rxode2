@@ -69,6 +69,20 @@ rxTest({
     }
   })
 
+  test_that("the gradient keeps duplicate observation rows", {
+    # dose 10 at t0, observed twice at t = 1: both rows enter the objective
+    .tt <- c(0.5, 1, 1, 2)
+    .obs <- c(5, 3, 2.8, 1)
+    .y <- 10 * exp(-0.7 * .tt)
+    .gKnown <- sum((.y - .obs) * -.tt * .y)
+    .ev <- et(amt = 10, cmt = "y") |> et(.tt)
+    .b <- .rxAdjointGradBuild("d/dt(y) <- -k*y", "k", "y", .ev)
+    .gC <- do.call(.rxAdjointGradEvalC, c(list(.b, c(k = 0.7), .tt, .obs), .tol))
+    expect_equal(.gC[["k"]], .gKnown, tolerance = 1e-6)
+    .gR <- suppressWarnings(do.call(.rxAdjointGradEval, c(list(.b, c(k = 0.7), .tt, .obs), .tol)))
+    expect_equal(.gR[["k"]], .gKnown, tolerance = 1e-6)
+  })
+
   test_that("the continuous adjoint refuses a reset", {
     .msg <- "the continuous adjoint does not support a reset (evid = 3/4); use rxSolveAdjointRk4()"
     for (.ev in list(et(c(0, 1, 3)) |> et(time = 2, evid = 3), et(c(0, 1, 3)) |> et(time = 2, evid = 4, amt = 5, cmt = "y"))) {
