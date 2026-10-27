@@ -222,9 +222,6 @@
   for the shift of the whole infusion window; before, it was missing in
   every method.
 
-- `method = "cvodesadj"` no longer fails its backward solve, returning
-  wrong sensitivities, when two events fall at the same time.
-
 - With both `f()` and `alag()` modeled on a compartment, the adjoint
   lag-time sensitivity was `1/F` times too large; it now uses the dose
   that lands.  The same applied to the delay-equation dose jump.
@@ -263,6 +260,9 @@
   longer produces invalid model code for a model with more than one
   string-valued output, such as an unconditional string and one assigned
   in `if`/`else`.
+
+- `method = "cvodesadj"` no longer fails its backward solve, returning
+  wrong sensitivities, when two events fall at the same time.
 
 # rxode2 5.1.8
 
