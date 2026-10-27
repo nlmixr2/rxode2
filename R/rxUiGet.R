@@ -81,6 +81,7 @@
 #' @param ... Other arguments
 #' @return value that was requested from the UI object
 #' @author Matthew Fidler
+#' @family Developer API
 #' @export
 rxUiGet <- function(x, ...) {
   if (!inherits(x, "rxUiGet")) {
@@ -411,6 +412,7 @@ attr(rxUiGet.multipleEndpoint, "rstudio") <- NA
 #' @param var variable name to be assigned
 #' @return parsed R expression that can be used for printing and
 #'   `as.function()` calls.
+#' @family Developer API
 #' @export
 #' @author Matthew L. Fidler
 #' @examples
@@ -748,6 +750,7 @@ rxUiGet.default <- function(x, ...) {
 #'
 #' @param enable boolean to enable/disable rxUi development mode.
 #' @return nothing, called for side effects
+#' @family Developer API
 #' @export
 #' @author Matthew L. Fidler
 #' @examples

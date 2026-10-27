@@ -80,6 +80,7 @@ rxUdfUi.mix <- function(fun) {
 #' plot(s, ipredSim)
 #'
 #' }
+#' @family User functions
 mix <- function(...) {
   .call <- match.call(expand.dots = TRUE)
   .args <- lapply(seq_along(.call)[-1L], function(i) {

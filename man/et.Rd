@@ -264,7 +264,25 @@ Pharmacometrics and Systems Pharmacology, 5(1), 3-10. ISSN 2163-8306
 \code{\link{add.dosing}}, \code{\link{et}},
 \code{\link{etRep}}, \code{\link{etRbind}},
 \code{\link{rxode2}}
+
+Other Event tables:
+\code{\link[=add.dosing]{add.dosing()}},
+\code{\link[=add.sampling]{add.sampling()}},
+\code{\link[=as.et]{as.et()}},
+\code{\link[=etExpand]{etExpand()}},
+\code{\link[=etRbind]{etRbind()}},
+\code{\link[=etRep]{etRep()}},
+\code{\link[=etSeq]{etSeq()}},
+\code{\link[=eventTable]{eventTable()}},
+\code{\link[=is.rxEt]{is.rxEt()}},
+\code{\link[=rxEventTableFile]{rxEventTableFile()}},
+\code{\link[=splitBolus]{splitBolus()}},
+\code{\link{splitBolusInfusion-directive}},
+\code{\link[=splitInfusion]{splitInfusion()}},
+\code{\link{splitInfusionBolus-directive}},
+\code{\link[=toTrialDuration]{toTrialDuration()}}
 }
 \author{
 Matthew L Fidler, Wenping Wang
 }
+\concept{Event tables}

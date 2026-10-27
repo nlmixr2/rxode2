@@ -92,6 +92,20 @@ Shafer S. L. \code{CONVERT.XLS}
 Rowland M, Tozer TN. Clinical Pharmacokinetics and Pharmacodynamics: Concepts and Applications (4th).
 Clipping Williams & Wilkins, Philadelphia, 2010.
 }
+\seealso{
+Other Utilities:
+\code{\link[=rxGetDefaultSerialize]{rxGetDefaultSerialize()}},
+\code{\link[=rxHtml]{rxHtml()}},
+\code{\link[=rxInv]{rxInv()}},
+\code{\link[=rxIsCurrent]{rxIsCurrent()}},
+\code{\link[=rxLock]{rxLock()}},
+\code{\link[=rxNumLoaded]{rxNumLoaded()}},
+\code{\link[=rxOmegaVarCovDeriv]{rxOmegaVarCovDeriv()}},
+\code{\link[=rxSuppressMsg]{rxSuppressMsg()}},
+\code{\link[=rxSymInvChol]{rxSymInvChol()}},
+\code{\link[=rxTempDir]{rxTempDir()}}
+}
 \author{
 Matthew Fidler and documentation from Justin Wilkins, \email{justin.wilkins@occams.com}
 }
+\concept{Utilities}

@@ -19,6 +19,58 @@ rxode2 related object
 \description{
 Assign the model block in the rxode2 related object
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    tcl <- log(3)
+    tv <- log(30)
+  })
+  model({
+    cl <- exp(tcl)
+    v <- exp(tv)
+    d/dt(central) <- -cl / v * central
+  })
+}
+ui <- rxode2(mod)
+model(ui) <- quote(model({
+  cl <- exp(tcl)
+  v <- exp(tv)
+  d/dt(central) <- -cl / v * central
+  cp <- central / v
+}))
+ui
+}
+}
+\seealso{
+Other Model UI and piping:
+\code{\link[=as.ini]{as.ini()}},
+\code{\link[=as.model]{as.model()}},
+\code{\link[=as.rxUi]{as.rxUi()}},
+\code{\link[=coef.rxUi]{coef.rxUi()}},
+\code{\link[=indLin]{indLin()}},
+\code{\link[=ini.rxUi]{ini.rxUi()}},
+\code{\link[=ini<-]{ini<-()}},
+\code{\link[=linCmtMicro]{linCmtMicro()}},
+\code{\link[=linToOde]{linToOde()}},
+\code{\link[=model.function]{model.function()}},
+\code{\link[=modelExtract]{modelExtract()}},
+\code{\link[=odeToLin]{odeToLin()}},
+\code{\link[=rxAppendModel]{rxAppendModel()}},
+\code{\link[=rxFixPop]{rxFixPop()}},
+\code{\link[=rxFixRes]{rxFixRes()}},
+\code{\link[=rxGetControl]{rxGetControl()}},
+\code{\link[=rxRemoveControl]{rxRemoveControl()}},
+\code{\link[=rxRename]{rxRename()}},
+\code{\link[=rxSetControl]{rxSetControl()}},
+\code{\link[=rxSetCovariateNamesForPiping]{rxSetCovariateNamesForPiping()}},
+\code{\link[=rxSetPipingAuto]{rxSetPipingAuto()}},
+\code{\link[=rxUiDecompress]{rxUiDecompress()}},
+\code{\link[=rxode2<-]{rxode2<-()}},
+\code{\link[=update.rxUi]{update.rxUi()}},
+\code{\link[=zeroRe]{zeroRe()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Model UI and piping}

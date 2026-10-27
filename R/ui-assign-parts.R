@@ -6,6 +6,29 @@
 #' @return rxode2 related object
 #' @export
 #' @author Matthew L. Fidler
+#' @family Model UI and piping
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     tcl <- log(3)
+#'     tv <- log(30)
+#'   })
+#'   model({
+#'     cl <- exp(tcl)
+#'     v <- exp(tv)
+#'     d/dt(central) <- -cl / v * central
+#'   })
+#' }
+#' ui <- rxode2(mod)
+#' model(ui) <- quote(model({
+#'   cl <- exp(tcl)
+#'   v <- exp(tv)
+#'   d/dt(central) <- -cl / v * central
+#'   cp <- central / v
+#' }))
+#' ui
+#' }
 `model<-` <- function(x, envir = environment(x), value) {
   UseMethod("model<-")
 }
@@ -31,6 +54,27 @@
 #' @return rxode2 related object
 #' @export
 #' @author Matthew L. Fidler
+#' @family Model UI and piping
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     tcl <- log(3)
+#'     tv <- log(30)
+#'   })
+#'   model({
+#'     cl <- exp(tcl)
+#'     v <- exp(tv)
+#'     d/dt(central) <- -cl / v * central
+#'   })
+#' }
+#' ui <- rxode2(mod)
+#' ini(ui) <- quote(ini({
+#'   tcl <- log(4)
+#'   tv <- log(40)
+#' }))
+#' ui
+#' }
 `ini<-` <- function(x, envir = environment(x), value) {
   UseMethod("ini<-")
 }
@@ -253,6 +297,7 @@
 #'
 #' rxode2(ui) <- two.compartment
 #'
+#' @family Model UI and piping
 `rxode2<-` <- function(x, envir = environment(x), value) {
   UseMethod("rxode2<-")
 }

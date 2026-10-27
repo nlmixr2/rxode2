@@ -160,7 +160,8 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   lsAdjActive = false;
   lsAdjInd = NULL;
 
-  if (op->badSolve || ind->err != 0) return;
+  // this subject's failure, not op->badSolve, which any subject's sets
+  if (ind->rc[0] < 0 || ind->err != 0) return;
   if (lsAdjSteps.empty() || lsAdjSegs.empty()) {   // no step taken: still at the initial conditions
     rk4sIniOnlyFill(op, ind, cSub, nBase, np, sensOff);
     return;

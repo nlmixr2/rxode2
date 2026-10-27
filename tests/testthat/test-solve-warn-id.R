@@ -1,10 +1,10 @@
 rxTest({
-  # `_rxTestSolveWarnLabels(idLvl, ids, setLvl)`: set rx_global's ID factor
-  # levels from `idLvl` (unless `setLvl` is FALSE), push one aggregated warning
-  # per internal solve id in `ids`, then flush.
-  .warnLabels <- function(idLvl, ids, setLvl = TRUE) {
+  # `_rxTestSolveWarnLabels(idLvl, ids, setLvl, maxIds)`: set rx_global's ID
+  # factor levels from `idLvl` (unless `setLvl` is FALSE), push one aggregated
+  # warning per internal solve id in `ids`, then flush listing `maxIds` subjects.
+  .warnLabels <- function(idLvl, ids, setLvl = TRUE, maxIds = 64L) {
     .out <- capture.output(
-      .Call("_rxTestSolveWarnLabels", idLvl, ids, setLvl, PACKAGE = "rxode2")
+      .Call("_rxTestSolveWarnLabels", idLvl, ids, setLvl, as.integer(maxIds), PACKAGE = "rxode2")
     )
     grep("warning\\(s\\)", .out, value = TRUE)
   }
@@ -34,6 +34,35 @@ rxTest({
     # nsub/nsim are whatever the last solve left; the levels here are not a
     # simulation's worth of subjects, so there is nothing to resolve.
     expect_match(.warnLabels(c("101", "202"), c(1L, 7L)), "for subject\\(s\\): 202, internal #8")
+  })
+
+  test_that("past 256 subjects for one message the remainder is a lower bound", {
+    # one message keeps at most 256 distinct subjects; the flush lists 64
+    .line <- function(n, rest) {
+      paste0(
+        "[rxTest -- solve warning]: ",
+        n,
+        " warning(s) for subject(s): ",
+        paste0("internal #", 1:64, collapse = ", "),
+        ", ... (",
+        rest,
+        " more)"
+      )
+    }
+    expect_identical(.warnLabels(character(0), 0:299), .line(300, "at least 193"))
+    expect_identical(.warnLabels(character(0), 0:255), .line(256, "192"))
+    expect_identical(.warnLabels(character(0), 0:99), .line(100, "36"))
+    # a repeat of a stored subject is not one more
+    expect_identical(.warnLabels(character(0), c(0:255, 0:255)), .line(512, "192"))
+    # listing every stored subject still says one more was seen
+    expect_identical(
+      .warnLabels(character(0), 0:299, maxIds = 300L),
+      paste0(
+        "[rxTest -- solve warning]: 300 warning(s) for subject(s): ",
+        paste0("internal #", 1:256, collapse = ", "),
+        ", ... (at least 1 more)"
+      )
+    )
   })
 
   test_that("a subject literally named Unknown is still printed as itself", {
@@ -143,5 +172,82 @@ rxTest({
     # empty.
     .warnLabels(character(0), integer(0))
     expect_equal(.Call("_rxTestGetIdLabels", 0L, PACKAGE = "rxode2"), "Unknown")
+  })
+
+  test_that("a summarized warning value gives mean +/- sd (min/max), or itself once", {
+    .stat <- function(x) {
+      .out <- capture.output(.Call("_rxTestSolveWarnStat", x, PACKAGE = "rxode2"))
+      grep("warning\\(s\\)", .out, value = TRUE)
+    }
+    .x <- c(1, 2, 4, 8)
+    expect_identical(
+      .stat(.x),
+      sprintf(
+        "[rxTest -- x = %g +/- %g (%g/%g), -x = %g +/- %g (%g/%g), n = 3]: 4 warning(s)",
+        mean(.x),
+        sd(.x),
+        min(.x),
+        max(.x),
+        -mean(.x),
+        sd(.x),
+        -max(.x),
+        -min(.x)
+      )
+    )
+    expect_identical(.stat(2.5), "[rxTest -- x = 2.5, -x = -2.5, n = 3]: 1 warning(s)")
+    # a large offset does not lose the spread (Welford, not sum of squares)
+    .x <- 1e8 + c(1, 2, 3)
+    expect_identical(
+      .stat(.x),
+      sprintf(
+        "[rxTest -- x = %g +/- %g (%g/%g), -x = %g +/- %g (%g/%g), n = 3]: 3 warning(s)",
+        mean(.x),
+        sd(.x),
+        min(.x),
+        max(.x),
+        -mean(.x),
+        sd(.x),
+        -max(.x),
+        -min(.x)
+      )
+    )
+  })
+
+  test_that("a dop853 step-limit warning keys on nmax and summarizes x over subjects", {
+    .m <- rxode2({
+      d/dt(central) <- -0.1 * central
+    })
+    .ev <- et(amt = 100) |> et(seq(0, 200, by = 50)) |> et(id = 1:2)
+    .out <- capture.output(suppressWarnings(rxSolve(.m, .ev, method = "dop853", maxsteps = 5L)))
+    .line <- grep("^\\[exit of dop853", .out, value = TRUE)
+    expect_length(.line, 1L)
+    expect_match(
+      .line,
+      "^\\[exit of dop853 at x = [-0-9.e+]+ \\+/- [-0-9.e+]+ \\([-0-9.e+]+/[-0-9.e+]+\\), more than nmax = 5 are needed\\]: 2 warning\\(s\\) for subject\\(s\\): 1, 2$"
+    )
+  })
+
+  test_that("the dop853 step-size and intdy warnings give their x, h and t", {
+    .m <- rxode2({
+      y(0) <- y0
+      d/dt(y) <- y^2
+    })
+    # subject 2 blows up at t = 1; subject 1 does not
+    .ev <- et(seq(0, 2, by = 0.5)) |> et(id = 1:2)
+    .p <- data.frame(y0 = c(0.1, 1))
+    .out <- capture.output(suppressWarnings(rxSolve(.m, .ev, params = .p, method = "dop853")))
+    .line <- grep("^\\[exit of dop853", .out, value = TRUE)
+    expect_length(.line, 1L)
+    expect_match(
+      .line,
+      "^\\[exit of dop853 at x = [-0-9.e+]+, step size too small h = [-0-9.e+]+\\]: 1 warning\\(s\\) for subject\\(s\\): 2$"
+    )
+    .out <- capture.output(suppressWarnings(rxSolve(.m, .ev, params = .p, method = "liblsoda")))
+    .line <- grep("intdy", .out, value = TRUE)
+    expect_length(.line, 1L)
+    expect_match(
+      .line,
+      "^\\[intdy -- t = ([-0-9.e+]+|[-0-9.e+]+ \\+/- [-0-9.e+]+ \\([-0-9.e+]+/[-0-9.e+]+\\)) illegal\\]: [1-9][0-9]* warning\\(s\\) for subject\\(s\\): 2$"
+    )
   })
 })

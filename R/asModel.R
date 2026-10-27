@@ -61,6 +61,7 @@
 #'
 #' as.model(model)
 #'
+#' @family Model UI and piping
 as.model <- function(x) {
   UseMethod("as.model")
 }

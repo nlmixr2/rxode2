@@ -15,7 +15,7 @@
 #include "../inst/include/rxode2parse.h"
 #include "../inst/include/rxode2_control.h"
 #include "tran.h"
-#include "../inst/include/rxode2parseSbuf.h"
+#include "rxSbufFormat.h"
 
 // show_ode = 1 dydt
 #define ode_dydt 1

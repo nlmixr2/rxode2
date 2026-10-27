@@ -167,3 +167,12 @@ plot(bidQd, C2) + geom_amt(aes(amt=amt), col="red", lty=1, linewidth=1.2)
 
 }
 }
+\seealso{
+Other rxode2 plotting:
+\code{\link[=is.rxStackData]{is.rxStackData()}},
+\code{\link[=plot.rxSolve]{plot.rxSolve()}},
+\code{\link[=rxStack]{rxStack()}},
+\code{\link[=rxTheme]{rxTheme()}},
+\code{\link[=stat_cens]{stat_cens()}}
+}
+\concept{rxode2 plotting}
