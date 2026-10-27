@@ -167,25 +167,6 @@ rxTest({
     )
   })
 
-  # central FD of rxSolve(): dop853 at a relative step of 1e-5
-  .doseFd <- function(txt, ev, p, cs) {
-    .m <- rxode2(txt)
-    .ret <- list()
-    for (.pn in cs) {
-      .h <- max(abs(p[[.pn]]), 1) * 1e-5
-      .pu <- p
-      .pd <- p
-      .pu[.pn] <- .pu[.pn] + .h
-      .pd[.pn] <- .pd[.pn] - .h
-      .u <- as.data.frame(rxSolve(.m, ev, params = .pu, method = "dop853", atol = 1e-13, rtol = 1e-13))
-      .d <- as.data.frame(rxSolve(.m, ev, params = .pd, method = "dop853", atol = 1e-13, rtol = 1e-13))
-      for (.s in rxStateOde(.m)) {
-        .ret[[paste0("rx__sens_", .s, "_BY_", .pn, "__")]] <- (.u[[.s]] - .d[[.s]]) / (2 * .h)
-      }
-    }
-    .ret
-  }
-
   test_that("f() and alag() duals hold with observations at dose times, several doses, resets and subjects", {
     .fTxt <- "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\nf(depot) <- fd"
     .scen <- list(
@@ -218,7 +199,7 @@ rxTest({
     )
     for (.nm in names(.scen)) {
       .k <- .scen[[.nm]]
-      .fd <- .doseFd(.k$txt, .k$ev, .k$p, names(.k$p))
+      .fd <- .adjFd(.k$txt, .k$ev, .k$p, names(.k$p))
       for (.meth in c("rk4s", "dop853s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj")) {
         .a <- rxSolveAdjointRk4(
           .k$txt,
@@ -250,7 +231,7 @@ rxTest({
         hmin = if (.meth == "rk4s") 0.001 else 0
       )
       for (.id in 1:2) {
-        .fd <- .doseFd(
+        .fd <- .adjFd(
           .fTxt,
           et(amt = 100, cmt = "depot") |> et(c(0, 1, 2, 4, 8)),
           unlist(.pd[.id, -1]),
@@ -272,7 +253,7 @@ rxTest({
       .k <- scen[[.nm]]
       .txt <- paste(.infBase, .k$txt, sep = "\n")
       .ev <- .k$ev |> et(.infTt)
-      .fd <- .doseFd(.txt, .ev, .k$p, names(.k$p))
+      .fd <- .adjFd(.txt, .ev, .k$p, names(.k$p))
       for (.meth in .infMeths) {
         .a <- rxSolveAdjointRk4(.txt, .ev,
           params = .k$p, calcSens = names(.k$p), method = .meth,
