@@ -82,15 +82,14 @@
   assign("logit", function(x, a = 0, b = 1) log((x - a) / (b - x)), .env)
   # model defaults such as `k <- 0.5` stay symbolic; supplied params override
   .def <- .rxAdjDefaults(object)
-  for (.n in names(.def)) {
-    assign(.n, .def[[.n]], envir = .env)
-  }
   .setState <- function(x) {
     for (i in seq_len(.ns)) {
       assign(.st[i], x[i], envir = .env)
     }
   }
   .setParams <- function(params) {
+    # refill omitted defaults so an earlier call's override does not persist
+    params <- .rxAdjParams(params, .def)
     .nm <- names(params)
     for (i in seq_along(params)) {
       assign(.nm[i], params[[i]], envir = .env)

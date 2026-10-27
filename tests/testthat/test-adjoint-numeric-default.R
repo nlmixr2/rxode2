@@ -41,7 +41,11 @@ rxTest({
   test_that(".rxAdjointGradBuild differentiates a parameter with a model default", {
     .obs <- c(2, 2.5, 1.5, 0.5, 0.2)
     .cp <- as.vector(.gC) / .p[["v"]]
-    .gfd <- vapply(.cs, function(.pn) sum((.cp - .obs) * .fd[[paste0("rx__sens_center_BY_", .pn, "__")]] / .p[["v"]]), numeric(1))
+    .gfd <- vapply(
+      .cs,
+      function(.pn) sum((.cp - .obs) * .fd[[paste0("rx__sens_center_BY_", .pn, "__")]] / .p[["v"]]),
+      numeric(1)
+    )
     .b <- .rxAdjointGradBuild(.txt, .cs, "center/v", .ev)
     expect_lt(max(abs(.rxAdjointGradEvalC(.b, .p, .tt, .obs, denseBy = .db, atol = 1e-12, rtol = 1e-12) - .gfd)), 1e-6)
     # approx() collapses the duplicated dose-time row of the forward checkpoint
@@ -60,5 +64,12 @@ rxTest({
         expect_lt(abs(.f$SN[.k, .pi] - .fd[[.cn]][5]), 1e-6, label = .cn)
       }
     }
+  })
+
+  test_that(".rxDiscreteAdjointBuild restores a default omitted after an override", {
+    .b <- .rxDiscreteAdjointBuild(.txt, .cs)
+    .x <- c(depot = 0, center = 1)
+    expect_equal(unname(.b$Fe(.x, .p)[2]), -1)
+    expect_equal(unname(.b$Fe(.x, .p[c("ka", "v")])[2]), -0.5)
   })
 })
