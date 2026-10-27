@@ -15,6 +15,7 @@
 #'   (defaults to parent environment)
 #' @return A rxModelVars object that has the model variables of a
 #'   rxode2 syntax expression
+#' @family Developer API
 #' @export
 #' @importFrom Rcpp evalCpp
 #' @importFrom dparser dparse

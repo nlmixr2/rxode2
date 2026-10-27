@@ -1,11 +1,11 @@
 ---
-title: "Choosing ODE solvers in rxode2"
+title: "Choosing an ODE solver"
 output:
   rmarkdown::html_vignette:
     toc: true
     number_sections: true
 vignette: >
-  %\VignetteIndexEntry{Choosing ODE solvers in rxode2}
+  %\VignetteIndexEntry{Choosing an ODE solver}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
 ---
@@ -69,20 +69,30 @@ via OpenMP when `cores > 1`:
 ```{r}
 library(rxode2)
 
-mod <- rxode2({
-  d/dt(depot)  <- -ka * depot
-  d/dt(center) <- ka * depot - (CL / V) * center
-  Cp           <- center / V
-})
+mod <- function() {
+  ini({
+    tka <- log(1)
+    tcl <- log(0.1)
+    tv <- log(10)
+    eta.ka ~ 0.04
+    eta.cl ~ 0.09
+    eta.v ~ 0.04
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    CL <- exp(tcl + eta.cl)
+    V <- exp(tv + eta.v)
+    d/dt(depot)  <- -ka * depot
+    d/dt(center) <- ka * depot - (CL / V) * center
+    Cp           <- center / V
+  })
+}
 
-set.seed(42)
 ev <- et(amt = 100) |> et(0:72)
-theta <- c(ka = 1, CL = 0.1, V = 10)
-omega <- lotri(eta.ka ~ 0.04, eta.cl ~ 0.09, eta.v ~ 0.04)
 
-sim <- rxSolve(mod, theta, ev,
-               omega  = omega,
+sim <- rxSolve(mod, ev,
                nSub   = 1000,
+               seed   = 42,
                method = "liblsoda",
                cores  = 4)
 ```
@@ -99,7 +109,7 @@ use or when evaluating numerical agreement with deSolve (which also
 wraps this FORTRAN code), `lsoda` is appropriate:
 
 ```{r}
-sol <- rxSolve(mod, theta, ev, method = "lsoda")
+sol <- rxSolve(mod, ev, method = "lsoda")
 ```
 
 ### `dop853`
@@ -111,7 +121,7 @@ however, very efficient for smooth problems and provides dense output
 (accurate solutions at any requested time point, not just the grid).
 
 ```{r}
-sol <- rxSolve(mod, theta, ev, method = "dop853")
+sol <- rxSolve(mod, ev, method = "dop853")
 ```
 
 For non-stiff problems it is often faster than LSODA because it avoids
@@ -127,17 +137,21 @@ article
 [Matrix Exponentials and Inductive Linearization in rxode2](rxode2-ind-lin.html).
 
 ```{r}
-mmPK <- rxode2(
-  {
+mmPK <- function() {
+  ini({
+    ka <- 1
+    Km <- 0.5
+    Vmax <- 0.2
+    V <- 1
+  })
+  model({
     d/dt(depot)  <- -ka * depot
     Cp           <- center / V
     d/dt(center) <- ka * depot - Vmax * Cp / (Km + Cp)
-  },
-  indLin = TRUE
-)
+  })
+}
 
-sol <- rxSolve(mmPK, c(ka = 1, Km = 0.5, Vmax = 0.2, V = 1),
-               ev, method = "indLin")
+sol <- rxSolve(mmPK, ev, method = "indLin")
 ```
 
 ## Stiffness and Jacobians
@@ -148,25 +162,30 @@ very stiff problems you can improve performance and stability by
 providing an analytic Jacobian with `df(state)/dy(variable)`:
 
 ```{r}
-vanPol <- rxode2({
-  mu <- 1000
-  d/dt(y)  <- dy
-  d/dt(dy) <- mu * (1 - y^2) * dy - y
-  df(y)/dy(dy)  <- 1
-  df(dy)/dy(y)  <- -2 * dy * mu * y - 1
-  df(dy)/dy(dy) <- mu * (1 - y^2)
-  y(0)  <- 2
-  dy(0) <- 0
-})
+vanPol <- function() {
+  ini({
+    mu <- 1000
+  })
+  model({
+    d/dt(y)  <- dy
+    d/dt(dy) <- mu * (1 - y^2) * dy - y
+    df(y)/dy(dy)  <- 1
+    df(dy)/dy(y)  <- -2 * dy * mu * y - 1
+    df(dy)/dy(dy) <- mu * (1 - y^2)
+    y(0)  <- 2
+    dy(0) <- 0
+  })
+}
 
 sol <- rxSolve(vanPol, et(seq(0, 20, length.out = 500)), method = "lsoda")
 ```
 
 rxode2 can also compute the Jacobian symbolically via the `symengine`
-CAS using `calcJac = TRUE`:
+CAS using `calcJac = TRUE`, an option of the low-level `rxode2()` model
+(see [Low-level models and other input styles](rxode2-classic-models.html)):
 
 ```{r}
-vanPol_auto <- rxode2(vanPol$symengineModelNoPrune, calcJac = TRUE)
+vanPol_auto <- rxode2(vanPol()$symengineModelNoPrune, calcJac = TRUE)
 ```
 
 ## Practical pharmacometric starting points
@@ -236,9 +255,9 @@ AutoSwitch methods let you combine a fast non-stiff primary solver with a
 stiff fallback solver using a `"primary+stiff"` string:
 
 ```{r}
-rxSolve(model, events, params, method = "t54+ros43")
-rxSolve(model, events, params, method = "vern76+ros43")
-rxSolve(model, events, params, method = "dop853+sdirk43")
+rxSolve(model, events, method = "t54+ros43")
+rxSolve(model, events, method = "vern76+ros43")
+rxSolve(model, events, method = "dop853+sdirk43")
 ```
 
 Within each ODE interval (the segment between events/observations),
@@ -415,10 +434,12 @@ machinery the composite methods use.  Writing `delay(state, T)` inside a
 (Monolix `delay()` semantics):
 
 ```{r eval=FALSE}
-dde <- rxode2({
-  y(0) <- 1
-  d/dt(y) <- -delay(y, 1)        # y'(t) = -y(t - 1)
-})
+dde <- function() {
+  model({
+    y(0) <- 1
+    d/dt(y) <- -delay(y, 1)        # y'(t) = -y(t - 1)
+  })
+}
 rxSolve(dde, et(seq(0, 10, by = 0.1)))
 ```
 
@@ -519,7 +540,7 @@ solver state has to be reconstructed at requested sample times.
 All numerical solvers respond to `atol` and `rtol`:
 
 ```{r}
-sol <- rxSolve(mod, theta, ev,
+sol <- rxSolve(mod, ev,
                method = "liblsoda",
                atol   = 1e-10,
                rtol   = 1e-8)
@@ -729,14 +750,16 @@ direct and avoiding all symbolic manipulation.  This is the most
 numerically stable approach for linear compartmental models:
 
 ```{r}
-threeComp <- rxode2({
-  matExp()
-  k_depot_central  = ka
-  k_central_output = k20
-  k_central_periph = k23
-  k_periph_central = k32
-  Cp = central / Vc
-})
+threeComp <- function() {
+  model({
+    matExp()
+    k_depot_central  <- ka
+    k_central_output <- k20
+    k_central_periph <- k23
+    k_periph_central <- k32
+    Cp <- central / Vc
+  })
+}
 sol <- rxSolve(threeComp, params, ev, method = "indLin")
 ```
 
@@ -989,3 +1012,9 @@ the start.
 
 - Beal S, Sheiner LB, Boeckmann A, Bauer RJ (2009). NONMEM Users
   Guides. (1989--2009). Icon Development Solutions, Ellicott City, MD.
+
+## Next steps
+
+- [Stiff systems and Jacobians](rxode2-stiff.html)
+- [Speeding up solving](rxode2-speed.html)
+- [Dense output for fast solving](rxode2-dense-output.html)

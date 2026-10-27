@@ -44,10 +44,12 @@ Other Assertions:
 \code{\link[=assertRxUi]{assertRxUi()}},
 \code{\link[=assertVariableExists]{assertVariableExists()}},
 \code{\link[=assertVariableNew]{assertVariableNew()}},
+\code{\link[=rxHasAr]{rxHasAr()}},
 \code{\link[=rxPriorBuildSpec]{rxPriorBuildSpec()}},
 \code{\link[=rxPriorLogDensity]{rxPriorLogDensity()}},
 \code{\link[=rxPriorOmegaToCholOmegaInvGrad]{rxPriorOmegaToCholOmegaInvGrad()}},
 \code{\link[=rxUiPriors]{rxUiPriors()}},
+\code{\link[=testRxLinCmt]{testRxLinCmt()}},
 \code{\link[=testRxUnbounded]{testRxUnbounded()}}
 }
 \author{

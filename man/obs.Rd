@@ -42,6 +42,34 @@ Past-time pushes (where \code{time < t}) are silently ignored and counted;
 a warning is issued after solving.
 }
 }
+\examples{
+\donttest{
+f <- function() {
+  ini({
+    cl <- 1; v <- 10
+  })
+  model({
+    d/dt(central) <- -cl / v * central
+    cp <- central / v
+    # add observations at t + 0.5, t + 1.5 and t + 3
+    if (t < 1) obs(0.5, 1.5, 3)
+  })
+}
+rxSolve(f, et(amt = 100) |> et(c(0, 24)))
+}
+}
+\seealso{
+Other In-model dosing:
+\code{\link[=bolus]{bolus()}},
+\code{\link[=evid_]{evid_()}},
+\code{\link[=infuse]{infuse()}},
+\code{\link[=infuseDur]{infuseDur()}},
+\code{\link[=multiply]{multiply()}},
+\code{\link[=phantom]{phantom()}},
+\code{\link[=replace]{replace()}},
+\code{\link[=reset]{reset()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{In-model dosing}

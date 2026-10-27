@@ -25,6 +25,7 @@
 #' # Explicit subject IDs
 #' rxMemSummary(nobs = c(10L, 20L), ndoses = c(5L, 5L), id = c(101L, 102L))
 #' @export
+#' @family Solver options and performance
 rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
   .ret <- data.frame(id = id, nobs = as.integer(nobs), ndoses = as.integer(ndoses))
   class(.ret) <- c("rxMemSummary", "data.frame")
@@ -533,6 +534,7 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 #' rxMemoryEstimate(as.data.frame(ev), model = mod, control = ctrl)
 #'
 #' }
+#' @family Solver options and performance
 rxMemoryEstimate <- function(
   dat,
   model = NULL,

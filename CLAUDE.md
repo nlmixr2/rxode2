@@ -413,6 +413,31 @@ nlmixr2est's `src/init.c`.)
 - Keep comments and documentation terse. Condense multi-line explanations to
   one-liners, and drop worked examples and numeric anecdotes (e.g. "matches to
   ~1e-6", "up to order 8"). State the fact, not the story behind it.
+- **Every new exported, user-facing roxygen topic gets exactly one `@family`**
+  (Rcpp exports: `//' @family` in `src/*.cpp`, then `Rcpp::compileAttributes()`).
+  The family both adds the "Other <family>:" See also links and files the topic
+  into the pkgdown reference index, whose sections select with
+  `has_concept("<family>")` in `_pkgdown.yml`. Reuse an existing family name
+  (`grep -rh "@family" R src | sort | uniq -c`); add a new family only together
+  with a matching `has_concept()` section. Developer-only exports (used by nlmixr2 and
+  extension packages) get `@family Developer API` and no examples.
+  `pkgdown::check_pkgdown()` fails on a topic in neither.
+- Every new article (`vignettes/*.Rmd`, `vignettes/articles/*.Rmd`) must be added
+  both to the `articles:` index and to a navbar menu in `_pkgdown.yml`. Keep
+  top-level navbar labels to one short word; long labels push the search box
+  off-screen.
+- Article titles: sentence case, task-oriented, no "rxode2" prefix unless it
+  disambiguates (comparisons are "Comparing rxode2 with X"), at most ~45
+  characters, set only in the YAML `title:` (and `VignetteIndexEntry`). The
+  navbar item text must equal the article title.
+- Every article ends with a `Next steps` section (2-3 links along the reading
+  path), written in the `.Rmd` wrapper, never in a shared `.Rmdh`/rmdhunk.
+- Examples, articles and rmdhunks use the function form
+  (`function() { ini({}); model({}) }`). Low-level `rxode2({})`/`rxode2("")`
+  models and classic event tables are documented only in
+  `vignettes/articles/rxode2-classic-models.Rmd` (and where a page is about
+  them, e.g. C functions from a package). Examples that compile a model go in
+  `\donttest{}`.
 - Shorten multi-paragraph roxygen descriptions to a single compact paragraph,
   but keep every `@param`, `@return`, `@author`, `@export`, and `@keywords` tag.
 - Organize `NEWS.md` per version (`# rxode2 X.Y.Z`): user-facing changes first

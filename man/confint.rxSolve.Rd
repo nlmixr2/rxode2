@@ -104,6 +104,22 @@ confint(s2, "cp", level=0.95)
 }
 
 }
+\seealso{
+Other Variability and uncertainty:
+\code{\link[=cvPost]{cvPost()}},
+\code{\link[=dfWishart]{dfWishart()}},
+\code{\link[=rinvchisq]{rinvchisq()}},
+\code{\link[=rxEtaDistExpand]{rxEtaDistExpand()}},
+\code{\link[=rxEtaDistMuRef]{rxEtaDistMuRef()}},
+\code{\link[=rxPp]{rxPp()}},
+\code{\link[=rxRmvn]{rxRmvn()}},
+\code{\link[=rxRmvt]{rxRmvt()}},
+\code{\link[=rxSimThetaOmega]{rxSimThetaOmega()}},
+\code{\link[=rxUiEtaDistAnchors]{rxUiEtaDistAnchors()}},
+\code{\link[=rxUiEtaDists]{rxUiEtaDists()}},
+\code{\link[=swapMatListWithCube]{swapMatListWithCube()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Variability and uncertainty}

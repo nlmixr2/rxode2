@@ -233,6 +233,7 @@
 #'
 #' rxPreferredDistributionName(c("add","dt"))
 #'
+#' @family Developer API
 #' @export
 rxPreferredDistributionName <- function(dist) {
   if (length(dist) == 1) {

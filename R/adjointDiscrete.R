@@ -728,7 +728,11 @@
 #' Applies the (cached) adjoint expansion, solves with the requested adjoint
 #' method, and drops the internal `rx__adj*` lhs, returning the full-trajectory
 #' `rx__sens_<state>_BY_<param>__` columns.  The stiff analytic Jacobian is
-#' emitted into the expansion automatically, inferred from `method`.
+#' emitted into the expansion automatically, inferred from `method`.  For a
+#' model with `delay()`, the delayed-state term of the adjoint is first order
+#' in the step size whatever the method's order, and an adaptive method's
+#' error control does not limit it: cap the step with `hmax` (or use a
+#' fixed-step method with a small `hmin`) for accurate sensitivities.
 #'
 #' @inheritParams .rxDiscreteAdjointBuild
 #' @param events an rxode2 event table / data set.
@@ -739,6 +743,19 @@
 #' @return the solved data frame with `rx__sens_<state>_BY_<param>__` columns.
 #' @author Matthew L. Fidler
 #' @export
+#' @family Sensitivities
+#' @examples
+#' \donttest{
+#' pk <- function() {
+#'   model({
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'   })
+#' }
+#' ev <- et(amt = 100, cmt = "depot") |> et(c(1, 2, 4, 8, 12))
+#' rxSolveAdjointRk4(rxode2(pk), ev, params = c(ka = 1.2, cl = 3.5, v = 25),
+#'                   calcSens = c("ka", "cl"))
+#' }
 rxSolveAdjointRk4 <- function(object, events, params = NULL, calcSens, method = "rk4s", ...) {
   .b <- .rxAdjointModel(object, calcSens, stiff = .rxAdjointMethodStiff(method))
   .df <- as.data.frame(rxode2::rxSolve(.b$model, events, params = params, method = method, ...))

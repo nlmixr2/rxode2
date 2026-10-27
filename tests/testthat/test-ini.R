@@ -179,4 +179,21 @@ rxTest({
       expect_equal(rxModelVars(tmp)$ini, structure(numeric(0), names = character(0)))
     })
   })
+
+  test_that("rxSolve() and rxInits() name a copy of an unnamed vector, not the caller's", {
+    .m <- rxode2({
+      d / dt(depot) <- -ka * depot
+      d / dt(center) <- ka * depot - cl / v * center
+    })
+    .ini <- c(0, 0)
+    expect_warning(
+      rxSolve(.m, c(ka = 1, cl = 2, v = 10), et(amt = 100) |> et(0:2), inits = .ini),
+      "Assumed order of inputs"
+    )
+    expect_identical(.ini, c(0, 0))
+    .v <- c(0, 0)
+    expect_warning(.r <- rxInits(.m, .v, rxState(.m)), "Assumed order of inputs")
+    expect_identical(.v, c(0, 0))
+    expect_identical(.r, c(depot = 0, center = 0))
+  })
 })
