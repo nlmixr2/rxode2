@@ -176,34 +176,45 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   lsAdjSegs.back().stepEnd = lsAdjSteps.size();     // close the final segment
   size_t nStep = lsAdjSteps.size();
 
-  // Reconstruct the events at each segment's start time (seg 0 included, for a
-  // modeled-F/lag dose or a jump at t0), in the order the forward solve applied
-  // them.  Additive boluses (dPhi/dy=I) carry only their F/alag duals.
-  for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg) {
-    double t0 = lsAdjSegs[sg].t0;
+  // The events at time t among the first `upTo` records, in the order the
+  // forward solve applied them; y is the state at t, for a dose's F*amt.
+  // Additive boluses (dPhi/dy=I) carry only their F/alag duals.
+  auto lsEventsAt = [&](double t, int upTo, const double *y) {
+    std::vector<lsAdjEv> evs;
     std::vector<double> _y(eff, 0.0);
-    for (int c = 0; c < nBase; ++c) _y[c] = lsAdjSegs[sg].y0[c];
-    for (int i = 0; i < ind->n_all_times; ++i) {
+    for (int c = 0; c < nBase; ++c) _y[c] = y[c];
+    for (int i = 0; i < upTo; ++i) {
       int ev = getEvid(ind, ind->ix[i]);
       if (isObs(ev)) continue;
-      if (fabs(ind->timeThread[ind->ix[i]] - t0) > 1e-8) continue;
-      if (ev == 3) { lsAdjSegs[sg].ev.push_back({3, -1, 1.0, 0.0, 0.0}); continue; }
+      if (fabs(ind->timeThread[ind->ix[i]] - t) > 1e-8) continue;
+      if (ev == 3) { evs.push_back({3, -1, 1.0, 0.0, 0.0}); continue; }
       if (!isDose(ev)) continue;
       int _wh, _cmt, _wh100, _whI, _wh0; getWh(ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
       if (_cmt < 0 || _cmt >= nBase) continue;
-      if (_whI == 0 && _wh0 == EVID0_SS) { lsAdjSegs[sg].ev.push_back({8, _cmt, 1.0, 0.0, 0.0}); continue; }
+      // an ss = 1 dose (a bolus, or an infusion's start, not its stop) replaces
+      // the state with Y_ss(p)
+      if (_wh0 == EVID0_SS && (_whI == 0 || getDose(ind, ind->ix[i]) > 0)) {
+        evs.push_back({8, _cmt, 1.0, 0.0, 0.0});
+        continue;
+      }
+      if (_wh0 == EVID0_SS) continue;
       if (_whI == 0) {
         double amt = getDose(ind, ind->ix[i]);
-        lsAdjSegs[sg].ev.push_back({0, _cmt, 1.0, amt, getAmt(ind, ind->id, _cmt, amt, t0, _y.data())});
+        evs.push_back({0, _cmt, 1.0, amt, getAmt(ind, ind->id, _cmt, amt, t, _y.data())});
       } else if (_whI == EVIDF_REPLACE) {
-        lsAdjSegs[sg].ev.push_back({5, _cmt, 0.0, 0.0, 0.0});
+        evs.push_back({5, _cmt, 0.0, 0.0, 0.0});
       } else if (_whI == EVIDF_MULT) {
-        lsAdjSegs[sg].ev.push_back({6, _cmt, getDose(ind, ind->ix[i]), 0.0, 0.0});
+        evs.push_back({6, _cmt, getDose(ind, ind->ix[i]), 0.0, 0.0});
       }
       // (modeled rate/dur infusion on/off open a segment but are not a state jump;
       //  their dR/dp dual is reconstructed as windows below, not here.)
     }
-  }
+    return evs;
+  };
+  // the events at each segment's start time (seg 0 included, for a modeled-F/lag
+  // dose or a jump at t0)
+  for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg)
+    lsAdjSegs[sg].ev = lsEventsAt(lsAdjSegs[sg].t0, ind->n_all_times, lsAdjSegs[sg].y0.data());
 
   // An infusion start/stop opening a segment changes the rate into its cmt by the
   // jump in InfusionRate across the segment boundary.  A modeled alag() moves that
@@ -435,8 +446,10 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       // parameter quadrature with the costate of its post-dose state (modeled F ->
       // mu += amt*dF/dp*lam[c]; alag -> mu += -F*amt*dlag/dp*(lam^T F_X[:,c])); a jump
       // maps the costate back through dPhi/dy^T (reset 0, replace[c] 0, multiply[c]
-      // *factor).  At the window start the caller adds the ss=1 and initial-condition
-      // terms.
+      // *factor).  A reset or an ss = 1 dose replaces the whole state, so the events
+      // recorded before it do not reach later observations and the sweep stops
+      // there.  At the window start the caller adds the ss=1 and initial-condition
+      // terms with the costate left here.
       for (size_t k = Sg.ev.size(); k-- > 0;) {
         const lsAdjEv &E = Sg.ev[k];
         if (E.type == 0) {
@@ -445,12 +458,18 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
           if (op->adjDlagOff >= 0) { const double *dlag = &lhs[op->adjDlagOff];
             double sc = 0; for (int i = 0; i < nBase; ++i) sc += wSeed[i] * fx0[i * nBase + c];
             for (int p = 0; p < np; ++p) mu[p] += -E.amtF * dlag[c * np + p] * sc; }
-        } else if (E.type == 3 && seg > 0) {   // reset restores the initial conditions
-          rk4sAddIni(dx0P, wSeed.data(), mu.data(), nBase, np);
-          for (int b = 0; b < nBase; ++b) wSeed[b] = 0.0;
-        } else if (E.type == 8 && seg > 0) {   // interior ss=1: the state becomes Y_ss(p)
-          applySsIc(wSeed, mu);
-          for (int b = 0; b < nBase; ++b) wSeed[b] = 0.0;
+        } else if (E.type == 3) {             // reset restores the initial conditions
+          if (seg > 0) {
+            rk4sAddIni(dx0P, wSeed.data(), mu.data(), nBase, np);
+            for (int b = 0; b < nBase; ++b) wSeed[b] = 0.0;
+          }
+          break;
+        } else if (E.type == 8) {             // ss=1: the state becomes Y_ss(p)
+          if (seg > 0) {
+            applySsIc(wSeed, mu);
+            for (int b = 0; b < nBase; ++b) wSeed[b] = 0.0;
+          }
+          break;
         } else if (E.type == 5) { wSeed[E.cmt] = 0.0; }
         else if (E.type == 6) { wSeed[E.cmt] *= E.factor; }
       }
@@ -548,13 +567,40 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     // means liblsoda took no step since the reset (e.g. an all-zero state),
     // so no segment starts there: the observation still reads the reset state,
     // which is the initial condition.
-    if (tReset > lsAdjSegs[segObs].t0 + 1e-9) {
+    if (tReset > lsAdjSegs[segObs].t0 + 1e-9 && tReset < ti - 1e-9) {
       for (int q = 0; q < nBase * np; ++q) out[sensOff + q] = dx0P ? dx0P[q] : 0.0;
       continue;
     }
+    // No segment opens after the events at the last record time, so an
+    // observation there transposes the events recorded before it itself.
+    std::vector<lsAdjEv> evAt;
+    if (lsAdjSegs[segObs].t0 < ti - 1e-9) evAt = lsEventsAt(ti, i, out);
     for (int k = 0; k < nBase; ++k) {
       std::fill(mu.begin(), mu.end(), 0.0);
       for (int c = 0; c < nBase; ++c) wSeed[c] = (c == k) ? 1.0 : 0.0;
+      bool atIni = false;   // a reset at ti: the state is its initial condition
+      if (!evAt.empty()) {
+        const double *fxT, *fpT;
+        lsAdjEval(cSub, ti, out, nBase, eff, fxOff, fpOff, A.data(), lhs, &fxT, &fpT);
+        for (size_t e = evAt.size(); e-- > 0 && !atIni;) {
+          const lsAdjEv &E = evAt[e];
+          if (E.type == 0) {
+            int c = E.cmt;
+            if (op->adjDfOff >= 0) { const double *dF = &lhs[op->adjDfOff]; for (int p = 0; p < np; ++p) mu[p] += E.amt * dF[c * np + p] * wSeed[c]; }
+            if (op->adjDlagOff >= 0) { const double *dlag = &lhs[op->adjDlagOff];
+              double sc = 0; for (int b = 0; b < nBase; ++b) sc += wSeed[b] * fxT[b * nBase + c];
+              for (int p = 0; p < np; ++p) mu[p] += -E.amtF * dlag[c * np + p] * sc; }
+          } else if (E.type == 3) {
+            rk4sAddIni(dx0P, wSeed.data(), mu.data(), nBase, np);
+            atIni = true;
+          } else if (E.type == 5) { wSeed[E.cmt] = 0.0; }
+          else if (E.type == 6) { wSeed[E.cmt] *= E.factor; }
+        }
+      }
+      if (atIni) {
+        for (int p = 0; p < np; ++p) out[sensOff + k * np + p] = mu[p];
+        continue;
+      }
       sweepToStart(segObs, ti);
       if (ssAtStart) applySsIc(wSeed, mu);   // window-start steady-state IC term
       // the window start holds the initial conditions unless the ss dose is there
