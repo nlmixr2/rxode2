@@ -2425,4 +2425,29 @@ rxTest({
       expect_equal(.a$rx__sens_y_BY_k__, .dk, tolerance = 1e-7, label = .meth)
     }
   })
+
+  test_that("an infusion off boundary and a multiply at the same time transpose in turn", {
+    # a: 10 infused at rate r = 5 (off at tau = 2); b: dose 10, halved at t = 2
+    .k <- 0.7; .r <- 5; .tau <- 10 / .r; .tt <- c(1, 3, 4); .pre <- .tt < .tau
+    .ev <- et(amt = 10, cmt = "a", rate = -1) |> et(amt = 10, cmt = "b") |>
+      et(time = 2, evid = 6, amt = 0.5, cmt = "b") |> et(.tt)
+    .aV <- ifelse(.pre, (.r / .k) * (1 - exp(-.k * .tt)), (.r / .k) * (exp(.k * .tau) - 1) * exp(-.k * .tt))
+    .daR <- ifelse(.pre, (1 - exp(-.k * .tt)) / .k,
+      ((exp(.k * .tau) - 1) / .k - .tau * exp(.k * .tau)) * exp(-.k * .tt))
+    .dak <- ifelse(.pre, -(.r / .k^2) * (1 - exp(-.k * .tt)) + (.r / .k) * .tt * exp(-.k * .tt),
+      -(.r / .k^2) * (exp(.k * .tau) - 1) * exp(-.k * .tt) +
+        (.r / .k) * .tau * exp(.k * .tau) * exp(-.k * .tt) - .tt * .aV)
+    .dbk <- -.tt * ifelse(.tt < 2, 10, 5) * exp(-.k * .tt)
+    for (.meth in c("rk4s", "dop853s", "ros4s", "cvodesadj")) {
+      .a <- rxSolveAdjointRk4("d/dt(a) <- -k*a\nd/dt(b) <- -k*b\nrate(a) <- r", .ev,
+        params = c(k = .k, r = .r), calcSens = c("k", "r"), method = .meth,
+        atol = 1e-11, rtol = 1e-11, hmin = if (.meth == "rk4s") 0.001 else 0)
+      .a <- .a[.a$time %in% .tt, , drop = FALSE]
+      expect_equal(nrow(.a), 3L, label = .meth)
+      expect_equal(.a$rx__sens_a_BY_r__, .daR, tolerance = 1e-7, label = .meth)
+      expect_equal(.a$rx__sens_a_BY_k__, .dak, tolerance = 1e-7, label = .meth)
+      expect_equal(.a$rx__sens_b_BY_k__, .dbk, tolerance = 1e-7, label = .meth)
+      expect_equal(.a$rx__sens_b_BY_r__, rep(0, 3), label = .meth)
+    }
+  })
 })
