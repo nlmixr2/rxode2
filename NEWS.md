@@ -47,6 +47,11 @@
 
 ### Solving
 
+- The default `hmax = NA` no longer gives a `NaN` maximum step to a subject
+  with a single time difference, so `method = "dop853"` no longer fails with
+  `IDID=-3` on a subject with one observation after its start.  `hmaxSd` now
+  adds its standard deviation term to every subject, not only the last one
+  (#1501).
 - A steady-state bolus solved with `lsoda`/`liblsoda` no longer drops its
   first iterated dose: the solver restarted from its internal state instead of
   the dosed one, so a steady state stopped by `minSS` (with `ssAtol`/`ssRtol`

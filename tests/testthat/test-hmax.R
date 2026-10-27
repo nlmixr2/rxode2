@@ -979,4 +979,29 @@ rxTest({
     x <- rxSolve(m1, params = theta, events = evi, method = "lsoda", hmax = 0)
     expect_false(all(x$centr == 0))
   })
+
+  test_that("default hmax solves a subject with a single time difference (#1501)", {
+    m <- rxode2({
+      d/dt(c) <- -k * c
+    })
+    .exp <- 100 * exp(-0.05)
+    .evs <- list(
+      et(amt = 100) |> et(0.5),
+      # two subjects with different event times (non-homogeneous setup)
+      rbind(
+        data.frame(id = 1, time = c(0, 0.5, 1), evid = c(1, 0, 0), amt = c(100, 0, 0)),
+        data.frame(id = 2, time = c(0, 0.5), evid = c(1, 0), amt = c(100, 0))
+      )
+    )
+    for (.e in .evs) {
+      for (.m in c("dop853", "liblsoda", "lsoda")) {
+        for (.sd in c(0, 1)) {
+          .s <- rxSolve(m, .e, params = c(k = 0.1), method = .m, hmaxSd = .sd)
+          .c <- .s$c[.s$time == 0.5]
+          expect_true(all(is.finite(.c)))
+          expect_equal(.c, rep(.exp, length(.c)), tolerance = 1e-5)
+        }
+      }
+    }
+  })
 })
