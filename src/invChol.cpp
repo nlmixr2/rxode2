@@ -46,7 +46,13 @@ static arma::mat rxInvCholParR(const arma::vec &par, int dim) {
 }
 
 arma::mat rxInvCholMat(const arma::vec &par, int dim) {
-  arma::mat Ri = arma::inv(arma::trimatu(rxInvCholParR(par, dim)));
+  arma::mat Ri;
+  // a diagonal that under- or overflows has no inverse; NaN marks the
+  // matrix unusable so the draw is redrawn
+  if (!arma::inv(Ri, arma::trimatu(rxInvCholParR(par, dim)))) {
+    Ri.set_size(dim, dim);
+    Ri.fill(arma::datum::nan);
+  }
   arma::mat ret = Ri * Ri.t();
   return 0.5 * (ret + ret.t());
 }

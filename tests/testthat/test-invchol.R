@@ -53,6 +53,10 @@ rxTest({
     expect_equal(.jac(.om), .num, tolerance = 1e-6)
   })
 
+  test_that("a diagonal that underflows gives an unusable matrix, not an error", {
+    expect_true(all(is.nan(.mat(-1000))))
+  })
+
   test_that("a matrix that is not positive definite is refused", {
     .bad <- matrix(c(1, 2, 2, 1), 2, 2)
     expect_error(.par(.bad), "positive definite")
