@@ -300,12 +300,13 @@ rxTest({
       twoDoses = list(ev = rbind(.row(1L, 1L, 100, "depot"), .row(1L, 1L, 50, "depot"),
                                  .row(1L, 0L, 0, "depot"), .row(1L, 0L, 0, "depot")), fd = 150, c0 = 1),
       replace = list(ev = rbind(.row(1L, 1L, 100, "depot"), .row(1L, 5L, 30, "center"),
-                                .row(1L, 0L, 0, "depot")), fd = 100, c0 = 0)
+                                .row(1L, 0L, 0, "depot")), fd = 100, c0 = 0, skip = "cvodesadj")
     )
-    # cvodesadj has no f() sensitivity here
+    # abs refuses an f() that depends on a calcSens parameter; cvodesadj reads
+    # an observation at t0 before a replace or multiply there
     for (.nm in names(.cases)) {
       .k <- .cases[[.nm]]
-      for (.m in setdiff(.adjIniMethods, "cvodesadj")) {
+      for (.m in setdiff(.adjIniMethods, c("abs", .k$skip))) {
         .a <- rxSolveAdjointRk4(.txtF, .k$ev, params = .pF, calcSens = c("fd", "c0"), method = .m)
         .n <- sum(.k$ev$evid == 0L)
         expect_equal(nrow(.a), .n, label = paste(.nm, .m))
