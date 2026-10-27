@@ -124,7 +124,7 @@ rxTest({
     }
   })
 
-  test_that("linCmt() under linear interpolation takes each interval's mean", {
+  test_that("linCmt() under linear interpolation takes the value at each interval's middle", {
     # a closed form keeps a parameter constant over an interval, where the
     # ODE follows the covariate's ramp; it takes the value at the interval's
     # middle

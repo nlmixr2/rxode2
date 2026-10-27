@@ -152,6 +152,15 @@
 
 ### linCmt() models
 
+- `linCmt()` models now solve a time-varying covariate as the equivalent ODE
+  model does.  Each interval between records used the covariates of the record
+  that ends it, so the default `covsInterpolation = "locf"` gave the `"nocb"`
+  solution.  An interval now takes its own covariates (`"locf"` the start
+  record's, `"nocb"` the end record's, `"midpoint"` their mean, `"linear"` the
+  value at its middle); results of `linCmt()` models and fits with a
+  time-varying covariate change under `"locf"`, `"midpoint"` and `"linear"`
+  (#1483).
+
 - After a subject whose `linCmt()` solve failed (a data error such as a
   modeled rate in a model without `rate()`), the later subjects on that thread
   returned zeros, since 4.0.0.  They now solve as usual.
