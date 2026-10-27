@@ -38,6 +38,15 @@
 
 ### Event tables
 
+- `etTrans()` now reads two records differently, each with one warning that
+  names the rows (1-based rows of the data as given, the first ten):
+  - a record with `evid` 0, a missing `dv` and a nonzero `amt` is a dose of
+    that amount ("'evid' 0 with a missing 'dv' and a nonzero 'amt' is read as
+    a dose"); it was kept as an observation with no `dv`, its dose dropped;
+  - with no `evid` column, a record whose `mdv` is missing and whose `amt` is
+    0 is `evid` 2, a record with no observation ("a missing 'mdv' with a zero
+    'amt' is read as 'evid' 2, not a dose"); it was a dose of 0.
+
 - `etTrans()` now stops on a record whose `evid` is missing but that carries
   dose information: a nonzero `amt`, or a `rate` or `dur` that is positive or
   modeled (-1, -2), as a record with no `evid` column is read.  It used to keep
