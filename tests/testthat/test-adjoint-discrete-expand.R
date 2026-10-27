@@ -290,6 +290,41 @@ rxTest({
     }
   })
 
+  test_that("a subject with records only at its first time keeps its t0 events", {
+    # No forward step is taken, so the sensitivity is dX0/dp changed only by
+    # the events at t0, which sort as multiply, replace, then dose.
+    .row <- function(id, evid, amt, cmt) data.frame(id = id, time = 0, evid = evid, amt = amt, cmt = cmt)
+    .txtF <- "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\nf(depot) <- fd\ncenter(0) <- c0"
+    .pF <- c(ka = 1.2, k = 0.14, fd = 0.7, c0 = 2)
+    .cases <- list(
+      dose = list(ev = rbind(.row(1L, 1L, 100, "depot"), .row(1L, 0L, 0, "depot")), fd = 100, c0 = 1),
+      twoDoses = list(ev = rbind(.row(1L, 1L, 100, "depot"), .row(1L, 1L, 50, "depot"),
+                                 .row(1L, 0L, 0, "depot"), .row(1L, 0L, 0, "depot")), fd = 150, c0 = 1),
+      replace = list(ev = rbind(.row(1L, 1L, 100, "depot"), .row(1L, 5L, 30, "center"),
+                                .row(1L, 0L, 0, "depot")), fd = 100, c0 = 0)
+    )
+    # cvodesadj has no f() sensitivity here
+    for (.nm in names(.cases)) {
+      .k <- .cases[[.nm]]
+      for (.m in setdiff(.adjIniMethods, "cvodesadj")) {
+        .a <- rxSolveAdjointRk4(.txtF, .k$ev, params = .pF, calcSens = c("fd", "c0"), method = .m)
+        .n <- sum(.k$ev$evid == 0L)
+        expect_equal(nrow(.a), .n, label = paste(.nm, .m))
+        expect_equal(.a$rx__sens_depot_BY_fd__, rep(.k$fd, .n), tolerance = 1e-12, label = paste(.nm, .m))
+        expect_equal(.a$rx__sens_center_BY_c0__, rep(.k$c0, .n), tolerance = 1e-12, label = paste(.nm, .m))
+        expect_equal(.a$rx__sens_center_BY_fd__, rep(0, .n), tolerance = 1e-12, label = paste(.nm, .m))
+      }
+    }
+    # a multiply at t0 scales the initial-condition sensitivity
+    .ev <- rbind(.row(1L, 6L, 3, "center"), .row(1L, 0L, 0, "center"))
+    for (.m in setdiff(.adjIniMethods, "cvodesadj")) {
+      .a <- rxSolveAdjointRk4("d/dt(center) <- -k*center\ncenter(0) <- c0", .ev,
+        params = c(k = 0.14, c0 = 2), calcSens = c("k", "c0"), method = .m)
+      expect_equal(.a$rx__sens_center_BY_c0__, 3, tolerance = 1e-12, label = .m)
+      expect_equal(.a$rx__sens_center_BY_k__, 0, tolerance = 1e-12, label = .m)
+    }
+  })
+
   test_that("the initial-condition sensitivity matches its closed form", {
     .tt <- c(0, 0.5, 1, 2, 3)
     .a <- rxSolveAdjointRk4("y(0) <- y0\nd/dt(y) <- -k*y", et(.tt), params = c(k = 0.7, y0 = 3), calcSens = c("k", "y0"))
