@@ -4268,7 +4268,7 @@ static inline void rxSetIndMix(rx_solving_options_ind* ind, unsigned int nsub,
 
 // hmax=NA: mean time difference + hmaxSd*sd; the sd needs >= 2 differences
 static inline double rxHmaxMean(double mean, double ss, double n, double hmaxSd) {
-  if (n < 2.0 || hmaxSd == 0.0) return mean;
+  if (n < 2.0 || hmaxSd == 0.0 || !(ss > 0.0)) return mean;
   return mean + hmaxSd*sqrt(ss/(n-1));
 }
 

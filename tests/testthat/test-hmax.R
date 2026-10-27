@@ -985,12 +985,19 @@ rxTest({
       d/dt(c) <- -k * c
     })
     .exp <- 100 * exp(-0.05)
+    .hom <- et(amt = 100) |> et(0.5) |> et(id = 1:3)
+    expect_false(is.null(attr(.etPrepareSolveEvents(.hom, rxControl()), "rxHomGroups")))
     .evs <- list(
       et(amt = 100) |> et(0.5),
-      # two subjects with different event times (non-homogeneous setup)
+      # identical subjects share one homogeneous group
+      .hom,
+      # different event times (non-homogeneous); a single time difference in a
+      # middle and in the last subject
       rbind(
-        data.frame(id = 1, time = c(0, 0.5, 1), evid = c(1, 0, 0), amt = c(100, 0, 0)),
-        data.frame(id = 2, time = c(0, 0.5), evid = c(1, 0), amt = c(100, 0))
+        data.frame(id = 1, time = c(0, 0.5, 1.5), evid = c(1, 0, 0), amt = c(100, 0, 0)),
+        data.frame(id = 2, time = c(0, 0.5), evid = c(1, 0), amt = c(100, 0)),
+        data.frame(id = 3, time = c(0, 0.5, 1), evid = c(1, 0, 0), amt = c(100, 0, 0)),
+        data.frame(id = 4, time = c(0, 0.5), evid = c(1, 0), amt = c(100, 0))
       )
     )
     for (.e in .evs) {
