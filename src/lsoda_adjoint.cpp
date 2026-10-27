@@ -191,7 +191,13 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       if (!isDose(ev)) continue;
       int _wh, _cmt, _wh100, _whI, _wh0; getWh(ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
       if (_cmt < 0 || _cmt >= nBase) continue;
-      if (_whI == 0 && _wh0 == EVID0_SS) { lsAdjSegs[sg].ev.push_back({8, _cmt, 1.0, 0.0, 0.0}); continue; }
+      // an ss = 1 dose (a bolus, or an infusion's start, not its stop) replaces
+      // the state with Y_ss(p)
+      if (_wh0 == EVID0_SS && (_whI == 0 || getDose(ind, ind->ix[i]) > 0)) {
+        lsAdjSegs[sg].ev.push_back({8, _cmt, 1.0, 0.0, 0.0});
+        continue;
+      }
+      if (_wh0 == EVID0_SS) continue;
       if (_whI == 0) {
         double amt = getDose(ind, ind->ix[i]);
         lsAdjSegs[sg].ev.push_back({0, _cmt, 1.0, amt, getAmt(ind, ind->id, _cmt, amt, t0, _y.data())});
@@ -435,8 +441,10 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       // parameter quadrature with the costate of its post-dose state (modeled F ->
       // mu += amt*dF/dp*lam[c]; alag -> mu += -F*amt*dlag/dp*(lam^T F_X[:,c])); a jump
       // maps the costate back through dPhi/dy^T (reset 0, replace[c] 0, multiply[c]
-      // *factor).  At the window start the caller adds the ss=1 and initial-condition
-      // terms.
+      // *factor).  A reset or an ss = 1 dose replaces the whole state, so the events
+      // recorded before it do not reach later observations and the sweep stops
+      // there.  At the window start the caller adds the ss=1 and initial-condition
+      // terms with the costate left here.
       for (size_t k = Sg.ev.size(); k-- > 0;) {
         const lsAdjEv &E = Sg.ev[k];
         if (E.type == 0) {
@@ -445,12 +453,18 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
           if (op->adjDlagOff >= 0) { const double *dlag = &lhs[op->adjDlagOff];
             double sc = 0; for (int i = 0; i < nBase; ++i) sc += wSeed[i] * fx0[i * nBase + c];
             for (int p = 0; p < np; ++p) mu[p] += -E.amtF * dlag[c * np + p] * sc; }
-        } else if (E.type == 3 && seg > 0) {   // reset restores the initial conditions
-          rk4sAddIni(dx0P, wSeed.data(), mu.data(), nBase, np);
-          for (int b = 0; b < nBase; ++b) wSeed[b] = 0.0;
-        } else if (E.type == 8 && seg > 0) {   // interior ss=1: the state becomes Y_ss(p)
-          applySsIc(wSeed, mu);
-          for (int b = 0; b < nBase; ++b) wSeed[b] = 0.0;
+        } else if (E.type == 3) {             // reset restores the initial conditions
+          if (seg > 0) {
+            rk4sAddIni(dx0P, wSeed.data(), mu.data(), nBase, np);
+            for (int b = 0; b < nBase; ++b) wSeed[b] = 0.0;
+          }
+          break;
+        } else if (E.type == 8) {             // ss=1: the state becomes Y_ss(p)
+          if (seg > 0) {
+            applySsIc(wSeed, mu);
+            for (int b = 0; b < nBase; ++b) wSeed[b] = 0.0;
+          }
+          break;
         } else if (E.type == 5) { wSeed[E.cmt] = 0.0; }
         else if (E.type == 6) { wSeed[E.cmt] *= E.factor; }
       }
