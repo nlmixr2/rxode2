@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>rxode2 ODE solving syntax • rxode2</title>
+<title>Model syntax • rxode2</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
@@ -15,7 +15,7 @@
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="rxode2 ODE solving syntax">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Model syntax">
 <meta name="google-site-verification" content="fp9A3qPrCar1DKeVQg4Mfrf6-An5keP9OwhIxUkntbU">
 </head>
 <body>
@@ -36,101 +36,107 @@
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
 <li class="active nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-begin" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-rocket"></span> Begin</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-begin">
-<li><a class="dropdown-item" href="../articles/rxode2-intro.html">Introduction to rxode2</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini-language syntax</a></li>
-    <li><a class="dropdown-item" href="../articles/ode-solvers.html">ODE solvers</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-ind-lin.html">Matrix Exponential Solving</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-start" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-rocket"></span> Start</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-start">
+<li><a class="dropdown-item" href="../articles/rxode2-cookbook.html">How do I...?</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-intro.html">Introduction to rxode2</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">Model syntax</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-model-types.html">Model types: ODEs, linCmt() and mixed</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-tutorials.html">Interactive tutorials</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Coming from another tool?</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-desolve-comparison.html">Comparing rxode2 with deSolve</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-mrgsolve-comparison.html">Comparing rxode2 with mrgsolve</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-nmsim-comparison.html">Comparing rxode2 with NMsim</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-nonmem-sim-comparison.html">Comparing rxode2 with NONMEM</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-simulx-comparison.html">Comparing rxode2 with Simulx</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-pkpdsim-comparison.html">Comparing rxode2 with PKPDsim</a></li>
   </ul>
 </li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-model" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-code"></span> Model</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-model">
-<li><a class="dropdown-item" href="../articles/rxode2-model-types.html">Model types (linCmt, ODEs, mixed)</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-ui-object.html">rxode2 UI object reference</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-pipeline.html">Model piping with |&gt;</a></li>
+<li><a class="dropdown-item" href="../articles/rxode2-ui-object.html">The rxode2 model object</a></li>
     <li><a class="dropdown-item" href="../articles/Modifying-Models.html">Modifying models</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-covariates.html">Covariates</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-cmt.html">Changing compartment numbers</a></li>
-    <li><a class="dropdown-item" href="../articles/Integrating-User-Defined-Functions-into-rxode2.html">Integrating user-defined functions</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-pkg-exported-funs.html">Package-exported rxode2 functions</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-transit-compartments.html">Transit compartments</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-sticky.html">Sticky variables</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-delay-differential-equations.html">Delay differential equations</a></li>
+    <li><a class="dropdown-item" href="../articles/Integrating-User-Defined-Functions-into-rxode2.html">User-defined functions</a></li>
   </ul>
 </li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-events" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-stethoscope"></span> Events</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-events">
-<li><a class="dropdown-item" href="../articles/rxode2-datasets.html">Dataset format and event types</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-event-table.html">Easy event tables (et())</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-events-classic.html">Classic rxode2 events explained</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-dosing" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-syringe"></span> Dosing</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-dosing">
+<li><a class="dropdown-item" href="../articles/rxode2-dosing-overview.html">Which dosing page do I need?</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-dataset-columns.html">Dataset columns</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-event-types.html">Dosing event types</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-event-table.html">Building event tables with et()</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-event-table-combine.html">Combining event tables</a></li>
+    <li><a class="dropdown-item" href="../articles/adaptive-dosing.html">Dosing from inside the model</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-wt.html">Weight-based dosing</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-split-bolus.html">Dual absorption with splitBolus()</a></li>
   </ul>
 </li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-simulation" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-desktop"></span> Simulation</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-simulation">
-<li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Core simulation</h6></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-single-subject.html">Single-subject ODE solving</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-sim-var.html">Population simulation (multiple subjects)</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-prior-data.html">Simulation from observed data</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-simulate" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-desktop"></span> Simulate</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-simulate">
+<li><h6 class="dropdown-header" data-toc-skip>Core simulation</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-single-subject.html">Solving a single subject</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-sim-var.html">Simulating populations</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-pipeline.html">Simulating in a pipeline</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-prior-data.html">Simulating from observed data</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-nesting.html">Nesting levels (IOV and beyond)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Variability and uncertainty</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-parameter-uncertainty.html">Parameter uncertainty</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-confint.html">Summarizing simulations with confint()</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-eta-eps-resampling.html">ETA/EPS resampling</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-phase-residual-error.html">Separating phase 1 and phase 3 residual error</a></li>
-  </ul>
-</li>
-<li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-hospital"></span> Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples">
-<li><a class="dropdown-item" href="../articles/rxode2-exposure-response.html">Exposure-response simulation</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-eta-eps-resampling.html">ETA and EPS resampling</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-phase-residual-error.html">Phase 1 vs phase 3 residual error</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Output</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Working with solved data frames</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting results</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Worked examples</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-exposure-response.html">Exposure-response simulation</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-clinical-trial-sim.html">Clinical trial simulation</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-vpc.html">Visual predictive checks (VPC)</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-vpc.html">Visual predictive checks</a></li>
   </ul>
 </li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-advanced" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-cogs"></span> Advanced</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-advanced">
-<li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Model features</h6></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-covariates.html">Covariates and covariate models</a></li>
-    <li><a class="dropdown-item" href="../articles/adaptive-dosing.html">Adaptive rxode2 dosing</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-split-bolus.html">Multi-peak models with splitBolus()</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-nesting.html">Multiple levels of nesting (IOV, between-study)</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-sticky.html">Sticky variables</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-wt.html">Weight-based dosing</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-transit-compartments.html">Transit compartment models</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff systems and Jacobian specification</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-delay-differential-equations.html">Delay differential equations</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Output and performance</h6></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up ODE solving</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-dense-output.html">Dense output for fast dense-grid solves</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-rxUse.html">Adding compiled models to a package</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-event-bus.html">The event bus (for loggers and emitters)</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Understanding Internal Code</h6></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-et-refactor.html">Event Tables after 5.0.2: Architecture and Benchmark</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-solve" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-gauge-high"></span> Solve</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-solve">
+<li><a class="dropdown-item" href="../articles/ode-solvers.html">Choosing an ODE solver</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff systems and Jacobians</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-ind-lin.html">Matrix exponential solving</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-dense-output.html">Dense output for fast solving</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up solving</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-mirai-parallel.html">Parallel solving with mirai</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-oom-solve.html">Out-of-memory solving</a></li>
   </ul>
 </li>
+<li class="nav-item"><a class="nav-link" href="../reference/index.html"><span class="fa fas fa-file-code"></span> Functions</a></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-compare" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-balance-scale"></span> Compare</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-compare">
-<li><a class="dropdown-item" href="../articles/rxode2-desolve-comparison.html">rxode2 vs deSolve</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-mrgsolve-comparison.html">rxode2 vs mrgsolve</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-nmsim-comparison.html">rxode2 vs NMsim</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-nonmem-sim-comparison.html">rxode2 vs NONMEM simulation</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-simulx-comparison.html">rxode2 vs Simulx</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-pkpdsim-comparison.html">rxode2 vs PKPDsim</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-more" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-ellipsis"></span> More</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-more">
+<li><h6 class="dropdown-header" data-toc-skip>For developers</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-rxUse.html">Compiled models in packages</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-pkg-exported-funs.html">C/C++ functions from a package</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Exploring models with Shiny</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-event-bus.html">The event bus</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-solve-hooks.html">Solve-time hooks</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-et-refactor.html">Event table architecture</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Legacy input styles</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-classic-models.html">Low-level models and other input styles</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-events-classic.html">Classic evid codes</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="../news/index.html">News (changelog)</a></li>
+    <li><a class="dropdown-item" href="../articles/index.html">All articles</a></li>
   </ul>
 </li>
-<li class="nav-item"><a class="nav-link" href="https://nlmixr2.github.io/rxode2/reference/index.html"><span class="fa fa-file-code-o"></span> Funs</a></li>
       </ul>
 <ul class="navbar-nav">
 <li class="nav-item"><form class="form-inline" role="search">
@@ -155,9 +161,9 @@
 <script src="rxode2-syntax_files/selectize-0.12.0/selectize.min.js"></script><link href="rxode2-syntax_files/crosstalk-1.2.2/css/crosstalk.min.css" rel="stylesheet">
 <script src="rxode2-syntax_files/crosstalk-1.2.2/js/crosstalk.min.js"></script><div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-      <img src="../logo.png" class="logo" alt=""><h1>rxode2 ODE solving syntax</h1>
+      <img src="../logo.png" class="logo" alt=""><h1>Model syntax</h1>
             
-            <h4 data-toc-skip class="date">2026-10-26</h4>
+            <h4 data-toc-skip class="date">2026-10-27</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/rxode2-syntax.Rmd" class="external-link"><code>vignettes/rxode2-syntax.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-syntax.Rmd</code></div>
@@ -182,64 +188,11 @@ the <code>rxode2</code> modeling specification.</p>
 <div class="section level3">
 <h3 id="creating-rxode2-models-1">Creating rxode2 models<a class="anchor" aria-label="anchor" href="#creating-rxode2-models-1"></a>
 </h3>
-<p>The ODE-based model specification may be coded inside four
-places:</p>
-<ul>
-<li>Inside a <code>rxode2({})</code> block statements:</li>
-</ul>
+<p>The recommended way to write an <code>rxode2</code> model is a model
+function with an <code>ini({})</code> block (parameter values) and a
+<code>model({})</code> block (equations):</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://nlmixr2.github.io/rxode2/">rxode2</a></span><span class="op">)</span></span>
-<span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>  <span class="co"># simple assignment</span></span>
-<span>  <span class="va">C2</span> <span class="op">&lt;-</span> <span class="va">centr</span><span class="op">/</span><span class="va">V2</span></span>
-<span></span>
-<span>  <span class="co"># time-derivative assignment</span></span>
-<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">centr</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="cn">F</span><span class="op">*</span><span class="va">KA</span><span class="op">*</span><span class="va">depot</span> <span class="op">-</span> <span class="va">CL</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">+</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;</span>
-<span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
-<ul>
-<li>Inside a <code>rxode2("")</code> string statement:</li>
-</ul>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="st">"</span></span>
-<span><span class="st">  # simple assignment</span></span>
-<span><span class="st">  C2 &lt;- centr/V2</span></span>
-<span><span class="st"></span></span>
-<span><span class="st">  # time-derivative assignment</span></span>
-<span><span class="st">  d/dt(centr) &lt;- F*KA*depot - CL*C2 - Q*C2 + Q*C3;</span></span>
-<span><span class="st">"</span><span class="op">)</span></span></code></pre></div>
-<ul>
-<li>In a file name to be loaded by rxode2:</li>
-</ul>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines</a></span><span class="op">(</span><span class="st">"</span></span>
-<span><span class="st">  # simple assignment</span></span>
-<span><span class="st">  C2 &lt;- centr/V2</span></span>
-<span><span class="st"></span></span>
-<span><span class="st">  # time-derivative assignment</span></span>
-<span><span class="st">  d/dt(centr) &lt;- F*KA*depot - CL*C2 - Q*C2 + Q*C3;</span></span>
-<span><span class="st">"</span>, <span class="st">"modelFile.rxode2"</span><span class="op">)</span></span>
-<span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span>filename<span class="op">=</span><span class="st">'modelFile.rxode2'</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink</a></span><span class="op">(</span><span class="st">"modelFile.rxode2"</span><span class="op">)</span></span></code></pre></div>
-<ul>
-<li>In a model function which can be parsed by <code>rxode2</code>:</li>
-</ul>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>    <span class="co"># simple assignment</span></span>
-<span>    <span class="va">C2</span> <span class="op">&lt;-</span> <span class="va">centr</span><span class="op">/</span><span class="va">V2</span></span>
-<span></span>
-<span>    <span class="co"># time-derivative assignment</span></span>
-<span>    <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">centr</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="cn">F</span><span class="op">*</span><span class="va">KA</span><span class="op">*</span><span class="va">depot</span> <span class="op">-</span> <span class="va">CL</span><span class="op">*</span><span class="va">C2</span> <span class="op">-</span> <span class="va">Q</span><span class="op">*</span><span class="va">C2</span> <span class="op">+</span> <span class="va">Q</span><span class="op">*</span><span class="va">C3</span>;</span>
-<span>  <span class="op">}</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span></span>
-<span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="va">mod</span><span class="op">)</span> <span class="co"># or simply mod() if the model is at the end of the function</span></span>
-<span></span>
-<span><span class="co"># These model functions often have residual components and initial</span></span>
-<span><span class="co"># (`ini({})`) conditions attached as well. For example the</span></span>
-<span><span class="co"># theophylline model can be written as:</span></span>
-<span></span>
 <span><span class="va">one.compartment</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">tka</span> <span class="op">&lt;-</span> <span class="fl">0.45</span> <span class="co"># Log Ka</span></span>
@@ -261,25 +214,34 @@ places:</p>
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="co"># after parsing the model</span></span>
-<span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">one.compartment</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p>For the block statement, character string or text file an internal
-<code>rxode2</code> compilation manager translates the ODE system into
-C, compiles it and loads it into the R session. The call to
-<code>rxode2</code> produces an object of class <code>rxode2</code>
-which consists of a list-like structure (environment) with various
-member functions.</p>
-<p>For the last type of model (a model function), a call to
-<code>rxode2</code> creates a parsed <code>rxode2</code> ui that can be
-translated to the <code>rxode2</code> compilation model.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<span><span class="co"># parse the model into a rxode2 ui object</span></span>
+<span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">one.compartment</span><span class="op">(</span><span class="op">)</span> <span class="co"># or rxode2(one.compartment)</span></span></code></pre></div>
+<p>The parameter values in <code>ini({})</code> are used when solving,
+so the model can be solved directly with
+<code>rxSolve(mod, events)</code>. Initial conditions of the states can
+be set in the model block with <code>state(0) &lt;- value</code>.</p>
+<p>Calling the function creates a parsed <code>rxode2</code> user
+interface object (<code>rxUi</code>) which is translated into an
+<code>rxode2</code> compiled model when solved:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod</span><span class="op">$</span><span class="va">simulationModel</span></span>
 <span></span>
 <span><span class="co"># or</span></span>
 <span><span class="va">mod</span><span class="op">$</span><span class="va">simulationIniModel</span></span></code></pre></div>
 <p>This is the same type of function required for <code>nlmixr2</code>
 estimation and can be extended and modified by model piping. For this
-reason will be focused on in the documentation.</p>
+reason it is the form used throughout the documentation.</p>
+<p>The model equations can also be given directly to
+<code><a href="../reference/rxode2.html">rxode2()</a></code>, without an <code>ini({})</code> block:</p>
+<ul>
+<li>a <code>rxode2({})</code> block of statements;</li>
+<li>a <code>rxode2("")</code> character string;</li>
+<li>a file, <code>rxode2(filename="modelFile.rxode2")</code>.</li>
+</ul>
+<p>These low-level forms create an <code>rxode2</code> compiled model
+object; the parameters are then supplied when solving with
+<code>params=</code>. See <a href="https://nlmixr2.github.io/rxode2/articles/rxode2-classic-models.html" class="uri">https://nlmixr2.github.io/rxode2/articles/rxode2-classic-models.html</a>
+for these forms and when to use them.</p>
 </div>
 <div class="section level3">
 <h3 id="syntax">Syntax<a class="anchor" aria-label="anchor" href="#syntax"></a>
@@ -610,14 +572,14 @@ output, it also is used to specify a residual output or endpoint when
 the input is an <code>rxode2</code> model function (that includes the
 residual in the <code>model({})</code> block).</p>
 <p>These specifications are of the form:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">var</span> <span class="op">~</span> <span class="fu">add</span><span class="op">(</span><span class="va">add.sd</span><span class="op">)</span></span></code></pre></div>
 <p>Indicating the variable <code>var</code> is the variable that
 represents the individual central tendencies of the model and it also
 represents the compartment specification in the data-set.</p>
 <p>You can also change the compartment name using the <code>|</code>
 syntax, that is:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">var</span> <span class="op">~</span> <span class="fu">add</span><span class="op">(</span><span class="va">add.sd</span><span class="op">)</span> <span class="op">|</span> <span class="va">cmt</span></span></code></pre></div>
 <p>In the above case <code>var</code> represents the central tendency
 and <code>cmt</code> represents the compartment or <code>dvid</code>
@@ -687,7 +649,7 @@ can describe the data possibly even better than
 <p>Adding <code>ar(cor)</code> to a normal residual makes successive
 residuals of the same endpoint follow a continuous-time AR(1)
 process:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cp</span> <span class="op">~</span> <span class="fu">add</span><span class="op">(</span><span class="va">add.sd</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/ar.html" class="external-link">ar</a></span><span class="op">(</span><span class="va">ar1.cor</span><span class="op">)</span></span></code></pre></div>
 <p>Here <code>ar1.cor</code> is the lag-one correlation and must be in
 <code>[0, 1)</code>. The correlation between two residuals separated by
@@ -712,19 +674,19 @@ continuous-time AR(1) residual model.</p>
 </h4>
 <p>For residuals that are not related to normal, t-distribution or
 cauchy, often the residual specification is of the form:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cmt</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/stats/Beta.html" class="external-link">dbeta</a></span><span class="op">(</span><span class="va">alpha</span>, <span class="va">beta</span><span class="op">)</span></span></code></pre></div>
 <p>Where the compartment specification is on the left handed side of the
 specification.</p>
 <p>For generalized likelihood you can specify:</p>
-<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="fu">ll</span>(cmt) <span class="sc">~</span> llik specification</span></code></pre></div>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="fu">ll</span>(cmt) <span class="sc">~</span> llik specification</span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="ordinal-likelihoods">Ordinal likelihoods<a class="anchor" aria-label="anchor" href="#ordinal-likelihoods"></a>
 </h4>
 <p>Finally, ordinal likelihoods/simulations can be specified in 2 ways.
 The first is:</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">err</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">p0</span>, <span class="va">p1</span>, <span class="va">p2</span><span class="op">)</span></span></code></pre></div>
 <p>Here <code>err</code> represents the compartment and <code>p0</code>
 is the probability of being in a specific category:</p>
@@ -758,7 +720,7 @@ arbitrary number of categories in the ordinal model described above.</p>
 <p>It seems a little off that <code>p0</code> is the probability for
 category <code>1</code> and sometimes scores are in non-whole numbers.
 This can be modeled as follows:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">err</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>p0<span class="op">=</span><span class="fl">0</span>, p1<span class="op">=</span><span class="fl">1</span>, p2<span class="op">=</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span></span></code></pre></div>
 <p>Here the numeric categories are specified explicitly, and the
 probabilities remain the same:</p>
@@ -801,12 +763,12 @@ probabilities remain the same:</p>
 </h3>
 <p>When an estimation method supports priors, the prior on a parameter
 is given in the <code>ini({})</code> block with:</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">prior</span><span class="op">(</span><span class="va">name</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/stats/dist.html" class="external-link">dist</a></span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div>
 <p>Because the statement names the parameter it applies to, prior lines
 are order independent; they can be put anywhere in the
 <code>ini({})</code> block.</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">one.compartment</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="va">tka</span> <span class="op">&lt;-</span> <span class="fl">0.45</span></span>
@@ -852,7 +814,7 @@ names given have to be exactly one block of the matrix.</li>
 shorthand that reuses the matrix syntax. Putting a <em>population
 parameter</em> on the left of a <code>~</code> gives it a normal prior
 with a <strong>zero mean</strong> and the given variance:</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="va">tka</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
 <span>  <span class="va">tcl</span> <span class="op">&lt;-</span> <span class="fl">3</span></span>
@@ -872,12 +834,12 @@ parameter” error. A name that is not a population parameter still
 specifies an eta exactly as before.</p>
 <p>Every matrix spelling works here, including the per-row line form,
 which builds up the block just as it does for etas:</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tcl</span> <span class="op">~</span> <span class="fl">1</span></span>
 <span><span class="va">tv</span>  <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.01</span>, <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
 <p>and the <code><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd()</a></code>, <code><a href="https://rdrr.io/r/stats/cor.html" class="external-link">var()</a></code>, <code><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor()</a></code>,
 <code><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cov()</a></code> and <code><a href="https://rdrr.io/r/base/chol.html" class="external-link">chol()</a></code> transformations:</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tcl</span> <span class="op">+</span> <span class="va">tv</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="fl">2</span>,</span>
 <span>              <span class="fl">0.5</span>, <span class="fl">3</span><span class="op">)</span>   <span class="co"># variances of 4 and 9</span></span></code></pre></div>
 <p>The matrix means exactly what it means for an eta block: the
@@ -899,7 +861,7 @@ The scale matrix of the Wishart family is optional, because the block it
 is put on already <em>is</em> that matrix, so only the degrees of
 freedom are needed – this is the
 <code>$OMEGAP</code>/<code>$OMEGAPD</code> pair:</p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="va">eta.cl</span> <span class="op">+</span> <span class="va">eta.v</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.3</span>,</span>
 <span>                     <span class="fl">0.01</span>, <span class="fl">0.1</span><span class="op">)</span></span>
@@ -910,7 +872,7 @@ dimension one is an inverse gamma. An improper
 <code>nu &lt;= p - 1</code> is an error.</p>
 <p>When every block shares the same degrees of freedom, a one-sided
 <code>~</code> sets them all at once instead of naming each block:</p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="va">eta.cl</span> <span class="op">+</span> <span class="va">eta.v</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.3</span>,</span>
 <span>                     <span class="fl">0.01</span>, <span class="fl">0.1</span><span class="op">)</span></span>
@@ -923,7 +885,7 @@ is a duplicate rather than an override.</p>
 <em>elements</em>, jointly with the thetas. Prepending <code>om.</code>
 to a between subject variability names its omega element, so the normal
 prior shorthand can be used on it:</p>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="va">eta.cl</span> <span class="op">~</span> <span class="fl">0.3</span></span>
 <span>  <span class="va">eta.v</span> <span class="op">~</span> <span class="fl">0.1</span></span>
@@ -965,7 +927,7 @@ written the way the rest of the package is written –
 <code>iniDf</code> and printed back, is the R name where there is a
 faithful one and the camelCase name otherwise. The arguments may be
 given positionally or by name, so these are all the same prior:</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">prior</span><span class="op">(</span><span class="va">tka</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">dnorm</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span><span class="op">)</span></span>
 <span><span class="fu">prior</span><span class="op">(</span><span class="va">tka</span><span class="op">)</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span><span class="op">)</span></span>
 <span><span class="fu">prior</span><span class="op">(</span><span class="va">tka</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">dnorm</a></span><span class="op">(</span>sd<span class="op">=</span><span class="fl">10</span>, mean<span class="op">=</span><span class="fl">0</span><span class="op">)</span></span></code></pre></div>
@@ -985,7 +947,7 @@ for each, is returned by <code><a href="https://nlmixr2.github.io/lotri/referenc
 <p>The bounds are not repeated in the prior; they come from the
 parameter itself. A parameter that is already bounded below by zero
 therefore gets a half distribution:</p>
-<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">add.sd</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.7</span><span class="op">)</span></span>
 <span><span class="fu">prior</span><span class="op">(</span><span class="va">add.sd</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/stats/Cauchy.html" class="external-link">dcauchy</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">5</span><span class="op">)</span>   <span class="co"># half-Cauchy, since add.sd has lower=0</span></span></code></pre></div>
 <p>The prior is checked against those bounds, so putting a distribution
@@ -1263,10 +1225,17 @@ open source tool , Plevyak (2015).</p>
 <div class="section level3">
 <h3 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
 </h3>
-<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
-<span></span>
+<span>    <span class="va">KA</span> <span class="op">&lt;-</span> <span class="fl">0.29</span></span>
+<span>    <span class="va">CL</span> <span class="op">&lt;-</span> <span class="fl">18.6</span></span>
+<span>    <span class="va">V2</span> <span class="op">&lt;-</span> <span class="fl">40.2</span></span>
+<span>    <span class="va">Q</span> <span class="op">&lt;-</span> <span class="fl">10.5</span></span>
+<span>    <span class="va">V3</span> <span class="op">&lt;-</span> <span class="fl">297</span></span>
+<span>    <span class="va">Kin</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>    <span class="va">Kout</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>    <span class="va">EC50</span> <span class="op">&lt;-</span> <span class="fl">200</span></span>
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="co"># An rxode2 model specification (this line is a comment).</span></span>
@@ -1295,24 +1264,21 @@ open source tool , Plevyak (2015).</p>
 </h3>
 <p>Users specify which variables are the dynamic system’s state
 variables via the <code>d/dt(identifier)</code> operator as part of the
-model specification, and which are model parameters via the
-<code>params=</code> argument in <code>rxode2</code>
-<code><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve()</a></code> method:</p>
-<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">m1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span>model <span class="op">=</span> <span class="va">ode</span>, modName <span class="op">=</span> <span class="st">"m1"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># model parameters -- a named vector is required</span></span>
-<span><span class="va">theta</span> <span class="op">&lt;-</span></span>
-<span>   <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>KA<span class="op">=</span><span class="fl">0.29</span>, CL<span class="op">=</span><span class="fl">18.6</span>, V2<span class="op">=</span><span class="fl">40.2</span>, Q<span class="op">=</span><span class="fl">10.5</span>, V3<span class="op">=</span><span class="fl">297</span>, Kin<span class="op">=</span><span class="fl">1</span>, Kout<span class="op">=</span><span class="fl">1</span>, EC50<span class="op">=</span><span class="fl">200</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># state variables and their amounts at time 0 (the use of names is</span></span>
-<span><span class="co"># encouraged, but not required)</span></span>
-<span><span class="va">inits</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>depot<span class="op">=</span><span class="fl">0</span>, centr<span class="op">=</span><span class="fl">0</span>, peri<span class="op">=</span><span class="fl">0</span>, eff<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># qd1 is an eventTable specification with a set of dosing and sampling</span></span>
+model specification. The model parameters and their values are given in
+the <code>ini({})</code> block, and the state values at time 0 with
+<code>state(0) &lt;-</code> (like <code>eff(0) &lt;- 1</code>
+above):</p>
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># qd1 is an eventTable specification with a set of dosing and sampling</span></span>
 <span><span class="co"># records (code not shown here)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/symengine/man/solve.html" class="external-link">solve</a></span><span class="op">(</span><span class="va">theta</span>, event <span class="op">=</span> <span class="va">qd1</span>, inits <span class="op">=</span> <span class="va">inits</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">f</span>, <span class="va">qd1</span>, params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>comed <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>Variables that are neither states nor defined in <code>ini({})</code>
+(like <code>comed</code> above) are covariates or parameters supplied
+with the event data or with <code>params=</code>. The low-level
+<code>rxode2({})</code> form, where all parameters are supplied with
+<code>params=</code> and the initial conditions with
+<code>inits=</code>, is described in <a href="https://nlmixr2.github.io/rxode2/articles/rxode2-classic-models.html" class="uri">https://nlmixr2.github.io/rxode2/articles/rxode2-classic-models.html</a>.</p>
 <p>The values of these variables at pre-specified time points are saved
 during model fitting/integration and returned as part of the fitted
 values (see the function <code><a href="../reference/et.html">et()</a></code>, to define a set of time
@@ -1321,6 +1287,17 @@ part of the modeling output.</p>
 <p>The ODE specification mini-language is parsed with the help of the
 open source tool <em>DParser</em>, Plevyak (2015).</p>
 </div>
+</div>
+<div class="section level2">
+<h2 id="next-steps">Next steps<a class="anchor" aria-label="anchor" href="#next-steps"></a>
+</h2>
+<ul>
+<li><a href="rxode2-model-types.html">Model types: ODEs, linCmt() and
+mixed</a></li>
+<li><a href="rxode2-ui-object.html">The rxode2 model object</a></li>
+<li><a href="rxode2-dosing-overview.html">Which dosing page do I
+need?</a></li>
+</ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

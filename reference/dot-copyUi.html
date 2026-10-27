@@ -16,87 +16,95 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-begin" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-rocket"></span> Begin</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-begin"><li><a class="dropdown-item" href="../articles/rxode2-intro.html">Introduction to rxode2</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini-language syntax</a></li>
-    <li><a class="dropdown-item" href="../articles/ode-solvers.html">ODE solvers</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-ind-lin.html">Matrix Exponential Solving</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-start" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-rocket"></span> Start</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-start"><li><a class="dropdown-item" href="../articles/rxode2-cookbook.html">How do I...?</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-intro.html">Introduction to rxode2</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">Model syntax</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-model-types.html">Model types: ODEs, linCmt() and mixed</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-tutorials.html">Interactive tutorials</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Coming from another tool?</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-desolve-comparison.html">Comparing rxode2 with deSolve</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-mrgsolve-comparison.html">Comparing rxode2 with mrgsolve</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-nmsim-comparison.html">Comparing rxode2 with NMsim</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-nonmem-sim-comparison.html">Comparing rxode2 with NONMEM</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-simulx-comparison.html">Comparing rxode2 with Simulx</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-pkpdsim-comparison.html">Comparing rxode2 with PKPDsim</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-model" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-code"></span> Model</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-model"><li><a class="dropdown-item" href="../articles/rxode2-model-types.html">Model types (linCmt, ODEs, mixed)</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-ui-object.html">rxode2 UI object reference</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-pipeline.html">Model piping with |&gt;</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-model"><li><a class="dropdown-item" href="../articles/rxode2-ui-object.html">The rxode2 model object</a></li>
     <li><a class="dropdown-item" href="../articles/Modifying-Models.html">Modifying models</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-covariates.html">Covariates</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-cmt.html">Changing compartment numbers</a></li>
-    <li><a class="dropdown-item" href="../articles/Integrating-User-Defined-Functions-into-rxode2.html">Integrating user-defined functions</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-pkg-exported-funs.html">Package-exported rxode2 functions</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-transit-compartments.html">Transit compartments</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-sticky.html">Sticky variables</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-delay-differential-equations.html">Delay differential equations</a></li>
+    <li><a class="dropdown-item" href="../articles/Integrating-User-Defined-Functions-into-rxode2.html">User-defined functions</a></li>
   </ul></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-events" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-stethoscope"></span> Events</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-events"><li><a class="dropdown-item" href="../articles/rxode2-datasets.html">Dataset format and event types</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-event-table.html">Easy event tables (et())</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-events-classic.html">Classic rxode2 events explained</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-dosing" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-syringe"></span> Dosing</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-dosing"><li><a class="dropdown-item" href="../articles/rxode2-dosing-overview.html">Which dosing page do I need?</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-dataset-columns.html">Dataset columns</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-event-types.html">Dosing event types</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-event-table.html">Building event tables with et()</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-event-table-combine.html">Combining event tables</a></li>
+    <li><a class="dropdown-item" href="../articles/adaptive-dosing.html">Dosing from inside the model</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-wt.html">Weight-based dosing</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-split-bolus.html">Dual absorption with splitBolus()</a></li>
   </ul></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-simulation" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-desktop"></span> Simulation</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-simulation"><li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Core simulation</h6></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-single-subject.html">Single-subject ODE solving</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-sim-var.html">Population simulation (multiple subjects)</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-prior-data.html">Simulation from observed data</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-simulate" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-desktop"></span> Simulate</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-simulate"><li><h6 class="dropdown-header" data-toc-skip>Core simulation</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-single-subject.html">Solving a single subject</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-sim-var.html">Simulating populations</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-pipeline.html">Simulating in a pipeline</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-prior-data.html">Simulating from observed data</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-nesting.html">Nesting levels (IOV and beyond)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Variability and uncertainty</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-parameter-uncertainty.html">Parameter uncertainty</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-confint.html">Summarizing simulations with confint()</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-eta-eps-resampling.html">ETA/EPS resampling</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-phase-residual-error.html">Separating phase 1 and phase 3 residual error</a></li>
-  </ul></li>
-<li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-hospital"></span> Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/rxode2-exposure-response.html">Exposure-response simulation</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-eta-eps-resampling.html">ETA and EPS resampling</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-phase-residual-error.html">Phase 1 vs phase 3 residual error</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Output</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Working with solved data frames</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting results</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Worked examples</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-exposure-response.html">Exposure-response simulation</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-clinical-trial-sim.html">Clinical trial simulation</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-vpc.html">Visual predictive checks (VPC)</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-vpc.html">Visual predictive checks</a></li>
   </ul></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-advanced" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-cogs"></span> Advanced</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-advanced"><li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Model features</h6></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-covariates.html">Covariates and covariate models</a></li>
-    <li><a class="dropdown-item" href="../articles/adaptive-dosing.html">Adaptive rxode2 dosing</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-split-bolus.html">Multi-peak models with splitBolus()</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-nesting.html">Multiple levels of nesting (IOV, between-study)</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-sticky.html">Sticky variables</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-wt.html">Weight-based dosing</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-transit-compartments.html">Transit compartment models</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff systems and Jacobian specification</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-delay-differential-equations.html">Delay differential equations</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Output and performance</h6></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up ODE solving</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-dense-output.html">Dense output for fast dense-grid solves</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-rxUse.html">Adding compiled models to a package</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-event-bus.html">The event bus (for loggers and emitters)</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Understanding Internal Code</h6></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-et-refactor.html">Event Tables after 5.0.2: Architecture and Benchmark</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-solve" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-gauge-high"></span> Solve</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-solve"><li><a class="dropdown-item" href="../articles/ode-solvers.html">Choosing an ODE solver</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff systems and Jacobians</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-ind-lin.html">Matrix exponential solving</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-dense-output.html">Dense output for fast solving</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up solving</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-mirai-parallel.html">Parallel solving with mirai</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-oom-solve.html">Out-of-memory solving</a></li>
   </ul></li>
+<li class="active nav-item"><a class="nav-link" href="../reference/index.html"><span class="fa fas fa-file-code"></span> Functions</a></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-compare" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-balance-scale"></span> Compare</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-compare"><li><a class="dropdown-item" href="../articles/rxode2-desolve-comparison.html">rxode2 vs deSolve</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-mrgsolve-comparison.html">rxode2 vs mrgsolve</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-nmsim-comparison.html">rxode2 vs NMsim</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-nonmem-sim-comparison.html">rxode2 vs NONMEM simulation</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-simulx-comparison.html">rxode2 vs Simulx</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-pkpdsim-comparison.html">rxode2 vs PKPDsim</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-more" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-ellipsis"></span> More</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-more"><li><h6 class="dropdown-header" data-toc-skip>For developers</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-rxUse.html">Compiled models in packages</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-pkg-exported-funs.html">C/C++ functions from a package</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Exploring models with Shiny</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-event-bus.html">The event bus</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-solve-hooks.html">Solve-time hooks</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-et-refactor.html">Event table architecture</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Legacy input styles</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-classic-models.html">Low-level models and other input styles</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-events-classic.html">Classic evid codes</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="../news/index.html">News (changelog)</a></li>
+    <li><a class="dropdown-item" href="../articles/index.html">All articles</a></li>
   </ul></li>
-<li class="active nav-item"><a class="nav-link" href="https://nlmixr2.github.io/rxode2/reference/index.html"><span class="fa fa-file-code-o"></span> Funs</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/nlmixr2/rxode2/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
@@ -132,6 +140,50 @@
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>Copied UI object</p>
+    </div>
+    <div class="section level2">
+    <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
+    <div class="dont-index"><p>Other Developer API:
+<code><a href="dot-cbindOme.html">.cbindOme()</a></code>,
+<code><a href="dot-collectWarnings.html">.collectWarnings()</a></code>,
+<code><a href="dot-handleSingleErrTypeNormOrTFoceiBase.html">.handleSingleErrTypeNormOrTFoceiBase()</a></code>,
+<code><a href="dot-matchesLangTemplate.html">.matchesLangTemplate()</a></code>,
+<code><a href="dot-modelHandleModelLines.html">.modelHandleModelLines()</a></code>,
+<code><a href="dot-quoteCallInfoLines.html">.quoteCallInfoLines()</a></code>,
+<code><a href="dot-rxLinCmtGen.html">.rxLinCmtGen()</a></code>,
+<code><a href="dot-rxSensStrippable.html">.rxSensStrippable()</a></code>,
+<code><a href="dot-rxWithOptions.html">.rxWithOptions()</a></code>,
+<code><a href="dot-rxWithWd.html">.rxWithWd()</a></code>,
+<code><a href="dot-rxode2ptrs.html">.rxode2ptrs()</a></code>,
+<code><a href="dot-toClassicEvid.html">.toClassicEvid()</a></code>,
+<code><a href="dot-vecDf.html">.vecDf()</a></code>,
+<code><a href="as.data.table.rxEt.html">as.data.table.rxEt()</a></code>,
+<code><a href="as_tibble.rxEt.html">as_tibble.rxEt()</a></code>,
+<code><a href="invWR1d.html">invWR1d()</a></code>,
+<code><a href="print.rxModelVars.html">print.rxModelVars()</a></code>,
+<code><a href="rLKJ1.html">rLKJ1()</a></code>,
+<code><a href="rxAllowUnload.html">rxAllowUnload()</a></code>,
+<code><a href="rxAssignControlValue.html">rxAssignControlValue()</a></code>,
+<code><a href="rxAssignPtr.html">rxAssignPtr()</a></code>,
+<code><a href="rxChain.html">rxChain()</a></code>,
+<code><a href="rxEtDispatchSolve.html">rxEtDispatchSolve()</a></code>,
+<code><a href="rxEvid.html">rxEvid()</a></code>,
+<code><a href="rxGetLin.html">rxGetLin()</a></code>,
+<code><a href="rxGetrxode2.html">rxGetrxode2()</a></code>,
+<code><a href="rxParseSuppressMsg.html">rxParseSuppressMsg()</a></code>,
+<code><a href="rxPreferredDistributionName.html">rxPreferredDistributionName()</a></code>,
+<code><a href="rxRateDur.html">rxRateDur()</a></code>,
+<code><a href="rxSyncOptions.html">rxSyncOptions()</a></code>,
+<code><a href="rxTrans.html">rxTrans()</a></code>,
+<code><a href="rxUiDeparse.html">rxUiDeparse()</a></code>,
+<code><a href="rxUiDevelop.html">rxUiDevelop()</a></code>,
+<code><a href="rxUiGet.html">rxUiGet.cmtLines()</a></code>,
+<code><a href="rxode2parse.html">rxode2parse()</a></code>,
+<code><a href="rxode2parseAssignTranslation.html">rxode2parseAssignTranslation()</a></code>,
+<code><a href="rxode2parseD.html">rxode2parseD()</a></code>,
+<code><a href="rxode2parseAssignPackagesToLoad.html">rxode2parseGetPackagesToLoad()</a></code>,
+<code><a href="rxode2parseGetPointerAssignment.html">rxode2parseGetPointerAssignment()</a></code>,
+<code><a href="rxode2parseGetTranslation.html">rxode2parseGetTranslation()</a></code></p></div>
     </div>
     <div class="section level2">
     <h2 id="author">Author<a class="anchor" aria-label="anchor" href="#author"></a></h2>

@@ -18,87 +18,95 @@ and can use multiple cores to generate the random deviates."><meta property="og:
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto"><li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-begin" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-rocket"></span> Begin</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-begin"><li><a class="dropdown-item" href="../articles/rxode2-intro.html">Introduction to rxode2</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">rxode2 mini-language syntax</a></li>
-    <li><a class="dropdown-item" href="../articles/ode-solvers.html">ODE solvers</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-ind-lin.html">Matrix Exponential Solving</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-start" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-rocket"></span> Start</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-start"><li><a class="dropdown-item" href="../articles/rxode2-cookbook.html">How do I...?</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-intro.html">Introduction to rxode2</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-syntax.html">Model syntax</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-model-types.html">Model types: ODEs, linCmt() and mixed</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-tutorials.html">Interactive tutorials</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Coming from another tool?</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-desolve-comparison.html">Comparing rxode2 with deSolve</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-mrgsolve-comparison.html">Comparing rxode2 with mrgsolve</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-nmsim-comparison.html">Comparing rxode2 with NMsim</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-nonmem-sim-comparison.html">Comparing rxode2 with NONMEM</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-simulx-comparison.html">Comparing rxode2 with Simulx</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-pkpdsim-comparison.html">Comparing rxode2 with PKPDsim</a></li>
   </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-model" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-code"></span> Model</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-model"><li><a class="dropdown-item" href="../articles/rxode2-model-types.html">Model types (linCmt, ODEs, mixed)</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-ui-object.html">rxode2 UI object reference</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-pipeline.html">Model piping with |&gt;</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-model"><li><a class="dropdown-item" href="../articles/rxode2-ui-object.html">The rxode2 model object</a></li>
     <li><a class="dropdown-item" href="../articles/Modifying-Models.html">Modifying models</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-covariates.html">Covariates</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-cmt.html">Changing compartment numbers</a></li>
-    <li><a class="dropdown-item" href="../articles/Integrating-User-Defined-Functions-into-rxode2.html">Integrating user-defined functions</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-pkg-exported-funs.html">Package-exported rxode2 functions</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-transit-compartments.html">Transit compartments</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-sticky.html">Sticky variables</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-delay-differential-equations.html">Delay differential equations</a></li>
+    <li><a class="dropdown-item" href="../articles/Integrating-User-Defined-Functions-into-rxode2.html">User-defined functions</a></li>
   </ul></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-events" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-stethoscope"></span> Events</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-events"><li><a class="dropdown-item" href="../articles/rxode2-datasets.html">Dataset format and event types</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-event-table.html">Easy event tables (et())</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-events-classic.html">Classic rxode2 events explained</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-dosing" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-syringe"></span> Dosing</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-dosing"><li><a class="dropdown-item" href="../articles/rxode2-dosing-overview.html">Which dosing page do I need?</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-dataset-columns.html">Dataset columns</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-event-types.html">Dosing event types</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-event-table.html">Building event tables with et()</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-event-table-combine.html">Combining event tables</a></li>
+    <li><a class="dropdown-item" href="../articles/adaptive-dosing.html">Dosing from inside the model</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-wt.html">Weight-based dosing</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-split-bolus.html">Dual absorption with splitBolus()</a></li>
   </ul></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-simulation" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-desktop"></span> Simulation</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-simulation"><li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Core simulation</h6></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-single-subject.html">Single-subject ODE solving</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-sim-var.html">Population simulation (multiple subjects)</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-prior-data.html">Simulation from observed data</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-simulate" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-desktop"></span> Simulate</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-simulate"><li><h6 class="dropdown-header" data-toc-skip>Core simulation</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-single-subject.html">Solving a single subject</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-sim-var.html">Simulating populations</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-pipeline.html">Simulating in a pipeline</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-prior-data.html">Simulating from observed data</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-nesting.html">Nesting levels (IOV and beyond)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Variability and uncertainty</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-parameter-uncertainty.html">Parameter uncertainty</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-confint.html">Summarizing simulations with confint()</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-eta-eps-resampling.html">ETA/EPS resampling</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-phase-residual-error.html">Separating phase 1 and phase 3 residual error</a></li>
-  </ul></li>
-<li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-hospital"></span> Examples</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/rxode2-exposure-response.html">Exposure-response simulation</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-eta-eps-resampling.html">ETA and EPS resampling</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-phase-residual-error.html">Phase 1 vs phase 3 residual error</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Output</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Working with solved data frames</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting results</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Worked examples</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-exposure-response.html">Exposure-response simulation</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-clinical-trial-sim.html">Clinical trial simulation</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-vpc.html">Visual predictive checks (VPC)</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-vpc.html">Visual predictive checks</a></li>
   </ul></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-advanced" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-cogs"></span> Advanced</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-advanced"><li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Model features</h6></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-covariates.html">Covariates and covariate models</a></li>
-    <li><a class="dropdown-item" href="../articles/adaptive-dosing.html">Adaptive rxode2 dosing</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-split-bolus.html">Multi-peak models with splitBolus()</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-nesting.html">Multiple levels of nesting (IOV, between-study)</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-sticky.html">Sticky variables</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-wt.html">Weight-based dosing</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-transit-compartments.html">Transit compartment models</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff systems and Jacobian specification</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-delay-differential-equations.html">Delay differential equations</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Output and performance</h6></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Adaptive data frames</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-plot.html">Plotting with rxode2</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up ODE solving</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-dense-output.html">Dense output for fast dense-grid solves</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Developer tools</h6></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Interactive model explorer (Shiny)</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-rxUse.html">Adding compiled models to a package</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-event-bus.html">The event bus (for loggers and emitters)</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Understanding Internal Code</h6></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-et-refactor.html">Event Tables after 5.0.2: Architecture and Benchmark</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-solve" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-gauge-high"></span> Solve</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-solve"><li><a class="dropdown-item" href="../articles/ode-solvers.html">Choosing an ODE solver</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff systems and Jacobians</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-ind-lin.html">Matrix exponential solving</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-dense-output.html">Dense output for fast solving</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up solving</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-mirai-parallel.html">Parallel solving with mirai</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-oom-solve.html">Out-of-memory solving</a></li>
   </ul></li>
+<li class="active nav-item"><a class="nav-link" href="../reference/index.html"><span class="fa fas fa-file-code"></span> Functions</a></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-compare" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-balance-scale"></span> Compare</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-compare"><li><a class="dropdown-item" href="../articles/rxode2-desolve-comparison.html">rxode2 vs deSolve</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-mrgsolve-comparison.html">rxode2 vs mrgsolve</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-nmsim-comparison.html">rxode2 vs NMsim</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-nonmem-sim-comparison.html">rxode2 vs NONMEM simulation</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-simulx-comparison.html">rxode2 vs Simulx</a></li>
-    <li><a class="dropdown-item" href="../articles/rxode2-pkpdsim-comparison.html">rxode2 vs PKPDsim</a></li>
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-more" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true"><span class="fa fas fa-ellipsis"></span> More</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-more"><li><h6 class="dropdown-header" data-toc-skip>For developers</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-rxUse.html">Compiled models in packages</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-pkg-exported-funs.html">C/C++ functions from a package</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-shiny.html">Exploring models with Shiny</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-event-bus.html">The event bus</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-solve-hooks.html">Solve-time hooks</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-et-refactor.html">Event table architecture</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Legacy input styles</h6></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-classic-models.html">Low-level models and other input styles</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-events-classic.html">Classic evid codes</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item" href="../news/index.html">News (changelog)</a></li>
+    <li><a class="dropdown-item" href="../articles/index.html">All articles</a></li>
   </ul></li>
-<li class="active nav-item"><a class="nav-link" href="https://nlmixr2.github.io/rxode2/reference/index.html"><span class="fa fa-file-code-o"></span> Funs</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/nlmixr2/rxode2/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
@@ -228,6 +236,22 @@ and Botev and L'Ecuyer (2015) <a href="https://doi.org/10.1109/WSC.2015.7408180"
 converted to thread safe simulation;</p>
     </div>
     <div class="section level2">
+    <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
+    <div class="dont-index"><p>Other Variability and uncertainty:
+<code><a href="confint.rxSolve.html">confint.rxSolve()</a></code>,
+<code><a href="cvPost.html">cvPost()</a></code>,
+<code><a href="dfWishart.html">dfWishart()</a></code>,
+<code><a href="rinvchisq.html">rinvchisq()</a></code>,
+<code><a href="rxEtaDistExpand.html">rxEtaDistExpand()</a></code>,
+<code><a href="rxEtaDistMuRef.html">rxEtaDistMuRef()</a></code>,
+<code><a href="rxPp.html">rxPp()</a></code>,
+<code><a href="rxRmvt.html">rxRmvt()</a></code>,
+<code><a href="rxSimThetaOmega.html">rxSimThetaOmega()</a></code>,
+<code><a href="rxUiEtaDistAnchors.html">rxUiEtaDistAnchors()</a></code>,
+<code><a href="rxUiEtaDists.html">rxUiEtaDists()</a></code>,
+<code><a href="swapMatListWithCube.html">swapMatListWithCube()</a></code></p></div>
+    </div>
+    <div class="section level2">
     <h2 id="author">Author<a class="anchor" aria-label="anchor" href="#author"></a></h2>
     <p>Matthew Fidler, Zdravko Botev and some from Matteo Fasiolo</p>
     </div>
@@ -248,27 +272,27 @@ converted to thread safe simulation;</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">414</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">rxRmvn</span><span class="op">(</span><span class="fl">4</span>, <span class="fl">1</span><span class="op">:</span><span class="va">d</span>, <span class="va">mcov</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>            [,1]     [,2]     [,3]      [,4]     [,5]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1,]  4.1506122 5.414956 9.549213 12.620290 3.017964</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [2,] -0.2853599 2.971188 4.626649  3.746980 1.615727</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [3,]  1.9251055 5.512113 4.965059  6.428276 5.014722</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [4,]  1.1862658 1.146355 3.172319  2.089440 2.845003</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>            [,1]      [,2]     [,3]       [,4]      [,5]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1,]  4.6608716 7.5738898 4.621124  3.3241603 4.2655067</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [2,] -0.4935312 0.7122176 4.990710 -0.6100023 0.4268195</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [3,]  2.0749315 4.6833305 3.514479  6.1895827 4.2226896</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [4,]  1.2164326 1.8892581 2.958542 -2.3482145 1.4124614</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">414</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">rxRmvn</span><span class="op">(</span><span class="fl">4</span>, <span class="fl">1</span><span class="op">:</span><span class="va">d</span>, <span class="va">mcov</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>            [,1]     [,2]     [,3]      [,4]     [,5]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1,]  4.1506122 5.414956 9.549213 12.620290 3.017964</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [2,] -0.2853599 2.971188 4.626649  3.746980 1.615727</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [3,]  1.9251055 5.512113 4.965059  6.428276 5.014722</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [4,]  1.1862658 1.146355 3.172319  2.089440 2.845003</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>            [,1]      [,2]     [,3]       [,4]      [,5]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1,]  4.6608716 7.5738898 4.621124  3.3241603 4.2655067</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [2,] -0.4935312 0.7122176 4.990710 -0.6100023 0.4268195</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [3,]  2.0749315 4.6833305 3.514479  6.1895827 4.2226896</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [4,]  1.2164326 1.8892581 2.958542 -2.3482145 1.4124614</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">414</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">rxRmvn</span><span class="op">(</span><span class="fl">4</span>, <span class="fl">1</span><span class="op">:</span><span class="va">d</span>, <span class="va">mcov</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># r.v. generated on the second core are different</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>            [,1]     [,2]     [,3]      [,4]     [,5]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1,]  4.1506122 5.414956 9.549213 12.620290 3.017964</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [2,] -0.2853599 2.971188 4.626649  3.746980 1.615727</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [3,]  1.9251055 5.512113 4.965059  6.428276 5.014722</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [4,]  1.1862658 1.146355 3.172319  2.089440 2.845003</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>            [,1]      [,2]     [,3]       [,4]      [,5]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1,]  4.6608716 7.5738898 4.621124  3.3241603 4.2655067</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [2,] -0.4935312 0.7122176 4.990710 -0.6100023 0.4268195</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [3,]  2.0749315 4.6833305 3.514479  6.1895827 4.2226896</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [4,]  1.2164326 1.8892581 2.958542 -2.3482145 1.4124614</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">###### Here we create the matrix that will hold the simulated</span></span></span>
 <span class="r-in"><span><span class="co">#  random variables upfront.</span></span></span>
@@ -278,26 +302,26 @@ converted to thread safe simulation;</p>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">414</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">rxRmvn</span><span class="op">(</span><span class="va">A</span>, <span class="fl">1</span><span class="op">:</span><span class="va">d</span>, <span class="va">mcov</span>, ncores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="co"># This returns NULL ...</span></span></span>
 <span class="r-in"><span><span class="va">A</span> <span class="co"># ... but the result is here</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>            [,1]     [,2]     [,3]      [,4]     [,5]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1,]  4.1506122 5.414956 9.549213 12.620290 3.017964</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [2,] -0.2853599 2.971188 4.626649  3.746980 1.615727</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [3,]  1.9251055 5.512113 4.965059  6.428276 5.014722</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [4,]  1.1862658 1.146355 3.172319  2.089440 2.845003</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>            [,1]      [,2]     [,3]       [,4]      [,5]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1,]  4.6608716 7.5738898 4.621124  3.3241603 4.2655067</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [2,] -0.4935312 0.7122176 4.990710 -0.6100023 0.4268195</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [3,]  2.0749315 4.6833305 3.514479  6.1895827 4.2226896</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [4,]  1.2164326 1.8892581 2.958542 -2.3482145 1.4124614</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## You can also simulate from a truncated normal:</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">rxRmvn</span><span class="op">(</span><span class="fl">10</span>, <span class="fl">1</span><span class="op">:</span><span class="va">d</span>, <span class="va">mcov</span>, lower <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="va">d</span> <span class="op">-</span> <span class="fl">1</span>, upper <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="va">d</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>             [,1]     [,2]     [,3]     [,4]     [,5]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1,] 0.79262085 1.697038 2.099696 3.630020 5.455126</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [2,] 1.04435234 1.427030 2.919770 3.373974 4.384124</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [3,] 0.24414720 2.992219 3.869267 4.497416 4.710781</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [4,] 0.04910428 2.723635 2.780222 3.176349 5.005966</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [5,] 1.90254439 1.251439 3.394864 4.072727 4.511589</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [6,] 1.19360114 1.839449 3.382534 4.185934 4.055395</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [7,] 1.88168988 2.144263 3.711241 4.589284 5.046709</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [8,] 1.56060480 1.453719 2.185001 3.037021 5.353926</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [9,] 0.50410109 2.485807 3.495097 4.537430 4.924342</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [10,] 1.09511696 1.427354 2.866330 3.489116 5.045053</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>            [,1]     [,2]     [,3]     [,4]     [,5]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [1,] 0.7725537 1.630020 3.468369 3.812808 4.701049</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [2,] 1.5637231 1.373974 2.352726 4.088726 4.431997</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [3,] 1.8638700 2.497416 2.788762 3.224494 5.992147</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [4,] 0.4303879 1.176349 3.037488 3.054974 5.730034</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [5,] 1.3607637 2.072727 2.443296 4.903593 4.250157</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [6,] 0.9707127 2.185934 2.051977 4.181108 4.836537</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [7,] 1.5984015 2.589284 2.988982 4.875853 5.136572</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [8,] 0.6496949 1.037021 3.263141 4.618208 4.462288</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [9,] 1.8022521 2.537430 2.999467 3.466715 5.480964</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [10,] 0.4920491 1.489116 3.015654 4.131002 4.431231</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># You can also simulate from different matrices (if they match</span></span></span>

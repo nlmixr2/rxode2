@@ -1,6 +1,5 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://nlmixr2.github.io/rxode2/404.html</loc></url>
-<url><loc>https://nlmixr2.github.io/rxode2/CLAUDE.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/LICENSE-text.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/LICENSE.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/Integrating-User-Defined-Functions-into-rxode2.html</loc></url>
@@ -8,17 +7,22 @@
 <url><loc>https://nlmixr2.github.io/rxode2/articles/adaptive-dosing.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/index.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/ode-solvers.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-classic-models.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-clinical-trial-sim.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-cmt.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-confint.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-cookbook.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-covariates.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-data-frame.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-dataset-columns.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-delay-differential-equations.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-dense-output.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-desolve-comparison.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-dosing-overview.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-et-refactor.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-eta-eps-resampling.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-event-bus.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-event-table-combine.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-event-table.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-events-classic.html</loc></url>
@@ -56,7 +60,6 @@
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-vpc.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-wt.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/authors.html</loc></url>
-<url><loc>https://nlmixr2.github.io/rxode2/copilot-instructions.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/index.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/news/index.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/ELU.html</loc></url>
