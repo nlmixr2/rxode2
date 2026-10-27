@@ -130,7 +130,9 @@ from a functional/ui model style) we will continue the discussion on
 `rxode2` originally developed as an ODE solver that allowed an ODE
 solve for a single subject.  This flexibility is still supported.
 
-The original code from the `rxode2` tutorial is below:
+The original code from the `rxode2` tutorial is below.  Since every
+parameter is supplied per subject, the model has no `ini({})` block and
+the low-level simulation model is extracted with `$simulationModel`:
 
 ```{r speed1}
 library(rxode2)
@@ -138,15 +140,18 @@ library(rxode2)
 library(microbenchmark)
 library(ggplot2)
 
-mod1 <- rxode2({
-    C2 = centr/V2
-    C3 = peri/V3
-    d/dt(depot) = -KA*depot
-    d/dt(centr) = KA*depot - CL*C2 - Q*C2 + Q*C3
-    d/dt(peri) = Q*C2 - Q*C3
-    d/dt(eff) = Kin - Kout*(1-C2/(EC50+C2))*eff
-    eff(0) = 1
-})
+mod1 <- function() {
+  model({
+    C2 <- centr/V2
+    C3 <- peri/V3
+    d/dt(depot) <- -KA*depot
+    d/dt(centr) <- KA*depot - CL*C2 - Q*C2 + Q*C3
+    d/dt(peri) <- Q*C2 - Q*C3
+    d/dt(eff) <- Kin - Kout*(1-C2/(EC50+C2))*eff
+    eff(0) <- 1
+  })
+}
+mod1 <- mod1()$simulationModel
 
 ## Create an event table
 
@@ -359,7 +364,9 @@ speed.
 cBefore some of the parallel solving was implemented, the fastest way
 to run `rxode2` was with `lapply`.  This is how Rik Schoemaker created
 the data-set for `nlmixr` comparisons, but reduced to run faster
-automatic building of the pkgdown website.
+automatic building of the pkgdown website.  It is kept in its original
+low-level `rxode2()` and `eventTable()` style (see
+[Low-level models and other input styles](https://nlmixr2.github.io/rxode2/articles/rxode2-classic-models.html)).
 
 
 ```{r}
@@ -438,21 +445,24 @@ By applying some of the new parallel solving concepts you can simply
 run the same simulation both with less code and faster:
 
 ```{r}
-rx <- rxode2({
-    CL =  log(4)
-    V = log(70)
-    KA = log(1)
-    CL = exp(CL + eta.CL)
-    V = exp(V + eta.V)
-    KA = exp(KA + eta.KA)
-    d/dt(abs)    = -KA*abs;
-    d/dt(centr)  =  KA*abs-(CL/V)*centr;
-    C2=centr/V;
-})
-
-omega <- lotri(eta.CL ~ 0.09,
-               eta.V ~ 0.09,
-               eta.KA ~ 0.09)
+rx <- function() {
+  ini({
+    tcl <- log(4)
+    tv <- log(70)
+    tka <- log(1)
+    eta.CL ~ 0.09
+    eta.V ~ 0.09
+    eta.KA ~ 0.09
+  })
+  model({
+    CL <- exp(tcl + eta.CL)
+    V <- exp(tv + eta.V)
+    KA <- exp(tka + eta.KA)
+    d/dt(abs)    <- -KA*abs
+    d/dt(centr)  <-  KA*abs-(CL/V)*centr
+    C2 <- centr/V
+  })
+}
 
 doses <- c(10, 30, 60, 120)
 
@@ -471,7 +481,7 @@ ev <- do.call("rbind",
                 as.data.frame()
         }))
 ## To better compare, use the same output, that is data.table
-res <- rxSolve(rx, ev, omega=omega, returnType="data.table")
+res <- rxSolve(rx, ev, returnType="data.table")
 endParallel <- Sys.time()
 print(endParallel - startParallel)
 ```

@@ -718,6 +718,34 @@ rxTest({
     expect_equal(rxToSE("abs0(a)"), "abs0(a)")
     expect_equal(rxFromSE("abs0(a)"), "abs(a)")
     expect_equal(rxFromSE("Derivative(abs0(a), a)"), "dabs(a)")
+    # a sum argument is written whole, by the C emitter and by the R walker (a
+    # string the emitter declines, and every derivative, reach the walker);
+    # only loggamma(x + 1) has a shorter form
+    for (.c in c(TRUE, FALSE)) {
+      withr::with_options(list(rxode2.symengineC = .c), {
+        expect_equal(rxFromSE("abs0(-0.9 + a)"), "abs(-0.9+a)", label = paste("C", .c))
+        expect_equal(rxFromSE("abs0(a + b)"), "abs(a+b)", label = paste("C", .c))
+        expect_equal(rxFromSE("exp(2*abs0(-0.9 + a))"), "exp(2*abs(-0.9+a))", label = paste("C", .c))
+        expect_equal(rxFromSE("rxNot(a + b)"), "(!(a+b))", label = paste("C", .c))
+        expect_equal(rxFromSE("loggamma(a + 2)"), "lgamma(a+2)", label = paste("C", .c))
+        expect_equal(rxFromSE("loggamma(a + 1)"), "lgamma1p(a)", label = paste("C", .c))
+      })
+    }
+  })
+
+  test_that("the derivative of a function of abs() of a sum keeps abs()'s argument", {
+    .s <- rxS("rx_pred_ = exp(2 * abs(a - 0.9))")
+    .d <- eval(parse(text = "assign(\".d\", with(.s, D(rx_pred_, a)), envir = .s)"))
+    expect_equal(rxFromSE(.d), "2*exp(2*abs(-0.9+a))*dabs(-0.9+a)")
+    # the sensitivity equations compile and match d/dk of y = exp(-exp(2|k - 0.9|) t)
+    .m <- rxode2({
+      d / dt(y) <- -exp(2 * abs(k - 0.9)) * y
+      y(0) <- 1
+    }, calcSens = "k")
+    .r <- as.data.frame(rxSolve(.m, et(c(1, 2)), params = c(k = 1.2)))
+    .c <- exp(2 * 0.3)
+    expect_equal(.r$y, exp(-.c * c(1, 2)), tolerance = 1e-5)
+    expect_equal(.r$rx__sens_y_BY_k__, -2 * .c * c(1, 2) * exp(-.c * c(1, 2)), tolerance = 1e-5)
   })
 
   test_that("parsing errors", {

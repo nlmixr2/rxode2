@@ -15,6 +15,7 @@ rxode2parseFuns <- function() {
 #'   argMin and argMax
 #' @return Nothing called for side effects
 #' @author Matthew L. Fidler
+#' @family Developer API
 #' @export
 #' @examples
 #'
@@ -38,6 +39,7 @@ rxode2parseAssignTranslation <- function(df) {
 #'
 #' @return The currently assigned translations
 #' @author Matthew L. Fidler
+#' @family Developer API
 #' @export
 #' @examples
 #' rxode2parseGetTranslation()
@@ -68,6 +70,7 @@ rxode2parseGetPackagesToLoad <- function() {
 #' rxode2parseGetPackagesToLoad()
 #'
 #' rxode2parseAssignPackagesToLoad(rxode2parseGetPackagesToLoad())
+#' @family Developer API
 #' @export
 rxode2parseAssignPackagesToLoad <- function(pkgs = rxode2parseGetPackagesToLoad()) {
   assign(".packagesToLoad", pkgs, envir = .parseEnv)
@@ -81,6 +84,7 @@ rxode2parseAssignPackagesToLoad <- function(pkgs = rxode2parseGetPackagesToLoad(
 #'
 #' @return The currently assigned pointer assignments
 #' @author Matthew L. Fidler
+#' @family Developer API
 #' @export
 #' @examples
 #' rxode2parseGetTranslation()

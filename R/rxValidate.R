@@ -10,6 +10,13 @@
 #' @author Matthew L. Fidler
 #' @return nothing
 #' @export
+#' @examples
+#' \dontrun{
+#' # run the full test suite (slow)
+#' rxValidate(TRUE)
+#' # only the tests whose file names match "basic"
+#' rxValidate("basic")
+#' }
 rxValidate <- function(type = NULL, skipOnCran = TRUE) {
   if (is(substitute(type), "{")) {
     if (isTRUE(skipOnCran)) {

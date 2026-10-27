@@ -29,9 +29,27 @@ its own parameters without touching an unrelated model's \code{par_ptr}.  Activa
 for as short a span as possible and clear afterwards (\code{on.exit()}), because
 the flag is global to the session, not attached to a model.
 }
+\examples{
+rxSetActiveParLoader("myPkg:myLoader")
+# ... internal solves here ...
+rxClearActiveParLoader()
+}
 \seealso{
 \code{\link[=rxParLoader]{rxParLoader()}}, \code{\link[=rxForcedPars]{rxForcedPars()}}
+
+Other Solving:
+\code{\link[=as.arrow]{as.arrow()}},
+\code{\link[=rxCbindStudyIndividual]{rxCbindStudyIndividual()}},
+\code{\link[=rxForcedPars]{rxForcedPars()}},
+\code{\link[=rxInjectedPars]{rxInjectedPars()}},
+\code{\link[=rxParLoader]{rxParLoader()}},
+\code{\link[=rxRegisterUiAssembled]{rxRegisterUiAssembled()}},
+\code{\link[=rxRegisterUiPrep]{rxRegisterUiPrep()}},
+\code{\link[=rxSetIni0]{rxSetIni0()}},
+\code{\link[=rxSolve]{rxSolve()}},
+\code{\link[=rxSolveChunked]{rxSolveChunked()}}
 }
 \author{
 Matthew L. Fidler
 }
+\concept{Solving}

@@ -1,5 +1,5 @@
 ---
-title: "ETA and EPS Resampling in rxode2"
+title: "ETA and EPS resampling"
 ---
 
 ```{r, include = FALSE}
@@ -35,32 +35,32 @@ example, simulating body weight from a lognormal distribution but
 only accepting values between 60 and 80 kg:
 
 ```{r simeta-example}
-mod <- rxode2({
-  wt  <- 70 * exp(eta.wt)   # individual weight (kg)
-  i   <- 0                   # iteration counter (for safety)
-  while ((wt < 60) || (wt > 80)) {
-    i <- i + 1
-    if (i > 100) break       # prevent infinite loops
-    simeta()                 # resample all ETAs for this subject
-    wt <- 70 * exp(eta.wt)
-  }
-})
+mod <- function() {
+  ini({
+    eta.wt ~ 0.25 # SD ~ 0.5 on log scale: wide variability
+  })
+  model({
+    wt  <- 70 * exp(eta.wt)   # individual weight (kg)
+    i   <- 0                   # iteration counter (for safety)
+    while ((wt < 60) || (wt > 80)) {
+      i <- i + 1
+      if (i > 100) break       # prevent infinite loops
+      simeta()                 # resample all ETAs for this subject
+      wt <- 70 * exp(eta.wt)
+    }
+  })
+}
 ```
 
 When `simeta()` is called, all ETA values for the current subject are
-re-drawn from the supplied omega matrix.  The model then re-evaluates
+re-drawn from the omega matrix (here from `ini({})`).  The model then re-evaluates
 the downstream expressions.  Because the resampling is done at the C
 level, parallel solving with OpenMP is fully supported.
 
 ```{r simeta-solve}
-set.seed(1234)
-
 e <- et(seq(0, 24, by = 4), id = 1:100)
 
-f <- rxSolve(
-  mod, e,
-  omega = lotri(eta.wt ~ 0.25)   # SD ~ 0.5 on log scale: wide variability
-)
+f <- rxSolve(mod, e, seed = 1234)
 
 summary(f$wt)
 ```
@@ -80,13 +80,11 @@ specified for a scaled chi-squared draw), and `simeta()` resamples
 within the study-specific omega:
 
 ```{r simeta-nstud}
-set.seed(42)
-
 f2 <- rxSolve(
   mod, e,
-  omega  = lotri(eta.wt ~ 0.25),
   nStud  = 5,
-  dfSub  = 40
+  dfSub  = 40,
+  seed   = 42
 )
 
 range(f2$wt)
@@ -99,24 +97,24 @@ current observation record.  A practical use case is ensuring a
 simulated observation is non-negative without post-hoc truncation:
 
 ```{r simeps-example}
-mod_conc <- rxode2({
-  C <- 0 + err            # hypothetical: mean zero + residual noise
-  i <- 0
-  while (C < 0) {
-    simeps()              # resample all EPSs for this record
-    C <- 0 + err
-    i <- i + 1
-    if (i > 10) break
-  }
-})
+mod_conc <- function() {
+  model({
+    C <- 0 + err            # hypothetical: mean zero + residual noise
+    i <- 0
+    while (C < 0) {
+      simeps()              # resample all EPSs for this record
+      C <- 0 + err
+      i <- i + 1
+      if (i > 10) break
+    }
+  })
+}
 ```
 
 ```{r simeps-solve}
-set.seed(10)
-
 e2 <- et(0:9)
 
-f3 <- rxSolve(mod_conc, e2, sigma = lotri(err ~ 1))
+f3 <- rxSolve(mod_conc, e2, sigma = lotri(err ~ 1), seed = 10)
 
 # Without resampling some records would be negative; with simeps() all are >= 0
 all(f3$C >= 0)
@@ -132,16 +130,16 @@ bias from extra calls:
 
 ```{r simeps-preserve}
 # Solve without simeps as reference
-mod_ref <- rxode2({
-  C <- 0 + err
-  i <- 0
-})
+mod_ref <- function() {
+  model({
+    C <- 0 + err
+    i <- 0
+  })
+}
 
-set.seed(10)
-f_ref <- rxSolve(mod_ref, e2, sigma = lotri(err ~ 1))
+f_ref <- rxSolve(mod_ref, e2, sigma = lotri(err ~ 1), seed = 10)
 
-set.seed(10)
-f_resamp <- rxSolve(mod_conc, e2, sigma = lotri(err ~ 1))
+f_resamp <- rxSolve(mod_conc, e2, sigma = lotri(err ~ 1), seed = 10)
 
 # Records where no resampling was needed (i == 0) should match exactly
 both <- merge(f_ref, f_resamp[f_resamp$i == 0, ], by = "time")
@@ -159,3 +157,8 @@ filtering or replacing values after `rxSolve()`:
    variables.
 2. **Parallelism**: resampling happens inside the C solver loop,
    so OpenMP parallelism across subjects is fully preserved.
+
+## Next steps
+
+- [Simulating populations](rxode2-sim-var.html)
+- [Phase 1 vs phase 3 residual error](rxode2-phase-residual-error.html)

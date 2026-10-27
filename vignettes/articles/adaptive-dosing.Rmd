@@ -1,5 +1,5 @@
 ---
-title: "Adaptive Dosing with rxode2"
+title: "Dosing from inside the model"
 ---
 
 ```{r, include = FALSE}
@@ -77,21 +77,27 @@ The most common adaptive dosing use case is titration: assess response,
 then add another dose if the current exposure is too low.
 
 ```{r bolus-titration}
-titrateModel <- rxode2({
-  d/dt(depot) <- -ka * depot
-  d/dt(central) <- ka * depot - cl / v * central
-  cp <- central / v
-  # Check every 24 hours, add a bolus dose if needed
-  if (t %% 24 == 0 && cp < 1) {
-    bolus(50, depot, 0, 0, 0)
-  }
-})
+titrateModel <- function() {
+  ini({
+    ka <- 0.5
+    cl <- 1.2
+    v <- 20
+  })
+  model({
+    d/dt(depot) <- -ka * depot
+    d/dt(central) <- ka * depot - cl / v * central
+    cp <- central / v
+    # Check every 24 hours, add a bolus dose if needed
+    if (t %% 24 == 0 && cp < 1) {
+      bolus(50, depot, 0, 0, 0)
+    }
+  })
+}
 
 titrateEvents <- et(amt = 100, time = 0) |>
   et(seq(0, 72, by = 1))
 
-titratePars <- c(ka = 0.5, cl = 1.2, v = 20)
-titrateSolve <- rxSolve(titrateModel, titratePars, titrateEvents)
+titrateSolve <- rxSolve(titrateModel, titrateEvents)
 
 plot(titrateSolve, cp)
 ```
@@ -108,8 +114,7 @@ library(dplyr)
 titrateEvents <- titrateEvents |>
   filter(time != 48)
 
-titratePars <- c(ka = 0.5, cl = 1.2, v = 20)
-titrateSolve <- rxSolve(titrateModel, titratePars, titrateEvents)
+titrateSolve <- rxSolve(titrateModel, titrateEvents)
 
 plot(titrateSolve, cp)
 ```
@@ -118,19 +123,25 @@ One way to overcome this is to use `mtime()`
 
 ```{r missing-time-but-still-dosed}
 
-titrateModel <- rxode2({
-  mtime(time48) <- 48 # always visit 48 hours
-  d/dt(depot) <- -ka * depot
-  d/dt(central) <- ka * depot - cl / v * central
-  cp <- central / v
-  # Check every 24 hours, add a bolus dose if needed
-  if (t %% 24 == 0 && cp < 1) {
-    bolus(50, depot, 0, 0, 0)
-  }
-})
+titrateModel <- function() {
+  ini({
+    ka <- 0.5
+    cl <- 1.2
+    v <- 20
+  })
+  model({
+    mtime(time48) <- 48 # always visit 48 hours
+    d/dt(depot) <- -ka * depot
+    d/dt(central) <- ka * depot - cl / v * central
+    cp <- central / v
+    # Check every 24 hours, add a bolus dose if needed
+    if (t %% 24 == 0 && cp < 1) {
+      bolus(50, depot, 0, 0, 0)
+    }
+  })
+}
 
-titratePars <- c(ka = 0.5, cl = 1.2, v = 20)
-titrateSolve <- rxSolve(titrateModel, titratePars, titrateEvents)
+titrateSolve <- rxSolve(titrateModel, titrateEvents)
 
 plot(titrateSolve, cp)
 ```
@@ -141,28 +152,38 @@ adaptive sampling helper:
 
 ```{r MissingWithObs}
 
-titrateModel <- rxode2({
-  if (time == 0) {
-    obs(48) # only schedule at time 0 so that it doesn't schedule
-            # multiple observations at 48 hours
-  }
-  d/dt(depot) <- -ka * depot
-  d/dt(central) <- ka * depot - cl / v * central
-  cp <- central / v
-  # Check every 24 hours, add a bolus dose if needed
-  if (t %% 24 == 0 && cp < 1) {
-    bolus(50, depot, 0, 0, 0)
-  }
-})
+titrateModel <- function() {
+  ini({
+    ka <- 0.5
+    cl <- 1.2
+    v <- 20
+  })
+  model({
+    if (time == 0) {
+      obs(48) # only schedule at time 0 so that it doesn't schedule
+      # multiple observations at 48 hours
+    }
+    d/dt(depot) <- -ka * depot
+    d/dt(central) <- ka * depot - cl / v * central
+    cp <- central / v
+    # Check every 24 hours, add a bolus dose if needed
+    if (t %% 24 == 0 && cp < 1) {
+      bolus(50, depot, 0, 0, 0)
+    }
+  })
+}
 
-titrateSolve <- rxSolve(titrateModel, titratePars, titrateEvents)
+titrateSolve <- rxSolve(titrateModel, titrateEvents)
 
 plot(titrateSolve, cp)
 ```
 
-As a note, there are many required arguments for the `bolus()` dose
-when using the `rxode2({})` solving form of the model.  However, these
-are not required when you use the functional model:
+In the model function only the amount is required in `bolus()`; the
+compartment defaults to the first one and `ii`, `addl` and `ss`
+default to zero (the low-level `rxode2({})` form requires every
+positional argument, see
+[Low-level models and other input styles](rxode2-classic-models.html)).
+With different parameters and `bolus(50)`:
 
 ```{r funModel}
 titrateModel <- function() {
@@ -207,31 +228,13 @@ models as it does in ODE models. You can reference the linear
 compartment names (`depot`, `central`) directly in `bolus()`,
 `infuse()`, and the other helpers.
 
-In the `rxode2({})` solving form, supply the full set of positional
-arguments to `bolus()`:
+In the model function you can use named arguments, and the remaining
+`bolus()` arguments take their defaults:
 
-```{r lincmt-bolus-positional}
-titrateModelLin <- rxode2({
-  cp <- linCmt(ka, cl, v)
-  # Check every 24 hours, add a bolus dose if needed
-  if (t %% 24 == 0 && cp < 1) {
-    bolus(50, depot, 0, 0, 0)
-  }
-})
-
+```{r lincmt-bolus-functional}
 titrateEventsLin <- et(amt = 100, time = 0) |>
   et(seq(0, 96, by = 1))
 
-titratePars <- c(ka = 0.5, cl = 1.2, v = 20)
-titrateSolveLin <- rxSolve(titrateModelLin, titratePars, titrateEventsLin)
-
-plot(titrateSolveLin, cp)
-```
-
-In the functional model form you can use named arguments, and the
-remaining `bolus()` arguments take their defaults:
-
-```{r lincmt-bolus-functional}
 titrateModelLin <- function() {
   ini({
     ka <- 0.5
@@ -373,27 +376,33 @@ for:
 
 ```{r replace-multiply}
 
-adjustModel <- rxode2({
-  mtime(replaceAt) <- 12
-  mtime(multAt) <- 24
+adjustModel <- function() {
+  ini({
+    ka <- 0.5
+    cl <- 1
+    v <- 10
+  })
+  model({
+    mtime(replaceAt) <- 12
+    mtime(multAt) <- 24
 
-  d/dt(depot) <- -ka * depot
-  d/dt(central) <- ka * depot - cl / v * central
-  cp <- central / v
+    d/dt(depot) <- -ka * depot
+    d/dt(central) <- ka * depot - cl / v * central
+    cp <- central / v
 
-  if (t == replaceAt && depot > 0) {
-    replace(25, depot)
-  }
-  if (t == multAt && depot > 0) {
-    multiply(0.5, depot)
-  }
-})
+    if (t == replaceAt && depot > 0) {
+      replace(25, depot)
+    }
+    if (t == multAt && depot > 0) {
+      multiply(0.5, depot)
+    }
+  })
+}
 
 adjustEvents <- et(amt = 100, time = 0) |>
   et(seq(0, 36, by = 0.25))
 
-adjustPars <- c(ka = 0.5, cl = 1, v = 10)
-adjustSolve <- rxSolve(adjustModel, adjustPars, adjustEvents)
+adjustSolve <- rxSolve(adjustModel, adjustEvents)
 
 plot(adjustSolve, cp)
 
@@ -449,19 +458,25 @@ more concise interface than `evid_(..., evid = 0, ...)`. Each argument
 is interpreted as a time offset from the current solve time.
 
 ```{r obs-direct}
-obsModel <- rxode2({
-  mtime(extraSample) <- 8
-  d/dt(x) <- -k * x
+obsModel <- function() {
+  ini({
+    k <- 0.2
+  })
+  model({
+    mtime(extraSample) <- 8
+    d/dt(x) <- -k * x
+    x(0) <- 1
 
-  if (t >= extraSample && t < extraSample + 0.5) {
-    obs(0.5, 1, 2)
-  }
-})
+    if (t >= extraSample && t < extraSample + 0.5) {
+      obs(0.5, 1, 2)
+    }
+  })
+}
 
 obsEvents <- et(amt = 1, time = 0) |>
   et(c(0, 8, 12))
 
-obsSolve <- rxSolve(obsModel, c(k = 0.2), obsEvents, inits = c(x = 1))
+obsSolve <- rxSolve(obsModel, obsEvents)
 obsSolve[, c("time", "x")]
 ```
 
@@ -478,19 +493,25 @@ need, use `evid_()` directly.  This gives full access to the
 NONMEM-style event fields:
 
 ```{r evid-direct}
-directModel <- rxode2({
-  mtime(extraSample) <- 8
-  d/dt(x) <- -k * x
+directModel <- function() {
+  ini({
+    k <- 0.2
+  })
+  model({
+    mtime(extraSample) <- 8
+    d/dt(x) <- -k * x
+    x(0) <- 1
 
-  if (t >= extraSample && t < extraSample + 0.5) {
-    evid_(t + 0.5, 0, 0, 1, 0, 0, 0, 0)
-  }
-})
+    if (t >= extraSample && t < extraSample + 0.5) {
+      evid_(t + 0.5, 0, 0, 1, 0, 0, 0, 0)
+    }
+  })
+}
 
 directEvents <- et(amt = 1, time = 0) |>
   et(c(0, 8, 12))
 
-directSolve <- rxSolve(directModel, c(k = 0.2), directEvents, inits = c(x = 1))
+directSolve <- rxSolve(directModel, directEvents)
 directSolve[, c("time", "x")]
 ```
 
@@ -567,3 +588,8 @@ protocol simulation.
 The tests in `tests/testthat/test-evid-push.R` provide concrete
 regression coverage for these event types, and the same patterns can be
 used in practical pharmacometric workflows.
+
+## Next steps
+
+- [Dosing event types](rxode2-event-types.html)
+- [Sticky variables](rxode2-sticky.html)
