@@ -1011,4 +1011,19 @@ rxTest({
       }
     }
   })
+
+  test_that("hmaxSd widens the default hmax of a subject that is not last (#1501)", {
+    m <- rxode2({
+      d/dt(c) <- -k * c
+    })
+    # id 1: gaps 0.01 and 19.99, so hmaxSd moves its hmax across the 19.99 gap
+    .e <- rbind(
+      data.frame(id = 1, time = c(0, 0.01, 20), evid = c(1, 0, 0), amt = c(100, 0, 0)),
+      data.frame(id = 2, time = c(0, 0.5), evid = c(1, 0), amt = c(100, 0))
+    )
+    .dadt <- function(sd) {
+      rxSolve(m, .e, params = c(k = 0.001), method = "dop853", hmaxSd = sd, atol = 1, rtol = 1)$counts$dadt[1]
+    }
+    expect_lt(.dadt(10), .dadt(0))
+  })
 })
