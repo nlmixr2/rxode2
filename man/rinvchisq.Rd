@@ -24,3 +24,19 @@ Scaled Inverse Chi Squared distribution
 rinvchisq(3, 4, 1) ## Scale = 1, degrees of freedom = 4
 rinvchisq(2, 4, 2) ## Scale = 2, degrees of freedom = 4
 }
+\seealso{
+Other Variability and uncertainty:
+\code{\link[=confint.rxSolve]{confint.rxSolve()}},
+\code{\link[=cvPost]{cvPost()}},
+\code{\link[=dfWishart]{dfWishart()}},
+\code{\link[=rxEtaDistExpand]{rxEtaDistExpand()}},
+\code{\link[=rxEtaDistMuRef]{rxEtaDistMuRef()}},
+\code{\link[=rxPp]{rxPp()}},
+\code{\link[=rxRmvn]{rxRmvn()}},
+\code{\link[=rxRmvt]{rxRmvt()}},
+\code{\link[=rxSimThetaOmega]{rxSimThetaOmega()}},
+\code{\link[=rxUiEtaDistAnchors]{rxUiEtaDistAnchors()}},
+\code{\link[=rxUiEtaDists]{rxUiEtaDists()}},
+\code{\link[=swapMatListWithCube]{swapMatListWithCube()}}
+}
+\concept{Variability and uncertainty}

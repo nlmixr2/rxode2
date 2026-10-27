@@ -34,6 +34,7 @@ dfWishartCalcRse <- function(nu, omega, totN, rse, diag = TRUE) {
 #'
 #' dfWishart(lotri::lotri(a+b~c(1, 0.5, 1)), 100)
 #'
+#' @family Variability and uncertainty
 dfWishart <- function(omega, n, rse, upper, totN = 1000, diag = TRUE, seed = 1234) {
   checkmate::assertMatrix(omega, "numeric", min.rows = 1, min.cols = 1)
   if (!missing(rse) && !missing(n)) {
@@ -83,6 +84,7 @@ dfWishart <- function(omega, n, rse, upper, totN = 1000, diag = TRUE, seed = 123
 #' matLst2 <- swapMatListWithCube(matCube)
 #' print(matLst2)
 #'
+#' @family Variability and uncertainty
 swapMatListWithCube <- function(matrixListOrCube) {
   .dim <- dim(matrixListOrCube)
   if (length(.dim) == 3L) {

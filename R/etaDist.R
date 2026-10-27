@@ -119,6 +119,7 @@
 #' rxUiEtaDistAnchors(rxEtaDistExpand(mod(), param = "direct"), .d)
 #' }
 #' }
+#' @family Variability and uncertainty
 rxUiEtaDistAnchors <- function(ui, d = NULL) {
   if (is.function(ui) || inherits(ui, c("rxode2", "rxode2tos"))) {
     ui <- .rxEtaDistAsUiQuietly(ui)
@@ -284,6 +285,31 @@ rxUiEtaDistAnchors <- function(ui, d = NULL) {
 #'   none
 #' @export
 #' @author Matthew L. Fidler
+#' @family Variability and uncertainty
+#' @examples
+#' \donttest{
+#' if (requireNamespace("lotri", quietly = TRUE) &&
+#'       "lotriEtaDists" %in% getNamespaceExports("lotri")) {
+#' mod <- function() {
+#'   ini({
+#'     lclm <- log(5)
+#'     lclrv <- log(0.09)
+#'     tv <- 3.45
+#'     dist(eta.cl) ~ dgamma(shape = 1 / exp(lclrv),
+#'                           rate = 1 / (exp(lclrv) * exp(lclm)))
+#'     add.sd <- 0.7
+#'   })
+#'   model({
+#'     cl <- eta.cl
+#'     v <- exp(tv)
+#'     linCmt() ~ add(add.sd)
+#'   })
+#' }
+#' print(rxUiEtaDists(mod))
+#' print(testRxUiEtaDist(mod))
+#' try(assertRxUiNoEtaDist(mod, extra = " in this example"))
+#' }
+#' }
 rxUiEtaDists <- function(ui) {
   ## accepts a model function as well as a built ui, the way the rest of
   ## the rxUi accessors do
@@ -716,6 +742,7 @@ assertRxUiNoEtaDist <- function(ui, extra = "") {
 #'   not have, so `"direct"` refuses a correlated declared block by name rather
 #'   than dropping the correlation silently.
 #' @author Matthew L. Fidler
+#' @family Variability and uncertainty
 rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
   param <- match.arg(param)
   if (is.function(ui) || inherits(ui, c("rxode2", "rxode2tos"))) {
@@ -1588,6 +1615,7 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
 #' rxEtaDistMuRef(mod)
 #' }
 #' }
+#' @family Variability and uncertainty
 rxEtaDistMuRef <- function(ui, variance = 0.1) {
   .ui <- rxUiDecompress(assertRxUi(ui))
   if (nrow(rxUiEtaDists(.ui)) == 0L) {
@@ -1709,6 +1737,29 @@ rxEtaDistMuRef <- function(ui, variance = 0.1) {
 #'   that replaces the declaration
 #' @export
 #' @author Matthew L. Fidler
+#' @family User functions
+#' @examples
+#' \donttest{
+#' if (requireNamespace("lotri", quietly = TRUE) &&
+#'       "lotriEtaDists" %in% getNamespaceExports("lotri")) {
+#' # called for you when a model() line declares dist(<eta>)
+#' mod <- function() {
+#'   ini({
+#'     lclm <- 1.63
+#'     lclrv <- -2.4
+#'     prop.sd <- 0.1
+#'   })
+#'   model({
+#'     dist(cl) ~ dgamma(shape = 1 / exp(lclrv),
+#'                       rate = 1 / (exp(lclrv) * exp(lclm)))
+#'     v <- 5
+#'     linCmt() ~ prop(prop.sd)
+#'   })
+#' }
+#' ui <- mod()
+#' rxUiEtaDists(ui)
+#' }
+#' }
 rxUdfUiLhs.dist <- function(fun, rhs) {
   if (length(fun) != 2L) {
     stop("'dist()' takes exactly one random effect, as in 'dist(eta.cl)'", call. = FALSE)

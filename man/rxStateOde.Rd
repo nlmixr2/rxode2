@@ -39,6 +39,16 @@ rxState(mod)
 }
 
 }
+\seealso{
+Other Query model information:
+\code{\link[=rxDfdy]{rxDfdy()}},
+\code{\link[=rxInits]{rxInits()}},
+\code{\link[=rxLhs]{rxLhs()}},
+\code{\link[=rxModelVars]{rxModelVars()}},
+\code{\link[=rxParams]{rxParams()}},
+\code{\link[=rxState]{rxState()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Query model information}

@@ -1,5 +1,5 @@
 ---
-title: "Providing Custom C/C++ Functions to rxode2 from a Package"
+title: "C/C++ functions from a package"
 ---
 
 ```{r, include = FALSE}
@@ -566,7 +566,10 @@ m3 <- function() {
 ```
 
 Note that plain `rxode2({...})` (low-level, without ui) does **not**
-call `rxUdfUi` methods and still requires positional arguments.
+call `rxUdfUi` methods and still requires positional arguments.  The
+examples on this page use that low-level form to show the C-level
+interface directly (see
+[Low-level models and other input styles](rxode2-classic-models.html)).
 
 ## Using the package
 
@@ -632,3 +635,8 @@ rxode2::rxFromSE("Derivative(mm_dKm(C, Vmax, Km), Km)")
 - [Integrating User Defined Functions into rxode2](Integrating-User-Defined-Functions-into-rxode2.html) -- the inline / R-function approach
 - [Writing R Extensions 5.4](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Registering-native-routines) -- `R_RegisterCCallable`, `R_GetCCallable`
 - `?rxode2parseAssignTranslation`, `?rxode2parseGetTranslation`, `?rxD`
+
+## Next steps
+
+- [User-defined functions](Integrating-User-Defined-Functions-into-rxode2.html)
+- [Compiled models in packages](rxode2-rxUse.html)

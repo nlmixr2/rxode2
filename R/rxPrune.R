@@ -16,8 +16,9 @@
   if (length(strAssign) == 0L) {
     return(ret)
   }
-  .w <- which(lhs %in% names(strAssign))
-  if (length(.w) == 1L) {
+  # the position of this variable's levels in strAssign
+  .w <- match(lhs, names(strAssign))
+  if (length(.w) == 1L && !is.na(.w)) {
     # Replace with integer
     .w <- which(vapply(
       seq_along(strAssign[[.w]]),

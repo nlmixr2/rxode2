@@ -1,5 +1,5 @@
 ---
-title: "rxode2 Covariates"
+title: "Covariates"
 date: "`r Sys.Date()`"
 output:
   html_document:
@@ -7,3 +7,9 @@ output:
 ---
 ```{r child='../man-roxygen/rmdhunks/covariates.Rmd'}
 ```
+
+# Next steps
+
+- [Weight-based dosing](rxode2-wt.html)
+- [Simulating populations](rxode2-sim-var.html)
+- [Dataset columns](rxode2-dataset-columns.html)

@@ -117,9 +117,37 @@ using the \code{\link[=.Call]{.Call()}} function.
 This is the compilation workhorse creating the rxode2 model DLL
 files.
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    k <- 0.1
+  })
+  model({
+    d/dt(A) <- -k * A
+  })
+}
+dll <- rxCompile(rxModelVars(mod()), dir = file.path(tempdir(), "rxCompile"))
+dll
+}
+}
 \seealso{
 \code{\link[=rxode2]{rxode2()}}
+
+Other Model definition:
+\code{\link[=rxClean]{rxClean()}},
+\code{\link[=rxCreateCache]{rxCreateCache()}},
+\code{\link[=rxDelete]{rxDelete()}},
+\code{\link[=rxLastCompile]{rxLastCompile()}},
+\code{\link[=rxNorm]{rxNorm()}},
+\code{\link{rxReservedKeywords}},
+\code{\link[=rxSupportedFuns]{rxSupportedFuns()}},
+\code{\link{rxSyntaxFunctions}},
+\code{\link[=rxUnloadAll]{rxUnloadAll()}},
+\code{\link[=rxode2]{rxode2()}},
+\code{\link[=summary.rxode2]{summary.rxode2()}}
 }
 \author{
 Matthew L.Fidler
 }
+\concept{Model definition}

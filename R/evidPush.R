@@ -111,6 +111,7 @@
 #' }
 #'
 #' @export
+#' @family In-model dosing
 evid_ <- function(time, evid, amt, cmt = 1, rate = 0, ii = 0, addl = 0, ss = 0.0) {
   stop("'evid_()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -195,6 +196,25 @@ rxUdfUi.evid_ <- function(fun) {
 #'
 #' @export
 #' @author Matthew L. Fidler
+#' @family In-model dosing
+#' @examples
+#' \donttest{
+#' # extra 50 unit bolus into the depot at t = 12
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     mtime(at) <- 12
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'     if (t >= at && t < at + 0.5) bolus(50, depot)
+#'   })
+#' }
+#' s <- rxSolve(f, et(amt = 100) |> et(0:24))
+#' s[s$time >= 11 & s$time <= 14, ]
+#' }
 bolus <- function(amt, cmt = 1, ii = 0, addl = 0, ss = 0) {
   stop("'bolus()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -252,6 +272,25 @@ rxUdfUi.bolus <- function(fun) {
 #'
 #' @export
 #' @author Matthew L. Fidler
+#' @family In-model dosing
+#' @examples
+#' \donttest{
+#' # 50 unit infusion at rate 10 into central at t = 12
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     mtime(at) <- 12
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'     if (t >= at && t < at + 0.5) infuse(50, 10, central)
+#'   })
+#' }
+#' s <- rxSolve(f, et(amt = 100) |> et(0:24))
+#' s[s$time >= 11 & s$time <= 14, ]
+#' }
 infuse <- function(amt, rate, cmt = 1, ii = 0, addl = 0, ss = 0) {
   stop("'infuse()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -308,6 +347,25 @@ rxUdfUi.infuse <- function(fun) {
 #'
 #' @export
 #' @author Matthew L. Fidler
+#' @family In-model dosing
+#' @examples
+#' \donttest{
+#' # 50 unit infusion over 5 time units into central at t = 12
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     mtime(at) <- 12
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'     if (t >= at && t < at + 0.5) infuseDur(50, 5, central)
+#'   })
+#' }
+#' s <- rxSolve(f, et(amt = 100) |> et(0:24))
+#' s[s$time >= 11 & s$time <= 14, ]
+#' }
 infuseDur <- function(amt, dur, cmt = 1, ii = 0, addl = 0, ss = 0) {
   stop("'infuseDur()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -358,6 +416,25 @@ rxUdfUi.infuseDur <- function(fun) {
 #' Past-time pushes (where `time < t`) are silently ignored and counted;
 #' a warning is issued after solving.
 #'
+#' @family In-model dosing
+#' @examples
+#' \donttest{
+#' # reset all compartments at t = 12
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     mtime(at) <- 12
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'     if (t >= at && t < at + 0.5) reset()
+#'   })
+#' }
+#' s <- rxSolve(f, et(amt = 100) |> et(0:24))
+#' s[s$time >= 11 & s$time <= 14, ]
+#' }
 reset <- function() {
   stop("'reset()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -386,6 +463,25 @@ reset <- function() {
 #' Past-time pushes (where `time < t`) are silently ignored and counted;
 #' a warning is issued after solving.
 #'
+#' @family In-model dosing
+#' @examples
+#' \donttest{
+#' # set the central amount to 25 at t = 12
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     mtime(at) <- 12
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'     if (t >= at && t < at + 0.5) replace(25, central)
+#'   })
+#' }
+#' s <- rxSolve(f, et(amt = 100) |> et(0:24))
+#' s[s$time >= 11 & s$time <= 14, ]
+#' }
 replace <- function(amt, cmt = 1) {
   stop("'replace()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -427,6 +523,25 @@ rxUdfUi.replace <- function(fun) {
 #' Past-time pushes (where `time < t`) are silently ignored and counted;
 #' a warning is issued after solving.
 #'
+#' @family In-model dosing
+#' @examples
+#' \donttest{
+#' # halve the central amount at t = 12
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     mtime(at) <- 12
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'     if (t >= at && t < at + 0.5) multiply(0.5, central)
+#'   })
+#' }
+#' s <- rxSolve(f, et(amt = 100) |> et(0:24))
+#' s[s$time >= 11 & s$time <= 14, ]
+#' }
 multiply <- function(amt, cmt = 1) {
   stop("'multiply()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -469,6 +584,26 @@ rxUdfUi.multiply <- function(fun) {
 #'
 #' @export
 #' @author Matthew L. Fidler
+#' @family In-model dosing
+#' @examples
+#' \donttest{
+#' # phantom dose at t = 12 resets tad() without adding drug
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     mtime(at) <- 12
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'     td <- tad(depot)
+#'     if (t >= at && t < at + 0.5) phantom(100, depot)
+#'   })
+#' }
+#' s <- rxSolve(f, et(amt = 100) |> et(0:24))
+#' s[s$time >= 11 & s$time <= 14, ]
+#' }
 phantom <- function(amt, cmt = 1, ii = 0, addl = 0, ss = 0) {
   stop("'phantom()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -536,6 +671,22 @@ rxUdfUi.phantom <- function(fun) {
 #'
 #' @export
 #' @author Matthew L. Fidler
+#' @family In-model dosing
+#' @examples
+#' \donttest{
+#' f <- function() {
+#'   ini({
+#'     cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     d/dt(central) <- -cl / v * central
+#'     cp <- central / v
+#'     # add observations at t + 0.5, t + 1.5 and t + 3
+#'     if (t < 1) obs(0.5, 1.5, 3)
+#'   })
+#' }
+#' rxSolve(f, et(amt = 100) |> et(c(0, 24)))
+#' }
 obs <- function(...) {
   stop("'obs()' can only be used inside an rxode2 model block", call. = FALSE)
 }

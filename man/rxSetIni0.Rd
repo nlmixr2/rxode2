@@ -17,3 +17,23 @@ the boolean ini0, though this is called for its side effects
 \description{
 Set Initial conditions to time zero instead of the first observed/dosed time
 }
+\examples{
+# initial conditions at the first record time rather than time zero
+rxSetIni0(FALSE)
+# restore the default
+rxSetIni0(TRUE)
+}
+\seealso{
+Other Solving:
+\code{\link[=as.arrow]{as.arrow()}},
+\code{\link[=rxCbindStudyIndividual]{rxCbindStudyIndividual()}},
+\code{\link[=rxForcedPars]{rxForcedPars()}},
+\code{\link[=rxInjectedPars]{rxInjectedPars()}},
+\code{\link[=rxParLoader]{rxParLoader()}},
+\code{\link[=rxRegisterUiAssembled]{rxRegisterUiAssembled()}},
+\code{\link[=rxRegisterUiPrep]{rxRegisterUiPrep()}},
+\code{\link[=rxSetActiveParLoader]{rxSetActiveParLoader()}},
+\code{\link[=rxSolve]{rxSolve()}},
+\code{\link[=rxSolveChunked]{rxSolveChunked()}}
+}
+\concept{Solving}

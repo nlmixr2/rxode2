@@ -1177,6 +1177,7 @@
 
 #' @export
 #' @rdname ini
+#' @family Model UI and piping
 ini.rxUi <- function(x, ..., envir = parent.frame(), append = NULL) {
   .s <- as.character(substitute(append))
   .f <- try(force(append), silent = TRUE)
@@ -1336,6 +1337,7 @@ as.lotri.call <- function(x, ..., default = "") {
 #' }
 #' zeroRe(one.compartment)
 #' @export
+#' @family Model UI and piping
 zeroRe <- function(object, which = c("omega", "sigma"), fix = TRUE) {
   object <- assertRxUi(object)
   which <- match.arg(which, several.ok = TRUE)

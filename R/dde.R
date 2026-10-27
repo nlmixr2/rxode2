@@ -1790,6 +1790,7 @@
 #'
 #' @author Matthew L. Fidler
 #' @export
+#' @family Special functions
 delay <- function(state, T) {
   stop("'delay()' can only be used inside an rxode2 model block", call. = FALSE)
 }
