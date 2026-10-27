@@ -43,8 +43,13 @@ rxTest({
         if (!is.null(.hmin)) {
           .args$hmin <- .hmin
         }
-        out <- do.call(rxode2::rxSolve, .args)
-        expect_s3_class(out, "rxSolve")
+        if (.method == "vv") {
+          # d/dt(X) is not a state, so these are not coordinate-momentum pairs
+          expect_error(do.call(rxode2::rxSolve, .args), "coordinate-momentum")
+        } else {
+          out <- do.call(rxode2::rxSolve, .args)
+          expect_s3_class(out, "rxSolve")
+        }
       })
     })
   }
@@ -60,5 +65,54 @@ rxTest({
     expect_equal(out2$q, cos(out2$time), tolerance = 0.05)
     expect_equal(out10$q, cos(out10$time), tolerance = 0.05)
     expect_true(any(out2$q != out10$q))
+  })
+
+  test_that("vv refuses a first-order model instead of returning the initial state (#1469)", {
+    .mod <- rxode2::rxode2({
+      y(0) <- 1
+      d/dt(y) <- -k * y
+    })
+    expect_error(
+      rxode2::rxSolve(.mod, rxode2::et(0:2), params = c(k = 1), method = "vv"),
+      "coordinate-momentum"
+    )
+    # pairs in the wrong order are refused too
+    .mod2 <- rxode2::rxode2({
+      d/dt(p) <- -q
+      d/dt(q) <- p
+    })
+    expect_error(
+      rxode2::rxSolve(.mod2, rxode2::et(0:2), inits = c(q = 1, p = 0), method = "vv"),
+      "coordinate-momentum"
+    )
+    # a non-finite coordinate derivative is not a pair either
+    .mod4 <- rxode2::rxode2({
+      y(0) <- 1
+      d/dt(y) <- Inf
+    })
+    expect_error(
+      rxode2::rxSolve(.mod4, rxode2::et(0:2), method = "vv"),
+      "coordinate-momentum"
+    )
+    # an infusion into a coordinate breaks d/dt(q) = p
+    .mod3 <- rxode2::rxode2({
+      d/dt(q) <- p
+      d/dt(p) <- -q
+    })
+    expect_error(
+      rxode2::rxSolve(.mod3, rxode2::et(amt = 1, rate = 1, cmt = "q") |> rxode2::et(0:2), method = "vv"),
+      "infusion"
+    )
+  })
+
+  test_that("vv accepts pairs whose coordinate derivative uses an intermediate", {
+    .mod <- rxode2::rxode2({
+      v <- p
+      d/dt(q) <- v
+      d/dt(p) <- -q
+    })
+    .et <- rxode2::et(seq(0, 2 * pi, length.out = 10))
+    out <- rxode2::rxSolve(.mod, .et, inits = c(q = 1, p = 0), method = "vv")
+    expect_equal(out$q, cos(out$time), tolerance = 0.05)
   })
 })

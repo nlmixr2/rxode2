@@ -59,7 +59,25 @@ s2 <- rxSolve(hutch, et(seq(0, 40, by = 0.5)))
 }
 \seealso{
 \code{\link[=rxSolve]{rxSolve()}}
+
+Other Special functions:
+\code{\link[=boxCox]{boxCox()}},
+\code{\link[=erf]{erf()}},
+\code{\link[=gammap]{gammap()}},
+\code{\link[=gammapDer]{gammapDer()}},
+\code{\link[=gammapInv]{gammapInv()}},
+\code{\link[=gammaq]{gammaq()}},
+\code{\link[=gammaqInv]{gammaqInv()}},
+\code{\link[=logit]{logit()}},
+\code{\link[=lowergamma]{lowergamma()}},
+\code{\link[=mexpit]{mexpit()}},
+\code{\link[=mlogit]{mlogit()}},
+\code{\link[=phi]{phi()}},
+\code{\link[=phiU]{phiU()}},
+\code{\link[=probit]{probit()}},
+\code{\link[=uppergamma]{uppergamma()}}
 }
 \author{
 Matthew L. Fidler
 }
+\concept{Special functions}

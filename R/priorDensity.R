@@ -673,6 +673,29 @@
 #' @family Assertions
 #' @author Matthew L. Fidler
 #' @export
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     tcl <- log(3)
+#'     tv <- log(30)
+#'     add.sd <- c(0, 0.7)
+#'     prior(tcl) ~ dnorm(0, 10)
+#'   })
+#'   model({
+#'     cl <- exp(tcl)
+#'     v <- exp(tv)
+#'     d/dt(central) <- -cl / v * central
+#'     cp <- central / v
+#'     cp ~ add(add.sd)
+#'   })
+#' }
+#' # priors need 'lotri' >= 1.0.5
+#' if (utils::packageVersion("lotri") >= "1.0.5") {
+#'   spec <- rxPriorBuildSpec(mod)
+#'   inherits(spec, "externalptr")
+#' }
+#' }
 rxPriorBuildSpec <- function(ui, method = c("general", "nwpri", "tnpri")) {
   method <- match.arg(method)
   ui <- rxode2::assertRxUi(ui)

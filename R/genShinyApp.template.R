@@ -63,6 +63,7 @@
 #' @concept PK/PD
 #' @concept pharmacometrics
 #' @export genShinyApp.template
+#' @family Shiny
 genShinyApp.template <-
   function(
     appDir = "shinyExample",

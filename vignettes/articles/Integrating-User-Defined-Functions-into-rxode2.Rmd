@@ -1,5 +1,5 @@
 ---
-title: "Integrating User Defined Functions into rxode2"
+title: "User-defined functions"
 ---
 
 ```{r, include = FALSE}
@@ -55,9 +55,12 @@ newAbs <- function(x) {
   }
 }
 
-f <- rxode2({
-  a <- newAbs(time)
-})
+f <- function() {
+  model({
+    a <- newAbs(time)
+  })
+}
+f <- f() # parse once so the benchmark does not re-parse the model
 
 e <- et(-10, 10, length.out=40)
 ```
@@ -86,9 +89,12 @@ rxFun(newAbs)
 # Note it would recompile anyway if you didn't do this step,
 # it just makes sure that it doesn't recompile every step in
 # the benchmark
-f <- rxode2({
-  a <- newAbs(time)
-})
+f <- function() {
+  model({
+    a <- newAbs(time)
+  })
+}
+f <- f()
 
 mb2 <- microbenchmark::microbenchmark(withC=rxSolve(f,e, cores=1))
 
@@ -322,7 +328,8 @@ f <- function() {
 # support named arguments (since it is translated to C)
 f()
 
-# Which is still true in the standard rxode2:
+# Named arguments are not supported in the low-level rxode2() model
+# (see the "Low-level models and other input styles" article):
 
 try(rxode2({
   a <- rxpois(lambda=lam)
@@ -569,3 +576,8 @@ linMod
 
 rxode2:::rxUdfUi.linMod
 ```
+
+## Next steps
+
+- [C/C++ functions from a package](rxode2-pkg-exported-funs.html)
+- [Model syntax](rxode2-syntax.html)

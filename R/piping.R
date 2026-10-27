@@ -62,6 +62,7 @@
 #' @param ui Original UI object
 #' @return Copied UI object
 #' @author Matthew L. Fidler
+#' @family Developer API
 #' @export
 .copyUi <- function(ui) {
   if (
@@ -531,6 +532,7 @@
 #'
 #' @author Matthew L. Fidler
 #'
+#' @family Developer API
 #' @export
 .quoteCallInfoLines <- function(callInfo, envir = parent.frame(), iniDf = NULL) {
   .bracket <- rep(FALSE, length.out = length(callInfo))

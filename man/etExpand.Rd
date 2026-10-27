@@ -24,6 +24,25 @@ print(ev)
 
 ev$expand() ## Expands the current event table and saves it in ev
 }
+\seealso{
+Other Event tables:
+\code{\link[=add.dosing]{add.dosing()}},
+\code{\link[=add.sampling]{add.sampling()}},
+\code{\link[=as.et]{as.et()}},
+\code{\link[=et]{et()}},
+\code{\link[=etRbind]{etRbind()}},
+\code{\link[=etRep]{etRep()}},
+\code{\link[=etSeq]{etSeq()}},
+\code{\link[=eventTable]{eventTable()}},
+\code{\link[=is.rxEt]{is.rxEt()}},
+\code{\link[=rxEventTableFile]{rxEventTableFile()}},
+\code{\link[=splitBolus]{splitBolus()}},
+\code{\link{splitBolusInfusion-directive}},
+\code{\link[=splitInfusion]{splitInfusion()}},
+\code{\link{splitInfusionBolus-directive}},
+\code{\link[=toTrialDuration]{toTrialDuration()}}
+}
 \author{
 Matthew Fidler
 }
+\concept{Event tables}

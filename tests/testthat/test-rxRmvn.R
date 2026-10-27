@@ -136,4 +136,25 @@ rxTest({
       expect_equal(a1, a2)
     })
   })
+
+  test_that("truncated normal has the covariance of rejection sampling", {
+    rxWithSeed(42, {
+      s <- matrix(c(4, 1.8, 1.8, 1), 2)
+      x <- rxRmvn(40000, c(0, 0), s, lower = c(-Inf, -0.5), upper = Inf)
+      y <- rxRmvn(200000, c(0, 0), s)
+      y <- y[y[, 2] > -0.5, ]
+      expect_equal(cov(x), cov(y), tolerance = 0.05)
+      x2 <- rxRmvn(40000, c(0, 0), chol(s), lower = c(-Inf, -0.5), upper = Inf, isChol = TRUE)
+      expect_equal(cov(x2), cov(y), tolerance = 0.05)
+
+      s3 <- matrix(c(2, .6, -.4, .6, 1, .3, -.4, .3, 1.5), 3)
+      lo <- c(-Inf, 0.2, -1)
+      up <- c(1, Inf, 0.5)
+      x <- rxRmvn(40000, c(0.5, 0, 0), s3, lower = lo, upper = up)
+      y <- rxRmvn(400000, c(0.5, 0, 0), s3)
+      y <- y[y[, 1] < 1 & y[, 2] > 0.2 & y[, 3] > -1 & y[, 3] < 0.5, ]
+      expect_equal(colMeans(x), colMeans(y), tolerance = 0.03)
+      expect_equal(cov(x), cov(y), tolerance = 0.05)
+    })
+  })
 })

@@ -52,6 +52,7 @@
 #' }
 #' @export
 #' @keywords internal
+#' @family Solver options and performance
 forderForceBase <- function(forceBase = FALSE) {
   if (forceBase) {
     .forderEnv$useBase <- forceBase

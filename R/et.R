@@ -188,6 +188,7 @@
 #' @importFrom stats simulate end setNames start
 #' @importFrom methods is
 #' @export
+#' @family Event tables
 et <- function(x, ..., envir = parent.frame()) {
   UseMethod("et")
 }
@@ -1308,6 +1309,7 @@ set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
 #' @param ...  other arguments
 #' @return if 'rxode2'  is loaded, a solved object, otherwise an error
 #' @author Matthew L. Fidler
+#' @family Developer API
 #' @export
 rxEtDispatchSolve <- function(x, ...) {
   UseMethod("rxEtDispatchSolve")
@@ -1408,6 +1410,7 @@ simulate.rxEt <- function(object, nsim = 1, seed = NULL, ...) {
 #' @author Matthew L. Fidler
 #' @template etExamples
 #' @export
+#' @family Event tables
 add.dosing <- function(
   eventTable,
   dose,
@@ -1476,6 +1479,7 @@ add.dosing <- function(
 #'     will be updated even if you don't reassign the eventTable)
 #' @template etExamples
 #' @export
+#' @family Event tables
 add.sampling <- function(eventTable, time, time.units = NA_character_) {
   if (is.rxEt(eventTable)) {
     eventTable$add.sampling(time, time.units = time.units)
@@ -1603,6 +1607,7 @@ add.sampling <- function(eventTable, time, time.units = NA_character_) {
 #' @concept Pharmacokinetics (PK)
 #' @concept Pharmacodynamics (PD)
 #' @export
+#' @family Event tables
 eventTable <- function(amount.units = NA, time.units = NA) {
   .amtU <- if (!missing(amount.units)) as.character(amount.units) else NA_character_
   .timU <- if (!missing(time.units)) as.character(time.units) else NA_character_
@@ -1657,6 +1662,7 @@ eventTable <- function(amount.units = NA, time.units = NA) {
 #' @template etExamples
 #'
 #' @export
+#' @family Event tables
 etSeq <- function(..., samples = c("clear", "use"), waitII = c("smart", "+ii"), ii = 24) {
   .samples <- match.arg(samples)
   .waitType <- match.arg(waitII)
@@ -1784,6 +1790,7 @@ etSeq <- function(..., samples = c("clear", "use"), waitII = c("smart", "+ii"), 
 #' @template etExamples
 #'
 #' @export
+#' @family Event tables
 etRbind <- function(..., samples = c("use", "clear"), waitII = c("smart", "+ii"), id = c("merge", "unique")) {
   .samples <- match.arg(samples)
   .uniqueId <- match.arg(id) == "unique"
@@ -1956,6 +1963,7 @@ c.rxEt <- function(...) {
 #' @template etExamples
 #' @return An event table
 #' @export
+#' @family Event tables
 etRep <- function(
   x,
   times = 1,
@@ -2021,6 +2029,9 @@ rep.rxEt <- function(x, ...) {
 #' @param ... Other parameters
 #' @return An event table
 #' @export
+#' @family Event tables
+#' @examples
+#' as.et(data.frame(time = c(0, 12), amt = c(100, 50), evid = 1))
 as.et <- function(x, ...) {
   UseMethod("as.et")
 }
@@ -2070,6 +2081,7 @@ as.data.frame.rxEt <- function(x, row.names = NULL, optional = FALSE, ...) {
 #'
 #' @return data.table of event table
 #'
+#' @family Developer API
 #' @export
 as.data.table.rxEt <- function(x, keep.rownames = FALSE, ...) {
   rxReq("data.table") # nolint
@@ -2084,6 +2096,7 @@ as.data.table.rxEt <- function(x, keep.rownames = FALSE, ...) {
 #'
 #' @return tibble of event table
 #'
+#' @family Developer API
 #' @export
 as_tibble.rxEt <- function(x, ...) {
   rxReq("tibble") # nolint
@@ -2105,6 +2118,7 @@ as_tibble.rxEt <- function(x, ...) {
 #'
 #' ev$expand() ## Expands the current event table and saves it in ev
 #' @export
+#' @family Event tables
 etExpand <- function(et) {
   .env <- .rxEtEnv(et) # nolint
   .newEnv <- new.env(parent = emptyenv())
@@ -2170,6 +2184,7 @@ etExpand <- function(et) {
 #' @examples
 #'
 #' rxEvid(1:7)
+#' @family Developer API
 #' @export
 rxEvid <- function(x) {
   structure(x, class = "rxEvid")
@@ -2279,6 +2294,7 @@ as.data.frame.rxEvid <- base::as.data.frame.difftime
 #'
 #' @return rxRateDur object
 #'
+#' @family Developer API
 #' @export
 rxRateDur <- function(x) {
   structure(x, class = "rxRateDur")
