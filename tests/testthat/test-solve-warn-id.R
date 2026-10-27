@@ -251,6 +251,24 @@ rxTest({
     }
   })
 
+  test_that("a dop853+ros4 solve that switches to ros4 prints no dop853 line", {
+    # the composite's dop853 probe hands an interval it cannot step to ros4;
+    # that is not a failure, so dop853 says nothing
+    .m <- rxode2({
+      y1(0) <- 1
+      d/dt(y1) <- -0.04 * y1 + 1e4 * y2 * y3
+      d/dt(y2) <- 0.04 * y1 - 1e4 * y2 * y3 - 3e7 * y2^2
+      d/dt(y3) <- 3e7 * y2^2
+    })
+    .ev <- et(c(0.1, 1, 10, 100, 1000, 1e4, 1e5))
+    .w <- capture_warnings(
+      .out <- capture.output(.s <- as.data.frame(rxSolve(.m, .ev, method = "dop853+ros4", atol = 1e-6, rtol = 1e-6)))
+    )
+    expect_identical(.w, character(0))
+    expect_identical(.out, character(0))
+    expect_equal(.s$y1[.s$time == 1e5], 0.01786593, tolerance = 1e-5)
+  })
+
   test_that("the dop853 step-size and intdy warnings give their x, h and t", {
     .m <- rxode2({
       y(0) <- y0

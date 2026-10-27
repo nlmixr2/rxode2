@@ -148,7 +148,8 @@
   needed" or "IDID=-3, step size becomes too small" line used to follow it.
   A step size that became non-finite (from a `NaN` derivative), which only
   that "IDID=-3" line reported, now reads "exit of dop853 at x = ..., step
-  size is not finite".
+  size is not finite".  Inside a `"dop853+<stiff>"` composite, where such a
+  step hands the interval to the stiff solver, dop853 prints none of these.
 
 - The aggregated `dop853` step-limit and step-size warnings and the `intdy`
   warning used to print values read from no argument (indeterminate numbers).
