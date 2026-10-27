@@ -107,47 +107,7 @@ reference:
 - title: Developer API (used by nlmixr2 and extensions)
   desc: Exported low-level functions for packages built on rxode2; most users do not need these.
   contents:
-  - .cbindOme
-  - .collectWarnings
-  - .copyUi
-  - .handleSingleErrTypeNormOrTFoceiBase
-  - .matchesLangTemplate
-  - .modelHandleModelLines
-  - .quoteCallInfoLines
-  - .rxLinCmtGen
-  - .rxSensStrippable
-  - .rxWithOptions
-  - .rxWithWd
-  - .rxode2ptrs
-  - .toClassicEvid
-  - .vecDf
-  - as.data.table.rxEt
-  - as_tibble.rxEt
-  - invWR1d
-  - print.rxModelVars
-  - rLKJ1
-  - rxAllowUnload
-  - rxAssignControlValue
-  - rxAssignPtr
-  - rxChain
-  - rxEtDispatchSolve
-  - rxEvid
-  - rxGetLin
-  - rxGetrxode2
-  - rxParseSuppressMsg
-  - rxPreferredDistributionName
-  - rxRateDur
-  - rxSyncOptions
-  - rxTrans
-  - rxUiDeparse
-  - rxUiDevelop
-  - rxUiGet
-  - rxode2parse
-  - rxode2parseAssignTranslation
-  - rxode2parseD
-  - rxode2parseGetPackagesToLoad
-  - rxode2parseGetPointerAssignment
-  - rxode2parseGetTranslation
+  - has_concept("Developer API")
 articles:
 - title: Get started
   desc: Learn the basics of rxode2 and its model language.

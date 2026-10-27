@@ -6,6 +6,7 @@
 #'
 #' @return Nothing
 #' @author Matthew Fidler
+#' @family Developer API
 #' @export
 #' @examples
 #'

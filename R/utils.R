@@ -42,6 +42,7 @@
 #' @param vars Variables in the model
 #' @return Model variables of expanded linCmt model
 #' @author Matthew L. Fidler
+#' @family Developer API
 #' @export
 .rxLinCmtGen <- function(lenState, vars) {
   rxGetModel(.Call(
@@ -956,6 +957,7 @@ rxUnloadAll <- function(set = TRUE) {
 #'
 #' @return value of code
 #'
+#' @family Developer API
 #' @export
 #' @examples
 #'
@@ -983,6 +985,7 @@ rxUnloadAll <- function(set = TRUE) {
 #'
 #' @inheritParams .rxWithSink
 #'
+#' @family Developer API
 #' @export
 #' @examples
 #'
@@ -1051,6 +1054,7 @@ is.latex <- function() {
 #' .matchesLangTemplate(str2lang("d/dt(foo)"), str2lang("d/dt(.name)"))
 #' .matchesLangTemplate(str2lang("d/dt(foo)"), str2lang("d/foo(.name)"))
 #' .matchesLangTemplate(str2lang("d/dt(foo)"), str2lang("d/."))
+#' @family Developer API
 #' @export
 .matchesLangTemplate <- function(x, template) {
   if (identical(template, as.name("."))) {
@@ -1456,6 +1460,7 @@ binomProbs.default <- function(
 #' @return classic evids, excluding evids that are added (you need to
 #'   add them manually) or simply use etTran.  This is mostly for
 #'   testing and really shouldn't be used directly.
+#' @family Developer API
 #' @export
 #' @author Matthew L. Fidler
 #' @examples

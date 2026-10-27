@@ -177,6 +177,7 @@ void rgbeta(int d, double shape, double* out){
 //' @return A correlation sample from the LKJ distribution
 //'
 //' @author Matthew Fidler (translated to RcppArmadillo) and Emma Schwager
+//' @family Developer API
 //' @export
 //' @keywords internal
 //[[Rcpp::export]]
@@ -254,6 +255,7 @@ arma::mat rLKJcvLsd1(arma::vec logSd, arma::vec logSdSD, double eta = 1.0){
 //'
 //' @author Matthew Fidler
 //' @keywords internal
+//' @family Developer API
 //' @export
 //[[Rcpp::export]]
 arma::mat invWR1d(int d, double nu, bool omegaIsChol = false){

@@ -1309,6 +1309,7 @@ set_units.rxEt <- function(x, value, ..., mode = .setUnitsMode()) {
 #' @param ...  other arguments
 #' @return if 'rxode2'  is loaded, a solved object, otherwise an error
 #' @author Matthew L. Fidler
+#' @family Developer API
 #' @export
 rxEtDispatchSolve <- function(x, ...) {
   UseMethod("rxEtDispatchSolve")
@@ -2080,6 +2081,7 @@ as.data.frame.rxEt <- function(x, row.names = NULL, optional = FALSE, ...) {
 #'
 #' @return data.table of event table
 #'
+#' @family Developer API
 #' @export
 as.data.table.rxEt <- function(x, keep.rownames = FALSE, ...) {
   rxReq("data.table") # nolint
@@ -2094,6 +2096,7 @@ as.data.table.rxEt <- function(x, keep.rownames = FALSE, ...) {
 #'
 #' @return tibble of event table
 #'
+#' @family Developer API
 #' @export
 as_tibble.rxEt <- function(x, ...) {
   rxReq("tibble") # nolint
@@ -2181,6 +2184,7 @@ etExpand <- function(et) {
 #' @examples
 #'
 #' rxEvid(1:7)
+#' @family Developer API
 #' @export
 rxEvid <- function(x) {
   structure(x, class = "rxEvid")
@@ -2290,6 +2294,7 @@ as.data.frame.rxEvid <- base::as.data.frame.difftime
 #'
 #' @return rxRateDur object
 #'
+#' @family Developer API
 #' @export
 rxRateDur <- function(x) {
   structure(x, class = "rxRateDur")

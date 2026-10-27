@@ -8035,6 +8035,7 @@ Nullable<Environment> rxrxode2env(RObject obj){
 //' Get rxode2 model from object
 //' @param obj rxode2 family of objects
 //' @return rxode2 model
+//' @family Developer API
 //' @export
 //[[Rcpp::export]]
 RObject rxGetrxode2(RObject obj){
@@ -8092,6 +8093,7 @@ bool rxIsCurrent(RObject obj){
 //' Assign pointer based on model variables
 //' @param object rxode2 family of objects
 //' @return nothing, called for side effects
+//' @family Developer API
 //' @export
 //[[Rcpp::export]]
 void rxAssignPtr(SEXP object = R_NilValue){
@@ -8392,6 +8394,7 @@ bool rxUnload_ = true;
 //'
 //' # Garbage collection will unload unused rxode2 dlls
 //' rxAllowUnload(TRUE);
+//' @family Developer API
 //' @export
 //' @author Matthew Fidler
 //[[Rcpp::export]]

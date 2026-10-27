@@ -32,6 +32,7 @@
 #' used to allow rxode2 to have binary linkage to nlmixr2est.
 #'
 #' @return a list of function pointers
+#' @family Developer API
 #' @export
 #' @author Matthew L. Fidler
 #' @examples
@@ -403,6 +404,7 @@ rxSuppressMsg <- function() {
 #'
 #' @author Matthew L. Fidler
 #' @return nothing; called for side effects
+#' @family Developer API
 #' @export
 rxSyncOptions <- function(setDefaults = c("none", "permissive", "strict")) {
   setDefaults <- match.arg(setDefaults)

@@ -78,6 +78,7 @@ findLhs <- function(x) {
 #' @inheritParams rxode2
 #' @return model with linCmt() replaced with linCmtA()
 #' @author Matthew Fidler
+#' @family Developer API
 #' @export
 rxGetLin <- function(model, linCmtSens = c("linCmtA", "linCmtB"), verbose = FALSE) {
   .mv <- rxGetModel(model) # nolint

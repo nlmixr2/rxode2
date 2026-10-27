@@ -35,6 +35,7 @@ rinvchisq <- function(n = 1L, nu = 1.0, scale = 1) {
 #' @return A correlation sample from the LKJ distribution
 #'
 #' @author Matthew Fidler (translated to RcppArmadillo) and Emma Schwager
+#' @family Developer API
 #' @export
 #' @keywords internal
 rLKJ1 <- function(d, eta = 1.0, cholesky = FALSE) {
@@ -64,6 +65,7 @@ rLKJcvLsd1 <- function(logSd, logSdSD, eta = 1.0) {
 #'
 #' @author Matthew Fidler
 #' @keywords internal
+#' @family Developer API
 #' @export
 invWR1d <- function(d, nu, omegaIsChol = FALSE) {
     .Call(`_rxode2_invWR1d`, d, nu, omegaIsChol)
@@ -797,6 +799,7 @@ rxRmModelLib_ <- function(str) {
 #' Get rxode2 model from object
 #' @param obj rxode2 family of objects
 #' @return rxode2 model
+#' @family Developer API
 #' @export
 rxGetrxode2 <- function(obj) {
     .Call(`_rxode2_rxGetrxode2`, obj)
@@ -831,6 +834,7 @@ rxIsCurrent <- function(obj) {
 #' Assign pointer based on model variables
 #' @param object rxode2 family of objects
 #' @return nothing, called for side effects
+#' @family Developer API
 #' @export
 rxAssignPtr <- function(object = NULL) {
     invisible(.Call(`_rxode2_rxAssignPtr`, object))
@@ -944,6 +948,7 @@ rxUnlock <- function(obj) {
 #'
 #' # Garbage collection will unload unused rxode2 dlls
 #' rxAllowUnload(TRUE);
+#' @family Developer API
 #' @export
 #' @author Matthew Fidler
 rxAllowUnload <- function(allow) {

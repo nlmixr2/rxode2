@@ -74,6 +74,7 @@ rxSetControl <- function(ui, control) {
 #' @param value Value of control to modify
 #' @return Nothing; called for the side effects
 #' @author Matthew L. Fidler
+#' @family Developer API
 #' @export
 rxAssignControlValue <- function(ui, option, value) {
   if (is.list(ui)) {

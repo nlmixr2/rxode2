@@ -85,6 +85,7 @@ model.rxModelVars <- model.rxode2
 #' @inheritParams model
 #' @return New UI
 #' @author Matthew L. Fidler
+#' @family Developer API
 #' @export
 .modelHandleModelLines <- function(
   modelLines,

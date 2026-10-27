@@ -419,8 +419,8 @@ nlmixr2est's `src/init.c`.)
   into the pkgdown reference index, whose sections select with
   `has_concept("<family>")` in `_pkgdown.yml`. Reuse an existing family name
   (`grep -rh "@family" R src | sort | uniq -c`); add a new family only together
-  with a matching `has_concept()` section. Developer-only exports get no family
-  and are listed by name under "Developer API" in `_pkgdown.yml`.
+  with a matching `has_concept()` section. Developer-only exports (used by nlmixr2 and
+  extension packages) get `@family Developer API` and no examples.
   `pkgdown::check_pkgdown()` fails on a topic in neither.
 - Every new article (`vignettes/*.Rmd`, `vignettes/articles/*.Rmd`) must be added
   both to the `articles:` index and to a navbar menu in `_pkgdown.yml`. Keep

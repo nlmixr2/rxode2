@@ -819,6 +819,7 @@ rxPp <- function(n, lambda, gamma = 1.0, prob = NULL, t0 = 0.0, tmax = Inf, rand
 #' @param n number of subject simulated
 #' @return data frame with et combined with simulated omega matrix values
 #' @author Matthew Fidler
+#' @family Developer API
 #' @export
 .cbindOme <- function(et, mat, n) {
   .Call(`_cbindOme`, et, mat, as.integer(n)) # nolint
@@ -854,6 +855,7 @@ phi <- function(q) {
 #' @param n Number of columns
 #' @return Data frame with repeated vec
 #' @author Matthew Fidler
+#' @family Developer API
 #' @export
 .vecDf <- function(vec, n) {
   .Call(`_vecDF`, vec, as.integer(n)) # nolint

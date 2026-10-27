@@ -826,6 +826,7 @@ rxode <- rxode2
 #' @return rxode2 trans list
 #'
 #' @author Matthew L. Fidler
+#' @family Developer API
 .rxSensStrippable <- function(mv) {
   .sens <- mv$sens
   if (length(.sens) == 0) {
@@ -1276,6 +1277,7 @@ rxGetModel <- function(
 #'
 #' @keywords internal
 #'
+#' @family Developer API
 #' @export
 rxChain <- function(obj1, obj2) {
   .args <- rev(as.list(match.call())[-1])
@@ -1705,6 +1707,7 @@ rxMd5 <- function(
 #'       as well as the `C` functions names to be called through the compiled model.
 #' @seealso [rxode2()], [rxCompile()].
 #' @author Matthew L.Fidler
+#' @family Developer API
 #' @export
 rxTrans <- function(
   model,
