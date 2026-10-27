@@ -9,6 +9,14 @@
   them: after a failed `rxSolve(m, params, ev, sigma = ...)`, a plain solve
   of a model with that residual gave values up to 2.6 off.
 
+### Prior simulation
+- A `thetaMat` given at the call site or carried in the model's `meta`
+  block (as nlmixr2 fits and monolix2rx/nonmem2rx imports do) now takes
+  precedence over the `ini({})` normal priors in uncertainty simulation, so
+  a MAP estimate that is not its prior mean no longer stops the solve.  A
+  `meta` `thetaMat` used to be replaced by the priors; `usePrior = TRUE`
+  still uses the priors instead (#1502).
+
 ## New features
 
 - `minSS` and `maxSS` now accept any count from 1, and `maxSS` may equal

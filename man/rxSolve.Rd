@@ -1801,9 +1801,13 @@ the default) uses them whenever the model has them and variability is
 being simulated (\code{nStud > 1}, or whatever \code{simVariability} forces);
 \code{TRUE} requires them, and is an error when the model has none or when
 no variability would be simulated; \code{FALSE} ignores them and falls back
-to a supplied \code{thetaMat}/\code{dfSub}.  The priors take precedence over a
-\code{thetaMat}/\code{dfSub} carried in the model's \code{meta} block, with a warning;
-one given at the call site wins over the priors instead.}
+to a supplied \code{thetaMat}/\code{dfSub}.  In auto mode a \code{thetaMat} given at
+the call site (with a warning) or carried in the model's \code{meta} block
+takes precedence over the normal priors, which are then not read, so
+an estimate that is not its prior mean (a MAP estimate) still
+simulates; \code{TRUE} makes the priors replace it.  The prior degrees of
+freedom take precedence over a \code{dfSub} carried in \code{meta}, with a
+warning; one given at the call site wins over them instead.}
 
 \item{priorPdRetry}{How many times a prior draw of a covariance matrix is
 retried when it is not positive definite.  After that many tries the

@@ -173,6 +173,21 @@
   data.frame(name = nm, neta1 = .i, neta2 = .i, stringsAsFactors = FALSE)
 }
 
+#' Which `iniDf` rows carry a prior that goes into the `thetaMat`
+#'
+#' @param iniDf `ui$iniDf`
+#' @return integer row indices
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPriorThetaRows <- function(iniDf) {
+  if (!any(names(iniDf) == "prior")) {
+    return(integer(0))
+  }
+  ## an omega row carrying a Wishart is degrees of freedom, not a normal
+  ## prior, and is handled by `.rxPriorOmegaNu()`
+  which(!is.na(iniDf$prior) & (is.na(iniDf$neta1) | .rxPriorIsNormal(iniDf$prior)))
+}
+
 #' The `thetaMat` the model's normal priors describe
 #'
 #' Each normal prior contributes its variance and each `multiNormal()` its
@@ -194,13 +209,7 @@
 #' @author Matthew L. Fidler
 .rxPriorThetaMat <- function(ui) {
   .iniDf <- ui$iniDf
-  .w <- which(
-    !is.na(.iniDf$prior) &
-      (is.na(.iniDf$neta1) | .rxPriorIsNormal(.iniDf$prior))
-  )
-  ## an omega row carrying a Wishart is degrees of freedom, not a normal
-  ## prior, and is handled by `.rxPriorOmegaNu()`
-  .w <- .w[is.na(.iniDf$neta1[.w]) | .rxPriorIsNormal(.iniDf$prior[.w])]
+  .w <- .rxPriorThetaRows(.iniDf)
   if (length(.w) == 0L) {
     return(list(thetaMat = NULL, theta = NULL, omegaEl = NULL))
   }
@@ -447,16 +456,22 @@
 #'
 #' @param ui rxode2 ui model
 #' @param ctl `rxControl` list
+#' @param theta when `FALSE` the normal priors (the `thetaMat` half) are
+#'   skipped, so a given `thetaMat` is not blocked by them
 #' @return `NULL` when the model carries no prior this uses, else a list
 #'   with `thetaMat`, `theta`, `omegaNu` and `omegaEl`
 #' @noRd
 #' @author Matthew L. Fidler
-.rxPriorSimSpec <- function(ui, ctl = NULL) {
+.rxPriorSimSpec <- function(ui, ctl = NULL, theta = TRUE) {
   .iniDf <- ui$iniDf
   if (is.null(.iniDf) || !any(names(.iniDf) == "prior") || !any(!is.na(.iniDf$prior))) {
     return(NULL)
   }
-  .th <- .rxPriorThetaMat(ui)
+  .th <- if (theta) {
+    .rxPriorThetaMat(ui)
+  } else {
+    list(thetaMat = NULL, theta = NULL, omegaEl = NULL)
+  }
   .nu <- .rxPriorOmegaNu(ui)
   ## asked after the pieces are built rather than before: only the omega
   ## half of a prior is what a chunked solve cannot carry
@@ -678,7 +693,20 @@
   if (!isTRUE(.use) && !.simVar) {
     return(ctl)
   }
-  .spec <- .rxPriorSimSpec(ui, ctl)
+  ## a supplied `thetaMat` (call site or `meta`) is the covariance of the
+  ## estimates actually in `ini({})`, so in auto mode it wins and the
+  ## normal priors are not even read: a MAP estimate is not its prior mean
+  .thetaMatWins <- !is.null(ctl$thetaMat) && !isTRUE(.use)
+  if (.thetaMatWins && length(.rxPriorThetaRows(ui$iniDf)) > 0L &&
+        !.rxPriorFromMeta(ui, "thetaMat", ctl$thetaMat)) {
+    warning(
+      "'thetaMat' was given, so the prior distributions on the ",
+      "population parameters were not used; drop it or set ",
+      "'usePrior=FALSE' to keep it without this warning",
+      call. = FALSE
+    )
+  }
+  .spec <- .rxPriorSimSpec(ui, ctl, theta = !.thetaMatWins)
   if (is.null(.spec)) {
     if (isTRUE(.use)) {
       stop("'usePrior=TRUE' but the model specifies no prior distributions", call. = FALSE)
@@ -695,23 +723,15 @@
     )
   }
   if (!is.null(.spec$thetaMat)) {
-    if (is.null(ctl$thetaMat)) {
-      ctl$thetaMat <- .spec$thetaMat
-    } else if (.rxPriorFromMeta(ui, "thetaMat", ctl$thetaMat)) {
+    if (!is.null(ctl$thetaMat)) {
+      ## only `usePrior=TRUE` reaches here with a `thetaMat`
       warning(
-        "the prior distributions in 'ini({})' replace the 'thetaMat' ",
-        "the model's 'meta' block carries",
-        call. = FALSE
-      )
-      ctl$thetaMat <- .spec$thetaMat
-    } else {
-      warning(
-        "'thetaMat' was given, so the prior distributions on the ",
-        "population parameters were not used; drop it or set ",
-        "'usePrior=FALSE' to keep it without this warning",
+        "'usePrior=TRUE', so the prior distributions in 'ini({})' replace ",
+        "the 'thetaMat' that was given",
         call. = FALSE
       )
     }
+    ctl$thetaMat <- .spec$thetaMat
   }
   .omega <- .rxPriorOmegaLotri(ui, .spec$omegaNu)
   if (!is.null(.omega)) {

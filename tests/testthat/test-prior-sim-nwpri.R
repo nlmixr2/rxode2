@@ -138,6 +138,86 @@ rxTest({
     expect_gt(sd(.s$thetaMat[, "tka"]), 0.5)
   })
 
+  ## a MAP estimate: the prior pulls the estimate but is not centered on it
+  .map <- function(meta = FALSE) {
+    .f <- function() {
+      ini({
+        tka <- 0.43
+        prior(tka) ~ dnorm(log(3), 0.25)
+        tcl <- -3.2
+        eta.ka ~ 0.4
+        add.sd <- 0.7
+      })
+      model({
+        ka <- exp(tka + eta.ka)
+        cl <- exp(tcl)
+        d / dt(depot) <- -ka * depot
+        d / dt(center) <- ka * depot - cl / 30 * center
+        cp <- center / 30
+        cp ~ add(add.sd)
+      })
+    }
+    .ui <- rxode2(.f)
+    if (meta) {
+      assign("thetaMat", .mapThetaMat(), envir = .ui$meta)
+    }
+    .ui
+  }
+  .mapThetaMat <- function() {
+    lotri::lotri(tka + tcl ~ c(0.01, 0.001, 0.02))
+  }
+  .mapEv <- function() et(amt = 320) |> et(seq(0, 24, by = 4))
+
+  test_that("a call site thetaMat wins over a prior not centered on the estimate (#1502)", {
+    skipIfOldLotri()
+
+    expect_warning(
+      {
+        withr::with_seed(1, {
+          .s <- rxSolve(.map(), .mapEv(), nSub = 2, nStud = 200, thetaMat = .mapThetaMat())
+        })
+      },
+      "were not used"
+    )
+    expect_equal(sort(colnames(.s$thetaMat)), c("tcl", "tka"))
+    expect_equal(sd(.s$thetaMat[, "tka"]), 0.1, tolerance = 0.2)
+  })
+
+  test_that("a meta thetaMat wins over the priors without a warning (#1502)", {
+    skipIfOldLotri()
+
+    .ui <- .map(meta = TRUE)
+    expect_no_warning(
+      withr::with_seed(1, {
+        .s <- rxSolve(.ui, .mapEv(), nSub = 2, nStud = 200)
+      }),
+      message = "prior"
+    )
+    expect_equal(sort(colnames(.s$thetaMat)), c("tcl", "tka"))
+    expect_equal(sd(.s$thetaMat[, "tcl"]), sqrt(0.02), tolerance = 0.2)
+  })
+
+  test_that("usePrior=TRUE uses the priors over a given thetaMat (#1502)", {
+    skipIfOldLotri()
+
+    ## the prior is still required to be centered on the estimate
+    expect_error(
+      rxSolve(.map(), .mapEv(), nSub = 2, nStud = 5, thetaMat = .mapThetaMat(), usePrior = TRUE),
+      "is not the initial estimate"
+    )
+
+    .m <- matrix(1, 1, 1, dimnames = list("tka", "tka"))
+    expect_warning(
+      {
+        withr::with_seed(1, {
+          .s <- rxSolve(.mod(), .ev(), nSub = 2, nStud = 200, thetaMat = .m, usePrior = TRUE)
+        })
+      },
+      "replace the 'thetaMat'"
+    )
+    expect_lt(sd(.s$thetaMat[, "tka"]), 0.5)
+  })
+
   test_that("usePrior=TRUE says why when it cannot be honored", {
     skipIfOldLotri()
 
