@@ -234,6 +234,11 @@
   later; before, only the dose at the event time counted, not the doses of
   the earlier periods that make up the steady state.
 
+- The adjoint methods now refuse a steady-state dose solved with
+  `minSS = maxSS`.  They differentiate the converged steady state, not the
+  state after that fixed number of doses, so their sensitivities did not
+  match the solved state.
+
 - A dose that follows a reset at the same time (`evid = 4`, or `evid = 3`
   and a dose at one time) lost its bioavailability (`f()`) adjoint
   sensitivity in the `rk4s` family of methods and in
