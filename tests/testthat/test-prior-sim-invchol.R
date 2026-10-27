@@ -135,6 +135,18 @@ rxTest({
     )
   })
 
+  test_that("a Cholesky omega is refused", {
+    expect_error(
+      .solve(
+        .thetaMat(c(0.01, 0.0004, 0.0001, 0.0004)),
+        "invchol",
+        5,
+        omegaIsChol = TRUE
+      ),
+      "needs 'omega' as a covariance"
+    )
+  })
+
   test_that("the missing pieces are named as for tnpri", {
     .tm <- matrix(0.01, 1, 1, dimnames = list("tka", "tka"))
     expect_error(
