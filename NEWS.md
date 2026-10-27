@@ -55,9 +55,8 @@
 
 - Every dose a steady-state record schedules between two records (the
   starts and ends of a steady-state infusion with `dur > ii` or with
-  `alag() > ii`) is now applied at its own time with the `liblsoda`,
-  `lsoda`, `lsode`, `dop853`, `indLin` and `linCmt()` solvers.  Only the
-  first one between two records was applied, so a short infusion could
+  `alag() > ii`) is now applied at its own time with every solver.  Only
+  the first one between two records was applied, so a short infusion could
   never end; `dop853` also integrated past that dose twice (#1499).
 
 ## New features
