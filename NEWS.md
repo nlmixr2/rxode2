@@ -56,6 +56,14 @@
   `minSS = n` gives exactly the state after `n` prior doses, as Monolix's
   `nbdoses = n` does.  It used to stop after `n + 2` (`n + 3` with a lag
   compartment) (#1492).
+- Steady-state infusions count `minSS` and `maxSS` the same way, including
+  infusions longer than the dosing interval and lag times longer than it.
+  They used to stop after `n + 1` doses, `n + 8` when the infusion was longer
+  than the interval, and one more with a lag (#1492).
+- A steady-state infusion lasting two or more dosing intervals now integrates
+  every interval of the overlapping infusions it starts; `lsoda` skipped all
+  but the first, so a steady state stopped by `minSS` was not a whole number
+  of doses (#1492).
 - Occasion (inter-occasion variability) variables now always step (locf)
   whatever `covsInterpolation` is; under `"nocb"` a simulated occasion eta
   used to switch at the previous record.  A model that declares `linear()`,
