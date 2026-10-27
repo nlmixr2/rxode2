@@ -14,7 +14,7 @@
 #include <errno.h>
 #define _(String) (String)
 #include "../inst/include/rxode2parse.h"
-#include "../inst/include/rxode2parseSbuf.h"
+#include "rxSbufFormat.h"
 #include "tran.h"
 #include "../inst/include/rxode2parseVer.h"
 #include "rxProtect.h"

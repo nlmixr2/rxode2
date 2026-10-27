@@ -21,6 +21,22 @@ extern "C" {
 #endif
 #include "rxode2parse.h"
 
+// A package that defines RXODE2_SBUF_FORMAT (PKG_CPPFLAGS =
+// -DRXODE2_SBUF_FORMAT) has its sAppend(), sPrint() and addLine() calls checked
+// by -Wformat, with R's printf format attribute; R's default
+// -Werror=format-security then refuses a format that is not a literal and has
+// no arguments.  Without it the declarations carry no attribute.  rxode2's own
+// calls are checked through src/rxSbufFormat.h.
+#ifdef RXODE2_SBUF_FORMAT
+#include <R_ext/Print.h>
+#ifndef R_PRINTF_FORMAT
+#define R_PRINTF_FORMAT(M, N)
+#endif
+#define RXODE2_SBUF_PRINTF(M, N) R_PRINTF_FORMAT(M, N)
+#else
+#define RXODE2_SBUF_PRINTF(M, N)
+#endif
+
 #define SBUF_MXBUF 48000
 #define SBUF_MXLINE 100
 
@@ -53,9 +69,9 @@ static inline void sPut(sbuf *sbb, char what) {
   sbb->o++;
 }
 
-void sAppend(sbuf *sbb, const char *format, ...);
+void sAppend(sbuf *sbb, const char *format, ...) RXODE2_SBUF_PRINTF(2, 3);
 
-void sPrint(sbuf *sbb, const char *format, ...);
+void sPrint(sbuf *sbb, const char *format, ...) RXODE2_SBUF_PRINTF(2, 3);
 
 static inline void sClear(sbuf *sbb){
   sbb->s[0]='\0';
@@ -66,7 +82,7 @@ void lineIni(vLines *sbb);
 
 void lineFree(vLines *sbb);
 
-void addLine(vLines *sbb, const char *format, ...);
+void addLine(vLines *sbb, const char *format, ...) RXODE2_SBUF_PRINTF(2, 3);
 
 void curLineProp(vLines *sbb, int propId);
 

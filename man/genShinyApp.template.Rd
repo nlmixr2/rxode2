@@ -80,8 +80,12 @@ if (requireNamespace("shiny", quietly=TRUE)) {
 }
 \seealso{
 \code{\link[=rxode2]{rxode2()}},\code{\link[=eventTable]{eventTable()}}, and the package \pkg{shiny} (\url{https://shiny.posit.co}).
+
+Other Shiny:
+\code{\link[=rxShiny]{rxShiny()}}
 }
 \concept{PK/PD}
+\concept{Shiny}
 \concept{pharmacometrics}
 \keyword{nonlinear}
 \keyword{simulation}

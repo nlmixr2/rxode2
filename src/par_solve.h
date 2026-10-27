@@ -171,6 +171,12 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
     // interleave with original observations are not silently dropped.
     if (inLhs == 0) ind->n_all_times = ind->n_all_times_orig;
 		ind->id=solveid;
+    // A solve's failure marks are its own: nothing else clears them between two
+    // solves of one subject (nlmixr2est solves a subject again on the same ind)
+    if (inLhs == 0 && ind->rc != NULL) {
+      ind->rc[0] = 0;
+      ind->err = 0;
+    }
     // AutoSwitch state is per subject solve.  It lives here rather than in
     // setupRxInd() because op (and therefore the autoSwitch* controls) is only
     // known at solve time, and because ind structs are reused across the

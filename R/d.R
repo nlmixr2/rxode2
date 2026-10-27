@@ -1428,6 +1428,7 @@
 #' argument then the derivative of arguments that are not specified
 #' cannot be taken.
 #' @author Matthew L. Fidler
+#' @family Developer API
 #' @export
 rxode2parseD <- function() {
   return(.rxD)

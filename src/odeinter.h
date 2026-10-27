@@ -214,7 +214,7 @@ struct error_checker {
         steps_++;
         if (steps_ > max_steps_) {
             *rc_ = -2019;
-            ind_->err = 1;
+            rxSolverFail(ind_);
         } else if (ind_->err != 0) {
             *rc_ = -2019;
         }

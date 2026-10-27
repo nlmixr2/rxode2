@@ -476,6 +476,39 @@ void rxExpandNestingRep(CharacterVector &thetaNest,
   thetaNestTran.attr("names") = thetaNestFull;
 }
 
+// Occasion (nesting) variables always step (locf): declare locf() for each
+// one the model leaves at the default; error on any other declared method.
+void rxExpandNestingLocf(CharacterVector &nest, List &mv,
+                         std::string &retS) {
+  IntegerVector interp;
+  CharacterVector interpN, lvl;
+  if (mv.containsElementNamed("interp")) {
+    interp = as<IntegerVector>(mv["interp"]);
+    if (!Rf_isNull(interp.attr("names"))) {
+      interpN = as<CharacterVector>(interp.attr("names"));
+    }
+    lvl = as<CharacterVector>(interp.attr("levels"));
+  }
+  for (int j = 0; j < nest.size(); ++j) {
+    std::string curNest = as<std::string>(nest[j]);
+    int cur = 1; // default
+    for (int i = 0; i < interpN.size(); ++i) {
+      if (as<std::string>(interpN[i]) == curNest) {
+        cur = interp[i];
+        break;
+      }
+    }
+    if (cur == 1) {
+      retS += "locf(" + curNest + ");\n";
+    } else if (cur != 3) {
+      std::string curLvl = (cur >= 1 && cur <= lvl.size()) ?
+        as<std::string>(lvl[cur - 1]) : std::string("unknown");
+      Rcpp::stop(_("occasion variable '%s' must use 'locf' interpolation, not '%s'"),
+                 curNest.c_str(), curLvl.c_str());
+    }
+  }
+}
+
 
 //[[Rcpp::export]]
 List rxExpandNesting(const RObject& obj, List& nestingInfo,
@@ -517,6 +550,8 @@ List rxExpandNesting(const RObject& obj, List& nestingInfo,
   CharacterVector etaNestFull(extraEta);
   int thCnt=0;
   std::string idName=nestingInfo["idName"];
+  rxExpandNestingLocf(thetaNest, mv, retS);
+  rxExpandNestingLocf(etaNest, mv, retS);
 
   if (thetaNest.size() > 0) {
     rxExpandNestingRep(thetaNest, thetaNestTran, thetaNestFull,

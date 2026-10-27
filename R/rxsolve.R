@@ -40,7 +40,13 @@
 #'
 #' @param params a numeric named vector with values for every
 #'     parameter in the ODE system; the names must correspond to the
-#'     parameter identifiers used in the ODE specification;
+#'     parameter identifiers used in the ODE specification.  A data
+#'     frame or matrix gives one row per subject (or per subject and
+#'     simulation), matched to the subjects by position in data order;
+#'     an `id` column is not used to match them.  A one-row data frame
+#'     or matrix is used for every subject, unless it has an `id`
+#'     column and the data has more than one subject, which is an
+#'     error;
 #'
 #' @param events an `eventTable` object describing the input
 #'     (e.g., doses) to the dynamic system and observation sampling
@@ -300,9 +306,18 @@
 #'
 #' @param indLinPhiM  the maximum size for the Krylov basis
 #'
-#' @param minSS Minimum number of iterations for a steady-state dose
+#' @param minSS Minimum number of doses given before a steady-state dose,
+#'     counting the extra dose a lag time adds; the steady state stops once
+#'     this many doses are given and `ssAtol`/`ssRtol` are met.  It is raised
+#'     to the fewest doses the regimen needs (2 with a lag time, more with
+#'     overlapping infusions or a lag longer than `ii`).  `minSS = maxSS = n`
+#'     gives exactly the state after `n` prior doses (Monolix
+#'     `nbdoses = n`).  `linCmt()` steady states are exact, and a constant
+#'     infusion (`ii = 0`), which has no doses, takes at least 5 and up to
+#'     `max(maxSS, 10000)` convergence steps.
 #'
-#' @param maxSS Maximum number of iterations for a steady-state dose
+#' @param maxSS Maximum number of doses given before a steady-state dose (at
+#'     least `minSS`)
 #'
 #' @param strictSS Boolean indicating if a strict steady-state is
 #'     required. If a strict steady-state is (`TRUE`) required
@@ -1264,6 +1279,31 @@
 #' @seealso [rxode2()]
 #' @author Matthew Fidler, Melissa Hallow and  Wenping Wang
 #' @export
+#' @family Solving
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     tka <- log(1); tcl <- log(0.1); tv <- log(10)
+#'     eta.cl ~ 0.1
+#'   })
+#'   model({
+#'     ka <- exp(tka); cl <- exp(tcl + eta.cl); v <- exp(tv)
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(center) <- ka * depot - cl / v * center
+#'     cp <- center / v
+#'   })
+#' }
+#' ev <- et(amt = 100, ii = 24, addl = 2) |> et(0:72)
+#' # typical subject (between-subject variability removed)
+#' s <- rxSolve(mod, ev, omega = NA)
+#' head(s)
+#' # change a parameter on the solved object; it re-solves
+#' s$tka <- log(2)
+#' head(s)
+#' # 10 subjects with between-subject variability
+#' s2 <- rxSolve(mod, ev, nSub = 10, seed = 42)
+#' }
 rxSolve <- function(
   object,
   params = NULL,
@@ -2060,10 +2100,10 @@ rxSolve <- function(
     checkmate::assertNumeric(indLinPhiTol, lower = 0, any.missing = FALSE, len = 1)
     checkmate::assertIntegerish(indLinPhiM, lower = 0L, any.missing = FALSE, len = 1)
     indLinPhiM <- as.integer(indLinPhiM)
-    checkmate::assertIntegerish(minSS, lower = 5L, any.missing = FALSE, len = 1)
-    checkmate::assertIntegerish(maxSS, lower = 7L, any.missing = FALSE, len = 1)
-    if (maxSS <= minSS) {
-      stop("'maxSS' must be larger than 'minSS'", call. = FALSE)
+    checkmate::assertIntegerish(minSS, lower = 1L, any.missing = FALSE, len = 1)
+    checkmate::assertIntegerish(maxSS, lower = 1L, any.missing = FALSE, len = 1)
+    if (maxSS < minSS) {
+      stop("'maxSS' must be at least 'minSS'", call. = FALSE)
     }
     checkmate::assertNumeric(infSSstep, lower = 6, any.missing = FALSE, len = 1)
     checkmate::assertNumeric(
@@ -2674,6 +2714,44 @@ rxSolve.function <- function(
   }
 }
 
+#' The error for a one-row `params` whose id column names one subject
+#'
+#' A one-row data frame or matrix is used for every subject, but one with an id
+#' column names a single subject, so with more subjects in the data it is an
+#' error.  rxSolve() asks this before simulation, and a chunked solve before it
+#' splits the data, with every subject's label.
+#'
+#' @param params the `params` given to `rxSolve()`
+#' @param subjects the data's subject labels, in data order
+#' @return the message, or `NULL` when there is nothing to refuse
+#' @noRd
+.rxParamsOneRowIdMsg <- function(params, subjects) {
+  if (!(is.data.frame(params) || is.matrix(params)) || NROW(params) != 1L || length(subjects) <= 1L) {
+    return(NULL)
+  }
+  .w <- which(tolower(colnames(params)) == "id")
+  if (length(.w) == 0L) {
+    return(NULL)
+  }
+  .id <- if (is.data.frame(params)) params[[.w[1]]] else params[1, .w[1]]
+  .n <- length(subjects)
+  .list <- paste(utils::head(as.character(subjects), 10L), collapse = ", ")
+  if (.n > 10L) {
+    .list <- paste0(.list, ", ... (", .n - 10L, " more)")
+  }
+  paste0(
+    "'params' has one row, for id ",
+    as.character(.id),
+    ", but the data has ",
+    .n,
+    " subjects\n",
+    "subjects: ",
+    .list,
+    "\n",
+    "give one row per subject, or drop the id column to use the row for all"
+  )
+}
+
 #' Which zero variance omega/sigma items to fix at zero in `params`
 #'
 #' An omega/sigma item whose variance is zero is dropped from the matrix that is
@@ -2724,8 +2802,9 @@ rxSolve.function <- function(
 #'
 #' @param params parameter `data.frame`/`matrix` (one row per id) or named
 #'   numeric vector
-#' @param mat the omega/sigma matrix naming the parameters to zero, or the
-#'   names themselves; when `NULL` the model has no such random effects and
+#' @param mat the omega/sigma matrix naming the parameters to zero, a nested
+#'   omega (`lotri` list) whose blocks name them, or the names themselves; when
+#'   `NULL` the model has no such random effects and
 #'   `params` is returned unchanged
 #' @return `params` with each parameter named by `mat` set to zero
 #' @noRd
@@ -2735,6 +2814,10 @@ rxSolve.function <- function(
   }
   .nms <- if (is.character(mat)) {
     mat
+  } else if (is.list(mat) && !is.data.frame(mat)) {
+    # a nested omega (a lotri list, one block per level): the etas of every
+    # level; a data frame keys off its names below, as a matrix does
+    dimnames(lotri::lotriMat(mat))[[2]]
   } else {
     # the rest of .rxSolveFromUi() keys off the row names, so fall back to them
     .matNms <- dimnames(mat)[[2]]
@@ -3247,6 +3330,9 @@ rxSolve.default <- function(
       rxUdfUiReset()
       .clearPipe()
       .asFunctionEnv$rx <- NULL
+      # a solve that stopped before moving its draws into its result would
+      # leave them for the next solve to read as its own residuals and thetas
+      .rxOomClearDrawn(.rxSolveDrawn)
     },
     add = TRUE
   )
@@ -3342,6 +3428,9 @@ rxSolve.default <- function(
     events <- params
     params <- .tmp
   }
+  # The Jacobian recursion gets the events from before the delay() sensitivity
+  # jump doses are mirrored onto them, so it mirrors them once itself.
+  .eventsUnmirrored <- events
   if (inherits(inits, "rxControl")) {
     stop(
       "'rxControl()' cannot be passed as 'inits'; pass control options as named arguments instead, e.g. rxSolve(object, params, events, method='dop853+ros4')", # nolint: line_length_linter.
@@ -3767,7 +3856,6 @@ rxSolve.default <- function(
           # Model changed (Jacobian equations were added); recurse with new model.
           object <- .jacObject
           force(params)
-          force(events)
           force(inits)
           force(indOwnAlloc)
           force(theta)
@@ -3776,7 +3864,7 @@ rxSolve.default <- function(
           return(rxSolve.default(
             object,
             params = params,
-            events = events,
+            events = .eventsUnmirrored,
             inits = inits,
             ...,
             indOwnAlloc = indOwnAlloc,
@@ -4724,12 +4812,9 @@ solve.rxEt <- solve.rxSolve
       .map <- get(.what, envir = .env, inherits = FALSE)
       .mapNames <- names(.map)
       if (!is.null(.mapNames)) {
-        for (.i in seq_along(.ret)) {
-          .w <- match(.ret[[.i]], .mapNames)
-          if (!is.na(.w)) {
-            .ret[[.i]] <- .map[[.w]]
-          }
-        }
+        .w <- match(.ret, .mapNames)
+        .ok <- !is.na(.w)
+        .ret[.ok] <- .map[.w[.ok]]
       }
     }
   }
@@ -4746,50 +4831,40 @@ solve.rxEt <- solve.rxSolve
   .parso <- get(".args.params", envir = .env, inherits = FALSE)
   .ppos <- get(".par.pos", envir = .env, inherits = FALSE)
   .isIni <- isTRUE(get(".par.pos.ini", envir = .env, inherits = FALSE))
-  .idLevels <- get(".idLevels", envir = .env, inherits = FALSE)
-  if (
-    is.null(.parso) ||
-      ((is.numeric(.parso) || is.integer(.parso)) && is.null(dim(.parso)))
-  ) {
+  if (.rxSolveParamsIsVector(.parso)) {
     .parNumeric <- if (is.null(.parso)) numeric(0) else as.numeric(.parso)
-    .vals <- numeric(0)
-    .nms <- character(0)
-    for (.i in seq_along(.ppos)) {
-      if (.ppos[[.i]] > 0) {
-        .vals <- c(.vals, if (.isIni) .mvIni[[.ppos[[.i]]]] else .parNumeric[[.ppos[[.i]]]])
-        .nms <- c(.nms, .pars[[.i]])
-      } else if (.ppos[[.i]] < 0) {
-        .vals <- c(.vals, .mvIni[[-.ppos[[.i]]]])
-        .nms <- c(.nms, .pars[[.i]])
-      }
-    }
-    .nms <- .rxSolveUpdateParNames(.nms, .env)
+    # a positive position is in the params (or the model's ini), a negative
+    # one in the model's ini, and 0 is a covariate or simulated parameter
+    .keep <- .ppos != 0
+    .pos <- .ppos[.keep]
+    .user <- .pos > 0
+    .vals <- numeric(length(.pos))
+    .vals[.user] <- unname((if (.isIni) .mvIni else .parNumeric)[.pos[.user]])
+    .vals[!.user] <- unname(.mvIni[-.pos[!.user]])
+    .nms <- .rxSolveUpdateParNames(.pars[.keep], .env)
     .single <- stats::setNames(.vals, .nms)
-    .dat <- as.data.frame(as.list(.single), check.names = FALSE)
+    # as.data.frame() of thousands of parameters takes most of a first `$`;
+    # this is the same one-row frame
+    .dat <- if (length(.single) > 0L) {
+      structure(as.list(.single), class = "data.frame", row.names = c(NA_integer_, -1L))
+    } else {
+      as.data.frame(as.list(.single), check.names = FALSE)
+    }
     assign(".params.single", .single, envir = .env)
     assign(".params.dat", .dat, envir = .env)
   } else {
     .parsDf <- as.data.frame(.parso, check.names = FALSE)
-    .nsub <- get(".nsub", envir = .env, inherits = FALSE)
-    .nsim <- get(".nsim", envir = .env, inherits = FALSE)
-    .dat <- as.data.frame(matrix(nrow = nrow(.parsDf), ncol = 0))
-    if (.nsim > 1) {
-      .dat[["sim.id"]] <- (seq_len(nrow(.parsDf)) - 1L) %/% .nsub + 1L
-    }
-    if (.nsub > 1) {
-      .id <- (seq_len(nrow(.parsDf)) - 1L) %% .nsub + 1L
-      if (length(.idLevels) > 0) {
-        .id <- factor(.id, levels = seq_along(.idLevels), labels = .idLevels)
-      }
-      .dat[["id"]] <- .id
-    }
-    for (.i in seq_along(.ppos)) {
-      if (.ppos[[.i]] > 0) {
-        .dat[[.rxSolveUpdateParNames(.pars[[.i]], .env)]] <- .parsDf[[.ppos[[.i]]]]
-      } else if (.ppos[[.i]] < 0) {
-        .dat[[.rxSolveUpdateParNames(.pars[[.i]], .env)]] <- rep(.mvIni[[-.ppos[[.i]]]], nrow(.parsDf))
-      }
-    }
+    .n <- nrow(.parsDf)
+    .lead <- .rxSolveParamsIdCols(.env, .n)
+    .keep <- .ppos != 0
+    .pos <- .ppos[.keep]
+    .user <- .pos > 0
+    .cols <- vector("list", length(.pos))
+    .cols[.user] <- unname(as.list(.parsDf)[.pos[.user]])
+    .cols[!.user] <- lapply(unname(.mvIni[-.pos[!.user]]), rep, .n)
+    names(.cols) <- .rxSolveUpdateParNames(.pars[.keep], .env)
+    # adding thousands of columns one at a time takes most of a first access
+    .dat <- structure(c(.lead, .cols), class = "data.frame", row.names = .set_row_names(.n))
     assign(".params.dat", .dat, envir = .env)
     if (nrow(.dat) == 1L) {
       .single <- stats::setNames(as.numeric(.dat[1, , drop = TRUE]), names(.dat))
@@ -4798,26 +4873,53 @@ solve.rxEt <- solve.rxSolve
       assign(".params.single", NULL, envir = .env)
     }
   }
-  assign(
-    "counts",
-    data.frame(
-      slvr = get(".slvr.counter", envir = .env, inherits = FALSE),
+  invisible(TRUE)
+}
+
+# Whether a solve's params are a named vector (or none), not a data frame or
+# matrix with a row per subject
+.rxSolveParamsIsVector <- function(.parso) {
+  is.null(.parso) || ((is.numeric(.parso) || is.integer(.parso)) && is.null(dim(.parso)))
+}
+
+# The sim.id and id columns that lead a multi-row params' $params and $counts
+.rxSolveParamsIdCols <- function(.env, .n) {
+  .nsub <- get(".nsub", envir = .env, inherits = FALSE)
+  .nsim <- get(".nsim", envir = .env, inherits = FALSE)
+  .ret <- list()
+  if (.nsim > 1) {
+    .ret[["sim.id"]] <- (seq_len(.n) - 1L) %/% .nsub + 1L
+  }
+  # a one-row params is one set for every subject and has no id column
+  if (.nsub > 1 && .n > 1L) {
+    .id <- (seq_len(.n) - 1L) %% .nsub + 1L
+    .idLevels <- get(".idLevels", envir = .env, inherits = FALSE)
+    if (length(.idLevels) > 0) {
+      .id <- factor(.id, levels = seq_along(.idLevels), labels = .idLevels)
+    }
+    .ret[["id"]] <- .id
+  }
+  .ret
+}
+
+# $counts, built on its first access: one row per solve, led by a multi-row
+# params' sim.id and id columns
+.rxSolveMaterializeCounts <- function(.env) {
+  if (exists("counts", envir = .env, inherits = FALSE)) {
+    return(invisible(TRUE))
+  }
+  .slvr <- get(".slvr.counter", envir = .env, inherits = FALSE)
+  .parso <- get(".args.params", envir = .env, inherits = FALSE)
+  .lead <- if (.rxSolveParamsIsVector(.parso)) list() else .rxSolveParamsIdCols(.env, NROW(.parso))
+  .counts <- c(
+    .lead,
+    list(
+      slvr = .slvr,
       dadt = get(".dadt.counter", envir = .env, inherits = FALSE),
       jac = get(".jac.counter", envir = .env, inherits = FALSE)
-    ),
-    envir = .env
+    )
   )
-  ## Parameters injected by par-loaders on this solve (e.g. trained neural-network
-  ## weights supplied through a loader hook rather than the params vector).  Saved
-  ## on the object so re-solving restores them even in a session without the
-  ## injecting package's buffer.  Indices are 0-based into the model params.
-  .inj <- tryCatch(.Call(`_rxode2_rxGetInjectedPars`), error = function(e) NULL)
-  if (!is.null(.inj) && length(.inj[[1L]]) > 0L) {
-    .injNames <- .pars[.inj[[1L]] + 1L]
-    assign(".injectedPars", stats::setNames(.inj[[2L]], .injNames), envir = .env)
-  } else {
-    assign(".injectedPars", NULL, envir = .env)
-  }
+  assign("counts", structure(.counts, class = "data.frame", row.names = .set_row_names(length(.slvr))), envir = .env)
   invisible(TRUE)
 }
 
@@ -4830,18 +4932,26 @@ solve.rxEt <- solve.rxSolve
 #' @param obj a solved rxode2 object.
 #' @return a named numeric vector, or `NULL` if nothing was injected.
 #' @export
+#' @family Solving
+#' @inherit rxForcedPars examples
 rxInjectedPars <- function(obj) {
   .cls <- attr(obj, "class")
   .env <- attr(.cls, ".rxode2.env")
   if (is.null(.env)) {
     return(NULL)
   }
-  .rxSolveMaterializeParams(obj, .env) # ensure materialized
-  if (exists(".injectedPars", envir = .env, inherits = FALSE)) {
-    get(".injectedPars", envir = .env, inherits = FALSE)
-  } else {
-    NULL
+  # list(index0 = <0-based model parameter indices>, value = <values>), kept on
+  # the solve's environment when the solve finished and something was injected
+  .inj <- get0(".injectedPars.raw", envir = .env, inherits = FALSE)
+  if (is.null(.inj)) {
+    # nothing injected, or an object solved by an rxode2 that read them when
+    # $params was first built
+    return(get0(".injectedPars", envir = .env, inherits = FALSE))
   }
+  if (length(.inj[[1L]]) == 0L) {
+    return(NULL)
+  }
+  stats::setNames(.inj[[2L]], rxModelVars(.env)$params[.inj[[1L]] + 1L])
 }
 
 #' Forced parameters carried by a model / ui
@@ -4868,6 +4978,28 @@ rxInjectedPars <- function(obj) {
 #'   returns the (modified) ui.
 #' @export
 #' @author Matthew L. Fidler
+#' @family Solving
+#' @examples
+#' \donttest{
+#' f <- function() {
+#'   ini({
+#'     tcl <- -2
+#'   })
+#'   model({
+#'     cl <- exp(tcl) * WT
+#'     d/dt(depot) <- -cl * depot
+#'   })
+#' }
+#' u <- rxode2(f)
+#' rxForcedPars(u) <- c(WT = 2)
+#' rxForcedPars(u)
+#' ev <- et(amt = 100) |> et(1:8)
+#' ev$WT <- 1
+#' # the forced WT = 2 overrides the data WT = 1
+#' s <- rxSolve(u, ev)
+#' rxInjectedPars(s)
+#' rxForcedPars(u) <- NULL
+#' }
 rxForcedPars <- function(ui) {
   .ui <- rxUiDecompress(ui)
   if (!inherits(.ui, "rxUi")) {
@@ -5001,6 +5133,22 @@ rxForcedPars <- function(ui) {
 #' @return the getter returns the name (or `NULL`); the setter returns the ui.
 #' @export
 #' @author Matthew L. Fidler
+#' @family Solving
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     k <- 0.1
+#'   })
+#'   model({
+#'     d/dt(A) <- -k * A
+#'   })
+#' }
+#' u <- rxode2(mod)
+#' rxParLoader(u) <- "myPkg:myLoader"
+#' rxParLoader(u)
+#' rxParLoader(u) <- NULL
+#' }
 rxParLoader <- function(ui) {
   .ui <- rxUiDecompress(ui)
   if (!inherits(.ui, "rxUi")) {
@@ -5063,6 +5211,11 @@ rxParLoader <- function(ui) {
 #' @seealso [rxParLoader()], [rxForcedPars()]
 #' @export
 #' @author Matthew L. Fidler
+#' @family Solving
+#' @examples
+#' rxSetActiveParLoader("myPkg:myLoader")
+#' # ... internal solves here ...
+#' rxClearActiveParLoader()
 rxSetActiveParLoader <- function(name) {
   if (!is.character(name) || length(name) != 1L || is.na(name)) {
     stop("'name' must be a single loader name", call. = FALSE)
@@ -5116,6 +5269,24 @@ rxClearActiveParLoader <- function() {
 #'   unrelated solves.
 #' @return Invisibly, the hook name (register) or `NULL` (remove).
 #' @export
+#' @family Solving
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     k <- 0.1
+#'   })
+#'   model({
+#'     d/dt(A) <- -k * A
+#'   })
+#' }
+#' seen <- new.env()
+#' seen$n <- 0L
+#' rxRegisterUiPrep("myPkg:count", function(ui) seen$n <- seen$n + 1L)
+#' s <- rxSolve(mod, et(amt = 100) |> et(0:4))
+#' seen$n
+#' rxRemoveUiPrep("myPkg:count")
+#' }
 rxRegisterUiPrep <- function(name, fn) {
   if (!is.character(name) || length(name) != 1L) {
     stop("'name' must be a single string", call. = FALSE)
@@ -5190,6 +5361,25 @@ rxRemoveUiPrep <- function(name) {
 #' @return Invisibly, the hook name (register) or `NULL` (remove).
 #' @export
 #' @author Matthew L. Fidler
+#' @family Solving
+#' @examples
+#' \donttest{
+#' rxRegisterUiAssembled("myPkg:tag", function(ui) {
+#'   assign("myTag", "built", envir = ui)
+#'   assign("sticky", unique(c(ui$sticky, "myTag")), envir = ui)
+#' })
+#' mod <- function() {
+#'   ini({
+#'     k <- 0.1
+#'   })
+#'   model({
+#'     d/dt(A) <- -k * A
+#'   })
+#' }
+#' u <- rxode2(mod)
+#' rxUiDecompress(u)$myTag
+#' rxRemoveUiAssembled("myPkg:tag")
+#' }
 rxRegisterUiAssembled <- function(name, fn) {
   if (!is.character(name) || length(name) != 1L) {
     stop("'name' must be a single string", call. = FALSE)
@@ -5266,6 +5456,10 @@ rxRemoveUiAssembled <- function(name) {
     if (arg %in% c("params", "par", "pars", "param")) {
       .rxSolveMaterializeParams(obj, .env)
       return(get(".params.dat", envir = .env, inherits = FALSE))
+    }
+    if (arg == "counts") {
+      .rxSolveMaterializeCounts(.env)
+      return(get("counts", envir = .env, inherits = FALSE))
     }
     .init <- .rxSolveGetInit(.env, arg)
     if (!is.null(.init)) {
@@ -5538,9 +5732,12 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   controlled by `hmin`).
 #'
 #' * `"vv"` -- Velocity Verlet stepper using Boost's odeint library.
-#'   Requires splitting the state into coordinate-momentum pairs (and
-#'   automatically pads odd-dimensional systems).  Is a fixed-step
-#'   method (step size controlled by `hmin`).
+#'   Requires the ODE states to be coordinate-momentum pairs: with
+#'   `N = ceiling(nstates/2)`, `d/dt(state i)` must equal `state N+i`
+#'   (an odd last coordinate must have a zero derivative).  Other models,
+#'   or an infusion or turning off of a coordinate that breaks this, are
+#'   refused with an error.  Is a fixed-step method (step size controlled
+#'   by `hmin`).
 #'
 #' * `"mm"` -- Modified Midpoint stepper using Boost's odeint library.
 #'   Is a fixed-step method (step size controlled by `hmin`) and uses
@@ -5911,6 +6108,10 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   see the details)
 #'
 #' @export
+#' @family Solver options and performance
+#' @examples
+#' odeMethodToInt("liblsoda")
+#' odeMethodToInt("dop853")
 odeMethodToInt <- function(
   method = c(
     "liblsoda",
@@ -6316,6 +6517,7 @@ odeMethodToInt <- function(
 #'
 #' @seealso [odeMethodToInt()]
 #' @export
+#' @family Solver options and performance
 rxIsImplicit <- function(method) {
   .implicitCodes <- c(13L, 14L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L)
   .methodIdx <- c(
@@ -6534,6 +6736,7 @@ rxIsImplicit <- function(method) {
 #'
 #' @seealso [rxIsNonStiff()], [rxIsImplicit()], [odeMethodToInt()]
 #' @export
+#' @family Solver options and performance
 rxIsStiff <- function(method) {
   .stiffCodes <- c(
     13L,
@@ -6774,6 +6977,7 @@ rxIsStiff <- function(method) {
 #'
 #' @seealso [rxIsStiff()], [rxIsImplicit()], [odeMethodToInt()]
 #' @export
+#' @family Solver options and performance
 rxIsNonStiff <- function(method) {
   .switcherCodes <- c(1L, 2L, 3L)
   .stiffCodes <- c(
@@ -7022,6 +7226,7 @@ rxIsNonStiff <- function(method) {
 #'
 #' @seealso [rxIsStiff()], [rxIsNonStiff()], [odeMethodToInt()]
 #' @export
+#' @family Solver options and performance
 rxIsDense <- function(method) {
   .denseCodes <- c(0L, 10L, 11L, 13L)
   .methodIdx <- c(
@@ -7302,6 +7507,7 @@ rxIsDense <- function(method) {
 #'
 #' @seealso [odeMethodToInt()], [rxIsNonStiff()], [rxIsStiff()]
 #' @export
+#' @family Solver options and performance
 rxIsAutoSwitch <- function(method) {
   if (is.character(method)) {
     return(grepl("+", method, fixed = TRUE))
@@ -7334,6 +7540,7 @@ rxIsAutoSwitch <- function(method) {
 #' tmp2$rtol
 #' tmp2$ssAtol
 #' tmp2$ssRtol
+#' @family Sensitivities
 rxControlUpdateSens <- function(rxControl, sensCmt = NULL, ncmt = NULL) {
   checkmate::assertIntegerish(sensCmt, lower = 1, len = 1)
   checkmate::assertIntegerish(ncmt, lower = 2, len = 1)

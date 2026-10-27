@@ -66,6 +66,7 @@
 #'
 #'  modelExtract(f, endpoint=NA, lines=TRUE, expression=TRUE)
 #'
+#' @family Model UI and piping
 modelExtract <- function(x, ..., expression = FALSE, endpoint = FALSE, lines = FALSE, envir = parent.frame()) {
   checkmate::assertLogical(expression, any.missing = FALSE, len = 1)
   checkmate::assertLogical(lines, any.missing = FALSE, len = 1)
