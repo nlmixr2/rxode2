@@ -53,10 +53,6 @@
 
 ### Solving
 
-- A `cvode` subject that fails on its steady-state path now gives the
-  solver-failure reason line; it was `NA` with the "could not solve" warning
-  but no reason.
-
 - The default `hmax = NA` no longer gives a `NaN` maximum step to a subject
   with a single time difference, so `method = "dop853"` no longer fails with
   `IDID=-3` on a subject with one observation after its start.  `hmaxSd` now
@@ -127,6 +123,10 @@
 
 - `ind_solve()` (as nlmixr2est uses it) no longer reads a failure left by the
   previous solve of the same subject as a failure of the new one.
+
+- A `cvode` subject that fails on its steady-state path now gives the
+  solver-failure reason line; it was `NA` with the "could not solve" warning
+  but no reason.
 
 - A subject whose solve failed is now named with its reason once the solve is
   over ("[solve error: <reason>]: N warning(s) for subject(s): <ids>", and the
