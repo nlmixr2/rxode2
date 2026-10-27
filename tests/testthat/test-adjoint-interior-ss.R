@@ -16,9 +16,11 @@ rxTest({
       .k <- scen[[.nm]]
       .ref <- .adjFd(.k$txt, .k$ev, .k$p)
       for (.m in meths) {
+        # the steady state converged as tightly as in the FD reference
         .a <- rxSolveAdjointRk4(.k$txt, .k$ev,
           params = .k$p, calcSens = names(.k$p), method = .m,
-          atol = 1e-10, rtol = 1e-10, hmin = if (.m == "rk4s") 0.001 else 0
+          atol = 1e-10, rtol = 1e-10, hmin = if (.m == "rk4s") 0.001 else 0,
+          ssAtol = 1e-13, ssRtol = 1e-13, maxSS = 50000
         )
         expect_equal(nrow(.a), length(.ref[[1]]), label = paste(.nm, .m, "rows"))
         for (.cn in names(.ref)) {
@@ -109,7 +111,8 @@ rxTest({
     .pd <- data.frame(id = 1:2, ka = c(1.2, 0.9), k = c(0.2, 0.3))
     for (.m in c("rk4s", "liblsodaadj")) {
       .a <- rxSolveAdjointRk4(.txt, .d, params = .pd, calcSens = c("ka", "k"), method = .m,
-        atol = 1e-10, rtol = 1e-10, hmin = if (.m == "rk4s") 0.001 else 0)
+        atol = 1e-10, rtol = 1e-10, hmin = if (.m == "rk4s") 0.001 else 0,
+        ssAtol = 1e-13, ssRtol = 1e-13, maxSS = 50000)
       for (.id in 1:2) {
         .di <- .d[.d$id == .id, ]
         .di$id <- 1
