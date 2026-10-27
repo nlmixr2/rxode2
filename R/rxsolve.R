@@ -556,6 +556,15 @@
 #'     redrawn, see `priorPdRetry`.  `dfSub` is not used: an entry the
 #'     `thetaMat` gives no variance stays at its estimate.
 #'
+#'  * `"invchol"` draws the same entries jointly with the thetas, but on the
+#'     scale of the inverse Cholesky decomposition of the omega (with a log
+#'     diagonal), so every drawn omega is positive definite and none is
+#'     redrawn.  The `thetaMat` covariance of the entries is moved to that
+#'     scale by the delta method at the `omega` estimate, which has to be
+#'     positive definite.  Only the blocks of `omega` holding a drawn entry
+#'     change, and an entry of such a block that the `thetaMat` gives no
+#'     variance can move with the others.
+#'
 #' @param omegaXform When taking `omega` values from the `thetaMat`
 #'   simulations (using the separation strategy for covariance
 #'   simulation), how should the `thetaMat` values be turned int
@@ -671,6 +680,9 @@
 #' *  `"tnpri"` draws the sigma entries jointly from the `thetaMat`, the
 #'    same way `omegaSeparation="tnpri"` does for the omega; `dfObs` is
 #'    not used.
+#'
+#' *  `"invchol"` draws them on the inverse Cholesky scale, the same way
+#'    `omegaSeparation="invchol"` does for the omega.
 #'
 #' @param dfObs Degrees of freedom to sample the unexplained variability matrix from the
 #'        inverse Wishart distribution (scaled) or scaled inverse chi squared distribution.
@@ -1518,7 +1530,7 @@ rxSolve <- function(
   sigmaUpper = Inf,
   nCoresRV = 1L,
   sigmaIsChol = FALSE,
-  sigmaSeparation = c("auto", "lkj", "separation", "tnpri"),
+  sigmaSeparation = c("auto", "lkj", "separation", "tnpri", "invchol"),
   sigmaXform = c("identity", "variance", "log", "nlmixrSqrt", "nlmixrLog", "nlmixrIdentity"),
   nDisplayProgress = 10000L,
   amountUnits = NA_character_,
@@ -1533,7 +1545,7 @@ rxSolve <- function(
   omega = NULL,
   omegaDf = NULL,
   omegaIsChol = FALSE,
-  omegaSeparation = c("auto", "lkj", "separation", "tnpri"),
+  omegaSeparation = c("auto", "lkj", "separation", "tnpri", "invchol"),
   omegaXform = c("variance", "identity", "log", "nlmixrSqrt", "nlmixrLog", "nlmixrIdentity"),
   omegaLower = -Inf,
   omegaUpper = Inf,
