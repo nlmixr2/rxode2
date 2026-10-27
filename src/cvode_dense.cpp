@@ -101,9 +101,10 @@ extern "C" void ind_cvode_dense_0(rx_solve *rx, rx_solving_options *op, int solv
         localBadSolve = 1;
       } else {
         if (!localBadSolve) {
-          if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                              xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis,
-                              cvode_ctx ? (void *)cvode_ctx : NULL)) {
+          while (!localBadSolve &&
+                 handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                                 xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis,
+                                 cvode_ctx ? (void *)cvode_ctx : NULL)) {
             if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
               preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
               if (neqOde > 0 && cvode_ctx) {
@@ -127,18 +128,6 @@ extern "C" void ind_cvode_dense_0(rx_solve *rx, rx_solving_options *op, int solv
               ind->ixds = ixds;
               ind->idx  = idx;
               ind->idxExtra++;
-              if (!isSameTime(xout, ind->extraDoseNewXout)) {
-                preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-                if (neqOde > 0 && cvode_ctx) {
-                  istate = cvode_ctx_integrate(cvode_ctx, yp,
-                                               ind->extraDoseNewXout, xout);
-                  dense_initialized = false;
-                }
-                copyLinCmt(neq, ind, op, yp);
-                postSolve(neq, &istate, ind->rc, &i, yp, NULL, 0, false, ind, op, rx);
-                if (*(ind->rc) < 0) localBadSolve = 1;
-                ind->extraDoseNewXout = xout;
-              }
               xp = ind->extraDoseNewXout;
             }
           }

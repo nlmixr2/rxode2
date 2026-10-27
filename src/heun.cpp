@@ -85,8 +85,9 @@ extern "C" void ind_heun_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         badSolveExit(i);
         localBadSolve = 1;
       } else {
-        if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                            xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
+        while (!localBadSolve &&
+               handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                               xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
 
@@ -110,18 +111,6 @@ extern "C" void ind_heun_0(rx_solve *rx, rx_solving_options *op, int solveid, in
             ind->ixds = ixds;
             ind->idx = idx;
             ind->idxExtra++;
-            if (!isSameTime(xout, ind->extraDoseNewXout)) {
-              preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-
-              if (neqOde > 0)
-                heun_do_steps(solver, ind, op, c_dydt, neq, yp, ind->extraDoseNewXout, xout);
-
-              copyLinCmt(neq, ind, op, yp);
-              const char* err_msg = "heun failed";
-              postSolve(neq, &istate, ind->rc, &idx, yp, &err_msg, 9, false, ind, op, rx);
-              if (*(ind->rc) < 0) localBadSolve = 1;
-              ind->extraDoseNewXout = xout;
-            }
             xp = ind->extraDoseNewXout;
           }
         }
