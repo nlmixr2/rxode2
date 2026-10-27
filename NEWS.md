@@ -1107,6 +1107,11 @@
   later; before, only the dose at the event time counted, not the doses of
   the earlier periods that make up the steady state.
 
+- The adjoint methods now refuse a steady-state dose solved with
+  `minSS = maxSS`.  They differentiate the converged steady state, not the
+  state after that fixed number of doses, so their sensitivities did not
+  match the solved state.
+
 # rxode2 5.1.8
 
 ## New features
