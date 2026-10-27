@@ -483,7 +483,8 @@
 #'     disabled.
 #'
 #' @param seed an object specifying if and how the random number
-#'    generator should be initialized
+#'    generator should be initialized; when given, it takes precedence
+#'    over an active [rxSetSeed()] stream for this solve
 #'
 #' @param nsim represents the number of simulations.  For rxode2, if
 #'     you supply single subject event tables (created with
@@ -2420,6 +2421,13 @@ rxSolve <- function(
   .rxEventEnter()
   .rxEventCallSave <- sys.call()
   on.exit(.rxEventExitSolve(returnValue(), object, .rxEventCallSave), add = TRUE)
+  if (!is.null(seed)) {
+    ## seed= works through set.seed(), which an active rxSetSeed() stream
+    ## would ignore; suspend that stream for this solve (#1507)
+    .rxSeedOrig <- rxGetSeed()
+    rxSetSeed(-1L)
+    on.exit(rxSetSeed(.rxSeedOrig), add = TRUE)
+  }
   UseMethod("rxSolve")
 }
 

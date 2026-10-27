@@ -62,6 +62,11 @@
   left in the standardized scale and mis-permuted, so their covariance ignored
   `sigma`, and `isChol = TRUE` used the wrong product of the factor.
 
+- `rxSolve(seed = )` now gives the same simulation after an earlier
+  `rxSetSeed()`.  The `rxSetSeed()` stream overrode `seed=`, so two solves
+  with the same `seed` differed; it is now suspended for that solve and left
+  where it was (#1507).
+
 ### Solving
 
 - The default `hmax = NA` no longer gives a `NaN` maximum step to a subject
