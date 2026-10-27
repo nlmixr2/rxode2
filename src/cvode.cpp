@@ -11,16 +11,22 @@ static int cvode_rhs_trampoline(double t, double *y, double *ydot, void *data) {
   return dydt_liblsoda(t, y, ydot, data);
 }
 
-// Called from the handleSS dispatch (case 21).
+// Called from the handleSS dispatch (case 21), which sets only rc on a
+// failure: a CVode failure here is the solver's, named after the solve, as
+// the main loop's postSolve() names it.
 extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double xout,
                                     int *istate, rx_solving_options *op,
                                     rx_solving_options_ind *ind, void *ctx_ptr) {
-  if (!ctx_ptr) { *istate = -1; return; }
+  if (!ctx_ptr) { *istate = -1; rxSolverFail(ind); return; }
   cvode_ctx_t *ctx = (cvode_ctx_t *)ctx_ptr;
   int neqOde = neq[0] - op->numLin - op->numLinSens;
   if (neqOde <= 0) { *xp_ptr = xout; *istate = 1; return; }
   *istate = cvode_ctx_integrate(ctx, yp, *xp_ptr, xout);
-  if (*istate >= 0) *xp_ptr = xout;
+  if (*istate >= 0) {
+    *xp_ptr = xout;
+  } else {
+    rxSolverFail(ind);
+  }
 }
 
 extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,

@@ -294,6 +294,28 @@ rxTest({
     expect_identical(.o, character(0))
   })
 
+  test_that("cvode names a subject's failure on the steady-state path", {
+    .m <- rxode2("d/dt(y) <- -k * y")
+    .d <- data.frame(
+      ID = rep(101:104, each = 4),
+      TIME = rep(c(0, 0, 1, 2), 4),
+      EVID = rep(c(1, 0, 0, 0), 4),
+      AMT = rep(c(1, 0, 0, 0), 4),
+      SS = rep(c(1, 0, 0, 0), 4),
+      II = rep(c(12, 0, 0, 0), 4),
+      CMT = "y"
+    )
+    .p <- data.frame(ID = 101:104, k = c(1, 1, Inf, 1))
+    .w <- capture_warnings(.o <- .cap(.s <- as.data.frame(rxSolve(.m, .d, params = .p, method = "cvode"))))
+    expect_identical(unique(.w), "some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'")
+    expect_true(all(is.na(.s$y[.s$id == "103"])))
+    expect_identical(.o, paste0("[solve error: ", .solverFail, "]: 1 warning(s) for subject(s): 103"))
+    .ref <- as.data.frame(rxSolve(.m, .d[.d$ID != 103, ], params = .p[.p$ID != 103, ], method = "cvode"))
+    .ok <- .s[.s$id != "103", c("time", "y")]
+    rownames(.ok) <- NULL
+    expect_identical(.ok, .ref[, c("time", "y")])
+  })
+
   test_that("ind_solve() pushes a failed subject's reasons for its caller to flush", {
     .m <- rxode2(.fsText)
     .d <- .fsData[rep(seq_len(5), 4), ]
