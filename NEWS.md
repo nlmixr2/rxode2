@@ -212,6 +212,9 @@
 
 ### Adjoint sensitivities
 
+- `method = "cvodesadj"` no longer fails its backward solve, returning
+  wrong sensitivities, when two events fall at the same time.
+
 - `rxSolveAdjointRk4()` now documents that, for a model with `delay()`,
   the adjoint's delayed-state term is first order in the step size for
   every method: an adaptive method such as `dop853s` needs `hmax` for
