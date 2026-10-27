@@ -533,13 +533,14 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       }
       continue;
     }
-    // replace/multiply events strictly inside (tStop, ti), descending in time:
-    // the backward stops at each and applies the transpose costate jump.
+    // replace/multiply events strictly inside (tStop, ti), descending in time and,
+    // at one time, in reverse of the order the forward solve applied them: the
+    // backward stops at each and applies the transpose costate jump.
     std::vector<int> segEv;
     for (size_t e = 0; e < evJumps.size(); ++e)
       if (evJumps[e].t < ti - 1e-12 && evJumps[e].t > tStop + 1e-12) segEv.push_back((int)e);
-    gfx::timsort(segEv.begin(), segEv.end(),
-                 [&](int a, int b) { return evJumps[a].t > evJumps[b].t; });
+    gfx::timsort(segEv.begin(), segEv.end(), [&](int a, int b) {
+      return evJumps[a].t > evJumps[b].t || (evJumps[a].t == evJumps[b].t && a > b); });
     for (int k = 0; bok && k < nBase; ++k) {
       for (int j = 0; j < nBase; ++j) NV_Ith_S(B, j) = (j == k) ? 1.0 : 0.0;
       for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) = 0.0;

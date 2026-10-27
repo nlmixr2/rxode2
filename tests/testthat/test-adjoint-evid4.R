@@ -54,8 +54,7 @@ rxTest({
   test_that("a dose together with a replace or multiply at one time keeps its bioavailability", {
     # Same-time records sort as multiply, replace, then dose.  A replace with 0
     # or a multiply of an empty compartment leaves no f() term on the jump
-    # itself.  liblsodaadj keeps one event per segment and cvodesadj cannot
-    # yet transpose same-time events, so this covers the rk4s family.
+    # itself.  test-adjoint-same-time.R covers the other drivers.
     .scenSame <- list(
       replaceDose = et(amt = 100, cmt = "depot") |> et(time = 3, evid = 5, amt = 0, cmt = "depot") |>
         et(time = 3, amt = 80, cmt = "depot") |> et(c(1, 3, 4, 6)),
