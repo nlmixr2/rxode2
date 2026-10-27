@@ -64,7 +64,10 @@
   that the solve overrides with a supplied value or a data covariate.
   Before, the default was folded into the event derivatives, so the
   targeted parameter's sensitivity was 0 (or a defaulted delay lost its
-  jump term) and an overridden default kept its model value there.
+  jump term) and an overridden default kept its model value there.  The
+  second-order `delay()` jump now also uses the solve's value of a
+  parameter in a state coupling (for example `kd*depot`), so an overridden
+  default no longer gives the wrong jump.
 
 - The default `hmax = NA` no longer gives a `NaN` maximum step to a subject
   with a single time difference, so `method = "dop853"` no longer fails with
