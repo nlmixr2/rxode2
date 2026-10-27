@@ -278,6 +278,11 @@
   post-event adjoint sensitivity with `method = "cvodesadj"` and
   `method = "abs"`; before, it read the pre-event one.
 
+- A subject whose `method = "cvodesadj"` adjoint solve fails now returns
+  `NA` states and sensitivities, as a failed forward solve does; before, it
+  kept finite states with zero sensitivities.  Its forward pass also stops
+  at `maxsteps` steps per output interval, like the other solvers.
+
 - With `method = "cvodesadj"`, and with `method = "liblsodaadj"` when
   nothing was integrated between resets, an observation recorded at the
   time of a reset (`evid = 3`) returned the pre-reset sensitivity; it now
