@@ -3616,6 +3616,16 @@ rxSolve.default <- function(
   ) {
     .evDf <- tryCatch(as.data.frame(events), error = function(e) NULL)
     if (!is.null(.evDf) && !is.null(.evDf$ss) && any(.evDf$ss != 0, na.rm = TRUE)) {
+      # The ss IC term is the derivative of the converged steady state, not of
+      # the state after exactly minSS = maxSS doses.
+      if (.ctl$minSS == .ctl$maxSS) {
+        stop(
+          "adjoint sensitivities differentiate the converged steady state, not ",
+          "the state after a fixed number of doses (minSS = maxSS); use ",
+          "forward sensitivities or set maxSS above minSS",
+          call. = FALSE
+        )
+      }
       # Which ss cases carry the steady-state initial-condition sensitivity
       # (dY_ss/dp) depends on the adjoint driver.  The rk4s framework (explicit
       # AND the composite/AutoSwitch fill) covers, for both ss==1 and ss==2:

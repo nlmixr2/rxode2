@@ -102,17 +102,54 @@ static inline void rk4sAddIni(const double *dx0, const double *lam, double *mu, 
 }
 
 // A subject that took no forward step (only records at its first time) is
-// still at its initial conditions: every observation's sensitivity is dX0/dp
-// (left at 0 when no initial condition depends on a calcSens parameter).
+// still at its initial conditions, changed only by the events at that time:
+// walking the records in order, the sensitivity starts at dX0/dp (0 when no
+// initial condition depends on a calcSens parameter), a reset restores dX0/dp,
+// a bolus adds amt * dF/dp to its compartment, a replace zeroes the
+// compartment's row and a multiply scales it.  Each observation reads the
+// running value.
 static inline void rk4sIniOnlyFill(rx_solving_options *op, rx_solving_options_ind *ind, int cSub,
                                    int nBase, int np, int sensOff) {
-  std::vector<double> dx0;
-  rk4sIniDx0(op, ind, cSub, getAllTimes(ind, 0), rxEffNeq(ind, op), nBase, np, dx0);
-  if (dx0.empty()) return;
+  double t0 = getAllTimes(ind, 0);
+  std::vector<double> dx0, dF;
+  rk4sIniDx0(op, ind, cSub, t0, rxEffNeq(ind, op), nBase, np, dx0);
+  if (op->adjDfOff >= 0) {   // ind->lhs was just evaluated at t0 when dx0 was
+    if (dx0.empty()) {
+      std::vector<double> a(rxEffNeq(ind, op), 0.0);
+      calc_lhs(cSub, t0, a.data(), ind->lhs);
+    }
+    dF.assign(ind->lhs + op->adjDfOff, ind->lhs + op->adjDfOff + nBase * np);
+  }
+  std::vector<double> s(nBase * np, 0.0);
+  if (!dx0.empty()) s = dx0;
   for (int i = 0; i < ind->n_all_times; ++i) {
-    if (!isObs(getEvid(ind, ind->ix[i]))) continue;
-    double *out = getSolve(i);
-    for (int q = 0; q < nBase * np; ++q) out[sensOff + q] = dx0[q];
+    int ev = getEvid(ind, ind->ix[i]);
+    if (isObs(ev)) {
+      double *out = getSolve(i);
+      for (int q = 0; q < nBase * np; ++q) out[sensOff + q] = s[q];
+      continue;
+    }
+    if (ev == 3) {
+      if (dx0.empty()) std::fill(s.begin(), s.end(), 0.0);
+      else s = dx0;
+      continue;
+    }
+    if (!isDose(ev)) continue;
+    int wh, c, wh100, whI, wh0;
+    getWh(ev, &wh, &c, &wh100, &whI, &wh0);
+    if (c < 0 || c >= nBase) continue;
+    double *row = &s[c * np];
+    if (whI == 0) {
+      // an ss = 2 dose is superposed, not applied to the state
+      if (dF.empty() || wh0 == EVID0_SS2 || wh0 == EVID0_SS20) continue;
+      double amt = getDose(ind, ind->ix[i]);
+      for (int p = 0; p < np; ++p) row[p] += amt * dF[c * np + p];
+    } else if (whI == EVIDF_REPLACE) {
+      for (int p = 0; p < np; ++p) row[p] = 0.0;
+    } else if (whI == EVIDF_MULT) {
+      double a = getAmt(ind, ind->id, c, getDoseIndex(ind, i), t0, getSolve(i));
+      for (int p = 0; p < np; ++p) row[p] *= a;
+    }
   }
 }
 

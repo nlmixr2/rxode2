@@ -164,4 +164,17 @@ rxTest({
       }
     }
   })
+
+  test_that("adjoint methods refuse a fixed number of steady-state doses", {
+    .ev <- et(amt = 100, cmt = "depot", ss = 1, ii = 12) |> et(c(1, 6, 12))
+    for (.m in .all) {
+      expect_error(
+        rxSolveAdjointRk4(.txt, .ev, params = .p, calcSens = names(.p), method = .m, minSS = 3, maxSS = 3),
+        "fixed number of doses \\(minSS = maxSS\\)", label = .m
+      )
+      # minSS below maxSS still solves
+      .a <- rxSolveAdjointRk4(.txt, .ev, params = .p, calcSens = names(.p), method = .m, minSS = 3, maxSS = 4000)
+      expect_equal(nrow(.a), 3L, label = .m)
+    }
+  })
 })
