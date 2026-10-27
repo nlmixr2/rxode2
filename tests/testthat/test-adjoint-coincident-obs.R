@@ -32,9 +32,7 @@ rxTest({
     for (.nm in names(.scen)) {
       .k <- .scen[[.nm]]
       .ref <- .adjFd(.k$txt, .k$ev, .k$p)
-      # abs refuses an f() that depends on a calcSens parameter
-      .meths <- c("rk4s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj")
-      if (!grepl("f(", .k$txt, fixed = TRUE)) .meths <- c(.meths, "abs")
+      .meths <- c("rk4s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj", "abs")
       for (.m in .meths) {
         .a <- rxSolveAdjointRk4(.k$txt, .k$ev,
           params = .k$p, calcSens = names(.k$p), method = .m,

@@ -37,12 +37,11 @@ rxTest({
     )
     for (.nm in names(.mods)) {
       .known <- .faKnown(.mods[[.nm]]$p, .tt)
-      # abs has no f()/alag() dual
-      for (.meth in c("rk4s", "dop853s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj")) {
+      for (.meth in c("rk4s", "dop853s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj", "abs")) {
         .a <- rxSolveAdjointRk4(
           .mods[[.nm]]$txt, .faEv,
           params = .mods[[.nm]]$p, calcSens = names(.mods[[.nm]]$p), method = .meth,
-          atol = 1e-10, rtol = 1e-10, hmin = if (.meth == "rk4s") 0.001 else 0
+          atol = 1e-10, rtol = 1e-10, hmin = if (.meth %in% c("rk4s", "abs")) 0.001 else 0
         )
         .a <- .a[.a$time %in% .tt, , drop = FALSE]
         for (.cn in names(.known)) {
@@ -79,18 +78,20 @@ rxTest({
     expect_lt(.e2, 0.01)
   })
 
-  test_that("abs refuses sensitivities through parameter-dependent dosing and still solves everything else", {
+  test_that("abs refuses sensitivities through parameter-dependent infusions and still solves everything else", {
     .base <- "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center"
     .msg <- "method='abs' cannot calculate sensitivities through %s that depend on sensitivity parameters; use %s"
     .both <- "method='rk4s' or method='liblsodaadj'"
     .rateEv <- et(amt = 100, cmt = "depot", rate = -1) |> et(c(1, 2, 4, 8, 12))
     .durEv <- et(amt = 100, cmt = "depot", rate = -2) |> et(c(1, 2, 4, 8, 12))
+    # abs carries the f() and alag() duals of a bolus, not of an infusion
+    .fixEv <- et(amt = 100, cmt = "depot", rate = 40) |> et(c(1, 2, 4, 8, 12))
     .kinds <- list(
-      list(txt = "f(depot) <- fd", p = c(fd = 0.7), ev = .faEv, what = "f()", use = .both),
-      list(txt = "alag(depot) <- lg", p = c(lg = 0.7), ev = .faEv, what = "alag()", use = .both),
+      list(txt = "f(depot) <- fd", p = c(fd = 0.7), ev = .fixEv, what = "f()", use = .both),
+      list(txt = "alag(depot) <- lg", p = c(lg = 0.7), ev = .fixEv, what = "alag()", use = .both),
       list(txt = "rate(depot) <- r", p = c(r = 40), ev = .rateEv, what = "rate()", use = .both),
       list(txt = "dur(depot) <- dd", p = c(dd = 2.5), ev = .durEv, what = "dur()", use = .both),
-      list(txt = "f(depot) <- fd\nalag(depot) <- lg", p = c(fd = 0.7, lg = 0.7), ev = .faEv, what = "f(), alag()", use = .both),
+      list(txt = "f(depot) <- fd\nalag(depot) <- lg", p = c(fd = 0.7, lg = 0.7), ev = .fixEv, what = "f(), alag()", use = .both),
       list(txt = "f(depot) <- fd\nrate(depot) <- r", p = c(fd = 0.7, r = 40), ev = .rateEv, what = "f(), rate()", use = .both)
     )
     for (.k in .kinds) {
@@ -155,10 +156,10 @@ rxTest({
     for (.nm in names(.scen)) {
       .k <- .scen[[.nm]]
       .fd <- .adjFd(.k$txt, .k$ev, .k$p, names(.k$p))
-      for (.meth in c("rk4s", "dop853s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj")) {
+      for (.meth in c("rk4s", "dop853s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj", "abs")) {
         .a <- rxSolveAdjointRk4(.k$txt, .k$ev,
           params = .k$p, calcSens = names(.k$p), method = .meth,
-          atol = 1e-12, rtol = 1e-12, hmin = if (.meth == "rk4s") 0.001 else 0
+          atol = 1e-12, rtol = 1e-12, hmin = if (.meth %in% c("rk4s", "abs")) 0.001 else 0
         )
         for (.cn in names(.fd)) {
           expect_lt(max(abs(.a[[.cn]] - .fd[[.cn]])), 1e-6, label = paste(.nm, .meth, .cn))
@@ -168,9 +169,9 @@ rxTest({
     # two subjects with different F
     .ev <- et(amt = 100, cmt = "depot") |> et(c(0, 1, 2, 4, 8)) |> et(id = 1:2)
     .pd <- data.frame(id = 1:2, ka = 1.2, k = 0.14, fd = c(0.5, 0.9))
-    for (.meth in c("rk4s", "dop853s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj")) {
+    for (.meth in c("rk4s", "dop853s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj", "abs")) {
       .a <- rxSolveAdjointRk4(.fTxt, .ev, params = .pd, calcSens = c("ka", "k", "fd"), method = .meth,
-        atol = 1e-12, rtol = 1e-12, hmin = if (.meth == "rk4s") 0.001 else 0)
+        atol = 1e-12, rtol = 1e-12, hmin = if (.meth %in% c("rk4s", "abs")) 0.001 else 0)
       for (.id in 1:2) {
         .fd <- .adjFd(.fTxt, et(amt = 100, cmt = "depot") |> et(c(0, 1, 2, 4, 8)), unlist(.pd[.id, -1]), c("ka", "k", "fd"))
         .ai <- .a[.a$id == .id, ]

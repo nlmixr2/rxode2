@@ -3585,11 +3585,16 @@ rxSolve.default <- function(
     .ctl$method <- .up
     .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
   }
-  # abs (Adams-Bashforth) has no adjoint duals for modeled dosing, so its
-  # sensitivities would leave out the f()/alag()/rate()/dur() terms of a
-  # modifier that depends on a sensitivity parameter.
+  # abs (Adams-Bashforth) carries the f() and alag() duals of a bolus only, so
+  # its sensitivities would leave out the rate()/dur() terms, and the f()/alag()
+  # terms of an infusion, of a modifier that depends on a sensitivity parameter.
   if (.ctl$method == 208L && any(rxModelVars(object)$lhs == "rx__adjFX_0_0__")) {
     .bad <- .rxAdjointDoseDuals(object)
+    .evAbs <- tryCatch(as.data.frame(events), error = function(e) NULL)
+    .absInf <- is.null(.evAbs) ||
+      (!is.null(.evAbs$rate) && any(.evAbs$rate != 0, na.rm = TRUE)) ||
+      (!is.null(.evAbs$dur) && any(.evAbs$dur > 0, na.rm = TRUE))
+    if (!.absInf) .bad <- setdiff(.bad, c("f()", "alag()"))
     if (length(.bad) > 0L) {
       stop(
         sprintf(
