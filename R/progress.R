@@ -35,6 +35,7 @@
 #' }
 #'
 #' @export
+#' @family Solver options and performance
 rxProgress <- function(num, core = 0L) {
   invisible(.Call(`_rxProgress`, as.integer(num), as.integer(core)))
 }

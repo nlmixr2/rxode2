@@ -1,3 +1,21 @@
+# A model with an eta and a time-varying covariate, and its events as a data
+# frame, for the tests that the caller's translated table is left alone
+.etCallerMod <- function() {
+  rxode2({
+    cl <- tcl * exp(eta.cl) * (WT / 70)
+    d / dt(depot) <- -ka * depot
+    d / dt(center) <- ka * depot - cl / v * center
+    cp <- center / v
+  })
+}
+
+.etCallerData <- function() {
+  .e <- as.data.frame(et(amt = 100) |> et(c(0.5, 1, 2, 4, 8)))
+  .e$id <- 1
+  .e$WT <- ifelse(.e$time > 3, 75, 70)
+  .e
+}
+
 rxTest({
   # mostly tested in 'rxode2et'
   test_that("warfarin model", {
@@ -2513,6 +2531,148 @@ d/dt(blood)     = a*intestine - b*blood
     expect_error(etTrans(dSimple, mod, addlDropSs = FALSE), "evid: 7")
   })
 
+  # the whole message etTrans(d, mod) stops with, or NULL
+  .etErr <- function(d, mod) {
+    tryCatch(
+      {
+        etTrans(d, mod)
+        NULL
+      },
+      error = conditionMessage
+    )
+  }
+  # the missing-evid stop's message for a subject and row
+  .etMissingEvidMsg <- function(id, row) {
+    sprintf(
+      "'evid' is missing on a record with dose information ('amt', 'rate' or 'dur'); use 1 for a dose or 0 for an observation (id: %s row: %d)",
+      id,
+      row
+    )
+  }
+
+  test_that("a missing EVID on a record with dose information is an error, not a dropped dose", {
+    mod <- rxode2parse(
+      "
+d/dt(depot) = -1.5*depot
+d/dt(central) = 1.5*depot - 0.2*central
+"
+    )
+    .msg <- .etMissingEvidMsg
+    .d <- data.frame(ID = 1, TIME = c(0, 1), DV = c(NA, 1), AMT = c(100, 0), EVID = c(NA, 0), CMT = 2)
+    expect_identical(.etErr(.d, mod), .msg(1, 1))
+    # lower-case columns, and no ID column (one subject, 1)
+    expect_identical(.etErr(setNames(.d, tolower(names(.d))), mod), .msg(1, 1))
+    expect_identical(.etErr(.d[names(.d) != "ID"], mod), .msg(1, 1))
+    # a negative or NaN amount, or a DV on the record, does not make it an observation
+    for (.amt in c(-5, NaN)) {
+      .d$AMT[1] <- .amt
+      expect_identical(.etErr(.d, mod), .msg(1, 1))
+    }
+    .d$DV[1] <- 3
+    expect_identical(.etErr(.d, mod), .msg(1, 1))
+    # nor does a fixed or modeled rate or duration with no amount, as a constant
+    # infusion (ss = 1 with a rate) has
+    .d <- data.frame(ID = 1, TIME = c(0, 1), DV = c(NA, 1), AMT = 0, EVID = c(NA, 0), CMT = 2)
+    for (.rate in c(10, -1, -2)) {
+      .r <- .d
+      .r$RATE <- c(.rate, 0)
+      expect_identical(.etErr(.r, mod), .msg(1, 1))
+    }
+    for (.dur in c(2, -1, -2)) {
+      .r <- .d
+      .r$DUR <- c(.dur, 0)
+      expect_identical(.etErr(.r, mod), .msg(1, 1))
+    }
+    .r <- .d
+    .r$RATE <- c(10, 0)
+    .r$SS <- c(1, 0)
+    expect_identical(.etErr(.r, mod), .msg(1, 1))
+    # a NaN or other negative rate or duration is no dose information: the record
+    # is an observation, as it is with no EVID column
+    for (.col in c("RATE", "DUR")) {
+      for (.v in c(NaN, -3)) {
+        .r <- .d
+        .r$DV[1] <- 3
+        .r[[.col]] <- c(.v, 0)
+        .lab <- paste(.col, .v)
+        expect_identical(etTrans(.r, mod)$EVID, c(0L, 0L), label = .lab)
+        expect_identical(etTrans(.r[names(.r) != "EVID"], mod)$EVID, c(0L, 0L), label = .lab)
+      }
+    }
+    # both columns present: a rate with a zero duration is dose information, and a
+    # NaN rate beside a duration is the classification's own error
+    .r <- .d
+    .r$RATE <- c(10, 0)
+    .r$DUR <- c(0, 0)
+    expect_identical(.etErr(.r, mod), .msg(1, 1))
+    .r$RATE <- c(NaN, 0)
+    .r$DUR <- c(2, 0)
+    expect_identical(.etErr(.r, mod), "'rate' and/or 'dur' are not specified correctly (id: 1 row: 1)")
+    # the subject's ID and the record's row in the data as given: subjects in
+    # first-seen order that is not alphabetical, times out of order
+    .m <- data.frame(
+      ID = c("b", "b", "a", "a"),
+      TIME = c(0, 1, 1, 0),
+      DV = c(NA, 1, NA, 2),
+      AMT = c(100, 0, 100, 0),
+      EVID = c(1, 0, NA, 0),
+      CMT = 2
+    )
+    expect_identical(.etErr(.m, mod), .msg("a", 3))
+    # with no amount, rate or duration a missing EVID is an observation
+    for (.amt in c(0, NA)) {
+      .d$AMT[1] <- .amt
+      .d$DV[1] <- 3
+      expect_identical(etTrans(.d, mod)$EVID, c(0L, 0L))
+    }
+    # with no EVID column a nonzero AMT is a dose, and so is a missing MDV with an
+    # amount when the MDV column stands in for the EVID.  A missing MDV with a zero
+    # amount is read as a dose too (EVID 201), dropping the record's observation:
+    # this pins current behaviour, which is open as a design question
+    .d <- data.frame(ID = 1, TIME = c(0, 1), DV = c(NA, 1), AMT = c(100, 0), CMT = 2)
+    expect_identical(etTrans(.d, mod)$EVID, c(201L, 0L))
+    .d$MDV <- c(NA, 0)
+    expect_identical(etTrans(.d, mod)$EVID, c(201L, 0L))
+    .d$AMT[1] <- 0
+    expect_identical(etTrans(.d, mod)$EVID, c(201L, 0L))
+  })
+
+  test_that("the rate and duration errors name the subject by its ID", {
+    mod <- rxode2parse(
+      "
+d/dt(depot) = -1.5*depot
+d/dt(central) = 1.5*depot - 0.2*central
+"
+    )
+    .d <- data.frame(
+      ID = "subjA",
+      TIME = c(0, 1),
+      AMT = c(100, 0),
+      RATE = c(10, 0),
+      DUR = c(2, 0),
+      EVID = c(1, 0),
+      CMT = 2,
+      DV = c(NA, 1)
+    )
+    expect_error(etTrans(.d, mod), "'rate' and/or 'dur' are not specified correctly (id: subjA row: 1)", fixed = TRUE)
+    # a steady-state constant infusion with a fixed, then a modeled, duration
+    .d <- data.frame(
+      ID = "subjA",
+      TIME = c(0, 1),
+      AMT = 0,
+      SS = c(1, 0),
+      II = 0,
+      DUR = c(2, 0),
+      EVID = c(1, 0),
+      CMT = 2,
+      DV = c(NA, 1)
+    )
+    .msg <- "specifying duration with a steady state constant infusion makes no sense (id: subjA row: 1)"
+    expect_error(etTrans(.d, mod), .msg, fixed = TRUE)
+    .d$DUR[1] <- -2
+    expect_error(etTrans(.d, mod), .msg, fixed = TRUE)
+  })
+
   test_that("etTrans lag ss", {
     mod <- rxode2parse(
       "
@@ -3063,5 +3223,32 @@ rxTest({
 
     invisible(rxode2::etTrans(.fixedRows(50, 1000), mod)) # warm up
     expect_lt(.minElapsed(.many), 3 * .minElapsed(.few))
+  })
+
+  test_that("rxSolve() and etTrans() leave the caller's translated table as it was", {
+    # each reference is built apart, so it shares nothing an in-place write
+    # would change; identical() compares the class's hidden translation too
+    .m <- .etCallerMod()
+    .p <- c(ka = 1, tcl = 2, v = 10, eta.cl = 0)
+    .d <- etTrans(.etCallerData(), .m, allTimeVar = TRUE)
+    .ref <- etTrans(.etCallerData(), .m, allTimeVar = TRUE)
+    expect_identical(.d, .ref)
+    invisible(suppressWarnings(rxSolve(.m, .p, .d)))
+    expect_identical(.d, .ref)
+    # translating again without allTimeVar makes a new table
+    .x <- etTrans(.d, .m, allTimeVar = FALSE)
+    expect_identical(.d, .ref)
+    expect_false(attr(class(.x), ".rxode2.lst")$allTimeVar)
+    # a single-level lotri omega reads the translation on another path
+    .d2 <- etTrans(.etCallerData(), .m)
+    .ref2 <- etTrans(.etCallerData(), .m)
+    invisible(suppressWarnings(rxSolve(
+      .m,
+      .p[-4],
+      .d2,
+      omega = lotri::lotri(lotri::lotri(eta.cl ~ 0.1) | id(nu = 100)),
+      nSub = 1
+    )))
+    expect_identical(.d2, .ref2)
   })
 })

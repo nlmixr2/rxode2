@@ -28,6 +28,11 @@
 #define rxErrIndLinConverge   16777216
 #define rxErrIndLinCode       33554432
 #define rxErrIndLinExcept     67108864
+// a driver's own solver failure (an exception, or a step it could not take),
+// set only when no more specific reason is
+#define rxErrSolverFail       134217728
+#define rxSolverFail(ind) do { if ((ind)->err == 0) (ind)->err = rxErrSolverFail; } while (0)
+#define rxErrVvNotPairs       268435456
 
 #define rxErrNaTimeLag   1
 #define rxErrNaTimeRate  2

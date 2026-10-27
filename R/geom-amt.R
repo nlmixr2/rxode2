@@ -94,6 +94,7 @@ StatAmt <- ggplot2::ggproto(
 #' }
 #' @export
 #' @inheritParams ggplot2::stat_identity
+#' @family rxode2 plotting
 stat_amt <- function(mapping = NULL, data = NULL, position = "identity", show.legend = NA, inherit.aes = TRUE, ...) {
   ggplot2::layer(
     stat = StatAmt,

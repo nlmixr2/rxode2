@@ -84,7 +84,12 @@ JD Cook. (2016). Random number generator seed mistakes.
 }
 \seealso{
 rxGetSeed, rxWithSeed, rxWithPreserveSeed
+
+Other Random seeds:
+\code{\link[=rxGetSeed]{rxGetSeed()}},
+\code{\link[=rxWithSeed]{rxWithSeed()}}
 }
 \author{
 Matthew Fidler
 }
+\concept{Random seeds}

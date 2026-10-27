@@ -1109,6 +1109,7 @@
 #'
 #' @author Matthew Fidler
 #' @export
+#' @family Model UI and piping
 odeToLin <- function(ui) {
   .ui <- as.rxUi(ui) # nolint
   .ui <- rxUiDecompress(.ui) # nolint

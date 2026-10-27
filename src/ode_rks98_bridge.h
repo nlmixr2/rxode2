@@ -30,7 +30,7 @@ protected:
         dydt_(full_neq_, t_stage_, solin, fout);
         for (unsigned long i = 0; i < neq_; i++) {
             if (!std::isfinite(fout[i])) {
-                ind_->err = 1;
+                rxSolverFail(ind_);
                 for (unsigned long j = 0; j < neq_; j++) fout[j] = 0.0;
                 return;
             }
@@ -130,7 +130,7 @@ protected:
         if (ind_->err != 0) throw std::runtime_error("rks98: ode error");
         if (nstep_ > max_steps_) {
             if (ind_->rc[0] == 0) ind_->rc[0] = -2019;
-            ind_->err = 1;
+            rxSolverFail(ind_);
             throw std::runtime_error("rks98: max steps exceeded");
         }
     }

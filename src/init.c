@@ -112,6 +112,12 @@ SEXP _rxode2_expandTheta_(SEXP, SEXP, SEXP, SEXP, SEXP,
 SEXP _rxode2_rxRmvnSEXP(SEXP, SEXP, SEXP, SEXP, SEXP,
                         SEXP, SEXP, SEXP, SEXP, SEXP,
                         SEXP, SEXP);
+SEXP _rxode2_rxRmvtSEXP(SEXP, SEXP, SEXP, SEXP, SEXP,
+                        SEXP, SEXP, SEXP, SEXP, SEXP,
+                        SEXP, SEXP, SEXP);
+SEXP _rxode2_rxRmvtTilt_(SEXP, SEXP, SEXP, SEXP);
+SEXP _rxode2_rxRmvtTeamDraw_(SEXP, SEXP, SEXP, SEXP, SEXP,
+                             SEXP, SEXP, SEXP, SEXP);
 
 SEXP _rxode2_itostr(SEXP, SEXP);
 SEXP _rxode2_itoletter(SEXP, SEXP);
@@ -371,12 +377,18 @@ SEXP setRxthreads(SEXP threads, SEXP percent, SEXP throttle);
 int getSilentErr(void);
 void setSilentErr(int silent);
 
-void rxSolveWarnPush(int id, const char *msg, ...);
+#include "rxPrintfFormat.h"
+void rxSolveWarnPush(int id, const char *msg, ...) R_PRINTF_FORMAT(2, 3);
 void rxSolveWarnFlush(int maxIds);
 void rxSolveWarnReset(void);
 void rxSetIdLvlFactors(SEXP idLvl);
 const char *rxGetIdSim(int id, int *sim);
-SEXP _rxTestSolveWarnLabels(SEXP idLvl, SEXP ids, SEXP setLvl);
+SEXP _rxTestSolveWarnLabels(SEXP idLvl, SEXP ids, SEXP setLvl, SEXP maxIds);
+SEXP _rxTestSolveWarnMany(SEXP ks, SEXP nFlush);
+SEXP _rxTestSolveWarnStat(SEXP x);
+SEXP _rxTestSolveErrPush(SEXP err);
+SEXP _rxTestSolveWarnFlush(void);
+SEXP _rxTestParSolveAfterPush(void);
 SEXP _rxTestGetIdLabels(SEXP ids);
 
 int iniSubjectE(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
@@ -482,6 +494,7 @@ void rxGetSolveAtolRtol(double *atol, double *rtol);
 
 // Cross-DLL OpenMP thread-id override (defined in rxData.cpp); see comment there.
 void setRxThreadId(int id);
+int getRxThreadId(void);
 
 // threefry RNG engine entry points shared with downstream packages
 // (nlmixr2est importance sampling); defined in rxthreefry.cpp.
@@ -490,6 +503,11 @@ void setSeedEng1(uint32_t seed);
 void seedEng(int ncores);
 double rxNormEng(double mean, double sd);
 double rxUnifEng(double low, double hi);
+int rxRmvtSetup(void **handle, int d, const double *mu, const double *sigma,
+                int isChol, const double *lower, const double *upper, double nu,
+                double a, double tol, double nlTol, int nlMaxiter);
+int rxRmvtDraw(void *handle, double *out, int n);
+void rxRmvtFree(void *handle);
 
 // per-individual ODE solve buffer-pointer accessors (defined in rx2api.c); let a
 // downstream caller swap in private, larger solve buffers for a higher-state
@@ -502,6 +520,7 @@ void setIndSolveLast(rx_solving_options_ind* ind, double* solveLast);
 double *getIndSolveLast2(rx_solving_options_ind* ind);
 void setIndSolveLast2(rx_solving_options_ind* ind, double* solveLast2);
 
+SEXP _rxTestThreadIdSlots(SEXP ptrs);
 SEXP _rxode2_rxode2Ptr(void) {
   int pro = 0;  // Counter for the number of PROTECT calls
   // Create an external pointer for _lotriLstToMat
@@ -615,8 +634,13 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2rxRegisterParLoaderNamed = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRegisterParLoaderNamed, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxPriorLogDensityEval = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxPriorLogDensityEval, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxPriorOmegaToCholOmegaInvGrad = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxPriorOmegaToCholOmegaInvGrad, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2getRxThreadId = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&getRxThreadId, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxRmvtSEXP = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&_rxode2_rxRmvtSEXP, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxRmvtSetup = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRmvtSetup, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxRmvtDraw = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRmvtDraw, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2rxRmvtFree = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRmvtFree, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 99
+#define nVec 104
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -717,6 +741,11 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 96, rxode2rxRegisterParLoaderNamed);
   SET_VECTOR_ELT(ret, 97, rxode2rxPriorLogDensityEval);
   SET_VECTOR_ELT(ret, 98, rxode2rxPriorOmegaToCholOmegaInvGrad);
+  SET_VECTOR_ELT(ret, 99, rxode2getRxThreadId);
+  SET_VECTOR_ELT(ret, 100, rxode2rxRmvtSEXP);
+  SET_VECTOR_ELT(ret, 101, rxode2rxRmvtSetup);
+  SET_VECTOR_ELT(ret, 102, rxode2rxRmvtDraw);
+  SET_VECTOR_ELT(ret, 103, rxode2rxRmvtFree);
 
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
@@ -826,6 +855,11 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 96, Rf_mkChar("rxode2rxRegisterParLoaderNamed"));
   SET_STRING_ELT(retN, 97, Rf_mkChar("rxPriorLogDensityEval"));
   SET_STRING_ELT(retN, 98, Rf_mkChar("rxPriorOmegaToCholOmegaInvGrad"));
+  SET_STRING_ELT(retN, 99, Rf_mkChar("rxode2getRxThreadId"));
+  SET_STRING_ELT(retN, 100, Rf_mkChar("rxode2rxRmvtSEXP"));
+  SET_STRING_ELT(retN, 101, Rf_mkChar("rxode2rxRmvtSetup"));
+  SET_STRING_ELT(retN, 102, Rf_mkChar("rxode2rxRmvtDraw"));
+  SET_STRING_ELT(retN, 103, Rf_mkChar("rxode2rxRmvtFree"));
 
   // Nothing is validated here.  Every reverse dependency calls this at load, so a
   // check that fails takes them all down at once and they cannot be patched
@@ -889,7 +923,12 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxClearForcedPars", (DL_FUNC) &_rxode2_rxClearForcedPars, 0},
     {"_rxode2_rxSetActiveParLoader", (DL_FUNC) &_rxode2_rxSetActiveParLoader, 1},
     {"_rxode2_rxClearActiveParLoader", (DL_FUNC) &_rxode2_rxClearActiveParLoader, 0},
-    {"_rxTestSolveWarnLabels", (DL_FUNC) &_rxTestSolveWarnLabels, 3},
+    {"_rxTestSolveWarnLabels", (DL_FUNC) &_rxTestSolveWarnLabels, 4},
+    {"_rxTestSolveWarnMany", (DL_FUNC) &_rxTestSolveWarnMany, 2},
+    {"_rxTestSolveWarnStat", (DL_FUNC) &_rxTestSolveWarnStat, 1},
+    {"_rxTestSolveErrPush", (DL_FUNC) &_rxTestSolveErrPush, 1},
+    {"_rxTestSolveWarnFlush", (DL_FUNC) &_rxTestSolveWarnFlush, 0},
+    {"_rxTestParSolveAfterPush", (DL_FUNC) &_rxTestParSolveAfterPush, 0},
     {"_rxTestGetIdLabels", (DL_FUNC) &_rxTestGetIdLabels, 1},
     {"_rxode2_qsDes", (DL_FUNC) &_rxode2_qsDes, 1},
     {"_rxode2_rxGetSerialType_", (DL_FUNC) &_rxode2_rxGetSerialType_, 1},
@@ -909,6 +948,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_powerD", (DL_FUNC) &_rxode2_powerD, 6},
     {"_rxode2_powerLDL", (DL_FUNC) &_rxode2_powerLDL, 6},
     {"_rxode2_rxode2Ptr", (DL_FUNC) &_rxode2_rxode2Ptr, 0},
+    {"_rxTestThreadIdSlots", (DL_FUNC) &_rxTestThreadIdSlots, 1},
     {"_rxode2_iniDparserPtr", (DL_FUNC) &_rxode2_iniDparserPtr, 1},
     {"_iniPreciseSumsPtr", (DL_FUNC) &iniPreciseSumsPtr, 1},
     {"_iniLotriPtr", (DL_FUNC) &iniLotriPtr, 1},
@@ -1061,6 +1101,9 @@ void R_init_rxode2(DllInfo *info){
     {"_vecDF", (DL_FUNC) _vecDF, 2},
     {"_cbindOme", (DL_FUNC) _cbindOme, 3},
     {"_rxode2_rxRmvnSEXP", (DL_FUNC) _rxode2_rxRmvnSEXP, 12},
+    {"_rxode2_rxRmvtSEXP", (DL_FUNC) _rxode2_rxRmvtSEXP, 13},
+    {"_rxode2_rxRmvtTilt_", (DL_FUNC) _rxode2_rxRmvtTilt_, 4},
+    {"_rxode2_rxRmvtTeamDraw_", (DL_FUNC) _rxode2_rxRmvtTeamDraw_, 9},
     {"_rxode2_expandPars_", (DL_FUNC) _rxode2_expandPars_, 4},
     {"_rxode2_convertId_", (DL_FUNC) _rxode2_convertId_, 1},
     {"_rxode2_nestingInfo_", (DL_FUNC) _rxode2_nestingInfo_, 2},

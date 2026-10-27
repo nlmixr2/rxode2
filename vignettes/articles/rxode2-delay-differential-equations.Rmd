@@ -1,5 +1,5 @@
 ---
-title: "Delay Differential Equations in rxode2"
+title: "Delay differential equations"
 date: "`r Sys.Date()`"
 output:
   html_document:
@@ -330,3 +330,8 @@ See also the function reference for `?delay` and the companion article
 ```{r sessioninfo}
 sessionInfo()
 ```
+
+## Next steps
+
+- [Choosing an ODE solver](ode-solvers.html)
+- [Model syntax](rxode2-syntax.html)

@@ -4,6 +4,41 @@
 ## MULTIPLE registered loaders are applied in series (test loaders A and B write
 ## sentinels 111 and 222 to parameters 0 and 1).
 
+# The model and events of the injected-parameter tests: oa and ob report a and b
+.parLoaderMod <- function() {
+  rxode2({
+    param(a, b)
+    oa <- a
+    ob <- b
+    d / dt(x) <- 0
+  })
+}
+
+.parLoaderEv <- function() {
+  et(amt = 0) |> et(0, 1, by = 1)
+}
+
+# A solve with the test loaders (111 -> a, 222 -> b) registered, which are
+# removed on exit
+.parLoaderSolve <- function(m) {
+  .Call("_rxode2_rxRegisterTestParLoaders", 2L, PACKAGE = "rxode2")
+  on.exit(.Call("_rxode2_rxRemoveTestParLoaders", PACKAGE = "rxode2"))
+  rxSolve(m, .parLoaderEv(), params = c(a = 1, b = 2))
+}
+
+# A ui whose thetas a and b oa and ob report, for forced parameters
+.parLoaderUi <- function() {
+  ini({
+    a <- 1
+    b <- 2
+  })
+  model({
+    oa <- a
+    ob <- b
+    d / dt(x) <- 0
+  })
+}
+
 rxTest({
   test_that("multiple par-loaders are applied in series", {
     .m <- rxode2({
@@ -197,5 +232,60 @@ rxTest({
     rxRemoveUiPrep("rxode2:testPrep")
     rxSolve(rxode2(.u), .ev, returnType = "data.frame")
     expect_equal(.seen$n, 3L)
+  })
+
+  test_that("injected parameters are an object's own, whatever is read first", {
+    .m <- .parLoaderMod()
+    .want <- c(a = 111, b = 222)
+    # another solve before the object is first read: the loaders' buffer is
+    # then that solve's
+    .obj <- .parLoaderSolve(.m)
+    .plain <- rxSolve(.m, .parLoaderEv(), params = c(a = 1, b = 2))
+    expect_null(rxInjectedPars(.plain))
+    expect_identical(rxInjectedPars(.obj), .want)
+    .re <- as.data.frame(rxSolve(.obj, .parLoaderEv()))
+    expect_identical(c(.re$oa[1], .re$ob[1]), c(111, 222))
+    # .DollarNames() first, and another solve before the read
+    .obj2 <- .parLoaderSolve(.m)
+    expect_true("params" %in% utils::.DollarNames(.obj2, ""))
+    .plain2 <- rxSolve(.m, .parLoaderEv(), params = c(a = 1, b = 2))
+    expect_null(rxInjectedPars(.plain2))
+    expect_identical(rxInjectedPars(.obj2), .want)
+    .re2 <- as.data.frame(rxSolve(.obj2, .parLoaderEv()))
+    expect_identical(c(.re2$oa[1], .re2$ob[1]), c(111, 222))
+    # $params is the parameters given, by either route
+    expect_identical(.obj2$params, .obj$params)
+    expect_identical(.obj$params, data.frame(a = 1, b = 2))
+  })
+
+  test_that("two solves keep their own injected parameters", {
+    # forced parameters inject each ui's own values
+    .u1 <- rxode2(.parLoaderUi)
+    rxForcedPars(.u1) <- c(a = 5, b = 6)
+    .u2 <- rxode2(.parLoaderUi)
+    rxForcedPars(.u2) <- c(a = 7, b = 8)
+    .s1 <- rxSolve(.u1, .parLoaderEv())
+    .s2 <- rxSolve(.u2, .parLoaderEv())
+    expect_true("params" %in% utils::.DollarNames(.s2, ""))
+    expect_identical(rxInjectedPars(.s1), c(a = 5, b = 6))
+    expect_identical(rxInjectedPars(.s2), c(a = 7, b = 8))
+    # read in the other order
+    .s3 <- rxSolve(.u1, .parLoaderEv())
+    .s4 <- rxSolve(.u2, .parLoaderEv())
+    expect_true("params" %in% utils::.DollarNames(.s3, ""))
+    expect_identical(rxInjectedPars(.s4), c(a = 7, b = 8))
+    expect_identical(rxInjectedPars(.s3), c(a = 5, b = 6))
+    .re <- as.data.frame(rxSolve(.s3, .parLoaderEv()))
+    expect_identical(c(.re$oa[1], .re$ob[1]), c(5, 6))
+  })
+
+  test_that("an object from an older rxode2 keeps its injected parameters", {
+    # one solved before the solve kept the loaders' buffer has .injectedPars,
+    # which its $params build set
+    .obj <- .parLoaderSolve(.parLoaderMod())
+    .e <- attr(class(.obj), ".rxode2.env")
+    rm(".injectedPars.raw", envir = .e)
+    assign(".injectedPars", c(a = 111, b = 222), envir = .e)
+    expect_identical(rxInjectedPars(.obj), c(a = 111, b = 222))
   })
 })

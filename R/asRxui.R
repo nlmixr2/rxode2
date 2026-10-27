@@ -34,6 +34,7 @@
 #'
 #' as.rxUi(mod1)
 #'
+#' @family Model UI and piping
 as.rxUi <- function(x) {
   UseMethod("as.rxUi")
 }
