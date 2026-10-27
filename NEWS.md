@@ -212,6 +212,10 @@
 
 ### Adjoint sensitivities
 
+- Adjoint solves of a model that pushes doses at run time (`bolus()`,
+  `evid_()` and friends inside `if()`) no longer corrupt memory and crash
+  R in the `rk4s` family of methods.
+
 - `rxSolveAdjointRk4()` now documents that, for a model with `delay()`,
   the adjoint's delayed-state term is first order in the step size for
   every method: an adaptive method such as `dop853s` needs `hmax` for
