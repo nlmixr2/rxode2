@@ -58,6 +58,9 @@
   illegal"), with "IDID=-3, illegal input detected (see printed message)".
   It used to report success and return the last step's state at that time
   (0 throughout for `d/dt(y) <- 1e308`), with no "could not solve" warning.
+  `intdy()`'s test of whether an output time lies in the last step now uses
+  the magnitudes of the step's time and size, as `dlsoda.f` does; at
+  negative times it rejected output times a few ulps past a step's start.
 
 - The default `hmax = NA` no longer gives a `NaN` maximum step to a subject
   with a single time difference, so `method = "dop853"` no longer fails with

@@ -339,4 +339,18 @@ rxTest({
     expect_identical(.o[1], "[IDID=-3, illegal input detected (see printed message).]: 1 warning(s) for subject(s): 2")
     expect_match(.o[2], "^\\[intdy -- t = [-0-9.e+]+ illegal\\]: 1 warning\\(s\\) for subject\\(s\\): 2$")
   })
+
+  test_that("liblsoda interpolates to output times a few ulps apart at negative times", {
+    # intdy()'s window takes the magnitudes of tn and hu, as dlsoda.f does;
+    # with their signed sum the window shrank at negative times and these
+    # outputs fell outside it
+    rxSetIni0(FALSE)
+    withr::defer(rxSetIni0(TRUE))
+    .m <- rxode2("d/dt(y) <- -0.3*y")
+    .t <- c(-99.900000000000006, -99.899999999998997, -99.899999999998897)
+    .w <- capture_warnings(.o <- .cap(.s <- as.data.frame(rxSolve(.m, et(.t), inits = c(y = 1), method = "liblsoda"))))
+    expect_false(any(grepl("could not solve", .w)))
+    expect_identical(.o, character(0))
+    expect_equal(.s$y, exp(-0.3 * (.s$time - .s$time[1])), tolerance = 1e-10)
+  })
 })
