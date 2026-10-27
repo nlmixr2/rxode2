@@ -1257,6 +1257,11 @@
   a sensitivity parameter, which it does not support, instead of silently
   leaving those terms out.  Constant modifiers still solve.
 
+- An observation at the time of a replace or multiply (`evid = 5`/`6`),
+  including one at the first time or right after a reset, now reads the
+  post-event adjoint sensitivity with `method = "cvodesadj"` and
+  `method = "abs"`; before, it read the pre-event one.
+
 - With `method = "cvodesadj"`, and with `method = "liblsodaadj"` when
   nothing was integrated between resets, an observation recorded at the
   time of a reset (`evid = 3`) returned the pre-reset sensitivity; it now
