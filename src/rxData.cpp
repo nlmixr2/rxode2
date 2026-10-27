@@ -4266,6 +4266,12 @@ static inline void rxSetIndMix(rx_solving_options_ind* ind, unsigned int nsub,
   }
 }
 
+// hmax=NA: mean time difference + hmaxSd*sd; the sd needs >= 2 differences
+static inline double rxHmaxMean(double mean, double ss, double n, double hmaxSd) {
+  if (n < 2.0 || hmaxSd == 0.0 || !(ss > 0.0)) return mean;
+  return mean + hmaxSd*sqrt(ss/(n-1));
+}
+
 // This loops through the data to put each individual into the
 // approiate data structure.
 // At the same time calculate hmax per individual as well
@@ -4570,8 +4576,8 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
         }
         double curHmax = hmax0;
         if (doMean) {
-          groupHmax1s = groupHmax1s/(groupHmax1n-1);
-          curHmax = groupHmax1m + asDouble(rxControl[Rxc_hmaxSd], "hmaxSd")*sqrt(groupHmax1s);
+          curHmax = rxHmaxMean(groupHmax1m, groupHmax1s, groupHmax1n,
+                               asDouble(rxControl[Rxc_hmaxSd], "hmaxSd"));
         } else if (hmax0 == 0.0) {
           curHmax = groupHmax1;
         }
@@ -4710,9 +4716,8 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
             }
             nsub++;
             if (doMean){
-              hmax1s = hmax1s/(hmax1n-1);
-              hmax1  = hmax1m;
-              ind->HMAX = hmax1;
+              ind->HMAX = rxHmaxMean(hmax1m, hmax1s, hmax1n,
+                                     asDouble(rxControl[Rxc_hmaxSd], "hmaxSd"));
             } else if (hmax0 == 0.0){
               ind->HMAX = hmax1;
             } else {
@@ -4818,9 +4823,8 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
       nsub++;
       rx->nsub= nsub;
       if (doMean){
-        hmax1s = hmax1s/(hmax1n-1);
-        hmax1  = hmax1m;
-        ind->HMAX = hmax1 + asDouble(rxControl[Rxc_hmaxSd], "hmaxSd")*sqrt(hmax1s);
+        ind->HMAX = rxHmaxMean(hmax1m, hmax1s, hmax1n,
+                               asDouble(rxControl[Rxc_hmaxSd], "hmaxSd"));
       } else if (hmax0 == 0.0){
         ind->HMAX = hmax1;
       } else {
