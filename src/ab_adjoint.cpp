@@ -182,8 +182,11 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
         // integrate up to a reset).  It reads the initial conditions after the
         // jumps of the call that starts there.
         std::fill(endCostate.begin(), endCostate.end(), 0.0); endCostate[k] = 1.0;
-        for (size_t c = 0; c < nCalls; ++c)
-          if (fabs(abAdjCalls[c].t0 - ti) < 1e-9) { abJumpT(callEv[c], endCostate.data(), mu.data()); break; }
+        bool opens = false;
+        for (size_t c = 0; c < nCalls && !opens; ++c)
+          if (fabs(abAdjCalls[c].t0 - ti) < 1e-9) { abJumpT(callEv[c], endCostate.data(), mu.data()); opens = true; }
+        // a reset at the last record time opens no call
+        if (!opens) abJumpT(abEventsAt(ti, i, true), endCostate.data(), mu.data());
         rk4sAddIni(dx0P, endCostate.data(), mu.data(), nBase, np);
       }
       for (int p = 0; p < np; ++p) out[sensOff + k * np + p] = mu[p];
