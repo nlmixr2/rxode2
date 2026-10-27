@@ -20,6 +20,12 @@
   to the first state, and a numeric `cmt` to that state, as `rxSolve()`
   does; a dose without a `cmt` used to fail in the build (#1504).
 
+### Steady state
+- A steady-state bolus into a compartment whose `alag()` is longer than `ii`
+  now includes the doses of the earlier intervals that arrive inside the
+  observed one; they were dropped, so the profile decayed from the trough
+  instead of matching explicit dosing (#1499).
+
 ## New features
 
 - `minSS` and `maxSS` now accept any count from 1, and `maxSS` may equal
