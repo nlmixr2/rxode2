@@ -79,9 +79,15 @@ static inline int rk4sInfusionStartKey(rx_solving_options_ind *ind, int idx) {
 }
 
 // Index of the open window into cmt that a stop with start key `key` closes: the
-// window with that key, else the most recent open one (fixed or modeled per
-// `fixed`), or -1.
+// window with that key; for a stop without one (pushed), the oldest open window
+// without one (the earlier periods' infusions of a long ss = 1 infusion end in
+// order); else the most recent open one (fixed or modeled per `fixed`), or -1.
 static inline int rk4sInfusionCloseIdx(const std::vector<rk4s_infus> &infus, int cmt, bool fixed, int key) {
+  if (key < 0)
+    for (size_t w = 0; w < infus.size(); ++w) {
+      const rk4s_infus &F = infus[w];
+      if (F.fixed == fixed && F.cmt == cmt && F.offStep == (size_t)-1 && F.key < 0) return (int)w;
+    }
   int last = -1;
   for (size_t w = infus.size(); w-- > 0;) {
     const rk4s_infus &F = infus[w];
@@ -7819,6 +7825,7 @@ struct rk4s_ss1Ev {
   bool inf = false; int infCmt = -1; double dur = 0.0, dur2 = 0.0, rate = 0.0, rate2 = 0.0;
   int mdl = 0; double mdlAmt = 0.0, mdlAmtRaw = 0.0; size_t onSteps = 0;   // modeled rate()/dur()
   int fixed = 0; double fixW = 0.0;   // fixed rate (1) / dur (2) infusion: its dF weight
+  double fixW2 = 0.0;                 // a fixed dur's dF weight in the second phase
 };
 
 // Record the steady-state period of an interior kind-1 ss=1 event from its
@@ -7869,7 +7876,7 @@ struct rk4sSsIc {
   // modeled rate()/dur() ss infusion in an explicit period: ON-phase forcing and
   // the ON->OFF transversality (the period analogue of rk4sBuildInfusMaps).
   struct SsForce { int cmt = -1; size_t onSteps = 0; double durMult = 0.0, offFac = 0.0,
-                   dfFMult = 0.0, dfOFac = 0.0; std::vector<double> dRate, dF; };
+                   dfFMult = 0.0, dfOFac = 0.0, dfFMult2 = 0.0; std::vector<double> dRate, dF; };
   SsForce wsFC; bool haveWsFC = false;                             // window-start period forcing
   bool haveCont = false; std::vector<double> FXc, contFP; std::vector<int> contPiv;  // continuous ss=1
   std::vector<double> Ybar, kbar, abar;                            // period-transpose scratch
@@ -7946,7 +7953,7 @@ struct rk4sSsIc {
         const double *fx = &P.FX[(n*sN+i)*nfx], *fp = &P.FP[(n*sN+i)*nfp];
         for (int j = 0; j < nBase; ++j) { double v=0; for (int ii=0;ii<nBase;++ii) v += fx[ii*nBase+j]*rhsbar[ii]; ubar[j]=v; }
         for (int p = 0; p < np; ++p) { double v=0; for (int ii=0;ii<nBase;++ii) v += fp[ii*np+p]*rhsbar[ii]; muAcc[p]+=v; }
-        if (FC && n < FC->onSteps) forceON(*FC, rhsbar.data(), muAcc);
+        if (FC && n < FC->onSteps) forceON(*FC, rhsbar.data(), muAcc); else if (FC) forceON2(*FC, rhsbar.data(), muAcc);
         if (jpOffM >= 0) { const double *Jpn = &P.Jp[n*nfx*np]; const double *ki = &P.R->k[(n*sN+i)*nBase];
           for (int p = 0; p < np; ++p) { double v=0; for (int a=0;a<nBase;++a){ double sb=0; for(int b=0;b<nBase;++b) sb+=Jpn[(a*nBase+b)*np+p]*ki[b]; v+=rhsbar[a]*sb; } muAcc[p]+=v; } }
         if (jyOffM >= 0) { const double *Jyn = &P.Jy[n*nfx*nBase]; const double *ki = &P.R->k[(n*sN+i)*nBase];
@@ -7974,7 +7981,7 @@ struct rk4sSsIc {
       for (int i = 0; i < sN; ++i) { const double *fx = &P.FX[(n*sN+i)*nfx], *fp = &P.FP[(n*sN+i)*nfp]; const double *zi = &z[i*nBase];
         for (int j = 0; j < nBase; ++j) { double v=0; for (int a=0;a<nBase;++a) v += fx[a*nBase+j]*zi[a]; nu[j]+=v; }
         for (int p = 0; p < np; ++p) { double v=0; for (int a=0;a<nBase;++a) v += fp[a*np+p]*zi[a]; muAcc[p]+=v; }
-        if (FC && n < FC->onSteps) forceON(*FC, zi, muAcc); }
+        if (FC && n < FC->onSteps) forceON(*FC, zi, muAcc); else if (FC) forceON2(*FC, zi, muAcc); }
       if (FC && n == FC->onSteps) forceOff(*FC, nu, muAcc);
     }
   }
@@ -7983,6 +7990,11 @@ struct rk4sSsIc {
     int rc = F.cmt;
     if (F.durMult != 0.0) for (int p = 0; p < np; ++p) muAcc[p] += F.durMult*F.dRate[rc*np+p]*kb[rc];
     if (F.dfFMult != 0.0) for (int p = 0; p < np; ++p) muAcc[p] += F.dfFMult*F.dF[rc*np+p]*kb[rc];
+  }
+  // second-phase forcing: the overlapping fixed-dur infusions still running
+  void forceON2(const SsForce &F, const double *kb, std::vector<double> &muAcc) {
+    int rc = F.cmt;
+    if (F.dfFMult2 != 0.0) for (int p = 0; p < np; ++p) muAcc[p] += F.dfFMult2*F.dF[rc*np+p]*kb[rc];
   }
   void forceOff(const SsForce &F, const std::vector<double> &nu, std::vector<double> &muAcc) {
     int rc = F.cmt;
@@ -8006,6 +8018,7 @@ struct rk4sSsIc {
         for (int j = 0; j < nBase; ++j) { double s=0; for (int q=0;q<nBase;++q) s+=fx[q*nBase+j]*kb[q]; abar[j]=s; }
         for (int p = 0; p < np; ++p) { double s=0; for (int q=0;q<nBase;++q) s+=fp[q*np+p]*kb[q]; muAcc[p]+=s; }
         if (FC && n < FC->onSteps) forceON(*FC, kb, muAcc);   // ON-phase dR/dp (and dF) forcing
+        else if (FC) forceON2(*FC, kb, muAcc);
         for (int j = 0; j < nBase; ++j) Ybar[j]+=abar[j];
         for (int js = 0; js < i; ++js) { double aij=Tss.A[i*sN+js]; if (aij!=0.0){ double*kbj=&kbar[js*nBase]; for(int j=0;j<nBase;++j) kbj[j]+=h*aij*abar[j]; } }
       }
@@ -8086,7 +8099,7 @@ struct rk4sSsIc {
         else if (E.mdl == 1) F.dfOFac = E.mdlAmtRaw;
       }
     } else {
-      if (E.fixed == 2) F.dfFMult = E.fixW; else F.dfOFac = E.fixW;
+      if (E.fixed == 2) { F.dfFMult = E.fixW; F.dfFMult2 = E.fixW2; } else F.dfOFac = E.fixW;
     }
     return true;
   }
@@ -9177,7 +9190,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           _e.inf = true; _e.infCmt = _adjSSinfCmt;
           _e.dur = _adjSSinfDur; _e.dur2 = _adjSSinfDur2; _e.rate = _adjSSinfRate; _e.rate2 = _adjSSinfRate2;
           _e.mdl = _adjSSinfModeled; _e.mdlAmt = _adjSSinfAmt; _e.mdlAmtRaw = _adjSSinfAmtRaw;
-          _e.fixed = _adjSSinfFixed; _e.fixW = _adjSSinfFixW;
+          _e.fixed = _adjSSinfFixed; _e.fixW = _adjSSinfFixW; _e.fixW2 = _adjSSinfFixW2;
           if (_e.step == 0 && !ssActive) {   // window start
             ssActive = true; ssInf = true; ssInfCmt = _adjSSinfCmt;
             ssInfDur = _adjSSinfDur; ssInfDur2 = _adjSSinfDur2; ssInfRate = _adjSSinfRate; ssInfRate2 = _adjSSinfRate2;
@@ -9210,9 +9223,24 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           rk4s_dose _d; _d.step = _lagRateStep; _d.cmt = _lagRateCmt; _d.amt = _dR; _d.type = 9;
           doseRec.push_back(_d);
         }
-        if (_dR != 0.0 && op->adjDfOff >= 0 && (_lagRateWhI == EVIDF_INF_RATE || _lagRateWhI == EVIDF_INF_DUR))
-          rk4sFixedInfusionRecord(infusRec, ind, _lagRateCmt, _lagRateWhI == EVIDF_INF_DUR, _dR, _lagRateStep, xout, yp,
-                                  _lagRateKey);
+        if (_dR != 0.0 && op->adjDfOff >= 0 && (_lagRateWhI == EVIDF_INF_RATE || _lagRateWhI == EVIDF_INF_DUR)) {
+          bool _isDur = (_lagRateWhI == EVIDF_INF_DUR);
+          const rk4s_ss1Ev *_se = (_lagRateWh0 == EVID0_SS && !ss1Evs.empty() && ss1Evs.back().step == _lagRateStep &&
+                                   ss1Evs.back().inf && ss1Evs.back().fixed != 0) ? &ss1Evs.back() : NULL;
+          double _r1 = _se ? _se->rate - _se->rate2 : 0.0;   // one infusion's rate
+          if (_se && _se->rate2 > 0.0 && _r1 > 0.0) {
+            // an ss = 1 infusion longer than ii: the infusions of the n earlier
+            // periods are still running (ended by pushed stops), so each gets its
+            // own window, started k*ii before this one
+            int _n = (int)floor(_se->rate2 / _r1 + 0.5);
+            double _ii = _se->dur + _se->dur2;
+            for (int _k = _n; _k >= 1; --_k)
+              rk4sFixedInfusionRecord(infusRec, ind, _lagRateCmt, _isDur, _r1, _lagRateStep, xout - _k * _ii, yp, -1);
+            rk4sFixedInfusionRecord(infusRec, ind, _lagRateCmt, _isDur, _r1, _lagRateStep, xout, yp, _lagRateKey);
+          } else {
+            rk4sFixedInfusionRecord(infusRec, ind, _lagRateCmt, _isDur, _dR, _lagRateStep, xout, yp, _lagRateKey);
+          }
+        }
         _lagRateCmt = -1;
       }
       int _mtime_requeued = 0;
