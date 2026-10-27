@@ -683,8 +683,7 @@
 #'   fit's covariance takes precedence over the priors on the population
 #'   parameters, which are then not read, so an estimate that is not its
 #'   prior mean (a MAP estimate) still simulates; a prior entry it does not
-#'   draw is held at its estimate with a warning.  `TRUE` makes the priors
-#'   replace it.  The prior degrees of
+#'   draw is named in a warning.  `TRUE` makes the priors replace it.  The prior degrees of
 #'   freedom take precedence over a `dfSub` carried in `meta`, with a
 #'   warning; one given at the call site wins over them instead.
 #'

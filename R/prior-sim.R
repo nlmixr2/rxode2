@@ -718,33 +718,45 @@
   if (length(.w) == 0L) {
     return(invisible())
   }
-  .cols <- dimnames(thetaMat)[[1]]
-  ## a `multiNormal()` names its own members, which may include `om.`
-  ## elements; any other prior is on its row (an omega row's `om.` element)
-  .nm <- unlist(lapply(.w, function(i) {
+  .cols <- colnames(thetaMat)
+  .omega <- ui$omega
+  .etaNm <- if (is.matrix(.omega)) dimnames(.omega)[[1]] else character(0)
+  ## each prior entry as a name and, for an omega element, its position; a
+  ## `multiNormal()` names its own members, which may include `om.`
+  ## elements, and any other prior is on its own row
+  .ent <- do.call(rbind, lapply(.w, function(i) {
     .cn <- .rxPriorCovNames(.iniDf$prior[i])
-    if (!is.null(.cn)) {
-      return(.cn)
+    if (is.null(.cn)) {
+      if (is.na(.iniDf$neta1[i])) {
+        return(data.frame(name = .iniDf$name[i], neta1 = NA_integer_, neta2 = NA_integer_))
+      }
+      .n1 <- as.integer(.iniDf$neta1[i])
+      .n2 <- as.integer(.iniDf$neta2[i])
+      .nm <- if (.n1 == .n2) paste0("om.", .iniDf$name[i]) else .iniDf$name[i]
+      return(data.frame(name = .nm, neta1 = .n1, neta2 = .n2))
     }
-    if (is.na(.iniDf$neta1[i])) .iniDf$name[i] else paste0("om.", .iniDf$name[i])
-  }), use.names = FALSE)
-  .theta <- !startsWith(.nm, "om.")
-  .miss <- setdiff(.nm[.theta], .cols)
-  .eta <- substring(.nm[!.theta], 4L)
-  if (length(.eta) > 0L) {
-    .omega <- ui$omega
-    .drawn <- character(0)
+    .om <- startsWith(.cn, "om.")
+    .i <- match(substring(.cn, 4L), .etaNm)
+    data.frame(
+      name = .cn,
+      neta1 = ifelse(.om, .i, NA_integer_),
+      neta2 = ifelse(.om, .i, NA_integer_)
+    )
+  }))
+  .theta <- !startsWith(.ent$name, "om.") & is.na(.ent$neta1)
+  .miss <- setdiff(.ent$name[.theta], .cols)
+  .om <- .ent[!.theta, , drop = FALSE]
+  if (nrow(.om) > 0L) {
+    .drawn <- rep(FALSE, nrow(.om))
     if (identical(ctl$omegaSeparation, "tnpri") && is.matrix(.omega)) {
       .pos <- .rxJointElFromNames(.omega, .cols, what = "omega")
       if (!is.null(.pos)) {
-        .d <- .pos[, 1] == .pos[, 2]
-        .drawn <- dimnames(.omega)[[1]][.pos[.d, 1]]
+        ## either order addresses the same element of a symmetric matrix
+        .key <- c(paste(.pos[, 1], .pos[, 2]), paste(.pos[, 2], .pos[, 1]))
+        .drawn <- paste(.om$neta1, .om$neta2) %in% .key
       }
     }
-    .undrawn <- setdiff(.eta, .drawn)
-    if (length(.undrawn) > 0L) {
-      .miss <- c(.miss, paste0("om.", .undrawn))
-    }
+    .miss <- c(.miss, .om$name[!.drawn])
   }
   .miss <- unique(.miss)
   if (length(.miss) > 0L) {
@@ -752,8 +764,7 @@
       "the 'thetaMat' takes precedence over the prior distributions in ",
       "'ini({})', but does not draw '",
       paste(.miss, collapse = "', '"),
-      "', which is held at its estimate; set 'usePrior=TRUE' to use the ",
-      "priors instead",
+      "' from it; set 'usePrior=TRUE' to use the priors instead",
       call. = FALSE
     )
   }

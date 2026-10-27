@@ -274,10 +274,21 @@ rxTest({
       .t <- rbind(cbind(.t, 0), c(0, 0.005))
       dimnames(.t) <- list(c("tcl", .nm), c("tcl", .nm))
       expect_no_warning(
-        rxSolve(.joint(), .ev(), nSub = 2, nStud = 5, thetaMat = .t, omegaSeparation = "tnpri"),
+        withr::with_seed(3, {
+          .s <- rxSolve(.joint(), .ev(), nSub = 2, nStud = 50, thetaMat = .t, omegaSeparation = "tnpri")
+        }),
         message = "does not draw"
       )
+      ## and the element really is drawn
+      .cl <- vapply(.s$omegaList, function(m) m["eta.cl", "eta.cl"], double(1))
+      expect_gt(sd(.cl), 0.01)
     }
+    ## the thetaMat is read by its column names
+    .t <- matrix(0.02, 1, 1, dimnames = list(NULL, "tcl"))
+    expect_warning(
+      rxSolve(.joint(), .ev(), nSub = 2, nStud = 5, thetaMat = .t),
+      "does not draw 'om.eta.cl' from"
+    )
   })
 
   test_that("a fit's covariance wins over a prior not centered on the estimate (#1502)", {

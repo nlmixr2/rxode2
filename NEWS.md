@@ -16,8 +16,8 @@
   parameters in uncertainty simulation, so a MAP estimate that is not its
   prior mean no longer stops the solve.  A `meta` `thetaMat` or fit
   covariance used to be replaced by the priors.  A prior entry the
-  `thetaMat` does not draw is held at its estimate with a warning naming
-  it, and `usePrior = TRUE` still uses the priors (#1502).
+  `thetaMat` does not draw is named in a warning, and `usePrior = TRUE`
+  still uses the priors (#1502).
 
 ## New features
 
