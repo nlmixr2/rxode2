@@ -271,8 +271,8 @@
 
 - The adjoint solve methods now include the initial-condition term, so a
   parameter that enters through an initial condition (directly or after a
-  reset) gets its sensitivity instead of 0.  This does not yet cover a
-  subject with a steady-state (`ss = 1`) dose.
+  reset) gets its sensitivity instead of 0, also in a subject with a
+  steady-state (`ss = 1`) dose.
 
 - Adjoint solves of a model that pushes doses at run time (`bolus()`,
   `evid_()` and friends inside `if()`) no longer corrupt memory and crash
