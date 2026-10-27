@@ -3742,7 +3742,7 @@ rxSolve.default <- function(
         if (length(.rxDelaySensJump2Cmts(.norm)) > 0L) {
           .map2 <- tryCatch(.rxDelaySensJump2Map(object), error = function(e) NULL)
           if (!is.null(.map2)) {
-            events <- tryCatch(.rxDelaySensJump2Events(.map2, events), error = function(e) events)
+            events <- tryCatch(.rxDelaySensJump2Events(.map2, events, params), error = function(e) events)
           }
         }
       }

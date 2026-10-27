@@ -943,10 +943,39 @@
   if (length(.entries) == 0L) {
     return(NULL)
   }
-  list(st = .st, entries = .entries)
+  # couplings stay symbolic; their defaults are resolved per dose at solve time
+  .ini <- rxode2::rxModelVars(model)$ini
+  list(st = .st, entries = .entries, ini = .ini[!is.na(.ini)])
 }
 
-.rxDelaySensJump2Events <- function(map, events) {
+## Values for a coupling: model defaults < `params` < the dose row's data columns.
+.rxDelaySensJump2Vals <- function(map, params, doseRow, id, iSub, nSub) {
+  .v <- as.list(map$ini)
+  if (is.numeric(params) && is.null(dim(params)) && !is.null(names(params))) {
+    .v[names(params)] <- as.list(params)
+  } else if (is.data.frame(params) || is.matrix(params)) {
+    .p <- as.data.frame(params)
+    .pid <- intersect(c("id", "ID"), names(.p))
+    .r <- if (length(.pid) && !is.null(id)) {
+      match(as.character(id), as.character(.p[[.pid[1L]]]))
+    } else if (nrow(.p) == 1L) {
+      1L
+    } else if (nrow(.p) == nSub) {
+      iSub
+    } else {
+      NA_integer_
+    }
+    if (!is.na(.r)) {
+      .num <- vapply(.p, is.numeric, logical(1))
+      .v[names(.p)[.num]] <- as.list(unlist(.p[.r, .num, drop = FALSE]))
+    }
+  }
+  .num <- vapply(doseRow, is.numeric, logical(1))
+  .v[names(doseRow)[.num]] <- as.list(unlist(doseRow[1L, .num, drop = FALSE]))
+  .v
+}
+
+.rxDelaySensJump2Events <- function(map, events, params = NULL) {
   if (is.null(map) || length(map$entries) == 0L) {
     return(events)
   }
@@ -988,7 +1017,9 @@
   }
   .grps <- if (is.null(.idCol)) list(.ev) else split(.ev, .ev[[.idCol]])
   .add <- .ev[0, , drop = FALSE]
-  for (.sub in .grps) {
+  for (.iSub in seq_along(.grps)) {
+    .sub <- .grps[[.iSub]]
+    .id <- if (is.null(.idCol)) NULL else .sub[[.idCol]][1L]
     .t0 <- min(.sub$time, na.rm = TRUE)
     .dose <- .sub[!is.na(.sub$evid) & .sub$evid != 0, , drop = FALSE]
     for (.e in map$entries) {
@@ -1007,8 +1038,15 @@
           }
           .cpn <- .rxToNum(.cp)
           if (is.na(.cpn)) {
+            .vals <- .rxDelaySensJump2Vals(map, params, .dose[.r, , drop = FALSE], .id, .iSub, length(.grps))
+            .cpn <- tryCatch(
+              as.numeric(eval(str2lang(.cp), .vals, baseenv())),
+              error = function(e) NA_real_
+            )
+          }
+          if (length(.cpn) != 1L || !is.finite(.cpn)) {
             next
-          } # nonlinear/param coupling: skip (gradient stays exact)
+          } # unresolved/state coupling: skip (gradient stays exact)
           .A <- .dose$amt[.r]
           if (is.na(.A) || .A == 0) {
             next
