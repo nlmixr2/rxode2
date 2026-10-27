@@ -243,6 +243,11 @@
 - `method = "cvodesadj"` no longer fails its backward solve, returning
   wrong sensitivities, when two events fall at the same time.
 
+- `method = "cvodesadj"` now includes an event at an observation's time
+  (or after a reset at the same time) in that observation's sensitivities,
+  and transposes same-time events in reverse of the order the forward
+  solve applied them.
+
 # rxode2 5.1.8
 
 ## New features
