@@ -1003,9 +1003,9 @@
 - The adjoint solve methods now include the initial-condition term, so a
   parameter that enters through an initial condition (directly or after a
   reset) gets its sensitivity instead of 0, including an initial condition
-  that reads another state's (`y(0) <- b * x`).  This does not yet cover a
-  subject with a steady-state (`ss = 1`) dose; an `ss` dose in a subject
-  whose records are all at its first time is now refused.
+  that reads another state's (`y(0) <- b * x`), also in a subject with a
+  steady-state (`ss = 1`) dose; an `ss` dose in a subject whose records are
+  all at its first time is refused.
 
 - A phantom dose (`evid = 7`) with a modeled `f()` no longer adds a
   bioavailability sensitivity in the `rk4s` family and liblsodaadj.

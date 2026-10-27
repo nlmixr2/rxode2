@@ -67,6 +67,29 @@ rxTest({
     ), .all)
   })
 
+  test_that("a parameter-dependent initial condition keeps its sensitivity with an ss = 1 dose", {
+    # before an interior ss dose the state still carries center(0); a window-start
+    # ss dose replaces it, and a later reset restores it
+    .txtIc <- paste0(.txt, "\ncenter(0) <- c0")
+    .pIc <- c(.p, c0 = 5)
+    .scen <- list(
+      icSs = list(txt = .txtIc, p = .pIc,
+        ev = et(amt = 100, cmt = "depot", time = 5, ss = 1, ii = 12) |> et(c(0, 1, 3, 4.5, 6, 8, 12, 17))),
+      icInfSs = list(txt = .txtIc, p = .pIc,
+        ev = et(amt = 100, rate = 50, cmt = "depot", time = 5, ss = 1, ii = 12) |> et(c(0, 1, 3, 4.5, 6, 7, 8, 12, 17))),
+      icContSs = list(txt = .txtIc, p = .pIc,
+        ev = et(amt = 0, rate = 50, cmt = "depot", time = 5, ss = 1) |> et(c(0, 1, 3, 4.5, 6, 8, 12, 17))),
+      icSsAtStart = list(txt = .txtIc, p = .pIc,
+        ev = et(amt = 100, cmt = "depot", ss = 1, ii = 12) |> et(c(1, 2, 4, 8, 12, 14))),
+      icSsAtStartReset = list(txt = .txtIc, p = .pIc,
+        ev = et(amt = 100, cmt = "depot", ss = 1, ii = 12) |> et(time = 6, evid = 3) |> et(c(1, 2, 4, 6.5, 8, 12, 14)))
+    )
+    .ref <- .adjFd(.txtIc, .scen$icSs$ev, .pIc)
+    expect_equal(.ref$rx__sens_center_BY_c0__[1:4], exp(-0.2 * c(0, 1, 3, 4.5)), tolerance = 1e-8)
+    expect_equal(.ref$rx__sens_center_BY_c0__[5:8], rep(0, 4), tolerance = 1e-8)
+    .check(.scen, .all)
+  })
+
   test_that("several ss = 1 doses each use their own regimen in the rk4s family", {
     .obs <- c(1, 3, 4.5, 6, 8, 12, 19, 21, 24, 30)
     .scen <- list(
