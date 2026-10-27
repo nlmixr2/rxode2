@@ -90,6 +90,22 @@ rxTest({
     .check(.scen, .all)
   })
 
+  test_that("f() with a fixed-rate or fixed-duration ss = 1 infusion carries its dual in every driver", {
+    # F stretches a fixed-rate ON phase and scales a fixed-duration rate, in the
+    # steady-state period and in the window after the dose
+    .obs <- c(1, 3, 4.5, 6, 7, 8, 12, 17)
+    .check(list(
+      rateStart = list(txt = .txtF, p = .pF,
+        ev = et(amt = 100, rate = 50, cmt = "depot", ss = 1, ii = 12) |> et(.obs)),
+      rateLater = list(txt = .txtF, p = .pF,
+        ev = et(amt = 50, cmt = "depot") |> et(amt = 100, rate = 50, cmt = "depot", time = 5, ss = 1, ii = 12) |> et(.obs)),
+      durStart = list(txt = .txtF, p = .pF,
+        ev = et(amt = 100, dur = 2, cmt = "depot", ss = 1, ii = 12) |> et(.obs)),
+      durLater = list(txt = .txtF, p = .pF,
+        ev = et(amt = 50, cmt = "depot") |> et(amt = 100, dur = 2, cmt = "depot", time = 5, ss = 1, ii = 12) |> et(.obs))
+    ), .all)
+  })
+
   test_that("several ss = 1 doses each use their own regimen in the rk4s family", {
     .obs <- c(1, 3, 4.5, 6, 8, 12, 19, 21, 24, 30)
     .scen <- list(
