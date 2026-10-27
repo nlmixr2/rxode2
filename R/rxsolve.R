@@ -4213,7 +4213,10 @@ rxSolve.default <- function(
       inherits(object, "rxUi")
   ) {
     .lst <- c(list(object, params = params, events = events, inits = inits), .rxCtlUnnameMeta(.ctl, object))
-
+    # the pipeline values are now in `.lst`; left set, the re-entry would see
+    # them twice
+    .clearPipe()
+    .asFunctionEnv$rx <- NULL
     return(do.call(rxSolve, .lst))
   }
   if (!any(class(object) %in% c("rxSolve", "rxode2", "character", "rxModelVars", "rxDll"))) {
