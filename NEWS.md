@@ -217,6 +217,36 @@
   time of a reset (`evid = 3`) returned the pre-reset sensitivity; it now
   reads the post-reset state, as the other adjoint methods do.
 
+- With both `f()` and `alag()` modeled on a compartment, the adjoint
+  lag-time sensitivity was `1/F` times too large; it now uses the dose
+  that lands.  The same applied to the delay-equation dose jump.
+
+- `method = "cvodesadj"` now includes the bioavailability (`f()`)
+  sensitivity, also for an observation at a dose time; before, it was
+  missing entirely.  `f()` together with a modeled `rate()` or `dur()` is
+  still not right in `cvodesadj` and `liblsodaadj`.
+
+- `method = "abs"` now stops with an error when sensitivities are
+  requested through an `f()`, `alag()`, `rate()` or `dur()` that depends on
+  a sensitivity parameter, which it does not support, instead of silently
+  leaving those terms out.  Constant modifiers still solve.
+
+- `rxSolveAdjointRk4()` now carries the whole model into the adjoint
+  expansion.  Before, initial conditions such as `y(0) <- 1` were dropped
+  (the solve started from 0), a numeric default such as `k <- 0.5`
+  ignored the supplied value, and the algebraic and string output columns,
+  `mtime()`, `past()`, `param()`, `dvid()`, extra `cmt()` compartments and
+  adaptive dosing were lost.
+
+- The adjoint solve methods now include the initial-condition term, so a
+  parameter that enters through an initial condition (directly or after a
+  reset) gets its sensitivity instead of 0.  This does not yet cover a
+  subject with a steady-state (`ss = 1`) dose.
+
+- Adjoint solves of a model that pushes doses at run time (`bolus()`,
+  `evid_()` and friends inside `if()`) no longer corrupt memory and crash
+  R in the `rk4s` family of methods.
+
 - `rxSolveAdjointRk4()` now documents that, for a model with `delay()`,
   the adjoint's delayed-state term is first order in the step size for
   every method: an adaptive method such as `dop853s` needs `hmax` for

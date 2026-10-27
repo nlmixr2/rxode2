@@ -3585,6 +3585,22 @@ rxSolve.default <- function(
     .ctl$method <- .up
     .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
   }
+  # abs (Adams-Bashforth) has no adjoint duals for modeled dosing, so its
+  # sensitivities would leave out the f()/alag()/rate()/dur() terms of a
+  # modifier that depends on a sensitivity parameter.
+  if (.ctl$method == 208L && any(rxModelVars(object)$lhs == "rx__adjFX_0_0__")) {
+    .bad <- .rxAdjointDoseDuals(object)
+    if (length(.bad) > 0L) {
+      stop(
+        sprintf(
+          gettext("method='abs' cannot calculate sensitivities through %s that depend on sensitivity parameters; use %s"),
+          paste(.bad, collapse = ", "),
+          if (any(.bad %in% c("rate()", "dur()"))) "method='rk4s'" else "method='rk4s' or method='liblsodaadj'"
+        ),
+        call. = FALSE
+      )
+    }
+  }
   # The discrete-adjoint forward primal now solves steady-state (ss) dosing
   # correctly (the ss pre-solve reuses the base method's stepper), but the
   # backward sweep does not yet propagate the steady-state initial condition's
