@@ -46,8 +46,8 @@ rxTest({
   })
 
   test_that("an ss = 1 fixed infusion overlapped by a regular one into the same compartment", {
-    # the ss infusion's stop is pushed (no event-table record), so it has to close
-    # the ss window, not the regular one opened after it
+    # the ss infusion's stop is an event-table record with the ss flag; it has to
+    # close the ss window, not the regular one opened after it
     .txtF <- paste0(.base, "\nf(depot) <- fd")
     .pF <- c(ka = 1.2, k = 0.2, fd = 0.7)
     .tt <- c(0.5, 1.5, 2.1, 3, 5, 8, 12, 16, 24)

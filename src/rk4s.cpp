@@ -70,7 +70,8 @@ static inline int rk4sInfusionStartKey(rx_solving_options_ind *ind, int idx) {
   if ((whI == EVIDF_INF_RATE || whI == EVIDF_INF_DUR) && amt < 0) {
     rx_solving_options *op = (ind->op ? ind->op : &op_global);
     rx_solve *rx = (ind->rx ? ind->rx : &rx_global);
-    // the pairing reads this record's own ss flag from ind->wh0
+    // the pairing branches on ind->wh0 (EVID0_INFRM, a same-time removal), so it
+    // reads this record's own wh0
     int startIdx = -1, endIdx = -1, err = ind->err, wh0Cur = ind->wh0, i = idx;
     ind->wh0 = wh0;
     handleInfusionGetStartOfInfusionIndex(&startIdx, &endIdx, &amt, &i, rx, op, ind);
