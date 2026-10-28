@@ -51,10 +51,32 @@ rxTest({
     }
   })
 
+  test_that("the adjoint objective gradient takes THETA[n] in calcSens and pred, and names it THETA_n_", {
+    .obsT <- c(1, 4, 8)
+    .obs <- c(5, 30, 20)
+    .dose <- et(amt = 100, cmt = "depot")
+    .g <- lapply(c("center/exp(THETA[2])", "center/exp(THETA_2_)"), function(.pred) {
+      .rxAdjointGrad(.txt, .p, .dose, c("THETA[1]", "THETA[2]"), .pred, .obsT, .obs)
+    })
+    expect_named(.g[[1]], c("THETA_1_", "THETA_2_"))
+    expect_equal(.g[[1]], .g[[2]], tolerance = 1e-12)
+    .gU <- .rxAdjointGrad(.txt, .p, .dose, c("THETA_1_", "THETA_2_"), "center/exp(THETA_2_)", .obsT, .obs)
+    expect_equal(.g[[1]], .gU, tolerance = 1e-12)
+    .dat <- data.frame(id = rep(1:2, each = 3), time = rep(.obsT, 2), dv = rep(.obs, 2))
+    .pop <- .rxAdjointGradPop(.txt, .p, .dose, c("THETA[1]", "THETA[2]"), "center/exp(THETA[2])", .dat)
+    expect_named(.pop, c("THETA_1_", "THETA_2_"))
+    expect_equal(.pop, 2 * .g[[1]], tolerance = 1e-8)
+  })
+
   test_that("calcSens naming a non-parameter is an error naming it", {
     expect_error(rxode2(.txt, calcSens = "nope"),
       "cannot calculate sensitivities with respect to nope: not a parameter of the model", fixed = TRUE)
     expect_error(rxode2(.txt, calcSens = c("THETA[1]", "THETA[9]")),
       "cannot calculate sensitivities with respect to THETA[9]: not a parameter of the model", fixed = TRUE)
+    # a state or a calculated variable is in the model but is not a parameter
+    expect_error(rxode2(.txt, calcSens = "center"),
+      "cannot calculate sensitivities with respect to center: not a parameter of the model", fixed = TRUE)
+    expect_error(rxode2(.txt, calcSens = c("THETA[1]", "ETA[1]"), calcSens2 = "center"),
+      "cannot calculate sensitivities with respect to center: not a parameter of the model", fixed = TRUE)
   })
 })

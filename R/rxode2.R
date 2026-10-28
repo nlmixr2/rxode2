@@ -983,9 +983,10 @@ rxGetModel <- function(
       if (rxIs(calcSens, "logical") && calcSens) {
         calcSens <- .rxParams(model, TRUE)
       }
-      calcSens <- .rxSensVarNames(.s, calcSens)
-      if (!is.null(calcSens2)) calcSens2 <- .rxSensVarNames(.s, calcSens2)
-      if (!is.null(calcSens3)) calcSens3 <- .rxSensVarNames(.s, calcSens3)
+      .sensPars <- .rxParams(model, TRUE)
+      calcSens <- .rxSensVarNames(calcSens, .sensPars)
+      if (!is.null(calcSens2)) calcSens2 <- .rxSensVarNames(calcSens2, .sensPars)
+      if (!is.null(calcSens3)) calcSens3 <- .rxSensVarNames(calcSens3, .sensPars)
       ## the parameter columns of the Jacobian are exactly the ones differentiated
       .rxJacobian(.s, unique(c(calcSens, calcSens2, calcSens3)))
       ## base ODE states, captured BEFORE .rxSens splices in the rx__sens_*

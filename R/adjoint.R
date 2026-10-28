@@ -537,7 +537,8 @@ rxSolveAdjoint <- function(
 #' @param errModel `NULL` for least squares, or a list with character entries
 #'   `add` and/or `prop` naming the additive / proportional residual-error
 #'   parameters, selecting the FOCEi -2LL objective `v = add^2 + (prop*f)^2`.
-#' @return named numeric vector `dG/dtheta` over `calcSens`.
+#' @return named numeric vector `dG/dtheta` over `calcSens` (`THETA[n]`/`ETA[n]`
+#'   spelled `THETA_n_`/`ETA_n_`).
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
@@ -572,7 +573,8 @@ rxSolveAdjoint <- function(
 #'   per-subject covariates (first value per subject) merged into `params`.
 #' @param useC use the C++ sweep ([.rxAdjointGradEvalC()]); otherwise the R
 #'   reference ([.rxAdjointGradEval()]).
-#' @return named numeric vector `dOFV/dtheta` over `calcSens`.
+#' @return named numeric vector `dOFV/dtheta` over `calcSens` (`THETA[n]`/`ETA[n]`
+#'   spelled `THETA_n_`/`ETA_n_`).
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
@@ -593,7 +595,7 @@ rxSolveAdjoint <- function(
   .evalFn <- if (useC) .rxAdjointGradEvalC else .rxAdjointGradEval
   .covCols <- setdiff(names(data), c("id", "time", "dv"))
   .ids <- unique(data$id)
-  .g <- stats::setNames(numeric(length(calcSens)), calcSens)
+  .g <- stats::setNames(numeric(length(calcSens)), .rxSensNameSE(calcSens))
   for (.id in .ids) {
     .d <- data[data$id == .id, , drop = FALSE]
     .p <- params
@@ -620,6 +622,7 @@ rxSolveAdjoint <- function(
 #' @keywords internal
 .rxAdjointGradBuild <- function(object, calcSens, pred, events, errModel = NULL) {
   calcSens <- .rxSensNameSE(calcSens)
+  pred <- .rxSensNameSE(pred)
   .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
   .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)

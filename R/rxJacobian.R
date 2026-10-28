@@ -230,6 +230,26 @@ rxExpandGrid <- function(x, y, type = 0L) {
   .lines
 }
 
+# calcSens names, or an expression over them, as the symengine model holds them:
+# THETA[n] and ETA[n] become THETA_n_ and ETA_n_.
+.rxSensNameSE <- function(vars) {
+  gsub("\\b(THETA|ETA)\\[([0-9]+)\\]", "\\1_\\2_", vars)
+}
+
+# calcSens names for the forward sensitivity build (.rxSensNameSE()).  Only the
+# model's parameters (`params`, from rxParams()) can be differentiated: a state
+# or a calculated variable would give a meaningless column, and an unknown name
+# would stop the build with "Aborted calculation", so either is an error naming it.
+.rxSensVarNames <- function(vars, params) {
+  .se <- .rxSensNameSE(vars)
+  .bad <- vars[!(.se %in% .rxSensNameSE(params))]
+  if (length(.bad) > 0L) {
+    stop("cannot calculate sensitivities with respect to ", paste(.bad, collapse = ", "),
+      ": not a parameter of the model", call. = FALSE)
+  }
+  .se
+}
+
 ## Assumes .rxJacobian called on model c(state,vars)
 #'  Sensitivity for model
 #'
@@ -240,25 +260,6 @@ rxExpandGrid <- function(x, y, type = 0L) {
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
-# A calcSens name as the symengine model holds it: THETA[n] and ETA[n] become
-# THETA_n_ and ETA_n_.
-.rxSensNameSE <- function(vars) {
-  gsub("^(THETA|ETA)\\[([0-9]+)\\]$", "\\1_\\2_", vars)
-}
-
-# calcSens names for the forward sensitivity build (.rxSensNameSE()).  A name
-# that is not a model parameter is an error naming it, since the build would
-# otherwise stop with "Aborted calculation".
-.rxSensVarNames <- function(model, vars) {
-  .se <- .rxSensNameSE(vars)
-  .bad <- vars[!vapply(.se, exists, logical(1), envir = model, inherits = FALSE)]
-  if (length(.bad) > 0L) {
-    stop("cannot calculate sensitivities with respect to ", paste(.bad, collapse = ", "),
-      ": not a parameter of the model", call. = FALSE)
-  }
-  .se
-}
-
 .rxSens <- function(model, vars, vars2, vars3) {
   .state <- rxStateOde(model)
   if (length(.state) > 0L) {
