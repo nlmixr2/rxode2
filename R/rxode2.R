@@ -2388,7 +2388,9 @@ rxCompile.rxModelVars <- function(
           .needCompile <- FALSE
         }
       } else {
-        .needCompile <- FALSE
+        # an unloadable file (still being linked by another process, or left
+        # empty) goes to the lock: wait for its builder or rebuild it (#1558)
+        .needCompile <- TRUE
       }
     }
   }
@@ -2600,7 +2602,13 @@ rxCompile.rxModelVars <- function(
         try(dyn.unload(.cDllFile), silent = TRUE)
         try(unlink(.cDllFile))
         .cmd <- file.path(R.home("bin"), "R")
-        .args <- c("CMD", "SHLIB", basename(.cFile))
+        # link to a private name and rename it into place, so a process sharing
+        # rxTempDir() never loads a partly written library (#1558)
+        .tmpDll <- paste0(
+          tools::file_path_sans_ext(basename(.cDllFile)), "_", Sys.getpid(),
+          .Platform$dynlib.ext
+        )
+        .args <- c("CMD", "SHLIB", "-o", .tmpDll, basename(.cFile))
         .rxBinpref <- Sys.getenv("rxBINPREF")
         if (.rxBinpref != "") {
           .oldBinpref <- Sys.getenv("BINPREF")
@@ -2640,6 +2648,11 @@ rxCompile.rxModelVars <- function(
           .rxCompileEnv$lst[["stderr"]] <- paste(.stderr, collapse = "\n")
         }
         .rxCompileEnv$success <- TRUE
+        .tmpDll <- file.path(.dir, .tmpDll)
+        if (.out$status == 0 && file.exists(.tmpDll)) {
+          file.rename(.tmpDll, .cDllFile)
+        }
+        unlink(.tmpDll)
         if (!(.out$status == 0 && file.exists(.cDllFile))) {
           .badBuild("error building model")
         }

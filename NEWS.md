@@ -20,6 +20,13 @@
   to the first state, and a numeric `cmt` to that state, as `rxSolve()`
   does; a dose without a `cmt` used to fail in the build (#1504).
 
+### Compilation
+- A cached model library that exists but will not load (still being linked by
+  another process sharing `rxTempDir()`, or left empty) is now rebuilt, or
+  waited for under the build lock, instead of failing with "something went
+  wrong in compilation".  Libraries are linked to a private name and renamed
+  into place, so another process never loads a partly written one (#1558).
+
 ## New features
 
 - `minSS` and `maxSS` now accept any count from 1, and `maxSS` may equal
