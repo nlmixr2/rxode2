@@ -3181,7 +3181,7 @@ rxTest({
     # the rows held fixed, going from 100 to 12000 subjects cost 12.6x.  Hold
     # the row count constant and only redistribute it over more subjects, so
     # the only thing that changes is the number of ids.
-    .fixedRows <- function(nSub, nRow = 40000) {
+    .fixedRows <- function(nSub, nRow = 120000) {
       nPer <- nRow / nSub
       data.frame(
         ID = rep(seq_len(nSub), each = nPer),
@@ -3194,12 +3194,14 @@ rxTest({
     mod <- rxode2({
       eff <- slopeA * x
     })
-    # A single etTrans() on this data can run faster than the OS timer's
-    # resolution (observed reading exactly 0 elapsed on a Windows CI runner),
-    # so each timing is a batch of calls.  The two inputs are timed in
-    # alternating pairs, and the median pair ratio is compared, so a burst of
-    # load from other processes falls on both sides of a pair instead of one.
-    .elapsed <- function(d, reps = 20L) {
+    # Each timing is a batch of calls, so it stays well above the OS timer's
+    # resolution (a single small call has read exactly 0 elapsed on a Windows CI
+    # runner), and starts after a gc() so a collection does not land in one
+    # side only.  The two inputs are timed in alternating pairs, and the median
+    # pair ratio is compared, so a burst of load from other processes falls on
+    # both sides of a pair instead of one.
+    .elapsed <- function(d, reps = 3L) {
+      gc()
       system.time(
         for (r in seq_len(reps)) {
           invisible(rxode2::etTrans(d, mod))
@@ -3220,15 +3222,15 @@ rxTest({
     # the same rows either way, only spread over more ids.  (The translated
     # row count is NOT the same -- splitting the rows over more subjects adds
     # per-subject records -- so only the input is held equal here.)
-    .few <- .fixedRows(50)
-    .many <- .fixedRows(5000)
+    .few <- .fixedRows(100)
+    .many <- .fixedRows(12000)
     expect_equal(nrow(.few), nrow(.many))
-    expect_equal(length(unique(.many$ID)), 5000L)
+    expect_equal(length(unique(.many$ID)), 12000L)
 
     invisible(rxode2::etTrans(.fixedRows(50, 1000), mod)) # warm up
-    # about 2x when translation is linear in the rows; the O(rows * subjects)
-    # scan it guards against was 12.6x
-    expect_lt(.medianRatio(.many, .few), 5)
+    # about 1.5x when translation is linear in the rows; the O(rows * subjects)
+    # scan it guards against gives 5x to 12x at these sizes
+    expect_lt(.medianRatio(.many, .few), 3)
   })
 
   test_that("rxSolve() and etTrans() leave the caller's translated table as it was", {
