@@ -135,6 +135,8 @@
 <h4 id="sensitivities-development-version">Sensitivities<a class="anchor" aria-label="anchor" href="#sensitivities-development-version"></a></h4>
 <ul><li>
 <code><a href="../reference/rxSolveAdjoint.html">rxSolveAdjoint()</a></code> now accepts a model function, as <code><a href="../reference/rxSolve.html">rxSolve()</a></code> does; it used to fail with an rxode2 syntax error on the <code>ini({})</code> block (<a href="https://github.com/nlmixr2/rxode2/issues/1504" class="external-link">#1504</a>).</li>
+<li>
+<code><a href="../reference/rxSolveAdjoint.html">rxSolveAdjoint()</a></code> and the adjoint builds now send a dose without a <code>cmt</code> to the first state, and a numeric <code>cmt</code> to that state, as <code><a href="../reference/rxSolve.html">rxSolve()</a></code> does; a dose without a <code>cmt</code> used to fail in the build (<a href="https://github.com/nlmixr2/rxode2/issues/1504" class="external-link">#1504</a>).</li>
 </ul></div>
 </div>
 <div class="section level3">
