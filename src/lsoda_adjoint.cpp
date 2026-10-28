@@ -274,8 +274,9 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   // ---- forward: run the ordinary liblsoda solve, with recording hooks on -------
   lsAdjSteps.clear();
   lsAdjSegs.clear();
-  _adjJumpCap.clear();
+  rxAdjJumpClear();
   _lsSsKind = 0; _lsSsBolusIi = 0.0; _lsSsCmt = -1; _lsSsT = 0.0;   // reset the sticky ss snapshot
+  _lsSsY.clear();
   _lsSsFixed = 0; _lsSsFixW = 0.0; _lsSsFixW2 = 0.0;
   _lsSsDur = _lsSsDur2 = _lsSsRate = _lsSsRate2 = 0.0;
   lsAdjNbase = nBase;
@@ -311,11 +312,11 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       if (_cmt < 0 || _cmt >= nBase) continue;
       // an ss = 1 dose (a bolus, or an infusion's start, not its stop) replaces
       // the state with Y_ss(p)
-      if (_wh0 == EVID0_SS && (_whI == 0 || getDose(ind, ind->ix[i]) > 0)) {
+      if ((_wh0 == EVID0_SS || _wh0 == EVID0_SSINF) && (_whI == 0 || getDose(ind, ind->ix[i]) > 0)) {
         evs.push_back({8, _cmt, 1.0, 0.0, 0.0});
         continue;
       }
-      if (_wh0 == EVID0_SS) continue;
+      if (_wh0 == EVID0_SS || _wh0 == EVID0_SSINF) continue;
       if (_whI == 0) {
         double amt = getDose(ind, ind->ix[i]);
         evs.push_back({0, _cmt, 1.0, amt, getAmt(ind, ind->id, _cmt, amt, t, _y.data()), i});
@@ -506,9 +507,10 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg)
       if (rxAdjSameTime(lsAdjSegs[sg].t0, _lsSsT)) { lsSsSeg = (int)sg; break; }
   bool ssAtStart = (lsSsSeg == 0);
-  // The steady state's starting state: its segment's y0, else (an ss dose at the
-  // last record time, after which no segment opens) the state an observation there
-  // reads.
+  // The steady state's starting state: the state right after the (last) ss dose,
+  // before later same-time events; the snapshot needs an ss segment, or (an ss
+  // dose at the last record time, after which no segment opens) an observation
+  // there.
   std::vector<double> ssY0;
   bool ssAtLast = false;
   if (lsSsSeg >= 0) {
@@ -522,6 +524,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       break;
     }
   }
+  if (!ssY0.empty() && (int)_lsSsY.size() >= nBase) ssY0.assign(_lsSsY.begin(), _lsSsY.begin() + nBase);
   if (lsSsSeg > 0) {
     std::vector<lsAdjEv> &E = lsAdjSegs[lsSsSeg].ev;
     bool has8 = false;
@@ -604,15 +607,20 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       }
       // an ss bolus's bioavailability enters every period's dose (no separate
       // dose term here, so from the first)
+      // (the last ss bolus at that time sets the steady state)
       if (lsMono && _lsSsBolusIi > 0.0) {
+        int ssBCmt = -1; double ssBAmt = 0.0;
         for (int i = 0; i < ind->n_all_times; ++i) {
           int ev = getEvid(ind, ind->ix[i]);
           if (isObs(ev) || !isDose(ev) || !rxAdjSameTime(ind->timeThread[ind->ix[i]], _lsSsT)) continue;
           int _wh, _cmt, _wh100, _whI, _wh0; getWh(ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
-          if (_whI != 0 || _wh0 != EVID0_SS || _cmt < 0 || _cmt >= nBase) continue;
+          if (_wh0 != EVID0_SS && _wh0 != EVID0_SSINF) continue;
+          if (_whI == 0 && _cmt >= 0 && _cmt < nBase) { ssBCmt = _cmt; ssBAmt = getDose(ind, ind->ix[i]); }
+          else if (_whI != 0 && getDose(ind, ind->ix[i]) > 0) ssBCmt = -1;   // a later ss infusion start
+        }
+        if (ssBCmt >= 0) {
           lsIc.loadDF(cSub, ind, op, _lsSsT, ssY0.data(), Asc);
-          if (!lsIc.dFv.empty()) { lsIc.fFrom = 0; lsIc.wsFCmt = _cmt; lsIc.wsFAmt = getDose(ind, ind->ix[i]); }
-          break;
+          if (!lsIc.dFv.empty()) { lsIc.fFrom = 0; lsIc.wsFCmt = ssBCmt; lsIc.wsFAmt = ssBAmt; }
         }
       }
     }

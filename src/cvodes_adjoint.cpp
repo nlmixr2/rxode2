@@ -46,7 +46,7 @@ struct cvHist {
     if (ns == 0) { for (int k = 0; k < nBase; ++k) out[k] = 0.0; return; }
     int s = 0;
     for (int si = 0; si < ns; ++si) {
-      if (t[segStart[si]] <= tq + 1e-12) s = si; else break;
+      if (t[segStart[si]] <= tq + rxAdjStepTol(t[segStart[si]], tq)) s = si; else break;
     }
     int lo = segStart[s];
     int hi = (s + 1 < ns) ? segStart[s + 1] : (int)t.size();   // [lo, hi)
@@ -138,7 +138,7 @@ static int cvB_bwd(sunrealtype t, N_Vector B, N_Vector Bd, void *ud) {
   if (u->infus) {
     for (size_t w = 0; w < u->infus->size(); ++w) {
       const cvInfus &F = (*u->infus)[w];
-      if ((double)t >= F.tOn - 1e-12 && (double)t <= F.tOff + 1e-12) {
+      if ((double)t >= F.tOn - rxAdjStepTol(t, F.tOn) && (double)t <= F.tOff + rxAdjStepTol(t, F.tOff)) {
         double lc = NV_Ith_S(B, F.cmt);
         if (u->drateOff >= 0 && !F.fixed) {   // dR/dtheta = durMult * drate
           const double *drate = &u->lhs[u->drateOff];
@@ -239,7 +239,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   // type 0 (additive bolus): factor = F*amt (the landed amount), raw = amt;
   // rec = a bolus/replace/multiply's record index (its rxAdjJumpCap), else -1
   struct cvEvent { double t; int cmt; int type; double factor; double raw = 0.0; int rec = -1; };
-  std::vector<cvEvent> evJumps; _adjJumpCap.clear();
+  std::vector<cvEvent> evJumps; rxAdjJumpClear();
   std::vector<cvInfus> infusRec;   // modeled-rate infusion windows (rate dual)
   int _infusOnCmt = -1; double _infusOnPre = 0.0;
   int _lagRateCmt = -1, _lagRateWhI = 0, _lagRateKey = -1; double _lagRatePre = 0.0;   // infusion start/stop
@@ -569,7 +569,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     // backward stops at each and applies the transpose costate jump.
     std::vector<int> segEv;
     for (size_t e = 0; e < evJumps.size(); ++e)
-      if (evJumps[e].t < ti - 1e-12 && evJumps[e].t > tStop + 1e-12) segEv.push_back((int)e);
+      if (evJumps[e].t < ti - rxAdjTimeTol(evJumps[e].t, ti) && evJumps[e].t > tStop + rxAdjTimeTol(evJumps[e].t, tStop)) segEv.push_back((int)e);
     gfx::timsort(segEv.begin(), segEv.end(), [&](int a, int b) {
       return evJumps[a].t > evJumps[b].t || (evJumps[a].t == evJumps[b].t && a > b); });
     for (int k = 0; bok && k < nBase; ++k) {
