@@ -3179,7 +3179,10 @@ static inline int rxAdjJumpCmt(rx_solving_options *op, rx_solving_options_ind *i
   if (!isDose(ev)) return -1;
   int _wh, _cmt, _wh100, _whI, _wh0; getWh(ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
   bool bolus = (_whI == 0 && _wh0 == EVID0_REGULAR && (op->adjDlagOff >= 0 || op->adjDfxOff >= 0));
-  if (_whI != EVIDF_REPLACE && _whI != EVIDF_MULT && !bolus) return -1;
+  // a fixed-dur infusion's start, for a state-dependent f(): the state it reads F at
+  bool infStart = (op->adjDfxOff >= 0 && _whI == EVIDF_INF_DUR && _wh0 == EVID0_REGULAR &&
+                   getDose(ind, ind->ix[rec]) > 0);
+  if (_whI != EVIDF_REPLACE && _whI != EVIDF_MULT && !bolus && !infStart) return -1;
   return (_cmt >= 0 && _cmt < op->adjNbase) ? _cmt : -1;
 }
 static inline void rxAdjJumpRecord(rx_solving_options *op, rx_solving_options_ind *ind, int *neq,
@@ -3188,7 +3191,7 @@ static inline void rxAdjJumpRecord(rx_solving_options *op, rx_solving_options_in
   int nBase = op->adjNbase;
   int _wh, _c, _wh100, _whI, _wh0; getWh(getEvid(ind, ind->ix[rec]), &_wh, &_c, &_wh100, &_whI, &_wh0);
   rxAdjJumpCap cap; cap.rec = rec; cap.xPre = pre[cmt]; cap.raw = getDose(ind, ind->ix[rec]);
-  cap.kind = (_whI == EVIDF_REPLACE) ? 5 : (_whI == EVIDF_MULT) ? 6 : 0;
+  cap.kind = (_whI == EVIDF_REPLACE) ? 5 : (_whI == EVIDF_MULT) ? 6 : (_whI == EVIDF_INF_DUR) ? 7 : 0;
   if (cap.kind == 6) {
     std::vector<double> yF(pre);
     cap.alpha = getAmt(ind, ind->id, cmt, cap.raw, t, yF.data());
@@ -3201,7 +3204,7 @@ static inline void rxAdjJumpRecord(rx_solving_options *op, rx_solving_options_in
       cap.fPre.assign(fA.begin(), fA.begin() + nBase);
     }
   }
-  if (op->adjDlagOff >= 0) {
+  if (op->adjDlagOff >= 0 && cap.kind != 7) {
     std::vector<double> yA(pre), fA(pre.size(), 0.0), fB(pre.size(), 0.0), yB(post, post + pre.size());
     double g = 1.0;                     // G[c][c]: 1 for a bolus, 0 for a replace, alpha for a multiply
     if (cap.kind == 5) g = 0.0;
@@ -3239,7 +3242,7 @@ static inline bool rxAdjJumpTerm(int rec, int c, const double *lam, double *mu, 
                                  const double *dfxRow = NULL) {
   if (rec < 0) return false;
   const rxAdjJumpCap *cap = rxAdjJumpFind(rec);
-  if (cap == NULL) return false;
+  if (cap == NULL || cap->kind == 7) return false;
   if (dF != NULL && cap->kind != 0) {
     double w = lam[c] * cap->raw * (cap->kind == 6 ? cap->xPre : 1.0);
     for (int p = 0; p < np; ++p) mu[p] += w * dF[c * np + p];

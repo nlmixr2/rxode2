@@ -160,6 +160,9 @@ static inline bool rxAdjSfWinAdd(rx_solving_options *op, rx_solving_options_ind 
                                  int eff, double t0, const double *y0, size_t seg0, size_t seg1, int c,
                                  double raw, int rec, std::vector<rxAdjSfWin> *sfw) {
   if (sfw == NULL || op->adjDfxOff < 0 || op->adjDfOff < 0 || cSub < 0) return false;
+  // the state the start record read F at (before later same-time events), else y0
+  const rxAdjJumpCap *cap = rec >= 0 ? rxAdjJumpFind(rec) : NULL;
+  if (cap != NULL && cap->kind == 7 && !cap->yPre.empty()) y0 = cap->yPre.data();
   std::vector<double> A(eff, 0.0);
   for (int b = 0; b < nBase; ++b) A[b] = y0[b];
   rk4sLhsRec(ind, cSub, rec, t0, A.data());

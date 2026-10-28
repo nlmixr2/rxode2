@@ -76,7 +76,12 @@ struct cvFwdUser {   // forward RHS user data
 // fixed-rate/duration window (fixed) carries only the dF dual, weighted by dfW: the
 // raw rate over a fixed-dur window, the raw amount at a fixed-rate off boundary.
 struct cvInfus { double tOn, tOff; int cmt; double R, amt, durMult, amtRaw; bool isDur;
-                 bool fixed = false; double dfW = 0.0; int key = -1; };
+                 bool fixed = false; double dfW = 0.0; int key = -1;
+                 // a fixed-dur window whose f() depends on the state: its record and
+                 // start state; sf >= 0 is its backward component (the integral of
+                 // lam_cmt), forced with dFon (dF_cmt/dp at the start, np), and at its
+                 // start lam += that integral * row (dfW * dF_cmt/dx, nBase)
+                 int rec = -1; std::vector<double> yOn; int sf = -1; std::vector<double> dFon, row; };
 
 // Index of the open window into cmt that a stop with start key `key` closes (see
 // rk4sInfusionStartKey()): the window with that key, else the most recent open
@@ -93,7 +98,7 @@ static inline int cvInfusCloseIdx(const std::vector<cvInfus> &infus, int cmt, bo
 }
 
 struct cvBwdUser {   // backward RHS user data
-  const cvHist *hist; int cSub, nBase, np, eff, fxOff, fpOff, drateOff, dfOff;
+  const cvHist *hist; int cSub, nBase, np, eff, fxOff, fpOff, drateOff, dfOff, nAug = 0;
   const std::vector<cvInfus> *infus;   // for the in-window forcing quadrature
   std::vector<double> A, yq;
   double *lhs;
@@ -133,6 +138,7 @@ static int cvB_bwd(sunrealtype t, N_Vector B, N_Vector Bd, void *ud) {
     for (int i = 0; i < n; ++i) s += fp[i * np + p] * NV_Ith_S(B, i);
     NV_Ith_S(Bd, n + p) = -s;
   }
+  for (int q = n + np; q < u->nAug; ++q) NV_Ith_S(Bd, q) = 0.0;
   // infusion forcing: inside a window the RHS gains +R, so F_p[c] += dR/dtheta ->
   // d(mu_p)/dt += -dR/dtheta * lambda_c.
   if (u->infus) {
@@ -145,7 +151,10 @@ static int cvB_bwd(sunrealtype t, N_Vector B, N_Vector Bd, void *ud) {
           for (int p = 0; p < np; ++p) NV_Ith_S(Bd, n + p) += -F.durMult * drate[F.cmt * np + p] * lc;
         }
         // a dur() or fixed-dur rate also moves with a modeled F
-        if (u->dfOff >= 0 && F.isDur && F.tOff < R_PosInf && F.tOff > F.tOn) {
+        if (F.sf >= 0) {                      // a state-dependent f(): read at the start
+          for (int p = 0; p < np; ++p) NV_Ith_S(Bd, n + p) += -F.dfW * F.dFon[p] * lc;
+          NV_Ith_S(Bd, n + np + F.sf) = -lc;
+        } else if (u->dfOff >= 0 && F.isDur && F.tOff < R_PosInf && F.tOff > F.tOn) {
           const double *dF = &u->lhs[u->dfOff];
           double dfm = F.fixed ? F.dfW : F.amtRaw / (F.tOff - F.tOn);
           for (int p = 0; p < np; ++p) NV_Ith_S(Bd, n + p) += -dfm * dF[F.cmt * np + p] * lc;
@@ -243,7 +252,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   _adjLagPush.clear(); _adjLagPushFixed.clear(); _adjLagPushMdl.clear();
   std::vector<cvInfus> infusRec;   // modeled-rate infusion windows (rate dual)
   int _infusOnCmt = -1; double _infusOnPre = 0.0;
-  int _lagRateCmt = -1, _lagRateWhI = 0, _lagRateKey = -1; double _lagRatePre = 0.0;   // infusion start/stop
+  int _lagRateCmt = -1, _lagRateWhI = 0, _lagRateKey = -1, _lagRateRec = -1; double _lagRatePre = 0.0;   // infusion start/stop
   double *yp;
   hist.newSeg();   // segment 0 begins at t0
   // Record boluses only when F or the lag time depends on a sensitivity
@@ -352,7 +361,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
           if (_lagRateCmt >= 0) {
             int _wh, _c, _wh100, _wh0; getWh(_ev, &_wh, &_c, &_wh100, &_lagRateWhI, &_wh0);
             _lagRatePre = ind->InfusionRate[_lagRateCmt];
-            _lagRateKey = rk4sInfusionStartKey(ind, ind->ix[i]);
+            _lagRateKey = rk4sInfusionStartKey(ind, ind->ix[i]); _lagRateRec = i;
           }
         }
         if (isDose(_ev)) {
@@ -426,6 +435,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
           if (_f != 0.0 && _dR > 0.0) {
             cvInfus _w = {xout, R_PosInf, _lagRateCmt, _dR, 0.0, 0.0, 0.0, _isDur};
             _w.fixed = true; _w.dfW = _isDur ? _dR / _f : 0.0; _w.key = _lagRateKey;
+            if (op->adjDfxOff >= 0 && _isDur) { _w.rec = _lagRateRec; _w.yOn.assign(yp, yp + nBase); }
             infusRec.push_back(_w);
           } else if (_f != 0.0) {
             int _wi = cvInfusCloseIdx(infusRec, _lagRateCmt, true, _isDur, _lagRateKey);
@@ -472,11 +482,30 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
 
   // ================= backward sweep -> rx__sens_* output slots =================
   if (localBadSolve) return 0;
-  int nAug = nBase + np;
+  // fixed-dur windows whose f() depends on the state: one backward component
+  // each, and a type-12 event at the start that applies it
+  int nSf = 0;
+  if (op->adjDfxOff >= 0 && op->adjDfOff >= 0)
+    for (size_t w = 0; w < infusRec.size(); ++w) {
+      cvInfus &F = infusRec[w];
+      if (!F.fixed || !F.isDur || F.yOn.empty() || F.dfW == 0.0) continue;
+      std::vector<double> Aq(eff, 0.0);
+      for (int b = 0; b < nBase; ++b) Aq[b] = F.yOn[b];
+      rk4sLhsRec(ind, cSub, F.rec, F.tOn, Aq.data());
+      bool dep = false;
+      for (int j = 0; j < nBase; ++j) dep = dep || ind->lhs[op->adjDfxOff + F.cmt * nBase + j] != 0.0;
+      if (!dep) continue;
+      F.dFon.assign(ind->lhs + op->adjDfOff + F.cmt * np, ind->lhs + op->adjDfOff + (F.cmt + 1) * np);
+      F.row.resize(nBase);
+      for (int j = 0; j < nBase; ++j) F.row[j] = F.dfW * ind->lhs[op->adjDfxOff + F.cmt * nBase + j];
+      F.sf = nSf++;
+      evJumps.push_back({F.tOn, (int)w, 12, 0.0});
+    }
+  int nAug = nBase + np + nSf;
   cvBwdUser bu;
   bu.hist = &hist; bu.cSub = cSub; bu.nBase = nBase; bu.np = np; bu.eff = eff;
   bu.fxOff = op->adjFxOff; bu.fpOff = op->adjFpOff; bu.lhs = ind->lhs;
-  bu.drateOff = op->adjDrateOff; bu.dfOff = op->adjDfOff; bu.infus = &infusRec;
+  bu.drateOff = op->adjDrateOff; bu.dfOff = op->adjDfOff; bu.infus = &infusRec; bu.nAug = nAug;
   bu.A.assign(eff, 0.0); bu.yq.assign(nBase, 0.0);
   // Off-boundary transversality events (type 7): stop at each infusion off-time.
   for (size_t w = 0; w < infusRec.size(); ++w) {
@@ -535,6 +564,12 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     }
     if (dfx) for (int j = 0; j < nBase; ++j) NV_Ith_S(B, j) += wC * dfx[j];
   };
+  // a state-dependent f() window's start: lam += (integral of lam_cmt) * row
+  auto sfStart = [&](const cvInfus &F) {
+    double acc = NV_Ith_S(B, nBase + np + F.sf);
+    for (int j = 0; j < nBase; ++j) NV_Ith_S(B, j) += acc * F.row[j];
+    NV_Ith_S(B, nBase + np + F.sf) = 0.0;
+  };
   // a replace (type 5) or multiply (6) at te: its alag() and f() duals, then the jump
   auto rmJump = [&](const cvEvent &E, double te) {
     bool sf = rxAdjStateFEvent(op, ind, cSub, E.rec, E.cmt, te, sfRow, sfDF, sfDl);
@@ -575,7 +610,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     if (ti <= tStop || isSameTime(ti, tStop)) {   // the initial conditions and the events at ti
       for (int k = 0; k < nBase; ++k) {
         for (int j = 0; j < nBase; ++j) NV_Ith_S(B, j) = (j == k) ? 1.0 : 0.0;
-        for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) = 0.0;
+        for (int q = nBase; q < nAug; ++q) NV_Ith_S(B, q) = 0.0;
         applyAt(ti, evLo, evHi);
         for (int p = 0; p < np; ++p) {
           double ini = 0.0;
@@ -595,7 +630,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       return evJumps[a].t > evJumps[b].t || (evJumps[a].t == evJumps[b].t && a > b); });
     for (int k = 0; bok && k < nBase; ++k) {
       for (int j = 0; j < nBase; ++j) NV_Ith_S(B, j) = (j == k) ? 1.0 : 0.0;
-      for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) = 0.0;
+      for (int q = nBase; q < nAug; ++q) NV_Ith_S(B, q) = 0.0;
       applyAt(ti, evLo, evHi);   // the events at ti itself
       if (CVodeReInit(bmem, (sunrealtype)ti, B) < 0) { bok = 0; break; }
       sunrealtype tret;
@@ -612,6 +647,8 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
         int c = evJumps[segEv[s]].cmt; int ty = evJumps[segEv[s]].type;
         if (ty == 5 || ty == 6) {                                      // replace / multiply
           rmJump(evJumps[segEv[s]], te);
+        } else if (ty == 12) {                                         // a state-dependent f() window starts
+          sfStart(infusRec[c]);
         } else if (ty == 0) {                                            // additive bolus duals
           bolusDual(evJumps[segEv[s]]);
         } else if (ty == 9) {                                          // lagged rate change
@@ -647,6 +684,8 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       if (!bok) break;
       CVodeSetStopTime(bmem, (sunrealtype)tStop);
       if (CVode(bmem, (sunrealtype)tStop, B, &tret, CV_NORMAL) < 0) { bok = 0; break; }
+      for (size_t w = 0; w < infusRec.size(); ++w)   // a state-dependent f() window starting there
+        if (infusRec[w].sf >= 0 && isSameTime(infusRec[w].tOn, tStop)) sfStart(infusRec[w]);
       applyAt(tStop, evLo, evHi);   // the events at t0, or right after the reset
       // tStop is t0 or a reset; either way the state there is the initial condition
       for (int p = 0; p < np; ++p) {

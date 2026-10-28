@@ -55,10 +55,17 @@ rxTest({
     }
   })
 
-  test_that("a fixed-dur infusion with a state-dependent f() carries its start state", {
-    # the rate F(x_on)*amt/dur moves with the start state; the stop lies past
-    # the last observation, since the forward re-reads F at the stop
-    .ev <- et(amt = 100, cmt = "depot") |> et(time = 3, amt = 80, dur = 10, cmt = "depot") |> et(.o)
-    .chk(list(txt = paste0(.base, .fCenter), p = .p, ev = .ev), .rk4sFamily, "infusionDur")
+  test_that("a fixed-dur infusion with a state-dependent f() carries its start state in every driver", {
+    # the rate F(x_on)*amt/dur moves with the start state.  The forward solve
+    # re-reads F at the infusion's stop, so its result after the stop is not
+    # right yet: the stop lies past the last observation here
+    .evs <- list(
+      interior = et(amt = 100, cmt = "depot") |> et(time = 3, amt = 80, dur = 10, cmt = "depot") |> et(.o),
+      atStart = et(amt = 100, cmt = "center") |> et(time = 0, amt = 80, dur = 12, cmt = "depot") |> et(.o)
+    )
+    for (.nm in names(.evs)) {
+      .chk(list(txt = paste0(.base, .fCenter), p = .p, ev = .evs[[.nm]]),
+        c(.rk4sFamily, "liblsodaadj", "cvodesadj", "abs"), .nm)
+    }
   })
 })
