@@ -9,6 +9,17 @@
   them: after a failed `rxSolve(m, params, ev, sigma = ...)`, a plain solve
   of a model with that residual gave values up to 2.6 off.
 
+### Documentation
+- The pipeline article no longer saves its simulation into the installed
+  package directory (#1506).
+
+### Sensitivities
+- `rxSolveAdjoint()` now accepts a model function, as `rxSolve()` does; it
+  used to fail with an rxode2 syntax error on the `ini({})` block (#1504).
+- `rxSolveAdjoint()` and the adjoint builds now send a dose without a `cmt`
+  to the first state, and a numeric `cmt` to that state, as `rxSolve()`
+  does; a dose without a `cmt` used to fail in the build (#1504).
+
 ## New features
 
 - `minSS` and `maxSS` now accept any count from 1, and `maxSS` may equal
@@ -58,6 +69,11 @@
   `IDID=-3` on a subject with one observation after its start.  `hmaxSd` now
   adds its standard deviation term to every subject, not only the last one
   (#1501).
+
+- An `rxParams()` pipeline now starts from a model function, an `rxUi` or
+  `rxode2(model)`, like `rxSolve()`; it used to stop with "need an rxode2
+  compiled model as the start of the pipeline" unless given the compiled
+  `$simulationModel` (#1505).
 - A steady-state bolus solved with `lsoda`/`liblsoda` no longer drops its
   first iterated dose: the solver restarted from its internal state instead of
   the dosed one, so a steady state stopped by `minSS` (with `ssAtol`/`ssRtol`
@@ -151,6 +167,15 @@
   model compiles; it compiles as before.
 
 ### linCmt() models
+
+- `linCmt()` models now solve a time-varying covariate as the equivalent ODE
+  model does.  Each interval between records used the covariates of the record
+  that ends it, so the default `covsInterpolation = "locf"` gave the `"nocb"`
+  solution.  An interval now takes its own covariates (`"locf"` the start
+  record's, `"nocb"` the end record's, `"midpoint"` their mean, `"linear"` the
+  value at its middle); results of `linCmt()` models and fits with a
+  time-varying covariate change under `"locf"`, `"midpoint"` and `"linear"`
+  (#1483).
 
 - After a subject whose `linCmt()` solve failed (a data error such as a
   modeled rate in a model without `rate()`), the later subjects on that thread

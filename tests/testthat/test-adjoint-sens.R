@@ -589,6 +589,49 @@ rxTest({
     }
   })
 
+  test_that("rxSolveAdjoint accepts a model function like rxSolve (#1504)", {
+    pk <- function() {
+      ini({
+        ka <- 1.2
+        cl <- 3.5
+        v <- 25
+      })
+      model({
+        d/dt(depot) <- -ka * depot
+        d/dt(center) <- ka * depot - cl / v * center
+      })
+    }
+    fP <- c(ka = 1.2, cl = 3.5, v = 25)
+    fEv <- rxode2::et(amt = 100, cmt = "depot") |> rxode2::et(seq(0, 12, by = 2))
+    resF <- rxode2::rxSolveAdjoint(pk, fP, fEv, calcSens = c("ka", "cl"))
+    resU <- rxode2::rxSolveAdjoint(pk(), fP, fEv, calcSens = c("ka", "cl"))
+    expect_equal(resF, resU)
+    expect_true("rx__sens_center_BY_cl__" %in% names(resF))
+  })
+
+  test_that("adjoint solves default a missing dose cmt to the first state (#1504)", {
+    dP <- c(ka = 1.2, cl = 3.5, v = 25)
+    dCS <- c("ka", "cl")
+    dT <- seq(0, 12, by = 2)
+    ref <- rxode2::rxSolveAdjoint(mText, dP, rxode2::et(amt = 100, cmt = "depot") |> rxode2::et(dT), dCS)
+    noCmt <- rxode2::rxSolveAdjoint(mText, dP, rxode2::et(amt = 100) |> rxode2::et(dT), dCS)
+    numCmt <- rxode2::rxSolveAdjoint(mText, dP, rxode2::et(amt = 100, cmt = 1) |> rxode2::et(dT), dCS)
+    expect_equal(noCmt, ref)
+    expect_equal(numCmt[names(ref)], ref)
+    # the f(depot) dose dual is found for a dose without a cmt
+    gText <- paste0(mText, "\nf(depot)=Fbio")
+    gP <- c(dP, Fbio = 0.7)
+    gCS <- c("ka", "cl", "Fbio")
+    gObsT <- c(1, 2, 4, 8, 12)
+    gObs <- c(2.5, 2.8, 2.3, 1.4, 0.8)
+    gRef <- rxode2::.rxAdjointGradBuild(gText, gCS, "center/v", rxode2::et(amt = 100, cmt = "depot"))
+    gNo <- rxode2::.rxAdjointGradBuild(gText, gCS, "center/v", rxode2::et(amt = 100))
+    expect_equal(
+      rxode2::.rxAdjointGradEvalC(gNo, gP, gObsT, gObs),
+      rxode2::.rxAdjointGradEvalC(gRef, gP, gObsT, gObs)
+    )
+  })
+
   # ---- population objective gradient (.rxAdjointGradPop) ---------------------
   # dOFV/dtheta = sum over subjects of each subject's adjoint -2LL gradient --
   # the exact quantity a gradient-based population estimator minimises, with one
