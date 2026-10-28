@@ -57,6 +57,13 @@
 
 ### Solving
 
+- `method = "dop853"` no longer integrates twice the piece after a dose that
+  the steady-state handling pushes between two records.  An `ss = 1`
+  infusion longer than its dosing interval (with or without `alag()`),
+  whose earlier infusion stops between records, gave the state of the next
+  record (off by 0.58 at the next observation); the dense-output path was
+  right, and doses pushed by `bolus()` in the model were not affected.
+
 - The default `hmax = NA` no longer gives a `NaN` maximum step to a subject
   with a single time difference, so `method = "dop853"` no longer fails with
   `IDID=-3` on a subject with one observation after its start.  `hmaxSd` now

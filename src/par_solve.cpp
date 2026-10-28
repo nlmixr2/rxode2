@@ -6680,6 +6680,10 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
               copyLinCmt(neq, ind, op, yp);
               postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
               if (*rc < 0) localBadSolve = 1;
+              // the state is now at xout (the Fortran solvers advance their t
+              // argument themselves; this one does not), so the solve below must
+              // not integrate the same interval again
+              ind->extraDoseNewXout = xout;
               xp = ind->extraDoseNewXout;
             }
           }
