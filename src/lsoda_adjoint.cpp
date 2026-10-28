@@ -162,6 +162,18 @@ static bool rxAdjInfusionWindows(rx_solving_options *op, rx_solving_options_ind 
     for (size_t sg = 0; sg < segs.size(); ++sg) {
       Seg &Sg = segs[sg];
       if ((int)Sg.infRate.size() != nBase) continue;
+      // a lagged ss dose's pushed infusion start/stop opening this segment
+      if (op->adjDlagOff >= 0)
+        for (size_t q = 0; q < _adjLagPush.size(); ++q) {
+          int k = _adjLagPush[q];
+          if (k >= ind->extraDoseN[0] || !rxAdjSameTime(ind->extraDoseTime[k], Sg.t0)) continue;
+          int c = rk4sInfusionEventCmt(ind->extraDoseEvid[k], nBase, true);
+          if (c < 0) continue;
+          double prev = (sg > 0 && (int)segs[sg - 1].infRate.size() == nBase) ? segs[sg - 1].infRate[c] : 0.0;
+          if (Sg.infRate[c] == prev) continue;
+          if (Sg.lagRate.empty()) Sg.lagRate.assign(nBase, 0.0);
+          Sg.lagRate[c] = Sg.infRate[c] - prev;
+        }
       for (int i = 0; i < ind->n_all_times; ++i) {
         if (!rxAdjSameTime(ind->timeThread[ind->ix[i]], Sg.t0)) continue;
         int ev = getEvid(ind, ind->ix[i]);
@@ -274,7 +286,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   // ---- forward: run the ordinary liblsoda solve, with recording hooks on -------
   lsAdjSteps.clear();
   lsAdjSegs.clear();
-  _adjJumpCap.clear();
+  _adjJumpCap.clear(); _adjLagPush.clear();
   _lsSsKind = 0; _lsSsBolusIi = 0.0; _lsSsCmt = -1; _lsSsT = 0.0; _lsSsLag = 0.0; _lsSsLagOn = 0;   // reset the sticky ss snapshot
   _lsSsFixed = 0; _lsSsFixW = 0.0; _lsSsFixW2 = 0.0;
   _lsSsDur = _lsSsDur2 = _lsSsRate = _lsSsRate2 = 0.0;

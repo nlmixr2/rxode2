@@ -3080,6 +3080,13 @@ static thread_local double _adjSSbolusIi = 0.0;
 // the record time then sits ii - _adjSSlag into the unlagged period.
 static thread_local double _adjSSlag = 0.0;
 static thread_local int _adjSSlagOn = 0;
+// extra (pushed) doses whose times move with a lagged ss = 1 dose's alag(), by
+// extraDoseTimeIdx; the adjoint drivers clear it per subject
+static thread_local std::vector<int> _adjLagPush;
+static inline bool rxAdjIsLagPush(int k) {
+  for (size_t j = 0; j < _adjLagPush.size(); ++j) if (_adjLagPush[j] == k) return true;
+  return false;
+}
 // Two-phase steady-state infusion period: rate _adjSSinfRate for _adjSSinfDur,
 // then rate _adjSSinfRate2 for _adjSSinfDur2.  Fixed-rate periodic (dur<ii) uses
 // (R, dur) then (0, ii-dur); large-duration (dur>=ii, overlapping infusions)
@@ -3768,6 +3775,7 @@ void handleSS(int *neq,
   _adjSSinfModeled = 0; _adjSSinfAmt = 0.0; _adjSSinfAmtRaw = 0.0;
   _adjSSinfFixed = 0; _adjSSinfFixW = 0.0; _adjSSinfFixW2 = 0.0;
   _esSSDurOffCmt = -1; _esSSRateOffCmt = -1;   // forward eventSens: disarm the modeled ss off markers
+  int _adjPush0 = ind->extraDoseN[0];
   int j;
   int doSS2=0;
   int doSSinf=0;
@@ -4670,6 +4678,8 @@ void handleSS(int *neq,
     ind->doSS=0;
     ind->ixds=oldIxds; ind->idx=oldIdx;
   }
+  if (op->adjoint && _adjSSlagOn)
+    for (int k = _adjPush0; k < ind->extraDoseN[0]; ++k) _adjLagPush.push_back(k);
   updateExtraDoseGlobals(ind);
 }
 

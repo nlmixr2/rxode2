@@ -9042,7 +9042,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   std::vector<size_t> boundarySs2(ind->n_all_times, 0);  // # ss2 events recorded when each time was stored
   std::vector<size_t> boundarySs1(ind->n_all_times, 0);  // # ss1 events recorded when each time was stored
   std::vector<rk4s_dose> doseRec;                     // additive boluses for the F-jump transpose
-  _adjJumpCap.clear();
+  _adjJumpCap.clear(); _adjLagPush.clear();
   std::vector<rk4s_infus> infusRec;                   // modeled-rate infusion windows (rate/dur dual)
   int _infusOnCmt = -1; double _infusOnPre = 0.0;     // set when the current event opens an infusion
   int _lagRateCmt = -1, _lagRateWhI = 0, _lagRateWh0 = 0, _lagRateKey = -1; double _lagRatePre = 0.0; size_t _lagRateStep = 0;  // infusion start/stop
@@ -9138,8 +9138,15 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               bool _xFix = adj && op->adjDfOff >= 0 && _xCmt >= 0 && _xCmt < op->adjNbase &&
                 (_xWhI == EVIDF_INF_RATE || _xWhI == EVIDF_INF_DUR);
               double _xPre = _xFix ? ind->InfusionRate[_xCmt] : 0.0;
+              // a lagged ss dose's pushed infusion start/stop moves with its alag()
+              bool _xLag = adj && op->adjDlagOff >= 0 && _xCmt >= 0 && _xCmt < op->adjNbase && rxAdjIsLagPush(trueIdx);
+              double _xLagPre = _xLag ? ind->InfusionRate[_xCmt] : 0.0;
               handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
                           ind->BadDose, ind->InfusionRate, ind->dose, yp, xout, neq[1], ind);
+              if (_xLag && ind->InfusionRate[_xCmt] != _xLagPre) {
+                rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _xCmt; _d.amt = ind->InfusionRate[_xCmt] - _xLagPre; _d.type = 9;
+                doseRec.push_back(_d);
+              }
               if (_xFix && ind->InfusionRate[_xCmt] - _xPre < 0.0)
                 rk4sFixedInfusionRecord(infusRec, ind, _xCmt, _xWhI == EVIDF_INF_DUR, ind->InfusionRate[_xCmt] - _xPre,
                                         rec.nStep(), ind->extraDoseNewXout, yp);
