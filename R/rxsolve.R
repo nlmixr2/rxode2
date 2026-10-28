@@ -2697,6 +2697,21 @@ rxSolve.function <- function(
   .bad
 }
 
+#' An event-table column by name, matched without case
+#'
+#' Event data may spell its columns in upper case (NONMEM `RATE`, `DUR`), which
+#' `$` does not match.
+#'
+#' @param df event table as a `data.frame`, or `NULL`
+#' @param name lower-case column name
+#' @return the first matching column, or `NULL` when there is none
+#' @noRd
+.rxEvCol <- function(df, name) {
+  if (is.null(df)) return(NULL)
+  .w <- which(tolower(names(df)) == name)
+  if (length(.w) == 0L) NULL else df[[.w[1]]]
+}
+
 #' The parameter names a `params` carries, whatever shape it is
 #'
 #' `names()` of a `matrix` is `NULL` -- its names are the column names -- so a
@@ -3591,9 +3606,11 @@ rxSolve.default <- function(
   if (.ctl$method == 208L && any(rxModelVars(object)$lhs == "rx__adjFX_0_0__")) {
     .bad <- .rxAdjointDoseDuals(object)
     .evAbs <- tryCatch(as.data.frame(events), error = function(e) NULL)
+    .absRate <- .rxEvCol(.evAbs, "rate")
+    .absDur <- .rxEvCol(.evAbs, "dur")
     .absInf <- is.null(.evAbs) ||
-      (!is.null(.evAbs$rate) && any(.evAbs$rate != 0, na.rm = TRUE)) ||
-      (!is.null(.evAbs$dur) && any(.evAbs$dur > 0, na.rm = TRUE))
+      (!is.null(.absRate) && any(.absRate != 0, na.rm = TRUE)) ||
+      (!is.null(.absDur) && any(.absDur > 0, na.rm = TRUE))
     if (!.absInf) .bad <- setdiff(.bad, c("f()", "alag()"))
     if (length(.bad) > 0L) {
       stop(
