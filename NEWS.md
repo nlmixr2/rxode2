@@ -57,6 +57,12 @@
 
 ### Solving
 
+- `method = "dop853"` no longer integrates the piece after a dose pushed
+  between two records twice.  An `ss = 1` infusion longer than its dosing
+  interval, whose earlier infusion stops between records, gave the state of
+  the next record (off by 0.58 at the next observation); the dense-output
+  path was right.
+
 - The default `hmax = NA` no longer gives a `NaN` maximum step to a subject
   with a single time difference, so `method = "dop853"` no longer fails with
   `IDID=-3` on a subject with one observation after its start.  `hmaxSd` now

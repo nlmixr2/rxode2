@@ -187,4 +187,30 @@ rxTest({
       }
     }
   })
+
+  test_that("dop853 keeps the state after a pushed infusion stop between two records", {
+    # An ss = 1 infusion longer than ii leaves the previous period's infusion
+    # running until dur - ii = 0.5, a stop pushed between the records at 0.25
+    # and 0.75.  The piece after that stop must be integrated once.
+    withr::local_options(rxode2.useLinCmt = FALSE)
+    .m <- rxode2("d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center")
+    .p <- c(ka = 1.2, k = 0.2)
+    .tt <- c(0.25, 0.75, 1, 4)
+    .ev <- et(amt = 100, rate = 8, ii = 12, ss = 1, cmt = "depot") |> et(.tt)
+    # depot by superposition of the infusions of every period (rate 8 for 12.5)
+    .depot <- vapply(.tt, function(t) {
+      .t0 <- -12 * (0:400)
+      .te <- pmin(t, .t0 + 12.5)
+      sum(ifelse(.te > .t0, 8 / 1.2 * (1 - exp(-1.2 * (.te - .t0))) * exp(-1.2 * (t - .te)), 0))
+    }, numeric(1))
+    .ctl <- list(params = .p, atol = 1e-12, rtol = 1e-12, ssAtol = 1e-12, ssRtol = 1e-12, maxsteps = 1e6)
+    .ref <- as.data.frame(do.call(rxSolve, c(list(.m, .ev, method = "liblsoda"), .ctl)))
+    expect_equal(.ref$depot, .depot, tolerance = 1e-9)
+    for (.dense in c(FALSE, TRUE)) {
+      .s <- as.data.frame(do.call(rxSolve, c(list(.m, .ev, method = "dop853", dense = .dense), .ctl)))
+      expect_equal(.s$time, .tt, label = paste("dense", .dense))
+      expect_equal(.s$depot, .depot, tolerance = 1e-9, label = paste("dense", .dense))
+      expect_equal(.s$center, .ref$center, tolerance = 1e-9, label = paste("dense", .dense))
+    }
+  })
 })
