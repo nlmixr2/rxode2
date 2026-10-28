@@ -859,7 +859,12 @@
 #' model with `delay()`, the delayed-state term of the adjoint is first order
 #' in the step size whatever the method's order, and an adaptive method's
 #' error control does not limit it: cap the step with `hmax` (or use a
-#' fixed-step method with a small `hmin`) for accurate sensitivities.
+#' fixed-step method with a small `hmin`) for accurate sensitivities.  Where
+#' the state sits at an equilibrium while its sensitivity does not (eg an
+#' `ss = 1` infusion whose duration is a multiple of `ii`, with `f()`), the
+#' error control does not see the sensitivity either: `"liblsodaadj"` then
+#' runs at order 2, so its error falls only as `hmax^2`, and `"dop853s"` needs
+#' a finite `hmax`; `"ros4s"` and `"radauiia5s"` are not affected.
 #'
 #' @inheritParams .rxDiscreteAdjointBuild
 #' @param events an rxode2 event table / data set.
