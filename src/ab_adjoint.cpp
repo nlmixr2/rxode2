@@ -51,6 +51,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
     const abRecCall &C = abAdjCalls[c];
     std::vector<double> y(nBase, 0.0);
     if (C.stepEnd > C.stepBegin) y = abAdjSteps[C.stepBegin].y;
+    else if ((int)C.yEnd.size() == nBase) y = C.yEnd;   // a call that took no step
     return y;
   };
   // the events at time t among the first `upTo` records (a reset only when it
