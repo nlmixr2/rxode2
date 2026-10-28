@@ -232,6 +232,34 @@ rxTest({
     }
   })
 
+  test_that("an ss = 1 bolus and a continuous ss = 1 infusion at one time", {
+    # both set the steady state together, in either record order, at the first
+    # time or later (the infusion into the dosed cmt or another)
+    .o <- c(1, 2, 4, 6, 9, 14)
+    .cont <- function(t, cmt) et(time = t, amt = 0, rate = 20, ss = 1, cmt = cmt)
+    .bol <- function(t) et(time = t, amt = 100, ii = 12, ss = 1, cmt = "depot")
+    .k <- list(
+      infusionFirst = .cont(0, "depot") |> et(time = 0, amt = 100, ii = 12, ss = 1, cmt = "depot") |> et(.o),
+      bolusFirst = .bol(0) |> et(time = 0, amt = 0, rate = 20, ss = 1, cmt = "depot") |> et(.o),
+      interior = et(amt = 100, cmt = "depot") |> et(time = 5, amt = 0, rate = 20, ss = 1, cmt = "depot") |>
+        et(time = 5, amt = 100, ii = 12, ss = 1, cmt = "depot") |> et(.o),
+      interiorCenter = et(amt = 100, cmt = "depot") |> et(time = 5, amt = 0, rate = 20, ss = 1, cmt = "center") |>
+        et(time = 5, amt = 100, ii = 12, ss = 1, cmt = "depot") |> et(.o)
+    )
+    for (.nm in names(.k)) {
+      .ref <- .adjFd(.base, .k[[.nm]], .p0)
+      for (.m in c("rk4s", "ros4s", "radauiia5s", "dop853s", "dop853s+ros4s", "liblsodaadj")) {
+        .a <- rxSolveAdjointRk4(.base, .k[[.nm]], params = .p0, calcSens = names(.p0), method = .m,
+          atol = 1e-10, rtol = 1e-10, hmin = if (.m == "rk4s") 0.001 else 0,
+          ssAtol = 1e-13, ssRtol = 1e-13, maxSS = 50000)
+        expect_equal(nrow(.a), length(.ref[[1]]), label = paste(.nm, .m, "rows"))
+        for (.cn in names(.ref)) {
+          expect_lt(max(abs(.a[[.cn]] - .ref[[.cn]])), 1e-6, label = paste(.nm, .m, .cn))
+        }
+      }
+    }
+  })
+
   test_that("the liblsodaadj self-check replay applies same-time events and the initial conditions", {
     # a parameter-dependent initial condition, a reset that restores it, and a
     # replace with a dose at one time
