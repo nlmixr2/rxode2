@@ -3175,6 +3175,7 @@ rxTest({
   })
 
   test_that("translation does not slow down with the subject count alone", {
+    skip_on_cran()
     # Whether an id has been seen is tested once per input row against
     # allId/obsId/zeroId/doseId, which hold one entry per subject.  As
     # std::find() linear scans that made translation O(rows * subjects): with
