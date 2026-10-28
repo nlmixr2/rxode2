@@ -112,4 +112,17 @@ rxTest({
         et(time = 3, amt = 120, rate = 10, ii = 12, ss = 2, cmt = "depot") |> et(.o2))
     ), c("rk4s", "ros4s", "radauiia5s", "dop853s", "dop853s+ros4s"))
   })
+
+  test_that("several ss = 2 regimens each carry their own steady state", {
+    .o2 <- c(1, 2.2, 4, 6.4, 9, 14, 20)
+    .first <- et(amt = 100, cmt = "depot") |> et(time = 3, amt = 50, ii = 12, ss = 2, cmt = "depot")
+    .chk(list(
+      sameTime = list(txt = .base, p = .p0, ev = .first |> et(time = 3, amt = 30, ii = 8, ss = 2, cmt = "center") |> et(.o2)),
+      laterOther = list(txt = .base, p = .p0, ev = .first |> et(time = 7, amt = 30, ii = 8, ss = 2, cmt = "center") |> et(.o2)),
+      laterSameCmt = list(txt = .base, p = .p0, ev = .first |> et(time = 7, amt = 30, ii = 6, ss = 2, cmt = "depot") |> et(.o2)),
+      bolusInfusion = list(txt = .base, p = .p0,
+        ev = .first |> et(time = 7, amt = 40, rate = 20, ii = 8, ss = 2, cmt = "center") |> et(c(1, 2.2, 4, 6.4, 8, 10, 14, 20))),
+      lagF = list(txt = .txtMF, p = .pMF, ev = .first |> et(time = 7, amt = 30, ii = 8, ss = 2, cmt = "center") |> et(.o2))
+    ), c("rk4s", "ros4s", "radauiia5s", "dop853s", "dop853s+ros4s"))
+  })
 })

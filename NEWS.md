@@ -361,6 +361,11 @@
   doses), and in `cvodesadj` and `abs` for a replace or multiply.  Before,
   they read it at the window start (off by up to 34).
 
+- Several `ss = 2` regimens in one subject (into different compartments, or
+  the same one with another dose or interval, at one time or at different
+  times) now each carry their own steady state in the `rk4s` family of
+  adjoint methods; the first one's served them all (off by up to 60).
+
 - Adjoint sensitivities with a bioavailability (`f()`) that depends on the
   state are now right in every adjoint method: the dose then lands as
   `x + F(x)*amt`, so its transpose carries `amt*dF/dx` at the pre-dose state,
