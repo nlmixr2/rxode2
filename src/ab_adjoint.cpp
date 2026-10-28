@@ -77,7 +77,9 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   std::vector<const double *> callY(nCalls);
   for (size_t c = 0; c < nCalls; ++c) {
     const abRecCall &C = abAdjCalls[c];
-    callY[c] = C.stepEnd > C.stepBegin ? abAdjSteps[C.stepBegin].y.data() : zeroY.data();
+    if (C.stepEnd > C.stepBegin) callY[c] = abAdjSteps[C.stepBegin].y.data();
+    else if ((int)C.yEnd.size() == nBase) callY[c] = C.yEnd.data();   // a call that took no step
+    else callY[c] = zeroY.data();
     callEv[c] = abEventsAt(C.t0, ind->n_all_times, c >= 1, callY[c]);
   }
 
