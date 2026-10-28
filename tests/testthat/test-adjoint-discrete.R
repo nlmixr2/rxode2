@@ -2563,4 +2563,25 @@ rxTest({
       expect_equal(.s$rx__sens_c_BY_tlag__, rep(.x[[2]], 2), tolerance = 1e-7)
     }
   })
+
+  test_that("cvodesadj keeps the lag sensitivity of a bolus lagged onto t0", {
+    skip_on_cran()
+    # tlag = 0: raising the lag delays the bolus, dy/dtlag = 10 k exp(-k t)
+    .ma <- rxode2(.rxAdjointExpand("d/dt(y)=-k*y\nalag(y)=tlag", c("k", "tlag"))$text)
+    .ev <- et(amt = 10, cmt = "y") |> et(c(1, 2))
+    for (.meth in c("rk4s", "cvodesadj")) {
+      .s <- rxSolve(
+        .ma,
+        .ev,
+        params = c(k = 0.7, tlag = 0),
+        method = .meth,
+        atol = 1e-11,
+        rtol = 1e-11,
+        cores = 1,
+        hmin = if (.meth == "rk4s") 0.001 else 0
+      )
+      .s <- .s[.s$time > 0, , drop = FALSE]
+      expect_equal(.s$rx__sens_y_BY_tlag__, 7 * exp(-0.7 * c(1, 2)), tolerance = 1e-7, label = .meth)
+    }
+  })
 })

@@ -463,7 +463,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     // applies the transpose costate jump.
     std::vector<int> segEv;
     for (size_t e = 0; e < evJumps.size(); ++e)
-      if (evJumps[e].seq < si && evJumps[e].seq > stopSeq && evJumps[e].t > t0 + 1e-12)
+      if (evJumps[e].seq < si && evJumps[e].seq > stopSeq)
         segEv.push_back((int)e);
     gfx::timsort(segEv.begin(), segEv.end(),
                  [&](int a, int b) { return evJumps[a].seq > evJumps[b].seq; });

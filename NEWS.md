@@ -249,7 +249,8 @@
   applied them, and evaluates each of several same-time lagged boluses at
   its own post-dose state.  Its `alag()` lag-time sensitivity now uses the
   exact change in the derivatives across the dose, so it is also correct
-  when the derivatives are nonlinear in the dosed compartment.
+  when the derivatives are nonlinear in the dosed compartment, and is no
+  longer dropped for a bolus lagged onto the first time.
 
 # rxode2 5.1.8
 
