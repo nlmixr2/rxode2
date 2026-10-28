@@ -33,7 +33,7 @@
 // reset (state -> inits), 5 = replace (cmt -> value), 6 = multiply (cmt *= amt).
 // amtF = F*amt, the amount that actually lands (type 0), which a moving dose
 // time carries; the dF dual uses the raw amt.  rec = the record index of a
-// replace/multiply (its rxAdjJumpCap), else -1.
+// bolus/replace/multiply (its rxAdjJumpCap), else -1.
 struct rk4s_dose { size_t step; int cmt; double amt; int type; double amtF = 0.0; int rec = -1; };
 
 // Event-time tolerance shared by the adjoint drivers: relative to the time's
@@ -231,13 +231,13 @@ static inline void rk4sIniOnlyFill(rx_solving_options *op, rx_solving_options_in
 //            state with its steady state, so the events recorded before it at
 //            this step do not reach later observations; the transpose stops
 //            here and the caller adds the steady-state term.
-// A replace/multiply that a modeled lag moves adds mu += dlag[c][p] * lambda_n+^T r
-// (rxAdjJumpTerm).  A constant replace/multiply value contributes nothing else to
-// mu; a modeled value would add mu += lambda_n+[c] * dvalue/dp (a later addition).
+// A replace/multiply that a modeled lag moves adds mu += dlag[c][p] * lambda_n+^T r,
+// and a modeled F (x+ = F*amt, or alpha = F*amt) its f() dual (rxAdjJumpTerm).
 // fx0 = F_X (df/dy) at this step's stage 0 (post-dose state), row-major i*nBase+j,
 // or NULL; dlag = d(lag)/dtheta block (c*np+p) or NULL.  When a bolus into cmt c has
 // a modeled lag, the dose time t_d+lag(theta) shifts with theta, adding the
-// transversality  mu += -F*amt * dlag[c][p] * (lambda^T F_X[:,c]).
+// transversality mu += dlag[c][p] * lambda^T (f(x-) - f(x+)) (rxAdjJumpTerm), or,
+// for a dose pushed at run time, its linearization -F*amt*dlag[c][p]*(lambda^T F_X[:,c]).
 static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
     std::vector<double> &muR, const std::vector<rk4s_dose> &doses,
     const std::vector<double> &dFdp, bool haveDf, int nBase, int np,
@@ -250,7 +250,8 @@ static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
     switch (d.type) {
     case 0:
       if (haveDf) for (int p = 0; p < np; ++p) muR[p] += d.amt * dFdp[d.cmt * np + p] * lamR[d.cmt];
-      if (dlag && fx0) {
+      // a recorded dose's exact term; a pushed one keeps the F_X linearization
+      if (dlag && !rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlag) && fx0) {
         double sc = 0.0;                          // lambda^T F_X[:,c]
         for (int i = 0; i < nBase; ++i) sc += lamR[i] * fx0[i * nBase + d.cmt];
         for (int p = 0; p < np; ++p) muR[p] += -d.amtF * dlag[d.cmt * np + p] * sc;
@@ -261,11 +262,11 @@ static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
       for (int j = 0; j < nBase; ++j) lamR[j] = 0.0;
       break;
     case 5:
-      rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlag);
+      rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlag, haveDf ? dFdp.data() : NULL);
       lamR[d.cmt] = 0.0;
       break;
     case 6:
-      rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlag);
+      rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlag, haveDf ? dFdp.data() : NULL);
       lamR[d.cmt] *= d.amt;
       break;
     case 9:
@@ -9111,7 +9112,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               // window F-jump.
               if (op->adjDfOff >= 0 && _wh0 != EVID0_SS2 && _wh0 != EVID0_SS20) {
                 rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _cmtD;
-                _d.amt = getDose(ind, ind->ix[i]); _d.type = 0;
+                _d.amt = getDose(ind, ind->ix[i]); _d.type = 0; _d.rec = i;
                 _d.amtF = getAmt(ind, ind->id, _cmtD, _d.amt, xout, yp);
                 doseRec.push_back(_d);
               }

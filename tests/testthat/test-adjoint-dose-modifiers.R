@@ -269,6 +269,83 @@ rxTest({
     expect_lt(as.numeric(sub("^.*discrete_forward_sens\\| = ([^ ]+) .*$", "\\1", .line)), 1e-8)
   })
 
+  test_that("f() on a replaced or multiplied compartment carries its dual in every driver", {
+    # the forward replaces with F*amt and multiplies by F*amt, so a replace adds
+    # lambda_c*amt*dF and a multiply lambda_c*x-_c*amt*dF
+    .b <- "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center"
+    .tF <- paste0(.b, "\nf(depot) <- fd")
+    .tFL <- paste0(.tF, "\nalag(depot) <- lag")
+    .nlF <- "d/dt(depot) <- -ka*depot/(1 + depot/40)\nd/dt(center) <- ka*depot/(1 + depot/40) - k*center\nf(depot) <- fd"
+    .pF <- c(ka = 1.2, k = 0.2, fd = 0.7)
+    .pFL <- c(.pF, lag = 0.4)
+    .scen <- list(
+      multiply = list(.tF, .pF, et(amt = 100, cmt = "depot") |> et(time = 3, evid = 6, amt = 0.5, cmt = "depot") |> et(c(1, 4, 6))),
+      replace = list(.tF, .pF, et(amt = 100, cmt = "depot") |> et(time = 3, evid = 5, amt = 10, cmt = "depot") |> et(c(1, 4, 6))),
+      replaceAtLastRecord = list(.tF, .pF, et(amt = 100, cmt = "depot") |> et(c(1, 3)) |>
+        et(time = 3, evid = 5, amt = 10, cmt = "depot")),
+      lagDoseMultiply = list(.tFL, .pFL, et(amt = 100, cmt = "depot") |> et(time = 3, amt = 80, cmt = "depot") |>
+        et(time = 3, evid = 6, amt = 0.5, cmt = "depot") |> et(c(1, 2, 4, 6))),
+      lagMultiplyDose = list(.tFL, .pFL, et(amt = 100, cmt = "depot") |> et(time = 3, evid = 6, amt = 0.5, cmt = "depot") |>
+        et(time = 3, amt = 80, cmt = "depot") |> et(c(1, 2, 4, 6))),
+      nonlinear = list(.nlF, .pF, et(amt = 100, cmt = "depot") |> et(time = 1, evid = 6, amt = 0.5, cmt = "depot") |>
+        et(time = 2, evid = 5, amt = 30, cmt = "depot") |> et(c(0.5, 1.6, 3, 5)))
+    )
+    for (.nm in names(.scen)) {
+      .k <- .scen[[.nm]]
+      .ref <- .adjFd(.k[[1]], .k[[3]], .k[[2]])
+      for (.m in c("rk4s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj", "abs")) {
+        .a <- rxSolveAdjointRk4(.k[[1]], .k[[3]], params = .k[[2]], calcSens = names(.k[[2]]), method = .m,
+          atol = 1e-10, rtol = 1e-10, hmin = if (.m %in% c("rk4s", "abs")) 0.001 else 0)
+        for (.cn in names(.ref)) {
+          expect_lt(max(abs(.a[[.cn]] - .ref[[.cn]])), 1e-6, label = paste(.nm, .m, .cn))
+        }
+      }
+    }
+    # the liblsodaadj discrete forward replay carries the same terms
+    withr::local_envvar(RX_LSADJ_SELFCHECK = "1")
+    .out <- utils::capture.output(
+      rxSolveAdjointRk4(.tFL, .scen$lagMultiplyDose[[3]], params = .pFL, calcSens = names(.pFL), method = "liblsodaadj", cores = 1),
+      type = "message"
+    )
+    .line <- grep("max\\|adjoint - discrete_forward_sens\\|", .out, value = TRUE)
+    expect_length(.line, 1L)
+    expect_lt(as.numeric(sub("^.*discrete_forward_sens\\| = ([^ ]+) .*$", "\\1", .line)), 1e-8)
+  })
+
+  test_that("alag() on a nonlinear dosed compartment uses f at both states in every driver", {
+    # the dose-time transversality is lambda^T (f(x-) - f(x+)), not its F_X
+    # linearization, which is off when the dosed compartment is nonlinear
+    .nl <- "d/dt(depot) <- -ka*depot/(1 + depot/40)\nd/dt(center) <- ka*depot/(1 + depot/40) - k*center\nalag(depot) <- lag"
+    .mm <- "d/dt(center) <- -vm*center/(km + center)\nf(center) <- fc\nalag(center) <- lc"
+    .scen <- list(
+      saturable = list(.nl, c(ka = 1.2, k = 0.2, lag = 0.4), et(amt = 100, cmt = "depot") |> et(c(0.5, 1.6, 3, 5))),
+      saturableTwice = list(.nl, c(ka = 1.2, k = 0.2, lag = 0.4),
+        et(amt = 100, cmt = "depot") |> et(time = 2, amt = 30, cmt = "depot") |> et(c(0.5, 1.6, 3, 5))),
+      michaelisMenten = list(.mm, c(vm = 20, km = 10, fc = 0.8, lc = 0.5), et(amt = 100, cmt = "center") |> et(c(1, 2, 4, 6)))
+    )
+    for (.nm in names(.scen)) {
+      .k <- .scen[[.nm]]
+      .ref <- .adjFd(.k[[1]], .k[[3]], .k[[2]])
+      for (.m in c("rk4s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj", "abs")) {
+        .a <- rxSolveAdjointRk4(.k[[1]], .k[[3]], params = .k[[2]], calcSens = names(.k[[2]]), method = .m,
+          atol = 1e-10, rtol = 1e-10, hmin = if (.m %in% c("rk4s", "abs")) 0.001 else 0)
+        for (.cn in names(.ref)) {
+          expect_lt(max(abs(.a[[.cn]] - .ref[[.cn]])), 2e-6, label = paste(.nm, .m, .cn))
+        }
+      }
+    }
+    # the liblsodaadj discrete forward replay carries the same term
+    withr::local_envvar(RX_LSADJ_SELFCHECK = "1")
+    .out <- utils::capture.output(
+      rxSolveAdjointRk4(.mm, .scen$michaelisMenten[[3]], params = .scen$michaelisMenten[[2]],
+        calcSens = names(.scen$michaelisMenten[[2]]), method = "liblsodaadj", cores = 1),
+      type = "message"
+    )
+    .line <- grep("max\\|adjoint - discrete_forward_sens\\|", .out, value = TRUE)
+    expect_length(.line, 1L)
+    expect_lt(as.numeric(sub("^.*discrete_forward_sens\\| = ([^ ]+) .*$", "\\1", .line)), 1e-8)
+  })
+
   test_that("the liblsodaadj self-check replay agrees with the adjoint for f() and alag()", {
     withr::local_envvar(RX_LSADJ_SELFCHECK = "1")
     .out <- utils::capture.output(
