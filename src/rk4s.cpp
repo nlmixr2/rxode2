@@ -260,9 +260,8 @@ static inline void rk4sLagJump(size_t di, const rk4s_dose &d, const std::vector<
 //   ss = 2   (type 10, at the ss dose's position): the state gains the added
 //            regimen's steady state, mu += lambda^T S2 (S2 = dY_ss_new/dp,
 //            nBase x np, or NULL); lambda passes through.
-// A replace/multiply that a modeled lag moves adds mu += dlag[c][p] * lambda_n+^T r
-// (rxAdjJumpTerm).  A constant replace/multiply value contributes nothing else to
-// mu; a modeled value would add mu += lambda_n+[c] * dvalue/dp (a later addition).
+// A replace/multiply that a modeled lag moves adds mu += dlag[c][p] * lambda_n+^T r,
+// and a modeled F (x+ = F*amt, or alpha = F*amt) its f() dual (rxAdjJumpTerm).
 // fx0 = F_X (df/dy) at this step's stage 0 (post-dose state), row-major i*nBase+j,
 // or NULL; dlag = d(lag)/dtheta block (c*np+p) or NULL.  When a bolus into cmt c has
 // a modeled lag, the dose time t_d+lag(theta) shifts with theta, adding the
@@ -290,11 +289,11 @@ static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
       for (int j = 0; j < nBase; ++j) lamR[j] = 0.0;
       break;
     case 5:
-      rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlag);
+      rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlag, haveDf ? dFdp.data() : NULL);
       lamR[d.cmt] = 0.0;
       break;
     case 6:
-      rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlag);
+      rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlag, haveDf ? dFdp.data() : NULL);
       lamR[d.cmt] *= d.amt;
       break;
     case 9:

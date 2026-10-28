@@ -41,12 +41,12 @@ rxTest({
         et(time = 1, evid = 5, amt = 30, cmt = "center") |>
         et(c(0.5, 2, 3))
     ),
-    # a replace with 0 or a multiply by 0 carries no f() term of its own
+    # f() also scales the replace value and the multiply factor
     replaceDose = list(
       txt = .txtF,
       p = .pF,
       ev = et(amt = 100, cmt = "depot") |>
-        et(time = 3, evid = 5, amt = 0, cmt = "depot") |>
+        et(time = 3, evid = 5, amt = 10, cmt = "depot") |>
         et(time = 3, amt = 80, cmt = "depot") |>
         et(c(1, 4, 6))
     ),
@@ -54,7 +54,7 @@ rxTest({
       txt = .txtF,
       p = .pF,
       ev = et(amt = 100, cmt = "depot") |>
-        et(time = 3, evid = 6, amt = 0, cmt = "depot") |>
+        et(time = 3, evid = 6, amt = 0.5, cmt = "depot") |>
         et(time = 3, amt = 80, cmt = "depot") |>
         et(c(1, 4, 6))
     ),
