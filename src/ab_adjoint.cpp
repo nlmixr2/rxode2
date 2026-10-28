@@ -76,6 +76,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
     const abRecCall &C = abAdjCalls[c];
     callY[c].assign(nBase, 0.0);
     if (C.stepEnd > C.stepBegin) for (int b = 0; b < nBase; ++b) callY[c][b] = abAdjSteps[C.stepBegin].y[b];
+    else if ((int)C.yEnd.size() == nBase) callY[c] = C.yEnd;   // a call that took no step
     callEv[c] = abEventsAt(C.t0, ind->n_all_times, c >= 1, callY[c].data());
   }
 
