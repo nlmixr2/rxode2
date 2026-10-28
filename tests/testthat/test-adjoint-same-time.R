@@ -48,7 +48,7 @@ rxTest({
     }
   })
 
-  test_that("an ss = 1 dose replaces the state of the jumps recorded before it in liblsodaadj", {
+  test_that("an ss = 1 dose replaces the state of the jumps recorded before it", {
     # the jumps at the ss time sort before the ss dose, which resets the state to
     # its steady state, so they do not reach later observations
     .ss <- list(
@@ -67,11 +67,14 @@ rxTest({
     )
     for (.nm in names(.ss)) {
       .ref <- .adjFd(.base, .ss[[.nm]], .p0)
-      .a <- rxSolveAdjointRk4(.base, .ss[[.nm]], params = .p0, calcSens = names(.p0), method = "liblsodaadj",
-        atol = 1e-10, rtol = 1e-10, ssAtol = 1e-13, ssRtol = 1e-13, maxSS = 50000)
-      expect_equal(nrow(.a), length(.ref[[1]]), label = paste(.nm, "rows"))
-      for (.cn in names(.ref)) {
-        expect_lt(max(abs(.a[[.cn]] - .ref[[.cn]])), 1e-6, label = paste(.nm, .cn))
+      for (.m in c("rk4s", "ros4s", "radauiia5s", "dop853s", "dop853s+ros4s", "liblsodaadj")) {
+        .a <- rxSolveAdjointRk4(.base, .ss[[.nm]], params = .p0, calcSens = names(.p0), method = .m,
+          atol = 1e-10, rtol = 1e-10, hmin = if (.m == "rk4s") 0.001 else 0,
+          ssAtol = 1e-13, ssRtol = 1e-13, maxSS = 50000)
+        expect_equal(nrow(.a), length(.ref[[1]]), label = paste(.nm, .m, "rows"))
+        for (.cn in names(.ref)) {
+          expect_lt(max(abs(.a[[.cn]] - .ref[[.cn]])), 1e-6, label = paste(.nm, .m, .cn))
+        }
       }
     }
   })

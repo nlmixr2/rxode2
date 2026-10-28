@@ -218,6 +218,10 @@ static inline void rk4sIniOnlyFill(rx_solving_options *op, rx_solving_options_in
 //   multiply (state c *= a): diag c is a        -> lambda[c] *= a.
 //   rate     (type 9, rate into c changes by amt at a lagged time): lambda
 //            unchanged; mu += -amt * dlag[c][p] * lambda[c].
+//   ss = 1   (type 8, at the ss dose's position): the dose replaces the whole
+//            state with its steady state, so the events recorded before it at
+//            this step do not reach later observations; the transpose stops
+//            here and the caller adds the steady-state term.
 // A constant replace/multiply value contributes nothing to mu; a modeled value
 // would add mu += lambda_n+[c] * dvalue/dp (a later addition).
 // fx0 = F_X (df/dy) at this step's stage 0 (post-dose state), row-major i*nBase+j,
@@ -255,6 +259,8 @@ static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
     case 9:
       if (dlag) for (int p = 0; p < np; ++p) muR[p] += -d.amt * dlag[d.cmt * np + p] * lamR[d.cmt];
       break;
+    case 8:
+      return;
     }
   }
 }
@@ -9079,6 +9085,12 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         } else if (isDose(_evCur)) {
           int _wh, _cmtD, _wh100, _whI, _wh0;
           getWh(_evCur, &_wh, &_cmtD, &_wh100, &_whI, &_wh0);
+          // an ss = 1 dose (a bolus, or an infusion's start) replaces the state:
+          // mark its position among this step's events
+          if (_wh0 == EVID0_SS && (_whI == 0 || getDose(ind, ind->ix[i]) > 0)) {
+            rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _cmtD; _d.amt = 0.0; _d.type = 8;
+            doseRec.push_back(_d);
+          }
           if (_cmtD >= 0 && _cmtD < op->adjNbase) {
             if (_whI == 0) {                                // additive bolus (F-jump)
               // A superposition (ss==2) dose is NOT applied to the window state
