@@ -3095,6 +3095,20 @@ static thread_local double _adjSSinfAmtRaw = 0.0;   // raw (non-F) amt, for the 
 static thread_local int    _adjSSinfFixed = 0;
 static thread_local double _adjSSinfFixW = 0.0;
 static thread_local double _adjSSinfFixW2 = 0.0;   // a fixed dur's dF weight in the second phase
+// Hands a fixed-rate or fixed-dur (wI) ss infusion into cmt c to the adjoint: raw
+// rate rawR (F-scaled for a dur, F = f), n0 infusions on for dur0 then n1 for
+// dur1 (1 and 0 when dur <= ii).  The dF weights: F scales each fixed-dur rate,
+// and moves the oldest fixed-rate infusion's end, the phase switch, by dur/F.
+static inline void rxAdjSSinfFixedHandoff(int wI, int c, double rawR, double f, double dur,
+                                          double dur0, double dur1, double n0, double n1) {
+  double R = (wI == EVIDF_INF_DUR) ? f * rawR : rawR;
+  _adjSSinfKind = 1; _adjSSinfCmt = c;
+  _adjSSinfDur = dur0; _adjSSinfRate = n0 * R;
+  _adjSSinfDur2 = dur1; _adjSSinfRate2 = n1 * R;
+  _adjSSinfFixed = (wI == EVIDF_INF_DUR) ? 2 : 1;
+  _adjSSinfFixW = (wI == EVIDF_INF_DUR) ? n0 * rawR : ((f != 0.0) ? rawR * dur / f : 0.0);
+  _adjSSinfFixW2 = (wI == EVIDF_INF_DUR) ? n1 * rawR : 0.0;
+}
 // STICKY snapshot of the ss handoff for the liblsodaadj backward fill: the
 // forward loop calls handleSS again for every addl-expanded dose (even under
 // addlDropSs), and each entry RESETS the live handoff -- so the driver snapshots
@@ -4213,15 +4227,8 @@ void handleSS(int *neq,
           int _w, _c, _w100, _wI, _w0;
           getWh(getEvid(ind, ind->idose[infBixds]), &_w, &_c, &_w100, &_wI, &_w0);
           if (_wI == EVIDF_INF_RATE || _wI == EVIDF_INF_DUR) {
-            double _rawR = getDose(ind, ind->idose[infBixds]);
-            double _f = getAmt(ind, ind->id, _c, 1.0, xout, yp);
-            _adjSSinfKind = 1; _adjSSinfCmt = _c;
-            _adjSSinfDur = dur; _adjSSinfDur2 = 0.0;
-            _adjSSinfRate = (_wI == EVIDF_INF_DUR) ? _f * _rawR : _rawR;
-            _adjSSinfRate2 = 0.0;
-            _adjSSinfFixed = (_wI == EVIDF_INF_DUR) ? 2 : 1;
-            _adjSSinfFixW = (_wI == EVIDF_INF_DUR) ? _rawR : ((_f != 0.0) ? _rawR * dur / _f : 0.0);
-            _adjSSinfFixW2 = 0.0;
+            rxAdjSSinfFixedHandoff(_wI, _c, getDose(ind, ind->idose[infBixds]),
+                                   getAmt(ind, ind->id, _c, 1.0, xout, yp), dur, dur, 0.0, 1.0, 0.0);
           }
         }
       }
@@ -4319,19 +4326,10 @@ void handleSS(int *neq,
           int _w, _c, _w100, _wI, _w0;
           getWh(getEvid(ind, ind->idose[infBixds]), &_w, &_c, &_w100, &_wI, &_w0);
           if (_wI == EVIDF_INF_RATE || _wI == EVIDF_INF_DUR) {
-            // a fixed duration's rate is F-scaled
-            double _rawR = getDose(ind, ind->idose[infBixds]), _R = _rawR;
-            double _f = getAmt(ind, ind->id, _c, 1.0, xout, yp);
-            if (_wI == EVIDF_INF_DUR) _R *= _f;
-            _adjSSinfKind = 1; _adjSSinfCmt = _c;
-            _adjSSinfDur  = offTime; _adjSSinfRate  = (numDoseInf + 1) * _R;
-            _adjSSinfDur2 = addTime; _adjSSinfRate2 = numDoseInf * _R;
-            // dF weights: F scales each overlapping fixed-dur rate (numDoseInf + 1,
-            // then numDoseInf of them), and moves the oldest fixed-rate infusion's
-            // end, the phase switch, by dur/F
-            _adjSSinfFixed = (_wI == EVIDF_INF_DUR) ? 2 : 1;
-            _adjSSinfFixW = (_wI == EVIDF_INF_DUR) ? (numDoseInf + 1) * _rawR : ((_f != 0.0) ? _rawR * dur / _f : 0.0);
-            _adjSSinfFixW2 = (_wI == EVIDF_INF_DUR) ? numDoseInf * _rawR : 0.0;
+            // numDoseInf + 1 overlapping infusions, then numDoseInf of them
+            rxAdjSSinfFixedHandoff(_wI, _c, getDose(ind, ind->idose[infBixds]),
+                                   getAmt(ind, ind->id, _c, 1.0, xout, yp), dur, offTime, addTime,
+                                   numDoseInf + 1.0, (double)numDoseInf);
           } else if (_wI == EVIDF_MODEL_RATE_ON || _wI == EVIDF_MODEL_DUR_ON) {
             // modeled large-duration ss (overlapping infusions + moving boundary):
             // not yet supported -- flag so the driver errors, not silently wrong.
@@ -4459,16 +4457,9 @@ void handleSS(int *neq,
           int _w, _c, _w100, _wI, _w0;
           getWh(getEvid(ind, ind->idose[infBixds]), &_w, &_c, &_w100, &_wI, &_w0);
           if (_wI == EVIDF_INF_RATE || _wI == EVIDF_INF_DUR) {
-            // a fixed duration's rate is F-scaled; a fixed rate's duration is
-            double _rawR = getDose(ind, ind->idose[infBixds]);
-            double _f = getAmt(ind, ind->id, _c, 1.0, xout, yp);
-            _adjSSinfKind = 1; _adjSSinfCmt = _c;
-            _adjSSinfDur = dur; _adjSSinfDur2 = dur2;
-            _adjSSinfRate = (_wI == EVIDF_INF_DUR) ? _f * _rawR : _rawR;
-            _adjSSinfRate2 = 0.0;                 // OFF phase (dur<ii)
-            _adjSSinfFixed = (_wI == EVIDF_INF_DUR) ? 2 : 1;
-            _adjSSinfFixW = (_wI == EVIDF_INF_DUR) ? _rawR : ((_f != 0.0) ? _rawR * dur / _f : 0.0);
-            _adjSSinfFixW2 = 0.0;
+            // one ON phase, then OFF (dur < ii)
+            rxAdjSSinfFixedHandoff(_wI, _c, getDose(ind, ind->idose[infBixds]),
+                                   getAmt(ind, ind->id, _c, 1.0, xout, yp), dur, dur, dur2, 1.0, 0.0);
           } else if (_wI == EVIDF_MODEL_RATE_ON || _wI == EVIDF_MODEL_DUR_ON) {
             // modeled rate()/dur(): the effective ON rate is R = F*amt/D (the
             // bioavailability-adjusted amount, matching the non-ss dual's getAmt);
