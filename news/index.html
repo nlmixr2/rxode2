@@ -127,6 +127,10 @@
 <h4 id="event-tables-development-version">Event tables<a class="anchor" aria-label="anchor" href="#event-tables-development-version"></a></h4>
 <ul><li>A simulation that stops with an error no longer leaves its draws for the next solve. The residuals, simulated thetas and per-study draws it had made stayed behind, and the next solve without residuals of its own used them: after a failed <code>rxSolve(m, params, ev, sigma = ...)</code>, a plain solve of a model with that residual gave values up to 2.6 off.</li>
 </ul></div>
+<div class="section level4">
+<h4 id="documentation-development-version">Documentation<a class="anchor" aria-label="anchor" href="#documentation-development-version"></a></h4>
+<ul><li>The pipeline article no longer saves its simulation into the installed package directory (<a href="https://github.com/nlmixr2/rxode2/issues/1506" class="external-link">#1506</a>).</li>
+</ul></div>
 </div>
 <div class="section level3">
 <h3 id="new-features-development-version">New features<a class="anchor" aria-label="anchor" href="#new-features-development-version"></a></h3>
