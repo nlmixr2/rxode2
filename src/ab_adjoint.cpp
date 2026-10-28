@@ -11,8 +11,10 @@
 // per y-point; an AB step distributes lam[j+1] via dt*c_i*J(p_{j-i})^T and
 // accumulates mu += dt*c_i*F_p(p_{j-i})^T lam[j+1], a startup step uses the RK4
 // transpose.  The events at a call start (a bolus with its modeled f() and alag()
-// duals, reset, replace, multiply) transpose last first; infusion duals are not
-// carried, and rxSolve() refuses them for abs.
+// duals, reset, replace, multiply) transpose last first.  An infusion rate is
+// constant within a call: its d(rate)/dp forcing enters with F_p, and a rate
+// change that f(), alag(), rate() or dur() moves adds its transversality at the
+// call start (rxAdjInfusionWindows, shared with liblsodaadj).
 //
 // Observations land on call ends (no interpolation).  y0 is p-independent, so
 // there is no t0 quadrature term.
@@ -81,9 +83,50 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   for (size_t c = 0; c < nCalls; ++c)
     callEv[c] = abEventsAt(abAdjCalls[c].t0, ind->n_all_times, c >= 1, abCallY0(c).data());
 
+  // Infusion-window duals per call (rxAdjInfusionWindows): W[c] = d(rate)/dp
+  // forcing inside call c, B[c] = the transversality of a moving rate change at
+  // its start, both nBase x np (a*np+p) or empty, from the dR, dF and dlag blocks
+  // at the call's start state.
+  struct abInfSeg { double t0; std::vector<double> y0, infRate, infDurMult, infDfMult, offFac, offDfFac, lagRate; };
+  std::vector<abInfSeg> infSeg(nCalls);
+  for (size_t c = 0; c < nCalls; ++c) {
+    infSeg[c].t0 = abAdjCalls[c].t0; infSeg[c].y0 = abCallY0(c); infSeg[c].infRate = abAdjCalls[c].infRate;
+  }
+  rxAdjInfusionWindows(op, ind, nBase, eff, infSeg);
+  std::vector<std::vector<double> > infW(nCalls), infB(nCalls);
+  {
+    std::vector<double> Ai(eff, 0.0);
+    for (size_t c = 0; c < nCalls; ++c) {
+      const abInfSeg &S = infSeg[c];
+      bool w = !S.infDurMult.empty() || !S.infDfMult.empty();
+      bool b = !S.offFac.empty() || !S.offDfFac.empty() || !S.lagRate.empty();
+      if (!w && !b) continue;
+      for (int i = 0; i < eff; ++i) Ai[i] = 0.0;
+      for (int i = 0; i < nBase; ++i) Ai[i] = S.y0[i];
+      calc_lhs(cSub, S.t0, Ai.data(), ind->lhs);
+      const double *dR = op->adjDrateOff >= 0 ? &ind->lhs[op->adjDrateOff] : NULL;
+      const double *dF = op->adjDfOff >= 0 ? &ind->lhs[op->adjDfOff] : NULL;
+      const double *dL = op->adjDlagOff >= 0 ? &ind->lhs[op->adjDlagOff] : NULL;
+      auto wt = [&](const std::vector<double> &v, int a) { return v.empty() ? 0.0 : v[a]; };
+      if (w) infW[c].assign((size_t)nBase * np, 0.0);
+      if (b) infB[c].assign((size_t)nBase * np, 0.0);
+      for (int a = 0; a < nBase; ++a) for (int p = 0; p < np; ++p) {
+        size_t q = (size_t)a * np + p;
+        if (w) infW[c][q] = (dR ? wt(S.infDurMult, a) * dR[q] : 0.0) + (dF ? wt(S.infDfMult, a) * dF[q] : 0.0);
+        if (b) infB[c][q] = (dR ? wt(S.offFac, a) * dR[q] : 0.0) + (dF ? wt(S.offDfFac, a) * dF[q] : 0.0) -
+                 (dL ? wt(S.lagRate, a) * dL[q] : 0.0);
+      }
+    }
+  }
+
   double *lhs = ind->lhs;
   std::vector<double> A(eff, 0.0), Aw(eff, 0.0);
   std::vector<double> mu(np, 0.0);
+  // mu += s * W^T v
+  auto addW = [&](const std::vector<double> &W, const double *v, double s) {
+    if (W.empty()) return;
+    for (int p = 0; p < np; ++p) { double z = 0.0; for (int a = 0; a < nBase; ++a) z += W[(size_t)a * np + p] * v[a]; mu[p] += s * z; }
+  };
   std::vector<double> k1(eff), k2(eff), k3(eff), k4(eff);
   int neqA[2]; neqA[0] = eff; neqA[1] = cSub;
 
@@ -104,7 +147,8 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   // k4=f(yb+dt k3).  Adds to lamIn (costate of yb) and mu.
   std::vector<double> s2(nBase), s3(nBase), s4(nBase), tmp(nBase);
   std::vector<double> k1b(nBase), k2b(nBase), k3b(nBase), k4b(nBase), sb(nBase);
-  auto rk4T = [&](const double *yb, double t, double dt, const double *lamOut, double *lamIn) {
+  auto rk4T = [&](const double *yb, double t, double dt, const double *lamOut, double *lamIn,
+                  const std::vector<double> &W) {
     fEval(t, yb, k1);
     for (int b = 0; b < nBase; ++b) s2[b] = yb[b] + 0.5 * dt * k1[b];  fEval(t + 0.5*dt, s2.data(), k2);
     for (int b = 0; b < nBase; ++b) s3[b] = yb[b] + 0.5 * dt * k2[b];  fEval(t + 0.5*dt, s3.data(), k3);
@@ -121,13 +165,13 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
     auto Pt = [&](const std::vector<double> &P, const double *v){ for(int p=0;p<np;++p){double s=0;for(int a=0;a<nBase;++a)s+=P[a*np+p]*v[a];mu[p]+=s;} };
     // reverse (topological): yout -> k4,s4 -> k3,s3 -> k2,s2 -> k1
     for (int b=0;b<nBase;++b){ double a=lamOut[b]; sb[b]=a; k1b[b]=(dt/6)*a; k2b[b]=(2*dt/6)*a; k3b[b]=(2*dt/6)*a; k4b[b]=(dt/6)*a; }
-    Jt(J4, k4b.data(), tmp); Pt(P4, k4b.data());                 // k4=f(s4)
+    Jt(J4, k4b.data(), tmp); Pt(P4, k4b.data()); addW(W, k4b.data(), 1.0);                 // k4=f(s4)
     for (int b=0;b<nBase;++b){ sb[b]+=tmp[b]; k3b[b]+=dt*tmp[b]; } // s4=yb+dt k3
-    Jt(J3, k3b.data(), tmp); Pt(P3, k3b.data());                 // k3=f(s3)
+    Jt(J3, k3b.data(), tmp); Pt(P3, k3b.data()); addW(W, k3b.data(), 1.0);                 // k3=f(s3)
     for (int b=0;b<nBase;++b){ sb[b]+=tmp[b]; k2b[b]+=0.5*dt*tmp[b]; } // s3=yb+.5dt k2
-    Jt(J2, k2b.data(), tmp); Pt(P2, k2b.data());                 // k2=f(s2)
+    Jt(J2, k2b.data(), tmp); Pt(P2, k2b.data()); addW(W, k2b.data(), 1.0);                 // k2=f(s2)
     for (int b=0;b<nBase;++b){ sb[b]+=tmp[b]; k1b[b]+=0.5*dt*tmp[b]; } // s2=yb+.5dt k1
-    Jt(J1, k1b.data(), tmp); Pt(P1, k1b.data());                 // k1=f(yb)
+    Jt(J1, k1b.data(), tmp); Pt(P1, k1b.data()); addW(W, k1b.data(), 1.0);                 // k1=f(yb)
     for (int b=0;b<nBase;++b) lamIn[b] += sb[b] + tmp[b];
   };
 
@@ -166,6 +210,9 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
     }
   };
   std::vector<double> endCostate(nBase), lam;
+  // the RK4 startup transpose re-evaluates f, which reads the infusion rates:
+  // each call is transposed with the rates it ran with
+  std::vector<double> infLive(ind->InfusionRate, ind->InfusionRate + nBase);
   for (int i = 0; i < ind->n_all_times; ++i) {
     if (!isObs(getEvid(ind, ind->ix[i]))) continue;
     double ti = ind->timeThread[ind->ix[i]];
@@ -185,6 +232,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
           abJumpT(abEventsAt(ti, i, true, out), ti, out, endCostate.data(), mu.data());
         for (int c = cObs; c >= 0; --c) {
           const abRecCall &call = abAdjCalls[c];
+          for (int b = 0; b < nBase; ++b) ind->InfusionRate[b] = call.infRate[b];
           int M = (int)(call.stepEnd - call.stepBegin), ord = call.order;
           const double *cc = ab_coef[ord - 1];
           lam.assign((size_t)(M + 1) * nBase, 0.0);
@@ -195,7 +243,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
             const double *lamOut = &lam[(size_t)(j + 1) * nBase];
             double *lamJ = &lam[(size_t)j * nBase];
             if (st.isRK4) {
-              rk4T(st.y.data(), st.t, st.dt, lamOut, lamJ);
+              rk4T(st.y.data(), st.t, st.dt, lamOut, lamJ, infW[c]);
             } else {
               for (int ii = 0; ii < ord; ++ii) {
                 const abRecStep &sh = abAdjSteps[g - ii];      // history point p_{j-ii}
@@ -204,10 +252,12 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
                 for (int b = 0; b < nBase; ++b) { double s = 0; for (int a = 0; a < nBase; ++a) s += fx[a * nBase + b] * lamOut[a]; lamTgt[b] += st.dt * cc[ii] * s; }
                 if (ii == 0) for (int b = 0; b < nBase; ++b) lamTgt[b] += lamOut[b];  // + identity from p_j
                 for (int p = 0; p < np; ++p) { double s = 0; for (int a = 0; a < nBase; ++a) s += fp[a * np + p] * lamOut[a]; mu[p] += st.dt * cc[ii] * s; }
+                addW(infW[c], lamOut, st.dt * cc[ii]);         // the rate is part of each f
               }
             }
           }
           for (int b = 0; b < nBase; ++b) endCostate[b] = lam[b];  // costate of call c's start
+          addW(infB[c], endCostate.data(), 1.0);                     // a moving rate change at t0_c
           // the jumps at t0_c -> costate of the pre-event state (call c-1's end, or
           // the initial conditions for call 0)
           abJumpT(callEv[c], abAdjCalls[c].t0, abCallY0(c).data(), endCostate.data(), mu.data());
@@ -231,6 +281,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
       for (int p = 0; p < np; ++p) out[sensOff + k * np + p] = mu[p];
     }
   }
+  for (int b = 0; b < nBase; ++b) ind->InfusionRate[b] = infLive[b];
 }
 
 extern "C" void ind_ab_adj(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis) {

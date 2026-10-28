@@ -307,9 +307,13 @@
   replace (`evid = 5`) or multiply (`evid = 6`) on the lagged compartment,
   which the lag shifts like a dose; before, every adjoint method left it out.
 
-- `method = "abs"` now includes the bioavailability (`f()`) and lag-time
-  (`alag()`) adjoint sensitivities of a bolus dose.  It still refuses them,
-  and modeled `rate()` and `dur()`, for infusion doses.
+- `method = "abs"` now includes the bioavailability (`f()`), lag-time
+  (`alag()`), `rate()` and `dur()` adjoint sensitivities of bolus and
+  infusion doses.
+
+- `method = "abs"` adjoint sensitivities while an infusion ran were off by
+  up to 5e-5 at `hmin = 0.001`: the backward sweep re-evaluated each call's
+  startup steps with the infusion rates of the end of the solve.
 
 - With `method = "cvodesadj"`, and with `method = "liblsodaadj"` when
   nothing was integrated between resets, an observation recorded at the
@@ -323,11 +327,6 @@
 - `method = "cvodesadj"` now includes the bioavailability (`f()`)
   sensitivity, also for an observation at a dose time; before, it was
   missing entirely.
-
-- `method = "abs"` now stops with an error when sensitivities are
-  requested through an `f()`, `alag()`, `rate()` or `dur()` that depends on
-  a sensitivity parameter, which it does not support, instead of silently
-  leaving those terms out.  Constant modifiers still solve.
 
 - `rxSolveAdjointRk4()` now carries the whole model into the adjoint
   expansion.  Before, initial conditions such as `y(0) <- 1` were dropped

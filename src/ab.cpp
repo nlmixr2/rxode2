@@ -33,7 +33,8 @@ static const double ab_coef[8][8] = {
 // these and runs the exact reverse-mode transpose.  Recompute J/F_p in the backward
 // from the recorded y via calc_lhs (RK4 stages are recomputed, not recorded).
 struct abRecStep { std::vector<double> y; double t, dt; int isRK4; };
-struct abRecCall { size_t stepBegin, stepEnd; int order; double t0, t1; std::vector<double> yEnd; };
+struct abRecCall { size_t stepBegin, stepEnd; int order; double t0, t1; std::vector<double> yEnd;
+                   std::vector<double> infRate; };   // InfusionRate[0..nBase) during the call
 static thread_local bool                  abAdjActive = false;
 static thread_local int                   abAdjNbase  = 0;
 static thread_local std::vector<abRecStep> abAdjSteps;
@@ -88,7 +89,11 @@ static inline void ab_do_steps(rx_solving_options_ind *ind, rx_solving_options *
 
   // discrete-adjoint: open a call record (this whole ab_do_steps call = one segment).
   size_t _abCallBegin = 0;
-  if (abAdjActive) _abCallBegin = abAdjSteps.size();
+  std::vector<double> _abInfRate;
+  if (abAdjActive) {
+    _abCallBegin = abAdjSteps.size();
+    _abInfRate.assign(ind->InfusionRate, ind->InfusionRate + abAdjNbase);
+  }
 
   while ((sign > 0 && t < xout) || (sign < 0 && t > xout)) {
     double current_dt = dt;
@@ -146,6 +151,7 @@ static inline void ab_do_steps(rx_solving_options_ind *ind, rx_solving_options *
     abRecCall _c; _c.stepBegin = _abCallBegin; _c.stepEnd = abAdjSteps.size();
     _c.order = order; _c.t0 = xp; _c.t1 = t;
     _c.yEnd.assign(y.begin(), y.begin() + abAdjNbase);
+    _c.infRate = std::move(_abInfRate);
     abAdjCalls.push_back(std::move(_c));
   }
 

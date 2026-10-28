@@ -78,30 +78,8 @@ rxTest({
     expect_lt(.e2, 0.01)
   })
 
-  test_that("abs refuses sensitivities through parameter-dependent infusions and still solves everything else", {
+  test_that("abs solves constant modifiers and non-sensitivity modifier parameters", {
     .base <- "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center"
-    .msg <- "method='abs' cannot calculate sensitivities through %s that depend on sensitivity parameters; use %s"
-    .both <- "method='rk4s' or method='liblsodaadj'"
-    .rateEv <- et(amt = 100, cmt = "depot", rate = -1) |> et(c(1, 2, 4, 8, 12))
-    .durEv <- et(amt = 100, cmt = "depot", rate = -2) |> et(c(1, 2, 4, 8, 12))
-    # abs carries the f() and alag() duals of a bolus, not of an infusion
-    .fixEv <- et(amt = 100, cmt = "depot", rate = 40) |> et(c(1, 2, 4, 8, 12))
-    .kinds <- list(
-      list(txt = "f(depot) <- fd", p = c(fd = 0.7), ev = .fixEv, what = "f()", use = .both),
-      list(txt = "alag(depot) <- lg", p = c(lg = 0.7), ev = .fixEv, what = "alag()", use = .both),
-      list(txt = "rate(depot) <- r", p = c(r = 40), ev = .rateEv, what = "rate()", use = .both),
-      list(txt = "dur(depot) <- dd", p = c(dd = 2.5), ev = .durEv, what = "dur()", use = .both),
-      list(txt = "f(depot) <- fd\nalag(depot) <- lg", p = c(fd = 0.7, lg = 0.7), ev = .fixEv, what = "f(), alag()", use = .both),
-      list(txt = "f(depot) <- fd\nrate(depot) <- r", p = c(fd = 0.7, r = 40), ev = .rateEv, what = "f(), rate()", use = .both)
-    )
-    for (.k in .kinds) {
-      .p <- c(ka = 1.2, k = 0.14, .k$p)
-      expect_error(
-        rxSolveAdjointRk4(paste(.base, .k$txt, sep = "\n"), .k$ev, params = .p, calcSens = names(.p), method = "abs"),
-        sprintf(.msg, .k$what, .k$use),
-        fixed = TRUE
-      )
-    }
     # constant modifiers, or ones whose parameter is not a sensitivity target,
     # carry no dual: abs solves them
     .tt <- c(1, 2, 4, 8, 12)
@@ -184,7 +162,7 @@ rxTest({
 
   .infBase <- "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center"
   .infTt <- c(0.5, 1, 1.5, 2, 4, 5.5, 8)
-  .infMeths <- c("rk4s", "dop853s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj")
+  .infMeths <- c("rk4s", "dop853s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj", "abs")
   .infCheck <- function(scen) {
     for (.nm in names(scen)) {
       .k <- scen[[.nm]]
@@ -194,7 +172,7 @@ rxTest({
       for (.meth in .infMeths) {
         .a <- rxSolveAdjointRk4(.txt, .ev,
           params = .k$p, calcSens = names(.k$p), method = .meth,
-          atol = 1e-11, rtol = 1e-11, hmin = if (.meth == "rk4s") 0.001 else 0
+          atol = 1e-11, rtol = 1e-11, hmin = if (.meth %in% c("rk4s", "abs")) 0.001 else 0
         )
         for (.cn in names(.fd)) {
           expect_lt(max(abs(.a[[.cn]] - .fd[[.cn]])), 1e-6, label = paste(.nm, .meth, .cn))
@@ -238,6 +216,18 @@ rxTest({
         ev = et(amt = 100, cmt = "depot", dur = 2.5) |> et(amt = 50, time = 4, cmt = "depot", dur = 2)),
       fixRateLag = list(txt = "f(depot) <- fd\nalag(depot) <- lg", p = c(ka = 1.2, k = 0.14, fd = 0.7, lg = 0.7),
         ev = et(amt = 100, cmt = "depot", rate = 40))
+    ))
+  })
+
+  test_that("overlapping, still-open and second-compartment infusion windows carry their duals in every driver", {
+    .infCheck(list(
+      overlap = list(txt = "f(depot) <- fd", p = c(ka = 1.2, k = 0.14, fd = 0.7),
+        ev = et(amt = 100, cmt = "depot", rate = 20) |> et(time = 2, amt = 60, rate = 30, cmt = "depot")),
+      # the stop lies past the last record
+      openAtEnd = list(txt = "f(depot) <- fd", p = c(ka = 1.2, k = 0.14, fd = 0.7),
+        ev = et(amt = 100, cmt = "depot", dur = 20)),
+      center = list(txt = "f(center) <- fc\nalag(center) <- lc", p = c(ka = 1.2, k = 0.14, fc = 0.8, lc = 0.3),
+        ev = et(amt = 100, cmt = "center", rate = 25) |> et(amt = 50, cmt = "depot", time = 1))
     ))
   })
 
