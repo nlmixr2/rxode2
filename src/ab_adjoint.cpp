@@ -43,7 +43,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   // order the forward solve applied them: 0 bolus (dPhi/dy=I; its modeled F and
   // alag duals, raw amt in factor and F*amt in amtF) | 3 reset (->0) | 5
   // replace[c] (->0) | 6 multiply[c] (*=factor).
-  struct abJump { int type, cmt; double factor, amtF = 0.0; int rec = -1; };   // rec: a replace/multiply's record index
+  struct abJump { int type, cmt; double factor, amtF = 0.0; int rec = -1; };   // rec: a bolus/replace/multiply's record index
   // the events at time t among the first `upTo` records (a reset only when it
   // follows a solved interval, `reset`); yPost is the base state after them
   auto abEventsAt = [&](double t, int upTo, bool reset, const double *yPost) {
@@ -63,7 +63,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
         std::vector<double> _y(eff, 0.0);
         for (int b = 0; b < nBase; ++b) _y[b] = yPost[b];
         abJump _j = {0, _cmt, _amt};
-        _j.amtF = getAmt(ind, ind->id, _cmt, _amt, t, _y.data());
+        _j.amtF = getAmt(ind, ind->id, _cmt, _amt, t, _y.data()); _j.rec = i;
         ev.push_back(_j);
       }
     }
@@ -149,7 +149,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
           const double *dF = &lhs[op->adjDfOff];
           for (int p = 0; p < np; ++p) muP[p] += E.factor * dF[E.cmt * np + p] * cost[E.cmt];
         }
-        if (op->adjDlagOff >= 0) {
+        if (op->adjDlagOff >= 0 && !rxAdjJumpTerm(E.rec, E.cmt, cost, muP, nBase, np, &lhs[op->adjDlagOff])) {
           const double *dlag = &lhs[op->adjDlagOff];
           double sc = 0.0;
           for (int b = 0; b < nBase; ++b) sc += cost[b] * fx[b * nBase + E.cmt];
