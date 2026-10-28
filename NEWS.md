@@ -16,6 +16,9 @@
 ### Sensitivities
 - `rxSolveAdjoint()` now accepts a model function, as `rxSolve()` does; it
   used to fail with an rxode2 syntax error on the `ini({})` block (#1504).
+- `rxSolveAdjoint()` and the adjoint builds now send a dose without a `cmt`
+  to the first state, and a numeric `cmt` to that state, as `rxSolve()`
+  does; a dose without a `cmt` used to fail in the build (#1504).
 
 ## New features
 
