@@ -60,7 +60,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
     for (int i = 0; i < upTo; ++i) {
       int e = getEvid(ind, ind->ix[i]);
       if (isObs(e)) continue;
-      if (fabs(ind->timeThread[ind->ix[i]] - t) > 1e-9) continue;
+      if (!rxAdjSameTime(ind->timeThread[ind->ix[i]], t)) continue;
       if (e == 3) { if (reset) ev.push_back({3, -1, 1.0}); continue; }
       if (!isDose(e)) continue;
       int _wh, _cmt, _wh100, _whI, _wh0; getWh(e, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
@@ -167,7 +167,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
     if (!isObs(getEvid(ind, ind->ix[i]))) continue;
     double ti = ind->timeThread[ind->ix[i]];
     int cObs = -1;
-    for (int c = (int)abAdjCalls.size() - 1; c >= 0; --c) { if (fabs(abAdjCalls[c].t1 - ti) < 1e-9) { cObs = c; break; } }
+    for (int c = (int)abAdjCalls.size() - 1; c >= 0; --c) { if (rxAdjSameTime(abAdjCalls[c].t1, ti)) { cObs = c; break; } }
     double *out = getSolve(i);
     for (int k = 0; k < nBase; ++k) {
       std::fill(mu.begin(), mu.end(), 0.0);
@@ -176,7 +176,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
         // an observation at an event time reads the state after the jumps recorded
         // before it: those that open the next call, or, after the last call, the
         // ones at the last record time
-        if (cObs + 1 < (int)nCalls && fabs(abAdjCalls[cObs + 1].t0 - ti) < 1e-9)
+        if (cObs + 1 < (int)nCalls && rxAdjSameTime(abAdjCalls[cObs + 1].t0, ti))
           abJumpT(callEv[cObs + 1], abAdjCalls[cObs + 1].t0, abCallY0(cObs + 1).data(), endCostate.data(), mu.data());
         else
           abJumpT(abEventsAt(ti, i, true, out), ti, out, endCostate.data(), mu.data());
@@ -217,7 +217,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
         std::fill(endCostate.begin(), endCostate.end(), 0.0); endCostate[k] = 1.0;
         bool opens = false;
         for (size_t c = 0; c < nCalls && !opens; ++c)
-          if (fabs(abAdjCalls[c].t0 - ti) < 1e-9) {
+          if (rxAdjSameTime(abAdjCalls[c].t0, ti)) {
             abJumpT(callEv[c], abAdjCalls[c].t0, abCallY0(c).data(), endCostate.data(), mu.data());
             opens = true;
           }

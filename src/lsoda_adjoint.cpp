@@ -186,7 +186,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     for (int i = 0; i < upTo; ++i) {
       int ev = getEvid(ind, ind->ix[i]);
       if (isObs(ev)) continue;
-      if (fabs(ind->timeThread[ind->ix[i]] - t) > 1e-8) continue;
+      if (!rxAdjSameTime(ind->timeThread[ind->ix[i]], t)) continue;
       if (ev == 3) { evs.push_back({3, -1, 1.0, 0.0, 0.0}); continue; }
       if (!isDose(ev)) continue;
       int _wh, _cmt, _wh100, _whI, _wh0; getWh(ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
@@ -228,7 +228,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       lsAdjSeg &Sg = lsAdjSegs[sg];
       if ((int)Sg.infRate.size() != nBase) continue;
       for (int i = 0; i < ind->n_all_times; ++i) {
-        if (fabs(ind->timeThread[ind->ix[i]] - Sg.t0) > 1e-8) continue;
+        if (!rxAdjSameTime(ind->timeThread[ind->ix[i]], Sg.t0)) continue;
         int ev = getEvid(ind, ind->ix[i]);
         int c = rk4sInfusionEventCmt(ev, nBase, true);
         if (c < 0) continue;
@@ -301,22 +301,22 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
         int ej = getEvid(ind, ind->ix[j]); if (isObs(ej) || !isDose(ej)) continue;
         int _wh2, _cmt2, _wh1002, _whI2, _wh02; getWh(ej, &_wh2, &_cmt2, &_wh1002, &_whI2, &_wh02);
         if ((_whI2 == EVIDF_MODEL_RATE_OFF || _whI2 == EVIDF_MODEL_DUR_OFF) && _cmt2 == _cmt) {
-          double te = ind->timeThread[ind->ix[j]]; if (te > tOn + 1e-9) tOff = te;
+          double te = ind->timeThread[ind->ix[j]]; if (te > tOn + rxAdjTimeTol(te, tOn)) tOff = te;
         }
       }
       if (!R_FINITE(tOff) || tOff - tOn < 1e-12) continue;
       std::vector<double> _y(eff, 0.0);             // F evaluated at the window's start state
       for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg)
-        if (fabs(lsAdjSegs[sg].t0 - tOn) < 1e-8) { for (int c = 0; c < nBase; ++c) _y[c] = lsAdjSegs[sg].y0[c]; break; }
+        if (rxAdjSameTime(lsAdjSegs[sg].t0, tOn)) { for (int c = 0; c < nBase; ++c) _y[c] = lsAdjSegs[sg].y0[c]; break; }
       double amt = getAmt(ind, ind->id, _cmt, amtRaw, tOn, _y.data());
       double R = amt / (tOff - tOn);
       double durMult = isDur ? amt : 1.0;
       for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg) {
         double t0s = lsAdjSegs[sg].t0;
-        if (t0s >= tOn - 1e-8 && t0s < tOff - 1e-8) {
+        if (t0s >= tOn - rxAdjTimeTol(t0s, tOn) && t0s < tOff - rxAdjTimeTol(t0s, tOff)) {
           lsAdjAddW(lsAdjSegs[sg].infDurMult, nBase, _cmt, durMult);
           if (isDur) lsAdjAddW(lsAdjSegs[sg].infDfMult, nBase, _cmt, amtRaw / (tOff - tOn));
-        } else if (fabs(t0s - tOff) < 1e-8) {
+        } else if (rxAdjSameTime(t0s, tOff)) {
           lsAdjAddW(lsAdjSegs[sg].offFac, nBase, _cmt, -(amt / R) * durMult);
           if (!isDur) lsAdjAddW(lsAdjSegs[sg].offDfFac, nBase, _cmt, amtRaw);
         }
@@ -386,7 +386,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   // bracketing step in segment seg for time t: first step with tn >= t (clamp).
   auto bracketStep = [&](int seg, double t) -> size_t {
     size_t b = lsAdjSegs[seg].stepBegin, e = lsAdjSegs[seg].stepEnd, S = b;
-    while (S < e && lsAdjSteps[S].tn < t - 1e-9) ++S;
+    while (S < e && lsAdjSteps[S].tn < t - rxAdjTimeTol(lsAdjSteps[S].tn, t)) ++S;
     if (S >= e) S = e - 1;
     return S;
   };
@@ -488,7 +488,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   int lsSsSeg = -1;
   if (_lsSsKind != 0)
     for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg)
-      if (fabs(lsAdjSegs[sg].t0 - _lsSsT) < 1e-8) { lsSsSeg = (int)sg; break; }
+      if (rxAdjSameTime(lsAdjSegs[sg].t0, _lsSsT)) { lsSsSeg = (int)sg; break; }
   bool ssAtStart = (lsSsSeg == 0);
   if (lsSsSeg > 0) {
     std::vector<lsAdjEv> &E = lsAdjSegs[lsSsSeg].ev;
@@ -514,8 +514,8 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       for (int k = 1; k <= n; ++k) {
         double tEnd = _lsSsT + _lsSsDur + (k - 1) * ii;
         for (size_t sg = (size_t)lsSsSeg; sg < lsAdjSegs.size(); ++sg) {
-          if (lsAdjSegs[sg].t0 >= tEnd - 1e-8) {
-            if (_lsSsFixed == 1 && fabs(lsAdjSegs[sg].t0 - tEnd) < 1e-8)
+          if (lsAdjSegs[sg].t0 >= tEnd - rxAdjTimeTol(lsAdjSegs[sg].t0, tEnd)) {
+            if (_lsSsFixed == 1 && rxAdjSameTime(lsAdjSegs[sg].t0, tEnd))
               lsAdjAddW(lsAdjSegs[sg].offDfFac, nBase, c, r1 * full / f);
             break;
           }
@@ -575,7 +575,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       if (lsMono && _lsSsBolusIi > 0.0) {
         for (int i = 0; i < ind->n_all_times; ++i) {
           int ev = getEvid(ind, ind->ix[i]);
-          if (isObs(ev) || !isDose(ev) || fabs(ind->timeThread[ind->ix[i]] - _lsSsT) > 1e-8) continue;
+          if (isObs(ev) || !isDose(ev) || !rxAdjSameTime(ind->timeThread[ind->ix[i]], _lsSsT)) continue;
           int _wh, _cmt, _wh100, _whI, _wh0; getWh(ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
           if (_whI != 0 || _wh0 != EVID0_SS || _cmt < 0 || _cmt >= nBase) continue;
           lsIc.loadDF(cSub, ind, op, _lsSsT, lsAdjSegs[lsSsSeg].y0.data(), Asc);
@@ -593,20 +593,20 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     if (!isObs(evI)) continue;
     double ti = ind->timeThread[ind->ix[i]];
     int segObs = 0;
-    for (int sgi = (int)lsAdjSegs.size() - 1; sgi >= 0; --sgi) { if (lsAdjSegs[sgi].t0 <= ti + 1e-9) { segObs = sgi; break; } }
+    for (int sgi = (int)lsAdjSegs.size() - 1; sgi >= 0; --sgi) { if (lsAdjSegs[sgi].t0 <= ti + rxAdjTimeTol(lsAdjSegs[sgi].t0, ti)) { segObs = sgi; break; } }
     double *out = getSolve(i);
     // A reset recorded before this observation but after its segment opened
     // means liblsoda took no step since the reset (e.g. an all-zero state),
     // so no segment starts there: the observation still reads the reset state,
     // which is the initial condition.
-    if (tReset > lsAdjSegs[segObs].t0 + 1e-9 && tReset < ti - 1e-9) {
+    if (tReset > lsAdjSegs[segObs].t0 + rxAdjTimeTol(tReset, lsAdjSegs[segObs].t0) && tReset < ti - rxAdjTimeTol(tReset, ti)) {
       for (int q = 0; q < nBase * np; ++q) out[sensOff + q] = dx0P ? dx0P[q] : 0.0;
       continue;
     }
     // No segment opens after the events at the last record time, so an
     // observation there transposes the events recorded before it itself.
     std::vector<lsAdjEv> evAt;
-    if (lsAdjSegs[segObs].t0 < ti - 1e-9) evAt = lsEventsAt(ti, i, out);
+    if (lsAdjSegs[segObs].t0 < ti - rxAdjTimeTol(lsAdjSegs[segObs].t0, ti)) evAt = lsEventsAt(ti, i, out);
     for (int k = 0; k < nBase; ++k) {
       std::fill(mu.begin(), mu.end(), 0.0);
       for (int c = 0; c < nBase; ++c) wSeed[c] = (c == k) ? 1.0 : 0.0;
@@ -664,9 +664,9 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     std::vector<int> obsIdx; std::vector<size_t> obsBrk;
     for (int i = 0; i < ind->n_all_times; ++i) if (isObs(getEvid(ind, ind->ix[i]))) {
       double ti = ind->timeThread[ind->ix[i]];
-      int sg = 0; for (int s = (int)lsAdjSegs.size()-1; s >= 0; --s) { if (lsAdjSegs[s].t0 <= ti + 1e-9) { sg = s; break; } }
+      int sg = 0; for (int s = (int)lsAdjSegs.size()-1; s >= 0; --s) { if (lsAdjSegs[s].t0 <= ti + rxAdjTimeTol(lsAdjSegs[s].t0, ti)) { sg = s; break; } }
       size_t S = lsAdjSegs[sg].stepBegin, e = lsAdjSegs[sg].stepEnd;
-      while (S < e && lsAdjSteps[S].tn < ti - 1e-9) ++S; if (S >= e) S = e - 1;
+      while (S < e && lsAdjSteps[S].tn < ti - rxAdjTimeTol(lsAdjSteps[S].tn, ti)) ++S; if (S >= e) S = e - 1;
       obsIdx.push_back(i); obsBrk.push_back(S);
     }
     // forward replay, segment by segment (re-init the Nordsieck at each; carry the

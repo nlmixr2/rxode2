@@ -79,6 +79,36 @@ rxTest({
     }
   })
 
+  test_that("events closer together than 1e-8 stay distinct in every driver", {
+    # distinct times closer than the old absolute matching tolerances (1e-8 in
+    # liblsodaadj, 1e-9 in abs) must not be merged into one event time
+    .near <- function(d) list(
+      multiplyDose = list(txt = .base, p = .p0, ev = et(amt = 100, cmt = "depot") |> et(time = 3, evid = 6, amt = 0.5, cmt = "depot") |>
+        et(time = 3 + d, amt = 80, cmt = "depot") |> et(c(1, 4, 6))),
+      doseMultiply = list(txt = .base, p = .p0, ev = et(amt = 100, cmt = "depot") |> et(time = 3, amt = 80, cmt = "depot") |>
+        et(time = 3 + d, evid = 6, amt = 0.5, cmt = "depot") |> et(c(1, 4, 6))),
+      doseMultiplyF = list(txt = .txtF, p = .pF, ev = et(amt = 100, cmt = "depot") |> et(time = 3, amt = 80, cmt = "depot") |>
+        et(time = 3 + d, evid = 6, amt = 0.5, cmt = "center") |> et(c(1, 4, 6))),
+      multiplyBeforeLastObs = list(txt = .base, p = .p0, ev = et(amt = 100, cmt = "depot") |> et(c(1, 3)) |>
+        et(time = 3 - d, evid = 6, amt = 0.5, cmt = "depot"))
+    )
+    .cases <- c(.near(5e-9), stats::setNames(.near(5e-10), paste0(names(.near(5e-10)), "5e-10")))
+    for (.nm in names(.cases)) {
+      .k <- .cases[[.nm]]
+      .ref <- .adjFd(.k$txt, .k$ev, .k$p)
+      for (.m in c("rk4s", "ros4s", "liblsodaadj", "cvodesadj", "abs")) {
+        .a <- rxSolveAdjointRk4(.k$txt, .k$ev,
+          params = .k$p, calcSens = names(.k$p), method = .m,
+          atol = 1e-10, rtol = 1e-10, hmin = if (.m %in% c("rk4s", "abs")) 0.001 else 0
+        )
+        expect_equal(nrow(.a), length(.ref[[1]]), label = paste(.nm, .m, "rows"))
+        for (.cn in names(.ref)) {
+          expect_lt(max(abs(.a[[.cn]] - .ref[[.cn]])), 1e-6, label = paste(.nm, .m, .cn))
+        }
+      }
+    }
+  })
+
   test_that("the liblsodaadj self-check replay applies same-time events and the initial conditions", {
     # a parameter-dependent initial condition, a reset that restores it, and a
     # replace with a dose at one time

@@ -35,6 +35,14 @@
 // time carries; the dF dual uses the raw amt.
 struct rk4s_dose { size_t step; int cmt; double amt; int type; double amtF = 0.0; };
 
+// Event-time tolerance shared by the adjoint drivers: relative to the time's
+// magnitude (absolute below 1), so large record times still match their segments
+// and distinct close times stay distinct.
+static inline double rxAdjTimeTol(double a, double b) {
+  return 1e-10 * std::max(1.0, std::max(fabs(a), fabs(b)));
+}
+static inline bool rxAdjSameTime(double a, double b) { return fabs(a - b) <= rxAdjTimeTol(a, b); }
+
 // Compartment of an infusion start/stop event whose time a modeled alag() moves
 // (or, with ss, also an ss = 1 infusion start, which opens the window after its
 // steady state), or -1.
