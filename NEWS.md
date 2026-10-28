@@ -276,8 +276,9 @@
   record time, now reads the post-event adjoint sensitivity with
   `method = "cvodesadj"` and `method = "abs"`; before, it read the
   pre-event one.  `method = "liblsodaadj"` now applies the events at the
-  last record time (a replace, multiply, reset or dose with a modeled
-  `f()`) to an observation there.
+  last record time (a replace, multiply, reset, dose with a modeled `f()`
+  or `ss = 1` dose) to an observation there; an `ss = 1` dose there was up
+  to about 360 off.
 
 - A subject whose `method = "cvodesadj"` adjoint solve fails now returns
   `NA` states and sensitivities, as a failed forward solve does; before, it
@@ -290,6 +291,10 @@
   of the earlier periods that are still running; before, it was wrong in
   every adjoint method that supports ss.  `method = "liblsodaadj"` also keeps the `f()` term
   of a fixed-duration infusion that is still running at the last record.
+  With such an infusion lasting an exact multiple of `ii`, the state sits at
+  an equilibrium that the error control cannot see past, so `liblsodaadj`
+  needs a small `hmax` (its error falls as `hmax^2`) and `dop853s` a finite
+  one; `?rxSolveAdjointRk4` says so.
 
 - A replace, multiply or reset at the time of a steady-state (`ss = 1`) dose
   no longer changes the adjoint sensitivities in the `rk4s` family of
