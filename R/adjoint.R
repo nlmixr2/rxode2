@@ -124,7 +124,7 @@ rxSolveAdjoint <- function(
   rtol = 1e-10
 ) {
   object <- .rxAdjointObject(object)
-  calcSens <- .rxSensNameSE(calcSens)
+  calcSens <- .rxSensVarNames(calcSens, .rxParams(object, TRUE))
   .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
   .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
@@ -212,7 +212,7 @@ rxSolveAdjoint <- function(
 #' @keywords internal
 .rxAdjointSolveBuild <- function(object, calcSens, events, adjStates = NULL) {
   object <- .rxAdjointObject(object)
-  calcSens <- .rxSensNameSE(calcSens)
+  calcSens <- .rxSensVarNames(calcSens, .rxParams(object, TRUE))
   .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
   .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
@@ -642,8 +642,12 @@ rxSolveAdjoint <- function(
 #' @keywords internal
 .rxAdjointGradBuild <- function(object, calcSens, pred, events, errModel = NULL) {
   object <- .rxAdjointObject(object)
-  calcSens <- .rxSensNameSE(calcSens)
   pred <- .rxSensNameSE(pred)
+  ## a residual-error parameter enters through pred/errModel, not the ODE model
+  .mv <- rxode2::rxModelVars(object)
+  .errPars <- all.vars(parse(text = .rxSensNameSE(c(pred, as.character(unlist(errModel))))))
+  .errPars <- setdiff(.errPars, c(.mv$state, .mv$lhs))
+  calcSens <- .rxSensVarNames(calcSens, c(.rxParams(object, TRUE), .errPars))
   .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
   .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)

@@ -78,5 +78,21 @@ rxTest({
       "cannot calculate sensitivities with respect to center: not a parameter of the model", fixed = TRUE)
     expect_error(rxode2(.txt, calcSens = c("THETA[1]", "ETA[1]"), calcSens2 = "center"),
       "cannot calculate sensitivities with respect to center: not a parameter of the model", fixed = TRUE)
+    # the adjoint entry points check the same way
+    .msg <- function(nm) paste0("cannot calculate sensitivities with respect to ", nm, ": not a parameter of the model")
+    expect_error(rxSolveAdjointRk4(.txt, .ev, params = .p, calcSens = c("THETA[1]", "center")), .msg("center"), fixed = TRUE)
+    expect_error(rxSolveAdjoint(.txt, .p, .ev, calcSens = "THETA[9]"), .msg("THETA[9]"), fixed = TRUE)
+    expect_error(.rxAdjointGrad(.txt, .p, et(amt = 100, cmt = "depot"), "center", "center/exp(THETA[2])", c(1, 4, 8), c(5, 30, 20)),
+      .msg("center"), fixed = TRUE)
+    # a residual-error parameter of errModel is one; a state it names is not
+    .g <- .rxAdjointGrad(.txt, c(.p, add = 0.5), et(amt = 100, cmt = "depot"), c("THETA[1]", "add"),
+      "center/exp(THETA[2])", c(1, 4, 8), c(5, 30, 20), errModel = list(add = "add"))
+    expect_named(.g, c("THETA_1_", "add"))
+    expect_true(all(is.finite(.g)))
+    expect_error(.rxAdjointGrad(.txt, .p, et(amt = 100, cmt = "depot"), c("THETA[1]", "center"),
+      "center/exp(THETA[2])", c(1, 4, 8), c(5, 30, 20), errModel = list(add = "center")), .msg("center"), fixed = TRUE)
+    expect_error(.rxAdjointSolveBuild(.txt, "nope", .ev), .msg("nope"), fixed = TRUE)
+    expect_error(.rxDiscreteAdjointBuild(.txt, "depot"), .msg("depot"), fixed = TRUE)
+    expect_error(.rxAdjointExpand(.txt, "nope"), .msg("nope"), fixed = TRUE)
   })
 })
