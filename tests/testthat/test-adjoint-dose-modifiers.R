@@ -102,6 +102,19 @@ rxTest({
         fixed = TRUE
       )
     }
+    # NONMEM-style upper-case RATE and DUR columns are infusions too
+    .up <- data.frame(ID = 1, TIME = c(0, 1, 2, 4, 8, 12), AMT = c(100, 0, 0, 0, 0, 0),
+      EVID = c(1, 0, 0, 0, 0, 0), CMT = "depot")
+    .p <- c(ka = 1.2, k = 0.14, fd = 0.7)
+    for (.col in c("RATE", "DUR")) {
+      .ev <- .up
+      .ev[[.col]] <- c(if (.col == "RATE") 40 else 2.5, 0, 0, 0, 0, 0)
+      expect_error(
+        rxSolveAdjointRk4(paste(.base, "f(depot) <- fd", sep = "\n"), .ev, params = .p, calcSens = names(.p), method = "abs"),
+        sprintf(.msg, "f()", .both),
+        fixed = TRUE
+      )
+    }
     # constant modifiers, or ones whose parameter is not a sensitivity target,
     # carry no dual: abs solves them
     .tt <- c(1, 2, 4, 8, 12)
