@@ -4197,6 +4197,25 @@ void handleSS(int *neq,
         // solve (not yet done); flag it so the driver errors instead of returning
         // silently-wrong sensitivities.
         if (isModeled) _adjSSinfModeled = -1;
+        // A fixed infusion lasting exactly ii has the same constant steady state,
+        // but F scales a fixed duration's rate and moves a fixed rate's end, which
+        // -J^{-1} df/dp leaves out: hand it over as one on phase over the whole
+        // period, whose monodromy carries those terms as in the dur < ii branch.
+        if (!doSSinf && !isModeled && isSameTimeOp(curIi, dur)) {
+          int _w, _c, _w100, _wI, _w0;
+          getWh(getEvid(ind, ind->idose[infBixds]), &_w, &_c, &_w100, &_wI, &_w0);
+          if (_wI == EVIDF_INF_RATE || _wI == EVIDF_INF_DUR) {
+            double _rawR = getDose(ind, ind->idose[infBixds]);
+            double _f = getAmt(ind, ind->id, _c, 1.0, xout, yp);
+            _adjSSinfKind = 1; _adjSSinfCmt = _c;
+            _adjSSinfDur = dur; _adjSSinfDur2 = 0.0;
+            _adjSSinfRate = (_wI == EVIDF_INF_DUR) ? _f * _rawR : _rawR;
+            _adjSSinfRate2 = 0.0;
+            _adjSSinfFixed = (_wI == EVIDF_INF_DUR) ? 2 : 1;
+            _adjSSinfFixW = (_wI == EVIDF_INF_DUR) ? _rawR : ((_f != 0.0) ? _rawR * dur / _f : 0.0);
+            _adjSSinfFixW2 = 0.0;
+          }
+        }
       }
       ind->doSS=0;
       updateExtraDoseGlobals(ind);

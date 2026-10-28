@@ -316,6 +316,11 @@
   before, it was missing (off by up to 6.3), and `liblsodaadj` and `abs`
   also scaled the costate of a multiply by `amt` instead of `F*amt`.
 
+- The adjoint bioavailability (`f()`) sensitivity of a steady-state
+  (`ss = 1`) fixed-rate or fixed-duration infusion lasting exactly its dosing
+  interval is now included; it was missing in every adjoint method (off by up
+  to 72), because that steady state was taken as a constant infusion.
+
 - `method = "abs"` now includes the bioavailability (`f()`), lag-time
   (`alag()`), `rate()` and `dur()` adjoint sensitivities of bolus and
   infusion doses.
