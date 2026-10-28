@@ -7857,7 +7857,73 @@ struct rk4s_ss1Ev {
   int mdl = 0; double mdlAmt = 0.0, mdlAmtRaw = 0.0; size_t onSteps = 0;   // modeled rate()/dur()
   int fixed = 0; double fixW = 0.0;   // fixed rate (1) / dur (2) infusion: its dF weight
   double fixW2 = 0.0;                 // a fixed dur's dF weight in the second phase
+  // a lagged event (EVID0_SS0; lag = its alag modulo ii): rec is the unlagged
+  // period recorded from its start, whose first lagSteps steps reach this
+  // state; lagF = f at this state and dLag = d(alag)/dp for the phase term
+  bool lagged = false; double lag = 0.0; size_t lagSteps = 0; std::vector<double> lagF, dLag;
 };
+
+// f at a lagged event's state psi and its d(alag)/dp row for cmt (the phase term
+// -(lam^T f(Psi)) dL/dp: a longer lag leaves the state earlier in its period)
+static void rk4sLagPhaseAt(rx_solving_options_ind *ind, rx_solving_options *op, t_dydt dydt,
+                           int *neq, rk4s_ss1Ev &E, const double *psi, int cmt) {
+  int nBase = op->adjNbase, np = op->adjNp, eff = neq[0];
+  std::vector<double> f(eff, 0.0), A(psi, psi + eff);
+  dydt(neq, 0.0, A.data(), f.data());
+  E.lagF.assign(f.begin(), f.begin() + nBase);
+  E.dLag.clear();
+  if (op->adjDlagOff >= 0) {
+    calc_lhs(neq[1], 0.0, A.data(), ind->lhs);
+    E.dLag.assign(ind->lhs + op->adjDlagOff + cmt * np, ind->lhs + op->adjDlagOff + (cmt + 1) * np);
+  }
+}
+
+// A lagged ss = 1 bolus leaves the state at Psi = Phi_{ii-L}(Y_peak), L its lag
+// modulo ii.  From Psi, flow L to the dose, add F*amt and record the peak period
+// over ii split at ii - L (E.lagSteps), the steps that carry Y_peak to Psi.
+static void rk4sRecordLagBolus(rx_solving_options_ind *ind, rx_solving_options *op, t_dydt dydt,
+                               int *neq, const rksTableau &T, int nAll, rk4s_ss1Ev &E,
+                               const double *psi, int cmt, double amtRaw, double ii, rk4s_rec *rec) {
+  int nBase = op->adjNbase;
+  std::vector<double> y(psi, psi + neq[0]), scratch;
+  rk4sLagPhaseAt(ind, op, dydt, neq, E, psi, cmt);
+  rk4s_rec pre; pre.composite = rec->composite;
+  rks_step_interval(ind, op, dydt, neq, T, nAll, nBase, y.data(), 0.0, E.lag, &pre, scratch);
+  y[cmt] += getAmt(ind, ind->id, cmt, amtRaw, E.lag, y.data());
+  rks_step_interval(ind, op, dydt, neq, T, nAll, nBase, y.data(), 0.0, ii - E.lag, rec, scratch);
+  E.lagSteps = rec->nStep();
+  rks_step_interval(ind, op, dydt, neq, T, nAll, nBase, y.data(), ii - E.lag, ii, rec, scratch);
+}
+
+// A lagged two-phase ss = 1 infusion (rate E.rate over E.dur, then E.rate2 over
+// E.dur2) leaves the state at Psi, s0 = ii - L into the unlagged period.  From
+// Psi, run the rest of that period to its start Y0, then record the period from
+// Y0 split at dur (E.onSteps) and at s0 (E.lagSteps); f(Psi) takes the rate in
+// effect just before s0.
+static void rk4sRecordLagInfusion(rx_solving_options_ind *ind, rx_solving_options *op, t_dydt dydt,
+                                  int *neq, const rksTableau &T, int nAll, rk4s_ss1Ev &E,
+                                  const double *psi, rk4s_rec *rec) {
+  int nBase = op->adjNbase, c = E.infCmt;
+  double ii = E.dur + E.dur2, s0 = ii - E.lag, saved = ind->InfusionRate[c];
+  std::vector<double> y(psi, psi + neq[0]), scratch;
+  ind->InfusionRate[c] = (s0 <= E.dur) ? E.rate : E.rate2;
+  rk4sLagPhaseAt(ind, op, dydt, neq, E, psi, c);
+  rk4s_rec pre; pre.composite = rec->composite;
+  // the unlagged period's rate by phase: E.rate on [0, dur), E.rate2 on [dur, ii)
+  auto run = [&](rk4s_rec *r, double a, double b) {
+    if (b <= a) return;
+    if (a < E.dur) { double e = std::min(b, E.dur); ind->InfusionRate[c] = E.rate;
+      rks_step_interval(ind, op, dydt, neq, T, nAll, nBase, y.data(), a, e, r, scratch); a = e; }
+    if (a < b) { ind->InfusionRate[c] = E.rate2;
+      rks_step_interval(ind, op, dydt, neq, T, nAll, nBase, y.data(), a, b, r, scratch); }
+  };
+  run(&pre, s0, ii);
+  run(rec, 0.0, std::min(s0, E.dur));
+  if (s0 < E.dur) { E.lagSteps = rec->nStep(); run(rec, s0, E.dur); E.onSteps = rec->nStep(); }
+  else { E.onSteps = rec->nStep(); run(rec, E.dur, s0); E.lagSteps = rec->nStep(); }
+  run(rec, std::max(s0, E.dur), ii);
+  ind->InfusionRate[c] = saved;
+}
 
 // Record the steady-state period of an interior kind-1 ss=1 event from its
 // captured state: a bolus flows over ii from its peak; a periodic infusion runs
@@ -7865,7 +7931,9 @@ struct rk4s_ss1Ev {
 static void rk4sRecordSs1Period(rx_solving_options_ind *ind, rx_solving_options *op, t_dydt dydt,
                                 int *neq, const rksTableau &T, int nAll, rk4s_ss1Ev &E) {
   std::vector<double> y = E.y, scratch;
-  if (E.inf) {
+  if (E.inf && E.lagged) {
+    rk4sRecordLagInfusion(ind, op, dydt, neq, T, nAll, E, E.y.data(), &E.rec);
+  } else if (E.inf) {
     double saved = ind->InfusionRate[E.infCmt], t = 0.0;
     if (E.dur > 0.0) {
       ind->InfusionRate[E.infCmt] = E.rate;
@@ -7878,6 +7946,8 @@ static void rk4sRecordSs1Period(rx_solving_options_ind *ind, rx_solving_options 
       rks_step_interval(ind, op, dydt, neq, T, nAll, op->adjNbase, y.data(), t, t + E.dur2, &E.rec, scratch);
     }
     ind->InfusionRate[E.infCmt] = saved;
+  } else if (E.ii > 0.0 && E.lagged) {
+    rk4sRecordLagBolus(ind, op, dydt, neq, T, nAll, E, E.y.data(), E.cmt, E.amtRaw, E.ii, &E.rec);
   } else if (E.ii > 0.0) {
     rks_step_interval(ind, op, dydt, neq, T, nAll, op->adjNbase, y.data(), 0.0, E.ii, &E.rec, scratch);
   }
@@ -7904,6 +7974,7 @@ struct rk4sSsIc {
   // bioavailability of an ss bolus: dY_ss/dp gains sum_j (M^T)^j e_cmt * amtRaw *
   // dF[cmt] over j >= fFrom (rk4s: j = 0 is the dose record at the event step).
   int fFrom = 1, wsFCmt = -1; double wsFAmt = 0.0; std::vector<double> dFv;
+  const rk4s_ss1Ev *wsLag = NULL;                                 // window-start lagged ss event
   // modeled rate()/dur() ss infusion in an explicit period: ON-phase forcing and
   // the ON->OFF transversality (the period analogue of rk4sBuildInfusMaps).
   struct SsForce { int cmt = -1; size_t onSteps = 0; double durMult = 0.0, offFac = 0.0,
@@ -7972,10 +8043,11 @@ struct rk4sSsIc {
   // Rosenbrock transpose of one recorded ss period: muAcc += B^T nu, nu := M^T nu.
   // Mirrors ros_backward_fill's per-step stepT (core; no infusion/dose/DDE).
   void rosPeriodT(const StiffPeriod &P, std::vector<double> &nu, std::vector<double> &muAcc,
-                  const SsForce *FC = NULL) {
+                  const SsForce *FC = NULL, size_t nUse = 0) {
     std::vector<double> ybar(nBase), ubar(nBase), rhsbar(nBase), kb(sN*nBase);
-    if (FC && FC->onSteps == P.N) forceOff(*FC, nu, muAcc);   // ON phase spans the period: its end
-    for (size_t nn = P.N; nn >= 1; --nn) {
+    size_t N = nUse ? nUse : P.N;
+    if (FC && FC->onSteps == N) forceOff(*FC, nu, muAcc);   // ON phase spans the period: its end
+    for (size_t nn = N; nn >= 1; --nn) {
       size_t n = nn - 1; double h = P.R->h[n]; const double *Wn = &P.Wf[n*nfx]; const int *pn = &P.pivf[n*nBase];
       for (int m = 0; m < nBase; ++m) ybar[m] = nu[m];
       for (int i = 0; i < sN; ++i) { double bi = Tss.b[i]; for (int m = 0; m < nBase; ++m) kb[i*nBase+m] = bi*nu[m]; }
@@ -8003,10 +8075,11 @@ struct rk4sSsIc {
   // radau_backward_fill: M^T z = h b (x) lam, then lam := lam + sum_i (F_X(u_i))^T z_i,
   // mu += sum_i (F_p(u_i))^T z_i.
   void radauPeriodT(const StiffPeriod &P, std::vector<double> &nu, std::vector<double> &muAcc,
-                    const SsForce *FC = NULL) {
+                    const SsForce *FC = NULL, size_t nUse = 0) {
     int sn = sN*nBase; std::vector<double> z(sn), rhs(sn);
-    if (FC && FC->onSteps == P.N) forceOff(*FC, nu, muAcc);   // ON phase spans the period: its end
-    for (size_t nn = P.N; nn >= 1; --nn) {
+    size_t N = nUse ? nUse : P.N;
+    if (FC && FC->onSteps == N) forceOff(*FC, nu, muAcc);   // ON phase spans the period: its end
+    for (size_t nn = N; nn >= 1; --nn) {
       size_t n = nn - 1; double h = P.R->h[n]; const double *Mn = &P.Mf[n*(size_t)sn*sn]; const int *mp = &P.Mpiv[n*sn];
       for (int i = 0; i < sN; ++i) { double bi = Tss.b[i]; for (int m = 0; m < nBase; ++m) rhs[i*nBase+m] = h*bi*nu[m]; }
       for (int q = 0; q < sn; ++q) z[q] = rhs[q];
@@ -8035,13 +8108,14 @@ struct rk4sSsIc {
     if (F.dfOFac != 0.0) for (int p = 0; p < np; ++p) muAcc[p] += F.dfOFac*F.dF[rc*np+p]*nu[rc];
   }
 
-  // dispatch one period transpose to the explicit or stiff recurrence.
+  // dispatch one period transpose to the explicit or stiff recurrence; N below
+  // the recorded steps transposes only the first N (a lagged event's phase).
   void periodT(const rk4s_rec *R, std::vector<std::vector<double> > &FXs,
                std::vector<std::vector<double> > &FPs, size_t N,
                std::vector<double> &nu, std::vector<double> &muAcc, StiffPeriod *SP = NULL,
                const SsForce *FC = NULL) {
-    if (SP && SP->rosen)      { rosPeriodT(*SP, nu, muAcc, FC); return; }
-    if (SP && SP->implicitRK) { radauPeriodT(*SP, nu, muAcc, FC); return; }
+    if (SP && SP->rosen)      { rosPeriodT(*SP, nu, muAcc, FC, N); return; }
+    if (SP && SP->implicitRK) { radauPeriodT(*SP, nu, muAcc, FC, N); return; }
     if (FC && FC->onSteps == N) forceOff(*FC, nu, muAcc);   // ON phase spans the period: its end
     for (size_t nn = N; nn >= 1; --nn) {
       size_t n = nn - 1; double h = R->h[n];
@@ -8061,18 +8135,34 @@ struct rk4sSsIc {
     }
   }
   // add the ss-bolus bioavailability term of geometric-series power j
-  void addFTerm(int j, int fCmt, double fAmt, const std::vector<double> &nu, std::vector<double> &muAcc) {
-    if (fCmt < 0 || j < fFrom || dFv.empty()) return;
+  void addFTerm(int j, int fCmt, double fAmt, const std::vector<double> &nu, std::vector<double> &muAcc,
+                int from = -1) {
+    if (fCmt < 0 || j < (from >= 0 ? from : fFrom) || dFv.empty()) return;
     for (int p = 0; p < np; ++p) muAcc[p] += fAmt*dFv[fCmt*np+p]*nu[fCmt];
+  }
+  // A lagged ss event's state Psi lies E.lagSteps steps into its recorded
+  // period: lam^T dPsi/dp adds -(lam^T f(Psi)) dL/dp and carries nu from Psi back
+  // to the period start through those steps; the period series then follows,
+  // from j = 0 since a lagged ss dose is not a window jump.
+  void lagPhaseT(const rk4s_ss1Ev &E, const rk4s_rec *R, std::vector<std::vector<double> > &FXs,
+                 std::vector<std::vector<double> > &FPs, StiffPeriod *SP,
+                 std::vector<double> &nu, std::vector<double> &muAcc, const SsForce *FC = NULL) {
+    if (!E.dLag.empty()) {
+      double s = 0; for (int j = 0; j < nBase; ++j) s += nu[j]*E.lagF[j];
+      for (int p = 0; p < np; ++p) muAcc[p] -= s*E.dLag[p];
+    }
+    periodT(R, FXs, FPs, E.lagSteps, nu, muAcc, SP, FC);
   }
   // materialize the fixed-point sensitivity (I-M)^{-1}B row-by-row (geometric series).
   void fillFixedPoint(const rk4s_rec *R, std::vector<std::vector<double> > &FXs,
                       std::vector<std::vector<double> > &FPs, size_t N, std::vector<double> &S,
-                      StiffPeriod *SP = NULL, const SsForce *FC = NULL, int fCmt = -1, double fAmt = 0.0) {
+                      StiffPeriod *SP = NULL, const SsForce *FC = NULL, int fCmt = -1, double fAmt = 0.0,
+                      const rk4s_ss1Ev *lagE = NULL) {
     S.assign((size_t)nBase*np, 0.0);
     for (int k = 0; k < nBase; ++k) {
       std::vector<double> nu(nBase, 0.0); nu[k] = 1.0; std::vector<double> muAdd(np, 0.0);
-      addFTerm(0, fCmt, fAmt, nu, muAdd);
+      if (lagE) lagPhaseT(*lagE, R, FXs, FPs, SP, nu, muAdd, FC);
+      addFTerm(0, fCmt, fAmt, nu, muAdd, lagE ? 0 : -1);
       for (int git = 0; git < maxGeo; ++git) { periodT(R, FXs, FPs, N, nu, muAdd, SP, FC);
         addFTerm(git + 1, fCmt, fAmt, nu, muAdd);
         double n2=0; for (int j=0;j<nBase;++j) n2+=fabs(nu[j]); if (n2<1e-14) break; }
@@ -8101,8 +8191,10 @@ struct rk4sSsIc {
   void setWindowF(int cSub, rx_solving_options_ind *ind, rx_solving_options *op, double t,
                   const std::vector<rk4s_ss1Ev> *evs, const std::vector<size_t> *steps,
                   const double *y, std::vector<double> &Ascratch) {
-    wsFCmt = -1;
-    if (!evs || !steps || evs->empty() || steps->empty() || (*steps)[0] != 0 || (*evs)[0].cmt < 0) return;
+    wsFCmt = -1; wsLag = NULL;
+    if (!evs || !steps || evs->empty() || steps->empty() || (*steps)[0] != 0) return;
+    if ((*evs)[0].lagged && (*evs)[0].lagSteps > 0) wsLag = &(*evs)[0];
+    if ((*evs)[0].cmt < 0) return;
     loadDF(cSub, ind, op, t, y, Ascratch);
     if (dFv.empty()) return;
     wsFCmt = (*evs)[0].cmt; wsFAmt = (*evs)[0].amtRaw;
@@ -8180,14 +8272,14 @@ struct rk4sSsIc {
         if (stiff()) {
           StiffPeriod P; precomputeStiff(cSub, ind, op, &E.rec, P, Ascratch);
           std::vector<std::vector<double> > noFX, noFP;
-          fillFixedPoint(&E.rec, noFX, noFP, N, S, &P, haveF ? &F : NULL, fCmt, E.amtRaw);
+          fillFixedPoint(&E.rec, noFX, noFP, N, S, &P, haveF ? &F : NULL, fCmt, E.amtRaw, E.lagged ? &E : NULL);
         } else {
           std::vector<std::vector<double> > FXs(sN), FPs(sN);
           for (int i = 0; i < sN; ++i) { FXs[i].resize(N*nfx); FPs[i].resize(N*nfp); }
           for (size_t n = 0; n < N; ++n) { double h = E.rec.h[n], t0s = E.rec.t0[n];
             for (int i = 0; i < sN; ++i)
               rk4s_eval_jac(cSub, t0s + Tss.c[i]*h, &E.rec.a[(n*sN+i)*nBase], nBase, np, fxOffM, fpOffM, Ascratch.data(), effM, ind, &FXs[i][n*nfx], &FPs[i][n*nfp]); }
-          fillFixedPoint(&E.rec, FXs, FPs, N, S, NULL, haveF ? &F : NULL, fCmt, E.amtRaw);
+          fillFixedPoint(&E.rec, FXs, FPs, N, S, NULL, haveF ? &F : NULL, fCmt, E.amtRaw, E.lagged ? &E : NULL);
         }
       }
       if (!S.empty()) ss1At[st] = (int)z;
@@ -8291,7 +8383,8 @@ struct rk4sSsIc {
   void applyWindowIC(std::vector<double> &lam, std::vector<double> &mu) {
     if (haveMono) { std::vector<double> nu(lam.begin(), lam.begin()+nBase), muAdd(np, 0.0);
       StiffPeriod *SP = stiff() ? &ssStiff : NULL;
-      addFTerm(0, wsFCmt, wsFAmt, nu, muAdd);
+      if (wsLag) lagPhaseT(*wsLag, ssRec, ssFXs, ssFPs, SP, nu, muAdd, haveWsFC ? &wsFC : NULL);
+      addFTerm(0, wsFCmt, wsFAmt, nu, muAdd, wsLag ? 0 : -1);
       for (int git = 0; git < maxGeo; ++git) { periodT(ssRec, ssFXs, ssFPs, ssN, nu, muAdd, SP, haveWsFC ? &wsFC : NULL);
         addFTerm(git + 1, wsFCmt, wsFAmt, nu, muAdd);
         double n2=0; for (int j=0;j<nBase;++j) n2+=fabs(nu[j]); if (n2<1e-14) break; }
@@ -8868,7 +8961,8 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
       dde.applyDoseJumps(mu, doses);
       if (ssN > 0) {                       // monodromy IC term (bolus / periodic infusion)
         std::vector<double> nu = lam, muAdd(np, 0.0);
-        ssInt.addFTerm(0, ssInt.wsFCmt, ssInt.wsFAmt, nu, muAdd);
+        if (ssInt.wsLag) ssInt.lagPhaseT(*ssInt.wsLag, ssRec, ssFXs, ssFPs, NULL, nu, muAdd, ssInt.haveWsFC ? &ssInt.wsFC : NULL);
+        ssInt.addFTerm(0, ssInt.wsFCmt, ssInt.wsFAmt, nu, muAdd, ssInt.wsLag ? 0 : -1);
         for (int git = 0; git < op->maxSS + 5; ++git) {
           ssInt.periodT(ssRec, ssFXs, ssFPs, ssN, nu, muAdd, NULL, ssInt.haveWsFC ? &ssInt.wsFC : NULL);
           ssInt.addFTerm(git + 1, ssInt.wsFCmt, ssInt.wsFAmt, nu, muAdd);
@@ -9104,16 +9198,17 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           getWh(_evCur, &_wh, &_cmtD, &_wh100, &_whI, &_wh0);
           // an ss = 1 dose (a bolus, or an infusion's start) replaces the state:
           // mark its position among this step's events
-          if (_wh0 == EVID0_SS && (_whI == 0 || getDose(ind, ind->ix[i]) > 0)) {
+          if ((_wh0 == EVID0_SS || _wh0 == EVID0_SS0) && (_whI == 0 || getDose(ind, ind->ix[i]) > 0)) {
             rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _cmtD; _d.amt = 0.0; _d.type = 8;
             doseRec.push_back(_d);
           }
           if (_cmtD >= 0 && _cmtD < op->adjNbase) {
             if (_whI == 0) {                                // additive bolus (F-jump)
               // A superposition (ss==2) dose is NOT applied to the window state
-              // (its effect is the added Y_ss_new), so do not record it as a
-              // window F-jump.
-              if (op->adjDfOff >= 0 && _wh0 != EVID0_SS2 && _wh0 != EVID0_SS20) {
+              // (its effect is the added Y_ss_new), nor is a lagged ss = 1 one
+              // (its dose lands later, as its own record), so do not record
+              // either as a window F-jump.
+              if (op->adjDfOff >= 0 && _wh0 != EVID0_SS2 && _wh0 != EVID0_SS20 && _wh0 != EVID0_SS0) {
                 rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _cmtD;
                 _d.amt = getDose(ind, ind->ix[i]); _d.type = 0; _d.rec = i;
                 _d.amtF = getAmt(ind, ind->id, _cmtD, _d.amt, xout, yp);
@@ -9122,7 +9217,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               // ss=1 reset bolus: mark for one-period monodromy capture (the
               // trough yp* is read after handleSS below).  ii read now, before
               // handleEvid1 advances ind->ixds past this dose.
-              if (_wh0 == EVID0_SS) {
+              if (_wh0 == EVID0_SS || _wh0 == EVID0_SS0) {
                 _ssPendCmt = _cmtD; _ssPendAmt = getDose(ind, ind->ix[i]);
                 _ssPendIi = getIiNumber(ind, ind->ixds);
               } else if (_wh0 == EVID0_SS2 || _wh0 == EVID0_SS20) {
@@ -9217,6 +9312,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           _adjSS2 = 0; _adjSSinfKind = 0;
         } else if (_ssPendCmt >= 0) {
           rk4s_ss1Ev _e; _e.step = rec.nStep(); _e.cmt = _ssPendCmt; _e.amtRaw = _ssPendAmt; _e.ii = _ssPendIi;
+          _e.lagged = (_adjSSlagOn != 0); _e.lag = _adjSSlag;
           if (_e.step == 0 && !ssActive) {   // window start
             ssActive = true; ssCmt = _ssPendCmt; ssAmt = _ssPendAmt; ssIi = _ssPendIi;
             ssTrough.assign(yp, yp + eff);
@@ -9233,6 +9329,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           _e.dur = _adjSSinfDur; _e.dur2 = _adjSSinfDur2; _e.rate = _adjSSinfRate; _e.rate2 = _adjSSinfRate2;
           _e.mdl = _adjSSinfModeled; _e.mdlAmt = _adjSSinfAmt; _e.mdlAmtRaw = _adjSSinfAmtRaw;
           _e.fixed = _adjSSinfFixed; _e.fixW = _adjSSinfFixW; _e.fixW2 = _adjSSinfFixW2;
+          _e.lagged = (_adjSSlagOn != 0); _e.lag = _adjSSlag;
           if (_e.step == 0 && !ssActive) {   // window start
             ssActive = true; ssInf = true; ssInfCmt = _adjSSinfCmt;
             ssInfDur = _adjSSinfDur; ssInfDur2 = _adjSSinfDur2; ssInfRate = _adjSSinfRate; ssInfRate2 = _adjSSinfRate2;
@@ -9329,17 +9426,24 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
       // B=dPhi/dp come entirely from the recorded flow (same monodromy as the
       // bolus; the infusion only shifts WHERE the model Jacobian is sampled).
       double _savedR = ind->InfusionRate[ssInfCmt], _t = 0.0;
-      if (ssInfDur > 0.0) {
-        ind->InfusionRate[ssInfCmt] = ssInfRate;
-        rks_step_interval(ind, op, c_dydt, neq, Tss, nAll, op->adjNbase, ytmp.data(), _t, _t + ssInfDur, &ssRec, ssScratch);
-        _t += ssInfDur;
-      }
-      ssOnSteps = ssRec.nStep();          // ON-phase step count (for the modeled-dR boundary)
-      if (ssInfDur2 > 0.0) {
-        ind->InfusionRate[ssInfCmt] = ssInfRate2;
-        rks_step_interval(ind, op, c_dydt, neq, Tss, nAll, op->adjNbase, ytmp.data(), _t, _t + ssInfDur2, &ssRec, ssScratch);
+      if (!ss1Evs.empty() && ss1Steps[0] == 0 && ss1Evs[0].lagged) {
+        rk4sRecordLagInfusion(ind, op, c_dydt, neq, Tss, nAll, ss1Evs[0], ssTrough.data(), &ssRec);
+        ssOnSteps = ss1Evs[0].onSteps;
+      } else {
+        if (ssInfDur > 0.0) {
+          ind->InfusionRate[ssInfCmt] = ssInfRate;
+          rks_step_interval(ind, op, c_dydt, neq, Tss, nAll, op->adjNbase, ytmp.data(), _t, _t + ssInfDur, &ssRec, ssScratch);
+          _t += ssInfDur;
+        }
+        ssOnSteps = ssRec.nStep();          // ON-phase step count (for the modeled-dR boundary)
+        if (ssInfDur2 > 0.0) {
+          ind->InfusionRate[ssInfCmt] = ssInfRate2;
+          rks_step_interval(ind, op, c_dydt, neq, Tss, nAll, op->adjNbase, ytmp.data(), _t, _t + ssInfDur2, &ssRec, ssScratch);
+        }
       }
       ind->InfusionRate[ssInfCmt] = _savedR;
+    } else if (ssIi > 0.0 && !ss1Evs.empty() && ss1Steps[0] == 0 && ss1Evs[0].lagged) {
+      rk4sRecordLagBolus(ind, op, c_dydt, neq, Tss, nAll, ss1Evs[0], ssTrough.data(), ssCmt, ssAmt, ssIi, &ssRec);
     } else if (ssIi > 0.0) {
       // bolus: yp after handleSS is the POST-dose peak yp* = dose(flow_tau(yp*));
       // for a bolus dose Jac is I / dose_dp is 0, so M=d(flow_tau)/dY,

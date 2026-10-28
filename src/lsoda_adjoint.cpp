@@ -275,7 +275,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   lsAdjSteps.clear();
   lsAdjSegs.clear();
   _adjJumpCap.clear();
-  _lsSsKind = 0; _lsSsBolusIi = 0.0; _lsSsCmt = -1; _lsSsT = 0.0;   // reset the sticky ss snapshot
+  _lsSsKind = 0; _lsSsBolusIi = 0.0; _lsSsCmt = -1; _lsSsT = 0.0; _lsSsLag = 0.0; _lsSsLagOn = 0;   // reset the sticky ss snapshot
   _lsSsFixed = 0; _lsSsFixW = 0.0; _lsSsFixW2 = 0.0;
   _lsSsDur = _lsSsDur2 = _lsSsRate = _lsSsRate2 = 0.0;
   lsAdjNbase = nBase;
@@ -309,13 +309,14 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       if (!isDose(ev)) continue;
       int _wh, _cmt, _wh100, _whI, _wh0; getWh(ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
       if (_cmt < 0 || _cmt >= nBase) continue;
-      // an ss = 1 dose (a bolus, or an infusion's start, not its stop) replaces
-      // the state with Y_ss(p)
-      if (_wh0 == EVID0_SS && (_whI == 0 || getDose(ind, ind->ix[i]) > 0)) {
+      // an ss = 1 dose (a bolus, or an infusion's start, not its stop; lagged or
+      // not) replaces the state with Y_ss(p)
+      bool _ss1 = (_wh0 == EVID0_SS || _wh0 == EVID0_SS0);
+      if (_ss1 && (_whI == 0 || getDose(ind, ind->ix[i]) > 0)) {
         evs.push_back({8, _cmt, 1.0, 0.0, 0.0});
         continue;
       }
-      if (_wh0 == EVID0_SS) continue;
+      if (_ss1) continue;
       if (_whI == 0) {
         double amt = getDose(ind, ind->ix[i]);
         evs.push_back({0, _cmt, 1.0, amt, getAmt(ind, ind->id, _cmt, amt, t, _y.data()), i});
@@ -417,7 +418,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   // (then the event jump's dPhi/dy^T).
   std::vector<double> wSeed(nBase);
   // ss=1 steady-state IC term (built below, before any sweep runs)
-  rk4sSsIc lsIc; bool lsMono = false; rk4s_rec lsSsRec;
+  rk4sSsIc lsIc; bool lsMono = false; rk4s_rec lsSsRec; rk4s_ss1Ev lsLagE;
   // continuous-infusion steady state: dY_ss/dp = -J^{-1} df/dp at Y_ss
   bool ssCont = false; std::vector<double> ssFXc, ssFP; std::vector<int> ssPiv;
   // lam^T dY_ss/dp of the subject's ss=1 steady state
@@ -562,8 +563,29 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     std::vector<double> y0(lsAdjSegs[lsSsSeg].y0.begin(), lsAdjSegs[lsSsSeg].y0.end()), ssScr;
     y0.resize(eff, 0.0);
     bool recorded = false; size_t lsSsOnSteps = 0;
-    if (_lsSsBolusIi > 0.0) {                        // bolus: flow from peak over ii
+    // the ss bolus record: its cmt, raw amount and whether it is lagged
+    int lsSsBCmt = -1; double lsSsBAmt = 0.0;
+    lsLagE.lagged = (_lsSsLagOn != 0); lsLagE.lag = _lsSsLag;
+    if (_lsSsBolusIi > 0.0)
+      for (int i = 0; i < ind->n_all_times; ++i) {
+        int ev = getEvid(ind, ind->ix[i]);
+        if (isObs(ev) || !isDose(ev) || !rxAdjSameTime(ind->timeThread[ind->ix[i]], _lsSsT)) continue;
+        int _wh, _cmt, _wh100, _whI, _wh0; getWh(ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
+        if (_whI != 0 || (_wh0 != EVID0_SS && _wh0 != EVID0_SS0) || _cmt < 0 || _cmt >= nBase) continue;
+        lsSsBCmt = _cmt; lsSsBAmt = getDose(ind, ind->ix[i]);
+        break;
+      }
+    if (_lsSsBolusIi > 0.0 && lsLagE.lagged && lsSsBCmt >= 0) {   // lagged bolus: peak period from the trough
+      rk4sRecordLagBolus(ind, op, c_dydt, neq2, Tss, neqOde, lsLagE, y0.data(), lsSsBCmt, lsSsBAmt, _lsSsBolusIi, &lsSsRec);
+      recorded = true;
+    } else if (_lsSsBolusIi > 0.0) {                 // bolus: flow from peak over ii
       rks_step_interval(ind, op, c_dydt, neq2, Tss, neqOde, nBase, y0.data(), 0.0, _lsSsBolusIi, &lsSsRec, ssScr);
+      recorded = true;
+    } else if (lsLagE.lagged) {                      // lagged infusion: its period from the period start
+      lsLagE.inf = true; lsLagE.infCmt = _lsSsCmt;
+      lsLagE.dur = _lsSsDur; lsLagE.dur2 = _lsSsDur2; lsLagE.rate = _lsSsRate; lsLagE.rate2 = _lsSsRate2;
+      rk4sRecordLagInfusion(ind, op, c_dydt, neq2, Tss, neqOde, lsLagE, y0.data(), &lsSsRec);
+      lsSsOnSteps = lsLagE.onSteps;
       recorded = true;
     } else {                                         // periodic/large-dur infusion: two-phase from trough
       double savedR = ind->InfusionRate[_lsSsCmt], t = 0.0;
@@ -588,17 +610,11 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       }
       // an ss bolus's bioavailability enters every period's dose (no separate
       // dose term here, so from the first)
-      if (lsMono && _lsSsBolusIi > 0.0) {
-        for (int i = 0; i < ind->n_all_times; ++i) {
-          int ev = getEvid(ind, ind->ix[i]);
-          if (isObs(ev) || !isDose(ev) || !rxAdjSameTime(ind->timeThread[ind->ix[i]], _lsSsT)) continue;
-          int _wh, _cmt, _wh100, _whI, _wh0; getWh(ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
-          if (_whI != 0 || _wh0 != EVID0_SS || _cmt < 0 || _cmt >= nBase) continue;
-          lsIc.loadDF(cSub, ind, op, _lsSsT, lsAdjSegs[lsSsSeg].y0.data(), Asc);
-          if (!lsIc.dFv.empty()) { lsIc.fFrom = 0; lsIc.wsFCmt = _cmt; lsIc.wsFAmt = getDose(ind, ind->ix[i]); }
-          break;
-        }
+      if (lsMono && _lsSsBolusIi > 0.0 && lsSsBCmt >= 0) {
+        lsIc.loadDF(cSub, ind, op, _lsSsT, lsAdjSegs[lsSsSeg].y0.data(), Asc);
+        if (!lsIc.dFv.empty()) { lsIc.fFrom = 0; lsIc.wsFCmt = lsSsBCmt; lsIc.wsFAmt = lsSsBAmt; }
       }
+      if (lsMono && lsLagE.lagged && lsLagE.lagSteps > 0) lsIc.wsLag = &lsLagE;
     }
   }
 

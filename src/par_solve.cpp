@@ -3076,6 +3076,10 @@ static thread_local int    _adjSSinfCmt = -1;
 // IC using this interval; the rk4s framework uses its own event-derived _ssPend*).
 // 0 = no bolus ss this window.  Dose Jacobian is I, so only the period is needed.
 static thread_local double _adjSSbolusIi = 0.0;
+// lagged ss = 1 dose (EVID0_SS0, _adjSSlagOn): its lag modulo ii; the state at
+// the record time then sits ii - _adjSSlag into the unlagged period.
+static thread_local double _adjSSlag = 0.0;
+static thread_local int _adjSSlagOn = 0;
 // Two-phase steady-state infusion period: rate _adjSSinfRate for _adjSSinfDur,
 // then rate _adjSSinfRate2 for _adjSSinfDur2.  Fixed-rate periodic (dur<ii) uses
 // (R, dur) then (0, ii-dur); large-duration (dur>=ii, overlapping infusions)
@@ -3105,12 +3109,14 @@ static thread_local double _lsSsBolusIi = 0.0;
 static thread_local int    _lsSsCmt = -1;
 static thread_local double _lsSsDur = 0.0, _lsSsDur2 = 0.0, _lsSsRate = 0.0, _lsSsRate2 = 0.0;
 static thread_local double _lsSsT = 0.0;       // time the snapshot's steady state was established
+static thread_local double _lsSsLag = 0.0;     // _adjSSlag / _adjSSlagOn of the snapshot
+static thread_local int    _lsSsLagOn = 0;
 static thread_local int    _lsSsFixed = 0;     // _adjSSinfFixed / _adjSSinfFixW of the snapshot
 static thread_local double _lsSsFixW = 0.0;
 static thread_local double _lsSsFixW2 = 0.0;
 static inline void lsAdjSnapshotSs(double t) {
   // called right after an ss handleSS while liblsoda recording is active
-  if (_lsSsKind == 0 && (_adjSSbolusIi > 0.0 || _adjSSinfKind != 0)) _lsSsT = t;
+  if (_lsSsKind == 0 && (_adjSSbolusIi > 0.0 || _adjSSinfKind != 0)) { _lsSsT = t; _lsSsLag = _adjSSlag; _lsSsLagOn = _adjSSlagOn; }
   if (_adjSSbolusIi > 0.0) { _lsSsKind = 1; _lsSsBolusIi = _adjSSbolusIi; }
   else if (_adjSSinfKind == 1) { _lsSsKind = 1; _lsSsBolusIi = 0.0; _lsSsCmt = _adjSSinfCmt;
     _lsSsDur = _adjSSinfDur; _lsSsDur2 = _adjSSinfDur2; _lsSsRate = _adjSSinfRate; _lsSsRate2 = _adjSSinfRate2;
@@ -3758,7 +3764,7 @@ void handleSS(int *neq,
               t_update_inis u_inis,
               void *ctx) {
   rx_solve *rx = &rx_global;
-  _adjSSinfKind = 0; _adjSS2 = 0; _adjSSbolusIi = 0.0;   // reset adjoint ss handoffs
+  _adjSSinfKind = 0; _adjSS2 = 0; _adjSSbolusIi = 0.0; _adjSSlag = 0.0; _adjSSlagOn = 0;   // reset adjoint ss handoffs
   _adjSSinfModeled = 0; _adjSSinfAmt = 0.0; _adjSSinfAmtRaw = 0.0;
   _adjSSinfFixed = 0; _adjSSinfFixW = 0.0; _adjSSinfFixW2 = 0.0;
   _esSSDurOffCmt = -1; _esSSRateOffCmt = -1;   // forward eventSens: disarm the modeled ss off markers
@@ -4123,6 +4129,7 @@ void handleSS(int *neq,
       ind->wh0 = wh0;
       overIi = floor(curLagExtra/curIi);
       curLagExtra = curLagExtra - overIi*curIi;
+      _adjSSlag = curLagExtra; _adjSSlagOn = 1;
     }
     // First Reset
     for (j = neq[0]; j--;) {
