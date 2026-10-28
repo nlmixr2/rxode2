@@ -49,8 +49,8 @@ struct lsAdjStep {
 //   0 additive bolus (dPhi/dy=I) | 3 reset (y:=inits, dPhi/dy=0) | 8 ss=1 (y:=Y_ss(p),
 //   dPhi/dy=0, adds lambda^T dY_ss/dp) | 5 replace (y[cmt]:=val, row cmt 0) |
 //   6 multiply (y[cmt]*=factor).  amt is the raw dose (modeled-F mu), amtF = F*amt,
-//   the amount that lands (modeled-alag mu); rec = a replace/multiply's record
-//   index (its rxAdjJumpCap), else -1.
+//   the amount that lands (modeled-alag mu); rec = a bolus/replace/multiply's
+//   record index (its rxAdjJumpCap), else -1.
 struct lsAdjEv { int type, cmt; double factor, amt, amtF; int rec = -1; };
 
 struct lsAdjSeg {
@@ -202,7 +202,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       if (_wh0 == EVID0_SS) continue;
       if (_whI == 0) {
         double amt = getDose(ind, ind->ix[i]);
-        evs.push_back({0, _cmt, 1.0, amt, getAmt(ind, ind->id, _cmt, amt, t, _y.data())});
+        evs.push_back({0, _cmt, 1.0, amt, getAmt(ind, ind->id, _cmt, amt, t, _y.data()), i});
       } else if (_whI == EVIDF_REPLACE) {
         evs.push_back({5, _cmt, 0.0, 0.0, 0.0, i});
       } else if (_whI == EVIDF_MULT) {
@@ -462,7 +462,8 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
         if (E.type == 0) {
           int c = E.cmt;
           if (op->adjDfOff >= 0) { const double *dF = &lhs[op->adjDfOff]; for (int p = 0; p < np; ++p) mu[p] += E.amt * dF[c * np + p] * wSeed[c]; }
-          if (op->adjDlagOff >= 0) { const double *dlag = &lhs[op->adjDlagOff];
+          if (op->adjDlagOff >= 0 && !rxAdjJumpTerm(E.rec, c, wSeed.data(), mu.data(), nBase, np, &lhs[op->adjDlagOff])) {
+            const double *dlag = &lhs[op->adjDlagOff];
             double sc = 0; for (int i = 0; i < nBase; ++i) sc += wSeed[i] * fx0[i * nBase + c];
             for (int p = 0; p < np; ++p) mu[p] += -E.amtF * dlag[c * np + p] * sc; }
         } else if (E.type == 3) {             // reset restores the initial conditions
@@ -624,7 +625,8 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
           if (E.type == 0) {
             int c = E.cmt;
             if (op->adjDfOff >= 0) { const double *dF = &lhs[op->adjDfOff]; for (int p = 0; p < np; ++p) mu[p] += E.amt * dF[c * np + p] * wSeed[c]; }
-            if (op->adjDlagOff >= 0) { const double *dlag = &lhs[op->adjDlagOff];
+            if (op->adjDlagOff >= 0 && !rxAdjJumpTerm(E.rec, c, wSeed.data(), mu.data(), nBase, np, &lhs[op->adjDlagOff])) {
+              const double *dlag = &lhs[op->adjDlagOff];
               double sc = 0; for (int b = 0; b < nBase; ++b) sc += wSeed[b] * fxT[b * nBase + c];
               for (int p = 0; p < np; ++p) mu[p] += -E.amtF * dlag[c * np + p] * sc; }
           } else if (E.type == 3) {
@@ -695,7 +697,8 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       // the events at the segment start, in forward order (as the backward's
       // transpose): reset -> dX0/dp, replace[c] -> 0, multiply[c] *= factor; a
       // modeled-F dose adds amt*dF/dp; a modeled alag shifts the dose time,
-      // S+ = S- + (f(y-)-f(y+))*dlag/dp = S- - F*amt*F_X[:,c]*dlag/dp.
+      // S+ = S- + (f(y-)-f(y+))*dlag/dp (its linearization -F*amt*F_X[:,c]*dlag/dp
+      // for a dose pushed at run time).
       for (size_t k = 0; k < Sg.ev.size(); ++k) {
         const lsAdjEv &E = Sg.ev[k];
         if (E.type == 3 && sg > 0) {
@@ -711,7 +714,9 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
           int c = E.cmt;
           if (op->adjDfOff >= 0) { const double *dF = &lhs[op->adjDfOff]; for (int p = 0; p < np; ++p) YHS[IDX(1, c, p)] += E.amt * dF[c * np + p]; }
           if (op->adjDlagOff >= 0) { const double *dlag = &lhs[op->adjDlagOff];
-            for (int i = 0; i < nBase; ++i) for (int p = 0; p < np; ++p) YHS[IDX(1, i, p)] += -E.amtF * fx0[i * nBase + c] * dlag[c * np + p]; }
+            const rxAdjJumpCap *cap = rxAdjJumpFind(E.rec);
+            for (int i = 0; i < nBase; ++i) for (int p = 0; p < np; ++p)
+              YHS[IDX(1, i, p)] += (cap != NULL && !cap->r.empty() ? cap->r[i] : -E.amtF * fx0[i * nBase + c]) * dlag[c * np + p]; }
         }
       }
       for (int c = 0; c < nBase; ++c) for (int p = 0; p < np; ++p) {

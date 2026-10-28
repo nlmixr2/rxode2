@@ -307,6 +307,11 @@
   replace (`evid = 5`) or multiply (`evid = 6`) on the lagged compartment,
   which the lag shifts like a dose; before, every adjoint method left it out.
 
+- The adjoint lag-time (`alag()`) sensitivity of a dose into a compartment
+  with nonlinear dynamics (for example Michaelis-Menten elimination) is now
+  exact in every adjoint method; it linearized the change in the derivative
+  across the dose, which was off by up to 24 in the tests.
+
 - `method = "abs"` now includes the bioavailability (`f()`) and lag-time
   (`alag()`) adjoint sensitivities of a bolus dose.  It still refuses them,
   and modeled `rate()` and `dur()`, for infusion doses.

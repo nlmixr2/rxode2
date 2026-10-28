@@ -3128,23 +3128,24 @@ static thread_local int    _adjSS2 = 0;
 // in the dY_ss_new/dp = -J^{-1} df/dp linear solve (kind 2).
 static thread_local std::vector<double> _adjSS2peak;
 
-// A replace/multiply into base cmt c, captured per record index while an adjoint
-// with a modeled alag() records: r = G f(t, x-) - f(t, x+) (G = dPhi/dx of the
-// jump), the state derivative of moving the jump later.  The backward adds
-// mu += dlag[c] * lambda+^T r.
+// A bolus (not ss), replace or multiply into base cmt c, captured per record
+// index while an adjoint with a modeled alag() records: r = G f(t, x-) - f(t, x+)
+// (G = dPhi/dx of the jump: I for a bolus), the state derivative of moving the
+// jump later.  The backward adds mu += dlag[c] * lambda+^T r, exact for a
+// nonlinear model.
 struct rxAdjJumpCap { int rec; std::vector<double> r; };
 static thread_local std::vector<rxAdjJumpCap> _adjJumpCap;
 static inline const rxAdjJumpCap *rxAdjJumpFind(int rec) {
   for (size_t k = 0; k < _adjJumpCap.size(); ++k) if (_adjJumpCap[k].rec == rec) return &_adjJumpCap[k];
   return NULL;
 }
-// cmt of a replace/multiply record into a base state to capture, or -1
+// cmt of a bolus/replace/multiply record into a base state to capture, or -1
 static inline int rxAdjJumpCmt(rx_solving_options *op, rx_solving_options_ind *ind, int rec) {
   if (!op->adjoint || op->adjDlagOff < 0) return -1;
   int ev = getEvid(ind, ind->ix[rec]);
   if (!isDose(ev)) return -1;
   int _wh, _cmt, _wh100, _whI, _wh0; getWh(ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
-  if (_whI != EVIDF_REPLACE && _whI != EVIDF_MULT) return -1;
+  if (_whI != EVIDF_REPLACE && _whI != EVIDF_MULT && !(_whI == 0 && _wh0 == EVID0_REGULAR)) return -1;
   return (_cmt >= 0 && _cmt < op->adjNbase) ? _cmt : -1;
 }
 static inline void rxAdjJumpRecord(rx_solving_options *op, rx_solving_options_ind *ind, int *neq,
@@ -3154,8 +3155,9 @@ static inline void rxAdjJumpRecord(rx_solving_options *op, rx_solving_options_in
   int _wh, _c, _wh100, _whI, _wh0; getWh(getEvid(ind, ind->ix[rec]), &_wh, &_c, &_wh100, &_whI, &_wh0);
   rxAdjJumpCap cap; cap.rec = rec;
   std::vector<double> yA(pre), fA(pre.size(), 0.0), fB(pre.size(), 0.0), yB(post, post + pre.size());
-  double g = 0.0;                       // G[c][c]: 0 for a replace, alpha for a multiply
-  if (_whI == EVIDF_MULT) g = getAmt(ind, ind->id, cmt, getDose(ind, ind->ix[rec]), t, yA.data());
+  double g = 1.0;                       // G[c][c]: 1 for a bolus, 0 for a replace, alpha for a multiply
+  if (_whI == EVIDF_REPLACE) g = 0.0;
+  else if (_whI == EVIDF_MULT) g = getAmt(ind, ind->id, cmt, getDose(ind, ind->ix[rec]), t, yA.data());
   dydt(neq, t, yA.data(), fA.data());
   dydt(neq, t, yB.data(), fB.data());
   cap.r.resize(nBase);
@@ -3165,7 +3167,7 @@ static inline void rxAdjJumpRecord(rx_solving_options *op, rx_solving_options_in
   _adjJumpCap.push_back(std::move(cap));
 }
 // handleEvid1() for the adjoint drivers' forward loops: also captures a
-// replace/multiply (rxAdjJumpRecord) while an adjoint records.
+// bolus/replace/multiply (rxAdjJumpRecord) while an adjoint records.
 static inline int rxAdjHandleEvid1(int *i, rx_solve *rx, int *neq, double *yp, double *xout) {
   rx_solving_options_ind *ind = &(rx->subjects[neq[1]]);
   int c = rxAdjJumpCmt(rx->op, ind, *i);
@@ -3175,16 +3177,18 @@ static inline int rxAdjHandleEvid1(int *i, rx_solve *rx, int *neq, double *yp, d
   rxAdjJumpRecord(rx->op, ind, neq, *i, c, ind->timeThread[ind->ix[*i]], pre, yp);
   return he;
 }
-// alag() dual of the replace/multiply at record rec into cmt c: mu += dlag[c][p] *
-// lam^T r, with lam the costate after the jump (before its transpose).
-static inline void rxAdjJumpTerm(int rec, int c, const double *lam, double *mu, int nBase, int np,
+// alag() dual of the jump at record rec into cmt c: mu += dlag[c][p] * lam^T r,
+// with lam the costate after the jump (before its transpose).  False when the
+// record has no capture (a dose pushed at run time).
+static inline bool rxAdjJumpTerm(int rec, int c, const double *lam, double *mu, int nBase, int np,
                                  const double *dlag) {
-  if (dlag == NULL || rec < 0) return;
+  if (dlag == NULL || rec < 0) return false;
   const rxAdjJumpCap *cap = rxAdjJumpFind(rec);
-  if (cap == NULL || cap->r.empty()) return;
+  if (cap == NULL || cap->r.empty()) return false;
   double sc = 0.0;
   for (int j = 0; j < nBase; ++j) sc += lam[j] * cap->r[j];
   for (int p = 0; p < np; ++p) mu[p] += dlag[c * np + p] * sc;
+  return true;
 }
 
 extern "C" void solveSSinf(int *neq,

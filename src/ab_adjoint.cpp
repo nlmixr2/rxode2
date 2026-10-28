@@ -43,7 +43,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   // solve applied them: 0 bolus (dPhi/dy=I; its modeled F and alag duals, raw amt
   // in factor and F*amt in amtF) | 3 reset (->0) | 5 replace[c] (->0) | 6
   // multiply[c] (*=factor).
-  struct abJump { int type, cmt; double factor, amtF = 0.0; int rec = -1; };   // rec: a replace/multiply's record index
+  struct abJump { int type, cmt; double factor, amtF = 0.0; int rec = -1; };   // rec: a bolus/replace/multiply's record index
   // the start state of call c
   auto abCallY0 = [&](size_t c) {
     const abRecCall &C = abAdjCalls[c];
@@ -70,7 +70,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
       else if (_whI == 0 && _wh0 == EVID0_REGULAR && (op->adjDfOff >= 0 || op->adjDlagOff >= 0)) {
         double _amt = getDose(ind, ind->ix[i]);
         abJump _j = {0, _cmt, _amt};
-        _j.amtF = getAmt(ind, ind->id, _cmt, _amt, t, _y.data());
+        _j.amtF = getAmt(ind, ind->id, _cmt, _amt, t, _y.data()); _j.rec = i;
         ev.push_back(_j);
       }
     }
@@ -148,7 +148,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
           const double *dF = &lhs[op->adjDfOff];
           for (int p = 0; p < np; ++p) muP[p] += E.factor * dF[E.cmt * np + p] * cost[E.cmt];
         }
-        if (op->adjDlagOff >= 0) {
+        if (op->adjDlagOff >= 0 && !rxAdjJumpTerm(E.rec, E.cmt, cost, muP, nBase, np, &lhs[op->adjDlagOff])) {
           const double *dlag = &lhs[op->adjDlagOff];
           double sc = 0.0;
           for (int b = 0; b < nBase; ++b) sc += cost[b] * fx[b * nBase + E.cmt];
