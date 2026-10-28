@@ -3081,13 +3081,13 @@ static thread_local double _adjSSbolusIi = 0.0;
 static thread_local double _adjSSlag = 0.0;
 static thread_local int _adjSSlagOn = 0;
 // extra (pushed) doses whose times move with a lagged ss = 1 dose's alag(), by
-// extraDoseTimeIdx, with that dose's _adjSSinfFixed (a pushed evid does not say
-// whether its infusion was a fixed rate or duration); the adjoint drivers clear
-// both per subject
-static thread_local std::vector<int> _adjLagPush, _adjLagPushFixed;
-// the _adjSSinfFixed of a lagged ss push k, or -1 when k is not one
-static inline int rxAdjLagPushFixed(int k) {
-  for (size_t j = 0; j < _adjLagPush.size(); ++j) if (_adjLagPush[j] == k) return _adjLagPushFixed[j];
+// extraDoseTimeIdx, with that dose's _adjSSinfFixed and _adjSSinfModeled (a
+// pushed evid does not say whether its infusion was a fixed rate or duration, or
+// modeled); the adjoint drivers clear them per subject
+static thread_local std::vector<int> _adjLagPush, _adjLagPushFixed, _adjLagPushMdl;
+// the position of a lagged ss push k in _adjLagPush, or -1 when k is not one
+static inline int rxAdjLagPushAt(int k) {
+  for (size_t j = 0; j < _adjLagPush.size(); ++j) if (_adjLagPush[j] == k) return (int)j;
   return -1;
 }
 // Two-phase steady-state infusion period: rate _adjSSinfRate for _adjSSinfDur,
@@ -4682,7 +4682,9 @@ void handleSS(int *neq,
     ind->ixds=oldIxds; ind->idx=oldIdx;
   }
   if (op->adjoint && _adjSSlagOn)
-    for (int k = _adjPush0; k < ind->extraDoseN[0]; ++k) { _adjLagPush.push_back(k); _adjLagPushFixed.push_back(_adjSSinfFixed); }
+    for (int k = _adjPush0; k < ind->extraDoseN[0]; ++k) {
+      _adjLagPush.push_back(k); _adjLagPushFixed.push_back(_adjSSinfFixed); _adjLagPushMdl.push_back(_adjSSinfModeled);
+    }
   updateExtraDoseGlobals(ind);
 }
 
