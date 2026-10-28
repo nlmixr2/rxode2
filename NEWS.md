@@ -32,6 +32,12 @@
   `setRxThreadId()` back through `getRxThreadId()`, a new entry of the C
   pointer table (`rxode2ptr.h`).
 
+- Packages linking to rxode2 can set a subject's `newind` with
+  `setIndNewind()`, a new entry of the C pointer table (`rxode2ptr.h`), so a
+  walk of their own over a subject's records with `calc_lhs` gives a model
+  that reads `newind` 1 at the first record and 2 after it, as rxode2's
+  output does.
+
 - A package that includes rxode2's `rxode2parseSbuf.h` can define
   `RXODE2_SBUF_FORMAT` (`PKG_CPPFLAGS = -DRXODE2_SBUF_FORMAT`) to have its
   `sAppend()`, `sPrint()` and `addLine()` calls checked by `-Wformat`.  Under

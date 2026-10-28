@@ -639,8 +639,9 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2rxRmvtSetup = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRmvtSetup, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxRmvtDraw = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRmvtDraw, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxRmvtFree = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRmvtFree, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2setIndNewind = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndNewind, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 104
+#define nVec 105
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -746,6 +747,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 101, rxode2rxRmvtSetup);
   SET_VECTOR_ELT(ret, 102, rxode2rxRmvtDraw);
   SET_VECTOR_ELT(ret, 103, rxode2rxRmvtFree);
+  SET_VECTOR_ELT(ret, 104, rxode2setIndNewind);
 
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
@@ -860,6 +862,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 101, Rf_mkChar("rxode2rxRmvtSetup"));
   SET_STRING_ELT(retN, 102, Rf_mkChar("rxode2rxRmvtDraw"));
   SET_STRING_ELT(retN, 103, Rf_mkChar("rxode2rxRmvtFree"));
+  SET_STRING_ELT(retN, 104, Rf_mkChar("rxode2setIndNewind"));
 
   // Nothing is validated here.  Every reverse dependency calls this at load, so a
   // check that fails takes them all down at once and they cannot be patched
