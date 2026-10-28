@@ -428,7 +428,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   // rec = a replace/multiply's record index (its rxAdjJumpCap), else -1.
   struct cvEvent { double t; int cmt; int type; double factor; int seq; int y; double raw = 0.0; int rec = -1; };
   std::vector<double> evY;
-  std::vector<cvEvent> evJumps; _adjJumpCap.clear();
+  std::vector<cvEvent> evJumps; rxAdjJumpClear();
   std::vector<cvInfus> infusRec;   // modeled-rate infusion windows (rate dual)
   // state jumps (bolus, replace, multiply) for the dose jump of a
   // parameter-dependent delay
