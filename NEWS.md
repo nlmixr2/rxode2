@@ -338,8 +338,11 @@
 
 - The adjoint bioavailability (`f()`) sensitivity of a steady-state
   (`ss = 1`) fixed-rate or fixed-duration infusion lasting exactly its dosing
-  interval is now included; it was missing in every adjoint method (off by up
+  interval is now included in the `rk4s` family and `liblsodaadj` (off by up
   to 72), because that steady state was taken as a constant infusion.
+  `liblsodaadj` keeps a small residual there (about 0.4 for a fixed rate at
+  `hmax = 0.1`, see `?rxSolveAdjointRk4`); `abs` and `cvodesadj` refuse
+  steady-state doses.
 
 - `method = "abs"` now includes the bioavailability (`f()`), lag-time
   (`alag()`), `rate()` and `dur()` adjoint sensitivities of bolus and
