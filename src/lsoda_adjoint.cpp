@@ -145,6 +145,122 @@ static inline void lsAdjEval(int cSub, double t, const double *yBase, int nBase,
   *fp = &lhs[fpOff];
 }
 
+// Infusion-window duals per segment start, for liblsodaadj's segments and abs's
+// calls (Seg needs t0, y0, infRate and the lsAdjSeg weight vectors).  Returns
+// whether the subject has an infusion.
+template <class Seg>
+static bool rxAdjInfusionWindows(rx_solving_options *op, rx_solving_options_ind *ind, int nBase, int eff,
+                                 std::vector<Seg> &segs) {
+  // An infusion start/stop opening a segment changes the rate into its cmt by the
+  // jump in InfusionRate across the segment boundary.  A modeled alag() moves that
+  // time; a modeled F scales a fixed-dur rate (forcing rawRate*dF over the window) or
+  // stretches a fixed-rate window (amtRaw*dF at its off boundary).
+  if (op->adjDlagOff >= 0 || op->adjDfOff >= 0) {
+    // open fixed windows: cmt, start key, first segment, raw rate, fixed dur or rate
+    struct lsFxWin { int cmt, key; size_t seg; double raw; bool isDur; };
+    std::vector<lsFxWin> fxOpen;
+    for (size_t sg = 0; sg < segs.size(); ++sg) {
+      Seg &Sg = segs[sg];
+      if ((int)Sg.infRate.size() != nBase) continue;
+      for (int i = 0; i < ind->n_all_times; ++i) {
+        if (!rxAdjSameTime(ind->timeThread[ind->ix[i]], Sg.t0)) continue;
+        int ev = getEvid(ind, ind->ix[i]);
+        int c = rk4sInfusionEventCmt(ev, nBase, true);
+        if (c < 0) continue;
+        double prev = (sg > 0 && (int)segs[sg - 1].infRate.size() == nBase) ? segs[sg - 1].infRate[c] : 0.0;
+        double dR = Sg.infRate[c] - prev;
+        int _wh, _c, _wh100, _whI, _wh0; getWh(ev, &_wh, &_c, &_wh100, &_whI, &_wh0);
+        if (op->adjDlagOff >= 0 && _wh0 == EVID0_REGULAR && dR != 0.0) {
+          if (Sg.lagRate.empty()) Sg.lagRate.assign(nBase, 0.0);
+          Sg.lagRate[c] = dR;
+        }
+        if (op->adjDfOff < 0 || (_whI != EVIDF_INF_RATE && _whI != EVIDF_INF_DUR)) continue;
+        std::vector<double> _y(eff, 0.0);
+        for (int b = 0; b < nBase; ++b) _y[b] = Sg.y0[b];
+        double f = getAmt(ind, ind->id, c, 1.0, Sg.t0, _y.data());
+        if (f == 0.0) continue;
+        double raw = getDose(ind, ind->ix[i]);   // the record's raw rate (negative at a stop)
+        int key = rk4sInfusionStartKey(ind, ind->ix[i]);
+        if (raw > 0.0) { fxOpen.push_back({c, key, sg, raw, _whI == EVIDF_INF_DUR}); continue; }
+        // the window this stop closes: its own start, else the most recent one
+        int wi = -1;
+        for (size_t w = fxOpen.size(); w-- > 0;) {
+          if (fxOpen[w].cmt != c) continue;
+          if (key >= 0 && fxOpen[w].key == key) { wi = (int)w; break; }
+          if (wi < 0) wi = (int)w;
+        }
+        if (wi < 0) continue;
+        const lsFxWin W = fxOpen[wi];
+        fxOpen.erase(fxOpen.begin() + wi);
+        if (_whI == EVIDF_INF_DUR) {
+          for (size_t s2 = W.seg; s2 < sg; ++s2) lsAdjAddW(segs[s2].infDfMult, nBase, c, W.raw);
+        } else {
+          lsAdjAddW(Sg.offDfFac, nBase, c, W.raw * (Sg.t0 - segs[W.seg].t0) / f);
+        }
+      }
+    }
+    // a fixed-dur window still open when the solve ends (its stop lies past the
+    // last record solved) forces every remaining segment
+    for (size_t w = 0; w < fxOpen.size(); ++w)
+      if (fxOpen[w].isDur)
+        for (size_t s2 = fxOpen[w].seg; s2 < segs.size(); ++s2) lsAdjAddW(segs[s2].infDfMult, nBase, fxOpen[w].cmt, fxOpen[w].raw);
+  }
+
+  // Reconstruct modeled rate()/dur() infusion windows for the dR/dp dual: pair each
+  // ON event with its matching OFF and derive R = F*amt/(t_off-t_on).  Segments in
+  // [t_on,t_off) get the in-window forcing; the segment at t_off gets the off-
+  // boundary transversality.  durMult = 1 for rate(), F*amt for dur().  A modeled F
+  // adds amtRaw/dur*dF to the dur() forcing and amtRaw*dF at the rate() off boundary
+  // (t_off = t_on + F*amt/rate).
+  bool hasInfusion = false;
+  for (int i = 0; i < ind->n_all_times; ++i) {
+    int ev = getEvid(ind, ind->ix[i]);
+    if (isObs(ev) || !isDose(ev)) continue;
+    int _wh, _cmt, _wh100, _whI, _wh0; getWh(ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
+    if (_whI == EVIDF_INF_RATE || _whI == EVIDF_INF_DUR ||
+        _whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON ||
+        _whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) hasInfusion = true;
+    if ((_whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON) && _cmt >= 0 && _cmt < nBase && op->adjDrateOff >= 0) {
+      double tOn = ind->timeThread[ind->ix[i]];
+      double amtRaw = getDose(ind, ind->ix[i]);
+      bool isDur = (_whI == EVIDF_MODEL_DUR_ON);
+      // its OFF event: the record right after the start (as the forward solve pairs
+      // them), else the next off time > tOn into the same cmt
+      double tOff = R_PosInf;
+      int ixOff = ind->ix[i] + 1;
+      if (ixOff < ind->n_all_times) {
+        int _wh2, _cmt2, _wh1002, _whI2, _wh02; getWh(getEvid(ind, ixOff), &_wh2, &_cmt2, &_wh1002, &_whI2, &_wh02);
+        if ((_whI2 == EVIDF_MODEL_RATE_OFF || _whI2 == EVIDF_MODEL_DUR_OFF) && _cmt2 == _cmt) tOff = ind->timeThread[ixOff];
+      }
+      for (int j = 0; !R_FINITE(tOff) && j < ind->n_all_times; ++j) {
+        int ej = getEvid(ind, ind->ix[j]); if (isObs(ej) || !isDose(ej)) continue;
+        int _wh2, _cmt2, _wh1002, _whI2, _wh02; getWh(ej, &_wh2, &_cmt2, &_wh1002, &_whI2, &_wh02);
+        if ((_whI2 == EVIDF_MODEL_RATE_OFF || _whI2 == EVIDF_MODEL_DUR_OFF) && _cmt2 == _cmt) {
+          double te = ind->timeThread[ind->ix[j]]; if (te > tOn + rxAdjTimeTol(te, tOn)) tOff = te;
+        }
+      }
+      if (!R_FINITE(tOff) || tOff - tOn < 1e-12) continue;
+      std::vector<double> _y(eff, 0.0);             // F evaluated at the window's start state
+      for (size_t sg = 0; sg < segs.size(); ++sg)
+        if (rxAdjSameTime(segs[sg].t0, tOn)) { for (int c = 0; c < nBase; ++c) _y[c] = segs[sg].y0[c]; break; }
+      double amt = getAmt(ind, ind->id, _cmt, amtRaw, tOn, _y.data());
+      double R = amt / (tOff - tOn);
+      double durMult = isDur ? amt : 1.0;
+      for (size_t sg = 0; sg < segs.size(); ++sg) {
+        double t0s = segs[sg].t0;
+        if (t0s >= tOn - rxAdjTimeTol(t0s, tOn) && t0s < tOff - rxAdjTimeTol(t0s, tOff)) {
+          lsAdjAddW(segs[sg].infDurMult, nBase, _cmt, durMult);
+          if (isDur) lsAdjAddW(segs[sg].infDfMult, nBase, _cmt, amtRaw / (tOff - tOn));
+        } else if (rxAdjSameTime(t0s, tOff)) {
+          lsAdjAddW(segs[sg].offFac, nBase, _cmt, -(amt / R) * durMult);
+          if (!isDur) lsAdjAddW(segs[sg].offDfFac, nBase, _cmt, amtRaw);
+        }
+      }
+    }
+  }
+  return hasInfusion;
+}
+
 extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct lsoda_opt_t opt,
                                   int solveid, t_dydt_liblsoda c_dydt_ll, t_dydt c_dydt,
                                   t_update_inis u_inis) {
@@ -218,113 +334,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg)
     lsAdjSegs[sg].ev = lsEventsAt(lsAdjSegs[sg].t0, ind->n_all_times, lsAdjSegs[sg].y0.data());
 
-  // An infusion start/stop opening a segment changes the rate into its cmt by the
-  // jump in InfusionRate across the segment boundary.  A modeled alag() moves that
-  // time; a modeled F scales a fixed-dur rate (forcing rawRate*dF over the window) or
-  // stretches a fixed-rate window (amtRaw*dF at its off boundary).
-  if (op->adjDlagOff >= 0 || op->adjDfOff >= 0) {
-    // open fixed windows: cmt, start key, first segment, raw rate, fixed dur or rate
-    struct lsFxWin { int cmt, key; size_t seg; double raw; bool isDur; };
-    std::vector<lsFxWin> fxOpen;
-    for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg) {
-      lsAdjSeg &Sg = lsAdjSegs[sg];
-      if ((int)Sg.infRate.size() != nBase) continue;
-      for (int i = 0; i < ind->n_all_times; ++i) {
-        if (!rxAdjSameTime(ind->timeThread[ind->ix[i]], Sg.t0)) continue;
-        int ev = getEvid(ind, ind->ix[i]);
-        int c = rk4sInfusionEventCmt(ev, nBase, true);
-        if (c < 0) continue;
-        double prev = (sg > 0 && (int)lsAdjSegs[sg - 1].infRate.size() == nBase) ? lsAdjSegs[sg - 1].infRate[c] : 0.0;
-        double dR = Sg.infRate[c] - prev;
-        int _wh, _c, _wh100, _whI, _wh0; getWh(ev, &_wh, &_c, &_wh100, &_whI, &_wh0);
-        if (op->adjDlagOff >= 0 && _wh0 == EVID0_REGULAR && dR != 0.0) {
-          if (Sg.lagRate.empty()) Sg.lagRate.assign(nBase, 0.0);
-          Sg.lagRate[c] = dR;
-        }
-        if (op->adjDfOff < 0 || (_whI != EVIDF_INF_RATE && _whI != EVIDF_INF_DUR)) continue;
-        std::vector<double> _y(eff, 0.0);
-        for (int b = 0; b < nBase; ++b) _y[b] = Sg.y0[b];
-        double f = getAmt(ind, ind->id, c, 1.0, Sg.t0, _y.data());
-        if (f == 0.0) continue;
-        double raw = getDose(ind, ind->ix[i]);   // the record's raw rate (negative at a stop)
-        int key = rk4sInfusionStartKey(ind, ind->ix[i]);
-        if (raw > 0.0) { fxOpen.push_back({c, key, sg, raw, _whI == EVIDF_INF_DUR}); continue; }
-        // the window this stop closes: its own start, else the most recent one
-        int wi = -1;
-        for (size_t w = fxOpen.size(); w-- > 0;) {
-          if (fxOpen[w].cmt != c) continue;
-          if (key >= 0 && fxOpen[w].key == key) { wi = (int)w; break; }
-          if (wi < 0) wi = (int)w;
-        }
-        if (wi < 0) continue;
-        const lsFxWin W = fxOpen[wi];
-        fxOpen.erase(fxOpen.begin() + wi);
-        if (_whI == EVIDF_INF_DUR) {
-          for (size_t s2 = W.seg; s2 < sg; ++s2) lsAdjAddW(lsAdjSegs[s2].infDfMult, nBase, c, W.raw);
-        } else {
-          lsAdjAddW(Sg.offDfFac, nBase, c, W.raw * (Sg.t0 - lsAdjSegs[W.seg].t0) / f);
-        }
-      }
-    }
-    // a fixed-dur window still open when the solve ends (its stop lies past the
-    // last record solved) forces every remaining segment
-    for (size_t w = 0; w < fxOpen.size(); ++w)
-      if (fxOpen[w].isDur)
-        for (size_t s2 = fxOpen[w].seg; s2 < lsAdjSegs.size(); ++s2) lsAdjAddW(lsAdjSegs[s2].infDfMult, nBase, fxOpen[w].cmt, fxOpen[w].raw);
-  }
-
-  // Reconstruct modeled rate()/dur() infusion windows for the dR/dp dual: pair each
-  // ON event with its matching OFF and derive R = F*amt/(t_off-t_on).  Segments in
-  // [t_on,t_off) get the in-window forcing; the segment at t_off gets the off-
-  // boundary transversality.  durMult = 1 for rate(), F*amt for dur().  A modeled F
-  // adds amtRaw/dur*dF to the dur() forcing and amtRaw*dF at the rate() off boundary
-  // (t_off = t_on + F*amt/rate).
-  bool hasInfusion = false;
-  for (int i = 0; i < ind->n_all_times; ++i) {
-    int ev = getEvid(ind, ind->ix[i]);
-    if (isObs(ev) || !isDose(ev)) continue;
-    int _wh, _cmt, _wh100, _whI, _wh0; getWh(ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
-    if (_whI == EVIDF_INF_RATE || _whI == EVIDF_INF_DUR ||
-        _whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON ||
-        _whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) hasInfusion = true;
-    if ((_whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON) && _cmt >= 0 && _cmt < nBase && op->adjDrateOff >= 0) {
-      double tOn = ind->timeThread[ind->ix[i]];
-      double amtRaw = getDose(ind, ind->ix[i]);
-      bool isDur = (_whI == EVIDF_MODEL_DUR_ON);
-      // its OFF event: the record right after the start (as the forward solve pairs
-      // them), else the next off time > tOn into the same cmt
-      double tOff = R_PosInf;
-      int ixOff = ind->ix[i] + 1;
-      if (ixOff < ind->n_all_times) {
-        int _wh2, _cmt2, _wh1002, _whI2, _wh02; getWh(getEvid(ind, ixOff), &_wh2, &_cmt2, &_wh1002, &_whI2, &_wh02);
-        if ((_whI2 == EVIDF_MODEL_RATE_OFF || _whI2 == EVIDF_MODEL_DUR_OFF) && _cmt2 == _cmt) tOff = ind->timeThread[ixOff];
-      }
-      for (int j = 0; !R_FINITE(tOff) && j < ind->n_all_times; ++j) {
-        int ej = getEvid(ind, ind->ix[j]); if (isObs(ej) || !isDose(ej)) continue;
-        int _wh2, _cmt2, _wh1002, _whI2, _wh02; getWh(ej, &_wh2, &_cmt2, &_wh1002, &_whI2, &_wh02);
-        if ((_whI2 == EVIDF_MODEL_RATE_OFF || _whI2 == EVIDF_MODEL_DUR_OFF) && _cmt2 == _cmt) {
-          double te = ind->timeThread[ind->ix[j]]; if (te > tOn + rxAdjTimeTol(te, tOn)) tOff = te;
-        }
-      }
-      if (!R_FINITE(tOff) || tOff - tOn < 1e-12) continue;
-      std::vector<double> _y(eff, 0.0);             // F evaluated at the window's start state
-      for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg)
-        if (rxAdjSameTime(lsAdjSegs[sg].t0, tOn)) { for (int c = 0; c < nBase; ++c) _y[c] = lsAdjSegs[sg].y0[c]; break; }
-      double amt = getAmt(ind, ind->id, _cmt, amtRaw, tOn, _y.data());
-      double R = amt / (tOff - tOn);
-      double durMult = isDur ? amt : 1.0;
-      for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg) {
-        double t0s = lsAdjSegs[sg].t0;
-        if (t0s >= tOn - rxAdjTimeTol(t0s, tOn) && t0s < tOff - rxAdjTimeTol(t0s, tOff)) {
-          lsAdjAddW(lsAdjSegs[sg].infDurMult, nBase, _cmt, durMult);
-          if (isDur) lsAdjAddW(lsAdjSegs[sg].infDfMult, nBase, _cmt, amtRaw / (tOff - tOn));
-        } else if (rxAdjSameTime(t0s, tOff)) {
-          lsAdjAddW(lsAdjSegs[sg].offFac, nBase, _cmt, -(amt / R) * durMult);
-          if (!isDur) lsAdjAddW(lsAdjSegs[sg].offDfFac, nBase, _cmt, amtRaw);
-        }
-      }
-    }
-  }
+  bool hasInfusion = rxAdjInfusionWindows(op, ind, nBase, eff, lsAdjSegs);
 
   std::vector<double> A(eff, 0.0);
   std::vector<double> lamFlat, adjPred, adjAcor, w, Pmat;
