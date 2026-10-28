@@ -212,5 +212,21 @@ rxTest({
       expect_equal(.s$depot, .depot, tolerance = 1e-9, label = paste("dense", .dense))
       expect_equal(.s$center, .ref$center, tolerance = 1e-9, label = paste("dense", .dense))
     }
+    # the same with a lag time, and doses pushed by bolus() inside the model,
+    # which fall between records too: dop853 agrees with liblsoda
+    .ml <- rxode2("d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\nalag(depot) <- lg")
+    .mb <- rxode2("d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\nif (t >= 1 && t < 1.5) {\n  bolus(50, depot, 0.7, 2, 0)\n}")
+    .cases <- list(
+      lagged = list(m = .ml, ev = .ev, p = c(.p, lg = 0.6)),
+      pushedBolus = list(m = .mb, ev = et(c(0.5, 1, 2, 3, 5)), p = .p)
+    )
+    for (.nm in names(.cases)) {
+      .k <- .cases[[.nm]]
+      .c <- c(list(params = .k$p), .ctl[-1])
+      .r <- as.data.frame(do.call(rxSolve, c(list(.k$m, .k$ev, method = "liblsoda"), .c)))
+      .d <- as.data.frame(do.call(rxSolve, c(list(.k$m, .k$ev, method = "dop853"), .c)))
+      expect_equal(.d$depot, .r$depot, tolerance = 1e-9, label = .nm)
+      expect_equal(.d$center, .r$center, tolerance = 1e-9, label = .nm)
+    }
   })
 })
