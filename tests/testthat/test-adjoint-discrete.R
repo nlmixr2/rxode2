@@ -2542,4 +2542,25 @@ rxTest({
     expect_equal(.s$c, c(0, 100, 200), tolerance = 1e-7)
     expect_equal(.s$rx__sens_c_BY_tlag__, c(0, -100, -100), tolerance = 1e-7)
   })
+
+  test_that("cvodesadj alag transversality uses the exact vector-field jump", {
+    skip_on_cran()
+    # c' = a (a - 20)^2 is 0 at a = 0 and a = 20, and 1000 at a = 10
+    .m <- "d/dt(a)=0*k\nd/dt(c)=a*(a-20)^2\nalag(a)=tlag"
+    .ma <- rxode2(.rxAdjointExpand(.m, c("k", "tlag"))$text)
+    .one <- et(amt = 10, cmt = "a") |> et(c(2, 3))
+    .two <- et(amt = 10, cmt = "a") |> et(amt = 10, cmt = "a") |> et(c(2, 3))
+    for (.x in list(list(.one, -1000), list(.two, 0))) {
+      .s <- rxSolve(
+        .ma,
+        .x[[1]],
+        params = c(k = 1, tlag = 1),
+        method = "cvodesadj",
+        atol = 1e-11,
+        rtol = 1e-11,
+        cores = 1
+      )
+      expect_equal(.s$rx__sens_c_BY_tlag__, rep(.x[[2]], 2), tolerance = 1e-7)
+    }
+  })
 })

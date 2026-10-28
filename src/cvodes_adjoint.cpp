@@ -130,12 +130,18 @@ static int cvB_bwd(sunrealtype t, N_Vector B, N_Vector Bd, void *ud) {
   return 0;
 }
 
-// Record the current (t, base states) plus f=dydt into the history segment.
-static void cvB_record(cvHist *hist, cvFwdUser *u, double t, const double *yp) {
-  double *A = u->A.data(), *D = u->DADT.data();
+// f = dydt at (t, base states yp) into D (eff wide; may be u->DADT).
+static void cvB_rhs(cvFwdUser *u, double t, const double *yp, double *D) {
+  double *A = u->A.data();
   for (int i = 0; i < u->eff; ++i) A[i] = 0.0;
   for (int i = 0; i < u->nBase; ++i) A[i] = yp[i];
   u->dydt(u->neq, t, A, D);
+}
+
+// Record the current (t, base states) plus f=dydt into the history segment.
+static void cvB_record(cvHist *hist, cvFwdUser *u, double t, const double *yp) {
+  double *D = u->DADT.data();
+  cvB_rhs(u, t, yp, D);
   hist->push(t, yp, D);
 }
 
@@ -209,7 +215,8 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   // replace (type 5: lambda[c]:=0) / multiply (type 6: lambda[c]*=factor) events;
   // the backward sweep stops at each and applies the transpose costate jump.
   // seq: forward processing order; y: offset in evY of the primal just after
-  // this event's own jump (-1: none), so same-time events see their own state.
+  // this event's own jump (-1: none), so same-time events see their own state;
+  // an alag bolus (type 0) follows it with its vector-field jump F(y+)-F(y-).
   struct cvEvent { double t; int cmt; int type; double factor; int seq; int y; };
   std::vector<double> evY;
   std::vector<cvEvent> evJumps;
@@ -307,6 +314,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       ind->idx = i;
       ++seq;
       int _yOff = -1;   // evY slot to fill with this record's post-jump primal
+      int _dfOff = -1;  // evY slot for an alag bolus's F(y+)-F(y-)
       // Record replace/multiply state jumps for the backward transpose jump.
       { int _ev = getEvid(ind, ind->ix[i]);
         if (isDose(_ev)) {
@@ -321,8 +329,11 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
             } else if (_whI == 0 && op->adjDlagOff >= 0) {
               // additive bolus in a model with a modeled alag(): record the
               // (lagged) dose time so the backward can add the transversality
-              // mu += -amt*dlag_c/dtheta*(lambda^T F_X[:,c]).
-              _yOff = (int)evY.size(); evY.resize(evY.size() + nBase);
+              // mu += -dlag_c/dtheta*(lambda^T (F(y+)-F(y-))).
+              _yOff = (int)evY.size(); _dfOff = _yOff + nBase;
+              evY.resize(evY.size() + 2 * nBase);
+              cvB_rhs(&fu, xout, yp, fu.DADT.data());   // F(y-), differenced below
+              std::copy(fu.DADT.begin(), fu.DADT.begin() + nBase, evY.begin() + _dfOff);
               evJumps.push_back({xout, _cmt, 0, getDose(ind, ind->ix[i]), seq, _yOff});
             } else if ((_whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON) && op->adjDrateOff >= 0) {
               double _amt = getDose(ind, ind->ix[i]);
@@ -373,6 +384,10 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       }
       // Resume the forward from the (possibly jumped) state and open a new segment.
       if (_yOff >= 0) std::copy(yp, yp + nBase, evY.begin() + _yOff);
+      if (_dfOff >= 0) {
+        cvB_rhs(&fu, xout, yp, fu.DADT.data());
+        for (int k = 0; k < nBase; ++k) evY[_dfOff + k] = fu.DADT[k] - evY[_dfOff + k];
+      }
       if (didEvent) {
         for (int k = 0; k < nBase; ++k) NV_Ith_S(y, k) = yp[k];
         CVodeReInit(mem, (sunrealtype)xout, y);
@@ -471,7 +486,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
         if (ty == 5) NV_Ith_S(B, c) = 0.0;                             // replace
         else if (ty == 6) NV_Ith_S(B, c) *= evJumps[segEv[s]].factor;  // multiply
         else if (ty == 0) {                                            // additive-alag transversality
-          // F_X and dlag at the primal just after this dose; lambda unchanged (dPhi/dy=I).
+          // dlag at the primal just after this dose; lambda unchanged (dPhi/dy=I).
           double *yq = bu.yq.data(), *A = bu.A.data();
           const cvEvent &ev = evJumps[segEv[s]];
           if (ev.y >= 0) std::copy(evY.begin() + ev.y, evY.begin() + ev.y + nBase, yq);
@@ -479,11 +494,11 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
           for (int ii = 0; ii < eff; ++ii) A[ii] = 0.0;
           for (int ii = 0; ii < nBase; ++ii) A[ii] = yq[ii];
           calc_lhs(cSub, (double)te, A, ind->lhs);
-          const double *fx = &ind->lhs[bu.fxOff];
           const double *dlag = &ind->lhs[op->adjDlagOff];
-          double amt = evJumps[segEv[s]].factor, sc = 0.0;
-          for (int ii = 0; ii < nBase; ++ii) sc += NV_Ith_S(B, ii) * fx[ii * nBase + c];
-          for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += -amt * dlag[c * np + p] * sc;
+          const double *dF = &evY[ev.y + nBase];
+          double sc = 0.0;
+          for (int ii = 0; ii < nBase; ++ii) sc += NV_Ith_S(B, ii) * dF[ii];
+          for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += -dlag[c * np + p] * sc;
         } else {                                                       // ty==7: infusion off-boundary
           // mu += -(amt/R) * dR/dtheta * lambda_c(t_off).  factor = -(amt/R).
           double *yq = bu.yq.data(), *A = bu.A.data();

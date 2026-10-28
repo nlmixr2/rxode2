@@ -247,7 +247,9 @@
   (or after a reset at the same time) in that observation's sensitivities,
   transposes same-time events in reverse of the order the forward solve
   applied them, and evaluates each of several same-time lagged boluses at
-  its own post-dose state.
+  its own post-dose state.  Its `alag()` lag-time sensitivity now uses the
+  exact change in the derivatives across the dose, so it is also correct
+  when the derivatives are nonlinear in the dosed compartment.
 
 # rxode2 5.1.8
 
