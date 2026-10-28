@@ -207,6 +207,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
         for (int b = 0; b < nBase; ++b) cost[b] = 0.0;
       }
       else if (E.type == 5 || E.type == 6) {
+        const double *fx, *fp; abEval(t, y, &fx, &fp);   // the duals' blocks at this event's time
         rxAdjJumpTerm(E.rec, E.cmt, cost, muP, nBase, np, op->adjDlagOff >= 0 ? &lhs[op->adjDlagOff] : NULL,
                       op->adjDfOff >= 0 ? &lhs[op->adjDfOff] : NULL);
         if (E.type == 5) cost[E.cmt] = 0.0; else cost[E.cmt] *= E.factor;

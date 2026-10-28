@@ -504,12 +504,16 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   // (dPhi/dy = I): modeled F adds amt*dF/dtheta*lambda_c, and a modeled alag
   // adds dlag_c/dtheta*lambda^T (f(y-) - f(y+)) (rxAdjJumpTerm), or for a pushed
   // dose its linearization -F*amt*dlag_c/dtheta*(lambda^T F_X[:,c]).
-  auto bolusDual = [&](const cvEvent &ev) {
+  // ind->lhs at time te and the forward state there (the event's own dF, dlag)
+  auto lhsAt = [&](double te) {
     double *yq = bu.yq.data(), *A = bu.A.data();
-    hist.interp(ev.t, yq);
+    hist.interp(te, yq);
     for (int ii = 0; ii < eff; ++ii) A[ii] = 0.0;
     for (int ii = 0; ii < nBase; ++ii) A[ii] = yq[ii];
-    calc_lhs(cSub, ev.t, A, ind->lhs);
+    calc_lhs(cSub, te, A, ind->lhs);
+  };
+  auto bolusDual = [&](const cvEvent &ev) {
+    lhsAt(ev.t);
     int c = ev.cmt;
     if (op->adjDfOff >= 0) {
       const double *dF = &ind->lhs[op->adjDfOff];
@@ -535,6 +539,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       if (!isSameTime(E.t, t)) continue;
       if (E.type == 0) { bolusDual(E); continue; }
       if (E.type != 5 && E.type != 6) continue;
+      lhsAt(E.t);
       rxAdjJumpTerm(E.rec, E.cmt, NV_DATA_S(B), NV_DATA_S(B) + nBase, nBase, np,
                     op->adjDlagOff >= 0 ? &ind->lhs[op->adjDlagOff] : NULL,
                     op->adjDfOff >= 0 ? &ind->lhs[op->adjDfOff] : NULL);
@@ -590,10 +595,12 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
           tCur = te;
         }
         int c = evJumps[segEv[s]].cmt; int ty = evJumps[segEv[s]].type;
-        if (ty == 5 || ty == 6)                                        // its alag() and f() duals
+        if (ty == 5 || ty == 6) {                                      // its alag() and f() duals
+          lhsAt(te);
           rxAdjJumpTerm(evJumps[segEv[s]].rec, c, NV_DATA_S(B), NV_DATA_S(B) + nBase, nBase, np,
                         op->adjDlagOff >= 0 ? &ind->lhs[op->adjDlagOff] : NULL,
                         op->adjDfOff >= 0 ? &ind->lhs[op->adjDfOff] : NULL);
+        }
         if (ty == 5) NV_Ith_S(B, c) = 0.0;                             // replace
         else if (ty == 6) NV_Ith_S(B, c) *= evJumps[segEv[s]].factor;  // multiply
         else if (ty == 0) {                                            // additive bolus duals

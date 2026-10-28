@@ -352,6 +352,12 @@
   An interior `ss = 1` or `ss = 2` bolus after an earlier dose whose lag
   carries it past the ss record also read that dose's `ii` (off by up to 82).
 
+- Adjoint `f()`, `alag()`, `rate()` and `dur()` terms that depend on a
+  time-varying covariate now read it at each event, with the record's own
+  value, in the `rk4s` family (doses, infusion windows and steady-state
+  doses), and in `cvodesadj` and `abs` for a replace or multiply.  Before,
+  they read it at the window start (off by up to 34).
+
 - `method = "abs"` now includes the bioavailability (`f()`), lag-time
   (`alag()`), `rate()` and `dur()` adjoint sensitivities of bolus and
   infusion doses.
