@@ -29,7 +29,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   int fxOff = op->adjFxOff, fpOff = op->adjFpOff, sensOff = op->adjSensOff;
 
   // ---- forward: run the ordinary AB solve, recording each call's steps -----------
-  abAdjSteps.clear(); abAdjCalls.clear(); abAdjNbase = nBase; _adjJumpCap.clear();
+  abAdjSteps.clear(); abAdjCalls.clear(); abAdjNbase = nBase; rxAdjJumpClear();
   _adjLagPush.clear(); _adjLagPushFixed.clear(); _adjLagPushMdl.clear();
   abAdjActive = true;
   int neqF[2]; neqF[0] = op->neq; neqF[1] = 0;
