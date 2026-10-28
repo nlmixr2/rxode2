@@ -1252,11 +1252,6 @@
 - `method = "cvodesadj"` no longer fails its backward solve, returning
   wrong sensitivities, when two events fall at the same time.
 
-- `method = "abs"` now stops with an error when sensitivities are
-  requested through an `f()`, `alag()`, `rate()` or `dur()` that depends on
-  a sensitivity parameter, which it does not support, instead of silently
-  leaving those terms out.  Constant modifiers still solve.
-
 - An observation at the time of a replace or multiply (`evid = 5`/`6`),
   including one at the first time, right after a reset or at the last
   record time, now reads the post-event adjoint sensitivity with
@@ -1325,9 +1320,13 @@
   before, it was missing (off by up to 6.3), and `liblsodaadj` and `abs`
   also scaled the costate of a multiply by `amt` instead of `F*amt`.
 
-- `method = "abs"` now includes the bioavailability (`f()`) and lag-time
-  (`alag()`) adjoint sensitivities of a bolus dose.  It still refuses them,
-  and modeled `rate()` and `dur()`, for infusion doses.
+- `method = "abs"` now includes the bioavailability (`f()`), lag-time
+  (`alag()`), `rate()` and `dur()` adjoint sensitivities of bolus and
+  infusion doses.
+
+- `method = "abs"` adjoint sensitivities while an infusion ran were off by
+  up to 5e-5 at `hmin = 0.001`: the backward sweep re-evaluated each call's
+  startup steps with the infusion rates of the end of the solve.
 
 - With `method = "cvodesadj"`, and with `method = "liblsodaadj"` when
   nothing was integrated between resets, an observation recorded at the
