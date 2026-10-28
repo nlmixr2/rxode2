@@ -127,8 +127,11 @@ rxSolveAdjoint <- function(
     vapply(calcSens, function(p) .nm(k, p), character(1))
   }))
 
-  ## dense forward checkpoint trajectory
+  ## dense forward checkpoint trajectory; et() of a data.frame drops the times
   .denseT <- sort(unique(c(seq(0, max(outTimes), by = denseBy), outTimes)))
+  if (!.isRxEt(events)) {
+    events <- rxode2::as.et(events)
+  }
   .fev <- events |> rxode2::et(.denseT)
   .fwd <- as.data.frame(rxode2::rxSolve(
     rxode2::rxode2(.mText),
@@ -204,8 +207,13 @@ rxSolveAdjoint <- function(
   adjStates <- intersect(.st, adjStates)
   invisible(rxode2::.rxJacobian(.model, c(.st, calcSens)))
 
+  ## a data.frame (any column case) becomes an rxEt, so the event reads below
+  ## and the dense forward grid (`et(.denseT)`) see its doses.
+  if (!.isRxEt(events)) {
+    events <- rxode2::as.et(events)
+  }
   ## event detection (identical to .rxAdjointGradBuild)
-  .ev <- as.data.frame(events)
+  .ev <- as.data.frame(events, all = TRUE)
   .dr <- which(!is.na(.ev$evid) & .ev$evid == 1L & !is.na(.ev$amt) & .ev$amt != 0)
   .rateCol <- if ("rate" %in% names(.ev)) .ev$rate[.dr] else rep(0, length(.dr))
   .rateCol[is.na(.rateCol)] <- 0
@@ -639,8 +647,13 @@ rxSolveAdjoint <- function(
   })
   names(.dhdp) <- calcSens
 
+  ## a data.frame (any column case) becomes an rxEt, so the event reads below
+  ## and the dense forward grid (`et(.denseT)`) see its doses.
+  if (!.isRxEt(events)) {
+    events <- rxode2::as.et(events)
+  }
   ## event detection (needed before the backward model is built)
-  .ev <- as.data.frame(events)
+  .ev <- as.data.frame(events, all = TRUE)
   .dr <- which(!is.na(.ev$evid) & .ev$evid == 1L & !is.na(.ev$amt) & .ev$amt != 0)
   .rateCol <- if ("rate" %in% names(.ev)) .ev$rate[.dr] else rep(0, length(.dr))
   .rateCol[is.na(.rateCol)] <- 0

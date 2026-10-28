@@ -326,6 +326,12 @@
   `method = "abs"`) or `minSS = maxSS` returned wrong sensitivities instead
   of an error.
 
+- The symbolic adjoint builders (`rxSolveAdjoint()`, `.rxAdjointSolveBuild()`,
+  `.rxAdjointGradBuild()`) now take a `data.frame` event table in either
+  column case.  Before, the dense forward solve dropped its observation times
+  (`NA` sensitivities and a wrong gradient), and upper-case columns also
+  dropped its doses from the `f()`, `alag()`, `rate()` and `dur()` duals.
+
 - `method = "abs"` adjoint sensitivities while an infusion ran were off by
   up to 5e-5 at `hmin = 0.001`: the backward sweep re-evaluated each call's
   startup steps with the infusion rates of the end of the solve.
