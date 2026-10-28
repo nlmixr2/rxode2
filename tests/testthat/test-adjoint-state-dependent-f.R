@@ -55,6 +55,13 @@ rxTest({
     }
   })
 
+  test_that("an ss = 2 bolus with a state-dependent f() lands its own dose on the total state", {
+    # the added regimen's trough follows its own F, the record's dose F(Y_before +
+    # trough); liblsodaadj does not carry ss = 2
+    .ev <- et(amt = 100, cmt = "depot") |> et(time = 3, amt = 80, ii = 12, ss = 2, cmt = "depot") |> et(.o)
+    .chk(list(txt = paste0(.base, .fCenter), p = .p, ev = .ev), .rk4sFamily, "ss2")
+  })
+
   test_that("a fixed-dur infusion with a state-dependent f() carries its start state in every driver", {
     # the rate F(x_on)*amt/dur moves with the start state.  The forward solve
     # re-reads F at the infusion's stop, so its result after the stop is not
