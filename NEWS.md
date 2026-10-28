@@ -290,7 +290,7 @@
   (`ss = 1`) fixed-rate or fixed-duration infusion longer than its dosing
   interval is now included, in the steady-state term and for the infusions
   of the earlier periods that are still running; before, it was wrong in
-  every adjoint method.  `method = "liblsodaadj"` also keeps the `f()` term
+  every adjoint method that supports ss.  `method = "liblsodaadj"` also keeps the `f()` term
   of a fixed-duration infusion that is still running at the last record.
 
 - With `method = "cvodesadj"`, and with `method = "liblsodaadj"` when
