@@ -325,6 +325,14 @@
   interval is now included; it was missing in every adjoint method (off by up
   to 72), because that steady state was taken as a constant infusion.
 
+- Adjoint sensitivities of a steady-state (`ss = 1`) dose into a compartment
+  with `alag()` are now right in every adjoint method that supports ss, for
+  a constant or modeled lag: boluses and infusions (fixed, `f()`, modeled
+  `rate()`/`dur()`), at the window start or later, with a lag longer than
+  `ii`, or with an infusion still running from the period before.  Before,
+  the steady-state term placed the dose at the record time instead of the
+  lagged one, so every sensitivity was wrong (off by up to 150).
+
 - `method = "abs"` now includes the bioavailability (`f()`), lag-time
   (`alag()`), `rate()` and `dur()` adjoint sensitivities of bolus and
   infusion doses.

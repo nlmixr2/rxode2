@@ -240,6 +240,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   // rec = a bolus/replace/multiply's record index (its rxAdjJumpCap), else -1
   struct cvEvent { double t; int cmt; int type; double factor; double raw = 0.0; int rec = -1; };
   std::vector<cvEvent> evJumps; _adjJumpCap.clear();
+  _adjLagPush.clear(); _adjLagPushFixed.clear(); _adjLagPushMdl.clear();
   std::vector<cvInfus> infusRec;   // modeled-rate infusion windows (rate dual)
   int _infusOnCmt = -1; double _infusOnPre = 0.0;
   int _lagRateCmt = -1, _lagRateWhI = 0, _lagRateKey = -1; double _lagRatePre = 0.0;   // infusion start/stop
