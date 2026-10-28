@@ -346,6 +346,12 @@
   the steady-state term placed the dose at the record time instead of the
   lagged one, so every sensitivity was wrong (off by up to 150).
 
+- The `ss = 2` (superposition) adjoint term in the `rk4s` family now carries
+  the added regimen's `f()` and `alag()` like an `ss = 1` one, for boluses
+  and fixed infusions (off by up to 36 with `f()`, and up to 8 with a lag).
+  An interior `ss = 1` or `ss = 2` bolus after an earlier dose whose lag
+  carries it past the ss record also read that dose's `ii` (off by up to 82).
+
 - `method = "abs"` now includes the bioavailability (`f()`), lag-time
   (`alag()`), `rate()` and `dur()` adjoint sensitivities of bolus and
   infusion doses.

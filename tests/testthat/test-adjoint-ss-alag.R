@@ -44,7 +44,10 @@ rxTest({
       lagF = list(txt = .txtMF, p = .pMF, ev = .ss(amt = 100) |> et(.o)),
       # the lag spans more than ii: an earlier period's dose lands inside the window
       lagOverIi = list(txt = .txtM, p = c(.p0, tlag = 13), ev = .ss(amt = 100) |> et(.o)),
-      interior = list(txt = .txtM, p = .pM, ev = .int(amt = 100) |> et(.oi))
+      interior = list(txt = .txtM, p = .pM, ev = .int(amt = 100) |> et(.oi)),
+      # the earlier dose's lag carries it past the ss record (to t = 13)
+      interiorLagOverIi = list(txt = .txtM, p = c(.p0, tlag = 13), ev = .int(amt = 100) |>
+        et(c(1, 4, 5.5, 6.5, 9, 12, 14, 16.5)))
     ), .meths)
   })
 
@@ -82,5 +85,31 @@ rxTest({
       durWrap = list(txt = paste0(.txtM, "\ndur(depot) <- dd"), p = c(.p0, tlag = 11, dd = 3),
         ev = .ss(amt = 100, rate = -2) |> et(c(0.5, 1.5, 1.99, 2.01, 6, 10.99, 11.01, 11.5)))
     ), c("rk4s", "dop853s"))
+  })
+
+  test_that("an ss = 2 dose with alag() or f() gives the right sensitivities", {
+    # the added regimen's steady state carries its own f() and lag terms like an
+    # ss = 1 one; liblsodaadj does not carry ss = 2, and an unlagged ss = 2
+    # infusion with f() does not solve
+    .txtF <- paste0(.base, "\nf(depot) <- fd")
+    .o2 <- c(1, 2.2, 4, 6.4, 9, 14, 20)
+    .b2 <- function(...) et(amt = 100, cmt = "depot") |> et(time = 3, amt = 50, ii = 12, ss = 2, cmt = "depot", ...) |> et(.o2)
+    .i2 <- function(...) et(amt = 100, cmt = "depot") |> et(time = 3, amt = 50, rate = 20, ii = 12, ss = 2, cmt = "depot", ...) |> et(.o2)
+    .chk(list(
+      bolusF = list(txt = .txtF, p = c(.p0, fd = 0.8), ev = .b2()),
+      bolusConstLag = list(txt = .txtC, p = .p0, ev = .b2()),
+      bolusLag = list(txt = .txtM, p = .pM, ev = .b2()),
+      bolusLagF = list(txt = .txtMF, p = .pMF, ev = .b2()),
+      bolusLagStart = list(txt = .txtM, p = .pM, ev = et(amt = 50, ii = 12, ss = 2, cmt = "depot") |> et(.o2)),
+      bolusLagOverIi = list(txt = .txtM, p = c(.p0, tlag = 15), ev = .b2()),
+      bolusLagOverIiF = list(txt = .txtMF, p = c(.p0, tlag = 15, fd = 0.8), ev = .b2()),
+      twoBolusF = list(txt = .txtF, p = c(.p0, fd = 0.8), ev = .b2() |> et(time = 8, amt = 50, ii = 12, ss = 2, cmt = "depot")),
+      infusionConstLag = list(txt = .txtC, p = .p0, ev = .i2()),
+      infusionLag = list(txt = .txtM, p = .pM, ev = .i2()),
+      infusionLagF = list(txt = .txtMF, p = .pMF, ev = .i2()),
+      infusionLagOverIi = list(txt = .txtM, p = c(.p0, tlag = 13.3), ev = .i2()),
+      fullInterval = list(txt = .base, p = .p0, ev = et(amt = 100, cmt = "depot") |>
+        et(time = 3, amt = 120, rate = 10, ii = 12, ss = 2, cmt = "depot") |> et(.o2))
+    ), c("rk4s", "ros4s", "radauiia5s", "dop853s", "dop853s+ros4s"))
   })
 })

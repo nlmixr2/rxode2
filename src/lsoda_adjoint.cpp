@@ -641,7 +641,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     if (recorded && lsSsRec.nStep() > 0) {
       std::vector<double> Asc(eff, 0.0);
       lsIc.build(cSub, ind, op, lsSsRec, fxOff, fpOff, eff, Asc,
-                 &lsSsRec, NULL, NULL, NULL, NULL, NULL, NULL, NULL, Tss, nBase, np, 0);
+                 &lsSsRec, NULL, NULL, NULL, NULL, NULL, NULL, Tss, nBase, np, 0);
       lsMono = lsIc.haveMono;
       // a fixed-rate/duration ss infusion with a modeled F: the period's dF terms
       if (lsMono && _lsSsBolusIi <= 0.0 && _lsSsFixed != 0) {
