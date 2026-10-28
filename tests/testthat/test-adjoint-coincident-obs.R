@@ -25,7 +25,19 @@ rxTest({
     dose = list(txt = .txtF, p = .pF, ev = et(amt = 100, cmt = "depot") |> et(time = 2, amt = 50, cmt = "depot") |>
       et(c(1, 2, 3))),
     multiplyDose = list(txt = .txtF, p = .pF, ev = et(amt = 100, cmt = "depot") |>
-      et(time = 2, evid = 6, amt = 0.5, cmt = "center") |> et(time = 2, amt = 50, cmt = "depot") |> et(c(1, 2, 3)))
+      et(time = 2, evid = 6, amt = 0.5, cmt = "center") |> et(time = 2, amt = 50, cmt = "depot") |> et(c(1, 2, 3))),
+    # at the last record time, with no later observation: no step follows the
+    # events there
+    multiplyLast = list(txt = .base, p = .p0, ev = et(amt = 100, cmt = "depot") |> et(c(1, 3)) |>
+      et(time = 3, evid = 6, amt = 0.5, cmt = "center")),
+    replaceLast = list(txt = .base, p = .p0, ev = et(amt = 100, cmt = "depot") |> et(c(1, 3)) |>
+      et(time = 3, evid = 5, amt = 30, cmt = "center")),
+    resetMultiplyLast = list(txt = .base, p = .p0, ev = et(amt = 100, cmt = "depot") |> et(c(1, 3)) |>
+      et(time = 3, evid = 3) |> et(time = 3, evid = 6, amt = 0.5, cmt = "center")),
+    multiplyOnlyLast = list(txt = .base, p = .p0, ev = et(amt = 100, cmt = "depot") |> et(3) |>
+      et(time = 3, evid = 6, amt = 0.5, cmt = "center")),
+    doseLast = list(txt = .txtF, p = .pF, ev = et(amt = 100, cmt = "depot") |> et(c(1, 3)) |>
+      et(time = 3, amt = 50, cmt = "depot"))
   )
 
   test_that("an observation at an event time reads the post-event sensitivity in every driver", {

@@ -54,7 +54,7 @@ static inline int rk4sInfusionEventCmt(int evid, int nBase, bool ss = false) {
 // fixed-rate/duration window (fixed) carries only the dF dual, weighted by dfW: the
 // raw rate over a fixed-dur window, the raw amount at a fixed-rate off boundary.
 struct rk4s_infus { size_t onStep, offStep; int cmt; double R, amt, durMult, amtRaw; bool isDur;
-                    bool fixed = false; double dfW = 0.0, tOn = 0.0; int key = -1; };
+                    bool fixed = false; double dfW = 0.0, tOn = 0.0; int key = -1; bool ss = false; };
 
 // Dose number of the infusion start that the fixed or modeled infusion record at
 // event-table index idx belongs to (its own for a start), or -1 when it cannot be
@@ -65,33 +65,45 @@ static inline int rk4sInfusionStartKey(rx_solving_options_ind *ind, int idx) {
   if (idx < 0) return -1;
   int wh, cmt, wh100, whI, wh0;
   getWh(getEvid(ind, idx), &wh, &cmt, &wh100, &whI, &wh0);
-  if (whI == EVIDF_MODEL_RATE_OFF || whI == EVIDF_MODEL_DUR_OFF) return getDoseNumberFromIndex(ind, idx - 1);
+  if (whI == EVIDF_MODEL_RATE_OFF || whI == EVIDF_MODEL_DUR_OFF) return getDoseNumberFromIndexScan(ind, idx - 1);
   double amt = getDose(ind, idx);
   if ((whI == EVIDF_INF_RATE || whI == EVIDF_INF_DUR) && amt < 0) {
     rx_solving_options *op = (ind->op ? ind->op : &op_global);
     rx_solve *rx = (ind->rx ? ind->rx : &rx_global);
-    int startIdx = -1, endIdx = -1, err = ind->err, i = idx;
+    // the pairing reads this record's own ss flag from ind->wh0
+    int startIdx = -1, endIdx = -1, err = ind->err, wh0Cur = ind->wh0, i = idx;
+    ind->wh0 = wh0;
     handleInfusionGetStartOfInfusionIndex(&startIdx, &endIdx, &amt, &i, rx, op, ind);
+    ind->wh0 = wh0Cur;
     ind->err = err;   // an unmatched stop falls back to the most recent window
     return startIdx;
   }
-  return getDoseNumberFromIndex(ind, idx);
+  return getDoseNumberFromIndexScan(ind, idx);
 }
 
 // Index of the open window into cmt that a stop with start key `key` closes: the
-// window with that key; for a stop without one (pushed), the oldest open window
-// without one (the earlier periods' infusions of a long ss = 1 infusion end in
-// order); else the most recent open one (fixed or modeled per `fixed`), or -1.
-static inline int rk4sInfusionCloseIdx(const std::vector<rk4s_infus> &infus, int cmt, bool fixed, int key) {
-  if (key < 0)
-    for (size_t w = 0; w < infus.size(); ++w) {
-      const rk4s_infus &F = infus[w];
-      if (F.fixed == fixed && F.cmt == cmt && F.offStep == (size_t)-1 && F.key < 0) return (int)w;
-    }
+// window with that key; for a stop without one (pushed by an ss = 1 infusion), the
+// oldest open window without one (the earlier periods' infusions of a long ss = 1
+// infusion end in order), then the oldest open ss window; else the most recent
+// open one, or -1.  A stop from the event table only closes a fixed window of its
+// own rate/dur kind; a pushed ss stop is flagged as a fixed-rate stop whatever the
+// kind, so it is not filtered.
+static inline int rk4sInfusionCloseIdx(const std::vector<rk4s_infus> &infus, int cmt, bool fixed, int key,
+                                       bool isDur = false) {
+  auto open = [&](const rk4s_infus &F) {
+    return F.fixed == fixed && F.cmt == cmt && F.offStep == (size_t)-1 &&
+      (!fixed || key < 0 || F.isDur == isDur);
+  };
+  if (key < 0) {
+    for (size_t w = 0; w < infus.size(); ++w)
+      if (open(infus[w]) && infus[w].key < 0) return (int)w;
+    for (size_t w = 0; w < infus.size(); ++w)
+      if (open(infus[w]) && infus[w].ss) return (int)w;
+  }
   int last = -1;
   for (size_t w = infus.size(); w-- > 0;) {
     const rk4s_infus &F = infus[w];
-    if (F.fixed != fixed || F.cmt != cmt || F.offStep != (size_t)-1) continue;
+    if (!open(F)) continue;
     if (key >= 0 && F.key == key) return (int)w;
     if (last < 0) last = (int)w;
   }
@@ -103,16 +115,16 @@ static inline int rk4sInfusionCloseIdx(const std::vector<rk4s_infus> &infus, int
 // stretches the duration of a fixed rate (t_off = t_on + F*amt/rate).
 static inline void rk4sFixedInfusionRecord(std::vector<rk4s_infus> &infus, rx_solving_options_ind *ind,
                                            int cmt, bool isDur, double dR, size_t step, double t, double *yp,
-                                           int key = -1) {
+                                           int key = -1, bool ss = false) {
   double f = getAmt(ind, ind->id, cmt, 1.0, t, yp);
   if (dR > 0.0) {
     rk4s_infus _f; _f.onStep = step; _f.offStep = (size_t)-1; _f.cmt = cmt;
     _f.R = dR; _f.amt = 0.0; _f.durMult = 0.0; _f.amtRaw = 0.0; _f.isDur = isDur;
-    _f.fixed = true; _f.tOn = t; _f.dfW = (isDur && f != 0.0) ? dR / f : 0.0; _f.key = key;
+    _f.fixed = true; _f.tOn = t; _f.dfW = (isDur && f != 0.0) ? dR / f : 0.0; _f.key = key; _f.ss = ss;
     infus.push_back(_f);
     return;
   }
-  int w = rk4sInfusionCloseIdx(infus, cmt, true, key);
+  int w = rk4sInfusionCloseIdx(infus, cmt, true, key, isDur);
   if (w < 0) return;
   rk4s_infus &F = infus[w];
   F.offStep = step;
@@ -9224,8 +9236,8 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           doseRec.push_back(_d);
         }
         if (_dR != 0.0 && op->adjDfOff >= 0 && (_lagRateWhI == EVIDF_INF_RATE || _lagRateWhI == EVIDF_INF_DUR)) {
-          bool _isDur = (_lagRateWhI == EVIDF_INF_DUR);
-          const rk4s_ss1Ev *_se = (_lagRateWh0 == EVID0_SS && !ss1Evs.empty() && ss1Evs.back().step == _lagRateStep &&
+          bool _isDur = (_lagRateWhI == EVIDF_INF_DUR), _isSs = (_lagRateWh0 == EVID0_SS);
+          const rk4s_ss1Ev *_se = (_isSs && !ss1Evs.empty() && ss1Evs.back().step == _lagRateStep &&
                                    ss1Evs.back().inf && ss1Evs.back().fixed != 0) ? &ss1Evs.back() : NULL;
           double _r1 = _se ? _se->rate - _se->rate2 : 0.0;   // one infusion's rate
           if (_se && _se->rate2 > 0.0 && _r1 > 0.0) {
@@ -9236,9 +9248,9 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
             double _ii = _se->dur + _se->dur2;
             for (int _k = _n; _k >= 1; --_k)
               rk4sFixedInfusionRecord(infusRec, ind, _lagRateCmt, _isDur, _r1, _lagRateStep, xout - _k * _ii, yp, -1);
-            rk4sFixedInfusionRecord(infusRec, ind, _lagRateCmt, _isDur, _r1, _lagRateStep, xout, yp, _lagRateKey);
+            rk4sFixedInfusionRecord(infusRec, ind, _lagRateCmt, _isDur, _r1, _lagRateStep, xout, yp, _lagRateKey, true);
           } else {
-            rk4sFixedInfusionRecord(infusRec, ind, _lagRateCmt, _isDur, _dR, _lagRateStep, xout, yp, _lagRateKey);
+            rk4sFixedInfusionRecord(infusRec, ind, _lagRateCmt, _isDur, _dR, _lagRateStep, xout, yp, _lagRateKey, _isSs);
           }
         }
         _lagRateCmt = -1;
