@@ -3136,9 +3136,11 @@ static thread_local std::vector<double> _adjSS2peak;
 // lambda+^T r, exact for a nonlinear model, and a replace/multiply's f() dual.
 struct rxAdjJumpCap { int rec, kind; double xPre, raw; std::vector<double> r; };
 static thread_local std::vector<rxAdjJumpCap> _adjJumpCap;
+static thread_local std::vector<int> _adjJumpPos;   // record index -> 1 + its _adjJumpCap slot, 0 none
+static inline void rxAdjJumpClear(void) { _adjJumpCap.clear(); _adjJumpPos.clear(); }
 static inline const rxAdjJumpCap *rxAdjJumpFind(int rec) {
-  for (size_t k = 0; k < _adjJumpCap.size(); ++k) if (_adjJumpCap[k].rec == rec) return &_adjJumpCap[k];
-  return NULL;
+  if (rec < 0 || (size_t)rec >= _adjJumpPos.size() || _adjJumpPos[rec] == 0) return NULL;
+  return &_adjJumpCap[_adjJumpPos[rec] - 1];
 }
 // cmt of a bolus/replace/multiply record into a base state to capture, or -1
 static inline int rxAdjJumpCmt(rx_solving_options *op, rx_solving_options_ind *ind, int rec) {
@@ -3167,9 +3169,10 @@ static inline void rxAdjJumpRecord(rx_solving_options *op, rx_solving_options_in
     cap.r.resize(nBase);
     for (int j = 0; j < nBase; ++j) cap.r[j] = (j == cmt ? g * fA[j] : fA[j]) - fB[j];
   }
-  for (size_t k = 0; k < _adjJumpCap.size(); ++k)
-    if (_adjJumpCap[k].rec == rec) { _adjJumpCap[k] = std::move(cap); return; }
+  if ((size_t)rec >= _adjJumpPos.size()) _adjJumpPos.resize(rec + 1, 0);
+  if (_adjJumpPos[rec] != 0) { _adjJumpCap[_adjJumpPos[rec] - 1] = std::move(cap); return; }
   _adjJumpCap.push_back(std::move(cap));
+  _adjJumpPos[rec] = (int)_adjJumpCap.size();
 }
 // handleEvid1() for the adjoint drivers' forward loops: also captures a
 // bolus/replace/multiply (rxAdjJumpRecord) while an adjoint records.

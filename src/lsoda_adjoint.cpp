@@ -158,7 +158,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   // ---- forward: run the ordinary liblsoda solve, with recording hooks on -------
   lsAdjSteps.clear();
   lsAdjSegs.clear();
-  _adjJumpCap.clear();
+  rxAdjJumpClear();
   _lsSsKind = 0; _lsSsBolusIi = 0.0; _lsSsCmt = -1; _lsSsT = 0.0;   // reset the sticky ss snapshot
   _lsSsFixed = 0; _lsSsFixW = 0.0; _lsSsFixW2 = 0.0;
   _lsSsDur = _lsSsDur2 = _lsSsRate = _lsSsRate2 = 0.0;

@@ -310,10 +310,12 @@
   replace (`evid = 5`) or multiply (`evid = 6`) on the lagged compartment,
   which the lag shifts like a dose; before, every adjoint method left it out.
 
-- The adjoint lag-time (`alag()`) sensitivity of a dose into a compartment
-  with nonlinear dynamics (for example Michaelis-Menten elimination) is now
-  exact in every adjoint method; it linearized the change in the derivative
-  across the dose, which was off by up to 24 in the tests.
+- The adjoint lag-time (`alag()`) sensitivity of a bolus dose from the event
+  table into a compartment with nonlinear dynamics (for example
+  Michaelis-Menten elimination) is now exact in every adjoint method; it
+  linearized the change in the derivative across the dose, which was off by
+  up to 24 in the tests.  A steady-state (`ss = 1`) bolus and a dose pushed
+  at run time still use the linearization.
 
 - The bioavailability (`f()`) that the forward solve applies to a replace
   (`evid = 5`, the state becomes `F*amt`) or multiply (`evid = 6`, by

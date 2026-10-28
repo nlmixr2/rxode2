@@ -8946,7 +8946,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   std::vector<size_t> boundarySs2(ind->n_all_times, 0);  // # ss2 events recorded when each time was stored
   std::vector<size_t> boundarySs1(ind->n_all_times, 0);  // # ss1 events recorded when each time was stored
   std::vector<rk4s_dose> doseRec;                     // additive boluses for the F-jump transpose
-  _adjJumpCap.clear();
+  rxAdjJumpClear();
   std::vector<rk4s_infus> infusRec;                   // modeled-rate infusion windows (rate/dur dual)
   int _infusOnCmt = -1; double _infusOnPre = 0.0;     // set when the current event opens an infusion
   int _lagRateCmt = -1, _lagRateWhI = 0, _lagRateWh0 = 0, _lagRateKey = -1; double _lagRatePre = 0.0; size_t _lagRateStep = 0;  // infusion start/stop
