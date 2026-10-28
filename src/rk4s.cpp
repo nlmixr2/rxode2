@@ -9042,7 +9042,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   std::vector<size_t> boundarySs2(ind->n_all_times, 0);  // # ss2 events recorded when each time was stored
   std::vector<size_t> boundarySs1(ind->n_all_times, 0);  // # ss1 events recorded when each time was stored
   std::vector<rk4s_dose> doseRec;                     // additive boluses for the F-jump transpose
-  _adjJumpCap.clear(); _adjLagPush.clear();
+  _adjJumpCap.clear(); _adjLagPush.clear(); _adjLagPushFixed.clear();
   std::vector<rk4s_infus> infusRec;                   // modeled-rate infusion windows (rate/dur dual)
   int _infusOnCmt = -1; double _infusOnPre = 0.0;     // set when the current event opens an infusion
   int _lagRateCmt = -1, _lagRateWhI = 0, _lagRateWh0 = 0, _lagRateKey = -1; double _lagRatePre = 0.0; size_t _lagRateStep = 0;  // infusion start/stop
@@ -9135,21 +9135,22 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               // a pushed fixed infusion stop (an ss = 1 infusion's OFF) closes its window
               int _xWh, _xCmt, _xWh100, _xWhI, _xWh0;
               getWh(ind->extraDoseEvid[trueIdx], &_xWh, &_xCmt, &_xWh100, &_xWhI, &_xWh0);
-              bool _xFix = adj && op->adjDfOff >= 0 && _xCmt >= 0 && _xCmt < op->adjNbase &&
-                (_xWhI == EVIDF_INF_RATE || _xWhI == EVIDF_INF_DUR);
-              double _xPre = _xFix ? ind->InfusionRate[_xCmt] : 0.0;
-              // a lagged ss dose's pushed infusion start/stop moves with its alag()
-              bool _xLag = adj && op->adjDlagOff >= 0 && _xCmt >= 0 && _xCmt < op->adjNbase && rxAdjIsLagPush(trueIdx);
-              double _xLagPre = _xLag ? ind->InfusionRate[_xCmt] : 0.0;
+              // a lagged ss dose pushes its infusions' starts and stops: their times
+              // move with its alag(), and its fixed rate/dur (lagFix) sets the dF window
+              int _lagFix = rxAdjLagPushFixed(trueIdx);
+              bool _xIn = adj && _xCmt >= 0 && _xCmt < op->adjNbase;
+              bool _xFix = _xIn && op->adjDfOff >= 0 && (_xWhI == EVIDF_INF_RATE || _xWhI == EVIDF_INF_DUR);
+              bool _xIsDur = (_lagFix > 0) ? (_lagFix == 2) : (_xWhI == EVIDF_INF_DUR);
+              double _xPre = _xIn ? ind->InfusionRate[_xCmt] : 0.0;
               handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
                           ind->BadDose, ind->InfusionRate, ind->dose, yp, xout, neq[1], ind);
-              if (_xLag && ind->InfusionRate[_xCmt] != _xLagPre) {
-                rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _xCmt; _d.amt = ind->InfusionRate[_xCmt] - _xLagPre; _d.type = 9;
+              double _xdR = _xIn ? ind->InfusionRate[_xCmt] - _xPre : 0.0;
+              if (_lagFix >= 0 && op->adjDlagOff >= 0 && _xdR != 0.0) {
+                rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _xCmt; _d.amt = _xdR; _d.type = 9;
                 doseRec.push_back(_d);
               }
-              if (_xFix && ind->InfusionRate[_xCmt] - _xPre < 0.0)
-                rk4sFixedInfusionRecord(infusRec, ind, _xCmt, _xWhI == EVIDF_INF_DUR, ind->InfusionRate[_xCmt] - _xPre,
-                                        rec.nStep(), ind->extraDoseNewXout, yp);
+              if (_xFix && (_xdR < 0.0 || (_xdR > 0.0 && _lagFix > 0)))
+                rk4sFixedInfusionRecord(infusRec, ind, _xCmt, _xIsDur, _xdR, rec.nStep(), ind->extraDoseNewXout, yp);
               istate = 1;
               ind->ixds = ixds;
               ind->idx = idx;
@@ -9337,6 +9338,18 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           _e.mdl = _adjSSinfModeled; _e.mdlAmt = _adjSSinfAmt; _e.mdlAmtRaw = _adjSSinfAmtRaw;
           _e.fixed = _adjSSinfFixed; _e.fixW = _adjSSinfFixW; _e.fixW2 = _adjSSinfFixW2;
           _e.lagged = (_adjSSlagOn != 0); _e.lag = _adjSSlag;
+          // a lagged ss infusion's earlier doses still on at the record time
+          // (started s0 + m*ii before it, s0 = ii - lag; each lasts D): open their
+          // fixed windows there, closed by their pushed stops
+          if (_e.lagged && _e.fixed != 0 && op->adjDfOff >= 0 && _e.rate > _e.rate2 &&
+              _e.infCmt >= 0 && _e.infCmt < op->adjNbase) {
+            double _r1 = _e.rate - _e.rate2, _ii = _e.dur + _e.dur2, _s0 = _ii - _e.lag;
+            double _D = _e.dur + floor(_e.rate2 / _r1 + 0.5) * _ii;
+            for (int _m = (int)floor((_D - _s0) / _ii); _m >= 0; --_m)
+              if (_D - _s0 - _m * _ii > rxAdjTimeTol(_D, _s0))
+                rk4sFixedInfusionRecord(infusRec, ind, _e.infCmt, _e.fixed == 2, _r1, rec.nStep(),
+                                        xout - _s0 - _m * _ii, yp);
+          }
           if (_e.step == 0 && !ssActive) {   // window start
             ssActive = true; ssInf = true; ssInfCmt = _adjSSinfCmt;
             ssInfDur = _adjSSinfDur; ssInfDur2 = _adjSSinfDur2; ssInfRate = _adjSSinfRate; ssInfRate2 = _adjSSinfRate2;

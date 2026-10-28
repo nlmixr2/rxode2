@@ -167,8 +167,8 @@ static bool rxAdjInfusionWindows(rx_solving_options *op, rx_solving_options_ind 
         for (size_t q = 0; q < _adjLagPush.size(); ++q) {
           int k = _adjLagPush[q];
           if (k >= ind->extraDoseN[0] || !rxAdjSameTime(ind->extraDoseTime[k], Sg.t0)) continue;
-          int c = rk4sInfusionEventCmt(ind->extraDoseEvid[k], nBase, true);
-          if (c < 0) continue;
+          int _wh, c, _wh100, _whI, _wh0; getWh(ind->extraDoseEvid[k], &_wh, &c, &_wh100, &_whI, &_wh0);
+          if (c < 0 || c >= nBase) continue;
           double prev = (sg > 0 && (int)segs[sg - 1].infRate.size() == nBase) ? segs[sg - 1].infRate[c] : 0.0;
           if (Sg.infRate[c] == prev) continue;
           if (Sg.lagRate.empty()) Sg.lagRate.assign(nBase, 0.0);
@@ -286,7 +286,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   // ---- forward: run the ordinary liblsoda solve, with recording hooks on -------
   lsAdjSteps.clear();
   lsAdjSegs.clear();
-  _adjJumpCap.clear(); _adjLagPush.clear();
+  _adjJumpCap.clear(); _adjLagPush.clear(); _adjLagPushFixed.clear();
   _lsSsKind = 0; _lsSsBolusIi = 0.0; _lsSsCmt = -1; _lsSsT = 0.0; _lsSsLag = 0.0; _lsSsLagOn = 0;   // reset the sticky ss snapshot
   _lsSsFixed = 0; _lsSsFixW = 0.0; _lsSsFixW2 = 0.0;
   _lsSsDur = _lsSsDur2 = _lsSsRate = _lsSsRate2 = 0.0;
@@ -525,23 +525,32 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     for (size_t k = 0; k < E.size(); ++k) has8 = has8 || E[k].type == 8;
     if (!has8) E.insert(E.begin(), lsAdjEv{8, -1, 1.0, 0.0, 0.0});
   }
-  // An ss = 1 fixed infusion longer than ii: the infusions of the n earlier
-  // periods are still running at the ss time and end at t_ss + offTime + (k-1)*ii,
-  // by pushed stops that are not event-table records.  Each carries the dF dual
-  // of a fixed window: a fixed dur's forcing until its end, or a fixed rate's
-  // off-boundary term (its end moves with F).
-  if (lsSsSeg >= 0 && _lsSsKind == 1 && _lsSsFixed != 0 && op->adjDfOff >= 0 && _lsSsRate2 > 0.0 &&
+  // The infusions of earlier periods still running at the ss time: for an ss = 1
+  // fixed infusion longer than ii, the n before it, ending at t_ss + offTime +
+  // (k-1)*ii; for a lagged one, those started s0 + m*ii before it (s0 = ii - lag),
+  // ending at t_ss + D - s0 - m*ii.  They end by pushed stops that are not
+  // event-table records.  Each carries the dF dual of a fixed window: a fixed
+  // dur's forcing until its end, or a fixed rate's off-boundary term (its end
+  // moves with F).
+  if (lsSsSeg >= 0 && _lsSsKind == 1 && _lsSsFixed != 0 && op->adjDfOff >= 0 &&
       _lsSsRate > _lsSsRate2 && _lsSsCmt >= 0 && _lsSsCmt < nBase) {
     int c = _lsSsCmt;
     double r1 = _lsSsRate - _lsSsRate2, ii = _lsSsDur + _lsSsDur2;
     int n = (int)floor(_lsSsRate2 / r1 + 0.5);
     double full = _lsSsDur + n * ii;
+    std::vector<double> ends;
+    if (_lsSsLagOn) {
+      double s0 = ii - _lsSsLag;
+      for (int m = 0; full - s0 - m * ii > rxAdjTimeTol(full, s0); ++m) ends.push_back(_lsSsT + full - s0 - m * ii);
+    } else {
+      for (int k = 1; k <= n; ++k) ends.push_back(_lsSsT + _lsSsDur + (k - 1) * ii);
+    }
     std::vector<double> _y(eff, 0.0);
     for (int b = 0; b < nBase; ++b) _y[b] = lsAdjSegs[lsSsSeg].y0[b];
     double f = getAmt(ind, ind->id, c, 1.0, _lsSsT, _y.data());
     if (f != 0.0)
-      for (int k = 1; k <= n; ++k) {
-        double tEnd = _lsSsT + _lsSsDur + (k - 1) * ii;
+      for (size_t k = 0; k < ends.size(); ++k) {
+        double tEnd = ends[k];
         for (size_t sg = (size_t)lsSsSeg; sg < lsAdjSegs.size(); ++sg) {
           if (lsAdjSegs[sg].t0 >= tEnd - rxAdjTimeTol(lsAdjSegs[sg].t0, tEnd)) {
             if (_lsSsFixed == 1 && rxAdjSameTime(lsAdjSegs[sg].t0, tEnd))
