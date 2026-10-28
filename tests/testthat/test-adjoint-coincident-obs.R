@@ -57,4 +57,31 @@ rxTest({
       }
     }
   })
+
+  test_that("an observation at an ss=1 dose at the last record time reads its steady state", {
+    .ssScen <- list(
+      bolus = list(txt = .base, p = .p0, ev = et(amt = 100, cmt = "depot") |> et(c(1, 3)) |>
+        et(time = 3, amt = 50, ss = 1, ii = 12, cmt = "depot")),
+      bolusF = list(txt = .txtF, p = .pF, ev = et(amt = 100, cmt = "depot") |> et(c(1, 3)) |>
+        et(time = 3, amt = 50, ss = 1, ii = 12, cmt = "depot")),
+      infusion = list(txt = .txtF, p = .pF, ev = et(amt = 100, cmt = "depot") |> et(c(1, 3)) |>
+        et(time = 3, amt = 50, rate = 20, ss = 1, ii = 12, cmt = "center")),
+      continuous = list(txt = .base, p = .p0, ev = et(amt = 100, cmt = "depot") |> et(c(1, 3)) |>
+        et(time = 3, amt = 0, rate = 20, ss = 1, cmt = "center"))
+    )
+    for (.nm in names(.ssScen)) {
+      .k <- .ssScen[[.nm]]
+      .ref <- .adjFd(.k$txt, .k$ev, .k$p)
+      for (.m in c("rk4s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj")) {
+        .a <- rxSolveAdjointRk4(.k$txt, .k$ev,
+          params = .k$p, calcSens = names(.k$p), method = .m,
+          atol = 1e-10, rtol = 1e-10, hmin = if (.m == "rk4s") 0.001 else 0
+        )
+        expect_equal(nrow(.a), length(.ref[[1]]), label = paste(.nm, .m, "rows"))
+        for (.cn in names(.ref)) {
+          expect_lt(max(abs(.a[[.cn]] - .ref[[.cn]])), 1e-6, label = paste(.nm, .m, .cn))
+        }
+      }
+    }
+  })
 })

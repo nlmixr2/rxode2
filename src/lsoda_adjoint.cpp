@@ -519,6 +519,22 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg)
       if (rxAdjSameTime(lsAdjSegs[sg].t0, _lsSsT)) { lsSsSeg = (int)sg; break; }
   bool ssAtStart = (lsSsSeg == 0);
+  // The steady state's starting state: its segment's y0, else (an ss dose at the
+  // last record time, after which no segment opens) the state an observation there
+  // reads.
+  std::vector<double> ssY0;
+  bool ssAtLast = false;
+  if (lsSsSeg >= 0) {
+    ssY0 = lsAdjSegs[lsSsSeg].y0;
+  } else if (_lsSsKind != 0 && _lsSsT > lsAdjSegs.back().t0 + rxAdjTimeTol(lsAdjSegs.back().t0, _lsSsT)) {
+    for (int i = 0; i < ind->n_all_times; ++i) {
+      if (!isObs(getEvid(ind, ind->ix[i])) || !rxAdjSameTime(ind->timeThread[ind->ix[i]], _lsSsT)) continue;
+      const double *o = getSolve(i);
+      ssY0.assign(o, o + nBase);
+      ssAtLast = true;
+      break;
+    }
+  }
   if (lsSsSeg > 0) {
     std::vector<lsAdjEv> &E = lsAdjSegs[lsSsSeg].ev;
     bool has8 = false;
@@ -564,10 +580,10 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   // Continuous-infusion steady state (kind 2): that segment's y0 is the constant
   // Y_ss with dY_ss/dp = -J^{-1} df/dp, so its contribution per observation is
   // -(J^{-T} lam)^T df/dp.
-  ssCont = (_lsSsKind == 2) && lsSsSeg >= 0 && nBase > 0;
+  ssCont = (_lsSsKind == 2) && !ssY0.empty() && nBase > 0;
   if (ssCont) {
     const double *fx0, *fp0;
-    lsAdjEval(cSub, lsAdjSegs[lsSsSeg].t0, lsAdjSegs[lsSsSeg].y0.data(), nBase, eff, fxOff, fpOff, A.data(), lhs, &fx0, &fp0);
+    lsAdjEval(cSub, _lsSsT, ssY0.data(), nBase, eff, fxOff, fpOff, A.data(), lhs, &fx0, &fp0);
     ssFXc.assign(fx0, fx0 + (size_t)nBase * nBase);
     ssFP.assign(fp0, fp0 + (size_t)nBase * np);
     ssPiv.resize(nBase);
@@ -577,11 +593,11 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   // ss==1 bolus / fixed-rate finite infusion: the missing IC is the monodromy
   // fixed point S_ss = (I-M)^{-1}B of one steady-state period.  Re-record that
   // period from y0 with a dop853 tableau and reuse the shared rk4sSsIc series.
-  if (!ssCont && lsSsSeg >= 0 && op->adjoint && fxOff >= 0 && nBase > 0 && _lsSsKind == 1) {
+  if (!ssCont && !ssY0.empty() && op->adjoint && fxOff >= 0 && nBase > 0 && _lsSsKind == 1) {
     int neqOde = op->neq - op->numLin - op->numLinSens;
     int neq2[2]; neq2[0] = eff; neq2[1] = cSub;
     rksTableau Tss = rksGetTableau(200);            // dop853 explicit tableau
-    std::vector<double> y0(lsAdjSegs[lsSsSeg].y0.begin(), lsAdjSegs[lsSsSeg].y0.end()), ssScr;
+    std::vector<double> y0(ssY0.begin(), ssY0.end()), ssScr;
     y0.resize(eff, 0.0);
     bool recorded = false; size_t lsSsOnSteps = 0;
     // the ss bolus record: its cmt, raw amount and whether it is lagged
@@ -632,7 +648,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       // an ss bolus's bioavailability enters every period's dose (no separate
       // dose term here, so from the first)
       if (lsMono && _lsSsBolusIi > 0.0 && lsSsBCmt >= 0) {
-        lsIc.loadDF(cSub, ind, op, _lsSsT, lsAdjSegs[lsSsSeg].y0.data(), Asc);
+        lsIc.loadDF(cSub, ind, op, _lsSsT, ssY0.data(), Asc);
         if (!lsIc.dFv.empty()) { lsIc.fFrom = 0; lsIc.wsFCmt = lsSsBCmt; lsIc.wsFAmt = lsSsBAmt; }
       }
       if (lsMono && lsLagE.lagged && lsLagE.lagSteps > 0) lsIc.wsLag = &lsLagE;
@@ -659,11 +675,16 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     // No segment opens after the events at the last record time, so an
     // observation there transposes the events recorded before it itself.
     std::vector<lsAdjEv> evAt;
-    if (lsAdjSegs[segObs].t0 < ti - rxAdjTimeTol(lsAdjSegs[segObs].t0, ti)) evAt = lsEventsAt(ti, i, out);
+    if (lsAdjSegs[segObs].t0 < ti - rxAdjTimeTol(lsAdjSegs[segObs].t0, ti)) {
+      evAt = lsEventsAt(ti, i, out);
+      bool has8 = false;
+      for (size_t k = 0; k < evAt.size(); ++k) has8 = has8 || evAt[k].type == 8;
+      if (ssAtLast && !has8 && rxAdjSameTime(ti, _lsSsT)) evAt.insert(evAt.begin(), lsAdjEv{8, -1, 1.0, 0.0, 0.0});
+    }
     for (int k = 0; k < nBase; ++k) {
       std::fill(mu.begin(), mu.end(), 0.0);
       for (int c = 0; c < nBase; ++c) wSeed[c] = (c == k) ? 1.0 : 0.0;
-      bool atIni = false;   // a reset at ti: the state is its initial condition
+      bool atIni = false;   // a reset or ss=1 dose at ti: the sweep stops there
       if (!evAt.empty()) {
         const double *fxT, *fpT;
         lsAdjEval(cSub, ti, out, nBase, eff, fxOff, fpOff, A.data(), lhs, &fxT, &fpT);
@@ -678,6 +699,9 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
               for (int p = 0; p < np; ++p) mu[p] += -E.amtF * dlag[c * np + p] * sc; }
           } else if (E.type == 3) {
             rk4sAddIni(dx0P, wSeed.data(), mu.data(), nBase, np);
+            atIni = true;
+          } else if (E.type == 8) {         // ss=1: the state is Y_ss(p)
+            applySsIc(wSeed, mu);
             atIni = true;
           } else if (E.type == 5 || E.type == 6) {
             rxAdjJumpTerm(E.rec, E.cmt, wSeed.data(), mu.data(), nBase, np,
