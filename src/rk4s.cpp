@@ -35,7 +35,7 @@
 // reset (state -> inits), 5 = replace (cmt -> value), 6 = multiply (cmt *= amt).
 // amtF = F*amt, the amount that actually lands (type 0), which a moving dose
 // time carries; the dF dual uses the raw amt.  rec = the record index of a
-// replace/multiply (its rxAdjJumpCap), else -1.
+// bolus/replace/multiply (its rxAdjJumpCap), else -1.
 struct rk4s_dose { size_t step; int cmt; double amt; int type; double amtF = 0.0; int rec = -1; };
 
 // Event-time tolerance shared by the adjoint drivers: the forward solve's
@@ -266,9 +266,9 @@ static inline void rk4sLagJump(size_t di, const rk4s_dose &d, const std::vector<
 // fx0 = F_X (df/dy) at this step's stage 0 (post-dose state), row-major i*nBase+j,
 // or NULL; dlag = d(lag)/dtheta block (c*np+p) or NULL.  When a bolus into cmt c has
 // a modeled lag, the dose time t_d+lag(theta) shifts with theta, adding the
-// transversality  mu += -F*amt * dlag[c][p] * (lambda^T F_X[:,c]), exact only for a
-// linear f.  With lagDf (row di = f(x-) - f(x+) at dose di, NaN when unavailable) the
-// exact mu += dlag[c][p] * lambda^T (f- - f+) is used instead.
+// transversality mu += dlag[c][p] * lambda^T (f(x-) - f(x+)) (rxAdjJumpTerm for a
+// recorded dose, else lagDf: row di = f(x-) - f(x+) at dose di, NaN when unavailable),
+// or its linearization -F*amt*dlag[c][p]*(lambda^T F_X[:,c]), exact only for a linear f.
 static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
     std::vector<double> &muR, const std::vector<rk4s_dose> &doses,
     const std::vector<double> &dFdp, bool haveDf, int nBase, int np,
@@ -281,7 +281,9 @@ static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
     switch (d.type) {
     case 0:
       if (haveDf) for (int p = 0; p < np; ++p) muR[p] += d.amt * dFdp[d.cmt * np + p] * lamR[d.cmt];
-      if (dlag) rk4sLagJump(di, d, lamR, muR, nBase, np, fx0, dlag, lagDf);
+      // a recorded dose's exact term; otherwise lagDf or the F_X linearization
+      if (dlag && !rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlag))
+        rk4sLagJump(di, d, lamR, muR, nBase, np, fx0, dlag, lagDf);
       break;
     case 3:
       rk4sAddIni(dx0, lamR.data(), muR.data(), nBase, np);
@@ -9190,7 +9192,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               // window F-jump.
               if (op->adjDfOff >= 0 && _wh0 != EVID0_SS2 && _wh0 != EVID0_SS20 && _wh0 != EVID0_PHANTOM) {
                 rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _cmtD;
-                _d.amt = getDose(ind, ind->ix[i]); _d.type = 0;
+                _d.amt = getDose(ind, ind->ix[i]); _d.type = 0; _d.rec = i;
                 _d.amtF = getAmt(ind, ind->id, _cmtD, _d.amt, xout, yp);
                 doseRec.push_back(_d);
               }
