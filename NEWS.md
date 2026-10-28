@@ -245,8 +245,9 @@
 
 - `method = "cvodesadj"` now includes an event at an observation's time
   (or after a reset at the same time) in that observation's sensitivities,
-  and transposes same-time events in reverse of the order the forward
-  solve applied them.
+  transposes same-time events in reverse of the order the forward solve
+  applied them, and evaluates each of several same-time lagged boluses at
+  its own post-dose state.
 
 # rxode2 5.1.8
 

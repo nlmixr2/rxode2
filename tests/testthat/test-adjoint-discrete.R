@@ -2523,4 +2523,23 @@ rxTest({
     .s <- rxSolve(rxode2(.ex$text), .ev, params = .p, method = "cvodesadj", atol = 1e-11, rtol = 1e-11, cores = 1)
     expect_equal(.s$rx__sens_center_BY_tlag__, .fd, tolerance = 1e-4)
   })
+
+  test_that("cvodesadj evaluates each tied lagged bolus at its own post-dose primal", {
+    skip_on_cran()
+    # a and b dosed 10 each at tlag = 1, c' = a*b: c(t) = 100 (t - tlag)
+    .m <- "d/dt(a)=0*k\nd/dt(b)=0\nd/dt(c)=a*b\nalag(a)=tlag\nalag(b)=tlag"
+    .ex <- .rxAdjointExpand(.m, c("k", "tlag"))
+    .ev <- et(amt = 10, cmt = "a") |> et(amt = 10, cmt = "b") |> et(c(0, 2, 3))
+    .s <- rxSolve(
+      rxode2(.ex$text),
+      .ev,
+      params = c(k = 1, tlag = 1),
+      method = "cvodesadj",
+      atol = 1e-11,
+      rtol = 1e-11,
+      cores = 1
+    )
+    expect_equal(.s$c, c(0, 100, 200), tolerance = 1e-7)
+    expect_equal(.s$rx__sens_c_BY_tlag__, c(0, -100, -100), tolerance = 1e-7)
+  })
 })
