@@ -301,7 +301,17 @@
 - A replace, multiply or reset at the time of a steady-state (`ss = 1`) dose
   no longer changes the adjoint sensitivities in the `rk4s` family of
   methods: the ss dose replaces the whole state, but the jumps recorded
-  before it were transposed into its steady-state term (off by 60 to 120).
+  before it were transposed into its steady-state term (off by up to about
+  150).  The same holds for a continuous steady-state infusion (`ss = 1`,
+  `amt = 0`), in `liblsodaadj` too (off by up to about 400).
+
+- Other same-time events around a steady-state dose now give the right
+  adjoint sensitivities: a replace, multiply or reset at the time of an
+  `ss = 2` dose (`rk4s` family, off by up to 120); several `ss = 1` doses at
+  the first time, where the last sets the steady state (`rk4s` family, and
+  `liblsodaadj` with `f()`, off by up to 66); and, in `liblsodaadj`, a plain
+  dose at the time of an `ss = 1` dose, which was included in the
+  steady-state period (off by up to 43).
 
 - `method = "abs"` now includes the bioavailability (`f()`) and lag-time
   (`alag()`) adjoint sensitivities of a bolus dose.  It still refuses them,
