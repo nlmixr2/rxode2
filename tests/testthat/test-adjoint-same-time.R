@@ -145,9 +145,10 @@ rxTest({
   })
 
   test_that("abs groups close events as its forward stepped", {
-    # abs takes no step across an interval within its own step tolerance
-    # (about 1.5e-11 * |t|), but that interval is still a call, so the events at
-    # its two ends stay apart; liblsodaadj and cvodesadj are the controls
+    # abs takes no step across an interval within its own step tolerance (about
+    # 1.5e-11 * |t| at the default maxsteps), but that interval is still a call,
+    # so the events at its two ends stay apart; liblsodaadj and cvodesadj are the
+    # controls
     .sc <- function(t0, d, p) list(
       multiplyDose = list(txt = .base, p = p, ev = et(time = t0, amt = 100, cmt = "depot") |>
         et(time = t0 + 3, evid = 6, amt = 0.5, cmt = "depot") |> et(time = t0 + 3 + d, amt = 80, cmt = "depot") |>
@@ -164,9 +165,12 @@ rxTest({
           et(time = t0 + 3 + d, amt = 50, cmt = "depot") |> et(t0 + c(1, 4.5, 6)))
     )
     .slow <- c(ka = 0.05, k = 0.02)
-    # at t = 1e4 the finite difference and cvodesadj are good to about 1e-4
-    .grid <- list(list(1e4, 1e-7, .slow, 5e-4), list(100, 1e-9, .slow, 1e-5), list(1, 1e-11, .slow, 1e-5),
-                  list(1, 1e-12, .slow, 1e-5), list(100, 1e-13, .slow, 1e-5), list(100, 3e-11, .p0, 1e-5))
+    # per-method tolerances: at t = 1e4 abs reaches about 1.5e-5 and cvodesadj
+    # about 1.2e-4 of the finite difference
+    .tight <- c(abs = 1e-5, liblsodaadj = 1e-5, cvodesadj = 1e-5)
+    .far <- c(abs = 1e-4, liblsodaadj = 1e-5, cvodesadj = 5e-4)
+    .grid <- list(list(1e4, 1e-7, .slow, .far), list(100, 1e-9, .slow, .tight), list(1, 1e-11, .slow, .tight),
+                  list(1, 1e-12, .slow, .tight), list(100, 1e-13, .slow, .tight), list(100, 3e-11, .p0, .tight))
     for (.g in .grid) {
       .cases <- .sc(.g[[1]], .g[[2]], .g[[3]])
       if (identical(.g[[3]], .slow)) .cases <- .cases[c("multiplyDose", "doseObsAfter")]
@@ -177,7 +181,7 @@ rxTest({
           .a <- rxSolveAdjointRk4(.k$txt, .k$ev, params = .k$p, calcSens = names(.k$p), method = .m,
             atol = 1e-10, rtol = 1e-10, hmin = if (.m == "abs") 0.001 else 0)
           for (.cn in names(.ref)) {
-            expect_lt(max(abs(.a[[.cn]] - .ref[[.cn]])), .g[[4]], label = paste(.nm, .g[[1]], .g[[2]], .m, .cn))
+            expect_lt(max(abs(.a[[.cn]] - .ref[[.cn]])), .g[[4]][[.m]], label = paste(.nm, .g[[1]], .g[[2]], .m, .cn))
           }
         }
       }
