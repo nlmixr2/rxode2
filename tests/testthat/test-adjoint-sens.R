@@ -589,6 +589,26 @@ rxTest({
     }
   })
 
+  test_that("rxSolveAdjoint accepts a model function like rxSolve (#1504)", {
+    pk <- function() {
+      ini({
+        ka <- 1.2
+        cl <- 3.5
+        v <- 25
+      })
+      model({
+        d/dt(depot) <- -ka * depot
+        d/dt(center) <- ka * depot - cl / v * center
+      })
+    }
+    fP <- c(ka = 1.2, cl = 3.5, v = 25)
+    fEv <- rxode2::et(amt = 100, cmt = "depot") |> rxode2::et(seq(0, 12, by = 2))
+    resF <- rxode2::rxSolveAdjoint(pk, fP, fEv, calcSens = c("ka", "cl"))
+    resU <- rxode2::rxSolveAdjoint(pk(), fP, fEv, calcSens = c("ka", "cl"))
+    expect_equal(resF, resU)
+    expect_true("rx__sens_center_BY_cl__" %in% names(resF))
+  })
+
   # ---- population objective gradient (.rxAdjointGradPop) ---------------------
   # dOFV/dtheta = sum over subjects of each subject's adjoint -2LL gradient --
   # the exact quantity a gradient-based population estimator minimises, with one

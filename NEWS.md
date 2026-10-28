@@ -13,6 +13,10 @@
 - The pipeline article no longer saves its simulation into the installed
   package directory (#1506).
 
+### Sensitivities
+- `rxSolveAdjoint()` now accepts a model function, as `rxSolve()` does; it
+  used to fail with an rxode2 syntax error on the `ini({})` block (#1504).
+
 ## New features
 
 - `minSS` and `maxSS` now accept any count from 1, and `maxSS` may equal

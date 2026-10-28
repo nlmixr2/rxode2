@@ -38,7 +38,7 @@
 #'   })
 #' }
 #' ev <- et(amt = 100, cmt = "depot") |> et(c(1, 2, 4, 8, 12))
-#' rxSolveAdjoint(rxode2(pk), c(ka = 1.2, cl = 3.5, v = 25), ev,
+#' rxSolveAdjoint(pk, c(ka = 1.2, cl = 3.5, v = 25), ev,
 #'                calcSens = c("ka", "cl"))
 #' }
 rxSolveAdjoint <- function(
@@ -52,6 +52,7 @@ rxSolveAdjoint <- function(
   rtol = 1e-06,
   ...
 ) {
+  object <- .rxAdjointObject(object)
   .primal <- as.data.frame(rxode2::rxSolve(object, params = params, events, returnType = "data.frame", ...))
   .obsTimes <- sort(unique(.primal$time))
   .build <- .rxAdjointSolveBuild(object, calcSens, events, adjStates = adjStates)
@@ -62,6 +63,11 @@ rxSolveAdjoint <- function(
     .primal[[.cn]] <- .sens[[.cn]][.idx]
   }
   .primal
+}
+
+## Convert a model function to its rxUi; rxGetModel() would deparse the body.
+.rxAdjointObject <- function(object) {
+  if (is.function(object)) rxode2::as.rxUi(object) else object
 }
 
 ## Reverse a backward-in-time "d/dt(L)=RHS" line to reversed-time forward form.
@@ -106,6 +112,7 @@ rxSolveAdjoint <- function(
   atol = 1e-10,
   rtol = 1e-10
 ) {
+  object <- .rxAdjointObject(object)
   .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
   .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
@@ -192,6 +199,7 @@ rxSolveAdjoint <- function(
 #' @export
 #' @keywords internal
 .rxAdjointSolveBuild <- function(object, calcSens, events, adjStates = NULL) {
+  object <- .rxAdjointObject(object)
   .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
   .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
@@ -617,6 +625,7 @@ rxSolveAdjoint <- function(
 #' @export
 #' @keywords internal
 .rxAdjointGradBuild <- function(object, calcSens, pred, events, errModel = NULL) {
+  object <- .rxAdjointObject(object)
   .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
   .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
