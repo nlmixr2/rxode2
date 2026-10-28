@@ -364,7 +364,7 @@
 - Several `ss = 2` regimens in one subject (into different compartments, or
   the same one with another dose or interval, at one time or at different
   times) now each carry their own steady state in the `rk4s` family of
-  adjoint methods; the first one's served them all (off by up to 60).
+  adjoint methods; the first one's served them all (off by up to 2.5).
 
 - Adjoint sensitivities with a bioavailability (`f()`) that depends on the
   state are now right in every adjoint method: the dose then lands as
