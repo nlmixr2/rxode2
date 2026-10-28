@@ -31,7 +31,7 @@ List cbindThetaOmegaNM(NumericMatrix& inputParameters, List& individualParameter
       NumericVector cur = inputParameters(_, i);
       ret[i] = cur;
     }
-  } else if (tot %  nstud == 0) {
+  } else if (nstud > 0 && tot % nstud == 0) {
     int nsub = tot / nstud;
     for (int i = inputN.size(); i--; ) {
       NumericVector cur(tot);
@@ -63,7 +63,7 @@ List cbindThetaOmegaL(List& inputParameters, List& individualParameters) {
       NumericVector cur = as<NumericVector>(inputParameters[i]);
       ret[i] = cur;
     }
-  } else if (tot %  nstud == 0) {
+  } else if (nstud > 0 && tot % nstud == 0) {
     int nsub = tot / nstud;
     for (int i = inputN.size(); i--; ) {
       NumericVector cur(tot);

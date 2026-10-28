@@ -20,6 +20,12 @@
   to the first state, and a numeric `cmt` to that state, as `rxSolve()`
   does; a dose without a `cmt` used to fail in the build (#1504).
 
+### Solving
+- `rxSolve()` now stops with an error when an `rxControl()` object is passed
+  as `params` or `events`, as it already did for `inits`, and a parameter list
+  whose first column is empty gives the parameter-size error.  With a `sigma`
+  to simulate, both used to crash R with a floating point exception (#1551).
+
 ## New features
 
 - `minSS` and `maxSS` now accept any count from 1, and `maxSS` may equal
