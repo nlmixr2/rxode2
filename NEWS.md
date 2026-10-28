@@ -316,7 +316,10 @@
 - Distinct event times closer together than 1e-8 (`liblsodaadj`), 1e-9
   (`abs`) or 1e-12 (`cvodesadj`) are no longer merged by the adjoint backward
   sweep, which applied their jumps out of order (off by up to 80); the sweep
-  now groups events at one time as the forward solve does (2 ulp).
+  now groups events at one time as the forward solve does (2 ulp).  `abs`
+  takes no step across an interval within its own step tolerance (about
+  `1.5e-11 * |t|`), and now records that interval anyway, so the events at
+  its two ends stay apart there too (off by up to 207).
 
 - `method = "abs"` now includes the bioavailability (`f()`) and lag-time
   (`alag()`) adjoint sensitivities of a bolus dose.  It still refuses them,

@@ -144,6 +144,46 @@ rxTest({
     }
   })
 
+  test_that("abs groups close events as its forward stepped", {
+    # abs takes no step across an interval within its own step tolerance
+    # (about 1.5e-11 * |t|), but that interval is still a call, so the events at
+    # its two ends stay apart; liblsodaadj and cvodesadj are the controls
+    .sc <- function(t0, d, p) list(
+      multiplyDose = list(txt = .base, p = p, ev = et(time = t0, amt = 100, cmt = "depot") |>
+        et(time = t0 + 3, evid = 6, amt = 0.5, cmt = "depot") |> et(time = t0 + 3 + d, amt = 80, cmt = "depot") |>
+        et(t0 + c(1, 4, 6))),
+      doseObsAfter = list(txt = .base, p = p, ev = et(time = t0, amt = 100, cmt = "depot") |>
+        et(time = t0 + 3, amt = 80, cmt = "depot") |> et(t0 + c(1, 3 + d, 6))),
+      replaceDose = list(txt = .base, p = p, ev = et(time = t0, amt = 100, cmt = "depot") |>
+        et(time = t0 + 3, evid = 5, amt = 30, cmt = "center") |> et(time = t0 + 3 + d, amt = 80, cmt = "depot") |>
+        et(t0 + c(1, 4, 6))),
+      resetDose = list(txt = .base, p = p, ev = et(time = t0, amt = 100, cmt = "depot") |> et(time = t0 + 3, evid = 3) |>
+        et(time = t0 + 3 + d, amt = 80, cmt = "depot") |> et(t0 + c(1, 4, 6))),
+      dosesLagged = list(txt = paste0(.base, "\nalag(depot) <- lg"), p = c(p, lg = 0.5),
+        ev = et(time = t0, amt = 100, cmt = "depot") |> et(time = t0 + 3, amt = 80, cmt = "depot") |>
+          et(time = t0 + 3 + d, amt = 50, cmt = "depot") |> et(t0 + c(1, 4.5, 6)))
+    )
+    .slow <- c(ka = 0.05, k = 0.02)
+    # at t = 1e4 the finite difference and cvodesadj are good to about 1e-4
+    .grid <- list(list(1e4, 1e-7, .slow, 5e-4), list(100, 1e-9, .slow, 1e-5), list(1, 1e-11, .slow, 1e-5),
+                  list(1, 1e-12, .slow, 1e-5), list(100, 1e-13, .slow, 1e-5), list(100, 3e-11, .p0, 1e-5))
+    for (.g in .grid) {
+      .cases <- .sc(.g[[1]], .g[[2]], .g[[3]])
+      if (identical(.g[[3]], .slow)) .cases <- .cases[c("multiplyDose", "doseObsAfter")]
+      for (.nm in names(.cases)) {
+        .k <- .cases[[.nm]]
+        .ref <- .adjFd(.k$txt, .k$ev, .k$p, method = "liblsoda", maxsteps = 1e6)
+        for (.m in c("abs", "liblsodaadj", "cvodesadj")) {
+          .a <- rxSolveAdjointRk4(.k$txt, .k$ev, params = .k$p, calcSens = names(.k$p), method = .m,
+            atol = 1e-10, rtol = 1e-10, hmin = if (.m == "abs") 0.001 else 0)
+          for (.cn in names(.ref)) {
+            expect_lt(max(abs(.a[[.cn]] - .ref[[.cn]])), .g[[4]], label = paste(.nm, .g[[1]], .g[[2]], .m, .cn))
+          }
+        }
+      }
+    }
+  })
+
   test_that("same-time events around continuous, ss = 2 and repeated ss doses", {
     # a continuous ss infusion replaces the state like an ss bolus; an ss = 2 dose
     # adds its regimen at its own position among the step's events; the last of
