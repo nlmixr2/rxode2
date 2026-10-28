@@ -80,6 +80,52 @@ test_that("a failing sensitivity build reports its own error, not 'Aborted calcu
   }
 })
 
+# the arguments of call e, skipping empty ones (x[, 1])
+.progressCallArgs <- function(e) {
+  .a <- as.list(e)
+  .a[!vapply(seq_along(.a), function(i) identical(.a[[i]], quote(expr = )), logical(1))]
+}
+
+# whether expression e calls rxProgressAbort() (bare or pkg::-qualified) anywhere
+.progressCallsAbort <- function(e) {
+  if (!is.call(e)) return(FALSE)
+  .h <- e[[1]]
+  if (identical(.h, quote(rxProgressAbort))) return(TRUE)
+  if (is.call(.h) && (identical(.h[[1]], quote(`::`)) || identical(.h[[1]], quote(`:::`))) &&
+    identical(.h[[3]], quote(rxProgressAbort))) {
+    return(TRUE)
+  }
+  any(vapply(.progressCallArgs(e), .progressCallsAbort, logical(1)))
+}
+
+# whether expression e has rxProgressAbort() in an on.exit() or a tryCatch() finally
+.progressExitAborts <- function(e) {
+  if (!is.call(e)) return(FALSE)
+  .h <- e[[1]]
+  if (identical(.h, quote(on.exit)) && length(e) > 1L && .progressCallsAbort(e[[2]])) return(TRUE)
+  if (identical(.h, quote(tryCatch)) && !is.null(e$finally) && .progressCallsAbort(e$finally)) return(TRUE)
+  any(vapply(.progressCallArgs(e), .progressExitAborts, logical(1)))
+}
+
+test_that("the on.exit() rxProgressAbort() detector flags every form", {
+  .yes <- list(
+    quote(on.exit(rxProgressAbort())),
+    quote(on.exit(if (!ok) rxProgressAbort())),
+    quote(on.exit({ a <- function() { 1 }; rxProgressAbort("x") }, add = TRUE)),
+    quote(on.exit(rxode2::rxProgressAbort())),
+    quote(tryCatch(f(), finally = rxProgressAbort())),
+    quote({ x[, 1]; g <- function() on.exit(rxProgressAbort()) })
+  )
+  .no <- list(
+    quote(on.exit(.rxProgressExit())),
+    quote({ rxProgressAbort(); on.exit(rxProgressStop()) }),
+    quote(tryCatch(rxProgressAbort(), error = function(e) NULL)),
+    quote(x[, 1])
+  )
+  for (.e in .yes) expect_true(.progressExitAborts(.e), label = deparse(.e)[1])
+  for (.e in .no) expect_false(.progressExitAborts(.e), label = deparse(.e)[1])
+})
+
 test_that("no package function closes a progress bar with rxProgressAbort() in on.exit()", {
   # rxProgressAbort() stops with its own error, which would replace the one
   # unwinding the function; .rxProgressExit() is the on.exit() form
@@ -88,11 +134,7 @@ test_that("no package function closes a progress bar with rxProgressAbort() in o
   for (.n in ls(.ns, all.names = TRUE)) {
     .f <- get(.n, envir = .ns)
     if (!is.function(.f) || is.primitive(.f)) next
-    .src <- paste(deparse(body(.f)), collapse = "\n")
-    if (grepl("on.exit\\([^)]*rxProgressAbort", .src) ||
-      grepl("on.exit\\(\\{[^}]*rxProgressAbort", .src)) {
-      .bad <- c(.bad, .n)
-    }
+    if (.progressExitAborts(body(.f))) .bad <- c(.bad, .n)
   }
   expect_identical(.bad, character(0))
 })
