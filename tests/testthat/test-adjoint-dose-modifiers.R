@@ -219,6 +219,23 @@ rxTest({
     ))
   })
 
+  test_that("abs reads NONMEM-style upper-case RATE and DUR columns as infusions", {
+    # the same infusion as an et() table and with upper-case columns gives the
+    # same sensitivities, which .infCheck() compares with the FD
+    .txt <- paste(.infBase, "f(depot) <- fd", sep = "\n")
+    .p <- c(ka = 1.2, k = 0.14, fd = 0.7)
+    .tt <- c(1, 2, 4, 8, 12)
+    for (.col in c("RATE", "DUR")) {
+      .lower <- if (.col == "RATE") et(amt = 100, cmt = "depot", rate = 40) else et(amt = 100, cmt = "depot", dur = 2.5)
+      .up <- data.frame(ID = 1, TIME = c(0, .tt), AMT = c(100, rep(0, 5)), EVID = c(1, rep(0, 5)), CMT = "depot")
+      .up[[.col]] <- c(if (.col == "RATE") 40 else 2.5, rep(0, 5))
+      .a <- rxSolveAdjointRk4(.txt, .lower |> et(.tt), params = .p, calcSens = names(.p), method = "abs", hmin = 0.001)
+      .b <- rxSolveAdjointRk4(.txt, .up, params = .p, calcSens = names(.p), method = "abs", hmin = 0.001)
+      .cn <- grep("^rx__sens_", names(.a), value = TRUE)
+      expect_equal(as.data.frame(.b)[, .cn], as.data.frame(.a)[, .cn], tolerance = 1e-10, label = .col)
+    }
+  })
+
   test_that("overlapping, still-open and second-compartment infusion windows carry their duals in every driver", {
     .infCheck(list(
       overlap = list(txt = "f(depot) <- fd", p = c(ka = 1.2, k = 0.14, fd = 0.7),
