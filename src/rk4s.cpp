@@ -231,9 +231,8 @@ static inline void rk4sIniOnlyFill(rx_solving_options *op, rx_solving_options_in
 //            state with its steady state, so the events recorded before it at
 //            this step do not reach later observations; the transpose stops
 //            here and the caller adds the steady-state term.
-// A replace/multiply that a modeled lag moves adds mu += dlag[c][p] * lambda_n+^T r
-// (rxAdjJumpTerm).  A constant replace/multiply value contributes nothing else to
-// mu; a modeled value would add mu += lambda_n+[c] * dvalue/dp (a later addition).
+// A replace/multiply that a modeled lag moves adds mu += dlag[c][p] * lambda_n+^T r,
+// and a modeled F (x+ = F*amt, or alpha = F*amt) its f() dual (rxAdjJumpTerm).
 // fx0 = F_X (df/dy) at this step's stage 0 (post-dose state), row-major i*nBase+j,
 // or NULL; dlag = d(lag)/dtheta block (c*np+p) or NULL.  When a bolus into cmt c has
 // a modeled lag, the dose time t_d+lag(theta) shifts with theta, adding the
@@ -263,11 +262,11 @@ static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
       for (int j = 0; j < nBase; ++j) lamR[j] = 0.0;
       break;
     case 5:
-      rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlag);
+      rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlag, haveDf ? dFdp.data() : NULL);
       lamR[d.cmt] = 0.0;
       break;
     case 6:
-      rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlag);
+      rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlag, haveDf ? dFdp.data() : NULL);
       lamR[d.cmt] *= d.amt;
       break;
     case 9:

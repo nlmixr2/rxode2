@@ -52,13 +52,13 @@ rxTest({
   })
 
   test_that("a dose together with a replace or multiply at one time keeps its bioavailability", {
-    # Same-time records sort as multiply, replace, then dose.  A replace with 0
-    # or a multiply of an empty compartment leaves no f() term on the jump
-    # itself.  test-adjoint-same-time.R covers the other drivers.
+    # Same-time records sort as multiply, replace, then dose; f() scales the
+    # replace value and the multiply factor too.  test-adjoint-same-time.R
+    # covers the other drivers.
     .scenSame <- list(
-      replaceDose = et(amt = 100, cmt = "depot") |> et(time = 3, evid = 5, amt = 0, cmt = "depot") |>
+      replaceDose = et(amt = 100, cmt = "depot") |> et(time = 3, evid = 5, amt = 10, cmt = "depot") |>
         et(time = 3, amt = 80, cmt = "depot") |> et(c(1, 3, 4, 6)),
-      multiplyDose = et(amt = 100, cmt = "depot") |> et(time = 3, evid = 6, amt = 0, cmt = "depot") |>
+      multiplyDose = et(amt = 100, cmt = "depot") |> et(time = 3, evid = 6, amt = 0.5, cmt = "depot") |>
         et(time = 3, amt = 80, cmt = "depot") |> et(c(1, 3, 4, 6)),
       multiplyDoseT0 = et(time = 0, evid = 6, amt = 3, cmt = "depot") |> et(amt = 100, cmt = "depot") |>
         et(c(0, 1, 3))

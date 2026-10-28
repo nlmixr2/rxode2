@@ -262,9 +262,7 @@
   sensitivity in the `rk4s` family of methods and in
   `method = "liblsodaadj"`; it is now kept.  Events at the same step are
   now transposed in reverse order in the `rk4s` family, which also fixes a
-  dose together with a replace or multiply at one time.  The bioavailability
-  that `f()` applies to a replace or multiply value is still missing from
-  the adjoint sensitivities.
+  dose together with a replace or multiply at one time.
 
 - Several events at one time (doses, replaces, multiplies and resets) now
   give the right adjoint sensitivities with `method = "liblsodaadj"` and
@@ -311,6 +309,12 @@
   with nonlinear dynamics (for example Michaelis-Menten elimination) is now
   exact in every adjoint method; it linearized the change in the derivative
   across the dose, which was off by up to 24 in the tests.
+
+- The bioavailability (`f()`) that the forward solve applies to a replace
+  (`evid = 5`, the state becomes `F*amt`) or multiply (`evid = 6`, by
+  `F*amt`) value is now in the adjoint sensitivities of every adjoint method;
+  before, it was missing (off by up to 6.3), and `liblsodaadj` and `abs`
+  also scaled the costate of a multiply by `amt` instead of `F*amt`.
 
 - `method = "abs"` now includes the bioavailability (`f()`) and lag-time
   (`alag()`) adjoint sensitivities of a bolus dose.  It still refuses them,

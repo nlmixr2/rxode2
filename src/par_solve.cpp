@@ -3129,11 +3129,12 @@ static thread_local int    _adjSS2 = 0;
 static thread_local std::vector<double> _adjSS2peak;
 
 // A bolus (not ss), replace or multiply into base cmt c, captured per record
-// index while an adjoint with a modeled alag() records: r = G f(t, x-) - f(t, x+)
-// (G = dPhi/dx of the jump: I for a bolus), the state derivative of moving the
-// jump later.  The backward adds mu += dlag[c] * lambda+^T r, exact for a
-// nonlinear model.
-struct rxAdjJumpCap { int rec; std::vector<double> r; };
+// index while an adjoint with a modeled alag() or f() records: kind (0 bolus, 5
+// replace, 6 multiply), xPre = x-[c], raw = the raw amount, and, with alag(),
+// r = G f(t, x-) - f(t, x+) (G = dPhi/dx of the jump: I for a bolus), the state
+// derivative of moving the jump later.  The backward adds mu += dlag[c] *
+// lambda+^T r, exact for a nonlinear model, and a replace/multiply's f() dual.
+struct rxAdjJumpCap { int rec, kind; double xPre, raw; std::vector<double> r; };
 static thread_local std::vector<rxAdjJumpCap> _adjJumpCap;
 static inline const rxAdjJumpCap *rxAdjJumpFind(int rec) {
   for (size_t k = 0; k < _adjJumpCap.size(); ++k) if (_adjJumpCap[k].rec == rec) return &_adjJumpCap[k];
@@ -3141,11 +3142,12 @@ static inline const rxAdjJumpCap *rxAdjJumpFind(int rec) {
 }
 // cmt of a bolus/replace/multiply record into a base state to capture, or -1
 static inline int rxAdjJumpCmt(rx_solving_options *op, rx_solving_options_ind *ind, int rec) {
-  if (!op->adjoint || op->adjDlagOff < 0) return -1;
+  if (!op->adjoint || (op->adjDlagOff < 0 && op->adjDfOff < 0)) return -1;
   int ev = getEvid(ind, ind->ix[rec]);
   if (!isDose(ev)) return -1;
   int _wh, _cmt, _wh100, _whI, _wh0; getWh(ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
-  if (_whI != EVIDF_REPLACE && _whI != EVIDF_MULT && !(_whI == 0 && _wh0 == EVID0_REGULAR)) return -1;
+  bool bolus = (_whI == 0 && _wh0 == EVID0_REGULAR && op->adjDlagOff >= 0);
+  if (_whI != EVIDF_REPLACE && _whI != EVIDF_MULT && !bolus) return -1;
   return (_cmt >= 0 && _cmt < op->adjNbase) ? _cmt : -1;
 }
 static inline void rxAdjJumpRecord(rx_solving_options *op, rx_solving_options_ind *ind, int *neq,
@@ -3153,15 +3155,18 @@ static inline void rxAdjJumpRecord(rx_solving_options *op, rx_solving_options_in
                                    double *post) {
   int nBase = op->adjNbase;
   int _wh, _c, _wh100, _whI, _wh0; getWh(getEvid(ind, ind->ix[rec]), &_wh, &_c, &_wh100, &_whI, &_wh0);
-  rxAdjJumpCap cap; cap.rec = rec;
-  std::vector<double> yA(pre), fA(pre.size(), 0.0), fB(pre.size(), 0.0), yB(post, post + pre.size());
-  double g = 1.0;                       // G[c][c]: 1 for a bolus, 0 for a replace, alpha for a multiply
-  if (_whI == EVIDF_REPLACE) g = 0.0;
-  else if (_whI == EVIDF_MULT) g = getAmt(ind, ind->id, cmt, getDose(ind, ind->ix[rec]), t, yA.data());
-  dydt(neq, t, yA.data(), fA.data());
-  dydt(neq, t, yB.data(), fB.data());
-  cap.r.resize(nBase);
-  for (int j = 0; j < nBase; ++j) cap.r[j] = (j == cmt ? g * fA[j] : fA[j]) - fB[j];
+  rxAdjJumpCap cap; cap.rec = rec; cap.xPre = pre[cmt]; cap.raw = getDose(ind, ind->ix[rec]);
+  cap.kind = (_whI == EVIDF_REPLACE) ? 5 : (_whI == EVIDF_MULT) ? 6 : 0;
+  if (op->adjDlagOff >= 0) {
+    std::vector<double> yA(pre), fA(pre.size(), 0.0), fB(pre.size(), 0.0), yB(post, post + pre.size());
+    double g = 1.0;                     // G[c][c]: 1 for a bolus, 0 for a replace, alpha for a multiply
+    if (cap.kind == 5) g = 0.0;
+    else if (cap.kind == 6) g = getAmt(ind, ind->id, cmt, cap.raw, t, yA.data());
+    dydt(neq, t, yA.data(), fA.data());
+    dydt(neq, t, yB.data(), fB.data());
+    cap.r.resize(nBase);
+    for (int j = 0; j < nBase; ++j) cap.r[j] = (j == cmt ? g * fA[j] : fA[j]) - fB[j];
+  }
   for (size_t k = 0; k < _adjJumpCap.size(); ++k)
     if (_adjJumpCap[k].rec == rec) { _adjJumpCap[k] = std::move(cap); return; }
   _adjJumpCap.push_back(std::move(cap));
@@ -3177,14 +3182,22 @@ static inline int rxAdjHandleEvid1(int *i, rx_solve *rx, int *neq, double *yp, d
   rxAdjJumpRecord(rx->op, ind, neq, *i, c, ind->timeThread[ind->ix[*i]], pre, yp);
   return he;
 }
-// alag() dual of the jump at record rec into cmt c: mu += dlag[c][p] * lam^T r,
-// with lam the costate after the jump (before its transpose).  False when the
-// record has no capture (a dose pushed at run time).
+// Duals of the jump at record rec into cmt c, with lam the costate after the
+// jump (before its transpose): alag(), mu += dlag[c][p] * lam^T r; and, given
+// dF, a replace's f() (x+ = F*amt: mu += lam[c]*amt*dF[c][p]) or a multiply's
+// (alpha = F*amt: mu += lam[c]*x-[c]*amt*dF[c][p]).  Returns whether the alag()
+// term was added: false when the record has no capture (a dose pushed at run
+// time).
 static inline bool rxAdjJumpTerm(int rec, int c, const double *lam, double *mu, int nBase, int np,
-                                 const double *dlag) {
-  if (dlag == NULL || rec < 0) return false;
+                                 const double *dlag, const double *dF = NULL) {
+  if (rec < 0) return false;
   const rxAdjJumpCap *cap = rxAdjJumpFind(rec);
-  if (cap == NULL || cap->r.empty()) return false;
+  if (cap == NULL) return false;
+  if (dF != NULL && cap->kind != 0) {
+    double w = lam[c] * cap->raw * (cap->kind == 6 ? cap->xPre : 1.0);
+    for (int p = 0; p < np; ++p) mu[p] += w * dF[c * np + p];
+  }
+  if (dlag == NULL || cap->r.empty()) return false;
   double sc = 0.0;
   for (int j = 0; j < nBase; ++j) sc += lam[j] * cap->r[j];
   for (int p = 0; p < np; ++p) mu[p] += dlag[c * np + p] * sc;

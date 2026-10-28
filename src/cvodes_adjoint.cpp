@@ -535,7 +535,8 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       if (E.type == 0) { bolusDual(E); continue; }
       if (E.type != 5 && E.type != 6) continue;
       rxAdjJumpTerm(E.rec, E.cmt, NV_DATA_S(B), NV_DATA_S(B) + nBase, nBase, np,
-                    op->adjDlagOff >= 0 ? &ind->lhs[op->adjDlagOff] : NULL);
+                    op->adjDlagOff >= 0 ? &ind->lhs[op->adjDlagOff] : NULL,
+                    op->adjDfOff >= 0 ? &ind->lhs[op->adjDfOff] : NULL);
       if (E.type == 5) NV_Ith_S(B, E.cmt) = 0.0;
       else NV_Ith_S(B, E.cmt) *= E.factor;
     }
@@ -588,9 +589,10 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
           tCur = te;
         }
         int c = evJumps[segEv[s]].cmt; int ty = evJumps[segEv[s]].type;
-        if (ty == 5 || ty == 6)                                        // a lagged jump's alag() dual
+        if (ty == 5 || ty == 6)                                        // its alag() and f() duals
           rxAdjJumpTerm(evJumps[segEv[s]].rec, c, NV_DATA_S(B), NV_DATA_S(B) + nBase, nBase, np,
-                        op->adjDlagOff >= 0 ? &ind->lhs[op->adjDlagOff] : NULL);
+                        op->adjDlagOff >= 0 ? &ind->lhs[op->adjDlagOff] : NULL,
+                        op->adjDfOff >= 0 ? &ind->lhs[op->adjDfOff] : NULL);
         if (ty == 5) NV_Ith_S(B, c) = 0.0;                             // replace
         else if (ty == 6) NV_Ith_S(B, c) *= evJumps[segEv[s]].factor;  // multiply
         else if (ty == 0) {                                            // additive bolus duals

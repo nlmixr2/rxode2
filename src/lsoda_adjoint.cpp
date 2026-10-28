@@ -48,7 +48,7 @@ struct lsAdjStep {
 // A state-jump event at a segment start, reconstructed from the event table:
 //   0 additive bolus (dPhi/dy=I) | 3 reset (y:=inits, dPhi/dy=0) | 8 ss=1 (y:=Y_ss(p),
 //   dPhi/dy=0, adds lambda^T dY_ss/dp) | 5 replace (y[cmt]:=val, row cmt 0) |
-//   6 multiply (y[cmt]*=factor).  amt is the raw dose (modeled-F mu), amtF = F*amt,
+//   6 multiply (y[cmt]*=factor, F*amt).  amt is the raw dose (modeled-F mu), amtF = F*amt,
 //   the amount that lands (modeled-alag mu); rec = a bolus/replace/multiply's
 //   record index (its rxAdjJumpCap), else -1.
 struct lsAdjEv { int type, cmt; double factor, amt, amtF; int rec = -1; };
@@ -206,7 +206,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       } else if (_whI == EVIDF_REPLACE) {
         evs.push_back({5, _cmt, 0.0, 0.0, 0.0, i});
       } else if (_whI == EVIDF_MULT) {
-        evs.push_back({6, _cmt, getDose(ind, ind->ix[i]), 0.0, 0.0, i});
+        evs.push_back({6, _cmt, getAmt(ind, ind->id, _cmt, getDose(ind, ind->ix[i]), t, _y.data()), 0.0, 0.0, i});
       }
       // (modeled rate/dur infusion on/off open a segment but are not a state jump;
       //  their dR/dp dual is reconstructed as windows below, not here.)
@@ -480,7 +480,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
           break;
         } else if (E.type == 5 || E.type == 6) {
           rxAdjJumpTerm(E.rec, E.cmt, wSeed.data(), mu.data(), nBase, np,
-                        op->adjDlagOff >= 0 ? &lhs[op->adjDlagOff] : NULL);
+                        op->adjDlagOff >= 0 ? &lhs[op->adjDlagOff] : NULL, op->adjDfOff >= 0 ? &lhs[op->adjDfOff] : NULL);
           if (E.type == 5) wSeed[E.cmt] = 0.0; else wSeed[E.cmt] *= E.factor;
         }
       }
@@ -634,7 +634,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
             atIni = true;
           } else if (E.type == 5 || E.type == 6) {
             rxAdjJumpTerm(E.rec, E.cmt, wSeed.data(), mu.data(), nBase, np,
-                          op->adjDlagOff >= 0 ? &lhs[op->adjDlagOff] : NULL);
+                          op->adjDlagOff >= 0 ? &lhs[op->adjDlagOff] : NULL, op->adjDfOff >= 0 ? &lhs[op->adjDfOff] : NULL);
             if (E.type == 5) wSeed[E.cmt] = 0.0; else wSeed[E.cmt] *= E.factor;
           }
         }
@@ -705,8 +705,12 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
           for (int c = 0; c < nBase; ++c) for (int p = 0; p < np; ++p) YHS[IDX(1, c, p)] = dx0P ? dx0P[c * np + p] : 0.0;
         } else if (E.type == 5 || E.type == 6) {
           for (int p = 0; p < np; ++p) YHS[IDX(1, E.cmt, p)] = (E.type == 5) ? 0.0 : YHS[IDX(1, E.cmt, p)] * E.factor;
-          // a lagged jump: S+ = G S- + r*dlag/dp
+          // a lagged jump: S+ = G S- + r*dlag/dp; a modeled F adds amt*dF/dp
+          // (replace) or x-*amt*dF/dp (multiply)
           const rxAdjJumpCap *cap = rxAdjJumpFind(E.rec);
+          if (op->adjDfOff >= 0 && cap != NULL) { const double *dF = &lhs[op->adjDfOff];
+            double w = cap->raw * (E.type == 6 ? cap->xPre : 1.0);
+            for (int p = 0; p < np; ++p) YHS[IDX(1, E.cmt, p)] += w * dF[E.cmt * np + p]; }
           if (op->adjDlagOff >= 0 && cap != NULL && !cap->r.empty()) { const double *dlag = &lhs[op->adjDlagOff];
             for (int i = 0; i < nBase; ++i) for (int p = 0; p < np; ++p) YHS[IDX(1, i, p)] += cap->r[i] * dlag[E.cmt * np + p]; }
         }
