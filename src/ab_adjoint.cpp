@@ -95,7 +95,9 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   for (size_t c = 0; c < nCalls; ++c) {
     infSeg[c].t0 = abAdjCalls[c].t0; infSeg[c].y0 = abCallY0(c); infSeg[c].infRate = abAdjCalls[c].infRate;
   }
-  rxAdjInfusionWindows(op, ind, nBase, eff, infSeg);
+  std::vector<rxAdjSfWin> sfWins;   // fixed-dur windows with a state-dependent f()
+  rxAdjInfusionWindows(op, ind, nBase, eff, infSeg, cSub, &sfWins);
+  std::vector<double> sfAcc(sfWins.size(), 0.0);
   std::vector<std::vector<double> > infW(nCalls), infB(nCalls);
   {
     std::vector<double> Ai(eff, 0.0);
@@ -120,13 +122,22 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
                  (dL ? wt(S.lagRate, a) * dL[q] : 0.0);
       }
     }
+    // a state-dependent f() window: forced with dF/dp at its start state
+    for (size_t k = 0; k < sfWins.size(); ++k)
+      for (size_t c = sfWins[k].seg0; c < sfWins[k].seg1 && c < nCalls; ++c) {
+        if (infW[c].empty()) infW[c].assign((size_t)nBase * np, 0.0);
+        for (int p = 0; p < np; ++p) infW[c][(size_t)sfWins[k].cmt * np + p] += sfWins[k].raw * sfWins[k].dF[p];
+      }
   }
 
   double *lhs = ind->lhs;
   std::vector<double> A(eff, 0.0), Aw(eff, 0.0);
   std::vector<double> mu(np, 0.0);
   // mu += s * W^T v
-  auto addW = [&](const std::vector<double> &W, const double *v, double s) {
+  // (and, in call c, each state-dependent f() window's integral of lam_cmt)
+  auto addW = [&](const std::vector<double> &W, const double *v, double s, long call = -1) {
+    for (size_t k = 0; call >= 0 && k < sfWins.size(); ++k)
+      if ((size_t)call >= sfWins[k].seg0 && (size_t)call < sfWins[k].seg1) sfAcc[k] += s * v[sfWins[k].cmt];
     if (W.empty()) return;
     for (int p = 0; p < np; ++p) { double z = 0.0; for (int a = 0; a < nBase; ++a) z += W[(size_t)a * np + p] * v[a]; mu[p] += s * z; }
   };
@@ -151,7 +162,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   std::vector<double> s2(nBase), s3(nBase), s4(nBase), tmp(nBase);
   std::vector<double> k1b(nBase), k2b(nBase), k3b(nBase), k4b(nBase), sb(nBase);
   auto rk4T = [&](const double *yb, double t, double dt, const double *lamOut, double *lamIn,
-                  const std::vector<double> &W) {
+                  const std::vector<double> &W, long call) {
     fEval(t, yb, k1);
     for (int b = 0; b < nBase; ++b) s2[b] = yb[b] + 0.5 * dt * k1[b];  fEval(t + 0.5*dt, s2.data(), k2);
     for (int b = 0; b < nBase; ++b) s3[b] = yb[b] + 0.5 * dt * k2[b];  fEval(t + 0.5*dt, s3.data(), k3);
@@ -168,13 +179,13 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
     auto Pt = [&](const std::vector<double> &P, const double *v){ for(int p=0;p<np;++p){double s=0;for(int a=0;a<nBase;++a)s+=P[a*np+p]*v[a];mu[p]+=s;} };
     // reverse (topological): yout -> k4,s4 -> k3,s3 -> k2,s2 -> k1
     for (int b=0;b<nBase;++b){ double a=lamOut[b]; sb[b]=a; k1b[b]=(dt/6)*a; k2b[b]=(2*dt/6)*a; k3b[b]=(2*dt/6)*a; k4b[b]=(dt/6)*a; }
-    Jt(J4, k4b.data(), tmp); Pt(P4, k4b.data()); addW(W, k4b.data(), 1.0);                 // k4=f(s4)
+    Jt(J4, k4b.data(), tmp); Pt(P4, k4b.data()); addW(W, k4b.data(), 1.0, call);                 // k4=f(s4)
     for (int b=0;b<nBase;++b){ sb[b]+=tmp[b]; k3b[b]+=dt*tmp[b]; } // s4=yb+dt k3
-    Jt(J3, k3b.data(), tmp); Pt(P3, k3b.data()); addW(W, k3b.data(), 1.0);                 // k3=f(s3)
+    Jt(J3, k3b.data(), tmp); Pt(P3, k3b.data()); addW(W, k3b.data(), 1.0, call);                 // k3=f(s3)
     for (int b=0;b<nBase;++b){ sb[b]+=tmp[b]; k2b[b]+=0.5*dt*tmp[b]; } // s3=yb+.5dt k2
-    Jt(J2, k2b.data(), tmp); Pt(P2, k2b.data()); addW(W, k2b.data(), 1.0);                 // k2=f(s2)
+    Jt(J2, k2b.data(), tmp); Pt(P2, k2b.data()); addW(W, k2b.data(), 1.0, call);                 // k2=f(s2)
     for (int b=0;b<nBase;++b){ sb[b]+=tmp[b]; k1b[b]+=0.5*dt*tmp[b]; } // s2=yb+.5dt k1
-    Jt(J1, k1b.data(), tmp); Pt(P1, k1b.data()); addW(W, k1b.data(), 1.0);                 // k1=f(yb)
+    Jt(J1, k1b.data(), tmp); Pt(P1, k1b.data()); addW(W, k1b.data(), 1.0, call);                 // k1=f(yb)
     for (int b=0;b<nBase;++b) lamIn[b] += sb[b] + tmp[b];
   };
 
@@ -238,6 +249,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
       std::fill(mu.begin(), mu.end(), 0.0);
       if (cObs >= 0) {
         std::fill(endCostate.begin(), endCostate.end(), 0.0); endCostate[k] = 1.0;
+        std::fill(sfAcc.begin(), sfAcc.end(), 0.0);
         // an observation at an event time reads the state after the jumps recorded
         // before it: those that open the next call, or, after the last call, the
         // ones at the last record time
@@ -258,7 +270,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
             const double *lamOut = &lam[(size_t)(j + 1) * nBase];
             double *lamJ = &lam[(size_t)j * nBase];
             if (st.isRK4) {
-              rk4T(st.y.data(), st.t, st.dt, lamOut, lamJ, infW[c]);
+              rk4T(st.y.data(), st.t, st.dt, lamOut, lamJ, infW[c], c);
             } else {
               for (int ii = 0; ii < ord; ++ii) {
                 const abRecStep &sh = abAdjSteps[g - ii];      // history point p_{j-ii}
@@ -267,11 +279,17 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
                 for (int b = 0; b < nBase; ++b) { double s = 0; for (int a = 0; a < nBase; ++a) s += fx[a * nBase + b] * lamOut[a]; lamTgt[b] += st.dt * cc[ii] * s; }
                 if (ii == 0) for (int b = 0; b < nBase; ++b) lamTgt[b] += lamOut[b];  // + identity from p_j
                 for (int p = 0; p < np; ++p) { double s = 0; for (int a = 0; a < nBase; ++a) s += fp[a * np + p] * lamOut[a]; mu[p] += st.dt * cc[ii] * s; }
-                addW(infW[c], lamOut, st.dt * cc[ii]);         // the rate is part of each f
+                addW(infW[c], lamOut, st.dt * cc[ii], c);      // the rate is part of each f
               }
             }
           }
           for (int b = 0; b < nBase; ++b) endCostate[b] = lam[b];  // costate of call c's start
+          // a state-dependent f() window starting here: its rate moved with this state
+          for (size_t q = 0; q < sfWins.size(); ++q)
+            if (sfWins[q].seg0 == (size_t)c) {
+              for (int b = 0; b < nBase; ++b) endCostate[b] += sfAcc[q] * sfWins[q].row[b];
+              sfAcc[q] = 0.0;
+            }
           addW(infB[c], endCostate.data(), 1.0);                     // a moving rate change at t0_c
           // the jumps at t0_c -> costate of the pre-event state (call c-1's end, or
           // the initial conditions for call 0)

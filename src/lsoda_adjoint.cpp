@@ -148,16 +148,44 @@ static inline void lsAdjEval(int cSub, double t, const double *yBase, int nBase,
 // Infusion-window duals per segment start, for liblsodaadj's segments and abs's
 // calls (Seg needs t0, y0, infRate and the lsAdjSeg weight vectors).  Returns
 // whether the subject has an infusion.
+// A fixed-dur window whose f() depends on the state, over segments [seg0, seg1):
+// its rate rawRate*F(x_on) is forced with dF/dp at the start state x_on (dF, the
+// cmt row, np), and the start state gains (integral of lam_cmt over the window)
+// * row, row = rawRate*dF_cmt/dx at x_on.
+struct rxAdjSfWin { size_t seg0, seg1; int cmt; double raw; std::vector<double> dF, row; };
+
+// Records a fixed-dur window as an rxAdjSfWin when its f() depends on the state
+// (start state y0 at t0, record rec); false otherwise, for the plain dF forcing.
+static inline bool rxAdjSfWinAdd(rx_solving_options *op, rx_solving_options_ind *ind, int cSub, int nBase,
+                                 int eff, double t0, const double *y0, size_t seg0, size_t seg1, int c,
+                                 double raw, int rec, std::vector<rxAdjSfWin> *sfw) {
+  if (sfw == NULL || op->adjDfxOff < 0 || op->adjDfOff < 0 || cSub < 0) return false;
+  std::vector<double> A(eff, 0.0);
+  for (int b = 0; b < nBase; ++b) A[b] = y0[b];
+  rk4sLhsRec(ind, cSub, rec, t0, A.data());
+  bool dep = false;
+  for (int j = 0; j < nBase; ++j) dep = dep || ind->lhs[op->adjDfxOff + c * nBase + j] != 0.0;
+  if (!dep) return false;
+  int np = op->adjNp;
+  rxAdjSfWin W; W.seg0 = seg0; W.seg1 = seg1; W.cmt = c; W.raw = raw;
+  W.dF.assign(ind->lhs + op->adjDfOff + c * np, ind->lhs + op->adjDfOff + (c + 1) * np);
+  W.row.resize(nBase);
+  for (int j = 0; j < nBase; ++j) W.row[j] = raw * ind->lhs[op->adjDfxOff + c * nBase + j];
+  sfw->push_back(W);
+  return true;
+}
+
 template <class Seg>
 static bool rxAdjInfusionWindows(rx_solving_options *op, rx_solving_options_ind *ind, int nBase, int eff,
-                                 std::vector<Seg> &segs) {
+                                 std::vector<Seg> &segs, int cSub = -1,
+                                 std::vector<rxAdjSfWin> *sfw = NULL) {
   // An infusion start/stop opening a segment changes the rate into its cmt by the
   // jump in InfusionRate across the segment boundary.  A modeled alag() moves that
   // time; a modeled F scales a fixed-dur rate (forcing rawRate*dF over the window) or
   // stretches a fixed-rate window (amtRaw*dF at its off boundary).
   if (op->adjDlagOff >= 0 || op->adjDfOff >= 0) {
     // open fixed windows: cmt, start key, first segment, raw rate, fixed dur or rate
-    struct lsFxWin { int cmt, key; size_t seg; double raw; bool isDur; };
+    struct lsFxWin { int cmt, key; size_t seg; double raw; bool isDur; int rec; };
     std::vector<lsFxWin> fxOpen;
     for (size_t sg = 0; sg < segs.size(); ++sg) {
       Seg &Sg = segs[sg];
@@ -193,7 +221,7 @@ static bool rxAdjInfusionWindows(rx_solving_options *op, rx_solving_options_ind 
         if (f == 0.0) continue;
         double raw = getDose(ind, ind->ix[i]);   // the record's raw rate (negative at a stop)
         int key = rk4sInfusionStartKey(ind, ind->ix[i]);
-        if (raw > 0.0) { fxOpen.push_back({c, key, sg, raw, _whI == EVIDF_INF_DUR}); continue; }
+        if (raw > 0.0) { fxOpen.push_back({c, key, sg, raw, _whI == EVIDF_INF_DUR, i}); continue; }
         // the window this stop closes: its own start, else the most recent one
         int wi = -1;
         for (size_t w = fxOpen.size(); w-- > 0;) {
@@ -205,7 +233,8 @@ static bool rxAdjInfusionWindows(rx_solving_options *op, rx_solving_options_ind 
         const lsFxWin W = fxOpen[wi];
         fxOpen.erase(fxOpen.begin() + wi);
         if (_whI == EVIDF_INF_DUR) {
-          for (size_t s2 = W.seg; s2 < sg; ++s2) lsAdjAddW(segs[s2].infDfMult, nBase, c, W.raw);
+          if (!rxAdjSfWinAdd(op, ind, cSub, nBase, eff, segs[W.seg].t0, segs[W.seg].y0.data(), W.seg, sg, c, W.raw, W.rec, sfw))
+            for (size_t s2 = W.seg; s2 < sg; ++s2) lsAdjAddW(segs[s2].infDfMult, nBase, c, W.raw);
         } else {
           lsAdjAddW(Sg.offDfFac, nBase, c, W.raw * (Sg.t0 - segs[W.seg].t0) / f);
         }
@@ -214,7 +243,9 @@ static bool rxAdjInfusionWindows(rx_solving_options *op, rx_solving_options_ind 
     // a fixed-dur window still open when the solve ends (its stop lies past the
     // last record solved) forces every remaining segment
     for (size_t w = 0; w < fxOpen.size(); ++w)
-      if (fxOpen[w].isDur)
+      if (fxOpen[w].isDur &&
+          !rxAdjSfWinAdd(op, ind, cSub, nBase, eff, segs[fxOpen[w].seg].t0, segs[fxOpen[w].seg].y0.data(),
+                         fxOpen[w].seg, segs.size(), fxOpen[w].cmt, fxOpen[w].raw, fxOpen[w].rec, sfw))
         for (size_t s2 = fxOpen[w].seg; s2 < segs.size(); ++s2) lsAdjAddW(segs[s2].infDfMult, nBase, fxOpen[w].cmt, fxOpen[w].raw);
   }
 
@@ -348,7 +379,9 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg)
     lsAdjSegs[sg].ev = lsEventsAt(lsAdjSegs[sg].t0, ind->n_all_times, lsAdjSegs[sg].y0.data());
 
-  bool hasInfusion = rxAdjInfusionWindows(op, ind, nBase, eff, lsAdjSegs);
+  std::vector<rxAdjSfWin> sfWins;   // fixed-dur windows with a state-dependent f()
+  bool hasInfusion = rxAdjInfusionWindows(op, ind, nBase, eff, lsAdjSegs, cSub, &sfWins);
+  std::vector<double> sfAcc(sfWins.size(), 0.0);
 
   std::vector<double> A(eff, 0.0);
   std::vector<double> lamFlat, adjPred, adjAcor, w, Pmat;
@@ -400,7 +433,13 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
           for (int p = 0; p < np; ++p) mu[p] += h * dm * dR[ic * np + p] * w[ic]; } }
       if (op->adjDfOff >= 0 && !Sw.infDfMult.empty()) { const double *dF = &lhs[op->adjDfOff];
         for (int ic = 0; ic < nBase; ++ic) { double dfm = Sw.infDfMult[ic]; if (dfm == 0.0) continue;
-          for (int p = 0; p < np; ++p) mu[p] += h * dfm * dF[ic * np + p] * w[ic]; } } }
+          for (int p = 0; p < np; ++p) mu[p] += h * dfm * dF[ic * np + p] * w[ic]; } }
+      for (size_t k = 0; k < sfWins.size(); ++k) {   // a state-dependent f(): forced at x_on
+        const rxAdjSfWin &W = sfWins[k];
+        if (st.seg < W.seg0 || st.seg >= W.seg1) continue;
+        for (int p = 0; p < np; ++p) mu[p] += h * W.raw * W.dF[p] * w[W.cmt];
+        sfAcc[k] += h * w[W.cmt];
+      } }
     for (int j = 1; j <= nq; ++j) for (int i1 = nq; i1 >= j; --i1) { double *dst = &adjPred[(size_t)(i1 + 1) * nBase]; const double *src = &adjPred[(size_t)i1 * nBase]; for (int c = 0; c < nBase; ++c) dst[c] += src[c]; }
     std::fill(lamFlat.begin(), lamFlat.end(), 0.0);
     for (int j = 1; j <= nq + 1; ++j) { double *lamj = &lamFlat[(size_t)j * nBase]; const double *pj = &adjPred[(size_t)j * nBase]; for (int c = 0; c < nBase; ++c) lamj[c] = pj[c]; }
@@ -448,6 +487,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   rk4sIniDx0(op, ind, cSub, lsAdjSegs[0].t0, eff, nBase, np, dx0V);
   const double *dx0P = dx0V.empty() ? NULL : dx0V.data();
   auto sweepToStart = [&](int segIdx, double time) {
+    std::fill(sfAcc.begin(), sfAcc.end(), 0.0);
     for (int seg = segIdx; ; --seg) {
       const lsAdjSeg &Sg = lsAdjSegs[seg];
       size_t Sb = bracketStep(seg, time);
@@ -462,6 +502,12 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       for (int p = 0; p < np; ++p) { double s = 0; for (int c = 0; c < nBase; ++c) s += fp0[c * np + p] * lam2[c]; mu[p] += Sg.h0 * s; }
       // costate of y0 (pre-Nordsieck-init): lam_y0 = lam1 + h0*J0^T lam2.
       for (int b = 0; b < nBase; ++b) { double s = 0; for (int a = 0; a < nBase; ++a) s += fx0[a * nBase + b] * lam2[a]; wSeed[b] = lam1[b] + Sg.h0 * s; }
+      // a state-dependent f() window starting here: its rate moved with y0
+      for (size_t k = 0; k < sfWins.size(); ++k)
+        if (sfWins[k].seg0 == (size_t)seg) {
+          for (int b = 0; b < nBase; ++b) wSeed[b] += sfAcc[k] * sfWins[k].row[b];
+          sfAcc[k] = 0.0;
+        }
       // modeled rate()/dur() OFF-boundary transversality: the off time t_on+amt/R shifts
       // with R -> mu += (-amt/R*durMult)*dR/dp[cmt]*lam_cmt(t_off).  (lhs holds calc_lhs
       // at this off segment's (t0,y0); lam_cmt(t_off) = lam_y0[cmt].)
