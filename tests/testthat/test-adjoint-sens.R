@@ -805,4 +805,41 @@ rxTest({
       expect_equal(g[[3]][[.pp]], gFd, tolerance = 1e-2)
     }
   })
+
+  test_that("adjoint builders send a numeric or missing dose cmt to its state in the f()/alag() duals", {
+    # a NONMEM table with CMT = 1, one with no CMT column, and an rxEt with
+    # cmt = 1 all dose the first state, depot, like the named table
+    nText <- paste0(mText, "\nf(depot)=Fbio\nalag(depot)=tlag\ncp=center/v")
+    nCS <- c("ka", "cl", "Fbio", "tlag")
+    nP <- c(ka = 1.1, cl = 3, v = 20, Fbio = 0.8, tlag = 0.3)
+    nNamed <- rxode2::et(amt = 100, cmt = "depot") |> rxode2::et(amt = 50, time = 6, cmt = "depot")
+    nNum <- data.frame(ID = 1L, TIME = c(0, 6), AMT = c(100, 50), EVID = 1L, CMT = 1L, MDV = 1L)
+    nNoCmt <- nNum[, setdiff(names(nNum), "CMT")]
+    nEtNum <- rxode2::et(amt = 100, cmt = 1) |> rxode2::et(amt = 50, time = 6, cmt = 1)
+    nOut <- c(2, 5, 9, 12)
+    nObs <- c(2, 3, 2.5, 1.5)
+    tabs <- list(nNamed, nNum, nNoCmt, nEtNum)
+    g <- lapply(tabs, function(e) rxode2::.rxAdjointGradEvalC(rxode2::.rxAdjointGradBuild(nText, nCS, "cp", e), nP, nOut, nObs))
+    s <- lapply(tabs, function(e) rxode2::.rxAdjointSolveEvalC(rxode2::.rxAdjointSolveBuild(nText, nCS, e), nP, nOut))
+    for (i in 2:4) {
+      expect_equal(g[[i]], g[[1]], tolerance = 1e-12, label = paste("gradient", i))
+      expect_equal(s[[i]], s[[1]], tolerance = 1e-12, label = paste("trajectory", i))
+    }
+  })
+
+  test_that(".rxAdjointGradPop() reads id, time and dv in any case", {
+    # upper-case ID/TIME/DV are the subject, time and observation columns, not
+    # covariates, and give the lower-case gradient
+    pText <- paste0(mText, "\ncp=center/v")
+    pCS <- c("ka", "cl")
+    pP <- c(ka = 1.1, cl = 3, v = 20)
+    pEv <- rxode2::et(amt = 100, cmt = "depot")
+    low <- data.frame(id = rep(1:2, each = 3), time = rep(c(1, 4, 8), 2), dv = c(2, 3, 2, 2.5, 3.2, 1.8))
+    up <- low
+    names(up) <- toupper(names(up))
+    gLow <- rxode2::.rxAdjointGradPop(pText, pP, pEv, pCS, "cp", low)
+    gUp <- rxode2::.rxAdjointGradPop(pText, pP, pEv, pCS, "cp", up)
+    expect_true(all(gLow != 0))
+    expect_equal(gUp, gLow, tolerance = 1e-12)
+  })
 })
