@@ -9,7 +9,8 @@ rxTest({
   # finite difference over these spans does not solve).
   .base <- "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center"
   .p0 <- c(ka = 1.2, k = 0.2)
-  .ev <- function(t0) et(time = t0, amt = 100, cmt = "depot") |> et(t0 + c(1, 4, 6))
+  .ev <- function(t0) et(time = t0, amt = 100, cmt = "depot") |> et(time = t0 + 3, amt = 50, cmt = "depot") |>
+    et(t0 + c(1, 4, 6))
   .sens <- function(txt, ev, p) {
     .a <- rxSolveAdjointRk4(txt, ev, params = p, calcSens = names(p), method = "abs", hmin = 0.001)
     .a[, grep("^rx__sens_", names(.a)), drop = FALSE]
@@ -17,7 +18,7 @@ rxTest({
 
   test_that("abs sensitivities stay finite after a long span before the first dose", {
     .ref <- .sens(.base, .ev(0), .p0)
-    for (.t0 in c(5000, 1e4, 1e5)) {
+    for (.t0 in c(3000, 5000, 1e4, 1e5)) {
       .a <- .sens(.base, .ev(.t0), .p0)
       expect_true(all(is.finite(as.matrix(.a))), label = paste("finite", .t0))
       expect_equal(as.matrix(.a), as.matrix(.ref), tolerance = 1e-8, label = paste("t0", .t0))
