@@ -431,7 +431,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   struct cvEvent { double t; int cmt; int type; double factor; int seq; int y; double raw = 0.0; int rec = -1; };
   rxAdjVec evY;   // at most 2 nBase per record, all from the arena
   rxAdjReserve(evY, (size_t)2 * nBase * ind->n_all_times);
-  std::vector<cvEvent> evJumps; _adjJumpCap.clear();
+  std::vector<cvEvent> evJumps; rxAdjJumpClear();
   std::vector<cvInfus> infusRec;   // modeled-rate infusion windows (rate dual)
   // state jumps (bolus, replace, multiply) for the dose jump of a
   // parameter-dependent delay
