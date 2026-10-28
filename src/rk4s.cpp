@@ -32,8 +32,9 @@
 // precedes.  type: 0 = additive bolus (amt = raw dose; F-jump quadrature), 3 =
 // reset (state -> inits), 5 = replace (cmt -> value), 6 = multiply (cmt *= amt).
 // amtF = F*amt, the amount that actually lands (type 0), which a moving dose
-// time carries; the dF dual uses the raw amt.
-struct rk4s_dose { size_t step; int cmt; double amt; int type; double amtF = 0.0; };
+// time carries; the dF dual uses the raw amt.  rec = the record index of a
+// replace/multiply (its rxAdjJumpCap), else -1.
+struct rk4s_dose { size_t step; int cmt; double amt; int type; double amtF = 0.0; int rec = -1; };
 
 // Event-time tolerance shared by the adjoint drivers: relative to the time's
 // magnitude (absolute below 1), so large record times still match their segments
@@ -230,8 +231,9 @@ static inline void rk4sIniOnlyFill(rx_solving_options *op, rx_solving_options_in
 //            state with its steady state, so the events recorded before it at
 //            this step do not reach later observations; the transpose stops
 //            here and the caller adds the steady-state term.
-// A constant replace/multiply value contributes nothing to mu; a modeled value
-// would add mu += lambda_n+[c] * dvalue/dp (a later addition).
+// A replace/multiply that a modeled lag moves adds mu += dlag[c][p] * lambda_n+^T r
+// (rxAdjJumpTerm).  A constant replace/multiply value contributes nothing else to
+// mu; a modeled value would add mu += lambda_n+[c] * dvalue/dp (a later addition).
 // fx0 = F_X (df/dy) at this step's stage 0 (post-dose state), row-major i*nBase+j,
 // or NULL; dlag = d(lag)/dtheta block (c*np+p) or NULL.  When a bolus into cmt c has
 // a modeled lag, the dose time t_d+lag(theta) shifts with theta, adding the
@@ -259,9 +261,11 @@ static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
       for (int j = 0; j < nBase; ++j) lamR[j] = 0.0;
       break;
     case 5:
+      rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlag);
       lamR[d.cmt] = 0.0;
       break;
     case 6:
+      rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlag);
       lamR[d.cmt] *= d.amt;
       break;
     case 9:
@@ -8940,6 +8944,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   std::vector<size_t> boundarySs2(ind->n_all_times, 0);  // # ss2 events recorded when each time was stored
   std::vector<size_t> boundarySs1(ind->n_all_times, 0);  // # ss1 events recorded when each time was stored
   std::vector<rk4s_dose> doseRec;                     // additive boluses for the F-jump transpose
+  _adjJumpCap.clear();
   std::vector<rk4s_infus> infusRec;                   // modeled-rate infusion windows (rate/dur dual)
   int _infusOnCmt = -1; double _infusOnPre = 0.0;     // set when the current event opens an infusion
   int _lagRateCmt = -1, _lagRateWhI = 0, _lagRateWh0 = 0, _lagRateKey = -1; double _lagRatePre = 0.0; size_t _lagRateStep = 0;  // infusion start/stop
@@ -9124,11 +9129,12 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               }
             } else if (_whI == EVIDF_REPLACE) {             // replace -> lambda[c] := 0
               rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _cmtD; _d.amt = 0.0; _d.type = 5;
+              _d.rec = i;
               doseRec.push_back(_d);
             } else if (_whI == EVIDF_MULT) {                // multiply -> lambda[c] *= alpha
               rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _cmtD;
               _d.amt = getAmt(ind, ind->id, _cmtD, getDoseIndex(ind, ind->idx), xout, yp);
-              _d.type = 6;
+              _d.type = 6; _d.rec = i;
               doseRec.push_back(_d);
             } else if ((_whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON) && op->adjDrateOff >= 0) {
               // modeled rate()/dur() infusion start: R read AFTER handleEvid1.  durMult
@@ -9164,7 +9170,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
       }
       if (getEvid(ind, ind->ix[i]) == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout, yp, &(istate), u_inis);
-      } else if (handleEvid1(&i, rx, neq, yp, &xout)){
+      } else if (rxAdjHandleEvid1(&i, rx, neq, yp, &xout)){
         handleSSDelay(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                       xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
         if (ind->wh0 == EVID0_OFF){

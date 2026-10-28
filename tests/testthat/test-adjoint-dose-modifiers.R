@@ -241,6 +241,44 @@ rxTest({
     ))
   })
 
+  test_that("alag() moves a replace or multiply on its compartment in every driver", {
+    # the jump moves with the lag, adding mu += dlag/dp * lambda+^T (G f(x-) - f(x+))
+    .lTxt <- "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\nalag(depot) <- lag"
+    .nlTxt <- "d/dt(depot) <- -ka*depot/(1 + depot/40)\nd/dt(center) <- ka*depot/(1 + depot/40) - k*center\nalag(depot) <- lag"
+    .lP <- c(ka = 1.2, k = 0.2, lag = 0.4)
+    .scen <- list(
+      multiply = list(.lTxt, et(amt = 100, cmt = "depot") |> et(time = 3, evid = 6, amt = 0.5, cmt = "depot") |> et(c(1, 2, 4, 6))),
+      replace = list(.lTxt, et(amt = 100, cmt = "depot") |> et(time = 3, evid = 5, amt = 10, cmt = "depot") |> et(c(1, 2, 4, 6))),
+      multiplyBeforeDose = list(.lTxt, et(time = 0.1, evid = 6, amt = 0.5, cmt = "depot") |> et(amt = 100, cmt = "depot") |> et(c(1, 2, 4, 6))),
+      multiplyInLag = list(.lTxt, et(amt = 100, cmt = "depot") |> et(time = 3, amt = 50, cmt = "depot") |>
+        et(time = 3.2, evid = 6, amt = 0.5, cmt = "depot") |> et(c(1, 2, 4, 6))),
+      # nonlinear f: the term uses f at both states, not a linearization
+      nonlinear = list(.nlTxt, et(time = 0, evid = 5, amt = 60, cmt = "depot") |> et(time = 1, evid = 6, amt = 0.5, cmt = "depot") |>
+        et(time = 2, evid = 5, amt = 30, cmt = "depot") |> et(c(0.2, 1.6, 3, 5)))
+    )
+    for (.nm in names(.scen)) {
+      .k <- .scen[[.nm]]
+      .ref <- .adjFd(.k[[1]], .k[[2]], .lP)
+      for (.m in c("rk4s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj", "abs")) {
+        .a <- rxSolveAdjointRk4(.k[[1]], .k[[2]], params = .lP, calcSens = names(.lP), method = .m,
+          atol = 1e-10, rtol = 1e-10, hmin = if (.m %in% c("rk4s", "abs")) 0.001 else 0)
+        expect_equal(nrow(.a), length(.ref[[1]]), label = paste(.nm, .m, "rows"))
+        for (.cn in names(.ref)) {
+          expect_lt(max(abs(.a[[.cn]] - .ref[[.cn]])), 1e-6, label = paste(.nm, .m, .cn))
+        }
+      }
+    }
+    # the liblsodaadj discrete forward replay carries the same term
+    withr::local_envvar(RX_LSADJ_SELFCHECK = "1")
+    .out <- utils::capture.output(
+      rxSolveAdjointRk4(.lTxt, .scen$multiplyInLag[[2]], params = .lP, calcSens = names(.lP), method = "liblsodaadj", cores = 1),
+      type = "message"
+    )
+    .line <- grep("max\\|adjoint - discrete_forward_sens\\|", .out, value = TRUE)
+    expect_length(.line, 1L)
+    expect_lt(as.numeric(sub("^.*discrete_forward_sens\\| = ([^ ]+) .*$", "\\1", .line)), 1e-8)
+  })
+
   test_that("the liblsodaadj self-check replay agrees with the adjoint for f() and alag()", {
     withr::local_envvar(RX_LSADJ_SELFCHECK = "1")
     .out <- utils::capture.output(

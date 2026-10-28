@@ -49,8 +49,9 @@ struct lsAdjStep {
 //   0 additive bolus (dPhi/dy=I) | 3 reset (y:=inits, dPhi/dy=0) | 8 ss=1 (y:=Y_ss(p),
 //   dPhi/dy=0, adds lambda^T dY_ss/dp) | 5 replace (y[cmt]:=val, row cmt 0) |
 //   6 multiply (y[cmt]*=factor).  amt is the raw dose (modeled-F mu), amtF = F*amt,
-//   the amount that lands (modeled-alag mu).
-struct lsAdjEv { int type, cmt; double factor, amt, amtF; };
+//   the amount that lands (modeled-alag mu); rec = a replace/multiply's record
+//   index (its rxAdjJumpCap), else -1.
+struct lsAdjEv { int type, cmt; double factor, amt, amtF; int rec = -1; };
 
 struct lsAdjSeg {
   double t0, h0;              // segment start time and its initial step h0
@@ -157,6 +158,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   // ---- forward: run the ordinary liblsoda solve, with recording hooks on -------
   lsAdjSteps.clear();
   lsAdjSegs.clear();
+  _adjJumpCap.clear();
   _lsSsKind = 0; _lsSsBolusIi = 0.0; _lsSsCmt = -1; _lsSsT = 0.0;   // reset the sticky ss snapshot
   _lsSsFixed = 0; _lsSsFixW = 0.0; _lsSsFixW2 = 0.0;
   _lsSsDur = _lsSsDur2 = _lsSsRate = _lsSsRate2 = 0.0;
@@ -202,9 +204,9 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
         double amt = getDose(ind, ind->ix[i]);
         evs.push_back({0, _cmt, 1.0, amt, getAmt(ind, ind->id, _cmt, amt, t, _y.data())});
       } else if (_whI == EVIDF_REPLACE) {
-        evs.push_back({5, _cmt, 0.0, 0.0, 0.0});
+        evs.push_back({5, _cmt, 0.0, 0.0, 0.0, i});
       } else if (_whI == EVIDF_MULT) {
-        evs.push_back({6, _cmt, getDose(ind, ind->ix[i]), 0.0, 0.0});
+        evs.push_back({6, _cmt, getDose(ind, ind->ix[i]), 0.0, 0.0, i});
       }
       // (modeled rate/dur infusion on/off open a segment but are not a state jump;
       //  their dR/dp dual is reconstructed as windows below, not here.)
@@ -475,8 +477,11 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
             for (int b = 0; b < nBase; ++b) wSeed[b] = 0.0;
           }
           break;
-        } else if (E.type == 5) { wSeed[E.cmt] = 0.0; }
-        else if (E.type == 6) { wSeed[E.cmt] *= E.factor; }
+        } else if (E.type == 5 || E.type == 6) {
+          rxAdjJumpTerm(E.rec, E.cmt, wSeed.data(), mu.data(), nBase, np,
+                        op->adjDlagOff >= 0 ? &lhs[op->adjDlagOff] : NULL);
+          if (E.type == 5) wSeed[E.cmt] = 0.0; else wSeed[E.cmt] *= E.factor;
+        }
       }
       if (seg == 0) break;
       time = Sg.t0;
@@ -625,8 +630,11 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
           } else if (E.type == 3) {
             rk4sAddIni(dx0P, wSeed.data(), mu.data(), nBase, np);
             atIni = true;
-          } else if (E.type == 5) { wSeed[E.cmt] = 0.0; }
-          else if (E.type == 6) { wSeed[E.cmt] *= E.factor; }
+          } else if (E.type == 5 || E.type == 6) {
+            rxAdjJumpTerm(E.rec, E.cmt, wSeed.data(), mu.data(), nBase, np,
+                          op->adjDlagOff >= 0 ? &lhs[op->adjDlagOff] : NULL);
+            if (E.type == 5) wSeed[E.cmt] = 0.0; else wSeed[E.cmt] *= E.factor;
+          }
         }
       }
       if (atIni) {
@@ -692,8 +700,13 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
         const lsAdjEv &E = Sg.ev[k];
         if (E.type == 3 && sg > 0) {
           for (int c = 0; c < nBase; ++c) for (int p = 0; p < np; ++p) YHS[IDX(1, c, p)] = dx0P ? dx0P[c * np + p] : 0.0;
-        } else if (E.type == 5) { for (int p = 0; p < np; ++p) YHS[IDX(1, E.cmt, p)] = 0.0; }
-        else if (E.type == 6) { for (int p = 0; p < np; ++p) YHS[IDX(1, E.cmt, p)] *= E.factor; }
+        } else if (E.type == 5 || E.type == 6) {
+          for (int p = 0; p < np; ++p) YHS[IDX(1, E.cmt, p)] = (E.type == 5) ? 0.0 : YHS[IDX(1, E.cmt, p)] * E.factor;
+          // a lagged jump: S+ = G S- + r*dlag/dp
+          const rxAdjJumpCap *cap = rxAdjJumpFind(E.rec);
+          if (op->adjDlagOff >= 0 && cap != NULL && !cap->r.empty()) { const double *dlag = &lhs[op->adjDlagOff];
+            for (int i = 0; i < nBase; ++i) for (int p = 0; p < np; ++p) YHS[IDX(1, i, p)] += cap->r[i] * dlag[E.cmt * np + p]; }
+        }
         else if (E.type == 0) {
           int c = E.cmt;
           if (op->adjDfOff >= 0) { const double *dF = &lhs[op->adjDfOff]; for (int p = 0; p < np; ++p) YHS[IDX(1, c, p)] += E.amt * dF[c * np + p]; }

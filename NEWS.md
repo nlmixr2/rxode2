@@ -303,6 +303,10 @@
   their jumps out of order; the event-time matching is now relative to the
   time's magnitude.
 
+- The adjoint lag-time (`alag()`) sensitivity now includes the move of a
+  replace (`evid = 5`) or multiply (`evid = 6`) on the lagged compartment,
+  which the lag shifts like a dose; before, every adjoint method left it out.
+
 - `method = "abs"` now includes the bioavailability (`f()`) and lag-time
   (`alag()`) adjoint sensitivities of a bolus dose.  It still refuses them,
   and modeled `rate()` and `dur()`, for infusion doses.
