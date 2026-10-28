@@ -128,7 +128,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   // mu += s * W^T v
   auto addW = [&](const std::vector<double> &W, const double *v, double s) {
     if (W.empty()) return;
-    for (int p = 0; p < np; ++p) { double z = 0.0; for (int a = 0; a < nBase; ++a) z += W[(size_t)a * np + p] * v[a]; mu[p] += s * z; }
+    for (int p = 0; p < np; ++p) { double z = 0.0; for (int a = 0; a < nBase; ++a) z += rxMulNz(W[(size_t)a * np + p], v[a]); mu[p] += s * z; }
   };
   std::vector<double> k1(eff), k2(eff), k3(eff), k4(eff);
   int neqA[2]; neqA[0] = eff; neqA[1] = cSub;
@@ -164,8 +164,8 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
     abEval(t+0.5*dt, s2.data(), &fx2,&fp2); for (int q=0;q<nBase*nBase;++q) J2[q]=fx2[q]; for(int q=0;q<nBase*np;++q) P2[q]=fp2[q];
     abEval(t+0.5*dt, s3.data(), &fx3,&fp3); for (int q=0;q<nBase*nBase;++q) J3[q]=fx3[q]; for(int q=0;q<nBase*np;++q) P3[q]=fp3[q];
     abEval(t+dt, s4.data(), &fx4,&fp4);     for (int q=0;q<nBase*nBase;++q) J4[q]=fx4[q]; for(int q=0;q<nBase*np;++q) P4[q]=fp4[q];
-    auto Jt = [&](const std::vector<double> &J, const double *v, std::vector<double> &r){ for(int b=0;b<nBase;++b){double s=0;for(int a=0;a<nBase;++a)s+=J[a*nBase+b]*v[a];r[b]=s;} };
-    auto Pt = [&](const std::vector<double> &P, const double *v){ for(int p=0;p<np;++p){double s=0;for(int a=0;a<nBase;++a)s+=P[a*np+p]*v[a];mu[p]+=s;} };
+    auto Jt = [&](const std::vector<double> &J, const double *v, std::vector<double> &r){ for(int b=0;b<nBase;++b){double s=0;for(int a=0;a<nBase;++a)s+=rxMulNz(J[a*nBase+b],v[a]);r[b]=s;} };
+    auto Pt = [&](const std::vector<double> &P, const double *v){ for(int p=0;p<np;++p){double s=0;for(int a=0;a<nBase;++a)s+=rxMulNz(P[a*np+p],v[a]);mu[p]+=s;} };
     // reverse (topological): yout -> k4,s4 -> k3,s3 -> k2,s2 -> k1
     for (int b=0;b<nBase;++b){ double a=lamOut[b]; sb[b]=a; k1b[b]=(dt/6)*a; k2b[b]=(2*dt/6)*a; k3b[b]=(2*dt/6)*a; k4b[b]=(dt/6)*a; }
     Jt(J4, k4b.data(), tmp); Pt(P4, k4b.data()); addW(W, k4b.data(), 1.0);                 // k4=f(s4)
@@ -253,9 +253,9 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
                 const abRecStep &sh = abAdjSteps[g - ii];      // history point p_{j-ii}
                 const double *fx, *fp; abEval(sh.t, sh.y.data(), &fx, &fp);
                 double *lamTgt = &lam[(size_t)(j - ii) * nBase];
-                for (int b = 0; b < nBase; ++b) { double s = 0; for (int a = 0; a < nBase; ++a) s += fx[a * nBase + b] * lamOut[a]; lamTgt[b] += st.dt * cc[ii] * s; }
+                for (int b = 0; b < nBase; ++b) { double s = 0; for (int a = 0; a < nBase; ++a) s += rxMulNz(fx[a * nBase + b], lamOut[a]); lamTgt[b] += st.dt * cc[ii] * s; }
                 if (ii == 0) for (int b = 0; b < nBase; ++b) lamTgt[b] += lamOut[b];  // + identity from p_j
-                for (int p = 0; p < np; ++p) { double s = 0; for (int a = 0; a < nBase; ++a) s += fp[a * np + p] * lamOut[a]; mu[p] += st.dt * cc[ii] * s; }
+                for (int p = 0; p < np; ++p) { double s = 0; for (int a = 0; a < nBase; ++a) s += rxMulNz(fp[a * np + p], lamOut[a]); mu[p] += st.dt * cc[ii] * s; }
                 addW(infW[c], lamOut, st.dt * cc[ii]);         // the rate is part of each f
               }
             }

@@ -168,11 +168,15 @@ static inline void rk4sIniDx0(rx_solving_options *op, rx_solving_options_ind *in
   dx0.assign(ind->lhs + op->adjDx0Off, ind->lhs + op->adjDx0Off + nBase * np);
 }
 
+// a*b, but 0 when the coefficient a is 0: a costate component the exact map
+// never uses may overflow (abs over a long, coarse span), and inf * 0 is NaN
+static inline double rxMulNz(double a, double b) { return a == 0.0 ? 0.0 : a * b; }
+
 static inline void rk4sAddIni(const double *dx0, const double *lam, double *mu, int nBase, int np) {
   if (dx0 == NULL) return;
   for (int p = 0; p < np; ++p) {
     double s = 0.0;
-    for (int q = 0; q < nBase; ++q) s += lam[q] * dx0[q * np + p];
+    for (int q = 0; q < nBase; ++q) s += rxMulNz(dx0[q * np + p], lam[q]);
     mu[p] += s;
   }
 }
