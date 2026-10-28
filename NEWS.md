@@ -200,6 +200,12 @@
   inter-occasion variability goes through it.
 ### Symbolic derivatives
 
+- An error inside a symbolic calculation that shows a progress bar (the
+  Jacobian and sensitivity builds of `rxode2(calcSens = )`, the adjoint
+  expansion, inductive linearization, expression optimization) is now
+  reported as itself; the progress bar's clean-up replaced it with
+  "Aborted calculation".
+
 - The derivative of a function of `abs()` of a sum (`exp(2 * abs(k - 0.9))`)
   keeps `abs()`'s argument.  It was written `abs(+)` (since 5.1.7), so a
   sensitivity model or an nlm-family gradient of such a model failed with
