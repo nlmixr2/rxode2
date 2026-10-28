@@ -938,6 +938,11 @@
   dose at the time of an `ss = 1` dose, which was included in the
   steady-state period (off by up to 43).
 
+- Distinct event times closer together than 1e-8 (`liblsodaadj`) or 1e-9
+  (`abs`) are no longer merged by the adjoint backward sweep, which applied
+  their jumps out of order; the event-time matching is now relative to the
+  time's magnitude.
+
 - `method = "abs"` now includes the bioavailability (`f()`) and lag-time
   (`alag()`) adjoint sensitivities of a bolus dose.  It still refuses them,
   and modeled `rate()` and `dur()`, for infusion doses.
