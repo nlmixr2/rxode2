@@ -3197,9 +3197,9 @@ rxTest({
     # Each timing is a batch of calls, so it stays well above the OS timer's
     # resolution (a single small call has read exactly 0 elapsed on a Windows CI
     # runner), and starts after a gc() so a collection does not land in one
-    # side only.  The two inputs are timed in alternating pairs, and the median
-    # pair ratio is compared, so a burst of load from other processes falls on
-    # both sides of a pair instead of one.
+    # side only.  The two inputs are timed alternately and the fastest batch of
+    # each is compared: load from other processes only adds time, so the
+    # minimum is the steadiest estimate of either.
     .elapsed <- function(d, reps = 3L) {
       gc()
       system.time(
@@ -3208,15 +3208,13 @@ rxTest({
         }
       )[["elapsed"]]
     }
-    .medianRatio <- function(many, few, pairs = 5L) {
-      stats::median(vapply(
-        seq_len(pairs),
-        function(i) {
-          .f <- .elapsed(few)
-          .elapsed(many) / max(.f, 1e-3)
-        },
-        numeric(1)
-      ))
+    .minRatio <- function(many, few, batches = 5L) {
+      .f <- .m <- numeric(batches)
+      for (i in seq_len(batches)) {
+        .f[i] <- .elapsed(few)
+        .m[i] <- .elapsed(many)
+      }
+      min(.m) / max(min(.f), 1e-3)
     }
 
     # the same rows either way, only spread over more ids.  (The translated
@@ -3230,7 +3228,7 @@ rxTest({
     invisible(rxode2::etTrans(.fixedRows(50, 1000), mod)) # warm up
     # about 1.5x when translation is linear in the rows; the O(rows * subjects)
     # scan it guards against gives 5x to 12x at these sizes
-    expect_lt(.medianRatio(.many, .few), 3)
+    expect_lt(.minRatio(.many, .few), 3)
   })
 
   test_that("rxSolve() and etTrans() leave the caller's translated table as it was", {
