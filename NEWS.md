@@ -299,12 +299,22 @@
 - A replace, multiply or reset at the time of a steady-state (`ss = 1`) dose
   no longer changes the adjoint sensitivities in the `rk4s` family of
   methods: the ss dose replaces the whole state, but the jumps recorded
-  before it were transposed into its steady-state term (off by 60 to 120).
+  before it were transposed into its steady-state term (off by up to about
+  150).  The same holds for a continuous steady-state infusion (`ss = 1`,
+  `amt = 0`), in `liblsodaadj` too (off by up to about 400).
 
-- Distinct event times closer together than 1e-8 (`liblsodaadj`) or 1e-9
-  (`abs`) are no longer merged by the adjoint backward sweep, which applied
-  their jumps out of order; the event-time matching is now relative to the
-  time's magnitude.
+- Other same-time events around a steady-state dose now give the right
+  adjoint sensitivities: a replace, multiply or reset at the time of an
+  `ss = 2` dose (`rk4s` family, off by up to 120); several `ss = 1` doses at
+  the first time, where the last sets the steady state (`rk4s` family, and
+  `liblsodaadj` with `f()`, off by up to 66); and, in `liblsodaadj`, a plain
+  dose at the time of an `ss = 1` dose, which was included in the
+  steady-state period (off by up to 43).
+
+- Distinct event times closer together than 1e-8 (`liblsodaadj`), 1e-9
+  (`abs`) or 1e-12 (`cvodesadj`) are no longer merged by the adjoint backward
+  sweep, which applied their jumps out of order (off by up to 80); the sweep
+  now groups events at one time as the forward solve does (2 ulp).
 
 - The adjoint lag-time (`alag()`) sensitivity now includes the move of a
   replace (`evid = 5`) or multiply (`evid = 6`) on the lagged compartment,

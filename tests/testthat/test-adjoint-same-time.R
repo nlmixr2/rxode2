@@ -109,6 +109,89 @@ rxTest({
     }
   })
 
+  test_that("events a few ulps apart at large times stay distinct in every driver", {
+    # the matching tolerance scales with the time, so it must stay at the forward
+    # solve's own (2 ulp) rather than a fixed fraction of the time
+    .far <- function(t0, d) list(
+      obsDose = list(txt = .txtF, p = .pF, ev = et(time = t0, amt = 100, cmt = "depot") |> et(t0 + c(1, 3, 6)) |>
+        et(time = t0 + 3 + d, amt = 80, cmt = "depot")),
+      multiplyDose = list(txt = .base, p = .p0, ev = et(time = t0, amt = 100, cmt = "depot") |>
+        et(time = t0 + 3, evid = 6, amt = 0.5, cmt = "depot") |> et(time = t0 + 3 + d, amt = 80, cmt = "depot") |>
+        et(t0 + c(1, 4, 6))),
+      doseMultiplyF = list(txt = .txtF, p = .pF, ev = et(time = t0, amt = 100, cmt = "depot") |>
+        et(time = t0 + 3, amt = 80, cmt = "depot") |> et(time = t0 + 3 + d, evid = 6, amt = 0.5, cmt = "center") |>
+        et(t0 + c(1, 4, 6)))
+    )
+    # at t = 1e4 the finite difference itself is good to about 2e-6
+    .grid <- list(list(t0 = 100, d = 2e-9, tol = 1e-6, meths = c("rk4s", "ros4s", "liblsodaadj", "cvodesadj", "abs")),
+                  list(t0 = 1e4, d = 1e-7, tol = 1e-5, meths = c("rk4s", "ros4s", "liblsodaadj", "cvodesadj")))
+    for (.g in .grid) {
+      .cases <- .far(.g$t0, .g$d)
+      for (.nm in names(.cases)) {
+        .k <- .cases[[.nm]]
+        .ref <- .adjFd(.k$txt, .k$ev, .k$p)
+        for (.m in .g$meths) {
+          .a <- rxSolveAdjointRk4(.k$txt, .k$ev,
+            params = .k$p, calcSens = names(.k$p), method = .m,
+            atol = 1e-10, rtol = 1e-10, hmin = if (.m %in% c("rk4s", "abs")) 0.001 else 0
+          )
+          expect_equal(nrow(.a), length(.ref[[1]]), label = paste(.nm, .g$t0, .m, "rows"))
+          for (.cn in names(.ref)) {
+            expect_lt(max(abs(.a[[.cn]] - .ref[[.cn]])), .g$tol, label = paste(.nm, .g$t0, .m, .cn))
+          }
+        }
+      }
+    }
+  })
+
+  test_that("same-time events around continuous, ss = 2 and repeated ss doses", {
+    # a continuous ss infusion replaces the state like an ss bolus; an ss = 2 dose
+    # adds its regimen at its own position among the step's events; the last of
+    # several ss = 1 doses at one time sets the steady state; a plain dose after an
+    # ss dose is not part of its period
+    .o <- c(1, 4, 6, 9, 14)
+    .k <- list(
+      contMultiply0 = list(txt = .base, p = .p0, ev = et(amt = 0, rate = 20, ss = 1, cmt = "depot") |>
+        et(time = 0, evid = 6, amt = 0.5, cmt = "center") |> et(.o)),
+      contReplace0 = list(txt = .base, p = .p0, ev = et(amt = 0, rate = 20, ss = 1, cmt = "depot") |>
+        et(time = 0, evid = 5, amt = 30, cmt = "center") |> et(.o)),
+      contMultiply5 = list(txt = .base, p = .p0, ev = et(amt = 100, cmt = "depot") |>
+        et(time = 5, amt = 0, rate = 20, ss = 1, cmt = "depot") |> et(time = 5, evid = 6, amt = 0.5, cmt = "center") |> et(.o)),
+      resetCont5 = list(txt = .base, p = .p0, ev = et(amt = 100, cmt = "depot") |> et(time = 5, evid = 3) |>
+        et(time = 5, amt = 0, rate = 20, ss = 1, cmt = "depot") |> et(.o)),
+      twoSs0 = list(txt = .base, p = .p0, ev = et(amt = 100, ii = 12, ss = 1, cmt = "depot") |>
+        et(time = 0, amt = 50, ii = 12, ss = 1, cmt = "center") |> et(.o)),
+      twoSsF0 = list(txt = .txtF, p = .pF, ev = et(amt = 100, ii = 12, ss = 1, cmt = "depot") |>
+        et(time = 0, amt = 50, ii = 12, ss = 1, cmt = "depot") |> et(.o)),
+      ssDose0 = list(txt = .txtF, p = .pF, ev = et(amt = 100, ii = 12, ss = 1, cmt = "depot") |>
+        et(time = 0, amt = 50, cmt = "depot") |> et(.o)),
+      ssDose5 = list(txt = .txtF, p = .pF, ev = et(amt = 100, cmt = "depot") |> et(time = 5, amt = 100, ii = 12, ss = 1, cmt = "depot") |>
+        et(time = 5, amt = 50, cmt = "center") |> et(.o)),
+      # liblsodaadj does not carry ss = 2
+      ss2Multiply5 = list(txt = .base, p = .p0, ev = et(amt = 100, cmt = "depot") |>
+        et(time = 5, amt = 100, ii = 12, ss = 2, cmt = "depot") |> et(time = 5, evid = 6, amt = 0.5, cmt = "center") |> et(.o)),
+      ss2Reset5 = list(txt = .base, p = .p0, ev = et(amt = 100, cmt = "depot") |> et(time = 5, evid = 3) |>
+        et(time = 5, amt = 100, ii = 12, ss = 2, cmt = "depot") |> et(.o)),
+      ss2Multiply0 = list(txt = .base, p = .p0, ev = et(amt = 100, ii = 12, ss = 2, cmt = "depot") |>
+        et(time = 0, evid = 6, amt = 0.5, cmt = "center") |> et(.o))
+    )
+    for (.nm in names(.k)) {
+      .c <- .k[[.nm]]
+      .ref <- .adjFd(.c$txt, .c$ev, .c$p)
+      .meths <- c("rk4s", "ros4s", "radauiia5s", "dop853s", "dop853s+ros4s")
+      if (!grepl("^ss2", .nm)) .meths <- c(.meths, "liblsodaadj")
+      for (.m in .meths) {
+        .a <- rxSolveAdjointRk4(.c$txt, .c$ev, params = .c$p, calcSens = names(.c$p), method = .m,
+          atol = 1e-10, rtol = 1e-10, hmin = if (.m == "rk4s") 0.001 else 0,
+          ssAtol = 1e-13, ssRtol = 1e-13, maxSS = 50000)
+        expect_equal(nrow(.a), length(.ref[[1]]), label = paste(.nm, .m, "rows"))
+        for (.cn in names(.ref)) {
+          expect_lt(max(abs(.a[[.cn]] - .ref[[.cn]])), 1e-6, label = paste(.nm, .m, .cn))
+        }
+      }
+    }
+  })
+
   test_that("the liblsodaadj self-check replay applies same-time events and the initial conditions", {
     # a parameter-dependent initial condition, a reset that restores it, and a
     # replace with a dose at one time
