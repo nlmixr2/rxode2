@@ -923,6 +923,11 @@
   needs a small `hmax` (its error falls as `hmax^2`) and `dop853s` a finite
   one; `?rxSolveAdjointRk4` says so.
 
+- A replace, multiply or reset at the time of a steady-state (`ss = 1`) dose
+  no longer changes the adjoint sensitivities in the `rk4s` family of
+  methods: the ss dose replaces the whole state, but the jumps recorded
+  before it were transposed into its steady-state term (off by 60 to 120).
+
 - `method = "abs"` now includes the bioavailability (`f()`) and lag-time
   (`alag()`) adjoint sensitivities of a bolus dose.  It still refuses them,
   and modeled `rate()` and `dur()`, for infusion doses.
