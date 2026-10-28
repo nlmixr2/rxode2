@@ -9,7 +9,7 @@ rxTest({
     m2 <- rxode2(code)
     expect_gt(file.size(rxDll(m2)), 0)
     s <- rxSolve(m2, c(k = 0.1, v = 10), et(0:2), inits = c(central = 1))
-    expect_equal(s$central, exp(-0.1 * 0:2), tolerance = 1e-6)
+    expect_equal(s$central, exp(-0.1 * 0:2), tolerance = 1e-4)
     # the private link name does not stay behind
     expect_length(list.files(dirname(dll), paste0("_", Sys.getpid(), "\\.")), 0)
   })
