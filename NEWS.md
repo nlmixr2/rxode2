@@ -303,10 +303,10 @@
   methods: the ss dose replaces the whole state, but the jumps recorded
   before it were transposed into its steady-state term (off by 60 to 120).
 
-- Distinct event times closer together than 1e-8 (`liblsodaadj`) or 1e-9
-  (`abs`) are no longer merged by the adjoint backward sweep, which applied
-  their jumps out of order; the event-time matching is now relative to the
-  time's magnitude.
+- Distinct event times closer together than 1e-8 (`liblsodaadj`), 1e-9
+  (`abs`) or 1e-12 (`cvodesadj`) are no longer merged by the adjoint backward
+  sweep, which applied their jumps out of order (off by up to 80); the sweep
+  now groups events at one time as the forward solve does (2 ulp).
 
 - `method = "abs"` now includes the bioavailability (`f()`) and lag-time
   (`alag()`) adjoint sensitivities of a bolus dose.  It still refuses them,

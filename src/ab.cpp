@@ -142,9 +142,10 @@ static inline void ab_do_steps(rx_solving_options_ind *ind, rx_solving_options *
   }
 
   // discrete-adjoint: close the call record (start/end time, order, step range, end y).
+  // It ends at the record time xout, which the accumulated t reaches within fp_tol.
   if (abAdjActive && abAdjSteps.size() > _abCallBegin) {
     abRecCall _c; _c.stepBegin = _abCallBegin; _c.stepEnd = abAdjSteps.size();
-    _c.order = order; _c.t0 = xp; _c.t1 = t;
+    _c.order = order; _c.t0 = xp; _c.t1 = xout;
     _c.yEnd.assign(y.begin(), y.begin() + abAdjNbase);
     abAdjCalls.push_back(std::move(_c));
   }

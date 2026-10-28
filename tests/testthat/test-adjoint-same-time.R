@@ -109,6 +109,41 @@ rxTest({
     }
   })
 
+  test_that("events a few ulps apart at large times stay distinct in every driver", {
+    # the matching tolerance scales with the time, so it must stay at the forward
+    # solve's own (2 ulp) rather than a fixed fraction of the time
+    .far <- function(t0, d) list(
+      obsDose = list(txt = .txtF, p = .pF, ev = et(time = t0, amt = 100, cmt = "depot") |> et(t0 + c(1, 3, 6)) |>
+        et(time = t0 + 3 + d, amt = 80, cmt = "depot")),
+      multiplyDose = list(txt = .base, p = .p0, ev = et(time = t0, amt = 100, cmt = "depot") |>
+        et(time = t0 + 3, evid = 6, amt = 0.5, cmt = "depot") |> et(time = t0 + 3 + d, amt = 80, cmt = "depot") |>
+        et(t0 + c(1, 4, 6))),
+      doseMultiplyF = list(txt = .txtF, p = .pF, ev = et(time = t0, amt = 100, cmt = "depot") |>
+        et(time = t0 + 3, amt = 80, cmt = "depot") |> et(time = t0 + 3 + d, evid = 6, amt = 0.5, cmt = "center") |>
+        et(t0 + c(1, 4, 6)))
+    )
+    # at t = 1e4 the finite difference itself is good to about 2e-6
+    .grid <- list(list(t0 = 100, d = 2e-9, tol = 1e-6, meths = c("rk4s", "ros4s", "liblsodaadj", "cvodesadj", "abs")),
+                  list(t0 = 1e4, d = 1e-7, tol = 1e-5, meths = c("rk4s", "ros4s", "liblsodaadj", "cvodesadj")))
+    for (.g in .grid) {
+      .cases <- .far(.g$t0, .g$d)
+      for (.nm in names(.cases)) {
+        .k <- .cases[[.nm]]
+        .ref <- .adjFd(.k$txt, .k$ev, .k$p)
+        for (.m in .g$meths) {
+          .a <- rxSolveAdjointRk4(.k$txt, .k$ev,
+            params = .k$p, calcSens = names(.k$p), method = .m,
+            atol = 1e-10, rtol = 1e-10, hmin = if (.m %in% c("rk4s", "abs")) 0.001 else 0
+          )
+          expect_equal(nrow(.a), length(.ref[[1]]), label = paste(.nm, .g$t0, .m, "rows"))
+          for (.cn in names(.ref)) {
+            expect_lt(max(abs(.a[[.cn]] - .ref[[.cn]])), .g$tol, label = paste(.nm, .g$t0, .m, .cn))
+          }
+        }
+      }
+    }
+  })
+
   test_that("the liblsodaadj self-check replay applies same-time events and the initial conditions", {
     # a parameter-dependent initial condition, a reset that restores it, and a
     # replace with a dose at one time
