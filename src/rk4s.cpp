@@ -42,7 +42,8 @@ struct rk4s_dose { size_t step; int cmt; double amt; int type; double amtF = 0.0
                    // an f() that depends on the state: the jump's extra row
                    // (rxAdjStateFRow), empty otherwise
                    std::vector<double> dFx;
-                   bool ss = false; };   // an ss = 1 bolus (its pre-dose state is its trough)
+                   bool ss = false;      // an ss = 1 bolus (its pre-dose state is its trough)
+                   std::vector<double> yPre; };   // the pre-dose state, when known (an ss = 2 bolus)
 
 extern "C" void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx);
 
@@ -64,20 +65,28 @@ static inline void rk4sLhsRec(rx_solving_options_ind *ind, int cSub, int recIdx,
 // multiply), at the captured pre-event state with the record's covariates; the
 // transpose adds row * lam+[c] to lam-.  ind->lhs is left evaluated there, for
 // the event's dF/dp and d(alag)/dp.  False when there is no such capture.
+// rxAdjStateFRow at a given pre-event state yPre and weight w (amt, or amt*x-[c])
+static inline bool rxAdjStateFRowAt(rx_solving_options *op, rx_solving_options_ind *ind, int cSub,
+                                    int rec, int c, double t, const double *yPre, double w,
+                                    std::vector<double> &row) {
+  row.clear();
+  if (op->adjDfxOff < 0) return false;
+  int nBase = op->adjNbase, eff = rxEffNeq(ind, op);
+  std::vector<double> A(eff, 0.0);
+  for (int j = 0; j < nBase; ++j) A[j] = yPre[j];
+  rk4sLhsRec(ind, cSub, rec, t, A.data());
+  row.resize(nBase);
+  for (int j = 0; j < nBase; ++j) row[j] = w * ind->lhs[op->adjDfxOff + c * nBase + j];
+  return true;
+}
 static inline bool rxAdjStateFRow(rx_solving_options *op, rx_solving_options_ind *ind, int cSub,
                                   int rec, int c, double t, std::vector<double> &row) {
   row.clear();
   if (op->adjDfxOff < 0 || rec < 0) return false;
   const rxAdjJumpCap *cap = rxAdjJumpFind(rec);
   if (cap == NULL || cap->yPre.empty()) return false;
-  int nBase = op->adjNbase, eff = rxEffNeq(ind, op);
-  std::vector<double> A(eff, 0.0);
-  for (int j = 0; j < nBase; ++j) A[j] = cap->yPre[j];
-  rk4sLhsRec(ind, cSub, rec, t, A.data());
-  double w = cap->raw * (cap->kind == 6 ? cap->xPre : 1.0);
-  row.resize(nBase);
-  for (int j = 0; j < nBase; ++j) row[j] = w * ind->lhs[op->adjDfxOff + c * nBase + j];
-  return true;
+  return rxAdjStateFRowAt(op, ind, cSub, rec, c, t, cap->yPre.data(),
+                          cap->raw * (cap->kind == 6 ? cap->xPre : 1.0), row);
 }
 
 // rxAdjStateFRow for a driver's event loop: also copies the event's dF/dp and
@@ -7986,6 +7995,9 @@ struct rk4s_ss1Ev {
   int recIdx = -1; double tRec = 0.0;
   // the recorded period's end state (an unlagged bolus's trough), when recorded
   std::vector<double> yEnd;
+  // an unlagged ss = 2 bolus: its sensitivity is d(trough)/dp, the event's own dose
+  // being a window dose (applied on the total state)
+  bool fromTrough = false;
 };
 
 // f at a lagged event's state psi and its d(alag)/dp row for cmt (the phase term
@@ -8291,10 +8303,19 @@ struct rk4sSsIc {
   void fillFixedPoint(const rk4s_rec *R, std::vector<std::vector<double> > &FXs,
                       std::vector<std::vector<double> > &FPs, size_t N, std::vector<double> &S,
                       StiffPeriod *SP = NULL, const SsForce *FC = NULL, int fCmt = -1, double fAmt = 0.0,
-                      const rk4s_ss1Ev *lagE = NULL) {
+                      const rk4s_ss1Ev *lagE = NULL, bool fromTrough = false) {
     S.assign((size_t)nBase*np, 0.0);
     for (int k = 0; k < nBase; ++k) {
       std::vector<double> nu(nBase, 0.0); nu[k] = 1.0; std::vector<double> muAdd(np, 0.0);
+      if (fromTrough) {
+        // S = d(trough)/dp: back over a period from the trough, then each period's
+        // dose (its f() term and jump), and so on
+        for (int git = 0; git < maxGeo; ++git) { periodT(R, FXs, FPs, N, nu, muAdd, SP, FC);
+          addFTerm(git, fCmt, fAmt, nu, muAdd, 0);
+          double n2=0; for (int j=0;j<nBase;++j) n2+=fabs(nu[j]); if (n2<1e-14) break; }
+        for (int p = 0; p < np; ++p) S[(size_t)k*np+p] = muAdd[p];
+        continue;
+      }
       if (lagE) lagPhaseT(*lagE, R, FXs, FPs, SP, nu, muAdd, FC);
       addFTerm(0, fCmt, fAmt, nu, muAdd, lagE ? 0 : -1);
       for (int git = 0; git < maxGeo; ++git) { periodT(R, FXs, FPs, N, nu, muAdd, SP, FC);
@@ -8431,14 +8452,16 @@ struct rk4sSsIc {
       if (stiff()) {
         StiffPeriod P; precomputeStiff(cSub, ind, op, &E.rec, P, Ascratch);
         std::vector<std::vector<double> > noFX, noFP;
-        fillFixedPoint(&E.rec, noFX, noFP, N, S, &P, haveF ? &F : NULL, fCmt, E.amtRaw, E.lagged ? &E : NULL);
+        fillFixedPoint(&E.rec, noFX, noFP, N, S, &P, haveF ? &F : NULL, fCmt, E.amtRaw, E.lagged ? &E : NULL,
+                       E.fromTrough);
       } else {
         std::vector<std::vector<double> > FXs(sN), FPs(sN);
         for (int i = 0; i < sN; ++i) { FXs[i].resize(N*nfx); FPs[i].resize(N*nfp); }
         for (size_t n = 0; n < N; ++n) { double h = E.rec.h[n], t0s = E.rec.t0[n];
           for (int i = 0; i < sN; ++i)
             rk4s_eval_jac(cSub, t0s + Tss.c[i]*h, &E.rec.a[(n*sN+i)*nBase], nBase, np, fxOffM, fpOffM, Ascratch.data(), effM, ind, &FXs[i][n*nfx], &FPs[i][n*nfp]); }
-        fillFixedPoint(&E.rec, FXs, FPs, N, S, NULL, haveF ? &F : NULL, fCmt, E.amtRaw, E.lagged ? &E : NULL);
+        fillFixedPoint(&E.rec, FXs, FPs, N, S, NULL, haveF ? &F : NULL, fCmt, E.amtRaw, E.lagged ? &E : NULL,
+                       E.fromTrough);
       }
     }
     dFv = dFsave; dFxRow = dFxSave; fFrom = fFromSave;
@@ -8820,12 +8843,14 @@ static void rk4sDoseLhsFill(rx_solving_options *op, rx_solving_options_ind *ind,
     // a state-dependent f() is read at the captured pre-event state
     const rxAdjJumpCap *cap = (d.type != 9 && d.rec >= 0) ? rxAdjJumpFind(d.rec) : NULL;
     if (cap != NULL && !cap->yPre.empty()) a = cap->yPre.data();
+    if (!d.yPre.empty()) a = d.yPre.data();
     // an ss bolus lands on its regimen's trough
     if (d.ss) for (size_t z = ssEvs.size(); z-- > 0;)
       if (ssEvs[z].step == d.step && !ssEvs[z].yEnd.empty()) { a = ssEvs[z].yEnd.data(); break; }
     for (int i = 0; i < eff; ++i) A[i] = 0.0;
     for (int i = 0; i < nBase; ++i) A[i] = a[i];
-    if (d.type != 9 && rxAdjStateFRow(op, ind, cSub, d.rec, d.cmt, t, d.dFx)) {
+    if (!d.yPre.empty() ? rxAdjStateFRowAt(op, ind, cSub, d.rec, d.cmt, t, d.yPre.data(), d.amt, d.dFx)
+                        : (d.type != 9 && rxAdjStateFRow(op, ind, cSub, d.rec, d.cmt, t, d.dFx))) {
       // ind->lhs is now at the pre-event state
     } else {
       rk4sLhsRec(ind, cSub, d.rec, t, A.data());
@@ -9168,6 +9193,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   bool ss2Active = false; rk4s_ss1Ev ss2E;
   std::vector<size_t> ss2Steps;
   int _ss2PendIi = 0; double _ss2Ii = 0.0; int _ss2Cmt = -1; double _ss2Amt = 0.0;
+  std::vector<double> _ss2Before;   // the state before an ss = 2 bolus record
   // Every ss=1 event (ss1Steps, parallel ss1Evs).  The window-start one (step 0)
   // drives ssRec/ssContY above; one past the window start re-establishes its own
   // regimen's steady state, recorded in its ss1Evs entry: the backward sweep adds
@@ -9333,6 +9359,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                 // Y_ss_new (the period-boundary trough) is read after handleSS.
                 _ss2Ii = getIi(ind, ind->ix[i]); _ss2PendIi = 1;
                 _ss2Cmt = _cmtD; _ss2Amt = getDose(ind, ind->ix[i]);
+                _ss2Before.assign(yp, yp + op->adjNbase);   // Y_before, for the dose's total state
               }
             } else if (_whI == EVIDF_REPLACE) {             // replace -> lambda[c] := 0
               rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _cmtD; _d.amt = 0.0; _d.type = 5;
@@ -9420,9 +9447,13 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               ss2E.kind = 2;
             } else if (_ss2PendIi) {
               ss2E.kind = 1; ss2E.cmt = _ss2Cmt; ss2E.amtRaw = _ss2Amt; ss2E.ii = _ss2Ii;
-              // unlagged, the published state is the trough before this dose
-              if (!ss2E.lagged && ss2E.cmt >= 0 && ss2E.cmt < eff)
+              // unlagged, the published state is the trough before this dose: the
+              // period is recorded from the peak its own regimen reaches, and the
+              // term is d(trough)/dp
+              if (!ss2E.lagged && ss2E.cmt >= 0 && ss2E.cmt < eff) {
                 ss2E.y[ss2E.cmt] += getAmt(ind, ind->id, ss2E.cmt, ss2E.amtRaw, xout, ss2E.y.data());
+                ss2E.fromTrough = true;
+              }
             } else {
               ss2E.kind = 1; ss2E.inf = true; ss2E.infCmt = _adjSSinfCmt;
               ss2E.dur = _adjSSinfDur; ss2E.dur2 = _adjSSinfDur2; ss2E.rate = _adjSSinfRate; ss2E.rate2 = _adjSSinfRate2;
@@ -9432,6 +9463,19 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           }
           ss2Steps.push_back(rec.nStep());
           { rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = -1; _d.amt = 0.0; _d.type = 10; doseRec.push_back(_d); }
+          // an unlagged ss = 2 bolus's own dose lands on the total state Y_before +
+          // trough after the superposition: a window dose, transposed before S2
+          if (_ss2PendIi && _adjSSlagOn == 0 && _ss2Cmt >= 0 && _ss2Cmt < op->adjNbase &&
+              (int)_ss2Before.size() == op->adjNbase && (int)_adjSS2peak.size() >= op->adjNbase) {
+            rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _ss2Cmt; _d.amt = _ss2Amt; _d.type = 0;
+            _d.rec = _ssRecI; _d.t = xout;
+            _d.yPre.resize(op->adjNbase);
+            for (int b = 0; b < op->adjNbase; ++b) _d.yPre[b] = _ss2Before[b] + _adjSS2peak[b];
+            std::vector<double> _yF(eff, 0.0);
+            for (int b = 0; b < op->adjNbase; ++b) _yF[b] = _d.yPre[b];
+            _d.amtF = getAmt(ind, ind->id, _ss2Cmt, _ss2Amt, xout, _yF.data());
+            doseRec.push_back(_d);
+          }
           _adjSS2 = 0; _ss2PendIi = 0; _adjSSinfKind = 0;
         } else if (_ssPendCmt >= 0) {
           rk4s_ss1Ev _e; _e.step = rec.nStep(); _e.recIdx = _ssRecI; _e.tRec = xout; _e.cmt = _ssPendCmt; _e.amtRaw = _ssPendAmt; _e.ii = _ssPendIi;
