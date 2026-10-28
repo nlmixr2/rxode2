@@ -55,7 +55,7 @@ rxTest({
     }
   })
 
-  test_that("a short ss = 1 infusion's pushed stop leaves a running regular infusion open", {
+  test_that("a short ss = 1 infusion's stop leaves a running regular infusion open", {
     .o <- c(0.5, 1.5, 2.1, 3, 5, 8, 12, 16, 24)
     .ss24 <- function(...) et(..., ii = 24, ss = 1, cmt = "depot")
     .short <- list(
