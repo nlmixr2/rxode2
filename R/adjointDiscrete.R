@@ -372,7 +372,8 @@
 #' @inheritParams .rxDiscreteAdjointBuild
 #' @return list with `text` (expanded model text), `st`, `ns`, `np`,
 #'   `calcSens`, and lhs layout `fxOff` (=0), `fpOff` (=ns*ns), `nlhsAdj`, and
-#'   `dx0Off` (the initial-condition derivative block, -1 if none).
+#'   `dx0Off` (the initial-condition derivative block, -1 if none), `dfxOff` (the
+#'   state derivative of the bioavailability, -1 if none).
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
@@ -681,6 +682,31 @@
   } else {
     character(0)
   }
+  # dF/dx of a bioavailability that depends on the state, as lhs (rx__adjdFx_k_j__),
+  # for the dose jump's dPhi/dy = I + amt*e_k*dF_k/dx^T; only emitted when one is
+  # nonzero.
+  .dfx <- matrix("0", .ns, .ns)
+  for (k in seq_len(.ns)) {
+    .fSE <- get0(paste0("rx_f_", .st[k], "_"), envir = .model, inherits = FALSE)
+    if (is.null(.fSE)) {
+      next
+    }
+    for (j in seq_len(.ns)) {
+      .d <- symengine::D(.fSE, .rxSEres(.st[j]))
+      .dfx[k, j] <- rxode2::rxFromSE(.d)
+    }
+  }
+  .hasDfxAdj <- any(.dfx != "0")
+  .dfxLines <- if (.hasDfxAdj) {
+    sprintf(
+      "rx__adjdFx_%d_%d__=%s",
+      rep(seq_len(.ns) - 1L, each = .ns),
+      rep(seq_len(.ns) - 1L, times = .ns),
+      as.vector(t(.dfx))
+    )
+  } else {
+    character(0)
+  }
   # STIFF (Rosenbrock) only: the stage matrix W = I/(h*gamma) - J depends on theta
   # and y through J, so the exact discrete adjoint needs rx__adjJp_ = dJ/dtheta
   # and rx__adjJy_ = dJ/dy (d2f/dy2, zero for state-linear f).
@@ -743,6 +769,7 @@
         .dlagLines,
         .drateLines,
         .dx0Lines,
+        .dfxLines,
         .carry$tail
       ),
       collapse = "\n"
@@ -763,6 +790,7 @@
     dlagOff = if (.hasLagAdj) .afterDelay else -1L,
     drateOff = if (.hasRateAdj) .afterDelay + .dlagLen else -1L,
     dx0Off = if (.hasDx0Adj) .afterDelay + .dlagLen + .drateLen else -1L,
+    dfxOff = if (.hasDfxAdj) .afterDelay + .dlagLen + .drateLen + (if (.hasDx0Adj) .ns * .np else 0L) else -1L,
     hasDelay = .hasDelayAdj,
     nlhsAdj = .ns * .ns + .ns * .np,
     sensOff = .ns

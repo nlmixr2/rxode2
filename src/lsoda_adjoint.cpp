@@ -430,6 +430,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   // couples rows 1 and 2, so the costate handed back is lam0[1] + h0*J(y0)^T*lam0[2]
   // (then the event jump's dPhi/dy^T).
   std::vector<double> wSeed(nBase);
+  std::vector<double> sfRow, sfDF, sfDl;   // a state-dependent f() event: its row and blocks
   // ss=1 steady-state IC term (built below, before any sweep runs)
   rk4sSsIc lsIc; bool lsMono = false; rk4s_rec lsSsRec; rk4s_ss1Ev lsLagE;
   // continuous-infusion steady state: dY_ss/dp = -J^{-1} df/dp at Y_ss
@@ -483,13 +484,22 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       // terms with the costate left here.
       for (size_t k = Sg.ev.size(); k-- > 0;) {
         const lsAdjEv &E = Sg.ev[k];
+        // a state-dependent f(): the event's blocks at its pre-event state and the
+        // jump's extra row (then lhs/fx0 back at this segment's start)
+        bool sf = (E.type == 0 || E.type == 5 || E.type == 6) &&
+          rxAdjStateFEvent(op, ind, cSub, E.rec, E.cmt, Sg.t0, sfRow, sfDF, sfDl);
+        if (sf) lsAdjEval(cSub, Sg.t0, Sg.y0.data(), nBase, eff, fxOff, fpOff, A.data(), lhs, &fx0, &fp0);
+        const double *dFp = sf ? (sfDF.empty() ? NULL : sfDF.data()) : (op->adjDfOff >= 0 ? &lhs[op->adjDfOff] : NULL);
+        const double *dlp = sf ? (sfDl.empty() ? NULL : sfDl.data()) : (op->adjDlagOff >= 0 ? &lhs[op->adjDlagOff] : NULL);
+        const double *dfx = sf ? sfRow.data() : NULL;
+        double wC = (E.cmt >= 0 && E.cmt < nBase) ? wSeed[E.cmt] : 0.0;
         if (E.type == 0) {
           int c = E.cmt;
-          if (op->adjDfOff >= 0) { const double *dF = &lhs[op->adjDfOff]; for (int p = 0; p < np; ++p) mu[p] += E.amt * dF[c * np + p] * wSeed[c]; }
-          if (op->adjDlagOff >= 0 && !rxAdjJumpTerm(E.rec, c, wSeed.data(), mu.data(), nBase, np, &lhs[op->adjDlagOff])) {
-            const double *dlag = &lhs[op->adjDlagOff];
+          if (dFp) { for (int p = 0; p < np; ++p) mu[p] += E.amt * dFp[c * np + p] * wSeed[c]; }
+          if (dlp && !rxAdjJumpTerm(E.rec, c, wSeed.data(), mu.data(), nBase, np, dlp, NULL, dfx)) {
             double sc = 0; for (int i = 0; i < nBase; ++i) sc += wSeed[i] * fx0[i * nBase + c];
-            for (int p = 0; p < np; ++p) mu[p] += -E.amtF * dlag[c * np + p] * sc; }
+            for (int p = 0; p < np; ++p) mu[p] += -E.amtF * dlp[c * np + p] * sc; }
+          if (dfx) for (int j = 0; j < nBase; ++j) wSeed[j] += wC * dfx[j];
         } else if (E.type == 3) {             // reset restores the initial conditions
           if (seg > 0) {
             rk4sAddIni(dx0P, wSeed.data(), mu.data(), nBase, np);
@@ -503,9 +513,9 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
           }
           break;
         } else if (E.type == 5 || E.type == 6) {
-          rxAdjJumpTerm(E.rec, E.cmt, wSeed.data(), mu.data(), nBase, np,
-                        op->adjDlagOff >= 0 ? &lhs[op->adjDlagOff] : NULL, op->adjDfOff >= 0 ? &lhs[op->adjDfOff] : NULL);
-          if (E.type == 5) wSeed[E.cmt] = 0.0; else wSeed[E.cmt] *= E.factor;
+          rxAdjJumpTerm(E.rec, E.cmt, wSeed.data(), mu.data(), nBase, np, dlp, dFp, dfx);
+          if (E.type == 5) wSeed[E.cmt] = 0.0; else wSeed[E.cmt] *= rxAdjJumpFactor(E.rec, E.factor);
+          if (dfx) for (int j = 0; j < nBase; ++j) wSeed[j] += wC * dfx[j];
         }
       }
       if (seg == 0) break;
@@ -602,7 +612,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     rksTableau Tss = rksGetTableau(200);            // dop853 explicit tableau
     std::vector<double> y0(ssY0.begin(), ssY0.end()), ssScr;
     y0.resize(eff, 0.0);
-    bool recorded = false; size_t lsSsOnSteps = 0;
+    bool recorded = false, lsSsTrough = false; size_t lsSsOnSteps = 0;
     // the ss bolus record: its cmt, raw amount and whether it is lagged
     int lsSsBCmt = -1; double lsSsBAmt = 0.0;
     lsLagE.lagged = (_lsSsLagOn != 0); lsLagE.lag = _lsSsLag;
@@ -621,7 +631,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       recorded = true;
     } else if (_lsSsBolusIi > 0.0) {                 // bolus: flow from peak over ii
       rks_step_interval(ind, op, c_dydt, neq2, Tss, neqOde, nBase, y0.data(), 0.0, _lsSsBolusIi, &lsSsRec, ssScr);
-      recorded = true;
+      recorded = true; lsSsTrough = true;               // y0 now holds the trough
     } else if (lsLagE.lagged) {                      // lagged infusion: its period from the period start
       lsLagE.inf = true; lsLagE.infCmt = _lsSsCmt;
       lsLagE.dur = _lsSsDur; lsLagE.dur2 = _lsSsDur2; lsLagE.rate = _lsSsRate; lsLagE.rate2 = _lsSsRate2;
@@ -652,7 +662,9 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       // an ss bolus's bioavailability enters every period's dose (no separate
       // dose term here, so from the first)
       if (lsMono && _lsSsBolusIi > 0.0 && lsSsBCmt >= 0) {
-        lsIc.loadDF(cSub, ind, op, _lsSsT, ssY0.data(), Asc);
+        // at the trough, where each period's dose is applied (a state-dependent f())
+        lsIc.loadDF(cSub, ind, op, _lsSsT, lsSsTrough ? y0.data() : ssY0.data(), Asc, -1,
+                    lsSsTrough ? lsSsBCmt : -1, lsSsBAmt);
         if (!lsIc.dFv.empty()) { lsIc.fFrom = 0; lsIc.wsFCmt = lsSsBCmt; lsIc.wsFAmt = lsSsBAmt; }
       }
       if (lsMono && lsLagE.lagged && lsLagE.lagSteps > 0) lsIc.wsLag = &lsLagE;
@@ -694,13 +706,20 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
         lsAdjEval(cSub, ti, out, nBase, eff, fxOff, fpOff, A.data(), lhs, &fxT, &fpT);
         for (size_t e = evAt.size(); e-- > 0 && !atIni;) {
           const lsAdjEv &E = evAt[e];
+          bool sf = (E.type == 0 || E.type == 5 || E.type == 6) &&
+            rxAdjStateFEvent(op, ind, cSub, E.rec, E.cmt, ti, sfRow, sfDF, sfDl);
+          if (sf) lsAdjEval(cSub, ti, out, nBase, eff, fxOff, fpOff, A.data(), lhs, &fxT, &fpT);
+          const double *dFp = sf ? (sfDF.empty() ? NULL : sfDF.data()) : (op->adjDfOff >= 0 ? &lhs[op->adjDfOff] : NULL);
+          const double *dlp = sf ? (sfDl.empty() ? NULL : sfDl.data()) : (op->adjDlagOff >= 0 ? &lhs[op->adjDlagOff] : NULL);
+          const double *dfx = sf ? sfRow.data() : NULL;
+          double wC = (E.cmt >= 0 && E.cmt < nBase) ? wSeed[E.cmt] : 0.0;
           if (E.type == 0) {
             int c = E.cmt;
-            if (op->adjDfOff >= 0) { const double *dF = &lhs[op->adjDfOff]; for (int p = 0; p < np; ++p) mu[p] += E.amt * dF[c * np + p] * wSeed[c]; }
-            if (op->adjDlagOff >= 0 && !rxAdjJumpTerm(E.rec, c, wSeed.data(), mu.data(), nBase, np, &lhs[op->adjDlagOff])) {
-              const double *dlag = &lhs[op->adjDlagOff];
+            if (dFp) { for (int p = 0; p < np; ++p) mu[p] += E.amt * dFp[c * np + p] * wSeed[c]; }
+            if (dlp && !rxAdjJumpTerm(E.rec, c, wSeed.data(), mu.data(), nBase, np, dlp, NULL, dfx)) {
               double sc = 0; for (int b = 0; b < nBase; ++b) sc += wSeed[b] * fxT[b * nBase + c];
-              for (int p = 0; p < np; ++p) mu[p] += -E.amtF * dlag[c * np + p] * sc; }
+              for (int p = 0; p < np; ++p) mu[p] += -E.amtF * dlp[c * np + p] * sc; }
+            if (dfx) for (int j = 0; j < nBase; ++j) wSeed[j] += wC * dfx[j];
           } else if (E.type == 3) {
             rk4sAddIni(dx0P, wSeed.data(), mu.data(), nBase, np);
             atIni = true;
@@ -708,9 +727,9 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
             applySsIc(wSeed, mu);
             atIni = true;
           } else if (E.type == 5 || E.type == 6) {
-            rxAdjJumpTerm(E.rec, E.cmt, wSeed.data(), mu.data(), nBase, np,
-                          op->adjDlagOff >= 0 ? &lhs[op->adjDlagOff] : NULL, op->adjDfOff >= 0 ? &lhs[op->adjDfOff] : NULL);
-            if (E.type == 5) wSeed[E.cmt] = 0.0; else wSeed[E.cmt] *= E.factor;
+            rxAdjJumpTerm(E.rec, E.cmt, wSeed.data(), mu.data(), nBase, np, dlp, dFp, dfx);
+            if (E.type == 5) wSeed[E.cmt] = 0.0; else wSeed[E.cmt] *= rxAdjJumpFactor(E.rec, E.factor);
+            if (dfx) for (int j = 0; j < nBase; ++j) wSeed[j] += wC * dfx[j];
           }
         }
       }

@@ -186,31 +186,41 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   // F_X[:,c]) with F_X at the call's start state; reset adds the initial-condition
   // term, then 0; replace[c] -> 0; multiply[c] *= factor (F*amt), each after its
   // alag() and f() duals (rxAdjJumpTerm)
+  std::vector<double> sfRow, sfDF, sfDl;   // a state-dependent f() event: its row and blocks
   auto abJumpT = [&](const std::vector<abJump> &ev, double t, const double *y, double *cost, double *muP) {
     for (size_t e = ev.size(); e-- > 0;) {
       const abJump &E = ev[e];
+      // a state-dependent f(): the event's blocks at its pre-event state and the
+      // jump's extra row, applied with the post-event cost[cmt]
+      bool sf = (E.type == 0 || E.type == 5 || E.type == 6) &&
+        rxAdjStateFEvent(op, ind, cSub, E.rec, E.cmt, t, sfRow, sfDF, sfDl);
+      const double *dfx = sf ? sfRow.data() : NULL;
+      double wC = (E.cmt >= 0 && E.cmt < nBase) ? cost[E.cmt] : 0.0;
       if (E.type == 0) {
         const double *fx, *fp; abEval(t, y, &fx, &fp);
-        if (op->adjDfOff >= 0) {
-          const double *dF = &lhs[op->adjDfOff];
-          for (int p = 0; p < np; ++p) muP[p] += E.factor * dF[E.cmt * np + p] * cost[E.cmt];
+        const double *dFp = sf ? (sfDF.empty() ? NULL : sfDF.data()) : (op->adjDfOff >= 0 ? &lhs[op->adjDfOff] : NULL);
+        const double *dlp = sf ? (sfDl.empty() ? NULL : sfDl.data()) : (op->adjDlagOff >= 0 ? &lhs[op->adjDlagOff] : NULL);
+        if (dFp) {
+          for (int p = 0; p < np; ++p) muP[p] += E.factor * dFp[E.cmt * np + p] * cost[E.cmt];
         }
-        if (op->adjDlagOff >= 0 && !rxAdjJumpTerm(E.rec, E.cmt, cost, muP, nBase, np, &lhs[op->adjDlagOff])) {
-          const double *dlag = &lhs[op->adjDlagOff];
+        if (dlp && !rxAdjJumpTerm(E.rec, E.cmt, cost, muP, nBase, np, dlp, NULL, dfx)) {
           double sc = 0.0;
           for (int b = 0; b < nBase; ++b) sc += cost[b] * fx[b * nBase + E.cmt];
-          for (int p = 0; p < np; ++p) muP[p] += -E.amtF * dlag[E.cmt * np + p] * sc;
+          for (int p = 0; p < np; ++p) muP[p] += -E.amtF * dlp[E.cmt * np + p] * sc;
         }
+        if (dfx) for (int b = 0; b < nBase; ++b) cost[b] += wC * dfx[b];
       }
       else if (E.type == 3) {
         rk4sAddIni(dx0P, cost, muP, nBase, np);
         for (int b = 0; b < nBase; ++b) cost[b] = 0.0;
       }
       else if (E.type == 5 || E.type == 6) {
-        const double *fx, *fp; abEval(t, y, &fx, &fp);   // the duals' blocks at this event's time
-        rxAdjJumpTerm(E.rec, E.cmt, cost, muP, nBase, np, op->adjDlagOff >= 0 ? &lhs[op->adjDlagOff] : NULL,
-                      op->adjDfOff >= 0 ? &lhs[op->adjDfOff] : NULL);
-        if (E.type == 5) cost[E.cmt] = 0.0; else cost[E.cmt] *= E.factor;
+        if (!sf) { const double *fx, *fp; abEval(t, y, &fx, &fp); }   // the duals' blocks at this event's time
+        const double *dFp = sf ? (sfDF.empty() ? NULL : sfDF.data()) : (op->adjDfOff >= 0 ? &lhs[op->adjDfOff] : NULL);
+        const double *dlp = sf ? (sfDl.empty() ? NULL : sfDl.data()) : (op->adjDlagOff >= 0 ? &lhs[op->adjDlagOff] : NULL);
+        rxAdjJumpTerm(E.rec, E.cmt, cost, muP, nBase, np, dlp, dFp, dfx);
+        if (E.type == 5) cost[E.cmt] = 0.0; else cost[E.cmt] *= rxAdjJumpFactor(E.rec, E.factor);
+        if (dfx) for (int b = 0; b < nBase; ++b) cost[b] += wC * dfx[b];
       }
     }
   };

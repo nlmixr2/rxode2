@@ -191,6 +191,10 @@ typedef struct {
      starts (k*np+p); -1 if no initial condition depends on a calcSens
      parameter.  Appended last so every earlier field keeps its offset. */
   int    adjDx0Off;
+  /* discrete adjoint: lhs index where the dF/dx block of a state-dependent
+     bioavailability starts (k*nBase+j); -1 if no f() depends on a state.
+     Appended last so every earlier field keeps its offset. */
+  int    adjDfxOff;
 } rx_solving_options;
 
 

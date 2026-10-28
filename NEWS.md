@@ -358,6 +358,15 @@
   doses), and in `cvodesadj` and `abs` for a replace or multiply.  Before,
   they read it at the window start (off by up to 34).
 
+- Adjoint sensitivities with a bioavailability (`f()`) that depends on the
+  state are now right in every adjoint method: the dose then lands as
+  `x + F(x)*amt`, so its transpose carries `amt*dF/dx` at the pre-dose state,
+  for a bolus, a replace or multiply, a lagged dose and each period of an
+  `ss = 1` dose (off by up to 81).  A fixed-duration infusion carries the rate's
+  dependence on its start state in the `rk4s` family; the forward solve re-reads
+  `F` at the infusion's stop, so its result after the stop is not yet right,
+  and a fixed-rate infusion with such an `f()` does not solve.
+
 - `method = "abs"` now includes the bioavailability (`f()`), lag-time
   (`alag()`), `rate()` and `dur()` adjoint sensitivities of bolus and
   infusion doses.
