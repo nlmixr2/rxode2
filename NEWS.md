@@ -320,6 +320,12 @@
   (`alag()`), `rate()` and `dur()` adjoint sensitivities of bolus and
   infusion doses.
 
+- The adjoint steady-state checks now read NONMEM-style upper-case `SS`,
+  `RATE`, `II`, `AMT` and `EVID` columns.  Before, data spelled that way
+  skipped them, so an unsupported steady-state case (for example with
+  `method = "abs"`) or `minSS = maxSS` returned wrong sensitivities instead
+  of an error.
+
 - `method = "abs"` adjoint sensitivities while an infusion ran were off by
   up to 5e-5 at `hmin = 0.001`: the backward sweep re-evaluated each call's
   startup steps with the infusion rates of the end of the solve.
