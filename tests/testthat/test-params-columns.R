@@ -62,6 +62,28 @@ rxTest({
     )
   })
 
+  test_that("a params column no parameter reads may be of any type when simulating", {
+    m <- rxode2({
+      d / dt(central) <- -k * exp(eta.k) * central
+      cp <- central / v
+    })
+    .ev <- et(amt = 10, cmt = "central") |> et(c(1, 2))
+    .om <- lotri(eta.k ~ 0.1)
+    # a one-row frame, and a frame recycled over nSub, carrying a label
+    for (.p in list(data.frame(k = 0.5, v = 2), data.frame(k = c(0.5, 0.6), v = c(2, 3)))) {
+      set.seed(42)
+      .want <- as.data.frame(rxSolve(m, .ev, params = .p, omega = .om, nSub = 4))$cp
+      expect_false(anyNA(.want))
+      set.seed(42)
+      .got <- as.data.frame(rxSolve(m, .ev, params = cbind(.p, label = "a"), omega = .om, nSub = 4))$cp
+      expect_identical(.got, .want)
+    }
+    expect_identical(
+      .paramsColsErr(rxSolve(m, .ev, params = data.frame(k = "0.5", v = 2), omega = .om, nSub = 3)),
+      "'params' column 'k' is character; a model parameter needs numbers"
+    )
+  })
+
   test_that("a character params column a parameter reads is refused by name", {
     m <- .paramsColsModel()
     d <- .paramsColsData()

@@ -5346,8 +5346,6 @@ static inline void rxSolve_resample(const RObject &obj,
   }
 }
 
-// A one-row parameter data frame or matrix is one set for every subject, as a
-// named vector is, and is expanded here to a row per subject.
 // Which columns of the params data frame a model parameter reads (gParPos)
 static inline std::vector<bool> rxSolve_parDfUsed(rxSolve_t* rxSolveDat) {
   rx_solve* rx = getRxSolve_();
@@ -5378,6 +5376,8 @@ static inline bool rxSolve_parDfCol(rxSolve_t* rxSolveDat, const std::vector<boo
   return true;
 }
 
+// A one-row parameter data frame or matrix is one set for every subject, as a
+// named vector is, and is expanded here to a row per subject.
 static inline void rxSolve_parOneRow(rxSolve_t* rxSolveDat, uint32_t nsub) {
   if (rxSolveDat->parType == 1 || rxSolveDat->nPopPar != 1 || nsub <= 1) return;
   int ncol = rxSolveDat->nmP.size();

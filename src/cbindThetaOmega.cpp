@@ -58,14 +58,29 @@ List cbindThetaOmegaL(List& inputParameters, List& individualParameters) {
   List ret(inputParameters.size() + individualParameters.size()) ;
   CharacterVector inputN = inputParameters.attr("names");
   CharacterVector individualN = individualParameters.attr("names");
+  // A character column (a label) is kept as character; rxSolve reads it only
+  // if a parameter needs it, and then refuses it by name.
   if (nstud == tot) {
     for (int i = inputN.size(); i--;) {
+      if (TYPEOF(inputParameters[i]) == STRSXP) {
+        ret[i] = inputParameters[i];
+        continue;
+      }
       NumericVector cur = as<NumericVector>(inputParameters[i]);
       ret[i] = cur;
     }
   } else if (tot %  nstud == 0) {
     int nsub = tot / nstud;
     for (int i = inputN.size(); i--; ) {
+      if (TYPEOF(inputParameters[i]) == STRSXP) {
+        CharacterVector curIn = inputParameters[i];
+        CharacterVector cur(tot);
+        for (int j=0; j < nstud; j++) {
+          for (int k=0; k < nsub; k++) cur[j*nsub + k] = curIn[j];
+        }
+        ret[i] = cur;
+        continue;
+      }
       NumericVector cur(tot);
       NumericVector curIn = as<NumericVector>(inputParameters[i]);
       for (int j=0; j < nstud; j++) {

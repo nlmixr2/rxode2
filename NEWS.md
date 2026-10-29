@@ -153,8 +153,8 @@
 
 - A `params` data frame with a character column no parameter reads (a label,
   a character id) now solves, one row (used for every subject, or for the
-  subjects `nSub` asks for) or many; it failed with "Not compatible with
-  requested type".  A character column that a parameter does read stops with
+  subjects `nSub` asks for) or many, and also when simulating with
+  `omega`; it failed with "Not compatible with requested type".  A character column that a parameter does read stops with
   an error naming it.
 
 - A one-row `params` data frame or matrix is now used for every subject, as
