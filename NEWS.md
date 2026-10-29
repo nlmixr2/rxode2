@@ -52,6 +52,10 @@
 - Steady-state infusions, including those longer than `ii` and lagged ones,
   run each dosing cycle on the same 0 to `ii` clock, so a model reading `t`
   reaches a steady state there too (#1585).
+- `tad()` inside a steady-state cycle now counts from that cycle's dose, so a
+  model whose ODE reads `tad()` (such as a transit compartment) reaches a
+  steady state; it used to count from the dose record and the solve failed
+  (#1585).
 - A steady-state bolus into a compartment whose `alag()` is longer than `ii`
   now includes the doses of the earlier intervals that arrive inside the
   observed one; they were dropped, so the profile decayed from the trough
