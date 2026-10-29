@@ -87,6 +87,9 @@ struct cvInfus { double tOn, tOff; int cmt; double R, amt, durMult, amtRaw; bool
                  // backward component (the integral of lam_cmt), forced with dFon, and
                  // at its start lam += that integral * row (dfW * dF_cmt/dx, nBase)
                  int sf = -1; std::vector<double> row;
+                 // a lagged one: the field just before its start and the cmt's
+                 // d(alag)/dp row, for the start's lag term (sfStart)
+                 std::vector<double> fPre, dlagOn;
                  int offSeq = 0, offY = -1, onSeq = 0; };
 
 // Index of the open window into cmt that a stop with start key `key` closes (see
@@ -472,6 +475,11 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
             cvInfus _w = {xout, R_PosInf, _lagRateCmt, _dR, 0.0, 0.0, 0.0, _isDur};
             _w.fixed = true; _w.dfW = _isDur ? _dR / _f : 0.0; _w.key = _lagRateKey;
             _w.onSeq = seq; _w.rec = _lagRateRec; _w.yOn.assign(yp, yp + nBase); _w.fOn = _f;
+            if (op->adjDlagOff >= 0 && op->adjDfxOff >= 0 && _isDur) {   // the field before this rate
+              cvB_rhs(&fu, xout, yp, fu.DADT.data());
+              _w.fPre.assign(fu.DADT.begin(), fu.DADT.begin() + nBase);
+              _w.fPre[_lagRateCmt] -= _dR;
+            }
             infusRec.push_back(_w);
           } else if (_f != 0.0) {
             int _wi = cvInfusCloseIdx(infusRec, _lagRateCmt, true, _isDur, _lagRateKey);
@@ -538,6 +546,8 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       F.dFon.assign(ind->lhs + op->adjDfOff + F.cmt * np, ind->lhs + op->adjDfOff + (F.cmt + 1) * np);
       F.row.resize(nBase);
       for (int j = 0; j < nBase; ++j) F.row[j] = F.dfW * ind->lhs[op->adjDfxOff + F.cmt * nBase + j];
+      if (op->adjDlagOff >= 0 && (int)F.fPre.size() == nBase)
+        F.dlagOn.assign(ind->lhs + op->adjDlagOff + F.cmt * np, ind->lhs + op->adjDlagOff + (F.cmt + 1) * np);
       F.sf = nSf++;
       evJumps.push_back({F.tOn, (int)w, 12, 0.0, F.onSeq, -1});
     }
@@ -616,6 +626,11 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   // a state-dependent f() window's start: lam += (integral of lam_cmt) * row
   auto sfStart = [&](const cvInfus &F) {
     double acc = NV_Ith_S(B, nBase + np + F.sf);
+    if (!F.dlagOn.empty()) {   // a lagged start reads x_on later: mu += dlag * acc * (row . fPre)
+      double g = 0.0;
+      for (int j = 0; j < nBase; ++j) g += F.row[j] * F.fPre[j];
+      for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += F.dlagOn[p] * acc * g;
+    }
     for (int j = 0; j < nBase; ++j) NV_Ith_S(B, j) += acc * F.row[j];
     NV_Ith_S(B, nBase + np + F.sf) = 0.0;
   };

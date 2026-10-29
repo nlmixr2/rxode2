@@ -76,6 +76,23 @@ rxTest({
     }
   })
 
+  test_that("a lagged dose with a state-dependent f() reads the state where it lands", {
+    # a lagged ss dose lands on its period's trough; with a lag longer than ii the
+    # earlier periods' doses land after the record (at t = 1 and 6, which the
+    # observations avoid); a lagged infusion's start reads x_on a lag later
+    .txtL <- paste0(.base, .fCenter, "\nalag(depot) <- lg")
+    .oL <- c(0.25, 0.5, 1.5, 2, 4, 8, 11.5)
+    .two <- function(...) et(amt = 100, cmt = "depot") |> et(time = 3, amt = 50, ii = 12, ss = 2, cmt = "depot") |>
+      et(c(1, 2.2, 4, 6.4, 9, 14, 20))
+    .ss1 <- et(amt = 100, ii = 12, ss = 1, cmt = "depot") |> et(.oL)
+    .chk(list(txt = .txtL, p = c(.p, lg = 0.4), ev = .ss1), c(.rk4sFamily, "liblsodaadj"), "ss1 lag")
+    .chk(list(txt = .txtL, p = c(.p, lg = 13), ev = .ss1), c(.rk4sFamily, "liblsodaadj"), "ss1 lag > ii")
+    .chk(list(txt = .txtL, p = c(.p, lg = 0.4), ev = .two()), .rk4sFamily, "ss2 lag")
+    .chk(list(txt = .txtL, p = c(.p, lg = 15), ev = .two()), .rk4sFamily, "ss2 lag > ii")
+    .inf <- et(amt = 100, cmt = "depot") |> et(time = 3, amt = 80, dur = 10, cmt = "depot") |> et(.o)
+    .chk(list(txt = .txtL, p = c(.p, lg = 0.4), ev = .inf), c(.rk4sFamily, "liblsodaadj", "cvodesadj", "abs"), "infusion lag")
+  })
+
   test_that("a same-time dose, replace or multiply changes the state an infusion start reads", {
     # the infusion's f() reads center, which an event at t = 3 changes; the start
     # term applies where the start record lies among that time's events

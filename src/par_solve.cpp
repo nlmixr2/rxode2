@@ -3198,7 +3198,17 @@ static thread_local std::vector<double> _adjSS2peak;
 struct rxAdjJumpCap { int rec, kind; double xPre, raw, alpha = 1.0; std::vector<double> r, yPre, fPre; };
 static thread_local std::vector<rxAdjJumpCap> _adjJumpCap;
 static thread_local std::vector<int> _adjJumpPos;   // record index -> 1 + its _adjJumpCap slot, 0 none
-static inline void rxAdjJumpClear(void) { _adjJumpCap.clear(); _adjJumpPos.clear(); }
+// A lagged ss bolus's earlier-interval dose pushed past its record (a lag longer
+// than ii), extra dose k, which has no record for rxAdjJumpRecord: its pre-dose
+// base state, fPre = f(t, x-) and r = f(t, x-) - f(t, x+), for the f() row and the
+// exact lag term of its transpose.
+struct rxAdjPushCap { int k; std::vector<double> yPre, fPre, r; };
+static thread_local std::vector<rxAdjPushCap> _adjPushCap;
+static inline void rxAdjJumpClear(void) { _adjJumpCap.clear(); _adjJumpPos.clear(); _adjPushCap.clear(); }
+static inline const rxAdjPushCap *rxAdjPushFind(int k) {
+  for (size_t j = 0; j < _adjPushCap.size(); ++j) if (_adjPushCap[j].k == k) return &_adjPushCap[j];
+  return NULL;
+}
 static inline const rxAdjJumpCap *rxAdjJumpFind(int rec) {
   if (rec < 0 || (size_t)rec >= _adjJumpPos.size() || _adjJumpPos[rec] == 0) return NULL;
   return &_adjJumpCap[_adjJumpPos[rec] - 1];
@@ -3266,6 +3276,43 @@ static inline int rxAdjHandleEvid1(int *i, rx_solve *rx, int *neq, double *yp, d
   rxAdjJumpRecord(rx->op, ind, neq, *i, c, ind->timeThread[ind->ix[*i]], pre, yp);
   return he;
 }
+// whether extra dose k is a registered lagged ss bolus push into a base state that
+// an adjoint with a modeled alag() or f() records (rxAdjPushCap)
+static inline bool rxAdjPushCapWanted(rx_solving_options *op, rx_solving_options_ind *ind, int k) {
+  if (!op->adjoint || (op->adjDlagOff < 0 && op->adjDfOff < 0) || rxAdjLagPushAt(k) < 0) return false;
+  int _wh, _cmt, _wh100, _whI, _wh0; getWh(ind->extraDoseEvid[k], &_wh, &_cmt, &_wh100, &_whI, &_wh0);
+  return _whI == 0 && _cmt >= 0 && _cmt < op->adjNbase;
+}
+// record extra dose k's rxAdjPushCap from its pre- and post-dose states at t
+static inline void rxAdjPushRecord(rx_solving_options *op, int *neq, int k, double t,
+                                   const std::vector<double> &pre, const double *post) {
+  int nBase = op->adjNbase;
+  rxAdjPushCap cap; cap.k = k;
+  cap.yPre.assign(pre.begin(), pre.begin() + nBase);
+  std::vector<double> yA(pre), fA(pre.size(), 0.0), yB(post, post + pre.size()), fB(pre.size(), 0.0);
+  dydt(neq, t, yA.data(), fA.data());
+  dydt(neq, t, yB.data(), fB.data());
+  cap.fPre.assign(fA.begin(), fA.begin() + nBase);
+  cap.r.resize(nBase);
+  for (int j = 0; j < nBase; ++j) cap.r[j] = fA[j] - fB[j];
+  for (size_t j = 0; j < _adjPushCap.size(); ++j)
+    if (_adjPushCap[j].k == k) { _adjPushCap[j] = std::move(cap); return; }
+  _adjPushCap.push_back(std::move(cap));
+}
+// The lag term of a pushed dose with capture pc into cmt c, lam the post-dose
+// costate: mu += dlag[c][p] * (lam^T r + lam[c] * (dfxRow . fPre)), as rxAdjJumpTerm
+static inline void rxAdjPushLagTerm(const rxAdjPushCap *pc, int c, const double *lam, double *mu,
+                                    int nBase, int np, const double *dlag, const double *dfxRow) {
+  double sc = 0.0;
+  for (int j = 0; j < nBase; ++j) sc += lam[j] * pc->r[j];
+  if (dfxRow != NULL) {
+    double g = 0.0;
+    for (int j = 0; j < nBase; ++j) g += dfxRow[j] * pc->fPre[j];
+    sc += lam[c] * g;
+  }
+  for (int p = 0; p < np; ++p) mu[p] += dlag[c * np + p] * sc;
+}
+
 // Duals of the jump at record rec into cmt c, with lam the costate after the
 // jump (before its transpose): alag(), mu += dlag[c][p] * lam^T r; and, given
 // dF, a replace's f() (x+ = F*amt: mu += lam[c]*amt*dF[c][p]) or a multiply's
@@ -5249,8 +5296,12 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
             int ixds= ind->ixds;
             int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
             ind->idx = -1-trueIdx;
+            bool _pushCap = rxAdjPushCapWanted(op, ind, trueIdx);
+            std::vector<double> _pushPre;
+            if (_pushCap) _pushPre.assign(yp, yp + neq[0] + op->extraCmt);
             handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
                         ind->BadDose, ind->InfusionRate, ind->dose, yp, xout, neq[1], ind);
+            if (_pushCap) rxAdjPushRecord(op, neq, trueIdx, ind->extraDoseNewXout, _pushPre, yp);
             ctx->state = 1;
             ind->idx = idx;
             ind->ixds = ixds;

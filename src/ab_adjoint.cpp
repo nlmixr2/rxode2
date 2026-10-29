@@ -238,6 +238,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
       else if (E.type == 12) {   // a state-dependent f() window starts: its rate moved with the state
         for (size_t q = 0; q < sfWins.size(); ++q)
           if (sfWins[q].rec == E.rec) {
+            rxAdjSfWinLag(sfWins[q], sfAcc[q], muP, nBase, np);
             for (int b = 0; b < nBase; ++b) cost[b] += sfAcc[q] * sfWins[q].row[b];
             sfAcc[q] = 0.0;
           }
