@@ -4934,7 +4934,7 @@ static int _rxTteAfterInterval(rx_solve *rx, rx_solving_options *op,
   double tStar = 0.0;
   int k = 0;
   std::vector<double> yStar(neq);
-  if (!rxTteLocate(ind, subj, neq, xs, ys, *xout, yp, integ, &tStar, &k,
+  if (!rxTteLocate(subj, neq, xs, ys, *xout, yp, integ, &tStar, &k,
                    yStar.data())) {
     return 0;
   }

@@ -1,4 +1,5 @@
-// Time-to-event (tte()) simulation: per-subject event store and root finding.
+// Time-to-event (tte()) simulation: per-subject event store (tte.cpp), root
+// finding (tteLocate.cpp) and model helpers (tteModel.cpp).
 // The solver-loop side (re-timing records, rewinding the integrator) lives in
 // par_solve.cpp; this header is internal to rxode2.
 #ifndef __RXODE2_TTE_H__
@@ -37,10 +38,9 @@ int rxTteHIdx(int k);
 int rxTteIsInterval(int k);
 int rxTteDropout(int k);
 void rxTteSubjectInit(rx_solving_options_ind *ind, int subj);
-int rxTteLocate(rx_solving_options_ind *ind, int subj, int neq, double xs,
-                const double *ys, double xout, const double *yout,
-                const rxTteInteg &integ, double *tStar, int *kOut,
-                double *yStar);
+int rxTteLocate(int subj, int neq, double xs, const double *ys, double xout,
+                const double *yout, const rxTteInteg &integ, double *tStar,
+                int *kOut, double *yStar);
 int rxTteRecord(int subj, int k, double tStar, double hStar);
 void rxTteSetDone(int subj, int k);
 void rxTteSubjectFinish(rx_solving_options_ind *ind);
