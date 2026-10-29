@@ -2005,6 +2005,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
         # tte() cumulative hazards are states of the model, numbered before the
         # endpoint compartments
         .tteChr <- vapply(.rxTteStateLines(.env), deparse1, character(1), USE.NAMES = FALSE)
+        .lstChr <- .rxTteRewriteLines(.lstChr, .env$predDf)
         if (any(.env$predDf$linCmt)) {
           .env$mv0 <- rxModelVars(paste(c(.lstChr, "rxLinCmt ~ linCmt()", .aliasChr, .tteChr), collapse = "\n"))
         } else {

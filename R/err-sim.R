@@ -934,7 +934,7 @@ rxCombineErrorLines <- function(
   .predDf <- uiModel$predDf
   .tmp <- .rxFilterOutPropsAndAdjustPredDf(uiModel, predDf = .predDf, lstExpr = lstExpr)
   .predDf <- .tmp$predDf
-  .expr <- .tmp$lstExpr
+  .expr <- .rxTteRewriteLines(.tmp$lstExpr, .predDf)
   # endpoints sharing a model variable get a generated alias; define it just
   # before the error lines that use it.  A shared linCmt() needs its single
   # allowed linCmt() call emitted once, outside the CMT branches.
