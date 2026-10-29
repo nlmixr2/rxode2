@@ -344,6 +344,11 @@
   or `ss = 1` dose) to an observation there; an `ss = 1` dose there was up
   to about 360 off.
 
+- A subject whose `method = "cvodesadj"` adjoint solve fails now returns
+  `NA` states and sensitivities, as a failed forward solve does; before, it
+  kept finite states with zero sensitivities.  Its forward pass also stops
+  at `maxsteps` steps per output interval, like the other solvers.
+
 - With `method = "cvodesadj"`, and with `method = "liblsodaadj"` when
   nothing was integrated between resets, an observation recorded at the
   time of a reset (`evid = 3`) returned the pre-reset sensitivity; it now
