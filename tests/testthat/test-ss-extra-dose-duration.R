@@ -42,6 +42,24 @@ rxTest({
     expect_equal(.r$cen, rep((100 / 12) / 0.1, length(.r$cen)), tolerance = 1e-5)
   })
 
+  test_that("ss=1 infusion with a modeled lag stops at the lagged end (dur == ii, issue #1592)", {
+    expect_equal(.ssRun(100 / 12), .longRun(100 / 12), tolerance = 1e-4)
+    .e <- et(et(amt = 100, dur = 12, ss = 1, ii = 12, cmt = "cen"), seq(0, 40, by = 4))
+    expect_equal(rxSolve(.ssLagModel, .e, returnType = "data.frame")$cen, .longRun(100 / 12), tolerance = 1e-4)
+  })
+
+  test_that("ss=1 dur == ii infusion with a lag longer than ii stops at the lagged end (issue #1592)", {
+    .m <- rxode2({
+      alag(cen) <- 15
+      d / dt(cen) <- -0.1 * cen
+    })
+    .e <- et(et(amt = 100, rate = 100 / 12, ss = 1, ii = 12, cmt = "cen"), seq(0, 40, by = 4))
+    .r <- rxSolve(.m, .e, returnType = "data.frame")$cen
+    .e2 <- et(et(amt = 100, rate = 100 / 12, ii = 12, addl = 40, cmt = "cen"), seq(0, 40, by = 4) + 40 * 12)
+    .r2 <- rxSolve(.m, .e2, returnType = "data.frame")
+    expect_equal(.r, .r2$cen[.r2$time >= 40 * 12], tolerance = 1e-4)
+  })
+
   test_that("ss=1 modeled-duration infusion with a modeled lag solves", {
     .m <- rxode2({
       alag(cen) <- 3
