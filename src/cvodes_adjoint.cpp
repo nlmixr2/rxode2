@@ -195,6 +195,10 @@ static void cvB_record(cvHist *hist, cvFwdUser *u, double t, const double *yp) {
 // CV_ONE_STEP, recording each accepted step into the current history segment.
 static void cvB_step(void *mem, cvFwdUser *u, N_Vector y, double *yp,
                      double xout, int *rc, cvHist *hist, int mxstep) {
+  // an event time that is not a number (an infusion stop from an NA
+  // bioavailability) fails the subject as the other solvers do; CVODE would
+  // step toward it until the step limit
+  if (!R_FINITE(xout)) { if (*rc == 0) *rc = -2019; return; }
   for (int k = 0; k < u->nBase; ++k) NV_Ith_S(y, k) = yp[k];
   CVodeSetStopTime(mem, (sunrealtype)xout);
   sunrealtype tcur = 0.0;

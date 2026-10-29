@@ -37,4 +37,26 @@ rxTest({
     expect_equal(nrow(.a), 3L)
     expect_true(all(is.finite(as.matrix(.a[, c("depot", "center", grep("^rx__sens_", names(.a), value = TRUE))]))))
   })
+
+  test_that("an NA bioavailability fails a cvodesadj subject as it does the other drivers", {
+    .base <- "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center"
+    # the fixed-rate infusion's stop time is NA; at the default maxsteps,
+    # cvodesadj stepped toward it until the step limit
+    .inf <- et(amt = 100, cmt = "depot") |> et(time = 3, amt = 80, rate = 8, cmt = "depot") |> et(c(1, 2, 4, 6, 9))
+    for (.m in c("cvodesadj", "liblsodaadj", "rk4s")) {
+      expect_error(
+        suppressWarnings(rxSolveAdjointRk4(paste0(.base, "\nf(depot) <- bio/(1 + center/50)"), .inf,
+          params = c(ka = 1.2, k = 0.2, bio = 0.8), calcSens = c("ka", "k", "bio"), method = .m,
+          hmin = if (.m == "rk4s") 0.001 else 0)),
+        "'amt(depot)' calculation and maybe more items produce NA", fixed = TRUE, label = .m
+      )
+    }
+    # an f() that is NaN at a bolus's state
+    .bol <- et(amt = 100, cmt = "depot") |> et(time = 3, amt = 80, cmt = "depot") |> et(c(1, 2, 4, 6))
+    expect_error(
+      suppressWarnings(rxSolveAdjointRk4(paste0(.base, "\nf(depot) <- bio*sqrt(5 - center)"), .bol,
+        params = c(ka = 1.2, k = 0.2, bio = 0.8), calcSens = c("ka", "k", "bio"), method = "cvodesadj")),
+      "could not solve the system", fixed = TRUE
+    )
+  })
 })

@@ -347,6 +347,11 @@
   kept finite states with zero sensitivities.  Its forward pass also stops
   at `maxsteps` steps per output interval, like the other solvers.
 
+- `method = "cvodesadj"` no longer runs to the step limit (appearing to hang)
+  when an event's time is `NA`, such as a fixed-rate infusion's stop with an
+  `NA` bioavailability; the subject fails with the forward's error, as in the
+  other methods.
+
 - The adjoint bioavailability (`f()`) sensitivity of a steady-state
   (`ss = 1`) fixed-rate or fixed-duration infusion longer than its dosing
   interval is now included, in the steady-state term and for the infusions
