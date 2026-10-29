@@ -173,6 +173,21 @@
   data.frame(name = nm, neta1 = .i, neta2 = .i, stringsAsFactors = FALSE)
 }
 
+#' Which `iniDf` rows carry a prior that goes into the `thetaMat`
+#'
+#' @param iniDf `ui$iniDf`
+#' @return integer row indices
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPriorThetaRows <- function(iniDf) {
+  if (!any(names(iniDf) == "prior")) {
+    return(integer(0))
+  }
+  ## an omega row carrying a Wishart is degrees of freedom, not a normal
+  ## prior, and is handled by `.rxPriorOmegaNu()`
+  which(!is.na(iniDf$prior) & (is.na(iniDf$neta1) | .rxPriorIsNormal(iniDf$prior)))
+}
+
 #' The `thetaMat` the model's normal priors describe
 #'
 #' Each normal prior contributes its variance and each `multiNormal()` its
@@ -194,13 +209,7 @@
 #' @author Matthew L. Fidler
 .rxPriorThetaMat <- function(ui) {
   .iniDf <- ui$iniDf
-  .w <- which(
-    !is.na(.iniDf$prior) &
-      (is.na(.iniDf$neta1) | .rxPriorIsNormal(.iniDf$prior))
-  )
-  ## an omega row carrying a Wishart is degrees of freedom, not a normal
-  ## prior, and is handled by `.rxPriorOmegaNu()`
-  .w <- .w[is.na(.iniDf$neta1[.w]) | .rxPriorIsNormal(.iniDf$prior[.w])]
+  .w <- .rxPriorThetaRows(.iniDf)
   if (length(.w) == 0L) {
     return(list(thetaMat = NULL, theta = NULL, omegaEl = NULL))
   }
@@ -447,16 +456,22 @@
 #'
 #' @param ui rxode2 ui model
 #' @param ctl `rxControl` list
+#' @param theta when `FALSE` the priors that make the `thetaMat` are
+#'   skipped, so a given `thetaMat` is not blocked by them
 #' @return `NULL` when the model carries no prior this uses, else a list
 #'   with `thetaMat`, `theta`, `omegaNu` and `omegaEl`
 #' @noRd
 #' @author Matthew L. Fidler
-.rxPriorSimSpec <- function(ui, ctl = NULL) {
+.rxPriorSimSpec <- function(ui, ctl = NULL, theta = TRUE) {
   .iniDf <- ui$iniDf
   if (is.null(.iniDf) || !any(names(.iniDf) == "prior") || !any(!is.na(.iniDf$prior))) {
     return(NULL)
   }
-  .th <- .rxPriorThetaMat(ui)
+  .th <- if (theta) {
+    .rxPriorThetaMat(ui)
+  } else {
+    list(thetaMat = NULL, theta = NULL, omegaEl = NULL)
+  }
   .nu <- .rxPriorOmegaNu(ui)
   ## asked after the pieces are built rather than before: only the omega
   ## half of a prior is what a chunked solve cannot carry
@@ -662,6 +677,103 @@
   isTRUE(all.equal(get(name, envir = .meta), value))
 }
 
+#' The covariance of a fit's estimates, if it has one
+#'
+#' @param ui rxode2 ui model or nlmixr2 fit
+#' @return the covariance matrix, or `NULL` when `ui` is not a fit with a
+#'   covariance step
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPriorFitCov <- function(ui) {
+  if (!inherits(ui, "nlmixr2FitCore")) {
+    return(NULL)
+  }
+  .env <- try(ui$env, silent = TRUE)
+  if (!is.environment(.env) || !exists("cov", envir = .env, inherits = FALSE)) {
+    return(NULL)
+  }
+  .cov <- get("cov", envir = .env)
+  if (!is.matrix(.cov)) {
+    return(NULL)
+  }
+  .cov
+}
+
+#' Say which priors a winning `thetaMat` leaves without a draw
+#'
+#' A theta is covered by a column of its own name.  An omega element is
+#' drawn from the `thetaMat` only under `omegaSeparation="tnpri"`, and then
+#' under any spelling `.rxJointElNames()` knows; otherwise its column is
+#' pruned before the draw.
+#'
+#' @param ui rxode2 ui model
+#' @param thetaMat the `thetaMat` that takes precedence
+#' @param ctl `rxControl` list
+#' @return nothing, called for the warning
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPriorWarnThetaMatWins <- function(ui, thetaMat, ctl) {
+  .iniDf <- ui$iniDf
+  .w <- .rxPriorThetaRows(.iniDf)
+  if (length(.w) == 0L) {
+    return(invisible())
+  }
+  .cols <- colnames(thetaMat)
+  .omega <- ui$omega
+  .etaNm <- if (is.matrix(.omega)) dimnames(.omega)[[1]] else character(0)
+  ## each prior entry as a name and, for an omega element, its position; a
+  ## `multiNormal()` names its own members, which may include `om.`
+  ## elements, and any other prior is on its own row
+  .ent <- do.call(
+    rbind,
+    lapply(.w, function(i) {
+      .cn <- .rxPriorCovNames(.iniDf$prior[i])
+      if (is.null(.cn)) {
+        if (is.na(.iniDf$neta1[i])) {
+          return(data.frame(name = .iniDf$name[i], neta1 = NA_integer_, neta2 = NA_integer_))
+        }
+        .n1 <- as.integer(.iniDf$neta1[i])
+        .n2 <- as.integer(.iniDf$neta2[i])
+        .nm <- if (.n1 == .n2) paste0("om.", .iniDf$name[i]) else .iniDf$name[i]
+        return(data.frame(name = .nm, neta1 = .n1, neta2 = .n2))
+      }
+      .om <- startsWith(.cn, "om.")
+      .i <- match(substring(.cn, 4L), .etaNm)
+      data.frame(
+        name = .cn,
+        neta1 = ifelse(.om, .i, NA_integer_),
+        neta2 = ifelse(.om, .i, NA_integer_)
+      )
+    })
+  )
+  .theta <- !startsWith(.ent$name, "om.") & is.na(.ent$neta1)
+  .miss <- setdiff(.ent$name[.theta], .cols)
+  .om <- .ent[!.theta, , drop = FALSE]
+  if (nrow(.om) > 0L) {
+    .drawn <- rep(FALSE, nrow(.om))
+    if (identical(ctl$omegaSeparation, "tnpri") && is.matrix(.omega)) {
+      .pos <- .rxJointElFromNames(.omega, .cols, what = "omega")
+      if (!is.null(.pos)) {
+        ## either order addresses the same element of a symmetric matrix
+        .key <- c(paste(.pos[, 1], .pos[, 2]), paste(.pos[, 2], .pos[, 1]))
+        .drawn <- paste(.om$neta1, .om$neta2) %in% .key
+      }
+    }
+    .miss <- c(.miss, .om$name[!.drawn])
+  }
+  .miss <- unique(.miss)
+  if (length(.miss) > 0L) {
+    warning(
+      "the 'thetaMat' takes precedence over the prior distributions in ",
+      "'ini({})', but does not draw '",
+      paste(.miss, collapse = "', '"),
+      "' from it; set 'usePrior=TRUE' to use the priors instead",
+      call. = FALSE
+    )
+  }
+  invisible()
+}
+
 #' Put the model's priors into the solve control
 #'
 #' @param ui rxode2 ui model
@@ -678,7 +790,23 @@
   if (!isTRUE(.use) && !.simVar) {
     return(ctl)
   }
-  .spec <- .rxPriorSimSpec(ui, ctl)
+  ## a supplied `thetaMat` (call site, `meta`, or a fit's covariance) is
+  ## the covariance of the estimates actually in `ini({})`, so in auto mode
+  ## it wins and the priors are not even read: a MAP estimate is not its
+  ## prior mean.  `simulate(fit)` hands its covariance in as a call site
+  ## `thetaMat`, so every source is treated alike.
+  .given <- ctl$thetaMat
+  .fitCov <- NULL
+  if (is.null(.given)) {
+    ## a fit's covariance is only added to the control after this, so ask
+    ## the fit for it here
+    .fitCov <- .rxPriorFitCov(ui)
+  }
+  .thetaMatWins <- !isTRUE(.use) && (!is.null(.given) || !is.null(.fitCov))
+  if (.thetaMatWins) {
+    .rxPriorWarnThetaMatWins(ui, if (is.null(.given)) .fitCov else .given, ctl)
+  }
+  .spec <- .rxPriorSimSpec(ui, ctl, theta = !.thetaMatWins)
   if (is.null(.spec)) {
     if (isTRUE(.use)) {
       stop("'usePrior=TRUE' but the model specifies no prior distributions", call. = FALSE)
@@ -695,23 +823,17 @@
     )
   }
   if (!is.null(.spec$thetaMat)) {
-    if (is.null(ctl$thetaMat)) {
-      ctl$thetaMat <- .spec$thetaMat
-    } else if (.rxPriorFromMeta(ui, "thetaMat", ctl$thetaMat)) {
+    if (!is.null(ctl$thetaMat)) {
+      ## only `usePrior=TRUE` reaches here with a `thetaMat`
       warning(
-        "the prior distributions in 'ini({})' replace the 'thetaMat' ",
-        "the model's 'meta' block carries",
-        call. = FALSE
-      )
-      ctl$thetaMat <- .spec$thetaMat
-    } else {
-      warning(
-        "'thetaMat' was given, so the prior distributions on the ",
-        "population parameters were not used; drop it or set ",
-        "'usePrior=FALSE' to keep it without this warning",
+        "'usePrior=TRUE', so the prior distributions in 'ini({})' replace ",
+        "the 'thetaMat' that was given",
         call. = FALSE
       )
     }
+    ctl$thetaMat <- .spec$thetaMat
+    ## the prior matrix is a covariance, never a Cholesky factor
+    ctl$thetaIsChol <- FALSE
   }
   .omega <- .rxPriorOmegaLotri(ui, .spec$omegaNu)
   if (!is.null(.omega)) {

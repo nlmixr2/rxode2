@@ -993,7 +993,8 @@
   if (is.null(map)) {
     return(NULL)
   }
-  .model <- .rxLoadPrune(obj)
+  # numeric defaults (`lg <- 0.3`) stay symbolic so their derivatives survive
+  .model <- .rxLoadPrune(obj, doConst = FALSE)
   .states <- map$states
   .params <- map$sensParams
   .cmtName <- function(cmt) map$states[match(cmt, map$stateCmt)]
