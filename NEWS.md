@@ -360,6 +360,10 @@
   needs a small `hmax` (its error falls as `hmax^2`) and `dop853s` a finite
   one; `?rxSolveAdjointRk4` says so.
 
+- `method = "abs"` now includes the bioavailability (`f()`) and lag-time
+  (`alag()`) adjoint sensitivities of a bolus dose.  It still refuses them,
+  and modeled `rate()` and `dur()`, for infusion doses.
+
 - With `method = "cvodesadj"`, and with `method = "liblsodaadj"` when
   nothing was integrated between resets, an observation recorded at the
   time of a reset (`evid = 3`) returned the pre-reset sensitivity; it now
