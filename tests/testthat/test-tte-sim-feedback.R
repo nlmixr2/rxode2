@@ -80,4 +80,48 @@ rxTest({
     .s2 <- withr::with_seed(8, as.data.frame(rxSolve(.noDrop, .e)))
     expect_true(all(tapply(.s2$time[.s2$CMT == 3], .s2$id[.s2$CMT == 3], max) == 48))
   })
+
+  test_that("tte() hazard of a delay() state", {
+    f <- function() {
+      ini({
+        k <- 0.3
+        lambda <- 0.02
+        beta <- 0.05
+        tau <- 2
+      })
+      model({
+        d/dt(central) <- -k * delay(central, tau)
+        haz <- lambda * exp(beta * central)
+        ev ~ tte(haz)
+      })
+    }
+    # the same hazard integrated as an ordinary state on the dense path
+    ref <- function() {
+      ini({
+        k <- 0.3
+        lambda <- 0.02
+        beta <- 0.05
+        tau <- 2
+      })
+      model({
+        d/dt(central) <- -k * delay(central, tau)
+        haz <- lambda * exp(beta * central)
+        d/dt(H) <- haz
+      })
+    }
+    .e <- et(amt = 100, cmt = "central") |>
+      et(seq(0, 48, by = 2), cmt = "central") |>
+      et(c(0, 48), cmt = "ev") |>
+      et(id = 1:10)
+    for (.m in c("dop853+ros4", "ros4")) {
+      .s <- withr::with_seed(3, as.data.frame(rxSolve(f(), .e, method = .m)))
+      .ev <- .s[.s$sim == 1 & .s$evid == 0, ]
+      expect_true(nrow(.ev) > 0, info = .m)
+      .g <- as.data.frame(rxSolve(ref(), et(amt = 100, cmt = "central") |>
+        et(sort(unique(c(seq(0, 48, by = 2), .ev$time))))))
+      expect_equal(.ev$rx.tteH.ev, .g$H[match(.ev$time, .g$time)], tolerance = 1e-4, info = .m)
+      .pk <- .s[.s$evid == 2, ]
+      expect_equal(.pk$central, .g$central[match(.pk$time, .g$time)], tolerance = 1e-4, info = .m)
+    }
+  })
 })

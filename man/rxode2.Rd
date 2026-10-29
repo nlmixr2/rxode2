@@ -977,7 +977,8 @@ before the first) and \code{tteCount(ev)} is the number of events so far, so
 renewal and count-dependent hazards can be written. Every ODE solving
 \code{method} except the adjoint sensitivity methods simulates \code{tte()}
 endpoints, since the root finding only re-solves intervals with the
-chosen method.
+chosen method; a hazard using \code{delay()} is solved with the dense
+\code{delay()} solvers.
 }
 
 \subsection{General table of supported residual distributions}{
