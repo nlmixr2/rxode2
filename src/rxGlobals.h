@@ -43,6 +43,7 @@ struct rx_globals {
   int *ginfPair = NULL; /* per-record infusion pairing offsets, see ind->infPair */
   int *gpkSkip = NULL; /* per-record non-data-record flags, see ind->pkSkip */
   int *gdoseRow = NULL; /* per-record offset to an expanded record's dose row, see ind->doseRow */
+  int *gaddlParent = NULL; /* per-record offset to an addl repeat's dose, see ind->addlParent */
   int *gpar_cov;
   int *gpar_covInterp;
   int *glhs_str;
