@@ -2414,15 +2414,174 @@ rxTest({
 
   test_that("two state jumps at the same time transpose in turn in every driver", {
     # dose 10, then multiply by 0.5 and by 0.8 at t = 1: y = 4 exp(-k t) after
-    .ev <- et(amt = 10, cmt = "y") |> et(time = 1, evid = 6, amt = 0.5, cmt = "y") |>
-      et(time = 1, evid = 6, amt = 0.8, cmt = "y") |> et(c(0.5, 2, 3))
+    .ev <- et(amt = 10, cmt = "y") |>
+      et(time = 1, evid = 6, amt = 0.5, cmt = "y") |>
+      et(time = 1, evid = 6, amt = 0.8, cmt = "y") |>
+      et(c(0.5, 2, 3))
     .tt <- c(0.5, 2, 3)
     .dk <- -.tt * ifelse(.tt < 1, 10, 4) * exp(-0.7 * .tt)
     for (.meth in c("rk4s", "dop853s", "ros4s", "cvodesadj")) {
-      .a <- rxSolveAdjointRk4("d/dt(y) <- -k*y", .ev, params = c(k = 0.7), calcSens = "k", method = .meth,
-        atol = 1e-11, rtol = 1e-11, hmin = if (.meth == "rk4s") 0.001 else 0)
+      .a <- rxSolveAdjointRk4(
+        "d/dt(y) <- -k*y",
+        .ev,
+        params = c(k = 0.7),
+        calcSens = "k",
+        method = .meth,
+        atol = 1e-11,
+        rtol = 1e-11,
+        hmin = if (.meth == "rk4s") 0.001 else 0
+      )
       .a <- .a[.a$time %in% .tt, , drop = FALSE]
       expect_equal(.a$rx__sens_y_BY_k__, .dk, tolerance = 1e-7, label = .meth)
+    }
+  })
+
+  test_that("an infusion off boundary and a multiply at the same time transpose in turn", {
+    # a: 10 infused at rate r = 5 (off at tau = 2); b: dose 10, halved at t = 2
+    .k <- 0.7
+    .r <- 5
+    .tau <- 10 / .r
+    .tt <- c(1, 3, 4)
+    .pre <- .tt < .tau
+    .ev <- et(amt = 10, cmt = "a", rate = -1) |>
+      et(amt = 10, cmt = "b") |>
+      et(time = 2, evid = 6, amt = 0.5, cmt = "b") |>
+      et(.tt)
+    .aV <- ifelse(.pre, (.r / .k) * (1 - exp(-.k * .tt)), (.r / .k) * (exp(.k * .tau) - 1) * exp(-.k * .tt))
+    .daR <- ifelse(
+      .pre,
+      (1 - exp(-.k * .tt)) / .k,
+      ((exp(.k * .tau) - 1) / .k - .tau * exp(.k * .tau)) * exp(-.k * .tt)
+    )
+    .dak <- ifelse(
+      .pre,
+      -(.r / .k^2) * (1 - exp(-.k * .tt)) + (.r / .k) * .tt * exp(-.k * .tt),
+      -(.r / .k^2) *
+        (exp(.k * .tau) - 1) *
+        exp(-.k * .tt) +
+        (.r / .k) * .tau * exp(.k * .tau) * exp(-.k * .tt) -
+        .tt * .aV
+    )
+    .dbk <- -.tt * ifelse(.tt < 2, 10, 5) * exp(-.k * .tt)
+    for (.meth in c("rk4s", "dop853s", "ros4s", "cvodesadj")) {
+      .a <- rxSolveAdjointRk4(
+        "d/dt(a) <- -k*a\nd/dt(b) <- -k*b\nrate(a) <- r",
+        .ev,
+        params = c(k = .k, r = .r),
+        calcSens = c("k", "r"),
+        method = .meth,
+        atol = 1e-11,
+        rtol = 1e-11,
+        hmin = if (.meth == "rk4s") 0.001 else 0
+      )
+      .a <- .a[.a$time %in% .tt, , drop = FALSE]
+      expect_equal(nrow(.a), 3L, label = .meth)
+      expect_equal(.a$rx__sens_a_BY_r__, .daR, tolerance = 1e-7, label = .meth)
+      expect_equal(.a$rx__sens_a_BY_k__, .dak, tolerance = 1e-7, label = .meth)
+      expect_equal(.a$rx__sens_b_BY_k__, .dbk, tolerance = 1e-7, label = .meth)
+      expect_equal(.a$rx__sens_b_BY_r__, rep(0, 3), label = .meth)
+    }
+  })
+
+  test_that("a multiply at an observation time transposes before that observation", {
+    # dose 10, halved at t = 1; the observation at t = 1 is post-multiply
+    .ev <- et(amt = 10, cmt = "y") |> et(time = 1, evid = 6, amt = 0.5, cmt = "y") |> et(c(0.5, 1, 2))
+    .tt <- c(0.5, 1, 2)
+    .dk <- -.tt * ifelse(.tt < 1, 10, 5) * exp(-0.7 * .tt)
+    for (.meth in c("rk4s", "dop853s", "ros4s", "cvodesadj")) {
+      .a <- rxSolveAdjointRk4(
+        "d/dt(y) <- -k*y",
+        .ev,
+        params = c(k = 0.7),
+        calcSens = "k",
+        method = .meth,
+        atol = 1e-11,
+        rtol = 1e-11,
+        hmin = if (.meth == "rk4s") 0.001 else 0
+      )
+      .a <- .a[.a$time %in% .tt, , drop = FALSE]
+      expect_equal(.a$rx__sens_y_BY_k__, .dk, tolerance = 1e-7, label = .meth)
+    }
+  })
+
+  test_that("cvodesadj transposes a lagged bolus tied with a multiply in reverse forward order", {
+    skip_on_cran()
+    # the center multiply runs before the depot bolus lagged onto t = 1, so the
+    # lag sensitivity is the one-sided derivative that keeps that order (tlag up)
+    .m <- "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-ke*center\nalag(depot)=tlag"
+    .p <- c(ka = 1.2, ke = 0.3, tlag = 1)
+    .ev <- et(amt = 10, cmt = "depot") |> et(time = 1, evid = 6, amt = 0.5, cmt = "center") |> et(c(2, 3))
+    .mb <- rxode2(.m)
+    .f <- function(tl) {
+      .pp <- .p
+      .pp["tlag"] <- tl
+      rxSolve(.mb, .ev, params = .pp, atol = 1e-12, rtol = 1e-12)$center
+    }
+    .h <- 1e-6
+    .fd <- (.f(1 + .h) - .f(1)) / .h
+    .ex <- .rxAdjointExpand(.m, names(.p))
+    .s <- rxSolve(rxode2(.ex$text), .ev, params = .p, method = "cvodesadj", atol = 1e-11, rtol = 1e-11, cores = 1)
+    expect_equal(.s$rx__sens_center_BY_tlag__, .fd, tolerance = 1e-4)
+  })
+
+  test_that("cvodesadj evaluates each tied lagged bolus at its own post-dose primal", {
+    skip_on_cran()
+    # a and b dosed 10 each at tlag = 1, c' = a*b: c(t) = 100 (t - tlag)
+    .m <- "d/dt(a)=0*k\nd/dt(b)=0\nd/dt(c)=a*b\nalag(a)=tlag\nalag(b)=tlag"
+    .ex <- .rxAdjointExpand(.m, c("k", "tlag"))
+    .ev <- et(amt = 10, cmt = "a") |> et(amt = 10, cmt = "b") |> et(c(0, 2, 3))
+    .s <- rxSolve(
+      rxode2(.ex$text),
+      .ev,
+      params = c(k = 1, tlag = 1),
+      method = "cvodesadj",
+      atol = 1e-11,
+      rtol = 1e-11,
+      cores = 1
+    )
+    expect_equal(.s$c, c(0, 100, 200), tolerance = 1e-7)
+    expect_equal(.s$rx__sens_c_BY_tlag__, c(0, -100, -100), tolerance = 1e-7)
+  })
+
+  test_that("cvodesadj alag transversality uses the exact vector-field jump", {
+    skip_on_cran()
+    # c' = a (a - 20)^2 is 0 at a = 0 and a = 20, and 1000 at a = 10
+    .m <- "d/dt(a)=0*k\nd/dt(c)=a*(a-20)^2\nalag(a)=tlag"
+    .ma <- rxode2(.rxAdjointExpand(.m, c("k", "tlag"))$text)
+    .one <- et(amt = 10, cmt = "a") |> et(c(2, 3))
+    .two <- et(amt = 10, cmt = "a") |> et(amt = 10, cmt = "a") |> et(c(2, 3))
+    for (.x in list(list(.one, -1000), list(.two, 0))) {
+      .s <- rxSolve(
+        .ma,
+        .x[[1]],
+        params = c(k = 1, tlag = 1),
+        method = "cvodesadj",
+        atol = 1e-11,
+        rtol = 1e-11,
+        cores = 1
+      )
+      expect_equal(.s$rx__sens_c_BY_tlag__, rep(.x[[2]], 2), tolerance = 1e-7)
+    }
+  })
+
+  test_that("cvodesadj keeps the lag sensitivity of a bolus lagged onto t0", {
+    skip_on_cran()
+    # tlag = 0: raising the lag delays the bolus, dy/dtlag = 10 k exp(-k t)
+    .ma <- rxode2(.rxAdjointExpand("d/dt(y)=-k*y\nalag(y)=tlag", c("k", "tlag"))$text)
+    .ev <- et(amt = 10, cmt = "y") |> et(c(1, 2))
+    for (.meth in c("rk4s", "cvodesadj")) {
+      .s <- rxSolve(
+        .ma,
+        .ev,
+        params = c(k = 0.7, tlag = 0),
+        method = .meth,
+        atol = 1e-11,
+        rtol = 1e-11,
+        cores = 1,
+        hmin = if (.meth == "rk4s") 0.001 else 0
+      )
+      .s <- .s[.s$time > 0, , drop = FALSE]
+      expect_equal(.s$rx__sens_y_BY_tlag__, 7 * exp(-0.7 * c(1, 2)), tolerance = 1e-7, label = .meth)
     }
   })
 })

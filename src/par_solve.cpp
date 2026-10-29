@@ -4267,9 +4267,17 @@ void handleSS(int *neq,
         // yp is last solve or y0
         solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                      xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-        for (int cur = 0; cur < overIi; ++cur) {
-          pushDosingEvent(startTimeD+curLagExtra+cur*curIi,
-                          rateOn, regEvid, ind);
+        if (overIi > 0) {
+          // lag > ii: the doses of the overIi earlier intervals arrive in this
+          // one, as regular boluses (rateOn/regEvid are only set for infusions)
+          int bolusEvid = getEvid(ind, ind->ix[bi]) - adjustEvidBolusLag;
+          getWh(bolusEvid, &wh, &cmt, &wh100, &whI, &wh0);
+          bolusEvid = bolusEvid - wh0 + EVID0_REGULAR;
+          double bolusAmt = getDoseIndex(ind, bi);
+          for (int cur = 0; cur < overIi; ++cur) {
+            pushDosingEvent(startTimeD+curLagExtra+cur*curIi,
+                            bolusAmt, bolusEvid, ind);
+          }
         }
         for (k = neq[0]; k--;){
           ind->solveLast[k] = yp[k];
