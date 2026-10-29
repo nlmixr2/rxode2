@@ -79,6 +79,19 @@ static inline int rk4sInfusionEventCmt(int evid, int nBase, bool ss = false) {
   return _cmt;
 }
 
+// Whether an infusion start record into cmt lies at time t (records sit at their
+// lagged times).
+static inline bool rk4sInfusionStartAt(rx_solving_options_ind *ind, int nBase, int cmt, double t) {
+  for (int i = 0; i < ind->n_all_times; ++i) {
+    int ev = getEvid(ind, ind->ix[i]);
+    if (rk4sInfusionEventCmt(ev, nBase, true) != cmt || !rxAdjSameTime(ind->timeThread[ind->ix[i]], t)) continue;
+    int _wh, _c, _wh100, _whI, _wh0; getWh(ev, &_wh, &_c, &_wh100, &_whI, &_wh0);
+    if (_whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON ||
+        ((_whI == EVIDF_INF_RATE || _whI == EVIDF_INF_DUR) && getDose(ind, ind->ix[i]) > 0.0)) return true;
+  }
+  return false;
+}
+
 // A modeled-rate infusion window: active over steps [onStep, offStep) delivering
 // rate R into compartment cmt (amt total).  Drives the two-term infusion dual --
 // the in-window forcing quadrature and the off-boundary (offStep) transversality.
@@ -7913,6 +7926,49 @@ struct rk4s_ss1Ev {
   int recIdx = -1; double tRec = 0.0;
 };
 
+// The record-time duals of a lagged ss infusion event E at step/time xout: the
+// windows of its doses still on at the record (and, for a lag of a whole number of
+// periods, of the one starting there) and that start's lag dual.
+static void rk4sLagSsRecordWindows(const rk4s_ss1Ev &E, rx_solving_options_ind *ind, rx_solving_options *op,
+                                   size_t step, double xout, double *yp, std::vector<rk4s_dose> &doseRec,
+                                   std::vector<rk4s_infus> &infusRec) {
+  if (!E.lagged || !E.inf) return;
+  // a lag of a whole number of periods (lag modulo ii == 0) starts this
+  // period's infusion at the record itself, inside handleSS, so its rate
+  // change is not seen as a record start
+  bool _lag0 = E.lag == 0.0 && E.infCmt >= 0 && E.infCmt < op->adjNbase &&
+    E.rate > E.rate2;
+  // a lagged modeled ss infusion still on at the record time (started
+  // s0 = ii - lag before it, or at it unless its start record lies there
+  // too, a zero lag): open its window there, closed by its pushed stop
+  if (E.mdl > 0 && op->adjDrateOff >= 0 && E.infCmt >= 0 && E.infCmt < op->adjNbase &&
+      (_lag0 ? !rk4sInfusionStartAt(ind, op->adjNbase, E.infCmt, xout) : E.dur + E.dur2 - E.lag < E.dur)) {
+    rk4s_infus _f; _f.onStep = step; _f.offStep = (size_t)-1; _f.cmt = E.infCmt;
+    _f.R = E.rate; _f.amt = E.mdlAmt; _f.amtRaw = E.mdlAmtRaw;
+    _f.durMult = (E.mdl == 2) ? E.mdlAmt : 1.0; _f.isDur = (E.mdl == 2);
+    _f.tOn = _lag0 ? xout : xout - (E.dur + E.dur2 - E.lag); _f.recIdx = E.recIdx;
+    infusRec.push_back(_f);
+  }
+  // the start's lag dual, after the ss marker so the backward takes it first
+  if (_lag0 && op->adjDlagOff >= 0) {
+    rk4s_dose _d; _d.step = step; _d.cmt = E.infCmt; _d.amt = E.rate - E.rate2; _d.type = 9;
+    doseRec.push_back(_d);
+  }
+  // a lagged ss infusion's earlier doses still on at the record time
+  // (started s0 + m*ii before it, s0 = ii - lag, or 0 when this period's
+  // starts at the record; each lasts D): open their fixed windows there,
+  // closed by their pushed stops
+  if (E.fixed != 0 && op->adjDfOff >= 0 && E.rate > E.rate2 &&
+      E.infCmt >= 0 && E.infCmt < op->adjNbase) {
+    double _r1 = E.rate - E.rate2, _ii = E.dur + E.dur2, _s0 = _lag0 ? 0.0 : _ii - E.lag;
+    double _D = E.dur + floor(E.rate2 / _r1 + 0.5) * _ii;
+    for (int _m = (int)floor((_D - _s0) / _ii); _m >= 0; --_m)
+      if (_D - _s0 - _m * _ii > rxAdjTimeTol(_D, _s0))
+        rk4sFixedInfusionRecord(infusRec, ind, E.infCmt, E.fixed == 2, _r1, step,
+                                xout - _s0 - _m * _ii, yp);
+  }
+}
+
 // f at a lagged event's state psi and its d(alag)/dp row for cmt (the phase term
 // -(lam^T f(Psi)) dL/dp: a longer lag leaves the state earlier in its period)
 static void rk4sLagPhaseAt(rx_solving_options_ind *ind, rx_solving_options *op, t_dydt dydt,
@@ -9324,6 +9380,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           }
           ss2Steps.push_back(rec.nStep());
           { rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = -1; _d.amt = 0.0; _d.type = 10; doseRec.push_back(_d); }
+          rk4sLagSsRecordWindows(ss2E, ind, op, rec.nStep(), xout, yp, doseRec, infusRec);
           _adjSS2 = 0; _ss2PendIi = 0; _adjSSinfKind = 0;
         } else if (_ssPendCmt >= 0) {
           rk4s_ss1Ev _e; _e.step = rec.nStep(); _e.recIdx = _ssRecI; _e.tRec = xout; _e.cmt = _ssPendCmt; _e.amtRaw = _ssPendAmt; _e.ii = _ssPendIi;
@@ -9345,28 +9402,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           _e.mdl = _adjSSinfModeled; _e.mdlAmt = _adjSSinfAmt; _e.mdlAmtRaw = _adjSSinfAmtRaw;
           _e.fixed = _adjSSinfFixed; _e.fixW = _adjSSinfFixW; _e.fixW2 = _adjSSinfFixW2;
           _e.lagged = (_adjSSlagOn != 0); _e.lag = _adjSSlag;
-          // a lagged modeled ss infusion still on at the record time (started
-          // s0 = ii - lag before it): open its window there, closed by its pushed stop
-          if (_e.lagged && _e.mdl > 0 && op->adjDrateOff >= 0 && _e.infCmt >= 0 && _e.infCmt < op->adjNbase &&
-              _e.dur + _e.dur2 - _e.lag < _e.dur) {
-            rk4s_infus _f; _f.onStep = rec.nStep(); _f.offStep = (size_t)-1; _f.cmt = _e.infCmt;
-            _f.R = _e.rate; _f.amt = _e.mdlAmt; _f.amtRaw = _e.mdlAmtRaw;
-            _f.durMult = (_e.mdl == 2) ? _e.mdlAmt : 1.0; _f.isDur = (_e.mdl == 2);
-            _f.tOn = xout - (_e.dur + _e.dur2 - _e.lag); _f.recIdx = _ssRecI;
-            infusRec.push_back(_f);
-          }
-          // a lagged ss infusion's earlier doses still on at the record time
-          // (started s0 + m*ii before it, s0 = ii - lag; each lasts D): open their
-          // fixed windows there, closed by their pushed stops
-          if (_e.lagged && _e.fixed != 0 && op->adjDfOff >= 0 && _e.rate > _e.rate2 &&
-              _e.infCmt >= 0 && _e.infCmt < op->adjNbase) {
-            double _r1 = _e.rate - _e.rate2, _ii = _e.dur + _e.dur2, _s0 = _ii - _e.lag;
-            double _D = _e.dur + floor(_e.rate2 / _r1 + 0.5) * _ii;
-            for (int _m = (int)floor((_D - _s0) / _ii); _m >= 0; --_m)
-              if (_D - _s0 - _m * _ii > rxAdjTimeTol(_D, _s0))
-                rk4sFixedInfusionRecord(infusRec, ind, _e.infCmt, _e.fixed == 2, _r1, rec.nStep(),
-                                        xout - _s0 - _m * _ii, yp);
-          }
+          rk4sLagSsRecordWindows(_e, ind, op, rec.nStep(), xout, yp, doseRec, infusRec);
           if (_e.step == 0 && !ssActive) {   // window start
             ssActive = true; ssInf = true; ssInfCmt = _adjSSinfCmt;
             ssInfDur = _adjSSinfDur; ssInfDur2 = _adjSSinfDur2; ssInfRate = _adjSSinfRate; ssInfRate2 = _adjSSinfRate2;
