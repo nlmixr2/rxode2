@@ -305,6 +305,22 @@ struct RxSaveWh {
   }
 };
 
+// The time of sorted record i that a covariate update at time t is matched
+// against.  In the solve it is the time the solve gave the record (its xout,
+// lagged as sortInd() or refreshLagTimesIfNeeded() left it), so a lagged dose
+// reads its own record's covariates.  gettime() would evaluate alag() again,
+// inside this update, where it reads the covariates the previous update left.
+// timeThread is the thread's, so outside the solve (the initial conditions,
+// the output walks) it can hold another subject's times; gettime() is used
+// there.
+static inline double rxRecMatchTime(rx_solving_options_ind *ind, int i) {
+  if (ind->timeThread != NULL && ind->inLhs == 0 && ind->isIni == 0) {
+    return ind->timeThread[ind->ix[i]];
+  }
+  return (ind->fns && ind->fns->gettime) ? ind->fns->gettime(ind->ix[i], ind) :
+    getTime(ind->ix[i], ind);
+}
+
 extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int idxIn) {
   if (rx == NULL) (Rf_errorcall)(R_NilValue, _("solve data is not loaded"));
   rx_solving_options_ind *ind, *indSample;
@@ -454,12 +470,12 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           // a pushed record has no value of its own; interpolate across it
           bool pushed = rxPushedRec(ind->ix, idxSample, ind->n_all_times_orig);
           if (!pushed && idxSample == 0 &&
-              isSameTimeOp(t, (indSample->fns && indSample->fns->gettime ? indSample->fns->gettime(indSample->ix[idxSample], indSample) : getTime(indSample->ix[idxSample], indSample)))) {
+              isSameTimeOp(t, rxRecMatchTime(indSample, idxSample))) {
             // y is in record order; a lagged dose can move record 0 off sorted slot 0
             par_ptr[op->par_cov[k]-1] = getValue(0, y, is_locf, indSample, op, 0);
             ind->cacheME=0;
           } else if (!pushed && idxSample > 0 && idxSample < indSample->n_all_times &&
-                     isSameTimeOp(t, (indSample->fns && indSample->fns->gettime ? indSample->fns->gettime(indSample->ix[idxSample], indSample) : getTime(indSample->ix[idxSample], indSample)))) {
+                     isSameTimeOp(t, rxRecMatchTime(indSample, idxSample))) {
             par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, is_locf,
                                                  indSample, op, 0);
             if (!isSameTimeOp(getValue(idxSample, y, is_locf,
