@@ -22,18 +22,22 @@
 - An infusion's `f()`, `alag()`, `rate()` and `dur()` are now read at its
   start's record, as NONMEM reads them: `f()` at the record's time with the
   record's covariates, also when `alag()` moves the infusion and in steady
-  state.  A fixed-duration infusion's stop read `f()` again at its own time,
-  so when a covariate or `t` in `f()` changed during the infusion the stop
-  did not remove the rate the start added.  A fixed-rate or fixed-duration
-  infusion's stop read `alag()` at the stop's record, so with `alag()` on a
-  covariate the infusion ran longer or shorter than it should.  A lagged infusion with a modeled
-  `rate()` or `dur()` read `f()` from the records around its data time, and
-  once a lagged dose moved past an infusion's start, its modeled `rate()`
-  or `dur()` read another record's covariates.  The records a dose expands
-  to (a steady-state dose's companions, an infusion's stop) now read the
-  covariates of that dose's record, as NONMEM reads the one record it has,
-  and an infusion's missing covariate is filled from the records next to it
-  in the data, wherever a lag moves it in the solve.
+  state.
+  - A fixed-duration infusion's stop read `f()` again at its own time, so
+    when a covariate or `t` in `f()` changed during the infusion the stop
+    did not remove the rate the start added.
+  - A fixed-rate or fixed-duration infusion's stop read `alag()` at the
+    stop's record, so with `alag()` on a covariate the infusion ran longer
+    or shorter than it should.
+  - A lagged infusion with a modeled `rate()` or `dur()` read `f()` from
+    the records around its data time, and once a lagged dose moved past an
+    infusion's start, its modeled `rate()` or `dur()` read another record's
+    covariates.
+  - The records a dose expands to (a steady-state dose's companions, an
+    infusion's stop) read the covariates of that dose's record, as NONMEM
+    reads the one record it has, and an infusion's missing covariate is
+    filled from the records next to it in the data, wherever a lag moves it
+    in the solve.
 - A simulation that stops with an error no longer leaves its draws for the
   next solve.  The residuals, simulated thetas and per-study draws it had
   made stayed behind, and the next solve without residuals of its own used
