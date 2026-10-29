@@ -557,12 +557,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   bool lsLag0 = false;
   if (lsSsSeg >= 0 && _lsSsKind == 1 && _lsSsLagOn && _lsSsLag == 0.0 &&
       _lsSsRate > _lsSsRate2 && _lsSsCmt >= 0 && _lsSsCmt < nBase) {
-    lsLag0 = true;
-    for (int i = 0; i < ind->n_all_times && lsLag0; ++i) {
-      int ev = getEvid(ind, ind->ix[i]);
-      if (rxAdjSameTime(ind->timeThread[ind->ix[i]], _lsSsT) && rk4sInfusionEventCmt(ev, nBase, true) == _lsSsCmt &&
-          getDose(ind, ind->ix[i]) > 0.0) lsLag0 = false;
-    }
+    lsLag0 = !rk4sInfusionStartAt(ind, nBase, _lsSsCmt, _lsSsT);
     if (lsLag0 && op->adjDlagOff >= 0) {
       std::vector<double> &L = lsAdjSegs[lsSsSeg].lagRate;
       if (L.empty()) L.assign(nBase, 0.0);

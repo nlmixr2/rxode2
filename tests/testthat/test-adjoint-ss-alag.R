@@ -151,4 +151,25 @@ rxTest({
       }
     }
   })
+
+  test_that("a modeled ss = 1 or an ss = 2 infusion with a lag of whole periods gives the right sensitivities", {
+    # observations stay off the infusions' stops, which f() and rate() move
+    .oM <- c(0.5, 1, 2.2, 2.6, 4, 8, 11.5)
+    .mdl <- list()
+    for (.L in c(0, 12, 24)) {
+      .lag <- if (.L == 0) "0" else "tlag"
+      .pL <- if (.L == 0) c(.p0, fd = 0.8) else c(.p0, fd = 0.8, tlag = .L)
+      .mdl[[paste0("rate", .L)]] <- list(txt = paste0(.base, "\nf(depot) <- fd\nrate(depot) <- rr\nalag(depot) <- ", .lag),
+        p = c(.pL, rr = 40), ev = .ss(amt = 100, rate = -1) |> et(.oM))
+      .mdl[[paste0("dur", .L)]] <- list(txt = paste0(.base, "\nf(depot) <- fd\ndur(depot) <- dd\nalag(depot) <- ", .lag),
+        p = c(.pL, dd = 2.5), ev = .ss(amt = 100, rate = -2) |> et(.oM))
+    }
+    .chk(.mdl, c("rk4s", "dop853s"))
+    .o2 <- c(1, 2.2, 4.3, 6.4, 9, 13.7)
+    .i2 <- et(amt = 100, cmt = "depot") |> et(time = 3, amt = 50, rate = 20, ii = 12, ss = 2, cmt = "depot") |> et(.o2)
+    .ss2 <- list(const0 = list(txt = paste0(.base, "\nf(depot) <- fd\nalag(depot) <- 0"), p = c(.p0, fd = 0.8), ev = .i2))
+    # 11: the infusion of the period before is still on at the record
+    for (.L in c(12, 24, 11)) .ss2[[paste0("tlag", .L)]] <- list(txt = .txtMF, p = c(.p0, tlag = .L, fd = 0.8), ev = .i2)
+    .chk(.ss2, c("rk4s", "ros4s", "radauiia5s", "dop853s", "dop853s+ros4s"))
+  })
 })
