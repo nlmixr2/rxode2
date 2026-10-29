@@ -1251,6 +1251,21 @@ static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, c
         yp[j]= max(bottom,yp[j]);
       }
     }
+    // A state still not finite after the trims is the solver's failure:
+    // liblsoda and indLin carry a non-finite right-hand side on into the state
+    // without failing the step.
+    bool finite = true;
+    for (int k = rxEffNeq(ind, op); k--;) {
+      if (!R_FINITE(yp[k])) {
+        finite = false;
+        break;
+      }
+    }
+    if (!finite) {
+      rxSolverFail(ind);
+      *rc = -2019;
+      badSolveExit(*i);
+    }
   }
   ind->slvr_counter[0]++;
 }
