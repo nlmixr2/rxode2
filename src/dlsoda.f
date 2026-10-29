@@ -1311,6 +1311,10 @@ C If MITER = 5, make MBAND calls to F to approximate J. ----------------
         DO 530 I = J,N,MBAND
           YI = Y(I)
           R = MAX(SRUR*ABS(YI),R0/EWT(I))
+C With F and Y subnormal, R0/EWT(I) underflows and -HL0/R would
+C overflow; take the increment an F of exactly zero gets.
+          IF (R .LT. MAX(TINY(R),ABS(HL0)/HUGE(R)))
+     1      R = MAX(SRUR*ABS(YI),1.0D0/EWT(I))
 C530      Y(I) = Y(I) + R
           Y(I) = Y(I) + R
  530      CONTINUE
@@ -1319,6 +1323,9 @@ C530      Y(I) = Y(I) + R
           Y(JJ) = YH(JJ,1)
           YJJ = Y(JJ)
           R = MAX(SRUR*ABS(YJJ),R0/EWT(JJ))
+C The increment the loop above perturbed Y(JJ) by.
+          IF (R .LT. MAX(TINY(R),ABS(HL0)/HUGE(R)))
+     1      R = MAX(SRUR*ABS(YJJ),1.0D0/EWT(JJ))
           FAC = -HL0/R
           I1 = MAX(JJ-MU,1)
           I2 = MIN(JJ+ML,N)

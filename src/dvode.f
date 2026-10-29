@@ -2330,6 +2330,9 @@ C If MITER = 2, make N calls to F to approximate the Jacobian. ---------
       DO 230 J = 1,N
         YJ = Y(J)
         R = MAX(SRUR*ABS(YJ),R0/EWT(J))
+C With F and Y subnormal, R0/EWT(J) underflows and ONE/R would
+C overflow; take the increment an F of exactly zero gets.
+        IF (R .LT. TINY(R)) R = MAX(SRUR*ABS(YJ),ONE/EWT(J))
         Y(J) = Y(J) + R
         FAC = ONE/R
         CALL F (N, TN, Y, FTEM, RPAR, IPAR)
@@ -2428,6 +2431,9 @@ C If MITER = 5, make N calls to F to approximate the Jacobian. ---------
         DO 530 I = J,N,MBAND
           YI = Y(I)
           R = MAX(SRUR*ABS(YI),R0/EWT(I))
+C With F and Y subnormal, R0/EWT(I) underflows and ONE/R would
+C overflow; take the increment an F of exactly zero gets.
+          IF (R .LT. TINY(R)) R = MAX(SRUR*ABS(YI),ONE/EWT(I))
           Y(I) = Y(I) + R
 530   CONTINUE     
         CALL F (N, TN, Y, FTEM, RPAR, IPAR)
@@ -2435,6 +2441,8 @@ C If MITER = 5, make N calls to F to approximate the Jacobian. ---------
           Y(JJ) = YH(JJ,1)
           YJJ = Y(JJ)
           R = MAX(SRUR*ABS(YJJ),R0/EWT(JJ))
+C The increment the loop above perturbed Y(JJ) by.
+          IF (R .LT. TINY(R)) R = MAX(SRUR*ABS(YJJ),ONE/EWT(JJ))
           FAC = ONE/R
           I1 = MAX(JJ-MU,1)
           I2 = MIN(JJ+ML,N)
