@@ -9127,6 +9127,14 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               bool _xFix = _xIn && op->adjDfOff >= 0 && (_xWhI == EVIDF_INF_RATE || _xWhI == EVIDF_INF_DUR);
               bool _xIsDur = (_lagFix > 0) ? (_lagFix == 2) : (_xWhI == EVIDF_INF_DUR);
               double _xPre = _xIn ? ind->InfusionRate[_xCmt] : 0.0;
+              // a lagged ss bolus's earlier-interval dose pushed past the record (a lag
+              // longer than ii): its landing time moves with alag() and f() scales it
+              if (_lagAt >= 0 && _xIn && _xWhI == 0 && (op->adjDlagOff >= 0 || op->adjDfOff >= 0)) {
+                rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _xCmt; _d.type = 0;
+                _d.amt = ind->extraDoseDose[trueIdx];
+                _d.amtF = getAmt(ind, ind->id, _xCmt, _d.amt, ind->extraDoseNewXout, yp);
+                doseRec.push_back(_d);
+              }
               handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
                           ind->BadDose, ind->InfusionRate, ind->dose, yp, xout, neq[1], ind);
               double _xdR = _xIn ? ind->InfusionRate[_xCmt] - _xPre : 0.0;
