@@ -21,6 +21,7 @@ extern "C" {
   int handle_evidL(int evid, double *yp, double xout, int id, rx_solving_options_ind *ind);
   void handleTlast(double *time, rx_solving_options_ind *ind);
   double _getDur(int l, rx_solving_options_ind *ind, int backward, unsigned int *p);
+  void updateExtraDoseGlobals(rx_solving_options_ind* ind);
 
 #else
   #define _getDur _rxode2parse_getDur
@@ -434,6 +435,10 @@ static inline int pushIgnoredDose(int doseIdx, rx_solving_options_ind *ind) {
       op->badSolve = 1;
       return 0;
     }
+#ifndef _isrxode2parse_
+    // the thread's next subject re-reads the list from the globals
+    updateExtraDoseGlobals(ind);
+#endif
   }
   ind->ignoredDoses[ind->ignoredDosesN[0]] = doseIdx;
   ind->ignoredDosesN[0] = ind->ignoredDosesN[0]+1;
