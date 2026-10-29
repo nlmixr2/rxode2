@@ -7942,18 +7942,22 @@ struct rk4sInfusMaps {
   // A fixed-dur window whose f() depends on the state: its rate F(x_on)*amt/dur
   // moves with the start state, so lam(t_on) gains (sum of the in-window costate
   // weights of cmt) * row, row = raw rate * dF_cmt/dx at x_on.
+  // A modeled window whose f() depends on the state moves with x_on too: a
+  // dur()'s rate F*amt/dur, as above (row = amt/dur * dF_cmt/dx), and a rate()'s
+  // stop t_on + F*amt/R, which adds lam_cmt(t_off) * amt * dF_cmt/dx (atOff: the
+  // weight is lam_cmt at its off step, not the in-window integral).
   // byEvent: its start is a type-12 event (startEvent), at the start record's
   // place among the events there; win: its index in infusRec.  A lagged start
   // read x_on later by the lag, moving it by fPre (the field just before the
   // start): mu += dlag/dp * acc * (row . fPre), dlag the cmt's d(alag)/dp row.
   struct SfWin { size_t on, off; int cmt; std::vector<double> row; int win = -1; bool byEvent = false;
-                 std::vector<double> fPre, dlag; };
+                 std::vector<double> fPre, dlag; bool atOff = false; };
   std::vector<SfWin> sfw;
   mutable std::vector<double> sfAcc;
   // mu += sum_c fV[n, c] * w[c], w the stage's costate weight
   void forcing(size_t n, const double *w, std::vector<double> &mu) const {
     for (size_t k = 0; k < sfw.size(); ++k)
-      if (n >= sfw[k].on && n < sfw[k].off) sfAcc[k] += w[sfw[k].cmt];
+      if (!sfw[k].atOff && n >= sfw[k].on && n < sfw[k].off) sfAcc[k] += w[sfw[k].cmt];
     if (fAny.empty() || !fAny[n]) return;
     for (int c = 0; c < nBase; ++c) {
       const double *v = &fV[((size_t)n * nBase + c) * np];
@@ -7983,6 +7987,8 @@ struct rk4sInfusMaps {
   }
   // mu += sum_c oV[n, c] * lam[c] at an off-boundary step
   void offBoundary(size_t n, const double *lam, std::vector<double> &mu) const {
+    for (size_t k = 0; k < sfw.size(); ++k)
+      if (sfw[k].atOff && sfw[k].off == n) sfAcc[k] += lam[sfw[k].cmt];
     if (oAny.empty() || !oAny[n]) return;
     for (int c = 0; c < nBase; ++c) {
       const double *v = &oV[((size_t)n * nBase + c) * np];
@@ -8038,6 +8044,17 @@ static void rk4sBuildInfusMaps(rx_solving_options *op, rx_solving_options_ind *i
         W.dlag.assign(ind->lhs + op->adjDlagOff + F.cmt * np, ind->lhs + op->adjDlagOff + (F.cmt + 1) * np);
       }
       M.sfw.push_back(W);
+    }
+    if (op->adjDfxOff >= 0 && !F.fixed && !F.yOn.empty() && F.R != 0.0 && F.amt != 0.0) {
+      bool dep = false;
+      for (int j = 0; j < nBase; ++j) dep = dep || ind->lhs[op->adjDfxOff + F.cmt * nBase + j] != 0.0;
+      if (dep) {
+        rk4sInfusMaps::SfWin W; W.on = F.onStep; W.off = (F.offStep == (size_t)-1) ? nStep : F.offStep;
+        W.cmt = F.cmt; W.row.resize(nBase); W.win = (int)w; W.byEvent = F.startEv; W.atOff = !F.isDur;
+        double sc = F.isDur ? F.amtRaw * F.R / F.amt : F.amtRaw;   // amt/dur, or amt
+        for (int j = 0; j < nBase; ++j) W.row[j] = sc * ind->lhs[op->adjDfxOff + F.cmt * nBase + j];
+        M.sfw.push_back(W);
+      }
     }
     if (haveRate) dR.assign(ind->lhs + op->adjDrateOff, ind->lhs + op->adjDrateOff + (size_t)nBase * np);
     if (haveDf) dF.assign(ind->lhs + op->adjDfOff, ind->lhs + op->adjDfOff + (size_t)nBase * np);
@@ -9537,7 +9554,13 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               _f.durMult = (_whI == EVIDF_MODEL_DUR_ON) ? _amt : 1.0;
               _f.isDur = (_whI == EVIDF_MODEL_DUR_ON);
               _f.key = rk4sInfusionStartKey(ind, ind->ix[i]); _f.tOn = xout; _f.recIdx = i;
+              if (op->adjDfxOff >= 0) { _f.yOn.assign(yp, yp + op->adjNbase); _f.startEv = true; }
               infusRec.push_back(_f);
+              if (op->adjDfxOff >= 0) {   // a state-dependent f(): its start term among the events here
+                rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _cmtD; _d.amt = 0.0; _d.type = 12;
+                _d.rec = (int)infusRec.size() - 1;
+                doseRec.push_back(_d);
+              }
               _infusOnCmt = _cmtD;
               _infusOnPre = ind->InfusionRate[_cmtD];
             } else if ((_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) && op->adjDrateOff >= 0) {

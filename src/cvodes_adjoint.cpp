@@ -160,7 +160,7 @@ static int cvB_bwd(sunrealtype t, N_Vector B, N_Vector Bd, void *ud) {
           for (int p = 0; p < np; ++p) NV_Ith_S(Bd, n + p) += -F.durMult * drate[p] * lc;
         }
         // a dur() or fixed-dur rate also moves with a modeled F
-        if (F.sf >= 0) {                      // a state-dependent f(): read at the start
+        if (F.sf >= 0 && F.fixed) {           // a state-dependent f(): read at the start
           for (int p = 0; p < np; ++p) NV_Ith_S(Bd, n + p) += -F.dfW * F.dFon[p] * lc;
           NV_Ith_S(Bd, n + np + F.sf) = -lc;
         } else if (u->dfOff >= 0 && F.isDur && F.tOff < R_PosInf && F.tOff > F.tOn) {
@@ -168,6 +168,8 @@ static int cvB_bwd(sunrealtype t, N_Vector B, N_Vector Bd, void *ud) {
           double dfm = F.fixed ? F.dfW : F.amtRaw / (F.tOff - F.tOn);
           for (int p = 0; p < np; ++p) NV_Ith_S(Bd, n + p) += -dfm * dF[p] * lc;
         }
+        // a modeled dur() whose f() depends on the state: the integral of lam_cmt
+        if (F.sf >= 0 && !F.fixed && F.isDur) NV_Ith_S(Bd, n + np + F.sf) = -lc;
       }
     }
   }
@@ -418,7 +420,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
                                   (_whI == EVIDF_MODEL_DUR_ON) ? _amt : 1.0, _raw,
                                   _whI == EVIDF_MODEL_DUR_ON});
               infusRec.back().key = rk4sInfusionStartKey(ind, ind->ix[i]);
-              infusRec.back().rec = i; infusRec.back().yOn.assign(yp, yp + nBase);
+              infusRec.back().rec = i; infusRec.back().yOn.assign(yp, yp + nBase); infusRec.back().onSeq = seq;
               _infusOnCmt = _cmt;   // R captured after handleEvid1
               _infusOnPre = ind->InfusionRate[_cmt];
             } else if ((_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) && op->adjDrateOff >= 0) {
@@ -530,13 +532,16 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
 
   // ================= backward sweep -> rx__sens_* output slots =================
   if (localBadSolve) return 0;
-  // fixed-dur windows whose f() depends on the state: one backward component
-  // each, and a type-12 event at the start that applies it
+  // fixed-dur and modeled windows whose f() depends on the state: one backward
+  // component each (the integral of lam_cmt over a dur window, or lam_cmt at a
+  // modeled rate()'s stop, which t_on + F*amt/R moves), and a type-12 event at
+  // the start that applies it
   int nSf = 0;
   if (op->adjDfxOff >= 0 && op->adjDfOff >= 0)
     for (size_t w = 0; w < infusRec.size(); ++w) {
       cvInfus &F = infusRec[w];
-      if (!F.fixed || !F.isDur || F.yOn.empty() || F.dfW == 0.0) continue;
+      if (F.yOn.empty()) continue;
+      if (F.fixed ? (!F.isDur || F.dfW == 0.0) : (F.R == 0.0 || F.amt == 0.0)) continue;
       std::vector<double> Aq(eff, 0.0);
       for (int b = 0; b < nBase; ++b) Aq[b] = F.yOn[b];
       rk4sLhsRec(ind, cSub, F.rec, F.tOn, Aq.data());
@@ -545,7 +550,9 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       if (!dep) continue;
       F.dFon.assign(ind->lhs + op->adjDfOff + F.cmt * np, ind->lhs + op->adjDfOff + (F.cmt + 1) * np);
       F.row.resize(nBase);
-      for (int j = 0; j < nBase; ++j) F.row[j] = F.dfW * ind->lhs[op->adjDfxOff + F.cmt * nBase + j];
+      // amt/dur for a modeled dur(), amt for a modeled rate()
+      double sc = F.fixed ? F.dfW : (F.isDur ? F.amtRaw * F.R / F.amt : F.amtRaw);
+      for (int j = 0; j < nBase; ++j) F.row[j] = sc * ind->lhs[op->adjDfxOff + F.cmt * nBase + j];
       if (op->adjDlagOff >= 0 && (int)F.fPre.size() == nBase)
         F.dlagOn.assign(ind->lhs + op->adjDlagOff + F.cmt * np, ind->lhs + op->adjDlagOff + (F.cmt + 1) * np);
       F.sf = nSf++;
@@ -714,6 +721,8 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
           calc_lhs(cSub, (double)te, A, ind->lhs);
           double fac = evJumps[segEv[s]].factor, lc = NV_Ith_S(B, c);
           const cvInfus *W = ev.rec >= 0 ? &infusRec[ev.rec] : NULL;   // its window's rows
+          // a state-dependent modeled rate()'s stop: the weight of its start term
+          if (W && W->sf >= 0 && !W->fixed && !W->isDur) NV_Ith_S(B, nBase + np + W->sf) += lc;
           if (op->adjDrateOff >= 0 && fac != 0.0) {
             const double *drate = (W && !W->dRon.empty()) ? W->dRon.data() : &ind->lhs[op->adjDrateOff + c * np];
             for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += fac * drate[p] * lc;

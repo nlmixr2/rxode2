@@ -93,6 +93,21 @@ rxTest({
     .chk(list(txt = .txtL, p = c(.p, lg = 0.4), ev = .inf), c(.rk4sFamily, "liblsodaadj", "cvodesadj", "abs"), "infusion lag")
   })
 
+  test_that("a modeled rate() or dur() infusion with a state-dependent f() moves with its start state", {
+    # dur(): the rate F(x_on)*amt/dur; rate(): the stop t_on + F(x_on)*amt/R.
+    # Observations before and after the stops (4.6 and 7)
+    .oM <- c(1, 2, 3.5, 5, 6.5, 8, 10, 12)
+    .mdl <- list(
+      rate = list(txt = paste0(.base, .fCenter, "\nrate(depot) <- rr"), p = c(.p, rr = 20), r = -1),
+      dur = list(txt = paste0(.base, .fCenter, "\ndur(depot) <- dd"), p = c(.p, dd = 4), r = -2)
+    )
+    for (.nm in names(.mdl)) {
+      .k <- .mdl[[.nm]]
+      .ev <- et(amt = 100, cmt = "depot") |> et(time = 3, amt = 80, rate = .k$r, cmt = "depot") |> et(.oM)
+      .chk(list(txt = .k$txt, p = .k$p, ev = .ev), c(.rk4sFamily, "liblsodaadj", "cvodesadj", "abs"), .nm)
+    }
+  })
+
   test_that("a same-time dose, replace or multiply changes the state an infusion start reads", {
     # the infusion's f() reads center, which an event at t = 3 changes; the start
     # term applies where the start record lies among that time's events

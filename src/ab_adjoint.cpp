@@ -45,8 +45,8 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   // ---- the events at a time from the event table, in the order the forward
   // solve applied them: 0 bolus (dPhi/dy=I; its modeled F and alag duals, raw amt
   // in factor and F*amt in amtF) | 3 reset (->0) | 5 replace[c] (->0) | 6
-  // multiply[c] (*=factor, F*amt) | 12 a fixed-dur infusion start (where a
-  // state-dependent f() window's start term applies, in the forward order).
+  // multiply[c] (*=factor, F*amt) | 12 a fixed-dur or modeled infusion start (where
+  // a state-dependent f() window's start term applies, in the forward order).
   struct abJump { int type, cmt; double factor, amtF = 0.0; int rec = -1; };   // rec: a bolus/replace/multiply's record index
   // the start state of call c
   auto abCallY0 = [&](size_t c) {
@@ -70,7 +70,9 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
       if (!isDose(e)) continue;
       int _wh, _cmt, _wh100, _whI, _wh0; getWh(e, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
       if (_cmt < 0 || _cmt >= nBase) continue;
-      if (_whI == EVIDF_INF_DUR && op->adjDfxOff >= 0 && _wh0 == EVID0_REGULAR && getDose(ind, ind->ix[i]) > 0) {
+      if (op->adjDfxOff >= 0 && _wh0 == EVID0_REGULAR &&
+          ((_whI == EVIDF_INF_DUR && getDose(ind, ind->ix[i]) > 0) ||
+           _whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON)) {
         abJump _j = {12, _cmt, 0.0}; _j.rec = i; ev.push_back(_j);
       }
       else if (_whI == EVIDF_REPLACE) { abJump _j = {5, _cmt, 0.0}; _j.rec = i; ev.push_back(_j); }
@@ -126,7 +128,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
     }
     // a state-dependent f() window: forced with dF/dp at its start state
     for (size_t k = 0; k < sfWins.size(); ++k)
-      for (size_t c = sfWins[k].seg0; c < sfWins[k].seg1 && c < nCalls; ++c) {
+      for (size_t c = sfWins[k].seg0; !sfWins[k].dF.empty() && c < sfWins[k].seg1 && c < nCalls; ++c) {
         if (infW[c].empty()) infW[c].assign((size_t)nBase * np, 0.0);
         for (int p = 0; p < np; ++p) infW[c][(size_t)sfWins[k].cmt * np + p] += sfWins[k].raw * sfWins[k].dF[p];
       }
@@ -139,7 +141,8 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   // (and, in call c, each state-dependent f() window's integral of lam_cmt)
   auto addW = [&](const std::vector<double> &W, const double *v, double s, long call = -1) {
     for (size_t k = 0; call >= 0 && k < sfWins.size(); ++k)
-      if ((size_t)call >= sfWins[k].seg0 && (size_t)call < sfWins[k].seg1) sfAcc[k] += s * v[sfWins[k].cmt];
+      if (!sfWins[k].atOff && (size_t)call >= sfWins[k].seg0 && (size_t)call < sfWins[k].seg1)
+        sfAcc[k] += s * v[sfWins[k].cmt];
     if (W.empty()) return;
     for (int p = 0; p < np; ++p) { double z = 0.0; for (int a = 0; a < nBase; ++a) z += W[(size_t)a * np + p] * v[a]; mu[p] += s * z; }
   };
@@ -295,6 +298,8 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
           }
           for (int b = 0; b < nBase; ++b) endCostate[b] = lam[b];  // costate of call c's start
           addW(infB[c], endCostate.data(), 1.0);                     // a moving rate change at t0_c
+          for (size_t q = 0; q < sfWins.size(); ++q)   // a state-dependent rate() window's stop
+            if (sfWins[q].atOff && sfWins[q].seg1 == (size_t)c) sfAcc[q] += endCostate[sfWins[q].cmt];
           // the jumps at t0_c -> costate of the pre-event state (call c-1's end, or
           // the initial conditions for call 0)
           abJumpT(callEv[c], abAdjCalls[c].t0, abCallY0(c).data(), endCostate.data(), mu.data());

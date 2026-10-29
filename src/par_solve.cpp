@@ -3225,9 +3225,10 @@ static inline int rxAdjJumpCmt(rx_solving_options *op, rx_solving_options_ind *i
   if (!isDose(ev)) return -1;
   int _wh, _cmt, _wh100, _whI, _wh0; getWh(ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
   bool bolus = (_whI == 0 && _wh0 == EVID0_REGULAR && (op->adjDlagOff >= 0 || op->adjDfxOff >= 0));
-  // a fixed-dur infusion's start, for a state-dependent f(): the state it reads F at
-  bool infStart = (op->adjDfxOff >= 0 && _whI == EVIDF_INF_DUR && _wh0 == EVID0_REGULAR &&
-                   getDose(ind, ind->ix[rec]) > 0);
+  // a fixed-dur or modeled infusion's start, for a state-dependent f(): the state it reads F at
+  bool infStart = (op->adjDfxOff >= 0 && _wh0 == EVID0_REGULAR &&
+                   ((_whI == EVIDF_INF_DUR && getDose(ind, ind->ix[rec]) > 0) ||
+                    _whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON));
   if (_whI != EVIDF_REPLACE && _whI != EVIDF_MULT && !bolus && !infStart) return -1;
   return (_cmt >= 0 && _cmt < op->adjNbase) ? _cmt : -1;
 }
@@ -3237,7 +3238,8 @@ static inline void rxAdjJumpRecord(rx_solving_options *op, rx_solving_options_in
   int nBase = op->adjNbase;
   int _wh, _c, _wh100, _whI, _wh0; getWh(getEvid(ind, ind->ix[rec]), &_wh, &_c, &_wh100, &_whI, &_wh0);
   rxAdjJumpCap cap; cap.rec = rec; cap.xPre = pre[cmt]; cap.raw = getDose(ind, ind->ix[rec]);
-  cap.kind = (_whI == EVIDF_REPLACE) ? 5 : (_whI == EVIDF_MULT) ? 6 : (_whI == EVIDF_INF_DUR) ? 7 : 0;
+  cap.kind = (_whI == EVIDF_REPLACE) ? 5 : (_whI == EVIDF_MULT) ? 6 :
+    (_whI == EVIDF_INF_DUR || _whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON) ? 7 : 0;
   if (cap.kind == 6) {
     std::vector<double> yF(pre);
     cap.alpha = getAmt(ind, ind->id, cmt, cap.raw, t, yF.data());
