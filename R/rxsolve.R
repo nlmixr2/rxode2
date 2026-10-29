@@ -3480,6 +3480,12 @@ rxSolve.default <- function(
       call. = FALSE
     )
   }
+  if (inherits(params, "rxControl") || inherits(events, "rxControl")) {
+    stop(
+      "'rxControl()' cannot be passed as 'params' or 'events'; pass control options as named arguments instead, e.g. rxSolve(object, params, events, method='dop853+ros4')", # nolint: line_length_linter.
+      call. = FALSE
+    )
+  }
   .ctl <- rxControl(..., indOwnAlloc = indOwnAlloc, events = events, params = params)
   if (length(rxModelVars(object)$indLin) > 0L) {
     if (.ctl$method != 3L) {
