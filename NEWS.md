@@ -142,6 +142,12 @@
   into it now cancels the infusion's stop record too, so the state no longer
   goes negative and the stop no longer turns the compartment back on.  Its
   event sensitivities are reset with it (#1562).
+- An infusion's `alag()`, `f()`, `rate()` and `dur()` are now read at its
+  start's record.  A fixed-rate infusion's stop read `alag()` at the stop's
+  record and `f()` between records (80 at rate 40 with
+  `alag(depot) <- lg*WT/70` delivered 85.14 when WT changed during the
+  infusion), and once a lagged dose moved past an infusion's start, a
+  modeled `rate()` or `dur()` read another record's covariates.
 - A simulation that stops with an error no longer leaves its draws for the
   next solve.  The residuals, simulated thetas and per-study draws it had
   made stayed behind, and the next solve without residuals of its own used
