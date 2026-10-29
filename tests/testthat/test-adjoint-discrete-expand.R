@@ -419,7 +419,7 @@ rxTest({
     }
     # a multiply at t0 scales the initial-condition sensitivity
     .ev <- rbind(.row(1L, 6L, 3, "center"), .row(1L, 0L, 0, "center"))
-    for (.m in setdiff(.adjIniMethods, "cvodesadj")) {
+    for (.m in .adjIniMethods) {
       .a <- rxSolveAdjointRk4(
         "d/dt(center) <- -k*center\ncenter(0) <- c0",
         .ev,
