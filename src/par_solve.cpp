@@ -2917,6 +2917,32 @@ static inline void solveWith1Pt(int *neq,
 }
 
 
+// One solve of a steady-state cycle, which runs on a 0..ii clock: tad() counts
+// from the cycle's dose at clock 0, and the dose times are restored after (#1585)
+static inline void solveSSCycle(int *neq,
+                                int *BadDose,
+                                double *InfusionRate,
+                                double *dose,
+                                double *yp,
+                                double xout, double xp, int id,
+                                int *i, int nx,
+                                int *istate,
+                                rx_solving_options *op,
+                                rx_solving_options_ind *ind,
+                                t_update_inis u_inis,
+                                void *ctx) {
+  int cmt = ind->cmt;
+  bool hasCmt = cmt >= 0 && cmt < op->neq + op->extraCmt;
+  double tlast = ind->tlast;
+  double tlastS = hasCmt ? ind->tlastS[cmt] : 0.0;
+  ind->tlast = ind->curShift;
+  if (hasCmt) ind->tlastS[cmt] = ind->curShift;
+  solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+               xout, xp, id, i, nx, istate, op, ind, u_inis, ctx);
+  ind->tlast = tlast;
+  if (hasCmt) ind->tlastS[cmt] = tlastS;
+}
+
 //' This function is used to check if the steady state can be handled
 //' by the pre-solved linear solutions
 //'
@@ -3070,8 +3096,8 @@ static inline void handleSSbolusIterate(int *neq,
   // restart: the cycle clock is not the solver's last time
   *istate=1;
   // yp is last solve or y0
-  solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-               *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+  solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
   *xp2 = *xout2;
   int evid=0;
   for (int nDose = 1; ; nDose++) {
@@ -3089,8 +3115,8 @@ static inline void handleSSbolusIterate(int *neq,
     // restart so lsoda integrates from the dosed yp, not its internal state
     *istate=1;
     // yp is last solve or y0
-    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
     ind->ixds--; // This dose stays in place
     // REprintf("ixds-- #2\n");
     *istate=1;
@@ -3311,8 +3337,8 @@ static inline void solveSSinfIterate(int *neq,
     // yp is last solve or y0
     *istate=1;
     // yp is last solve or y0
-    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
     *xp2 = *xout2;
     // Turn off Infusion, solve (*dur-ii)
     *xout2 = *xp2 + *dur2;
@@ -3351,8 +3377,8 @@ static inline void solveSSinfIterate(int *neq,
     // yp is last solve or y0
     *istate=1;
     ind->ssTime = ssStop;
-    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
     if (j + 1 < minSS){
       if (ind->rc[0]== -2019){
         badSolveExit(*i);
@@ -3496,8 +3522,8 @@ extern "C" void solveSSinfLargeDur(int *neq,
     // restart so lsoda integrates each interval from the dosed yp
     *istate=1;
     // yp is last solve or y0
-    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
   }
   // minSS/maxSS count every dose before the steady-state one: the
   // numDoseInf started above, one per period and the nAfter that handleSS()
@@ -3524,8 +3550,8 @@ extern "C" void solveSSinfLargeDur(int *neq,
     *istate=1;
     // yp is last solve or y0
     ind->ssTime = time2;
-    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
     *xp2 = *xout2;
     // Turn off Infusion, solve (dur-ii)
     *xout2 = *xp2 + *addTime;
@@ -3558,8 +3584,8 @@ extern "C" void solveSSinfLargeDur(int *neq,
     // yp is last solve or y0
     *istate=1;
     ind->ssTime = time3;
-    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
     if (j + 1 < minSS && ind->rc[0]== -2019){
       badSolveExit(*i);
       break;
@@ -4328,8 +4354,8 @@ void handleSS(int *neq,
         // covariates stay at the dose time, as in the cycles
         ind->ssTime = xp;
         // yp is last solve or y0
-        solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                     xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+        solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                      xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
         ind->ssTime = NA_REAL;
         if (overIi > 0) {
           // lag > ii: the doses of the overIi earlier intervals arrive in this
@@ -4434,8 +4460,8 @@ void handleSS(int *neq,
             // yp is last solve or y0
             *istate=1;
             // yp is last solve or y0
-            solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                         xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+            solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                          xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
             xp2 = xout2;
             // Turn off Infusion, and solve to infusion stop time
             xout2 = xp2 + solveTo - offTime;
@@ -4446,8 +4472,8 @@ void handleSS(int *neq,
                         BadDose, InfusionRate, dose, yp,
                         xout+dur, neq[1], ind);
             *istate=1;
-            solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                         xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+            solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                          xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
             pushDosingEvent(startTimeD+curLagExtra,
                             rateOn, extraEvid, ind);
           } else {
@@ -4464,8 +4490,8 @@ void handleSS(int *neq,
             // yp is last solve or y0
             *istate=1;
             // yp is last solve or y0
-            solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                         xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+            solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                          xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
             pushDosingEvent(startTimeD+offTime-solveTo,
                             rateOff, extraEvid, ind);
             pushDosingEvent(startTimeD+curLagExtra,
@@ -4573,8 +4599,8 @@ void handleSS(int *neq,
               // yp is last solve or y0
               *istate=1;
               // yp is last solve or y0
-              solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                           xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+              solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                            xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
               ind->idx=ei;
               ind->ixds = infEixds;
               handle_evid(getEvid(ind, ind->idose[infEixds]), neq[0],
@@ -4605,8 +4631,8 @@ void handleSS(int *neq,
               // yp is last solve or y0
               *istate=1;
               // yp is last solve or y0
-              solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                           xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+              solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                            xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
 
               for (int cur = 0; cur < (overIi+1); ++cur) {
                 pushDosingEvent(startTimeD+dur-solveExtra+cur*curIi,
@@ -4632,8 +4658,8 @@ void handleSS(int *neq,
               // yp is last solve or y0
               *istate=1;
               // yp is last solve or y0
-              solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                           xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+              solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                            xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
               if (!isSameTimeOp(totTime, xout2)) {
                 // don't give the infusion off dose
                 xp2 = xout2;
@@ -4646,8 +4672,8 @@ void handleSS(int *neq,
                             xout+dur, neq[1], ind);
                 // yp is last solve or y0
                 *istate=1;
-                solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                             xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+                solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                              xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
               }
               for (int cur = 0; cur < (overIi+1); ++cur) {
                 pushDosingEvent(startTimeD+curLagExtra+cur*curIi,
