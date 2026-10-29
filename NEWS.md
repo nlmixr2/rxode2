@@ -154,6 +154,13 @@
   into it now cancels the infusion's stop record too, so the state no longer
   goes negative and the stop no longer turns the compartment back on.  Its
   event sensitivities are reset with it (#1562).
+- `alag()` now fills a dose row's missing covariate the way `f()` does, from
+  the neighbouring records: under `locf` from the nearest earlier record
+  with a value (or the nearest later one when none is earlier), under `nocb`
+  from the nearest later one (or earlier), and under `midpoint` and
+  `linear` in the direction `naInterpolation` gives.  With covariates on
+  the observation rows only, an `alag()` on a covariate used to stop the
+  solve with "'alag(depot)' and maybe more items produce NA".
 - A simulation that stops with an error no longer leaves its draws for the
   next solve.  The residuals, simulated thetas and per-study draws it had
   made stayed behind, and the next solve without residuals of its own used
