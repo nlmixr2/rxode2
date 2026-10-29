@@ -362,6 +362,10 @@ convertId_ <- function(x) {
     .Call(`_rxode2_convertId_`, x)
 }
 
+rxInvChol_ <- function(x, type) {
+    .Call(`_rxode2_rxInvChol_`, x, type)
+}
+
 #' Variance-covariance (non-Cholesky) Omega parameterization derivatives (C++)
 #'
 #' C++/RcppArmadillo implementation of the non-Cholesky Omega derivatives used

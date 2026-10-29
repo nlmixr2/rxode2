@@ -579,6 +579,18 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// rxInvChol_
+SEXP rxInvChol_(SEXP x, int type);
+RcppExport SEXP _rxode2_rxInvChol_(SEXP xSEXP, SEXP typeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type type(typeSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxInvChol_(x, type));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rxOmegaVarCovDeriv_
 List rxOmegaVarCovDeriv_(arma::mat omega, int order);
 RcppExport SEXP _rxode2_rxOmegaVarCovDeriv_(SEXP omegaSEXP, SEXP orderSEXP) {
