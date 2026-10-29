@@ -3223,15 +3223,7 @@ rxTest({
     expect_equal(length(unique(.many$ID)), 5000L)
 
     invisible(rxode2::etTrans(.fixedRows(50, 1000), mod)) # warm up
-    # rxTest() already skips on CRAN, so this also runs in loaded local
-    # checks; retry so one contended interval does not fail it.  The O(rows *
-    # subjects) regression (12.6x) fails every attempt.
-    .ratio <- Inf
-    for (.try in 1:3) {
-      .ratio <- min(.ratio, .minElapsed(.many) / .minElapsed(.few))
-      if (.ratio < 3) break
-    }
-    expect_lt(.ratio, 3)
+    expect_lt(.minElapsed(.many), 3 * .minElapsed(.few))
   })
 
   test_that("rxSolve() and etTrans() leave the caller's translated table as it was", {
