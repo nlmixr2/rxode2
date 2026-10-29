@@ -4442,7 +4442,7 @@ void handleSS(int *neq,
                    &dur,
                    &dur2,
                    &canBreak,
-                   (isSsLag && curLagExtra > 0) ? 1 + overIi : 0);
+                   (curLagExtra > 0 ? 1 : 0) + overIi);
         // Adjoint handoff: a fixed-rate (whI == EVIDF_INF_RATE) infusion with a
         // single on/off window per period (dur < ii, this solveSSinf branch)
         // has dR/dp == 0, so the rk4s driver can record its steady-state period
@@ -4595,6 +4595,14 @@ void handleSS(int *neq,
           if (_rxEsActive && ind->whI == EVIDF_MODEL_RATE_ON) _esSSRateOffCmt = ind->cmt;
           pushDosingEvent(startTimeD+dur,
                           rateOff, extraEvid, ind);
+          // lag == overIi*ii: the infusion above is the earliest arriving dose;
+          // the later ones, the record's own last, start overIi*ii after it
+          for (int cur = 1; cur <= overIi; ++cur) {
+            pushDosingEvent(startTimeD+cur*curIi,
+                            rateOn, regEvid, ind);
+            pushDosingEvent(startTimeD+dur+cur*curIi,
+                            rateOff, regEvid, ind);
+          }
         }
         *istate=1;
         for (k = neq[0]; k--;){

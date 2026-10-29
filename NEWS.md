@@ -52,6 +52,10 @@
 - `linCmt()` models now follow `minSS = maxSS = n`, giving the profile after
   exactly `n` prior doses as the equivalent ODE model does; they used to
   return the exact steady state for every `n` (#1500).
+- A steady-state infusion into a compartment whose `alag()` is an exact
+  multiple of `ii` now gives the record's own lagged infusion (and those of
+  the intervals in between); they were dropped, so the profile decayed from
+  the dose arrival time on (#1590).
 
 ## New features
 
