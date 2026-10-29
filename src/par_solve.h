@@ -355,6 +355,7 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
                                  rx_solve *rx, int *neq, double *xp, double *xout,
                                  double *yp, int *idid, t_update_inis u_inis) {
     ind->curShift -= rx->maxShift;
+    cancelRunningInfusionStops(ind, rx, op, ind->idx, neq[0]);
     for (unsigned int j = neq[0]; j--;) {
       ind->InfusionRate[j] = 0;
       ind->on[j] = 1;

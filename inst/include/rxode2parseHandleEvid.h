@@ -440,6 +440,50 @@ static inline int pushIgnoredDose(int doseIdx, rx_solving_options_ind *ind) {
   return re;
 }
 
+// A reset (evid 3/4, ss=1) zeros InfusionRate and so cancels every running
+// data-table infusion; ignore the stop records still ahead of it, or each
+// would leave the compartment at -rate (nlmixr2/rxode2#1562).  `pos` is the
+// reset's position in ind->ix; call before InfusionRate is zeroed.
+static inline void cancelRunningInfusionStops(rx_solving_options_ind *ind,
+                                              rx_solve *rx,
+                                              rx_solving_options *op,
+                                              int pos, int neq) {
+  int wh, cmt, wh100, whI, wh0;
+  for (int k = 0; k < pos && k < ind->n_all_times; ++k) {
+    int r = ind->ix[k];
+    int evid = getEvid(ind, r);
+    if (!isDose(evid) || evid == 3) continue;
+    getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
+    if (wh0 != EVID0_REGULAR || cmt < 0 || cmt >= neq ||
+        ind->InfusionRate[cmt] == 0.0) continue;
+    int l = getDoseNumberFromIndex(ind, r);
+    if (l == -1) {
+      // idose is not guaranteed ascending once doses are pushed at solve time
+      for (int j = 0; j < ind->ndoses; j++) {
+        if (ind->idose[j] == r) { l = j; break; }
+      }
+      if (l == -1) continue;
+    }
+    int e = -1;
+    if (whI == EVIDF_INF_RATE || whI == EVIDF_INF_DUR) {
+      if (getDoseNumber(ind, l) <= 0) continue;
+      handleInfusionGetEndOfInfusionIndex(l, &e, rx, op, ind);
+    } else if (whI == EVIDF_MODEL_RATE_ON || whI == EVIDF_MODEL_DUR_ON) {
+      // the modeled stop is the record right after its start
+      if (l + 1 < ind->ndoses &&
+          getEvid(ind, ind->idose[l + 1]) == evid - 20000) e = l + 1;
+    }
+    if (e < 0) continue;
+    int er = ind->idose[e];
+    for (int kk = pos + 1; kk < ind->n_all_times; ++kk) {
+      if (ind->ix[kk] == er) {
+        pushIgnoredDose(e, ind);
+        break;
+      }
+    }
+  }
+}
+
 static inline int pushPendingDose(int doseIdx, rx_solving_options_ind *ind) {
   int re = 0;
   if (ind->pendingDosesN[0]+1 >= ind->pendingDosesAllocN[0]) {
