@@ -292,7 +292,7 @@ extern "C" double _rxPkTime(double t, unsigned int id, rx_solve *rx) {
   return t;
 }
 
-// The addl repeat dose whose f()/rate()/dur() is being evaluated at `t0`, or
+// The addl repeat dose whose f()/alag()/rate()/dur() is being evaluated at `t0`, or
 // -1.  ind->idx is an ix position while events are handled, but the record
 // itself in updateDur()/updateRate().
 static inline int rxAddlRepDose(rx_solving_options *op, rx_solving_options_ind *ind,
@@ -333,6 +333,18 @@ extern "C" double _rxDoseTime(double t, unsigned int id, rx_solve *rx) {
     return tj + ind->curShift;
   }
   return t;
+}
+
+// The time alag() reads with rxControl(nonmem = TRUE) (rxode2#1583): for an
+// addl repeat dose, the time of the dose record it repeats (as NONMEM
+// evaluates ALAG1); otherwise `t`.
+extern "C" double _rxLagTime(double t, unsigned int id, rx_solve *rx) {
+  if (!rx->nonmem) return t;
+  rx_solving_options *op = rx->op;
+  rx_solving_options_ind *ind = &(rx->subjects[id]);
+  int c = rxAddlRepDose(op, ind, t - ind->curShift);
+  if (c < 0 || ind->pkSkip[c] <= 2) return t;
+  return ind->all_times[c - (ind->pkSkip[c] - 2)] + ind->curShift;
 }
 
 // getTime() decodes the evid of the record it looks up into
