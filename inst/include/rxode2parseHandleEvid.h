@@ -445,6 +445,65 @@ static inline int pushIgnoredDose(int doseIdx, rx_solving_options_ind *ind) {
   return re;
 }
 
+// The dose number of record `r`; idose is not guaranteed ascending once doses
+// are pushed at solve time, so fall back to a linear search.
+static inline int getDoseNumberFromIndexAny(rx_solving_options_ind *ind, int r) {
+  int l = getDoseNumberFromIndex(ind, r);
+  if (l != -1) return l;
+  for (int j = 0; j < ind->ndoses; j++) {
+    if (ind->idose[j] == r) return j;
+  }
+  return -1;
+}
+
+// Is dose record `r` an infusion start that sets a compartment's rate?
+static inline int isInfusionStartRecord(int wh0, int whI) {
+  if (wh0 == EVID0_REGULAR) return 1;
+  // a phantom modeled start still sets the rate (its stop is regular)
+  return wh0 == EVID0_PHANTOM &&
+    (whI == EVIDF_MODEL_RATE_ON || whI == EVIDF_MODEL_DUR_ON);
+}
+
+// The dose number of the stop of a modeled start `r`: the record right after
+// it (getDoseIndexPlus1()); pushed doses keep that, but not idose order.
+static inline int getModeledInfusionStop(rx_solving_options_ind *ind, int r,
+                                         int cmt, int whI) {
+  if (r + 1 >= ind->n_all_times) return -1;
+  int sWh, sCmt, sWh100, sWhI, sWh0;
+  getWh(getEvid(ind, r + 1), &sWh, &sCmt, &sWh100, &sWhI, &sWh0);
+  if (sCmt != cmt || sWhI != whI - 2) return -1;
+  return getDoseNumberFromIndexAny(ind, r + 1);
+}
+
+// The dose number of the stop of the infusion started by record `r`, or -1.
+static inline int getInfusionStopDoseNumber(rx_solving_options_ind *ind,
+                                            rx_solve *rx,
+                                            rx_solving_options *op,
+                                            int r, int cmt, int whI) {
+  int l = getDoseNumberFromIndexAny(ind, r);
+  if (l == -1) return -1;
+  int e = -1;
+  if (whI == EVIDF_INF_RATE || whI == EVIDF_INF_DUR) {
+    // a start with no stop record must not take a later infusion's stop
+    if (getDoseNumber(ind, l) <= 0 || isInfusionUnpaired(ind, r)) return -1;
+    handleInfusionGetEndOfInfusionIndex(l, &e, rx, op, ind);
+  } else if (whI == EVIDF_MODEL_RATE_ON || whI == EVIDF_MODEL_DUR_ON) {
+    e = getModeledInfusionStop(ind, r, cmt, whI);
+  }
+  return e;
+}
+
+// Ignore stop dose `e` when its record is still ahead of position `pos`.
+static inline void ignoreStopAfter(rx_solving_options_ind *ind, int pos, int e) {
+  int er = ind->idose[e];
+  for (int kk = pos + 1; kk < ind->n_all_times; ++kk) {
+    if (ind->ix[kk] == er) {
+      pushIgnoredDose(e, ind);
+      return;
+    }
+  }
+}
+
 // A reset (evid 3/4, ss=1) zeros InfusionRate and so cancels every running
 // data-table infusion; ignore the stop records still ahead of it, or each
 // would leave the compartment at -rate (nlmixr2/rxode2#1562).  `pos` is the
@@ -461,45 +520,10 @@ static inline void cancelRunningInfusionStops(rx_solving_options_ind *ind,
     if (evid == 3) break;
     if (!isDose(evid)) continue;
     getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
-    bool isModeledOn = whI == EVIDF_MODEL_RATE_ON || whI == EVIDF_MODEL_DUR_ON;
-    // a phantom modeled start still sets the rate (its stop is regular)
-    if ((wh0 != EVID0_REGULAR && !(isModeledOn && wh0 == EVID0_PHANTOM)) ||
+    if (!isInfusionStartRecord(wh0, whI) ||
         cmt < 0 || cmt >= neq || ind->InfusionRate[cmt] == 0.0) continue;
-    int l = getDoseNumberFromIndex(ind, r);
-    if (l == -1) {
-      // idose is not guaranteed ascending once doses are pushed at solve time
-      for (int j = 0; j < ind->ndoses; j++) {
-        if (ind->idose[j] == r) { l = j; break; }
-      }
-      if (l == -1) continue;
-    }
-    int e = -1;
-    if (whI == EVIDF_INF_RATE || whI == EVIDF_INF_DUR) {
-      // a start with no stop record must not take a later infusion's stop
-      if (getDoseNumber(ind, l) <= 0 || isInfusionUnpaired(ind, r)) continue;
-      handleInfusionGetEndOfInfusionIndex(l, &e, rx, op, ind);
-    } else if (isModeledOn && r + 1 < ind->n_all_times) {
-      // the modeled stop is the record right after its start
-      // (getDoseIndexPlus1()); pushed doses keep that, but not idose order
-      int sWh, sCmt, sWh100, sWhI, sWh0;
-      getWh(getEvid(ind, r + 1), &sWh, &sCmt, &sWh100, &sWhI, &sWh0);
-      if (sCmt == cmt && sWhI == whI - 2) {
-        e = getDoseNumberFromIndex(ind, r + 1);
-        if (e == -1) {
-          for (int j = 0; j < ind->ndoses; j++) {
-            if (ind->idose[j] == r + 1) { e = j; break; }
-          }
-        }
-      }
-    }
-    if (e < 0) continue;
-    int er = ind->idose[e];
-    for (int kk = pos + 1; kk < ind->n_all_times; ++kk) {
-      if (ind->ix[kk] == er) {
-        pushIgnoredDose(e, ind);
-        break;
-      }
-    }
+    int e = getInfusionStopDoseNumber(ind, rx, op, r, cmt, whI);
+    if (e >= 0) ignoreStopAfter(ind, pos, e);
   }
 }
 
@@ -516,31 +540,41 @@ static inline int isIgnoredExtraDose(rx_solving_options_ind *ind, int i) {
   return 0;
 }
 
+// Does pool stop `i` (amount `amt` at `t`) belong to an infusion running at
+// `time`?  It does when the later pending stops do not outnumber the starts.
+static inline int isRunningExtraInfusionStop(rx_solving_options_ind *ind,
+                                             int i, int cmt, int whI,
+                                             double amt, double t,
+                                             double time) {
+  int wh, oc, wh100, oWhI, wh0;
+  int nStart = 0, nLaterStop = 0;
+  for (int j = 0; j < ind->extraDoseN[0]; ++j) {
+    int o = -1-j;
+    if (j == i || isIgnoredExtraDose(ind, j)) continue;
+    getWh(getEvid(ind, o), &wh, &oc, &wh100, &oWhI, &wh0);
+    double oAmt = getDose(ind, o), ot = getAllTimes(ind, o);
+    if (oc != cmt || oWhI != whI || (oAmt != amt && oAmt != -amt) ||
+        ot <= time) continue;
+    if (oAmt > 0) nStart++;
+    else if (ot > t || (ot == t && j > i)) nLaterStop++;
+  }
+  return nLaterStop >= nStart;
+}
+
 static inline void cancelRunningExtraInfusionStops(rx_solving_options_ind *ind,
                                                    int cmt, double time) {
   if (ind->InfusionRate[cmt] == 0.0) return;
   int wh, c, wh100, whI, wh0;
-  int n = ind->extraDoseN[0];
-  for (int i = 0; i < n; ++i) {
+  for (int i = 0; i < ind->extraDoseN[0]; ++i) {
     int cur = -1-i;
     if (isIgnoredExtraDose(ind, i)) continue;
     getWh(getEvid(ind, cur), &wh, &c, &wh100, &whI, &wh0);
     double amt = getDose(ind, cur), t = getAllTimes(ind, cur);
     if (c != cmt || (whI != EVIDF_INF_RATE && whI != EVIDF_INF_DUR) ||
         amt >= 0 || t <= time) continue;
-    int nStart = 0, nLaterStop = 0;
-    for (int j = 0; j < n; ++j) {
-      int o = -1-j;
-      if (j == i || isIgnoredExtraDose(ind, j)) continue;
-      int oc, oWhI;
-      getWh(getEvid(ind, o), &wh, &oc, &wh100, &oWhI, &wh0);
-      double oAmt = getDose(ind, o), ot = getAllTimes(ind, o);
-      if (oc != cmt || oWhI != whI || (oAmt != amt && oAmt != -amt) ||
-          ot <= time) continue;
-      if (oAmt > 0) nStart++;
-      else if (ot > t || (ot == t && j > i)) nLaterStop++;
+    if (isRunningExtraInfusionStop(ind, i, cmt, whI, amt, t, time)) {
+      pushIgnoredDose(cur, ind);
     }
-    if (nLaterStop >= nStart) pushIgnoredDose(cur, ind);
   }
 }
 
