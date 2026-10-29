@@ -84,6 +84,10 @@
 - A steady-state infusion lasting exactly `ii` (fixed `rate` or `dur`) into a
   compartment with an `alag()` now stays on until its own lagged dose ends;
   with `ssAtDoseTime = TRUE` it turned off `alag()` too early (#1590).
+- The other solvers (`rk4`, `cvode`, the Runge-Kutta, Adams and implicit
+  families, and the rest) now also give every dose a steady-state record
+  schedules between two observations, as #1499 did for `liblsoda`, `lsoda`,
+  `dop853` and `indLin`; all but the first were dropped (#1590).
 
 ## New features
 

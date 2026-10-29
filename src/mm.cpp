@@ -97,7 +97,7 @@ extern "C" void ind_mm_0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         badSolveExit(i);
         localBadSolve = 1;
       } else {
-        if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+        while (!localBadSolve && handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
             if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
               preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
@@ -124,20 +124,6 @@ extern "C" void ind_mm_0(rx_solve *rx, rx_solving_options *op, int solveid, int 
               ind->ixds = ixds;
               ind->idx = idx;
               ind->idxExtra++;
-              if (!isSameTime(xout, ind->extraDoseNewXout)) {
-                preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-
-                if (neqOde > 0) {
-                    zero_copy_state state(yp, neqOde);
-                    mm_do_steps(ind, op, sys, state, ind->extraDoseNewXout, xout);
-                }
-
-                copyLinCmt(neq, ind, op, yp);
-                const char* err_msg = "mm failed";
-                postSolve(neq, &istate, ind->rc, &idx, yp, &err_msg, 19, false, ind, op, rx);
-                if (*(ind->rc) < 0) localBadSolve = 1;
-                ind->extraDoseNewXout = xout;
-              }
               xp = ind->extraDoseNewXout;
             }
         }
