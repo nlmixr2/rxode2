@@ -163,6 +163,7 @@ rxSolve(
   linCmtSensH = 1e-04,
   linCmtSensPhi = TRUE,
   nonmem = FALSE,
+  tieOrder = NULL,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -1459,7 +1460,18 @@ calls \verb{$PK} at its records.  \code{d/dt()} and state-dependent statements k
 the continuous time (like \verb{$DES}).  \code{addl} repeats, infusion ends,
 lagged doses and doses added while solving do not end an interval;
 \code{mtime()} times do.  Covariate interpolation is still set by
-\code{covsInterpolation}.  By default \code{FALSE}.}
+\code{covsInterpolation}.  It also sets the default \code{tieOrder} to \code{"data"}.
+By default \code{FALSE}.}
+
+\item{tieOrder}{How records of a subject that share a time are processed:
+\code{"evid"} processes resets first, then doses, then observations, so the
+result does not depend on the row order of the data; \code{"data"} processes
+them in the order of the rows in the data, the way NONMEM does (records
+a row expands to, like the reset of an \code{evid=4} dose or \code{addl} repeats,
+follow that row).  Doses added while solving follow the records at the
+same time.  An event table already translated by \code{\link[=etTrans]{etTrans()}} keeps the
+order it was translated with.  By default (\code{NULL}) this is \code{"data"} when
+\code{nonmem = TRUE} and \code{"evid"} otherwise.}
 
 \item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that
 is acceptable before issuing a warning/error about the gradient estimates.}
