@@ -489,7 +489,15 @@ static inline void cancelRunningInfusionStops(rx_solving_options_ind *ind,
 // compartment `cmt` cancelled at `time` while its pending doses are kept.
 // Same-rate infusions pair first in first out, so when the pool holds
 // `running` more pending stops than starts, its first `running` stops belong to
-// the running infusions.
+// the running infusions.  Two such regimens with different durations cannot be
+// told apart, the limitation handleTlastInlineDurExtra() documents.
+static inline int isIgnoredExtraDose(rx_solving_options_ind *ind, int i) {
+  for (int k = 0; k < ind->ignoredDosesN[0]; ++k) {
+    if (ind->ignoredDoses[k] == -1-i) return 1;
+  }
+  return 0;
+}
+
 static inline void cancelRunningExtraInfusionStops(rx_solving_options_ind *ind,
                                                    int cmt, double time) {
   if (ind->InfusionRate[cmt] == 0.0) return;
@@ -497,6 +505,7 @@ static inline void cancelRunningExtraInfusionStops(rx_solving_options_ind *ind,
   int n = ind->extraDoseN[0];
   for (int i = 0; i < n; ++i) {
     int cur = -1-i;
+    if (isIgnoredExtraDose(ind, i)) continue;
     getWh(getEvid(ind, cur), &wh, &c, &wh100, &whI, &wh0);
     double amt = getDose(ind, cur), t = getAllTimes(ind, cur);
     if (c != cmt || (whI != EVIDF_INF_RATE && whI != EVIDF_INF_DUR) ||
@@ -504,7 +513,7 @@ static inline void cancelRunningExtraInfusionStops(rx_solving_options_ind *ind,
     int nStart = 0, nLaterStop = 0;
     for (int j = 0; j < n; ++j) {
       int o = -1-j;
-      if (j == i) continue;
+      if (j == i || isIgnoredExtraDose(ind, j)) continue;
       int oc, oWhI;
       getWh(getEvid(ind, o), &wh, &oc, &wh100, &oWhI, &wh0);
       double oAmt = getDose(ind, o), ot = getAllTimes(ind, o);
