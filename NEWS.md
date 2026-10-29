@@ -33,8 +33,9 @@
 ### Solving
 - `rxSolve()` now stops with an error when an `rxControl()` object is passed
   as `params` or `events`, as it already did for `inits`, and a parameter list
-  whose first column is empty gives the parameter-size error.  With a `sigma`
-  to simulate, both used to crash R with a floating point exception (#1551).
+  that is empty or whose first column is empty gives the parameter-size
+  error.  With a `sigma` to simulate, these used to crash R with a floating
+  point exception or fail with an unrelated internal error (#1551).
 
 ### Steady state
 - A steady-state bolus into a compartment whose `alag()` is longer than `ii`

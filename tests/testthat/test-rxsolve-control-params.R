@@ -14,6 +14,7 @@ rxTest({
     # a parameter list whose first column is empty reaches the size check instead of dividing by 0
     expect_error(rxSolve(mod, ev, sigma = sig, unclass(ctl)), "does not match the number of studies")
     expect_error(rxSolve(mod, ev, sigma = sig, list(a = numeric(0))), "does not match the number of studies")
+    expect_error(rxSolve(mod, ev, sigma = sig, list()), "does not match the number of studies")
     expect_equal(nrow(rxSolve(mod, ev, sigma = sig, list(a = 1))), 5L)
   })
 })

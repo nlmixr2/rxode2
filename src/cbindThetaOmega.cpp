@@ -53,6 +53,9 @@ List cbindThetaOmegaNM(NumericMatrix& inputParameters, List& individualParameter
 }
 
 List cbindThetaOmegaL(List& inputParameters, List& individualParameters) {
+  if (inputParameters.size() == 0) {
+    rxError("input parameter data.frame does not match the number of studies (nStud) or total number of simulated subjects (nStud*nSub)");
+  }
   int tot = Rf_length(individualParameters[0]);
   int nstud = Rf_length(inputParameters[0]);
   List ret(inputParameters.size() + individualParameters.size()) ;
