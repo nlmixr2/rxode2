@@ -1154,7 +1154,8 @@ created by reference (ie \code{setDt()}), which should be fast.
 }}
 
 \item{seed}{an object specifying if and how the random number
-generator should be initialized}
+generator should be initialized; when given, it takes precedence
+over an active \code{\link[=rxSetSeed]{rxSetSeed()}} stream for this solve}
 
 \item{nsim}{represents the number of simulations.  For rxode2, if
 you supply single subject event tables (created with
