@@ -326,6 +326,30 @@ rxTest({
     }
   })
 
+  test_that("a replace or multiply right after a reset reaches the initial-condition sensitivity", {
+    # the reset at t = 4 restores center(0) = c0, then the jump there scales it by
+    # 0.5 or replaces it, so dcenter/dc0 is 0.5 then 0.5*exp(-k*(t - 4)), or 0
+    .txt <- "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\ncenter(0) <- c0"
+    .p <- c(ka = 1.2, k = 0.2, c0 = 5)
+    .reset <- et(amt = 100, cmt = "depot") |> et(time = 4, evid = 3)
+    .evs <- list(
+      multiply = .reset |> et(time = 4, evid = 6, amt = 0.5, cmt = "center") |> et(c(1, 4, 5)),
+      replace = .reset |> et(time = 4, evid = 5, amt = 30, cmt = "center") |> et(c(1, 4, 5))
+    )
+    .c0 <- list(multiply = c(exp(-0.2), 0.5, 0.5 * exp(-0.2)), replace = c(exp(-0.2), 0, 0))
+    for (.nm in names(.evs)) {
+      .ev <- .evs[[.nm]]
+      .fd <- .adjFd(.txt, .ev, .p, "liblsoda", tol = 1e-13)
+      .a <- rxSolveAdjointRk4(.txt, .ev, params = .p, calcSens = names(.p), method = "cvodesadj",
+        atol = 1e-10, rtol = 1e-10)
+      expect_equal(.a$rx__sens_center_BY_c0__, .c0[[.nm]], tolerance = 1e-8, label = .nm)
+      # the finite difference across the reset holds about 1e-5
+      for (.cn in setdiff(names(.fd), "rx__sens_center_BY_c0__")) {
+        expect_lt(max(abs(.a[[.cn]] - .fd[[.cn]])), 1e-5, label = paste(.nm, .cn))
+      }
+    }
+  })
+
   test_that("a subject observed only at its first time reads dX0/dtheta", {
     .txt <- "y(0) <- y0\nd/dt(y) <- -k*y"
     .p <- c(k = 0.7, y0 = 3)
