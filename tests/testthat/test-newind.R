@@ -113,6 +113,15 @@ rxTest({
 
       .s <- .solve(.newindMtime, et(c(0, 1, 2, 4)))
       expect_equal(.s$central[.s$time %in% c(2, 4)], 110 * exp(-0.1 * c(2, 4)), tolerance = 1e-4)
+      # ...and with a late data start, where the requeued mtime() at time 0
+      # sorted ahead of the hidden start record
+      .s <- .solve(.newindMtime, et(c(1, 2, 4)), addDosing = TRUE)
+      expect_equal(.s$time[.s$evid == 1], 1)
+      expect_equal(
+        .s$central[.s$time %in% c(2, 4)],
+        10 * exp(-0.1 * c(2, 4)) + 100 * exp(-0.1 * c(1, 3)),
+        tolerance = 1e-4
+      )
     })
   }
 
