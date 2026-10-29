@@ -1480,8 +1480,8 @@ static inline int handle_evid(int evid, int neq,
         cancelRunningInfusionStops(ind, rx, op, ind->idx, neq, cmt);
       }
       cancelRunningExtraInfusionStops(ind, cmt, xout);
-      if (_esSSDurOffCmt == cmt) _esSSDurOffCmt = -1;
-      if (_esSSRateOffCmt == cmt) _esSSRateOffCmt = -1;
+      if (_rxEsActive && _esSSDurOffCmt == cmt) _esSSDurOffCmt = -1;
+      if (_rxEsActive && _esSSRateOffCmt == cmt) _esSSRateOffCmt = -1;
       yp[cmt]=op->inits[cmt];
       InfusionRate[cmt] = 0;
       // and its event sensitivities, whose forcing the ignored stop no longer
