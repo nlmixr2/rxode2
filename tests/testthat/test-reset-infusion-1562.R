@@ -226,6 +226,24 @@ rxTest({
     }
   })
 
+  test_that("turning a compartment off cancels overlapping steady-state infusions", {
+    # dur 20 over ii 1: about 20 overlapping infusions are running at the off
+    d <- data.frame(
+      id = 1,
+      time = c(0, 0.5, 1:30),
+      evid = c(1, 2, rep(0, 30)),
+      cmt = c(1, -1, rep(1, 30)),
+      amt = c(100, rep(0, 31)),
+      rate = c(5, rep(0, 31)),
+      ii = c(1, rep(0, 31)),
+      ss = c(1, rep(0, 31))
+    )
+    for (meth in .meths) {
+      s <- rxSolve(.m, d, .p, method = meth, cores = 1)
+      expect_equal(s$depot[s$time > 0.5], rep(0, 30), tolerance = 1e-6)
+    }
+  })
+
   test_that("a compartment turned off mid-infusion is turned back on by a dose", {
     d <- data.frame(
       id = 1,

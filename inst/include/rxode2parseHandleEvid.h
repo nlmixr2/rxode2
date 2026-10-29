@@ -1484,8 +1484,9 @@ static inline int handle_evid(int evid, int neq,
       InfusionRate[cmt] = 0;
       // and its event sensitivities, whose forcing the ignored stop no longer
       // removes
-      if (_rxEsActive && cmt < _rxEsNState) {
-        for (int _k = cmt + _rxEsNState; _k < neq; _k += _rxEsNState) {
+      if (_rxEsActive && cmt < _rxEsNState &&
+          _rxEsNState * (1 + _rxEsNParam) <= neq) {
+        for (int _k = cmt + _rxEsNState; _k < op->neq; _k += _rxEsNState) {
           yp[_k] = op->inits[_k];
           InfusionRate[_k] = 0;
         }
