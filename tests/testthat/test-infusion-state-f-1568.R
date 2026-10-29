@@ -9,8 +9,7 @@ rxTest({
     ev <- et(time = 3, amt = 100, dur = 2.5, cmt = "depot") |>
       et(c(4, 5, 5.5, 6, 8, 10))
     s <- rxSolve(.m, ev)
-    expect_equal(s$depot, c(40 * .f(3) * c(1, 2, 2.5), rep(100 * .f(3), 3)),
-                 tolerance = 1e-6)
+    expect_equal(s$depot, c(40 * .f(3) * c(1, 2, 2.5), rep(100 * .f(3), 3)), tolerance = 1e-6)
   })
 
   test_that("overlapping infusions each keep their own start F", {
@@ -19,8 +18,7 @@ rxTest({
       et(time = 4, amt = 100, dur = 2.5, cmt = "depot") |>
       et(c(10, 12))
     s <- rxSolve(.m, ev)
-    expect_equal(s$depot, rep(100 * .f(3) + 50 * .f(4) + 100 * .f(4), 2),
-                 tolerance = 1e-6)
+    expect_equal(s$depot, rep(100 * .f(3) + 50 * .f(4) + 100 * .f(4), 2), tolerance = 1e-6)
   })
 
   test_that("infusions repeated with addl each read F at their own start", {
