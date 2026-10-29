@@ -1915,7 +1915,16 @@ static inline int refreshLagTimesIfNeeded(rx_solve *rx,
     // lag = f(state at dosing time). Updating before or after the raw time would use
     // a different state (e.g. pushing a pending dose forward on every observation).
     if (!isSameTime(rawTime, xout)) continue;
-    double newTime = getLag(ind, ind->id, cmt, rawTime, yp);
+    // a fixed-duration infusion's stop keeps its start's lagged time plus the
+    // duration (getInfusionDurTime())
+    int infBidx = (whI == EVIDF_INF_DUR) ? getInfusionStartDose(raw, rx, op, ind) : -1;
+    double newTime;
+    if (infBidx != -1) {
+      int start = ind->idose[infBidx];
+      newTime = time[start] + rawTime - getAllTimes(ind, start);
+    } else {
+      newTime = getLag(ind, ind->id, cmt, rawTime, yp);
+    }
     if (!ISNA(newTime) && newTime != time[raw]) {
       time[raw] = newTime;
       changed = 1;

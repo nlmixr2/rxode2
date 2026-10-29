@@ -372,29 +372,6 @@ static inline void handleInfusionGetStartOfInfusionIndex(int *startIdx, int *end
     handleInfusionStartDefault(startIdx, endIdx, amt, idx, rx, op, ind);
 }
 
-// F*amt of the fixed-duration infusion record at ind->idx, whose F scales the
-// rate: the start's f() read at the start's record (getAmtAtRecord()), for
-// the stop as for the start, so the stop removes the rate the start added.
-// An extra dose, or a stop with no start found, keeps the time-based read.
-static inline double getInfusionDurAmt(rx_solving_options_ind *ind, int id, int cmt,
-                                       double amt, double xout, double *yp) {
-  if (ind->idx >= 0) {
-    int raw = ind->ix[ind->idx];
-    if (amt > 0 && raw < ind->n_all_times_orig) {
-      return getAmtAtRecord(ind, raw, amt, yp);
-    }
-    if (amt < 0 && raw < ind->n_all_times_orig) {
-      rx_solve *rx = (ind->rx ? ind->rx : &rx_global);
-      rx_solving_options *op = (ind->op ? ind->op : &op_global);
-      int infBidx = -1, infEidx = -1;
-      double a = amt;
-      handleInfusionGetStartOfInfusionIndex(&infBidx, &infEidx, &a, &raw, rx, op, ind);
-      if (infBidx != -1) return getAmtAtRecord(ind, ind->idose[infBidx], amt, yp);
-    }
-  }
-  return getAmt(ind, id, cmt, amt, xout, yp);
-}
-
 // The lagged start time of the infusion that starts at dose number infBidx,
 // alag() read at its record
 static inline double getInfusionStartLag(int infBidx, rx_solve *rx, rx_solving_options *op,
@@ -412,24 +389,54 @@ static inline double getInfusionStartLag(int infBidx, rx_solve *rx, rx_solving_o
   return tB;
 }
 
+// Dose number of the start of the infusion whose stop is record `idx`, or -1
+// for a start or when none is found.  The search's corrupt-table flags are
+// not kept: such a record keeps the reads it had before it was paired.
+static inline int getInfusionStartDose(int idx, rx_solve *rx, rx_solving_options *op,
+                                       rx_solving_options_ind *ind) {
+  double amt = getDose(ind, idx);
+  if (!(amt < 0) || ind->wh0 == EVID0_RATEADJ) return -1;
+  int infEidx = getDoseNumberFromIndex(ind, idx), infBidx = -1, stop = idx;
+  if (infEidx == -1) return -1;
+  int err = ind->err;
+  handleInfusionGetStartOfInfusionIndex(&infBidx, &infEidx, &amt, &stop, rx, op, ind);
+  ind->err = err;
+  return (infBidx < 0 || infBidx >= ind->ndoses) ? -1 : infBidx;
+}
+
 // The lagged time of a fixed-duration infusion's record: a stop is its
 // start's lagged time plus the duration, alag() read at the start's record.
 // A start, or a stop whose start is not found, reads alag() at its own record.
 static inline double getInfusionDurTime(int idx, rx_solve *rx, rx_solving_options *op,
                                         rx_solving_options_ind *ind) {
-  double amt = getDose(ind, idx);
-  if (amt < 0 && ind->wh0 != EVID0_RATEADJ) {
-    int infEidx = getDoseNumberFromIndex(ind, idx), infBidx = -1, stop = idx;
-    if (infEidx != -1) {
-      handleInfusionGetStartOfInfusionIndex(&infBidx, &infEidx, &amt, &stop, rx, op, ind);
-    }
-    if (infBidx != -1) {
-      return getInfusionStartLag(infBidx, rx, op, ind) +
-        getAllTimes(ind, idx) - getAllTimes(ind, ind->idose[infBidx]);
-    }
+  int infBidx = getInfusionStartDose(idx, rx, op, ind);
+  if (infBidx != -1) {
+    return getInfusionStartLag(infBidx, rx, op, ind) +
+      getAllTimes(ind, idx) - getAllTimes(ind, ind->idose[infBidx]);
   }
   return getLag(ind, ind->id, ind->cmt, getAllTimes(ind, idx),
                 (op->neq > 0) ? ind->solve : rx->ypNA);
+}
+
+// F*amt of the fixed-duration infusion record at ind->idx, whose F scales the
+// rate: the start's f() read at the start's record (getAmtAtRecord()), for
+// the stop as for the start, so the stop removes the rate the start added.
+// An extra dose, or a stop with no start found, keeps the time-based read.
+static inline double getInfusionDurAmt(rx_solving_options_ind *ind, int id, int cmt,
+                                       double amt, double xout, double *yp) {
+  if (ind->idx >= 0) {
+    int raw = ind->ix[ind->idx];
+    if (amt > 0 && raw < ind->n_all_times_orig) {
+      return getAmtAtRecord(ind, raw, amt, yp);
+    }
+    if (amt < 0 && raw < ind->n_all_times_orig) {
+      rx_solve *rx = (ind->rx ? ind->rx : &rx_global);
+      rx_solving_options *op = (ind->op ? ind->op : &op_global);
+      int infBidx = getInfusionStartDose(raw, rx, op, ind);
+      if (infBidx != -1) return getAmtAtRecord(ind, ind->idose[infBidx], amt, yp);
+    }
+  }
+  return getAmt(ind, id, cmt, amt, xout, yp);
 }
 
 static inline double handleInfusionItem(int idx, rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind) {
