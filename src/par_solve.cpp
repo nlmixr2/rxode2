@@ -4958,7 +4958,7 @@ static int _rxTteAfterInterval(rx_solve *rx, rx_solving_options *op,
   ind->timeThread[slot] = tStar;
   if (interval) {
     ind->dv[slot] = rxTteDv(k, RXTTE_USED);
-    ind->evid[slot] = 2;
+    ind->evid[slot] = 9;
     int best = -1;
     double bt = R_PosInf;
     for (int j = i; j < ind->n_all_times; j++) {
@@ -4984,14 +4984,14 @@ static int _rxTteAfterInterval(rx_solve *rx, rx_solving_options *op,
   int full = rxTteRecord(subj, k, tStar, yStar[rxTteHIdx(k)]);
   int dropout = rxTteDropout(k);
   if (full || dropout) {
-    // records past the event are no longer observed: evid 2 keeps them in
+    // records past the event are no longer observed: evid 9 keeps them in
     // the timeline but out of the output
     for (int j = i + 1; j < ind->n_all_times; j++) {
       int raw = ind->ix[j], kk;
       if (ind->evid[raw] != 0 || !(ind->timeThread[raw] > tKeep)) continue;
       int role = rxTteRole(ind->dv[raw], &kk);
       if (dropout || (kk == k && (role == RXTTE_CENSOR || role == RXTTE_INTERVAL))) {
-        ind->evid[raw] = 2;
+        ind->evid[raw] = 9;
       }
     }
     if (dropout) {

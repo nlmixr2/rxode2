@@ -3197,7 +3197,8 @@ rxSolve.rxUi <- function(
     .hasIpred <- TRUE
   }
   .hasSim <- FALSE
-  if (any(.mv$lhs == "sim")) {
+  # a simulated tte() endpoint is random even without omega/sigma
+  if (any(.mv$lhs == "sim") || .rxTteHas(object)) {
     .hasSim <- TRUE
   }
   if (is.null(.lst$omega) && is.null(.lst$sigma)) {

@@ -12,7 +12,7 @@
 #define RXTTE_START 1     // window start (DV=0)
 #define RXTTE_CENSOR 2    // right censoring (DV=0)
 #define RXTTE_INTERVAL 3  // interval end, no event (DV=0)
-#define RXTTE_FREE 4      // unused event slot (evid 2 once the subject is solved)
+#define RXTTE_FREE 4      // unused event slot (evid 9, not output, once solved)
 #define RXTTE_EVENT 5     // event row / interval end holding an event (DV=1)
 #define RXTTE_USED 6      // event slot used by an interval-censored event
 
