@@ -175,9 +175,10 @@ rxTest({
       expect_equal(.f70, .f(.dur, 1000), tolerance = 1e-6)
     }
   })
+  # tad0(): tad() is NA before the first dose
   test_that("tad() in a steady-state cycle counts from the cycle's dose", {
     .tadMod <- rxode2({
-      d / dt(central) <- -(1 / 20) * central * (1 + 0.03 * tad())
+      d / dt(central) <- -(1 / 20) * central * (1 + 0.03 * tad0())
       f <- central / 20
       dn <- dosenum()
     })
@@ -203,7 +204,7 @@ rxTest({
 
   test_that("tad() in a steady-state infusion cycle counts from its start", {
     .tadMod <- rxode2({
-      d / dt(central) <- -(1 / 20) * central * (1 + 0.03 * tad())
+      d / dt(central) <- -(1 / 20) * central * (1 + 0.03 * tad0())
       f <- central / 20
     })
     .tadCycleMod <- rxode2({
@@ -214,8 +215,8 @@ rxTest({
     for (.dur in c(3, 30)) {
       .ss <- rxSolve(
         .tadMod,
-        et(amt = 100, ii = 12, ss = 1, dur = .dur, time = 0) |>
-          et(.ssInfObs),
+        et(amt = 100, ii = 12, ss = 1, dur = .dur, time = 480) |>
+          et(480 + .ssInfObs),
         atol = 1e-10,
         rtol = 1e-10,
         ssAtol = 1e-10,
