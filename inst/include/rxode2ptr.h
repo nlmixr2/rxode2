@@ -302,6 +302,11 @@ extern "C" {
   typedef void (*setIndMixest_t)(rx_solving_options_ind* ind, int mixest);
   extern setIndMixest_t setIndMixest;
 
+  // A subject's newind (the model's `newind`): 1 at its first record, 2 after.
+  // A walk over the records with calc_lhs sets it before each, as rxode2's does.
+  typedef void (*setIndNewind_t)(rx_solving_options_ind* ind, int newind);
+  extern setIndNewind_t setIndNewind;
+
   typedef void (*mexpit_t)(double *x, double *p, int n);
   extern mexpit_t mexpit;
 
@@ -485,6 +490,7 @@ extern "C" {
       rxRmvtSetup = (rxRmvtSetup_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 101));
       rxRmvtDraw = (rxRmvtDraw_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 102));
       rxRmvtFree = (rxRmvtFree_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 103));
+      setIndNewind = (setIndNewind_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 104));
     }
     return R_NilValue;
   }
@@ -594,6 +600,7 @@ extern "C" {
   rxRmvtSetup_t rxRmvtSetup = NULL;                     \
   rxRmvtDraw_t rxRmvtDraw = NULL;                       \
   rxRmvtFree_t rxRmvtFree = NULL;                       \
+  setIndNewind_t setIndNewind = NULL;                   \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \
