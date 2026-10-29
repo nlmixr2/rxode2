@@ -2,9 +2,16 @@
 #undef min
 #undef max
 #include "odeinter.h"
+#include "odeintDense.h"
 
 extern "C" void ind_dop5_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,
                             t_dydt c_dydt, t_update_inis u_inis) {
+  // delay() models solve on the dense segment driver, which records the
+  // history on every step, toward observations and key events alike.
+  if (op->hasDelay && op->useDense) {
+    ind_dop0_dense(rx, op, solveid, neq, c_dydt, u_inis);
+    return;
+  }
   clock_t t0 = clock();
   int i;
   int istate = 1;
@@ -271,6 +278,28 @@ extern "C" void dop5_solveWith1Pt(int *neq, double *yp, double *xp, double xout,
   }
   *xp = xout;
   *istate = 1;
+}
+
+// Solve one dense segment [xp, xout] with dop5 (see rxOdeintDenseSegment),
+// so delay() models record history on every step (rxode2#1599).
+int rxDop5DenseSegment(rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind,
+                       int *neq, t_dydt c_dydt, double xp, double xout, double *yp,
+                       int obs_first, int obs_last, int solveid) {
+  (void) rx;
+  int eff = rxEffNeq(ind, op);
+  int neqOde = eff - op->numLin - op->numLinSens;
+  if (neqOde <= 0) { return 1; }
+  double maxdt = rxDelayCapHmax(ind);
+  if (maxdt < 0.0) maxdt = 0.0;
+  typedef boost::numeric::odeint::runge_kutta_dopri5<zero_copy_state> error_stepper_type;
+  typedef boost::numeric::odeint::result_of::make_dense_output<error_stepper_type>::type dense_stepper_type;
+  dense_stepper_type dense_stepper = boost::numeric::odeint::make_dense_output(
+      ind->atol2[0], ind->rtol2[0], maxdt, error_stepper_type());
+  rxode2_system sys(c_dydt, neq, ind);
+  double dt = op->HMIN > 0.0 ? op->HMIN : 1e-4;
+  return rxOdeintDenseSegment<dense_stepper_type, rxode2_system, zero_copy_state, 8>(
+    dense_stepper, sys, op, ind, neqOde, xp, xout, dt, yp, obs_first, obs_last, solveid,
+    op->mxstep);
 }
 
 #endif // IN_PAR_SOLVE

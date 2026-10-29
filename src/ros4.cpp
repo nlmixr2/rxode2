@@ -391,8 +391,10 @@ int rxRos4DenseSegment(rx_solve *rx, rx_solving_options *op, rx_solving_options_
   double dt = (ind->autoHcur > 0.0) ? ind->autoHcur : (op->HMIN > 0.0 ? op->HMIN : 1e-4);
   sys.first.xout_ = xout;
   sys.first.sign_ = (xout >= xp) ? 1 : -1;
+  // no step limit, as before the segment was shared
   return rxOdeintDenseSegment<dense_stepper_type, decltype(sys), state_type>(
-    dense_stepper, sys, op, ind, neqOde, xp, xout, dt, yp, obs_first, obs_last, solveid);
+    dense_stepper, sys, op, ind, neqOde, xp, xout, dt, yp, obs_first, obs_last, solveid,
+    0);
 }
 
 #endif // IN_PAR_SOLVE
