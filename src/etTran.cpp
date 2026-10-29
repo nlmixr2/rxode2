@@ -1769,7 +1769,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   } else {
     List newInData = clone(inData);
     Function convDate = rx[".convertExtra"];
-    newInData =  convDate(newInData);
+    newInData =  convDate(newInData, tieOrder);
     return etTrans(newInData, mv, addCmt, dropUnits, allTimeVar, keepDosingOnly,
                    combineDvid, CharacterVector(0), false, true, true, iCov,
                    tieOrder);
