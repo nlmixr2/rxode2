@@ -173,6 +173,77 @@ static inline void updateRate(int idx, rx_solving_options_ind *ind, double *yp) 
   }
 }
 
+// rxControl(nonmem = TRUE): sorted position of the first data record after
+// position i (the record that ends the next interval), skipping the records
+// _rxPkTime() skips; -1 when there is none
+static inline int nonmemNextRecord(rx_solving_options_ind *ind, int i) {
+  for (int j = i + 1; j < ind->n_all_times; ++j) {
+    int raw = ind->ix[j];
+    if (raw < 0 || raw >= ind->n_all_times_orig) continue;
+    if (ind->pkSkip != NULL && ind->pkSkip[raw]) continue;
+    int evid = getEvid(ind, raw);
+    if (isDose(evid) && (isEvidModeledRateStop(evid) || isEvidModeledDurationStop(evid) ||
+                         !isSameTime(ind->timeThread[raw], ind->all_times[raw]))) continue;
+    return j;
+  }
+  return -1;
+}
+
+// rxControl(nonmem = TRUE) (rxode2#1586): like NONMEM's R1, a modeled rate
+// runs on (t[j-1], t[j]] at the rate computed with data record j until its
+// amount is delivered.  Called after the record at sorted position i is
+// handled (an addl repeat too, so its first interval reads the next data
+// record): re-reads each running modeled rate from the next data record and
+// moves its end.  Returns 1 when an end moved (the timeline needs a re-sort).
+static inline int updateNonmemModeledRates(rx_solve *rx, rx_solving_options_ind *ind,
+                                           int i, double *yp, double *InfusionRate) {
+  if (!rx->nonmem || ind->idose == NULL || ind->timeThread == NULL) return 0;
+  int raw = ind->ix[i];
+  if (raw < 0 || raw >= ind->n_all_times_orig) return 0;
+  double tNow = ind->timeThread[raw];
+  int j = -2, ret = 0;
+  for (int d = 0; d < ind->ndoses; ++d) {
+    int on = ind->idose[d];
+    if (on < 0 || on + 1 >= ind->n_all_times_orig) continue;
+    int wh, cmt, wh100, whI, wh0;
+    getWh(getEvid(ind, on), &wh, &cmt, &wh100, &whI, &wh0);
+    if (whI != EVIDF_MODEL_RATE_ON || wh0 != EVID0_REGULAR) continue;
+    if (!isEvidModeledRateStop(getEvid(ind, on + 1))) continue;
+    if (cmt < 0 || !ind->on[cmt]) continue;
+    // running: started at or before this record, ends after it
+    double tOn = ind->timeThread[on];
+    if (tOn > tNow && !isSameTime(tOn, tNow)) continue;
+    if (isSameTime(tOn, tNow)) {
+      int p = i;
+      while (p >= 0 && ind->ix[p] != on && isSameTime(ind->timeThread[ind->ix[p]], tNow)) p--;
+      if (p < 0 || ind->ix[p] != on) continue;
+    }
+    double tOff = ind->all_times[on + 1];
+    if (tOff < tNow || isSameTime(tOff, tNow)) continue;
+    double rOld = -ind->dose[on + 1];
+    if (!(rOld > 0)) continue;
+    // a reset (evid = 3) cleared this infusion's forcing
+    if (InfusionRate[cmt] < rOld*(1.0 - 1e-8)) continue;
+    if (j == -2) j = nonmemNextRecord(ind, i);
+    if (j < 0) return ret;
+    int oldIdx = ind->idx;
+    ind->idx = j;
+    double rNew = getRate(ind, ind->id, cmt, ind->dose[on],
+                          ind->timeThread[ind->ix[j]], yp);
+    ind->idx = oldIdx;
+    if (!(rNew > 0)) {
+      if (!(ind->err & rxErrRate0)) ind->err += rxErrRate0;
+      return ret;
+    }
+    if (rNew == rOld) continue;
+    InfusionRate[cmt] += rNew - rOld;
+    ind->dose[on + 1] = -rNew;
+    ind->all_times[on + 1] = tNow + rOld*(tOff - tNow)/rNew;
+    ret = 1;
+  }
+  return ret;
+}
+
 static inline void handleTurnOffModeledDuration(int idx, rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind) {
   if (idx > 0){
     if (!isEvidModeledDurationStart(getEvidM1(ind, idx))) {

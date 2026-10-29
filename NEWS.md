@@ -38,6 +38,11 @@
   into place, so another process never loads a partly written one (#1558).
 
 ### Solving
+- With `rxSolve(..., nonmem = TRUE)`, a modeled infusion rate (`rate(cmt)`,
+  `RATE = -1`) now follows NONMEM's `R1`: on each interval it runs at the rate
+  computed with the data record that ends the interval, until the dose is
+  delivered.  It used to stay at the rate of the dose record, so a covariate
+  or `time` change during the infusion did not change it (#1586).
 - `rxSolve()` now stops with an error when an `rxControl()` object is passed
   as `params` or `events`, as it already did for `inits`, and a parameter list
   that is empty or whose first column is empty gives the parameter-size
