@@ -302,6 +302,33 @@ rxTest({
     }
   })
 
+  test_that("a fixed-duration infusion's stop follows its start's lag, also with a record at the stop's time", {
+    # 100 over 2 h from t = 0 (X 1, so a lag of 0.1); X is 5 from t = 1, and a
+    # record at t = 2 sits at the stop's data time
+    mod <- rxode2({
+      d/dt(depot) <- -ka * depot
+      alag(depot) <- 0.1 * X
+    })
+    for (obsT in list(c(1, 2.05, 3), c(1, 2, 2.05, 3))) {
+      nObs <- length(obsT)
+      ev <- data.frame(
+        id = 1,
+        time = c(0, obsT),
+        evid = c(1, rep(0, nObs)),
+        amt = c(100, rep(0, nObs)),
+        dur = c(2, rep(0, nObs)),
+        cmt = "depot",
+        X = c(1, rep(5, nObs))
+      )
+      for (interp in .interps) {
+        lab <- paste(length(obsT), interp)
+        s <- rxSolve(mod, c(ka = 0), ev, covsInterpolation = interp, returnType = "data.frame")
+        expect_equal(s$depot[s$time == 2.05], 97.5, tolerance = 1e-8, label = lab)
+        expect_equal(s$depot[s$time == 3], 100, tolerance = 1e-8, label = lab)
+      }
+    }
+  })
+
   test_that("f() of a modeled rate or duration reads its start's record, not the covariates at its time", {
     # WT is 100 before the dose at 1.8 and 70 from its record on
     wtf <- function(t) ifelse(t < 1.8, 100, 70)
