@@ -102,6 +102,18 @@ rxTest({
     }
   })
 
+  test_that("the R adjoint evaluators bind THETA[n] parameters", {
+    # a modeled infusion rate in THETA[1] matches the same model with it named r
+    .inf <- "rate(x) <- THETA[1]\nd/dt(x) <- -k*x"
+    .d <- et(amt = 10, cmt = "x", rate = -1)
+    .g <- .rxAdjointGrad(.inf, c(k = 1, "THETA[1]" = 2), .d, "THETA[1]", "x", 6, 1)
+    .ref <- .rxAdjointGrad(sub("THETA[1]", "r", .inf, fixed = TRUE), c(k = 1, r = 2), .d, "r", "x", 6, 1)
+    expect_equal(unname(.g), unname(.ref), tolerance = 1e-8)
+    # the discrete-adjoint RHS
+    .b <- .rxDiscreteAdjointBuild("d/dt(x) <- THETA[1]*x", "THETA[1]")
+    expect_equal(unname(.b$Fe(c(x = 1), c("THETA[1]" = 2))), 2)
+  })
+
   test_that("calcSens naming a non-parameter is an error naming it", {
     expect_error(
       rxode2(.txt, calcSens = "nope"),

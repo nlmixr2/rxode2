@@ -91,6 +91,7 @@
     for (i in seq_along(params)) {
       assign(.nm[i], params[[i]], envir = .env)
     }
+    .rxSensBindIdx(params, .env)
   }
   .evList <- function(pl) vapply(pl, eval, numeric(1), envir = .env)
   list(

@@ -891,6 +891,7 @@ rxSolveAdjoint <- function(
 ## numeric evaluation of an rxFromSE expression string at parameter values
 .rxAdjEvalNum <- function(txt, params) {
   .env <- list2env(as.list(params), parent = baseenv())
+  .rxSensBindIdx(params, .env)
   assign("Rx_pow_di", function(x, i) x^i, envir = .env)
   assign("Rx_pow", function(x, y) x^y, envir = .env)
   assign("expit", function(x, a = 0, b = 1) a + (b - a) / (1 + exp(-x)), envir = .env)

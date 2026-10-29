@@ -236,6 +236,24 @@ rxExpandGrid <- function(x, y, type = 0L) {
   gsub("\\b(THETA|ETA)\\[([0-9]+)\\]", "\\1_\\2_", vars)
 }
 
+# Bind the THETA[n]/ETA[n] (or THETA_n_/ETA_n_) entries of params as THETA/ETA
+# vectors in envir, so rxFromSE() text, which spells them THETA[n], evaluates.
+.rxSensBindIdx <- function(params, envir) {
+  .se <- .rxSensNameSE(names(params))
+  .val <- as.numeric(unlist(params, use.names = FALSE))
+  for (.v in c("THETA", "ETA")) {
+    .re <- paste0("^", .v, "_([0-9]+)_$")
+    .w <- grepl(.re, .se)
+    if (any(.w)) {
+      .i <- as.integer(sub(.re, "\\1", .se[.w]))
+      .x <- rep(NA_real_, max(.i))
+      .x[.i] <- .val[.w]
+      assign(.v, .x, envir = envir)
+    }
+  }
+  invisible(envir)
+}
+
 # calcSens names for the forward sensitivity build (.rxSensNameSE()).  Only the
 # model's parameters (`params`, from rxParams()) can be differentiated: a state
 # or a calculated variable would give a meaningless column, and an unknown name
@@ -244,8 +262,12 @@ rxExpandGrid <- function(x, y, type = 0L) {
   .se <- .rxSensNameSE(vars)
   .bad <- vars[!(.se %in% .rxSensNameSE(params))]
   if (length(.bad) > 0L) {
-    stop("cannot calculate sensitivities with respect to ", paste(.bad, collapse = ", "),
-      ": not a parameter of the model", call. = FALSE)
+    stop(
+      "cannot calculate sensitivities with respect to ",
+      paste(.bad, collapse = ", "),
+      ": not a parameter of the model",
+      call. = FALSE
+    )
   }
   .se
 }
