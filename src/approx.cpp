@@ -635,7 +635,9 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           // a record a dose row expands to reads that row
           ind->par_ptr[op->par_cov[k]-1] = rxRecCovValue(ind, indSample, idxSample, y,
                                                          is_locf, op);
-          if (idx == 0){
+          // idxSample is the dose record's position for a repeat's alag(),
+          // which can be 0 when idx is not
+          if (idx == 0 || idxSample == 0){
             ind->cacheME=0;
           } else if (!isSameTimeOp(getValue(idxSample, y, is_locf,
                                             indSample, op, 0),
