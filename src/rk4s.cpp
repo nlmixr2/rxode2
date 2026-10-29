@@ -173,6 +173,7 @@ struct rk4s_infus { size_t onStep, offStep; int cmt; double R, amt, durMult, amt
                     bool fixed = false; double dfW = 0.0, tOn = 0.0; int key = -1; bool ss = false;
                     int recIdx = -1;      // its record (sorted position), -1 for a pushed one
                     std::vector<double> yOn;      // the state at its start (a state-dependent f())
+                    bool startEv = false;         // its start term is a type-12 event
                     double fOn = 0.0; };  // a fixed window's F at its start
 
 // Dose number of the infusion start that the fixed or modeled infusion record at
@@ -357,6 +358,9 @@ static inline void rk4sIniOnlyFill(rx_solving_options *op, rx_solving_options_in
 //   ss = 2   (type 10, at the ss dose's position): the state gains the added
 //            regimen's steady state, mu += lambda^T S2 (S2 = dY_ss_new/dp,
 //            nBase x np, or NULL); lambda passes through.
+//   window   (type 12, rec = its window in infusRec): a fixed-dur window whose
+//            f() depends on the state starts here, at its record's place among
+//            the events (rk4sInfusMaps::startEvent, via im).
 // A replace/multiply that a modeled lag moves adds mu += dlag[c][p] * lambda_n+^T r,
 // and a modeled F (x+ = F*amt, or alpha = F*amt) its f() dual (rxAdjJumpTerm).
 // fx0 = F_X (df/dy) at this step's stage 0 (post-dose state), row-major i*nBase+j,
@@ -364,11 +368,14 @@ static inline void rk4sIniOnlyFill(rx_solving_options *op, rx_solving_options_in
 // a modeled lag, the dose time t_d+lag(theta) shifts with theta, adding the
 // transversality mu += dlag[c][p] * lambda^T (f(x-) - f(x+)) (rxAdjJumpTerm), or,
 // for a dose pushed at run time, its linearization -F*amt*dlag[c][p]*(lambda^T F_X[:,c]).
+struct rk4sInfusMaps;
+static inline void rk4sInfusStartEvent(const rk4sInfusMaps *im, int win, std::vector<double> &lam);
 static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
     std::vector<double> &muR, const std::vector<rk4s_dose> &doses,
     const std::vector<double> &dFdp, bool haveDf, int nBase, int np,
     const double *fx0, const double *dlag, const double *dx0,
-    size_t maxIdx = (size_t)-1, const double *S2 = NULL) {
+    size_t maxIdx = (size_t)-1, const double *S2 = NULL,
+    const rk4sInfusMaps *im = NULL) {
   size_t nRec = doses.size() < maxIdx ? doses.size() : maxIdx;   // only doses recorded before this point
   for (size_t di = nRec; di-- > 0;) {
     if (doses[di].step != n) continue;
@@ -411,6 +418,9 @@ static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
       return;
     case 10:
       if (S2) for (int p = 0; p < np; ++p) { double v = 0.0; for (int q = 0; q < nBase; ++q) v += lamR[q] * S2[(size_t)q * np + p]; muR[p] += v; }
+      break;
+    case 12:
+      rk4sInfusStartEvent(im, d.rec, lamR);
       break;
     }
   }
@@ -7913,7 +7923,9 @@ struct rk4sInfusMaps {
   // A fixed-dur window whose f() depends on the state: its rate F(x_on)*amt/dur
   // moves with the start state, so lam(t_on) gains (sum of the in-window costate
   // weights of cmt) * row, row = raw rate * dF_cmt/dx at x_on.
-  struct SfWin { size_t on, off; int cmt; std::vector<double> row; };
+  // byEvent: its start is a type-12 event (startEvent), at the start record's
+  // place among the events there; win: its index in infusRec.
+  struct SfWin { size_t on, off; int cmt; std::vector<double> row; int win = -1; bool byEvent = false; };
   std::vector<SfWin> sfw;
   mutable std::vector<double> sfAcc;
   // mu += sum_c fV[n, c] * w[c], w the stage's costate weight
@@ -7929,7 +7941,15 @@ struct rk4sInfusMaps {
   // at step n's start (after its transpose): the windows starting there
   void stateJump(size_t n, std::vector<double> &lam) const {
     for (size_t k = 0; k < sfw.size(); ++k) {
-      if (sfw[k].on != n) continue;
+      if (sfw[k].on != n || sfw[k].byEvent) continue;
+      for (int j = 0; j < nBase; ++j) lam[j] += sfAcc[k] * sfw[k].row[j];
+      sfAcc[k] = 0.0;
+    }
+  }
+  // the start of window win (its type-12 event)
+  void startEvent(int win, std::vector<double> &lam) const {
+    for (size_t k = 0; k < sfw.size(); ++k) {
+      if (sfw[k].win != win) continue;
       for (int j = 0; j < nBase; ++j) lam[j] += sfAcc[k] * sfw[k].row[j];
       sfAcc[k] = 0.0;
     }
@@ -7943,6 +7963,9 @@ struct rk4sInfusMaps {
     }
   }
 };
+static inline void rk4sInfusStartEvent(const rk4sInfusMaps *im, int win, std::vector<double> &lam) {
+  if (im != NULL) im->startEvent(win, lam);
+}
 
 // Build the infusion dual maps (shared by all fills) from the recorded windows.
 // Each window's dR/dtheta and dF/dtheta blocks are read at its start, with its
@@ -7980,7 +8003,7 @@ static void rk4sBuildInfusMaps(rx_solving_options *op, rx_solving_options_ind *i
     rk4sLhsRec(ind, cSub, F.recIdx, F.tOn, Ascratch.data());
     if (op->adjDfxOff >= 0 && F.fixed && F.isDur && !F.yOn.empty() && F.dfW != 0.0) {
       rk4sInfusMaps::SfWin W; W.on = F.onStep; W.off = (F.offStep == (size_t)-1) ? nStep : F.offStep;
-      W.cmt = F.cmt; W.row.resize(nBase);
+      W.cmt = F.cmt; W.row.resize(nBase); W.win = (int)w; W.byEvent = F.startEv;
       for (int j = 0; j < nBase; ++j) W.row[j] = F.dfW * ind->lhs[op->adjDfxOff + F.cmt * nBase + j];
       M.sfw.push_back(W);
     }
@@ -8700,7 +8723,7 @@ static void ros_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_o
     }
     for (int m = 0; m < nBase; ++m) lamR[m] = ybar[m];
     infM.offBoundary(n, lamR.data(), muR);   // infusion and bioavailability off-boundary
-    if (!doses.empty()) rk4sApplyEventJumps(n, lamR, muR, doses, dFdp, haveDose, nBase, np, &FX[n*s*nfx], dlagP, dx0P, (size_t)-1, ssic && !ssic->S2.empty() ? ssic->S2.data() : NULL);
+    if (!doses.empty()) rk4sApplyEventJumps(n, lamR, muR, doses, dFdp, haveDose, nBase, np, &FX[n*s*nfx], dlagP, dx0P, (size_t)-1, ssic && !ssic->S2.empty() ? ssic->S2.data() : NULL, &infM);
   };
   rk4s_dde dde;   // DDE anticipating term (no-op unless the model has delay())
   dde.init(op, ind, cSub, rec, nBase, np, eff, Ascratch, [&](size_t n){ return &rec.a[(n*s)*nBase]; });
@@ -8712,7 +8735,7 @@ static void ros_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_o
       for (int p = 0; p < np; ++p) mu[p] = 0.0;
       // coincident state-jump at the obs's own step (see rk4s_backward_fill)
       if (!doses.empty()) rk4sApplyEventJumps(fromStep, lam, mu, doses, dFdp, haveDose, nBase, np,
-                                              &FX[(fromStep < nStep ? fromStep : nStep - 1)*s*nfx], dlagP, dx0P, boundaryDose[i], ssic && !ssic->S2.empty() ? ssic->S2.data() : NULL);
+                                              &FX[(fromStep < nStep ? fromStep : nStep - 1)*s*nfx], dlagP, dx0P, boundaryDose[i], ssic && !ssic->S2.empty() ? ssic->S2.data() : NULL, &infM);
       if (ssic) ssic->seedBoundary(fromStep, i, lam, mu);   // coincident interior-ss=1 IC
       dde.beginSweep(fromStep, lam);
       for (size_t nn = fromStep; nn >= 1; --nn) { stepT(nn - 1, lam, mu); infM.stateJump(nn - 1, lam); dde.applyStep(nn - 1, lam);
@@ -8778,7 +8801,7 @@ static void radau_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving
       infM.forcing(nn, zi, muR); }   // infusion and bioavailability forcing
     for (int c = 0; c < n; ++c) lamR[c] = ybar[c];
     infM.offBoundary(nn, lamR.data(), muR);   // infusion and bioavailability off-boundary
-    if (!doses.empty()) rk4sApplyEventJumps(nn, lamR, muR, doses, dFdp, haveDose, n, np, &FX[nn*s*nfx], dlagP, dx0P, (size_t)-1, ssic && !ssic->S2.empty() ? ssic->S2.data() : NULL);
+    if (!doses.empty()) rk4sApplyEventJumps(nn, lamR, muR, doses, dFdp, haveDose, n, np, &FX[nn*s*nfx], dlagP, dx0P, (size_t)-1, ssic && !ssic->S2.empty() ? ssic->S2.data() : NULL, &infM);
   };
   rk4s_dde dde;   // DDE anticipating term (no-op unless the model has delay())
   dde.init(op, ind, cSub, rec, n, np, eff, Ascratch, [&](size_t nn){ return &rec.a[(nn*s)*n]; });
@@ -8790,7 +8813,7 @@ static void radau_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving
       for (int p = 0; p < np; ++p) mu[p] = 0.0;
       // coincident state-jump at the obs's own step (see rk4s_backward_fill)
       if (!doses.empty()) rk4sApplyEventJumps(fromStep, lam, mu, doses, dFdp, haveDose, n, np,
-                                              &FX[(fromStep < nStep ? fromStep : nStep - 1)*s*nfx], dlagP, dx0P, boundaryDose[i], ssic && !ssic->S2.empty() ? ssic->S2.data() : NULL);
+                                              &FX[(fromStep < nStep ? fromStep : nStep - 1)*s*nfx], dlagP, dx0P, boundaryDose[i], ssic && !ssic->S2.empty() ? ssic->S2.data() : NULL, &infM);
       if (ssic) ssic->seedBoundary(fromStep, i, lam, mu);   // coincident interior-ss=1 IC
       dde.beginSweep(fromStep, lam);
       for (size_t nn = fromStep; nn >= 1; --nn) { stepT(nn - 1, lam, mu); infM.stateJump(nn - 1, lam); dde.applyStep(nn - 1, lam);
@@ -8877,7 +8900,7 @@ static void composite_backward_fill(rx_solve *rx, rx_solving_options *op, rx_sol
     }
     for (int c = 0; c < n; ++c) lamR[c] = ybar[c];
     infM.offBoundary(nn, lamR.data(), muR);   // infusion and bioavailability off-boundary
-    if (!doses.empty()) rk4sApplyEventJumps(nn, lamR, muR, doses, dFdp, haveDose, n, np, P.FX.data(), dlagP, dx0P, (size_t)-1, ssic && !ssic->S2.empty() ? ssic->S2.data() : NULL);
+    if (!doses.empty()) rk4sApplyEventJumps(nn, lamR, muR, doses, dFdp, haveDose, n, np, P.FX.data(), dlagP, dx0P, (size_t)-1, ssic && !ssic->S2.empty() ? ssic->S2.data() : NULL, &infM);
   };
   rk4s_dde dde;   // DDE anticipating term (no-op unless the model has delay())
   dde.init(op, ind, cSub, rec, n, np, eff, Ascratch, [&](size_t nn){ return &rec.a[rec.aOff[nn]]; });
@@ -8889,7 +8912,7 @@ static void composite_backward_fill(rx_solve *rx, rx_solving_options *op, rx_sol
       for (int p = 0; p < np; ++p) mu[p] = 0.0;
       // coincident state-jump at the obs's own step (see rk4s_backward_fill)
       if (!doses.empty()) rk4sApplyEventJumps(fromStep, lam, mu, doses, dFdp, haveDose, n, np,
-                                              pre[fromStep < nStep ? fromStep : nStep - 1].FX.data(), dlagP, dx0P, boundaryDose[i], ssic && !ssic->S2.empty() ? ssic->S2.data() : NULL);
+                                              pre[fromStep < nStep ? fromStep : nStep - 1].FX.data(), dlagP, dx0P, boundaryDose[i], ssic && !ssic->S2.empty() ? ssic->S2.data() : NULL, &infM);
       if (ssic) ssic->seedBoundary(fromStep, i, lam, mu);   // coincident interior-ss=1 IC
       dde.beginSweep(fromStep, lam);
       for (size_t nn = fromStep; nn >= 1; --nn) { stepT(nn - 1, lam, mu); infM.stateJump(nn - 1, lam); dde.applyStep(nn - 1, lam);
@@ -9076,7 +9099,7 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
     infM.offBoundary(n, lamR.data(), muR);   // and the bioavailability off-boundary
     if (!doses.empty()) rk4sApplyEventJumps(n, lamR, muR, doses, dFdp, haveDose, nBase, np,
                                             &FXs[0][n * nfx], dlagP, dx0P, (size_t)-1,
-                                            S2.empty() ? NULL : S2.data());
+                                            S2.empty() ? NULL : S2.data(), &infM);
   };
 
   // Steady-state IC term: the window starts from the converged trough yp*, whose
@@ -9148,7 +9171,7 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
       if (!doses.empty())
         rk4sApplyEventJumps(fromStep, lam, mu, doses, dFdp, haveDose, nBase, np,
                             &FXs[0][(fromStep < nStep ? fromStep : nStep - 1) * nfx], dlagP,
-                            dx0P, boundaryDose[i], S2.empty() ? NULL : S2.data());
+                            dx0P, boundaryDose[i], S2.empty() ? NULL : S2.data(), &infM);
       // An observation coincident with an interior ss=1 event reads its steady
       // state: add lambda^T dY_ss/dp then reset lambda := 0 so the sweep below
       // contributes nothing from before the event (gated by boundarySs1[i]).
@@ -9635,6 +9658,13 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
             rk4sFixedInfusionRecord(infusRec, ind, _lagRateCmt, _isDur, _r1, _lagRateStep, xout, yp, _lagRateKey, true, _ssRecI);
           } else {
             rk4sFixedInfusionRecord(infusRec, ind, _lagRateCmt, _isDur, _dR, _lagRateStep, xout, yp, _lagRateKey, _isSs, _ssRecI);
+            if (_dR > 0.0 && _isDur && op->adjDfxOff >= 0 && !infusRec.empty() && !infusRec.back().yOn.empty()) {
+              // a state-dependent f() window starts at this record's place among the events
+              infusRec.back().startEv = true;
+              rk4s_dose _d; _d.step = _lagRateStep; _d.cmt = _lagRateCmt; _d.amt = 0.0; _d.type = 12;
+              _d.rec = (int)infusRec.size() - 1;
+              doseRec.push_back(_d);
+            }
           }
         }
         _lagRateCmt = -1;

@@ -48,7 +48,8 @@ struct lsAdjStep {
 // A state-jump event at a segment start, reconstructed from the event table:
 //   0 additive bolus (dPhi/dy=I) | 3 reset (y:=inits, dPhi/dy=0) | 8 ss=1 (y:=Y_ss(p),
 //   dPhi/dy=0, adds lambda^T dY_ss/dp) | 5 replace (y[cmt]:=val, row cmt 0) |
-//   6 multiply (y[cmt]*=factor, F*amt).  amt is the raw dose (modeled-F mu), amtF = F*amt,
+//   6 multiply (y[cmt]*=factor, F*amt) | 12 a fixed-dur infusion start (where a
+//   state-dependent f() window's start term applies, in the forward order).  amt is the raw dose (modeled-F mu), amtF = F*amt,
 //   the amount that lands (modeled-alag mu); rec = a bolus/replace/multiply's
 //   record index (its rxAdjJumpCap), else -1.
 struct lsAdjEv { int type, cmt; double factor, amt, amtF; int rec = -1; };
@@ -155,7 +156,7 @@ static inline void lsAdjEval(int cSub, double t, const double *yBase, int nBase,
 // its rate rawRate*F(x_on) is forced with dF/dp at the start state x_on (dF, the
 // cmt row, np), and the start state gains (integral of lam_cmt over the window)
 // * row, row = rawRate*dF_cmt/dx at x_on.
-struct rxAdjSfWin { size_t seg0, seg1; int cmt; double raw; std::vector<double> dF, row; };
+struct rxAdjSfWin { size_t seg0, seg1; int cmt, rec; double raw; std::vector<double> dF, row; };
 
 // Records a fixed-dur window as an rxAdjSfWin when its f() depends on the state
 // (start state y0 at t0, record rec); false otherwise, for the plain dF forcing.
@@ -173,7 +174,7 @@ static inline bool rxAdjSfWinAdd(rx_solving_options *op, rx_solving_options_ind 
   for (int j = 0; j < nBase; ++j) dep = dep || ind->lhs[op->adjDfxOff + c * nBase + j] != 0.0;
   if (!dep) return false;
   int np = op->adjNp;
-  rxAdjSfWin W; W.seg0 = seg0; W.seg1 = seg1; W.cmt = c; W.raw = raw;
+  rxAdjSfWin W; W.seg0 = seg0; W.seg1 = seg1; W.cmt = c; W.rec = rec; W.raw = raw;
   W.dF.assign(ind->lhs + op->adjDfOff + c * np, ind->lhs + op->adjDfOff + (c + 1) * np);
   W.row.resize(nBase);
   for (int j = 0; j < nBase; ++j) W.row[j] = raw * ind->lhs[op->adjDfxOff + c * nBase + j];
@@ -381,6 +382,10 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
         continue;
       }
       if (_ss1) continue;
+      if (_whI == EVIDF_INF_DUR && op->adjDfxOff >= 0 && _wh0 == EVID0_REGULAR && getDose(ind, ind->ix[i]) > 0) {
+        evs.push_back({12, _cmt, 0.0, 0.0, 0.0, i});
+        continue;
+      }
       if (_whI == 0) {
         double amt = getDose(ind, ind->ix[i]);
         evs.push_back({0, _cmt, 1.0, amt, getAmt(ind, ind->id, _cmt, amt, t, _y.data()), i});
@@ -518,12 +523,6 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       for (int p = 0; p < np; ++p) { double s = 0; for (int c = 0; c < nBase; ++c) s += fp0[c * np + p] * lam2[c]; mu[p] += Sg.h0 * s; }
       // costate of y0 (pre-Nordsieck-init): lam_y0 = lam1 + h0*J0^T lam2.
       for (int b = 0; b < nBase; ++b) { double s = 0; for (int a = 0; a < nBase; ++a) s += fx0[a * nBase + b] * lam2[a]; wSeed[b] = lam1[b] + Sg.h0 * s; }
-      // a state-dependent f() window starting here: its rate moved with y0
-      for (size_t k = 0; k < sfWins.size(); ++k)
-        if (sfWins[k].seg0 == (size_t)seg) {
-          for (int b = 0; b < nBase; ++b) wSeed[b] += sfAcc[k] * sfWins[k].row[b];
-          sfAcc[k] = 0.0;
-        }
       // infusion OFF-boundary transversality: a modeled off time t_on+amt/R shifts
       // with R, a fixed rate's with F -> mu += offG^T lam(t_off), lam(t_off) = lam_y0.
       // (lhs holds calc_lhs at this off segment's (t0,y0), for the lag term below.)
@@ -575,6 +574,12 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
           rxAdjJumpTerm(E.rec, E.cmt, wSeed.data(), mu.data(), nBase, np, dlp, dFp, dfx);
           if (E.type == 5) wSeed[E.cmt] = 0.0; else wSeed[E.cmt] *= rxAdjJumpFactor(E.rec, E.factor);
           if (dfx) for (int j = 0; j < nBase; ++j) wSeed[j] += wC * dfx[j];
+        } else if (E.type == 12) {            // a state-dependent f() window starts: its rate moved with the state
+          for (size_t q = 0; q < sfWins.size(); ++q)
+            if (sfWins[q].seg0 == (size_t)seg && sfWins[q].rec == E.rec) {
+              for (int b = 0; b < nBase; ++b) wSeed[b] += sfAcc[q] * sfWins[q].row[b];
+              sfAcc[q] = 0.0;
+            }
         }
       }
       if (seg == 0) break;

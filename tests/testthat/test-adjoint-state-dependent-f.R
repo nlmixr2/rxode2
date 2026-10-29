@@ -75,4 +75,22 @@ rxTest({
         c(.rk4sFamily, "liblsodaadj", "cvodesadj", "abs"), .nm)
     }
   })
+
+  test_that("a same-time dose, replace or multiply changes the state an infusion start reads", {
+    # the infusion's f() reads center, which an event at t = 3 changes; the start
+    # term applies where the start record lies among that time's events
+    .txt <- paste0(.base, .fCenter, "\nf(center) <- b2/(1 + depot/40)")
+    .inf <- et(amt = 100, cmt = "depot") |> et(time = 3, amt = 80, dur = 10, cmt = "depot")
+    .evs <- list(
+      bolus = .inf |> et(time = 3, amt = 30, cmt = "center") |> et(.o),
+      bolusFirst = et(amt = 100, cmt = "depot") |> et(time = 3, amt = 30, cmt = "center") |>
+        et(time = 3, amt = 80, dur = 10, cmt = "depot") |> et(.o),
+      replace = .inf |> et(time = 3, evid = 5, amt = 30, cmt = "center") |> et(.o),
+      multiply = .inf |> et(time = 3, evid = 6, amt = 0.5, cmt = "center") |> et(.o)
+    )
+    for (.nm in names(.evs)) {
+      .chk(list(txt = .txt, p = c(.p, b2 = 0.9), ev = .evs[[.nm]]),
+        c(.rk4sFamily, "liblsodaadj", "cvodesadj", "abs"), .nm)
+    }
+  })
 })
