@@ -6,10 +6,15 @@
 - A dose's `f()` now reads the covariates of its own record, as its `alag()`
   does, also when `alag()` moves the dose past a covariate change.  With an
   `alag()` on a covariate or a state, `f()` read the covariates at the time
-  the dose landed, and the amount moved with the solver's steps: with
-  `f(depot) <- bio*WT/70`, `alag(depot) <- lg*WT/70` and WT stepping from 70
-  to 100 during the lag, F was 1.14 rather than 0.8 under `locf`, and
-  between the two under `midpoint` and `linear`.
+  the dose landed, and the amount moved with the solver's steps.  An `addl`
+  dose reads its own record's covariates the same way, so with
+  `addlKeepsCov = TRUE` its `f()` takes the covariates of the dose it
+  repeats under every interpolation.
+- A covariate in `d/dt()` (or any other statement read while solving) is
+  now interpolated with a lagged dose's record at the time the solve gives
+  that dose.  The record's time was found by evaluating `alag()` again with
+  whatever covariates the previous update left, so the result depended on
+  the ODE method, and under `nocb` the solve could stop with "excess work".
 - A simulation that stops with an error no longer leaves its draws for the
   next solve.  The residuals, simulated thetas and per-study draws it had
   made stayed behind, and the next solve without residuals of its own used
