@@ -429,9 +429,11 @@
 
 - Adjoint `f()`, `alag()`, `rate()` and `dur()` terms that depend on a
   time-varying covariate now read it at each event, with the record's own
-  value, in the `rk4s` family (doses, infusion windows and steady-state
-  doses), and in `cvodesadj` and `abs` for a replace or multiply.  Before,
-  they read it at the window start (off by up to 34).
+  value: in the `rk4s` family (doses, infusion windows and steady-state
+  doses), in `liblsodaadj`, `cvodesadj` and `abs` for an infusion window
+  (at its start record) and a replace or multiply, and in `liblsodaadj` for a
+  steady-state infusion.  Before, they read it at the window start or at the
+  time the solve reached (off by up to 34).
 
 - `method = "abs"` now includes the bioavailability (`f()`), lag-time
   (`alag()`), `rate()` and `dur()` adjoint sensitivities of bolus and

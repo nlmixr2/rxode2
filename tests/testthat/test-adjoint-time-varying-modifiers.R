@@ -59,6 +59,37 @@ rxTest({
     for (.nm in names(.scen)) .chk(.scen[[.nm]], .meths, .nm)
   })
 
+  test_that("an infusion window reads its rate(), dur() and f() at its start record", {
+    # WT steps at the record at t = 5, inside each infusion started at t = 4; the
+    # forward solve reads the window's modifiers at its start.  Observations stay
+    # off the infusions' stops (6, 6.13 and 5.6).
+    .evW <- function(...) {
+      .e <- data.frame(id = 1, time = c(0, 1, 3, 4, 4.5, 5, 6.5, 8), evid = c(1, 0, 0, 1, 0, 0, 0, 0),
+        amt = c(100, 0, 0, 80, 0, 0, 0, 0), cmt = c("depot", "center", "center", "depot", rep("center", 4)))
+      .e$WT <- ifelse(.e$time < 5, 70, 90)
+      .x <- list(...)
+      for (.n in names(.x)) .e[[.n]] <- ifelse(.e$time == 4, .x[[.n]], 0)
+      .e
+    }
+    .txtF <- paste0(.base, "\nf(depot) <- bio*WT/70")
+    .scenW <- list(
+      modeledDur = list(txt = paste0(.base, "\ndur(depot) <- dd*WT/70"), p = c(.p0, dd = 2), ev = .evW(rate = -2)),
+      modeledRateF = list(txt = paste0(.txtF, "\nrate(depot) <- rr*WT/70"), p = c(.p0, rr = 30, bio = 0.8),
+        ev = .evW(rate = -1)),
+      fixedRateF = list(txt = .txtF, p = c(.p0, bio = 0.8), ev = .evW(rate = 40))
+    )
+    for (.nm in names(.scenW)) .chk(.scenW[[.nm]], .meths, .nm)
+  })
+
+  test_that("an ss = 1 infusion's f() reads its record's covariate", {
+    # the ss record at t = 3 has WT = 100, not the 70 of t = 0
+    for (.x in list(list(rate = 40), list(dur = 2.5))) {
+      .ev <- do.call(.d, c(list(.twoDoses, ss = 1, ii = 12), .x))
+      .chk(list(txt = paste0(.base, "\nf(depot) <- bio*WT/70"), p = c(.p0, bio = 0.8), ev = .ev),
+        c("rk4s", "ros4s", "radauiia5s", "dop853s", "dop853s+ros4s", "liblsodaadj"), paste("ss", names(.x)))
+    }
+  })
+
   test_that("an interior ss = 1 dose's f() reads its record's covariate", {
     .ev <- .d(.twoDoses, ss = 1, ii = 12)
     # cvodesadj and abs do not carry ss

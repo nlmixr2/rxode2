@@ -89,36 +89,33 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
 
   // Infusion-window duals per call (rxAdjInfusionWindows): W[c] = d(rate)/dp
   // forcing inside call c, B[c] = the transversality of a moving rate change at
-  // its start, both nBase x np (a*np+p) or empty, from the dR, dF and dlag blocks
-  // at the call's start state.
-  struct abInfSeg { double t0; std::vector<double> y0, infRate, infDurMult, infDfMult, offFac, offDfFac, lagRate; };
+  // its start, both nBase x np (a*np+p) or empty.  The windows' dR and dF terms are
+  // read at their start records; a lagged rate change's dlag at the call's start.
+  struct abInfSeg { double t0; std::vector<double> y0, infRate, lagRate, infG, offG; };
   std::vector<abInfSeg> infSeg(nCalls);
   for (size_t c = 0; c < nCalls; ++c) {
     infSeg[c].t0 = abAdjCalls[c].t0; infSeg[c].y0 = abCallY0(c); infSeg[c].infRate = abAdjCalls[c].infRate;
   }
-  rxAdjInfusionWindows(op, ind, nBase, eff, infSeg);
+  rxAdjInfusionWindows(op, ind, cSub, nBase, eff, infSeg);
   std::vector<std::vector<double> > infW(nCalls), infB(nCalls);
   {
     std::vector<double> Ai(eff, 0.0);
     for (size_t c = 0; c < nCalls; ++c) {
       const abInfSeg &S = infSeg[c];
-      bool w = !S.infDurMult.empty() || !S.infDfMult.empty();
-      bool b = !S.offFac.empty() || !S.offDfFac.empty() || !S.lagRate.empty();
+      bool w = !S.infG.empty();
+      bool b = !S.lagRate.empty() || !S.offG.empty();
       if (!w && !b) continue;
       for (int i = 0; i < eff; ++i) Ai[i] = 0.0;
       for (int i = 0; i < nBase; ++i) Ai[i] = S.y0[i];
       calc_lhs(cSub, S.t0, Ai.data(), ind->lhs);
-      const double *dR = op->adjDrateOff >= 0 ? &ind->lhs[op->adjDrateOff] : NULL;
-      const double *dF = op->adjDfOff >= 0 ? &ind->lhs[op->adjDfOff] : NULL;
       const double *dL = op->adjDlagOff >= 0 ? &ind->lhs[op->adjDlagOff] : NULL;
       auto wt = [&](const std::vector<double> &v, int a) { return v.empty() ? 0.0 : v[a]; };
       if (w) infW[c].assign((size_t)nBase * np, 0.0);
       if (b) infB[c].assign((size_t)nBase * np, 0.0);
       for (int a = 0; a < nBase; ++a) for (int p = 0; p < np; ++p) {
         size_t q = (size_t)a * np + p;
-        if (w) infW[c][q] = (dR ? wt(S.infDurMult, a) * dR[q] : 0.0) + (dF ? wt(S.infDfMult, a) * dF[q] : 0.0);
-        if (b) infB[c][q] = (dR ? wt(S.offFac, a) * dR[q] : 0.0) + (dF ? wt(S.offDfFac, a) * dF[q] : 0.0) -
-                 (dL ? wt(S.lagRate, a) * dL[q] : 0.0);
+        if (w) infW[c][q] = S.infG[q];
+        if (b) infB[c][q] = (S.offG.empty() ? 0.0 : S.offG[q]) - (dL ? wt(S.lagRate, a) * dL[q] : 0.0);
       }
     }
   }
