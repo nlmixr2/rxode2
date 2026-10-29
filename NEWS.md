@@ -253,7 +253,8 @@
 - Forward sensitivities of a model written with `THETA[n]`/`ETA[n]` now
   build: `rxode2(model, calcSens = )` accepts `"THETA[1]"` or `"THETA_1_"`,
   and `calcSens = TRUE`, where before each stopped with "Aborted
-  calculation".  The adjoint solves accept both spellings too.  A `calcSens`
+  calculation".  The adjoint solves and the adjoint objective gradient
+  (including its `errModel` parameters) accept both spellings too.  A `calcSens`
   name that is not a model parameter (a state, a calculated variable or an
   unknown name) is now an error that names it, in the forward and the
   adjoint builds; before, the adjoint builds returned a meaningless column.

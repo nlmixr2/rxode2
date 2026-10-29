@@ -643,6 +643,9 @@ rxSolveAdjoint <- function(
 .rxAdjointGradBuild <- function(object, calcSens, pred, events, errModel = NULL) {
   object <- .rxAdjointObject(object)
   pred <- .rxSensNameSE(pred)
+  if (!is.null(errModel)) {
+    errModel <- lapply(errModel, .rxSensNameSE)
+  }
   ## a residual-error parameter enters through pred/errModel, not the ODE model
   .mv <- rxode2::rxModelVars(object)
   .errPars <- all.vars(parse(text = .rxSensNameSE(c(pred, as.character(unlist(errModel))))))
@@ -879,6 +882,12 @@ rxSolveAdjoint <- function(
   )
 }
 
+# value of the residual-error parameter `name` (THETA_n_ spelling) in params,
+# which may spell it THETA[n]
+.rxAdjErrPar <- function(params, name) {
+  params[[match(name, .rxSensNameSE(names(params)))]]
+}
+
 ## numeric evaluation of an rxFromSE expression string at parameter values
 .rxAdjEvalNum <- function(txt, params) {
   .env <- list2env(as.list(params), parent = baseenv())
@@ -987,8 +996,8 @@ rxSolveAdjoint <- function(
   if (is.null(errModel)) {
     .dLdf <- rep_len(weight, length(obsTimes)) * .resid # d(1/2 w r^2)/df
   } else {
-    .addV <- if (!is.null(errModel$add)) params[[errModel$add]] else 0
-    .propV <- if (!is.null(errModel$prop)) params[[errModel$prop]] else 0
+    .addV <- if (!is.null(errModel$add)) .rxAdjErrPar(params, errModel$add) else 0
+    .propV <- if (!is.null(errModel$prop)) .rxAdjErrPar(params, errModel$prop) else 0
     .var <- .addV^2 + (.propV * .fobs)^2 # residual variance
     .dLdvar <- 1 / .var - .resid^2 / .var^2 # dG/dv, G = r^2/v + log v
     .dvardf <- 2 * .propV^2 * .fobs # dv/df (proportional)
@@ -1241,8 +1250,8 @@ rxSolveAdjoint <- function(
   if (is.null(errModel)) {
     .dLdf <- rep_len(weight, length(obsTimes)) * .resid
   } else {
-    .addV <- if (!is.null(errModel$add)) params[[errModel$add]] else 0
-    .propV <- if (!is.null(errModel$prop)) params[[errModel$prop]] else 0
+    .addV <- if (!is.null(errModel$add)) .rxAdjErrPar(params, errModel$add) else 0
+    .propV <- if (!is.null(errModel$prop)) .rxAdjErrPar(params, errModel$prop) else 0
     .var <- .addV^2 + (.propV * .fobs)^2
     .dLdvar <- 1 / .var - .resid^2 / .var^2
     .dLdf <- 2 * .resid / .var + .dLdvar * (2 * .propV^2 * .fobs)
