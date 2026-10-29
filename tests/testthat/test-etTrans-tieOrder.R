@@ -10,7 +10,8 @@ rxTest({
     })
   }
 
-  # one subject: two records tied at time 10, then observations
+  # one subject: an observation at time 0, two records tied at time 10, then
+  # observations (a reset can not be a subject's first record)
   .tieData <- function(id, first, second) {
     .ev <- function(e) {
       data.frame(
@@ -23,6 +24,7 @@ rxTest({
     cbind(
       ID = id,
       rbind(
+        data.frame(TIME = 0, EVID = 0, AMT = 0, CMT = 2),
         .ev(first),
         .ev(second),
         data.frame(TIME = c(10.5, 12.5, 20), EVID = 0, AMT = 0, CMT = 2)
@@ -69,9 +71,9 @@ rxTest({
 
   test_that("tieOrder='data' still sorts by subject and time", {
     .d <- rbind(.tieData(2, 3, 1), .tieData(1, 1, 3))
-    .d <- .d[c(5:10, 1:4), ]
+    .d <- .d[c(10:12, 7:9, 4:6, 1:3), ]
     .t <- as.data.frame(etTrans(.d, .tieMod(), tieOrder = "data"))
-    expect_equal(as.integer(.t$ID), rep(1:2, each = 5))
+    expect_equal(as.integer(.t$ID), rep(1:2, each = 6))
     expect_false(is.unsorted(.t$TIME[.t$ID == 1]))
     expect_equal(.t$EVID[.t$TIME == 10 & .t$ID == 1], c(101L, 3L))
     expect_equal(.t$EVID[.t$TIME == 10 & .t$ID == 2], c(3L, 101L))
