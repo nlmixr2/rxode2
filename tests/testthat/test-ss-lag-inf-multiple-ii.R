@@ -18,14 +18,14 @@ rxTest({
   .ssInfLagPhys <- function(lag) {
     .ev <- et(time = lag - .ii * (0:150), amt = 100, rate = 50, cmt = "central") |>
       et(.t)
-    .r <- rxSolve(
+    .r <- suppressWarnings(rxSolve(
       .ssInfLagRef,
       .ev,
       atol = 1e-10,
       rtol = 1e-10,
       maxsteps = 1e6,
       returnType = "data.frame"
-    )
+    ))
     .r$cp[match(.t, .r$time)]
   }
 
