@@ -8857,7 +8857,17 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       if (_mtime_requeued) i--;
     }
-    if (adj && i >= 0 && i < ind->n_all_times) { boundary[i] = rec.nStep(); boundaryDose[i] = doseRec.size(); boundarySs2[i] = ss2Steps.size(); boundarySs1[i] = ss1Steps.size(); }
+    if (adj && i >= 0 && i < ind->n_all_times) {
+      // a dose pushed at run time (evid_(), bolus(), ...) adds records, so the
+      // per-record bookkeeping grows with ind->n_all_times
+      if (boundary.size() < (size_t)ind->n_all_times) {
+        boundary.resize(ind->n_all_times, 0);
+        boundaryDose.resize(ind->n_all_times, 0);
+        boundarySs2.resize(ind->n_all_times, 0);
+        boundarySs1.resize(ind->n_all_times, 0);
+      }
+      boundary[i] = rec.nStep(); boundaryDose[i] = doseRec.size(); boundarySs2[i] = ss2Steps.size(); boundarySs1[i] = ss1Steps.size();
+    }
     ind->solvedIdx = i;
   }
 
