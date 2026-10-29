@@ -18,12 +18,14 @@
 #' Add the tte() records to a simulation event table
 #'
 #' For every subject and tte endpoint the endpoint's own records only define
-#' the observation window (first to last record) and are replaced by a start
-#' record, a right-censoring record (or the interval ends for
-#' `eventType="intervalCensored"`) and free event-slot records that the solver
-#' re-times to the simulated event times (unused slots are dropped from the
-#' output).  Each record's role is
-#' encoded in its `dv` (see `src/tte.h`).
+#' the observation window (first to last record) and covariate values; they
+#' are kept as non-output records, and a start record, a right-censoring
+#' record (or the interval ends for `eventType="intervalCensored"`) and free
+#' event-slot records that the solver re-times to the simulated event times
+#' (unused slots are dropped from the output) are added.  The added records
+#' have no covariate values, so the solver takes the ones in effect at their
+#' (possibly re-timed) times.  Each record's role is encoded in its `dv` (see
+#' `src/tte.h`).
 #'
 #' @param ui rxode2 ui
 #' @param events event table
@@ -70,7 +72,6 @@
     stop("simulating a tte() endpoint in a model with several endpoints requires a 'cmt' column", call. = FALSE)
   }
   .w <- which(.predDf$distribution == "tte")
-  .keep <- rep(TRUE, nrow(.d))
   .add <- list()
   .ids <- unique(.d[[.id]])
   for (.j in seq_along(.w)) {
@@ -106,7 +107,7 @@
       if (.o$eventType == "intervalCensored") {
         .l <- .o$intervalLength
         if (is.na(.l)) .l <- (.end - .start) / 10
-        .g <- seq(.start + .l, .end, by = .l)
+        .g <- if (.start + .l <= .end) seq(.start + .l, .end, by = .l) else numeric(0)
         if (length(.g) == 0L || .end - .g[length(.g)] > sqrt(.Machine$double.eps) * max(1, abs(.end))) {
           .g <- c(.g, .end)
         }
@@ -133,9 +134,11 @@
       if (!is.null(.cmt)) .a[[.cmt]] <- .cmtVal
       .add[[length(.add) + 1L]] <- .a
     }
-    .keep <- .keep & !.isTte
+    # the endpoint's own records stay for their covariates, out of the output
+    .d[[.evid]][.isTte] <- 0L
+    .d[[.dv]][.isTte] <- -(1e6 + 10 * .j + 7)
   }
-  .d <- do.call(rbind, c(list(.d[.keep, , drop = FALSE]), .add))
+  .d <- do.call(rbind, c(list(.d), .add))
   .d <- .d[order(.d[[.id]], .d[[.time]]), , drop = FALSE]
   rownames(.d) <- NULL
   .d

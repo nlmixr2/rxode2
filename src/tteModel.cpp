@@ -7,7 +7,7 @@
 
 // 1 when the subject's current record is an event row of endpoint k
 static double rxTteRowSim(int cSub, int k) {
-  rx_solve *rx = getRxSolve_();
+  rx_solve *rx = getRxSolve2_();
   rx_solving_options_ind *ind = &(rx->subjects[cSub]);
   if (ind->idx < 0 || ind->idx >= ind->n_all_times) return 0.0;
   int kk;
