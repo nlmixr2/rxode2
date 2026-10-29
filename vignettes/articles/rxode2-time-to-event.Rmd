@@ -67,6 +67,10 @@ tte <- tte[tte$CMT == 4, c("id", "time", "sim")]
 head(tte)
 ```
 
+A steady-state dose (`ss = 1`) brings the model states to steady state
+but holds the cumulative hazard fixed, so no hazard accumulates over the
+doses before it.
+
 The events give a Kaplan-Meier estimate directly:
 
 ```{r}

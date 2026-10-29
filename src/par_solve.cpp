@@ -3681,18 +3681,18 @@ static void handleSSDelay(int *neq,
   }
 }
 
-void handleSS(int *neq,
-              int *BadDose,
-              double *InfusionRate,
-              double *dose,
-              double *yp,
-              double xout, double xp, int id,
-              int *i, int nx,
-              int *istate,
-              rx_solving_options *op,
-              rx_solving_options_ind *ind,
-              t_update_inis u_inis,
-              void *ctx) {
+static void handleSS0(int *neq,
+                      int *BadDose,
+                      double *InfusionRate,
+                      double *dose,
+                      double *yp,
+                      double xout, double xp, int id,
+                      int *i, int nx,
+                      int *istate,
+                      rx_solving_options *op,
+                      rx_solving_options_ind *ind,
+                      t_update_inis u_inis,
+                      void *ctx) {
   rx_solve *rx = &rx_global;
   _adjSSinfKind = 0; _adjSS2 = 0; _adjSSbolusIi = 0.0;   // reset adjoint ss handoffs
   _adjSSinfModeled = 0; _adjSSinfAmt = 0.0; _adjSSinfAmtRaw = 0.0;
@@ -4575,6 +4575,28 @@ void handleSS(int *neq,
   updateExtraDoseGlobals(ind);
 }
 
+// tte() cumulative hazards only grow, so they take no part in a steady-state
+// solve: their ssAtol is Inf (always converged) and they keep their value
+void handleSS(int *neq,
+              int *BadDose,
+              double *InfusionRate,
+              double *dose,
+              double *yp,
+              double xout, double xp, int id,
+              int *i, int nx,
+              int *istate,
+              rx_solving_options *op,
+              rx_solving_options_ind *ind,
+              t_update_inis u_inis,
+              void *ctx) {
+  int n = rxTteN();
+  std::vector<double> h(n);
+  for (int k = 1; k <= n; k++) h[k - 1] = yp[rxTteHIdx(k)];
+  handleSS0(neq, BadDose, InfusionRate, dose, yp, xout, xp, id, i, nx,
+            istate, op, ind, u_inis, ctx);
+  for (int k = 1; k <= n; k++) yp[rxTteHIdx(k)] = h[k - 1];
+}
+
 // Grow ind->solve if slot i (and optionally i+1) are beyond the current
 // allocated capacity.  Safe to call between ODE steps -- no integrator holds
 // a live pointer into ind->solve at those points.
@@ -5195,6 +5217,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         badSolveExit(i);
         localBadSolve = 1;
       } else {
+        int _tteHit = 0;
         if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, ind->n_all_times,
                             &(ctx->state), op, ind, u_inis, ctx)) {
@@ -5205,7 +5228,17 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
             postSolve(neq, &(ctx->state), rc, &i, yp, err_msg_ls, 7, false, ind, op, rx);
             if (*rc < 0) localBadSolve = 1;
           }
-          if (!localBadSolve) {
+          // an event before the extra dose ends this record there; the dose
+          // stays pending for the next one
+          double _tteEnd = xp;
+          int _tteR = localBadSolve ? 0 :
+            _tte.after(rx, op, ind, i, &xp, &_tteEnd, yp, _tteInteg);
+          if (_tteR) ctx->state = 1;
+          if (_tteR == 1) {
+            _tteHit = 1;
+            xout = xp;
+          }
+          if (!localBadSolve && !_tteHit) {
             int idx = ind->idx;
             int ixds= ind->ixds;
             int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
@@ -5216,6 +5249,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
             ind->idx = idx;
             ind->ixds = ixds;
             ind->idxExtra++;
+            _tte.start(ind->extraDoseNewXout, yp);
             if (!isSameTime(xout, ind->extraDoseNewXout)) {
               preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
               lsoda(ctx,yp, &ind->extraDoseNewXout, xout);
@@ -5234,7 +5268,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
           if (*rc < 0) localBadSolve = 1;
         }
         xp = xout;
-        if (!localBadSolve &&
+        if (!localBadSolve && !_tteHit &&
             _tte.after(rx, op, ind, i, &xp, &xout, yp, _tteInteg)) {
           ctx->state = 1;
         }
@@ -6899,6 +6933,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         badSolveExit(i);
         localBadSolve = 1;
       } else {
+        int _tteHit = 0;
         if (handleExtraDose(neq, ind->BadDose, InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
           if (!localBadSolve && !isSameTimeDop(ind->extraDoseNewXout, xp)) {
@@ -6912,7 +6947,17 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
             if (*rc < 0) localBadSolve = 1;
             xp = ind->extraDoseNewXout;
           }
-          if (!localBadSolve) {
+          // an event before the extra dose ends this record there; the dose
+          // stays pending for the next one
+          double _tteEnd = xp;
+          int _tteR = localBadSolve ? 0 :
+            _tte.after(rx, op, ind, i, &xp, &_tteEnd, yp, _tteInteg);
+          if (_tteR) istate = 1;
+          if (_tteR == 1) {
+            _tteHit = 1;
+            xout = xp;
+          }
+          if (!localBadSolve && !_tteHit) {
             int idx = ind->idx;
             int ixds = ind->ixds;
             int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
@@ -6923,6 +6968,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
             ind->idx = idx;
             ind->ixds = ixds;
             ind->idxExtra++;
+            _tte.start(xp, yp);
             if (!isSameTimeDop(xout, ind->extraDoseNewXout)) {
               preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
               neq[0] = eff - op->numLin - op->numLinSens;
@@ -6947,7 +6993,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           if (*rc < 0) localBadSolve = 1;
           xp = xout;
         }
-        if (!localBadSolve &&
+        if (!localBadSolve && !_tteHit &&
             _tte.after(rx, op, ind, i, &xp, &xout, yp, _tteInteg)) {
           istate = 1;
         }

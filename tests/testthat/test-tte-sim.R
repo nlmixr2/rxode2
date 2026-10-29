@@ -146,7 +146,7 @@ rxTest({
     expect_error(rxSolve(.tteConst(), .e, method = "rk4s"), "adjoint")
     expect_error(rxSolve(.tteConst(), .e, method = "liblsodaadj"), "adjoint")
     # dense output falls back to the standard (hooked) record loop
-    .d <- withr::with_seed(1, as.data.frame(suppressWarnings(rxSolve(.tteConst(), .e, method = "dop853", dense = TRUE))))
+    expect_no_warning(.d <- withr::with_seed(1, as.data.frame(rxSolve(.tteConst(), .e, method = "dop853", dense = TRUE))))
     expect_equal(.d$time, .a$time, tolerance = 1e-6)
   })
 
