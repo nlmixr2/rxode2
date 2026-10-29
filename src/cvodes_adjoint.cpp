@@ -268,7 +268,9 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   // with a modeled alag() a bolus's vector-field jump F(y+)-F(y-) follows it.
   // rec = a bolus/replace/multiply's record index (its rxAdjJumpCap), an infusion
   // off's (type 7) window in infusRec, else -1
-  struct cvEvent { double t; int cmt; int type; double factor; int seq; int y; double raw = 0.0; int rec = -1; };
+  // tau: a record the model pushed, its inherited push-time sensitivity (rxAdjPushTau)
+  struct cvEvent { double t; int cmt; int type; double factor; int seq; int y; double raw = 0.0; int rec = -1;
+                   std::vector<double> tau; };
   std::vector<double> evY;
   std::vector<cvEvent> evJumps; rxAdjJumpClear();
   _adjLagPush.clear(); _adjLagPushFixed.clear(); _adjLagPushMdl.clear();
@@ -468,7 +470,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       }
       if (_lagRateCmt >= 0) {   // type 9: the rate into cmt changes by factor at a lagged time
         double _dR = ind->InfusionRate[_lagRateCmt] - _lagRatePre;
-        if (_dR != 0.0 && op->adjDlagOff >= 0) evJumps.push_back({xout, _lagRateCmt, 9, _dR, seq, -1});
+        if (_dR != 0.0 && op->adjDlagOff >= 0) evJumps.push_back({xout, _lagRateCmt, 9, _dR, seq, -1, 0.0, _lagRateRec});
         if (_dR != 0.0 && op->adjDfOff >= 0 && (_lagRateWhI == EVIDF_INF_RATE || _lagRateWhI == EVIDF_INF_DUR)) {
           // fixed rate/dur: F scales a fixed-dur rate and stretches a fixed-rate window
           bool _isDur = (_lagRateWhI == EVIDF_INF_DUR);
@@ -564,6 +566,12 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   bu.fxOff = op->adjFxOff; bu.fpOff = op->adjFpOff; bu.lhs = ind->lhs;
   bu.drateOff = op->adjDrateOff; bu.dfOff = op->adjDfOff; bu.infus = &infusRec; bu.nAug = nAug;
   bu.A.assign(eff, 0.0); bu.yq.assign(nBase, 0.0);
+  // a record the model pushed moves with the time of the record that pushed it
+  for (size_t e = 0; e < evJumps.size(); ++e) {
+    cvEvent &E = evJumps[e];
+    if (E.rec >= 0 && (E.type == 0 || E.type == 5 || E.type == 6 || E.type == 9))
+      E.tau = rxAdjPushTauOf(op, ind, cSub, E.rec);
+  }
   // each window's dR/dp and dF/dp at its start record
   for (size_t w = 0; w < infusRec.size(); ++w) {
     cvInfus &F = infusRec[w];
@@ -609,14 +617,15 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   };
   // a state-dependent f(): the event's blocks at its pre-event state and the
   // jump's extra row, added with the post-event costate of its cmt
-  std::vector<double> sfRow, sfDF, sfDl;
+  std::vector<double> sfRow, sfDF, sfDl, dlagBuf;
   auto bolusDual = [&](const cvEvent &ev) {
     bool sf = rxAdjStateFEvent(op, ind, cSub, ev.rec, ev.cmt, ev.t, sfRow, sfDF, sfDl);
     lhsAt(ev.t, ev.y);
     int c = ev.cmt;
     double wC = NV_Ith_S(B, c);
     const double *dFp = sf ? (sfDF.empty() ? NULL : sfDF.data()) : (op->adjDfOff >= 0 ? &ind->lhs[op->adjDfOff] : NULL);
-    const double *dlp = sf ? (sfDl.empty() ? NULL : sfDl.data()) : (op->adjDlagOff >= 0 ? &ind->lhs[op->adjDlagOff] : NULL);
+    const double *dlp = rxAdjDlagPlus(sf ? (sfDl.empty() ? NULL : sfDl.data()) : (op->adjDlagOff >= 0 ? &ind->lhs[op->adjDlagOff] : NULL),
+                                      ev.tau, ev.cmt, nBase, np, dlagBuf);
     const double *dfx = sf ? sfRow.data() : NULL;
     if (dFp) {
       for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += ev.raw * dFp[c * np + p] * NV_Ith_S(B, c);
@@ -646,7 +655,8 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     bool sf = rxAdjStateFEvent(op, ind, cSub, E.rec, E.cmt, te, sfRow, sfDF, sfDl);
     if (!sf) lhsAt(te, E.y);
     const double *dFp = sf ? (sfDF.empty() ? NULL : sfDF.data()) : (op->adjDfOff >= 0 ? &ind->lhs[op->adjDfOff] : NULL);
-    const double *dlp = sf ? (sfDl.empty() ? NULL : sfDl.data()) : (op->adjDlagOff >= 0 ? &ind->lhs[op->adjDlagOff] : NULL);
+    const double *dlp = rxAdjDlagPlus(sf ? (sfDl.empty() ? NULL : sfDl.data()) : (op->adjDlagOff >= 0 ? &ind->lhs[op->adjDlagOff] : NULL),
+                                      E.tau, E.cmt, nBase, np, dlagBuf);
     const double *dfx = sf ? sfRow.data() : NULL;
     double wC = NV_Ith_S(B, E.cmt);
     rxAdjJumpTerm(E.rec, E.cmt, NV_DATA_S(B), NV_DATA_S(B) + nBase, nBase, np, dlp, dFp, dfx);
@@ -706,7 +716,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
           for (int ii = 0; ii < eff; ++ii) A[ii] = 0.0;
           for (int ii = 0; ii < nBase; ++ii) A[ii] = yq[ii];
           calc_lhs(cSub, (double)te, A, ind->lhs);
-          const double *dlag = &ind->lhs[op->adjDlagOff];
+          const double *dlag = rxAdjDlagPlus(&ind->lhs[op->adjDlagOff], ev.tau, c, nBase, np, dlagBuf);
           double fac = evJumps[segEv[s]].factor, lc = NV_Ith_S(B, c);
           for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += -fac * dlag[c * np + p] * lc;
         } else {                                                       // ty==7: infusion off-boundary

@@ -1582,6 +1582,9 @@ static thread_local int _rxEvidRequeueIdx = -1;
 // Push a current/future event into the individual's own event arrays during ODE solving.
 // _curTime: current ODE model time (for past-time guard with solver tolerance).
 // Returns 1 on success, 0 if ignored (past time or unknown evid), -1 on alloc failure.
+// raw record index -> raw index of the record whose evaluation pushed it (a dose
+// pushed from the model while an adjoint records), -1 for one the model did not push
+static thread_local std::vector<int> _adjPushParent;
 extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
                            double _time, int _evid, double _amt, int _cmt,
                            double _rate, double _ii, int _addl, int _ss,
@@ -1789,6 +1792,11 @@ extern "C" int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
     _ind->idx = savedIdx;
     _ind->wh = savedWh; _ind->cmt = savedCmt; _ind->wh100 = savedWh100;
     _ind->whI = savedWhI; _ind->wh0 = savedWh0;
+    if (op->adjoint) {   // the pushing record, for the adjoint's push-time sensitivity
+      int parentRaw = (savedIdx >= 0 && savedIdx < rawStart) ? _ind->ix[savedIdx] : -1;
+      if ((int)_adjPushParent.size() < _ind->n_all_times) _adjPushParent.resize(_ind->n_all_times, -1);
+      for (int rawIdx = rawStart; rawIdx < _ind->n_all_times; rawIdx++) _adjPushParent[rawIdx] = parentRaw;
+    }
 
     // Re-sort ix from current event forward so new events land in the right slots
     int sortStart;
@@ -3204,7 +3212,9 @@ static thread_local std::vector<int> _adjJumpPos;   // record index -> 1 + its _
 // exact lag term of its transpose.
 struct rxAdjPushCap { int k; std::vector<double> yPre, fPre, r; };
 static thread_local std::vector<rxAdjPushCap> _adjPushCap;
-static inline void rxAdjJumpClear(void) { _adjJumpCap.clear(); _adjJumpPos.clear(); _adjPushCap.clear(); }
+static inline void rxAdjJumpClear(void) {
+  _adjJumpCap.clear(); _adjJumpPos.clear(); _adjPushCap.clear(); _adjPushParent.clear();
+}
 static inline const rxAdjPushCap *rxAdjPushFind(int k) {
   for (size_t j = 0; j < _adjPushCap.size(); ++j) if (_adjPushCap[j].k == k) return &_adjPushCap[j];
   return NULL;

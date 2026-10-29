@@ -117,6 +117,54 @@ static inline bool rxAdjStateFEvent(rx_solving_options *op, rx_solving_options_i
   return true;
 }
 
+// The time sensitivity a record inherits from the record that pushed it (sorted
+// position rec): a dose the model pushes while it evaluates a lagged dose's
+// record lands later when that lag grows, and so does one pushed from such a
+// dose's own push.  tau (np) = that record's d(alag)/dp plus its own inherited
+// one; 0 for a record the model did not push.  Leaves ind->lhs evaluated at
+// the parent's record when there is one.
+static void rxAdjPushTau(rx_solving_options *op, rx_solving_options_ind *ind, int cSub, int rec,
+                         std::vector<double> &tau, int depth = 0) {
+  int np = op->adjNp;
+  tau.assign(np, 0.0);
+  if (op->adjDlagOff < 0 || rec < 0 || rec >= ind->n_all_times || depth > ind->n_all_times) return;
+  int raw = ind->ix[rec];
+  if (raw < 0 || (size_t)raw >= _adjPushParent.size() || _adjPushParent[raw] < 0) return;
+  int praw = _adjPushParent[raw], prec = -1;
+  for (int j = 0; j < ind->n_all_times; ++j) if (ind->ix[j] == praw) { prec = j; break; }
+  if (prec < 0) return;
+  rxAdjPushTau(op, ind, cSub, prec, tau, depth + 1);
+  int ev = getEvid(ind, praw);
+  if (isObs(ev) || !isDose(ev)) return;
+  int _wh, c, _wh100, _whI, _wh0; getWh(ev, &_wh, &c, &_wh100, &_whI, &_wh0);
+  if (c < 0 || c >= op->adjNbase) return;
+  std::vector<double> A(rxEffNeq(ind, op), 0.0);
+  rk4sLhsRec(ind, cSub, prec, getAllTimes(ind, praw), A.data());
+  for (int p = 0; p < np; ++p) tau[p] += ind->lhs[op->adjDlagOff + c * np + p];
+}
+
+// rxAdjPushTau, empty when it is 0 (a record the model did not push, or one
+// pushed at an unlagged record's time)
+static inline std::vector<double> rxAdjPushTauOf(rx_solving_options *op, rx_solving_options_ind *ind,
+                                                 int cSub, int rec) {
+  std::vector<double> tau;
+  rxAdjPushTau(op, ind, cSub, rec, tau);
+  bool nz = false;
+  for (size_t p = 0; p < tau.size(); ++p) nz = nz || tau[p] != 0.0;
+  if (!nz) tau.clear();
+  return tau;
+}
+// dlag (nBase x np, c*np+p, or NULL) with an event's inherited tau added to its
+// cmt c's row, in buf; dlag itself when tau is empty
+static inline const double *rxAdjDlagPlus(const double *dlag, const std::vector<double> &tau, int c,
+                                          int nBase, int np, std::vector<double> &buf) {
+  if (tau.empty() || c < 0 || c >= nBase) return dlag;
+  buf.assign((size_t)nBase * np, 0.0);
+  if (dlag != NULL) std::copy(dlag, dlag + (size_t)nBase * np, buf.begin());
+  for (int p = 0; p < np; ++p) buf[(size_t)c * np + p] += tau[p];
+  return buf.data();
+}
+
 // An infusion window's modifiers as the forward solve read them at its start record
 // (sorted position rec, time t, base state y): the d(rate)/dp and dF/dp rows of
 // cmt c (np each, empty when not modeled); returns F of cmt c per unit dose.
@@ -9021,6 +9069,11 @@ static void rk4sDoseLhsFill(rx_solving_options *op, rx_solving_options_ind *ind,
       double tRec = d.rec >= 0 ? getAllTimes(ind, ind->ix[d.rec]) : t;
       if (tRec != t) rk4sLhsRec(ind, cSub, d.rec, tRec, A.data());
       d.dlag.assign(ind->lhs + op->adjDlagOff, ind->lhs + op->adjDlagOff + nb);
+      // a dose the model pushed also moves with the time of the record that pushed it
+      std::vector<double> tau;
+      rxAdjPushTau(op, ind, cSub, d.rec, tau);
+      if (d.cmt >= 0 && d.cmt < nBase)
+        for (int p = 0; p < op->adjNp; ++p) d.dlag[(size_t)d.cmt * op->adjNp + p] += tau[p];
     }
   }
 }
@@ -9714,6 +9767,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         double _dR = ind->InfusionRate[_lagRateCmt] - _lagRatePre;
         if (_dR != 0.0 && op->adjDlagOff >= 0 && _lagRateWh0 == EVID0_REGULAR) {
           rk4s_dose _d; _d.step = _lagRateStep; _d.cmt = _lagRateCmt; _d.amt = _dR; _d.type = 9; _d.t = xout;
+          _d.rec = _ssRecI;
           doseRec.push_back(_d);
         }
         if (_dR != 0.0 && op->adjDfOff >= 0 && (_lagRateWhI == EVIDF_INF_RATE || _lagRateWhI == EVIDF_INF_DUR)) {

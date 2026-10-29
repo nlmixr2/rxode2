@@ -393,6 +393,14 @@
   up to 24 in the tests.  A steady-state (`ss = 1`) bolus and a dose pushed
   at run time still use the linearization.
 
+- A dose the model pushes (`bolus()`, `infuse()`, `infuseDur()`, `replace()`,
+  `multiply()` in an `if()` block) now gets its adjoint lag-time sensitivity
+  in every adjoint method when the record that pushed it was itself lagged:
+  the pushed dose's time then moves with that lag too, and with every lag
+  before it when pushes chain (off by up to 140).  In `liblsodaadj` and `abs`
+  an observation at the time of such a dose no longer includes it (off by up
+  to 50 in an `f()` sensitivity).
+
 - The bioavailability (`f()`) that the forward solve applies to a replace
   (`evid = 5`, the state becomes `F*amt`) or multiply (`evid = 6`, by
   `F*amt`) value is now in the adjoint sensitivities of every adjoint method;

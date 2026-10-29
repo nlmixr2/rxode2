@@ -47,7 +47,9 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   // in factor and F*amt in amtF) | 3 reset (->0) | 5 replace[c] (->0) | 6
   // multiply[c] (*=factor, F*amt) | 12 a fixed-dur or modeled infusion start (where
   // a state-dependent f() window's start term applies, in the forward order).
-  struct abJump { int type, cmt; double factor, amtF = 0.0; int rec = -1; };   // rec: a bolus/replace/multiply's record index
+  // rec: a bolus/replace/multiply's record index; tau: its inherited push-time
+  // sensitivity (rxAdjPushTau) when the model pushed it, else empty
+  struct abJump { int type, cmt; double factor, amtF = 0.0; int rec = -1; std::vector<double> tau; };
   // the start state of call c
   auto abCallY0 = [&](size_t c) {
     const abRecCall &C = abAdjCalls[c];
@@ -85,6 +87,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
         _j.amtF = getAmt(ind, ind->id, _cmt, _amt, t, _y.data()); _j.rec = i;
         ev.push_back(_j);
       }
+      if (!ev.empty() && ev.back().rec == i && ev.back().type != 12) ev.back().tau = rxAdjPushTauOf(op, ind, cSub, i);
     }
     return ev;
   };
@@ -97,7 +100,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   // forcing inside call c, B[c] = the transversality of a moving rate change at
   // its start, both nBase x np (a*np+p) or empty.  The windows' dR and dF terms are
   // read at their start records; a lagged rate change's dlag at the call's start.
-  struct abInfSeg { double t0; std::vector<double> y0, infRate, lagRate, infG, offG; };
+  struct abInfSeg { double t0; std::vector<double> y0, infRate, lagRate, lagTau, infG, offG; };
   std::vector<abInfSeg> infSeg(nCalls);
   for (size_t c = 0; c < nCalls; ++c) {
     infSeg[c].t0 = abAdjCalls[c].t0; infSeg[c].y0 = abCallY0(c); infSeg[c].infRate = abAdjCalls[c].infRate;
@@ -111,7 +114,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
     for (size_t c = 0; c < nCalls; ++c) {
       const abInfSeg &S = infSeg[c];
       bool w = !S.infG.empty();
-      bool b = !S.lagRate.empty() || !S.offG.empty();
+      bool b = !S.lagRate.empty() || !S.offG.empty() || !S.lagTau.empty();
       if (!w && !b) continue;
       for (int i = 0; i < eff; ++i) Ai[i] = 0.0;
       for (int i = 0; i < nBase; ++i) Ai[i] = S.y0[i];
@@ -123,7 +126,8 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
       for (int a = 0; a < nBase; ++a) for (int p = 0; p < np; ++p) {
         size_t q = (size_t)a * np + p;
         if (w) infW[c][q] = S.infG[q];
-        if (b) infB[c][q] = (S.offG.empty() ? 0.0 : S.offG[q]) - (dL ? wt(S.lagRate, a) * dL[q] : 0.0);
+        if (b) infB[c][q] = (S.offG.empty() ? 0.0 : S.offG[q]) - (dL ? wt(S.lagRate, a) * dL[q] : 0.0) -
+                 (S.lagTau.empty() ? 0.0 : S.lagTau[q]);
       }
     }
     // a state-dependent f() window: forced with dF/dp at its start state
@@ -203,6 +207,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   // term, then 0; replace[c] -> 0; multiply[c] *= factor (F*amt), each after its
   // alag() and f() duals (rxAdjJumpTerm)
   std::vector<double> sfRow, sfDF, sfDl;   // a state-dependent f() event: its row and blocks
+  std::vector<double> dlagBuf;             // an event's dlag with its inherited push tau
   auto abJumpT = [&](const std::vector<abJump> &ev, double t, const double *y, double *cost, double *muP) {
     for (size_t e = ev.size(); e-- > 0;) {
       const abJump &E = ev[e];
@@ -215,7 +220,8 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
       if (E.type == 0) {
         const double *fx, *fp; abEval(t, y, &fx, &fp);
         const double *dFp = sf ? (sfDF.empty() ? NULL : sfDF.data()) : (op->adjDfOff >= 0 ? &lhs[op->adjDfOff] : NULL);
-        const double *dlp = sf ? (sfDl.empty() ? NULL : sfDl.data()) : (op->adjDlagOff >= 0 ? &lhs[op->adjDlagOff] : NULL);
+        const double *dlp = rxAdjDlagPlus(sf ? (sfDl.empty() ? NULL : sfDl.data()) : (op->adjDlagOff >= 0 ? &lhs[op->adjDlagOff] : NULL),
+                                          E.tau, E.cmt, nBase, np, dlagBuf);
         if (dFp) {
           for (int p = 0; p < np; ++p) muP[p] += E.factor * dFp[E.cmt * np + p] * cost[E.cmt];
         }
@@ -233,7 +239,8 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
       else if (E.type == 5 || E.type == 6) {
         if (!sf) { const double *fx, *fp; abEval(t, y, &fx, &fp); }   // the duals' blocks at this event's time
         const double *dFp = sf ? (sfDF.empty() ? NULL : sfDF.data()) : (op->adjDfOff >= 0 ? &lhs[op->adjDfOff] : NULL);
-        const double *dlp = sf ? (sfDl.empty() ? NULL : sfDl.data()) : (op->adjDlagOff >= 0 ? &lhs[op->adjDlagOff] : NULL);
+        const double *dlp = rxAdjDlagPlus(sf ? (sfDl.empty() ? NULL : sfDl.data()) : (op->adjDlagOff >= 0 ? &lhs[op->adjDlagOff] : NULL),
+                                          E.tau, E.cmt, nBase, np, dlagBuf);
         rxAdjJumpTerm(E.rec, E.cmt, cost, muP, nBase, np, dlp, dFp, dfx);
         if (E.type == 5) cost[E.cmt] = 0.0; else cost[E.cmt] *= rxAdjJumpFactor(E.rec, E.factor);
         if (dfx) for (int b = 0; b < nBase; ++b) cost[b] += wC * dfx[b];
