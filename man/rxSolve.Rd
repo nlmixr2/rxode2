@@ -1154,7 +1154,9 @@ created by reference (ie \code{setDt()}), which should be fast.
 }}
 
 \item{seed}{an object specifying if and how the random number
-generator should be initialized}
+generator should be initialized; when given, it takes precedence
+over an active \code{\link[=rxSetSeed]{rxSetSeed()}} stream for this solve, and the
+caller's \code{.Random.seed} is restored afterwards}
 
 \item{nsim}{represents the number of simulations.  For rxode2, if
 you supply single subject event tables (created with
@@ -1801,9 +1803,14 @@ the default) uses them whenever the model has them and variability is
 being simulated (\code{nStud > 1}, or whatever \code{simVariability} forces);
 \code{TRUE} requires them, and is an error when the model has none or when
 no variability would be simulated; \code{FALSE} ignores them and falls back
-to a supplied \code{thetaMat}/\code{dfSub}.  The priors take precedence over a
-\code{thetaMat}/\code{dfSub} carried in the model's \code{meta} block, with a warning;
-one given at the call site wins over the priors instead.}
+to a supplied \code{thetaMat}/\code{dfSub}.  In auto mode a \code{thetaMat} given at
+the call site, carried in the model's \code{meta} block, or from an nlmixr2
+fit's covariance takes precedence over the priors on the population
+parameters, which are then not read, so an estimate that is not its
+prior mean (a MAP estimate) still simulates; a prior entry it does not
+draw is named in a warning.  \code{TRUE} makes the priors replace it.  The prior degrees of
+freedom take precedence over a \code{dfSub} carried in \code{meta}, with a
+warning; one given at the call site wins over them instead.}
 
 \item{priorPdRetry}{How many times a prior draw of a covariance matrix is
 retried when it is not positive definite.  After that many tries the
