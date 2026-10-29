@@ -471,6 +471,7 @@ static void rxSolveErrPush(int id, int err) {
 
 rx_solving_options op_global;
 extern int nPastEvid_global;
+extern int tieOrderData_global;
 #include "rxGlobals.h"
 extern rx_globals _globals;
 
@@ -1525,6 +1526,17 @@ extern "C" double getTime(int idx, rx_solving_options_ind *ind) {
 static inline void reSortMainTimeline(rx_solving_options_ind *ind, int startI) {
   double *time = ind->timeThread;
   int    *evid = ind->evid;
+  if (tieOrderData_global) {
+    // rxControl(tieOrder="data"): ties keep etTrans()'s order (the data's
+    // row order); records pushed while solving come after them
+    SORT(ind->ix + startI, ind->ix + ind->n_all_times,
+         [time](int a, int b) -> bool {
+           double ta = time[a], tb = time[b];
+           if (ta != tb) return ta < tb;
+           return a < b;
+         });
+    return;
+  }
   SORT(ind->ix + startI, ind->ix + ind->n_all_times,
        [time, evid](int a, int b) -> bool {
          double ta = time[a], tb = time[b];
