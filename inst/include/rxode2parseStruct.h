@@ -555,6 +555,10 @@ struct rx_solving_options_ind_s {
   double *infDurOn;
   int     infDurOnCap; /* allocated doubles in infDurOn */
   int     infDurOnN;   /* entries in use */
+  // 1 + the sorted position of the record whose own covariates a time-based
+  // covariate update reads, whatever time it is at (0 = match by time):
+  // getAmtAtRecord() reads f() at a record's data time with its covariates.
+  int     recCovPos;
 };
 
 typedef struct rx_solve_s {
