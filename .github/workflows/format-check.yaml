@@ -1,9 +1,14 @@
 # Checks that R code is formatted with air (https://posit-dev.github.io/air/),
 # using the settings in air.toml. To fix a failure locally run `air format .`.
+# Stacked PRs (based on another PR's branch) skip CI; a PR runs once it
+# targets main, including when it is retargeted there (edited, base
+# changed).  Other PR edits start a run whose jobs are all skipped.
 on:
   push:
     branches: [main, master]
   pull_request:
+    branches: [main, master]
+    types: [opened, synchronize, reopened, edited]
 
 name: format-check.yaml
 
@@ -11,11 +16,12 @@ permissions: read-all
 
 # A new push to a pull request cancels the superseded run; nothing here deploys.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}${{ github.event.action == 'edited' && !github.event.changes.base && format('-{0}', github.run_id) || '' }}
   cancel-in-progress: true
 
 jobs:
   format-check:
+    if: github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
