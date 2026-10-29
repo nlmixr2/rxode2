@@ -36,7 +36,9 @@ rxTest({
     sens <- rep(NA_real_, nrow(grid))
     rawAlast <- 0
     for (i in seq_len(nrow(grid))) {
-      cl_i <- clAt(grid$wt[i])
+      # the interval ending at record i takes the covariate of its start
+      # record (locf), as the solve does
+      cl_i <- clAt(grid$wt[max(i - 1L, 1L)])
       amt_i <- if (grid$evid[i] != 0) grid$amt[i] else 0
       if (i == 1) {
         rawAlast <- rawAlast + amt_i

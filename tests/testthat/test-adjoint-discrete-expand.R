@@ -10,68 +10,85 @@ rxTest({
   .adjCarryKinds <- list(
     ini = list(
       txt = "y(0) <- 2\nd/dt(y) <- -k*y",
-      ev = .ev2, p = c(k = 0.5)
+      ev = .ev2,
+      p = c(k = 0.5)
     ),
     lhs = list(
       txt = "ka2 <- ka*2\nd/dt(depot) <- -ka2*depot\ncp <- center/v\nd/dt(center) <- ka2*depot - k*center\nauc <- cp*2",
-      ev = .evDose, p = c(ka = 1.2, v = 25, k = 0.14)
+      ev = .evDose,
+      p = c(ka = 1.2, v = 25, k = 0.14)
     ),
     dosing = list(
       txt = "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\nf(depot) <- fd\nalag(depot) <- lg",
-      ev = .evDose, p = c(ka = 1.2, k = 0.14, fd = 0.7, lg = 0.7)
+      ev = .evDose,
+      p = c(ka = 1.2, k = 0.14, fd = 0.7, lg = 0.7)
     ),
     rate = list(
       txt = "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\nrate(depot) <- r",
-      ev = et(amt = 100, cmt = "depot", rate = -1) |> et(c(1, 2, 4, 8, 12)), p = c(ka = 1.2, k = 0.14, r = 40)
+      ev = et(amt = 100, cmt = "depot", rate = -1) |> et(c(1, 2, 4, 8, 12)),
+      p = c(ka = 1.2, k = 0.14, r = 40)
     ),
     dur = list(
       txt = "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\ndur(depot) <- dd",
-      ev = et(amt = 100, cmt = "depot", rate = -2) |> et(c(1, 2, 4, 8, 12)), p = c(ka = 1.2, k = 0.14, dd = 2.5)
+      ev = et(amt = 100, cmt = "depot", rate = -2) |> et(c(1, 2, 4, 8, 12)),
+      p = c(ka = 1.2, k = 0.14, dd = 2.5)
     ),
     ifelse = list(
       txt = "if (t > 2) { kk <- k*2 } else { kk <- k }\nd/dt(y) <- -kk*y\ny(0) <- y0",
-      ev = .ev2, p = c(k = 0.5, y0 = 3)
+      ev = .ev2,
+      p = c(k = 0.5, y0 = 3)
     ),
     default = list(
       txt = "k <- 0.5\nd/dt(y) <- -k*y\ny(0) <- 2",
-      ev = .ev2, p = c(k = 1)
+      ev = .ev2,
+      p = c(k = 1)
     ),
     string = list(
       txt = "d/dt(y) <- -k*y\nif (t > 1) {label <- \"a\"} else {label <- \"b\"}\nz <- y\ny(0) <- 1",
-      ev = .ev2, p = c(k = 1)
+      ev = .ev2,
+      p = c(k = 1)
     ),
     # a string output after a numeric one keeps its column position
     stringLate = list(
       txt = "d/dt(y) <- -k*y\nz <- y*2\nif (t > 1) {label <- \"a\"} else {label <- \"b\"}\nw <- z + 1\ny(0) <- 1",
-      ev = .ev2, p = c(k = 1)
+      ev = .ev2,
+      p = c(k = 1)
     ),
     mtime = list(
       txt = "d/dt(y) <- -k*y\nmtime(t1) <- 1.5\nw <- t1*k\ny(0) <- 1",
-      ev = .ev2, p = c(k = 1)
+      ev = .ev2,
+      p = c(k = 1)
     ),
     param = list(
       txt = "param(zz, k)\nd/dt(y) <- -k*y\nz <- y*zz\ny(0) <- 2",
-      ev = .ev2, p = c(k = 0.5, zz = 2)
+      ev = .ev2,
+      p = c(k = 0.5, zz = 2)
     ),
     order = list(
       txt = "cmt(y)\nd/dt(x) <- -k*x\nd/dt(y) <- k*x - k2*y\nx(0) <- 4\ndvid(2, 1)",
-      ev = .ev2, p = c(k = 0.5, k2 = 0.3)
+      ev = .ev2,
+      p = c(k = 0.5, k2 = 0.3)
     ),
     extra = list(
       txt = "d/dt(y) <- -k*y\ncmt(extra)\ny(0) <- 2",
-      ev = .ev2, p = c(k = 0.5)
+      ev = .ev2,
+      p = c(k = 0.5)
     ),
     jac = list(
       txt = "d/dt(y) <- -k*y\ndf(y)/dy(y) <- -k\ny(0) <- 2",
-      ev = .ev2, p = c(k = 0.5)
+      ev = .ev2,
+      p = c(k = 0.5)
     ),
     adaptive = list(
       txt = "d/dt(y) <- -k*y\nif (t < 1) {\n bolus(50, 1, 0, 0, 0)\n}",
-      ev = .ev2, p = c(k = 1)
+      ev = .ev2,
+      p = c(k = 1)
     ),
     past = list(
       txt = "d/dt(y) <- -k*delay(y, 1)\ny(0) <- 2\npast(y, 1) <- 3",
-      ev = et(c(0.5, 1.5, 2.5, 3.5)), p = c(k = 0.5), dense = TRUE
+      ev = et(c(0.5, 1.5, 2.5, 3.5)),
+      p = c(k = 0.5),
+      dense = TRUE
     )
   )
 
@@ -79,10 +96,26 @@ rxTest({
   # A field not listed fails the test, so a new field must be classified.
   .adjMvRules <- list(
     identical = c(
-      "params", "ini", "normal.state", "normProp", "needSort", "nMtime",
-      "extraCmt", "stateExtra", "dvid", "indLin", "slhs", "alag", "udf",
-      "interp", "strAssign", "strCmpParams", "splitBolus", "splitInfusion",
-      "splitInfusionBolus", "splitBolusInfusion"
+      "params",
+      "ini",
+      "normal.state",
+      "normProp",
+      "needSort",
+      "nMtime",
+      "extraCmt",
+      "stateExtra",
+      "dvid",
+      "indLin",
+      "slhs",
+      "alag",
+      "udf",
+      "interp",
+      "strAssign",
+      "strCmpParams",
+      "splitBolus",
+      "splitInfusion",
+      "splitInfusionBolus",
+      "splitBolusInfusion"
     ),
     # the base states come first, the rx__sens_* output slots after them
     prefix = c("state", "state.ignore"),
@@ -119,7 +152,8 @@ rxTest({
       .eLhs <- .e$lhs[!grepl("^(rx__adj|rxCaptureId[0-9]+$)", .e$lhs)]
       expect_identical(.eLhs, .o$lhs, label = paste(.nm, "lhs"))
       expect_identical(
-        order(.e$lhsOrd[names(.o$lhsOrd)]), order(.o$lhsOrd),
+        order(.e$lhsOrd[names(.o$lhsOrd)]),
+        order(.o$lhsOrd),
         label = paste(.nm, "lhsOrd")
       )
       expect_identical(.e$sens, paste0("rx__sens_", .ex$st, "_BY_", names(.k$p)[1], "__"), label = paste(.nm, "sens"))
@@ -180,11 +214,20 @@ rxTest({
   .pkClosed <- function(p, tt, fd = "1", lg = "0", c0 = "10") {
     .e <- sprintf(
       "~ %s * 100 * ka / (ka - k) * (exp(-k * (t - %s)) - exp(-ka * (t - %s))) + %s * exp(-k * t)",
-      fd, lg, lg, c0
+      fd,
+      lg,
+      lg,
+      c0
     )
     .eD <- sprintf("~ %s * 100 * exp(-ka * (t - %s))", fd, lg)
-    .gC <- attr(do.call(deriv(stats::as.formula(.e), names(p), function.arg = c(names(p), "t")), c(as.list(p), list(t = tt))), "gradient")
-    .gD <- attr(do.call(deriv(stats::as.formula(.eD), names(p), function.arg = c(names(p), "t")), c(as.list(p), list(t = tt))), "gradient")
+    .gC <- attr(
+      do.call(deriv(stats::as.formula(.e), names(p), function.arg = c(names(p), "t")), c(as.list(p), list(t = tt))),
+      "gradient"
+    )
+    .gD <- attr(
+      do.call(deriv(stats::as.formula(.eD), names(p), function.arg = c(names(p), "t")), c(as.list(p), list(t = tt))),
+      "gradient"
+    )
     .ret <- list()
     for (.pn in names(p)) {
       .ret[[paste0("rx__sens_depot_BY_", .pn, "__")]] <- unname(.gD[, .pn])
@@ -197,16 +240,20 @@ rxTest({
     .tt <- c(1, 2, 4, 8, 12)
     .mods <- list(
       ini = list(
-        txt = "y(0) <- 2\nd/dt(y) <- -k*y", ev = et(.tt), p = c(k = 0.5),
+        txt = "y(0) <- 2\nd/dt(y) <- -k*y",
+        ev = et(.tt),
+        p = c(k = 0.5),
         known = list(rx__sens_y_BY_k__ = -.tt * 2 * exp(-0.5 * .tt))
       ),
       f = list(
         txt = "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\nf(depot) <- fd\ncenter(0) <- 10",
-        ev = .evDose, p = c(ka = 1.2, k = 0.14, fd = 0.7)
+        ev = .evDose,
+        p = c(ka = 1.2, k = 0.14, fd = 0.7)
       ),
       alag = list(
         txt = "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\nalag(depot) <- lg\ncenter(0) <- 10",
-        ev = .evDose, p = c(ka = 1.2, k = 0.14, lg = 0.7)
+        ev = .evDose,
+        p = c(ka = 1.2, k = 0.14, lg = 0.7)
       )
     )
     .mods$f$known <- .pkClosed(.mods$f$p, .tt, fd = "fd")
@@ -216,9 +263,14 @@ rxTest({
       .k <- .mods[[.nm]]
       for (.m in c("rk4s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj")) {
         .a <- rxSolveAdjointRk4(
-          .k$txt, .k$ev,
-          params = .k$p, calcSens = names(.k$p), method = .m,
-          atol = 1e-10, rtol = 1e-10, hmin = if (.m == "rk4s") 0.001 else 0
+          .k$txt,
+          .k$ev,
+          params = .k$p,
+          calcSens = names(.k$p),
+          method = .m,
+          atol = 1e-10,
+          rtol = 1e-10,
+          hmin = if (.m == "rk4s") 0.001 else 0
         )
         .a <- .a[.a$time %in% .tt, , drop = FALSE]
         for (.cn in names(.k$known)) {
@@ -234,15 +286,18 @@ rxTest({
   .adjIniMods <- list(
     one = list(
       txt = "y(0) <- y0\nd/dt(y) <- -k*y",
-      ev = et(c(0, 0.5, 1, 2, 3)), p = c(k = 0.7, y0 = 3)
+      ev = et(c(0, 0.5, 1, 2, 3)),
+      p = c(k = 0.7, y0 = 3)
     ),
     two = list(
       txt = "x(0) <- a*b\nd/dt(x) <- -k*x\nd/dt(z) <- k*x - k2*z",
-      ev = et(c(0, 0.5, 1, 2, 3)), p = c(a = 2, b = 1.5, k = 0.7, k2 = 0.3)
+      ev = et(c(0, 0.5, 1, 2, 3)),
+      p = c(a = 2, b = 1.5, k = 0.7, k2 = 0.3)
     ),
     reset = list(
       txt = "y(0) <- y0\nd/dt(y) <- -k*y",
-      ev = et(c(0, 0.5, 1, 2.5, 3)) |> et(time = 2, evid = 3), p = c(k = 0.7, y0 = 3)
+      ev = et(c(0, 0.5, 1, 2.5, 3)) |> et(time = 2, evid = 3),
+      p = c(k = 0.7, y0 = 3)
     )
   )
 
@@ -253,9 +308,14 @@ rxTest({
       for (.m in .adjIniMethods) {
         # hmin sets the fixed step; it would only constrain the adaptive methods
         .a <- rxSolveAdjointRk4(
-          .k$txt, .k$ev,
-          params = .k$p, calcSens = names(.k$p), method = .m,
-          atol = 1e-10, rtol = 1e-10, hmin = if (.m %in% c("rk4s", "abs")) 0.001 else 0
+          .k$txt,
+          .k$ev,
+          params = .k$p,
+          calcSens = names(.k$p),
+          method = .m,
+          atol = 1e-10,
+          rtol = 1e-10,
+          hmin = if (.m %in% c("rk4s", "abs")) 0.001 else 0
         )
         .a <- .a[.a$time %in% .k$ev$time[is.na(.k$ev$evid) | .k$ev$evid == 0], , drop = FALSE]
         for (.cn in names(.fd)) {
@@ -283,8 +343,16 @@ rxTest({
       data.frame(id = 3L, time = c(0, 0.5, 3), evid = 0L)
     )
     for (.m in .adjIniMethods) {
-      .a <- rxSolveAdjointRk4(.txt, .ev, params = .p, calcSens = c("k", "y0"), method = .m,
-        atol = 1e-10, rtol = 1e-10, hmin = if (.m %in% c("rk4s", "abs")) 0.001 else 0)
+      .a <- rxSolveAdjointRk4(
+        .txt,
+        .ev,
+        params = .p,
+        calcSens = c("k", "y0"),
+        method = .m,
+        atol = 1e-10,
+        rtol = 1e-10,
+        hmin = if (.m %in% c("rk4s", "abs")) 0.001 else 0
+      )
       expect_equal(.a$rx__sens_y_BY_y0__, exp(-0.7 * .a$time), tolerance = 1e-6, label = .m)
     }
   })
@@ -297,16 +365,26 @@ rxTest({
     .pF <- c(ka = 1.2, k = 0.14, fd = 0.7, c0 = 2)
     .cases <- list(
       dose = list(ev = rbind(.row(1L, 1L, 100, "depot"), .row(1L, 0L, 0, "depot")), fd = 100, c0 = 1),
-      twoDoses = list(ev = rbind(.row(1L, 1L, 100, "depot"), .row(1L, 1L, 50, "depot"),
-                                 .row(1L, 0L, 0, "depot"), .row(1L, 0L, 0, "depot")), fd = 150, c0 = 1),
-      replace = list(ev = rbind(.row(1L, 1L, 100, "depot"), .row(1L, 5L, 30, "center"),
-                                .row(1L, 0L, 0, "depot")), fd = 100, c0 = 0, skip = "cvodesadj")
+      twoDoses = list(
+        ev = rbind(
+          .row(1L, 1L, 100, "depot"),
+          .row(1L, 1L, 50, "depot"),
+          .row(1L, 0L, 0, "depot"),
+          .row(1L, 0L, 0, "depot")
+        ),
+        fd = 150,
+        c0 = 1
+      ),
+      replace = list(
+        ev = rbind(.row(1L, 1L, 100, "depot"), .row(1L, 5L, 30, "center"), .row(1L, 0L, 0, "depot")),
+        fd = 100,
+        c0 = 0
+      )
     )
-    # abs refuses an f() that depends on a calcSens parameter; cvodesadj reads
-    # an observation at t0 before a replace or multiply there
+    # abs refuses an f() that depends on a calcSens parameter
     for (.nm in names(.cases)) {
       .k <- .cases[[.nm]]
-      for (.m in setdiff(.adjIniMethods, c("abs", .k$skip))) {
+      for (.m in setdiff(.adjIniMethods, "abs")) {
         .a <- rxSolveAdjointRk4(.txtF, .k$ev, params = .pF, calcSens = c("fd", "c0"), method = .m)
         .n <- sum(.k$ev$evid == 0L)
         expect_equal(nrow(.a), .n, label = paste(.nm, .m))
@@ -318,8 +396,13 @@ rxTest({
     # a multiply at t0 scales the initial-condition sensitivity
     .ev <- rbind(.row(1L, 6L, 3, "center"), .row(1L, 0L, 0, "center"))
     for (.m in setdiff(.adjIniMethods, "cvodesadj")) {
-      .a <- rxSolveAdjointRk4("d/dt(center) <- -k*center\ncenter(0) <- c0", .ev,
-        params = c(k = 0.14, c0 = 2), calcSens = c("k", "c0"), method = .m)
+      .a <- rxSolveAdjointRk4(
+        "d/dt(center) <- -k*center\ncenter(0) <- c0",
+        .ev,
+        params = c(k = 0.14, c0 = 2),
+        calcSens = c("k", "c0"),
+        method = .m
+      )
       expect_equal(.a$rx__sens_center_BY_c0__, 3, tolerance = 1e-12, label = .m)
       expect_equal(.a$rx__sens_center_BY_k__, 0, tolerance = 1e-12, label = .m)
     }
@@ -327,7 +410,12 @@ rxTest({
 
   test_that("the initial-condition sensitivity matches its closed form", {
     .tt <- c(0, 0.5, 1, 2, 3)
-    .a <- rxSolveAdjointRk4("y(0) <- y0\nd/dt(y) <- -k*y", et(.tt), params = c(k = 0.7, y0 = 3), calcSens = c("k", "y0"))
+    .a <- rxSolveAdjointRk4(
+      "y(0) <- y0\nd/dt(y) <- -k*y",
+      et(.tt),
+      params = c(k = 0.7, y0 = 3),
+      calcSens = c("k", "y0")
+    )
     expect_equal(.a$rx__sens_y_BY_y0__, exp(-0.7 * .tt), tolerance = 1e-6)
     expect_equal(.a$rx__sens_y_BY_k__, -.tt * 3 * exp(-0.7 * .tt), tolerance = 1e-6)
     # no initial condition depends on a calcSens parameter: no extra lhs block
