@@ -166,6 +166,19 @@ rxTest({
     }
   })
 
+  test_that("a reset during an addl repeat of a steady-state infusion cancels it", {
+    # the repeat at 12 is cancelled at 14; the one at 24 runs
+    o <- c(13, 15, 17, 20, 30)
+    ev <- et(amt = 100, rate = 25, ii = 12, ss = 1, addl = 2, cmt = "depot") |>
+      et(time = 14, evid = 3) |>
+      et(o)
+    want <- et(time = 24, amt = 100, rate = 25, cmt = "depot") |> et(o)
+    for (meth in .meths) {
+      d <- .solve(.m, ev, meth)
+      expect_equal(d[o > 14], .solve(.m, want, meth)[o > 14], tolerance = 1e-6)
+    }
+  })
+
   test_that("an infusion started after the reset keeps its own stop", {
     o <- c(.o, 3.4, 3.6)
     ev <- et(amt = 100, rate = 25, cmt = "depot") |>
