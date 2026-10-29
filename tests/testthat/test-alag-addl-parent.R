@@ -78,6 +78,40 @@
   )
 }
 
+# The X an addl repeat at `tr` that does not keep its covariates reads, from
+# the records at `recT` (X `recX`, evid `recE`; the dose at t0 = 0 has X 1):
+# under nocb the first record at or after tr (NONMEM's F1 record), otherwise
+# the last before it in the data, where an EVID 2 record at tr comes first
+.addlFillX <- function(tr, recT, recX, recE, interp) {
+  allT <- c(0, recT)
+  allX <- c(1, recX)
+  allE <- c(1, recE)
+  if (interp == "nocb") {
+    nxt <- which(allT >= tr)
+    return(allX[nxt[which.min(allT[nxt])]])
+  }
+  prv <- which(allT < tr | (allT == tr & allE == 2))
+  prv <- prv[allT[prv] == max(allT[prv])]
+  allX[prv[length(prv)]]
+}
+
+# 100 q12h (addl 3) from t = 0 with X 1, and records at recT
+.addlFillEv <- function(recT, recX, recE) {
+  d <- data.frame(
+    ID = 1,
+    TIME = c(0, recT),
+    DV = 0,
+    MDV = c(1, ifelse(recE == 0, 0, 1)),
+    EVID = c(1, recE),
+    AMT = c(100, rep(NA, length(recT))),
+    CMT = c(1, rep(2, length(recT))),
+    ADDL = c(3, rep(0, length(recT))),
+    II = c(12, rep(0, length(recT))),
+    X = c(1, recX)
+  )
+  d[order(d$TIME, -(d$EVID == 1)), ]
+}
+
 .addlParentSolveP <- function(mod, d, interp, keep, params) {
   rxSolve(
     mod,
@@ -210,6 +244,38 @@ rxTest({
         dn <- .addlParentSolveP(m0, d, interp, keep, c(tlag = log(0.1), eta_lag = -h))
         fd <- (up$central - dn$central) / (2 * h)
         expect_equal(s$rx__sens_central_BY_eta_lag__, fd, tolerance = 1e-6, label = lab)
+      }
+    }
+  })
+
+  test_that("an addl repeat's missing covariates come from the records next to it in the data", {
+    # a record just after each repeat, before its lag lands it; one at each
+    # repeat's time; an EVID 2 record at the first repeat's time
+    layouts <- list(
+      after = list(t = c(12.05, 24.05, 36.05, 40), x = c(2, 4, 5, 8), e = c(0, 0, 0, 0)),
+      at = list(t = c(12, 24, 36, 40), x = c(2, 4, 5, 8), e = c(0, 0, 0, 0)),
+      evid2 = list(t = c(8, 12, 14, 20, 40), x = c(2, 6, 4, 5, 8), e = c(0, 2, 0, 0, 0))
+    )
+    tr <- c(12, 24, 36)
+    for (ln in names(layouts)) {
+      l <- layouts[[ln]]
+      d <- .addlFillEv(l$t, l$x, l$e)
+      for (interp in c("locf", "nocb", "midpoint", "linear")) {
+        xf <- vapply(tr, .addlFillX, 0, recT = l$t, recX = l$x, recE = l$e, interp = interp)
+        # NONMEM's ALAG1 reads the dose record under nocb
+        xl <- if (interp == "nocb") rep(1, 3) else xf
+        # alag() and f() together also need f() of a lagged dose to read its
+        # record, which fix/lagged-dose-record-covariates does
+        for (nm in c("lag", "f")) {
+          s <- .addlParentSolve(.addlParentMods[[nm]], d, interp)
+          e <- .addlParentPred(
+            s$time,
+            c(0, tr),
+            if (nm == "lag") rep(1, 4) else 1 / c(1, xf),
+            if (nm == "f") rep(0, 4) else 0.1 * c(1, xl)
+          )
+          expect_equal(s$pred, e, tolerance = 1e-7, label = paste(ln, interp, nm))
+        }
       }
     }
   })
