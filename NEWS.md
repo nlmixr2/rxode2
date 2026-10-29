@@ -35,6 +35,9 @@
   now includes the doses of the earlier intervals that arrive inside the
   observed one; they were dropped, so the profile decayed from the trough
   instead of matching explicit dosing (#1499).
+- `linCmt()` models now follow `minSS = maxSS = n`, giving the profile after
+  exactly `n` prior doses as the equivalent ODE model does; they used to
+  return the exact steady state for every `n` (#1500).
 
 ## New features
 

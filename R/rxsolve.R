@@ -312,9 +312,9 @@
 #'     to the fewest doses the regimen needs (2 with a lag time, more with
 #'     overlapping infusions or a lag longer than `ii`).  `minSS = maxSS = n`
 #'     gives exactly the state after `n` prior doses (Monolix
-#'     `nbdoses = n`).  `linCmt()` steady states are exact, and a constant
-#'     infusion (`ii = 0`), which has no doses, takes at least 5 and up to
-#'     `max(maxSS, 10000)` convergence steps.
+#'     `nbdoses = n`), for `linCmt()` models too; otherwise `linCmt()` steady
+#'     states are exact.  A constant infusion (`ii = 0`), which has no doses,
+#'     takes at least 5 and up to `max(maxSS, 10000)` convergence steps.
 #'
 #' @param maxSS Maximum number of doses given before a steady-state dose (at
 #'     least `minSS`)
