@@ -201,6 +201,17 @@ make_rxode2_system_iem(rx_solving_options_ind* ind, t_dydt calc_dydt, t_calc_jac
     );
 }
 
+// odeint's integrate_adaptive() for a controlled stepper, with the step size
+// passed by reference: on return dt holds the step the controller proposes
+// next.  The stepper is taken by value, as integrate_adaptive() takes it, so
+// each call starts it afresh.
+template <class Stepper, class System, class State, class Observer>
+inline size_t rxIntegrateAdaptive(Stepper stepper, System sys, State &x,
+                                  double t0, double t1, double &dt, Observer obs) {
+  return boost::numeric::odeint::detail::integrate_adaptive(
+      stepper, sys, x, t0, t1, dt, obs, typename Stepper::stepper_category());
+}
+
 struct error_checker {
     rx_solving_options_ind *ind_;
     int* rc_;

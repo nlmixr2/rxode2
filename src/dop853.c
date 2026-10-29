@@ -803,6 +803,19 @@ int dop853
  long int nmax, int meth, long int nstiff, int nrdens, int* icont, int licont,
  void *userdata, int subject_id, dop853_stiff_t *stiffState)
 {
+  return dop853Next(nptr, fcn, x, y, xend, rtoler, atoler, itoler, solout, iout,
+                    fileout, uround, safe, fac1, fac2, beta, hmax, h, nmax, meth,
+                    nstiff, nrdens, icont, licont, userdata, subject_id, stiffState,
+                    NULL);
+}
+
+int dop853Next
+(int *nptr, FcnEqDiff fcn, double x, double* y, double xend, double* rtoler,
+ double* atoler, int itoler, SolTrait solout, int iout, FILE* fileout, double uround,
+ double safe, double fac1, double fac2, double beta, double hmax, double h,
+ long int nmax, int meth, long int nstiff, int nrdens, int* icont, int licont,
+ void *userdata, int subject_id, dop853_stiff_t *stiffState, double *hNext)
+{
   dop853_ctx_t ctx;
   int          arret, idid;
   int i;
@@ -821,6 +834,7 @@ int dop853
   ctx.subject_id = subject_id;
 
   arret = 0;
+  if (hNext != NULL) *hNext = 0.0;
   /* so a caller reading xLast after an input-validation failure sees the
      interval start rather than a stale value */
   if (stiffState != NULL) stiffState->xLast = x;
@@ -1038,6 +1052,7 @@ int dop853
       idid = dopcor (&ctx, nptr, fcn, x, y, xend, hmax, h, rtoler, atoler, itoler, fileout,
                      solout, iout, nmax, uround, meth, nstiff, safe, beta, fac1, fac2, icont,
                      stiffState);
+      if (hNext != NULL && idid > 0) *hNext = fabs(ctx.hout);
       R_Free (ctx.k10);
       R_Free (ctx.k9);
       R_Free (ctx.k8);
@@ -1066,4 +1081,4 @@ int dop853
       return idid;
     }
 
-} /* dop853 */
+} /* dop853Next */

@@ -259,3 +259,13 @@ extern int dop853
   int subject_id, /* rxode2 subject id (-1 if N/A); used by message aggregator */
   dop853_stiff_t *stiffState /* persistent stiffness-probe state, or NULL */
  );
+
+/* dop853() that also returns, in *hNext, the step size it proposes after the
+   last accepted step (0 on failure). */
+extern int dop853Next
+ (int *nptr, FcnEqDiff fcn, double x, double* y, double xend, double* rtoler,
+  double* atoler, int itoler, SolTrait solout, int iout, FILE* fileout,
+  double uround, double safe, double fac1, double fac2, double beta, double hmax,
+  double h, long int nmax, int meth, long int nstiff, int nrdens, int* icont,
+  int licont, void *userdata, int subject_id, dop853_stiff_t *stiffState,
+  double *hNext);
