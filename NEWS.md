@@ -179,6 +179,11 @@
   1 for the whole solve, so a right-hand side, `f()` or `evid_()` reading it
   treated every record as the first (#1526).
 
+- Forward sensitivities now include the `f()` of a fixed-duration infusion,
+  read at its start and removed at its stop.  They were missing, so a
+  parameter reaching `f()` directly or through a state got a wrong
+  sensitivity during and after the infusion (#1568).
+
 - Forward sensitivities through `alag()`, `f()`, `rate()`, `dur()` and a
   parameter-dependent `delay()` are now right for a parameter that also
   has a numeric default in the model (for example `lg <- 0.3` with
