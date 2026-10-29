@@ -42,3 +42,71 @@ rxTest({
     }
   }
 })
+
+rxTest({
+  # newind during the solve (#1526): 1 for the subject's first record's own dose
+  # functions and evid_() pushes, 2 for the integration after it
+  .newindMethods <- c("dop853", "dop853+ros4", "t54+sdirk43")
+  .newindDense <- c("dop853", "dop853+ros4")
+
+  .newindRhs <- function() {
+    model({
+      d / dt(central) <- -0.2 * central * ifelse(newind <= 1, 2, 1)
+    })
+  }
+  .newindF <- function() {
+    model({
+      d / dt(central) <- -0.2 * central
+      f(central) <- ifelse(newind <= 1, 0.5, 1)
+    })
+  }
+  .newindGuard <- function() {
+    model({
+      d / dt(central) <- -0.2 * central
+      if (newind <= 1) bolus(100, 1, 0, 0, 0)
+    })
+  }
+  .newindSticky <- function() {
+    model({
+      d / dt(central) <- -0.2 * central
+      if (newind <= 1) {
+        n <- 0
+      }
+      if (t >= 1 && n < 1) {
+        bolus(100, 1, 0, 0, 0)
+        n <- n + 1
+      }
+    })
+  }
+
+  .newindCheck <- function(method, dense = FALSE) {
+    .lab <- paste0(method, if (dense) " (dense)" else "")
+    .solve <- function(m, ev, ...) {
+      suppressMessages(rxSolve(m, ev, method = method, dense = dense, ...))
+    }
+    test_that(paste("newind during the solve matches the table for", .lab), {
+      .s <- .solve(.newindRhs, et(amt = 100) |> et(c(1, 2, 4)))
+      expect_equal(.s$central, 100 * exp(-0.2 * c(1, 2, 4)), tolerance = 1e-4)
+
+      .s <- .solve(
+        .newindF,
+        et(amt = 100, time = 0) |> et(amt = 100, time = 2) |> et(c(1, 1.999, 2.001, 4))
+      )
+      expect_equal(.s$central, c(40.9365, 33.5227, 133.489, 89.4985), tolerance = 1e-4)
+
+      # dense output falls back to standard output for evid_() models
+      if (dense) {
+        return(invisible())
+      }
+      .s <- .solve(.newindGuard, et(c(0, 1, 2, 4)), addDosing = TRUE)
+      expect_equal(.s$central[.s$time > 0], 100 * exp(-0.2 * c(1, 2, 4)), tolerance = 1e-4)
+      expect_equal(sum(.s$evid != 0), 1L)
+
+      .s <- .solve(.newindSticky, et(c(0, 0.5, 1, 2, 4)))
+      expect_equal(.s$central[.s$time > 1], 100 * exp(-0.2 * c(1, 3)), tolerance = 1e-4)
+    })
+  }
+
+  for (.m in .newindMethods) .newindCheck(.m)
+  for (.m in .newindDense) .newindCheck(.m, dense = TRUE)
+})
