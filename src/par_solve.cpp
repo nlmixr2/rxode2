@@ -1928,6 +1928,61 @@ static inline int refreshLagTimesIfNeeded(rx_solve *rx,
   return changed;
 }
 
+// A dose whose alag() reads a state (needSortAlagState) has its lag evaluated
+// with the state at the dose's own time.  sortInd() places it at that (raw)
+// time, so the solve stops there with or without another record at that time;
+// handleEvid1() then evaluates the lag (rxDeferStateLagDose()), moves the
+// record to its lagged time and applies nothing, and updateSolve() runs the
+// slot again once the timeline is re-sorted.  Regular boluses, replacements
+// and multiplications; infusions and steady-state doses keep their sort-time
+// lag.
+static inline int rxLagDeferrable(rx_solving_options_ind *ind, int raw) {
+  if (!(rx_global.needSort & needSortAlagState)) return 0;
+  if (raw < 0 || raw >= ind->n_all_times) return 0;
+  int evid = getEvid(ind, raw);
+  if (isObs(evid) || evid == 3 || evid == 9 || (evid >= 10 && evid <= 99)) return 0;
+  int wh, cmt, wh100, whI, wh0;
+  getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
+  if (wh0 != EVID0_REGULAR) return 0;
+  return whI == EVIDF_NORMAL || whI == EVIDF_REPLACE || whI == EVIDF_MULT;
+}
+
+// The dose at ind->idx, still at its own time (the solve's time), gets its lag
+// from the state `yp` there.  Returns 1 when that moves it later: its time is
+// updated and the timeline marked for a re-sort, and the dose is not applied
+// now.  Returns 0 when the dose is applied at this record (a zero lag, or the
+// record is already at its lagged time).
+extern "C" int rxDeferStateLagDose(rx_solving_options_ind *ind, double *yp) {
+  if (ind->idx < 0 || ind->timeThread == NULL) return 0;
+  int raw = ind->ix[ind->idx];
+  if (!rxLagDeferrable(ind, raw)) return 0;
+  double rawTime = getAllTimes(ind, raw);
+  if (!isSameTime(ind->timeThread[raw], rawTime)) return 0;
+  int savedWh = ind->wh, savedCmt = ind->cmt, savedWh100 = ind->wh100,
+    savedWhI = ind->whI, savedWh0 = ind->wh0;
+  getWh(getEvid(ind, raw), &(ind->wh), &(ind->cmt), &(ind->wh100), &(ind->whI), &(ind->wh0));
+  // the sort-time convention, as refreshLagTimesIfNeeded() uses
+  double savedCurShift = ind->curShift;
+  ind->curShift = 0.0;
+  double lagged = getLag(ind, ind->id, ind->cmt, rawTime, yp);
+  ind->curShift = savedCurShift;
+  ind->wh = savedWh; ind->cmt = savedCmt; ind->wh100 = savedWh100;
+  ind->whI = savedWhI; ind->wh0 = savedWh0;
+  if (ISNA(lagged) || isSameTime(lagged, rawTime) || lagged < rawTime) return 0;
+  ind->timeThread[raw] = lagged;
+  ind->mainSorted = 0;
+  return 1;
+}
+
+// Slot i holds a dose rxDeferStateLagDose() just moved past the solve's time.
+static inline bool rxLagDeferredSlot(rx_solving_options_ind *ind, int i, double xout) {
+  if (i < 0 || i >= ind->n_all_times) return false;
+  int raw = ind->ix[i];
+  if (!rxLagDeferrable(ind, raw)) return false;
+  double t = ind->timeThread[raw];
+  return t > xout && !isSameTime(t, xout);
+}
+
 // Adapted from
 extern "C" void sortInd(rx_solving_options_ind *ind) {
 // #ifdef _OPENMP
@@ -1946,7 +2001,9 @@ extern "C" void sortInd(rx_solving_options_ind *ind) {
     ind->ix[i] = i;
     ind->idx = i;
     if (!isObs(getEvid(ind, i))) {
-      time[i] = getTime__(ind->ix[i], ind, 1);
+      // a dose whose alag() reads a state waits at its own time
+      time[i] = rxLagDeferrable(ind, i) ? getAllTimes(ind, i) :
+        getTime__(ind->ix[i], ind, 1);
       ind->ixds++;
     } else {
       if (getEvid(ind, i) == 3) {
@@ -4639,7 +4696,10 @@ updateSolve(rx_solving_options_ind *ind, rx_solving_options *op, int *neq,
   bool _mtimeRequeued = (_rxEvidRequeueId == ind->id && _rxEvidRequeueIdx == i);
   _rxEvidRequeueId = -1;
   _rxEvidRequeueIdx = -1;
-  bool _fire = _rxFireEvid(ind, op, i) && !_mtimeRequeued;
+  // a dose handleEvid1() moved to its lagged time: this slot runs again after
+  // the re-sort (an mtime() requeue of the same slot already runs it again)
+  bool _lagDeferred = !_mtimeRequeued && rxLagDeferredSlot(ind, i, xout);
+  bool _fire = _rxFireEvid(ind, op, i) && !_mtimeRequeued && !_lagDeferred;
   if (_fire) {
     _rxEvidSortStart = i + 1;
     ind->_atEventTime = 1;
@@ -4654,6 +4714,7 @@ updateSolve(rx_solving_options_ind *ind, rx_solving_options *op, int *neq,
     _growSolveIfNeeded(ind, op, i, 1);
     std::copy(getSolve(i), getSolve(i) + rxEffNeq(ind, op), getSolve(i+1));
   }
+  if (_lagDeferred) i--;
 }
 
 //================================================================================

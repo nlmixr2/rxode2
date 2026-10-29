@@ -27,6 +27,8 @@ extern "C" {
   extern rx_solving_options op_global;
   extern rx_solve rx_global;
 #endif
+  // par_solve.cpp: a dose whose alag() reads a state, met at its own time
+  int rxDeferStateLagDose(rx_solving_options_ind *ind, double *yp);
 
 #if defined(__cplusplus)
 }
@@ -2584,6 +2586,11 @@ static inline int handleEvid1(int *i, rx_solve *rx, int *neq, double *yp, double
   rx_solving_options_ind *ind = &(rx->subjects[neq[1]]);
   rx_solving_options *op = rx->op;
   ind->idx = *i;
+  // A dose whose alag() reads a state waits at its own time, where the solve
+  // now stands; its lag moves it later and it is applied there.
+  if ((rx->needSort & needSortAlagState) && rxDeferStateLagDose(ind, yp)) {
+    return 0;
+  }
   if (!isObs(getEvid(ind, ind->ix[ind->idx]))) {
     syncIdx(ind);
   }
