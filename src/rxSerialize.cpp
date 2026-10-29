@@ -21,7 +21,9 @@ extern "C" void rxOptionsIniEnsure(int mx, int cores);
 extern rx_globals _globals;
 
 static const char rxSerializeMagic[8] = {'R','X','O','D','E','2','S','Z'};
-static const uint32_t rxSerializeFormatVer = 9u;
+static const uint32_t rxSerializeFormatVer = 10u;
+// Format 10 appended each subject's ind->addlParent (an addl repeat's offset
+// to the dose record it repeats) after pkSkip; empty when NULL.
 // Format 9 appended each subject's ind->pkSkip (the records that are not data
 // records, nlmixr2/rxode2#1429) after infPair; empty when NULL.
 // Format 8 appended each subject's ind->infPair (the fixed infusion pairing
@@ -481,6 +483,11 @@ SEXP rxSaveState_() {
     sWriteIntBlob(f, ind->pkSkip,
                   (uint64_t)(ind->pkSkip != NULL && ind->n_all_times_orig > 0 ?
                              ind->n_all_times_orig : 0), "pkSkip");
+
+    // addlParent: n_all_times_orig ints, or none when NULL
+    sWriteIntBlob(f, ind->addlParent,
+                  (uint64_t)(ind->addlParent != NULL && ind->n_all_times_orig > 0 ?
+                             ind->n_all_times_orig : 0), "addlParent");
   }
 
   // -- Section 9: op->indLin convergence set (format 3+) --------------------
@@ -1115,6 +1122,9 @@ SEXP rxRestoreState_(SEXP rawSexp) {
   // pkSkip blobs, gathered the same way into _globals.gpkSkip
   std::vector<int> pkSkipAll;
   std::vector<int64_t> pkSkipOff(nsub, -1);
+  // addlParent blobs, gathered the same way into _globals.gaddlParent
+  std::vector<int> addlParentAll;
+  std::vector<int64_t> addlParentOff(nsub, -1);
 
   for (uint32_t si = 0; si < nsub; si++) {
     rx_solving_options_ind *ind = &inds[si];
@@ -1256,6 +1266,21 @@ SEXP rxRestoreState_(SEXP rawSexp) {
       free(buf);
     }
 
+    if (fmt >= 10u) {
+      uint64_t n;
+      int *buf = sReadIntBlob(f, &n, "addlParent");
+      if (n > 0) {
+        if (n != (uint64_t)(ind->n_all_times_orig > 0 ? ind->n_all_times_orig : 0)) {
+          free(buf);
+          (Rf_error)("rxRestoreState: addlParent size mismatch (file: %llu, expected: %d)",
+                     (unsigned long long)n, ind->n_all_times_orig);
+        }
+        addlParentOff[si] = (int64_t)addlParentAll.size();
+        addlParentAll.insert(addlParentAll.end(), buf, buf + n);
+      }
+      free(buf);
+    }
+
     // timeThread: not restored (recomputed from ix by solver)
     // Allocate a private timeThread buffer for this subject
     if (nat > 0) {
@@ -1300,6 +1325,16 @@ SEXP rxRestoreState_(SEXP rawSexp) {
     std::copy(pkSkipAll.begin(), pkSkipAll.end(), _globals.gpkSkip);
     for (uint32_t si = 0; si < nsub; si++) {
       if (pkSkipOff[si] >= 0) inds[si].pkSkip = _globals.gpkSkip + pkSkipOff[si];
+    }
+  }
+
+  if (!addlParentAll.empty()) {
+    if (_globals.gaddlParent != NULL) free(_globals.gaddlParent);
+    _globals.gaddlParent = (int *)malloc(addlParentAll.size() * sizeof(int));
+    if (!_globals.gaddlParent) (Rf_error)("rxRestoreState: out of memory for addlParent");
+    std::copy(addlParentAll.begin(), addlParentAll.end(), _globals.gaddlParent);
+    for (uint32_t si = 0; si < nsub; si++) {
+      if (addlParentOff[si] >= 0) inds[si].addlParent = _globals.gaddlParent + addlParentOff[si];
     }
   }
 

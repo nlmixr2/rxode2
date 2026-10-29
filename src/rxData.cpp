@@ -2078,6 +2078,8 @@ extern "C" void gFree(){
   _globals.ginfPair=NULL;
   if (_globals.gpkSkip != NULL) free(_globals.gpkSkip);
   _globals.gpkSkip=NULL;
+  if (_globals.gaddlParent != NULL) free(_globals.gaddlParent);
+  _globals.gaddlParent=NULL;
   if (_globals.gall_times != NULL) free(_globals.gall_times);
   _globals.gall_times=NULL;
   _globals.gall_times_n = 0;
@@ -4389,6 +4391,25 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
         if (ip[k] >= 1 && ip[k] <= nr) _globals.gpkSkip[ip[k] - 1] = 1;
       }
     }
+    // addl repeats without their covariates and the dose record each
+    // repeats, as 1-based (repeat, dose) row pairs; stored as the offset from
+    // the repeat to its dose
+    if (_globals.gaddlParent != NULL) free(_globals.gaddlParent);
+    _globals.gaddlParent = NULL;
+    SEXP addlParentS = Rf_getAttrib(ev1, Rf_install("rxAddlParent"));
+    if (TYPEOF(addlParentS) == INTSXP && Rf_length(addlParentS) > 1) {
+      int nr = evid.size();
+      _globals.gaddlParent = (int*)calloc(nr, sizeof(int));
+      if (_globals.gaddlParent == NULL){
+        rxSolveFree();
+        stop(_("can not allocate enough memory to load record types"));
+      }
+      int *ip = INTEGER(addlParentS);
+      for (int k = 0; k + 1 < Rf_length(addlParentS); k += 2) {
+        int r0 = ip[k] - 1, p0 = ip[k+1] - 1;
+        if (r0 >= 0 && r0 < nr && p0 >= 0 && p0 < r0) _globals.gaddlParent[r0] = p0 - r0;
+      }
+    }
     int ntot = 1;
 
     IntegerVector id(evid.size(), 1);
@@ -4597,6 +4618,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           ind->ii               = &_globals.gii[startRow];
           ind->infPair          = _globals.ginfPair ? &_globals.ginfPair[startRow] : NULL;
           ind->pkSkip           = _globals.gpkSkip ? &_globals.gpkSkip[startRow] : NULL;
+          ind->addlParent       = _globals.gaddlParent ? &_globals.gaddlParent[startRow] : NULL;
           ind->cov_ptr          = groupCov;
           ind->n_all_times      = groupNAll;
           ind->n_all_times_orig = groupNAll;
@@ -4739,6 +4761,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           ind->ii             = &_globals.gii[i];
           ind->infPair        = _globals.ginfPair ? &_globals.ginfPair[i] : NULL;
           ind->pkSkip         = _globals.gpkSkip ? &_globals.gpkSkip[i] : NULL;
+          ind->addlParent     = _globals.gaddlParent ? &_globals.gaddlParent[i] : NULL;
           lasti = i;
 
           hmax1m=0.0;
@@ -5526,6 +5549,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
             ind->ii   = &(indS.ii[0]);
             ind->infPair = indS.infPair;
             ind->pkSkip = indS.pkSkip;
+            ind->addlParent = indS.addlParent;
             ind->evid =&(indS.evid[0]);
             ind->dv    = &(indS.dv[0]);
             ind->limit = &(indS.limit[0]);

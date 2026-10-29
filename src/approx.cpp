@@ -399,9 +399,12 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
             indSample = ind;
             idxSample = idx;
           }
+          // an addl repeat's alag() reads a nocb covariate at the dose
+          // record it repeats, as NONMEM's ALAG1 does (see getLag())
+          if (is_locf == 2 && ind->lagParent > 0) idxSample = ind->lagParent - 1;
           // cov_ptr is laid out by the data records (n_all_times_orig)
           double *y = indSample->cov_ptr + indSample->n_all_times_orig*k;
-          if (rxPushedRec(ind->ix, idx, ind->n_all_times_orig)) {
+          if (rxPushedRec(ind->ix, idxSample, ind->n_all_times_orig)) {
             ind->par_ptr[op->par_cov[k]-1] =
               rxApproxCovData(getAllTimes(ind, ind->ix[idx]), k, is_locf, op, ind);
             ind->cacheME=0;
