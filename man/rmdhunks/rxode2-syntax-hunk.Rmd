@@ -523,7 +523,8 @@ before the first) and `tteCount(ev)` is the number of events so far,
 so renewal and count-dependent hazards can be written. Every ODE
 solving `method` except the adjoint sensitivity methods simulates
 `tte()` endpoints, since the root finding only re-solves intervals with
-the chosen method.
+the chosen method; a hazard using `delay()` is solved with the dense
+`delay()` solvers.
 
 ### General table of supported residual distributions
 

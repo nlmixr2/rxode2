@@ -3745,7 +3745,10 @@ rxSolve.default <- function(
     # cannot apply an event the model decides on at one of those observations
     # (rxode2#1214).  Refuse rather than silently return one of the two wrong
     # answers.
-    if (isTRUE(rxModelVars(object)$flags[["evid_"]] == 1L)) {
+    # tte() models set the evid_() flag but solve in the per-record loop,
+    # whose dense steps record the delay() history
+    .tte <- any(startsWith(rxModelVars(object)$state, "rx.tteH."))
+    if (!.tte && isTRUE(rxModelVars(object)$flags[["evid_"]] == 1L)) {
       stop(
         "a model cannot combine delay() with evid_() event pushing ",
         "(bolus(), infuse(), replace(), multiply(), reset(), phantom(), obs()):
@@ -3808,14 +3811,14 @@ rxSolve.default <- function(
       # liblsoda is the overall default; switch DDE models to dop853 + ros4
       .ctl$method <- 0L
       .ctl$stiff2 <- 13L
-      .ctl$dense <- TRUE
+      .ctl$dense <- !.tte
       .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
     } else if (
       (.ctl$method == 0L && (.stiff2 == 0L || .stiff2 == 13L)) ||
         (.ctl$method == 13L && .stiff2 == 0L)
     ) {
       # dop853 (optionally + ros4 secondary), or pure ros4 for stiff delays
-      if (!isTRUE(.ctl$dense)) {
+      if (!.tte && !isTRUE(.ctl$dense)) {
         .ctl$dense <- TRUE
         .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
       }

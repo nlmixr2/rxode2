@@ -4950,6 +4950,11 @@ static int _rxTteAfterInterval(rx_solve *rx, rx_solving_options *op,
   if (slot < 0) {
     rxSolveWarnPush(ind->id, "tte() endpoint %d ran out of event slots; later events were not simulated", k);
     rxTteSetDone(subj, k);
+    if (ind->delayHistOn) {
+      // the root finding left the delay() history at the event time
+      std::copy(ys, ys + neq, yp);
+      integ(yp, xs, *xout);
+    }
     return 2;
   }
   int interval = rxTteIsInterval(k);
@@ -5010,14 +5015,22 @@ struct rxTteHook {
   int n;
   double xs;
   std::vector<double> ys;
-  rxTteHook(rx_solve *rx, rx_solving_options_ind *ind, int neq)
-    : n(rxTteN()), xs(0.0), ys(n > 0 ? neq : 0) {
+  rx_solving_options_ind *ind;
+  int hist;
+  rxTteHook(rx_solve *rx, rx_solving_options_ind *ind0, int neq)
+    : n(rxTteN()), xs(0.0), ys(n > 0 ? neq : 0), ind(ind0), hist(0) {
     if (n > 0) rxTteSubjectInit(ind, (int)(ind - rx->subjects));
   }
   void start(double xp, const double *yp) {
     if (n == 0) return;
     xs = xp;
     std::copy(yp, yp + ys.size(), ys.begin());
+    hist = ind->delayHistN;
+  }
+  // a re-integration from the interval start replaces the delay() history
+  // recorded after it
+  void rewindHistory() {
+    if (ind->delayHistOn) ind->delayHistN = hist;
   }
   int after(rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind,
             int i, double *xp, double *xout, double *yp,
@@ -6652,12 +6665,20 @@ static int rxSegmentSingle(rx_solving_options *op, rx_solving_options_ind *ind,
   return (*istate > 0 && idid > 0 && ind->rc[0] != -2019 && !ind->err) ? 1 : -2019;
 }
 
+static int rxDelayRecordSegment(rx_solve *rx, rx_solving_options *op,
+                                rx_solving_options_ind *ind, int *neq,
+                                t_dydt c_dydt, double xp, double xout,
+                                double *yp, int eff);
+
 static int rxSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
                                rx_solving_options_ind *ind, int *neq, t_dydt c_dydt,
                                double xp, double xout, double *yp,
                                int *istate, int itol, int eff, int *iRec,
                                void *ctx) {
   (void) rx;
+  if (ind->delayHistOn) {
+    return rxDelayRecordSegment(rx, op, ind, neq, c_dydt, xp, xout, yp, eff);
+  }
   if (op->stiff2 <= 0 && op->stiff != 0) {
     return rxSegmentSingle(op, ind, neq, xp, xout, yp, istate, eff, iRec, ctx);
   }
@@ -6819,6 +6840,13 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   rc= ind->rc;
   double xp = x[0];
   ind->solvedIdx = 0;
+  // delay() history, recorded by the dense solver of each interval
+  ind->delayHistOn = op->hasDelay;
+  ind->delayHistN  = 0;
+  ind->delayT0     = xp;
+  ind->delayMinT   = R_PosInf;
+  ind->delayMaxT   = 0.0;
+  ind->delayWarmed = 0;
   ctx = rxGenericCtxInit(op, ind, neq, xp);
   if (ctx == NULL && rxBaseMethod(op) == 21 && op->stiff2 <= 0 &&
       op->neq > op->numLin + op->numLinSens) {
@@ -6828,6 +6856,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   }
   rxTteHook _tte(rx, ind, eff);
   rxTteInteg _tteInteg = [&](double *y, double t0, double t1) {
+    _tte.rewindHistory();
     if (isSameTimeDop(t0, t1)) return;
     int st = 1;
     preSolve(op, ind, t0, t1, y);
@@ -6930,8 +6959,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
       if (getEvid(ind, ind->ix[i]) == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(idid), u_inis);
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
-        handleSS(neq, ind->BadDose, InfusionRate, ind->dose, yp, xout,
-                 xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
+        handleSSDelay(neq, ind->BadDose, InfusionRate, ind->dose, yp, xout,
+                      xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
         if (ind->wh0 == EVID0_OFF){
           yp[ind->cmt] = inits[ind->cmt];
         }
@@ -7499,6 +7528,31 @@ static void rxDelaySSSolve(int *neq, double *yp, double xp, double xout,
   ind->delaySSClock += xout - xp;
   ind->delayTOff = 0.0;
   if ((idid <= 0 || ind->err) && ind->rc[0] == 0) ind->rc[0] = -2019;
+}
+
+// One interval of a delay() model in the per-record loop (ind_dop0): the dense
+// solver records every step into the history and fills no observations.  The
+// caller set neq[0] to the ODE size.
+static int rxDelayRecordSegment(rx_solve *rx, rx_solving_options *op,
+                                rx_solving_options_ind *ind, int *neq,
+                                t_dydt c_dydt, double xp, double xout,
+                                double *yp, int eff) {
+  if (!ind->delayWarmed) {
+    // one RHS evaluation so delay() learns the step-size cap
+    std::vector<double> _ddt((size_t)eff);
+    c_dydt(neq, xp, yp, _ddt.data());
+    ind->delayWarmed = 1;
+  }
+  if (rxBaseMethod(op) == 13 && op->stiff2 <= 0) {
+    return rxRos4DenseSegment(rx, op, ind, neq, c_dydt, xp, xout, yp, 1, 0, neq[1]);
+  }
+  DopDenseCtx dc;
+  dc.ind = ind;
+  dc.op  = op;
+  dc.neq = neq;
+  dc.obs_next = 1;    // empty observation range: record history only
+  dc.segment_end = 0;
+  return denseSegmentSolve(rx, op, ind, neq, c_dydt, xp, xout, yp, &dc, 1, eff);
 }
 
 extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid,

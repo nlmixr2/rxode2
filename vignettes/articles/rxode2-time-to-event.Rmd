@@ -165,8 +165,31 @@ The other methods run in a shared record loop that restarts the solver
 at each record, which costs little for the one-step methods
 (Runge-Kutta, Rosenbrock) and more for the multistep ones.  The Fortran
 `lsoda`, `lsode` and `bdf` methods solve one subject at a time.
-`dense = TRUE` falls back to standard output, and a model cannot
-combine `tte()` with `delay()`, which needs dense output.
+`dense = TRUE` falls back to standard output.
+
+A hazard may use `delay()`.  The record loop then solves each interval
+with a dense solver (`dop853+ros4`, `dop853` or `ros4`), whose steps
+record the history `delay()` reads, and an event rewinds that history
+with the state:
+
+```{r}
+dde <- function() {
+  ini({
+    k <- 0.3
+    lambda <- 0.005
+    beta <- 0.02
+    tau <- 2
+  })
+  model({
+    d/dt(central) <- -k * delay(central, tau)
+    haz <- lambda * exp(beta * central)
+    ev ~ tte(haz, maxEventNumber = 1)
+  })
+}
+ed <- et(amt = 100, cmt = "central") |> et(c(0, 48), cmt = "ev") |> et(id = 1:5)
+s <- withr::with_seed(3, as.data.frame(rxSolve(dde(), ed)))
+s[, c("id", "time", "sim", "central")]
+```
 
 ## Next steps
 

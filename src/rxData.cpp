@@ -53,6 +53,7 @@ using namespace arma;
 extern "C" void seedEng(int ncores);
 extern "C" void ensureLsodaCtxPool(int nCores);
 extern "C" void ensureIndLinExpCache(int nCores);
+extern "C" int rxTteN(void);
 extern "C" void ensureRworkPool(int nCores, int lrw, int liw);
 
 #include "cbindThetaOmega.h"
@@ -6766,7 +6767,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     // asking for two incompatible things.  Refuse instead of dropping one of
     // them.  rxSolve() refuses this earlier with a fuller message; this is the
     // backstop for a caller that reaches solver setup another way.
-    if (op->hasDelay && INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_evid_]) {
+    // tte() models set the evid_() flag but solve delay() in the per-record
+    // loop, whose dense steps record the history
+    if (op->hasDelay && INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_evid_] &&
+        rxTteN() == 0) {
       (Rf_error)("a model cannot combine delay() with evid_() event pushing: "
                  "delay() requires dense output, which cannot apply an event "
                  "pushed at an observation");

@@ -45,7 +45,7 @@
   a root finder, and the simulation returns Monolix/NONMEM-style rows.
   `tteTime(ev)` and `tteCount(ev)` give the last event time and the event
   count inside the model.  Every ODE solving `method` except the adjoint
-  sensitivity methods can simulate them.
+  sensitivity methods can simulate them, and the hazard may use `delay()`.
 
 - `minSS` and `maxSS` now accept any count from 1, and `maxSS` may equal
   `minSS`, so `minSS = maxSS = n` gives exactly the state after `n` doses
