@@ -77,6 +77,9 @@
   `lsoda`, `lsode`, `dop853`, `indLin` and `linCmt()` solvers.  Only the
   first one between two records was applied, so a short infusion could
   never end; `dop853` also integrated past that dose twice (#1499).
+- The off phase of a steady-state infusion, and every phase of one longer
+  than `ii`, now uses the covariates of the steady-state dose record, as
+  NONMEM does; it used the covariates of a later record (#1589).
 
 ## New features
 

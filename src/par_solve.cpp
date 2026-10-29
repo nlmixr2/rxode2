@@ -3263,8 +3263,7 @@ static inline void solveSSinfIterate(int *neq,
                                      double *dur,
                                      double *dur2,
                                      int *canBreak,
-                                     double ssStart,
-                                     double ssStop, int minSS, int maxSS) {
+                                     double ssStart, int minSS, int maxSS) {
   for (int k = neq[0]; k--;) {
     ind->solveLast[k] = ind->solveLast2[k] = yp[k];
   }
@@ -3321,7 +3320,7 @@ static inline void solveSSinfIterate(int *neq,
     }
     // yp is last solve or y0
     *istate=1;
-    ind->ssTime = ssStop;
+    ind->ssTime = ssStart;
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
     if (j + 1 < minSS){
@@ -3383,8 +3382,8 @@ extern "C" void solveSSinf(int *neq,
                            double *dur2,
                            int *canBreak,
                            int nAfter) {
+  // every phase of the cycle uses the covariates of the ss dose record
   double ssStart = *xp2;
-  double ssStop = *xp2 + *dur;
   // minSS/maxSS count every dose before the steady-state one, including the
   // nAfter that handleSS() gives after this loop
   int minSS = max2(op->minSS - nAfter, 1);
@@ -3416,8 +3415,7 @@ extern "C" void solveSSinf(int *neq,
   }
   solveSSinfIterate(neq, BadDose, InfusionRate, dose, yp, xout, id, i, nx, istate,
                     op, ind, u_inis, ctx, xout2, xp2, infBixds, bi, infEixds,
-                    ei, curIi, dur, dur2, canBreak, ssStart,
-                    ssStop, minSS, maxSS);
+                    ei, curIi, dur, dur2, canBreak, ssStart, minSS, maxSS);
   ind->ssTime = NA_REAL;
 }
 
@@ -3452,6 +3450,7 @@ extern "C" void solveSSinfLargeDur(int *neq,
   *addTime = *curIi - *offTime;
   ind->ixds = *infBixds;
   ind->idx = *bi;
+  // every phase of the cycle uses the covariates of the ss dose record
   double timeStart = *xp2;
   ind->ssTime = timeStart;
   for (int j = 0; j < *numDoseInf; j++) {
@@ -3477,8 +3476,6 @@ extern "C" void solveSSinfLargeDur(int *neq,
     ind->solveLast[k] = ind->solveLast2[k] = yp[k];
   }
   int nDup = 0;
-  double time2 = *xp2;
-  double time3 = *xp2 + *addTime;
   for (int j = 0; j < maxSS; j++) {
     // Turn on Infusion, solve (0-dur)
     *canBreak =1;
@@ -3491,7 +3488,7 @@ extern "C" void solveSSinfLargeDur(int *neq,
     // yp is last solve or y0
     *istate=1;
     // yp is last solve or y0
-    ind->ssTime = time2;
+    ind->ssTime = timeStart;
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
     *xp2 = *xout2;
@@ -3525,7 +3522,7 @@ extern "C" void solveSSinfLargeDur(int *neq,
     }
     // yp is last solve or y0
     *istate=1;
-    ind->ssTime = time3;
+    ind->ssTime = timeStart;
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
     if (j + 1 < minSS && ind->rc[0]== -2019){
