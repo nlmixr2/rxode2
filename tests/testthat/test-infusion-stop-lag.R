@@ -109,6 +109,10 @@ rxTest({
   })
 
   test_that("a modeled rate or duration reads its start's record after a lagged dose reorders the records", {
+    # rate() follows rxode2's rule: read once, at the start's record, and
+    # fixed for the infusion.  NONMEM re-reads R1 on each interval from the
+    # record that ends it (rxode2 issue 1586); a change to that rule changes
+    # these modeled-rate expectations.
     # the bolus into center at t = 0 lags to t = 3, past the depot infusion
     # that starts at t = 1 (WT 70)
     modDur <- rxode2({
@@ -366,6 +370,10 @@ rxTest({
   })
 
   test_that("f() of a modeled rate or duration reads its start's record, not the covariates at its time", {
+    # rate() follows rxode2's rule: read once, at the start's record, and
+    # fixed for the infusion.  NONMEM re-reads R1 on each interval from the
+    # record that ends it (rxode2 issue 1586); a change to that rule changes
+    # these modeled-rate expectations.
     # WT is 100 before the dose at 1.8 and 70 from its record on
     wtf <- function(t) ifelse(t < 1.8, 100, 70)
     modRate <- rxode2({
@@ -415,6 +423,10 @@ rxTest({
   })
 
   test_that("several subjects whose records a lagged dose reorders read their own records with 4 cores", {
+    # rate() follows rxode2's rule: read once, at the start's record, and
+    # fixed for the infusion.  NONMEM re-reads R1 on each interval from the
+    # record that ends it (rxode2 issue 1586); a change to that rule changes
+    # these modeled-rate expectations.
     mods <- list(
       rate = rxode2({
         d/dt(depot) <- -ka * depot
