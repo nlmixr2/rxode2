@@ -314,6 +314,16 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     std::vector<lsAdjEv> evs;
     std::vector<double> _y(eff, 0.0);
     for (int c = 0; c < nBase; ++c) _y[c] = y[c];
+    // a lagged ss bolus's earlier-interval doses pushed past the record (a lag
+    // longer than ii), which the forward solve applies before the records here
+    for (size_t q = 0; q < _adjLagPush.size(); ++q) {
+      int k = _adjLagPush[q];
+      if (k >= ind->extraDoseN[0] || !rxAdjSameTime(ind->extraDoseTime[k], t)) continue;
+      int _wh, _cmt, _wh100, _whI, _wh0; getWh(ind->extraDoseEvid[k], &_wh, &_cmt, &_wh100, &_whI, &_wh0);
+      if (_whI != 0 || _cmt < 0 || _cmt >= nBase) continue;
+      double amt = ind->extraDoseDose[k];
+      evs.push_back({0, _cmt, 1.0, amt, getAmt(ind, ind->id, _cmt, amt, t, _y.data())});
+    }
     for (int i = 0; i < upTo; ++i) {
       int ev = getEvid(ind, ind->ix[i]);
       if (isObs(ev)) continue;
