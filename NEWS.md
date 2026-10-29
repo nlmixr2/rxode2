@@ -259,6 +259,9 @@
 - A steady-state dose with a modeled `dur()` that follows a zero-amount record
   (for example a zero `evid = 5` replace) is now solved as an infusion; the
   duration check read the wrong record and solved it as a bolus (#1602).
+- The off phase of a steady-state infusion, and every phase of one longer
+  than `ii`, now uses the covariates of the steady-state dose record, as
+  NONMEM does; it used the covariates of a later record (#1589).
 
 ## New features
 
