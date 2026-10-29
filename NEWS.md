@@ -94,9 +94,10 @@
   illegal"), with "IDID=-3, illegal input detected (see printed message)".
   It used to report success and return the last step's state at that time
   (0 throughout for `d/dt(y) <- 1e308`), with no "could not solve" warning.
-  `intdy()`'s test of whether an output time lies in the last step now uses
-  the magnitudes of the step's time and size, as `dlsoda.f` does; at
-  negative times it rejected output times a few ulps past a step's start.
+  `intdy()`'s test of whether an output time lies in the last step now
+  takes its tolerance as `dlsoda.f` does, from the magnitudes of the step's
+  time and size with the step's sign; at negative times it rejected output
+  times a few ulps past a step's start.
 
 - Forward sensitivities through `alag()`, `f()`, `rate()`, `dur()` and a
   parameter-dependent `delay()` are now right for a parameter that also
