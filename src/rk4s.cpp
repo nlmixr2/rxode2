@@ -7986,6 +7986,7 @@ struct rk4sSsIc {
   void rosPeriodT(const StiffPeriod &P, std::vector<double> &nu, std::vector<double> &muAcc,
                   const SsForce *FC = NULL) {
     std::vector<double> ybar(nBase), ubar(nBase), rhsbar(nBase), kb(sN*nBase);
+    if (FC && FC->onSteps == P.N) forceOff(*FC, nu, muAcc);   // ON phase spans the period: its end
     for (size_t nn = P.N; nn >= 1; --nn) {
       size_t n = nn - 1; double h = P.R->h[n]; const double *Wn = &P.Wf[n*nfx]; const int *pn = &P.pivf[n*nBase];
       for (int m = 0; m < nBase; ++m) ybar[m] = nu[m];
@@ -8016,6 +8017,7 @@ struct rk4sSsIc {
   void radauPeriodT(const StiffPeriod &P, std::vector<double> &nu, std::vector<double> &muAcc,
                     const SsForce *FC = NULL) {
     int sn = sN*nBase; std::vector<double> z(sn), rhs(sn);
+    if (FC && FC->onSteps == P.N) forceOff(*FC, nu, muAcc);   // ON phase spans the period: its end
     for (size_t nn = P.N; nn >= 1; --nn) {
       size_t n = nn - 1; double h = P.R->h[n]; const double *Mn = &P.Mf[n*(size_t)sn*sn]; const int *mp = &P.Mpiv[n*sn];
       for (int i = 0; i < sN; ++i) { double bi = Tss.b[i]; for (int m = 0; m < nBase; ++m) rhs[i*nBase+m] = h*bi*nu[m]; }
@@ -8052,6 +8054,7 @@ struct rk4sSsIc {
                const SsForce *FC = NULL) {
     if (SP && SP->rosen)      { rosPeriodT(*SP, nu, muAcc, FC); return; }
     if (SP && SP->implicitRK) { radauPeriodT(*SP, nu, muAcc, FC); return; }
+    if (FC && FC->onSteps == N) forceOff(*FC, nu, muAcc);   // ON phase spans the period: its end
     for (size_t nn = N; nn >= 1; --nn) {
       size_t n = nn - 1; double h = R->h[n];
       for (int j = 0; j < nBase; ++j) Ybar[j] = nu[j];
