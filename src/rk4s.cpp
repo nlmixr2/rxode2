@@ -44,7 +44,10 @@ struct rk4s_dose { size_t step; int cmt; double amt; int type; double amtF = 0.0
                    std::vector<double> dFx;
                    bool ss = false;      // an ss = 1 bolus (its pre-dose state is its trough)
                    std::vector<double> yPre;   // the pre-dose state, when known (an ss = 2 bolus, a push)
-                   int push = -1; };     // a pushed lagged ss bolus: its extra dose (rxAdjPushCap)
+                   int push = -1;        // a pushed lagged ss bolus: its extra dose (rxAdjPushCap)
+                   // type 13 (a lag read from the state at its dose's raw time):
+                   // d(alag_cmt)/dx there (nBase)
+                   std::vector<double> dLx; };
 
 extern "C" void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx);
 
@@ -373,6 +376,10 @@ static inline void rk4sIniOnlyFill(rx_solving_options *op, rx_solving_options_in
 //   ss = 2   (type 10, at the ss dose's position; cmt indexes its regimen): the
 //            state gains that regimen's steady state, mu += lambda^T S2 (S2 =
 //            dY_ss_new/dp, nBase x np, from S2s, or none); lambda passes through.
+//   lag read (type 13, rec = the dose's record): the forward read a lag that
+//            depends on the state at the dose's raw time, here, so its landing
+//            moves with this state: lambda += s * dLx, s the weight the dose's lag
+//            term took at its landing (rk4sInfusMaps::lagSet/lagApply, via im).
 //   window   (type 12, rec = its window in infusRec): a fixed-dur window whose
 //            f() depends on the state starts here, at its record's place among
 //            the events (rk4sInfusMaps::startEvent, via im), with its lag term.
@@ -386,6 +393,9 @@ static inline void rk4sIniOnlyFill(rx_solving_options *op, rx_solving_options_in
 struct rk4sInfusMaps;
 static inline void rk4sInfusStartEvent(const rk4sInfusMaps *im, int win, std::vector<double> &lam,
                                        std::vector<double> &mu);
+static inline void rk4sInfusLagSet(const rk4sInfusMaps *im, int rec, double s);
+static inline void rk4sInfusLagApply(const rk4sInfusMaps *im, int rec, const std::vector<double> &row,
+                                     std::vector<double> &lam);
 static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
     std::vector<double> &muR, const std::vector<rk4s_dose> &doses,
     const std::vector<double> &dFdp, bool haveDf, int nBase, int np,
@@ -406,13 +416,18 @@ static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
     case 0:
       if (dFb) for (int p = 0; p < np; ++p) muR[p] += d.amt * dFb[d.cmt * np + p] * lamR[d.cmt];
       // a recorded dose's exact term, a captured pushed one's (rxAdjPushCap); any
-      // other pushed one keeps the F_X linearization
-      if (dlb && d.push >= 0 && rxAdjPushFind(d.push) != NULL) {
-        rxAdjPushLagTerm(rxAdjPushFind(d.push), d.cmt, lamR.data(), muR.data(), nBase, np, dlb, dfx);
-      } else if (dlb && !rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlb, NULL, dfx) && fx0) {
-        double sc = 0.0;                          // lambda^T F_X[:,c]
-        for (int i = 0; i < nBase; ++i) sc += lamR[i] * fx0[i * nBase + d.cmt];
-        for (int p = 0; p < np; ++p) muR[p] += -d.amtF * dlb[d.cmt * np + p] * sc;
+      // other pushed one keeps the F_X linearization.  sLag: the term's weight
+      if (dlb) {
+        double sLag = 0.0;
+        if (d.push >= 0 && rxAdjPushFind(d.push) != NULL) {
+          rxAdjPushLagTerm(rxAdjPushFind(d.push), d.cmt, lamR.data(), muR.data(), nBase, np, dlb, dfx, &sLag);
+        } else if (!rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlb, NULL, dfx, &sLag) && fx0) {
+          double sc = 0.0;                        // lambda^T F_X[:,c]
+          for (int i = 0; i < nBase; ++i) sc += lamR[i] * fx0[i * nBase + d.cmt];
+          sLag = -d.amtF * sc;
+          for (int p = 0; p < np; ++p) muR[p] += dlb[d.cmt * np + p] * sLag;
+        }
+        rk4sInfusLagSet(im, d.rec, sLag);
       }
       if (dfx) for (int j = 0; j < nBase; ++j) lamR[j] += wC * dfx[j];
       break;
@@ -421,17 +436,27 @@ static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
       for (int j = 0; j < nBase; ++j) lamR[j] = 0.0;
       break;
     case 5:
-      rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlb, dFb, dfx);
+      { double sLag = 0.0;
+        if (rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlb, dFb, dfx, &sLag))
+          rk4sInfusLagSet(im, d.rec, sLag); }
       lamR[d.cmt] = 0.0;
       if (dfx) for (int j = 0; j < nBase; ++j) lamR[j] += wC * dfx[j];
       break;
     case 6:
-      rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlb, dFb, dfx);
+      { double sLag = 0.0;
+        if (rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlb, dFb, dfx, &sLag))
+          rk4sInfusLagSet(im, d.rec, sLag); }
       lamR[d.cmt] *= rxAdjJumpFactor(d.rec, d.amt);
       if (dfx) for (int j = 0; j < nBase; ++j) lamR[j] += wC * dfx[j];
       break;
     case 9:
-      if (dlb) for (int p = 0; p < np; ++p) muR[p] += -d.amt * dlb[d.cmt * np + p] * lamR[d.cmt];
+      if (dlb) {
+        for (int p = 0; p < np; ++p) muR[p] += -d.amt * dlb[d.cmt * np + p] * lamR[d.cmt];
+        rk4sInfusLagSet(im, d.rec, -d.amt * lamR[d.cmt]);
+      }
+      break;
+    case 13:
+      rk4sInfusLagApply(im, d.rec, d.dLx, lamR);
       break;
     case 8:
       return;
@@ -7975,6 +8000,21 @@ struct rk4sInfusMaps {
       sfAcc[k] = 0.0;
     }
   }
+  // A lag read from the state at its dose's raw time (a type-13 event there): the
+  // weight its dose's lag term took at the landing, by the dose's record, until
+  // the backward reaches the raw time in the same sweep.
+  mutable std::vector<double> lagS;
+  void lagReset() const { std::fill(lagS.begin(), lagS.end(), 0.0); }
+  void lagSet(int rec, double s) const {
+    if (rec < 0) return;
+    if ((size_t)rec >= lagS.size()) lagS.resize(rec + 1, 0.0);
+    lagS[rec] = s;
+  }
+  void lagApply(int rec, const std::vector<double> &row, std::vector<double> &lam) const {
+    if (rec < 0 || (size_t)rec >= lagS.size() || lagS[rec] == 0.0) return;
+    for (int j = 0; j < nBase && j < (int)row.size(); ++j) lam[j] += lagS[rec] * row[j];
+    lagS[rec] = 0.0;
+  }
   // the start of window win (its type-12 event)
   void startEvent(int win, std::vector<double> &lam, std::vector<double> &mu) const {
     for (size_t k = 0; k < sfw.size(); ++k) {
@@ -8002,6 +8042,13 @@ struct rk4sInfusMaps {
 static inline void rk4sInfusStartEvent(const rk4sInfusMaps *im, int win, std::vector<double> &lam,
                                        std::vector<double> &mu) {
   if (im != NULL) im->startEvent(win, lam, mu);
+}
+static inline void rk4sInfusLagSet(const rk4sInfusMaps *im, int rec, double s) {
+  if (im != NULL) im->lagSet(rec, s);
+}
+static inline void rk4sInfusLagApply(const rk4sInfusMaps *im, int rec, const std::vector<double> &row,
+                                     std::vector<double> &lam) {
+  if (im != NULL) im->lagApply(rec, row, lam);
 }
 
 // Build the infusion dual maps (shared by all fills) from the recorded windows.
@@ -8792,6 +8839,7 @@ static void ros_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_o
       for (int j = 0; j < nBase; ++j) lam[j] = (j == k) ? 1.0 : 0.0;
       for (int p = 0; p < np; ++p) mu[p] = 0.0;
       // coincident state-jump at the obs's own step (see rk4s_backward_fill)
+      infM.lagReset();
       if (!doses.empty()) rk4sApplyEventJumps(fromStep, lam, mu, doses, dFdp, haveDose, nBase, np,
                                               &FX[(fromStep < nStep ? fromStep : nStep - 1)*s*nfx], dlagP, dx0P, boundaryDose[i], ssic ? &ssic->S2s : NULL, &infM);
       if (ssic) ssic->seedBoundary(fromStep, i, lam, mu);   // coincident interior-ss=1 IC
@@ -8870,6 +8918,7 @@ static void radau_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving
       for (int j = 0; j < n; ++j) lam[j] = (j == k) ? 1.0 : 0.0;
       for (int p = 0; p < np; ++p) mu[p] = 0.0;
       // coincident state-jump at the obs's own step (see rk4s_backward_fill)
+      infM.lagReset();
       if (!doses.empty()) rk4sApplyEventJumps(fromStep, lam, mu, doses, dFdp, haveDose, n, np,
                                               &FX[(fromStep < nStep ? fromStep : nStep - 1)*s*nfx], dlagP, dx0P, boundaryDose[i], ssic ? &ssic->S2s : NULL, &infM);
       if (ssic) ssic->seedBoundary(fromStep, i, lam, mu);   // coincident interior-ss=1 IC
@@ -8969,6 +9018,7 @@ static void composite_backward_fill(rx_solve *rx, rx_solving_options *op, rx_sol
       for (int j = 0; j < n; ++j) lam[j] = (j == k) ? 1.0 : 0.0;
       for (int p = 0; p < np; ++p) mu[p] = 0.0;
       // coincident state-jump at the obs's own step (see rk4s_backward_fill)
+      infM.lagReset();
       if (!doses.empty()) rk4sApplyEventJumps(fromStep, lam, mu, doses, dFdp, haveDose, n, np,
                                               pre[fromStep < nStep ? fromStep : nStep - 1].FX.data(), dlagP, dx0P, boundaryDose[i], ssic ? &ssic->S2s : NULL, &infM);
       if (ssic) ssic->seedBoundary(fromStep, i, lam, mu);   // coincident interior-ss=1 IC
@@ -8997,6 +9047,17 @@ static void rk4sDoseLhsFill(rx_solving_options *op, rx_solving_options_ind *ind,
   std::vector<double> A(eff, 0.0);
   for (size_t k = 0; k < doses.size(); ++k) {
     rk4s_dose &d = doses[k];
+    if (d.type == 13) {   // its dose's record (raw index here) and d(alag)/dx at the raw time
+      int raw = d.rec; d.rec = -1;
+      for (int j = 0; j < ind->n_all_times; ++j) if (ind->ix[j] == raw) { d.rec = j; break; }
+      d.dLx.clear();
+      if (d.rec < 0 || op->adjDlagxOff < 0 || (int)d.yPre.size() != nBase) continue;
+      for (int i = 0; i < eff; ++i) A[i] = 0.0;
+      for (int i = 0; i < nBase; ++i) A[i] = d.yPre[i];
+      rk4sLhsRec(ind, cSub, d.rec, getAllTimes(ind, raw), A.data());
+      d.dLx.assign(ind->lhs + op->adjDlagxOff + (size_t)d.cmt * nBase, ind->lhs + op->adjDlagxOff + (size_t)(d.cmt + 1) * nBase);
+      continue;
+    }
     if (d.type != 0 && d.type != 5 && d.type != 6 && d.type != 9) continue;
     size_t n = d.step < nStep ? d.step : nStep - 1;
     double t = !ISNA(d.t) ? d.t : (d.step < nStep ? rec.t0[n] : rec.t0[n] + rec.h[n]);
@@ -9229,6 +9290,7 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
       // same boundary step; boundaryDose[i] (the dose count when the obs was
       // stored) disambiguates -- only jumps recorded BEFORE this observation
       // apply to it.
+      infM.lagReset();
       if (!doses.empty())
         rk4sApplyEventJumps(fromStep, lam, mu, doses, dFdp, haveDose, nBase, np,
                             &FXs[0][(fromStep < nStep ? fromStep : nStep - 1) * nfx], dlagP,
@@ -9714,6 +9776,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         double _dR = ind->InfusionRate[_lagRateCmt] - _lagRatePre;
         if (_dR != 0.0 && op->adjDlagOff >= 0 && _lagRateWh0 == EVID0_REGULAR) {
           rk4s_dose _d; _d.step = _lagRateStep; _d.cmt = _lagRateCmt; _d.amt = _dR; _d.type = 9; _d.t = xout;
+          _d.rec = _ssRecI;
           doseRec.push_back(_d);
         }
         if (_dR != 0.0 && op->adjDfOff >= 0 && (_lagRateWhI == EVIDF_INF_RATE || _lagRateWhI == EVIDF_INF_DUR)) {
@@ -9760,6 +9823,16 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         if (refreshLagTimesIfNeeded(rx, ind, yp, i + 1, xout)) {
           ind->mainSorted = 0;
         }
+        // a dose whose lag that refresh read from this state at its raw time: its
+        // landing moves with this state (a type-13 event at this record's place)
+        if (adj && op->adjDlagxOff >= 0)
+          for (int j = i + 1; j < ind->n_all_times; ++j) {
+            int raw = ind->ix[j], _c = rxAdjLagReadCmt(ind, j, xout, op->adjNbase);
+            if (_c < 0) continue;
+            rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _c; _d.amt = 0.0; _d.type = 13; _d.rec = raw; _d.t = xout;
+            _d.yPre.assign(yp, yp + op->adjNbase);
+            doseRec.push_back(_d);
+          }
       }
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       if (_mtime_requeued) i--;

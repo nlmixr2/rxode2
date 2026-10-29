@@ -51,8 +51,10 @@ struct lsAdjStep {
 //   6 multiply (y[cmt]*=factor, F*amt) | 12 a fixed-dur or modeled infusion start
 //   (where a state-dependent f() window's start term applies, in the forward order).  amt is the raw dose (modeled-F mu), amtF = F*amt,
 //   the amount that lands (modeled-alag mu); rec = a bolus/replace/multiply's
-//   record index (its rxAdjJumpCap), else -1.
-struct lsAdjEv { int type, cmt; double factor, amt, amtF; int rec = -1; int push = -1; };   // push: its extra dose (rxAdjPushCap)
+//   record index (its rxAdjJumpCap), else -1.  13 a lag read from the state at its
+//   dose's raw time (rec = the dose's record, read = its lsAdjLagReads entry).
+struct lsAdjEv { int type, cmt; double factor, amt, amtF; int rec = -1; int push = -1;   // push: its extra dose (rxAdjPushCap)
+                 int read = -1; };
 
 struct lsAdjSeg {
   double t0, h0;              // segment start time and its initial step h0
@@ -71,6 +73,7 @@ struct lsAdjSeg {
   std::vector<double> infRate;  // InfusionRate[0..nBase) at segment start
   std::vector<double> lagRate;  // rate change per cmt from a lagged infusion start/stop
                                 // opening this segment -> mu += -dR*dlag/dp*lam[cmt].
+  std::vector<int> lagRec;      // its record per cmt (-1: a pushed one)
 };
 // G[c*np+p] += x*row[p] on an nBase x np infusion term, allocated on first use
 static inline void lsAdjAddG(std::vector<double> &G, int nBase, int np, int c, double x,
@@ -86,8 +89,19 @@ static thread_local int                  lsAdjNbase  = 0;
 static thread_local std::vector<lsAdjStep> lsAdjSteps;
 static thread_local std::vector<lsAdjSeg>  lsAdjSegs;
 static thread_local rx_solving_options_ind *lsAdjInd = NULL;   // for the InfusionRate snapshot
+// a lag that refreshLagTimesIfNeeded read from the state at its dose's raw time:
+// the reading record and the dose (raw indices), and the state it read
+struct lsAdjLagReadT { int reader, dose, cmt; std::vector<double> y; };
+static thread_local std::vector<lsAdjLagReadT> lsAdjLagReads;
 
 extern "C" int lsAdjIsActive(void) { return lsAdjActive ? 1 : 0; }
+
+extern "C" void lsAdjLagRead(int reader, int dose, int cmt, const double *y) {
+  if (!lsAdjActive) return;
+  lsAdjLagReadT r; r.reader = reader; r.dose = dose; r.cmt = cmt;
+  r.y.assign(y, y + lsAdjNbase);
+  lsAdjLagReads.push_back(std::move(r));
+}
 
 // Called at every state==1 init (yh[1]=y0, yh[2]=h0*f(y0)) -- once at t0 and once
 // after each interior event that reset the integrator -- opening a new segment.
@@ -242,7 +256,8 @@ static bool rxAdjInfusionWindows(rx_solving_options *op, rx_solving_options_ind 
         int _wh, _c, _wh100, _whI, _wh0; getWh(ev, &_wh, &_c, &_wh100, &_whI, &_wh0);
         if (op->adjDlagOff >= 0 && _wh0 == EVID0_REGULAR && dR != 0.0) {
           if (Sg.lagRate.empty()) Sg.lagRate.assign(nBase, 0.0);
-          Sg.lagRate[c] = dR;
+          if (Sg.lagRec.empty()) Sg.lagRec.assign(nBase, -1);
+          Sg.lagRate[c] = dR; Sg.lagRec[c] = i;
         }
         if (op->adjDfOff < 0 || (_whI != EVIDF_INF_RATE && _whI != EVIDF_INF_DUR)) continue;
         double raw = getDose(ind, ind->ix[i]);   // the record's raw rate (negative at a stop)
@@ -356,6 +371,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   // ---- forward: run the ordinary liblsoda solve, with recording hooks on -------
   lsAdjSteps.clear();
   lsAdjSegs.clear();
+  lsAdjLagReads.clear();
   rxAdjJumpClear(); _adjLagPush.clear(); _adjLagPushFixed.clear(); _adjLagPushMdl.clear();
   _lsSsKind = 0; _lsSsBolusIi = 0.0; _lsSsCmt = -1; _lsSsT = 0.0; _lsSsLag = 0.0; _lsSsLagOn = 0;   // reset the sticky ss snapshot
   _lsSsY.clear();
@@ -376,6 +392,34 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   }
   lsAdjSegs.back().stepEnd = lsAdjSteps.size();     // close the final segment
   size_t nStep = lsAdjSteps.size();
+
+  // each lag read's dose and reading record as sorted positions, and d(alag_cmt)/dx
+  // at the state it read
+  size_t nLr = lsAdjLagReads.size();
+  std::vector<int> lrDose(nLr, -1), lrReader(nLr, -1);
+  std::vector<std::vector<double> > lrDLx(nLr);
+  for (size_t q = 0; q < nLr; ++q) {
+    const lsAdjLagReadT &R = lsAdjLagReads[q];
+    for (int j = 0; j < ind->n_all_times; ++j) {
+      if (ind->ix[j] == R.dose) lrDose[q] = j;
+      if (ind->ix[j] == R.reader) lrReader[q] = j;
+    }
+    if (lrDose[q] < 0 || lrReader[q] < 0) continue;
+    std::vector<double> Aq(eff, 0.0);
+    for (int b = 0; b < nBase; ++b) Aq[b] = R.y[b];
+    rk4sLhsRec(ind, cSub, lrDose[q], getAllTimes(ind, R.dose), Aq.data());
+    lrDLx[q].assign(ind->lhs + op->adjDlagxOff + (size_t)R.cmt * nBase,
+                    ind->lhs + op->adjDlagxOff + (size_t)(R.cmt + 1) * nBase);
+  }
+  // the lag reads after record `after` at time t, as type-13 events
+  auto lsLagReadsAfter = [&](std::vector<lsAdjEv> &evs, int after, double t) {
+    if (after < 0 || !rxAdjSameTime(ind->timeThread[ind->ix[after]], t)) return;
+    for (size_t q = 0; q < nLr; ++q)
+      if (lrReader[q] == after && !lrDLx[q].empty()) {
+        lsAdjEv _e = {13, lsAdjLagReads[q].cmt, 0.0, 0.0, 0.0, lrDose[q]}; _e.read = (int)q;
+        evs.push_back(_e);
+      }
+  };
 
   // The events at time t among the first `upTo` records, in the order the
   // forward solve applied them; y is the state at t, for a dose's F*amt.
@@ -400,6 +444,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       evs.push_back(_e);
     }
     for (int i = 0; i < upTo; ++i) {
+      lsLagReadsAfter(evs, i - 1, t);
       int ev = getEvid(ind, ind->ix[i]);
       if (isObs(ev)) continue;
       if (!rxAdjSameTime(ind->timeThread[ind->ix[i]], t)) continue;
@@ -432,6 +477,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       // (modeled rate/dur infusion on/off open a segment but are not a state jump;
       //  their dR/dp dual is reconstructed as windows below, not here.)
     }
+    lsLagReadsAfter(evs, upTo - 1, t);
     return evs;
   };
   // the events at each segment's start time (seg 0 included, for a modeled-F/lag
@@ -512,13 +558,39 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     return S;
   };
   // seed costate at (step S, time t) by intdy^T with weight wSeed (state covector).
-  auto seedCostate = [&](size_t S, double t, const std::vector<double> &wSeed) {
+  auto addSeed = [&](size_t S, double t, const double *wv) {
     int nqSeed = lsAdjSteps[S].nqNext;
     double sS = (t - lsAdjSteps[S].tn) / lsAdjSteps[S].hNext;
-    std::fill(lamFlat.begin(), lamFlat.end(), 0.0);
     double sp = 1.0;
-    for (int j = 0; j <= nqSeed; ++j) { double *lamj = &lamFlat[(size_t)(j + 1) * nBase]; for (int c = 0; c < nBase; ++c) lamj[c] += sp * wSeed[c]; sp *= sS; }
+    for (int j = 0; j <= nqSeed; ++j) { double *lamj = &lamFlat[(size_t)(j + 1) * nBase]; for (int c = 0; c < nBase; ++c) lamj[c] += sp * wv[c]; sp *= sS; }
   };
+  auto seedCostate = [&](size_t S, double t, const std::vector<double> &wSeed) {
+    std::fill(lamFlat.begin(), lamFlat.end(), 0.0);
+    addSeed(S, t, wSeed.data());
+  };
+  // A dose's lag term weight, by record, until the sweep reaches its lag read.  A
+  // read at a segment start is a type-13 event there; one inside a segment adds
+  // its seed lagS * d(alag)/dx to the costate where the sweep passes its time.
+  std::vector<double> lagS(ind->n_all_times, 0.0), lagW(nBase);
+  auto lagSet = [&](int rec, double v) { if (rec >= 0 && rec < (int)lagS.size()) lagS[rec] = v; };
+  auto lagApply = [&](const lsAdjEv &E, std::vector<double> &lam) {
+    if (E.read < 0 || E.rec < 0 || lagS[E.rec] == 0.0) return;
+    for (int b = 0; b < nBase; ++b) lam[b] += lagS[E.rec] * lrDLx[E.read][b];
+    lagS[E.rec] = 0.0;
+  };
+  struct lsLagInj { int seg; size_t S; double t; size_t q; };
+  std::vector<lsLagInj> lrInj;
+  for (size_t q = 0; q < nLr; ++q) {
+    if (lrDLx[q].empty()) continue;
+    double tr = ind->timeThread[ind->ix[lrReader[q]]];
+    int sgR = -1; bool atStart = false;
+    for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg) {
+      if (rxAdjSameTime(lsAdjSegs[sg].t0, tr)) { atStart = true; break; }
+      if (lsAdjSegs[sg].t0 < tr) sgR = (int)sg;
+    }
+    if (atStart || sgR < 0 || lsAdjSegs[sgR].stepEnd <= lsAdjSegs[sgR].stepBegin) continue;
+    lrInj.push_back({sgR, bracketStep(sgR, tr), tr, q});
+  }
 
   // Backward sweep of one costate seed at (segIdx, time, wSeed) to t0, into mu.
   // Segments join at an event with an exact dual; the re-init yh0=[y0, h0*f(y0)]
@@ -548,7 +620,17 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       const lsAdjSeg &Sg = lsAdjSegs[seg];
       size_t Sb = bracketStep(seg, time);
       seedCostate(Sb, time, wSeed);
-      for (long n = (long)Sb; n >= (long)Sg.stepBegin; --n) stepTransposeN((size_t)n);
+      for (long n = (long)Sb; n >= (long)Sg.stepBegin; --n) {
+        for (size_t r = 0; r < lrInj.size(); ++r) {
+          const lsLagInj &L = lrInj[r];
+          int dr = lrDose[L.q];
+          if (L.seg != seg || L.S != (size_t)n || lagS[dr] == 0.0) continue;
+          for (int b = 0; b < nBase; ++b) lagW[b] = lagS[dr] * lrDLx[L.q][b];
+          addSeed(L.S, L.t, lagW.data());
+          lagS[dr] = 0.0;
+        }
+        stepTransposeN((size_t)n);
+      }
       // lamFlat is now the costate of the segment's initial Nordsieck [y0, h0*f(y0)].
       const double *fx0, *fp0;
       lsAdjEval(cSub, Sg.t0, Sg.y0.data(), nBase, eff, fxOff, fpOff, A.data(), lhs, &fx0, &fp0);
@@ -567,8 +649,10 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       for (size_t q = 0; q < sfWins.size(); ++q)   // a state-dependent rate() window's stop
         if (sfWins[q].atOff && sfWins[q].seg1 == (size_t)seg) sfAcc[q] += wSeed[sfWins[q].cmt];
       if (op->adjDlagOff >= 0 && !Sg.lagRate.empty()) { const double *dlag = &lhs[op->adjDlagOff];
-        for (int c = 0; c < nBase; ++c) if (Sg.lagRate[c] != 0.0)
-          for (int p = 0; p < np; ++p) mu[p] += -Sg.lagRate[c] * dlag[c * np + p] * wSeed[c]; }
+        for (int c = 0; c < nBase; ++c) if (Sg.lagRate[c] != 0.0) {
+          for (int p = 0; p < np; ++p) mu[p] += -Sg.lagRate[c] * dlag[c * np + p] * wSeed[c];
+          if (!Sg.lagRec.empty()) lagSet(Sg.lagRec[c], -Sg.lagRate[c] * wSeed[c]);
+        } }
       // The events at this segment's start, last first.  A dose adds its explicit-
       // parameter quadrature with the costate of its post-dose state (modeled F ->
       // mu += amt*dF/dp*lam[c]; alag -> mu += -F*amt*dlag/dp*(lam^T F_X[:,c])); a jump
@@ -593,10 +677,13 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
         if (E.type == 0) {
           int c = E.cmt;
           if (dFp) { for (int p = 0; p < np; ++p) mu[p] += E.amt * dFp[c * np + p] * wSeed[c]; }
+          double sLag = 0.0;
           if (dlp && pc) rxAdjPushLagTerm(pc, c, wSeed.data(), mu.data(), nBase, np, dlp, dfx);
-          else if (dlp && !rxAdjJumpTerm(E.rec, c, wSeed.data(), mu.data(), nBase, np, dlp, NULL, dfx)) {
+          else if (dlp && !rxAdjJumpTerm(E.rec, c, wSeed.data(), mu.data(), nBase, np, dlp, NULL, dfx, &sLag)) {
             double sc = 0; for (int i = 0; i < nBase; ++i) sc += wSeed[i] * fx0[i * nBase + c];
-            for (int p = 0; p < np; ++p) mu[p] += -E.amtF * dlp[c * np + p] * sc; }
+            sLag = -E.amtF * sc;
+            for (int p = 0; p < np; ++p) mu[p] += dlp[c * np + p] * sLag; }
+          if (dlp && !pc) lagSet(E.rec, sLag);
           if (dfx) for (int j = 0; j < nBase; ++j) wSeed[j] += wC * dfx[j];
         } else if (E.type == 3) {             // reset restores the initial conditions
           if (seg > 0) {
@@ -611,9 +698,12 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
           }
           break;
         } else if (E.type == 5 || E.type == 6) {
-          rxAdjJumpTerm(E.rec, E.cmt, wSeed.data(), mu.data(), nBase, np, dlp, dFp, dfx);
+          double sLag = 0.0;
+          if (rxAdjJumpTerm(E.rec, E.cmt, wSeed.data(), mu.data(), nBase, np, dlp, dFp, dfx, &sLag)) lagSet(E.rec, sLag);
           if (E.type == 5) wSeed[E.cmt] = 0.0; else wSeed[E.cmt] *= rxAdjJumpFactor(E.rec, E.factor);
           if (dfx) for (int j = 0; j < nBase; ++j) wSeed[j] += wC * dfx[j];
+        } else if (E.type == 13) {            // a lag read from the state: lam += s * d(alag)/dx
+          lagApply(E, wSeed);
         } else if (E.type == 12) {            // a state-dependent f() window starts: its rate moved with the state
           for (size_t q = 0; q < sfWins.size(); ++q)
             if (sfWins[q].seg0 == (size_t)seg && sfWins[q].rec == E.rec) {
@@ -830,6 +920,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     }
     for (int k = 0; k < nBase; ++k) {
       std::fill(mu.begin(), mu.end(), 0.0);
+      std::fill(lagS.begin(), lagS.end(), 0.0);
       for (int c = 0; c < nBase; ++c) wSeed[c] = (c == k) ? 1.0 : 0.0;
       bool atIni = false;   // a reset or ss=1 dose at ti: the sweep stops there
       if (!evAt.empty()) {
@@ -849,10 +940,13 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
           if (E.type == 0) {
             int c = E.cmt;
             if (dFp) { for (int p = 0; p < np; ++p) mu[p] += E.amt * dFp[c * np + p] * wSeed[c]; }
+            double sLag = 0.0;
             if (dlp && pc) rxAdjPushLagTerm(pc, c, wSeed.data(), mu.data(), nBase, np, dlp, dfx);
-            else if (dlp && !rxAdjJumpTerm(E.rec, c, wSeed.data(), mu.data(), nBase, np, dlp, NULL, dfx)) {
+            else if (dlp && !rxAdjJumpTerm(E.rec, c, wSeed.data(), mu.data(), nBase, np, dlp, NULL, dfx, &sLag)) {
               double sc = 0; for (int b = 0; b < nBase; ++b) sc += wSeed[b] * fxT[b * nBase + c];
-              for (int p = 0; p < np; ++p) mu[p] += -E.amtF * dlp[c * np + p] * sc; }
+              sLag = -E.amtF * sc;
+              for (int p = 0; p < np; ++p) mu[p] += dlp[c * np + p] * sLag; }
+            if (dlp && !pc) lagSet(E.rec, sLag);
             if (dfx) for (int j = 0; j < nBase; ++j) wSeed[j] += wC * dfx[j];
           } else if (E.type == 3) {
             rk4sAddIni(dx0P, wSeed.data(), mu.data(), nBase, np);
@@ -861,9 +955,12 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
             applySsIc(wSeed, mu);
             atIni = true;
           } else if (E.type == 5 || E.type == 6) {
-            rxAdjJumpTerm(E.rec, E.cmt, wSeed.data(), mu.data(), nBase, np, dlp, dFp, dfx);
+            double sLag = 0.0;
+            if (rxAdjJumpTerm(E.rec, E.cmt, wSeed.data(), mu.data(), nBase, np, dlp, dFp, dfx, &sLag)) lagSet(E.rec, sLag);
             if (E.type == 5) wSeed[E.cmt] = 0.0; else wSeed[E.cmt] *= rxAdjJumpFactor(E.rec, E.factor);
             if (dfx) for (int j = 0; j < nBase; ++j) wSeed[j] += wC * dfx[j];
+          } else if (E.type == 13) {
+            lagApply(E, wSeed);
           }
         }
       }

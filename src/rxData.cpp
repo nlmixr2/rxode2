@@ -6173,6 +6173,7 @@ static inline void iniRx(rx_solve* rx) {
   op->adjDrateOff = -1;
   op->adjDx0Off = -1;
   op->adjDfxOff = -1;
+  op->adjDlagxOff = -1;
   op->adjSensOff = 0;
   op->hasDelay = 0;
   op->ncov = 0;
@@ -6793,7 +6794,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       for (int _i = 0; _i < _adjSt.size(); ++_i) {
         if (strncmp(CHAR(_adjSt[_i]), "rx__sens_", 9) != 0) _nBase++;
       }
-      int _fxOff = -1, _fpOff = -1, _dfOff = -1, _jpOff = -1, _jyOff = -1, _fxdOff = -1, _tauOff = -1, _dtauOff = -1, _dlagOff = -1, _drateOff = -1, _dx0Off = -1, _dfxOff = -1;
+      int _fxOff = -1, _fpOff = -1, _dfOff = -1, _jpOff = -1, _jyOff = -1, _fxdOff = -1, _tauOff = -1, _dtauOff = -1, _dlagOff = -1, _drateOff = -1, _dx0Off = -1, _dfxOff = -1, _dlagxOff = -1;
       for (int _i = 0; _i < _adjLhs.size(); ++_i) {
         const char *_s = CHAR(_adjLhs[_i]);
         if (_fxOff < 0 && strcmp(_s, "rx__adjFX_0_0__") == 0) _fxOff = _i;
@@ -6808,6 +6809,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
         if (_drateOff < 0 && strcmp(_s, "rx__adjDrate_0_0__") == 0) _drateOff = _i; // modeled-rate infusion dual
         if (_dx0Off < 0 && strcmp(_s, "rx__adjDx0_0_0__") == 0) _dx0Off = _i; // parameter-dependent initial conditions
         if (_dfxOff < 0 && strcmp(_s, "rx__adjdFx_0_0__") == 0) _dfxOff = _i; // state-dependent bioavailability
+        if (_dlagxOff < 0 && strcmp(_s, "rx__adjDlagX_0_0__") == 0) _dlagxOff = _i; // state-dependent lag time
       }
       int _nSens = (int)_adjSt.size() - _nBase;
       if (_fxOff < 0 || _fpOff < 0 || _nBase <= 0) {
@@ -6848,6 +6850,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
         op->adjDrateOff = _drateOff;
         op->adjDx0Off = _dx0Off;
         op->adjDfxOff = _dfxOff;
+        op->adjDlagxOff = _dlagxOff;
         op->adjSensOff = _nBase;
       }
     }

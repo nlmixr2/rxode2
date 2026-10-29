@@ -449,6 +449,17 @@
   `F` at a fixed-duration infusion's stop and does not solve a fixed-rate
   infusion with such an `f()`, so those are not covered.
 
+- Adjoint sensitivities with a lag time (`alag()`) that depends on the state
+  are now right in every adjoint method: the forward solve reads such a lag
+  at the dose's own time, so the dose's landing moves with the state there,
+  and the transpose now carries that `d(alag)/dx` term for boluses, replaces
+  and multiplies (off by up to 49).  This holds when a record lies at the
+  dose's time, where the forward solve reads the lag; without one, the
+  adjoint follows the forward solve once that reads the lag there too.  The
+  forward solve does not move a fixed-duration or modeled infusion's stop
+  with its start's lag, and reads a fixed-rate infusion's lag at the start of
+  the solve, so infusions are not covered.
+
 - `method = "abs"` now includes the bioavailability (`f()`), lag-time
   (`alag()`), `rate()` and `dur()` adjoint sensitivities of bolus and
   infusion doses.

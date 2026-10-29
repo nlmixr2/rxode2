@@ -3307,10 +3307,22 @@ static inline void rxAdjPushRecord(rx_solving_options *op, int *neq, int k, doub
     if (_adjPushCap[j].k == k) { _adjPushCap[j] = std::move(cap); return; }
   _adjPushCap.push_back(std::move(cap));
 }
+// The cmt of record j (sorted) when refreshLagTimesIfNeeded at xout just read its
+// lag from the state there (a dose at raw time xout), else -1
+static inline int rxAdjLagReadCmt(rx_solving_options_ind *ind, int j, double xout, int nBase) {
+  int raw = ind->ix[j], ev = getEvid(ind, raw);
+  if (isObs(ev) || ev == 3 || (ev >= 10 && ev <= 99)) return -1;
+  int _wh, _c, _w100, _wI, _w0; getWh(ev, &_wh, &_c, &_w100, &_wI, &_w0);
+  if (_wI == EVIDF_MODEL_RATE_OFF || _wI == EVIDF_MODEL_DUR_OFF || _wI == EVIDF_INF_RATE) return -1;
+  if (_c < 0 || _c >= nBase || !isSameTime(getAllTimes(ind, raw), xout)) return -1;
+  return _c;
+}
+
 // The lag term of a pushed dose with capture pc into cmt c, lam the post-dose
 // costate: mu += dlag[c][p] * (lam^T r + lam[c] * (dfxRow . fPre)), as rxAdjJumpTerm
 static inline void rxAdjPushLagTerm(const rxAdjPushCap *pc, int c, const double *lam, double *mu,
-                                    int nBase, int np, const double *dlag, const double *dfxRow) {
+                                    int nBase, int np, const double *dlag, const double *dfxRow,
+                                    double *sOut = NULL) {
   double sc = 0.0;
   for (int j = 0; j < nBase; ++j) sc += lam[j] * pc->r[j];
   if (dfxRow != NULL) {
@@ -3319,6 +3331,7 @@ static inline void rxAdjPushLagTerm(const rxAdjPushCap *pc, int c, const double 
     sc += lam[c] * g;
   }
   for (int p = 0; p < np; ++p) mu[p] += dlag[c * np + p] * sc;
+  if (sOut != NULL) *sOut = sc;
 }
 
 // Duals of the jump at record rec into cmt c, with lam the costate after the
@@ -3327,10 +3340,11 @@ static inline void rxAdjPushLagTerm(const rxAdjPushCap *pc, int c, const double 
 // (alpha = F*amt: mu += lam[c]*x-[c]*amt*dF[c][p]).  dfxRow, for an f() that
 // depends on the state, is the extra row of G (rxAdjStateFRow), so G f(x-) gains
 // dfxRow . f(x-) in c.  Returns whether the alag() term was added: false when the
-// record has no capture (a dose pushed at run time).
+// record has no capture (a dose pushed at run time).  sOut, when given, takes the
+// lag term's weight lam^T r (+ the dfxRow part), what multiplies dlag[c][p].
 static inline bool rxAdjJumpTerm(int rec, int c, const double *lam, double *mu, int nBase, int np,
                                  const double *dlag, const double *dF = NULL,
-                                 const double *dfxRow = NULL) {
+                                 const double *dfxRow = NULL, double *sOut = NULL) {
   if (rec < 0) return false;
   const rxAdjJumpCap *cap = rxAdjJumpFind(rec);
   if (cap == NULL || cap->kind == 7) return false;
@@ -3347,6 +3361,7 @@ static inline bool rxAdjJumpTerm(int rec, int c, const double *lam, double *mu, 
     sc += lam[c] * g;
   }
   for (int p = 0; p < np; ++p) mu[p] += dlag[c * np + p] * sc;
+  if (sOut != NULL) *sOut = sc;
   return true;
 }
 
@@ -5144,6 +5159,7 @@ extern "C" void par_indLin(rx_solve *rx){
 // #included lsoda_adjoint.cpp; ind_liblsoda0 installs them on the ctx common
 // block when recording is active for this thread.
 extern "C" int  lsAdjIsActive(void);
+extern "C" void lsAdjLagRead(int reader, int dose, int cmt, const double *y);
 extern "C" void lsAdjSetActive(int a);
 extern "C" void lsAdjInitStep(struct lsoda_context_t *ctx);
 extern "C" void lsAdjPushStep(struct lsoda_context_t *ctx);
@@ -5366,6 +5382,11 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         if (refreshLagTimesIfNeeded(rx, ind, yp, i + 1, xout)) {
           ind->mainSorted = 0;
         }
+        if (lsAdjIsActive() && op->adjDlagxOff >= 0)
+          for (int j = i + 1; j < ind->n_all_times; ++j) {
+            int _c = rxAdjLagReadCmt(ind, j, xout, op->adjNbase);
+            if (_c >= 0) lsAdjLagRead(ind->ix[i], ind->ix[j], _c, yp);
+          }
       }
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.

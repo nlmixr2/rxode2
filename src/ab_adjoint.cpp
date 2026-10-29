@@ -29,7 +29,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   int fxOff = op->adjFxOff, fpOff = op->adjFpOff, sensOff = op->adjSensOff;
 
   // ---- forward: run the ordinary AB solve, recording each call's steps -----------
-  abAdjSteps.clear(); abAdjCalls.clear(); abAdjNbase = nBase; rxAdjJumpClear();
+  abAdjSteps.clear(); abAdjCalls.clear(); abAdjLagReads.clear(); abAdjNbase = nBase; rxAdjJumpClear();
   _adjLagPush.clear(); _adjLagPushFixed.clear(); _adjLagPushMdl.clear();
   abAdjActive = true;
   int neqF[2]; neqF[0] = op->neq; neqF[1] = 0;
@@ -46,8 +46,27 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   // solve applied them: 0 bolus (dPhi/dy=I; its modeled F and alag duals, raw amt
   // in factor and F*amt in amtF) | 3 reset (->0) | 5 replace[c] (->0) | 6
   // multiply[c] (*=factor, F*amt) | 12 a fixed-dur or modeled infusion start (where
-  // a state-dependent f() window's start term applies, in the forward order).
-  struct abJump { int type, cmt; double factor, amtF = 0.0; int rec = -1; };   // rec: a bolus/replace/multiply's record index
+  // a state-dependent f() window's start term applies, in the forward order) | 13
+  // a lag read from the state at its dose's raw time (rec = the dose's record,
+  // read = its abAdjLagReads entry), after the reading record's events.
+  struct abJump { int type, cmt; double factor, amtF = 0.0; int rec = -1; int read = -1; };   // rec: a bolus/replace/multiply's record index
+  // each lag read's dose and reading record as sorted positions, and d(alag_cmt)/dx
+  // at the state it read
+  std::vector<int> lrDose(abAdjLagReads.size(), -1), lrReader(abAdjLagReads.size(), -1);
+  std::vector<std::vector<double> > lrDLx(abAdjLagReads.size());
+  for (size_t q = 0; q < abAdjLagReads.size(); ++q) {
+    const abLagRead &R = abAdjLagReads[q];
+    for (int j = 0; j < ind->n_all_times; ++j) {
+      if (ind->ix[j] == R.dose) lrDose[q] = j;
+      if (ind->ix[j] == R.reader) lrReader[q] = j;
+    }
+    if (lrDose[q] < 0 || lrReader[q] < 0) continue;
+    std::vector<double> Aq(eff, 0.0);
+    for (int b = 0; b < nBase; ++b) Aq[b] = R.y[b];
+    rk4sLhsRec(ind, cSub, lrDose[q], getAllTimes(ind, R.dose), Aq.data());
+    lrDLx[q].assign(ind->lhs + op->adjDlagxOff + (size_t)R.cmt * nBase,
+                    ind->lhs + op->adjDlagxOff + (size_t)(R.cmt + 1) * nBase);
+  }
   // the start state of call c
   auto abCallY0 = [&](size_t c) {
     const abRecCall &C = abAdjCalls[c];
@@ -56,35 +75,41 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
     else if ((int)C.yEnd.size() == nBase) y = C.yEnd;   // a call that took no step
     return y;
   };
+  // the events of record i at time t (y the state there, for F*amt)
+  auto abEventAt = [&](std::vector<abJump> &ev, int i, double t, bool reset, double *y) {
+    int e = getEvid(ind, ind->ix[i]);
+    if (isObs(e)) return;
+    if (e == 3) { if (reset) ev.push_back({3, -1, 1.0}); return; }
+    if (!isDose(e)) return;
+    int _wh, _cmt, _wh100, _whI, _wh0; getWh(e, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
+    if (_cmt < 0 || _cmt >= nBase) return;
+    if (op->adjDfxOff >= 0 && _wh0 == EVID0_REGULAR &&
+        ((_whI == EVIDF_INF_DUR && getDose(ind, ind->ix[i]) > 0) ||
+         _whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON)) {
+      abJump _j = {12, _cmt, 0.0}; _j.rec = i; ev.push_back(_j);
+    }
+    else if (_whI == EVIDF_REPLACE) { abJump _j = {5, _cmt, 0.0}; _j.rec = i; ev.push_back(_j); }
+    else if (_whI == EVIDF_MULT) {
+      abJump _j = {6, _cmt, getAmt(ind, ind->id, _cmt, getDose(ind, ind->ix[i]), t, y)}; _j.rec = i; ev.push_back(_j);
+    }
+    else if (_whI == 0 && _wh0 == EVID0_REGULAR && (op->adjDfOff >= 0 || op->adjDlagOff >= 0)) {
+      double _amt = getDose(ind, ind->ix[i]);
+      abJump _j = {0, _cmt, _amt};
+      _j.amtF = getAmt(ind, ind->id, _cmt, _amt, t, y); _j.rec = i;
+      ev.push_back(_j);
+    }
+  };
   // the events at time t among the first `upTo` records (a reset only when it
   // follows a solved interval, `reset`); y is the state at t, for a bolus's F*amt
-  auto abEventsAt = [&](double t, int upTo, bool reset, const double *y) {
+  auto abEventsAt = [&](double t, int upTo, bool reset, double *y) {
     std::vector<abJump> ev;
     std::vector<double> _y(eff, 0.0);
     for (int b = 0; b < nBase; ++b) _y[b] = y[b];
     for (int i = 0; i < upTo; ++i) {
-      int e = getEvid(ind, ind->ix[i]);
-      if (isObs(e)) continue;
       if (!rxAdjSameTime(ind->timeThread[ind->ix[i]], t)) continue;
-      if (e == 3) { if (reset) ev.push_back({3, -1, 1.0}); continue; }
-      if (!isDose(e)) continue;
-      int _wh, _cmt, _wh100, _whI, _wh0; getWh(e, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
-      if (_cmt < 0 || _cmt >= nBase) continue;
-      if (op->adjDfxOff >= 0 && _wh0 == EVID0_REGULAR &&
-          ((_whI == EVIDF_INF_DUR && getDose(ind, ind->ix[i]) > 0) ||
-           _whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON)) {
-        abJump _j = {12, _cmt, 0.0}; _j.rec = i; ev.push_back(_j);
-      }
-      else if (_whI == EVIDF_REPLACE) { abJump _j = {5, _cmt, 0.0}; _j.rec = i; ev.push_back(_j); }
-      else if (_whI == EVIDF_MULT) {
-        abJump _j = {6, _cmt, getAmt(ind, ind->id, _cmt, getDose(ind, ind->ix[i]), t, _y.data())}; _j.rec = i; ev.push_back(_j);
-      }
-      else if (_whI == 0 && _wh0 == EVID0_REGULAR && (op->adjDfOff >= 0 || op->adjDlagOff >= 0)) {
-        double _amt = getDose(ind, ind->ix[i]);
-        abJump _j = {0, _cmt, _amt};
-        _j.amtF = getAmt(ind, ind->id, _cmt, _amt, t, _y.data()); _j.rec = i;
-        ev.push_back(_j);
-      }
+      abEventAt(ev, i, t, reset, _y.data());
+      for (size_t q = 0; q < lrReader.size(); ++q)
+        if (lrReader[q] == i && !lrDLx[q].empty()) { abJump _j = {13, abAdjLagReads[q].cmt, 0.0}; _j.rec = lrDose[q]; _j.read = (int)q; ev.push_back(_j); }
     }
     return ev;
   };
@@ -97,7 +122,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   // forcing inside call c, B[c] = the transversality of a moving rate change at
   // its start, both nBase x np (a*np+p) or empty.  The windows' dR and dF terms are
   // read at their start records; a lagged rate change's dlag at the call's start.
-  struct abInfSeg { double t0; std::vector<double> y0, infRate, lagRate, infG, offG; };
+  struct abInfSeg { double t0; std::vector<double> y0, infRate, lagRate, infG, offG; std::vector<int> lagRec; };
   std::vector<abInfSeg> infSeg(nCalls);
   for (size_t c = 0; c < nCalls; ++c) {
     infSeg[c].t0 = abAdjCalls[c].t0; infSeg[c].y0 = abCallY0(c); infSeg[c].infRate = abAdjCalls[c].infRate;
@@ -203,6 +228,9 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   // term, then 0; replace[c] -> 0; multiply[c] *= factor (F*amt), each after its
   // alag() and f() duals (rxAdjJumpTerm)
   std::vector<double> sfRow, sfDF, sfDl;   // a state-dependent f() event: its row and blocks
+  // a dose's lag term weight, by record, until the sweep reaches its lag read (type 13)
+  std::vector<double> lagS(ind->n_all_times, 0.0);
+  auto lagSet = [&](int rec, double v) { if (rec >= 0 && rec < (int)lagS.size()) lagS[rec] = v; };
   auto abJumpT = [&](const std::vector<abJump> &ev, double t, const double *y, double *cost, double *muP) {
     for (size_t e = ev.size(); e-- > 0;) {
       const abJump &E = ev[e];
@@ -219,11 +247,14 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
         if (dFp) {
           for (int p = 0; p < np; ++p) muP[p] += E.factor * dFp[E.cmt * np + p] * cost[E.cmt];
         }
-        if (dlp && !rxAdjJumpTerm(E.rec, E.cmt, cost, muP, nBase, np, dlp, NULL, dfx)) {
+        double sLag = 0.0;
+        if (dlp && !rxAdjJumpTerm(E.rec, E.cmt, cost, muP, nBase, np, dlp, NULL, dfx, &sLag)) {
           double sc = 0.0;
           for (int b = 0; b < nBase; ++b) sc += cost[b] * fx[b * nBase + E.cmt];
-          for (int p = 0; p < np; ++p) muP[p] += -E.amtF * dlp[E.cmt * np + p] * sc;
+          sLag = -E.amtF * sc;
+          for (int p = 0; p < np; ++p) muP[p] += dlp[E.cmt * np + p] * sLag;
         }
+        if (dlp) lagSet(E.rec, sLag);
         if (dfx) for (int b = 0; b < nBase; ++b) cost[b] += wC * dfx[b];
       }
       else if (E.type == 3) {
@@ -234,9 +265,17 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
         if (!sf) { const double *fx, *fp; abEval(t, y, &fx, &fp); }   // the duals' blocks at this event's time
         const double *dFp = sf ? (sfDF.empty() ? NULL : sfDF.data()) : (op->adjDfOff >= 0 ? &lhs[op->adjDfOff] : NULL);
         const double *dlp = sf ? (sfDl.empty() ? NULL : sfDl.data()) : (op->adjDlagOff >= 0 ? &lhs[op->adjDlagOff] : NULL);
-        rxAdjJumpTerm(E.rec, E.cmt, cost, muP, nBase, np, dlp, dFp, dfx);
+        double sLag = 0.0;
+        if (rxAdjJumpTerm(E.rec, E.cmt, cost, muP, nBase, np, dlp, dFp, dfx, &sLag)) lagSet(E.rec, sLag);
         if (E.type == 5) cost[E.cmt] = 0.0; else cost[E.cmt] *= rxAdjJumpFactor(E.rec, E.factor);
         if (dfx) for (int b = 0; b < nBase; ++b) cost[b] += wC * dfx[b];
+      }
+      else if (E.type == 13) {   // a lag read from the state: lam += s * d(alag)/dx
+        if (E.rec >= 0 && E.rec < (int)lagS.size() && lagS[E.rec] != 0.0) {
+          const std::vector<double> &dLx = lrDLx[E.read];
+          for (int b = 0; b < nBase; ++b) cost[b] += lagS[E.rec] * dLx[b];
+          lagS[E.rec] = 0.0;
+        }
       }
       else if (E.type == 12) {   // a state-dependent f() window starts: its rate moved with the state
         for (size_t q = 0; q < sfWins.size(); ++q)
@@ -260,6 +299,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
     double *out = getSolve(i);
     for (int k = 0; k < nBase; ++k) {
       std::fill(mu.begin(), mu.end(), 0.0);
+      std::fill(lagS.begin(), lagS.end(), 0.0);
       if (cObs >= 0) {
         std::fill(endCostate.begin(), endCostate.end(), 0.0); endCostate[k] = 1.0;
         std::fill(sfAcc.begin(), sfAcc.end(), 0.0);
@@ -298,6 +338,9 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
           }
           for (int b = 0; b < nBase; ++b) endCostate[b] = lam[b];  // costate of call c's start
           addW(infB[c], endCostate.data(), 1.0);                     // a moving rate change at t0_c
+          if (op->adjDlagOff >= 0 && !infSeg[c].lagRec.empty())      // ... and its lag term's weight
+            for (int a = 0; a < nBase; ++a)
+              if (infSeg[c].lagRate[a] != 0.0) lagSet(infSeg[c].lagRec[a], -infSeg[c].lagRate[a] * endCostate[a]);
           for (size_t q = 0; q < sfWins.size(); ++q)   // a state-dependent rate() window's stop
             if (sfWins[q].atOff && sfWins[q].seg1 == (size_t)c) sfAcc[q] += endCostate[sfWins[q].cmt];
           // the jumps at t0_c -> costate of the pre-event state (call c-1's end, or

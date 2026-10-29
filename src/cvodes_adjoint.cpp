@@ -268,7 +268,10 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   // with a modeled alag() a bolus's vector-field jump F(y+)-F(y-) follows it.
   // rec = a bolus/replace/multiply's record index (its rxAdjJumpCap), an infusion
   // off's (type 7) window in infusRec, else -1
-  struct cvEvent { double t; int cmt; int type; double factor; int seq; int y; double raw = 0.0; int rec = -1; };
+  // type 13: the forward read a lag that depends on the state at the dose's raw
+  // time, here (rec = the dose's record, y its state there); dLx = d(alag_cmt)/dx
+  struct cvEvent { double t; int cmt; int type; double factor; int seq; int y; double raw = 0.0; int rec = -1;
+                   std::vector<double> dLx; };
   std::vector<double> evY;
   std::vector<cvEvent> evJumps; rxAdjJumpClear();
   _adjLagPush.clear(); _adjLagPushFixed.clear(); _adjLagPushMdl.clear();
@@ -468,7 +471,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       }
       if (_lagRateCmt >= 0) {   // type 9: the rate into cmt changes by factor at a lagged time
         double _dR = ind->InfusionRate[_lagRateCmt] - _lagRatePre;
-        if (_dR != 0.0 && op->adjDlagOff >= 0) evJumps.push_back({xout, _lagRateCmt, 9, _dR, seq, -1});
+        if (_dR != 0.0 && op->adjDlagOff >= 0) evJumps.push_back({xout, _lagRateCmt, 9, _dR, seq, -1, 0.0, _lagRateRec});
         if (_dR != 0.0 && op->adjDfOff >= 0 && (_lagRateWhI == EVIDF_INF_RATE || _lagRateWhI == EVIDF_INF_DUR)) {
           // fixed rate/dur: F scales a fixed-dur rate and stretches a fixed-rate window
           bool _isDur = (_lagRateWhI == EVIDF_INF_DUR);
@@ -517,6 +520,15 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
         if (refreshLagTimesIfNeeded(rx, ind, yp, i + 1, xout)) {
           ind->mainSorted = 0;
         }
+        // a dose whose lag that refresh read from this state at its raw time: its
+        // landing moves with this state (type 13, after this record's events)
+        if (op->adjDlagxOff >= 0)
+          for (int j = i + 1; j < ind->n_all_times; ++j) {
+            int raw = ind->ix[j], _c = rxAdjLagReadCmt(ind, j, xout, nBase);
+            if (_c < 0) continue;
+            int _yL = (int)evY.size(); evY.insert(evY.end(), yp, yp + nBase);
+            evJumps.push_back({xout, _c, 13, 0.0, seq, _yL, 0.0, raw});
+          }
       }
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       if (isObs(getEvid(ind, ind->ix[i]))) { obsT.push_back(xout); obsIx.push_back(i); obsSeq.push_back(seq); }
@@ -564,6 +576,18 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   bu.fxOff = op->adjFxOff; bu.fpOff = op->adjFpOff; bu.lhs = ind->lhs;
   bu.drateOff = op->adjDrateOff; bu.dfOff = op->adjDfOff; bu.infus = &infusRec; bu.nAug = nAug;
   bu.A.assign(eff, 0.0); bu.yq.assign(nBase, 0.0);
+  // a lag read from the state: its dose's record and d(alag)/dx at the raw time
+  for (size_t e = 0; e < evJumps.size(); ++e) {
+    cvEvent &E = evJumps[e];
+    if (E.type != 13) continue;
+    int raw = E.rec; E.rec = -1;
+    for (int j = 0; j < ind->n_all_times; ++j) if (ind->ix[j] == raw) { E.rec = j; break; }
+    if (E.rec < 0) continue;
+    std::vector<double> Aq(eff, 0.0);
+    for (int b = 0; b < nBase; ++b) Aq[b] = evY[E.y + b];
+    rk4sLhsRec(ind, cSub, E.rec, getAllTimes(ind, raw), Aq.data());
+    E.dLx.assign(ind->lhs + op->adjDlagxOff + (size_t)E.cmt * nBase, ind->lhs + op->adjDlagxOff + (size_t)(E.cmt + 1) * nBase);
+  }
   // each window's dR/dp and dF/dp at its start record
   for (size_t w = 0; w < infusRec.size(); ++w) {
     cvInfus &F = infusRec[w];
@@ -610,6 +634,9 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   // a state-dependent f(): the event's blocks at its pre-event state and the
   // jump's extra row, added with the post-event costate of its cmt
   std::vector<double> sfRow, sfDF, sfDl;
+  // a dose's lag term weight, by record, until the sweep reaches its lag read (type 13)
+  std::vector<double> lagS(ind->n_all_times, 0.0);
+  auto lagSet = [&](int rec, double v) { if (rec >= 0 && rec < (int)lagS.size()) lagS[rec] = v; };
   auto bolusDual = [&](const cvEvent &ev) {
     bool sf = rxAdjStateFEvent(op, ind, cSub, ev.rec, ev.cmt, ev.t, sfRow, sfDF, sfDl);
     lhsAt(ev.t, ev.y);
@@ -621,13 +648,16 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     if (dFp) {
       for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += ev.raw * dFp[c * np + p] * NV_Ith_S(B, c);
     }
+    double sLag = 0.0;
     if (dlp && ev.y >= 0 &&
-        !rxAdjJumpTerm(ev.rec, c, NV_DATA_S(B), NV_DATA_S(B) + nBase, nBase, np, dlp, NULL, dfx)) {
+        !rxAdjJumpTerm(ev.rec, c, NV_DATA_S(B), NV_DATA_S(B) + nBase, nBase, np, dlp, NULL, dfx, &sLag)) {
       const double *dF = &evY[ev.y + nBase];
       double sc = 0.0;
       for (int ii = 0; ii < nBase; ++ii) sc += NV_Ith_S(B, ii) * dF[ii];
-      for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += -dlp[c * np + p] * sc;
+      sLag = -sc;
+      for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += dlp[c * np + p] * sLag;
     }
+    if (dlp) lagSet(ev.rec, sLag);
     if (dfx) for (int j = 0; j < nBase; ++j) NV_Ith_S(B, j) += wC * dfx[j];
   };
   // a state-dependent f() window's start: lam += (integral of lam_cmt) * row
@@ -649,7 +679,9 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     const double *dlp = sf ? (sfDl.empty() ? NULL : sfDl.data()) : (op->adjDlagOff >= 0 ? &ind->lhs[op->adjDlagOff] : NULL);
     const double *dfx = sf ? sfRow.data() : NULL;
     double wC = NV_Ith_S(B, E.cmt);
-    rxAdjJumpTerm(E.rec, E.cmt, NV_DATA_S(B), NV_DATA_S(B) + nBase, nBase, np, dlp, dFp, dfx);
+    double sLag = 0.0;
+    if (rxAdjJumpTerm(E.rec, E.cmt, NV_DATA_S(B), NV_DATA_S(B) + nBase, nBase, np, dlp, dFp, dfx, &sLag))
+      lagSet(E.rec, sLag);
     if (E.type == 5) NV_Ith_S(B, E.cmt) = 0.0;
     else NV_Ith_S(B, E.cmt) *= rxAdjJumpFactor(E.rec, E.factor);
     if (dfx) for (int j = 0; j < nBase; ++j) NV_Ith_S(B, j) += wC * dfx[j];
@@ -678,6 +710,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     for (int k = 0; bok && k < nBase; ++k) {
       for (int j = 0; j < nBase; ++j) NV_Ith_S(B, j) = (j == k) ? 1.0 : 0.0;
       for (int q = nBase; q < nAug; ++q) NV_Ith_S(B, q) = 0.0;
+      std::fill(lagS.begin(), lagS.end(), 0.0);
       if (CVodeReInit(bmem, (sunrealtype)ti, B) < 0) { bok = 0; break; }
       sunrealtype tret;
       // integrate ti -> each event (applying its costate jump) -> tStop; mu (the
@@ -709,6 +742,13 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
           const double *dlag = &ind->lhs[op->adjDlagOff];
           double fac = evJumps[segEv[s]].factor, lc = NV_Ith_S(B, c);
           for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += -fac * dlag[c * np + p] * lc;
+          lagSet(ev.rec, -fac * lc);
+        } else if (ty == 13) {                                         // a lag read from the state
+          const cvEvent &ev = evJumps[segEv[s]];
+          if (ev.rec >= 0 && ev.rec < (int)lagS.size() && lagS[ev.rec] != 0.0 && (int)ev.dLx.size() == nBase) {
+            for (int j = 0; j < nBase; ++j) NV_Ith_S(B, j) += lagS[ev.rec] * ev.dLx[j];
+            lagS[ev.rec] = 0.0;
+          }
         } else {                                                       // ty==7: infusion off-boundary
           // mu += -(F*amt/R)*durMult * dR/dtheta * lambda_c(t_off) (factor), plus
           // amtRaw*dF/dtheta*lambda_c for rate(), whose t_off = t_on + F*amt/R (raw).

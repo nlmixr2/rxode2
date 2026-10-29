@@ -373,7 +373,8 @@
 #' @return list with `text` (expanded model text), `st`, `ns`, `np`,
 #'   `calcSens`, and lhs layout `fxOff` (=0), `fpOff` (=ns*ns), `nlhsAdj`, and
 #'   `dx0Off` (the initial-condition derivative block, -1 if none), `dfxOff` (the
-#'   state derivative of the bioavailability, -1 if none).
+#'   state derivative of the bioavailability, -1 if none), `dlagxOff` (the state
+#'   derivative of the lag time, -1 if none).
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
@@ -707,6 +708,31 @@
   } else {
     character(0)
   }
+  # d(alag)/dx of a lag time that depends on the state, as lhs (rx__adjDlagX_k_j__),
+  # for the costate term at the dose record's own time (its landing time moves
+  # with the state there); only emitted when one is nonzero.
+  .dlx <- matrix("0", .ns, .ns)
+  for (k in seq_len(.ns)) {
+    .lSE <- get0(paste0("rx_lag_", .st[k], "_"), envir = .model, inherits = FALSE)
+    if (is.null(.lSE)) {
+      next
+    }
+    for (j in seq_len(.ns)) {
+      .d <- symengine::D(.lSE, .rxSEres(.st[j]))
+      .dlx[k, j] <- rxode2::rxFromSE(.d)
+    }
+  }
+  .hasDlxAdj <- any(.dlx != "0")
+  .dlxLines <- if (.hasDlxAdj) {
+    sprintf(
+      "rx__adjDlagX_%d_%d__=%s",
+      rep(seq_len(.ns) - 1L, each = .ns),
+      rep(seq_len(.ns) - 1L, times = .ns),
+      as.vector(t(.dlx))
+    )
+  } else {
+    character(0)
+  }
   # STIFF (Rosenbrock) only: the stage matrix W = I/(h*gamma) - J depends on theta
   # and y through J, so the exact discrete adjoint needs rx__adjJp_ = dJ/dtheta
   # and rx__adjJy_ = dJ/dy (d2f/dy2, zero for state-linear f).
@@ -770,6 +796,7 @@
         .drateLines,
         .dx0Lines,
         .dfxLines,
+        .dlxLines,
         .carry$tail
       ),
       collapse = "\n"
@@ -791,6 +818,11 @@
     drateOff = if (.hasRateAdj) .afterDelay + .dlagLen else -1L,
     dx0Off = if (.hasDx0Adj) .afterDelay + .dlagLen + .drateLen else -1L,
     dfxOff = if (.hasDfxAdj) .afterDelay + .dlagLen + .drateLen + (if (.hasDx0Adj) .ns * .np else 0L) else -1L,
+    dlagxOff = if (.hasDlxAdj) {
+      .afterDelay + .dlagLen + .drateLen + (if (.hasDx0Adj) .ns * .np else 0L) + (if (.hasDfxAdj) .ns * .ns else 0L)
+    } else {
+      -1L
+    },
     hasDelay = .hasDelayAdj,
     nlhsAdj = .ns * .ns + .ns * .np,
     sensOff = .ns

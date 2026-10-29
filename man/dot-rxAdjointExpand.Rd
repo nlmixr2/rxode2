@@ -15,7 +15,8 @@
 list with \code{text} (expanded model text), \code{st}, \code{ns}, \code{np},
 \code{calcSens}, and lhs layout \code{fxOff} (=0), \code{fpOff} (=ns*ns), \code{nlhsAdj}, and
 \code{dx0Off} (the initial-condition derivative block, -1 if none), \code{dfxOff} (the
-state derivative of the bioavailability, -1 if none).
+state derivative of the bioavailability, -1 if none), \code{dlagxOff} (the state
+derivative of the lag time, -1 if none).
 }
 \description{
 Exposes the state Jacobian \code{F_X = dF/dy} and parameter forcing

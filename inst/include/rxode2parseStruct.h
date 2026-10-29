@@ -195,6 +195,10 @@ typedef struct {
      bioavailability starts (k*nBase+j); -1 if no f() depends on a state.
      Appended last so every earlier field keeps its offset. */
   int    adjDfxOff;
+  /* discrete adjoint: lhs index where the d(alag)/dx block of a lag time that
+     depends on the state starts (k*nBase+j); -1 if no alag() depends on a
+     state.  Appended last so every earlier field keeps its offset. */
+  int    adjDlagxOff;
 } rx_solving_options;
 
 

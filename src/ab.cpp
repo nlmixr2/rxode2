@@ -39,6 +39,10 @@ static thread_local bool                  abAdjActive = false;
 static thread_local int                   abAdjNbase  = 0;
 static thread_local std::vector<abRecStep> abAdjSteps;
 static thread_local std::vector<abRecCall> abAdjCalls;
+// a lag that refreshLagTimesIfNeeded read from the state at its dose's raw time:
+// the reading record and the dose (raw indices), and the state it read
+struct abLagRead { int reader, dose, cmt; std::vector<double> y; };
+static thread_local std::vector<abLagRead> abAdjLagReads;
 
 // Direct Adams-Bashforth implementation using manual history management.
 // Boost's adams_bashforth<N> has accuracy issues with zero_copy_state aliasing.
@@ -302,6 +306,14 @@ extern "C" void ind_ab_0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         if (refreshLagTimesIfNeeded(rx, ind, yp, i + 1, xout)) {
           ind->mainSorted = 0;
         }
+        if (abAdjActive && op->adjDlagxOff >= 0)
+          for (int j = i + 1; j < ind->n_all_times; ++j) {
+            int raw = ind->ix[j], _c = rxAdjLagReadCmt(ind, j, xout, abAdjNbase);
+            if (_c < 0) continue;
+            abLagRead _r; _r.reader = ind->ix[i]; _r.dose = raw; _r.cmt = _c;
+            _r.y.assign(yp, yp + abAdjNbase);
+            abAdjLagReads.push_back(std::move(_r));
+          }
       }
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       if (_mtime_requeued) i--;
