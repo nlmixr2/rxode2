@@ -5346,16 +5346,49 @@ static inline void rxSolve_resample(const RObject &obj,
   }
 }
 
+// Which columns of the params data frame a model parameter reads (gParPos)
+static inline std::vector<bool> rxSolve_parDfUsed(rxSolve_t* rxSolveDat) {
+  rx_solve* rx = getRxSolve_();
+  unsigned int n = rxSolveDat->parDf.size();
+  std::vector<bool> used(n, false);
+  for (int k = 0; k < rx->npars; ++k) {
+    int pos = _globals.gParPos[k];
+    if (pos > 0 && pos <= (int)n) used[pos - 1] = true;
+  }
+  return used;
+}
+
+// Column j of the params data frame as numbers, in `out`.  A column no model
+// parameter reads (an id, a label) is converted only when it is numeric, and
+// is otherwise left NA, unread (returns false); a character column a
+// parameter reads is an error naming it.
+static inline bool rxSolve_parDfCol(rxSolve_t* rxSolveDat, const std::vector<bool>& used,
+                                    int j, NumericVector& out) {
+  SEXP col = rxSolveDat->parDf[j];
+  if (!used[j] && !Rf_isNumeric(col) && !Rf_isLogical(col)) return false;
+  if (TYPEOF(col) == STRSXP) {
+    CharacterVector parNames = rxSolveDat->parDf.names();
+    std::string nm = as<std::string>(parNames[j]);
+    rxSolveFree();
+    stop(_("'params' column '%s' is character; a model parameter needs numbers"), nm.c_str());
+  }
+  out = NumericVector(col);
+  return true;
+}
+
 // A one-row parameter data frame or matrix is one set for every subject, as a
 // named vector is, and is expanded here to a row per subject.
 static inline void rxSolve_parOneRow(rxSolve_t* rxSolveDat, uint32_t nsub) {
   if (rxSolveDat->parType == 1 || rxSolveDat->nPopPar != 1 || nsub <= 1) return;
   int ncol = rxSolveDat->nmP.size();
   NumericMatrix mat(nsub, ncol);
+  std::vector<bool> used;
+  if (rxSolveDat->parType == 2) used = rxSolve_parDfUsed(rxSolveDat);
   for (int j = 0; j < ncol; ++j) {
     double v;
     if (rxSolveDat->parType == 2) {
-      v = NumericVector(rxSolveDat->parDf[j])[0];
+      NumericVector col;
+      v = rxSolve_parDfCol(rxSolveDat, used, j, col) ? col[0] : NA_REAL;
     } else {
       v = rxSolveDat->parMat(0, j);
     }
@@ -5426,12 +5459,19 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
       rx->nsim=1;
     }
   case 2: // DataFrame
-    // Convert to NumericMatrix
+    // Convert to NumericMatrix, column by column (rxSolve_parDfCol())
     {
       unsigned int parDfi = rxSolveDat->parDf.size();
       rxSolveDat->parMat = NumericMatrix(rxSolveDat->nPopPar,parDfi);
+      std::vector<bool> used = rxSolve_parDfUsed(rxSolveDat);
       while (parDfi--){
-        rxSolveDat->parMat(_,parDfi)=NumericVector(rxSolveDat->parDf[parDfi]);
+        NumericVector col;
+        if (rxSolve_parDfCol(rxSolveDat, used, parDfi, col)) {
+          rxSolveDat->parMat(_,parDfi) = col;
+        } else {
+          NumericMatrix::Column unread = rxSolveDat->parMat(_, parDfi);
+          std::fill(unread.begin(), unread.end(), NA_REAL);
+        }
       }
       rxSolveDat->parMat.attr("dimnames") = List::create(R_NilValue, rxSolveDat->parDf.names());
     }
