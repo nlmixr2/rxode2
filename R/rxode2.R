@@ -2605,7 +2605,9 @@ rxCompile.rxModelVars <- function(
         # link to a private name and rename it into place, so a process sharing
         # rxTempDir() never loads a partly written library (#1558)
         .tmpDll <- paste0(
-          tools::file_path_sans_ext(basename(.cDllFile)), "_", Sys.getpid(),
+          tools::file_path_sans_ext(basename(.cDllFile)),
+          "_",
+          Sys.getpid(),
           .Platform$dynlib.ext
         )
         .args <- c("CMD", "SHLIB", "-o", .tmpDll, basename(.cFile))
