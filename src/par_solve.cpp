@@ -7459,9 +7459,12 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
     int this_evid = getEvid(ind, ind->ix[i]);
     bool is_obs   = isObs(this_evid);
     bool is_last  = (i == nx - 1);
-    bool need_seg = is_obs && is_last; // last obs: close the final segment
+    // the subject's first record (newind == 1) closes a segment too, so the
+    // integration after it sees newind == 2
+    bool is_first = is_obs && ind->_newind == 1;
+    bool need_seg = is_obs && (is_last || is_first); // close the segment here
 
-    if (is_obs && !is_last) {
+    if (is_obs && !is_last && !is_first) {
       // Pure observation interior to a segment.
       // Same-time obs (at xp): fill directly from the carry-forward state.
       if (isSameTimeDop(xout, xp)) {

@@ -52,6 +52,18 @@ rxTest({
   .newindRhs <- rxode2({
     d / dt(central) <- -0.2 * central * ifelse(newind <= 1, 2, 1)
   })
+  # before the first real record (here the data start at 1) newind is still 1
+  .newindRhs0 <- rxode2({
+    central(0) <- 10
+    d / dt(central) <- -0.2 * central * ifelse(newind <= 1, 2, 1)
+  })
+  .newindDur <- rxode2({
+    d / dt(central) <- -0.2 * central
+    dur(central) <- ifelse(newind <= 1, 1, 2)
+  })
+  .newindPlain <- rxode2({
+    d / dt(central) <- -0.2 * central
+  })
   .newindF <- rxode2({
     d / dt(central) <- -0.2 * central
     f(central) <- ifelse(newind <= 1, 0.5, 1)
@@ -93,6 +105,25 @@ rxTest({
       )
       expect_equal(.s$central, c(40.9365, 33.5227, 133.489, 89.4985), tolerance = 1e-4)
 
+      # every subject starts again at newind = 1
+      .s <- .solve(
+        .newindF,
+        et(amt = 100, time = 0, id = 1:2) |> et(amt = 100, time = 2, id = 1:2) |> et(c(1, 4), id = 1:2)
+      )
+      expect_equal(.s$central, rep(c(40.9365, 89.4985), 2), tolerance = 1e-4)
+
+      # a modeled duration at the first record
+      .obs <- c(0.5, 1, 3, 5, 6, 8)
+      .s <- .solve(.newindDur, et(amt = 100, rate = -2) |> et(amt = 100, rate = -2, time = 4) |> et(.obs))
+      .ref <- .solve(.newindPlain, et(amt = 100, dur = 1) |> et(amt = 100, dur = 2, time = 4) |> et(.obs))
+      expect_equal(.s$central, .ref$central, tolerance = 1e-4)
+
+      # data starting after time 0: the hidden start record is not the first
+      .s <- .solve(.newindF, et(amt = 100, time = 1) |> et(c(2, 4)))
+      expect_equal(.s$central, 50 * exp(-0.2 * c(1, 3)), tolerance = 1e-4)
+      .s <- .solve(.newindRhs0, et(c(1, 2, 4)))
+      expect_equal(.s$central, 10 * exp(-0.4 - 0.2 * c(0, 1, 3)), tolerance = 1e-4)
+
       # dense output falls back to standard output for evid_() models
       if (dense) {
         return(invisible())
@@ -104,9 +135,6 @@ rxTest({
       .s <- .solve(.newindSticky, et(c(0, 0.5, 1, 2, 4)))
       expect_equal(.s$central[.s$time > 1], 100 * exp(-0.2 * c(1, 3)), tolerance = 1e-4)
 
-      # data starting after time 0: the hidden start record is not the first
-      .s <- .solve(.newindF, et(amt = 100, time = 1) |> et(c(2, 4)))
-      expect_equal(.s$central, 50 * exp(-0.2 * c(1, 3)), tolerance = 1e-4)
       .s <- .solve(.newindGuard, et(c(1, 2, 4)), addDosing = TRUE)
       expect_equal(.s$central[.s$time > 1], 100 * exp(-0.2 * c(1, 3)), tolerance = 1e-4)
       expect_equal(.s$time[.s$evid != 0], 1)
