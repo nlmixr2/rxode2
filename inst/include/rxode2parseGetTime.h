@@ -114,7 +114,10 @@ static inline int getSortedPosition(rx_solving_options_ind *ind, int raw) {
   for (int j = 0; j < ind->n_all_times; ++j) {
     if (ind->ix[j] == raw) return j;
   }
-  return raw;
+  // unreachable while ix is a permutation (sortInd() pre-fills it); fail the
+  // subject's solve
+  ind->err |= rxErrSortedPos; // nocov
+  return 0; // nocov
 }
 
 // rxControl(doseAtRecord=TRUE): a dose's f(), alag(), rate() and dur(), and
