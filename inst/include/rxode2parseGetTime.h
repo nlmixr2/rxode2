@@ -173,18 +173,21 @@ static inline void updateRate(int idx, rx_solving_options_ind *ind, double *yp) 
   }
 }
 
-// rxControl(nonmem = TRUE): sorted position of the first data record after
-// position i (the record that ends the next interval), skipping the records
-// _rxPkTime() skips; -1 when there is none
+// rxControl(nonmem = TRUE): whether raw record `raw` is a data record, one
+// that ends an interval; skips the records _rxPkTime() skips
+static inline int nonmemDataRecord(rx_solving_options_ind *ind, int raw) {
+  if (raw < 0 || raw >= ind->n_all_times_orig) return 0;
+  if (ind->pkSkip != NULL && ind->pkSkip[raw]) return 0;
+  int evid = getEvid(ind, raw);
+  return !(isDose(evid) && (isEvidModeledRateStop(evid) || isEvidModeledDurationStop(evid) ||
+                            !isSameTime(ind->timeThread[raw], ind->all_times[raw])));
+}
+
+// sorted position of the first data record after position i (the record that
+// ends the next interval); -1 when there is none
 static inline int nonmemNextRecord(rx_solving_options_ind *ind, int i) {
   for (int j = i + 1; j < ind->n_all_times; ++j) {
-    int raw = ind->ix[j];
-    if (raw < 0 || raw >= ind->n_all_times_orig) continue;
-    if (ind->pkSkip != NULL && ind->pkSkip[raw]) continue;
-    int evid = getEvid(ind, raw);
-    if (isDose(evid) && (isEvidModeledRateStop(evid) || isEvidModeledDurationStop(evid) ||
-                         !isSameTime(ind->timeThread[raw], ind->all_times[raw]))) continue;
-    return j;
+    if (nonmemDataRecord(ind, ind->ix[j])) return j;
   }
   return -1;
 }
@@ -214,9 +217,9 @@ static inline int nonmemRateStarted(rx_solving_options_ind *ind, int i, int on, 
 // rxControl(nonmem = TRUE) (rxode2#1586): like NONMEM's R1, a modeled rate
 // runs on (t[j-1], t[j]] at the rate computed with data record j until its
 // amount is delivered.  Called after the record at sorted position i is
-// handled (an addl repeat too, so its first interval reads the next data
-// record): re-reads each running modeled rate from the next data record and
-// moves its end.  Returns 1 when an end moved (the timeline needs a re-sort).
+// handled: a data record re-reads each running modeled rate from the next
+// data record and moves its end; any other record (an addl repeat, a lagged
+// dose) does so only for the infusion it starts.  Returns 1 when an end moved (the timeline needs a re-sort).
 // Event sensitivities and the adjoint keep the rate of the dose, which their
 // d(rate)/dp forcing assumes.
 static inline int updateNonmemModeledRates(rx_solve *rx, rx_solving_options_ind *ind,
@@ -227,11 +230,13 @@ static inline int updateNonmemModeledRates(rx_solve *rx, rx_solving_options_ind 
   int raw = ind->ix[i];
   if (raw < 0 || raw >= ind->n_all_times_orig) return 0;
   double tNow = ind->timeThread[raw];
+  int dataRec = nonmemDataRecord(ind, raw);
   int ncmt = op->neq + op->extraCmt;
   int j = -2, ret = 0;
   for (int d = 0; d < ind->ndoses; ++d) {
     int on = ind->idose[d];
     if (on < 0 || on + 1 >= ind->n_all_times_orig) continue;
+    if (!dataRec && on != raw) continue;
     int wh, cmt, wh100, whI, wh0;
     getWh(getEvid(ind, on), &wh, &cmt, &wh100, &whI, &wh0);
     if (whI != EVIDF_MODEL_RATE_ON || wh0 != EVID0_REGULAR) continue;

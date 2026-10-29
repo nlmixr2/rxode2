@@ -163,6 +163,25 @@ rxTest({
     }
   })
 
+  test_that("an infusion end does not re-read a state-dependent rate", {
+    .ms <- rxode2({
+      rate(a) <- 100 + a
+      dur(b) <- 1
+      d/dt(a) <- 0
+      d/dt(b) <- 0
+    })
+    .dd <- data.frame(
+      ID = 1,
+      TIME = c(0, 0, 10),
+      EVID = c(1, 1, 0),
+      AMT = c(10000, 10, 0),
+      RATE = c(-1, -2, 0),
+      CMT = c(1, 2, 1)
+    )
+    .s <- rxSolve(.ms, .dd, nonmem = TRUE, addDosing = FALSE, returnType = "data.frame")
+    expect_equal(.s$a, 1000, tolerance = 1e-6)
+  })
+
   test_that("a modeled duration is still fixed at the dose", {
     .md <- rxode2({
       cl <- 0.5
