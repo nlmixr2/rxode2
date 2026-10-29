@@ -1157,7 +1157,9 @@ created by reference (ie \code{setDt()}), which should be fast.
 generator should be initialized; when given, it takes precedence
 over an active \code{\link[=rxSetSeed]{rxSetSeed()}} stream for this solve, and the
 caller's \code{.Random.seed} is restored afterwards.  \code{\link[=rxControl]{rxControl()}} only
-stores it; the seed is applied when the control is used by a solve}
+stores it; the seed is applied when the control is used by a solve.
+Re-solving a result by assignment (eg \code{s$params <- p}) reapplies its
+seed, while \code{update()} uses only a \code{seed} it is given}
 
 \item{nsim}{represents the number of simulations.  For rxode2, if
 you supply single subject event tables (created with

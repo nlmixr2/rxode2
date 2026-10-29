@@ -109,6 +109,39 @@ rxTest({
     expect_equal(do.call(rxSolve, c(list(.m, .ev), .ctl))$C, .ref)
   })
 
+  test_that("re-solving by assignment reapplies the stored seed (#1550)", {
+    on.exit(rxSetSeed(-1L), add = TRUE)
+    .m <- function() {
+      model({
+        C <- a + err
+      })
+    }
+    .sig <- lotri::lotri(err ~ 1)
+    rxSetSeed(-1L)
+    .s1 <- rxSolve(.m, c(a = 1), .ev, sigma = .sig, seed = 10)
+    expect_equal(.s1$.args$seed, 10)
+    set.seed(1)
+    .before <- .Random.seed
+    rxSetSeed(3L)
+    .s2 <- .s1
+    .s2$a <- 2
+    expect_equal(.s2$C, .s1$C + 1)
+    .s3 <- .s1
+    .s3[["params"]] <- c(a = 3)
+    expect_equal(.s3$C, .s1$C + 2)
+    .s4 <- .s1
+    .s4[, "a"] <- 4
+    expect_equal(.s4$C, .s1$C + 3)
+    expect_equal(rxGetSeed(), 3L)
+    expect_identical(.Random.seed, .before)
+    # without a stored seed a re-solve still draws fresh values
+    rxSetSeed(-1L)
+    .s5 <- rxSolve(.m, c(a = 1), .ev, sigma = .sig)
+    .s6 <- .s5
+    .s6$a <- 2
+    expect_false(isTRUE(all.equal(.s6$C, .s5$C + 1)))
+  })
+
   test_that("rxSolve() without seed= still follows set.seed()", {
     set.seed(5)
     .a <- .solve()

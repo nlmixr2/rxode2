@@ -117,6 +117,11 @@
   `.Random.seed` as `rxSolve(seed = )` does.  The simulated values for a
   given `seed` are unchanged (#1550).
 
+- Re-solving an `rxSolve()` result by assignment (`$<-`, `[[<-`, `[<-`, eg
+  `s$params <- p`) now reapplies the seed stored in its control, so the draws
+  are reproducible; they used to be fresh values.  `update()` still uses only
+  a `seed` passed to it (#1550).
+
 ### Solving
 
 - Forward sensitivities through `alag()`, `f()`, `rate()`, `dur()` and a
