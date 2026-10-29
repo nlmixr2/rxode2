@@ -436,14 +436,12 @@
   time the solve reached (off by up to 34).
 
 - Adjoint sensitivities with a bioavailability (`f()`) that depends on the
-  state are now right in every adjoint method: the dose then lands as
-  `x + F(x)*amt`, so its transpose carries `amt*dF/dx` at the pre-dose state,
-  for a bolus, a replace or multiply, a lagged dose, each period of an
-  `ss = 1` dose and an `ss = 2` dose, whose own dose lands on the total state
-  (off by up to 81), and for a fixed-duration infusion, whose
-  rate moves with its start state.  The forward solve re-reads `F` at the
-  infusion's stop, so its result after the stop is not yet right, and it does
-  not solve a fixed-rate infusion with such an `f()`.
+  state are now right in every adjoint method: a dose's transpose carries
+  `amt*dF/dx` at the state it reads `F` at, for boluses, replaces and
+  multiplies, lagged and steady-state doses, and fixed-duration and modeled
+  `rate()`/`dur()` infusions (off by up to 81).  The forward solve re-reads
+  `F` at a fixed-duration infusion's stop and does not solve a fixed-rate
+  infusion with such an `f()`, so those are not covered.
 
 - `method = "abs"` now includes the bioavailability (`f()`), lag-time
   (`alag()`), `rate()` and `dur()` adjoint sensitivities of bolus and

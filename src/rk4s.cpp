@@ -60,12 +60,6 @@ static inline void rk4sLhsRec(rx_solving_options_ind *ind, int cSub, int recIdx,
   ind->_update_par_ptr_in = 0;
 }
 
-// A bolus, replace or multiply at record rec into cmt c whose f() depends on the
-// state: x+[c] = x-[c] + F(x-)*amt, F(x-)*amt or F(x-)*amt*x-[c].  Fills row with
-// the part of dx+[c]/dx- the plain jump leaves out, amt*dF_c/dx (times x-[c] for a
-// multiply), at the captured pre-event state with the record's covariates; the
-// transpose adds row * lam+[c] to lam-.  ind->lhs is left evaluated there, for
-// the event's dF/dp and d(alag)/dp.  False when there is no such capture.
 // rxAdjStateFRow at a given pre-event state yPre and weight w (amt, or amt*x-[c])
 static inline bool rxAdjStateFRowAt(rx_solving_options *op, rx_solving_options_ind *ind, int cSub,
                                     int rec, int c, double t, const double *yPre, double w,
@@ -80,6 +74,12 @@ static inline bool rxAdjStateFRowAt(rx_solving_options *op, rx_solving_options_i
   for (int j = 0; j < nBase; ++j) row[j] = w * ind->lhs[op->adjDfxOff + c * nBase + j];
   return true;
 }
+// A bolus, replace or multiply at record rec into cmt c whose f() depends on the
+// state: x+[c] = x-[c] + F(x-)*amt, F(x-)*amt or F(x-)*amt*x-[c].  Fills row with
+// the part of dx+[c]/dx- the plain jump leaves out, amt*dF_c/dx (times x-[c] for a
+// multiply), at the captured pre-event state with the record's covariates; the
+// transpose adds row * lam+[c] to lam-.  ind->lhs is left evaluated there, for
+// the event's dF/dp and d(alag)/dp.  False when there is no such capture.
 static inline bool rxAdjStateFRow(rx_solving_options *op, rx_solving_options_ind *ind, int cSub,
                                   int rec, int c, double t, std::vector<double> &row) {
   row.clear();
