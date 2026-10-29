@@ -79,6 +79,22 @@ rxTest({
     expect_equal(.t$EVID[.t$TIME == 10 & .t$ID == 2], c(3L, 101L))
   })
 
+  test_that("tieOrder='data' keeps the row order with DATE/TIME data", {
+    .d <- data.frame(
+      ID = 1,
+      DATE = "01/01/2020",
+      TIME = c("08:00", "13:00", "13:00", "14:00"),
+      EVID = c(1, 0, 1, 0),
+      AMT = c(100, 0, 100, 0),
+      CMT = 1
+    )
+    .data <- as.data.frame(etTrans(.d, .tieMod(), tieOrder = "data"))
+    expect_equal(.data$EVID, c(101L, 0L, 101L, 0L))
+    expect_equal(.data$TIME, c(0, 5, 5, 6))
+    .evid <- as.data.frame(etTrans(.d, .tieMod()))
+    expect_equal(.evid$EVID, c(101L, 101L, 0L, 0L))
+  })
+
   test_that("tieOrder must be 'evid' or 'data'", {
     expect_error(etTrans(.tieData(1, 1, 3), .tieMod(), tieOrder = "file"))
   })
