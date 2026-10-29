@@ -21,7 +21,7 @@ rxTest({
   .chk <- function(scen, meths) {
     for (.nm in names(scen)) {
       .k <- scen[[.nm]]
-      .ref <- .adjFd(.k$txt, .k$ev, .k$p, method = "liblsoda", maxsteps = 1e6)
+      .ref <- .adjFd(.k$txt, .k$ev, .k$p, method = "liblsoda", maxsteps = 1e6, layout = 0.05)
       for (.m in meths) {
         .a <- rxSolveAdjointRk4(.k$txt, .k$ev,
           params = .k$p, calcSens = names(.k$p), method = .m,
