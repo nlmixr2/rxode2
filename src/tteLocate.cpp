@@ -51,7 +51,6 @@ int rxTteLocate(int subj, int neq, double xs, const double *ys, double xout,
                 const double *yout, const rxTteInteg &integ, double *tStar,
                 int *kOut, double *yStar) {
   if (rxTteN() == 0) return 0;
-  rxTteOpenWindows(subj, xout, yout);
   int found = 0;
   for (int k = 1; xout > xs && k <= rxTteN(); k++) {
     rxTteState *st = rxTteGet(subj, k);
@@ -66,5 +65,7 @@ int rxTteLocate(int subj, int neq, double xs, const double *ys, double xout,
     std::copy(ys, ys + neq, yStar);
     integ(yStar, xs, *tStar);
   }
+  // windows open on the trajectory that is kept: up to the event, if any
+  rxTteOpenWindows(subj, found ? *tStar : xout, found ? yStar : yout);
   return found;
 }

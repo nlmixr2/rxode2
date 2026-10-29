@@ -73,7 +73,8 @@ static void rxTteWindowRecord(rx_solving_options_ind *ind, int subj, int r) {
   int k;
   int role = rxTteRole(ind->dv[r], &k);
   rxTteState *st = role == 0 ? NULL : rxTteGet(subj, k);
-  if (st == NULL || role == RXTTE_EVENT || role == RXTTE_USED) return;
+  if (st == NULL || role == RXTTE_EVENT || role == RXTTE_USED ||
+      role == RXTTE_DATA) return;
   double t = ind->all_times[r];
   if (role == RXTTE_START) {
     if (ISNA(st->start) || t < st->start) st->start = t;
@@ -84,7 +85,7 @@ static void rxTteWindowRecord(rx_solving_options_ind *ind, int subj, int r) {
 
 void rxTteSubjectInit(rx_solving_options_ind *ind, int subj) {
   if (_rxTteEps.empty()) return;
-  rx_solve *rx = getRxSolve_();
+  rx_solve *rx = getRxSolve2_();
 #pragma omp critical(rxTteAllocCrit)
   rxTteAlloc(rx);
   for (int k = 1; k <= rxTteN(); k++) {
@@ -112,13 +113,13 @@ void rxTteSetDone(int subj, int k) {
   if (st != NULL) st->done = 1;
 }
 
-// Unused event slots and slots holding interval-censored events are not
-// output rows
+// Unused event slots, slots holding interval-censored events and the
+// endpoint's own (covariate) records are not output rows
 void rxTteSubjectFinish(rx_solving_options_ind *ind) {
   for (int r = 0; r < ind->n_all_times; r++) {
     int k;
     int role = rxTteRole(ind->dv[r], &k);
-    if (role == RXTTE_FREE || role == RXTTE_USED) ind->evid[r] = 9;
+    if (role == RXTTE_FREE || role == RXTTE_USED || role == RXTTE_DATA) ind->evid[r] = 9;
   }
 }
 
@@ -131,10 +132,14 @@ extern "C" void rxTteSsAtol(double *ssAtol, int neq) {
 }
 
 // Set (or with NULL clear) the tte() configuration for the next solve
+extern "C" void rxSetNaCovNoValue(int on);
+
 extern "C" SEXP _rxode2_rxTteSetup(SEXP cfg) {
   _rxTteEps.clear();
   _rxTteSt.clear();
   _rxTteNsub = 0;
+  // the added tte() records carry no covariates
+  rxSetNaCovNoValue(!Rf_isNull(cfg));
   if (Rf_isNull(cfg)) return R_NilValue;
   int n = Rf_length(VECTOR_ELT(cfg, 0));
   _rxTteEps.resize(n);

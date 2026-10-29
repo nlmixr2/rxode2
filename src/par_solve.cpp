@@ -4952,6 +4952,15 @@ extern "C" void lsAdjSetActive(int a);
 extern "C" void lsAdjInitStep(struct lsoda_context_t *ctx);
 extern "C" void lsAdjPushStep(struct lsoda_context_t *ctx);
 
+// A free event-slot record of tte() endpoint k at or after timeline slot i
+static int rxTteFreeSlot(rx_solving_options_ind *ind, int i, int k) {
+  for (int j = i; j < ind->n_all_times; j++) {
+    int raw = ind->ix[j], kk;
+    if (rxTteRole(ind->dv[raw], &kk) == RXTTE_FREE && kk == k) return raw;
+  }
+  return -1;
+}
+
 // tte() simulation: after the interval (xs, *xout] is solved, locate the
 // earliest event in it.  The event takes a free event-slot record of its
 // endpoint, which is re-timed to the event time and sorted into slot i; the
@@ -4967,27 +4976,25 @@ static int _rxTteAfterInterval(rx_solve *rx, rx_solving_options *op,
   double tStar = 0.0;
   int k = 0;
   std::vector<double> yStar(neq);
-  if (!rxTteLocate(subj, neq, xs, ys, *xout, yp, integ, &tStar, &k,
-                   yStar.data())) {
-    return 0;
-  }
-  int slot = -1;
-  for (int j = i; j < ind->n_all_times; j++) {
-    int raw = ind->ix[j], kk;
-    if (rxTteRole(ind->dv[raw], &kk) == RXTTE_FREE && kk == k) {
-      slot = raw;
-      break;
+  int slot = -1, exhausted = 0;
+  while (slot < 0) {
+    if (!rxTteLocate(subj, neq, xs, ys, *xout, yp, integ, &tStar, &k,
+                     yStar.data())) {
+      if (!exhausted) return 0;
+      if (ind->delayHistOn) {
+        // the root finding left the delay() history at the event time
+        std::copy(ys, ys + neq, yp);
+        integ(yp, xs, *xout);
+      }
+      return 2;
     }
-  }
-  if (slot < 0) {
-    rxSolveWarnPush(ind->id, "tte() endpoint %d ran out of event slots; later events were not simulated", k);
-    rxTteSetDone(subj, k);
-    if (ind->delayHistOn) {
-      // the root finding left the delay() history at the event time
-      std::copy(ys, ys + neq, yp);
-      integ(yp, xs, *xout);
+    slot = rxTteFreeSlot(ind, i, k);
+    if (slot < 0) {
+      // the other endpoints may still have an event in this interval
+      rxSolveWarnPush(ind->id, "tte() endpoint %d ran out of event slots; later events were not simulated", k);
+      rxTteSetDone(subj, k);
+      exhausted = 1;
     }
-    return 2;
   }
   int interval = rxTteIsInterval(k);
   // last time of the endpoint's records that are still observed

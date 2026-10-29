@@ -140,10 +140,23 @@ static inline double getValue(int idx, double *y, int is_locf,
   return getValue(idx, y, is_locf, ind->ix, ind->n_all_times, ind->n_all_times_orig, op, lh);
 }
 
-// v is at record i's time; a pushed record has no value of its own, so
-// interpolate across it instead
-static inline bool rxAtDataRec(double v, double ti, const int *ix, int i, int nOrig) {
-  return isSameTime(v, ti) && !rxPushedRec(ix, i, nOrig);
+// During a tte() solve a record without a covariate value (NA), such as a
+// tte() record re-timed to an event, has no value of its own either
+static int _rxNaCovNoValue = 0;
+extern "C" void rxSetNaCovNoValue(int on) {
+  _rxNaCovNoValue = on;
+}
+
+static inline bool rxNoValueRec(double *y, const int *ix, int i, int nOrig) {
+  if (rxPushedRec(ix, i, nOrig)) return true;
+  return _rxNaCovNoValue && ISNA(rxCovRec(y, ix == NULL ? i : ix[i], nOrig));
+}
+
+// v is at record i's time; a record without a value of its own (pushed) is
+// interpolated across instead
+static inline bool rxAtDataRec(double v, double ti, double *y, const int *ix, int i,
+                               int nOrig) {
+  return isSameTime(v, ti) && !rxNoValueRec(y, ix, i, nOrig);
 }
 
 // Linear interpolation between records i and j, moved past NA values
@@ -187,8 +200,8 @@ static inline double rx_approxP(double v, double *y, int is_locf, int n, int nOr
 
   double tj = T(j);
   double ti = T(i);
-  if(rxAtDataRec(v, tj, ix, j, nOrig)) return V(j, 1);
-  if(rxAtDataRec(v, ti, ix, i, nOrig)) return V(i, -1);
+  if(rxAtDataRec(v, tj, y, ix, j, nOrig)) return V(j, 1);
+  if(rxAtDataRec(v, ti, y, ix, i, nOrig)) return V(i, -1);
   /* impossible: if(T(j) == T(i)) return V(i); */
 
   switch (is_locf) {
@@ -210,10 +223,13 @@ static inline double rx_approxP(double v, double *y, int is_locf, int n, int nOr
 
 #undef V
 
-// Covariate of this subject at time t, on its (possibly lagged) sorted times
+// Covariate of this subject at time t, on its (possibly lagged) sorted times.
+// getTime() is 0 for an internal evid 9 record; the tte() records made evid 9
+// after solving keep their own time.
 static inline double rxApproxCov(double t, double *y, int is_locf,
                                  rx_solving_options *op, rx_solving_options_ind *id) {
   return rx_approxP(t, y, is_locf, id->n_all_times, id->n_all_times_orig, id->ix, op, [id](int i) {
+    if (_rxNaCovNoValue && getEvid(id, id->ix[i]) == 9) return getAllTimes(id, id->ix[i]);
     return id->fns ? id->fns->gettime(id->ix[i], id) : getTime(id->ix[i], id);
   });
 }
@@ -407,6 +423,14 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
             ind->cacheME=0;
             continue;
           }
+          if (rxNoValueRec(y, ind->ix, idx, ind->n_all_times_orig)) {
+            // a tte() record: interpolate on the sorted timeline at its time
+            double _t = ind->fns && ind->fns->gettime ? ind->fns->gettime(ind->ix[idx], ind) :
+              getTime(ind->ix[idx], ind);
+            ind->par_ptr[op->par_cov[k]-1] = rxApproxCov(_t, y, is_locf, op, ind);
+            ind->cacheME=0;
+            continue;
+          }
           ind->par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, is_locf,
                                                     indSample, op, 0);
           if (idx == 0){
@@ -452,7 +476,7 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           // cov_ptr is laid out by the data records (n_all_times_orig)
           double *y = indSample->cov_ptr + indSample->n_all_times_orig*k;
           // a pushed record has no value of its own; interpolate across it
-          bool pushed = rxPushedRec(ind->ix, idxSample, ind->n_all_times_orig);
+          bool pushed = rxNoValueRec(y, ind->ix, idxSample, ind->n_all_times_orig);
           if (!pushed && idxSample == 0 &&
               isSameTimeOp(t, (indSample->fns && indSample->fns->gettime ? indSample->fns->gettime(indSample->ix[idxSample], indSample) : getTime(indSample->ix[idxSample], indSample)))) {
             // y is in record order; a lagged dose can move record 0 off sorted slot 0

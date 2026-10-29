@@ -17,6 +17,19 @@ rxTest({
       })
     }
     ui <- f()
+    # the same columns as an ordinary endpoint's
+    g <- function() {
+      ini({
+        lambda <- 0.1
+        add.sd <- 1
+      })
+      model({
+        y <- lambda
+        y ~ add(add.sd)
+      })
+    }
+    expect_identical(names(ui$predDf), names(g()$predDf))
+    expect_identical(names(ui$iniDf), names(g()$iniDf))
     expect_equal(as.character(ui$predDf$distribution), "tte")
     expect_equal(levels(ui$predDf$distribution)[20], "tte")
     expect_equal(ui$predDf$cond, "seizure")
