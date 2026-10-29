@@ -947,6 +947,35 @@ probabilities remain the same:\tabular{ll}{
 
 }
 
+\subsection{Time-to-event endpoints}{
+
+A time-to-event endpoint is specified by its hazard:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{ev ~ tte(haz, eventType = "exact", maxEventNumber = Inf,
+         rightCensoringTime = 120, intervalLength = 10, dropout = FALSE)
+}\if{html}{\out{</div>}}
+
+The cumulative hazard is added to the model as a hidden state
+(\code{rx.tteH.ev}), and event times solve \code{H(t) - H(t_last) = -log(u)} with
+a root finder. Only the hazard is required; the options are:\tabular{lll}{
+   Option \tab Default \tab Meaning \cr
+   \code{eventType} \tab \code{"exact"} \tab \code{"exact"} or \code{"intervalCensored"} event times \cr
+   \code{maxEventNumber} \tab \code{Inf} \tab maximum number of events (\code{1} for one-off) \cr
+   \code{rightCensoringTime} \tab last record of the endpoint \tab end of the observation window \cr
+   \code{intervalLength} \tab tenth of the observation window \tab interval length for \code{"intervalCensored"} \cr
+   \code{dropout} \tab \code{FALSE} \tab the event ends all observations (needs \code{maxEventNumber = 1}) \cr
+}
+
+
+Simulated rows follow the Monolix/NONMEM layout: \code{sim = 0} at the start
+of the window, \code{sim = 1} at each event (or at the end of each interval
+holding an event) and \code{sim = 0} at right censoring. In model lines,
+\code{tteTime(ev)} is the time of the last event of \code{ev} (the window start
+before the first) and \code{tteCount(ev)} is the number of events so far, so
+renewal and count-dependent hazards can be written. Simulation requires
+\code{method = "liblsoda"}.
+}
+
 \subsection{General table of supported residual distributions}{
 
 In general all the that are supported are in the following table

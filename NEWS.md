@@ -38,6 +38,14 @@
 
 ## New features
 
+- Time-to-event endpoints can be simulated with `ev ~ tte(haz, ...)`, using
+  the options of Monolix's `{type=event}` definitions (`eventType`,
+  `maxEventNumber`, `rightCensoringTime`, `intervalLength`) plus `dropout`.
+  The cumulative hazard is a hidden model state, event times are found with
+  a root finder, and the simulation returns Monolix/NONMEM-style rows.
+  `tteTime(ev)` and `tteCount(ev)` give the last event time and the event
+  count inside the model.
+
 - `minSS` and `maxSS` now accept any count from 1, and `maxSS` may equal
   `minSS`, so `minSS = maxSS = n` gives exactly the state after `n` doses
   before the steady-state one (Monolix `nbdoses = n`).  They used to require

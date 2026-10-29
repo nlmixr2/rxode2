@@ -494,6 +494,35 @@ probabilities remain the same:
 | 2        | p2          |
 | 3        | 1-p0-p1-p2  |
 
+### Time-to-event endpoints
+
+A time-to-event endpoint is specified by its hazard:
+
+``` r
+ev ~ tte(haz, eventType = "exact", maxEventNumber = Inf,
+         rightCensoringTime = 120, intervalLength = 10, dropout = FALSE)
+```
+
+The cumulative hazard is added to the model as a hidden state
+(`rx.tteH.ev`), and event times solve `H(t) - H(t_last) = -log(u)`
+with a root finder. Only the hazard is required; the options are:
+
+| Option               | Default                         | Meaning                                         |
+|----------------------|---------------------------------|-------------------------------------------------|
+| `eventType`          | `"exact"`                       | `"exact"` or `"intervalCensored"` event times   |
+| `maxEventNumber`     | `Inf`                           | maximum number of events (`1` for one-off)      |
+| `rightCensoringTime` | last record of the endpoint     | end of the observation window                   |
+| `intervalLength`     | tenth of the observation window | interval length for `"intervalCensored"`        |
+| `dropout`            | `FALSE`                         | the event ends all observations (needs `maxEventNumber = 1`) |
+
+Simulated rows follow the Monolix/NONMEM layout: `sim = 0` at the start
+of the window, `sim = 1` at each event (or at the end of each interval
+holding an event) and `sim = 0` at right censoring. In model lines,
+`tteTime(ev)` is the time of the last event of `ev` (the window start
+before the first) and `tteCount(ev)` is the number of events so far,
+so renewal and count-dependent hazards can be written. Simulation
+requires `method = "liblsoda"`.
+
 ### General table of supported residual distributions
 
 In general all the that are supported are in the following table
