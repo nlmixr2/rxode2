@@ -58,6 +58,10 @@
   to carry its record's covariates to its arrival, which now happens only with
   `addlKeepsCov = TRUE`.  `nonmem = TRUE` turns on `addlKeepsCov` unless it is
   given, since NONMEM keeps a dose record's covariates with the dose (#1584).
+- `linCmt()` models with `alag()` now end an interval at a lagged dose's data
+  time when `addlKeepsCov = FALSE`, so the covariates before and after it each
+  apply over their own part of the interval; one value used to cover the
+  whole interval (#1584).
 
 ### Steady state
 - A `linCmt()` steady-state constant infusion (`ss = 1` with a rate and no
