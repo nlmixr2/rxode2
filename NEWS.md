@@ -52,6 +52,9 @@
 - `linCmt()` models now follow `minSS = maxSS = n`, giving the profile after
   exactly `n` prior doses as the equivalent ODE model does; they used to
   return the exact steady state for every `n` (#1500).
+- The off phase of a steady-state infusion, and every phase of one longer
+  than `ii`, now uses the covariates of the steady-state dose record, as
+  NONMEM does; it used the covariates of a later record (#1589).
 
 ## New features
 
