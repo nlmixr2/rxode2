@@ -454,13 +454,17 @@ static inline void cancelRunningInfusionStops(rx_solving_options_ind *ind,
                                               rx_solving_options *op,
                                               int pos, int neq) {
   int wh, cmt, wh100, whI, wh0;
-  for (int k = 0; k < pos && k < ind->n_all_times; ++k) {
+  // an earlier evid=3 already cancelled every infusion that started before it
+  for (int k = (pos < ind->n_all_times ? pos : ind->n_all_times); k--;) {
     int r = ind->ix[k];
     int evid = getEvid(ind, r);
-    if (!isDose(evid) || evid == 3) continue;
+    if (evid == 3) break;
+    if (!isDose(evid)) continue;
     getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
-    if (wh0 != EVID0_REGULAR || cmt < 0 || cmt >= neq ||
-        ind->InfusionRate[cmt] == 0.0) continue;
+    bool isModeledOn = whI == EVIDF_MODEL_RATE_ON || whI == EVIDF_MODEL_DUR_ON;
+    // a phantom modeled start still sets the rate (its stop is regular)
+    if ((wh0 != EVID0_REGULAR && !(isModeledOn && wh0 == EVID0_PHANTOM)) ||
+        cmt < 0 || cmt >= neq || ind->InfusionRate[cmt] == 0.0) continue;
     int l = getDoseNumberFromIndex(ind, r);
     if (l == -1) {
       // idose is not guaranteed ascending once doses are pushed at solve time
@@ -474,10 +478,11 @@ static inline void cancelRunningInfusionStops(rx_solving_options_ind *ind,
       // a start with no stop record must not take a later infusion's stop
       if (getDoseNumber(ind, l) <= 0 || isInfusionUnpaired(ind, r)) continue;
       handleInfusionGetEndOfInfusionIndex(l, &e, rx, op, ind);
-    } else if (whI == EVIDF_MODEL_RATE_ON || whI == EVIDF_MODEL_DUR_ON) {
+    } else if (isModeledOn && l + 1 < ind->ndoses) {
       // the modeled stop is the record right after its start
-      if (l + 1 < ind->ndoses &&
-          getEvid(ind, ind->idose[l + 1]) == evid - 20000) e = l + 1;
+      int sWh, sCmt, sWh100, sWhI, sWh0;
+      getWh(getEvid(ind, ind->idose[l + 1]), &sWh, &sCmt, &sWh100, &sWhI, &sWh0);
+      if (sCmt == cmt && sWhI == whI - 2) e = l + 1;
     }
     if (e < 0) continue;
     int er = ind->idose[e];
