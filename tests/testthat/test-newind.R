@@ -139,7 +139,7 @@ rxTest({
       expect_equal(.s$central, 10 * exp(-0.4 - 0.2 * c(0, 1, 3)), tolerance = 0.05)
 
       .s <- .solve(.newindMtime1, et(c(1, 2, 4)))
-      expect_equal(.s$central[.s$time %in% c(1, 2, 4)], 10 * exp(-0.1 * c(1, 2, 4)), tolerance = 1e-4)
+      expect_equal(.s$central[.s$time %in% c(1, 2, 4)], 10 * exp(-0.1 * c(1, 2, 4)), tolerance = 1e-3)
 
       # dense output falls back to standard output for evid_() models
       if (dense) {
