@@ -13,7 +13,11 @@
   covariate the infusion ran longer or shorter than it should.  A lagged infusion with a modeled
   `rate()` or `dur()` read `f()` from the records around its data time, and
   once a lagged dose moved past an infusion's start, its modeled `rate()`
-  or `dur()` read another record's covariates.
+  or `dur()` read another record's covariates.  The records a dose expands
+  to (a steady-state dose's companions, an infusion's stop) now read the
+  covariates of that dose's record, as NONMEM reads the one record it has,
+  and an infusion's missing covariate is filled from the records next to it
+  in the data, wherever a lag moves it in the solve.
 - A simulation that stops with an error no longer leaves its draws for the
   next solve.  The residuals, simulated thetas and per-study draws it had
   made stayed behind, and the next solve without residuals of its own used
