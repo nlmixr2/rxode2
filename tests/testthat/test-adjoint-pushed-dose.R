@@ -65,8 +65,16 @@ rxTest({
     .sk <- vapply(.tt, function(t) sum(ifelse(t > .tp, -50 * (t - .tp) * exp(-(t - .tp)), 0)), numeric(1))
     for (.m in c("rk4s", "dop853s", "liblsodaadj", "abs")) {
       for (.cores in c(1L, 2L, 4L)) {
-        .s <- as.data.frame(rxSolve(.mod, .ev, params = c(k = 1), method = .m, cores = .cores,
-          atol = 1e-10, rtol = 1e-10, hmin = 0.001))
+        .s <- as.data.frame(rxSolve(
+          .mod,
+          .ev,
+          params = c(k = 1),
+          method = .m,
+          cores = .cores,
+          atol = 1e-10,
+          rtol = 1e-10,
+          hmin = 0.001
+        ))
         for (.id in 1:4) {
           .si <- .s[.s$id == .id, ]
           expect_lt(max(abs(.si$y - .y)), 5e-7, label = paste(.m, .cores, .id, "y"))
