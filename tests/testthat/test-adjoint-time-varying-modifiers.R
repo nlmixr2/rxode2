@@ -96,4 +96,24 @@ rxTest({
     .chk(list(txt = paste0(.base, "\nf(depot) <- bio*WT/70"), p = c(.p0, bio = 0.8), ev = .ev),
       c("rk4s", "ros4s", "radauiia5s", "dop853s", "dop853s+ros4s", "liblsodaadj"), "ssF")
   })
+
+  test_that("an mtime() that switches the ODE is carried and exact in every driver", {
+    # mtime(mt) is used by the ODE before the expansion's carried mtime() line
+    .txt <- paste0(
+      "mtime(mt) <- 3.3\nkk <- k\nif (t >= mt) kk <- 0.5\n",
+      "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - kk*center\n"
+    )
+    .p <- c(ka = 1.2, k = 0.2)
+    .ev <- et(amt = 100, cmt = "depot") |> et(c(0.5, 1, 2, 3, 4, 5, 6, 8))
+    .ref <- .adjFd(.txt, .ev, .p, method = "liblsoda", maxsteps = 1e6)
+    for (.m in c("rk4s", "ros4s", "radauiia5s", "dop853s", "dop853s+ros4s", "liblsodaadj", "cvodesadj", "abs")) {
+      .a <- rxSolveAdjointRk4(.txt, .ev, params = .p, calcSens = names(.p), method = .m,
+        atol = 1e-10, rtol = 1e-10, hmin = if (.m %in% c("rk4s", "abs")) 0.001 else 0)
+      expect_equal(nrow(.a), length(.ref[[1]]), label = paste(.m, "rows"))
+      .tol <- if (.m == "cvodesadj") 1e-6 else 3e-7
+      for (.cn in names(.ref)) {
+        expect_lt(max(abs(.a[[.cn]] - .ref[[.cn]])), .tol, label = paste(.m, .cn))
+      }
+    }
+  })
 })

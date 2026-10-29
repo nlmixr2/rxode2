@@ -124,4 +124,33 @@ rxTest({
       }
     }
   })
+
+  test_that("a one-line if() bolus() into a named cmt survives the expansion in every driver", {
+    # the expansion keeps the push (rewritten into a capture variable and a
+    # braced if()), with and without a modeled lag or bioavailability on it
+    .base <- "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\n"
+    .push <- "if (t < 0.01) bolus(50, depot, 2.5, 2, 0)\n"
+    .scen <- list(
+      plain = list(m = "", p = c(ka = 1.2, k = 0.2)),
+      lag = list(m = "alag(depot) <- lg\n", p = c(ka = 1.2, k = 0.2, lg = 0.4)),
+      bio = list(m = "f(depot) <- bio\n", p = c(ka = 1.2, k = 0.2, bio = 0.8))
+    )
+    .ev <- et(amt = 100, cmt = "depot") |> et(c(0.5, 1, 2, 3, 4, 5, 6, 8))
+    .meths <- c("rk4s", "ros4s", "radauiia5s", "dop853s", "dop853s+ros4s", "liblsodaadj", "cvodesadj", "abs")
+    for (.nm in names(.scen)) {
+      .k <- .scen[[.nm]]
+      .txt <- paste0(.base, .k$m, .push)
+      expect_match(.rxAdjointExpand(.txt, names(.k$p))$text, "bolus(50, depot, 2.5, 2, 0)", fixed = TRUE)
+      .ref <- .adjFd(.txt, .ev, .k$p, method = "liblsoda", maxsteps = 1e6)
+      for (.m in .meths) {
+        .a <- rxSolveAdjointRk4(.txt, .ev, params = .k$p, calcSens = names(.k$p), method = .m,
+          atol = 1e-10, rtol = 1e-10, hmin = if (.m %in% c("rk4s", "abs")) 0.001 else 0)
+        expect_equal(nrow(.a), length(.ref[[1]]), label = paste(.nm, .m, "rows"))
+        .tol <- if (.m == "cvodesadj") 3e-6 else 1e-6
+        for (.cn in names(.ref)) {
+          expect_lt(max(abs(.a[[.cn]] - .ref[[.cn]])), .tol, label = paste(.nm, .m, .cn))
+        }
+      }
+    }
+  })
 })
