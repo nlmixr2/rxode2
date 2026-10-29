@@ -7,6 +7,7 @@
 #include <Rinternals.h>
 #include <stdio.h>
 #include <math.h>
+#include <float.h>
 #include "lsoda.h"
 #include "blas.h"
 #include "common.h"
@@ -50,6 +51,10 @@ int prja(struct lsoda_context_t * ctx, double *y)
 		for (j = 1; j <= neq; j++) {
 			yj = y[j];
 			r = fmax(SQRTETA * fabs(yj), r0 / _rxC(ewt)[j]);
+			/* With f and y subnormal, r0 / ewt underflows and -hl0 / r would
+			   overflow; take the increment an f of exactly zero gets. */
+			if (r < fmax(DBL_MIN, fabs(hl0) / DBL_MAX))
+				r = fmax(SQRTETA * fabs(yj), 1. / _rxC(ewt)[j]);
 			y[j] += r;
 			fac = -hl0 / r;
 			(*ctx->function) (_rxC(tn), y + 1, _rxC(acor) + 1, ctx->data);
