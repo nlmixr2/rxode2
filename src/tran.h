@@ -140,11 +140,12 @@ lhs symbols?
   int hasDdt;
   int curDdt; // currently parsing the RHS of a d/dt() statement
   int hasIndLinProp;
-  // Every assignment and every indLin(state) <- expr forcing, in source order,
-  // with the symbols its right-hand side reads.  Replayed in genModelVars to
-  // report which states carry a state-dependent forcing (wIndLin).
-  int *stmtT; // target: symbol index (stmtK 0) or de index (stmtK 1)
-  int *stmtK; // 0 = ordinary assignment, 1 = indLin() forcing
+  // Every assignment, every indLin(state) <- expr forcing and every
+  // alag(state) <- expr, in source order, with the symbols its right-hand side
+  // reads.  Replayed in genModelVars to report which states carry a
+  // state-dependent forcing (wIndLin) and whether an alag() reads a state.
+  int *stmtT; // target: symbol index (stmtK 0) or de index (stmtK 1, 2)
+  int *stmtK; // 0 = ordinary assignment, 1 = indLin() forcing, 2 = alag()
   int *stmtC; // inside an if/while/ifelse block, so it may not run
   int *stmtR0; // first stmtRef index
   int *stmtRn; // number of stmtRef entries
@@ -155,6 +156,7 @@ lhs symbols?
   int stmtRefAlloc;
   int curStmt; // statement being parsed, -1 outside one
   int curIndLin; // 1 + de index while parsing an indLin() RHS, 0 otherwise
+  int curAlag; // 1 + de index while parsing an alag() RHS, 0 otherwise
   int curLhs; // symbol index being assigned, -1 outside an assignment
   int nCond; // depth of the enclosing if/while/ifelse blocks
   int hasDelay; // Has delay() function (delay differential equation)

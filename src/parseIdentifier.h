@@ -23,11 +23,13 @@ static inline int pushIndLinStmt(int target, int kind) {
 }
 
 // Remember that the statement being parsed reads symbol `symbolIx`.  Only
-// right-hand sides count: an indLin() forcing (its left-hand side is consumed
-// before tb.curIndLin is set) or the part of an assignment after its `=`.
+// right-hand sides count: an indLin() forcing or an alag() (their left-hand
+// sides are consumed before tb.curIndLin/tb.curAlag is set) or the part of an
+// assignment after its `=`.
 static inline void recordIndLinRef(int symbolIx) {
   if (tb.curStmt < 0 || symbolIx < 0) return;
-  if (tb.curIndLin == 0 && !(tb.curLhs >= 0 && tb.didEq == 1)) return;
+  if (tb.curIndLin == 0 && tb.curAlag == 0 &&
+      !(tb.curLhs >= 0 && tb.didEq == 1)) return;
   for (int i = tb.stmtR0[tb.curStmt]; i < tb.stmtRefN; ++i) {
     if (tb.stmtRef[i] == symbolIx) return;
   }

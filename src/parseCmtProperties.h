@@ -41,6 +41,11 @@ static inline int handleCmtPropertyAlag(nodeInfo ni, char *name, char *v) {
       tb.alag[tb.alagn] = lagP;
       tb.alagn++;
     }
+    // The lag's right-hand side is parsed next; record the symbols it reads so
+    // genModelVars can tell whether the lag depends on a state.  Cleared in
+    // finalizeLine() / by ENDLINE.
+    tb.curAlag = tb.id + 1;
+    tb.curStmt = pushIndLinStmt(tb.id, 2);
     return 1;
   }
   return 0;

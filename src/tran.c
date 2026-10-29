@@ -552,6 +552,7 @@ void reset(void) {
   tb.stmtRefAlloc = MXSYM;
   tb.curStmt    = -1;
   tb.curIndLin  = 0;
+  tb.curAlag    = 0;
   tb.curLhs     = -1;
   tb.nCond      = 0;
   tb.hasDelay   = 0;

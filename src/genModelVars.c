@@ -1,6 +1,7 @@
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 #include "genModelVars.h"
+#include "../inst/include/needSortDefines.h"
 
 SEXP _rxode2parse_getUdf(void);
 extern void calcLinCmt(void);
@@ -17,6 +18,9 @@ SEXP generateModelVars(void) {
   SEXP sNeedSort = rxP(Rf_allocVector(INTSXP,1));
   int *iNeedSort  = INTEGER(sNeedSort);
   iNeedSort[0] = needSort;
+  if ((needSort & needSortAlag) && alagReadsState()) {
+    iNeedSort[0] += needSortAlagState;
+  }
 
   SEXP sLinCmt =rxP(calcSLinCmt());
 

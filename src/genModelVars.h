@@ -471,6 +471,7 @@ static inline void indLinReplay(int *dep, int *fdep, int *fany) {
     if (fany != NULL) fany[d] = 0;
   }
   for (int s = 0; s < tb.stmtN; ++s) {
+    if (tb.stmtK[s] == 2) continue; // an alag() is not a forcing
     int t = indLinStmtTarget(s, dep);
     if (t < 0) continue;
     int v = indLinStmtReadsDep(s, dep);
@@ -478,6 +479,27 @@ static inline void indLinReplay(int *dep, int *fdep, int *fany) {
     cur[t] = tb.stmtC[s] ? (cur[t] || v) : v;
     if (tb.stmtK[s] == 1 && fany != NULL) fany[t] = 1;
   }
+}
+
+// Does any alag() read a state, directly or through an assigned variable?
+// Replays the assignments as indLinReplay() does; each alag() is checked
+// against what its variables hold at that point of the model.
+static inline int alagReadsState(void) {
+  if (tb.stmtN == 0 || tb.de.n <= 0 || NV <= 0) return 0;
+  int *dep = (int*)R_alloc(NV, sizeof(int));
+  indLinSeedStateDep(dep);
+  for (int s = 0; s < tb.stmtN; ++s) {
+    if (tb.stmtK[s] == 2) {
+      if (indLinStmtReadsDep(s, dep)) return 1;
+      continue;
+    }
+    if (tb.stmtK[s] != 0) continue;
+    int t = indLinStmtTarget(s, dep);
+    if (t < 0) continue;
+    int v = indLinStmtReadsDep(s, dep);
+    dep[t] = tb.stmtC[s] ? (dep[t] || v) : v;
+  }
+  return 0;
 }
 
 // Walk back from symbol `j` through whatever gave it its state dependence
