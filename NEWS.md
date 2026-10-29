@@ -3,13 +3,22 @@
 ## Bug fixes
 
 ### Event tables
-- `alag()` now fills a dose row's missing covariate the way `f()` does, from
-  the neighbouring records: under `locf` from the nearest earlier record
-  with a value (or the nearest later one when none is earlier), under `nocb`
-  from the nearest later one (or earlier), and under `midpoint` and
-  `linear` in the direction `naInterpolation` gives.  With covariates on
-  the observation rows only, an `alag()` on a covariate used to stop the
-  solve with "'alag(depot)' and maybe more items produce NA".
+- `alag()` reads a dose's covariates by NONMEM's rule.
+  - A dose row's missing covariate is filled the way `f()` fills it, from
+    the neighbouring records: under `locf` from the nearest earlier record
+    with a value (or the nearest later one when none is earlier), under
+    `nocb` from the nearest later one (or earlier), and under `midpoint` and
+    `linear` in the direction `naInterpolation` gives.  With covariates on
+    the observation rows only, an `alag()` on a covariate used to stop the
+    solve with "'alag(depot)' and maybe more items produce NA".
+  - An `addl` repeat that does not keep its covariates
+    (`addlKeepsCov = FALSE`) evaluates its `alag()` with a `nocb`
+    covariate's value on the dose record it repeats, as NONMEM's `ALAG1`
+    does, while its `f()` keeps the record that ends its interval, as
+    NONMEM's `F1` does.  Its lag used to come from whatever record the
+    sort happened to read, and from the next record when another record
+    shared the repeat's time (#1582).  Under `locf`, and with
+    `addlKeepsCov = TRUE`, nothing changes.
 - A simulation that stops with an error no longer leaves its draws for the
   next solve.  The residuals, simulated thetas and per-study draws it had
   made stayed behind, and the next solve without residuals of its own used
