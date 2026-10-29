@@ -287,8 +287,10 @@ etTrans <- function(
   addlKeepsCov = FALSE,
   addlDropSs = TRUE,
   ssAtDoseTime = TRUE,
-  iCov = NULL
+  iCov = NULL,
+  tieOrder = c("evid", "data")
 ) {
+  tieOrder <- match.arg(tieOrder)
   if (is.rxEt(inData)) {
     .env <- .rxEtEnv(inData)
     .chunks <- Filter(Negate(is.null), .env$chunks)
@@ -316,6 +318,7 @@ etTrans <- function(
     addlKeepsCov,
     addlDropSs,
     ssAtDoseTime,
-    iCov
+    iCov,
+    tieOrder
   )
 }
