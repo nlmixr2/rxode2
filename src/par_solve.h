@@ -18,6 +18,8 @@ extern "C" {
 #include "../inst/include/rxode2.h"
 #include "rxThreadData.h"
 
+void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx);
+
 void par_rkf78(rx_solve *rx);
 extern "C" void ind_rkf78(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 void par_trapz(rx_solve *rx);
@@ -363,7 +365,12 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
     cancelInfusionsThatHaveStarted(ind, neq[1], *xout);
     cancelPendingDoses(ind, neq[1]);
     memcpy(yp, op->inits, neq[0]*sizeof(double));
-    u_inis(neq[1], yp); // Update initial conditions @ current time
+    // cmt(0) reads the reset record's covariates, as NONMEM re-runs $PK on
+    // it (rxode2#1587); _inis() would otherwise reload them at t = 0
+    _update_par_ptr(NA_REAL, neq[1], rx, ind->idx);
+    ind->_update_par_ptr_in = 1;
+    u_inis(neq[1], yp);
+    ind->_update_par_ptr_in = 0;
     if (rx->istateReset) *idid = 1;
     *xout -= rx->maxShift;
     *xp = *xout;

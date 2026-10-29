@@ -43,6 +43,9 @@
   that is empty or whose first column is empty gives the parameter-size
   error.  With a `sigma` to simulate, these used to crash R with a floating
   point exception or fail with an unrelated internal error (#1551).
+- At an `evid=3` reset, `cmt(0)` statements now read the covariates of the
+  reset record, as NONMEM re-runs `$PK` there, instead of the covariates at
+  time 0 (#1587).
 
 ### Steady state
 - A steady-state bolus into a compartment whose `alag()` is longer than `ii`
