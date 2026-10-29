@@ -1178,6 +1178,23 @@ t_get_solve get_solve = NULL;
 
 t_assignFuns assignFuns=NULL;
 
+// The call of the model that advances the linear compartments over
+// (start, end] reads that interval's covariates, as an ODE solver
+// integrating through it does: they are interpolated at its middle (locf
+// the start record's, nocb the end record's, midpoint their mean), not read
+// at the end record, whose own values start the next interval.  Returns
+// whether it set the covariate time, which linCmtCovIntervalEnd() clears; a
+// steady-state solve sets ssTime itself and is left alone.
+static inline bool linCmtCovIntervalStart(rx_solving_options_ind *ind, double start, double end) {
+  if (!ISNA(ind->ssTime) || !(end > start)) return false;
+  ind->ssTime = 0.5*(start + end);
+  return true;
+}
+
+static inline void linCmtCovIntervalEnd(rx_solving_options_ind *ind, bool set) {
+  if (set) ind->ssTime = NA_REAL;
+}
+
 static inline void copyLinCmt(int *neq,
                               rx_solving_options_ind *ind, rx_solving_options *op,
                               double *yp) {
@@ -1187,7 +1204,10 @@ static inline void copyLinCmt(int *neq,
     std::copy(yp,
               yp + op->neq,
               ind->linCmtDummy);
+    // preSolve() set (tprior, tout] to the interval just solved
+    bool covInterval = linCmtCovIntervalStart(ind, ind->tprior, ind->tout);
     dydt(neq, ind->tout, ind->linCmtDummy, ind->linCmtDummy);
+    linCmtCovIntervalEnd(ind, covInterval);
     std::copy(ind->linCmtSave,
               ind->linCmtSave + op->numLin + op->numLinSens,
               yp + op->linOffset);
@@ -1474,7 +1494,9 @@ static inline void linSolve(int *neq, rx_solving_options_ind *ind,
   // This means that the clearances do not depend on
   // depot values.  To ensure this, the values while solving are set to NA
   //
+  bool covInterval = linCmtCovIntervalStart(ind, *xp, xout);
   dydt(neq, xout, rx->ypNA, ind->linCmtDummy);
+  linCmtCovIntervalEnd(ind, covInterval);
   std::copy(ind->linCmtSave,
             ind->linCmtSave + op->numLin + op->numLinSens,
             yp + op->linOffset);
@@ -4166,9 +4188,17 @@ void handleSS(int *neq,
         // yp is last solve or y0
         solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                      xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-        for (int cur = 0; cur < overIi; ++cur) {
-          pushDosingEvent(startTimeD+curLagExtra+cur*curIi,
-                          rateOn, regEvid, ind);
+        if (overIi > 0) {
+          // lag > ii: the doses of the overIi earlier intervals arrive in this
+          // one, as regular boluses (rateOn/regEvid are only set for infusions)
+          int bolusEvid = getEvid(ind, ind->ix[bi]) - adjustEvidBolusLag;
+          getWh(bolusEvid, &wh, &cmt, &wh100, &whI, &wh0);
+          bolusEvid = bolusEvid - wh0 + EVID0_REGULAR;
+          double bolusAmt = getDoseIndex(ind, bi);
+          for (int cur = 0; cur < overIi; ++cur) {
+            pushDosingEvent(startTimeD+curLagExtra+cur*curIi,
+                            bolusAmt, bolusEvid, ind);
+          }
         }
         for (k = neq[0]; k--;){
           ind->solveLast[k] = yp[k];
