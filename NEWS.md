@@ -3,6 +3,12 @@
 ## Bug fixes
 
 ### Event tables
+- An infusion's `alag()`, `f()`, `rate()` and `dur()` are now read at its
+  start's record.  A fixed-rate infusion's stop read `alag()` at the stop's
+  record and `f()` between records (80 at rate 40 with
+  `alag(depot) <- lg*WT/70` delivered 85.14 when WT changed during the
+  infusion), and once a lagged dose moved past an infusion's start, a
+  modeled `rate()` or `dur()` read another record's covariates.
 - A simulation that stops with an error no longer leaves its draws for the
   next solve.  The residuals, simulated thetas and per-study draws it had
   made stayed behind, and the next solve without residuals of its own used
