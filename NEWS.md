@@ -3,6 +3,13 @@
 ## Bug fixes
 
 ### Event tables
+- A dose's `f()` now reads the covariates of its own record, as its `alag()`
+  does, also when `alag()` moves the dose past a covariate change.  With an
+  `alag()` on a covariate or a state, `f()` read the covariates at the time
+  the dose landed, and the amount moved with the solver's steps: with
+  `f(depot) <- bio*WT/70`, `alag(depot) <- lg*WT/70` and WT stepping from 70
+  to 100 during the lag, F was 1.14 rather than 0.8 under `locf`, and
+  between the two under `midpoint` and `linear`.
 - A simulation that stops with an error no longer leaves its draws for the
   next solve.  The residuals, simulated thetas and per-study draws it had
   made stayed behind, and the next solve without residuals of its own used
