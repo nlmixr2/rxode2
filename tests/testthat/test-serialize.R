@@ -413,5 +413,41 @@ rxTest({
         as.data.frame(pkRef)
       )
     })
+
+    # ind->doseRow: a lagged steady-state infusion's companion reads its dose
+    # row's WT (70), not the next record's (100), under nocb
+    drMod <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - k * center
+      f(depot) <- 0.8 * WT / 70
+      alag(depot) <- 0.3
+    })
+    drEv <- data.frame(
+      id = 1,
+      time = c(0, 0.5, 1.5, 2.5, 4, 8, 12),
+      evid = c(1, rep(0, 6)),
+      amt = c(80, rep(0, 6)),
+      rate = c(40, rep(0, 6)),
+      ss = c(1L, rep(0L, 6)),
+      ii = c(12, rep(0, 6)),
+      cmt = "depot",
+      WT = c(70, rep(100, 6))
+    )
+    drPar <- c(ka = 1.2, k = 0.2)
+    drRef <- rxSolve(drMod, drPar, drEv, covsInterpolation = "nocb")
+    drFile <- tempfile(fileext = ".rxbin")
+    rxSolve(drMod, drPar, drEv, covsInterpolation = "nocb", serializeFile = drFile)
+
+    test_that("C-state replay keeps the records' dose rows", {
+      expect_equal(
+        as.data.frame(cStateSolve(
+          drMod,
+          .rxReadStateBundle(drFile),
+          control = rxControl(covsInterpolation = "nocb"),
+          params = drPar
+        )),
+        as.data.frame(drRef)
+      )
+    })
   })
 })
