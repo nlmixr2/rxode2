@@ -1253,6 +1253,12 @@ List rxModelVars_(const RObject &obj); // model variables section
 //'   steady concentration at the actual time of dose, otherwise when
 //'   `FALSE` the doses are shifted
 //'
+//' @param tieOrder How records that share a subject and time are ordered:
+//'   `"evid"` (the default) puts resets first, then doses, then
+//'   observations; `"data"` keeps the order of the rows in `inData`, the
+//'   way NONMEM processes its records.  Records a row expands to (the reset
+//'   of an `evid=4` dose, `addl` repeats, infusion ends) follow that row.
+//'
 //' @inheritParams rxSolve
 //'
 //' @return Object for solving in rxode2
@@ -1268,7 +1274,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
              bool addlKeepsCov=false,
              bool addlDropSs = true,
              bool ssAtDoseTime=true,
-             Nullable<List> iCov = R_NilValue) {
+             Nullable<List> iCov = R_NilValue,
+             std::string tieOrder = "evid") {
 #ifdef rxSolveT
   clock_t _lastT0 = clock();
 #endif
@@ -1764,7 +1771,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     Function convDate = rx[".convertExtra"];
     newInData =  convDate(newInData);
     return etTrans(newInData, mv, addCmt, dropUnits, allTimeVar, keepDosingOnly,
-                   combineDvid, CharacterVector(0), false, true, true, iCov);
+                   combineDvid, CharacterVector(0), false, true, true, iCov,
+                   tieOrder);
   }
   size_t resSize = inTime.size()+256;
   std::vector<int> id;
@@ -3015,8 +3023,13 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   NumericVector nvTime = wrap(time);
   IntegerVector ivEvid = clone(wrap(evid));
 
+  // tieOrder="data": a constant key, so the stable sort keeps the order the
+  // records were emitted in, which is the row order of inData
+  bool dataTieOrder = (tieOrder == "data");
   if (!keepDosingOnly && doseId.size() > 0) {
-#define sortID if (ivEvid[j]==3){               \
+#define sortID if (dataTieOrder) {              \
+      ivEvid[j] = 0;                            \
+    } else if (ivEvid[j]==3){                   \
       ivEvid[j] = NA_INTEGER+1;                 \
     } else if (amt[j] == 0){                    \
       ivEvid[j] = NA_INTEGER+2;                 \
