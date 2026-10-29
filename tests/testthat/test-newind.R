@@ -60,6 +60,13 @@ rxTest({
     d / dt(central) <- -0.2 * central
     if (newind <= 1) bolus(100, 1, 0, 0, 0)
   })
+  # a state-dependent mtime() at slot 0 is requeued, which re-runs that slot
+  .newindMtime <- rxode2({
+    central(0) <- 10
+    d / dt(central) <- -0.1 * central
+    mtime(tm) <- 0.1 * central
+    if (newind <= 1) bolus(100, 1, 0, 0, 0)
+  })
   .newindSticky <- rxode2({
     d / dt(central) <- -0.2 * central
     if (newind <= 1) {
@@ -96,6 +103,16 @@ rxTest({
 
       .s <- .solve(.newindSticky, et(c(0, 0.5, 1, 2, 4)))
       expect_equal(.s$central[.s$time > 1], 100 * exp(-0.2 * c(1, 3)), tolerance = 1e-4)
+
+      # data starting after time 0: the hidden start record is not the first
+      .s <- .solve(.newindF, et(amt = 100, time = 1) |> et(c(2, 4)))
+      expect_equal(.s$central, 50 * exp(-0.2 * c(1, 3)), tolerance = 1e-4)
+      .s <- .solve(.newindGuard, et(c(1, 2, 4)), addDosing = TRUE)
+      expect_equal(.s$central[.s$time > 1], 100 * exp(-0.2 * c(1, 3)), tolerance = 1e-4)
+      expect_equal(.s$time[.s$evid != 0], 1)
+
+      .s <- .solve(.newindMtime, et(c(0, 1, 2, 4)))
+      expect_equal(.s$central[.s$time %in% c(2, 4)], 110 * exp(-0.1 * c(2, 4)), tolerance = 1e-4)
     })
   }
 

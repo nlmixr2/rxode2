@@ -6821,7 +6821,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       if (_mtime_requeued) i--;
     }
-    ind->_newind = 2; // after the record: its dose functions and evid_() see newind = 1
+    rxNewindAfterRecord(ind, i);
     ind->solvedIdx = i;
   }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
@@ -7473,7 +7473,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
         std::copy(getSolve(i), getSolve(i) + eff, getSolve(i+1));
       }
       // else: will be filled by dopDenseSolout when the segment closes
-      ind->_newind = 2; // after the record: its dose functions and evid_() see newind = 1
+      rxNewindAfterRecord(ind, i);
       ind->solvedIdx = i;
       continue;
     }
@@ -7605,7 +7605,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
       if (_mtime_requeued) i--;
     }
     last_key_i = i;
-    ind->_newind = 2; // after the record: its dose functions and evid_() see newind = 1
+    rxNewindAfterRecord(ind, i);
     ind->solvedIdx = i;
   }
   // Keep this subject's delay history: the output data frame recalculates lhs

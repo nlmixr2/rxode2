@@ -132,6 +132,20 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
     ind->linCmtOriginSS = 0;
   }
 
+  // newind during the solve: 1 for the subject's first record (its dose
+  // functions and evid_() pushes included), 2 after it, as the output table
+  // has it.  The hidden evid 9 start record, which the table skips, is not
+  // that first record: it sees 2 and the record after it sees 1.
+  static inline int rxNewindFirst(rx_solving_options_ind *ind) {
+    return (ind->n_all_times > 0 && getEvid(ind, ind->ix[0]) == 9) ? 2 : 1;
+  }
+  // newind for the record after slot i; an mtime() requeue of slot 0 (i == -1)
+  // runs slot 0 again.
+  static inline void rxNewindAfterRecord(rx_solving_options_ind *ind, int i) {
+    if (i < 0) ind->_newind = rxNewindFirst(ind);
+    else ind->_newind = (i == 0 && getEvid(ind, ind->ix[0]) == 9) ? 1 : 2;
+  }
+
 	static inline int iniSubject(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
 															 t_update_inis u_inis) {
 		ind->_rxFlag=1;
@@ -341,6 +355,7 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
       // sortInd and may have re-sorted for state-dep lag; preserve that order so
       // getSolve(i) positions in rxode2_df agree with the solve loop.
       sortInd(ind);
+      if (inLhs == 0) ind->_newind = rxNewindFirst(ind);
       // Note: op->badSolve is NOT checked here -- it is a shared global flag.
       // In parallel mode another thread's failed solve would prevent THIS
       // individual from initializing.  Bad-solve state is handled per-individual
