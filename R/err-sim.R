@@ -1045,6 +1045,13 @@ rxCombineErrorLines <- function(
       .k <- .k + 1
     }
   }
+  # tte() cumulative-hazard states are the last states, ahead of the endpoint
+  # cmt() lines (the same order as the ui's base model)
+  .tteLines <- .rxTteStateLines(uiModel)
+  for (.i in seq_along(.tteLines)) {
+    .ret[[.k]] <- .tteLines[[.i]]
+    .k <- .k + 1
+  }
   for (.i in seq_along(.cmtLines)) {
     .ret[[.k]] <- .cmtLines[[.i]]
     .k <- .k + 1

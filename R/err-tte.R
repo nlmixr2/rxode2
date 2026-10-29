@@ -148,3 +148,245 @@
   }
   .rxTteParseCall(.rhs)
 }
+
+#' Which tte endpoint (1-based, in $predDf order) is this endpoint?
+#'
+#' @param predDf the ui's `$predDf`
+#' @param cond endpoint condition
+#' @return integer tte index, or NA when `cond` is not a tte endpoint
+#' @author Matthew L. Fidler
+#' @noRd
+.rxTteIndex <- function(predDf, cond) {
+  .tte <- predDf$cond[predDf$distribution == "tte"]
+  match(cond, .tte)
+}
+
+#' Name of the hidden cumulative-hazard state of a tte endpoint
+#'
+#' @param var endpoint variable
+#' @return state name
+#' @noRd
+.rxTteStateName <- function(var) {
+  paste0("rx.tteH.", var)
+}
+
+#' Hidden cumulative-hazard ODE lines for every tte endpoint
+#'
+#' @param ui rxode2 ui
+#' @return list of `d/dt(rx.tteH.<var>) <- <hazard>` lines (NULL when the model
+#'   has no tte endpoint)
+#' @author Matthew L. Fidler
+#' @noRd
+.rxTteStateLines <- function(ui) {
+  .predDf <- ui$predDf
+  if (is.null(.predDf)) {
+    return(NULL)
+  }
+  .w <- which(.predDf$distribution == "tte")
+  if (length(.w) == 0L) {
+    return(NULL)
+  }
+  lapply(.w, function(.i) {
+    .o <- .rxTteOptions(ui, .predDf[.i, ])
+    bquote(d / dt(.(str2lang(.rxTteStateName(.predDf$var[.i])))) <- .(.o$hazard))
+  })
+}
+
+#' @rdname rxGetDistributionSimulationLines
+#' @export
+rxGetDistributionSimulationLines.tte <- function(line) {
+  .env <- line[[1]]
+  .pred1 <- line[[2]]
+  .k <- as.numeric(.rxTteIndex(.env$predDf, .pred1$cond))
+  .h <- str2lang(.rxTteStateName(.pred1$var))
+  list(
+    bquote(ipredSim <- exp(-(.(.h) - rxTteH0(.(.k))))),
+    bquote(sim <- rxTteSim(.(.k)))
+  )
+}
+
+#' Does this ui have a tte() endpoint?
+#'
+#' @param ui rxode2 ui (or anything else)
+#' @return logical
+#' @noRd
+.rxTteHas <- function(ui) {
+  if (!inherits(ui, "rxUi")) {
+    return(FALSE)
+  }
+  .predDf <- ui$predDf
+  !is.null(.predDf) && any(.predDf$distribution == "tte")
+}
+
+#' Find a column of a data frame ignoring case
+#'
+#' @param d data frame
+#' @param name lower-case column name
+#' @return the column name or NULL
+#' @noRd
+.rxTteCol <- function(d, name) {
+  .w <- which(tolower(names(d)) == name)
+  if (length(.w) == 0L) {
+    return(NULL)
+  }
+  names(d)[.w[1]]
+}
+
+#' Add the tte() records to a simulation event table
+#'
+#' For every subject and tte endpoint the endpoint's own records only define
+#' the observation window (first to last record) and are replaced by a start
+#' record, a right-censoring record (or the interval ends for
+#' `eventType="intervalCensored"`) and free event-slot records that the solver
+#' re-times to the simulated event times (unused slots are dropped from the
+#' output).  Each record's role is
+#' encoded in its `dv` (see `src/tte.h`).
+#'
+#' @param ui rxode2 ui
+#' @param events event table
+#' @param maxSlots event slots per subject and endpoint when `maxEventNumber`
+#'   is unlimited
+#' @return data frame of events
+#' @author Matthew L. Fidler
+#' @noRd
+.rxTteEvents <- function(ui, events, maxSlots = getOption("rxode2.tteMaxEvents", 100L)) {
+  if (is.null(events)) {
+    stop("simulating a tte() endpoint requires an event table", call. = FALSE)
+  }
+  .d <- as.data.frame(events)
+  for (.i in seq_along(.d)) {
+    if (is.factor(.d[[.i]])) .d[[.i]] <- as.character(.d[[.i]])
+  }
+  .time <- .rxTteCol(.d, "time")
+  if (is.null(.time)) {
+    stop("simulating a tte() endpoint requires a 'time' column", call. = FALSE)
+  }
+  .id <- .rxTteCol(.d, "id")
+  if (is.null(.id)) {
+    .id <- "id"
+    .d$id <- 1L
+  }
+  .dv <- .rxTteCol(.d, "dv")
+  if (is.null(.dv)) {
+    .dv <- "dv"
+    .d$dv <- NA_real_
+  }
+  .amt <- .rxTteCol(.d, "amt")
+  if (is.null(.amt)) {
+    .amt <- "amt"
+    .d$amt <- 0
+  }
+  .evid <- .rxTteCol(.d, "evid")
+  if (is.null(.evid)) {
+    .evid <- "evid"
+    .d$evid <- ifelse(!is.na(.d[[.amt]]) & .d[[.amt]] != 0, 1L, 0L)
+  }
+  .cmt <- .rxTteCol(.d, "cmt")
+  .predDf <- ui$predDf
+  if (is.null(.cmt) && nrow(.predDf) > 1L) {
+    stop("simulating a tte() endpoint in a model with several endpoints requires a 'cmt' column", call. = FALSE)
+  }
+  .w <- which(.predDf$distribution == "tte")
+  .keep <- rep(TRUE, nrow(.d))
+  .add <- list()
+  .ids <- unique(.d[[.id]])
+  for (.j in seq_along(.w)) {
+    .pred1 <- .predDf[.w[.j], ]
+    .o <- .rxTteOptions(ui, .pred1)
+    # without a cmt column the single (tte) endpoint owns every observation
+    .isTte <- .d[[.evid]] %in% c(0L, 2L)
+    .cmtVal <- NULL
+    if (!is.null(.cmt)) {
+      .c <- .d[[.cmt]]
+      if (is.character(.c)) {
+        .isTte <- !is.na(.c) & .c == .pred1$cond
+        .cmtVal <- .pred1$cond
+      } else {
+        .isTte <- !is.na(.c) & .c == .pred1$cmt
+        .cmtVal <- .pred1$cmt
+      }
+      .isTte <- .isTte & .d[[.evid]] %in% c(0L, 2L)
+    }
+    .nSlot <- as.integer(min(.o$maxEventNumber, maxSlots))
+    for (.cid in .ids) {
+      .r <- .d[[.id]] == .cid
+      .tAll <- .d[[.time]][.r]
+      .tTte <- .d[[.time]][.r & .isTte]
+      .start <- if (length(.tTte) > 0L) min(.tTte) else min(.tAll)
+      .end <- .o$rightCensoringTime
+      if (is.na(.end)) {
+        .end <- if (length(.tTte) > 0L) max(.tTte) else max(.tAll)
+      }
+      if (!(.end > .start)) next
+      .t <- .start
+      .role <- 1L
+      if (.o$eventType == "intervalCensored") {
+        .l <- .o$intervalLength
+        if (is.na(.l)) .l <- (.end - .start) / 10
+        .g <- seq(.start + .l, .end, by = .l)
+        if (length(.g) == 0L || .end - .g[length(.g)] > sqrt(.Machine$double.eps) * max(1, abs(.end))) {
+          .g <- c(.g, .end)
+        }
+        .t <- c(.t, .g)
+        .role <- c(.role, rep(3L, length(.g)))
+      } else {
+        .t <- c(.t, .end)
+        .role <- c(.role, 2L)
+      }
+      if (.nSlot > 0L) {
+        .t <- c(.t, rep(.end, .nSlot))
+        .role <- c(.role, rep(4L, .nSlot))
+      }
+      .ev <- rep(0L, length(.t))
+      .a <- .d[rep(which(.r)[1], length(.t)), , drop = FALSE]
+      .a[] <- lapply(.a, function(x) {
+        x[] <- NA
+        x
+      })
+      .a[[.id]] <- .cid
+      .a[[.time]] <- .t
+      .a[[.evid]] <- .ev
+      .a[[.dv]] <- -(1e6 + 10 * .j + .role)
+      if (!is.null(.cmt)) .a[[.cmt]] <- .cmtVal
+      .add[[length(.add) + 1L]] <- .a
+    }
+    .keep <- .keep & !.isTte
+  }
+  .d <- do.call(rbind, c(list(.d[.keep, , drop = FALSE]), .add))
+  .d <- .d[order(.d[[.id]], .d[[.time]]), , drop = FALSE]
+  rownames(.d) <- NULL
+  .d
+}
+
+#' Prepare a ui solve with tte() endpoints
+#'
+#' @param ui rxode2 ui
+#' @param lst the combined `rxSolve.default()` argument list
+#' @return the updated argument list; the C configuration is set as a side
+#'   effect
+#' @author Matthew L. Fidler
+#' @noRd
+.rxTtePrepareSolve <- function(ui, lst) {
+  .predDf <- ui$predDf
+  .w <- which(.predDf$distribution == "tte")
+  .state <- rxModelVars(lst[[1]])$state
+  .hIdx <- match(.rxTteStateName(.predDf$var[.w]), .state) - 1L
+  .opts <- lapply(.w, function(.i) .rxTteOptions(ui, .predDf[.i, ]))
+  .events <- lst$events
+  if (is.null(.events) && (rxIs(lst$params, "rx.event") || is.data.frame(lst$params))) {
+    lst$params <- .rxTteEvents(ui, lst$params)
+  } else {
+    lst$events <- .rxTteEvents(ui, .events)
+  }
+  .Call(
+    `_rxode2_rxTteSetup`,
+    list(
+      as.integer(.hIdx),
+      vapply(.opts, function(.o) as.double(.o$maxEventNumber), double(1)),
+      vapply(.opts, function(.o) as.integer(.o$eventType == "intervalCensored"), integer(1)),
+      vapply(.opts, function(.o) as.integer(.o$dropout), integer(1)),
+      as.integer(stats::runif(1, 0, .Machine$integer.max))
+    )
+  )
+  lst
+}
