@@ -9551,7 +9551,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
             _d.amtF = getAmt(ind, ind->id, _ss2Cmt, _ss2Amt, xout, _yF.data());
             doseRec.push_back(_d);
           }
-          rk4sLagSsRecordWindows(ss2E, ind, op, rec.nStep(), xout, yp, doseRec, infusRec);
+          rk4sLagSsRecordWindows(ss2Evs.back(), ind, op, rec.nStep(), xout, yp, doseRec, infusRec);
           _adjSS2 = 0; _ss2PendIi = 0; _adjSSinfKind = 0;
         } else if (_ssPendCmt >= 0) {
           rk4s_ss1Ev _e; _e.step = rec.nStep(); _e.recIdx = _ssRecI; _e.tRec = xout; _e.cmt = _ssPendCmt; _e.amtRaw = _ssPendAmt; _e.ii = _ssPendIi;
