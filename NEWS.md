@@ -55,6 +55,13 @@
 
 ## New features
 
+- `dop853`, `dop5` and `ros4` now start the segment after an observation
+  record with the step size they proposed at the end of the previous one,
+  instead of choosing a first step again; a dose or any other record that
+  changes the state still restarts them.  A solve with many observation
+  records takes fewer right-hand-side evaluations, with the same error
+  control.
+
 - `minSS` and `maxSS` now accept any count from 1, and `maxSS` may equal
   `minSS`, so `minSS = maxSS = n` gives exactly the state after `n` doses
   before the steady-state one (Monolix `nbdoses = n`).  They used to require
