@@ -155,7 +155,8 @@
 </ul></div>
 <div class="section level4">
 <h4 id="simulation-development-version">Simulation<a class="anchor" aria-label="anchor" href="#simulation-development-version"></a></h4>
-<ul><li>Truncated multivariate normal draws (<code><a href="../reference/rxRmvn.html">rxRmvn()</a></code> with <code>lower</code>/<code>upper</code>, and truncated simulated etas) now have the right distribution. The draws were left in the standardized scale and mis-permuted, so their covariance ignored <code>sigma</code>, and <code>isChol = TRUE</code> used the wrong product of the factor.</li>
+<ul><li><p>Truncated multivariate normal draws (<code><a href="../reference/rxRmvn.html">rxRmvn()</a></code> with <code>lower</code>/<code>upper</code>, and truncated simulated etas) now have the right distribution. The draws were left in the standardized scale and mis-permuted, so their covariance ignored <code>sigma</code>, and <code>isChol = TRUE</code> used the wrong product of the factor.</p></li>
+<li><p><code>rxSolve(seed = )</code> now gives the same simulation after an earlier <code><a href="../reference/rxSetSeed.html">rxSetSeed()</a></code>. The <code><a href="../reference/rxSetSeed.html">rxSetSeed()</a></code> stream overrode <code>seed=</code>, so two solves with the same <code>seed</code> differed; it is now suspended for that solve and left where it was (<a href="https://github.com/nlmixr2/rxode2/issues/1507" class="external-link">#1507</a>).</p></li>
 </ul></div>
 <div class="section level4">
 <h4 id="solving-development-version">Solving<a class="anchor" aria-label="anchor" href="#solving-development-version"></a></h4>
