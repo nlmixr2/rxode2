@@ -452,15 +452,11 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     // A reset processed before the observation zeroes the costate (dy_k(ti)/dp
     // depends only on the post-reset window), so the sweep only needs to reach
     // the most recent such reset; below tReset the costate is 0 and mu is frozen.
-    double tStop = t0; int stopSeq = 0, hasReset = 0;
+    double tStop = t0; int stopSeq = 0;
     for (size_t r = 0; r < resetT.size(); ++r)
       if (resetSeq[r] < si && resetSeq[r] > stopSeq) {
-        tStop = resetT[r]; stopSeq = resetSeq[r]; hasReset = 1;
+        tStop = resetT[r]; stopSeq = resetSeq[r];
       }
-    if (hasReset && isSameTime(ti, tStop)) {   // the state is still its initial condition
-      for (int q = 0; q < nBase * np; ++q) out[sensOff + q] = dx0P ? dx0P[q] : 0.0;
-      continue;
-    }
     // events processed between the reset and the observation (at either end's
     // time too), in reverse processing order: the backward stops at each and
     // applies the transpose costate jump.
