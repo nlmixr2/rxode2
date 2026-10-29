@@ -49,35 +49,27 @@ rxTest({
   .newindMethods <- c("dop853", "dop853+ros4", "t54+sdirk43")
   .newindDense <- c("dop853", "dop853+ros4")
 
-  .newindRhs <- function() {
-    model({
-      d / dt(central) <- -0.2 * central * ifelse(newind <= 1, 2, 1)
-    })
-  }
-  .newindF <- function() {
-    model({
-      d / dt(central) <- -0.2 * central
-      f(central) <- ifelse(newind <= 1, 0.5, 1)
-    })
-  }
-  .newindGuard <- function() {
-    model({
-      d / dt(central) <- -0.2 * central
-      if (newind <= 1) bolus(100, 1, 0, 0, 0)
-    })
-  }
-  .newindSticky <- function() {
-    model({
-      d / dt(central) <- -0.2 * central
-      if (newind <= 1) {
-        n <- 0
-      }
-      if (t >= 1 && n < 1) {
-        bolus(100, 1, 0, 0, 0)
-        n <- n + 1
-      }
-    })
-  }
+  .newindRhs <- rxode2({
+    d / dt(central) <- -0.2 * central * ifelse(newind <= 1, 2, 1)
+  })
+  .newindF <- rxode2({
+    d / dt(central) <- -0.2 * central
+    f(central) <- ifelse(newind <= 1, 0.5, 1)
+  })
+  .newindGuard <- rxode2({
+    d / dt(central) <- -0.2 * central
+    if (newind <= 1) bolus(100, 1, 0, 0, 0)
+  })
+  .newindSticky <- rxode2({
+    d / dt(central) <- -0.2 * central
+    if (newind <= 1) {
+      n <- 0
+    }
+    if (t >= 1 && n < 1) {
+      bolus(100, 1, 0, 0, 0)
+      n <- n + 1
+    }
+  })
 
   .newindCheck <- function(method, dense = FALSE) {
     .lab <- paste0(method, if (dense) " (dense)" else "")
