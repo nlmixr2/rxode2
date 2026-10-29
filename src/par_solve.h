@@ -213,6 +213,7 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
 			ind->tfirstS[j] = NA_REAL;
 			ind->curDoseS[j] = NA_REAL;
 		}
+		ind->infDurOnN = 0;
 		ind->inLhs = inLhs;
 		for (int j = op->nlhs; j--;) {
       if (op->lhs_str[j] == 1) {

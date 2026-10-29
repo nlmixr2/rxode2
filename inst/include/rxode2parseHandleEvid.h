@@ -399,6 +399,50 @@ static inline double getAmt(rx_solving_options_ind *ind, int id, int cmt,
   return ret;
 }
 
+// A fixed-duration infusion's rate is F*amt/dur with F read once, at its start
+// (rxode2#1568); evaluating a state-dependent f() again at the stop leaves a
+// residual rate.  The start records the rate it added under its stop record,
+// which the stop then removes.
+static inline void pushInfDurOn(rx_solving_options_ind *ind, double rate) {
+  if (ind->idx < 0) return; // extra doses have no paired stop record
+  int stop = -1;
+  handleInfusionGetEndOfInfusionIndex(handleTlastInlineDoseIndex(ind), &stop,
+                                      NULL, NULL, ind);
+  if (stop < 0 || stop >= ind->ndoses) return;
+  double rec = (double)ind->idose[stop];
+  int j;
+  for (j = 0; j < ind->infDurOnN; j++) {
+    if (ind->infDurOn[2*j] == rec) break; // the start was handled again
+  }
+  if (j == ind->infDurOnCap) {
+    int cap = ind->infDurOnCap + 8;
+    double *p = (double*)realloc(ind->infDurOn, 2*cap*sizeof(double));
+    if (p == NULL) return; // the stop falls back to evaluating f() again
+    ind->infDurOn = p;
+    ind->infDurOnCap = cap;
+  }
+  ind->infDurOn[2*j] = rec;
+  ind->infDurOn[2*j+1] = rate;
+  if (j == ind->infDurOnN) ind->infDurOnN++;
+}
+
+// Rate the start of the infusion stopped by the current record added (and
+// forget it); returns 0 when no start recorded one.
+static inline int popInfDurOn(rx_solving_options_ind *ind, double *rate) {
+  if (ind->idx < 0) return 0;
+  double rec = (double)ind->ix[ind->idx];
+  for (int j = 0; j < ind->infDurOnN; j++) {
+    if (ind->infDurOn[2*j] == rec) {
+      *rate = ind->infDurOn[2*j+1];
+      ind->infDurOnN--;
+      ind->infDurOn[2*j] = ind->infDurOn[2*ind->infDurOnN];
+      ind->infDurOn[2*j+1] = ind->infDurOn[2*ind->infDurOnN+1];
+      return 1;
+    }
+  }
+  return 0;
+}
+
 static inline int isIgnoredDose(rx_solving_options_ind *ind, int ixds) {
   for (int i = 0; i < ind->ignoredDosesN[0]; ++i) {
     if (ind->idx < 0 ) {
@@ -1857,7 +1901,17 @@ static inline int handle_evid(int evid, int neq,
         ind->curDose = tmp;
         ind->curDoseS[cmt] = ind->curDose;
       }
-      tmp = getAmt(ind, id, cmt, tmp, xout, yp);
+      if (tmp > 0) {
+        tmp = getAmt(ind, id, cmt, tmp, xout, yp);
+        pushInfDurOn(ind, tmp);
+      } else {
+        double _rateOn;
+        if (popInfDurOn(ind, &_rateOn)) {
+          tmp = -_rateOn;
+        } else {
+          tmp = getAmt(ind, id, cmt, tmp, xout, yp);
+        }
+      }
       {
         double *_esDydtPreB = _esInfusionDydtPre(id, xout, yp, neq);
         InfusionRate[cmt] += tmp;
