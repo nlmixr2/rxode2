@@ -235,6 +235,30 @@ static inline double nonmemRunningRate(rx_solving_options_ind *ind, int i, int o
   return rate;
 }
 
+// rxControl(nonmem = TRUE): re-reads the rate of the infusion started by raw
+// record `on` from the data record at sorted position j and moves its end so
+// the remaining amount is kept.  Returns 1 when moved, 0 when unchanged, -1 on
+// a non-positive rate.
+static inline int nonmemRereadRate(rx_solving_options_ind *ind, int j, int on, int cmt,
+                                   double rOld, double tNow, double *yp,
+                                   double *InfusionRate) {
+  int oldIdx = ind->idx;
+  ind->idx = j;
+  double rNew = getRate(ind, ind->id, cmt, ind->dose[on],
+                        ind->timeThread[ind->ix[j]], yp);
+  ind->idx = oldIdx;
+  if (!(rNew > 0)) {
+    if (!(ind->err & rxErrRate0)) ind->err += rxErrRate0;
+    return -1;
+  }
+  if (rNew == rOld) return 0;
+  double tOff = ind->all_times[on + 1];
+  InfusionRate[cmt] += rNew - rOld;
+  ind->dose[on + 1] = -rNew;
+  ind->all_times[on + 1] = tNow + rOld*(tOff - tNow)/rNew;
+  return 1;
+}
+
 // rxControl(nonmem = TRUE) (rxode2#1586): like NONMEM's R1, a modeled rate
 // runs on (t[j-1], t[j]] at the rate computed with data record j until its
 // amount is delivered.  Called after the record at sorted position i is
@@ -262,21 +286,9 @@ static inline int updateNonmemModeledRates(rx_solve *rx, rx_solving_options_ind 
     if (rOld == 0.0) continue;
     if (j == -2) j = nonmemNextRecord(ind, i);
     if (j < 0) return ret;
-    int oldIdx = ind->idx;
-    ind->idx = j;
-    double rNew = getRate(ind, ind->id, cmt, ind->dose[on],
-                          ind->timeThread[ind->ix[j]], yp);
-    ind->idx = oldIdx;
-    if (!(rNew > 0)) {
-      if (!(ind->err & rxErrRate0)) ind->err += rxErrRate0;
-      return ret;
-    }
-    if (rNew == rOld) continue;
-    double tOff = ind->all_times[on + 1];
-    InfusionRate[cmt] += rNew - rOld;
-    ind->dose[on + 1] = -rNew;
-    ind->all_times[on + 1] = tNow + rOld*(tOff - tNow)/rNew;
-    ret = 1;
+    int moved = nonmemRereadRate(ind, j, on, cmt, rOld, tNow, yp, InfusionRate);
+    if (moved < 0) return ret;
+    ret |= moved;
   }
   return ret;
 }
