@@ -50,6 +50,10 @@
   window that crossed a covariate change did not match NONMEM (#1584).
 
 ### Steady state
+- A `linCmt()` steady-state constant infusion (`ss = 1` with a rate and no
+  `ii`, or an infusion lasting `ii`) no longer reads an unset solve end time,
+  which could skip the solve and give a wrong steady state depending on the
+  build.
 - A steady-state bolus into a compartment whose `alag()` is longer than `ii`
   now includes the doses of the earlier intervals that arrive inside the
   observed one; they were dropped, so the profile decayed from the trough

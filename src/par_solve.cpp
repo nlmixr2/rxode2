@@ -3564,6 +3564,8 @@ extern "C" void handleSSinf8(int *neq,
     ind->InfusionRate[ind->cmt] = *rateOn;
     ind->on[ind->cmt] = 1;
     *xp2 = 0.0;
+    // the caller leaves xout2 unset; a span equal to xp2 skips the solve
+    *xout2 = *xp2 + 1.0;
 
     // next solve
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
