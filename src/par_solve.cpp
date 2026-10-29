@@ -4988,7 +4988,8 @@ static int _rxTteAfterInterval(rx_solve *rx, rx_solving_options *op,
     // the timeline but out of the output
     for (int j = i + 1; j < ind->n_all_times; j++) {
       int raw = ind->ix[j], kk;
-      if (ind->evid[raw] != 0 || !(ind->timeThread[raw] > tKeep)) continue;
+      int ev = ind->evid[raw];
+      if ((ev != 0 && ev != 2) || !(ind->timeThread[raw] > tKeep)) continue;
       int role = rxTteRole(ind->dv[raw], &kk);
       if (dropout || (kk == k && (role == RXTTE_CENSOR || role == RXTTE_INTERVAL))) {
         ind->evid[raw] = 9;
