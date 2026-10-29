@@ -952,13 +952,25 @@ static inline double _esRm2Move(const _esRm2 *s, int p, int q, int k) {
   return l * tq;
 }
 
+static inline int getAddlParentPosition(rx_solving_options_ind *ind);
+
+// An event-sensitivity derivative of alag() (dLagEs, d2LagEs, dLagQEs) of
+// subject `id`, evaluated as getLag() evaluates alag(): an addl repeat reads
+// its nocb covariates at the dose record it repeats (rxode2parseGetTime.h)
+static inline void rxEsLag(t_dLag fn, int id, double t, double *y, double *out) {
+  rx_solving_options_ind *ind = &(rx_global.subjects[id]);
+  ind->lagParent = getAddlParentPosition(ind) + 1;
+  fn(id, t, y, out);
+  ind->lagParent = 0;
+}
+
 // Fill the event-parameter derivative tables at the pre-event state.
 static inline void _esRm2Tables(_esRm2 *s, int id, double xout) {
-  if (dLagEs != NULL) dLagEs(id, xout, s->yPre, s->dLag);
+  if (dLagEs != NULL) rxEsLag(dLagEs, id, xout, s->yPre, s->dLag);
   if (dF != NULL) dF(id, xout, s->yPre, s->dF);
-  if (d2LagEs != NULL) d2LagEs(id, xout, s->yPre, s->d2Lag);
+  if (d2LagEs != NULL) rxEsLag(d2LagEs, id, xout, s->yPre, s->d2Lag);
   if (d2FEs != NULL) d2FEs(id, xout, s->yPre, s->d2F);
-  if (dLagQEs != NULL) dLagQEs(id, xout, s->yPre, s->dLagQ);
+  if (dLagQEs != NULL) rxEsLag(dLagQEs, id, xout, s->yPre, s->dLagQ);
   if (dFQEs != NULL) dFQEs(id, xout, s->yPre, s->dFQ);
 }
 
@@ -1181,8 +1193,8 @@ static inline void _esInfusionBoundary2ndOrder(int id, double xout, double *yp,
   }
   int _haveG = _rxEsUseCalcJac ? (_fullJac != NULL) : (_dydtPost != NULL);
   if (_d2LagB != NULL && _dLagQB != NULL && _haveG) {
-    d2LagEs(id, xout, yp, _d2LagB);
-    dLagQEs(id, xout, yp, _dLagQB);
+    rxEsLag(d2LagEs, id, xout, yp, _d2LagB);
+    rxEsLag(dLagQEs, id, xout, yp, _dLagQB);
     for (int _p = 0; _p < np; _p++) {
       // Safety guard: skip if tmp might depend on p (see comment above).
       if ((_fPGuard != NULL && _fPGuard[cmt * np + _p] != 0.0) ||
@@ -1385,7 +1397,7 @@ static inline int handle_evid(int evid, int neq,
           int _ns = _rxEsNState, _np = _rxEsNParam;
           double *_eA = (double*) calloc((size_t)_ns * _np, sizeof(double));
           if (_eA != NULL) {
-            dLagEs(id, xout, yp, _eA);
+            rxEsLag(dLagEs, id, xout, yp, _eA);
             for (int _p = 0; _p < _np; _p++) {
               yp[_ns + _p * _ns + cmt] += tmp * _eA[cmt * _np + _p];
             }
@@ -1545,7 +1557,7 @@ static inline int handle_evid(int evid, int neq,
                 double *_esFQB3 = (double*) calloc((size_t)_ns * _np2, sizeof(double));
                 double *_esDurQB3 = (double*) calloc((size_t)_ns * _np2, sizeof(double));
                 if (_esLagB3 != NULL && _esFQB3 != NULL && _esDurQB3 != NULL) {
-                  dLagEs(id, xout, yp, _esLagB3);
+                  rxEsLag(dLagEs, id, xout, yp, _esLagB3);
                   dFQEs(id, xout, yp, _esFQB3);
                   dDurQEs(id, xout, yp, _esDurQB3);
                   for (int _p = 0; _p < _np; _p++) {
@@ -1599,7 +1611,7 @@ static inline int handle_evid(int evid, int neq,
         int _ns = _rxEsNState, _np = _rxEsNParam;
         double *_eA = (double*) calloc((size_t)_ns * _np, sizeof(double));
         if (_eA != NULL) {
-          dLagEs(id, xout, yp, _eA);
+          rxEsLag(dLagEs, id, xout, yp, _eA);
           for (int _p = 0; _p < _np; _p++) {
             yp[_ns + _p * _ns + cmt] += -tmp * _eA[cmt * _np + _p];
           }
@@ -1787,9 +1799,9 @@ static inline int handle_evid(int evid, int neq,
             double *_esD2LagB2 = (_esLagB2 != NULL) ?
               (double*) calloc((size_t)_ns * _np * _np2, sizeof(double)) : NULL;
             if (_esLagB2 != NULL && _esLagQB2 != NULL && _esD2LagB2 != NULL) {
-              dLagEs(id, xout, yp, _esLagB2);
-              dLagQEs(id, xout, yp, _esLagQB2);
-              d2LagEs(id, xout, yp, _esD2LagB2);
+              rxEsLag(dLagEs, id, xout, yp, _esLagB2);
+              rxEsLag(dLagQEs, id, xout, yp, _esLagQB2);
+              rxEsLag(d2LagEs, id, xout, yp, _esD2LagB2);
             }
             if (_esD2DurB2 != NULL && _esDurQB2 != NULL && _esFQB2 != NULL &&
                 _esDydtPostB2 != NULL && _esDurB2 != NULL) {
@@ -1871,7 +1883,7 @@ static inline int handle_evid(int evid, int neq,
           int _ns = _rxEsNState, _np = _rxEsNParam;
           double *_eA = (double*) calloc((size_t)_ns * _np, sizeof(double));
           if (_eA != NULL) {
-            dLagEs(id, xout, yp, _eA);
+            rxEsLag(dLagEs, id, xout, yp, _eA);
             for (int _p = 0; _p < _np; _p++) {
               yp[_ns + _p * _ns + cmt] += -tmp * _eA[cmt * _np + _p];
             }
@@ -1913,7 +1925,7 @@ static inline int handle_evid(int evid, int neq,
         int _ns = _rxEsNState, _np = _rxEsNParam;
         double *_eA = (double*) calloc((size_t)_ns * _np, sizeof(double));
         if (_eA != NULL) {
-          dLagEs(id, xout, yp, _eA);
+          rxEsLag(dLagEs, id, xout, yp, _eA);
           for (int _p = 0; _p < _np; _p++) {
             yp[_ns + _p * _ns + cmt] += -tmp * _eA[cmt * _np + _p];
           }
@@ -2056,7 +2068,7 @@ static inline int handle_evid(int evid, int neq,
             _esRow = NULL;
           }
           if (_esDLagB != NULL && _esRow != NULL) {
-            dLagEs(id, xout, yp, _esDLagB);
+            rxEsLag(dLagEs, id, xout, yp, _esDLagB);
             {
               for (int _p = 0; _p < _np; _p++) {
                 double _esDLagP = _esDLagB[cmt * _np + _p];
@@ -2150,7 +2162,7 @@ static inline int handle_evid(int evid, int neq,
               _esRow = NULL;
             }
             if (_esDLagB != NULL && _esRow != NULL) {
-              dLagEs(id, xout, yp, _esDLagB);
+              rxEsLag(dLagEs, id, xout, yp, _esDLagB);
               {
                 for (int _p = 0; _p < _np; _p++) {
                   double _esDLagP = _esDLagB[cmt * _np + _p];
@@ -2354,7 +2366,7 @@ static inline int handle_evid(int evid, int neq,
               _esSalt = NULL;
             }
             if (_esDLagB != NULL && _esSalt != NULL) {
-              dLagEs(id, xout, yp, _esDLagB);
+              rxEsLag(dLagEs, id, xout, yp, _esDLagB);
               for (int _p = 0; _p < _np; _p++) {
                 double _esDLagP = _esDLagB[cmt * _np + _p];
                 if (_esDLagP != 0.0) {
@@ -2449,9 +2461,9 @@ static inline int handle_evid(int evid, int neq,
               }
             }
             if (_esDLagB2 != NULL && _esD2LagB != NULL && _esDLagQB != NULL) {
-              dLagEs(id, xout, yp, _esDLagB2);
-              d2LagEs(id, xout, yp, _esD2LagB);
-              if (dLagQEs != NULL) dLagQEs(id, xout, yp, _esDLagQB);
+              rxEsLag(dLagEs, id, xout, yp, _esDLagB2);
+              rxEsLag(d2LagEs, id, xout, yp, _esD2LagB);
+              if (dLagQEs != NULL) rxEsLag(dLagQEs, id, xout, yp, _esDLagQB);
               // Does ANY calcSens2 param also drive this event's alag? The
               // Leibniz term below needs dS^p_./dt regardless of whether p
               // ITSELF has a nonzero dLag_p (S^p may have been jumped purely
