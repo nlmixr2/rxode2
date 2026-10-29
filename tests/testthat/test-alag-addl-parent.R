@@ -78,6 +78,20 @@
   )
 }
 
+.addlParentSolveP <- function(mod, d, interp, keep, params) {
+  rxSolve(
+    mod,
+    d,
+    params = params,
+    nonmem = TRUE,
+    addlKeepsCov = keep,
+    covsInterpolation = interp,
+    atol = 1e-12,
+    rtol = 1e-12,
+    returnType = "data.frame"
+  )
+}
+
 rxTest({
   test_that("under nocb an addl repeat's alag() reads its dose record, with or without a co-timed record", {
     m <- rxode2({
@@ -172,6 +186,31 @@ rxTest({
         if (nm == "f") rep(0, 4) else 0.1 * x
       )
       expect_equal(s$pred, e, tolerance = 1e-7, label = nm)
+    }
+  })
+
+  test_that("the event sensitivities of an addl repeat's alag() read the record its alag() reads", {
+    mod <- "
+      ka <- 1
+      cl <- 0.5
+      v <- 10
+      alag(depot) <- exp(tlag + eta_lag) * X
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "
+    m <- rxode2(mod, calcSens = "eta_lag", eventSens = "jump")
+    m0 <- rxode2(mod)
+    d <- .addlParentEv(0, c(8, 14, 20, 40), 1, c(2, 4, 5, 8))
+    h <- 1e-5
+    for (interp in c("nocb", "locf")) {
+      for (keep in c(FALSE, TRUE)) {
+        lab <- paste(interp, keep)
+        s <- .addlParentSolveP(m, d, interp, keep, c(tlag = log(0.1), eta_lag = 0))
+        up <- .addlParentSolveP(m0, d, interp, keep, c(tlag = log(0.1), eta_lag = h))
+        dn <- .addlParentSolveP(m0, d, interp, keep, c(tlag = log(0.1), eta_lag = -h))
+        fd <- (up$central - dn$central) / (2 * h)
+        expect_equal(s$rx__sens_central_BY_eta_lag__, fd, tolerance = 1e-6, label = lab)
+      }
     }
   })
 
