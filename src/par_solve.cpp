@@ -4260,9 +4260,12 @@ void handleSS(int *neq,
         handle_evid(getEvid(ind, ind->ix[bi])-adjustEvidBolusLag, neq[0],
                     BadDose, InfusionRate, dose, yp,
                     xout, neq[1], ind);
+        // covariates stay at the dose time, as in the cycles
+        ind->ssTime = xp;
         // yp is last solve or y0
         solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                      xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+        ind->ssTime = NA_REAL;
         if (overIi > 0) {
           // lag > ii: the doses of the overIi earlier intervals arrive in this
           // one, as regular boluses (rateOn/regEvid are only set for infusions)

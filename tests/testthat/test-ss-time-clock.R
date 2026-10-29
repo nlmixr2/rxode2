@@ -76,4 +76,34 @@ rxTest({
     expect_true(all(is.finite(.f70)))
     expect_equal(.f70, .f(1000), tolerance = 1e-6)
   })
+  test_that("a lagged steady-state bolus reads covariates at the dose time", {
+    .covMod <- rxode2({
+      d / dt(central) <- -(cl / 20) * central
+      alag(central) <- 2
+      f <- central / 20
+    })
+    .early <- data.frame(
+      ID = 1,
+      TIME = 0,
+      EVID = 2,
+      AMT = 0,
+      CMT = 1,
+      II = 0,
+      SS = 0,
+      cl = 50
+    )
+    .d <- rbind(.early, cbind(.ssClockData, cl = 1))
+    .f <- function(d) {
+      rxSolve(
+        .covMod,
+        d,
+        atol = 1e-10,
+        rtol = 1e-10,
+        returnType = "data.frame"
+      )$f
+    }
+    .ref <- .f(cbind(.ssClockData, cl = 1))
+    .fCov <- .f(.d)
+    expect_equal(.fCov[-1], .ref, tolerance = 1e-6)
+  })
 })
