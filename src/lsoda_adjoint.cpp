@@ -177,6 +177,8 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   // Reconstruct the event opening each segment by matching its start time (seg 0
   // included, for a modeled-F/lag dose at t0).  Additive boluses (dPhi/dy=I) are
   // the default; reset/replace/multiply get their exact dual.
+  // the subject's first record (newind == 1): slot 0, or 1 after the evid 9 start
+  int _first = (rxNewindFirst(ind) == 2) ? 1 : 0;
   for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg) {
     double t0 = lsAdjSegs[sg].t0;
     for (int i = 0; i < ind->n_all_times; ++i) {
@@ -187,7 +189,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       if (isDose(ev)) {
         int _wh, _cmt, _wh100, _whI, _wh0; getWh(ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
         if (_cmt >= 0 && _cmt < nBase) {
-          if (_whI == 0)                  { lsAdjSegs[sg].evType = 0; lsAdjSegs[sg].evCmt = _cmt; lsAdjSegs[sg].evAmt = getDose(ind, ind->ix[i]); lsAdjSegs[sg].evNi = (i == 0) ? 1 : 2; break; }
+          if (_whI == 0)                  { lsAdjSegs[sg].evType = 0; lsAdjSegs[sg].evCmt = _cmt; lsAdjSegs[sg].evAmt = getDose(ind, ind->ix[i]); lsAdjSegs[sg].evNi = (i == _first) ? 1 : 2; break; }
           else if (_whI == EVIDF_REPLACE) { lsAdjSegs[sg].evType = 5; lsAdjSegs[sg].evCmt = _cmt; break; }
           else if (_whI == EVIDF_MULT)    { lsAdjSegs[sg].evType = 6; lsAdjSegs[sg].evCmt = _cmt; lsAdjSegs[sg].evFactor = getDose(ind, ind->ix[i]); break; }
           // (modeled rate/dur infusion on/off open a segment but are not a state jump;
