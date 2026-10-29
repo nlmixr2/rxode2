@@ -19,6 +19,7 @@ rxode2_fn0i _sumType = NULL;
 _update_par_ptr_p _update_par_ptr=NULL;
 _rxPkTime_p _rxPkTime=NULL;
 _rxDoseTime_p _rxDoseTime=NULL;
+_rxLagTime_p _rxLagTime=NULL;
 _getParCov_p _getParCov=NULL;
 _setThreadInd_t _setThreadInd=NULL;
 _rxPushDose_t _rxPushDose=NULL;
@@ -635,6 +636,7 @@ void _assignFuns0(void) {
   _update_par_ptr = (_update_par_ptr_p) R_GetCCallable("rxode2","_update_par_ptr");
   _rxPkTime = (_rxPkTime_p) R_GetCCallable("rxode2","_rxPkTime");
   _rxDoseTime = (_rxDoseTime_p) R_GetCCallable("rxode2","_rxDoseTime");
+  _rxLagTime = (_rxLagTime_p) R_GetCCallable("rxode2","_rxLagTime");
   _getParCov = (_getParCov_p) R_GetCCallable("rxode2","_getParCov");
   _setThreadInd = (_setThreadInd_t) R_GetCCallable("rxode2","_setThreadInd");
   _rxPushDose   = (_rxPushDose_t)   R_GetCCallable("rxode2","_rxPushDose");

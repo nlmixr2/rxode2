@@ -528,7 +528,8 @@ struct rx_solving_options_ind_s {
   // a dose expands to), recorded by etTrans() only for a model whose PK-type
   // statements read `time`, or whose f()/alag()/rate()/dur() may; NULL
   // otherwise.  _rxPkTime() skips these with rxControl(nonmem = TRUE)
-  // (rxode2#1429).  2 marks the dose of an addl repeat, for _rxDoseTime()
+  // (rxode2#1429).  2 marks the dose of an addl repeat, for _rxDoseTime(),
+  // and 2 + n one whose dose record is n records back, for _rxLagTime()
   // (rxode2#1583).  Covers the first n_all_times_orig records.
   int    *pkSkip;
   // delay() pre-history: this subject's evaluated initial state (after the

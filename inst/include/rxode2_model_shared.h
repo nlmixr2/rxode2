@@ -425,6 +425,8 @@ typedef void (*_update_par_ptr_p)(double t, unsigned int id, rx_solve *rx, int i
 typedef double (*_rxPkTime_p)(double t, unsigned int id, rx_solve *rx);
 // time f()/rate()/dur() read with nonmem = TRUE (rxode2#1583)
 typedef double (*_rxDoseTime_p)(double t, unsigned int id, rx_solve *rx);
+// time alag() reads with nonmem = TRUE (rxode2#1583)
+typedef double (*_rxLagTime_p)(double t, unsigned int id, rx_solve *rx);
 
 /* dydt forcing hook: generated model calls this at the end of its RHS (dydt) so a
    plugin can add forcing to state derivatives (e.g. b_j for NN-weight variational
