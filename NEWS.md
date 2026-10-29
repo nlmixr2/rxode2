@@ -9,6 +9,33 @@
   them: after a failed `rxSolve(m, params, ev, sigma = ...)`, a plain solve
   of a model with that residual gave values up to 2.6 off.
 
+### Prior simulation
+- A `thetaMat` given at the call site, carried in the model's `meta` block
+  (as monolix2rx/nonmem2rx imports do), or from an nlmixr2 fit's covariance
+  now takes precedence over the `ini({})` priors on the population
+  parameters in uncertainty simulation, so a MAP estimate that is not its
+  prior mean no longer stops the solve.  A `meta` `thetaMat` or fit
+  covariance used to be replaced by the priors.  A prior entry the
+  `thetaMat` does not draw is named in a warning, and `usePrior = TRUE`
+  still uses the priors (#1502).
+
+### Documentation
+- The pipeline article no longer saves its simulation into the installed
+  package directory (#1506).
+
+### Sensitivities
+- `rxSolveAdjoint()` now accepts a model function, as `rxSolve()` does; it
+  used to fail with an rxode2 syntax error on the `ini({})` block (#1504).
+- `rxSolveAdjoint()` and the adjoint builds now send a dose without a `cmt`
+  to the first state, and a numeric `cmt` to that state, as `rxSolve()`
+  does; a dose without a `cmt` used to fail in the build (#1504).
+
+### Steady state
+- A steady-state bolus into a compartment whose `alag()` is longer than `ii`
+  now includes the doses of the earlier intervals that arrive inside the
+  observed one; they were dropped, so the profile decayed from the trough
+  instead of matching explicit dosing (#1499).
+
 ## New features
 
 - `minSS` and `maxSS` now accept any count from 1, and `maxSS` may equal
@@ -51,13 +78,39 @@
   left in the standardized scale and mis-permuted, so their covariance ignored
   `sigma`, and `isChol = TRUE` used the wrong product of the factor.
 
+- `rxSolve(seed = )` now gives the same simulation after an earlier
+  `rxSetSeed()`.  The `rxSetSeed()` stream overrode `seed=`, so two solves
+  with the same `seed` differed; it is now suspended for that solve and left
+  where it was (#1507).
+
+- `rxSolve(seed = )` now restores the caller's `.Random.seed` (or its
+  absence) when it returns, so it no longer replaces the session's random
+  stream.  The simulated values for a given `seed` are unchanged (#1503).
+
 ### Solving
+
+- Forward sensitivities through `alag()`, `f()`, `rate()`, `dur()` and a
+  parameter-dependent `delay()` are now right for a parameter that also
+  has a numeric default in the model (for example `lg <- 0.3` with
+  `alag(depot) <- lg` and `calcSens` including `lg`), and for a default
+  that the solve overrides with a supplied value or a data covariate.
+  Before, the default was folded into the event derivatives, so the
+  targeted parameter's sensitivity was 0 (or a defaulted delay lost its
+  jump term) and an overridden default kept its model value there.  The
+  second-order `delay()` jump now also uses the solve's value of a
+  parameter in a state coupling (for example `kd*depot`), so an overridden
+  default no longer gives the wrong jump.
 
 - The default `hmax = NA` no longer gives a `NaN` maximum step to a subject
   with a single time difference, so `method = "dop853"` no longer fails with
   `IDID=-3` on a subject with one observation after its start.  `hmaxSd` now
   adds its standard deviation term to every subject, not only the last one
   (#1501).
+
+- An `rxParams()` pipeline now starts from a model function, an `rxUi` or
+  `rxode2(model)`, like `rxSolve()`; it used to stop with "need an rxode2
+  compiled model as the start of the pipeline" unless given the compiled
+  `$simulationModel` (#1505).
 - A steady-state bolus solved with `lsoda`/`liblsoda` no longer drops its
   first iterated dose: the solver restarted from its internal state instead of
   the dosed one, so a steady state stopped by `minSS` (with `ssAtol`/`ssRtol`
@@ -151,6 +204,15 @@
   model compiles; it compiles as before.
 
 ### linCmt() models
+
+- `linCmt()` models now solve a time-varying covariate as the equivalent ODE
+  model does.  Each interval between records used the covariates of the record
+  that ends it, so the default `covsInterpolation = "locf"` gave the `"nocb"`
+  solution.  An interval now takes its own covariates (`"locf"` the start
+  record's, `"nocb"` the end record's, `"midpoint"` their mean, `"linear"` the
+  value at its middle); results of `linCmt()` models and fits with a
+  time-varying covariate change under `"locf"`, `"midpoint"` and `"linear"`
+  (#1483).
 
 - After a subject whose `linCmt()` solve failed (a data error such as a
   modeled rate in a model without `rate()`), the later subjects on that thread
@@ -307,6 +369,15 @@
 
 - `method = "cvodesadj"` no longer fails its backward solve, returning
   wrong sensitivities, when two events fall at the same time.
+
+- `method = "cvodesadj"` now includes an event at an observation's time
+  (or after a reset at the same time) in that observation's sensitivities,
+  transposes same-time events in reverse of the order the forward solve
+  applied them, and evaluates each of several same-time lagged boluses at
+  its own post-dose state.  Its `alag()` lag-time sensitivity now uses the
+  exact change in the derivatives across the dose, so it is also correct
+  when the derivatives are nonlinear in the dosed compartment, and is no
+  longer dropped for a bolus lagged onto the first time.
 
 # rxode2 5.1.8
 
