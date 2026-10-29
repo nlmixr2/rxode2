@@ -483,7 +483,9 @@
 #'     disabled.
 #'
 #' @param seed an object specifying if and how the random number
-#'    generator should be initialized
+#'    generator should be initialized; when given, it takes precedence
+#'    over an active [rxSetSeed()] stream for this solve, and the
+#'    caller's `.Random.seed` is restored afterwards
 #'
 #' @param nsim represents the number of simulations.  For rxode2, if
 #'     you supply single subject event tables (created with
@@ -678,9 +680,14 @@
 #'   being simulated (`nStud > 1`, or whatever `simVariability` forces);
 #'   `TRUE` requires them, and is an error when the model has none or when
 #'   no variability would be simulated; `FALSE` ignores them and falls back
-#'   to a supplied `thetaMat`/`dfSub`.  The priors take precedence over a
-#'   `thetaMat`/`dfSub` carried in the model's `meta` block, with a warning;
-#'   one given at the call site wins over the priors instead.
+#'   to a supplied `thetaMat`/`dfSub`.  In auto mode a `thetaMat` given at
+#'   the call site, carried in the model's `meta` block, or from an nlmixr2
+#'   fit's covariance takes precedence over the priors on the population
+#'   parameters, which are then not read, so an estimate that is not its
+#'   prior mean (a MAP estimate) still simulates; a prior entry it does not
+#'   draw is named in a warning.  `TRUE` makes the priors replace it.  The prior degrees of
+#'   freedom take precedence over a `dfSub` carried in `meta`, with a
+#'   warning; one given at the call site wins over them instead.
 #'
 #' @param priorPdRetry How many times a prior draw of a covariance matrix is
 #'   retried when it is not positive definite.  After that many tries the
@@ -2420,7 +2427,43 @@ rxSolve <- function(
   .rxEventEnter()
   .rxEventCallSave <- sys.call()
   on.exit(.rxEventExitSolve(returnValue(), object, .rxEventCallSave), add = TRUE)
+  if (!is.null(seed)) {
+    ## seed= works through set.seed(), which an active rxSetSeed() stream
+    ## would ignore; suspend that stream for this solve (#1507) and put the
+    ## caller's .Random.seed back afterwards (#1503)
+    .rxSeedOrig <- rxGetSeed()
+    .rSeedOrig <- .rxGetRandomSeed()
+    rxSetSeed(-1L)
+    on.exit(
+      {
+        rxSetSeed(.rxSeedOrig)
+        .rxRestoreRandomSeed(.rSeedOrig)
+      },
+      add = TRUE
+    )
+  }
   UseMethod("rxSolve")
+}
+
+## The caller's .Random.seed, or NULL when it has none
+.rxGetRandomSeed <- function() {
+  if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+    get(".Random.seed", envir = globalenv(), inherits = FALSE)
+  } else {
+    NULL
+  }
+}
+
+## Put back a .Random.seed saved by .rxGetRandomSeed()
+.rxRestoreRandomSeed <- function(seed) {
+  if (is.null(seed)) {
+    if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+      rm(".Random.seed", envir = globalenv())
+    }
+  } else {
+    assign(".Random.seed", seed, envir = globalenv())
+  }
+  invisible(NULL)
 }
 
 #' @rdname rxSolve
@@ -3742,7 +3785,7 @@ rxSolve.default <- function(
         if (length(.rxDelaySensJump2Cmts(.norm)) > 0L) {
           .map2 <- tryCatch(.rxDelaySensJump2Map(object), error = function(e) NULL)
           if (!is.null(.map2)) {
-            events <- tryCatch(.rxDelaySensJump2Events(.map2, events), error = function(e) events)
+            events <- tryCatch(.rxDelaySensJump2Events(.map2, events, params), error = function(e) events)
           }
         }
       }
@@ -4208,7 +4251,10 @@ rxSolve.default <- function(
       inherits(object, "rxUi")
   ) {
     .lst <- c(list(object, params = params, events = events, inits = inits), .rxCtlUnnameMeta(.ctl, object))
-
+    # the pipeline values are now in `.lst`; left set, the re-entry would see
+    # them twice
+    .clearPipe()
+    .asFunctionEnv$rx <- NULL
     return(do.call(rxSolve, .lst))
   }
   if (!any(class(object) %in% c("rxSolve", "rxode2", "character", "rxModelVars", "rxDll"))) {
