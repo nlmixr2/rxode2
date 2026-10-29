@@ -114,6 +114,59 @@ rxTest({
   })
 })
 
+# the lagged doses of .lagRecEv() with WT also in d/dt(center): every solver
+# gives the explicit regimen of the landed doses, each carrying its record's
+# WT (70) at its landing time
+.lagRecDydtMods <- function() {
+  list(
+    lagged = rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - k * (WT / 70) * center
+      f(depot) <- bio * WT / 70
+      alag(depot) <- lg * WT / 70
+    }),
+    explicit = rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - k * (WT / 70) * center
+      f(depot) <- bio * WT / 70
+    })
+  )
+}
+
+.lagRecDydtSolve <- function(mod, ev, interp, method) {
+  rxSolve(
+    mod,
+    c(ka = 1.2, k = 0.2, bio = 0.8, lg = 0.3),
+    ev,
+    covsInterpolation = interp,
+    method = method,
+    atol = 1e-10,
+    rtol = 1e-10,
+    returnType = "data.frame"
+  )
+}
+
+rxTest({
+  test_that("a covariate in d/dt() is interpolated over a lagged dose's solve time", {
+    mods <- .lagRecDydtMods()
+    ev <- .lagRecEv()
+    evE <- ev
+    evE$time[evE$evid == 1] <- c(0.3, 2.1)
+    evE <- evE[order(evE$time, -evE$evid), ]
+    for (interp in c("locf", "nocb", "midpoint", "linear")) {
+      e <- .lagRecDydtSolve(mods$explicit, evE, interp, "liblsoda")
+      e <- e[e$time %in% c(1, 2, 3, 4.5, 6, 8), ]
+      for (method in c("liblsoda", "lsoda", "dop853", "vern65")) {
+        s <- .lagRecDydtSolve(mods$lagged, ev, interp, method)
+        lab <- paste(interp, method)
+        expect_equal(s$time, c(1, 2, 3, 4.5, 6, 8), label = lab)
+        expect_equal(s$depot, e$depot, tolerance = 1e-6, label = lab)
+        expect_equal(s$center, e$center, tolerance = 1e-6, label = lab)
+      }
+    }
+  })
+})
+
 # an addl repeat that keeps its dose's covariates (X = 1): its alag() moves
 # it to 0.1 after the repeat, and its f() reads the same record
 .lagRecAddlEv <- function() {
@@ -143,7 +196,7 @@ rxTest({
       d/dt(central) <- ka * depot - cl / v * central
       pred <- central / v
     })
-    for (interp in c("nocb", "locf")) {
+    for (interp in c("locf", "nocb", "midpoint", "linear")) {
       s <- rxSolve(
         mod,
         .lagRecAddlEv(),
