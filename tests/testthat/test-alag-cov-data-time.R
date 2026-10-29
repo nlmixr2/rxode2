@@ -37,3 +37,22 @@ rxTest({
     expect_equal(s$ipred, c(a5, a65, a7) / 50, tolerance = 1e-7)
   })
 })
+
+rxTest({
+  test_that("same-time records keep their own covariates with alag()", {
+    mod <- rxode2({
+      alag(central) <- 0.5
+      d / dt(central) <- -0.1 * central
+      w <- WT
+    })
+    d <- data.frame(
+      ID = 1,
+      TIME = c(0, 1, 1, 2),
+      AMT = c(100, 0, 0, 0),
+      EVID = c(1, 0, 0, 0),
+      WT = c(70, 70, 140, 140)
+    )
+    s <- rxSolve(mod, d, covsInterpolation = "nocb")
+    expect_equal(s$w, c(70, 140, 140))
+  })
+})
