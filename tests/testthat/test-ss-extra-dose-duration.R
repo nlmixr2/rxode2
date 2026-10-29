@@ -61,7 +61,7 @@ rxTest({
   })
 
   test_that("ss=1 modeled dur/rate == ii infusion with a modeled lag stops at the lagged end (issue #1592)", {
-    for (.lag in c(3, 15)) {
+    for (.lag in c(3, 8.1, 15)) {
       for (.spec in c("dur(cen) <- 12", "rate(cen) <- 100/12")) {
         .m <- rxode2(paste0("alag(cen) <- ", .lag, "\n", .spec, "\nd/dt(cen) <- -0.1*cen"))
         .rate <- if (grepl("dur", .spec)) -2 else -1
