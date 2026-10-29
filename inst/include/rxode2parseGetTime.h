@@ -103,8 +103,9 @@ static inline int getSortedPosition(rx_solving_options_ind *ind, int raw) {
 
 // f() of the dose at record `raw` times `dose`, read as NONMEM reads it: at
 // the record's data time, with the record's covariates, wherever a lag puts
-// the record in the solve (a covariate the record has no value for is read at
-// that time)
+// the record in the solve.  A missing covariate is filled from the record's
+// neighbours in record order, and a record a dose row expands to reads that
+// row (ind->doseRow).
 static inline double getAmtAtRecord(rx_solving_options_ind *ind, int raw,
                                     double dose, double *yp) {
   int oldRec = ind->recCovPos;
