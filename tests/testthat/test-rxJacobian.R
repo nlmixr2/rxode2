@@ -184,6 +184,13 @@ rxTest({
       .msg("center"),
       fixed = TRUE
     )
+    # nor is a suppressed (~) calculated variable it names
+    .cpTxt <- paste0("cp ~ center/exp(THETA[2])\n", .txt)
+    expect_error(
+      .rxAdjointGradBuild(.cpTxt, c("THETA[1]", "cp"), "cp", et(amt = 100, cmt = "depot")),
+      .msg("cp"),
+      fixed = TRUE
+    )
     expect_error(.rxAdjointSolveBuild(.txt, "nope", .ev), .msg("nope"), fixed = TRUE)
     expect_error(.rxDiscreteAdjointBuild(.txt, "depot"), .msg("depot"), fixed = TRUE)
     expect_error(.rxAdjointExpand(.txt, "nope"), .msg("nope"), fixed = TRUE)

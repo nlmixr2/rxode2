@@ -649,7 +649,7 @@ rxSolveAdjoint <- function(
   ## a residual-error parameter enters through pred/errModel, not the ODE model
   .mv <- rxode2::rxModelVars(object)
   .errPars <- all.vars(parse(text = .rxSensNameSE(c(pred, as.character(unlist(errModel))))))
-  .errPars <- setdiff(.errPars, c(.mv$state, .mv$lhs))
+  .errPars <- setdiff(.errPars, c(.mv$state, .mv$lhs, .mv$slhs))
   calcSens <- .rxSensVarNames(calcSens, c(.rxParams(object, TRUE), .errPars))
   .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
   .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
