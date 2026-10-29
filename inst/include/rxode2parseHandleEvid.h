@@ -466,7 +466,8 @@ static inline void cancelRunningInfusionStops(rx_solving_options_ind *ind,
     }
     int e = -1;
     if (whI == EVIDF_INF_RATE || whI == EVIDF_INF_DUR) {
-      if (getDoseNumber(ind, l) <= 0) continue;
+      // a start with no stop record must not take a later infusion's stop
+      if (getDoseNumber(ind, l) <= 0 || isInfusionUnpaired(ind, r)) continue;
       handleInfusionGetEndOfInfusionIndex(l, &e, rx, op, ind);
     } else if (whI == EVIDF_MODEL_RATE_ON || whI == EVIDF_MODEL_DUR_ON) {
       // the modeled stop is the record right after its start
