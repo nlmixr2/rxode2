@@ -3,6 +3,11 @@
 ## Bug fixes
 
 ### Event tables
+- An `alag()` that reads a state is now evaluated with the state at the
+  dose's own time whether or not another record sits at that time.  Without
+  such a record the lag used the initial state: with
+  `alag(depot) <- lg + 0.01*center`, a second dose landed where `center = 0`
+  put it, and `depot(3)` was 31.08 rather than 66.14.
 - A simulation that stops with an error no longer leaves its draws for the
   next solve.  The residuals, simulated thetas and per-study draws it had
   made stayed behind, and the next solve without residuals of its own used
