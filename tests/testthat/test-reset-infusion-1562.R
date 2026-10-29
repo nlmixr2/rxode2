@@ -242,4 +242,33 @@ rxTest({
       expect_equal(s$depot[s$time > 5], 10 * exp(-1.2 * (c(6, 8) - 5)), tolerance = 1e-5)
     }
   })
+
+  test_that("event sensitivities follow a compartment turned off mid-infusion", {
+    skip_on_cran()
+    txt <- "d/dt(depot) <- -ka * depot\nd/dt(center) <- ka * depot - k * center\nrate(depot) <- r"
+    ms <- rxode2(txt, calcSens = c("r", "ka"), eventSens = "jump")
+    mb <- rxode2(txt)
+    p <- c(ka = 1.2, k = 0.2, r = 25)
+    o <- c(1, 1.5, 3, 4.5, 6, 8)
+    d <- data.frame(
+      id = 1,
+      time = c(0, 2, o),
+      evid = c(1, 2, rep(0, length(o))),
+      cmt = c("depot", "-depot", rep("depot", length(o))),
+      amt = c(100, rep(0, length(o) + 1)),
+      rate = c(-1, rep(0, length(o) + 1))
+    )
+    d <- d[order(d$time), ]
+    s <- as.data.frame(rxSolve(ms, d, p))
+    for (pn in c("r", "ka")) {
+      h <- p[[pn]] * 1e-6
+      pp <- pm <- p
+      pp[pn] <- pp[pn] + h
+      pm[pn] <- pm[pn] - h
+      for (st in c("depot", "center")) {
+        fd <- (rxSolve(mb, d, pp)[[st]] - rxSolve(mb, d, pm)[[st]]) / (2 * h)
+        expect_equal(s[[sprintf("rx__sens_%s_BY_%s__", st, pn)]], fd, tolerance = 1e-4)
+      }
+    }
+  })
 })
