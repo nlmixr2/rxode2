@@ -178,6 +178,9 @@
   with `f()` now solves without an `alag()`; it stopped with `SS=2 & Modeled
   F does not work` although the same regimen with `alag() <- 0` solved and
   matched explicit dosing (#1602).
+- The off phase of a steady-state infusion, and every phase of one longer
+  than `ii`, now uses the covariates of the steady-state dose record, as
+  NONMEM does; it used the covariates of a later record (#1589).
 
 ## New features
 
