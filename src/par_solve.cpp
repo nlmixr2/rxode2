@@ -3094,13 +3094,29 @@ extern "C" void handleSSbolus(int *neq,
   int isSsLag = ind->wh0 == EVID0_SS20 || ind->wh0 == EVID0_SS0;
   int minSS = max2(op->minSS - isSsLag, 1);
   int maxSS = max2(op->maxSS - isSsLag, minSS);
-  // a fixed dose count (minSS == maxSS) iterates linCmt() too (#1500)
-  if (minSS < maxSS &&
-      handleSSbolusLinear(neq, BadDose, InfusionRate, dose, yp, xout, id, i,
-                          nx, istate, op, ind, u_inis, ctx, xout2, xp2,
-                          curIi, adjustEvidBolusLag)) {
-    ind->ssTime = NA_REAL;
-    return;
+  // linCmt() iterates a fixed dose count (minSS == maxSS) and stops at minSS
+  // doses when converged there, as the ODE solve does; otherwise its steady
+  // state is exact (#1500)
+  if (minSS < maxSS && canHandleSSLinear(op, ind, ind->ix[*i])) {
+    std::vector<double> y0(yp, yp + neq[0]);
+    double xp20 = *xp2, xout20 = *xout2;
+    handleSSbolusIterate(neq, BadDose, InfusionRate, dose, yp, xout, id, i, nx,
+                         istate, op, ind, u_inis, ctx, xout2, xp2, curIi,
+                         canBreak, adjustEvidBolusLag, minSS, minSS);
+    if (*canBreak) {
+      ind->ssTime = NA_REAL;
+      return;
+    }
+    std::copy(y0.begin(), y0.end(), yp);
+    *xp2 = xp20; *xout2 = xout20; *istate = 1;
+    if (handleSSbolusLinear(neq, BadDose, InfusionRate, dose, yp, xout, id, i,
+                            nx, istate, op, ind, u_inis, ctx, xout2, xp2,
+                            curIi, adjustEvidBolusLag)) {
+      ind->ssTime = NA_REAL;
+      return;
+    }
+    std::copy(y0.begin(), y0.end(), yp);
+    *xp2 = xp20; *xout2 = xout20; *istate = 1;
   }
   handleSSbolusIterate(neq, BadDose, InfusionRate, dose, yp, xout, id, i, nx,
                        istate, op, ind, u_inis, ctx, xout2, xp2, curIi,
@@ -3373,13 +3389,30 @@ extern "C" void solveSSinf(int *neq,
   // nAfter that handleSS() gives after this loop
   int minSS = max2(op->minSS - nAfter, 1);
   int maxSS = max2(op->maxSS - nAfter, minSS);
-  // a fixed dose count (minSS == maxSS) iterates linCmt() too (#1500)
-  if (minSS < maxSS &&
-      solveSSinfLinear(neq, BadDose, InfusionRate, dose, yp, xout, id, i, nx, istate,
-                       op, ind, u_inis, ctx, xout2, xp2, infBixds, bi, infEixds,
-                       ei, curIi, dur, dur2, canBreak, ssStart)) {
-    ind->ssTime = NA_REAL;
-    return;
+  // linCmt() iterates a fixed dose count (minSS == maxSS) and stops at minSS
+  // doses when converged there, as the ODE solve does; otherwise its steady
+  // state is exact (#1500)
+  if (minSS < maxSS && canHandleSSLinear(op, ind, ind->idose[*infBixds])) {
+    std::vector<double> y0(yp, yp + neq[0]);
+    double xp20 = *xp2, xout20 = *xout2;
+    solveSSinfIterate(neq, BadDose, InfusionRate, dose, yp, xout, id, i, nx, istate,
+                      op, ind, u_inis, ctx, xout2, xp2, infBixds, bi, infEixds,
+                      ei, curIi, dur, dur2, canBreak, ssStart,
+                      ssStop, minSS, minSS);
+    if (*canBreak) {
+      ind->ssTime = NA_REAL;
+      return;
+    }
+    std::copy(y0.begin(), y0.end(), yp);
+    *xp2 = xp20; *xout2 = xout20;
+    if (solveSSinfLinear(neq, BadDose, InfusionRate, dose, yp, xout, id, i, nx, istate,
+                         op, ind, u_inis, ctx, xout2, xp2, infBixds, bi, infEixds,
+                         ei, curIi, dur, dur2, canBreak, ssStart)) {
+      ind->ssTime = NA_REAL;
+      return;
+    }
+    std::copy(y0.begin(), y0.end(), yp);
+    *xp2 = xp20; *xout2 = xout20;
   }
   solveSSinfIterate(neq, BadDose, InfusionRate, dose, yp, xout, id, i, nx, istate,
                     op, ind, u_inis, ctx, xout2, xp2, infBixds, bi, infEixds,
