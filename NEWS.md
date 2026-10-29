@@ -1,5 +1,11 @@
 # rxode2 (development version)
 
+## New features
+
+- `etTrans()` gains `tieOrder = "data"`, which keeps records of a subject
+  that share a time in the order of the rows in the data, the way NONMEM
+  processes them, instead of resets, then doses, then observations (#1593).
+
 ## Bug fixes
 
 ### Event tables
