@@ -41,4 +41,31 @@ rxTest({
     s <- rxSolve(mod, et(c(3, 4, 5.5, 8, 10)))
     expect_equal(s$depot, c(0, 40 * .f(3), rep(100 * .f(3), 3)), tolerance = 1e-6)
   })
+
+  test_that("forward sensitivities carry a fixed-duration infusion's f() (rxode2#1568)", {
+    # f(depot) depends on eta_f directly and on eta_cl through central; the
+    # sensitivity forcing is read at the start and removed at the stop
+    .mod <- "
+      ka <- exp(tka); cl <- exp(tcl + eta_cl); v <- exp(tv)
+      f(depot) <- 1 / (1 + central / (5 * exp(eta_f)))
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "
+    th <- c(tka = log(0.5), tcl = 0, tv = log(10), eta_f = 0, eta_cl = 0)
+    e <- et(time = 0, amt = 30, cmt = "central") |>
+      et(time = 3, amt = 100, dur = 2.5, cmt = "depot") |>
+      et(seq(0.13, 14, 0.41))
+    mj <- rxode2(.mod, calcSens = c("eta_f", "eta_cl"))
+    mfd <- rxode2(.mod, calcSens = c("eta_f", "eta_cl"), eventSens = "fd")
+    sj <- rxSolve(mj, e, th)
+    h <- 1e-4
+    for (.sp in c("eta_f", "eta_cl")) {
+      pp <- th
+      pp[.sp] <- pp[.sp] + h
+      pm <- th
+      pm[.sp] <- pm[.sp] - h
+      fd <- (rxSolve(mfd, e, pp)$central - rxSolve(mfd, e, pm)$central) / (2 * h)
+      expect_equal(sj[[paste0("rx__sens_central_BY_", .sp, "__")]], fd, tolerance = 1e-4, info = .sp)
+    }
+  })
 })
