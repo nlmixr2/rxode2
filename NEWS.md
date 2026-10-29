@@ -221,9 +221,7 @@
   `sdirk43s`, `gauss6s`, `iiic6s`, `geng5s` and `backwardEulers`.  They
   returned `NaN` (`ros4` finite values) with no warning; the subject is now
   `NA`, with the "could not solve" warning and its reason, as the other
-  methods give it.  This includes a state that starts as `NA` or infinite,
-  even one no equation uses (`spare(0) <- NA`), which these methods used to
-  solve around.
+  methods give it.
 
 ### linCmt() models
 
