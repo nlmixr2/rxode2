@@ -7120,8 +7120,17 @@ struct rk4s_rec {
   int composite = 0;
   std::vector<int> method;   // per-step method code (rksGetTableau input)
   std::vector<size_t> aOff, JOff, kOff;  // per-step offsets into a/J/k (SIZE_MAX if none)
+  int ni = 2;                // steady-state period: newind of the record whose ss solve it is
   void clear() { h.clear(); t0.clear(); a.clear(); J.clear(); k.clear(); method.clear(); aOff.clear(); JOff.clear(); kOff.clear(); }
   size_t nStep() const { return h.size(); }
+};
+
+// Sets newind for a scope, as the forward pass saw it for the evaluation, and
+// restores it on exit.
+struct rk4sNewindScope {
+  rx_solving_options_ind *ind; int ni0;
+  rk4sNewindScope(rx_solving_options_ind *ind_, int ni) : ind(ind_), ni0(ind_->_newind) { ind->_newind = ni; }
+  ~rk4sNewindScope() { ind->_newind = ni0; }
 };
 
 // DDE history: record one accepted step [t0, t0+dt] as a cubic-Hermite dense
@@ -7824,6 +7833,7 @@ struct rk4sSsIc {
     // per-stage FX/FP table above.
     ssN = (ssRec ? ssRec->nStep() : 0);
     if (ssN > 0) {
+      rk4sNewindScope _ni(ind, ssRec->ni);
       if (stiff()) {
         precomputeStiff(cSub, ind, op, ssRec, ssStiff, Ascratch);
       } else {
@@ -8296,6 +8306,7 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
   std::vector<std::vector<double> > ssFXs, ssFPs;
   size_t ssN = (ssRec ? ssRec->nStep() : 0);
   if (ssN > 0) {
+    rk4sNewindScope _ni(ind, ssRec->ni);
     ssFXs.resize(sN); ssFPs.resize(sN);
     for (int i = 0; i < sN; ++i) { ssFXs[i].resize(ssN * nfx); ssFPs[i].resize(ssN * nfp); }
     for (size_t n = 0; n < ssN; ++n) {
@@ -8319,7 +8330,10 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
     dRateSs.assign((size_t)nBase * np, 0.0);
     for (int _i = 0; _i < eff; ++_i) Ascratch[_i] = 0.0;
     for (int _i = 0; _i < nBase; ++_i) Ascratch[_i] = ssRec->a[_i];   // trough
-    calc_lhs(cSub, ssRec->t0[0], Ascratch.data(), ind->lhs);
+    {
+      rk4sNewindScope _ni(ind, ssRec->ni);
+      calc_lhs(cSub, ssRec->t0[0], Ascratch.data(), ind->lhs);
+    }
     for (int _i = 0; _i < nBase * np; ++_i) dRateSs[_i] = ind->lhs[op->adjDrateOff + _i];
     ssDurMult = (ssMdl == 2) ? ssMdlAmt : 1.0;             // dur: amt, rate: 1
     ssOffFac = -(ssMdlAmt / ssMdlR) * ssDurMult;
@@ -8837,6 +8851,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           _adjSS2 = 0; _adjSSinfKind = 0;
         } else if (_ssPendCmt >= 0) {
           ssActive = true; ssCmt = _ssPendCmt; ssAmt = _ssPendAmt; ssIi = _ssPendIi;
+          ssRec.ni = ind->_newind;
           ssTrough.assign(yp, yp + eff);
           ss1Steps.push_back(rec.nStep());   // every ss=1 event step (0 = window start)
           _ssPendCmt = -1;
@@ -8846,6 +8861,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           ssActive = true; ssInf = true; ssInfCmt = _adjSSinfCmt;
           ssInfDur = _adjSSinfDur; ssInfDur2 = _adjSSinfDur2; ssInfRate = _adjSSinfRate; ssInfRate2 = _adjSSinfRate2;
           ssInfModeled = _adjSSinfModeled; ssInfAmt = _adjSSinfAmt; ssInfAmtRaw = _adjSSinfAmtRaw;
+          ssRec.ni = ind->_newind;
           ssTrough.assign(yp, yp + eff);
           ss1Steps.push_back(rec.nStep());   // window-start ss=1 infusion (step 0)
           _adjSSinfKind = 0;
@@ -8900,6 +8916,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   // untouched; only for the table-driven explicit path (not composite/implicit/
   // Rosenbrock, which the ss IC term does not yet cover).
   if (adj && ssActive && !localBadSolve && ind->err == 0) {
+    rk4sNewindScope _ni(ind, ssRec.ni);
     std::vector<double> ytmp = ssTrough, ssScratch;
     if (ssInf) {
       // Two-phase steady-state infusion period from yp*: constant rate ssInfRate
