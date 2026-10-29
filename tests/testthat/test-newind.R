@@ -99,6 +99,10 @@ rxTest({
     })
   }
 
-  for (.m in .newindMethods) .newindCheck(.m)
-  for (.m in .newindDense) .newindCheck(.m, dense = TRUE)
+  for (.m in .newindMethods) {
+    .newindCheck(.m)
+  }
+  for (.m in .newindDense) {
+    .newindCheck(.m, dense = TRUE)
+  }
 })
