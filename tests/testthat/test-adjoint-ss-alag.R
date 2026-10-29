@@ -21,7 +21,7 @@ rxTest({
   .chk <- function(scen, meths) {
     for (.nm in names(scen)) {
       .k <- scen[[.nm]]
-      .ref <- .adjFd(.k$txt, .k$ev, .k$p, method = "liblsoda", maxsteps = 1e6)
+      .ref <- .adjFd(.k$txt, .k$ev, .k$p, method = "liblsoda", maxsteps = 1e6, layout = 0.05)
       for (.m in meths) {
         .a <- rxSolveAdjointRk4(.k$txt, .k$ev,
           params = .k$p, calcSens = names(.k$p), method = .m,
@@ -124,5 +124,65 @@ rxTest({
         ev = .first |> et(time = 7, amt = 40, rate = 20, ii = 8, ss = 2, cmt = "center") |> et(c(1, 2.2, 4, 6.4, 8, 10, 14, 20))),
       lagF = list(txt = .txtMF, p = .pMF, ev = .first |> et(time = 7, amt = 30, ii = 8, ss = 2, cmt = "center") |> et(.o2))
     ), c("rk4s", "ros4s", "radauiia5s", "dop853s", "dop853s+ros4s"))
+  })
+
+  test_that("an ss = 1 fixed infusion with f() and a lag of whole periods gives the right sensitivities", {
+    # a lag modulo ii of 0 starts the period's infusion at the record itself.
+    # Observations stay before ii: the forward solve does not start the record's
+    # own lagged infusion at a lag of k*ii (k >= 1)
+    .txtF0 <- paste0(.base, "\nf(depot) <- fd\nalag(depot) <- 0")
+    .txtFc <- paste0(.base, "\nf(depot) <- fd\nalag(depot) <- lagc")
+    .p0F <- c(.p0, fd = 0.8)
+    .o0 <- c(0.5, 1, 2, 2.6, 4, 8, 11.5)
+    .dur <- .ss(amt = 100, dur = 3) |> et(.o0)
+    .rate <- .ss(amt = 100, rate = 50) |> et(.o0)
+    .cov <- function(ev) {
+      do.call(rbind, lapply(seq_along(c(0, 0.7, 12)), function(.id) {
+        .d <- as.data.frame(ev); .d$id <- .id; .d$lagc <- c(0, 0.7, 12)[.id]; .d
+      }))
+    }
+    .scen <- list(
+      durConst0 = list(txt = .txtF0, p = .p0F, ev = .dur),
+      rateConst0 = list(txt = .txtF0, p = .p0F, ev = .rate),
+      durCov = list(txt = .txtFc, p = .p0F, ev = .cov(.dur)),
+      rateCov = list(txt = .txtFc, p = .p0F, ev = .cov(.rate))
+    )
+    for (.L in c(12, 24, 36)) {
+      .scen[[paste0("dur", .L)]] <- list(txt = .txtMF, p = c(.pMF[names(.pMF) != "tlag"], tlag = .L), ev = .dur)
+      .scen[[paste0("rate", .L)]] <- list(txt = .txtMF, p = c(.pMF[names(.pMF) != "tlag"], tlag = .L), ev = .rate)
+    }
+    .chk(.scen, .meths)
+    # a zero lag gives the unlagged sensitivities
+    for (.m in .meths) {
+      for (.ev in list(.dur, .rate)) {
+        .a0 <- rxSolveAdjointRk4(.txtF0, .ev, params = .p0F, calcSens = names(.p0F), method = .m,
+          atol = 1e-10, rtol = 1e-10, hmin = if (.m == "rk4s") 0.001 else 0, ssAtol = 1e-13, ssRtol = 1e-13, maxSS = 50000)
+        .a <- rxSolveAdjointRk4(paste0(.base, "\nf(depot) <- fd"), .ev, params = .p0F, calcSens = names(.p0F), method = .m,
+          atol = 1e-10, rtol = 1e-10, hmin = if (.m == "rk4s") 0.001 else 0, ssAtol = 1e-13, ssRtol = 1e-13, maxSS = 50000)
+        .sn <- grep("^rx__sens_", names(.a), value = TRUE)
+        expect_equal(as.matrix(.a0[, .sn]), as.matrix(.a[, .sn]), tolerance = 1e-8, label = paste("lag 0", .m))
+      }
+    }
+  })
+
+  test_that("a modeled ss = 1 or an ss = 2 infusion with a lag of whole periods gives the right sensitivities", {
+    # observations stay off the infusions' stops, which f() and rate() move
+    .oM <- c(0.5, 1, 2.2, 2.6, 4, 8, 11.5)
+    .mdl <- list()
+    for (.L in c(0, 12, 24)) {
+      .lag <- if (.L == 0) "0" else "tlag"
+      .pL <- if (.L == 0) c(.p0, fd = 0.8) else c(.p0, fd = 0.8, tlag = .L)
+      .mdl[[paste0("rate", .L)]] <- list(txt = paste0(.base, "\nf(depot) <- fd\nrate(depot) <- rr\nalag(depot) <- ", .lag),
+        p = c(.pL, rr = 40), ev = .ss(amt = 100, rate = -1) |> et(.oM))
+      .mdl[[paste0("dur", .L)]] <- list(txt = paste0(.base, "\nf(depot) <- fd\ndur(depot) <- dd\nalag(depot) <- ", .lag),
+        p = c(.pL, dd = 2.5), ev = .ss(amt = 100, rate = -2) |> et(.oM))
+    }
+    .chk(.mdl, c("rk4s", "dop853s"))
+    .o2 <- c(1, 2.2, 4.3, 6.4, 9, 13.7)
+    .i2 <- et(amt = 100, cmt = "depot") |> et(time = 3, amt = 50, rate = 20, ii = 12, ss = 2, cmt = "depot") |> et(.o2)
+    .ss2 <- list(const0 = list(txt = paste0(.base, "\nf(depot) <- fd\nalag(depot) <- 0"), p = c(.p0, fd = 0.8), ev = .i2))
+    # 11: the infusion of the period before is still on at the record
+    for (.L in c(12, 24, 11)) .ss2[[paste0("tlag", .L)]] <- list(txt = .txtMF, p = c(.p0, tlag = .L, fd = 0.8), ev = .i2)
+    .chk(.ss2, c("rk4s", "ros4s", "radauiia5s", "dop853s", "dop853s+ros4s"))
   })
 })

@@ -32,12 +32,23 @@ rxTest({
       .mod <- if (.rxAdjointMethodStiff(.m)) .pushModelStiff else .pushModel
       # first-order (Euler) and second-order (midpoint, Heun) fixed steps
       # carry their truncation error at this step size
-      .tol <- if (.m %in% c("eulers", "backwardEulers")) 0.05 else if (.m %in% c("midpoints", "heuns")) 5e-5 else 5e-7
+      .tol <- if (.m %in% c("eulers", "backwardEulers")) {
+        0.05
+      } else if (.m %in% c("midpoints", "heuns")) {
+        5e-5
+      } else {
+        5e-7
+      }
       for (.rep in 1:2) {
         .s <- as.data.frame(rxSolve(
-          .mod, et(.tt),
-          params = c(k = 1), method = .m, cores = 1,
-          atol = 1e-10, rtol = 1e-10, hmin = 0.001
+          .mod,
+          et(.tt),
+          params = c(k = 1),
+          method = .m,
+          cores = 1,
+          atol = 1e-10,
+          rtol = 1e-10,
+          hmin = 0.001
         ))
         expect_lt(max(abs(.s$y - .yKnown)), .tol, label = paste(.m, "y"))
         expect_lt(max(abs(.s$rx__sens_y_BY_k__ - .sKnown)), .tol, label = paste(.m, "sens"))
@@ -54,8 +65,16 @@ rxTest({
     .sk <- vapply(.tt, function(t) sum(ifelse(t > .tp, -50 * (t - .tp) * exp(-(t - .tp)), 0)), numeric(1))
     for (.m in c("rk4s", "dop853s", "liblsodaadj", "abs")) {
       for (.cores in c(1L, 2L, 4L)) {
-        .s <- as.data.frame(rxSolve(.mod, .ev, params = c(k = 1), method = .m, cores = .cores,
-          atol = 1e-10, rtol = 1e-10, hmin = 0.001))
+        .s <- as.data.frame(rxSolve(
+          .mod,
+          .ev,
+          params = c(k = 1),
+          method = .m,
+          cores = .cores,
+          atol = 1e-10,
+          rtol = 1e-10,
+          hmin = 0.001
+        ))
         for (.id in 1:4) {
           .si <- .s[.s$id == .id, ]
           expect_lt(max(abs(.si$y - .y)), 5e-7, label = paste(.m, .cores, .id, "y"))

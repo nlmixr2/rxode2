@@ -29,7 +29,7 @@
 #' }
 #' rxParams(pk)
 #' # pipe the parameter values into a solve
-#' rxode2(pk)$simulationModel |>
+#' pk |>
 #'   rxParams(params = c(ka = 1.2, cl = 3.5, v = 25)) |>
 #'   et(amt = 100) |>
 #'   et(0:24) |>
@@ -114,6 +114,14 @@ rxParams.rxode2 <- function(
     return(.ret)
   }
 }
+
+#' @rdname rxParams
+#' @export
+rxParams.function <- rxParams.rxode2
+
+#' @rdname rxParams
+#' @export
+rxParams.rxUi <- rxParams.rxode2
 
 #' @rdname rxParams
 #' @export
