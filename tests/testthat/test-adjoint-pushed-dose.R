@@ -32,12 +32,23 @@ rxTest({
       .mod <- if (.rxAdjointMethodStiff(.m)) .pushModelStiff else .pushModel
       # first-order (Euler) and second-order (midpoint, Heun) fixed steps
       # carry their truncation error at this step size
-      .tol <- if (.m %in% c("eulers", "backwardEulers")) 0.05 else if (.m %in% c("midpoints", "heuns")) 5e-5 else 5e-7
+      .tol <- if (.m %in% c("eulers", "backwardEulers")) {
+        0.05
+      } else if (.m %in% c("midpoints", "heuns")) {
+        5e-5
+      } else {
+        5e-7
+      }
       for (.rep in 1:2) {
         .s <- as.data.frame(rxSolve(
-          .mod, et(.tt),
-          params = c(k = 1), method = .m, cores = 1,
-          atol = 1e-10, rtol = 1e-10, hmin = 0.001
+          .mod,
+          et(.tt),
+          params = c(k = 1),
+          method = .m,
+          cores = 1,
+          atol = 1e-10,
+          rtol = 1e-10,
+          hmin = 0.001
         ))
         expect_lt(max(abs(.s$y - .yKnown)), .tol, label = paste(.m, "y"))
         expect_lt(max(abs(.s$rx__sens_y_BY_k__ - .sKnown)), .tol, label = paste(.m, "sens"))
