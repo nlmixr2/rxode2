@@ -3,22 +3,25 @@
 ## Bug fixes
 
 ### Event tables
-- `alag()` reads a dose's covariates by NONMEM's rule.
-  - A dose row's missing covariate is filled the way `f()` fills it, from
-    the neighbouring records: under `locf` from the nearest earlier record
-    with a value (or the nearest later one when none is earlier), under
-    `nocb` from the nearest later one (or earlier), and under `midpoint` and
-    `linear` in the direction `naInterpolation` gives.  With covariates on
-    the observation rows only, an `alag()` on a covariate used to stop the
-    solve with "'alag(depot)' and maybe more items produce NA".
+- A dose's `alag()`, and every read of a record's covariates, follow
+  NONMEM's rule.
+  - A record's missing covariate is filled from the records next to it in
+    the data, wherever a lag moves the records in the solve: under `locf`
+    from the nearest earlier record with a value (or the nearest later one
+    when none is earlier), under `nocb` from the nearest later one (or
+    earlier), and under `midpoint` and `linear` in the direction
+    `naInterpolation` gives.  With covariates on the observation rows only,
+    an `alag()` on a covariate used to stop the solve with
+    "'alag(depot)' and maybe more items produce NA".
   - An `addl` repeat that does not keep its covariates
     (`addlKeepsCov = FALSE`) evaluates its `alag()` with a `nocb`
     covariate's value on the dose record it repeats, as NONMEM's `ALAG1`
-    does, while its `f()` keeps the record that ends its interval, as
-    NONMEM's `F1` does.  Its lag used to come from whatever record the
-    sort happened to read, and from the next record when another record
-    shared the repeat's time (#1582).  Under `locf`, and with
-    `addlKeepsCov = TRUE`, nothing changes.
+    does, and the event sensitivities of that `alag()` read the same
+    record.  Its `f()` reads the first record at or after its time, as
+    NONMEM's `F1` does, also when its lag lands it after another record.
+    Its lag used to come from whatever record the sort happened to read,
+    and from the next record when another record shared the repeat's time
+    (#1582).
 - An infusion's `f()`, `alag()`, `rate()` and `dur()` are now read at its
   start's record, as NONMEM reads them: `f()` at the record's time with the
   record's covariates, also when `alag()` moves the infusion and in steady
