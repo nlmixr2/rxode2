@@ -1168,9 +1168,9 @@ this many doses are given and \code{ssAtol}/\code{ssRtol} are met.  It is raised
 to the fewest doses the regimen needs (2 with a lag time, more with
 overlapping infusions or a lag longer than \code{ii}).  \code{minSS = maxSS = n}
 gives exactly the state after \code{n} prior doses (Monolix
-\code{nbdoses = n}).  \code{linCmt()} steady states are exact, and a constant
-infusion (\code{ii = 0}), which has no doses, takes at least 5 and up to
-\code{max(maxSS, 10000)} convergence steps.}
+\code{nbdoses = n}), for \code{linCmt()} models too; otherwise \code{linCmt()} steady
+states are exact.  A constant infusion (\code{ii = 0}), which has no doses,
+takes at least 5 and up to \code{max(maxSS, 10000)} convergence steps.}
 
 \item{maxSS}{Maximum number of doses given before a steady-state dose (at
 least \code{minSS})}
