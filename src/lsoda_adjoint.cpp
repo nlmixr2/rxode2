@@ -809,7 +809,16 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     if (!isObs(evI)) continue;
     double ti = ind->timeThread[ind->ix[i]];
     int segObs = 0;
-    for (int sgi = (int)lsAdjSegs.size() - 1; sgi >= 0; --sgi) { if (lsAdjSegs[sgi].t0 <= ti + rxAdjTimeTol(lsAdjSegs[sgi].t0, ti)) { segObs = sgi; break; } }
+    for (int sgi = (int)lsAdjSegs.size() - 1; sgi >= 0; --sgi) {
+      const lsAdjSeg &Sg = lsAdjSegs[sgi];
+      if (Sg.t0 > ti + rxAdjTimeTol(Sg.t0, ti)) continue;
+      // a segment opened at the observation's time only by records stored after
+      // it (a dose the model pushed there) starts after the observation
+      bool after = sgi > 0 && rxAdjSameTime(Sg.t0, ti) && !Sg.ev.empty();
+      for (size_t k = 0; after && k < Sg.ev.size(); ++k) after = Sg.ev[k].rec > i;
+      if (after) continue;
+      segObs = sgi; break;
+    }
     double *out = getSolve(i);
     // A reset recorded before this observation but after its segment opened
     // means liblsoda took no step since the reset (e.g. an all-zero state),

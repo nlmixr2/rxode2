@@ -264,10 +264,11 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
         std::fill(endCostate.begin(), endCostate.end(), 0.0); endCostate[k] = 1.0;
         std::fill(sfAcc.begin(), sfAcc.end(), 0.0);
         // an observation at an event time reads the state after the jumps recorded
-        // before it: those that open the next call, or, after the last call, the
-        // ones at the last record time
+        // before it (not a dose the model pushed there after it): those among the
+        // ones opening the next call, or, after the last call, at the last record time
         if (cObs + 1 < (int)nCalls && rxAdjSameTime(abAdjCalls[cObs + 1].t0, ti))
-          abJumpT(callEv[cObs + 1], abAdjCalls[cObs + 1].t0, abCallY0(cObs + 1).data(), endCostate.data(), mu.data());
+          abJumpT(abEventsAt(ti, i, true, abCallY0(cObs + 1).data()), abAdjCalls[cObs + 1].t0,
+                  abCallY0(cObs + 1).data(), endCostate.data(), mu.data());
         else
           abJumpT(abEventsAt(ti, i, true, out), ti, out, endCostate.data(), mu.data());
         for (int c = cObs; c >= 0; --c) {
