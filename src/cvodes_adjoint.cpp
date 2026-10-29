@@ -651,7 +651,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     double wC = NV_Ith_S(B, E.cmt);
     rxAdjJumpTerm(E.rec, E.cmt, NV_DATA_S(B), NV_DATA_S(B) + nBase, nBase, np, dlp, dFp, dfx);
     if (E.type == 5) NV_Ith_S(B, E.cmt) = 0.0;
-    else NV_Ith_S(B, E.cmt) *= E.factor;
+    else NV_Ith_S(B, E.cmt) *= rxAdjJumpFactor(E.rec, E.factor);
     if (dfx) for (int j = 0; j < nBase; ++j) NV_Ith_S(B, j) += wC * dfx[j];
   };
   for (int oi = (int)obsT.size() - 1; bok && oi >= 0; --oi) {

@@ -427,7 +427,7 @@ static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
       break;
     case 6:
       rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlb, dFb, dfx);
-      lamR[d.cmt] *= d.amt;
+      lamR[d.cmt] *= rxAdjJumpFactor(d.rec, d.amt);
       if (dfx) for (int j = 0; j < nBase; ++j) lamR[j] += wC * dfx[j];
       break;
     case 9:
