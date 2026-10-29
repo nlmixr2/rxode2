@@ -278,6 +278,18 @@
   string-valued output, such as an unconditional string and one assigned
   in `if`/`else`.
 
+- `method = "cvodesadj"` no longer fails its backward solve, returning
+  wrong sensitivities, when two events fall at the same time.
+
+- `method = "cvodesadj"` now includes an event at an observation's time
+  (or after a reset at the same time) in that observation's sensitivities,
+  transposes same-time events in reverse of the order the forward solve
+  applied them, and evaluates each of several same-time lagged boluses at
+  its own post-dose state.  Its `alag()` lag-time sensitivity now uses the
+  exact change in the derivatives across the dose, so it is also correct
+  when the derivatives are nonlinear in the dosed compartment, and is no
+  longer dropped for a bolus lagged onto the first time.
+
 # rxode2 5.1.8
 
 ## New features
