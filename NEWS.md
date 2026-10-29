@@ -131,7 +131,8 @@
 
 - The `rk4s`-family and `liblsodaadj` adjoint sensitivities now read a
   modeled `f()` at the subject's first record with `newind == 1`, as the
-  forward solve does, instead of using the later doses' `dF/dp` for it
+  forward solve does, instead of using the later doses' `dF/dp` for it; the
+  `rk4s` family does the same for a modeled `rate()`/`dur()` infusion
   (#1526).
 
 - Forward sensitivities through `alag()`, `f()`, `rate()`, `dur()` and a
