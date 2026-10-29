@@ -48,10 +48,11 @@ struct lsAdjStep {
 // A state-jump event at a segment start, reconstructed from the event table:
 //   0 additive bolus (dPhi/dy=I) | 3 reset (y:=inits, dPhi/dy=0) | 8 ss=1 (y:=Y_ss(p),
 //   dPhi/dy=0, adds lambda^T dY_ss/dp) | 5 replace (y[cmt]:=val, row cmt 0) |
-//   6 multiply (y[cmt]*=factor, F*amt).  amt is the raw dose (modeled-F mu), amtF = F*amt,
+//   6 multiply (y[cmt]*=factor, F*amt) | 12 a fixed-dur or modeled infusion start
+//   (where a state-dependent f() window's start term applies, in the forward order).  amt is the raw dose (modeled-F mu), amtF = F*amt,
 //   the amount that lands (modeled-alag mu); rec = a bolus/replace/multiply's
 //   record index (its rxAdjJumpCap), else -1.
-struct lsAdjEv { int type, cmt; double factor, amt, amtF; int rec = -1; };
+struct lsAdjEv { int type, cmt; double factor, amt, amtF; int rec = -1; int push = -1; };   // push: its extra dose (rxAdjPushCap)
 
 struct lsAdjSeg {
   double t0, h0;              // segment start time and its initial step h0
@@ -59,22 +60,24 @@ struct lsAdjSeg {
   size_t stepBegin, stepEnd;  // [begin,end) range into lsAdjSteps
   // the events at this segment's start time (the interior events that opened it)
   std::vector<lsAdjEv> ev;   // those events in forward order (empty for seg 0 without one)
-  // Infusion duals per cmt (empty = none), summed over overlapping windows:
-  //   infDurMult  in-window forcing mu += h*durMult*dR/dp[cmt]*w[cmt] per step
-  //               (1 for rate(), F*amt for dur());
-  //   infDfMult   dF forcing weight (raw amt/dur for dur() or a fixed dur);
-  //   offFac      this segment STARTS at an infusion OFF boundary: transversality
-  //               mu += offFac*dR/dp[cmt]*lam[cmt], offFac = -F*amt/R*durMult;
-  //   offDfFac    dF off-boundary weight (raw amt for rate() or a fixed rate).
-  std::vector<double> infDurMult, infDfMult, offFac, offDfFac;
+  // Infusion duals, nBase x np (c*np+p, empty = none), summed over overlapping
+  // windows, with dR/dp and dF/dp read at each window's start record:
+  //   infG  in-window forcing mu += h*infG^T w per step (durMult*dR/dp, durMult 1
+  //         for rate() or F*amt for dur(), plus raw amt/dur*dF/dp for dur() or a
+  //         fixed dur);
+  //   offG  this segment STARTS at an infusion OFF boundary: mu += offG^T lam
+  //         (-F*amt/R*durMult*dR/dp, plus raw amt*dF/dp for rate() or a fixed rate).
+  std::vector<double> infG, offG;
   std::vector<double> infRate;  // InfusionRate[0..nBase) at segment start
   std::vector<double> lagRate;  // rate change per cmt from a lagged infusion start/stop
                                 // opening this segment -> mu += -dR*dlag/dp*lam[cmt].
 };
-// v[c] += x on a per-cmt infusion weight, allocated on first use
-static inline void lsAdjAddW(std::vector<double> &v, int nBase, int c, double x) {
-  if (v.empty()) v.assign(nBase, 0.0);
-  v[c] += x;
+// G[c*np+p] += x*row[p] on an nBase x np infusion term, allocated on first use
+static inline void lsAdjAddG(std::vector<double> &G, int nBase, int np, int c, double x,
+                             const std::vector<double> &row) {
+  if (row.empty() || x == 0.0) return;
+  if (G.empty()) G.assign((size_t)nBase * np, 0.0);
+  for (int p = 0; p < np; ++p) G[(size_t)c * np + p] += x * row[p];
 }
 
 // Thread-local recording state (serial per subject; par is P6).
@@ -146,49 +149,73 @@ static inline void lsAdjEval(int cSub, double t, const double *yBase, int nBase,
 }
 
 // Infusion-window duals per segment start, for liblsodaadj's segments and abs's
-// calls (Seg needs t0, y0, infRate and the lsAdjSeg weight vectors).  Returns
-// whether the subject has an infusion.
+// calls (Seg needs t0, y0, infRate and the lsAdjSeg weight vectors).  A window's
+// dR/dp, dF/dp and F are read at its start record, as the forward solve read them.
+// Returns whether the subject has an infusion.
 // A fixed-dur window whose f() depends on the state, over segments [seg0, seg1):
 // its rate rawRate*F(x_on) is forced with dF/dp at the start state x_on (dF, the
 // cmt row, np), and the start state gains (integral of lam_cmt over the window)
-// * row, row = rawRate*dF_cmt/dx at x_on.
-struct rxAdjSfWin { size_t seg0, seg1; int cmt; double raw; std::vector<double> dF, row; };
+// * row, row = rawRate*dF_cmt/dx at x_on.  A lagged start reads x_on later by the
+// lag, which moves it by fPre (the field just before the start): mu += dlag/dp *
+// (that integral) * (row . fPre), dlag the cmt's d(alag)/dp row (both empty
+// without a modeled alag()).  A modeled window (dF empty: its dF/dp forcing is in
+// infG) has row = amt/dur * dF_cmt/dx for dur(), and, for rate() (atOff), row =
+// amt * dF_cmt/dx weighted by lam_cmt at its off boundary (segment seg1), since
+// its stop t_on + F*amt/R moves with x_on.
+struct rxAdjSfWin { size_t seg0, seg1; int cmt, rec; double raw; std::vector<double> dF, row, fPre, dlag;
+                    bool atOff = false; };
 
 // Records a fixed-dur window as an rxAdjSfWin when its f() depends on the state
 // (start state y0 at t0, record rec); false otherwise, for the plain dF forcing.
 static inline bool rxAdjSfWinAdd(rx_solving_options *op, rx_solving_options_ind *ind, int cSub, int nBase,
                                  int eff, double t0, const double *y0, size_t seg0, size_t seg1, int c,
-                                 double raw, int rec, std::vector<rxAdjSfWin> *sfw) {
+                                 double raw, int rec, std::vector<rxAdjSfWin> *sfw,
+                                 bool mdl = false, bool atOff = false) {
   if (sfw == NULL || op->adjDfxOff < 0 || op->adjDfOff < 0 || cSub < 0) return false;
   // the state the start record read F at (before later same-time events), else y0
   const rxAdjJumpCap *cap = rec >= 0 ? rxAdjJumpFind(rec) : NULL;
   if (cap != NULL && cap->kind == 7 && !cap->yPre.empty()) y0 = cap->yPre.data();
-  std::vector<double> A(eff, 0.0);
-  for (int b = 0; b < nBase; ++b) A[b] = y0[b];
-  rk4sLhsRec(ind, cSub, rec, t0, A.data());
+  std::vector<double> _dR, _dF;
+  double f = rxAdjRecRows(op, ind, cSub, eff, rec, t0, y0, c, _dR, _dF);   // leaves ind->lhs at x_on
   bool dep = false;
   for (int j = 0; j < nBase; ++j) dep = dep || ind->lhs[op->adjDfxOff + c * nBase + j] != 0.0;
   if (!dep) return false;
   int np = op->adjNp;
-  rxAdjSfWin W; W.seg0 = seg0; W.seg1 = seg1; W.cmt = c; W.raw = raw;
-  W.dF.assign(ind->lhs + op->adjDfOff + c * np, ind->lhs + op->adjDfOff + (c + 1) * np);
+  rxAdjSfWin W; W.seg0 = seg0; W.seg1 = seg1; W.cmt = c; W.rec = rec; W.raw = raw; W.atOff = atOff;
+  if (!mdl) W.dF = _dF;
   W.row.resize(nBase);
   for (int j = 0; j < nBase; ++j) W.row[j] = raw * ind->lhs[op->adjDfxOff + c * nBase + j];
+  // the capture's field is taken after the start set its rate (raw*F)
+  if (!mdl && op->adjDlagOff >= 0 && cap != NULL && cap->kind == 7 && (int)cap->fPre.size() == nBase) {
+    W.fPre = cap->fPre;
+    W.fPre[c] -= raw * f;
+    W.dlag.assign(ind->lhs + op->adjDlagOff + c * np, ind->lhs + op->adjDlagOff + (c + 1) * np);
+  }
   sfw->push_back(W);
   return true;
 }
 
+// mu += dlag/dp * acc * (row . fPre): a lagged state-dependent window's start
+// term, acc the window's integral of lam_cmt
+static inline void rxAdjSfWinLag(const rxAdjSfWin &W, double acc, double *mu, int nBase, int np) {
+  if (W.dlag.empty()) return;
+  double g = 0.0;
+  for (int j = 0; j < nBase; ++j) g += W.row[j] * W.fPre[j];
+  for (int p = 0; p < np; ++p) mu[p] += W.dlag[p] * acc * g;
+}
+
 template <class Seg>
-static bool rxAdjInfusionWindows(rx_solving_options *op, rx_solving_options_ind *ind, int nBase, int eff,
-                                 std::vector<Seg> &segs, int cSub = -1,
-                                 std::vector<rxAdjSfWin> *sfw = NULL) {
+static bool rxAdjInfusionWindows(rx_solving_options *op, rx_solving_options_ind *ind, int cSub, int nBase, int eff,
+                                 std::vector<Seg> &segs, std::vector<rxAdjSfWin> *sfw = NULL) {
+  int np = op->adjNp;
   // An infusion start/stop opening a segment changes the rate into its cmt by the
   // jump in InfusionRate across the segment boundary.  A modeled alag() moves that
   // time; a modeled F scales a fixed-dur rate (forcing rawRate*dF over the window) or
   // stretches a fixed-rate window (amtRaw*dF at its off boundary).
   if (op->adjDlagOff >= 0 || op->adjDfOff >= 0) {
-    // open fixed windows: cmt, start key, first segment, raw rate, fixed dur or rate
-    struct lsFxWin { int cmt, key; size_t seg; double raw; bool isDur; int rec; };
+    // open fixed windows: cmt, start key, first segment, raw rate, fixed dur or
+    // rate, start record, and F and its dF/dp row there
+    struct lsFxWin { int cmt, key; size_t seg; double raw; bool isDur; int rec; double f; std::vector<double> dF; };
     std::vector<lsFxWin> fxOpen;
     for (size_t sg = 0; sg < segs.size(); ++sg) {
       Seg &Sg = segs[sg];
@@ -218,13 +245,14 @@ static bool rxAdjInfusionWindows(rx_solving_options *op, rx_solving_options_ind 
           Sg.lagRate[c] = dR;
         }
         if (op->adjDfOff < 0 || (_whI != EVIDF_INF_RATE && _whI != EVIDF_INF_DUR)) continue;
-        std::vector<double> _y(eff, 0.0);
-        for (int b = 0; b < nBase; ++b) _y[b] = Sg.y0[b];
-        double f = getAmt(ind, ind->id, c, 1.0, Sg.t0, _y.data());
-        if (f == 0.0) continue;
         double raw = getDose(ind, ind->ix[i]);   // the record's raw rate (negative at a stop)
         int key = rk4sInfusionStartKey(ind, ind->ix[i]);
-        if (raw > 0.0) { fxOpen.push_back({c, key, sg, raw, _whI == EVIDF_INF_DUR, i}); continue; }
+        if (raw > 0.0) {
+          std::vector<double> _dR, _dF;
+          double f = rxAdjRecRows(op, ind, cSub, eff, i, Sg.t0, Sg.y0.data(), c, _dR, _dF);
+          if (f != 0.0) fxOpen.push_back({c, key, sg, raw, _whI == EVIDF_INF_DUR, i, f, _dF});
+          continue;
+        }
         // the window this stop closes: its own start, else the most recent one
         int wi = -1;
         for (size_t w = fxOpen.size(); w-- > 0;) {
@@ -237,9 +265,9 @@ static bool rxAdjInfusionWindows(rx_solving_options *op, rx_solving_options_ind 
         fxOpen.erase(fxOpen.begin() + wi);
         if (_whI == EVIDF_INF_DUR) {
           if (!rxAdjSfWinAdd(op, ind, cSub, nBase, eff, segs[W.seg].t0, segs[W.seg].y0.data(), W.seg, sg, c, W.raw, W.rec, sfw))
-            for (size_t s2 = W.seg; s2 < sg; ++s2) lsAdjAddW(segs[s2].infDfMult, nBase, c, W.raw);
+            for (size_t s2 = W.seg; s2 < sg; ++s2) lsAdjAddG(segs[s2].infG, nBase, np, c, W.raw, W.dF);
         } else {
-          lsAdjAddW(Sg.offDfFac, nBase, c, W.raw * (Sg.t0 - segs[W.seg].t0) / f);
+          lsAdjAddG(Sg.offG, nBase, np, c, W.raw * (Sg.t0 - segs[W.seg].t0) / W.f, W.dF);
         }
       }
     }
@@ -249,7 +277,8 @@ static bool rxAdjInfusionWindows(rx_solving_options *op, rx_solving_options_ind 
       if (fxOpen[w].isDur &&
           !rxAdjSfWinAdd(op, ind, cSub, nBase, eff, segs[fxOpen[w].seg].t0, segs[fxOpen[w].seg].y0.data(),
                          fxOpen[w].seg, segs.size(), fxOpen[w].cmt, fxOpen[w].raw, fxOpen[w].rec, sfw))
-        for (size_t s2 = fxOpen[w].seg; s2 < segs.size(); ++s2) lsAdjAddW(segs[s2].infDfMult, nBase, fxOpen[w].cmt, fxOpen[w].raw);
+        for (size_t s2 = fxOpen[w].seg; s2 < segs.size(); ++s2)
+          lsAdjAddG(segs[s2].infG, nBase, np, fxOpen[w].cmt, fxOpen[w].raw, fxOpen[w].dF);
   }
 
   // Reconstruct modeled rate()/dur() infusion windows for the dR/dp dual: pair each
@@ -286,22 +315,29 @@ static bool rxAdjInfusionWindows(rx_solving_options *op, rx_solving_options_ind 
         }
       }
       if (!R_FINITE(tOff) || tOff - tOn < 1e-12) continue;
-      std::vector<double> _y(eff, 0.0);             // F evaluated at the window's start state
+      std::vector<double> _y(eff, 0.0);             // the window's start state
       for (size_t sg = 0; sg < segs.size(); ++sg)
         if (rxAdjSameTime(segs[sg].t0, tOn)) { for (int c = 0; c < nBase; ++c) _y[c] = segs[sg].y0[c]; break; }
-      double amt = getAmt(ind, ind->id, _cmt, amtRaw, tOn, _y.data());
+      std::vector<double> _dR, _dF;
+      double amt = amtRaw * rxAdjRecRows(op, ind, cSub, eff, i, tOn, _y.data(), _cmt, _dR, _dF);
       double R = amt / (tOff - tOn);
       double durMult = isDur ? amt : 1.0;
+      size_t sgOn = segs.size(), sgOff = segs.size();
       for (size_t sg = 0; sg < segs.size(); ++sg) {
         double t0s = segs[sg].t0;
         if (t0s >= tOn - rxAdjTimeTol(t0s, tOn) && t0s < tOff - rxAdjTimeTol(t0s, tOff)) {
-          lsAdjAddW(segs[sg].infDurMult, nBase, _cmt, durMult);
-          if (isDur) lsAdjAddW(segs[sg].infDfMult, nBase, _cmt, amtRaw / (tOff - tOn));
+          if (sgOn == segs.size()) sgOn = sg;
+          lsAdjAddG(segs[sg].infG, nBase, np, _cmt, durMult, _dR);
+          if (isDur) lsAdjAddG(segs[sg].infG, nBase, np, _cmt, amtRaw / (tOff - tOn), _dF);
         } else if (rxAdjSameTime(t0s, tOff)) {
-          lsAdjAddW(segs[sg].offFac, nBase, _cmt, -(amt / R) * durMult);
-          if (!isDur) lsAdjAddW(segs[sg].offDfFac, nBase, _cmt, amtRaw);
+          sgOff = sg;
+          lsAdjAddG(segs[sg].offG, nBase, np, _cmt, -(amt / R) * durMult, _dR);
+          if (!isDur) lsAdjAddG(segs[sg].offG, nBase, np, _cmt, amtRaw, _dF);
         }
       }
+      if (sgOn < segs.size())   // a state-dependent f(): the window moves with x_on
+        rxAdjSfWinAdd(op, ind, cSub, nBase, eff, tOn, _y.data(), sgOn, sgOff, _cmt,
+                      isDur ? amtRaw / (tOff - tOn) : amtRaw, i, sfw, true, !isDur);
     }
   }
   return hasInfusion;
@@ -356,7 +392,12 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       int _wh, _cmt, _wh100, _whI, _wh0; getWh(ind->extraDoseEvid[k], &_wh, &_cmt, &_wh100, &_whI, &_wh0);
       if (_whI != 0 || _cmt < 0 || _cmt >= nBase) continue;
       double amt = ind->extraDoseDose[k];
-      evs.push_back({0, _cmt, 1.0, amt, getAmt(ind, ind->id, _cmt, amt, t, _y.data())});
+      const rxAdjPushCap *pc = rxAdjPushFind(k);
+      std::vector<double> _yp(eff, 0.0);   // F reads the pre-dose state
+      for (int c = 0; c < nBase; ++c) _yp[c] = pc ? pc->yPre[c] : _y[c];
+      lsAdjEv _e = {0, _cmt, 1.0, amt, getAmt(ind, ind->id, _cmt, amt, t, _yp.data())};
+      _e.push = k;
+      evs.push_back(_e);
     }
     for (int i = 0; i < upTo; ++i) {
       int ev = getEvid(ind, ind->ix[i]);
@@ -374,6 +415,12 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
         continue;
       }
       if (_ss1) continue;
+      if (op->adjDfxOff >= 0 && _wh0 == EVID0_REGULAR &&
+          ((_whI == EVIDF_INF_DUR && getDose(ind, ind->ix[i]) > 0) ||
+           _whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON)) {
+        evs.push_back({12, _cmt, 0.0, 0.0, 0.0, i});
+        continue;
+      }
       if (_whI == 0) {
         double amt = getDose(ind, ind->ix[i]);
         evs.push_back({0, _cmt, 1.0, amt, getAmt(ind, ind->id, _cmt, amt, t, _y.data()), i});
@@ -393,7 +440,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     lsAdjSegs[sg].ev = lsEventsAt(lsAdjSegs[sg].t0, ind->n_all_times, lsAdjSegs[sg].y0.data());
 
   std::vector<rxAdjSfWin> sfWins;   // fixed-dur windows with a state-dependent f()
-  bool hasInfusion = rxAdjInfusionWindows(op, ind, nBase, eff, lsAdjSegs, cSub, &sfWins);
+  bool hasInfusion = rxAdjInfusionWindows(op, ind, cSub, nBase, eff, lsAdjSegs, &sfWins);
   std::vector<double> sfAcc(sfWins.size(), 0.0);
 
   std::vector<double> A(eff, 0.0);
@@ -437,20 +484,16 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     for (int b = 0; b < nBase; ++b) { double s = 0; for (int a = 0; a < nBase; ++a) s += fx[a * nBase + b] * w[a]; p1[b] += h * s; }
     for (int c = 0; c < nBase; ++c) p2[c] += -w[c];
     for (int p = 0; p < np; ++p) { double s = 0; for (int a = 0; a < nBase; ++a) s += fp[a * np + p] * w[a]; mu[p] += h * s; }
-    // modeled rate()/dur() in-window forcing: inside the infusion the RHS gains +R, so
-    // F_p[cmt] gains durMult*dR/dp -> mu += h*durMult*dR/dp[cmt]*w[cmt] (lhs holds the
-    // calc_lhs at this step's y, incl. the rx__adjDrate block).
+    // in-window infusion forcing: inside the infusion the RHS gains +R, so F_p[cmt]
+    // gains dR/dp (and a dur()'s or fixed dur's F term) -> mu += h*infG^T w.
     { const lsAdjSeg &Sw = lsAdjSegs[st.seg];
-      if (op->adjDrateOff >= 0 && !Sw.infDurMult.empty()) { const double *dR = &lhs[op->adjDrateOff];
-        for (int ic = 0; ic < nBase; ++ic) { double dm = Sw.infDurMult[ic]; if (dm == 0.0) continue;
-          for (int p = 0; p < np; ++p) mu[p] += h * dm * dR[ic * np + p] * w[ic]; } }
-      if (op->adjDfOff >= 0 && !Sw.infDfMult.empty()) { const double *dF = &lhs[op->adjDfOff];
-        for (int ic = 0; ic < nBase; ++ic) { double dfm = Sw.infDfMult[ic]; if (dfm == 0.0) continue;
-          for (int p = 0; p < np; ++p) mu[p] += h * dfm * dF[ic * np + p] * w[ic]; } }
+      if (!Sw.infG.empty())
+        for (int ic = 0; ic < nBase; ++ic)
+          for (int p = 0; p < np; ++p) mu[p] += h * Sw.infG[(size_t)ic * np + p] * w[ic];
       for (size_t k = 0; k < sfWins.size(); ++k) {   // a state-dependent f(): forced at x_on
         const rxAdjSfWin &W = sfWins[k];
-        if (st.seg < W.seg0 || st.seg >= W.seg1) continue;
-        for (int p = 0; p < np; ++p) mu[p] += h * W.raw * W.dF[p] * w[W.cmt];
+        if (W.atOff || st.seg < W.seg0 || st.seg >= W.seg1) continue;
+        if (!W.dF.empty()) for (int p = 0; p < np; ++p) mu[p] += h * W.raw * W.dF[p] * w[W.cmt];
         sfAcc[k] += h * w[W.cmt];
       } }
     for (int j = 1; j <= nq; ++j) for (int i1 = nq; i1 >= j; --i1) { double *dst = &adjPred[(size_t)(i1 + 1) * nBase]; const double *src = &adjPred[(size_t)i1 * nBase]; for (int c = 0; c < nBase; ++c) dst[c] += src[c]; }
@@ -515,21 +558,14 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       for (int p = 0; p < np; ++p) { double s = 0; for (int c = 0; c < nBase; ++c) s += fp0[c * np + p] * lam2[c]; mu[p] += Sg.h0 * s; }
       // costate of y0 (pre-Nordsieck-init): lam_y0 = lam1 + h0*J0^T lam2.
       for (int b = 0; b < nBase; ++b) { double s = 0; for (int a = 0; a < nBase; ++a) s += fx0[a * nBase + b] * lam2[a]; wSeed[b] = lam1[b] + Sg.h0 * s; }
-      // a state-dependent f() window starting here: its rate moved with y0
-      for (size_t k = 0; k < sfWins.size(); ++k)
-        if (sfWins[k].seg0 == (size_t)seg) {
-          for (int b = 0; b < nBase; ++b) wSeed[b] += sfAcc[k] * sfWins[k].row[b];
-          sfAcc[k] = 0.0;
-        }
-      // modeled rate()/dur() OFF-boundary transversality: the off time t_on+amt/R shifts
-      // with R -> mu += (-amt/R*durMult)*dR/dp[cmt]*lam_cmt(t_off).  (lhs holds calc_lhs
-      // at this off segment's (t0,y0); lam_cmt(t_off) = lam_y0[cmt].)
-      if (op->adjDrateOff >= 0 && !Sg.offFac.empty()) { const double *dR = &lhs[op->adjDrateOff];
-        for (int oc = 0; oc < nBase; ++oc) { if (Sg.offFac[oc] == 0.0) continue;
-          for (int p = 0; p < np; ++p) mu[p] += Sg.offFac[oc] * dR[oc * np + p] * wSeed[oc]; } }
-      if (op->adjDfOff >= 0 && !Sg.offDfFac.empty()) { const double *dF = &lhs[op->adjDfOff];
-        for (int oc = 0; oc < nBase; ++oc) { if (Sg.offDfFac[oc] == 0.0) continue;
-          for (int p = 0; p < np; ++p) mu[p] += Sg.offDfFac[oc] * dF[oc * np + p] * wSeed[oc]; } }
+      // infusion OFF-boundary transversality: a modeled off time t_on+amt/R shifts
+      // with R, a fixed rate's with F -> mu += offG^T lam(t_off), lam(t_off) = lam_y0.
+      // (lhs holds calc_lhs at this off segment's (t0,y0), for the lag term below.)
+      if (!Sg.offG.empty())
+        for (int oc = 0; oc < nBase; ++oc)
+          for (int p = 0; p < np; ++p) mu[p] += Sg.offG[(size_t)oc * np + p] * wSeed[oc];
+      for (size_t q = 0; q < sfWins.size(); ++q)   // a state-dependent rate() window's stop
+        if (sfWins[q].atOff && sfWins[q].seg1 == (size_t)seg) sfAcc[q] += wSeed[sfWins[q].cmt];
       if (op->adjDlagOff >= 0 && !Sg.lagRate.empty()) { const double *dlag = &lhs[op->adjDlagOff];
         for (int c = 0; c < nBase; ++c) if (Sg.lagRate[c] != 0.0)
           for (int p = 0; p < np; ++p) mu[p] += -Sg.lagRate[c] * dlag[c * np + p] * wSeed[c]; }
@@ -545,8 +581,10 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
         const lsAdjEv &E = Sg.ev[k];
         // a state-dependent f(): the event's blocks at its pre-event state and the
         // jump's extra row (then lhs/fx0 back at this segment's start)
-        bool sf = (E.type == 0 || E.type == 5 || E.type == 6) &&
-          rxAdjStateFEvent(op, ind, cSub, E.rec, E.cmt, Sg.t0, sfRow, sfDF, sfDl);
+        const rxAdjPushCap *pc = E.push >= 0 ? rxAdjPushFind(E.push) : NULL;
+        bool sf = pc ? rxAdjStateFPushEvent(op, ind, cSub, pc, E.cmt, Sg.t0, E.amt, sfRow, sfDF, sfDl)
+                     : ((E.type == 0 || E.type == 5 || E.type == 6) &&
+                        rxAdjStateFEvent(op, ind, cSub, E.rec, E.cmt, Sg.t0, sfRow, sfDF, sfDl));
         if (sf) lsAdjEval(cSub, Sg.t0, Sg.y0.data(), nBase, eff, fxOff, fpOff, A.data(), lhs, &fx0, &fp0);
         const double *dFp = sf ? (sfDF.empty() ? NULL : sfDF.data()) : (op->adjDfOff >= 0 ? &lhs[op->adjDfOff] : NULL);
         const double *dlp = sf ? (sfDl.empty() ? NULL : sfDl.data()) : (op->adjDlagOff >= 0 ? &lhs[op->adjDlagOff] : NULL);
@@ -555,7 +593,8 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
         if (E.type == 0) {
           int c = E.cmt;
           if (dFp) { for (int p = 0; p < np; ++p) mu[p] += E.amt * dFp[c * np + p] * wSeed[c]; }
-          if (dlp && !rxAdjJumpTerm(E.rec, c, wSeed.data(), mu.data(), nBase, np, dlp, NULL, dfx)) {
+          if (dlp && pc) rxAdjPushLagTerm(pc, c, wSeed.data(), mu.data(), nBase, np, dlp, dfx);
+          else if (dlp && !rxAdjJumpTerm(E.rec, c, wSeed.data(), mu.data(), nBase, np, dlp, NULL, dfx)) {
             double sc = 0; for (int i = 0; i < nBase; ++i) sc += wSeed[i] * fx0[i * nBase + c];
             for (int p = 0; p < np; ++p) mu[p] += -E.amtF * dlp[c * np + p] * sc; }
           if (dfx) for (int j = 0; j < nBase; ++j) wSeed[j] += wC * dfx[j];
@@ -575,6 +614,13 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
           rxAdjJumpTerm(E.rec, E.cmt, wSeed.data(), mu.data(), nBase, np, dlp, dFp, dfx);
           if (E.type == 5) wSeed[E.cmt] = 0.0; else wSeed[E.cmt] *= rxAdjJumpFactor(E.rec, E.factor);
           if (dfx) for (int j = 0; j < nBase; ++j) wSeed[j] += wC * dfx[j];
+        } else if (E.type == 12) {            // a state-dependent f() window starts: its rate moved with the state
+          for (size_t q = 0; q < sfWins.size(); ++q)
+            if (sfWins[q].seg0 == (size_t)seg && sfWins[q].rec == E.rec) {
+              rxAdjSfWinLag(sfWins[q], sfAcc[q], mu.data(), nBase, np);
+              for (int b = 0; b < nBase; ++b) wSeed[b] += sfAcc[q] * sfWins[q].row[b];
+              sfAcc[q] = 0.0;
+            }
         }
       }
       if (seg == 0) break;
@@ -589,6 +635,17 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg)
       if (rxAdjSameTime(lsAdjSegs[sg].t0, _lsSsT)) { lsSsSeg = (int)sg; break; }
   bool ssAtStart = (lsSsSeg == 0);
+  // the ss record (the last ss = 1 dose at its time), whose covariates the
+  // steady state reads
+  int lsSsRecI = -1;
+  if (_lsSsKind != 0)
+    for (int i = 0; i < ind->n_all_times; ++i) {
+      int ev = getEvid(ind, ind->ix[i]);
+      if (isObs(ev) || !isDose(ev) || !rxAdjSameTime(ind->timeThread[ind->ix[i]], _lsSsT)) continue;
+      int _wh, _cmt, _wh100, _whI, _wh0; getWh(ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
+      if ((_wh0 == EVID0_SS || _wh0 == EVID0_SS0 || _wh0 == EVID0_SSINF) && (_whI == 0 || getDose(ind, ind->ix[i]) > 0))
+        lsSsRecI = i;
+    }
   // The steady state's starting state: the state right after the (last) ss dose,
   // before later same-time events; the snapshot needs an ss segment, or (an ss
   // dose at the last record time, after which no segment opens) an observation
@@ -646,19 +703,18 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     } else {
       for (int k = 1; k <= n; ++k) ends.push_back(_lsSsT + _lsSsDur + (k - 1) * ii);
     }
-    std::vector<double> _y(eff, 0.0);
-    for (int b = 0; b < nBase; ++b) _y[b] = lsAdjSegs[lsSsSeg].y0[b];
-    double f = getAmt(ind, ind->id, c, 1.0, _lsSsT, _y.data());
+    std::vector<double> _dR, _dF;
+    double f = rxAdjRecRows(op, ind, cSub, eff, lsSsRecI, _lsSsT, lsAdjSegs[lsSsSeg].y0.data(), c, _dR, _dF);
     if (f != 0.0)
       for (size_t k = 0; k < ends.size(); ++k) {
         double tEnd = ends[k];
         for (size_t sg = (size_t)lsSsSeg; sg < lsAdjSegs.size(); ++sg) {
           if (lsAdjSegs[sg].t0 >= tEnd - rxAdjTimeTol(lsAdjSegs[sg].t0, tEnd)) {
             if (_lsSsFixed == 1 && rxAdjSameTime(lsAdjSegs[sg].t0, tEnd))
-              lsAdjAddW(lsAdjSegs[sg].offDfFac, nBase, c, r1 * full / f);
+              lsAdjAddG(lsAdjSegs[sg].offG, nBase, np, c, r1 * full / f, _dF);
             break;
           }
-          if (_lsSsFixed == 2) lsAdjAddW(lsAdjSegs[sg].infDfMult, nBase, c, r1 / f);
+          if (_lsSsFixed == 2) lsAdjAddG(lsAdjSegs[sg].infG, nBase, np, c, r1 / f, _dF);
         }
       }
   }
@@ -688,6 +744,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     // the ss bolus record: its cmt, raw amount and whether it is lagged
     int lsSsBCmt = -1; double lsSsBAmt = 0.0;
     lsLagE.lagged = (_lsSsLagOn != 0); lsLagE.lag = _lsSsLag;
+    lsLagE.recIdx = lsSsRecI; lsLagE.tRec = _lsSsT;
     if (_lsSsBolusIi > 0.0)
       for (int i = 0; i < ind->n_all_times; ++i) {
         int ev = getEvid(ind, ind->ix[i]);
@@ -728,15 +785,17 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       // a fixed-rate/duration ss infusion with a modeled F: the period's dF terms
       if (lsMono && _lsSsBolusIi <= 0.0 && _lsSsFixed != 0) {
         rk4s_ss1Ev E; E.inf = true; E.infCmt = _lsSsCmt; E.onSteps = lsSsOnSteps;
+        E.recIdx = lsSsRecI; E.tRec = _lsSsT;
         E.fixed = _lsSsFixed; E.fixW = _lsSsFixW; E.fixW2 = _lsSsFixW2;
         lsIc.haveWsFC = lsIc.makeForce(cSub, ind, op, lsSsRec, E, Asc, lsIc.wsFC, false);
       }
       // an ss bolus's bioavailability enters every period's dose (no separate
       // dose term here, so from the first)
       if (lsMono && _lsSsBolusIi > 0.0 && lsSsBCmt >= 0) {
-        // at the trough, where each period's dose is applied (a state-dependent f())
-        lsIc.loadDF(cSub, ind, op, _lsSsT, lsSsTrough ? y0.data() : ssY0.data(), Asc, -1,
-                    lsSsTrough ? lsSsBCmt : -1, lsSsBAmt);
+        // a lagged bolus's trough is its recorded period's end
+        const double *lsTr = lsSsTrough ? y0.data() : (!lsLagE.yEnd.empty() ? lsLagE.yEnd.data() : NULL);
+        lsIc.loadDF(cSub, ind, op, _lsSsT, lsTr ? lsTr : ssY0.data(), Asc, lsSsRecI,
+                    lsTr ? lsSsBCmt : -1, lsSsBAmt);
         if (!lsIc.dFv.empty()) { lsIc.fFrom = 0; lsIc.wsFCmt = lsSsBCmt; lsIc.wsFAmt = lsSsBAmt; }
       }
       if (lsMono && lsLagE.lagged && lsLagE.lagSteps > 0) lsIc.wsLag = &lsLagE;
@@ -778,8 +837,10 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
         lsAdjEval(cSub, ti, out, nBase, eff, fxOff, fpOff, A.data(), lhs, &fxT, &fpT);
         for (size_t e = evAt.size(); e-- > 0 && !atIni;) {
           const lsAdjEv &E = evAt[e];
-          bool sf = (E.type == 0 || E.type == 5 || E.type == 6) &&
-            rxAdjStateFEvent(op, ind, cSub, E.rec, E.cmt, ti, sfRow, sfDF, sfDl);
+          const rxAdjPushCap *pc = E.push >= 0 ? rxAdjPushFind(E.push) : NULL;
+          bool sf = pc ? rxAdjStateFPushEvent(op, ind, cSub, pc, E.cmt, ti, E.amt, sfRow, sfDF, sfDl)
+                       : ((E.type == 0 || E.type == 5 || E.type == 6) &&
+                          rxAdjStateFEvent(op, ind, cSub, E.rec, E.cmt, ti, sfRow, sfDF, sfDl));
           if (sf) lsAdjEval(cSub, ti, out, nBase, eff, fxOff, fpOff, A.data(), lhs, &fxT, &fpT);
           const double *dFp = sf ? (sfDF.empty() ? NULL : sfDF.data()) : (op->adjDfOff >= 0 ? &lhs[op->adjDfOff] : NULL);
           const double *dlp = sf ? (sfDl.empty() ? NULL : sfDl.data()) : (op->adjDlagOff >= 0 ? &lhs[op->adjDlagOff] : NULL);
@@ -788,7 +849,8 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
           if (E.type == 0) {
             int c = E.cmt;
             if (dFp) { for (int p = 0; p < np; ++p) mu[p] += E.amt * dFp[c * np + p] * wSeed[c]; }
-            if (dlp && !rxAdjJumpTerm(E.rec, c, wSeed.data(), mu.data(), nBase, np, dlp, NULL, dfx)) {
+            if (dlp && pc) rxAdjPushLagTerm(pc, c, wSeed.data(), mu.data(), nBase, np, dlp, dfx);
+            else if (dlp && !rxAdjJumpTerm(E.rec, c, wSeed.data(), mu.data(), nBase, np, dlp, NULL, dfx)) {
               double sc = 0; for (int b = 0; b < nBase; ++b) sc += wSeed[b] * fxT[b * nBase + c];
               for (int p = 0; p < np; ++p) mu[p] += -E.amtF * dlp[c * np + p] * sc; }
             if (dfx) for (int j = 0; j < nBase; ++j) wSeed[j] += wC * dfx[j];

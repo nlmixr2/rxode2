@@ -429,9 +429,11 @@
 
 - Adjoint `f()`, `alag()`, `rate()` and `dur()` terms that depend on a
   time-varying covariate now read it at each event, with the record's own
-  value, in the `rk4s` family (doses, infusion windows and steady-state
-  doses), and in `cvodesadj` and `abs` for a replace or multiply.  Before,
-  they read it at the window start (off by up to 34).
+  value: in the `rk4s` family (doses, infusion windows and steady-state
+  doses), in `liblsodaadj`, `cvodesadj` and `abs` for an infusion window
+  (at its start record) and a replace or multiply, and in `liblsodaadj` for a
+  steady-state infusion.  Before, they read it at the window start or at the
+  time the solve reached (off by up to 34).
 
 - Several `ss = 2` regimens in one subject (into different compartments, or
   the same one with another dose or interval, at one time or at different
@@ -440,14 +442,12 @@
   2.5 for a second regimen into another compartment).
 
 - Adjoint sensitivities with a bioavailability (`f()`) that depends on the
-  state are now right in every adjoint method: the dose then lands as
-  `x + F(x)*amt`, so its transpose carries `amt*dF/dx` at the pre-dose state,
-  for a bolus, a replace or multiply, a lagged dose, each period of an
-  `ss = 1` dose and an `ss = 2` dose, whose own dose lands on the total state
-  (off by up to 81), and for a fixed-duration infusion, whose
-  rate moves with its start state.  The forward solve re-reads `F` at the
-  infusion's stop, so its result after the stop is not yet right, and it does
-  not solve a fixed-rate infusion with such an `f()`.
+  state are now right in every adjoint method: a dose's transpose carries
+  `amt*dF/dx` at the state it reads `F` at, for boluses, replaces and
+  multiplies, lagged and steady-state doses, and fixed-duration and modeled
+  `rate()`/`dur()` infusions (off by up to 81).  The forward solve re-reads
+  `F` at a fixed-duration infusion's stop and does not solve a fixed-rate
+  infusion with such an `f()`, so those are not covered.
 
 - `method = "abs"` now includes the bioavailability (`f()`), lag-time
   (`alag()`), `rate()` and `dur()` adjoint sensitivities of bolus and

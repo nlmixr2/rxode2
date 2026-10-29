@@ -45,7 +45,8 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   // ---- the events at a time from the event table, in the order the forward
   // solve applied them: 0 bolus (dPhi/dy=I; its modeled F and alag duals, raw amt
   // in factor and F*amt in amtF) | 3 reset (->0) | 5 replace[c] (->0) | 6
-  // multiply[c] (*=factor, F*amt).
+  // multiply[c] (*=factor, F*amt) | 12 a fixed-dur or modeled infusion start (where
+  // a state-dependent f() window's start term applies, in the forward order).
   struct abJump { int type, cmt; double factor, amtF = 0.0; int rec = -1; };   // rec: a bolus/replace/multiply's record index
   // the start state of call c
   auto abCallY0 = [&](size_t c) {
@@ -69,7 +70,12 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
       if (!isDose(e)) continue;
       int _wh, _cmt, _wh100, _whI, _wh0; getWh(e, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
       if (_cmt < 0 || _cmt >= nBase) continue;
-      if (_whI == EVIDF_REPLACE) { abJump _j = {5, _cmt, 0.0}; _j.rec = i; ev.push_back(_j); }
+      if (op->adjDfxOff >= 0 && _wh0 == EVID0_REGULAR &&
+          ((_whI == EVIDF_INF_DUR && getDose(ind, ind->ix[i]) > 0) ||
+           _whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON)) {
+        abJump _j = {12, _cmt, 0.0}; _j.rec = i; ev.push_back(_j);
+      }
+      else if (_whI == EVIDF_REPLACE) { abJump _j = {5, _cmt, 0.0}; _j.rec = i; ev.push_back(_j); }
       else if (_whI == EVIDF_MULT) {
         abJump _j = {6, _cmt, getAmt(ind, ind->id, _cmt, getDose(ind, ind->ix[i]), t, _y.data())}; _j.rec = i; ev.push_back(_j);
       }
@@ -89,43 +95,40 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
 
   // Infusion-window duals per call (rxAdjInfusionWindows): W[c] = d(rate)/dp
   // forcing inside call c, B[c] = the transversality of a moving rate change at
-  // its start, both nBase x np (a*np+p) or empty, from the dR, dF and dlag blocks
-  // at the call's start state.
-  struct abInfSeg { double t0; std::vector<double> y0, infRate, infDurMult, infDfMult, offFac, offDfFac, lagRate; };
+  // its start, both nBase x np (a*np+p) or empty.  The windows' dR and dF terms are
+  // read at their start records; a lagged rate change's dlag at the call's start.
+  struct abInfSeg { double t0; std::vector<double> y0, infRate, lagRate, infG, offG; };
   std::vector<abInfSeg> infSeg(nCalls);
   for (size_t c = 0; c < nCalls; ++c) {
     infSeg[c].t0 = abAdjCalls[c].t0; infSeg[c].y0 = abCallY0(c); infSeg[c].infRate = abAdjCalls[c].infRate;
   }
   std::vector<rxAdjSfWin> sfWins;   // fixed-dur windows with a state-dependent f()
-  rxAdjInfusionWindows(op, ind, nBase, eff, infSeg, cSub, &sfWins);
+  rxAdjInfusionWindows(op, ind, cSub, nBase, eff, infSeg, &sfWins);
   std::vector<double> sfAcc(sfWins.size(), 0.0);
   std::vector<std::vector<double> > infW(nCalls), infB(nCalls);
   {
     std::vector<double> Ai(eff, 0.0);
     for (size_t c = 0; c < nCalls; ++c) {
       const abInfSeg &S = infSeg[c];
-      bool w = !S.infDurMult.empty() || !S.infDfMult.empty();
-      bool b = !S.offFac.empty() || !S.offDfFac.empty() || !S.lagRate.empty();
+      bool w = !S.infG.empty();
+      bool b = !S.lagRate.empty() || !S.offG.empty();
       if (!w && !b) continue;
       for (int i = 0; i < eff; ++i) Ai[i] = 0.0;
       for (int i = 0; i < nBase; ++i) Ai[i] = S.y0[i];
       calc_lhs(cSub, S.t0, Ai.data(), ind->lhs);
-      const double *dR = op->adjDrateOff >= 0 ? &ind->lhs[op->adjDrateOff] : NULL;
-      const double *dF = op->adjDfOff >= 0 ? &ind->lhs[op->adjDfOff] : NULL;
       const double *dL = op->adjDlagOff >= 0 ? &ind->lhs[op->adjDlagOff] : NULL;
       auto wt = [&](const std::vector<double> &v, int a) { return v.empty() ? 0.0 : v[a]; };
       if (w) infW[c].assign((size_t)nBase * np, 0.0);
       if (b) infB[c].assign((size_t)nBase * np, 0.0);
       for (int a = 0; a < nBase; ++a) for (int p = 0; p < np; ++p) {
         size_t q = (size_t)a * np + p;
-        if (w) infW[c][q] = (dR ? wt(S.infDurMult, a) * dR[q] : 0.0) + (dF ? wt(S.infDfMult, a) * dF[q] : 0.0);
-        if (b) infB[c][q] = (dR ? wt(S.offFac, a) * dR[q] : 0.0) + (dF ? wt(S.offDfFac, a) * dF[q] : 0.0) -
-                 (dL ? wt(S.lagRate, a) * dL[q] : 0.0);
+        if (w) infW[c][q] = S.infG[q];
+        if (b) infB[c][q] = (S.offG.empty() ? 0.0 : S.offG[q]) - (dL ? wt(S.lagRate, a) * dL[q] : 0.0);
       }
     }
     // a state-dependent f() window: forced with dF/dp at its start state
     for (size_t k = 0; k < sfWins.size(); ++k)
-      for (size_t c = sfWins[k].seg0; c < sfWins[k].seg1 && c < nCalls; ++c) {
+      for (size_t c = sfWins[k].seg0; !sfWins[k].dF.empty() && c < sfWins[k].seg1 && c < nCalls; ++c) {
         if (infW[c].empty()) infW[c].assign((size_t)nBase * np, 0.0);
         for (int p = 0; p < np; ++p) infW[c][(size_t)sfWins[k].cmt * np + p] += sfWins[k].raw * sfWins[k].dF[p];
       }
@@ -138,7 +141,8 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   // (and, in call c, each state-dependent f() window's integral of lam_cmt)
   auto addW = [&](const std::vector<double> &W, const double *v, double s, long call = -1) {
     for (size_t k = 0; call >= 0 && k < sfWins.size(); ++k)
-      if ((size_t)call >= sfWins[k].seg0 && (size_t)call < sfWins[k].seg1) sfAcc[k] += s * v[sfWins[k].cmt];
+      if (!sfWins[k].atOff && (size_t)call >= sfWins[k].seg0 && (size_t)call < sfWins[k].seg1)
+        sfAcc[k] += s * v[sfWins[k].cmt];
     if (W.empty()) return;
     for (int p = 0; p < np; ++p) { double z = 0.0; for (int a = 0; a < nBase; ++a) z += W[(size_t)a * np + p] * v[a]; mu[p] += s * z; }
   };
@@ -234,6 +238,14 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
         if (E.type == 5) cost[E.cmt] = 0.0; else cost[E.cmt] *= rxAdjJumpFactor(E.rec, E.factor);
         if (dfx) for (int b = 0; b < nBase; ++b) cost[b] += wC * dfx[b];
       }
+      else if (E.type == 12) {   // a state-dependent f() window starts: its rate moved with the state
+        for (size_t q = 0; q < sfWins.size(); ++q)
+          if (sfWins[q].rec == E.rec) {
+            rxAdjSfWinLag(sfWins[q], sfAcc[q], muP, nBase, np);
+            for (int b = 0; b < nBase; ++b) cost[b] += sfAcc[q] * sfWins[q].row[b];
+            sfAcc[q] = 0.0;
+          }
+      }
     }
   };
   std::vector<double> endCostate(nBase), lam;
@@ -285,13 +297,9 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
             }
           }
           for (int b = 0; b < nBase; ++b) endCostate[b] = lam[b];  // costate of call c's start
-          // a state-dependent f() window starting here: its rate moved with this state
-          for (size_t q = 0; q < sfWins.size(); ++q)
-            if (sfWins[q].seg0 == (size_t)c) {
-              for (int b = 0; b < nBase; ++b) endCostate[b] += sfAcc[q] * sfWins[q].row[b];
-              sfAcc[q] = 0.0;
-            }
           addW(infB[c], endCostate.data(), 1.0);                     // a moving rate change at t0_c
+          for (size_t q = 0; q < sfWins.size(); ++q)   // a state-dependent rate() window's stop
+            if (sfWins[q].atOff && sfWins[q].seg1 == (size_t)c) sfAcc[q] += endCostate[sfWins[q].cmt];
           // the jumps at t0_c -> costate of the pre-event state (call c-1's end, or
           // the initial conditions for call 0)
           abJumpT(callEv[c], abAdjCalls[c].t0, abCallY0(c).data(), endCostate.data(), mu.data());
