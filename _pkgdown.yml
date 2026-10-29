@@ -160,6 +160,7 @@ articles:
   - articles/rxode2-confint
   - articles/rxode2-eta-eps-resampling
   - articles/rxode2-phase-residual-error
+  - articles/rxode2-time-to-event
   - rxode2-data-frame
   - rxode2-plot
 - title: Worked examples
@@ -285,6 +286,8 @@ navbar:
       href: articles/rxode2-eta-eps-resampling.html
     - text: "Phase 1 vs phase 3 residual error"
       href: articles/rxode2-phase-residual-error.html
+    - text: "Simulating time-to-event endpoints"
+      href: articles/rxode2-time-to-event.html
     - text: "---------"
     - text: "Output"
     - text: "Working with solved data frames"
