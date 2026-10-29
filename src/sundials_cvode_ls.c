@@ -37,6 +37,15 @@
 #define ONE          SUN_RCONST(1.0)
 #define TWO          SUN_RCONST(2.0)
 
+/* The DQ increment max(srur|y_j|, minInc/ewt_j) leaves the normal range when
+   y_j and f are subnormal, and 1/inc then overflows; such a column takes the
+   increment an f of exactly zero gets (minInc = 1). */
+static sunrealtype cvLsDQInc(sunrealtype sy, sunrealtype minInc, sunrealtype ewt)
+{
+  sunrealtype inc = SUNMAX(sy, minInc / ewt);
+  return (inc < SUN_SMALL_REAL) ? SUNMAX(sy, ONE / ewt) : inc;
+}
+
 /*=================================================================
   PRIVATE FUNCTION PROTOTYPES
   =================================================================*/
@@ -1094,7 +1103,7 @@ int cvLsDenseDQJac(sunrealtype t, N_Vector y, N_Vector fy, SUNMatrix Jac,
     N_VSetArrayPointer(SUNDenseMatrix_Column(Jac, j), jthCol);
 
     yjsaved = y_data[j];
-    inc     = SUNMAX(srur * SUNRabs(yjsaved), minInc / ewt_data[j]);
+    inc     = cvLsDQInc(srur * SUNRabs(yjsaved), minInc, ewt_data[j]);
 
     /* Adjust sign(inc) if y_j has an inequality constraint. */
     if (cv_mem->cv_constraints)
@@ -1198,7 +1207,7 @@ int cvLsBandDQJac(sunrealtype t, N_Vector y, N_Vector fy, SUNMatrix Jac,
     /* Increment all y_j in group */
     for (j = group - 1; j < N; j += width)
     {
-      inc = SUNMAX(srur * SUNRabs(y_data[j]), minInc / ewt_data[j]);
+      inc = cvLsDQInc(srur * SUNRabs(y_data[j]), minInc, ewt_data[j]);
 
       /* Adjust sign(inc) if yj has an inequality constraint. */
       if (cv_mem->cv_constraints)
@@ -1227,7 +1236,7 @@ int cvLsBandDQJac(sunrealtype t, N_Vector y, N_Vector fy, SUNMatrix Jac,
     {
       ytemp_data[j] = y_data[j];
       col_j         = SUNBandMatrix_Column(Jac, j);
-      inc           = SUNMAX(srur * SUNRabs(y_data[j]), minInc / ewt_data[j]);
+      inc           = cvLsDQInc(srur * SUNRabs(y_data[j]), minInc, ewt_data[j]);
 
       /* Adjust sign(inc) as before. */
       if (cv_mem->cv_constraints)

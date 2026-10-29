@@ -350,4 +350,46 @@ for (.f in c(
   .fix_calloc(.f)
 }
 
+## ---------------------------------------------------------------------------
+## The difference-quotient Jacobian increment max(srur|y_j|, minInc/ewt_j)
+## leaves the normal range when y_j and f are subnormal, and 1/inc then
+## overflows.  Route the dense and banded increments through cvLsDQInc(),
+## which gives such a column the increment an f of exactly zero gets.
+## ---------------------------------------------------------------------------
+
+.fix_dq_increment <- function(.path) {
+  if (!file.exists(.path)) {
+    return(invisible(NULL))
+  }
+  .lines <- readLines(.path)
+  if (any(grepl("cvLsDQInc(", .lines, fixed = TRUE))) {
+    return(invisible(NULL))
+  }
+  .re <- "SUNMAX\\(srur \\* SUNRabs\\(([A-Za-z_]+(\\[j\\])?)\\), minInc / ewt_data\\[j\\]\\)"
+  .hit <- grepl(.re, .lines)
+  .def <- grep("^#define TWO +SUN_RCONST\\(2\\.0\\)", .lines)
+  if (sum(.hit) != 3L || length(.def) != 1L) {
+    stop("the DQ increments in ", .path, " are not the three this fix expects", call. = FALSE)
+  }
+  .lines <- gsub(.re, "cvLsDQInc(srur * SUNRabs(\\1), minInc, ewt_data[j])", .lines)
+  .helper <- c(
+    "",
+    "/* The DQ increment max(srur|y_j|, minInc/ewt_j) leaves the normal range when",
+    "   y_j and f are subnormal, and 1/inc then overflows; such a column takes the",
+    "   increment an f of exactly zero gets (minInc = 1). */",
+    "static sunrealtype cvLsDQInc(sunrealtype sy, sunrealtype minInc, sunrealtype ewt)",
+    "{",
+    "  sunrealtype inc = SUNMAX(sy, minInc / ewt);",
+    "  return (inc < SUN_SMALL_REAL) ? SUNMAX(sy, ONE / ewt) : inc;",
+    "}"
+  )
+  .lines <- append(.lines, .helper, after = .def)
+  .out <- file(.path, "wb")
+  writeLines(.lines, .out, sep = "\n")
+  close(.out)
+  message("Guarded the DQ Jacobian increments in ", .path)
+}
+
+.fix_dq_increment("src/sundials_cvode_ls.c")
+
 message("Done. Review 'git diff src/' and commit any updated files.")
