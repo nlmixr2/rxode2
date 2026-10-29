@@ -7606,8 +7606,12 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
       // tests against nx rather than ind->n_all_times.
       nx = ind->n_all_times;
       if (_mtime_requeued) i--;
+      // a requeued slot re-runs from the state this pass integrated into it,
+      // not from the key event before it
+      last_key_i = _mtime_requeued ? i + 1 : i;
+    } else {
+      last_key_i = i;
     }
-    last_key_i = i;
     rxNewindAfterRecord(ind, i);
     ind->solvedIdx = i;
   }

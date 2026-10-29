@@ -64,6 +64,12 @@ rxTest({
   .newindPlain <- rxode2({
     d / dt(central) <- -0.2 * central
   })
+  # an mtime() requeued at the first record of a late data start
+  .newindMtime1 <- rxode2({
+    central(0) <- 10
+    d / dt(central) <- -0.1 * central
+    mtime(tm) <- 1 + 0.1 * central
+  })
   .newindF <- rxode2({
     d / dt(central) <- -0.2 * central
     f(central) <- ifelse(newind <= 1, 0.5, 1)
@@ -124,6 +130,9 @@ rxTest({
       .s <- .solve(.newindRhs0, et(c(1, 2, 4)))
       # (the RHS jump at an observation is no solver restart; 1 vs 2 is 20%)
       expect_equal(.s$central, 10 * exp(-0.4 - 0.2 * c(0, 1, 3)), tolerance = 0.05)
+
+      .s <- .solve(.newindMtime1, et(c(1, 2, 4)))
+      expect_equal(.s$central[.s$time %in% c(1, 2, 4)], 10 * exp(-0.1 * c(1, 2, 4)), tolerance = 1e-4)
 
       # dense output falls back to standard output for evid_() models
       if (dense) {
