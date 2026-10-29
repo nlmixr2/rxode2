@@ -86,15 +86,13 @@ static int rxInvCholFind(std::vector<int> &up, int i) {
   return i;
 }
 
-// Set up `ic` from the estimate `mat` and move the covariance `cov` of the
-// thetaMat columns onto the parameter scale by the delta method.  With the
-// other parameters held at their estimates, d(entries) = Jcc d(par), so
-// the drawn entries keep their stated covariance to first order.
-bool rxInvCholJointSetup(rxInvCholJoint &ic, arma::mat &cov,
-                                const arma::mat &mat, const IntegerMatrix &el,
-                                const std::vector<int> &col) {
+// The rows/columns `d` of the blocks the drawn entries touch, where a block
+// links entries by a nonzero estimate or a drawn entry; `pos` gives each
+// row's place in `d` and `use` marks the drawn entries (-1 when not drawn)
+static void rxInvCholBlocks(std::vector<arma::uword> &d, std::vector<int> &pos,
+                            std::vector<int> &use, const arma::mat &mat,
+                            const IntegerMatrix &el) {
   int dim = mat.n_rows;
-  // the blocks: entries linked by a nonzero estimate or a drawn entry
   std::vector<int> up(dim);
   for (int i = 0; i < dim; ++i) up[i] = i;
   for (int j = 0; j < dim; ++j) {
@@ -103,7 +101,6 @@ bool rxInvCholJointSetup(rxInvCholJoint &ic, arma::mat &cov,
     }
   }
   std::vector<bool> drawn(dim, false);
-  std::vector<int> use(col);
   for (int r = 0; r < el.nrow(); ++r) {
     int a = el(r, 0) - 1, b = el(r, 1) - 1;
     if (a < 0 || b < 0 || a >= dim || b >= dim) use[r] = -1;
@@ -113,14 +110,25 @@ bool rxInvCholJointSetup(rxInvCholJoint &ic, arma::mat &cov,
   for (int r = 0; r < el.nrow(); ++r) {
     if (use[r] >= 0) drawn[rxInvCholFind(up, el(r, 0) - 1)] = true;
   }
-  std::vector<int> pos(dim, -1);
-  std::vector<arma::uword> d;
+  pos.assign(dim, -1);
   for (int i = 0; i < dim; ++i) {
     if (drawn[rxInvCholFind(up, i)]) {
       pos[i] = d.size();
       d.push_back(i);
     }
   }
+}
+
+// Set up `ic` from the estimate `mat` and move the covariance `cov` of the
+// thetaMat columns onto the parameter scale by the delta method.  With the
+// other parameters held at their estimates, d(entries) = Jcc d(par), so
+// the drawn entries keep their stated covariance to first order.
+bool rxInvCholJointSetup(rxInvCholJoint &ic, arma::mat &cov,
+                                const arma::mat &mat, const IntegerMatrix &el,
+                                const std::vector<int> &col) {
+  std::vector<arma::uword> d;
+  std::vector<int> pos, use(col);
+  rxInvCholBlocks(d, pos, use, mat, el);
   // nothing is drawn, so the estimate is kept as it is
   if (d.empty()) return true;
   ic.dims = arma::uvec(d);
