@@ -593,6 +593,8 @@ table:\tabular{lll}{
    lag0(parameter, number=1) \tab Like lag() but returns 0 instead of NA when there is no prior value (the first record) \tab  \cr
    lead0(parameter, number=1) \tab Like lead() but returns 0 instead of NA when there is no following value (the last record) \tab  \cr
    diff0(par, number=1) \tab Like diff() but returns the value itself (previous value treated as 0) when there is no prior value \tab  \cr
+   tteTime(ev) \tab Time of the last event of the tte() endpoint ev (the observation window start before the first event) \tab  \cr
+   tteCount(ev) \tab Number of events of the tte() endpoint ev so far \tab  \cr
    first(par) \tab Get the first value of an input parameter \tab  \cr
    last(par) \tab Get the last value of an input parameter \tab  \cr
    transit() \tab The transit compartment pseudo function \tab  \cr
@@ -972,8 +974,10 @@ of the window, \code{sim = 1} at each event (or at the end of each interval
 holding an event) and \code{sim = 0} at right censoring. In model lines,
 \code{tteTime(ev)} is the time of the last event of \code{ev} (the window start
 before the first) and \code{tteCount(ev)} is the number of events so far, so
-renewal and count-dependent hazards can be written. Simulation requires
-\code{method = "liblsoda"}.
+renewal and count-dependent hazards can be written. Every ODE solving
+\code{method} except the adjoint sensitivity methods simulates \code{tte()}
+endpoints, since the root finding only re-solves intervals with the
+chosen method.
 }
 
 \subsection{General table of supported residual distributions}{
@@ -1163,6 +1167,7 @@ In general all the that are supported are in the following table
    negative binomial form #1 \tab  \tab none \tab cmt ~ dnbinom(n, p) \tab  \tab compartment specification \cr
    negative binomial form #2 \tab  \tab none \tab cmt ~ dnbinomMu(size, mu) \tab  \tab compartment specification \cr
    ordinal probability \tab  \tab none \tab cmt ~ c(p0=0, p1=1, p2=2, 3) \tab  \tab compartment specification \cr
+   time-to-event \tab  \tab none \tab cmt ~ tte(hazard, eventType=, maxEventNumber=, rightCensoringTime=, intervalLength=, dropout=) \tab  \tab compartment specification \cr
    log-likelihood \tab  \tab none \tab ll(cmt) ~ log likelihood expression \tab  \tab likelihood + compartment expression \cr
 }
 

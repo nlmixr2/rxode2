@@ -131,7 +131,42 @@ s <- withr::with_seed(1, as.data.frame(rxSolve(renewal(), et(c(0, 50)) |> et(id 
 table(tapply(s$sim, s$id, sum))
 ```
 
-TTE simulation requires `method = "liblsoda"` (the default).
+`tteTime()` and `tteCount()` are part of the model syntax, listed with
+the other functions in `rxSupportedFuns()`.
+
+## Choosing a solver
+
+Every ODE solving `method` except the adjoint sensitivity methods
+(`rk4s`, `liblsodaadj`, ...) simulates `tte()` endpoints.  The root finder
+only asks the solver to re-solve part of an interval from its saved
+start, so the event times are found to the accuracy of whichever solver
+does the work, and the random thresholds do not depend on the method:
+
+```{r}
+f <- function() {
+  ini({
+    te <- 10
+    sh <- 1.5
+  })
+  model({
+    haz <- sh / te * (time / te)^(sh - 1)
+    ev ~ tte(haz, maxEventNumber = 1)
+  })
+}
+e <- et(c(0, 100)) |> et(id = 1:5)
+sapply(c("liblsoda", "dop853", "rk4", "lsode", "cvode"), function(m) {
+  s <- withr::with_seed(2, as.data.frame(rxSolve(f(), e, method = m)))
+  s$time[s$sim == 1]
+})
+```
+
+`liblsoda` (the default) keeps its integrator history between records.
+The other methods run in a shared record loop that restarts the solver
+at each record, which costs little for the one-step methods
+(Runge-Kutta, Rosenbrock) and more for the multistep ones.  The Fortran
+`lsoda`, `lsode` and `bdf` methods solve one subject at a time.
+`dense = TRUE` falls back to standard output, and a model cannot
+combine `tte()` with `delay()`, which needs dense output.
 
 ## Next steps
 
