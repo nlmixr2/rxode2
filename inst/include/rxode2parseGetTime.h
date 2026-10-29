@@ -395,6 +395,43 @@ static inline double getInfusionDurAmt(rx_solving_options_ind *ind, int id, int 
   return getAmt(ind, id, cmt, amt, xout, yp);
 }
 
+// The lagged start time of the infusion that starts at dose number infBidx,
+// alag() read at its record
+static inline double getInfusionStartLag(int infBidx, rx_solve *rx, rx_solving_options *op,
+                                         rx_solving_options_ind *ind) {
+  int oIdx = ind->idx;
+  ind->idx = getSortedPosition(ind, ind->idose[infBidx]);
+  // To the correct lag time, we need to make sure the steady state flags are not set...
+  int wh0 = ind->wh0;
+  int wh, cmt, wh100, whI;
+  getWh(getEvid(ind, ind->idose[infBidx]), &wh, &cmt, &wh100, &whI, &(ind->wh0));
+  double tB = getLag(ind, ind->id, ind->cmt, getAllTimes(ind, ind->idose[infBidx]),
+                     (op->neq > 0) ? ind->solve : rx->ypNA);
+  ind->wh0 = wh0;
+  ind->idx = oIdx;
+  return tB;
+}
+
+// The lagged time of a fixed-duration infusion's record: a stop is its
+// start's lagged time plus the duration, alag() read at the start's record.
+// A start, or a stop whose start is not found, reads alag() at its own record.
+static inline double getInfusionDurTime(int idx, rx_solve *rx, rx_solving_options *op,
+                                        rx_solving_options_ind *ind) {
+  double amt = getDose(ind, idx);
+  if (amt < 0 && ind->wh0 != EVID0_RATEADJ) {
+    int infEidx = getDoseNumberFromIndex(ind, idx), infBidx = -1, stop = idx;
+    if (infEidx != -1) {
+      handleInfusionGetStartOfInfusionIndex(&infBidx, &infEidx, &amt, &stop, rx, op, ind);
+    }
+    if (infBidx != -1) {
+      return getInfusionStartLag(infBidx, rx, op, ind) +
+        getAllTimes(ind, idx) - getAllTimes(ind, ind->idose[infBidx]);
+    }
+  }
+  return getLag(ind, ind->id, ind->cmt, getAllTimes(ind, idx),
+                (op->neq > 0) ? ind->solve : rx->ypNA);
+}
+
 static inline double handleInfusionItem(int idx, rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind) {
   if (ind->wh0 == EVID0_RATEADJ) {
     return getAllTimes(ind, idx);
@@ -418,15 +455,9 @@ static inline double handleInfusionItem(int idx, rx_solve *rx, rx_solving_option
     rx_solve *rxp = (ind->rx ? ind->rx : &rx_global);
     // the stop is the start's lagged time plus F*duration, with alag() and f()
     // both read at the start's record
+    double tB = getInfusionStartLag(infBidx, rx, op, ind);
     int oIdx = ind->idx;
     ind->idx = getSortedPosition(ind, ind->idose[infBidx]);
-    // To the correct lag time, we need to make sure the steady state flags are not set...
-    int wh0 = ind->wh0;
-    int wh, cmt, wh100, whI;
-    getWh(getEvid(ind, ind->idose[infBidx]), &wh, &cmt, &wh100, &whI, &(ind->wh0));
-    double tB = getLag(ind, ind->id, ind->cmt, getAllTimes(ind, ind->idose[infBidx]),
-                       (op->neq > 0) ? ind->solve : rx->ypNA);
-    ind->wh0 = wh0;
     double f = getAmtAtRecord(ind, ind->idose[infBidx], 1.0, rxp->ypNA);
     ind->idx = oIdx;
     if (ISNA(f)){
@@ -468,6 +499,8 @@ static inline double getTimeCalculateInfusionTimes(int idx, rx_solve *rx, rx_sol
   case EVIDF_INF_RATE:
     return handleInfusionItem(idx, rx, op, ind);
     break;
+  case EVIDF_INF_DUR:
+    return getInfusionDurTime(idx, rx, op, ind);
   }
   // Sort-time lag for start/bolus events: use per-subject initial state
   return getLag(ind, ind->id, ind->cmt, getAllTimes(ind,idx),
@@ -495,6 +528,9 @@ static inline double getTime__(int idx, rx_solving_options_ind *ind, int update)
     if (update == 0) {
       if (ind->whI == EVIDF_INF_RATE) {
         return handleInfusionItem(idx, rx, op, ind);
+      }
+      if (ind->whI == EVIDF_INF_DUR) {
+        return getInfusionDurTime(idx, rx, op, ind);
       }
       if (ind->whI == EVIDF_MODEL_RATE_OFF || ind->whI == EVIDF_MODEL_DUR_OFF) {
         return getAllTimes(ind, idx);  // absolute lagged stop time stored by updateRate/updateDur
