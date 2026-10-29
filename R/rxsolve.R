@@ -1023,7 +1023,9 @@
 #'   calls `$PK` at its records.  `d/dt()` and state-dependent statements keep
 #'   the continuous time (like `$DES`).  `addl` repeats, infusion ends,
 #'   lagged doses and doses added while solving do not end an interval;
-#'   `mtime()` times do.  Covariate interpolation is still set by
+#'   `mtime()` times do.  `f()`, `rate()` and `dur()` of an `addl` repeat
+#'   read the time of the first data record at or after it (NONMEM's `F1`,
+#'   `R1` and `D1`).  Covariate interpolation is still set by
 #'   `covsInterpolation`.  It also sets the default `tieOrder` to `"data"`
 #'   and turns on `addlKeepsCov` unless it is given.  By default `FALSE`.
 #'
