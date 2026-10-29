@@ -160,6 +160,18 @@ static inline double rxRecValue(int raw, double *y, int is_locf,
                   ind->n_all_times_orig, op, 0);
 }
 
+// What a record-based read of sorted record `pos` reads: its data record's
+// value (that of the dose row, for a record a dose row expands to), a missing
+// one filled from the neighbours in record (data) order wherever a lag sorts
+// the records.  A pushed record has no data neighbours and keeps the sorted
+// fill.
+static inline double rxRecRead(int pos, double *y, int is_locf,
+                               rx_solving_options_ind *ind, rx_solving_options *op) {
+  int rec = rxRecCovRow(ind, pos);
+  return rec >= 0 ? rxRecValue(rec, y, is_locf, ind, op) :
+    getValue(pos, y, is_locf, ind, op, 0);
+}
+
 // v is at record i's time; a pushed record has no value of its own, so
 // interpolate across it instead
 static inline bool rxAtDataRec(double v, double ti, const int *ix, int i, int nOrig) {
@@ -430,23 +442,12 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
             ind->cacheME=0;
             continue;
           }
-          int linked = rxRecCovRow(indSample, idxSample);
-          if (linked >= 0 && linked != indSample->ix[idxSample]) {
-            // a record a dose row expands to reads that row
-            ind->par_ptr[op->par_cov[k]-1] = rxRecValue(linked, y, is_locf, indSample, op);
-            ind->cacheME=0;
-            continue;
-          }
-          ind->par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, is_locf,
-                                                    indSample, op, 0);
+          double v = rxRecRead(idxSample, y, is_locf, indSample, op);
+          ind->par_ptr[op->par_cov[k]-1] = v;
           // idxSample is the dose record's position for a repeat's alag(),
           // which can be 0 when idx is not
-          if (idx == 0 || idxSample == 0){
-            ind->cacheME=0;
-          } else if (!isSameTimeOp(getValue(idxSample, y, is_locf,
-                                            indSample, op, 0),
-                                   getValue(idxSample-1, y, is_locf,
-                                            indSample, op, 0))) {
+          if (idx == 0 || idxSample == 0 ||
+              !isSameTimeOp(v, rxRecRead(idxSample - 1, y, is_locf, indSample, op))) {
             ind->cacheME=0;
           }
         }
@@ -497,26 +498,13 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           if (!pushed && idxSample == 0 &&
               isSameTimeOp(t, (indSample->fns && indSample->fns->gettime ? indSample->fns->gettime(indSample->ix[idxSample], indSample) : getTime(indSample->ix[idxSample], indSample)))) {
             // y is in record order; a lagged dose can move record 0 off sorted slot 0
-            int linked = rxRecCovRow(indSample, 0);
-            par_ptr[op->par_cov[k]-1] = (linked >= 0 && linked != indSample->ix[0]) ?
-              rxRecValue(linked, y, is_locf, indSample, op) :
-              getValue(0, y, is_locf, indSample, op, 0);
+            par_ptr[op->par_cov[k]-1] = rxRecRead(0, y, is_locf, indSample, op);
             ind->cacheME=0;
           } else if (!pushed && idxSample > 0 && idxSample < indSample->n_all_times &&
                      isSameTimeOp(t, (indSample->fns && indSample->fns->gettime ? indSample->fns->gettime(indSample->ix[idxSample], indSample) : getTime(indSample->ix[idxSample], indSample)))) {
-            int linked = rxRecCovRow(indSample, idxSample);
-            if (linked >= 0 && linked != indSample->ix[idxSample]) {
-              // a record a dose row expands to reads that row
-              par_ptr[op->par_cov[k]-1] = rxRecValue(linked, y, is_locf, indSample, op);
-              ind->cacheME=0;
-              continue;
-            }
-            par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, is_locf,
-                                                 indSample, op, 0);
-            if (!isSameTimeOp(getValue(idxSample, y, is_locf,
-                                       indSample, op, 0),
-                              getValue(idxSample-1, y, is_locf,
-                                       indSample, op, 0))) {
+            double v = rxRecRead(idxSample, y, is_locf, indSample, op);
+            par_ptr[op->par_cov[k]-1] = v;
+            if (!isSameTimeOp(v, rxRecRead(idxSample - 1, y, is_locf, indSample, op))) {
               ind->cacheME=0;
             }
           } else {
