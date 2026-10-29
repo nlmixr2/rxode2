@@ -485,6 +485,38 @@ static inline void cancelRunningInfusionStops(rx_solving_options_ind *ind,
   }
 }
 
+// The same for the infusions steady state pushes into the extra-dose pool, for
+// compartment `cmt` cancelled at `time` while its pending doses are kept.
+// Same-rate infusions pair first in first out, so when the pool holds
+// `running` more pending stops than starts, its first `running` stops belong to
+// the running infusions.
+static inline void cancelRunningExtraInfusionStops(rx_solving_options_ind *ind,
+                                                   int cmt, double time) {
+  if (ind->InfusionRate[cmt] == 0.0) return;
+  int wh, c, wh100, whI, wh0;
+  int n = ind->extraDoseN[0];
+  for (int i = 0; i < n; ++i) {
+    int cur = -1-i;
+    getWh(getEvid(ind, cur), &wh, &c, &wh100, &whI, &wh0);
+    double amt = getDose(ind, cur), t = getAllTimes(ind, cur);
+    if (c != cmt || (whI != EVIDF_INF_RATE && whI != EVIDF_INF_DUR) ||
+        amt >= 0 || t <= time) continue;
+    int nStart = 0, nLaterStop = 0;
+    for (int j = 0; j < n; ++j) {
+      int o = -1-j;
+      if (j == i) continue;
+      int oc, oWhI;
+      getWh(getEvid(ind, o), &wh, &oc, &wh100, &oWhI, &wh0);
+      double oAmt = getDose(ind, o), ot = getAllTimes(ind, o);
+      if (oc != cmt || oWhI != whI || (oAmt != amt && oAmt != -amt) ||
+          ot <= time) continue;
+      if (oAmt > 0) nStart++;
+      else if (ot > t || (ot == t && j > i)) nLaterStop++;
+    }
+    if (nLaterStop >= nStart) pushIgnoredDose(cur, ind);
+  }
+}
+
 static inline int pushPendingDose(int doseIdx, rx_solving_options_ind *ind) {
   int re = 0;
   if (ind->pendingDosesN[0]+1 >= ind->pendingDosesAllocN[0]) {

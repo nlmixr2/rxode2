@@ -60,6 +60,18 @@ rxTest({
     }
   })
 
+  test_that("an ss=2 dose cancels a running steady-state infusion, stop included", {
+    ev <- et(amt = 100, rate = 25, ii = 12, ss = 1, cmt = "depot") |>
+      et(time = 2, amt = 100, ii = 12, ss = 2, cmt = "center") |>
+      et(.o)
+    for (meth in .meths) {
+      for (cancel in c(FALSE, TRUE)) {
+        d <- rxSolve(.m, ev, .p, method = meth, ss2cancelAllPending = cancel)$depot
+        expect_equal(d[-1], d[2] * exp(-1.2 * (.o[-1] - 3)), tolerance = 1e-5)
+      }
+    }
+  })
+
   test_that("modeled rate and duration infusions are cancelled by a reset", {
     mr <- rxode2({
       d/dt(depot) <- -ka * depot
@@ -78,6 +90,18 @@ rxTest({
         expect_equal(d[1], 14.56, tolerance = 1e-3)
         expect_equal(d[-1], rep(0, 4), tolerance = 1e-6)
       }
+    }
+  })
+
+  test_that("a reset cancels a lagged infusion, stop included", {
+    ml <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - k * center
+      alag(depot) <- 0.5
+    })
+    ev <- et(amt = 100, rate = 25, cmt = "depot") |> et(time = 2, evid = 3) |> et(.o)
+    for (meth in .meths) {
+      expect_equal(.solve(ml, ev, meth)[-1], rep(0, 4), tolerance = 1e-6)
     }
   })
 
