@@ -95,6 +95,31 @@ rxTest({
     }
   })
 
+  test_that("a reset does not take a later infusion's stop for a start without one", {
+    # the classic infusion start at t=0 has no stop record
+    d <- data.frame(
+      id = 1,
+      time = c(0, 1, 2, 3, 6, 8, 10),
+      evid = c(10101, 3, 1, 0, 0, 0, 0),
+      cmt = 1,
+      amt = c(10, NA, 50, NA, NA, NA, NA),
+      rate = c(0, 0, 10, 0, 0, 0, 0)
+    )
+    want <- data.frame(
+      id = 1,
+      time = c(2, 3, 6, 8, 10),
+      evid = c(1, 0, 0, 0, 0),
+      cmt = 1,
+      amt = c(50, NA, NA, NA, NA),
+      rate = c(10, 0, 0, 0, 0)
+    )
+    for (meth in .meths) {
+      s <- rxSolve(.m, d, .p, method = meth)
+      w <- rxSolve(.m, want, .p, method = meth)
+      expect_equal(s$depot[s$time > 2], w$depot[w$time > 2], tolerance = 1e-6)
+    }
+  })
+
   test_that("adjoint sensitivities follow a reset during an infusion", {
     skip_on_cran()
     mText <- "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl/v)*center"
