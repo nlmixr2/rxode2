@@ -122,6 +122,14 @@ void rxTteSubjectFinish(rx_solving_options_ind *ind) {
   }
 }
 
+// The cumulative hazards never reach a steady state: an infinite ssAtol
+// counts them as converged
+extern "C" void rxTteSsAtol(double *ssAtol, int neq) {
+  for (const rxTteEndpoint &ep : _rxTteEps) {
+    if (ep.hIdx >= 0 && ep.hIdx < neq) ssAtol[ep.hIdx] = R_PosInf;
+  }
+}
+
 // Set (or with NULL clear) the tte() configuration for the next solve
 extern "C" SEXP _rxode2_rxTteSetup(SEXP cfg) {
   _rxTteEps.clear();

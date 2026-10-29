@@ -56,6 +56,7 @@ extern "C" void seedEng(int ncores);
 extern "C" void ensureLsodaCtxPool(int nCores);
 extern "C" void ensureIndLinExpCache(int nCores);
 extern "C" int rxTteN(void);
+extern "C" void rxTteSsAtol(double *ssAtol, int neq);
 extern "C" void ensureRworkPool(int nCores, int lrw, int liw);
 
 #include "cbindThetaOmega.h"
@@ -7045,7 +7046,11 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
                  "pushed at an observation");
     }
     if (op->useDense && INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_evid_]) {
-      Rf_warning("dense output not yet supported for models that push events with evid_(); using standard output");
+      // tte() sets the evid_() flag without pushing events; its record loop
+      // gives the same solution, so no warning
+      if (rxTteN() == 0) {
+        Rf_warning("dense output not yet supported for models that push events with evid_(); using standard output");
+      }
       op->useDense = 0;
     }
     op->stiff = method;
@@ -7655,6 +7660,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->rtol2 = &_globals.grtol2[0];
     op->ssAtol = _globals.gssAtol;
     op->ssRtol = _globals.gssRtol;
+    rxTteSsAtol(_globals.gssAtol, op->neq);
 
     // Initialize per-thread tolerance arrays from the global baseline values.
     for (int _core = 0; _core < op->cores; _core++) {

@@ -524,7 +524,8 @@ so renewal and count-dependent hazards can be written. Every ODE
 solving `method` except the adjoint sensitivity methods simulates
 `tte()` endpoints, since the root finding only re-solves intervals with
 the chosen method; a hazard using `delay()` is solved with the dense
-`delay()` solvers.
+`delay()` solvers.  A steady-state dose holds the cumulative hazard
+fixed.
 
 ### General table of supported residual distributions
 
