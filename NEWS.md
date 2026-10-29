@@ -56,6 +56,9 @@
   multiple of `ii` now gives the record's own lagged infusion (and those of
   the intervals in between); they were dropped, so the profile decayed from
   the dose arrival time on (#1590).
+- A steady-state infusion lasting exactly `ii` (fixed `rate` or `dur`) into a
+  compartment with an `alag()` now stays on until its own lagged dose ends;
+  with `ssAtDoseTime = TRUE` it turned off `alag()` too early (#1590).
 
 ## New features
 

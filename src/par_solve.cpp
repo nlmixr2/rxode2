@@ -4187,7 +4187,11 @@ void handleSS(int *neq,
                    &canBreak);
       if (isSameTimeOp(curIi, dur) && !isSameTimeOp(dur, 0.0)) {
         ind->InfusionRate[ind->cmt] = rateOn;
-        pushDosingEvent(startTimeD+curIi, rateOff, extraEvid, ind);
+        // back-to-back infusions stay on until the record's own lagged one
+        // ends; a modeled startTimeD is already the lagged arrival
+        double offTime = startTimeD + curIi;
+        if (!isModeled) offTime += curLagExtra + overIi*curIi;
+        pushDosingEvent(offTime, rateOff, extraEvid, ind);
         for (int ii = 0; ii < nIgnoredDoses; ++ii) {
           pushIgnoredDose(ignoreDoses[ii], ind);
         }
