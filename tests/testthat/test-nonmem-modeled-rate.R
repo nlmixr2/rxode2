@@ -126,6 +126,43 @@ rxTest({
     }
   })
 
+  test_that("an infusion ended by a turn-off or reset is not re-read", {
+    .base <- data.frame(
+      ID = 1,
+      TIME = c(2, 3, 4, 8),
+      EVID = c(1, 0, 0, 0),
+      AMT = c(100, 0, 0, 0),
+      RATE = c(-1, 0, 0, 0),
+      CMT = 1,
+      X = c(4, 2, 1, 1)
+    )
+    .ref <- rxSolve(
+      .m,
+      .base,
+      nonmem = TRUE,
+      addDosing = FALSE,
+      atol = 1e-12,
+      rtol = 1e-12,
+      returnType = "data.frame"
+    )$cp
+    for (.ev in c(2, 3)) {
+      .dd <- rbind(
+        data.frame(
+          ID = 1,
+          TIME = c(0, 1),
+          EVID = c(1, .ev),
+          AMT = c(100, 0),
+          RATE = c(-1, 0),
+          CMT = c(1, ifelse(.ev == 2, -1, 1)),
+          X = 4
+        ),
+        .base
+      )
+      .s <- rxSolve(.m, .dd, nonmem = TRUE, addDosing = FALSE, atol = 1e-12, rtol = 1e-12, returnType = "data.frame")
+      expect_equal(tail(.s$cp, 3), .ref, tolerance = 1e-8, info = .ev)
+    }
+  })
+
   test_that("a modeled duration is still fixed at the dose", {
     .md <- rxode2({
       cl <- 0.5

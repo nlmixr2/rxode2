@@ -189,18 +189,45 @@ static inline int nonmemNextRecord(rx_solving_options_ind *ind, int i) {
   return -1;
 }
 
+// rxControl(nonmem = TRUE): whether the modeled rate started by record `on`
+// (compartment cmt) is handled at or before sorted position i with no reset
+// (evid = 3) or turn-off of cmt since
+static inline int nonmemRateStarted(rx_solving_options_ind *ind, int i, int on, int cmt) {
+  double tOn = ind->timeThread[on];
+  for (int p = i; p >= 0; --p) {
+    int r = ind->ix[p];
+    if (r == on) return 1;
+    if (r < 0) continue;
+    double tp = ind->timeThread[r];
+    if (tp < tOn && !isSameTime(tp, tOn)) return 0;
+    int evid = getEvid(ind, r);
+    if (evid == 3) return 0;
+    if (evid >= 100) {
+      int wh, cmt2, wh100, whI, wh0;
+      getWh(evid, &wh, &cmt2, &wh100, &whI, &wh0);
+      if (wh0 == EVID0_OFF && cmt2 == cmt) return 0;
+    }
+  }
+  return 0;
+}
+
 // rxControl(nonmem = TRUE) (rxode2#1586): like NONMEM's R1, a modeled rate
 // runs on (t[j-1], t[j]] at the rate computed with data record j until its
 // amount is delivered.  Called after the record at sorted position i is
 // handled (an addl repeat too, so its first interval reads the next data
 // record): re-reads each running modeled rate from the next data record and
 // moves its end.  Returns 1 when an end moved (the timeline needs a re-sort).
+// Event sensitivities and the adjoint keep the rate of the dose, which their
+// d(rate)/dp forcing assumes.
 static inline int updateNonmemModeledRates(rx_solve *rx, rx_solving_options_ind *ind,
                                            int i, double *yp, double *InfusionRate) {
   if (!rx->nonmem || ind->idose == NULL || ind->timeThread == NULL) return 0;
+  rx_solving_options *op = (ind->op ? ind->op : &op_global);
+  if (_rxEsActive || op->adjoint) return 0;
   int raw = ind->ix[i];
   if (raw < 0 || raw >= ind->n_all_times_orig) return 0;
   double tNow = ind->timeThread[raw];
+  int ncmt = op->neq + op->extraCmt;
   int j = -2, ret = 0;
   for (int d = 0; d < ind->ndoses; ++d) {
     int on = ind->idose[d];
@@ -209,21 +236,15 @@ static inline int updateNonmemModeledRates(rx_solve *rx, rx_solving_options_ind 
     getWh(getEvid(ind, on), &wh, &cmt, &wh100, &whI, &wh0);
     if (whI != EVIDF_MODEL_RATE_ON || wh0 != EVID0_REGULAR) continue;
     if (!isEvidModeledRateStop(getEvid(ind, on + 1))) continue;
-    if (cmt < 0 || !ind->on[cmt]) continue;
+    if (cmt < 0 || cmt >= ncmt || !ind->on[cmt]) continue;
     // running: started at or before this record, ends after it
     double tOn = ind->timeThread[on];
     if (tOn > tNow && !isSameTime(tOn, tNow)) continue;
-    if (isSameTime(tOn, tNow)) {
-      int p = i;
-      while (p >= 0 && ind->ix[p] != on && isSameTime(ind->timeThread[ind->ix[p]], tNow)) p--;
-      if (p < 0 || ind->ix[p] != on) continue;
-    }
     double tOff = ind->all_times[on + 1];
     if (tOff < tNow || isSameTime(tOff, tNow)) continue;
     double rOld = -ind->dose[on + 1];
     if (!(rOld > 0)) continue;
-    // a reset (evid = 3) cleared this infusion's forcing
-    if (InfusionRate[cmt] < rOld*(1.0 - 1e-8)) continue;
+    if (!nonmemRateStarted(ind, i, on, cmt)) continue;
     if (j == -2) j = nonmemNextRecord(ind, i);
     if (j < 0) return ret;
     int oldIdx = ind->idx;
