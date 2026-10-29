@@ -174,7 +174,10 @@ at each record, which costs little for the one-step methods
 A hazard may use `delay()`.  The record loop then solves each interval
 with a dense solver (`dop853+ros4`, `dop853` or `ros4`), whose steps
 record the history `delay()` reads, and an event rewinds that history
-with the state:
+with the state.  Any state may be delayed, including the cumulative
+hazard itself (`delay(rx.tteH.ev, tau)`), but a delayed cumulative hazard
+cannot be combined with steady-state doses, since the hazard has no
+steady state:
 
 ```{r}
 dde <- function() {

@@ -525,7 +525,8 @@ solving `method` except the adjoint sensitivity methods simulates
 `tte()` endpoints, since the root finding only re-solves intervals with
 the chosen method; a hazard using `delay()` is solved with the dense
 `delay()` solvers.  A steady-state dose holds the cumulative hazard
-fixed.
+fixed, so a `delay()` of the cumulative hazard (`rx.tteH.ev`) cannot be
+combined with steady-state doses.
 
 ### General table of supported residual distributions
 
