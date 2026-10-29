@@ -344,6 +344,29 @@ rxTest({
     ) # interior ss1 reset
   })
 
+  test_that("a modeled ss infusion lasting ii or longer fails only the subject it applies to", {
+    skip_on_cran()
+    # dur(center) = dd crosses ii = 8 only for the second subject: it becomes NA
+    # with the reason in the solve warnings; the first one is solved
+    mDd <- rxode2::rxode2(rxode2::.rxAdjointExpand(
+      "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl/v)*center\ndur(center)=dd", c("ka", "cl", "v", "dd"))$text)
+    .ev <- et(amt = 100, rate = -2, cmt = "center", ss = 1, ii = 8, id = 1:2) %>% et(c(1, 4, 8))
+    .prm <- data.frame(id = 1:2, ka = 1.2, cl = 3.5, v = 25, dd = c(4, 9))
+    .w <- capture_warnings(
+      .o <- capture.output(.s <- rxode2::rxSolve(mDd, .ev, params = .prm, method = "rk4s", cores = 1))
+    )
+    .s <- as.data.frame(.s)
+    expect_identical(nrow(.s), 6L)
+    expect_true(all(is.finite(.s$center[.s$id == 1])))
+    expect_true(all(is.finite(.s$rx__sens_center_BY_dd__[.s$id == 1])))
+    expect_true(all(is.na(.s$center[.s$id == 2])))
+    expect_identical(.w, "some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'")
+    expect_true(paste0(
+      "[solve error: the explicit-tableau adjoint methods (rk4s, dop853s, ...) do not support a modeled ",
+      "rate()/dur() steady-state (ss) infusion lasting ii or longer]: 1 warning(s) for subject(s): 2"
+    ) %in% .o)
+  })
+
   test_that("steady-state (ss): not-yet-covered cases and drivers stay guarded", {
     skip_on_cran()
     ex <- rxode2::.rxAdjointExpand(mText, cs)
@@ -363,11 +386,15 @@ rxTest({
       ),
       "steady-state"
     ) # composite guarded
-    # a modeled dur longer than ii (9 > 8 here) or a modeled dur parameter equal
-    # to it: the explicit fills find these only while solving, and name them
+    # a modeled dur longer than ii (9 > 8 here), a modeled dur parameter equal to
+    # it, or a modeled rate whose duration (100/10) exceeds it: every explicit
+    # tableau fill finds these only while solving, and names them
+    .why <- "do not support a modeled rate()/dur() steady-state (ss) infusion lasting ii or longer"
     mEq <- rxode2::rxode2(rxode2::.rxAdjointExpand(
       "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl/v)*center\ndur(depot)=dd", c("ka", "cl", "v", "dd"))$text)
-    for (.m in c("rk4s", "dop853s")) {
+    mRate <- rxode2::rxode2(rxode2::.rxAdjointExpand(
+      "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl/v)*center\nrate(center)=rr", c("ka", "cl", "v", "rr"))$text)
+    for (.m in c("rk4s", "dop853s", "ck54s")) {
       expect_error(
         rxode2::rxSolve(
           mMdl,
@@ -376,7 +403,7 @@ rxTest({
           method = .m,
           cores = 1
         ),
-        "do not yet support this steady-state (ss) case",
+        .why,
         fixed = TRUE
       )
       expect_error(
@@ -387,7 +414,18 @@ rxTest({
           method = .m,
           cores = 1
         ),
-        "do not yet support this steady-state (ss) case",
+        .why,
+        fixed = TRUE
+      )
+      expect_error(
+        rxode2::rxSolve(
+          mRate,
+          et(amt = 100, rate = -1, cmt = "center", ss = 1, ii = 8) %>% et(c(1, 4, 8)),
+          params = c(p, rr = 10),
+          method = .m,
+          cores = 1
+        ),
+        .why,
         fixed = TRUE
       )
     }

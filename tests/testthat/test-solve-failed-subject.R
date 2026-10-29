@@ -188,7 +188,7 @@ rxTest({
       "Inductive linearization failed with an unhandled exception (most likely out of memory)",
       "the ODE solver failed (an exception, or a step it could not take)",
       "method='vv' needs coordinate-momentum state pairs with d/dt(q_i) = p_i",
-      "adjoint sensitivities do not yet support this steady-state (ss) case"
+      "the explicit-tableau adjoint methods (rk4s, dop853s, ...) do not support a modeled rate()/dur() steady-state (ss) infusion lasting ii or longer"
     )
     # every rxErr bit in the installed header has a text: the NA-time codes
     # (rxErrNaTime*, 1-5) are not bits

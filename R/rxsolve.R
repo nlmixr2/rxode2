@@ -3656,7 +3656,7 @@ rxSolve.default <- function(
       # duration dur>ii via a two-phase monodromy; full-interval dur==ii via a
       # -J^{-1} df/dp linear solve), continuous infusion (rate, amt 0), and
       # interior ss==1 resets / multiple ss==2 superposition events.
-      # Still guarded (fall back to sensMethod="forward"): modeled-rate/dur
+      # Still guarded (forward sensitivities instead): modeled-rate/dur
       # infusion ss (dR/dp != 0, a moving period boundary); the liblsodaadj
       # multistep driver for anything but continuous infusion; and the abs /
       # cvodesadj / pure Rosenbrock-implicit drivers (no ss IC term at all).
@@ -3721,7 +3721,9 @@ rxSolve.default <- function(
       if (.badSs) {
         stop(
           "adjoint sensitivities do not yet support this steady-state (ss) ",
-          "case; use sensMethod=\"forward\" for models with steady-state doses",
+          "case; for forward sensitivities build the model with ",
+          "rxode2(model, calcSens = <parameters>) and solve it with a ",
+          "non-adjoint method",
           call. = FALSE
         )
       }

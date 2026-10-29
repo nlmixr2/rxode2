@@ -33,7 +33,7 @@
 #define rxErrSolverFail       134217728
 #define rxSolverFail(ind) do { if ((ind)->err == 0) (ind)->err = rxErrSolverFail; } while (0)
 #define rxErrVvNotPairs       268435456
-// an adjoint steady-state (ss) case a driver finds unsupported only while solving
+// an explicit-tableau adjoint fill's modeled rate()/dur() ss infusion lasting ii or longer
 #define rxErrAdjSsUnsupported 536870912
 
 #define rxErrNaTimeLag   1

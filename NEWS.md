@@ -29,11 +29,15 @@
 - `rxSolveAdjoint()` and the adjoint builds now send a dose without a `cmt`
   to the first state, and a numeric `cmt` to that state, as `rxSolve()`
   does; a dose without a `cmt` used to fail in the build (#1504).
-- `method = "rk4s"` and `"dop853s"` now name a steady-state modeled
-  `rate()`/`dur()` infusion they cannot carry (lasting longer than the dosing
-  interval, or a modeled duration equal to it) as an unsupported adjoint
-  steady-state case, as the other adjoint methods do; they
-  stopped with "could not solve the system".
+- The explicit-tableau adjoint methods (`rk4s`, `dop853s`, `heuns`, `ck54s`
+  and the others ending in `s` that are not stiff) now name a steady-state
+  modeled `rate()`/`dur()` infusion lasting the dosing interval or longer,
+  which they cannot carry; a single subject stopped with "could not solve the
+  system".  The condition depends on the parameters, so with several
+  subjects only the subjects it applies to are `NA`, with that reason in the
+  solve warnings, as before.  The steady-state refusal before solving now
+  suggests forward sensitivities (`rxode2(model, calcSens = )` with a
+  non-adjoint method) instead of a `sensMethod` argument that does not exist.
 
 ### Compilation
 - A cached model library that exists but will not load (still being linked by
