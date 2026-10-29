@@ -62,7 +62,7 @@ extern "C" void ind_rkf78_0(rx_solve *rx, rx_solving_options *op, int solveid, i
         badSolveExit(i);
         localBadSolve = 1;
       } else {
-        if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+        while (!localBadSolve && handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                             xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
             if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
               preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
@@ -96,27 +96,6 @@ extern "C" void ind_rkf78_0(rx_solve *rx, rx_solving_options *op, int solveid, i
               ind->ixds = ixds;
               ind->idx = idx;
               ind->idxExtra++;
-              if (!isSameTime(xout, ind->extraDoseNewXout)) {
-                preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-
-                if (neqOde > 0) {
-                    zero_copy_state state(yp, neqOde);
-                    double dt = op->HMIN > 0.0 ? op->HMIN : 1e-4;
-                    if (xout < ind->extraDoseNewXout) dt = -dt;
-                    try {
-                        boost::numeric::odeint::integrate_adaptive(
-                            stepper, sys, state, ind->extraDoseNewXout, xout, dt, error_checker(ind, ind->rc, op->mxstep));
-                    } catch(const std::exception& e) {
-                        if (ind->rc[0] == 0) ind->rc[0] = -2019;
-                    }
-                }
-
-                copyLinCmt(neq, ind, op, yp);
-                const char* err_msg = "rkf78 failed";
-                postSolve(neq, &istate, ind->rc, &idx, yp, &err_msg, 9, false, ind, op, rx);
-                if (*(ind->rc) < 0) localBadSolve = 1;
-                ind->extraDoseNewXout = xout;
-              }
               xp = ind->extraDoseNewXout;
             }
         }

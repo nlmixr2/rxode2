@@ -384,6 +384,9 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
 #if defined(__cplusplus)
 }
 
+// Returns 1 when the next extra dose lies in [xp, xout]; callers loop until it
+// returns 0, since an extra dose left for the next interval falls before xp and
+// is skipped.
 static inline int handleExtraDose(int *neq,
                                   int *BadDose,
                                   double *InfusionRate,
