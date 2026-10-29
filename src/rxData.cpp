@@ -2145,6 +2145,8 @@ extern "C" void gFree(){
   _globals.gpkSkip=NULL;
   if (_globals.gdoseRow != NULL) free(_globals.gdoseRow);
   _globals.gdoseRow=NULL;
+  if (_globals.gaddlParent != NULL) free(_globals.gaddlParent);
+  _globals.gaddlParent=NULL;
   if (_globals.gall_times != NULL) free(_globals.gall_times);
   _globals.gall_times=NULL;
   _globals.gall_times_n = 0;
@@ -4432,23 +4434,23 @@ static inline double rxHmaxMean(double mean, double ss, double n, double hmaxSd)
   return mean + hmaxSd*sqrt(ss/(n-1));
 }
 
-// Loads _globals.gdoseRow from the event table's rxDoseRow attribute: the
-// records a dose row expands to and that row's own record, as 1-based
-// (record, dose) row pairs, stored as the offset from the record to it
-static inline void rxSolve_loadDoseRow(SEXP ev1, int nr) {
-  if (_globals.gdoseRow != NULL) free(_globals.gdoseRow);
-  _globals.gdoseRow = NULL;
-  SEXP doseRowS = Rf_getAttrib(ev1, Rf_install("rxDoseRow"));
-  if (TYPEOF(doseRowS) != INTSXP || Rf_length(doseRowS) < 2) return;
-  _globals.gdoseRow = (int*)calloc(nr, sizeof(int));
-  if (_globals.gdoseRow == NULL){
+// Loads *dst from the event table's `attr` attribute, 1-based (record,
+// linked) row pairs, stored as the offset from the record to its linked row
+static inline void rxSolve_loadRowLink(SEXP ev1, int nr, const char *attr,
+                                       int **dst) {
+  if (*dst != NULL) free(*dst);
+  *dst = NULL;
+  SEXP linkS = Rf_getAttrib(ev1, Rf_install(attr));
+  if (TYPEOF(linkS) != INTSXP || Rf_length(linkS) < 2) return;
+  *dst = (int*)calloc(nr, sizeof(int));
+  if (*dst == NULL){
     rxSolveFree();
     stop(_("can not allocate enough memory to load record types"));
   }
-  int *ip = INTEGER(doseRowS);
-  for (int k = 0; k + 1 < Rf_length(doseRowS); k += 2) {
+  int *ip = INTEGER(linkS);
+  for (int k = 0; k + 1 < Rf_length(linkS); k += 2) {
     int r0 = ip[k] - 1, p0 = ip[k+1] - 1;
-    if (r0 >= 0 && r0 < nr && p0 >= 0 && p0 < r0) _globals.gdoseRow[r0] = p0 - r0;
+    if (r0 >= 0 && r0 < nr && p0 >= 0 && p0 < r0) (*dst)[r0] = p0 - r0;
   }
 }
 
@@ -4578,7 +4580,9 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
       }
     }
     // the records a dose row expands to and that row's own record
-    rxSolve_loadDoseRow(ev1, evid.size());
+    rxSolve_loadRowLink(ev1, evid.size(), "rxDoseRow", &_globals.gdoseRow);
+    // addl repeats without their covariates and the dose record each repeats
+    rxSolve_loadRowLink(ev1, evid.size(), "rxAddlParent", &_globals.gaddlParent);
     int ntot = 1;
 
     IntegerVector id(evid.size(), 1);
@@ -4839,6 +4843,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           ind->infPair          = _globals.ginfPair ? &_globals.ginfPair[startRow] : NULL;
           ind->pkSkip           = _globals.gpkSkip ? &_globals.gpkSkip[startRow] : NULL;
           ind->doseRow          = _globals.gdoseRow ? &_globals.gdoseRow[startRow] : NULL;
+          ind->addlParent       = _globals.gaddlParent ? &_globals.gaddlParent[startRow] : NULL;
           ind->cov_ptr          = groupCov;
           ind->n_all_times      = groupNAll;
           ind->n_all_times_orig = groupNAll;
@@ -4991,6 +4996,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           ind->infPair        = _globals.ginfPair ? &_globals.ginfPair[i] : NULL;
           ind->pkSkip         = _globals.gpkSkip ? &_globals.gpkSkip[i] : NULL;
           ind->doseRow        = _globals.gdoseRow ? &_globals.gdoseRow[i] : NULL;
+          ind->addlParent     = _globals.gaddlParent ? &_globals.gaddlParent[i] : NULL;
           lasti = i;
 
           hmax1m=0.0;
@@ -5823,6 +5829,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
             ind->infPair = indS.infPair;
             ind->pkSkip = indS.pkSkip;
             ind->doseRow = indS.doseRow;
+            ind->addlParent = indS.addlParent;
             ind->evid =&(indS.evid[0]);
             ind->dv    = &(indS.dv[0]);
             ind->limit = &(indS.limit[0]);
