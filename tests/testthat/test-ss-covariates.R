@@ -73,9 +73,15 @@ rxTest({
 
   test_that("a lagged ss bolus places the lag with the dose record's covariates (#1589)", {
     .bolus <- function(wtLast, lag, interp) {
-      d <- data.frame(ID = 1, TIME = c(0, 1, 24), EVID = c(1, 0, 0),
-                      AMT = c(100, 0, 0), SS = c(1, 0, 0), II = c(12, 0, 0),
-                      WT = c(70, 70, wtLast))
+      d <- data.frame(
+        ID = 1,
+        TIME = c(0, 1, 24),
+        EVID = c(1, 0, 0),
+        AMT = c(100, 0, 0),
+        SS = c(1, 0, 0),
+        II = c(12, 0, 0),
+        WT = c(70, 70, wtLast)
+      )
       .solveFirst(.modLag, d, interp, params = c(lag = lag))
     }
     for (.interp in c("nocb", "locf")) {
@@ -90,22 +96,33 @@ rxTest({
   test_that("a lagged ss infusion places the lag with the dose record's covariates (#1589)", {
     .inf <- function(wtLast, lag, amt, interp) {
       .t <- c(0, seq(0.5, 24, by = 0.5))
-      d <- data.frame(ID = 1, TIME = .t, EVID = c(1, rep(0, length(.t) - 1)),
-                      AMT = c(amt, rep(0, length(.t) - 1)),
-                      RATE = c(100, rep(0, length(.t) - 1)),
-                      SS = c(1, rep(0, length(.t) - 1)),
-                      II = c(12, rep(0, length(.t) - 1)),
-                      WT = c(rep(70, length(.t) - 1), wtLast))
-      .s <- rxSolve(.modLag, d, params = c(lag = lag), covsInterpolation = interp,
-                    atol = 1e-12, rtol = 1e-12, ssAtol = 1e-12, ssRtol = 1e-12)
+      d <- data.frame(
+        ID = 1,
+        TIME = .t,
+        EVID = c(1, rep(0, length(.t) - 1)),
+        AMT = c(amt, rep(0, length(.t) - 1)),
+        RATE = c(100, rep(0, length(.t) - 1)),
+        SS = c(1, rep(0, length(.t) - 1)),
+        II = c(12, rep(0, length(.t) - 1)),
+        WT = c(rep(70, length(.t) - 1), wtLast)
+      )
+      .s <- rxSolve(
+        .modLag,
+        d,
+        params = c(lag = lag),
+        covsInterpolation = interp,
+        atol = 1e-12,
+        rtol = 1e-12,
+        ssAtol = 1e-12,
+        ssRtol = 1e-12
+      )
       .s$cp[.s$time < 24]
     }
     ## lag 6 (lag + dur == ii), lag 7 (lag > ii - dur), dur > ii
     .cases <- list(c(0, 600), c(0.7, 600), c(6, 600), c(7, 600), c(0.7, 1800))
     for (.interp in c("nocb", "locf")) {
       for (.c in .cases) {
-        expect_equal(.inf(140, .c[1], .c[2], .interp), .inf(70, .c[1], .c[2], .interp),
-                     tolerance = 1e-7)
+        expect_equal(.inf(140, .c[1], .c[2], .interp), .inf(70, .c[1], .c[2], .interp), tolerance = 1e-7)
       }
     }
   })
