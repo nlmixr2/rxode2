@@ -211,9 +211,7 @@
     if (identical(x[[1]], quote(`{`))) {
       if (progress) {
         rxProgress(length(.x2))
-        on.exit({
-          rxProgressAbort("stopped optimizing duplicate expressions")
-        })
+        on.exit(.rxProgressExit())
         .ret <- unlist(lapply(.x2, function(x) {
           rxTick()
           ..rxOpt(x)

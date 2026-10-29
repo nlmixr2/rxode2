@@ -71,11 +71,28 @@
   to the first state, and a numeric `cmt` to that state, as `rxSolve()`
   does; a dose without a `cmt` used to fail in the build (#1504).
 
+### Compilation
+- A cached model library that exists but will not load (still being linked by
+  another process sharing `rxTempDir()`, or left empty) is now rebuilt, or
+  waited for under the build lock, instead of failing with "something went
+  wrong in compilation".  Libraries are linked to a private name and renamed
+  into place, so another process never loads a partly written one (#1558).
+
+### Solving
+- `rxSolve()` now stops with an error when an `rxControl()` object is passed
+  as `params` or `events`, as it already did for `inits`, and a parameter list
+  that is empty or whose first column is empty gives the parameter-size
+  error.  With a `sigma` to simulate, these used to crash R with a floating
+  point exception or fail with an unrelated internal error (#1551).
+
 ### Steady state
 - A steady-state bolus into a compartment whose `alag()` is longer than `ii`
   now includes the doses of the earlier intervals that arrive inside the
   observed one; they were dropped, so the profile decayed from the trough
   instead of matching explicit dosing (#1499).
+- `linCmt()` models now follow `minSS = maxSS = n`, giving the profile after
+  exactly `n` prior doses as the equivalent ODE model does; they used to
+  return the exact steady state for every `n` (#1500).
 
 ## New features
 
@@ -95,6 +112,12 @@
 - Packages linking to rxode2 can read the thread id they gave with
   `setRxThreadId()` back through `getRxThreadId()`, a new entry of the C
   pointer table (`rxode2ptr.h`).
+
+- Packages linking to rxode2 can set a subject's `newind` with
+  `setIndNewind()`, a new entry of the C pointer table (`rxode2ptr.h`), so a
+  walk of their own over a subject's records with `calc_lhs` gives a model
+  that reads `newind` 1 at the first record and 2 after it, as rxode2's
+  output does.
 
 - A package that includes rxode2's `rxode2parseSbuf.h` can define
   `RXODE2_SBUF_FORMAT` (`PKG_CPPFLAGS = -DRXODE2_SBUF_FORMAT`) to have its
@@ -284,6 +307,12 @@
   solving".  nlmixr2est's population `predict()` of a fit with
   inter-occasion variability goes through it.
 ### Symbolic derivatives
+
+- An error inside a symbolic calculation that shows a progress bar (the
+  Jacobian and sensitivity builds of `rxode2(calcSens = )`, the adjoint
+  expansion, inductive linearization, expression optimization) is now
+  reported as itself; the progress bar's clean-up replaced it with
+  "Aborted calculation".
 
 - The derivative of a function of `abs()` of a sum (`exp(2 * abs(k - 0.9))`)
   keeps `abs()`'s argument.  It was written `abs(+)` (since 5.1.7), so a

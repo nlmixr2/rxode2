@@ -3051,7 +3051,14 @@ extern "C" void handleSSbolus(int *neq,
                               int *canBreak,
                               int adjustEvidBolusLag) {
   ind->ssTime = *xp2;
-  if (handleSSbolusLinear(neq, BadDose, InfusionRate, dose, yp, xout, id, i,
+  // yp holds the first dose and an ss lag adds one after this, so minSS and
+  // maxSS count every dose before the steady-state one
+  int isSsLag = ind->wh0 == EVID0_SS20 || ind->wh0 == EVID0_SS0;
+  int minSS = max2(op->minSS - isSsLag, 1);
+  int maxSS = max2(op->maxSS - isSsLag, minSS);
+  // a fixed dose count (minSS == maxSS) iterates linCmt() too (#1500)
+  if (minSS < maxSS &&
+      handleSSbolusLinear(neq, BadDose, InfusionRate, dose, yp, xout, id, i,
                           nx, istate, op, ind, u_inis, ctx, xout2, xp2,
                           curIi, adjustEvidBolusLag)) {
     ind->ssTime = NA_REAL;
@@ -3060,11 +3067,6 @@ extern "C" void handleSSbolus(int *neq,
   // advance to trough
   ind->idx=*i;
   *xout2 = *xp2 + *curIi;
-  // yp holds the first dose and an ss lag adds one after this, so minSS and
-  // maxSS count every dose before the steady-state one
-  int isSsLag = ind->wh0 == EVID0_SS20 || ind->wh0 == EVID0_SS0;
-  int minSS = max2(op->minSS - isSsLag, 1);
-  int maxSS = max2(op->maxSS - isSsLag, minSS);
   for (int k = rxEffNeq(ind, op); k--;) {
     ind->solveLast[k] = yp[k];
   }
@@ -3179,7 +3181,12 @@ extern "C" void solveSSinf(int *neq,
                            int nAfter) {
   double ssStart = *xp2;
   double ssStop = *xp2 + *dur;
-  if (canHandleSSLinear(op, ind, ind->idose[*infBixds])) {
+  // minSS/maxSS count every dose before the steady-state one, including the
+  // nAfter that handleSS() gives after this loop
+  int minSS = max2(op->minSS - nAfter, 1);
+  int maxSS = max2(op->maxSS - nAfter, minSS);
+  // a fixed dose count (minSS == maxSS) iterates linCmt() too (#1500)
+  if (minSS < maxSS && canHandleSSLinear(op, ind, ind->idose[*infBixds])) {
     // only a linear solved, use calculated steady state instead of
     // solved steady state.
     //
@@ -3217,10 +3224,6 @@ extern "C" void solveSSinf(int *neq,
       return;
     }
   }
-  // minSS/maxSS count every dose before the steady-state one, including the
-  // nAfter that handleSS() gives after this loop
-  int minSS = max2(op->minSS - nAfter, 1);
-  int maxSS = max2(op->maxSS - nAfter, minSS);
   for (int k = neq[0]; k--;) {
     ind->solveLast[k] = ind->solveLast2[k] = yp[k];
   }
