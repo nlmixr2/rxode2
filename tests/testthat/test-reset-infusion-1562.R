@@ -115,6 +115,11 @@ rxTest({
         d <- .solve(r[[1]], ev, meth)
         expect_equal(d[1], 14.56, tolerance = 1e-3)
         expect_equal(d[-1], rep(0, 4), tolerance = 1e-6)
+        # a phantom (evid=7) modeled start still sets the rate
+        ev <- et(amt = 100, rate = r[[2]], evid = 7, cmt = "depot") |>
+          et(time = 2, evid = 3) |>
+          et(.o)
+        expect_equal(.solve(r[[1]], ev, meth)[-1], rep(0, 4), tolerance = 1e-6)
       }
     }
   })
@@ -179,6 +184,8 @@ rxTest({
     s <- rxSolve(.m, ev, .p, cores = 1)
     expect_true(all(s$depot >= -1e-8))
     expect_equal(s$depot[s$id == 2], s$depot[s$id == 1])
+    one <- rxSolve(.m, ev |> et(id = 1), .p, cores = 1)
+    expect_equal(s$depot[s$id == 1], one$depot)
   })
 
   test_that("adjoint sensitivities follow a reset during an infusion", {
