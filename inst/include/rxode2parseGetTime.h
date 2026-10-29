@@ -87,12 +87,25 @@ static inline int isEvidType(int evid, int type) {
 #define isEvidModeledRateStart(evid) isEvidType(evid, EVIDF_MODEL_RATE_ON)
 #define isEvidModeledRateStop(evid) isEvidType(evid, EVIDF_MODEL_RATE_OFF)
 
+// Sorted position of data record `raw` (ind->ix is a permutation of the
+// records); a covariate update reads ind->idx as a sorted position.  At sort
+// time, and in a record order no lag changed, the record sits at its own slot.
+static inline int getSortedPosition(rx_solving_options_ind *ind, int raw) {
+  if (raw < 0) return raw; // an extra dose is addressed by its negative index
+  if (raw < ind->n_all_times && ind->ix[raw] == raw) return raw;
+  for (int j = 0; j < ind->n_all_times; ++j) {
+    if (ind->ix[j] == raw) return j;
+  }
+  return raw;
+}
+
 static inline void updateDur(int idx, rx_solving_options_ind *ind, double *yp){
   double t = getAllTimes(ind, idx);
   double dur, amt;
-  // The duration and f cannot depend on state values
+  // The duration and f cannot depend on state values; both are read at the
+  // start's record
   int oldIdx = ind->idx;
-  ind->idx = idx;
+  ind->idx = getSortedPosition(ind, idx);
   amt  = getAmt(ind, ind->id, ind->cmt, getDose(ind, idx), t, yp);
   dur  = getDur(ind, ind->id, ind->cmt, amt, t, yp);
   ind->idx = oldIdx;
@@ -138,8 +151,9 @@ static inline void updateDur(int idx, rx_solving_options_ind *ind, double *yp){
 
 static inline void updateRate(int idx, rx_solving_options_ind *ind, double *yp) {
   double t = getAllTimes(ind, idx);
+  // f() and the rate are read at the start's record
   int oldIdx = ind->idx;
-  ind->idx=idx;
+  ind->idx = getSortedPosition(ind, idx);
   double dur, rate, amt;
   amt  = getAmt(ind, ind->id, ind->cmt, getDose(ind,idx), t, yp);
   rate  = getRate(ind, ind->id, ind->cmt, amt, t, yp);
@@ -355,10 +369,19 @@ static inline double handleInfusionItem(int idx, rx_solve *rx, rx_solving_option
     handleInfusionGetStartOfInfusionIndex(&infBidx, &infEidx, &amt, &idx, rx, op, ind);
     if (infBidx == -1) return 0.0;
     rx_solve *rxp = (ind->rx ? ind->rx : &rx_global);
+    // the stop is the start's lagged time plus F*duration, with alag() and f()
+    // both read at the start's record; f() is evaluated at the lagged time,
+    // the time the solve gives that record
     int oIdx = ind->idx;
-    ind->idx = ind->idose[infBidx];
-    double f = getAmt(ind, ind->id, ind->cmt, 1.0,
-                      getAllTimes(ind, ind->idose[infBidx]), rxp->ypNA);
+    ind->idx = getSortedPosition(ind, ind->idose[infBidx]);
+    // To the correct lag time, we need to make sure the steady state flags are not set...
+    int wh0 = ind->wh0;
+    int wh, cmt, wh100, whI;
+    getWh(getEvid(ind, ind->idose[infBidx]), &wh, &cmt, &wh100, &whI, &(ind->wh0));
+    double tB = getLag(ind, ind->id, ind->cmt, getAllTimes(ind, ind->idose[infBidx]),
+                       (op->neq > 0) ? ind->solve : rx->ypNA);
+    ind->wh0 = wh0;
+    double f = getAmt(ind, ind->id, ind->cmt, 1.0, tB, rxp->ypNA);
     ind->idx = oIdx;
     if (ISNA(f)){
       rx_solving_options *opp = ind->op;
@@ -372,13 +395,6 @@ static inline double handleInfusionItem(int idx, rx_solve *rx, rx_solving_option
     double durOld = (getAllTimes(ind, ind->idose[infEidx]) -
                      getAllTimes(ind, ind->idose[infBidx]));
     double dur = f*durOld;
-    // To the correct lag time, we need to make sure the steady state flags are not set...
-    int wh0 = ind->wh0;
-    int wh, cmt, wh100, whI;
-    getWh(getEvid(ind, ind->idose[infBidx]), &wh, &cmt, &wh100, &whI, &(ind->wh0));
-    double tB = getLag(ind, ind->id, ind->cmt, getAllTimes(ind, ind->idose[infBidx]),
-                       (op->neq > 0) ? ind->solve : rx->ypNA);
-    ind->wh0 = wh0;
     return tB + dur;
   } else {
     /* Rf_errorcall(R_NilValue, "Corrupted events."); */
