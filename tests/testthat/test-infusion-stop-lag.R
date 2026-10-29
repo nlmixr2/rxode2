@@ -171,7 +171,8 @@ rxTest({
   d[order(d$time, -d$evid), ]
 }
 
-# f() on WT or on t, with or without a lag; rate() and dur() give 40 and 2
+# f() on WT or on t, with or without a lag (on WT for fWLW); rate() and dur()
+# give 40 and 2
 .infKindMods <- function() {
   list(
     fW = rxode2({
@@ -186,6 +187,14 @@ rxTest({
       d/dt(center) <- ka * depot - k * center
       f(depot) <- bio * WT / 70
       alag(depot) <- lg
+      rate(depot) <- 40
+      dur(depot) <- 2
+    }),
+    fWLW = rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - k * center
+      f(depot) <- bio * WT / 70
+      alag(depot) <- lg * WT / 70
       rate(depot) <- 40
       dur(depot) <- 2
     }),
@@ -212,7 +221,7 @@ rxTest({
 .infKindWt <- function(t) ifelse(t < 0.2, 70, 100)
 
 # F of the dose at t = 0 under each model: WT 70 at its record, t = 0
-.infKindF <- c(fW = 0.8, fWL = 0.8, fT = 1, fTL = 1)
+.infKindF <- c(fW = 0.8, fWL = 0.8, fWLW = 0.8, fT = 1, fTL = 1)
 
 # several subjects, each with a lagged bolus into center at t = 0 that moves
 # past its depot infusion (80 at 1 + 0.1*s with WT 70; WT 100 before it),
@@ -249,7 +258,7 @@ rxTest({
     })
     obsT <- c(0.5, 1.5, 2.5, 4, 8)
     for (nm in names(mods)) {
-      tLand <- if (nm %in% c("fWL", "fTL")) 0.3 else 0
+      tLand <- if (nm %in% c("fWL", "fWLW", "fTL")) 0.3 else 0
       for (kind in .kinds) {
         ev <- .infKindEv(0, kind, .infKindWt, obsT)
         # F scales a fixed rate's duration and a fixed duration's rate
