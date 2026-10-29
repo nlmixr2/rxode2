@@ -40,7 +40,7 @@ rxTest({
   test_that("long ss = 1 infusions give the right sensitivities in every driver", {
     for (.nm in names(.scen)) {
       .k <- .scen[[.nm]]
-      .ref <- .adjFd(.k$txt, .k$ev, .k$p, method = "liblsoda", maxsteps = 1e6)
+      .ref <- .adjFd(.k$txt, .k$ev, .k$p, method = "liblsoda", maxsteps = 1e6, layout = 0.05)
       for (.m in c("rk4s", "ros4s", "radauiia5s", "dop853s", "dop853s+ros4s", "liblsodaadj")) {
         .a <- rxSolveAdjointRk4(.k$txt, .k$ev,
           params = .k$p, calcSens = names(.k$p), method = .m,
@@ -90,7 +90,7 @@ rxTest({
         et(c(1, 4, 6, 9, 14, 16.5, 19))
     )
     for (.nm in names(.full)) {
-      .ref <- .adjFd(.txtF, .full[[.nm]], .pF, method = "liblsoda", maxsteps = 1e6)
+      .ref <- .adjFd(.txtF, .full[[.nm]], .pF, method = "liblsoda", maxsteps = 1e6, layout = 0.05)
       for (.m in c("rk4s", "ros4s", "radauiia5s", "dop853s", "dop853s+ros4s")) {
         .a <- rxSolveAdjointRk4(.txtF, .full[[.nm]],
           params = .pF, calcSens = names(.pF), method = .m,
@@ -115,7 +115,7 @@ rxTest({
         et(c(1, 4, 6, 8, 11, 16, 18, 23, 28))
     )
     for (.nm in names(.mult)) {
-      .ref <- .adjFd(.txtF, .mult[[.nm]], .pM, method = "liblsoda", maxsteps = 1e6)
+      .ref <- .adjFd(.txtF, .mult[[.nm]], .pM, method = "liblsoda", maxsteps = 1e6, layout = 0.05)
       for (.m in c("rk4s", "ros4s", "radauiia5s", "dop853s", "dop853s+ros4s")) {
         .a <- rxSolveAdjointRk4(.txtF, .mult[[.nm]],
           params = .pM, calcSens = names(.pM), method = .m,

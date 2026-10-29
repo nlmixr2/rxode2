@@ -124,13 +124,12 @@ rxTest({
     skipIfOldLotri()
 
     .m <- matrix(1, 1, 1, dimnames = list("tka", "tka"))
-    expect_warning(
-      {
-        withr::with_seed(1, {
-          .s <- rxSolve(.mod(), .ev(), nSub = 2, nStud = 200, thetaMat = .m)
-        })
-      },
-      "were not used"
+    ## it covers the only prior parameter, so there is nothing to say
+    expect_no_warning(
+      withr::with_seed(1, {
+        .s <- rxSolve(.mod(), .ev(), nSub = 2, nStud = 200, thetaMat = .m)
+      }),
+      message = "prior|thetaMat"
     )
 
     ## an explicit argument is never silently discarded, so the spread is
