@@ -33,6 +33,8 @@
 #define rxErrSolverFail       134217728
 #define rxSolverFail(ind) do { if ((ind)->err == 0) (ind)->err = rxErrSolverFail; } while (0)
 #define rxErrVvNotPairs       268435456
+// a dose record missing from ix, the subject's sorted records (internal)
+#define rxErrSortedPos        536870912
 
 #define rxErrNaTimeLag   1
 #define rxErrNaTimeRate  2

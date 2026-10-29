@@ -445,6 +445,7 @@ static const rxSolveErrReason rxSolveErrReasons[] = {
   {rxErrIndLinExcept, "Inductive linearization failed with an unhandled exception (most likely out of memory)"},
   {rxErrSolverFail, rxSolverFailText},
   {rxErrVvNotPairs, "method='vv' needs coordinate-momentum state pairs with d/dt(q_i) = p_i"},
+  {rxErrSortedPos, "internal error: a dose record is missing from the sorted records"},
 };
 
 // Push the reasons a subject's solve failed to the solve-warning aggregator,
