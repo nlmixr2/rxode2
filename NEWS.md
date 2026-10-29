@@ -2,6 +2,11 @@
 
 ## Bug fixes
 
+### Delay differential equations
+- `delay()` models now solve with `method = "dop5"` and `method = "bs"`.
+  Both are dense solvers, but they recorded no `delay()` history, so
+  `rxSolve()` refused them (#1599).
+
 ### Event tables
 - A reset (`evid = 3`), a reset and dose (`evid = 4`) or a steady-state dose
   (`ss = 1` or `ss = 2`) during an infusion now cancels the infusion's stop
