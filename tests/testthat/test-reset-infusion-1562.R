@@ -186,4 +186,60 @@ rxTest({
       expect_lt(fdmax, if (meth == "cvodesadj") 1e-3 else 1e-4)
     }
   })
+
+  test_that("turning a compartment off cancels its running infusion, stop included", {
+    d <- data.frame(
+      id = 1,
+      time = c(0, 0, 1, 2, 3, 4.5, 6, 8),
+      evid = c(1, 1, 0, 2, 0, 0, 0, 0),
+      cmt = c(1, 2, 1, -1, 1, 1, 1, 1),
+      amt = c(100, 50, 0, 0, 0, 0, 0, 0),
+      rate = c(25, 10, 0, 0, 0, 0, 0, 0)
+    )
+    # depot emptied at t=2; the center infusion keeps running (0 to 5)
+    want <- et(amt = 50, rate = 25, cmt = "depot") |>
+      et(amt = 50, rate = 10, cmt = "center") |>
+      et(time = 2, amt = 0, evid = 5, cmt = "depot") |>
+      et(c(1, 3, 4.5, 6, 8))
+    for (meth in .meths) {
+      s <- rxSolve(.m, d, .p, method = meth)
+      expect_equal(s$depot[s$time > 2], rep(0, 4), tolerance = 1e-6)
+      w <- rxSolve(.m, want, .p, method = meth)
+      expect_equal(s$center[s$time != 2], w$center, tolerance = 1e-6)
+    }
+  })
+
+  test_that("turning a compartment off cancels a steady-state infusion's pending stop", {
+    d <- data.frame(
+      id = 1,
+      time = c(0, 1, 2, 3, 4.5, 6, 8),
+      evid = c(1, 0, 2, 0, 0, 0, 0),
+      cmt = c(1, 1, -1, 1, 1, 1, 1),
+      amt = c(100, 0, 0, 0, 0, 0, 0),
+      rate = c(25, 0, 0, 0, 0, 0, 0),
+      ii = c(12, 0, 0, 0, 0, 0, 0),
+      ss = c(1, 0, 0, 0, 0, 0, 0)
+    )
+    for (meth in .meths) {
+      s <- rxSolve(.m, d, .p, method = meth)
+      expect_equal(s$depot[s$time > 2], rep(0, 4), tolerance = 1e-6)
+    }
+  })
+
+  test_that("a compartment turned off mid-infusion is turned back on by a dose", {
+    d <- data.frame(
+      id = 1,
+      time = c(0, 1, 2, 3, 5, 6, 8),
+      evid = c(1, 0, 2, 0, 1, 0, 0),
+      cmt = c(1, 1, -1, 1, 1, 1, 1),
+      amt = c(100, 0, 0, 0, 10, 0, 0),
+      rate = 0
+    )
+    d$rate[1] <- 25
+    for (meth in .meths) {
+      s <- rxSolve(.m, d, .p, method = meth)
+      expect_equal(s$depot[s$time == 3], 0, tolerance = 1e-6)
+      expect_equal(s$depot[s$time > 5], 10 * exp(-1.2 * (c(6, 8) - 5)), tolerance = 1e-5)
+    }
+  })
 })

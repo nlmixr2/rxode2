@@ -4145,7 +4145,7 @@ void handleSS(int *neq,
       curLagExtra = curLagExtra - overIi*curIi;
     }
     // First Reset
-    cancelRunningInfusionStops(ind, rx, op, *i, neq[0]);
+    cancelRunningInfusionStops(ind, rx, op, *i, neq[0], -1);
     if (!rx->ss2cancelAllPending && doSS2) {
       // the pending stops of running steady-state infusions are kept too
       for (j = neq[0]; j--;) cancelRunningExtraInfusionStops(ind, j, startTimeD);
