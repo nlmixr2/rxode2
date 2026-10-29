@@ -202,14 +202,34 @@ make_rxode2_system_iem(rx_solving_options_ind* ind, t_dydt calc_dydt, t_calc_jac
 }
 
 // odeint's integrate_adaptive() for a controlled stepper, with the step size
-// passed by reference: on return dt holds the step the controller proposes
-// next.  The stepper is taken by value, as integrate_adaptive() takes it, so
-// each call starts it afresh.
+// passed by reference: on return dt is the step to take next, the larger of
+// the one the controller proposes after the last step and the one it
+// proposed before that step was cut to end at t1.  The stepper is taken by
+// value, as integrate_adaptive() takes it, so each call starts it afresh.
 template <class Stepper, class System, class State, class Observer>
 inline size_t rxIntegrateAdaptive(Stepper stepper, System sys, State &x,
-                                  double t0, double t1, double &dt, Observer obs) {
-  return boost::numeric::odeint::detail::integrate_adaptive(
-      stepper, sys, x, t0, t1, dt, obs, typename Stepper::stepper_category());
+                                  double t, double t1, double &dt, Observer obs) {
+  using boost::numeric::odeint::detail::less_with_sign;
+  boost::numeric::odeint::failed_step_checker failChecker;
+  size_t count = 0;
+  double dtCut = 0.0;
+  while (less_with_sign(t, t1, dt)) {
+    obs(x, t);
+    if (less_with_sign(t1, t + dt, dt)) {
+      dtCut = dt;
+      dt = t1 - t;
+    }
+    boost::numeric::odeint::controlled_step_result res;
+    do {
+      res = stepper.try_step(sys, x, t, dt);
+      failChecker();
+    } while (res == boost::numeric::odeint::fail);
+    failChecker.reset();
+    ++count;
+  }
+  obs(x, t);
+  if (std::fabs(dtCut) > std::fabs(dt)) dt = dtCut;
+  return count;
 }
 
 struct error_checker {

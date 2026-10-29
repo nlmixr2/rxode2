@@ -483,6 +483,7 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
 
       if ((x + 1.01*h - xend) * posneg > 0.0)
         {
+          ctx->hcut = h;
           h = xend - x;
           last = 1;
         }
@@ -824,6 +825,7 @@ int dop853Next
   /* initialise context */
   ctx.nfcn = ctx.nstep = ctx.naccpt = ctx.nrejct = 0;
   ctx.hout = ctx.xold = ctx.xout = 0.0;
+  ctx.hcut = 0.0;
   ctx.nrds = 0;
   ctx.indir = NULL;
   ctx.rcont1 = ctx.rcont2 = ctx.rcont3 = ctx.rcont4 = NULL;
@@ -1052,7 +1054,7 @@ int dop853Next
       idid = dopcor (&ctx, nptr, fcn, x, y, xend, hmax, h, rtoler, atoler, itoler, fileout,
                      solout, iout, nmax, uround, meth, nstiff, safe, beta, fac1, fac2, icont,
                      stiffState);
-      if (hNext != NULL && idid > 0) *hNext = fabs(ctx.hout);
+      if (hNext != NULL && idid > 0) *hNext = fmax(fabs(ctx.hout), fabs(ctx.hcut));
       R_Free (ctx.k10);
       R_Free (ctx.k9);
       R_Free (ctx.k8);

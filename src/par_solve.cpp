@@ -6511,8 +6511,8 @@ static int rxSegmentAutoSwitchGeneric(rx_solving_options *op,
   return (*istate > 0 && !ind->err) ? 1 : -4;
 }
 
-// h0 is plain dop853's first step (0 lets dop853 choose it); *hNext gets the
-// step it proposes next (0 from the composite, which keeps its own).
+// h0 is dop853's first step (0 lets dop853 choose it); *hNext gets the step
+// it would take next, or 0 when the stiff secondary solved any of the interval.
 static int rxSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
                                rx_solving_options_ind *ind, int *neq, t_dydt c_dydt,
                                double xp, double xout, double *yp,
@@ -6545,13 +6545,14 @@ static int rxSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
     memcpy(ypSave, yp, (size_t)eff * sizeof(double));
     dop853_stiff_t st;
     rxStiffLoad(&st, op, ind);
-    idid = dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
-                  solout, 0, NULL, DBL_EPSILON, 0, 0, 0, 0,
-                  ind->HMAX, op->H0, op->mxstep, 1, RX_AUTOSWITCH_NSTIFF,
-                  0, NULL, 0, NULL, ind->id, &st);
+    idid = dop853Next(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
+                      solout, 0, NULL, DBL_EPSILON, 0, 0, 0, 0,
+                      ind->HMAX, h0, op->mxstep, 1, RX_AUTOSWITCH_NSTIFF,
+                      0, NULL, 0, NULL, ind->id, &st, hNext);
     rxStiffSave(&st, ind);
     bool failed = (idid <= 0 || ind->err);
     if (failed) {
+      *hNext = 0.0;
       // Stiffness: hand the stiff secondary (op->stiff2) the rest of the
       // interval, starting from the probe's last fully accepted step, via the
       // shared per-method interval solver (its preSolve() is idempotent).  Only
