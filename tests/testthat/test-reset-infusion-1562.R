@@ -72,6 +72,32 @@ rxTest({
     }
   })
 
+  test_that("an ss=2 dose keeps the stop of a pending lagged steady-state infusion", {
+    ml <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - k * center
+      alag(depot) <- 3
+    })
+    o <- c(0.25, 1, 2, 4, 8, 12, 14, 18)
+    # pending at t=0.5: the running stop at 1, then on at 3 and off at 13
+    ev <- et(amt = 100, rate = 10, ii = 12, ss = 1, cmt = "depot") |>
+      et(time = 0.5, amt = 100, ii = 12, ss = 2, cmt = "center") |>
+      et(o)
+    for (meth in .meths) {
+      s <- rxSolve(ml, ev, .p, method = meth)
+      # the depot amount the ss=2 dose leaves at t=0.5
+      d0 <- rxSolve(
+        ml,
+        et(amt = 100, rate = 10, ii = 12, ss = 1, cmt = "depot") |> et(0.5),
+        .p,
+        method = meth
+      )$depot
+      want <- et(time = 3, amt = 100, rate = 10, cmt = "depot") |> et(o)
+      w <- rxSolve(.m, want, .p, method = meth)$depot
+      expect_equal(s$depot[-1], w[-1] + d0 * exp(-1.2 * (o[-1] - 0.5)), tolerance = 1e-5)
+    }
+  })
+
   test_that("modeled rate and duration infusions are cancelled by a reset", {
     mr <- rxode2({
       d/dt(depot) <- -ka * depot
@@ -142,6 +168,17 @@ rxTest({
       w <- rxSolve(.m, want, .p, method = meth)
       expect_equal(s$depot[s$time > 2], w$depot[w$time > 2], tolerance = 1e-6)
     }
+  })
+
+  test_that("many resets during infusions keep later subjects intact", {
+    # more ignored stops than the initial list holds, on one thread
+    ev <- et(amt = 10, rate = 10, ii = 1, addl = 39, cmt = "depot") |>
+      et(time = seq(0.5, 39.5, by = 1), evid = 3) |>
+      et(seq(0.25, 40, by = 0.5)) |>
+      et(id = 1:2)
+    s <- rxSolve(.m, ev, .p, cores = 1)
+    expect_true(all(s$depot >= -1e-8))
+    expect_equal(s$depot[s$id == 2], s$depot[s$id == 1])
   })
 
   test_that("adjoint sensitivities follow a reset during an infusion", {
