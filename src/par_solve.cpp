@@ -4356,6 +4356,8 @@ void handleSS(int *neq,
                           rateOff, extraEvid, ind);
         }
         if (curLagExtra > 0) {
+          // covariates stay at the dose time, as in the cycles
+          ind->ssTime = startTimeD;
           double solveTo=curIi - curLagExtra;
           if (solveTo > offTime) {
             // infusion where the lag time does not cause the infusion
@@ -4408,6 +4410,7 @@ void handleSS(int *neq,
             pushDosingEvent(startTimeD+curLagExtra,
                             rateOn, extraEvid, ind);
           }
+          ind->ssTime = NA_REAL;
         } else {
           // infusion without a lag time.
           *istate=1;
@@ -4490,8 +4493,10 @@ void handleSS(int *neq,
         xp2 = xout2;
         bool doNoLag = false;
         if (isSsLag) {
-          // the lag tail starts the next 0..ii cycle (#1585)
+          // the lag tail starts the next 0..ii cycle (#1585) with the
+          // covariates at the dose time, as in the cycles
           xp2 = 0.0;
+          ind->ssTime = startTimeD;
           double totTime = dur + dur2 - curLagExtra;
           if (curLagExtra > 0) {
             if (isSameTimeOp(curLagExtra+dur, curIi)) {
@@ -4593,6 +4598,7 @@ void handleSS(int *neq,
           } else {
             doNoLag = true;
           }
+          ind->ssTime = NA_REAL;
         } else {
           doNoLag = true;
         }
