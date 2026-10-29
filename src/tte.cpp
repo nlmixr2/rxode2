@@ -196,7 +196,7 @@ void rxTteSubjectFinish(rx_solving_options_ind *ind) {
   for (int r = 0; r < ind->n_all_times; r++) {
     int k;
     int role = rxTteRole(ind->dv[r], &k);
-    if (role == RXTTE_FREE || role == RXTTE_USED) ind->evid[r] = 2;
+    if (role == RXTTE_FREE || role == RXTTE_USED) ind->evid[r] = 9;
   }
 }
 
