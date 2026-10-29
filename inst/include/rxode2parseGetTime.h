@@ -112,9 +112,9 @@ static inline int getSortedPosition(rx_solving_options_ind *ind, int raw) {
   for (int j = 0; j < ind->n_all_times; ++j) {
     if (ind->ix[j] == raw) return j;
   }
-  // unreachable while ix is a permutation (sortInd() pre-fills it); fail the
-  // subject's solve
-  ind->err |= rxErrSortedPos; // nocov
+  // unreachable while ix is a permutation (sortInd() pre-fills it): an
+  // internal invariant, so fail the subject's solve as a corrupted event table
+  ind->err |= rxErrCorruptET; // nocov
   return 0; // nocov
 }
 
