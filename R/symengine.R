@@ -1276,9 +1276,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
   .x2 <- x[-1]
   if (progress) {
     rxProgress(length(.x2))
-    on.exit({
-      rxProgressAbort()
-    })
+    on.exit(.rxProgressExit())
     .ret <- paste(
       lapply(.x2, function(x) {
         rxTick()

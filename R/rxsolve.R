@@ -312,9 +312,9 @@
 #'     to the fewest doses the regimen needs (2 with a lag time, more with
 #'     overlapping infusions or a lag longer than `ii`).  `minSS = maxSS = n`
 #'     gives exactly the state after `n` prior doses (Monolix
-#'     `nbdoses = n`).  `linCmt()` steady states are exact, and a constant
-#'     infusion (`ii = 0`), which has no doses, takes at least 5 and up to
-#'     `max(maxSS, 10000)` convergence steps.
+#'     `nbdoses = n`), for `linCmt()` models too; otherwise `linCmt()` steady
+#'     states are exact.  A constant infusion (`ii = 0`), which has no doses,
+#'     takes at least 5 and up to `max(maxSS, 10000)` convergence steps.
 #'
 #' @param maxSS Maximum number of doses given before a steady-state dose (at
 #'     least `minSS`)
@@ -3482,6 +3482,12 @@ rxSolve.default <- function(
   if (inherits(inits, "rxControl")) {
     stop(
       "'rxControl()' cannot be passed as 'inits'; pass control options as named arguments instead, e.g. rxSolve(object, params, events, method='dop853+ros4')", # nolint: line_length_linter.
+      call. = FALSE
+    )
+  }
+  if (inherits(params, "rxControl") || inherits(events, "rxControl")) {
+    stop(
+      "'rxControl()' cannot be passed as 'params' or 'events'; pass control options as named arguments instead, e.g. rxSolve(object, params, events, method='dop853+ros4')", # nolint: line_length_linter.
       call. = FALSE
     )
   }
