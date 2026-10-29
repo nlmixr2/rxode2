@@ -248,9 +248,10 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   // seq: forward processing order; y: offset in evY of the primal just after
   // this event's own jump (-1: none), so same-time events see their own state;
   // with a modeled alag() a bolus's vector-field jump F(y+)-F(y-) follows it.
-  struct cvEvent { double t; int cmt; int type; double factor; int seq; int y; double raw = 0.0; };
+  // rec = a bolus/replace/multiply's record index (its rxAdjJumpCap), else -1
+  struct cvEvent { double t; int cmt; int type; double factor; int seq; int y; double raw = 0.0; int rec = -1; };
   std::vector<double> evY;
-  std::vector<cvEvent> evJumps;
+  std::vector<cvEvent> evJumps; rxAdjJumpClear();
   std::vector<cvInfus> infusRec;   // modeled-rate infusion windows (rate dual)
   int _infusOnCmt = -1; double _infusOnPre = 0.0;
   int _lagRateCmt = -1, _lagRateWhI = 0, _lagRateKey = -1; double _lagRatePre = 0.0;   // infusion start/stop
@@ -373,10 +374,10 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
           getWh(_ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
           if (_cmt >= 0 && _cmt < nBase) {
             if (_whI == EVIDF_REPLACE) {
-              evJumps.push_back({xout, _cmt, 5, 0.0, seq, -1});
+              evJumps.push_back({xout, _cmt, 5, 0.0, seq, -1, 0.0, i});
             } else if (_whI == EVIDF_MULT) {
               evJumps.push_back({xout, _cmt, 6,
-                getAmt(ind, ind->id, _cmt, getDoseIndex(ind, ind->idx), xout, yp), seq, -1});
+                getAmt(ind, ind->id, _cmt, getDoseIndex(ind, ind->idx), xout, yp), seq, -1, 0.0, i});
             } else if (_whI == 0 && bolusDuals) {
               // additive bolus: record the (lagged) dose time and post-dose primal so
               // the backward can add the modeled-F dual mu += amt*dF/dtheta*lambda_c
@@ -391,7 +392,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
               } else {
                 evY.resize(evY.size() + nBase);
               }
-              evJumps.push_back({xout, _cmt, 0, getAmt(ind, ind->id, _cmt, _raw, xout, yp), seq, _yOff, _raw});
+              evJumps.push_back({xout, _cmt, 0, getAmt(ind, ind->id, _cmt, _raw, xout, yp), seq, _yOff, _raw, i});
             } else if ((_whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON) && op->adjDrateOff >= 0) {
               double _raw = getDose(ind, ind->ix[i]);
               double _amt = getAmt(ind, ind->id, _cmt, _raw, xout, yp);
@@ -427,7 +428,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
         resetT.push_back(xout); resetSeq.push_back(seq);
         handleEvid3(ind, op, rx, neq, &xp, &xout, yp, &(istate), u_inis);
         didEvent = 1;
-      } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
+      } else if (rxAdjHandleEvid1(&i, rx, neq, yp, &xout)) {
         handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
         if (ind->wh0 == EVID0_OFF) {
@@ -534,7 +535,8 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   const double *dx0P = dx0V.empty() ? NULL : dx0V.data();
   // Duals of an additive bolus at te, with B holding the post-dose costate
   // (dPhi/dy = I): modeled F adds amt*dF/dtheta*lambda_c, and a modeled alag
-  // adds -dlag_c/dtheta*(lambda^T (F(y+)-F(y-))) at the post-dose primal.
+  // adds dlag_c/dtheta*lambda^T (f(y-) - f(y+)) (rxAdjJumpTerm, else the jump
+  // captured in evY) at the post-dose primal.
   auto bolusDual = [&](const cvEvent &ev) {
     double *yq = bu.yq.data(), *A = bu.A.data();
     if (ev.y >= 0) std::copy(evY.begin() + ev.y, evY.begin() + ev.y + nBase, yq);
@@ -547,7 +549,8 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       const double *dF = &ind->lhs[op->adjDfOff];
       for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += ev.raw * dF[c * np + p] * NV_Ith_S(B, c);
     }
-    if (op->adjDlagOff >= 0 && ev.y >= 0) {
+    if (op->adjDlagOff >= 0 && ev.y >= 0 &&
+        !rxAdjJumpTerm(ev.rec, c, NV_DATA_S(B), NV_DATA_S(B) + nBase, nBase, np, &ind->lhs[op->adjDlagOff])) {
       const double *dlag = &ind->lhs[op->adjDlagOff];
       const double *dF = &evY[ev.y + nBase];
       double sc = 0.0;
@@ -591,6 +594,10 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
           tCur = te;
         }
         int c = evJumps[segEv[s]].cmt; int ty = evJumps[segEv[s]].type;
+        if (ty == 5 || ty == 6)                                        // its alag() and f() duals
+          rxAdjJumpTerm(evJumps[segEv[s]].rec, c, NV_DATA_S(B), NV_DATA_S(B) + nBase, nBase, np,
+                        op->adjDlagOff >= 0 ? &ind->lhs[op->adjDlagOff] : NULL,
+                        op->adjDfOff >= 0 ? &ind->lhs[op->adjDfOff] : NULL);
         if (ty == 5) NV_Ith_S(B, c) = 0.0;                             // replace
         else if (ty == 6) NV_Ith_S(B, c) *= evJumps[segEv[s]].factor;  // multiply
         else if (ty == 0) {                                            // additive bolus duals

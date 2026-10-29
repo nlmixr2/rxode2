@@ -27,7 +27,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   int fxOff = op->adjFxOff, fpOff = op->adjFpOff, sensOff = op->adjSensOff;
 
   // ---- forward: run the ordinary AB solve, recording each call's steps -----------
-  abAdjSteps.clear(); abAdjCalls.clear(); abAdjNbase = nBase;
+  abAdjSteps.clear(); abAdjCalls.clear(); abAdjNbase = nBase; rxAdjJumpClear();
   abAdjActive = true;
   int neqF[2]; neqF[0] = op->neq; neqF[1] = 0;
   ind_ab_0(rx, op, solveid, neqF, c_dydt, u_inis);
@@ -42,8 +42,8 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   // ---- the events at a time from the event table, in the order the forward
   // solve applied them: 0 bolus (dPhi/dy=I; its modeled F and alag duals, raw amt
   // in factor and F*amt in amtF) | 3 reset (->0) | 5 replace[c] (->0) | 6
-  // multiply[c] (*=factor).
-  struct abJump { int type, cmt; double factor, amtF = 0.0; };
+  // multiply[c] (*=factor, F*amt).
+  struct abJump { int type, cmt; double factor, amtF = 0.0; int rec = -1; };   // rec: a bolus/replace/multiply's record index
   // the start state of call c
   auto abCallY0 = [&](size_t c) {
     const abRecCall &C = abAdjCalls[c];
@@ -66,12 +66,14 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
       if (!isDose(e)) continue;
       int _wh, _cmt, _wh100, _whI, _wh0; getWh(e, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
       if (_cmt < 0 || _cmt >= nBase) continue;
-      if (_whI == EVIDF_REPLACE) ev.push_back({5, _cmt, 0.0});
-      else if (_whI == EVIDF_MULT) ev.push_back({6, _cmt, getDose(ind, ind->ix[i])});
+      if (_whI == EVIDF_REPLACE) { abJump _j = {5, _cmt, 0.0}; _j.rec = i; ev.push_back(_j); }
+      else if (_whI == EVIDF_MULT) {
+        abJump _j = {6, _cmt, getAmt(ind, ind->id, _cmt, getDose(ind, ind->ix[i]), t, _y.data())}; _j.rec = i; ev.push_back(_j);
+      }
       else if (_whI == 0 && _wh0 == EVID0_REGULAR && (op->adjDfOff >= 0 || op->adjDlagOff >= 0)) {
         double _amt = getDose(ind, ind->ix[i]);
         abJump _j = {0, _cmt, _amt};
-        _j.amtF = getAmt(ind, ind->id, _cmt, _amt, t, _y.data());
+        _j.amtF = getAmt(ind, ind->id, _cmt, _amt, t, _y.data()); _j.rec = i;
         ev.push_back(_j);
       }
     }
@@ -138,7 +140,8 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   // the events of call c's start, last first: a bolus adds its modeled-F dual
   // mu += amt*dF/dp*lam[c] and alag transversality mu += -F*amt*dlag/dp*(lam^T
   // F_X[:,c]) with F_X at the call's start state; reset adds the initial-condition
-  // term, then 0; replace[c] -> 0; multiply[c] *= factor
+  // term, then 0; replace[c] -> 0; multiply[c] *= factor (F*amt), each after its
+  // alag() and f() duals (rxAdjJumpTerm)
   auto abJumpT = [&](const std::vector<abJump> &ev, double t, const double *y, double *cost, double *muP) {
     for (size_t e = ev.size(); e-- > 0;) {
       const abJump &E = ev[e];
@@ -148,7 +151,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
           const double *dF = &lhs[op->adjDfOff];
           for (int p = 0; p < np; ++p) muP[p] += E.factor * dF[E.cmt * np + p] * cost[E.cmt];
         }
-        if (op->adjDlagOff >= 0) {
+        if (op->adjDlagOff >= 0 && !rxAdjJumpTerm(E.rec, E.cmt, cost, muP, nBase, np, &lhs[op->adjDlagOff])) {
           const double *dlag = &lhs[op->adjDlagOff];
           double sc = 0.0;
           for (int b = 0; b < nBase; ++b) sc += cost[b] * fx[b * nBase + E.cmt];
@@ -159,8 +162,11 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
         rk4sAddIni(dx0P, cost, muP, nBase, np);
         for (int b = 0; b < nBase; ++b) cost[b] = 0.0;
       }
-      else if (E.type == 5) { cost[E.cmt] = 0.0; }
-      else if (E.type == 6) { cost[E.cmt] *= E.factor; }
+      else if (E.type == 5 || E.type == 6) {
+        rxAdjJumpTerm(E.rec, E.cmt, cost, muP, nBase, np, op->adjDlagOff >= 0 ? &lhs[op->adjDlagOff] : NULL,
+                      op->adjDfOff >= 0 ? &lhs[op->adjDfOff] : NULL);
+        if (E.type == 5) cost[E.cmt] = 0.0; else cost[E.cmt] *= E.factor;
+      }
     }
   };
   std::vector<double> endCostate(nBase), lam;
