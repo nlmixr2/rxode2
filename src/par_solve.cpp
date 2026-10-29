@@ -43,6 +43,7 @@ extern "C" {
 #include "rxode2_df.h"
 }
 #include "par_solve.h"
+#include "tte.h"
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
 #define badSolveExit(i) for (int j = rxEffNeq(ind, op)*(ind->n_all_times); j--;){ \
     ind->solve[j] = NA_REAL;                                           \
@@ -4918,6 +4919,88 @@ extern "C" void lsAdjSetActive(int a);
 extern "C" void lsAdjInitStep(struct lsoda_context_t *ctx);
 extern "C" void lsAdjPushStep(struct lsoda_context_t *ctx);
 
+// tte() simulation: after the interval (xs, *xout] is solved, locate the
+// earliest event in it.  The event takes a free event-slot record of its
+// endpoint, which is re-timed to the event time and sorted into slot i; the
+// state is rewound to the event time so the solver continues from there.
+// Returns 0 when the integrator was not touched, 1 after a rewind, and 2 when
+// the integrator was used without a rewind (both need an integrator restart).
+static int _rxTteAfterInterval(rx_solve *rx, rx_solving_options *op,
+                               rx_solving_options_ind *ind, int neq, int i,
+                               double xs, const double *ys, double *xp,
+                               double *xout, double *yp,
+                               const rxTteInteg &integ) {
+  int subj = (int)(ind - rx->subjects);
+  double tStar = 0.0;
+  int k = 0;
+  std::vector<double> yStar(neq);
+  if (!rxTteLocate(ind, subj, neq, xs, ys, *xout, yp, integ, &tStar, &k,
+                   yStar.data())) {
+    return 0;
+  }
+  int slot = -1;
+  for (int j = i; j < ind->n_all_times; j++) {
+    int raw = ind->ix[j], kk;
+    if (rxTteRole(ind->dv[raw], &kk) == RXTTE_FREE && kk == k) {
+      slot = raw;
+      break;
+    }
+  }
+  if (slot < 0) {
+    rxSolveWarnPush(ind->id, "tte() endpoint %d ran out of event slots; later events were not simulated", k);
+    rxTteSetDone(subj, k);
+    return 2;
+  }
+  int interval = rxTteIsInterval(k);
+  // last time of the endpoint's records that are still observed
+  double tKeep = tStar;
+  ind->all_times[slot] = tStar;
+  ind->timeThread[slot] = tStar;
+  if (interval) {
+    ind->dv[slot] = rxTteDv(k, RXTTE_USED);
+    ind->evid[slot] = 2;
+    int best = -1;
+    double bt = R_PosInf;
+    for (int j = i; j < ind->n_all_times; j++) {
+      int raw = ind->ix[j], kk;
+      int role = rxTteRole(ind->dv[raw], &kk);
+      if (kk != k || (role != RXTTE_INTERVAL && role != RXTTE_EVENT)) continue;
+      double t = ind->timeThread[raw];
+      if (t >= tStar && t < bt) {
+        bt = t;
+        best = raw;
+      }
+    }
+    if (best >= 0) {
+      ind->dv[best] = rxTteDv(k, RXTTE_EVENT);
+      tKeep = bt;
+    }
+  } else {
+    ind->dv[slot] = rxTteDv(k, RXTTE_EVENT);
+  }
+  reSortMainTimeline(ind, i);
+  std::copy(yStar.begin(), yStar.end(), yp);
+  *xp = *xout = tStar;
+  int full = rxTteRecord(subj, k, tStar, yStar[rxTteHIdx(k)]);
+  int dropout = rxTteDropout(k);
+  if (full || dropout) {
+    // records past the event are no longer observed: evid 2 keeps them in
+    // the timeline but out of the output
+    for (int j = i + 1; j < ind->n_all_times; j++) {
+      int raw = ind->ix[j], kk;
+      if (ind->evid[raw] != 0 || !(ind->timeThread[raw] > tKeep)) continue;
+      int role = rxTteRole(ind->dv[raw], &kk);
+      if (dropout || (kk == k && (role == RXTTE_CENSOR || role == RXTTE_INTERVAL))) {
+        ind->evid[raw] = 2;
+      }
+    }
+    if (dropout) {
+      for (int kk = 1; kk <= rxTteN(); kk++) rxTteSetDone(subj, kk);
+    }
+  }
+  return 1;
+}
+
 extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda_opt_t opt, int solveid,
                               t_dydt_liblsoda dydt_liblsoda, t_update_inis u_inis) {
   clock_t t0 = clock();
@@ -5028,6 +5111,19 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
     ctx->common->adjPush = NULL;
   }
   ind->solvedIdx = 0;
+  // tte() simulation: the start of the interval being solved
+  int _tteN = rxTteN();
+  double _tteXs = xp;
+  std::vector<double> _tteYs(_tteN > 0 ? neq[0] : 0);
+  if (_tteN > 0) rxTteSubjectInit(ind, (int)(ind - rx->subjects));
+  rxTteInteg _tteInteg = [&](double *y, double t0, double t1) {
+    if (isSameTime(t0, t1)) return;
+    ctx->state = 1;
+    double tt = t0;
+    preSolve(op, ind, tt, t1, y);
+    lsoda(ctx, y, &tt, t1);
+    copyLinCmt(neq, ind, op, y);
+  };
   for(i=0; i< ind->n_all_times; i++) {
     ind->idx=i;
     ind->linSS=0;
@@ -5052,6 +5148,10 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
     _growSolveIfNeeded(ind, op, i, 1);
     yp = getSolve(i);
     xout = ind->timeThread[ind->ix[i]];
+    if (_tteN > 0) {
+      _tteXs = xp;
+      std::copy(yp, yp + neq[0], _tteYs.begin());
+    }
     if (getEvid(ind, ind->ix[i]) != 3) {
       if (ind->err){
         *rc = -1000;
@@ -5098,6 +5198,11 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
           if (*rc < 0) localBadSolve = 1;
         }
         xp = xout;
+        if (_tteN > 0 && !localBadSolve &&
+            _rxTteAfterInterval(rx, op, ind, neq[0], i, _tteXs, _tteYs.data(),
+                                &xp, &xout, yp, _tteInteg)) {
+          ctx->state = 1;
+        }
       }
     }
     ind->_newind = 2;
@@ -5140,6 +5245,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
     }
     ind->solvedIdx = i;
   }
+  if (_tteN > 0) rxTteSubjectFinish(ind);
   // Reset LHS to NA
   if (_usingPool) {
     // Pool: keep the context alive for the next subject; just clean up any error.

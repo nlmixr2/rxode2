@@ -3186,6 +3186,10 @@ rxSolve.rxUi <- function(
     eta = eta
   )
   .lst <- do.call("c", .lst)
+  if (.rxTteHas(object)) {
+    .lst <- .rxTtePrepareSolve(object, .lst)
+    on.exit(.Call(`_rxode2_rxTteSetup`, NULL), add = TRUE)
+  }
   .pred <- FALSE
   .mv <- rxModelVars(object)
   .hasIpred <- FALSE

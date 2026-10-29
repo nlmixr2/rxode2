@@ -2002,10 +2002,13 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
         # source is always defined by now, so append the definitions last
         .errAssignEndpointAliases(.env)
         .aliasChr <- vapply(.rxEndpointAliasLines(.env), deparse1, character(1), USE.NAMES = FALSE)
+        # tte() cumulative hazards are states of the model, numbered before the
+        # endpoint compartments
+        .tteChr <- vapply(.rxTteStateLines(.env), deparse1, character(1), USE.NAMES = FALSE)
         if (any(.env$predDf$linCmt)) {
-          .env$mv0 <- rxModelVars(paste(c(.lstChr, "rxLinCmt ~ linCmt()", .aliasChr), collapse = "\n"))
+          .env$mv0 <- rxModelVars(paste(c(.lstChr, "rxLinCmt ~ linCmt()", .aliasChr, .tteChr), collapse = "\n"))
         } else {
-          .env$mv0 <- rxModelVars(paste(c(.lstChr, .aliasChr), collapse = "\n"))
+          .env$mv0 <- rxModelVars(paste(c(.lstChr, .aliasChr, .tteChr), collapse = "\n"))
         }
       } else {
         if (.env$earlyErr) {
