@@ -46,4 +46,26 @@ rxTest({
       )
     }
   })
+
+  test_that("linCmt() applies every scheduled dose between two records (#1591)", {
+    .t <- c(0.5, 27)
+    for (.lag in c(26, 40)) {
+      expect_equal(
+        .linLagSolve(et(amt = 100, ss = 1, ii = .ii) |> et(.t), .lag),
+        .linLagSolve(et(amt = 100, ii = .ii, addl = .nAddl) |> et(.t + .nAddl * .ii), .lag),
+        tolerance = 1e-6
+      )
+    }
+    .infMod <- rxode2({
+      cl <- 2
+      v <- 20
+      cp <- linCmt()
+    })
+    .inf <- function(ev) rxSolve(.infMod, ev, returnType = "data.frame")$cp
+    expect_equal(
+      .inf(et(amt = 100, ss = 1, ii = .ii, dur = 30) |> et(.t)),
+      .inf(et(amt = 100, ii = .ii, addl = .nAddl, dur = 30) |> et(.t + .nAddl * .ii)),
+      tolerance = 1e-6
+    )
+  })
 })

@@ -55,7 +55,7 @@
 - A `linCmt()` steady-state bolus with `alag()` longer than `ii` now matches
   the ODE model and NONMEM.  After a dose that a steady-state record
   schedules between two records, the `linCmt()` solver advanced to the next
-  record twice, and applied only the first of several such doses (#1591).
+  record twice (#1591).
 
 ## New features
 
