@@ -18,7 +18,7 @@ rxTest({
 
   test_that("abs sensitivities stay finite after a long span before the first dose", {
     .ref <- .sens(.base, .ev(0), .p0)
-    for (.t0 in c(3000, 5000, 1e4, 1e5)) {
+    for (.t0 in c(1500, 3000, 5000, 1e4, 1e5)) {
       .a <- .sens(.base, .ev(.t0), .p0)
       expect_true(all(is.finite(as.matrix(.a))), label = paste("finite", .t0))
       expect_equal(as.matrix(.a), as.matrix(.ref), tolerance = 1e-8, label = paste("t0", .t0))

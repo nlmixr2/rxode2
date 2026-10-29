@@ -428,7 +428,7 @@
   carries it past the ss record also read that dose's `ii` (off by up to 82).
 
 - With `method = "abs"`, adjoint sensitivities after a long span before the
-  first dose (from about 5000 time units with `hmin = 0.001`) are no longer
+  first dose (from about 1500 time units with `hmin = 0.001`) are no longer
   `NaN`.  abs crosses such a span in steps capped by `maxsteps`, too coarse
   for its high-order transpose, so the costate of a state that stays 0
   overflowed and was multiplied by its zero coefficients.
