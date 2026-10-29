@@ -221,6 +221,14 @@
   `cvode` an infinite one).  A failed `cvodesadj` step now fails the
   subject, which kept its last values with no warning.
 
+- `liblsoda`, `lsoda` and `dop853` now solve a span over which the states
+  decay to zero, such as a long gap between a nonzero initial condition and
+  the first dose.  Once the states were subnormal, the finite-difference
+  Jacobian of `liblsoda` and `lsoda` divided by an increment that had
+  underflowed and the `dop853` error norm overflowed: `liblsoda` returned
+  `NaN` with no warning, and `lsoda` and `dop853` failed the subject with
+  "excess accuracy requested" and "step size becomes too small".
+
 ### linCmt() models
 
 - `linCmt()` models now solve a time-varying covariate as the equivalent ODE
