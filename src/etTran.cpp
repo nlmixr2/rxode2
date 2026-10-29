@@ -2645,6 +2645,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         cens.push_back(0);
         idxInput.push_back((int)i);
         recImplied.push_back(0);
+        doseRow.push_back(-1);
       }
       continue;
     }
@@ -3109,6 +3110,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           cens.push_back(0);
           idxInput.push_back((int)i);
           recImplied.push_back(0);
+          doseRow.push_back(-1);
         }
         if (rep == 0 && ctime == 0){
           if (zeroIdSet.find(cid) == zeroIdSet.end()){
