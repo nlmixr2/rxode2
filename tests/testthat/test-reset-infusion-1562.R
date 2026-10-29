@@ -244,6 +244,45 @@ rxTest({
     }
   })
 
+  test_that("turning a compartment off keeps a later same-rate infusion's stop", {
+    # rate 10 over 0-10 is running at the off; rate 10 over 2-4 starts after it
+    o <- c(1.5, 3, 5, 8, 12)
+    d <- data.frame(
+      id = 1,
+      time = c(0, 1, 2, o),
+      evid = c(1, 2, 1, rep(0, length(o))),
+      cmt = c(1, -1, 1, rep(1, length(o))),
+      amt = c(100, 0, 20, rep(0, length(o))),
+      rate = c(10, 0, 10, rep(0, length(o)))
+    )
+    want <- et(time = 2, amt = 20, rate = 10, cmt = "depot") |> et(o)
+    for (meth in .meths) {
+      s <- rxSolve(.m, d, .p, method = meth)
+      expect_equal(s$depot[s$time > 1], .solve(.m, want, meth), tolerance = 1e-6)
+    }
+  })
+
+  test_that("many compartment-off records keep later subjects intact on two cores", {
+    n <- 20
+    d <- data.frame(
+      time = c(0:(n - 1), 0:(n - 1) + 0.5, seq(0.25, n, by = 0.5)),
+      evid = c(rep(1, n), rep(2, n), rep(0, 2 * n)),
+      cmt = c(rep(1, n), rep(-1, n), rep(1, 2 * n)),
+      amt = c(rep(10, n), rep(0, 3 * n)),
+      rate = c(rep(10, n), rep(0, 3 * n))
+    )
+    d <- d[order(d$time), ]
+    d <- do.call(rbind, lapply(1:4, function(i) cbind(id = i, d)))
+    one <- rxSolve(.m, d[d$id == 1, ], .p, cores = 1)$depot
+    expect_true(all(one >= -1e-8))
+    for (cores in 1:2) {
+      s <- rxSolve(.m, d, .p, cores = cores)
+      for (i in 1:4) {
+        expect_equal(s$depot[s$id == i], one)
+      }
+    }
+  })
+
   test_that("a compartment turned off mid-infusion is turned back on by a dose", {
     d <- data.frame(
       id = 1,
