@@ -19,6 +19,16 @@
     sort happened to read, and from the next record when another record
     shared the repeat's time (#1582).  Under `locf`, and with
     `addlKeepsCov = TRUE`, nothing changes.
+- An infusion's `f()`, `alag()`, `rate()` and `dur()` are now read at its
+  start's record, as NONMEM reads them: `f()` at the record's time with the
+  record's covariates, also when `alag()` moves the infusion and in steady
+  state.  A fixed-duration infusion's stop read `f()` again at its own time,
+  so when a covariate or `t` in `f()` changed during the infusion the stop
+  did not remove the rate the start added.  A fixed-rate infusion's stop
+  read `alag()` at the stop's record.  A lagged infusion with a modeled
+  `rate()` or `dur()` read `f()` from the records around its data time, and
+  once a lagged dose moved past an infusion's start, its modeled `rate()`
+  or `dur()` read another record's covariates.
 - A simulation that stops with an error no longer leaves its draws for the
   next solve.  The residuals, simulated thetas and per-study draws it had
   made stayed behind, and the next solve without residuals of its own used

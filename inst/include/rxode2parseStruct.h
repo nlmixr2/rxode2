@@ -546,6 +546,10 @@ struct rx_solving_options_ind_s {
   int     delaySS;      /* 1 while handleSS() records delay() history */
   double  delaySSii;    /* dosing interval of that steady state (0 = constant) */
   double  delayMaxT;    /* largest delay duration seen */
+  // 1 + the sorted position of the record whose own covariates a time-based
+  // covariate update reads, whatever time it is at (0 = match by time):
+  // getAmtAtRecord() reads f() at a record's data time with its covariates.
+  int     recCovPos;
   // For an addl repeat that does not keep its covariates (addlKeepsCov =
   // FALSE), the offset from the repeat to the record of the dose it repeats
   // (negative), recorded by etTrans(); 0 for every other record, NULL when

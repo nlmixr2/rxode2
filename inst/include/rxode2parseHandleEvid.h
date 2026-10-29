@@ -1290,6 +1290,11 @@ static inline double *_esInfusionDydtPre(int id, double xout, double *yp, int ne
   return _pre;
 }
 
+// F*amt of a fixed-duration infusion record, read at its start's record
+// (defined in rxode2parseGetTime.h)
+static inline double getInfusionDurAmt(rx_solving_options_ind *ind, int id, int cmt,
+                                       double amt, double xout, double *yp);
+
 static inline int handle_evid(int evid, int neq,
                               int *BadDose,
                               double *InfusionRate,
@@ -1869,7 +1874,7 @@ static inline int handle_evid(int evid, int neq,
         ind->curDose = tmp;
         ind->curDoseS[cmt] = ind->curDose;
       }
-      tmp = getAmt(ind, id, cmt, tmp, xout, yp);
+      tmp = getInfusionDurAmt(ind, id, cmt, tmp, xout, yp);
       {
         double *_esDydtPreB = _esInfusionDydtPre(id, xout, yp, neq);
         InfusionRate[cmt] += tmp;
