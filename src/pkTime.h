@@ -225,12 +225,17 @@ static inline void pkTimeSeedStates(pkTimeVars *d) {
   sFree(&buf);
 }
 
+// Lines of these types are part of the ODE system (or linCmt() solution)
+static inline int pkTimeStateType(int t) {
+  return t == TDDT || t == TLIN || t == TJAC || t == TMTIME ||
+    t == TMAT0 || t == TMATF || t == TEVID;
+}
+
 // Is line i state dependent on its own (ignoring the chain it sits in)?
 static inline int pkTimeLineDep(int i, pkTimeVars *d, int *hasT) {
   int t = sbPm.lType[i];
   int cur = pkTimeLineReadsDep(sbPm.line[i], d, hasT);
-  if (t == TDDT || t == TLIN || t == TJAC || t == TMTIME ||
-      t == TMAT0 || t == TMATF || t == TEVID) return 1;
+  if (pkTimeStateType(t)) return 1;
   // an indLin(state) <- forcing is part of the ODE right-hand side
   if (t == TASSIGN && !cur) {
     int start = 0;
@@ -315,6 +320,22 @@ static inline int pkTimeClassify(int *isPk) {
     }
   }
   return ret;
+}
+
+// Can an f(), alag(), rate() or dur() statement read `t`?  Conservative: the
+// model has one and a line outside the ODE system reads `t` (rxode2#1583).
+static inline int pkTimeDoseT(void) {
+  if (!(foundF || foundLag || foundRate || foundDur)) return 0;
+  pkTimeVars d0;
+  d0.v = NULL;
+  d0.n = 0;
+  d0.nAlloc = 0;
+  int anyT = 0;
+  for (int i = 0; i < sbPm.n && !anyT; ++i) {
+    if (pkTimeStateType(sbPm.lType[i])) continue;
+    pkTimeLineReadsDep(sbPm.line[i], &d0, &anyT);
+  }
+  return anyT;
 }
 
 // Append `line`, reading the identifier `t` as `_tPK`.

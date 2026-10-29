@@ -292,6 +292,49 @@ extern "C" double _rxPkTime(double t, unsigned int id, rx_solve *rx) {
   return t;
 }
 
+// The addl repeat dose whose f()/rate()/dur() is being evaluated at `t0`, or
+// -1.  ind->idx is an ix position while events are handled, but the record
+// itself in updateDur()/updateRate().
+static inline int rxAddlRepDose(rx_solving_options *op, rx_solving_options_ind *ind,
+                                double t0) {
+  if (ind->pkSkip == NULL || ind->idx < 0) return -1;
+  int n = ind->n_all_times_orig;
+  int cand[2] = {(ind->ix != NULL && ind->idx < ind->n_all_times) ?
+                 ind->ix[ind->idx] : -1, ind->idx};
+  for (int k = 0; k < 2; ++k) {
+    int c = cand[k];
+    if (c < 0 || c >= n || ind->pkSkip[c] < 2) continue;
+    if (isSameTimeOp(t0, ind->all_times[c]) ||
+        (ind->timeThread != NULL && isSameTimeOp(t0, ind->timeThread[c]))) {
+      return c;
+    }
+  }
+  return -1;
+}
+
+// The time f(), rate() and dur() read with rxControl(nonmem = TRUE)
+// (rxode2#1583): for an addl repeat dose, the time of the first data record
+// at or after it (the record that ends its interval, as NONMEM evaluates F1,
+// R1 and D1); otherwise `t`.
+extern "C" double _rxDoseTime(double t, unsigned int id, rx_solve *rx) {
+  if (!rx->nonmem) return t;
+  rx_solving_options *op = rx->op;
+  rx_solving_options_ind *ind = &(rx->subjects[id]);
+  double t0 = t - ind->curShift;
+  int c = rxAddlRepDose(op, ind, t0);
+  if (c < 0) return t;
+  double tc = ind->all_times[c];
+  int j = c;
+  while (j > 0 && isSameTimeOp(ind->all_times[j-1], tc)) j--;
+  for (; j < ind->n_all_times_orig; ++j) {
+    if (ind->pkSkip[j]) continue;
+    double tj = ind->all_times[j];
+    if (tj < tc && !isSameTimeOp(tj, tc)) continue;
+    return tj + ind->curShift;
+  }
+  return t;
+}
+
 // getTime() decodes the evid of the record it looks up into
 // ind->wh/cmt/wh100/whI/wh0.  Looking up neighbouring records while
 // interpolating a covariate must not clobber the event being handled.

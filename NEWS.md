@@ -43,6 +43,10 @@
   that is empty or whose first column is empty gives the parameter-size
   error.  With a `sigma` to simulate, these used to crash R with a floating
   point exception or fail with an unrelated internal error (#1551).
+- With `rxSolve(..., nonmem = TRUE)`, `f()`, `rate()` and `dur()` of an
+  `addl` repeat now read `time` as the first data record at or after the
+  repeat, as NONMEM evaluates `F1`, `R1` and `D1`; they used to read the
+  repeat's own time (#1583).
 
 ### Steady state
 - A steady-state bolus into a compartment whose `alag()` is longer than `ii`
