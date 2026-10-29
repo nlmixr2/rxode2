@@ -103,6 +103,28 @@ static inline bool rxAdjStateFEvent(rx_solving_options *op, rx_solving_options_i
   return true;
 }
 
+// An infusion window's modifiers as the forward solve read them at its start record
+// (sorted position rec, time t, base state y): the d(rate)/dp and dF/dp rows of
+// cmt c (np each, empty when not modeled); returns F of cmt c per unit dose.
+static inline double rxAdjRecRows(rx_solving_options *op, rx_solving_options_ind *ind, int cSub, int eff,
+                                  int rec, double t, const double *y, int c,
+                                  std::vector<double> &dR, std::vector<double> &dF) {
+  int np = op->adjNp;
+  std::vector<double> A(eff, 0.0);
+  for (int b = 0; b < op->adjNbase; ++b) A[b] = y[b];
+  rk4sLhsRec(ind, cSub, rec, t, A.data());
+  dR.clear(); dF.clear();
+  if (op->adjDrateOff >= 0) dR.assign(ind->lhs + op->adjDrateOff + c * np, ind->lhs + op->adjDrateOff + (c + 1) * np);
+  if (op->adjDfOff >= 0) dF.assign(ind->lhs + op->adjDfOff + c * np, ind->lhs + op->adjDfOff + (c + 1) * np);
+  if (rec >= 0) {
+    _update_par_ptr(NA_REAL, cSub, ind->rx ? ind->rx : &rx_global, rec);
+    ind->_update_par_ptr_in = 1;
+  }
+  double f = getAmt(ind, ind->id, c, 1.0, t, A.data());
+  ind->_update_par_ptr_in = 0;
+  return f;
+}
+
 // Event-time tolerance shared by the adjoint drivers: the forward solve's
 // isSameTime() (2 ulp of the larger time), so the backward sweep groups exactly
 // the events the forward applied at one time.
@@ -150,7 +172,8 @@ static inline bool rk4sInfusionStartAt(rx_solving_options_ind *ind, int nBase, i
 struct rk4s_infus { size_t onStep, offStep; int cmt; double R, amt, durMult, amtRaw; bool isDur;
                     bool fixed = false; double dfW = 0.0, tOn = 0.0; int key = -1; bool ss = false;
                     int recIdx = -1;      // its record (sorted position), -1 for a pushed one
-                    std::vector<double> yOn; };   // the state at its start (a state-dependent f())
+                    std::vector<double> yOn;      // the state at its start (a state-dependent f())
+                    double fOn = 0.0; };  // a fixed window's F at its start
 
 // Dose number of the infusion start that the fixed or modeled infusion record at
 // event-table index idx belongs to (its own for a start), or -1 when it cannot be
@@ -216,8 +239,9 @@ static inline void rk4sModeledInfusionClose(rk4s_infus &F, size_t step, double t
 }
 
 // Record a fixed-rate/duration infusion start (dR > 0) or close its window (dR < 0)
-// for the dF dual.  The table holds the raw rate; F scales it for a fixed dur and
-// stretches the duration of a fixed rate (t_off = t_on + F*amt/rate).
+// for the dF dual.  The table holds the raw rate; F, read at the start, scales it
+// for a fixed dur and stretches the duration of a fixed rate (t_off = t_on +
+// F*amt/rate).
 static inline void rk4sFixedInfusionRecord(std::vector<rk4s_infus> &infus, rx_solving_options_ind *ind,
                                            int cmt, bool isDur, double dR, size_t step, double t, double *yp,
                                            int key = -1, bool ss = false, int recIdx = -1) {
@@ -226,7 +250,7 @@ static inline void rk4sFixedInfusionRecord(std::vector<rk4s_infus> &infus, rx_so
     rk4s_infus _f; _f.onStep = step; _f.offStep = (size_t)-1; _f.cmt = cmt;
     _f.R = dR; _f.amt = 0.0; _f.durMult = 0.0; _f.amtRaw = 0.0; _f.isDur = isDur;
     _f.fixed = true; _f.tOn = t; _f.dfW = (isDur && f != 0.0) ? dR / f : 0.0; _f.key = key; _f.ss = ss;
-    _f.recIdx = recIdx;
+    _f.recIdx = recIdx; _f.fOn = f;
     rx_solving_options *op = (ind->op ? ind->op : &op_global);
     if (op->adjDfxOff >= 0 && isDur) _f.yOn.assign(yp, yp + op->adjNbase);
     infus.push_back(_f);
@@ -236,7 +260,7 @@ static inline void rk4sFixedInfusionRecord(std::vector<rk4s_infus> &infus, rx_so
   if (w < 0) return;
   rk4s_infus &F = infus[w];
   F.offStep = step;
-  if (!F.isDur && f != 0.0) F.dfW = -dR * (t - F.tOn) / f;
+  if (!F.isDur && F.fOn != 0.0) F.dfW = -dR * (t - F.tOn) / F.fOn;
 }
 
 // Model initial conditions y(0) = g(theta): the d g/dtheta block
