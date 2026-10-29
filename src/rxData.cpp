@@ -2034,6 +2034,10 @@ static void rxFreeInd(rx_solving_options_ind *ind) {
   ind->delayIni = NULL;
   ind->delayIniCap = 0;
   ind->delayIniN = 0;
+  free(ind->infDurOn);
+  ind->infDurOn = NULL;
+  ind->infDurOnCap = 0;
+  ind->infDurOnN = 0;
   // linCmtB()'s rate / per-origin histories (kept after the solve like
   // delayHist above) and its per-individual carried state are allocated in
   // rxode2lincmt, so they are freed there too.
