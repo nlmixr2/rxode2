@@ -354,7 +354,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
             nnn+=1;
           }
         }
-        sAppend(&sbOut,  "// Functional based bioavailability (returns amount)\ndouble %sF(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double _f[%d];\n  (void)_f;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n    rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=4;\n",
+        sAppend(&sbOut,  "// Functional based bioavailability (returns amount)\ndouble %sF(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double _f[%d];\n  (void)_f;\n  double t = _rxDoseTime(__t + _solveData->subjects[_cSub].curShift, _cSub, _solveData);\n  (void)t;\n    rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=4;\n",
                 prefix, nnn);
         for (int jjj = nnn; jjj--;){
           sAppend(&sbOut, "  _f[%d]=1.0;\n",jjj);
@@ -392,7 +392,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
             nnn+=1;
           }
         }
-        sAppend(&sbOut,  "// Modeled zero-order rate\ndouble %sRate(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n    int _itwhile = 0;\n  (void)_itwhile;\n  double _rate[%d];\n   double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=6;\n",
+        sAppend(&sbOut,  "// Modeled zero-order rate\ndouble %sRate(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n    int _itwhile = 0;\n  (void)_itwhile;\n  double _rate[%d];\n   double t = _rxDoseTime(__t + _solveData->subjects[_cSub].curShift, _cSub, _solveData);\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=6;\n",
                 prefix, nnn);
         for (int jjj = nnn; jjj--;){
           sAppend(&sbOut, "  _rate[%d]=0.0;\n",jjj);
@@ -411,7 +411,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
             nnn+=1;
           }
         }
-        sAppend(&sbOut,  "// Modeled zero-order duration\ndouble %sDur(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n double _dur[%d];\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n    rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=7;\n",
+        sAppend(&sbOut,  "// Modeled zero-order duration\ndouble %sDur(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n double _dur[%d];\n  double t = _rxDoseTime(__t + _solveData->subjects[_cSub].curShift, _cSub, _solveData);\n  (void)t;\n    rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=7;\n",
                 prefix, nnn);
         for (int jjj = nnn; jjj--;){
           sAppend(&sbOut, "  _dur[%d]=0.0;\n",jjj);
