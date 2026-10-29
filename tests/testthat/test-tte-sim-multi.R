@@ -92,6 +92,37 @@ rxTest({
     expect_equal(.e3$rx.tteH.ev, 0.01 * (.e3$time + 0.05 * .e3$time^2), tolerance = 1e-6)
   })
 
+  test_that("tte() keeps the NA covariate semantics of the user's own records", {
+    f <- function() {
+      ini({
+        lambda <- 1e-6
+      })
+      model({
+        d/dt(depot) <- -depot
+        w <- wt
+        haz <- lambda * wt / 70
+        ev ~ tte(haz, maxEventNumber = 1)
+      })
+    }
+    g <- function() {
+      ini({
+        lambda <- 1e-6
+      })
+      model({
+        d/dt(depot) <- -depot * lambda
+        w <- wt
+      })
+    }
+    .d <- data.frame(id = 1, time = c(0, 5, 10), evid = c(0, 1, 0), amt = c(0, 10, 0),
+                     cmt = c(NA, "depot", NA), wt = c(0, NA, 10))
+    for (.m in c("linear", "midpoint", "locf", "nocb")) {
+      .a <- withr::with_seed(1, as.data.frame(rxSolve(f(), .d, covsInterpolation = .m,
+                                                      addDosing = TRUE)))
+      .b <- as.data.frame(rxSolve(g(), .d, covsInterpolation = .m, addDosing = TRUE))
+      expect_equal(.a$w[.a$time == 5], .b$w[.b$time == 5], info = .m)
+    }
+  })
+
   test_that("tte() interval censoring with a window shorter than one interval", {
     f <- function() {
       ini({
