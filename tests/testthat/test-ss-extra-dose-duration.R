@@ -60,6 +60,24 @@ rxTest({
     expect_equal(.r, .r2$cen[.r2$time >= 40 * 12], tolerance = 1e-4)
   })
 
+  test_that("ss=1 modeled dur/rate == ii infusion with a modeled lag stops at the lagged end (issue #1592)", {
+    for (.lag in c(3, 15)) {
+      for (.spec in c("dur(cen) <- 12", "rate(cen) <- 100/12")) {
+        .m <- rxode2(paste0("alag(cen) <- ", .lag, "\n", .spec, "\nd/dt(cen) <- -0.1*cen"))
+        .rate <- if (grepl("dur", .spec)) -2 else -1
+        .e <- et(et(amt = 100, rate = .rate, ss = 1, ii = 12, cmt = "cen"), seq(0, 40, by = 4))
+        .r <- rxSolve(.m, .e, returnType = "data.frame")$cen
+        .e2 <- et(et(amt = 100, rate = .rate, ii = 12, addl = 40, cmt = "cen"), seq(0, 40, by = 4) + 40 * 12)
+        .r2 <- rxSolve(.m, .e2, returnType = "data.frame")
+        expect_equal(.r, .r2$cen[.r2$time >= 40 * 12], tolerance = 1e-4)
+      }
+    }
+  })
+
+  test_that("ss=2 dur == ii infusion with a modeled lag and no prior regimen matches ss=1 (issue #1592)", {
+    expect_equal(.ssRun(100 / 12, ss = 2), .ssRun(100 / 12), tolerance = 1e-6)
+  })
+
   test_that("ss=1 modeled-duration infusion with a modeled lag solves", {
     .m <- rxode2({
       alag(cen) <- 3
