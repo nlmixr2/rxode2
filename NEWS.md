@@ -342,12 +342,16 @@
   to 72), because that steady state was taken as a constant infusion.
 
 - Adjoint sensitivities of a steady-state (`ss = 1`) dose into a compartment
-  with `alag()` are now right in every adjoint method that supports ss, for
-  a constant or modeled lag: boluses and infusions (fixed, `f()`, modeled
-  `rate()`/`dur()`), at the window start or later, with a lag longer than
-  `ii`, or with an infusion still running from the period before.  Before,
+  with `alag()` are now right in the `rk4s` family and `liblsodaadj` (`abs`
+  and `cvodesadj` refuse ss doses), for a constant or modeled lag: boluses and
+  infusions (fixed, `f()`, and modeled `rate()`/`dur()` in `rk4s` and
+  `dop853s`), at the window start or later, with a lag of a whole number of
+  periods, or with an infusion still running from the period before.  Before,
   the steady-state term placed the dose at the record time instead of the
-  lagged one, so every sensitivity was wrong (off by up to 150).
+  lagged one, so every sensitivity was wrong (off by up to 150).  With a lag
+  longer than `ii`, the lag sensitivity of a bolus, the sensitivities of a
+  modeled `rate()`/`dur()` infusion, and `liblsodaadj`'s `f()` sensitivity of
+  a fixed infusion are not yet right.
 
 - The `ss = 2` (superposition) adjoint term in the `rk4s` family now carries
   the added regimen's `f()` and `alag()` like an `ss = 1` one, for boluses
