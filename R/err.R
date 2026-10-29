@@ -325,7 +325,8 @@ rxPreferredDistributionName <- function(dist) {
   "LL", # 16
   "dnorm", # 17
   "nbinom", # 18 size, prob
-  "nbinomMu" # 19 size, mu
+  "nbinomMu", # 19 size, mu
+  "tte" # 20 time-to-event (hazard)
 )
 
 #' Demote the error type
@@ -682,7 +683,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   nbinomMu = c("a", "b")
 )
 
-.allowEstimatedParameters <- "ordinal"
+.allowEstimatedParameters <- c("ordinal", "tte")
 
 #' Convert a numeric literal error-model argument into a FIX `$iniDf` parameter
 #'
@@ -1102,7 +1103,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
         env$distribution <- "dnorm"
       }
       .errHandleSingleDistributionTerm(.currErr, expression, env)
-    } else if (.currErr %in% names(.errDist)) {
+    } else if (.currErr %in% c(names(.errDist), "tte")) {
       assign("err", c(env$err, paste0("`", .currErr, "` is incorrectly added to an error expression")), envir = env)
     } else {
       .errHandleSingleTerm(.currErr, expression, env)
@@ -1120,6 +1121,8 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
     if (.isC) {
       env$distribution <- "ordinal"
       .errHandleSingleDistributionTerm("ordinal", expression, env)
+    } else if (identical(.currErr, "tte")) {
+      .errHandleTte(expression, env)
     } else if (identical(rxPreferredDistributionName(.currErr), "ar")) {
       env$err <- c(
         env$err,
@@ -1544,7 +1547,7 @@ rxErrTypeCombine <- function(oldErrType, newErrType) {
   .err <- env$dupErr
   for (.i in seq_along(.predDf$cond)) {
     if (!any(!is.na(.predDf[.i, c("a", "b", "c", "d", "e", "f", "lambda")]))) {
-      if (!(.predDf[.i, "distribution"] %in% c("LL", "ordinal"))) {
+      if (!(.predDf[.i, "distribution"] %in% c("LL", "ordinal", "tte"))) {
         .cnd <- .predDf$cond[.i]
         .w <- which(.iniDf$condition == .cnd)
         if (length(.w) == 0L) {
