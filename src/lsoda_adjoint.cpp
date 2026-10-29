@@ -158,7 +158,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   lsAdjSteps.clear();
   lsAdjSegs.clear();
   _lsSsKind = 0; _lsSsBolusIi = 0.0; _lsSsCmt = -1; _lsSsT = 0.0;   // reset the sticky ss snapshot
-  _lsSsFixed = 0; _lsSsFixW = 0.0;
+  _lsSsFixed = 0; _lsSsFixW = 0.0; _lsSsFixW2 = 0.0;
   _lsSsDur = _lsSsDur2 = _lsSsRate = _lsSsRate2 = 0.0;
   lsAdjNbase = nBase;
   lsAdjActive = true;                 // ind_liblsoda0 installs the ctx hooks
@@ -221,8 +221,8 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   // time; a modeled F scales a fixed-dur rate (forcing rawRate*dF over the window) or
   // stretches a fixed-rate window (amtRaw*dF at its off boundary).
   if (op->adjDlagOff >= 0 || op->adjDfOff >= 0) {
-    // open fixed windows: cmt, start key, first segment and raw rate
-    struct lsFxWin { int cmt, key; size_t seg; double raw; };
+    // open fixed windows: cmt, start key, first segment, raw rate, fixed dur or rate
+    struct lsFxWin { int cmt, key; size_t seg; double raw; bool isDur; };
     std::vector<lsFxWin> fxOpen;
     for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg) {
       lsAdjSeg &Sg = lsAdjSegs[sg];
@@ -246,7 +246,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
         if (f == 0.0) continue;
         double raw = getDose(ind, ind->ix[i]);   // the record's raw rate (negative at a stop)
         int key = rk4sInfusionStartKey(ind, ind->ix[i]);
-        if (raw > 0.0) { fxOpen.push_back({c, key, sg, raw}); continue; }
+        if (raw > 0.0) { fxOpen.push_back({c, key, sg, raw, _whI == EVIDF_INF_DUR}); continue; }
         // the window this stop closes: its own start, else the most recent one
         int wi = -1;
         for (size_t w = fxOpen.size(); w-- > 0;) {
@@ -264,6 +264,11 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
         }
       }
     }
+    // a fixed-dur window still open when the solve ends (its stop lies past the
+    // last record solved) forces every remaining segment
+    for (size_t w = 0; w < fxOpen.size(); ++w)
+      if (fxOpen[w].isDur)
+        for (size_t s2 = fxOpen[w].seg; s2 < lsAdjSegs.size(); ++s2) lsAdjAddW(lsAdjSegs[s2].infDfMult, nBase, fxOpen[w].cmt, fxOpen[w].raw);
   }
 
   // Reconstruct modeled rate()/dur() infusion windows for the dR/dp dual: pair each
@@ -507,6 +512,33 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     for (size_t k = 0; k < E.size(); ++k) has8 = has8 || E[k].type == 8;
     if (!has8) E.insert(E.begin(), lsAdjEv{8, -1, 1.0, 0.0, 0.0});
   }
+  // An ss = 1 fixed infusion longer than ii: the infusions of the n earlier
+  // periods are still running at the ss time and end at t_ss + offTime + (k-1)*ii,
+  // by pushed stops that are not event-table records.  Each carries the dF dual
+  // of a fixed window: a fixed dur's forcing until its end, or a fixed rate's
+  // off-boundary term (its end moves with F).
+  if (lsSsSeg >= 0 && _lsSsKind == 1 && _lsSsFixed != 0 && op->adjDfOff >= 0 && _lsSsRate2 > 0.0 &&
+      _lsSsRate > _lsSsRate2 && _lsSsCmt >= 0 && _lsSsCmt < nBase) {
+    int c = _lsSsCmt;
+    double r1 = _lsSsRate - _lsSsRate2, ii = _lsSsDur + _lsSsDur2;
+    int n = (int)floor(_lsSsRate2 / r1 + 0.5);
+    double full = _lsSsDur + n * ii;
+    std::vector<double> _y(eff, 0.0);
+    for (int b = 0; b < nBase; ++b) _y[b] = lsAdjSegs[lsSsSeg].y0[b];
+    double f = getAmt(ind, ind->id, c, 1.0, _lsSsT, _y.data());
+    if (f != 0.0)
+      for (int k = 1; k <= n; ++k) {
+        double tEnd = _lsSsT + _lsSsDur + (k - 1) * ii;
+        for (size_t sg = (size_t)lsSsSeg; sg < lsAdjSegs.size(); ++sg) {
+          if (lsAdjSegs[sg].t0 >= tEnd - 1e-8) {
+            if (_lsSsFixed == 1 && fabs(lsAdjSegs[sg].t0 - tEnd) < 1e-8)
+              lsAdjAddW(lsAdjSegs[sg].offDfFac, nBase, c, r1 * full / f);
+            break;
+          }
+          if (_lsSsFixed == 2) lsAdjAddW(lsAdjSegs[sg].infDfMult, nBase, c, r1 / f);
+        }
+      }
+  }
   // Continuous-infusion steady state (kind 2): that segment's y0 is the constant
   // Y_ss with dY_ss/dp = -J^{-1} df/dp, so its contribution per observation is
   // -(J^{-T} lam)^T df/dp.
@@ -551,7 +583,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       // a fixed-rate/duration ss infusion with a modeled F: the period's dF terms
       if (lsMono && _lsSsBolusIi <= 0.0 && _lsSsFixed != 0) {
         rk4s_ss1Ev E; E.inf = true; E.infCmt = _lsSsCmt; E.onSteps = lsSsOnSteps;
-        E.fixed = _lsSsFixed; E.fixW = _lsSsFixW;
+        E.fixed = _lsSsFixed; E.fixW = _lsSsFixW; E.fixW2 = _lsSsFixW2;
         lsIc.haveWsFC = lsIc.makeForce(cSub, ind, op, lsSsRec, E, Asc, lsIc.wsFC, false);
       }
       // an ss bolus's bioavailability enters every period's dose (no separate
