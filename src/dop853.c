@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h> /* dj: malloc.h */
 #include <limits.h>
+#include <float.h>
 #include <memory.h>
 /* #include <malloc.h> */
 #include "dop853.h"
@@ -568,7 +569,9 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
       deno = err + 0.01 * err2;
       if (deno <= 0.0)
         deno = 1.0;
-      err = fabs(h) * err * sqrt (1.0 / (deno*(double)n));
+      /* 1/(deno*n) overflows once the scaled error terms are subnormal */
+      deno *= (double)n;
+      err = fabs(h) * err * (deno > 1.0 / DBL_MAX ? sqrt (1.0 / deno) : 1.0 / sqrt (deno));
 
       /* computation of hnew */
       fac11 = pow (err, expo1);
