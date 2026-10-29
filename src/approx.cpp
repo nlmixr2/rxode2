@@ -451,6 +451,17 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           //double *all_times = indSample->all_times;
           // cov_ptr is laid out by the data records (n_all_times_orig)
           double *y = indSample->cov_ptr + indSample->n_all_times_orig*k;
+          if (ind->recCovPos > 0 &&
+              !ISNA(rxCovRec(y, ind->ix[ind->recCovPos - 1], ind->n_all_times_orig))) {
+            // a given record's own covariate, whatever time t is
+            // (getAmtAtRecord()).  A record with no value of its own (one a
+            // dose expands to, or a missing value) is read by time below, at
+            // t, the record's data time, where its dose's data row is.
+            par_ptr[op->par_cov[k]-1] = getValue(ind->recCovPos - 1, y, is_locf,
+                                                 indSample, op, 0);
+            ind->cacheME=0;
+            continue;
+          }
           // a pushed record has no value of its own; interpolate across it
           bool pushed = rxPushedRec(ind->ix, idxSample, ind->n_all_times_orig);
           if (!pushed && idxSample == 0 &&

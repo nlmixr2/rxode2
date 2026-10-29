@@ -3806,13 +3806,14 @@ void handleSS(int *neq,
           ignoreDoses[nIgnoredDoses++] = infEixds;
           double f = 1.0;
           if (ind->whI == EVIDF_INF_RATE) {
-            f = getAmt(ind, ind->id, ind->cmt, 1.0, getAllTimes(ind, ind->idose[infBixds2]), yp);
+            f = getAmtAtRecord(ind, ind->idose[infBixds2], 1.0, yp);
             rateOn = getDose(ind, ind->idose[infBixds2]);
             rateOff = getDose(ind, ind->idose[infEixds]);
           } else {
             f = 1.0;
-            rateOn = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infBixds2]), getAllTimes(ind, ind->idose[infBixds2]), yp);
-            rateOff = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infEixds]), getAllTimes(ind, ind->idose[infEixds]), yp);
+            rateOn = getAmtAtRecord(ind, ind->idose[infBixds2], getDose(ind, ind->idose[infBixds2]), yp);
+            // the stop removes the rate its start added: the start's F
+            rateOff = getAmtAtRecord(ind, ind->idose[infBixds2], getDose(ind, ind->idose[infEixds]), yp);
           }
           // REprintf("get dur isSsLag: %d\n", isSsLag);
           dur = getAllTimes(ind, ind->idose[infEixds]);// -
@@ -3843,13 +3844,14 @@ void handleSS(int *neq,
           ignoreDoses[nIgnoredDoses++] = infEixds;
           double f = 1.0;
           if (ind->whI == EVIDF_INF_RATE) {
-            f = getAmt(ind, ind->id, ind->cmt, 1.0, getAllTimes(ind, ind->idose[infBixds2]), yp);
+            f = getAmtAtRecord(ind, ind->idose[infBixds2], 1.0, yp);
             rateOn = getDose(ind, ind->idose[infBixds2]);
             rateOff = getDose(ind, ind->idose[infEixds]);
           } else {
             f = 1.0;
-            rateOn = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infBixds2]), getAllTimes(ind, ind->idose[infBixds2]), yp);
-            rateOff = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infEixds]), getAllTimes(ind, ind->idose[infEixds]), yp);
+            rateOn = getAmtAtRecord(ind, ind->idose[infBixds2], getDose(ind, ind->idose[infBixds2]), yp);
+            // the stop removes the rate its start added: the start's F
+            rateOff = getAmtAtRecord(ind, ind->idose[infBixds2], getDose(ind, ind->idose[infEixds]), yp);
           }
           // REprintf("get dur2\n");
           dur = getAllTimes(ind, ind->idose[infEixds]);// -
@@ -4016,8 +4018,9 @@ void handleSS(int *neq,
         // shouldn't ever get here modeled duration would have to be
         // infinite for this to occur... but I don't think that is
         // supported yet
-        rateOn = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infBixds2]), getAllTimes(ind, ind->idose[infBixds2]), yp);
-        rateOff = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infEixds]), getAllTimes(ind, ind->idose[infEixds]), yp);
+        rateOn = getAmtAtRecord(ind, ind->idose[infBixds2], getDose(ind, ind->idose[infBixds2]), yp);
+        // the stop removes the rate its start added: the start's F
+        rateOff = getAmtAtRecord(ind, ind->idose[infBixds2], getDose(ind, ind->idose[infEixds]), yp);
       }
     } else if (ind->whI == EVIDF_INF_RATE ||
                ind->whI == EVIDF_INF_DUR ||
