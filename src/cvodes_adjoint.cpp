@@ -75,8 +75,10 @@ struct cvFwdUser {   // forward RHS user data
 // F*amt; durMult is 1 (rate) or F*amt (dur); amtRaw is the dose before F.  A
 // fixed-rate/duration window (fixed) carries only the dF dual, weighted by dfW: the
 // raw rate over a fixed-dur window, the raw amount at a fixed-rate off boundary.
+// offSeq/offY: the off record's processing order and its evY post-event primal.
 struct cvInfus { double tOn, tOff; int cmt; double R, amt, durMult, amtRaw; bool isDur;
-                 bool fixed = false; double dfW = 0.0; int key = -1; };
+                 bool fixed = false; double dfW = 0.0; int key = -1;
+                 int offSeq = 0, offY = -1; };
 
 // Index of the open window into cmt that a stop with start key `key` closes (see
 // rk4sInfusionStartKey()): the window with that key, else the most recent open
@@ -156,12 +158,18 @@ static int cvB_bwd(sunrealtype t, N_Vector B, N_Vector Bd, void *ud) {
   return 0;
 }
 
-// Record the current (t, base states) plus f=dydt into the history segment.
-static void cvB_record(cvHist *hist, cvFwdUser *u, double t, const double *yp) {
-  double *A = u->A.data(), *D = u->DADT.data();
+// f = dydt at (t, base states yp) into D (eff wide; may be u->DADT).
+static void cvB_rhs(cvFwdUser *u, double t, const double *yp, double *D) {
+  double *A = u->A.data();
   for (int i = 0; i < u->eff; ++i) A[i] = 0.0;
   for (int i = 0; i < u->nBase; ++i) A[i] = yp[i];
   u->dydt(u->neq, t, A, D);
+}
+
+// Record the current (t, base states) plus f=dydt into the history segment.
+static void cvB_record(cvHist *hist, cvFwdUser *u, double t, const double *yp) {
+  double *D = u->DADT.data();
+  cvB_rhs(u, t, yp, D);
   hist->push(t, yp, D);
 }
 
@@ -229,16 +237,20 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     return 0;
   }
 
-  std::vector<double> obsT; std::vector<int> obsIx;
-  std::vector<size_t> obsReset;   // resets processed before each observation was stored
-  std::vector<size_t> obsEv;      // evJumps recorded before it (the events it follows)
-  std::vector<size_t> resetEv;    // evJumps recorded before each reset
+  // seq: forward processing order, which orders records sharing a time.
+  int seq = 0;
+  std::vector<double> obsT; std::vector<int> obsIx, obsSeq;
   std::vector<double> resetT;   // evid-3 reset times (costate jump: lambda := 0)
+  std::vector<int> resetSeq;
   // replace (type 5: lambda[c]:=0) / multiply (type 6: lambda[c]*=factor) events;
   // the backward sweep stops at each and applies the transpose costate jump.
   // type 0 (additive bolus): factor = F*amt (the landed amount), raw = amt;
+  // seq: forward processing order; y: offset in evY of the primal just after
+  // this event's own jump (-1: none), so same-time events see their own state;
+  // with a modeled alag() a bolus's vector-field jump F(y+)-F(y-) follows it.
   // rec = a bolus/replace/multiply's record index (its rxAdjJumpCap), else -1
-  struct cvEvent { double t; int cmt; int type; double factor; double raw = 0.0; int rec = -1; };
+  struct cvEvent { double t; int cmt; int type; double factor; int seq; int y; double raw = 0.0; int rec = -1; };
+  std::vector<double> evY;
   std::vector<cvEvent> evJumps; rxAdjJumpClear();
   std::vector<cvInfus> infusRec;   // modeled-rate infusion windows (rate dual)
   int _infusOnCmt = -1; double _infusOnPre = 0.0;
@@ -344,6 +356,9 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     ind->_newind = 2;
     if (!localBadSolve) {
       ind->idx = i;
+      ++seq;
+      int _yOff = -1;   // evY slot to fill with this record's post-jump primal
+      int _dfOff = -1;  // evY slot for an alag bolus's F(y+)-F(y-)
       // Record replace/multiply state jumps for the backward transpose jump.
       { int _ev = getEvid(ind, ind->ix[i]);
         if (op->adjDlagOff >= 0 || op->adjDfOff >= 0) {
@@ -359,16 +374,25 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
           getWh(_ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
           if (_cmt >= 0 && _cmt < nBase) {
             if (_whI == EVIDF_REPLACE) {
-              evJumps.push_back({xout, _cmt, 5, 0.0, 0.0, i});
+              evJumps.push_back({xout, _cmt, 5, 0.0, seq, -1, 0.0, i});
             } else if (_whI == EVIDF_MULT) {
               evJumps.push_back({xout, _cmt, 6,
-                getAmt(ind, ind->id, _cmt, getDoseIndex(ind, ind->idx), xout, yp), 0.0, i});
+                getAmt(ind, ind->id, _cmt, getDoseIndex(ind, ind->idx), xout, yp), seq, -1, 0.0, i});
             } else if (_whI == 0 && bolusDuals) {
-              // additive bolus: record the (lagged) dose time so the backward can
-              // add the modeled-F dual mu += amt*dF/dtheta*lambda_c and the alag
-              // transversality mu += -F*amt*dlag_c/dtheta*(lambda^T F_X[:,c]).
+              // additive bolus: record the (lagged) dose time and post-dose primal so
+              // the backward can add the modeled-F dual mu += amt*dF/dtheta*lambda_c
+              // and the alag transversality mu += -dlag_c/dtheta*(lambda^T (F(y+)-F(y-))).
               double _raw = getDose(ind, ind->ix[i]);
-              evJumps.push_back({xout, _cmt, 0, getAmt(ind, ind->id, _cmt, _raw, xout, yp), _raw, i});
+              _yOff = (int)evY.size();
+              if (op->adjDlagOff >= 0) {
+                _dfOff = _yOff + nBase;
+                evY.resize(evY.size() + 2 * nBase);
+                cvB_rhs(&fu, xout, yp, fu.DADT.data());   // F(y-), differenced below
+                std::copy(fu.DADT.begin(), fu.DADT.begin() + nBase, evY.begin() + _dfOff);
+              } else {
+                evY.resize(evY.size() + nBase);
+              }
+              evJumps.push_back({xout, _cmt, 0, getAmt(ind, ind->id, _cmt, _raw, xout, yp), seq, _yOff, _raw, i});
             } else if ((_whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON) && op->adjDrateOff >= 0) {
               double _raw = getDose(ind, ind->ix[i]);
               double _amt = getAmt(ind, ind->id, _cmt, _raw, xout, yp);
@@ -380,7 +404,10 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
               _infusOnPre = ind->InfusionRate[_cmt];
             } else if ((_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) && op->adjDrateOff >= 0) {
               int _w = cvInfusCloseIdx(infusRec, _cmt, false, false, rk4sInfusionStartKey(ind, ind->ix[i]));
-              if (_w >= 0) infusRec[_w].tOff = xout;
+              if (_w >= 0) {
+                infusRec[_w].tOff = xout; infusRec[_w].offSeq = seq;
+                infusRec[_w].offY = _yOff = (int)evY.size(); evY.resize(evY.size() + nBase);
+              }
             }
           }
         } else if (!isObs(_ev) && op->adjDrateOff >= 0) {
@@ -388,14 +415,17 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
           getWh(_ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
           if ((_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) && _cmt >= 0 && _cmt < nBase) {
             int _w = cvInfusCloseIdx(infusRec, _cmt, false, false, rk4sInfusionStartKey(ind, ind->ix[i]));
-            if (_w >= 0) infusRec[_w].tOff = xout;
+            if (_w >= 0) {
+              infusRec[_w].tOff = xout; infusRec[_w].offSeq = seq;
+              infusRec[_w].offY = _yOff = (int)evY.size(); evY.resize(evY.size() + nBase);
+            }
           }
         } }
       if (getEvid(ind, ind->ix[i]) == 3) {
         // A reset wipes the state to its initial conditions, so dPhi/dy = 0
         // and the backward costate zeroes here.  Record before handleEvid3 mutates
         // xout.
-        resetT.push_back(xout); resetEv.push_back(evJumps.size());
+        resetT.push_back(xout); resetSeq.push_back(seq);
         handleEvid3(ind, op, rx, neq, &xp, &xout, yp, &(istate), u_inis);
         didEvent = 1;
       } else if (rxAdjHandleEvid1(&i, rx, neq, yp, &xout)) {
@@ -417,7 +447,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       }
       if (_lagRateCmt >= 0) {   // type 9: the rate into cmt changes by factor at a lagged time
         double _dR = ind->InfusionRate[_lagRateCmt] - _lagRatePre;
-        if (_dR != 0.0 && op->adjDlagOff >= 0) evJumps.push_back({xout, _lagRateCmt, 9, _dR});
+        if (_dR != 0.0 && op->adjDlagOff >= 0) evJumps.push_back({xout, _lagRateCmt, 9, _dR, seq, -1});
         if (_dR != 0.0 && op->adjDfOff >= 0 && (_lagRateWhI == EVIDF_INF_RATE || _lagRateWhI == EVIDF_INF_DUR)) {
           // fixed rate/dur: F scales a fixed-dur rate and stretches a fixed-rate window
           bool _isDur = (_lagRateWhI == EVIDF_INF_DUR);
@@ -430,7 +460,8 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
             int _wi = cvInfusCloseIdx(infusRec, _lagRateCmt, true, _isDur, _lagRateKey);
             if (_wi >= 0) {
               cvInfus &F = infusRec[_wi];
-              F.tOff = xout;
+              F.tOff = xout; F.offSeq = seq;
+              F.offY = _yOff = (int)evY.size(); evY.resize(evY.size() + nBase);
               if (!_isDur) F.dfW = -_dR * (xout - F.tOn) / _f;
             }
           }
@@ -438,6 +469,11 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
         _lagRateCmt = -1;
       }
       // Resume the forward from the (possibly jumped) state and open a new segment.
+      if (_yOff >= 0) std::copy(yp, yp + nBase, evY.begin() + _yOff);
+      if (_dfOff >= 0) {
+        cvB_rhs(&fu, xout, yp, fu.DADT.data());
+        for (int k = 0; k < nBase; ++k) evY[_dfOff + k] = fu.DADT[k] - evY[_dfOff + k];
+      }
       if (didEvent) {
         for (int k = 0; k < nBase; ++k) NV_Ith_S(y, k) = yp[k];
         CVodeReInit(mem, (sunrealtype)xout, y);
@@ -456,9 +492,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
         }
       }
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
-      if (isObs(getEvid(ind, ind->ix[i]))) {
-        obsT.push_back(xout); obsIx.push_back(i); obsReset.push_back(resetT.size()); obsEv.push_back(evJumps.size());
-      }
+      if (isObs(getEvid(ind, ind->ix[i]))) { obsT.push_back(xout); obsIx.push_back(i); obsSeq.push_back(seq); }
       if (_mtime_requeued) i--;
     }
     ind->solvedIdx = i;
@@ -481,7 +515,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   for (size_t w = 0; w < infusRec.size(); ++w) {
     const cvInfus &F = infusRec[w];
     if (F.tOff == R_PosInf || F.R == 0.0 || (F.fixed && F.isDur)) continue;
-    evJumps.push_back({F.tOff, F.cmt, 7, F.fixed ? 0.0 : -(F.amt / F.R) * F.durMult,
+    evJumps.push_back({F.tOff, F.cmt, 7, F.fixed ? 0.0 : -(F.amt / F.R) * F.durMult, F.offSeq, F.offY,
                        F.fixed ? F.dfW : (F.isDur ? 0.0 : F.amtRaw)});
   }
 
@@ -501,11 +535,12 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   const double *dx0P = dx0V.empty() ? NULL : dx0V.data();
   // Duals of an additive bolus at te, with B holding the post-dose costate
   // (dPhi/dy = I): modeled F adds amt*dF/dtheta*lambda_c, and a modeled alag
-  // adds dlag_c/dtheta*lambda^T (f(y-) - f(y+)) (rxAdjJumpTerm), or for a pushed
-  // dose its linearization -F*amt*dlag_c/dtheta*(lambda^T F_X[:,c]).
+  // adds dlag_c/dtheta*lambda^T (f(y-) - f(y+)) (rxAdjJumpTerm, else the jump
+  // captured in evY) at the post-dose primal.
   auto bolusDual = [&](const cvEvent &ev) {
     double *yq = bu.yq.data(), *A = bu.A.data();
-    hist.interp(ev.t, yq);
+    if (ev.y >= 0) std::copy(evY.begin() + ev.y, evY.begin() + ev.y + nBase, yq);
+    else hist.interp(ev.t, yq);
     for (int ii = 0; ii < eff; ++ii) A[ii] = 0.0;
     for (int ii = 0; ii < nBase; ++ii) A[ii] = yq[ii];
     calc_lhs(cSub, ev.t, A, ind->lhs);
@@ -514,68 +549,38 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       const double *dF = &ind->lhs[op->adjDfOff];
       for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += ev.raw * dF[c * np + p] * NV_Ith_S(B, c);
     }
-    if (op->adjDlagOff >= 0 &&
+    if (op->adjDlagOff >= 0 && ev.y >= 0 &&
         !rxAdjJumpTerm(ev.rec, c, NV_DATA_S(B), NV_DATA_S(B) + nBase, nBase, np, &ind->lhs[op->adjDlagOff])) {
-      const double *fx = &ind->lhs[bu.fxOff];
       const double *dlag = &ind->lhs[op->adjDlagOff];
+      const double *dF = &evY[ev.y + nBase];
       double sc = 0.0;
-      for (int ii = 0; ii < nBase; ++ii) sc += NV_Ith_S(B, ii) * fx[ii * nBase + c];
-      for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += -ev.factor * dlag[c * np + p] * sc;
-    }
-  };
-  // The events at time t among evJumps[lo, hi), last first: a bolus's F/alag dual
-  // (with the costate of its post-dose state), then replace[c] -> 0 and
-  // multiply[c] *= factor.  An observation at an event time reads the state after
-  // the events recorded before it.  A lagged replace/multiply first adds its
-  // alag() dual (rxAdjJumpTerm).
-  auto applyAt = [&](double t, size_t lo, size_t hi) {
-    for (size_t e = hi; e-- > lo;) {
-      const cvEvent &E = evJumps[e];
-      if (!isSameTime(E.t, t)) continue;
-      if (E.type == 0) { bolusDual(E); continue; }
-      if (E.type != 5 && E.type != 6) continue;
-      rxAdjJumpTerm(E.rec, E.cmt, NV_DATA_S(B), NV_DATA_S(B) + nBase, nBase, np,
-                    op->adjDlagOff >= 0 ? &ind->lhs[op->adjDlagOff] : NULL,
-                    op->adjDfOff >= 0 ? &ind->lhs[op->adjDfOff] : NULL);
-      if (E.type == 5) NV_Ith_S(B, E.cmt) = 0.0;
-      else NV_Ith_S(B, E.cmt) *= E.factor;
+      for (int ii = 0; ii < nBase; ++ii) sc += NV_Ith_S(B, ii) * dF[ii];
+      for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += -dlag[c * np + p] * sc;
     }
   };
   for (int oi = (int)obsT.size() - 1; bok && oi >= 0; --oi) {
-    double ti = obsT[oi]; int solveIdx = obsIx[oi];
+    double ti = obsT[oi]; int solveIdx = obsIx[oi], si = obsSeq[oi];
     double *out = getSolve(solveIdx);
-    // A reset zeroes the costate (dy_k(ti)/dp depends only on the post-reset
-    // window), so the sweep only needs to reach the most recent reset processed
-    // before this observation was stored -- including one at the observation's
-    // own time, whose observation reads the post-reset state.
-    double tStop = obsReset[oi] > 0 ? resetT[obsReset[oi] - 1] : t0;
-    // only events after that reset reach the observation
-    size_t evLo = obsReset[oi] > 0 ? resetEv[obsReset[oi] - 1] : 0, evHi = obsEv[oi];
-    if (ti <= tStop || isSameTime(ti, tStop)) {   // the initial conditions and the events at ti
-      for (int k = 0; k < nBase; ++k) {
-        for (int j = 0; j < nBase; ++j) NV_Ith_S(B, j) = (j == k) ? 1.0 : 0.0;
-        for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) = 0.0;
-        applyAt(ti, evLo, evHi);
-        for (int p = 0; p < np; ++p) {
-          double ini = 0.0;
-          if (dx0P) for (int q = 0; q < nBase; ++q) ini += NV_Ith_S(B, q) * dx0P[q * np + p];
-          out[sensOff + k * np + p] = NV_Ith_S(B, nBase + p) + ini;
-        }
+    // A reset processed before the observation zeroes the costate (dy_k(ti)/dp
+    // depends only on the post-reset window), so the sweep only needs to reach
+    // the most recent such reset; below tReset the costate is 0 and mu is frozen.
+    double tStop = t0; int stopSeq = 0;
+    for (size_t r = 0; r < resetT.size(); ++r)
+      if (resetSeq[r] < si && resetSeq[r] > stopSeq) {
+        tStop = resetT[r]; stopSeq = resetSeq[r];
       }
-      continue;
-    }
-    // replace/multiply events strictly inside (tStop, ti), descending in time and,
-    // at one time, in reverse of the order the forward solve applied them: the
-    // backward stops at each and applies the transpose costate jump.
+    // events processed between the reset and the observation (at either end's
+    // time too), in reverse processing order: the backward stops at each and
+    // applies the transpose costate jump.
     std::vector<int> segEv;
     for (size_t e = 0; e < evJumps.size(); ++e)
-      if (evJumps[e].t < ti - rxAdjTimeTol(evJumps[e].t, ti) && evJumps[e].t > tStop + rxAdjTimeTol(evJumps[e].t, tStop)) segEv.push_back((int)e);
-    gfx::timsort(segEv.begin(), segEv.end(), [&](int a, int b) {
-      return evJumps[a].t > evJumps[b].t || (evJumps[a].t == evJumps[b].t && a > b); });
+      if (evJumps[e].seq < si && evJumps[e].seq > stopSeq)
+        segEv.push_back((int)e);
+    gfx::timsort(segEv.begin(), segEv.end(),
+                 [&](int a, int b) { return evJumps[a].seq > evJumps[b].seq; });
     for (int k = 0; bok && k < nBase; ++k) {
       for (int j = 0; j < nBase; ++j) NV_Ith_S(B, j) = (j == k) ? 1.0 : 0.0;
       for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) = 0.0;
-      applyAt(ti, evLo, evHi);   // the events at ti itself
       if (CVodeReInit(bmem, (sunrealtype)ti, B) < 0) { bok = 0; break; }
       sunrealtype tret;
       // integrate ti -> each event (applying its costate jump) -> tStop; mu (the
@@ -600,7 +605,9 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
         } else if (ty == 9) {                                          // lagged rate change
           // mu += -dR * dlag_c/dtheta * lambda_c (factor = dR)
           double *yq = bu.yq.data(), *A = bu.A.data();
-          hist.interp((double)te, yq);
+          const cvEvent &ev = evJumps[segEv[s]];
+          if (ev.y >= 0) std::copy(evY.begin() + ev.y, evY.begin() + ev.y + nBase, yq);
+          else hist.interp((double)te, yq);
           for (int ii = 0; ii < eff; ++ii) A[ii] = 0.0;
           for (int ii = 0; ii < nBase; ++ii) A[ii] = yq[ii];
           calc_lhs(cSub, (double)te, A, ind->lhs);
@@ -611,7 +618,9 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
           // mu += -(F*amt/R)*durMult * dR/dtheta * lambda_c(t_off) (factor), plus
           // amtRaw*dF/dtheta*lambda_c for rate(), whose t_off = t_on + F*amt/R (raw).
           double *yq = bu.yq.data(), *A = bu.A.data();
-          hist.interp((double)te, yq);
+          const cvEvent &ev = evJumps[segEv[s]];
+          if (ev.y >= 0) std::copy(evY.begin() + ev.y, evY.begin() + ev.y + nBase, yq);
+          else hist.interp((double)te, yq);
           for (int ii = 0; ii < eff; ++ii) A[ii] = 0.0;
           for (int ii = 0; ii < nBase; ++ii) A[ii] = yq[ii];
           calc_lhs(cSub, (double)te, A, ind->lhs);
@@ -628,9 +637,10 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
         if (CVodeReInit(bmem, (sunrealtype)te, B) < 0) { bok = 0; break; }
       }
       if (!bok) break;
-      CVodeSetStopTime(bmem, (sunrealtype)tStop);
-      if (CVode(bmem, (sunrealtype)tStop, B, &tret, CV_NORMAL) < 0) { bok = 0; break; }
-      applyAt(tStop, evLo, evHi);   // the events at t0, or right after the reset
+      if (!isSameTime(tStop, tCur)) {
+        CVodeSetStopTime(bmem, (sunrealtype)tStop);
+        if (CVode(bmem, (sunrealtype)tStop, B, &tret, CV_NORMAL) < 0) { bok = 0; break; }
+      }
       // tStop is t0 or a reset; either way the state there is the initial condition
       for (int p = 0; p < np; ++p) {
         double ini = 0.0;
