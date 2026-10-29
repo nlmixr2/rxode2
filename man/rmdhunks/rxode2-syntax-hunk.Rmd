@@ -520,8 +520,10 @@ of the window, `sim = 1` at each event (or at the end of each interval
 holding an event) and `sim = 0` at right censoring. In model lines,
 `tteTime(ev)` is the time of the last event of `ev` (the window start
 before the first) and `tteCount(ev)` is the number of events so far,
-so renewal and count-dependent hazards can be written. Simulation
-requires `method = "liblsoda"`.
+so renewal and count-dependent hazards can be written. Every ODE
+solving `method` except the adjoint sensitivity methods simulates
+`tte()` endpoints, since the root finding only re-solves intervals with
+the chosen method.
 
 ### General table of supported residual distributions
 

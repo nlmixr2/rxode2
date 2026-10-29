@@ -168,9 +168,9 @@
   .state <- rxModelVars(lst[[1]])$state
   .hIdx <- match(.rxTteStateName(.predDf$var[.w]), .state) - 1L
   .opts <- lapply(.w, function(.i) .rxTteOptions(ui, .predDf[.i, ]))
-  .m <- lst$method
-  if (length(.m) != 1L || is.na(.m) || as.integer(.m) != 2L) {
-    stop("simulating a tte() endpoint is only supported with method=\"liblsoda\"", call. = FALSE)
+  .m <- as.integer(lst$method)
+  if (length(.m) == 1L && !is.na(.m) && (.m >= 200L || .m == 4L)) {
+    stop("simulating a tte() endpoint is not supported with the adjoint sensitivity methods", call. = FALSE)
   }
   .events <- lst$events
   if (is.null(.events) && (rxIs(lst$params, "rx.event") || is.data.frame(lst$params))) {

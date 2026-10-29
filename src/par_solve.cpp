@@ -44,6 +44,7 @@ extern "C" {
 }
 #include "par_solve.h"
 #include "tte.h"
+#include "cvode_solver.h"
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
 #define badSolveExit(i) for (int j = rxEffNeq(ind, op)*(ind->n_all_times); j--;){ \
     ind->solve[j] = NA_REAL;                                           \
@@ -5002,6 +5003,34 @@ static int _rxTteAfterInterval(rx_solve *rx, rx_solving_options *op,
   return 1;
 }
 
+// The tte() side of a per-subject record loop: start() saves the state at the
+// start of each interval, after() locates events once it is solved (returning
+// nonzero when the integrator must restart) and finish() drops unused slots.
+struct rxTteHook {
+  int n;
+  double xs;
+  std::vector<double> ys;
+  rxTteHook(rx_solve *rx, rx_solving_options_ind *ind, int neq)
+    : n(rxTteN()), xs(0.0), ys(n > 0 ? neq : 0) {
+    if (n > 0) rxTteSubjectInit(ind, (int)(ind - rx->subjects));
+  }
+  void start(double xp, const double *yp) {
+    if (n == 0) return;
+    xs = xp;
+    std::copy(yp, yp + ys.size(), ys.begin());
+  }
+  int after(rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind,
+            int i, double *xp, double *xout, double *yp,
+            const rxTteInteg &integ) {
+    if (n == 0) return 0;
+    return _rxTteAfterInterval(rx, op, ind, (int)ys.size(), i, xs, ys.data(),
+                               xp, xout, yp, integ);
+  }
+  void finish(rx_solving_options_ind *ind) {
+    if (n > 0) rxTteSubjectFinish(ind);
+  }
+};
+
 extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda_opt_t opt, int solveid,
                               t_dydt_liblsoda dydt_liblsoda, t_update_inis u_inis) {
   clock_t t0 = clock();
@@ -5112,11 +5141,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
     ctx->common->adjPush = NULL;
   }
   ind->solvedIdx = 0;
-  // tte() simulation: the start of the interval being solved
-  int _tteN = rxTteN();
-  double _tteXs = xp;
-  std::vector<double> _tteYs(_tteN > 0 ? neq[0] : 0);
-  if (_tteN > 0) rxTteSubjectInit(ind, (int)(ind - rx->subjects));
+  rxTteHook _tte(rx, ind, neq[0]);
   rxTteInteg _tteInteg = [&](double *y, double t0, double t1) {
     if (isSameTime(t0, t1)) return;
     ctx->state = 1;
@@ -5149,10 +5174,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
     _growSolveIfNeeded(ind, op, i, 1);
     yp = getSolve(i);
     xout = ind->timeThread[ind->ix[i]];
-    if (_tteN > 0) {
-      _tteXs = xp;
-      std::copy(yp, yp + neq[0], _tteYs.begin());
-    }
+    _tte.start(xp, yp);
     if (getEvid(ind, ind->ix[i]) != 3) {
       if (ind->err){
         *rc = -1000;
@@ -5199,9 +5221,8 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
           if (*rc < 0) localBadSolve = 1;
         }
         xp = xout;
-        if (_tteN > 0 && !localBadSolve &&
-            _rxTteAfterInterval(rx, op, ind, neq[0], i, _tteXs, _tteYs.data(),
-                                &xp, &xout, yp, _tteInteg)) {
+        if (!localBadSolve &&
+            _tte.after(rx, op, ind, i, &xp, &xout, yp, _tteInteg)) {
           ctx->state = 1;
         }
       }
@@ -5246,7 +5267,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
     }
     ind->solvedIdx = i;
   }
-  if (_tteN > 0) rxTteSubjectFinish(ind);
+  _tte.finish(ind);
   // Reset LHS to NA
   if (_usingPool) {
     // Pool: keep the context alive for the next subject; just clean up any error.
@@ -6615,11 +6636,31 @@ static int rxSegmentAutoSwitchGeneric(rx_solving_options *op,
   return (*istate > 0 && !ind->err) ? 1 : -4;
 }
 
+// One interval of a single method other than dop853 (the record loop that
+// tte() models use for every method); the caller set neq[0] to the ODE size.
+static int rxSegmentSingle(rx_solving_options *op, rx_solving_options_ind *ind,
+                           int *neq, double xp, double xout, double *yp,
+                           int *istate, int eff, int *iRec, void *ctx) {
+  int idid = 1;
+  double xpLoc = xp;
+  int neqOde = neq[0];
+  neq[0] = eff;
+  *istate = 1;
+  _rxSolveOneInterval(op->stiff, false, neq, yp, &xpLoc, xout, istate,
+                      &idid, op, ind, iRec, ctx, eff);
+  neq[0] = neqOde;
+  return (*istate > 0 && idid > 0 && ind->rc[0] != -2019 && !ind->err) ? 1 : -2019;
+}
+
 static int rxSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
                                rx_solving_options_ind *ind, int *neq, t_dydt c_dydt,
                                double xp, double xout, double *yp,
-                               int *istate, int itol, int eff, int *iRec) {
+                               int *istate, int itol, int eff, int *iRec,
+                               void *ctx) {
   (void) rx;
+  if (op->stiff2 <= 0 && op->stiff != 0) {
+    return rxSegmentSingle(op, ind, neq, xp, xout, yp, istate, eff, iRec, ctx);
+  }
   // Non-composite: plain dop853 (unchanged behavior).
   if (op->stiff2 <= 0) {
     return dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
@@ -6686,6 +6727,55 @@ static int rxSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
   return idid;
 }
 
+extern "C" int getCvodeLinearSolver();
+
+static int rxGenericCvodeRhs(double t, double *y, double *ydot, void *data) {
+  return dydt_liblsoda(t, y, ydot, data);
+}
+
+static inline int rxBaseMethod(rx_solving_options *op) {
+  return op->stiff >= 200 ? op->stiff - 200 : op->stiff;
+}
+
+// Methods whose Fortran solvers share one work array (single threaded)
+static inline bool rxFortranMethod(rx_solving_options *op) {
+  int base = rxBaseMethod(op);
+  return base == 1 || base == 106 || base == 107;
+}
+
+// The per-subject solver state a single method needs in the generic record
+// loop: a CVODE context (returned, freed by the caller), or the Fortran
+// LSODA/LSODE option slots of the shared work arrays.
+static void *rxGenericCtxInit(rx_solving_options *op, rx_solving_options_ind *ind,
+                              int *neq, double xp) {
+  if (op->stiff2 > 0) return NULL;
+  if (rxFortranMethod(op)) {
+    rwork_pool_t &p = __rworkPool[0];
+    std::fill(p.rworkp, p.rworkp + p.rworki, 0.0);
+    std::fill(p.iworkp, p.iworkp + p.iworki, 0);
+    p.rworkp[4] = op->H0;
+    p.rworkp[5] = (ind->HMAX > 0.0 && std::isfinite(ind->HMAX)) ? ind->HMAX : 0.0;
+    p.rworkp[6] = op->HMIN;
+    p.iworkp[5] = op->mxstep;
+    p.iworkp[6] = op->mxhnil;
+    p.iworkp[7] = op->MXORDN;
+    p.iworkp[8] = op->MXORDS;
+    return NULL;
+  }
+  int neqOde = op->neq - op->numLin - op->numLinSens;
+  if (rxBaseMethod(op) != 21 || neqOde <= 0) return NULL;
+  double rtol = (ind->rtol2 != NULL) ? ind->rtol2[0]
+    : (op->rtol2 != NULL) ? op->rtol2[0] : op->RTOL;
+  std::vector<double> atol(neqOde, op->ATOL);
+  const double *atolIn = (ind->atol2 != NULL) ? ind->atol2 : op->atol2;
+  if (atolIn != NULL) std::copy(atolIn, atolIn + neqOde, atol.begin());
+  int lin = op->cvodeLinSolver > 0 ? op->cvodeLinSolver : getCvodeLinearSolver();
+  _growSolveIfNeeded(ind, op, 0, 1);
+  return cvode_ctx_create(neqOde, getSolve(0), atol.data(), rtol, xp, op->HMIN,
+                          op->hmax2 > 0.0 ? op->hmax2 : 0.0, op->mxstep,
+                          rxGenericCvodeRhs, (void *)neq, lin);
+}
+
 extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,
                          t_dydt c_dydt,
                          t_update_inis u_inis) {
@@ -6729,6 +6819,23 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   rc= ind->rc;
   double xp = x[0];
   ind->solvedIdx = 0;
+  ctx = rxGenericCtxInit(op, ind, neq, xp);
+  if (ctx == NULL && rxBaseMethod(op) == 21 && op->stiff2 <= 0 &&
+      op->neq > op->numLin + op->numLinSens) {
+    ind->rc[0] = -2019;
+    rxSolverFail(ind);
+    return;
+  }
+  rxTteHook _tte(rx, ind, eff);
+  rxTteInteg _tteInteg = [&](double *y, double t0, double t1) {
+    if (isSameTimeDop(t0, t1)) return;
+    int st = 1;
+    preSolve(op, ind, t0, t1, y);
+    neq[0] = eff - op->numLin - op->numLinSens;
+    rxSegmentAutoSwitch(rx, op, ind, neq, c_dydt, t0, t1, y, &st, itol, eff, &i, ctx);
+    neq[0] = eff;
+    copyLinCmt(neq, ind, op, y);
+  };
   for(i=0; i<ind->n_all_times; i++) {
     ind->idx=i;
     ind->linSS=0;
@@ -6752,6 +6859,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
     }
     yp = getSolve(i);
     xout = ind->timeThread[ind->ix[i]];
+    _tte.start(xp, yp);
     if (global_debug){
       RSprintf("i=%d xp=%f xout=%f\n", i, xp, xout);
     }
@@ -6768,7 +6876,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             neq[0] = eff - op->numLin - op->numLinSens;
             idid = rxSegmentAutoSwitch(rx, op, ind, neq, c_dydt, xp,
-                                        ind->extraDoseNewXout, yp, &istate, itol, eff, &i);
+                                        ind->extraDoseNewXout, yp, &istate, itol, eff, &i, ctx);
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -6790,7 +6898,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
               preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
               neq[0] = eff - op->numLin - op->numLinSens;
               idid = rxSegmentAutoSwitch(rx, op, ind, neq, c_dydt,
-                                          ind->extraDoseNewXout, xout, yp, &istate, itol, eff, &i);
+                                          ind->extraDoseNewXout, xout, yp, &istate, itol, eff, &i, ctx);
               neq[0] = eff;
               copyLinCmt(neq, ind, op, yp);
               postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -6803,12 +6911,16 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           preSolve(op, ind, xp, xout, yp);
           neq[0] = eff - op->numLin - op->numLinSens;
           idid = rxSegmentAutoSwitch(rx, op, ind, neq, c_dydt, xp, xout, yp,
-                                      &istate, itol, eff, &i);
+                                      &istate, itol, eff, &i, ctx);
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
           if (*rc < 0) localBadSolve = 1;
           xp = xout;
+        }
+        if (!localBadSolve &&
+            _tte.after(rx, op, ind, i, &xp, &xout, yp, _tteInteg)) {
+          istate = 1;
         }
         //dadt_counter = 0;
       }
@@ -6843,6 +6955,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
     }
     ind->solvedIdx = i;
   }
+  _tte.finish(ind);
+  if (ctx != NULL && rxBaseMethod(op) == 21) cvode_ctx_destroy((cvode_ctx_t *)ctx);
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
 
@@ -7640,7 +7754,8 @@ extern "C" void ind_dop(rx_solve *rx, int solveid,
   neq[1] = 0;
   // The dense segment path is dop853 + ros4; a composite with any other
   // primary uses the non-dense record loop (rxData.cpp clears useDense for it).
-  if (op->useDense && (op->stiff2 <= 0 || op->stiff == 0))
+  // the dense path has no tte() hook
+  if (op->useDense && (op->stiff2 <= 0 || op->stiff == 0) && rxTteN() == 0)
     ind_dop0_dense(rx, op, solveid, neq, c_dydt, u_inis);
   else
     ind_dop0(rx, op, solveid, neq, c_dydt, u_inis);
@@ -7659,11 +7774,13 @@ void par_dop(rx_solve *rx){
   clock_t t0 = clock();
   int curTick = 0;
   int cur = 0;
-  // dop853 is thread-safe: dop853_ctx_t is stack-allocated per call (no static state)
+  // dop853 is thread-safe: dop853_ctx_t is stack-allocated per call (no static
+  // state); the Fortran methods the generic loop also runs are not
+  if (rxFortranMethod(op)) cores = 1;
   int abort = 0;
   uint32_t seed0 = getRxSeed1(cores);
 #ifdef _OPENMP
-#pragma omp parallel for num_threads(op->cores)
+#pragma omp parallel for num_threads(cores)
 #endif
   for (int solveid = 0; solveid < nsolve; solveid++){
     int neq[2];        // per-thread: ind_dop0 writes neq[0] and neq[1]
@@ -7677,7 +7794,7 @@ void par_dop(rx_solve *rx){
       // loop counts positions; the drivers take subject ids.
       int _id = rx->ordId[solveid] - 1;
       setSeedEng1(seed0 + _id);
-      if (op->useDense)
+      if (op->useDense && rxTteN() == 0)
         ind_dop0_dense(rx, op, _id, neq, dydt, update_inis);
       else
         ind_dop0(rx, op, _id, neq, dydt, update_inis);
@@ -8364,6 +8481,14 @@ static void ind_solve0(rx_solve *rx, unsigned int cid,
       // This only is linear compartment solving
       ind_linCmt(rx, cid, c_dydt, u_inis);
       return;
+    } else if (rxTteN() > 0) {
+      // tte() simulation: see par_solve()
+      if (rxBaseMethod(op) == 2) {
+        ind_liblsoda(rx, cid, dydt_lls, u_inis);
+      } else {
+        ind_dop(rx, cid, c_dydt, u_inis);
+      }
+      return;
     } else if (op->stiff2 > 0 && op->stiff != 0 && op->stiff < 200) {
       // AutoSwitch composite whose primary is not dop853.  Its own driver knows
       // nothing about op->stiff2, so it would silently run as the plain
@@ -8815,7 +8940,16 @@ extern "C" void par_solve(rx_solve *rx) {
       // op->stiff2.  Dispatching on -1 then skips the per-method switch (which
       // has no default) without skipping the teardown below it.
       int _dispatch = op->stiff;
-      if (op->stiff2 > 0 && op->stiff != 0 && op->stiff < 200) {
+      if (rxTteN() > 0) {
+        // tte() simulation runs in the two record loops with its hook: the
+        // liblsoda loop, and the generic loop for every other method
+        if (rxBaseMethod(op) == 2) {
+          par_liblsoda(rx);
+        } else {
+          par_dop(rx);
+        }
+        _dispatch = -1;
+      } else if (op->stiff2 > 0 && op->stiff != 0 && op->stiff < 200) {
         par_dop(rx);
         _dispatch = -1;
       }

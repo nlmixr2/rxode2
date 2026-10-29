@@ -116,7 +116,72 @@ rxTest({
     expect_false(identical(.a$time, .c$time))
   })
 
-  test_that("tte() simulation requires liblsoda", {
-    expect_error(rxSolve(.tteConst(), et(c(0, 30)), method = "dop853"), "liblsoda")
+  test_that("tte() simulation gives the same events with every solver family", {
+    f <- function() {
+      ini({
+        te <- 10
+        sh <- 1.5
+      })
+      model({
+        haz <- sh / te * (time / te)^(sh - 1)
+        ev ~ tte(haz, maxEventNumber = 1)
+      })
+    }
+    .e <- et(c(0, 100)) |> et(id = 1:50)
+    .ref <- withr::with_seed(2, as.data.frame(rxSolve(f(), .e)))
+    # explicit, adaptive, multistep, stiff, Fortran and CVODE solvers
+    for (.m in c("dop853", "rk4", "ck54", "ab", "ros4", "lsoda", "lsode", "cvode")) {
+      .s <- withr::with_seed(2, as.data.frame(rxSolve(f(), .e, method = .m)))
+      .ev <- .s[.s$sim == 1, ]
+      expect_equal(.s$sim, .ref$sim, info = .m)
+      expect_equal(.s$time, .ref$time, tolerance = 1e-4, info = .m)
+      expect_equal(.ev$rx.tteH.ev, (.ev$time / 10)^1.5, tolerance = 1e-4, info = .m)
+    }
+    # indLin, with a hazard it integrates exactly
+    .e <- et(c(0, 30)) |> et(id = 1:50)
+    .a <- withr::with_seed(1, as.data.frame(rxSolve(.tteConst(), .e)))
+    .b <- withr::with_seed(1, as.data.frame(suppressMessages(rxSolve(.tteConst(), .e, method = "indLin"))))
+    expect_equal(.b$sim, .a$sim)
+    expect_equal(.b$time, .a$time, tolerance = 1e-6)
+    expect_error(rxSolve(.tteConst(), .e, method = "rk4s"), "adjoint")
+    expect_error(rxSolve(.tteConst(), .e, method = "liblsodaadj"), "adjoint")
+    # dense output falls back to the standard (hooked) record loop
+    .d <- withr::with_seed(1, as.data.frame(suppressWarnings(rxSolve(.tteConst(), .e, method = "dop853", dense = TRUE))))
+    expect_equal(.d$time, .a$time, tolerance = 1e-6)
+  })
+
+  test_that("tte() dropout with dosing in the generic record loop", {
+    f <- function() {
+      ini({
+        tcl <- log(1)
+        tv <- log(10)
+        eta.cl ~ 0.1
+        add.sd <- 0.1
+        lambda <- 0.01
+        beta <- 0.1
+      })
+      model({
+        cl <- exp(tcl + eta.cl)
+        v <- exp(tv)
+        d/dt(central) <- -cl / v * central
+        cp <- central / v
+        haz <- lambda * exp(beta * cp)
+        cp ~ add(add.sd)
+        ev ~ tte(haz, maxEventNumber = 1, dropout = TRUE)
+      })
+    }
+    .e <- et(amt = 100, cmt = "central", ii = 24, addl = 1) |>
+      et(seq(0, 48, by = 4), cmt = "cp") |>
+      et(c(0, 48), cmt = "ev") |>
+      et(id = 1:50)
+    .a <- withr::with_seed(7, as.data.frame(rxSolve(f(), .e)))
+    .b <- withr::with_seed(7, as.data.frame(rxSolve(f(), .e, method = "dop853", cores = 2)))
+    expect_equal(.a$sim, .b$sim, tolerance = 1e-4)
+    expect_equal(.a$time, .b$time, tolerance = 1e-4)
+    .ev <- .b[.b$CMT == 4 & .b$sim == 1, ]
+    expect_true(nrow(.ev) > 0)
+    for (.j in seq_len(nrow(.ev))) {
+      expect_true(all(.b$time[.b$id == .ev$id[.j]] <= .ev$time[.j]))
+    }
   })
 })
