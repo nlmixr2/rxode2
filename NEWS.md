@@ -4,9 +4,12 @@
 
 ### Event tables
 - An infusion's `f()`, `alag()`, `rate()` and `dur()` are now read at its
-  start's record, as NONMEM reads them: `f()` at the record's time with the
-  record's covariates, also when `alag()` moves the infusion and in steady
-  state.
+  start's record: `f()` at the record's time with the record's covariates,
+  also when `alag()` moves the infusion and in steady state.  For `f()`,
+  `alag()` and `dur()` this is how NONMEM reads them.  A modeled `rate()`
+  keeps rxode2's rule, a rate read once at the start's record and fixed for
+  the infusion, now also when a lag moves the records; NONMEM re-reads its
+  `R1` on each interval (#1586), which this does not change.
   - A fixed-duration infusion's stop read `f()` again at its own time, so
     when a covariate or `t` in `f()` changed during the infusion the stop
     did not remove the rate the start added.
