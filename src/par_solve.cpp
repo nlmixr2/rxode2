@@ -3194,7 +3194,7 @@ static thread_local std::vector<double> _adjSS2peak;
 // With an f() that depends on the state (op->adjDfxOff >= 0), yPre holds the
 // whole base pre-event state and fPre = f(t, x-), for the state part of the
 // jump's transpose.
-// alpha is a multiply's factor F*amt as the forward solve applied it.
+// alpha is a multiply's factor F*amt as the forward solve applied it (x+[c]/x-[c]).
 struct rxAdjJumpCap { int rec, kind; double xPre, raw, alpha = 1.0; std::vector<double> r, yPre, fPre; };
 static thread_local std::vector<rxAdjJumpCap> _adjJumpCap;
 static thread_local std::vector<int> _adjJumpPos;   // record index -> 1 + its _adjJumpCap slot, 0 none
@@ -3241,8 +3241,14 @@ static inline void rxAdjJumpRecord(rx_solving_options *op, rx_solving_options_in
   cap.kind = (_whI == EVIDF_REPLACE) ? 5 : (_whI == EVIDF_MULT) ? 6 :
     (_whI == EVIDF_INF_DUR || _whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON) ? 7 : 0;
   if (cap.kind == 6) {
-    std::vector<double> yF(pre);
-    cap.alpha = getAmt(ind, ind->id, cmt, cap.raw, t, yF.data());
+    // the factor the forward applied, whatever covariates and time its F read;
+    // F*amt itself when the compartment was 0
+    if (pre[cmt] != 0.0) {
+      cap.alpha = post[cmt] / pre[cmt];
+    } else {
+      std::vector<double> yF(pre);
+      cap.alpha = getAmt(ind, ind->id, cmt, cap.raw, t, yF.data());
+    }
   }
   if (op->adjDfxOff >= 0) {
     cap.yPre.assign(pre.begin(), pre.begin() + nBase);
