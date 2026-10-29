@@ -478,11 +478,19 @@ static inline void cancelRunningInfusionStops(rx_solving_options_ind *ind,
       // a start with no stop record must not take a later infusion's stop
       if (getDoseNumber(ind, l) <= 0 || isInfusionUnpaired(ind, r)) continue;
       handleInfusionGetEndOfInfusionIndex(l, &e, rx, op, ind);
-    } else if (isModeledOn && l + 1 < ind->ndoses) {
+    } else if (isModeledOn && r + 1 < ind->n_all_times) {
       // the modeled stop is the record right after its start
+      // (getDoseIndexPlus1()); pushed doses keep that, but not idose order
       int sWh, sCmt, sWh100, sWhI, sWh0;
-      getWh(getEvid(ind, ind->idose[l + 1]), &sWh, &sCmt, &sWh100, &sWhI, &sWh0);
-      if (sCmt == cmt && sWhI == whI - 2) e = l + 1;
+      getWh(getEvid(ind, r + 1), &sWh, &sCmt, &sWh100, &sWhI, &sWh0);
+      if (sCmt == cmt && sWhI == whI - 2) {
+        e = getDoseNumberFromIndex(ind, r + 1);
+        if (e == -1) {
+          for (int j = 0; j < ind->ndoses; j++) {
+            if (ind->idose[j] == r + 1) { e = j; break; }
+          }
+        }
+      }
     }
     if (e < 0) continue;
     int er = ind->idose[e];

@@ -357,7 +357,7 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
     ind->curShift -= rx->maxShift;
     cancelRunningInfusionStops(ind, rx, op, ind->idx, neq[0]);
     // the modeled steady-state off these mark was cancelled with the rest
-    _esSSDurOffCmt = -1; _esSSRateOffCmt = -1;
+    if (_rxEsActive) { _esSSDurOffCmt = -1; _esSSRateOffCmt = -1; }
     for (unsigned int j = neq[0]; j--;) {
       ind->InfusionRate[j] = 0;
       ind->on[j] = 1;

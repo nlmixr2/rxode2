@@ -136,6 +136,36 @@ rxTest({
     }
   })
 
+  test_that("fixed-duration infusions are cancelled by a reset, on any core count", {
+    ev <- et(amt = 100, dur = 4, cmt = "depot") |>
+      et(time = 2, evid = 3) |>
+      et(.o) |>
+      et(id = 1:4)
+    for (meth in .meths) {
+      for (cores in 1:2) {
+        d <- rxSolve(.m, ev, .p, method = meth, cores = cores)$depot
+        expect_equal(d[rep(.o, 4) > 2], rep(0, 16), tolerance = 1e-6)
+      }
+    }
+  })
+
+  test_that("a reset cancels overlapping pushed modeled infusions", {
+    mp <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - k * center
+      rate(depot) <- 25
+      if (t < 1e-8) {
+        evid_(0, 1, 100, 1, -1, 2, 1, 0)
+      }
+    })
+    # starts at 0 and 2 (4 h each); reset at 3, before either stop
+    o <- c(0, 1, 2.5, 4, 5, 7)
+    for (meth in .meths) {
+      d <- rxSolve(mp, et(time = 3, evid = 3) |> et(o), .p, method = meth)$depot
+      expect_equal(d[o > 3], rep(0, 3), tolerance = 1e-6)
+    }
+  })
+
   test_that("an infusion started after the reset keeps its own stop", {
     o <- c(.o, 3.4, 3.6)
     ev <- et(amt = 100, rate = 25, cmt = "depot") |>
