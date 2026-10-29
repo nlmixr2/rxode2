@@ -1218,33 +1218,35 @@ static IntegerVector etTransInfPairAttr(const std::vector<std::pair<int,int>>& p
   return wrap(ret);
 }
 
-// (repeat, dose) 1-based output-row pairs: each addl repeat that does not keep
-// its covariates and the record of the dose it repeats (that input row's own
-// record, which carries the dose's covariates)
-static IntegerVector etTransAddlParentAttr(const std::vector<int>& addlParent,
-                                           const std::vector<int>& idxInput,
-                                           const std::vector<char>& recImplied,
-                                           const std::vector<int>& idxOutput) {
-  if (addlParent.size() != idxInput.size()) return IntegerVector(0);
-  if (std::find_if(addlParent.begin(), addlParent.end(),
-                   [](int v) { return v >= 0; }) == addlParent.end()) {
+// (record, linked) 1-based output-row pairs from `link`, the input row each
+// record is linked to (-1 for none), to the record standing in for that input
+// row, which carries its covariates: the records a dose row expands to
+// (rxDoseRow) and the addl repeats that do not keep their covariates
+// (rxAddlParent)
+static IntegerVector etTransRowLinkAttr(const std::vector<int>& link,
+                                        const std::vector<int>& idxInput,
+                                        const std::vector<char>& recImplied,
+                                        const std::vector<int>& idxOutput) {
+  if (link.size() != idxInput.size()) return IntegerVector(0);
+  if (std::find_if(link.begin(), link.end(),
+                   [](int v) { return v >= 0; }) == link.end()) {
     return IntegerVector(0);
   }
   std::vector<int> outRow, outPre;
   etTransInfOutRows(idxOutput, idxInput.size(), outRow, outPre);
   bool hasImplied = recImplied.size() == idxInput.size();
-  std::unordered_map<int, int> doseRow;
+  std::unordered_map<int, int> inputRow;
   for (int r = 0; r < (int)outPre.size(); ++r) {
     int q = outPre[r];
     if (idxInput[q] < 0 || (hasImplied && recImplied[q])) continue;
-    doseRow.emplace(idxInput[q], r);
+    inputRow.emplace(idxInput[q], r);
   }
   std::vector<int> ret;
   for (int r = 0; r < (int)outPre.size(); ++r) {
-    int p = addlParent[outPre[r]];
+    int p = link[outPre[r]];
     if (p < 0) continue;
-    auto it = doseRow.find(p);
-    if (it == doseRow.end() || it->second >= r) continue;
+    auto it = inputRow.find(p);
+    if (it == inputRow.end() || it->second >= r) continue;
     ret.push_back(r + 1);
     ret.push_back(it->second + 1);
   }
@@ -1842,6 +1844,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   // dose expands to); only read for PK-type time with nonmem=TRUE (rxode2#1429)
   std::vector<char> recImplied;
   recImplied.reserve(resSize);
+  // for a record a dose row expands to (a steady-state companion, an
+  // infusion's stop), that input row; -1 for every other record
+  std::vector<int> doseRow;
+  doseRow.reserve(resSize);
   std::vector<std::pair<int,int>> infPairs; // see etTransNoteInfPairs()
   std::vector<int> infClassic;               // see etTransNoteInfClassic()
   std::vector<int> cmtF; // Final compartment
@@ -2155,6 +2161,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         idxInput.push_back(-1);
         addlParent.push_back(-1);
         recImplied.push_back(0);
+        doseRow.push_back(-1);
       }
       nid++;
     }
@@ -2484,6 +2491,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         idxInput.push_back(i);
         addlParent.push_back(-1);
         recImplied.push_back(0);
+        doseRow.push_back(-1);
         cevid = -1;
       }
       break;
@@ -2542,6 +2550,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         idxInput.push_back(i);
         addlParent.push_back(-1);
         recImplied.push_back(0);
+        doseRow.push_back(-1);
         ndose++;
         // + cmt needs to turn on cmts.
         // This gives a zero dose to cmt
@@ -2560,6 +2569,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           idxInput.push_back(i);
           addlParent.push_back(-1);
           recImplied.push_back(0);
+          doseRow.push_back(-1);
           ndose++;
         }
         cevid = -1;
@@ -2593,6 +2603,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       idxInput.push_back(i);
       addlParent.push_back(-1);
       recImplied.push_back(0);
+      doseRow.push_back(-1);
       ndose++;
       cevid = -1;
       break;
@@ -2637,6 +2648,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       idxInput.push_back(-1);
       addlParent.push_back(-1);
       recImplied.push_back(1);
+      doseRow.push_back(-1);
       ndose++;
       // Now use the transformed compartment
       cevid = cmt100*100000+rateI*10000+cmt99*100+flg;
@@ -2763,11 +2775,13 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             idxInput.push_back(k == 0 ? (int)i : -1);
             addlParent.push_back(-1);
             recImplied.push_back(k == 0 ? 0 : 1);
+            doseRow.push_back(k == 0 ? -1 : (int)i);
           } else {
             idxInput.push_back(addlKeepsCov ? (int)i : -1);
             // the dose it repeats, when it does not keep that dose's covariates
             addlParent.push_back(addlKeepsCov ? -1 : (int)i);
             recImplied.push_back(1);
+            doseRow.push_back(-1);
           }
           ndose++;
         }
@@ -2847,6 +2861,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     std::vector<int> idxInput2;
     std::vector<int> addlParent2;
     std::vector<char> recImplied2;
+    std::vector<int> doseRow2;
     id2.reserve(id.size());
     evid2.reserve(evid.size());
     cmtF2.reserve(cmtF.size());
@@ -2859,6 +2874,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     idxInput2.reserve(idxInput.size());
     addlParent2.reserve(addlParent.size());
     recImplied2.reserve(recImplied.size());
+    doseRow2.reserve(doseRow.size());
     // where each record's copies land, to carry infPairs across
     std::vector<int> newFirst(evid.size(), 0), newCount(evid.size(), 0);
     ndose = 0;
@@ -2899,6 +2915,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         idxInput2.push_back(idxInput[j]);
         addlParent2.push_back(addlParent[j]);
         recImplied2.push_back(recImplied[j]);
+        doseRow2.push_back(doseRow[j]);
         mxCmt = max2(mxCmt, cmtF[j]);
         newCount[j] = 1;
         continue;
@@ -2931,6 +2948,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           idxInput2.push_back(idxInput[j]);
           addlParent2.push_back(addlParent[j]);
           recImplied2.push_back(recImplied[j]);
+          doseRow2.push_back(doseRow[j]);
           mxCmt = max2(mxCmt, curCmt);
         };
         int promotion = canPromote ? promote[k] : 0;
@@ -2941,6 +2959,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           pushRow(_rxEncodeEventCmtInf(evid[j], curCmt, promotion));
           pushRow(_rxEncodeEventCmtInf(evid[j], curCmt, stopFlag));
           recImplied2.back() = 1;
+          // the promoted stop is a record its dose row expands to
+          if (idxInput[j] >= 0) doseRow2.back() = idxInput[j];
           hasModeledRateDur = true;
         } else {
           pushRow(_rxEncodeEventCmt(evid[j], curCmt));
@@ -2975,6 +2995,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     idxInput.swap(idxInput2);
     addlParent.swap(addlParent2);
     recImplied.swap(recImplied2);
+    doseRow.swap(doseRow2);
   }
   if (hasReset && isSorted) {
     // Here EVID=3 resets time
@@ -3052,6 +3073,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             idxInput.push_back(-1);
             addlParent.push_back(-1);
             recImplied.push_back(0);
+            doseRow.push_back(-1);
           }
         }
       }
@@ -3138,8 +3160,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   if (idxOutput.size()-rmAmt <= 0) stop(_("empty data"));
   IntegerVector infPairAttr = etTransInfPairAttr(infPairs, infClassic, idxOutput,
                                                  id, evid, amt);
-  IntegerVector addlParentAttr = etTransAddlParentAttr(addlParent, idxInput,
-                                                       recImplied, idxOutput);
+  IntegerVector doseRowAttr = etTransRowLinkAttr(doseRow, idxInput, recImplied,
+                                                 idxOutput);
+  IntegerVector addlParentAttr = etTransRowLinkAttr(addlParent, idxInput,
+                                                    recImplied, idxOutput);
   if (!keepDosingOnly) {
     nid = obsId.size();
   } else {
@@ -3916,6 +3940,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   if (pkSkipRows.size() > 0) {
     std::reverse(pkSkipRows.begin(), pkSkipRows.end());
     Rf_setAttrib(lstF, Rf_install("rxPkSkip"), wrap(pkSkipRows));
+  }
+  if (doseRowAttr.size() > 0) {
+    Rf_setAttrib(lstF, Rf_install("rxDoseRow"), doseRowAttr);
   }
   if (addlParentAttr.size() > 0) {
     Rf_setAttrib(lstF, Rf_install("rxAddlParent"), addlParentAttr);

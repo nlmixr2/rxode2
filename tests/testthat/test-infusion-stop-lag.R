@@ -250,6 +250,42 @@ rxTest({
   .kinds <- c("rate", "dur", "mrate", "mdur")
   .p <- c(ka = 1.2, k = 0.2, bio = 0.8, lg = 0.3)
 
+  test_that("etTrans() links the records a dose row expands to to that row", {
+    mod <- rxode2({
+      d/dt(depot) <- -ka * depot
+      f(depot) <- 0.8 * WT / 70
+      alag(depot) <- 0.3
+    })
+    # an infusion's stop (row 3) reads its start's row (1)
+    inf <- data.frame(
+      id = 1,
+      time = c(0, 1, 4),
+      evid = c(1, 0, 0),
+      amt = c(80, 0, 0),
+      rate = c(40, 0, 0),
+      cmt = "depot",
+      WT = c(70, 100, 100)
+    )
+    expect_equal(attr(etTrans(inf, mod), "rxDoseRow"), c(3L, 1L))
+    # a steady-state infusion's companions (rows 2 and 3) and its stop (5)
+    # read the steady-state dose row
+    ssInf <- data.frame(
+      id = 1,
+      time = c(0, 0.5, 4),
+      evid = c(1, 0, 0),
+      amt = c(80, 0, 0),
+      rate = c(40, 0, 0),
+      ss = c(1L, 0L, 0L),
+      ii = c(12, 0, 0),
+      cmt = "depot",
+      WT = c(70, 100, 100)
+    )
+    expect_equal(attr(etTrans(ssInf, mod), "rxDoseRow"), c(2L, 1L, 3L, 1L, 5L, 1L))
+    # a bolus expands to no other record
+    bolus <- data.frame(id = 1, time = c(0, 1), evid = c(1, 0), amt = c(80, 0), cmt = "depot", WT = c(70, 100))
+    expect_null(attr(etTrans(bolus, mod), "rxDoseRow"))
+  })
+
   test_that("an infusion's f() reads its record's time and covariates, whatever its kind", {
     mods <- .infKindMods()
     modPlain <- rxode2({
