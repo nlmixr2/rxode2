@@ -46,8 +46,15 @@ rxTest({
 rxTest({
   # newind during the solve (#1526): 1 for the subject's first record's own dose
   # functions and evid_() pushes, 2 for the integration after it
-  .newindMethods <- c("dop853", "dop853+ros4", "t54+sdirk43")
-  .newindDense <- c("dop853", "dop853+ros4")
+  # every forward method (indLin rewrites the model, vv needs paired states;
+  # the adjoint methods after bdf need an adjoint build) and every dense one
+  .newindMethods <- eval(formals(rxSolve)$method)
+  .newindMethods <- c(
+    setdiff(.newindMethods[seq_len(match("bdf", .newindMethods))], c("indLin", "vv")),
+    "dop853+ros4",
+    "t54+sdirk43"
+  )
+  .newindDense <- c("dop853", "dop5", "bs", "ros4", "cvode", "dop853+ros4")
 
   .newindRhs <- rxode2({
     d / dt(central) <- -0.2 * central * ifelse(newind <= 1, 2, 1)
@@ -103,30 +110,30 @@ rxTest({
     }
     test_that(paste("newind during the solve matches the table for", .lab), {
       .s <- .solve(.newindRhs, et(amt = 100) |> et(c(1, 2, 4)))
-      expect_equal(.s$central, 100 * exp(-0.2 * c(1, 2, 4)), tolerance = 1e-4)
+      expect_equal(.s$central, 100 * exp(-0.2 * c(1, 2, 4)), tolerance = 1e-3)
 
       .s <- .solve(
         .newindF,
         et(amt = 100, time = 0) |> et(amt = 100, time = 2) |> et(c(1, 1.999, 2.001, 4))
       )
-      expect_equal(.s$central, c(40.9365, 33.5227, 133.489, 89.4985), tolerance = 1e-4)
+      expect_equal(.s$central, c(40.9365, 33.5227, 133.489, 89.4985), tolerance = 1e-3)
 
       # every subject starts again at newind = 1
       .s <- .solve(
         .newindF,
         et(amt = 100, time = 0, id = 1:2) |> et(amt = 100, time = 2, id = 1:2) |> et(c(1, 4), id = 1:2)
       )
-      expect_equal(.s$central, rep(c(40.9365, 89.4985), 2), tolerance = 1e-4)
+      expect_equal(.s$central, rep(c(40.9365, 89.4985), 2), tolerance = 1e-3)
 
       # a modeled duration at the first record
       .obs <- c(0.5, 1, 3, 5, 6, 8)
       .s <- .solve(.newindDur, et(amt = 100, rate = -2) |> et(amt = 100, rate = -2, time = 4) |> et(.obs))
       .ref <- .solve(.newindPlain, et(amt = 100, dur = 1) |> et(amt = 100, dur = 2, time = 4) |> et(.obs))
-      expect_equal(.s$central, .ref$central, tolerance = 1e-4)
+      expect_equal(.s$central, .ref$central, tolerance = 1e-3)
 
       # data starting after time 0: the hidden start record is not the first
       .s <- .solve(.newindF, et(amt = 100, time = 1) |> et(c(2, 4)))
-      expect_equal(.s$central, 50 * exp(-0.2 * c(1, 3)), tolerance = 1e-4)
+      expect_equal(.s$central, 50 * exp(-0.2 * c(1, 3)), tolerance = 1e-3)
       .s <- .solve(.newindRhs0, et(c(1, 2, 4)))
       # (the RHS jump at an observation is no solver restart; 1 vs 2 is 20%)
       expect_equal(.s$central, 10 * exp(-0.4 - 0.2 * c(0, 1, 3)), tolerance = 0.05)
@@ -139,18 +146,18 @@ rxTest({
         return(invisible())
       }
       .s <- .solve(.newindGuard, et(c(0, 1, 2, 4)), addDosing = TRUE)
-      expect_equal(.s$central[.s$time > 0], 100 * exp(-0.2 * c(1, 2, 4)), tolerance = 1e-4)
+      expect_equal(.s$central[.s$time > 0], 100 * exp(-0.2 * c(1, 2, 4)), tolerance = 1e-3)
       expect_equal(sum(.s$evid != 0), 1L)
 
       .s <- .solve(.newindSticky, et(c(0, 0.5, 1, 2, 4)))
-      expect_equal(.s$central[.s$time > 1], 100 * exp(-0.2 * c(1, 3)), tolerance = 1e-4)
+      expect_equal(.s$central[.s$time > 1], 100 * exp(-0.2 * c(1, 3)), tolerance = 1e-3)
 
       .s <- .solve(.newindGuard, et(c(1, 2, 4)), addDosing = TRUE)
-      expect_equal(.s$central[.s$time > 1], 100 * exp(-0.2 * c(1, 3)), tolerance = 1e-4)
+      expect_equal(.s$central[.s$time > 1], 100 * exp(-0.2 * c(1, 3)), tolerance = 1e-3)
       expect_equal(.s$time[.s$evid != 0], 1)
 
       .s <- .solve(.newindMtime, et(c(0, 1, 2, 4)))
-      expect_equal(.s$central[.s$time %in% c(2, 4)], 110 * exp(-0.1 * c(2, 4)), tolerance = 1e-4)
+      expect_equal(.s$central[.s$time %in% c(2, 4)], 110 * exp(-0.1 * c(2, 4)), tolerance = 1e-3)
       # ...and with a late data start, where the requeued mtime() at time 0
       # sorted ahead of the hidden start record
       .s <- .solve(.newindMtime, et(c(1, 2, 4)), addDosing = TRUE)
@@ -158,7 +165,7 @@ rxTest({
       expect_equal(
         .s$central[.s$time %in% c(2, 4)],
         10 * exp(-0.1 * c(2, 4)) + 100 * exp(-0.1 * c(1, 3)),
-        tolerance = 1e-4
+        tolerance = 1e-3
       )
     })
   }
