@@ -72,7 +72,7 @@ struct cvFwdUser {   // forward RHS user data
   std::vector<double> A, DADT;
 };
 // A modeled-rate infusion window (time-based) for the cvodesadj rate dual.
-struct cvInfus { double tOn, tOff; int cmt; double R, amt, durMult; };  // durMult: 1 (rate) or amt (dur)
+struct cvInfus { double tOn, tOff; int cmt; double R, amt, durMult; int offSeq, offY; };  // durMult: 1 (rate) or amt (dur)
 
 struct cvBwdUser {   // backward RHS user data
   const cvHist *hist; int cSub, nBase, np, eff, fxOff, fpOff, drateOff;
@@ -130,12 +130,18 @@ static int cvB_bwd(sunrealtype t, N_Vector B, N_Vector Bd, void *ud) {
   return 0;
 }
 
-// Record the current (t, base states) plus f=dydt into the history segment.
-static void cvB_record(cvHist *hist, cvFwdUser *u, double t, const double *yp) {
-  double *A = u->A.data(), *D = u->DADT.data();
+// f = dydt at (t, base states yp) into D (eff wide; may be u->DADT).
+static void cvB_rhs(cvFwdUser *u, double t, const double *yp, double *D) {
+  double *A = u->A.data();
   for (int i = 0; i < u->eff; ++i) A[i] = 0.0;
   for (int i = 0; i < u->nBase; ++i) A[i] = yp[i];
   u->dydt(u->neq, t, A, D);
+}
+
+// Record the current (t, base states) plus f=dydt into the history segment.
+static void cvB_record(cvHist *hist, cvFwdUser *u, double t, const double *yp) {
+  double *D = u->DADT.data();
+  cvB_rhs(u, t, yp, D);
   hist->push(t, yp, D);
 }
 
@@ -201,11 +207,18 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     return 0;
   }
 
-  std::vector<double> obsT; std::vector<int> obsIx;
+  // seq: forward processing order, which orders records sharing a time.
+  int seq = 0;
+  std::vector<double> obsT; std::vector<int> obsIx, obsSeq;
   std::vector<double> resetT;   // evid-3 reset times (costate jump: lambda := 0)
+  std::vector<int> resetSeq;
   // replace (type 5: lambda[c]:=0) / multiply (type 6: lambda[c]*=factor) events;
   // the backward sweep stops at each and applies the transpose costate jump.
-  struct cvEvent { double t; int cmt; int type; double factor; };
+  // seq: forward processing order; y: offset in evY of the primal just after
+  // this event's own jump (-1: none), so same-time events see their own state;
+  // an alag bolus (type 0) follows it with its vector-field jump F(y+)-F(y-).
+  struct cvEvent { double t; int cmt; int type; double factor; int seq; int y; };
+  std::vector<double> evY;
   std::vector<cvEvent> evJumps;
   std::vector<cvInfus> infusRec;   // modeled-rate infusion windows (rate dual)
   int _infusOnCmt = -1;
@@ -299,6 +312,9 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     ind->_newind = 2;
     if (!localBadSolve) {
       ind->idx = i;
+      ++seq;
+      int _yOff = -1;   // evY slot to fill with this record's post-jump primal
+      int _dfOff = -1;  // evY slot for an alag bolus's F(y+)-F(y-)
       // Record replace/multiply state jumps for the backward transpose jump.
       { int _ev = getEvid(ind, ind->ix[i]);
         if (isDose(_ev)) {
@@ -306,23 +322,31 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
           getWh(_ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
           if (_cmt >= 0 && _cmt < nBase) {
             if (_whI == EVIDF_REPLACE) {
-              evJumps.push_back({xout, _cmt, 5, 0.0});
+              evJumps.push_back({xout, _cmt, 5, 0.0, seq, -1});
             } else if (_whI == EVIDF_MULT) {
               evJumps.push_back({xout, _cmt, 6,
-                getAmt(ind, ind->id, _cmt, getDoseIndex(ind, ind->idx), xout, yp)});
+                getAmt(ind, ind->id, _cmt, getDoseIndex(ind, ind->idx), xout, yp), seq, -1});
             } else if (_whI == 0 && op->adjDlagOff >= 0) {
               // additive bolus in a model with a modeled alag(): record the
               // (lagged) dose time so the backward can add the transversality
-              // mu += -amt*dlag_c/dtheta*(lambda^T F_X[:,c]).
-              evJumps.push_back({xout, _cmt, 0, getDose(ind, ind->ix[i])});
+              // mu += -dlag_c/dtheta*(lambda^T (F(y+)-F(y-))).
+              _yOff = (int)evY.size(); _dfOff = _yOff + nBase;
+              evY.resize(evY.size() + 2 * nBase);
+              cvB_rhs(&fu, xout, yp, fu.DADT.data());   // F(y-), differenced below
+              std::copy(fu.DADT.begin(), fu.DADT.begin() + nBase, evY.begin() + _dfOff);
+              evJumps.push_back({xout, _cmt, 0, getDose(ind, ind->ix[i]), seq, _yOff});
             } else if ((_whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON) && op->adjDrateOff >= 0) {
               double _amt = getDose(ind, ind->ix[i]);
               infusRec.push_back({xout, R_PosInf, _cmt, 0.0, _amt,
-                                  (_whI == EVIDF_MODEL_DUR_ON) ? _amt : 1.0});
+                                  (_whI == EVIDF_MODEL_DUR_ON) ? _amt : 1.0, 0, -1});
               _infusOnCmt = _cmt;   // R captured after handleEvid1
             } else if ((_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) && op->adjDrateOff >= 0) {
               for (size_t w = infusRec.size(); w-- > 0;)
-                if (infusRec[w].cmt == _cmt && infusRec[w].tOff == R_PosInf) { infusRec[w].tOff = xout; break; }
+                if (infusRec[w].cmt == _cmt && infusRec[w].tOff == R_PosInf) {
+                  infusRec[w].tOff = xout; infusRec[w].offSeq = seq;
+                  infusRec[w].offY = _yOff = (int)evY.size(); evY.resize(evY.size() + nBase);
+                  break;
+                }
             }
           }
         } else if (!isObs(_ev) && op->adjDrateOff >= 0) {
@@ -330,13 +354,17 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
           getWh(_ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
           if ((_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) && _cmt >= 0 && _cmt < nBase)
             for (size_t w = infusRec.size(); w-- > 0;)
-              if (infusRec[w].cmt == _cmt && infusRec[w].tOff == R_PosInf) { infusRec[w].tOff = xout; break; }
+              if (infusRec[w].cmt == _cmt && infusRec[w].tOff == R_PosInf) {
+                  infusRec[w].tOff = xout; infusRec[w].offSeq = seq;
+                  infusRec[w].offY = _yOff = (int)evY.size(); evY.resize(evY.size() + nBase);
+                  break;
+                }
         } }
       if (getEvid(ind, ind->ix[i]) == 3) {
         // A reset wipes the state to (parameter-independent) inits, so dPhi/dy = 0
         // and the backward costate zeroes here.  Record before handleEvid3 mutates
         // xout.
-        resetT.push_back(xout);
+        resetT.push_back(xout); resetSeq.push_back(seq);
         handleEvid3(ind, op, rx, neq, &xp, &xout, yp, &(istate), u_inis);
         didEvent = 1;
       } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
@@ -355,6 +383,11 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
         _infusOnCmt = -1;
       }
       // Resume the forward from the (possibly jumped) state and open a new segment.
+      if (_yOff >= 0) std::copy(yp, yp + nBase, evY.begin() + _yOff);
+      if (_dfOff >= 0) {
+        cvB_rhs(&fu, xout, yp, fu.DADT.data());
+        for (int k = 0; k < nBase; ++k) evY[_dfOff + k] = fu.DADT[k] - evY[_dfOff + k];
+      }
       if (didEvent) {
         for (int k = 0; k < nBase; ++k) NV_Ith_S(y, k) = yp[k];
         CVodeReInit(mem, (sunrealtype)xout, y);
@@ -373,7 +406,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
         }
       }
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
-      if (isObs(getEvid(ind, ind->ix[i]))) { obsT.push_back(xout); obsIx.push_back(i); }
+      if (isObs(getEvid(ind, ind->ix[i]))) { obsT.push_back(xout); obsIx.push_back(i); obsSeq.push_back(seq); }
       if (_mtime_requeued) i--;
     }
     ind->solvedIdx = i;
@@ -396,7 +429,8 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   for (size_t w = 0; w < infusRec.size(); ++w)
     if (infusRec[w].tOff < R_PosInf && infusRec[w].R != 0.0)
       evJumps.push_back({infusRec[w].tOff, infusRec[w].cmt, 7,
-                         -(infusRec[w].amt / infusRec[w].R) * infusRec[w].durMult});
+                         -(infusRec[w].amt / infusRec[w].R) * infusRec[w].durMult,
+                         infusRec[w].offSeq, infusRec[w].offY});
 
   N_Vector B = N_VNew_Serial(nAug, sunctx);
   void *bmem = CVodeCreate(CV_BDF, sunctx);
@@ -410,25 +444,29 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   if (bok) CVodeSetMaxNumSteps(bmem, (long int)(op->mxstep > 0 ? op->mxstep : 50000));
 
   for (int oi = (int)obsT.size() - 1; bok && oi >= 0; --oi) {
-    double ti = obsT[oi]; int solveIdx = obsIx[oi];
+    double ti = obsT[oi]; int solveIdx = obsIx[oi], si = obsSeq[oi];
     double *out = getSolve(solveIdx);
-    // A reset at tau<ti zeroes the costate (dy_k(ti)/dp depends only on the
-    // post-reset window), so the sweep only needs to reach the most recent reset
-    // before ti; below tReset the costate is 0 and mu is frozen.
-    double tStop = t0;
+    // A reset processed before the observation zeroes the costate (dy_k(ti)/dp
+    // depends only on the post-reset window), so the sweep only needs to reach
+    // the most recent such reset; below tReset the costate is 0 and mu is frozen.
+    double tStop = t0; int stopSeq = 0, hasReset = 0;
     for (size_t r = 0; r < resetT.size(); ++r)
-      if (resetT[r] < ti - 1e-12 && resetT[r] > tStop) tStop = resetT[r];
-    if (ti <= tStop || isSameTime(ti, tStop)) {
+      if (resetSeq[r] < si && resetSeq[r] > stopSeq) {
+        tStop = resetT[r]; stopSeq = resetSeq[r]; hasReset = 1;
+      }
+    if (hasReset && isSameTime(ti, tStop)) {
       for (int q = 0; q < nBase * np; ++q) out[sensOff + q] = 0.0;
       continue;
     }
-    // replace/multiply events strictly inside (tStop, ti), descending in time:
-    // the backward stops at each and applies the transpose costate jump.
+    // events processed between the reset and the observation (at either end's
+    // time too), in reverse processing order: the backward stops at each and
+    // applies the transpose costate jump.
     std::vector<int> segEv;
     for (size_t e = 0; e < evJumps.size(); ++e)
-      if (evJumps[e].t < ti - 1e-12 && evJumps[e].t > tStop + 1e-12) segEv.push_back((int)e);
+      if (evJumps[e].seq < si && evJumps[e].seq > stopSeq)
+        segEv.push_back((int)e);
     gfx::timsort(segEv.begin(), segEv.end(),
-                 [&](int a, int b) { return evJumps[a].t > evJumps[b].t; });
+                 [&](int a, int b) { return evJumps[a].seq > evJumps[b].seq; });
     for (int k = 0; bok && k < nBase; ++k) {
       for (int j = 0; j < nBase; ++j) NV_Ith_S(B, j) = (j == k) ? 1.0 : 0.0;
       for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) = 0.0;
@@ -436,29 +474,37 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       sunrealtype tret;
       // integrate ti -> each event (applying its costate jump) -> tStop; mu (the
       // quadrature) is a component of B, so it carries across the reinits.
+      double tCur = ti;
       for (size_t s = 0; s < segEv.size() && bok; ++s) {
         double te = evJumps[segEv[s]].t;
-        CVodeSetStopTime(bmem, (sunrealtype)te);
-        if (CVode(bmem, (sunrealtype)te, B, &tret, CV_NORMAL) < 0) { bok = 0; break; }
+        if (!isSameTime(te, tCur)) {   // events sharing a time jump in turn, without integrating
+          CVodeSetStopTime(bmem, (sunrealtype)te);
+          if (CVode(bmem, (sunrealtype)te, B, &tret, CV_NORMAL) < 0) { bok = 0; break; }
+          tCur = te;
+        }
         int c = evJumps[segEv[s]].cmt; int ty = evJumps[segEv[s]].type;
         if (ty == 5) NV_Ith_S(B, c) = 0.0;                             // replace
         else if (ty == 6) NV_Ith_S(B, c) *= evJumps[segEv[s]].factor;  // multiply
         else if (ty == 0) {                                            // additive-alag transversality
-          // F_X and dlag at the post-dose primal y(te+); lambda unchanged (dPhi/dy=I).
+          // dlag at the primal just after this dose; lambda unchanged (dPhi/dy=I).
           double *yq = bu.yq.data(), *A = bu.A.data();
-          hist.interp((double)te, yq);
+          const cvEvent &ev = evJumps[segEv[s]];
+          if (ev.y >= 0) std::copy(evY.begin() + ev.y, evY.begin() + ev.y + nBase, yq);
+          else hist.interp((double)te, yq);
           for (int ii = 0; ii < eff; ++ii) A[ii] = 0.0;
           for (int ii = 0; ii < nBase; ++ii) A[ii] = yq[ii];
           calc_lhs(cSub, (double)te, A, ind->lhs);
-          const double *fx = &ind->lhs[bu.fxOff];
           const double *dlag = &ind->lhs[op->adjDlagOff];
-          double amt = evJumps[segEv[s]].factor, sc = 0.0;
-          for (int ii = 0; ii < nBase; ++ii) sc += NV_Ith_S(B, ii) * fx[ii * nBase + c];
-          for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += -amt * dlag[c * np + p] * sc;
+          const double *dF = &evY[ev.y + nBase];
+          double sc = 0.0;
+          for (int ii = 0; ii < nBase; ++ii) sc += NV_Ith_S(B, ii) * dF[ii];
+          for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += -dlag[c * np + p] * sc;
         } else {                                                       // ty==7: infusion off-boundary
           // mu += -(amt/R) * dR/dtheta * lambda_c(t_off).  factor = -(amt/R).
           double *yq = bu.yq.data(), *A = bu.A.data();
-          hist.interp((double)te, yq);
+          const cvEvent &ev = evJumps[segEv[s]];
+          if (ev.y >= 0) std::copy(evY.begin() + ev.y, evY.begin() + ev.y + nBase, yq);
+          else hist.interp((double)te, yq);
           for (int ii = 0; ii < eff; ++ii) A[ii] = 0.0;
           for (int ii = 0; ii < nBase; ++ii) A[ii] = yq[ii];
           calc_lhs(cSub, (double)te, A, ind->lhs);
@@ -469,8 +515,10 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
         if (CVodeReInit(bmem, (sunrealtype)te, B) < 0) { bok = 0; break; }
       }
       if (!bok) break;
-      CVodeSetStopTime(bmem, (sunrealtype)tStop);
-      if (CVode(bmem, (sunrealtype)tStop, B, &tret, CV_NORMAL) < 0) { bok = 0; break; }
+      if (!isSameTime(tStop, tCur)) {
+        CVodeSetStopTime(bmem, (sunrealtype)tStop);
+        if (CVode(bmem, (sunrealtype)tStop, B, &tret, CV_NORMAL) < 0) { bok = 0; break; }
+      }
       for (int p = 0; p < np; ++p) out[sensOff + k * np + p] = NV_Ith_S(B, nBase + p);
     }
   }
