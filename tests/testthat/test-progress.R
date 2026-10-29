@@ -88,11 +88,18 @@ test_that("a failing sensitivity build reports its own error, not 'Aborted calcu
 
 # whether expression e calls rxProgressAbort() (bare or pkg::-qualified) anywhere
 .progressCallsAbort <- function(e) {
-  if (!is.call(e)) return(FALSE)
+  if (!is.call(e)) {
+    return(FALSE)
+  }
   .h <- e[[1]]
-  if (identical(.h, quote(rxProgressAbort))) return(TRUE)
-  if (is.call(.h) && (identical(.h[[1]], quote(`::`)) || identical(.h[[1]], quote(`:::`))) &&
-    identical(.h[[3]], quote(rxProgressAbort))) {
+  if (identical(.h, quote(rxProgressAbort))) {
+    return(TRUE)
+  }
+  if (
+    is.call(.h) &&
+      (identical(.h[[1]], quote(`::`)) || identical(.h[[1]], quote(`:::`))) &&
+      identical(.h[[3]], quote(rxProgressAbort))
+  ) {
     return(TRUE)
   }
   any(vapply(.progressCallArgs(e), .progressCallsAbort, logical(1)))
@@ -100,10 +107,16 @@ test_that("a failing sensitivity build reports its own error, not 'Aborted calcu
 
 # whether expression e has rxProgressAbort() in an on.exit() or a tryCatch() finally
 .progressExitAborts <- function(e) {
-  if (!is.call(e)) return(FALSE)
+  if (!is.call(e)) {
+    return(FALSE)
+  }
   .h <- e[[1]]
-  if (identical(.h, quote(on.exit)) && length(e) > 1L && .progressCallsAbort(e[[2]])) return(TRUE)
-  if (identical(.h, quote(tryCatch)) && !is.null(e$finally) && .progressCallsAbort(e$finally)) return(TRUE)
+  if (identical(.h, quote(on.exit)) && length(e) > 1L && .progressCallsAbort(e[[2]])) {
+    return(TRUE)
+  }
+  if (identical(.h, quote(tryCatch)) && !is.null(e$finally) && .progressCallsAbort(e$finally)) {
+    return(TRUE)
+  }
   any(vapply(.progressCallArgs(e), .progressExitAborts, logical(1)))
 }
 
@@ -122,8 +135,12 @@ test_that("the on.exit() rxProgressAbort() detector flags every form", {
     quote(tryCatch(rxProgressAbort(), error = function(e) NULL)),
     quote(x[, 1])
   )
-  for (.e in .yes) expect_true(.progressExitAborts(.e), label = deparse(.e)[1])
-  for (.e in .no) expect_false(.progressExitAborts(.e), label = deparse(.e)[1])
+  for (.e in .yes) {
+    expect_true(.progressExitAborts(.e), label = deparse(.e)[1])
+  }
+  for (.e in .no) {
+    expect_false(.progressExitAborts(.e), label = deparse(.e)[1])
+  }
 })
 
 test_that("no package function closes a progress bar with rxProgressAbort() in on.exit()", {
@@ -133,7 +150,9 @@ test_that("no package function closes a progress bar with rxProgressAbort() in o
   .bad <- character(0)
   for (.n in ls(.ns, all.names = TRUE)) {
     .f <- get(.n, envir = .ns)
-    if (!is.function(.f) || is.primitive(.f)) next
+    if (!is.function(.f) || is.primitive(.f)) {
+      next
+    }
     if (.progressExitAborts(body(.f))) .bad <- c(.bad, .n)
   }
   expect_identical(.bad, character(0))
