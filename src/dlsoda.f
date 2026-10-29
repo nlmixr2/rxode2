@@ -1246,6 +1246,10 @@ C If MITER = 2, make N calls to F to approximate J. --------------------
       DO 230 J = 1,N
         YJ = Y(J)
         R = MAX(SRUR*ABS(YJ),R0/EWT(J))
+C With F and Y subnormal, R0/EWT(J) underflows and -HL0/R would
+C overflow; take the increment an F of exactly zero gets.
+        IF (R .LT. MAX(TINY(R),ABS(HL0)/HUGE(R)))
+     1    R = MAX(SRUR*ABS(YJ),1.0D0/EWT(J))
         Y(J) = Y(J) + R
         FAC = -HL0/R
         CALL F (NEQ, TN, Y, FTEM)
