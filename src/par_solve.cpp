@@ -445,6 +445,7 @@ static const rxSolveErrReason rxSolveErrReasons[] = {
   {rxErrIndLinExcept, "Inductive linearization failed with an unhandled exception (most likely out of memory)"},
   {rxErrSolverFail, rxSolverFailText},
   {rxErrVvNotPairs, "method='vv' needs coordinate-momentum state pairs with d/dt(q_i) = p_i"},
+  {rxErrAdjSsUnsupported, "adjoint sensitivities do not yet support this steady-state (ss) case"},
 };
 
 // Push the reasons a subject's solve failed to the solve-warning aggregator,

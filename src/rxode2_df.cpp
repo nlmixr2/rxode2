@@ -434,6 +434,15 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
                        _("method='vv' (Velocity Verlet) needs the ODE states ordered as coordinate-momentum pairs: with N=ceiling(nstates/2), d/dt(state i) must equal state N+i for i=1..N (an odd last coordinate must have d/dt()=0), and no infusion or turning off may change a coordinate's derivative; use another method"));
       }
     }
+    // the R-side ss guard cannot see every unsupported case (a modeled dur() or
+    // rate() is only known once solved), so a driver that finds one names it
+    for (int solveid = 0; solveid < (int)(rx->nsub * rx->nsim); solveid++){
+      if (rx->subjects[solveid].err & rxErrAdjSsUnsupported) {
+        rxSolveFreeC();
+        (Rf_errorcall)(R_NilValue, "%s",
+                       _("adjoint sensitivities do not yet support this steady-state (ss) case; for forward sensitivities build the model with rxode2(model, calcSens = <parameters>) and solve it with a non-adjoint method"));
+      }
+    }
     if (nidCols == 0){
       if (rx->extraPushAbort) {
         rxSolveFreeC();

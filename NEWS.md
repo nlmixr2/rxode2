@@ -29,6 +29,11 @@
 - `rxSolveAdjoint()` and the adjoint builds now send a dose without a `cmt`
   to the first state, and a numeric `cmt` to that state, as `rxSolve()`
   does; a dose without a `cmt` used to fail in the build (#1504).
+- `method = "rk4s"` and `"dop853s"` now name a steady-state modeled
+  `rate()`/`dur()` infusion they cannot carry (lasting longer than the dosing
+  interval, or a modeled duration equal to it) as an unsupported adjoint
+  steady-state case, as the other adjoint methods do; they
+  stopped with "could not solve the system".
 
 ### Steady state
 - A steady-state bolus into a compartment whose `alag()` is longer than `ii`

@@ -363,13 +363,34 @@ rxTest({
       ),
       "steady-state"
     ) # composite guarded
-    expect_error(rxode2::rxSolve(
-      mMdl,
-      et(amt = 100, rate = -2, cmt = "center", ss = 1, ii = 8) %>% et(c(1, 4, 8)),
-      params = p,
-      method = "rk4s",
-      cores = 1
-    )) # large-dur modeled -> errors
+    # a modeled dur longer than ii (9 > 8 here) or a modeled dur parameter equal
+    # to it: the explicit fills find these only while solving, and name them
+    mEq <- rxode2::rxode2(rxode2::.rxAdjointExpand(
+      "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl/v)*center\ndur(depot)=dd", c("ka", "cl", "v", "dd"))$text)
+    for (.m in c("rk4s", "dop853s")) {
+      expect_error(
+        rxode2::rxSolve(
+          mMdl,
+          et(amt = 100, rate = -2, cmt = "center", ss = 1, ii = 8) %>% et(c(1, 4, 8)),
+          params = p,
+          method = .m,
+          cores = 1
+        ),
+        "do not yet support this steady-state (ss) case",
+        fixed = TRUE
+      )
+      expect_error(
+        rxode2::rxSolve(
+          mEq,
+          et(amt = 100, rate = -2, cmt = "depot", ss = 1, ii = 12) %>% et(c(1, 4, 8)),
+          params = c(p, dd = 12),
+          method = .m,
+          cores = 1
+        ),
+        "do not yet support this steady-state (ss) case",
+        fixed = TRUE
+      )
+    }
     # liblsodaadj covers single ss==1 (below) but NOT ss==2 or interior/multiple ss==1
     expect_error(
       rxode2::rxSolve(
