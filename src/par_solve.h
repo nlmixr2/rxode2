@@ -139,10 +139,28 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
   static inline int rxNewindFirst(rx_solving_options_ind *ind) {
     return (ind->n_all_times > 0 && getEvid(ind, ind->ix[0]) == 9) ? 2 : 1;
   }
+  // The same, for the order an mtime() requeue of slot 0 re-sorts into at the
+  // top of the next iteration (reSortMainTimeline(); mtime records take their
+  // new ind->mtime time there): does the evid 9 start record come first?
+  static inline int rxNewindFirstResort(rx_solving_options_ind *ind) {
+    int e9 = -1;
+    for (int j = 0; j < ind->n_all_times; ++j) {
+      if (getEvid(ind, ind->ix[j]) == 9) { e9 = ind->ix[j]; break; }
+    }
+    if (e9 < 0) return 1;
+    double t9 = ind->timeThread[e9];
+    for (int j = 0; j < ind->n_all_times; ++j) {
+      int raw = ind->ix[j], ev = getEvid(ind, raw);
+      if (raw == e9) continue;
+      double tj = (ev >= 10 && ev <= 99) ? ind->mtime[ev - 10] : ind->timeThread[raw];
+      if (tj < t9 || (tj == t9 && (ev == 3 || ev > 9))) return 1;
+    }
+    return 2;
+  }
   // newind for the record after slot i; an mtime() requeue of slot 0 (i == -1)
   // runs slot 0 again.
   static inline void rxNewindAfterRecord(rx_solving_options_ind *ind, int i) {
-    if (i < 0) ind->_newind = rxNewindFirst(ind);
+    if (i < 0) ind->_newind = rxNewindFirstResort(ind);
     else ind->_newind = (i == 0 && getEvid(ind, ind->ix[0]) == 9) ? 1 : 2;
   }
 
