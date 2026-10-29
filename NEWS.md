@@ -9,6 +9,16 @@
   them: after a failed `rxSolve(m, params, ev, sigma = ...)`, a plain solve
   of a model with that residual gave values up to 2.6 off.
 
+### Prior simulation
+- A `thetaMat` given at the call site, carried in the model's `meta` block
+  (as monolix2rx/nonmem2rx imports do), or from an nlmixr2 fit's covariance
+  now takes precedence over the `ini({})` priors on the population
+  parameters in uncertainty simulation, so a MAP estimate that is not its
+  prior mean no longer stops the solve.  A `meta` `thetaMat` or fit
+  covariance used to be replaced by the priors.  A prior entry the
+  `thetaMat` does not draw is named in a warning, and `usePrior = TRUE`
+  still uses the priors (#1502).
+
 ### Documentation
 - The pipeline article no longer saves its simulation into the installed
   package directory (#1506).

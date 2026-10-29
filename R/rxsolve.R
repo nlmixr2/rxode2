@@ -680,9 +680,14 @@
 #'   being simulated (`nStud > 1`, or whatever `simVariability` forces);
 #'   `TRUE` requires them, and is an error when the model has none or when
 #'   no variability would be simulated; `FALSE` ignores them and falls back
-#'   to a supplied `thetaMat`/`dfSub`.  The priors take precedence over a
-#'   `thetaMat`/`dfSub` carried in the model's `meta` block, with a warning;
-#'   one given at the call site wins over the priors instead.
+#'   to a supplied `thetaMat`/`dfSub`.  In auto mode a `thetaMat` given at
+#'   the call site, carried in the model's `meta` block, or from an nlmixr2
+#'   fit's covariance takes precedence over the priors on the population
+#'   parameters, which are then not read, so an estimate that is not its
+#'   prior mean (a MAP estimate) still simulates; a prior entry it does not
+#'   draw is named in a warning.  `TRUE` makes the priors replace it.  The prior degrees of
+#'   freedom take precedence over a `dfSub` carried in `meta`, with a
+#'   warning; one given at the call site wins over them instead.
 #'
 #' @param priorPdRetry How many times a prior draw of a covariance matrix is
 #'   retried when it is not positive definite.  After that many tries the
