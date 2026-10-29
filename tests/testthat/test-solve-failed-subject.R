@@ -187,8 +187,7 @@ rxTest({
       "Unsupported inductive linearization code; the model's 'indLin' descriptor does not match the solver",
       "Inductive linearization failed with an unhandled exception (most likely out of memory)",
       "the ODE solver failed (an exception, or a step it could not take)",
-      "method='vv' needs coordinate-momentum state pairs with d/dt(q_i) = p_i",
-      "internal error: a dose record is missing from the sorted records"
+      "method='vv' needs coordinate-momentum state pairs with d/dt(q_i) = p_i"
     )
     # every rxErr bit in the installed header has a text: the NA-time codes
     # (rxErrNaTime*, 1-5) are not bits
@@ -206,7 +205,7 @@ rxTest({
       expect_identical(.line, paste0("[solve error: ", .texts[.k], "]: 1 warning(s)"), label = names(.bits)[.k])
     }
     # a bit with no text is pushed as its code
-    expect_identical(.errPush(bitwShiftL(1L, 30L)), "[solve error: code 1073741824]: 1 warning(s)")
+    expect_identical(.errPush(bitwShiftL(1L, 29L)), "[solve error: code 536870912]: 1 warning(s)")
     # bits that share a text push it once
     expect_identical(
       .errPush(bitwShiftL(1L, 20L) + bitwShiftL(1L, 21L) + bitwShiftL(1L, 22L)),
