@@ -414,10 +414,12 @@
   `dop853s`), at the window start or later, with a lag of a whole number of
   periods, or with an infusion still running from the period before.  Before,
   the steady-state term placed the dose at the record time instead of the
-  lagged one, so every sensitivity was wrong (off by up to 150).  With a lag
-  longer than `ii`, the lag sensitivity of a bolus, the sensitivities of a
-  modeled `rate()`/`dur()` infusion, and `liblsodaadj`'s `f()` sensitivity of
-  a fixed infusion are not yet right.
+  lagged one, so every sensitivity was wrong (off by up to 150).  A bolus
+  whose lag is longer than `ii` now also carries the `f()` and lag terms of
+  the earlier periods' doses that land after the record (off by up to 63
+  and 37); with a lag longer than `ii`, the sensitivities of a modeled
+  `rate()`/`dur()` infusion and `liblsodaadj`'s `f()` sensitivity of a fixed
+  infusion are not yet right.
 
 - The `ss = 2` (superposition) adjoint term in the `rk4s` family now carries
   the added regimen's `f()` and `alag()` like an `ss = 1` one, for boluses

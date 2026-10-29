@@ -42,8 +42,11 @@ rxTest({
       constLag = list(txt = .txtC, p = .p0, ev = .ss(amt = 100) |> et(.o)),
       modeledLag = list(txt = .txtM, p = .pM, ev = .ss(amt = 100) |> et(.o)),
       lagF = list(txt = .txtMF, p = .pMF, ev = .ss(amt = 100) |> et(.o)),
-      # the lag spans more than ii: an earlier period's dose lands inside the window
-      lagOverIi = list(txt = .txtM, p = c(.p0, tlag = 13), ev = .ss(amt = 100) |> et(.o)),
+      # the lag spans more than ii: an earlier period's dose lands inside the window,
+      # at t = 1 (lag modulo ii), which the observations avoid
+      lagOverIi = list(txt = .txtM, p = c(.p0, tlag = 13), ev = .ss(amt = 100) |> et(c(0.25, 0.5, 1.5, 2, 4, 8, 11.5))),
+      lagOverIiF = list(txt = .txtMF, p = c(.p0, tlag = 13, fd = 0.8), ev = .ss(amt = 100) |> et(c(0.25, 0.5, 1.5, 2, 4, 8, 11.5))),
+      lagTwoIi = list(txt = .txtM, p = c(.p0, tlag = 25), ev = .ss(amt = 100) |> et(c(0.25, 0.5, 1.5, 2, 4, 8, 11.5))),
       interior = list(txt = .txtM, p = .pM, ev = .int(amt = 100) |> et(.oi)),
       # the earlier dose's lag carries it past the ss record (to t = 13)
       interiorLagOverIi = list(txt = .txtM, p = c(.p0, tlag = 13), ev = .int(amt = 100) |>
