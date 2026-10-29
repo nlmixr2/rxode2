@@ -4590,6 +4590,16 @@ void handleSS(int *neq,
               t_update_inis u_inis,
               void *ctx) {
   int n = rxTteN();
+  if (n > 0 && op->hasDelay && op->delayCol != NULL && rxDelayIsSSDose(ind)) {
+    // a delayed cumulative hazard has no steady state to record (rxSolve()
+    // refuses the data-table case; this catches pushed and classic-evid doses)
+    for (int k = 1; k <= n; k++) {
+      if (op->delayCol[rxTteHIdx(k)] < 0) continue;
+      rxSolveWarnPush(ind->id, "a delay() of a tte() cumulative hazard cannot be used with steady-state doses");
+      rxSolverFail(ind);
+      return;
+    }
+  }
   std::vector<double> h(n);
   for (int k = 1; k <= n; k++) h[k - 1] = yp[rxTteHIdx(k)];
   handleSS0(neq, BadDose, InfusionRate, dose, yp, xout, xp, id, i, nx,

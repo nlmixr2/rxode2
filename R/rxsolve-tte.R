@@ -1,4 +1,4 @@
-# tte() simulation solve preparation: the records added to the event table
+# tte() simulation solve preparation: checks on the model and event table
 # and the C configuration (see src/tte.h).
 
 #' Does this ui have a tte() endpoint?
@@ -14,144 +14,38 @@
   !is.null(.predDf) && any(.predDf$distribution == "tte")
 }
 
-#' Find a column of a data frame ignoring case
+#' Refuse a delay() of a cumulative hazard with steady-state doses
 #'
-#' @param d data frame
-#' @param name lower-case column name
-#' @return the column name or NULL
-#' @noRd
-.rxTteCol <- function(d, name) {
-  .w <- which(tolower(names(d)) == name)
-  if (length(.w) == 0L) {
-    return(NULL)
-  }
-  names(d)[.w[1]]
-}
-
-#' Add the tte() records to a simulation event table
+#' The hazard never reaches a steady state, so the history a steady-state
+#' dose records for `delay(rx.tteH.<ev>)` has no meaning.
 #'
-#' For every subject and tte endpoint the endpoint's own records only define
-#' the observation window (first to last record) and are replaced by a start
-#' record, a right-censoring record (or the interval ends for
-#' `eventType="intervalCensored"`) and free event-slot records that the solver
-#' re-times to the simulated event times (unused slots are dropped from the
-#' output).  Each record's role is
-#' encoded in its `dv` (see `src/tte.h`).
-#'
-#' @param ui rxode2 ui
+#' @param model the simulation model
 #' @param events event table
-#' @param maxSlots event slots per subject and endpoint when `maxEventNumber`
-#'   is unlimited
-#' @return data frame of events
+#' @return nothing, called for the error
 #' @author Matthew L. Fidler
 #' @noRd
-.rxTteEvents <- function(ui, events, maxSlots = getOption("rxode2.tteMaxEvents", 100L)) {
-  if (is.null(events)) {
-    stop("simulating a tte() endpoint requires an event table", call. = FALSE)
+.rxTteAssertSsDelay <- function(model, events) {
+  if (!grepl("delay(rx.tteH.", rxModelVars(model)$model["normModel"], fixed = TRUE)) {
+    return(invisible())
   }
-  .d <- as.data.frame(events)
-  for (.i in seq_along(.d)) {
-    if (is.factor(.d[[.i]])) .d[[.i]] <- as.character(.d[[.i]])
+  if (rxIs(events, "rx.event")) events <- as.data.frame(events)
+  if (!is.data.frame(events)) return(invisible())
+  .col <- function(name, default) {
+    .c <- .rxTteCol(events, name)
+    if (is.null(.c)) rep(default, nrow(events)) else events[[.c]]
   }
-  .time <- .rxTteCol(.d, "time")
-  if (is.null(.time)) {
-    stop("simulating a tte() endpoint requires a 'time' column", call. = FALSE)
+  .s <- .col("ss", 0)
+  .ii <- .col("ii", 0)
+  .amt <- .col("amt", 0)
+  .evid <- .col("evid", 0)
+  # the steady-state rule of _rxDeriveFlg(), plus classic steady-state evids
+  .isSs <- (.s %in% c(1, 2) & .ii > 0) | (.s == 1 & .ii == 0 & .amt == 0) |
+    (.evid >= 100 & .evid %% 100 %in% c(9, 10, 19, 20, 40))
+  if (any(.isSs, na.rm = TRUE)) {
+    stop("a delay() of a tte() cumulative hazard cannot be used with steady-state doses: the hazard has no steady state",
+         call. = FALSE)
   }
-  .id <- .rxTteCol(.d, "id")
-  if (is.null(.id)) {
-    .id <- "id"
-    .d$id <- 1L
-  }
-  .dv <- .rxTteCol(.d, "dv")
-  if (is.null(.dv)) {
-    .dv <- "dv"
-    .d$dv <- NA_real_
-  }
-  .amt <- .rxTteCol(.d, "amt")
-  if (is.null(.amt)) {
-    .amt <- "amt"
-    .d$amt <- 0
-  }
-  .evid <- .rxTteCol(.d, "evid")
-  if (is.null(.evid)) {
-    .evid <- "evid"
-    .d$evid <- ifelse(!is.na(.d[[.amt]]) & .d[[.amt]] != 0, 1L, 0L)
-  }
-  .cmt <- .rxTteCol(.d, "cmt")
-  .predDf <- ui$predDf
-  if (is.null(.cmt) && nrow(.predDf) > 1L) {
-    stop("simulating a tte() endpoint in a model with several endpoints requires a 'cmt' column", call. = FALSE)
-  }
-  .w <- which(.predDf$distribution == "tte")
-  .keep <- rep(TRUE, nrow(.d))
-  .add <- list()
-  .ids <- unique(.d[[.id]])
-  for (.j in seq_along(.w)) {
-    .pred1 <- .predDf[.w[.j], ]
-    .o <- .rxTteOptions(ui, .pred1)
-    # without a cmt column the single (tte) endpoint owns every observation
-    .isTte <- .d[[.evid]] %in% c(0L, 2L)
-    .cmtVal <- NULL
-    if (!is.null(.cmt)) {
-      .c <- .d[[.cmt]]
-      if (is.character(.c)) {
-        .isTte <- !is.na(.c) & .c == .pred1$cond
-        .cmtVal <- .pred1$cond
-      } else {
-        .isTte <- !is.na(.c) & .c == .pred1$cmt
-        .cmtVal <- .pred1$cmt
-      }
-      .isTte <- .isTte & .d[[.evid]] %in% c(0L, 2L)
-    }
-    .nSlot <- as.integer(min(.o$maxEventNumber, maxSlots))
-    for (.cid in .ids) {
-      .r <- .d[[.id]] == .cid
-      .tAll <- .d[[.time]][.r]
-      .tTte <- .d[[.time]][.r & .isTte]
-      .start <- if (length(.tTte) > 0L) min(.tTte) else min(.tAll)
-      .end <- .o$rightCensoringTime
-      if (is.na(.end)) {
-        .end <- if (length(.tTte) > 0L) max(.tTte) else max(.tAll)
-      }
-      if (!(.end > .start)) next
-      .t <- .start
-      .role <- 1L
-      if (.o$eventType == "intervalCensored") {
-        .l <- .o$intervalLength
-        if (is.na(.l)) .l <- (.end - .start) / 10
-        .g <- seq(.start + .l, .end, by = .l)
-        if (length(.g) == 0L || .end - .g[length(.g)] > sqrt(.Machine$double.eps) * max(1, abs(.end))) {
-          .g <- c(.g, .end)
-        }
-        .t <- c(.t, .g)
-        .role <- c(.role, rep(3L, length(.g)))
-      } else {
-        .t <- c(.t, .end)
-        .role <- c(.role, 2L)
-      }
-      if (.nSlot > 0L) {
-        .t <- c(.t, rep(.end, .nSlot))
-        .role <- c(.role, rep(4L, .nSlot))
-      }
-      .ev <- rep(0L, length(.t))
-      .a <- .d[rep(which(.r)[1], length(.t)), , drop = FALSE]
-      .a[] <- lapply(.a, function(x) {
-        x[] <- NA
-        x
-      })
-      .a[[.id]] <- .cid
-      .a[[.time]] <- .t
-      .a[[.evid]] <- .ev
-      .a[[.dv]] <- -(1e6 + 10 * .j + .role)
-      if (!is.null(.cmt)) .a[[.cmt]] <- .cmtVal
-      .add[[length(.add) + 1L]] <- .a
-    }
-    .keep <- .keep & !.isTte
-  }
-  .d <- do.call(rbind, c(list(.d[.keep, , drop = FALSE]), .add))
-  .d <- .d[order(.d[[.id]], .d[[.time]]), , drop = FALSE]
-  rownames(.d) <- NULL
-  .d
+  invisible()
 }
 
 #' Prepare a ui solve with tte() endpoints
@@ -173,6 +67,7 @@
     stop("simulating a tte() endpoint is not supported with the adjoint sensitivity methods", call. = FALSE)
   }
   .events <- lst$events
+  .rxTteAssertSsDelay(lst[[1]], if (is.null(.events)) lst$params else .events)
   if (is.null(.events) && (rxIs(lst$params, "rx.event") || is.data.frame(lst$params))) {
     lst$params <- .rxTteEvents(ui, lst$params)
   } else {

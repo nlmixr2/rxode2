@@ -46,7 +46,8 @@
   `tteTime(ev)` and `tteCount(ev)` give the last event time and the event
   count inside the model.  Every ODE solving `method` except the adjoint
   sensitivity methods can simulate them, the hazard may use `delay()`,
-  and steady-state doses hold the cumulative hazard fixed.
+  and steady-state doses hold the cumulative hazard fixed (a `delay()` of
+  the cumulative hazard is refused with them).
 
 - `minSS` and `maxSS` now accept any count from 1, and `maxSS` may equal
   `minSS`, so `minSS = maxSS = n` gives exactly the state after `n` doses

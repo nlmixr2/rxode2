@@ -979,7 +979,8 @@ renewal and count-dependent hazards can be written. Every ODE solving
 endpoints, since the root finding only re-solves intervals with the
 chosen method; a hazard using \code{delay()} is solved with the dense
 \code{delay()} solvers. A steady-state dose holds the cumulative hazard
-fixed.
+fixed, so a \code{delay()} of the cumulative hazard (\code{rx.tteH.ev}) cannot be
+combined with steady-state doses.
 }
 
 \subsection{General table of supported residual distributions}{
