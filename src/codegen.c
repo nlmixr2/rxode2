@@ -373,7 +373,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
             nnn+=1;
           }
         }
-        sAppend(&sbOut,  "// Functional based absorption lag\ndouble %sLag(int _cSub,  int _cmt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double _alag[%d];\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=5;\n",
+        sAppend(&sbOut,  "// Functional based absorption lag\ndouble %sLag(int _cSub,  int _cmt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double _alag[%d];\n  double _tDose = __t + _solveData->subjects[_cSub].curShift;\n  double t = _rxLagTime(_tDose, _cSub, _solveData);\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=5;\n",
                 prefix, nnn);
         for (int jjj = nnn; jjj--;){
           sAppend(&sbOut, "  _alag[%d]=0.0;\n",jjj);
@@ -745,7 +745,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
         break;
       case ode_lag:
         // Alag
-        sAppendN(&sbOut, "\n  return t + _alag[_cmt] - _solveData->subjects[_cSub].curShift;\n", 66);
+        sAppend(&sbOut, "\n  return _tDose + _alag[_cmt] - _solveData->subjects[_cSub].curShift;\n");
         break;
       case ode_fbio:
         sAppendN(&sbOut, "\n  return _f[_cmt]*_amt;\n", 25);

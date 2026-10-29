@@ -47,6 +47,9 @@
   `addl` repeat now read `time` as the first data record at or after the
   repeat, as NONMEM evaluates `F1`, `R1` and `D1`; they used to read the
   repeat's own time (#1583).
+- With `rxSolve(..., nonmem = TRUE)`, `alag()` of an `addl` repeat now reads
+  `time` as the time of the dose record it repeats, as NONMEM evaluates
+  `ALAG1`; it used to read the repeat's own time (#1583).
 
 ### Steady state
 - A steady-state bolus into a compartment whose `alag()` is longer than `ii`

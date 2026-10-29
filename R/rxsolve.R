@@ -1000,7 +1000,8 @@
 #'   lagged doses and doses added while solving do not end an interval;
 #'   `mtime()` times do.  `f()`, `rate()` and `dur()` of an `addl` repeat
 #'   read the time of the first data record at or after it (NONMEM's `F1`,
-#'   `R1` and `D1`).  Covariate interpolation is still set by
+#'   `R1` and `D1`), and `alag()` the time of the dose record it repeats
+#'   (`ALAG1`).  Covariate interpolation is still set by
 #'   `covsInterpolation`.  By default `FALSE`.
 #'
 #' @param linCmtGillK The total number of possible steps to determine the
