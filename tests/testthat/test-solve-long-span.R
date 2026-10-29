@@ -113,6 +113,15 @@ rxTest({
     .lsMatch("dop853", 1e5, maxsteps = 200000L)
   })
 
+  test_that("bdf and cvode solve a span whose states decay through the subnormal range", {
+    # their RMS error norm reaches zero (and the f = 0 increment) before a
+    # finite-difference increment can leave the normal range
+    for (.method in c("bdf", "cvode")) {
+      .lsMatch(.method, 3000)
+      .lsMatch(.method, 1e4)
+    }
+  })
+
   test_that("abs fails the subject when its fixed step is outside AB8's stability interval", {
     # the step is the span over maxsteps; ka * step must stay under about 0.024
     for (.t0 in c(3000, 1e4, 1e5)) {
