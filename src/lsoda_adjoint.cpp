@@ -546,11 +546,29 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   }
   // The infusions of earlier periods still running at the ss time: for an ss = 1
   // fixed infusion longer than ii, the n before it, ending at t_ss + offTime +
-  // (k-1)*ii; for a lagged one, those started s0 + m*ii before it (s0 = ii - lag),
-  // ending at t_ss + D - s0 - m*ii.  They end by pushed stops that are not
+  // (k-1)*ii; for a lagged one, those started s0 + m*ii before it (s0 = ii - lag,
+  // or 0 for lsLag0), ending at t_ss + D - s0 - m*ii.  They end by pushed stops that are not
   // event-table records.  Each carries the dF dual of a fixed window: a fixed
   // dur's forcing until its end, or a fixed rate's off-boundary term (its end
   // moves with F).
+  // A lag of a whole number of periods (lag modulo ii == 0) starts this period's
+  // infusion at the ss time, inside handleSS; unless its start record lies there
+  // too (a zero lag), no record opens its window or carries its lag dual.
+  bool lsLag0 = false;
+  if (lsSsSeg >= 0 && _lsSsKind == 1 && _lsSsLagOn && _lsSsLag == 0.0 &&
+      _lsSsRate > _lsSsRate2 && _lsSsCmt >= 0 && _lsSsCmt < nBase) {
+    lsLag0 = true;
+    for (int i = 0; i < ind->n_all_times && lsLag0; ++i) {
+      int ev = getEvid(ind, ind->ix[i]);
+      if (rxAdjSameTime(ind->timeThread[ind->ix[i]], _lsSsT) && rk4sInfusionEventCmt(ev, nBase, true) == _lsSsCmt &&
+          getDose(ind, ind->ix[i]) > 0.0) lsLag0 = false;
+    }
+    if (lsLag0 && op->adjDlagOff >= 0) {
+      std::vector<double> &L = lsAdjSegs[lsSsSeg].lagRate;
+      if (L.empty()) L.assign(nBase, 0.0);
+      L[_lsSsCmt] += _lsSsRate - _lsSsRate2;
+    }
+  }
   if (lsSsSeg >= 0 && _lsSsKind == 1 && _lsSsFixed != 0 && op->adjDfOff >= 0 &&
       _lsSsRate > _lsSsRate2 && _lsSsCmt >= 0 && _lsSsCmt < nBase) {
     int c = _lsSsCmt;
@@ -559,7 +577,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     double full = _lsSsDur + n * ii;
     std::vector<double> ends;
     if (_lsSsLagOn) {
-      double s0 = ii - _lsSsLag;
+      double s0 = lsLag0 ? 0.0 : ii - _lsSsLag;
       for (int m = 0; full - s0 - m * ii > rxAdjTimeTol(full, s0); ++m) ends.push_back(_lsSsT + full - s0 - m * ii);
     } else {
       for (int k = 1; k <= n; ++k) ends.push_back(_lsSsT + _lsSsDur + (k - 1) * ii);

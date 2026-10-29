@@ -9293,12 +9293,23 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
             _f.tOn = xout - (_e.dur + _e.dur2 - _e.lag);
             infusRec.push_back(_f);
           }
+          // a lag of a whole number of periods (lag modulo ii == 0) starts this
+          // period's infusion at the record itself, inside handleSS, so its rate
+          // change is not seen as a record start: give it its lag dual here, after
+          // the ss marker, so the backward takes it first
+          bool _lag0 = _e.lagged && _e.lag == 0.0 && _e.infCmt >= 0 && _e.infCmt < op->adjNbase &&
+            _e.rate > _e.rate2;
+          if (_lag0 && op->adjDlagOff >= 0) {
+            rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _e.infCmt; _d.amt = _e.rate - _e.rate2; _d.type = 9;
+            doseRec.push_back(_d);
+          }
           // a lagged ss infusion's earlier doses still on at the record time
-          // (started s0 + m*ii before it, s0 = ii - lag; each lasts D): open their
-          // fixed windows there, closed by their pushed stops
+          // (started s0 + m*ii before it, s0 = ii - lag, or 0 when this period's
+          // starts at the record; each lasts D): open their fixed windows there,
+          // closed by their pushed stops
           if (_e.lagged && _e.fixed != 0 && op->adjDfOff >= 0 && _e.rate > _e.rate2 &&
               _e.infCmt >= 0 && _e.infCmt < op->adjNbase) {
-            double _r1 = _e.rate - _e.rate2, _ii = _e.dur + _e.dur2, _s0 = _ii - _e.lag;
+            double _r1 = _e.rate - _e.rate2, _ii = _e.dur + _e.dur2, _s0 = _lag0 ? 0.0 : _ii - _e.lag;
             double _D = _e.dur + floor(_e.rate2 / _r1 + 0.5) * _ii;
             for (int _m = (int)floor((_D - _s0) / _ii); _m >= 0; --_m)
               if (_D - _s0 - _m * _ii > rxAdjTimeTol(_D, _s0))

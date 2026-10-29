@@ -112,4 +112,43 @@ rxTest({
         et(time = 3, amt = 120, rate = 10, ii = 12, ss = 2, cmt = "depot") |> et(.o2))
     ), c("rk4s", "ros4s", "radauiia5s", "dop853s", "dop853s+ros4s"))
   })
+
+  test_that("an ss = 1 fixed infusion with f() and a lag of whole periods gives the right sensitivities", {
+    # a lag modulo ii of 0 starts the period's infusion at the record itself.
+    # Observations stay before ii: the forward solve does not start the record's
+    # own lagged infusion at a lag of k*ii (k >= 1)
+    .txtF0 <- paste0(.base, "\nf(depot) <- fd\nalag(depot) <- 0")
+    .txtFc <- paste0(.base, "\nf(depot) <- fd\nalag(depot) <- lagc")
+    .p0F <- c(.p0, fd = 0.8)
+    .o0 <- c(0.5, 1, 2, 2.6, 4, 8, 11.5)
+    .dur <- .ss(amt = 100, dur = 3) |> et(.o0)
+    .rate <- .ss(amt = 100, rate = 50) |> et(.o0)
+    .cov <- function(ev) {
+      do.call(rbind, lapply(seq_along(c(0, 0.7, 12)), function(.id) {
+        .d <- as.data.frame(ev); .d$id <- .id; .d$lagc <- c(0, 0.7, 12)[.id]; .d
+      }))
+    }
+    .scen <- list(
+      durConst0 = list(txt = .txtF0, p = .p0F, ev = .dur),
+      rateConst0 = list(txt = .txtF0, p = .p0F, ev = .rate),
+      durCov = list(txt = .txtFc, p = .p0F, ev = .cov(.dur)),
+      rateCov = list(txt = .txtFc, p = .p0F, ev = .cov(.rate))
+    )
+    for (.L in c(12, 24, 36)) {
+      .scen[[paste0("dur", .L)]] <- list(txt = .txtMF, p = c(.pMF[names(.pMF) != "tlag"], tlag = .L), ev = .dur)
+      .scen[[paste0("rate", .L)]] <- list(txt = .txtMF, p = c(.pMF[names(.pMF) != "tlag"], tlag = .L), ev = .rate)
+    }
+    .chk(.scen, .meths)
+    # a zero lag gives the unlagged sensitivities
+    for (.m in .meths) {
+      for (.ev in list(.dur, .rate)) {
+        .a0 <- rxSolveAdjointRk4(.txtF0, .ev, params = .p0F, calcSens = names(.p0F), method = .m,
+          atol = 1e-10, rtol = 1e-10, hmin = if (.m == "rk4s") 0.001 else 0, ssAtol = 1e-13, ssRtol = 1e-13, maxSS = 50000)
+        .a <- rxSolveAdjointRk4(paste0(.base, "\nf(depot) <- fd"), .ev, params = .p0F, calcSens = names(.p0F), method = .m,
+          atol = 1e-10, rtol = 1e-10, hmin = if (.m == "rk4s") 0.001 else 0, ssAtol = 1e-13, ssRtol = 1e-13, maxSS = 50000)
+        .sn <- grep("^rx__sens_", names(.a), value = TRUE)
+        expect_equal(as.matrix(.a0[, .sn]), as.matrix(.a[, .sn]), tolerance = 1e-8, label = paste("lag 0", .m))
+      }
+    }
+  })
 })
