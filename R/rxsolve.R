@@ -484,7 +484,8 @@
 #'
 #' @param seed an object specifying if and how the random number
 #'    generator should be initialized; when given, it takes precedence
-#'    over an active [rxSetSeed()] stream for this solve
+#'    over an active [rxSetSeed()] stream for this solve, and the
+#'    caller's `.Random.seed` is restored afterwards
 #'
 #' @param nsim represents the number of simulations.  For rxode2, if
 #'     you supply single subject event tables (created with
@@ -2423,12 +2424,41 @@ rxSolve <- function(
   on.exit(.rxEventExitSolve(returnValue(), object, .rxEventCallSave), add = TRUE)
   if (!is.null(seed)) {
     ## seed= works through set.seed(), which an active rxSetSeed() stream
-    ## would ignore; suspend that stream for this solve (#1507)
+    ## would ignore; suspend that stream for this solve (#1507) and put the
+    ## caller's .Random.seed back afterwards (#1503)
     .rxSeedOrig <- rxGetSeed()
+    .rSeedOrig <- .rxGetRandomSeed()
     rxSetSeed(-1L)
-    on.exit(rxSetSeed(.rxSeedOrig), add = TRUE)
+    on.exit(
+      {
+        rxSetSeed(.rxSeedOrig)
+        .rxRestoreRandomSeed(.rSeedOrig)
+      },
+      add = TRUE
+    )
   }
   UseMethod("rxSolve")
+}
+
+## The caller's .Random.seed, or NULL when it has none
+.rxGetRandomSeed <- function() {
+  if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+    get(".Random.seed", envir = globalenv(), inherits = FALSE)
+  } else {
+    NULL
+  }
+}
+
+## Put back a .Random.seed saved by .rxGetRandomSeed()
+.rxRestoreRandomSeed <- function(seed) {
+  if (is.null(seed)) {
+    if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+      rm(".Random.seed", envir = globalenv())
+    }
+  } else {
+    assign(".Random.seed", seed, envir = globalenv())
+  }
+  invisible(NULL)
 }
 
 #' @rdname rxSolve
