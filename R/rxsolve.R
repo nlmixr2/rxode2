@@ -998,7 +998,10 @@
 #'   calls `$PK` at its records.  `d/dt()` and state-dependent statements keep
 #'   the continuous time (like `$DES`).  `addl` repeats, infusion ends,
 #'   lagged doses and doses added while solving do not end an interval;
-#'   `mtime()` times do.  Covariate interpolation is still set by
+#'   `mtime()` times do.  A modeled rate (`rate()`, `RATE = -1`) is likewise
+#'   re-read on each interval from the record that ends it, like NONMEM's `R1`,
+#'   until the dose is delivered (not with event sensitivities or the adjoint,
+#'   which keep the rate of the dose).  Covariate interpolation is still set by
 #'   `covsInterpolation`.  By default `FALSE`.
 #'
 #' @param linCmtGillK The total number of possible steps to determine the

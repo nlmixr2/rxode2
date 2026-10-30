@@ -1458,7 +1458,10 @@ the data record that ends the interval being integrated, the way NONMEM
 calls \verb{$PK} at its records.  \code{d/dt()} and state-dependent statements keep
 the continuous time (like \verb{$DES}).  \code{addl} repeats, infusion ends,
 lagged doses and doses added while solving do not end an interval;
-\code{mtime()} times do.  Covariate interpolation is still set by
+\code{mtime()} times do.  A modeled rate (\code{rate()}, \code{RATE = -1}) is likewise
+re-read on each interval from the record that ends it, like NONMEM's \code{R1},
+until the dose is delivered (not with event sensitivities or the adjoint,
+which keep the rate of the dose).  Covariate interpolation is still set by
 \code{covsInterpolation}.  By default \code{FALSE}.}
 
 \item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that
