@@ -29,7 +29,7 @@
   one can be carried.  Each subject's struct grows by 768 bytes.  No field
   that nlmixr2est or babelmixr2 reads comes after the carry, so their
   binaries built against an older rxode2 keep working.  A state saved by
-  `rxSaveState()` from an older build is refused by `rxRestoreState()`, as
+  `rxSaveState()` from an older build is refused by `rxLoadState()`, as
   for any change of the struct size.  rxode2 now needs rxode2lincmt
   0.1.1.9000, which reads the column count from rxode2 at load, and loading
   rxode2 checks it.  Each subject's carry is cleared only for the columns it
