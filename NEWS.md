@@ -129,6 +129,12 @@
   `alag()`, `rate()`, `dur()` and `evid_()`/`bolus()` calls see
   `newind == 1`, as the output table already did (#1526).
 
+- The `rk4s`-family and `liblsodaadj` adjoint sensitivities now read a
+  modeled `f()` at the subject's first record with `newind == 1`, as the
+  forward solve does, instead of using the later doses' `dF/dp` for it; the
+  `rk4s` family does the same for a modeled `rate()`/`dur()` infusion and
+  for a steady-state dose at the first record (#1526).
+
 - Forward sensitivities through `alag()`, `f()`, `rate()`, `dur()` and a
   parameter-dependent `delay()` are now right for a parameter that also
   has a numeric default in the model (for example `lg <- 0.3` with
