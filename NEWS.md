@@ -48,6 +48,9 @@
   lagged dose arrives.  A lagged dose used to carry its record's covariates to
   its arrival, so `nocb`, `locf`, `linear` and `midpoint` covariates over a lag
   window that crossed a covariate change did not match NONMEM (#1584).
+- `linCmt()` models with `alag()` now end an interval at a lagged dose's data
+  time, so the covariates before and after it each apply over their own part
+  of the interval; one value used to cover the whole interval (#1584).
 
 ### Steady state
 - A `linCmt()` steady-state constant infusion (`ss = 1` with a rate and no

@@ -1195,22 +1195,72 @@ static inline void linCmtCovIntervalEnd(rx_solving_options_ind *ind, bool set) {
   if (set) ind->ssTime = NA_REAL;
 }
 
+// The data time of the first record strictly inside (start, end), or NA_REAL.
+// With alag() a lagged dose sorts at its arrival, so its record's own time,
+// where its covariates start, can fall inside an interval (#1584).
+static inline double linCmtCovKnot(rx_solving_options_ind *ind, rx_solving_options *op,
+                                   double start, double end) {
+  if (!op->do_par_cov || !(rx_global.needSort & needSortAlag) ||
+      !ISNA(ind->ssTime) || ind->doSS) return NA_REAL;
+  double *at = ind->all_times;
+  int *evid = ind->evid;
+  // a modeled rate/duration stop's time is set while solving; use its start's
+  auto T = [at, evid](int i) {
+    return (i > 0 && (isEvidModeledRateStop(evid[i]) ||
+                      isEvidModeledDurationStop(evid[i]))) ? at[i-1] : at[i];
+  };
+  int lo = 0, hi = ind->n_all_times_orig;
+  while (lo < hi) {
+    int mid = (lo + hi)/2;
+    if (T(mid) <= start) lo = mid + 1; else hi = mid;
+  }
+  for (int i = lo; i < ind->n_all_times_orig; ++i) {
+    double ti = T(i);
+    if (isSameTime(ti, start)) continue;
+    if (ti >= end || isSameTime(ti, end)) break;
+    return ti;
+  }
+  return NA_REAL;
+}
+
+// Advances the linear compartments in yp over (tprior, tout]
+static inline void copyLinCmtPiece(int *neq,
+                                   rx_solving_options_ind *ind, rx_solving_options *op,
+                                   double *yp) {
+  // save the values here
+  std::copy(yp,
+            yp + op->neq,
+            ind->linCmtDummy);
+  bool covInterval = linCmtCovIntervalStart(ind, ind->tprior, ind->tout);
+  dydt(neq, ind->tout, ind->linCmtDummy, ind->linCmtDummy);
+  linCmtCovIntervalEnd(ind, covInterval);
+  std::copy(ind->linCmtSave,
+            ind->linCmtSave + op->numLin + op->numLinSens,
+            yp + op->linOffset);
+}
+
 static inline void copyLinCmt(int *neq,
                               rx_solving_options_ind *ind, rx_solving_options *op,
                               double *yp) {
   if (op->numLin > 0) {
     // Here we are doing ODE solving OR only linear solving
-    // save the values here
-    std::copy(yp,
-              yp + op->neq,
-              ind->linCmtDummy);
-    // preSolve() set (tprior, tout] to the interval just solved
-    bool covInterval = linCmtCovIntervalStart(ind, ind->tprior, ind->tout);
-    dydt(neq, ind->tout, ind->linCmtDummy, ind->linCmtDummy);
-    linCmtCovIntervalEnd(ind, covInterval);
-    std::copy(ind->linCmtSave,
-              ind->linCmtSave + op->numLin + op->numLinSens,
-              yp + op->linOffset);
+    // preSolve() set (tprior, tout] to the interval just solved; a covariate
+    // knot inside it ends a piece of its own
+    double knot = linCmtCovKnot(ind, op, ind->tprior, ind->tout);
+    if (!ISNA(knot)) {
+      double tprior = ind->tprior, tout = ind->tout;
+      while (!ISNA(knot)) {
+        ind->tout = knot;
+        copyLinCmtPiece(neq, ind, op, yp);
+        ind->tprior = knot;
+        knot = linCmtCovKnot(ind, op, knot, tout);
+      }
+      ind->tout = tout;
+      copyLinCmtPiece(neq, ind, op, yp);
+      ind->tprior = tprior;
+    } else {
+      copyLinCmtPiece(neq, ind, op, yp);
+    }
   }
 }
 
@@ -1482,6 +1532,18 @@ extern "C" void F77_NAME(dlsoda)(
                                  void (*)(int *, double *, double *, int *, int *, double *, int *),
                                  int *);
 
+// Advances the linear compartments in yp over (start, end], no ODEs
+static inline void linSolvePiece(int *neq, rx_solving_options_ind *ind,
+                                 rx_solving_options *op, rx_solve *rx,
+                                 double *yp, double start, double end) {
+  bool covInterval = linCmtCovIntervalStart(ind, start, end);
+  dydt(neq, end, rx->ypNA, ind->linCmtDummy);
+  linCmtCovIntervalEnd(ind, covInterval);
+  std::copy(ind->linCmtSave,
+            ind->linCmtSave + op->numLin + op->numLinSens,
+            yp + op->linOffset);
+}
+
 static inline void linSolve(int *neq, rx_solving_options_ind *ind,
                             double *yp, double *xp, double xout) {
   // there is no ODEs when using linSolve
@@ -1494,12 +1556,21 @@ static inline void linSolve(int *neq, rx_solving_options_ind *ind,
   // This means that the clearances do not depend on
   // depot values.  To ensure this, the values while solving are set to NA
   //
-  bool covInterval = linCmtCovIntervalStart(ind, *xp, xout);
-  dydt(neq, xout, rx->ypNA, ind->linCmtDummy);
-  linCmtCovIntervalEnd(ind, covInterval);
-  std::copy(ind->linCmtSave,
-            ind->linCmtSave + op->numLin + op->numLinSens,
-            yp + op->linOffset);
+  // a covariate knot inside the interval ends a piece of its own
+  double start = *xp;
+  double knot = linCmtCovKnot(ind, op, start, xout);
+  double tprior = ind->tprior, tout = ind->tout, shift = ind->tprior - start;
+  bool split = !ISNA(knot);
+  while (!ISNA(knot)) {
+    ind->tout = knot + shift;
+    linSolvePiece(neq, ind, op, rx, yp, start, knot);
+    start = knot;
+    ind->tprior = start + shift;
+    knot = linCmtCovKnot(ind, op, start, xout);
+  }
+  if (split) ind->tout = tout;
+  linSolvePiece(neq, ind, op, rx, yp, start, xout);
+  if (split) ind->tprior = tprior;
   // The values **could** depend on state, though it would require a
   // recursive solve and currently isn't implemented.  It also would
   // no longer be a linear compartment model :)
