@@ -6821,6 +6821,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       if (_mtime_requeued) i--;
     }
+    rxNewindAfterRecord(ind, i);
     ind->solvedIdx = i;
   }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
@@ -7458,9 +7459,12 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
     int this_evid = getEvid(ind, ind->ix[i]);
     bool is_obs   = isObs(this_evid);
     bool is_last  = (i == nx - 1);
-    bool need_seg = is_obs && is_last; // last obs: close the final segment
+    // the subject's first record (newind == 1) closes a segment too, so the
+    // integration after it sees newind == 2
+    bool is_first = is_obs && ind->_newind == 1;
+    bool need_seg = is_obs && (is_last || is_first); // close the segment here
 
-    if (is_obs && !is_last) {
+    if (is_obs && !is_last && !is_first) {
       // Pure observation interior to a segment.
       // Same-time obs (at xp): fill directly from the carry-forward state.
       if (isSameTimeDop(xout, xp)) {
@@ -7472,6 +7476,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
         std::copy(getSolve(i), getSolve(i) + eff, getSolve(i+1));
       }
       // else: will be filled by dopDenseSolout when the segment closes
+      rxNewindAfterRecord(ind, i);
       ind->solvedIdx = i;
       continue;
     }
@@ -7601,8 +7606,13 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
       // tests against nx rather than ind->n_all_times.
       nx = ind->n_all_times;
       if (_mtime_requeued) i--;
+      // a requeued slot re-runs from the state this pass integrated into it,
+      // not from the key event before it
+      last_key_i = _mtime_requeued ? i + 1 : i;
+    } else {
+      last_key_i = i;
     }
-    last_key_i = i;
+    rxNewindAfterRecord(ind, i);
     ind->solvedIdx = i;
   }
   // Keep this subject's delay history: the output data frame recalculates lhs
