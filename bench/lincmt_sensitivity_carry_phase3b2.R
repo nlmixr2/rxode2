@@ -2,7 +2,7 @@
 # ~/.claude/plans/the-lincmt-solutions-are-calm-seahorse.md): multi-pair
 # carry storage. Phase 2 validated ind->linCmtCarryT for exactly ONE
 # carry-eligible (linCmt-parameter, eta) pair (m=1, 1-cmt IV); this script
-# proves the extended storage (4 rows x RX_LINCMT_CARRY_MAXPAIRS=8 pair
+# proves the extended storage (4 rows x linCmtCarryMaxPairs() pair
 # columns, each column an independent d(Alast)/d(eta) m-vector) keeps
 # SIMULTANEOUS pairs genuinely independent:
 #
@@ -16,8 +16,8 @@
 #   C. 2-cmt IV (m=2), two pairs -- exercises the row stride
 #      (row*RX_LINCMT_CARRY_MAXPAIRS + pair) with row > 0, exactly where an
 #      indexing bug would hide in m=1-only tests.
-#   D. Cap: pair index >= 8 must fail loudly (clear R error), not truncate
-#      or crash.
+#   D. Cap: a pair index >= linCmtCarryMaxPairs() must fail loudly (clear
+#      R error), not truncate or crash.
 #
 # which2 encoding (the contract 3b.3's codegen must emit): row + m*pair,
 # m = ncmt+oral0. which1=-5 advances EVERY pair column at once (one shared
@@ -425,8 +425,8 @@ capErr <- tryCatch(
       oral0 = 0L,
       trans = 1L,
       which1 = -6L,
-      which2 = 8L
-    ) # m=1 -> pair 8, cap is 8
+      which2 = linCmtCarryMaxPairs()
+    ) # m=1 -> pair = cap
     NULL
   },
   error = function(e) conditionMessage(e)
