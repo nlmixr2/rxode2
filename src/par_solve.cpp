@@ -7508,11 +7508,8 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
     neq[0] = eff;
     copyLinCmt(neq, ind, op, y);
   };
-  // The step dop853 proposed at the end of the last segment, and whether only
-  // plain observation records came since (rxKeepsStep()), so the next segment
-  // starts with that step instead of choosing one afresh.
-  double hKeep = 0.0;
-  bool keepH = false;
+  rxStepKeeper keep; // how each segment starts
+  double hNext = 0.0;
   for(i=0; i<ind->n_all_times; i++) {
     ind->idx=i;
     ind->linSS=0;
@@ -7555,8 +7552,10 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
             neq[0] = eff - op->numLin - op->numLinSens;
             idid = rxSegmentSolve(rx, op, ind, neq, c_dydt, xp,
                                   ind->extraDoseNewXout, yp, &istate, itol, eff, &i, ctx,
-                                  (keepH && hKeep > 0.0) ? rxKeptStep(hKeep, op->HMIN, ind->HMAX) : op->H0, &hKeep);
-            keepH = (_tte.n == 0);
+                                  keep.first(op->H0, op, ind, neq, neq[0], c_dydt, xp, yp),
+                                  &hNext);
+            keep.solved(hNext);
+            if (_tte.n != 0) keep.reset();
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -7572,7 +7571,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
             handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
                         ind->BadDose, InfusionRate, ind->dose, yp, xout, neq[1], ind);
             idid = 1;
-            keepH = false;
+            keep.stateChanged();
             ind->idx = idx;
             ind->ixds = ixds;
             ind->idxExtra++;
@@ -7585,8 +7584,10 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           neq[0] = eff - op->numLin - op->numLinSens;
           idid = rxSegmentSolve(rx, op, ind, neq, c_dydt, xp, xout, yp,
                                 &istate, itol, eff, &i, ctx,
-                                (keepH && hKeep > 0.0) ? rxKeptStep(hKeep, op->HMIN, ind->HMAX) : op->H0, &hKeep);
-          keepH = (_tte.n == 0);
+                                keep.first(op->H0, op, ind, neq, neq[0], c_dydt, xp, yp),
+                                &hNext);
+          keep.solved(hNext);
+          if (_tte.n != 0) keep.reset();
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -7610,7 +7611,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         }
         xp = xout;
       }
-      if (!rxKeepsStep(getEvid(ind, ind->ix[i]))) keepH = false;
+      keep.record(getEvid(ind, ind->ix[i]));
       int _mtime_requeued = 0;
       if (rx->nMtime > 0) {
         if (recomputeMtimeIfNeeded(rx, ind, yp, i, xout)) {
