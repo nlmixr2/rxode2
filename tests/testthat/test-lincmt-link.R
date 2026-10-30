@@ -4,7 +4,7 @@ rxTest({
 
   test_that("every lincmt table slot is bound after load", {
     .linked <- .Call(`_rxode2_rxode2lincmtLinked`)
-    expect_length(.linked, 9L)
+    expect_length(.linked, 10L)
     expect_true(all(.linked))
   })
 
