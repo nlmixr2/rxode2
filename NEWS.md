@@ -12,6 +12,11 @@
 - `delay()` models now solve with `method = "cvode"`, which records the
   `delay()` history from CVODE's interpolant on every step, steady state
   included (#1599).
+- `method = "cvodesadj"` now solves `delay()` models: the forward solve
+  records the `delay()` history and the backward solve carries the delayed
+  Jacobian term (and the dose jump of a parameter-dependent delay), so the
+  sensitivities are correct; before, the solution and its sensitivities
+  ignored the delay (#1599).
 
 ### Event tables
 - A simulation that stops with an error no longer leaves its draws for the
