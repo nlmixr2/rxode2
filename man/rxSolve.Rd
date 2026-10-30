@@ -1458,7 +1458,9 @@ the data record that ends the interval being integrated, the way NONMEM
 calls \verb{$PK} at its records.  \code{d/dt()} and state-dependent statements keep
 the continuous time (like \verb{$DES}).  \code{addl} repeats, infusion ends,
 lagged doses and doses added while solving do not end an interval;
-\code{mtime()} times do.  Covariate interpolation is still set by
+\code{mtime()} times do.  \code{f()}, \code{rate()} and \code{dur()} of an \code{addl} repeat
+read the time of the first data record at or after it (NONMEM's \code{F1},
+\code{R1} and \code{D1}).  Covariate interpolation is still set by
 \code{covsInterpolation}.  By default \code{FALSE}.}
 
 \item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that

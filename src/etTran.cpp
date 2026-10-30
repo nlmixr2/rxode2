@@ -2720,7 +2720,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             recImplied.push_back(k == 0 ? 0 : 1);
           } else {
             idxInput.push_back(addlKeepsCov ? (int)i : -1);
-            recImplied.push_back(1);
+            // 2: the dose of an addl repeat (rxode2#1583)
+            recImplied.push_back(k == 0 ? 2 : 1);
           }
           ndose++;
         }
@@ -3440,15 +3441,23 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   int maxItemsPerId = 0;
   int curItems = 0;
   // Output rows that are not data records, for a model whose PK-type
-  // statements read `time` (rxode2#1429)
+  // statements read `time` (rxode2#1429), and the addl repeat doses among
+  // them, for a model whose f()/alag()/rate()/dur() may (rxode2#1583)
   std::vector<int> pkSkipRows;
+  std::vector<int> addlRepRows;
   IntegerVector mvFlags = mv[RxMv_flags];
-  bool needPkSkip = mvFlags.size() > RxMvFlag_pkTime &&
-    mvFlags[RxMvFlag_pkTime] != 0 && recImplied.size() == idxInput.size();
+  bool needAddlRep = mvFlags.size() > RxMvFlag_doseTime &&
+    mvFlags[RxMvFlag_doseTime] != 0;
+  bool needPkSkip = (needAddlRep || (mvFlags.size() > RxMvFlag_pkTime &&
+                                     mvFlags[RxMvFlag_pkTime] != 0)) &&
+    recImplied.size() == idxInput.size();
   for (i =idxOutput.size(); i--;){
     if (idxOutput[i] != -1) {
       jj--;
-      if (needPkSkip && recImplied[idxOutput[i]]) pkSkipRows.push_back(jj + 1);
+      if (needPkSkip && recImplied[idxOutput[i]]) {
+        pkSkipRows.push_back(jj + 1);
+        if (needAddlRep && recImplied[idxOutput[i]] == 2) addlRepRows.push_back(jj + 1);
+      }
       outId[jj] = id[idxOutput[i]];
       if (lastId != id[idxOutput[i]]) {
         maxItemsPerId = max2(curItems, maxItemsPerId);
@@ -3861,6 +3870,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   if (pkSkipRows.size() > 0) {
     std::reverse(pkSkipRows.begin(), pkSkipRows.end());
     Rf_setAttrib(lstF, Rf_install("rxPkSkip"), wrap(pkSkipRows));
+  }
+  if (addlRepRows.size() > 0) {
+    std::reverse(addlRepRows.begin(), addlRepRows.end());
+    Rf_setAttrib(lstF, Rf_install("rxAddlRep"), wrap(addlRepRows));
   }
   Rf_setAttrib(lstF, R_NamesSymbol, nmeF);
   Rf_setAttrib(lstF, R_ClassSymbol, cls);
