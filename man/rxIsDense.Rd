@@ -23,7 +23,8 @@ accuracy on densely sampled grids.
 }
 \details{
 Dense-capable single methods are:
-\code{"dop853"} (0), \code{"dop5"} (10), \code{"bs"} (11), \code{"ros4"} (13), \code{"cvode"} (21).
+\code{"dop853"} (0), \code{"liblsoda"} (2), \code{"dop5"} (10), \code{"bs"} (11), \code{"ros4"} (13),
+\code{"cvode"} (21).
 
 For composite AutoSwitch methods (e.g. \code{"dop5+ros4"}), \code{TRUE} is returned
 only when \strong{both} the primary and stiff secondary are dense-capable.
@@ -33,7 +34,8 @@ composites are \code{"dop853+ros4"}, \code{"dop5+ros4"}, and \code{"bs+ros4"}.
 \examples{
 rxIsDense("dop853")                       # TRUE
 rxIsDense("ros4")                         # TRUE
-rxIsDense("liblsoda")                     # FALSE
+rxIsDense("liblsoda")                     # TRUE
+rxIsDense("lsoda")                        # FALSE
 rxIsDense(c("dop5", "bs", "cvode"))       # TRUE TRUE TRUE
 rxIsDense("dop5+ros4")                    # TRUE  (both dense)
 rxIsDense("dop5+ros43")                   # FALSE (ros43 not dense)

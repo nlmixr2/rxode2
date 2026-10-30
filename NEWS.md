@@ -62,6 +62,9 @@
 - `method = "cvode"` now honors `dense = TRUE`, as `rxIsDense()` and the
   documentation describe; the CVODE dense driver existed but `dense = TRUE`
   was silently dropped (#1599).
+- `method = "liblsoda"` now accepts `dense = TRUE`, which lifts the `hmax`
+  default like the other dense methods (LSODA already interpolates between
+  its own steps), and `rxIsDense("liblsoda")` is `TRUE` (#1599).
 
 ### Steady state
 - A steady-state bolus into a compartment whose `alag()` is longer than `ii`

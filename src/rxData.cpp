@@ -6736,10 +6736,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->autoSwitchDtfac       = asDouble(rxControl[Rxc_autoSwitchDtfac], "autoSwitchDtfac");
     op->autoSwitchSwitchMax   = asInt(rxControl[Rxc_autoSwitchSwitchMax], "autoSwitchSwitchMax");
     if (op->useDense) {
-      /* Dense output is only supported for dop853(0), dop5(10), bs(11), ros4(13),
-         cvode(21). */
-      int _primDense = (method == 0 || method == 10 || method == 11 || method == 13 ||
-                        method == 21);
+      /* Dense output is only supported for dop853(0), liblsoda(2), dop5(10),
+         bs(11), ros4(13), cvode(21). */
+      int _primDense = (method == 0 || method == 2 || method == 10 || method == 11 ||
+                        method == 13 || method == 21);
       /* For AutoSwitch composites (stiff2>0) the stiff secondary must be dense
          too -- only ros4(13) is -- and the dense segment driver that hands a
          segment from the primary to the secondary exists only for a dop853
