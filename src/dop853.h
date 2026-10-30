@@ -186,6 +186,8 @@ typedef void (*FcnEqDiff)(int *nptr, double x, double *y, double *f);
 typedef struct {
   long int     nfcn, nstep, naccpt, nrejct;
   double       hout, xold, xout;
+  double       hcut;   /* the step proposed before the last one was cut to end
+                          at xend (0 if it was not cut) */
   int          nrds, *indir;
   double       *yy1, *k1, *k2, *k3, *k4, *k5, *k6, *k7, *k8, *k9, *k10;
   double       *rcont1, *rcont2, *rcont3, *rcont4;
@@ -259,3 +261,14 @@ extern int dop853
   int subject_id, /* rxode2 subject id (-1 if N/A); used by message aggregator */
   dop853_stiff_t *stiffState /* persistent stiffness-probe state, or NULL */
  );
+
+/* dop853() that also returns, in *hNext, the step size it would take next:
+   the larger of the step it proposes after the last accepted step and the one
+   it proposed before that step was cut to end at xend (0 on failure). */
+extern int dop853Next
+ (int *nptr, FcnEqDiff fcn, double x, double* y, double xend, double* rtoler,
+  double* atoler, int itoler, SolTrait solout, int iout, FILE* fileout,
+  double uround, double safe, double fac1, double fac2, double beta, double hmax,
+  double h, long int nmax, int meth, long int nstiff, int nrdens, int* icont,
+  int licont, void *userdata, int subject_id, dop853_stiff_t *stiffState,
+  double *hNext);
