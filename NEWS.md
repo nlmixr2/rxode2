@@ -183,6 +183,12 @@
 - `method = "liblsoda"` now accepts `dense = TRUE`, which lifts the `hmax`
   default like the other dense methods (LSODA already interpolates between
   its own steps), and `rxIsDense("liblsoda")` is `TRUE` (#1599).
+- `liblsoda`, `lsoda`, `lsode` and `bdf` now stop exactly at the next dose,
+  infusion edge, `mtime()` or other event record (and at extra doses between
+  records) instead of stepping past it and interpolating back.  A time window
+  in the model that starts at an `mtime()` record was stepped over: an input
+  switched on for 0.05 time units at the `mtime()` was missed entirely.  Plain
+  observation records are still stepped past and interpolated.
 
 ### Steady state
 - A steady-state fixed-duration infusion shorter than `ii` into a compartment
