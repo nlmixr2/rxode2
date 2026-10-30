@@ -8,7 +8,7 @@
  * src/rxCse.cpp only reads the argument and hands the text back to R -- the
  * same division as seBatch.h and src/seFromSE.cpp.
  *
- * The output must match the R implementation BYTE FOR BYTE: downstream codegen
+ * Without existing temporaries, output matches the R implementation byte for byte: downstream codegen
  * consumes this text and nlmixr2est's saem rewrites the rx_expr_ prefix by
  * name.  Anything this file is not certain it reproduces makes the whole call
  * decline so the R walker runs -- all or nothing, because a partial result
