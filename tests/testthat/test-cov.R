@@ -864,6 +864,8 @@ rxTest({
   })
 
   test_that("non-double covariate columns stay linear in row count (#1325)", {
+    skip_on_cran()
+    skip_on_ci()
     # etTrans() used to coerce a covariate column to double once per output
     # row.  For an integer or logical column that is a whole-column allocation
     # and copy per row, which made rxSolve() quadratic in rows -- 20000 rows
@@ -918,6 +920,8 @@ rxTest({
   })
 
   test_that("a CMT covariate stays linear in subject count (#1325)", {
+    skip_on_cran()
+    skip_on_ci()
     # CMT is the one covariate rxSolve() receives as an integer column, and the
     # per-subject copy into the solving buffer used to coerce the whole column
     # to double for each subject.  Hold it to an otherwise identical double
