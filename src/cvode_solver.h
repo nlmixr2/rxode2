@@ -46,6 +46,14 @@ void cvode_ctx_destroy(cvode_ctx_t *ctx);
 // Returns 1 on success, -1 on failure.
 int cvode_ctx_integrate(cvode_ctx_t *ctx, double *yp, double t0, double tout);
 
+// Integrate to tout without stepping past tstop (raised to tout if earlier).
+// restart re-initialises at (t0, yp) first; otherwise CVODE carries on from its own
+// state, whose last step may already reach past tout, and the value at tout
+// is interpolated.  yp receives the value at tout.
+// Returns 1 on success, -1 on failure.
+int cvode_ctx_integrate_stop(cvode_ctx_t *ctx, double *yp, double t0, double tout,
+                             double tstop, int restart);
+
 // Dense output interface (mirrors the odeint dense-stepper API).
 // Reinitialize at a new initial state; call after dose events.
 void cvode_ctx_dense_reinit(cvode_ctx_t *ctx, double *yp, double t0);

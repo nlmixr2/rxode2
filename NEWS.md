@@ -55,6 +55,17 @@
 
 ## New features
 
+- `cvode` now re-initialises only where the state or the right-hand side may
+  change (a dose, a reset, an infusion edge, an `mtime()` or evid 2 record, a
+  covariate change), instead of at every record.  Across a plain observation
+  record it carries on with its step, order and history, stopping exactly at
+  the next record it may not cross and interpolating the observations in
+  between, so a solve with many observation records takes far fewer
+  right-hand-side evaluations.  A time window in the model, such as
+  `if (t >= a && t < b)`, that starts at or just after a plain observation
+  record can now be stepped over, as `liblsoda` and `lsoda` can step over
+  one; give its start an `mtime()` or an event record.
+
 - `minSS` and `maxSS` now accept any count from 1, and `maxSS` may equal
   `minSS`, so `minSS = maxSS = n` gives exactly the state after `n` doses
   before the steady-state one (Monolix `nbdoses = n`).  They used to require

@@ -5,6 +5,7 @@
 #include "cvode_solver.h"
 
 #include <stdlib.h>
+#include <math.h>
 #include <cvode/cvode.h>
 #include <cvode/cvode_ls.h>
 #include <nvector/nvector_serial.h>
@@ -134,6 +135,8 @@ extern "C"
 int cvode_ctx_integrate(cvode_ctx_t *ctx, double *yp, double t0, double tout) {
   N_VSetArrayPointer(yp, ctx->y);
   if (CVodeReInit(ctx->mem, (sunrealtype)t0, ctx->y) < 0) return -1;
+  // a stop time left by cvode_ctx_integrate_stop() must not cut this one short
+  CVodeClearStopTime(ctx->mem);
   sunrealtype tret;
   int ret = CVode(ctx->mem, (sunrealtype)tout, ctx->y, &tret, CV_NORMAL);
   ctx->tret = (double)tret;
@@ -141,9 +144,26 @@ int cvode_ctx_integrate(cvode_ctx_t *ctx, double *yp, double t0, double tout) {
 }
 
 extern "C"
+int cvode_ctx_integrate_stop(cvode_ctx_t *ctx, double *yp, double t0, double tout,
+                             double tstop, int restart) {
+  N_VSetArrayPointer(yp, ctx->y);
+  if (restart && CVodeReInit(ctx->mem, (sunrealtype)t0, ctx->y) < 0) return -1;
+  if (tstop < tout) tstop = tout;
+  if (CVodeSetStopTime(ctx->mem, (sunrealtype)tstop) < 0) return -1;
+  sunrealtype tret;
+  int ret = CVode(ctx->mem, (sunrealtype)tout, ctx->y, &tret, CV_NORMAL);
+  ctx->tret = (double)tret;
+  // yp holds y(tout) only if CVODE returned at tout, or at a stop time within
+  // roundoff of it (an infusion end computed as start + amt/rate)
+  if (ret < 0 || fabs((double)tret - tout) > 1e-12 * fmax(fabs(tout), 1.0)) return -1;
+  return 1;
+}
+
+extern "C"
 void cvode_ctx_dense_reinit(cvode_ctx_t *ctx, double *yp, double t0) {
   N_VSetArrayPointer(yp, ctx->y);
   CVodeReInit(ctx->mem, (sunrealtype)t0, ctx->y);
+  CVodeClearStopTime(ctx->mem);
   ctx->tret = t0;
 }
 
