@@ -50,8 +50,8 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   dense_stepper_type dense_stepper(stepper);
   bool stepper_initialized = false;
   // The step the controller proposed at the end of the last segment, and
-  // whether the state has not changed since: only observation records came
-  // between, so the next segment starts with that step.
+  // whether only plain observation records came since (rxKeepsStep()), so the
+  // next segment starts with that step.
   double hKeep = 0.0;
   bool keepH = false;
 
@@ -99,7 +99,7 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               if (neqOde > 0) {
                   state_type state(neqOde);
                   double dt = (ind->autoHcur > 0.0) ? ind->autoHcur
-                  : (keepH && hKeep > 0.0) ? hKeep
+                  : (keepH && hKeep > 0.0) ? rxKeptStep(hKeep, op->HMIN, ind->HMAX)
                   : (op->HMIN > 0.0) ? op->HMIN : 1e-4;
                   if (ind->extraDoseNewXout < xp) dt = -dt;
                   sys.first.xout_ = ind->extraDoseNewXout;
@@ -148,7 +148,7 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           if (neqOde > 0) {
               state_type state(neqOde);
               double dt = (ind->autoHcur > 0.0) ? ind->autoHcur
-                  : (keepH && hKeep > 0.0) ? hKeep
+                  : (keepH && hKeep > 0.0) ? rxKeptStep(hKeep, op->HMIN, ind->HMAX)
                   : (op->HMIN > 0.0) ? op->HMIN : 1e-4;
               if (xout < xp) dt = -dt;
               sys.first.xout_ = xout;
@@ -218,7 +218,7 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         xp = xout;
         stepper_initialized = false;
       }
-      if (!isPassObs(getEvid(ind, ind->ix[i]))) keepH = false;
+      if (!rxKeepsStep(getEvid(ind, ind->ix[i]))) keepH = false;
       int _mtime_requeued = 0;
       if (rx->nMtime > 0) {
         if (recomputeMtimeIfNeeded(rx, ind, yp, i, xout)) {
