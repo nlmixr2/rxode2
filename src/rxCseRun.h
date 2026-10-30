@@ -30,6 +30,7 @@
 #include "rxCseStmt.h"
 #include "rxomp.h"
 #include <time.h>
+#include <string>
 
 /* 1 when the loaded dparser can run dparse() concurrently; src/tran.c */
 extern "C" int rxDparserParallel;
@@ -229,16 +230,26 @@ static int csSelectPhase(csRun *r) {
    (src/rxOptRep.cpp) */
 static int csReducePhase(csRun *r) {
   int j, k;
+  std::string prefix = "rx_expr_";
+  // Reserve a namespace absent from the input, including existing CSE passes.
+  for (;;) {
+    bool used = false;
+    for (R_xlen_t i = 0; i < r->n; ++i) {
+      if (strstr(r->in[i], prefix.c_str()) != NULL) { used = true; break; }
+    }
+    if (!used) break;
+    prefix += "cse_";
+  }
   if (!csMapInit(&r->rep, 1024)) return 0;
   r->repNames = (const char**) calloc((size_t) r->ncand, sizeof(char*));
   if (r->repNames == NULL) return 0;
   for (j = 0; j < r->ncand; j++) {
     size_t cap = r->cand[j].len + 64;
     r->cand[j].reduced = (char*) malloc(cap);
-    r->cand[j].name = (char*) malloc(32);
+    r->cand[j].name = (char*) malloc(prefix.size() + 32);
     if (r->cand[j].reduced == NULL || r->cand[j].name == NULL) return 0;
     memcpy(r->cand[j].reduced, r->cand[j].key, r->cand[j].len + 1);
-    snprintf(r->cand[j].name, 32, "rx_expr_%d", j);
+    snprintf(r->cand[j].name, prefix.size() + 32, "%s%d", prefix.c_str(), j);
     for (k = 0; k < j; k++) {
       if (csReplace1(&r->cand[j].reduced, &cap,
                      r->cand[k].reduced, r->cand[k].name) < 0) {

@@ -191,3 +191,20 @@ rxTest({
     }
   })
 })
+
+test_that('CSE reserves temporary names across repeated passes', {
+  evaluate <- function(txt) {
+    env <- list2env(list(a=2, b=3, c=7, d=11))
+    eval(parse(text=gsub('~', '<-', txt, fixed=TRUE)), env)
+    env$y
+  }
+  for (name in c('rx_expr_0', 'rx_expr_cse_0', 'rx_expr_cse_cse_0')) {
+    txt <- paste0(name, '~a+b\ny=', name, '*(c+d)+(c+d)')
+    for (pass in 1:3) {
+      out <- .rxOptExprC(txt)
+      if (is.na(out)) break
+      expect_equal(evaluate(out), 108)
+      txt <- out
+    }
+  }
+})
