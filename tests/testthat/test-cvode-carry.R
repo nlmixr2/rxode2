@@ -57,10 +57,12 @@ rxTest({
     # re-initialising at every observation record costs about 50 evaluations
     # per record here
     .perRecord <- (.hourly$dadt - .sparse$dadt) / (120 - 10)
-    expect_lt(.perRecord, 10)
+    expect_lt(.perRecord, 3)
   })
 
-  test_that("cvode re-initialises where a covariate changes on an evid 2 or an observation record", {
+  test_that("cvode matches the exact solution across a covariate step on an evid 2 or an observation record", {
+    # an accuracy check: covariates are looked up by time, so this holds with
+    # or without the re-initialisation at the step
     .obs <- seq(0.5, 119.5, by = 1)
     for (.evid in c(2L, 0L)) {
       .ev <- .cvEvents(.obs)
@@ -108,5 +110,41 @@ rxTest({
                     returnType = "data.frame")
       expect_equal(.s$y[.s$time == 6], 100, tolerance = 1e-6, label = .case$lab)
     }
+  })
+
+  test_that("cvode carries on between resets, replacements and multiplications as lsoda solves them", {
+    .ev <- rbind(
+      data.frame(id = 1L, time = .cvDose, evid = 1L, amt = 100, cmt = "depot"),
+      data.frame(id = 1L, time = seq(0.5, 119.5, by = 1), evid = 0L, amt = 0, cmt = "center"),
+      data.frame(id = 1L, time = c(30.25, 50.25, 70.25), evid = c(3L, 5L, 6L),
+                 amt = c(0, 40, 0.5), cmt = c("depot", "center", "depot"))
+    )
+    .ev <- .ev[order(.ev$time), ]
+    .solve <- function(method) {
+      .s <- rxSolve(.cvModel, .ev, params = c(ka = 1.2, kel = 0.2), method = method,
+                    atol = 1e-10, rtol = 1e-10, returnType = "data.frame")
+      .s[.s$time %in% seq(0.5, 119.5, by = 1), ]
+    }
+    .c <- .solve("cvode")
+    .l <- .solve("lsoda")
+    expect_equal(.c$depot, .l$depot, tolerance = 1e-6)
+    expect_equal(.c$center, .l$center, tolerance = 1e-6)
+  })
+
+  test_that("cvode reaches each record when extra doses fall between records", {
+    # a steady-state bolus whose alag() is longer than ii leaves several
+    # pending extra doses between sparse observations; cvode must still return
+    # the state at each observation, as lsoda does
+    .ssModel <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(c) <- ka * depot - k * c
+      alag(depot) <- lag
+    })
+    .ev <- et(amt = 100, ss = 1, ii = 12) |> et(c(0.5, 30, 60))
+    .solve <- function(method) {
+      rxSolve(.ssModel, .ev, params = c(k = 0.05, ka = 0.7, lag = 30), method = method,
+              atol = 1e-10, rtol = 1e-10, returnType = "data.frame")$c
+    }
+    expect_equal(.solve("cvode"), .solve("lsoda"), tolerance = 1e-6)
   })
 })
