@@ -24,14 +24,16 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
 }
 
 // Whether CVODE may carry on across record r (a position in ind->ix) without
-// re-initialising: an observation (evid 0 or 2) data record at which no
-// time-varying covariate changes value, or slope, so neither the state nor the
-// right-hand side changes there.
+// re-initialising: a plain observation (evid 0) or the time-0 placeholder
+// (evid 9) at which no time-varying covariate changes value, or slope, so
+// neither the state nor the right-hand side changes there.  An mtime() or evid
+// 2 record can mark a model-time or right-hand-side discontinuity, so it
+// re-initialises as a dose does.
 static bool cvodeCarriesAcross(rx_solving_options *op, rx_solving_options_ind *ind, int r) {
   int raw = ind->ix[r];
   if (raw < 0 || raw >= ind->n_all_times_orig) return false;
   int evid = getEvid(ind, raw);
-  if (evid != 0 && evid != 2) return false;
+  if (evid != 0 && evid != 9) return false;
   if (!op->do_par_cov) return true;
   for (int k = 0; k < op->ncov; k++) {
     if (!op->par_cov[k]) continue;
