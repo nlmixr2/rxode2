@@ -1,7 +1,8 @@
 rxTest({
-  # The lsoda family stops exactly (itask 4, tcrit) at an mtime() or evid 2
-  # record, which can open a window inside the right-hand side, and at a
-  # pending extra dose, instead of stepping past it and interpolating back.
+  # The lsoda family stops exactly (itask 4, tcrit) at every record that is
+  # not a plain observation -- a dose, an infusion edge, an mtime() or evid 2
+  # record -- and at a pending extra dose, instead of stepping past it and
+  # interpolating back.
   .tcMethods <- c("liblsoda", "lsoda", "lsode", "bdf")
 
   test_that("the lsoda family stops at an mtime() or evid 2 record that opens a time window", {
