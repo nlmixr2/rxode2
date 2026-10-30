@@ -79,9 +79,34 @@ rxTest({
     }
   })
 
+  test_that("linCmt() stops at minSS with disabled tolerances, like the ODE solve", {
+    for (.ncmt in c("1", "2", "3")) {
+      for (.n in c(2, 5)) {
+        expect_equal(.linSs(.ncmt, .n, .n + 2, ssTol = 1e8), .linNDose(.ncmt, .n), tolerance = 1e-6)
+        expect_equal(
+          .linSs(.ncmt, .n, .n + 2, ssTol = 1e8, cmt = "central"),
+          .linNDose(.ncmt, .n, cmt = "central"),
+          tolerance = 1e-6
+        )
+        for (.extra in list(list(rate = 50), list(dur = 3))) {
+          expect_equal(
+            .linSs(.ncmt, .n, .n + 2, extra = .extra, ssTol = 1e8),
+            .linNDose(.ncmt, .n, extra = .extra),
+            tolerance = 1e-6
+          )
+        }
+      }
+    }
+  })
+
   test_that("linCmt() keeps the exact steady state when minSS < maxSS", {
     .exact <- .linNDose("2", 400)
     expect_equal(.linSs("2", 10, 1000), .exact, tolerance = 1e-8)
     expect_equal(.linSs("2", 2, 3), .exact, tolerance = 1e-8)
+    expect_equal(
+      .linSs("2", 10, 1000, extra = list(dur = 3)),
+      .linNDose("2", 400, extra = list(dur = 3)),
+      tolerance = 1e-8
+    )
   })
 })
