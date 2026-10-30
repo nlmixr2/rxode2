@@ -255,8 +255,8 @@ static void ind_implicit_0(rx_solve *rx, rx_solving_options *op, int solveid, in
             if (getEvid(ind, ind->ix[i]) == 3) {
                 handleEvid3(ind, op, rx, neq, &xp, &xout, yp, &(istate), u_inis);
             } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
-                handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                         xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
+                handleSSTte(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                            xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
                 if (ind->wh0 == EVID0_OFF) ind->solve[ind->cmt] = op->inits[ind->cmt];
                 if (rx->istateReset) istate = 1;
                 xp = xout;
