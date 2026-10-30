@@ -6630,9 +6630,9 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   rc= ind->rc;
   double xp = x[0];
   ind->solvedIdx = 0;
-  // The step dop853 proposed at the end of the last segment, and whether the
-  // state has not changed since: only observation records came between, so
-  // the next segment starts with that step instead of choosing one afresh.
+  // The step dop853 proposed at the end of the last segment, and whether only
+  // plain observation records came since (rxKeepsStep()), so the next segment
+  // starts with that step instead of choosing one afresh.
   double hKeep = 0.0;
   bool keepH = false;
   for(i=0; i<ind->n_all_times; i++) {
@@ -6675,7 +6675,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
             neq[0] = eff - op->numLin - op->numLinSens;
             idid = rxSegmentAutoSwitch(rx, op, ind, neq, c_dydt, xp,
                                         ind->extraDoseNewXout, yp, &istate, itol, eff, &i,
-                                        (keepH && hKeep > 0.0) ? hKeep : op->H0, &hKeep);
+                                        (keepH && hKeep > 0.0) ? rxKeptStep(hKeep, op->HMIN, ind->HMAX) : op->H0, &hKeep);
             keepH = true;
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
@@ -6700,7 +6700,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
               neq[0] = eff - op->numLin - op->numLinSens;
               idid = rxSegmentAutoSwitch(rx, op, ind, neq, c_dydt,
                                           ind->extraDoseNewXout, xout, yp, &istate, itol, eff, &i,
-                                          (keepH && hKeep > 0.0) ? hKeep : op->H0, &hKeep);
+                                          (keepH && hKeep > 0.0) ? rxKeptStep(hKeep, op->HMIN, ind->HMAX) : op->H0, &hKeep);
               keepH = true;
               neq[0] = eff;
               copyLinCmt(neq, ind, op, yp);
@@ -6715,7 +6715,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           neq[0] = eff - op->numLin - op->numLinSens;
           idid = rxSegmentAutoSwitch(rx, op, ind, neq, c_dydt, xp, xout, yp,
                                       &istate, itol, eff, &i,
-                                      (keepH && hKeep > 0.0) ? hKeep : op->H0, &hKeep);
+                                      (keepH && hKeep > 0.0) ? rxKeptStep(hKeep, op->HMIN, ind->HMAX) : op->H0, &hKeep);
           keepH = true;
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
@@ -6738,7 +6738,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         }
         xp = xout;
       }
-      if (!isObs(getEvid(ind, ind->ix[i]))) keepH = false;
+      if (!rxKeepsStep(getEvid(ind, ind->ix[i]))) keepH = false;
       int _mtime_requeued = 0;
       if (rx->nMtime > 0) {
         if (recomputeMtimeIfNeeded(rx, ind, yp, i, xout)) {

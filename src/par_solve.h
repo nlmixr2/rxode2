@@ -384,6 +384,19 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
 #if defined(__cplusplus)
 }
 
+// Whether a solver keeps its step across record evid: only a plain
+// observation (0) or the time-0 placeholder (9).  An mtime() record (10-99)
+// or an evid 2 record can mark a model-time or right-hand-side discontinuity,
+// so the step restarts there as it does at a dose.
+static inline bool rxKeepsStep(int evid) { return evid == 0 || evid == 9; }
+
+// The kept step, within [hmin, hmax] (a bound <= 0 is no bound).
+static inline double rxKeptStep(double h, double hmin, double hmax) {
+  if (hmax > 0.0 && h > hmax) h = hmax;
+  if (hmin > 0.0 && h < hmin) h = hmin;
+  return h;
+}
+
 static inline int handleExtraDose(int *neq,
                                   int *BadDose,
                                   double *InfusionRate,

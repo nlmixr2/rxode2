@@ -31,8 +31,8 @@ extern "C" void ind_dop5_0(rx_solve *rx, rx_solving_options *op, int solveid, in
       ind->atol2[0], ind->rtol2[0], error_stepper_type());
   bool stepper_initialized = false;
   // The step the controller proposed at the end of the last segment, and
-  // whether the state has not changed since: only observation records came
-  // between, so the next segment starts with that step.
+  // whether only plain observation records came since (rxKeepsStep()), so the
+  // next segment starts with that step.
   double hKeep = 0.0;
   bool keepH = false;
       
@@ -78,7 +78,7 @@ extern "C" void ind_dop5_0(rx_solve *rx, rx_solving_options *op, int solveid, in
 
               if (neqOde > 0) {
                   zero_copy_state state(yp, neqOde);
-                  double dt = (keepH && hKeep > 0.0) ? hKeep : (op->HMIN > 0.0 ? op->HMIN : 1e-4);
+                  double dt = (keepH && hKeep > 0.0) ? rxKeptStep(hKeep, op->HMIN, ind->HMAX) : (op->HMIN > 0.0 ? op->HMIN : 1e-4);
                   if (ind->extraDoseNewXout < xp) dt = -dt;
                   try {
                       rxIntegrateAdaptive(
@@ -114,7 +114,7 @@ extern "C" void ind_dop5_0(rx_solve *rx, rx_solving_options *op, int solveid, in
 
                 if (neqOde > 0) {
                     zero_copy_state state(yp, neqOde);
-                    double dt = (keepH && hKeep > 0.0) ? hKeep : (op->HMIN > 0.0 ? op->HMIN : 1e-4);
+                    double dt = (keepH && hKeep > 0.0) ? rxKeptStep(hKeep, op->HMIN, ind->HMAX) : (op->HMIN > 0.0 ? op->HMIN : 1e-4);
                     if (xout < ind->extraDoseNewXout) dt = -dt;
                     try {
                         rxIntegrateAdaptive(
@@ -141,7 +141,7 @@ extern "C" void ind_dop5_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           
           if (neqOde > 0) {
               zero_copy_state state(yp, neqOde);
-              double dt = (keepH && hKeep > 0.0) ? hKeep : (op->HMIN > 0.0 ? op->HMIN : 1e-4);
+              double dt = (keepH && hKeep > 0.0) ? rxKeptStep(hKeep, op->HMIN, ind->HMAX) : (op->HMIN > 0.0 ? op->HMIN : 1e-4);
               if (xout < xp) dt = -dt;
               try {
                   if (op->useDense && isObs(getEvid(ind, ind->ix[i]))) {
@@ -198,7 +198,7 @@ extern "C" void ind_dop5_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         xp = xout;
         stepper_initialized = false;
       }
-      if (!isObs(getEvid(ind, ind->ix[i]))) keepH = false;
+      if (!rxKeepsStep(getEvid(ind, ind->ix[i]))) keepH = false;
       int _mtime_requeued = 0;
       if (rx->nMtime > 0) {
         if (recomputeMtimeIfNeeded(rx, ind, yp, i, xout)) {
