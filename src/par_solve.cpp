@@ -2338,6 +2338,8 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
     case 2:
       if (!isSameTime(xout, *xp)) {
         preSolve(op, ind, *xp, xout, yp);
+        // the record loop may have left itask 4 and a tcrit behind xout
+        ((lsoda_context_t*)ctx)->opt->itask = 1;
         lsoda((lsoda_context_t*)ctx, yp, xp, xout);
         copyLinCmt(neq, ind, op, yp);
       }
@@ -4921,6 +4923,38 @@ extern "C" void lsAdjSetActive(int a);
 extern "C" void lsAdjInitStep(struct lsoda_context_t *ctx);
 extern "C" void lsAdjPushStep(struct lsoda_context_t *ctx);
 
+// The stop time (tcrit, with itask 4) an lsoda-family solver integrates
+// toward record i with: the first record from i on that is not a plain
+// observation (evid 0, or the time-0 placeholder 9) -- a dose, an infusion
+// edge, a reset, an mtime() or evid 2 record -- or the last record, or the
+// first pending extra dose after xp when that comes earlier, and never before
+// xout.  The solver then stops exactly at such an event instead of stepping
+// past it and interpolating back; it still steps past plain observation
+// records and interpolates them, as before.  The record scan is cached
+// until the timeline changes.
+struct rxLsodaStop {
+  int rec = -1, n = -1, pushed = -1;
+  double at(rx_solving_options_ind *ind, int i, double xp, double xout) {
+    if (rec < i || n != ind->n_all_times || pushed != ind->nPushedExtra) {
+      n = ind->n_all_times;
+      pushed = ind->nPushedExtra;
+      rec = i;
+      while (rec < n - 1) {
+        int evid = getEvid(ind, ind->ix[rec]);
+        if (evid != 0 && evid != 9) break;
+        rec++;
+      }
+    }
+    double ts = ind->timeThread[ind->ix[rec]];
+    for (int e = ind->idxExtra; e < ind->extraDoseN[0]; e++) {
+      double te = ind->extraDoseTime[ind->extraDoseTimeIdx[e]];
+      if (te > xp && te < ts) ts = te;
+    }
+    return (ts < xout) ? xout : ts;
+  }
+  void reset() { rec = -1; }
+};
+
 extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda_opt_t opt, int solveid,
                               t_dydt_liblsoda dydt_liblsoda, t_update_inis u_inis) {
   clock_t t0 = clock();
@@ -5030,11 +5064,13 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
     ctx->common->adjInit = NULL;
     ctx->common->adjPush = NULL;
   }
+  rxLsodaStop lsStop; // where the solver must stop (tcrit)
   ind->solvedIdx = 0;
   for(i=0; i< ind->n_all_times; i++) {
     ind->idx=i;
     ind->linSS=0;
     if (ind->mainSorted == 0) {
+      lsStop.reset();
       double *_rtime = ind->timeThread;
       for (int _j = i; _j < ind->n_all_times; _j++) {
         int _raw = ind->ix[_j];
@@ -5067,6 +5103,8 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
                             &(ctx->state), op, ind, u_inis, ctx)) {
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
+            ctx->opt->itask = 4;
+            ctx->opt->tcrit = ind->extraDoseNewXout;
             lsoda(ctx, yp, &xp, ind->extraDoseNewXout);
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &(ctx->state), rc, &i, yp, err_msg_ls, 7, false, ind, op, rx);
@@ -5085,6 +5123,8 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
             ind->idxExtra++;
             if (!isSameTime(xout, ind->extraDoseNewXout)) {
               preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
+              ctx->opt->itask = 4;
+              ctx->opt->tcrit = lsStop.at(ind, i, ind->extraDoseNewXout, xout);
               lsoda(ctx,yp, &ind->extraDoseNewXout, xout);
               copyLinCmt(neq, ind, op, yp);
               postSolve(neq, &(ctx->state), rc, &i, yp, err_msg_ls, 7, false, ind, op, rx);
@@ -5095,6 +5135,8 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         }
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
+          ctx->opt->itask = 4;
+          ctx->opt->tcrit = lsStop.at(ind, i, xp, xout);
           lsoda(ctx, yp, &xp, xout);
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &(ctx->state), rc, &i, yp, err_msg_ls, 7, false, ind, op, rx);
@@ -5538,7 +5580,8 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
 
   int istate = 1, i = 0;
   // Thread-local copies of solver flags (replaces shared globals gitol/gitask/giopt/gliw/glrw)
-  int itol = 1, itask = 1, iopt = 1;
+  // itask 4: stop at rwork[0] (tcrit), the next event
+  int itol = 1, itask = 4, iopt = 1;
 
   std::fill(rwork, rwork + lrw + 1, 0.0); // Works because it is a double
   std::fill(iwork, iwork + liw + 1, 0); // Works because it is a integer
@@ -5565,11 +5608,13 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
   int localBadSolve = 0;
 
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
+  rxLsodaStop lsStop; // where the solver must stop (tcrit)
   ind->solvedIdx = 0;
   for(i=0; i < ind->n_all_times; i++) {
     ind->idx=i;
     ind->linSS=0;
     if (ind->mainSorted == 0) {
+      lsStop.reset();
       double *_rtime = ind->timeThread;
       for (int _j = i; _j < ind->n_all_times; _j++) {
         int _raw = ind->ix[_j];
@@ -5602,6 +5647,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             neq[0] = eff - op->numLin - op->numLinSens;
+            rwork[0] = ind->extraDoseNewXout;
             F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &ind->extraDoseNewXout, &itol, &(op->RTOL), &(op->ATOL), &itask,
                              &istate, &iopt, rwork, &lrw, iwork, &liw, jdum, &jt);
             neq[0] = eff;
@@ -5623,6 +5669,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
             if (!isSameTime(xout, ind->extraDoseNewXout)) {
               preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
               neq[0] = eff - op->numLin - op->numLinSens;
+              rwork[0] = lsStop.at(ind, i, ind->extraDoseNewXout, xout);
               F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &ind->extraDoseNewXout, &xout, &itol, &(op->RTOL), &(op->ATOL), &itask,
                                &istate, &iopt, rwork, &lrw, iwork, &liw, jdum, &jt);
               neq[0] = eff;
@@ -5636,6 +5683,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
           neq[0] = eff - op->numLin - op->numLinSens;
+          rwork[0] = lsStop.at(ind, i, xp, xout);
           F77_CALL(dlsoda)(dydt_lsoda, neq, yp,
                            &xp, &xout, &itol,
                            &(op->RTOL),
@@ -5773,7 +5821,8 @@ static void ind_lsode0(rx_solve *rx, rx_solving_options *op, int solveid,
   void *ctx = NULL;
 
   int istate = 1;
-  int itol = 1, itask = 1, iopt = 1;
+  // itask 4: stop at rwork[0] (tcrit), the next event
+  int itol = 1, itask = 4, iopt = 1;
   double rpar = 0.0; int ipar = 0;
 
   std::fill(rwork, rwork + lrw + 1, 0.0);
@@ -5794,11 +5843,13 @@ static void ind_lsode0(rx_solve *rx, rx_solving_options *op, int solveid,
   int localBadSolve = 0;
 
   if (!iniSubject(neq[1], 0, ind, op, rx, update_inis)) return;
+  rxLsodaStop lsStop; // where the solver must stop (tcrit)
   ind->solvedIdx = 0;
   for (int i = 0; i < ind->n_all_times; i++) {
     ind->idx = i;
     ind->linSS = 0;
     if (ind->mainSorted == 0) {
+      lsStop.reset();
       double *_rtime = ind->timeThread;
       for (int _j = i; _j < ind->n_all_times; _j++) {
         int _raw = ind->ix[_j];
@@ -5829,6 +5880,7 @@ static void ind_lsode0(rx_solve *rx, rx_solving_options *op, int solveid,
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             neq[0] = eff - op->numLin - op->numLinSens;
+            rwork[0] = ind->extraDoseNewXout;
             F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, &xp, &ind->extraDoseNewXout,
                              &itol, &(op->RTOL), &(op->ATOL), &itask, &istate, &iopt,
                              rwork, &lrw, iwork, &liw, rxode2_dlsode_JAC, &mf, &rpar, &ipar);
@@ -5853,6 +5905,7 @@ static void ind_lsode0(rx_solve *rx, rx_solving_options *op, int solveid,
               neq[0] = eff - op->numLin - op->numLinSens;
               // istate is already 1 from the dose handler above (needed for restart
               // after a dose event).
+              rwork[0] = lsStop.at(ind, i, ind->extraDoseNewXout, xout);
               F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, &ind->extraDoseNewXout, &xout,
                                &itol, &(op->RTOL), &(op->ATOL), &itask, &istate, &iopt,
                                rwork, &lrw, iwork, &liw, rxode2_dlsode_JAC, &mf, &rpar, &ipar);
@@ -5867,6 +5920,7 @@ static void ind_lsode0(rx_solve *rx, rx_solving_options *op, int solveid,
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
           neq[0] = eff - op->numLin - op->numLinSens;
+          rwork[0] = lsStop.at(ind, i, xp, xout);
           F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, &xp, &xout,
                            &itol, &(op->RTOL), &(op->ATOL), &itask, &istate, &iopt,
                            rwork, &lrw, iwork, &liw, rxode2_dlsode_JAC, &mf, &rpar, &ipar);
