@@ -137,7 +137,7 @@ rxTest({
       )
     }
     ## doses, an infusion and a steady state between observations: every
-    ## interval must record history, so dop5/bs agree with dop853
+    ## interval must record history, so dop5/bs/ros4 agree with dop853
     .pk <- rxode2({
       d/dt(depot) <- -ka * depot
       d/dt(central) <- ka * delay(depot, 0.7) - kel * central
@@ -149,7 +149,7 @@ rxTest({
       et(amt = 4, time = 7.1, rate = 2, cmt = "central") |>
       et(seq(0, 12, by = 1))
     .ref <- rxSolve(.pk, .ev, method = "dop853", atol = 1e-10, rtol = 1e-10)
-    for (.m in c("dop5", "bs")) {
+    for (.m in c("dop5", "bs", "ros4")) {
       .s <- rxSolve(.pk, .ev, method = .m, atol = 1e-10, rtol = 1e-10)
       expect_equal(.s$central, .ref$central, tolerance = 1e-5, label = .m)
       expect_equal(.s$depot, .ref$depot, tolerance = 1e-5, label = .m)

@@ -6,6 +6,9 @@
 - `delay()` models now solve with `method = "dop5"` and `method = "bs"`.
   Both are dense solvers, but they recorded no `delay()` history, so
   `rxSolve()` refused them (#1599).
+- `delay()` models with `method = "ros4"` now solve on the dense segment
+  driver, so `delay()` history is recorded on every step and `hmax` is
+  honored (#1599).
 
 ### Event tables
 - A simulation that stops with an error no longer leaves its draws for the
