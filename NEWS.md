@@ -124,6 +124,11 @@
   1 for the whole solve, so a right-hand side, `f()` or `evid_()` reading it
   treated every record as the first (#1526).
 
+- During the solve, every other method now advances `newind` after a
+  subject's first record instead of before it, so that record's `f()`,
+  `alag()`, `rate()`, `dur()` and `evid_()`/`bolus()` calls see
+  `newind == 1`, as the output table already did (#1526).
+
 - Forward sensitivities through `alag()`, `f()`, `rate()`, `dur()` and a
   parameter-dependent `delay()` are now right for a parameter that also
   has a numeric default in the model (for example `lg <- 0.3` with

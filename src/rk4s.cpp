@@ -8692,7 +8692,6 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         xp = xout;
       }
     }
-    ind->_newind = 2;
     if (!localBadSolve){
       ind->idx = i;
       // Record forward state-jump events for the adjoint transpose jumps, tagged
@@ -8868,6 +8867,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
       }
       boundary[i] = rec.nStep(); boundaryDose[i] = doseRec.size(); boundarySs2[i] = ss2Steps.size(); boundarySs1[i] = ss1Steps.size();
     }
+    rxNewindAfterRecord(ind, i);
     ind->solvedIdx = i;
   }
 
