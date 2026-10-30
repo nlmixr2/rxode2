@@ -110,6 +110,13 @@
   absence) when it returns, so it no longer replaces the session's random
   stream.  The simulated values for a given `seed` are unchanged (#1503).
 
+- `rxControl(seed = )` no longer reseeds the session's random stream when the
+  control is built; the seed is stored and applied by the solve that uses it.
+  A seed that reaches the solve only through the control (for example from a
+  model's `meta` block) now suspends `rxSetSeed()` and restores the caller's
+  `.Random.seed` as `rxSolve(seed = )` does.  The simulated values for a
+  given `seed` are unchanged (#1550).
+
 ### Solving
 
 - Forward sensitivities through `alag()`, `f()`, `rate()`, `dur()` and a
