@@ -1,13 +1,13 @@
 rxTest({
-  # The lsoda family integrates toward each record with itask 4 and tcrit at
-  # the next record that is not a plain observation (or the next pending extra
-  # dose), so it stops exactly at a dose, an infusion edge or an mtime() record
-  # instead of stepping past it.
+  # The lsoda family stops exactly (itask 4, tcrit) at an mtime() or evid 2
+  # record, which can open a window inside the right-hand side, and at a
+  # pending extra dose, instead of stepping past it and interpolating back.
   .tcMethods <- c("liblsoda", "lsoda", "lsode", "bdf")
 
-  test_that("the lsoda family stops at an mtime() record that opens a time window", {
-    # an input of 400 for 0.05 time units from the mtime() at t = 12, observed
-    # at the integers; stepping past t = 12 skips the window
+  test_that("the lsoda family stops at an mtime() or evid 2 record that opens a time window", {
+    # an input of 400 for 0.05 time units from t = 12, observed at the
+    # integers, with an mtime() or an evid 2 record at 12; stepping past t =
+    # 12 skips the window
     .m <- rxode2({
       mtime(tp) <- 12
       if (t >= tp && t < tp + 0.05) {
@@ -17,8 +17,18 @@ rxTest({
       }
       d/dt(y) <- -0.2 * y + inp
     })
+    .m2 <- rxode2({
+      if (t >= 12 && t < 12.05) {
+        inp <- 400
+      } else {
+        inp <- 0
+      }
+      d/dt(y) <- -0.2 * y + inp
+    })
     .ev <- data.frame(id = 1L, time = c(0, 1:24), evid = c(1L, rep(0L, 24)),
                       amt = c(10, rep(0, 24)), cmt = "y")
+    .ev2 <- .ev
+    .ev2$evid[.ev2$time == 12] <- 2L
     .k <- 0.2
     .yw0 <- 10 * exp(-.k * 12)
     .yw1 <- .yw0 * exp(-.k * 0.05) + (400 / .k) * (1 - exp(-.k * 0.05))
@@ -26,11 +36,14 @@ rxTest({
     for (.method in .tcMethods) {
       .s <- rxSolve(.m, .ev, method = .method, atol = 1e-8, rtol = 1e-6,
                     returnType = "data.frame")
-      expect_equal(.s$y[.s$time == 24], .exact, tolerance = 1e-4, label = .method)
+      expect_equal(.s$y[.s$time == 24], .exact, tolerance = 1e-4, label = paste(.method, "mtime"))
+      .s2 <- rxSolve(.m2, .ev2, method = .method, atol = 1e-8, rtol = 1e-6,
+                     returnType = "data.frame")
+      expect_equal(.s2$y[.s2$time == 24], .exact, tolerance = 1e-4, label = paste(.method, "evid 2"))
     }
   })
 
-  test_that("the lsoda family matches the exact solution across doses and infusion edges", {
+  test_that("the lsoda family still matches the exact solution across doses and infusion edges", {
     .oral <- rxode2({
       d/dt(depot) <- -ka * depot
       d/dt(center) <- ka * depot - k * center
