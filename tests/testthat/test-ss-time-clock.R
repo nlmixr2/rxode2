@@ -106,4 +106,73 @@ rxTest({
     .fCov <- .f(.d)
     expect_equal(.fCov[-1], .ref, tolerance = 1e-6)
   })
+  # The steady-state infusion cycle on the 0..ii clock is the periodic solution
+  # of the model reading the time since the cycle started
+  .ssInfMod <- rxode2({
+    d / dt(central) <- -(1 / 20) * central * (1 + 0.003 * t)
+    f <- central / 20
+  })
+  .ssInfCycleMod <- rxode2({
+    tc <- t - 12 * floor(t / 12 + 1e-9)
+    d / dt(central) <- -(1 / 20) * central * (1 + 0.003 * tc)
+    f <- central / 20
+  })
+  .ssInfObs <- c(1, 2.5, 5, 8, 11.5)
+  .ssInf <- function(dur, maxSS = 1000) {
+    .ev <- et(amt = 100, ii = 12, ss = 1, dur = dur, time = 0) |>
+      et(.ssInfObs)
+    rxSolve(
+      .ssInfMod,
+      .ev,
+      atol = 1e-10,
+      rtol = 1e-10,
+      ssAtol = 1e-10,
+      ssRtol = 1e-10,
+      maxSS = maxSS,
+      returnType = "data.frame"
+    )$f
+  }
+  .ssInfPeriodic <- function(dur) {
+    .ev <- et(amt = 100, ii = 12, addl = 299, dur = dur, time = 0) |>
+      et(3588 + .ssInfObs)
+    rxSolve(
+      .ssInfCycleMod,
+      .ev,
+      atol = 1e-10,
+      rtol = 1e-10,
+      returnType = "data.frame"
+    )$f
+  }
+
+  test_that("a steady-state infusion of a model reading t is periodic", {
+    for (.dur in c(3, 30)) {
+      expect_equal(.ssInf(.dur), .ssInfPeriodic(.dur), tolerance = 1e-6)
+      expect_equal(.ssInf(.dur, 70), .ssInf(.dur), tolerance = 1e-6)
+    }
+  })
+
+  test_that("a lagged steady-state infusion of a model reading t converges", {
+    .lagMod <- rxode2({
+      d / dt(central) <- -(1 / 20) * central * (1 + 0.003 * t)
+      alag(central) <- 2
+      f <- central / 20
+    })
+    .f <- function(dur, maxSS) {
+      .ev <- et(amt = 100, ii = 12, ss = 1, dur = dur, time = 480) |>
+        et(480 + .ssInfObs)
+      rxSolve(
+        .lagMod,
+        .ev,
+        atol = 1e-10,
+        rtol = 1e-10,
+        maxSS = maxSS,
+        returnType = "data.frame"
+      )$f
+    }
+    for (.dur in c(3, 10, 11, 30)) {
+      .f70 <- .f(.dur, 70)
+      expect_true(all(is.finite(.f70)))
+      expect_equal(.f70, .f(.dur, 1000), tolerance = 1e-6)
+    }
+  })
 })
