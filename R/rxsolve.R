@@ -485,7 +485,8 @@
 #' @param seed an object specifying if and how the random number
 #'    generator should be initialized; when given, it takes precedence
 #'    over an active [rxSetSeed()] stream for this solve, and the
-#'    caller's `.Random.seed` is restored afterwards
+#'    caller's `.Random.seed` is restored afterwards.  [rxControl()] only
+#'    stores it; the seed is applied when the control is used by a solve
 #'
 #' @param nsim represents the number of simulations.  For rxode2, if
 #'     you supply single subject event tables (created with
@@ -1754,12 +1755,7 @@ rxSolve <- function(
         "nlmixrIdentity" = 3L
       )[match.arg(omegaXform)]
     }
-    if (!is.null(seed)) {
-      # Depending on the kind of seed, seed may be a vector of
-      # integers, though that use-case is likely not common
-      checkmate::testIntegerish(seed, any.missing = FALSE, min.len = 1)
-      set.seed(seed)
-    }
+    ## the seed is only stored here; the solve applies it (#1550)
     if (checkmate::testIntegerish(nsim, len = 1, lower = 1, any.missing = FALSE)) {
       if (
         nSub == 1L &&
@@ -2431,21 +2427,23 @@ rxSolve <- function(
   .rxEventCallSave <- sys.call()
   on.exit(.rxEventExitSolve(returnValue(), object, .rxEventCallSave), add = TRUE)
   if (!is.null(seed)) {
-    ## seed= works through set.seed(), which an active rxSetSeed() stream
-    ## would ignore; suspend that stream for this solve (#1507) and put the
-    ## caller's .Random.seed back afterwards (#1503)
-    .rxSeedOrig <- rxGetSeed()
-    .rSeedOrig <- .rxGetRandomSeed()
-    rxSetSeed(-1L)
-    on.exit(
-      {
-        rxSetSeed(.rxSeedOrig)
-        .rxRestoreRandomSeed(.rSeedOrig)
-      },
-      add = TRUE
-    )
+    .rxSeedRestore <- .rxSeedSuspend()
+    on.exit(.rxSeedRestore(), add = TRUE)
   }
   UseMethod("rxSolve")
+}
+
+## seed= works through set.seed(), which an active rxSetSeed() stream would
+## ignore; suspend that stream for the solve (#1507) and return the function
+## that puts it and the caller's .Random.seed back afterwards (#1503)
+.rxSeedSuspend <- function() {
+  .rxSeedOrig <- rxGetSeed()
+  .rSeedOrig <- .rxGetRandomSeed()
+  rxSetSeed(-1L)
+  function() {
+    rxSetSeed(.rxSeedOrig)
+    .rxRestoreRandomSeed(.rSeedOrig)
+  }
 }
 
 ## The caller's .Random.seed, or NULL when it has none
@@ -4404,6 +4402,13 @@ rxSolve.default <- function(
     events
   }
 
+  if (!is.null(.ctl$seed)) {
+    ## a seed carried in the control (eg spread from an rxControl() list)
+    ## takes effect here, the way rxSolve(seed=) does (#1550)
+    .rxSeedRestore <- .rxSeedSuspend()
+    on.exit(.rxSeedRestore(), add = TRUE)
+    set.seed(.ctl$seed)
+  }
   if (!is.null(.ctl$file)) {
     return(.rxSolveOom(object, params = params, events = events, inits = inits, .ctl = .ctl, .envir = envir))
   }
