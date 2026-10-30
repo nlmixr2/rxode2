@@ -83,6 +83,7 @@ extern "C" void ind_bs_0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                       stepper_initialized = false;
                   } catch(const std::exception& e) {
                       if (ind->rc[0] == 0) ind->rc[0] = -2019;
+                      rxSolverFail(ind);
                   }
               }
 
@@ -118,6 +119,7 @@ extern "C" void ind_bs_0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                         stepper_initialized = false;
                     } catch(const std::exception& e) {
                         if (ind->rc[0] == 0) ind->rc[0] = -2019;
+                        rxSolverFail(ind);
                     }
                 }
 
@@ -164,6 +166,7 @@ extern "C" void ind_bs_0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                   }
               } catch(const std::exception& e) {
                   if (ind->rc[0] == 0) ind->rc[0] = -2019;
+                  rxSolverFail(ind);
               }
           }
           
@@ -269,6 +272,7 @@ extern "C" void bs_solveWith1Pt(int *neq, double *yp, double *xp, double xout, i
               stepper, sys, state, *xp, xout, dt, error_checker(ind, ind->rc, op->mxstep));
       } catch(const std::exception& e) {
           if (ind->rc[0] == 0) ind->rc[0] = -2019;
+          rxSolverFail(ind);
           *istate = -1;
           return;
       }

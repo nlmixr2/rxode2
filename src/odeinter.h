@@ -4,6 +4,7 @@
 #include "odeint_bsd.h"
 #include <boost/numeric/odeint.hpp>
 #include <vector>
+#include <cmath>
 #include <stdexcept>
 
 struct zero_copy_state {
@@ -209,10 +210,21 @@ struct error_checker {
 
     error_checker(rx_solving_options_ind* ind, int* rc, int max_steps) : ind_(ind), rc_(rc), max_steps_(max_steps), steps_(0) {}
 
+    // Called after every accepted step: a step limit, or a state that is no
+    // longer finite, is the solver's own failure.  A trial stage's
+    // non-finite right-hand side is not: rosenbrock4's error control rejects
+    // that step and retries a smaller one.
     template <class State>
     void operator()(const State& x, const double t) {
         steps_++;
-        if (steps_ > max_steps_) {
+        bool finite = true;
+        for (auto it = x.begin(); it != x.end(); ++it) {
+            if (!std::isfinite(*it)) {
+                finite = false;
+                break;
+            }
+        }
+        if (steps_ > max_steps_ || !finite) {
             *rc_ = -2019;
             rxSolverFail(ind_);
         } else if (ind_->err != 0) {

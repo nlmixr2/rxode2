@@ -26,6 +26,16 @@ rxTest({
       error = conditionMessage
     )
   }
+  # a solve with its own params, as .fsSolve() gives it
+  .nfSolve <- function(m, d, params, method) {
+    tryCatch(
+      {
+        .w <- capture_warnings(.o <- capture.output(.s <- rxSolve(m, d, params = params, method = method)))
+        list(d = as.data.frame(.s), w = .w, o = .o)
+      },
+      error = conditionMessage
+    )
+  }
   .fsReason <- function(ids) {
     paste0(
       "[solve error: Modeled rate requested in event table, but not in model; use 'rate(cmt) =']: ",
@@ -273,6 +283,130 @@ rxTest({
       grep("^\\[IDID", .o, value = TRUE),
       "[IDID=-2, larger nmax is needed]: 4 warning(s) for subject(s): 101, 102, 103, 104"
     )
+  })
+
+  test_that("a non-finite right-hand side fails its subject alone, for every method", {
+    # k = Inf makes subject 103's derivative -Inf from its dose on; a stepper
+    # that carries the state on gives non-finite values, or keeps the dose
+    .nfText <- "d/dt(y) <- -k * y"
+    .mPlain <- rxode2(.nfText)
+    .mAdj <- rxode2(rxode2::.rxAdjointExpand(.nfText, "k")$text)
+    .d <- data.frame(
+      ID = rep(101:104, each = 4),
+      TIME = rep(c(0, 0, 1, 2), 4),
+      EVID = rep(c(1, 0, 0, 0), 4),
+      AMT = rep(c(1, 0, 0, 0), 4),
+      CMT = "y"
+    )
+    .p <- data.frame(ID = 101:104, k = c(1, 1, Inf, 1))
+    .msg <- "some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'"
+    .line <- paste0("[solve error: ", .solverFail, "]: 1 warning(s) for subject(s): 103")
+    # the solvers that print their own text first
+    .own <- c(
+      lsoda = "^DLSODA-",
+      lsode = "^DLSODE-",
+      bdf = "^DLSODE-",
+      dop853 = "^\\[IDID=-3, step size becomes too small\\]: 1 warning\\(s\\) for subject\\(s\\): 103$"
+    )
+    # solvers that do not fail the subject: liblsoda and liblsodaadj return NaN
+    # with their istate texts; cvodesadj keeps the values; indLin returns NaN
+    # silently.  vv refuses a model whose states are not coordinate-momentum
+    # pairs.
+    .skip <- c("liblsoda", "liblsodaadj", "cvodesadj", "indLin", "vv")
+    .meths <- eval(formals(rxode2::rxSolve)$method)
+    expect_true(all(.skip %in% .meths))
+    .n <- 0L
+    for (.meth in setdiff(.meths, .skip)) {
+      .m <- .mPlain
+      .ref <- .nfSolve(.m, .d[.d$ID != 103, ], .p[.p$ID != 103, ], .meth)
+      if (is.character(.ref) && grepl("adjoint expansion", .ref, fixed = TRUE)) {
+        .m <- .mAdj
+        .ref <- .nfSolve(.m, .d[.d$ID != 103, ], .p[.p$ID != 103, ], .meth)
+      }
+      expect_true(is.list(.ref), label = .meth)
+      if (!is.list(.ref)) {
+        next
+      }
+      .s <- .nfSolve(.m, .d, .p, .meth)
+      expect_true(is.list(.s), label = .meth)
+      if (!is.list(.s)) {
+        next
+      }
+      .n <- .n + 1L
+      .cols <- setdiff(names(.ref$d), c("id", "time"))
+      .ok <- .s$d[.s$d$id != "103", .cols, drop = FALSE]
+      rownames(.ok) <- NULL
+      expect_identical(.ok, .ref$d[, .cols, drop = FALSE], label = .meth)
+      # subject 103's states and sensitivities; the adjoint lhs are computed
+      # from k and keep their values
+      .st <- intersect(.cols, rxModelVars(.m)$state)
+      expect_true("y" %in% .st, label = .meth)
+      expect_true(all(is.na(as.matrix(.s$d[.s$d$id == "103", .st, drop = FALSE]))), label = .meth)
+      expect_identical(unique(.s$w), .msg, label = .meth)
+      if (.meth %in% names(.own)) {
+        expect_true(grepl(.own[[.meth]], .s$o[1]), label = .meth)
+      } else {
+        expect_identical(.s$o, .line, label = .meth)
+      }
+    }
+    expect_identical(.n, length(.meths) - length(.skip))
+  })
+
+  test_that("a trial stage's non-finite derivative does not fail a ros4 solve", {
+    # a negative trial-stage C makes C^g NaN; rosenbrock4 rejects that step and
+    # retries a smaller one, so the solve goes on, as liblsoda's does
+    .m <- rxode2("
+      d/dt(central) = -ke*central
+      C = central/V
+      d/dt(E) = kin - kout*E*(1 + Emax*C^g/(EC50^g + C^g))
+      E(0) = kin/kout
+    ")
+    .ev <- et(amt = 100, cmt = "central") |> et(c(0.5, 1, 2, 4, 8, 12, 24, 48, 72, 96, 168))
+    .p <- c(ke = 0.3, V = 10, kin = 10, kout = 0.5, Emax = 3, EC50 = 0.2, g = 1.7)
+    .w <- capture_warnings(.s <- as.data.frame(rxSolve(.m, .p, .ev, method = "ros4")))
+    expect_identical(.w, character(0))
+    .ref <- as.data.frame(rxSolve(.m, .p, .ev, method = "liblsoda", atol = 1e-12, rtol = 1e-10))
+    expect_equal(.s$E, .ref$E, tolerance = 1e-3)
+    expect_equal(.s$E[.s$time == 168], 20, tolerance = 1e-3)
+  })
+
+  test_that("a non-finite derivative fails its subject on the steady-state and lagged-dose paths", {
+    .d <- data.frame(
+      ID = rep(101:104, each = 4),
+      TIME = rep(c(0, 0, 1, 2), 4),
+      EVID = rep(c(1, 0, 0, 0), 4),
+      AMT = rep(c(1, 0, 0, 0), 4),
+      CMT = "y"
+    )
+    .p <- data.frame(ID = 101:104, k = c(1, 1, Inf, 1))
+    .msg <- "some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'"
+    .line <- paste0("[solve error: ", .solverFail, "]: 1 warning(s) for subject(s): 103")
+    .ss <- .d
+    .ss$SS <- rep(c(1, 0, 0, 0), 4)
+    .ss$II <- rep(c(12, 0, 0, 0), 4)
+    .cases <- list(
+      ss = list(m = rxode2("d/dt(y) <- -k * y"), d = .ss),
+      lag = list(m = rxode2("d/dt(y) <- -k * y\nalag(y) <- 0.5"), d = .d)
+    )
+    for (.c in names(.cases)) {
+      .m <- .cases[[.c]]$m
+      .dd <- .cases[[.c]]$d
+      for (.meth in c("rk4", "ros4", "bs", "ab", "trapz")) {
+        .lab <- paste(.c, .meth)
+        .ref <- .nfSolve(.m, .dd[.dd$ID != 103, ], .p[.p$ID != 103, ], .meth)
+        .s <- .nfSolve(.m, .dd, .p, .meth)
+        expect_true(is.list(.ref) && is.list(.s), label = .lab)
+        if (!is.list(.s) || !is.list(.ref)) {
+          next
+        }
+        .ok <- .s$d[.s$d$id != "103", c("time", "y")]
+        rownames(.ok) <- NULL
+        expect_identical(.ok, .ref$d[, c("time", "y")], label = .lab)
+        expect_true(all(is.na(.s$d$y[.s$d$id == "103"])), label = .lab)
+        expect_identical(unique(.s$w), .msg, label = .lab)
+        expect_identical(.s$o, .line, label = .lab)
+      }
+    }
   })
 
   test_that("reasons name the simulation, and a later clean solve prints none", {

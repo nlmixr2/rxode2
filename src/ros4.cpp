@@ -133,6 +133,7 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                       if (!ind->err) std::copy(state.begin(), state.end(), yp);
                   } catch(const std::exception& e) {
                       if (ind->rc[0] == 0) ind->rc[0] = -2019;
+                      rxSolverFail(ind);
                   }
               }
 
@@ -173,6 +174,7 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                       if (!ind->err) std::copy(state.begin(), state.end(), yp);
                     } catch(const std::exception& e) {
                         if (ind->rc[0] == 0) ind->rc[0] = -2019;
+                        rxSolverFail(ind);
                     }
                 }
 
@@ -237,6 +239,7 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                   }
               } catch(const std::exception& e) {
                   if (ind->rc[0] == 0) ind->rc[0] = -2019;
+                  rxSolverFail(ind);
               }
           }
 
@@ -354,6 +357,7 @@ extern "C" void ros4_solveWith1Pt(int *neq, double *yp, double *xp, double xout,
           if (!ind->err) std::copy(state.begin(), state.end(), yp);
       } catch(const std::exception& e) {
           if (ind->rc[0] == 0) ind->rc[0] = -2019;
+          rxSolverFail(ind);
           *istate = -1;
           return;
       }
