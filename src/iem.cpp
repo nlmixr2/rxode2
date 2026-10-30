@@ -35,7 +35,7 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
   stepper_type stepper(1e-6);
 
   int neqOde = op->neq - op->numLin - op->numLinSens;
-  auto sys = make_rxode2_system_iem(ind, c_dydt, calc_jac, neq);
+  auto sys = make_rxode2_system_iem(ind, c_dydt, calc_jac, neq, neqOde);
   state_type state(neqOde > 0 ? (size_t)neqOde : (size_t)1);
   double *yp;
 
@@ -259,7 +259,7 @@ extern "C" void iem_solveWith1Pt(int *neq, double *yp, double *xp, double xout,
   typedef boost::numeric::odeint::implicit_euler<double> stepper_type;
   stepper_type stepper(1e-6);
 
-  auto sys = make_rxode2_system_iem(ind, dydt, calc_jac, neq);
+  auto sys = make_rxode2_system_iem(ind, dydt, calc_jac, neq, neqOde);
 
   if (neqOde > 0) {
       state_type state(neqOde);
