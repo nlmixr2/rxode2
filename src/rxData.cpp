@@ -110,7 +110,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt,
              bool addlKeepsCov,
              bool addlDropSs,
              bool ssAtDoseTime,
-             Nullable<List> iCovIn = R_NilValue);
+             Nullable<List> iCovIn = R_NilValue,
+             std::string tieOrder = "evid");
 
 RObject et_(List input, List et__);
 

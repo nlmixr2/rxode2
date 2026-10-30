@@ -24,7 +24,8 @@ List etTrans(List inData, const RObject &mv, bool addCmt,
              bool addlKeepsCov,
              bool addlDropSs,
              bool ssAtDoseTime,
-             Nullable<List> iCovIn);
+             Nullable<List> iCovIn,
+             std::string tieOrder = "evid");
 SEXP nestingInfo_(SEXP omega, List data);
 
 List rxExpandNesting(const RObject& obj, List& nestingInfo,
