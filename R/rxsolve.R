@@ -3795,7 +3795,8 @@ rxSolve.default <- function(
       }
     }
     # delay() history is recorded on the dense dop853 path (default, and the
-    # dop853 leg of "dop853+ros4") and on the dense dop5, bs and ros4 paths.
+    # dop853 leg of "dop853+ros4") and on the dense dop5, bs, ros4 and cvode
+    # paths.
     # Other solvers cannot record dense history and are rejected.
     .stiff2 <- if (is.null(.ctl$stiff2)) 0L else as.integer(.ctl$stiff2)
     if (.ctl$method >= 200L) {
@@ -3811,16 +3812,16 @@ rxSolve.default <- function(
       .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
     } else if (
       (.ctl$method == 0L && (.stiff2 == 0L || .stiff2 == 13L)) ||
-        (.ctl$method %in% c(10L, 11L, 13L) && .stiff2 == 0L)
+        (.ctl$method %in% c(10L, 11L, 13L, 21L) && .stiff2 == 0L)
     ) {
-      # dop853 (optionally + ros4 secondary), or pure dop5, bs or ros4
+      # dop853 (optionally + ros4 secondary), or pure dop5, bs, ros4 or cvode
       if (!isTRUE(.ctl$dense)) {
         .ctl$dense <- TRUE
         .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
       }
     } else {
       stop(
-        "delay differential equations require a dense solver; use method='dop853+ros4' (the default for delay models), 'dop853', 'dop5', 'bs', or 'ros4' (stiff)", # nolint: line_length_linter.
+        "delay differential equations require a dense solver; use method='dop853+ros4' (the default for delay models), 'dop853', 'dop5', 'bs', 'ros4' or 'cvode' (stiff)", # nolint: line_length_linter.
         call. = FALSE
       )
     }

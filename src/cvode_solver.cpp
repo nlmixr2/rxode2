@@ -169,3 +169,34 @@ int cvode_ctx_dense_calc_state(cvode_ctx_t *ctx, double t, double *yp) {
   for (sunindextype i = 0; i < ctx->neq; i++) yp[i] = d[i];
   return 1;
 }
+
+extern "C"
+int cvode_ctx_set_stop_time(cvode_ctx_t *ctx, double tstop) {
+  return (CVodeSetStopTime(ctx->mem, (sunrealtype)tstop) < 0) ? -1 : 1;
+}
+
+extern "C"
+int cvode_ctx_set_max_step(cvode_ctx_t *ctx, double hmax) {
+  return (CVodeSetMaxStep(ctx->mem, (sunrealtype)(hmax > 0.0 ? hmax : 0.0)) < 0) ? -1 : 1;
+}
+
+extern "C"
+int cvode_ctx_last_step(cvode_ctx_t *ctx, double *tn, double *h) {
+  sunrealtype t, hu;
+  if (CVodeGetCurrentTime(ctx->mem, &t) < 0) return -1;
+  if (CVodeGetLastStep(ctx->mem, &hu) < 0) return -1;
+  *tn = (double)t;
+  *h  = (double)hu;
+  return 1;
+}
+
+extern "C"
+int cvode_ctx_restart(cvode_ctx_t *ctx) {
+  sunrealtype tn;
+  if (CVodeGetCurrentTime(ctx->mem, &tn) < 0) return -1;
+  if (CVodeGetDky(ctx->mem, tn, 0, ctx->dky) < 0) return -1;
+  N_VScale(1.0, ctx->dky, ctx->y);
+  if (CVodeReInit(ctx->mem, tn, ctx->y) < 0) return -1;
+  ctx->tret = (double)tn;
+  return 1;
+}
