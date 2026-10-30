@@ -319,6 +319,10 @@
   every method: an adaptive method such as `dop853s` needs `hmax` for
   accurate sensitivities.
 
+- The adjoint builders no longer constant-fold a numeric default such as
+  `k <- 0.5` in the model.  Before, a supplied `k` was ignored in the
+  derivatives and its sensitivity was 0.
+
 - `rxPrune()` (and so the symengine loads used for sensitivities) no
   longer produces invalid model code for a model with more than one
   string-valued output, such as an unconditional string and one assigned

@@ -23,7 +23,7 @@
 #' @export
 #' @keywords internal
 .rxDiscreteAdjointBuild <- function(object, calcSens) {
-  .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
+  .model <- rxode2::rxS(rxode2::rxGetModel(object), FALSE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
   .ns <- length(.st)
   .np <- length(calcSens)
@@ -80,12 +80,16 @@
   assign("Rx_pow", function(a, b) a^b, .env)
   assign("expit", function(x, a = 0, b = 1) a + (b - a) / (1 + exp(-x)), .env)
   assign("logit", function(x, a = 0, b = 1) log((x - a) / (b - x)), .env)
+  # model defaults such as `k <- 0.5` stay symbolic; supplied params override
+  .def <- .rxAdjDefaults(object)
   .setState <- function(x) {
     for (i in seq_len(.ns)) {
       assign(.st[i], x[i], envir = .env)
     }
   }
   .setParams <- function(params) {
+    # refill omitted defaults so an earlier call's override does not persist
+    params <- .rxAdjParams(params, .def)
     .nm <- names(params)
     for (i in seq_along(params)) {
       assign(.nm[i], params[[i]], envir = .env)

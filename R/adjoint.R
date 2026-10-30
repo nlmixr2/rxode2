@@ -125,11 +125,12 @@ rxSolveAdjoint <- function(
 ) {
   object <- .rxAdjointObject(object)
   .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
-  .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
+  .model <- rxode2::rxS(rxode2::rxGetModel(object), FALSE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
   if (length(.st) == 0L) {
     stop("adjoint sensitivities require a model with ODE states", call. = FALSE)
   }
+  params <- .rxAdjParams(params, .rxAdjDefaults(object))
   if (is.null(adjStates)) {
     adjStates <- .st
   }
@@ -212,7 +213,7 @@ rxSolveAdjoint <- function(
 .rxAdjointSolveBuild <- function(object, calcSens, events, adjStates = NULL) {
   object <- .rxAdjointObject(object)
   .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
-  .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
+  .model <- rxode2::rxS(rxode2::rxGetModel(object), FALSE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
   if (length(.st) == 0L) {
     stop("adjoint solve requires a model with ODE states", call. = FALSE)
@@ -357,6 +358,7 @@ rxSolveAdjoint <- function(
     dFexpr = .dFexpr,
     dLagStr = .dLagStr,
     lagStr = .lagStr,
+    ini = .rxAdjDefaults(object),
     events = events
   )
 }
@@ -378,6 +380,7 @@ rxSolveAdjoint <- function(
 #' @export
 #' @keywords internal
 .rxAdjointSolveEvalC <- function(build, params, outTimes, denseBy = 0.01, atol = 1e-10, rtol = 1e-10) {
+  params <- .rxAdjParams(params, build$ini)
   .st <- build$st
   calcSens <- build$calcSens
   adjStates <- build$adjStates
@@ -639,7 +642,7 @@ rxSolveAdjoint <- function(
 .rxAdjointGradBuild <- function(object, calcSens, pred, events, errModel = NULL) {
   object <- .rxAdjointObject(object)
   .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
-  .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
+  .model <- rxode2::rxS(rxode2::rxGetModel(object), FALSE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
   if (length(.st) == 0L) {
     stop("adjoint gradient requires a model with ODE states", call. = FALSE)
@@ -865,8 +868,21 @@ rxSolveAdjoint <- function(
     dLagStr = .dLagStr,
     lagStr = .lagStr,
     needF = .needF,
+    ini = .rxAdjDefaults(object),
     events = events
   )
+}
+
+## The symbolic adjoint is derived without constant folding, so its expressions
+## can read a model default such as `k <- 0.5`; these are the defaults of the
+## model's parameters, filled in under the supplied values.
+.rxAdjDefaults <- function(object) {
+  .mv <- rxode2::rxModelVars(object)
+  .mv$ini[names(.mv$ini) %in% .mv$params]
+}
+
+.rxAdjParams <- function(params, defaults) {
+  c(params, defaults[setdiff(names(defaults), names(params))])
 }
 
 ## numeric evaluation of an rxFromSE expression string at parameter values
@@ -900,6 +916,7 @@ rxSolveAdjoint <- function(
 #' @export
 #' @keywords internal
 .rxAdjointGradEval <- function(build, params, obsTimes, obs, weight = 1, denseBy = 0.01, atol = 1e-10, rtol = 1e-10) {
+  params <- .rxAdjParams(params, build$ini)
   .st <- build$st
   calcSens <- build$calcSens
   errModel <- build$errModel
@@ -1144,6 +1161,7 @@ rxSolveAdjoint <- function(
 #' @export
 #' @keywords internal
 .rxAdjointGradEvalC <- function(build, params, obsTimes, obs, weight = 1, denseBy = 0.01, atol = 1e-10, rtol = 1e-10) {
+  params <- .rxAdjParams(params, build$ini)
   ## all duals (F, modeled lag, replace/multiply, modeled rate/dur infusion) run
   ## through the C++ sweep.
   .st <- build$st
