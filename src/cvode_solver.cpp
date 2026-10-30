@@ -147,11 +147,13 @@ int cvode_ctx_integrate_stop(cvode_ctx_t *ctx, double *yp, double t0, double tou
                              double tstop, int restart) {
   N_VSetArrayPointer(yp, ctx->y);
   if (restart && CVodeReInit(ctx->mem, (sunrealtype)t0, ctx->y) < 0) return -1;
+  if (tstop < tout) tstop = tout;
   if (CVodeSetStopTime(ctx->mem, (sunrealtype)tstop) < 0) return -1;
   sunrealtype tret;
   int ret = CVode(ctx->mem, (sunrealtype)tout, ctx->y, &tret, CV_NORMAL);
   ctx->tret = (double)tret;
-  return (ret >= 0) ? 1 : -1;
+  // yp holds y(tout) only if CVODE returned at tout
+  return (ret >= 0 && (double)tret == tout) ? 1 : -1;
 }
 
 extern "C"

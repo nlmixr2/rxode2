@@ -28,7 +28,8 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
 // (evid 9) at which no time-varying covariate changes value, or slope, so
 // neither the state nor the right-hand side changes there.  An mtime() or evid
 // 2 record can mark a model-time or right-hand-side discontinuity, so it
-// re-initialises as a dose does.
+// re-initialises as a dose does.  An NA covariate counts as a change, at its
+// record and at the records next to it.
 static bool cvodeCarriesAcross(rx_solving_options *op, rx_solving_options_ind *ind, int r) {
   int raw = ind->ix[r];
   if (raw < 0 || raw >= ind->n_all_times_orig) return false;
@@ -49,12 +50,14 @@ static bool cvodeCarriesAcross(rx_solving_options *op, rx_solving_options_ind *i
   return true;
 }
 
-// The time CVODE must not step past on its way to record i: the first record
-// from i on that it may not carry on across (or the last record), or the first
-// pending extra dose after xp when that comes earlier.  *rStop gets the
-// record.
+// The time CVODE must not step past on its way from xp to record i (at xout):
+// the first record from i on that it may not carry on across (or the last
+// record), or the first pending extra dose after xp when that comes earlier,
+// but never before xout.  An extra dose before xout that handleExtraDose() did
+// not apply on the way (a second one in the interval, or an ignored one) is
+// integrated over, as every solver does.  *rStop gets the record.
 static double cvodeStopTime(rx_solving_options *op, rx_solving_options_ind *ind,
-                            int i, double xp, int *rStop) {
+                            int i, double xp, double xout, int *rStop) {
   int r = i;
   while (r < ind->n_all_times - 1 && cvodeCarriesAcross(op, ind, r)) r++;
   *rStop = r;
@@ -63,7 +66,7 @@ static double cvodeStopTime(rx_solving_options *op, rx_solving_options_ind *ind,
     double te = ind->extraDoseTime[ind->extraDoseTimeIdx[e]];
     if (te > xp && te < ts) ts = te;
   }
-  return ts;
+  return (ts < xout) ? xout : ts;
 }
 
 extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,
@@ -201,7 +204,7 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
                 preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
                 if (neqOde > 0 && cvode_ctx) {
                   cvStop = cvMayCarry
-                    ? cvodeStopTime(op, ind, i, ind->extraDoseNewXout, &cvStopRec)
+                    ? cvodeStopTime(op, ind, i, ind->extraDoseNewXout, xout, &cvStopRec)
                     : xout;
                   istate = cvode_ctx_integrate_stop(cvode_ctx, yp,
                                                     ind->extraDoseNewXout, xout,
@@ -222,7 +225,7 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
           preSolve(op, ind, xp, xout, yp);
           if (neqOde > 0 && cvode_ctx) {
             if (!cvLive) {
-              cvStop = cvMayCarry ? cvodeStopTime(op, ind, i, xp, &cvStopRec) : xout;
+              cvStop = cvMayCarry ? cvodeStopTime(op, ind, i, xp, xout, &cvStopRec) : xout;
             }
             istate = cvode_ctx_integrate_stop(cvode_ctx, yp, xp, xout, cvStop, !cvLive);
             cvLive = cvMayCarry && istate > 0 && cvStopRec > i;
