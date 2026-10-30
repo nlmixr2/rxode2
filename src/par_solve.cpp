@@ -3036,12 +3036,16 @@ static inline void handleSSbolusIterate(int *neq,
                                         int *canBreak,
                                         int adjustEvidBolusLag,
                                         int minSS, int maxSS) {
-  // advance to trough
+  // advance to trough; like NONMEM every cycle runs on a clock from 0 to ii,
+  // so a model reading t has a fixed point (#1585)
   ind->idx=*i;
-  *xout2 = *xp2 + *curIi;
+  *xp2 = 0.0;
+  *xout2 = *curIi;
   for (int k = rxEffNeq(ind, op); k--;) {
     ind->solveLast[k] = yp[k];
   }
+  // restart: the cycle clock is not the solver's last time
+  *istate=1;
   // yp is last solve or y0
   solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
@@ -3052,7 +3056,8 @@ static inline void handleSSbolusIterate(int *neq,
       break;
     }
     ind->idx=*i;
-    *xout2 = *xp2 + *curIi;
+    *xp2 = 0.0;
+    *xout2 = *curIi;
     // Use "real" xout for handle_evid functions.
     evid = getEvid(ind, ind->ix[*i])-adjustEvidBolusLag;
     handle_evid(evid, neq[0],
@@ -4246,17 +4251,21 @@ void handleSS(int *neq,
       // steady-state period's flow from the post-dose peak for the monodromy IC.
       if (op->adjoint && !doSS2) _adjSSbolusIi = curIi;
       if (isSsLag) {
-        //advance the lag time
+        //advance the lag time on the steady-state cycle clock
         ind->idx=*i;
-        xout2 = xp2 + curIi - curLagExtra;
+        xp2 = 0.0;
+        xout2 = curIi - curLagExtra;
         // Use "real" xout for handle_evid functions.
         *istate=1;
         handle_evid(getEvid(ind, ind->ix[bi])-adjustEvidBolusLag, neq[0],
                     BadDose, InfusionRate, dose, yp,
                     xout, neq[1], ind);
+        // covariates stay at the dose time, as in the cycles
+        ind->ssTime = xp;
         // yp is last solve or y0
         solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
                      xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+        ind->ssTime = NA_REAL;
         if (overIi > 0) {
           // lag > ii: the doses of the overIi earlier intervals arrive in this
           // one, as regular boluses (rateOn/regEvid are only set for infusions)

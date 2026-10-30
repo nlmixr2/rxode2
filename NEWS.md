@@ -45,6 +45,10 @@
   point exception or fail with an unrelated internal error (#1551).
 
 ### Steady state
+- A steady-state bolus now runs each dosing cycle on a clock from 0 to `ii`,
+  as NONMEM does, so a model whose ODE reads `t` reaches a steady state.  The
+  cycles used to keep advancing `t`, so the solve failed or returned values
+  that depended on `maxSS` (#1585).
 - A steady-state bolus into a compartment whose `alag()` is longer than `ii`
   now includes the doses of the earlier intervals that arrive inside the
   observed one; they were dropped, so the profile decayed from the trough
