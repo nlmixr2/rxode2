@@ -546,13 +546,13 @@ struct rx_solving_options_ind_s {
   int     delaySS;      /* 1 while handleSS() records delay() history */
   double  delaySSii;    /* dosing interval of that steady state (0 = constant) */
   double  delayMaxT;    /* largest delay duration seen */
-  // Fixed-duration infusions in progress: (stop record, rate its start added)
-  // pairs, so the stop removes the rate its start added rather than
-  // re-evaluating a state-dependent f() (rxode2#1568).  Owned by the subject,
-  // freed in rxFreeInd().
+  // Fixed-duration infusions in progress: (stop record, rate its start added,
+  // then the rate's forward sensitivities) entries, so the stop removes what
+  // its start added rather than re-evaluating a state-dependent f()
+  // (rxode2#1568).  Owned by the subject, freed in rxFreeInd().
   double *infDurOn;
-  int     infDurOnCap; /* allocated pairs in infDurOn */
-  int     infDurOnN;   /* pairs in use */
+  int     infDurOnCap; /* allocated doubles in infDurOn */
+  int     infDurOnN;   /* entries in use */
 };
 
 typedef struct rx_solve_s {
