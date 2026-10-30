@@ -398,16 +398,20 @@ static inline double rxKeptStep(double h, double hmin, double hmax) {
 }
 
 // The time scale of the state y with derivative f: ||y|| / ||f||, both RMS
-// norms weighted by 1 / (atol + rtol |y|) (dop853's hinit() starts from 1/100
-// of it), or 0 when either norm is negligible.
+// norms weighted by 1 / (atol + rtol |y|), or 0 when either norm is
+// negligible.  scalarTol uses the first compartment's atol and rtol for
+// every state, as dop5 and ros4 control their error; otherwise each state's
+// own, as dop853 does.
 static inline double rxStepScale(int n, const double *y, const double *f,
-                                 rx_solving_options *op, rx_solving_options_ind *ind) {
+                                 rx_solving_options *op, rx_solving_options_ind *ind,
+                                 bool scalarTol) {
   const double *atol = (ind->atol2 != NULL) ? ind->atol2 : op->atol2;
   const double *rtol = (ind->rtol2 != NULL) ? ind->rtol2 : op->rtol2;
   double d0 = 0.0, d1 = 0.0;
   for (int i = 0; i < n; i++) {
-    double sk = ((atol != NULL) ? atol[i] : op->ATOL) +
-      ((rtol != NULL) ? rtol[i] : op->RTOL) * fabs(y[i]);
+    int k = scalarTol ? 0 : i;
+    double sk = ((atol != NULL) ? atol[k] : op->ATOL) +
+      ((rtol != NULL) ? rtol[k] : op->RTOL) * fabs(y[i]);
     d0 += (y[i] / sk) * (y[i] / sk);
     d1 += (f[i] / sk) * (f[i] / sk);
   }
@@ -419,19 +423,23 @@ static inline double rxStepScale(int n, const double *y, const double *f,
 // controller proposed at the end of a segment.  Across a plain observation
 // record the next segment starts with that step; across a dose, an infusion
 // edge or any other record or extra dose that changes the state or the
-// dosing, with that step capped by the time scale of the state just after
-// (rxStepScale()), so a large jump starts small; after an mtime() or evid 2
-// record, or with no step kept, the way the solver starts a solve.
+// dosing, with that step capped by 1/100 of the time scale of the state just
+// after (rxStepScale(), where dop853's hinit() starts), so a large jump
+// starts small; after an mtime() or evid 2 record, or with no step kept, the
+// way the solver starts a solve.  A solver that sets acrossDoses false
+// starts afresh after every record that is not a plain observation.
 struct rxStepKeeper {
   double h = 0.0;
   int mode = 0; // 0 afresh, 1 the kept step, 2 the kept step capped
+  bool acrossDoses = true;
+  bool scalarTol = false; // see rxStepScale()
   std::vector<double> f;
   void solved(double hNext) {
     h = hNext;
     mode = (hNext > 0.0) ? 1 : 0;
   }
   void reset() { mode = 0; }
-  void stateChanged() { if (mode != 0) mode = 2; }
+  void stateChanged() { if (mode != 0) mode = acrossDoses ? 2 : 0; }
   // after processing a record with this evid
   void record(int evid) {
     if (rxKeepsStep(evid)) return;
@@ -450,7 +458,7 @@ struct rxStepKeeper {
     if (mode == 2) {
       f.assign((size_t)(neq[0] > nOde ? neq[0] : nOde), 0.0);
       dydt(neq, t, y, f.data());
-      double tau = rxStepScale(nOde, y, f.data(), op, ind);
+      double tau = 0.01 * rxStepScale(nOde, y, f.data(), op, ind, scalarTol);
       if (!(tau > 0.0)) return hDefault;
       if (tau < hk) hk = tau;
     }

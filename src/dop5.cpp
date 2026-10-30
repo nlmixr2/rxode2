@@ -31,6 +31,7 @@ extern "C" void ind_dop5_0(rx_solve *rx, rx_solving_options *op, int solveid, in
       ind->atol2[0], ind->rtol2[0], error_stepper_type());
   bool stepper_initialized = false;
   rxStepKeeper keep; // how each segment starts
+  keep.scalarTol = true;
       
   int neqOde = op->neq - op->numLin - op->numLinSens;
   rxode2_system sys(c_dydt, neq, ind);

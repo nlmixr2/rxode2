@@ -61,6 +61,10 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   dense_stepper_type dense_stepper(stepper);
   bool stepper_initialized = false;
   rxStepKeeper keep; // how each segment starts
+  keep.scalarTol = true;
+  // ros4 restarts after a dose: on a stiff transient its L-stable step accepts
+  // a kept step far longer than the relaxation it skips (Robertson)
+  keep.acrossDoses = false;
 
   // scratch vectors for sampling ros4 dense output when recording delay history
   state_type _dq0(neqOde), _dq1(neqOde), _dq2(neqOde), _dq3(neqOde);

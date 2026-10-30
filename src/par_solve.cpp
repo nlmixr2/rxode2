@@ -6631,6 +6631,9 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   double xp = x[0];
   ind->solvedIdx = 0;
   rxStepKeeper keep; // how each segment starts
+  // dop853 restarts after a dose: hinit() already starts near the capped
+  // kept step, and growing from the cap costs it more steps than hinit()
+  keep.acrossDoses = false;
   double hNext = 0.0;
   for(i=0; i<ind->n_all_times; i++) {
     ind->idx=i;
