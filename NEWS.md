@@ -24,6 +24,14 @@
   package directory (#1506).
 
 ### Sensitivities
+- A `linCmt()` model's sensitivities follow a replace (EVID 5) or multiply
+  (EVID 6) record, from the data or pushed by `replace()`/`multiply()`.
+  The compartment's derivatives in the `linCmt()` parameters used to keep
+  their history, so every gradient after such a record was wrong: a
+  replace with 50 at 24 h gave d(central)/d(cl) at 30 h of -14.2 instead
+  of -8.2.  rxode2 calls rxode2lincmt's `linCmtEventJac()` (slot 10 of its
+  pointer table) after the event, and keeps the old behaviour with an
+  rxode2lincmt that does not have it.
 - The `linCmt()` sensitivity carry has 32 columns per subject instead of 8
   (`linCmtCarryMaxPairs()`), so an IOV model whose occasion etas each need
   one can be carried.  Each subject's struct grows by 768 bytes.  No field

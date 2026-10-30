@@ -23,6 +23,9 @@ int rxode2LinCmtThread(int mx);
 // rxode2lincmt's slot 9, linCmtCarryReset(): zeroes the carry columns a
 // subject has written; a full clear of ind->linCmtCarryT without it
 extern rxLcIndFree_t _p_linCmtCarryReset;
+// rxode2lincmt's slot 10, linCmtEventJac(): a linCmt() compartment's
+// Jacobian rows follow a replace or multiply; a no-op without it
+extern rxLcEventJac_t _p_linCmtEventJac;
 
 #if defined(__cplusplus)
 }

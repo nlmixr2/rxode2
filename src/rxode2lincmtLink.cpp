@@ -55,6 +55,8 @@ static void rxLcStubFreeInd(rx_solving_options_ind *) {}
 static void rxLcStubCarryReset(rx_solving_options_ind *ind) {
   std::memset(ind->linCmtCarryT, 0, sizeof(ind->linCmtCarryT));
 }
+// Without rxode2lincmt's slot 10 the Jacobian rows stay as they were
+static void rxLcStubEventJac(double *, int, int, int, int, int, double) {}
 
 rxLcLinCmtA_t _p_linCmtA = &rxLcStubA;
 rxLcLinCmtB_t _p_linCmtB = &rxLcStubB;
@@ -66,11 +68,25 @@ rxLcScaleInitN_t _p_linCmtScaleInitN = &rxLcStubScaleInitN;
 rxLcZeroJac_t _p_linCmtZeroJac = &rxLcStubZeroJac;
 rxLcIndFree_t _p_linCmtFreeInd = &rxLcStubFreeInd;
 rxLcIndFree_t _p_linCmtCarryReset = &rxLcStubCarryReset;
+rxLcEventJac_t _p_linCmtEventJac = &rxLcStubEventJac;
 
 SEXP _rxode2_iniRxode2lincmtPtrs(SEXP p) {
   iniRxode2lincmtPtrs0(p);
   iniRxode2lincmtCarryReset(p, &_p_linCmtCarryReset);
+  iniRxode2lincmtEventJac(p, &_p_linCmtEventJac);
   return R_NilValue;
+}
+
+// After a replace or multiply record changed compartment cmt of the state
+// yp (handle_evid()), make a linCmt() compartment's Jacobian rows follow;
+// rxode2lincmt knows their layout (slot 10)
+void rxode2LinCmtEventJac(double *yp, int cmt, int type, double factor) {
+  rx_solving_options *op = getRxSolve_()->op;
+  if (op->numLinSens <= 0) return;
+  int c = cmt - op->linOffset;
+  if (c < 0 || c >= op->numLin) return;
+  _p_linCmtEventJac(yp + op->linOffset, op->numLin, op->depotLin, op->numLinSens,
+                    c, type, factor);
 }
 
 // rxode2's thread slot (thread_local override + this DLL's OpenMP numbering),
@@ -130,7 +146,7 @@ SEXP _rxode2_rxode2lincmtHost(void) {
 // Test hook: which lincmt slots are bound to something other than their stub
 SEXP _rxode2_rxode2lincmtLinked(void) {
   rxProtect rx_protect;
-  SEXP ret = rx_protect.protect(Rf_allocVector(LGLSXP, 10));
+  SEXP ret = rx_protect.protect(Rf_allocVector(LGLSXP, 11));
   int *p = LOGICAL(ret);
   p[0] = _p_linCmtA != &rxLcStubA;
   p[1] = _p_linCmtB != &rxLcStubB;
@@ -142,6 +158,7 @@ SEXP _rxode2_rxode2lincmtLinked(void) {
   p[7] = _p_linCmtZeroJac != &rxLcStubZeroJac;
   p[8] = _p_linCmtFreeInd != &rxLcStubFreeInd;
   p[9] = _p_linCmtCarryReset != &rxLcStubCarryReset;
+  p[10] = _p_linCmtEventJac != &rxLcStubEventJac;
   return ret;
 }
 

@@ -1278,6 +1278,14 @@ static inline double *_esInfusionDydtPre(int id, double xout, double *yp, int ne
   return _pre;
 }
 
+// rxode2's call into rxode2lincmt after a replace or multiply record changed
+// a compartment (src/rxode2lincmtLink.cpp): type 0 replace, 1 multiply by
+// factor
+#if defined(__cplusplus)
+extern "C"
+#endif
+void rxode2LinCmtEventJac(double *yp, int cmt, int type, double factor);
+
 static inline int handle_evid(int evid, int neq,
                               int *BadDose,
                               double *InfusionRate,
@@ -2081,6 +2089,7 @@ static inline int handle_evid(int evid, int neq,
         if (_esRow != NULL) free(_esRow);
       }
       yp[cmt] = getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);     //dosing before obs
+      rxode2LinCmtEventJac(yp, cmt, 0, 0.0);
       break;
     case EVIDF_MULT: //multiply
       ind->on[cmt] = 1;
@@ -2175,6 +2184,7 @@ static inline int handle_evid(int evid, int neq,
           if (_esRow != NULL) free(_esRow);
         }
         yp[cmt] *= _esAlpha;     //dosing before obs
+        rxode2LinCmtEventJac(yp, cmt, 1, _esAlpha);
       }
       break;
     case EVIDF_NORMAL:
