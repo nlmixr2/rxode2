@@ -5,6 +5,7 @@
 #include "cvode_solver.h"
 
 #include <stdlib.h>
+#include <math.h>
 #include <cvode/cvode.h>
 #include <cvode/cvode_ls.h>
 #include <nvector/nvector_serial.h>
@@ -152,8 +153,10 @@ int cvode_ctx_integrate_stop(cvode_ctx_t *ctx, double *yp, double t0, double tou
   sunrealtype tret;
   int ret = CVode(ctx->mem, (sunrealtype)tout, ctx->y, &tret, CV_NORMAL);
   ctx->tret = (double)tret;
-  // yp holds y(tout) only if CVODE returned at tout
-  return (ret >= 0 && (double)tret == tout) ? 1 : -1;
+  // yp holds y(tout) only if CVODE returned at tout, or at a stop time within
+  // roundoff of it (an infusion end computed as start + amt/rate)
+  if (ret < 0 || fabs((double)tret - tout) > 1e-12 * fmax(fabs(tout), 1.0)) return -1;
+  return 1;
 }
 
 extern "C"
