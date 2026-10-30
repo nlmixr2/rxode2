@@ -51,6 +51,9 @@
   that is empty or whose first column is empty gives the parameter-size
   error.  With a `sigma` to simulate, these used to crash R with a floating
   point exception or fail with an unrelated internal error (#1551).
+- `method = "cvode"` now honors `dense = TRUE`, as `rxIsDense()` and the
+  documentation describe; the CVODE dense driver existed but `dense = TRUE`
+  was silently dropped (#1599).
 
 ### Steady state
 - A steady-state bolus into a compartment whose `alag()` is longer than `ii`

@@ -161,7 +161,7 @@
 #'   maximum absolute step size.
 #'
 #'   Note that for dense output methods (`"dop853"`, `"dop5"`, `"bs"`,
-#'   `"ros4"`), `hmax` defaults to `NULL` to allow the solvers to
+#'   `"ros4"`, `"cvode"`), `hmax` defaults to `NULL` to allow the solvers to
 #'   determine the step size when `dense=TRUE`
 #'
 #'   For `method="indLin"`, `hmax` caps how long an interval is treated
@@ -1111,8 +1111,8 @@
 #' @param dense Logical; when `TRUE` and the method supports dense output,
 #'   enables continuous interpolation so the solver can take large internal
 #'   steps and reconstruct the solution cheaply at each observation time.
-#'   Dense-capable single methods are `"dop853"`, `"dop5"`, `"bs"`, and
-#'   `"ros4"`.  `"dop853+ros4"` is the only dense AutoSwitch composite: the
+#'   Dense-capable single methods are `"dop853"`, `"dop5"`, `"bs"`, `"ros4"`
+#'   and `"cvode"`.  `"dop853+ros4"` is the only dense AutoSwitch composite: the
 #'   secondary must be dense too (`"ros4"` is the only stiff method that is),
 #'   and handing a dense segment from the primary to the secondary mid-segment
 #'   is implemented for a `"dop853"` primary.  Other composites solve densely
@@ -2059,7 +2059,7 @@ rxSolve <- function(
       )
       dense <- FALSE
     }
-    if (isTRUE(dense) && method %in% c(0L, 10L, 11L, 13L) && (stiff2 == 0L || stiff2 == 13L) && missing(hmax)) {
+    if (isTRUE(dense) && method %in% c(0L, 10L, 11L, 13L, 21L) && (stiff2 == 0L || stiff2 == 13L) && missing(hmax)) {
       ## .minfo("dense=TRUE: setting hmax=NULL so the solver can take steps larger than the observation spacing")
       hmax <- NULL
     }
@@ -7257,7 +7257,7 @@ rxIsNonStiff <- function(method) {
 #' accuracy on densely sampled grids.
 #'
 #' Dense-capable single methods are:
-#' `"dop853"` (0), `"dop5"` (10), `"bs"` (11), `"ros4"` (13).
+#' `"dop853"` (0), `"dop5"` (10), `"bs"` (11), `"ros4"` (13), `"cvode"` (21).
 #'
 #' For composite AutoSwitch methods (e.g. `"dop5+ros4"`), `TRUE` is returned
 #' only when **both** the primary and stiff secondary are dense-capable.
@@ -7274,7 +7274,7 @@ rxIsNonStiff <- function(method) {
 #' rxIsDense("dop853")                       # TRUE
 #' rxIsDense("ros4")                         # TRUE
 #' rxIsDense("liblsoda")                     # FALSE
-#' rxIsDense(c("dop5", "bs", "cvode"))       # TRUE TRUE FALSE
+#' rxIsDense(c("dop5", "bs", "cvode"))       # TRUE TRUE TRUE
 #' rxIsDense("dop5+ros4")                    # TRUE  (both dense)
 #' rxIsDense("dop5+ros43")                   # FALSE (ros43 not dense)
 #'
@@ -7282,7 +7282,9 @@ rxIsNonStiff <- function(method) {
 #' @export
 #' @family Solver options and performance
 rxIsDense <- function(method) {
-  .denseCodes <- c(0L, 10L, 11L, 13L)
+  .denseCodes <- c(0L, 10L, 11L, 13L, 21L)
+  # ros4 is the only dense stiff secondary of a composite
+  .denseStiff <- 13L
   .methodIdx <- c(
     "lsoda" = 1L,
     "dop853" = 0L,
@@ -7474,7 +7476,7 @@ rxIsDense <- function(method) {
           .parts <- .parseAutoSwitchMethod(.m)
           !is.null(.parts) &&
             as.integer(.parts["primary"]) %in% .denseCodes &&
-            as.integer(.parts["stiff"]) %in% .denseCodes
+            as.integer(.parts["stiff"]) %in% .denseStiff
         },
         logical(1)
       )
