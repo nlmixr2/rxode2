@@ -43,6 +43,11 @@
   that is empty or whose first column is empty gives the parameter-size
   error.  With a `sigma` to simulate, these used to crash R with a floating
   point exception or fail with an unrelated internal error (#1551).
+- In a model with `alag()`, time-varying covariates now follow the data
+  records' own times, as in NONMEM, rather than the sorted times where a
+  lagged dose arrives.  A lagged dose used to carry its record's covariates to
+  its arrival, so `nocb`, `locf`, `linear` and `midpoint` covariates over a lag
+  window that crossed a covariate change did not match NONMEM (#1584).
 
 ### Steady state
 - A steady-state bolus into a compartment whose `alag()` is longer than `ii`
