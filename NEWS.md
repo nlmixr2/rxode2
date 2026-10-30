@@ -43,6 +43,12 @@
   that is empty or whose first column is empty gives the parameter-size
   error.  With a `sigma` to simulate, these used to crash R with a floating
   point exception or fail with an unrelated internal error (#1551).
+- `liblsoda`, `lsoda`, `lsode` and `bdf` now stop exactly at the next dose,
+  infusion edge, `mtime()` or other event record (and at extra doses between
+  records) instead of stepping past it and interpolating back.  A time window
+  in the model that starts at an `mtime()` record was stepped over: an input
+  switched on for 0.05 time units at the `mtime()` was missed entirely.  Plain
+  observation records are still stepped past and interpolated.
 
 ### Steady state
 - A steady-state bolus into a compartment whose `alag()` is longer than `ii`
