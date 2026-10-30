@@ -457,6 +457,8 @@ typedef void (*_setThreadInd_t) (int);
 typedef int  (*_rxPushDose_t)(rx_solving_options_ind *, double,
                                double, int, double, int,
                                double, double, int, int, int);
+// time-to-event helper: what 0 = sim, 1 = H0, 2 = tteTime, 3 = tteCount
+typedef double (*_rxTte_t)(int, double, int, double);
 typedef void (*rxode2_assignFuns2_t)(rx_solve, rx_solving_options, t_F, t_LAG, t_RATE, t_DUR,t_calc_mtime, t_ME, t_IndF, t_getTime, t_locateTimeIndex, t_handle_evidL,t_getDur);
 
 #endif // __rxode2_model_shared_H__

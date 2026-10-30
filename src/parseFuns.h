@@ -418,6 +418,32 @@ static inline int handleFunctionSum(transFunctions *tf) {
   return 0;
 }
 
+// Time-to-event (tte()) helpers; every one takes the endpoint's tte index and
+// dispatches through _rxTte(_cSub, t, what, k) (src/tte.cpp)
+static inline int handleFunctionTte(transFunctions *tf) {
+  int what = -1;
+  if (!strcmp("rxTteSim", tf->v)) what = 0;
+  else if (!strcmp("rxTteH0", tf->v)) what = 1;
+  else if (!strcmp("tteTime", tf->v)) what = 2;
+  else if (!strcmp("tteCount", tf->v)) what = 3;
+  if (what < 0) return 0;
+  int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
+  if (ii != 1) {
+    updateSyntaxCol();
+    sPrint(&_gbuf, _("'%s' takes 1 argument"), tf->v);
+    trans_syntax_error_report_fn(_gbuf.s);
+  }
+  sAppend(&sb, "_rxTte(_cSub, t, %d, (double) ", what);
+  sAppend(&sbDt, "_rxTte(_cSub, t, %d, (double) ", what);
+  sAppend(&sbt, "%s(", tf->v);
+  // tte simulation re-times records of each subject, so every subject needs
+  // its own event arrays (the same requirement as evid_() pushes)
+  tb.evid_ = 1;
+  tf->i[0] = 1;// Parse next arguments
+  tf->depth[0]=1;
+  return 1;
+}
+
 #include "parseFunsDiff.h"
 #include "parseFunsRandom.h"
 #include "parseFunsNa.h"
@@ -428,6 +454,7 @@ static inline int handleFunctionsExceptLinCmt(transFunctions *tf) {
     handleFunctionDelay(tf) ||
     handleFunctionTad(tf) ||
     handleFunctionSum(tf) ||
+    handleFunctionTte(tf) ||
     handleFunctionLogit(tf) ||
     handleFunctionDiff(tf) ||
     handleFunctionPnorm(tf) ||

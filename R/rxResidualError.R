@@ -1,6 +1,6 @@
 #' A description of Rode2 supported residual errors
 #'
-#' @format A data frame with 6 columns and 183 rows
+#' @format A data frame with 6 columns and 184 rows
 #' \describe{
 #' \item{Error model}{A description of the type of residual error}
 #' \item{Functional Form}{For additive and proportional what functional form is used}

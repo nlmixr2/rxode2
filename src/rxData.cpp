@@ -53,6 +53,8 @@ using namespace arma;
 extern "C" void seedEng(int ncores);
 extern "C" void ensureLsodaCtxPool(int nCores);
 extern "C" void ensureIndLinExpCache(int nCores);
+extern "C" int rxTteN(void);
+extern "C" void rxTteSsAtol(double *ssAtol, int neq);
 extern "C" void ensureRworkPool(int nCores, int lrw, int liw);
 
 #include "cbindThetaOmega.h"
@@ -6766,13 +6768,20 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     // asking for two incompatible things.  Refuse instead of dropping one of
     // them.  rxSolve() refuses this earlier with a fuller message; this is the
     // backstop for a caller that reaches solver setup another way.
-    if (op->hasDelay && INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_evid_]) {
+    // tte() models set the evid_() flag but solve delay() in the per-record
+    // loop, whose dense steps record the history
+    if (op->hasDelay && INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_evid_] &&
+        rxTteN() == 0) {
       (Rf_error)("a model cannot combine delay() with evid_() event pushing: "
                  "delay() requires dense output, which cannot apply an event "
                  "pushed at an observation");
     }
     if (op->useDense && INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_evid_]) {
-      Rf_warning("dense output not yet supported for models that push events with evid_(); using standard output");
+      // tte() sets the evid_() flag without pushing events; its record loop
+      // gives the same solution, so no warning
+      if (rxTteN() == 0) {
+        Rf_warning("dense output not yet supported for models that push events with evid_(); using standard output");
+      }
       op->useDense = 0;
     }
     op->stiff = method;
@@ -7379,6 +7388,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->rtol2 = &_globals.grtol2[0];
     op->ssAtol = _globals.gssAtol;
     op->ssRtol = _globals.gssRtol;
+    rxTteSsAtol(_globals.gssAtol, op->neq);
 
     // Initialize per-thread tolerance arrays from the global baseline values.
     for (int _core = 0; _core < op->cores; _core++) {

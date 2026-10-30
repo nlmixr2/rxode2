@@ -24,6 +24,8 @@ extern int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
                        double _time, int _evid, double _amt, int _cmt,
                        double _rate, double _ii, int _addl, int _ss,
                        int _isDur);
+extern double _rxTte(int cSub, double t, int what, double k);
+SEXP _rxode2_rxTteSetup(SEXP);
 
 SEXP _vecDF(SEXP cv, SEXP n_);
 SEXP _rxode2_dropUnitsRxSolve(SEXP);
@@ -1147,6 +1149,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxSimThetaOmega", (DL_FUNC) _rxode2_rxSimThetaOmega, 28},
     {"_rxSetSeed", (DL_FUNC) _rxode2_rxSetSeed, 1},
     {"_rxode2_rxordSelect", (DL_FUNC) _rxode2_rxordSelect, 2},
+    {"_rxode2_rxTteSetup", (DL_FUNC) _rxode2_rxTteSetup, 1},
     {"_rxode2_rxErf", (DL_FUNC) &_rxode2_rxErf, 1},
     {"_rxode2_rxMemoryComponents_", (DL_FUNC) &_rxode2_rxMemoryComponents_, 25},
     {"_rxode2_rxRamBytes_", (DL_FUNC) &_rxode2_rxRamBytes_, 0},
@@ -1270,6 +1273,7 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "studentTInv", (DL_FUNC) &studentTInv);
   R_RegisterCCallable("rxode2", "_setThreadInd", (DL_FUNC) &_setThreadInd);
   R_RegisterCCallable("rxode2", "_rxPushDose",   (DL_FUNC) &_rxPushDose);
+  R_RegisterCCallable("rxode2", "_rxTte",        (DL_FUNC) &_rxTte);
 
   R_RegisterCCallable("rxode2", "ribeta", (DL_FUNC) &ribeta);
   R_RegisterCCallable("rxode2", "ribinom", (DL_FUNC) &ribinom);

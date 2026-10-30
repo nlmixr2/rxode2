@@ -153,8 +153,9 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
     # rather than symbols -- `symengine::S("I")` is the imaginary unit, so
     # differentiating by it fails with "Input is not a SYMBOL".  rxToSE() maps
     # each to the `rx_SymPy_Res_*` name the environment actually binds it under
-    # (`.rxSEreserved`, R/symengine.R:524).
-    .stateSym <- lapply(.states, function(.s) symengine::S(rxToSE(.s)))
+    # (`.rxSEreserved`, R/symengine.R:524).  Symbol() rather than S(): S()
+    # parses the name, which fails for a dotted state such as `rx.tteH.ev`.
+    .stateSym <- lapply(.states, function(.s) symengine::Symbol(rxToSE(.s)))
     names(.stateSym) <- .states
     for (.ii in seq_along(.states)) {
       .ddtName <- paste0("rx__d_dt_", .states[.ii], "__")

@@ -9,6 +9,7 @@
 #include "../inst/include/rxode2.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
 #include "../inst/include/rxode2parseGetTime.h"
+#include "tte.h"
 
 #define safe_zero(a) ((a) == 0 ? DBL_EPSILON : (a))
 #define _as_zero(a) (fabs(a) < sqrt(DBL_EPSILON) ? 0.0 : a)
@@ -140,10 +141,31 @@ static inline double getValue(int idx, double *y, int is_locf,
   return getValue(idx, y, is_locf, ind->ix, ind->n_all_times, ind->n_all_times_orig, op, lh);
 }
 
-// v is at record i's time; a pushed record has no value of its own, so
-// interpolate across it instead
-static inline bool rxAtDataRec(double v, double ti, const int *ix, int i, int nOrig) {
-  return isSameTime(v, ti) && !rxPushedRec(ix, i, nOrig);
+// During a tte() solve a record rxSolve() adds for an endpoint (found by its
+// DV role) without a value of a covariate (NA) has no value of its own either
+static int _rxNaCovNoValue = 0;
+extern "C" void rxSetNaCovNoValue(int on) {
+  _rxNaCovNoValue = on;
+}
+
+static inline const double *rxTteDvs(rx_solving_options_ind *ind) {
+  return _rxNaCovNoValue ? ind->dv : NULL;
+}
+
+static inline bool rxNoValueRec(const double *y, const double *dv, const int *ix, int i,
+                                int nOrig) {
+  if (rxPushedRec(ix, i, nOrig)) return true;
+  if (dv == NULL) return false;
+  int raw = ix == NULL ? i : ix[i], k;
+  int role = rxTteRole(dv[raw], &k);
+  return role > 0 && role != RXTTE_DATA && ISNA(y[raw]);
+}
+
+// v is at record i's time; a record without a value of its own (pushed) is
+// interpolated across instead
+static inline bool rxAtDataRec(double v, double ti, const double *y, const double *dv,
+                               const int *ix, int i, int nOrig) {
+  return isSameTime(v, ti) && !rxNoValueRec(y, dv, ix, i, nOrig);
 }
 
 // Linear interpolation between records i and j, moved past NA values
@@ -164,7 +186,8 @@ static inline double rxApproxLinear(double v, int i, int j, double *y, int n, in
 #define V(i, lh) getValue(i, y, is_locf, ix, n, nOrig, Meth, lh)
 template <typename TimeFn>
 static inline double rx_approxP(double v, double *y, int is_locf, int n, int nOrig,
-                                const int *ix, rx_solving_options *Meth, TimeFn T){
+                                const int *ix, const double *dv,
+                                rx_solving_options *Meth, TimeFn T){
   /* Approximate  y(v),  given (x,y)[i], i = 0,..,n-1 */
   int i, j, ij;
   if(!n) return R_NaN;
@@ -187,8 +210,8 @@ static inline double rx_approxP(double v, double *y, int is_locf, int n, int nOr
 
   double tj = T(j);
   double ti = T(i);
-  if(rxAtDataRec(v, tj, ix, j, nOrig)) return V(j, 1);
-  if(rxAtDataRec(v, ti, ix, i, nOrig)) return V(i, -1);
+  if(rxAtDataRec(v, tj, y, dv, ix, j, nOrig)) return V(j, 1);
+  if(rxAtDataRec(v, ti, y, dv, ix, i, nOrig)) return V(i, -1);
   /* impossible: if(T(j) == T(i)) return V(i); */
 
   switch (is_locf) {
@@ -210,10 +233,14 @@ static inline double rx_approxP(double v, double *y, int is_locf, int n, int nOr
 
 #undef V
 
-// Covariate of this subject at time t, on its (possibly lagged) sorted times
+// Covariate of this subject at time t, on its (possibly lagged) sorted times.
+// getTime() is 0 for an internal evid 9 record; the tte() records made evid 9
+// after solving keep their own time.
 static inline double rxApproxCov(double t, double *y, int is_locf,
                                  rx_solving_options *op, rx_solving_options_ind *id) {
-  return rx_approxP(t, y, is_locf, id->n_all_times, id->n_all_times_orig, id->ix, op, [id](int i) {
+  return rx_approxP(t, y, is_locf, id->n_all_times, id->n_all_times_orig, id->ix, rxTteDvs(id), op,
+                     [id](int i) {
+    if (_rxNaCovNoValue && getEvid(id, id->ix[i]) == 9) return getAllTimes(id, id->ix[i]);
     return id->fns ? id->fns->gettime(id->ix[i], id) : getTime(id->ix[i], id);
   });
 }
@@ -229,7 +256,7 @@ static inline double rxApproxCovData(double t, int k, int is_locf,
   double *at = indSample->all_times;
   int *evid = indSample->evid;
   // a modeled rate/duration stop's time is set while solving; use its start's
-  return rx_approxP(t, y, is_locf, n, n, NULL, op, [at, evid](int i) {
+  return rx_approxP(t, y, is_locf, n, n, NULL, rxTteDvs(indSample), op, [at, evid](int i) {
     return (i > 0 && (isEvidModeledRateStop(evid[i]) ||
                       isEvidModeledDurationStop(evid[i]))) ? at[i-1] : at[i];
   });
@@ -407,6 +434,14 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
             ind->cacheME=0;
             continue;
           }
+          if (rxNoValueRec(y, rxTteDvs(ind), ind->ix, idx, ind->n_all_times_orig)) {
+            // a tte() record: interpolate on the sorted timeline at its time
+            double _t = ind->fns && ind->fns->gettime ? ind->fns->gettime(ind->ix[idx], ind) :
+              getTime(ind->ix[idx], ind);
+            ind->par_ptr[op->par_cov[k]-1] = rxApproxCov(_t, y, is_locf, op, ind);
+            ind->cacheME=0;
+            continue;
+          }
           ind->par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, is_locf,
                                                     indSample, op, 0);
           if (idx == 0){
@@ -452,7 +487,7 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           // cov_ptr is laid out by the data records (n_all_times_orig)
           double *y = indSample->cov_ptr + indSample->n_all_times_orig*k;
           // a pushed record has no value of its own; interpolate across it
-          bool pushed = rxPushedRec(ind->ix, idxSample, ind->n_all_times_orig);
+          bool pushed = rxNoValueRec(y, rxTteDvs(ind), ind->ix, idxSample, ind->n_all_times_orig);
           if (!pushed && idxSample == 0 &&
               isSameTimeOp(t, (indSample->fns && indSample->fns->gettime ? indSample->fns->gettime(indSample->ix[idxSample], indSample) : getTime(indSample->ix[idxSample], indSample)))) {
             // y is in record order; a lagged dose can move record 0 off sorted slot 0
