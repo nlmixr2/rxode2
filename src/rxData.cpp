@@ -1712,7 +1712,17 @@ static inline rx_solving_options_ind **curIndSlot(rx_solving_options *op) {
 extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
-  inds_thread[rx_get_thread(op->cores)] = *ind;
+  // The copy serves the random-number functions (rxthreefry.cpp), which
+  // read only its scalars; the linCmt() carry array (1 KB) is skipped so the
+  // per-subject copy does not grow with the carry's columns.
+  {
+    char *_dst = (char*)&inds_thread[rx_get_thread(op->cores)];
+    const char *_src = (const char*)ind;
+    const size_t _a = offsetof(rx_solving_options_ind, linCmtCarryT);
+    const size_t _b = _a + sizeof(ind->linCmtCarryT);
+    memcpy(_dst, _src, _a);
+    memcpy(_dst + _b, _src + _b, sizeof(rx_solving_options_ind) - _b);
+  }
   // ... and the individual itself, for writes that have to reach the subject
   // rather than the copy (atolRtolFactorC_'s sticky tolerance factor).
   rx_solving_options_ind **_cur = curIndSlot(op);
