@@ -769,6 +769,27 @@
   )
 }
 
+## Dosing modifiers with a non-zero parameter derivative in an adjoint
+## expansion (the rx__adjdF / rx__adjDlag / rx__adjDrate blocks it emitted),
+## named as statements: what a sweep without dosing duals would leave out.
+.rxAdjointDoseDuals <- function(object) {
+  .l <- strsplit(rxNorm(object), "\n", fixed = TRUE)[[1]]
+  # 1-based compartments of each block's non-zero rows
+  .nz <- list()
+  for (.b in c("dF", "Dlag", "Drate")) {
+    .x <- grep(paste0("^rx__adj", .b, "_[0-9]+_[0-9]+__="), .l, value = TRUE)
+    .x <- .x[!grepl("=[[:space:]]*0(\\.0*)?[[:space:]]*;?[[:space:]]*$", .x)]
+    .nz[[.b]] <- unique(as.integer(sub(paste0("^rx__adj", .b, "_([0-9]+)_.*$"), "\\1", .x)) + 1L)
+  }
+  .prop <- .rxEventSensProp(rxModelVars(object))
+  c(
+    if (length(.nz$dF)) "f()",
+    if (length(.nz$Dlag)) "alag()",
+    if (any(.nz$Drate %in% .prop$rateCmt)) "rate()",
+    if (any(.nz$Drate %in% .prop$durCmt)) "dur()"
+  )
+}
+
 ## Cached build + solve convenience for the in-engine discrete adjoint ----------
 
 .rxAdjointModelCache <- new.env(parent = emptyenv())
