@@ -134,6 +134,20 @@ extern "C"
 int cvode_ctx_integrate(cvode_ctx_t *ctx, double *yp, double t0, double tout) {
   N_VSetArrayPointer(yp, ctx->y);
   if (CVodeReInit(ctx->mem, (sunrealtype)t0, ctx->y) < 0) return -1;
+  // a stop time left by cvode_ctx_integrate_stop() must not cut this one short
+  CVodeClearStopTime(ctx->mem);
+  sunrealtype tret;
+  int ret = CVode(ctx->mem, (sunrealtype)tout, ctx->y, &tret, CV_NORMAL);
+  ctx->tret = (double)tret;
+  return (ret >= 0) ? 1 : -1;
+}
+
+extern "C"
+int cvode_ctx_integrate_stop(cvode_ctx_t *ctx, double *yp, double t0, double tout,
+                             double tstop, int restart) {
+  N_VSetArrayPointer(yp, ctx->y);
+  if (restart && CVodeReInit(ctx->mem, (sunrealtype)t0, ctx->y) < 0) return -1;
+  if (CVodeSetStopTime(ctx->mem, (sunrealtype)tstop) < 0) return -1;
   sunrealtype tret;
   int ret = CVode(ctx->mem, (sunrealtype)tout, ctx->y, &tret, CV_NORMAL);
   ctx->tret = (double)tret;
@@ -144,6 +158,7 @@ extern "C"
 void cvode_ctx_dense_reinit(cvode_ctx_t *ctx, double *yp, double t0) {
   N_VSetArrayPointer(yp, ctx->y);
   CVodeReInit(ctx->mem, (sunrealtype)t0, ctx->y);
+  CVodeClearStopTime(ctx->mem);
   ctx->tret = t0;
 }
 
