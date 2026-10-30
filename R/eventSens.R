@@ -994,7 +994,7 @@
     return(NULL)
   }
   # numeric defaults (`lg <- 0.3`) stay symbolic so their derivatives survive
-  .model <- .rxLoadPrune(obj, doConst = FALSE)
+  delayedAssign(".model", .rxLoadPrune(obj, doConst = FALSE))
   .states <- map$states
   .params <- map$sensParams
   .cmtName <- function(cmt) map$states[match(cmt, map$stateCmt)]
@@ -1215,7 +1215,7 @@
     lagRhsQ = .buildRhsQ(map$lagCmt),
     ## FALSE when some state has no symbolic right-hand side (matExp()), so the
     ## runtime falls back to the calc_jac linearization
-    lagRhsQOk = all(vapply(paste0("rx__d_dt_", .states, "__"), exists, logical(1), envir = .model)),
+    lagRhsQOk = length(map$lagCmt) == 0L || all(vapply(paste0("rx__d_dt_", .states, "__"), exists, logical(1), envir = .model)),
     ## d(alag)/dq safety guard: when q also drives the same event's alag,
     ## the product-rule 2nd-order dtau row misses a Leibniz/moving-boundary
     ## term (dS^p_k/dt * dLag_q[c]); this table lets the runtime skip those
