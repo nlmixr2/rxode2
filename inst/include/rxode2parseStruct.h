@@ -556,6 +556,17 @@ struct rx_solving_options_ind_s {
   // there are none.  The record-based covariate reads of such a record read
   // its dose row.  Covers the first n_all_times_orig records.
   int    *doseRow;
+  // For an addl repeat that does not keep its covariates (addlKeepsCov =
+  // FALSE), the offset from the repeat to the record of the dose it repeats
+  // (negative), recorded by etTrans(); 0 for every other record, NULL when
+  // there are none.  getLag() evaluates a repeat's alag() with that record's
+  // nocb covariates, as NONMEM does for ALAG1.  Covers the first
+  // n_all_times_orig records.
+  int    *addlParent;
+  // While getLag() evaluates an addl repeat's alag(): 1 + the sorted position
+  // of the dose record it repeats, whose covariates a nocb covariate is read
+  // at; 0 otherwise.
+  int    lagParent;
 };
 
 typedef struct rx_solve_s {

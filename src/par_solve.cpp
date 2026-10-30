@@ -1951,8 +1951,13 @@ extern "C" void sortInd(rx_solving_options_ind *ind) {
   double *time = ind->timeThread;
   ind->ixds = 0;
   ind->curShift = 0;
+  // the record order is set before any record's time: a record whose
+  // covariate is missing takes it from its neighbours through ix when
+  // alag() and the other modifiers read it
   for (int i = 0; i < ind->n_all_times; i++) {
     ind->ix[i] = i;
+  }
+  for (int i = 0; i < ind->n_all_times; i++) {
     ind->idx = i;
     if (!isObs(getEvid(ind, i))) {
       time[i] = getTime__(ind->ix[i], ind, 1);

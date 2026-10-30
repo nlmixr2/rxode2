@@ -23,6 +23,17 @@
     }                                               \
   }
 
+static inline int getSortedPosition(rx_solving_options_ind *ind, int raw);
+
+// The sorted position of the dose record that the addl repeat at ind->idx
+// repeats (ind->addlParent), or -1
+static inline int getAddlParentPosition(rx_solving_options_ind *ind) {
+  if (ind->addlParent == NULL || ind->idx < 0 || ind->idx >= ind->n_all_times) return -1;
+  int raw = ind->ix[ind->idx];
+  if (raw < 0 || raw >= ind->n_all_times_orig || ind->addlParent[raw] == 0) return -1;
+  return getSortedPosition(ind, raw + ind->addlParent[raw]);
+}
+
 static inline double getLag(rx_solving_options_ind *ind, int id, int cmt, double time, double *y) {
   rx_solving_options *op = (ind->op ? ind->op : &op_global);
   returnBadTime(time);
@@ -30,7 +41,12 @@ static inline double getLag(rx_solving_options_ind *ind, int id, int cmt, double
     return time;
   }
   if (ind->fns == NULL || ind->fns->lag == NULL) return time;
+  // an addl repeat that does not keep its covariates evaluates its alag()
+  // with the nocb covariates of the dose record it repeats, as NONMEM's ALAG1
+  // does
+  ind->lagParent = getAddlParentPosition(ind) + 1;
   double ret = ind->fns->lag(id, cmt, time, y);
+  ind->lagParent = 0;
   if (ISNA(ret)) {
     int newBadSolve = 1;
 #pragma omp atomic write
@@ -87,18 +103,19 @@ static inline int isEvidType(int evid, int type) {
 #define isEvidModeledRateStart(evid) isEvidType(evid, EVIDF_MODEL_RATE_ON)
 #define isEvidModeledRateStop(evid) isEvidType(evid, EVIDF_MODEL_RATE_OFF)
 
-// Sorted position of data record `raw`; a covariate update reads ind->idx as
-// a sorted position.  At sort time, and in a record order no lag changed, the
-// record sits at its own slot.  sortInd() fills ix as it times each record, so
-// while it runs a later record (the start an ss-with-lag stop pairs with) has
-// no slot yet and is at its own.
+// Sorted position of data record `raw` (ind->ix is a permutation of the
+// records); a covariate update reads ind->idx as a sorted position.  At sort
+// time, and in a record order no lag changed, the record sits at its own slot.
 static inline int getSortedPosition(rx_solving_options_ind *ind, int raw) {
   if (raw < 0) return raw; // an extra dose is addressed by its negative index
   if (raw < ind->n_all_times && ind->ix[raw] == raw) return raw;
   for (int j = 0; j < ind->n_all_times; ++j) {
     if (ind->ix[j] == raw) return j;
   }
-  return raw;
+  // unreachable while ix is a permutation (sortInd() pre-fills it): an
+  // internal invariant, so fail the subject's solve as a corrupted event table
+  ind->err |= rxErrCorruptET; // nocov
+  return 0; // nocov
 }
 
 // f() of the dose at record `raw` times `dose`, read as NONMEM reads it: at
