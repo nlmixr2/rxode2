@@ -55,6 +55,13 @@
 
 ## New features
 
+- `cvode` now re-initialises only where the state or the right-hand side
+  changes (a dose, a reset, an infusion edge, a covariate change), instead of
+  at every record.  Across an observation record it carries on with its step,
+  order and history, stopping exactly at the next record it may not cross and
+  interpolating the observations in between, so a solve with many
+  observation records takes far fewer right-hand-side evaluations.
+
 - `minSS` and `maxSS` now accept any count from 1, and `maxSS` may equal
   `minSS`, so `minSS = maxSS = n` gives exactly the state after `n` doses
   before the steady-state one (Monolix `nbdoses = n`).  They used to require
