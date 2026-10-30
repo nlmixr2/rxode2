@@ -486,7 +486,9 @@
 #'    generator should be initialized; when given, it takes precedence
 #'    over an active [rxSetSeed()] stream for this solve, and the
 #'    caller's `.Random.seed` is restored afterwards.  [rxControl()] only
-#'    stores it; the seed is applied when the control is used by a solve
+#'    stores it; the seed is applied when the control is used by a solve.
+#'    Re-solving a result by assignment (eg `s$params <- p`) reapplies its
+#'    seed, while `update()` uses only a `seed` it is given
 #'
 #' @param nsim represents the number of simulations.  For rxode2, if
 #'     you supply single subject event tables (created with
@@ -5577,7 +5579,7 @@ dimnames.rxSolve <- function(x) {
 "[<-.rxSolve" <- function(x, i, j, value) {
   if (missing(i) && !missing(j)) {
     if (rxIs(j, "character")) {
-      ret <- .Call(`_rxode2_rxSolveUpdate`, x, j, value)
+      ret <- .rxSolveUpdateSeed(x, j, value)
       if (is.null(ret)) {
         class(x) <- "data.frame"
         return(`[<-.data.frame`(x, , j, value = value))
@@ -5607,13 +5609,29 @@ dimnames.rxSolve <- function(x) {
     return(`[<-.data.frame`(x, i, j, value))
   }
 }
+## Re-solve an rxSolve object for an assigned `name`; it reuses the solve's
+## control, so its seed is reapplied and the draws are reproducible (#1550)
+.rxSolveUpdateSeed <- function(x, name, value) {
+  .env <- attr(attr(x, "class"), ".rxode2.env")
+  .seed <- NULL
+  if (is.environment(.env) && exists(".args", envir = .env, inherits = FALSE)) {
+    .seed <- get(".args", envir = .env, inherits = FALSE)$seed
+  }
+  if (!is.null(.seed)) {
+    .rxSeedRestore <- .rxSeedSuspend()
+    on.exit(.rxSeedRestore(), add = TRUE)
+    set.seed(.seed)
+  }
+  .Call(`_rxode2_rxSolveUpdate`, x, name, value)
+}
+
 #' @export
 `$<-.rxSolve` <- function(x, name, value) {
   if (is.null(value)) {
     class(x) <- "data.frame"
     return(`$<-.data.frame`(x, name, value))
   }
-  ret <- .Call(`_rxode2_rxSolveUpdate`, x, name, value)
+  ret <- .rxSolveUpdateSeed(x, name, value)
   if (is.null(ret)) {
     class(x) <- "data.frame"
     return(`$<-.data.frame`(x, name, value))
@@ -5632,7 +5650,7 @@ dimnames.rxSolve <- function(x) {
     }
   }
   if (missing(j) && rxIs(i, "character")) {
-    ret <- .Call(`_rxode2_rxSolveUpdate`, x, i, value)
+    ret <- .rxSolveUpdateSeed(x, i, value)
     if (!is.null(ret)) {
       return(ret)
     } else {
