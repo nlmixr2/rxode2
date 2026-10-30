@@ -50,6 +50,10 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   dense_stepper_type dense_stepper(stepper);
   bool stepper_initialized = false;
   rxStepKeeper keep; // how each segment starts
+  keep.scalarTol = true;
+  // ros4 restarts after a dose: on a stiff transient its L-stable step accepts
+  // a kept step far longer than the relaxation it skips (Robertson)
+  keep.acrossDoses = false;
 
   auto sys = make_rxode2_system_ros4(ind, c_dydt, calc_jac, neq);
   
