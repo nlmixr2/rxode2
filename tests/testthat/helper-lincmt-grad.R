@@ -90,3 +90,10 @@
   )
 }
 .linCmtTestStats <- function() rxode2::linCmtSeqStats(TRUE)
+
+# Does the loaded rxode2lincmt have slot 10, linCmtEventJac()?  rxode2 binds
+# it only from a table that names it in that slot, and keeps a no-op stub
+# otherwise.
+.linCmtEventJacSlot <- function() {
+  identical(names(rxode2lincmt::.rxode2lincmtPtr())[11], "linCmtEventJac")
+}

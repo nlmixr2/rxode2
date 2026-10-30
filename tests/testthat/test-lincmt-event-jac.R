@@ -67,6 +67,7 @@ rxTest({
   .ev <- function(time, evid, amt, cmt) data.frame(time = time, evid = evid, amt = amt, cmt = cmt)
 
   test_that("a replace or multiply into a 1-cmt model's central compartment", {
+    skip_if_not(.linCmtEventJacSlot(), "rxode2lincmt without linCmtEventJac()")
     .m <- .evJacModel(1L, 0L, 0L, 0L)
     for (.r in list(.ev(24, 5, 50, 1), .ev(24, 6, 0.5, 1), .ev(24, 5, 0, 1), .ev(24, 6, 0, 1))) {
       expect_lt(.evJacErr(.m, .evJacData(1, .r), "cl"), 1e-6, label = paste(.r$evid, .r$amt))
@@ -77,6 +78,7 @@ rxTest({
   })
 
   test_that("a replace or multiply into a 2-cmt model, read in both compartments", {
+    skip_if_not(.linCmtEventJacSlot(), "rxode2lincmt without linCmtEventJac()")
     for (.row in 0:1) {
       .m <- .evJacModel(2L, 0L, .row, 0L)
       for (.r in list(.ev(24, 5, 50, 1), .ev(24, 6, 0.5, 1), .ev(24, 5, 10, 2), .ev(24, 6, 2, 2))) {
@@ -87,6 +89,7 @@ rxTest({
   })
 
   test_that("a replace or multiply into an oral model's depot or central compartment", {
+    skip_if_not(.linCmtEventJacSlot(), "rxode2lincmt without linCmtEventJac()")
     # depot is cmt 1 and block row 0; central cmt 2 and row 1; ka is column 2
     for (.r in list(.ev(24, 5, 30, 1), .ev(24, 6, 0.5, 1), .ev(24, 5, 50, 2), .ev(24, 6, 0.5, 2))) {
       .d <- .evJacData(1, .r)
@@ -97,6 +100,7 @@ rxTest({
   })
 
   test_that("an observation at the time of the event, and several events at one time", {
+    skip_if_not(.linCmtEventJacSlot(), "rxode2lincmt without linCmtEventJac()")
     .m <- .evJacModel(1L, 0L, 0L, 0L)
     .cases <- list(
       rbind(.ev(24, 5, 50, 1), .ev(24, 0, 0, 1)),
@@ -112,12 +116,14 @@ rxTest({
   })
 
   test_that("a multiply under a modeled f() scales by F*amt", {
+    skip_if_not(.linCmtEventJacSlot(), "rxode2lincmt without linCmtEventJac()")
     .m <- .evJacModel(1L, 0L, 0L, 0L, extra = "f(central) <- 0.8\n")
     expect_lt(.evJacErr(.m, .evJacData(1, .ev(24, 6, 0.5, 1)), "cl"), 1e-6)
     expect_lt(.evJacErr(.m, .evJacData(1, .ev(24, 5, 50, 1)), "cl"), 1e-6)
   })
 
   test_that("a replace or multiply pushed by the model", {
+    skip_if_not(.linCmtEventJacSlot(), "rxode2lincmt without linCmtEventJac()")
     .d <- .evJacData(1, .ev(24, 0, 0, 1))
     .am0 <- .evJacSolve(.evJacModel(1L, 0L, 0L, 0L), .d, .evJacPar, 1L)
     .am0 <- .am0$am[.am0$time == 30]
@@ -133,6 +139,7 @@ rxTest({
   })
 
   test_that("on 1 and 8 cores, subject by subject", {
+    skip_if_not(.linCmtEventJacSlot(), "rxode2lincmt without linCmtEventJac()")
     .m <- .evJacModel(2L, 0L, 0L, 0L)
     .d <- .evJacData(1, rbind(.ev(24, 5, 50, 1), .ev(24, 0, 0, 1), .ev(33, 6, 0.5, 1)), nid = 16L)
     .p <- data.frame(id = 1:16, cl = seq(1, 4, length.out = 16), v = 20, q = 1, v2 = 30, ka = 1.2)

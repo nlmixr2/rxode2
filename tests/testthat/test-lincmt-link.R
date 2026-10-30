@@ -4,8 +4,7 @@ rxTest({
 
   test_that("every lincmt table slot is bound after load", {
     .linked <- .Call(`_rxode2_rxode2lincmtLinked`)
-    expect_length(.linked, 11L)
-    expect_true(all(.linked))
+    expect_identical(.linked, c(rep(TRUE, 10L), .linCmtEventJacSlot()))
   })
 
   test_that("rxode2lincmt holds exactly the offsets rxode2 builds", {
@@ -33,12 +32,12 @@ rxTest({
     .tagged <- Filter(function(h) isTRUE(attr(h, "rxode2Relink")), getHook(.event))
     expect_length(.tagged, 1L)
     .tagged[[1]]()
-    expect_true(all(.Call(`_rxode2_rxode2lincmtLinked`)))
+    expect_identical(.Call(`_rxode2_rxode2lincmtLinked`), c(rep(TRUE, 10L), .linCmtEventJacSlot()))
   })
 
   test_that("re-linking is idempotent", {
     .linkAll()
-    expect_true(all(.Call(`_rxode2_rxode2lincmtLinked`)))
+    expect_identical(.Call(`_rxode2_rxode2lincmtLinked`), c(rep(TRUE, 10L), .linCmtEventJacSlot()))
     expect_identical(rxode2lincmt::.rxode2lincmtHostInfo()$offsets, .Call(`_rxode2_rxode2lincmtHost`)[[1]])
   })
 })
