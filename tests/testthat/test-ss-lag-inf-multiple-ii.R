@@ -15,8 +15,8 @@ rxTest({
   .ii <- 12
   .t <- c(0.5, 1.5, 6, 11.5, 12.5, 13.5, 16, 24.5, 30, 37, 45)
   # explicit infusions starting at lag - m*ii, no ss and no alag()
-  .ssInfLagPhys <- function(lag) {
-    .ev <- et(time = lag - .ii * (0:150), amt = 100, rate = 50, cmt = "central") |>
+  .ssInfLagPhys <- function(lag, rate = 50) {
+    .ev <- et(time = lag - .ii * (0:150), amt = 100, rate = rate, cmt = "central") |>
       et(.t)
     .r <- suppressWarnings(rxSolve(
       .ssInfLagRef,
@@ -51,6 +51,26 @@ rxTest({
             expect_equal(.ss, .ref, tolerance = 1e-6)
           }
         }
+      }
+    }
+  })
+
+  test_that("a steady-state infusion lasting ii with alag() stays on until its own dose ends", {
+    for (.lag in c(6, 12, 13, 24)) {
+      .ref <- .ssInfLagPhys(.lag, 100 / .ii)
+      for (.rate in c(100 / .ii, -1, -2)) {
+        .ss <- rxSolve(
+          .ssInfLagMod,
+          et(amt = 100, rate = .rate, ss = 1, ii = .ii, cmt = "central") |>
+            et(.t),
+          params = c(lag = .lag, mrate = 100 / .ii, mdur = .ii),
+          atol = 1e-10,
+          rtol = 1e-10,
+          ssAtol = 1e-10,
+          ssRtol = 1e-10,
+          returnType = "data.frame"
+        )$cp
+        expect_equal(.ss, .ref, tolerance = 1e-6)
       }
     }
   })
