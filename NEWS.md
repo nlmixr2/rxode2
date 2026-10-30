@@ -324,6 +324,12 @@
   string-valued output, such as an unconditional string and one assigned
   in `if`/`else`.
 
+- An adjoint method that `rxSolve()` cannot run on a model is now named in
+  the error, with the reason, as in "method='ros4s' cannot solve a model
+  without the adjoint expansion; build it with calcSens or
+  rxode2::.rxAdjointExpand()".  The error said "method='rk4s'" whatever the
+  method, and blamed missing Jacobian lhs.
+
 - `method = "cvodesadj"` no longer fails its backward solve, returning
   wrong sensitivities, when two events fall at the same time.
 
