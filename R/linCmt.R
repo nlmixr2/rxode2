@@ -94,6 +94,19 @@ linCmtCarrySentinelMax <- function() {
   rxode2lincmt::.linCmtCarrySentinelMax()
 }
 
+#' Carry pairs a linCmt() model can carry at once
+#'
+#' The `linCmt()` sensitivity carry keeps one column per carried (linCmt
+#' parameter, eta) pair in each subject; nlmixr2est keeps a model's carry
+#' within this many columns.
+#' @return integer, the column count in use (rxode2's
+#'   `RX_LINCMT_CARRY_MAXPAIRS`)
+#' @keywords internal
+#' @export
+linCmtCarryMaxPairs <- function() {
+  rxode2lincmt::.linCmtCarryMaxPairs()
+}
+
 #' Read (and optionally reset) the linCmt() carry-advance fast-path counters
 #'
 #' @param reset logical; when TRUE zero the counters after reading

@@ -20,6 +20,12 @@
 
 extern "C" double getTime(int idx, rx_solving_options_ind *ind);
 
+// An rxode2lincmt whose header fixes the carry cap below rxode2's indexes
+// ind->linCmtCarryT with its own stride
+#if RXLC_CARRY_MAXPAIRS < RX_LINCMT_CARRY_MAXPAIRS
+#error "rxode2 needs an rxode2lincmt that reads the linCmt() carry cap at run time (>= 0.1.1)"
+#endif
+
 // Every field rxode2lincmt reads through the offset table must still exist
 // with the type it was built for; a mismatch fails this compile.
 RXLC_HOST_STATIC_CHECKS
