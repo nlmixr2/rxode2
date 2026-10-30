@@ -18,6 +18,7 @@
 #define NPARS 60
 #include <RcppArmadillo.h>
 #include "nearPD.h"
+#include "invChol.h"
 #include <Rmath.h>
 #include <thread>
 #include <string>
@@ -2235,11 +2236,14 @@ static std::vector<int> rxPriorElCols(const CharacterVector &elN,
 
 // One candidate matrix: the point estimate with the drawn deviation added
 // into each entry the prior names.  The matrix is symmetric, so an off
-// diagonal is written both ways.
-static arma::mat rxPriorCand(const arma::mat &cur, const arma::mat &base,
+// diagonal is written both ways.  `"invchol"` moves the entries on the
+// inverse Cholesky scale instead.
+static arma::mat rxPriorCand(const rxInvCholJoint &ic,
+                             const arma::mat &cur, const arma::mat &base,
                              const IntegerMatrix &el,
                              const std::vector<int> &col,
                              const NumericVector &dev, int dim) {
+  if (ic.on) return rxInvCholJointCand(ic, cur, dev, col);
   arma::mat cand = cur;
   for (int r = 0; r < el.nrow(); ++r) {
     if (col[r] < 0) continue;
@@ -2265,14 +2269,15 @@ static bool rxPriorUsable(const arma::mat &m) {
 // `rxNearPD()` copies its input into `ret` when it fails, which would give
 // a distance of zero and win the comparison -- so the flag decides, not the
 // distance.
-static bool rxPriorNearest(const std::vector<NumericVector> &keep,
+static bool rxPriorNearest(const rxInvCholJoint &ic,
+                           const std::vector<NumericVector> &keep,
                            const arma::mat &cur, const arma::mat &base,
                            const IntegerMatrix &el,
                            const std::vector<int> &col, int dim,
                            arma::mat &bestMat, NumericVector &bestDev) {
   double best = -1.0;
   for (size_t k = 0; k < keep.size(); ++k) {
-    arma::mat bad = rxPriorCand(cur, base, el, col, keep[k], dim);
+    arma::mat bad = rxPriorCand(ic, cur, base, el, col, keep[k], dim);
     arma::mat np;
     if (!rxNearPD(np, 0.5 * (bad + bad.t()))) continue;
     if (!rxPriorUsable(np)) continue;
@@ -2310,7 +2315,8 @@ static void rxPriorJointMat(NumericMatrix &thetaM,
                             int nCoresRV,
                             int nStud,
                             int priorPdRetry,
-                            const char *what) {
+                            const char *what,
+                            const rxInvCholJoint &ic) {
   if (Rf_isNull(priorOmegaEl)) return;
   IntegerMatrix el = as<IntegerMatrix>(priorOmegaEl);
   if (el.nrow() == 0) return;
@@ -2333,7 +2339,7 @@ static void rxPriorJointMat(NumericMatrix &thetaM,
     // attempt 0 is the row the joint draw already made -- do not waste it
     NumericVector dev = thetaM(i, _);
     std::vector<NumericVector> keep;
-    arma::mat cand = rxPriorCand(cur, base, el, col, dev, dim);
+    arma::mat cand = rxPriorCand(ic, cur, base, el, col, dev, dim);
     for (int k = 1; !rxPriorUsable(cand) && k <= priorPdRetry; ++k) {
       keep.push_back(dev);
       if (k == priorPdRetry) break;
@@ -2343,10 +2349,10 @@ static void rxPriorJointMat(NumericMatrix &thetaM,
                                      thetaIsChol, 1, true, thetaLower,
                                      thetaUpper));
       dev = one(0, _);
-      cand = rxPriorCand(cur, base, el, col, dev, dim);
+      cand = rxPriorCand(ic, cur, base, el, col, dev, dim);
     }
     if (!keep.empty() && !rxPriorUsable(cand)) {
-      if (!rxPriorNearest(keep, cur, base, el, col, dim, cand, dev)) {
+      if (!rxPriorNearest(ic, keep, cur, base, el, col, dim, cand, dev)) {
         rxSolveFree();
         stop(_("could not draw a positive definite '%s' from the prior for study %d after %d tries"),
              what, i + 1, priorPdRetry);
@@ -2361,6 +2367,39 @@ static void rxPriorJointMat(NumericMatrix &thetaM,
   if (nFallback > 0) {
     warning(_("%d of %d studies needed the nearest positive definite '%s' after %d prior draws; those studies are not draws from the stated prior"),
             nFallback, nStud, what, priorPdRetry);
+  }
+}
+
+// `"invchol"` draws the entries on the inverse Cholesky scale, so the
+// thetaMat covariance `cov` is moved there before anything is drawn from it
+static void rxInvCholThetaMat(rxInvCholJoint &ic, arma::mat &cov,
+                              bool &haveCov,
+                              const Nullable<NumericMatrix> &thetaMat,
+                              const bool &thetaIsChol, const RObject &mat,
+                              const bool &matIsChol,
+                              const RObject &priorEl, const char *what) {
+  if (Rf_isNull(priorEl) || thetaMat.isNull() || !rxIs(mat, "matrix")) return;
+  if (matIsChol) {
+    rxSolveFree();
+    stop(_("'%sSeparation=\"invchol\"' needs '%s' as a covariance, not its Cholesky decomposition"),
+         what, what);
+  }
+  IntegerMatrix el = as<IntegerMatrix>(priorEl);
+  RObject elDn = el.attr("dimnames");
+  NumericMatrix tm(thetaMat);
+  if (el.nrow() == 0 || Rf_isNull(elDn) || !tm.hasAttribute("dimnames")) return;
+  if (!haveCov) {
+    arma::mat t = as<arma::mat>(tm);
+    cov = thetaIsChol ? arma::mat(t.t() * t) : t;
+    haveCov = true;
+  }
+  CharacterVector tn = as<CharacterVector>((as<List>(tm.attr("dimnames")))[1]);
+  std::vector<int> col =
+    rxPriorElCols(as<CharacterVector>((as<List>(elDn))[0]), tn);
+  if (!rxInvCholJointSetup(ic, cov, as<arma::mat>(mat), el, col)) {
+    rxSolveFree();
+    stop(_("'%sSeparation=\"invchol\"' needs a positive definite '%s'"),
+         what, what);
   }
 }
 
@@ -2631,9 +2670,32 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
   bool simTheta = false;
   IntegerVector thetaPar(parN.size());
   int i, j, k;
+  rxInvCholJoint omegaIc, sigmaIc;
+  Nullable<NumericMatrix> thetaMatUse = thetaMat;
+  // `Nullable` does not protect what it holds, so this does
+  NumericMatrix thetaMatHold;
+  bool thetaIsCholUse = thetaIsChol;
+  if (simVar) {
+    arma::mat cov;
+    bool haveCov = false;
+    if (omegaSeparation == "invchol") {
+      rxInvCholThetaMat(omegaIc, cov, haveCov, thetaMat, thetaIsChol, omega,
+                        omegaIsChol, priorOmegaEl, "omega");
+    }
+    if (sigmaSeparation == "invchol") {
+      rxInvCholThetaMat(sigmaIc, cov, haveCov, thetaMat, thetaIsChol, sigma,
+                        sigmaIsChol, priorSigmaEl, "sigma");
+    }
+    if (omegaIc.on || sigmaIc.on) {
+      thetaMatHold = wrap(cov);
+      thetaMatHold.attr("dimnames") = NumericMatrix(thetaMat).attr("dimnames");
+      thetaMatUse = Nullable<NumericMatrix>(thetaMatHold);
+      thetaIsCholUse = false;
+    }
+  }
   rxSimTheta(thetaN, parN, thetaPar, thetaM, simTheta,
-             thetaMat, thetaLower, thetaUpper, thetaDf,
-             thetaIsChol, nStud, nCoresRV, simVariability);
+             thetaMatUse, thetaLower, thetaUpper, thetaDf,
+             thetaIsCholUse, nStud, nCoresRV, simVariability);
   bool simOmega = false;
   bool omegaSep=false;
   NumericMatrix omegaM;
@@ -2650,7 +2712,8 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
   // `dfSub` inverse Wishart (#1388).  Only when the joint draw will run:
   // without `priorOmegaEl` (a direct `rxSimThetaOmega()` call) it would
   // leave nothing to seed the per-study list.
-  double dfSubSim = (omegaSeparation == "tnpri" && !Rf_isNull(priorOmegaEl)) ? 0.0 : dfSub;
+  double dfSubSim = ((omegaSeparation == "tnpri" || omegaSeparation == "invchol") &&
+                     !Rf_isNull(priorOmegaEl)) ? 0.0 : dfSub;
   rxSimOmega(simOmega, omegaSep, omegaM, omegaN, omegaMC,
              omegaList, thetaN, thetaM, "omega", omega, omegaDf,
              omegaLower, omegaUpper, omegaIsChol,
@@ -2668,8 +2731,8 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
   // both it and the drawn `thetaM`.
   if (simOmega && simVar) {
     rxPriorJointMat(thetaM, thetaN, omegaList, omegaM, omegaN, priorOmegaEl,
-                    thetaMat, thetaDf, thetaIsChol, thetaLower, thetaUpper,
-                    nCoresRV, nStud, priorPdRetry, "omega");
+                    thetaMatUse, thetaDf, thetaIsCholUse, thetaLower, thetaUpper,
+                    nCoresRV, nStud, priorPdRetry, "omega", omegaIc);
   }
   arma::mat tmp = as<arma::mat>(omegaM);
   if (tmp.is_zero()) {
@@ -2681,7 +2744,8 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
   CharacterVector sigmaN;
   NumericMatrix sigmaMC;
   List sigmaList;
-  double dfObsSim = (sigmaSeparation == "tnpri" && !Rf_isNull(priorSigmaEl)) ? 0.0 : dfObs;
+  double dfObsSim = ((sigmaSeparation == "tnpri" || sigmaSeparation == "invchol") &&
+                     !Rf_isNull(priorSigmaEl)) ? 0.0 : dfObs;
   rxSimOmega(simSigma, sigmaSep, sigmaM, sigmaN, sigmaMC,
              sigmaList, thetaN, thetaM, "sigma", sigma, sigmaDf,
              sigmaLower, sigmaUpper, sigmaIsChol,
@@ -2692,8 +2756,8 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
   bool sigmaByStudy = (dfObs > 0 || !Rf_isNull(priorSigmaEl));
   if (simSigma && simVar) {
     rxPriorJointMat(thetaM, thetaN, sigmaList, sigmaM, sigmaN, priorSigmaEl,
-                    thetaMat, thetaDf, thetaIsChol, thetaLower, thetaUpper,
-                    nCoresRV, nStud, priorPdRetry, "sigma");
+                    thetaMatUse, thetaDf, thetaIsCholUse, thetaLower, thetaUpper,
+                    nCoresRV, nStud, priorPdRetry, "sigma", sigmaIc);
   }
 
   tmp = as<arma::mat>(sigmaM);

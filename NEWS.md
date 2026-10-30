@@ -55,6 +55,12 @@
 
 ## New features
 
+- `rxSolve(omegaSeparation = "invchol")` (and `sigmaSeparation = "invchol"`)
+  draws the omega (sigma) entries a `thetaMat` carries jointly with the
+  thetas, like `"tnpri"`, but on the inverse Cholesky scale (the `thetaMat`
+  is moved there by the delta method), so every drawn matrix is positive
+  definite and none is redrawn (#1486).
+
 - `minSS` and `maxSS` now accept any count from 1, and `maxSS` may equal
   `minSS`, so `minSS = maxSS = n` gives exactly the state after `n` doses
   before the steady-state one (Monolix `nbdoses = n`).  They used to require
