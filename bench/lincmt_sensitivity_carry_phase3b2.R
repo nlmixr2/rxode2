@@ -27,12 +27,14 @@
 if (
   requireNamespace("devtools", quietly = TRUE) &&
     file.exists("DESCRIPTION") &&
-    file.exists("src/linCmt.cpp")
+    file.exists("src/rxode2lincmtLink.cpp")
 ) {
   devtools::load_all(".", quiet = TRUE)
 } else {
   library(rxode2)
 }
+# linCmtModelDouble() is rxode2lincmt's
+library(rxode2lincmt)
 
 nPass <- 0L
 nFail <- 0L
