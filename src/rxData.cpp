@@ -4388,12 +4388,18 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
       for (int k = 0; k < Rf_length(pkSkipS); ++k) {
         if (ip[k] >= 1 && ip[k] <= nr) _globals.gpkSkip[ip[k] - 1] = 1;
       }
-      // 2 marks the dose of an addl repeat (rxode2#1583)
+      // 2 marks the dose of an addl repeat, 2 + n when the dose it repeats is
+      // n rows back (rxode2#1583)
       SEXP addlRepS = Rf_getAttrib(ev1, Rf_install("rxAddlRep"));
+      SEXP addlParS = Rf_getAttrib(ev1, Rf_install("rxAddlParent"));
       if (TYPEOF(addlRepS) == INTSXP) {
         ip = INTEGER(addlRepS);
+        int *pp = (TYPEOF(addlParS) == INTSXP &&
+                   Rf_length(addlParS) == Rf_length(addlRepS)) ? INTEGER(addlParS) : NULL;
         for (int k = 0; k < Rf_length(addlRepS); ++k) {
-          if (ip[k] >= 1 && ip[k] <= nr) _globals.gpkSkip[ip[k] - 1] = 2;
+          if (ip[k] < 1 || ip[k] > nr) continue;
+          int off = (pp != NULL && pp[k] > 0 && pp[k] < ip[k]) ? pp[k] : 0;
+          _globals.gpkSkip[ip[k] - 1] = 2 + off;
         }
       }
     }
