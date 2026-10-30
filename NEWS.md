@@ -102,6 +102,9 @@
   (levenc/posologyr#70).  Event tables under 100,000 rows are now sorted with
   base R's radix sort, which gives the same order as the `data.table` sort
   without its setup cost on every solve.
+- `method = "cvode"` now honors `dense = TRUE`, as `rxIsDense()` and the
+  documentation describe; the CVODE dense driver existed but `dense = TRUE`
+  was silently dropped (#1599).
 
 ### Steady state
 - A steady-state bolus into a compartment whose `alag()` is longer than `ii`
