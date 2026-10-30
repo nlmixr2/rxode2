@@ -17,6 +17,9 @@
   Jacobian term (and the dose jump of a parameter-dependent delay), so the
   sensitivities are correct; before, the solution and its sensitivities
   ignored the delay (#1599).
+- `delay()` models now solve with `method = "liblsoda", dense = TRUE`, which
+  records the `delay()` history from LSODA's interpolant on every step;
+  `method = "liblsoda"` alone still switches to `"dop853+ros4"` (#1599).
 
 ### Event tables
 - A simulation that stops with an error no longer leaves its draws for the
