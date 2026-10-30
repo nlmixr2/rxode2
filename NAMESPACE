@@ -959,6 +959,7 @@ importFrom(methods,
   is,
   signature
 )
+importFrom(rxode2lincmt,.linCmtCarryMaxPairs)
 importFrom(stats,
   ave,
   coef,

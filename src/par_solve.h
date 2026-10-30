@@ -17,6 +17,7 @@ extern "C" {
 
 #include "../inst/include/rxode2.h"
 #include "rxThreadData.h"
+#include "rxode2lincmtLink.h"
 
 void par_rkf78(rx_solve *rx);
 extern "C" void ind_rkf78(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
@@ -278,12 +279,12 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
     }
     // Reset ind->linCmtCarryT -- the cumulative d(Alast_i)/d(eta) carry state
     // for the linCmt()-time-varying-covariate fix (see rxode2parseStruct.h
-    // and linCmtB()'s which1=-5/-6/-7 in linCmt.cpp). Alast starts at 0 for
-    // a fresh subject, so its sensitivity does too; the full fixed-size
-    // buffer (4 rows x RX_LINCMT_CARRY_MAXPAIRS pair columns) is memset
-    // (not gated on m or the pair count actually in use).
+    // and linCmtB()'s which1=-5/-6/-7 in rxode2lincmt). Alast starts at 0 for
+    // a fresh subject, so its sensitivity does too.  rxode2lincmt's
+    // linCmtCarryReset() zeroes only the pair columns the subject has
+    // written, so a linCmt() model without the carry clears nothing.
     if ((op->numLin + op->numLinSens) > 0) {
-      memset(ind->linCmtCarryT, 0, sizeof(ind->linCmtCarryT));
+      _p_linCmtCarryReset(ind);
       ind->linCmtCarryTlast = NAN;
       ind->linCmtCarryVarying = 0;
       linCmtOriginReset(ind);
