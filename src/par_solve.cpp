@@ -4242,6 +4242,8 @@ void handleSS(int *neq,
       // Jacobian I; publish the period so the multistep driver re-records one
       // steady-state period's flow from the post-dose peak for the monodromy IC.
       if (op->adjoint && !doSS2) _adjSSbolusIi = curIi;
+      // the segments placing the lag after steady state use the ss dose record's covariates
+      ind->ssTime = xp;
       if (isSsLag) {
         //advance the lag time
         ind->idx=*i;
@@ -4339,6 +4341,8 @@ void handleSS(int *neq,
           pushDosingEvent(startTimeD + offTime + (overIi+cur)*curIi + curLagExtra,
                           rateOff, extraEvid, ind);
         }
+        // the segments placing the lag after steady state use the ss dose record's covariates
+        ind->ssTime = xp;
         if (curLagExtra > 0) {
           double solveTo=curIi - curLagExtra;
           if (solveTo > offTime) {
@@ -4472,6 +4476,8 @@ void handleSS(int *neq,
           ind->solveLast[k] = yp[k];
         }
         xp2 = xout2;
+        // the segments placing the lag after steady state use the ss dose record's covariates
+        ind->ssTime = xp;
         bool doNoLag = false;
         if (isSsLag) {
           double totTime = xp2 + dur + dur2 - curLagExtra;
@@ -4605,6 +4611,7 @@ void handleSS(int *neq,
         }
       }
     }
+    ind->ssTime = NA_REAL;
     if (doSS2){
       // Publish the new-regimen steady state Y_ss_new (yp before adding back the
       // saved pre-ss2 state) for the adjoint superposition term.

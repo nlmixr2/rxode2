@@ -55,6 +55,10 @@
 - The off phase of a steady-state infusion, and every phase of one longer
   than `ii`, now uses the covariates of the steady-state dose record, as
   NONMEM does; it used the covariates of a later record (#1589).
+- A steady-state dose into a compartment with an `alag()` (even
+  `alag() <- 0`) now places the lag with the covariates of its own record; the
+  segment after steady state used the covariates of the subject's last record
+  (#1589).
 
 ## New features
 
