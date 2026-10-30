@@ -151,7 +151,11 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   lsAdjActive = false;
 
   // this subject's failure, not op->badSolve, which any subject's sets
-  if (ind->rc[0] < 0 || ind->err != 0 || lsAdjSteps.empty() || lsAdjSegs.empty()) return;
+  if (ind->rc[0] < 0 || ind->err != 0) return;
+  if (lsAdjSteps.empty() || lsAdjSegs.empty()) {   // no step taken: still at the initial conditions
+    rk4sIniOnlyFill(op, ind, cSub, nBase, np, sensOff);
+    return;
+  }
   lsAdjSegs.back().stepEnd = lsAdjSteps.size();     // close the final segment
   size_t nStep = lsAdjSteps.size();
 
@@ -290,6 +294,9 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   // couples rows 1 and 2, so the costate handed back is lam0[1] + h0*J(y0)^T*lam0[2]
   // (then the event jump's dPhi/dy^T).
   std::vector<double> wSeed(nBase);
+  std::vector<double> dx0V;                         // parameter-dependent initial conditions
+  rk4sIniDx0(op, ind, cSub, lsAdjSegs[0].t0, eff, nBase, np, dx0V);
+  const double *dx0P = dx0V.empty() ? NULL : dx0V.data();
   auto sweepToStart = [&](int segIdx, double time) {
     for (int seg = segIdx; ; --seg) {
       const lsAdjSeg &Sg = lsAdjSegs[seg];
@@ -322,7 +329,10 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       if (seg == 0) break;
       // event jump dPhi/dy^T maps lam_y0 -> costate of y(tau-) handed to the previous
       // segment: bolus (I) unchanged | reset all 0 | replace[c]->0 | multiply[c]*=factor.
-      if (Sg.evType == 3) { for (int b = 0; b < nBase; ++b) wSeed[b] = 0.0; }
+      if (Sg.evType == 3) {                 // reset restores the initial conditions
+        rk4sAddIni(dx0P, wSeed.data(), mu.data(), nBase, np);
+        for (int b = 0; b < nBase; ++b) wSeed[b] = 0.0;
+      }
       else if (Sg.evType == 5 && Sg.evCmt >= 0) { wSeed[Sg.evCmt] = 0.0; }
       else if (Sg.evType == 6 && Sg.evCmt >= 0) { wSeed[Sg.evCmt] *= Sg.evFactor; }
       time = Sg.t0;
@@ -390,6 +400,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
         for (int p = 0; p < np; ++p) { double s = 0; for (int j = 0; j < nBase; ++j) s += w[j] * ssFP[j * np + p]; mu[p] -= s; }
       }
       if (lsMono) lsIc.applyWindowIC(wSeed, mu);   // bolus / periodic-infusion monodromy IC
+      if (_lsSsKind == 0) rk4sAddIni(dx0P, wSeed.data(), mu.data(), nBase, np);   // window start t0
       for (int p = 0; p < np; ++p) out[sensOff + k * np + p] = mu[p];
     }
   }

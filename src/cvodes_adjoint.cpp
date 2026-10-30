@@ -361,7 +361,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
                 }
         } }
       if (getEvid(ind, ind->ix[i]) == 3) {
-        // A reset wipes the state to (parameter-independent) inits, so dPhi/dy = 0
+        // A reset wipes the state to its initial conditions, so dPhi/dy = 0
         // and the backward costate zeroes here.  Record before handleEvid3 mutates
         // xout.
         resetT.push_back(xout); resetSeq.push_back(seq);
@@ -443,21 +443,20 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   if (bok && (!BM || !BLS || CVodeSetLinearSolver(bmem, BLS, BM) < 0)) bok = 0;
   if (bok) CVodeSetMaxNumSteps(bmem, (long int)(op->mxstep > 0 ? op->mxstep : 50000));
 
+  std::vector<double> dx0V;                         // parameter-dependent initial conditions
+  rk4sIniDx0(op, ind, cSub, t0, eff, nBase, np, dx0V);
+  const double *dx0P = dx0V.empty() ? NULL : dx0V.data();
   for (int oi = (int)obsT.size() - 1; bok && oi >= 0; --oi) {
     double ti = obsT[oi]; int solveIdx = obsIx[oi], si = obsSeq[oi];
     double *out = getSolve(solveIdx);
     // A reset processed before the observation zeroes the costate (dy_k(ti)/dp
     // depends only on the post-reset window), so the sweep only needs to reach
     // the most recent such reset; below tReset the costate is 0 and mu is frozen.
-    double tStop = t0; int stopSeq = 0, hasReset = 0;
+    double tStop = t0; int stopSeq = 0;
     for (size_t r = 0; r < resetT.size(); ++r)
       if (resetSeq[r] < si && resetSeq[r] > stopSeq) {
-        tStop = resetT[r]; stopSeq = resetSeq[r]; hasReset = 1;
+        tStop = resetT[r]; stopSeq = resetSeq[r];
       }
-    if (hasReset && isSameTime(ti, tStop)) {
-      for (int q = 0; q < nBase * np; ++q) out[sensOff + q] = 0.0;
-      continue;
-    }
     // events processed between the reset and the observation (at either end's
     // time too), in reverse processing order: the backward stops at each and
     // applies the transpose costate jump.
@@ -519,7 +518,12 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
         CVodeSetStopTime(bmem, (sunrealtype)tStop);
         if (CVode(bmem, (sunrealtype)tStop, B, &tret, CV_NORMAL) < 0) { bok = 0; break; }
       }
-      for (int p = 0; p < np; ++p) out[sensOff + k * np + p] = NV_Ith_S(B, nBase + p);
+      // tStop is t0 or a reset; either way the state there is the initial condition
+      for (int p = 0; p < np; ++p) {
+        double ini = 0.0;
+        if (dx0P) for (int q = 0; q < nBase; ++q) ini += NV_Ith_S(B, q) * dx0P[q * np + p];
+        out[sensOff + k * np + p] = NV_Ith_S(B, nBase + p) + ini;
+      }
     }
   }
 

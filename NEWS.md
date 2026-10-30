@@ -310,6 +310,18 @@
 
 ### Adjoint sensitivities
 
+- `rxSolveAdjointRk4()` now carries the whole model into the adjoint
+  expansion.  Before, initial conditions such as `y(0) <- 1` were dropped
+  (the solve started from 0), a numeric default such as `k <- 0.5`
+  ignored the supplied value, and the algebraic and string output columns,
+  `mtime()`, `past()`, `param()`, `dvid()`, extra `cmt()` compartments and
+  adaptive dosing were lost.
+
+- The adjoint solve methods now include the initial-condition term, so a
+  parameter that enters through an initial condition (directly or after a
+  reset) gets its sensitivity instead of 0.  This does not yet cover a
+  subject with a steady-state (`ss = 1`) dose.
+
 - Adjoint solves of a model that pushes doses at run time (`bolus()`,
   `evid_()` and friends inside `if()`) no longer corrupt memory and crash
   R in the `rk4s` family of methods.
