@@ -24,6 +24,12 @@
   package directory (#1506).
 
 ### Sensitivities
+- The `linCmt()` sensitivity carry has 32 columns per subject instead of 8
+  (`linCmtCarryMaxPairs()`), so an IOV model whose occasion etas each need
+  one can be carried.  Each subject's struct grows by 768 bytes, so packages
+  compiled against rxode2's headers (nlmixr2est, babelmixr2) must be
+  rebuilt, and rxode2 now needs rxode2lincmt 0.1.1, which reads the column
+  count from rxode2 at load.
 - `rxSolveAdjoint()` now accepts a model function, as `rxSolve()` does; it
   used to fail with an rxode2 syntax error on the `ini({})` block (#1504).
 - `rxSolveAdjoint()` and the adjoint builds now send a dose without a `cmt`
