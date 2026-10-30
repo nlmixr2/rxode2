@@ -59,6 +59,11 @@
 - A steady-state infusion lasting exactly `ii` (fixed `rate` or `dur`) into a
   compartment with an `alag()` now stays on until its own lagged dose ends;
   with `ssAtDoseTime = TRUE` it turned off `alag()` too early (#1590).
+- Every dose a steady-state record pushes (the earlier intervals' doses of an
+  `alag()` longer than `ii`, and the on/off records of an infusion longer
+  than `ii`) is now given when several fall between two observations; all but
+  the first were dropped, so the result depended on the observation times and
+  a long infusion could even turn negative (#1590).
 
 ## New features
 
