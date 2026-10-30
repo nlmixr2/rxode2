@@ -1798,7 +1798,7 @@
 #' Delayed states are interpolated from the solver's dense output, so delay
 #' models are solved on a dense path: the default method becomes the dense
 #' AutoSwitch composite `"dop853+ros4"`, and the dense methods `"dop853"`,
-#' `"dop5"`, `"bs"` and `"ros4"` also work.  The step size is capped to the smallest delay, and
+#' `"dop5"`, `"bs"`, `"ros4"` and `"cvode"` also work.  The step size is capped to the smallest delay, and
 #' methods that cannot record dense history raise an error.  The dense-output
 #' and delay-history machinery is adapted from the `dde` package by Rich
 #' FitzJohn and Wes Hinsley (Imperial College of Science, Technology and
