@@ -6137,8 +6137,9 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
         badSolveExit(i);
         localBadSolve = 1;
       } else {
-        if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
-                            xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
+        while (!localBadSolve &&
+               handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
+                               xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             linSolve(neq, ind, yp, &xp, ind->extraDoseNewXout);
@@ -6156,12 +6157,6 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
             ind->idx = idx;
             ind->ixds = ixds;
             ind->idxExtra++;
-          }
-          if (!localBadSolve && !isSameTime(xout, ind->extraDoseNewXout)) {
-            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-            linSolve(neq, ind, yp, &(ind->extraDoseNewXout), xout);
-            postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
-            if (*rc < 0) localBadSolve = 1;
             xp = ind->extraDoseNewXout;
           }
         }
@@ -6397,8 +6392,9 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
         badSolveExit(i);
         localBadSolve = 1;
       } else {
-        if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                            xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
+        while (!localBadSolve &&
+               handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                               xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             linSolve(neq, ind, yp, &xp, ind->extraDoseNewXout);
@@ -6416,12 +6412,6 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
             ind->idx = idx;
             ind->ixds = ixds;
             ind->idxExtra++;
-          }
-          if (!localBadSolve && !isSameTime(xout, ind->extraDoseNewXout)) {
-            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-            linSolve(neq, ind, yp, &(ind->extraDoseNewXout), xout);
-            postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
-            if (*rc < 0) localBadSolve = 1;
             xp = ind->extraDoseNewXout;
           }
         }
