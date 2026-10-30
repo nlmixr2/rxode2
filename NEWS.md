@@ -461,6 +461,13 @@
   unless `tte(origin = TRUE)`.  `tteTime()`/`tteCount()` of an estimation
   solve come from the endpoint's `DV = 1` records.
 
+- `dop853`, `dop5` and `ros4` now also keep their step across a dose, an
+  infusion start or stop and the other records that change the state or
+  the dosing, capped by the time scale of the state just after the event
+  so a large jump starts small.  An `mtime()` or evid 2 record still
+  restarts the step.  Infusion regimens take fewer right-hand-side
+  evaluations, with the same error control.
+
 - `dop853`, `dop5` and `ros4` now start the segment after an observation
   record with the step size they proposed at the end of the previous one,
   instead of choosing a first step again; a dose or any other record that
