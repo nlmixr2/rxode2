@@ -175,4 +175,63 @@ rxTest({
       expect_equal(.f70, .f(.dur, 1000), tolerance = 1e-6)
     }
   })
+  # tad0(): tad() is NA before the first dose
+  test_that("tad() in a steady-state cycle counts from the cycle's dose", {
+    .tadMod <- rxode2({
+      d / dt(central) <- -(1 / 20) * central * (1 + 0.03 * tad0())
+      f <- central / 20
+      dn <- dosenum()
+    })
+    .k <- function(t) (1 / 20) * (1 + 0.03 * t)
+    .peak <- 100 / (1 - exp(-integrate(.k, 0, 12)$value))
+    .expected <- vapply(
+      .ssClockObs - 480,
+      function(t) .peak * exp(-integrate(.k, 0, t)$value) / 20,
+      numeric(1)
+    )
+    .s <- rxSolve(
+      .tadMod,
+      .ssClockData,
+      atol = 1e-10,
+      rtol = 1e-10,
+      ssAtol = 1e-10,
+      ssRtol = 1e-10,
+      returnType = "data.frame"
+    )
+    expect_equal(.s$f, .expected, tolerance = 1e-6)
+    expect_equal(.s$dn, rep(1, 4))
+  })
+
+  test_that("tad() in a steady-state infusion cycle counts from its start", {
+    .tadMod <- rxode2({
+      d / dt(central) <- -(1 / 20) * central * (1 + 0.03 * tad0())
+      f <- central / 20
+    })
+    .tadCycleMod <- rxode2({
+      tc <- t - 12 * floor(t / 12 + 1e-9)
+      d / dt(central) <- -(1 / 20) * central * (1 + 0.03 * tc)
+      f <- central / 20
+    })
+    for (.dur in c(3, 30)) {
+      .ss <- rxSolve(
+        .tadMod,
+        et(amt = 100, ii = 12, ss = 1, dur = .dur, time = 480) |>
+          et(480 + .ssInfObs),
+        atol = 1e-10,
+        rtol = 1e-10,
+        ssAtol = 1e-10,
+        ssRtol = 1e-10,
+        returnType = "data.frame"
+      )$f
+      .periodic <- rxSolve(
+        .tadCycleMod,
+        et(amt = 100, ii = 12, addl = 299, dur = .dur, time = 0) |>
+          et(3588 + .ssInfObs),
+        atol = 1e-10,
+        rtol = 1e-10,
+        returnType = "data.frame"
+      )$f
+      expect_equal(.ss, .periodic, tolerance = 1e-6)
+    }
+  })
 })
