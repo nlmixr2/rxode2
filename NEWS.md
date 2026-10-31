@@ -9,6 +9,9 @@
 - `delay()` models with `method = "ros4"` now solve on the dense segment
   driver, so `delay()` history is recorded on every step and `hmax` is
   honored (#1599).
+- `delay()` models now solve with `method = "cvode"`, which records the
+  `delay()` history from CVODE's interpolant on every step, steady state
+  included (#1599).
 
 ### Event tables
 - A simulation that stops with an error no longer leaves its draws for the

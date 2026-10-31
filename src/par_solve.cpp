@@ -2857,7 +2857,7 @@ static inline void solveWith1PtComposite(int *neq, double *yp, double xout, doub
 
 static void rxDelaySSSolve(int *neq, double *yp, double xp, double xout,
                            rx_solving_options *op, rx_solving_options_ind *ind,
-                           int eff);
+                           int eff, void *ctx);
 
 static inline void solveWith1Pt(int *neq,
                                 int *BadDose,
@@ -2883,7 +2883,7 @@ static inline void solveWith1Pt(int *neq,
     }
   } else if (ind->delaySS && xout > xp) {
     // steady state of a delay() model: record the history (rxode2#1447)
-    rxDelaySSSolve(neq, yp, xp, xout, op, ind, eff);
+    rxDelaySSSolve(neq, yp, xp, xout, op, ind, eff, ctx);
   } else if (op->stiff2 > 0) {
     solveWith1PtComposite(neq, yp, xout, xp, i, istate, op, ind, ctx, eff);
   } else {
@@ -7369,13 +7369,18 @@ static int denseSegmentSolve(rx_solve *rx, rx_solving_options *op,
   return idid;
 }
 
+static int rxCvodeDelaySegment(void *ctx_ptr, rx_solving_options *op,
+                               rx_solving_options_ind *ind, int *neq,
+                               double xp, double xout, double *yp, bool *init);
+
 // One steady-state sub-solve [xp, xout] of a delay() model (rxode2#1447): use
 // the dense solver so every step is recorded into the delay history on the
 // virtual clock ind->delaySSClock (no observations are filled).  ros4 for a pure
-// ros4 solve, otherwise dop853 (with the stiff secondary of a composite).
+// ros4 solve, CVODE (its context `ctx`) for cvode, otherwise dop853 (with the
+// stiff secondary of a composite).
 static void rxDelaySSSolve(int *neq, double *yp, double xp, double xout,
                            rx_solving_options *op, rx_solving_options_ind *ind,
-                           int eff) {
+                           int eff, void *ctx) {
   if (isSameTimeDop(xout, xp)) return;
   ind->delayTOff = ind->delaySSClock - xp;
   preSolve(op, ind, xp, xout, yp);
@@ -7391,6 +7396,10 @@ static void rxDelaySSSolve(int *neq, double *yp, double xp, double xout,
   if (base == 13 && op->stiff2 <= 0) {
     idid = rxRos4DenseSegment(&rx_global, op, ind, neq, dydt, xp, xout, yp,
                               1, 0, neq[1]);
+  } else if (op->stiff == 21) {
+    bool init = false;
+    neq[0] = eff;
+    idid = rxCvodeDelaySegment(ctx, op, ind, neq, xp, xout, yp, &init);
   } else {
     DopDenseCtx dc;
     dc.ind = ind;

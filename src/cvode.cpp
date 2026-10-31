@@ -209,7 +209,7 @@ extern "C" void par_cvode_dense(rx_solve *rx);
 
 extern "C" void ind_cvode(rx_solve *rx, int solveid, t_update_inis u_inis) {
   rx_solving_options *op = rx->op;
-  if (op->useDense) { ind_cvode_dense(rx, solveid, u_inis); return; }
+  if (op->useDense || op->hasDelay) { ind_cvode_dense(rx, solveid, u_inis); return; }
   int neq[2];
   neq[0] = op->neq;
   neq[1] = 0;
@@ -218,7 +218,7 @@ extern "C" void ind_cvode(rx_solve *rx, int solveid, t_update_inis u_inis) {
 
 extern "C" void par_cvode(rx_solve *rx) {
   rx_solving_options *op = rx->op;
-  if (op->useDense) { par_cvode_dense(rx); return; }
+  if (op->useDense || op->hasDelay) { par_cvode_dense(rx); return; }
 #ifdef _OPENMP
   int cores = op->cores;
 #else
