@@ -1351,7 +1351,8 @@ created by reference (ie <code>setDt()</code>), which should be fast.</p></li>
 <dd><p>an object specifying if and how the random number
 generator should be initialized; when given, it takes precedence
 over an active <code><a href="rxSetSeed.html">rxSetSeed()</a></code> stream for this solve, and the
-caller's <code>.Random.seed</code> is restored afterwards</p></dd>
+caller's <code>.Random.seed</code> is restored afterwards.  <code>rxControl()</code> only
+stores it; the seed is applied when the control is used by a solve</p></dd>
 
 
 <dt id="arg-nsim">nsim<a class="anchor" aria-label="anchor" href="#arg-nsim"></a></dt>
