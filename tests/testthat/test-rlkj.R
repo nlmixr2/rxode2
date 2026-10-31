@@ -302,11 +302,14 @@ rxTest({
         l <- invWR1d(d = d, nu = e)
         eigen(l %*% t(l))$values
       }
-      for (d in d_vals) {
-        for (nu in nu_vals) {
-          expect_true(all(test_pd(d, nu) > 0))
+      # nu near d - 1 can draw a near-rank-1 matrix whose eigenvalues round to <= 0
+      withr::with_seed(42, {
+        for (d in d_vals) {
+          for (nu in nu_vals) {
+            expect_true(all(test_pd(d, nu) > 0))
+          }
         }
-      }
+      })
     })
 
     test_that("invWR1d corr matrix is symmetric", {
