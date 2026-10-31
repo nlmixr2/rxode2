@@ -140,6 +140,26 @@ static inline double getValue(int idx, double *y, int is_locf,
   return getValue(idx, y, is_locf, ind->ix, ind->n_all_times, ind->n_all_times_orig, op, lh);
 }
 
+// The data record whose covariates a record-based read of sorted record `pos`
+// reads, or -1 for a pushed record: a record a dose row expands to (a
+// steady-state companion, an infusion's stop; ind->doseRow) reads that dose
+// row's record, any other its own
+static inline int rxRecCovRow(rx_solving_options_ind *ind, int pos) {
+  if (pos < 0 || pos >= ind->n_all_times) return -1;
+  int raw = ind->ix[pos];
+  if (raw < 0 || raw >= ind->n_all_times_orig) return -1;
+  if (ind->doseRow != NULL && ind->doseRow[raw] != 0) return raw + ind->doseRow[raw];
+  return raw;
+}
+
+// The value of data record `raw`, a missing one filled from its neighbours in
+// record (data) order
+static inline double rxRecValue(int raw, double *y, int is_locf,
+                                rx_solving_options_ind *ind, rx_solving_options *op) {
+  return getValue(raw, y, is_locf, NULL, ind->n_all_times_orig,
+                  ind->n_all_times_orig, op, 0);
+}
+
 // v is at record i's time; a pushed record has no value of its own, so
 // interpolate across it instead
 static inline bool rxAtDataRec(double v, double ti, const int *ix, int i, int nOrig) {
@@ -407,6 +427,13 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
             ind->cacheME=0;
             continue;
           }
+          int linked = rxRecCovRow(indSample, idxSample);
+          if (linked >= 0 && linked != indSample->ix[idxSample]) {
+            // a record a dose row expands to reads that row
+            ind->par_ptr[op->par_cov[k]-1] = rxRecValue(linked, y, is_locf, indSample, op);
+            ind->cacheME=0;
+            continue;
+          }
           ind->par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, is_locf,
                                                     indSample, op, 0);
           if (idx == 0){
@@ -451,15 +478,34 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           //double *all_times = indSample->all_times;
           // cov_ptr is laid out by the data records (n_all_times_orig)
           double *y = indSample->cov_ptr + indSample->n_all_times_orig*k;
+          if (ind->recCovPos > 0 && rxRecCovRow(ind, ind->recCovPos - 1) >= 0) {
+            // a given record's covariates, whatever time t is
+            // (getAmtAtRecord()), a missing one from its neighbours in record
+            // order; a record a dose row expands to reads that row
+            par_ptr[op->par_cov[k]-1] =
+              rxRecValue(rxRecCovRow(ind, ind->recCovPos - 1), y, is_locf, indSample, op);
+            ind->cacheME=0;
+            continue;
+          }
           // a pushed record has no value of its own; interpolate across it
           bool pushed = rxPushedRec(ind->ix, idxSample, ind->n_all_times_orig);
           if (!pushed && idxSample == 0 &&
               isSameTimeOp(t, (indSample->fns && indSample->fns->gettime ? indSample->fns->gettime(indSample->ix[idxSample], indSample) : getTime(indSample->ix[idxSample], indSample)))) {
             // y is in record order; a lagged dose can move record 0 off sorted slot 0
-            par_ptr[op->par_cov[k]-1] = getValue(0, y, is_locf, indSample, op, 0);
+            int linked = rxRecCovRow(indSample, 0);
+            par_ptr[op->par_cov[k]-1] = (linked >= 0 && linked != indSample->ix[0]) ?
+              rxRecValue(linked, y, is_locf, indSample, op) :
+              getValue(0, y, is_locf, indSample, op, 0);
             ind->cacheME=0;
           } else if (!pushed && idxSample > 0 && idxSample < indSample->n_all_times &&
                      isSameTimeOp(t, (indSample->fns && indSample->fns->gettime ? indSample->fns->gettime(indSample->ix[idxSample], indSample) : getTime(indSample->ix[idxSample], indSample)))) {
+            int linked = rxRecCovRow(indSample, idxSample);
+            if (linked >= 0 && linked != indSample->ix[idxSample]) {
+              // a record a dose row expands to reads that row
+              par_ptr[op->par_cov[k]-1] = rxRecValue(linked, y, is_locf, indSample, op);
+              ind->cacheME=0;
+              continue;
+            }
             par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, is_locf,
                                                  indSample, op, 0);
             if (!isSameTimeOp(getValue(idxSample, y, is_locf,

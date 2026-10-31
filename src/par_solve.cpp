@@ -1915,7 +1915,16 @@ static inline int refreshLagTimesIfNeeded(rx_solve *rx,
     // lag = f(state at dosing time). Updating before or after the raw time would use
     // a different state (e.g. pushing a pending dose forward on every observation).
     if (!isSameTime(rawTime, xout)) continue;
-    double newTime = getLag(ind, ind->id, cmt, rawTime, yp);
+    // a fixed-duration infusion's stop keeps its start's lagged time plus the
+    // duration (getInfusionDurTime())
+    int infBidx = (whI == EVIDF_INF_DUR) ? getInfusionStartDose(raw, rx, op, ind) : -1;
+    double newTime;
+    if (infBidx != -1) {
+      int start = ind->idose[infBidx];
+      newTime = time[start] + rawTime - getAllTimes(ind, start);
+    } else {
+      newTime = getLag(ind, ind->id, cmt, rawTime, yp);
+    }
     if (!ISNA(newTime) && newTime != time[raw]) {
       time[raw] = newTime;
       changed = 1;
@@ -3893,13 +3902,14 @@ void handleSS(int *neq,
           ignoreDoses[nIgnoredDoses++] = infEixds;
           double f = 1.0;
           if (ind->whI == EVIDF_INF_RATE) {
-            f = getAmt(ind, ind->id, ind->cmt, 1.0, getAllTimes(ind, ind->idose[infBixds2]), yp);
+            f = getAmtAtRecord(ind, ind->idose[infBixds2], 1.0, yp);
             rateOn = getDose(ind, ind->idose[infBixds2]);
             rateOff = getDose(ind, ind->idose[infEixds]);
           } else {
             f = 1.0;
-            rateOn = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infBixds2]), getAllTimes(ind, ind->idose[infBixds2]), yp);
-            rateOff = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infEixds]), getAllTimes(ind, ind->idose[infEixds]), yp);
+            rateOn = getAmtAtRecord(ind, ind->idose[infBixds2], getDose(ind, ind->idose[infBixds2]), yp);
+            // the stop removes the rate its start added: the start's F
+            rateOff = getAmtAtRecord(ind, ind->idose[infBixds2], getDose(ind, ind->idose[infEixds]), yp);
           }
           // REprintf("get dur isSsLag: %d\n", isSsLag);
           dur = getAllTimes(ind, ind->idose[infEixds]);// -
@@ -3930,13 +3940,14 @@ void handleSS(int *neq,
           ignoreDoses[nIgnoredDoses++] = infEixds;
           double f = 1.0;
           if (ind->whI == EVIDF_INF_RATE) {
-            f = getAmt(ind, ind->id, ind->cmt, 1.0, getAllTimes(ind, ind->idose[infBixds2]), yp);
+            f = getAmtAtRecord(ind, ind->idose[infBixds2], 1.0, yp);
             rateOn = getDose(ind, ind->idose[infBixds2]);
             rateOff = getDose(ind, ind->idose[infEixds]);
           } else {
             f = 1.0;
-            rateOn = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infBixds2]), getAllTimes(ind, ind->idose[infBixds2]), yp);
-            rateOff = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infEixds]), getAllTimes(ind, ind->idose[infEixds]), yp);
+            rateOn = getAmtAtRecord(ind, ind->idose[infBixds2], getDose(ind, ind->idose[infBixds2]), yp);
+            // the stop removes the rate its start added: the start's F
+            rateOff = getAmtAtRecord(ind, ind->idose[infBixds2], getDose(ind, ind->idose[infEixds]), yp);
           }
           // REprintf("get dur2\n");
           dur = getAllTimes(ind, ind->idose[infEixds]);// -
@@ -4103,8 +4114,9 @@ void handleSS(int *neq,
         // shouldn't ever get here modeled duration would have to be
         // infinite for this to occur... but I don't think that is
         // supported yet
-        rateOn = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infBixds2]), getAllTimes(ind, ind->idose[infBixds2]), yp);
-        rateOff = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infEixds]), getAllTimes(ind, ind->idose[infEixds]), yp);
+        rateOn = getAmtAtRecord(ind, ind->idose[infBixds2], getDose(ind, ind->idose[infBixds2]), yp);
+        // the stop removes the rate its start added: the start's F
+        rateOff = getAmtAtRecord(ind, ind->idose[infBixds2], getDose(ind, ind->idose[infEixds]), yp);
       }
     } else if (ind->whI == EVIDF_INF_RATE ||
                ind->whI == EVIDF_INF_DUR ||
