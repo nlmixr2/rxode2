@@ -13,6 +13,12 @@
 
 extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,
                             t_dydt c_dydt, t_update_inis u_inis) {
+  // delay() models solve on the dense segment driver, which records the
+  // history on every step, toward observations and key events alike.
+  if (op->hasDelay && op->useDense) {
+    ind_dop0_dense(rx, op, solveid, neq, c_dydt, u_inis);
+    return;
+  }
   clock_t t0 = clock();
   int i;
   int istate = 1;
@@ -33,49 +39,16 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
 
   int neqOde = op->neq - op->numLin - op->numLinSens;
 
-  // Delay differential equation history for the ros4 (stiff) dense path.
-  ind->delayHistOn = op->hasDelay;
-  ind->delayHistN  = 0;
-  ind->delayT0     = xp;
-  ind->delayMinT   = R_PosInf;
-  ind->delayMaxT   = 0.0;
-  ind->delayWarmed = 0;
-  double _ros4MaxDt = 0.0; // 0 = no cap (default rosenbrock4_controller behavior)
-  if (ind->delayHistOn && neqOde > 0) {
-    // one RHS evaluation so delay() learns the minimum delay, which both caps
-    // the step size and confirms whether any delay is present
-    std::vector<double> _ddt((size_t)neqOde), _y0((size_t)neqOde);
-    for (int _j = 0; _j < neqOde; _j++) _y0[_j] = op->inits[_j];
-    c_dydt(neq, xp, _y0.data(), _ddt.data());
-    ind->delayWarmed = 1;
-    if (R_FINITE(ind->delayMinT)) _ros4MaxDt = ind->delayMinT;
-  }
-
   typedef boost::numeric::ublas::vector<double> state_type;
   typedef boost::numeric::ublas::matrix<double> matrix_type;
   typedef boost::numeric::odeint::rosenbrock4<double> stepper_base_type;
   typedef boost::numeric::odeint::rosenbrock4_controller<stepper_base_type> error_stepper_type;
-  error_stepper_type stepper(ind->atol2[0], ind->rtol2[0], _ros4MaxDt, stepper_base_type());
+  error_stepper_type stepper(ind->atol2[0], ind->rtol2[0]);
 
 
   typedef boost::numeric::odeint::rosenbrock4_dense_output<error_stepper_type> dense_stepper_type;
   dense_stepper_type dense_stepper(stepper);
   bool stepper_initialized = false;
-
-  // scratch vectors for sampling ros4 dense output when recording delay history
-  state_type _dq0(neqOde), _dq1(neqOde), _dq2(neqOde), _dq3(neqOde);
-  auto recordDelayStep = [&](void) {
-    if (!ind->delayHistOn || ind->err) return;
-    double t_old = dense_stepper.previous_time();
-    double t_cur = dense_stepper.current_time();
-    double hh = t_cur - t_old;
-    dense_stepper.calc_state(t_old,                _dq0);
-    dense_stepper.calc_state(t_old + hh / 3.0,     _dq1);
-    dense_stepper.calc_state(t_old + 2.0*hh / 3.0, _dq2);
-    dense_stepper.calc_state(t_cur,                _dq3);
-    rxDelayHistPushSamples(ind, op, t_old, hh,
-                           &_dq0[0], &_dq1[0], &_dq2[0], &_dq3[0]);
-  };
 
   auto sys = make_rxode2_system_ros4(ind, c_dydt, calc_jac, neq);
   
@@ -197,10 +170,7 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               sys.first.xout_ = xout;
               sys.first.sign_ = (dt > 0) ? 1 : -1;
               try {
-                  // delay models always use the dense stepper (even toward
-                  // non-observation events) so every step is recorded into the
-                  // delay history with no gaps.
-                  if ((op->useDense && isObs(getEvid(ind, ind->ix[i]))) || ind->delayHistOn) {
+                  if (op->useDense && isObs(getEvid(ind, ind->ix[i]))) {
                       if (!stepper_initialized) {
 
                           std::copy(yp, yp + neqOde, state.begin());
@@ -212,13 +182,11 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                           while (dense_stepper.current_time() < xout) {
                               dense_stepper.do_step(sys);
                               if (ind->err) { if (ind->rc[0] == 0) ind->rc[0] = -2019; break; }
-                              recordDelayStep();
                           }
                       } else {
                           while (dense_stepper.current_time() > xout) {
                               dense_stepper.do_step(sys);
                               if (ind->err) { if (ind->rc[0] == 0) ind->rc[0] = -2019; break; }
-                              recordDelayStep();
                           }
                       }
 
@@ -256,8 +224,8 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         handleEvid3(ind, op, rx, neq, &xp, &xout, yp, &(istate), u_inis);
         stepper_initialized = false;
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
-        handleSSDelay(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                      xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
+        handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                 xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
         if (ind->wh0 == EVID0_OFF){
           ind->solve[ind->cmt] = op->inits[ind->cmt];
         }
@@ -377,8 +345,8 @@ int rxRos4DenseSegment(rx_solve *rx, rx_solving_options *op, rx_solving_options_
   int eff = rxEffNeq(ind, op);
   int neqOde = eff - op->numLin - op->numLinSens;
   if (neqOde <= 0) { return 1; }
-  double maxdt = 0.0;
-  if (ind->delayHistOn && R_FINITE(ind->delayMinT)) maxdt = rxDelayStepCap(ind);
+  double maxdt = rxDelayCapHmax(ind);
+  if (maxdt < 0.0) maxdt = 0.0;
 
   typedef boost::numeric::ublas::vector<double> state_type;
   typedef boost::numeric::odeint::rosenbrock4<double> stepper_base_type;
