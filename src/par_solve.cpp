@@ -4145,6 +4145,11 @@ void handleSS(int *neq,
       curLagExtra = curLagExtra - overIi*curIi;
     }
     // First Reset
+    cancelRunningInfusionStops(ind, rx, op, *i, neq[0]);
+    if (!rx->ss2cancelAllPending && doSS2) {
+      // the pending stops of running steady-state infusions are kept too
+      for (j = neq[0]; j--;) cancelRunningExtraInfusionStops(ind, j, startTimeD);
+    }
     for (j = neq[0]; j--;) {
       ind->InfusionRate[j] = 0;
       // ind->on[j] = 1; // nonmem doesn't reset on according to doc

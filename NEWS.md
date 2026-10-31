@@ -3,6 +3,10 @@
 ## Bug fixes
 
 ### Event tables
+- A reset (`evid = 3`), a reset and dose (`evid = 4`) or a steady-state dose
+  (`ss = 1` or `ss = 2`) during an infusion now cancels the infusion's stop
+  record too.  The stop used to still apply, leaving the compartment at a net
+  rate of `-rate` and the state negative (#1562).
 - A simulation that stops with an error no longer leaves its draws for the
   next solve.  The residuals, simulated thetas and per-study draws it had
   made stayed behind, and the next solve without residuals of its own used
