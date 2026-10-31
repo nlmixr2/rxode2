@@ -3803,7 +3803,9 @@ rxSolve.default <- function(
       # discrete-adjoint rk4s methods record their own cubic-Hermite dense
       # history per accepted step and carry the backward anticipating term
       # (delayed Jacobian) in every backward fill -- explicit, stiff (ros4s,
-      # radauiia5s) and the dop853s+ros4s composite -- so all support delay().
+      # radauiia5s) and the dop853s+ros4s composite -- and cvodesadj records
+      # the history from CVODE's interpolant with the same backward term, so
+      # all support delay().
     } else if (.ctl$method == 2L) {
       # liblsoda is the overall default; switch DDE models to dop853 + ros4
       .ctl$method <- 0L
