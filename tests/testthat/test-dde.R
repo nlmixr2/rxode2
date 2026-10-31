@@ -118,8 +118,41 @@ rxTest({
 
   test_that("delay models reject solvers that cannot record dense history", {
     .tt <- seq(0, 2, by = 0.5)
-    for (.m in c("lsoda", "dop5", "bs", "cvode")) {
+    for (.m in c("lsoda", "cvode")) {
       expect_error(rxSolve(.dde, et(.tt), method = .m), "dense")
+    }
+  })
+
+  test_that("delay models solve with the dense dop5 and bs paths (#1599)", {
+    .tt <- seq(0, 2, by = 0.1)
+    for (.m in c("dop5", "bs")) {
+      .s <- rxSolve(.dde, et(.tt), method = .m, atol = 1e-10, rtol = 1e-10)
+      expect_true(max(abs(.s$y - .exact(.tt))) < 1e-5, label = .m)
+      ## the step cap (the delay) needs far more than maxsteps steps
+      expect_error(
+        suppressMessages(suppressWarnings(
+          rxSolve(.dde, et(c(0, 2)), method = .m, maxsteps = 3)
+        )),
+        "could not solve"
+      )
+    }
+    ## doses, an infusion and a steady state between observations: every
+    ## interval must record history, so dop5/bs agree with dop853
+    .pk <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * delay(depot, 0.7) - kel * central
+      ka <- 1.2
+      kel <- 0.3
+    })
+    .ev <- et(amt = 10, ii = 6, ss = 1, cmt = "depot") |>
+      et(amt = 5, time = 3.3, cmt = "depot") |>
+      et(amt = 4, time = 7.1, rate = 2, cmt = "central") |>
+      et(seq(0, 12, by = 1))
+    .ref <- rxSolve(.pk, .ev, method = "dop853", atol = 1e-10, rtol = 1e-10)
+    for (.m in c("dop5", "bs")) {
+      .s <- rxSolve(.pk, .ev, method = .m, atol = 1e-10, rtol = 1e-10)
+      expect_equal(.s$central, .ref$central, tolerance = 1e-5, label = .m)
+      expect_equal(.s$depot, .ref$depot, tolerance = 1e-5, label = .m)
     }
   })
 
