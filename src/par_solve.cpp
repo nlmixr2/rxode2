@@ -5004,6 +5004,71 @@ extern "C" int  lsAdjIsActive(void);
 extern "C" void lsAdjSetActive(int a);
 extern "C" void lsAdjInitStep(struct lsoda_context_t *ctx);
 extern "C" void lsAdjPushStep(struct lsoda_context_t *ctx);
+extern "C" int intdy(struct lsoda_context_t *ctx, double t, int k, double *dky);
+static void rxDelayHistPushNodes(rx_solving_options_ind *ind, rx_solving_options *op,
+                                 double xold, double h, const double *const *s);
+static inline double rxDelayStepCap(rx_solving_options_ind *ind);
+
+// Record the step lsoda just accepted into the delay() history: a degree-7
+// record from intdy() on 8 equispaced nodes of [tn - hu, tn].
+static void lsDelayPushStep(struct lsoda_context_t *ctx) {
+  int *neq = (int *)ctx->data;
+  rx_solving_options *op = rx_global.op;
+  rx_solving_options_ind *ind = &(rx_global.subjects[neq[1]]);
+  if (!ind->delayHistOn) return;
+  double tn = ctx->common->tn, hu = ctx->common->hu;
+  std::vector<double> q((size_t)8 * rxEffNeq(ind, op), 0.0);
+  size_t stride = q.size() / 8;
+  const double *qp[8];
+  for (int m = 0; m < 8; m++) {
+    double *qm = &q[m * stride];
+    intdy(ctx, m == 7 ? tn : tn - hu + hu * m / 7.0, 0, qm - 1);   // dky is 1-based
+    qp[m] = qm;
+  }
+  rxDelayHistPushNodes(ind, op, tn - hu, hu, qp);
+}
+
+// The time a delay() solve may step to without passing an event: the next
+// non-observation record from slot i on, or the next pending extra dose
+// (queued when the dose that makes it is handled), but not before xout.
+static inline double rxLsodaTcrit(rx_solving_options_ind *ind, int i, double xp,
+                                  double xout) {
+  double tc = ind->timeThread[ind->ix[ind->n_all_times - 1]];
+  for (int j = i; j < ind->n_all_times; j++) {
+    int raw = ind->ix[j];
+    if (!isObs(getEvid(ind, raw))) {
+      tc = ind->timeThread[raw];
+      break;
+    }
+  }
+  for (int k = ind->idxExtra; k < ind->extraDoseN[0]; k++) {
+    double te = getAllTimes(ind, -1 - ind->extraDoseTimeIdx[k]);
+    if (te > xp && te < tc) tc = te;
+  }
+  return (tc > xout) ? tc : xout;
+}
+
+// lsoda() toward tout.  For a delay() model step no further than tcrit (the
+// next event), so the history never runs past one, and if a step fails on
+// the history from before a delay breakpoint (a kink in the solution),
+// restart there once.
+static inline void rxLsodaTo(struct lsoda_context_t *ctx, double *yp, double *t,
+                             double tout, double tcrit, rx_solving_options_ind *ind) {
+  if (!ind->delayHistOn) {
+    lsoda(ctx, yp, t, tout);
+    return;
+  }
+  ctx->opt->tcrit = tcrit;
+  lsoda(ctx, yp, t, tout);
+  if ((ctx->state == -4 || ctx->state == -5) && *t < tout) {
+    if (ctx->error) {
+      free(ctx->error);
+      ctx->error = NULL;
+    }
+    ctx->state = 1;
+    lsoda(ctx, yp, t, tout);
+  }
+}
 
 extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda_opt_t opt, int solveid,
                               t_dydt_liblsoda dydt_liblsoda, t_update_inis u_inis) {
@@ -5114,6 +5179,26 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
     ctx->common->adjInit = NULL;
     ctx->common->adjPush = NULL;
   }
+  // delay() history, as in ind_dop0_dense(): each lsoda call stops at its
+  // target and every step is recorded, with the step capped at the smallest
+  // delay (learned from one RHS evaluation).
+  ind->delayHistOn = op->hasDelay;
+  ind->delayHistN  = 0;
+  ind->delayT0     = xp;
+  ind->delayMinT   = R_PosInf;
+  ind->delayMaxT   = 0.0;
+  ind->delayWarmed = 0;
+  ctx->common->stepPush = ind->delayHistOn ? lsDelayPushStep : NULL;
+  if (ind->delayHistOn && neqOde > 0) {
+    ctx->opt->itask = 4;
+    std::vector<double> _ddt((size_t)neq[0]);
+    dydt_liblsoda(xp, getSolve(0), _ddt.data(), neq);
+    ind->delayWarmed = 1;
+    if (R_FINITE(ind->delayMinT)) {
+      double _cap = rxDelayStepCap(ind);
+      if (ctx->opt->hmax <= 0.0 || _cap < ctx->opt->hmax) ctx->opt->hmax = _cap;
+    }
+  }
   ind->solvedIdx = 0;
   for(i=0; i< ind->n_all_times; i++) {
     ind->idx=i;
@@ -5151,7 +5236,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
                             &(ctx->state), op, ind, u_inis, ctx)) {
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
-            lsoda(ctx, yp, &xp, ind->extraDoseNewXout);
+            rxLsodaTo(ctx, yp, &xp, ind->extraDoseNewXout, ind->extraDoseNewXout, ind);
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &(ctx->state), rc, &i, yp, err_msg_ls, 7, false, ind, op, rx);
             if (*rc < 0) localBadSolve = 1;
@@ -5169,7 +5254,8 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
             ind->idxExtra++;
             if (!isSameTime(xout, ind->extraDoseNewXout)) {
               preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-              lsoda(ctx,yp, &ind->extraDoseNewXout, xout);
+              rxLsodaTo(ctx, yp, &ind->extraDoseNewXout, xout,
+                        rxLsodaTcrit(ind, i, ind->extraDoseNewXout, xout), ind);
               copyLinCmt(neq, ind, op, yp);
               postSolve(neq, &(ctx->state), rc, &i, yp, err_msg_ls, 7, false, ind, op, rx);
               if (*rc < 0) localBadSolve = 1;
@@ -5179,7 +5265,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         }
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
-          lsoda(ctx, yp, &xp, xout);
+          rxLsodaTo(ctx, yp, &xp, xout, rxLsodaTcrit(ind, i, xp, xout), ind);
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &(ctx->state), rc, &i, yp, err_msg_ls, 7, false, ind, op, rx);
           if (*rc < 0) localBadSolve = 1;
@@ -5199,8 +5285,8 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         // sensitivity dY_ss/dp is added analytically in the backward sweep.
         int _lsWasActive = lsAdjIsActive();
         if (_lsWasActive) lsAdjSetActive(0);
-        handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                 xp, ind->id, &i, ind->n_all_times, &(ctx->state), op, ind, u_inis, ctx);
+        handleSSDelay(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                      xp, ind->id, &i, ind->n_all_times, &(ctx->state), op, ind, u_inis, ctx);
         if (_lsWasActive) { lsAdjSetActive(1); lsAdjSnapshotSs(); }
         if (ind->wh0 == EVID0_OFF){
           yp[ind->cmt] = op->inits[ind->cmt];

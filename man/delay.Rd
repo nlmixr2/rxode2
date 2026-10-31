@@ -28,8 +28,10 @@ an ordinary differential equation model into a delay differential equation
 Delayed states are interpolated from the solver's dense output, so delay
 models are solved on a dense path: the default method becomes the dense
 AutoSwitch composite \code{"dop853+ros4"}, and the dense methods \code{"dop853"},
-\code{"dop5"}, \code{"bs"}, \code{"ros4"} and \code{"cvode"} also work.  The step size is capped to the smallest delay, and
-methods that cannot record dense history raise an error.  The dense-output
+\code{"dop5"}, \code{"bs"}, \code{"ros4"} and \code{"cvode"} also work, as does \code{"liblsoda"} with
+\code{dense = TRUE} (without it, \code{"liblsoda"} switches to \code{"dop853+ros4"}).  The
+step size is capped to the smallest delay, and methods that cannot record
+dense history raise an error.  The dense-output
 and delay-history machinery is adapted from the \code{dde} package by Rich
 FitzJohn and Wes Hinsley (Imperial College of Science, Technology and
 Medicine).

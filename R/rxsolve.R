@@ -3798,8 +3798,8 @@ rxSolve.default <- function(
       }
     }
     # delay() history is recorded on the dense dop853 path (default, and the
-    # dop853 leg of "dop853+ros4") and on the dense dop5, bs, ros4 and cvode
-    # paths.
+    # dop853 leg of "dop853+ros4"), on the dense dop5, bs, ros4 and cvode
+    # paths, and by liblsoda when dense = TRUE asks for it.
     # Other solvers cannot record dense history and are rejected.
     .stiff2 <- if (is.null(.ctl$stiff2)) 0L else as.integer(.ctl$stiff2)
     if (.ctl$method >= 200L) {
@@ -3809,24 +3809,26 @@ rxSolve.default <- function(
       # radauiia5s) and the dop853s+ros4s composite -- and cvodesadj records
       # the history from CVODE's interpolant with the same backward term, so
       # all support delay().
-    } else if (.ctl$method == 2L) {
+    } else if (.ctl$method == 2L && !isTRUE(.ctl$dense)) {
       # liblsoda is the overall default; switch DDE models to dop853 + ros4
+      # (an explicit dense = TRUE keeps liblsoda)
       .ctl$method <- 0L
       .ctl$stiff2 <- 13L
       .ctl$dense <- TRUE
       .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
     } else if (
       (.ctl$method == 0L && (.stiff2 == 0L || .stiff2 == 13L)) ||
-        (.ctl$method %in% c(10L, 11L, 13L, 21L) && .stiff2 == 0L)
+        (.ctl$method %in% c(2L, 10L, 11L, 13L, 21L) && .stiff2 == 0L)
     ) {
-      # dop853 (optionally + ros4 secondary), or pure dop5, bs, ros4 or cvode
+      # dop853 (optionally + ros4 secondary), or pure liblsoda (dense), dop5,
+      # bs, ros4 or cvode
       if (!isTRUE(.ctl$dense)) {
         .ctl$dense <- TRUE
         .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
       }
     } else {
       stop(
-        "delay differential equations require a dense solver; use method='dop853+ros4' (the default for delay models), 'dop853', 'dop5', 'bs', 'ros4' or 'cvode' (stiff)", # nolint: line_length_linter.
+        "delay differential equations require a dense solver; use method='dop853+ros4' (the default for delay models), 'dop853', 'dop5', 'bs', 'ros4', 'cvode' (stiff) or 'liblsoda' with dense = TRUE", # nolint: line_length_linter.
         call. = FALSE
       )
     }

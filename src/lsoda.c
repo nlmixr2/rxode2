@@ -816,6 +816,7 @@ int lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 				/* discrete-adjoint: record this accepted step's linearisation
 				   point (tn, converged y=yh[1]) + metadata (hu, nqu, el). */
 				if (ctx->common->adjPush) ctx->common->adjPush(ctx);
+				if (ctx->common->stepPush) ctx->common->stepPush(ctx);
 				if (_rxC(meth) != _rxC(mused)) {
 					_rxC(tsw) = _rxC(tn);
 					jstart = -1;
