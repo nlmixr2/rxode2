@@ -507,11 +507,12 @@ static inline void ignoreStopAfter(rx_solving_options_ind *ind, int pos, int e) 
 // A reset (evid 3/4, ss=1) zeros InfusionRate and so cancels every running
 // data-table infusion; ignore the stop records still ahead of it, or each
 // would leave the compartment at -rate (nlmixr2/rxode2#1562).  `pos` is the
-// reset's position in ind->ix; call before InfusionRate is zeroed.
+// reset's position in ind->ix; call before InfusionRate is zeroed.  `onlyCmt`
+// limits it to one compartment (one turned off), -1 for all.
 static inline void cancelRunningInfusionStops(rx_solving_options_ind *ind,
                                               rx_solve *rx,
                                               rx_solving_options *op,
-                                              int pos, int neq) {
+                                              int pos, int neq, int onlyCmt) {
   int wh, cmt, wh100, whI, wh0;
   // an earlier evid=3 already cancelled every infusion that started before it
   for (int k = (pos < ind->n_all_times ? pos : ind->n_all_times); k--;) {
@@ -521,14 +522,16 @@ static inline void cancelRunningInfusionStops(rx_solving_options_ind *ind,
     if (!isDose(evid)) continue;
     getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
     if (!isInfusionStartRecord(wh0, whI) ||
-        cmt < 0 || cmt >= neq || ind->InfusionRate[cmt] == 0.0) continue;
+        cmt < 0 || cmt >= neq || (onlyCmt >= 0 && cmt != onlyCmt) ||
+        ind->InfusionRate[cmt] == 0.0) continue;
     int e = getInfusionStopDoseNumber(ind, rx, op, r, cmt, whI);
     if (e >= 0) ignoreStopAfter(ind, pos, e);
   }
 }
 
 // The same for the infusions steady state pushes into the extra-dose pool, for
-// compartment `cmt` cancelled at `time` while its pending doses are kept.
+// compartment `cmt` cancelled at `time` while its pending doses are kept (an
+// ss=2 dose) or when it is turned off.
 // Same-rate infusions pair first in first out, so when the pool holds
 // `running` more pending stops than starts, its first `running` stops belong to
 // the running infusions.  Two such regimens with different durations cannot be
@@ -1472,8 +1475,24 @@ static inline int handle_evid(int evid, int neq,
     rx_solving_options *op = (ind->op ? ind->op : &op_global);
     //if (syncIdx(ind) == 0) return 0;
     if (ind->wh0 == EVID0_OFF) {
+      if (ind->idx >= 0) {
+        rx_solve *rx = (ind->rx ? ind->rx : &rx_global);
+        cancelRunningInfusionStops(ind, rx, op, ind->idx, neq, cmt);
+      }
+      cancelRunningExtraInfusionStops(ind, cmt, xout);
+      if (_rxEsActive && _esSSDurOffCmt == cmt) _esSSDurOffCmt = -1;
+      if (_rxEsActive && _esSSRateOffCmt == cmt) _esSSRateOffCmt = -1;
       yp[cmt]=op->inits[cmt];
       InfusionRate[cmt] = 0;
+      // and its event sensitivities, whose forcing the ignored stop no longer
+      // removes
+      if (_rxEsActive && cmt < _rxEsNState &&
+          _rxEsNState * (1 + _rxEsNParam) <= neq) {
+        for (int _k = cmt + _rxEsNState; _k < op->neq; _k += _rxEsNState) {
+          yp[_k] = op->inits[_k];
+          InfusionRate[_k] = 0;
+        }
+      }
       ind->cacheME=0;
       ind->on[cmt] = 0;
       return 1;

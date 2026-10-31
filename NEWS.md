@@ -7,6 +7,10 @@
   (`ss = 1` or `ss = 2`) during an infusion now cancels the infusion's stop
   record too.  The stop used to still apply, leaving the compartment at a net
   rate of `-rate` and the state negative (#1562).
+- Turning a compartment off (`evid = 2`, negative `cmt`) during an infusion
+  into it now cancels the infusion's stop record too, so the state no longer
+  goes negative and the stop no longer turns the compartment back on.  Its
+  event sensitivities are reset with it (#1562).
 - A simulation that stops with an error no longer leaves its draws for the
   next solve.  The residuals, simulated thetas and per-study draws it had
   made stayed behind, and the next solve without residuals of its own used
