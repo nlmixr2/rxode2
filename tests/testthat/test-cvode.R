@@ -43,4 +43,42 @@ rxTest({
       expect_equal(out$y, exp(-out$time), tolerance = 1e-4)
     }
   })
+
+  test_that("cvode dense=TRUE matches dense=FALSE and dop853", {
+    mod <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central - q / v * central + q / vp * periph
+      d/dt(periph) <- q / v * central - q / vp * periph
+      ka <- 1.1
+      cl <- 2
+      v <- 10
+      q <- 1.5
+      vp <- 20
+    })
+    ev <- et(amt = 100, ii = 12, ss = 1, cmt = "depot") |>
+      et(amt = 50, time = 5.3, cmt = "depot") |>
+      et(amt = 40, time = 14.2, rate = 20, cmt = "central") |>
+      et(time = 30, evid = 3) |>
+      et(amt = 20, time = 31.5, cmt = "depot") |>
+      et(seq(0, 48, by = 0.5))
+    f <- function(...) {
+      as.data.frame(rxSolve(mod, ev, atol = 1e-10, rtol = 1e-10, ...))
+    }
+    .ref <- f(method = "dop853")
+    .nd <- f(method = "cvode")
+    .d <- f(method = "cvode", dense = TRUE)
+    .d2 <- f(method = "cvode", dense = TRUE, cores = 2)
+    for (.v in c("depot", "central", "periph")) {
+      expect_equal(.d[[.v]], .nd[[.v]], tolerance = 1e-6)
+      expect_equal(.d[[.v]], .ref[[.v]], tolerance = 1e-6)
+    }
+    expect_equal(.d2, .d)
+  })
+
+  test_that("rxIsDense() reports cvode as dense", {
+    expect_true(rxIsDense("cvode"))
+    expect_true(rxIsDense(21L))
+    expect_true(rxIsDense("dop853+ros4"))
+    expect_false(rxIsDense("liblsoda"))
+  })
 })
