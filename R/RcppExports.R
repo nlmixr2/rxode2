@@ -1174,8 +1174,8 @@ rxTestAbiStrideProbe_ <- function(pad, n) {
     .Call(`_rxode2_rxTestAbiStrideProbe_`, pad, n)
 }
 
-rxOptRep_ <- function(input) {
-    .Call(`_rxode2_rxOptRep_`, input)
+rxOptRep_ <- function(input, prefix = "rx_expr_") {
+    .Call(`_rxode2_rxOptRep_`, input, prefix)
 }
 
 rxRmvtTilt_ <- function(sigma, lower, upper, df) {

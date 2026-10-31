@@ -2377,13 +2377,14 @@ RcppExport SEXP _rxode2_rxTestAbiStrideProbe_(SEXP padSEXP, SEXP nSEXP) {
     return rcpp_result_gen;
 }
 // rxOptRep_
-RObject rxOptRep_(RObject input);
-RcppExport SEXP _rxode2_rxOptRep_(SEXP inputSEXP) {
+RObject rxOptRep_(RObject input, std::string prefix);
+RcppExport SEXP _rxode2_rxOptRep_(SEXP inputSEXP, SEXP prefixSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< RObject >::type input(inputSEXP);
-    rcpp_result_gen = Rcpp::wrap(rxOptRep_(input));
+    Rcpp::traits::input_parameter< std::string >::type prefix(prefixSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxOptRep_(input, prefix));
     return rcpp_result_gen;
 END_RCPP
 }

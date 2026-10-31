@@ -92,7 +92,7 @@ SEXP _rxode2_rxSolveUpdate(SEXP, SEXP, SEXP);
 SEXP _rxode2_rxAssignPtr(SEXP);
 SEXP _rxode2_rxAssignPtr(SEXP objectSEXP);
 SEXP _rxode2_dynLoad(SEXP dllSEXP);
-SEXP _rxode2_rxOptRep_(SEXP);
+SEXP _rxode2_rxOptRep_(SEXP, SEXP);
 SEXP _rxode2_rxIndLin_(SEXP);
 SEXP _rxParProgress(SEXP);
 SEXP _rxode2_rxRmvn_(SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -1065,7 +1065,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxOmegaVarCovDeriv_",(DL_FUNC) &_rxode2_rxOmegaVarCovDeriv_, 2},
     {"_rxode2_rxExpandFEta_", (DL_FUNC) &_rxode2_rxExpandFEta_, 4},
     {"_rxode2_rxRepR0_", (DL_FUNC) &_rxode2_rxRepR0_, 1},
-    {"_rxode2_rxOptRep_", (DL_FUNC) &_rxode2_rxOptRep_, 1},
+    {"_rxode2_rxOptRep_", (DL_FUNC) &_rxode2_rxOptRep_, 2},
     {"_rxode2_rxSetSilentErr", (DL_FUNC) &_rxode2_rxSetSilentErr, 1},
     {"_rxode2_rxIndLin_",(DL_FUNC) &_rxode2_rxIndLin_, 1},
     {"_rxode2_rxUnloadAll_", (DL_FUNC) &_rxode2_rxUnloadAll_, 0},

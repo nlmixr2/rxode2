@@ -238,3 +238,18 @@ test_that('chunked CSE remains equivalent when optimized again', {
     expect_equal(solve(twice), expected, tolerance = 1e-10)
   }
 })
+
+test_that('the R CSE fallback preserves existing temporary names', {
+  withr::local_options(rxode2.optExprC = FALSE)
+  for (name in c('rx_expr_0', 'rx_expr_cse_0', 'rx_expr_cse_cse_0')) {
+    original <- paste0(name, '~a+b\ny=', name, '*(c+d)+(c+d)')
+    optimized <- suppressMessages(rxOptExpr(original, chunkLines = 0L))
+    params <- c(a = 2, b = 3, c = 7, d = 11)
+    actual <- as.data.frame(rxSolve(
+      rxode2(optimized),
+      params = params,
+      events = data.frame(time = 0, evid = 0, amt = 0)
+    ))
+    expect_equal(actual$y, 108)
+  }
+})

@@ -1167,7 +1167,11 @@ rxOptExpr <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
     if (length(.exprs) == 0) {
       return(x)
     }
-    .rp <- rxOptRep_(.exprs)
+    .prefix <- "rx_expr_"
+    while (grepl(.prefix, .norm, fixed = TRUE)) {
+      .prefix <- paste0(.prefix, "cse_")
+    }
+    .rp <- rxOptRep_(.exprs, .prefix)
     .rxOptEnv$.rep <- as.list(.rp[[1]])
     .rxOptEnv$.exclude <- ""
     .malert(sprintf("optimizing duplicate expressions in %s...", msg))
