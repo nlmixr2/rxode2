@@ -837,7 +837,7 @@
 .rxOptExprChunk <- function(i, chunks, msg) {
   .txt <- paste(chunks[[i]], collapse = "\n")
   .o <- suppressMessages(rxOptExpr(.txt, msg, chunkLines = 0L))
-  .re <- "\\brx_expr_[0-9]+\\b"
+  .re <- "\\brx_expr_(cse_)*[0-9]+\\b"
   .new <- setdiff(unique(regmatches(.o, gregexpr(.re, .o))[[1]]), unique(regmatches(.txt, gregexpr(.re, .txt))[[1]]))
   for (.v in .new) {
     .o <- gsub(paste0("\\b", .v, "\\b"), sub("^rx_expr_", sprintf("rx_expr_c%d_", i), .v), .o)
