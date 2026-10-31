@@ -69,32 +69,32 @@ bool replace1(std::string& str, const std::string& from, const std::string& to) 
 }
 
 //[[Rcpp::export]]
-RObject rxOptRep_(RObject input){
+RObject rxOptRep_(RObject input, std::string prefix = "rx_expr_"){
   CharacterVector inp = as<CharacterVector>(input);
   int len = inp.length();
   CharacterVector out(len);
   CharacterVector outn(len);
   if (len == 1) {
     List ret(2);
-    CharacterVector outn = CharacterVector::create("rx_expr_0");
+    CharacterVector outn = CharacterVector::create(prefix + "0");
     outn.attr("names") = inp;
     ret[0] = outn;
-    std::string outE = "rx_expr_0~" + as<std::string>(inp[0]) + "\n";
+    std::string outE = prefix + "0~" + as<std::string>(inp[0]) + "\n";
     ret[1] = CharacterVector::create(outE);
     return as<RObject>(ret);
   }
   out[0] = inp[0];
-  outn[0] = "rx_expr_0";
-  std::string outE = "rx_expr_0~" + as<std::string>(inp[0]) + "\n";
+  outn[0] = prefix + "0";
+  std::string outE = prefix + "0~" + as<std::string>(inp[0]) + "\n";
   for (int i = 1; i < len; i++){
     std::string cur = as<std::string>(inp[i]);
     for (int j = 0; j < i; j++){
       std::string last = as<std::string>(out[j]);
-      std::string expr = "rx_expr_" + std::to_string(j);
+      std::string expr = prefix + std::to_string(j);
       replace1(cur,last,expr);
     }
     out[i] = cur;
-    outn[i] = "rx_expr_" + std::to_string(i);
+    outn[i] = prefix + std::to_string(i);
     outE += as<std::string>(outn[i]) + "~" + as<std::string>(out[i]) +"\n";
   }
   outn.attr("names") = out;

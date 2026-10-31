@@ -837,7 +837,7 @@
 .rxOptExprChunk <- function(i, chunks, msg) {
   .txt <- paste(chunks[[i]], collapse = "\n")
   .o <- suppressMessages(rxOptExpr(.txt, msg, chunkLines = 0L))
-  .re <- "\\brx_expr_[0-9]+\\b"
+  .re <- "\\brx_expr_(cse_)*[0-9]+\\b"
   .new <- setdiff(unique(regmatches(.o, gregexpr(.re, .o))[[1]]), unique(regmatches(.txt, gregexpr(.re, .txt))[[1]]))
   for (.v in .new) {
     .o <- gsub(paste0("\\b", .v, "\\b"), sub("^rx_expr_", sprintf("rx_expr_c%d_", i), .v), .o)
@@ -1167,7 +1167,11 @@ rxOptExpr <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
     if (length(.exprs) == 0) {
       return(x)
     }
-    .rp <- rxOptRep_(.exprs)
+    .prefix <- "rx_expr_"
+    while (grepl(.prefix, .norm, fixed = TRUE)) {
+      .prefix <- paste0(.prefix, "cse_")
+    }
+    .rp <- rxOptRep_(.exprs, .prefix)
     .rxOptEnv$.rep <- as.list(.rp[[1]])
     .rxOptEnv$.exclude <- ""
     .malert(sprintf("optimizing duplicate expressions in %s...", msg))

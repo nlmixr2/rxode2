@@ -191,3 +191,65 @@ rxTest({
     }
   })
 })
+
+test_that('CSE reserves temporary names across repeated passes', {
+  evaluate <- function(txt) {
+    env <- list2env(list(a = 2, b = 3, c = 7, d = 11))
+    eval(parse(text = gsub('~', '<-', txt, fixed = TRUE)), env)
+    env$y
+  }
+  for (name in c('rx_expr_0', 'rx_expr_cse_0', 'rx_expr_cse_cse_0')) {
+    txt <- paste0(name, '~a+b\ny=', name, '*(c+d)+(c+d)')
+    for (pass in 1:3) {
+      out <- .rxOptExprC(txt)
+      if (is.na(out)) {
+        expect_gt(pass, 1L)
+        break
+      }
+      expect_equal(evaluate(out), 108)
+      txt <- out
+    }
+  }
+})
+
+test_that('chunked CSE remains equivalent when optimized again', {
+  withr::local_options(rxode2.optExprChunkChars = 1L)
+  for (covariate in c('my_rx_expr_cov', 'my_rx_expr_cse_cov', 'my_rx_expr_cse_cse_cov')) {
+    original <- paste(
+      c(
+        sprintf('x%d=exp(a+b)*%s+%d', 1:5, covariate, 1:5),
+        sprintf('z%d=exp(c+d)*%s+%d', 1:5, covariate, 1:5),
+        'y=x1+x2+x3+x4+x5+z1+z2+z3+z4+z5'
+      ),
+      collapse = '\n'
+    )
+    once <- suppressMessages(rxOptExpr(original, chunkLines = 4L, parallel = 1L))
+    twice <- suppressMessages(rxOptExpr(once, chunkLines = 0L))
+    params <- c(a = .2, b = .3, c = .7, d = 1.1, setNames(2, covariate))
+    solve <- function(txt) {
+      as.data.frame(rxSolve(
+        rxode2(txt),
+        params = params,
+        events = data.frame(time = 0, evid = 0, amt = 0)
+      ))
+    }
+    expected <- solve(original)
+    expect_equal(solve(once), expected, tolerance = 1e-10)
+    expect_equal(solve(twice), expected, tolerance = 1e-10)
+  }
+})
+
+test_that('the R CSE fallback preserves existing temporary names', {
+  withr::local_options(rxode2.optExprC = FALSE)
+  for (name in c('rx_expr_0', 'rx_expr_cse_0', 'rx_expr_cse_cse_0')) {
+    original <- paste0(name, '~a+b\ny=', name, '*(c+d)+(c+d)')
+    optimized <- suppressMessages(rxOptExpr(original, chunkLines = 0L))
+    params <- c(a = 2, b = 3, c = 7, d = 11)
+    actual <- as.data.frame(rxSolve(
+      rxode2(optimized),
+      params = params,
+      events = data.frame(time = 0, evid = 0, amt = 0)
+    ))
+    expect_equal(actual$y, 108)
+  }
+})
