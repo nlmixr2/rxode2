@@ -3017,38 +3017,25 @@ static inline int ssBolusDone(int nDose, int minSS, int maxSS, int *neq,
   return *canBreak || nDose >= maxSS;
 }
 
-extern "C" void handleSSbolus(int *neq,
-                              int *BadDose,
-                              double *InfusionRate,
-                              double *dose,
-                              double *yp,
-                              double *xout, double xp, int id,
-                              int *i, int nx,
-                              int *istate,
-                              rx_solving_options *op,
-                              rx_solving_options_ind *ind,
-                              t_update_inis u_inis,
-                              void *ctx,
-                              rx_solve *rx,
-                              double *xout2,
-                              double *xp2,
-                              double *curIi,
-                              int *canBreak,
-                              int adjustEvidBolusLag) {
-  ind->ssTime = *xp2;
-  // yp holds the first dose and an ss lag adds one after this, so minSS and
-  // maxSS count every dose before the steady-state one
-  int isSsLag = ind->wh0 == EVID0_SS20 || ind->wh0 == EVID0_SS0;
-  int minSS = max2(op->minSS - isSsLag, 1);
-  int maxSS = max2(op->maxSS - isSsLag, minSS);
-  // a fixed dose count (minSS == maxSS) iterates linCmt() too (#1500)
-  if (minSS < maxSS &&
-      handleSSbolusLinear(neq, BadDose, InfusionRate, dose, yp, xout, id, i,
-                          nx, istate, op, ind, u_inis, ctx, xout2, xp2,
-                          curIi, adjustEvidBolusLag)) {
-    ind->ssTime = NA_REAL;
-    return;
-  }
+// iterate steady-state boluses until converged between minSS and maxSS doses
+static inline void handleSSbolusIterate(int *neq,
+                                        int *BadDose,
+                                        double *InfusionRate,
+                                        double *dose,
+                                        double *yp,
+                                        double *xout, int id,
+                                        int *i, int nx,
+                                        int *istate,
+                                        rx_solving_options *op,
+                                        rx_solving_options_ind *ind,
+                                        t_update_inis u_inis,
+                                        void *ctx,
+                                        double *xout2,
+                                        double *xp2,
+                                        double *curIi,
+                                        int *canBreak,
+                                        int adjustEvidBolusLag,
+                                        int minSS, int maxSS) {
   // advance to trough
   ind->idx=*i;
   *xout2 = *xp2 + *curIi;
@@ -3081,6 +3068,43 @@ extern "C" void handleSSbolus(int *neq,
     *istate=1;
     *xp2 = *xout2;
   }
+}
+
+extern "C" void handleSSbolus(int *neq,
+                              int *BadDose,
+                              double *InfusionRate,
+                              double *dose,
+                              double *yp,
+                              double *xout, double xp, int id,
+                              int *i, int nx,
+                              int *istate,
+                              rx_solving_options *op,
+                              rx_solving_options_ind *ind,
+                              t_update_inis u_inis,
+                              void *ctx,
+                              rx_solve *rx,
+                              double *xout2,
+                              double *xp2,
+                              double *curIi,
+                              int *canBreak,
+                              int adjustEvidBolusLag) {
+  ind->ssTime = *xp2;
+  // yp holds the first dose and an ss lag adds one after this, so minSS and
+  // maxSS count every dose before the steady-state one
+  int isSsLag = ind->wh0 == EVID0_SS20 || ind->wh0 == EVID0_SS0;
+  int minSS = max2(op->minSS - isSsLag, 1);
+  int maxSS = max2(op->maxSS - isSsLag, minSS);
+  // a fixed dose count (minSS == maxSS) iterates linCmt() too (#1500)
+  if (minSS < maxSS &&
+      handleSSbolusLinear(neq, BadDose, InfusionRate, dose, yp, xout, id, i,
+                          nx, istate, op, ind, u_inis, ctx, xout2, xp2,
+                          curIi, adjustEvidBolusLag)) {
+    ind->ssTime = NA_REAL;
+    return;
+  }
+  handleSSbolusIterate(neq, BadDose, InfusionRate, dose, yp, xout, id, i, nx,
+                       istate, op, ind, u_inis, ctx, xout2, xp2, curIi,
+                       canBreak, adjustEvidBolusLag, minSS, maxSS);
   ind->ssTime = NA_REAL;
 }
 
@@ -3140,75 +3164,91 @@ static thread_local int    _adjSS2 = 0;
 // in the dY_ss_new/dp = -J^{-1} df/dp linear solve (kind 2).
 static thread_local std::vector<double> _adjSS2peak;
 
-extern "C" void solveSSinf(int *neq,
-                           int *BadDose,
-                           double *InfusionRate,
-                           double *dose,
-                           double *yp,
-                           double *xout, double xp, int id,
-                           int *i, int nx,
-                           int *istate,
-                           rx_solving_options *op,
-                           rx_solving_options_ind *ind,
-                           t_update_inis u_inis,
-                           void *ctx,
-                           rx_solve *rx,
-                           double *xout2,
-                           double *xp2,
-                           int *infBixds,
-                           int *bi,
-                           int *infEixds,
-                           int *ei,
-                           double *curIi,
-                           double *dur,
-                           double *dur2,
-                           int *canBreak,
-                           int nAfter) {
-  double ssStart = *xp2;
-  double ssStop = *xp2 + *dur;
-  // minSS/maxSS count every dose before the steady-state one, including the
-  // nAfter that handleSS() gives after this loop
-  int minSS = max2(op->minSS - nAfter, 1);
-  int maxSS = max2(op->maxSS - nAfter, minSS);
-  // a fixed dose count (minSS == maxSS) iterates linCmt() too (#1500)
-  if (minSS < maxSS && canHandleSSLinear(op, ind, ind->idose[*infBixds])) {
-    // only a linear solved, use calculated steady state instead of
-    // solved steady state.
-    //
-    // First set the steady state options for linCmtA or linCmtB
-    ind->linSS = 2;
-    ind->linSSvar = *dur; // tinf or dur
-    ind->linSStau = *curIi;
-    ind->ssTime = ssStart;
+// steady-state infusion from the linear solution; returns 1 when it applies
+static inline int solveSSinfLinear(int *neq,
+                                   int *BadDose,
+                                   double *InfusionRate,
+                                   double *dose,
+                                   double *yp,
+                                   double *xout, int id,
+                                   int *i, int nx,
+                                   int *istate,
+                                   rx_solving_options *op,
+                                   rx_solving_options_ind *ind,
+                                   t_update_inis u_inis,
+                                   void *ctx,
+                                   double *xout2,
+                                   double *xp2,
+                                   int *infBixds,
+                                   int *bi,
+                                   int *infEixds,
+                                   int *ei,
+                                   double *curIi,
+                                   double *dur,
+                                   double *dur2,
+                                   int *canBreak,
+                                   double ssStart) {
+  if (!canHandleSSLinear(op, ind, ind->idose[*infBixds])) return 0;
+  // only a linear solved, use calculated steady state instead of
+  // solved steady state.
+  //
+  // First set the steady state options for linCmtA or linCmtB
+  ind->linSS = 2;
+  ind->linSSvar = *dur; // tinf or dur
+  ind->linSStau = *curIi;
+  ind->ssTime = ssStart;
 
-    // Next, turn on the infusion in the appropriate compartment
-    *canBreak=1;
-    *xout2 = *xp2+*dur;
-    ind->idx=*bi;
-    ind->ixds = *infBixds;
-    handle_evid(getEvid(ind, ind->idose[*infBixds]), neq[0],
-                BadDose, InfusionRate, dose, yp,
-                *xout, neq[1], ind);
-    // yp is last solve or y0
-    *istate=1;
-    // yp is last solve or y0
-    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-    *xp2 = *xout2;
-    // Turn off Infusion; no need to solve anything afterward
-    *xout2 = *xp2 + *dur2;
-    ind->ixds = *infEixds;
-    ind->idx=*ei;
-    handle_evid(getEvid(ind, ind->idose[*infEixds]), neq[0],
-                BadDose, InfusionRate, dose, yp,
-                *xout+*dur, neq[1], ind);
-    ind->linSS = 0; // switch back to normal solve
-    if (yp[ind->cmt] > 0) {
-      // solved successfully, return
-      ind->ssTime = NA_REAL;
-      return;
-    }
-  }
+  // Next, turn on the infusion in the appropriate compartment
+  *canBreak=1;
+  *xout2 = *xp2+*dur;
+  ind->idx=*bi;
+  ind->ixds = *infBixds;
+  handle_evid(getEvid(ind, ind->idose[*infBixds]), neq[0],
+              BadDose, InfusionRate, dose, yp,
+              *xout, neq[1], ind);
+  // yp is last solve or y0
+  *istate=1;
+  // yp is last solve or y0
+  solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+               *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+  *xp2 = *xout2;
+  // Turn off Infusion; no need to solve anything afterward
+  *xout2 = *xp2 + *dur2;
+  ind->ixds = *infEixds;
+  ind->idx=*ei;
+  handle_evid(getEvid(ind, ind->idose[*infEixds]), neq[0],
+              BadDose, InfusionRate, dose, yp,
+              *xout+*dur, neq[1], ind);
+  ind->linSS = 0; // switch back to normal solve
+  // solved successfully when positive
+  return yp[ind->cmt] > 0;
+}
+
+// iterate steady-state infusions until converged between minSS and maxSS doses
+static inline void solveSSinfIterate(int *neq,
+                                     int *BadDose,
+                                     double *InfusionRate,
+                                     double *dose,
+                                     double *yp,
+                                     double *xout, int id,
+                                     int *i, int nx,
+                                     int *istate,
+                                     rx_solving_options *op,
+                                     rx_solving_options_ind *ind,
+                                     t_update_inis u_inis,
+                                     void *ctx,
+                                     double *xout2,
+                                     double *xp2,
+                                     int *infBixds,
+                                     int *bi,
+                                     int *infEixds,
+                                     int *ei,
+                                     double *curIi,
+                                     double *dur,
+                                     double *dur2,
+                                     int *canBreak,
+                                     double ssStart,
+                                     double ssStop, int minSS, int maxSS) {
   for (int k = neq[0]; k--;) {
     ind->solveLast[k] = ind->solveLast2[k] = yp[k];
   }
@@ -3301,6 +3341,50 @@ extern "C" void solveSSinf(int *neq,
     }
     *xp2 = *xout2;
   }
+}
+
+extern "C" void solveSSinf(int *neq,
+                           int *BadDose,
+                           double *InfusionRate,
+                           double *dose,
+                           double *yp,
+                           double *xout, double xp, int id,
+                           int *i, int nx,
+                           int *istate,
+                           rx_solving_options *op,
+                           rx_solving_options_ind *ind,
+                           t_update_inis u_inis,
+                           void *ctx,
+                           rx_solve *rx,
+                           double *xout2,
+                           double *xp2,
+                           int *infBixds,
+                           int *bi,
+                           int *infEixds,
+                           int *ei,
+                           double *curIi,
+                           double *dur,
+                           double *dur2,
+                           int *canBreak,
+                           int nAfter) {
+  double ssStart = *xp2;
+  double ssStop = *xp2 + *dur;
+  // minSS/maxSS count every dose before the steady-state one, including the
+  // nAfter that handleSS() gives after this loop
+  int minSS = max2(op->minSS - nAfter, 1);
+  int maxSS = max2(op->maxSS - nAfter, minSS);
+  // a fixed dose count (minSS == maxSS) iterates linCmt() too (#1500)
+  if (minSS < maxSS &&
+      solveSSinfLinear(neq, BadDose, InfusionRate, dose, yp, xout, id, i, nx, istate,
+                       op, ind, u_inis, ctx, xout2, xp2, infBixds, bi, infEixds,
+                       ei, curIi, dur, dur2, canBreak, ssStart)) {
+    ind->ssTime = NA_REAL;
+    return;
+  }
+  solveSSinfIterate(neq, BadDose, InfusionRate, dose, yp, xout, id, i, nx, istate,
+                    op, ind, u_inis, ctx, xout2, xp2, infBixds, bi, infEixds,
+                    ei, curIi, dur, dur2, canBreak, ssStart,
+                    ssStop, minSS, maxSS);
   ind->ssTime = NA_REAL;
 }
 
