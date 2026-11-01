@@ -186,7 +186,7 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  sigmaUpper <span class="op">=</span> <span class="cn">Inf</span>,</span>
 <span>  nCoresRV <span class="op">=</span> <span class="fl">1L</span>,</span>
 <span>  sigmaIsChol <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  sigmaSeparation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"lkj"</span>, <span class="st">"separation"</span>, <span class="st">"tnpri"</span><span class="op">)</span>,</span>
+<span>  sigmaSeparation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"lkj"</span>, <span class="st">"separation"</span>, <span class="st">"tnpri"</span>, <span class="st">"invchol"</span><span class="op">)</span>,</span>
 <span>  sigmaXform <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"identity"</span>, <span class="st">"variance"</span>, <span class="st">"log"</span>, <span class="st">"nlmixrSqrt"</span>, <span class="st">"nlmixrLog"</span>,</span>
 <span>    <span class="st">"nlmixrIdentity"</span><span class="op">)</span>,</span>
 <span>  nDisplayProgress <span class="op">=</span> <span class="fl">10000L</span>,</span>
@@ -202,7 +202,7 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  omega <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  omegaDf <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  omegaIsChol <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  omegaSeparation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"lkj"</span>, <span class="st">"separation"</span>, <span class="st">"tnpri"</span><span class="op">)</span>,</span>
+<span>  omegaSeparation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"lkj"</span>, <span class="st">"separation"</span>, <span class="st">"tnpri"</span>, <span class="st">"invchol"</span><span class="op">)</span>,</span>
 <span>  omegaXform <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"variance"</span>, <span class="st">"identity"</span>, <span class="st">"log"</span>, <span class="st">"nlmixrSqrt"</span>, <span class="st">"nlmixrLog"</span>,</span>
 <span>    <span class="st">"nlmixrIdentity"</span><span class="op">)</span>,</span>
 <span>  omegaLower <span class="op">=</span> <span class="op">-</span><span class="cn">Inf</span>,</span>
@@ -1102,6 +1102,8 @@ than equal to 10.</p></li>
 <li><p><code>"tnpri"</code> draws the sigma entries jointly from the <code>thetaMat</code>, the
 same way <code>omegaSeparation="tnpri"</code> does for the omega; <code>dfObs</code> is
 not used.</p></li>
+<li><p><code>"invchol"</code> draws them on the inverse Cholesky scale, the same way
+<code>omegaSeparation="invchol"</code> does for the omega.</p></li>
 </ul></dd>
 
 
@@ -1259,6 +1261,14 @@ the omega entries, which the strategies above redraw or discard.
 off diagonal.  A drawn matrix that is not positive definite is
 redrawn, see <code>priorPdRetry</code>.  <code>dfSub</code> is not used: an entry the
 <code>thetaMat</code> gives no variance stays at its estimate.</p></li>
+<li><p><code>"invchol"</code> draws the same entries jointly with the thetas, but on the
+scale of the inverse Cholesky decomposition of the omega (with a log
+diagonal), so every drawn omega is positive definite and none is
+redrawn.  The <code>thetaMat</code> covariance of the entries is moved to that
+scale by the delta method at the <code>omega</code> estimate, which has to be
+positive definite.  Only the blocks of <code>omega</code> holding a drawn entry
+change, and an entry of such a block that the <code>thetaMat</code> gives no
+variance can move with the others.</p></li>
 </ul></dd>
 
 

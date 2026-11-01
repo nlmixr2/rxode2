@@ -223,6 +223,14 @@ the omega entries, which the strategies above redraw or discard.
 off diagonal.  A drawn matrix that is not positive definite is
 redrawn, see <code>priorPdRetry</code>.  <code>dfSub</code> is not used: an entry the
 <code>thetaMat</code> gives no variance stays at its estimate.</p></li>
+<li><p><code>"invchol"</code> draws the same entries jointly with the thetas, but on the
+scale of the inverse Cholesky decomposition of the omega (with a log
+diagonal), so every drawn omega is positive definite and none is
+redrawn.  The <code>thetaMat</code> covariance of the entries is moved to that
+scale by the delta method at the <code>omega</code> estimate, which has to be
+positive definite.  Only the blocks of <code>omega</code> holding a drawn entry
+change, and an entry of such a block that the <code>thetaMat</code> gives no
+variance can move with the others.</p></li>
 </ul></dd>
 
 
@@ -334,6 +342,8 @@ than equal to 10.</p></li>
 <li><p><code>"tnpri"</code> draws the sigma entries jointly from the <code>thetaMat</code>, the
 same way <code>omegaSeparation="tnpri"</code> does for the omega; <code>dfObs</code> is
 not used.</p></li>
+<li><p><code>"invchol"</code> draws them on the inverse Cholesky scale, the same way
+<code>omegaSeparation="invchol"</code> does for the omega.</p></li>
 </ul></dd>
 
 
