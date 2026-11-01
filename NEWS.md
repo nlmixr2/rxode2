@@ -35,6 +35,11 @@
 - The pipeline article no longer saves its simulation into the installed
   package directory (#1506).
 
+- `?rxSolve` now describes `covsInterpolation = "midpoint"` as it works: the
+  mean of the two neighboring records over the interval, as
+  `approxfun(method = "constant", f = 0.5)` gives, not a step at the
+  midpoint (#1654).
+
 ### Sensitivities
 - `rxSolveAdjoint()` now accepts a model function, as `rxSolve()` does; it
   used to fail with an rxode2 syntax error on the `ini({})` block (#1504).
@@ -66,6 +71,12 @@
   return the exact steady state for every `n` (#1500).
 
 ## New features
+
+- `rxSolve(omegaSeparation = "invchol")` (and `sigmaSeparation = "invchol"`)
+  draws the omega (sigma) entries a `thetaMat` carries jointly with the
+  thetas, like `"tnpri"`, but on the inverse Cholesky scale (the `thetaMat`
+  is moved there by the delta method), so every drawn matrix is positive
+  definite and none is redrawn (#1486).
 
 - `minSS` and `maxSS` now accept any count from 1, and `maxSS` may equal
   `minSS`, so `minSS = maxSS = n` gives exactly the state after `n` doses
@@ -122,7 +133,24 @@
   absence) when it returns, so it no longer replaces the session's random
   stream.  The simulated values for a given `seed` are unchanged (#1503).
 
+- `rxControl(seed = )` no longer reseeds the session's random stream when the
+  control is built; the seed is stored and applied by the solve that uses it.
+  A seed that reaches the solve only through the control (for example from a
+  model's `meta` block) now suspends `rxSetSeed()` and restores the caller's
+  `.Random.seed` as `rxSolve(seed = )` does.  The simulated values for a
+  given `seed` are unchanged (#1550).
+
 ### Solving
+
+- `liblsoda` (and `liblsodaadj`, whose forward solve it is) now fails a
+  subject whose interpolation to an output time fails ("intdy -- t = ...
+  illegal"), with "IDID=-3, illegal input detected (see printed message)".
+  It used to report success and return the last step's state at that time
+  (0 throughout for `d/dt(y) <- 1e308`), with no "could not solve" warning.
+  `intdy()`'s test of whether an output time lies in the last step now
+  takes its tolerance as `dlsoda.f` does, from the magnitudes of the step's
+  time and size with the step's sign; at negative times it rejected output
+  times a few ulps past a step's start.
 
 - Forward sensitivities through `alag()`, `f()`, `rate()`, `dur()` and a
   parameter-dependent `delay()` are now right for a parameter that also

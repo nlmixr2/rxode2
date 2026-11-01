@@ -438,8 +438,9 @@
 #' * `"nocb"` -- Next Observation Carried Backward.  This is the same method
 #'       that NONMEM uses.
 #'
-#' * `"midpoint"` Last observation carried forward to midpoint; Next observation
-#'   carried backward to midpoint.
+#' * `"midpoint"` -- the mean of the two neighboring records over the whole
+#'   interval between them, as `stats::approxfun(method = "constant", f = 0.5)`
+#'   gives.
 #'
 #'   For time-varying covariates where a missing value is present, the
 #'   interpolation method will use either "locf" or "nocb" throughout
@@ -485,7 +486,8 @@
 #' @param seed an object specifying if and how the random number
 #'    generator should be initialized; when given, it takes precedence
 #'    over an active [rxSetSeed()] stream for this solve, and the
-#'    caller's `.Random.seed` is restored afterwards
+#'    caller's `.Random.seed` is restored afterwards.  [rxControl()] only
+#'    stores it; the seed is applied when the control is used by a solve
 #'
 #' @param nsim represents the number of simulations.  For rxode2, if
 #'     you supply single subject event tables (created with
@@ -554,6 +556,15 @@
 #'     off diagonal.  A drawn matrix that is not positive definite is
 #'     redrawn, see `priorPdRetry`.  `dfSub` is not used: an entry the
 #'     `thetaMat` gives no variance stays at its estimate.
+#'
+#'  * `"invchol"` draws the same entries jointly with the thetas, but on the
+#'     scale of the inverse Cholesky decomposition of the omega (with a log
+#'     diagonal), so every drawn omega is positive definite and none is
+#'     redrawn.  The `thetaMat` covariance of the entries is moved to that
+#'     scale by the delta method at the `omega` estimate, which has to be
+#'     positive definite.  Only the blocks of `omega` holding a drawn entry
+#'     change, and an entry of such a block that the `thetaMat` gives no
+#'     variance can move with the others.
 #'
 #' @param omegaXform When taking `omega` values from the `thetaMat`
 #'   simulations (using the separation strategy for covariance
@@ -670,6 +681,9 @@
 #' *  `"tnpri"` draws the sigma entries jointly from the `thetaMat`, the
 #'    same way `omegaSeparation="tnpri"` does for the omega; `dfObs` is
 #'    not used.
+#'
+#' *  `"invchol"` draws them on the inverse Cholesky scale, the same way
+#'    `omegaSeparation="invchol"` does for the omega.
 #'
 #' @param dfObs Degrees of freedom to sample the unexplained variability matrix from the
 #'        inverse Wishart distribution (scaled) or scaled inverse chi squared distribution.
@@ -1517,7 +1531,7 @@ rxSolve <- function(
   sigmaUpper = Inf,
   nCoresRV = 1L,
   sigmaIsChol = FALSE,
-  sigmaSeparation = c("auto", "lkj", "separation", "tnpri"),
+  sigmaSeparation = c("auto", "lkj", "separation", "tnpri", "invchol"),
   sigmaXform = c("identity", "variance", "log", "nlmixrSqrt", "nlmixrLog", "nlmixrIdentity"),
   nDisplayProgress = 10000L,
   amountUnits = NA_character_,
@@ -1532,7 +1546,7 @@ rxSolve <- function(
   omega = NULL,
   omegaDf = NULL,
   omegaIsChol = FALSE,
-  omegaSeparation = c("auto", "lkj", "separation", "tnpri"),
+  omegaSeparation = c("auto", "lkj", "separation", "tnpri", "invchol"),
   omegaXform = c("variance", "identity", "log", "nlmixrSqrt", "nlmixrLog", "nlmixrIdentity"),
   omegaLower = -Inf,
   omegaUpper = Inf,
@@ -1751,12 +1765,7 @@ rxSolve <- function(
         "nlmixrIdentity" = 3L
       )[match.arg(omegaXform)]
     }
-    if (!is.null(seed)) {
-      # Depending on the kind of seed, seed may be a vector of
-      # integers, though that use-case is likely not common
-      checkmate::testIntegerish(seed, any.missing = FALSE, min.len = 1)
-      set.seed(seed)
-    }
+    ## the seed is only stored here; the solve applies it (#1550)
     if (checkmate::testIntegerish(nsim, len = 1, lower = 1, any.missing = FALSE)) {
       if (
         nSub == 1L &&
@@ -2428,21 +2437,23 @@ rxSolve <- function(
   .rxEventCallSave <- sys.call()
   on.exit(.rxEventExitSolve(returnValue(), object, .rxEventCallSave), add = TRUE)
   if (!is.null(seed)) {
-    ## seed= works through set.seed(), which an active rxSetSeed() stream
-    ## would ignore; suspend that stream for this solve (#1507) and put the
-    ## caller's .Random.seed back afterwards (#1503)
-    .rxSeedOrig <- rxGetSeed()
-    .rSeedOrig <- .rxGetRandomSeed()
-    rxSetSeed(-1L)
-    on.exit(
-      {
-        rxSetSeed(.rxSeedOrig)
-        .rxRestoreRandomSeed(.rSeedOrig)
-      },
-      add = TRUE
-    )
+    .rxSeedRestore <- .rxSeedSuspend()
+    on.exit(.rxSeedRestore(), add = TRUE)
   }
   UseMethod("rxSolve")
+}
+
+## seed= works through set.seed(), which an active rxSetSeed() stream would
+## ignore; suspend that stream for the solve (#1507) and return the function
+## that puts it and the caller's .Random.seed back afterwards (#1503)
+.rxSeedSuspend <- function() {
+  .rxSeedOrig <- rxGetSeed()
+  .rSeedOrig <- .rxGetRandomSeed()
+  rxSetSeed(-1L)
+  function() {
+    rxSetSeed(.rxSeedOrig)
+    .rxRestoreRandomSeed(.rSeedOrig)
+  }
 }
 
 ## The caller's .Random.seed, or NULL when it has none
@@ -4401,6 +4412,13 @@ rxSolve.default <- function(
     events
   }
 
+  if (!is.null(.ctl$seed)) {
+    ## a seed carried in the control (eg spread from an rxControl() list)
+    ## takes effect here, the way rxSolve(seed=) does (#1550)
+    .rxSeedRestore <- .rxSeedSuspend()
+    on.exit(.rxSeedRestore(), add = TRUE)
+    set.seed(.ctl$seed)
+  }
   if (!is.null(.ctl$file)) {
     return(.rxSolveOom(object, params = params, events = events, inits = inits, .ctl = .ctl, .envir = envir))
   }

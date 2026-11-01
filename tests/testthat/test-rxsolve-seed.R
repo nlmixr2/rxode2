@@ -75,6 +75,40 @@ rxTest({
     expect_false(exists(".Random.seed", envir = globalenv(), inherits = FALSE))
   })
 
+  test_that("rxControl(seed=) leaves the session's random stream alone (#1550)", {
+    set.seed(1)
+    .before <- .Random.seed
+    .ctl <- rxControl(seed = 10)
+    expect_identical(.Random.seed, .before)
+    expect_equal(.ctl$seed, 10)
+  })
+
+  test_that("a seed carried in the control works like rxSolve(seed=) (#1550)", {
+    on.exit(rxSetSeed(-1L), add = TRUE)
+    .m <- function() {
+      model({
+        C <- rxnorm()
+      })
+    }
+    .mSeed <- function() {
+      seed <- 10
+      model({
+        C <- rxnorm()
+      })
+    }
+    rxSetSeed(-1L)
+    .ref <- rxSolve(.m, .ev, seed = 10, returnType = "data.frame")$C
+    set.seed(1)
+    .before <- .Random.seed
+    rxSetSeed(3L)
+    expect_equal(rxSolve(.mSeed, .ev, returnType = "data.frame")$C, .ref)
+    expect_equal(rxGetSeed(), 3L)
+    expect_identical(.Random.seed, .before)
+    # a control list spread into rxSolve() gives the same draws
+    .ctl <- rxControl(seed = 10, returnType = "data.frame")
+    expect_equal(do.call(rxSolve, c(list(.m, .ev), .ctl))$C, .ref)
+  })
+
   test_that("rxSolve() without seed= still follows set.seed()", {
     set.seed(5)
     .a <- .solve()
