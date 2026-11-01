@@ -438,8 +438,9 @@
 #' * `"nocb"` -- Next Observation Carried Backward.  This is the same method
 #'       that NONMEM uses.
 #'
-#' * `"midpoint"` Last observation carried forward to midpoint; Next observation
-#'   carried backward to midpoint.
+#' * `"midpoint"` -- the mean of the two neighboring records over the whole
+#'   interval between them, as `stats::approxfun(method = "constant", f = 0.5)`
+#'   gives.
 #'
 #'   For time-varying covariates where a missing value is present, the
 #'   interpolation method will use either "locf" or "nocb" throughout
