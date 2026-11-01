@@ -79,7 +79,7 @@ rxSolve(
   sigmaUpper = Inf,
   nCoresRV = 1L,
   sigmaIsChol = FALSE,
-  sigmaSeparation = c("auto", "lkj", "separation", "tnpri"),
+  sigmaSeparation = c("auto", "lkj", "separation", "tnpri", "invchol"),
   sigmaXform = c("identity", "variance", "log", "nlmixrSqrt", "nlmixrLog",
     "nlmixrIdentity"),
   nDisplayProgress = 10000L,
@@ -95,7 +95,7 @@ rxSolve(
   omega = NULL,
   omegaDf = NULL,
   omegaIsChol = FALSE,
-  omegaSeparation = c("auto", "lkj", "separation", "tnpri"),
+  omegaSeparation = c("auto", "lkj", "separation", "tnpri", "invchol"),
   omegaXform = c("variance", "identity", "log", "nlmixrSqrt", "nlmixrLog",
     "nlmixrIdentity"),
   omegaLower = -Inf,
@@ -862,8 +862,9 @@ covariate value.
 \item \code{"locf"} -- Last observation carried forward (the default).
 \item \code{"nocb"} -- Next Observation Carried Backward.  This is the same method
 that NONMEM uses.
-\item \code{"midpoint"} Last observation carried forward to midpoint; Next observation
-carried backward to midpoint.
+\item \code{"midpoint"} -- the mean of the two neighboring records over the whole
+interval between them, as \code{stats::approxfun(method = "constant", f = 0.5)}
+gives.
 
 For time-varying covariates where a missing value is present, the
 interpolation method will use either "locf" or "nocb" throughout
@@ -949,6 +950,8 @@ than equal to 10.
 \item \code{"tnpri"} draws the sigma entries jointly from the \code{thetaMat}, the
 same way \code{omegaSeparation="tnpri"} does for the omega; \code{dfObs} is
 not used.
+\item \code{"invchol"} draws them on the inverse Cholesky scale, the same way
+\code{omegaSeparation="invchol"} does for the omega.
 }}
 
 \item{sigmaXform}{When taking \code{sigma} values from the \code{thetaMat}
@@ -1083,6 +1086,14 @@ the omega entries, which the strategies above redraw or discard.
 off diagonal.  A drawn matrix that is not positive definite is
 redrawn, see \code{priorPdRetry}.  \code{dfSub} is not used: an entry the
 \code{thetaMat} gives no variance stays at its estimate.
+\item \code{"invchol"} draws the same entries jointly with the thetas, but on the
+scale of the inverse Cholesky decomposition of the omega (with a log
+diagonal), so every drawn omega is positive definite and none is
+redrawn.  The \code{thetaMat} covariance of the entries is moved to that
+scale by the delta method at the \code{omega} estimate, which has to be
+positive definite.  Only the blocks of \code{omega} holding a drawn entry
+change, and an entry of such a block that the \code{thetaMat} gives no
+variance can move with the others.
 }}
 
 \item{omegaXform}{When taking \code{omega} values from the \code{thetaMat}
