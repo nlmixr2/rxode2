@@ -133,7 +133,8 @@
 </ul></div>
 <div class="section level4">
 <h4 id="documentation-development-version">Documentation<a class="anchor" aria-label="anchor" href="#documentation-development-version"></a></h4>
-<ul><li>The pipeline article no longer saves its simulation into the installed package directory (<a href="https://github.com/nlmixr2/rxode2/issues/1506" class="external-link">#1506</a>).</li>
+<ul><li><p>The pipeline article no longer saves its simulation into the installed package directory (<a href="https://github.com/nlmixr2/rxode2/issues/1506" class="external-link">#1506</a>).</p></li>
+<li><p><code><a href="../reference/rxSolve.html">?rxSolve</a></code> now describes <code>covsInterpolation = "midpoint"</code> as it works: the mean of the two neighboring records over the interval, as <code>approxfun(method = "constant", f = 0.5)</code> gives, not a step at the midpoint (<a href="https://github.com/nlmixr2/rxode2/issues/1654" class="external-link">#1654</a>).</p></li>
 </ul></div>
 <div class="section level4">
 <h4 id="sensitivities-development-version">Sensitivities<a class="anchor" aria-label="anchor" href="#sensitivities-development-version"></a></h4>
