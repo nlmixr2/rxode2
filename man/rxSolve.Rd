@@ -862,8 +862,9 @@ covariate value.
 \item \code{"locf"} -- Last observation carried forward (the default).
 \item \code{"nocb"} -- Next Observation Carried Backward.  This is the same method
 that NONMEM uses.
-\item \code{"midpoint"} Last observation carried forward to midpoint; Next observation
-carried backward to midpoint.
+\item \code{"midpoint"} -- the mean of the two neighboring records over the whole
+interval between them, as \code{stats::approxfun(method = "constant", f = 0.5)}
+gives.
 
 For time-varying covariates where a missing value is present, the
 interpolation method will use either "locf" or "nocb" throughout
