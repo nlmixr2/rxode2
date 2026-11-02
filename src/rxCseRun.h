@@ -226,16 +226,35 @@ static int csSelectPhase(csRun *r) {
   return 1;
 }
 
+static int csIdentChar(char c) {
+  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+    (c >= '0' && c <= '9') || c == '_' || c == '.';
+}
+
+/* 1 when s holds an identifier `prefix<digits>`; matches rxOptExpr()'s
+   .rxOptPrefixUsed() */
+static int csHasTemp(const char *s, const char *prefix) {
+  size_t pl = strlen(prefix);
+  for (const char *p = strstr(s, prefix); p != NULL; p = strstr(p + 1, prefix)) {
+    if (p != s && csIdentChar(p[-1])) continue;
+    const char *q = p + pl;
+    if (*q < '0' || *q > '9') continue;
+    while (*q >= '0' && *q <= '9') q++;
+    if (!csIdentChar(*q)) return 1;
+  }
+  return 0;
+}
+
 /* name them rx_expr_0..n and rewrite each in terms of the shorter ones
    (src/rxOptRep.cpp) */
 static int csReducePhase(csRun *r) {
   int j, k;
   std::string prefix = "rx_expr_";
-  // Reserve a namespace absent from the input, including existing CSE passes.
+  // Reserve a temporary namespace not already used by the input.
   for (;;) {
     bool used = false;
     for (R_xlen_t i = 0; i < r->n; ++i) {
-      if (strstr(r->in[i], prefix.c_str()) != NULL) { used = true; break; }
+      if (csHasTemp(r->in[i], prefix.c_str())) { used = true; break; }
     }
     if (!used) break;
     prefix += "cse_";

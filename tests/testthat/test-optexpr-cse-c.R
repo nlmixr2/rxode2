@@ -253,3 +253,24 @@ test_that('the R CSE fallback preserves existing temporary names', {
     expect_equal(actual$y, 108)
   }
 })
+
+test_that('CSE keeps rx_expr_ when only other names contain it', {
+  evaluate <- function(txt, covariate) {
+    env <- list2env(setNames(list(2, 3, 7, 11, 5), c('a', 'b', 'c', 'd', covariate)))
+    eval(parse(text = gsub('~', '<-', txt, fixed = TRUE)), env)
+    env$y
+  }
+  for (covariate in c('my_rx_expr_cov', 'my_rx_expr_0', 'rx_expr_0x')) {
+    original <- paste0('y=', covariate, '*(c+d)+(c+d)+exp(a+b)*exp(a+b)')
+    expected <- evaluate(original, covariate)
+    native <- .rxOptExprC(rxNorm(original))
+    expect_false(is.na(native))
+    expect_match(native, '(^|\n)rx_expr_0~')
+    expect_equal(evaluate(native, covariate), expected)
+    withr::with_options(list(rxode2.optExprC = FALSE), {
+      fallback <- suppressMessages(rxOptExpr(original, chunkLines = 0L))
+    })
+    expect_match(fallback, '(^|\n)rx_expr_0~')
+    expect_equal(evaluate(fallback, covariate), expected)
+  }
+})

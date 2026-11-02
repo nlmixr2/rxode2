@@ -834,6 +834,19 @@
 #
 # Errors are deliberately not caught here: a chunk that cannot be optimized must reach
 # .rxOptExprChunked(), which falls back to the whole model.
+#' Does the model text already use a temporary named `prefix<digits>`?
+#'
+#' @param prefix Temporary prefix, eg "rx_expr_"
+#' @param txt Model text
+#' @return TRUE when an identifier `prefix<digits>` occurs in `txt`
+#' @noRd
+.rxOptPrefixUsed <- function(prefix, txt) {
+  any(grepl(
+    paste0("(^|[^A-Za-z0-9_.])", prefix, "[0-9]+($|[^A-Za-z0-9_.])"),
+    txt
+  ))
+}
+
 .rxOptExprChunk <- function(i, chunks, msg) {
   .txt <- paste(chunks[[i]], collapse = "\n")
   .o <- suppressMessages(rxOptExpr(.txt, msg, chunkLines = 0L))
@@ -1168,7 +1181,7 @@ rxOptExpr <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
       return(x)
     }
     .prefix <- "rx_expr_"
-    while (grepl(.prefix, .norm, fixed = TRUE)) {
+    while (.rxOptPrefixUsed(.prefix, .norm)) {
       .prefix <- paste0(.prefix, "cse_")
     }
     .rp <- rxOptRep_(.exprs, .prefix)
