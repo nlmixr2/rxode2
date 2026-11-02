@@ -840,6 +840,29 @@
 #' @param txt Model text
 #' @return TRUE when an identifier `prefix<digits>` occurs in `txt`
 #' @noRd
+.rxOptHasTemps <- function(txt) {
+  .rxOptPrefixUsed("rx_expr_(c[0-9]+_)?(cse_)*", txt)
+}
+
+#' Warn when rxOptExpr() is given text it has already optimized
+#'
+#' Only the outermost rxOptExpr() call warns, so a chunked call warns once.
+#'
+#' @param txt Model text
+#' @return Nothing, called for the warning
+#' @noRd
+.rxOptWarnRepeat <- function(txt) {
+  if (identical(.rxOptEnv$.depth, 1L) && .rxOptHasTemps(txt)) {
+    warning(
+      "'rxOptExpr()' input already has common subexpression temporaries ",
+      "(rx_expr_*); the model was optimized more than once, so new ",
+      "temporaries get a distinct prefix",
+      call. = FALSE
+    )
+  }
+  invisible()
+}
+
 .rxOptPrefixUsed <- function(prefix, txt) {
   any(grepl(
     paste0("(^|[^A-Za-z0-9_.])", prefix, "[0-9]+($|[^A-Za-z0-9_.])"),
@@ -884,6 +907,7 @@
     x <- rxNorm(x)
   }
   .txt <- if (is.character(x)) paste(x, collapse = "\n") else rxNorm(x)
+  .rxOptWarnRepeat(.txt)
   .ln <- strsplit(.txt, "\n", fixed = TRUE)[[1]]
   # Chunk only when it will actually pay.  What chunking buys is amortizing the
   # PARSE, whose cost tracks the model's total CHARACTERS -- not its line count,
@@ -1143,19 +1167,23 @@
 #' writeLines(rxOptExpr(pk))
 #' }
 rxOptExpr <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
+  .depth <- if (is.integer(.rxOptEnv$.depth)) .rxOptEnv$.depth else 0L
+  .rxOptEnv$.depth <- .depth + 1L
+  on.exit(.rxOptEnv$.depth <- .depth)
   .chunkLines <- as.integer(chunkLines)
   if (!is.na(.chunkLines) && .chunkLines > 0L) {
     return(.rxOptExprChunked(x, msg = msg, chunkLines = .chunkLines, parallel = parallel))
   }
   .oldOpts <- options()
   options(digits = 22)
-  on.exit(options(.oldOpts))
+  on.exit(options(.oldOpts), add = TRUE)
   .rxOptEnv$.list <- list()
   .rxOptEnv$.rep <- list()
   .rxOptEnv$.added <- NULL
   .rxOptEnv$.exclude <- ""
   .malert(sprintf("finding duplicate expressions in %s...", msg))
   .norm <- rxNorm(x)
+  .rxOptWarnRepeat(.norm)
   ## The C pass first; it returns NA when it will not reproduce the R walker
   ## exactly, and the R implementation below then runs.  Chunking calls this
   ## same whole-model path once per chunk, so chunks go through C too.

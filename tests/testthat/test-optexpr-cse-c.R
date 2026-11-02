@@ -224,7 +224,10 @@ test_that('chunked CSE remains equivalent when optimized again', {
       collapse = '\n'
     )
     once <- suppressMessages(rxOptExpr(original, chunkLines = 4L, parallel = 1L))
-    twice <- suppressMessages(rxOptExpr(once, chunkLines = 0L))
+    expect_warning(
+      twice <- suppressMessages(rxOptExpr(once, chunkLines = 0L)),
+      'optimized more than once'
+    )
     params <- c(a = .2, b = .3, c = .7, d = 1.1, setNames(2, covariate))
     solve <- function(txt) {
       as.data.frame(rxSolve(
@@ -243,7 +246,10 @@ test_that('the R CSE fallback preserves existing temporary names', {
   withr::local_options(rxode2.optExprC = FALSE)
   for (name in c('rx_expr_0', 'rx_expr_cse_0', 'rx_expr_cse_cse_0')) {
     original <- paste0(name, '~a+b\ny=', name, '*(c+d)+(c+d)')
-    optimized <- suppressMessages(rxOptExpr(original, chunkLines = 0L))
+    expect_warning(
+      optimized <- suppressMessages(rxOptExpr(original, chunkLines = 0L)),
+      'optimized more than once'
+    )
     params <- c(a = 2, b = 3, c = 7, d = 11)
     actual <- as.data.frame(rxSolve(
       rxode2(optimized),
@@ -268,9 +274,34 @@ test_that('CSE keeps rx_expr_ when only other names contain it', {
     expect_match(native, '(^|\n)rx_expr_0~')
     expect_equal(evaluate(native, covariate), expected)
     withr::with_options(list(rxode2.optExprC = FALSE), {
-      fallback <- suppressMessages(rxOptExpr(original, chunkLines = 0L))
+      expect_no_warning(fallback <- suppressMessages(rxOptExpr(original, chunkLines = 0L)))
     })
     expect_match(fallback, '(^|\n)rx_expr_0~')
     expect_equal(evaluate(fallback, covariate), expected)
   }
+})
+
+test_that('re-optimizing CSE output warns once, including chunked', {
+  withr::local_options(rxode2.optExprChunkChars = 1L)
+  original <- paste(
+    c(
+      sprintf('x%d=exp(a+b)*cov+%d', 1:5, 1:5),
+      sprintf('z%d=exp(c+d)*cov+%d', 1:5, 1:5),
+      'y=x1+x2+x3+x4+x5+z1+z2+z3+z4+z5'
+    ),
+    collapse = '\n'
+  )
+  expect_no_warning(once <- suppressMessages(rxOptExpr(original, chunkLines = 4L, parallel = 1L)))
+  expect_match(once, 'rx_expr_')
+  warned <- 0L
+  withCallingHandlers(
+    suppressMessages(rxOptExpr(once, chunkLines = 4L, parallel = 1L)),
+    warning = function(w) {
+      if (grepl('optimized more than once', conditionMessage(w))) {
+        warned <<- warned + 1L
+        invokeRestart('muffleWarning')
+      }
+    }
+  )
+  expect_equal(warned, 1L)
 })

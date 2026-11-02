@@ -43,7 +43,9 @@
   input already defines, so optimizing an already optimized model again
   (natively, with the R fallback, or in chunks) keeps its equations; the
   second pass used to overwrite the earlier temporary and change the result.
-  Names that only contain `rx_expr_` keep the usual temporary names (#1632).
+  Names that only contain `rx_expr_` keep the usual temporary names.  A model
+  should be optimized only once, so `rxOptExpr()` now warns when its input
+  already has these temporaries (#1632).
 
 ### Compilation
 - A cached model library that exists but will not load (still being linked by
