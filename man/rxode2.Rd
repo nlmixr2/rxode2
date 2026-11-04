@@ -958,7 +958,7 @@ A time-to-event endpoint is specified by its hazard:
 }\if{html}{\out{</div>}}
 
 The cumulative hazard is added to the model as a hidden state
-(\code{rx.tteH.ev}), and event times solve \code{H(t) - H(t_last) = -log(u)} with
+(\code{rx_tteH_ev}), and event times solve \code{H(t) - H(t_last) = -log(u)} with
 a root finder. Only the hazard is required; the options are:\tabular{lll}{
    Option \tab Default \tab Meaning \cr
    \code{eventType} \tab \code{"exact"} \tab \code{"exact"} or \code{"intervalCensored"} event times \cr
@@ -966,6 +966,7 @@ a root finder. Only the hazard is required; the options are:\tabular{lll}{
    \code{rightCensoringTime} \tab last record of the endpoint \tab end of the observation window \cr
    \code{intervalLength} \tab tenth of the observation window \tab interval length for \code{"intervalCensored"} \cr
    \code{dropout} \tab \code{FALSE} \tab the event ends all observations (needs \code{maxEventNumber = 1}) \cr
+   \code{origin} \tab \code{FALSE} \tab observe from the subject’s start, with no start row \cr
 }
 
 
@@ -979,8 +980,16 @@ renewal and count-dependent hazards can be written. Every ODE solving
 endpoints, since the root finding only re-solves intervals with the
 chosen method; a hazard using \code{delay()} is solved with the dense
 \code{delay()} solvers. A steady-state dose holds the cumulative hazard
-fixed, so a \code{delay()} of the cumulative hazard (\code{rx.tteH.ev}) cannot be
+fixed, so a \code{delay()} of the cumulative hazard (\code{rx_tteH_ev}) cannot be
 combined with steady-state doses.
+
+In estimation each record of the endpoint scores the events and survival
+since the endpoint’s previous record: \code{log(h) - dH} for an event,
+\code{log(1 - exp(-dH))} for an interval holding one and \code{-dH} otherwise,
+with \code{dH} the change of the cumulative hazard. The first record of a
+subject is the start of observation and scores nothing (\code{origin = TRUE}
+counts from the subject’s start instead), and \code{tteTime()}/\code{tteCount()}
+come from the endpoint’s \code{DV = 1} records.
 }
 
 \subsection{General table of supported residual distributions}{
