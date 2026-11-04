@@ -76,7 +76,7 @@ static void rxTteWindowRecord(rx_solving_options_ind *ind, int subj, int r) {
   if (st == NULL || role == RXTTE_EVENT || role == RXTTE_USED ||
       role == RXTTE_DATA) return;
   double t = ind->all_times[r];
-  if (role == RXTTE_START) {
+  if (role == RXTTE_START || role == RXTTE_ORIGIN) {
     if (ISNA(st->start) || t < st->start) st->start = t;
   } else if (ISNA(st->end) || t > st->end) {
     st->end = t;
@@ -113,13 +113,14 @@ void rxTteSetDone(int subj, int k) {
   if (st != NULL) st->done = 1;
 }
 
-// Unused event slots, slots holding interval-censored events and the
-// endpoint's own (covariate) records are not output rows
+// Unused event slots, slots holding interval-censored events, the endpoint's
+// own (covariate) records and origin=TRUE window starts are not output rows
 void rxTteSubjectFinish(rx_solving_options_ind *ind) {
   for (int r = 0; r < ind->n_all_times; r++) {
     int k;
     int role = rxTteRole(ind->dv[r], &k);
-    if (role == RXTTE_FREE || role == RXTTE_USED || role == RXTTE_DATA) ind->evid[r] = 9;
+    if (role == RXTTE_FREE || role == RXTTE_USED || role == RXTTE_DATA ||
+        role == RXTTE_ORIGIN) ind->evid[r] = 9;
   }
 }
 

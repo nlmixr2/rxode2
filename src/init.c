@@ -24,7 +24,7 @@ extern int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
                        double _time, int _evid, double _amt, int _cmt,
                        double _rate, double _ii, int _addl, int _ss,
                        int _isDur);
-extern double _rxTte(int cSub, double t, int what, double k);
+extern double _rxTte(int cSub, double t, int what, int cmtBase, int cmtSens, double code);
 SEXP _rxode2_rxTteSetup(SEXP);
 
 SEXP _vecDF(SEXP cv, SEXP n_);

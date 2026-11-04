@@ -218,6 +218,9 @@ static inline double erfinv(double x) {
 #define rxDistributionOrdinal 15
 #define rxDistributionN2ll    16
 #define rxDistributionDnorm   17
+#define rxDistributionNbinom  18
+#define rxDistributionNbinomMu 19
+#define rxDistributionTte     20
 
 static inline void _splitYj(int *yj, int *dist,  int *trans) {
   *dist  = *yj/10;

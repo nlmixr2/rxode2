@@ -19,7 +19,8 @@
 #'
 #' For every subject and tte endpoint the endpoint's own records only define
 #' the observation window (first to last record) and covariate values; they
-#' are kept as non-output records, and a start record, a right-censoring
+#' are kept as non-output records, and a start record (hidden for
+#' `origin = TRUE`), a right-censoring
 #' record (or the interval ends for `eventType="intervalCensored"`) and free
 #' event-slot records that the solver re-times to the simulated event times
 #' (unused slots are dropped from the output) are added.  The added records
@@ -96,14 +97,15 @@
       .r <- .d[[.id]] == .cid
       .tAll <- .d[[.time]][.r]
       .tTte <- .d[[.time]][.r & .isTte]
-      .start <- if (length(.tTte) > 0L) min(.tTte) else min(.tAll)
+      # origin=TRUE observes from the subject's start, with no start row
+      .start <- if (length(.tTte) > 0L && !.o$origin) min(.tTte) else min(.tAll)
       .end <- .o$rightCensoringTime
       if (is.na(.end)) {
         .end <- if (length(.tTte) > 0L) max(.tTte) else max(.tAll)
       }
       if (!(.end > .start)) next
       .t <- .start
-      .role <- 1L
+      .role <- if (.o$origin) 8L else 1L
       if (.o$eventType == "intervalCensored") {
         .l <- .o$intervalLength
         if (is.na(.l)) .l <- (.end - .start) / 10

@@ -581,6 +581,10 @@
 #' @export
 .handleSingleErrTypeNormOrTFoceiBase <- function(env, pred1, errNum = 1L, rxPredLlik = TRUE, arNorm = FALSE) {
   type <- pred1$distribution
+  if (type == "tte") {
+    # always a likelihood endpoint, from its hidden cumulative hazard
+    return(.rxTteEstLines(env, pred1, errNum))
+  }
   if (type %in% c("norm", "t", "cauchy", "dnorm")) {
     .yj <- as.double(pred1$transform) - 1
     # AR(1), norm form (focei inner model): keep the endpoint on the Gaussian

@@ -1,5 +1,5 @@
 # Time-to-event (tte) endpoints: `ev ~ tte(hazard, eventType=, maxEventNumber=,
-# rightCensoringTime=, intervalLength=, dropout=)`.  Like ordinal endpoints the
+# rightCensoringTime=, intervalLength=, dropout=, origin=)`.  Like ordinal endpoints the
 # options are not stored in $predDf/$iniDf; they are re-read from the endpoint's
 # expression in `lstExpr` with `.rxTteOptions()`.
 
@@ -8,7 +8,8 @@
   "maxEventNumber",
   "rightCensoringTime",
   "intervalLength",
-  "dropout"
+  "dropout",
+  "origin"
 )
 
 .rxTteEventTypes <- c("exact", "intervalCensored")
@@ -29,6 +30,7 @@
     rightCensoringTime = NA_real_,
     intervalLength = NA_real_,
     dropout = FALSE,
+    origin = FALSE,
     err = character(0)
   )
   .args <- as.list(expr)[-1]
@@ -108,6 +110,15 @@
       .ret$err <- c(.ret$err, "'tte()' option 'dropout' must be TRUE or FALSE")
     } else {
       .ret$dropout <- .v
+    }
+  }
+  if (!is.null(.args$origin)) {
+    .v <- .args$origin
+    if (is.name(.v)) .v <- c(T = TRUE, F = FALSE)[as.character(.v)]
+    if (!is.logical(.v) || length(.v) != 1L || is.na(.v)) {
+      .ret$err <- c(.ret$err, "'tte()' option 'origin' must be TRUE or FALSE")
+    } else {
+      .ret$origin <- unname(.v)
     }
   }
   if (isTRUE(.ret$dropout) && !identical(.ret$maxEventNumber, 1)) {
