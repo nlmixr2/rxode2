@@ -48,34 +48,37 @@ struct rxTteDataCache {
   std::vector<double> evT;
 };
 
-// The data records of endpoint cmt: the observations whose CMT (remapped like
-// the model's _CMT) is cmt, or every observation without a CMT covariate
+// Is data record r an observation of endpoint cmt?  Its CMT is remapped like
+// the model's _CMT; without a CMT covariate every observation is.
+static bool rxTteDataIsEndpoint(rx_solving_options *op, rx_solving_options_ind *ind, int r,
+                                int cmtBase, int cmtSens, int cmt) {
+  if (ind->evid[r] != 0) return false;
+  if (op->cmtCov < 0 || ind->cov_ptr == NULL) return true;
+  double v = ind->cov_ptr[(size_t)ind->n_all_times_orig * (size_t)op->cmtCov + (size_t)r];
+  if (ISNA(v)) return false;
+  if (cmtSens > 0 && fabs(v) > cmtBase) v = v < 0 ? v + cmtSens : v - cmtSens;
+  return (int)v == cmt;
+}
+
+// The event times (DV=1 records) and observation start of an endpoint: its
+// first record, or the subject's first record for origin=TRUE
 static const rxTteDataCache &rxTteDataEvents(rx_solving_options_ind *ind, int cmtBase,
                                              int cmtSens, double code) {
   static thread_local rxTteDataCache c;
   if (c.gen == _rxTteDataGen && c.ind == ind && c.code == code) return c;
   int k, cmt, origin;
   rxTteDecode(code, &k, &cmt, &origin);
-  rx_solve *rx = getRxSolve2_();
-  rx_solving_options *op = rx->op;
+  rx_solving_options *op = getRxSolve2_()->op;
   c.gen = _rxTteDataGen;
   c.ind = ind;
   c.code = code;
   c.evT.clear();
   c.start = R_PosInf;
-  int n = ind->n_all_times_orig;
-  for (int r = 0; r < n; r++) {
+  for (int r = 0; r < ind->n_all_times_orig; r++) {
     double t = ind->all_times[r];
-    if (origin && t < c.start) c.start = t;
-    if (ind->evid[r] != 0) continue;
-    if (op->cmtCov >= 0 && ind->cov_ptr != NULL) {
-      double v = ind->cov_ptr[(size_t)n * (size_t)op->cmtCov + (size_t)r];
-      if (ISNA(v)) continue;
-      if (cmtSens > 0 && fabs(v) > cmtBase) v = v < 0 ? v + cmtSens : v - cmtSens;
-      if ((int)v != cmt) continue;
-    }
-    if (!origin && t < c.start) c.start = t;
-    if (ind->dv[r] == 1.0) c.evT.push_back(t);
+    bool ep = rxTteDataIsEndpoint(op, ind, r, cmtBase, cmtSens, cmt);
+    if ((origin || ep) && t < c.start) c.start = t;
+    if (ep && ind->dv[r] == 1.0) c.evT.push_back(t);
   }
   std::sort(c.evT.begin(), c.evT.end());
   if (!R_FINITE(c.start)) c.start = 0.0;
