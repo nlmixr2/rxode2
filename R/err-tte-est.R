@@ -5,7 +5,7 @@
 #'
 #' Each record of the endpoint scores the events and survival since its
 #' previous record: `dH` is the change of the hidden cumulative hazard
-#' `rx.tteH.<var>` since then, and `DV` is 1 for an event (or an interval
+#' `rx_tteH_<var>` since then, and `DV` is 1 for an event (or an interval
 #' holding one) and 0 otherwise.  An exact event adds `log(h)`, an interval
 #' with an event `log(1 - exp(-dH))`; survival adds `-dH`.  By default the
 #' first record of the endpoint is the start of observation and scores
@@ -28,7 +28,7 @@
   .var <- gsub("[^A-Za-z0-9]", "_", pred1$var)
   .n <- function(.p) str2lang(paste0("rx_tte", .p, "_", .var))
   .O <- .n("O")
-  .hc <- .n("Hc")
+  .hc <- str2lang(.rxTteStateName(pred1$var))
   .hz <- .n("Hz")
   .hk <- .n("Hk")
   .s <- .n("S")
@@ -50,7 +50,6 @@
     } else {
       bquote(.(.O) <- rx__isObs__)
     },
-    bquote(.(.hc) <- .(str2lang(.rxTteStateName(pred1$var)))),
     bquote(.(.hz) <- .(.haz)),
     bquote(.(.hk) <- .(.O) * .(.hc) + (1 - .(.O)) * lag0(.(.hk), 1)),
     bquote(.(.s) <- .(.O) + (1 - .(.O)) * lag0(.(.s), 1)),

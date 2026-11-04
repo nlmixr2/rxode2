@@ -19,13 +19,14 @@
 #' @return state name
 #' @noRd
 .rxTteStateName <- function(var) {
-  paste0("rx.tteH.", var)
+  # dot-free: symengine cannot parse a dotted name
+  paste0("rx_tteH_", gsub("[^A-Za-z0-9_]", "_", var))
 }
 
 #' Hidden cumulative-hazard ODE lines for every tte endpoint
 #'
 #' @param ui rxode2 ui
-#' @return list of `d/dt(rx.tteH.<var>) <- <hazard>` lines (NULL when the model
+#' @return list of `d/dt(rx_tteH_<var>) <- <hazard>` lines (NULL when the model
 #'   has no tte endpoint)
 #' @author Matthew L. Fidler
 #' @noRd
