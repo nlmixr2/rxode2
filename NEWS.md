@@ -34,18 +34,12 @@
 - `rxSolveAdjoint()` and the adjoint builds now send a dose without a `cmt`
   to the first state, and a numeric `cmt` to that state, as `rxSolve()`
   does; a dose without a `cmt` used to fail in the build (#1504).
-- Event-sensitivity setup now loads the symbolic model only when a dosing
-  derivative needs it, so large sensitivity models with no such derivatives
-  no longer wait on a full symbolic expansion (#1632).
+- Event-sensitivity setup skips symbolic expansion when no dosing derivative
+  needs it, reducing setup time for large sensitivity models (#1632).
 
 ### Expression optimization
-- `rxOptExpr()` no longer reuses a temporary name (`rx_expr_0`, ...) that its
-  input already defines, so optimizing an already optimized model again
-  (natively, with the R fallback, or in chunks) keeps its equations; the
-  second pass used to overwrite the earlier temporary and change the result.
-  Names that only contain `rx_expr_` keep the usual temporary names.  A model
-  should be optimized only once, so `rxOptExpr()` now warns when its input
-  already has these temporaries (#1632).
+- `rxOptExpr()` avoids CSE temporary-name collisions and warns on repeated
+  optimization; each model should be optimized only once (#1632).
 
 ### Compilation
 - A cached model library that exists but will not load (still being linked by
