@@ -73,6 +73,10 @@
 
 ## New features
 
+- `etTrans()` gains `tieOrder = "data"`, which keeps records of a subject
+  that share a time in the order of the rows in the data, the way NONMEM
+  processes them, instead of resets, then doses, then observations (#1593).
+
 - `rxSolve(omegaSeparation = "invchol")` (and `sigmaSeparation = "invchol"`)
   draws the omega (sigma) entries a `thetaMat` carries jointly with the
   thetas, like `"tnpri"`, but on the inverse Cholesky scale (the `thetaMat`
