@@ -309,7 +309,6 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
         xp = xout;
       }
     }
-    ind->_newind = 2;
     if (!localBadSolve) {
       ind->idx = i;
       ++seq;
@@ -409,6 +408,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       if (isObs(getEvid(ind, ind->ix[i]))) { obsT.push_back(xout); obsIx.push_back(i); obsSeq.push_back(seq); }
       if (_mtime_requeued) i--;
     }
+    rxNewindAfterRecord(ind, i);
     ind->solvedIdx = i;
   }
 
