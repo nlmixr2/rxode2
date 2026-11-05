@@ -138,7 +138,8 @@
 <span>  addlKeepsCov <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  addlDropSs <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  ssAtDoseTime <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  iCov <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  iCov <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  tieOrder <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"evid"</span>, <span class="st">"data"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">etTrans</span><span class="op">(</span></span>
@@ -153,7 +154,8 @@
 <span>  addlKeepsCov <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  addlDropSs <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  ssAtDoseTime <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  iCov <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  iCov <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  tieOrder <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"evid"</span>, <span class="st">"data"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -220,6 +222,14 @@ steady concentration at the actual time of dose, otherwise when
 <dd><p>A data frame of individual non-time varying covariates
 to combine with the <code>events</code> dataset.  The <code>iCov</code> dataset has one
 covariate per ID and should match the event table</p></dd>
+
+
+<dt id="arg-tieorder">tieOrder<a class="anchor" aria-label="anchor" href="#arg-tieorder"></a></dt>
+<dd><p>How records that share a subject and time are ordered:
+<code>"evid"</code> (the default) puts resets first, then doses, then
+observations; <code>"data"</code> keeps the order of the rows in <code>inData</code>, the
+way NONMEM processes its records.  Records a row expands to (the reset
+of an <code>evid=4</code> dose, <code>addl</code> repeats, infusion ends) follow that row.</p></dd>
 
 </dl></div>
     <div class="section level2">
