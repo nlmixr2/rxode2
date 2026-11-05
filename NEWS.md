@@ -58,6 +58,13 @@
   now includes the doses of the earlier intervals that arrive inside the
   observed one; they were dropped, so the profile decayed from the trough
   instead of matching explicit dosing (#1499).
+- `linCmt()` models now follow `minSS = maxSS = n`, giving the profile after
+  exactly `n` prior doses as the equivalent ODE model does; they used to
+  return the exact steady state for every `n` (#1500).
+- A `linCmt()` steady-state bolus with `alag()` longer than `ii` now matches
+  the ODE model and NONMEM.  After a dose that a steady-state record
+  schedules between two records, the `linCmt()` solver advanced to the next
+  record twice (#1591).
 - `linCmt()` models now follow `minSS`/`maxSS` as the equivalent ODE model
   does: `minSS = maxSS = n` gives the profile after exactly `n` prior doses,
   and a steady state converged by `minSS` doses (for example with
