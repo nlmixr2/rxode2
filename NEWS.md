@@ -33,6 +33,10 @@
   midpoint (#1654).
 
 ### Sensitivities
+- A `delay()` duration written with `THETA[]`/`ETA[]` (the form nlmixr2est
+  generates) now keeps its own forward-sensitivity term
+  `-ydot(t - tau) * dtau/dp` and its dose jumps; the duration did not
+  evaluate, so they were silently zero (nlmixr2/nlmixr2est#1300).
 - `rxSolveAdjoint()` now accepts a model function, as `rxSolve()` does; it
   used to fail with an rxode2 syntax error on the `ini({})` block (#1504).
 - `rxSolveAdjoint()` and the adjoint builds now send a dose without a `cmt`

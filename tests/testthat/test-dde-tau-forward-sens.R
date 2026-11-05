@@ -50,3 +50,14 @@ rxTest({
     }
   })
 })
+
+rxTest({
+  # A duration in THETA[]/ETA[] form (as nlmixr2est writes it) keeps its own
+  # sensitivity term; evaluating the subscript text used to drop it (nlmixr2est#1300).
+  test_that("a THETA[]/ETA[] delay duration keeps its rxDelayD() term", {
+    .s <- rxS("TR=exp(THETA[1]+ETA[1])\nd/dt(central) = -0.3*central\nd/dt(R) = 2 - 0.5*delay(central, TR)")
+    .rxJacobian(.s, c("central", "R", "ETA_1_"))
+    .rxSens(.s, "ETA_1_")
+    expect_true(any(grepl("rxDelayD(central,", .s$..sens, fixed = TRUE)))
+  })
+})

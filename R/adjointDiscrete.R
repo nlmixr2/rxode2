@@ -443,7 +443,7 @@
       # Param-dependent delay tau(p): d tau / d p per calcSens param (resolved in
       # the symengine env), feeding the breaking-point correction to F_p below.
       .dtauByP <- stats::setNames(rep("0", .np), calcSens)
-      .tauRes <- tryCatch(eval(.rxSEresLang(parse(text = .tau)[[1L]]), envir = .model), error = function(e) NULL)
+      .tauRes <- .rxDelayTauSE(.model, .tau)
       if (!is.null(.tauRes) && inherits(.tauRes, "Basic")) {
         for (.pp in calcSens) {
           .dD <- tryCatch(symengine::D(.tauRes, .rxSEres(.pp)), error = function(e) NULL)
