@@ -3419,8 +3419,7 @@ extern "C" void solveSSinf(int *neq,
     double xp20 = *xp2, xout20 = *xout2;
     solveSSinfIterate(neq, BadDose, InfusionRate, dose, yp, xout, id, i, nx, istate,
                       op, ind, u_inis, ctx, xout2, xp2, infBixds, bi, infEixds,
-                      ei, curIi, dur, dur2, canBreak, ssStart,
-                      ssStop, minSS, minSS);
+                      ei, curIi, dur, dur2, canBreak, ssStart, minSS, minSS);
     if (*canBreak) {
       ind->ssTime = NA_REAL;
       return;
