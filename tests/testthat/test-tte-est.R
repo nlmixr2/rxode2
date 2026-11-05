@@ -13,7 +13,8 @@ rxTest({
     rxode2(paste(.txt, collapse = "\n"))
   }
   .tteLl <- function(f, d, p, cmt = NULL) {
-    .s <- rxSolve(.tteEstModel(f), d, params = p, returnType = "data.frame",
+    # pruned like the estimation models (endpoint branches become products)
+    .s <- rxSolve(rxode2(rxPrune(.tteEstModel(f))), d, params = p, returnType = "data.frame",
                   atol = 1e-12, rtol = 1e-12, addDosing = FALSE)
     if (!is.null(cmt)) .s <- .s[.s$CMT == cmt, ]
     sum(.s$rx_pred_)
@@ -167,6 +168,10 @@ rxTest({
       log(0.1) + log(0.2) - (0.1 * 3 + 0.2 * 4 + 0.3 * 3),
       tolerance = 1e-6
     )
+    # the other endpoint's DV stays out of the tte log-likelihood
+    .s <- rxSolve(rxode2(rxPrune(.tteEstModel(f))), .d, params = c(ke = 0.2, lam = 0.1, add.sd = 0.1),
+                  returnType = "data.frame", addDosing = FALSE)
+    expect_true(all(is.finite(.s$rx_pred_)))
   })
 
   test_that("tte(origin = TRUE) simulation has no start row", {

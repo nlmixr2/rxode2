@@ -35,10 +35,11 @@
   .hp <- .n("Hp")
   .sp <- .n("Sp")
   .dh <- .n("Dh")
+  .dv <- .n("Dv")
   .ll <- if (.o$eventType == "intervalCensored") {
-    bquote(log(DV * (1 - exp(-.(.dh))) + (1 - DV)) - (1 - DV) * .(.dh))
+    bquote(log(.(.dv) * (1 - exp(-.(.dh))) + (1 - .(.dv))) - (1 - .(.dv)) * .(.dh))
   } else {
-    bquote(log(DV * .(.hz) + (1 - DV)) - .(.dh))
+    bquote(log(.(.dv) * .(.hz) + (1 - .(.dv))) - .(.dh))
   }
   list(
     bquote(rx_yj_ ~ .(.yj + 10 * (.dist - 1))),
@@ -50,6 +51,8 @@
     } else {
       bquote(.(.O) <- rx__isObs__)
     },
+    # another endpoint's DV would make the log NaN (0 * NaN is NaN)
+    bquote(.(.dv) <- .(.O) * DV),
     bquote(.(.hz) <- .(.haz)),
     bquote(.(.hk) <- .(.O) * .(.hc) + (1 - .(.O)) * lag0(.(.hk), 1)),
     bquote(.(.s) <- .(.O) + (1 - .(.O)) * lag0(.(.s), 1)),
@@ -64,4 +67,19 @@
     },
     quote(rx_r_ ~ 0)
   )
+}
+
+#' Is this a tte() estimation carry line?
+#'
+#' The `rx_tte*_<var>` lines of `.rxTteEstLines()` are gated by their own
+#' endpoint indicator, so `rxCombineErrorLines()` emits them ahead of the
+#' endpoint's `if (CMT == ...)` branch.
+#'
+#' @param line quoted model line
+#' @return logical
+#' @noRd
+.rxTteIsCarryLine <- function(line) {
+  is.call(line) && length(line) == 3L &&
+    identical(line[[1]], quote(`<-`)) && is.name(line[[2]]) &&
+    grepl("^rx_tte[A-Z][A-Za-z]*_", as.character(line[[2]]))
 }
