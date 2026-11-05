@@ -453,13 +453,13 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           double *y = indSample->cov_ptr + indSample->n_all_times_orig*k;
           // a pushed record has no value of its own; interpolate across it
           bool pushed = rxPushedRec(ind->ix, idxSample, ind->n_all_times_orig);
-          if ((rx->needSort & needSortAlag) &&
+          if (!rx->addlKeepsCov && (rx->needSort & needSortAlag) &&
               (pushed || idxSample >= indSample->n_all_times ||
                !isSameTimeOp(t, getAllTimes(indSample, indSample->ix[idxSample])) ||
                !isSameTimeOp(t, (indSample->fns && indSample->fns->gettime ? indSample->fns->gettime(indSample->ix[idxSample], indSample) : getTime(indSample->ix[idxSample], indSample))))) {
-            // a lagged dose sorts at its arrival, which is not a record (as in
-            // NONMEM), so away from a record at its own data time interpolate
-            // on the data records' times (#1584)
+            // a lagged dose sorts at its arrival; unless addlKeepsCov carries
+            // its record's covariates there, away from a record at its own
+            // data time impute on the data records' times (#1584)
             double v = rxApproxCovData(t, k, is_locf, op, indSample);
             if (!isSameTimeOp(v, par_ptr[op->par_cov[k]-1])) ind->cacheME=0;
             par_ptr[op->par_cov[k]-1] = v;
