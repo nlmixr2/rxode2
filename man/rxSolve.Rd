@@ -1381,9 +1381,12 @@ solve, but continues solving passing through the \code{NA} time
 solved ODE (otherwise stopping can crash R)
 }}
 
-\item{addlKeepsCov}{This determines if the additional dosing items
-repeats the dose only (\code{FALSE}) or keeps the covariates at the
-record of the dose (\code{TRUE})}
+\item{addlKeepsCov}{This determines if a dose given at a time other
+than its record's (an additional dosing item or a dose moved by
+\code{alag()}) takes the time-varying covariates imputed at its actual
+dosing time (\code{FALSE}) or keeps the covariates at the record of the
+dose (\code{TRUE}, as NONMEM does).  By default \code{FALSE}, or \code{TRUE} with
+\code{nonmem = TRUE}.}
 
 \item{addlDropSs}{When there are steady state doses with an \code{addl}
 specification the steady state flag is dropped with repeated
@@ -1473,7 +1476,8 @@ calls \verb{$PK} at its records.  \code{d/dt()} and state-dependent statements k
 the continuous time (like \verb{$DES}).  \code{addl} repeats, infusion ends,
 lagged doses and doses added while solving do not end an interval;
 \code{mtime()} times do.  Covariate interpolation is still set by
-\code{covsInterpolation}.  By default \code{FALSE}.}
+\code{covsInterpolation}.  \code{TRUE} also turns on \code{addlKeepsCov} unless it is
+given.  By default \code{FALSE}.}
 
 \item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that
 is acceptable before issuing a warning/error about the gradient estimates.}

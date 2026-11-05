@@ -894,9 +894,12 @@
 #'   doses not canceled with `SS=2` (the infusions started before
 #'   `SS=2` occurred are canceled, though).
 #'
-#' @param addlKeepsCov This determines if the additional dosing items
-#'   repeats the dose only (`FALSE`) or keeps the covariates at the
-#'   record of the dose (`TRUE`)
+#' @param addlKeepsCov This determines if a dose given at a time other
+#'   than its record's (an additional dosing item or a dose moved by
+#'   `alag()`) takes the time-varying covariates imputed at its actual
+#'   dosing time (`FALSE`) or keeps the covariates at the record of the
+#'   dose (`TRUE`, as NONMEM does).  By default `FALSE`, or `TRUE` with
+#'   `nonmem = TRUE`.
 #'
 #' @param addlDropSs When there are steady state doses with an `addl`
 #'   specification the steady state flag is dropped with repeated
@@ -1015,7 +1018,8 @@
 #'   the continuous time (like `$DES`).  `addl` repeats, infusion ends,
 #'   lagged doses and doses added while solving do not end an interval;
 #'   `mtime()` times do.  Covariate interpolation is still set by
-#'   `covsInterpolation`.  By default `FALSE`.
+#'   `covsInterpolation`.  `TRUE` also turns on `addlKeepsCov` unless it is
+#'   given.  By default `FALSE`.
 #'
 #' @param linCmtGillK The total number of possible steps to determine the
 #'     optimal forward/central difference step size per parameter (by
@@ -1939,6 +1943,10 @@ rxSolve <- function(
       .linCmtSensPhi <- as.integer(linCmtSensPhi)
     }
     checkmate::assertLogical(nonmem, any.missing = FALSE, len = 1)
+    if (nonmem && missing(addlKeepsCov)) {
+      # NONMEM keeps a dose record's covariates with the dose
+      addlKeepsCov <- TRUE
+    }
     checkmate::assertNumeric(linCmtGillFtol, lower = 0, finite = TRUE, any.missing = FALSE, len = 1)
     checkmate::assertIntegerish(linCmtGillK, lower = 0, any.missing = FALSE, len = 1)
     checkmate::assertNumeric(linCmtGillStep, lower = 0, finite = TRUE, any.missing = FALSE, len = 1)

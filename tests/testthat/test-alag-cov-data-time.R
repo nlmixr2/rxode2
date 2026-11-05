@@ -1,6 +1,6 @@
 rxTest({
-  # A lagged dose's arrival is not a record: covariates stay on the data
-  # records' own times, as in NONMEM (#1584)
+  # A lagged dose takes the covariates imputed at its arrival; they stay on the
+  # data records' own times unless addlKeepsCov carries its record's (#1584)
   .alagCovMod <- function() {
     rxode2({
       cl <- 10 * (WT / 70)^0.75
@@ -36,6 +36,38 @@ rxTest({
     s <- rxSolve(.alagCovMod(), .alagCovDat, covsInterpolation = "locf", atol = 1e-12, rtol = 1e-12)
     expect_equal(s$ipred, c(a5, a65, a7) / 50, tolerance = 1e-7)
   })
+
+  test_that("addlKeepsCov = TRUE carries a lagged dose's record covariates", {
+    k <- .alagK
+    a5 <- 100 * exp(-k(150) * 4.3)
+    b65 <- a5 * exp(-k(75) * 1.5)
+    b7 <- (b65 * exp(-k(150) * 0.2) + 100) * exp(-k(75) * 0.3)
+    s <- rxSolve(
+      .alagCovMod(),
+      .alagCovDat,
+      covsInterpolation = "nocb",
+      addlKeepsCov = TRUE,
+      atol = 1e-12,
+      rtol = 1e-12
+    )
+    expect_equal(s$ipred, c(a5, b65, b7) / 50, tolerance = 1e-7)
+  })
+
+  test_that("nonmem = TRUE turns on addlKeepsCov unless it is given", {
+    .s <- function(...) {
+      rxSolve(
+        .alagCovMod(),
+        .alagCovDat,
+        covsInterpolation = "nocb",
+        nonmem = TRUE,
+        atol = 1e-12,
+        rtol = 1e-12,
+        ...
+      )$ipred
+    }
+    expect_equal(.s(), .s(addlKeepsCov = TRUE))
+    expect_false(isTRUE(all.equal(.s(), .s(addlKeepsCov = FALSE))))
+  })
 })
 
 rxTest({
@@ -54,5 +86,34 @@ rxTest({
     )
     s <- rxSolve(mod, d, covsInterpolation = "nocb")
     expect_equal(s$w, c(70, 140, 140))
+  })
+})
+
+rxTest({
+  test_that("f() of a lagged dose follows addlKeepsCov", {
+    mod <- rxode2({
+      f(central) <- WT / 70
+      alag(central) <- 0.7
+      d / dt(central) <- -0.1 * central
+    })
+    d <- data.frame(
+      ID = 1,
+      TIME = c(0, 6, 6.5, 7, 8),
+      AMT = c(0, 100, 0, 0, 0),
+      EVID = c(0, 1, 0, 0, 0),
+      WT = c(70, 140, 70, 35, 35)
+    )
+    .f <- function(ci, keep) {
+      s <- rxSolve(mod, d, covsInterpolation = ci, addlKeepsCov = keep, atol = 1e-12, rtol = 1e-12)
+      s$central[s$time == 8] / (100 * exp(-0.1 * 1.3))
+    }
+    # imputed at the arrival, t = 6.7
+    expect_equal(.f("locf", FALSE), 1, tolerance = 1e-6)
+    expect_equal(.f("nocb", FALSE), 0.5, tolerance = 1e-6)
+    expect_equal(.f("linear", FALSE), 0.8, tolerance = 1e-6)
+    # the dose record's WT
+    for (ci in c("locf", "nocb", "linear")) {
+      expect_equal(.f(ci, TRUE), 2, tolerance = 1e-6)
+    }
   })
 })
