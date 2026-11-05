@@ -55,6 +55,7 @@ extern "C" void ensureLsodaCtxPool(int nCores);
 extern "C" void ensureIndLinExpCache(int nCores);
 extern "C" int rxTteN(void);
 extern "C" void rxTteSsAtol(double *ssAtol, int neq);
+extern "C" void rxTteDataNewSolve(void);
 extern "C" void ensureRworkPool(int nCores, int lrw, int liw);
 
 #include "cbindThetaOmega.h"
@@ -7389,6 +7390,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->ssAtol = _globals.gssAtol;
     op->ssRtol = _globals.gssRtol;
     rxTteSsAtol(_globals.gssAtol, op->neq);
+    rxTteDataNewSolve();
 
     // Initialize per-thread tolerance arrays from the global baseline values.
     for (int _core = 0; _core < op->cores; _core++) {

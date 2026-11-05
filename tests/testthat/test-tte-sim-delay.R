@@ -43,7 +43,7 @@ rxTest({
     .s <- withr::with_seed(3, as.data.frame(rxSolve(f(), .win(.dose))))
     .ev <- .s[.s$sim == 1 & .s$time > 0, ]
     expect_true(nrow(.ev) > 0)
-    expect_equal(.ev$rx.tteH.ev, unname(.tteRefH(.s, ref, .dose)), tolerance = 1e-5)
+    expect_equal(.ev$rx_tteH_ev, unname(.tteRefH(.s, ref, .dose)), tolerance = 1e-5)
   })
 
   test_that("tte() hazard of the delayed cumulative hazard", {
@@ -54,7 +54,7 @@ rxTest({
       })
       model({
         d/dt(central) <- -k * central
-        haz <- lambda * (1 + delay(rx.tteH.ev, 2))
+        haz <- lambda * (1 + delay(rx_tteH_ev, 2))
         ev ~ tte(haz)
       })
     }
@@ -69,7 +69,7 @@ rxTest({
       })
     }
     .s <- withr::with_seed(3, as.data.frame(rxSolve(f(), .win(.dose))))
-    expect_equal(.s$rx.tteH.ev[.s$sim == 1 & .s$time > 0], unname(.tteRefH(.s, ref, .dose)), tolerance = 1e-5)
+    expect_equal(.s$rx_tteH_ev[.s$sim == 1 & .s$time > 0], unname(.tteRefH(.s, ref, .dose)), tolerance = 1e-5)
     # the hazard has no steady state to delay
     expect_error(
       rxSolve(f(), .win(et(amt = 100, cmt = "central", ii = 24, ss = 1))),
@@ -110,7 +110,7 @@ rxTest({
     .s <- withr::with_seed(3, as.data.frame(rxSolve(f(), .win(.dose))))
     .ev <- .s[.s$sim == 1 & .s$time > 0, ]
     expect_true(any(table(.ev$id) > 1))
-    expect_equal(.ev$rx.tteH.ev, unname(.tteRefH(.s, ref, .dose, cnt = TRUE)), tolerance = 1e-4)
+    expect_equal(.ev$rx_tteH_ev, unname(.tteRefH(.s, ref, .dose, cnt = TRUE)), tolerance = 1e-4)
   })
 
   test_that("tte() with delay() and steady-state doses", {
@@ -144,7 +144,7 @@ rxTest({
     # steady state reached with explicit doses, the window 960 h later
     .g <- .tight(ref(), et(amt = 100, cmt = "central", ii = 24, addl = 40) |> et(960 + sort(unique(c(0, .ev$time)))))
     .h <- .g$H[match(960 + .ev$time, .g$time)] - .g$H[.g$time == 960]
-    expect_equal(.ev$rx.tteH.ev, .h, tolerance = 1e-4)
+    expect_equal(.ev$rx_tteH_ev, .h, tolerance = 1e-4)
   })
 
   test_that("tte() interval censoring with delay() matches the exact events", {

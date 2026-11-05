@@ -19,13 +19,14 @@
 #' @return state name
 #' @noRd
 .rxTteStateName <- function(var) {
-  paste0("rx.tteH.", var)
+  # dot-free: symengine cannot parse a dotted name
+  paste0("rx_tteH_", gsub("[^A-Za-z0-9_]", "_", var))
 }
 
 #' Hidden cumulative-hazard ODE lines for every tte endpoint
 #'
 #' @param ui rxode2 ui
-#' @return list of `d/dt(rx.tteH.<var>) <- <hazard>` lines (NULL when the model
+#' @return list of `d/dt(rx_tteH_<var>) <- <hazard>` lines (NULL when the model
 #'   has no tte endpoint)
 #' @author Matthew L. Fidler
 #' @noRd
@@ -40,7 +41,7 @@
   }
   lapply(.w, function(.i) {
     .o <- .rxTteOptions(ui, .predDf[.i, ])
-    .h <- .rxTteRewriteLines(list(.o$hazard), .predDf)[[1]]
+    .h <- .rxTteRewriteLines(list(.o$hazard), .predDf, ui)[[1]]
     bquote(d / dt(.(str2lang(.rxTteStateName(.predDf$var[.i])))) <- .(.h))
   })
 }
@@ -58,10 +59,36 @@ rxGetDistributionSimulationLines.tte <- function(line) {
   )
 }
 
-#' Rewrite `tteTime(ev)`/`tteCount(ev)` to the endpoint's tte index
+#' Codes passed to `tteTime()`/`tteCount()` in C for each tte endpoint
+#'
+#' The code is `k + 100*cmt` (k the 1-based tte index, cmt the endpoint's
+#' compartment), negative for `origin = TRUE`; a simulation solve reads k, an
+#' estimation solve looks the endpoint up in the data by cmt.
+#'
+#' @param predDf the ui's `$predDf`
+#' @param env parsed ui environment (for the `origin` option), or NULL
+#' @return numeric codes named by the endpoint conditions
+#' @author Matthew L. Fidler
+#' @noRd
+.rxTteCodes <- function(predDf, env = NULL) {
+  if (is.null(predDf)) {
+    return(numeric(0))
+  }
+  .w <- which(predDf$distribution == "tte")
+  .code <- vapply(seq_along(.w), function(.k) {
+    .pred1 <- predDf[.w[.k], ]
+    .origin <- !is.null(env) && isTRUE(.rxTteOptions(env, .pred1)$origin)
+    # no cmt yet while parsing (the model variables only need a number)
+    .cmt <- if (length(.pred1$cmt) == 1L && !is.na(.pred1$cmt)) as.numeric(.pred1$cmt) else 0
+    (if (.origin) -1 else 1) * (.k + 100 * .cmt)
+  }, numeric(1))
+  stats::setNames(.code, predDf$cond[.w])
+}
+
+#' Rewrite `tteTime(ev)`/`tteCount(ev)` to the endpoint's code
 #'
 #' @param expr quoted model expression
-#' @param tte names of the model's tte endpoints
+#' @param tte codes of the model's tte endpoints, from `.rxTteCodes()`
 #' @return the rewritten expression
 #' @author Matthew L. Fidler
 #' @noRd
@@ -74,11 +101,11 @@ rxGetDistributionSimulationLines.tte <- function(line) {
     if (length(expr) != 2L || !is.name(expr[[2]])) {
       stop("'", .f, "()' takes one tte() endpoint name, e.g. ", .f, "(ev)", call. = FALSE)
     }
-    .k <- match(as.character(expr[[2]]), tte)
+    .k <- match(as.character(expr[[2]]), names(tte))
     if (is.na(.k)) {
       stop("'", .f, "(", as.character(expr[[2]]), ")' does not name a tte() endpoint", call. = FALSE)
     }
-    expr[[2]] <- as.numeric(.k)
+    expr[[2]] <- tte[[.k]]
     return(expr)
   }
   as.call(lapply(as.list(expr), .rxTteRewrite, tte = tte))
@@ -88,10 +115,11 @@ rxGetDistributionSimulationLines.tte <- function(line) {
 #'
 #' @param lines list of quoted lines, or character lines
 #' @param predDf the ui's `$predDf`
+#' @param env parsed ui environment (for the `origin` option), or NULL
 #' @return the rewritten lines (same type)
 #' @noRd
-.rxTteRewriteLines <- function(lines, predDf) {
-  .tte <- if (is.null(predDf)) character(0) else predDf$cond[predDf$distribution == "tte"]
+.rxTteRewriteLines <- function(lines, predDf, env = NULL) {
+  .tte <- .rxTteCodes(predDf, env)
   if (is.character(lines)) {
     .w <- grepl("tte(Time|Count)", lines)
     if (!any(.w)) {

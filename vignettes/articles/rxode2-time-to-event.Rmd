@@ -44,7 +44,7 @@ seizure <- function() {
 }
 ```
 
-The cumulative hazard is added as a hidden state (`rx.tteH.ev`), and
+The cumulative hazard is added as a hidden state (`rx_tteH_ev`), and
 each event time solves `H(t) - H(t_last) = -log(u)` with a root finder,
 so the event times are exact rather than limited to the sampling grid.
 
@@ -90,6 +90,7 @@ if (requireNamespace("survival", quietly = TRUE)) {
 | `rightCensoringTime` | last record of the endpoint     | end of the observation window                   |
 | `intervalLength`     | tenth of the observation window | interval length for `"intervalCensored"`        |
 | `dropout`            | `FALSE`                         | the event ends all observations (needs `maxEventNumber = 1`) |
+| `origin`             | `FALSE`                         | observe from the subject's start, with no start row |
 
 With `eventType = "intervalCensored"` the rows are the ends of each
 interval, with `sim = 1` when the interval holds an event:
@@ -175,7 +176,7 @@ A hazard may use `delay()`.  The record loop then solves each interval
 with a dense solver (`dop853+ros4`, `dop853` or `ros4`), whose steps
 record the history `delay()` reads, and an event rewinds that history
 with the state.  Any state may be delayed, including the cumulative
-hazard itself (`delay(rx.tteH.ev, tau)`), but a delayed cumulative hazard
+hazard itself (`delay(rx_tteH_ev, tau)`), but a delayed cumulative hazard
 cannot be combined with steady-state doses, since the hazard has no
 steady state:
 
@@ -197,6 +198,30 @@ ed <- et(amt = 100, cmt = "central") |> et(c(0, 48), cmt = "ev") |> et(id = 1:5)
 s <- withr::with_seed(3, as.data.frame(rxSolve(dde(), ed)))
 s[, c("id", "time", "sim", "central")]
 ```
+
+## Estimating
+
+The rows `rxSolve()` returns are also the data a `tte()` endpoint is
+estimated from (with `nlmixr2()`): `DV = 1` at each event (or the end of
+an interval holding one) and `DV = 0` otherwise.  Each record scores the
+events and survival since the endpoint's previous record from the change
+`dH` of the cumulative hazard:
+
+| Record                         | Log-likelihood       |
+|--------------------------------|----------------------|
+| exact event                    | `log(h(t)) - dH`     |
+| interval holding an event      | `log(1 - exp(-dH))`  |
+| no event                       | `-dH`                |
+
+The first record of each subject is the start of observation and scores
+nothing, so a later start (late entry) is handled.  With
+`tte(origin = TRUE)` the cumulative hazard counts from the subject's
+start instead and every record scores; the simulation then has no start
+row.  `tteTime()` and `tteCount()` come from the endpoint's `DV = 1`
+records, and the hazard at an event record is the one just before the
+event.  The likelihood methods (`focei`, `laplace`, `agq`, `saem`, `nlm`,
+`bobyqa`, ...) estimate `tte()` endpoints; `fo`, `foi`, `nls` and `nlme`
+refuse them.
 
 ## Next steps
 

@@ -3753,7 +3753,7 @@ rxSolve.default <- function(
     # answers.
     # tte() models set the evid_() flag but solve in the per-record loop,
     # whose dense steps record the delay() history
-    .tte <- any(startsWith(rxModelVars(object)$state, "rx.tteH."))
+    .tte <- any(startsWith(rxModelVars(object)$state, "rx_tteH_"))
     if (!.tte && isTRUE(rxModelVars(object)$flags[["evid_"]] == 1L)) {
       stop(
         "a model cannot combine delay() with evid_() event pushing ",

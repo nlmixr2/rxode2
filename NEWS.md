@@ -66,6 +66,12 @@
   and steady-state doses hold the cumulative hazard fixed (a `delay()` of
   the cumulative hazard is refused with them).
 
+- `tte()` endpoints can be estimated: each record of the endpoint scores
+  the events and survival since its previous record from the hidden
+  cumulative hazard, the first record being the start of observation
+  unless `tte(origin = TRUE)`.  `tteTime()`/`tteCount()` of an estimation
+  solve come from the endpoint's `DV = 1` records.
+
 - `minSS` and `maxSS` now accept any count from 1, and `maxSS` may equal
   `minSS`, so `minSS = maxSS = n` gives exactly the state after `n` doses
   before the steady-state one (Monolix `nbdoses = n`).  They used to require

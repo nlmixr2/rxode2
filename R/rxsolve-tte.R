@@ -17,7 +17,7 @@
 #' Refuse a delay() of a cumulative hazard with steady-state doses
 #'
 #' The hazard never reaches a steady state, so the history a steady-state
-#' dose records for `delay(rx.tteH.<ev>)` has no meaning.
+#' dose records for `delay(rx_tteH_<ev>)` has no meaning.
 #'
 #' @param model the simulation model
 #' @param events event table
@@ -25,7 +25,7 @@
 #' @author Matthew L. Fidler
 #' @noRd
 .rxTteAssertSsDelay <- function(model, events) {
-  if (!grepl("delay(rx.tteH.", rxModelVars(model)$model["normModel"], fixed = TRUE)) {
+  if (!grepl("delay(rx_tteH_", rxModelVars(model)$model["normModel"], fixed = TRUE)) {
     return(invisible())
   }
   if (rxIs(events, "rx.event")) events <- as.data.frame(events)

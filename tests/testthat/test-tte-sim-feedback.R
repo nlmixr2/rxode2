@@ -119,7 +119,7 @@ rxTest({
       expect_true(nrow(.ev) > 0, info = .m)
       .g <- as.data.frame(rxSolve(ref(), et(amt = 100, cmt = "central") |>
         et(sort(unique(c(seq(0, 48, by = 2), .ev$time))))))
-      expect_equal(.ev$rx.tteH.ev, .g$H[match(.ev$time, .g$time)], tolerance = 1e-4, info = .m)
+      expect_equal(.ev$rx_tteH_ev, .g$H[match(.ev$time, .g$time)], tolerance = 1e-4, info = .m)
       .pk <- .s[.s$evid == 2, ]
       expect_equal(.pk$central, .g$central[match(.pk$time, .g$time)], tolerance = 1e-4, info = .m)
     }

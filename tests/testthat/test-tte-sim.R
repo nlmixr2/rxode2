@@ -11,7 +11,7 @@ rxTest({
 
   test_that("tte() single events: layout, distribution and root accuracy", {
     .s <- withr::with_seed(1, as.data.frame(rxSolve(.tteConst(), et(c(0, 30)) |> et(id = 1:1000))))
-    expect_true(all(c("sim", "rx.tteH.ev") %in% names(.s)))
+    expect_true(all(c("sim", "rx_tteH_ev") %in% names(.s)))
     # start row (0), then either the event (1) or the censoring row (0)
     expect_true(all(table(.s$id) == 2L))
     expect_true(all(.s$sim[.s$time == 0] == 0))
@@ -37,7 +37,7 @@ rxTest({
     .s <- withr::with_seed(2, as.data.frame(rxSolve(f(), et(c(0, 100)) |> et(id = 1:300))))
     .e <- .s[.s$sim == 1, ]
     # the solved cumulative hazard at the event is the closed form
-    expect_equal(.e$rx.tteH.ev, (.e$time / 10)^1.5, tolerance = 1e-5)
+    expect_equal(.e$rx_tteH_ev, (.e$time / 10)^1.5, tolerance = 1e-5)
     expect_gt(stats::ks.test(.e$time, function(x) pweibull(x, 1.5, 10) / pweibull(100, 1.5, 10))$p.value, 0.01)
   })
 
@@ -135,7 +135,7 @@ rxTest({
       .ev <- .s[.s$sim == 1, ]
       expect_equal(.s$sim, .ref$sim, info = .m)
       expect_equal(.s$time, .ref$time, tolerance = 1e-4, info = .m)
-      expect_equal(.ev$rx.tteH.ev, (.ev$time / 10)^1.5, tolerance = 1e-4, info = .m)
+      expect_equal(.ev$rx_tteH_ev, (.ev$time / 10)^1.5, tolerance = 1e-4, info = .m)
     }
     # indLin, with a hazard it integrates exactly
     .e <- et(c(0, 30)) |> et(id = 1:50)

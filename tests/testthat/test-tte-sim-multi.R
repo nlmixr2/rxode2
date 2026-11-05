@@ -20,17 +20,17 @@ rxTest({
     .early <- .st$id %in% .s$id[.s$CMT == 3 & .s$sim == 1 & .s$time < 5]
     expect_true(sum(.early) > 50L)
     # opened on the trajectory kept after a's earlier events
-    expect_equal(.st$h0b, .st$rx.tteH.b)
+    expect_equal(.st$h0b, .st$rx_tteH_b)
     .n <- 0L
     for (.id in unique(.s$id)) {
       .d <- .s[.s$id == .id, ]
       .ta <- .d$time[.d$CMT == 3 & .d$sim == 1]
-      .h0 <- .d$rx.tteH.b[.d$CMT == 4 & .d$time == 5][1]
+      .h0 <- .d$rx_tteH_b[.d$CMT == 4 & .d$time == 5][1]
       for (.j in which(.d$CMT == 4 & .d$sim == 1)) {
         .t <- .d$time[.j]
         # lb * integral over (5, t] of 1 + (events of a before s)
         .ref <- 0.05 * ((.t - 5) + sum(.t - pmax(.ta[.ta < .t], 5)))
-        expect_equal(.d$rx.tteH.b[.j] - .h0, .ref, tolerance = 1e-5)
+        expect_equal(.d$rx_tteH_b[.j] - .h0, .ref, tolerance = 1e-5)
         .n <- .n + 1L
       }
     }
@@ -74,14 +74,14 @@ rxTest({
     expect_true(all(table(.s$id) == 2L))
     .ev <- .s[.s$sim == 1, ]
     .h <- ifelse(.ev$time < 10, 0.01 * .ev$time, 0.1 + 0.04 * (.ev$time - 10))
-    expect_equal(.ev$rx.tteH.ev, .h, tolerance = 1e-6)
+    expect_equal(.ev$rx_tteH_ev, .h, tolerance = 1e-6)
     expect_equal(nrow(.ev) / 400, 1 - exp(-0.9), tolerance = 0.1)
     # a constant covariate per subject
     .d2 <- data.frame(id = rep(1:400, each = 2), time = rep(c(0, 30), 400), evid = 0,
                       wt = rep(rep(c(140, 35), each = 200), each = 2))
     .s2 <- withr::with_seed(4, as.data.frame(rxSolve(f(), .d2)))
     .e2 <- .s2[.s2$sim == 1, ]
-    expect_equal(.e2$rx.tteH.ev, 0.01 * .e2$wt / 70 * .e2$time, tolerance = 1e-6)
+    expect_equal(.e2$rx_tteH_ev, 0.01 * .e2$wt / 70 * .e2$time, tolerance = 1e-6)
     # linear interpolation from 70 at 0 to 280 at 30, also at the event rows
     .d3 <- data.frame(id = rep(1:400, each = 2), time = rep(c(0, 30), 400), evid = 0,
                       wt = rep(c(70, 280), 400))
@@ -89,7 +89,7 @@ rxTest({
     .e3 <- .s3[.s3$sim == 1, ]
     expect_true(nrow(.e3) > 100L)
     expect_equal(.e3$wt, 70 + 7 * .e3$time, tolerance = 1e-8)
-    expect_equal(.e3$rx.tteH.ev, 0.01 * (.e3$time + 0.05 * .e3$time^2), tolerance = 1e-6)
+    expect_equal(.e3$rx_tteH_ev, 0.01 * (.e3$time + 0.05 * .e3$time^2), tolerance = 1e-6)
   })
 
   test_that("tte() keeps the NA covariate semantics of the user's own records", {

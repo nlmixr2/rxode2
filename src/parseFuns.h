@@ -418,8 +418,9 @@ static inline int handleFunctionSum(transFunctions *tf) {
   return 0;
 }
 
-// Time-to-event (tte()) helpers; every one takes the endpoint's tte index and
-// dispatches through _rxTte(_cSub, t, what, k) (src/tte.cpp)
+// Time-to-event (tte()) helpers; every one takes the endpoint's tte code and
+// dispatches through _rxTte(_cSub, t, what, cmtBase, cmtSens, code)
+// (src/tteModel.cpp), with the model's _CMT remap for data lookups
 static inline int handleFunctionTte(transFunctions *tf) {
   int what = -1;
   if (!strcmp("rxTteSim", tf->v)) what = 0;
@@ -433,8 +434,8 @@ static inline int handleFunctionTte(transFunctions *tf) {
     sPrint(&_gbuf, _("'%s' takes 1 argument"), tf->v);
     trans_syntax_error_report_fn(_gbuf.s);
   }
-  sAppend(&sb, "_rxTte(_cSub, t, %d, (double) ", what);
-  sAppend(&sbDt, "_rxTte(_cSub, t, %d, (double) ", what);
+  sAppend(&sb, "_rxTte(_cSub, t, %d, _RXTTE_CMTB, _RXTTE_CMTS, (double) ", what);
+  sAppend(&sbDt, "_rxTte(_cSub, t, %d, _RXTTE_CMTB, _RXTTE_CMTS, (double) ", what);
   sAppend(&sbt, "%s(", tf->v);
   // tte simulation re-times records of each subject, so every subject needs
   // its own event arrays (the same requirement as evid_() pushes)

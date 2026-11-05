@@ -934,7 +934,7 @@ rxCombineErrorLines <- function(
   .predDf <- uiModel$predDf
   .tmp <- .rxFilterOutPropsAndAdjustPredDf(uiModel, predDf = .predDf, lstExpr = lstExpr)
   .predDf <- .tmp$predDf
-  .expr <- .rxTteRewriteLines(.tmp$lstExpr, .predDf)
+  .expr <- .rxTteRewriteLines(.tmp$lstExpr, .predDf, uiModel)
   # endpoints sharing a model variable get a generated alias; define it just
   # before the error lines that use it.  A shared linCmt() needs its single
   # allowed linCmt() call emitted once, outside the CMT branches.
@@ -1027,6 +1027,14 @@ rxCombineErrorLines <- function(
         .aliasLinCmtLine <- NULL
       }
       if (.if) {
+        # tte() carry lines stay outside the branch: pruned into it they would
+        # reset on the other endpoints' records
+        .hoist <- vapply(.curErr, .rxTteIsCarryLine, logical(1), USE.NAMES = FALSE)
+        for (.j in which(.hoist)) {
+          .ret[[.k]] <- .curErr[[.j]]
+          .k <- .k + 1
+        }
+        .curErr <- .curErr[!.hoist]
         .ret[[.k]] <- as.call(list(
           quote(`if`),
           as.call(list(quote(`==`), quote(`CMT`), as.numeric(.predDf$cmt[.curErrLine]))),
