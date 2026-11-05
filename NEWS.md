@@ -3,6 +3,10 @@
 ## Bug fixes
 
 ### Event tables
+- A reset (`evid = 3`), a reset and dose (`evid = 4`) or a steady-state dose
+  (`ss = 1` or `ss = 2`) during an infusion now cancels the infusion's stop
+  record too.  The stop used to still apply, leaving the compartment at a net
+  rate of `-rate` and the state negative (#1562).
 - A simulation that stops with an error no longer leaves its draws for the
   next solve.  The residuals, simulated thetas and per-study draws it had
   made stayed behind, and the next solve without residuals of its own used
@@ -61,8 +65,24 @@
   the ODE model and NONMEM.  After a dose that a steady-state record
   schedules between two records, the `linCmt()` solver advanced to the next
   record twice (#1591).
+- `linCmt()` models now follow `minSS`/`maxSS` as the equivalent ODE model
+  does: `minSS = maxSS = n` gives the profile after exactly `n` prior doses,
+  and a steady state converged by `minSS` doses (for example with
+  `ssAtol`/`ssRtol` disabled) stops there.  They used to return the exact
+  steady state for every `minSS` (#1500).
+
+- Every dose a steady-state record schedules between two records (the
+  starts and ends of a steady-state infusion with `dur > ii` or with
+  `alag() > ii`) is now applied at its own time with the `liblsoda`,
+  `lsoda`, `lsode`, `dop853`, `indLin` and `linCmt()` solvers.  Only the
+  first one between two records was applied, so a short infusion could
+  never end; `dop853` also integrated past that dose twice (#1499).
 
 ## New features
+
+- `etTrans()` gains `tieOrder = "data"`, which keeps records of a subject
+  that share a time in the order of the rows in the data, the way NONMEM
+  processes them, instead of resets, then doses, then observations (#1593).
 
 - `rxSolve(omegaSeparation = "invchol")` (and `sigmaSeparation = "invchol"`)
   draws the omega (sigma) entries a `thetaMat` carries jointly with the
@@ -132,6 +152,11 @@
   `.Random.seed` as `rxSolve(seed = )` does.  The simulated values for a
   given `seed` are unchanged (#1550).
 
+- Re-solving an `rxSolve()` result by assignment (`$<-`, `[[<-`, `[<-`, eg
+  `s$params <- p`) now reapplies the seed stored in its control, so the draws
+  are reproducible; they used to be fresh values.  `update()` still uses only
+  a `seed` passed to it (#1550).
+
 ### Solving
 
 - `liblsoda` (and `liblsodaadj`, whose forward solve it is) now fails a
@@ -143,6 +168,16 @@
   takes its tolerance as `dlsoda.f` does, from the magnitudes of the step's
   time and size with the step's sign; at negative times it rejected output
   times a few ulps past a step's start.
+
+- A fixed-duration infusion into a compartment whose `f()` depends on a
+  state now stops by removing the rate its start added, `f()` being read
+  once, at the start.  The stop used to evaluate `f()` again, leaving a
+  constant residual rate in the compartment after the infusion (#1568).
+
+- With `dop853` (dense output and AutoSwitch composites included), `newind`
+  now becomes 2 after a subject's first record during the solve; it stayed
+  1 for the whole solve, so a right-hand side, `f()` or `evid_()` reading it
+  treated every record as the first (#1526).
 
 - Forward sensitivities through `alag()`, `f()`, `rate()`, `dur()` and a
   parameter-dependent `delay()` are now right for a parameter that also
@@ -231,6 +266,10 @@
 
 - `ind_solve()` (as nlmixr2est uses it) no longer reads a failure left by the
   previous solve of the same subject as a failure of the new one.
+
+- A `cvode` subject that fails on its steady-state path now gives the
+  solver-failure reason line; it was `NA` with the "could not solve" warning
+  but no reason.
 
 - A subject whose solve failed is now named with its reason once the solve is
   over ("[solve error: <reason>]: N warning(s) for subject(s): <ids>", and the
