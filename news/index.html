@@ -154,9 +154,9 @@
 </ul></div>
 <div class="section level4">
 <h4 id="steady-state-development-version">Steady state<a class="anchor" aria-label="anchor" href="#steady-state-development-version"></a></h4>
-<ul><li>A steady-state bolus into a compartment whose <code>alag()</code> is longer than <code>ii</code> now includes the doses of the earlier intervals that arrive inside the observed one; they were dropped, so the profile decayed from the trough instead of matching explicit dosing (<a href="https://github.com/nlmixr2/rxode2/issues/1499" class="external-link">#1499</a>).</li>
-<li>
-<code>linCmt()</code> models now follow <code>minSS = maxSS = n</code>, giving the profile after exactly <code>n</code> prior doses as the equivalent ODE model does; they used to return the exact steady state for every <code>n</code> (<a href="https://github.com/nlmixr2/rxode2/issues/1500" class="external-link">#1500</a>).</li>
+<ul><li><p>A steady-state bolus into a compartment whose <code>alag()</code> is longer than <code>ii</code> now includes the doses of the earlier intervals that arrive inside the observed one; they were dropped, so the profile decayed from the trough instead of matching explicit dosing (<a href="https://github.com/nlmixr2/rxode2/issues/1499" class="external-link">#1499</a>).</p></li>
+<li><p><code>linCmt()</code> models now follow <code>minSS = maxSS = n</code>, giving the profile after exactly <code>n</code> prior doses as the equivalent ODE model does; they used to return the exact steady state for every <code>n</code> (<a href="https://github.com/nlmixr2/rxode2/issues/1500" class="external-link">#1500</a>).</p></li>
+<li><p>Every dose a steady-state record schedules between two records (the starts and ends of a steady-state infusion with <code>dur &gt; ii</code> or with <code>alag() &gt; ii</code>) is now applied at its own time with the <code>liblsoda</code>, <code>lsoda</code>, <code>lsode</code>, <code>dop853</code>, <code>indLin</code> and <code>linCmt()</code> solvers. Only the first one between two records was applied, so a short infusion could never end; <code>dop853</code> also integrated past that dose twice (<a href="https://github.com/nlmixr2/rxode2/issues/1499" class="external-link">#1499</a>).</p></li>
 </ul></div>
 </div>
 <div class="section level3">
