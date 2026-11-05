@@ -268,7 +268,6 @@ extern "C" void ind_sb3am4_0(rx_solve *rx, rx_solving_options *op, int solveid, 
         xp = xout;
       }
     }
-    ind->_newind = 2;
     if (!localBadSolve){
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
@@ -297,6 +296,7 @@ extern "C" void ind_sb3am4_0(rx_solve *rx, rx_solving_options *op, int solveid, 
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       if (_mtime_requeued) i--;
     }
+    rxNewindAfterRecord(ind, i);
     ind->solvedIdx = i;
   }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
