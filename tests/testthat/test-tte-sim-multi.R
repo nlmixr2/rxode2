@@ -136,4 +136,23 @@ rxTest({
     .s <- as.data.frame(rxSolve(f(), et(0) |> et(id = 1:3)))
     expect_equal(sort(unique(.s$time)), c(0, 5))
   })
+
+  test_that("tte() keeps the other endpoints' observations without a dv column", {
+    f <- function() {
+      ini({
+        lam <- 0.05
+        add.sd <- 0.2
+      })
+      model({
+        d / dt(central) <- -0.1 * central
+        cp <- central / 10
+        haz <- lam
+        cp ~ add(add.sd)
+        ev ~ tte(haz)
+      })
+    }
+    .e <- et(amt = 100, cmt = "central") |> et(c(0.5, 1, 2), cmt = "cp") |> et(c(0, 30), cmt = "ev")
+    .s <- as.data.frame(rxSolve(f(), .e, addDosing = TRUE))
+    expect_equal(.s$evid[.s$time %in% c(0.5, 1, 2)], c(0L, 0L, 0L))
+  })
 })

@@ -53,7 +53,8 @@
     .d$id <- 1L
   }
   .dv <- .rxTteCol(.d, "dv")
-  if (is.null(.dv)) {
+  .addDv <- is.null(.dv)
+  if (.addDv) {
     .dv <- "dv"
     .d$dv <- NA_real_
   }
@@ -71,6 +72,14 @@
   .predDf <- ui$predDf
   if (is.null(.cmt) && nrow(.predDf) > 1L) {
     stop("simulating a tte() endpoint in a model with several endpoints requires a 'cmt' column", call. = FALSE)
+  }
+  if (.addDv && !is.null(.cmt)) {
+    # etTrans makes an NA-dv observation evid 2, so the other endpoints'
+    # records get a dv
+    .c <- .d[[.cmt]]
+    .other <- .predDf[.predDf$distribution != "tte", ]
+    .isEp <- if (is.character(.c)) .c %in% .other$cond else .c %in% .other$cmt
+    .d[[.dv]][.isEp & .d[[.evid]] == 0L] <- 0
   }
   .w <- which(.predDf$distribution == "tte")
   .add <- list()
