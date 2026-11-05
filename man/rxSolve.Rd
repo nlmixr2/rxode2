@@ -1168,7 +1168,9 @@ created by reference (ie \code{setDt()}), which should be fast.
 generator should be initialized; when given, it takes precedence
 over an active \code{\link[=rxSetSeed]{rxSetSeed()}} stream for this solve, and the
 caller's \code{.Random.seed} is restored afterwards.  \code{\link[=rxControl]{rxControl()}} only
-stores it; the seed is applied when the control is used by a solve}
+stores it; the seed is applied when the control is used by a solve.
+Re-solving a result by assignment (eg \code{s$params <- p}) reapplies its
+seed, while \code{update()} uses only a \code{seed} it is given}
 
 \item{nsim}{represents the number of simulations.  For rxode2, if
 you supply single subject event tables (created with
@@ -1180,9 +1182,10 @@ this many doses are given and \code{ssAtol}/\code{ssRtol} are met.  It is raised
 to the fewest doses the regimen needs (2 with a lag time, more with
 overlapping infusions or a lag longer than \code{ii}).  \code{minSS = maxSS = n}
 gives exactly the state after \code{n} prior doses (Monolix
-\code{nbdoses = n}), for \code{linCmt()} models too; otherwise \code{linCmt()} steady
-states are exact.  A constant infusion (\code{ii = 0}), which has no doses,
-takes at least 5 and up to \code{max(maxSS, 10000)} convergence steps.}
+\code{nbdoses = n}).  \code{linCmt()} models follow both, stopping at \code{minSS}
+doses when converged there and otherwise using their exact steady
+state.  A constant infusion (\code{ii = 0}), which has no doses, takes at
+least 5 and up to \code{max(maxSS, 10000)} convergence steps.}
 
 \item{maxSS}{Maximum number of doses given before a steady-state dose (at
 least \code{minSS})}
