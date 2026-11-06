@@ -270,6 +270,7 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  linCmtSensH <span class="op">=</span> <span class="fl">1e-04</span>,</span>
 <span>  linCmtSensPhi <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  nonmem <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  tieOrder <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  linCmtGillFtol <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>  linCmtGillK <span class="op">=</span> <span class="fl">20L</span>,</span>
 <span>  linCmtGillStep <span class="op">=</span> <span class="fl">4</span>,</span>
@@ -1757,7 +1758,20 @@ calls <code>$PK</code> at its records.  <code>d/dt()</code> and state-dependent 
 the continuous time (like <code>$DES</code>).  <code>addl</code> repeats, infusion ends,
 lagged doses and doses added while solving do not end an interval;
 <code>mtime()</code> times do.  Covariate interpolation is still set by
-<code>covsInterpolation</code>.  By default <code>FALSE</code>.</p></dd>
+<code>covsInterpolation</code>.  It also sets the default <code>tieOrder</code> to <code>"data"</code>.
+By default <code>FALSE</code>.</p></dd>
+
+
+<dt id="arg-tieorder">tieOrder<a class="anchor" aria-label="anchor" href="#arg-tieorder"></a></dt>
+<dd><p>How records of a subject that share a time are processed:
+<code>"evid"</code> processes resets first, then doses, then observations, so the
+result does not depend on the row order of the data; <code>"data"</code> processes
+them in the order of the rows in the data, the way NONMEM does (records
+a row expands to, like the reset of an <code>evid=4</code> dose or <code>addl</code> repeats,
+follow that row).  Doses added while solving follow the records at the
+same time.  An event table already translated by <code><a href="etTrans.html">etTrans()</a></code> keeps the
+order it was translated with.  By default (<code>NULL</code>) this is <code>"data"</code> when
+<code>nonmem = TRUE</code> and <code>"evid"</code> otherwise.</p></dd>
 
 
 <dt id="arg-lincmtgillftol">linCmtGillFtol<a class="anchor" aria-label="anchor" href="#arg-lincmtgillftol"></a></dt>
