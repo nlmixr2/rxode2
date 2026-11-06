@@ -310,6 +310,12 @@
 
 ### linCmt() models
 
+- `linCmt()` models now refuse `"linear"` covariate interpolation (from
+  `covsInterpolation` or a declared `linear()`) for a covariate that varies
+  within a subject, pointing to `"locf"`, `"nocb"`, `"midpoint"` or an ODE
+  model.  The closed form cannot follow the ramp and silently gave the
+  `"midpoint"` solution (#1669).
+
 - `linCmt()` models now solve a time-varying covariate as the equivalent ODE
   model does.  Each interval between records used the covariates of the record
   that ends it, so the default `covsInterpolation = "locf"` gave the `"nocb"`

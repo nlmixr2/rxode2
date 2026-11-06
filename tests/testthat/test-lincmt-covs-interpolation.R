@@ -124,14 +124,64 @@ rxTest({
     }
   })
 
-  test_that("linCmt() under linear interpolation takes the value at each interval's middle", {
-    # a closed form keeps a parameter constant over an interval, where the
-    # ODE follows the covariate's ramp; it takes the value at the interval's
-    # middle
+  test_that("linCmt() refuses linear interpolation of a time-varying covariate (#1669)", {
+    # a closed form keeps a parameter constant over an interval and cannot
+    # follow the covariate's ramp, so "linear" would silently be "midpoint"
     .m <- .lccModels(1L, FALSE)
-    .d <- .lccDiff(.m, .lccEvents(FALSE), "linear")
-    expect_lt(.d, 5e-3)
-    expect_gt(.d, 1e-8)
+    .ev <- .lccEvents(FALSE)
+    expect_error(
+      rxSolve(.m$lin, .ev, covsInterpolation = "linear"),
+      "'linear' interpolation of time-varying covariate"
+    )
+    expect_error(rxSolve(.m$ode, .ev, covsInterpolation = "linear"), NA)
+    .lin <- rxode2({
+      cl <- 1 * (wt / 70)^3
+      v <- 10
+      cp <- linCmt()
+    })
+    .ev2 <- data.frame(
+      id = 1,
+      time = c(0, 24),
+      evid = c(1, 0),
+      amt = c(100, 0),
+      cmt = 1,
+      wt = c(40, 120)
+    )
+    expect_error(rxSolve(.lin, .ev2, covsInterpolation = "linear"), "'wt'")
+    # a declared linear() is refused under any covsInterpolation
+    .linD <- rxode2({
+      linear(wt)
+      cl <- 1 * (wt / 70)^3
+      v <- 10
+      cp <- linCmt()
+    })
+    expect_error(rxSolve(.linD, .ev2), "'wt'")
+    # a declared locf() overrides covsInterpolation = "linear"
+    .linL <- rxode2({
+      locf(wt)
+      cl <- 1 * (wt / 70)^3
+      v <- 10
+      cp <- linCmt()
+    })
+    expect_error(rxSolve(.linL, .ev2, covsInterpolation = "linear"), NA)
+    # a covariate constant within each subject is still accepted
+    # (an NA record does not count as a change)
+    .ev3 <- data.frame(
+      id = c(1, 1, 1, 2, 2),
+      time = c(0, 12, 24, 0, 24),
+      evid = c(1, 0, 0, 1, 0),
+      amt = c(100, 0, 0, 100, 0),
+      cmt = 1,
+      wt = c(40, NA, 40, 90, 90)
+    )
+    expect_error(
+      .s <- rxSolve(.lin, .ev3, covsInterpolation = "linear", returnType = "data.frame"),
+      NA
+    )
+    expect_equal(
+      .s$cp,
+      rxSolve(.lin, .ev3, covsInterpolation = "midpoint", returnType = "data.frame")$cp
+    )
   })
 
   test_that("linCmt()'s sensitivities follow the interval's covariate", {

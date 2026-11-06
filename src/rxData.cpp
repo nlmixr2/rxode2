@@ -4605,6 +4605,35 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
         }
       }
     }
+    // linCmt() advances each interval with the covariates at its middle, so it
+    // cannot follow a linear ramp; refuse "linear" for a covariate that varies
+    // within a subject rather than silently giving the midpoint solution.
+    if (op->numLin > 0) {
+      for (int ic = 0; ic < ncov; ic++) {
+        if (ic == op->cmtCov) continue;
+        int curInterp = _globals.gpar_covInterp[ic];
+        if (!(curInterp == 0 || (curInterp == -1 && op->is_locf == 0))) continue;
+        NumericVector curCov = as<NumericVector>(dataf[covPos[ic]]);
+        int lastId = NA_INTEGER;
+        double firstVal = NA_REAL;
+        for (int ir = 0; ir < curCov.size(); ir++) {
+          if (id[ir] != lastId) {
+            lastId = id[ir];
+            firstVal = NA_REAL;
+          }
+          double curVal = curCov[ir];
+          if (ISNAN(curVal)) continue;
+          if (ISNAN(firstVal)) {
+            firstVal = curVal;
+          } else if (curVal != firstVal) {
+            std::string covName = as<std::string>(dfNames[covPos[ic]]);
+            rxSolveFree();
+            stop(_("'linear' interpolation of time-varying covariate '%s' is not supported for linCmt() models; use covsInterpolation = \"locf\", \"nocb\" or \"midpoint\" (or declare that interpolation for '%s' in the model), or write the model as ODEs"),
+                 covName.c_str(), covName.c_str());
+          }
+        }
+      }
+    }
     // Make sure the covariates are a #ncov * all times size
     if (_globals.gcov != NULL) free(_globals.gcov);
     _globals.gcov = (double*)calloc(ncov * amt.size(), sizeof(double));
