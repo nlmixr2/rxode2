@@ -145,4 +145,5 @@
 #define Rxc_priorSigmaEl 140
 #define Rxc_linCmtSensPhi 141
 #define Rxc_nonmem 142
+#define Rxc_tieOrder 143
 #endif // __rxode2_control_H__

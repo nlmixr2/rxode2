@@ -83,6 +83,13 @@
   that share a time in the order of the rows in the data, the way NONMEM
   processes them, instead of resets, then doses, then observations (#1593).
 
+- `rxSolve()` gains `tieOrder`.  `tieOrder = "data"` processes records of a
+  subject that share a time in the order of the rows in the data, so a dose
+  listed before a reset at the same time is wiped by it and an observation
+  listed before a co-timed dose is predicted before the dose, as in NONMEM.
+  It is the default with `nonmem = TRUE`; otherwise the default stays
+  `"evid"` (resets, then doses, then observations) (#1593).
+
 - `rxSolve(omegaSeparation = "invchol")` (and `sigmaSeparation = "invchol"`)
   draws the omega (sigma) entries a `thetaMat` carries jointly with the
   thetas, like `"tnpri"`, but on the inverse Cholesky scale (the `thetaMat`
