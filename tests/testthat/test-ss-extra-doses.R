@@ -31,7 +31,7 @@ rxTest({
       returnType = "data.frame"
     )$c
   }
-  .ssExtraMethods <- c("liblsoda", "lsoda", "lsode", "dop853", "indLin")
+  .ssExtraMethods <- c("liblsoda", "lsoda", "lsode", "dop853", "indLin", "cvode", "rk4")
 
   test_that("a steady-state infusion with dur > ii matches explicit dosing", {
     for (.lag in c(0, 2)) {
@@ -82,5 +82,40 @@ rxTest({
       returnType = "data.frame"
     )$cp
     expect_equal(.ss, .ex, tolerance = 1e-5)
+  })
+  test_that("every solver applies each extra dose between two records at its time (#1499)", {
+    # the same solve with records at the extra dose times takes the path that
+    # was already right; vv and the adjoint methods need other models
+    .skip <- c(
+      "vv",
+      "ros4s",
+      "radauiia5s",
+      "backwardEulers",
+      "gauss6s",
+      "sdirk43s",
+      "iiic6s",
+      "ros43s",
+      "ros6s",
+      "geng5s",
+      "cvodesadj"
+    )
+    .meths <- setdiff(eval(formals(rxSolve)$method), .skip)
+    .ev <- et(amt = 100, ss = 1, ii = .ii, dur = 0.5)
+    .split <- sort(c(.tobs, 2, 2.5, 14, 14.5))
+    for (.meth in .meths) {
+      .s <- rxSolve(
+        .ssExtraMod,
+        et(.ev, .split),
+        params = c(k = 0.05, ka = 0.7, lag = 14),
+        method = .meth,
+        returnType = "data.frame"
+      )
+      expect_equal(
+        .ssExtraSolve(et(.ev, .tobs), 14, .meth),
+        .s$c[.s$time %in% .tobs],
+        tolerance = 1e-6,
+        label = .meth
+      )
+    }
   })
 })

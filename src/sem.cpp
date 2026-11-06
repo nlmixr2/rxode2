@@ -183,8 +183,9 @@ extern "C" void ind_sem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
         badSolveExit(i);
         localBadSolve = 1;
       } else {
-        if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                            xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
+        while (!localBadSolve &&
+               handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                               xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
             if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
               preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
 
@@ -220,30 +221,6 @@ extern "C" void ind_sem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
               ind->ixds = ixds;
               ind->idx = idx;
               ind->idxExtra++;
-              if (!isSameTime(xout, ind->extraDoseNewXout)) {
-                preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-
-                  if (neqOde > 0) {
-                      int N = (neqOde + 1) / 2;
-                      zero_copy_state q(N);
-                      zero_copy_state p(N);
-                      std::copy(yp, yp + N, q.begin());
-                      std::copy(yp + N, yp + neqOde, p.begin());
-                      if (2 * N > neqOde) {
-                          p[N - 1] = 0.0;
-                      }
-                      auto state = std::make_pair(q, p);
-                      sem_do_steps(ind, op, sys, state, ind->extraDoseNewXout, xout);
-                      std::copy(state.first.begin(), state.first.end(), yp);
-                      std::copy(state.second.begin(), state.second.begin() + (neqOde - N), yp + N);
-                  }
-
-                copyLinCmt(neq, ind, op, yp);
-                const char* err_msg = "sem failed";
-                postSolve(neq, &istate, ind->rc, &idx, yp, &err_msg, 15, false, ind, op, rx);
-                if (*(ind->rc) < 0) localBadSolve = 1;
-                ind->extraDoseNewXout = xout;
-              }
               xp = ind->extraDoseNewXout;
             }
         }
