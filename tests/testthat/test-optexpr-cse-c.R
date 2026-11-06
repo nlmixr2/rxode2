@@ -191,3 +191,117 @@ rxTest({
     }
   })
 })
+
+test_that('CSE reserves temporary names across repeated passes', {
+  evaluate <- function(txt) {
+    env <- list2env(list(a = 2, b = 3, c = 7, d = 11))
+    eval(parse(text = gsub('~', '<-', txt, fixed = TRUE)), env)
+    env$y
+  }
+  for (name in c('rx_expr_0', 'rx_expr_cse_0', 'rx_expr_cse_cse_0')) {
+    txt <- paste0(name, '~a+b\ny=', name, '*(c+d)+(c+d)')
+    for (pass in 1:3) {
+      out <- .rxOptExprC(txt)
+      if (is.na(out)) {
+        expect_gt(pass, 1L)
+        break
+      }
+      expect_equal(evaluate(out), 108)
+      txt <- out
+    }
+  }
+})
+
+test_that('chunked CSE remains equivalent when optimized again', {
+  withr::local_options(rxode2.optExprChunkChars = 1L)
+  for (covariate in c('my_rx_expr_cov', 'my_rx_expr_cse_cov', 'my_rx_expr_cse_cse_cov')) {
+    original <- paste(
+      c(
+        sprintf('x%d=exp(a+b)*%s+%d', 1:5, covariate, 1:5),
+        sprintf('z%d=exp(c+d)*%s+%d', 1:5, covariate, 1:5),
+        'y=x1+x2+x3+x4+x5+z1+z2+z3+z4+z5'
+      ),
+      collapse = '\n'
+    )
+    once <- suppressMessages(rxOptExpr(original, chunkLines = 4L, parallel = 1L))
+    expect_warning(
+      twice <- suppressMessages(rxOptExpr(once, chunkLines = 0L)),
+      'optimized more than once'
+    )
+    params <- c(a = .2, b = .3, c = .7, d = 1.1, setNames(2, covariate))
+    solve <- function(txt) {
+      as.data.frame(rxSolve(
+        rxode2(txt),
+        params = params,
+        events = data.frame(time = 0, evid = 0, amt = 0)
+      ))
+    }
+    expected <- solve(original)
+    expect_equal(solve(once), expected, tolerance = 1e-10)
+    expect_equal(solve(twice), expected, tolerance = 1e-10)
+  }
+})
+
+test_that('the R CSE fallback preserves existing temporary names', {
+  withr::local_options(rxode2.optExprC = FALSE)
+  for (name in c('rx_expr_0', 'rx_expr_cse_0', 'rx_expr_cse_cse_0')) {
+    original <- paste0(name, '~a+b\ny=', name, '*(c+d)+(c+d)')
+    expect_warning(
+      optimized <- suppressMessages(rxOptExpr(original, chunkLines = 0L)),
+      'optimized more than once'
+    )
+    params <- c(a = 2, b = 3, c = 7, d = 11)
+    actual <- as.data.frame(rxSolve(
+      rxode2(optimized),
+      params = params,
+      events = data.frame(time = 0, evid = 0, amt = 0)
+    ))
+    expect_equal(actual$y, 108)
+  }
+})
+
+test_that('CSE keeps rx_expr_ when only other names contain it', {
+  evaluate <- function(txt, covariate) {
+    env <- list2env(setNames(list(2, 3, 7, 11, 5), c('a', 'b', 'c', 'd', covariate)))
+    eval(parse(text = gsub('~', '<-', txt, fixed = TRUE)), env)
+    env$y
+  }
+  for (covariate in c('my_rx_expr_cov', 'my_rx_expr_0', 'rx_expr_0x')) {
+    original <- paste0('y=', covariate, '*(c+d)+(c+d)+exp(a+b)*exp(a+b)')
+    expected <- evaluate(original, covariate)
+    native <- .rxOptExprC(rxNorm(original))
+    expect_false(is.na(native))
+    expect_match(native, '(^|\n)rx_expr_0~')
+    expect_equal(evaluate(native, covariate), expected)
+    withr::with_options(list(rxode2.optExprC = FALSE), {
+      expect_no_warning(fallback <- suppressMessages(rxOptExpr(original, chunkLines = 0L)))
+    })
+    expect_match(fallback, '(^|\n)rx_expr_0~')
+    expect_equal(evaluate(fallback, covariate), expected)
+  }
+})
+
+test_that('re-optimizing CSE output warns once, including chunked', {
+  withr::local_options(rxode2.optExprChunkChars = 1L)
+  original <- paste(
+    c(
+      sprintf('x%d=exp(a+b)*cov+%d', 1:5, 1:5),
+      sprintf('z%d=exp(c+d)*cov+%d', 1:5, 1:5),
+      'y=x1+x2+x3+x4+x5+z1+z2+z3+z4+z5'
+    ),
+    collapse = '\n'
+  )
+  expect_no_warning(once <- suppressMessages(rxOptExpr(original, chunkLines = 4L, parallel = 1L)))
+  expect_match(once, 'rx_expr_')
+  warned <- 0L
+  withCallingHandlers(
+    suppressMessages(rxOptExpr(once, chunkLines = 4L, parallel = 1L)),
+    warning = function(w) {
+      if (grepl('optimized more than once', conditionMessage(w))) {
+        warned <<- warned + 1L
+        invokeRestart('muffleWarning')
+      }
+    }
+  )
+  expect_equal(warned, 1L)
+})
