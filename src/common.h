@@ -27,6 +27,9 @@ struct lsoda_common_t {
 	   stale hook onto a following non-adjoint subject. */
 	void (*adjInit)(struct lsoda_context_t *ctx);
 	void (*adjPush)(struct lsoda_context_t *ctx);
+	/* delay() history: called after every accepted step, like adjPush; set
+	   per subject in ind_liblsoda0 (NULL = off). */
+	void (*stepPush)(struct lsoda_context_t *ctx);
 	double **yh, **wm, *ewt, *savf, *acor;
 	int     *ipvt;
 	void * memory;
