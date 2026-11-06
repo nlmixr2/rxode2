@@ -3286,9 +3286,10 @@ static inline void solveSSinfIterate(int *neq,
     ind->solveLast[k] = ind->solveLast2[k] = yp[k];
   }
   for (int j = 0; j < maxSS; j++) {
-    // Turn on Infusion, solve (0-dur)
+    // Turn on Infusion, solve (0-dur) on the 0..ii cycle clock (#1585)
     *canBreak=1;
-    *xout2 = *xp2+*dur;
+    *xp2 = 0.0;
+    *xout2 = *dur;
     ind->idx=*bi;
     ind->ixds = *infBixds;
     ind->ssTime = ssStart;
@@ -3474,7 +3475,9 @@ extern "C" void solveSSinfLargeDur(int *neq,
   for (int j = 0; j < *numDoseInf; j++) {
     ind->ixds = *infBixds;
     ind->idx = *bi;
-    *xout2 = *xp2 + *curIi;
+    // each period on the 0..ii cycle clock (#1585)
+    *xp2 = 0.0;
+    *xout2 = *curIi;
     // Use "real" xout for handle_evid functions.
     handle_evid(getEvid(ind, ind->ix[*bi]), neq[0],
                 BadDose, InfusionRate, dose, yp,
@@ -3494,12 +3497,13 @@ extern "C" void solveSSinfLargeDur(int *neq,
     ind->solveLast[k] = ind->solveLast2[k] = yp[k];
   }
   int nDup = 0;
-  double time2 = *xp2;
-  double time3 = *xp2 + *addTime;
+  double time2 = timeStart;
+  double time3 = timeStart + *addTime;
   for (int j = 0; j < maxSS; j++) {
-    // Turn on Infusion, solve (0-dur)
+    // Turn on Infusion, solve (0-dur) on the 0..ii cycle clock (#1585)
     *canBreak =1;
-    *xout2    = *xp2 + *offTime;
+    *xp2      = 0.0;
+    *xout2    = *offTime;
     ind->idx  = *bi;
     ind->ixds = *infBixds;
     handle_evid(getEvid(ind, ind->idose[*infBixds]), neq[0],
@@ -4402,11 +4406,13 @@ void handleSS(int *neq,
                           rateOff, extraEvid, ind);
         }
         if (curLagExtra > 0) {
+          // covariates stay at the dose time, as in the cycles
+          ind->ssTime = startTimeD;
           double solveTo=curIi - curLagExtra;
           if (solveTo > offTime) {
             // infusion where the lag time does not cause the infusion
             // to occur during the inter-dose interval
-            xp2 = startTimeD;
+            xp2 = 0.0; // the 0..ii cycle clock (#1585)
             xout2 = xp2+offTime;
             ind->idx=bi;
             ind->ixds = infBixds;
@@ -4435,7 +4441,7 @@ void handleSS(int *neq,
                             rateOn, extraEvid, ind);
           } else {
             // infusion where the lag time occurs during the inter-dose interval split
-            xp2 = startTimeD;
+            xp2 = 0.0; // the 0..ii cycle clock (#1585)
             xout2 = xp2 + solveTo;
             ind->idx=bi;
             ind->ixds = infBixds;
@@ -4454,6 +4460,7 @@ void handleSS(int *neq,
             pushDosingEvent(startTimeD+curLagExtra,
                             rateOn, extraEvid, ind);
           }
+          ind->ssTime = NA_REAL;
         } else {
           // infusion without a lag time.
           *istate=1;
@@ -4536,7 +4543,11 @@ void handleSS(int *neq,
         xp2 = xout2;
         bool doNoLag = false;
         if (isSsLag) {
-          double totTime = xp2 + dur + dur2 - curLagExtra;
+          // the lag tail starts the next 0..ii cycle (#1585) with the
+          // covariates at the dose time, as in the cycles
+          xp2 = 0.0;
+          ind->ssTime = startTimeD;
+          double totTime = dur + dur2 - curLagExtra;
           if (curLagExtra > 0) {
             if (isSameTimeOp(curLagExtra+dur, curIi)) {
               // REprintf("isSameTimeOp(curLagExtra:%f+dur:%f, curIi:%f)\n",
@@ -4546,8 +4557,8 @@ void handleSS(int *neq,
               handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
                           BadDose, InfusionRate, dose, yp,
                           xout, neq[1], ind);
-              xp2   = startTimeD;
-              xout2 = startTimeD + dur;
+              xp2   = 0.0; // the 0..ii cycle clock (#1585)
+              xout2 = dur;
               // yp is last solve or y0
               *istate=1;
               // yp is last solve or y0
@@ -4578,8 +4589,8 @@ void handleSS(int *neq,
               handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
                           BadDose, InfusionRate, dose, yp,
                           xout, neq[1], ind);
-              xp2   = startTimeD;
-              xout2 = startTimeD + solveExtra;
+              xp2   = 0.0; // the 0..ii cycle clock (#1585)
+              xout2 = solveExtra;
               // yp is last solve or y0
               *istate=1;
               // yp is last solve or y0
@@ -4637,6 +4648,7 @@ void handleSS(int *neq,
           } else {
             doNoLag = true;
           }
+          ind->ssTime = NA_REAL;
         } else {
           doNoLag = true;
         }
