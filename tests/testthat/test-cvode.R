@@ -79,6 +79,6 @@ rxTest({
     expect_true(rxIsDense("cvode"))
     expect_true(rxIsDense(21L))
     expect_true(rxIsDense("dop853+ros4"))
-    expect_false(rxIsDense("liblsoda"))
+    expect_false(rxIsDense("lsoda"))
   })
 })
