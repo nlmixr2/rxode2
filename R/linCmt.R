@@ -204,6 +204,10 @@ linCmtBThreadsSeen <- function(reset) {
             }
             return(invisible())
           }
+          if (identical(.f, quote(`while`))) {
+            .walk(e[[3]], c(cond, all.vars(e[[2]])))
+            return(invisible())
+          }
           if (identical(.f, quote(`=`)) || identical(.f, quote(`<-`)) || identical(.f, quote(`~`))) {
             .l <- e[[2]]
             .r <- if (length(e) == 3L) e[[3]] else NULL

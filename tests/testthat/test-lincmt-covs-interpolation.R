@@ -177,6 +177,17 @@ rxTest({
       cp <- linCmt()
     })
     expect_error(rxSolve(.linI, .ev2, covsInterpolation = "linear"), "'wt'")
+    .linW <- rxode2({
+      cl <- 1
+      v <- 10
+      i <- 0
+      while (i < 1) {
+        cl <- (wt / 70)^3
+        i <- i + 1
+      }
+      cp <- linCmt()
+    })
+    expect_error(rxSolve(.linW, .ev2, covsInterpolation = "linear"), "'wt'")
     # a covariate only in an ODE or an output line is solved, as the ODE
     # solver follows its ramp
     .mix <- rxode2({
