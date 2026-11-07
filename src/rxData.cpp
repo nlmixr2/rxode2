@@ -4605,6 +4605,58 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
         }
       }
     }
+    // linCmt() advances each interval with the covariates at its middle, so it
+    // cannot follow a linear ramp; refuse "linear" for a covariate that varies
+    // within a subject and feeds the linCmt() parameters, rather than silently
+    // giving the midpoint solution.  The dependencies (.rxLinCmtDepends) are
+    // looked up only once a varying covariate is found.
+    if (op->numLin > 0) {
+      bool haveDeps = false;
+      RObject linDeps = R_NilValue;
+      for (int ic = 0; ic < ncov; ic++) {
+        if (ic == op->cmtCov) continue;
+        int curInterp = _globals.gpar_covInterp[ic];
+        if (!(curInterp == 0 || (curInterp == -1 && op->is_locf == 0))) continue;
+        NumericVector curCov = as<NumericVector>(dataf[covPos[ic]]);
+        int lastId = NA_INTEGER;
+        double firstVal = NA_REAL;
+        for (int ir = 0; ir < curCov.size(); ir++) {
+          if (id[ir] != lastId) {
+            lastId = id[ir];
+            firstVal = NA_REAL;
+          }
+          double curVal = curCov[ir];
+          if (ISNAN(curVal)) continue;
+          if (ISNAN(firstVal)) {
+            firstVal = curVal;
+          } else if (curVal != firstVal) {
+            std::string covName = as<std::string>(dfNames[covPos[ic]]);
+            if (!haveDeps) {
+              Environment rxode2ns = Environment::namespace_env("rxode2");
+              Function linCmtDepends = rxode2ns[".rxLinCmtDepends"];
+              linDeps = linCmtDepends(rxSolveDat->mv);
+              haveDeps = true;
+            }
+            if (!Rf_isNull(linDeps)) {
+              CharacterVector deps = as<CharacterVector>(linDeps);
+              // the parameter name, which may differ in case from the column
+              std::string parName = as<std::string>(pars[_globals.gpar_cov[ic] - 1]);
+              bool feedsLin = false;
+              for (int id0 = 0; id0 < deps.size(); id0++) {
+                if (as<std::string>(deps[id0]) == parName) {
+                  feedsLin = true;
+                  break;
+                }
+              }
+              if (!feedsLin) break;
+            }
+            rxSolveFree();
+            stop(_("'linear' interpolation of time-varying covariate '%s' on a linCmt() parameter is not supported; use covsInterpolation = \"locf\", \"nocb\" or \"midpoint\" (or declare that interpolation for '%s' in the model), or write the model as ODEs"),
+                 covName.c_str(), covName.c_str());
+          }
+        }
+      }
+    }
     // Make sure the covariates are a #ncov * all times size
     if (_globals.gcov != NULL) free(_globals.gcov);
     _globals.gcov = (double*)calloc(ncov * amt.size(), sizeof(double));
