@@ -860,8 +860,9 @@ interpolated.  Currently this can be:
 \item \code{"linear"} interpolation, which interpolates the covariate
 by solving the line between the observed covariates and extrapolating the new
 covariate value.  A \code{linCmt()} model refuses it for a covariate
-that varies within a subject, since its closed form cannot follow
-the ramp; use another method or write the model as ODEs.
+that varies within a subject and feeds the \code{linCmt()} parameters,
+since its closed form cannot follow the ramp; use another method or
+write the model as ODEs.
 \item \code{"locf"} -- Last observation carried forward (the default).
 \item \code{"nocb"} -- Next Observation Carried Backward.  This is the same method
 that NONMEM uses.

@@ -167,3 +167,85 @@ linCmtBSensTypesSeen <- function(reset) {
 linCmtBThreadsSeen <- function(reset) {
   rxode2lincmt::.linCmtBThreadsSeen(reset)
 }
+
+#' Variables the linCmt() parameters depend on
+#'
+#' Walks the normalized model back from the `linCmtA()`/`linCmtB()` arguments
+#' through the assignments (and the `if()` conditions around them) that feed
+#' them.  rxSolve() refuses "linear" interpolation only for a time-varying
+#' covariate in this set.
+#'
+#' @param mv model variables
+#' @return character vector of variable names, or `NULL` when the model
+#'   cannot be walked (every covariate is then treated as a dependency)
+#' @noRd
+.rxLinCmtDepends <- function(mv) {
+  tryCatch(
+    {
+      # braces let a normalized `else` start its own line
+      .exprs <- str2lang(paste0("{\n", mv$model["normModel"], "\n}"))
+      .lhs <- character(0)
+      .rhs <- list()
+      .seed <- character(0)
+      .walk <- function(e, cond) {
+        if (is.call(e)) {
+          .f <- e[[1]]
+          if (identical(.f, quote(`{`))) {
+            for (.i in seq_along(e)[-1]) {
+              .walk(e[[.i]], cond)
+            }
+            return(invisible())
+          }
+          if (identical(.f, quote(`if`))) {
+            .c <- c(cond, all.vars(e[[2]]))
+            .walk(e[[3]], .c)
+            if (length(e) == 4L) {
+              .walk(e[[4]], .c)
+            }
+            return(invisible())
+          }
+          if (identical(.f, quote(`=`)) || identical(.f, quote(`<-`)) || identical(.f, quote(`~`))) {
+            .l <- e[[2]]
+            .r <- if (length(e) == 3L) e[[3]] else NULL
+            if (is.call(.l) && identical(.l[[1]], quote(`/`)) && identical(.l[[2]], quote(d))) {
+              .l <- .l[[3]][[2]]
+            }
+            .lin <- .rxLinCmtCallVars(.r)
+            .seed <<- c(.seed, .lin)
+            if (is.name(.l)) {
+              .lhs <<- c(.lhs, as.character(.l))
+              .rhs[[length(.lhs)]] <<- unique(c(cond, all.vars(.r)))
+            }
+            return(invisible())
+          }
+          .seed <<- c(.seed, .rxLinCmtCallVars(e))
+        }
+        invisible()
+      }
+      .walk(.exprs, character(0))
+      .need <- unique(.seed)
+      repeat {
+        .add <- unique(unlist(.rhs[.lhs %in% .need]))
+        .new <- setdiff(.add, .need)
+        if (length(.new) == 0L) {
+          break
+        }
+        .need <- c(.need, .new)
+      }
+      .need
+    },
+    error = function(e) NULL
+  )
+}
+
+#' Variables in the arguments of every linCmtA()/linCmtB() call in `e`
+#' @noRd
+.rxLinCmtCallVars <- function(e) {
+  if (!is.call(e)) {
+    return(character(0))
+  }
+  if (identical(e[[1]], quote(linCmtA)) || identical(e[[1]], quote(linCmtB))) {
+    return(all.vars(e))
+  }
+  unlist(lapply(as.list(e)[-1], .rxLinCmtCallVars))
+}

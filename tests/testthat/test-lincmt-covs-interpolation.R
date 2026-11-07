@@ -164,6 +164,49 @@ rxTest({
       cp <- linCmt()
     })
     expect_error(rxSolve(.linL, .ev2, covsInterpolation = "linear"), NA)
+    # a covariate that reaches the linCmt() parameters through other lines is
+    # refused too
+    .linI <- rxode2({
+      k <- (wt / 70)^3
+      if (k > 0) {
+        cl <- 1 * k
+      } else {
+        cl <- 1
+      }
+      v <- 10
+      cp <- linCmt()
+    })
+    expect_error(rxSolve(.linI, .ev2, covsInterpolation = "linear"), "'wt'")
+    # a covariate only in an ODE or an output line is solved, as the ODE
+    # solver follows its ramp
+    .mix <- rxode2({
+      cl <- 1
+      v <- 10
+      cp <- linCmt()
+      d/dt(eff) <- 0.1 * cp * wt / 70 - 0.2 * eff
+      out <- cp * wt
+    })
+    .mixOde <- rxode2({
+      cl <- 1
+      v <- 10
+      d/dt(central) <- -cl / v * central
+      cp <- central / v
+      d/dt(eff) <- 0.1 * cp * wt / 70 - 0.2 * eff
+      out <- cp * wt
+    })
+    .ev4 <- data.frame(
+      id = 1,
+      time = c(0, 0:24),
+      evid = c(1, rep(0, 25)),
+      amt = c(100, rep(0, 25)),
+      cmt = 1
+    )
+    .ev4$wt <- 40 + 80 * .ev4$time / 24
+    .ev4$wt[.ev4$time > 0 & .ev4$time < 24] <- NA
+    .a <- rxSolve(.mix, .ev4, covsInterpolation = "linear", atol = 1e-12, rtol = 1e-12, returnType = "data.frame")
+    .b <- rxSolve(.mixOde, .ev4, covsInterpolation = "linear", atol = 1e-12, rtol = 1e-12, returnType = "data.frame")
+    expect_equal(.a$eff, .b$eff, tolerance = 1e-6)
+    expect_equal(.a$out, .b$out, tolerance = 1e-6)
     # a covariate constant within each subject is still accepted
     # (an NA record does not count as a change)
     .ev3 <- data.frame(
