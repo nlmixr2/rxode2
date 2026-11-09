@@ -3,6 +3,10 @@
 ## Bug fixes
 
 ### Event tables
+- A reset (`evid = 3`), a reset and dose (`evid = 4`) or a steady-state dose
+  (`ss = 1` or `ss = 2`) during an infusion now cancels the infusion's stop
+  record too.  The stop used to still apply, leaving the compartment at a net
+  rate of `-rate` and the state negative (#1562).
 - A simulation that stops with an error no longer leaves its draws for the
   next solve.  The residuals, simulated thetas and per-study draws it had
   made stayed behind, and the next solve without residuals of its own used
@@ -22,6 +26,11 @@
 ### Documentation
 - The pipeline article no longer saves its simulation into the installed
   package directory (#1506).
+
+- `?rxSolve` now describes `covsInterpolation = "midpoint"` as it works: the
+  mean of the two neighboring records over the interval, as
+  `approxfun(method = "constant", f = 0.5)` gives, not a step at the
+  midpoint (#1654).
 
 ### Sensitivities
 - `rxSolveAdjoint()` now accepts a model function, as `rxSolve()` does; it
@@ -52,8 +61,44 @@
 - `linCmt()` models now follow `minSS = maxSS = n`, giving the profile after
   exactly `n` prior doses as the equivalent ODE model does; they used to
   return the exact steady state for every `n` (#1500).
+- A `linCmt()` steady-state bolus with `alag()` longer than `ii` now matches
+  the ODE model and NONMEM.  After a dose that a steady-state record
+  schedules between two records, the `linCmt()` solver advanced to the next
+  record twice (#1591).
+- `linCmt()` models now follow `minSS`/`maxSS` as the equivalent ODE model
+  does: `minSS = maxSS = n` gives the profile after exactly `n` prior doses,
+  and a steady state converged by `minSS` doses (for example with
+  `ssAtol`/`ssRtol` disabled) stops there.  They used to return the exact
+  steady state for every `minSS` (#1500).
+
+- Every dose a steady-state record schedules between two records (the
+  starts and ends of a steady-state infusion with `dur > ii` or with
+  `alag() > ii`) is now applied at its own time with every solver.  Only
+  the first one between two records was applied, so a short infusion could
+  never end; `dop853` also integrated past that dose twice (#1499).
+- A steady-state infusion into a compartment whose `alag()` is an exact
+  multiple of `ii` now gives the record's own lagged infusion (and those of
+  the intervals in between); they were dropped, so the profile decayed from
+  the dose arrival time on (#1590).
 
 ## New features
+
+- `etTrans()` gains `tieOrder = "data"`, which keeps records of a subject
+  that share a time in the order of the rows in the data, the way NONMEM
+  processes them, instead of resets, then doses, then observations (#1593).
+
+- `rxSolve()` gains `tieOrder`.  `tieOrder = "data"` processes records of a
+  subject that share a time in the order of the rows in the data, so a dose
+  listed before a reset at the same time is wiped by it and an observation
+  listed before a co-timed dose is predicted before the dose, as in NONMEM.
+  It is the default with `nonmem = TRUE`; otherwise the default stays
+  `"evid"` (resets, then doses, then observations) (#1593).
+
+- `rxSolve(omegaSeparation = "invchol")` (and `sigmaSeparation = "invchol"`)
+  draws the omega (sigma) entries a `thetaMat` carries jointly with the
+  thetas, like `"tnpri"`, but on the inverse Cholesky scale (the `thetaMat`
+  is moved there by the delta method), so every drawn matrix is positive
+  definite and none is redrawn (#1486).
 
 - `cvode` now re-initialises only where the state or the right-hand side may
   change (a dose, a reset, an infusion edge, an `mtime()` or evid 2 record, a
@@ -121,7 +166,44 @@
   absence) when it returns, so it no longer replaces the session's random
   stream.  The simulated values for a given `seed` are unchanged (#1503).
 
+- `rxControl(seed = )` no longer reseeds the session's random stream when the
+  control is built; the seed is stored and applied by the solve that uses it.
+  A seed that reaches the solve only through the control (for example from a
+  model's `meta` block) now suspends `rxSetSeed()` and restores the caller's
+  `.Random.seed` as `rxSolve(seed = )` does.  The simulated values for a
+  given `seed` are unchanged (#1550).
+
+- Re-solving an `rxSolve()` result by assignment (`$<-`, `[[<-`, `[<-`, eg
+  `s$params <- p`) now reapplies the seed stored in its control, so the draws
+  are reproducible; they used to be fresh values.  `update()` still uses only
+  a `seed` passed to it (#1550).
+
 ### Solving
+
+- `liblsoda` (and `liblsodaadj`, whose forward solve it is) now fails a
+  subject whose interpolation to an output time fails ("intdy -- t = ...
+  illegal"), with "IDID=-3, illegal input detected (see printed message)".
+  It used to report success and return the last step's state at that time
+  (0 throughout for `d/dt(y) <- 1e308`), with no "could not solve" warning.
+  `intdy()`'s test of whether an output time lies in the last step now
+  takes its tolerance as `dlsoda.f` does, from the magnitudes of the step's
+  time and size with the step's sign; at negative times it rejected output
+  times a few ulps past a step's start.
+
+- A fixed-duration infusion into a compartment whose `f()` depends on a
+  state now stops by removing the rate its start added, `f()` being read
+  once, at the start.  The stop used to evaluate `f()` again, leaving a
+  constant residual rate in the compartment after the infusion (#1568).
+
+- With `dop853` (dense output and AutoSwitch composites included), `newind`
+  now becomes 2 after a subject's first record during the solve; it stayed
+  1 for the whole solve, so a right-hand side, `f()` or `evid_()` reading it
+  treated every record as the first (#1526).
+
+- During the solve, every other method now advances `newind` after a
+  subject's first record instead of before it, so that record's `f()`,
+  `alag()`, `rate()`, `dur()` and `evid_()`/`bolus()` calls see
+  `newind == 1`, as the output table already did (#1526).
 
 - Forward sensitivities through `alag()`, `f()`, `rate()`, `dur()` and a
   parameter-dependent `delay()` are now right for a parameter that also
@@ -210,6 +292,10 @@
 
 - `ind_solve()` (as nlmixr2est uses it) no longer reads a failure left by the
   previous solve of the same subject as a failure of the new one.
+
+- A `cvode` subject that fails on its steady-state path now gives the
+  solver-failure reason line; it was `NA` with the "could not solve" warning
+  but no reason.
 
 - A subject whose solve failed is now named with its reason once the solve is
   over ("[solve error: <reason>]: N warning(s) for subject(s): <ids>", and the

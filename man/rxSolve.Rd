@@ -79,7 +79,7 @@ rxSolve(
   sigmaUpper = Inf,
   nCoresRV = 1L,
   sigmaIsChol = FALSE,
-  sigmaSeparation = c("auto", "lkj", "separation", "tnpri"),
+  sigmaSeparation = c("auto", "lkj", "separation", "tnpri", "invchol"),
   sigmaXform = c("identity", "variance", "log", "nlmixrSqrt", "nlmixrLog",
     "nlmixrIdentity"),
   nDisplayProgress = 10000L,
@@ -95,7 +95,7 @@ rxSolve(
   omega = NULL,
   omegaDf = NULL,
   omegaIsChol = FALSE,
-  omegaSeparation = c("auto", "lkj", "separation", "tnpri"),
+  omegaSeparation = c("auto", "lkj", "separation", "tnpri", "invchol"),
   omegaXform = c("variance", "identity", "log", "nlmixrSqrt", "nlmixrLog",
     "nlmixrIdentity"),
   omegaLower = -Inf,
@@ -163,6 +163,7 @@ rxSolve(
   linCmtSensH = 1e-04,
   linCmtSensPhi = TRUE,
   nonmem = FALSE,
+  tieOrder = NULL,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -862,8 +863,9 @@ covariate value.
 \item \code{"locf"} -- Last observation carried forward (the default).
 \item \code{"nocb"} -- Next Observation Carried Backward.  This is the same method
 that NONMEM uses.
-\item \code{"midpoint"} Last observation carried forward to midpoint; Next observation
-carried backward to midpoint.
+\item \code{"midpoint"} -- the mean of the two neighboring records over the whole
+interval between them, as \code{stats::approxfun(method = "constant", f = 0.5)}
+gives.
 
 For time-varying covariates where a missing value is present, the
 interpolation method will use either "locf" or "nocb" throughout
@@ -949,6 +951,8 @@ than equal to 10.
 \item \code{"tnpri"} draws the sigma entries jointly from the \code{thetaMat}, the
 same way \code{omegaSeparation="tnpri"} does for the omega; \code{dfObs} is
 not used.
+\item \code{"invchol"} draws them on the inverse Cholesky scale, the same way
+\code{omegaSeparation="invchol"} does for the omega.
 }}
 
 \item{sigmaXform}{When taking \code{sigma} values from the \code{thetaMat}
@@ -1083,6 +1087,14 @@ the omega entries, which the strategies above redraw or discard.
 off diagonal.  A drawn matrix that is not positive definite is
 redrawn, see \code{priorPdRetry}.  \code{dfSub} is not used: an entry the
 \code{thetaMat} gives no variance stays at its estimate.
+\item \code{"invchol"} draws the same entries jointly with the thetas, but on the
+scale of the inverse Cholesky decomposition of the omega (with a log
+diagonal), so every drawn omega is positive definite and none is
+redrawn.  The \code{thetaMat} covariance of the entries is moved to that
+scale by the delta method at the \code{omega} estimate, which has to be
+positive definite.  Only the blocks of \code{omega} holding a drawn entry
+change, and an entry of such a block that the \code{thetaMat} gives no
+variance can move with the others.
 }}
 
 \item{omegaXform}{When taking \code{omega} values from the \code{thetaMat}
@@ -1156,7 +1168,10 @@ created by reference (ie \code{setDt()}), which should be fast.
 \item{seed}{an object specifying if and how the random number
 generator should be initialized; when given, it takes precedence
 over an active \code{\link[=rxSetSeed]{rxSetSeed()}} stream for this solve, and the
-caller's \code{.Random.seed} is restored afterwards}
+caller's \code{.Random.seed} is restored afterwards.  \code{\link[=rxControl]{rxControl()}} only
+stores it; the seed is applied when the control is used by a solve.
+Re-solving a result by assignment (eg \code{s$params <- p}) reapplies its
+seed, while \code{update()} uses only a \code{seed} it is given}
 
 \item{nsim}{represents the number of simulations.  For rxode2, if
 you supply single subject event tables (created with
@@ -1168,9 +1183,10 @@ this many doses are given and \code{ssAtol}/\code{ssRtol} are met.  It is raised
 to the fewest doses the regimen needs (2 with a lag time, more with
 overlapping infusions or a lag longer than \code{ii}).  \code{minSS = maxSS = n}
 gives exactly the state after \code{n} prior doses (Monolix
-\code{nbdoses = n}), for \code{linCmt()} models too; otherwise \code{linCmt()} steady
-states are exact.  A constant infusion (\code{ii = 0}), which has no doses,
-takes at least 5 and up to \code{max(maxSS, 10000)} convergence steps.}
+\code{nbdoses = n}).  \code{linCmt()} models follow both, stopping at \code{minSS}
+doses when converged there and otherwise using their exact steady
+state.  A constant infusion (\code{ii = 0}), which has no doses, takes at
+least 5 and up to \code{max(maxSS, 10000)} convergence steps.}
 
 \item{maxSS}{Maximum number of doses given before a steady-state dose (at
 least \code{minSS})}
@@ -1458,7 +1474,18 @@ calls \verb{$PK} at its records.  \code{d/dt()} and state-dependent statements k
 the continuous time (like \verb{$DES}).  \code{addl} repeats, infusion ends,
 lagged doses and doses added while solving do not end an interval;
 \code{mtime()} times do.  Covariate interpolation is still set by
-\code{covsInterpolation}.  By default \code{FALSE}.}
+\code{covsInterpolation}.  It also sets the default \code{tieOrder} to \code{"data"}.
+By default \code{FALSE}.}
+
+\item{tieOrder}{How records of a subject that share a time are processed:
+\code{"evid"} processes resets first, then doses, then observations, so the
+result does not depend on the row order of the data; \code{"data"} processes
+them in the order of the rows in the data, the way NONMEM does (records
+a row expands to, like the reset of an \code{evid=4} dose or \code{addl} repeats,
+follow that row).  Doses added while solving follow the records at the
+same time.  An event table already translated by \code{\link[=etTrans]{etTrans()}} keeps the
+order it was translated with.  By default (\code{NULL}) this is \code{"data"} when
+\code{nonmem = TRUE} and \code{"evid"} otherwise.}
 
 \item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that
 is acceptable before issuing a warning/error about the gradient estimates.}
