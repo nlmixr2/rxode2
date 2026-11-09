@@ -1569,14 +1569,15 @@ NumericVector rxSetupScale(const RObject &obj,
 #include "rxGlobals.h"
 
 extern bool rxEtTransStrCmpQuiet;
-// Quiets etTrans string-comparison warnings while in scope (or until restore())
+// Quiets etTrans string-comparison warnings while in scope; keep the scope to
+// one etTransR() call, whose R errors return as C++ exceptions (an Rf_warningcall
+// longjmp would skip the destructor)
 struct rxEtTransStrCmpQuietGuard {
   bool old;
   rxEtTransStrCmpQuietGuard(bool quiet) : old(rxEtTransStrCmpQuiet) {
     if (quiet) rxEtTransStrCmpQuiet = true;
   }
-  void restore() { rxEtTransStrCmpQuiet = old; }
-  ~rxEtTransStrCmpQuietGuard() { restore(); }
+  ~rxEtTransStrCmpQuietGuard() { rxEtTransStrCmpQuiet = old; }
 };
 
 rx_globals _globals;
@@ -3658,8 +3659,6 @@ static inline void rxSolve_ev1Update(const RObject &obj,
                                                                         rxSolve_t* rxSolveDat){
                                      rx_solve* rx = getRxSolve_();
                                      Function etTransR = getRxFn("etTrans");
-                                     // passes without 'iCov' cannot see its string-compared covariates
-                                     rxEtTransStrCmpQuietGuard strCmpQuiet(rxSolveDat->hasICov);
                                      if (rxIs(ev1, "rxEt")) {
                                        CharacterVector cls = ev1.attr("class");
                                        List etE = cls.attr(".rxode2.lst");
@@ -3669,7 +3668,11 @@ static inline void rxSolve_ev1Update(const RObject &obj,
                                          if (rxSolveDat->hasICov) {
                                            Rf_warningcall(R_NilValue, "'iCov' ignored when there are no samples/observations in the input dataset");
                                          }
-                                         List ev1a = etTransR(ev1, obj, rxSolveDat->hasCmt,
+                                         List ev1a;
+                                         {
+                                           // no 'iCov' here: quiet its string-comparison warnings
+                                           rxEtTransStrCmpQuietGuard strCmpQuiet(rxSolveDat->hasICov);
+                                           ev1a = etTransR(ev1, obj, rxSolveDat->hasCmt,
                                                               false, false, true, R_NilValue,
                                                               rxControl[Rxc_keepF],
                                                               rxControl[Rxc_addlKeepsCov],
@@ -3677,6 +3680,7 @@ static inline void rxSolve_ev1Update(const RObject &obj,
                                                               rxControl[Rxc_ssAtDoseTime],
                                                               R_NilValue,
                                                               rxControlTieOrder(rxControl));
+                                         }
       rxSolveDat->labelID=true;
       CharacterVector tmpC = ev1a.attr("class");
       List tmpL = tmpC.attr(".rxode2.lst");
@@ -3745,12 +3749,15 @@ static inline void rxSolve_ev1Update(const RObject &obj,
       rx->nobs2 = lenOut;
       Function etFun = getRxFn("et");
       ev1 = etFun(ev1, wrap(newObs));
-      ev1 = etTransR(ev1, obj, rxSolveDat->hasCmt,
-                     false, false, false, R_NilValue,
-                     rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
-                     rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
-                     R_NilValue,
-                     rxControlTieOrder(rxControl));
+      {
+        rxEtTransStrCmpQuietGuard strCmpQuiet(rxSolveDat->hasICov);
+        ev1 = etTransR(ev1, obj, rxSolveDat->hasCmt,
+                       false, false, false, R_NilValue,
+                       rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                       rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                       R_NilValue,
+                       rxControlTieOrder(rxControl));
+      }
     }
   }
   // No class is "rxEtTrans" (a translated table is "rxEtTran"), so every data
@@ -3759,12 +3766,16 @@ static inline void rxSolve_ev1Update(const RObject &obj,
   // is.  Skipping translated tables here would solve one made for another
   // model with that model's layout.
   if (rxIs(ev1, "data.frame") && !rxIs(ev1, "rxEtTrans")) {
-    List ev1k = etTransR(ev1, obj, rxSolveDat->hasCmt,
-                         false, false, true, R_NilValue,
-                         rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
-                         rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
-                         R_NilValue,
-                         rxControlTieOrder(rxControl));
+    List ev1k;
+    {
+      rxEtTransStrCmpQuietGuard strCmpQuiet(rxSolveDat->hasICov);
+      ev1k = etTransR(ev1, obj, rxSolveDat->hasCmt,
+                      false, false, true, R_NilValue,
+                           rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                           rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                           R_NilValue,
+                           rxControlTieOrder(rxControl));
+    }
     CharacterVector tmpCk = ev1k.attr("class");
     List tmpLk = tmpCk.attr(".rxode2.lst");
     if (asInt(tmpLk[RxTrans_nobs], "nobs") == 0) {
@@ -3835,7 +3846,6 @@ static inline void rxSolve_ev1Update(const RObject &obj,
       Function etFun = getRxFn("et");
       RObject evEt = asEtFun(ev1);
       evEt = etFun(evEt, wrap(newObs));
-      strCmpQuiet.restore();
       ev1 = etTransR(evEt, obj, rxSolveDat->hasCmt,
                      false, false, false, R_NilValue,
                      rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
@@ -3846,7 +3856,6 @@ static inline void rxSolve_ev1Update(const RObject &obj,
       // Same arguments as ev1k; reuse it rather than translating twice
       ev1 = ev1k;
     } else {
-      strCmpQuiet.restore();
       ev1 = etTransR(ev1, obj, rxSolveDat->hasCmt,
                      false, false, true, R_NilValue,
                      rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],

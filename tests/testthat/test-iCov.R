@@ -225,6 +225,17 @@ rxTest({
     ev <- et(amt = 1, time = 0) |>
       et(id = 1:3)
     expect_no_warning(rxSolve(mod, ev, iCov = ic))
+    # the iCov solves leave the warnings on
+    d <- data.frame(id = 1, time = 1:2, Cov = c("alpha", "beta"))
+    m2 <- function() {
+      model({
+        isG <- (Cov == "gamma")
+      })
+    }
+    expect_warning(
+      etTrans(d, m2),
+      "'Cov' is compared to \"gamma\", which is not in the data"
+    )
   })
 
   test_that("'allTimeVar=TRUE' emits an 'iCov' covariate as a per-row column", {
