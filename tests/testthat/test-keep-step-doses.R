@@ -45,8 +45,7 @@ rxTest({
   .kdMethods <- c("dop853", "dop5", "ros4")
 
   .kdSolve <- function(model, ev, params, method, tol = 1e-10, ...) {
-    .s <- rxSolve(model, ev, params = params, method = method, atol = tol, rtol = tol,
-                  returnType = "rxSolve", ...)
+    .s <- rxSolve(model, ev, params = params, method = method, atol = tol, rtol = tol, returnType = "rxSolve", ...)
     list(d = as.data.frame(.s), dadt = .s$counts$dadt)
   }
 
@@ -60,17 +59,20 @@ rxTest({
       data.frame(id = 1L, time = .dose, evid = 1L, amt = 100, cmt = "depot", rate = 0),
       data.frame(id = 1L, time = .obs, evid = 0L, amt = 0, cmt = "center", rate = 0)
     )
-    .exO <- .kdExact(matrix(c(-.ka, .ka, 0, -0.2), 2, 2),
-                     data.frame(time = .dose, cmt = 1L, add = 100, rate = 0), .obs)
+    .exO <- .kdExact(matrix(c(-.ka, .ka, 0, -0.2), 2, 2), data.frame(time = .dose, cmt = 1L, add = 100, rate = 0), .obs)
     # one-hour infusions into a two-compartment model
     .evI <- rbind(
       data.frame(id = 1L, time = .dose, evid = 1L, amt = 100, cmt = "central", rate = 100),
       data.frame(id = 1L, time = .obs, evid = 0L, amt = 0, cmt = "periph", rate = 0)
     )
-    .exI <- .kdExact(matrix(c(-0.7, 0.5, 0.1, -0.1), 2, 2),
-                     rbind(data.frame(time = .dose, cmt = 1L, add = 0, rate = 100),
-                           data.frame(time = .dose + 1, cmt = 1L, add = 0, rate = -100)),
-                     .obs)
+    .exI <- .kdExact(
+      matrix(c(-0.7, 0.5, 0.1, -0.1), 2, 2),
+      rbind(
+        data.frame(time = .dose, cmt = 1L, add = 0, rate = 100),
+        data.frame(time = .dose + 1, cmt = 1L, add = 0, rate = -100)
+      ),
+      .obs
+    )
     for (.method in .kdMethods) {
       .o <- .kdSolve(.kdOral, .evO, c(ka = .ka, k = 0.2), .method)$d
       expect_equal(.o$depot, .exO[, 1], tolerance = 1e-7, label = paste(.method, "oral depot"))
@@ -90,8 +92,15 @@ rxTest({
     .ev <- rbind(
       data.frame(id = 1L, time = .dose, evid = 1L, amt = 100, cmt = "depot", ss = 0L, ii = 0),
       data.frame(id = 1L, time = .obs, evid = 0L, amt = 0, cmt = "center", ss = 0L, ii = 0),
-      data.frame(id = 1L, time = c(30.25, 50.25, 70.25), evid = c(3L, 5L, 6L),
-                 amt = c(0, 40, 0.5), cmt = c("depot", "center", "depot"), ss = 0L, ii = 0)
+      data.frame(
+        id = 1L,
+        time = c(30.25, 50.25, 70.25),
+        evid = c(3L, 5L, 6L),
+        amt = c(0, 40, 0.5),
+        cmt = c("depot", "center", "depot"),
+        ss = 0L,
+        ii = 0
+      )
     )
     .ev <- .ev[order(.ev$time), ]
     .ref <- .kdSolve(.kdOral, .ev, c(ka = 1.2, k = 0.2), "lsoda", tol = 1e-12)$d
