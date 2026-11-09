@@ -254,7 +254,7 @@ rxTest({
     })
     # context(sprintf("IV Infusion SS=2 (%s)", m))
     d <- 10
-    ## Changing Bioavailability causes changes in these results...
+    ## ss=2 superposes on the system for any bioavailability (#1602)
     for (f in c(0.5, 1, 2)) {
       for (dur in c(1, 2)) {
         ## Fixed rate
@@ -265,21 +265,15 @@ rxTest({
         e2 <- et() |>
           et(time = 12, amt = 2 * d, ss = 2, ii = 24, rate = d * 2 / dur) |>
           et(seq(0, 24, length.out = 200))
-        if (f == 1) {
-          s2 <- solve(ode.1c, e2, c(fc = f), method = m, maxsteps = 1000000)
-          e3 <- et() |>
-            et(amt = d, ss = 1, ii = 24, rate = d / dur) |>
-            et(time = 12, amt = 2 * d, ss = 2, ii = 24, rate = d * 2 / dur) |>
-            et(seq(0, 24, length.out = 200))
-          s3 <- solve(ode.1c, e3, c(fc = f), method = m, maxsteps = 1000000)
-          test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(rate); meth=", m), {
-            expect_equal(s1$C2 + s2$C2, s3$C2, tolerance = 1e-4)
-          })
-        } else {
-          test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(dur); meth=", m), {
-            expect_error(solve(ode.1c, e2, c(fc = f), method = m, maxsteps = 1000000))
-          })
-        }
+        s2 <- solve(ode.1c, e2, c(fc = f), method = m, maxsteps = 1000000)
+        e3 <- et() |>
+          et(amt = d, ss = 1, ii = 24, rate = d / dur) |>
+          et(time = 12, amt = 2 * d, ss = 2, ii = 24, rate = d * 2 / dur) |>
+          et(seq(0, 24, length.out = 200))
+        s3 <- solve(ode.1c, e3, c(fc = f), method = m, maxsteps = 1000000)
+        test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(rate); meth=", m), {
+          expect_equal(s1$C2 + s2$C2, s3$C2, tolerance = 1e-4)
+        })
         ## Fixed duration
         e1 <- et() |>
           et(amt = d, ss = 1, ii = 24, dur = dur) |>
@@ -288,21 +282,15 @@ rxTest({
         e2 <- et() |>
           et(time = 12, amt = 2 * d, ss = 2, ii = 24, dur = dur) |>
           et(seq(0, 24, length.out = 200))
-        if (f == 1) {
-          s2 <- solve(ode.1c, e2, c(fc = f), method = m, maxsteps = 1000000)
-          e3 <- et() |>
-            et(amt = d, ss = 1, ii = 24, rate = d / dur) |>
-            et(time = 12, amt = 2 * d, ss = 2, ii = 24, rate = d * 2 / dur) |>
-            et(seq(0, 24, length.out = 200))
-          s3 <- solve(ode.1c, e3, c(fc = f), method = m, maxsteps = 1000000)
-          test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(dur); meth=", m), {
-            expect_equal(s1$C2 + s2$C2, s3$C2, tolerance = 1e-4)
-          })
-        } else {
-          test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(dur); meth=", m), {
-            expect_error(solve(ode.1c, e2, c(fc = f), method = m, maxsteps = 1000000))
-          })
-        }
+        s2 <- solve(ode.1c, e2, c(fc = f), method = m, maxsteps = 1000000)
+        e3 <- et() |>
+          et(amt = d, ss = 1, ii = 24, dur = dur) |>
+          et(time = 12, amt = 2 * d, ss = 2, ii = 24, dur = dur) |>
+          et(seq(0, 24, length.out = 200))
+        s3 <- solve(ode.1c, e3, c(fc = f), method = m, maxsteps = 1000000)
+        test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(dur); meth=", m), {
+          expect_equal(s1$C2 + s2$C2, s3$C2, tolerance = 1e-4)
+        })
         ## Modeled rate when used with SS=2
         e1 <- et() |>
           et(amt = d, ss = 1, ii = 24, rate = d / dur) |>
@@ -311,21 +299,15 @@ rxTest({
         e2 <- et() |>
           et(time = 12, amt = 2 * d, ss = 2, ii = 24, rate = -1) |>
           et(seq(0, 24, length.out = 200))
-        if (f == 1) {
-          s2 <- solve(ode.1cR, e2, c(fc = f, rateIn = 2 * d / dur), method = m, maxsteps = 1000000)
-          e3 <- et() |>
-            et(amt = d, ss = 1, ii = 24, rate = d / dur) |>
-            et(time = 12, amt = 2 * d, ss = 2, ii = 24, rate = -1) |>
-            et(seq(0, 24, length.out = 200))
-          s3 <- solve(ode.1cR, e3, c(fc = f, rateIn = 2 * d / dur), method = m, maxsteps = 1000000)
-          test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(modeled rate); meth=", m), {
-            expect_equal(s1$C2 + s2$C2, s3$C2, tolerance = 1e-4)
-          })
-        } else {
-          test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(modeled rate); meth=", m), {
-            expect_error(solve(ode.1cR, e2, c(fc = f, rateIn = 2 * d / dur), method = m, maxsteps = 1000000))
-          })
-        }
+        s2 <- solve(ode.1cR, e2, c(fc = f, rateIn = 2 * d / dur), method = m, maxsteps = 1000000)
+        e3 <- et() |>
+          et(amt = d, ss = 1, ii = 24, rate = d / dur) |>
+          et(time = 12, amt = 2 * d, ss = 2, ii = 24, rate = -1) |>
+          et(seq(0, 24, length.out = 200))
+        s3 <- solve(ode.1cR, e3, c(fc = f, rateIn = 2 * d / dur), method = m, maxsteps = 1000000)
+        test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(modeled rate); meth=", m), {
+          expect_equal(s1$C2 + s2$C2, s3$C2, tolerance = 1e-4)
+        })
         ## Modeled duration when used with SS=2
         e1 <- et() |>
           et(amt = d, ss = 1, ii = 24, dur = dur) |>
@@ -334,21 +316,15 @@ rxTest({
         e2 <- et() |>
           et(time = 12, amt = 2 * d, ss = 2, ii = 24, rate = -2) |>
           et(seq(0, 24, length.out = 200))
-        if (f == 1) {
-          s2 <- solve(ode.1cD, e2, c(fc = f, durIn = dur), method = m, maxsteps = 1000000)
-          e3 <- et() |>
-            et(amt = d, ss = 1, ii = 24, dur = dur) |>
-            et(time = 12, amt = 2 * d, ss = 2, ii = 24, rate = -2) |>
-            et(seq(0, 24, length.out = 200))
-          s3 <- solve(ode.1cD, e3, c(fc = f, durIn = dur), method = m, maxsteps = 1000000)
-          test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(modeled duration); meth=", m), {
-            expect_equal(s1$C2 + s2$C2, s3$C2, tolerance = 1e-4)
-          })
-        } else {
-          test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(modeled duration); meth=", m), {
-            expect_error(solve(ode.1cD, e2, c(fc = f, durIn = dur), method = m, maxsteps = 1000000))
-          })
-        }
+        s2 <- solve(ode.1cD, e2, c(fc = f, durIn = dur), method = m, maxsteps = 1000000)
+        e3 <- et() |>
+          et(amt = d, ss = 1, ii = 24, dur = dur) |>
+          et(time = 12, amt = 2 * d, ss = 2, ii = 24, rate = -2) |>
+          et(seq(0, 24, length.out = 200))
+        s3 <- solve(ode.1cD, e3, c(fc = f, durIn = dur), method = m, maxsteps = 1000000)
+        test_that(paste("Infusion SS=2 dose makes sense for f=", f, " dur=", dur, "(modeled duration); meth=", m), {
+          expect_equal(s1$C2 + s2$C2, s3$C2, tolerance = 1e-4)
+        })
       }
     }
 

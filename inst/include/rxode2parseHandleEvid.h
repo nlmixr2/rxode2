@@ -1753,14 +1753,6 @@ static inline int handle_evid(int evid, int neq,
             if (_esFB != NULL) free(_esFB);
           }
         }
-        if (ind->wh0 == EVID0_SS2 &&
-            getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp) !=
-            getDoseIndex(ind, ind->idx)) {
-          if (!(ind->err & rxErrModeledFss2)){
-            ind->err += rxErrModeledFss2;
-          }
-          return 0;
-        }
       }
       break;
     case EVIDF_MODEL_RATE_OFF: // End modeled rate
@@ -2021,14 +2013,6 @@ static inline int handle_evid(int evid, int neq,
       if (_esDydtPreB2 != NULL) free(_esDydtPreB2);
       }
       ind->cacheME=0;
-      if (ind->wh0 == EVID0_SS2 &&
-          getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp) !=
-          getDoseIndex(ind, ind->idx)) {
-        if (!(ind->err & rxErrModeledFss2n2)){
-          ind->err += rxErrModeledFss2n2;
-        }
-        return 0;
-      }
       break;
     case EVIDF_INF_DUR:
       // In this case bio-availability changes the rate, but the
@@ -2076,12 +2060,6 @@ static inline int handle_evid(int evid, int neq,
         if (_esDydtPreB != NULL) free(_esDydtPreB);
       }
       ind->cacheME=0;
-      if (ind->wh0 == EVID0_SS2 && tmp != getDoseIndex(ind, ind->idx)) {
-        if (!(ind->err & rxErrModeledFss2n3)){
-          ind->err += rxErrModeledFss2n3;
-        }
-        return 0;
-      }
       break;
     case EVIDF_INF_RATE:
       // In this case bio-availability changes the duration, but the
@@ -2174,13 +2152,6 @@ static inline int handle_evid(int evid, int neq,
       if (_esDydtPreB != NULL) free(_esDydtPreB);
       }
       ind->cacheME=0;
-      if (ind->wh0 == EVID0_SS2 && getDoseIndex(ind, ind->idx) > 0 &&
-          getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp) !=
-          getDoseIndex(ind, ind->idx)) {
-        if (!(ind->err & rxErrModeledFss2n3)){
-          ind->err += rxErrModeledFss2n3;
-        }
-      }
       break;
     case EVIDF_REPLACE: // replace
       ind->on[cmt] = 1;
