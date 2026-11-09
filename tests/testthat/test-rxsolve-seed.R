@@ -75,6 +75,73 @@ rxTest({
     expect_false(exists(".Random.seed", envir = globalenv(), inherits = FALSE))
   })
 
+  test_that("rxControl(seed=) leaves the session's random stream alone (#1550)", {
+    set.seed(1)
+    .before <- .Random.seed
+    .ctl <- rxControl(seed = 10)
+    expect_identical(.Random.seed, .before)
+    expect_equal(.ctl$seed, 10)
+  })
+
+  test_that("a seed carried in the control works like rxSolve(seed=) (#1550)", {
+    on.exit(rxSetSeed(-1L), add = TRUE)
+    .m <- function() {
+      model({
+        C <- rxnorm()
+      })
+    }
+    .mSeed <- function() {
+      seed <- 10
+      model({
+        C <- rxnorm()
+      })
+    }
+    rxSetSeed(-1L)
+    .ref <- rxSolve(.m, .ev, seed = 10, returnType = "data.frame")$C
+    set.seed(1)
+    .before <- .Random.seed
+    rxSetSeed(3L)
+    expect_equal(rxSolve(.mSeed, .ev, returnType = "data.frame")$C, .ref)
+    expect_equal(rxGetSeed(), 3L)
+    expect_identical(.Random.seed, .before)
+    # a control list spread into rxSolve() gives the same draws
+    .ctl <- rxControl(seed = 10, returnType = "data.frame")
+    expect_equal(do.call(rxSolve, c(list(.m, .ev), .ctl))$C, .ref)
+  })
+
+  test_that("re-solving by assignment reapplies the stored seed (#1550)", {
+    on.exit(rxSetSeed(-1L), add = TRUE)
+    .m <- function() {
+      model({
+        C <- a + err
+      })
+    }
+    .sig <- lotri::lotri(err ~ 1)
+    rxSetSeed(-1L)
+    .s1 <- rxSolve(.m, c(a = 1), .ev, sigma = .sig, seed = 10)
+    expect_equal(.s1$.args$seed, 10)
+    set.seed(1)
+    .before <- .Random.seed
+    rxSetSeed(3L)
+    .s2 <- .s1
+    .s2$a <- 2
+    expect_equal(.s2$C, .s1$C + 1)
+    .s3 <- .s1
+    .s3[["params"]] <- c(a = 3)
+    expect_equal(.s3$C, .s1$C + 2)
+    .s4 <- .s1
+    .s4[, "a"] <- 4
+    expect_equal(.s4$C, .s1$C + 3)
+    expect_equal(rxGetSeed(), 3L)
+    expect_identical(.Random.seed, .before)
+    # without a stored seed a re-solve still draws fresh values
+    rxSetSeed(-1L)
+    .s5 <- rxSolve(.m, c(a = 1), .ev, sigma = .sig)
+    .s6 <- .s5
+    .s6$a <- 2
+    expect_false(isTRUE(all.equal(.s6$C, .s5$C + 1)))
+  })
+
   test_that("rxSolve() without seed= still follows set.seed()", {
     set.seed(5)
     .a <- .solve()
