@@ -294,6 +294,28 @@ rxTest({
     expect_identical(.o, character(0))
   })
 
+  test_that("cvode names a subject's failure on the steady-state path", {
+    .m <- rxode2("d/dt(y) <- -k * y")
+    .d <- data.frame(
+      ID = rep(101:104, each = 4),
+      TIME = rep(c(0, 0, 1, 2), 4),
+      EVID = rep(c(1, 0, 0, 0), 4),
+      AMT = rep(c(1, 0, 0, 0), 4),
+      SS = rep(c(1, 0, 0, 0), 4),
+      II = rep(c(12, 0, 0, 0), 4),
+      CMT = "y"
+    )
+    .p <- data.frame(ID = 101:104, k = c(1, 1, Inf, 1))
+    .w <- capture_warnings(.o <- .cap(.s <- as.data.frame(rxSolve(.m, .d, params = .p, method = "cvode"))))
+    expect_identical(unique(.w), "some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'")
+    expect_true(all(is.na(.s$y[.s$id == "103"])))
+    expect_identical(.o, paste0("[solve error: ", .solverFail, "]: 1 warning(s) for subject(s): 103"))
+    .ref <- as.data.frame(rxSolve(.m, .d[.d$ID != 103, ], params = .p[.p$ID != 103, ], method = "cvode"))
+    .ok <- .s[.s$id != "103", c("time", "y")]
+    rownames(.ok) <- NULL
+    expect_identical(.ok, .ref[, c("time", "y")])
+  })
+
   test_that("ind_solve() pushes a failed subject's reasons for its caller to flush", {
     .m <- rxode2(.fsText)
     .d <- .fsData[rep(seq_len(5), 4), ]
@@ -320,5 +342,37 @@ rxTest({
       .cap(.Call("_rxTestParSolveAfterPush", PACKAGE = "rxode2")),
       "[rxTest -- pushed before par_solve()]: 1 warning(s)"
     )
+  })
+
+  test_that("liblsoda fails a subject whose interpolation to an output time fails", {
+    # dy/dt = 1e308 overflows y after its first step, so intdy() cannot reach
+    # the outputs; the subject's state there was never computed
+    .m <- rxode2("d/dt(y) <- r")
+    .d <- data.frame(ID = rep(1:3, each = 4), TIME = rep(c(0.5, 1, 1.5, 2), 3), EVID = 0)
+    .p <- data.frame(ID = 1:3, r = c(1, 1e308, 2))
+    .w <- capture_warnings(.o <- .cap(.s <- as.data.frame(rxSolve(.m, .d, params = .p, method = "liblsoda"))))
+    expect_identical(unique(.w), "some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'")
+    expect_true(all(is.na(.s$y[.s$id == "2"])))
+    # the other subjects solve as they do alone
+    .ref <- as.data.frame(rxSolve(.m, .d[.d$ID != 2, ], params = .p[.p$ID != 2, ], method = "liblsoda"))
+    .ok <- .s[.s$id != "2", c("time", "y")]
+    rownames(.ok) <- NULL
+    expect_identical(.ok, .ref[, c("time", "y")])
+    expect_identical(.o[1], "[IDID=-3, illegal input detected (see printed message).]: 1 warning(s) for subject(s): 2")
+    expect_match(.o[2], "^\\[intdy -- t = [-0-9.e+]+ illegal\\]: 1 warning\\(s\\) for subject\\(s\\): 2$")
+  })
+
+  test_that("liblsoda interpolates to output times a few ulps apart at negative times", {
+    # intdy()'s window takes the magnitudes of tn and hu, as dlsoda.f does;
+    # with their signed sum the window shrank at negative times and these
+    # outputs fell outside it
+    rxSetIni0(FALSE)
+    withr::defer(rxSetIni0(TRUE))
+    .m <- rxode2("d/dt(y) <- -0.3*y")
+    .t <- c(-99.900000000000006, -99.899999999998997, -99.899999999998897)
+    .w <- capture_warnings(.o <- .cap(.s <- as.data.frame(rxSolve(.m, et(.t), inits = c(y = 1), method = "liblsoda"))))
+    expect_false(any(grepl("could not solve", .w)))
+    expect_identical(.o, character(0))
+    expect_equal(.s$y, exp(-0.3 * (.s$time - .s$time[1])), tolerance = 1e-10)
   })
 })

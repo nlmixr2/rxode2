@@ -116,8 +116,9 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         badSolveExit(i);
         localBadSolve = 1;
       } else {
-        if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                            xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
+        while (!localBadSolve &&
+               handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                               xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
             if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
               preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
 
@@ -160,38 +161,9 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               ind->ixds = ixds;
               ind->idx = idx;
               ind->idxExtra++;
+              // the dose changed the state; restart the dense stepper from it
+              stepper_initialized = false;
               keep.stateChanged();
-              if (!isSameTime(xout, ind->extraDoseNewXout)) {
-                preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-
-                if (neqOde > 0) {
-                    state_type state(neqOde);
-                    double dt = (ind->autoHcur > 0.0) ? ind->autoHcur
-                      : keep.first((op->HMIN > 0.0) ? op->HMIN : 1e-4, op, ind, neq, neqOde,
-                                   c_dydt, ind->extraDoseNewXout, yp);
-                    if (xout < ind->extraDoseNewXout) dt = -dt;
-                    sys.first.xout_ = xout;
-                    sys.first.sign_ = (dt > 0) ? 1 : -1;
-                    try {
-                        
-                      std::copy(yp, yp + neqOde, state.begin());
-                      rxIntegrateAdaptive(
-
-                            stepper, sys, state, ind->extraDoseNewXout, xout, dt, error_checker(ind, ind->rc, op->mxstep));
-                        stepper_initialized = false;
-                        keep.solved(fabs(dt));
-                      if (!ind->err) std::copy(state.begin(), state.end(), yp);
-                    } catch(const std::exception& e) {
-                        if (ind->rc[0] == 0) ind->rc[0] = -2019;
-                    }
-                }
-
-                copyLinCmt(neq, ind, op, yp);
-                const char* err_msg = "ros4 failed";
-                postSolve(neq, &istate, ind->rc, &idx, yp, &err_msg, 11, false, ind, op, rx);
-                if (*(ind->rc) < 0) localBadSolve = 1;
-                ind->extraDoseNewXout = xout;
-              }
               xp = ind->extraDoseNewXout;
             }
         }
@@ -261,7 +233,6 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         xp = xout;
       }
     }
-    ind->_newind = 2;
     if (!localBadSolve){
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
@@ -293,6 +264,7 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       if (_mtime_requeued) i--;
     }
+    rxNewindAfterRecord(ind, i);
     ind->solvedIdx = i;
   }
   // Keep this subject's delay history: the output data frame recalculates lhs
