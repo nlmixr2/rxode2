@@ -76,6 +76,10 @@
   `alag() > ii`) is now applied at its own time with every solver.  Only
   the first one between two records was applied, so a short infusion could
   never end; `dop853` also integrated past that dose twice (#1499).
+- A steady-state infusion into a compartment whose `alag()` is an exact
+  multiple of `ii` now gives the record's own lagged infusion (and those of
+  the intervals in between); they were dropped, so the profile decayed from
+  the dose arrival time on (#1590).
 
 ## New features
 
