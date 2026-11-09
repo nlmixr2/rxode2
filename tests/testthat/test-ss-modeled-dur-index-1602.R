@@ -15,7 +15,7 @@ rxTest({
     test_that(paste0("a modeled dur() = ", .durv, " ss dose after other records matches the explicit regimen"), {
       .want <- et(time = 3, amt = 50, rate = -2, ii = 12, addl = 300, cmt = "depot") |>
         et(.o + .off)
-      for (.lag in c("", "alag(depot) <- 0\n")) {
+      for (.lag in c("", "alag(depot) <- 0\n", "alag(depot) <- 0.7\n")) {
         .m <- .mod(.durv, .lag)
         .w <- rxSolve(.m, .want, .p)$center
         for (.ss in 1:2) {
