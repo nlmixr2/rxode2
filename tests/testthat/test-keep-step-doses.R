@@ -151,8 +151,8 @@ rxTest({
   })
 
   test_that("dop5 keeps its step across infusion edges", {
-    # ten one-hour infusions observed once per interval, atol = rtol = 1e-4;
-    # restarting at every infusion edge takes about a third more evaluations
+    # ten one-hour infusions observed once per interval, atol = rtol = 1e-4:
+    # 1122 evaluations here, against 1481 restarting at every infusion edge
     .dose <- (0:9) * 12
     .ev <- rbind(
       data.frame(id = 1L, time = .dose, evid = 1L, amt = 100, cmt = "central", rate = 100),
@@ -160,6 +160,6 @@ rxTest({
     )
     .ev <- .ev[order(.ev$time), ]
     .w <- .kdSolve(.kdInf, .ev, c(cl = 2, v = 10, q = 5, vp = 50), "dop5", tol = 1e-4)$dadt
-    expect_lt(.w, 1300)
+    expect_lt(.w, 1290)
   })
 })
