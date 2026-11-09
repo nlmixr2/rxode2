@@ -32,8 +32,7 @@ rxTest({
       data.frame(id = 1L, time = .ksDose, evid = 1L, amt = 100, cmt = "depot"),
       data.frame(id = 1L, time = obs, evid = 0L, amt = 0, cmt = "center")
     )
-    .s <- rxSolve(.ksModel, .ev, params = .ksPar, method = method,
-                  atol = 1e-10, rtol = 1e-10, returnType = "rxSolve")
+    .s <- rxSolve(.ksModel, .ev, params = .ksPar, method = method, atol = 1e-10, rtol = 1e-10, returnType = "rxSolve")
     list(d = as.data.frame(.s), dadt = .s$counts$dadt)
   }
 
@@ -80,12 +79,9 @@ rxTest({
     .ev2 <- rbind(.obs, data.frame(id = 1L, time = 5, evid = 2L, cmt = "y"))
     .ev2 <- .ev2[order(.ev2$time), ]
     for (.method in c("dop853", "dop5", "ros4")) {
-      for (.case in list(list(m = .mt, ev = .obs, lab = "mtime"),
-                         list(m = .e2, ev = .ev2, lab = "evid 2"))) {
-        .s <- rxSolve(.case$m, .case$ev, method = .method, atol = 1e-10, rtol = 1e-10,
-                      returnType = "data.frame")
-        expect_equal(.s$y[.s$time == 6], 100, tolerance = 1e-6,
-                     label = paste(.method, .case$lab))
+      for (.case in list(list(m = .mt, ev = .obs, lab = "mtime"), list(m = .e2, ev = .ev2, lab = "evid 2"))) {
+        .s <- rxSolve(.case$m, .case$ev, method = .method, atol = 1e-10, rtol = 1e-10, returnType = "data.frame")
+        expect_equal(.s$y[.s$time == 6], 100, tolerance = 1e-6, label = paste(.method, .case$lab))
       }
     }
   })
