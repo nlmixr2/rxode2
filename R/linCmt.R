@@ -197,6 +197,9 @@ linCmtBThreadsSeen <- function(reset) {
             }
             return(invisible())
           }
+          if (identical(.f, quote(`if`)) || identical(.f, quote(`while`))) {
+            .seed <<- c(.seed, .rxLinCmtCallVars(e[[2]]))
+          }
           if (identical(.f, quote(`if`))) {
             .c <- c(cond, all.vars(e[[2]]))
             .walk(e[[3]], .c)
