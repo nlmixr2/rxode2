@@ -55,10 +55,10 @@ rxTest({
       expect_equal(.x$d$depot, .exact[, 1], tolerance = 1e-7)
       expect_equal(.x$d$center, .exact[, 2], tolerance = 1e-7)
     }
-    # re-initialising at every observation record costs about 50 evaluations
-    # per record here
+    # re-initialising at every observation record costs 52 evaluations per
+    # record here; carrying on, 1.2
     .perRecord <- (.hourly$dadt - .sparse$dadt) / (120 - 10)
-    expect_lt(.perRecord, 3)
+    expect_lt(.perRecord, 1.4)
   })
 
   test_that("cvode matches the exact solution across a covariate step on an evid 2 or an observation record", {
