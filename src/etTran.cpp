@@ -137,15 +137,12 @@ IntegerVector convertDvid_(SEXP inCmt, int maxDvid=0){
   return id;
 }
 
+// Index of the model parameter `par` in the string-comparison table, or -1;
+// exact, since the model can compare case-distinct parameters (lvl, Lvl)
 static inline int getStrCmpParamIndex(CharacterVector strCmpNames,
-                                      std::string cov) {
-  std::string covLower = cov;
-  std::string covUpper = cov;
-  std::transform(covLower.begin(), covLower.end(), covLower.begin(), ::tolower);
-  std::transform(covUpper.begin(), covUpper.end(), covUpper.begin(), ::toupper);
+                                      std::string par) {
   for (int i = 0; i < strCmpNames.size(); ++i) {
-    std::string cur = as<std::string>(strCmpNames[i]);
-    if (cur == cov || cur == covLower || cur == covUpper) {
+    if (as<std::string>(strCmpNames[i]) == par) {
       return i;
     }
   }

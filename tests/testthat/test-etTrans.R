@@ -148,6 +148,17 @@ d/dt(blood)     = a*intestine - b*blood
     s <- rxSolve(m, d2, returnType = "data.frame")
     expect_equal(s$isC, c(0, 0, 1, 0))
     expect_equal(s$isB, c(0, 1, 0, 0))
+    # case-distinct parameters each re-level against their own literals
+    m2 <- function() {
+      model({
+        a <- (lvl == "x")
+        b <- (Lvl == "y")
+      })
+    }
+    d3 <- data.frame(id = 1, time = 1:2, lvl = c("w", "x"), Lvl = c("y", "z"))
+    s <- rxSolve(m2, d3, returnType = "data.frame")
+    expect_equal(s$a, c(0, 1))
+    expect_equal(s$b, c(1, 0))
   })
 
   test_that("homogeneous solve events stay compressed through etTrans", {
