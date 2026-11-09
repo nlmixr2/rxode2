@@ -1568,6 +1568,17 @@ NumericVector rxSetupScale(const RObject &obj,
 
 #include "rxGlobals.h"
 
+extern bool rxEtTransStrCmpQuiet;
+// Quiets etTrans string-comparison warnings while in scope (or until restore())
+struct rxEtTransStrCmpQuietGuard {
+  bool old;
+  rxEtTransStrCmpQuietGuard(bool quiet) : old(rxEtTransStrCmpQuiet) {
+    if (quiet) rxEtTransStrCmpQuiet = true;
+  }
+  void restore() { rxEtTransStrCmpQuiet = old; }
+  ~rxEtTransStrCmpQuietGuard() { restore(); }
+};
+
 rx_globals _globals;
 
 #include "extraDosing.h"
@@ -3647,6 +3658,8 @@ static inline void rxSolve_ev1Update(const RObject &obj,
                                                                         rxSolve_t* rxSolveDat){
                                      rx_solve* rx = getRxSolve_();
                                      Function etTransR = getRxFn("etTrans");
+                                     // passes without 'iCov' cannot see its string-compared covariates
+                                     rxEtTransStrCmpQuietGuard strCmpQuiet(rxSolveDat->hasICov);
                                      if (rxIs(ev1, "rxEt")) {
                                        CharacterVector cls = ev1.attr("class");
                                        List etE = cls.attr(".rxode2.lst");
@@ -3822,6 +3835,7 @@ static inline void rxSolve_ev1Update(const RObject &obj,
       Function etFun = getRxFn("et");
       RObject evEt = asEtFun(ev1);
       evEt = etFun(evEt, wrap(newObs));
+      strCmpQuiet.restore();
       ev1 = etTransR(evEt, obj, rxSolveDat->hasCmt,
                      false, false, false, R_NilValue,
                      rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
@@ -3832,6 +3846,7 @@ static inline void rxSolve_ev1Update(const RObject &obj,
       // Same arguments as ev1k; reuse it rather than translating twice
       ev1 = ev1k;
     } else {
+      strCmpQuiet.restore();
       ev1 = etTransR(ev1, obj, rxSolveDat->hasCmt,
                      false, false, true, R_NilValue,
                      rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],

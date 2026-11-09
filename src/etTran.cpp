@@ -172,10 +172,14 @@ static inline SEXP refactorStrCmpCovariate(SEXP cur, CharacterVector modelLevels
   return factor2(curChr, _["levels"] = fullLevels);
 }
 
+// Set by rxSolve around its etTrans passes without the 'iCov' it solves with
+bool rxEtTransStrCmpQuiet = false;
+
 // Warn for each model literal compared to `name` that no data value has
-// (the comparison is then always false); `cur` is the re-leveled factor.
+// (the comparison then never matches); `cur` is the re-leveled factor.
 static inline void warnStrCmpMissingLevels(SEXP cur, CharacterVector modelLevels,
                                            std::string name) {
+  if (rxEtTransStrCmpQuiet) return;
   int nLvl = modelLevels.size();
   std::vector<bool> seen(nLvl, false);
   int *codes = INTEGER(cur);
@@ -187,7 +191,7 @@ static inline void warnStrCmpMissingLevels(SEXP cur, CharacterVector modelLevels
   for (int k = 0; k < nLvl; ++k) {
     if (!seen[k]) {
       Rf_warningcall(R_NilValue,
-                     _("'%s' is compared to \"%s\", which is not in the data; that comparison is always false"),
+                     _("'%s' is compared to \"%s\", which is not in the data, so it never matches"),
                      name.c_str(), CHAR(STRING_ELT(modelLevels, k)));
     }
   }
@@ -198,6 +202,7 @@ static inline void warnStrCmpMissingLevels(SEXP cur, CharacterVector modelLevels
 static inline void warnStrCmpNotReleveled(CharacterVector strCmpNames,
                                           std::vector<bool> &releveled,
                                           CharacterVector pars) {
+  if (rxEtTransStrCmpQuiet) return;
   for (int k = 0; k < strCmpNames.size(); ++k) {
     if (releveled[k]) continue;
     std::string nm = as<std::string>(strCmpNames[k]);

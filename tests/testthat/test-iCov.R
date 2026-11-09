@@ -207,6 +207,26 @@ rxTest({
     expect_equal(as.numeric(tmp2$pars["Cov", ]), c(2, 3, 1))
   })
 
+  test_that("rxSolve with an iCov string-compared covariate does not warn (#1656)", {
+    mod <- function() {
+      model({
+        isA <- (Cov == "alpha")
+        isB <- ("beta" == Cov)
+      })
+    }
+    ic <- data.frame(id = 1:3, Cov = c("beta", "gamma", "alpha"))
+    ev <- et(amt = 1, time = 0) |>
+      et(time = 1) |>
+      et(id = 1:3)
+    expect_no_warning(s <- rxSolve(mod, ev, iCov = ic, returnType = "data.frame"))
+    s <- s[order(s$id), ]
+    expect_equal(s$isA, c(0, 0, 1))
+    expect_equal(s$isB, c(1, 0, 0))
+    ev <- et(amt = 1, time = 0) |>
+      et(id = 1:3)
+    expect_no_warning(rxSolve(mod, ev, iCov = ic))
+  })
+
   test_that("'allTimeVar=TRUE' emits an 'iCov' covariate as a per-row column", {
     # the per-row column for an 'iCov' covariate was never allocated under
     # 'allTimeVar', so taking it errored instead of returning the covariate

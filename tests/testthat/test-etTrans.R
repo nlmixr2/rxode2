@@ -146,6 +146,16 @@ d/dt(blood)     = a*intestine - b*blood
     )
     expect_equal(s$is2, c(0, 1, 0))
     expect_equal(s$is25, c(0, 0, 0))
+    m2 <- function() {
+      model({
+        not25 <- (tnom != "25")
+      })
+    }
+    expect_warning(
+      s <- rxSolve(m2, d, returnType = "data.frame"),
+      "'tnom' is compared to \"25\", which is not in the data, so it never matches"
+    )
+    expect_equal(s$not25, c(1, 1, 1))
   })
 
   test_that("string comparison warns when the variable is not re-leveled (#1656)", {
