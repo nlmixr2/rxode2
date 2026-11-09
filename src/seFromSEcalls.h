@@ -141,6 +141,34 @@ static int seIsInfNaN(seCtx *ctx, D_ParseNode *pn) {
   return strcmp(t, "Inf") == 0 || strcmp(t, "NaN") == 0;
 }
 
+static const char *seP1rm(seCtx *ctx, D_ParseNode *pn, int *found);
+
+/* `lit + other` (litFirst) or `other + lit`: a literal 1 is dropped, any
+   other literal is kept as as.character() renders it */
+static const char *seP1rmLit(seCtx *ctx, double v, D_ParseNode *other,
+                             int litFirst, int *found) {
+  if (v == 1.0) {
+    *found = 1;
+    return seEmit(ctx, seStripAllP(other));
+  }
+  const char *o = seP1rm(ctx, other, found);
+  if (ctx->failed) return "";
+  const char *l = seDblToStr(ctx, v);
+  return litFirst ? seCat(ctx, l, "+", o, NULL, NULL, NULL)
+                  : seCat(ctx, o, "+", l, NULL, NULL, NULL);
+}
+
+/* `a - c`: only 1 - c is rewritten, to -c */
+static const char *seP1rmMinus(seCtx *ctx, D_ParseNode *pn, D_ParseNode *a,
+                               D_ParseNode *c, int *found) {
+  double v;
+  if (!seLitNum(ctx, a, &v) || v != 1.0) return seEmit(ctx, pn);
+  *found = 1;
+  const char *r = seEmit(ctx, c);
+  if (ctx->failed) return "";
+  return seCat(ctx, "-", r, NULL, NULL, NULL, NULL);
+}
+
 /* .rxP1rmF(): emit a +/- spine, dropping one literal 1 (sets *found).
    Numbers kept on the '+' spine use as.character(), not .rxFromSEnum(), and
    the spine is NOT folded -- this is the text .rxFromSE() builds. */
@@ -154,33 +182,9 @@ static const char *seP1rm(seCtx *ctx, D_ParseNode *pn, int *found) {
   c = d_get_child(b, 2);
   /* R parses Inf and NaN as numeric literals; this grammar sees symbols */
   if (seIsInfNaN(ctx, a) || seIsInfNaN(ctx, c)) return seFail(ctx);
-  if (op == '-') {
-    if (seLitNum(ctx, a, &v) && v == 1.0) {
-      *found = 1;
-      const char *r = seEmit(ctx, c);
-      if (ctx->failed) return "";
-      return seCat(ctx, "-", r, NULL, NULL, NULL, NULL);
-    }
-    return seEmit(ctx, pn);
-  }
-  if (seLitNum(ctx, c, &v)) {
-    if (v == 1.0) {
-      *found = 1;
-      return seEmit(ctx, seStripAllP(a));
-    }
-    const char *l = seP1rm(ctx, a, found);
-    if (ctx->failed) return "";
-    return seCat(ctx, l, "+", seDblToStr(ctx, v), NULL, NULL, NULL);
-  }
-  if (seLitNum(ctx, a, &v)) {
-    if (v == 1.0) {
-      *found = 1;
-      return seEmit(ctx, seStripAllP(c));
-    }
-    const char *r = seP1rm(ctx, c, found);
-    if (ctx->failed) return "";
-    return seCat(ctx, seDblToStr(ctx, v), "+", r, NULL, NULL, NULL);
-  }
+  if (op == '-') return seP1rmMinus(ctx, pn, a, c, found);
+  if (seLitNum(ctx, c, &v)) return seP1rmLit(ctx, v, a, 0, found);
+  if (seLitNum(ctx, a, &v)) return seP1rmLit(ctx, v, c, 1, found);
   const char *l = seP1rm(ctx, a, found);
   if (ctx->failed) return "";
   const char *r = seP1rm(ctx, c, found);

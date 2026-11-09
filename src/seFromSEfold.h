@@ -87,8 +87,9 @@ static double seEvalAdd(seEval *s) {
    so arithmetic on it fails in R. */
 static const char *seBaseVals[] = {
   "pi", "T", "F", "TRUE", "FALSE", "Inf", "NaN", "NA", "NA_real_",
-  "NA_integer_", "NA_character_", "NA_complex_", "NULL", "letters", "LETTERS", "month.abb",
-  "month.name", "R.version", "R.version.string", "version"
+  "NA_integer_", "NA_character_", "NA_complex_", "NULL", "letters",
+  "LETTERS", "month.abb", "month.name", "R.version", "R.version.string",
+  "version"
 };
 #define seNbaseVals ((int)(sizeof(seBaseVals)/sizeof(seBaseVals[0])))
 
@@ -100,50 +101,73 @@ static int seIdChar(char c) {
   return seIdStart(c) || (c >= '0' && c <= '9');
 }
 
+static int seIsDigit(char c) {
+  return c >= '0' && c <= '9';
+}
+
+/* past a quoted string literal starting at p */
+static const char *seSkipString(const char *p) {
+  char q = *p++;
+  while (*p != '\0' && *p != q) {
+    if (*p == '\\' && p[1] != '\0') p++;
+    p++;
+  }
+  return (*p != '\0') ? p + 1 : p;
+}
+
+/* past a decimal number starting at p; NULL when an R-only literal suffix
+   follows (0x1, 1i, 1L) */
+static const char *seSkipNumber(const char *p) {
+  while (seIsDigit(*p) || *p == '.') p++;
+  if ((*p == 'e' || *p == 'E') &&
+      (seIsDigit(p[1]) || ((p[1] == '+' || p[1] == '-') && seIsDigit(p[2])))) {
+    p += 2;
+    while (seIsDigit(*p)) p++;
+  }
+  return seIdChar(*p) ? NULL : p;
+}
+
+/* a non-function value in baseenv() (or a .name, conservatively) */
+static int seIsBaseVal(const char *id, size_t n) {
+  int i;
+  if (id[0] == '.') return 1;
+  for (i = 0; i < seNbaseVals; i++) {
+    if (strlen(seBaseVals[i]) == n && strncmp(id, seBaseVals[i], n) == 0) return 1;
+  }
+  return 0;
+}
+
+/* past an identifier at p; *unbound is set when it is a variable that
+   baseenv() cannot supply (a call name is not a variable) */
+static const char *seSkipIdent(const char *p, int *unbound) {
+  const char *id = p, *q;
+  while (seIdChar(*p)) p++;
+  q = p;
+  while (*q == ' ' || *q == '\t') q++;
+  *unbound = (*q != '(') && !seIsBaseVal(id, (size_t)(p - id));
+  return p;
+}
+
 /* Could eval(parse(text = s), baseenv()) give a number?  0 only when the text
    names a variable that baseenv() cannot supply (and nothing short-circuits
    around it); then R's fold fails.  Otherwise R may fold something this file
    cannot evaluate (gamma(2), log1p(0), log(2+pi)), so the caller bails. */
 static int seMayFold(const char *s) {
   const char *p = s;
-  int i;
+  int unbound = 0;
   if (strstr(s, "||") != NULL || strstr(s, "&&") != NULL) return 1;
   while (*p != '\0') {
-    if (*p == '"' || *p == '\'') {               /* string literal */
-      char q = *p++;
-      while (*p != '\0' && *p != q) {
-        if (*p == '\\' && p[1] != '\0') p++;
-        p++;
-      }
-      if (*p != '\0') p++;
-      continue;
+    if (*p == '"' || *p == '\'') {
+      p = seSkipString(p);
+    } else if (seIsDigit(*p) || (*p == '.' && seIsDigit(p[1]))) {
+      p = seSkipNumber(p);
+      if (p == NULL) return 1;
+    } else if (seIdStart(*p)) {
+      p = seSkipIdent(p, &unbound);
+      if (unbound) return 0;
+    } else {
+      p++;
     }
-    if ((*p >= '0' && *p <= '9') || (*p == '.' && p[1] >= '0' && p[1] <= '9')) {
-      while ((*p >= '0' && *p <= '9') || *p == '.') p++;
-      if ((*p == 'e' || *p == 'E') &&
-          ((p[1] >= '0' && p[1] <= '9') ||
-           ((p[1] == '+' || p[1] == '-') && p[2] >= '0' && p[2] <= '9'))) {
-        p += 2;
-        while (*p >= '0' && *p <= '9') p++;
-      }
-      if (seIdChar(*p)) return 1;                 /* 0x1, 1i, 1L: R literals */
-      continue;
-    }
-    if (seIdStart(*p)) {
-      const char *id = p;
-      while (seIdChar(*p)) p++;
-      size_t n = (size_t)(p - id);
-      const char *q = p;
-      while (*q == ' ' || *q == '\t') q++;
-      if (*q == '(') continue;                    /* a call */
-      if (id[0] == '.') continue;                 /* .Machine and friends */
-      for (i = 0; i < seNbaseVals; i++) {
-        if (strlen(seBaseVals[i]) == n && strncmp(id, seBaseVals[i], n) == 0) break;
-      }
-      if (i == seNbaseVals) return 0;
-      continue;
-    }
-    p++;
   }
   return 1;
 }
