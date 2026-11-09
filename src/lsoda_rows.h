@@ -4,11 +4,15 @@
 /*
    The element-wise vector updates of stoda() and correction(), on lsoda's
    1-based vectors of length n.  The vectors never overlap (rows of the
-   Nordsieck array yh, acor, savf and the caller's y), hence restrict.  Each
-   loop takes two elements a pass: at R's -O2 GCC vectorizes only a loop
-   whose vector code replaces all of the scalar code, which a loop of unknown
-   length one element a pass is not.  Every element is computed by the same
-   expression as one at a time, so the results are the same bit for bit.
+   Nordsieck array yh, acor, savf and the caller's y), hence restrict.
+
+   Each loop takes two elements a pass, with a scalar tail.  R compiles
+   packages at -O2, where GCC's vectorizer uses its "very-cheap" cost model:
+   it vectorizes a loop only when the vector code replaces all of the scalar
+   code, so it leaves a loop of unknown trip count taken one element a pass
+   scalar, restrict or not.  The two-element body is vectorized (16-byte
+   vectors on x86-64).  Every element is computed by the same expression as
+   one at a time, so the results are the same bit for bit.
 */
 
 /* to += from */
