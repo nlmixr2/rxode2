@@ -154,22 +154,6 @@ static inline void handleInfusionGetEndOfInfusionIndex(int idx, int *infEixds,
 	}
 }
 
-// Dose number of the fixed-rate infusion start that dose number `stop` turns
-// off, or -1; the inverse of handleInfusionGetEndOfInfusionIndex().
-static inline int handleInfusionStartOfStop(rx_solving_options_ind *ind, int stop) {
-  if (stop < 0 || stop >= ind->ndoses) return -1;
-  int evid = getEvid(ind, ind->idose[stop]);
-  double rate = -getDoseNumber(ind, stop);
-  for (int j = 0; j < ind->ndoses; j++) {
-    if (j == stop || getEvid(ind, ind->idose[j]) != evid ||
-        getDoseNumber(ind, j) != rate) continue;
-    int e = -1;
-    handleInfusionGetEndOfInfusionIndex(j, &e, NULL, NULL, ind);
-    if (e == stop) return j;
-  }
-  return -1;
-}
-
 // Dose index (into ind->idose) of the record currently being handled.
 // ind->ixds is the solver's running dose counter; the output/lhs pass
 // (rxode2_df.cpp) calls handleTlastInline() without advancing or syncing it, so
@@ -788,6 +772,10 @@ static inline int pushUniqueDosingEvent(double time, double amt, int evid,
 // Forward declarations: defined in rxode2parseGetTime.h (included after this header)
 static inline void updateRate(int idx, rx_solving_options_ind *ind, double *yp);
 static inline void updateDur(int idx, rx_solving_options_ind *ind, double *yp);
+static inline void handleInfusionGetStartOfInfusionIndex(int *startIdx, int *endIdx,
+                                                         double *amt, int *idx,
+                                                         rx_solve *rx, rx_solving_options *op,
+                                                         rx_solving_options_ind *ind);
 
 // Event ("jump") sensitivities: apply a 1st-order dtau/alag moving-boundary jump
 // to sensitivity compartment `slot` (state esK, param p), or DEFER it.  The
@@ -2141,11 +2129,15 @@ static inline int handle_evid(int evid, int neq,
           _esSSDurOffCmt != cmt && _esSSRateOffCmt != cmt &&
           ind->wh0 != EVID0_RATEADJ && ind->wh0 != EVID0_SSINF &&
           ind->wh0 != EVID0_SS0 && ind->wh0 != EVID0_SS20) {
-        int _esStop = handleTlastInlineDoseIndex(ind);
-        int _esStart = (_esStop >= 0 && _esStop < ind->ndoses &&
-                        ind->idose[_esStop] == ind->ix[ind->idx]) ?
-          handleInfusionStartOfStop(ind, _esStop) : -1;
-        if (_esStart >= 0) {
+        // the start handleInfusionItem() paired this stop with
+        int _esRec = ind->ix[ind->idx], _esStop = -1, _esStart = -1;
+        double _esAmtStop = getDose(ind, _esRec);
+        rx_solve *_esRx = (ind->rx ? ind->rx : &rx_global);
+        rx_solving_options *_esOp = (ind->op ? ind->op : &op_global);
+        handleInfusionGetStartOfInfusionIndex(&_esStart, &_esStop, &_esAmtStop,
+                                              &_esRec, _esRx, _esOp, ind);
+        if (_esStart >= 0 && _esStart < ind->ndoses &&
+            _esStop >= 0 && _esStop < ind->ndoses) {
           int _ns = _rxEsNState, _np = _rxEsNParam;
           double _esT0 = getAllTimes(ind, ind->idose[_esStart]);
           double _esDur = getAllTimes(ind, ind->idose[_esStop]) - _esT0;
