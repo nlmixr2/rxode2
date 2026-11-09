@@ -59,6 +59,12 @@
   error.  With a `sigma` to simulate, these used to crash R with a floating
   point exception or fail with an unrelated internal error (#1551).
 
+### Symbolic derivatives
+- `rxFromSE()`'s C translator now emits `log()` of a sum or difference
+  (including the `log1p()` rewrite) instead of sending the whole expression
+  to the much slower R walker, which made up most of the FOCEi build time for
+  models with terms such as `log(t + 1e-6)` (#1673).
+
 ### Steady state
 - A steady-state bolus into a compartment whose `alag()` is longer than `ii`
   now includes the doses of the earlier intervals that arrive inside the

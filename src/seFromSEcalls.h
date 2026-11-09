@@ -18,8 +18,8 @@
 
 /* Functions that reach .rxFromSE()'s GENERIC call branch unchanged: no
    special-case handler, not in .SE1p/.SE1m/.SEsingle/.SEdouble, and not one of
-   the rewrites keyed on the argument's shape.  Everything else -- log (its
-   log(beta(..)) and log1p rewrites), lgamma/loggamma (lgamma1p), sin/cos/tan
+   the rewrites keyed on the argument's shape.  log has its own emitter,
+   seEmitLog().  Everything else -- lgamma/loggamma (lgamma1p), sin/cos/tan
    (sinpi/cospi/tanpi), Derivative, Subs, polygamma, the lag/lead/delay family,
    linCmt, max/min, the tlast/podo family, the llik family, rxTBS and the
    rxEq/rxAnd/... operator spellings -- goes to the R walker.
@@ -96,29 +96,117 @@ static D_ParseNode *seStripP(D_ParseNode *pn) {
 /* collect arg_list left spine into args[], in source order; see seParseNode.h */
 #define seArgs(pn, args, max) seArgsFlattenT(sePt, (pn), (args), (max))
 
-/* log() takes .rxFromSE()'s .SE1p route, where .rxP1rmF() hunts a literal 1
-   down the argument's +/- spine to build log1p().  It only recurses through
-   '+' and '-', so on any other argument shape it hands back .rxFromSE(x)
-   unchanged and we can emit the same text.  On an additive argument it
-   rebuilds the text itself and bypasses the constant fold, so that shape goes
-   to R -- as does beta(), which .rxFromSE() rewrites to lbeta().
+/* the node under any single-child wrappers */
+static D_ParseNode *seUnwrap(D_ParseNode *pn) {
+  while (d_get_number_of_children(pn) == 1) pn = d_get_child(pn, 0);
+  return pn;
+}
+
+/* '+' or '-' when pn is a binary sum/difference, else 0 */
+static char seAddOp(D_ParseNode *pn) {
+  pn = seUnwrap(pn);
+  if (d_get_number_of_children(pn) != 3 || seIsLit(d_get_child(pn, 0), '(')) {
+    return 0;
+  }
+  const char *op = seNodeName(d_get_child(pn, 1));
+  if ((op[0] == '+' || op[0] == '-') && op[1] == '\0') return op[0];
+  return 0;
+}
+
+/* .stripP(): every layer of parentheses */
+static D_ParseNode *seStripAllP(D_ParseNode *pn) {
+  for (;;) {
+    D_ParseNode *u = seUnwrap(pn);
+    if (d_get_number_of_children(u) == 3 && seIsLit(d_get_child(u, 0), '(')) {
+      pn = d_get_child(u, 1);
+      continue;
+    }
+    return pn;
+  }
+}
+
+/* a bare numeric literal's value (R's inherits(x, "numeric")) */
+static int seLitNum(seCtx *ctx, D_ParseNode *pn, double *v) {
+  if (!seIsBareNumber(pn)) return 0;
+  *v = atof(seNodeText(ctx, seUnwrap(pn)));
+  return 1;
+}
+
+/* .rxP1rmF(): emit a +/- spine, dropping one literal 1 (sets *found).
+   Numbers kept on the '+' spine use as.character(), not .rxFromSEnum(), and
+   the spine is NOT folded -- this is the text .rxFromSE() builds. */
+static const char *seP1rm(seCtx *ctx, D_ParseNode *pn, int *found) {
+  char op = seAddOp(pn);
+  D_ParseNode *b, *a, *c;
+  double v;
+  if (op == 0) return seEmit(ctx, pn);
+  b = seUnwrap(pn);
+  a = d_get_child(b, 0);
+  c = d_get_child(b, 2);
+  if (op == '-') {
+    if (seLitNum(ctx, a, &v) && v == 1.0) {
+      *found = 1;
+      const char *r = seEmit(ctx, c);
+      if (ctx->failed) return "";
+      return seCat(ctx, "-", r, NULL, NULL, NULL, NULL);
+    }
+    return seEmit(ctx, pn);
+  }
+  if (seLitNum(ctx, c, &v)) {
+    if (v == 1.0) {
+      *found = 1;
+      return seEmit(ctx, seStripAllP(a));
+    }
+    const char *l = seP1rm(ctx, a, found);
+    if (ctx->failed) return "";
+    return seCat(ctx, l, "+", seDblToStr(ctx, v), NULL, NULL, NULL);
+  }
+  if (seLitNum(ctx, a, &v)) {
+    if (v == 1.0) {
+      *found = 1;
+      return seEmit(ctx, seStripAllP(c));
+    }
+    const char *r = seP1rm(ctx, c, found);
+    if (ctx->failed) return "";
+    return seCat(ctx, seDblToStr(ctx, v), "+", r, NULL, NULL, NULL);
+  }
+  const char *l = seP1rm(ctx, a, found);
+  if (ctx->failed) return "";
+  const char *r = seP1rm(ctx, c, found);
+  if (ctx->failed) return "";
+  return seCat(ctx, l, "+", r, NULL, NULL, NULL);
+}
+
+/* text that is exactly one exp(...) call */
+static int seIsExpCall(const char *s) {
+  int depth = 0;
+  const char *p;
+  if (strncmp(s, "exp(", 4) != 0) return 0;
+  for (p = s + 3; *p; p++) {
+    if (*p == '(') depth++;
+    else if (*p == ')' && --depth == 0) return p[1] == '\0';
+  }
+  return 0;
+}
+
+/* log() takes .rxFromSE()'s .SE1p route: .rxP1rmF() turns log(1 + x) into
+   log1p(x).  log1p(exp(x)) becomes log1pexp() by re-translating the emitted
+   text, and log(beta(..)) becomes lbeta(); both go to R.
+   NB: the log path passes the RAW argument, not the .stripP()ed one.
    Returns NULL when the caller should bail. */
 static const char *seEmitLog(seCtx *ctx, D_ParseNode *arg) {
-  D_ParseNode *a0 = arg;
-  while (d_get_number_of_children(a0) == 1) a0 = d_get_child(a0, 0);
-  int nch = d_get_number_of_children(a0);
-  if (nch == 3 && !seIsLit(d_get_child(a0, 0), '(')) {
-    char op = seNodeName(d_get_child(a0, 1))[0];
-    if (op == '+' || op == '-') return NULL;
-  }
-  if (nch == 2 && seNiIs(a0, unary_expression)) return NULL;
+  D_ParseNode *a0 = seUnwrap(arg);
+  int found = 0;
   if (seNiIs(a0, function_call) &&
       strcmp(seNodeText(ctx, d_get_child(a0, 0)), "beta") == 0) {
     return NULL;
   }
-  /* NB: the log path passes the RAW argument, not the .stripP()ed one */
-  const char *inner = seEmit(ctx, arg);
+  const char *inner = seP1rm(ctx, arg, &found);
   if (ctx->failed) return "";
+  if (found) {
+    if (seIsExpCall(inner)) return NULL;
+    return seCat(ctx, "log1p(", inner, ")", NULL, NULL, NULL);
+  }
   return seNamedConstant(seCat(ctx, "log(", inner, ")", NULL, NULL, NULL));
 }
 
