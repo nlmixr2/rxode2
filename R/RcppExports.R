@@ -229,6 +229,12 @@ cmtSupportsOff_ <- function(cmt, mv) {
 #'   steady concentration at the actual time of dose, otherwise when
 #'   `FALSE` the doses are shifted
 #'
+#' @param tieOrder How records that share a subject and time are ordered:
+#'   `"evid"` (the default) puts resets first, then doses, then
+#'   observations; `"data"` keeps the order of the rows in `inData`, the
+#'   way NONMEM processes its records.  Records a row expands to (the reset
+#'   of an `evid=4` dose, `addl` repeats, infusion ends) follow that row.
+#'
 #' @inheritParams rxSolve
 #'
 #' @return Object for solving in rxode2
@@ -236,8 +242,8 @@ cmtSupportsOff_ <- function(cmt, mv) {
 #' @keywords internal
 #'
 #' @export
-etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar = FALSE, keepDosingOnly = FALSE, combineDvid = NULL, keep = character(0), addlKeepsCov = FALSE, addlDropSs = TRUE, ssAtDoseTime = TRUE, iCov = NULL) {
-    .Call(`_rxode2_etTrans`, inData, obj, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid, keep, addlKeepsCov, addlDropSs, ssAtDoseTime, iCov)
+etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar = FALSE, keepDosingOnly = FALSE, combineDvid = NULL, keep = character(0), addlKeepsCov = FALSE, addlDropSs = TRUE, ssAtDoseTime = TRUE, iCov = NULL, tieOrder = "evid") {
+    .Call(`_rxode2_etTrans`, inData, obj, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid, keep, addlKeepsCov, addlDropSs, ssAtDoseTime, iCov, tieOrder)
 }
 
 rxEtTransAsDataFrame_ <- function(inData1) {
