@@ -994,6 +994,7 @@
     return(NULL)
   }
   # numeric defaults (`lg <- 0.3`) stay symbolic so their derivatives survive
+  # lazy: the costly symbolic load runs only if a modeled alag/F/rate/dur reads it
   delayedAssign(".model", .rxLoadPrune(obj, doConst = FALSE))
   .states <- map$states
   .params <- map$sensParams
