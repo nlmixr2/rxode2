@@ -131,8 +131,11 @@ struct rxode2_system_jac_second {
   int neqOde;
   int nRowPd;
 
-  rxode2_system_jac_second(rx_solving_options_ind *ind_in, t_calc_jac calc_jac_in, int *neq_in) : 
-    ind(ind_in), calc_jac(calc_jac_in), neq(neq_in), neqOde(neq_in[0]) {
+  // neqOde_in is the number of ODE states, the size of the stepper's state and
+  // Jacobian; neq_in[0] also counts linCmt() states, which those leave out
+  rxode2_system_jac_second(rx_solving_options_ind *ind_in, t_calc_jac calc_jac_in, int *neq_in,
+                           int neqOde_in) :
+    ind(ind_in), calc_jac(calc_jac_in), neq(neq_in), neqOde(neqOde_in) {
     nRowPd = neqOde; 
   }
 
@@ -157,8 +160,10 @@ struct rxode2_system_ros4_second {
   int *neq;
   int neqOde;
   
-  rxode2_system_ros4_second(rx_solving_options_ind *ind_in, t_calc_jac calc_jac_in, int *neq_in) :
-    ind(ind_in), calc_jac(calc_jac_in), neq(neq_in), neqOde(neq_in[0]) {
+  // neqOde_in as for rxode2_system_jac_second
+  rxode2_system_ros4_second(rx_solving_options_ind *ind_in, t_calc_jac calc_jac_in, int *neq_in,
+                            int neqOde_in) :
+    ind(ind_in), calc_jac(calc_jac_in), neq(neq_in), neqOde(neqOde_in) {
   }
 
   template<class StateType, class MatrixType, class DfdtType>
@@ -184,20 +189,22 @@ struct rxode2_system_ros4_second {
 };
 
 inline std::pair<rxode2_system, rxode2_system_ros4_second>
-make_rxode2_system_ros4(rx_solving_options_ind* ind, t_dydt calc_dydt, t_calc_jac calc_jac, int* neq) {
+make_rxode2_system_ros4(rx_solving_options_ind* ind, t_dydt calc_dydt, t_calc_jac calc_jac, int* neq,
+                        int neqOde) {
     return std::make_pair(
         rxode2_system(calc_dydt, neq, ind),
-        rxode2_system_ros4_second(ind, calc_jac, neq)
+        rxode2_system_ros4_second(ind, calc_jac, neq, neqOde)
     );
 }
 
 // For implicit_euler, the Jacobian is called with 3 args: (state, matrix, time)
 // rxode2_system_jac_second already has this signature.
 inline std::pair<rxode2_system, rxode2_system_jac_second>
-make_rxode2_system_iem(rx_solving_options_ind* ind, t_dydt calc_dydt, t_calc_jac calc_jac, int* neq) {
+make_rxode2_system_iem(rx_solving_options_ind* ind, t_dydt calc_dydt, t_calc_jac calc_jac, int* neq,
+                       int neqOde) {
     return std::make_pair(
         rxode2_system(calc_dydt, neq, ind),
-        rxode2_system_jac_second(ind, calc_jac, neq)
+        rxode2_system_jac_second(ind, calc_jac, neq, neqOde)
     );
 }
 
