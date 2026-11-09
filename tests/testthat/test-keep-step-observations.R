@@ -47,10 +47,11 @@ rxTest({
         expect_equal(.x$d$depot, .exact$depot, tolerance = 1e-7, label = .method)
         expect_equal(.x$d$center, .exact$center, tolerance = 1e-7, label = .method)
       }
-      # a restart at every observation record costs 26 to 32 evaluations per
-      # record here; keeping the step, 6 to 13
+      # a restart at every observation record costs 26 (dop853), 31.5 (dop5)
+      # and 28.8 (ros4) evaluations per record here; keeping the step, 7.7,
+      # 6.5 and 11.5
       .perRecord <- (.h$dadt - .s$dadt) / (length(.hourly) - length(.sparse))
-      expect_lt(.perRecord, 18, label = .method)
+      expect_lt(.perRecord, c(dop853 = 9, dop5 = 7.5, ros4 = 13.5)[[.method]], label = .method)
     }
   })
 
