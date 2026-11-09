@@ -132,6 +132,15 @@ static int seLitNum(seCtx *ctx, D_ParseNode *pn, double *v) {
   return 1;
 }
 
+static int seIsInfNaN(seCtx *ctx, D_ParseNode *pn) {
+  while (!seNiIs(pn, symbol) && d_get_number_of_children(pn) == 1) {
+    pn = d_get_child(pn, 0);
+  }
+  if (!seNiIs(pn, symbol)) return 0;
+  const char *t = seNodeText(ctx, pn);
+  return strcmp(t, "Inf") == 0 || strcmp(t, "NaN") == 0;
+}
+
 /* .rxP1rmF(): emit a +/- spine, dropping one literal 1 (sets *found).
    Numbers kept on the '+' spine use as.character(), not .rxFromSEnum(), and
    the spine is NOT folded -- this is the text .rxFromSE() builds. */
@@ -143,6 +152,8 @@ static const char *seP1rm(seCtx *ctx, D_ParseNode *pn, int *found) {
   b = seUnwrap(pn);
   a = d_get_child(b, 0);
   c = d_get_child(b, 2);
+  /* R parses Inf and NaN as numeric literals; this grammar sees symbols */
+  if (seIsInfNaN(ctx, a) || seIsInfNaN(ctx, c)) return seFail(ctx);
   if (op == '-') {
     if (seLitNum(ctx, a, &v) && v == 1.0) {
       *found = 1;

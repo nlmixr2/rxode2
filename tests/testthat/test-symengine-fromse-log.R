@@ -53,7 +53,11 @@ rxTest({
     "log(1 + exp(a))",
     "log(exp(a) + 1)",
     "log(1 + (exp(a)))",
-    "log(beta(a, b))"
+    "log(beta(a, b))",
+    # R parses Inf/NaN as numeric literals in .rxP1rmF()
+    "log(2.718281828459045 + Inf)",
+    "log(a + Inf)",
+    "log(a + NaN)"
   )
   # R folds these constant operands in baseenv(); C cannot, so it declines
   .foldDeclined <- c(
@@ -64,7 +68,8 @@ rxTest({
     "a + log(1 + pi)",
     "1 + rxOr(rxEq(1, 1), a)",
     "1 + rxOr(rxEq(1, 1), t)",
-    "a + gamma(2)"
+    "a + gamma(2)",
+    "1 + abs0(NA_complex_)"
   )
 
   test_that("C emits log() of a sum exactly as the R walker does", {

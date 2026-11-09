@@ -87,7 +87,7 @@ static double seEvalAdd(seEval *s) {
    so arithmetic on it fails in R. */
 static const char *seBaseVals[] = {
   "pi", "T", "F", "TRUE", "FALSE", "Inf", "NaN", "NA", "NA_real_",
-  "NA_integer_", "NA_character_", "NULL", "letters", "LETTERS", "month.abb",
+  "NA_integer_", "NA_character_", "NA_complex_", "NULL", "letters", "LETTERS", "month.abb",
   "month.name", "R.version", "R.version.string", "version"
 };
 #define seNbaseVals ((int)(sizeof(seBaseVals)/sizeof(seBaseVals[0])))
@@ -126,6 +126,7 @@ static int seMayFold(const char *s) {
         p += 2;
         while (*p >= '0' && *p <= '9') p++;
       }
+      if (seIdChar(*p)) return 1;                 /* 0x1, 1i, 1L: R literals */
       continue;
     }
     if (seIdStart(*p)) {
