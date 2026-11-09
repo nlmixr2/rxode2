@@ -132,6 +132,24 @@ d/dt(blood)     = a*intestine - b*blood
     expect_equal(as.numeric(tmp2$cov1$cov), c(2, 3, 1))
   })
 
+  test_that("string comparison re-levels a mixed-case covariate by name (#1656)", {
+    d <- data.frame(id = 1, time = 1:4, Lvl = factor(c("a", "b", "c", "d")))
+    m <- function() {
+      model({
+        isC <- (Lvl == "c")
+        isB <- (Lvl == "b")
+      })
+    }
+    s <- rxSolve(m, d, returnType = "data.frame")
+    expect_equal(s$isC, c(0, 0, 1, 0))
+    expect_equal(s$isB, c(0, 1, 0, 0))
+    d2 <- d
+    d2$Lvl <- as.character(d2$Lvl)
+    s <- rxSolve(m, d2, returnType = "data.frame")
+    expect_equal(s$isC, c(0, 0, 1, 0))
+    expect_equal(s$isB, c(0, 1, 0, 0))
+  })
+
   test_that("homogeneous solve events stay compressed through etTrans", {
     mod <- rxode2parse(
       "

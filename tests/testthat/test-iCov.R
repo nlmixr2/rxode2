@@ -191,6 +191,22 @@ rxTest({
     expect_equal(as.numeric(tmp2$pars["cov", ]), c(2, 3, 1))
   })
 
+  test_that("iCov string comparison re-levels a mixed-case covariate (#1656)", {
+    mod <- rxode2parse('c = Cov == "alpha"; d = "beta" == Cov')
+    ev <- et() |>
+      et(amt = 1, time = 0) |>
+      et(time = 1) |>
+      et(id = 1:3)
+    ic <- data.frame(
+      id = 1:3,
+      Cov = factor(c("beta", "gamma", "alpha"), levels = c("gamma", "beta", "alpha"))
+    )
+    tmp <- etTrans(ev, mod, iCov = ic)
+    tmp2 <- attr(class(tmp), ".rxode2.lst")
+    class(tmp2) <- NULL
+    expect_equal(as.numeric(tmp2$pars["Cov", ]), c(2, 3, 1))
+  })
+
   test_that("'allTimeVar=TRUE' emits an 'iCov' covariate as a per-row column", {
     # the per-row column for an 'iCov' covariate was never allocated under
     # 'allTimeVar', so taking it errored instead of returning the covariate

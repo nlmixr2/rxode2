@@ -1678,8 +1678,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       } else {
         cur = iCov_[-covColi-1];
       }
+      // Look up by the model parameter this column matched; the data name
+      // is lowercased and misses mixed-case model names (#1656).
       int strCmpIdx = getStrCmpParamIndex(strCmpParamNames,
-                                          as<std::string>(inDataLvlN[i]));
+                                          as<std::string>(pars[covParPos[i]]));
       if (strCmpIdx != -1 && (TYPEOF(cur) == STRSXP || Rf_inherits(cur, "factor"))) {
         CharacterVector modelLevels = Rf_getAttrib(strCmpParams[strCmpIdx], R_LevelsSymbol);
         cur = refactorStrCmpCovariate(cur, modelLevels);
