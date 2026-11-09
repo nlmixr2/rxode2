@@ -3655,6 +3655,9 @@ extern "C" void handleSSinf8(int *neq,
     ind->InfusionRate[ind->cmt] = *rateOn;
     ind->on[ind->cmt] = 1;
     *xp2 = 0.0;
+    // any time after xp2 (an equal time skips the solve); the linear steady
+    // state does not depend on it
+    *xout2 = 1.0;
 
     // next solve
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
@@ -4262,7 +4265,7 @@ void handleSS(int *neq,
     u_inis(neq[1], yp); // Update initial conditions @ current time
     if (rx->istateReset) *istate = 1;
     int k;
-    double xp2, xout2;
+    double xp2, xout2 = xp;
     int canBreak=0;
     xp2 = xp;
     if (doSSinf || isSameTimeOp(curIi, dur)) {
