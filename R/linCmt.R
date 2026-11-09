@@ -173,7 +173,8 @@ linCmtBThreadsSeen <- function(reset) {
 #' Walks the normalized model back from the `linCmtA()`/`linCmtB()` arguments
 #' through the assignments (and the `if()` conditions around them) that feed
 #' them.  rxSolve() refuses "linear" interpolation only for a time-varying
-#' covariate in this set.
+#' covariate in this set.  The walk ignores statement order, so it may include
+#' a variable whose assignment is overwritten (refusing more, never less).
 #'
 #' @param mv model variables
 #' @return character vector of variable names, or `NULL` when the model
@@ -205,7 +206,8 @@ linCmtBThreadsSeen <- function(reset) {
             return(invisible())
           }
           if (identical(.f, quote(`while`))) {
-            .walk(e[[3]], c(cond, all.vars(e[[2]])))
+            # a break under any if() in the body ends every later assignment
+            .walk(e[[3]], c(cond, all.vars(e[[2]]), .rxLinCmtIfVars(e[[3]])))
             return(invisible())
           }
           if (identical(.f, quote(`=`)) || identical(.f, quote(`<-`)) || identical(.f, quote(`~`))) {
@@ -240,6 +242,19 @@ linCmtBThreadsSeen <- function(reset) {
     },
     error = function(e) NULL
   )
+}
+
+#' Variables in every if() condition in `e`
+#' @noRd
+.rxLinCmtIfVars <- function(e) {
+  if (!is.call(e)) {
+    return(character(0))
+  }
+  .ret <- unlist(lapply(as.list(e)[-1], .rxLinCmtIfVars))
+  if (identical(e[[1]], quote(`if`)) || identical(e[[1]], quote(`while`))) {
+    .ret <- c(all.vars(e[[2]]), .ret)
+  }
+  unique(.ret)
 }
 
 #' Variables in the arguments of every linCmtA()/linCmtB() call in `e`

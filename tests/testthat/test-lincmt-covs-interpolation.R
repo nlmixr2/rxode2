@@ -188,6 +188,21 @@ rxTest({
       cp <- linCmt()
     })
     expect_error(rxSolve(.linW, .ev2, covsInterpolation = "linear"), "'wt'")
+    # ... or decides through a break which assignment reaches them
+    .linB <- rxode2({
+      v <- 10
+      cl <- v / 10
+      i <- 0
+      while (i < 1) {
+        if (wt > 70) {
+          break
+        }
+        cl <- v / 5
+        i <- i + 1
+      }
+      cp <- linCmt()
+    })
+    expect_error(rxSolve(.linB, .ev2, covsInterpolation = "linear"), "'wt'")
     # a covariate only in an ODE or an output line is solved, as the ODE
     # solver follows its ramp
     .mix <- rxode2({
