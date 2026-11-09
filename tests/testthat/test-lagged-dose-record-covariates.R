@@ -1,7 +1,13 @@
-# A dose's f() reads the covariates of its own record, as its alag() does,
-# also when alag() moves the dose past a covariate change.  WT steps from 70
-# to 100 at t = 2 and to 50 at t = 5; the second dose (t = 1.8, WT 70) lands
-# after the first step, so F = bio*WT/70 = 0.8 for both doses.
+# A dose that alag() moves past a covariate change.  WT steps from 70 to 100
+# at t = 2 and to 50 at t = 5; the second dose (t = 1.8, WT 70) lands after
+# the first step.  With addlKeepsCov = FALSE (the default) its f() reads WT
+# imputed at its landing time (100), as an addl repeat does, so
+# F = bio*WT/70 = 0.8*100/70; with addlKeepsCov = TRUE it reads its record's
+# WT (70), as NONMEM does, so F = 0.8.  The first dose lands before the step
+# (F = 0.8) either way.
+
+# the amount the second dose (80) gives under each setting
+.lagRecAmt2 <- function(keep) if (keep) 64 else 80 * 0.8 * 100 / 70
 
 .lagRecWt <- function(t) ifelse(t < 2, 70, ifelse(t < 5, 100, 50))
 
@@ -35,12 +41,13 @@
   list(depot = depot, center = center)
 }
 
-.lagRecSolve <- function(mod, ev, k, interp) {
+.lagRecSolve <- function(mod, ev, k, interp, keep) {
   rxSolve(
     mod,
     c(ka = 1.2, k = k, bio = 0.8, lg = 0.3),
     ev,
     covsInterpolation = interp,
+    addlKeepsCov = keep,
     atol = 1e-10,
     rtol = 1e-10,
     returnType = "data.frame"
@@ -50,7 +57,7 @@
 rxTest({
   .interps <- c("locf", "nocb", "midpoint", "linear")
 
-  test_that("f() of a lagged dose reads its record's covariates, whatever alag() reads", {
+  test_that("f() of a lagged dose follows addlKeepsCov, whatever alag() reads", {
     modConst <- rxode2({
       d/dt(depot) <- -ka * depot
       d/dt(center) <- ka * depot - k * center
@@ -76,22 +83,24 @@ rxTest({
       list(name = "lg + 0.001*WT", mod = modShifted, lag = 0.37)
     )
     ev <- .lagRecEv()
-    for (l in lags) {
-      for (interp in .interps) {
-        # the result must not move with a parameter neither f() nor alag() uses
-        for (k in c(0.1999, 0.2, 0.2001)) {
-          s <- .lagRecSolve(l$mod, ev, k, interp)
-          e <- .lagRecPk(s$time, c(0, 1.8) + l$lag, c(80, 64), 1.2, k)
-          lab <- paste(l$name, interp, k)
-          expect_equal(s$time, c(1, 2, 3, 4.5, 6, 8), label = lab)
-          expect_equal(s$depot, e$depot, tolerance = 1e-7, label = lab)
-          expect_equal(s$center, e$center, tolerance = 1e-7, label = lab)
+    for (keep in c(FALSE, TRUE)) {
+      for (l in lags) {
+        for (interp in .interps) {
+          # the result must not move with a parameter neither f() nor alag() uses
+          for (k in c(0.1999, 0.2, 0.2001)) {
+            s <- .lagRecSolve(l$mod, ev, k, interp, keep)
+            e <- .lagRecPk(s$time, c(0, 1.8) + l$lag, c(80, .lagRecAmt2(keep)), 1.2, k)
+            lab <- paste(l$name, interp, k, keep)
+            expect_equal(s$time, c(1, 2, 3, 4.5, 6, 8), label = lab)
+            expect_equal(s$depot, e$depot, tolerance = 1e-7, label = lab)
+            expect_equal(s$center, e$center, tolerance = 1e-7, label = lab)
+          }
         }
       }
     }
   })
 
-  test_that("f() of a dose with a state-dependent alag() reads its record's covariates", {
+  test_that("f() of a dose with a state-dependent alag() follows addlKeepsCov", {
     mod <- rxode2({
       d/dt(depot) <- -ka * depot
       d/dt(center) <- ka * depot - k * center
@@ -104,19 +113,25 @@ rxTest({
     tland <- c(0.3, 1.8 + 0.3 + 0.01 * first$center)
     expect_equal(tland[2], 2.652499, tolerance = 1e-6)
     ev <- .lagRecEv(obsAtDose = TRUE)
-    for (interp in .interps) {
-      s <- .lagRecSolve(mod, ev, 0.2, interp)
-      e <- .lagRecPk(s$time, tland, c(80, 64), 1.2, 0.2)
-      expect_equal(s$time, c(1, 1.8, 2, 3, 4.5, 6, 8), label = interp)
-      expect_equal(s$depot, e$depot, tolerance = 1e-7, label = interp)
-      expect_equal(s$center, e$center, tolerance = 1e-7, label = interp)
+    for (keep in c(FALSE, TRUE)) {
+      for (interp in .interps) {
+        s <- .lagRecSolve(mod, ev, 0.2, interp, keep)
+        e <- .lagRecPk(s$time, tland, c(80, .lagRecAmt2(keep)), 1.2, 0.2)
+        lab <- paste(interp, keep)
+        expect_equal(s$time, c(1, 1.8, 2, 3, 4.5, 6, 8), label = lab)
+        expect_equal(s$depot, e$depot, tolerance = 1e-7, label = lab)
+        expect_equal(s$center, e$center, tolerance = 1e-7, label = lab)
+      }
     }
   })
 })
 
 # the lagged doses of .lagRecEv() with WT also in d/dt(center): every solver
-# gives the explicit regimen of the landed doses, each carrying its record's
-# WT (70) at its landing time
+# gives the explicit regimen of the landed doses.  With addlKeepsCov = TRUE
+# each landed dose carries its record's WT (70) to its landing time; with
+# FALSE the covariates stay on the data records' times (the dose records kept
+# as evid = 2 rows) and the landed doses take WT imputed there (70 at 0.3,
+# 100 at 2.1, on every interpolation's path)
 .lagRecDydtMods <- function() {
   list(
     lagged = rxode2({
@@ -133,12 +148,13 @@ rxTest({
   )
 }
 
-.lagRecDydtSolve <- function(mod, ev, interp, method) {
+.lagRecDydtSolve <- function(mod, ev, interp, method, keep) {
   rxSolve(
     mod,
     c(ka = 1.2, k = 0.2, bio = 0.8, lg = 0.3),
     ev,
     covsInterpolation = interp,
+    addlKeepsCov = keep,
     method = method,
     atol = 1e-10,
     rtol = 1e-10,
@@ -147,21 +163,34 @@ rxTest({
 }
 
 rxTest({
-  test_that("a covariate in d/dt() is interpolated over a lagged dose's solve time", {
+  test_that("a covariate in d/dt() with a lagged dose follows addlKeepsCov", {
     mods <- .lagRecDydtMods()
     ev <- .lagRecEv()
-    evE <- ev
-    evE$time[evE$evid == 1] <- c(0.3, 2.1)
-    evE <- evE[order(evE$time, -evE$evid), ]
-    for (interp in c("locf", "nocb", "midpoint", "linear")) {
-      e <- .lagRecDydtSolve(mods$explicit, evE, interp, "liblsoda")
-      e <- e[e$time %in% c(1, 2, 3, 4.5, 6, 8), ]
-      for (method in c("liblsoda", "lsoda", "dop853", "vern65")) {
-        s <- .lagRecDydtSolve(mods$lagged, ev, interp, method)
-        lab <- paste(interp, method)
-        expect_equal(s$time, c(1, 2, 3, 4.5, 6, 8), label = lab)
-        expect_equal(s$depot, e$depot, tolerance = 1e-6, label = lab)
-        expect_equal(s$center, e$center, tolerance = 1e-6, label = lab)
+    # addlKeepsCov = TRUE: the dose rows moved, keeping their WT
+    evT <- ev
+    evT$time[evT$evid == 1] <- c(0.3, 2.1)
+    evT <- evT[order(evT$time, -evT$evid), ]
+    # addlKeepsCov = FALSE: the dose rows kept as covariate records, and the
+    # doses given at their landing times with the WT imputed there
+    evF <- ev
+    evF$evid[evF$evid == 1] <- 2
+    evF$amt <- 0
+    evF <- rbind(
+      evF,
+      data.frame(id = 1, time = c(0.3, 2.1), evid = 1, amt = c(100, 80), cmt = "depot", WT = c(70, 100))
+    )
+    evF <- evF[order(evF$time, -evF$evid), ]
+    for (keep in c(FALSE, TRUE)) {
+      for (interp in c("locf", "nocb", "midpoint", "linear")) {
+        e <- .lagRecDydtSolve(mods$explicit, if (keep) evT else evF, interp, "liblsoda", keep)
+        e <- e[e$time %in% c(1, 2, 3, 4.5, 6, 8), ]
+        for (method in c("liblsoda", "lsoda", "dop853", "vern65")) {
+          s <- .lagRecDydtSolve(mods$lagged, ev, interp, method, keep)
+          lab <- paste(interp, method, keep)
+          expect_equal(s$time, c(1, 2, 3, 4.5, 6, 8), label = lab)
+          expect_equal(s$depot, e$depot, tolerance = 1e-6, label = lab)
+          expect_equal(s$center, e$center, tolerance = 1e-6, label = lab)
+        }
       }
     }
   })

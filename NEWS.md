@@ -3,18 +3,17 @@
 ## Bug fixes
 
 ### Event tables
-- A dose's `f()` now reads the covariates of its own record, as its `alag()`
-  does, also when `alag()` moves the dose past a covariate change.  With an
-  `alag()` on a covariate or a state, `f()` read the covariates at the time
-  the dose landed, and the amount moved with the solver's steps.  An `addl`
-  dose reads its own record's covariates the same way, so with
-  `addlKeepsCov = TRUE` its `f()` takes the covariates of the dose it
-  repeats under every interpolation.
-- A covariate in `d/dt()` (or any other statement read while solving) is
-  now interpolated with a lagged dose's record at the time the solve gives
-  that dose.  The record's time was found by evaluating `alag()` again with
-  whatever covariates the previous update left, so the result depended on
-  the ODE method, and under `nocb` the solve could stop with "excess work".
+- With `addlKeepsCov = TRUE`, a dose's `f()` now reads the covariates of its
+  own record, as its `alag()` does, also when `alag()` moves the dose past a
+  covariate change.  With an `alag()` on a covariate or a state, `f()` read
+  them at the time the dose landed, and the amount moved with the solver's
+  steps.  An `addl` repeat that keeps its covariates reads them the same way
+  under every interpolation.
+- A covariate in `d/dt()` (or any other statement read while solving) no
+  longer depends on the ODE method when a lagged dose is in the solve.  The
+  dose record's time was found by evaluating `alag()` again with whatever
+  covariates the previous update left, and under `nocb` the solve could stop
+  with "excess work".
 - A reset (`evid = 3`), a reset and dose (`evid = 4`) or a steady-state dose
   (`ss = 1` or `ss = 2`) during an infusion now cancels the infusion's stop
   record too.  The stop used to still apply, leaving the compartment at a net

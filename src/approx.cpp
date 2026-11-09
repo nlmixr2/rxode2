@@ -474,7 +474,7 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           if (!rx->addlKeepsCov && (rx->needSort & needSortAlag) &&
               (pushed || idxSample >= indSample->n_all_times ||
                !isSameTimeOp(t, getAllTimes(indSample, indSample->ix[idxSample])) ||
-               !isSameTimeOp(t, (indSample->fns && indSample->fns->gettime ? indSample->fns->gettime(indSample->ix[idxSample], indSample) : getTime(indSample->ix[idxSample], indSample))))) {
+               !isSameTimeOp(t, rxRecMatchTime(indSample, idxSample)))) {
             // a lagged dose sorts at its arrival; unless addlKeepsCov carries
             // its record's covariates there, away from a record at its own
             // data time impute on the data records' times (#1584)
