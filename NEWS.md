@@ -42,6 +42,10 @@
   now matches the data's levels by name.  The column was not re-leveled to
   the model's strings, so the comparison used the data's factor codes by
   position (#1656).
+- A string comparison now warns when its literal is not among the data's
+  values (the comparison is then always false), and when the compared
+  variable has no character or factor data column to re-level, so the
+  comparison would use its value as a level code (#1656).
 
 ### Prior simulation
 - A `thetaMat` given at the call site, carried in the model's `meta` block
