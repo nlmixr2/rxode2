@@ -11,16 +11,22 @@ static int cvode_rhs_trampoline(double t, double *y, double *ydot, void *data) {
   return dydt_liblsoda(t, y, ydot, data);
 }
 
-// Called from the handleSS dispatch (case 21).
+// Called from the handleSS dispatch (case 21), which sets only rc on a
+// failure: a CVode failure here is the solver's, named after the solve, as
+// the main loop's postSolve() names it.
 extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double xout,
                                     int *istate, rx_solving_options *op,
                                     rx_solving_options_ind *ind, void *ctx_ptr) {
-  if (!ctx_ptr) { *istate = -1; return; }
+  if (!ctx_ptr) { *istate = -1; rxSolverFail(ind); return; }
   cvode_ctx_t *ctx = (cvode_ctx_t *)ctx_ptr;
   int neqOde = neq[0] - op->numLin - op->numLinSens;
   if (neqOde <= 0) { *xp_ptr = xout; *istate = 1; return; }
   *istate = cvode_ctx_integrate(ctx, yp, *xp_ptr, xout);
-  if (*istate >= 0) *xp_ptr = xout;
+  if (*istate >= 0) {
+    *xp_ptr = xout;
+  } else {
+    rxSolverFail(ind);
+  }
 }
 
 extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,
@@ -113,9 +119,10 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
         localBadSolve = 1;
       } else {
         if (!localBadSolve) {
-          if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                              xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis,
-                              cvode_ctx ? (void *)cvode_ctx : NULL)) {
+          while (!localBadSolve &&
+                 handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                                 xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis,
+                                 cvode_ctx ? (void *)cvode_ctx : NULL)) {
             if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
               preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
               if (neqOde > 0 && cvode_ctx) {
@@ -138,17 +145,6 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
               ind->ixds = ixds;
               ind->idx  = idx;
               ind->idxExtra++;
-              if (!isSameTime(xout, ind->extraDoseNewXout)) {
-                preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-                if (neqOde > 0 && cvode_ctx) {
-                  istate = cvode_ctx_integrate(cvode_ctx, yp,
-                                               ind->extraDoseNewXout, xout);
-                }
-                copyLinCmt(neq, ind, op, yp);
-                postSolve(neq, &istate, ind->rc, &i, yp, NULL, 0, false, ind, op, rx);
-                if (*(ind->rc) < 0) localBadSolve = 1;
-                ind->extraDoseNewXout = xout;
-              }
               xp = ind->extraDoseNewXout;
             }
           }
@@ -167,7 +163,6 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
       }
     }
 
-    ind->_newind = 2;
     if (!localBadSolve) {
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
@@ -197,6 +192,7 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       if (_mtime_requeued) i--;
     }
+    rxNewindAfterRecord(ind, i);
     ind->solvedIdx = i;
   }
 
