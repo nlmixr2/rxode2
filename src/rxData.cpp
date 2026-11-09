@@ -1700,6 +1700,8 @@ static inline double *getCurDoseSThread() {
 
 extern rx_solving_options_ind **inds_threadCur;
 extern int inds_threadCurN;
+extern rx_solving_options_ind **inds_threadSubj;
+extern int inds_threadSubjN;
 
 // The individual this thread is currently solving, or NULL between solves.
 static inline rx_solving_options_ind **curIndSlot(rx_solving_options *op) {
@@ -1723,6 +1725,9 @@ extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
   inds_thread[rx_get_thread(op->cores)] = *ind;
+  // the random-number helpers read the subject itself through this slot
+  int _tSubj = rx_get_thread(op->cores);
+  if (_tSubj < inds_threadSubjN) inds_threadSubj[_tSubj] = ind;
   // ... and the individual itself, for writes that have to reach the subject
   // rather than the copy (atolRtolFactorC_'s sticky tolerance factor).
   rx_solving_options_ind **_cur = curIndSlot(op);

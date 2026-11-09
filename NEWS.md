@@ -83,6 +83,13 @@
 
 ## New features
 
+- Every right-hand-side, Jacobian and `lhs` evaluation of a model no longer
+  copies the subject's whole solving state (about 1.7 kB) for the
+  random-number functions the model may call (`rxnorm()`, `rinorm()`,
+  `simeta()`, `simeps()`, ...); they read the subject in place.  Simulated
+  values are unchanged, bit for bit, at any number of cores; a 5000-subject
+  simulation runs about 10% faster and a FOCEi fit about 2%.
+
 - `etTrans()` gains `tieOrder = "data"`, which keeps records of a subject
   that share a time in the order of the rows in the data, the way NONMEM
   processes them, instead of resets, then doses, then observations (#1593).

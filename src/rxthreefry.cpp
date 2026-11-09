@@ -881,6 +881,18 @@ RObject rxSeedEng(int ncores = 1){
   return R_NilValue;
 }
 
+extern rx_solving_options_ind **inds_threadSubj;
+extern int inds_threadSubjN;
+
+// The subject this thread is evaluating the model for, read in place: the one
+// _setThreadInd() or _setIndPointersByThread() last named, or the thread's
+// copy in inds_thread when no slot is allocated.
+static inline rx_solving_options_ind *rxThreadInd() {
+  int t = rx_get_thread(op_global.cores);
+  if (t < inds_threadSubjN && inds_threadSubj[t] != NULL) return inds_threadSubj[t];
+  return &inds_thread[t];
+}
+
 static inline double _rxnbinom__(double size, double p) {
   boost::random::negative_binomial_distribution_r<> dist(size, p);
   return (double) dist(_eng[rx_get_thread(op_global.cores)]);
@@ -893,13 +905,13 @@ static inline double _rxnbinom_mu_(double size, double mu) {
 
 extern "C" double rxnbinomMu(int size, double mu) {
   if (ISNA(size) || ISNA(mu)) return NA_REAL;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (!ind->inLhs) return 0;
   return _rxnbinom_mu_(size, mu);
 }
 
 extern "C" double rinbinomMu(int id, int size, double mu){
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni == 1) {
     if (ISNA(size) || ISNA(mu)) {
       ind->simIni[id] = NA_REAL;
@@ -937,13 +949,13 @@ IntegerVector rxnbinomMu_(int size, double mu, int n, int ncores){
 
 extern "C" double rxnbinom(int size, double prob) {
   if (ISNA(size) || ISNA(prob)) return NA_REAL;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (!ind->inLhs) return 0;
   return _rxnbinom__(size, prob);
 }
 
 extern "C" double rinbinom(int id, int size, double prob){
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni == 1) {
     if (ISNA(size) || ISNA(prob)) {
       ind->simIni[id] = NA_REAL;
@@ -982,14 +994,14 @@ IntegerVector rxnbinom_(double size, double prob, int n, int ncores){
 
 extern "C" double rxbinom(int n, double prob){
   if (ISNA(n) || ISNA(prob)) return NA_REAL;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (!ind->inLhs) return 0;
   boost::random::binomial_distribution<int> d(n, prob);
   return (double)d(_eng[rx_get_thread(op_global.cores)]);
 }
 
 extern "C" double ribinom(int id, int n, double prob){
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni == 1) {
     if (ISNA(n) || ISNA(prob)) {
       ind->simIni[id] = NA_REAL;
@@ -1028,7 +1040,7 @@ IntegerVector rxbinom_(int n0, double prob, int n, int ncores){
 }
 
 extern "C" double rxcauchy(double location, double scale){
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ISNA(location) || ISNA(scale)) return NA_REAL;
   if (!ind->inLhs) return 0;
   boost::random::cauchy_distribution<double> d(location, scale);
@@ -1036,7 +1048,7 @@ extern "C" double rxcauchy(double location, double scale){
 }
 
 extern "C" double ricauchy(int id, double location, double scale){
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni == 1) {
     if (ISNA(location) || ISNA(scale)) {
       ind->simIni[id] = NA_REAL;
@@ -1076,7 +1088,7 @@ NumericVector rxcauchy_(double location, double scale, int n, int ncores) {
 
 extern "C" double rxchisq(double df){
   if (ISNA(df)) return NA_REAL;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (!ind->inLhs) return 0;
   // Non central not supported in C++11
   boost::random::chi_squared_distribution<double> d(df);
@@ -1084,7 +1096,7 @@ extern "C" double rxchisq(double df){
 }
 
 extern "C" double richisq(int id, double df){
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni == 1) {
     if (ISNA(df)) {
       ind->simIni[id] = NA_REAL;
@@ -1125,14 +1137,14 @@ NumericVector rxchisq_(double df, int n, int ncores){
 
 extern "C" double rxexp(double rate){
   if (ISNA(rate)) return NA_REAL;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (!ind->inLhs) return 0;
   boost::random::exponential_distribution<double> d(rate);
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 
 extern "C" double riexp(int id, double rate){
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni) {
     if (ISNA(rate)) {
       ind->simIni[id] = NA_REAL;
@@ -1172,14 +1184,14 @@ NumericVector rxexp_(double rate, int n, int ncores){
 
 extern "C" double rxf(double df1, double df2) {
   if (ISNA(df1) || ISNA(df2)) return NA_REAL;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (!ind->inLhs) return 0;
   boost::random::fisher_f_distribution<double> d(df1, df2);
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 
 extern "C" double rif(int id, double df1, double df2){
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni) {
     if (ISNA(df1) || ISNA(df2)) {
       ind->simIni[id] = NA_REAL;
@@ -1227,11 +1239,11 @@ double rxgamma(rx_solving_options_ind* ind, double shape, double rate){
 
 extern "C" double rxgamma(double shape, double rate){
   // R uses rate; C++ uses scale
-  return rxgamma(&inds_thread[rx_get_thread(op_global.cores)], shape, rate);
+  return rxgamma(rxThreadInd(), shape, rate);
 }
 
 extern "C" double rigamma(int id, double shape, double rate) {
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni) {
     if (ISNA(shape) || ISNA(rate)) {
       ind->simIni[id] = NA_REAL;
@@ -1283,11 +1295,11 @@ double rxlnorm(rx_solving_options_ind* ind, double meanlog, double sdlog){
 }
 
 extern "C" double rxlnorm(double meanlog, double sdlog){
-  return rxlnorm(&inds_thread[rx_get_thread(op_global.cores)], meanlog, sdlog);
+  return rxlnorm(rxThreadInd(), meanlog, sdlog);
 }
 
 extern "C" double rilnorm(int id, double meanlog, double sdlog) {
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni) {
     if (ISNA(meanlog) || ISNA(sdlog)) {
       ind->simIni[id] = NA_REAL;
@@ -1326,7 +1338,12 @@ NumericVector rxlnorm_(double meanlog, double sdlog, int n, int ncores){
 }
 
 extern "C" void _setThreadInd(int cid) {
-  inds_thread[rx_get_thread(op_global.cores)] = rx_global.subjects[cid];
+  int t = rx_get_thread(op_global.cores);
+  if (t < inds_threadSubjN) {
+    inds_threadSubj[t] = &rx_global.subjects[cid];
+  } else {
+    inds_thread[t] = rx_global.subjects[cid];
+  }
 }
 
 double rxbeta(rx_solving_options_ind* ind, double shape1, double shape2) {
@@ -1338,12 +1355,12 @@ double rxbeta(rx_solving_options_ind* ind, double shape1, double shape2) {
 }
 
 extern "C" double rxbeta(double shape1, double shape2) {
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   return rxbeta(ind, shape1, shape2);
 }
 
 extern "C" double ribeta(int id, double shape1, double shape2) {
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni == 1) {
     if (ISNA(shape1) || ISNA(shape2)) {
       ind->simIni[id] = NA_REAL;
@@ -1387,14 +1404,14 @@ NumericVector rxbeta_(double shape1, double shape2, int n, int ncores){
 
 extern "C" double rxgeom(double prob){
   if (ISNA(prob)) return NA_REAL;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (!ind->inLhs) return 0;
   boost::random::geometric_distribution<int> d(prob);
   return (double) d(_eng[rx_get_thread(op_global.cores)]);
 }
 
 extern "C" double rigeom(int id, double prob){
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni) {
     if (ISNA(prob)) {
       ind->simIni[id] = NA_REAL;
@@ -1434,7 +1451,7 @@ IntegerVector rxgeom_(double prob, int n, int ncores){
 
 extern "C" double rxnorm(double mean, double sd){
   if (ISNA(mean) || ISNA(sd)) return NA_REAL;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (!ind->inLhs) return 0.0;
   boost::random::normal_distribution<double> d(mean, sd);
   return d(_eng[rx_get_thread(op_global.cores)]);
@@ -1463,7 +1480,7 @@ extern "C" double rxUnifEng(double low, double hi){
 }
 
 extern "C" double rinorm(int id, double mean, double sd) {
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni) {
     if (ISNA(mean) || ISNA(sd)) {
       ind->simIni[id] = NA_REAL;
@@ -1503,14 +1520,14 @@ NumericVector rxnorm_(double mean, double sd, int n, int ncores){
 
 extern "C" double rxpois(double lambda){
   if (ISNA(lambda)) return NA_REAL;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (!ind->inLhs) return 0.0;
   boost::random::poisson_distribution<int> d(lambda);
   return (double)d(_eng[rx_get_thread(op_global.cores)]);
 }
 
 extern "C" double ripois(int id, double lambda){
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni == 1){
     if (ISNA(lambda)) {
       ind->simIni[id] = NA_REAL;
@@ -1550,14 +1567,14 @@ IntegerVector rxpois_(double lambda, int n, int ncores){
 
 extern "C" double rxt_(double df){
   if (ISNA(df)) return NA_REAL;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (!ind->inLhs) return 0.0;
   boost::random::student_t_distribution<double> d(df);
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 
 extern "C" double rit_(int id, double df){
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind != NULL && ind->isIni == 1){
     if (ISNA(df)) {
       ind->simIni[id] = NA_REAL;
@@ -1608,11 +1625,11 @@ double rxunif(rx_solving_options_ind* ind, double low, double hi) {
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 extern "C" double rxunif(double low, double hi) {
-  return rxunif(&inds_thread[rx_get_thread(op_global.cores)], low, hi);
+  return rxunif(rxThreadInd(), low, hi);
 }
 
 extern "C" double riunif(int id, double low, double hi) {
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind != NULL && ind->isIni == 1) {
     if (ISNA(low) || ISNA(hi)) {
       ind->simIni[id] = NA_REAL;
@@ -1660,7 +1677,7 @@ NumericVector rxunif_(double low, double hi, int n, int ncores){
 
 extern "C" double rxweibull(double shape, double scale) {
   if (ISNA(shape) || ISNA(scale)) return NA_REAL;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (!ind->inLhs) return 0.0;
   boost::random::weibull_distribution<double> d(shape, scale);
   return d(_eng[rx_get_thread(op_global.cores)]);
@@ -1668,7 +1685,7 @@ extern "C" double rxweibull(double shape, double scale) {
 
 
 extern "C" double riweibull(int id, double shape, double scale){
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni) {
     if (ISNA(shape) || ISNA(scale)) {
       ind->simIni[id] = NA_REAL;
@@ -1929,7 +1946,7 @@ extern "C" void rxPreGenEta(rx_solve *rx, int ncores) {
 
 extern "C" void simeps(void) {
   rx_solve* rx = &rx_global;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->inLhs == 1) { // only change while calculating the lhs
     // In this case the par_ptr will be updated with the new values, but they are out of order
     arma::mat out(1, rx->neps);
@@ -1948,7 +1965,7 @@ extern "C" void simeps(void) {
 
 extern "C" void simeta(void) {
   rx_solve* rx = &rx_global;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind != NULL && ind->isIni == 1) { // only initialize at beginning
     double *par_ptr = ind->par_ptr;
     double *pre = rxGetEtaPre();

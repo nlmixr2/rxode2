@@ -485,6 +485,12 @@ rx_solving_options_ind **inds_threadCur = NULL;
 // Its length, so a read or write cannot run off the end if `op->cores` is
 // raised after the allocation.
 int inds_threadCurN = 0;
+// The subject each thread is evaluating the model for, named by
+// _setThreadInd() and _setIndPointersByThread().  The random-number helpers the
+// model calls (rxnorm(), rinorm(), simeta(), ...) take no subject argument and
+// read it through here, in place.  Its length is inds_threadSubjN.
+rx_solving_options_ind **inds_threadSubj = NULL;
+int inds_threadSubjN = 0;
 
 
 void par_flush_console() {
@@ -715,6 +721,9 @@ extern "C" void rxOptionsIniEnsure(int mx, int cores) {
   R_Free(inds_threadCur);
   inds_threadCurN = max2(1, cores);
   inds_threadCur = R_Calloc(inds_threadCurN, rx_solving_options_ind*);
+  R_Free(inds_threadSubj);
+  inds_threadSubjN = max2(1, cores);
+  inds_threadSubj = R_Calloc(inds_threadSubjN, rx_solving_options_ind*);
   rx_solve *rx=(&rx_global);
   rx->subjects = inds_global;
   rx->ordId = NULL;
@@ -5647,6 +5656,8 @@ extern "C" void rxFreeLast(){
   R_Free(inds_thread);
   R_Free(inds_threadCur);
   inds_threadCurN = 0;
+  R_Free(inds_threadSubj);
+  inds_threadSubjN = 0;
   inds_thread = NULL;
   inds_threadCur = NULL;
   inds_global=NULL;
