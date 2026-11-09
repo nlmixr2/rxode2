@@ -16,8 +16,8 @@ rxTest({
       "f(depot) <- fd\n", kind$model, lag
     ))
   }
-  .dose <- function(ev, kind, ...) {
-    .a <- list(ev, amt = 50, ii = 12, cmt = "depot", ...)
+  .dose <- function(ev, kind, amt = 50, ...) {
+    .a <- list(ev, amt = amt, ii = 12, cmt = "depot", ...)
     if (!is.null(kind$rate)) {
       .a$rate <- kind$rate
     }
@@ -48,45 +48,49 @@ rxTest({
     })
   }
 
-  test_that("an ss=2 infusion that f() stretches past ii matches the explicit regimen", {
-    # 200 at rate 20 lasts 10 < ii; f() = 1.5 makes it 15 > ii
-    .m <- rxode2(paste0(
-      "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\n",
-      "f(depot) <- 1.5\n"
-    ))
-    .ev <- et(amt = 100, cmt = "depot") |>
-      et(time = 3, amt = 200, rate = 20, ii = 12, ss = 2, cmt = "depot") |>
-      et(c(.o, 30))
-    .want <- et(amt = 100, time = .off, cmt = "depot") |>
-      et(time = 3, amt = 200, rate = 20, ii = 12, addl = 300, cmt = "depot") |>
-      et(c(.o, 30) + .off)
-    for (.meth in c("liblsoda", "dop853")) {
-      .r <- rxSolve(.m, .ev, .p, method = .meth)
-      .w <- rxSolve(.m, .want, .p, method = .meth)
-      expect_equal(.r$depot, .w$depot, tolerance = 1e-6)
-      expect_equal(.r$center, .w$center, tolerance = 1e-6)
+  test_that("an ss=2 infusion lasting longer than ii with f() matches the explicit regimen", {
+    # 200 at rate 20 lasts 10 < ii, which f() = 1.5 makes 15 > ii; the
+    # durations are 15 > ii outright
+    .long <- list(
+      rate = list(rate = 20, model = ""),
+      dur = list(dur = 15, model = ""),
+      modeledRate = list(rate = -1, model = "rate(depot) <- 20\n"),
+      modeledDur = list(rate = -2, model = "dur(depot) <- 15\n")
+    )
+    .p2 <- c(.p[c("ka", "k")], fd = 1.5)
+    for (.kind in .long) {
+      .m <- .mod(.kind, "")
+      .ev <- et(amt = 100, cmt = "depot") |>
+        .dose(.kind, amt = 200, time = 3, ss = 2) |>
+        et(c(.o, 30))
+      .want <- et(amt = 100, time = .off, cmt = "depot") |>
+        .dose(.kind, amt = 200, time = 3, addl = 300) |>
+        et(c(.o, 30) + .off)
+      for (.meth in c("liblsoda", "dop853")) {
+        .r <- rxSolve(.m, .ev, .p2, method = .meth)
+        .w <- rxSolve(.m, .want, .p2, method = .meth)
+        expect_equal(.r$depot, .w$depot, tolerance = 1e-6)
+        expect_equal(.r$center, .w$center, tolerance = 1e-6)
+      }
     }
   })
 
   test_that("an ss=2 infusion with f() into a linCmt() depot solves", {
-    .m <- function() {
-      ini({
-        ka <- 1.2
-        cl <- 2
-        v <- 10
-      })
-      model({
+    for (.rate in c(20, -1)) {
+      .m <- rxode2({
         cp <- linCmt(v, cl, ka)
         f(depot) <- 0.8
+        rate(depot) <- 20
       })
+      .lp <- c(ka = 1.2, cl = 2, v = 10)
+      .ev <- et(amt = 100, cmt = "depot") |>
+        et(time = 3, amt = 50, rate = .rate, ii = 12, ss = 2, cmt = "depot") |>
+        et(.o)
+      .want <- et(amt = 100, time = .off, cmt = "depot") |>
+        et(time = 3, amt = 50, rate = .rate, ii = 12, addl = 300, cmt = "depot") |>
+        et(.o + .off)
+      .r <- expect_no_warning(rxSolve(.m, .ev, .lp))
+      expect_equal(.r$cp, rxSolve(.m, .want, .lp)$cp, tolerance = 1e-6)
     }
-    .ev <- et(amt = 100, cmt = "depot") |>
-      et(time = 3, amt = 50, rate = 20, ii = 12, ss = 2, cmt = "depot") |>
-      et(.o)
-    .want <- et(amt = 100, time = .off, cmt = "depot") |>
-      et(time = 3, amt = 50, rate = 20, ii = 12, addl = 300, cmt = "depot") |>
-      et(.o + .off)
-    .r <- expect_no_warning(rxSolve(.m, .ev))
-    expect_equal(.r$cp, rxSolve(.m, .want)$cp, tolerance = 1e-6)
   })
 })
