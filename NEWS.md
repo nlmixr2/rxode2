@@ -83,6 +83,12 @@
 
 ## New features
 
+- `liblsoda` updates its history array and corrector vectors two elements
+  at a time, which the compiler vectorizes at R's default `-O2`.  Results are
+  unchanged, bit for bit; a FOCEi fit with sensitivities (12 states) spends
+  about 8% fewer instructions in the solver and runs about 4-6% faster, while
+  a 3-state simulation is unchanged.
+
 - `etTrans()` gains `tieOrder = "data"`, which keeps records of a subject
   that share a time in the order of the rows in the data, the way NONMEM
   processes them, instead of resets, then doses, then observations (#1593).
