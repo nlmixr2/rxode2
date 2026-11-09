@@ -12,18 +12,25 @@ rxTest({
     .e <- eigen(.a)
     .v <- .e$vectors
     .c <- solve(.v, y0)
-    matrix(vapply(time, function(.t) Re(drop(.v %*% (.c * exp(.e$values * .t)))),
-                  numeric(length(k))), ncol = length(k), byrow = TRUE)
+    matrix(
+      vapply(time, function(.t) Re(drop(.v %*% (.c * exp(.e$values * .t)))), numeric(length(k))),
+      ncol = length(k),
+      byrow = TRUE
+    )
   }
 
   .chainModel <- function(n) {
-    .lines <- vapply(seq_len(n), function(.i) {
-      if (.i == 1) {
-        "d/dt(s1) <- -k1 * s1"
-      } else {
-        sprintf("d/dt(s%d) <- k%d * s%d - k%d * s%d", .i, .i - 1, .i - 1, .i, .i)
-      }
-    }, character(1))
+    .lines <- vapply(
+      seq_len(n),
+      function(.i) {
+        if (.i == 1) {
+          "d/dt(s1) <- -k1 * s1"
+        } else {
+          sprintf("d/dt(s%d) <- k%d * s%d - k%d * s%d", .i, .i - 1, .i - 1, .i, .i)
+        }
+      },
+      character(1)
+    )
     rxode2(paste(.lines, collapse = "\n"))
   }
 
@@ -38,12 +45,15 @@ rxTest({
         names(.k) <- paste0("k", seq_len(.n))
         .y0 <- c(100, rep(0, .n - 1))
         .ev <- et(amt = 100, cmt = "s1") |> et(.time)
-        .s <- rxSolve(.m, .ev, params = .k, method = "liblsoda",
-                      atol = 1e-12, rtol = 1e-10, returnType = "data.frame")
+        .s <- rxSolve(.m, .ev, params = .k, method = "liblsoda", atol = 1e-12, rtol = 1e-10, returnType = "data.frame")
         .ex <- .chainExact(.k, .s$time, .y0)
         for (.i in seq_len(.n)) {
-          expect_equal(.s[[paste0("s", .i)]], .ex[, .i], tolerance = 1e-7,
-                       label = sprintf("n = %d, stiff = %s, s%d", .n, .stiff, .i))
+          expect_equal(
+            .s[[paste0("s", .i)]],
+            .ex[, .i],
+            tolerance = 1e-7,
+            label = sprintf("n = %d, stiff = %s, s%d", .n, .stiff, .i)
+          )
         }
       }
     }
