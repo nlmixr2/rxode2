@@ -64,6 +64,9 @@
   (including the `log1p()` rewrite) instead of sending the whole expression
   to the much slower R walker, which made up most of the FOCEi build time for
   models with terms such as `log(t + 1e-6)` (#1673).
+- `rxFromSE()`'s C translator now renders numbers as R's `as.character()`
+  does (`1e+05`, not `100000`), so it gives the same text as the R walker
+  (#1673).
 
 ### Steady state
 - A steady-state bolus into a compartment whose `alag()` is longer than `ii`

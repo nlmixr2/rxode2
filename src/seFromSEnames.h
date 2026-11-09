@@ -288,15 +288,33 @@ static const char *seDemangle(seCtx *ctx, const char *name) {
   return s;
 }
 
-/* R's as.character() on a double: 15 significant digits, trailing zeros
-   dropped.  This matters for the constant table -- R parses "2.718281828459045"
+/* R's as.character() on a double: the fewest significant digits (at most 15)
+   that represent it, in fixed notation unless scientific is strictly
+   narrower (so 1e+05 but 123456, 0.001 but 1e-04); fixed integers print every
+   digit.  This matters for the constant table -- R parses "2.718281828459045"
    to a double first, so .rxFromSEnum() sees the 16-character
    as.character() form "2.71828182845905" and prefix-matches M_E.  Matching
    the raw 17-character source text instead would silently miss every
    constant. */
 static const char *seDblToStr(seCtx *ctx, double v) {
-  char buf[64];
-  snprintf(buf, sizeof(buf), "%.15g", v);
+  char buf[400];
+  if (ISNAN(v)) return "NaN";
+  if (!R_FINITE(v)) return v > 0 ? "Inf" : "-Inf";
+  if (v == 0) return "0";
+  /* d.dddddddddddddde[+-]XX: the significant digits and decimal exponent */
+  snprintf(buf, sizeof(buf), "%.14e", v);
+  char *m = buf + (buf[0] == '-'), *ep = strchr(buf, 'e');
+  int e = atoi(ep + 1), nsig = 15, neg = (v < 0);
+  while (nsig > 1 && m[nsig] == '0') nsig--;  /* m[0] digit, m[1] '.' */
+  int sciW = neg + nsig + (nsig > 1) + (abs(e) >= 100 ? 5 : 4);
+  int rgt = nsig - 1 - e;
+  if (rgt < 0) rgt = 0;
+  int fixW = neg + (e >= 0 ? e + 1 : 1) + (rgt > 0 ? rgt + 1 : 0);
+  if (fixW <= sciW) {
+    snprintf(buf, sizeof(buf), "%.*f", rgt, v);
+  } else {
+    snprintf(buf, sizeof(buf), "%.*e", nsig - 1, v);
+  }
   return seStr(ctx, buf);
 }
 
