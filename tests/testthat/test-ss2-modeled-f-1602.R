@@ -48,6 +48,26 @@ rxTest({
     })
   }
 
+  test_that("an ss=2 infusion that f() stretches past ii matches the explicit regimen", {
+    # 200 at rate 20 lasts 10 < ii; f() = 1.5 makes it 15 > ii
+    .m <- rxode2(paste0(
+      "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\n",
+      "f(depot) <- 1.5\n"
+    ))
+    .ev <- et(amt = 100, cmt = "depot") |>
+      et(time = 3, amt = 200, rate = 20, ii = 12, ss = 2, cmt = "depot") |>
+      et(c(.o, 30))
+    .want <- et(amt = 100, time = .off, cmt = "depot") |>
+      et(time = 3, amt = 200, rate = 20, ii = 12, addl = 300, cmt = "depot") |>
+      et(c(.o, 30) + .off)
+    for (.meth in c("liblsoda", "dop853")) {
+      .r <- rxSolve(.m, .ev, .p, method = .meth)
+      .w <- rxSolve(.m, .want, .p, method = .meth)
+      expect_equal(.r$depot, .w$depot, tolerance = 1e-6)
+      expect_equal(.r$center, .w$center, tolerance = 1e-6)
+    }
+  })
+
   test_that("an ss=2 infusion with f() into a linCmt() depot solves", {
     .m <- function() {
       ini({
