@@ -177,16 +177,18 @@ static const char *seP1rm(seCtx *ctx, D_ParseNode *pn, int *found) {
   return seCat(ctx, l, "+", r, NULL, NULL, NULL);
 }
 
-/* text that is exactly one exp(...) call */
+/* text that may be one exp(...) call; R re-parses it to find out.  A quote
+   means a string literal whose parentheses this scan cannot count, so yes. */
 static int seIsExpCall(const char *s) {
   int depth = 0;
   const char *p;
   if (strncmp(s, "exp(", 4) != 0) return 0;
+  if (strchr(s, '"') != NULL || strchr(s, '\'') != NULL) return 1;
   for (p = s + 3; *p; p++) {
     if (*p == '(') depth++;
     else if (*p == ')' && --depth == 0) return p[1] == '\0';
   }
-  return 0;
+  return 1;
 }
 
 /* log() takes .rxFromSE()'s .SE1p route: .rxP1rmF() turns log(1 + x) into

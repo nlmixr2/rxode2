@@ -12,7 +12,7 @@
  *  - "R could not fold it" and "we do not know what R would have done" are
  *    different answers.  An ordinary model symbol is unbound in baseenv() so
  *    nothing folds, but `pi` IS bound there and gamma(2) really does evaluate
- *    (1/gamma(2) comes out as 1/1).  The third outcome, BAIL, hands the whole
+ *    (1/gamma(2) comes out as 1/1).  seMayFold() tells the two apart.  The third outcome, BAIL, hands the whole
  *    expression to the R walker rather than guess.
  */
 #ifndef __SE_FROM_SE_FOLD_H__
@@ -82,20 +82,67 @@ static double seEvalAdd(seEval *s) {
   }
 }
 
-/* name(<no letters inside>) -- the shape R can still evaluate in baseenv(),
-   which is how 1/gamma(2) becomes 1/1.  Anything with a letter inside the
-   parentheses names something unbound there, and anything already folded to a
-   constant (M_LN2, M_SQRT2) has no parentheses at all. */
-static int seConstCall(const char *s) {
+/* Names that evaluate to something other than a function in baseenv(), plus
+   the parser constants.  Any other bare name is unbound there or a function,
+   so arithmetic on it fails in R. */
+static const char *seBaseVals[] = {
+  "pi", "T", "F", "TRUE", "FALSE", "Inf", "NaN", "NA", "NA_real_",
+  "NA_integer_", "NA_character_", "NULL", "letters", "LETTERS", "month.abb",
+  "month.name", "R.version", "R.version.string", "version"
+};
+#define seNbaseVals ((int)(sizeof(seBaseVals)/sizeof(seBaseVals[0])))
+
+static int seIdStart(char c) {
+  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '.' || c == '_';
+}
+
+static int seIdChar(char c) {
+  return seIdStart(c) || (c >= '0' && c <= '9');
+}
+
+/* Could eval(parse(text = s), baseenv()) give a number?  0 only when the text
+   names a variable that baseenv() cannot supply (and nothing short-circuits
+   around it); then R's fold fails.  Otherwise R may fold something this file
+   cannot evaluate (gamma(2), log1p(0), log(2+pi)), so the caller bails. */
+static int seMayFold(const char *s) {
   const char *p = s;
-  while ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') ||
-         *p == '.' || *p == '_') {
+  int i;
+  if (strstr(s, "||") != NULL || strstr(s, "&&") != NULL) return 1;
+  while (*p != '\0') {
+    if (*p == '"' || *p == '\'') {               /* string literal */
+      char q = *p++;
+      while (*p != '\0' && *p != q) {
+        if (*p == '\\' && p[1] != '\0') p++;
+        p++;
+      }
+      if (*p != '\0') p++;
+      continue;
+    }
+    if ((*p >= '0' && *p <= '9') || (*p == '.' && p[1] >= '0' && p[1] <= '9')) {
+      while ((*p >= '0' && *p <= '9') || *p == '.') p++;
+      if ((*p == 'e' || *p == 'E') &&
+          ((p[1] >= '0' && p[1] <= '9') ||
+           ((p[1] == '+' || p[1] == '-') && p[2] >= '0' && p[2] <= '9'))) {
+        p += 2;
+        while (*p >= '0' && *p <= '9') p++;
+      }
+      continue;
+    }
+    if (seIdStart(*p)) {
+      const char *id = p;
+      while (seIdChar(*p)) p++;
+      size_t n = (size_t)(p - id);
+      const char *q = p;
+      while (*q == ' ' || *q == '\t') q++;
+      if (*q == '(') continue;                    /* a call */
+      if (id[0] == '.') continue;                 /* .Machine and friends */
+      for (i = 0; i < seNbaseVals; i++) {
+        if (strlen(seBaseVals[i]) == n && strncmp(id, seBaseVals[i], n) == 0) break;
+      }
+      if (i == seNbaseVals) return 0;
+      continue;
+    }
     p++;
-  }
-  if (p == s || *p != '(') return 0;
-  if (s[strlen(s) - 1] != ')') return 0;
-  for (p++; *p != '\0'; p++) {
-    if ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z')) return 0;
   }
   return 1;
 }
@@ -114,7 +161,7 @@ static seFoldRes seFoldStr(const char *str, double *out) {
     *out = v;
     return SE_FOLD_YES;
   }
-  if (seConstCall(str)) return SE_FOLD_BAIL;
+  if (seMayFold(str)) return SE_FOLD_BAIL;
   return SE_FOLD_NO;
 }
 

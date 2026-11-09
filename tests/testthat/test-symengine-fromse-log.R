@@ -43,10 +43,29 @@ rxTest({
     "log(1 + 2*pi)",
     "log(1 + 3.14159265358979)",
     "log(0.5 + a)",
-    "log(1 + a/b)"
+    "log(1 + a/b)",
+    "log(1 + a + 1)",
+    "log(1 + 1 + a)",
+    "log(3 - 1)"
   )
   # rewritten by re-translating emitted text (log1pexp) or to lbeta(): R only
-  .logDeclined <- c("log(1 + exp(a))", "log(exp(a) + 1)", "log(beta(a, b))")
+  .logDeclined <- c(
+    "log(1 + exp(a))",
+    "log(exp(a) + 1)",
+    "log(1 + (exp(a)))",
+    "log(beta(a, b))"
+  )
+  # R folds these constant operands in baseenv(); C cannot, so it declines
+  .foldDeclined <- c(
+    "a + log(0 + 1)",
+    "a + log(2 + 1)",
+    "log(0.5 + 0.5) + 2",
+    "log(2 + pi)/log(2 + pi)",
+    "a + log(1 + pi)",
+    "1 + rxOr(rxEq(1, 1), a)",
+    "1 + rxOr(rxEq(1, 1), t)",
+    "a + gamma(2)"
+  )
 
   test_that("C emits log() of a sum exactly as the R walker does", {
     .c <- .rxFromSEC(.logAccepted)
@@ -57,5 +76,9 @@ rxTest({
 
   test_that("log1pexp() and lbeta() rewrites stay with the R walker", {
     expect_true(all(is.na(.rxFromSEC(.logDeclined))))
+  })
+
+  test_that("C declines operands that R would constant-fold", {
+    expect_true(all(is.na(.rxFromSEC(.foldDeclined))))
   })
 })
