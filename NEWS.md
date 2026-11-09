@@ -52,6 +52,12 @@
   that is empty or whose first column is empty gives the parameter-size
   error.  With a `sigma` to simulate, these used to crash R with a floating
   point exception or fail with an unrelated internal error (#1551).
+- A dose moved by `alag()` now takes the time-varying covariates imputed at
+  its actual dosing time, as `addl` repeats do with `addlKeepsCov = FALSE`
+  (the default); the covariates stay on the data records' own times.  It used
+  to carry its record's covariates to its arrival, which now happens only with
+  `addlKeepsCov = TRUE`.  `nonmem = TRUE` turns on `addlKeepsCov` unless it is
+  given, since NONMEM keeps a dose record's covariates with the dose (#1584).
 
 ### Steady state
 - A steady-state bolus into a compartment whose `alag()` is longer than `ii`
