@@ -122,6 +122,20 @@
   about 8% fewer instructions in the solver and runs about 4-6% faster, while
   a 3-state simulation is unchanged.
 
+- `rxFromSE()` and `rxToSE()` now translate in C what they used to send to
+  the R tree walker -- `log()` of a sum (#1673), `lgamma()`, `sin()`/`cos()`/
+  `tan()` of a multiple of `pi`, `Subs()`, higher-order `Derivative()`, the
+  finite-difference fallback and every `.rxSEeq` function -- and
+  `rxS()` loads assignments through the C translator.  The output is
+  unchanged.  On the three-period model of #1682, translating the
+  `foceiControl(fast = TRUE)` outer model fell from about 1470 s to 15 s,
+  and `rxFromSE()` from 75-84% of the model setup to a few percent (#1682).
+
+- `rxFromSE()` and `rxToSE()` cache their translations for the session; text
+  translated again is not re-parsed.  `rxSymEngineCacheReset()` clears the
+  cache, `options(rxode2.symengineCacheMB = )` bounds it and
+  `options(rxode2.symengineCache = FALSE)` turns it off.
+
 - `etTrans()` gains `tieOrder = "data"`, which keeps records of a subject
   that share a time in the order of the rows in the data, the way NONMEM
   processes them, instead of resets, then doses, then observations (#1593).
@@ -407,6 +421,10 @@
   solving".  nlmixr2est's population `predict()` of a fit with
   inter-occasion variability goes through it.
 ### Symbolic derivatives
+
+- The C translator behind `rxFromSE()`/`rxToSE()` now writes numbers as R
+  does (`1e+05`, `1e-04`) and no longer answers for text the R translator
+  constant-folds differently, so both give the same output.
 
 - An error inside a symbolic calculation that shows a progress bar (the
   Jacobian and sensitivity builds of `rxode2(calcSens = )`, the adjoint

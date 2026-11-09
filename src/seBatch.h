@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "rxomp.h"
+#include "seCache.h"
 
 /* rxode2's own thread count: respects setRxThreads() and throttles small
    batches, so it is also the "is this worth threading" gate */
@@ -46,6 +47,7 @@ typedef const char *(*seXlateFn)(seCtx *ctx, const char *in);
 typedef struct seConvert {
   R_xlen_t n;
   char **out;
+  const char **in;       /* NULL = already filled (cache hit) or NA */
   SEXP ret;
 } seConvert;
 
@@ -54,7 +56,7 @@ static SEXP seConvertResults(void *data) {
   R_xlen_t i;
   for (i = 0; i < c->n; i++) {
     if (c->out[i] == NULL) {
-      SET_STRING_ELT(c->ret, i, NA_STRING);
+      if (c->in[i] != NULL) SET_STRING_ELT(c->ret, i, NA_STRING);
     } else {
       SET_STRING_ELT(c->ret, i, Rf_mkChar(c->out[i]));
       free(c->out[i]);
@@ -78,9 +80,16 @@ static void seFreeResults(void *data, Rboolean jump) {
 
 /* .Call shape for both translators: character vector in, character vector out,
    one for one.  An element the emitter declines comes back NA_character_, and
-   the R shim routes just those to the R walker. */
+   the R shim routes just those to the R walker; the reason for each decline is
+   attached as attr(, "why") so the shim knows whether the R walker's answer
+   may be cached.
+
+   `dir` is SE_DIR_FROM/SE_DIR_TO and `cacheOn` the result of seCacheBegin():
+   cached inputs are answered before the parallel region, and new
+   translations stored after it, so the cache is never touched from a
+   thread. */
 static SEXP seRunBatch(SEXP strVec, seXlateFn xlate, int numDer,
-                       const seDeriv *derivs, int nd) {
+                       const seTables *tab, int dir, int cacheOn) {
   if (TYPEOF(strVec) != STRSXP) {
     Rf_error("%s", "'strVec' must be a character vector");
   }
@@ -100,10 +109,31 @@ static SEXP seRunBatch(SEXP strVec, seXlateFn xlate, int numDer,
      from a thread. */
   const char **in = (const char**) R_alloc((size_t) n, sizeof(char*));
   char **out = (char**) R_alloc((size_t) n, sizeof(char*));
+  int *why = (int*) R_alloc((size_t) n, sizeof(int));
+  R_xlen_t nWork = 0;
   for (i = 0; i < n; i++) {
     SEXP el = STRING_ELT(strVec, i);
     in[i] = (el == NA_STRING) ? NULL : CHAR(el);
     out[i] = NULL;
+    why[i] = 0;
+    if (el == NA_STRING) {                   /* NA in, NA out */
+      SET_STRING_ELT(ret, i, NA_STRING);
+      why[i] = -1;
+      continue;
+    }
+    if (in[i] != NULL && cacheOn) {
+      const char *hit = seCacheGet(dir, in[i]);
+      if (hit != NULL) {
+        /* converted now, while the cache entry is certainly alive -- storing
+           the misses below may clear the cache */
+        SET_STRING_ELT(ret, i, Rf_mkChar(hit));
+        seStatsHit(dir);
+        in[i] = NULL;
+        why[i] = -1;                         /* answered from the cache */
+        continue;
+      }
+    }
+    if (in[i] != NULL) nWork++;
   }
 
   /* Creating a parallel region costs more than it saves on a small batch.
@@ -114,10 +144,10 @@ static SEXP seRunBatch(SEXP strVec, seXlateFn xlate, int numDer,
      batches worth threading are the jacobian and sensitivity ones, which run
      450-900 expressions at fifteen states and grow from there. */
   int nthr = 1;
-  if (n >= SE_MIN_PARALLEL && rxDparserParallel) {
-    nthr = getRxThreads((int64_t) n, true);
+  if (nWork >= SE_MIN_PARALLEL && rxDparserParallel) {
+    nthr = getRxThreads((int64_t) nWork, true);
     if (nthr < 1) nthr = 1;
-    if ((R_xlen_t) nthr > n) nthr = (int) n;
+    if ((R_xlen_t) nthr > nWork) nthr = (int) nWork;
   }
 
 #ifdef _OPENMP
@@ -125,18 +155,43 @@ static SEXP seRunBatch(SEXP strVec, seXlateFn xlate, int numDer,
 #endif
   {
     seCtx ctx;
-    ctx.head = NULL; ctx.failed = 0; ctx.numDer = numDer;
-    ctx.derivs = derivs; ctx.nderivs = nd;
+    ctx.head = NULL; ctx.failed = 0; ctx.why = 0; ctx.numDer = numDer;
+    ctx.nsubs = 0;
+    ctx.collect = 0;
+    ctx.syms = NULL; ctx.nsyms = 0; ctx.msyms = 0;
+    ctx.thetas = NULL; ctx.nthetas = 0; ctx.mthetas = 0;
+    ctx.etas = NULL; ctx.netas = 0; ctx.metas = 0;
+    ctx.ncall = 0;
+    ctx.thetaFuns = NULL; ctx.nthetaFuns = 0; ctx.mthetaFuns = 0;
+    ctx.etaFuns = NULL; ctx.netaFuns = 0; ctx.metaFuns = 0;
+    ctx.tab = tab;
 #ifdef _OPENMP
-#pragma omp for schedule(static)
+#pragma omp for schedule(dynamic, 8)
 #endif
     for (i = 0; i < n; i++) {
-      if (in[i] == NULL) continue;                 /* NA in, NA out */
+      if (in[i] == NULL) continue;                 /* NA, or a cache hit */
+      ctx.why = 0;
       const char *r = xlate(&ctx, in[i]);
       /* NULL means the emitter declined; the R shim then falls back */
-      if (r != NULL) out[i] = strdup(r);
+      if (r != NULL) {
+        out[i] = strdup(r);
+      } else {
+        why[i] = ctx.why == 0 ? SE_WHY_PARSE : ctx.why;
+      }
     }
     seArenaFree(&ctx);
+  }
+
+  /* bookkeeping on the main thread: statistics, and the cache */
+  int anyNA = 0;
+  for (i = 0; i < n; i++) {
+    if (in[i] == NULL) continue;
+    seStatsAdd(dir, why[i]);
+    if (out[i] != NULL) {
+      if (cacheOn) seCachePut(dir, CHAR(STRING_ELT(strVec, i)), out[i]);
+    } else {
+      anyNA = 1;
+    }
   }
 
   /* Rf_mkChar() allocates, so the conversion below can unwind to the top level
@@ -145,9 +200,15 @@ static SEXP seRunBatch(SEXP strVec, seXlateFn xlate, int numDer,
      be freed by hand -- and R_UnwindProtect is what guarantees that happens on
      the error path as well as the normal one.  seFreeResults() is idempotent:
      the conversion nulls each pointer as it frees it. */
-  seConvert cv; cv.n = n; cv.out = out; cv.ret = ret;
+  seConvert cv; cv.n = n; cv.out = out; cv.ret = ret; cv.in = in;
   SEXP cont = PROTECT(R_MakeUnwindCont());   /* R_NilValue here is "bad value" */
   R_UnwindProtect(seConvertResults, &cv, seFreeResults, &cv, cont);
+  if (anyNA) {
+    SEXP w = PROTECT(Rf_allocVector(INTSXP, n));
+    for (i = 0; i < n; i++) INTEGER(w)[i] = why[i] < 0 ? 0 : why[i];
+    Rf_setAttrib(ret, Rf_install("why"), w);
+    UNPROTECT(1);
+  }
   UNPROTECT(2);
   return ret;
 }

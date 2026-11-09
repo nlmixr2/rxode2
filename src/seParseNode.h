@@ -24,6 +24,19 @@ static const char *seNodeTextOf(seCtx *ctx, D_ParseNode *pn) {
   return seDup(ctx, b, (size_t)(e - b));
 }
 
+/* The table index of the production `name`, or -1.  Called once per
+   production at init; the walk then compares node->symbol to it. */
+static int seProdIdT(D_ParserTables *t, const char *name) {
+  unsigned int i;
+  for (i = 0; i < t->nsymbols; i++) {
+    if (t->symbols[i].kind == D_SYMBOL_NTERM &&
+        strcmp(t->symbols[i].name, name) == 0) {
+      return (int) i;
+    }
+  }
+  return -1;
+}
+
 /* literals are matched on the first character of the symbol name */
 static int seIsLitT(D_ParserTables *t, D_ParseNode *pn, char c) {
   return seNodeNameT(t, pn)[0] == c;

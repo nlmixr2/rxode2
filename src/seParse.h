@@ -21,6 +21,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <float.h>
+#define R_NO_REMAP_RMATH
+#include <Rmath.h>
+#include <R_ext/Utils.h>
 
 /* dparser function-pointer table.  tran.c has the dparserPtrIni definitions;
    here we only want the extern declarations. */

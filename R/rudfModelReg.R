@@ -51,7 +51,7 @@
   } else {
     assign(name, reg$d, envir = .rxD)
   }
-  .rxSEstate$dTemplates <- NULL
+  .rxSEinvalidate()
   invisible()
 }
 

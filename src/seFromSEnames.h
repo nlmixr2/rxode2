@@ -11,6 +11,7 @@
 #define __SE_FROM_SE_NAMES_H__
 
 #include "seFromSEarena.h"
+#include "seNum.h"
 
 /* ------------------------------------------------------------- constants --
    Mirrors .rxSEcnt in R/symengine.R.  `val` is what paste() renders the
@@ -294,12 +295,6 @@ static const char *seDemangle(seCtx *ctx, const char *name) {
    as.character() form "2.71828182845905" and prefix-matches M_E.  Matching
    the raw 17-character source text instead would silently miss every
    constant. */
-static const char *seDblToStr(seCtx *ctx, double v) {
-  char buf[64];
-  snprintf(buf, sizeof(buf), "%.15g", v);
-  return seStr(ctx, buf);
-}
-
 static const char *seNumToStr(seCtx *ctx, double v) {
   return seFromSEnum(ctx, seDblToStr(ctx, v));
 }

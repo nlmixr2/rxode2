@@ -13,50 +13,97 @@
  * is not.  tests/testthat/test-symengine-translate-fixture.R pins the contract.
  *
  * No R API and no symengine call happens inside seFromSE1(); it is pure
- * string -> string over a private arena.  That is deliberate: the batch entry
- * point can later run the per-expression loop under OpenMP (symengine itself
- * is built without thread-safe refcounting, so only this half can be threaded).
+ * string -> string over a private arena, which is what lets seBatch.h run it
+ * across threads (symengine itself is built without thread-safe refcounting,
+ * so only this half can be threaded).
  */
 #include "seParse.h"
 #include "seFromSE.g.d_parser.h"
 
 #include "seFromSEemit.h"
 #include "seBatch.h"
+#include "seFromSEtables.h"
+
+/* .rxUnXi(): symengine's dummy `_xi_<n>` is not a valid rxode2 name; R
+   rewrites it to `rx_xi_<n>` (gsub("(?<!rx)_xi_", "rx_xi_", perl = TRUE))
+   before anything else.  Done here so the R shim does not have to run a
+   regular expression over every (possibly megabyte) line first. */
+static const char *seUnXi(seCtx *ctx, const char *in) {
+  const char *p = strstr(in, "_xi_");
+  if (p == NULL) return in;
+  const char *out = "", *seg = in;
+  while (p != NULL) {
+    if (!(p - in >= 2 && p[-2] == 'r' && p[-1] == 'x')) {
+      out = seCat(ctx, out, seDup(ctx, seg, (size_t)(p - seg)), "rx",
+                  NULL, NULL, NULL);
+      seg = p;
+    }
+    p = strstr(p + 4, "_xi_");
+  }
+  return seCat(ctx, out, seg, NULL, NULL, NULL, NULL);
+}
 
 static const char *seFromSE1(seCtx *ctx, const char *in) {
-  return seParseEmit(ctx, in, &parser_tables_rxode2seFromSE, seEmit);
+  return seParseEmit(ctx, seUnXi(ctx, in), &parser_tables_rxode2seFromSE, seEmit);
 }
 
-/* .Call entry (below); the R fallback for a declined element is .rxFromSE().
-
-   Bring the derivative templates across from R into plain C.  Done once, here,
-   where the R API is allowed: CHAR() pointers stay valid while the caller's
-   vectors are protected, so the walk itself never touches R.  Caller frees. */
-static seDeriv *seDerivsFromR(SEXP dName, SEXP dWhich, SEXP dTmpl, int *nOut) {
-  int n = (TYPEOF(dName) == STRSXP) ? (int) Rf_xlength(dName) : 0;
-  seDeriv *d = NULL;
-  int i;
-  *nOut = 0;
-  if (n <= 0) return NULL;
-  /* R_alloc, not malloc: STRING_ELT/INTEGER below type check and can longjmp,
-     and so can Rf_mkChar() inside seRunBatch() afterwards, either of which
-     would leave a malloc here unfreed.  R_alloc is released when the .Call
-     unwinds either way, so the caller has nothing to free. */
-  d = (seDeriv*) R_alloc((size_t) n, sizeof(seDeriv));
-  for (i = 0; i < n; i++) {
-    d[i].name = CHAR(STRING_ELT(dName, i));
-    d[i].which = INTEGER(dWhich)[i];
-    d[i].tmpl = CHAR(STRING_ELT(dTmpl, i));
-  }
-  *nOut = n;
-  return d;
-}
-
-extern "C" SEXP _rxode2_rxFromSEChar(SEXP strVec, SEXP numDerS,
-                          SEXP dName, SEXP dWhich, SEXP dTmpl) {
-  /* resolve the named-constant buckets once, before any thread starts */
+/* resolve every fixed table once, before any thread starts */
+static void seFromSEinit(void) {
   seNamedInit();
-  int nd = 0;
-  seDeriv *derivs = seDerivsFromR(dName, dWhich, dTmpl, &nd);
-  return seRunBatch(strVec, seFromSE1, Rf_asInteger(numDerS), derivs, nd);
+  seFnInit();
+  seSymInit();
+}
+
+/* .Call entry; the R fallback for a declined element is .rxFromSE(). */
+extern "C" SEXP _rxode2_rxFromSEChar(SEXP strVec, SEXP numDerS, SEXP tabs,
+                                     SEXP stamp) {
+  seTables tab;
+  seFromSEinit();
+  seTablesFromR(&tab, tabs);
+  int cacheOn = seCacheBegin(stamp);
+  return seRunBatch(strVec, seFromSE1, Rf_asInteger(numDerS), &tab,
+                    SE_DIR_FROM, cacheOn);
+}
+
+/* .Call: as.character(<double>) as the emitter renders it, for the tests */
+extern "C" SEXP _rxode2_seFormatDouble(SEXP x) {
+  R_xlen_t n = Rf_xlength(x), i;
+  SEXP ret = PROTECT(Rf_allocVector(STRSXP, n));
+  char buf[400];
+  for (i = 0; i < n; i++) {
+    seDblFormat(REAL(x)[i], buf, sizeof(buf));
+    SET_STRING_ELT(ret, i, Rf_mkChar(buf));
+  }
+  UNPROTECT(1);
+  return ret;
+}
+
+/* .Call: the fixed name table, so a test can hold it to the R lists */
+extern "C" SEXP _rxode2_seFromSEfnTable(void) {
+  SEXP ret = PROTECT(Rf_allocVector(VECSXP, 7));
+  SEXP nm = PROTECT(Rf_allocVector(STRSXP, 7));
+  const char *cols[] = {"name", "kind", "flags", "a", "b", "c", "p"};
+  SEXP v[7];
+  int i, j;
+  v[0] = PROTECT(Rf_allocVector(STRSXP, seNfnTab));
+  v[1] = PROTECT(Rf_allocVector(INTSXP, seNfnTab));
+  v[2] = PROTECT(Rf_allocVector(INTSXP, seNfnTab));
+  for (j = 3; j < 7; j++) v[j] = PROTECT(Rf_allocVector(STRSXP, seNfnTab));
+  for (i = 0; i < seNfnTab; i++) {
+    const seFnInfo *f = &seFnTab[i];
+    const char *s[4] = {f->a, f->b, f->c, f->p};
+    SET_STRING_ELT(v[0], i, Rf_mkChar(f->name));
+    INTEGER(v[1])[i] = f->kind;
+    INTEGER(v[2])[i] = f->flags;
+    for (j = 0; j < 4; j++) {
+      SET_STRING_ELT(v[3 + j], i, s[j] == NULL ? NA_STRING : Rf_mkChar(s[j]));
+    }
+  }
+  for (j = 0; j < 7; j++) {
+    SET_VECTOR_ELT(ret, j, v[j]);
+    SET_STRING_ELT(nm, j, Rf_mkChar(cols[j]));
+  }
+  Rf_setAttrib(ret, R_NamesSymbol, nm);
+  UNPROTECT(9);
+  return ret;
 }
