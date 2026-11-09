@@ -31,8 +31,27 @@ rxTest({
     )
     .txt <- sprintf("%.17g", .x)
     .txt <- c(.txt, paste0("a*", .txt), paste0("a + ", .txt), paste0("log(a + ", .txt, ")"))
+    .txt <- c(
+      .txt,
+      "0",
+      "0 - 1.23456789012345e5",
+      "2.718281828459045",
+      "10000",
+      "12345678901234567890",
+      "1.5e-100",
+      "a*(1/0)",
+      "a*(-1/0)",
+      "a*(0/0)"
+    )
     .c <- .rxFromSEC(.txt)
     .r <- vapply(.txt, function(x) .rxFromSE(str2lang(x)), character(1), USE.NAMES = FALSE)
     expect_identical(.c, .r)
+  })
+
+  test_that("C declines under a non-default scipen, which changes as.character()", {
+    withr::with_options(list(scipen = 999), {
+      expect_true(is.na(.rxFromSEC("log(1e-06 + D1)")))
+      expect_identical(rxFromSE("log(1e-06 + D1)"), "log(0.000001+D1)")
+    })
   })
 })

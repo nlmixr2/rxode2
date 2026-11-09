@@ -3036,6 +3036,11 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
 }
 
 .rxFromSEC <- function(x, numDer = .rxSEstate$fromNumDer) {
+  ## C renders numbers as as.character() does at the default scipen = 0
+  .scipen <- getOption("scipen", 0L)
+  if (!is.numeric(.scipen) || length(.scipen) != 1L || .scipen != 0) {
+    return(rep(NA_character_, length(x)))
+  }
   .d <- .rxDtemplates()
   .Call(`_rxode2_rxFromSEChar`, as.character(x), as.integer(numDer), .d$name, .d$which, .d$template)
 }
