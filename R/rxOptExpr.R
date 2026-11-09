@@ -873,10 +873,15 @@
 .rxOptExprChunk <- function(i, chunks, msg) {
   .txt <- paste(chunks[[i]], collapse = "\n")
   .o <- suppressMessages(rxOptExpr(.txt, msg, chunkLines = 0L))
-  .re <- "\\brx_expr_(cse_)*[0-9]+\\b"
-  .new <- setdiff(unique(regmatches(.o, gregexpr(.re, .o))[[1]]), unique(regmatches(.txt, gregexpr(.re, .txt))[[1]]))
+  # whole identifiers only; `.` is part of a name, as in .rxOptPrefixUsed()
+  .b <- function(re) paste0("(?<![A-Za-z0-9_.])", re, "(?![A-Za-z0-9_.])")
+  .re <- .b("rx_expr_(cse_)*[0-9]+")
+  .new <- setdiff(
+    unique(regmatches(.o, gregexpr(.re, .o, perl = TRUE))[[1]]),
+    unique(regmatches(.txt, gregexpr(.re, .txt, perl = TRUE))[[1]])
+  )
   for (.v in .new) {
-    .o <- gsub(paste0("\\b", .v, "\\b"), sub("^rx_expr_", sprintf("rx_expr_c%d_", i), .v), .o)
+    .o <- gsub(.b(.v), sub("^rx_expr_", sprintf("rx_expr_c%d_", i), .v), .o, perl = TRUE)
   }
   .o
 }

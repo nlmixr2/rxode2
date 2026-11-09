@@ -305,3 +305,14 @@ test_that('re-optimizing CSE output warns once, including chunked', {
   )
   expect_equal(warned, 1L)
 })
+
+test_that('chunk renaming treats dotted names as whole identifiers', {
+  chunks <- list(c('rx_expr_0~a+b', 'x=rx_expr_0*rx_expr_cse_0.foo*(c+d)+(c+d)'))
+  expect_warning(
+    out <- .rxOptExprChunk(1L, chunks, 'model'),
+    'optimized more than once'
+  )
+  expect_match(out, 'rx_expr_c1_cse_0~c+d', fixed = TRUE)
+  expect_match(out, 'rx_expr_cse_0.foo', fixed = TRUE)
+  expect_false(grepl('(^|[^A-Za-z0-9_.])rx_expr_cse_0([^A-Za-z0-9_.]|$)', out))
+})
