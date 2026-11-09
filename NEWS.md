@@ -192,6 +192,9 @@
 - A steady-state infusion lasting exactly `ii` (fixed `rate` or `dur`) into a
   compartment with an `alag()` now stays on until its own lagged dose ends;
   with `ssAtDoseTime = TRUE` it turned off `alag()` too early (#1590).
+- A steady-state dose with a modeled `dur()` that follows a zero-amount record
+  (for example a zero `evid = 5` replace) is now solved as an infusion; the
+  duration check read the wrong record and solved it as a bolus (#1602).
 
 ## New features
 
