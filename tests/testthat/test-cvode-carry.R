@@ -26,7 +26,9 @@ rxTest({
         .x <- .prop(.x, .te - .t, .k)
         .t <- .te
       }
-      if (.te %in% .cvDose) .x[1] <- .x[1] + 100
+      if (.te %in% .cvDose) {
+        .x[1] <- .x[1] + 100
+      }
       .w <- which(time == .te)
       if (length(.w)) .out[.w, ] <- matrix(.x, length(.w), 2, byrow = TRUE)
     }
@@ -34,8 +36,7 @@ rxTest({
   }
 
   .cvSolve <- function(ev, params = NULL) {
-    .s <- rxSolve(.cvModel, ev, params = params, method = "cvode",
-                  atol = 1e-10, rtol = 1e-10, returnType = "rxSolve")
+    .s <- rxSolve(.cvModel, ev, params = params, method = "cvode", atol = 1e-10, rtol = 1e-10, returnType = "rxSolve")
     list(d = as.data.frame(.s), dadt = .s$counts$dadt)
   }
   .cvEvents <- function(obs, kelCol = NULL) {
@@ -104,10 +105,8 @@ rxTest({
     .obs <- data.frame(id = 1L, time = c(1, 2, 3, 4, 6), evid = 0L, cmt = "y")
     .ev2 <- rbind(.obs, data.frame(id = 1L, time = 5, evid = 2L, cmt = "y"))
     .ev2 <- .ev2[order(.ev2$time), ]
-    for (.case in list(list(m = .mt, ev = .obs, lab = "mtime"),
-                       list(m = .e2, ev = .ev2, lab = "evid 2"))) {
-      .s <- rxSolve(.case$m, .case$ev, method = "cvode", atol = 1e-10, rtol = 1e-10,
-                    returnType = "data.frame")
+    for (.case in list(list(m = .mt, ev = .obs, lab = "mtime"), list(m = .e2, ev = .ev2, lab = "evid 2"))) {
+      .s <- rxSolve(.case$m, .case$ev, method = "cvode", atol = 1e-10, rtol = 1e-10, returnType = "data.frame")
       expect_equal(.s$y[.s$time == 6], 100, tolerance = 1e-6, label = .case$lab)
     }
   })
@@ -116,13 +115,25 @@ rxTest({
     .ev <- rbind(
       data.frame(id = 1L, time = .cvDose, evid = 1L, amt = 100, cmt = "depot"),
       data.frame(id = 1L, time = seq(0.5, 119.5, by = 1), evid = 0L, amt = 0, cmt = "center"),
-      data.frame(id = 1L, time = c(30.25, 50.25, 70.25), evid = c(3L, 5L, 6L),
-                 amt = c(0, 40, 0.5), cmt = c("depot", "center", "depot"))
+      data.frame(
+        id = 1L,
+        time = c(30.25, 50.25, 70.25),
+        evid = c(3L, 5L, 6L),
+        amt = c(0, 40, 0.5),
+        cmt = c("depot", "center", "depot")
+      )
     )
     .ev <- .ev[order(.ev$time), ]
     .solve <- function(method) {
-      .s <- rxSolve(.cvModel, .ev, params = c(ka = 1.2, kel = 0.2), method = method,
-                    atol = 1e-10, rtol = 1e-10, returnType = "data.frame")
+      .s <- rxSolve(
+        .cvModel,
+        .ev,
+        params = c(ka = 1.2, kel = 0.2),
+        method = method,
+        atol = 1e-10,
+        rtol = 1e-10,
+        returnType = "data.frame"
+      )
       .s[.s$time %in% seq(0.5, 119.5, by = 1), ]
     }
     .c <- .solve("cvode")
@@ -142,8 +153,15 @@ rxTest({
     })
     .ev <- et(amt = 100, ss = 1, ii = 12) |> et(c(0.5, 30, 60))
     .solve <- function(method) {
-      rxSolve(.ssModel, .ev, params = c(k = 0.05, ka = 0.7, lag = 30), method = method,
-              atol = 1e-10, rtol = 1e-10, returnType = "data.frame")$c
+      rxSolve(
+        .ssModel,
+        .ev,
+        params = c(k = 0.05, ka = 0.7, lag = 30),
+        method = method,
+        atol = 1e-10,
+        rtol = 1e-10,
+        returnType = "data.frame"
+      )$c
     }
     expect_equal(.solve("cvode"), .solve("lsoda"), tolerance = 1e-6)
   })
