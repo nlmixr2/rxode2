@@ -10,6 +10,9 @@ on:
   # "ready to be merged" (pushes to a PR branch no longer start CI).
   pull_request_review:
     types: [submitted]
+  # Maintainers can also start PR checks by commenting "/ci" on the PR.
+  issue_comment:
+    types: [created]
 
 name: test-coverage.yaml
 
@@ -17,13 +20,15 @@ permissions: read-all
 
 jobs:
   test-coverage:
-    if: ((github.event_name != 'pull_request' && github.event_name != 'pull_request_review') || github.event.action != 'edited' || github.event.changes.base) && (github.event_name != 'pull_request_review' || (github.event.review.state == 'approved' && contains(github.event.review.body, 'ready to be merged') && contains(fromJSON('["main","master"]'), github.event.pull_request.base.ref)))
+    if: ((github.event_name != 'pull_request' && github.event_name != 'pull_request_review' && github.event_name != 'issue_comment') || github.event.action != 'edited' || github.event.changes.base) && ((github.event_name != 'pull_request_review' && github.event_name != 'issue_comment') || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved' && contains(github.event.review.body, 'ready to be merged') && contains(fromJSON('["main","master"]'), github.event.pull_request.base.ref)) || (github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/ci') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)))
     runs-on: ubuntu-latest
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'issue_comment' && format('refs/pull/{0}/merge', github.event.issue.number) || '' }}
 
       - uses: r-lib/actions/setup-r@v2
         with:
@@ -55,7 +60,7 @@ jobs:
       - uses: codecov/codecov-action@v5
         with:
           # Fail if error if not on PR, or if on PR and token is given
-          fail_ci_if_error: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_review') || secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_review' && github.event_name != 'issue_comment') || secrets.CODECOV_TOKEN }}
           files: ./cobertura.xml
           plugins: noop
           disable_search: true
