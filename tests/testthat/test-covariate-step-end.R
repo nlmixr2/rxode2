@@ -100,9 +100,13 @@ rxTest({
             .lab <- paste(.kind, .interp, .method, if (.resample) "resampled" else "plain")
             # dop853 lands on every record, so a step covariate is integrated
             # exactly (a midpoint step falls between records, inside a step);
+            # the lsoda family stops at the evid 2 record, where a locf
+            # covariate steps (a nocb one steps at the observation before it);
             # cvode and the lsoda family step past a record they need not stop
             # at, and stay at the solver tolerance
-            if (.method == "dop853" && .interp != "midpoint") {
+            .exact <- (.method == "dop853" && .interp != "midpoint") ||
+              (.method %in% c("liblsoda", "lsoda") && .kind == "evid2" && .interp == "locf")
+            if (.exact) {
               expect_lt(.err, 1e-13, label = .lab)
             } else {
               expect_lt(.err, 1e-9, label = .lab)
