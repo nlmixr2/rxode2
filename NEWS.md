@@ -38,6 +38,12 @@
 - `rxSolveAdjoint()` and the adjoint builds now send a dose without a `cmt`
   to the first state, and a numeric `cmt` to that state, as `rxSolve()`
   does; a dose without a `cmt` used to fail in the build (#1504).
+- Event-sensitivity setup skips symbolic expansion when no dosing derivative
+  needs it, reducing setup time for large sensitivity models (#1632).
+
+### Expression optimization
+- `rxOptExpr()` avoids CSE temporary-name collisions and warns on repeated
+  optimization; each model should be optimized only once (#1632).
 
 ### Compilation
 - A cached model library that exists but will not load (still being linked by
@@ -319,6 +325,12 @@
   model compiles; it compiles as before.
 
 ### linCmt() models
+
+- `linCmt()` models now refuse `"linear"` covariate interpolation (from
+  `covsInterpolation` or a declared `linear()`) for a covariate that varies
+  within a subject and feeds the `linCmt()` parameters, pointing to
+  `"locf"`, `"nocb"`, `"midpoint"` or an ODE model.  The closed form cannot
+  follow the ramp and silently gave the `"midpoint"` solution (#1669).
 
 - `linCmt()` models now solve a time-varying covariate as the equivalent ODE
   model does.  Each interval between records used the covariates of the record
