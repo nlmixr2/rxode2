@@ -26,8 +26,7 @@ rxTest({
       }
       d/dt(y) <- -0.2 * y + inp
     })
-    .ev <- data.frame(id = 1L, time = c(0, 1:24), evid = c(1L, rep(0L, 24)),
-                      amt = c(10, rep(0, 24)), cmt = "y")
+    .ev <- data.frame(id = 1L, time = c(0, 1:24), evid = c(1L, rep(0L, 24)), amt = c(10, rep(0, 24)), cmt = "y")
     .ev2 <- .ev
     .ev2$evid[.ev2$time == 12] <- 2L
     .k <- 0.2
@@ -35,11 +34,9 @@ rxTest({
     .yw1 <- .yw0 * exp(-.k * 0.05) + (400 / .k) * (1 - exp(-.k * 0.05))
     .exact <- .yw1 * exp(-.k * (24 - 12.05))
     for (.method in .tcMethods) {
-      .s <- rxSolve(.m, .ev, method = .method, atol = 1e-8, rtol = 1e-6,
-                    returnType = "data.frame")
+      .s <- rxSolve(.m, .ev, method = .method, atol = 1e-8, rtol = 1e-6, returnType = "data.frame")
       expect_equal(.s$y[.s$time == 24], .exact, tolerance = 1e-4, label = paste(.method, "mtime"))
-      .s2 <- rxSolve(.m2, .ev2, method = .method, atol = 1e-8, rtol = 1e-6,
-                     returnType = "data.frame")
+      .s2 <- rxSolve(.m2, .ev2, method = .method, atol = 1e-8, rtol = 1e-6, returnType = "data.frame")
       expect_equal(.s2$y[.s2$time == 24], .exact, tolerance = 1e-4, label = paste(.method, "evid 2"))
     }
   })
@@ -72,8 +69,15 @@ rxTest({
       .c
     }
     for (.method in .tcMethods) {
-      .s <- rxSolve(.oral, .ev, params = c(ka = .ka, k = .k), method = .method,
-                    atol = 1e-10, rtol = 1e-10, returnType = "data.frame")
+      .s <- rxSolve(
+        .oral,
+        .ev,
+        params = c(ka = .ka, k = .k),
+        method = .method,
+        atol = 1e-10,
+        rtol = 1e-10,
+        returnType = "data.frame"
+      )
       expect_equal(.s$center, .exact(.s$time), tolerance = 1e-7, label = .method)
     }
   })
@@ -88,8 +92,15 @@ rxTest({
     })
     .ev <- et(amt = 100, ss = 1, ii = 12) |> et(c(0.5, 7, 30, 60))
     .solve <- function(method) {
-      rxSolve(.ss, .ev, params = c(k = 0.05, ka = 0.7, lag = 30), method = method,
-              atol = 1e-10, rtol = 1e-10, returnType = "data.frame")$center
+      rxSolve(
+        .ss,
+        .ev,
+        params = c(k = 0.05, ka = 0.7, lag = 30),
+        method = method,
+        atol = 1e-10,
+        rtol = 1e-10,
+        returnType = "data.frame"
+      )$center
     }
     .ref <- .solve("lsoda")
     for (.method in setdiff(.tcMethods, "lsoda")) {
