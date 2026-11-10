@@ -235,6 +235,65 @@ static inline double rxApproxCovData(double t, int k, int is_locf,
   });
 }
 
+// Whether the model function running now is one the solver calls while it
+// integrates toward a record (dydt, its Jacobian, the matrix exponential and
+// inductive linearization); calc_lhs, the initial conditions and the dose
+// functions evaluate at a record instead.
+static inline bool rxIntegratingToRecord(rx_solving_options_ind *ind) {
+  int f = ind->_rxFlag;
+  return f == 1 || f == 2 || f == 9 || f == 10;
+}
+
+// Sorted record i's time, as the covariate lookups below match it.
+static inline double rxCovRecTime(rx_solving_options_ind *ind, int i) {
+  return (ind->fns && ind->fns->gettime) ? ind->fns->gettime(ind->ix[i], ind) :
+    getTime(ind->ix[i], ind);
+}
+
+// Which side of t a step covariate must be read from while the solver
+// integrates toward sorted record i: the interval (t[i-1], t[i]) has one value
+// of a locf or nocb covariate, but at its ends the lookup gives the value of
+// the record there, which belongs to the neighbouring interval.  Returns -1
+// when t is the record's own time and the covariate is locf (read the value
+// before t), +1 when t is the previous record's time and it is nocb (read the
+// value after t), and 0 otherwise.  Linear interpolation is continuous and
+// midpoint interpolation already takes the value of the half-interval next
+// to each end, so neither needs a side.
+static inline int rxStepCovSide(double t, int is_locf, int i, rx_solving_options_ind *ind,
+                                rx_solving_options *op) {
+  if ((is_locf != 1 && is_locf != 2) || i <= 0 || i >= ind->n_all_times) return 0;
+  if (!rxIntegratingToRecord(ind)) return 0;
+  double ti = rxCovRecTime(ind, i);
+  double tp = rxCovRecTime(ind, i - 1);
+  if (isSameTimeOp(ti, tp)) return 0;
+  if (is_locf == 1 && isSameTimeOp(t, ti)) return -1;
+  if (is_locf == 2 && isSameTimeOp(t, tp)) return 1;
+  return 0;
+}
+
+// Covariate k of a sampled subject just before (side < 0) or just after
+// (side > 0) time t: its value at its last data time before t, or at its first
+// data time after t; at t itself when there is none on that side.
+static inline double rxApproxCovDataSide(double t, int k, int is_locf, int side,
+                                         rx_solving_options *op,
+                                         rx_solving_options_ind *indSample) {
+  int n = indSample->n_all_times_orig;
+  double *at = indSample->all_times;
+  int *evid = indSample->evid;
+  double best = t;
+  bool found = false;
+  for (int i = 0; i < n; i++) {
+    double ti = (i > 0 && (isEvidModeledRateStop(evid[i]) ||
+                           isEvidModeledDurationStop(evid[i]))) ? at[i-1] : at[i];
+    if (isSameTimeOp(ti, t) || (side < 0 ? ti > t : ti < t)) continue;
+    if (!found || (side < 0 ? ti > best : ti < best)) {
+      best = ti;
+      found = true;
+    }
+  }
+  return rxApproxCovData(best, k, is_locf, op, indSample);
+}
+
 /* End approx from R */
 
 // getParCov first(parNo, idx=0) last(parNo, idx=ind->n_all_times-1)
@@ -441,7 +500,10 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
             indSample = &(rx->subjects[ind->cov_sample[k]-1]);
             // Use the same methodology as approxfun.  Don't need to reset ME
             // because solver doesn't use the times in-between.
-            ind->par_ptr[op->par_cov[k]-1] = rxApproxCovData(t, k, is_locf, op, indSample);
+            int side = rxStepCovSide(t, is_locf, idx, ind, op);
+            ind->par_ptr[op->par_cov[k]-1] = (side == 0) ?
+              rxApproxCovData(t, k, is_locf, op, indSample) :
+              rxApproxCovDataSide(t, k, is_locf, side, op, indSample);
             continue;
           } else {
             indSample = ind;
@@ -451,6 +513,17 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           //double *all_times = indSample->all_times;
           // cov_ptr is laid out by the data records (n_all_times_orig)
           double *y = indSample->cov_ptr + indSample->n_all_times_orig*k;
+          // integrating toward the record, a step covariate at an end of the
+          // interval takes the value it has inside it
+          int side = rxStepCovSide(t, is_locf, idxSample, ind, op);
+          if (side != 0 && !rxPushedRec(ind->ix, idxSample, ind->n_all_times_orig) &&
+              !rxPushedRec(ind->ix, idxSample - 1, ind->n_all_times_orig)) {
+            double vIn = getValue(side < 0 ? idxSample - 1 : idxSample, y, is_locf,
+                                  indSample, op, 0);
+            if (!isSameTimeOp(vIn, par_ptr[op->par_cov[k]-1])) ind->cacheME = 0;
+            par_ptr[op->par_cov[k]-1] = vIn;
+            continue;
+          }
           // a pushed record has no value of its own; interpolate across it
           bool pushed = rxPushedRec(ind->ix, idxSample, ind->n_all_times_orig);
           if (!pushed && idxSample == 0 &&
