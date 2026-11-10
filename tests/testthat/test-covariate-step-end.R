@@ -159,13 +159,35 @@ rxTest({
     }
   })
 
+  test_that("a step in the first interval (nocb) or at the last record (locf) keeps the interval's value", {
+    .t <- seq(0, 10, by = 0.5)
+    for (.method in c("dop853", "cvode", "liblsoda", "lsoda")) {
+      .tol <- if (.method == "dop853") 1e-13 else 1e-9
+      # nocb: wt is 1 at t = 0 and 3 after, so (0, 0.5] already takes 3
+      .d <- data.frame(id = 1L, time = .t, evid = 0L, amt = 0, cmt = "cc", wt = ifelse(.t > 0, 3, 1))
+      .s <- .stepSolve(.d, .method, "nocb")
+      expect_equal(.s$cc, 3 * .s$time, tolerance = .tol, label = paste("nocb", .method))
+      # locf: wt is 1 up to the last record, t = 10, where it is 3, so (9.5, 10) keeps 1
+      .d$wt <- ifelse(.t < 10, 1, 3)
+      .s <- .stepSolve(.d, .method, "locf")
+      expect_equal(.s$cc, .s$time, tolerance = .tol, label = paste("locf", .method))
+    }
+  })
+
   test_that("the record reports its own covariate value", {
     .d <- .stepData("obs")
     for (.method in c("dop853", "liblsoda")) {
-      .s <- .stepSolve(.d, .method, "locf")
-      expect_equal(.s$w, .d$wt, label = .method)
-      .s <- .stepSolve(.d, .method, "nocb")
-      expect_equal(.s$w, .d$wt, label = .method)
+      for (.interp in c("locf", "nocb")) {
+        .lab <- paste(.interp, .method)
+        .s <- .stepSolve(.d, .method, .interp)
+        expect_equal(.s$w, .d$wt, label = .lab)
+        # resampled, each subject takes one subject's wt, 5 j + 10 from t = 5
+        .s <- .stepSolve(.d, .method, .interp, resample = TRUE)
+        .id <- as.character(if ("id" %in% names(.s)) .s$id else .s$sim.id)
+        .w0 <- vapply(split(.s$w, .id), function(.w) .w[1], numeric(1))
+        expect_true(all(.w0 %in% c(5, 10, 15, 20)), label = .lab)
+        expect_equal(.s$w, unname(.w0[.id]) + 10 * (.s$time >= 5), label = paste(.lab, "resampled"))
+      }
     }
   })
 })
