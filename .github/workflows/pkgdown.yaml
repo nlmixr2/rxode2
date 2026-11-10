@@ -7,6 +7,9 @@ on:
   # "ready to be merged" (pushes to a PR branch no longer start CI).
   pull_request_review:
     types: [submitted]
+  # Maintainers can also start PR checks by commenting "/ci" on the PR.
+  issue_comment:
+    types: [created]
   release:
     types: [published]
   workflow_dispatch:
@@ -19,17 +22,19 @@ permissions: read-all
 
 jobs:
   pkgdown:
-    if: (github.event_name != 'pull_request_review' || (github.event.review.state == 'approved' && contains(github.event.review.body, 'ready to be merged')))
+    if: ((github.event_name != 'pull_request_review' && github.event_name != 'issue_comment') || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved' && contains(github.event.review.body, 'ready to be merged')) || (github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/ci') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)))
     runs-on: ubuntu-latest
     # Only restrict concurrency for non-PR jobs
     concurrency:
-      group: pkgdown-${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_review') || github.run_id }}
+      group: pkgdown-${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_review' && github.event_name != 'issue_comment') || github.run_id }}${{ ((github.event_name == 'pull_request_review' && !(github.event.review.state == 'approved' && contains(github.event.review.body, 'ready to be merged'))) || (github.event_name == 'issue_comment' && !(github.event.issue.pull_request && startsWith(github.event.comment.body, '/ci') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)))) && format('-noop-{0}', github.run_id) || '' }}
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'issue_comment' && format('refs/pull/{0}/merge', github.event.issue.number) || '' }}
 
       - uses: r-lib/actions/setup-pandoc@v2
 
@@ -67,7 +72,7 @@ jobs:
           done
 
       - name: Deploy to GitHub pages
-        if: (github.event_name != 'pull_request' && github.event_name != 'pull_request_review')
+        if: (github.event_name != 'pull_request' && github.event_name != 'pull_request_review' && github.event_name != 'issue_comment')
         uses: JamesIves/github-pages-deploy-action@v4.5.0
         with:
           clean: false
