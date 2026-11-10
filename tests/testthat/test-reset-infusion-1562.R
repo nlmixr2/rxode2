@@ -113,7 +113,7 @@ rxTest({
     for (meth in .meths) {
       d <- .solve(.m, ev, meth, atol = 1e-12, rtol = 1e-10)
       expect_true(all(d >= 0))
-      expect_equal(d[o > 2], .solve(.m, want, meth, atol = 1e-12, rtol = 1e-10)[o > 2], tolerance = 1e-6)
+      expect_equal(d[o > 2], .solve(.m, want, meth, atol = 1e-12, rtol = 1e-10)[o > 2], tolerance = 1e-8)
     }
   })
 
