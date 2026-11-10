@@ -51,9 +51,11 @@ rxTest({
     }
   })
 
-  test_that("dop853's paired stage updates match the plain loop bit for bit", {
-    # every stage element is the same expression as in the plain loop, so
-    # forcing the plain loop for every size must not change a single bit
+  test_that("dop853's paired stage loops give the plain loop's results bit for bit", {
+    # the plain loop, the paired body and the odd-n tail run the same
+    # expression, so this pins the loop structure (pairing, tail, index
+    # bookkeeping) and any contraction difference between the paths; the
+    # exact-solution test above checks the coefficients
     .rates <- c(1, 0.7, 0.5, 0.3, 0.2, 0.9, 0.4, 0.6, 0.25)
     .ev <- et(amt = 100, cmt = "s1", ii = 6, addl = 3) |> et(c(0.1, 0.5, 1, 2, 5, 10, 20, 30))
     for (.n in c(4L, 5L, 8L, 9L, 20L)) {
