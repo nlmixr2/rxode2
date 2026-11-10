@@ -53,6 +53,18 @@
   into place, so another process never loads a partly written one (#1558).
 
 ### Solving
+- While a solver integrates toward a record, a time-varying covariate
+  interpolated with `locf` or `nocb` now keeps, at the ends of the interval,
+  the value it has inside it.  At the record a `locf` covariate took the
+  record's own value, which belongs to the next interval, and at the start of
+  the interval a `nocb` covariate took the previous record's, so a solver that
+  lands on the record, such as `dop853`, integrated the step with the wrong
+  value in its last (first) stage.  `dop853` now integrates a
+  piecewise-constant covariate exactly; results move at the level of the
+  solver tolerance wherever a step covariate changes at a record a solver
+  stops on.  Resampled covariates (`resample = TRUE`) follow the same rule;
+  outputs at a record still report the record's value, and `linear` and
+  `midpoint` interpolation are unchanged.
 - `rxSolve()` now stops with an error when an `rxControl()` object is passed
   as `params` or `events`, as it already did for `inits`, and a parameter list
   that is empty or whose first column is empty gives the parameter-size
