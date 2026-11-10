@@ -94,7 +94,7 @@ rxTest({
     for (.kind in c("obs", "evid2")) {
       .d <- .stepData(.kind)
       for (.interp in c("locf", "nocb", "midpoint", "linear")) {
-        for (.method in c("dop853", "cvode", "liblsoda", "lsoda")) {
+        for (.method in c("dop853", "cvode", "liblsoda", "lsoda", "lsode", "bdf")) {
           for (.resample in c(FALSE, TRUE)) {
             .err <- .stepError(.stepSolve(.d, .method, .interp, .resample), .interp)
             .lab <- paste(.kind, .interp, .method, if (.resample) "resampled" else "plain")
@@ -105,7 +105,7 @@ rxTest({
             # cvode and the lsoda family step past a record they need not stop
             # at, and stay at the solver tolerance
             .exact <- (.method == "dop853" && .interp != "midpoint") ||
-              (.method %in% c("liblsoda", "lsoda") && .kind == "evid2" && .interp == "locf")
+              (.method %in% c("liblsoda", "lsoda", "lsode", "bdf") && .kind == "evid2" && .interp == "locf")
             if (.exact) {
               expect_lt(.err, 1e-13, label = .lab)
             } else {
