@@ -432,7 +432,10 @@
 #'
 #' * `"linear"` interpolation, which interpolates the covariate
 #'     by solving the line between the observed covariates and extrapolating the new
-#'     covariate value.
+#'     covariate value.  A `linCmt()` model refuses it for a covariate
+#'     that varies within a subject and feeds the `linCmt()` parameters,
+#'     since its closed form cannot follow the ramp; use another method or
+#'     write the model as ODEs.
 #'
 #' * `"locf"` -- Last observation carried forward (the default).
 #'
