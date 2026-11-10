@@ -311,6 +311,5 @@ sim1 <- r |> # Use rxode2
 ## subjects into sqrt(#subjects) subjects and then summarizes the
 ## confidence intervals
 sim2 <- sim1 |> confint(c("pt","q","qp","sim"),level=0.90); # Create Simulation intervals
-save(sim2, file = file.path(system.file(package = "rxode2"), "pipeline-sim2.rds"), version = 2)
 sim2 |> plot()
 ```

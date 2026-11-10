@@ -57,3 +57,16 @@ rxProgressStop <- function(clear = TRUE) {
 rxProgressAbort <- function(error = "Aborted calculation") {
   invisible(.Call(`_rxProgressAbort`, error))
 }
+
+#' Close a progress bar from on.exit() without masking the error that stopped it
+#'
+#' `rxProgressAbort()` closes an unfinished bar and then stops with its own
+#' error, which replaces whatever error was unwinding the caller.  This closes
+#' it the same way and drops that error, so the caller's error is reported.
+#'
+#' @return `NULL`, invisibly
+#' @noRd
+.rxProgressExit <- function() {
+  tryCatch(rxProgressAbort(), error = function(e) NULL)
+  invisible(NULL)
+}

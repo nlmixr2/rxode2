@@ -3,6 +3,8 @@
 \name{rxParams}
 \alias{rxParams}
 \alias{rxParams.rxode2}
+\alias{rxParams.function}
+\alias{rxParams.rxUi}
 \alias{rxParams.rxSolve}
 \alias{rxParams.rxEt}
 \alias{rxParam}
@@ -11,6 +13,40 @@
 rxParams(obj, ...)
 
 \method{rxParams}{rxode2}(
+  obj,
+  constants = TRUE,
+  ...,
+  params = NULL,
+  inits = NULL,
+  iCov = NULL,
+  keep = NULL,
+  thetaMat = NULL,
+  omega = NULL,
+  dfSub = NULL,
+  sigma = NULL,
+  dfObs = NULL,
+  nSub = NULL,
+  nStud = NULL
+)
+
+\method{rxParams}{`function`}(
+  obj,
+  constants = TRUE,
+  ...,
+  params = NULL,
+  inits = NULL,
+  iCov = NULL,
+  keep = NULL,
+  thetaMat = NULL,
+  omega = NULL,
+  dfSub = NULL,
+  sigma = NULL,
+  dfObs = NULL,
+  nSub = NULL,
+  nStud = NULL
+)
+
+\method{rxParams}{rxUi}(
   obj,
   constants = TRUE,
   ...,
@@ -146,7 +182,7 @@ pk <- function() {
 }
 rxParams(pk)
 # pipe the parameter values into a solve
-rxode2(pk)$simulationModel |>
+pk |>
   rxParams(params = c(ka = 1.2, cl = 3.5, v = 25)) |>
   et(amt = 100) |>
   et(0:24) |>

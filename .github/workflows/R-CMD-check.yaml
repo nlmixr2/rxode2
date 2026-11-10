@@ -27,6 +27,21 @@ concurrency:
 jobs:
   R-CMD-check:
     if: ((github.event_name != 'pull_request' && github.event_name != 'pull_request_review' && github.event_name != 'issue_comment') || github.event.action != 'edited' || github.event.changes.base) && ((github.event_name != 'pull_request_review' && github.event_name != 'issue_comment') || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved' && contains(github.event.review.body, 'ready to be merged') && contains(fromJSON('["main","master"]'), github.event.pull_request.base.ref)) || (github.event_name == 'issue_comment' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/ci') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)))
+
+    # statuses: write lets a /ci run report back to the PR
+    permissions:
+      actions: read
+      checks: read
+      contents: read
+      deployments: read
+      discussions: read
+      issues: read
+      packages: read
+      pages: read
+      pull-requests: read
+      repository-projects: read
+      security-events: read
+      statuses: write
     runs-on: ${{ matrix.config.os }}
 
     name: ${{ matrix.config.os }} (${{ matrix.config.r }})
@@ -46,6 +61,19 @@ jobs:
       R_KEEP_PKG_SOURCE: yes
 
     steps:
+      - name: Report /ci run to the PR (pending)
+        if: github.event_name == 'issue_comment'
+        uses: actions/github-script@v7
+        env:
+          CI_CONTEXT: ${{ matrix.config.os }} (${{ matrix.config.r }})
+        with:
+          script: |
+            const pr = await github.rest.pulls.get({ ...context.repo, pull_number: context.issue.number });
+            core.exportVariable('CI_PR_HEAD_SHA', pr.data.head.sha);
+            await github.rest.repos.createCommitStatus({ ...context.repo, sha: pr.data.head.sha,
+              state: 'pending', context: process.env.CI_CONTEXT, description: '/ci run in progress',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}` });
+
       - name: Install deps on MacOS
         if: runner.os == 'macOS'
         run: |
@@ -82,3 +110,17 @@ jobs:
         with:
           upload-snapshots: true
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+
+      - name: Report /ci run to the PR (result)
+        if: always() && github.event_name == 'issue_comment' && env.CI_PR_HEAD_SHA != ''
+        uses: actions/github-script@v7
+        env:
+          CI_CONTEXT: ${{ matrix.config.os }} (${{ matrix.config.r }})
+          CI_JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const s = process.env.CI_JOB_STATUS;
+            const state = s === 'success' ? 'success' : s === 'failure' ? 'failure' : 'error';
+            await github.rest.repos.createCommitStatus({ ...context.repo, sha: process.env.CI_PR_HEAD_SHA,
+              state, context: process.env.CI_CONTEXT, description: `/ci run: ${s}`,
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}` });

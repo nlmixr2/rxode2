@@ -235,9 +235,7 @@ rxIndLinState <- function(preferred = NULL) {
   .states <- rxState(.env)
   rxProgress(length(.states))
   .minfo("create inductive linearization matrices")
-  on.exit({
-    rxProgressAbort()
-  })
+  on.exit(.rxProgressExit())
   .ret <- eval(parse(text = rxIndLin_(.states)))
   .w <- setNames(which(.ret[, "indLin"] == "TRUE") - 1, NULL)
   .fullIndLin <- length(.w) > 0
