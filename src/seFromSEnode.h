@@ -115,17 +115,20 @@ static int seNiArgList(D_ParseNode *pn) {
 /* The active Subs() entry whose v is this symbol node, or NULL.  Compares
    the node's source span in place: no allocation, so it is cheap enough to
    ask of every symbol the structure checks look at. */
+/* Does entry s stand for the symbol spelled b[0..n), read from the text s
+   was pushed for?  (Symbols of any other buffer -- w's own -- never are.) */
+static int seSubMatches(const seSub *s, const char *b, size_t n) {
+  if (!s->active || b < s->buf || b >= s->buf + s->len) return 0;
+  return strlen(s->v) == n && strncmp(s->v, b, n) == 0;
+}
+
 static seSub *seSubFind(seCtx *ctx, D_ParseNode *pn) {
   int i;
+  const char *b;
   if (ctx->nsubs == 0 || !seNiIs(pn, symbol)) return NULL;
-  const char *b = pn->start_loc.s, *e = pn->end;
-  while (b < e && (*b == ' ' || *b == '\t' || *b == '\n')) b++;
-  while (e > b && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\n')) e--;
-  size_t n = (size_t)(e - b);
+  size_t n = seNodeSpan(pn, &b);
   for (i = ctx->nsubs - 1; i >= 0; i--) {
-    seSub *s = &ctx->subs[i];
-    if (b < s->buf || b >= s->buf + s->len) continue;
-    if (s->active && strlen(s->v) == n && strncmp(s->v, b, n) == 0) return s;
+    if (seSubMatches(&ctx->subs[i], b, n)) return &ctx->subs[i];
   }
   return NULL;
 }

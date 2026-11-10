@@ -16,12 +16,21 @@ static const char *seNodeNameT(D_ParserTables *t, D_ParseNode *pn) {
   return (const char*) t->symbols[pn->symbol].name;
 }
 
-/* the source text the node spans, trimmed of surrounding whitespace */
-static const char *seNodeTextOf(seCtx *ctx, D_ParseNode *pn) {
+/* the source span the node covers, trimmed of surrounding whitespace; no
+   allocation */
+static size_t seNodeSpan(D_ParseNode *pn, const char **start) {
   const char *b = pn->start_loc.s, *e = pn->end;
   while (b < e && (*b == ' ' || *b == '\t' || *b == '\n')) b++;
   while (e > b && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\n')) e--;
-  return seDup(ctx, b, (size_t)(e - b));
+  *start = b;
+  return (size_t)(e - b);
+}
+
+/* the source text the node spans, trimmed of surrounding whitespace */
+static const char *seNodeTextOf(seCtx *ctx, D_ParseNode *pn) {
+  const char *b;
+  size_t n = seNodeSpan(pn, &b);
+  return seDup(ctx, b, n);
 }
 
 /* The table index of the production `name`, or -1.  Called once per

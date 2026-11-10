@@ -139,26 +139,46 @@ static double seEvalCall(seEval *s, const char *b, size_t n) {
   return r;
 }
 
-/* A name: a call, pi, or a variable.  Only pi is a value -- a model name is
-   a variable even when baseenv() binds it (T, F; #1692) */
+/* What R reads a bare word as when it is not a name: pi (bound in
+   baseenv()), and R's literal constants.  Inf and NaN are numbers -- the fold
+   writes Inf back as text, and 1/Inf must fold to 0 as R folds it -- while
+   NA, TRUE, FALSE and NULL are constants R may still compute with, which
+   this does not model.  Every other word is a name. */
+enum { SE_LIT_PI, SE_LIT_INF, SE_LIT_NAN, SE_LIT_UNSURE };
+typedef struct { const char *word; int kind; } seLiteral;
+
+/* 0 = a name; 1 = a number, in *value; 2 = a constant this does not model */
+static int seEvalLiteral(const char *b, size_t n, double *value) {
+  static const seLiteral lit[] = {
+    {"pi", SE_LIT_PI}, {"Inf", SE_LIT_INF}, {"NaN", SE_LIT_NAN},
+    {"NA", SE_LIT_UNSURE}, {"TRUE", SE_LIT_UNSURE}, {"FALSE", SE_LIT_UNSURE},
+    {"NULL", SE_LIT_UNSURE}
+  };
+  size_t i;
+  for (i = 0; i < sizeof(lit)/sizeof(lit[0]); i++) {
+    if (strlen(lit[i].word) != n || strncmp(lit[i].word, b, n) != 0) continue;
+    switch (lit[i].kind) {
+    case SE_LIT_PI: *value = M_PI; return 1;
+    case SE_LIT_INF: *value = R_PosInf; return 1;
+    case SE_LIT_NAN: *value = R_NaN; return 1;
+    default: return 2;
+    }
+  }
+  return 0;
+}
+
+/* A name: a call, a literal, or a variable.  A model name is a variable even
+   when baseenv() binds it (T, F; #1692) */
 static double seEvalName(seEval *s) {
   const char *b = s->p;
+  double v = 0;
   while (rxNameChar(*s->p)) s->p++;
   size_t n = (size_t)(s->p - b);
   seEvalWs(s);
   if (*s->p == '(') return seEvalCall(s, b, n);
-  if (n == 2 && strncmp(b, "pi", 2) == 0) return M_PI;
-  /* R literals, not names: Inf and NaN are numbers (the fold writes Inf
-     back as text, and 1/Inf must fold to 0 as R folds it); NA, TRUE, FALSE
-     are logical constants R may still compute with */
-  if (n == 3 && strncmp(b, "Inf", 3) == 0) return R_PosInf;
-  if (n == 3 && strncmp(b, "NaN", 3) == 0) return R_NaN;
-  if ((n == 2 && strncmp(b, "NA", 2) == 0) || (n == 4 && strncmp(b, "TRUE", 4) == 0) ||
-      (n == 5 && strncmp(b, "FALSE", 5) == 0) || (n == 4 && strncmp(b, "NULL", 4) == 0)) {
-    seEvalSt(s, 2);
-    return 0;
-  }
-  seEvalSt(s, 1);
+  int lit = seEvalLiteral(b, n, &v);
+  if (lit == 1) return v;
+  seEvalSt(s, lit == 2 ? 2 : 1);
   return 0;
 }
 
