@@ -193,6 +193,141 @@ static void dopStiffEnd (dop853_stiff_t *st, double hlamb, long int iasti,
     return (v);                                                         \
   } while (0)
 
+/* The stage updates of dopcor(), one function per number of terms.  The
+   arrays are restrict parameters and each loop takes two indices a pass,
+   with a scalar tail.  R compiles packages at -O2, where GCC's vectorizer
+   uses its "very-cheap" cost model: it adds neither a run-time aliasing check
+   nor a scalar epilogue, so a plain loop over n stays scalar, while a body
+   that already handles two indices is vectorized as it stands.  Below
+   DOP_PAIRS_MIN states the plain loop is kept, as it measured faster there.
+   Each element is the same expression, evaluated in the same order, as in a
+   plain loop. */
+#define DOP_PAIRS_MIN 4
+#define DOP_PAIRS(i, n, STMT) do {                                \
+    if ((n) < DOP_PAIRS_MIN) {                                    \
+      for (i = 0; i < (n); i++) { STMT; }                         \
+    } else {                                                      \
+      for (i = 0; i + 1 < (n); i += 2) {                          \
+        STMT;                                                     \
+        { const int dopI_ = i; i = dopI_ + 1; STMT; i = dopI_; }  \
+      }                                                           \
+      if (i < (n)) { STMT; }                                      \
+    }                                                             \
+  } while (0)
+
+static inline void dopStage1(int n, double *restrict yy1, const double *restrict y, double h,
+                             double a1, const double *restrict k1) {
+  int i;
+  DOP_PAIRS(i, n, yy1[i] = y[i] + h * a1 * k1[i]);
+}
+
+static inline void dopStage2(int n, double *restrict yy1, const double *restrict y, double h,
+                             double a1, const double *restrict k1,
+                             double a2, const double *restrict k2) {
+  int i;
+  DOP_PAIRS(i, n, yy1[i] = y[i] + h * (a1*k1[i] + a2*k2[i]));
+}
+
+static inline void dopStage3(int n, double *restrict yy1, const double *restrict y, double h,
+                             double a1, const double *restrict k1,
+                             double a2, const double *restrict k2,
+                             double a3, const double *restrict k3) {
+  int i;
+  DOP_PAIRS(i, n, yy1[i] = y[i] + h * (a1*k1[i] + a2*k2[i] + a3*k3[i]));
+}
+
+static inline void dopStage4(int n, double *restrict yy1, const double *restrict y, double h,
+                             double a1, const double *restrict k1,
+                             double a2, const double *restrict k2,
+                             double a3, const double *restrict k3,
+                             double a4, const double *restrict k4) {
+  int i;
+  DOP_PAIRS(i, n, yy1[i] = y[i] + h * (a1*k1[i] + a2*k2[i] + a3*k3[i] + a4*k4[i]));
+}
+
+static inline void dopStage5(int n, double *restrict yy1, const double *restrict y, double h,
+                             double a1, const double *restrict k1,
+                             double a2, const double *restrict k2,
+                             double a3, const double *restrict k3,
+                             double a4, const double *restrict k4,
+                             double a5, const double *restrict k5) {
+  int i;
+  DOP_PAIRS(i, n, yy1[i] = y[i] + h * (a1*k1[i] + a2*k2[i] + a3*k3[i] + a4*k4[i] +
+                                       a5*k5[i]));
+}
+
+static inline void dopStage6(int n, double *restrict yy1, const double *restrict y, double h,
+                             double a1, const double *restrict k1,
+                             double a2, const double *restrict k2,
+                             double a3, const double *restrict k3,
+                             double a4, const double *restrict k4,
+                             double a5, const double *restrict k5,
+                             double a6, const double *restrict k6) {
+  int i;
+  DOP_PAIRS(i, n, yy1[i] = y[i] + h * (a1*k1[i] + a2*k2[i] + a3*k3[i] + a4*k4[i] +
+                                       a5*k5[i] + a6*k6[i]));
+}
+
+static inline void dopStage7(int n, double *restrict yy1, const double *restrict y, double h,
+                             double a1, const double *restrict k1,
+                             double a2, const double *restrict k2,
+                             double a3, const double *restrict k3,
+                             double a4, const double *restrict k4,
+                             double a5, const double *restrict k5,
+                             double a6, const double *restrict k6,
+                             double a7, const double *restrict k7) {
+  int i;
+  DOP_PAIRS(i, n, yy1[i] = y[i] + h * (a1*k1[i] + a2*k2[i] + a3*k3[i] + a4*k4[i] +
+                                       a5*k5[i] + a6*k6[i] + a7*k7[i]));
+}
+
+static inline void dopStage8(int n, double *restrict yy1, const double *restrict y, double h,
+                             double a1, const double *restrict k1,
+                             double a2, const double *restrict k2,
+                             double a3, const double *restrict k3,
+                             double a4, const double *restrict k4,
+                             double a5, const double *restrict k5,
+                             double a6, const double *restrict k6,
+                             double a7, const double *restrict k7,
+                             double a8, const double *restrict k8) {
+  int i;
+  DOP_PAIRS(i, n, yy1[i] = y[i] + h * (a1*k1[i] + a2*k2[i] + a3*k3[i] + a4*k4[i] +
+                                       a5*k5[i] + a6*k6[i] + a7*k7[i] + a8*k8[i]));
+}
+
+static inline void dopStage9(int n, double *restrict yy1, const double *restrict y, double h,
+                             double a1, const double *restrict k1,
+                             double a2, const double *restrict k2,
+                             double a3, const double *restrict k3,
+                             double a4, const double *restrict k4,
+                             double a5, const double *restrict k5,
+                             double a6, const double *restrict k6,
+                             double a7, const double *restrict k7,
+                             double a8, const double *restrict k8,
+                             double a9, const double *restrict k9) {
+  int i;
+  DOP_PAIRS(i, n, yy1[i] = y[i] + h * (a1*k1[i] + a2*k2[i] + a3*k3[i] + a4*k4[i] +
+                                       a5*k5[i] + a6*k6[i] + a7*k7[i] + a8*k8[i] +
+                                       a9*k9[i]));
+}
+
+/* The 8th-order solution increment (into k4) and the new state (into k5). */
+static inline void dopStageSol(int n, double *restrict k4, double *restrict k5,
+                               const double *restrict y, double h,
+                               double b1, const double *restrict k1,
+                               double b6, const double *restrict k6,
+                               double b7, const double *restrict k7,
+                               double b8, const double *restrict k8,
+                               double b9, const double *restrict k9,
+                               double b10, const double *restrict k10,
+                               double b11, const double *restrict k2,
+                               double b12, const double *restrict k3) {
+  int i;
+  DOP_PAIRS(i, n, (k4[i] = b1*k1[i] + b6*k6[i] + b7*k7[i] + b8*k8[i] + b9*k9[i] +
+                   b10*k10[i] + b11*k2[i] + b12*k3[i],
+                   k5[i] = y[i] + h * k4[i]));
+}
+
 /* core integrator */
 static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double* y, double xend,
                    double hmax, double h, double* rtoler, double* atoler,
@@ -490,53 +625,35 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
       ctx->nstep++;
 
       /* the twelve stages */
-      for (i = 0; i < n; i++)
-        yy1[i] = y[i] + h * a21 * k1[i];
+      dopStage1(n, yy1, y, h, a21, k1);
       fcn (nptr, x+c2*h, yy1, k2);
-      for (i = 0; i < n; i++)
-        yy1[i] = y[i] + h * (a31*k1[i] + a32*k2[i]);
+      dopStage2(n, yy1, y, h, a31, k1, a32, k2);
       fcn (nptr, x+c3*h, yy1, k3);
-      for (i = 0; i < n; i++)
-        yy1[i] = y[i] + h * (a41*k1[i] + a43*k3[i]);
+      dopStage2(n, yy1, y, h, a41, k1, a43, k3);
       fcn (nptr, x+c4*h, yy1, k4);
-      for (i = 0; i <n; i++)
-        yy1[i] = y[i] + h * (a51*k1[i] + a53*k3[i] + a54*k4[i]);
+      dopStage3(n, yy1, y, h, a51, k1, a53, k3, a54, k4);
       fcn (nptr, x+c5*h, yy1, k5);
-      for (i = 0; i < n; i++)
-        yy1[i] = y[i] + h * (a61*k1[i] + a64*k4[i] + a65*k5[i]);
+      dopStage3(n, yy1, y, h, a61, k1, a64, k4, a65, k5);
       fcn (nptr, x+c6*h, yy1, k6);
-      for (i = 0; i < n; i++)
-        yy1[i] = y[i] + h * (a71*k1[i] + a74*k4[i] + a75*k5[i] + a76*k6[i]);
+      dopStage4(n, yy1, y, h, a71, k1, a74, k4, a75, k5, a76, k6);
       fcn (nptr, x+c7*h, yy1, k7);
-      for (i = 0; i < n; i++)
-        yy1[i] = y[i] + h * (a81*k1[i] + a84*k4[i] + a85*k5[i] + a86*k6[i] +
-                             a87*k7[i]);
+      dopStage5(n, yy1, y, h, a81, k1, a84, k4, a85, k5, a86, k6, a87, k7);
       fcn (nptr, x+c8*h, yy1, k8);
-      for (i = 0; i <n; i++)
-        yy1[i] = y[i] + h * (a91*k1[i] + a94*k4[i] + a95*k5[i] + a96*k6[i] +
-                             a97*k7[i] + a98*k8[i]);
+      dopStage6(n, yy1, y, h, a91, k1, a94, k4, a95, k5, a96, k6, a97, k7, a98, k8);
       fcn (nptr, x+c9*h, yy1, k9);
-      for (i = 0; i < n; i++)
-        yy1[i] = y[i] + h * (a101*k1[i] + a104*k4[i] + a105*k5[i] + a106*k6[i] +
-                             a107*k7[i] + a108*k8[i] + a109*k9[i]);
+      dopStage7(n, yy1, y, h, a101, k1, a104, k4, a105, k5, a106, k6, a107, k7,
+                a108, k8, a109, k9);
       fcn (nptr, x+c10*h, yy1, k10);
-      for (i = 0; i < n; i++)
-        yy1[i] = y[i] + h * (a111*k1[i] + a114*k4[i] + a115*k5[i] + a116*k6[i] +
-                             a117*k7[i] + a118*k8[i] + a119*k9[i] + a1110*k10[i]);
+      dopStage8(n, yy1, y, h, a111, k1, a114, k4, a115, k5, a116, k6, a117, k7,
+                a118, k8, a119, k9, a1110, k10);
       fcn (nptr, x+c11*h, yy1, k2);
       xph = x + h;
-      for (i = 0; i < n; i++)
-        yy1[i] = y[i] + h * (a121*k1[i] + a124*k4[i] + a125*k5[i] + a126*k6[i] +
-                             a127*k7[i] + a128*k8[i] + a129*k9[i] +
-                             a1210*k10[i] + a1211*k2[i]);
+      dopStage9(n, yy1, y, h, a121, k1, a124, k4, a125, k5, a126, k6, a127, k7,
+                a128, k8, a129, k9, a1210, k10, a1211, k2);
       fcn (nptr, xph, yy1, k3);
       ctx->nfcn += 11;
-      for (i = 0; i < n; i++)
-        {
-          k4[i] = b1*k1[i] + b6*k6[i] + b7*k7[i] + b8*k8[i] + b9*k9[i] +
-            b10*k10[i] + b11*k2[i] + b12*k3[i];
-          k5[i] = y[i] + h * k4[i];
-        }
+      dopStageSol(n, k4, k5, y, h, b1, k1, b6, k6, b7, k7, b8, k8, b9, k9,
+                  b10, k10, b11, k2, b12, k3);
 
       /* error estimation */
       err = 0.0;
