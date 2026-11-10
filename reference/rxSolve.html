@@ -1002,7 +1002,10 @@ times outside the sampling time specified in <code>events</code>.
 When this happens, the time varying covariates are
 interpolated.  Currently this can be:</p><ul><li><p><code>"linear"</code> interpolation, which interpolates the covariate
 by solving the line between the observed covariates and extrapolating the new
-covariate value.</p></li>
+covariate value.  A <code>linCmt()</code> model refuses it for a covariate
+that varies within a subject and feeds the <code>linCmt()</code> parameters,
+since its closed form cannot follow the ramp; use another method or
+write the model as ODEs.</p></li>
 <li><p><code>"locf"</code> – Last observation carried forward (the default).</p></li>
 <li><p><code>"nocb"</code> – Next Observation Carried Backward.  This is the same method
 that NONMEM uses.</p></li>
