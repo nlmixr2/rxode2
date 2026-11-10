@@ -55,7 +55,7 @@ pk <- function() {
   })
 }
 ev <- et(amt = 100, cmt = "depot") |> et(c(1, 2, 4, 8, 12))
-rxSolveAdjoint(rxode2(pk), c(ka = 1.2, cl = 3.5, v = 25), ev,
+rxSolveAdjoint(pk, c(ka = 1.2, cl = 3.5, v = 25), ev,
                calcSens = c("ka", "cl"))
 }
 }

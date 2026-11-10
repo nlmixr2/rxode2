@@ -199,6 +199,14 @@ void setIndMixest(rx_solving_options_ind* ind, int mixest) {
   ind->mixest = mixest;
 }
 
+void setIndNewind(rx_solving_options_ind* ind, int newind) {
+  if (newind != 1 && newind != 2) {
+    rxApiError("[setIndNewind]: newind (%d) should be 1 or 2", newind);
+    return;
+  }
+  ind->_newind = newind;
+}
+
 int getRxMixnum(rx_solve *rx) {
   // This is the number of mixtures
   rx = rxSolveOrError(rx, __func__);

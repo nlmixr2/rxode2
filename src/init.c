@@ -31,7 +31,7 @@ SEXP _rxode2_rxSolveSEXP(SEXP, SEXP, SEXP, SEXP, SEXP,
                          SEXP, SEXP, SEXP);
 SEXP _rxode2_etTrans(SEXP, SEXP, SEXP, SEXP, SEXP,
                      SEXP, SEXP, SEXP, SEXP, SEXP,
-                     SEXP, SEXP);
+                     SEXP, SEXP, SEXP);
 SEXP _rxode2_rxUpdateTrans_(SEXP, SEXP, SEXP);
 double powerDi(double x, double lambda, int yj);
 double powerD(double x, double lambda, int yj);
@@ -92,7 +92,7 @@ SEXP _rxode2_rxSolveUpdate(SEXP, SEXP, SEXP);
 SEXP _rxode2_rxAssignPtr(SEXP);
 SEXP _rxode2_rxAssignPtr(SEXP objectSEXP);
 SEXP _rxode2_dynLoad(SEXP dllSEXP);
-SEXP _rxode2_rxOptRep_(SEXP);
+SEXP _rxode2_rxOptRep_(SEXP, SEXP);
 SEXP _rxode2_rxIndLin_(SEXP);
 SEXP _rxParProgress(SEXP);
 SEXP _rxode2_rxRmvn_(SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -446,6 +446,7 @@ SEXP _rxode2_parse_strncmpci(void);
 SEXP _rxode2_rxIsEt2(SEXP);
 SEXP _rxode2_etTransEvidIsObs(SEXP);
 SEXP _rxode2_rxTranslateOneEvent_(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP _rxode2_rxInvChol_(SEXP, SEXP);
 SEXP _rxode2_rxSetIni0(SEXP ini0SEXP);
 SEXP _rxode2_rxEtTransAsDataFrame_(SEXP inData1SEXP);
 SEXP _rxode2_swapMatListWithCube_(SEXP inOSEXP);
@@ -639,8 +640,9 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2rxRmvtSetup = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRmvtSetup, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxRmvtDraw = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRmvtDraw, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxRmvtFree = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRmvtFree, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2setIndNewind = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndNewind, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 104
+#define nVec 105
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -746,6 +748,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 101, rxode2rxRmvtSetup);
   SET_VECTOR_ELT(ret, 102, rxode2rxRmvtDraw);
   SET_VECTOR_ELT(ret, 103, rxode2rxRmvtFree);
+  SET_VECTOR_ELT(ret, 104, rxode2setIndNewind);
 
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
@@ -860,6 +863,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 101, Rf_mkChar("rxode2rxRmvtSetup"));
   SET_STRING_ELT(retN, 102, Rf_mkChar("rxode2rxRmvtDraw"));
   SET_STRING_ELT(retN, 103, Rf_mkChar("rxode2rxRmvtFree"));
+  SET_STRING_ELT(retN, 104, Rf_mkChar("rxode2setIndNewind"));
 
   // Nothing is validated here.  Every reverse dependency calls this at load, so a
   // check that fails takes them all down at once and they cannot be patched
@@ -970,6 +974,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxSetIni0", (DL_FUNC) &_rxode2_rxSetIni0, 1},
     {"_rxode2_etTransEvidIsObs", (DL_FUNC) &_rxode2_etTransEvidIsObs, 1},
     {"_rxode2_rxTranslateOneEvent_", (DL_FUNC) &_rxode2_rxTranslateOneEvent_, 9},
+    {"_rxode2_rxInvChol_", (DL_FUNC) &_rxode2_rxInvChol_, 2},
     {"_rxode2_parse_strncmpci",(DL_FUNC) &_rxode2_parse_strncmpci, 0},
     {"_rxode2_rxParseSetSilentErr", (DL_FUNC) &_rxode2_rxParseSetSilentErr, 1},
     {"_rxode2_rxIsEt2", (DL_FUNC) &_rxode2_rxIsEt2, 1},
@@ -1045,7 +1050,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_setProgSupported", (DL_FUNC) &_rxode2_setProgSupported, 1},
     {"_rxode2_getProgSupported", (DL_FUNC) &_rxode2_getProgSupported, 0},
     {"_rxode2_rxUpdateTrans_", (DL_FUNC) &_rxode2_rxUpdateTrans_, 3},
-    {"_rxode2_etTrans", (DL_FUNC) &_rxode2_etTrans, 12},
+    {"_rxode2_etTrans", (DL_FUNC) &_rxode2_etTrans, 13},
     {"_rxode2_rxSolveSEXP", (DL_FUNC) &_rxode2_rxSolveSEXP, 8},
     {"_rxode2_dropUnitsRxSolve", (DL_FUNC) &_rxode2_dropUnitsRxSolve, 1},
     {"_rxode2_rxAdjointSweep", (DL_FUNC) &_rxode2_rxAdjointSweep, 9},
@@ -1060,7 +1065,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxOmegaVarCovDeriv_",(DL_FUNC) &_rxode2_rxOmegaVarCovDeriv_, 2},
     {"_rxode2_rxExpandFEta_", (DL_FUNC) &_rxode2_rxExpandFEta_, 4},
     {"_rxode2_rxRepR0_", (DL_FUNC) &_rxode2_rxRepR0_, 1},
-    {"_rxode2_rxOptRep_", (DL_FUNC) &_rxode2_rxOptRep_, 1},
+    {"_rxode2_rxOptRep_", (DL_FUNC) &_rxode2_rxOptRep_, 2},
     {"_rxode2_rxSetSilentErr", (DL_FUNC) &_rxode2_rxSetSilentErr, 1},
     {"_rxode2_rxIndLin_",(DL_FUNC) &_rxode2_rxIndLin_, 1},
     {"_rxode2_rxUnloadAll_", (DL_FUNC) &_rxode2_rxUnloadAll_, 0},

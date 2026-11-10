@@ -127,9 +127,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
   assign("..vars", .pars, envir = model)
   ## .malert("calculate jacobian")
   rxProgress(dim(.jac)[1])
-  on.exit({
-    rxProgressAbort()
-  })
+  on.exit(.rxProgressExit())
   ## Two passes rather than one.  symengine::D() has to stay serial (this
   ## build has no thread-safe refcounting), but the translation afterwards
   ## does not, and doing it in one batch also pays rxFromSE()'s fixed per-call
@@ -271,9 +269,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
     }
     .malert("calculate sensitivities")
     rxProgress(dim(.grd)[1])
-    on.exit({
-      rxProgressAbort()
-    })
+    on.exit(.rxProgressExit())
     lapply(c(.grd$ddtS, .grd$ddS2), function(x) {
       assign(x, symengine::Symbol(x), envir = model)
     })
@@ -382,9 +378,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
   }
   .malert("calculate adjoint sensitivities")
   rxProgress(length(states) * (length(.state) + length(vars)))
-  on.exit({
-    rxProgressAbort()
-  })
+  on.exit(.rxProgressExit())
   .ret <- character(0)
   for (.k in states) {
     ## costate block: for each state i, -sum_j (df_j/dy_i) * lambda_{k,j}
