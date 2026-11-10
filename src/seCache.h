@@ -23,6 +23,8 @@
 
 #define SE_DIR_FROM 0
 #define SE_DIR_TO 1
+/* where .rxSEstamp() puts options(scipen=) (0-based; part of the key) */
+#define SE_STAMP_SCIPEN 5
 
 /* Apply the stamp (INTSXP: key..., enabled, capMB) for direction `dir`:
    clears the cache when the key changed.  Returns 1 when caching is on. */

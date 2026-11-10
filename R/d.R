@@ -1421,7 +1421,10 @@
     name = .name, which = as.integer(.which), template = .tmpl, kind = .kind,
     rxdName = .dNames, rxdLen = .dLen,
     eqName = names(.eq), eqN = suppressWarnings(as.integer(.eq)),
-    baseFns = .base
+    baseFns = .base,
+    ## functions whose translation cannot depend on the caller's environment
+    ## (.rxSEcallerFree): R user functions are looked up there instead
+    known = unique(c(names(.eq), .dNames, .Call(`_rxode2_seFromSEfnTable`)$name))
   )
   .rxSEstate$dTemplates <- .cached
   .cached

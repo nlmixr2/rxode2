@@ -57,7 +57,13 @@ rxTest({
         round(stats::runif(100, 0, 1e7))
       )
     })
-    expect_identical(.Call(`_rxode2_seFormatDouble`, .x), as.character(.x))
+    expect_identical(.Call(`_rxode2_seFormatDouble`, .x, 0L), as.character(.x))
+    for (.sp in c(-5L, 3L, 999L)) {
+      withr::with_options(list(scipen = .sp), {
+        expect_identical(.Call(`_rxode2_seFormatDouble`, .x, .sp), as.character(.x),
+                         info = paste("scipen", .sp))
+      })
+    }
   })
 
   test_that("number rendering in rxFromSE() matches the R walker", {

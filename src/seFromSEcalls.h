@@ -240,10 +240,11 @@ static int seIsBaseFn(const seCtx *ctx, const char *name, size_t n) {
 
 /* .stripP(): drop every redundant layer of parentheses from an argument */
 static D_ParseNode *seStripP(seCtx *ctx, D_ParseNode *pn) {
+  unsigned int used = 0;
   for (;;) {
-    seSub *s = seSubFind(ctx, pn);
-    if (s != NULL) {             /* R's tree has w (already stripped) here */
-      pn = s->w;
+    D_ParseNode *w = seSubFollow(ctx, pn, &used);
+    if (w != NULL) {             /* R's tree has w (already stripped) here */
+      pn = w;
       continue;
     }
     int nch = d_get_number_of_children(pn);
@@ -262,14 +263,15 @@ static D_ParseNode *seStripP(seCtx *ctx, D_ParseNode *pn) {
 /* the node under the single-child precedence wrappers: what R's parser would
    call the expression's top-level form */
 static D_ParseNode *seCore(seCtx *ctx, D_ParseNode *pn) {
+  unsigned int used = 0;
   for (;;) {
     if (d_get_number_of_children(pn) == 1 && seNiWrapper(pn)) {
       pn = d_get_child(pn, 0);
       continue;
     }
-    seSub *s = seSubFind(ctx, pn);
-    if (s != NULL) {
-      pn = s->w;
+    D_ParseNode *w = seSubFollow(ctx, pn, &used);
+    if (w != NULL) {
+      pn = w;
       continue;
     }
     return pn;
@@ -295,10 +297,11 @@ static int seCallArgs(D_ParseNode *pn, D_ParseNode **args, int max) {
    node for a single argument, and the grammar's precedence ladder sits on top
    of every value, so descend single-child nodes until one carries meaning. */
 static D_ParseNode *seArgNode(seCtx *ctx, D_ParseNode *pn) {
+  unsigned int used = 0;
   for (;;) {
-    seSub *s = seSubFind(ctx, pn);
-    if (s != NULL) {
-      pn = s->w;
+    D_ParseNode *w = seSubFollow(ctx, pn, &used);
+    if (w != NULL) {
+      pn = w;
       continue;
     }
     if (seNiIs(pn, symbol) || seNiIs(pn, number) || seNiIs(pn, function_call)) {

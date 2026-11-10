@@ -34,7 +34,8 @@ rxTest({
       "sin(pi*a)", "cos(a*pi/2)", "tan(pi/a)", "sin(2*(t - a)/p)", "sin(pi)",
       "a*log(4)", "a/(2^-2)", "a*(pi/3)", "a/gamma(3)", "exp(1e-06)*a",
       "a*100000", "a + 0.0001", "a*1234567890123456789", "log(1e-04 + a)",
-      "exp(a)/log(3)", "a/(3*pi)", "1.0/(1.0 + exp(exp(THETA_3_)*(-log(1e-06 + a) + log(exp(THETA_4_)))))"
+      "exp(a)/log(3)", "a/(3*pi)", "1/exp(1000)", "a/exp(1000)", "a*exp(-1000)",
+      "Subs(x, x, x)", "Subs(exp(x), x, x + 1)", "1.0/(1.0 + exp(exp(THETA_3_)*(-log(1e-06 + a) + log(exp(THETA_4_)))))"
     ))
   })
 

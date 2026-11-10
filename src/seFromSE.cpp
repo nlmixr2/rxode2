@@ -60,13 +60,15 @@ extern "C" SEXP _rxode2_rxFromSEChar(SEXP strVec, SEXP numDerS, SEXP tabs,
   seTables tab;
   seFromSEinit();
   seTablesFromR(&tab, tabs);
+  seSetScipen(stamp, SE_STAMP_SCIPEN);
   int cacheOn = seCacheBegin(stamp);
   return seRunBatch(strVec, seFromSE1, Rf_asInteger(numDerS), &tab,
                     SE_DIR_FROM, cacheOn);
 }
 
 /* .Call: as.character(<double>) as the emitter renders it, for the tests */
-extern "C" SEXP _rxode2_seFormatDouble(SEXP x) {
+extern "C" SEXP _rxode2_seFormatDouble(SEXP x, SEXP scipen) {
+  seScipen = Rf_asInteger(scipen) == NA_INTEGER ? 0 : Rf_asInteger(scipen);
   R_xlen_t n = Rf_xlength(x), i;
   SEXP ret = PROTECT(Rf_allocVector(STRSXP, n));
   char buf[400];

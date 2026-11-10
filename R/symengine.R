@@ -759,6 +759,11 @@ rxD <- function(name, derivatives) {
 ## The state a translation depends on, and the cache settings, for the C
 ## translators (src/seCache.h): everything but the last two entries is the
 ## cache key, so a change in any of them clears the cache before it is used.
+.rxSEscipen <- function() {
+  .s <- suppressWarnings(as.integer(getOption("scipen", 0L)))
+  if (length(.s) != 1L || is.na(.s)) 0L else .s
+}
+
 .rxSEstamp <- function(numDer = .rxSEstate$fromNumDer) {
   .mb <- suppressWarnings(as.integer(getOption("rxode2.symengineCacheMB", 256L)))
   if (length(.mb) != 1L || is.na(.mb) || .mb < 1L) .mb <- 256L
@@ -768,14 +773,28 @@ rxD <- function(name, derivatives) {
     as.integer(isTRUE(.rxSEstate$sumProdSum)),
     as.integer(isTRUE(.rxSEstate$sumProdProd)),
     as.integer(isTRUE(.rxSEstate$promoteLinB)),
+    ## options(scipen=): as.character() writes numbers by it (SE_STAMP_SCIPEN)
+    .rxSEscipen(),
     as.integer(isTRUE(getOption("rxode2.symengineCache", TRUE))),
     .mb
   )
 }
 
-## decline reasons the C translators report (seWhy in src/seFromSEarena.h)
-## after which the R walker's answer must not be cached: it depends on R
-## functions looked up in the caller's environment
+## Can the R walker's translation of txt be cached?  Not when it calls a
+## function rxode2 does not know, which the R walker looks up in the caller's
+## environment (an R user function) -- every call is checked, since the C
+## decline reason names only the FIRST thing the C walk could not do.
+## linCmt() also carries session state through rxToSE().
+.rxSEcallerFree <- function(txt, toSE = FALSE) {
+  .f <- regmatches(txt, gregexpr("[A-Za-z_.][A-Za-z0-9_.]*(?=\\()", txt, perl = TRUE))[[1]]
+  if (toSE && any(startsWith(.f, "linCmt"))) {
+    return(FALSE)
+  }
+  all(.f %in% .rxDtemplates()$known)
+}
+
+## decline reasons the C translators report (seWhy in src/seFromSEarena.h):
+## an unknown function, which R resolves in the caller's environment
 .rxSEwhyUnknownFn <- 9L
 ## decline reasons after which rxToSE()'s R walker answer is cached: only
 ## SE_WHY_OTHER, an expression shape the C walk does not write itself
@@ -868,7 +887,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
         return(.c)
       }
       if (is.null(envir) && !is.na(x) &&
-        isTRUE(attr(.c, "why") %in% .rxSEwhyToSEcache)) {
+        isTRUE(attr(.c, "why") %in% .rxSEwhyToSEcache) && .rxSEcallerFree(x, toSE = TRUE)) {
         ## A single expression the R walker translates without touching the
         ## caller's functions or any session state: remember its answer.
         ## Statements (a parse failure here) and calls the C side does not
@@ -1476,7 +1495,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
   if (length(.cc[.cc != ""]) > 0L) {
     return(.rxToSE(x, envir = envir))
   }
-  .r <- .Call(`_rxode2_rxToSEenv`, deparse1(x))
+  .r <- .Call(`_rxode2_rxToSEenv`, deparse1(x), .rxSEstamp())
   if (is.null(.r)) {
     return(.rxToSE(x, envir = envir))
   }
@@ -3199,7 +3218,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
   }
   .ret <- .rxFromSE(eval(parse(text = paste0("quote({", .x2, "})"))))
   if (.useC && is.character(.ret) && length(.ret) == 1L &&
-    !identical(.why, .rxSEwhyUnknownFn)) {
+    !identical(.why, .rxSEwhyUnknownFn) && .rxSEcallerFree(txt)) {
     .Call(`_rxode2_seCachePutR`, 0L, txt, .ret)
   }
   .ret

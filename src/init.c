@@ -64,14 +64,14 @@ SEXP _rxode2_eventSensShapeRestore(SEXP buf);
 SEXP _rxode2_parseModel(SEXP type);
 /* symengine text -> rxode2/C, src/seFromSE.c */
 SEXP _rxode2_rxFromSEChar(SEXP strVec, SEXP numDerS, SEXP tabs, SEXP stamp);
-SEXP _rxode2_seFormatDouble(SEXP x);
+SEXP _rxode2_seFormatDouble(SEXP x, SEXP scipen);
 SEXP _rxode2_seFromSEfnTable(void);
 SEXP _rxode2_seCachePutR(SEXP dirS, SEXP keyS, SEXP valS);
 SEXP _rxode2_seCacheResetR(void);
 SEXP _rxode2_seStatsR(SEXP resetS);
 /* rxode2 -> symengine text, src/rxToSE.c */
 SEXP _rxode2_rxToSEChar(SEXP strVec, SEXP stamp);
-SEXP _rxode2_rxToSEenv(SEXP str);
+SEXP _rxode2_rxToSEenv(SEXP str, SEXP stamp);
 /* common subexpression elimination, src/rxCse.c */
 SEXP _rxode2_rxCse(SEXP linesVec);
 SEXP _rxode2_rxCsePickThreads(SEXP n);
@@ -1014,8 +1014,8 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_parseModel", (DL_FUNC) &_rxode2_parseModel, 1},
     {"_rxode2_rxFromSEChar", (DL_FUNC) &_rxode2_rxFromSEChar, 4},
     {"_rxode2_rxToSEChar", (DL_FUNC) &_rxode2_rxToSEChar, 2},
-    {"_rxode2_rxToSEenv", (DL_FUNC) &_rxode2_rxToSEenv, 1},
-    {"_rxode2_seFormatDouble", (DL_FUNC) &_rxode2_seFormatDouble, 1},
+    {"_rxode2_rxToSEenv", (DL_FUNC) &_rxode2_rxToSEenv, 2},
+    {"_rxode2_seFormatDouble", (DL_FUNC) &_rxode2_seFormatDouble, 2},
     {"_rxode2_seFromSEfnTable", (DL_FUNC) &_rxode2_seFromSEfnTable, 0},
     {"_rxode2_seCachePutR", (DL_FUNC) &_rxode2_seCachePutR, 3},
     {"_rxode2_seCacheResetR", (DL_FUNC) &_rxode2_seCacheResetR, 0},

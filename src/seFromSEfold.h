@@ -147,7 +147,17 @@ static double seEvalName(seEval *s) {
   size_t n = (size_t)(s->p - b);
   seEvalWs(s);
   if (*s->p == '(') return seEvalCall(s, b, n);
-  if (n == 2 && b[0] == 'p' && b[1] == 'i') return M_PI;
+  if (n == 2 && strncmp(b, "pi", 2) == 0) return M_PI;
+  /* R literals, not names: Inf and NaN are numbers (the fold writes Inf
+     back as text, and 1/Inf must fold to 0 as R folds it); NA, TRUE, FALSE
+     are logical constants R may still compute with */
+  if (n == 3 && strncmp(b, "Inf", 3) == 0) return R_PosInf;
+  if (n == 3 && strncmp(b, "NaN", 3) == 0) return R_NaN;
+  if ((n == 2 && strncmp(b, "NA", 2) == 0) || (n == 4 && strncmp(b, "TRUE", 4) == 0) ||
+      (n == 5 && strncmp(b, "FALSE", 5) == 0) || (n == 4 && strncmp(b, "NULL", 4) == 0)) {
+    seEvalSt(s, 2);
+    return 0;
+  }
   seEvalSt(s, 1);
   return 0;
 }

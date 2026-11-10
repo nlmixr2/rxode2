@@ -177,12 +177,15 @@ static int seTopSign(seCtx *ctx, D_ParseNode *pn) {
 }
 
 /* make v stand for w while text is walked (seSubFind); 0 when too deep */
-static int seSubPush(seCtx *ctx, const char *v, D_ParseNode *w) {
+static int seSubPush(seCtx *ctx, const char *v, D_ParseNode *w,
+                     const char *txt) {
   if (v == NULL) return 1;
   if (ctx->nsubs >= SE_MAX_SUBS) return 0;
   ctx->subs[ctx->nsubs].v = v;
   ctx->subs[ctx->nsubs].w = w;
   ctx->subs[ctx->nsubs].active = 1;
+  ctx->subs[ctx->nsubs].buf = txt;
+  ctx->subs[ctx->nsubs].len = strlen(txt);
   ctx->nsubs++;
   return 1;
 }
@@ -190,7 +193,7 @@ static int seSubPush(seCtx *ctx, const char *v, D_ParseNode *w) {
 static const char *seReEmitSub(seCtx *ctx, const char *txt, int *topSign,
                                const char *v, D_ParseNode *w) {
   const char *out = NULL;
-  if (!seSubPush(ctx, v, w)) return NULL;
+  if (!seSubPush(ctx, v, w, txt)) return NULL;
   D_Parser *p = new_D_Parser(sePt, sizeof(D_ParseNode_User));
   if (p != NULL) {
     p->save_parse_tree = 1;

@@ -97,6 +97,11 @@ typedef struct {
   const char *v;
   struct D_ParseNode *w;
   int active;
+  /* the reparsed F text: only its symbols are substituted.  w's nodes live
+     in another buffer, so a v inside w is never replaced again -- R splices
+     w in once and does not walk into it (Subs(exp(x), x, x + 1)) */
+  const char *buf;
+  size_t len;
 } seSub;
 
 #define SE_MAX_SUBS 16

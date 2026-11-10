@@ -66,6 +66,24 @@ rxTest({
     rxCacheG <- function(x, ...) x
     expect_error(rxToSE("rxCacheG(x,y)"))
     expect_error(rxFromSE("Derivative(rxCacheG(a,b),a)"))
+    # the user function comes AFTER something else C declines (round(1.5)
+    # folds in R only), so the decline reason alone does not reveal it
+    rxSymEngineCacheReset()
+    rxCacheG <- function(x, y) 3
+    .s <- "a*round(1.5)+rxCacheG(a,b)"
+    expect_equal(rxFromSE(.s), "a*2+rxCacheG(a, b)")
+    rxCacheG <- function(x, ...) x
+    expect_error(rxFromSE(.s))
+  })
+
+  test_that("options(scipen=) is followed, and is part of the cache key", {
+    rxSymEngineCacheReset()
+    expect_equal(rxFromSE("a*100000"), "a*1e+05")
+    withr::with_options(list(scipen = 999), {
+      expect_equal(rxFromSE("a*100000"), "a*100000")
+      expect_equal(rxToSE("a*100000"), "a*100000")
+    })
+    expect_equal(rxFromSE("a*100000"), "a*1e+05")
   })
 
   test_that("a reset or a new session empties the cache", {

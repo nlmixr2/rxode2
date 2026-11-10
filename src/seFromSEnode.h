@@ -124,12 +124,27 @@ static seSub *seSubFind(seCtx *ctx, D_ParseNode *pn) {
   size_t n = (size_t)(e - b);
   for (i = ctx->nsubs - 1; i >= 0; i--) {
     seSub *s = &ctx->subs[i];
+    if (b < s->buf || b >= s->buf + s->len) continue;
     if (s->active && strlen(s->v) == n && strncmp(s->v, b, n) == 0) return s;
   }
   return NULL;
 }
 
+/* The node a substituted symbol stands for, following each Subs() entry at
+   most once per walk (`used` is that walk's record) -- Subs(x, x, x) replaces
+   x with x, and following it again would never end.  NULL when pn is not a
+   substituted symbol (any more). */
+static D_ParseNode *seSubFollow(seCtx *ctx, D_ParseNode *pn, unsigned int *used) {
+  seSub *s = seSubFind(ctx, pn);
+  if (s == NULL) return NULL;
+  unsigned int bit = 1u << (unsigned int)(s - ctx->subs);
+  if (*used & bit) return NULL;
+  *used |= bit;
+  return s->w;
+}
+
 static int seIsBareNumber(seCtx *ctx, D_ParseNode *pn) {
+  unsigned int used = 0;
   for (;;) {
     if (seNiNumber(pn)) return 1;
     if (d_get_number_of_children(pn) == 1 && seNiWrapper(pn)) {
@@ -137,9 +152,9 @@ static int seIsBareNumber(seCtx *ctx, D_ParseNode *pn) {
       continue;
     }
     /* a substituted symbol is whatever replaces it */
-    seSub *s = seSubFind(ctx, pn);
-    if (s != NULL) {
-      pn = s->w;
+    D_ParseNode *w = seSubFollow(ctx, pn, &used);
+    if (w != NULL) {
+      pn = w;
       continue;
     }
     return 0;

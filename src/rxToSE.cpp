@@ -27,6 +27,7 @@ static const char *rxToSE1(seCtx *ctx, const char *in) {
 /* .Call entry; the R fallback for a declined element is rxToSE(). */
 extern "C" SEXP _rxode2_rxToSEChar(SEXP strVec, SEXP stamp) {
   rtSymInit();
+  seSetScipen(stamp, SE_STAMP_SCIPEN);
   int cacheOn = seCacheBegin(stamp);
   return seRunBatch(strVec, rxToSE1, 0, NULL, SE_DIR_TO, cacheOn);
 }
@@ -92,12 +93,13 @@ static void rtEnvKeep(seCtx *ctx, const char *out, rtEnvFound *f) {
    ..curCall path each was read under -- so R can make the same bindings
    .rxToSENameOrAtomic()/.rxToSESquareBracket() would; NULL when the emitter
    declines and the R walker must run.  Not cached: the leaves matter. */
-extern "C" SEXP _rxode2_rxToSEenv(SEXP str) {
+extern "C" SEXP _rxode2_rxToSEenv(SEXP str, SEXP stamp) {
   if (TYPEOF(str) != STRSXP || Rf_xlength(str) != 1 ||
       STRING_ELT(str, 0) == NA_STRING) {
     return R_NilValue;
   }
   rtSymInit();
+  seSetScipen(stamp, SE_STAMP_SCIPEN);
   seCtx ctx;
   memset(&ctx, 0, sizeof(seCtx));
   ctx.collect = 1;
