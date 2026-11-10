@@ -113,6 +113,52 @@ rxTest({
     }
   })
 
+  test_that("a steady-state dose at a step reads the dose record's covariates", {
+    # d/dt(a) = -k a with an ss = 1 bolus at t = 10, where k steps from 0.1 to
+    # 0.3: the steady state is built with the dose record's k, and the
+    # interval after the dose takes the next record's k (0.3 locf, 0.5 nocb)
+    .m <- rxode2({
+      d/dt(a) <- -k * a
+    })
+    .d <- function(k) {
+      data.frame(
+        id = 1L,
+        time = c(0, 10, 11, 14, 22),
+        evid = c(0L, 1L, 0L, 0L, 0L),
+        amt = c(0, 100, 0, 0, 0),
+        ss = c(0L, 1L, 0L, 0L, 0L),
+        ii = c(0, 12, 0, 0, 0),
+        cmt = "a",
+        k = k
+      )
+    }
+    .cases <- list(
+      locf = list(k = c(0.1, 0.3, 0.3, 0.3, 0.3), after = 0.3),
+      nocb = list(k = c(0.1, 0.3, 0.5, 0.5, 0.5), after = 0.5)
+    )
+    .a10 <- 100 / (1 - exp(-0.3 * 12))
+    for (.interp in names(.cases)) {
+      for (.method in c("dop853", "cvode", "liblsoda", "lsoda")) {
+        .s <- rxSolve(
+          .m,
+          .d(.cases[[.interp]]$k),
+          method = .method,
+          covsInterpolation = .interp,
+          atol = 1e-12,
+          rtol = 1e-12,
+          returnType = "data.frame"
+        )
+        .after <- .s$time > 10
+        expect_equal(
+          .s$a[.after],
+          .a10 * exp(-.cases[[.interp]]$after * (.s$time[.after] - 10)),
+          tolerance = 1e-8,
+          label = paste(.interp, .method)
+        )
+      }
+    }
+  })
+
   test_that("the record reports its own covariate value", {
     .d <- .stepData("obs")
     for (.method in c("dop853", "liblsoda")) {
