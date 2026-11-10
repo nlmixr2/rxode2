@@ -117,13 +117,81 @@ rxTest({
     }
   })
 
+  test_that("a steady-state dose at a step reads the dose record's covariates", {
+    # d/dt(a) = -k a with an ss = 1 bolus at t = 10, where k steps from 0.1 to
+    # 0.3: the steady state is built with the dose record's k, and the
+    # interval after the dose takes the next record's k (0.3 locf, 0.5 nocb)
+    .m <- rxode2({
+      d/dt(a) <- -k * a
+    })
+    .d <- function(k) {
+      data.frame(
+        id = 1L,
+        time = c(0, 10, 11, 14, 22),
+        evid = c(0L, 1L, 0L, 0L, 0L),
+        amt = c(0, 100, 0, 0, 0),
+        ss = c(0L, 1L, 0L, 0L, 0L),
+        ii = c(0, 12, 0, 0, 0),
+        cmt = "a",
+        k = k
+      )
+    }
+    .cases <- list(
+      locf = list(k = c(0.1, 0.3, 0.3, 0.3, 0.3), after = 0.3),
+      nocb = list(k = c(0.1, 0.3, 0.5, 0.5, 0.5), after = 0.5)
+    )
+    .a10 <- 100 / (1 - exp(-0.3 * 12))
+    for (.interp in names(.cases)) {
+      for (.method in c("dop853", "cvode", "liblsoda", "lsoda")) {
+        .s <- rxSolve(
+          .m,
+          .d(.cases[[.interp]]$k),
+          method = .method,
+          covsInterpolation = .interp,
+          atol = 1e-12,
+          rtol = 1e-12,
+          returnType = "data.frame"
+        )
+        .after <- .s$time > 10
+        expect_equal(
+          .s$a[.after],
+          .a10 * exp(-.cases[[.interp]]$after * (.s$time[.after] - 10)),
+          tolerance = 1e-8,
+          label = paste(.interp, .method)
+        )
+      }
+    }
+  })
+
+  test_that("a step in the first interval (nocb) or at the last record (locf) keeps the interval's value", {
+    .t <- seq(0, 10, by = 0.5)
+    for (.method in c("dop853", "cvode", "liblsoda", "lsoda")) {
+      .tol <- if (.method == "dop853") 1e-13 else 1e-9
+      # nocb: wt is 1 at t = 0 and 3 after, so (0, 0.5] already takes 3
+      .d <- data.frame(id = 1L, time = .t, evid = 0L, amt = 0, cmt = "cc", wt = ifelse(.t > 0, 3, 1))
+      .s <- .stepSolve(.d, .method, "nocb")
+      expect_equal(.s$cc, 3 * .s$time, tolerance = .tol, label = paste("nocb", .method))
+      # locf: wt is 1 up to the last record, t = 10, where it is 3, so (9.5, 10) keeps 1
+      .d$wt <- ifelse(.t < 10, 1, 3)
+      .s <- .stepSolve(.d, .method, "locf")
+      expect_equal(.s$cc, .s$time, tolerance = .tol, label = paste("locf", .method))
+    }
+  })
+
   test_that("the record reports its own covariate value", {
     .d <- .stepData("obs")
     for (.method in c("dop853", "liblsoda")) {
-      .s <- .stepSolve(.d, .method, "locf")
-      expect_equal(.s$w, .d$wt, label = .method)
-      .s <- .stepSolve(.d, .method, "nocb")
-      expect_equal(.s$w, .d$wt, label = .method)
+      for (.interp in c("locf", "nocb")) {
+        .lab <- paste(.interp, .method)
+        .s <- .stepSolve(.d, .method, .interp)
+        expect_equal(.s$w, .d$wt, label = .lab)
+        # resampled, each subject takes one subject's wt, 5 j + 10 from t = 5
+        .s <- .stepSolve(.d, .method, .interp, resample = TRUE)
+        .id <- as.character(if ("id" %in% names(.s)) .s$id else .s$sim.id)
+        .w0 <- vapply(split(.s$w, .id), function(.w) .w[1], numeric(1))
+        expect_true(all(.w0 %in% c(5, 10, 15, 20)), label = .lab)
+        expect_equal(.s$w, unname(.w0[.id]) + 10 * (.s$time >= 5), label = paste(.lab, "resampled"))
+      }
     }
   })
 })

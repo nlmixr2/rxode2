@@ -258,10 +258,14 @@ static inline double rxCovRecTime(rx_solving_options_ind *ind, int i) {
 // before t), +1 when t is the previous record's time and it is nocb (read the
 // value after t), and 0 otherwise.  Linear interpolation is continuous and
 // midpoint interpolation already takes the value of the half-interval next
-// to each end, so neither needs a side.
+// to each end, so neither needs a side.  op is read by isSameTimeOp().
 static inline int rxStepCovSide(double t, int is_locf, int i, rx_solving_options_ind *ind,
                                 rx_solving_options *op) {
   if ((is_locf != 1 && is_locf != 2) || i <= 0 || i >= ind->n_all_times) return 0;
+  // while ssTime is set the covariates are read at that fixed time: a
+  // steady-state solve integrates forward from its dose record with the
+  // record's own values, and a linCmt() interval reads its middle
+  if (!ISNA(ind->ssTime)) return 0;
   // only while record i is still ahead: once it is solved, the output walk
   // reads its covariates with the flag the last model call left
   if (!rxIntegratingToRecord(ind) || ind->solvedIdx >= i) return 0;
