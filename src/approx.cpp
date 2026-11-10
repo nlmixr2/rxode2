@@ -280,7 +280,9 @@ static inline double rxCovRecTime(rx_solving_options_ind *ind, int i) {
 static inline int rxStepCovSide(double t, int is_locf, int i, rx_solving_options_ind *ind,
                                 rx_solving_options *op) {
   if ((is_locf != 1 && is_locf != 2) || i <= 0 || i >= ind->n_all_times) return 0;
-  if (!rxIntegratingToRecord(ind)) return 0;
+  // only while record i is still ahead: once it is solved, the output walk
+  // reads its covariates with the flag the last model call left
+  if (!rxIntegratingToRecord(ind) || ind->solvedIdx >= i) return 0;
   double ti = rxCovRecTime(ind, i);
   double tp = rxCovRecTime(ind, i - 1);
   if (isSameTimeOp(ti, tp)) return 0;
