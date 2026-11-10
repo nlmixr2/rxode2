@@ -210,11 +210,29 @@ static inline double rx_approxP(double v, double *y, int is_locf, int n, int nOr
 
 #undef V
 
+// The time of sorted record i that a covariate update at time t is matched,
+// searched and interpolated against.  In the solve it is the time the solve
+// gave the record (its xout, lagged as sortInd() or refreshLagTimesIfNeeded()
+// left it), the order ix is sorted in, so a lagged dose reads its own
+// record's covariates and a time between records interpolates between the
+// records the solve integrates across.  gettime() would evaluate alag() again,
+// inside this update, where it reads the covariates the previous update left.
+// timeThread is the thread's, so outside the solve (the initial conditions,
+// the output walks) it can hold another subject's times; gettime() is used
+// there.
+static inline double rxRecMatchTime(rx_solving_options_ind *ind, int i) {
+  if (ind->timeThread != NULL && ind->inLhs == 0 && ind->isIni == 0) {
+    return ind->timeThread[ind->ix[i]];
+  }
+  return (ind->fns && ind->fns->gettime) ? ind->fns->gettime(ind->ix[i], ind) :
+    getTime(ind->ix[i], ind);
+}
+
 // Covariate of this subject at time t, on its (possibly lagged) sorted times
 static inline double rxApproxCov(double t, double *y, int is_locf,
                                  rx_solving_options *op, rx_solving_options_ind *id) {
   return rx_approxP(t, y, is_locf, id->n_all_times, id->n_all_times_orig, id->ix, op, [id](int i) {
-    return id->fns ? id->fns->gettime(id->ix[i], id) : getTime(id->ix[i], id);
+    return rxRecMatchTime(id, i);
   });
 }
 
@@ -244,12 +262,6 @@ static inline bool rxIntegratingToRecord(rx_solving_options_ind *ind) {
   return f == 1 || f == 2 || f == 9 || f == 10;
 }
 
-// Sorted record i's time, as the covariate lookups below match it.
-static inline double rxCovRecTime(rx_solving_options_ind *ind, int i) {
-  return (ind->fns && ind->fns->gettime) ? ind->fns->gettime(ind->ix[i], ind) :
-    getTime(ind->ix[i], ind);
-}
-
 // Which side of t a step covariate must be read from while the solver
 // integrates toward sorted record i: the interval (t[i-1], t[i]) has one value
 // of a locf or nocb covariate, but at its ends the lookup gives the value of
@@ -269,8 +281,8 @@ static inline int rxStepCovSide(double t, int is_locf, int i, rx_solving_options
   // only while record i is still ahead: once it is solved, the output walk
   // reads its covariates with the flag the last model call left
   if (!rxIntegratingToRecord(ind) || ind->solvedIdx >= i) return 0;
-  double ti = rxCovRecTime(ind, i);
-  double tp = rxCovRecTime(ind, i - 1);
+  double ti = rxRecMatchTime(ind, i);
+  double tp = rxRecMatchTime(ind, i - 1);
   if (isSameTimeOp(ti, tp)) return 0;
   if (is_locf == 1 && isSameTimeOp(t, ti)) return -1;
   if (is_locf == 2 && isSameTimeOp(t, tp)) return 1;
@@ -396,24 +408,24 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
     int i, j, ij, n = ind->n_all_times;
     i = 0;
     j = n - 1;
-    if (v < (ind->fns ? ind->fns->gettime(ind->ix[i], ind) : getTime(ind->ix[i], ind))) {
+    if (v < rxRecMatchTime(ind, i)) {
       idx = i;
-    } else if (v > (ind->fns ? ind->fns->gettime(ind->ix[j], ind) : getTime(ind->ix[j], ind))) {
+    } else if (v > rxRecMatchTime(ind, j)) {
       idx = j;
     } else {
       /* find the correct interval by bisection */
       while(i < j - 1) { /* T(i) <= v <= T(j) */
         ij = (i + j)/2; /* i+1 <= ij <= j-1 */
-        if (v < (ind->fns ? ind->fns->gettime(ind->ix[ij], ind) : getTime(ind->ix[ij], ind))) {
+        if (v < rxRecMatchTime(ind, ij)) {
           j = ij;
         } else  {
           i = ij;
         }
       }
       // Pick best match
-      if (isSameTimeOp(v, (ind->fns ? ind->fns->gettime(ind->ix[j], ind) : getTime(ind->ix[j], ind)))) {
+      if (isSameTimeOp(v, rxRecMatchTime(ind, j))) {
         idx = j;
-      } else if (isSameTimeOp(v, (ind->fns ? ind->fns->gettime(ind->ix[i], ind) : getTime(ind->ix[i], ind)))) {
+      } else if (isSameTimeOp(v, rxRecMatchTime(ind, i))) {
         idx = i;
       } else if (op->instant_backward == 0) {
         // use instant_backward to change the idx too; it does not
@@ -532,13 +544,25 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           }
           // a pushed record has no value of its own; interpolate across it
           bool pushed = rxPushedRec(ind->ix, idxSample, ind->n_all_times_orig);
+          if (!rx->addlKeepsCov && (rx->needSort & needSortAlag) &&
+              (pushed || idxSample >= indSample->n_all_times ||
+               !isSameTimeOp(t, getAllTimes(indSample, indSample->ix[idxSample])) ||
+               !isSameTimeOp(t, rxRecMatchTime(indSample, idxSample)))) {
+            // a lagged dose sorts at its arrival; unless addlKeepsCov carries
+            // its record's covariates there, away from a record at its own
+            // data time impute on the data records' times (#1584)
+            double v = rxApproxCovData(t, k, is_locf, op, indSample);
+            if (!isSameTimeOp(v, par_ptr[op->par_cov[k]-1])) ind->cacheME=0;
+            par_ptr[op->par_cov[k]-1] = v;
+            continue;
+          }
           if (!pushed && idxSample == 0 &&
-              isSameTimeOp(t, (indSample->fns && indSample->fns->gettime ? indSample->fns->gettime(indSample->ix[idxSample], indSample) : getTime(indSample->ix[idxSample], indSample)))) {
+              isSameTimeOp(t, rxRecMatchTime(indSample, idxSample))) {
             // y is in record order; a lagged dose can move record 0 off sorted slot 0
             par_ptr[op->par_cov[k]-1] = getValue(0, y, is_locf, indSample, op, 0);
             ind->cacheME=0;
           } else if (!pushed && idxSample > 0 && idxSample < indSample->n_all_times &&
-                     isSameTimeOp(t, (indSample->fns && indSample->fns->gettime ? indSample->fns->gettime(indSample->ix[idxSample], indSample) : getTime(indSample->ix[idxSample], indSample)))) {
+                     isSameTimeOp(t, rxRecMatchTime(indSample, idxSample))) {
             par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, is_locf,
                                                  indSample, op, 0);
             if (!isSameTimeOp(getValue(idxSample, y, is_locf,

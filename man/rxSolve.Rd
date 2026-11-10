@@ -859,7 +859,10 @@ interpolated.  Currently this can be:
 \itemize{
 \item \code{"linear"} interpolation, which interpolates the covariate
 by solving the line between the observed covariates and extrapolating the new
-covariate value.
+covariate value.  A \code{linCmt()} model refuses it for a covariate
+that varies within a subject and feeds the \code{linCmt()} parameters,
+since its closed form cannot follow the ramp; use another method or
+write the model as ODEs.
 \item \code{"locf"} -- Last observation carried forward (the default).
 \item \code{"nocb"} -- Next Observation Carried Backward.  This is the same method
 that NONMEM uses.
@@ -1382,9 +1385,12 @@ solve, but continues solving passing through the \code{NA} time
 solved ODE (otherwise stopping can crash R)
 }}
 
-\item{addlKeepsCov}{This determines if the additional dosing items
-repeats the dose only (\code{FALSE}) or keeps the covariates at the
-record of the dose (\code{TRUE})}
+\item{addlKeepsCov}{This determines if a dose given at a time other
+than its record's (an additional dosing item or a dose moved by
+\code{alag()}) takes the time-varying covariates imputed at its actual
+dosing time (\code{FALSE}) or keeps the covariates at the record of the
+dose (\code{TRUE}, as NONMEM does).  By default \code{FALSE}, or \code{TRUE} with
+\code{nonmem = TRUE}.}
 
 \item{addlDropSs}{When there are steady state doses with an \code{addl}
 specification the steady state flag is dropped with repeated
@@ -1474,8 +1480,8 @@ calls \verb{$PK} at its records.  \code{d/dt()} and state-dependent statements k
 the continuous time (like \verb{$DES}).  \code{addl} repeats, infusion ends,
 lagged doses and doses added while solving do not end an interval;
 \code{mtime()} times do.  Covariate interpolation is still set by
-\code{covsInterpolation}.  It also sets the default \code{tieOrder} to \code{"data"}.
-By default \code{FALSE}.}
+\code{covsInterpolation}.  It also sets the default \code{tieOrder} to \code{"data"}
+and turns on \code{addlKeepsCov} unless it is given.  By default \code{FALSE}.}
 
 \item{tieOrder}{How records of a subject that share a time are processed:
 \code{"evid"} processes resets first, then doses, then observations, so the
