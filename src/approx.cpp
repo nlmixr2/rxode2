@@ -277,8 +277,7 @@ static inline double rxCovRecTime(rx_solving_options_ind *ind, int i) {
 // value after t), and 0 otherwise.  Linear interpolation is continuous and
 // midpoint interpolation already takes the value of the half-interval next
 // to each end, so neither needs a side.
-static inline int rxStepCovSide(double t, int is_locf, int i, rx_solving_options_ind *ind,
-                                rx_solving_options *op) {
+static inline int rxStepCovSide(double t, int is_locf, int i, rx_solving_options_ind *ind) {
   if ((is_locf != 1 && is_locf != 2) || i <= 0 || i >= ind->n_all_times) return 0;
   // while ssTime is set the covariates are read at that fixed time: a
   // steady-state solve integrates forward from its dose record with the
@@ -524,7 +523,7 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
             indSample = &(rx->subjects[ind->cov_sample[k]-1]);
             // Use the same methodology as approxfun.  Don't need to reset ME
             // because solver doesn't use the times in-between.
-            int side = rxStepCovSide(t, is_locf, idx, ind, op);
+            int side = rxStepCovSide(t, is_locf, idx, ind);
             ind->par_ptr[op->par_cov[k]-1] = (side == 0) ?
               rxApproxCovData(t, k, is_locf, op, indSample) :
               rxApproxCovDataSide(t, k, is_locf, side, op, indSample);
@@ -539,7 +538,7 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           double *y = indSample->cov_ptr + indSample->n_all_times_orig*k;
           // integrating toward the record, a step covariate at an end of the
           // interval takes the value it has inside it
-          int side = rxStepCovSide(t, is_locf, idxSample, ind, op);
+          int side = rxStepCovSide(t, is_locf, idxSample, ind);
           if (side != 0 && !rxPushedRec(ind->ix, idxSample, ind->n_all_times_orig) &&
               !rxPushedRec(ind->ix, idxSample - 1, ind->n_all_times_orig)) {
             double vIn = getValue(side < 0 ? idxSample - 1 : idxSample, y, is_locf,
