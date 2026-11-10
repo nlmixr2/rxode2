@@ -46,7 +46,8 @@ suppressMessages(library(rxode2))
 stopifnot(identical(normalizePath(dirname(system.file(package = "rxode2"))), normalizePath(.lib)))
 .label <- Sys.getenv("BENCH_LABEL", "build")
 .reps <- as.integer(Sys.getenv("BENCH_REPS", "5"))
-cat("reps:", .reps, " load:", strsplit(readLines("/proc/loadavg"), " ")[[1]][1], "\n")
+.load <- if (file.exists("/proc/loadavg")) strsplit(readLines("/proc/loadavg"), " ")[[1]][1] else NA
+cat("reps:", .reps, " load:", .load, "\n")
 
 .fingerprint <- function(x) {
   .f <- tempfile()
