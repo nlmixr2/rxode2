@@ -143,6 +143,12 @@
 <code><a href="../reference/rxSolveAdjoint.html">rxSolveAdjoint()</a></code> now accepts a model function, as <code><a href="../reference/rxSolve.html">rxSolve()</a></code> does; it used to fail with an rxode2 syntax error on the <code>ini({})</code> block (<a href="https://github.com/nlmixr2/rxode2/issues/1504" class="external-link">#1504</a>).</li>
 <li>
 <code><a href="../reference/rxSolveAdjoint.html">rxSolveAdjoint()</a></code> and the adjoint builds now send a dose without a <code>cmt</code> to the first state, and a numeric <code>cmt</code> to that state, as <code><a href="../reference/rxSolve.html">rxSolve()</a></code> does; a dose without a <code>cmt</code> used to fail in the build (<a href="https://github.com/nlmixr2/rxode2/issues/1504" class="external-link">#1504</a>).</li>
+<li>Event-sensitivity setup skips symbolic expansion when no dosing derivative needs it, reducing setup time for large sensitivity models (<a href="https://github.com/nlmixr2/rxode2/issues/1632" class="external-link">#1632</a>).</li>
+</ul></div>
+<div class="section level4">
+<h4 id="expression-optimization-development-version">Expression optimization<a class="anchor" aria-label="anchor" href="#expression-optimization-development-version"></a></h4>
+<ul><li>
+<code><a href="../reference/rxOptExpr.html">rxOptExpr()</a></code> avoids CSE temporary-name collisions and warns on repeated optimization; each model should be optimized only once (<a href="https://github.com/nlmixr2/rxode2/issues/1632" class="external-link">#1632</a>).</li>
 </ul></div>
 <div class="section level4">
 <h4 id="compilation-development-version">Compilation<a class="anchor" aria-label="anchor" href="#compilation-development-version"></a></h4>
