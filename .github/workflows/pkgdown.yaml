@@ -3,7 +3,10 @@
 on:
   push:
     branches: [main, master]
-  pull_request:
+  # PR checks run only when a reviewer approves with the phrase
+  # "ready to be merged" (pushes to a PR branch no longer start CI).
+  pull_request_review:
+    types: [submitted]
   release:
     types: [published]
   workflow_dispatch:
@@ -16,10 +19,11 @@ permissions: read-all
 
 jobs:
   pkgdown:
+    if: (github.event_name != 'pull_request_review' || (github.event.review.state == 'approved' && contains(github.event.review.body, 'ready to be merged')))
     runs-on: ubuntu-latest
     # Only restrict concurrency for non-PR jobs
     concurrency:
-      group: pkgdown-${{ github.event_name != 'pull_request' || github.run_id }}
+      group: pkgdown-${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_review') || github.run_id }}
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     permissions:
@@ -63,7 +67,7 @@ jobs:
           done
 
       - name: Deploy to GitHub pages
-        if: github.event_name != 'pull_request'
+        if: (github.event_name != 'pull_request' && github.event_name != 'pull_request_review')
         uses: JamesIves/github-pages-deploy-action@v4.5.0
         with:
           clean: false
