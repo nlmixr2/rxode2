@@ -316,9 +316,11 @@ static D_ParseNode *seArgNode(seCtx *ctx, D_ParseNode *pn) {
    "numeric")).  Negative numbers are calls to unary minus, so they are not. */
 static int seIsNumLit(D_ParseNode *pn, double *v, seCtx *ctx) {
   D_ParseNode *c = seCore(ctx, pn);
-  /* NaN is numeric to R, and `NaN == 1` then stops .rxP1rmF() with an
-     error: decline rather than guess */
-  if (seNiIs(c, symbol) && strcmp(seNodeText(ctx, c), "NaN") == 0) {
+  /* Inf/NaN are numeric to R: `NaN == 1` stops .rxP1rmF() with an error,
+     and an Inf operand sends its sibling through .rxFromSE() (2.718... ->
+     M_E): decline rather than guess */
+  if (seNiIs(c, symbol) && (strcmp(seNodeText(ctx, c), "NaN") == 0 ||
+                            strcmp(seNodeText(ctx, c), "Inf") == 0)) {
     seFailWhy(ctx, SE_WHY_LOG);
     return 0;
   }

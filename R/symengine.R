@@ -3462,7 +3462,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
 ## in it is pi: baseenv() also binds T, F, LETTERS, ..., and a model variable
 ## of that name is a variable, not R's TRUE/FALSE (#1692).
 .rxSEfoldValue <- function(txt) {
-  .e <- try(str2lang(txt), silent = TRUE)
+  .e <- try(parse(text = txt), silent = TRUE)
   if (inherits(.e, "try-error") || !all(all.vars(.e) == "pi")) {
     return(NULL)
   }
