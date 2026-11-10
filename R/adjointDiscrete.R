@@ -700,6 +700,34 @@
   "backwardEulers"
 )
 
+#' The message rxSolve() stops with for an adjoint method it cannot run
+#'
+#' @param method the method's code, as from [odeMethodToInt()]
+#' @param why 1, the model has no ODE state; 2, it has sensitivity states but
+#'   not the expansion's Jacobian lhs; 3, a stiff adjoint method on a model
+#'   without the expansion, which it cannot solve forward-only
+#' @return the message, naming the method
+#' @noRd
+#' @author Matthew L. Fidler
+.rxAdjointRefuseMsg <- function(method, why) {
+  .idx <- odeMethodToInt(NULL)
+  .name <- names(.idx)[match(method, .idx)]
+  if (is.na(.name)) {
+    .name <- as.character(method)
+  }
+  .build <- "; build it with calcSens or rxode2::.rxAdjointExpand()"
+  switch(
+    why,
+    sprintf("method='%s' needs a model with ODE states", .name),
+    sprintf(
+      "method='%s' needs the adjoint expansion's Jacobian lhs (rx__adjFX_*, rx__adjFP_*) for the model's sensitivities%s",
+      .name,
+      .build
+    ),
+    sprintf("method='%s' cannot solve a model without the adjoint expansion%s", .name, .build)
+  )
+}
+
 #' Does an adjoint (`s`) solve method require the stiff analytic Jacobian?
 #'
 #' @param method adjoint method name(s) -- a single name, a composite vector
