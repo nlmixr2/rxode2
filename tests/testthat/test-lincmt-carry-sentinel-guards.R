@@ -17,9 +17,57 @@ rxTest({
       expect_true(all(is.na(s$cp)))
     })
   }
+  test_that("the carry has 32 pair columns", {
+    expect_identical(linCmtCarryMaxPairs(), 32L)
+  })
   test_that("a pair index past the cap returns NA", {
-    s <- rxSolve(mk(3L, 1L, -7L, 4L * 8L), ev, returnType = "data.frame")
+    s <- rxSolve(mk(3L, 1L, -7L, 4L * linCmtCarryMaxPairs()), ev, returnType = "data.frame")
     expect_true(all(is.na(s$cp)))
+  })
+  test_that("the last pair column accumulates", {
+    s <- rxSolve(mk(3L, 1L, -7L, 4L * (linCmtCarryMaxPairs() - 1L) + 3L), ev,
+                 returnType = "data.frame")
+    expect_equal(s$cp, c(1.0, 1.5))
+  })
+  test_that("a subject's carry starts at zero in every solve", {
+    # only the columns written are cleared between solves, so a second solve
+    # of an accumulating model, and a model that only reads a column another
+    # model wrote, must both see zeros
+    s1 <- rxSolve(mk(3L, 1L, -7L, 4L * (linCmtCarryMaxPairs() - 1L) + 3L), ev,
+                  returnType = "data.frame")
+    s2 <- rxSolve(mk(3L, 1L, -7L, 4L * (linCmtCarryMaxPairs() - 1L) + 3L), ev,
+                  returnType = "data.frame")
+    expect_equal(s1$cp, c(1.0, 1.5))
+    expect_identical(s2$cp, s1$cp)
+    s3 <- rxSolve(mk(3L, 1L, -6L, 4L * (linCmtCarryMaxPairs() - 1L) + 3L), ev,
+                  returnType = "data.frame")
+    expect_identical(s3$cp, c(0, 0))
+  })
+  test_that("the -5 advance carries the last pair column as it does the first", {
+    # 1-cmt IV (m = 1, which2 = pair): the same -7 add to pair 0 and to the
+    # last pair, advanced by the same -5, must read back the same; the
+    # advance multiplies only the columns a -7 add has written
+    hi <- linCmtCarryMaxPairs() - 1L
+    base <- "rx__PTR__, t, 1, 1, 0, %d, %d, 1, 1, 10, 0.5, 0, 0, 0, 0"
+    m <- suppressWarnings(rxode2(paste0(
+      "cp=linCmtB(", sprintf(base, -1L, -1L), ")\n",
+      "ad=linCmtB(", sprintf(base, -5L, 0L), ")\n",
+      "a0=linCmtB(", sprintf(base, -7L, 0L), ")\n",
+      "aH=linCmtB(", sprintf(base, -7L, hi), ")\n",
+      "r0=linCmtB(", sprintf(base, -6L, 0L), ")\n",
+      "rH=linCmtB(", sprintf(base, -6L, hi), ")")))
+    prev <- linCmtCarrySetFast(FALSE)
+    on.exit(linCmtCarrySetFast(prev), add = TRUE)
+    s <- rxSolve(m, et(amt = 100) |> et(c(1, 2, 3.5)), returnType = "data.frame")
+    expect_identical(s$rH, s$r0)
+    # rows at 1, 2 and 3.5 after the dose row: s_i = exp(-0.1 dt) s_{i-1} + 0.5
+    .r <- 0.5
+    .want <- numeric(3)
+    for (.k in 1:3) {
+      .r <- exp(-0.1 * c(1, 1, 1.5)[.k]) * .r + 0.5
+      .want[.k] <- .r
+    }
+    expect_equal(s$r0, .want, tolerance = 1e-12)
   })
   test_that("which1=-4 uses the interval since the previous row in the output pass", {
     # 1-cmt IV: d(A_i)/d(A_{i-1}) = exp(-(cl/v) * dt); ind->tprior is stale

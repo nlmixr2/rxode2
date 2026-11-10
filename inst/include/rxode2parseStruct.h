@@ -400,8 +400,9 @@ struct rx_solving_options_ind_s {
   // fix (project_lincmt_timevarying_covariate_bug): d(Alast_i)/d(eta), one
   // column per carried (linCmt-parameter, eta) pair, one row per linCmt()
   // compartment (up to 4, ncmt+oral0 <= 3+1). Up to RX_LINCMT_CARRY_MAXPAIRS
-  // simultaneous pairs (8 covers an eta on every one of the 7 linCmt()
-  // parameters plus one spare; ~256 bytes/subject, still tiny). Fixed flat,
+  // simultaneous pairs (32: an IOV model's occasion etas each take a column;
+  // 1 KB/subject). rxode2lincmt reads the cap from the host table at load,
+  // so it is not compiled into that package. Fixed flat,
   // row-major, stride RX_LINCMT_CARRY_MAXPAIRS regardless of the model's
   // actual m so iniSubject() can reset it without needing to know m --
   // linCmtB(which1=-5/-6/-7, src/linCmt.cpp) only ever reads/writes the top
@@ -411,7 +412,7 @@ struct rx_solving_options_ind_s {
   // write). Reset to all-zero each subject (Alast starts at 0, so
   // d(Alast_0)/d(eta) = 0), mirroring how linCmtSave is reset above.
   // Opt-in: unused unless a model actually requests which1=-5/-6/-7.
-#define RX_LINCMT_CARRY_MAXPAIRS 8
+#define RX_LINCMT_CARRY_MAXPAIRS 32
   double linCmtCarryT[4*RX_LINCMT_CARRY_MAXPAIRS];
   // Time of this subject's previous which1=-5 carry advance.  calc_lhs fires
   // exactly once per event row in solve order (dose rows included, output

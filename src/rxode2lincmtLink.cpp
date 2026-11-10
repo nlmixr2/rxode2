@@ -20,6 +20,12 @@
 
 extern "C" double getTime(int idx, rx_solving_options_ind *ind);
 
+// An rxode2lincmt whose header fixes the carry cap below rxode2's indexes
+// ind->linCmtCarryT with its own stride
+#if RXLC_CARRY_MAXPAIRS < RX_LINCMT_CARRY_MAXPAIRS
+#error "rxode2 needs an rxode2lincmt that reads the linCmt() carry cap at run time (>= 0.1.1.9000)"
+#endif
+
 // Every field rxode2lincmt reads through the offset table must still exist
 // with the type it was built for; a mismatch fails this compile.
 RXLC_HOST_STATIC_CHECKS
@@ -45,6 +51,10 @@ static double rxLcStubScaleInitPar(int) { return NA_REAL; }
 static double rxLcStubScaleInitN(void) { return 0.0; }
 static int rxLcStubZeroJac(int) { return 1; }
 static void rxLcStubFreeInd(rx_solving_options_ind *) {}
+// Without rxode2lincmt's reset (slot 9), clear the whole carry array
+static void rxLcStubCarryReset(rx_solving_options_ind *ind) {
+  std::memset(ind->linCmtCarryT, 0, sizeof(ind->linCmtCarryT));
+}
 
 rxLcLinCmtA_t _p_linCmtA = &rxLcStubA;
 rxLcLinCmtB_t _p_linCmtB = &rxLcStubB;
@@ -55,9 +65,11 @@ rxLcScaleInitPar_t _p_linCmtScaleInitPar = &rxLcStubScaleInitPar;
 rxLcScaleInitN_t _p_linCmtScaleInitN = &rxLcStubScaleInitN;
 rxLcZeroJac_t _p_linCmtZeroJac = &rxLcStubZeroJac;
 rxLcIndFree_t _p_linCmtFreeInd = &rxLcStubFreeInd;
+rxLcIndFree_t _p_linCmtCarryReset = &rxLcStubCarryReset;
 
 SEXP _rxode2_iniRxode2lincmtPtrs(SEXP p) {
   iniRxode2lincmtPtrs0(p);
+  iniRxode2lincmtCarryReset(p, &_p_linCmtCarryReset);
   return R_NilValue;
 }
 
@@ -118,7 +130,7 @@ SEXP _rxode2_rxode2lincmtHost(void) {
 // Test hook: which lincmt slots are bound to something other than their stub
 SEXP _rxode2_rxode2lincmtLinked(void) {
   rxProtect rx_protect;
-  SEXP ret = rx_protect.protect(Rf_allocVector(LGLSXP, 9));
+  SEXP ret = rx_protect.protect(Rf_allocVector(LGLSXP, 10));
   int *p = LOGICAL(ret);
   p[0] = _p_linCmtA != &rxLcStubA;
   p[1] = _p_linCmtB != &rxLcStubB;
@@ -129,6 +141,7 @@ SEXP _rxode2_rxode2lincmtLinked(void) {
   p[6] = _p_linCmtScaleInitN != &rxLcStubScaleInitN;
   p[7] = _p_linCmtZeroJac != &rxLcStubZeroJac;
   p[8] = _p_linCmtFreeInd != &rxLcStubFreeInd;
+  p[9] = _p_linCmtCarryReset != &rxLcStubCarryReset;
   return ret;
 }
 
