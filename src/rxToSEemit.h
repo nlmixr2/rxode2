@@ -177,39 +177,44 @@ static const char *rtPassFns[] = {
 /* collect an arg_list's left spine in source order; see seParseNode.h */
 #define rtArgs(pn, args, max) seArgsFlattenT(rtPt, (pn), (args), (max))
 
+/* .rxToSESquareBracket()'s bookkeeping for one THETA[n]/ETA[n] -- the
+   index, and the ..curCall path it was read under -- for R to replay */
+static int rtRecordIndex(seCtx *ctx, int isTheta, int n) {
+  const char *path = rtCallPath(ctx);
+  int **ix = isTheta ? &ctx->thetas : &ctx->etas;
+  int *nix = isTheta ? &ctx->nthetas : &ctx->netas;
+  int *mix = isTheta ? &ctx->mthetas : &ctx->metas;
+  const char ***fn = isTheta ? &ctx->thetaFuns : &ctx->etaFuns;
+  int *nfn = isTheta ? &ctx->nthetaFuns : &ctx->netaFuns;
+  int *mfn = isTheta ? &ctx->mthetaFuns : &ctx->metaFuns;
+  if (!seGrow(ctx, (void**) ix, nix, mix, sizeof(int)) ||
+      !seGrow(ctx, (void**) fn, nfn, mfn, sizeof(char*))) {
+    return 0;
+  }
+  (*ix)[(*nix)++] = n;
+  (*fn)[(*nfn)++] = path;
+  return 1;
+}
+
+/* is ix a plain positive integer as.character() writes back unchanged?
+   (THETA[01] is THETA_1_ in R, which this does not reproduce) */
+static int rtPlainIndex(const char *ix) {
+  const char *p;
+  if (*ix < '1' || *ix > '9' || strlen(ix) > 9) return 0;
+  for (p = ix; *p != '\0'; p++) {
+    if (*p < '0' || *p > '9') return 0;
+  }
+  return 1;
+}
+
 /* THETA[1] -> THETA_1_ */
 static const char *rtIndex(seCtx *ctx, D_ParseNode *pn) {
   const char *nm = rtNodeText(ctx, d_get_child(pn, 0));
   const char *ix = rtNodeText(ctx, d_get_child(pn, 2));
-  const char *p;
   int isTheta = strcmp(nm, "THETA") == 0;
   if (!isTheta && strcmp(nm, "ETA") != 0) return rtFail(ctx);
-  /* R writes the number back with as.character(): THETA[01] is THETA_1_,
-     which this does not reproduce, so only plain integers */
-  if (*ix < '1' || *ix > '9') return rtFail(ctx);
-  for (p = ix; *p != '\0'; p++) {
-    if (*p < '0' || *p > '9') return rtFail(ctx);
-  }
-  if (strlen(ix) > 9) return rtFail(ctx);
-  if (ctx->collect) {
-    /* .rxToSESquareBracket() records the largest THETA/ETA */
-    const char *path = rtCallPath(ctx);
-    if (isTheta) {
-      if (!seGrow(ctx, (void**) &ctx->thetas, &ctx->nthetas, &ctx->mthetas, sizeof(int)) ||
-          !seGrow(ctx, (void**) &ctx->thetaFuns, &ctx->nthetaFuns, &ctx->mthetaFuns, sizeof(char*))) {
-        return rtFail(ctx);
-      }
-      ctx->thetas[ctx->nthetas++] = atoi(ix);
-      ctx->thetaFuns[ctx->nthetaFuns++] = path;
-    } else {
-      if (!seGrow(ctx, (void**) &ctx->etas, &ctx->netas, &ctx->metas, sizeof(int)) ||
-          !seGrow(ctx, (void**) &ctx->etaFuns, &ctx->netaFuns, &ctx->metaFuns, sizeof(char*))) {
-        return rtFail(ctx);
-      }
-      ctx->etas[ctx->netas++] = atoi(ix);
-      ctx->etaFuns[ctx->netaFuns++] = path;
-    }
-  }
+  if (!rtPlainIndex(ix)) return rtFail(ctx);
+  if (ctx->collect && !rtRecordIndex(ctx, isTheta, atoi(ix))) return rtFail(ctx);
   return seCat(ctx, nm, "_", ix, "_", NULL, NULL);
 }
 

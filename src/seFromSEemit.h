@@ -163,42 +163,48 @@ static const char *seEmit(seCtx *ctx, D_ParseNode *pn) {
    R's Subs and log1pexp handling convert text they have already written.  A
    second parse into the same arena; NULL declines.  *topSign is whether R
    would see a call to + or - at the top (the Subs grouping rule). */
+/* Would R see a call to + or - at the top of this tree (binary, or a sign)?
+   The Subs grouping rule asks it of the substituted result. */
+static int seTopSign(seCtx *ctx, D_ParseNode *pn) {
+  D_ParseNode *top = seCore(ctx, pn);
+  char op = seBinOp(top);
+  if (op == '+' || op == '-') return 1;
+  if (d_get_number_of_children(top) == 2 && seNiIs(top, unary_expression)) {
+    char c = seNodeName(d_get_child(top, 0))[0];
+    return c == '-' || c == '+';
+  }
+  return 0;
+}
+
+/* make v stand for w while text is walked (seSubFind); 0 when too deep */
+static int seSubPush(seCtx *ctx, const char *v, D_ParseNode *w) {
+  if (v == NULL) return 1;
+  if (ctx->nsubs >= SE_MAX_SUBS) return 0;
+  ctx->subs[ctx->nsubs].v = v;
+  ctx->subs[ctx->nsubs].w = w;
+  ctx->subs[ctx->nsubs].active = 1;
+  ctx->nsubs++;
+  return 1;
+}
+
 static const char *seReEmitSub(seCtx *ctx, const char *txt, int *topSign,
                                const char *v, D_ParseNode *w) {
-  D_Parser *p = new_D_Parser(sePt, sizeof(D_ParseNode_User));
   const char *out = NULL;
-  if (p == NULL) return NULL;
-  if (v != NULL) {
-    if (ctx->nsubs >= SE_MAX_SUBS) {
-      free_D_Parser(p);
-      return NULL;
+  if (!seSubPush(ctx, v, w)) return NULL;
+  D_Parser *p = new_D_Parser(sePt, sizeof(D_ParseNode_User));
+  if (p != NULL) {
+    p->save_parse_tree = 1;
+    p->error_recovery = 0;
+    D_ParseNode *pn = dparse(p, (char*) txt, (int) strlen(txt));
+    if (pn != NULL && p->syntax_errors == 0) {
+      *topSign = seTopSign(ctx, pn);
+      out = seEmit(ctx, pn);
+      if (ctx->failed) out = NULL;
     }
-    ctx->subs[ctx->nsubs].v = v;
-    ctx->subs[ctx->nsubs].w = w;
-    ctx->subs[ctx->nsubs].active = 1;
-    ctx->nsubs++;
-  }
-  p->save_parse_tree = 1;
-  p->error_recovery = 0;
-  D_ParseNode *pn = dparse(p, (char*) txt, (int) strlen(txt));
-  if (pn != NULL && p->syntax_errors == 0) {
-    D_ParseNode *top = pn;
-    if (seNiIs(top, translation_unit) && d_get_number_of_children(top) == 1) {
-      top = d_get_child(top, 0);
-    }
-    top = seCore(ctx, top);
-    *topSign = 0;
-    if (seBinOp(top) == '+' || seBinOp(top) == '-') *topSign = 1;
-    if (d_get_number_of_children(top) == 2 && seNiIs(top, unary_expression)) {
-      char c = seNodeName(d_get_child(top, 0))[0];
-      if (c == '-' || c == '+') *topSign = 1;
-    }
-    out = seEmit(ctx, pn);
-    if (ctx->failed) out = NULL;
+    if (pn != NULL) free_D_ParseNode(p, pn);
+    free_D_Parser(p);
   }
   if (v != NULL) ctx->nsubs--;
-  if (pn != NULL) free_D_ParseNode(p, pn);
-  free_D_Parser(p);
   return out;
 }
 

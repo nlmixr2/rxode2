@@ -2,7 +2,7 @@
  * seFromSEtables.h -- bring .rxDtemplates() across from R into plain C.
  *
  * The derivative templates, rxode2parseD()'s names and entry lengths, .SEeq,
- * and the names baseenv() binds, each as an array plus a hash table, so the
+ * and the functions baseenv() binds, each as an array plus a hash table, so the
  * walk finds a name with one hash and one strcmp.  Done once per .Call, where
  * the R API is allowed: CHAR() pointers stay valid while the caller's vectors
  * are protected, so the walk itself never touches R.
@@ -99,8 +99,6 @@ static void seTablesFromR(seTables *t, SEXP tabs) {
   if (t->nrxd > 0) t->rxdLen = INTEGER(rxdLen);
   seEqFromR(t, tabs);
   t->baseFns = seNamesFromR(seListEl(tabs, 8, STRSXP), NULL, &t->baseHash, &t->nbase);
-  t->baseVars = seNamesFromR(seListEl(tabs, 9, STRSXP), NULL, &t->baseVarHash,
-                             &t->nbaseVar);
 }
 
 #endif /* __SE_FROM_SE_TABLES_H__ */

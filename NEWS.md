@@ -426,6 +426,11 @@
   does (`1e+05`, `1e-04`) and no longer answers for text the R translator
   constant-folds differently, so both give the same output.
 
+- A model variable, parameter or covariate named `T` or `F` (or any other
+  name `baseenv()` binds) is now kept as a variable when a model is loaded
+  into symengine.  `rxFromSE()` constant-folded it as `TRUE`/`FALSE`, so
+  `b*(F+1)` became `b` (#1692).
+
 - An error inside a symbolic calculation that shows a progress bar (the
   Jacobian and sensitivity builds of `rxode2(calcSens = )`, the adjoint
   expansion, inductive linearization, expression optimization) is now

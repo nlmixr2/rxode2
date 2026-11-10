@@ -78,6 +78,124 @@ static void seFreeResults(void *data, Rboolean jump) {
   }
 }
 
+/* One batch: inputs (NULL = NA or answered from the cache), outputs
+   (strdup'd, NULL = declined) and each element's decline reason (-1 = not
+   translated here).  The arrays are R_alloc'd on the main thread. */
+typedef struct {
+  R_xlen_t n, nWork;
+  const char **in;
+  char **out;
+  int *why;
+} seBatch;
+
+/* CHAR() is R API, so every input is pulled out before any thread starts;
+   the pointers stay valid while strVec is protected.  NA and cached inputs
+   are answered into `ret` here, while the cache entry is certainly alive --
+   storing the misses later may clear the cache.
+
+   R_alloc, not malloc: Rf_mkChar() allocates, so it can longjmp out of the
+   .Call on memory exhaustion, and any malloc here would then never be freed.
+   R_alloc is released when the .Call unwinds, whether it returns or errors.
+   Allocating on the main thread before the parallel region is what makes it
+   legal -- the threads only READ these arrays; it is R_alloc ITSELF that must
+   not be called from a thread. */
+static void seBatchCollect(SEXP strVec, SEXP ret, int dir, int cacheOn,
+                           seBatch *b) {
+  R_xlen_t i;
+  b->n = Rf_xlength(strVec);
+  b->nWork = 0;
+  b->in = (const char**) R_alloc((size_t) b->n, sizeof(char*));
+  b->out = (char**) R_alloc((size_t) b->n, sizeof(char*));
+  b->why = (int*) R_alloc((size_t) b->n, sizeof(int));
+  for (i = 0; i < b->n; i++) {
+    SEXP el = STRING_ELT(strVec, i);
+    const char *hit = NULL;
+    b->out[i] = NULL;
+    b->why[i] = -1;
+    b->in[i] = NULL;
+    if (el == NA_STRING) {                   /* NA in, NA out */
+      SET_STRING_ELT(ret, i, NA_STRING);
+      continue;
+    }
+    if (cacheOn) hit = seCacheGet(dir, CHAR(el));
+    if (hit != NULL) {
+      SET_STRING_ELT(ret, i, Rf_mkChar(hit));
+      seStatsHit(dir);
+      continue;
+    }
+    b->in[i] = CHAR(el);
+    b->why[i] = 0;
+    b->nWork++;
+  }
+}
+
+/* Creating a parallel region costs more than it saves on a small batch.
+   Measured on the fixture: the translation breaks even by roughly a hundred
+   expressions and is clearly ahead by five hundred, while a whole
+   jacobian+sensitivity build of a two-to-eight state model came out 5-13%
+   SLOWER with threads because its batches are far below that.  The real
+   batches worth threading are the jacobian and sensitivity ones, which run
+   450-900 expressions at fifteen states and grow from there. */
+static int seBatchThreads(R_xlen_t nWork) {
+  int nthr = 1;
+  if (nWork >= SE_MIN_PARALLEL && rxDparserParallel) {
+    nthr = getRxThreads((int64_t) nWork, true);
+    if (nthr < 1) nthr = 1;
+    if ((R_xlen_t) nthr > nWork) nthr = (int) nWork;
+  }
+  return nthr;
+}
+
+/* the translation itself: no R API in here.  Each thread has its own seCtx
+   and arena, freed at the end of the region. */
+static void seBatchTranslate(seBatch *b, seXlateFn xlate, int numDer,
+                             const seTables *tab) {
+  R_xlen_t i;
+  int nthr = seBatchThreads(b->nWork);
+#ifdef _OPENMP
+#pragma omp parallel num_threads(nthr)
+#endif
+  {
+    seCtx ctx;
+    memset(&ctx, 0, sizeof(seCtx));
+    ctx.numDer = numDer;
+    ctx.tab = tab;
+#ifdef _OPENMP
+#pragma omp for schedule(dynamic, 8)
+#endif
+    for (i = 0; i < b->n; i++) {
+      if (b->in[i] == NULL) continue;
+      ctx.why = 0;
+      const char *r = xlate(&ctx, b->in[i]);
+      /* NULL means the emitter declined; the R shim then falls back */
+      if (r != NULL) {
+        b->out[i] = strdup(r);
+      } else {
+        b->why[i] = ctx.why == 0 ? SE_WHY_PARSE : ctx.why;
+      }
+    }
+    seArenaFree(&ctx);
+  }
+  (void) nthr;
+}
+
+/* back on the main thread: statistics, and the new translations into the
+   cache.  1 when anything was declined. */
+static int seBatchRecord(SEXP strVec, const seBatch *b, int dir, int cacheOn) {
+  R_xlen_t i;
+  int anyNA = 0;
+  for (i = 0; i < b->n; i++) {
+    if (b->in[i] == NULL) continue;
+    seStatsAdd(dir, b->why[i]);
+    if (b->out[i] == NULL) {
+      anyNA = 1;
+    } else if (cacheOn) {
+      seCachePut(dir, CHAR(STRING_ELT(strVec, i)), b->out[i]);
+    }
+  }
+  return anyNA;
+}
+
 /* .Call shape for both translators: character vector in, character vector out,
    one for one.  An element the emitter declines comes back NA_character_, and
    the R shim routes just those to the R walker; the reason for each decline is
@@ -90,109 +208,16 @@ static void seFreeResults(void *data, Rboolean jump) {
    thread. */
 static SEXP seRunBatch(SEXP strVec, seXlateFn xlate, int numDer,
                        const seTables *tab, int dir, int cacheOn) {
+  seBatch b;
+  R_xlen_t i;
   if (TYPEOF(strVec) != STRSXP) {
     Rf_error("%s", "'strVec' must be a character vector");
   }
-  R_xlen_t n = Rf_xlength(strVec), i;
-  SEXP ret = PROTECT(Rf_allocVector(STRSXP, n));
-  if (n == 0) { UNPROTECT(1); return ret; }
-
-  /* CHAR() is R API, so pull every input out before any thread starts.  The
-     pointers stay valid while strVec is protected.
-
-     R_alloc, not malloc: Rf_mkChar() in the conversion loop below allocates,
-     so it can longjmp out of this function on memory exhaustion, and any
-     malloc here would then never be freed.  R_alloc is released when the .Call
-     unwinds, whether it returns or errors.  Allocating on the main thread
-     before the parallel region is what makes it legal -- the threads only READ
-     these arrays, which is fine; it is R_alloc ITSELF that must not be called
-     from a thread. */
-  const char **in = (const char**) R_alloc((size_t) n, sizeof(char*));
-  char **out = (char**) R_alloc((size_t) n, sizeof(char*));
-  int *why = (int*) R_alloc((size_t) n, sizeof(int));
-  R_xlen_t nWork = 0;
-  for (i = 0; i < n; i++) {
-    SEXP el = STRING_ELT(strVec, i);
-    in[i] = (el == NA_STRING) ? NULL : CHAR(el);
-    out[i] = NULL;
-    why[i] = 0;
-    if (el == NA_STRING) {                   /* NA in, NA out */
-      SET_STRING_ELT(ret, i, NA_STRING);
-      why[i] = -1;
-      continue;
-    }
-    if (in[i] != NULL && cacheOn) {
-      const char *hit = seCacheGet(dir, in[i]);
-      if (hit != NULL) {
-        /* converted now, while the cache entry is certainly alive -- storing
-           the misses below may clear the cache */
-        SET_STRING_ELT(ret, i, Rf_mkChar(hit));
-        seStatsHit(dir);
-        in[i] = NULL;
-        why[i] = -1;                         /* answered from the cache */
-        continue;
-      }
-    }
-    if (in[i] != NULL) nWork++;
-  }
-
-  /* Creating a parallel region costs more than it saves on a small batch.
-     Measured on the fixture: the translation breaks even by roughly a hundred
-     expressions and is clearly ahead by five hundred, while a whole
-     jacobian+sensitivity build of a two-to-eight state model came out 5-13%
-     SLOWER with threads because its batches are far below that.  The real
-     batches worth threading are the jacobian and sensitivity ones, which run
-     450-900 expressions at fifteen states and grow from there. */
-  int nthr = 1;
-  if (nWork >= SE_MIN_PARALLEL && rxDparserParallel) {
-    nthr = getRxThreads((int64_t) nWork, true);
-    if (nthr < 1) nthr = 1;
-    if ((R_xlen_t) nthr > nWork) nthr = (int) nWork;
-  }
-
-#ifdef _OPENMP
-#pragma omp parallel num_threads(nthr)
-#endif
-  {
-    seCtx ctx;
-    ctx.head = NULL; ctx.failed = 0; ctx.why = 0; ctx.numDer = numDer;
-    ctx.nsubs = 0;
-    ctx.collect = 0;
-    ctx.syms = NULL; ctx.nsyms = 0; ctx.msyms = 0;
-    ctx.thetas = NULL; ctx.nthetas = 0; ctx.mthetas = 0;
-    ctx.etas = NULL; ctx.netas = 0; ctx.metas = 0;
-    ctx.ncall = 0;
-    ctx.thetaFuns = NULL; ctx.nthetaFuns = 0; ctx.mthetaFuns = 0;
-    ctx.etaFuns = NULL; ctx.netaFuns = 0; ctx.metaFuns = 0;
-    ctx.tab = tab;
-#ifdef _OPENMP
-#pragma omp for schedule(dynamic, 8)
-#endif
-    for (i = 0; i < n; i++) {
-      if (in[i] == NULL) continue;                 /* NA, or a cache hit */
-      ctx.why = 0;
-      const char *r = xlate(&ctx, in[i]);
-      /* NULL means the emitter declined; the R shim then falls back */
-      if (r != NULL) {
-        out[i] = strdup(r);
-      } else {
-        why[i] = ctx.why == 0 ? SE_WHY_PARSE : ctx.why;
-      }
-    }
-    seArenaFree(&ctx);
-  }
-
-  /* bookkeeping on the main thread: statistics, and the cache */
-  int anyNA = 0;
-  for (i = 0; i < n; i++) {
-    if (in[i] == NULL) continue;
-    seStatsAdd(dir, why[i]);
-    if (out[i] != NULL) {
-      if (cacheOn) seCachePut(dir, CHAR(STRING_ELT(strVec, i)), out[i]);
-    } else {
-      anyNA = 1;
-    }
-  }
+  SEXP ret = PROTECT(Rf_allocVector(STRSXP, Rf_xlength(strVec)));
+  if (Rf_xlength(strVec) == 0) { UNPROTECT(1); return ret; }
+  seBatchCollect(strVec, ret, dir, cacheOn, &b);
+  seBatchTranslate(&b, xlate, numDer, tab);
+  int anyNA = seBatchRecord(strVec, &b, dir, cacheOn);
 
   /* Rf_mkChar() allocates, so the conversion below can unwind to the top level
      with strdup'd results still outstanding.  A thread cannot call R_alloc,
@@ -200,12 +225,12 @@ static SEXP seRunBatch(SEXP strVec, seXlateFn xlate, int numDer,
      be freed by hand -- and R_UnwindProtect is what guarantees that happens on
      the error path as well as the normal one.  seFreeResults() is idempotent:
      the conversion nulls each pointer as it frees it. */
-  seConvert cv; cv.n = n; cv.out = out; cv.ret = ret; cv.in = in;
+  seConvert cv; cv.n = b.n; cv.out = b.out; cv.ret = ret; cv.in = b.in;
   SEXP cont = PROTECT(R_MakeUnwindCont());   /* R_NilValue here is "bad value" */
   R_UnwindProtect(seConvertResults, &cv, seFreeResults, &cv, cont);
   if (anyNA) {
-    SEXP w = PROTECT(Rf_allocVector(INTSXP, n));
-    for (i = 0; i < n; i++) INTEGER(w)[i] = why[i] < 0 ? 0 : why[i];
+    SEXP w = PROTECT(Rf_allocVector(INTSXP, b.n));
+    for (i = 0; i < b.n; i++) INTEGER(w)[i] = b.why[i] < 0 ? 0 : b.why[i];
     Rf_setAttrib(ret, Rf_install("why"), w);
     UNPROTECT(1);
   }

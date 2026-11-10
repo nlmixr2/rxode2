@@ -18,10 +18,11 @@
 #ifndef __SE_FROM_SE_FOLD_H__
 #define __SE_FROM_SE_FOLD_H__
 
+#include "rxNameChar.h"
+
 typedef enum { SE_FOLD_NO = 0, SE_FOLD_YES = 1, SE_FOLD_BAIL = 2 } seFoldRes;
 
 static int seIsBaseFn(const seCtx *ctx, const char *name, size_t n);
-static int seIsBaseVar(const seCtx *ctx, const char *name, size_t n);
 
 /* What R's eval(parse(text = .), envir = baseenv()) does with the text,
    reproduced for the part of R it can reach: double arithmetic (+ - * / ^),
@@ -31,7 +32,9 @@ static int seIsBaseVar(const seCtx *ctx, const char *name, size_t n);
    st is a bit set: 1 = R's eval() fails (a name baseenv() does not bind, or
    not R syntax) so nothing folds -- whatever else is in the text, so the
    walk stops there; 2 = R might produce a value this cannot reproduce
-   (another base function, T/F, %%, a comparison, ...). */
+   (another base function, %%, a comparison, ...).  A name other than pi is
+   a model variable, never the value baseenv() happens to bind to it (T, F;
+   #1692), which is how .rxFromSE() folds too. */
 typedef struct {
   const char *p;
   int st;
@@ -81,65 +84,83 @@ static int seEvalFn1(const char *b, size_t n, double x, double *out) {
   return 0;
 }
 
+/* ( expr ) */
+static double seEvalParen(seEval *s) {
+  s->p++;
+  double v = seEvalAdd(s);
+  seEvalWs(s);
+  if (*s->p != ')') { seEvalSt(s, 1); return 0; }
+  s->p++;
+  return v;
+}
+
+/* a numeric literal, read as R's parser reads it */
+static double seEvalNumber(seEval *s) {
+  char *end = NULL;
+  double v = R_strtod(s->p, &end);
+  if (end == s->p) { seEvalSt(s, 1); return 0; }
+  s->p = end;
+  /* 1L, 0x10, 1i: R syntax this does not model */
+  if (*s->p == 'L' || *s->p == 'i' || *s->p == 'x' || *s->p == 'X') seEvalSt(s, 2);
+  return v;
+}
+
+/* skip the rest of an argument list up to and including its ")" */
+static void seEvalSkipArgs(seEval *s) {
+  int depth = 0;
+  while (*s->p != '\0' && !(*s->p == ')' && depth == 0)) {
+    if (*s->p == '(') depth++;
+    if (*s->p == ')') depth--;
+    s->p++;
+  }
+  if (*s->p == ')') s->p++;
+}
+
+/* name( ... ), with s->p on the "(": a base function of one argument this
+   evaluates; another base function R might evaluate (unsure); anything else
+   is unbound in baseenv() and R's eval() fails */
+static double seEvalCall(seEval *s, const char *b, size_t n) {
+  if (!seIsBaseFn(s->ctx, b, n)) { seEvalSt(s, 1); return 0; }
+  s->p++;
+  seEvalWs(s);
+  if (*s->p == ')') { s->p++; seEvalSt(s, 2); return 0; }
+  double a = seEvalAdd(s);
+  if (seEvalDead(s)) return 0;
+  seEvalWs(s);
+  if (*s->p != ')') {
+    /* more than one argument: some other base function */
+    seEvalSt(s, 2);
+    seEvalSkipArgs(s);
+    return 0;
+  }
+  s->p++;
+  double r;
+  if (!seEvalFn1(b, n, a, &r)) { seEvalSt(s, 2); return 0; }
+  return r;
+}
+
+/* A name: a call, pi, or a variable.  Only pi is a value -- a model name is
+   a variable even when baseenv() binds it (T, F; #1692) */
+static double seEvalName(seEval *s) {
+  const char *b = s->p;
+  while (rxNameChar(*s->p)) s->p++;
+  size_t n = (size_t)(s->p - b);
+  seEvalWs(s);
+  if (*s->p == '(') return seEvalCall(s, b, n);
+  if (n == 2 && b[0] == 'p' && b[1] == 'i') return M_PI;
+  seEvalSt(s, 1);
+  return 0;
+}
+
 static double seEvalPrim(seEval *s) {
   if (seEvalDead(s)) return 0;
   seEvalWs(s);
   char c = *s->p;
-  if (c == '(') {
-    s->p++;
-    double v = seEvalAdd(s);
-    seEvalWs(s);
-    if (*s->p != ')') { seEvalSt(s, 1); return 0; }
-    s->p++;
-    return v;
-  }
+  if (c == '(') return seEvalParen(s);
   if ((c >= '0' && c <= '9') || (c == '.' && s->p[1] >= '0' && s->p[1] <= '9')) {
-    char *end = NULL;
-    double v = R_strtod(s->p, &end);
-    if (end == s->p) { seEvalSt(s, 1); return 0; }
-    s->p = end;
-    /* 1L, 0x10, 1i: R syntax this does not model */
-    if (*s->p == 'L' || *s->p == 'i' || *s->p == 'x' || *s->p == 'X') seEvalSt(s, 2);
-    return v;
+    return seEvalNumber(s);
   }
-  if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '.' || c == '_') {
-    const char *b = s->p;
-    while ((*s->p >= 'a' && *s->p <= 'z') || (*s->p >= 'A' && *s->p <= 'Z') ||
-           (*s->p >= '0' && *s->p <= '9') || *s->p == '.' || *s->p == '_') {
-      s->p++;
-    }
-    size_t n = (size_t)(s->p - b);
-    seEvalWs(s);
-    if (*s->p == '(') {
-      if (!seIsBaseFn(s->ctx, b, n)) { seEvalSt(s, 1); return 0; }
-      s->p++;
-      seEvalWs(s);
-      if (*s->p == ')') { s->p++; seEvalSt(s, 2); return 0; }
-      double a = seEvalAdd(s);
-      if (seEvalDead(s)) return 0;
-      seEvalWs(s);
-      if (*s->p != ')') {
-        /* more than one argument: some other base function */
-        seEvalSt(s, 2);
-        int depth = 0;
-        while (*s->p != '\0' && !(*s->p == ')' && depth == 0)) {
-          if (*s->p == '(') depth++;
-          if (*s->p == ')') depth--;
-          s->p++;
-        }
-        if (*s->p == ')') s->p++;
-        return 0;
-      }
-      s->p++;
-      double r;
-      if (!seEvalFn1(b, n, a, &r)) { seEvalSt(s, 2); return 0; }
-      return r;
-    }
-    if (n == 2 && b[0] == 'p' && b[1] == 'i') return M_PI;
-    if (seIsBaseVar(s->ctx, b, n)) { seEvalSt(s, 2); return 0; }
-    seEvalSt(s, 1);       /* unbound in baseenv(): R's eval() fails */
-    return 0;
-  }
+  if (rxNameStart(c)) return seEvalName(s);
   /* not something this models; R may still read it */
   seEvalSt(s, c == '\0' || c == ')' ? 1 : 2);
   if (c != '\0') s->p++;

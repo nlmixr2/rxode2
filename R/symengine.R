@@ -3436,6 +3436,24 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
   return(.ret)
 }
 
+## The number translated text stands for, or NULL when it is not a constant.
+## Evaluated in baseenv() so only numeric-constant subexpressions fold: the
+## default frame's scope chain reaches the user's global environment, leaking
+## workspace variables into the conversion (#1109).  And only when every name
+## in it is pi: baseenv() also binds T, F, LETTERS, ..., and a model variable
+## of that name is a variable, not R's TRUE/FALSE (#1692).
+.rxSEfoldValue <- function(txt) {
+  .e <- try(str2lang(txt), silent = TRUE)
+  if (inherits(.e, "try-error") || !all(all.vars(.e) == "pi")) {
+    return(NULL)
+  }
+  .v <- try(eval(.e, envir = baseenv()), silent = TRUE)
+  if (inherits(.v, "numeric") && length(.v) == 1L) {
+    return(.v)
+  }
+  NULL
+}
+
 #' @export
 #' @rdname rxToSE
 .rxFromSE <- function(x) {
@@ -3527,12 +3545,8 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
         .x2 <- .rxFromSE(.x2)
         .x3 <- x[[3]]
         .x3 <- .rxFromSE(.x3)
-        # eval in baseenv() so only numeric-constant subexpressions
-        # canonicalize; the default frame's scope chain reaches the user's
-        # global environment, leaking workspace variables into the
-        # conversion (nlmixr2/rxode2#1109)
-        .x3v <- try(eval(parse(text = .x3), envir = baseenv()), silent = TRUE)
-        if (inherits(.x3v, "numeric") && length(.x3v) == 1L) {
+        .x3v <- .rxSEfoldValue(.x3)
+        if (!is.null(.x3v)) {
           .x3 <- .rxFromSEnum(.x3v)
         }
         if (.x1 == "^" && .x3 == "1") {
@@ -3668,8 +3682,8 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
         ## global environment and would leak workspace variables in
         ## (nlmixr2/rxode2#1109).  Runs AFTER the constant peepholes so pi*2
         ## still comes out as M_2PI rather than 6.28...
-        .retv <- try(eval(parse(text = .ret), envir = baseenv()), silent = TRUE)
-        if (inherits(.retv, "numeric") && length(.retv) == 1L) {
+        .retv <- .rxSEfoldValue(.ret)
+        if (!is.null(.retv)) {
           return(.rxFromSEnum(.retv))
         }
         return(.ret)

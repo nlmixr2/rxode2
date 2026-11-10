@@ -1414,14 +1414,14 @@
   ## what decides whether .rxFromSE() constant-folds name(<numbers>)
   .base <- ls(baseenv(), all.names = TRUE)
   .base <- .base[grepl("^[A-Za-z._][A-Za-z0-9._]*$", .base)]
-  .isFn <- vapply(.base, function(.n) {
+  .base <- .base[vapply(.base, function(.n) {
     is.function(get(.n, envir = baseenv()))
-  }, logical(1), USE.NAMES = FALSE)
+  }, logical(1), USE.NAMES = FALSE)]
   .cached <- list(
     name = .name, which = as.integer(.which), template = .tmpl, kind = .kind,
     rxdName = .dNames, rxdLen = .dLen,
     eqName = names(.eq), eqN = suppressWarnings(as.integer(.eq)),
-    baseFns = .base[.isFn], baseVars = .base[!.isFn]
+    baseFns = .base
   )
   .rxSEstate$dTemplates <- .cached
   .cached

@@ -69,9 +69,6 @@ typedef struct {
   const char **baseFns;    /* functions callable in baseenv() */
   int nbase;
   seHash baseHash;
-  const char **baseVars;   /* other bindings in baseenv(): T, F, ... */
-  int nbaseVar;
-  seHash baseVarHash;
 } seTables;
 
 /* Why the walk declined, so the declines can be counted and the most common
