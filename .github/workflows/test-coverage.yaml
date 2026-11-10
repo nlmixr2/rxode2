@@ -3,7 +3,10 @@
 on:
   push:
     branches: [main, master]
-  pull_request:
+  # PR checks run only when a reviewer approves with the phrase
+  # "ready to be merged" (pushes to a PR branch no longer start CI).
+  pull_request_review:
+    types: [submitted]
 
 name: test-coverage.yaml
 
@@ -13,10 +16,11 @@ permissions: read-all
 # on main always finish, since they report coverage
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ (github.event_name == 'pull_request' || github.event_name == 'pull_request_review') }}
 
 jobs:
   test-coverage:
+    if: (github.event_name != 'pull_request_review' || (github.event.review.state == 'approved' && contains(github.event.review.body, 'ready to be merged')))
     runs-on: ubuntu-latest
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -78,7 +82,7 @@ jobs:
       - uses: codecov/codecov-action@v5
         with:
           # Fail if error if not on PR, or if on PR and token is given
-          fail_ci_if_error: ${{ github.event_name != 'pull_request' || secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: ${{ (github.event_name != 'pull_request' && github.event_name != 'pull_request_review') || secrets.CODECOV_TOKEN }}
           files: ./cobertura.xml
           plugins: noop
           disable_search: true
