@@ -9,8 +9,8 @@ rxTest({
   .o <- c(1, 3, 4.5, 6, 8)
   .meths <- c("liblsoda", "lsoda", "dop853")
 
-  .solve <- function(mod, ev, meth, cmt = "depot") {
-    rxSolve(mod, ev, .p, method = meth)[[cmt]]
+  .solve <- function(mod, ev, meth, cmt = "depot", ...) {
+    rxSolve(mod, ev, .p, method = meth, ...)[[cmt]]
   }
 
   test_that("evid=3 during an infusion cancels it, stop included", {
@@ -107,10 +107,13 @@ rxTest({
       et(time = 2.5, amt = 10, rate = 10, cmt = "depot") |>
       et(o)
     want <- et(time = 2.5, amt = 10, rate = 10, cmt = "depot") |> et(o)
+    # the two event sequences are solved with different steps, so both are
+    # solved at tight tolerances: the comparison then tests the events, not
+    # the integration error of each sequence
     for (meth in .meths) {
-      d <- .solve(.m, ev, meth)
+      d <- .solve(.m, ev, meth, atol = 1e-12, rtol = 1e-10)
       expect_true(all(d >= 0))
-      expect_equal(d[o > 2], .solve(.m, want, meth)[o > 2], tolerance = 1e-6)
+      expect_equal(d[o > 2], .solve(.m, want, meth, atol = 1e-12, rtol = 1e-10)[o > 2], tolerance = 1e-6)
     }
   })
 
