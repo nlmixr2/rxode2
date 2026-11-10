@@ -262,12 +262,6 @@ static inline bool rxIntegratingToRecord(rx_solving_options_ind *ind) {
   return f == 1 || f == 2 || f == 9 || f == 10;
 }
 
-// Sorted record i's time, as the covariate lookups below match it.
-static inline double rxCovRecTime(rx_solving_options_ind *ind, int i) {
-  return (ind->fns && ind->fns->gettime) ? ind->fns->gettime(ind->ix[i], ind) :
-    getTime(ind->ix[i], ind);
-}
-
 // Which side of t a step covariate must be read from while the solver
 // integrates toward sorted record i: the interval (t[i-1], t[i]) has one value
 // of a locf or nocb covariate, but at its ends the lookup gives the value of
@@ -287,8 +281,8 @@ static inline int rxStepCovSide(double t, int is_locf, int i, rx_solving_options
   // only while record i is still ahead: once it is solved, the output walk
   // reads its covariates with the flag the last model call left
   if (!rxIntegratingToRecord(ind) || ind->solvedIdx >= i) return 0;
-  double ti = rxCovRecTime(ind, i);
-  double tp = rxCovRecTime(ind, i - 1);
+  double ti = rxRecMatchTime(ind, i);
+  double tp = rxRecMatchTime(ind, i - 1);
   if (isSameTimeOp(ti, tp)) return 0;
   if (is_locf == 1 && isSameTimeOp(t, ti)) return -1;
   if (is_locf == 2 && isSameTimeOp(t, tp)) return 1;
