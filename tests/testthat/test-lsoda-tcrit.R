@@ -34,10 +34,13 @@ rxTest({
     .yw1 <- .yw0 * exp(-.k * 0.05) + (400 / .k) * (1 - exp(-.k * 0.05))
     .exact <- .yw1 * exp(-.k * (24 - 12.05))
     for (.method in .tcMethods) {
-      .s <- rxSolve(.m, .ev, method = .method, atol = 1e-8, rtol = 1e-6, returnType = "data.frame")
-      expect_equal(.s$y[.s$time == 24], .exact, tolerance = 1e-4, label = paste(.method, "mtime"))
-      .s2 <- rxSolve(.m2, .ev2, method = .method, atol = 1e-8, rtol = 1e-6, returnType = "data.frame")
-      expect_equal(.s2$y[.s2$time == 24], .exact, tolerance = 1e-4, label = paste(.method, "evid 2"))
+      for (.tol in list(c(1e-8, 1e-6), c(1e-9, 1e-7), c(1e-10, 1e-8))) {
+        .lab <- paste(.method, "atol", .tol[1], "rtol", .tol[2])
+        .s <- rxSolve(.m, .ev, method = .method, atol = .tol[1], rtol = .tol[2], returnType = "data.frame")
+        expect_equal(.s$y[.s$time == 24], .exact, tolerance = 1e-5, label = paste(.lab, "mtime"))
+        .s2 <- rxSolve(.m2, .ev2, method = .method, atol = .tol[1], rtol = .tol[2], returnType = "data.frame")
+        expect_equal(.s2$y[.s2$time == 24], .exact, tolerance = 1e-5, label = paste(.lab, "evid 2"))
+      }
     }
   })
 

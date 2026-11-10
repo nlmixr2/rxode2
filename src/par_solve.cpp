@@ -5288,6 +5288,13 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         }
         if (rx->istateReset) ctx->state = 1;
         xp = xout;
+      } else if (rx->istateReset && getEvid(ind, ind->ix[i]) >= 10 &&
+                 getEvid(ind, ind->ix[i]) <= 99) {
+        // the solver stopped at this mtime() record (rxLsodaStop) and restarts
+        // there, as at a dose: its next step then starts from the right-hand
+        // side as it is from this time, instead of from a history that ends
+        // just short of it and can step over a window the record opens
+        ctx->state = 1;
       }
       int _mtime_requeued = 0;
       if (rx->nMtime > 0) {
@@ -5825,6 +5832,13 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         }
         if (rx->istateReset) istate = 1;
         xp = xout;
+      } else if (rx->istateReset && getEvid(ind, ind->ix[i]) >= 10 &&
+                 getEvid(ind, ind->ix[i]) <= 99) {
+        // the solver stopped at this mtime() record (rxLsodaStop) and restarts
+        // there, as at a dose: its next step then starts from the right-hand
+        // side as it is from this time, instead of from a history that ends
+        // just short of it and can step over a window the record opens
+        istate = 1;
       }
       int _mtime_requeued = 0;
       if (rx->nMtime > 0) {
@@ -6044,6 +6058,13 @@ static void ind_lsode0(rx_solve *rx, rx_solving_options *op, int solveid,
           istate = 1;
         }
         xp = xout;
+      } else if (rx->istateReset && getEvid(ind, ind->ix[i]) >= 10 &&
+                 getEvid(ind, ind->ix[i]) <= 99) {
+        // the solver stopped at this mtime() record (rxLsodaStop) and restarts
+        // there, as at a dose: its next step then starts from the right-hand
+        // side as it is from this time, instead of from a history that ends
+        // just short of it and can step over a window the record opens
+        istate = 1;
       }
       int _mtime_requeued = 0;
       if (rx->nMtime > 0) {
