@@ -50,4 +50,23 @@ rxTest({
       }
     }
   })
+
+  test_that("dop853's paired stage updates match the plain loop bit for bit", {
+    # every stage element is the same expression as in the plain loop, so
+    # forcing the plain loop for every size must not change a single bit
+    .rates <- c(1, 0.7, 0.5, 0.3, 0.2, 0.9, 0.4, 0.6, 0.25)
+    .ev <- et(amt = 100, cmt = "s1", ii = 6, addl = 3) |> et(c(0.1, 0.5, 1, 2, 5, 10, 20, 30))
+    for (.n in c(4L, 5L, 8L, 9L, 20L)) {
+      .m <- .chainModel(.n)
+      .k <- rep(.rates, length.out = .n) * (1 + seq_len(.n) / 100)
+      names(.k) <- paste0("k", seq_len(.n))
+      .paired <- rxSolve(.m, .ev, params = .k, method = "dop853", returnType = "data.frame")
+      .old <- .rxDop853PairsMin(.Machine$integer.max)
+      .plain <- tryCatch(
+        rxSolve(.m, .ev, params = .k, method = "dop853", returnType = "data.frame"),
+        finally = .rxDop853PairsMin(.old)
+      )
+      expect_identical(.paired, .plain, label = sprintf("n = %d", .n))
+    }
+  })
 })

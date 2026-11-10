@@ -199,12 +199,21 @@ static void dopStiffEnd (dop853_stiff_t *st, double hlamb, long int iasti,
    uses its "very-cheap" cost model: it adds neither a run-time aliasing check
    nor a scalar epilogue, so a plain loop over n stays scalar, while a body
    that already handles two indices is vectorized as it stands.  Below
-   DOP_PAIRS_MIN states the plain loop is kept, as it measured faster there.
+   dopPairsMin states the plain loop is kept, as it measured faster there.
    Each element is the same expression, evaluated in the same order, as in a
    plain loop. */
-#define DOP_PAIRS_MIN 4
+static int dopPairsMin = 4;
+
+/* Sets dopPairsMin and returns its previous value.  Internal: the test that
+   compares the paired and the plain loops forces the plain one with it. */
+SEXP _rxode2_dop853PairsMin(SEXP nSEXP) {
+  int old = dopPairsMin;
+  dopPairsMin = Rf_asInteger(nSEXP);
+  return Rf_ScalarInteger(old);
+}
+
 #define DOP_PAIRS(i, n, STMT) do {                                \
-    if ((n) < DOP_PAIRS_MIN) {                                    \
+    if ((n) < dopPairsMin) {                                      \
       for (i = 0; i < (n); i++) { STMT; }                         \
     } else {                                                      \
       for (i = 0; i + 1 < (n); i += 2) {                          \
