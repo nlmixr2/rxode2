@@ -85,29 +85,79 @@ rxTest({
     }
   })
 
-  test_that("the lsoda family agrees across extra doses between records", {
+  test_that("the lsoda family matches the exact solution across extra doses between records", {
     # a steady-state bolus whose alag() is longer than ii leaves extra doses
-    # inside the segments; each one is a stop
+    # inside the segments; each one is a stop.  At steady state the doses
+    # given every 12 up to t = 0 arrive 30 later, so the exact center is the
+    # sum of their oral profiles from those arrivals.
     .ss <- rxode2({
       d/dt(depot) <- -ka * depot
       d/dt(center) <- ka * depot - k * center
       alag(depot) <- lag
     })
-    .ev <- et(amt = 100, ss = 1, ii = 12) |> et(c(0.5, 7, 30, 60))
-    .solve <- function(method) {
-      rxSolve(
+    .ka <- 0.7
+    .k <- 0.05
+    .lag <- 30
+    .ev <- et(amt = 100, ss = 1, ii = 12) |> et(c(0.5, 3, 7, 12, 18, 25, 30, 36, 45, 60))
+    .exact <- function(t) {
+      vapply(
+        t,
+        function(.t) {
+          .a <- 12 * (0:-5000) + .lag
+          .a <- .a[.a <= .t]
+          sum(100 * .ka / (.ka - .k) * (exp(-.k * (.t - .a)) - exp(-.ka * (.t - .a))))
+        },
+        numeric(1)
+      )
+    }
+    for (.method in .tcMethods) {
+      .s <- rxSolve(
         .ss,
         .ev,
-        params = c(k = 0.05, ka = 0.7, lag = 30),
-        method = method,
+        params = c(k = .k, ka = .ka, lag = .lag),
+        method = .method,
+        atol = 1e-10,
+        rtol = 1e-10,
+        ssAtol = 1e-12,
+        ssRtol = 1e-12,
+        returnType = "data.frame"
+      )
+      expect_equal(.s$center, .exact(.s$time), tolerance = 1e-8, label = .method)
+    }
+  })
+
+  test_that("the lsoda family matches the exact solution across a reset between records", {
+    # an oral dose of 100 at 0, a reset (evid 3) at 5.25 and a dose of 50 at 7,
+    # observed at the half hours
+    .oral <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - k * center
+    })
+    .ka <- 1.2
+    .k <- 0.2
+    .ev <- rbind(
+      data.frame(id = 1L, time = c(0, 7), evid = 1L, amt = c(100, 50), cmt = "depot"),
+      data.frame(id = 1L, time = 5.25, evid = 3L, amt = 0, cmt = "depot"),
+      data.frame(id = 1L, time = seq(0.5, 15.5, by = 1), evid = 0L, amt = 0, cmt = "center")
+    )
+    .ev <- .ev[order(.ev$time), ]
+    .exact <- function(t) {
+      .f <- function(amt, t0) {
+        ifelse(t >= t0, amt * .ka / (.ka - .k) * (exp(-.k * (t - t0)) - exp(-.ka * (t - t0))), 0)
+      }
+      ifelse(t < 5.25, .f(100, 0), 0) + .f(50, 7)
+    }
+    for (.method in .tcMethods) {
+      .s <- rxSolve(
+        .oral,
+        .ev,
+        params = c(ka = .ka, k = .k),
+        method = .method,
         atol = 1e-10,
         rtol = 1e-10,
         returnType = "data.frame"
-      )$center
-    }
-    .ref <- .solve("lsoda")
-    for (.method in setdiff(.tcMethods, "lsoda")) {
-      expect_equal(.solve(.method), .ref, tolerance = 1e-6, label = .method)
+      )
+      expect_equal(.s$center, .exact(.s$time), tolerance = 1e-8, label = .method)
     }
   })
 })
