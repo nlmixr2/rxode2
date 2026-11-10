@@ -278,6 +278,16 @@ rxTest({
           .c_s <- .fun(.st)
           ifelse(.st != .t & .c == .c_s, .c_s, .fun(.t))
         }
+        ## While the solver integrates toward a record, a step covariate at an
+        ## end of the interval takes the value it has inside it.  So at a knot
+        ## the right-hand side can see a locf covariate's previous value (the
+        ## integration toward the record there) and a nocb covariate's next
+        ## value (the integration from it), besides the knot's own value.
+        .cov_approx_step <- function(.t, .c, .fun, .side) {
+          .k <- match(.snap_to_obs(.t), .obs_times)
+          .nb <- .fun(.obs_times[pmin(pmax(.k + .side, 1L), length(.obs_times))])
+          ifelse(!is.na(.k) & .c == .nb, .c, .cov_approx(.t, .c, .fun))
+        }
 
         cov.lin <- approxfun(et$time, et$c, yleft = et$c[1], yright = et$c[length(cov$c)])
 
@@ -356,7 +366,7 @@ rxTest({
           method = "constant",
           f = 1
         )
-        lin.interp$c2 <- .cov_approx(lin.interp$t, lin.interp$c, cov.lin)
+        lin.interp$c2 <- .cov_approx_step(lin.interp$t, lin.interp$c, cov.lin, 1L)
 
         test_that(paste0("NOCB Approximation similar to approxfun (", meth, ";", .homogenous, ")"), {
           expect_equal(lin.interp$c, lin.interp$c2)
@@ -386,7 +396,7 @@ rxTest({
           method = "constant",
           f = 1
         )
-        lin.interp$c2 <- .cov_approx(lin.interp$t, lin.interp$c, cov.lin)
+        lin.interp$c2 <- .cov_approx_step(lin.interp$t, lin.interp$c, cov.lin, 1L)
 
         test_that(paste0("NOCB Approximation similar to approxfun and overrides locf when in ode (", meth, ")"), {
           expect_equal(lin.interp$c, lin.interp$c2)
@@ -482,7 +492,7 @@ rxTest({
 
         cov.lin <- approxfun(out$time, out$c, yleft = cov$c[1], yright = cov$c[length(cov$c)], method = "constant")
 
-        lin.interp$c2 <- .cov_approx(lin.interp$t, lin.interp$c, cov.lin)
+        lin.interp$c2 <- .cov_approx_step(lin.interp$t, lin.interp$c, cov.lin, -1L)
 
         test_that(paste0("Constant Approximation similar to approxfun (", meth, ";", .homogenous, ")"), {
           expect_equal(lin.interp$c, lin.interp$c2)
@@ -507,7 +517,7 @@ rxTest({
 
         cov.lin <- approxfun(out$time, out$c, yleft = cov$c[1], yright = cov$c[length(cov$c)], method = "constant")
 
-        lin.interp$c2 <- .cov_approx(lin.interp$t, lin.interp$c, cov.lin)
+        lin.interp$c2 <- .cov_approx_step(lin.interp$t, lin.interp$c, cov.lin, -1L)
 
         test_that(paste0("Constant Approximation similar to approxfun and overrides covsInterpolation: ", meth), {
           expect_equal(lin.interp$c, lin.interp$c2)
