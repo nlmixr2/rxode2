@@ -218,7 +218,8 @@ rxTest({
           )
         }
       ),
-      # a bolus that arrives 2 after its dose time, the last one at t = 12
+      # each dose arrives 2 after its dose time: the one dosed at t = 10
+      # arrives at t = 12, the earlier steady-state doses every 12 before
       alag = list(
         m = .mLag,
         d = .data(.dose(10, 100, 1L, .ii)),
