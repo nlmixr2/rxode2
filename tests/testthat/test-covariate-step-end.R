@@ -163,6 +163,99 @@ rxTest({
     }
   })
 
+  test_that("ss = 2, steady-state infusions and lagged steady states read the dose record's covariates", {
+    # d/dt(a) = -k a, where a locf k steps from 0.1 to 0.3 at a steady-state
+    # dose at t = 10 (ii = 12); each steady state is built with k = 0.3
+    .k <- 0.3
+    .ii <- 12
+    .obs <- c(11, 14, 22)
+    .data <- function(dose) {
+      .d <- rbind(
+        data.frame(
+          id = 1L,
+          time = c(0, .obs),
+          evid = 0L,
+          amt = 0,
+          ss = 0L,
+          ii = 0,
+          rate = 0,
+          cmt = "a",
+          k = c(0.1, rep(.k, length(.obs)))
+        ),
+        dose
+      )
+      .d[order(.d$time, -.d$evid), ]
+    }
+    .dose <- function(time, amt, ss, ii = 0, rate = 0, k = .k) {
+      data.frame(id = 1L, time = time, evid = 1L, amt = amt, ss = ss, ii = ii, rate = rate, cmt = "a", k = k)
+    }
+    .m <- rxode2({
+      d/dt(a) <- -k * a
+    })
+    .mLag <- rxode2({
+      d/dt(a) <- -k * a
+      alag(a) <- 2
+    })
+    .cases <- list(
+      # ss = 2 adds the steady state to what is left of a dose at t = 0
+      ss2 = list(
+        m = .m,
+        d = .data(rbind(.dose(0, 50, 0L, k = 0.1), .dose(10, 100, 2L, .ii))),
+        exact = function(t) {
+          (50 * exp(-0.1 * 10) + 100 / (1 - exp(-.k * .ii))) * exp(-.k * (t - 10))
+        }
+      ),
+      # an infusion of 100 at rate 50 (2 time units) every 12
+      infusion = list(
+        m = .m,
+        d = .data(.dose(10, 100, 1L, .ii, rate = 50)),
+        exact = function(t) {
+          .r <- 50
+          .dur <- 2
+          .a0 <- .r / .k * (1 - exp(-.k * .dur)) * exp(-.k * (.ii - .dur)) / (1 - exp(-.k * .ii))
+          .tau <- t - 10
+          .aEnd <- .r / .k * (1 - exp(-.k * .dur)) + .a0 * exp(-.k * .dur)
+          ifelse(
+            .tau <= .dur,
+            .r / .k * (1 - exp(-.k * .tau)) + .a0 * exp(-.k * .tau),
+            .aEnd * exp(-.k * (.tau - .dur))
+          )
+        }
+      ),
+      # a bolus that arrives 2 after its dose time, the last one at t = 12
+      alag = list(
+        m = .mLag,
+        d = .data(.dose(10, 100, 1L, .ii)),
+        exact = function(t) {
+          100 * exp(-.k * (t - ifelse(t >= 12, 12, 0))) / (1 - exp(-.k * .ii))
+        }
+      )
+    )
+    for (.case in names(.cases)) {
+      .cs <- .cases[[.case]]
+      for (.method in c("dop853", "cvode", "liblsoda", "lsoda")) {
+        .s <- rxSolve(
+          .cs$m,
+          .cs$d,
+          method = .method,
+          covsInterpolation = "locf",
+          atol = 1e-12,
+          rtol = 1e-12,
+          ssAtol = 1e-12,
+          ssRtol = 1e-12,
+          returnType = "data.frame"
+        )
+        .after <- .s$time > 10
+        expect_equal(
+          .s$a[.after],
+          .cs$exact(.s$time[.after]),
+          tolerance = 1e-8,
+          label = paste(.case, .method)
+        )
+      }
+    }
+  })
+
   test_that("a step in the first interval (nocb) or at the last record (locf) keeps the interval's value", {
     .t <- seq(0, 10, by = 0.5)
     for (.method in c("dop853", "cvode", "liblsoda", "lsoda")) {
