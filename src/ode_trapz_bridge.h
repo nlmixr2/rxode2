@@ -46,6 +46,15 @@ protected:
             return;
         }
         dydt_(full_neq_, t_stage_, solin, fout);
+        // a non-finite right-hand side is the solver's failure, as in the
+        // other bridges
+        for (unsigned long i = 0; i < neq_; i++) {
+            if (!std::isfinite(fout[i])) {
+                rxSolverFail(ind_);
+                for (unsigned long j = 0; j < neq_; j++) fout[j] = 0.0;
+                return;
+            }
+        }
     }
 
     // Override step_() to inject the correct stage time into each ode_fun_ call.
