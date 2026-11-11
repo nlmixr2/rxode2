@@ -16,9 +16,9 @@ on:
         type: string
         required: true
       error-on:
-        description: rcmdcheck error_on level
+        description: rcmdcheck error_on level (CRAN asks for every NOTE to be fixed or explained)
         type: string
-        default: warning
+        default: note
 
 permissions:
   contents: read
@@ -30,7 +30,7 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
 
@@ -72,7 +72,7 @@ jobs:
       _R_CHECK_DONTTEST_EXAMPLES_: 'true'
       _R_CHECK_TESTS_NLINES_: '0'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
 
@@ -124,7 +124,10 @@ jobs:
             .t <- utils::read.table(.f, header = TRUE, stringsAsFactors = FALSE)
             .t <- .t[.t$elapsed > 5 | (.t$user + .t$system) > 5, , drop = FALSE]
             for (.i in seq_len(nrow(.t))) {
-              cat(sprintf("::warning::example %s took %.1f s elapsed (CRAN limit 5 s)\n", .t$name[.i], .t$elapsed[.i]))
+              cat(sprintf(
+                "::warning::example %s took %.1f s elapsed, %.1f s cpu (CRAN limit 5 s)\n",
+                .t$name[.i], .t$elapsed[.i], .t$user[.i] + .t$system[.i]
+              ))
             }
           }
           .log <- Sys.glob("check/*.Rcheck/00check.log")
