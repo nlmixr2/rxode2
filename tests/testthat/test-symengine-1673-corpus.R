@@ -140,10 +140,13 @@ rxTest({
   })
 
   test_that("the R walker folds a multi-statement constant", {
-    expect_identical(.rxFromSE(quote(a * {
+    expect_identical(
+      .rxFromSE(quote(a * {
       2
       3
-    })), "a*3")
+    })),
+      "a*3"
+    )
     expect_identical(.rxFromSE(str2lang("a/gamma(2)")), "a")
   })
 })
