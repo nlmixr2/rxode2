@@ -769,7 +769,9 @@ rxD <- function(name, derivatives) {
 
 .rxSEstamp <- function(numDer = .rxSEstate$fromNumDer) {
   .mb <- suppressWarnings(as.integer(getOption("rxode2.symengineCacheMB", 256L)))
-  if (length(.mb) != 1L || is.na(.mb) || .mb < 1L) .mb <- 256L
+  if (length(.mb) != 1L || is.na(.mb) || .mb < 1L) {
+    .mb <- 256L
+  }
   c(
     as.integer(numDer),
     .rxSEstate$dGen,
@@ -889,8 +891,9 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
       if (!is.na(.c)) {
         return(.c)
       }
-      if (is.null(envir) && !is.na(x) &&
-        isTRUE(attr(.c, "why") %in% .rxSEwhyToSEcache) && .rxSEcallerFree(x, toSE = TRUE)) {
+      if (
+        is.null(envir) && !is.na(x) && isTRUE(attr(.c, "why") %in% .rxSEwhyToSEcache) && .rxSEcallerFree(x, toSE = TRUE)
+      ) {
         ## A single expression the R walker translates without touching the
         ## caller's functions or any session state: remember its answer.
         ## Statements (a parse failure here) and calls the C side does not
@@ -1505,8 +1508,10 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
   .syms <- unique(.r[[2]])
   ## not names in R's tree: constants R writes back as.character()
   .syms <- .syms[!(.syms %in% c("TRUE", "FALSE", "NaN", "Inf", "NULL"))]
-  if (any(.syms %in% .rxToSEDualVarFunction) ||
-    any(.syms %in% names(envir$..laggedAssignN))) {
+  if (
+    any(.syms %in% .rxToSEDualVarFunction) ||
+      any(.syms %in% names(envir$..laggedAssignN))
+  ) {
     return(.rxToSE(x, envir = envir))
   }
   .cnst <- names(.rxSEreserved)
@@ -3191,8 +3196,11 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
 
 .rxFromSEC <- function(x, numDer = .rxSEstate$fromNumDer) {
   .Call(
-    `_rxode2_rxFromSEChar`, as.character(x), as.integer(numDer),
-    .rxDtemplates(), .rxSEstamp(numDer)
+    `_rxode2_rxFromSEChar`,
+    as.character(x),
+    as.integer(numDer),
+    .rxDtemplates(),
+    .rxSEstamp(numDer)
   )
 }
 
@@ -3220,8 +3228,9 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
     .why <- attr(.c, "why")
   }
   .ret <- .rxFromSE(eval(parse(text = paste0("quote({", .x2, "})"))))
-  if (.useC && is.character(.ret) && length(.ret) == 1L &&
-    !identical(.why, .rxSEwhyUnknownFn) && .rxSEcallerFree(txt)) {
+  if (
+    .useC && is.character(.ret) && length(.ret) == 1L && !identical(.why, .rxSEwhyUnknownFn) && .rxSEcallerFree(txt)
+  ) {
     .Call(`_rxode2_seCachePutR`, 0L, txt, .ret)
   }
   .ret

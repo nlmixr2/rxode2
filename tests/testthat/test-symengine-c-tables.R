@@ -45,15 +45,47 @@ rxTest({
 
   test_that("C writes numbers exactly as as.character() does", {
     .x <- c(
-      0, 1, -1, 0.5, 0.1, 1e-4, 1e-5, 1e-6, 1.5e-7, 1e5, 1e6, 123456, 1234567,
-      1e15, 1e16, 1e22, 1234567890123456789, 0.30000000000000004, 1 / 3, 2 / 3,
-      pi, exp(1), 100, 1e-300, 1e300, 99999.99999999999, 9.999999999999999e4,
-      -1e5, -0.0001, 6.055454452393343e-06, .Machine$double.eps,
-      .Machine$double.xmax, NaN, Inf, -Inf
+      0,
+      1,
+      -1,
+      0.5,
+      0.1,
+      1e-4,
+      1e-5,
+      1e-6,
+      1.5e-7,
+      1e5,
+      1e6,
+      123456,
+      1234567,
+      1e15,
+      1e16,
+      1e22,
+      1234567890123456789,
+      0.30000000000000004,
+      1 / 3,
+      2 / 3,
+      pi,
+      exp(1),
+      100,
+      1e-300,
+      1e300,
+      99999.99999999999,
+      9.999999999999999e4,
+      -1e5,
+      -0.0001,
+      6.055454452393343e-06,
+      .Machine$double.eps,
+      .Machine$double.xmax,
+      NaN,
+      Inf,
+      -Inf
     )
     withr::with_seed(42, {
       .x <- c(
-        .x, stats::runif(200, -1e3, 1e3), 10^stats::runif(200, -20, 20),
+        .x,
+        stats::runif(200, -1e3, 1e3),
+        10^stats::runif(200, -20, 20),
         round(stats::runif(100, 0, 1e7))
       )
     })
@@ -77,10 +109,19 @@ rxTest({
     .rTxt <- function(s) {
       .rxFromSE(eval(parse(text = paste0("quote({", s, "})"))))
     }
-    for (.s in c("a*100000", "a*0.0001", "100000*a", "a^100000", "a + 0.0001",
-                 "a*1234567890123456789", "log(1e-04 + a)")) {
+    for (.s in c(
+      "a*100000",
+      "a*0.0001",
+      "100000*a",
+      "a^100000",
+      "a + 0.0001",
+      "a*1234567890123456789",
+      "log(1e-04 + a)"
+    )) {
       .c <- .rxFromSEC(.s, 1L)
-      if (is.na(.c) && .Platform$OS.type == "windows") next # trio: src/seNum.h
+      if (is.na(.c) && .Platform$OS.type == "windows") {
+        next
+      } # trio: src/seNum.h
       expect_identical(.c, .rTxt(.s), info = .s)
     }
   })
