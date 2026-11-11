@@ -27,3 +27,35 @@ rxTest({
     expect_equal(rxNorm(.x), paste0("y=max(", .sum, ",-", .sum, ");\n"))
   })
 })
+
+rxTest({
+  test_that("an empty argument is a syntax error, not malformed C", {
+    expect_error(rxNorm("y=max(,b);"), "syntax error")
+    expect_error(rxNorm("y=atan2(,a);"), "syntax error")
+    expect_error(rxNorm("y=pnorm(,a);"), "syntax error")
+    expect_error(rxNorm("y=lag(,1);"), "syntax error")
+    expect_error(rxNorm("obs(,a);"), "syntax error")
+    expect_error(rxNorm("y=max();"), "syntax error")
+    expect_error(rxNorm("y=sum();"), "syntax error")
+    expect_error(rxNorm("y=exp();"), "syntax error")
+    expect_error(rxNorm("obs();"), "syntax error")
+  })
+
+  test_that("the empty-argument errors name the function", {
+    .msg <- function(x) {
+      paste(
+        utils::capture.output(try(rxNorm(x), silent = TRUE), type = "output"),
+        collapse = "\n"
+      )
+    }
+    expect_match(.msg("y=max(,b);"), "'max' has an empty first argument", fixed = TRUE)
+    expect_match(.msg("y=max();"), "'max' needs at least one argument", fixed = TRUE)
+    expect_match(.msg("y=exp();"), "'exp' takes 1 arguments, supplied 0", fixed = TRUE)
+  })
+
+  test_that("functions that take no arguments still parse", {
+    for (.f in c("rxnorm", "rnorm", "tad", "tlast", "dosenum")) {
+      expect_equal(rxNorm(paste0("y=", .f, "();")), paste0("y=", .f, "();\n"))
+    }
+  })
+})

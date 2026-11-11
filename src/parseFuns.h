@@ -11,6 +11,30 @@ SEXP rxode2_getUdf2(const char *fun, const int nargs);
 // defined below, used by the adaptive dosing statement handlers
 static inline void rxPushDoseNoteArg(const char *fn, const char *arg, const char *v);
 
+// number of arguments of a `function` parse node: `f()` has 0, not 1
+static inline int functionNodeNargs(D_ParseNode *fPn) {
+  int ii = d_get_number_of_children(d_get_child(fPn, 3)) + 1;
+  if (ii == 1) {
+    D_ParseNode *xpn = d_get_child(fPn, 2);
+    char *v2 = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
+    if (allSpaces(v2)) return 0;
+  }
+  return ii;
+}
+
+// `f(, b)`: the grammar's first argument is optional, so an empty one
+// followed by a comma has to be refused here
+static inline void assertNoEmptyFirstArg(D_ParseNode *fPn, const char *fn) {
+  if (d_get_number_of_children(d_get_child(fPn, 3)) == 0) return;
+  D_ParseNode *xpn = d_get_child(fPn, 2);
+  char *v2 = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
+  if (allSpaces(v2)) {
+    updateSyntaxCol();
+    sPrint(&_gbuf, _("'%s' has an empty first argument"), fn);
+    trans_syntax_error_report_fn(_gbuf.s);
+  }
+}
+
 static inline int isAtFunctionArg(const char *name) {
   return !strcmp("(", name) ||
     !strcmp(")", name) ||
@@ -80,7 +104,12 @@ static inline int handleObsStatement(nodeInfo ni, char *name, int *i, int nch,
     sb.o = 0; sbDt.o = 0; sbt.o = 0;
     tb.evid_ = 1;
     aType(TEVID);
-    int ii = d_get_number_of_children(d_get_child(fPn, 3)) + 1;
+    assertNoEmptyFirstArg(fPn, "obs");
+    int ii = functionNodeNargs(fPn);
+    if (ii == 0) {
+      updateSyntaxCol();
+      trans_syntax_error_report_fn(_("'obs' needs at least one argument"));
+    }
     D_ParseNode *xpn0 = d_get_child(fPn, 2);
     char *v0 = (char*)rc_dup_str(xpn0->start_loc.s, xpn0->end);
     rxPushDoseNoteArg("obs", "value", v0);
@@ -361,7 +390,12 @@ static inline int handleFunctionSum(transFunctions *tf) {
       !strcmp("max", tf->v)   || !strcmp("min", tf->v) ||
       !strcmp("rxord", tf->v) ||
       !strcmp("mix", tf->v) || !strcmp("obs", tf->v)) {
-    int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
+    int ii = functionNodeNargs(tf->pn);
+    if (ii == 0) {
+      updateSyntaxCol();
+      sPrint(&_gbuf, _("'%s' needs at least one argument"), tf->v);
+      trans_syntax_error_report_fn(_gbuf.s);
+    }
     if (!strcmp("prod", tf->v)) {
       sAppend(&sb, "_prod(_p, _input, _solveData->prodType, %d, (double) ", ii);
       sAppend(&sbDt, "_prod(_p, _input, _solveData->prodType, %d, (double) ", ii);
@@ -510,7 +544,7 @@ static inline int handleBadFunctions(transFunctions *tf) {
   int curThread = 0;
   for (int j = Rf_length(_goodFuns); j--;){
     if (!strcmp(CHAR(STRING_ELT(_goodFuns, j)),tf->v)){
-      int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
+      int ii = functionNodeNargs(tf->pn);
       int argMin=-1, argMax=-1;
       for (int kk = Rf_length(_rxode2parse_rxFunctionName); kk--;) {
         if (!strcmp(CHAR(STRING_ELT(_rxode2parse_rxFunctionName, kk)),tf->v)) {
@@ -569,13 +603,7 @@ static inline int handleBadFunctions(transFunctions *tf) {
     }
   }
   if (foundFun == 0){
-    int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
-    if (ii == 1) {
-      D_ParseNode *xpn = d_get_child(tf->pn, 2);
-      char *v2 = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
-      int allSpace=allSpaces(v2);
-      if (allSpace) ii = 0;
-    }
+    int ii = functionNodeNargs(tf->pn);
     rxProtectGuard;
     SEXP lst = rxP(rxode2_getUdf2(tf->v, ii));
     int udf = INTEGER(VECTOR_ELT(lst, 0))[0];
@@ -628,6 +656,7 @@ static inline int handleFunctions(nodeInfo ni, char *name, int *i, int *depth, i
     tf->xpn = xpn;
     tf->pn = pn;
     tf->v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
+    assertNoEmptyFirstArg(pn, tf->v);
     if (handleFunctionsExceptLinCmt(tf)) {
       return 1;
     } else if (handleFunctionLinCmt(tf)){
