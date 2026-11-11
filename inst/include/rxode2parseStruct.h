@@ -187,6 +187,10 @@ typedef struct {
      kernel evaluation per origin per step, so a model that cannot use it
      pays nothing.  Superset of linCmtLagMask. */
   int    linCmtOriginMask;
+  /* discrete adjoint: lhs index where the d(initial condition)/dtheta block
+     starts (k*np+p); -1 if no initial condition depends on a calcSens
+     parameter.  Appended last so every earlier field keeps its offset. */
+  int    adjDx0Off;
 } rx_solving_options;
 
 
