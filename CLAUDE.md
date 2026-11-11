@@ -67,21 +67,24 @@ invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devto
 `result` is the single check to require.
 
 - **fast** (every push to a PR targeting main, push to main, a `/ci` PR
-  comment): lint of the changed files, the CRAN-mirror check (`_check.yaml`:
-  one tarball, `R CMD check --as-cran` on linux/windows/macOS release with
-  `NOT_CRAN=false` and 2 OpenMP threads, so `rxTest({})` blocks skip as on
-  CRAN), and the core NOT_CRAN tests listed in `tests/ci-core.txt`.
+  comment): the air format check, lint of the changed files, the CRAN-mirror
+  check (`_check.yaml`: one tarball, `R CMD check --as-cran` on
+  linux/windows/macOS release with `NOT_CRAN=false` and 2 OpenMP threads, so
+  `rxTest({})` blocks skip as on CRAN), and the core NOT_CRAN tests listed in
+  `tests/ci-core.txt`.
 - **full** (nightly when main changed, a `/cifull` PR comment, manual run):
   fast plus R-devel/oldrel checks, every test file on all three OSes,
   coverage and a pkgdown build.
 
 Comments count only from owners/members/collaborators. Stacked PRs,
 documentation-only PRs and draft PRs (until marked ready, or commented `/ci`)
-run nothing. A test file that covers a major feature
-belongs in `tests/ci-core.txt`. Shards are balanced from
+run nothing. Retargeting a stacked PR to main starts the fast tier via
+`ci-retarget.yaml`; other PR edits start no run. A test file that covers a
+major feature belongs in `tests/ci-core.txt`. Shards are balanced from
 `tests/ci-timings.csv`; refresh it from a full run's `junit-*` artifacts with
-`.github/scripts/ci-test-timings.R` (`.github/scripts/ci-shards.R` does the split). The shared
-setup (R, dependencies, ccache) is `.github/actions/setup-rxode2`.
+`.github/scripts/ci-test-timings.R` (`.github/scripts/ci-shards.R` does the
+split). The shared setup (R, dependencies, ccache) is
+`.github/actions/setup-rxode2`.
 
 ### Get generated C code and C code errors from model
 

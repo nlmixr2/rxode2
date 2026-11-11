@@ -2,7 +2,7 @@
 #
 #   fast  every push to a pull request targeting main, every push to main,
 #         and a "/ci" comment on a pull request.
-#         lint (changed files) + CRAN-mirror check (linux/windows/macOS
+#         air format check + lint (changed files) + CRAN-mirror check (linux/windows/macOS
 #         release) + the core NOT_CRAN tests (tests/ci-core.txt).
 #   full  nightly (only when main changed since the last nightly run),
 #         a "/cifull" comment on a pull request, or a manual run.
@@ -15,11 +15,14 @@
 # /cifull comment still runs on a draft).
 # A pull request that changes only documentation (*.md other than NEWS.md,
 # issue templates, bench/, inst/WORDLIST) runs nothing either.
+# Retargeting a stacked pull request to main runs the fast tier through
+# ci-retarget.yaml, which dispatches this workflow with `pr`; other pull
+# request edits start no run here, so they never post a `result`.
 # The `result` job is the one check to require in branch protection.
 on:
   pull_request:
     branches: [main, master]
-    types: [opened, synchronize, reopened, edited, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main, master]
   issue_comment:
@@ -33,6 +36,10 @@ on:
         type: choice
         options: [fast, full]
         default: full
+      pr:
+        description: pull request number to test (its merge ref); empty = this branch
+        type: string
+        default: ''
 
 name: ci.yaml
 
@@ -40,14 +47,12 @@ permissions: read-all
 
 # One run per pull request (or branch) and tier: a new push cancels the
 # superseded fast run but never a /cifull run.  Comments that are not CI
-# commands, and pull request edits that do not change the base, get a group of
-# their own so they cancel nothing.
+# commands get a group of their own so they cancel nothing.
 concurrency:
   group: >-
-    ci-${{ github.event.pull_request.number || github.event.issue.number || github.ref }}-${{
+    ci-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr || github.ref }}-${{
     (github.event_name == 'schedule' || inputs.tier == 'full' || startsWith(github.event.comment.body, '/cifull')) && 'full' || 'fast' }}${{
-    (github.event_name == 'issue_comment' && !(github.event.issue.pull_request && startsWith(github.event.comment.body, '/ci') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))) && format('-noop-{0}', github.run_id) || '' }}${{
-    (github.event.action == 'edited' && !github.event.changes.base) && format('-noop-{0}', github.run_id) || '' }}
+    (github.event_name == 'issue_comment' && !(github.event.issue.pull_request && startsWith(github.event.comment.body, '/ci') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))) && format('-noop-{0}', github.run_id) || '' }}
   cancel-in-progress: ${{ github.event_name != 'schedule' }}
 
 jobs:
@@ -78,11 +83,10 @@ jobs:
             let tier = 'none', ref = '', sha = '', pr = null;
 
             if (ev === 'pull_request') {
-              // an edit that does not retarget the pull request is not a code
-              // change; a draft waits until it is marked ready for review
+              // a draft waits until it is marked ready for review
               if (p.pull_request.draft) {
                 core.notice('draft pull request: CI skipped (comment /ci to run it)');
-              } else if (p.action !== 'edited' || (p.changes && p.changes.base)) {
+              } else {
                 tier = 'fast';
                 pr = p.pull_request.number;
               }
@@ -90,6 +94,19 @@ jobs:
               tier = 'fast';
             } else if (ev === 'workflow_dispatch') {
               tier = (p.inputs && p.inputs.tier) || 'full';
+              const n = parseInt((p.inputs && p.inputs.pr) || '', 10);
+              if (!isNaN(n)) {
+                // a pull request run (ci-retarget.yaml): test its merge ref and
+                // report to its head commit, as a /ci comment does
+                const pull = (await github.rest.pulls.get({ ...context.repo, pull_number: n })).data;
+                if (pull.state === 'open' && mainBranches.includes(pull.base.ref)) {
+                  pr = n;
+                  ref = `refs/pull/${n}/merge`;
+                  sha = pull.head.sha;
+                } else {
+                  tier = 'none';
+                }
+              }
             } else if (ev === 'schedule') {
               // nothing new on main since the last nightly run -> skip
               const runs = await github.rest.actions.listWorkflowRuns({
@@ -200,6 +217,26 @@ jobs:
             lintr::lint_package(exclusions = as.list(setdiff(.all, .files)))
           }
 
+  # R code formatted with air (https://posit-dev.github.io/air/), using
+  # air.toml.  To fix a failure locally run `air format .`.
+  format:
+    needs: gate
+    if: needs.gate.outputs.tier != 'none'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.gate.outputs.ref }}
+
+      - name: Check R code is formatted with air
+        uses: rstudio/shiny-workflows/format-r-code@v1
+        with:
+          # Pinned so CI and local `air format` agree; bump deliberately and
+          # reformat in the same PR.
+          version: 0.11.0
+          check: "true"
+
   check:
     needs: gate
     if: needs.gate.outputs.tier != 'none'
@@ -236,7 +273,7 @@ jobs:
   # cancelled (a skipped job is fine), and reports a comment-started run back
   # to the pull request's head commit.
   result:
-    needs: [gate, lint, check, tests, coverage, pkgdown]
+    needs: [gate, format, lint, check, tests, coverage, pkgdown]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
