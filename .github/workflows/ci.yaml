@@ -11,13 +11,15 @@
 #
 # Comments count only from OWNER/MEMBER/COLLABORATOR, on pull requests that
 # target main.  Stacked pull requests (based on another branch) run nothing.
+# Draft pull requests run nothing until marked ready for review (a /ci or
+# /cifull comment still runs on a draft).
 # A pull request that changes only documentation (*.md other than NEWS.md,
 # issue templates, bench/, inst/WORDLIST) runs nothing either.
 # The `result` job is the one check to require in branch protection.
 on:
   pull_request:
     branches: [main, master]
-    types: [opened, synchronize, reopened, edited]
+    types: [opened, synchronize, reopened, edited, ready_for_review]
   push:
     branches: [main, master]
   issue_comment:
@@ -76,8 +78,11 @@ jobs:
             let tier = 'none', ref = '', sha = '', pr = null;
 
             if (ev === 'pull_request') {
-              // an edit that does not retarget the pull request is not a code change
-              if (p.action !== 'edited' || (p.changes && p.changes.base)) {
+              // an edit that does not retarget the pull request is not a code
+              // change; a draft waits until it is marked ready for review
+              if (p.pull_request.draft) {
+                core.notice('draft pull request: CI skipped (comment /ci to run it)');
+              } else if (p.action !== 'edited' || (p.changes && p.changes.base)) {
                 tier = 'fast';
                 pr = p.pull_request.number;
               }

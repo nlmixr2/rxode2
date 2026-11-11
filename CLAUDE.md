@@ -75,8 +75,9 @@ invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devto
   fast plus R-devel/oldrel checks, every test file on all three OSes,
   coverage and a pkgdown build.
 
-Comments count only from owners/members/collaborators. Stacked PRs and
-documentation-only PRs run nothing. A test file that covers a major feature
+Comments count only from owners/members/collaborators. Stacked PRs,
+documentation-only PRs and draft PRs (until marked ready, or commented `/ci`)
+run nothing. A test file that covers a major feature
 belongs in `tests/ci-core.txt`. Shards are balanced from
 `tests/ci-timings.csv`; refresh it from a full run's `junit-*` artifacts with
 `.github/scripts/ci-test-timings.R` (`.github/scripts/ci-shards.R` does the split). The shared
