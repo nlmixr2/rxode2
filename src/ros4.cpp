@@ -61,11 +61,11 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   typedef boost::numeric::odeint::rosenbrock4_dense_output<error_stepper_type> dense_stepper_type;
   dense_stepper_type dense_stepper(stepper);
   bool stepper_initialized = false;
-  // The step the controller proposed at the end of the last segment, and
-  // whether only plain observation records came since (rxKeepsStep()), so the
-  // next segment starts with that step.
-  double hKeep = 0.0;
-  bool keepH = false;
+  rxStepKeeper keep; // how each segment starts
+  keep.scalarTol = true;
+  // ros4 restarts after a dose: on a stiff transient its L-stable step accepts
+  // a kept step far longer than the relaxation it skips (Robertson)
+  keep.acrossDoses = false;
 
   // scratch vectors for sampling ros4 dense output when recording delay history
   state_type _dq0(neqOde), _dq1(neqOde), _dq2(neqOde), _dq3(neqOde);
@@ -126,8 +126,8 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               if (neqOde > 0) {
                   state_type state(neqOde);
                   double dt = (ind->autoHcur > 0.0) ? ind->autoHcur
-                  : (keepH && hKeep > 0.0) ? rxKeptStep(hKeep, op->HMIN, ind->HMAX)
-                  : (op->HMIN > 0.0) ? op->HMIN : 1e-4;
+                    : keep.first((op->HMIN > 0.0) ? op->HMIN : 1e-4, op, ind, neq, neqOde,
+                                 c_dydt, xp, yp);
                   if (ind->extraDoseNewXout < xp) dt = -dt;
                   sys.first.xout_ = ind->extraDoseNewXout;
                   sys.first.sign_ = (dt > 0) ? 1 : -1;
@@ -138,8 +138,7 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
 
                           stepper, sys, state, xp, ind->extraDoseNewXout, dt, error_checker(ind, ind->rc, op->mxstep));
                       stepper_initialized = false;
-                      hKeep = fabs(dt);
-                      keepH = true;
+                      keep.solved(fabs(dt));
                       if (!ind->err) std::copy(state.begin(), state.end(), yp);
                   } catch(const std::exception& e) {
                       if (ind->rc[0] == 0) ind->rc[0] = -2019;
@@ -165,7 +164,7 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               ind->idxExtra++;
               // the dose changed the state; restart the dense stepper from it
               stepper_initialized = false;
-              keepH = false;
+              keep.stateChanged();
               xp = ind->extraDoseNewXout;
             }
         }
@@ -175,8 +174,8 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           if (neqOde > 0) {
               state_type state(neqOde);
               double dt = (ind->autoHcur > 0.0) ? ind->autoHcur
-                  : (keepH && hKeep > 0.0) ? rxKeptStep(hKeep, op->HMIN, ind->HMAX)
-                  : (op->HMIN > 0.0) ? op->HMIN : 1e-4;
+                : keep.first((op->HMIN > 0.0) ? op->HMIN : 1e-4, op, ind, neq, neqOde,
+                             c_dydt, xp, yp);
               if (xout < xp) dt = -dt;
               sys.first.xout_ = xout;
               sys.first.sign_ = (dt > 0) ? 1 : -1;
@@ -185,7 +184,7 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                   // non-observation events) so every step is recorded into the
                   // delay history with no gaps.
                   if ((op->useDense && isObs(getEvid(ind, ind->ix[i]))) || ind->delayHistOn) {
-                    keepH = false;
+                    keep.reset();
                       if (!stepper_initialized) {
 
                           std::copy(yp, yp + neqOde, state.begin());
@@ -219,8 +218,7 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
 
                           stepper, sys, state, xp, xout, dt, error_checker(ind, ind->rc, op->mxstep));
                       stepper_initialized = false;
-                      hKeep = fabs(dt);
-                      keepH = true;
+                      keep.solved(fabs(dt));
                       if (!ind->err) std::copy(state.begin(), state.end(), yp);
                   }
               } catch(const std::exception& e) {
@@ -251,7 +249,7 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         xp = xout;
         stepper_initialized = false;
       }
-      if (!rxKeepsStep(getEvid(ind, ind->ix[i]))) keepH = false;
+      keep.record(getEvid(ind, ind->ix[i]));
       int _mtime_requeued = 0;
       if (rx->nMtime > 0) {
         if (recomputeMtimeIfNeeded(rx, ind, yp, i, xout)) {
