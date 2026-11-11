@@ -8,6 +8,7 @@ rxTest({
     ## this used to be read as `max(ab)`, gluing two names into one
     expect_error(rxNorm("y=max(a b);"))
     expect_error(rxNorm("y=exp(a (b));"))
+    expect_error(rxNorm("y=max(a, b c);"))
   })
 
   test_that("function arguments still parse as before", {
@@ -22,5 +23,7 @@ rxTest({
     .sum <- paste0("1", paste0("-0.01*THETA[", 1:300, "]", collapse = ""))
     .x <- paste0("y=exp(", .sum, ")^(", .sum, ");")
     expect_equal(rxNorm(.x), paste0("y=exp(", .sum, ")^(", .sum, ");\n"))
+    .x <- paste0("y=max(", .sum, ",-", .sum, ");")
+    expect_equal(rxNorm(.x), paste0("y=max(", .sum, ",-", .sum, ");\n"))
   })
 })
