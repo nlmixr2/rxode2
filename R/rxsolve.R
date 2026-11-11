@@ -3638,7 +3638,7 @@ rxSolve.default <- function(
         sprintf(
           gettext("method='abs' cannot calculate sensitivities through %s that depend on sensitivity parameters; use %s"),
           paste(.bad, collapse = ", "),
-          if (any(.bad %in% c("rate()", "dur()"))) "method='rk4s'" else "method='rk4s' or method='liblsodaadj'"
+          "method='rk4s' or method='liblsodaadj'"
         ),
         call. = FALSE
       )

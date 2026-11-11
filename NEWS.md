@@ -274,6 +274,16 @@
 
 ### Adjoint sensitivities
 
+- The adjoint bioavailability (`f()`) sensitivity of an infusion is now
+  right for fixed-rate, fixed-duration and modeled `rate()`/`dur()`
+  infusions in the `rk4s` family, `liblsodaadj` and `cvodesadj`.  Before,
+  fixed infusions missed it in every method, and modeled ones in
+  `liblsodaadj` and `cvodesadj`.
+
+- The adjoint lag-time (`alag()`) sensitivity of an infusion now accounts
+  for the shift of the whole infusion window; before, it was missing in
+  every method.
+
 - A steady-state (`ss = 1`) dose after the first record no longer gives
   wrong adjoint sensitivities: in the `rk4s` family the observations
   before it picked up the steady-state term, and in
@@ -324,8 +334,7 @@
 
 - `method = "cvodesadj"` now includes the bioavailability (`f()`)
   sensitivity, also for an observation at a dose time; before, it was
-  missing entirely.  `f()` together with a modeled `rate()` or `dur()` is
-  still not right in `cvodesadj` and `liblsodaadj`.
+  missing entirely.
 
 - `method = "abs"` now stops with an error when sensitivities are
   requested through an `f()`, `alag()`, `rate()` or `dur()` that depends on
