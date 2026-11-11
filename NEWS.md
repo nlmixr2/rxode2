@@ -322,12 +322,18 @@
 - A dose that follows a reset at the same time (`evid = 4`, or `evid = 3`
   and a dose at one time) lost its bioavailability (`f()`) adjoint
   sensitivity in the `rk4s` family of methods and in
-  `method = "liblsodaadj"`; it is now kept (in liblsodaadj, when it is the
-  only dose at that time).  Events at the same step are
+  `method = "liblsodaadj"`; it is now kept.  Events at the same step are
   now transposed in reverse order in the `rk4s` family, which also fixes a
   dose together with a replace or multiply at one time.  The bioavailability
   that `f()` applies to a replace or multiply value is still missing from
   the adjoint sensitivities.
+
+- Several events at one time (doses, replaces, multiplies and resets) now
+  give the right adjoint sensitivities with `method = "liblsodaadj"` and
+  `method = "abs"`, which kept only the first of them, and with
+  `method = "cvodesadj"`, which transposed them in forward order.  The
+  liblsodaadj self-check replay (`RX_LSADJ_SELFCHECK`) also starts from a
+  parameter-dependent initial condition and restores it at a reset.
 
 - With `method = "cvodesadj"`, and with `method = "liblsodaadj"` when
   nothing was integrated between resets, an observation recorded at the
