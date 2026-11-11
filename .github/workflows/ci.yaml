@@ -271,10 +271,12 @@ jobs:
 
   # The single required check: fails when any job above failed or was
   # cancelled (a skipped job is fine), and reports a comment-started run back
-  # to the pull request's head commit.
+  # to the pull request's head commit.  Not run when the whole run is
+  # cancelled: the newer run reports instead, and a job left waiting for a
+  # runner would hold the concurrency group and keep that newer run pending.
   result:
     needs: [gate, format, lint, check, tests, coverage, pkgdown]
-    if: always()
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
