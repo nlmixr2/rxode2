@@ -23,7 +23,7 @@ inputs:
     description: install pandoc (needed to build vignettes)
     default: 'true'
   ccache:
-    description: put ccache in front of the compilers (linux and macOS)
+    description: put ccache in front of the compilers
     default: 'true'
 
 runs:
@@ -65,7 +65,7 @@ runs:
     # ccache is set up AFTER the dependencies so it only caches rxode2's own
     # objects (and the models the tests compile), keeping the cache small.
     - name: Set up ccache
-      if: inputs.ccache == 'true' && runner.os != 'Windows'
+      if: inputs.ccache == 'true'
       uses: hendrikmuhs/ccache-action@v1.2
       with:
         key: ${{ runner.os }}-${{ inputs.r-version }}-${{ github.job }}
@@ -73,12 +73,19 @@ runs:
 
     # A dedicated Makevars through R_MAKEVARS_USER: it wraps only the compiler
     # commands, so the flags rxode2 reads back from the user Makevars are
-    # unchanged.
+    # unchanged.  Without a working ccache the compilers are left alone.
     - name: Route the compilers through ccache
-      if: inputs.ccache == 'true' && runner.os != 'Windows'
+      if: inputs.ccache == 'true'
       shell: bash
       run: |
-        mv="$RUNNER_TEMP/Makevars.ccache"
+        if ! ccache --version > /dev/null 2>&1; then
+          echo "::warning::ccache is not on the PATH; compiling without it"
+          exit 0
+        fi
+        tmp="$RUNNER_TEMP"
+        # R on Windows wants a C:/... path, not the bash or backslash form
+        if [ "$RUNNER_OS" = "Windows" ]; then tmp=$(cygpath -m "$RUNNER_TEMP"); fi
+        mv="$tmp/Makevars.ccache"
         : > "$mv"
         for v in CC CXX CXX11 CXX14 CXX17 CXX20; do
           c=$(R CMD config "$v" 2>/dev/null || true)
