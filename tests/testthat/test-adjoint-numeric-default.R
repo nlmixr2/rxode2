@@ -41,11 +41,10 @@ rxTest({
   test_that(".rxAdjointGradBuild differentiates a parameter with a model default", {
     .obs <- c(2, 2.5, 1.5, 0.5, 0.2)
     .cp <- as.vector(.gC) / .p[["v"]]
-    .gfd <- vapply(
-      .cs,
-      function(.pn) sum((.cp - .obs) * .fd[[paste0("rx__sens_center_BY_", .pn, "__")]] / .p[["v"]]),
-      numeric(1)
-    )
+    .gfd <- numeric(0)
+    for (.pn in .cs) {
+      .gfd[.pn] <- sum((.cp - .obs) * .fd[[paste0("rx__sens_center_BY_", .pn, "__")]] / .p[["v"]])
+    }
     .b <- .rxAdjointGradBuild(.txt, .cs, "center/v", .ev)
     expect_lt(max(abs(.rxAdjointGradEvalC(.b, .p, .tt, .obs, denseBy = .db, atol = 1e-12, rtol = 1e-12) - .gfd)), 1e-6)
     # approx() collapses the duplicated dose-time row of the forward checkpoint
