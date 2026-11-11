@@ -3130,9 +3130,14 @@ static thread_local double _lsSsT = 0.0;       // time the snapshot's steady sta
 static thread_local int    _lsSsFixed = 0;     // _adjSSinfFixed / _adjSSinfFixW of the snapshot
 static thread_local double _lsSsFixW = 0.0;
 static thread_local double _lsSsFixW2 = 0.0;
-static inline void lsAdjSnapshotSs(double t) {
+// the state right after the steady-state dose (before later same-time events):
+// the period's starting state; the last ss = 1 dose at _lsSsT wins
+static thread_local std::vector<double> _lsSsY;
+static inline void lsAdjSnapshotSs(double t, const double *yp, int n) {
   // called right after an ss handleSS while liblsoda recording is active
-  if (_lsSsKind == 0 && (_adjSSbolusIi > 0.0 || _adjSSinfKind != 0)) _lsSsT = t;
+  bool est = (_adjSSbolusIi > 0.0 || _adjSSinfKind != 0);
+  if (_lsSsKind == 0 && est) _lsSsT = t;
+  if (est && t == _lsSsT) _lsSsY.assign(yp, yp + n);
   if (_adjSSbolusIi > 0.0) { _lsSsKind = 1; _lsSsBolusIi = _adjSSbolusIi; }
   else if (_adjSSinfKind == 1) { _lsSsKind = 1; _lsSsBolusIi = 0.0; _lsSsCmt = _adjSSinfCmt;
     _lsSsDur = _adjSSinfDur; _lsSsDur2 = _adjSSinfDur2; _lsSsRate = _adjSSinfRate; _lsSsRate2 = _adjSSinfRate2;
@@ -5142,7 +5147,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         if (_lsWasActive) lsAdjSetActive(0);
         handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                  xp, ind->id, &i, ind->n_all_times, &(ctx->state), op, ind, u_inis, ctx);
-        if (_lsWasActive) { lsAdjSetActive(1); lsAdjSnapshotSs(xout); }
+        if (_lsWasActive) { lsAdjSetActive(1); lsAdjSnapshotSs(xout, yp, neq[0]); }
         if (ind->wh0 == EVID0_OFF){
           yp[ind->cmt] = op->inits[ind->cmt];
         }
