@@ -1367,10 +1367,23 @@
   .name <- character(0)
   .which <- integer(0)
   .tmpl <- character(0)
-  for (.nm in ls(.rxD)) {
+  .kind <- integer(0)
+  .dNames <- ls(.rxD)
+  .dLen <- integer(length(.dNames))
+  for (.i in seq_along(.dNames)) {
+    .nm <- .dNames[.i]
     .lst <- get(.nm, envir = .rxD)
+    .dLen[.i] <- length(.lst)
     for (.k in seq_along(.lst)) {
       .f <- .lst[[.k]]
+      if (is.null(.f)) {
+        ## a NULL entry: .rxFromSE() takes the finite difference (.errD)
+        .name <- c(.name, .nm)
+        .which <- c(.which, .k)
+        .tmpl <- c(.tmpl, "")
+        .kind <- c(.kind, 2L)
+        next
+      }
       if (!is.function(.f)) {
         next
       }
@@ -1383,8 +1396,8 @@
         next
       }
       .conv <- .t1
-      for (.i in seq_len(.na)) {
-        .conv <- gsub(.a[.i], .b[.i], .conv, fixed = TRUE)
+      for (.j in seq_len(.na)) {
+        .conv <- gsub(.a[.j], .b[.j], .conv, fixed = TRUE)
       }
       if (!identical(.conv, .t2)) {
         next
@@ -1392,9 +1405,27 @@
       .name <- c(.name, .nm)
       .which <- c(.which, .k)
       .tmpl <- c(.tmpl, .t1)
+      .kind <- c(.kind, 1L)
     }
   }
-  .cached <- list(name = .name, which = as.integer(.which), template = .tmpl)
+  ## .SEeq, the functions .rxFromSE() emits through its generic call branch
+  .eq <- c(.rxSEeq, .rxSEeqUsr())
+  ## the functions eval(parse(text = .), envir = baseenv()) can call, which is
+  ## what decides whether .rxFromSE() constant-folds name(<numbers>)
+  .base <- ls(baseenv(), all.names = TRUE)
+  .base <- .base[grepl("^[A-Za-z._][A-Za-z0-9._]*$", .base)]
+  .base <- .base[vapply(.base, function(.n) {
+    is.function(get(.n, envir = baseenv()))
+  }, logical(1), USE.NAMES = FALSE)]
+  .cached <- list(
+    name = .name, which = as.integer(.which), template = .tmpl, kind = .kind,
+    rxdName = .dNames, rxdLen = .dLen,
+    eqName = names(.eq), eqN = suppressWarnings(as.integer(.eq)),
+    baseFns = .base,
+    ## functions whose translation cannot depend on the caller's environment
+    ## (.rxSEcallerFree): R user functions are looked up there instead
+    known = unique(c(names(.eq), .dNames, .Call(`_rxode2_seFromSEfnTable`)$name))
+  )
   .rxSEstate$dTemplates <- .cached
   .cached
 }

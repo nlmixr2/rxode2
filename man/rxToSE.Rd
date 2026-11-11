@@ -63,7 +63,8 @@ if (requireNamespace("symengine", quietly = TRUE)) {
 }
 \seealso{
 Other Symbolic tools:
-\code{\link[=rxS]{rxS()}}
+\code{\link[=rxS]{rxS()}},
+\code{\link[=rxSymEngineCacheReset]{rxSymEngineCacheReset()}}
 }
 \author{
 Matthew L. Fidler
