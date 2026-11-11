@@ -89,4 +89,11 @@ d3GELU = 1, d4GELU = 1, ELU = 2, dELU = 2, d2ELU = 2, d2aELU = 2,
 dELUa = 2, d2ELUa = 2, softplus = 1, dsoftplus = 1, d2softplus = 1, 
 d3softplus = 1, d4softplus = 1, SELU = 1, dSELU = 1, lReLU = 1, 
 dlReLU = 1, PReLU = 2, dPReLU = 2, dPReLUa = 2, dPReLUa1 = 2, 
-Swish = 1, dSwish = 1)
+Swish = 1, dSwish = 1, gammafn = 1, lgammafn = 1, loggamma = 1, 
+tetragamma = 1, pentagamma = 1, cospi = 1, sinpi = 1, tanpi = 1, 
+log1p = 1, expm1 = 1, factorial = 1, lfactorial = 1, lgamma1p = 1, 
+log10 = 1, log2 = 1, log1pexp = 1, "!" = 1, phi = 1, pnorm = 1, 
+normcdf = 1, qnorm = 1, fabs = 1, pow = 2, R_pow = 2, R_pow_di = 2, 
+Rx_pow_di = 2, Rx_pow = 2, lbeta = 2, "==" = 2, "!=" = 2, ">=" = 2, 
+"<=" = 2, "<" = 2, ">" = 2, "&&" = 2, "||" = 2, "&" = 2, "|" = 2, 
+"%%" = 2)

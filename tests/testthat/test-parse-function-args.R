@@ -53,6 +53,46 @@ rxTest({
     expect_match(.msg("y=exp();"), "'exp' takes 1 arguments, supplied 0", fixed = TRUE)
   })
 
+  test_that("only functions that take no arguments accept f()", {
+    ## log10(), pow(), expm1() ... used to translate to malformed C
+    .zero <- c(
+      "dose",
+      "dose0",
+      "dosenum",
+      "linCmt",
+      "podo",
+      "podo0",
+      "rcauchy",
+      "rexp",
+      "rnorm",
+      "rxcauchy",
+      "rxexp",
+      "rxnorm",
+      "tfirst",
+      "tfirst0",
+      "tlast",
+      "tlast0"
+    )
+    .ok <- vapply(
+      rxSupportedFuns(),
+      function(.f) {
+        tryCatch(
+          {
+            suppressMessages(utils::capture.output(
+              rxNorm(paste0("y=", .f, "();"))
+            ))
+            TRUE
+          },
+          error = function(e) FALSE
+        )
+      },
+      logical(1)
+    )
+    expect_setequal(names(.ok)[.ok], .zero)
+    expect_error(rxNorm("y=log10(a, b);"), "syntax error")
+    expect_error(rxNorm("y=pow(a);"), "syntax error")
+  })
+
   test_that("functions that take no arguments still parse", {
     for (.f in c("rxnorm", "rnorm", "tad", "tlast", "dosenum")) {
       expect_equal(rxNorm(paste0("y=", .f, "();")), paste0("y=", .f, "();\n"))
