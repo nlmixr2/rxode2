@@ -35,6 +35,19 @@
 // time carries; the dF dual uses the raw amt.
 struct rk4s_dose { size_t step; int cmt; double amt; int type; double amtF = 0.0; };
 
+// Event-time tolerance shared by the adjoint drivers: the forward solve's
+// isSameTime() (2 ulp of the larger time), so the backward sweep groups exactly
+// the events the forward applied at one time.
+static inline double rxAdjTimeTol(double a, double b) {
+  return 2.0 * DBL_EPSILON * std::max(fabs(a), fabs(b));
+}
+static inline bool rxAdjSameTime(double a, double b) { return fabs(a - b) <= rxAdjTimeTol(a, b); }
+// Slack for an integrator's own accumulated time against a segment or window
+// boundary: above its round-off, which grows with the time.
+static inline double rxAdjStepTol(double a, double b) {
+  return 1e-12 * std::max(1.0, std::max(fabs(a), fabs(b)));
+}
+
 // Compartment of an infusion start/stop event whose time a modeled alag() moves
 // (or, with ss, also an ss = 1 infusion start, which opens the window after its
 // steady state), or -1.

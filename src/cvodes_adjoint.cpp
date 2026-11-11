@@ -46,7 +46,7 @@ struct cvHist {
     if (ns == 0) { for (int k = 0; k < nBase; ++k) out[k] = 0.0; return; }
     int s = 0;
     for (int si = 0; si < ns; ++si) {
-      if (t[segStart[si]] <= tq + 1e-12) s = si; else break;
+      if (t[segStart[si]] <= tq + rxAdjStepTol(t[segStart[si]], tq)) s = si; else break;
     }
     int lo = segStart[s];
     int hi = (s + 1 < ns) ? segStart[s + 1] : (int)t.size();   // [lo, hi)
@@ -140,7 +140,7 @@ static int cvB_bwd(sunrealtype t, N_Vector B, N_Vector Bd, void *ud) {
   if (u->infus) {
     for (size_t w = 0; w < u->infus->size(); ++w) {
       const cvInfus &F = (*u->infus)[w];
-      if ((double)t >= F.tOn - 1e-12 && (double)t <= F.tOff + 1e-12) {
+      if ((double)t >= F.tOn - rxAdjStepTol(t, F.tOn) && (double)t <= F.tOff + rxAdjStepTol(t, F.tOff)) {
         double lc = NV_Ith_S(B, F.cmt);
         if (u->drateOff >= 0 && !F.fixed) {   // dR/dtheta = durMult * drate
           const double *drate = &u->lhs[u->drateOff];
