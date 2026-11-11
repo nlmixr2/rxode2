@@ -74,6 +74,35 @@ static void seDepthSign(seDepthGrp *g, int unary) {
   g->add++;
 }
 
+/* ( [ opens a group, ) ] closes one: 1 when nesting passes the stack, -1
+   when a close has no open (the parser rejects it), else 0 */
+static int seDepthBracket(seDepthGrp *st, int *top, char ch) {
+  if (ch == '(' || ch == '[') {
+    if (++(*top) > SE_MAX_DEPTH / 4) return 1;
+    memset(&st[*top], 0, sizeof(seDepthGrp));
+    return 0;
+  }
+  if (*top == 0) return -1;
+  (*top)--;
+  seDepthClose(&st[*top], &st[*top + 1]);
+  return 0;
+}
+
+/* one operator character; 0 when ch is not one */
+static int seDepthOp(seDepthGrp *g, const char *s, const char *c, int prevOp) {
+  char ch = *c;
+  if (ch == ',') {
+    seDepthComma(g);
+  } else if (ch == '+' || ch == '-') {
+    seDepthSign(g, prevOp || (c > s && (c[-1] == 'e' || c[-1] == 'E')));
+  } else if (ch == '*' || ch == '/' || ch == '^') {
+    if (!prevOp) g->mulOps++;
+  } else {
+    return 0;
+  }
+  return 1;
+}
+
 static int seTextTooDeep(const char *s, int cap) {
   seDepthGrp st[SE_MAX_DEPTH / 4 + 1];
   int top = 0, prevOp = 1; /* at the start, a sign is unary */
@@ -81,20 +110,11 @@ static int seTextTooDeep(const char *s, int cap) {
   for (const char *c = s; *c; c++) {
     char ch = *c;
     if (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r') continue;
-    if (ch == '(' || ch == '[') {
-      if (++top > SE_MAX_DEPTH / 4) return 1;
-      memset(&st[top], 0, sizeof(seDepthGrp));
-    } else if (ch == ')' || ch == ']') {
-      if (top == 0) return 0; /* unbalanced: the parser rejects it */
-      top--;
-      seDepthClose(&st[top], &st[top + 1]);
-    } else if (ch == ',') {
-      seDepthComma(&st[top]);
-    } else if (ch == '+' || ch == '-') {
-      seDepthSign(&st[top], prevOp || (c > s && (c[-1] == 'e' || c[-1] == 'E')));
-    } else if (ch == '*' || ch == '/' || ch == '^') {
-      if (!prevOp) st[top].mulOps++;
-    } else {
+    int br = (ch == '(' || ch == '[' || ch == ')' || ch == ']');
+    if (br) {
+      int r = seDepthBracket(st, &top, ch);
+      if (r != 0) return r > 0;
+    } else if (!seDepthOp(&st[top], s, c, prevOp)) {
       prevOp = 0;
       continue;
     }
