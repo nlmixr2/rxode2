@@ -335,6 +335,15 @@
   liblsodaadj self-check replay (`RX_LSADJ_SELFCHECK`) also starts from a
   parameter-dependent initial condition and restores it at a reset.
 
+- An observation at the time of a replace or multiply (`evid = 5`/`6`),
+  including one at the first time, right after a reset or at the last
+  record time, now reads the post-event adjoint sensitivity with
+  `method = "cvodesadj"` and `method = "abs"`; before, it read the
+  pre-event one.  `method = "liblsodaadj"` now applies the events at the
+  last record time (a replace, multiply, reset, dose with a modeled `f()`
+  or `ss = 1` dose) to an observation there; an `ss = 1` dose there was up
+  to about 360 off.
+
 - With `method = "cvodesadj"`, and with `method = "liblsodaadj"` when
   nothing was integrated between resets, an observation recorded at the
   time of a reset (`evid = 3`) returned the pre-reset sensitivity; it now
