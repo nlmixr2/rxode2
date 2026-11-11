@@ -32,8 +32,9 @@
 // precedes.  type: 0 = additive bolus (amt = raw dose; F-jump quadrature), 3 =
 // reset (state -> inits), 5 = replace (cmt -> value), 6 = multiply (cmt *= amt).
 // amtF = F*amt, the amount that actually lands (type 0), which a moving dose
-// time carries; the dF dual uses the raw amt.
-struct rk4s_dose { size_t step; int cmt; double amt; int type; double amtF = 0.0; };
+// time carries; the dF dual uses the raw amt.  rec = the record index of a
+// bolus/replace/multiply (its rxAdjJumpCap), else -1.
+struct rk4s_dose { size_t step; int cmt; double amt; int type; double amtF = 0.0; int rec = -1; };
 
 // Event-time tolerance shared by the adjoint drivers: the forward solve's
 // isSameTime() (2 ulp of the larger time), so the backward sweep groups exactly
@@ -239,12 +240,13 @@ static inline void rk4sIniOnlyFill(rx_solving_options *op, rx_solving_options_in
 //   ss = 2   (type 10, at the ss dose's position): the state gains the added
 //            regimen's steady state, mu += lambda^T S2 (S2 = dY_ss_new/dp,
 //            nBase x np, or NULL); lambda passes through.
-// A constant replace/multiply value contributes nothing to mu; a modeled value
-// would add mu += lambda_n+[c] * dvalue/dp (a later addition).
+// A replace/multiply that a modeled lag moves adds mu += dlag[c][p] * lambda_n+^T r,
+// and a modeled F (x+ = F*amt, or alpha = F*amt) its f() dual (rxAdjJumpTerm).
 // fx0 = F_X (df/dy) at this step's stage 0 (post-dose state), row-major i*nBase+j,
 // or NULL; dlag = d(lag)/dtheta block (c*np+p) or NULL.  When a bolus into cmt c has
 // a modeled lag, the dose time t_d+lag(theta) shifts with theta, adding the
-// transversality  mu += -F*amt * dlag[c][p] * (lambda^T F_X[:,c]).
+// transversality mu += dlag[c][p] * lambda^T (f(x-) - f(x+)) (rxAdjJumpTerm), or,
+// for a dose pushed at run time, its linearization -F*amt*dlag[c][p]*(lambda^T F_X[:,c]).
 static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
     std::vector<double> &muR, const std::vector<rk4s_dose> &doses,
     const std::vector<double> &dFdp, bool haveDf, int nBase, int np,
@@ -257,7 +259,8 @@ static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
     switch (d.type) {
     case 0:
       if (haveDf) for (int p = 0; p < np; ++p) muR[p] += d.amt * dFdp[d.cmt * np + p] * lamR[d.cmt];
-      if (dlag && fx0) {
+      // a recorded dose's exact term; a pushed one keeps the F_X linearization
+      if (dlag && !rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlag) && fx0) {
         double sc = 0.0;                          // lambda^T F_X[:,c]
         for (int i = 0; i < nBase; ++i) sc += lamR[i] * fx0[i * nBase + d.cmt];
         for (int p = 0; p < np; ++p) muR[p] += -d.amtF * dlag[d.cmt * np + p] * sc;
@@ -268,9 +271,11 @@ static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
       for (int j = 0; j < nBase; ++j) lamR[j] = 0.0;
       break;
     case 5:
+      rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlag, haveDf ? dFdp.data() : NULL);
       lamR[d.cmt] = 0.0;
       break;
     case 6:
+      rxAdjJumpTerm(d.rec, d.cmt, lamR.data(), muR.data(), nBase, np, dlag, haveDf ? dFdp.data() : NULL);
       lamR[d.cmt] *= d.amt;
       break;
     case 9:
@@ -8932,6 +8937,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   std::vector<size_t> boundarySs2(ind->n_all_times, 0);  // # ss2 events recorded when each time was stored
   std::vector<size_t> boundarySs1(ind->n_all_times, 0);  // # ss1 events recorded when each time was stored
   std::vector<rk4s_dose> doseRec;                     // additive boluses for the F-jump transpose
+  rxAdjJumpClear();
   std::vector<rk4s_infus> infusRec;                   // modeled-rate infusion windows (rate/dur dual)
   int _infusOnCmt = -1; double _infusOnPre = 0.0;     // set when the current event opens an infusion
   int _lagRateCmt = -1, _lagRateWhI = 0, _lagRateWh0 = 0, _lagRateKey = -1; double _lagRatePre = 0.0; size_t _lagRateStep = 0;  // infusion start/stop
@@ -9098,7 +9104,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               // window F-jump.
               if (op->adjDfOff >= 0 && _wh0 != EVID0_SS2 && _wh0 != EVID0_SS20) {
                 rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _cmtD;
-                _d.amt = getDose(ind, ind->ix[i]); _d.type = 0;
+                _d.amt = getDose(ind, ind->ix[i]); _d.type = 0; _d.rec = i;
                 _d.amtF = getAmt(ind, ind->id, _cmtD, _d.amt, xout, yp);
                 doseRec.push_back(_d);
               }
@@ -9116,11 +9122,12 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               }
             } else if (_whI == EVIDF_REPLACE) {             // replace -> lambda[c] := 0
               rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _cmtD; _d.amt = 0.0; _d.type = 5;
+              _d.rec = i;
               doseRec.push_back(_d);
             } else if (_whI == EVIDF_MULT) {                // multiply -> lambda[c] *= alpha
               rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _cmtD;
               _d.amt = getAmt(ind, ind->id, _cmtD, getDoseIndex(ind, ind->idx), xout, yp);
-              _d.type = 6;
+              _d.type = 6; _d.rec = i;
               doseRec.push_back(_d);
             } else if ((_whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON) && op->adjDrateOff >= 0) {
               // modeled rate()/dur() infusion start: R read AFTER handleEvid1.  durMult
@@ -9156,7 +9163,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
       }
       if (getEvid(ind, ind->ix[i]) == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout, yp, &(istate), u_inis);
-      } else if (handleEvid1(&i, rx, neq, yp, &xout)){
+      } else if (rxAdjHandleEvid1(&i, rx, neq, yp, &xout)){
         handleSSDelay(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
                       xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
         if (ind->wh0 == EVID0_OFF){
