@@ -70,6 +70,11 @@
 ### Expression optimization
 - `rxOptExpr()` avoids CSE temporary-name collisions and warns on repeated
   optimization; each model should be optimized only once (#1632).
+- Parsing a function call whose argument is a long signed sum, such as
+  `exp(1 + a - b + ...)`, is no longer exponential in the sum's length; it
+  dominated `rxNorm()`/`rxOptExpr()` and FOCEi setup on models with long
+  lines.  Function arguments must now be separated by commas: `max(a b)` is
+  a syntax error instead of silently becoming `max(ab)` (#1674).
 
 ### Compilation
 - A cached model library that exists but will not load (still being linked by
