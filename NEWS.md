@@ -1,5 +1,12 @@
 # rxode2 (development version)
 
+## New features
+
+- `rxSymInvCholCreate()` builds block-diagonal omegas with
+  `lotri::lotriMat()` instead of `Matrix::bdiag()`, removing the
+  first-use `Matrix` namespace load (#1675); `Matrix` is no longer
+  suggested.
+
 ## Bug fixes
 
 ### Event tables
