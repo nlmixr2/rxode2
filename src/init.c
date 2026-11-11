@@ -59,6 +59,7 @@ SEXP _rxode2_rxIndLinSteps(void);
 SEXP _rxode2_rxIndLinExpStats(SEXP);
 SEXP _rxode2_rxIndLinDriveTeam(SEXP, SEXP);
 SEXP _rxode2_eventSensDeactivate(void);
+SEXP _rxode2_dop853PairsMin(SEXP nSEXP);
 SEXP _rxode2_eventSensShapeSave(void);
 SEXP _rxode2_eventSensShapeRestore(SEXP buf);
 SEXP _rxode2_parseModel(SEXP type);
@@ -1002,6 +1003,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxIndLinExpStats", (DL_FUNC) &_rxode2_rxIndLinExpStats, 1},
     {"_rxode2_rxIndLinDriveTeam", (DL_FUNC) &_rxode2_rxIndLinDriveTeam, 2},
     {"_rxode2_eventSensDeactivate", (DL_FUNC) &_rxode2_eventSensDeactivate, 0},
+    {"_rxode2_dop853PairsMin", (DL_FUNC) &_rxode2_dop853PairsMin, 1},
     {"_rxode2_eventSensShapeSave", (DL_FUNC) &_rxode2_eventSensShapeSave, 0},
     {"_rxode2_eventSensShapeRestore", (DL_FUNC) &_rxode2_eventSensShapeRestore, 1},
     {"_rxode2_codeLoaded", (DL_FUNC) &_rxode2_codeLoaded, 0},

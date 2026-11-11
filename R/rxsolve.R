@@ -7788,3 +7788,13 @@ rxUiDeparse.rxControl <- function(object, var) {
 .rxLinCmtSensDebug <- function() {
   rxLinCmtSensDebug_()
 }
+
+#' Set the smallest system dop853 forms its stages for two elements a pass
+#'
+#' Returns the previous value.  Internal: the test that compares the paired
+#' stage updates with the plain loop forces the plain one with it.
+#' @param n smallest number of states taken two elements a pass
+#' @noRd
+.rxDop853PairsMin <- function(n) {
+  .Call(`_rxode2_dop853PairsMin`, as.integer(n))
+}
