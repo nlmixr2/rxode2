@@ -17,6 +17,8 @@
 #ifndef __RX_CSE_RUN_H__
 #define __RX_CSE_RUN_H__
 
+#include "rxNameChar.h"
+
 #include "seParse.h"
 #include "rxCse.g.d_parser.h"
 
@@ -226,21 +228,17 @@ static int csSelectPhase(csRun *r) {
   return 1;
 }
 
-static int csIdentChar(char c) {
-  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-    (c >= '0' && c <= '9') || c == '_' || c == '.';
-}
 
 /* 1 when s holds an identifier `prefix<digits>`; matches rxOptExpr()'s
    .rxOptPrefixUsed() */
 static int csHasTemp(const char *s, const char *prefix) {
   size_t pl = strlen(prefix);
   for (const char *p = strstr(s, prefix); p != NULL; p = strstr(p + 1, prefix)) {
-    if (p != s && csIdentChar(p[-1])) continue;
+    if (p != s && rxNameChar(p[-1])) continue;
     const char *q = p + pl;
     if (*q < '0' || *q > '9') continue;
     while (*q >= '0' && *q <= '9') q++;
-    if (!csIdentChar(*q)) return 1;
+    if (!rxNameChar(*q)) return 1;
   }
   return 0;
 }
