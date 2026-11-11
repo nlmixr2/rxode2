@@ -79,6 +79,31 @@ rxTest({
     }
   })
 
+  test_that("an ss = 1 fixed infusion lasting exactly ii carries its f() term", {
+    # the total rate is constant, but F scales a fixed duration's rate and moves
+    # a fixed rate's end; the steady state is an equilibrium, so the adaptive
+    # methods run with hmax = 0.1
+    .full <- list(
+      rate = .ss(amt = 100, rate = 70 / 12) |> et(c(1, 3, 6, 9, 11.5, 13, 16)),
+      dur = .ss(amt = 100, dur = 12) |> et(c(1, 3, 6, 9, 11.5, 13, 16)),
+      interiorRate = et(amt = 50, cmt = "depot") |> et(time = 5, amt = 100, rate = 70 / 12, ii = 12, ss = 1, cmt = "depot") |>
+        et(c(1, 4, 6, 9, 14, 16.5, 19))
+    )
+    for (.nm in names(.full)) {
+      .ref <- .adjFd(.txtF, .full[[.nm]], .pF, method = "liblsoda", maxsteps = 1e6)
+      for (.m in c("rk4s", "ros4s", "radauiia5s", "dop853s", "dop853s+ros4s")) {
+        .a <- rxSolveAdjointRk4(.txtF, .full[[.nm]],
+          params = .pF, calcSens = names(.pF), method = .m,
+          atol = 1e-10, rtol = 1e-10, hmin = if (.m == "rk4s") 0.001 else 0, hmax = if (.m == "rk4s") NULL else 0.1,
+          ssAtol = 1e-12, ssRtol = 1e-12, maxSS = 50000
+        )
+        for (.cn in names(.ref)) {
+          expect_lt(max(abs(.a[[.cn]] - .ref[[.cn]])), 1e-6, label = paste(.nm, .m, .cn))
+        }
+      }
+    }
+  })
+
   test_that("an ss = 1 fixed-rate infusion lasting a multiple of ii carries its f() term", {
     # the steady state is an equilibrium (constant total rate), so an adaptive
     # step grows far past the transient an F change starts; hmax resolves it

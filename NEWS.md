@@ -399,6 +399,14 @@
   before, it was missing (off by up to 6.3), and `liblsodaadj` and `abs`
   also scaled the costate of a multiply by `amt` instead of `F*amt`.
 
+- The adjoint bioavailability (`f()`) sensitivity of a steady-state
+  (`ss = 1`) fixed-rate or fixed-duration infusion lasting exactly its dosing
+  interval is now included in the `rk4s` family and `liblsodaadj` (off by up
+  to 72), because that steady state was taken as a constant infusion.
+  `liblsodaadj` keeps a small residual there (about 0.4 for a fixed rate at
+  `hmax = 0.1`, see `?rxSolveAdjointRk4`); `abs` and `cvodesadj` refuse
+  steady-state doses.
+
 - `method = "abs"` now includes the bioavailability (`f()`), lag-time
   (`alag()`), `rate()` and `dur()` adjoint sensitivities of bolus and
   infusion doses.
