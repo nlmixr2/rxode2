@@ -122,6 +122,11 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="rxode2-development-version">rxode2 (development version)<a class="anchor" aria-label="anchor" href="#rxode2-development-version"></a></h2>
 <div class="section level3">
+<h3 id="new-features-development-version">New features<a class="anchor" aria-label="anchor" href="#new-features-development-version"></a></h3>
+<ul><li>
+<code><a href="../reference/rxSymInvCholCreate.html">rxSymInvCholCreate()</a></code> builds block-diagonal omegas with <code><a href="https://nlmixr2.github.io/lotri/reference/lotriMat.html" class="external-link">lotri::lotriMat()</a></code> instead of <code><a href="https://rdrr.io/pkg/Matrix/man/bdiag.html" class="external-link">Matrix::bdiag()</a></code>, removing the first-use <code>Matrix</code> namespace load (<a href="https://github.com/nlmixr2/rxode2/issues/1675" class="external-link">#1675</a>); <code>Matrix</code> is no longer suggested.</li>
+</ul></div>
+<div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
 <div class="section level4">
 <h4 id="event-tables-development-version">Event tables<a class="anchor" aria-label="anchor" href="#event-tables-development-version"></a></h4>
@@ -173,7 +178,7 @@
 </ul></div>
 </div>
 <div class="section level3">
-<h3 id="new-features-development-version">New features<a class="anchor" aria-label="anchor" href="#new-features-development-version"></a></h3>
+<h3 id="new-features-development-version-1">New features<a class="anchor" aria-label="anchor" href="#new-features-development-version-1"></a></h3>
 <ul><li><p><code><a href="../reference/etTrans.html">etTrans()</a></code> gains <code>tieOrder = "data"</code>, which keeps records of a subject that share a time in the order of the rows in the data, the way NONMEM processes them, instead of resets, then doses, then observations (<a href="https://github.com/nlmixr2/rxode2/issues/1593" class="external-link">#1593</a>).</p></li>
 <li><p><code><a href="../reference/rxSolve.html">rxSolve()</a></code> gains <code>tieOrder</code>. <code>tieOrder = "data"</code> processes records of a subject that share a time in the order of the rows in the data, so a dose listed before a reset at the same time is wiped by it and an observation listed before a co-timed dose is predicted before the dose, as in NONMEM. It is the default with <code>nonmem = TRUE</code>; otherwise the default stays <code>"evid"</code> (resets, then doses, then observations) (<a href="https://github.com/nlmixr2/rxode2/issues/1593" class="external-link">#1593</a>).</p></li>
 <li><p><code>rxSolve(omegaSeparation = "invchol")</code> (and <code>sigmaSeparation = "invchol"</code>) draws the omega (sigma) entries a <code>thetaMat</code> carries jointly with the thetas, like <code>"tnpri"</code>, but on the inverse Cholesky scale (the <code>thetaMat</code> is moved there by the delta method), so every drawn matrix is positive definite and none is redrawn (<a href="https://github.com/nlmixr2/rxode2/issues/1486" class="external-link">#1486</a>).</p></li>
