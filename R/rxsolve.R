@@ -4753,7 +4753,9 @@ rxSolve.rxSolve <- function(
       envir = envir
     ))
   }
-  .model <- as.character(.model)
+  # Re-solve the compiled model; its text would be re-parsed on every call
+  # (posologyr MAP estimation, levenc/posologyr#70).
+  .model <- rxModelVars(object)
   if (is.null(params)) {
     params <- object$.params.single
   }
