@@ -1,5 +1,12 @@
 # rxode2 (development version)
 
+## New features
+
+- `rxSymInvCholCreate()` builds block-diagonal omegas with
+  `lotri::lotriMat()` instead of `Matrix::bdiag()`, removing the
+  first-use `Matrix` namespace load (#1675); `Matrix` is no longer
+  suggested.
+
 ## Bug fixes
 
 ### Event tables
@@ -66,6 +73,9 @@
   waited for under the build lock, instead of failing with "something went
   wrong in compilation".  Libraries are linked to a private name and renamed
   into place, so another process never loads a partly written one (#1558).
+- R's `CFLAGS` is now read once per session instead of running
+  `R CMD config CFLAGS` before every model compile; it is re-read when a
+  Makevars file changes (#1675, #1711).
 
 ### Solving
 - `rxSolve()` now stops with an error when an `rxControl()` object is passed
@@ -109,6 +119,12 @@
   the dose arrival time on (#1590).
 
 ## New features
+
+- `liblsoda` updates its history array and corrector vectors two elements
+  at a time, which the compiler vectorizes at R's default `-O2`.  Results are
+  unchanged, bit for bit; a FOCEi fit with sensitivities (12 states) spends
+  about 8% fewer instructions in the solver and runs about 4-6% faster, while
+  a 3-state simulation is unchanged.
 
 - `etTrans()` gains `tieOrder = "data"`, which keeps records of a subject
   that share a time in the order of the rows in the data, the way NONMEM
