@@ -81,6 +81,17 @@
   that is empty or whose first column is empty gives the parameter-size
   error.  With a `sigma` to simulate, these used to crash R with a floating
   point exception or fail with an unrelated internal error (#1551).
+- `liblsoda`, `lsoda`, `lsode` and `bdf` now stop exactly at every record
+  that is not a plain observation (a dose, an infusion edge, an `mtime()` or
+  evid 2 record) and at an extra dose between records, instead of stepping
+  past it and interpolating back, and restart at an `mtime()` record as they
+  do at a dose.  A time window in the model that started at an `mtime()`
+  record was stepped over: an input switched on for 0.05 time units there
+  was missed entirely.  It is now caught at the default tolerances and at
+  tight ones.  With `istateReset = FALSE` the solver restarts neither at a
+  dose nor at an `mtime()` record, and such a window can still be missed.
+  Plain observation records are still stepped past and interpolated;
+  results at doses move within the tolerances.
 - A dose moved by `alag()` now takes the time-varying covariates imputed at
   its actual dosing time, as `addl` repeats do with `addlKeepsCov = FALSE`
   (the default); the covariates stay on the data records' own times.  It used
