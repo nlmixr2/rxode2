@@ -126,7 +126,6 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                   sys.first.xout_ = ind->extraDoseNewXout;
                   sys.first.sign_ = (dt > 0) ? 1 : -1;
                   try {
-                      
                       std::copy(yp, yp + neqOde, state.begin());
                       boost::numeric::odeint::integrate_adaptive(
 
@@ -177,7 +176,6 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                   // delay history with no gaps.
                   if ((op->useDense && isObs(getEvid(ind, ind->ix[i]))) || ind->delayHistOn) {
                       if (!stepper_initialized) {
-
                           std::copy(yp, yp + neqOde, state.begin());
                           dense_stepper.initialize(state, xp, dt);
 
@@ -203,7 +201,6 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                       }
 
                   } else {
-
                       std::copy(yp, yp + neqOde, state.begin());
                       boost::numeric::odeint::integrate_adaptive(
 
