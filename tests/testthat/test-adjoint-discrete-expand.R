@@ -258,11 +258,10 @@ rxTest({
     )
     .mods$f$known <- .pkClosed(.mods$f$p, .tt, fd = "fd")
     .mods$alag$known <- .pkClosed(.mods$alag$p, .tt, lg = "lg")
-    # one method per backward sweep; abs refuses f()/alag() sensitivities and
-    # cvodesadj gains its f() term separately
+    # one method per backward sweep; abs refuses f()/alag() sensitivities
     for (.nm in names(.mods)) {
       .k <- .mods[[.nm]]
-      for (.m in c("rk4s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj")) {
+      for (.m in c("rk4s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj")) {
         .a <- rxSolveAdjointRk4(
           .k$txt,
           .k$ev,
@@ -406,10 +405,10 @@ rxTest({
         c0 = 0
       )
     )
-    # cvodesadj has no f() sensitivity here
+    # abs refuses an f() that depends on a calcSens parameter
     for (.nm in names(.cases)) {
       .k <- .cases[[.nm]]
-      for (.m in setdiff(.adjIniMethods, "cvodesadj")) {
+      for (.m in setdiff(.adjIniMethods, "abs")) {
         .a <- rxSolveAdjointRk4(.txtF, .k$ev, params = .pF, calcSens = c("fd", "c0"), method = .m)
         .n <- sum(.k$ev$evid == 0L)
         expect_equal(nrow(.a), .n, label = paste(.nm, .m))
