@@ -374,8 +374,18 @@ static const char *rtEmitBinary(seCtx *ctx, D_ParseNode *pn) {
   return seCat(ctx, a, op, b, NULL, NULL, NULL);
 }
 
+static const char *rtEmitNode(seCtx *ctx, D_ParseNode *pn);
+
 static const char *rtEmit(seCtx *ctx, D_ParseNode *pn) {
   if (ctx->failed) return "";
+  if (ctx->depth >= SE_MAX_DEPTH) return seFailWhy(ctx, SE_WHY_DEEP);
+  ctx->depth++;
+  const char *r = rtEmitNode(ctx, pn);
+  ctx->depth--;
+  return r;
+}
+
+static const char *rtEmitNode(seCtx *ctx, D_ParseNode *pn) {
   int nch = d_get_number_of_children(pn);
 
   if (rtNodeHas(symbol)) return rtSymbol(ctx, pn);

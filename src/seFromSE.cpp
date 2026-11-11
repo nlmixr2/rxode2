@@ -73,8 +73,9 @@ extern "C" SEXP _rxode2_seFormatDouble(SEXP x, SEXP scipen) {
   SEXP ret = PROTECT(Rf_allocVector(STRSXP, n));
   char buf[400];
   for (i = 0; i < n; i++) {
-    seDblFormat(REAL(x)[i], buf, sizeof(buf));
-    SET_STRING_ELT(ret, i, Rf_mkChar(buf));
+    /* NA: this platform's printf may not print what R prints (Windows) */
+    SET_STRING_ELT(ret, i, seDblFormat(REAL(x)[i], buf, sizeof(buf)) ?
+                   Rf_mkChar(buf) : NA_STRING);
   }
   UNPROTECT(1);
   return ret;

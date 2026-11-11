@@ -57,12 +57,19 @@ rxTest({
         round(stats::runif(100, 0, 1e7))
       )
     })
-    expect_identical(.Call(`_rxode2_seFormatDouble`, .x, 0L), as.character(.x))
+    # NA = declined: R for Windows prints with its own trio library, so C
+    # leaves numbers whose last digits trio may print differently to R
+    .same <- function(.sp) {
+      .c <- .Call(`_rxode2_seFormatDouble`, .x, .sp)
+      .r <- as.character(.x)
+      if (.Platform$OS.type != "windows") {
+        expect_false(anyNA(.c), info = paste("scipen", .sp))
+      }
+      expect_identical(.c[!is.na(.c)], .r[!is.na(.c)], info = paste("scipen", .sp))
+    }
+    .same(0L)
     for (.sp in c(-5L, 3L, 999L)) {
-      withr::with_options(list(scipen = .sp), {
-        expect_identical(.Call(`_rxode2_seFormatDouble`, .x, .sp), as.character(.x),
-                         info = paste("scipen", .sp))
-      })
+      withr::with_options(list(scipen = .sp), .same(.sp))
     }
   })
 
@@ -72,7 +79,9 @@ rxTest({
     }
     for (.s in c("a*100000", "a*0.0001", "100000*a", "a^100000", "a + 0.0001",
                  "a*1234567890123456789", "log(1e-04 + a)")) {
-      expect_identical(.rxFromSEC(.s, 1L), .rTxt(.s), info = .s)
+      .c <- .rxFromSEC(.s, 1L)
+      if (is.na(.c) && .Platform$OS.type == "windows") next # trio: src/seNum.h
+      expect_identical(.c, .rTxt(.s), info = .s)
     }
   })
 })

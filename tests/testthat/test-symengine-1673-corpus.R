@@ -79,7 +79,11 @@ rxTest({
   )
 
   test_that("C emits log() of a sum exactly as the R walker does", {
-    expect_false(any(is.na(.rxFromSEC(.logAccepted))))
+    # R for Windows prints numbers with trio, so there C leaves 15-digit
+    # numbers to the R walker (src/seNum.h)
+    if (.Platform$OS.type != "windows") {
+      expect_false(any(is.na(.rxFromSEC(.logAccepted))))
+    }
     .agree(.logAccepted)
   })
 

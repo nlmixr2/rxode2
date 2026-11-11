@@ -13,7 +13,7 @@
 #include "seCache.h"
 
 /* the decline reasons in seFromSEarena.h (seWhy); 0 is "accepted" */
-#define SE_NWHY 12
+#define SE_NWHY 14 /* SE_WHY_N */
 
 namespace {
 

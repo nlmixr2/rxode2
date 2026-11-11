@@ -103,13 +103,19 @@ rxTest({
   test_that("the byte cap empties the cache", {
     rxSymEngineCacheReset()
     withr::with_options(list(rxode2.symengineCacheMB = 1L), {
-      .big <- paste(rep("exp(a)", 30000), collapse = "*")
-      for (.i in 1:12) {
+      .big <- paste(rep("exp(a)", 500), collapse = "*")
+      for (.i in 1:300) {
         .t <- paste0(.big, "*b", .i)
         rxFromSE(.t)
       }
       expect_lt(.stats()$bytes, 1024 * 1024)
     })
+  })
+
+  test_that("a chain deeper than the C stack allows is declined, not a crash", {
+    .deep <- paste(rep("exp(a)", 30000), collapse = "*")
+    expect_identical(attr(.rxFromSEC(.deep), "why"), 13L) # SE_WHY_DEEP
+    expect_identical(attr(.rxToSEC(.deep), "why"), 13L)
   })
 
   test_that("a large batch gives the same answer serial and threaded, cached or not", {

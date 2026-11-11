@@ -18,7 +18,9 @@ rxTest({
     .c <- .rxFromSEC(inputs, numDer)
     .r <- vapply(inputs, .rTxt, character(1), numDer = numDer, USE.NAMES = FALSE)
     .acc <- !is.na(.c)
-    expect_gte(mean(.acc), minAccept)
+    # R for Windows prints numbers with trio, so there C leaves 15-digit
+    # numbers to the R walker (src/seNum.h)
+    if (.Platform$OS.type != "windows") expect_gte(mean(.acc), minAccept)
     .bad <- which(.acc & (is.na(.r) | .c != .r))
     expect_equal(length(.bad), 0L,
       info = paste0(inputs[.bad], "\n  C: ", .c[.bad], "\n  R: ", .r[.bad], collapse = "\n")

@@ -86,6 +86,8 @@ typedef enum {
   SE_WHY_UNKNOWN_FN,     /* not a known function: R user function or error */
   SE_WHY_SYMBOL,         /* a symbol R raises on (NA, dosenum0, ...) */
   SE_WHY_OTHER,
+  SE_WHY_NUMBER,         /* a number this platform's printf may print unlike R */
+  SE_WHY_DEEP,           /* nested deeper than SE_MAX_DEPTH */
   SE_WHY_N
 } seWhy;
 
@@ -106,12 +108,19 @@ typedef struct {
 
 #define SE_MAX_SUBS 16
 
+/* Deepest seEmit()/rtEmit() recursion before the walk declines, so a long
+   operator chain (a*b*c*... parses left-deep) cannot overflow the C stack of
+   a thread; R's own walker gives up far sooner ("node stack overflow" near
+   1000 factors). */
+#define SE_MAX_DEPTH 2000
+
 typedef struct {
   seBlk *head;
   int failed;          /* 1 = hand this expression back to the R walker */
   seSub subs[SE_MAX_SUBS];
   int nsubs;
   int why;             /* seWhy: the first reason the walk declined */
+  int depth;           /* current seEmit()/rtEmit() recursion depth */
   int numDer;          /* .rxFromNumDer: 0 error, 1 forward, 2 central */
   const seTables *tab; /* NULL for rxToSE */
   /* rxToSE() into a symengine environment: the leaves the walk met, so R

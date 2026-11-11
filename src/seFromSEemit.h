@@ -121,8 +121,18 @@ static const char *seEmitSymbol(seCtx *ctx, D_ParseNode *pn) {
   return seUnRes(ctx, seDemangle(ctx, seFromSEnum(ctx, raw)));
 }
 
+static const char *seEmitNode(seCtx *ctx, D_ParseNode *pn);
+
 static const char *seEmit(seCtx *ctx, D_ParseNode *pn) {
   if (ctx->failed) return "";
+  if (ctx->depth >= SE_MAX_DEPTH) return seFailWhy(ctx, SE_WHY_DEEP);
+  ctx->depth++;
+  const char *r = seEmitNode(ctx, pn);
+  ctx->depth--;
+  return r;
+}
+
+static const char *seEmitNode(seCtx *ctx, D_ParseNode *pn) {
   int nch = d_get_number_of_children(pn);
 
   if (seNodeHas(symbol)) {
@@ -193,6 +203,10 @@ static int seSubPush(seCtx *ctx, const char *v, D_ParseNode *w,
 static const char *seReEmitSub(seCtx *ctx, const char *txt, int *topSign,
                                const char *v, D_ParseNode *w) {
   const char *out = NULL;
+  if (seTextTooDeep(txt, SE_MAX_DEPTH)) {
+    seFailWhy(ctx, SE_WHY_DEEP);
+    return NULL;
+  }
   if (!seSubPush(ctx, v, w, txt)) return NULL;
   D_Parser *p = new_D_Parser(sePt, sizeof(D_ParseNode_User));
   if (p != NULL) {
