@@ -2740,6 +2740,21 @@ rxSolve.function <- function(
   .bad
 }
 
+#' An event-table column by name, matched without case
+#'
+#' Event data may spell its columns in upper case (NONMEM `RATE`, `DUR`), which
+#' `$` does not match.
+#'
+#' @param df event table as a `data.frame`, or `NULL`
+#' @param name lower-case column name
+#' @return the first matching column, or `NULL` when there is none
+#' @noRd
+.rxEvCol <- function(df, name) {
+  if (is.null(df)) return(NULL)
+  .w <- which(tolower(names(df)) == name)
+  if (length(.w) == 0L) NULL else df[[.w[1]]]
+}
+
 #' The parameter names a `params` carries, whatever shape it is
 #'
 #' `names()` of a `matrix` is `NULL` -- its names are the column names -- so a
@@ -3628,11 +3643,18 @@ rxSolve.default <- function(
     .ctl$method <- .up
     .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
   }
-  # abs (Adams-Bashforth) has no adjoint duals for modeled dosing, so its
-  # sensitivities would leave out the f()/alag()/rate()/dur() terms of a
-  # modifier that depends on a sensitivity parameter.
+  # abs (Adams-Bashforth) carries the f() and alag() duals of a bolus only, so
+  # its sensitivities would leave out the rate()/dur() terms, and the f()/alag()
+  # terms of an infusion, of a modifier that depends on a sensitivity parameter.
   if (.ctl$method == 208L && any(rxModelVars(object)$lhs == "rx__adjFX_0_0__")) {
     .bad <- .rxAdjointDoseDuals(object)
+    .evAbs <- tryCatch(as.data.frame(events), error = function(e) NULL)
+    .absRate <- .rxEvCol(.evAbs, "rate")
+    .absDur <- .rxEvCol(.evAbs, "dur")
+    .absInf <- is.null(.evAbs) ||
+      (!is.null(.absRate) && any(.absRate != 0, na.rm = TRUE)) ||
+      (!is.null(.absDur) && any(.absDur > 0, na.rm = TRUE))
+    if (!.absInf) .bad <- setdiff(.bad, c("f()", "alag()"))
     if (length(.bad) > 0L) {
       stop(
         sprintf(

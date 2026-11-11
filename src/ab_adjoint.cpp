@@ -10,8 +10,9 @@
 // step is p_{m+1} = p_m + dt*sum c_i f(p_{m-i}).  The reverse mode keeps a costate
 // per y-point; an AB step distributes lam[j+1] via dt*c_i*J(p_{j-i})^T and
 // accumulates mu += dt*c_i*F_p(p_{j-i})^T lam[j+1], a startup step uses the RK4
-// transpose.  Interior dose jumps are the additive-bolus identity (multi-dose
-// works); reset/replace/multiply/infusion duals are a follow-up.
+// transpose.  The events at a call start (a bolus with its modeled f() and alag()
+// duals, reset, replace, multiply) transpose last first; infusion duals are not
+// carried, and rxSolve() refuses them for abs.
 //
 // Observations land on call ends (no interpolation).  y0 is p-independent, so
 // there is no t0 quadrature term.
@@ -38,14 +39,24 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
     return;
   }
 
-  // ---- reconstruct the state-jump events at each call's start from the event
-  // table, in the order the forward solve applied them: 3 reset (->0) | 5
-  // replace[c] (->0) | 6 multiply[c] (*=factor); an additive bolus is dPhi/dy=I.
-  struct abJump { int type, cmt; double factor; };
+  // ---- the events at a time from the event table, in the order the forward
+  // solve applied them: 0 bolus (dPhi/dy=I; its modeled F and alag duals, raw amt
+  // in factor and F*amt in amtF) | 3 reset (->0) | 5 replace[c] (->0) | 6
+  // multiply[c] (*=factor).
+  struct abJump { int type, cmt; double factor, amtF = 0.0; };
+  // the start state of call c
+  auto abCallY0 = [&](size_t c) {
+    const abRecCall &C = abAdjCalls[c];
+    std::vector<double> y(nBase, 0.0);
+    if (C.stepEnd > C.stepBegin) y = abAdjSteps[C.stepBegin].y;
+    return y;
+  };
   // the events at time t among the first `upTo` records (a reset only when it
-  // follows a solved interval, `reset`)
-  auto abEventsAt = [&](double t, int upTo, bool reset) {
+  // follows a solved interval, `reset`); y is the state at t, for a bolus's F*amt
+  auto abEventsAt = [&](double t, int upTo, bool reset, const double *y) {
     std::vector<abJump> ev;
+    std::vector<double> _y(eff, 0.0);
+    for (int b = 0; b < nBase; ++b) _y[b] = y[b];
     for (int i = 0; i < upTo; ++i) {
       int e = getEvid(ind, ind->ix[i]);
       if (isObs(e)) continue;
@@ -56,12 +67,19 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
       if (_cmt < 0 || _cmt >= nBase) continue;
       if (_whI == EVIDF_REPLACE) ev.push_back({5, _cmt, 0.0});
       else if (_whI == EVIDF_MULT) ev.push_back({6, _cmt, getDose(ind, ind->ix[i])});
+      else if (_whI == 0 && _wh0 == EVID0_REGULAR && (op->adjDfOff >= 0 || op->adjDlagOff >= 0)) {
+        double _amt = getDose(ind, ind->ix[i]);
+        abJump _j = {0, _cmt, _amt};
+        _j.amtF = getAmt(ind, ind->id, _cmt, _amt, t, _y.data());
+        ev.push_back(_j);
+      }
     }
     return ev;
   };
   size_t nCalls = abAdjCalls.size();
   std::vector<std::vector<abJump> > callEv(nCalls);
-  for (size_t c = 0; c < nCalls; ++c) callEv[c] = abEventsAt(abAdjCalls[c].t0, ind->n_all_times, c >= 1);
+  for (size_t c = 0; c < nCalls; ++c)
+    callEv[c] = abEventsAt(abAdjCalls[c].t0, ind->n_all_times, c >= 1, abCallY0(c).data());
 
   double *lhs = ind->lhs;
   std::vector<double> A(eff, 0.0), Aw(eff, 0.0);
@@ -116,12 +134,27 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   std::vector<double> dx0V;                         // parameter-dependent initial conditions
   rk4sIniDx0(op, ind, cSub, abAdjCalls[0].t0, eff, nBase, np, dx0V);
   const double *dx0P = dx0V.empty() ? NULL : dx0V.data();
-  // the jumps dPhi/dy^T of one call start, last first: reset (adds the
-  // initial-condition term, then 0), replace[c] -> 0, multiply[c] *= factor
-  auto abJumpT = [&](const std::vector<abJump> &ev, double *cost, double *muP) {
+  // the events of call c's start, last first: a bolus adds its modeled-F dual
+  // mu += amt*dF/dp*lam[c] and alag transversality mu += -F*amt*dlag/dp*(lam^T
+  // F_X[:,c]) with F_X at the call's start state; reset adds the initial-condition
+  // term, then 0; replace[c] -> 0; multiply[c] *= factor
+  auto abJumpT = [&](const std::vector<abJump> &ev, double t, const double *y, double *cost, double *muP) {
     for (size_t e = ev.size(); e-- > 0;) {
       const abJump &E = ev[e];
-      if (E.type == 3) {
+      if (E.type == 0) {
+        const double *fx, *fp; abEval(t, y, &fx, &fp);
+        if (op->adjDfOff >= 0) {
+          const double *dF = &lhs[op->adjDfOff];
+          for (int p = 0; p < np; ++p) muP[p] += E.factor * dF[E.cmt * np + p] * cost[E.cmt];
+        }
+        if (op->adjDlagOff >= 0) {
+          const double *dlag = &lhs[op->adjDlagOff];
+          double sc = 0.0;
+          for (int b = 0; b < nBase; ++b) sc += cost[b] * fx[b * nBase + E.cmt];
+          for (int p = 0; p < np; ++p) muP[p] += -E.amtF * dlag[E.cmt * np + p] * sc;
+        }
+      }
+      else if (E.type == 3) {
         rk4sAddIni(dx0P, cost, muP, nBase, np);
         for (int b = 0; b < nBase; ++b) cost[b] = 0.0;
       }
@@ -144,9 +177,9 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
         // before it: those that open the next call, or, after the last call, the
         // ones at the last record time
         if (cObs + 1 < (int)nCalls && fabs(abAdjCalls[cObs + 1].t0 - ti) < 1e-9)
-          abJumpT(callEv[cObs + 1], endCostate.data(), mu.data());
+          abJumpT(callEv[cObs + 1], abAdjCalls[cObs + 1].t0, abCallY0(cObs + 1).data(), endCostate.data(), mu.data());
         else
-          abJumpT(abEventsAt(ti, i, true), endCostate.data(), mu.data());
+          abJumpT(abEventsAt(ti, i, true, out), ti, out, endCostate.data(), mu.data());
         for (int c = cObs; c >= 0; --c) {
           const abRecCall &call = abAdjCalls[c];
           int M = (int)(call.stepEnd - call.stepBegin), ord = call.order;
@@ -174,7 +207,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
           for (int b = 0; b < nBase; ++b) endCostate[b] = lam[b];  // costate of call c's start
           // the jumps at t0_c -> costate of the pre-event state (call c-1's end, or
           // the initial conditions for call 0)
-          abJumpT(callEv[c], endCostate.data(), mu.data());
+          abJumpT(callEv[c], abAdjCalls[c].t0, abCallY0(c).data(), endCostate.data(), mu.data());
         }
         rk4sAddIni(dx0P, endCostate.data(), mu.data(), nBase, np);   // window start t0
       } else {
@@ -184,9 +217,12 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
         std::fill(endCostate.begin(), endCostate.end(), 0.0); endCostate[k] = 1.0;
         bool opens = false;
         for (size_t c = 0; c < nCalls && !opens; ++c)
-          if (fabs(abAdjCalls[c].t0 - ti) < 1e-9) { abJumpT(callEv[c], endCostate.data(), mu.data()); opens = true; }
+          if (fabs(abAdjCalls[c].t0 - ti) < 1e-9) {
+            abJumpT(callEv[c], abAdjCalls[c].t0, abCallY0(c).data(), endCostate.data(), mu.data());
+            opens = true;
+          }
         // a reset at the last record time opens no call
-        if (!opens) abJumpT(abEventsAt(ti, i, true), endCostate.data(), mu.data());
+        if (!opens) abJumpT(abEventsAt(ti, i, true, out), ti, out, endCostate.data(), mu.data());
         rk4sAddIni(dx0P, endCostate.data(), mu.data(), nBase, np);
       }
       for (int p = 0; p < np; ++p) out[sensOff + k * np + p] = mu[p];
