@@ -48,8 +48,17 @@ rxTest({
     .s <- rxSolve(.f, et(0:2))
     expect_equal(.s$x, exp(-2 * (0:2)), tolerance = 1e-5)
     expect_equal(.s$y, -2 * (0:2), tolerance = 1e-5)
+    ## a signed right-hand side still adds to a running infusion
+    .f <- rxode2("d/dt(x) = -2*x")
+    .s <- rxSolve(.f, et(amt = 10, rate = 5) |> et(c(1, 2)))
+    expect_equal(.s$x, 2.5 * (1 - exp(-2 * c(1, 2))), tolerance = 1e-5)
     ## a doubled sign is refused here as it is in any other assignment
     expect_error(rxNorm("d/dt(x) = - -k;"))
+    expect_error(rxNorm("d/dt(x) = + +k;"))
+    expect_error(rxNorm("d/dt(x) = - +k;"))
+    expect_error(rxNorm("d/dt(x) = + -k;"))
+    expect_equal(rxNorm("d/dt(x) = -(-k);"), "d/dt(x)=-(-k);\n")
+    expect_equal(rxNorm("d/dt(x) = -(!a);"), "d/dt(x)=-(!a);\n")
     expect_error(rxNorm("y = - -k;"))
   })
 })
