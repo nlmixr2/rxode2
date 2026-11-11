@@ -38,7 +38,12 @@ emitted into the expansion automatically, inferred from \code{method}.  For a
 model with \code{delay()}, the delayed-state term of the adjoint is first order
 in the step size whatever the method's order, and an adaptive method's
 error control does not limit it: cap the step with \code{hmax} (or use a
-fixed-step method with a small \code{hmin}) for accurate sensitivities.
+fixed-step method with a small \code{hmin}) for accurate sensitivities.  Where
+the state sits at an equilibrium while its sensitivity does not (eg an
+\code{ss = 1} infusion whose duration is a multiple of \code{ii}, with \code{f()}), the
+error control does not see the sensitivity either: \code{"liblsodaadj"} then
+runs at order 2, so its error falls only as \code{hmax^2}, and \code{"dop853s"} needs
+a finite \code{hmax}; \code{"ros4s"} and \code{"radauiia5s"} are not affected.
 }
 \examples{
 \donttest{

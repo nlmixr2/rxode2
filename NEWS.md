@@ -349,6 +349,17 @@
   kept finite states with zero sensitivities.  Its forward pass also stops
   at `maxsteps` steps per output interval, like the other solvers.
 
+- The adjoint bioavailability (`f()`) sensitivity of a steady-state
+  (`ss = 1`) fixed-rate or fixed-duration infusion longer than its dosing
+  interval is now included, in the steady-state term and for the infusions
+  of the earlier periods that are still running; before, it was wrong in
+  every adjoint method that supports ss.  `method = "liblsodaadj"` also keeps the `f()` term
+  of a fixed-duration infusion that is still running at the last record.
+  With such an infusion lasting an exact multiple of `ii`, the state sits at
+  an equilibrium that the error control cannot see past, so `liblsodaadj`
+  needs a small `hmax` (its error falls as `hmax^2`) and `dop853s` a finite
+  one; `?rxSolveAdjointRk4` says so.
+
 - With `method = "cvodesadj"`, and with `method = "liblsodaadj"` when
   nothing was integrated between resets, an observation recorded at the
   time of a reset (`evid = 3`) returned the pre-reset sensitivity; it now
