@@ -667,12 +667,15 @@ rxRmFun <- function(name) {
 })
 ## "rxTBS", "rxTBSd"
 
+# Hex literals parse to the same double on every platform; long decimal ones
+# do not (arm64 macOS lands an ulp off), and the C table in
+# src/seFromSEnames.h holds their sprintf("%.16f") text.
 .rxSEreserved <- list(
-  "e" = 2.718281828459045090796,
-  "E" = 2.718281828459045090796,
-  "EulerGamma" = 0.57721566490153286060651209008240243104215933593992,
-  "Catalan" = 0.915965594177219015054603514932384110774,
-  "GoldenRatio" = 2.118033988749894902526,
+  "e" = 0x1.5bf0a8b145769p+1,
+  "E" = 0x1.5bf0a8b145769p+1,
+  "EulerGamma" = 0x1.2788cfc6fb619p-1,
+  "Catalan" = 0x1.d4f9713e8135dp-1,
+  "GoldenRatio" = 0x1.0f1bbcdcbfa54p+1,
   "I" = 1i
 )
 
