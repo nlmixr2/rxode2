@@ -1,0 +1,95 @@
+# Test coverage (full tier), called by ci.yaml.
+name: _coverage.yaml
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: git ref to check out ('' = the triggering ref)
+        type: string
+        default: ''
+    secrets:
+      CODECOV_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  test-coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      # covr instruments its own build, so ccache would only add misses
+      - uses: ./.github/actions/setup-rxode2
+        with:
+          pandoc: 'false'
+          ccache: 'false'
+          extra-packages: |
+            any::covr
+            any::xml2
+          needs: coverage
+
+      - name: Test coverage
+        run: |
+          # covr merges every covr_trace_* file left in the install path, and
+          # every R process that loads the instrumented package writes one --
+          # including the child processes the tests start (`R CMD INSTALL` of a
+          # throw-away package, the OMP_NUM_THREADS child).  A child that dies
+          # before its trace finishes writing leaves a truncated gzip stream,
+          # and the readRDS() of that one file aborts the whole merge.  Skip the
+          # unreadable traces instead, naming each one that is dropped.
+          .mergeCoverage <- covr:::merge_coverage.character
+          utils::assignInNamespace(
+            "merge_coverage.character",
+            function(x, ...) {
+              .ok <- vapply(x, function(.f) {
+                !inherits(try(readRDS(.f), silent = TRUE), "try-error")
+              }, logical(1))
+              if (any(!.ok)) {
+                message("dropping ", sum(!.ok), " of ", length(x),
+                        " unreadable covr trace file(s): ",
+                        paste(basename(x[!.ok]), collapse = ", "))
+              }
+              .mergeCoverage(x[.ok], ...)
+            },
+            "covr"
+          )
+          cov <- covr::package_coverage(
+            quiet = FALSE,
+            clean = FALSE,
+            install_path = file.path(normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/"), "package")
+          )
+          print(cov)
+          covr::to_cobertura(cov)
+        shell: Rscript {0}
+
+      - uses: codecov/codecov-action@v5
+        with:
+          # A run on main must upload; a /cifull run on a PR only fails when a
+          # token is available.
+          fail_ci_if_error: ${{ github.event_name != 'issue_comment' || secrets.CODECOV_TOKEN != '' }}
+          files: ./cobertura.xml
+          plugins: noop
+          disable_search: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Show testthat output
+        if: always()
+        run: |
+          ## --------------------------------------------------------------------
+          find '${{ runner.temp }}/package' -name 'testthat.Rout*' -exec cat '{}' \; || true
+        shell: bash
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-test-failures
+          path: ${{ runner.temp }}/package

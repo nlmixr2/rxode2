@@ -1,0 +1,92 @@
+# Shared setup for every CI job that compiles rxode2: R, pandoc, the
+# dependency library (cached), and ccache in front of the C/C++ compilers.
+name: setup-rxode2
+description: Set up R, rxode2's dependencies and ccache
+
+inputs:
+  r-version:
+    description: R version passed to r-lib/actions/setup-r
+    default: release
+  http-user-agent:
+    description: passed to r-lib/actions/setup-r
+    default: ''
+  extra-packages:
+    description: packages added to the nlmixr2 development dependencies
+    default: ''
+  needs:
+    description: Config/Needs field used by setup-r-dependencies
+    default: ''
+  cache-version:
+    description: bump to invalidate the dependency library cache
+    default: '12'
+  pandoc:
+    description: install pandoc (needed to build vignettes)
+    default: 'true'
+  ccache:
+    description: put ccache in front of the compilers (linux and macOS)
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - name: Install system libraries (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        brew install --cask xquartz
+        brew install cairo udunits
+
+    - name: Install qpdf and ghostscript (linux)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: sudo apt-get update -qq && sudo apt-get install -y -qq qpdf ghostscript
+
+    - if: inputs.pandoc == 'true'
+      uses: r-lib/actions/setup-pandoc@v2
+
+    - uses: r-lib/actions/setup-r@v2
+      with:
+        r-version: ${{ inputs.r-version }}
+        http-user-agent: ${{ inputs.http-user-agent }}
+        use-public-rspm: true
+
+    - uses: r-lib/actions/setup-r-dependencies@v2
+      with:
+        cache-version: ${{ inputs.cache-version }}
+        extra-packages: |
+          nlmixr2/dparser-R
+          nlmixr2/lotri
+          nlmixr2/rxode2ll
+          nlmixr2/rxode2lincmt
+          nlmixr2/PreciseSums
+          ${{ inputs.extra-packages }}
+        needs: ${{ inputs.needs }}
+
+    # ccache is set up AFTER the dependencies so it only caches rxode2's own
+    # objects (and the models the tests compile), keeping the cache small.
+    - name: Set up ccache
+      if: inputs.ccache == 'true' && runner.os != 'Windows'
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ runner.os }}-${{ inputs.r-version }}-${{ github.job }}
+        max-size: 500M
+
+    # A dedicated Makevars through R_MAKEVARS_USER: it wraps only the compiler
+    # commands, so the flags rxode2 reads back from the user Makevars are
+    # unchanged.
+    - name: Route the compilers through ccache
+      if: inputs.ccache == 'true' && runner.os != 'Windows'
+      shell: bash
+      run: |
+        mv="$RUNNER_TEMP/Makevars.ccache"
+        : > "$mv"
+        for v in CC CXX CXX11 CXX14 CXX17 CXX20; do
+          c=$(R CMD config "$v" 2>/dev/null || true)
+          if [ -n "$c" ] && ! echo "$c" | grep -q "not defined"; then
+            echo "$v=ccache $c" >> "$mv"
+          fi
+        done
+        cat "$mv"
+        echo "R_MAKEVARS_USER=$mv" >> "$GITHUB_ENV"
+        echo "CCACHE_SLOPPINESS=include_file_ctime,include_file_mtime,time_macros" >> "$GITHUB_ENV"
+        echo "CCACHE_COMPILERCHECK=content" >> "$GITHUB_ENV"

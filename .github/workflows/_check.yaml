@@ -1,0 +1,142 @@
+# CRAN-mirror check, called by ci.yaml.  The source tarball (with vignettes)
+# is built once, then every platform runs `R CMD check --as-cran` on that same
+# tarball with CRAN's environment: NOT_CRAN is false, so the rxTest({}) blocks
+# skip exactly as they do on CRAN, and OpenMP is limited to 2 threads.
+name: _check.yaml
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: git ref to check out ('' = the triggering ref)
+        type: string
+        default: ''
+      matrix:
+        description: JSON list of {os, r, http-user-agent} platforms
+        type: string
+        required: true
+      error-on:
+        description: rcmdcheck error_on level
+        type: string
+        default: warning
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: ./.github/actions/setup-rxode2
+        with:
+          extra-packages: any::rcmdcheck
+          needs: check
+
+      - name: Build the source tarball
+        shell: bash
+        run: |
+          R CMD build --no-manual --compact-vignettes=gs+qpdf .
+          ls -l rxode2_*.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rxode2-tarball
+          path: rxode2_*.tar.gz
+          retention-days: 7
+
+  check:
+    needs: build
+    runs-on: ${{ matrix.config.os }}
+    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        config: ${{ fromJSON(inputs.matrix) }}
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+      # CRAN's check environment
+      NOT_CRAN: 'false'
+      OMP_THREAD_LIMIT: '2'
+      _R_CHECK_CRAN_INCOMING_: 'false'
+      _R_CHECK_CRAN_INCOMING_REMOTE_: 'false'
+      _R_CHECK_FORCE_SUGGESTS_: 'false'
+      _R_CHECK_DONTTEST_EXAMPLES_: 'true'
+      _R_CHECK_TESTS_NLINES_: '0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: ./.github/actions/setup-rxode2
+        with:
+          r-version: ${{ matrix.config.r }}
+          http-user-agent: ${{ matrix.config.http-user-agent }}
+          extra-packages: any::rcmdcheck
+          needs: check
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: rxode2-tarball
+          path: tarball
+
+      - name: R CMD check --as-cran
+        shell: Rscript {0}
+        run: |
+          .tb <- Sys.glob("tarball/rxode2_*.tar.gz")
+          .t0 <- proc.time()[["elapsed"]]
+          .res <- rcmdcheck::rcmdcheck(
+            .tb,
+            args = c("--as-cran", "--no-manual"),
+            error_on = "never",
+            check_dir = "check"
+          )
+          .min <- (proc.time()[["elapsed"]] - .t0) / 60
+          cat(sprintf("check took %.1f min\n", .min))
+          cat(sprintf("CHECK_MINUTES=%.1f\n", .min), file = Sys.getenv("GITHUB_ENV"), append = TRUE)
+          .lvl <- c(never = 0, error = 1, warning = 2, note = 3)
+          .on <- .lvl[["${{ inputs.error-on }}"]]
+          .bad <- (.on >= 1 && length(.res$errors) > 0) ||
+            (.on >= 2 && length(.res$warnings) > 0) ||
+            (.on >= 3 && length(.res$notes) > 0)
+          if (.bad) stop("R CMD check found problems at level '${{ inputs.error-on }}' or above", call. = FALSE)
+
+      # CI annotations only, never a test assertion: flag what CRAN would
+      # find slow (10 minutes per check, 5 seconds per example).
+      - name: Compare against CRAN time limits
+        if: always()
+        shell: Rscript {0}
+        run: |
+          .min <- as.numeric(Sys.getenv("CHECK_MINUTES", "NA"))
+          if (!is.na(.min) && .min > 10) {
+            cat(sprintf("::warning::R CMD check took %.1f min; CRAN asks for at most 10 min\n", .min))
+          }
+          .f <- Sys.glob("check/*.Rcheck/*-Ex.timings")
+          if (length(.f) == 1L) {
+            .t <- utils::read.table(.f, header = TRUE, stringsAsFactors = FALSE)
+            .t <- .t[.t$elapsed > 5 | (.t$user + .t$system) > 5, , drop = FALSE]
+            for (.i in seq_len(nrow(.t))) {
+              cat(sprintf("::warning::example %s took %.1f s elapsed (CRAN limit 5 s)\n", .t$name[.i], .t$elapsed[.i]))
+            }
+          }
+          .log <- Sys.glob("check/*.Rcheck/00check.log")
+          if (length(.log) == 1L) {
+            .l <- grep("Running .*\\[[0-9]+s", readLines(.log), value = TRUE)
+            if (length(.l) > 0L) cat(.l, sep = "\n")
+          }
+
+      - name: Upload check results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: check-${{ matrix.config.os }}-${{ matrix.config.r }}
+          path: check
+          retention-days: 7

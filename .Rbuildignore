@@ -169,3 +169,5 @@ tests/testthat/test-lincmt-parse.R
 ^tools/
 ^air\.toml$
 ^\.git-blame-ignore-revs$
+^tests/ci-core\.txt$
+^tests/ci-timings\.csv$
