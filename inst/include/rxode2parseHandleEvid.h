@@ -161,6 +161,19 @@ static inline void handleInfusionGetEndOfInfusionIndex(int idx, int *infEixds,
 // for extra doses (idx < 0).  An extra dose's amount lives in extraDoseDose,
 // not in idose, so there is no dose index to recover for it; callers that need
 // an extra dose's infusion duration use handleTlastInlineDurExtra() instead.
+// Dose number of record `idx`, or -1.  _rxPushDose() appends doses at the end
+// of all_times and then re-sorts the unprocessed idose suffix by time, so idose
+// is not guaranteed to stay ascending in the record index and the bisection can
+// miss a dose that is there; scan for it before giving up.
+static inline int getDoseNumberFromIndexScan(rx_solving_options_ind *ind, int idx) {
+  int m = getDoseNumberFromIndex(ind, idx);
+  if (m != -1) return m;
+  for (int j = 0; j < ind->ndoses; j++) {
+    if (ind->idose[j] == idx) return j;
+  }
+  return -1;
+}
+
 static inline int handleTlastInlineDoseIndex(rx_solving_options_ind *ind) {
   if (ind->idx < 0) return ind->ixds;
   int cur = ind->ix[ind->idx];
@@ -168,15 +181,8 @@ static inline int handleTlastInlineDoseIndex(rx_solving_options_ind *ind) {
   // matches and the bisection can be skipped
   if (ind->ixds >= 0 && ind->ixds < ind->ndoses &&
       ind->idose[ind->ixds] == cur) return ind->ixds;
-  int m = getDoseNumberFromIndex(ind, cur);
+  int m = getDoseNumberFromIndexScan(ind, cur);
   if (m != -1) return m;
-  // _rxPushDose() appends doses at the end of all_times and then re-sorts the
-  // unprocessed idose suffix by time, so idose is not guaranteed to stay
-  // ascending in the record index and the bisection can miss a dose that is
-  // there.  Scan for it before giving up.
-  for (int j = 0; j < ind->ndoses; j++) {
-    if (ind->idose[j] == cur) return j;
-  }
   return ind->ixds;
 }
 

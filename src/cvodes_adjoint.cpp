@@ -77,7 +77,22 @@ struct cvFwdUser {   // forward RHS user data
 // raw rate over a fixed-dur window, the raw amount at a fixed-rate off boundary.
 // offSeq/offY: the off record's processing order and its evY post-event primal.
 struct cvInfus { double tOn, tOff; int cmt; double R, amt, durMult, amtRaw; bool isDur;
-                 bool fixed = false; double dfW = 0.0; int offSeq = 0, offY = -1; };
+                 bool fixed = false; double dfW = 0.0; int key = -1;
+                 int offSeq = 0, offY = -1; };
+
+// Index of the open window into cmt that a stop with start key `key` closes (see
+// rk4sInfusionStartKey()): the window with that key, else the most recent open
+// one of the same kind, or -1.
+static inline int cvInfusCloseIdx(const std::vector<cvInfus> &infus, int cmt, bool fixed, bool isDur, int key) {
+  int last = -1;
+  for (size_t w = infus.size(); w-- > 0;) {
+    const cvInfus &F = infus[w];
+    if (F.fixed != fixed || F.cmt != cmt || F.tOff != R_PosInf || (fixed && F.isDur != isDur)) continue;
+    if (key >= 0 && F.key == key) return (int)w;
+    if (last < 0) last = (int)w;
+  }
+  return last;
+}
 
 struct cvBwdUser {   // backward RHS user data
   const cvHist *hist; int cSub, nBase, np, eff, fxOff, fpOff, drateOff, dfOff;
@@ -235,8 +250,8 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   std::vector<double> evY;
   std::vector<cvEvent> evJumps;
   std::vector<cvInfus> infusRec;   // modeled-rate infusion windows (rate dual)
-  int _infusOnCmt = -1;
-  int _lagRateCmt = -1, _lagRateWhI = 0; double _lagRatePre = 0.0;   // infusion start/stop
+  int _infusOnCmt = -1; double _infusOnPre = 0.0;
+  int _lagRateCmt = -1, _lagRateWhI = 0, _lagRateKey = -1; double _lagRatePre = 0.0;   // infusion start/stop
   double *yp;
   hist.newSeg();   // segment 0 begins at t0
   // Record boluses only when F or the lag time depends on a sensitivity
@@ -348,6 +363,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
           if (_lagRateCmt >= 0) {
             int _wh, _c, _wh100, _wh0; getWh(_ev, &_wh, &_c, &_wh100, &_lagRateWhI, &_wh0);
             _lagRatePre = ind->InfusionRate[_lagRateCmt];
+            _lagRateKey = rk4sInfusionStartKey(ind, ind->ix[i]);
           }
         }
         if (isDose(_ev)) {
@@ -380,26 +396,27 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
               infusRec.push_back({xout, R_PosInf, _cmt, 0.0, _amt,
                                   (_whI == EVIDF_MODEL_DUR_ON) ? _amt : 1.0, _raw,
                                   _whI == EVIDF_MODEL_DUR_ON});
+              infusRec.back().key = rk4sInfusionStartKey(ind, ind->ix[i]);
               _infusOnCmt = _cmt;   // R captured after handleEvid1
+              _infusOnPre = ind->InfusionRate[_cmt];
             } else if ((_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) && op->adjDrateOff >= 0) {
-              for (size_t w = infusRec.size(); w-- > 0;)
-                if (infusRec[w].cmt == _cmt && !infusRec[w].fixed && infusRec[w].tOff == R_PosInf) {
-                  infusRec[w].tOff = xout; infusRec[w].offSeq = seq;
-                  infusRec[w].offY = _yOff = (int)evY.size(); evY.resize(evY.size() + nBase);
-                  break;
-                }
+              int _w = cvInfusCloseIdx(infusRec, _cmt, false, false, rk4sInfusionStartKey(ind, ind->ix[i]));
+              if (_w >= 0) {
+                infusRec[_w].tOff = xout; infusRec[_w].offSeq = seq;
+                infusRec[_w].offY = _yOff = (int)evY.size(); evY.resize(evY.size() + nBase);
+              }
             }
           }
         } else if (!isObs(_ev) && op->adjDrateOff >= 0) {
           int _wh, _cmt, _wh100, _whI, _wh0;
           getWh(_ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
-          if ((_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) && _cmt >= 0 && _cmt < nBase)
-            for (size_t w = infusRec.size(); w-- > 0;)
-              if (infusRec[w].cmt == _cmt && !infusRec[w].fixed && infusRec[w].tOff == R_PosInf) {
-                infusRec[w].tOff = xout; infusRec[w].offSeq = seq;
-                infusRec[w].offY = _yOff = (int)evY.size(); evY.resize(evY.size() + nBase);
-                break;
-              }
+          if ((_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) && _cmt >= 0 && _cmt < nBase) {
+            int _w = cvInfusCloseIdx(infusRec, _cmt, false, false, rk4sInfusionStartKey(ind, ind->ix[i]));
+            if (_w >= 0) {
+              infusRec[_w].tOff = xout; infusRec[_w].offSeq = seq;
+              infusRec[_w].offY = _yOff = (int)evY.size(); evY.resize(evY.size() + nBase);
+            }
+          }
         } }
       if (getEvid(ind, ind->ix[i]) == 3) {
         // A reset wipes the state to its initial conditions, so dPhi/dy = 0
@@ -420,7 +437,9 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       }
       // Capture the modeled infusion rate R now that handleEvid1 has set it.
       if (_infusOnCmt >= 0 && !infusRec.empty()) {
-        infusRec.back().R = ind->InfusionRate[_infusOnCmt];
+        // this window's own rate: the increment, since an overlapping window
+        // into the same cmt already contributes to InfusionRate
+        infusRec.back().R = ind->InfusionRate[_infusOnCmt] - _infusOnPre;
         _infusOnCmt = -1;
       }
       if (_lagRateCmt >= 0) {   // type 9: the rate into cmt changes by factor at a lagged time
@@ -432,16 +451,15 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
           double _f = getAmt(ind, ind->id, _lagRateCmt, 1.0, xout, yp);
           if (_f != 0.0 && _dR > 0.0) {
             cvInfus _w = {xout, R_PosInf, _lagRateCmt, _dR, 0.0, 0.0, 0.0, _isDur};
-            _w.fixed = true; _w.dfW = _isDur ? _dR / _f : 0.0;
+            _w.fixed = true; _w.dfW = _isDur ? _dR / _f : 0.0; _w.key = _lagRateKey;
             infusRec.push_back(_w);
           } else if (_f != 0.0) {
-            for (size_t w = infusRec.size(); w-- > 0;) {
-              cvInfus &F = infusRec[w];
-              if (!F.fixed || F.cmt != _lagRateCmt || F.isDur != _isDur || F.tOff != R_PosInf) continue;
+            int _wi = cvInfusCloseIdx(infusRec, _lagRateCmt, true, _isDur, _lagRateKey);
+            if (_wi >= 0) {
+              cvInfus &F = infusRec[_wi];
               F.tOff = xout; F.offSeq = seq;
               F.offY = _yOff = (int)evY.size(); evY.resize(evY.size() + nBase);
               if (!_isDur) F.dfW = -_dR * (xout - F.tOn) / _f;
-              break;
             }
           }
         }
