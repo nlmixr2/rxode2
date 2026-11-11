@@ -2225,7 +2225,8 @@ rxNumLoaded <- function() {
     .env[1:2],
     file.path(R.home("etc"), "Makevars.site"),
     path.expand(file.path(
-      "~", ".R",
+      "~",
+      ".R",
       c("Makevars", "Makevars.win", "Makevars.win64", "Makevars.ucrt", paste0("Makevars-", R.version$platform))
     ))
   )
