@@ -151,7 +151,8 @@ jobs:
             let checkMatrix = [rel('ubuntu-latest'), rel('windows-latest'), rel('macos-latest')];
             const shards = (subset, os, n) =>
               Array.from({ length: n }, (_, i) => ({ subset, os, r: 'release', index: i + 1, n }));
-            let testMatrix = shards('core', 'ubuntu-latest', 3);
+            // two shards finish before the CRAN check, so a third adds a runner, not speed
+            let testMatrix = shards('core', 'ubuntu-latest', 2);
             if (tier === 'full') {
               checkMatrix = checkMatrix.concat([
                 { os: 'ubuntu-latest', r: 'devel', 'http-user-agent': 'release' },
