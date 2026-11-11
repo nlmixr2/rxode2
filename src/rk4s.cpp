@@ -117,6 +117,8 @@ static inline void rk4sIniOnlyFill(rx_solving_options *op, rx_solving_options_in
 
 // Apply the transpose event jumps at backward step n.  On entry lamR = lambda_n+
 // (post-RK-transpose, pre-jump); on exit lamR = lambda_n (= (dPhi/dy)^T lambda_n+).
+// Events recorded at the same step are transposed in reverse order (a reset
+// then a dose -- evid = 4 -- takes the dose's dual before the reset's).
 //   additive (dPhi/dy = I): lambda unchanged; mu += amt * dF/dp * lambda[c].
 //   reset    (Phi = inits) : dPhi/dy = 0        -> lambda := 0; a parameter-
 //                            dependent model initial condition first adds
@@ -134,8 +136,8 @@ static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
     const std::vector<double> &dFdp, bool haveDf, int nBase, int np,
     const double *fx0, const double *dlag, const double *dx0,
     size_t maxIdx = (size_t)-1) {
-  for (size_t di = 0; di < doses.size(); ++di) {
-    if (di >= maxIdx) break;             // only doses recorded before this point
+  size_t nRec = doses.size() < maxIdx ? doses.size() : maxIdx;   // only doses recorded before this point
+  for (size_t di = nRec; di-- > 0;) {
     if (doses[di].step != n) continue;
     const rk4s_dose &d = doses[di];
     switch (d.type) {
