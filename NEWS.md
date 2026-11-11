@@ -362,12 +362,11 @@
   methods give it.
 
 - A state that is not finite after a step now fails the subject in every
-  method.  `liblsoda`, `liblsodaadj` and `indLin` returned `NaN` with no
-  warning (`liblsoda` with its "intdy" texts).  This includes a state that
-  starts as `NA` or infinite, even one no equation uses: most methods used
-  to solve around one or the other (`liblsoda` an `NA` one, `dop853` and
-  `cvode` an infinite one).  A failed `cvodesadj` step now fails the
-  subject, which kept its last values with no warning.
+  method.  This includes a state that starts as `NA` or infinite, even one
+  no equation uses (`spare(0) <- NA`): most methods used to solve around one
+  or the other (`liblsoda` an `NA` one, `dop853` and `cvode` an infinite
+  one).  `indLin` returned `NaN` with no warning, and a failed `cvodesadj`
+  step kept the subject's last values with no warning.
 
 ### linCmt() models
 
