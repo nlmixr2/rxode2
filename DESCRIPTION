@@ -63,7 +63,6 @@ Maintainer: Matthew L. Fidler <matthew.fidler@gmail.com>
 Depends:
     R (>= 4.1.0)
 Suggests:
-    Matrix,
     DT,
     callr,
     covr,

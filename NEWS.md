@@ -1,5 +1,12 @@
 # rxode2 (development version)
 
+## New features
+
+- `rxSymInvCholCreate()` builds block-diagonal omegas with
+  `lotri::lotriMat()` instead of `Matrix::bdiag()`, removing the
+  first-use `Matrix` namespace load (#1675); `Matrix` is no longer
+  suggested.
+
 ## Bug fixes
 
 ### Event tables
@@ -62,6 +69,9 @@
   waited for under the build lock, instead of failing with "something went
   wrong in compilation".  Libraries are linked to a private name and renamed
   into place, so another process never loads a partly written one (#1558).
+- R's `CFLAGS` is now read once per session instead of running
+  `R CMD config CFLAGS` before every model compile; it is re-read when a
+  Makevars file changes (#1675, #1711).
 
 ### Solving
 - `rxSolve()` now stops with an error when an `rxControl()` object is passed
@@ -105,6 +115,26 @@
   the dose arrival time on (#1590).
 
 ## New features
+
+- `liblsoda` updates its history array and corrector vectors two elements
+  at a time, which the compiler vectorizes at R's default `-O2`.  Results are
+  unchanged, bit for bit; a FOCEi fit with sensitivities (12 states) spends
+  about 8% fewer instructions in the solver and runs about 4-6% faster, while
+  a 3-state simulation is unchanged.
+
+- `rxFromSE()` and `rxToSE()` now translate in C what they used to send to
+  the R tree walker -- `log()` of a sum (#1673), `lgamma()`, `sin()`/`cos()`/
+  `tan()` of a multiple of `pi`, `Subs()`, higher-order `Derivative()`, the
+  finite-difference fallback and every `.rxSEeq` function -- and
+  `rxS()` loads assignments through the C translator.  The output is
+  unchanged.  On the three-period model of #1682, translating the
+  `foceiControl(fast = TRUE)` outer model fell from about 1470 s to 15 s,
+  and `rxFromSE()` from 75-84% of the model setup to a few percent (#1682).
+
+- `rxFromSE()` and `rxToSE()` cache their translations for the session; text
+  translated again is not re-parsed.  `rxSymEngineCacheReset()` clears the
+  cache, `options(rxode2.symengineCacheMB = )` bounds it and
+  `options(rxode2.symengineCache = FALSE)` turns it off.
 
 - `etTrans()` gains `tieOrder = "data"`, which keeps records of a subject
   that share a time in the order of the rows in the data, the way NONMEM
@@ -335,6 +365,23 @@
   (`printf("%d", x)` with a double `x`) now gives a `-Wformat` warning when the
   model compiles; it compiles as before.
 
+- A non-finite derivative or state (an infinite rate constant, say) now fails
+  the subject in the 32 methods that integrated on through it: `f78`, `rk4`,
+  `ck54`, `ab`, `abm`, `abs`, `dop5`, `bs`, `ros4`, `iem`, `sem`, `sb3a`,
+  `sb3am4`, `mm`, `em`, `trapz`, `ssp3`, `ssp33`, `rk4s`, `rk3s`, `heuns`,
+  `midpoints`, `eulers`, `ros4s`, `ros43s`, `ros6s`, `radauiia5s`,
+  `sdirk43s`, `gauss6s`, `iiic6s`, `geng5s` and `backwardEulers`.  They
+  returned `NaN` (`ros4` finite values) with no warning; the subject is now
+  `NA`, with the "could not solve" warning and its reason, as the other
+  methods give it.
+
+- A state that is not finite after a step now fails the subject in every
+  method.  This includes a state that starts as `NA` or infinite, even one
+  no equation uses (`spare(0) <- NA`): most methods used to solve around one
+  or the other (`liblsoda` an `NA` one, `dop853` and `cvode` an infinite
+  one).  `indLin` returned `NaN` with no warning, and a failed `cvodesadj`
+  step kept the subject's last values with no warning.
+
 ### linCmt() models
 
 - `linCmt()` models now refuse `"linear"` covariate interpolation (from
@@ -381,6 +428,15 @@
   solving".  nlmixr2est's population `predict()` of a fit with
   inter-occasion variability goes through it.
 ### Symbolic derivatives
+
+- The C translator behind `rxFromSE()`/`rxToSE()` now writes numbers as R
+  does (`1e+05`, `1e-04`) and no longer answers for text the R translator
+  constant-folds differently, so both give the same output.
+
+- A model variable, parameter or covariate named `T` or `F` (or any other
+  name `baseenv()` binds) is now kept as a variable when a model is loaded
+  into symengine.  `rxFromSE()` constant-folded it as `TRUE`/`FALSE`, so
+  `b*(F+1)` became `b` (#1692).
 
 - An error inside a symbolic calculation that shows a progress bar (the
   Jacobian and sensitivity builds of `rxode2(calcSens = )`, the adjoint
