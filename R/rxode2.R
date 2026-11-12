@@ -980,7 +980,15 @@ rxGetModel <- function(
       .stateInfo <- .rxGenFunState(.ret)
       .s <- .rxLoadPrune(.ret, FALSE, pkTime = TRUE)
       .s$..stateInfo <- .stateInfo
-      .rxJacobian(.s)
+      if (rxIs(calcSens, "logical") && calcSens) {
+        calcSens <- .rxParams(model, TRUE)
+      }
+      .sensPars <- .rxParams(model, TRUE)
+      calcSens <- .rxSensVarNames(calcSens, .sensPars)
+      if (!is.null(calcSens2)) calcSens2 <- .rxSensVarNames(calcSens2, .sensPars)
+      if (!is.null(calcSens3)) calcSens3 <- .rxSensVarNames(calcSens3, .sensPars)
+      ## the parameter columns of the Jacobian are exactly the ones differentiated
+      .rxJacobian(.s, unique(c(calcSens, calcSens2, calcSens3)))
       ## base ODE states, captured BEFORE .rxSens splices in the rx__sens_*
       ## variational compartments -- used to build the full-system stiff Jacobian
       ## by reusing the F_X/F_p just computed (see .rxFwdSensJacBlock).
@@ -990,11 +998,6 @@ rxGetModel <- function(
       }
       if (is.null(calcJac)) {
         calcJac <- FALSE
-      }
-      if (rxIs(calcSens, "logical")) {
-        if (calcSens) {
-          calcSens <- .rxParams(model, TRUE)
-        }
       }
       ## .rxSens augments the sensitivity ODEs with the delayed (variational)
       ## terms for delay() models (no-op otherwise).

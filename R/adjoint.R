@@ -124,6 +124,7 @@ rxSolveAdjoint <- function(
   rtol = 1e-10
 ) {
   object <- .rxAdjointObject(object)
+  calcSens <- .rxSensVarNames(calcSens, .rxParams(object, TRUE))
   .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
   .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
@@ -211,6 +212,7 @@ rxSolveAdjoint <- function(
 #' @keywords internal
 .rxAdjointSolveBuild <- function(object, calcSens, events, adjStates = NULL) {
   object <- .rxAdjointObject(object)
+  calcSens <- .rxSensVarNames(calcSens, .rxParams(object, TRUE))
   .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
   .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
@@ -555,7 +557,8 @@ rxSolveAdjoint <- function(
 #' @param errModel `NULL` for least squares, or a list with character entries
 #'   `add` and/or `prop` naming the additive / proportional residual-error
 #'   parameters, selecting the FOCEi -2LL objective `v = add^2 + (prop*f)^2`.
-#' @return named numeric vector `dG/dtheta` over `calcSens`.
+#' @return named numeric vector `dG/dtheta` over `calcSens` (`THETA[n]`/`ETA[n]`
+#'   spelled `THETA_n_`/`ETA_n_`).
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
@@ -590,7 +593,8 @@ rxSolveAdjoint <- function(
 #'   per-subject covariates (first value per subject) merged into `params`.
 #' @param useC use the C++ sweep ([.rxAdjointGradEvalC()]); otherwise the R
 #'   reference ([.rxAdjointGradEval()]).
-#' @return named numeric vector `dOFV/dtheta` over `calcSens`.
+#' @return named numeric vector `dOFV/dtheta` over `calcSens` (`THETA[n]`/`ETA[n]`
+#'   spelled `THETA_n_`/`ETA_n_`).
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
@@ -611,7 +615,7 @@ rxSolveAdjoint <- function(
   .evalFn <- if (useC) .rxAdjointGradEvalC else .rxAdjointGradEval
   .covCols <- setdiff(names(data), c("id", "time", "dv"))
   .ids <- unique(data$id)
-  .g <- stats::setNames(numeric(length(calcSens)), calcSens)
+  .g <- stats::setNames(numeric(length(calcSens)), .rxSensNameSE(calcSens))
   for (.id in .ids) {
     .d <- data[data$id == .id, , drop = FALSE]
     .p <- params
@@ -638,6 +642,15 @@ rxSolveAdjoint <- function(
 #' @keywords internal
 .rxAdjointGradBuild <- function(object, calcSens, pred, events, errModel = NULL) {
   object <- .rxAdjointObject(object)
+  pred <- .rxSensNameSE(pred)
+  if (!is.null(errModel)) {
+    errModel <- lapply(errModel, .rxSensNameSE)
+  }
+  ## a residual-error parameter enters through pred/errModel, not the ODE model
+  .mv <- rxode2::rxModelVars(object)
+  .errPars <- all.vars(parse(text = .rxSensNameSE(c(pred, as.character(unlist(errModel))))))
+  .errPars <- setdiff(.errPars, c(.mv$state, .mv$lhs, .mv$slhs))
+  calcSens <- .rxSensVarNames(calcSens, c(.rxParams(object, TRUE), .errPars))
   .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
   .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
@@ -869,9 +882,16 @@ rxSolveAdjoint <- function(
   )
 }
 
+# value of the residual-error parameter `name` (THETA_n_ spelling) in params,
+# which may spell it THETA[n]
+.rxAdjErrPar <- function(params, name) {
+  params[[match(name, .rxSensNameSE(names(params)))]]
+}
+
 ## numeric evaluation of an rxFromSE expression string at parameter values
 .rxAdjEvalNum <- function(txt, params) {
   .env <- list2env(as.list(params), parent = baseenv())
+  .rxSensBindIdx(params, .env)
   assign("Rx_pow_di", function(x, i) x^i, envir = .env)
   assign("Rx_pow", function(x, y) x^y, envir = .env)
   assign("expit", function(x, a = 0, b = 1) a + (b - a) / (1 + exp(-x)), envir = .env)
@@ -977,8 +997,8 @@ rxSolveAdjoint <- function(
   if (is.null(errModel)) {
     .dLdf <- rep_len(weight, length(obsTimes)) * .resid # d(1/2 w r^2)/df
   } else {
-    .addV <- if (!is.null(errModel$add)) params[[errModel$add]] else 0
-    .propV <- if (!is.null(errModel$prop)) params[[errModel$prop]] else 0
+    .addV <- if (!is.null(errModel$add)) .rxAdjErrPar(params, errModel$add) else 0
+    .propV <- if (!is.null(errModel$prop)) .rxAdjErrPar(params, errModel$prop) else 0
     .var <- .addV^2 + (.propV * .fobs)^2 # residual variance
     .dLdvar <- 1 / .var - .resid^2 / .var^2 # dG/dv, G = r^2/v + log v
     .dvardf <- 2 * .propV^2 * .fobs # dv/df (proportional)
@@ -1231,8 +1251,8 @@ rxSolveAdjoint <- function(
   if (is.null(errModel)) {
     .dLdf <- rep_len(weight, length(obsTimes)) * .resid
   } else {
-    .addV <- if (!is.null(errModel$add)) params[[errModel$add]] else 0
-    .propV <- if (!is.null(errModel$prop)) params[[errModel$prop]] else 0
+    .addV <- if (!is.null(errModel$add)) .rxAdjErrPar(params, errModel$add) else 0
+    .propV <- if (!is.null(errModel$prop)) .rxAdjErrPar(params, errModel$prop) else 0
     .var <- .addV^2 + (.propV * .fobs)^2
     .dLdvar <- 1 / .var - .resid^2 / .var^2
     .dLdf <- 2 * .resid / .var + .dLdvar * (2 * .propV^2 * .fobs)
