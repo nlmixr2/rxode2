@@ -129,6 +129,11 @@
 <div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
 <div class="section level4">
+<h4 id="delay-differential-equations-development-version">Delay differential equations<a class="anchor" aria-label="anchor" href="#delay-differential-equations-development-version"></a></h4>
+<ul><li>
+<code><a href="../reference/delay.html">delay()</a></code> models now solve with <code>method = "dop5"</code> and <code>method = "bs"</code>. Both are dense solvers, but they recorded no <code><a href="../reference/delay.html">delay()</a></code> history, so <code><a href="../reference/rxSolve.html">rxSolve()</a></code> refused them (<a href="https://github.com/nlmixr2/rxode2/issues/1599" class="external-link">#1599</a>).</li>
+</ul></div>
+<div class="section level4">
 <h4 id="event-tables-development-version">Event tables<a class="anchor" aria-label="anchor" href="#event-tables-development-version"></a></h4>
 <ul><li>With <code>addlKeepsCov = TRUE</code>, a dose’s <code>f()</code> now reads the covariates of its own record, as its <code>alag()</code> does, also when <code>alag()</code> moves the dose past a covariate change. With an <code>alag()</code> on a covariate or a state, <code>f()</code> read them at the time the dose landed, and the amount moved with the solver’s steps. An <code>addl</code> repeat that keeps its covariates reads them the same way under every interpolation.</li>
 <li>A covariate in <code>d/dt()</code> (or any other statement read while solving) no longer depends on the ODE method when a lagged dose is in the solve. The dose record’s time was found by evaluating <code>alag()</code> again with whatever covariates the previous update left, and under <code>nocb</code> the solve could stop with “excess work”.</li>
