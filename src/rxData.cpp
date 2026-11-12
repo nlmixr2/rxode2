@@ -3828,6 +3828,9 @@ static inline void rxSolve_ev1Update(const RObject &obj,
                      rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
                      rxControl[Rxc_iCov],
                      rxControlTieOrder(rxControl));
+    } else if (Rf_isNull(rxControl[Rxc_iCov])) {
+      // Same arguments as ev1k; reuse it rather than translating twice
+      ev1 = ev1k;
     } else {
       ev1 = etTransR(ev1, obj, rxSolveDat->hasCmt,
                      false, false, true, R_NilValue,
