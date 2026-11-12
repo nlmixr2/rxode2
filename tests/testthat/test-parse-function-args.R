@@ -98,4 +98,25 @@ rxTest({
       expect_equal(rxNorm(paste0("y=", .f, "();")), paste0("y=", .f, "();\n"))
     }
   })
+
+  test_that("a bad call reports one error, and tlast() takes at most one argument", {
+    .msg <- function(x) {
+      paste(
+        utils::capture.output(try(rxNorm(x), silent = TRUE), type = "output"),
+        collapse = "\n"
+      )
+    }
+    expect_no_match(.msg("y=mix();"), "odd number", fixed = TRUE)
+    expect_no_match(.msg("d/dt(x)=-x; y=delay(, 1);"), "must be an ODE state", fixed = TRUE)
+    expect_match(.msg("d/dt(x)=-x; y=tlast(x, 1);"), "'tlast' takes 0 or 1 arguments", fixed = TRUE)
+    expect_error(rxode2parse("y=mix();"), "syntax error")
+    expect_error(rxode2parse("y=lag(, 1);"), "syntax error")
+    expect_error(rxode2parse("d/dt(x)=-x; y=delay(, 1);"), "syntax error")
+    expect_error(rxode2parse("d/dt(x)=-x; y=tlast(x, 1);"), "syntax error")
+    expect_error(rxode2parse("y=tad(a, b);"), "syntax error")
+    expect_error(rxode2parse("obs(, 1);"), "syntax error")
+    expect_error(rxode2parse("y=max(a, );"), "syntax error")
+    expect_error(rxode2parse("y=max(a, , b);"), "syntax error")
+    expect_equal(rxNorm("d/dt(x)=-x;y=tlast(x);"), "d/dt(x)=-x;\ny=tlast(x);\n")
+  })
 })

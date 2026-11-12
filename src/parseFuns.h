@@ -24,15 +24,17 @@ static inline int functionNodeNargs(D_ParseNode *fPn) {
 
 // `f(, b)`: the grammar's first argument is optional, so an empty one
 // followed by a comma has to be refused here
-static inline void assertNoEmptyFirstArg(D_ParseNode *fPn, const char *fn) {
-  if (d_get_number_of_children(d_get_child(fPn, 3)) == 0) return;
+static inline int assertNoEmptyFirstArg(D_ParseNode *fPn, const char *fn) {
+  if (d_get_number_of_children(d_get_child(fPn, 3)) == 0) return 0;
   D_ParseNode *xpn = d_get_child(fPn, 2);
   char *v2 = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
   if (allSpaces(v2)) {
     updateSyntaxCol();
     sPrint(&_gbuf, _("'%s' has an empty first argument"), fn);
     trans_syntax_error_report_fn(_gbuf.s);
+    return 1;
   }
+  return 0;
 }
 
 static inline int isAtFunctionArg(const char *name) {
@@ -414,7 +416,7 @@ static inline int handleFunctionSum(transFunctions *tf) {
     } else if (!strcmp("mix", tf->v)) {
       sAppend(&sb, "_mix(_cSub, %d, (double) ", ii);
       sAppend(&sbDt, "_mix(_cSub, %d, (double) ", ii);
-      if (ii % 2 == 0 || ii < 3) {
+      if (ii != 0 && (ii % 2 == 0 || ii < 3)) {
         sPrint(&_gbuf,
                _("'mix' takes an odd number of arguments (and at least 3) supplied %d"),
                ii);
@@ -656,7 +658,11 @@ static inline int handleFunctions(nodeInfo ni, char *name, int *i, int *depth, i
     tf->xpn = xpn;
     tf->pn = pn;
     tf->v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
-    assertNoEmptyFirstArg(pn, tf->v);
+    if (assertNoEmptyFirstArg(pn, tf->v)) {
+      // skip the call so its handler does not also act on the empty argument
+      tf->i[0] = tf->nch;
+      return 1;
+    }
     if (handleFunctionsExceptLinCmt(tf)) {
       return 1;
     } else if (handleFunctionLinCmt(tf)){
