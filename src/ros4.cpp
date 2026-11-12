@@ -126,7 +126,6 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                   sys.first.xout_ = ind->extraDoseNewXout;
                   sys.first.sign_ = (dt > 0) ? 1 : -1;
                   try {
-                      
                       std::copy(yp, yp + neqOde, state.begin());
                       boost::numeric::odeint::integrate_adaptive(
 
@@ -135,6 +134,7 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                       if (!ind->err) std::copy(state.begin(), state.end(), yp);
                   } catch(const std::exception& e) {
                       if (ind->rc[0] == 0) ind->rc[0] = -2019;
+                      rxSolverFail(ind);
                   }
               }
 
@@ -176,7 +176,6 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                   // delay history with no gaps.
                   if ((op->useDense && isObs(getEvid(ind, ind->ix[i]))) || ind->delayHistOn) {
                       if (!stepper_initialized) {
-
                           std::copy(yp, yp + neqOde, state.begin());
                           dense_stepper.initialize(state, xp, dt);
 
@@ -202,7 +201,6 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                       }
 
                   } else {
-
                       std::copy(yp, yp + neqOde, state.begin());
                       boost::numeric::odeint::integrate_adaptive(
 
@@ -212,6 +210,7 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                   }
               } catch(const std::exception& e) {
                   if (ind->rc[0] == 0) ind->rc[0] = -2019;
+                  rxSolverFail(ind);
               }
           }
 
@@ -329,6 +328,7 @@ extern "C" void ros4_solveWith1Pt(int *neq, double *yp, double *xp, double xout,
           if (!ind->err) std::copy(state.begin(), state.end(), yp);
       } catch(const std::exception& e) {
           if (ind->rc[0] == 0) ind->rc[0] = -2019;
+          rxSolverFail(ind);
           *istate = -1;
           return;
       }
@@ -365,8 +365,10 @@ int rxRos4DenseSegment(rx_solve *rx, rx_solving_options *op, rx_solving_options_
   double dt = (ind->autoHcur > 0.0) ? ind->autoHcur : (op->HMIN > 0.0 ? op->HMIN : 1e-4);
   sys.first.xout_ = xout;
   sys.first.sign_ = (xout >= xp) ? 1 : -1;
+  // no step limit, as before the segment was shared
   return rxOdeintDenseSegment<dense_stepper_type, decltype(sys), state_type>(
-    dense_stepper, sys, op, ind, neqOde, xp, xout, dt, yp, obs_first, obs_last, solveid);
+    dense_stepper, sys, op, ind, neqOde, xp, xout, dt, yp, obs_first, obs_last, solveid,
+    0);
 }
 
 #endif // IN_PAR_SOLVE

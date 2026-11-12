@@ -133,7 +133,16 @@ static inline void ab_do_steps(rx_solving_options_ind *ind, rx_solving_options *
 
     t += current_dt;
     steps_taken++;
-    if (steps_taken > max_steps) {
+    // a state that is no longer finite (a non-finite right-hand side) is the
+    // solver's failure, as is the step limit
+    bool finite = true;
+    for (int i = 0; i < neq; i++) {
+      if (!std::isfinite(y[i])) {
+        finite = false;
+        break;
+      }
+    }
+    if (steps_taken > max_steps || !finite) {
       ind->rc[0] = -2019;
       rxSolverFail(ind);
       break;
