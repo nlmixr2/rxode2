@@ -25,6 +25,8 @@ evid-push
 steady-state
 nmtest
 reset
+tieOrder
+tieOrder-events
 # covariates, data handling and output
 cov
 keep
