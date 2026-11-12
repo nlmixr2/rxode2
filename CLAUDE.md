@@ -79,7 +79,8 @@ invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devto
 Comments count only from owners/members/collaborators. Stacked PRs,
 documentation-only PRs and draft PRs (until marked ready, or commented `/ci`)
 run nothing. Retargeting a stacked PR to main starts the fast tier via
-`ci-retarget.yaml`; other PR edits start no run. A test file that covers a
+`ci-retarget.yaml`; other PR edits start no run. `/ci` reruns the PR's own run
+for its head commit rather than starting a second one. A test file that covers a
 major feature belongs in `tests/ci-core.txt`. Shards are balanced from
 `tests/ci-timings.csv`; refresh it from a full run's `junit-*` artifacts with
 `.github/scripts/ci-test-timings.R` (`.github/scripts/ci-shards.R` does the

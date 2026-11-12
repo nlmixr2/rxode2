@@ -12,7 +12,9 @@
 # Comments count only from OWNER/MEMBER/COLLABORATOR, on pull requests that
 # target main.  Stacked pull requests (based on another branch) run nothing.
 # Draft pull requests run nothing until marked ready for review (a /ci or
-# /cifull comment still runs on a draft).
+# /cifull comment still runs on a draft).  "/ci" reruns the pull request's
+# own run for its head commit (or waits for it) instead of starting another,
+# so the pull request's checks update in place.
 # A pull request that changes only documentation (*.md other than NEWS.md,
 # issue templates, bench/, inst/WORDLIST) runs nothing either.
 # Retargeting a stacked pull request to main runs the fast tier through
@@ -48,12 +50,15 @@ name: ci.yaml
 permissions: read-all
 
 # One run per pull request (or branch) and tier: a new push cancels the
-# superseded fast run but never a /cifull run.  Comments that are not CI
-# commands get a group of their own so they cancel nothing.
+# superseded fast run but never a /cifull run.  Comments get a group of
+# their own so they never cancel a pull request's run (a cancelled run leaves
+# failed checks on the pull request); comments that are not CI commands get
+# a group per run so they cancel nothing at all.
 concurrency:
   group: >-
     ci-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr || github.ref }}-${{
     (github.event_name == 'schedule' || inputs.tier == 'full' || startsWith(github.event.comment.body, '/cifull')) && 'full' || 'fast' }}${{
+    github.event_name == 'issue_comment' && '-comment' || '' }}${{
     (github.event_name == 'issue_comment' && !(github.event.issue.pull_request && startsWith(github.event.comment.body, '/ci') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))) && format('-noop-{0}', github.run_id) || '' }}
   cancel-in-progress: ${{ github.event_name != 'schedule' }}
 
@@ -62,7 +67,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
-      actions: read
+      actions: write
       contents: read
       pull-requests: read
       statuses: write
@@ -127,6 +132,32 @@ jobs:
                   pr = p.issue.number;
                   ref = `refs/pull/${pr}/merge`;
                   sha = pull.head.sha;
+                }
+                // /ci reuses the pull request's own fast run on the head commit,
+                // so its checks on the pull request update in place: one still
+                // running is left alone, a finished one is rerun (on the merge
+                // commit it first tested).  A rerun replays the original event,
+                // so a draft, or a run that checked nothing (draft or
+                // documentation only), is not reused and this run does the work.
+                if (tier === 'fast' && !pull.draft) {
+                  const own = (await github.rest.actions.listWorkflowRuns({ ...context.repo,
+                    workflow_id: 'ci.yaml', event: 'pull_request', head_sha: pull.head.sha, per_page: 1 }))
+                    .data.workflow_runs[0];
+                  if (own && own.status !== 'completed') {
+                    core.notice(`run ${own.html_url} is still going for this commit`);
+                    tier = 'none';
+                  } else if (own && (own.conclusion === 'cancelled' || (await github.paginate(github.rest.actions.listJobsForWorkflowRun,
+                      { ...context.repo, run_id: own.id, per_page: 100 }))
+                      .some(j => /^(check|tests) \//.test(j.name) && j.conclusion !== 'skipped'))) {
+                    try {
+                      await github.rest.actions.reRunWorkflow({ ...context.repo, run_id: own.id });
+                      core.notice(`reran ${own.html_url}`);
+                      tier = 'none';
+                    } catch (e) {
+                      core.warning(`could not rerun ${own.html_url} (${e.message}); running here`);
+                    }
+                  }
+                  if (tier === 'none') { pr = null; ref = ''; sha = ''; }
                 }
               }
             }
