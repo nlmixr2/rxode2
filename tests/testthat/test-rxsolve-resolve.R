@@ -48,4 +48,20 @@ rxTest({
     expect_equal(.n, 1L)
     expect_equal(as.data.frame(.s), as.data.frame(rxSolve(.m, .p2, .d)))
   })
+
+  test_that("the small-table sort matches data.table's order", {
+    .c1 <- c(2L, NA, 1L, 1L, NA, 2L, 1L, 2L)
+    .c2 <- c(1, 2, NaN, 0, 1, NA, -0, 1)
+    .c3 <- c(3L, 1L, 2L, 1L, NA, 2L, 1L, 3L)
+    expect_identical(
+      .forder3(.c1, .c2, .c3),
+      data.table::data.table(c1 = .c1, c2 = .c2, c3 = .c3)[order(c1, c2, c3), which = TRUE]
+    )
+    for (.dec in c(FALSE, TRUE)) {
+      expect_identical(
+        .forder1(.c2, decreasing = .dec),
+        data.table::data.table(c1 = .c2)[order(c1, decreasing = .dec, na.last = TRUE), which = TRUE]
+      )
+    }
+  })
 })

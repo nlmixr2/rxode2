@@ -2,7 +2,15 @@
 .forderEnv$useBase <- FALSE
 
 
+# Below this many rows building a data.table costs more than base's radix sort
+# (it ran once per etTrans() in posologyr MAP estimation, levenc/posologyr#70);
+# both give the same stable, NA-last order.
+.forderMinRows <- 1e5
+
 .forder3 <- function(c1, c2, c3, decreasing = FALSE) {
+  if (length(c1) < .forderMinRows) {
+    return(base::order(c1, c2, c3, na.last = TRUE, method = "radix"))
+  }
   data.table::data.table(c1 = c1, c2 = c2, c3 = c3, decreasing = decreasing, na.last = TRUE)[
     order(c1, c2, c3),
     which = TRUE
@@ -14,6 +22,9 @@
 }
 
 .forder1 <- function(c1, decreasing = FALSE) {
+  if (length(c1) < .forderMinRows) {
+    return(base::order(c1, decreasing = decreasing, na.last = TRUE, method = "radix"))
+  }
   data.table::data.table(c1 = c1)[order(c1, decreasing = decreasing, na.last = TRUE), which = TRUE]
 }
 
