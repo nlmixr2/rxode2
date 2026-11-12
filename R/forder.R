@@ -3,12 +3,20 @@
 
 
 # Below this many rows building a data.table costs more than base's radix sort
-# (it ran once per etTrans() in posologyr MAP estimation, levenc/posologyr#70);
-# both give the same stable, NA-last order.
+# (it ran once per etTrans() in posologyr MAP estimation, levenc/posologyr#70).
+# Both give the same stable, NA-last order, except that base ties NA with NaN
+# where data.table puts NaN first, so a double with missing values keeps
+# data.table.
 .forderMinRows <- 1e5
 
+.forderUseBase <- function(...) {
+  .cols <- list(...)
+  length(.cols[[1]]) < .forderMinRows &&
+    !any(vapply(.cols, function(x) is.double(x) && anyNA(x), logical(1)))
+}
+
 .forder3 <- function(c1, c2, c3, decreasing = FALSE) {
-  if (length(c1) < .forderMinRows) {
+  if (.forderUseBase(c1, c2, c3)) {
     return(base::order(c1, c2, c3, na.last = TRUE, method = "radix"))
   }
   data.table::data.table(c1 = c1, c2 = c2, c3 = c3, decreasing = decreasing, na.last = TRUE)[
@@ -22,7 +30,7 @@
 }
 
 .forder1 <- function(c1, decreasing = FALSE) {
-  if (length(c1) < .forderMinRows) {
+  if (.forderUseBase(c1)) {
     return(base::order(c1, decreasing = decreasing, na.last = TRUE, method = "radix"))
   }
   data.table::data.table(c1 = c1)[order(c1, decreasing = decreasing, na.last = TRUE), which = TRUE]

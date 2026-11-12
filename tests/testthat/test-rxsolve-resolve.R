@@ -34,6 +34,30 @@ rxTest({
     expect_s3_class(.r, "rxSolve")
   })
 
+  test_that("re-solving keeps working after the model DLL is unloaded", {
+    .m2 <- rxode2("d/dt(centr) = -kel * centr")
+    .e1 <- et(amt = 100) |> et(1:4)
+    .e2 <- et(amt = 200) |> et(1:4)
+    .s <- rxSolve(.m2, c(kel = 0.2), .e1)
+    rxDynUnload(.m2)
+    expect_equal(
+      as.data.frame(rxSolve(.s, c(kel = 0.3), .e2)),
+      as.data.frame(rxSolve(.m2, c(kel = 0.3), .e2))
+    )
+  })
+
+  test_that("re-solving keeps the event (jump) sensitivities", {
+    .m3 <- rxode2({
+      alag(centr) <- tau
+      f(centr) <- bio
+      d/dt(centr) <- -kel * centr
+    }, calcSens = c("tau", "bio", "kel"))
+    .p3 <- c(tau = 0.5, bio = 0.8, kel = 0.2)
+    .s <- rxSolve(.m3, .p3, et(amt = 100) |> et(0:10))
+    .e2 <- et(amt = 200) |> et(0:10)
+    expect_equal(as.data.frame(rxSolve(.s, .p3, .e2)), as.data.frame(rxSolve(.m3, .p3, .e2)))
+  })
+
   test_that("a data frame solve and a $params update translate the events once", {
     .n <- 0L
     .etTrans <- etTrans
@@ -50,14 +74,24 @@ rxTest({
   })
 
   test_that("the small-table sort matches data.table's order", {
-    .c1 <- c(2L, NA, 1L, 1L, NA, 2L, 1L, 2L)
-    .c2 <- c(1, 2, NaN, 0, 1, NA, -0, 1)
-    .c3 <- c(3L, 1L, 2L, 1L, NA, 2L, 1L, 3L)
+    .c1 <- c(2L, NA, 1L, 1L, NA, 2L, 1L, 2L, 1L, 1L, 1L)
+    .c2 <- c(1, 2, NaN, 0, 1, NA, -0, 1, NA, NaN, 0)
+    .c3 <- c(3L, 1L, 2L, 1L, NA, 2L, 1L, 3L, 1L, 1L, 2L)
     expect_identical(
       .forder3(.c1, .c2, .c3),
       data.table::data.table(c1 = .c1, c2 = .c2, c3 = .c3)[order(c1, c2, c3), which = TRUE]
     )
+    .c2b <- c(1, 2, 3, 0, 1, 2, -0, 1, 0, 3, 0)
+    expect_true(.forderUseBase(.c1, .c2b, .c3))
+    expect_identical(
+      .forder3(.c1, .c2b, .c3),
+      data.table::data.table(c1 = .c1, c2 = .c2b, c3 = .c3)[order(c1, c2, c3), which = TRUE]
+    )
     for (.dec in c(FALSE, TRUE)) {
+      expect_identical(
+        .forder1(.c1, decreasing = .dec),
+        data.table::data.table(c1 = .c1)[order(c1, decreasing = .dec, na.last = TRUE), which = TRUE]
+      )
       expect_identical(
         .forder1(.c2, decreasing = .dec),
         data.table::data.table(c1 = .c2)[order(c1, decreasing = .dec, na.last = TRUE), which = TRUE]
