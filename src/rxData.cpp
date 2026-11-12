@@ -7580,8 +7580,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _lastT0 = clock();
 #endif// rxSolveT
 
-    SEXP ret = rxSolve_finalize(object, rxControl, specParams, extraArgs, params, events,
-                                inits, rxSolveDat);
+    // The return value of `rxSolve_finalize()` needs to be protected from GC because
+    // the operations below can trigger a GC.
+    SEXP ret = PROTECT(rxSolve_finalize(object, rxControl, specParams, extraArgs, params, events,
+                                        inits, rxSolveDat));
     if (!rxIsNull(setupOnlyObj)) {
       rxUnlock(setupOnlyObj);
       setupOnlyObj = R_NilValue;
@@ -7590,6 +7592,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     RSprintf("Time15: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
 #endif // rxSolveT
+    UNPROTECT(1);
     return ret;
   }
   return R_NilValue;
