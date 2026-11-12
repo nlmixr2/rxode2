@@ -93,6 +93,15 @@
   to carry its record's covariates to its arrival, which now happens only with
   `addlKeepsCov = TRUE`.  `nonmem = TRUE` turns on `addlKeepsCov` unless it is
   given, since NONMEM keeps a dose record's covariates with the dose (#1584).
+- Re-solving a solved object with new events (`rxSolve(<rxSolve>, params,
+  events)`) solves the model that produced it instead of re-parsing the model
+  text on every call, which also keeps the event (jump) sensitivities of a
+  `calcSens` model, and a data frame solve or `$params<-` update translates its
+  events once instead of twice.  Both were slowdowns introduced in 5.1.1; MAP
+  estimation in posologyr was about 10 times slower
+  (levenc/posologyr#70).  Event tables under 100,000 rows are now sorted with
+  base R's radix sort, which gives the same order as the `data.table` sort
+  without its setup cost on every solve.
 
 ### Steady state
 - A steady-state bolus into a compartment whose `alag()` is longer than `ii`

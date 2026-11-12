@@ -4753,7 +4753,13 @@ rxSolve.rxSolve <- function(
       envir = envir
     ))
   }
-  .model <- as.character(.model)
+  # Re-solve the model that produced this solve, not its text, which would be
+  # re-parsed on every call (posologyr MAP estimation, levenc/posologyr#70).
+  # The model object keeps its DLL handle and event-sensitivity information.
+  .model <- object$env$.args.object
+  if (!inherits(.model, "rxode2")) {
+    .model <- rxModelVars(object)
+  }
   if (is.null(params)) {
     params <- object$.params.single
   }
