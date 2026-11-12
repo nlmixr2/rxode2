@@ -2210,6 +2210,51 @@ rxNumLoaded <- function() {
   length(grep(rex::rex(start, "rx_", n_times(any, 32), or("_x64", "_i386", "_", "")), names(.dlls)))
 }
 
+.rxRConfigCflagsCache <- new.env(parent = emptyenv())
+#' `R CMD config CFLAGS`, cached per session
+#'
+#' The subprocess costs ~0.05 s per compile.  Its output depends only on R and
+#' the Makevars files it reads, so the cache key is those files' paths and
+#' modification times; editing or repointing a Makevars re-reads it.
+#'
+#' @return R's `CFLAGS`, or `""` when it cannot be read (not cached)
+#' @noRd
+.rxRConfigCflags <- function() {
+  .env <- Sys.getenv(c("R_MAKEVARS_USER", "R_MAKEVARS_SITE", "HOME"))
+  .files <- c(
+    .env[1:2],
+    file.path(R.home("etc"), "Makevars.site"),
+    path.expand(file.path(
+      "~",
+      ".R",
+      c("Makevars", "Makevars.win", "Makevars.win64", "Makevars.ucrt", paste0("Makevars-", R.version$platform))
+    ))
+  )
+  .files <- .files[.files != ""]
+  .key <- paste(c(.env, .files, as.character(file.mtime(.files))), collapse = "\r")
+  if (identical(.rxRConfigCflagsCache$key, .key)) {
+    return(.rxRConfigCflagsCache$value)
+  }
+  .cflags <- tryCatch(
+    gsub(
+      "\n",
+      "",
+      rawToChar(
+        sys::exec_internal(
+          file.path(R.home("bin"), "R"),
+          c("CMD", "config", "CFLAGS")
+        )$stdout
+      )
+    ),
+    error = function(e) ""
+  )
+  if (.cflags != "") {
+    .rxRConfigCflagsCache$key <- .key
+    .rxRConfigCflagsCache$value <- .cflags
+  }
+  .cflags
+}
+
 #' Make `rxode2.compile.O` actually take effect for `R CMD SHLIB`
 #'
 #' `R CMD SHLIB` builds `ALL_CFLAGS = $(PKG_CFLAGS) $(CPICFLAGS) $(SHLIB_CFLAGS)
@@ -2239,19 +2284,7 @@ rxNumLoaded <- function() {
   if (is.na(.o) || .o == "") {
     return(NULL)
   }
-  .cflags <- tryCatch(
-    gsub(
-      "\n",
-      "",
-      rawToChar(
-        sys::exec_internal(
-          file.path(R.home("bin"), "R"),
-          c("CMD", "config", "CFLAGS")
-        )$stdout
-      )
-    ),
-    error = function(e) ""
-  )
+  .cflags <- .rxRConfigCflags()
   if (.cflags == "") {
     return(NULL)
   }
@@ -2388,7 +2421,9 @@ rxCompile.rxModelVars <- function(
           .needCompile <- FALSE
         }
       } else {
-        .needCompile <- FALSE
+        # an unloadable file (still being linked by another process, or left
+        # empty) goes to the lock: wait for its builder or rebuild it (#1558)
+        .needCompile <- TRUE
       }
     }
   }
@@ -2600,7 +2635,15 @@ rxCompile.rxModelVars <- function(
         try(dyn.unload(.cDllFile), silent = TRUE)
         try(unlink(.cDllFile))
         .cmd <- file.path(R.home("bin"), "R")
-        .args <- c("CMD", "SHLIB", basename(.cFile))
+        # link to a private name and rename it into place, so a process sharing
+        # rxTempDir() never loads a partly written library (#1558)
+        .tmpDll <- paste0(
+          tools::file_path_sans_ext(basename(.cDllFile)),
+          "_",
+          Sys.getpid(),
+          .Platform$dynlib.ext
+        )
+        .args <- c("CMD", "SHLIB", "-o", .tmpDll, basename(.cFile))
         .rxBinpref <- Sys.getenv("rxBINPREF")
         if (.rxBinpref != "") {
           .oldBinpref <- Sys.getenv("BINPREF")
@@ -2640,6 +2683,11 @@ rxCompile.rxModelVars <- function(
           .rxCompileEnv$lst[["stderr"]] <- paste(.stderr, collapse = "\n")
         }
         .rxCompileEnv$success <- TRUE
+        .tmpDll <- file.path(.dir, .tmpDll)
+        if (.out$status == 0 && file.exists(.tmpDll)) {
+          file.rename(.tmpDll, .cDllFile)
+        }
+        unlink(.tmpDll)
         if (!(.out$status == 0 && file.exists(.cDllFile))) {
           .badBuild("error building model")
         }

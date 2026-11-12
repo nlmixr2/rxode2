@@ -31,7 +31,7 @@ SEXP _rxode2_rxSolveSEXP(SEXP, SEXP, SEXP, SEXP, SEXP,
                          SEXP, SEXP, SEXP);
 SEXP _rxode2_etTrans(SEXP, SEXP, SEXP, SEXP, SEXP,
                      SEXP, SEXP, SEXP, SEXP, SEXP,
-                     SEXP, SEXP);
+                     SEXP, SEXP, SEXP);
 SEXP _rxode2_rxUpdateTrans_(SEXP, SEXP, SEXP);
 double powerDi(double x, double lambda, int yj);
 double powerD(double x, double lambda, int yj);
@@ -63,9 +63,15 @@ SEXP _rxode2_eventSensShapeSave(void);
 SEXP _rxode2_eventSensShapeRestore(SEXP buf);
 SEXP _rxode2_parseModel(SEXP type);
 /* symengine text -> rxode2/C, src/seFromSE.c */
-SEXP _rxode2_rxFromSEChar(SEXP strVec, SEXP numDerS, SEXP dName, SEXP dWhich, SEXP dTmpl);
+SEXP _rxode2_rxFromSEChar(SEXP strVec, SEXP numDerS, SEXP tabs, SEXP stamp);
+SEXP _rxode2_seFormatDouble(SEXP x, SEXP scipen);
+SEXP _rxode2_seFromSEfnTable(void);
+SEXP _rxode2_seCachePutR(SEXP dirS, SEXP keyS, SEXP valS);
+SEXP _rxode2_seCacheResetR(void);
+SEXP _rxode2_seStatsR(SEXP resetS);
 /* rxode2 -> symengine text, src/rxToSE.c */
-SEXP _rxode2_rxToSEChar(SEXP strVec);
+SEXP _rxode2_rxToSEChar(SEXP strVec, SEXP stamp);
+SEXP _rxode2_rxToSEenv(SEXP str, SEXP stamp);
 /* common subexpression elimination, src/rxCse.c */
 SEXP _rxode2_rxCse(SEXP linesVec);
 SEXP _rxode2_rxCsePickThreads(SEXP n);
@@ -92,7 +98,7 @@ SEXP _rxode2_rxSolveUpdate(SEXP, SEXP, SEXP);
 SEXP _rxode2_rxAssignPtr(SEXP);
 SEXP _rxode2_rxAssignPtr(SEXP objectSEXP);
 SEXP _rxode2_dynLoad(SEXP dllSEXP);
-SEXP _rxode2_rxOptRep_(SEXP);
+SEXP _rxode2_rxOptRep_(SEXP, SEXP);
 SEXP _rxode2_rxIndLin_(SEXP);
 SEXP _rxParProgress(SEXP);
 SEXP _rxode2_rxRmvn_(SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -640,8 +646,9 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2rxRmvtSetup = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRmvtSetup, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxRmvtDraw = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRmvtDraw, R_NilValue, R_NilValue)); pro++;
   SEXP rxode2rxRmvtFree = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&rxRmvtFree, R_NilValue, R_NilValue)); pro++;
+  SEXP rxode2setIndNewind = PROTECT(R_MakeExternalPtrFn((DL_FUNC)&setIndNewind, R_NilValue, R_NilValue)); pro++;
 
-#define nVec 104
+#define nVec 105
   SEXP ret = PROTECT(Rf_allocVector(VECSXP, nVec)); pro++;
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -747,6 +754,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 101, rxode2rxRmvtSetup);
   SET_VECTOR_ELT(ret, 102, rxode2rxRmvtDraw);
   SET_VECTOR_ELT(ret, 103, rxode2rxRmvtFree);
+  SET_VECTOR_ELT(ret, 104, rxode2setIndNewind);
 
 
   SEXP retN = PROTECT(Rf_allocVector(STRSXP, nVec)); pro++;
@@ -861,6 +869,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 101, Rf_mkChar("rxode2rxRmvtSetup"));
   SET_STRING_ELT(retN, 102, Rf_mkChar("rxode2rxRmvtDraw"));
   SET_STRING_ELT(retN, 103, Rf_mkChar("rxode2rxRmvtFree"));
+  SET_STRING_ELT(retN, 104, Rf_mkChar("rxode2setIndNewind"));
 
   // Nothing is validated here.  Every reverse dependency calls this at load, so a
   // check that fails takes them all down at once and they cannot be patched
@@ -1003,8 +1012,14 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_eventSensShapeRestore", (DL_FUNC) &_rxode2_eventSensShapeRestore, 1},
     {"_rxode2_codeLoaded", (DL_FUNC) &_rxode2_codeLoaded, 0},
     {"_rxode2_parseModel", (DL_FUNC) &_rxode2_parseModel, 1},
-    {"_rxode2_rxFromSEChar", (DL_FUNC) &_rxode2_rxFromSEChar, 5},
-    {"_rxode2_rxToSEChar", (DL_FUNC) &_rxode2_rxToSEChar, 1},
+    {"_rxode2_rxFromSEChar", (DL_FUNC) &_rxode2_rxFromSEChar, 4},
+    {"_rxode2_rxToSEChar", (DL_FUNC) &_rxode2_rxToSEChar, 2},
+    {"_rxode2_rxToSEenv", (DL_FUNC) &_rxode2_rxToSEenv, 2},
+    {"_rxode2_seFormatDouble", (DL_FUNC) &_rxode2_seFormatDouble, 2},
+    {"_rxode2_seFromSEfnTable", (DL_FUNC) &_rxode2_seFromSEfnTable, 0},
+    {"_rxode2_seCachePutR", (DL_FUNC) &_rxode2_seCachePutR, 3},
+    {"_rxode2_seCacheResetR", (DL_FUNC) &_rxode2_seCacheResetR, 0},
+    {"_rxode2_seStatsR", (DL_FUNC) &_rxode2_seStatsR, 1},
     {"_rxode2_rxCse", (DL_FUNC) &_rxode2_rxCse, 1},
     {"_rxode2_rxCsePickThreads", (DL_FUNC) &_rxode2_rxCsePickThreads, 1},
     {"_rxode2_rxDparserParallel", (DL_FUNC) &_rxode2_rxDparserParallel, 1},
@@ -1047,7 +1062,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_setProgSupported", (DL_FUNC) &_rxode2_setProgSupported, 1},
     {"_rxode2_getProgSupported", (DL_FUNC) &_rxode2_getProgSupported, 0},
     {"_rxode2_rxUpdateTrans_", (DL_FUNC) &_rxode2_rxUpdateTrans_, 3},
-    {"_rxode2_etTrans", (DL_FUNC) &_rxode2_etTrans, 12},
+    {"_rxode2_etTrans", (DL_FUNC) &_rxode2_etTrans, 13},
     {"_rxode2_rxSolveSEXP", (DL_FUNC) &_rxode2_rxSolveSEXP, 8},
     {"_rxode2_dropUnitsRxSolve", (DL_FUNC) &_rxode2_dropUnitsRxSolve, 1},
     {"_rxode2_rxAdjointSweep", (DL_FUNC) &_rxode2_rxAdjointSweep, 9},
@@ -1062,7 +1077,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxOmegaVarCovDeriv_",(DL_FUNC) &_rxode2_rxOmegaVarCovDeriv_, 2},
     {"_rxode2_rxExpandFEta_", (DL_FUNC) &_rxode2_rxExpandFEta_, 4},
     {"_rxode2_rxRepR0_", (DL_FUNC) &_rxode2_rxRepR0_, 1},
-    {"_rxode2_rxOptRep_", (DL_FUNC) &_rxode2_rxOptRep_, 1},
+    {"_rxode2_rxOptRep_", (DL_FUNC) &_rxode2_rxOptRep_, 2},
     {"_rxode2_rxSetSilentErr", (DL_FUNC) &_rxode2_rxSetSilentErr, 1},
     {"_rxode2_rxIndLin_",(DL_FUNC) &_rxode2_rxIndLin_, 1},
     {"_rxode2_rxUnloadAll_", (DL_FUNC) &_rxode2_rxUnloadAll_, 0},

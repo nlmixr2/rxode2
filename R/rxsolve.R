@@ -312,9 +312,10 @@
 #'     to the fewest doses the regimen needs (2 with a lag time, more with
 #'     overlapping infusions or a lag longer than `ii`).  `minSS = maxSS = n`
 #'     gives exactly the state after `n` prior doses (Monolix
-#'     `nbdoses = n`).  `linCmt()` steady states are exact, and a constant
-#'     infusion (`ii = 0`), which has no doses, takes at least 5 and up to
-#'     `max(maxSS, 10000)` convergence steps.
+#'     `nbdoses = n`).  `linCmt()` models follow both, stopping at `minSS`
+#'     doses when converged there and otherwise using their exact steady
+#'     state.  A constant infusion (`ii = 0`), which has no doses, takes at
+#'     least 5 and up to `max(maxSS, 10000)` convergence steps.
 #'
 #' @param maxSS Maximum number of doses given before a steady-state dose (at
 #'     least `minSS`)
@@ -431,15 +432,19 @@
 #'
 #' * `"linear"` interpolation, which interpolates the covariate
 #'     by solving the line between the observed covariates and extrapolating the new
-#'     covariate value.
+#'     covariate value.  A `linCmt()` model refuses it for a covariate
+#'     that varies within a subject and feeds the `linCmt()` parameters,
+#'     since its closed form cannot follow the ramp; use another method or
+#'     write the model as ODEs.
 #'
 #' * `"locf"` -- Last observation carried forward (the default).
 #'
 #' * `"nocb"` -- Next Observation Carried Backward.  This is the same method
 #'       that NONMEM uses.
 #'
-#' * `"midpoint"` Last observation carried forward to midpoint; Next observation
-#'   carried backward to midpoint.
+#' * `"midpoint"` -- the mean of the two neighboring records over the whole
+#'   interval between them, as `stats::approxfun(method = "constant", f = 0.5)`
+#'   gives.
 #'
 #'   For time-varying covariates where a missing value is present, the
 #'   interpolation method will use either "locf" or "nocb" throughout
@@ -485,7 +490,10 @@
 #' @param seed an object specifying if and how the random number
 #'    generator should be initialized; when given, it takes precedence
 #'    over an active [rxSetSeed()] stream for this solve, and the
-#'    caller's `.Random.seed` is restored afterwards
+#'    caller's `.Random.seed` is restored afterwards.  [rxControl()] only
+#'    stores it; the seed is applied when the control is used by a solve.
+#'    Re-solving a result by assignment (eg `s$params <- p`) reapplies its
+#'    seed, while `update()` uses only a `seed` it is given
 #'
 #' @param nsim represents the number of simulations.  For rxode2, if
 #'     you supply single subject event tables (created with
@@ -554,6 +562,15 @@
 #'     off diagonal.  A drawn matrix that is not positive definite is
 #'     redrawn, see `priorPdRetry`.  `dfSub` is not used: an entry the
 #'     `thetaMat` gives no variance stays at its estimate.
+#'
+#'  * `"invchol"` draws the same entries jointly with the thetas, but on the
+#'     scale of the inverse Cholesky decomposition of the omega (with a log
+#'     diagonal), so every drawn omega is positive definite and none is
+#'     redrawn.  The `thetaMat` covariance of the entries is moved to that
+#'     scale by the delta method at the `omega` estimate, which has to be
+#'     positive definite.  Only the blocks of `omega` holding a drawn entry
+#'     change, and an entry of such a block that the `thetaMat` gives no
+#'     variance can move with the others.
 #'
 #' @param omegaXform When taking `omega` values from the `thetaMat`
 #'   simulations (using the separation strategy for covariance
@@ -670,6 +687,9 @@
 #' *  `"tnpri"` draws the sigma entries jointly from the `thetaMat`, the
 #'    same way `omegaSeparation="tnpri"` does for the omega; `dfObs` is
 #'    not used.
+#'
+#' *  `"invchol"` draws them on the inverse Cholesky scale, the same way
+#'    `omegaSeparation="invchol"` does for the omega.
 #'
 #' @param dfObs Degrees of freedom to sample the unexplained variability matrix from the
 #'        inverse Wishart distribution (scaled) or scaled inverse chi squared distribution.
@@ -877,9 +897,12 @@
 #'   doses not canceled with `SS=2` (the infusions started before
 #'   `SS=2` occurred are canceled, though).
 #'
-#' @param addlKeepsCov This determines if the additional dosing items
-#'   repeats the dose only (`FALSE`) or keeps the covariates at the
-#'   record of the dose (`TRUE`)
+#' @param addlKeepsCov This determines if a dose given at a time other
+#'   than its record's (an additional dosing item or a dose moved by
+#'   `alag()`) takes the time-varying covariates imputed at its actual
+#'   dosing time (`FALSE`) or keeps the covariates at the record of the
+#'   dose (`TRUE`, as NONMEM does).  By default `FALSE`, or `TRUE` with
+#'   `nonmem = TRUE`.
 #'
 #' @param addlDropSs When there are steady state doses with an `addl`
 #'   specification the steady state flag is dropped with repeated
@@ -998,7 +1021,18 @@
 #'   the continuous time (like `$DES`).  `addl` repeats, infusion ends,
 #'   lagged doses and doses added while solving do not end an interval;
 #'   `mtime()` times do.  Covariate interpolation is still set by
-#'   `covsInterpolation`.  By default `FALSE`.
+#'   `covsInterpolation`.  It also sets the default `tieOrder` to `"data"`
+#'   and turns on `addlKeepsCov` unless it is given.  By default `FALSE`.
+#'
+#' @param tieOrder How records of a subject that share a time are processed:
+#'   `"evid"` processes resets first, then doses, then observations, so the
+#'   result does not depend on the row order of the data; `"data"` processes
+#'   them in the order of the rows in the data, the way NONMEM does (records
+#'   a row expands to, like the reset of an `evid=4` dose or `addl` repeats,
+#'   follow that row).  Doses added while solving follow the records at the
+#'   same time.  An event table already translated by [etTrans()] keeps the
+#'   order it was translated with.  By default (`NULL`) this is `"data"` when
+#'   `nonmem = TRUE` and `"evid"` otherwise.
 #'
 #' @param linCmtGillK The total number of possible steps to determine the
 #'     optimal forward/central difference step size per parameter (by
@@ -1517,7 +1551,7 @@ rxSolve <- function(
   sigmaUpper = Inf,
   nCoresRV = 1L,
   sigmaIsChol = FALSE,
-  sigmaSeparation = c("auto", "lkj", "separation", "tnpri"),
+  sigmaSeparation = c("auto", "lkj", "separation", "tnpri", "invchol"),
   sigmaXform = c("identity", "variance", "log", "nlmixrSqrt", "nlmixrLog", "nlmixrIdentity"),
   nDisplayProgress = 10000L,
   amountUnits = NA_character_,
@@ -1532,7 +1566,7 @@ rxSolve <- function(
   omega = NULL,
   omegaDf = NULL,
   omegaIsChol = FALSE,
-  omegaSeparation = c("auto", "lkj", "separation", "tnpri"),
+  omegaSeparation = c("auto", "lkj", "separation", "tnpri", "invchol"),
   omegaXform = c("variance", "identity", "log", "nlmixrSqrt", "nlmixrLog", "nlmixrIdentity"),
   omegaLower = -Inf,
   omegaUpper = Inf,
@@ -1613,6 +1647,7 @@ rxSolve <- function(
   linCmtSensH = 0.0001,
   linCmtSensPhi = TRUE,
   nonmem = FALSE,
+  tieOrder = NULL,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -1751,12 +1786,7 @@ rxSolve <- function(
         "nlmixrIdentity" = 3L
       )[match.arg(omegaXform)]
     }
-    if (!is.null(seed)) {
-      # Depending on the kind of seed, seed may be a vector of
-      # integers, though that use-case is likely not common
-      checkmate::testIntegerish(seed, any.missing = FALSE, min.len = 1)
-      set.seed(seed)
-    }
+    ## the seed is only stored here; the solve applies it (#1550)
     if (checkmate::testIntegerish(nsim, len = 1, lower = 1, any.missing = FALSE)) {
       if (
         nSub == 1L &&
@@ -1927,6 +1957,14 @@ rxSolve <- function(
       .linCmtSensPhi <- as.integer(linCmtSensPhi)
     }
     checkmate::assertLogical(nonmem, any.missing = FALSE, len = 1)
+    if (is.null(tieOrder)) {
+      tieOrder <- if (nonmem) "data" else "evid"
+    }
+    checkmate::assertChoice(tieOrder, c("evid", "data"))
+    if (nonmem && missing(addlKeepsCov)) {
+      # NONMEM keeps a dose record's covariates with the dose
+      addlKeepsCov <- TRUE
+    }
     checkmate::assertNumeric(linCmtGillFtol, lower = 0, finite = TRUE, any.missing = FALSE, len = 1)
     checkmate::assertIntegerish(linCmtGillK, lower = 0, any.missing = FALSE, len = 1)
     checkmate::assertNumeric(linCmtGillStep, lower = 0, finite = TRUE, any.missing = FALSE, len = 1)
@@ -2417,7 +2455,8 @@ rxSolve <- function(
       priorOmegaEl = priorOmegaEl,
       priorSigmaEl = priorSigmaEl,
       linCmtSensPhi = .linCmtSensPhi,
-      nonmem = nonmem
+      nonmem = nonmem,
+      tieOrder = tieOrder
     )
     class(.ret) <- "rxControl"
     return(.ret)
@@ -2428,21 +2467,23 @@ rxSolve <- function(
   .rxEventCallSave <- sys.call()
   on.exit(.rxEventExitSolve(returnValue(), object, .rxEventCallSave), add = TRUE)
   if (!is.null(seed)) {
-    ## seed= works through set.seed(), which an active rxSetSeed() stream
-    ## would ignore; suspend that stream for this solve (#1507) and put the
-    ## caller's .Random.seed back afterwards (#1503)
-    .rxSeedOrig <- rxGetSeed()
-    .rSeedOrig <- .rxGetRandomSeed()
-    rxSetSeed(-1L)
-    on.exit(
-      {
-        rxSetSeed(.rxSeedOrig)
-        .rxRestoreRandomSeed(.rSeedOrig)
-      },
-      add = TRUE
-    )
+    .rxSeedRestore <- .rxSeedSuspend()
+    on.exit(.rxSeedRestore(), add = TRUE)
   }
   UseMethod("rxSolve")
+}
+
+## seed= works through set.seed(), which an active rxSetSeed() stream would
+## ignore; suspend that stream for the solve (#1507) and return the function
+## that puts it and the caller's .Random.seed back afterwards (#1503)
+.rxSeedSuspend <- function() {
+  .rxSeedOrig <- rxGetSeed()
+  .rSeedOrig <- .rxGetRandomSeed()
+  rxSetSeed(-1L)
+  function() {
+    rxSetSeed(.rxSeedOrig)
+    .rxRestoreRandomSeed(.rSeedOrig)
+  }
 }
 
 ## The caller's .Random.seed, or NULL when it has none
@@ -3480,6 +3521,12 @@ rxSolve.default <- function(
       call. = FALSE
     )
   }
+  if (inherits(params, "rxControl") || inherits(events, "rxControl")) {
+    stop(
+      "'rxControl()' cannot be passed as 'params' or 'events'; pass control options as named arguments instead, e.g. rxSolve(object, params, events, method='dop853+ros4')", # nolint: line_length_linter.
+      call. = FALSE
+    )
+  }
   .ctl <- rxControl(..., indOwnAlloc = indOwnAlloc, events = events, params = params)
   if (length(rxModelVars(object)$indLin) > 0L) {
     if (.ctl$method != 3L) {
@@ -4395,6 +4442,13 @@ rxSolve.default <- function(
     events
   }
 
+  if (!is.null(.ctl$seed)) {
+    ## a seed carried in the control (eg spread from an rxControl() list)
+    ## takes effect here, the way rxSolve(seed=) does (#1550)
+    .rxSeedRestore <- .rxSeedSuspend()
+    on.exit(.rxSeedRestore(), add = TRUE)
+    set.seed(.ctl$seed)
+  }
   if (!is.null(.ctl$file)) {
     return(.rxSolveOom(object, params = params, events = events, inits = inits, .ctl = .ctl, .envir = envir))
   }
@@ -5566,7 +5620,7 @@ dimnames.rxSolve <- function(x) {
 "[<-.rxSolve" <- function(x, i, j, value) {
   if (missing(i) && !missing(j)) {
     if (rxIs(j, "character")) {
-      ret <- .Call(`_rxode2_rxSolveUpdate`, x, j, value)
+      ret <- .rxSolveUpdateSeed(x, j, value)
       if (is.null(ret)) {
         class(x) <- "data.frame"
         return(`[<-.data.frame`(x, , j, value = value))
@@ -5596,13 +5650,29 @@ dimnames.rxSolve <- function(x) {
     return(`[<-.data.frame`(x, i, j, value))
   }
 }
+## Re-solve an rxSolve object for an assigned `name`; it reuses the solve's
+## control, so its seed is reapplied and the draws are reproducible (#1550)
+.rxSolveUpdateSeed <- function(x, name, value) {
+  .env <- attr(attr(x, "class"), ".rxode2.env")
+  .seed <- NULL
+  if (is.environment(.env) && exists(".args", envir = .env, inherits = FALSE)) {
+    .seed <- get(".args", envir = .env, inherits = FALSE)$seed
+  }
+  if (!is.null(.seed)) {
+    .rxSeedRestore <- .rxSeedSuspend()
+    on.exit(.rxSeedRestore(), add = TRUE)
+    set.seed(.seed)
+  }
+  .Call(`_rxode2_rxSolveUpdate`, x, name, value)
+}
+
 #' @export
 `$<-.rxSolve` <- function(x, name, value) {
   if (is.null(value)) {
     class(x) <- "data.frame"
     return(`$<-.data.frame`(x, name, value))
   }
-  ret <- .Call(`_rxode2_rxSolveUpdate`, x, name, value)
+  ret <- .rxSolveUpdateSeed(x, name, value)
   if (is.null(ret)) {
     class(x) <- "data.frame"
     return(`$<-.data.frame`(x, name, value))
@@ -5621,7 +5691,7 @@ dimnames.rxSolve <- function(x) {
     }
   }
   if (missing(j) && rxIs(i, "character")) {
-    ret <- .Call(`_rxode2_rxSolveUpdate`, x, i, value)
+    ret <- .rxSolveUpdateSeed(x, i, value)
     if (!is.null(ret)) {
       return(ret)
     } else {

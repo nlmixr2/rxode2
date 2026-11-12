@@ -70,8 +70,9 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
         badSolveExit(i);
         localBadSolve = 1;
       } else {
-        if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                            xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
+        while (!localBadSolve &&
+               handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                               xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
             if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
               preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
               if (neqOde > 0) {
@@ -113,37 +114,6 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
               ind->ixds = ixds;
               ind->idx = idx;
               ind->idxExtra++;
-              if (!isSameTime(xout, ind->extraDoseNewXout)) {
-                double _xp2 = ind->extraDoseNewXout;
-                preSolve(op, ind, _xp2, xout, yp);
-                if (neqOde > 0) {
-                    double dt = (ind->autoHcur > 0.0) ? ind->autoHcur
-                  : (op->HMIN > 0.0) ? op->HMIN : 1e-4;
-                    if (dt <= 0.0) dt = 1e-4;
-                    if (fabs(xout - ind->extraDoseNewXout) / dt >= (double)op->mxstep) {
-                        dt = fabs(xout - ind->extraDoseNewXout) / (double)(op->mxstep - 10);
-                    }
-                    if (xout < ind->extraDoseNewXout) dt = -dt;
-                    sys.first.xout_ = xout;
-                    sys.first.sign_ = (dt > 0) ? 1 : -1;
-                    try {
-                        std::copy(yp, yp + neqOde, state.begin());
-                        boost::numeric::odeint::integrate_const(
-                            stepper, sys, state, ind->extraDoseNewXout, xout, dt,
-                            error_checker(ind, ind->rc, op->mxstep));
-                        if (!ind->err) std::copy(state.begin(), state.end(), yp);
-                    } catch(const std::exception& e) {
-                        if (ind->rc[0] == 0) ind->rc[0] = -2019;
-                        istate = -1;
-                    }
-                }
-
-                copyLinCmt(neq, ind, op, yp);
-                const char* err_msg = "iem failed";
-                postSolve(neq, &istate, ind->rc, &idx, yp, &err_msg, 14, false, ind, op, rx);
-                if (*(ind->rc) < 0) localBadSolve = 1;
-                ind->extraDoseNewXout = xout;
-              }
               xp = ind->extraDoseNewXout;
             }
         }
@@ -179,7 +149,6 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
         xp = xout;
       }
     }
-    ind->_newind = 2;
     if (!localBadSolve){
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
@@ -208,6 +177,7 @@ extern "C" void ind_iem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       if (_mtime_requeued) i--;
     }
+    rxNewindAfterRecord(ind, i);
     ind->solvedIdx = i;
   }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;

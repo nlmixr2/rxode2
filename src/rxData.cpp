@@ -18,6 +18,7 @@
 #define NPARS 60
 #include <RcppArmadillo.h>
 #include "nearPD.h"
+#include "invChol.h"
 #include <Rmath.h>
 #include <thread>
 #include <string>
@@ -110,7 +111,16 @@ List etTrans(List inData, const RObject &obj, bool addCmt,
              bool addlKeepsCov,
              bool addlDropSs,
              bool ssAtDoseTime,
-             Nullable<List> iCovIn = R_NilValue);
+             Nullable<List> iCovIn = R_NilValue,
+             std::string tieOrder = "evid");
+// rxControl(tieOrder=); a control list built before that slot existed gets
+// the historical evid order
+std::string rxControlTieOrder(const List &control) {
+  if (Rf_length(control) <= Rxc_tieOrder) return "evid";
+  return as<std::string>(control[Rxc_tieOrder]);
+}
+// 1 when tied records keep their translated order while solving
+int tieOrderData_global = 0;
 
 RObject et_(List input, List et__);
 
@@ -2034,6 +2044,10 @@ static void rxFreeInd(rx_solving_options_ind *ind) {
   ind->delayIni = NULL;
   ind->delayIniCap = 0;
   ind->delayIniN = 0;
+  free(ind->infDurOn);
+  ind->infDurOn = NULL;
+  ind->infDurOnCap = 0;
+  ind->infDurOnN = 0;
   // linCmtB()'s rate / per-origin histories (kept after the solve like
   // delayHist above) and its per-individual carried state are allocated in
   // rxode2lincmt, so they are freed there too.
@@ -2235,11 +2249,14 @@ static std::vector<int> rxPriorElCols(const CharacterVector &elN,
 
 // One candidate matrix: the point estimate with the drawn deviation added
 // into each entry the prior names.  The matrix is symmetric, so an off
-// diagonal is written both ways.
-static arma::mat rxPriorCand(const arma::mat &cur, const arma::mat &base,
+// diagonal is written both ways.  `"invchol"` moves the entries on the
+// inverse Cholesky scale instead.
+static arma::mat rxPriorCand(const rxInvCholJoint &ic,
+                             const arma::mat &cur, const arma::mat &base,
                              const IntegerMatrix &el,
                              const std::vector<int> &col,
                              const NumericVector &dev, int dim) {
+  if (ic.on) return rxInvCholJointCand(ic, cur, dev, col);
   arma::mat cand = cur;
   for (int r = 0; r < el.nrow(); ++r) {
     if (col[r] < 0) continue;
@@ -2265,14 +2282,15 @@ static bool rxPriorUsable(const arma::mat &m) {
 // `rxNearPD()` copies its input into `ret` when it fails, which would give
 // a distance of zero and win the comparison -- so the flag decides, not the
 // distance.
-static bool rxPriorNearest(const std::vector<NumericVector> &keep,
+static bool rxPriorNearest(const rxInvCholJoint &ic,
+                           const std::vector<NumericVector> &keep,
                            const arma::mat &cur, const arma::mat &base,
                            const IntegerMatrix &el,
                            const std::vector<int> &col, int dim,
                            arma::mat &bestMat, NumericVector &bestDev) {
   double best = -1.0;
   for (size_t k = 0; k < keep.size(); ++k) {
-    arma::mat bad = rxPriorCand(cur, base, el, col, keep[k], dim);
+    arma::mat bad = rxPriorCand(ic, cur, base, el, col, keep[k], dim);
     arma::mat np;
     if (!rxNearPD(np, 0.5 * (bad + bad.t()))) continue;
     if (!rxPriorUsable(np)) continue;
@@ -2310,7 +2328,8 @@ static void rxPriorJointMat(NumericMatrix &thetaM,
                             int nCoresRV,
                             int nStud,
                             int priorPdRetry,
-                            const char *what) {
+                            const char *what,
+                            const rxInvCholJoint &ic) {
   if (Rf_isNull(priorOmegaEl)) return;
   IntegerMatrix el = as<IntegerMatrix>(priorOmegaEl);
   if (el.nrow() == 0) return;
@@ -2333,7 +2352,7 @@ static void rxPriorJointMat(NumericMatrix &thetaM,
     // attempt 0 is the row the joint draw already made -- do not waste it
     NumericVector dev = thetaM(i, _);
     std::vector<NumericVector> keep;
-    arma::mat cand = rxPriorCand(cur, base, el, col, dev, dim);
+    arma::mat cand = rxPriorCand(ic, cur, base, el, col, dev, dim);
     for (int k = 1; !rxPriorUsable(cand) && k <= priorPdRetry; ++k) {
       keep.push_back(dev);
       if (k == priorPdRetry) break;
@@ -2343,10 +2362,10 @@ static void rxPriorJointMat(NumericMatrix &thetaM,
                                      thetaIsChol, 1, true, thetaLower,
                                      thetaUpper));
       dev = one(0, _);
-      cand = rxPriorCand(cur, base, el, col, dev, dim);
+      cand = rxPriorCand(ic, cur, base, el, col, dev, dim);
     }
     if (!keep.empty() && !rxPriorUsable(cand)) {
-      if (!rxPriorNearest(keep, cur, base, el, col, dim, cand, dev)) {
+      if (!rxPriorNearest(ic, keep, cur, base, el, col, dim, cand, dev)) {
         rxSolveFree();
         stop(_("could not draw a positive definite '%s' from the prior for study %d after %d tries"),
              what, i + 1, priorPdRetry);
@@ -2361,6 +2380,39 @@ static void rxPriorJointMat(NumericMatrix &thetaM,
   if (nFallback > 0) {
     warning(_("%d of %d studies needed the nearest positive definite '%s' after %d prior draws; those studies are not draws from the stated prior"),
             nFallback, nStud, what, priorPdRetry);
+  }
+}
+
+// `"invchol"` draws the entries on the inverse Cholesky scale, so the
+// thetaMat covariance `cov` is moved there before anything is drawn from it
+static void rxInvCholThetaMat(rxInvCholJoint &ic, arma::mat &cov,
+                              bool &haveCov,
+                              const Nullable<NumericMatrix> &thetaMat,
+                              const bool &thetaIsChol, const RObject &mat,
+                              const bool &matIsChol,
+                              const RObject &priorEl, const char *what) {
+  if (Rf_isNull(priorEl) || thetaMat.isNull() || !rxIs(mat, "matrix")) return;
+  if (matIsChol) {
+    rxSolveFree();
+    stop(_("'%sSeparation=\"invchol\"' needs '%s' as a covariance, not its Cholesky decomposition"),
+         what, what);
+  }
+  IntegerMatrix el = as<IntegerMatrix>(priorEl);
+  RObject elDn = el.attr("dimnames");
+  NumericMatrix tm(thetaMat);
+  if (el.nrow() == 0 || Rf_isNull(elDn) || !tm.hasAttribute("dimnames")) return;
+  if (!haveCov) {
+    arma::mat t = as<arma::mat>(tm);
+    cov = thetaIsChol ? arma::mat(t.t() * t) : t;
+    haveCov = true;
+  }
+  CharacterVector tn = as<CharacterVector>((as<List>(tm.attr("dimnames")))[1]);
+  std::vector<int> col =
+    rxPriorElCols(as<CharacterVector>((as<List>(elDn))[0]), tn);
+  if (!rxInvCholJointSetup(ic, cov, as<arma::mat>(mat), el, col)) {
+    rxSolveFree();
+    stop(_("'%sSeparation=\"invchol\"' needs a positive definite '%s'"),
+         what, what);
   }
 }
 
@@ -2631,9 +2683,32 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
   bool simTheta = false;
   IntegerVector thetaPar(parN.size());
   int i, j, k;
+  rxInvCholJoint omegaIc, sigmaIc;
+  Nullable<NumericMatrix> thetaMatUse = thetaMat;
+  // `Nullable` does not protect what it holds, so this does
+  NumericMatrix thetaMatHold;
+  bool thetaIsCholUse = thetaIsChol;
+  if (simVar) {
+    arma::mat cov;
+    bool haveCov = false;
+    if (omegaSeparation == "invchol") {
+      rxInvCholThetaMat(omegaIc, cov, haveCov, thetaMat, thetaIsChol, omega,
+                        omegaIsChol, priorOmegaEl, "omega");
+    }
+    if (sigmaSeparation == "invchol") {
+      rxInvCholThetaMat(sigmaIc, cov, haveCov, thetaMat, thetaIsChol, sigma,
+                        sigmaIsChol, priorSigmaEl, "sigma");
+    }
+    if (omegaIc.on || sigmaIc.on) {
+      thetaMatHold = wrap(cov);
+      thetaMatHold.attr("dimnames") = NumericMatrix(thetaMat).attr("dimnames");
+      thetaMatUse = Nullable<NumericMatrix>(thetaMatHold);
+      thetaIsCholUse = false;
+    }
+  }
   rxSimTheta(thetaN, parN, thetaPar, thetaM, simTheta,
-             thetaMat, thetaLower, thetaUpper, thetaDf,
-             thetaIsChol, nStud, nCoresRV, simVariability);
+             thetaMatUse, thetaLower, thetaUpper, thetaDf,
+             thetaIsCholUse, nStud, nCoresRV, simVariability);
   bool simOmega = false;
   bool omegaSep=false;
   NumericMatrix omegaM;
@@ -2643,14 +2718,15 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
 
   if (nSub > 1 && rxIsNull(omega)){
     // rxSolveFree();
-    warning(_("multi-subject simulation without without 'omega'"));
+    warning(_("multi-subject simulation without 'omega'"));
   }
   // "tnpri" draws every entry from the `thetaMat`, so an entry it carries
   // no variance for stays at its estimate rather than coming from the
   // `dfSub` inverse Wishart (#1388).  Only when the joint draw will run:
   // without `priorOmegaEl` (a direct `rxSimThetaOmega()` call) it would
   // leave nothing to seed the per-study list.
-  double dfSubSim = (omegaSeparation == "tnpri" && !Rf_isNull(priorOmegaEl)) ? 0.0 : dfSub;
+  double dfSubSim = ((omegaSeparation == "tnpri" || omegaSeparation == "invchol") &&
+                     !Rf_isNull(priorOmegaEl)) ? 0.0 : dfSub;
   rxSimOmega(simOmega, omegaSep, omegaM, omegaN, omegaMC,
              omegaList, thetaN, thetaM, "omega", omega, omegaDf,
              omegaLower, omegaUpper, omegaIsChol,
@@ -2668,8 +2744,8 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
   // both it and the drawn `thetaM`.
   if (simOmega && simVar) {
     rxPriorJointMat(thetaM, thetaN, omegaList, omegaM, omegaN, priorOmegaEl,
-                    thetaMat, thetaDf, thetaIsChol, thetaLower, thetaUpper,
-                    nCoresRV, nStud, priorPdRetry, "omega");
+                    thetaMatUse, thetaDf, thetaIsCholUse, thetaLower, thetaUpper,
+                    nCoresRV, nStud, priorPdRetry, "omega", omegaIc);
   }
   arma::mat tmp = as<arma::mat>(omegaM);
   if (tmp.is_zero()) {
@@ -2681,7 +2757,8 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
   CharacterVector sigmaN;
   NumericMatrix sigmaMC;
   List sigmaList;
-  double dfObsSim = (sigmaSeparation == "tnpri" && !Rf_isNull(priorSigmaEl)) ? 0.0 : dfObs;
+  double dfObsSim = ((sigmaSeparation == "tnpri" || sigmaSeparation == "invchol") &&
+                     !Rf_isNull(priorSigmaEl)) ? 0.0 : dfObs;
   rxSimOmega(simSigma, sigmaSep, sigmaM, sigmaN, sigmaMC,
              sigmaList, thetaN, thetaM, "sigma", sigma, sigmaDf,
              sigmaLower, sigmaUpper, sigmaIsChol,
@@ -2692,8 +2769,8 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
   bool sigmaByStudy = (dfObs > 0 || !Rf_isNull(priorSigmaEl));
   if (simSigma && simVar) {
     rxPriorJointMat(thetaM, thetaN, sigmaList, sigmaM, sigmaN, priorSigmaEl,
-                    thetaMat, thetaDf, thetaIsChol, thetaLower, thetaUpper,
-                    nCoresRV, nStud, priorPdRetry, "sigma");
+                    thetaMatUse, thetaDf, thetaIsCholUse, thetaLower, thetaUpper,
+                    nCoresRV, nStud, priorPdRetry, "sigma", sigmaIc);
   }
 
   tmp = as<arma::mat>(sigmaM);
@@ -3585,7 +3662,8 @@ static inline void rxSolve_ev1Update(const RObject &obj,
                                                               rxControl[Rxc_addlKeepsCov],
                                                               rxControl[Rxc_addlDropSs],
                                                               rxControl[Rxc_ssAtDoseTime],
-                                                              R_NilValue);
+                                                              R_NilValue,
+                                                              rxControlTieOrder(rxControl));
       rxSolveDat->labelID=true;
       CharacterVector tmpC = ev1a.attr("class");
       List tmpL = tmpC.attr(".rxode2.lst");
@@ -3658,7 +3736,8 @@ static inline void rxSolve_ev1Update(const RObject &obj,
                      false, false, false, R_NilValue,
                      rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
                      rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
-                     R_NilValue);
+                     R_NilValue,
+                     rxControlTieOrder(rxControl));
     }
   }
   // No class is "rxEtTrans" (a translated table is "rxEtTran"), so every data
@@ -3671,7 +3750,8 @@ static inline void rxSolve_ev1Update(const RObject &obj,
                          false, false, true, R_NilValue,
                          rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
                          rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
-                         R_NilValue);
+                         R_NilValue,
+                         rxControlTieOrder(rxControl));
     CharacterVector tmpCk = ev1k.attr("class");
     List tmpLk = tmpCk.attr(".rxode2.lst");
     if (asInt(tmpLk[RxTrans_nobs], "nobs") == 0) {
@@ -3746,13 +3826,15 @@ static inline void rxSolve_ev1Update(const RObject &obj,
                      false, false, false, R_NilValue,
                      rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
                      rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
-                     rxControl[Rxc_iCov]);
+                     rxControl[Rxc_iCov],
+                     rxControlTieOrder(rxControl));
     } else {
       ev1 = etTransR(ev1, obj, rxSolveDat->hasCmt,
                      false, false, true, R_NilValue,
                      rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
                      rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
-                     rxControl[Rxc_iCov]);
+                     rxControl[Rxc_iCov],
+                     rxControlTieOrder(rxControl));
     }
     rxSolveDat->labelID=true;
     CharacterVector tmpC = ev1.attr("class");
@@ -4520,6 +4602,58 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           }
           covPos[ncov] = i;
           ncov++;
+        }
+      }
+    }
+    // linCmt() advances each interval with the covariates at its middle, so it
+    // cannot follow a linear ramp; refuse "linear" for a covariate that varies
+    // within a subject and feeds the linCmt() parameters, rather than silently
+    // giving the midpoint solution.  The dependencies (.rxLinCmtDepends) are
+    // looked up only once a varying covariate is found.
+    if (op->numLin > 0) {
+      bool haveDeps = false;
+      RObject linDeps = R_NilValue;
+      for (int ic = 0; ic < ncov; ic++) {
+        if (ic == op->cmtCov) continue;
+        int curInterp = _globals.gpar_covInterp[ic];
+        if (!(curInterp == 0 || (curInterp == -1 && op->is_locf == 0))) continue;
+        NumericVector curCov = as<NumericVector>(dataf[covPos[ic]]);
+        int lastId = NA_INTEGER;
+        double firstVal = NA_REAL;
+        for (int ir = 0; ir < curCov.size(); ir++) {
+          if (id[ir] != lastId) {
+            lastId = id[ir];
+            firstVal = NA_REAL;
+          }
+          double curVal = curCov[ir];
+          if (ISNAN(curVal)) continue;
+          if (ISNAN(firstVal)) {
+            firstVal = curVal;
+          } else if (curVal != firstVal) {
+            std::string covName = as<std::string>(dfNames[covPos[ic]]);
+            if (!haveDeps) {
+              Environment rxode2ns = Environment::namespace_env("rxode2");
+              Function linCmtDepends = rxode2ns[".rxLinCmtDepends"];
+              linDeps = linCmtDepends(rxSolveDat->mv);
+              haveDeps = true;
+            }
+            if (!Rf_isNull(linDeps)) {
+              CharacterVector deps = as<CharacterVector>(linDeps);
+              // the parameter name, which may differ in case from the column
+              std::string parName = as<std::string>(pars[_globals.gpar_cov[ic] - 1]);
+              bool feedsLin = false;
+              for (int id0 = 0; id0 < deps.size(); id0++) {
+                if (as<std::string>(deps[id0]) == parName) {
+                  feedsLin = true;
+                  break;
+                }
+              }
+              if (!feedsLin) break;
+            }
+            rxSolveFree();
+            stop(_("'linear' interpolation of time-varying covariate '%s' on a linCmt() parameter is not supported; use covsInterpolation = \"locf\", \"nocb\" or \"midpoint\" (or declare that interpolation for '%s' in the model), or write the model as ODEs"),
+                 covName.c_str(), covName.c_str());
+          }
         }
       }
     }
@@ -6126,6 +6260,7 @@ static inline void iniRx(rx_solve* rx) {
   rx->safeLog = 1;
   rx->useStdPow = 0;
   rx->ss2cancelAllPending = false;
+  rx->addlKeepsCov = 0;
   rx->sumType = 1; // pairwise
   rx->prodType = 1; // long double
   rx->hasFactors = 0;
@@ -6601,6 +6736,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       asInt(rxControl[Rxc_linCmtSensPhi], "linCmtSensPhi") : 2;
     rx->nonmem = (Rf_length(rxControl) > Rxc_nonmem) ?
       (int)asBool(rxControl[Rxc_nonmem], "nonmem") : 0;
+    tieOrderData_global = (rxControlTieOrder(rxControl) == "data");
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");
@@ -6664,6 +6800,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->safeLog = asInt(rxControl[Rxc_safeLog], "safeLog");
     rx->useStdPow = asInt(rxControl[Rxc_useStdPow], "useStdPow");
     rx->ss2cancelAllPending = asInt(rxControl[Rxc_ss2cancelAllPending], "ss2cancelAllPending");
+    rx->addlKeepsCov = (int)asBool(rxControl[Rxc_addlKeepsCov], "addlKeepsCov");
     op->ssSolved = asInt(rxControl[Rxc_ssSolved], "ssSolved");
     op->indOwnAlloc = asInt(rxControl[Rxc_indOwnAlloc], "indOwnAlloc");
     if (op->indOwnAlloc == -1) {

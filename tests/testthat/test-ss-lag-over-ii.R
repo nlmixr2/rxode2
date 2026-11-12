@@ -36,7 +36,7 @@ rxTest({
     for (.lag in c(2, 12, 14, 24, 26, 30)) {
       for (.f in c(1, 0.5)) {
         .ref <- .explicit(.explicitEv, .lag, .f)
-        for (.meth in c("liblsoda", "lsoda", "cvode", "rk4")) {
+        for (.meth in c("liblsoda", "lsoda", "cvode", "rk4", "dop853")) {
           expect_equal(
             .ssLagSolve(et(amt = 100, ss = 1, ii = .ii) |> et(.tobs), .lag, .f, .meth),
             .ref,
