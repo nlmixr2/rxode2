@@ -24,7 +24,9 @@ rxode2::setRxThreads(1L)
   if (.hasCache) utils::getFromNamespace("rxSymEngineCacheReset", "rxode2")()
 }
 .stats <- function() {
-  if (!.hasCache) return(NULL)
+  if (!.hasCache) {
+    return(NULL)
+  }
   .Call(utils::getFromNamespace("_rxode2_seStatsR", "rxode2"), TRUE)
 }
 
@@ -38,8 +40,13 @@ rxode2::setRxThreads(1L)
 cat("== rxFromSE() over the #1682 corpora ==\n")
 cat("rxode2", .ver, "from", .lib, "\n")
 cat(sprintf(
-  "%-26s %6s %8s %10s %10s %8s\n", "corpus", "lines", "MB",
-  "cold (s)", "warm (s)", "C share"
+  "%-26s %6s %8s %10s %10s %8s\n",
+  "corpus",
+  "lines",
+  "MB",
+  "cold (s)",
+  "warm (s)",
+  "C share"
 ))
 for (.f in .files) {
   .x <- readRDS(.f)
@@ -51,8 +58,12 @@ for (.f in .files) {
   .warm <- system.time(vapply(.x, .toRx, character(1), USE.NAMES = FALSE))[["elapsed"]]
   .share <- if (is.null(.st)) NA_real_ else .st$fromSE[1] / sum(.st$fromSE)
   cat(sprintf(
-    "%-26s %6d %8.2f %10.2f %10.2f %8s\n", basename(.f), length(.x),
-    sum(nchar(.x)) / 1e6, .cold, .warm,
+    "%-26s %6d %8.2f %10.2f %10.2f %8s\n",
+    basename(.f),
+    length(.x),
+    sum(nchar(.x)) / 1e6,
+    .cold,
+    .warm,
     if (is.na(.share)) "-" else sprintf("%.0f%%", 100 * .share)
   ))
   saveRDS(.out, file.path(tempdir(), paste0("out-", basename(.f))))
@@ -66,8 +77,11 @@ if (.fit) {
   for (.P in 1:3) {
     .x <- .fastCase(.P, 3L, "log")
     .ctl <- foceiControl(
-      print = 0, maxOuterIterations = 0, covMethod = "",
-      calcTables = FALSE, fast = TRUE,
+      print = 0,
+      maxOuterIterations = 0,
+      covMethod = "",
+      calcTables = FALSE,
+      fast = TRUE,
       rxControl = rxode2::rxControl(cores = 1L)
     )
     .reset()
