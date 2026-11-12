@@ -106,11 +106,12 @@ static inline int handleObsStatement(nodeInfo ni, char *name, int *i, int nch,
     sb.o = 0; sbDt.o = 0; sbt.o = 0;
     tb.evid_ = 1;
     aType(TEVID);
-    assertNoEmptyFirstArg(fPn, "obs");
+    if (assertNoEmptyFirstArg(fPn, "obs")) return 1;
     int ii = functionNodeNargs(fPn);
     if (ii == 0) {
       updateSyntaxCol();
       trans_syntax_error_report_fn(_("'obs' needs at least one argument"));
+      return 1;
     }
     D_ParseNode *xpn0 = d_get_child(fPn, 2);
     char *v0 = (char*)rc_dup_str(xpn0->start_loc.s, xpn0->end);
