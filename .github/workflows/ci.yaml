@@ -89,7 +89,7 @@ jobs:
               if (p.pull_request.draft) {
                 core.notice('draft pull request: CI skipped (comment /ci to run it)');
               } else {
-                tier = 'full'; // TEMPORARY: exercise the full tier on #1715, revert before merge
+                tier = 'fast';
                 pr = p.pull_request.number;
               }
             } else if (ev === 'push') {
