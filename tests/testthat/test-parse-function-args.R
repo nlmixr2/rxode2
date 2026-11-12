@@ -116,6 +116,8 @@ rxTest({
     expect_error(rxode2parse("y=tad(a, b);"), "syntax error")
     expect_error(rxode2parse("obs(, 1);"), "syntax error")
     expect_error(rxode2parse("y=max(a, );"), "syntax error")
+    expect_error(rxode2parse("y=max( , b);"), "syntax error")
+    expect_error(rxode2parse("y=max( );"), "syntax error")
     expect_error(rxode2parse("y=max(a, , b);"), "syntax error")
     expect_equal(rxNorm("d/dt(x)=-x;y=tlast(x);"), "d/dt(x)=-x;\ny=tlast(x);\n")
   })

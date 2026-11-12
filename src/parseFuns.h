@@ -115,10 +115,10 @@ static inline int handleObsStatement(nodeInfo ni, char *name, int *i, int nch,
     }
     D_ParseNode *xpn0 = d_get_child(fPn, 2);
     char *v0 = (char*)rc_dup_str(xpn0->start_loc.s, xpn0->end);
-    rxPushDoseNoteArg("obs", "value", v0);
     sAppend(&sb, "_obs(_cSub, t, %d, (double) %s", ii, v0);
     sAppend(&sbDt, "_obs(_cSub, t, %d, (double) %s", ii, v0);
     sAppend(&sbt, "obs(%s", v0);
+    rxPushDoseNoteArg("obs", "value", v0);
     D_ParseNode *rest = d_get_child(fPn, 3);
     for (int j = 0; j < ii - 1; ++j) {
       char *cur = (char*)rc_dup_str(d_get_child(rest, j)->start_loc.s,
