@@ -1215,6 +1215,26 @@ static inline void copyLinCmt(int *neq,
   }
 }
 
+// Applies stateTrimU/stateTrimL; false when a state is still not finite after
+// the trims (liblsoda and indLin carry a non-finite right-hand side on into the
+// state without failing the step).
+static inline bool trimStatesFinite(double *yp, rx_solving_options_ind *ind,
+                                    rx_solving_options *op, rx_solve *rx) {
+  int n = rxEffNeq(ind, op);
+  if (R_FINITE(rx->stateTrimU)) {
+    double top = fabs(rx->stateTrimU);
+    for (int j = n; j--;) yp[j] = min(top, yp[j]);
+  }
+  if (R_FINITE(rx->stateTrimL)) {
+    double bottom = rx->stateTrimL;
+    for (int j = n; j--;) yp[j] = max(bottom, yp[j]);
+  }
+  for (int k = n; k--;) {
+    if (!R_FINITE(yp[k])) return false;
+  }
+  return true;
+}
+
 // The bool is unused: a failed subject's reasons are pushed after the solve,
 // by par_solve() and ind_solve().
 static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, const char** err_msg, int nerr, bool,
@@ -1239,19 +1259,10 @@ static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, c
     *rc = -2019;
     // Bad Solve => NA
     badSolveExit(*i);
-  } else {
-    if (R_FINITE(rx->stateTrimU)){
-      double top=fabs(rx->stateTrimU);
-      for (int j = rxEffNeq(ind, op); j--;) {
-        yp[j]= min(top,yp[j]);
-      }
-    }
-    if (R_FINITE(rx->stateTrimL)){
-      double bottom=rx->stateTrimL;
-      for (int j = rxEffNeq(ind, op); j--;) {
-        yp[j]= max(bottom,yp[j]);
-      }
-    }
+  } else if (!trimStatesFinite(yp, ind, op, rx)) {
+    rxSolverFail(ind);
+    *rc = -2019;
+    badSolveExit(*i);
   }
   ind->slvr_counter[0]++;
 }

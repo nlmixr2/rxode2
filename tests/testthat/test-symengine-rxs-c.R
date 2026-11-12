@@ -5,17 +5,21 @@ rxTest({
 
   .envState <- function(.s) {
     .nm <- sort(ls(.s, all.names = TRUE))
-    vapply(.nm, function(.n) {
-      .v <- eval(as.name(.n), envir = .s)
-      .c <- class(.v)
-      if (is.function(.v)) {
-        return("<function>")
-      }
-      if (inherits(.v, "Basic")) {
-        return(paste0("Basic:", as.character(.v)))
-      }
-      paste(c(.c, utils::capture.output(dput(.v))), collapse = " ")
-    }, character(1))
+    vapply(
+      .nm,
+      function(.n) {
+        .v <- eval(as.name(.n), envir = .s)
+        .c <- class(.v)
+        if (is.function(.v)) {
+          return("<function>")
+        }
+        if (inherits(.v, "Basic")) {
+          return(paste0("Basic:", as.character(.v)))
+        }
+        paste(c(.c, utils::capture.output(dput(.v))), collapse = " ")
+      },
+      character(1)
+    )
   }
 
   .both <- function(model, ...) {

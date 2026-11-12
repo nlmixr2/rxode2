@@ -1414,13 +1414,23 @@
   ## what decides whether .rxFromSE() constant-folds name(<numbers>)
   .base <- ls(baseenv(), all.names = TRUE)
   .base <- .base[grepl("^[A-Za-z._][A-Za-z0-9._]*$", .base)]
-  .base <- .base[vapply(.base, function(.n) {
-    is.function(get(.n, envir = baseenv()))
-  }, logical(1), USE.NAMES = FALSE)]
+  .base <- .base[vapply(
+    .base,
+    function(.n) {
+      is.function(get(.n, envir = baseenv()))
+    },
+    logical(1),
+    USE.NAMES = FALSE
+  )]
   .cached <- list(
-    name = .name, which = as.integer(.which), template = .tmpl, kind = .kind,
-    rxdName = .dNames, rxdLen = .dLen,
-    eqName = names(.eq), eqN = suppressWarnings(as.integer(.eq)),
+    name = .name,
+    which = as.integer(.which),
+    template = .tmpl,
+    kind = .kind,
+    rxdName = .dNames,
+    rxdLen = .dLen,
+    eqName = names(.eq),
+    eqN = suppressWarnings(as.integer(.eq)),
     baseFns = .base,
     ## functions whose translation cannot depend on the caller's environment
     ## (.rxSEcallerFree): R user functions are looked up there instead
