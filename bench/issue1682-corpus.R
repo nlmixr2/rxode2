@@ -30,15 +30,15 @@ source("bench/issue1682-model.R")
 }
 ## rxFromSE() is non-standard-evaluating; the tracer forces `x` the same way
 ## nlmixr2est's .toRx() already does, so nothing about the call changes
-suppressMessages(trace("rxFromSE",
-  tracer = bquote(.(.record)(x)),
-  where = asNamespace("rxode2"), print = FALSE
-))
+suppressMessages(trace("rxFromSE", tracer = bquote(.(.record)(x)), where = asNamespace("rxode2"), print = FALSE))
 
 .x <- .fastCase(.P, .K, .form)
 .ctl <- foceiControl(
-  print = 0, maxOuterIterations = 0, covMethod = "",
-  calcTables = FALSE, fast = TRUE,
+  print = 0,
+  maxOuterIterations = 0,
+  covMethod = "",
+  calcTables = FALSE,
+  fast = TRUE,
   rxControl = rxode2::rxControl(cores = 1L)
 )
 .t <- system.time(suppressMessages(nlmixr2(.x$model, .x$data, "focei", .ctl)))[["elapsed"]]
@@ -48,5 +48,11 @@ untrace("rxFromSE", where = asNamespace("rxode2"))
 saveRDS(.corpus$x, .file, compress = "xz")
 cat(sprintf(
   "P=%d K=%d %s: %d rxFromSE() calls, %.1f MB of input, fit setup %.1f s -> %s\n",
-  .P, .K, .form, length(.corpus$x), sum(nchar(.corpus$x)) / 1e6, .t, .file
+  .P,
+  .K,
+  .form,
+  length(.corpus$x),
+  sum(nchar(.corpus$x)) / 1e6,
+  .t,
+  .file
 ))

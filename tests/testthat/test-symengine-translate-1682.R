@@ -8,9 +8,7 @@ rxTest({
     on.exit(.rxSEstate$fromNumDer <- .old)
     .rxSEstate$fromNumDer <- numDer
     .x <- .rxSubsTupleExpand(.rxUnXi(s))
-    tryCatch(.rxFromSE(eval(parse(text = paste0("quote({", .x, "})")))),
-      error = function(e) NA_character_
-    )
+    tryCatch(.rxFromSE(eval(parse(text = paste0("quote({", .x, "})")))), error = function(e) NA_character_)
   }
 
   .cmp <- function(inputs, numDer = 1L, minAccept = 1) {
@@ -20,9 +18,13 @@ rxTest({
     .acc <- !is.na(.c)
     # R for Windows prints numbers with trio, so there C leaves 15-digit
     # numbers to the R walker (src/seNum.h)
-    if (.Platform$OS.type != "windows") expect_gte(mean(.acc), minAccept)
+    if (.Platform$OS.type != "windows") {
+      expect_gte(mean(.acc), minAccept)
+    }
     .bad <- which(.acc & (is.na(.r) | .c != .r))
-    expect_equal(length(.bad), 0L,
+    expect_equal(
+      length(.bad),
+      0L,
       info = paste0(inputs[.bad], "\n  C: ", .c[.bad], "\n  R: ", .r[.bad], collapse = "\n")
     )
   }
@@ -31,13 +33,36 @@ rxTest({
     .cmp(c(
       "log(1e-06 + rxGt(-T1 + t, 0.0)*(-T1 + t))",
       "-log(1e-06 + a*b) + log(exp(THETA_4_))",
-      "log(1.0 + exp(a))", "log(1 + exp(a^2))", "log(1 - a)", "log(a + 1 + b)",
-      "log(2 + a)", "lgamma(1 + a)", "loggamma(1 + a)", "lgamma(a + 1)",
-      "sin(pi*a)", "cos(a*pi/2)", "tan(pi/a)", "sin(2*(t - a)/p)", "sin(pi)",
-      "a*log(4)", "a/(2^-2)", "a*(pi/3)", "a/gamma(3)", "exp(1e-06)*a",
-      "a*100000", "a + 0.0001", "a*1234567890123456789", "log(1e-04 + a)",
-      "exp(a)/log(3)", "a/(3*pi)", "1/exp(1000)", "a/exp(1000)", "a*exp(-1000)",
-      "Subs(x, x, x)", "Subs(exp(x), x, x + 1)", "1.0/(1.0 + exp(exp(THETA_3_)*(-log(1e-06 + a) + log(exp(THETA_4_)))))"
+      "log(1.0 + exp(a))",
+      "log(1 + exp(a^2))",
+      "log(1 - a)",
+      "log(a + 1 + b)",
+      "log(2 + a)",
+      "lgamma(1 + a)",
+      "loggamma(1 + a)",
+      "lgamma(a + 1)",
+      "sin(pi*a)",
+      "cos(a*pi/2)",
+      "tan(pi/a)",
+      "sin(2*(t - a)/p)",
+      "sin(pi)",
+      "a*log(4)",
+      "a/(2^-2)",
+      "a*(pi/3)",
+      "a/gamma(3)",
+      "exp(1e-06)*a",
+      "a*100000",
+      "a + 0.0001",
+      "a*1234567890123456789",
+      "log(1e-04 + a)",
+      "exp(a)/log(3)",
+      "a/(3*pi)",
+      "1/exp(1000)",
+      "a/exp(1000)",
+      "a*exp(-1000)",
+      "Subs(x, x, x)",
+      "Subs(exp(x), x, x + 1)",
+      "1.0/(1.0 + exp(exp(THETA_3_)*(-log(1e-06 + a) + log(exp(THETA_4_)))))"
     ))
   })
 
