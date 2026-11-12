@@ -2151,10 +2151,27 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     // An observation with no DV but a dose amount is read as that dose; its
     // MDV, if any, describes the observation it is not.  Decided here, as
     // the rate and duration below are read as a dose's only on a dose record;
-    // evidRow is the record's EVID as read, 1 for such a record.
-    bool obsAmtDose = hasEvid && inEvid[i] == 0 && dvCol != -1 && ISNA(inDv[i]) &&
-      !ISNA(camt) && camt != 0.0 && !(mdvCol != -1 && inMdv[i] == 1);
-    int evidRow = evidCol == -1 ? NA_INTEGER : (obsAmtDose ? 1 : inEvid[i]);
+    // evidRow is the record's EVID as read, 1 for such a record.  A NaN DV
+    // or AMT counts as missing; a negative CMT turns a compartment off.
+    bool obsAmtDose = hasEvid && inEvid[i] == 0 && dvCol != -1 && ISNAN(inDv[i]) &&
+      !ISNAN(camt) && camt != 0.0 && !(mdvCol != -1 && inMdv[i] == 1) &&
+      !(cmtCol != -1 && !IntegerVector::is_na(inCmt[i]) && inCmt[i] < 0);
+    // A missing MDV standing in for the EVID is a dose (EVID 1, so its rate
+    // or duration is read), unless it has a zero amount and no rate or
+    // duration: then there is nothing to dose and it is EVID 2
+    bool mdvNaDose = false;
+    if (evidIsMDV && IntegerVector::is_na(inEvid[i])) {
+      if (amtCol != -1 && camt == 0.0 &&
+          !(rateCol != -1 && etRateDurIsDose(inRate[i])) &&
+          !(durCol != -1 && etRateDurIsDose(inDur[i]))) {
+        mdvNaNoDoseRows.push_back(i + 1);
+      } else {
+        mdvNaDose = true;
+      }
+    }
+    int evidRow = evidCol == -1 ? NA_INTEGER :
+      ((obsAmtDose || mdvNaDose) ? 1 :
+       (evidIsMDV && IntegerVector::is_na(inEvid[i]) ? 2 : inEvid[i]));
     if (obsAmtDose) obsAmtDoseRows.push_back(i + 1);
 
     // SS flag
@@ -2333,22 +2350,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     } else {
       cevid = evidRow;
     }
-    if (evidIsMDV && cevid == 1 && camt == 0) {
+    if (evidIsMDV && cevid == 1 && camt == 0 && !mdvNaDose) {
       cevid=2;
     }
     if (IntegerVector::is_na(cevid)) {
       if (evidIsMDV) {
-        // a missing MDV is read as a dose; with a zero amount and no rate or
-        // duration there is nothing to dose, so it is a record with no
-        // observation
-        if (amtCol != -1 && camt == 0.0 &&
-            !(rateCol != -1 && etRateDurIsDose(inRate[i])) &&
-            !(durCol != -1 && etRateDurIsDose(inDur[i]))) {
-          cevid = 2;
-          mdvNaNoDoseRows.push_back(i + 1);
-        } else {
-          cevid=1;
-        }
+        cevid=1;
       } else {
         // a missing EVID is an observation, which would silently drop the
         // record's dose information, read as the no-EVID-column path reads it

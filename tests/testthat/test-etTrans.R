@@ -2717,6 +2717,79 @@ cp = central
     expect_identical(.e$EVID[.e$TIME == 2], 201L)
   })
 
+  test_that("a missing MDV dose keeps its rate or duration, as MDV 1 or no EVID column does", {
+    mod <- .etWarnModel()
+    .base <- data.frame(ID = 1, TIME = c(0, 1), MDV = c(NA, 0), AMT = c(100, 0), DV = c(NA, 1), CMT = 2)
+    for (.col in c("RATE", "DUR")) {
+      .d <- .base
+      .d[[.col]] <- c(if (.col == "RATE") 25 else 2, 0)
+      .e <- etTrans(.d, mod)
+      .d1 <- .d
+      .d1$MDV[1] <- 1
+      .ref <- etTrans(.d1, mod)
+      expect_identical(.e$EVID, .ref$EVID, label = .col)
+      expect_identical(.e$AMT, .ref$AMT, label = .col)
+      expect_true(any(.e$EVID == if (.col == "RATE") 10201L else 20201L), label = .col)
+    }
+    # a zero amount with a steady-state constant infusion rate
+    .d <- data.frame(
+      ID = 1,
+      TIME = c(0, 1),
+      MDV = c(NA, 0),
+      AMT = 0,
+      RATE = c(10, 0),
+      SS = c(1, 0),
+      II = 0,
+      DV = c(NA, 1),
+      CMT = 2
+    )
+    .ref <- .d[names(.d) != "MDV"]
+    expect_identical(capture_warnings(.e <- etTrans(.d, mod)), character(0))
+    expect_identical(.e$EVID, etTrans(.ref, mod)$EVID)
+    expect_identical(.e$EVID[1], 10240L)
+  })
+
+  test_that("an EVID 0 dose with an MDV column, NaN values or a negative CMT", {
+    mod <- .etWarnModel()
+    # an MDV of 0 or NA beside the EVID 0 does not stop the dose
+    .d <- data.frame(
+      ID = 1,
+      TIME = 0:3,
+      EVID = c(1, 0, 0, 0),
+      MDV = c(1, 0, 0, 0),
+      AMT = c(100, 0, 50, 0),
+      DV = c(NA, 1, NA, 2),
+      CMT = 2
+    )
+    for (.mdv in list(0L, NA_integer_)) {
+      .d$MDV[3] <- .mdv
+      expect_identical(capture_warnings(.e <- etTrans(.d, mod)), .etObsDoseMsg("3"))
+      expect_identical(.e$EVID[.e$TIME == 2], 201L)
+    }
+    # a NaN DV is missing; a NaN AMT is not a dose
+    .d <- data.frame(ID = 1, TIME = 0:2, EVID = c(1, 0, 0), AMT = c(100, 50, 0), DV = c(NA, NaN, 2), CMT = 2)
+    expect_identical(capture_warnings(.e <- etTrans(.d, mod)), .etObsDoseMsg("2"))
+    expect_identical(.e$EVID[.e$TIME == 1], 201L)
+    .d$AMT[2] <- NaN
+    .d$DV[2] <- NA
+    expect_identical(capture_warnings(.e <- etTrans(.d, mod)), character(0))
+    expect_identical(.e$EVID[.e$TIME == 1], 0L)
+    # a negative CMT turns the compartment off, with or without a rate
+    .d <- data.frame(
+      ID = 1,
+      TIME = 0:3,
+      EVID = c(1, 0, 1, 0),
+      AMT = c(100, 50, 100, 0),
+      DV = c(NA, NA, NA, 2),
+      CMT = c(2, -2, 2, 2)
+    )
+    for (.rate in c(0, 25)) {
+      .d$RATE <- c(0, .rate, 0, 0)
+      expect_identical(capture_warnings(.e <- etTrans(.d, mod)), character(0))
+      expect_identical(.e$EVID, c(201L, 230L, 201L, 0L))
+    }
+  })
+
   test_that("both readings warn, each naming its rows, and clean data warns of neither", {
     mod <- .etWarnModel()
     .d <- data.frame(

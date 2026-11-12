@@ -195,7 +195,9 @@
     dose"); it was kept as an observation with no `dv`, its dose dropped;
   - with no `evid` column, a record whose `mdv` is missing and whose `amt` is
     0 is `evid` 2, a record with no observation ("a missing 'mdv' with a zero
-    'amt' is read as 'evid' 2, not a dose"); it was a dose of 0.
+    'amt' is read as 'evid' 2, not a dose"); it was a dose of 0.  A missing
+    `mdv` that is a dose now keeps its `rate` or `dur`, as `mdv` 1 does; it
+    was a bolus.
 
 - `etTrans()` now stops on a record whose `evid` is missing but that carries
   dose information: a nonzero `amt`, or a `rate` or `dur` that is positive or
