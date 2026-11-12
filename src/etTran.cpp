@@ -2156,22 +2156,27 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     bool obsAmtDose = hasEvid && inEvid[i] == 0 && dvCol != -1 && ISNAN(inDv[i]) &&
       !ISNAN(camt) && camt != 0.0 && !(mdvCol != -1 && inMdv[i] == 1) &&
       !(cmtCol != -1 && !IntegerVector::is_na(inCmt[i]) && inCmt[i] < 0);
-    // A missing MDV standing in for the EVID is a dose (EVID 1, so its rate
-    // or duration is read), unless it has a zero amount and no rate or
-    // duration: then there is nothing to dose and it is EVID 2
-    bool mdvNaDose = false;
-    if (evidIsMDV && IntegerVector::is_na(inEvid[i])) {
-      if (amtCol != -1 && camt == 0.0 &&
-          !(rateCol != -1 && etRateDurIsDose(inRate[i])) &&
+    // A missing MDV standing in for the EVID is a dose, unless it has a zero
+    // amount and no rate or duration: then there is nothing to dose and it
+    // is EVID 2.  It is read as EVID 1 (so its rate or duration is read) when
+    // it has a nonzero amount or is a steady-state constant infusion; other
+    // doses keep the missing-EVID reading below.  A negative CMT is left alone.
+    bool mdvNaDose = false, mdvNaNoDose = false;
+    if (evidIsMDV && IntegerVector::is_na(inEvid[i]) &&
+        !(cmtCol != -1 && !IntegerVector::is_na(inCmt[i]) && inCmt[i] < 0)) {
+      bool rateDose = rateCol != -1 && etRateDurIsDose(inRate[i]);
+      if (amtCol != -1 && camt == 0.0 && !rateDose &&
           !(durCol != -1 && etRateDurIsDose(inDur[i]))) {
+        mdvNaNoDose = true;
         mdvNaNoDoseRows.push_back(i + 1);
-      } else {
+      } else if ((amtCol != -1 && !ISNAN(camt) && camt != 0.0) ||
+                 (camt == 0.0 && rateDose && ssCol != -1 && inSs[i] == 1 && cii == 0)) {
         mdvNaDose = true;
       }
     }
     int evidRow = evidCol == -1 ? NA_INTEGER :
       ((obsAmtDose || mdvNaDose) ? 1 :
-       (evidIsMDV && IntegerVector::is_na(inEvid[i]) ? 2 : inEvid[i]));
+       (mdvNaNoDose ? 2 : inEvid[i]));
     if (obsAmtDose) obsAmtDoseRows.push_back(i + 1);
 
     // SS flag

@@ -2723,11 +2723,12 @@ cp = central
     for (.col in c("RATE", "DUR")) {
       .d <- .base
       .d[[.col]] <- c(if (.col == "RATE") 25 else 2, 0)
-      .e <- etTrans(.d, mod)
+      expect_identical(capture_warnings(.e <- etTrans(.d, mod)), character(0), label = .col)
       .d1 <- .d
       .d1$MDV[1] <- 1
       .ref <- etTrans(.d1, mod)
       expect_identical(.e$EVID, .ref$EVID, label = .col)
+      expect_identical(.e$TIME, .ref$TIME, label = .col)
       expect_identical(.e$AMT, .ref$AMT, label = .col)
       expect_true(any(.e$EVID == if (.col == "RATE") 10201L else 20201L), label = .col)
     }
@@ -2747,6 +2748,28 @@ cp = central
     expect_identical(capture_warnings(.e <- etTrans(.d, mod)), character(0))
     expect_identical(.e$EVID, etTrans(.ref, mod)$EVID)
     expect_identical(.e$EVID[1], 10240L)
+    # a zero amount with a duration, or a missing amount with a rate, is not
+    # read as an infusion (no NaN or NA stop time)
+    .d <- data.frame(ID = 1, TIME = c(0, 1), MDV = c(NA, 0), AMT = c(0, 0), DUR = c(2, 0), DV = c(NA, 1), CMT = 2)
+    expect_false(anyNA(etTrans(.d, mod)$TIME))
+    .d <- data.frame(ID = 1, TIME = c(0, 1), MDV = c(NA, 0), AMT = c(NA, 0), RATE = c(25, 0), DV = c(NA, 1), CMT = 2)
+    expect_error(etTrans(.d, mod), "'amt' value NA for dose event")
+    # a negative CMT turns the compartment off, as with MDV 1, and does not warn
+    .d <- data.frame(
+      ID = 1,
+      TIME = 0:3,
+      MDV = c(1, NA, 1, 0),
+      AMT = c(100, 0, 100, 0),
+      RATE = 0,
+      DV = c(NA, NA, NA, 2),
+      CMT = c(2, -2, 2, 2)
+    )
+    for (.k in list(c(0, 0), c(50, 25))) {
+      .d$AMT[2] <- .k[1]
+      .d$RATE[2] <- .k[2]
+      expect_identical(capture_warnings(.e <- etTrans(.d, mod)), character(0))
+      expect_identical(.e$EVID, c(201L, 230L, 201L, 0L))
+    }
   })
 
   test_that("an EVID 0 dose with an MDV column, NaN values or a negative CMT", {
@@ -2802,6 +2825,9 @@ cp = central
     )
     .w <- capture_warnings(.e <- etTrans(.d, mod))
     expect_identical(.w, c(.etMdvObsDoseMsg("5"), .etMdvNaMsg("3")))
+    # the MDV 0 record is a dose of 25 into central
+    expect_identical(.e$EVID[.e$ID == 2 & .e$TIME == 1], 201L)
+    expect_identical(.e$AMT[.e$ID == 2 & .e$TIME == 1], 25)
     .d$MDV[3] <- 1
     .d$DV[5] <- 3
     expect_identical(capture_warnings(etTrans(.d, mod)), character(0))
