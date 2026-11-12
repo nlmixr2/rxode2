@@ -19,6 +19,8 @@
 # ci-retarget.yaml, which dispatches this workflow with `pr`; other pull
 # request edits start no run here, so they never post a `result`.
 # The `result` job is the one check to require in branch protection.
+# A failing run on main opens (or comments on) a `ci-main-failure-<tier>`
+# issue; the next green run of that tier closes it (`main-alert`).
 on:
   pull_request:
     branches: [main, master]
@@ -301,3 +303,82 @@ jobs:
                 target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}` });
             }
             if (!ok) core.setFailed(`failed jobs: ${bad.map(([k]) => k).join(', ')}`);
+
+  # A failure on main (a push or the nightly full run) opens an issue, one
+  # per tier, so it is not lost behind pull requests that were merged on a
+  # green fast tier.  Later failures comment on that issue; the next green
+  # run of the same tier closes it.  The issue lists the commits since the
+  # last green run of that tier and mentions their authors.  Optional repo
+  # variable CI_FAILURE_ASSIGNEES (comma-separated logins) assigns it.
+  main-alert:
+    needs: [gate, format, lint, check, tests, coverage, pkgdown]
+    if: >-
+      !cancelled() && needs.gate.outputs.tier != 'none' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') &&
+      (github.event_name == 'push' || github.event_name == 'schedule' ||
+       (github.event_name == 'workflow_dispatch' && inputs.pr == ''))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+          TIER: ${{ needs.gate.outputs.tier }}
+          ASSIGNEES: ${{ vars.CI_FAILURE_ASSIGNEES }}
+        with:
+          script: |
+            const needs = JSON.parse(process.env.NEEDS);
+            const bad = Object.entries(needs).filter(([, v]) => v.result === 'failure' || v.result === 'cancelled');
+            const tier = process.env.TIER;
+            const label = `ci-main-failure-${tier}`;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const sha = context.sha;
+            const open = (await github.rest.issues.listForRepo({ ...context.repo, labels: label, state: 'open', per_page: 1 })).data[0];
+
+            if (bad.length === 0) {
+              if (open) {
+                await github.rest.issues.createComment({ ...context.repo, issue_number: open.number,
+                  body: `The ${tier} tier passes again on ${sha.slice(0, 9)}: ${runUrl}` });
+                await github.rest.issues.update({ ...context.repo, issue_number: open.number, state: 'closed' });
+              }
+              return;
+            }
+
+            // failing jobs, with links
+            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRunAttempt,
+              { ...context.repo, run_id: context.runId, attempt_number: context.runAttempt, per_page: 100 });
+            const failed = jobs.filter(j => j.conclusion === 'failure' || j.conclusion === 'cancelled')
+              .map(j => `- [${j.name}](${j.html_url}) (${j.conclusion})`);
+
+            // commits since the last green run of this tier on main
+            const event = tier === 'full' ? 'schedule' : 'push';
+            const green = (await github.rest.actions.listWorkflowRuns({ ...context.repo, workflow_id: 'ci.yaml',
+              event, branch: context.ref.replace('refs/heads/', ''), status: 'success', per_page: 1 })).data.workflow_runs[0];
+            let suspects = '_No earlier green run of this tier was found._';
+            if (green && green.head_sha !== sha) {
+              const cmp = (await github.rest.repos.compareCommits({ ...context.repo, base: green.head_sha, head: sha })).data;
+              const authors = [...new Set(cmp.commits.map(c => c.author && c.author.login).filter(Boolean))];
+              suspects = `Commits since the last green ${tier} run (${green.head_sha.slice(0, 9)}, ${green.html_url}):\n\n` +
+                cmp.commits.slice(-50).map(c => `- ${c.sha.slice(0, 9)} ${c.commit.message.split('\n')[0]}`).join('\n') +
+                (authors.length ? `\n\nAuthors: ${authors.map(a => '@' + a).join(' ')}` : '');
+            }
+            const body = `The **${tier}** CI tier failed on \`${context.ref.replace('refs/heads/', '')}\` at ${sha.slice(0, 9)} (${context.eventName}).\n\n` +
+              `Run: ${runUrl}\n\nFailed jobs:\n${failed.join('\n') || bad.map(([k]) => `- ${k}`).join('\n')}\n\n${suspects}`;
+
+            if (open) {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: open.number, body });
+            } else {
+              try {
+                await github.rest.issues.getLabel({ ...context.repo, name: label });
+              } catch (e) {
+                await github.rest.issues.createLabel({ ...context.repo, name: label, color: 'd73a4a',
+                  description: `CI ${tier} tier failing on main` });
+              }
+              const assignees = (process.env.ASSIGNEES || '').split(',').map(s => s.trim()).filter(Boolean);
+              await github.rest.issues.create({ ...context.repo, title: `CI ${tier} tier failing on main`,
+                body, labels: [label], assignees });
+            }

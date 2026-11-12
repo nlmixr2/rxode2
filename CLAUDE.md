@@ -84,7 +84,9 @@ major feature belongs in `tests/ci-core.txt`. Shards are balanced from
 `tests/ci-timings.csv`; refresh it from a full run's `junit-*` artifacts with
 `.github/scripts/ci-test-timings.R` (`.github/scripts/ci-shards.R` does the
 split). The shared setup (R, dependencies, ccache) is
-`.github/actions/setup-rxode2`.
+`.github/actions/setup-rxode2`. A failing run on main (push or nightly) opens
+or comments on a `ci-main-failure-<tier>` issue listing the commits since the
+last green run; the next green run closes it.
 
 ### Get generated C code and C code errors from model
 
