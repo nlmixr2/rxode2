@@ -12,7 +12,7 @@ on:
         type: string
         default: ''
       matrix:
-        description: JSON list of {os, r, http-user-agent} platforms
+        description: JSON list of {os, r, http-user-agent, error-on} platforms (error-on overrides the input)
         type: string
         required: true
       error-on:
@@ -103,11 +103,12 @@ jobs:
           cat(sprintf("check took %.1f min\n", .min))
           cat(sprintf("CHECK_MINUTES=%.1f\n", .min), file = Sys.getenv("GITHUB_ENV"), append = TRUE)
           .lvl <- c(never = 0, error = 1, warning = 2, note = 3)
-          .on <- .lvl[["${{ inputs.error-on }}"]]
+          .lev <- "${{ matrix.config.error-on || inputs.error-on }}"
+          .on <- .lvl[[.lev]]
           .bad <- (.on >= 1 && length(.res$errors) > 0) ||
             (.on >= 2 && length(.res$warnings) > 0) ||
             (.on >= 3 && length(.res$notes) > 0)
-          if (.bad) stop("R CMD check found problems at level '${{ inputs.error-on }}' or above", call. = FALSE)
+          if (.bad) stop(sprintf("R CMD check found problems at level '%s' or above", .lev), call. = FALSE)
 
       # CI annotations only, never a test assertion: flag what CRAN would
       # find slow (10 minutes per check, 5 seconds per example).
