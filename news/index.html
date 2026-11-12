@@ -132,6 +132,8 @@
 <h4 id="delay-differential-equations-development-version">Delay differential equations<a class="anchor" aria-label="anchor" href="#delay-differential-equations-development-version"></a></h4>
 <ul><li>
 <code><a href="../reference/delay.html">delay()</a></code> models now solve with <code>method = "dop5"</code> and <code>method = "bs"</code>. Both are dense solvers, but they recorded no <code><a href="../reference/delay.html">delay()</a></code> history, so <code><a href="../reference/rxSolve.html">rxSolve()</a></code> refused them (<a href="https://github.com/nlmixr2/rxode2/issues/1599" class="external-link">#1599</a>).</li>
+<li>
+<code><a href="../reference/delay.html">delay()</a></code> models with <code>method = "ros4"</code> now solve on the dense segment driver, so <code><a href="../reference/delay.html">delay()</a></code> history is recorded on every step and <code>hmax</code> is honored (<a href="https://github.com/nlmixr2/rxode2/issues/1599" class="external-link">#1599</a>).</li>
 </ul></div>
 <div class="section level4">
 <h4 id="event-tables-development-version">Event tables<a class="anchor" aria-label="anchor" href="#event-tables-development-version"></a></h4>
