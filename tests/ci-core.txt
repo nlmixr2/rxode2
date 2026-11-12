@@ -1,0 +1,55 @@
+# Test files (name without "test-" and ".R") that the fast CI tier runs on
+# every pull request with NOT_CRAN=true.  Keep one or two files per major
+# feature; everything else runs nightly and on /cifull.  Shards are balanced
+# with tests/ci-timings.csv (see .github/scripts/ci-shards.R, .github/scripts/ci-test-timings.R).
+
+# parsing and code generation
+basic
+parsing
+rxs
+codegen-md5
+# solving
+solver-basic
+par-solve
+cvode
+par-dop853
+rk4
+solve-failed-subject
+# events
+event
+et
+etTrans
+etTrans-golden
+etTrans-translator
+evid-push
+steady-state
+nmtest
+reset
+# covariates, data handling and output
+cov
+keep
+data-frame
+serialize
+# model UI and piping
+ui
+ui-model
+ui-piping
+ui-err
+ui-solve
+piping-ini
+ini
+rxUiDeparse
+# linear compartment models
+lincmt-link
+lincmt-parse
+lincmt-solve
+# sensitivities and symengine
+sens3
+adjoint-sens
+event-sensitivities-api
+symengine-translate-fixture
+# delay differential equations
+dde
+# simulation and random numbers
+random
+ui-simulation

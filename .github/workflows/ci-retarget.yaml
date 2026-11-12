@@ -1,0 +1,29 @@
+# GitHub sends no `synchronize` when a stacked pull request is retargeted to
+# main (for example after its base branch merges), so this starts the fast
+# tier of ci.yaml for it.  Kept out of ci.yaml so that ordinary pull request
+# edits (title, description) start no ci.yaml run and post no `result`.
+on:
+  pull_request:
+    branches: [main, master]
+    types: [edited]
+
+name: ci-retarget.yaml
+
+permissions: read-all
+
+jobs:
+  retarget:
+    if: github.event.changes.base && !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = String(context.payload.pull_request.number);
+            await github.rest.actions.createWorkflowDispatch({ ...context.repo,
+              workflow_id: 'ci.yaml', ref: context.payload.repository.default_branch,
+              inputs: { tier: 'fast', pr } });
+            core.notice(`retargeted to main: started the fast tier of ci.yaml for #${pr}`);
