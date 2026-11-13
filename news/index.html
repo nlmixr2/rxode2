@@ -222,6 +222,11 @@
 <div class="section level4">
 <h4 id="event-tables-development-version-1">Event tables<a class="anchor" aria-label="anchor" href="#event-tables-development-version-1"></a></h4>
 <ul><li>
+<code><a href="../reference/etTrans.html">etTrans()</a></code> now reads two records differently, each with one warning that names the rows (1-based rows of the data as given, the first ten; under a chunked <code>rxSolve(file =, chunkSize =)</code>, rows of each chunk):
+<ul><li>a record with <code>evid</code> 0 (or <code>mdv</code> 0 standing in for it), a missing <code>dv</code> and a nonzero <code>amt</code> is a dose of that amount, an infusion with a <code>rate</code> or <code>dur</code> (“‘evid’ 0 with a missing ‘dv’ and a nonzero ‘amt’ is read as a dose”); it was kept as an observation with no <code>dv</code>, its dose dropped;</li>
+<li>with no <code>evid</code> column, a record whose <code>mdv</code> is missing and whose <code>amt</code> is 0 is <code>evid</code> 2, a record with no observation (“a missing ‘mdv’ with a zero ‘amt’ is read as ‘evid’ 2, not a dose”); it was a dose of 0. A missing <code>mdv</code> that is a dose now keeps its <code>rate</code> or <code>dur</code>, as <code>mdv</code> 1 does; it was a bolus.</li>
+</ul></li>
+<li>
 <code><a href="../reference/etTrans.html">etTrans()</a></code> now stops on a record whose <code>evid</code> is missing but that carries dose information: a nonzero <code>amt</code>, or a <code>rate</code> or <code>dur</code> that is positive or modeled (-1, -2), as a record with no <code>evid</code> column is read. It used to keep the record as an observation and drop the dose or infusion silently; with no <code>evid</code> column at all such a record is still a dose.</li>
 </ul></div>
 <div class="section level4">
