@@ -3883,10 +3883,14 @@ void handleSS(int *neq,
   bool isModeled = ind->whI == EVIDF_MODEL_DUR_ON ||
     ind->whI == EVIDF_MODEL_RATE_ON;
   int adjustEvidBolusLag = 0;
+  // the modeled duration's stop record follows its start in idose (with an ss
+  // lag the start follows the ss record); read it by dose index, not record
+  // index (#1602)
+  int offIxds = isSsLag ? ind->ixds + 1 : ind->ixds;
   if (isModeled &&
       ind->whI == EVIDF_MODEL_DUR_ON &&
-      ((isSsLag && getDoseP1(ind, ind->ixds) == 0.0) ||
-       (!isSsLag && getDose(ind, ind->ixds) == 0.0))
+      offIxds < ind->ndoses &&
+      getDoseNumber(ind, offIxds) == 0.0
       ) {
     // This is a modeled duration dose with duration = 0.
     // Handle like a bolus dose.
