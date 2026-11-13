@@ -242,8 +242,8 @@ jobs:
           version: 0.11.0
           check: "true"
 
-      # C++ uses the rxProtect guard, never raw PROTECT/UNPROTECT (CLAUDE.md).
-      - name: Check C++ uses rxProtect, not raw PROTECT/UNPROTECT
+      # C/C++ use the rxProtect guards, never raw PROTECT/UNPROTECT (CLAUDE.md).
+      - name: Check C/C++ use rxProtect guards, not raw PROTECT/UNPROTECT
         run: .github/scripts/check-protect.sh
 
   check:

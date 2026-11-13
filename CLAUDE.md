@@ -305,8 +305,8 @@ arguments`. When manipulating symengine objects programmatically:
 - C++ files use `#define R_NO_REMAP` to avoid R API name pollution
 - OpenMP support is conditional via `rxomp.h`
 - **Never write raw `PROTECT()`/`UNPROTECT()` (or `Rf_protect`/`Rf_unprotect`)
-  in C++.** CI fails on it (`.github/scripts/check-protect.sh`, run it locally
-  before pushing); this includes one-line fixes to existing code.
+  in C or C++.** CI fails on it (`.github/scripts/check-protect.sh`, run it
+  locally before pushing); this includes one-line fixes to existing code.
   - C++: declare `rxProtect rx_protect;` (`src/rxProtect.h`) and wrap each
     allocation in `rx_protect.protect(x)`; it unprotects when it leaves scope,
     so write no `UNPROTECT` and no unprotect before `return`.  Use
@@ -314,7 +314,9 @@ arguments`. When manipulating symengine objects programmatically:
   - C: begin the function with `rxProtectGuard;`, use `rxP()`/`rxUP()` in place
     of `PROTECT`/`UNPROTECT`, and `rxUPAll()` before returning, since
     `rxP()`/`rxUP()` count the protected expressions in the function.
-  - Exempt: generated code (`RcppExports.cpp`, model C emitted by `codegen.h`).
+  - Exempt: generated code (`RcppExports.cpp`, model C emitted as strings by
+    `codegen.h`).  A line that genuinely must stay raw ends with the comment
+    `// check-protect: allow (<reason>)`.
   - EXCEPTION -- objects that must outlive a `longjmp`: `rxProtectGuard`'s
     cleanup does NOT fire on `Rf_error`, so anything claimed by one function and
     released by another with an error possible in between (the parse translation

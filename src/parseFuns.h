@@ -4,6 +4,7 @@
 
 #include <ctype.h>
 #include "threadSafeConstants.h"
+#include "rxProtect.h"
 
 SEXP rxode2_getUdf2(const char *fun, const int nargs);
 
@@ -575,10 +576,11 @@ static inline int handleBadFunctions(transFunctions *tf) {
       int allSpace=allSpaces(v2);
       if (allSpace) ii = 0;
     }
-    SEXP lst = PROTECT(rxode2_getUdf2(tf->v, ii));
+    rxProtectGuard;
+    SEXP lst = rxP(rxode2_getUdf2(tf->v, ii));
     int udf = INTEGER(VECTOR_ELT(lst, 0))[0];
     const char *udfInfo = R_CHAR(STRING_ELT(VECTOR_ELT(lst, 1), 0));
-    UNPROTECT(1);
+    rxUPAll();
     if (udf == NA_INTEGER) {
       sPrint(&_gbuf, "%s", udfInfo);
       updateSyntaxCol();
