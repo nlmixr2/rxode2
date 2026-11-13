@@ -146,6 +146,9 @@
 - `method = "liblsoda"` now accepts `dense = TRUE`, which lifts the `hmax`
   default like the other dense methods (LSODA already interpolates between
   its own steps), and `rxIsDense("liblsoda")` is `TRUE` (#1599).
+- With `addDosing = TRUE, subsetNonmem = TRUE`, the `mtime()`, infusion-off
+  and zero-dose rows the output hides now advance `newind`, so `newind` (and
+  any lhs that reads it) matches the full table and the solve (#1665).
 
 ### Steady state
 - A steady-state bolus into a compartment whose `alag()` is longer than `ii`

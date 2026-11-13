@@ -177,3 +177,40 @@ rxTest({
     .newindCheck(.m, dense = TRUE)
   }
 })
+
+rxTest({
+  # subsetNonmem output: the hidden mtime(), infusion-off and zero-dose rows
+  # still advance newind (#1665)
+  test_that("subsetNonmem = TRUE output keeps the full table's newind", {
+    .m <- rxode2({
+      d / dt(central) <- -0.1 * central
+      mtime(tm) <- 0.5
+      ni <- newind
+    })
+    .ev <- et(c(1, 2, 4))
+    .sub <- rxSolve(.m, .ev, addDosing = TRUE, subsetNonmem = TRUE)
+    .full <- rxSolve(.m, .ev, addDosing = TRUE, subsetNonmem = FALSE)
+    .solve <- rxSolve(.m, .ev)
+    expect_equal(.sub$time, c(1, 2, 4))
+    expect_equal(.sub$ni, c(2, 2, 2))
+    expect_equal(.sub$ni, .full$ni[.full$time %in% c(1, 2, 4)])
+    expect_equal(.sub$ni, .solve$ni[.solve$time %in% c(1, 2, 4)])
+
+    .m2 <- rxode2({
+      d / dt(central) <- -0.1 * central
+      ni <- newind
+    })
+    # the infusion-off record (t = 1) is hidden; the zero dose at t = 0 too
+    .ev2 <- et(amt = 0, time = 0) |>
+      et(amt = 10, rate = 10, time = 0.5) |>
+      et(c(1.5, 3))
+    .sub2 <- rxSolve(.m2, .ev2, addDosing = TRUE, subsetNonmem = TRUE)
+    .full2 <- rxSolve(.m2, .ev2, addDosing = TRUE, subsetNonmem = FALSE)
+    expect_false(any(.sub2$time == 0))
+    expect_equal(.sub2$ni, rep(2, nrow(.sub2)))
+    expect_equal(
+      .sub2$ni,
+      .full2$ni[match(paste(.sub2$time, .sub2$evid), paste(.full2$time, .full2$evid))]
+    )
+  })
+})

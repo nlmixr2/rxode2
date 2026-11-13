@@ -824,13 +824,15 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
           calc_lhs(solveid, curT, getSolve(i), ind->lhs);
         }
         if (subsetEvid == 1) {
-          if (isObs(evid_p) && evid_p >= 10) continue;
+          // Hidden rows still advance newind, as in the solve (#1665).
+          if (isObs(evid_p) && evid_p >= 10) { ind->_newind = 2; continue; }
           if (isDose(evid_p)) {
             getWh(evid_p, &wh_p, &cmt_p, &wh100_p, &whI_p, &wh0_p);
             if (whI_p == EVIDF_MODEL_RATE_OFF || whI_p == EVIDF_MODEL_DUR_OFF) {
 #pragma omp atomic write
               dullRate = 0;
               di_p++;
+              ind->_newind = 2;
               continue;
             } else if (whI_p == EVIDF_INF_RATE || whI_p == EVIDF_MODEL_RATE_ON || whI_p == EVIDF_MODEL_DUR_ON) {
 #pragma omp atomic write
@@ -841,6 +843,7 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
             }
             if (getDoseNumber(ind, di_p) <= 0) {
               di_p++;
+              ind->_newind = 2;
               continue;
             }
           }
