@@ -99,6 +99,11 @@
   one- or two-argument math function such as `log10()` or `pow()`, or more
   than one argument to `tlast()`, `tad()` and the like; these used to
   translate to malformed C that failed to compile (#1674).
+- The sign at the start of a `d/dt()` right-hand side is now parsed only as
+  part of the expression, removing the last ambiguity in the model grammar.
+  A doubled sign or a signed negation there, `d/dt(x) = - -k` or
+  `d/dt(x) = -!a`, is now a syntax error, as it already was in any other
+  assignment; write `-(-k)` or `-(!a)` instead (#1674).
 
 ### Compilation
 - A cached model library that exists but will not load (still being linked by
