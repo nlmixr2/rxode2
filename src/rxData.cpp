@@ -520,7 +520,6 @@ RObject rxSimSigma(const RObject &sigma,
                    NumericVector upperIn = NumericVector::create(R_PosInf),
                    double a=0.4, double tol = 2.05, double nlTol=1e-10,
                    int nlMaxiter=100){
-
   if (nObs < 1){
     rxSolveFree();
     stop(_("refusing to simulate %d items"),nObs);
@@ -4607,7 +4606,6 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
                 break;
               }
             }
-
           }
           covPos[ncov] = i;
           ncov++;
