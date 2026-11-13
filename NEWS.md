@@ -195,6 +195,13 @@
 
 ## New features
 
+- Every right-hand-side, Jacobian and `lhs` evaluation of a model no longer
+  copies the subject's whole solving state (about 1.7 kB) for the
+  random-number functions the model may call (`rxnorm()`, `rinorm()`,
+  `simeta()`, `simeps()`, ...); they read the subject in place.  Simulated
+  values are unchanged, bit for bit, at any number of cores; a 5000-subject
+  simulation runs about 10% faster and a FOCEi fit about 2%.
+
 - `liblsoda` updates its history array and corrector vectors two elements
   at a time, which the compiler vectorizes at R's default `-O2`.  Results are
   unchanged, bit for bit; a FOCEi fit with sensitivities (12 states) spends
