@@ -53,7 +53,7 @@ rxTest({
     expect_match(.msg("y=exp();"), "'exp' takes 1 arguments, supplied 0", fixed = TRUE)
   })
 
-  test_that("only functions that take no arguments accept f()", {
+  test_that("only functions that can be called with no arguments accept f()", {
     ## log10(), pow(), expm1() ... used to translate to malformed C
     .zero <- c(
       "dose",
@@ -93,9 +93,31 @@ rxTest({
     expect_error(rxNorm("y=pow(a);"), "syntax error")
   })
 
-  test_that("functions that take no arguments still parse", {
+  test_that("functions called with no arguments still parse", {
     for (.f in c("rxnorm", "rnorm", "tad", "tlast", "dosenum")) {
       expect_equal(rxNorm(paste0("y=", .f, "();")), paste0("y=", .f, "();\n"))
+    }
+  })
+
+  test_that("dosing functions still take an optional compartment", {
+    .ode <- "d/dt(depot)=-ka*depot;\n"
+    for (.f in c(
+      "dose",
+      "dose0",
+      "podo",
+      "podo0",
+      "tlast",
+      "tlast0",
+      "tfirst",
+      "tfirst0",
+      "tad",
+      "tad0",
+      "tafd",
+      "tafd0"
+    )) {
+      .y <- paste0("y=", .f, "(depot);\n")
+      expect_equal(rxNorm(paste0(.ode, .y)), paste0(.ode, .y))
+      expect_error(rxNorm(paste0(.ode, "y=", .f, "(depot, 1);")), "syntax error")
     }
   })
 
