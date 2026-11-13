@@ -161,8 +161,10 @@ initial-condition history is used.</p>
     <p>Delayed states are interpolated from the solver's dense output, so delay
 models are solved on a dense path: the default method becomes the dense
 AutoSwitch composite <code>"dop853+ros4"</code>, and the dense methods <code>"dop853"</code>,
-<code>"dop5"</code>, <code>"bs"</code> and <code>"ros4"</code> also work.  The step size is capped to the smallest delay, and
-methods that cannot record dense history raise an error.  The dense-output
+<code>"dop5"</code>, <code>"bs"</code>, <code>"ros4"</code> and <code>"cvode"</code> also work, as does <code>"liblsoda"</code> with
+<code>dense = TRUE</code> (without it, <code>"liblsoda"</code> switches to <code>"dop853+ros4"</code>).  The
+step size is capped to the smallest delay, and methods that cannot record
+dense history raise an error.  The dense-output
 and delay-history machinery is adapted from the <code>dde</code> package by Rich
 FitzJohn and Wes Hinsley (Imperial College of Science, Technology and
 Medicine).</p>

@@ -942,7 +942,7 @@ specified parameter and which defaults to zero.  When
 your sampling and events.  The value 0 is equivalent to infinite
 maximum absolute step size.</p>
 <p>Note that for dense output methods (<code>"dop853"</code>, <code>"dop5"</code>, <code>"bs"</code>,
-<code>"ros4"</code>), <code>hmax</code> defaults to <code>NULL</code> to allow the solvers to
+<code>"ros4"</code>, <code>"cvode"</code>, <code>"liblsoda"</code>), <code>hmax</code> defaults to <code>NULL</code> to allow the solvers to
 determine the step size when <code>dense=TRUE</code></p>
 <p>For <code>method="indLin"</code>, <code>hmax</code> caps how long an interval is treated
 as having a CONSTANT matrix-exponential term before re-linearizing.
@@ -1932,8 +1932,9 @@ controls.</p></dd>
 <dd><p>Logical; when <code>TRUE</code> and the method supports dense output,
 enables continuous interpolation so the solver can take large internal
 steps and reconstruct the solution cheaply at each observation time.
-Dense-capable single methods are <code>"dop853"</code>, <code>"dop5"</code>, <code>"bs"</code>, and
-<code>"ros4"</code>.  <code>"dop853+ros4"</code> is the only dense AutoSwitch composite: the
+Dense-capable single methods are <code>"dop853"</code>, <code>"dop5"</code>, <code>"bs"</code>, <code>"ros4"</code>,
+<code>"cvode"</code> and <code>"liblsoda"</code> (which interpolates between its own steps
+either way; <code>dense = TRUE</code> lifts the <code>hmax</code> default).  <code>"dop853+ros4"</code> is the only dense AutoSwitch composite: the
 secondary must be dense too (<code>"ros4"</code> is the only stiff method that is),
 and handing a dense segment from the primary to the secondary mid-segment
 is implemented for a <code>"dop853"</code> primary.  Other composites solve densely
