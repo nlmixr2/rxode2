@@ -6,6 +6,7 @@
 #define STRICT_R_HEADERS
 #include <R.h>
 #include <Rinternals.h>
+#include "rxProtect.h"
 #include <vector>
 #include <algorithm>
 
@@ -211,14 +212,14 @@ extern "C" SEXP _rxode2_rxAdjointTrajSweep(SEXP tgS, SEXP JS, SEXP dPS, SEXP nsS
   int nt = LENGTH(tgS), nOut = LENGTH(outKS), nStates = LENGTH(stateIdxS);
   int nCj = LENGTH(VECTOR_ELT(cjS, 0));
   int nDual = LENGTH(VECTOR_ELT(dualS, 0));
-  SEXP resS = PROTECT(Rf_allocVector(REALSXP, (R_xlen_t)nOut * nStates * np));
+  rxProtect rx_protect;
+  SEXP resS = rx_protect.protect(Rf_allocVector(REALSXP, (R_xlen_t)nOut * nStates * np));
   rxode2AdjointTrajSweep(REAL(tgS), REAL(JS), REAL(dPS), ns, np, nt,
                          INTEGER(outKS), nOut, INTEGER(stateIdxS), nStates, REAL(resS),
                          nCj, INTEGER(VECTOR_ELT(cjS, 0)), INTEGER(VECTOR_ELT(cjS, 1)),
                          REAL(VECTOR_ELT(cjS, 2)),
                          nDual, INTEGER(VECTOR_ELT(dualS, 0)), REAL(VECTOR_ELT(dualS, 1)),
                          REAL(VECTOR_ELT(dualS, 2)));
-  UNPROTECT(1);
   return resS;
 }
 
@@ -231,7 +232,8 @@ extern "C" SEXP _rxode2_rxAdjointSweep(SEXP tgS, SEXP JS, SEXP dPS, SEXP coverS,
   int nt = LENGTH(tgS), nobs = LENGTH(obsKS);
   int nCj = LENGTH(VECTOR_ELT(cjS, 0));
   int nDual = LENGTH(VECTOR_ELT(dualS, 0));
-  SEXP outS = PROTECT(Rf_allocVector(REALSXP, np));
+  rxProtect rx_protect;
+  SEXP outS = rx_protect.protect(Rf_allocVector(REALSXP, np));
   double *out = REAL(outS);
   for (int p = 0; p < np; ++p) out[p] = 0.0;
   rxode2AdjointSweep(REAL(tgS), REAL(JS), REAL(dPS), REAL(coverS),
@@ -240,6 +242,5 @@ extern "C" SEXP _rxode2_rxAdjointSweep(SEXP tgS, SEXP JS, SEXP dPS, SEXP coverS,
                      REAL(VECTOR_ELT(cjS, 2)),
                      nDual, INTEGER(VECTOR_ELT(dualS, 0)), REAL(VECTOR_ELT(dualS, 1)),
                      REAL(VECTOR_ELT(dualS, 2)));
-  UNPROTECT(1);
   return outS;
 }

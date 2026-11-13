@@ -1042,7 +1042,9 @@ SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS) {
     List bounds = rx_protect.protect(lotriGetBounds(sigmaLotri, R_NilValue, R_NilValue));
     NumericVector upper = bounds[0];
     NumericVector lower = bounds[1];
-    SEXP sigmaMat = rxRmvnSEXP(n2, R_NilValue, sigmaList,
+    // rxRmvnSEXP() returns a freshly allocated matrix as a bare SEXP.
+    // We need to keep it protected across lotriMaxNu and rxModelsAssign.
+    SEXP sigmaMat = rx_protect.protect(rxRmvnSEXP(n2, R_NilValue, sigmaList,
                                upper, lower, // lower upper
                                control[Rxc_nCoresRV],
                                LogicalVector::create(false), // isChol
@@ -1050,7 +1052,7 @@ SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS) {
                                NumericVector::create(0.4), // a
                                NumericVector::create(2.05), // tol
                                NumericVector::create(1e-10), // nlTol
-                               IntegerVector::create(100)); // nlMaxiter
+                               IntegerVector::create(100))); // nlMaxiter
     if (Rf_length(sigmaList) >= 1 &&
         asDouble(lotriMaxNu(sigmaLotri), "lotriMaxNu(sigmaLotri)") > 1.0) {
       rxModelsAssign(".sigmaL", sigmaList);

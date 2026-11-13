@@ -1224,6 +1224,26 @@ static inline void copyLinCmt(int *neq,
   }
 }
 
+// Applies stateTrimU/stateTrimL; false when a state is still not finite after
+// the trims (liblsoda and indLin carry a non-finite right-hand side on into the
+// state without failing the step).
+static inline bool trimStatesFinite(double *yp, rx_solving_options_ind *ind,
+                                    rx_solving_options *op, rx_solve *rx) {
+  int n = rxEffNeq(ind, op);
+  if (R_FINITE(rx->stateTrimU)) {
+    double top = fabs(rx->stateTrimU);
+    for (int j = n; j--;) yp[j] = min(top, yp[j]);
+  }
+  if (R_FINITE(rx->stateTrimL)) {
+    double bottom = rx->stateTrimL;
+    for (int j = n; j--;) yp[j] = max(bottom, yp[j]);
+  }
+  for (int k = n; k--;) {
+    if (!R_FINITE(yp[k])) return false;
+  }
+  return true;
+}
+
 // The bool is unused: a failed subject's reasons are pushed after the solve,
 // by par_solve() and ind_solve().
 static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, const char** err_msg, int nerr, bool,
@@ -1248,19 +1268,10 @@ static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, c
     *rc = -2019;
     // Bad Solve => NA
     badSolveExit(*i);
-  } else {
-    if (R_FINITE(rx->stateTrimU)){
-      double top=fabs(rx->stateTrimU);
-      for (int j = rxEffNeq(ind, op); j--;) {
-        yp[j]= min(top,yp[j]);
-      }
-    }
-    if (R_FINITE(rx->stateTrimL)){
-      double bottom=rx->stateTrimL;
-      for (int j = rxEffNeq(ind, op); j--;) {
-        yp[j]= max(bottom,yp[j]);
-      }
-    }
+  } else if (!trimStatesFinite(yp, ind, op, rx)) {
+    rxSolverFail(ind);
+    *rc = -2019;
+    badSolveExit(*i);
   }
   ind->slvr_counter[0]++;
 }
@@ -7096,6 +7107,28 @@ static inline void rxDelaySetRecTime(double *rec, int nd, double a, double h) {
   rec[8 * nd + 2] = 0.0;  // dop853 record
 }
 
+// Record one dense step as a degree-7 (dop853-form) record fitted to the
+// stepper's dense output sampled at s_k = k/7, k = 0..7 (dop5 and bs).
+struct rxDelayDop853InvTab {
+  double inv[8][8];
+  rxDelayDop853InvTab() { rxDelayDop853Inverse(inv); }
+};
+static void rxDelayHistPushNodes(rx_solving_options_ind *ind, rx_solving_options *op,
+                                 double xold, double h, const double *const *s) {
+  static const rxDelayDop853InvTab tab;
+  int nd = op->nDelayState;
+  double *rec = rxDelayHistSlot(ind, nd);
+  if (rec == NULL) return;
+  const int *ds = op->delayState;
+  double v[8];
+  for (int c = 0; c < nd; c++) {
+    for (int k = 0; k < 8; k++) v[k] = s[k][ds[c]];
+    rxDelayFitColumn(tab.inv, v, nd, c, rec);
+  }
+  rxDelaySetRecTime(rec, nd, xold + ind->delayTOff, h);  // virtual time during handleSS()
+  ind->delayHistN++;
+}
+
 // Fit the dop853 record for [a, a + h] exactly to old + steady state.  Each
 // history's record is chosen once at the midpoint (the breakpoints include
 // every record start), so a dose jump at either end is not straddled; before
@@ -7257,10 +7290,41 @@ static void dopDenseSolout(long int nr, double xold, double x, double *y,
   }
 }
 
-// Defined in ros4.cpp (included later in this translation unit).
+// Defined in ros4.cpp, dop5.cpp and bs.cpp (included later in this
+// translation unit).
 int rxRos4DenseSegment(rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind,
                        int *neq, t_dydt c_dydt, double xp, double xout, double *yp,
                        int obs_first, int obs_last, int solveid);
+int rxDop5DenseSegment(rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind,
+                       int *neq, t_dydt c_dydt, double xp, double xout, double *yp,
+                       int obs_first, int obs_last, int solveid);
+int rxBsDenseSegment(rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind,
+                     int *neq, t_dydt c_dydt, double xp, double xout, double *yp,
+                     int obs_first, int obs_last, int solveid);
+
+// Non-composite dense segment: the method's own dense output (dop853 unless
+// dop5, bs or ros4 was requested).
+static int denseSegmentSolveSingle(rx_solve *rx, rx_solving_options *op,
+                                   rx_solving_options_ind *ind, int *neq,
+                                   t_dydt c_dydt, double xp, double xout,
+                                   double *yp, DopDenseCtx *dc, int itol) {
+  int solveid = neq[1];
+  switch (op->stiff) {
+  case 10:
+    return rxDop5DenseSegment(rx, op, ind, neq, c_dydt, xp, xout, yp,
+                              dc->obs_next, dc->segment_end, solveid);
+  case 11:
+    return rxBsDenseSegment(rx, op, ind, neq, c_dydt, xp, xout, yp,
+                            dc->obs_next, dc->segment_end, solveid);
+  case 13:
+    return rxRos4DenseSegment(rx, op, ind, neq, c_dydt, xp, xout, yp,
+                              dc->obs_next, dc->segment_end, solveid);
+  }
+  return dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
+                dopDenseSolout, 2, NULL, DBL_EPSILON, 0, 0, 0, 0,
+                rxDelayCapHmax(ind), op->H0, op->mxstep, 1, -1,
+                neq[0], NULL, 0, dc, ind->id, NULL);
+}
 
 // Solve one dense segment [xp, xout], filling the segment's observations and
 // recording delay history.  When the AutoSwitch composite is active (stiff2>0)
@@ -7273,15 +7337,12 @@ static int denseSegmentSolve(rx_solve *rx, rx_solving_options *op,
                              rx_solving_options_ind *ind, int *neq, t_dydt c_dydt,
                              double xp, double xout, double *yp,
                              DopDenseCtx *dc, int itol, int eff) {
+  if (op->stiff2 <= 0) {
+    return denseSegmentSolveSingle(rx, op, ind, neq, c_dydt, xp, xout, yp, dc,
+                                   itol);
+  }
   int neqOde  = neq[0];
   int solveid = neq[1];
-  // Non-composite: plain dop853 dense output (unchanged behavior).
-  if (op->stiff2 <= 0) {
-    return dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
-                  dopDenseSolout, 2, NULL, DBL_EPSILON, 0, 0, 0, 0,
-                  rxDelayCapHmax(ind), op->H0, op->mxstep, 1, -1,
-                  neqOde, NULL, 0, dc, ind->id, NULL);
-  }
   // Reactive switching, mirroring rxSegmentAutoSwitch (see its comment): probe
   // with dop853 (its stiffness estimator on, its state carried over from the
   // previous segment) and hand the rest of the segment to ros4 if it reports

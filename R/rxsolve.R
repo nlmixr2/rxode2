@@ -897,9 +897,12 @@
 #'   doses not canceled with `SS=2` (the infusions started before
 #'   `SS=2` occurred are canceled, though).
 #'
-#' @param addlKeepsCov This determines if the additional dosing items
-#'   repeats the dose only (`FALSE`) or keeps the covariates at the
-#'   record of the dose (`TRUE`)
+#' @param addlKeepsCov This determines if a dose given at a time other
+#'   than its record's (an additional dosing item or a dose moved by
+#'   `alag()`) takes the time-varying covariates imputed at its actual
+#'   dosing time (`FALSE`) or keeps the covariates at the record of the
+#'   dose (`TRUE`, as NONMEM does).  By default `FALSE`, or `TRUE` with
+#'   `nonmem = TRUE`.
 #'
 #' @param addlDropSs When there are steady state doses with an `addl`
 #'   specification the steady state flag is dropped with repeated
@@ -1018,8 +1021,8 @@
 #'   the continuous time (like `$DES`).  `addl` repeats, infusion ends,
 #'   lagged doses and doses added while solving do not end an interval;
 #'   `mtime()` times do.  Covariate interpolation is still set by
-#'   `covsInterpolation`.  It also sets the default `tieOrder` to `"data"`.
-#'   By default `FALSE`.
+#'   `covsInterpolation`.  It also sets the default `tieOrder` to `"data"`
+#'   and turns on `addlKeepsCov` unless it is given.  By default `FALSE`.
 #'
 #' @param tieOrder How records of a subject that share a time are processed:
 #'   `"evid"` processes resets first, then doses, then observations, so the
@@ -1958,6 +1961,10 @@ rxSolve <- function(
       tieOrder <- if (nonmem) "data" else "evid"
     }
     checkmate::assertChoice(tieOrder, c("evid", "data"))
+    if (nonmem && missing(addlKeepsCov)) {
+      # NONMEM keeps a dose record's covariates with the dose
+      addlKeepsCov <- TRUE
+    }
     checkmate::assertNumeric(linCmtGillFtol, lower = 0, finite = TRUE, any.missing = FALSE, len = 1)
     checkmate::assertIntegerish(linCmtGillK, lower = 0, any.missing = FALSE, len = 1)
     checkmate::assertNumeric(linCmtGillStep, lower = 0, finite = TRUE, any.missing = FALSE, len = 1)
@@ -3831,8 +3838,8 @@ rxSolve.default <- function(
       }
     }
     # delay() history is recorded on the dense dop853 path (default, and the
-    # dop853 leg of "dop853+ros4") and on the dense ros4 path (for stiff delay
-    # models).  Other solvers cannot record dense history and are rejected.
+    # dop853 leg of "dop853+ros4") and on the dense dop5, bs and ros4 paths.
+    # Other solvers cannot record dense history and are rejected.
     .stiff2 <- if (is.null(.ctl$stiff2)) 0L else as.integer(.ctl$stiff2)
     if (.ctl$method >= 200L) {
       # discrete-adjoint rk4s methods record their own cubic-Hermite dense
@@ -3847,16 +3854,16 @@ rxSolve.default <- function(
       .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
     } else if (
       (.ctl$method == 0L && (.stiff2 == 0L || .stiff2 == 13L)) ||
-        (.ctl$method == 13L && .stiff2 == 0L)
+        (.ctl$method %in% c(10L, 11L, 13L) && .stiff2 == 0L)
     ) {
-      # dop853 (optionally + ros4 secondary), or pure ros4 for stiff delays
+      # dop853 (optionally + ros4 secondary), or pure dop5, bs or ros4
       if (!isTRUE(.ctl$dense)) {
         .ctl$dense <- TRUE
         .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
       }
     } else {
       stop(
-        "delay differential equations require a dense solver; use method='dop853+ros4' (the default for delay models), 'dop853', or 'ros4' (stiff)", # nolint: line_length_linter.
+        "delay differential equations require a dense solver; use method='dop853+ros4' (the default for delay models), 'dop853', 'dop5', 'bs', or 'ros4' (stiff)", # nolint: line_length_linter.
         call. = FALSE
       )
     }
@@ -4746,7 +4753,13 @@ rxSolve.rxSolve <- function(
       envir = envir
     ))
   }
-  .model <- as.character(.model)
+  # Re-solve the model that produced this solve, not its text, which would be
+  # re-parsed on every call (posologyr MAP estimation, levenc/posologyr#70).
+  # The model object keeps its DLL handle and event-sensitivity information.
+  .model <- object$env$.args.object
+  if (!inherits(.model, "rxode2")) {
+    .model <- rxModelVars(object)
+  }
   if (is.null(params)) {
     params <- object$.params.single
   }
