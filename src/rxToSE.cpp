@@ -19,6 +19,7 @@
 
 #include "rxToSEemit.h"
 #include "seBatch.h"
+#include "rxProtect.h"
 
 static const char *rxToSE1(seCtx *ctx, const char *in) {
   return seParseEmit(ctx, in, &parser_tables_rxode2rxToSE, rtEmit);
@@ -48,19 +49,19 @@ static const char **rtKeepAll(const char **s, int n) {
 }
 
 static SEXP rtStrings(const char **s, int n) {
-  SEXP v = PROTECT(Rf_allocVector(STRSXP, n));
+  rxProtect rx_protect;
+  SEXP v = rx_protect.protect(Rf_allocVector(STRSXP, n));
   int i;
   for (i = 0; i < n; i++) SET_STRING_ELT(v, i, Rf_mkChar(s[i]));
-  UNPROTECT(1);
   return v;
 }
 
 /* doubles: R reads a THETA[]/ETA[] index as a parsed number */
 static SEXP rtIndices(const int *x, int n) {
-  SEXP v = PROTECT(Rf_allocVector(REALSXP, n));
+  rxProtect rx_protect;
+  SEXP v = rx_protect.protect(Rf_allocVector(REALSXP, n));
   int i;
   for (i = 0; i < n; i++) REAL(v)[i] = (double) x[i];
-  UNPROTECT(1);
   return v;
 }
 
@@ -110,13 +111,13 @@ extern "C" SEXP _rxode2_rxToSEenv(SEXP str, SEXP stamp) {
   seArenaFree(&ctx);
   if (out == NULL) return R_NilValue;
 
-  SEXP ret = PROTECT(Rf_allocVector(VECSXP, 6));
+  rxProtect rx_protect;
+  SEXP ret = rx_protect.protect(Rf_allocVector(VECSXP, 6));
   SET_VECTOR_ELT(ret, 0, Rf_mkString(f.text));
   SET_VECTOR_ELT(ret, 1, rtStrings(f.syms, f.nsyms));
   SET_VECTOR_ELT(ret, 2, rtIndices(f.thetas, f.nthetas));
   SET_VECTOR_ELT(ret, 3, rtIndices(f.etas, f.netas));
   SET_VECTOR_ELT(ret, 4, rtStrings(f.thetaFuns, f.nthetas));
   SET_VECTOR_ELT(ret, 5, rtStrings(f.etaFuns, f.netas));
-  UNPROTECT(1);
   return ret;
 }

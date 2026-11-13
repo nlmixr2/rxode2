@@ -67,7 +67,8 @@ invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devto
 `result` is the single check to require.
 
 - **fast** (every push to a PR targeting main, push to main, a `/ci` PR
-  comment): the air format check, lint of the changed files, the CRAN-mirror
+  comment): the air format check, the rxProtect check
+  (`.github/scripts/check-protect.sh`), lint of the changed files, the CRAN-mirror
   check (`_check.yaml`: one tarball, `R CMD check --as-cran` on
   linux/windows/macOS release with `NOT_CRAN=false` and 2 OpenMP threads, so
   `rxTest({})` blocks skip as on CRAN), and the core NOT_CRAN tests listed in
@@ -79,7 +80,8 @@ invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devto
 Comments count only from owners/members/collaborators. Stacked PRs,
 documentation-only PRs and draft PRs (until marked ready, or commented `/ci`)
 run nothing. Retargeting a stacked PR to main starts the fast tier via
-`ci-retarget.yaml`; other PR edits start no run. A test file that covers a
+`ci-retarget.yaml`; other PR edits start no run. `/ci` reruns the PR's own run
+for its head commit rather than starting a second one. A test file that covers a
 major feature belongs in `tests/ci-core.txt`. Shards are balanced from
 `tests/ci-timings.csv`; refresh it from a full run's `junit-*` artifacts with
 `.github/scripts/ci-test-timings.R` (`.github/scripts/ci-shards.R` does the
@@ -303,17 +305,19 @@ arguments`. When manipulating symengine objects programmatically:
 - C files use `#define STRICT_R_HEADERS` and `#define USE_FC_LEN_T`
 - C++ files use `#define R_NO_REMAP` to avoid R API name pollution
 - OpenMP support is conditional via `rxomp.h`
-- Instead of using PROTECT/UNPROTECT:
-  - In C:
-    - begin functions that typically need PROTECT/UNPROTECT with `rxProtectGuard;`
-    - Use PROTECT->rxP()/UNPROTECT->rxUP()
-    - Use rxUPAll() to unprotect everything before returning since
-      `rxP()`/`rxUP()` counts the number of protected expressions in the functions
-  - in C++:
-    - For functions where protection is needed:
-    - Create a protection object `rxProtect rx_protect;`
-    - Use `rx_protect.protect()` instead of `PROTECT()`; `UNPROTECT`
-      will be handled when the object goes out of scope.
+- **Never write raw `PROTECT()`/`UNPROTECT()` (or `Rf_protect`/`Rf_unprotect`)
+  in C or C++.** CI fails on it (`.github/scripts/check-protect.sh`, run it
+  locally before pushing); this includes one-line fixes to existing code.
+  - C++: declare `rxProtect rx_protect;` (`src/rxProtect.h`) and wrap each
+    allocation in `rx_protect.protect(x)`; it unprotects when it leaves scope,
+    so write no `UNPROTECT` and no unprotect before `return`.  Use
+    `rx_protect.unprotect(n)` only to release temporaries inside a loop.
+  - C: begin the function with `rxProtectGuard;`, use `rxP()`/`rxUP()` in place
+    of `PROTECT`/`UNPROTECT`, and `rxUPAll()` before returning, since
+    `rxP()`/`rxUP()` count the protected expressions in the function.
+  - Exempt: generated code (`RcppExports.cpp`, model C emitted as strings by
+    `codegen.h`).  A line that genuinely must stay raw ends with the comment
+    `// check-protect: allow (<reason>)`.
   - EXCEPTION -- objects that must outlive a `longjmp`: `rxProtectGuard`'s
     cleanup does NOT fire on `Rf_error`, so anything claimed by one function and
     released by another with an error possible in between (the parse translation

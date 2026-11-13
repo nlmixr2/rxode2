@@ -4,6 +4,7 @@
 #define USE_FC_LEN_T
 #include "../inst/include/rxode2.h"
 #include "mlogit.h"
+#include "rxProtect.h"
 
 // This is close to softmax, but adapted for multinomial logistic regression
 void mexpit(double *x, double *p, int n) {
@@ -20,13 +21,14 @@ void mexpit(double *x, double *p, int n) {
 SEXP _rxode2_mexpit(SEXP x) {
   SEXP p;
   int n = LENGTH(x);
-  PROTECT(p = Rf_allocVector(REALSXP, n));
+  rxProtectGuard;
+  p = rxP(Rf_allocVector(REALSXP, n));
   double *px = REAL(x);
   double *pp = REAL(p);
 
   mexpit(pp, px, n);
 
-  UNPROTECT(1);
+  rxUPAll();
   return p;
 }/* _rxode2_mexpit() */
 
@@ -46,13 +48,14 @@ void dmexpit(double *x, double *p, int n) {
 SEXP _rxode2_dmexpit(SEXP x) {
   SEXP p;
   int n = LENGTH(x);
-  PROTECT(p = Rf_allocVector(REALSXP, n));
+  rxProtectGuard;
+  p = rxP(Rf_allocVector(REALSXP, n));
   double *px = REAL(x);
   double *pp = REAL(p);
 
   dmexpit(pp, px, n);
 
-  UNPROTECT(1);
+  rxUPAll();
   return p;
 }/* _rxode2_dmexpit() */
 
@@ -61,7 +64,8 @@ SEXP _rxode2_dmexpit(SEXP x) {
 SEXP _rxode2_mlogit_f(SEXP x, SEXP p) {
   SEXP r;
   int n = LENGTH(x);
-  PROTECT(r = Rf_allocVector(REALSXP, n));
+  rxProtectGuard;
+  r = rxP(Rf_allocVector(REALSXP, n));
 
   double *px = REAL(x);
   double *pp = REAL(p);
@@ -72,7 +76,7 @@ SEXP _rxode2_mlogit_f(SEXP x, SEXP p) {
     pr[i] -= pp[i];
   }
 
-  UNPROTECT(1);
+  rxUPAll();
   return r;
 }
 
@@ -80,8 +84,9 @@ SEXP _rxode2_mlogit_f(SEXP x, SEXP p) {
 SEXP _rxode2_mlogit_j(SEXP x) {
   SEXP j, xp;
   int n = LENGTH(x);
-  PROTECT(j = Rf_allocMatrix(REALSXP, n, n));
-  PROTECT(xp = Rf_allocVector(REALSXP, n));
+  rxProtectGuard;
+  j = rxP(Rf_allocMatrix(REALSXP, n, n));
+  xp = rxP(Rf_allocVector(REALSXP, n));
   double *px = REAL(x);
   double *pxp = REAL(xp);
   double *pj = REAL(j);
@@ -109,6 +114,6 @@ SEXP _rxode2_mlogit_j(SEXP x) {
     }
   }
 
-  UNPROTECT(2);
+  rxUPAll();
   return j;
 }/* _rxode2_mlogit() */
