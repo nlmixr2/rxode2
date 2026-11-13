@@ -178,6 +178,9 @@
   with `f()` now solves without an `alag()`; it stopped with `SS=2 & Modeled
   F does not work` although the same regimen with `alag() <- 0` solved and
   matched explicit dosing (#1602).
+- A steady-state infusion lasting exactly `ii` (fixed `rate` or `dur`) into a
+  compartment with an `alag()` now stays on until its own lagged dose ends;
+  with `ssAtDoseTime = TRUE` it turned off `alag()` too early (#1590).
 
 ## New features
 
