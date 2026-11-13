@@ -22,6 +22,7 @@
 
 #include "seFromSEemit.h"
 #include "seBatch.h"
+#include "rxProtect.h"
 #include "seFromSEtables.h"
 
 /* .rxUnXi(): symengine's dummy `_xi_<n>` is not a valid rxode2 name; R
@@ -70,28 +71,29 @@ extern "C" SEXP _rxode2_rxFromSEChar(SEXP strVec, SEXP numDerS, SEXP tabs,
 extern "C" SEXP _rxode2_seFormatDouble(SEXP x, SEXP scipen) {
   seScipen = Rf_asInteger(scipen) == NA_INTEGER ? 0 : Rf_asInteger(scipen);
   R_xlen_t n = Rf_xlength(x), i;
-  SEXP ret = PROTECT(Rf_allocVector(STRSXP, n));
+  rxProtect rx_protect;
+  SEXP ret = rx_protect.protect(Rf_allocVector(STRSXP, n));
   char buf[400];
   for (i = 0; i < n; i++) {
     /* NA: this platform's printf may not print what R prints (Windows) */
     SET_STRING_ELT(ret, i, seDblFormat(REAL(x)[i], buf, sizeof(buf)) ?
                    Rf_mkChar(buf) : NA_STRING);
   }
-  UNPROTECT(1);
   return ret;
 }
 
 /* .Call: the fixed name table, so a test can hold it to the R lists */
 extern "C" SEXP _rxode2_seFromSEfnTable(void) {
-  SEXP ret = PROTECT(Rf_allocVector(VECSXP, 7));
-  SEXP nm = PROTECT(Rf_allocVector(STRSXP, 7));
+  rxProtect rx_protect;
+  SEXP ret = rx_protect.protect(Rf_allocVector(VECSXP, 7));
+  SEXP nm = rx_protect.protect(Rf_allocVector(STRSXP, 7));
   const char *cols[] = {"name", "kind", "flags", "a", "b", "c", "p"};
   SEXP v[7];
   int i, j;
-  v[0] = PROTECT(Rf_allocVector(STRSXP, seNfnTab));
-  v[1] = PROTECT(Rf_allocVector(INTSXP, seNfnTab));
-  v[2] = PROTECT(Rf_allocVector(INTSXP, seNfnTab));
-  for (j = 3; j < 7; j++) v[j] = PROTECT(Rf_allocVector(STRSXP, seNfnTab));
+  v[0] = rx_protect.protect(Rf_allocVector(STRSXP, seNfnTab));
+  v[1] = rx_protect.protect(Rf_allocVector(INTSXP, seNfnTab));
+  v[2] = rx_protect.protect(Rf_allocVector(INTSXP, seNfnTab));
+  for (j = 3; j < 7; j++) v[j] = rx_protect.protect(Rf_allocVector(STRSXP, seNfnTab));
   for (i = 0; i < seNfnTab; i++) {
     const seFnInfo *f = &seFnTab[i];
     const char *s[4] = {f->a, f->b, f->c, f->p};
@@ -107,6 +109,5 @@ extern "C" SEXP _rxode2_seFromSEfnTable(void) {
     SET_STRING_ELT(nm, j, Rf_mkChar(cols[j]));
   }
   Rf_setAttrib(ret, R_NamesSymbol, nm);
-  UNPROTECT(9);
   return ret;
 }

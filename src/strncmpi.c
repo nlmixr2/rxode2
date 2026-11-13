@@ -40,6 +40,7 @@ IT WORKS! ALL UNIT TESTS PASS!
 #include <stdio.h>
 #include <string.h>
 #include "strncmpi.h"
+#include "rxProtect.h"
 
 
 // For ANSI color codes in a terminal, see my notes to self in my file here:
@@ -334,9 +335,10 @@ SEXP _rxode2_parse_strncmpci(void) {
         REprintf(ANSI_COLOR_RED "FAILED UNIT TESTS! NUMBER OF UNEXPECTED FAILURES = %i"
             ANSI_COLOR_OFF "\n", globals.error_count - 1);
     }
-  SEXP reti = PROTECT(Rf_allocVector(INTSXP, 1));
+  rxProtectGuard;
+  SEXP reti = rxP(Rf_allocVector(INTSXP, 1));
   INTEGER(reti)[0] = (globals.error_count == 1);
-  UNPROTECT(1);
+  rxUPAll();
   return reti;
 }
 

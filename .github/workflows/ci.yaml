@@ -2,7 +2,7 @@
 #
 #   fast  every push to a pull request targeting main, every push to main,
 #         and a "/ci" comment on a pull request.
-#         air format check + lint (changed files) + CRAN-mirror check (linux/windows/macOS
+#         air format check + rxProtect check + lint (changed files) + CRAN-mirror check (linux/windows/macOS
 #         release) + the core NOT_CRAN tests (tests/ci-core.txt).
 #   full  nightly (only when main changed since the last nightly run),
 #         a "/cifull" comment on a pull request, or a manual run.
@@ -272,6 +272,10 @@ jobs:
           # reformat in the same PR.
           version: 0.11.0
           check: "true"
+
+      # C/C++ use the rxProtect guards, never raw PROTECT/UNPROTECT (CLAUDE.md).
+      - name: Check C/C++ use rxProtect guards, not raw PROTECT/UNPROTECT
+        run: .github/scripts/check-protect.sh
 
   check:
     needs: gate
