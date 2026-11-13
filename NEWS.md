@@ -148,6 +148,17 @@
   its own steps), and `rxIsDense("liblsoda")` is `TRUE` (#1599).
 
 ### Steady state
+- A steady-state bolus now runs each dosing cycle on a clock from 0 to `ii`,
+  as NONMEM does, so a model whose ODE reads `t` reaches a steady state.  The
+  cycles used to keep advancing `t`, so the solve failed or returned values
+  that depended on `maxSS` (#1585).
+- Steady-state infusions, including those longer than `ii` and lagged ones,
+  run each dosing cycle on the same 0 to `ii` clock, so a model reading `t`
+  reaches a steady state there too (#1585).
+- `tad()` and `tad0()` inside a steady-state cycle now count from that cycle's dose, so a
+  model whose ODE reads `tad()` (such as a transit compartment) reaches a
+  steady state; it used to count from the dose record and the solve failed
+  (#1585).
 - A steady-state bolus into a compartment whose `alag()` is longer than `ii`
   now includes the doses of the earlier intervals that arrive inside the
   observed one; they were dropped, so the profile decayed from the trough
