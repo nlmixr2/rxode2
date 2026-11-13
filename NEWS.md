@@ -170,6 +170,10 @@
   multiple of `ii` now gives the record's own lagged infusion (and those of
   the intervals in between); they were dropped, so the profile decayed from
   the dose arrival time on (#1590).
+- An `ss = 2` infusion (fixed or modeled rate or duration) into a compartment
+  with `f()` now solves without an `alag()`; it stopped with `SS=2 & Modeled
+  F does not work` although the same regimen with `alag() <- 0` solved and
+  matched explicit dosing (#1602).
 
 ## New features
 
