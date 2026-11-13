@@ -772,6 +772,10 @@ static inline int pushUniqueDosingEvent(double time, double amt, int evid,
 // Forward declarations: defined in rxode2parseGetTime.h (included after this header)
 static inline void updateRate(int idx, rx_solving_options_ind *ind, double *yp);
 static inline void updateDur(int idx, rx_solving_options_ind *ind, double *yp);
+static inline void handleInfusionGetStartOfInfusionIndex(int *startIdx, int *endIdx,
+                                                         double *amt, int *idx,
+                                                         rx_solve *rx, rx_solving_options *op,
+                                                         rx_solving_options_ind *ind);
 
 // Event ("jump") sensitivities: apply a 1st-order dtau/alag moving-boundary jump
 // to sensitivity compartment `slot` (state esK, param p), or DEFER it.  The
@@ -2092,6 +2096,38 @@ static inline int handle_evid(int evid, int neq,
         // Second-order moving-boundary term (product rule + Leibniz), see
         // _esInfusionBoundary2ndOrder()'s own comment for the derivation.
         _esInfusionBoundary2ndOrder(id, xout, yp, cmt, _ns, neq, tmp, _esDydtPreB);
+      }
+      // Infusion stop moved by f() (rxode2#1676): f() scales the amount, so the
+      // stop is t0 + lag + f*dur (handleInfusionItem(), f read at the raw start
+      // t0).  The forcing drops by rate = -tmp there, so the sensitivity jumps by
+      // rate*d(tstop)/dp = rate*dur*dF/dp.  First order only.
+      if (tmp < 0.0 && ind->idx >= 0 && dF != NULL && _rxEsActive &&
+          _rxEsNParam > 0 && cmt < _rxEsNState &&
+          _rxEsNState * (1 + _rxEsNParam) <= neq &&
+          _esSSDurOffCmt != cmt && _esSSRateOffCmt != cmt &&
+          ind->wh0 != EVID0_RATEADJ && ind->wh0 != EVID0_SSINF &&
+          ind->wh0 != EVID0_SS0 && ind->wh0 != EVID0_SS20) {
+        // the start handleInfusionItem() paired this stop with
+        int _esRec = ind->ix[ind->idx], _esStop = -1, _esStart = -1;
+        double _esAmtStop = getDose(ind, _esRec);
+        rx_solve *_esRx = (ind->rx ? ind->rx : &rx_global);
+        rx_solving_options *_esOp = (ind->op ? ind->op : &op_global);
+        handleInfusionGetStartOfInfusionIndex(&_esStart, &_esStop, &_esAmtStop,
+                                              &_esRec, _esRx, _esOp, ind);
+        if (_esStart >= 0 && _esStart < ind->ndoses &&
+            _esStop >= 0 && _esStop < ind->ndoses) {
+          int _ns = _rxEsNState, _np = _rxEsNParam;
+          double _esT0 = getAllTimes(ind, ind->idose[_esStart]);
+          double _esDur = getAllTimes(ind, ind->idose[_esStop]) - _esT0;
+          double *_esFB = (double*) calloc((size_t)_ns * _np, sizeof(double));
+          if (_esFB != NULL) {
+            dF(id, _esT0, yp, _esFB);
+            for (int _p = 0; _p < _np; _p++) {
+              yp[_ns + _p * _ns + cmt] += -tmp * _esDur * _esFB[cmt * _np + _p];
+            }
+            free(_esFB);
+          }
+        }
       }
       // Forward eventSens fix (modeled dur() STEADY STATE): solveSSinf re-expresses
       // a modeled dur ss infusion as this fixed-rate INF_RATE window, so the
