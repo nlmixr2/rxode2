@@ -542,9 +542,6 @@
 - Adjoint solves of a model that pushes doses at run time (`bolus()`,
   `evid_()` and friends inside `if()`) no longer corrupt memory and crash
   R in the `rk4s` family of methods.
-- The adjoint builders no longer constant-fold a numeric default such as
-  `k <- 0.5` in the model.  Before, a supplied `k` was ignored in the
-  derivatives and its sensitivity was 0.
 
 - `rxSolveAdjointRk4()` now documents that, for a model with `delay()`,
   the adjoint's delayed-state term is first order in the step size for
