@@ -132,6 +132,80 @@ d/dt(blood)     = a*intestine - b*blood
     expect_equal(as.numeric(tmp2$cov1$cov), c(2, 3, 1))
   })
 
+  test_that("string comparison warns when a literal is not in the data (#1656)", {
+    d <- data.frame(id = 1, time = 1:3, tnom = c("1", "2", "3"))
+    m <- function() {
+      model({
+        is2 <- (tnom == "2")
+        is25 <- (tnom == "25")
+      })
+    }
+    expect_warning(
+      s <- rxSolve(m, d, returnType = "data.frame"),
+      "'tnom' is compared to \"25\", which is not in the data"
+    )
+    expect_equal(s$is2, c(0, 1, 0))
+    expect_equal(s$is25, c(0, 0, 0))
+    m2 <- function() {
+      model({
+        not25 <- (tnom != "25")
+      })
+    }
+    expect_warning(
+      s <- rxSolve(m2, d, returnType = "data.frame"),
+      "'tnom' is compared to \"25\", which is not in the data, so it never matches"
+    )
+    expect_equal(s$not25, c(1, 1, 1))
+  })
+
+  test_that("string comparison warns when the variable is not re-leveled (#1656)", {
+    m <- function() {
+      model({
+        isC <- (lvl == "c")
+      })
+    }
+    d <- data.frame(id = 1, time = 1:3, lvl = c(1, 2, 3))
+    expect_warning(
+      rxSolve(m, d, returnType = "data.frame"),
+      "'lvl' is compared to strings, but no character or factor data column"
+    )
+    expect_warning(
+      rxSolve(m, et(1:3), params = c(lvl = 1), returnType = "data.frame"),
+      "'lvl' is compared to strings, but no character or factor data column"
+    )
+    d$lvl <- c("a", "b", "c")
+    expect_no_warning(rxSolve(m, d, returnType = "data.frame"))
+  })
+
+  test_that("string comparison re-levels a mixed-case covariate by name (#1656)", {
+    d <- data.frame(id = 1, time = 1:4, Lvl = factor(c("a", "b", "c", "d")))
+    m <- function() {
+      model({
+        isC <- (Lvl == "c")
+        isB <- (Lvl == "b")
+      })
+    }
+    s <- rxSolve(m, d, returnType = "data.frame")
+    expect_equal(s$isC, c(0, 0, 1, 0))
+    expect_equal(s$isB, c(0, 1, 0, 0))
+    d2 <- d
+    d2$Lvl <- as.character(d2$Lvl)
+    s <- rxSolve(m, d2, returnType = "data.frame")
+    expect_equal(s$isC, c(0, 0, 1, 0))
+    expect_equal(s$isB, c(0, 1, 0, 0))
+    # case-distinct parameters each re-level against their own literals
+    m2 <- function() {
+      model({
+        a <- (lvl == "x")
+        b <- (Lvl == "y")
+      })
+    }
+    d3 <- data.frame(id = 1, time = 1:2, lvl = c("w", "x"), Lvl = c("y", "z"))
+    s <- rxSolve(m2, d3, returnType = "data.frame")
+    expect_equal(s$a, c(0, 1))
+    expect_equal(s$b, c(1, 0))
+  })
+
   test_that("homogeneous solve events stay compressed through etTrans", {
     mod <- rxode2parse(
       "

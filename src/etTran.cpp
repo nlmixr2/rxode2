@@ -137,15 +137,12 @@ IntegerVector convertDvid_(SEXP inCmt, int maxDvid=0){
   return id;
 }
 
+// Index of the model parameter `par` in the string-comparison table, or -1;
+// exact, since the model can compare case-distinct parameters (lvl, Lvl)
 static inline int getStrCmpParamIndex(CharacterVector strCmpNames,
-                                      std::string cov) {
-  std::string covLower = cov;
-  std::string covUpper = cov;
-  std::transform(covLower.begin(), covLower.end(), covLower.begin(), ::tolower);
-  std::transform(covUpper.begin(), covUpper.end(), covUpper.begin(), ::toupper);
+                                      std::string par) {
   for (int i = 0; i < strCmpNames.size(); ++i) {
-    std::string cur = as<std::string>(strCmpNames[i]);
-    if (cur == cov || cur == covLower || cur == covUpper) {
+    if (as<std::string>(strCmpNames[i]) == par) {
       return i;
     }
   }
@@ -173,6 +170,51 @@ static inline SEXP refactorStrCmpCovariate(SEXP cur, CharacterVector modelLevels
     fullLevels[i] = levels[i];
   }
   return factor2(curChr, _["levels"] = fullLevels);
+}
+
+// Set by rxSolve around its etTrans passes without the 'iCov' it solves with
+bool rxEtTransStrCmpQuiet = false;
+
+// Warn for each model literal compared to `name` that no data value has
+// (the comparison then never matches); `cur` is the re-leveled factor.
+static inline void warnStrCmpMissingLevels(SEXP cur, CharacterVector modelLevels,
+                                           std::string name) {
+  if (rxEtTransStrCmpQuiet) return;
+  int nLvl = modelLevels.size();
+  std::vector<bool> seen(nLvl, false);
+  int *codes = INTEGER(cur);
+  R_xlen_t n = Rf_xlength(cur);
+  for (R_xlen_t k = 0; k < n; ++k) {
+    int c = codes[k];
+    if (c != NA_INTEGER && c >= 1 && c <= nLvl) seen[c - 1] = true;
+  }
+  for (int k = 0; k < nLvl; ++k) {
+    if (!seen[k]) {
+      Rf_warningcall(R_NilValue,
+                     _("'%s' is compared to \"%s\", which is not in the data, so it never matches"),
+                     name.c_str(), CHAR(STRING_ELT(modelLevels, k)));
+    }
+  }
+}
+
+// Warn for each string-compared model parameter that no character or factor
+// data column was re-leveled for; the comparison then uses positional codes.
+static inline void warnStrCmpNotReleveled(CharacterVector strCmpNames,
+                                          std::vector<bool> &releveled,
+                                          CharacterVector pars) {
+  if (rxEtTransStrCmpQuiet) return;
+  for (int k = 0; k < strCmpNames.size(); ++k) {
+    if (releveled[k]) continue;
+    std::string nm = as<std::string>(strCmpNames[k]);
+    for (int j = 0; j < pars.size(); ++j) {
+      if (nm == as<std::string>(pars[j])) {
+        Rf_warningcall(R_NilValue,
+                       _("'%s' is compared to strings, but no character or factor data column was matched to it; the comparison uses its value as a level code"),
+                       nm.c_str());
+        break;
+      }
+    }
+  }
 }
 
 /*
@@ -1658,6 +1700,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   List inDataF(covCol.size());
   List inDataLvlN(covCol.size()+strAssign.size());
   List inDataLvl(covCol.size()+strAssign.size());
+  std::vector<bool> strCmpReleveled(strCmpParamNames.size(), false);
   for (i = covCol.size(); i--;) {
     int covColi = covCol[i];
     if (covColi >= 0) {
@@ -1678,12 +1721,17 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       } else {
         cur = iCov_[-covColi-1];
       }
+      // Look up by the model parameter this column matched; the data name
+      // is lowercased and misses mixed-case model names (#1656).
       int strCmpIdx = getStrCmpParamIndex(strCmpParamNames,
-                                          as<std::string>(inDataLvlN[i]));
+                                          as<std::string>(pars[covParPos[i]]));
       if (strCmpIdx != -1 && (TYPEOF(cur) == STRSXP || Rf_inherits(cur, "factor"))) {
         CharacterVector modelLevels = Rf_getAttrib(strCmpParams[strCmpIdx], R_LevelsSymbol);
         cur = refactorStrCmpCovariate(cur, modelLevels);
         inDataF[i] = cur;
+        strCmpReleveled[strCmpIdx] = true;
+        warnStrCmpMissingLevels(cur, modelLevels,
+                                as<std::string>(strCmpParamNames[strCmpIdx]));
       }
       if (TYPEOF(cur) == INTSXP){
         RObject lvls = cur.attr("levels");
@@ -1707,6 +1755,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     }
     covUnits[i] = nvTmp2;
   }
+  warnStrCmpNotReleveled(strCmpParamNames, strCmpReleveled, pars);
   for (i = 0; i < strAssign.size(); ++i) {
     inDataLvlN[i+covCol.size()] = strAssignN[i];
     inDataLvl[i+covCol.size()] = strAssign[i];
