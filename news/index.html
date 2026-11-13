@@ -163,6 +163,7 @@
 <h4 id="expression-optimization-development-version">Expression optimization<a class="anchor" aria-label="anchor" href="#expression-optimization-development-version"></a></h4>
 <ul><li>
 <code><a href="../reference/rxOptExpr.html">rxOptExpr()</a></code> avoids CSE temporary-name collisions and warns on repeated optimization; each model should be optimized only once (<a href="https://github.com/nlmixr2/rxode2/issues/1632" class="external-link">#1632</a>).</li>
+<li>Parsing a function call whose argument is a long signed sum, such as <code>exp(1 + a - b + ...)</code>, is no longer exponential in the sum’s length; it dominated <code><a href="../reference/rxNorm.html">rxNorm()</a></code>/<code><a href="../reference/rxOptExpr.html">rxOptExpr()</a></code> and FOCEi setup on models with long lines. Function arguments must now be separated by commas: <code>max(a b)</code> is a syntax error instead of silently becoming <code>max(ab)</code> (<a href="https://github.com/nlmixr2/rxode2/issues/1674" class="external-link">#1674</a>).</li>
 </ul></div>
 <div class="section level4">
 <h4 id="compilation-development-version">Compilation<a class="anchor" aria-label="anchor" href="#compilation-development-version"></a></h4>
