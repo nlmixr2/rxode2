@@ -183,4 +183,18 @@ rxTest({
       expect_equal(nrow(.a), 3L, label = .m)
     }
   })
+
+  test_that("the adjoint ss guards read NONMEM-style upper-case columns", {
+    .up <- data.frame(ID = 1, TIME = c(0, 1, 6, 12), AMT = c(100, 0, 0, 0), EVID = c(1, 0, 0, 0),
+      SS = c(1, 0, 0, 0), II = c(12, 0, 0, 0), CMT = "depot")
+    expect_error(
+      rxSolveAdjointRk4(.txt, .up, params = .p, calcSens = names(.p), method = "rk4s", minSS = 3, maxSS = 3),
+      "fixed number of doses \\(minSS = maxSS\\)"
+    )
+    # abs carries no steady-state term
+    expect_error(
+      rxSolveAdjointRk4(.txt, .up, params = .p, calcSens = names(.p), method = "abs", hmin = 0.001),
+      "adjoint sensitivities do not yet support this steady-state (ss) case", fixed = TRUE
+    )
+  })
 })

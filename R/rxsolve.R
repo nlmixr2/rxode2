@@ -2747,12 +2747,15 @@ rxSolve.function <- function(
 #'
 #' @param df event table as a `data.frame`, or `NULL`
 #' @param name lower-case column name
-#' @return the first matching column, or `NULL` when there is none
+#' @param default value for a missing column, repeated to one per row; `NULL`
+#'   returns `NULL`
+#' @return the first matching column, or `default`
 #' @noRd
-.rxEvCol <- function(df, name) {
+.rxEvCol <- function(df, name, default = NULL) {
   if (is.null(df)) return(NULL)
   .w <- which(tolower(names(df)) == name)
-  if (length(.w) == 0L) NULL else df[[.w[1]]]
+  if (length(.w) > 0L) return(df[[.w[1]]])
+  if (is.null(default)) NULL else rep(default, nrow(df))
 }
 
 #' The parameter names a `params` carries, whatever shape it is
@@ -3657,7 +3660,8 @@ rxSolve.default <- function(
       any(rxModelVars(object)$lhs == "rx__adjFX_0_0__")
   ) {
     .evDf <- tryCatch(as.data.frame(events), error = function(e) NULL)
-    if (!is.null(.evDf) && !is.null(.evDf$ss) && any(.evDf$ss != 0, na.rm = TRUE)) {
+    .ssv <- .rxEvCol(.evDf, "ss")
+    if (!is.null(.ssv) && any(.ssv != 0, na.rm = TRUE)) {
       # The ss IC term is the derivative of the converged steady state, not of
       # the state after exactly minSS = maxSS doses.
       if (.ctl$minSS == .ctl$maxSS) {
@@ -3681,11 +3685,11 @@ rxSolve.default <- function(
       # infusion ss (dR/dp != 0, a moving period boundary) outside the explicit
       # non-composite fill; ss==2 and several ss==1 events in one subject on
       # liblsodaadj; and the abs / cvodesadj drivers (no ss IC term at all).
-      .r <- if (is.null(.evDf$rate)) rep(0, nrow(.evDf)) else .evDf$rate
-      .iiv <- if (is.null(.evDf$ii)) rep(0, nrow(.evDf)) else .evDf$ii
-      .amv <- if (is.null(.evDf$amt)) rep(0, nrow(.evDf)) else .evDf$amt
+      .r <- .rxEvCol(.evDf, "rate", 0)
+      .iiv <- .rxEvCol(.evDf, "ii", 0)
+      .amv <- .rxEvCol(.evDf, "amt", 0)
       .durv <- ifelse(.r > 0, .amv / .r, Inf)
-      .cont <- .evDf$ss == 1 & .r > 0 & .amv == 0 # continuous SSINF
+      .cont <- .ssv == 1 & .r > 0 & .amv == 0 # continuous SSINF
       .stiffCodes <- c(213L, 231L, 232L, 233L, 234L, 235L, 236L, 237L, 238L)
       .rk4sFw <- !(.ctl$method %in% c(202L, 208L, 221L, .stiffCodes))
       .rk4sStiff <- .ctl$method %in% .stiffCodes
@@ -3709,8 +3713,8 @@ rxSolve.default <- function(
         # state with a moving period boundary; the non-composite explicit fill
         # carries the extra dR/dp forcing + transversality B terms (composite/
         # liblsodaadj modeled ss stay guarded).
-        .supported <- (.evDf$ss == 1 & (.r == 0 | .cont | (.r > 0 & .iiv > 0) | (.r < 0 & .iiv > 0 & .noComposite))) |
-          (.evDf$ss == 2 & (.r == 0 | (.r > 0 & .iiv > 0)))
+        .supported <- (.ssv == 1 & (.r == 0 | .cont | (.r > 0 & .iiv > 0) | (.r < 0 & .iiv > 0 & .noComposite))) |
+          (.ssv == 2 & (.r == 0 | (.r > 0 & .iiv > 0)))
       } else if (.ctl$method == 202L) {
         # liblsodaadj: one ss==1 event per subject (all durations), at the window
         # start or later.  Bolus and any fixed-rate infusion with an interval reach
@@ -3718,7 +3722,7 @@ rxSolve.default <- function(
         # period (recording-paused pre-solve) for the monodromy IC, or a -J^{-1}
         # df/dp linear solve for the continuous/full-interval (kind-2) case.  ss==2
         # and several ss==1 events in one subject stay guarded (below).
-        .supported <- (.evDf$ss == 1 & (.r == 0 | .cont | (.r > 0 & .iiv > 0)))
+        .supported <- (.ssv == 1 & (.r == 0 | .cont | (.r > 0 & .iiv > 0)))
       } else if (.rk4sStiff) {
         # pure stiff (Rosenbrock / implicit RK)
         # The stiff backward fills (radau/ros) carry the same ss IC terms as the
@@ -3727,21 +3731,20 @@ rxSolve.default <- function(
         # interval, continuous, ss=2 superposition, interior/multiple ss=1 resets.
         # MODELED rate()/dur() ss (moving boundary, dR/dp) is NOT in rk4sSsIc -> the
         # r<0 term is omitted, so modeled ss stays guarded on the stiff family.
-        .supported <- (.evDf$ss == 1 & (.r == 0 | .cont | (.r > 0 & .iiv > 0))) |
-          (.evDf$ss == 2 & (.r == 0 | (.r > 0 & .iiv > 0)))
+        .supported <- (.ssv == 1 & (.r == 0 | .cont | (.r > 0 & .iiv > 0))) |
+          (.ssv == 2 & (.r == 0 | (.r > 0 & .iiv > 0)))
       } else {
         # abs / cvodesadj: none
         .supported <- rep(FALSE, nrow(.evDf))
       }
       # Several ss==1 events in one subject are handled by the rk4s family (each
       # from its own regimen); liblsodaadj carries one per subject.
-      .idCol <- which(tolower(names(.evDf)) == "id")[1]
-      .ssId <- if (is.na(.idCol)) rep(1L, nrow(.evDf)) else .evDf[[.idCol]]
-      .ss1 <- which(.evDf$ss == 1 & .evDf$evid != 0)
-      .multiSs1 <- any(vapply(split(.evDf$time[.ss1], .ssId[.ss1]),
+      .ssId <- .rxEvCol(.evDf, "id", 1L)
+      .ss1 <- which(.ssv == 1 & .rxEvCol(.evDf, "evid", 1L) != 0)
+      .multiSs1 <- any(vapply(split(.rxEvCol(.evDf, "time", 0)[.ss1], .ssId[.ss1]),
         function(.t) length(unique(.t)) > 1L, logical(1)))
       .badSs <- (.multiSs1 && !(.rk4sFw || .rk4sStiff)) ||
-        any(.evDf$ss != 0 & !.supported, na.rm = TRUE)
+        any(.ssv != 0 & !.supported, na.rm = TRUE)
       if (.badSs) {
         stop(
           "adjoint sensitivities do not yet support this steady-state (ss) ",

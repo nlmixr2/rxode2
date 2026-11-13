@@ -70,6 +70,12 @@ rxSolveAdjoint <- function(
   if (is.function(object)) rxode2::as.rxUi(object) else object
 }
 
+## The event table as an rxEt: a data.frame (any column case) is converted, so
+## the event reads and the dense forward grid (`et(times)`) see its doses.
+.rxAdjointEvents <- function(events) {
+  if (.isRxEt(events)) events else rxode2::as.et(events)
+}
+
 ## Dose compartment of each event row as a state name, defaulting a missing,
 ## NA or "(default)" cmt to the first state and mapping a cmt number to its state.
 .rxAdjointEvCmt <- function(ev, state) {
@@ -145,8 +151,9 @@ rxSolveAdjoint <- function(
     vapply(calcSens, function(p) .nm(k, p), character(1))
   }))
 
-  ## dense forward checkpoint trajectory
+  ## dense forward checkpoint trajectory; et() of a data.frame drops the times
   .denseT <- sort(unique(c(seq(0, max(outTimes), by = denseBy), outTimes)))
+  events <- .rxAdjointEvents(events)
   .fev <- events |> rxode2::et(.denseT)
   .fwd <- as.data.frame(rxode2::rxSolve(
     rxode2::rxode2(.mText),
@@ -223,8 +230,9 @@ rxSolveAdjoint <- function(
   adjStates <- intersect(.st, adjStates)
   invisible(rxode2::.rxJacobian(.model, c(.st, calcSens)))
 
+  events <- .rxAdjointEvents(events)
   ## event detection (identical to .rxAdjointGradBuild)
-  .ev <- as.data.frame(events)
+  .ev <- as.data.frame(events, all = TRUE)
   .ev$cmt <- .rxAdjointEvCmt(.ev, rxode2::rxModelVars(object)$state)
   .dr <- which(!is.na(.ev$evid) & .ev$evid == 1L & !is.na(.ev$amt) & .ev$amt != 0)
   .rateCol <- if ("rate" %in% names(.ev)) .ev$rate[.dr] else rep(0, length(.dr))
@@ -609,16 +617,21 @@ rxSolveAdjoint <- function(
 ) {
   .build <- .rxAdjointGradBuild(object, calcSens, pred, events, errModel)
   .evalFn <- if (useC) .rxAdjointGradEvalC else .rxAdjointGradEval
-  .covCols <- setdiff(names(data), c("id", "time", "dv"))
-  .ids <- unique(data$id)
+  ## id, time and dv in any column case; every other column is a covariate
+  .covCols <- names(data)[!(tolower(names(data)) %in% c("id", "time", "dv"))]
+  .idv <- .rxEvCol(data, "id")
+  .tv <- .rxEvCol(data, "time")
+  .dvv <- .rxEvCol(data, "dv")
+  .ids <- unique(.idv)
   .g <- stats::setNames(numeric(length(calcSens)), calcSens)
   for (.id in .ids) {
-    .d <- data[data$id == .id, , drop = FALSE]
+    .w <- .idv == .id
+    .d <- data[.w, , drop = FALSE]
     .p <- params
     for (.cc in .covCols) {
       .p[[.cc]] <- .d[[.cc]][1]
     } # per-subject covariates
-    .g <- .g + .evalFn(.build, .p, .d$time, .d$dv, denseBy = denseBy, atol = atol, rtol = rtol)
+    .g <- .g + .evalFn(.build, .p, .tv[.w], .dvv[.w], denseBy = denseBy, atol = atol, rtol = rtol)
   }
   .g
 }
@@ -660,8 +673,9 @@ rxSolveAdjoint <- function(
   })
   names(.dhdp) <- calcSens
 
+  events <- .rxAdjointEvents(events)
   ## event detection (needed before the backward model is built)
-  .ev <- as.data.frame(events)
+  .ev <- as.data.frame(events, all = TRUE)
   .ev$cmt <- .rxAdjointEvCmt(.ev, rxode2::rxModelVars(object)$state)
   .dr <- which(!is.na(.ev$evid) & .ev$evid == 1L & !is.na(.ev$amt) & .ev$amt != 0)
   .rateCol <- if ("rate" %in% names(.ev)) .ev$rate[.dr] else rep(0, length(.dr))
