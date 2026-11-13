@@ -41,6 +41,7 @@
 #include "strncmp.h"
 #include "rxode2_altrep.h"
 #include "rxode2_df.h"
+#include "rxProtect.h"
 #include "../inst/include/rxMemoryCalc.h"
 #include "rxSbufFormat.h"
 #define _(String) (String)
@@ -7580,10 +7581,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _lastT0 = clock();
 #endif// rxSolveT
 
-    // The return value of `rxSolve_finalize()` needs to be protected from GC because
-    // the operations below can trigger a GC.
-    SEXP ret = PROTECT(rxSolve_finalize(object, rxControl, specParams, extraArgs, params, events,
-                                        inits, rxSolveDat));
+    // rxSolve_finalize() returns a bare SEXP; keep it protected until return.
+    rxProtect rx_protect;
+    SEXP ret = rx_protect.protect(rxSolve_finalize(object, rxControl, specParams, extraArgs,
+                                                   params, events, inits, rxSolveDat));
     if (!rxIsNull(setupOnlyObj)) {
       rxUnlock(setupOnlyObj);
       setupOnlyObj = R_NilValue;
@@ -7592,7 +7593,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     RSprintf("Time15: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
 #endif // rxSolveT
-    UNPROTECT(1);
     return ret;
   }
   return R_NilValue;
