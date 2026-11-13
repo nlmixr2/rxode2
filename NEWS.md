@@ -530,6 +530,11 @@
   into symengine.  `rxFromSE()` constant-folded it as `TRUE`/`FALSE`, so
   `b*(F+1)` became `b` (#1692).
 
+- `rxFromSE()`'s R walker, used for expressions the C translator declines,
+  is faster: the symbol rewrites run only on names they can match, and
+  their anchored pattern and the reserved-name table are built once instead
+  of on every leaf (#1673).
+
 - An error inside a symbolic calculation that shows a progress bar (the
   Jacobian and sensitivity builds of `rxode2(calcSens = )`, the adjoint
   expansion, inductive linearization, expression optimization) is now

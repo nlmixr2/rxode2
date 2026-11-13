@@ -679,6 +679,12 @@ rxRmFun <- function(name) {
   "I" = 1i
 )
 
+## rx_SymPy_Res_<name> -> <name>, for .rxFromSE()
+.rxSEreservedUnmask <- structure(
+  names(.rxSEreserved),
+  names = paste0("rx_SymPy_Res_", names(.rxSEreserved))
+)
+
 #' Add to rxode2's derivative tables
 #'
 #' @param name Function Name
@@ -3489,14 +3495,10 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
 #' @rdname rxToSE
 .rxFromSE <- function(x) {
   rxReq("symengine")
-  .cnst <- setNames(
-    names(.rxSEreserved),
-    paste0("rx_SymPy_Res_", names(.rxSEreserved))
-  )
   if (is.name(x) || is.atomic(x)) {
     .ret <- .rxFromSEnum(x)
     .ret <- .rxRepRxQ(.ret)
-    .ret0 <- .cnst[.ret]
+    .ret0 <- .rxSEreservedUnmask[.ret]
     if (!is.na(.ret0)) {
       return(.ret0)
     }
@@ -3511,44 +3513,20 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
     if (.ret == "E") {
       return("M_E")
     }
-    .ret <- sub(
-      .regRate,
-      "rate(\\1)",
-      sub(
-        .regDur,
-        "dur(\\1)",
-        sub(
-          .regLag,
-          "alag(\\1)",
-          sub(
-            .regF,
-            "f(\\1)",
-            sub(
-              regIni0,
-              "\\1(0)",
-              sub(
-                regDfDy,
-                "df(\\1)/dy(\\2)",
-                sub(
-                  regDfDyTh,
-                  "df(\\1)/dy(\\2[\\3])",
-                  sub(
-                    regDDt,
-                    "d/dt(\\1)",
-                    sub(
-                      rex::rex(start, regThEt, end),
-                      "\\1[\\2]",
-                      .ret
-                    )
-                  )
-                )
-              )
-            )
-          )
-        )
-      )
-    )
-    .ret <- sub("[(]rx_SymPy_Res_", "(", .ret)
+    ## the mangled names all start with rx; THETA_n_/ETA_n_ cannot
+    if (startsWith(.ret, "rx")) {
+      .ret <- sub(regDDt, "d/dt(\\1)", .ret)
+      .ret <- sub(regDfDyTh, "df(\\1)/dy(\\2[\\3])", .ret)
+      .ret <- sub(regDfDy, "df(\\1)/dy(\\2)", .ret)
+      .ret <- sub(regIni0, "\\1(0)", .ret)
+      .ret <- sub(.regF, "f(\\1)", .ret)
+      .ret <- sub(.regLag, "alag(\\1)", .ret)
+      .ret <- sub(.regDur, "dur(\\1)", .ret)
+      .ret <- sub(.regRate, "rate(\\1)", .ret)
+    } else if (grepl("ETA_", .ret, fixed = TRUE)) {
+      .ret <- sub(.regThEtAll, "\\1[\\2]", .ret)
+    }
+    .ret <- sub("(rx_SymPy_Res_", "(", .ret, fixed = TRUE)
 
     return(.ret)
   } else if (is.call(x)) {
