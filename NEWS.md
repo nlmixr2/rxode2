@@ -94,6 +94,11 @@
   dominated `rxNorm()`/`rxOptExpr()` and FOCEi setup on models with long
   lines.  Function arguments must now be separated by commas: `max(a b)` is
   a syntax error instead of silently becoming `max(ab)` (#1674).
+- A function call with an empty argument, such as `max(, b)`, `max()` or
+  `exp()`, is now a syntax error, as is a wrong number of arguments to a
+  one- or two-argument math function such as `log10()` or `pow()`, or more
+  than one argument to `tlast()`, `tad()` and the like; these used to
+  translate to malformed C that failed to compile (#1674).
 
 ### Compilation
 - A cached model library that exists but will not load (still being linked by

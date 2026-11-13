@@ -561,6 +561,7 @@ static inline int allSpaces(char *v2) {
       allSpace=0;
       break;
     }
+    iii++;
   }
   return allSpace;
 }

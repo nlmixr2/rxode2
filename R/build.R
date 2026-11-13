@@ -337,7 +337,12 @@ d/dt(blood)     = a*intestine - b*blood
   message("saved!")
   message("Generating parseFuns.R")
   .var <- deparse(rxSupportedFuns())
-  .num <- deparse(.rxSEeq)
+  ## the parser checks a function's argument count against this table
+  .num <- .rxSEeq
+  .num1 <- setdiff(names(.rxSEsingle), names(.num))
+  .num2 <- setdiff(names(.rxSEdouble), c(names(.num), .num1))
+  .num <- c(.num, setNames(rep(1, length(.num1)), .num1), setNames(rep(2, length(.num2)), .num2))
+  .num <- deparse(.num)
   .var[1] <- paste0(".parseEnv$.parseFuns <- ", .var[1])
   .num[1] <- paste0(".parseEnv$.parseNum <- ", .num[1])
   .pf <- devtools::package_file("R/parseFuns.R")

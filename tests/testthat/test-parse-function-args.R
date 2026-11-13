@@ -27,3 +27,120 @@ rxTest({
     expect_equal(rxNorm(.x), paste0("y=max(", .sum, ",-", .sum, ");\n"))
   })
 })
+
+rxTest({
+  test_that("an empty argument is a syntax error, not malformed C", {
+    expect_error(rxNorm("y=max(,b);"), "syntax error")
+    expect_error(rxNorm("y=atan2(,a);"), "syntax error")
+    expect_error(rxNorm("y=pnorm(,a);"), "syntax error")
+    expect_error(rxNorm("y=lag(,1);"), "syntax error")
+    expect_error(rxNorm("obs(,a);"), "syntax error")
+    expect_error(rxNorm("y=max();"), "syntax error")
+    expect_error(rxNorm("y=sum();"), "syntax error")
+    expect_error(rxNorm("y=exp();"), "syntax error")
+    expect_error(rxNorm("obs();"), "syntax error")
+  })
+
+  test_that("the empty-argument errors name the function", {
+    .msg <- function(x) {
+      paste(
+        utils::capture.output(try(rxNorm(x), silent = TRUE), type = "output"),
+        collapse = "\n"
+      )
+    }
+    expect_match(.msg("y=max(,b);"), "'max' has an empty first argument", fixed = TRUE)
+    expect_match(.msg("y=max();"), "'max' needs at least one argument", fixed = TRUE)
+    expect_match(.msg("y=exp();"), "'exp' takes 1 arguments, supplied 0", fixed = TRUE)
+  })
+
+  test_that("only functions that can be called with no arguments accept f()", {
+    ## log10(), pow(), expm1() ... used to translate to malformed C
+    .zero <- c(
+      "dose",
+      "dose0",
+      "dosenum",
+      "linCmt",
+      "podo",
+      "podo0",
+      "rcauchy",
+      "rexp",
+      "rnorm",
+      "rxcauchy",
+      "rxexp",
+      "rxnorm",
+      "tfirst",
+      "tfirst0",
+      "tlast",
+      "tlast0"
+    )
+    .ok <- vapply(
+      rxSupportedFuns(),
+      function(.f) {
+        tryCatch(
+          {
+            suppressMessages(utils::capture.output(
+              rxNorm(paste0("y=", .f, "();"))
+            ))
+            TRUE
+          },
+          error = function(e) FALSE
+        )
+      },
+      logical(1)
+    )
+    expect_setequal(names(.ok)[.ok], .zero)
+    expect_error(rxNorm("y=log10(a, b);"), "syntax error")
+    expect_error(rxNorm("y=pow(a);"), "syntax error")
+  })
+
+  test_that("functions called with no arguments still parse", {
+    for (.f in c("rxnorm", "rnorm", "tad", "tlast", "dosenum")) {
+      expect_equal(rxNorm(paste0("y=", .f, "();")), paste0("y=", .f, "();\n"))
+    }
+  })
+
+  test_that("dosing functions still take an optional compartment", {
+    .ode <- "d/dt(depot)=-ka*depot;\n"
+    for (.f in c(
+      "dose",
+      "dose0",
+      "podo",
+      "podo0",
+      "tlast",
+      "tlast0",
+      "tfirst",
+      "tfirst0",
+      "tad",
+      "tad0",
+      "tafd",
+      "tafd0"
+    )) {
+      .y <- paste0("y=", .f, "(depot);\n")
+      expect_equal(rxNorm(paste0(.ode, .y)), paste0(.ode, .y))
+      expect_error(rxNorm(paste0(.ode, "y=", .f, "(depot, 1);")), "syntax error")
+    }
+  })
+
+  test_that("a bad call reports one error, and tlast() takes at most one argument", {
+    .msg <- function(x) {
+      paste(
+        utils::capture.output(try(rxNorm(x), silent = TRUE), type = "output"),
+        collapse = "\n"
+      )
+    }
+    expect_no_match(.msg("y=mix();"), "odd number", fixed = TRUE)
+    expect_no_match(.msg("d/dt(x)=-x; y=delay(, 1);"), "must be an ODE state", fixed = TRUE)
+    expect_match(.msg("d/dt(x)=-x; y=tlast(x, 1);"), "'tlast' takes 0 or 1 arguments", fixed = TRUE)
+    expect_error(rxode2parse("y=mix();"), "syntax error")
+    expect_error(rxode2parse("y=lag(, 1);"), "syntax error")
+    expect_error(rxode2parse("d/dt(x)=-x; y=delay(, 1);"), "syntax error")
+    expect_error(rxode2parse("d/dt(x)=-x; y=tlast(x, 1);"), "syntax error")
+    expect_error(rxode2parse("y=tad(a, b);"), "syntax error")
+    expect_error(rxode2parse("obs(, 1);"), "syntax error")
+    expect_error(rxode2parse("y=max(a, );"), "syntax error")
+    expect_error(rxode2parse("y=max( , b);"), "syntax error")
+    expect_error(rxode2parse("y=max( );"), "syntax error")
+    expect_error(rxode2parse("y=max(a, , b);"), "syntax error")
+    expect_equal(rxNorm("d/dt(x)=-x;y=tlast(x);"), "d/dt(x)=-x;\ny=tlast(x);\n")
+  })
+})
