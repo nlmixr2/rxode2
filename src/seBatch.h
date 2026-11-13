@@ -24,6 +24,7 @@
  */
 #ifndef __SE_BATCH_H__
 #define __SE_BATCH_H__
+#include "rxProtect.h"
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -213,8 +214,9 @@ static SEXP seRunBatch(SEXP strVec, seXlateFn xlate, int numDer,
   if (TYPEOF(strVec) != STRSXP) {
     Rf_error("%s", "'strVec' must be a character vector");
   }
-  SEXP ret = PROTECT(Rf_allocVector(STRSXP, Rf_xlength(strVec)));
-  if (Rf_xlength(strVec) == 0) { UNPROTECT(1); return ret; }
+  rxProtect rx_protect;
+  SEXP ret = rx_protect.protect(Rf_allocVector(STRSXP, Rf_xlength(strVec)));
+  if (Rf_xlength(strVec) == 0) return ret;
   seBatchCollect(strVec, ret, dir, cacheOn, &b);
   seBatchTranslate(&b, xlate, numDer, tab);
   int anyNA = seBatchRecord(strVec, &b, dir, cacheOn);
@@ -226,15 +228,13 @@ static SEXP seRunBatch(SEXP strVec, seXlateFn xlate, int numDer,
      the error path as well as the normal one.  seFreeResults() is idempotent:
      the conversion nulls each pointer as it frees it. */
   seConvert cv; cv.n = b.n; cv.out = b.out; cv.ret = ret; cv.in = b.in;
-  SEXP cont = PROTECT(R_MakeUnwindCont());   /* R_NilValue here is "bad value" */
+  SEXP cont = rx_protect.protect(R_MakeUnwindCont());   /* R_NilValue here is "bad value" */
   R_UnwindProtect(seConvertResults, &cv, seFreeResults, &cv, cont);
   if (anyNA) {
-    SEXP w = PROTECT(Rf_allocVector(INTSXP, b.n));
+    SEXP w = rx_protect.protect(Rf_allocVector(INTSXP, b.n));
     for (i = 0; i < b.n; i++) INTEGER(w)[i] = b.why[i] < 0 ? 0 : b.why[i];
     Rf_setAttrib(ret, Rf_install("why"), w);
-    UNPROTECT(1);
   }
-  UNPROTECT(2);
   return ret;
 }
 

@@ -7,6 +7,7 @@
 #define STRICT_R_HEADERS
 #include <R.h>
 #include <Rinternals.h>
+#include "rxProtect.h"
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -107,13 +108,14 @@ extern "C" SEXP _rxode2_seCacheResetR(void) {
 /* .Call: list(fromSE=, toSE=) decline counts by reason, cache hits, size;
    reset = TRUE zeroes the counters after reading them */
 extern "C" SEXP _rxode2_seStatsR(SEXP resetS) {
-  SEXP ret = PROTECT(Rf_allocVector(VECSXP, 6));
-  SEXP nm = PROTECT(Rf_allocVector(STRSXP, 6));
+  rxProtect rx_protect;
+  SEXP ret = rx_protect.protect(Rf_allocVector(VECSXP, 6));
+  SEXP nm = rx_protect.protect(Rf_allocVector(STRSXP, 6));
   for (int d = 0; d < 2; d++) {
-    SEXP v = PROTECT(Rf_allocVector(REALSXP, SE_NWHY));
+    SEXP v = rx_protect.protect(Rf_allocVector(REALSXP, SE_NWHY));
     for (int i = 0; i < SE_NWHY; i++) REAL(v)[i] = seStats[d][i];
     SET_VECTOR_ELT(ret, d, v);
-    UNPROTECT(1);
+    rx_protect.unprotect(1);
   }
   SET_VECTOR_ELT(ret, 2, Rf_ScalarReal(seHits[0]));
   SET_VECTOR_ELT(ret, 3, Rf_ScalarReal(seHits[1]));
@@ -132,6 +134,5 @@ extern "C" SEXP _rxode2_seStatsR(SEXP resetS) {
       seHits[d] = 0.0;
     }
   }
-  UNPROTECT(2);
   return ret;
 }

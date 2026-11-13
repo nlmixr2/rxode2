@@ -1639,10 +1639,10 @@ extern "C" SEXP _rxTestThreadIdSlots(SEXP ptrs) {
   set(-1);
   int b = get();
   set(old);
-  SEXP ret = PROTECT(Rf_allocVector(INTSXP, 2));
+  rxProtect rx_protect;
+  SEXP ret = rx_protect.protect(Rf_allocVector(INTSXP, 2));
   INTEGER(ret)[0] = a;
   INTEGER(ret)[1] = b;
-  UNPROTECT(1);
   return ret;
 }
 static inline int _rxTid(void) {
@@ -5223,11 +5223,11 @@ static std::vector<double> _rxForcedVal;
 extern "C" SEXP _rxode2_rxSetForcedPars(SEXP idx, SEXP val) {
   int n = Rf_length(idx);
   if (Rf_length(val) != n) Rf_error("forcedPars idx/val length mismatch");
-  SEXP idxI = PROTECT(Rf_coerceVector(idx, INTSXP));
-  SEXP valR = PROTECT(Rf_coerceVector(val, REALSXP));
+  rxProtect rx_protect;
+  SEXP idxI = rx_protect.protect(Rf_coerceVector(idx, INTSXP));
+  SEXP valR = rx_protect.protect(Rf_coerceVector(val, REALSXP));
   _rxForcedIdx.assign(INTEGER(idxI), INTEGER(idxI) + n);
   _rxForcedVal.assign(REAL(valR), REAL(valR) + n);
-  UNPROTECT(2);
   return R_NilValue;
 }
 
@@ -5270,16 +5270,16 @@ static inline void rxCallParLoaders(rx_solve* rx, int npars, int ncols) {
 // value = <injected values>); the R layer maps indices to parameter names.
 extern "C" SEXP _rxode2_rxGetInjectedPars(void) {
   int n = (int) _rxInjIdx.size();
-  SEXP idx = PROTECT(Rf_allocVector(INTSXP, n));
-  SEXP val = PROTECT(Rf_allocVector(REALSXP, n));
+  rxProtect rx_protect;
+  SEXP idx = rx_protect.protect(Rf_allocVector(INTSXP, n));
+  SEXP val = rx_protect.protect(Rf_allocVector(REALSXP, n));
   for (int i = 0; i < n; ++i) {
     INTEGER(idx)[i] = _rxInjIdx[i];
     REAL(val)[i] = _rxInjVal[i];
   }
-  SEXP ret = PROTECT(Rf_allocVector(VECSXP, 2));
+  SEXP ret = rx_protect.protect(Rf_allocVector(VECSXP, 2));
   SET_VECTOR_ELT(ret, 0, idx);
   SET_VECTOR_ELT(ret, 1, val);
-  UNPROTECT(3);
   return ret;
 }
 
