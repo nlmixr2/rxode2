@@ -16,6 +16,17 @@
 - `delay()` models with `method = "ros4"` now solve on the dense segment
   driver, so `delay()` history is recorded on every step and `hmax` is
   honored (#1599).
+- `delay()` models now solve with `method = "cvode"`, which records the
+  `delay()` history from CVODE's interpolant on every step, steady state
+  included (#1599).
+- `method = "cvodesadj"` now solves `delay()` models: the forward solve
+  records the `delay()` history and the backward solve carries the delayed
+  Jacobian term (and the dose jump of a parameter-dependent delay), so the
+  sensitivities are correct; before, the solution and its sensitivities
+  ignored the delay (#1599).
+- `delay()` models now solve with `method = "liblsoda", dense = TRUE`, which
+  records the `delay()` history from LSODA's interpolant on every step;
+  `method = "liblsoda"` alone still switches to `"dop853+ros4"` (#1599).
 
 ### Event tables
 - With `addlKeepsCov = TRUE`, a dose's `f()` now reads the covariates of its
@@ -115,6 +126,12 @@
   (levenc/posologyr#70).  Event tables under 100,000 rows are now sorted with
   base R's radix sort, which gives the same order as the `data.table` sort
   without its setup cost on every solve.
+- `method = "cvode"` now honors `dense = TRUE`, as `rxIsDense()` and the
+  documentation describe; the CVODE dense driver existed but `dense = TRUE`
+  was silently dropped (#1599).
+- `method = "liblsoda"` now accepts `dense = TRUE`, which lifts the `hmax`
+  default like the other dense methods (LSODA already interpolates between
+  its own steps), and `rxIsDense("liblsoda")` is `TRUE` (#1599).
 
 ### Steady state
 - A steady-state bolus into a compartment whose `alag()` is longer than `ii`
