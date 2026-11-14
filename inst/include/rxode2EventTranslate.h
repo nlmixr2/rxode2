@@ -29,6 +29,7 @@ typedef struct {
 // EVID = 2; Non-observation, possibly covariate
 // EVID = 3; Reset ODE states to zero; Non-observation event
 // EVID = 4; Reset and then dose event;  Illegal
+// EVID = 8; Hidden covariate knot at a lagged dose's record time (not output)
 // EVID = 9; Non-observation event to ini system at time zero; This is to set the INIs at the correct place.
 // EVID = 10-99; mtime events (from ODE system)
 // When EVID > 100

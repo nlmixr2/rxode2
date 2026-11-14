@@ -220,7 +220,7 @@ static inline void dfCountRowsForNmOutput(rx_solve *rx, int nsim, int nsub) {
       di = 0;
       for (int i = 0; i < ntimes; i++){
         evid = getEvid(ind, ind->ix[i]);
-        if (evid == 9) continue; // not output in NONMEM
+        if (isHiddenEvid(evid)) continue; // not output in NONMEM
         if (isDose(evid)) {
           getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
           if (whI == EVIDF_MODEL_RATE_OFF  || whI == EVIDF_MODEL_DUR_OFF){
@@ -491,7 +491,7 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
     int _di = 0, _subRows = 0, _subKk = 0;
     for (int _ti = 0; _ti < _sind->n_all_times; _ti++) {
       int _ev = getEvid(_sind, _sind->ix[_ti]);
-      if (_ev == 9) continue;
+      if (isHiddenEvid(_ev)) continue;
       if (updateErr) {
         if ((doDose && _ev != 9) || (evid0 == 0 && isObs(_ev)) || (evid0 == 1 && _ev == 0)) {
           _subKk++;
@@ -794,6 +794,11 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
         double curT = getTime_(ind->ix[ind->idx], ind);
         evid_p = getEvid(ind, ind->ix[ind->idx]);
         if (evid_p == 9) continue;
+        if (evid_p == 8) {
+          // a lagged dose's knot is not output, but lag() of an lhs reads it
+          if (nlhs) calc_lhs(solveid, curT, getSolve(i), ind->lhs);
+          continue;
+        }
         if (isDose(evid_p)) {
           getWh(getEvid(ind, ind->ix[i]), &(ind->wh), &(ind->cmt), &(ind->wh100), &(ind->whI), &(ind->wh0));
           switch (ind->whI) {

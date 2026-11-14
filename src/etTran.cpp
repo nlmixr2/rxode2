@@ -1781,6 +1781,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   // EVID = 2; Non-observation, possibly covariate
   // EVID = 3; Reset ODE states to zero; Non-observation event
   // EVID = 4; Reset and then dose event;  Illegal
+  // EVID = 8; Hidden covariate knot at a lagged dose's record time (not output)
   // EVID = 9; Non-observation event to ini system at time zero; This is to set the INIs at the correct place.
   // EVID = 10-99; mtime events (from ODE system)
   // When EVID > 100
@@ -2424,6 +2425,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         cevid=0;
       }
     }
+    if (cevid == 8) {
+      // a lagged dose's hidden knot from an earlier translation; its dose
+      // record emits it again when it is still due
+      continue;
+    }
     if (cevid == 4 && nobs ==0 && ndose == 0) {
       // No reset here
       cevid = 1;
@@ -2785,6 +2791,16 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       // to, comes from the shared translator in
       // inst/include/rxode2EventTranslate.h, which the runtime evid_() push
       // path uses as well, so the two cannot disagree.
+      // a dose alag() moves off its record's time (not a compartment turn-off)
+      bool lagCmt = false;
+      if (flg != 30) {
+        for (int jj = 0; jj < curAlag.size(); ++jj) {
+          if (cmt == curAlag[jj]) {
+            lagCmt = true;
+            break;
+          }
+        }
+      }
       int nOcc = _rxAddlCount(cii, caddl);
       for (int rep = 0; rep < nOcc; ++rep) {
         if (rep > 0) ctime += cii;
@@ -2836,6 +2852,21 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
         if (_rxAddlZeroLastIi(rep, flg, cii, caddl) && !ii.empty()) {
           ii[ii.size() - 1] = 0.0;
+        }
+        if (rep == 0 && !addlKeepsCov && lagCmt) {
+          // alag() moves the dose, but its record's time stays a covariate
+          // knot (#1584); a hidden record there makes every solve stop at it
+          id.push_back(cid);
+          evid.push_back(8);
+          cmtF.push_back(0);
+          time.push_back(ctime);
+          amt.push_back(NA_REAL);
+          ii.push_back(0.0);
+          dv.push_back(NA_REAL);
+          limit.push_back(NA_REAL);
+          cens.push_back(0);
+          idxInput.push_back((int)i);
+          recImplied.push_back(0);
         }
         if (rep == 0 && ctime == 0){
           if (zeroIdSet.find(cid) == zeroIdSet.end()){
@@ -2939,7 +2970,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         } else {
           ndose += splitN - 1;
         }
-      } else if (isObs(evid[j])) nobs++;
+      } else if (isObs(evid[j]) && evid[j] != 8) nobs++;
       newFirst[j] = (int)id2.size();
       if (!splitThis) {
         id2.push_back(id[j]);
