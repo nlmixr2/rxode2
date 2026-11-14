@@ -131,6 +131,14 @@
   to carry its record's covariates to its arrival, which now happens only with
   `addlKeepsCov = TRUE`.  `nonmem = TRUE` turns on `addlKeepsCov` unless it is
   given, since NONMEM keeps a dose record's covariates with the dose (#1584).
+- With `addlKeepsCov = FALSE`, `etTrans()` now adds a hidden record (internal
+  `evid` 8, never output) at the data time of each dose that `alag()` moves.
+  ODE solves (dense output, `delay()` and `lsoda` included) and `linCmt()`
+  solves now stop where the dose record's covariates start, so a lagged dose
+  solves the same as an explicit record at that time.
+  `linCmt()` used to advance across that time with a single covariate value.
+  Re-translating a translated table keeps its knots, and the knots do not count
+  as observations (#1584).
 - Re-solving a solved object with new events (`rxSolve(<rxSolve>, params,
   events)`) solves the model that produced it instead of re-parsing the model
   text on every call, which also keeps the event (jump) sensitivities of a

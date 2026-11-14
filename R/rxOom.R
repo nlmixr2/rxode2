@@ -192,12 +192,11 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   .addDosing <- .ctl$addDosing
   .keep <- if (is.null(.addDosing)) {
     .evid == 0L
-  } else if (is.na(.addDosing[1])) {
-    .evid != 9L
-  } else if (isTRUE(.addDosing[1])) {
-    .evid != 9L
+  } else if (is.na(.addDosing[1]) || isTRUE(.addDosing[1])) {
+    # evid 8 (lagged-dose knot) and 9 are hidden records
+    !(.evid %in% c(8L, 9L))
   } else {
-    (.evid == 0L | .evid == 2L | (.evid >= 9L & .evid <= 99L)) & .evid != 9L
+    .evid == 0L | .evid == 2L | (.evid >= 10L & .evid <= 99L)
   }
   .n <- tabulate(.id[.keep], nbins = length(.lvl))
   .n <- .n[match(as.character(.ids), as.character(.lvl))]

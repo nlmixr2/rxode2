@@ -2954,6 +2954,9 @@ d/dt(central) = 1.5*depot - 0.2*central
   })
 
   test_that("etTrans lag ss", {
+    # the hidden knot (evid 8) at each lagged dose's time is tested in
+    # test-alag-cov-data-time.R
+    .noKnot <- function(x) x[x$EVID != 8L, ]
     mod <- rxode2parse(
       "
 a = 6
@@ -2966,7 +2969,7 @@ d/dt(blood)     = a*intestine - b*blood
 
     d <- data.frame(time = c(0, 1), amt = c(100, 0), ii = c(24, 0), evid = c(1, 0), ss = c(1, 0))
 
-    tmp <- etTrans(d, mod)
+    tmp <- .noKnot(etTrans(d, mod))
 
     expect_equal(tmp$TIME, c(0, 0, 1))
     expect_equal(tmp$EVID, c(109L, 101L, 0L))
@@ -2975,7 +2978,7 @@ d/dt(blood)     = a*intestine - b*blood
 
     d <- data.frame(time = c(0, 1), amt = c(100, 0), ii = c(24, 0), evid = c(1, 0), ss = c(2, 0))
 
-    tmp <- etTrans(d, mod, addlDropSs = FALSE)
+    tmp <- .noKnot(etTrans(d, mod, addlDropSs = FALSE))
 
     expect_equal(tmp$TIME, c(0, 0, 1))
     expect_equal(tmp$EVID, c(119L, 101L, 0L))
@@ -2984,7 +2987,7 @@ d/dt(blood)     = a*intestine - b*blood
 
     d <- data.frame(time = c(0, 1), amt = c(100, 0), ii = c(24, 0), evid = c(1, 0), ss = c(1, 0), rate = c(5, 0))
 
-    tmp <- etTrans(d, mod, addlDropSs = FALSE)
+    tmp <- .noKnot(etTrans(d, mod, addlDropSs = FALSE))
 
     expect_equal(tmp$TIME, c(0, 0, 0, 1, 20))
     expect_equal(tmp$EVID, c(10109L, 10108L, 10101L, 0L, 10101L))
@@ -2993,7 +2996,7 @@ d/dt(blood)     = a*intestine - b*blood
 
     d <- data.frame(time = c(0, 1), amt = c(100, 0), ii = c(24, 0), evid = c(1, 0), ss = c(1, 0), dur = c(20, 0))
 
-    tmp <- etTrans(d, mod, addlDropSs = FALSE)
+    tmp <- .noKnot(etTrans(d, mod, addlDropSs = FALSE))
 
     expect_equal(tmp$TIME, c(0, 0, 0, 1, 20))
     expect_equal(tmp$EVID, c(20109L, 20108L, 20101L, 0L, 20101L))
@@ -3002,7 +3005,7 @@ d/dt(blood)     = a*intestine - b*blood
 
     d <- data.frame(time = c(0, 1), amt = c(100, 0), ii = c(24, 0), evid = c(1, 0), ss = c(2, 0), rate = c(5, 0))
 
-    tmp <- etTrans(d, mod, addlDropSs = FALSE)
+    tmp <- .noKnot(etTrans(d, mod, addlDropSs = FALSE))
 
     expect_equal(tmp$TIME, c(0, 0, 0, 1, 20))
     expect_equal(tmp$EVID, c(10119L, 10108L, 10101L, 0L, 10101L))
@@ -3011,7 +3014,7 @@ d/dt(blood)     = a*intestine - b*blood
 
     d <- data.frame(time = c(0, 1), amt = c(100, 0), ii = c(24, 0), evid = c(1, 0), ss = c(2, 0), dur = c(20, 0))
 
-    tmp <- etTrans(d, mod, addlDropSs = FALSE)
+    tmp <- .noKnot(etTrans(d, mod, addlDropSs = FALSE))
 
     expect_equal(tmp$TIME, c(0, 0, 0, 1, 20))
     expect_equal(tmp$EVID, c(20119L, 20108L, 20101L, 0L, 20101L))
@@ -3028,7 +3031,7 @@ d/dt(blood)     = a*intestine - b*blood
       addl = c(3, 0)
     )
 
-    tmp <- etTrans(d, mod, addlDropSs = FALSE)
+    tmp <- .noKnot(etTrans(d, mod, addlDropSs = FALSE))
 
     expect_equal(tmp$TIME, c(0, 0, 0, 20, 24, 24, 24, 44, 48, 48, 48, 68, 72, 72, 72, 92, 200))
     expect_equal(
@@ -3066,7 +3069,7 @@ d/dt(blood)     = a*intestine - b*blood
       addl = c(3, 0)
     )
 
-    tmp <- etTrans(d, mod, addlDropSs = FALSE)
+    tmp <- .noKnot(etTrans(d, mod, addlDropSs = FALSE))
 
     expect_equal(tmp$TIME, c(0, 0, 0, 20, 24, 24, 24, 44, 48, 48, 48, 68, 72, 72, 72, 92, 200))
     expect_equal(
@@ -3104,7 +3107,7 @@ d/dt(blood)     = a*intestine - b*blood
       addl = c(3, 0)
     )
 
-    tmp <- etTrans(d, mod, addlDropSs = FALSE)
+    tmp <- .noKnot(etTrans(d, mod, addlDropSs = FALSE))
 
     expect_equal(tmp$TIME, c(0, 0, 0, 20, 24, 24, 24, 44, 48, 48, 48, 68, 72, 72, 72, 92, 200))
     expect_equal(
@@ -3142,7 +3145,7 @@ d/dt(blood)     = a*intestine - b*blood
       addl = c(3, 0)
     )
 
-    tmp <- etTrans(d, mod, addlDropSs = FALSE)
+    tmp <- .noKnot(etTrans(d, mod, addlDropSs = FALSE))
 
     expect_equal(tmp$TIME, c(0, 0, 0, 20, 24, 24, 24, 44, 48, 48, 48, 68, 72, 72, 72, 92, 200))
     expect_equal(
@@ -3174,7 +3177,7 @@ d/dt(blood)     = a*intestine - b*blood
 
     d <- data.frame(time = c(0, 200), amt = c(100, 0), ii = c(24, 0), evid = c(1, 0), ss = c(1, 0), addl = c(3, 0))
 
-    tmp <- etTrans(d, mod, addlDropSs = FALSE)
+    tmp <- .noKnot(etTrans(d, mod, addlDropSs = FALSE))
 
     expect_equal(tmp$TIME, c(0, 0, 24, 24, 48, 48, 72, 72, 200))
     expect_equal(tmp$EVID, c(109L, 101L, 109L, 101L, 109L, 101L, 109L, 101L, 0L))
@@ -3183,7 +3186,7 @@ d/dt(blood)     = a*intestine - b*blood
 
     d <- data.frame(time = c(0, 200), amt = c(100, 0), ii = c(24, 0), evid = c(1, 0), ss = c(2, 0), addl = c(3, 0))
 
-    tmp <- etTrans(d, mod, addlDropSs = FALSE)
+    tmp <- .noKnot(etTrans(d, mod, addlDropSs = FALSE))
 
     expect_equal(tmp$TIME, c(0, 0, 24, 24, 48, 48, 72, 72, 200))
     expect_equal(tmp$EVID, c(119L, 101L, 119L, 101L, 119L, 101L, 119L, 101L, 0L))
@@ -3204,7 +3207,7 @@ d/dt(blood)     = a*intestine - b*blood
 
     d <- data.frame(time = c(0, 1), amt = c(100, 0), ii = c(24, 0), evid = c(1, 0), ss = c(1, 0), rate = c(-1, 0))
 
-    tmp <- etTrans(d, mod, addlDropSs = FALSE)
+    tmp <- .noKnot(etTrans(d, mod, addlDropSs = FALSE))
 
     expect_equal(tmp$TIME, c(0, 0, 0, 1))
     expect_equal(tmp$EVID, c(90109L, 90101L, 70101L, 0L))
