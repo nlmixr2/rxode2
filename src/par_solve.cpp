@@ -5146,7 +5146,7 @@ static inline double rxLsodaTcrit(rx_solving_options_ind *ind, int i, double xp,
   double tc = ind->timeThread[ind->ix[ind->n_all_times - 1]];
   for (int j = i; j < ind->n_all_times; j++) {
     int raw = ind->ix[j];
-    if (!isObs(getEvid(ind, raw))) {
+    if (!isPassObs(getEvid(ind, raw))) {
       tc = ind->timeThread[raw];
       break;
     }
@@ -7669,9 +7669,10 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
     // the subject's first record (newind == 1) closes a segment too, so the
     // integration after it sees newind == 2
     bool is_first = is_obs && ind->_newind == 1;
-    bool need_seg = is_obs && (is_last || is_first); // close the segment here
+    // a lagged dose's knot (evid 8) closes one too, where its covariates start
+    bool need_seg = is_obs && (is_last || is_first || !isPassObs(this_evid));
 
-    if (is_obs && !is_last && !is_first) {
+    if (is_obs && !need_seg) {
       // Pure observation interior to a segment.
       // Same-time obs (at xp): fill directly from the carry-forward state.
       if (isSameTimeDop(xout, xp)) {

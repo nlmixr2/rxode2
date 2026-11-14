@@ -4722,7 +4722,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     // Get the number of doses
     if (hasHomGroups) {
       int nall = 0, nobst=0, lasti =0, ii=0, nobs2t=0, nevid9=0, nknot=0;
-      int groupNobs2 = 0, groupNevid9 = 0, groupNevid2 = 0, groupNknot = 0;
+      int groupNobs2 = 0, groupNevid9 = 0, groupNevid2 = 0, groupNknot = 0, groupHasEvid2 = 0;
       nsub = 0;
       j=0;
       rx->maxAllTimes=0;
@@ -4776,7 +4776,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           if (rx->mixnum) rxSetIndMix(ind, (unsigned int)groupIndex, mixUnif);
           nsub++;
         }
-        if (groupNevid2 > 0) rx->hasEvid2 = 1;
+        if (groupHasEvid2) rx->hasEvid2 = 1;
         nall += groupNAll * curIds.size();
         nobst += nobs * curIds.size();
         nobs2t += groupNobs2 * curIds.size();
@@ -4800,6 +4800,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           groupNevid9 = 0;
           groupNknot = 0;
           groupNevid2 = 0;
+          groupHasEvid2 = 0;
           groupHmax1m = 0.0;
           groupHmax1s = 0.0;
           groupHmax1n = 0.0;
@@ -4817,8 +4818,11 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           }
         } else {
           nobs++;
-          // a hidden knot (evid 8) is no observation either
-          if (_globals.gevid[i] == 2 || _globals.gevid[i] == 8) {
+          if (_globals.gevid[i] == 2) {
+            groupNevid2++;
+            groupHasEvid2 = 1;
+          } else if (_globals.gevid[i] == 8) {
+            // a hidden knot is no observation either
             groupNevid2++;
           }
           if (_globals.gevid[i] == 0) groupNobs2++;

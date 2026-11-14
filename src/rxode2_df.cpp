@@ -797,6 +797,8 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
         if (evid_p == 8) {
           // a lagged dose's knot is not output, but lag() of an lhs reads it
           if (nlhs) calc_lhs(solveid, curT, getSolve(i), ind->lhs);
+          // a record, as the solve counts it for newind
+          ind->_newind = 2;
           continue;
         }
         if (isDose(evid_p)) {

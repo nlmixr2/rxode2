@@ -1381,6 +1381,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   if (mv.size() > RxMv_splitBolusInfusion && TYPEOF(mv[RxMv_splitBolusInfusion]) == INTSXP) {
     splitBolInf = clone(as<IntegerVector>(mv[RxMv_splitBolusInfusion]));
   }
+  // the split directive's source then targets, for the lagged-dose knots
+  IntegerVector knotSplit = splitBolusN >= 2 ? splitBolus :
+    splitInfusion.size() >= 2 ? splitInfusion :
+    splitInfBol.size() >= 2 ? splitInfBol : splitBolInf;
   IntegerVector statePropSplit = IntegerVector::create();
   if (TYPEOF(mv[RxMv_stateProp]) == INTSXP) {
     statePropSplit = clone(as<IntegerVector>(mv[RxMv_stateProp]));
@@ -2426,8 +2430,21 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       }
     }
     if (cevid == 8) {
-      // a lagged dose's hidden knot from an earlier translation; its dose
-      // record emits it again when it is still due
+      // a knot from an earlier translation, whose (classic) dose record does
+      // not emit it again; addlKeepsCov needs none
+      if (!addlKeepsCov) {
+        id.push_back(cid);
+        evid.push_back(8);
+        cmtF.push_back(0);
+        time.push_back(ctime);
+        amt.push_back(NA_REAL);
+        ii.push_back(0.0);
+        dv.push_back(NA_REAL);
+        limit.push_back(NA_REAL);
+        cens.push_back(0);
+        idxInput.push_back((int)i);
+        recImplied.push_back(0);
+      }
       continue;
     }
     if (cevid == 4 && nobs ==0 && ndose == 0) {
@@ -2791,13 +2808,15 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       // to, comes from the shared translator in
       // inst/include/rxode2EventTranslate.h, which the runtime evid_() push
       // path uses as well, so the two cannot disagree.
-      // a dose alag() moves off its record's time (not a compartment turn-off)
+      // a data dose alag() moves off its record's time (not a compartment
+      // turn-off); a classic evid is already translated, its knot with it
       bool lagCmt = false;
-      if (flg != 30) {
-        for (int jj = 0; jj < curAlag.size(); ++jj) {
-          if (cmt == curAlag[jj]) {
-            lagCmt = true;
-            break;
+      if (flg != 30 && !classicEvid) {
+        for (int jj = 0; jj < curAlag.size() && !lagCmt; ++jj) {
+          lagCmt = (cmt == curAlag[jj]);
+          // a split dose lands in its targets, which may carry the alag()
+          for (int kk = 1; kk < knotSplit.size() && !lagCmt; ++kk) {
+            lagCmt = (cmt == knotSplit[0] && knotSplit[kk] == curAlag[jj]);
           }
         }
       }

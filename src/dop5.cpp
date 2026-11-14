@@ -122,7 +122,7 @@ extern "C" void ind_dop5_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               double dt = op->HMIN > 0.0 ? op->HMIN : 1e-4;
               if (xout < xp) dt = -dt;
               try {
-                  if (op->useDense && isObs(getEvid(ind, ind->ix[i]))) {
+                  if (op->useDense && isPassObs(getEvid(ind, ind->ix[i]))) {
                       if (!stepper_initialized) {
                           dense_stepper.initialize(state, xp, dt);
                           stepper_initialized = true;

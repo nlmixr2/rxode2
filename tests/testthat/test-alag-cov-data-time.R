@@ -157,11 +157,74 @@ rxTest({
     expect_false(any(etTrans(.knotDat, .noLag)$EVID == 8L))
   })
 
+  test_that("dense output solvers stop at a lagged dose's knot", {
+    .expl <- rbind(.knotDat, data.frame(id = 1, time = 12, amt = 0, evid = 2, cmt = 1, kk = 2))
+    .expl <- .expl[order(.expl$time, -.expl$evid), ]
+    .s <- function(d, ...) {
+      r <- rxSolve(.knotOde(), d, returnType = "data.frame", ...)
+      r$cp[r$time %in% c(12.25, 13, 20)]
+    }
+    .ref <- .s(.expl, atol = 1e-12, rtol = 1e-12)
+    for (.me in c("dop853", "dop5", "bs", "ros4", "cvode")) {
+      .r <- .s(.knotDat, method = .me, dense = TRUE, atol = 1e-6, rtol = 1e-6)
+      expect_equal(.r, .ref, tolerance = 1e-5, label = .me)
+    }
+  })
+
   test_that("re-translating a table keeps one knot per lagged dose", {
     .t <- etTrans(.knotDat, .knotOde())
     .t2 <- etTrans(as.data.frame(.t), .knotOde())
     expect_equal(sum(.t2$EVID == 8L), 2L)
     expect_false(any(etTrans(as.data.frame(.t), .knotOde(), addlKeepsCov = TRUE)$EVID == 8L))
+  })
+
+  test_that("re-translation adds no knot for addl repeats or infusion stops", {
+    .m <- rxode2({
+      alag(depot) <- 0.5
+      d / dt(depot) <- -depot * wt
+      d / dt(central) <- depot - central
+    })
+    .d <- data.frame(
+      id = 1, time = c(0, 1, 24, 30), amt = c(100, 0, 100, 0),
+      evid = c(1, 0, 1, 0), ii = c(12, 0, 0, 0), addl = c(1, 0, 0, 0),
+      rate = c(0, 0, 50, 0), dv = c(NA, 1, NA, 1), cmt = 1, wt = c(1, 1, 2, 2)
+    )
+    .t <- as.data.frame(etTrans(.d, .m))
+    .t2 <- as.data.frame(etTrans(.t, .m))
+    expect_equal(.t2$TIME[.t2$EVID == 8L], c(0, 24))
+    expect_equal(.t2$wt[.t2$EVID == 8L], c(1, 2))
+    .s <- function(d) rxSolve(.m, d, returnType = "data.frame")$central
+    expect_equal(.s(.t2), .s(.d))
+  })
+
+  test_that("a homogeneous event table gets no evid column from its knots", {
+    .ev <- et(amt = 100) |> et(1:3) |> et(id = 1:2)
+    .s <- rxSolve(.knotOde(), .ev, params = c(kk = 0), returnType = "data.frame")
+    expect_false("evid" %in% names(.s))
+  })
+
+  test_that("a split dose whose target has the alag() gets a knot", {
+    .m <- rxode2({
+      alag(gut2) <- 0.5
+      d / dt(depot) <- -depot
+      d / dt(gut2) <- -gut2
+      d / dt(central) <- depot + gut2 - central
+      splitBolus(depot, depot, gut2)
+    })
+    .d <- data.frame(id = 1, time = c(0, 1), amt = c(100, 0), evid = c(1, 0), cmt = 1)
+    expect_equal(sum(etTrans(.d, .m)$EVID == 8L), 1L)
+  })
+
+  test_that("newind counts the knot as a record in the solve and the table", {
+    .m <- rxode2({
+      alag(depot) <- 0.5
+      d / dt(depot) <- -depot
+      ni <- newind
+    })
+    .d <- data.frame(id = 1, time = c(0, 1, 2), amt = c(100, 0, 0), evid = c(1, 0, 0), cmt = 1)
+    .s <- rxSolve(.m, .d, returnType = "data.frame", addDosing = TRUE)
+    # the knot at t = 0 is the subject's first record
+    expect_equal(.s$ni, c(2, 2, 2))
   })
 
   test_that("the hidden knot record is never output", {
