@@ -163,6 +163,7 @@ rxSolve(
   linCmtSensH = 1e-04,
   linCmtSensPhi = TRUE,
   nonmem = FALSE,
+  tieOrder = NULL,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -811,7 +812,7 @@ your sampling and events.  The value 0 is equivalent to infinite
 maximum absolute step size.
 
 Note that for dense output methods (\code{"dop853"}, \code{"dop5"}, \code{"bs"},
-\code{"ros4"}), \code{hmax} defaults to \code{NULL} to allow the solvers to
+\code{"ros4"}, \code{"cvode"}, \code{"liblsoda"}), \code{hmax} defaults to \code{NULL} to allow the solvers to
 determine the step size when \code{dense=TRUE}
 
 For \code{method="indLin"}, \code{hmax} caps how long an interval is treated
@@ -858,7 +859,10 @@ interpolated.  Currently this can be:
 \itemize{
 \item \code{"linear"} interpolation, which interpolates the covariate
 by solving the line between the observed covariates and extrapolating the new
-covariate value.
+covariate value.  A \code{linCmt()} model refuses it for a covariate
+that varies within a subject and feeds the \code{linCmt()} parameters,
+since its closed form cannot follow the ramp; use another method or
+write the model as ODEs.
 \item \code{"locf"} -- Last observation carried forward (the default).
 \item \code{"nocb"} -- Next Observation Carried Backward.  This is the same method
 that NONMEM uses.
@@ -1381,9 +1385,12 @@ solve, but continues solving passing through the \code{NA} time
 solved ODE (otherwise stopping can crash R)
 }}
 
-\item{addlKeepsCov}{This determines if the additional dosing items
-repeats the dose only (\code{FALSE}) or keeps the covariates at the
-record of the dose (\code{TRUE})}
+\item{addlKeepsCov}{This determines if a dose given at a time other
+than its record's (an additional dosing item or a dose moved by
+\code{alag()}) takes the time-varying covariates imputed at its actual
+dosing time (\code{FALSE}) or keeps the covariates at the record of the
+dose (\code{TRUE}, as NONMEM does).  By default \code{FALSE}, or \code{TRUE} with
+\code{nonmem = TRUE}.}
 
 \item{addlDropSs}{When there are steady state doses with an \code{addl}
 specification the steady state flag is dropped with repeated
@@ -1473,7 +1480,18 @@ calls \verb{$PK} at its records.  \code{d/dt()} and state-dependent statements k
 the continuous time (like \verb{$DES}).  \code{addl} repeats, infusion ends,
 lagged doses and doses added while solving do not end an interval;
 \code{mtime()} times do.  Covariate interpolation is still set by
-\code{covsInterpolation}.  By default \code{FALSE}.}
+\code{covsInterpolation}.  It also sets the default \code{tieOrder} to \code{"data"}
+and turns on \code{addlKeepsCov} unless it is given.  By default \code{FALSE}.}
+
+\item{tieOrder}{How records of a subject that share a time are processed:
+\code{"evid"} processes resets first, then doses, then observations, so the
+result does not depend on the row order of the data; \code{"data"} processes
+them in the order of the rows in the data, the way NONMEM does (records
+a row expands to, like the reset of an \code{evid=4} dose or \code{addl} repeats,
+follow that row).  Doses added while solving follow the records at the
+same time.  An event table already translated by \code{\link[=etTrans]{etTrans()}} keeps the
+order it was translated with.  By default (\code{NULL}) this is \code{"data"} when
+\code{nonmem = TRUE} and \code{"evid"} otherwise.}
 
 \item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that
 is acceptable before issuing a warning/error about the gradient estimates.}
@@ -1602,8 +1620,9 @@ controls.}
 \item{dense}{Logical; when \code{TRUE} and the method supports dense output,
 enables continuous interpolation so the solver can take large internal
 steps and reconstruct the solution cheaply at each observation time.
-Dense-capable single methods are \code{"dop853"}, \code{"dop5"}, \code{"bs"}, and
-\code{"ros4"}.  \code{"dop853+ros4"} is the only dense AutoSwitch composite: the
+Dense-capable single methods are \code{"dop853"}, \code{"dop5"}, \code{"bs"}, \code{"ros4"},
+\code{"cvode"} and \code{"liblsoda"} (which interpolates between its own steps
+either way; \code{dense = TRUE} lifts the \code{hmax} default).  \code{"dop853+ros4"} is the only dense AutoSwitch composite: the
 secondary must be dense too (\code{"ros4"} is the only stiff method that is),
 and handing a dense segment from the primary to the secondary mid-segment
 is implemented for a \code{"dop853"} primary.  Other composites solve densely

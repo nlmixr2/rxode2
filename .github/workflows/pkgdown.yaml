@@ -1,14 +1,8 @@
-# Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
-# Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
-# Stacked PRs (based on another PR's branch) skip CI; a PR runs once it
-# targets main, including when it is retargeted there (edited, base
-# changed).  Other PR edits start a run whose jobs are all skipped.
+# Builds and deploys the pkgdown site from main.  Pull requests build the site
+# (without deploying) in ci.yaml's full tier: nightly or on /cifull.
 on:
   push:
     branches: [main, master]
-  pull_request:
-    branches: [main, master]
-    types: [opened, synchronize, reopened, edited]
   release:
     types: [published]
   workflow_dispatch:
@@ -19,57 +13,31 @@ name: pkgdown.yaml
 
 permissions: read-all
 
+# Deploys must not overlap: a newer push waits for (never cancels) a
+# running deploy.
+concurrency:
+  group: pkgdown-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  pkgdown:
-    if: github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base
+  build:
+    uses: ./.github/workflows/_pkgdown.yaml
+
+  deploy:
+    needs: build
     runs-on: ubuntu-latest
-    # Only restrict concurrency for non-PR jobs
-    concurrency:
-      group: pkgdown-${{ github.event_name != 'pull_request' || github.run_id }}${{ github.event.action == 'edited' && !github.event.changes.base && format('-{0}', github.run_id) || '' }}
-    env:
-      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      # the deploy action works inside a git checkout
+      - uses: actions/checkout@v6
 
-      - uses: r-lib/actions/setup-pandoc@v2
-
-      - uses: r-lib/actions/setup-r@v2
+      - uses: actions/download-artifact@v4
         with:
-          use-public-rspm: true
-
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          cache-version: 11
-          extra-packages: |
-            any::pkgdown
-            nlmixr2/dparser-R
-            nlmixr2/lotri
-            nlmixr2/rxode2ll
-            nlmixr2/rxode2lincmt
-            nlmixr2/PreciseSums
-            any::rxode2mrgsolvebridge
-            local::.
-          needs: website
-
-      # pkgdown renders every top-level .md; keep agent instruction files off the site
-      - name: Remove agent instruction files
-        run: rm -f CLAUDE.md AGENTS.md .github/copilot-instructions.md
-
-      - name: Build site
-        run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
-        shell: Rscript {0}
-
-      # deploy uses clean: false, so overwrite copies already published on gh-pages
-      - name: Replace previously published agent pages
-        run: |
-          for f in CLAUDE.html AGENTS.html copilot-instructions.html; do
-            printf '<!DOCTYPE html><html><head><meta name="robots" content="noindex"><meta http-equiv="refresh" content="0; url=index.html"></head><body></body></html>\n' > "docs/$f"
-          done
+          name: pkgdown-site
+          path: docs
 
       - name: Deploy to GitHub pages
-        if: github.event_name != 'pull_request'
         uses: JamesIves/github-pages-deploy-action@v4.5.0
         with:
           clean: false
