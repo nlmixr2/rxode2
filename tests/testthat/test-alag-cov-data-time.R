@@ -254,4 +254,73 @@ rxTest({
       }
     }
   })
+
+  .ssLin <- function(push = NULL) {
+    rxode2(paste("cl <- 1 * (wt / 70)", "v <- 10", "ka <- 1", "alag(depot) <- 2",
+                 "cp <- linCmt()", if (!is.null(push)) push, sep = "\n"))
+  }
+  # drug is on board in the lag window, so a missed knot moves the prediction
+  .ssDat <- data.frame(id = 1, time = c(0, 0.5, 4, 5, 7, 9, 20, 30), evid = c(1, rep(0, 7)),
+                       amt = c(100, rep(0, 7)), cmt = 2, wt = c(50, 50, 70, 80, 90, 90, 60, 60),
+                       rate = 0, ii = 0, ss = 0, addl = 0)
+  .ssDose <- function(d, cs) {
+    .r <- d[3, ]
+    .r$evid <- 1; .r$amt <- 100; .r$cmt <- 1
+    .r$rate <- cs[["rate"]]; .r$ii <- cs[["ii"]]; .r$ss <- cs[["ss"]]; .r$addl <- cs[["addl"]]
+    .r$time <- 3; .r$wt <- 60
+    .x <- rbind(d, .r)
+    .x[order(.x$time, -.x$evid), ]
+  }
+  .ssCases <- list(bolus = c(rate = 0, ii = 0, ss = 0, addl = 0),
+                   ss1 = c(rate = 0, ii = 12, ss = 1, addl = 0),
+                   ss1inf = c(rate = 20, ii = 12, ss = 1, addl = 0),
+                   ss1addl = c(rate = 0, ii = 12, ss = 1, addl = 2),
+                   ssConstInf = c(rate = 5, ii = 0, ss = 1, addl = 0))
+
+  test_that("steady-state lagged doses get the knot and solve as an explicit record", {
+    .m <- .ssLin()
+    for (.n in names(.ssCases)) {
+      .d <- .ssDose(.ssDat, .ssCases[[.n]])
+      expect_equal(sum(etTrans(.d, .m)$EVID == 8L), 1L, label = .n)
+      .r <- .d[.d$cmt == 1, ]
+      .r$evid <- 2; .r$amt <- 0; .r$cmt <- 2; .r$rate <- 0; .r$ii <- 0; .r$ss <- 0; .r$addl <- 0
+      .e <- rbind(.d, .r)
+      .e <- .e[order(.e$time, -.e$evid), ]
+      for (.i in c("locf", "nocb", "midpoint")) {
+        .a <- rxSolve(.m, .d, covsInterpolation = .i, returnType = "data.frame")
+        .b <- rxSolve(.m, .e, covsInterpolation = .i, returnType = "data.frame")
+        expect_equal(.a$cp, .b$cp[.b$time %in% .a$time], tolerance = 1e-8,
+                     label = paste(.n, .i))
+      }
+    }
+  })
+
+  test_that("a hand-encoded classic evid dose gets no knot", {
+    .d <- .ssDose(.ssDat, .ssCases$bolus)
+    .d$evid[.d$cmt == 1] <- 101L
+    .d$evid[.d$evid == 1] <- 201L
+    .d$cmt <- NULL
+    expect_false(any(etTrans(.d, .ssLin())$EVID == 8L))
+  })
+
+  test_that("an evid_() pushed lagged dose needs no knot: it adds no covariate data", {
+    # a pushed record carries no covariates, so its time is no breakpoint; it
+    # solves as the same dose written at a data record of the same time
+    for (.n in names(.ssCases)[-4]) {
+      .cs <- .ssCases[[.n]]
+      .m <- .ssLin(sprintf("if (t < 1e-8) evid_(4, 1, 100, 1, %g, %g, 0, %d)",
+                           .cs[["rate"]], .cs[["ii"]], .cs[["ss"]]))
+      .d <- .ssDose(.ssDat, .cs)
+      .d$time[.d$cmt == 1] <- 4
+      .d$wt[.d$cmt == 1] <- 70
+      .d <- .d[order(.d$time, -.d$evid), ]
+      for (.i in c("locf", "nocb", "midpoint")) {
+        .a <- rxSolve(.m, .ssDat, covsInterpolation = .i, returnType = "data.frame")
+        .b <- rxSolve(.ssLin(), .d, covsInterpolation = .i, returnType = "data.frame",
+                      addDosing = FALSE)
+        expect_equal(.a$cp[.a$time > 4.0001], .b$cp[.b$time > 4.0001], tolerance = 1e-8,
+                     label = paste(.n, .i))
+      }
+    }
+  })
 })
