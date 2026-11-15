@@ -520,7 +520,6 @@ RObject rxSimSigma(const RObject &sigma,
                    NumericVector upperIn = NumericVector::create(R_PosInf),
                    double a=0.4, double tol = 2.05, double nlTol=1e-10,
                    int nlMaxiter=100){
-
   if (nObs < 1){
     rxSolveFree();
     stop(_("refusing to simulate %d items"),nObs);
@@ -1732,6 +1731,8 @@ static inline double *getCurDoseSThread() {
 
 extern rx_solving_options_ind **inds_threadCur;
 extern int inds_threadCurN;
+extern rx_solving_options_ind **inds_threadSubj;
+extern int inds_threadSubjN;
 
 // The individual this thread is currently solving, or NULL between solves.
 static inline rx_solving_options_ind **curIndSlot(rx_solving_options *op) {
@@ -1755,6 +1756,9 @@ extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
   inds_thread[rx_get_thread(op->cores)] = *ind;
+  // the random-number helpers read the subject itself through this slot
+  int _tSubj = rx_get_thread(op->cores);
+  if (_tSubj < inds_threadSubjN) inds_threadSubj[_tSubj] = ind;
   // ... and the individual itself, for writes that have to reach the subject
   // rather than the copy (atolRtolFactorC_'s sticky tolerance factor).
   rx_solving_options_ind **_cur = curIndSlot(op);
@@ -4030,19 +4034,21 @@ static inline unsigned int rxExpandHomGroupCounts(rx_solve *rx,
   for (int _hg = 0; _hg < nHg; ++_hg) {
     nSub0 += Rf_length(hgl[_hg]);
   }
-  int nall = 0, nobs = 0, nobs2 = 0, evid9 = 0;
+  int nall = 0, nobs = 0, nobs2 = 0, evid9 = 0, nknot = 0;
   for (int _j = 0; _j < evid.size(); ++_j) {
     int _gi = id[_j] - 1;
     int _mult = (_gi >= 0 && _gi < nHg) ? Rf_length(hgl[_gi]) : 1;
     nall += _mult;
     if (isObs(evid[_j])) nobs += _mult;
     if (evid[_j] == 0) nobs2 += _mult;
-    if (evid[_j] == 9) evid9 += _mult;
+    if (isHiddenEvid(evid[_j])) evid9 += _mult;
+    if (evid[_j] == 8) nknot += _mult;
   }
   rx->nall = nall;
   rx->nobs = nobs;
   rx->nobs2 = nobs2;
   rx->nevid9 = evid9;
+  rx->nknot = nknot;
   return nSub0;
 }
 
@@ -4129,6 +4135,7 @@ static inline void rxSolve_simulate(const RObject &obj,
 
   op->ncoresRV = nCoresRV;
   rx->nevid9 = 0;
+  rx->nknot = 0;
 
   if (!thetaMat.isNull() || !rxIsNull(omega) || !rxIsNull(sigma)){
     // Simulated Variable3
@@ -4162,7 +4169,8 @@ static inline void rxSolve_simulate(const RObject &obj,
           }
           if (isObs(evid[j])) rx->nobs++;
           if (evid[j] == 0) rx->nobs2++;
-          if (evid[j] == 9) evid9++;
+          if (isHiddenEvid(evid[j])) evid9++;
+          if (evid[j] == 8) rx->nknot++;
         }
         rx->nevid9 = evid9;
         // Get true number of subjects if this is a homogenous event table.
@@ -4177,7 +4185,8 @@ static inline void rxSolve_simulate(const RObject &obj,
         for (unsigned int j =rx->nall; j--;){
           if (isObs(evid[j])) rx->nobs++;
           if (evid[j] == 0) rx->nobs2++;
-          if (evid[j] == 9) evid9++;
+          if (isHiddenEvid(evid[j])) evid9++;
+          if (evid[j] == 8) rx->nknot++;
         }
         rx->nevid9= evid9;
       }
@@ -4645,7 +4654,6 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
                 break;
               }
             }
-
           }
           covPos[ncov] = i;
           ncov++;
@@ -4735,8 +4743,8 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     // Get the number of observations
     // Get the number of doses
     if (hasHomGroups) {
-      int nall = 0, nobst=0, lasti =0, ii=0, nobs2t=0, nevid9=0;
-      int groupNobs2 = 0, groupNevid9 = 0, groupNevid2 = 0;
+      int nall = 0, nobst=0, lasti =0, ii=0, nobs2t=0, nevid9=0, nknot=0;
+      int groupNobs2 = 0, groupNevid9 = 0, groupNevid2 = 0, groupNknot = 0, groupHasEvid2 = 0;
       nsub = 0;
       j=0;
       rx->maxAllTimes=0;
@@ -4790,11 +4798,12 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           if (rx->mixnum) rxSetIndMix(ind, (unsigned int)groupIndex, mixUnif);
           nsub++;
         }
-        if (groupNevid2 > 0) rx->hasEvid2 = 1;
+        if (groupHasEvid2) rx->hasEvid2 = 1;
         nall += groupNAll * curIds.size();
         nobst += nobs * curIds.size();
         nobs2t += groupNobs2 * curIds.size();
         nevid9 += groupNevid9 * curIds.size();
+        nknot += groupNknot * curIds.size();
       };
       ndoses=0;
       nobs=0;
@@ -4811,7 +4820,9 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           nobs = 0;
           groupNobs2 = 0;
           groupNevid9 = 0;
+          groupNknot = 0;
           groupNevid2 = 0;
+          groupHasEvid2 = 0;
           groupHmax1m = 0.0;
           groupHmax1s = 0.0;
           groupHmax1n = 0.0;
@@ -4831,9 +4842,14 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           nobs++;
           if (_globals.gevid[i] == 2) {
             groupNevid2++;
+            groupHasEvid2 = 1;
+          } else if (_globals.gevid[i] == 8) {
+            // a hidden knot is no observation either
+            groupNevid2++;
           }
           if (_globals.gevid[i] == 0) groupNobs2++;
-          if (_globals.gevid[i] == 9) groupNevid9++;
+          if (isHiddenEvid(_globals.gevid[i])) groupNevid9++;
+          if (_globals.gevid[i] == 8) groupNknot++;
           if (!ISNA(tlast)) {
             tmp = time0[i]-tlast;
             if (tmp < 0){
@@ -4866,6 +4882,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
       rx->nobs2 = nobs2t;
       rx->nall = nall;
       rx->nevid9 = nevid9;
+      rx->nknot = nknot;
       if (doMean || hmax0 == 0.0){
         op->hmax2 = hmax2;
       } else {
@@ -4873,7 +4890,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
       }
       rx->nsub= nsub;
     } else {
-      int nall = 0, nobst=0, lasti =0, ii=0, nobs2t=0, nevid9=0;
+      int nall = 0, nobst=0, lasti =0, ii=0, nobs2t=0, nevid9=0, nknot=0;
       nsub = 0;
       ind = &(rx->subjects[0]);
       setupRxInd(ind, 1);
@@ -4950,9 +4967,13 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           if (_globals.gevid[i] == 2) {
             ind->nevid2++;
             rx->hasEvid2 = 1;
+          } else if (_globals.gevid[i] == 8) {
+            // a hidden knot is no observation either
+            ind->nevid2++;
           }
           if (_globals.gevid[i] == 0) nobs2t++;
-          if (_globals.gevid[i] == 9) nevid9++;
+          if (isHiddenEvid(_globals.gevid[i])) nevid9++;
+          if (_globals.gevid[i] == 8) nknot++;
           if (!ISNA(tlast)) {
             tmp = time0[i]-tlast;
             if (tmp < 0){
@@ -4984,6 +5005,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
       rx->nobs2 = nobs2t;
       rx->nall = nall;
       rx->nevid9 = nevid9;
+      rx->nknot = nknot;
       // Finalize the prior individual
       ind->n_all_times    = ndoses+nobs;
       ind->n_all_times_orig = ind->n_all_times;
@@ -6326,6 +6348,7 @@ static inline void iniRx(rx_solve* rx) {
   rx->simflg = 0;
   rx->nall = 0;
   rx->nevid9 = 0;
+  rx->nknot = 0;
   rx->nobs = 0;
   rx->nobs2 = 0;
   rx->nr = 0;

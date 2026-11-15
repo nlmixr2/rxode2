@@ -474,10 +474,13 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           if (!rx->addlKeepsCov && (rx->needSort & needSortAlag) &&
               (pushed || idxSample >= indSample->n_all_times ||
                !isSameTimeOp(t, getAllTimes(indSample, indSample->ix[idxSample])) ||
-               !isSameTimeOp(t, rxRecMatchTime(indSample, idxSample)))) {
+               !isSameTimeOp(t, rxRecMatchTime(indSample, idxSample)) ||
+               ISNA(rxCovRec(y, indSample->ix[idxSample], indSample->n_all_times_orig)))) {
             // a lagged dose sorts at its arrival; unless addlKeepsCov carries
             // its record's covariates there, away from a record at its own
-            // data time impute on the data records' times (#1584)
+            // data time impute on the data records' times (#1584).  A record
+            // with no value of its own does too: filling it along the sorted
+            // records would read a lagged dose at its arrival.
             double v = rxApproxCovData(t, k, is_locf, op, indSample);
             if (!isSameTimeOp(v, par_ptr[op->par_cov[k]-1])) ind->cacheME=0;
             par_ptr[op->par_cov[k]-1] = v;

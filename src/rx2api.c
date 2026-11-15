@@ -448,7 +448,8 @@ int getRxNall(rx_solve *rx) {
 
 int getRxNobs(rx_solve *rx) {
   rx = rxSolveOrError(rx, __func__);
-  return rx->nobs;
+  // a lagged dose's hidden knot is no observation
+  return rx->nobs - rx->nknot;
 }
 
 int getRxNobs2(rx_solve *rx) {

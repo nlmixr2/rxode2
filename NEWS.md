@@ -131,6 +131,19 @@
   to carry its record's covariates to its arrival, which now happens only with
   `addlKeepsCov = TRUE`.  `nonmem = TRUE` turns on `addlKeepsCov` unless it is
   given, since NONMEM keeps a dose record's covariates with the dose (#1584).
+- With `addlKeepsCov = FALSE`, `etTrans()` now adds a hidden record (internal
+  `evid` 8, never output) at the data time of each dose that `alag()` moves.
+  ODE solves (dense output, `delay()` and `lsoda` included) and `linCmt()`
+  solves now stop where the dose record's covariates start, so a lagged dose
+  solves the same as an explicit record at that time.
+  `linCmt()` used to advance across that time with a single covariate value.
+  Re-translating a translated table keeps its knots, and the knots do not count
+  as observations. Hand-encoded classic `evid` doses get the knot too
+  (#1584).
+
+- With `addlKeepsCov = FALSE`, a record with a missing covariate inside a
+  lagged dose's lag window now reads the covariate along the data times. It
+  used to read the lagged dose's covariates at its arrival (#1584).
 - Re-solving a solved object with new events (`rxSolve(<rxSolve>, params,
   events)`) solves the model that produced it instead of re-parsing the model
   text on every call, which also keeps the event (jump) sensitivities of a
@@ -194,6 +207,13 @@
   with `ssAtDoseTime = TRUE` it turned off `alag()` too early (#1590).
 
 ## New features
+
+- Every right-hand-side, Jacobian and `lhs` evaluation of a model no longer
+  copies the subject's whole solving state (about 1.7 kB) for the
+  random-number functions the model may call (`rxnorm()`, `rinorm()`,
+  `simeta()`, `simeps()`, ...); they read the subject in place.  Simulated
+  values are unchanged, bit for bit, at any number of cores; a 5000-subject
+  simulation runs about 10% faster and a FOCEi fit about 2%.
 
 - `liblsoda` updates its history array and corrector vectors two elements
   at a time, which the compiler vectorizes at R's default `-O2`.  Results are
@@ -457,6 +477,15 @@
     given the model's state names;
   - a translated event table (`etTrans()`'s result) given to `rxSolve()` or
     `etTrans()` had its hidden translation changed.
+
+- A subject whose `dop853` solve fails is now reported on one line,
+  dop853's own ("exit of dop853 at x = ..., more than nmax = N are needed",
+  or "..., step size too small h = ..."); an "IDID=-2, larger nmax is
+  needed" or "IDID=-3, step size becomes too small" line used to follow it.
+  A step size that became non-finite (from a `NaN` derivative), which only
+  that "IDID=-3" line reported, now reads "exit of dop853 at x = ..., step
+  size is not finite".  Inside a `"dop853+<stiff>"` composite, where such a
+  step hands the interval to the stiff solver, dop853 prints none of these.
 
 - The aggregated `dop853` step-limit and step-size warnings and the `intdy`
   warning used to print values read from no argument (indeterminate numbers).

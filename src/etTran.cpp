@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <tuple>
 #include <unordered_set>
+#include <set>
+#include <utility>
 #include "../inst/include/rxode2parse.h"
 #include "../inst/include/rxode2EventTranslate.h"
 #include "timsort.h"
@@ -1403,6 +1405,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   if (mv.size() > RxMv_splitBolusInfusion && TYPEOF(mv[RxMv_splitBolusInfusion]) == INTSXP) {
     splitBolInf = clone(as<IntegerVector>(mv[RxMv_splitBolusInfusion]));
   }
+  // the split directive's source then targets, for the lagged-dose knots
+  IntegerVector knotSplit = splitBolusN >= 2 ? splitBolus :
+    splitInfusion.size() >= 2 ? splitInfusion :
+    splitInfBol.size() >= 2 ? splitInfBol : splitBolInf;
   IntegerVector statePropSplit = IntegerVector::create();
   if (TYPEOF(mv[RxMv_stateProp]) == INTSXP) {
     statePropSplit = clone(as<IntegerVector>(mv[RxMv_stateProp]));
@@ -1803,6 +1809,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   // EVID = 2; Non-observation, possibly covariate
   // EVID = 3; Reset ODE states to zero; Non-observation event
   // EVID = 4; Reset and then dose event;  Illegal
+  // EVID = 8; Hidden covariate knot at a lagged dose's record time (not output)
   // EVID = 9; Non-observation event to ini system at time zero; This is to set the INIs at the correct place.
   // EVID = 10-99; mtime events (from ODE system)
   // When EVID > 100
@@ -1878,6 +1885,27 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   std::vector<int> zeroId;
   zeroId.reserve(resSize);
   std::unordered_set<int> zeroIdSet;
+  // (id, time) of every lagged-dose knot emitted, so a re-translated table's
+  // own knots and its dose records never emit the same knot twice
+  std::set<std::pair<int, double> > knotSet;
+  // does input row r carry time-varying covariate data (a covariate knot)?
+  // A translated table's implied records (addl repeats, steady-state
+  // companions, infusion stops) carry none.
+  auto rowHasCovData = [&](int r) -> bool {
+    for (size_t c = 0; c < covCol.size(); ++c) {
+      int cc = covCol[c];
+      if (cc < 0 || as<std::string>(lName[cc]) == "cmt") continue;
+      SEXP col = inData[cc];
+      switch (TYPEOF(col)) {
+      case REALSXP: if (!ISNA(REAL(col)[r])) return true; break;
+      case INTSXP: if (INTEGER(col)[r] != NA_INTEGER) return true; break;
+      case LGLSXP: if (LOGICAL(col)[r] != NA_LOGICAL) return true; break;
+      case STRSXP: if (STRING_ELT(col, r) != NA_STRING) return true; break;
+      default: return true;
+      }
+    }
+    return false;
+  };
   std::vector<int> doseId;
   doseId.reserve(resSize);
   std::unordered_set<int> doseIdSet;
@@ -2446,6 +2474,23 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         cevid=0;
       }
     }
+    if (cevid == 8) {
+      // a knot from an earlier translation; addlKeepsCov needs none
+      if (!addlKeepsCov && knotSet.insert(std::make_pair(cid, ctime)).second) {
+        id.push_back(cid);
+        evid.push_back(8);
+        cmtF.push_back(0);
+        time.push_back(ctime);
+        amt.push_back(NA_REAL);
+        ii.push_back(0.0);
+        dv.push_back(NA_REAL);
+        limit.push_back(NA_REAL);
+        cens.push_back(0);
+        idxInput.push_back((int)i);
+        recImplied.push_back(0);
+      }
+      continue;
+    }
     if (cevid == 4 && nobs ==0 && ndose == 0) {
       // No reset here
       cevid = 1;
@@ -2807,6 +2852,27 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       // to, comes from the shared translator in
       // inst/include/rxode2EventTranslate.h, which the runtime evid_() push
       // path uses as well, so the two cannot disagree.
+      // a data dose alag() moves off its record's time (not a compartment
+      // turn-off).  A classic evid row needs one only when it carries
+      // covariate data: a translated table's implied records carry none.
+      bool lagCmt = false;
+      if (classicEvid) {
+        int wh, wCmt, wh100, whI, wh0;
+        getWh(cevid, &wh, &wCmt, &wh100, &whI, &wh0);
+        if (wh0 != EVID0_OFF && rowHasCovData((int)i)) {
+          for (int jj = 0; jj < curAlag.size() && !lagCmt; ++jj) {
+            lagCmt = (wCmt + 1 == curAlag[jj]);
+          }
+        }
+      } else if (flg != 30) {
+        for (int jj = 0; jj < curAlag.size() && !lagCmt; ++jj) {
+          lagCmt = (cmt == curAlag[jj]);
+          // a split dose lands in its targets, which may carry the alag()
+          for (int kk = 1; kk < knotSplit.size() && !lagCmt; ++kk) {
+            lagCmt = (cmt == knotSplit[0] && knotSplit[kk] == curAlag[jj]);
+          }
+        }
+      }
       int nOcc = _rxAddlCount(cii, caddl);
       for (int rep = 0; rep < nOcc; ++rep) {
         if (rep > 0) ctime += cii;
@@ -2858,6 +2924,22 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
         if (_rxAddlZeroLastIi(rep, flg, cii, caddl) && !ii.empty()) {
           ii[ii.size() - 1] = 0.0;
+        }
+        if (rep == 0 && !addlKeepsCov && lagCmt &&
+            knotSet.insert(std::make_pair(cid, ctime)).second) {
+          // alag() moves the dose, but its record's time stays a covariate
+          // knot (#1584); a hidden record there makes every solve stop at it
+          id.push_back(cid);
+          evid.push_back(8);
+          cmtF.push_back(0);
+          time.push_back(ctime);
+          amt.push_back(NA_REAL);
+          ii.push_back(0.0);
+          dv.push_back(NA_REAL);
+          limit.push_back(NA_REAL);
+          cens.push_back(0);
+          idxInput.push_back((int)i);
+          recImplied.push_back(0);
         }
         if (rep == 0 && ctime == 0){
           if (zeroIdSet.find(cid) == zeroIdSet.end()){
@@ -2961,7 +3043,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         } else {
           ndose += splitN - 1;
         }
-      } else if (isObs(evid[j])) nobs++;
+      } else if (isObs(evid[j]) && evid[j] != 8) nobs++;
       newFirst[j] = (int)id2.size();
       if (!splitThis) {
         id2.push_back(id[j]);

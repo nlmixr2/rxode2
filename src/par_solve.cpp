@@ -485,6 +485,12 @@ rx_solving_options_ind **inds_threadCur = NULL;
 // Its length, so a read or write cannot run off the end if `op->cores` is
 // raised after the allocation.
 int inds_threadCurN = 0;
+// The subject each thread is evaluating the model for, named by
+// _setThreadInd() and _setIndPointersByThread().  The random-number helpers the
+// model calls (rxnorm(), rinorm(), simeta(), ...) take no subject argument and
+// read it through here, in place.  Its length is inds_threadSubjN.
+rx_solving_options_ind **inds_threadSubj = NULL;
+int inds_threadSubjN = 0;
 
 
 void par_flush_console() {
@@ -715,6 +721,9 @@ extern "C" void rxOptionsIniEnsure(int mx, int cores) {
   R_Free(inds_threadCur);
   inds_threadCurN = max2(1, cores);
   inds_threadCur = R_Calloc(inds_threadCurN, rx_solving_options_ind*);
+  R_Free(inds_threadSubj);
+  inds_threadSubjN = max2(1, cores);
+  inds_threadSubj = R_Calloc(inds_threadSubjN, rx_solving_options_ind*);
   rx_solve *rx=(&rx_global);
   rx->subjects = inds_global;
   rx->ordId = NULL;
@@ -1243,7 +1252,10 @@ static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, c
     if (err_msg != NULL) {
       int cid = -*idid-1;
       if (cid >= 0 && cid < nerr){
-        rxSolveWarnPush(ind->id, "IDID=%d, %s", *idid, err_msg[cid]);
+        // a NULL text: the solver reported this failure itself
+        if (err_msg[cid] != NULL) {
+          rxSolveWarnPush(ind->id, "IDID=%d, %s", *idid, err_msg[cid]);
+        }
       }
       else {
         rxSolveWarnPush(ind->id, "IDID=%d, unhandled exception", *idid);
@@ -5146,7 +5158,7 @@ static inline double rxLsodaTcrit(rx_solving_options_ind *ind, int i, double xp,
   double tc = ind->timeThread[ind->ix[ind->n_all_times - 1]];
   for (int j = i; j < ind->n_all_times; j++) {
     int raw = ind->ix[j];
-    if (!isObs(getEvid(ind, raw))) {
+    if (!isPassObs(getEvid(ind, raw))) {
       tc = ind->timeThread[raw];
       break;
     }
@@ -5794,6 +5806,8 @@ extern "C" void rxFreeLast(){
   R_Free(inds_thread);
   R_Free(inds_threadCur);
   inds_threadCurN = 0;
+  R_Free(inds_threadSubj);
+  inds_threadSubjN = 0;
   inds_thread = NULL;
   inds_threadCur = NULL;
   inds_global=NULL;
@@ -6836,11 +6850,13 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   int istate = 0;
   // this subject's own failure; op->badSolve is shared by every subject and thread
   int localBadSolve = 0;
+  // dop853 reports its step limit (-2) and step size (-3) failures itself,
+  // with the x and h it stopped at, so they have no text here
   static const char *err_msg[]=
     {
       "input is not consistent",
-      "larger nmax is needed",
-      "step size becomes too small",
+      NULL,
+      NULL,
       "problem is probably stiff (interrupted)"
     };
   rx_solving_options_ind *ind;
@@ -7587,11 +7603,13 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
   int istate = 0;
   // this subject's own failure; op->badSolve is shared by every subject and thread
   int localBadSolve = 0;
+  // dop853 reports its step limit (-2) and step size (-3) failures itself,
+  // with the x and h it stopped at, so they have no text here
   static const char *err_msg[]=
     {
       "input is not consistent",
-      "larger nmax is needed",
-      "step size becomes too small",
+      NULL,
+      NULL,
       "problem is probably stiff (interrupted)"
     };
   rx_solving_options_ind *ind;
@@ -7669,9 +7687,10 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
     // the subject's first record (newind == 1) closes a segment too, so the
     // integration after it sees newind == 2
     bool is_first = is_obs && ind->_newind == 1;
-    bool need_seg = is_obs && (is_last || is_first); // close the segment here
+    // a lagged dose's knot (evid 8) closes one too, where its covariates start
+    bool need_seg = is_obs && (is_last || is_first || !isPassObs(this_evid));
 
-    if (is_obs && !is_last && !is_first) {
+    if (is_obs && !need_seg) {
       // Pure observation interior to a segment.
       // Same-time obs (at xp): fill directly from the carry-forward state.
       if (isSameTimeDop(xout, xp)) {

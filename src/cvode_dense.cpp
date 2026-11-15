@@ -227,8 +227,8 @@ extern "C" void ind_cvode_dense_0(rx_solve *rx, rx_solving_options *op, int solv
               // an observation continues the solve; any other event re-starts it
               istate = rxCvodeDelayInterval(cvode_ctx, op, ind, neq, xp, xout, yp,
                                             &dense_initialized);
-              if (!isObs(getEvid(ind, ind->ix[i]))) dense_initialized = false;
-            } else if (op->useDense && isObs(getEvid(ind, ind->ix[i]))) {
+              if (!isPassObs(getEvid(ind, ind->ix[i]))) dense_initialized = false;
+            } else if (op->useDense && isPassObs(getEvid(ind, ind->ix[i]))) {
               if (!dense_initialized) {
                 cvode_ctx_dense_reinit(cvode_ctx, yp, xp);
                 dense_initialized = true;

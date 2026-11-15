@@ -144,7 +144,7 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               sys.first.xout_ = xout;
               sys.first.sign_ = (dt > 0) ? 1 : -1;
               try {
-                  if (op->useDense && isObs(getEvid(ind, ind->ix[i]))) {
+                  if (op->useDense && isPassObs(getEvid(ind, ind->ix[i]))) {
                       if (!stepper_initialized) {
                           std::copy(yp, yp + neqOde, state.begin());
                           dense_stepper.initialize(state, xp, dt);
