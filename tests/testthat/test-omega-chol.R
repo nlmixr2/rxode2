@@ -98,7 +98,7 @@ rxTest({
     r <- rxSymInvCholCreate(m, diag.xform = "sqrt", create.env = FALSE)
     .fd(r, as.double(r$ini))
     ## a repeated block with an internal zero shares its master's thetas
-    m2 <- as.matrix(Matrix::bdiag(m, m))
+    m2 <- lotri::lotriMat(list(m, m))
     r <- rxSymInvCholCreate(m2, diag.xform = "sqrt", create.env = FALSE, same = c(0L, 0L, 0L, 1L, 2L, 3L))
     expect_equal(r$fn(NULL, -2L), 6)
     th <- as.double(r$ini)

@@ -21,7 +21,11 @@
 
 
 #define isDose(evid) ((evid) == 3 || (evid) >= 100)
-#define isObs(evid) ((evid) == 0 || (evid) == 2 || ((evid) >= 9 && (evid) <= 99))
+// evid 8: hidden covariate knot at a lagged dose's data time (#1584)
+#define isObs(evid) ((evid) == 0 || (evid) == 2 || ((evid) >= 8 && (evid) <= 99))
+#define isHiddenEvid(evid) ((evid) == 8 || (evid) == 9)
+// an observation-like record an integrator may step past (a knot is a stop)
+#define isPassObs(evid) (isObs(evid) && (evid) != 8)
 
 #include "rxode2_control.h"
 #include "rxode2prior.h"

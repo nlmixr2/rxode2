@@ -112,6 +112,12 @@ rxTest({
     )
   })
 
+  test_that("setIndNewind() occupies slot 104, the last", {
+    .n <- names(.rxode2ptrs())
+    expect_identical(length(.n), 105L)
+    expect_identical(.n[105], "rxode2setIndNewind")
+  })
+
   test_that("linCmt entry points never occupy a slot in this table", {
     # they live in rxode2lincmt's own table (src/rxode2lincmtLink.cpp)
     expect_false(any(grepl("linCmt", names(.rxode2ptrs()), fixed = TRUE)))

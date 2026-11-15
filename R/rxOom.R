@@ -165,7 +165,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
 # is not the input one -- so this translates with the same translator rather
 # than counting the input rows.  The predicate follows `addDosing`, exactly as
 # the solve does: `NULL` counts observations only, `TRUE`/`NA` every record but
-# `evid=9`, and `FALSE` (the default) every `isObs()` record but `evid=9`.
+# `evid=8`/`9`, and `FALSE` (the default) every `isObs()` record but `evid=8`/`9`.
 .rxOomObsPerSubject <- function(object, evDf, .ctl, .ids) {
   .obj <- if (inherits(object, c("rxode2", "rxDll"))) object else rxode2(object)
   .hasCmt <- tryCatch(as.logical(rxModelVars(.obj)$flags[["hasCmt"]]), error = function(e) FALSE)
@@ -192,12 +192,11 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   .addDosing <- .ctl$addDosing
   .keep <- if (is.null(.addDosing)) {
     .evid == 0L
-  } else if (is.na(.addDosing[1])) {
-    .evid != 9L
-  } else if (isTRUE(.addDosing[1])) {
-    .evid != 9L
+  } else if (is.na(.addDosing[1]) || isTRUE(.addDosing[1])) {
+    # evid 8 (lagged-dose knot) and 9 are hidden records
+    !(.evid %in% c(8L, 9L))
   } else {
-    (.evid == 0L | .evid == 2L | (.evid >= 9L & .evid <= 99L)) & .evid != 9L
+    .evid == 0L | .evid == 2L | (.evid >= 10L & .evid <= 99L)
   }
   .n <- tabulate(.id[.keep], nbins = length(.lvl))
   .n <- .n[match(as.character(.ids), as.character(.lvl))]
@@ -378,13 +377,13 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     !is.null(.ctl$priorOmega) ||
       !is.null(.ctl$priorOmegaEl) ||
       !is.null(.ctl$priorSigmaEl) ||
-      identical(.ctl$omegaSeparation, "tnpri") ||
-      identical(.ctl$sigmaSeparation, "tnpri")
+      isTRUE(.ctl$omegaSeparation %in% c("tnpri", "invchol")) ||
+      isTRUE(.ctl$sigmaSeparation %in% c("tnpri", "invchol"))
   ) {
     stop(
       "a chunked solve ('file='/'chunkSize=') cannot draw the omega/sigma ",
-      "entries a 'thetaMat' carries ('omegaSeparation=\"tnpri\"', ",
-      "'sigmaSeparation=\"tnpri\"', or a prior on an omega block): the ",
+      "entries a 'thetaMat' carries ('omegaSeparation=\"tnpri\"'/'\"invchol\"', ",
+      "'sigmaSeparation=\"tnpri\"'/'\"invchol\"', or a prior on an omega block): the ",
       "one draw every chunk shares cannot express them, so they would be ",
       "dropped without warning.  Solve without chunking.",
       call. = FALSE
