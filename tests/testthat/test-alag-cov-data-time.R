@@ -295,12 +295,36 @@ rxTest({
     }
   })
 
-  test_that("a hand-encoded classic evid dose gets no knot", {
+  test_that("a hand-encoded classic evid dose gets the knot", {
+    .m <- .ssLin()
     .d <- .ssDose(.ssDat, .ssCases$bolus)
     .d$evid[.d$cmt == 1] <- 101L
     .d$evid[.d$evid == 1] <- 201L
     .d$cmt <- NULL
-    expect_false(any(etTrans(.d, .ssLin())$EVID == 8L))
+    .d$rate <- .d$ii <- .d$ss <- .d$addl <- NULL
+    expect_equal(sum(etTrans(.d, .m)$EVID == 8L), 1L)
+    .e <- rbind(.d, data.frame(id = 1, time = 3, evid = 2L, amt = 0, wt = 60))
+    .e <- .e[order(.e$time, -.e$evid), ]
+    for (.i in c("locf", "nocb", "midpoint")) {
+      .a <- rxSolve(.m, .d, covsInterpolation = .i, returnType = "data.frame")
+      .b <- rxSolve(.m, .e, covsInterpolation = .i, returnType = "data.frame")
+      expect_equal(.a$cp, .b$cp[.b$time %in% .a$time], tolerance = 1e-8, label = .i)
+    }
+    # a classic steady-state pair at one time gets one knot
+    .p <- data.frame(id = 1, time = c(0, 4, 4, 8), evid = c(0L, 109L, 101L, 0L),
+                     amt = c(0, 100, 100, 0), ii = c(0, 12, 0, 0), wt = c(50, 70, 70, 90))
+    expect_equal(sum(etTrans(.p, .m)$EVID == 8L), 1L)
+  })
+
+  test_that("re-translating keeps the knots once, with or without covariates on its doses", {
+    .m <- .ssLin()
+    for (.n in names(.ssCases)) {
+      .t <- as.data.frame(etTrans(.ssDose(.ssDat, .ssCases[[.n]]), .m))
+      names(.t) <- tolower(names(.t))
+      .r <- etTrans(.t, .m)
+      expect_equal(sum(.r$EVID == 8L), 1L, label = .n)
+      expect_equal(sum(etTrans(as.data.frame(.r), .m)$EVID == 8L), 1L, label = .n)
+    }
   })
 
   test_that("an evid_() pushed lagged dose needs no knot: it adds no covariate data", {
