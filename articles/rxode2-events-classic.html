@@ -262,9 +262,15 @@ infusion to compartment 199 would be <code>119901</code>.</p>
 <p>EVID = 0 (observations), EVID=2 (other type event) and EVID=3 are all
 supported. Internally an EVID=9 is a non-observation event and makes
 sure the system is initialized to zero; EVID=9 should not be manually
-set. EVID 10-99 represents modeled time interventions, similar to
-NONMEM’s MTIME. This along with amount (amt) and time columns specify
-the events in the ODE system.</p>
+set. Internally an EVID=8 is a hidden record at the data time of a dose
+that <code>alag()</code> moves; it carries that dose row’s covariates,
+so the solver stops where the covariates change even though the dose
+arrives later. <code><a href="../reference/etTrans.html">etTrans()</a></code> adds it (unless
+<code>addlKeepsCov=TRUE</code>), it is never output, and it is not
+counted as an observation; EVID=8 should not be manually set either.
+EVID 10-99 represents modeled time interventions, similar to NONMEM’s
+MTIME. This along with amount (amt) and time columns specify the events
+in the ODE system.</p>
 <p>For infusions specified with EVIDs &gt; 100 the amt column represents
 the rate value.</p>
 <p>For Infusion flags 1 and 2 <code>+amt</code> turn on the infusion to

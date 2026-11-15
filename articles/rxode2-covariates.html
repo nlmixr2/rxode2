@@ -393,6 +393,111 @@ observation carried backward (NOCB):</p>
 <p><img src="rxode2-covariates_files/figure-html/time-varying-nocb-effect-1.png" class="r-plt" alt="" width="100%"></p>
 </div>
 <div class="section level2">
+<h2 id="covariates-with-lagged-and-additional-doses">Covariates with lagged and additional doses<a class="anchor" aria-label="anchor" href="#covariates-with-lagged-and-additional-doses"></a>
+</h2>
+<p>A dose moved by <code>alag()</code>, and the additional doses of an
+<code>addl</code> record, happen at times other than their own data row.
+<code>rxSolve(addlKeepsCov=)</code> decides which covariates they
+use:</p>
+<ul>
+<li>
+<code>addlKeepsCov = FALSE</code> (the default): the dose row’s
+covariates are a data point at the row’s own time, like any other row. A
+dose that arrives later reads whatever the covariate interpolation gives
+at its arrival time, and <code>addl</code> repeats have no covariates of
+their own.</li>
+<li>
+<code>addlKeepsCov = TRUE</code> (the default with
+<code>nonmem = TRUE</code>): the dose takes its row’s covariates with
+it, to its arrival time and to every <code>addl</code> repeat.</li>
+</ul>
+<p>Here a dose at time 4 with <code>wt = 70</code> arrives at time 6,
+and <code>wt</code> is only recorded on three rows:</p>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">modLag</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxode2.html">rxode2</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>  <span class="fu">alag</span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">2</span></span>
+<span>  <span class="va">cl</span> <span class="op">&lt;-</span> <span class="fl">0.1</span> <span class="op">*</span> <span class="va">wt</span> <span class="op">/</span> <span class="fl">70</span></span>
+<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">depot</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="va">depot</span></span>
+<span>  <span class="va">d</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/stats/TDist.html" class="external-link">dt</a></span><span class="op">(</span><span class="va">central</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">depot</span> <span class="op">-</span> <span class="va">cl</span> <span class="op">*</span> <span class="va">central</span></span>
+<span>  <span class="va">wtUsed</span> <span class="op">&lt;-</span> <span class="va">wt</span></span>
+<span><span class="op">}</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">dLag</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  id   <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  time <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">4</span>, <span class="fl">5</span>, <span class="fl">7</span>, <span class="fl">8</span>, <span class="fl">9</span>, <span class="fl">10</span><span class="op">)</span>,</span>
+<span>  evid <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span>,</span>
+<span>  amt  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">100</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span>,</span>
+<span>  cmt  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="st">"central"</span>, <span class="fl">4</span><span class="op">)</span>, <span class="st">"depot"</span>, <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="st">"central"</span>, <span class="fl">5</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  wt   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">50</span>, <span class="cn">NA</span>, <span class="cn">NA</span>, <span class="cn">NA</span>, <span class="fl">70</span>, <span class="cn">NA</span>, <span class="cn">NA</span>, <span class="fl">90</span>, <span class="cn">NA</span>, <span class="cn">NA</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sFalse</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">modLag</span>, <span class="va">dLag</span>, covsInterpolation <span class="op">=</span> <span class="st">"nocb"</span><span class="op">)</span></span>
+<span><span class="va">sTrue</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">modLag</span>, <span class="va">dLag</span>, covsInterpolation <span class="op">=</span> <span class="st">"nocb"</span>,</span>
+<span>                 addlKeepsCov <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>time <span class="op">=</span> <span class="va">sFalse</span><span class="op">$</span><span class="va">time</span>,</span>
+<span>           wtFalse <span class="op">=</span> <span class="va">sFalse</span><span class="op">$</span><span class="va">wtUsed</span>,</span>
+<span>           wtTrue <span class="op">=</span> <span class="va">sTrue</span><span class="op">$</span><span class="va">wtUsed</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   time wtFalse wtTrue</span></span>
+<span><span class="co">#&gt; 1    0      50     50</span></span>
+<span><span class="co">#&gt; 2    1      70     70</span></span>
+<span><span class="co">#&gt; 3    2      70     70</span></span>
+<span><span class="co">#&gt; 4    3      70     70</span></span>
+<span><span class="co">#&gt; 5    5      90     70</span></span>
+<span><span class="co">#&gt; 6    7      90     90</span></span>
+<span><span class="co">#&gt; 7    8      90     90</span></span>
+<span><span class="co">#&gt; 8    9      90     90</span></span>
+<span><span class="co">#&gt; 9   10      90     90</span></span></code></pre></div>
+<p>With <code>nocb</code> and <code>addlKeepsCov = FALSE</code>,
+<code>wt</code> is 70 up to time 4, the dose row’s own time, and 90
+after it. With <code>addlKeepsCov = TRUE</code> the 70 travels with the
+dose to time 6, so time 5 still reads 70.</p>
+<div class="section level3">
+<h3 id="the-hidden-record-at-a-lagged-doses-data-time">The hidden record at a lagged dose’s data time<a class="anchor" aria-label="anchor" href="#the-hidden-record-at-a-lagged-doses-data-time"></a>
+</h3>
+<p>With <code>addlKeepsCov = FALSE</code>, the covariates can change at
+the dose row’s time (4 above) even though nothing is dosed then. The ODE
+and <code>linCmt()</code> solvers only stop at records, and the dose
+record itself moved to time 6. So <code><a href="../reference/etTrans.html">etTrans()</a></code> adds a hidden
+record (internal <code>EVID = 8</code>) at the dose row’s time, carrying
+its covariates:</p>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="../reference/etTrans.html">etTrans</a></span><span class="op">(</span><span class="va">dLag</span>, <span class="va">modLag</span><span class="op">)</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"TIME"</span>, <span class="st">"EVID"</span>, <span class="st">"AMT"</span>, <span class="st">"wt"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt;    TIME EVID AMT wt</span></span>
+<span><span class="co">#&gt; 1     0    0  NA 50</span></span>
+<span><span class="co">#&gt; 2     1    0  NA NA</span></span>
+<span><span class="co">#&gt; 3     2    0  NA NA</span></span>
+<span><span class="co">#&gt; 4     3    0  NA NA</span></span>
+<span><span class="co">#&gt; 5     4  101 100 70</span></span>
+<span><span class="co">#&gt; 6     4    8  NA 70</span></span>
+<span><span class="co">#&gt; 7     5    0  NA NA</span></span>
+<span><span class="co">#&gt; 8     7    0  NA NA</span></span>
+<span><span class="co">#&gt; 9     8    0  NA 90</span></span>
+<span><span class="co">#&gt; 10    9    0  NA NA</span></span>
+<span><span class="co">#&gt; 11   10    0  NA NA</span></span></code></pre></div>
+<p>The <code>101</code> row is the dose, which sorts at its arrival
+(time 6) when the model is solved. The <code>EVID = 8</code> row stays
+at time 4 and makes every solver stop where the covariate changes, as an
+explicit record there would. This is also what NONMEM does: the dose
+record stays an event record at its data time. The hidden record is
+never output and is not counted as an observation. With
+<code>addlKeepsCov = TRUE</code> the covariates do not change at time 4,
+so no hidden record is added:</p>
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="../reference/etTrans.html">etTrans</a></span><span class="op">(</span><span class="va">dLag</span>, <span class="va">modLag</span>, addlKeepsCov <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"TIME"</span>, <span class="st">"EVID"</span>, <span class="st">"AMT"</span>, <span class="st">"wt"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt;    TIME EVID AMT wt</span></span>
+<span><span class="co">#&gt; 1     0    0  NA 50</span></span>
+<span><span class="co">#&gt; 2     1    0  NA NA</span></span>
+<span><span class="co">#&gt; 3     2    0  NA NA</span></span>
+<span><span class="co">#&gt; 4     3    0  NA NA</span></span>
+<span><span class="co">#&gt; 5     4  101 100 70</span></span>
+<span><span class="co">#&gt; 6     5    0  NA NA</span></span>
+<span><span class="co">#&gt; 7     7    0  NA NA</span></span>
+<span><span class="co">#&gt; 8     8    0  NA 90</span></span>
+<span><span class="co">#&gt; 9     9    0  NA NA</span></span>
+<span><span class="co">#&gt; 10   10    0  NA NA</span></span></code></pre></div>
+</div>
+</div>
+<div class="section level2">
 <h2 id="forced-parameters">Forced parameters<a class="anchor" aria-label="anchor" href="#forced-parameters"></a>
 </h2>
 <p>Sometimes a parameter’s value is owned <em>outside</em> the usual
@@ -403,7 +508,7 @@ self-contained. <code><a href="../reference/rxForcedPars.html">rxForcedPars()</a
 hidden slot on the model (a named numeric vector). On each solve they
 are injected into every subject/simulation column at solve setup,
 overriding whatever <code>params</code> or the data supplied:</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span> <span class="va">tcl</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="fl">2</span> <span class="op">}</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
@@ -437,12 +542,12 @@ piping and into any <code>nlmixr2</code> fit built from the model, so
 <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code>/<code><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate()</a></code> on that fit reuse it with
 no external state. The forced values are also reported by
 <code><a href="../reference/rxInjectedPars.html">rxInjectedPars()</a></code> on the solved object:</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxInjectedPars.html">rxInjectedPars</a></span><span class="op">(</span><span class="va">s1</span><span class="op">)</span></span>
 <span><span class="co">#&gt; WT </span></span>
 <span><span class="co">#&gt;  2</span></span></code></pre></div>
 <p>Clear forcing by assigning <code>NULL</code>:</p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rxForcedPars.html">rxForcedPars</a></span><span class="op">(</span><span class="va">ui</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="cn">NULL</span></span></code></pre></div>
 <p>Names that are not model parameters are ignored, and forcing applies
 only to population-constant parameters/covariates (a single value per

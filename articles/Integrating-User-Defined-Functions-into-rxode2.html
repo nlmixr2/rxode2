@@ -267,9 +267,9 @@ Lets see how this very simple function performs:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mb</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
-<span><span class="co">#&gt;      expr       min       lq     mean    median        uq      max neval</span></span>
-<span><span class="co">#&gt;  withoutC 10.998495 11.25084 18.97442 11.605895 13.807078 587.2163   100</span></span>
-<span><span class="co">#&gt;     withC  7.135343  7.29121 12.78619  7.481398  8.313554 457.1155   100</span></span></code></pre></div>
+<span><span class="co">#&gt;      expr      min       lq     mean   median       uq      max neval</span></span>
+<span><span class="co">#&gt;  withoutC 16.72689 17.35369 25.93233 17.78150 18.41512 712.7782   100</span></span>
+<span><span class="co">#&gt;     withC 11.16285 11.97860 18.41239 12.36554 12.96658 549.2778   100</span></span></code></pre></div>
 <p>The C version is almost twice as fast as the R version. You may have
 noticed the conversion also created C versions of the first derivative.
 This is done automatically and gives not just C versions of function,
@@ -388,7 +388,7 @@ function:</p>
 <span><span class="co">#&gt;         eff &lt;- hill(temax, time, tec50)</span></span>
 <span><span class="co">#&gt;     })</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x636746e929e8&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;environment: 0x5f0c0869db60&gt;</span></span></code></pre></div>
 <p>When possible, the function is translated to C along with its
 derivatives, just like <code><a href="../reference/rxFun.html">rxFun()</a></code>, but only for this
 model:</p>
@@ -958,7 +958,7 @@ ability to use:</p>
 <span><span class="co">#&gt;             iniDf = .iniDf)</span></span>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;bytecode: 0x6367348d6138&gt;</span></span>
+<span><span class="co">#&gt; &lt;bytecode: 0x5f0bf60f82e8&gt;</span></span>
 <span><span class="co">#&gt; &lt;environment: namespace:rxode2&gt;</span></span>
 <span></span>
 <span><span class="co"># You can also print the s3 method that is used for this method</span></span>
@@ -968,7 +968,7 @@ ability to use:</p>
 <span><span class="co">#&gt; {</span></span>
 <span><span class="co">#&gt;     eval(fun)</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;bytecode: 0x636733f9dbc8&gt;</span></span>
+<span><span class="co">#&gt; &lt;bytecode: 0x5f0bf57bfc60&gt;</span></span>
 <span><span class="co">#&gt; &lt;environment: namespace:rxode2&gt;</span></span>
 <span><span class="co">#&gt; attr(,"nargs")</span></span>
 <span><span class="co">#&gt; [1] 2</span></span></code></pre></div>
