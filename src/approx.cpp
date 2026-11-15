@@ -270,7 +270,7 @@ static inline bool rxIntegratingToRecord(rx_solving_options_ind *ind) {
 // before t), +1 when t is the previous record's time and it is nocb (read the
 // value after t), and 0 otherwise.  Linear interpolation is continuous and
 // midpoint interpolation already takes the value of the half-interval next
-// to each end, so neither needs a side.  op is read by isSameTimeOp().
+// to each end, so neither needs a side.
 static inline int rxStepCovSide(double t, int is_locf, int i, rx_solving_options_ind *ind,
                                 rx_solving_options *op) {
   if ((is_locf != 1 && is_locf != 2) || i <= 0 || i >= ind->n_all_times) return 0;
@@ -278,6 +278,10 @@ static inline int rxStepCovSide(double t, int is_locf, int i, rx_solving_options
   // steady-state solve integrates forward from its dose record with the
   // record's own values, and a linCmt() interval reads its middle
   if (!ISNA(ind->ssTime)) return 0;
+  // an adjoint method (code >= 200) re-evaluates its stages in the backward
+  // sweep without the interval they were taken in, so it keeps the record's
+  // own value at both ends
+  if (op->stiff >= 200) return 0;
   // only while record i is still ahead: once it is solved, the output walk
   // reads its covariates with the flag the last model call left
   if (!rxIntegratingToRecord(ind) || ind->solvedIdx >= i) return 0;
@@ -534,13 +538,23 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           // integrating toward the record, a step covariate at an end of the
           // interval takes the value it has inside it
           int side = rxStepCovSide(t, is_locf, idxSample, ind, op);
-          if (side != 0 && !rxPushedRec(ind->ix, idxSample, ind->n_all_times_orig) &&
-              !rxPushedRec(ind->ix, idxSample - 1, ind->n_all_times_orig)) {
-            double vIn = getValue(side < 0 ? idxSample - 1 : idxSample, y, is_locf,
-                                  indSample, op, 0);
-            if (!isSameTimeOp(vIn, par_ptr[op->par_cov[k]-1])) ind->cacheME = 0;
-            par_ptr[op->par_cov[k]-1] = vIn;
-            continue;
+          if (side != 0) {
+            // a pushed record has no value of its own: take the nearest data
+            // record on that side
+            int j = side < 0 ? idxSample - 1 : idxSample;
+            while (j >= 0 && j < ind->n_all_times &&
+                   rxPushedRec(ind->ix, j, ind->n_all_times_orig)) j += side;
+            bool lagData = !rx->addlKeepsCov && (rx->needSort & needSortAlag);
+            if (lagData || (j >= 0 && j < ind->n_all_times)) {
+              // a lagged dose imputes on the data records' times (#1584), so
+              // the interval's value is read on them too
+              double vIn = lagData ?
+                rxApproxCovDataSide(t, k, is_locf, side, op, indSample) :
+                getValue(j, y, is_locf, indSample, op, 0);
+              if (!isSameTimeOp(vIn, par_ptr[op->par_cov[k]-1])) ind->cacheME = 0;
+              par_ptr[op->par_cov[k]-1] = vIn;
+              continue;
+            }
           }
           // a pushed record has no value of its own; interpolate across it
           bool pushed = rxPushedRec(ind->ix, idxSample, ind->n_all_times_orig);

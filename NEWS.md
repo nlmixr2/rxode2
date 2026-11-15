@@ -129,9 +129,11 @@
   value in its last (first) stage.  `dop853` now integrates a
   piecewise-constant covariate exactly; results move at the level of the
   solver tolerance wherever a step covariate changes at a record a solver
-  stops on.  Resampled covariates (`resample = TRUE`) follow the same rule;
-  outputs at a record still report the record's value, and `linear` and
-  `midpoint` interpolation are unchanged.
+  stops on, including next to a lagged dose or a record pushed by `evid_()`.
+  Resampled covariates (`resample = TRUE`) follow the same rule; outputs at a
+  record still report the record's value, and `linear` and `midpoint`
+  interpolation and the adjoint methods (`rk4s`, `dop853s`, ...) are
+  unchanged.
 - `rxSolve()` now stops with an error when an `rxControl()` object is passed
   as `params` or `events`, as it already did for `inits`, and a parameter list
   that is empty or whose first column is empty gives the parameter-size
