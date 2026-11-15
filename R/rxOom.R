@@ -165,7 +165,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
 # is not the input one -- so this translates with the same translator rather
 # than counting the input rows.  The predicate follows `addDosing`, exactly as
 # the solve does: `NULL` counts observations only, `TRUE`/`NA` every record but
-# `evid=9`, and `FALSE` (the default) every `isObs()` record but `evid=9`.
+# `evid=8`/`9`, and `FALSE` (the default) every `isObs()` record but `evid=8`/`9`.
 .rxOomObsPerSubject <- function(object, evDf, .ctl, .ids) {
   .obj <- if (inherits(object, c("rxode2", "rxDll"))) object else rxode2(object)
   .hasCmt <- tryCatch(as.logical(rxModelVars(.obj)$flags[["hasCmt"]]), error = function(e) FALSE)
