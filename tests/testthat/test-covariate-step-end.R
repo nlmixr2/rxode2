@@ -284,4 +284,131 @@ rxTest({
       }
     }
   })
+
+  # the exact cc(t) of d/dt(cc) = wt for a step covariate with values w at the
+  # data times td
+  .stepExactAt <- function(time, td, w, interp) {
+    .f <- if (interp == "locf") {
+      stats::stepfun(td, c(w[1], w), right = FALSE)
+    } else {
+      stats::stepfun(td, c(w, w[length(w)]), right = TRUE)
+    }
+    vapply(
+      time,
+      function(.x) {
+        .g <- sort(unique(c(0, td[td < .x], .x)))
+        sum(diff(.g) * .f((utils::head(.g, -1) + .g[-1]) / 2))
+      },
+      numeric(1)
+    )
+  }
+
+  test_that("a step next to a lagged dose or a pushed record is exact", {
+    .td <- c(0, 1, 3, 6)
+    .w <- c(5, 10, 15, 20)
+    # the dose at t = 0 arrives at t = 2, between the data times 1 and 3
+    .mLag <- rxode2({
+      alag(depot) <- 2
+      d/dt(depot) <- -depot
+      d/dt(cc) <- wt
+    })
+    .dLag <- data.frame(
+      id = 1,
+      time = .td,
+      evid = c(1, 0, 0, 0),
+      amt = c(1, 0, 0, 0),
+      cmt = c("depot", "cc", "cc", "cc"),
+      wt = .w
+    )
+    # an evid_() record pushed at PT, next to the data time 3
+    .mPush <- rxode2({
+      d/dt(depot) <- -depot
+      d/dt(cc) <- wt
+      if (t < 0.5) evid_(PT, 1, 0, 1, 0, 0, 0, 0)
+    })
+    .dPush <- rbind(
+      data.frame(id = 1, time = 0, evid = 1, amt = 1, cmt = "depot", wt = 5),
+      transform(.dLag, evid = 0, amt = 0, cmt = "cc")
+    )
+    for (.interp in c("locf", "nocb")) {
+      for (.resample in c(FALSE, TRUE)) {
+        .lab <- paste(.interp, if (.resample) "resampled" else "plain")
+        .s <- rxSolve(
+          .mLag,
+          .dLag,
+          method = "dop853",
+          atol = 1e-12,
+          rtol = 1e-10,
+          covsInterpolation = .interp,
+          resample = .resample
+        )
+        expect_equal(.s$cc, .stepExactAt(.s$time, .td, .w, .interp), tolerance = 1e-13, label = paste("alag", .lab))
+        for (.pt in c(2, 4)) {
+          .s <- rxSolve(
+            .mPush,
+            c(PT = .pt),
+            .dPush,
+            method = "dop853",
+            atol = 1e-12,
+            rtol = 1e-10,
+            covsInterpolation = .interp,
+            resample = .resample
+          )
+          expect_equal(
+            .s$cc,
+            .stepExactAt(.s$time, .td, .w, .interp),
+            tolerance = 1e-13,
+            label = paste("pushed at", .pt, .lab)
+          )
+        }
+      }
+    }
+  })
+
+  test_that("an adjoint method's sensitivities stay exact across a step", {
+    # the backward sweep re-evaluates the stages without their interval, so an
+    # adjoint method keeps the record's own value at both ends; its rx__sens_*
+    # columns must match central differences of the same RK4 map
+    withr::local_options(rxode2.useLinCmt = FALSE)
+    .mText <- "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl*wt/v)*center"
+    .cs <- c("ka", "cl", "v")
+    .p <- c(ka = 1.2, cl = 3.5, v = 25)
+    .ex <- .rxAdjointExpand(.mText, .cs)
+    .madj <- rxode2(.ex$text)
+    .mbase <- rxode2(.mText)
+    .d <- data.frame(
+      id = 1,
+      time = c(0, 1, 2, 4, 8, 12, 24),
+      evid = c(1, rep(0, 6)),
+      amt = c(100, rep(0, 6)),
+      cmt = "depot",
+      wt = c(1, 1, 2, 2, 0.5, 3, 3)
+    )
+    for (.interp in c("locf", "nocb")) {
+      .sd <- as.data.frame(rxSolve(.madj, .d, params = .p, method = "rk4s", cores = 1, covsInterpolation = .interp))
+      .sb <- function(pp) {
+        as.matrix(as.data.frame(rxSolve(
+          .mbase,
+          .d,
+          params = pp,
+          method = "rk4s",
+          cores = 1,
+          covsInterpolation = .interp
+        ))[, c("depot", "center")])
+      }
+      .err <- 0
+      for (.pn in .cs) {
+        .h <- .p[[.pn]] * 1e-5
+        .pp <- .p
+        .pm <- .p
+        .pp[.pn] <- .pp[.pn] + .h
+        .pm[.pn] <- .pm[.pn] - .h
+        .fd <- (.sb(.pp) - .sb(.pm)) / (2 * .h)
+        for (.k in seq_along(.ex$st)) {
+          .err <- max(.err, abs(.sd[[sprintf("rx__sens_%s_BY_%s__", .ex$st[.k], .pn)]] - .fd[, .k]))
+        }
+      }
+      expect_lt(.err, 1e-7, label = .interp)
+    }
+  })
 })
