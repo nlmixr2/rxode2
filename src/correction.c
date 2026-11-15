@@ -7,6 +7,7 @@
 #include "common.h"
 #include "blas.h"
 #include "lsoda_internal.h"
+#include "lsoda_rows.h"
 
 /* m is the correction count */
 int correction(struct lsoda_context_t * ctx, double *y, double pnorm, double *del, double *delp, double told, int *m)
@@ -60,15 +61,9 @@ int correction(struct lsoda_context_t * ctx, double *y, double pnorm, double *de
    In case of functional iteration, update y directly from
    the result of the last function evaluation.
 */
-			for (i = 1; i <= neq; i++) {
-				_rxC(savf)[i] = _rxC(h) * _rxC(savf)[i] - _rxC(yh)[2][i];
-				y[i] = _rxC(savf)[i] - _rxC(acor)[i];
-			}
+			lsodaCorrFunctional(neq, _rxC(savf), _rxC(h), _rxC(yh)[2], _rxC(acor), y);
 			*del = vmnorm0(neq, y, _rxC(ewt));
-			for (i = 1; i <= neq; i++) {
-				y[i] = _rxC(yh)[1][i] + _rxC(el)[1] * _rxC(savf)[i];
-				_rxC(acor)[i] = _rxC(savf)[i];
-			}
+			lsodaCorrFunctionalY(neq, y, _rxC(yh)[1], _rxC(el)[1], _rxC(savf), _rxC(acor));
 		}
 		/* end functional iteration   */
 		/*
@@ -77,14 +72,10 @@ int correction(struct lsoda_context_t * ctx, double *y, double pnorm, double *de
 		   P as coefficient matrix.
 		 */
 		else {
-			for (i = 1; i <= neq; i++)
-				y[i] = _rxC(h) * _rxC(savf)[i] - (_rxC(yh)[2][i] + _rxC(acor)[i]);
+			lsodaCorrNewtonRhs(neq, y, _rxC(h), _rxC(savf), _rxC(yh)[2], _rxC(acor));
 			solsy(ctx, y);
 			*del = vmnorm0(neq, y, _rxC(ewt));
-			for (i = 1; i <= neq; i++) {
-				_rxC(acor)[i] += y[i];
-				y[i] = _rxC(yh)[1][i] + _rxC(el)[1] * _rxC(acor)[i];
-			}
+			lsodaCorrNewtonY(neq, _rxC(acor), y, _rxC(yh)[1], _rxC(el)[1]);
 		}		/* end chord method   */
 /*
    Test for convergence.  If *m > 0, an estimate of the convergence

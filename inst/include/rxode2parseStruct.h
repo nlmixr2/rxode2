@@ -546,6 +546,13 @@ struct rx_solving_options_ind_s {
   int     delaySS;      /* 1 while handleSS() records delay() history */
   double  delaySSii;    /* dosing interval of that steady state (0 = constant) */
   double  delayMaxT;    /* largest delay duration seen */
+  // Fixed-duration infusions in progress: (stop record, rate its start added)
+  // pairs, so the stop removes the rate its start added rather than
+  // re-evaluating a state-dependent f() (rxode2#1568).  Owned by the subject,
+  // freed in rxFreeInd().
+  double *infDurOn;
+  int     infDurOnCap; /* allocated pairs in infDurOn */
+  int     infDurOnN;   /* pairs in use */
 };
 
 typedef struct rx_solve_s {
@@ -659,6 +666,9 @@ typedef struct rx_solve_s {
   // rxControl(nonmem=TRUE): PK-type statements read the record time
   // (_rxPkTime(), rxode2#1429)
   int nonmem;
+  // rxControl(addlKeepsCov=TRUE): a dose moved by alag() carries its record's
+  // covariates; otherwise they are imputed at its actual dosing time (#1584)
+  int addlKeepsCov;
 } rx_solve;
 
 typedef void (*rxode2_assignFuns2_t)(rx_solve, rx_solving_options, t_F, t_LAG, t_RATE, t_DUR,t_calc_mtime, t_ME, t_IndF, t_getTime, t_locateTimeIndex, t_handle_evidL,t_getDur);

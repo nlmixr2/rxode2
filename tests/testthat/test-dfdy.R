@@ -324,6 +324,34 @@ d/dt(cen) = ka*depot-k*cen
     )
   })
 
+  test_that("implicit methods keep the analytic Jacobian with a dotted parameter (#1659)", {
+    f <- function() {
+      ini({
+        tcl <- log(0.1)
+        tv <- log(10)
+        eta.cl ~ 0.09
+      })
+      model({
+        cl <- exp(tcl + eta.cl)
+        v <- exp(tv)
+        d/dt(center) <- -cl / v * center^2
+      })
+    }
+    expect_s3_class(
+      suppressMessages(rxode2(f()$symengineModelNoPrune, calcJac = TRUE)),
+      "rxode2"
+    )
+    .ev <- et(amt = 100) |> et(0:24)
+    .p <- c(eta.cl = 0.2)
+    .ref <- suppressMessages(rxSolve(f, .ev, params = .p, omega = NA, method = "liblsoda", atol = 1e-10, rtol = 1e-10))
+    for (.m in c("ros43", "sdirk43", "radauiia5")) {
+      .s <- expect_no_warning(suppressMessages(
+        rxSolve(f, .ev, params = .p, omega = NA, method = .m)
+      ))
+      expect_equal(.s$center, .ref$center, tolerance = 1e-4)
+    }
+  })
+
   test_that("lsoda reads the analytic Jacobian in column-major order", {
     # calc_jac is row major; a transposed Jacobian made lsoda hit MXSTEP here.
     .rob <- "d/dt(a) = -k1*a + k2*b*cc\nd/dt(b) = k1*a - k2*b*cc - k3*b*b\nd/dt(cc) = k3*b*b"

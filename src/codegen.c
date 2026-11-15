@@ -1008,8 +1008,8 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
     SET_STRING_ELT(VECTOR_ELT(mvLast, RxMv_md5), 0, Rf_mkChar(md5));
   }
   SET_STRING_ELT(VECTOR_ELT(mvLast, RxMv_model), 1, Rf_mkChar(me_code == NULL ? "" : me_code));
-  int pro = 0;
-  SEXP trans = PROTECT(VECTOR_ELT(mvLast, RxMv_trans)); pro++;
+  rxProtectGuard;
+  SEXP trans = rxP(VECTOR_ELT(mvLast, RxMv_trans));
   sbuf buf; sNull(&buf);
   sIni(&buf);
   if (strcmp(CHAR(STRING_ELT(trans, 0)), CHAR(STRING_ELT(libname, 0)))) {
@@ -1056,7 +1056,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
     SET_STRING_ELT(trans, 21, Rf_mkChar(buf.s)); // IndF
   }
   //sPrint(&_mv, "%s", CHAR(STRING_ELT(PROTECT(_rxode2_rxQs(mvLast)), 0))); pro++;
-  SEXP rawMV = PROTECT(_rxode2_rxQs(mvLast)); pro++;
+  SEXP rawMV = rxP(_rxode2_rxQs(mvLast));
   sPrint(&_mv,"   SEXP rw    = PROTECT(Rf_allocVector(RAWSXP, %d));pro++;\n", Rf_length(rawMV));
   unsigned char *raw = RAW(rawMV);
   sAppendN(&_mv, "    unsigned char r[]={", 23);
@@ -1075,10 +1075,10 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   sFree(&sbOut);
   sIniTo(&sbOut, (int)((sbPm.sN)*5.3));
 
-  SEXP stateOrd = PROTECT(VECTOR_ELT(mvLast, RxMv_stateOrd)); pro++;
+  SEXP stateOrd = rxP(VECTOR_ELT(mvLast, RxMv_stateOrd));
   int nOrd = Rf_length(stateOrd);
   if (nOrd > 0) {
-    SEXP stateOrdNames = PROTECT(Rf_getAttrib(stateOrd, R_NamesSymbol)); pro++;
+    SEXP stateOrdNames = rxP(Rf_getAttrib(stateOrd, R_NamesSymbol));
     int *stateOrdInt = INTEGER(stateOrd);
     sAppend(&sbOut, "// Define translation state order for %d states\n", Rf_length(stateOrd));
     // Re-key the __DDT defines by each state's actual tb.de index, so that
@@ -1148,10 +1148,10 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
     writeSb(&sbOut, fpIO);
     sbOut.o = 0;
   }
-  SEXP lhsOrd = PROTECT(VECTOR_ELT(mvLast, RxMv_lhsOrd)); pro++;
+  SEXP lhsOrd = rxP(VECTOR_ELT(mvLast, RxMv_lhsOrd));
   int  nLhs  =  Rf_length(lhsOrd);
   if (nLhs > 0) {
-    SEXP lhsOrdNames = PROTECT(Rf_getAttrib(lhsOrd, R_NamesSymbol)); pro++;
+    SEXP lhsOrdNames = rxP(Rf_getAttrib(lhsOrd, R_NamesSymbol));
     int *lhsOrdInt = INTEGER(lhsOrd);
     sAppend(&sbOut, "// Define %d LHS values\n", nLhs);
     for (int i = 0; i < nLhs; i++){
@@ -1161,7 +1161,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
     writeSb(&sbOut, fpIO);
     sbOut.o = 0;
   }
-  UNPROTECT(pro);
+  rxUPAll();
   // show_ode = 1 dydt
   // show_ode = 2 Jacobian
   // show_ode = 3 Ini statement
