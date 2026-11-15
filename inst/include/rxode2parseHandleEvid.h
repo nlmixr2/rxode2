@@ -21,6 +21,7 @@ extern "C" {
   int handle_evidL(int evid, double *yp, double xout, int id, rx_solving_options_ind *ind);
   void handleTlast(double *time, rx_solving_options_ind *ind);
   double _getDur(int l, rx_solving_options_ind *ind, int backward, unsigned int *p);
+  void updateExtraDoseGlobals(rx_solving_options_ind* ind);
 
 #else
   #define _getDur _rxode2parse_getDur
@@ -399,6 +400,50 @@ static inline double getAmt(rx_solving_options_ind *ind, int id, int cmt,
   return ret;
 }
 
+// A fixed-duration infusion's rate is F*amt/dur with F read once, at its start
+// (rxode2#1568); evaluating a state-dependent f() again at the stop leaves a
+// residual rate.  The start records the rate it added under its stop record,
+// which the stop then removes.
+static inline void pushInfDurOn(rx_solving_options_ind *ind, double rate) {
+  if (ind->idx < 0) return; // extra doses have no paired stop record
+  int stop = -1;
+  handleInfusionGetEndOfInfusionIndex(handleTlastInlineDoseIndex(ind), &stop,
+                                      NULL, NULL, ind);
+  if (stop < 0 || stop >= ind->ndoses) return;
+  double rec = (double)ind->idose[stop];
+  int j;
+  for (j = 0; j < ind->infDurOnN; j++) {
+    if (ind->infDurOn[2*j] == rec) break; // the start was handled again
+  }
+  if (j == ind->infDurOnCap) {
+    int cap = ind->infDurOnCap + 8;
+    double *p = (double*)realloc(ind->infDurOn, 2*cap*sizeof(double));
+    if (p == NULL) return; // the stop falls back to evaluating f() again
+    ind->infDurOn = p;
+    ind->infDurOnCap = cap;
+  }
+  ind->infDurOn[2*j] = rec;
+  ind->infDurOn[2*j+1] = rate;
+  if (j == ind->infDurOnN) ind->infDurOnN++;
+}
+
+// Rate the start of the infusion stopped by the current record added (and
+// forget it); returns 0 when no start recorded one.
+static inline int popInfDurOn(rx_solving_options_ind *ind, double *rate) {
+  if (ind->idx < 0) return 0;
+  double rec = (double)ind->ix[ind->idx];
+  for (int j = 0; j < ind->infDurOnN; j++) {
+    if (ind->infDurOn[2*j] == rec) {
+      *rate = ind->infDurOn[2*j+1];
+      ind->infDurOnN--;
+      ind->infDurOn[2*j] = ind->infDurOn[2*ind->infDurOnN];
+      ind->infDurOn[2*j+1] = ind->infDurOn[2*ind->infDurOnN+1];
+      return 1;
+    }
+  }
+  return 0;
+}
+
 static inline int isIgnoredDose(rx_solving_options_ind *ind, int ixds) {
   for (int i = 0; i < ind->ignoredDosesN[0]; ++i) {
     if (ind->idx < 0 ) {
@@ -434,10 +479,147 @@ static inline int pushIgnoredDose(int doseIdx, rx_solving_options_ind *ind) {
       op->badSolve = 1;
       return 0;
     }
+#ifndef _isrxode2parse_
+    // the thread's next subject re-reads the list from the globals
+    updateExtraDoseGlobals(ind);
+#endif
   }
   ind->ignoredDoses[ind->ignoredDosesN[0]] = doseIdx;
   ind->ignoredDosesN[0] = ind->ignoredDosesN[0]+1;
   return re;
+}
+
+// The dose number of record `r`; idose is not guaranteed ascending once doses
+// are pushed at solve time, so fall back to a linear search.
+static inline int getDoseNumberFromIndexAny(rx_solving_options_ind *ind, int r) {
+  int l = getDoseNumberFromIndex(ind, r);
+  if (l != -1) return l;
+  for (int j = 0; j < ind->ndoses; j++) {
+    if (ind->idose[j] == r) return j;
+  }
+  return -1;
+}
+
+// Is dose record `r` an infusion start that sets a compartment's rate?
+static inline int isInfusionStartRecord(int wh0, int whI) {
+  if (wh0 == EVID0_REGULAR) return 1;
+  // a phantom modeled start still sets the rate (its stop is regular)
+  return wh0 == EVID0_PHANTOM &&
+    (whI == EVIDF_MODEL_RATE_ON || whI == EVIDF_MODEL_DUR_ON);
+}
+
+// The dose number of the stop of a modeled start `r`: the record right after
+// it (getDoseIndexPlus1()); pushed doses keep that, but not idose order.
+static inline int getModeledInfusionStop(rx_solving_options_ind *ind, int r,
+                                         int cmt, int whI) {
+  if (r + 1 >= ind->n_all_times) return -1;
+  int sWh, sCmt, sWh100, sWhI, sWh0;
+  getWh(getEvid(ind, r + 1), &sWh, &sCmt, &sWh100, &sWhI, &sWh0);
+  if (sCmt != cmt || sWhI != whI - 2) return -1;
+  return getDoseNumberFromIndexAny(ind, r + 1);
+}
+
+// The dose number of the stop of the infusion started by record `r`, or -1.
+static inline int getInfusionStopDoseNumber(rx_solving_options_ind *ind,
+                                            rx_solve *rx,
+                                            rx_solving_options *op,
+                                            int r, int cmt, int whI) {
+  int l = getDoseNumberFromIndexAny(ind, r);
+  if (l == -1) return -1;
+  int e = -1;
+  if (whI == EVIDF_INF_RATE || whI == EVIDF_INF_DUR) {
+    // a start with no stop record must not take a later infusion's stop
+    if (getDoseNumber(ind, l) <= 0 || isInfusionUnpaired(ind, r)) return -1;
+    handleInfusionGetEndOfInfusionIndex(l, &e, rx, op, ind);
+  } else if (whI == EVIDF_MODEL_RATE_ON || whI == EVIDF_MODEL_DUR_ON) {
+    e = getModeledInfusionStop(ind, r, cmt, whI);
+  }
+  return e;
+}
+
+// Ignore stop dose `e` when its record is still ahead of position `pos`.
+static inline void ignoreStopAfter(rx_solving_options_ind *ind, int pos, int e) {
+  int er = ind->idose[e];
+  for (int kk = pos + 1; kk < ind->n_all_times; ++kk) {
+    if (ind->ix[kk] == er) {
+      pushIgnoredDose(e, ind);
+      return;
+    }
+  }
+}
+
+// A reset (evid 3/4, ss=1) zeros InfusionRate and so cancels every running
+// data-table infusion; ignore the stop records still ahead of it, or each
+// would leave the compartment at -rate (nlmixr2/rxode2#1562).  `pos` is the
+// reset's position in ind->ix; call before InfusionRate is zeroed.
+static inline void cancelRunningInfusionStops(rx_solving_options_ind *ind,
+                                              rx_solve *rx,
+                                              rx_solving_options *op,
+                                              int pos, int neq) {
+  int wh, cmt, wh100, whI, wh0;
+  // an earlier evid=3 already cancelled every infusion that started before it
+  for (int k = (pos < ind->n_all_times ? pos : ind->n_all_times); k--;) {
+    int r = ind->ix[k];
+    int evid = getEvid(ind, r);
+    if (evid == 3) break;
+    if (!isDose(evid)) continue;
+    getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
+    if (!isInfusionStartRecord(wh0, whI) ||
+        cmt < 0 || cmt >= neq || ind->InfusionRate[cmt] == 0.0) continue;
+    int e = getInfusionStopDoseNumber(ind, rx, op, r, cmt, whI);
+    if (e >= 0) ignoreStopAfter(ind, pos, e);
+  }
+}
+
+// The same for the infusions steady state pushes into the extra-dose pool, for
+// compartment `cmt` cancelled at `time` while its pending doses are kept.
+// Same-rate infusions pair first in first out, so when the pool holds
+// `running` more pending stops than starts, its first `running` stops belong to
+// the running infusions.  Two such regimens with different durations cannot be
+// told apart, the limitation handleTlastInlineDurExtra() documents.
+static inline int isIgnoredExtraDose(rx_solving_options_ind *ind, int i) {
+  for (int k = 0; k < ind->ignoredDosesN[0]; ++k) {
+    if (ind->ignoredDoses[k] == -1-i) return 1;
+  }
+  return 0;
+}
+
+// Does pool stop `i` (amount `amt` at `t`) belong to an infusion running at
+// `time`?  It does when the later pending stops do not outnumber the starts.
+static inline int isRunningExtraInfusionStop(rx_solving_options_ind *ind,
+                                             int i, int cmt, int whI,
+                                             double amt, double t,
+                                             double time) {
+  int wh, oc, wh100, oWhI, wh0;
+  int nStart = 0, nLaterStop = 0;
+  for (int j = 0; j < ind->extraDoseN[0]; ++j) {
+    int o = -1-j;
+    if (j == i || isIgnoredExtraDose(ind, j)) continue;
+    getWh(getEvid(ind, o), &wh, &oc, &wh100, &oWhI, &wh0);
+    double oAmt = getDose(ind, o), ot = getAllTimes(ind, o);
+    if (oc != cmt || oWhI != whI || (oAmt != amt && oAmt != -amt) ||
+        ot <= time) continue;
+    if (oAmt > 0) nStart++;
+    else if (ot > t || (ot == t && j > i)) nLaterStop++;
+  }
+  return nLaterStop >= nStart;
+}
+
+static inline void cancelRunningExtraInfusionStops(rx_solving_options_ind *ind,
+                                                   int cmt, double time) {
+  if (ind->InfusionRate[cmt] == 0.0) return;
+  int wh, c, wh100, whI, wh0;
+  for (int i = 0; i < ind->extraDoseN[0]; ++i) {
+    int cur = -1-i;
+    if (isIgnoredExtraDose(ind, i)) continue;
+    getWh(getEvid(ind, cur), &wh, &c, &wh100, &whI, &wh0);
+    double amt = getDose(ind, cur), t = getAllTimes(ind, cur);
+    if (c != cmt || (whI != EVIDF_INF_RATE && whI != EVIDF_INF_DUR) ||
+        amt >= 0 || t <= time) continue;
+    if (isRunningExtraInfusionStop(ind, i, cmt, whI, amt, t, time)) {
+      pushIgnoredDose(cur, ind);
+    }
+  }
 }
 
 static inline int pushPendingDose(int doseIdx, rx_solving_options_ind *ind) {
@@ -590,6 +772,10 @@ static inline int pushUniqueDosingEvent(double time, double amt, int evid,
 // Forward declarations: defined in rxode2parseGetTime.h (included after this header)
 static inline void updateRate(int idx, rx_solving_options_ind *ind, double *yp);
 static inline void updateDur(int idx, rx_solving_options_ind *ind, double *yp);
+static inline void handleInfusionGetStartOfInfusionIndex(int *startIdx, int *endIdx,
+                                                         double *amt, int *idx,
+                                                         rx_solve *rx, rx_solving_options *op,
+                                                         rx_solving_options_ind *ind);
 
 // Event ("jump") sensitivities: apply a 1st-order dtau/alag moving-boundary jump
 // to sensitivity compartment `slot` (state esK, param p), or DEFER it.  The
@@ -1571,14 +1757,6 @@ static inline int handle_evid(int evid, int neq,
             if (_esFB != NULL) free(_esFB);
           }
         }
-        if (ind->wh0 == EVID0_SS2 &&
-            getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp) !=
-            getDoseIndex(ind, ind->idx)) {
-          if (!(ind->err & rxErrModeledFss2)){
-            ind->err += rxErrModeledFss2;
-          }
-          return 0;
-        }
       }
       break;
     case EVIDF_MODEL_RATE_OFF: // End modeled rate
@@ -1839,14 +2017,6 @@ static inline int handle_evid(int evid, int neq,
       if (_esDydtPreB2 != NULL) free(_esDydtPreB2);
       }
       ind->cacheME=0;
-      if (ind->wh0 == EVID0_SS2 &&
-          getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp) !=
-          getDoseIndex(ind, ind->idx)) {
-        if (!(ind->err & rxErrModeledFss2n2)){
-          ind->err += rxErrModeledFss2n2;
-        }
-        return 0;
-      }
       break;
     case EVIDF_INF_DUR:
       // In this case bio-availability changes the rate, but the
@@ -1857,7 +2027,17 @@ static inline int handle_evid(int evid, int neq,
         ind->curDose = tmp;
         ind->curDoseS[cmt] = ind->curDose;
       }
-      tmp = getAmt(ind, id, cmt, tmp, xout, yp);
+      if (tmp > 0) {
+        tmp = getAmt(ind, id, cmt, tmp, xout, yp);
+        pushInfDurOn(ind, tmp);
+      } else {
+        double _rateOn;
+        if (popInfDurOn(ind, &_rateOn)) {
+          tmp = -_rateOn;
+        } else {
+          tmp = getAmt(ind, id, cmt, tmp, xout, yp);
+        }
+      }
       {
         double *_esDydtPreB = _esInfusionDydtPre(id, xout, yp, neq);
         InfusionRate[cmt] += tmp;
@@ -1884,12 +2064,6 @@ static inline int handle_evid(int evid, int neq,
         if (_esDydtPreB != NULL) free(_esDydtPreB);
       }
       ind->cacheME=0;
-      if (ind->wh0 == EVID0_SS2 && tmp != getDoseIndex(ind, ind->idx)) {
-        if (!(ind->err & rxErrModeledFss2n3)){
-          ind->err += rxErrModeledFss2n3;
-        }
-        return 0;
-      }
       break;
     case EVIDF_INF_RATE:
       // In this case bio-availability changes the duration, but the
@@ -1922,6 +2096,38 @@ static inline int handle_evid(int evid, int neq,
         // Second-order moving-boundary term (product rule + Leibniz), see
         // _esInfusionBoundary2ndOrder()'s own comment for the derivation.
         _esInfusionBoundary2ndOrder(id, xout, yp, cmt, _ns, neq, tmp, _esDydtPreB);
+      }
+      // Infusion stop moved by f() (rxode2#1676): f() scales the amount, so the
+      // stop is t0 + lag + f*dur (handleInfusionItem(), f read at the raw start
+      // t0).  The forcing drops by rate = -tmp there, so the sensitivity jumps by
+      // rate*d(tstop)/dp = rate*dur*dF/dp.  First order only.
+      if (tmp < 0.0 && ind->idx >= 0 && dF != NULL && _rxEsActive &&
+          _rxEsNParam > 0 && cmt < _rxEsNState &&
+          _rxEsNState * (1 + _rxEsNParam) <= neq &&
+          _esSSDurOffCmt != cmt && _esSSRateOffCmt != cmt &&
+          ind->wh0 != EVID0_RATEADJ && ind->wh0 != EVID0_SSINF &&
+          ind->wh0 != EVID0_SS0 && ind->wh0 != EVID0_SS20) {
+        // the start handleInfusionItem() paired this stop with
+        int _esRec = ind->ix[ind->idx], _esStop = -1, _esStart = -1;
+        double _esAmtStop = getDose(ind, _esRec);
+        rx_solve *_esRx = (ind->rx ? ind->rx : &rx_global);
+        rx_solving_options *_esOp = (ind->op ? ind->op : &op_global);
+        handleInfusionGetStartOfInfusionIndex(&_esStart, &_esStop, &_esAmtStop,
+                                              &_esRec, _esRx, _esOp, ind);
+        if (_esStart >= 0 && _esStart < ind->ndoses &&
+            _esStop >= 0 && _esStop < ind->ndoses) {
+          int _ns = _rxEsNState, _np = _rxEsNParam;
+          double _esT0 = getAllTimes(ind, ind->idose[_esStart]);
+          double _esDur = getAllTimes(ind, ind->idose[_esStop]) - _esT0;
+          double *_esFB = (double*) calloc((size_t)_ns * _np, sizeof(double));
+          if (_esFB != NULL) {
+            dF(id, _esT0, yp, _esFB);
+            for (int _p = 0; _p < _np; _p++) {
+              yp[_ns + _p * _ns + cmt] += -tmp * _esDur * _esFB[cmt * _np + _p];
+            }
+            free(_esFB);
+          }
+        }
       }
       // Forward eventSens fix (modeled dur() STEADY STATE): solveSSinf re-expresses
       // a modeled dur ss infusion as this fixed-rate INF_RATE window, so the
@@ -1982,13 +2188,6 @@ static inline int handle_evid(int evid, int neq,
       if (_esDydtPreB != NULL) free(_esDydtPreB);
       }
       ind->cacheME=0;
-      if (ind->wh0 == EVID0_SS2 && getDoseIndex(ind, ind->idx) > 0 &&
-          getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp) !=
-          getDoseIndex(ind, ind->idx)) {
-        if (!(ind->err & rxErrModeledFss2n3)){
-          ind->err += rxErrModeledFss2n3;
-        }
-      }
       break;
     case EVIDF_REPLACE: // replace
       ind->on[cmt] = 1;

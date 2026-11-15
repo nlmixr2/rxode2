@@ -1004,7 +1004,7 @@
   }
   for (.w in c("omega", "sigma")) {
     .sep <- paste0(.w, "Separation")
-    if (identical(ctl[[.sep]], "tnpri") || !inherits(ctl[[.w]], "matrix")) {
+    if (isTRUE(ctl[[.sep]] %in% c("tnpri", "invchol")) || !inherits(ctl[[.w]], "matrix")) {
       next
     }
     ## only a hint, so a name clash never turns into an error here
@@ -1044,7 +1044,7 @@
 .rxTnpriApplyControl <- function(ctl) {
   for (.w in c("omega", "sigma")) {
     .sep <- ctl[[paste0(.w, "Separation")]]
-    if (!identical(.sep, "tnpri")) {
+    if (!isTRUE(.sep %in% c("tnpri", "invchol"))) {
       next
     }
     .el <- paste0("prior", if (.w == "omega") "Omega" else "Sigma", "El")
@@ -1054,14 +1054,16 @@
       next
     }
     if (!inherits(ctl$thetaMat, "matrix")) {
-      stop("'", .w, "Separation=\"tnpri\"' needs a 'thetaMat' carrying the ", .w, " entries", call. = FALSE)
+      stop("'", .w, "Separation=\"", .sep, "\"' needs a 'thetaMat' carrying the ", .w, " entries", call. = FALSE)
     }
     .mat <- ctl[[.w]]
     if (!inherits(.mat, "matrix")) {
       stop(
         "'",
         .w,
-        "Separation=\"tnpri\"' needs '",
+        "Separation=\"",
+        .sep,
+        "\"' needs '",
         .w,
         "' to be a matrix, ",
         "since the drawn entries are added to it",
@@ -1073,7 +1075,9 @@
       stop(
         "'",
         .w,
-        "Separation=\"tnpri\"' was given but no 'thetaMat' column ",
+        "Separation=\"",
+        .sep,
+        "\"' was given but no 'thetaMat' column ",
         "names a ",
         .w,
         " entry; expected one of '",

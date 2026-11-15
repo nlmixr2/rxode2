@@ -1,13 +1,62 @@
 # rxode2 (development version)
 
+## New features
+
+- `rxSymInvCholCreate()` builds block-diagonal omegas with
+  `lotri::lotriMat()` instead of `Matrix::bdiag()`, removing the
+  first-use `Matrix` namespace load (#1675); `Matrix` is no longer
+  suggested.
+
 ## Bug fixes
 
+### Delay differential equations
+- `delay()` models now solve with `method = "dop5"` and `method = "bs"`.
+  Both are dense solvers, but they recorded no `delay()` history, so
+  `rxSolve()` refused them (#1599).
+- `delay()` models with `method = "ros4"` now solve on the dense segment
+  driver, so `delay()` history is recorded on every step and `hmax` is
+  honored (#1599).
+- `delay()` models now solve with `method = "cvode"`, which records the
+  `delay()` history from CVODE's interpolant on every step, steady state
+  included (#1599).
+- `method = "cvodesadj"` now solves `delay()` models: the forward solve
+  records the `delay()` history and the backward solve carries the delayed
+  Jacobian term (and the dose jump of a parameter-dependent delay), so the
+  sensitivities are correct; before, the solution and its sensitivities
+  ignored the delay (#1599).
+- `delay()` models now solve with `method = "liblsoda", dense = TRUE`, which
+  records the `delay()` history from LSODA's interpolant on every step;
+  `method = "liblsoda"` alone still switches to `"dop853+ros4"` (#1599).
+
 ### Event tables
+- With `addlKeepsCov = TRUE`, a dose's `f()` now reads the covariates of its
+  own record, as its `alag()` does, also when `alag()` moves the dose past a
+  covariate change.  With an `alag()` on a covariate or a state, `f()` read
+  them at the time the dose landed, and the amount moved with the solver's
+  steps.  An `addl` repeat that keeps its covariates reads them the same way
+  under every interpolation.
+- A covariate in `d/dt()` (or any other statement read while solving) no
+  longer depends on the ODE method when a lagged dose is in the solve.  The
+  dose record's time was found by evaluating `alag()` again with whatever
+  covariates the previous update left, and under `nocb` the solve could stop
+  with "excess work".
+- A reset (`evid = 3`), a reset and dose (`evid = 4`) or a steady-state dose
+  (`ss = 1` or `ss = 2`) during an infusion now cancels the infusion's stop
+  record too.  The stop used to still apply, leaving the compartment at a net
+  rate of `-rate` and the state negative (#1562).
 - A simulation that stops with an error no longer leaves its draws for the
   next solve.  The residuals, simulated thetas and per-study draws it had
   made stayed behind, and the next solve without residuals of its own used
   them: after a failed `rxSolve(m, params, ev, sigma = ...)`, a plain solve
   of a model with that residual gave values up to 2.6 off.
+- A string comparison on a covariate with a mixed-case name (`Lvl == "c"`)
+  now matches the data's levels by name.  The column was not re-leveled to
+  the model's strings, so the comparison used the data's factor codes by
+  position (#1656).
+- A string comparison now warns when its literal is not among the data's
+  values (the comparison is then always false), and when the compared
+  variable has no character or factor data column to re-level, so the
+  comparison would use its value as a level code (#1656).
 
 ### Prior simulation
 - A `thetaMat` given at the call site, carried in the model's `meta` block
@@ -23,20 +72,165 @@
 - The pipeline article no longer saves its simulation into the installed
   package directory (#1506).
 
+- `?rxSolve` now describes `covsInterpolation = "midpoint"` as it works: the
+  mean of the two neighboring records over the interval, as
+  `approxfun(method = "constant", f = 0.5)` gives, not a step at the
+  midpoint (#1654).
+
 ### Sensitivities
+- Forward sensitivities of a fixed-rate infusion (`rate=` without `dur=`) now
+  include its parameter-dependent `f()`, which moves the infusion's stop.  The
+  sensitivity with respect to a parameter reaching only `f()` used to stay 0
+  (#1676).
 - `rxSolveAdjoint()` now accepts a model function, as `rxSolve()` does; it
   used to fail with an rxode2 syntax error on the `ini({})` block (#1504).
 - `rxSolveAdjoint()` and the adjoint builds now send a dose without a `cmt`
   to the first state, and a numeric `cmt` to that state, as `rxSolve()`
   does; a dose without a `cmt` used to fail in the build (#1504).
+- Event-sensitivity setup skips symbolic expansion when no dosing derivative
+  needs it, reducing setup time for large sensitivity models (#1632).
+
+### Expression optimization
+- `rxOptExpr()` avoids CSE temporary-name collisions and warns on repeated
+  optimization; each model should be optimized only once (#1632).
+- Parsing a function call whose argument is a long signed sum, such as
+  `exp(1 + a - b + ...)`, is no longer exponential in the sum's length; it
+  dominated `rxNorm()`/`rxOptExpr()` and FOCEi setup on models with long
+  lines.  Function arguments must now be separated by commas: `max(a b)` is
+  a syntax error instead of silently becoming `max(ab)` (#1674).
+- A function call with an empty argument, such as `max(, b)`, `max()` or
+  `exp()`, is now a syntax error, as is a wrong number of arguments to a
+  one- or two-argument math function such as `log10()` or `pow()`, or more
+  than one argument to `tlast()`, `tad()` and the like; these used to
+  translate to malformed C that failed to compile (#1674).
+- The sign at the start of a `d/dt()` right-hand side is now parsed only as
+  part of the expression, removing the last ambiguity in the model grammar.
+  A doubled sign or a signed negation there, `d/dt(x) = - -k` or
+  `d/dt(x) = -!a`, is now a syntax error, as it already was in any other
+  assignment; write `-(-k)` or `-(!a)` instead (#1674).
+
+### Compilation
+- A cached model library that exists but will not load (still being linked by
+  another process sharing `rxTempDir()`, or left empty) is now rebuilt, or
+  waited for under the build lock, instead of failing with "something went
+  wrong in compilation".  Libraries are linked to a private name and renamed
+  into place, so another process never loads a partly written one (#1558).
+- R's `CFLAGS` is now read once per session instead of running
+  `R CMD config CFLAGS` before every model compile; it is re-read when a
+  Makevars file changes (#1675, #1711).
+
+### Solving
+- `rxSolve()` now stops with an error when an `rxControl()` object is passed
+  as `params` or `events`, as it already did for `inits`, and a parameter list
+  that is empty or whose first column is empty gives the parameter-size
+  error.  With a `sigma` to simulate, these used to crash R with a floating
+  point exception or fail with an unrelated internal error (#1551).
+- A dose moved by `alag()` now takes the time-varying covariates imputed at
+  its actual dosing time, as `addl` repeats do with `addlKeepsCov = FALSE`
+  (the default); the covariates stay on the data records' own times.  It used
+  to carry its record's covariates to its arrival, which now happens only with
+  `addlKeepsCov = TRUE`.  `nonmem = TRUE` turns on `addlKeepsCov` unless it is
+  given, since NONMEM keeps a dose record's covariates with the dose (#1584).
+- Re-solving a solved object with new events (`rxSolve(<rxSolve>, params,
+  events)`) solves the model that produced it instead of re-parsing the model
+  text on every call, which also keeps the event (jump) sensitivities of a
+  `calcSens` model, and a data frame solve or `$params<-` update translates its
+  events once instead of twice.  Both were slowdowns introduced in 5.1.1; MAP
+  estimation in posologyr was about 10 times slower
+  (levenc/posologyr#70).  Event tables under 100,000 rows are now sorted with
+  base R's radix sort, which gives the same order as the `data.table` sort
+  without its setup cost on every solve.
+- `method = "cvode"` now honors `dense = TRUE`, as `rxIsDense()` and the
+  documentation describe; the CVODE dense driver existed but `dense = TRUE`
+  was silently dropped (#1599).
+- `method = "liblsoda"` now accepts `dense = TRUE`, which lifts the `hmax`
+  default like the other dense methods (LSODA already interpolates between
+  its own steps), and `rxIsDense("liblsoda")` is `TRUE` (#1599).
 
 ### Steady state
+- A steady-state bolus now runs each dosing cycle on a clock from 0 to `ii`,
+  as NONMEM does, so a model whose ODE reads `t` reaches a steady state.  The
+  cycles used to keep advancing `t`, so the solve failed or returned values
+  that depended on `maxSS` (#1585).
+- Steady-state infusions, including those longer than `ii` and lagged ones,
+  run each dosing cycle on the same 0 to `ii` clock, so a model reading `t`
+  reaches a steady state there too (#1585).
+- `tad()` and `tad0()` inside a steady-state cycle now count from that cycle's dose, so a
+  model whose ODE reads `tad()` (such as a transit compartment) reaches a
+  steady state; it used to count from the dose record and the solve failed
+  (#1585).
 - A steady-state bolus into a compartment whose `alag()` is longer than `ii`
   now includes the doses of the earlier intervals that arrive inside the
   observed one; they were dropped, so the profile decayed from the trough
   instead of matching explicit dosing (#1499).
+- `linCmt()` models now follow `minSS = maxSS = n`, giving the profile after
+  exactly `n` prior doses as the equivalent ODE model does; they used to
+  return the exact steady state for every `n` (#1500).
+- A `linCmt()` steady-state bolus with `alag()` longer than `ii` now matches
+  the ODE model and NONMEM.  After a dose that a steady-state record
+  schedules between two records, the `linCmt()` solver advanced to the next
+  record twice (#1591).
+- `linCmt()` models now follow `minSS`/`maxSS` as the equivalent ODE model
+  does: `minSS = maxSS = n` gives the profile after exactly `n` prior doses,
+  and a steady state converged by `minSS` doses (for example with
+  `ssAtol`/`ssRtol` disabled) stops there.  They used to return the exact
+  steady state for every `minSS` (#1500).
+
+- Every dose a steady-state record schedules between two records (the
+  starts and ends of a steady-state infusion with `dur > ii` or with
+  `alag() > ii`) is now applied at its own time with every solver.  Only
+  the first one between two records was applied, so a short infusion could
+  never end; `dop853` also integrated past that dose twice (#1499).
+- A steady-state infusion into a compartment whose `alag()` is an exact
+  multiple of `ii` now gives the record's own lagged infusion (and those of
+  the intervals in between); they were dropped, so the profile decayed from
+  the dose arrival time on (#1590).
+- An `ss = 2` infusion (fixed or modeled rate or duration) into a compartment
+  with `f()` now solves without an `alag()`; it stopped with `SS=2 & Modeled
+  F does not work` although the same regimen with `alag() <- 0` solved and
+  matched explicit dosing (#1602).
+- A steady-state infusion lasting exactly `ii` (fixed `rate` or `dur`) into a
+  compartment with an `alag()` now stays on until its own lagged dose ends;
+  with `ssAtDoseTime = TRUE` it turned off `alag()` too early (#1590).
 
 ## New features
+
+- `liblsoda` updates its history array and corrector vectors two elements
+  at a time, which the compiler vectorizes at R's default `-O2`.  Results are
+  unchanged, bit for bit; a FOCEi fit with sensitivities (12 states) spends
+  about 8% fewer instructions in the solver and runs about 4-6% faster, while
+  a 3-state simulation is unchanged.
+
+- `rxFromSE()` and `rxToSE()` now translate in C what they used to send to
+  the R tree walker -- `log()` of a sum (#1673), `lgamma()`, `sin()`/`cos()`/
+  `tan()` of a multiple of `pi`, `Subs()`, higher-order `Derivative()`, the
+  finite-difference fallback and every `.rxSEeq` function -- and
+  `rxS()` loads assignments through the C translator.  The output is
+  unchanged.  On the three-period model of #1682, translating the
+  `foceiControl(fast = TRUE)` outer model fell from about 1470 s to 15 s,
+  and `rxFromSE()` from 75-84% of the model setup to a few percent (#1682).
+
+- `rxFromSE()` and `rxToSE()` cache their translations for the session; text
+  translated again is not re-parsed.  `rxSymEngineCacheReset()` clears the
+  cache, `options(rxode2.symengineCacheMB = )` bounds it and
+  `options(rxode2.symengineCache = FALSE)` turns it off.
+
+- `etTrans()` gains `tieOrder = "data"`, which keeps records of a subject
+  that share a time in the order of the rows in the data, the way NONMEM
+  processes them, instead of resets, then doses, then observations (#1593).
+
+- `rxSolve()` gains `tieOrder`.  `tieOrder = "data"` processes records of a
+  subject that share a time in the order of the rows in the data, so a dose
+  listed before a reset at the same time is wiped by it and an observation
+  listed before a co-timed dose is predicted before the dose, as in NONMEM.
+  It is the default with `nonmem = TRUE`; otherwise the default stays
+  `"evid"` (resets, then doses, then observations) (#1593).
+
+- `rxSolve(omegaSeparation = "invchol")` (and `sigmaSeparation = "invchol"`)
+  draws the omega (sigma) entries a `thetaMat` carries jointly with the
+  thetas, like `"tnpri"`, but on the inverse Cholesky scale (the `thetaMat`
+  is moved there by the delta method), so every drawn matrix is positive
+  definite and none is redrawn (#1486).
 
 - `minSS` and `maxSS` now accept any count from 1, and `maxSS` may equal
   `minSS`, so `minSS = maxSS = n` gives exactly the state after `n` doses
@@ -55,6 +249,12 @@
   `setRxThreadId()` back through `getRxThreadId()`, a new entry of the C
   pointer table (`rxode2ptr.h`).
 
+- Packages linking to rxode2 can set a subject's `newind` with
+  `setIndNewind()`, a new entry of the C pointer table (`rxode2ptr.h`), so a
+  walk of their own over a subject's records with `calc_lhs` gives a model
+  that reads `newind` 1 at the first record and 2 after it, as rxode2's
+  output does.
+
 - A package that includes rxode2's `rxode2parseSbuf.h` can define
   `RXODE2_SBUF_FORMAT` (`PKG_CPPFLAGS = -DRXODE2_SBUF_FORMAT`) to have its
   `sAppend()`, `sPrint()` and `addLine()` calls checked by `-Wformat`.  Under
@@ -64,6 +264,19 @@
 ## Bug fixes
 
 ### Event tables
+
+- `etTrans()` now reads two records differently, each with one warning that
+  names the rows (1-based rows of the data as given, the first ten; under a
+  chunked `rxSolve(file =, chunkSize =)`, rows of each chunk):
+  - a record with `evid` 0 (or `mdv` 0 standing in for it), a missing `dv`
+    and a nonzero `amt` is a dose of that amount, an infusion with a `rate`
+    or `dur` ("'evid' 0 with a missing 'dv' and a nonzero 'amt' is read as a
+    dose"); it was kept as an observation with no `dv`, its dose dropped;
+  - with no `evid` column, a record whose `mdv` is missing and whose `amt` is
+    0 is `evid` 2, a record with no observation ("a missing 'mdv' with a zero
+    'amt' is read as 'evid' 2, not a dose"); it was a dose of 0.  A missing
+    `mdv` that is a dose now keeps its `rate` or `dur`, as `mdv` 1 does; it
+    was a bolus.
 
 - `etTrans()` now stops on a record whose `evid` is missing but that carries
   dose information: a nonzero `amt`, or a `rate` or `dur` that is positive or
@@ -87,7 +300,44 @@
   absence) when it returns, so it no longer replaces the session's random
   stream.  The simulated values for a given `seed` are unchanged (#1503).
 
+- `rxControl(seed = )` no longer reseeds the session's random stream when the
+  control is built; the seed is stored and applied by the solve that uses it.
+  A seed that reaches the solve only through the control (for example from a
+  model's `meta` block) now suspends `rxSetSeed()` and restores the caller's
+  `.Random.seed` as `rxSolve(seed = )` does.  The simulated values for a
+  given `seed` are unchanged (#1550).
+
+- Re-solving an `rxSolve()` result by assignment (`$<-`, `[[<-`, `[<-`, eg
+  `s$params <- p`) now reapplies the seed stored in its control, so the draws
+  are reproducible; they used to be fresh values.  `update()` still uses only
+  a `seed` passed to it (#1550).
+
 ### Solving
+
+- `liblsoda` (and `liblsodaadj`, whose forward solve it is) now fails a
+  subject whose interpolation to an output time fails ("intdy -- t = ...
+  illegal"), with "IDID=-3, illegal input detected (see printed message)".
+  It used to report success and return the last step's state at that time
+  (0 throughout for `d/dt(y) <- 1e308`), with no "could not solve" warning.
+  `intdy()`'s test of whether an output time lies in the last step now
+  takes its tolerance as `dlsoda.f` does, from the magnitudes of the step's
+  time and size with the step's sign; at negative times it rejected output
+  times a few ulps past a step's start.
+
+- A fixed-duration infusion into a compartment whose `f()` depends on a
+  state now stops by removing the rate its start added, `f()` being read
+  once, at the start.  The stop used to evaluate `f()` again, leaving a
+  constant residual rate in the compartment after the infusion (#1568).
+
+- With `dop853` (dense output and AutoSwitch composites included), `newind`
+  now becomes 2 after a subject's first record during the solve; it stayed
+  1 for the whole solve, so a right-hand side, `f()` or `evid_()` reading it
+  treated every record as the first (#1526).
+
+- During the solve, every other method now advances `newind` after a
+  subject's first record instead of before it, so that record's `f()`,
+  `alag()`, `rate()`, `dur()` and `evid_()`/`bolus()` calls see
+  `newind == 1`, as the output table already did (#1526).
 
 - Forward sensitivities through `alag()`, `f()`, `rate()`, `dur()` and a
   parameter-dependent `delay()` are now right for a parameter that also
@@ -177,6 +427,10 @@
 - `ind_solve()` (as nlmixr2est uses it) no longer reads a failure left by the
   previous solve of the same subject as a failure of the new one.
 
+- A `cvode` subject that fails on its steady-state path now gives the
+  solver-failure reason line; it was `NA` with the "could not solve" warning
+  but no reason.
+
 - A subject whose solve failed is now named with its reason once the solve is
   over ("[solve error: <reason>]: N warning(s) for subject(s): <ids>", and the
   `lsoda` and `liblsoda` "IDID=" texts likewise), whichever thread solved it.
@@ -203,7 +457,30 @@
   (`printf("%d", x)` with a double `x`) now gives a `-Wformat` warning when the
   model compiles; it compiles as before.
 
+- A non-finite derivative or state (an infinite rate constant, say) now fails
+  the subject in the 32 methods that integrated on through it: `f78`, `rk4`,
+  `ck54`, `ab`, `abm`, `abs`, `dop5`, `bs`, `ros4`, `iem`, `sem`, `sb3a`,
+  `sb3am4`, `mm`, `em`, `trapz`, `ssp3`, `ssp33`, `rk4s`, `rk3s`, `heuns`,
+  `midpoints`, `eulers`, `ros4s`, `ros43s`, `ros6s`, `radauiia5s`,
+  `sdirk43s`, `gauss6s`, `iiic6s`, `geng5s` and `backwardEulers`.  They
+  returned `NaN` (`ros4` finite values) with no warning; the subject is now
+  `NA`, with the "could not solve" warning and its reason, as the other
+  methods give it.
+
+- A state that is not finite after a step now fails the subject in every
+  method.  This includes a state that starts as `NA` or infinite, even one
+  no equation uses (`spare(0) <- NA`): most methods used to solve around one
+  or the other (`liblsoda` an `NA` one, `dop853` and `cvode` an infinite
+  one).  `indLin` returned `NaN` with no warning, and a failed `cvodesadj`
+  step kept the subject's last values with no warning.
+
 ### linCmt() models
+
+- `linCmt()` models now refuse `"linear"` covariate interpolation (from
+  `covsInterpolation` or a declared `linear()`) for a covariate that varies
+  within a subject and feeds the `linCmt()` parameters, pointing to
+  `"locf"`, `"nocb"`, `"midpoint"` or an ODE model.  The closed form cannot
+  follow the ramp and silently gave the `"midpoint"` solution (#1669).
 
 - `linCmt()` models now solve a time-varying covariate as the equivalent ODE
   model does.  Each interval between records used the covariates of the record
@@ -243,6 +520,26 @@
   solving".  nlmixr2est's population `predict()` of a fit with
   inter-occasion variability goes through it.
 ### Symbolic derivatives
+
+- The C translator behind `rxFromSE()`/`rxToSE()` now writes numbers as R
+  does (`1e+05`, `1e-04`) and no longer answers for text the R translator
+  constant-folds differently, so both give the same output.
+
+- A model variable, parameter or covariate named `T` or `F` (or any other
+  name `baseenv()` binds) is now kept as a variable when a model is loaded
+  into symengine.  `rxFromSE()` constant-folded it as `TRUE`/`FALSE`, so
+  `b*(F+1)` became `b` (#1692).
+
+- `rxFromSE()`'s R walker, used for expressions the C translator declines,
+  is faster: the symbol rewrites run only on names they can match, and
+  their anchored pattern and the reserved-name table are built once instead
+  of on every leaf (#1673).
+
+- An error inside a symbolic calculation that shows a progress bar (the
+  Jacobian and sensitivity builds of `rxode2(calcSens = )`, the adjoint
+  expansion, inductive linearization, expression optimization) is now
+  reported as itself; the progress bar's clean-up replaced it with
+  "Aborted calculation".
 
 - The derivative of a function of `abs()` of a sum (`exp(2 * abs(k - 0.9))`)
   keeps `abs()`'s argument.  It was written `abs(+)` (since 5.1.7), so a
