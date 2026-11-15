@@ -812,7 +812,7 @@ your sampling and events.  The value 0 is equivalent to infinite
 maximum absolute step size.
 
 Note that for dense output methods (\code{"dop853"}, \code{"dop5"}, \code{"bs"},
-\code{"ros4"}), \code{hmax} defaults to \code{NULL} to allow the solvers to
+\code{"ros4"}, \code{"cvode"}, \code{"liblsoda"}), \code{hmax} defaults to \code{NULL} to allow the solvers to
 determine the step size when \code{dense=TRUE}
 
 For \code{method="indLin"}, \code{hmax} caps how long an interval is treated
@@ -859,7 +859,10 @@ interpolated.  Currently this can be:
 \itemize{
 \item \code{"linear"} interpolation, which interpolates the covariate
 by solving the line between the observed covariates and extrapolating the new
-covariate value.
+covariate value.  A \code{linCmt()} model refuses it for a covariate
+that varies within a subject and feeds the \code{linCmt()} parameters,
+since its closed form cannot follow the ramp; use another method or
+write the model as ODEs.
 \item \code{"locf"} -- Last observation carried forward (the default).
 \item \code{"nocb"} -- Next Observation Carried Backward.  This is the same method
 that NONMEM uses.
@@ -1617,8 +1620,9 @@ controls.}
 \item{dense}{Logical; when \code{TRUE} and the method supports dense output,
 enables continuous interpolation so the solver can take large internal
 steps and reconstruct the solution cheaply at each observation time.
-Dense-capable single methods are \code{"dop853"}, \code{"dop5"}, \code{"bs"}, and
-\code{"ros4"}.  \code{"dop853+ros4"} is the only dense AutoSwitch composite: the
+Dense-capable single methods are \code{"dop853"}, \code{"dop5"}, \code{"bs"}, \code{"ros4"},
+\code{"cvode"} and \code{"liblsoda"} (which interpolates between its own steps
+either way; \code{dense = TRUE} lifts the \code{hmax} default).  \code{"dop853+ros4"} is the only dense AutoSwitch composite: the
 secondary must be dense too (\code{"ros4"} is the only stiff method that is),
 and handing a dense segment from the primary to the secondary mid-segment
 is implemented for a \code{"dop853"} primary.  Other composites solve densely

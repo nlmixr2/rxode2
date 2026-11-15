@@ -41,6 +41,7 @@
 #include "strncmp.h"
 #include "rxode2_altrep.h"
 #include "rxode2_df.h"
+#include "rxProtect.h"
 #include "../inst/include/rxMemoryCalc.h"
 #include "rxSbufFormat.h"
 #define _(String) (String)
@@ -1568,6 +1569,18 @@ NumericVector rxSetupScale(const RObject &obj,
 
 #include "rxGlobals.h"
 
+extern bool rxEtTransStrCmpQuiet;
+// Quiets etTrans string-comparison warnings while in scope; keep the scope to
+// one etTransR() call, whose R errors return as C++ exceptions (an Rf_warningcall
+// longjmp would skip the destructor)
+struct rxEtTransStrCmpQuietGuard {
+  bool old;
+  rxEtTransStrCmpQuietGuard(bool quiet) : old(rxEtTransStrCmpQuiet) {
+    if (quiet) rxEtTransStrCmpQuiet = true;
+  }
+  ~rxEtTransStrCmpQuietGuard() { rxEtTransStrCmpQuiet = old; }
+};
+
 rx_globals _globals;
 
 #include "extraDosing.h"
@@ -1638,10 +1651,10 @@ extern "C" SEXP _rxTestThreadIdSlots(SEXP ptrs) {
   set(-1);
   int b = get();
   set(old);
-  SEXP ret = PROTECT(Rf_allocVector(INTSXP, 2));
+  rxProtect rx_protect;
+  SEXP ret = rx_protect.protect(Rf_allocVector(INTSXP, 2));
   INTEGER(ret)[0] = a;
   INTEGER(ret)[1] = b;
-  UNPROTECT(1);
   return ret;
 }
 static inline int _rxTid(void) {
@@ -2718,7 +2731,7 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
 
   if (nSub > 1 && rxIsNull(omega)){
     // rxSolveFree();
-    warning(_("multi-subject simulation without without 'omega'"));
+    warning(_("multi-subject simulation without 'omega'"));
   }
   // "tnpri" draws every entry from the `thetaMat`, so an entry it carries
   // no variance for stays at its estimate rather than coming from the
@@ -3656,7 +3669,11 @@ static inline void rxSolve_ev1Update(const RObject &obj,
                                          if (rxSolveDat->hasICov) {
                                            Rf_warningcall(R_NilValue, "'iCov' ignored when there are no samples/observations in the input dataset");
                                          }
-                                         List ev1a = etTransR(ev1, obj, rxSolveDat->hasCmt,
+                                         List ev1a;
+                                         {
+                                           // no 'iCov' here: quiet its string-comparison warnings
+                                           rxEtTransStrCmpQuietGuard strCmpQuiet(rxSolveDat->hasICov);
+                                           ev1a = etTransR(ev1, obj, rxSolveDat->hasCmt,
                                                               false, false, true, R_NilValue,
                                                               rxControl[Rxc_keepF],
                                                               rxControl[Rxc_addlKeepsCov],
@@ -3664,6 +3681,7 @@ static inline void rxSolve_ev1Update(const RObject &obj,
                                                               rxControl[Rxc_ssAtDoseTime],
                                                               R_NilValue,
                                                               rxControlTieOrder(rxControl));
+                                         }
       rxSolveDat->labelID=true;
       CharacterVector tmpC = ev1a.attr("class");
       List tmpL = tmpC.attr(".rxode2.lst");
@@ -3732,12 +3750,15 @@ static inline void rxSolve_ev1Update(const RObject &obj,
       rx->nobs2 = lenOut;
       Function etFun = getRxFn("et");
       ev1 = etFun(ev1, wrap(newObs));
-      ev1 = etTransR(ev1, obj, rxSolveDat->hasCmt,
-                     false, false, false, R_NilValue,
-                     rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
-                     rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
-                     R_NilValue,
-                     rxControlTieOrder(rxControl));
+      {
+        rxEtTransStrCmpQuietGuard strCmpQuiet(rxSolveDat->hasICov);
+        ev1 = etTransR(ev1, obj, rxSolveDat->hasCmt,
+                       false, false, false, R_NilValue,
+                       rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                       rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                       R_NilValue,
+                       rxControlTieOrder(rxControl));
+      }
     }
   }
   // No class is "rxEtTrans" (a translated table is "rxEtTran"), so every data
@@ -3746,12 +3767,16 @@ static inline void rxSolve_ev1Update(const RObject &obj,
   // is.  Skipping translated tables here would solve one made for another
   // model with that model's layout.
   if (rxIs(ev1, "data.frame") && !rxIs(ev1, "rxEtTrans")) {
-    List ev1k = etTransR(ev1, obj, rxSolveDat->hasCmt,
-                         false, false, true, R_NilValue,
-                         rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
-                         rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
-                         R_NilValue,
-                         rxControlTieOrder(rxControl));
+    List ev1k;
+    {
+      rxEtTransStrCmpQuietGuard strCmpQuiet(rxSolveDat->hasICov);
+      ev1k = etTransR(ev1, obj, rxSolveDat->hasCmt,
+                      false, false, true, R_NilValue,
+                           rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                           rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                           R_NilValue,
+                           rxControlTieOrder(rxControl));
+    }
     CharacterVector tmpCk = ev1k.attr("class");
     List tmpLk = tmpCk.attr(".rxode2.lst");
     if (asInt(tmpLk[RxTrans_nobs], "nobs") == 0) {
@@ -3828,6 +3853,9 @@ static inline void rxSolve_ev1Update(const RObject &obj,
                      rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
                      rxControl[Rxc_iCov],
                      rxControlTieOrder(rxControl));
+    } else if (Rf_isNull(rxControl[Rxc_iCov])) {
+      // Same arguments as ev1k; reuse it rather than translating twice
+      ev1 = ev1k;
     } else {
       ev1 = etTransR(ev1, obj, rxSolveDat->hasCmt,
                      false, false, true, R_NilValue,
@@ -4605,6 +4633,58 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
         }
       }
     }
+    // linCmt() advances each interval with the covariates at its middle, so it
+    // cannot follow a linear ramp; refuse "linear" for a covariate that varies
+    // within a subject and feeds the linCmt() parameters, rather than silently
+    // giving the midpoint solution.  The dependencies (.rxLinCmtDepends) are
+    // looked up only once a varying covariate is found.
+    if (op->numLin > 0) {
+      bool haveDeps = false;
+      RObject linDeps = R_NilValue;
+      for (int ic = 0; ic < ncov; ic++) {
+        if (ic == op->cmtCov) continue;
+        int curInterp = _globals.gpar_covInterp[ic];
+        if (!(curInterp == 0 || (curInterp == -1 && op->is_locf == 0))) continue;
+        NumericVector curCov = as<NumericVector>(dataf[covPos[ic]]);
+        int lastId = NA_INTEGER;
+        double firstVal = NA_REAL;
+        for (int ir = 0; ir < curCov.size(); ir++) {
+          if (id[ir] != lastId) {
+            lastId = id[ir];
+            firstVal = NA_REAL;
+          }
+          double curVal = curCov[ir];
+          if (ISNAN(curVal)) continue;
+          if (ISNAN(firstVal)) {
+            firstVal = curVal;
+          } else if (curVal != firstVal) {
+            std::string covName = as<std::string>(dfNames[covPos[ic]]);
+            if (!haveDeps) {
+              Environment rxode2ns = Environment::namespace_env("rxode2");
+              Function linCmtDepends = rxode2ns[".rxLinCmtDepends"];
+              linDeps = linCmtDepends(rxSolveDat->mv);
+              haveDeps = true;
+            }
+            if (!Rf_isNull(linDeps)) {
+              CharacterVector deps = as<CharacterVector>(linDeps);
+              // the parameter name, which may differ in case from the column
+              std::string parName = as<std::string>(pars[_globals.gpar_cov[ic] - 1]);
+              bool feedsLin = false;
+              for (int id0 = 0; id0 < deps.size(); id0++) {
+                if (as<std::string>(deps[id0]) == parName) {
+                  feedsLin = true;
+                  break;
+                }
+              }
+              if (!feedsLin) break;
+            }
+            rxSolveFree();
+            stop(_("'linear' interpolation of time-varying covariate '%s' on a linCmt() parameter is not supported; use covsInterpolation = \"locf\", \"nocb\" or \"midpoint\" (or declare that interpolation for '%s' in the model), or write the model as ODEs"),
+                 covName.c_str(), covName.c_str());
+          }
+        }
+      }
+    }
     // Make sure the covariates are a #ncov * all times size
     if (_globals.gcov != NULL) free(_globals.gcov);
     _globals.gcov = (double*)calloc(ncov * amt.size(), sizeof(double));
@@ -5170,11 +5250,11 @@ static std::vector<double> _rxForcedVal;
 extern "C" SEXP _rxode2_rxSetForcedPars(SEXP idx, SEXP val) {
   int n = Rf_length(idx);
   if (Rf_length(val) != n) Rf_error("forcedPars idx/val length mismatch");
-  SEXP idxI = PROTECT(Rf_coerceVector(idx, INTSXP));
-  SEXP valR = PROTECT(Rf_coerceVector(val, REALSXP));
+  rxProtect rx_protect;
+  SEXP idxI = rx_protect.protect(Rf_coerceVector(idx, INTSXP));
+  SEXP valR = rx_protect.protect(Rf_coerceVector(val, REALSXP));
   _rxForcedIdx.assign(INTEGER(idxI), INTEGER(idxI) + n);
   _rxForcedVal.assign(REAL(valR), REAL(valR) + n);
-  UNPROTECT(2);
   return R_NilValue;
 }
 
@@ -5217,16 +5297,16 @@ static inline void rxCallParLoaders(rx_solve* rx, int npars, int ncols) {
 // value = <injected values>); the R layer maps indices to parameter names.
 extern "C" SEXP _rxode2_rxGetInjectedPars(void) {
   int n = (int) _rxInjIdx.size();
-  SEXP idx = PROTECT(Rf_allocVector(INTSXP, n));
-  SEXP val = PROTECT(Rf_allocVector(REALSXP, n));
+  rxProtect rx_protect;
+  SEXP idx = rx_protect.protect(Rf_allocVector(INTSXP, n));
+  SEXP val = rx_protect.protect(Rf_allocVector(REALSXP, n));
   for (int i = 0; i < n; ++i) {
     INTEGER(idx)[i] = _rxInjIdx[i];
     REAL(val)[i] = _rxInjVal[i];
   }
-  SEXP ret = PROTECT(Rf_allocVector(VECSXP, 2));
+  SEXP ret = rx_protect.protect(Rf_allocVector(VECSXP, 2));
   SET_VECTOR_ELT(ret, 0, idx);
   SET_VECTOR_ELT(ret, 1, val);
-  UNPROTECT(3);
   return ret;
 }
 
@@ -6821,8 +6901,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->autoSwitchDtfac       = asDouble(rxControl[Rxc_autoSwitchDtfac], "autoSwitchDtfac");
     op->autoSwitchSwitchMax   = asInt(rxControl[Rxc_autoSwitchSwitchMax], "autoSwitchSwitchMax");
     if (op->useDense) {
-      /* Dense output is only supported for dop853(0), dop5(10), bs(11), ros4(13). */
-      int _primDense = (method == 0 || method == 10 || method == 11 || method == 13);
+      /* Dense output is only supported for dop853(0), liblsoda(2), dop5(10),
+         bs(11), ros4(13), cvode(21). */
+      int _primDense = (method == 0 || method == 2 || method == 10 || method == 11 ||
+                        method == 13 || method == 21);
       /* For AutoSwitch composites (stiff2>0) the stiff secondary must be dense
          too -- only ros4(13) is -- and the dense segment driver that hands a
          segment from the primary to the secondary exists only for a dop853
@@ -7528,8 +7610,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _lastT0 = clock();
 #endif// rxSolveT
 
-    SEXP ret = rxSolve_finalize(object, rxControl, specParams, extraArgs, params, events,
-                                inits, rxSolveDat);
+    // rxSolve_finalize() returns a bare SEXP; keep it protected until return.
+    rxProtect rx_protect;
+    SEXP ret = rx_protect.protect(rxSolve_finalize(object, rxControl, specParams, extraArgs,
+                                                   params, events, inits, rxSolveDat));
     if (!rxIsNull(setupOnlyObj)) {
       rxUnlock(setupOnlyObj);
       setupOnlyObj = R_NilValue;

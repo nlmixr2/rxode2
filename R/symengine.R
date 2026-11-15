@@ -667,12 +667,15 @@ rxRmFun <- function(name) {
 })
 ## "rxTBS", "rxTBSd"
 
+# Hex literals parse to the same double on every platform; long decimal ones
+# do not (arm64 macOS lands an ulp off), and the C table in
+# src/seFromSEnames.h holds their sprintf("%.16f") text.
 .rxSEreserved <- list(
-  "e" = 2.718281828459045090796,
-  "E" = 2.718281828459045090796,
-  "EulerGamma" = 0.57721566490153286060651209008240243104215933593992,
-  "Catalan" = 0.915965594177219015054603514932384110774,
-  "GoldenRatio" = 2.118033988749894902526,
+  "e" = 0x1.5bf0a8b145769p+1,
+  "E" = 0x1.5bf0a8b145769p+1,
+  "EulerGamma" = 0x1.2788cfc6fb619p-1,
+  "Catalan" = 0x1.d4f9713e8135dp-1,
+  "GoldenRatio" = 0x1.0f1bbcdcbfa54p+1,
   "I" = 1i
 )
 
@@ -713,7 +716,7 @@ rxD <- function(name, derivatives) {
   }
   assign(name, derivatives, envir = .rxD)
   ## the C translator caches these as templates; see .rxDtemplates()
-  .rxSEstate$dTemplates <- NULL
+  .rxSEinvalidate()
   return(invisible())
 }
 
@@ -743,16 +746,90 @@ rxD <- function(name, derivatives) {
 ## model is translated; same state, same environment
 .rxSEstate$sumProdSum <- FALSE
 .rxSEstate$sumProdProd <- FALSE
-## Derivative templates extracted from rxode2parseD(); see .rxDtemplates().
-## Dropped whenever the derivative table changes (rxD/rxFun/rxRmFun).
+## Derivative templates and .SEeq extracted for the C translator; see
+## .rxDtemplates().  Dropped whenever the derivative table or the user function
+## table changes (rxD/rxFun/rxRmFun) by .rxSEinvalidate(), which also bumps
+## dGen, the generation the translation cache is keyed on.
 .rxSEstate$dTemplates <- NULL
+.rxSEstate$dGen <- 0L
+
+.rxSEinvalidate <- function() {
+  .rxSEstate$dTemplates <- NULL
+  .rxSEstate$dGen <- (.rxSEstate$dGen + 1L) %% .Machine$integer.max
+  invisible()
+}
+
+## The state a translation depends on, and the cache settings, for the C
+## translators (src/seCache.h): everything but the last two entries is the
+## cache key, so a change in any of them clears the cache before it is used.
+.rxSEscipen <- function() {
+  .s <- suppressWarnings(as.integer(getOption("scipen", 0L)))
+  if (length(.s) != 1L || is.na(.s)) 0L else .s
+}
+
+.rxSEstamp <- function(numDer = .rxSEstate$fromNumDer) {
+  .mb <- suppressWarnings(as.integer(getOption("rxode2.symengineCacheMB", 256L)))
+  if (length(.mb) != 1L || is.na(.mb) || .mb < 1L) {
+    .mb <- 256L
+  }
+  c(
+    as.integer(numDer),
+    .rxSEstate$dGen,
+    as.integer(isTRUE(.rxSEstate$sumProdSum)),
+    as.integer(isTRUE(.rxSEstate$sumProdProd)),
+    as.integer(isTRUE(.rxSEstate$promoteLinB)),
+    ## options(scipen=): as.character() writes numbers by it (SE_STAMP_SCIPEN)
+    .rxSEscipen(),
+    as.integer(isTRUE(getOption("rxode2.symengineCache", TRUE))),
+    .mb
+  )
+}
+
+## Can the R walker's translation of txt be cached?  Not when it calls a
+## function rxode2 does not know, which the R walker looks up in the caller's
+## environment (an R user function) -- every call is checked, since the C
+## decline reason names only the FIRST thing the C walk could not do.
+## linCmt() also carries session state through rxToSE().
+.rxSEcallerFree <- function(txt, toSE = FALSE) {
+  .f <- regmatches(txt, gregexpr("[A-Za-z_.][A-Za-z0-9_.]*(?=\\()", txt, perl = TRUE))[[1]]
+  if (toSE && any(startsWith(.f, "linCmt"))) {
+    return(FALSE)
+  }
+  all(.f %in% .rxDtemplates()$known)
+}
+
+## decline reasons the C translators report (seWhy in src/seFromSEarena.h):
+## an unknown function, which R resolves in the caller's environment
+.rxSEwhyUnknownFn <- 9L
+## decline reasons after which rxToSE()'s R walker answer is cached: only
+## SE_WHY_OTHER, an expression shape the C walk does not write itself
+.rxSEwhyToSEcache <- 11L
+
+#' Reset the symengine translation cache
+#'
+#' `rxToSE()` and `rxFromSE()` remember the translations they have made, so
+#' text that is translated again (as symbolic-derivative builds do, line after
+#' line) is not re-parsed.  The cache is cleared automatically when a new
+#' translation session starts (`rxS()`, or `rxToSE()` with an `envir`), when
+#' the derivative or user-function tables change, and when it grows past
+#' `getOption("rxode2.symengineCacheMB", 256)` megabytes.  Set
+#' `options(rxode2.symengineCache = FALSE)` to turn it off.
+#'
+#' @return nothing, called for its side effect
+#' @author Matthew L. Fidler
+#' @export
+#' @family Symbolic tools
+rxSymEngineCacheReset <- function() {
+  .Call(`_rxode2_seCacheResetR`)
+  invisible()
+}
 
 ## The C translator (src/rxToSE.c) for rxode2 -> symengine text.  Returns
 ## NA_character_ for anything it does not reproduce exactly, and those fall
 ## back to the R walker below.  Shares options(rxode2.symengineC=) with
 ## .rxFromSEC(): both are the same translation moved to C.
 .rxToSEC <- function(x) {
-  .Call(`_rxode2_rxToSEChar`, as.character(x))
+  .Call(`_rxode2_rxToSEChar`, as.character(x), .rxSEstamp())
 }
 
 #' rxode2 to symengine environment
@@ -789,6 +866,11 @@ rxD <- function(name, derivatives) {
 #'   print(rxFromSE("exp(-ke*t)*central/v"))
 #' }
 rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, parent = parent.frame()) {
+  if (!is.null(envir)) {
+    ## loading a model into a symengine environment starts a new translation
+    ## session (see rxSymEngineCacheReset())
+    rxSymEngineCacheReset()
+  }
   .udfEnvLocal(parent)
   .rxToSE.envir$parent <- parent
   .rxToSElinCmt$linCmt <- NULL # no linCmt() found
@@ -808,6 +890,19 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
       .c <- .rxToSEC(x)
       if (!is.na(.c)) {
         return(.c)
+      }
+      if (
+        is.null(envir) && !is.na(x) && isTRUE(attr(.c, "why") %in% .rxSEwhyToSEcache) && .rxSEcallerFree(x, toSE = TRUE)
+      ) {
+        ## A single expression the R walker translates without touching the
+        ## caller's functions or any session state: remember its answer.
+        ## Statements (a parse failure here) and calls the C side does not
+        ## know (user functions, linCmt) are left alone.
+        .ret <- .rxToSE(eval(parse(text = paste0("quote({", x, "})"))), envir, progress)
+        if (is.character(.ret) && length(.ret) == 1L) {
+          .Call(`_rxode2_seCachePutR`, 1L, x, .ret)
+        }
+        return(.ret)
       }
     }
   } else if (is(substitute(x), "{")) {
@@ -1391,6 +1486,70 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
   }
 }
 
+## The right-hand side of an assignment being loaded into a symengine
+## environment, translated by the C emitter when it can, with the bindings
+## the R walker would have made along the way: every symbol leaf it reads
+## (.rxToSENameOrAtomic) and the largest THETA[]/ETA[] (.rxToSESquareBracket).
+## Anything whose walk has wider effects -- a lagged-variable snapshot, a
+## dose-history name (whose expansion resets the translation state), linCmt(),
+## a pending ..curCall -- or that C declines goes to the R walker as before.
+.rxToSEenvRhs <- function(x, envir) {
+  if (!is.call(x) || !.rxFromSEuseC() || !is.null(.rxToSElinCmt$linCmt)) {
+    return(.rxToSE(x, envir = envir))
+  }
+  .cc <- envir$..curCall
+  if (length(.cc[.cc != ""]) > 0L) {
+    return(.rxToSE(x, envir = envir))
+  }
+  .r <- .Call(`_rxode2_rxToSEenv`, deparse1(x), .rxSEstamp())
+  if (is.null(.r)) {
+    return(.rxToSE(x, envir = envir))
+  }
+  .syms <- unique(.r[[2]])
+  ## not names in R's tree: constants R writes back as.character()
+  .syms <- .syms[!(.syms %in% c("TRUE", "FALSE", "NaN", "Inf", "NULL"))]
+  if (
+    any(.syms %in% .rxToSEDualVarFunction) ||
+      any(.syms %in% names(envir$..laggedAssignN))
+  ) {
+    return(.rxToSE(x, envir = envir))
+  }
+  .cnst <- names(.rxSEreserved)
+  for (.v in .syms) {
+    if (substr(.v, 1, 1) == ".") {
+      next
+    }
+    if (any(.v == .cnst)) {
+      .v <- paste0("rx_SymPy_Res_", .v)
+      if (!exists(.v, envir = envir)) {
+        .rxSEassign(.v, symengine::Symbol(.v), envir)
+      }
+    } else if (is.na(.rxSEcnt[.v]) && !exists(.v, envir = envir)) {
+      assign(.v, symengine::Symbol(.v), envir = envir)
+    }
+  }
+  ## .rxToSESquareBracket(), once per THETA[]/ETA[] in walk order
+  for (.k in seq_along(.r[[3]])) {
+    .num <- .r[[3]][.k]
+    .m <- if (exists("..maxTheta", envir = envir)) get("..maxTheta", envir = envir) else 0
+    .funs <- .r[[5]][.k]
+    if (nzchar(.funs)) {
+      envir$..extraTheta[[.funs]] <- unique(c(envir$..extraTheta[[.funs]], .num))
+    }
+    assign("..maxTheta", max(.m, .num), envir = envir)
+  }
+  for (.k in seq_along(.r[[4]])) {
+    .num <- .r[[4]][.k]
+    .m <- if (exists("..maxEta", envir = envir)) get("..maxEta", envir = envir) else 0
+    .funs <- .r[[6]][.k]
+    if (nzchar(.funs)) {
+      envir$..extraEta[[.funs]] <- unique(c(envir$..extraEta[[.funs]], .num))
+    }
+    assign("..maxEta", max(.m, .num), envir = envir)
+  }
+  .r[[1]]
+}
+
 .rxToSEAssignOperators <- function(x, envir = NULL, progress = FALSE, isEnv = TRUE) {
   .rxSEstate$isLhs <- TRUE
   .var <- .rxToSE(x[[2]], envir = envir)
@@ -1454,7 +1613,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
   if (isEnv) {
     .expr <- paste0(
       "with(envir,",
-      .rxToSE(x[[3]], envir = envir),
+      .rxToSEenvRhs(x[[3]], envir),
       ")"
     )
     # A variable that is referenced inside a history function (lag/lead/diff/...)
@@ -3017,8 +3176,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
 }
 
 .rxFromSEvec <- function(x) {
-  .x <- .rxUnXi(as.character(x))
-  .x <- vapply(.x, .rxSubsTupleExpand, character(1), USE.NAMES = FALSE)
+  .x <- as.character(x)
   if (.rxFromSEuseC()) {
     .ret <- .rxFromSEC(.x)
     .na <- which(is.na(.ret))
@@ -3030,14 +3188,52 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
     .na <- seq_along(.x)
   }
   for (.i in .na) {
-    .ret[.i] <- .rxFromSE(eval(parse(text = paste0("quote({", .x[.i], "})"))))
+    .ret[.i] <- .rxFromSEtxt(.x[.i])
   }
+  attr(.ret, "why") <- NULL
   .ret
 }
 
 .rxFromSEC <- function(x, numDer = .rxSEstate$fromNumDer) {
-  .d <- .rxDtemplates()
-  .Call(`_rxode2_rxFromSEChar`, as.character(x), as.integer(numDer), .d$name, .d$which, .d$template)
+  .Call(
+    `_rxode2_rxFromSEChar`,
+    as.character(x),
+    as.integer(numDer),
+    .rxDtemplates(),
+    .rxSEstamp(numDer)
+  )
+}
+
+## Translate symengine text (one string) the way rxFromSE() does: the C
+## emitter (with the cache) first, then -- only for what it declines -- the
+## .rxUnXi()/tuple-Subs rewrites and the R walker, whose answer is cached too.
+.rxFromSEtxt <- function(txt) {
+  .useC <- .rxFromSEuseC()
+  .why <- 0L
+  if (.useC) {
+    .c <- .rxFromSEC(txt)
+    if (!is.na(.c)) {
+      return(.c)
+    }
+    .why <- attr(.c, "why")
+  }
+  .x <- .rxUnXi(txt)
+  .x2 <- .rxSubsTupleExpand(.x)
+  if (.useC && !identical(.x2, .x)) {
+    .c <- .rxFromSEC(.x2)
+    if (!is.na(.c)) {
+      .Call(`_rxode2_seCachePutR`, 0L, txt, .c)
+      return(.c)
+    }
+    .why <- attr(.c, "why")
+  }
+  .ret <- .rxFromSE(eval(parse(text = paste0("quote({", .x2, "})"))))
+  if (
+    .useC && is.character(.ret) && length(.ret) == 1L && !identical(.why, .rxSEwhyUnknownFn) && .rxSEcallerFree(txt)
+  ) {
+    .Call(`_rxode2_seCachePutR`, 0L, txt, .ret)
+  }
+  .ret
 }
 
 #' @rdname rxToSE
@@ -3049,14 +3245,11 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
   .unknown <- c("central" = 2L, "forward" = 1L, "error" = 0L)
   .rxSEstate$fromNumDer <- .unknown[match.arg(unknownDerivatives)]
   if (is(substitute(x), "character")) {
+    if (length(x) == 1L && !is.na(x)) {
+      return(.rxFromSEtxt(x))
+    }
     .x <- .rxUnXi(x)
     .x <- vapply(.x, .rxSubsTupleExpand, character(1), USE.NAMES = FALSE)
-    if (length(.x) == 1L && .rxFromSEuseC()) {
-      .c <- .rxFromSEC(.x)
-      if (!is.na(.c)) {
-        return(.c)
-      }
-    }
     return(.rxFromSE(eval(parse(text = paste0("quote({", .x, "})")))))
   } else if (is(substitute(x), "{")) {
     x <- deparse1(substitute(x))
@@ -3079,6 +3272,9 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
         if (exists(.xc, envir = .env)) {
           .val2 <- try(get(.xc, envir = .env), silent = TRUE)
           if (inherits(.val2, "character")) {
+            if (length(.val2) == 1L && !is.na(.val2)) {
+              return(.rxFromSEtxt(.val2))
+            }
             .val2 <- eval(parse(text = paste0("quote({", .rxUnXi(.val2), "})")))
             .ret <- .rxFromSE(.val2)
             return(.ret)
@@ -3087,16 +3283,14 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
           } else {
             if (!is.null(attr(class(.val2), "package"))) {
               if (attr(class(.val2), "package") == "symengine") {
-                .txt <- .rxUnXi(as.character(.val2))
-                ## Before the C fast path AND before parse(): a tuple-form Subs is
-                ## not parsable R at all (see .rxSubsTupleExpand).
-                .txt <- vapply(.txt, .rxSubsTupleExpand, character(1), USE.NAMES = FALSE)
-                if (length(.txt) == 1L && .rxFromSEuseC()) {
-                  .c <- .rxFromSEC(.txt)
-                  if (!is.na(.c)) {
-                    return(.c)
-                  }
+                .txt <- as.character(.val2)
+                if (length(.txt) == 1L && !is.na(.txt)) {
+                  return(.rxFromSEtxt(.txt))
                 }
+                .txt <- .rxUnXi(.txt)
+                ## Before parse(): a tuple-form Subs is not parsable R at all
+                ## (see .rxSubsTupleExpand).
+                .txt <- vapply(.txt, .rxSubsTupleExpand, character(1), USE.NAMES = FALSE)
                 .val2 <- eval(parse(text = paste0("quote({", .txt, "})")))
                 .ret <- .rxFromSE(.val2)
                 return(.ret)
@@ -3273,6 +3467,24 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
   return(.ret)
 }
 
+## The number translated text stands for, or NULL when it is not a constant.
+## Evaluated in baseenv() so only numeric-constant subexpressions fold: the
+## default frame's scope chain reaches the user's global environment, leaking
+## workspace variables into the conversion (#1109).  And only when every name
+## in it is pi: baseenv() also binds T, F, LETTERS, ..., and a model variable
+## of that name is a variable, not R's TRUE/FALSE (#1692).
+.rxSEfoldValue <- function(txt) {
+  .e <- try(parse(text = txt), silent = TRUE)
+  if (inherits(.e, "try-error") || !all(all.vars(.e) == "pi")) {
+    return(NULL)
+  }
+  .v <- try(eval(.e, envir = baseenv()), silent = TRUE)
+  if (inherits(.v, "numeric") && length(.v) == 1L) {
+    return(.v)
+  }
+  NULL
+}
+
 #' @export
 #' @rdname rxToSE
 .rxFromSE <- function(x) {
@@ -3364,12 +3576,8 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
         .x2 <- .rxFromSE(.x2)
         .x3 <- x[[3]]
         .x3 <- .rxFromSE(.x3)
-        # eval in baseenv() so only numeric-constant subexpressions
-        # canonicalize; the default frame's scope chain reaches the user's
-        # global environment, leaking workspace variables into the
-        # conversion (nlmixr2/rxode2#1109)
-        .x3v <- try(eval(parse(text = .x3), envir = baseenv()), silent = TRUE)
-        if (inherits(.x3v, "numeric") && length(.x3v) == 1L) {
+        .x3v <- .rxSEfoldValue(.x3)
+        if (!is.null(.x3v)) {
           .x3 <- .rxFromSEnum(.x3v)
         }
         if (.x1 == "^" && .x3 == "1") {
@@ -3505,8 +3713,8 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
         ## global environment and would leak workspace variables in
         ## (nlmixr2/rxode2#1109).  Runs AFTER the constant peepholes so pi*2
         ## still comes out as M_2PI rather than 6.28...
-        .retv <- try(eval(parse(text = .ret), envir = baseenv()), silent = TRUE)
-        if (inherits(.retv, "numeric") && length(.retv) == 1L) {
+        .retv <- .rxSEfoldValue(.ret)
+        if (!is.null(.retv)) {
           return(.rxFromSEnum(.retv))
         }
         return(.ret)
@@ -4303,6 +4511,8 @@ local({
 #' with(s, D(rx__d_dt_central__, ka))
 #' }
 rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame(), pkTime = FALSE) {
+  ## a new model, a new translation session (see rxSymEngineCacheReset())
+  rxSymEngineCacheReset()
   .udfEnvLocal(envir)
   rxReq("symengine")
   .cnst <- names(.rxSEreserved)
