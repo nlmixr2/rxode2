@@ -68,4 +68,48 @@ rxTest({
       expect_equal(sj[[paste0("rx__sens_central_BY_", .sp, "__")]], fd, tolerance = 1e-4, info = .sp)
     }
   })
+
+  # handleSS ends the steady-state infusion it starts with a fixed-rate extra
+  # stop; that stop removes the rate and the f() sensitivity forcing the start
+  # added
+  .ssMod <- "
+    ka <- exp(tka); cl <- exp(tcl + eta_cl); v <- exp(tv)
+    f(depot) <- FFORM
+    d/dt(depot) <- -ka * depot
+    d/dt(central) <- ka * depot - cl / v * central
+  "
+  .ssTh <- c(tka = log(0.5), tcl = 0, tv = log(10), eta_f = 0, eta_cl = 0)
+
+  test_that("a steady-state fixed-duration infusion's stop removes its start's state-dependent F (rxode2#1568)", {
+    m <- rxode2(gsub("FFORM", "1 / (1 + central / (5 * exp(eta_f)))", .ssMod))
+    tt <- c(2.5, 5, 10, 20)
+    s <- rxSolve(m, et(time = 0, amt = 100, dur = 2.5, ii = 12, ss = 1, cmt = "depot") |> et(tt), .ssTh)
+    r <- rxSolve(m, et(time = 0, amt = 100, dur = 2.5, ii = 12, addl = 59, cmt = "depot") |> et(708 + tt), .ssTh)
+    expect_equal(s$depot, r$depot, tolerance = 1e-5)
+    expect_equal(s$central, r$central, tolerance = 1e-5)
+  })
+
+  test_that("forward sensitivities of a steady-state fixed-duration infusion's f() (rxode2#1568)", {
+    .m <- gsub("FFORM", "0.6 * exp(eta_f)", .ssMod)
+    mj <- rxode2(.m, calcSens = c("eta_f", "eta_cl"))
+    mfd <- rxode2(.m, calcSens = c("eta_f", "eta_cl"), eventSens = "fd")
+    h <- 1e-4
+    for (e in list(
+      et(time = 0, amt = 100, dur = 2.5, ii = 12, ss = 1, addl = 2, cmt = "depot") |>
+        et(seq(0.13, 40, 0.41)),
+      et(time = 0, amt = 100, dur = 2.5, cmt = "depot") |>
+        et(time = 5, amt = 100, dur = 2.5, ii = 12, ss = 2, cmt = "depot") |>
+        et(seq(0.13, 30, 0.41))
+    )) {
+      sj <- rxSolve(mj, e, .ssTh)
+      for (.sp in c("eta_f", "eta_cl")) {
+        pp <- .ssTh
+        pp[.sp] <- pp[.sp] + h
+        pm <- .ssTh
+        pm[.sp] <- pm[.sp] - h
+        fd <- (rxSolve(mfd, e, pp)$central - rxSolve(mfd, e, pm)$central) / (2 * h)
+        expect_equal(sj[[paste0("rx__sens_central_BY_", .sp, "__")]], fd, tolerance = 1e-4, info = .sp)
+      }
+    }
+  })
 })
