@@ -465,7 +465,7 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity"), sam
       ret
     }
   } else {
-    mat <- Matrix::.bdiag(block)
+    mat <- lotri::lotriMat(block)
     matI <- lapply(block, rxSymInvCreateC_, diag.xform = diag.xform)
     ## Which blocks repeat an earlier one?  `same` is the per-eta map from
     ## `lotri::lotriSameMap()`: 0 for an ordinary or master eta, otherwise
@@ -520,8 +520,6 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity"), sam
     ## the "which thetas are diagonal elements" vector is positional over
     ## the theta vector, so it counts the free blocks only
     theta.partFree <- theta.part[.free]
-    ## Possible optimization: move these to C/C++ and drop the Matrix
-    ## dependency (this part is run in R).
     fn <- eval(bquote(function(theta, tn) {
       force(matI)
       theta.part <- .(theta.part)
@@ -594,9 +592,7 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity"), sam
       if (is.na(tn)) {
         unlist(lst)
       } else if (tn >= -1) {
-        ## Possible simplification: lotri::lotriMat(lst), once lotriMat
-        ## accepts an unnamed list.
-        as.matrix(Matrix::bdiag(lst))
+        lotri::lotriMat(lst)
       } else {
         unlist(lst)
       }

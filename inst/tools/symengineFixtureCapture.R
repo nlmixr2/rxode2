@@ -30,6 +30,10 @@
   sprintf(
     '
     %s
+    ## the R translators are the oracle: with the C ones on, the fixture
+    ## would record what it is meant to check (and the cache would answer
+    ## a pass from an earlier one)
+    options(rxode2.symengineC = FALSE, rxode2.symengineCache = FALSE)
     .in <- readRDS("%s")
     .capture <- function(inputs, fn) {
       out <- character(length(inputs)); err <- logical(length(inputs))

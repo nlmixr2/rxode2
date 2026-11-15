@@ -24,7 +24,7 @@ static const char *seEmitPower(seCtx *ctx, const char *x2, const char *x3,
                                D_ParseNode *rhs) {
   if (strcmp(x3, "1") == 0) return x2;
   if (strcmp(x3, "-1") == 0) return seCat(ctx, "(1/(", x2, "))", NULL, NULL, NULL);
-  if (!seIsBareNumber(rhs)) return NULL;          /* caller joins with '^' */
+  if (!seIsBareNumber(ctx, rhs)) return NULL;          /* caller joins with '^' */
   double d = atof(x3);
   if (d == floor(d)) return seCat(ctx, "Rx_pow_di(", x2, ",", x3, ")", NULL);
   if (strcmp(x3, "0.5") == 0) {
@@ -47,40 +47,47 @@ static const char *seBinIdentity(const char *x2, char op, const char *x3) {
   return NULL;
 }
 
-static const char *seBinary(seCtx *ctx, D_ParseNode *pn) {
-  const char *x2 = seEmit(ctx, d_get_child(pn, 0));
-  if (ctx->failed) return "";
-  D_ParseNode *rhs = d_get_child(pn, 2);
-  D_ParseNode *opNode = d_get_child(pn, 1);
+/* `x2 op rhs` once the left operand is text: the right operand is emitted,
+   folded, and the identities/power rules/peepholes applied.  Split out of
+   seBinary() because .rxM1rmF() rewrites pi/x to 1/x and converts THAT. */
+static const char *seBinaryText(seCtx *ctx, const char *x2, char op,
+                                D_ParseNode *rhs) {
   const char *x3 = seEmit(ctx, rhs);
   if (ctx->failed) return "";
 
   /* the fold is asked of the EMITTED text, exactly as .rxFromSE() asks it */
   double fv;
-  seFoldRes fr = seFoldStr(x3, &fv);
-  if (fr == SE_FOLD_BAIL) return seFail(ctx);
+  seFoldRes fr = seFoldStr(ctx, x3, &fv);
+  if (fr == SE_FOLD_BAIL) return seFailWhy(ctx, SE_WHY_FOLD);
   if (fr == SE_FOLD_YES) x3 = seNumToStr(ctx, fv);
 
-  int isPow = seIsPowOp(opNode);
+  int isPow = (op == '^');
   if (isPow) {
     const char *pw = seEmitPower(ctx, x2, x3, rhs);
     if (pw != NULL) return pw;
-  }
-  if (!isPow) {
-    const char *id = seBinIdentity(x2, seNodeName(opNode)[0], x3);
+  } else {
+    const char *id = seBinIdentity(x2, op, x3);
     if (id != NULL) return id;
   }
-  /* symengine may print '**'; rxode2 always emits '^' */
-  const char *ret = seNamedConstant(seCat(ctx, x2, isPow ? "^" : seNodeName(opNode),
-                                          x3, NULL, NULL, NULL));
+  char ops[2] = {op, '\0'};
+  const char *ret = seNamedConstant(seCat(ctx, x2, ops, x3, NULL, NULL, NULL));
   /* The right operand was folded above; do the same for the whole expression
      so a fully constant one collapses to its value.  AFTER the named-constant
      lookup, so pi*2 stays M_2PI rather than becoming 6.28... */
   double wv;
-  seFoldRes wr = seFoldStr(ret, &wv);
-  if (wr == SE_FOLD_BAIL) return seFail(ctx);
+  seFoldRes wr = seFoldStr(ctx, ret, &wv);
+  if (wr == SE_FOLD_BAIL) return seFailWhy(ctx, SE_WHY_FOLD);
   if (wr == SE_FOLD_YES) return seNumToStr(ctx, wv);
   return ret;
+}
+
+static const char *seBinary(seCtx *ctx, D_ParseNode *pn) {
+  const char *x2 = seEmit(ctx, d_get_child(pn, 0));
+  if (ctx->failed) return "";
+  D_ParseNode *opNode = d_get_child(pn, 1);
+  /* symengine may print '**'; rxode2 always emits '^' */
+  char op = seIsPowOp(opNode) ? '^' : seNodeName(opNode)[0];
+  return seBinaryText(ctx, x2, op, d_get_child(pn, 2));
 }
 
 #include "seFromSEcalls.h"
@@ -114,19 +121,36 @@ static const char *seEmitSymbol(seCtx *ctx, D_ParseNode *pn) {
   return seUnRes(ctx, seDemangle(ctx, seFromSEnum(ctx, raw)));
 }
 
+static const char *seEmitNode(seCtx *ctx, D_ParseNode *pn);
+
 static const char *seEmit(seCtx *ctx, D_ParseNode *pn) {
   if (ctx->failed) return "";
-  const char *name = seNodeName(pn);
-  seNodeInfo ni;
-  int nch = d_get_number_of_children(pn);
-  seNiReset(&ni);
+  if (ctx->depth >= SE_MAX_DEPTH) return seFailWhy(ctx, SE_WHY_DEEP);
+  ctx->depth++;
+  const char *r = seEmitNode(ctx, pn);
+  ctx->depth--;
+  return r;
+}
 
-  if (seNodeHas(symbol)) return seEmitSymbol(ctx, pn);
+static const char *seEmitNode(seCtx *ctx, D_ParseNode *pn) {
+  int nch = d_get_number_of_children(pn);
+
+  if (seNodeHas(symbol)) {
+    seSub *s = seSubFind(ctx, pn);
+    if (s != NULL) {
+      /* Subs(): the symbol is w's tree; R does not substitute inside w */
+      s->active = 0;
+      const char *r = seEmit(ctx, s->w);
+      s->active = 1;
+      return r;
+    }
+    return seEmitSymbol(ctx, pn);
+  }
   if (seNodeHas(number) || seNodeHas(integer_num) || seNodeHas(float_num)) {
     /* do NOT recurse: a terminal's only child is named after its regex.
        Round-trip through a double so the rendering matches what R's parser
        plus as.character() produce (see seDblToStr). */
-    return seNumToStr(ctx, atof(seNodeText(ctx, pn)));
+    return seNumToStr(ctx, R_strtod(seNodeText(ctx, pn), NULL));
   }
   if (seNodeHas(function_call)) return seFunctionCall(ctx, pn);
   if (nch == 1) return seEmit(ctx, d_get_child(pn, 0));
@@ -143,6 +167,66 @@ static const char *seEmit(seCtx *ctx, D_ParseNode *pn) {
     return seBinary(ctx, pn);
   }
   return seFail(ctx);
+}
+
+/* Translate rxode2 text the way .rxFromSE(eval(parse(text = txt))) would --
+   R's Subs and log1pexp handling convert text they have already written.  A
+   second parse into the same arena; NULL declines.  *topSign is whether R
+   would see a call to + or - at the top (the Subs grouping rule). */
+/* Would R see a call to + or - at the top of this tree (binary, or a sign)?
+   The Subs grouping rule asks it of the substituted result. */
+static int seTopSign(seCtx *ctx, D_ParseNode *pn) {
+  D_ParseNode *top = seCore(ctx, pn);
+  char op = seBinOp(top);
+  if (op == '+' || op == '-') return 1;
+  if (d_get_number_of_children(top) == 2 && seNiIs(top, unary_expression)) {
+    char c = seNodeName(d_get_child(top, 0))[0];
+    return c == '-' || c == '+';
+  }
+  return 0;
+}
+
+/* make v stand for w while text is walked (seSubFind); 0 when too deep */
+static int seSubPush(seCtx *ctx, const char *v, D_ParseNode *w,
+                     const char *txt) {
+  if (v == NULL) return 1;
+  if (ctx->nsubs >= SE_MAX_SUBS) return 0;
+  ctx->subs[ctx->nsubs].v = v;
+  ctx->subs[ctx->nsubs].w = w;
+  ctx->subs[ctx->nsubs].active = 1;
+  ctx->subs[ctx->nsubs].buf = txt;
+  ctx->subs[ctx->nsubs].len = strlen(txt);
+  ctx->nsubs++;
+  return 1;
+}
+
+static const char *seReEmitSub(seCtx *ctx, const char *txt, int *topSign,
+                               const char *v, D_ParseNode *w) {
+  const char *out = NULL;
+  if (seTextTooDeep(txt, SE_MAX_DEPTH)) {
+    seFailWhy(ctx, SE_WHY_DEEP);
+    return NULL;
+  }
+  if (!seSubPush(ctx, v, w, txt)) return NULL;
+  D_Parser *p = new_D_Parser(sePt, sizeof(D_ParseNode_User));
+  if (p != NULL) {
+    p->save_parse_tree = 1;
+    p->error_recovery = 0;
+    D_ParseNode *pn = dparse(p, (char*) txt, (int) strlen(txt));
+    if (pn != NULL && p->syntax_errors == 0) {
+      *topSign = seTopSign(ctx, pn);
+      out = seEmit(ctx, pn);
+      if (ctx->failed) out = NULL;
+    }
+    if (pn != NULL) free_D_ParseNode(p, pn);
+    free_D_Parser(p);
+  }
+  if (v != NULL) ctx->nsubs--;
+  return out;
+}
+
+static const char *seReEmit(seCtx *ctx, const char *txt, int *topSign) {
+  return seReEmitSub(ctx, txt, topSign, NULL, NULL);
 }
 
 #endif /* __SE_FROM_SE_EMIT_H__ */

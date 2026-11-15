@@ -58,3 +58,24 @@ rxTest({
     })
   })
 })
+
+rxTest({
+  test_that("R CMD config CFLAGS is cached, and re-read when a Makevars changes", {
+    .user <- tempfile("Makevars-user-")
+    writeLines("CFLAGS = -O1 -first-flag", .user)
+    on.exit(unlink(.user), add = TRUE)
+    withr::with_envvar(list(R_MAKEVARS_USER = .user), {
+      .a <- .rxRConfigCflags()
+      skip_if(.a == "", "no R CFLAGS to work from")
+      expect_match(.a, "-first-flag", fixed = TRUE)
+      .b <- .rxRConfigCflags()
+      expect_identical(.b, .a)
+      # editing the file (new mtime) invalidates the cache
+      writeLines("CFLAGS = -O1 -second-flag", .user)
+      Sys.setFileTime(.user, Sys.time() + 10)
+      expect_match(.rxRConfigCflags(), "-second-flag", fixed = TRUE)
+    })
+    # repointing R_MAKEVARS_USER invalidates it too
+    expect_false(grepl("-second-flag", .rxRConfigCflags(), fixed = TRUE))
+  })
+})

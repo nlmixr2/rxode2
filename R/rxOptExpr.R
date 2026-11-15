@@ -834,13 +834,54 @@
 #
 # Errors are deliberately not caught here: a chunk that cannot be optimized must reach
 # .rxOptExprChunked(), which falls back to the whole model.
+#' Does the model text already use a temporary named `prefix<digits>`?
+#'
+#' @param prefix Temporary prefix, eg "rx_expr_"
+#' @param txt Model text
+#' @return TRUE when an identifier `prefix<digits>` occurs in `txt`
+#' @noRd
+.rxOptHasTemps <- function(txt) {
+  .rxOptPrefixUsed("rx_expr_(c[0-9]+_)?(cse_)*", txt)
+}
+
+#' Warn when rxOptExpr() is given text it has already optimized
+#'
+#' Only the outermost rxOptExpr() call warns, so a chunked call warns once.
+#'
+#' @param txt Model text
+#' @return Nothing, called for the warning
+#' @noRd
+.rxOptWarnRepeat <- function(txt) {
+  if (identical(.rxOptEnv$.depth, 1L) && .rxOptHasTemps(txt)) {
+    warning(
+      "'rxOptExpr()' input already has common subexpression temporaries ",
+      "(rx_expr_*); the model was optimized more than once, so new ",
+      "temporaries get a distinct prefix",
+      call. = FALSE
+    )
+  }
+  invisible()
+}
+
+.rxOptPrefixUsed <- function(prefix, txt) {
+  any(grepl(
+    paste0("(^|[^A-Za-z0-9_.])", prefix, "[0-9]+($|[^A-Za-z0-9_.])"),
+    txt
+  ))
+}
+
 .rxOptExprChunk <- function(i, chunks, msg) {
   .txt <- paste(chunks[[i]], collapse = "\n")
   .o <- suppressMessages(rxOptExpr(.txt, msg, chunkLines = 0L))
-  .re <- "\\brx_expr_[0-9]+\\b"
-  .new <- setdiff(unique(regmatches(.o, gregexpr(.re, .o))[[1]]), unique(regmatches(.txt, gregexpr(.re, .txt))[[1]]))
+  # whole identifiers only; `.` is part of a name, as in .rxOptPrefixUsed()
+  .b <- function(re) paste0("(?<![A-Za-z0-9_.])", re, "(?![A-Za-z0-9_.])")
+  .re <- .b("rx_expr_(cse_)*[0-9]+")
+  .new <- setdiff(
+    unique(regmatches(.o, gregexpr(.re, .o, perl = TRUE))[[1]]),
+    unique(regmatches(.txt, gregexpr(.re, .txt, perl = TRUE))[[1]])
+  )
   for (.v in .new) {
-    .o <- gsub(paste0("\\b", .v, "\\b"), sub("^rx_expr_", sprintf("rx_expr_c%d_", i), .v), .o)
+    .o <- gsub(.b(.v), sub("^rx_expr_", sprintf("rx_expr_c%d_", i), .v), .o, perl = TRUE)
   }
   .o
 }
@@ -871,6 +912,7 @@
     x <- rxNorm(x)
   }
   .txt <- if (is.character(x)) paste(x, collapse = "\n") else rxNorm(x)
+  .rxOptWarnRepeat(.txt)
   .ln <- strsplit(.txt, "\n", fixed = TRUE)[[1]]
   # Chunk only when it will actually pay.  What chunking buys is amortizing the
   # PARSE, whose cost tracks the model's total CHARACTERS -- not its line count,
@@ -1130,19 +1172,23 @@
 #' writeLines(rxOptExpr(pk))
 #' }
 rxOptExpr <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
+  .depth <- if (is.integer(.rxOptEnv$.depth)) .rxOptEnv$.depth else 0L
+  .rxOptEnv$.depth <- .depth + 1L
+  on.exit(.rxOptEnv$.depth <- .depth)
   .chunkLines <- as.integer(chunkLines)
   if (!is.na(.chunkLines) && .chunkLines > 0L) {
     return(.rxOptExprChunked(x, msg = msg, chunkLines = .chunkLines, parallel = parallel))
   }
   .oldOpts <- options()
   options(digits = 22)
-  on.exit(options(.oldOpts))
+  on.exit(options(.oldOpts), add = TRUE)
   .rxOptEnv$.list <- list()
   .rxOptEnv$.rep <- list()
   .rxOptEnv$.added <- NULL
   .rxOptEnv$.exclude <- ""
   .malert(sprintf("finding duplicate expressions in %s...", msg))
   .norm <- rxNorm(x)
+  .rxOptWarnRepeat(.norm)
   ## The C pass first; it returns NA when it will not reproduce the R walker
   ## exactly, and the R implementation below then runs.  Chunking calls this
   ## same whole-model path once per chunk, so chunks go through C too.
@@ -1167,7 +1213,11 @@ rxOptExpr <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
     if (length(.exprs) == 0) {
       return(x)
     }
-    .rp <- rxOptRep_(.exprs)
+    .prefix <- "rx_expr_"
+    while (.rxOptPrefixUsed(.prefix, .norm)) {
+      .prefix <- paste0(.prefix, "cse_")
+    }
+    .rp <- rxOptRep_(.exprs, .prefix)
     .rxOptEnv$.rep <- as.list(.rp[[1]])
     .rxOptEnv$.exclude <- ""
     .malert(sprintf("optimizing duplicate expressions in %s...", msg))

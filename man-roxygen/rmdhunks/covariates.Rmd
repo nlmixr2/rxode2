@@ -165,6 +165,77 @@ plot(r1,C2, ylab="Central Concentration", xlab="Time")
 plot(r1,eff, ylab="Effect", xlab="Time")
 ```
 
+# Covariates with lagged and additional doses
+
+A dose moved by `alag()`, and the additional doses of an `addl`
+record, happen at times other than their own data row.
+`rxSolve(addlKeepsCov=)` decides which covariates they use:
+
+- `addlKeepsCov = FALSE` (the default): the dose row's covariates are
+  a data point at the row's own time, like any other row. A dose that
+  arrives later reads whatever the covariate interpolation gives at
+  its arrival time, and `addl` repeats have no covariates of their own.
+- `addlKeepsCov = TRUE` (the default with `nonmem = TRUE`): the dose
+  takes its row's covariates with it, to its arrival time and to every
+  `addl` repeat.
+
+Here a dose at time 4 with `wt = 70` arrives at time 6, and `wt` is
+only recorded on three rows:
+
+```{r}
+modLag <- rxode2({
+  alag(depot) <- 2
+  cl <- 0.1 * wt / 70
+  d/dt(depot) <- -depot
+  d/dt(central) <- depot - cl * central
+  wtUsed <- wt
+})
+
+dLag <- data.frame(
+  id   = 1,
+  time = c(0, 1, 2, 3, 4, 5, 7, 8, 9, 10),
+  evid = c(0, 0, 0, 0, 1, 0, 0, 0, 0, 0),
+  amt  = c(0, 0, 0, 0, 100, 0, 0, 0, 0, 0),
+  cmt  = c(rep("central", 4), "depot", rep("central", 5)),
+  wt   = c(50, NA, NA, NA, 70, NA, NA, 90, NA, NA))
+
+sFalse <- rxSolve(modLag, dLag, covsInterpolation = "nocb")
+sTrue <- rxSolve(modLag, dLag, covsInterpolation = "nocb",
+                 addlKeepsCov = TRUE)
+
+data.frame(time = sFalse$time,
+           wtFalse = sFalse$wtUsed,
+           wtTrue = sTrue$wtUsed)
+```
+
+With `nocb` and `addlKeepsCov = FALSE`, `wt` is 70 up to time 4, the
+dose row's own time, and 90 after it. With `addlKeepsCov = TRUE` the 70
+travels with the dose to time 6, so time 5 still reads 70.
+
+## The hidden record at a lagged dose's data time
+
+With `addlKeepsCov = FALSE`, the covariates can change at the dose
+row's time (4 above) even though nothing is dosed then. The ODE and
+`linCmt()` solvers only stop at records, and the dose record itself
+moved to time 6. So `etTrans()` adds a hidden record (internal
+`EVID = 8`) at the dose row's time, carrying its covariates:
+
+```{r}
+as.data.frame(etTrans(dLag, modLag))[, c("TIME", "EVID", "AMT", "wt")]
+```
+
+The `101` row is the dose, which sorts at its arrival (time 6) when the
+model is solved. The `EVID = 8` row stays at time 4 and makes every
+solver stop where the covariate changes, as an explicit record there
+would. This is also what NONMEM does: the dose record stays an event
+record at its data time. The hidden record is never output and is not
+counted as an observation. With `addlKeepsCov = TRUE` the covariates do
+not change at time 4, so no hidden record is added:
+
+```{r}
+as.data.frame(etTrans(dLag, modLag, addlKeepsCov = TRUE))[, c("TIME", "EVID", "AMT", "wt")]
+```
+
 # Forced parameters
 
 Sometimes a parameter's value is owned *outside* the usual `params`/data/`ini`
