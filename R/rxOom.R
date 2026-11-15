@@ -378,13 +378,13 @@ rxMemSummary.rxEtFile <- function(x, ...) {
     !is.null(.ctl$priorOmega) ||
       !is.null(.ctl$priorOmegaEl) ||
       !is.null(.ctl$priorSigmaEl) ||
-      identical(.ctl$omegaSeparation, "tnpri") ||
-      identical(.ctl$sigmaSeparation, "tnpri")
+      isTRUE(.ctl$omegaSeparation %in% c("tnpri", "invchol")) ||
+      isTRUE(.ctl$sigmaSeparation %in% c("tnpri", "invchol"))
   ) {
     stop(
       "a chunked solve ('file='/'chunkSize=') cannot draw the omega/sigma ",
-      "entries a 'thetaMat' carries ('omegaSeparation=\"tnpri\"', ",
-      "'sigmaSeparation=\"tnpri\"', or a prior on an omega block): the ",
+      "entries a 'thetaMat' carries ('omegaSeparation=\"tnpri\"'/'\"invchol\"', ",
+      "'sigmaSeparation=\"tnpri\"'/'\"invchol\"', or a prior on an omega block): the ",
       "one draw every chunk shares cannot express them, so they would be ",
       "dropped without warning.  Solve without chunking.",
       call. = FALSE

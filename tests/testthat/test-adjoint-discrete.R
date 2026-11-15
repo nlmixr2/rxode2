@@ -1387,6 +1387,239 @@ rxTest({
     expect_lt(e2, 0.05) # and is small at the fine step
   })
 
+  test_that("cvodesadj delay() adjoint matches the exact sensitivities (#1599)", {
+    skip_on_cran()
+    # x' = -k x(t - tau), x = 10 on [0, tau]: piecewise polynomial by the method
+    # of steps; d/dk by a complex step, d/dtau by a central difference (off the
+    # breakpoints, where x is smooth in tau)
+    .exact <- function(t, k, tau) {
+      .pc <- list(10 + 0 * k)
+      for (.n in seq_len(max(floor(t / tau)) + 1)) {
+        .prev <- .pc[[.n]]
+        .int <- -k * c(0, .prev / seq_along(.prev))
+        .int[1] <- sum(.prev * tau^(seq_along(.prev) - 1))
+        .pc[[.n + 1]] <- .int
+      }
+      vapply(
+        t,
+        function(.t) {
+          .n <- floor(.t / tau)
+          sum(.pc[[.n + 1]] * (.t - .n * tau)^(seq_along(.pc[[.n + 1]]) - 1))
+        },
+        numeric(1) + 0 * k
+      )
+    }
+    exD <- rxode2::.rxAdjointExpand("d/dt(central) = -k * delay(central, tau)", c("k", "tau"), stiff = TRUE)
+    madjD <- rxode2::rxode2(exD$text)
+    p <- c(k = 0.3, tau = 2)
+    tt <- seq(0.7, 15, by = 1.7)
+    sc <- as.data.frame(rxode2::rxSolve(
+      madjD,
+      et(amt = 10, cmt = "central") %>% et(tt),
+      params = p,
+      method = "cvodesadj",
+      atol = 1e-10,
+      rtol = 1e-10
+    ))
+    expect_equal(sc$central, .exact(tt, 0.3, 2), tolerance = 1e-7)
+    expect_equal(
+      sc[["rx__sens_central_BY_k__"]],
+      Im(.exact(tt, complex(real = 0.3, imaginary = 1e-20), 2)) / 1e-20,
+      tolerance = 1e-6
+    )
+    expect_equal(
+      sc[["rx__sens_central_BY_tau__"]],
+      (.exact(tt, 0.3, 2 + 1e-6) - .exact(tt, 0.3, 2 - 1e-6)) / 2e-6,
+      tolerance = 1e-6
+    )
+    # observations on the breakpoints, where the solution has a kink
+    tt <- 0:12
+    sc <- as.data.frame(rxode2::rxSolve(
+      madjD,
+      et(amt = 10, cmt = "central") %>% et(tt),
+      params = p,
+      method = "cvodesadj",
+      atol = 1e-10,
+      rtol = 1e-10
+    ))
+    expect_equal(sc$central, .exact(tt, 0.3, 2), tolerance = 1e-7)
+    expect_equal(
+      sc[["rx__sens_central_BY_k__"]],
+      Im(.exact(tt, complex(real = 0.3, imaginary = 1e-20), 2)) / 1e-20,
+      tolerance = 1e-6
+    )
+  })
+
+  test_that("cvodesadj delay() dose jump uses the actual jump of a nonlinear RHS (#1599)", {
+    skip_on_cran()
+    # z' = delay(y, tau)^2 with a bolus of 10 into y at t = 1: z(t) = 100 *
+    # (t - 1 - tau) after the delayed arrival, so dz/dtau = -100 (not the
+    # linearized -2 * 10 * 10)
+    exD <- rxode2::.rxAdjointExpand("d/dt(y) = 0\nd/dt(z) = delay(y, tau)^2", c("tau"), stiff = TRUE)
+    madjD <- rxode2::rxode2(exD$text)
+    sc <- as.data.frame(rxode2::rxSolve(
+      madjD,
+      et(amt = 10, time = 1, cmt = "y") %>% et(c(0.5, 2.5, 3, 4)),
+      params = c(tau = 1),
+      method = "cvodesadj",
+      atol = 1e-10,
+      rtol = 1e-10
+    ))
+    expect_equal(sc$z, c(0, 50, 100, 200), tolerance = 1e-7)
+    expect_equal(sc[["rx__sens_z_BY_tau__"]], c(0, -100, -100, -100), tolerance = 1e-6)
+    # a large smooth forcing does not leak into the measured jump
+    exF <- rxode2::.rxAdjointExpand("d/dt(y) = 0\nd/dt(z) = 1e6*(t-2) + delay(y, tau)^2", c("tau"), stiff = TRUE)
+    sc <- as.data.frame(rxode2::rxSolve(
+      rxode2::rxode2(exF$text),
+      et(amt = 10, time = 1, cmt = "y") %>% et(c(2.5, 4)),
+      params = c(tau = 1),
+      method = "cvodesadj",
+      atol = 1e-10,
+      rtol = 1e-10
+    ))
+    expect_equal(sc[["rx__sens_z_BY_tau__"]], c(-100, -100), tolerance = 1e-6)
+    # two delayed states arriving together keep their own delay sensitivities
+    exW <- rxode2::.rxAdjointExpand(
+      "d/dt(y) = 0\nd/dt(z) = 0\nd/dt(w) = delay(y, a) + delay(z, b)",
+      c("a", "b"),
+      stiff = TRUE
+    )
+    sc <- as.data.frame(rxode2::rxSolve(
+      rxode2::rxode2(exW$text),
+      et(amt = 10, time = 1, cmt = "y") %>%
+        et(amt = 20, time = 1, cmt = "z") %>%
+        et(c(2.5, 4)),
+      params = c(a = 1, b = 1),
+      method = "cvodesadj",
+      atol = 1e-10,
+      rtol = 1e-10
+    ))
+    expect_equal(sc[["rx__sens_w_BY_a__"]], c(-10, -10), tolerance = 1e-6)
+    expect_equal(sc[["rx__sens_w_BY_b__"]], c(-20, -20), tolerance = 1e-6)
+    # ... or nearly together
+    sc <- as.data.frame(rxode2::rxSolve(
+      rxode2::rxode2(exW$text),
+      et(amt = 10, time = 1, cmt = "y") %>% et(amt = 20, time = 1, cmt = "z") %>% et(3),
+      params = c(a = 1, b = 1 + 1e-9),
+      method = "cvodesadj",
+      atol = 1e-10,
+      rtol = 1e-10
+    ))
+    expect_equal(sc[["rx__sens_w_BY_a__"]], -10, tolerance = 1e-6)
+    expect_equal(sc[["rx__sens_w_BY_b__"]], -20, tolerance = 1e-6)
+    # ... including when their linearized shares cancel
+    exC <- rxode2::.rxAdjointExpand(
+      "d/dt(y) = 0\nd/dt(z) = 0\nd/dt(w) = delay(y, a) - delay(z, b)",
+      c("a", "b"),
+      stiff = TRUE
+    )
+    sc <- as.data.frame(rxode2::rxSolve(
+      rxode2::rxode2(exC$text),
+      et(amt = 10, time = 1, cmt = "y") %>% et(amt = 10, time = 1, cmt = "z") %>% et(3),
+      params = c(a = 1, b = 1),
+      method = "cvodesadj",
+      atol = 1e-10,
+      rtol = 1e-10
+    ))
+    expect_equal(sc[["rx__sens_w_BY_a__"]], -10, tolerance = 1e-6)
+    expect_equal(sc[["rx__sens_w_BY_b__"]], 10, tolerance = 1e-6)
+    # replace and lagged doses jump the delayed state too, and an RHS jump
+    # from an infusion starting at the arrival does not move with tau
+    .one <- function(txt, ev) {
+      ex <- rxode2::.rxAdjointExpand(txt, c("tau"), stiff = TRUE)
+      as.data.frame(rxode2::rxSolve(
+        rxode2::rxode2(ex$text),
+        ev,
+        params = c(tau = 1),
+        method = "cvodesadj",
+        atol = 1e-10,
+        rtol = 1e-10
+      ))
+    }
+    sc <- .one("d/dt(y) = 0\nd/dt(z) = delay(y, tau)", et(amt = 10, time = 1, cmt = "y", evid = 5) %>% et(3))
+    expect_equal(sc[["rx__sens_z_BY_tau__"]], -10, tolerance = 1e-6)
+    sc <- .one("d/dt(y) = 0\nalag(y) = 0.5\nd/dt(z) = delay(y, tau)", et(amt = 10, time = 0.5, cmt = "y") %>% et(3))
+    expect_equal(sc[["rx__sens_z_BY_tau__"]], -10, tolerance = 1e-6)
+    sc <- .one(
+      "d/dt(y) = 0\nd/dt(z) = delay(y, tau)",
+      et(amt = 1, time = 1, cmt = "y") %>% et(amt = 1, rate = 1, time = 2, cmt = "z") %>% et(3)
+    )
+    expect_equal(sc$z, 2, tolerance = 1e-7)
+    expect_equal(sc[["rx__sens_z_BY_tau__"]], -1, tolerance = 1e-6)
+    # a modeled dose lag moves the delayed arrival as well
+    exL <- rxode2::.rxAdjointExpand("d/dt(y) = 0\nalag(y) = p\nd/dt(z) = delay(y, p)", c("p"), stiff = TRUE)
+    sc <- as.data.frame(rxode2::rxSolve(
+      rxode2::rxode2(exL$text),
+      et(amt = 10, time = 1, cmt = "y") %>% et(c(0, 3)),
+      params = c(p = 0.5),
+      method = "cvodesadj",
+      atol = 1e-10,
+      rtol = 1e-10
+    ))
+    expect_equal(sc$z, c(0, 10), tolerance = 1e-7)
+    expect_equal(sc[["rx__sens_z_BY_p__"]], c(0, -20), tolerance = 1e-6)
+    # a late time origin does not widen the jump measurement
+    sc <- .one(
+      "d/dt(y) = -10*y\nd/dt(z) = delay(y, tau)",
+      et(time = 19999) %>% et(amt = 10, time = 20000, cmt = "y") %>% et(20002)
+    )
+    expect_equal(sc[["rx__sens_z_BY_tau__"]][sc$time == 20002], -10 * exp(-10), tolerance = 1e-3)
+    # nor does it admit anticipating terms past the observation
+    exO <- rxode2::.rxAdjointExpand("d/dt(x) = -k*delay(x, 1)", c("k"), stiff = TRUE)
+    sc <- as.data.frame(rxode2::rxSolve(
+      rxode2::rxode2(exO$text),
+      et(amt = 1, time = 1e4, cmt = "x") %>% et(1e4 + 1.95),
+      params = c(k = 1),
+      method = "cvodesadj",
+      atol = 1e-10,
+      rtol = 1e-10,
+      maxsteps = 1e6
+    ))
+    expect_equal(sc[["rx__sens_x_BY_k__"]][sc$time > 1e4], -0.95, tolerance = 1e-6)
+    # a subject observed only at its start records no history at all
+    exK <- rxode2::.rxAdjointExpand("d/dt(central) = -k * delay(central, tau)", c("k"), stiff = TRUE)
+    sc <- as.data.frame(rxode2::rxSolve(
+      rxode2::rxode2(exK$text),
+      et(0),
+      params = c(k = 0.3, tau = 2),
+      inits = c(central = 1),
+      method = "cvodesadj"
+    ))
+    expect_equal(sc$central, 1)
+    expect_equal(sc[["rx__sens_central_BY_k__"]], 0)
+  })
+
+  test_that("cvodesadj delay() adjoint couples states through the delayed Jacobian (#1599)", {
+    skip_on_cran()
+    exD <- rxode2::.rxAdjointExpand(
+      "d/dt(depot) = -ka * depot\nd/dt(central) = ka * delay(depot, tau) - kel * central",
+      c("ka", "kel", "tau"),
+      stiff = TRUE
+    )
+    madjD <- rxode2::rxode2(exD$text)
+    p <- c(ka = 1.2, kel = 0.3, tau = 0.7)
+    ev <- et(amt = 10, cmt = "depot") %>%
+      et(amt = 5, time = 3.3, cmt = "depot") %>%
+      et(seq(0.5, 12, by = 1.1))
+    sc <- as.data.frame(rxode2::rxSolve(madjD, ev, params = p, method = "cvodesadj", atol = 1e-10, rtol = 1e-10))
+    for (par in c("ka", "kel", "tau")) {
+      hh <- p[[par]] * 1e-4
+      pp <- p
+      pm <- p
+      pp[par] <- pp[par] + hh
+      pm[par] <- pm[par] - hh
+      sb <- function(.p) {
+        as.data.frame(rxode2::rxSolve(madjD, ev, params = .p, method = "cvode", atol = 1e-13, rtol = 1e-13))$central
+      }
+      expect_equal(
+        sc[[paste0("rx__sens_central_BY_", par, "__")]],
+        (sb(pp) - sb(pm)) / (2 * hh),
+        tolerance = 1e-5,
+        label = par
+      )
+    }
+  })
+
   test_that("DDE delay() adjoint converges for stiff (ros4s) and composite methods", {
     skip_on_cran()
 

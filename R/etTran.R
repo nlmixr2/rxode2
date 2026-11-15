@@ -23,7 +23,7 @@
   .m$idxi
 }
 
-.convertExtra <- function(dat) {
+.convertExtra <- function(dat, tieOrder = "evid") {
   d <- as.data.frame(dat)
   .colNames0 <- colnames(d)
   .colNames <- toupper(.colNames0)
@@ -214,7 +214,12 @@
     if (!any(names(d) == "EVID")) {
       d$EVID <- 0L
     }
-    d <- d[order(d$ID, d$DATE.TIME, -d$EVID), ]
+    ## tieOrder = "data" keeps the row order of records at the same time
+    if (tieOrder == "data") {
+      d <- d[order(d$ID, d$DATE.TIME), ]
+    } else {
+      d <- d[order(d$ID, d$DATE.TIME, -d$EVID), ]
+    }
     d$TIME <- as.vector(unlist(sapply(unique(d$ID), function(id) {
       d0 <- d[d$ID == id, ]
       as.numeric(difftime(d0$DATE.TIME, d0$DATE.TIME[1], units = "hours"))
@@ -287,8 +292,10 @@ etTrans <- function(
   addlKeepsCov = FALSE,
   addlDropSs = TRUE,
   ssAtDoseTime = TRUE,
-  iCov = NULL
+  iCov = NULL,
+  tieOrder = c("evid", "data")
 ) {
+  tieOrder <- match.arg(tieOrder)
   if (is.rxEt(inData)) {
     .env <- .rxEtEnv(inData)
     .chunks <- Filter(Negate(is.null), .env$chunks)
@@ -316,6 +323,7 @@ etTrans <- function(
     addlKeepsCov,
     addlDropSs,
     ssAtDoseTime,
-    iCov
+    iCov,
+    tieOrder
   )
 }

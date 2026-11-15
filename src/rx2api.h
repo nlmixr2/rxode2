@@ -99,6 +99,11 @@ extern "C" {
   // Set the individual mixest
   void setIndMixest(rx_solving_options_ind* ind, int mixest);
 
+  // Set the individual's newind, which a model reads as `newind`: 1 at the
+  // subject's first record, 2 after it.  rxode2's own walk over the records
+  // (rxode2_df.cpp) sets it; a caller that walks them with calc_lhs sets it too.
+  void setIndNewind(rx_solving_options_ind* ind, int newind);
+
   // Get the number of mixtures in the rxode2 problem
   int getRxMixnum(rx_solve *rx);
 
