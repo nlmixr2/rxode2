@@ -138,7 +138,12 @@
   solves the same as an explicit record at that time.
   `linCmt()` used to advance across that time with a single covariate value.
   Re-translating a translated table keeps its knots, and the knots do not count
-  as observations (#1584).
+  as observations. Hand-encoded classic `evid` doses get the knot too
+  (#1584).
+
+- With `addlKeepsCov = FALSE`, a record with a missing covariate inside a
+  lagged dose's lag window now reads the covariate along the data times. It
+  used to read the lagged dose's covariates at its arrival (#1584).
 - Re-solving a solved object with new events (`rxSolve(<rxSolve>, params,
   events)`) solves the model that produced it instead of re-parsing the model
   text on every call, which also keeps the event (jump) sensitivities of a

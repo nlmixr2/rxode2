@@ -185,9 +185,16 @@ rxTest({
       d / dt(central) <- depot - central
     })
     .d <- data.frame(
-      id = 1, time = c(0, 1, 24, 30), amt = c(100, 0, 100, 0),
-      evid = c(1, 0, 1, 0), ii = c(12, 0, 0, 0), addl = c(1, 0, 0, 0),
-      rate = c(0, 0, 50, 0), dv = c(NA, 1, NA, 1), cmt = 1, wt = c(1, 1, 2, 2)
+      id = 1,
+      time = c(0, 1, 24, 30),
+      amt = c(100, 0, 100, 0),
+      evid = c(1, 0, 1, 0),
+      ii = c(12, 0, 0, 0),
+      addl = c(1, 0, 0, 0),
+      rate = c(0, 0, 50, 0),
+      dv = c(NA, 1, NA, 1),
+      cmt = 1,
+      wt = c(1, 1, 2, 2)
     )
     .t <- as.data.frame(etTrans(.d, .m))
     .t2 <- as.data.frame(etTrans(.t, .m))
@@ -244,8 +251,7 @@ rxTest({
       # linCmt() refuses a linear time-varying covariate
       for (.i in c("locf", "nocb", "midpoint", if (!.lin) "linear")) {
         .s <- function(d) {
-          r <- rxSolve(.m, d, covsInterpolation = .i, atol = 1e-12, rtol = 1e-12,
-                       returnType = "data.frame")
+          r <- rxSolve(.m, d, covsInterpolation = .i, atol = 1e-12, rtol = 1e-12, returnType = "data.frame")
           r$cp[r$time %in% c(12.25, 13, 20)]
         }
         expect_equal(.s(.knotDat), .s(.expl), tolerance = 1e-8, label = paste(.i, .lin))
@@ -260,22 +266,39 @@ rxTest({
                  "cp <- linCmt()", if (!is.null(push)) push, sep = "\n"))
   }
   # drug is on board in the lag window, so a missed knot moves the prediction
-  .ssDat <- data.frame(id = 1, time = c(0, 0.5, 4, 5, 7, 9, 20, 30), evid = c(1, rep(0, 7)),
-                       amt = c(100, rep(0, 7)), cmt = 2, wt = c(50, 50, 70, 80, 90, 90, 60, 60),
-                       rate = 0, ii = 0, ss = 0, addl = 0)
+  .ssDat <- data.frame(
+    id = 1,
+    time = c(0, 0.5, 4, 5, 7, 9, 20, 30),
+    evid = c(1, rep(0, 7)),
+    amt = c(100, rep(0, 7)),
+    cmt = 2,
+    wt = c(50, 50, 70, 80, 90, 90, 60, 60),
+    rate = 0,
+    ii = 0,
+    ss = 0,
+    addl = 0
+  )
   .ssDose <- function(d, cs) {
     .r <- d[3, ]
-    .r$evid <- 1; .r$amt <- 100; .r$cmt <- 1
-    .r$rate <- cs[["rate"]]; .r$ii <- cs[["ii"]]; .r$ss <- cs[["ss"]]; .r$addl <- cs[["addl"]]
-    .r$time <- 3; .r$wt <- 60
+    .r$evid <- 1
+    .r$amt <- 100
+    .r$cmt <- 1
+    .r$rate <- cs[["rate"]]
+    .r$ii <- cs[["ii"]]
+    .r$ss <- cs[["ss"]]
+    .r$addl <- cs[["addl"]]
+    .r$time <- 3
+    .r$wt <- 60
     .x <- rbind(d, .r)
     .x[order(.x$time, -.x$evid), ]
   }
-  .ssCases <- list(bolus = c(rate = 0, ii = 0, ss = 0, addl = 0),
-                   ss1 = c(rate = 0, ii = 12, ss = 1, addl = 0),
-                   ss1inf = c(rate = 20, ii = 12, ss = 1, addl = 0),
-                   ss1addl = c(rate = 0, ii = 12, ss = 1, addl = 2),
-                   ssConstInf = c(rate = 5, ii = 0, ss = 1, addl = 0))
+  .ssCases <- list(
+    bolus = c(rate = 0, ii = 0, ss = 0, addl = 0),
+    ss1 = c(rate = 0, ii = 12, ss = 1, addl = 0),
+    ss1inf = c(rate = 20, ii = 12, ss = 1, addl = 0),
+    ss1addl = c(rate = 0, ii = 12, ss = 1, addl = 2),
+    ssConstInf = c(rate = 5, ii = 0, ss = 1, addl = 0)
+  )
 
   test_that("steady-state lagged doses get the knot and solve as an explicit record", {
     .m <- .ssLin()
@@ -283,14 +306,19 @@ rxTest({
       .d <- .ssDose(.ssDat, .ssCases[[.n]])
       expect_equal(sum(etTrans(.d, .m)$EVID == 8L), 1L, label = .n)
       .r <- .d[.d$cmt == 1, ]
-      .r$evid <- 2; .r$amt <- 0; .r$cmt <- 2; .r$rate <- 0; .r$ii <- 0; .r$ss <- 0; .r$addl <- 0
+      .r$evid <- 2
+      .r$amt <- 0
+      .r$cmt <- 2
+      .r$rate <- 0
+      .r$ii <- 0
+      .r$ss <- 0
+      .r$addl <- 0
       .e <- rbind(.d, .r)
       .e <- .e[order(.e$time, -.e$evid), ]
       for (.i in c("locf", "nocb", "midpoint")) {
         .a <- rxSolve(.m, .d, covsInterpolation = .i, returnType = "data.frame")
         .b <- rxSolve(.m, .e, covsInterpolation = .i, returnType = "data.frame")
-        expect_equal(.a$cp, .b$cp[.b$time %in% .a$time], tolerance = 1e-8,
-                     label = paste(.n, .i))
+        expect_equal(.a$cp, .b$cp[.b$time %in% .a$time], tolerance = 1e-8, label = paste(.n, .i))
       }
     }
   })
@@ -311,8 +339,14 @@ rxTest({
       expect_equal(.a$cp, .b$cp[.b$time %in% .a$time], tolerance = 1e-8, label = .i)
     }
     # a classic steady-state pair at one time gets one knot
-    .p <- data.frame(id = 1, time = c(0, 4, 4, 8), evid = c(0L, 109L, 101L, 0L),
-                     amt = c(0, 100, 100, 0), ii = c(0, 12, 0, 0), wt = c(50, 70, 70, 90))
+    .p <- data.frame(
+      id = 1,
+      time = c(0, 4, 4, 8),
+      evid = c(0L, 109L, 101L, 0L),
+      amt = c(0, 100, 100, 0),
+      ii = c(0, 12, 0, 0),
+      wt = c(50, 70, 70, 90)
+    )
     expect_equal(sum(etTrans(.p, .m)$EVID == 8L), 1L)
   })
 
@@ -332,19 +366,49 @@ rxTest({
     # solves as the same dose written at a data record of the same time
     for (.n in names(.ssCases)[-4]) {
       .cs <- .ssCases[[.n]]
-      .m <- .ssLin(sprintf("if (t < 1e-8) evid_(4, 1, 100, 1, %g, %g, 0, %d)",
-                           .cs[["rate"]], .cs[["ii"]], .cs[["ss"]]))
+      .m <- .ssLin(sprintf("if (t < 1e-8) evid_(4, 1, 100, 1, %g, %g, 0, %d)", .cs[["rate"]], .cs[["ii"]], .cs[["ss"]]))
       .d <- .ssDose(.ssDat, .cs)
       .d$time[.d$cmt == 1] <- 4
       .d$wt[.d$cmt == 1] <- 70
       .d <- .d[order(.d$time, -.d$evid), ]
       for (.i in c("locf", "nocb", "midpoint")) {
         .a <- rxSolve(.m, .ssDat, covsInterpolation = .i, returnType = "data.frame")
-        .b <- rxSolve(.ssLin(), .d, covsInterpolation = .i, returnType = "data.frame",
-                      addDosing = FALSE)
-        expect_equal(.a$cp[.a$time > 4.0001], .b$cp[.b$time > 4.0001], tolerance = 1e-8,
-                     label = paste(.n, .i))
+        .b <- rxSolve(.ssLin(), .d, covsInterpolation = .i, returnType = "data.frame", addDosing = FALSE)
+        expect_equal(.a$cp[.a$time > 4.0001], .b$cp[.b$time > 4.0001], tolerance = 1e-8, label = paste(.n, .i))
       }
+    }
+  })
+
+  test_that("a record with no covariate in a lag window reads the data-time path", {
+    # covariates only on some rows: a missing value is filled along the data
+    # times, not from the lagged dose at its arrival
+    .m <- rxode2({
+      alag(depot) <- 2
+      cl <- 0.1 * wt / 70
+      v <- 10
+      ka <- 1
+      cp <- linCmt()
+      wtUsed <- wt
+    })
+    .d <- data.frame(
+      id = 1,
+      time = c(0, 1, 4, 5, 8, 10),
+      evid = c(0, 1, 1, 0, 0, 0),
+      amt = c(0, 100, 100, 0, 0, 0),
+      cmt = c(2, 2, 1, 2, 2, 2),
+      wt = c(50, NA, 70, NA, 90, NA)
+    )
+    .s <- function(d, i, ...) {
+      rxSolve(.m, d, covsInterpolation = i, returnType = "data.frame", ...)
+    }
+    expect_equal(.s(.d, "nocb")$wtUsed[.s(.d, "nocb")$time == 5], 90)
+    expect_equal(.s(.d, "locf")$wtUsed[.s(.d, "locf")$time == 5], 70)
+    expect_equal(.s(.d, "nocb", addlKeepsCov = TRUE)$wtUsed[.s(.d, "nocb")$time == 5], 70)
+    for (.i in c("locf", "nocb", "midpoint")) {
+      # the NA row inside the lag window changes nothing
+      .a <- .s(.d, .i)
+      .b <- .s(.d[.d$time != 5, ], .i)
+      expect_equal(.a$cp[.a$time == 10], .b$cp[.b$time == 10], tolerance = 1e-8, label = .i)
     }
   })
 })
