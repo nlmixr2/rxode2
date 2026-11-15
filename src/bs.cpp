@@ -127,7 +127,7 @@ extern "C" void ind_bs_0(rx_solve *rx, rx_solving_options *op, int solveid, int 
               sys.xout_ = xout;
               sys.sign_ = (dt > 0) ? 1 : -1;
               try {
-                  if (op->useDense && isObs(getEvid(ind, ind->ix[i]))) {
+                  if (op->useDense && isPassObs(getEvid(ind, ind->ix[i]))) {
                       if (!stepper_initialized) {
                           dense_stepper.initialize(state, xp, dt);
                           stepper_initialized = true;
