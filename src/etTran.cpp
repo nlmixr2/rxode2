@@ -188,6 +188,9 @@ static inline SEXP refactorStrCmpCovariate(SEXP cur, CharacterVector modelLevels
 
 // Set by rxSolve around its etTrans passes without the 'iCov' it solves with
 bool rxEtTransStrCmpQuiet = false;
+// Parameters rxSolve's 'params' gives as character or factor columns; etTrans
+// does not warn that no data column was matched to them
+std::vector<std::string> rxEtTransStrCmpParams;
 
 // Warn for each model literal compared to `name` that no data value has
 // (the comparison then never matches); `cur` is the re-leveled factor.
@@ -220,6 +223,8 @@ static inline void warnStrCmpNotReleveled(CharacterVector strCmpNames,
   for (int k = 0; k < strCmpNames.size(); ++k) {
     if (releveled[k]) continue;
     std::string nm = as<std::string>(strCmpNames[k]);
+    if (std::find(rxEtTransStrCmpParams.begin(), rxEtTransStrCmpParams.end(), nm) !=
+        rxEtTransStrCmpParams.end()) continue;
     for (int j = 0; j < pars.size(); ++j) {
       if (nm == as<std::string>(pars[j])) {
         Rf_warningcall(R_NilValue,
@@ -229,6 +234,23 @@ static inline void warnStrCmpNotReleveled(CharacterVector strCmpNames,
       }
     }
   }
+}
+
+// A character or factor 'params' column read by the model parameter `par`,
+// converted as etTrans() converts a data column: re-leveled to the model's
+// string literals when `par` is compared to strings, otherwise a factor
+SEXP rxStrCmpParamCol(SEXP cur, List mv, std::string par) {
+  List strCmpParams = mv[RxMv_strCmpParams];
+  CharacterVector strCmpParamNames = strCmpParams.names();
+  int strCmpIdx = getStrCmpParamIndex(strCmpParamNames, par);
+  if (strCmpIdx != -1) {
+    CharacterVector modelLevels = Rf_getAttrib(strCmpParams[strCmpIdx], R_LevelsSymbol);
+    RObject ret = refactorStrCmpCovariate(cur, modelLevels);
+    warnStrCmpMissingLevels(ret, modelLevels, par);
+    return ret;
+  }
+  if (TYPEOF(cur) == STRSXP) return convertId_(cur);
+  return cur;
 }
 
 /*

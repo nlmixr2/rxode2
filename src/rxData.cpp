@@ -1581,6 +1581,25 @@ struct rxEtTransStrCmpQuietGuard {
   ~rxEtTransStrCmpQuietGuard() { rxEtTransStrCmpQuiet = old; }
 };
 
+extern std::vector<std::string> rxEtTransStrCmpParams;
+SEXP rxStrCmpParamCol(SEXP cur, List mv, std::string par);
+// Names the character and factor columns of a 'params' data frame for etTrans
+// (rxEtTransStrCmpParams) while in scope
+struct rxEtTransStrCmpParamsGuard {
+  rxEtTransStrCmpParamsGuard(RObject par) {
+    rxEtTransStrCmpParams.clear();
+    if (!Rf_inherits(par, "data.frame")) return;
+    SEXP nms = Rf_getAttrib(par, R_NamesSymbol);
+    for (int i = 0; i < Rf_length(par); ++i) {
+      SEXP col = VECTOR_ELT(par, i);
+      if (TYPEOF(col) == STRSXP || Rf_isFactor(col)) {
+        rxEtTransStrCmpParams.push_back(CHAR(STRING_ELT(nms, i)));
+      }
+    }
+  }
+  ~rxEtTransStrCmpParamsGuard() { rxEtTransStrCmpParams.clear(); }
+};
+
 rx_globals _globals;
 
 #include "extraDosing.h"
@@ -5522,17 +5541,16 @@ static inline std::vector<bool> rxSolve_parDfUsed(rxSolve_t* rxSolveDat) {
 
 // Column j of the params data frame as numbers, in `out`.  A column no model
 // parameter reads (an id, a label) is converted only when it is numeric, and
-// is otherwise left NA, unread (returns false); a character column a
-// parameter reads is an error naming it.
+// is otherwise left NA, unread (returns false); a character or factor column
+// a parameter reads is converted as etTrans() converts a data column
+// (rxStrCmpParamCol()).
 static inline bool rxSolve_parDfCol(rxSolve_t* rxSolveDat, const std::vector<bool>& used,
                                     int j, NumericVector& out) {
-  SEXP col = rxSolveDat->parDf[j];
+  RObject col = rxSolveDat->parDf[j];
   if (!used[j] && !Rf_isNumeric(col) && !Rf_isLogical(col)) return false;
-  if (TYPEOF(col) == STRSXP) {
+  if (TYPEOF(col) == STRSXP || Rf_isFactor(col)) {
     CharacterVector parNames = rxSolveDat->parDf.names();
-    std::string nm = as<std::string>(parNames[j]);
-    rxSolveFree();
-    stop(_("'params' column '%s' is character; a model parameter needs numbers"), nm.c_str());
+    col = rxStrCmpParamCol(col, rxSolveDat->mv, as<std::string>(parNames[j]));
   }
   out = NumericVector(col);
   return true;
@@ -7177,8 +7195,11 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _lastT0 = clock();
 #endif// rxSolveT
     // Update event table with observations if they are missing
-    rxSolve_ev1Update(object, rxControl, specParams, extraArgs, params,
-                      ev1, inits, rxSolveDat);
+    {
+      rxEtTransStrCmpParamsGuard strCmpParams(rxSolveDat->par1);
+      rxSolve_ev1Update(object, rxControl, specParams, extraArgs, params,
+                        ev1, inits, rxSolveDat);
+    }
 
 #ifdef rxSolveT
     RSprintf("Time6: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);

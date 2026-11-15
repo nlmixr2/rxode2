@@ -15,14 +15,24 @@
   )
 }
 
-.paramsColsErr <- function(expr) {
-  tryCatch(
-    {
-      force(expr)
-      NA_character_
-    },
-    error = conditionMessage
-  )
+.paramsColsSexModel <- function() {
+  function() {
+    ini({
+      k <- 0.5
+    })
+    model({
+      kk <- k
+      if (sex == "male") kk <- k * 2
+      d / dt(central) <- -kk * central
+    })
+  }
+}
+
+# central at t=1 for each subject, by id
+.paramsColsCentral <- function(s) {
+  s <- as.data.frame(s)
+  s <- s[s$time == 1, ]
+  s$central[order(as.numeric(as.character(s$id)))]
 }
 
 rxTest({
@@ -55,11 +65,6 @@ rxTest({
       suppressWarnings(as.data.frame(rxSolve(m, .ev, params = data.frame(k = 0.5, v = 2, label = "a"), nSub = 2)))$cp,
       .ns
     )
-    # a character column a parameter reads is refused there too
-    expect_identical(
-      .paramsColsErr(rxSolve(m, d, params = data.frame(k = "0.5", v = 2))),
-      "'params' column 'k' is character; a model parameter needs numbers"
-    )
   })
 
   test_that("a params column no parameter reads may be of any type when simulating", {
@@ -78,20 +83,71 @@ rxTest({
       .got <- as.data.frame(rxSolve(m, .ev, params = cbind(.p, label = "a"), omega = .om, nSub = 4))$cp
       expect_identical(.got, .want)
     }
-    expect_identical(
-      .paramsColsErr(rxSolve(m, .ev, params = data.frame(k = "0.5", v = 2), omega = .om, nSub = 3)),
-      "'params' column 'k' is character; a model parameter needs numbers"
-    )
   })
 
-  test_that("a character params column a parameter reads is refused by name", {
+  test_that("a character or factor params column is compared to strings as a data column is", {
+    m <- .paramsColsSexModel()
+    .ev <- et(amt = 10) |> et(1) |> et(id = 1:2)
+    .sex <- c("male", "female")
+    .d <- as.data.frame(.ev)
+    .d$sex <- .sex[.d$id]
+    .want <- .paramsColsCentral(rxSolve(m, .d))
+    expect_equal(.want, 10 * exp(-c(1, 0.5)), tolerance = 1e-5)
+    expect_identical(.paramsColsCentral(rxSolve(m, .ev, iCov = data.frame(id = 1:2, sex = .sex))), .want)
+    # neither warns that no data column was matched to 'sex'
+    expect_no_warning(.p <- rxSolve(m, .ev, params = data.frame(k = 0.5, sex = .sex)))
+    expect_identical(.paramsColsCentral(.p), .want)
+    expect_no_warning(.p <- rxSolve(m, .ev, params = data.frame(k = 0.5, sex = factor(.sex))))
+    expect_identical(.paramsColsCentral(.p), .want)
+    # a one-row frame is used for every subject
+    expect_equal(
+      .paramsColsCentral(rxSolve(m, .ev, params = data.frame(k = 0.5, sex = "male"))),
+      rep(10 * exp(-1), 2),
+      tolerance = 1e-5
+    )
+    # a model literal no row has never matches, with the data column's warning
+    expect_warning(
+      .p <- rxSolve(m, .ev, params = data.frame(k = 0.5, sex = c("female", "female"))),
+      "which is not in the data"
+    )
+    expect_equal(.paramsColsCentral(.p), rep(10 * exp(-0.5), 2), tolerance = 1e-5)
+  })
+
+  test_that("a character or factor params column is compared to strings when simulating", {
+    m <- function() {
+      ini({
+        k <- 0.5
+        eta.k ~ 0.1
+      })
+      model({
+        kk <- k * exp(eta.k)
+        if (sex == "male") kk <- k * 2 * exp(eta.k)
+        d / dt(central) <- -kk * central
+      })
+    }
+    .ev <- et(amt = 10) |> et(1)
+    set.seed(42)
+    # the level codes of the model's literals: "male" is 1
+    .want <- .paramsColsCentral(suppressWarnings(rxSolve(
+      m,
+      .ev,
+      params = data.frame(k = 0.5, sex = c(1, 2)),
+      nSub = 4
+    )))
+    for (.sex in list(c("male", "female"), factor(c("male", "female"), levels = c("female", "male")))) {
+      set.seed(42)
+      .got <- .paramsColsCentral(rxSolve(m, .ev, params = data.frame(k = 0.5, sex = .sex), nSub = 4))
+      expect_identical(.got, .want)
+    }
+  })
+
+  test_that("a character params column a parameter reads without comparing it is a factor, as in the data", {
     m <- .paramsColsModel()
     d <- .paramsColsData()
-    expect_identical(
-      .paramsColsErr(rxSolve(m, d, params = data.frame(k = c("0.5", "0.6"), v = c(2, 3)))),
-      "'params' column 'k' is character; a model parameter needs numbers"
-    )
-    # rxode2 solves normally afterwards
-    expect_false(anyNA(as.data.frame(rxSolve(m, d, params = data.frame(k = c(0.5, 0.6), v = c(2, 3))))$cp))
+    .d <- d
+    .d$k <- ifelse(.d$id == 11, "b", "a")
+    .d$v <- 2
+    .want <- as.data.frame(rxSolve(m, .d))$cp
+    expect_identical(as.data.frame(rxSolve(m, d, params = data.frame(k = c("b", "a"), v = 2)))$cp, .want)
   })
 })
