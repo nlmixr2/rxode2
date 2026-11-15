@@ -52,6 +52,19 @@ static std::string etRowList(const std::vector<int> &rows) {
 
 // A rate or duration that is dose information, as the no-EVID-column path reads
 // it: positive, or modeled (-1, -2).  A NaN, 0 or other negative value is none.
+// An integer rxModelVars element looked up by name; 0 when absent or not integer
+static inline IntegerVector mvIntByName(List &mv, const char *name) {
+  SEXP nm = Rf_getAttrib(mv, R_NamesSymbol);
+  for (R_xlen_t i = 0; i < Rf_xlength(nm); ++i) {
+    if (!strcmp(CHAR(STRING_ELT(nm, i)), name)) {
+      SEXP cur = VECTOR_ELT(mv, i);
+      if (TYPEOF(cur) == INTSXP) return clone(as<IntegerVector>(cur));
+      break;
+    }
+  }
+  return IntegerVector::create(0);
+}
+
 static inline bool etRateDurIsDose(double x) {
   return x > 0.0 || x == -1.0 || x == -2.0;
 }
@@ -1368,21 +1381,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   IntegerVector curAlag = clone(as<IntegerVector>(mv[RxMv_alag]));
   IntegerVector splitBolus = clone(as<IntegerVector>(mv[RxMv_splitBolus]));
   int splitBolusN = splitBolus.size();
-  /* splitInfusion()/splitInfusionBolus()/splitBolusInfusion() mv entries
-   * are newer than some cached rxModelVars objects; guard the reads by
-   * size and type */
-  IntegerVector splitInfusion = IntegerVector::create(0);
-  if (mv.size() > RxMv_splitInfusion && TYPEOF(mv[RxMv_splitInfusion]) == INTSXP) {
-    splitInfusion = clone(as<IntegerVector>(mv[RxMv_splitInfusion]));
-  }
-  IntegerVector splitInfBol = IntegerVector::create(0);
-  if (mv.size() > RxMv_splitInfusionBolus && TYPEOF(mv[RxMv_splitInfusionBolus]) == INTSXP) {
-    splitInfBol = clone(as<IntegerVector>(mv[RxMv_splitInfusionBolus]));
-  }
-  IntegerVector splitBolInf = IntegerVector::create(0);
-  if (mv.size() > RxMv_splitBolusInfusion && TYPEOF(mv[RxMv_splitBolusInfusion]) == INTSXP) {
-    splitBolInf = clone(as<IntegerVector>(mv[RxMv_splitBolusInfusion]));
-  }
+  /* splitInfusion()/splitInfusionBolus()/splitBolusInfusion() are read by
+   * name: an rxModelVars saved by an older rxode2 may lack them or hold them
+   * at other indexes (5.1.8 had timeId at 31) */
+  IntegerVector splitInfusion = mvIntByName(mv, "splitInfusion");
+  IntegerVector splitInfBol = mvIntByName(mv, "splitInfusionBolus");
+  IntegerVector splitBolInf = mvIntByName(mv, "splitBolusInfusion");
   // the split directive's source then targets, for the lagged-dose knots
   IntegerVector knotSplit = splitBolusN >= 2 ? splitBolus :
     splitInfusion.size() >= 2 ? splitInfusion :

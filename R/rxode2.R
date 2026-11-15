@@ -1826,7 +1826,7 @@ rxTrans.default <- function(
     .parsedMd5 <- digest::digest(c(.parsedMd5, paste0("eventSens=", eventSensKey)), serialize = TRUE, algo = "md5")
   }
   md5 <- c(file_md5 = md5, parsed_md5 = .parsedMd5)
-  .ret$timeId <- .rxTimeId(md5["parsed_md5"])
+  .rxTimeId(md5["parsed_md5"])
   .ret$md5 <- md5
   if (.isStr == 1L) {
     ## Now update trans.
@@ -2533,7 +2533,7 @@ rxCompile.rxModelVars <- function(
           .rxModelVarsCharacter(setNames(rxNorm(.mv), NULL))
         }
         .prefix2 <- .rxState$modelVarsCCache[[3]]
-        ## Register the model for unload bookkeeping (codegen no longer takes timeId)
+        ## Register the model for unload bookkeeping
         .rxTimeId(.trans["parsed_md5"])
         .newMod <- FALSE
         if (!is.null(modName)) {
