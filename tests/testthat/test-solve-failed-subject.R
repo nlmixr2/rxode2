@@ -312,7 +312,7 @@ rxTest({
       bdf = "^DLSODE-",
       liblsoda = .liblsoda,
       liblsodaadj = .liblsoda,
-      dop853 = "^\\[IDID=-3, step size becomes too small\\]: 1 warning\\(s\\) for subject\\(s\\): 103$"
+      dop853 = "^\\[exit of dop853 at x = [-0-9.e+]+, step size too small h = [-0-9.e+]+\\]: 1 warning\\(s\\) for subject\\(s\\): 103$"
     )
     .ownReason <- "lsoda"
     # vv refuses a model whose states are not coordinate-momentum pairs
