@@ -429,6 +429,15 @@
   `$params`, `$counts`, `.DollarNames()` or event-table method builds only
   what it uses rather than all of them and the event table.
 
+- A `params` data frame with a character column now solves, one row (used
+  for every subject, or for the subjects `nSub` asks for) or many, and when
+  simulating with `omega`; it failed with "Not compatible with requested
+  type".  A column no parameter reads (a label, a character id) is skipped;
+  a character or factor column a parameter reads is converted as a data or
+  `iCov` column is, so `sex == "male"` compares by level name.  A factor was
+  compared by its level code, so the comparison could silently pick the
+  wrong level.
+
 - A one-row `params` data frame or matrix is now used for every subject, as
   a named vector is; with more than one subject, the subjects after the first
   were solved with `NA` parameters.  A one-row `params` with an id column

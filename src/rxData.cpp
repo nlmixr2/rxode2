@@ -1580,6 +1580,25 @@ struct rxEtTransStrCmpQuietGuard {
   ~rxEtTransStrCmpQuietGuard() { rxEtTransStrCmpQuiet = old; }
 };
 
+extern std::vector<std::string> rxEtTransStrCmpParams;
+SEXP rxStrCmpParamCol(SEXP cur, List mv, std::string par);
+// Names the character and factor columns of a 'params' data frame for etTrans
+// (rxEtTransStrCmpParams) while in scope
+struct rxEtTransStrCmpParamsGuard {
+  rxEtTransStrCmpParamsGuard(RObject par) {
+    rxEtTransStrCmpParams.clear();
+    if (!Rf_inherits(par, "data.frame")) return;
+    SEXP nms = Rf_getAttrib(par, R_NamesSymbol);
+    for (int i = 0; i < Rf_length(par); ++i) {
+      SEXP col = VECTOR_ELT(par, i);
+      if (TYPEOF(col) == STRSXP || Rf_isFactor(col)) {
+        rxEtTransStrCmpParams.push_back(CHAR(STRING_ELT(nms, i)));
+      }
+    }
+  }
+  ~rxEtTransStrCmpParamsGuard() { rxEtTransStrCmpParams.clear(); }
+};
+
 rx_globals _globals;
 
 #include "extraDosing.h"
@@ -5530,16 +5549,48 @@ static inline void rxSolve_resample(const RObject &obj,
   }
 }
 
+// Which columns of the params data frame a model parameter reads (gParPos)
+static inline std::vector<bool> rxSolve_parDfUsed(rxSolve_t* rxSolveDat) {
+  rx_solve* rx = getRxSolve_();
+  unsigned int n = rxSolveDat->parDf.size();
+  std::vector<bool> used(n, false);
+  for (int k = 0; k < rx->npars; ++k) {
+    int pos = _globals.gParPos[k];
+    if (pos > 0 && pos <= (int)n) used[pos - 1] = true;
+  }
+  return used;
+}
+
+// Column j of the params data frame as numbers, in `out`.  A column no model
+// parameter reads (an id, a label) is converted only when it is numeric, and
+// is otherwise left NA, unread (returns false); a character or factor column
+// a parameter reads is converted as etTrans() converts a data column
+// (rxStrCmpParamCol()).
+static inline bool rxSolve_parDfCol(rxSolve_t* rxSolveDat, const std::vector<bool>& used,
+                                    int j, NumericVector& out) {
+  RObject col = rxSolveDat->parDf[j];
+  if (!used[j] && !Rf_isNumeric(col) && !Rf_isLogical(col)) return false;
+  if (TYPEOF(col) == STRSXP || Rf_isFactor(col)) {
+    CharacterVector parNames = rxSolveDat->parDf.names();
+    col = rxStrCmpParamCol(col, rxSolveDat->mv, as<std::string>(parNames[j]));
+  }
+  out = NumericVector(col);
+  return true;
+}
+
 // A one-row parameter data frame or matrix is one set for every subject, as a
 // named vector is, and is expanded here to a row per subject.
 static inline void rxSolve_parOneRow(rxSolve_t* rxSolveDat, uint32_t nsub) {
   if (rxSolveDat->parType == 1 || rxSolveDat->nPopPar != 1 || nsub <= 1) return;
   int ncol = rxSolveDat->nmP.size();
   NumericMatrix mat(nsub, ncol);
+  std::vector<bool> used;
+  if (rxSolveDat->parType == 2) used = rxSolve_parDfUsed(rxSolveDat);
   for (int j = 0; j < ncol; ++j) {
     double v;
     if (rxSolveDat->parType == 2) {
-      v = NumericVector(rxSolveDat->parDf[j])[0];
+      NumericVector col;
+      v = rxSolve_parDfCol(rxSolveDat, used, j, col) ? col[0] : NA_REAL;
     } else {
       v = rxSolveDat->parMat(0, j);
     }
@@ -5610,12 +5661,19 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
       rx->nsim=1;
     }
   case 2: // DataFrame
-    // Convert to NumericMatrix
+    // Convert to NumericMatrix, column by column (rxSolve_parDfCol())
     {
       unsigned int parDfi = rxSolveDat->parDf.size();
       rxSolveDat->parMat = NumericMatrix(rxSolveDat->nPopPar,parDfi);
+      std::vector<bool> used = rxSolve_parDfUsed(rxSolveDat);
       while (parDfi--){
-        rxSolveDat->parMat(_,parDfi)=NumericVector(rxSolveDat->parDf[parDfi]);
+        NumericVector col;
+        if (rxSolve_parDfCol(rxSolveDat, used, parDfi, col)) {
+          rxSolveDat->parMat(_,parDfi) = col;
+        } else {
+          NumericMatrix::Column unread = rxSolveDat->parMat(_, parDfi);
+          std::fill(unread.begin(), unread.end(), NA_REAL);
+        }
       }
       rxSolveDat->parMat.attr("dimnames") = List::create(R_NilValue, rxSolveDat->parDf.names());
     }
@@ -7160,8 +7218,11 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _lastT0 = clock();
 #endif// rxSolveT
     // Update event table with observations if they are missing
-    rxSolve_ev1Update(object, rxControl, specParams, extraArgs, params,
-                      ev1, inits, rxSolveDat);
+    {
+      rxEtTransStrCmpParamsGuard strCmpParams(rxSolveDat->par1);
+      rxSolve_ev1Update(object, rxControl, specParams, extraArgs, params,
+                        ev1, inits, rxSolveDat);
+    }
 
 #ifdef rxSolveT
     RSprintf("Time6: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
