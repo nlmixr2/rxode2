@@ -172,6 +172,10 @@
   model whose ODE reads `tad()` (such as a transit compartment) reaches a
   steady state; it used to count from the dose record and the solve failed
   (#1585).
+- A `linCmt()` steady-state constant infusion (`ss = 1` with a rate and no
+  `ii`, or an infusion lasting `ii`) no longer reads an unset solve end time,
+  which could skip the solve and give a wrong steady state depending on the
+  build.
 - A steady-state bolus into a compartment whose `alag()` is longer than `ii`
   now includes the doses of the earlier intervals that arrive inside the
   observed one; they were dropped, so the profile decayed from the trough
@@ -472,6 +476,15 @@
     given the model's state names;
   - a translated event table (`etTrans()`'s result) given to `rxSolve()` or
     `etTrans()` had its hidden translation changed.
+
+- A subject whose `dop853` solve fails is now reported on one line,
+  dop853's own ("exit of dop853 at x = ..., more than nmax = N are needed",
+  or "..., step size too small h = ..."); an "IDID=-2, larger nmax is
+  needed" or "IDID=-3, step size becomes too small" line used to follow it.
+  A step size that became non-finite (from a `NaN` derivative), which only
+  that "IDID=-3" line reported, now reads "exit of dop853 at x = ..., step
+  size is not finite".  Inside a `"dop853+<stiff>"` composite, where such a
+  step hands the interval to the stiff solver, dop853 prints none of these.
 
 - The aggregated `dop853` step-limit and step-size warnings and the `intdy`
   warning used to print values read from no argument (indeterminate numbers).

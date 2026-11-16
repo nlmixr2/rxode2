@@ -1252,7 +1252,10 @@ static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, c
     if (err_msg != NULL) {
       int cid = -*idid-1;
       if (cid >= 0 && cid < nerr){
-        rxSolveWarnPush(ind->id, "IDID=%d, %s", *idid, err_msg[cid]);
+        // a NULL text: the solver reported this failure itself
+        if (err_msg[cid] != NULL) {
+          rxSolveWarnPush(ind->id, "IDID=%d, %s", *idid, err_msg[cid]);
+        }
       }
       else {
         rxSolveWarnPush(ind->id, "IDID=%d, unhandled exception", *idid);
@@ -3664,6 +3667,8 @@ extern "C" void handleSSinf8(int *neq,
     ind->InfusionRate[ind->cmt] = *rateOn;
     ind->on[ind->cmt] = 1;
     *xp2 = 0.0;
+    // the caller leaves xout2 unset; a span equal to xp2 skips the solve
+    *xout2 = *xp2 + 1.0;
 
     // next solve
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
@@ -6848,11 +6853,13 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   int istate = 0;
   // this subject's own failure; op->badSolve is shared by every subject and thread
   int localBadSolve = 0;
+  // dop853 reports its step limit (-2) and step size (-3) failures itself,
+  // with the x and h it stopped at, so they have no text here
   static const char *err_msg[]=
     {
       "input is not consistent",
-      "larger nmax is needed",
-      "step size becomes too small",
+      NULL,
+      NULL,
       "problem is probably stiff (interrupted)"
     };
   rx_solving_options_ind *ind;
@@ -7599,11 +7606,13 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
   int istate = 0;
   // this subject's own failure; op->badSolve is shared by every subject and thread
   int localBadSolve = 0;
+  // dop853 reports its step limit (-2) and step size (-3) failures itself,
+  // with the x and h it stopped at, so they have no text here
   static const char *err_msg[]=
     {
       "input is not consistent",
-      "larger nmax is needed",
-      "step size becomes too small",
+      NULL,
+      NULL,
       "problem is probably stiff (interrupted)"
     };
   rx_solving_options_ind *ind;
