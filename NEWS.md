@@ -183,6 +183,10 @@
 - `linCmt()` models now follow `minSS = maxSS = n`, giving the profile after
   exactly `n` prior doses as the equivalent ODE model does; they used to
   return the exact steady state for every `n` (#1500).
+- A steady-state infusion lasting its whole dosing interval with a modeled
+  `dur()` or `rate()` into a compartment with an `alag()` now stops at its
+  lagged end even when the modeled duration rounds just above `ii`; it
+  stopped one interval after the unlagged dose time (#1592).
 - A `linCmt()` steady-state bolus with `alag()` longer than `ii` now matches
   the ODE model and NONMEM.  After a dose that a steady-state record
   schedules between two records, the `linCmt()` solver advanced to the next
