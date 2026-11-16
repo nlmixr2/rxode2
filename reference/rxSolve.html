@@ -1420,8 +1420,11 @@ been achieved.</p></dd>
 
 <dt id="arg-istatereset">istateReset<a class="anchor" aria-label="anchor" href="#arg-istatereset"></a></dt>
 <dd><p>When <code>TRUE</code>, reset the <code>ISTATE</code> variable to 1 for
-lsoda and liblsoda with doses, like <code>deSolve</code>; When <code>FALSE</code>, do
-not reset the <code>ISTATE</code> variable with doses.</p></dd>
+lsoda and liblsoda with doses, like <code>deSolve</code>, and restart the lsoda
+family (<code>liblsoda</code>, <code>lsoda</code>, <code>lsode</code>, <code>bdf</code>) at an <code>mtime()</code> record;
+When <code>FALSE</code>, do not reset the <code>ISTATE</code> variable with doses or at
+<code>mtime()</code> records, so a time window that starts at an <code>mtime()</code>
+record can be stepped over.</p></dd>
 
 
 <dt id="arg-subsetnonmem">subsetNonmem<a class="anchor" aria-label="anchor" href="#arg-subsetnonmem"></a></dt>
