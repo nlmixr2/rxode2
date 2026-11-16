@@ -19,8 +19,11 @@ rxTest({
     dur = et(amt = 100, dur = 3, cmt = "center") |> et(seq(0, 12, by = 2)),
     ss = et(amt = 100, ii = 12, ss = 1, cmt = "depot") |> et(seq(0, 12, by = 3)),
     evid2 = et(amt = 100, cmt = "depot") |> et(seq(0, 12, by = 4)) |> et(time = 5, evid = 2),
-    reset = et(amt = 100, cmt = "depot") |> et(seq(0, 12, by = 4)) |>
-      et(time = 13, evid = 3) |> et(amt = 50, time = 14, cmt = "depot") |> et(c(16, 20)),
+    reset = et(amt = 100, cmt = "depot") |>
+      et(seq(0, 12, by = 4)) |>
+      et(time = 13, evid = 3) |>
+      et(amt = 50, time = 14, cmt = "depot") |>
+      et(c(16, 20)),
     twoId = et(amt = 100, cmt = "depot", id = 1:2) |> et(seq(0, 12, by = 4), id = 1:2)
   )
 
@@ -40,39 +43,51 @@ rxTest({
 
   for (.ev in names(.walkEvents)) {
     for (.m in .walkModes) {
-      test_that(paste0("the walk gives rxSolve()'s rows: ", .ev, ", addDosing=", .m$addDosing,
-                       ", subsetNonmem=", .m$subsetNonmem), {
-        .ref <- as.data.frame(rxSolve(.walkMod, .walkEvents[[.ev]],
-          addDosing = .m$addDosing, subsetNonmem = .m$subsetNonmem,
-          returnType = "data.frame"
-        ))
-        .w <- .walkRows(.walkEvents[[.ev]], .m$code)
-        expect_equal(length(.w$time), nrow(.ref))
-        expect_equal(.w$time, .ref$time)
-        if (!is.null(.ref$resetno)) {
-          expect_equal(as.integer(.w$resetno), as.integer(.ref$resetno))
-        }
-        if (!is.null(.ref$evid)) {
-          expect_equal(as.integer(.w$evid), as.integer(.ref$evid))
-        }
-        for (.c in c("cmt", "ss")) {
-          if (!is.null(.ref[[.c]])) {
-            expect_equal(as.integer(.w[[.c]]), as.integer(.ref[[.c]]), label = .c)
+      test_that(
+        paste0(
+          "the walk gives rxSolve()'s rows: ",
+          .ev,
+          ", addDosing=",
+          .m$addDosing,
+          ", subsetNonmem=",
+          .m$subsetNonmem
+        ),
+        {
+          .ref <- as.data.frame(rxSolve(
+            .walkMod,
+            .walkEvents[[.ev]],
+            addDosing = .m$addDosing,
+            subsetNonmem = .m$subsetNonmem,
+            returnType = "data.frame"
+          ))
+          .w <- .walkRows(.walkEvents[[.ev]], .m$code)
+          expect_equal(length(.w$time), nrow(.ref))
+          expect_equal(.w$time, .ref$time)
+          if (!is.null(.ref$resetno)) {
+            expect_equal(as.integer(.w$resetno), as.integer(.ref$resetno))
+          }
+          if (!is.null(.ref$evid)) {
+            expect_equal(as.integer(.w$evid), as.integer(.ref$evid))
+          }
+          for (.c in c("cmt", "ss")) {
+            if (!is.null(.ref[[.c]])) {
+              expect_equal(as.integer(.w[[.c]]), as.integer(.ref[[.c]]), label = .c)
+            }
+          }
+          for (.c in c("amt", "rate", "dur", "ii")) {
+            if (!is.null(.ref[[.c]])) {
+              expect_equal(.w[[.c]], .ref[[.c]], label = .c)
+            }
+          }
+          if (.m$code >= 2L) {
+            # a dull (all-empty) column is the one rxSolve() drops
+            .dull <- setNames(.w$dull == 1L, c("rate", "dur", "ss", "ii"))
+            for (.c in names(.dull)) {
+              expect_equal(.dull[[.c]], is.null(.ref[[.c]]), label = paste("dull", .c))
+            }
           }
         }
-        for (.c in c("amt", "rate", "dur", "ii")) {
-          if (!is.null(.ref[[.c]])) {
-            expect_equal(.w[[.c]], .ref[[.c]], label = .c)
-          }
-        }
-        if (.m$code >= 2L) {
-          # a dull (all-empty) column is the one rxSolve() drops
-          .dull <- setNames(.w$dull == 1L, c("rate", "dur", "ss", "ii"))
-          for (.c in names(.dull)) {
-            expect_equal(.dull[[.c]], is.null(.ref[[.c]]), label = paste("dull", .c))
-          }
-        }
-      })
+      )
     }
   }
   test_that("addDosing = TRUE keeps a string lhs and a factor covariate typed", {
@@ -91,8 +106,11 @@ rxTest({
       sexEff <- SEX
     })
     .d <- data.frame(
-      id = 1, time = c(0, 1, 2, 4, 8), evid = c(1, 0, 0, 0, 0),
-      amt = c(100, 0, 0, 0, 0), cmt = c(1, 2, 2, 2, 2),
+      id = 1,
+      time = c(0, 1, 2, 4, 8),
+      evid = c(1, 0, 0, 0, 0),
+      amt = c(100, 0, 0, 0, 0),
+      cmt = c(1, 2, 2, 2, 2),
       SEX = factor(c("F", "M", "F", "M", "F"))
     )
     .obs <- as.data.frame(rxSolve(.m, .d, addDosing = FALSE))
