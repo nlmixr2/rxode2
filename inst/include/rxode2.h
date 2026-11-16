@@ -162,6 +162,12 @@ int rxDfWalkInit(void *state, int stateSize, rx_solve *rx,
                  rx_solving_options_ind *ind, int doDose, int countOnly);
 int rxDfWalkStep(void *state, int i, double *out, int nOut);
 void rxDfWalkDull(const void *state, int *dull);
+int rxDfKeepSetup(rx_solve *rx);
+int rxDfKeepFirst(rx_solve *rx, int solveid);
+void rxDfKeepRow(rx_solve *rx, rx_solving_options_ind *ind, int solveid,
+                 int fid, int i, double t, double *out);
+SEXP rxDfKeepCols(SEXP vals);
+SEXP getDfLevels(const char *item, rx_solve *rx, R_xlen_t nrow);
 int rxRmvtSetup(void **handle, int d, const double *mu, const double *sigma,
                 int isChol, const double *lower, const double *upper, double nu,
                 double a, double tol, double nlTol, int nlMaxiter);
