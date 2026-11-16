@@ -181,6 +181,8 @@
 <h4 id="compilation-development-version">Compilation<a class="anchor" aria-label="anchor" href="#compilation-development-version"></a></h4>
 <ul><li>A cached model library that exists but will not load (still being linked by another process sharing <code><a href="../reference/rxTempDir.html">rxTempDir()</a></code>, or left empty) is now rebuilt, or waited for under the build lock, instead of failing with “something went wrong in compilation”. Libraries are linked to a private name and renamed into place, so another process never loads a partly written one (<a href="https://github.com/nlmixr2/rxode2/issues/1558" class="external-link">#1558</a>).</li>
 <li>R’s <code>CFLAGS</code> is now read once per session instead of running <code>R CMD config CFLAGS</code> before every model compile; it is re-read when a Makevars file changes (<a href="https://github.com/nlmixr2/rxode2/issues/1675" class="external-link">#1675</a>, <a href="https://github.com/nlmixr2/rxode2/issues/1711" class="external-link">#1711</a>).</li>
+<li>
+<code><a href="../reference/rxModelVars.html">rxModelVars()</a></code> no longer has a <code>timeId</code> element, the session time of a model’s first translation that nothing read; the same model now serializes identically across sessions. <code>md5</code> and the <code>splitInfusion*</code> elements move down one index, and <code>rxModelVars</code> saved by earlier versions are still read correctly (<a href="https://github.com/nlmixr2/rxode2/issues/1729" class="external-link">#1729</a>).</li>
 </ul></div>
 <div class="section level4">
 <h4 id="solving-development-version">Solving<a class="anchor" aria-label="anchor" href="#solving-development-version"></a></h4>
@@ -208,6 +210,7 @@
 <li><p>A steady-state infusion into a compartment whose <code>alag()</code> is an exact multiple of <code>ii</code> now gives the record’s own lagged infusion (and those of the intervals in between); they were dropped, so the profile decayed from the dose arrival time on (<a href="https://github.com/nlmixr2/rxode2/issues/1590" class="external-link">#1590</a>).</p></li>
 <li><p>An <code>ss = 2</code> infusion (fixed or modeled rate or duration) into a compartment with <code>f()</code> now solves without an <code>alag()</code>; it stopped with <code>SS=2 &amp; Modeled F does not work</code> although the same regimen with <code>alag() &lt;- 0</code> solved and matched explicit dosing (<a href="https://github.com/nlmixr2/rxode2/issues/1602" class="external-link">#1602</a>).</p></li>
 <li><p>A steady-state infusion lasting exactly <code>ii</code> (fixed <code>rate</code> or <code>dur</code>) into a compartment with an <code>alag()</code> now stays on until its own lagged dose ends; with <code>ssAtDoseTime = TRUE</code> it turned off <code>alag()</code> too early (<a href="https://github.com/nlmixr2/rxode2/issues/1590" class="external-link">#1590</a>).</p></li>
+<li><p>A steady-state dose with a modeled <code>dur()</code> that follows a zero-amount record (for example a zero <code>evid = 5</code> replace) is now solved as an infusion; the duration check read the wrong record and solved it as a bolus (<a href="https://github.com/nlmixr2/rxode2/issues/1602" class="external-link">#1602</a>).</p></li>
 </ul></div>
 </div>
 <div class="section level3">
