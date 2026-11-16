@@ -16,6 +16,11 @@
 
 ## Bug fixes
 
+- `rxSolve(..., addDosing = TRUE)` no longer crashes with a string
+  assignment (`x <- "a"`) or a factor covariate in the output: the
+  `rate`/`dur`/`ii` columns were allocated after the covariates but filled
+  before `time`, so every later column was written three positions off.
+
 ### Delay differential equations
 - `delay()` models now solve with `method = "dop5"` and `method = "bs"`.
   Both are dense solvers, but they recorded no `delay()` history, so

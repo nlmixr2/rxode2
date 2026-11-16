@@ -75,4 +75,36 @@ rxTest({
       })
     }
   }
+  test_that("addDosing = TRUE keeps a string lhs and a factor covariate typed", {
+    # the dose columns were allocated after the covariates but filled before
+    # time, so every later column was written three positions off: a factor
+    # column (string lhs, factor covariate) crashed the solve
+    .m <- rxode2({
+      ka <- 1.2
+      cl <- 3
+      v <- 30
+      d / dt(depot) <- -ka * depot
+      d / dt(center) <- ka * depot - cl / v * center
+      cp <- center / v
+      grp <- "low"
+      if (cp > 1) grp <- "high"
+      sexEff <- SEX
+    })
+    .d <- data.frame(
+      id = 1, time = c(0, 1, 2, 4, 8), evid = c(1, 0, 0, 0, 0),
+      amt = c(100, 0, 0, 0, 0), cmt = c(1, 2, 2, 2, 2),
+      SEX = factor(c("F", "M", "F", "M", "F"))
+    )
+    .obs <- as.data.frame(rxSolve(.m, .d, addDosing = FALSE))
+    for (.sn in c(TRUE, FALSE)) {
+      .all <- as.data.frame(rxSolve(.m, .d, addDosing = TRUE, subsetNonmem = .sn))
+      expect_s3_class(.all$grp, "factor")
+      expect_identical(levels(.all$grp), levels(.obs$grp))
+      .w <- .all$evid == 0
+      expect_identical(.all$grp[.w], .obs$grp)
+      expect_equal(.all$cp[.w], .obs$cp)
+      expect_equal(.all$time[.w], .obs$time)
+      expect_identical(.all$SEX[.w], .obs$SEX)
+    }
+  })
 })

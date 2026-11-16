@@ -818,17 +818,21 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
     }
     // amt
     df[i++] = NumericVector(doseTimeNrow);
+    if (nmevid) {
+      // rate, dur, ii: the fill writes them right after amt, before time
+      df[i++] = NumericVector(doseTimeNrow);
+      df[i++] = NumericVector(doseTimeNrow);
+      df[i++] = NumericVector(doseTimeNrow);
+    }
   } else if (nevid2col) {
     df[i++] = IntegerVector((R_xlen_t)rx->nr);
   }
   doseCols += nevid2col;
   CharacterVector paramNames = rxParamNames(op->modNamePtr);
   CharacterVector fkeepNames = get_fkeepn();
-  // time comes in here
-  df[md + sm +ms + doseCols + 2*nmevid] = NumericVector(doseTimeNrow);
   CharacterVector lhsNames = rxLhsNames(op->modNamePtr);
-  // time
-  int i0 = md + sm + ms + doseCols + 2*nmevid;
+  // time, after the dose columns (cmt, ss, rate, dur and ii under nmevid)
+  int i0 = md + sm + ms + doseCols + 5*nmevid;
   df[i0] = NumericVector(doseTimeNrow);
   i0++;
 
@@ -847,11 +851,11 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
   i0+=nlhs;
 
   // Rest is numeric
-  for (i = i0; i < ncols + doseCols + nidCols + 2*nmevid; i++){
+  for (i = i0; i < ncols + doseCols + nidCols + 5*nmevid; i++){
     df[i] = NumericVector((R_xlen_t)rx->nr);
   }
   // These could be factors
-  j = ncols + doseCols + nidCols + 2*nmevid;
+  j = ncols + doseCols + nidCols + 5*nmevid;
   const char *charItem;
   int *par_cov = op->par_cov;
   SEXP tmp;
@@ -869,13 +873,8 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
     df[j++] = getDfLevels(charItem, rx, covKeepNrow);
   }
   ncols += ncols2;
-  for (i = ncols + doseCols + nidCols + 2*nmevid;
-       i < ncols + doseCols + nidCols + nmevid*5 - nkeep;
-       i++){
-    df[i] = NumericVector(doseTimeNrow);
-  }
-  // keep items (when nmevid==0 these are the same positions as the main-block
-  // keep allocated by getDfLevels above; use covKeepNrow so the size matches).
+  // keep items (the same positions as the keep allocated by getDfLevels above;
+  // use covKeepNrow so the size matches).
   j = 0;
   for (i = ncols + doseCols + nidCols + nmevid*5 - nkeep;
        i < ncols + doseCols + nidCols + nmevid*5;
@@ -951,7 +950,7 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
     }
   }
   // Pre-compute LHS factor level counts for bounds checking in the fill loop.
-  int _lhsColStart = nidCols + doseCols + 2*nmevid + 1; // +1 for time column
+  int _lhsColStart = nidCols + doseCols + 5*nmevid + 1; // +1 for time column
   std::vector<int> lhsLevelCount(nlhs, 0);
   for (int _lhsJ = 0; _lhsJ < nlhs; _lhsJ++) {
     if (op->lhs_str[_lhsJ] == 1) {
