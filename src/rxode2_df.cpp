@@ -414,6 +414,23 @@ static inline void rxDfWalkRowCols(rxDfWalkState *w, int i, int evid, double *ou
   out[RXDF_OUT_TIME] = t;
 }
 
+// Check the walk state and output buffer, and reset the buffer
+static inline bool rxDfWalkOutInit(rxDfWalkState *w, double *out, int nOut) {
+  if (w == NULL || w->magic != RXDF_WALK_MAGIC) return false;
+  if (out == NULL || nOut < RXDF_OUT_N) return false;
+  for (int k = 0; k < RXDF_OUT_N; ++k) out[k] = NA_REAL;
+  out[RXDF_OUT_SIMERR] = 0;
+  out[RXDF_OUT_NEWIND] = 0;
+  return true;
+}
+
+// Whether the record is an output row under addDosing
+static inline int rxDfWalkOutRow(rxDfWalkState *w, int evid) {
+  if (w->doDose) return 1;
+  if (w->evid0 == 0) return isObs(evid);
+  return w->evid0 == 1 && evid == 0;
+}
+
 // Walk record position i (time order) of the subject; positions must be
 // walked in order from 0.  Returns RXDF_SKIP, RXDF_LHS, RXDF_ROW or RXDF_KNOT
 // (or RXDF_BAD) and fills out[0..RXDF_OUT_N-1].  The caller calls calc_lhs()
@@ -421,13 +438,8 @@ static inline void rxDfWalkRowCols(rxDfWalkState *w, int i, int evid, double *ou
 // subject's newind to 2 when out[RXDF_OUT_NEWIND] is 1.
 extern "C" int rxDfWalkStep(void *state, int i, double *out, int nOut) {
   rxDfWalkState *w = (rxDfWalkState*)state;
-  if (w == NULL || w->magic != RXDF_WALK_MAGIC || out == NULL || nOut < RXDF_OUT_N) {
-    return RXDF_BAD;
-  }
+  if (!rxDfWalkOutInit(w, out, nOut)) return RXDF_BAD;
   rx_solving_options_ind *ind = w->ind;
-  for (int k = 0; k < RXDF_OUT_N; ++k) out[k] = NA_REAL;
-  out[RXDF_OUT_SIMERR] = 0;
-  out[RXDF_OUT_NEWIND] = 0;
   rxDfWalkReset(w, i);
   int evid = getEvid(ind, ind->ix[i]);
   w->evidPrev = evid;
@@ -439,7 +451,7 @@ extern "C" int rxDfWalkStep(void *state, int i, double *out, int nOut) {
     out[RXDF_OUT_NEWIND] = 1;
     return RXDF_KNOT;
   }
-  int outRow = w->doDose || (w->evid0 == 0 && isObs(evid)) || (w->evid0 == 1 && evid == 0);
+  int outRow = rxDfWalkOutRow(w, evid);
   out[RXDF_OUT_SIMERR] = outRow;
   if (w->subsetEvid && rxDfWalkSubsetDrop(w, evid)) return RXDF_LHS;
   out[RXDF_OUT_NEWIND] = 1;
