@@ -26,6 +26,7 @@ List etTrans(List inData, const RObject &mv, bool addCmt,
              bool ssAtDoseTime,
              Nullable<List> iCovIn,
              std::string tieOrder = "evid");
+std::string rxControlTieOrder(const List &control);
 SEXP nestingInfo_(SEXP omega, List data);
 
 List rxExpandNesting(const RObject& obj, List& nestingInfo,
@@ -829,7 +830,8 @@ SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS) {
                                control[Rxc_addlKeepsCov],
                                control[Rxc_addlDropSs],
                                control[Rxc_ssAtDoseTime],
-                               control[Rxc_iCov]));
+                               control[Rxc_iCov],
+                               rxControlTieOrder(control)));
       rxModelsAssign(".nestEvents", events);
       RObject cls = Rf_getAttrib(events, R_ClassSymbol);
       // a shallow copy: etTrans() hands back the caller's own translated table
@@ -1012,7 +1014,8 @@ SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS) {
                                control[Rxc_addlKeepsCov],
                                control[Rxc_addlDropSs],
                                control[Rxc_ssAtDoseTime],
-                               control[Rxc_iCov]));
+                               control[Rxc_iCov],
+                               rxControlTieOrder(control)));
       rxModelsAssign(".nestEvents", events);
     } else if (!Rf_inherits(events, "rxEtTrans")){
       // No class is "rxEtTrans" (a translated table is "rxEtTran"), so this
@@ -1025,7 +1028,8 @@ SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS) {
                                control[Rxc_addlKeepsCov],
                                control[Rxc_addlDropSs],
                                control[Rxc_ssAtDoseTime],
-                               control[Rxc_iCov]));
+                               control[Rxc_iCov],
+                               rxControlTieOrder(control)));
       rxModelsAssign(".nestEvents", events);
     }
     int nobs =  Rf_length(VECTOR_ELT(events, 0));
@@ -1038,7 +1042,9 @@ SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS) {
     List bounds = rx_protect.protect(lotriGetBounds(sigmaLotri, R_NilValue, R_NilValue));
     NumericVector upper = bounds[0];
     NumericVector lower = bounds[1];
-    SEXP sigmaMat = rxRmvnSEXP(n2, R_NilValue, sigmaList,
+    // rxRmvnSEXP() returns a freshly allocated matrix as a bare SEXP.
+    // We need to keep it protected across lotriMaxNu and rxModelsAssign.
+    SEXP sigmaMat = rx_protect.protect(rxRmvnSEXP(n2, R_NilValue, sigmaList,
                                upper, lower, // lower upper
                                control[Rxc_nCoresRV],
                                LogicalVector::create(false), // isChol
@@ -1046,7 +1052,7 @@ SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS) {
                                NumericVector::create(0.4), // a
                                NumericVector::create(2.05), // tol
                                NumericVector::create(1e-10), // nlTol
-                               IntegerVector::create(100)); // nlMaxiter
+                               IntegerVector::create(100))); // nlMaxiter
     if (Rf_length(sigmaList) >= 1 &&
         asDouble(lotriMaxNu(sigmaLotri), "lotriMaxNu(sigmaLotri)") > 1.0) {
       rxModelsAssign(".sigmaL", sigmaList);

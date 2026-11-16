@@ -701,20 +701,20 @@ extern "C" SEXP _rxode2_rxPriorLogDensity(SEXP specSEXP, SEXP thetaS, SEXP omega
   rx_prior_spec_t *spec = (rx_prior_spec_t *)R_ExternalPtrAddr(specSEXP);
   int thetaLen = LENGTH(thetaS);
   int omegaDim = (int)std::sqrt((double)LENGTH(omegaS));
-  SEXP gradThetaS = PROTECT(Rf_allocVector(REALSXP, thetaLen));
-  SEXP gradOmegaS = PROTECT(Rf_allocVector(REALSXP, (R_xlen_t)omegaDim * omegaDim));
+  rxProtect rx_protect;
+  SEXP gradThetaS = rx_protect.protect(Rf_allocVector(REALSXP, thetaLen));
+  SEXP gradOmegaS = rx_protect.protect(Rf_allocVector(REALSXP, (R_xlen_t)omegaDim * omegaDim));
   double *gradTheta = REAL(gradThetaS), *gradOmega = REAL(gradOmegaS);
   for (int i = 0; i < thetaLen; ++i) gradTheta[i] = 0.0;
   for (int i = 0; i < omegaDim * omegaDim; ++i) gradOmega[i] = 0.0;
   double value = rxPriorLogDensityEval(spec, REAL(thetaS), thetaLen,
                                        REAL(omegaS), omegaDim, gradTheta, gradOmega);
-  SEXP valueS = PROTECT(Rf_allocVector(REALSXP, 1));
+  SEXP valueS = rx_protect.protect(Rf_allocVector(REALSXP, 1));
   REAL(valueS)[0] = value;
-  SEXP ret = PROTECT(Rf_allocVector(VECSXP, 3));
+  SEXP ret = rx_protect.protect(Rf_allocVector(VECSXP, 3));
   SET_VECTOR_ELT(ret, 0, valueS);
   SET_VECTOR_ELT(ret, 1, gradThetaS);
   SET_VECTOR_ELT(ret, 2, gradOmegaS);
-  UNPROTECT(4);
   return ret;
 }
 
@@ -737,10 +737,10 @@ extern "C" SEXP _rxode2_rxPriorOmegaToCholOmegaInvGrad(SEXP omegaBlockS, SEXP gr
   bool ok = rxPriorOmegaToCholOmegaInvGrad(REAL(omegaBlockS), p, REAL(gradOmegaBlockS),
                                            rowMajor.data());
   if (!ok) return R_NilValue;
-  SEXP retS = PROTECT(Rf_allocMatrix(REALSXP, p, p));
+  rxProtect rx_protect;
+  SEXP retS = rx_protect.protect(Rf_allocMatrix(REALSXP, p, p));
   double *ret = REAL(retS);
   for (int i = 0; i < p; ++i)
     for (int j = 0; j < p; ++j) ret[i + j * p] = rowMajor[i * p + j]; // row-major -> column-major
-  UNPROTECT(1);
   return retS;
 }

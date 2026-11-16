@@ -77,7 +77,7 @@ static inline SEXP linCmtParseSEXP(linCmtStruct *lin) {
   if (lin->trans == -1) {
     /* _linCmtParsePro tracks caller's (linCmtGenSEXP) protect count;
      * must manually unprotect before longjmp since cleanup doesn't fire on longjmp */
-    UNPROTECT(_linCmtParsePro);
+    UNPROTECT(_linCmtParsePro); // check-protect: allow (caller's count, before longjmp)
     _linCmtParsePro=0;
     _rxode2parse_unprotect();
     err_trans("could not figure out linCmt() model");

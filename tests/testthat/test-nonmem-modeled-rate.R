@@ -159,7 +159,7 @@ rxTest({
         .base
       )
       .s <- rxSolve(.m, .dd, nonmem = TRUE, addDosing = FALSE, atol = 1e-12, rtol = 1e-12, returnType = "data.frame")
-      expect_equal(tail(.s$cp, 3), .ref, tolerance = 1e-8, info = .ev)
+      expect_equal(tail(.s$cp, 3), .ref, tolerance = 1e-8, info = paste("evid", .ev))
     }
   })
 

@@ -980,7 +980,19 @@ rxGetModel <- function(
       .stateInfo <- .rxGenFunState(.ret)
       .s <- .rxLoadPrune(.ret, FALSE, pkTime = TRUE)
       .s$..stateInfo <- .stateInfo
-      .rxJacobian(.s)
+      if (rxIs(calcSens, "logical") && calcSens) {
+        calcSens <- .rxParams(model, TRUE)
+      }
+      .sensPars <- .rxParams(model, TRUE)
+      calcSens <- .rxSensVarNames(calcSens, .sensPars)
+      if (!is.null(calcSens2)) {
+        calcSens2 <- .rxSensVarNames(calcSens2, .sensPars)
+      }
+      if (!is.null(calcSens3)) {
+        calcSens3 <- .rxSensVarNames(calcSens3, .sensPars)
+      }
+      ## the parameter columns of the Jacobian are exactly the ones differentiated
+      .rxJacobian(.s, unique(c(calcSens, calcSens2, calcSens3)))
       ## base ODE states, captured BEFORE .rxSens splices in the rx__sens_*
       ## variational compartments -- used to build the full-system stiff Jacobian
       ## by reusing the F_X/F_p just computed (see .rxFwdSensJacBlock).
@@ -990,11 +1002,6 @@ rxGetModel <- function(
       }
       if (is.null(calcJac)) {
         calcJac <- FALSE
-      }
-      if (rxIs(calcSens, "logical")) {
-        if (calcSens) {
-          calcSens <- .rxParams(model, TRUE)
-        }
       }
       ## .rxSens augments the sensitivity ODEs with the delayed (variational)
       ## terms for delay() models (no-op otherwise).
@@ -2210,6 +2217,51 @@ rxNumLoaded <- function() {
   length(grep(rex::rex(start, "rx_", n_times(any, 32), or("_x64", "_i386", "_", "")), names(.dlls)))
 }
 
+.rxRConfigCflagsCache <- new.env(parent = emptyenv())
+#' `R CMD config CFLAGS`, cached per session
+#'
+#' The subprocess costs ~0.05 s per compile.  Its output depends only on R and
+#' the Makevars files it reads, so the cache key is those files' paths and
+#' modification times; editing or repointing a Makevars re-reads it.
+#'
+#' @return R's `CFLAGS`, or `""` when it cannot be read (not cached)
+#' @noRd
+.rxRConfigCflags <- function() {
+  .env <- Sys.getenv(c("R_MAKEVARS_USER", "R_MAKEVARS_SITE", "HOME"))
+  .files <- c(
+    .env[1:2],
+    file.path(R.home("etc"), "Makevars.site"),
+    path.expand(file.path(
+      "~",
+      ".R",
+      c("Makevars", "Makevars.win", "Makevars.win64", "Makevars.ucrt", paste0("Makevars-", R.version$platform))
+    ))
+  )
+  .files <- .files[.files != ""]
+  .key <- paste(c(.env, .files, as.character(file.mtime(.files))), collapse = "\r")
+  if (identical(.rxRConfigCflagsCache$key, .key)) {
+    return(.rxRConfigCflagsCache$value)
+  }
+  .cflags <- tryCatch(
+    gsub(
+      "\n",
+      "",
+      rawToChar(
+        sys::exec_internal(
+          file.path(R.home("bin"), "R"),
+          c("CMD", "config", "CFLAGS")
+        )$stdout
+      )
+    ),
+    error = function(e) ""
+  )
+  if (.cflags != "") {
+    .rxRConfigCflagsCache$key <- .key
+    .rxRConfigCflagsCache$value <- .cflags
+  }
+  .cflags
+}
+
 #' Make `rxode2.compile.O` actually take effect for `R CMD SHLIB`
 #'
 #' `R CMD SHLIB` builds `ALL_CFLAGS = $(PKG_CFLAGS) $(CPICFLAGS) $(SHLIB_CFLAGS)
@@ -2239,19 +2291,7 @@ rxNumLoaded <- function() {
   if (is.na(.o) || .o == "") {
     return(NULL)
   }
-  .cflags <- tryCatch(
-    gsub(
-      "\n",
-      "",
-      rawToChar(
-        sys::exec_internal(
-          file.path(R.home("bin"), "R"),
-          c("CMD", "config", "CFLAGS")
-        )$stdout
-      )
-    ),
-    error = function(e) ""
-  )
+  .cflags <- .rxRConfigCflags()
   if (.cflags == "") {
     return(NULL)
   }
