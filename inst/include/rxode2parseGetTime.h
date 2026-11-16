@@ -219,6 +219,7 @@ static inline int nonmemRateStarted(rx_solving_options_ind *ind, int i, int on, 
 // at or before it, ends after it.  Sets *cmtOut; 0 when not running.
 static inline double nonmemRunningRate(rx_solving_options_ind *ind, int i, int on,
                                        double tNow, int ncmt, int *cmtOut) {
+  if (on < 0 || on + 1 >= ind->n_all_times_orig) return 0.0;
   int wh, cmt, wh100, whI, wh0;
   getWh(getEvid(ind, on), &wh, &cmt, &wh100, &whI, &wh0);
   if (whI != EVIDF_MODEL_RATE_ON || wh0 != EVID0_REGULAR) return 0.0;
@@ -259,6 +260,18 @@ static inline int nonmemRereadRate(rx_solving_options_ind *ind, int j, int on, i
   return 1;
 }
 
+// rxControl(nonmem = TRUE): the solving options when modeled rates are re-read
+// after the record at sorted position i; NULL when they are not
+static inline rx_solving_options *nonmemRereadOp(rx_solve *rx, rx_solving_options_ind *ind,
+                                                 int i) {
+  if (!rx->nonmem || ind->idose == NULL || ind->timeThread == NULL) return NULL;
+  rx_solving_options *op = (ind->op ? ind->op : &op_global);
+  if (_rxEsActive || op->adjoint) return NULL;
+  int raw = ind->ix[i];
+  if (raw < 0 || raw >= ind->n_all_times_orig) return NULL;
+  return op;
+}
+
 // rxControl(nonmem = TRUE) (rxode2#1586): like NONMEM's R1, a modeled rate
 // runs on (t[j-1], t[j]] at the rate computed with data record j until its
 // amount is delivered.  Called after the record at sorted position i is
@@ -269,24 +282,20 @@ static inline int nonmemRereadRate(rx_solving_options_ind *ind, int j, int on, i
 // the rate of the dose, which their d(rate)/dp forcing assumes.
 static inline int updateNonmemModeledRates(rx_solve *rx, rx_solving_options_ind *ind,
                                            int i, double *yp, double *InfusionRate) {
-  if (!rx->nonmem || ind->idose == NULL || ind->timeThread == NULL) return 0;
-  rx_solving_options *op = (ind->op ? ind->op : &op_global);
-  if (_rxEsActive || op->adjoint) return 0;
+  rx_solving_options *op = nonmemRereadOp(rx, ind, i);
+  if (op == NULL) return 0;
   int raw = ind->ix[i];
-  if (raw < 0 || raw >= ind->n_all_times_orig) return 0;
   double tNow = ind->timeThread[raw];
   int dataRec = nonmemDataRecord(ind, raw);
   int ncmt = op->neq + op->extraCmt;
   int j = -2, ret = 0;
   for (int d = 0; d < ind->ndoses; ++d) {
     int on = ind->idose[d], cmt = -1;
-    if (on < 0 || on + 1 >= ind->n_all_times_orig) continue;
     if (!dataRec && on != raw) continue;
     double rOld = nonmemRunningRate(ind, i, on, tNow, ncmt, &cmt);
     if (rOld == 0.0) continue;
     if (j == -2) j = nonmemNextRecord(ind, i);
-    if (j < 0) return ret;
-    int moved = nonmemRereadRate(ind, j, on, cmt, rOld, tNow, yp, InfusionRate);
+    int moved = (j < 0) ? -1 : nonmemRereadRate(ind, j, on, cmt, rOld, tNow, yp, InfusionRate);
     if (moved < 0) return ret;
     ret |= moved;
   }
