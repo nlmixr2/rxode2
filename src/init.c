@@ -529,6 +529,7 @@ double *getIndSolveLast2(rx_solving_options_ind* ind);
 void setIndSolveLast2(rx_solving_options_ind* ind, double* solveLast2);
 
 SEXP _rxTestThreadIdSlots(SEXP ptrs);
+SEXP _rxTestDfWalkSlots(SEXP ptrs, SEXP doDose);
 SEXP _rxode2_rxode2Ptr(void) {
   rxProtectGuard;
   // Create an external pointer for _lotriLstToMat
@@ -648,8 +649,11 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2rxRmvtDraw = rxP(R_MakeExternalPtrFn((DL_FUNC)&rxRmvtDraw, R_NilValue, R_NilValue));
   SEXP rxode2rxRmvtFree = rxP(R_MakeExternalPtrFn((DL_FUNC)&rxRmvtFree, R_NilValue, R_NilValue));
   SEXP rxode2setIndNewind = rxP(R_MakeExternalPtrFn((DL_FUNC)&setIndNewind, R_NilValue, R_NilValue));
+  SEXP rxode2rxDfWalkInit = rxP(R_MakeExternalPtrFn((DL_FUNC)&rxDfWalkInit, R_NilValue, R_NilValue));
+  SEXP rxode2rxDfWalkStep = rxP(R_MakeExternalPtrFn((DL_FUNC)&rxDfWalkStep, R_NilValue, R_NilValue));
+  SEXP rxode2rxDfWalkDull = rxP(R_MakeExternalPtrFn((DL_FUNC)&rxDfWalkDull, R_NilValue, R_NilValue));
 
-#define nVec 105
+#define nVec 108
   SEXP ret = rxP(Rf_allocVector(VECSXP, nVec));
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -756,6 +760,9 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 102, rxode2rxRmvtDraw);
   SET_VECTOR_ELT(ret, 103, rxode2rxRmvtFree);
   SET_VECTOR_ELT(ret, 104, rxode2setIndNewind);
+  SET_VECTOR_ELT(ret, 105, rxode2rxDfWalkInit);
+  SET_VECTOR_ELT(ret, 106, rxode2rxDfWalkStep);
+  SET_VECTOR_ELT(ret, 107, rxode2rxDfWalkDull);
 
 
   SEXP retN = rxP(Rf_allocVector(STRSXP, nVec));
@@ -871,6 +878,9 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 102, Rf_mkChar("rxode2rxRmvtDraw"));
   SET_STRING_ELT(retN, 103, Rf_mkChar("rxode2rxRmvtFree"));
   SET_STRING_ELT(retN, 104, Rf_mkChar("rxode2setIndNewind"));
+  SET_STRING_ELT(retN, 105, Rf_mkChar("rxode2rxDfWalkInit"));
+  SET_STRING_ELT(retN, 106, Rf_mkChar("rxode2rxDfWalkStep"));
+  SET_STRING_ELT(retN, 107, Rf_mkChar("rxode2rxDfWalkDull"));
 
   // Nothing is validated here.  Every reverse dependency calls this at load, so a
   // check that fails takes them all down at once and they cannot be patched
@@ -960,6 +970,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_powerLDL", (DL_FUNC) &_rxode2_powerLDL, 6},
     {"_rxode2_rxode2Ptr", (DL_FUNC) &_rxode2_rxode2Ptr, 0},
     {"_rxTestThreadIdSlots", (DL_FUNC) &_rxTestThreadIdSlots, 1},
+    {"_rxTestDfWalkSlots", (DL_FUNC) &_rxTestDfWalkSlots, 2},
     {"_rxode2_iniDparserPtr", (DL_FUNC) &_rxode2_iniDparserPtr, 1},
     {"_iniPreciseSumsPtr", (DL_FUNC) &iniPreciseSumsPtr, 1},
     {"_iniLotriPtr", (DL_FUNC) &iniLotriPtr, 1},

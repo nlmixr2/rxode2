@@ -307,6 +307,18 @@ extern "C" {
   typedef void (*setIndNewind_t)(rx_solving_options_ind* ind, int newind);
   extern setIndNewind_t setIndNewind;
 
+  // The record walk rxSolve()'s data frame is built with (RXDF_* in rxode2.h).
+  // rxDfWalkInit(NULL, 0, ...) gives the state size; a caller-owned buffer that
+  // large is then set up for one subject (returns 1, or 0 if too small), and
+  // rxDfWalkStep() walks its records in time order from position 0.  The state
+  // layout is opaque and may change between rxode2 versions.
+  typedef int (*rxDfWalkInit_t)(void *state, int stateSize, rx_solve *rx, rx_solving_options_ind *ind, int doDose, int countOnly);
+  extern rxDfWalkInit_t rxDfWalkInit;
+  typedef int (*rxDfWalkStep_t)(void *state, int i, double *out, int nOut);
+  extern rxDfWalkStep_t rxDfWalkStep;
+  typedef void (*rxDfWalkDull_t)(const void *state, int *dull);
+  extern rxDfWalkDull_t rxDfWalkDull;
+
   typedef void (*mexpit_t)(double *x, double *p, int n);
   extern mexpit_t mexpit;
 
@@ -491,6 +503,9 @@ extern "C" {
       rxRmvtDraw = (rxRmvtDraw_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 102));
       rxRmvtFree = (rxRmvtFree_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 103));
       setIndNewind = (setIndNewind_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 104));
+      rxDfWalkInit = (rxDfWalkInit_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 105));
+      rxDfWalkStep = (rxDfWalkStep_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 106));
+      rxDfWalkDull = (rxDfWalkDull_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 107));
     }
     return R_NilValue;
   }
@@ -601,6 +616,9 @@ extern "C" {
   rxRmvtDraw_t rxRmvtDraw = NULL;                       \
   rxRmvtFree_t rxRmvtFree = NULL;                       \
   setIndNewind_t setIndNewind = NULL;                   \
+  rxDfWalkInit_t rxDfWalkInit = NULL;                   \
+  rxDfWalkStep_t rxDfWalkStep = NULL;                   \
+  rxDfWalkDull_t rxDfWalkDull = NULL;                   \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \
