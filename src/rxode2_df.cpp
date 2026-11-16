@@ -232,40 +232,58 @@ extern "C" void rxDfWalkDull(const void *state, int *dull) {
   dull[3] = w->dullIi;
 }
 
-// The NONMEM evid, cmt and ss columns of dose record position i
-static inline void rxDfWalkNmDose(rxDfWalkState *w, int evid, double curAmt, double *out) {
-  int wh = 0, cmt = 0, wh100 = 0, whI = 0, wh0 = 0;
-  getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
-  int code;
-  if (evid == 3) {
-    code = 3;
-  } else if (whI == EVIDF_MODEL_RATE_OFF) {
+// The NONMEM evid code of a dose record (and the dull flags it clears)
+static inline int rxDfWalkNmEvidCode(rxDfWalkState *w, int evid, int whI, double curAmt) {
+  if (evid == 3) return 3;
+  if (whI == EVIDF_MODEL_RATE_OFF || whI == EVIDF_MODEL_DUR_OFF) {
     w->dullRate = 0;
-    code = -1;
-  } else if (whI == EVIDF_MODEL_DUR_OFF) {
-    w->dullRate = 0;
-    code = -2;
-  } else if (whI == EVIDF_REPLACE) {
-    code = 5;
-  } else if (whI == EVIDF_MULT) {
-    code = 6;
-  } else if (curAmt > 0) {
-    code = 1;
+    return (whI == EVIDF_MODEL_RATE_OFF) ? -1 : -2;
+  }
+  if (whI == EVIDF_REPLACE) return 5;
+  if (whI == EVIDF_MULT) return 6;
+  if (curAmt > 0) {
     if (whI == EVIDF_INF_RATE || whI == EVIDF_MODEL_DUR_ON || whI == EVIDF_MODEL_RATE_ON) {
       w->dullRate = 0;
     } else if (whI == EVIDF_INF_DUR) {
       w->dullDur = 0;
     }
-  } else if (whI == EVIDF_INF_RATE) {
-    w->dullRate = 0;
-    code = -10;
-  } else if (whI == EVIDF_INF_DUR) {
-    w->dullDur = 0;
-    code = -20;
-  } else {
-    code = 1;
+    return 1;
   }
-  out[RXDF_OUT_EVID] = code;
+  if (whI == EVIDF_INF_RATE) {
+    w->dullRate = 0;
+    return -10;
+  }
+  if (whI == EVIDF_INF_DUR) {
+    w->dullDur = 0;
+    return -20;
+  }
+  return 1;
+}
+
+// The NONMEM ss column of a dose record (and the dull flags it clears)
+static inline double rxDfWalkNmSs(rxDfWalkState *w, int wh0) {
+  switch (wh0) {
+  case EVID0_SS2:
+    w->dullSS = 0;
+    return 2;
+  case EVID0_SS:
+    w->dullSS = 0;
+    return 1;
+  case 40:
+    w->dullRate = 0;
+    w->dullSS = 0;
+    w->dullIi = 0;
+    return 1;
+  default:
+    return 0;
+  }
+}
+
+// The NONMEM evid, cmt and ss columns of dose record position i
+static inline void rxDfWalkNmDose(rxDfWalkState *w, int evid, double curAmt, double *out) {
+  int wh = 0, cmt = 0, wh100 = 0, whI = 0, wh0 = 0;
+  getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
+  out[RXDF_OUT_EVID] = rxDfWalkNmEvidCode(w, evid, whI, curAmt);
   if (evid == 2 || evid == 3) {
     out[RXDF_OUT_CMT] = NA_REAL;
   } else if (wh0 == 30) {
@@ -273,25 +291,7 @@ static inline void rxDfWalkNmDose(rxDfWalkState *w, int evid, double curAmt, dou
   } else {
     out[RXDF_OUT_CMT] = cmt + 1;
   }
-  switch (wh0) {
-  case EVID0_SS2:
-    w->dullSS = 0;
-    out[RXDF_OUT_SS] = 2;
-    break;
-  case EVID0_SS:
-    w->dullSS = 0;
-    out[RXDF_OUT_SS] = 1;
-    break;
-  case 40:
-    w->dullRate = 0;
-    w->dullSS = 0;
-    w->dullIi = 0;
-    out[RXDF_OUT_SS] = 1;
-    break;
-  default:
-    out[RXDF_OUT_SS] = 0;
-    break;
-  }
+  out[RXDF_OUT_SS] = rxDfWalkNmSs(w, wh0);
 }
 
 // The NONMEM amt, rate, dur and ii columns of dose record position i; takes
@@ -338,6 +338,82 @@ static inline void rxDfWalkNmAmt(rxDfWalkState *w, int i, double *out) {
   }
 }
 
+// Before record position i: a reset (EVID 3) record before it shifts time
+static inline void rxDfWalkReset(rxDfWalkState *w, int i) {
+  rx_solving_options_ind *ind = w->ind;
+  if (!w->countOnly) ind->idx = i;
+  if (w->evidPrev != 3) return;
+  if (!w->countOnly) ind->curShift -= w->rx->maxShift;
+  w->resetno++;
+}
+
+// A dose record: its infusion type, the dull flags it clears and tlast
+static inline void rxDfWalkDoseStart(rxDfWalkState *w, int evid, double *curT) {
+  rx_solving_options_ind *ind = w->ind;
+  getWh(evid, &(ind->wh), &(ind->cmt), &(ind->wh100), &(ind->whI), &(ind->wh0));
+  switch (ind->whI) {
+  case EVIDF_INF_RATE:
+  case EVIDF_MODEL_DUR_ON:
+  case EVIDF_MODEL_DUR_OFF:
+  case EVIDF_MODEL_RATE_ON:
+  case EVIDF_MODEL_RATE_OFF:
+    w->dullRate = 0;
+    break;
+  case EVIDF_INF_DUR:
+    w->dullDur = 0;
+    break;
+  }
+  handleTlastInline(curT, ind);
+}
+
+// addDosing = TRUE with subsetNonmem: whether the record is left out (an
+// mtime() record, an infusion's modeled stop, a dose of no amount); rxode2_df()
+// leaves these before setting newind
+static inline bool rxDfWalkSubsetDrop(rxDfWalkState *w, int evid) {
+  if (isObs(evid) && evid >= 10) return true;
+  if (!isDose(evid)) return false;
+  int wh = 0, cmt = 0, wh100 = 0, whI = 0, wh0 = 0;
+  getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
+  if (whI == EVIDF_MODEL_RATE_OFF || whI == EVIDF_MODEL_DUR_OFF) {
+    w->dullRate = 0;
+    w->di++;
+    return true;
+  }
+  if (whI == EVIDF_INF_RATE || whI == EVIDF_MODEL_RATE_ON || whI == EVIDF_MODEL_DUR_ON) {
+    w->dullRate = 0;
+  } else if (whI == EVIDF_INF_DUR) {
+    w->dullDur = 0;
+  }
+  if (getDoseNumber(w->ind, w->di) <= 0) {
+    w->di++;
+    return true;
+  }
+  return false;
+}
+
+// The resetno, evid, dose and time columns of the row at position i
+static inline void rxDfWalkRowCols(rxDfWalkState *w, int i, int evid, double *out) {
+  rx_solving_options_ind *ind = w->ind;
+  out[RXDF_OUT_RESETNO] = w->resetno + 1;
+  out[RXDF_OUT_EVID] = evid;
+  if (w->doDose && w->nmevid && isObs(evid)) {
+    out[RXDF_OUT_EVID] = (evid >= 10) ? evid + 91 : evid;
+    out[RXDF_OUT_SS] = 0;
+  } else if (w->doDose && w->nmevid) {
+    rxDfWalkNmDose(w, evid, getDoseNumber(ind, w->di), out);
+    rxDfWalkNmAmt(w, i, out);
+  } else if (w->doDose && !isObs(evid)) {
+    out[RXDF_OUT_AMT] = getDoseNumber(ind, w->di);
+    w->di++;
+  }
+  double t = getTime_(ind->ix[i], ind) + ind->curShift;
+  if (evid == 3) {
+    t -= w->rx->maxShift;
+    if (fabs(t) < sqrt(DBL_EPSILON)) t = 0.0;
+  }
+  out[RXDF_OUT_TIME] = t;
+}
+
 // Walk record position i (time order) of the subject; positions must be
 // walked in order from 0.  Returns RXDF_SKIP, RXDF_LHS, RXDF_ROW or RXDF_KNOT
 // (or RXDF_BAD) and fills out[0..RXDF_OUT_N-1].  The caller calls calc_lhs()
@@ -352,64 +428,20 @@ extern "C" int rxDfWalkStep(void *state, int i, double *out, int nOut) {
   for (int k = 0; k < RXDF_OUT_N; ++k) out[k] = NA_REAL;
   out[RXDF_OUT_SIMERR] = 0;
   out[RXDF_OUT_NEWIND] = 0;
-  if (!w->countOnly) {
-    ind->idx = i;
-    if (w->evidPrev == 3) {
-      ind->curShift -= w->rx->maxShift;
-      w->resetno++;
-    }
-  } else if (w->evidPrev == 3) {
-    w->resetno++;
-  }
+  rxDfWalkReset(w, i);
   int evid = getEvid(ind, ind->ix[i]);
   w->evidPrev = evid;
   if (evid == 9) return RXDF_SKIP;
   double curT = w->countOnly ? NA_REAL : getTime_(ind->ix[i], ind);
+  if (evid != 8 && isDose(evid) && !w->countOnly) rxDfWalkDoseStart(w, evid, &curT);
   out[RXDF_OUT_LHS_TIME] = curT;
   if (evid == 8) {
     out[RXDF_OUT_NEWIND] = 1;
     return RXDF_KNOT;
   }
-  if (isDose(evid) && !w->countOnly) {
-    getWh(evid, &(ind->wh), &(ind->cmt), &(ind->wh100), &(ind->whI), &(ind->wh0));
-    switch (ind->whI) {
-    case EVIDF_INF_RATE:
-    case EVIDF_MODEL_DUR_ON:
-    case EVIDF_MODEL_DUR_OFF:
-    case EVIDF_MODEL_RATE_ON:
-    case EVIDF_MODEL_RATE_OFF:
-      w->dullRate = 0;
-      break;
-    case EVIDF_INF_DUR:
-      w->dullDur = 0;
-      break;
-    }
-    handleTlastInline(&curT, ind);
-    out[RXDF_OUT_LHS_TIME] = curT;
-  }
   int outRow = w->doDose || (w->evid0 == 0 && isObs(evid)) || (w->evid0 == 1 && evid == 0);
   out[RXDF_OUT_SIMERR] = outRow;
-  if (w->subsetEvid) {
-    // rxode2_df() leaves these before setting newind
-    if (isObs(evid) && evid >= 10) return RXDF_LHS;
-    if (isDose(evid)) {
-      int wh = 0, cmt = 0, wh100 = 0, whI = 0, wh0 = 0;
-      getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
-      if (whI == EVIDF_MODEL_RATE_OFF || whI == EVIDF_MODEL_DUR_OFF) {
-        w->dullRate = 0;
-        w->di++;
-        return RXDF_LHS;
-      } else if (whI == EVIDF_INF_RATE || whI == EVIDF_MODEL_RATE_ON || whI == EVIDF_MODEL_DUR_ON) {
-        w->dullRate = 0;
-      } else if (whI == EVIDF_INF_DUR) {
-        w->dullDur = 0;
-      }
-      if (getDoseNumber(ind, w->di) <= 0) {
-        w->di++;
-        return RXDF_LHS;
-      }
-    }
-  }
+  if (w->subsetEvid && rxDfWalkSubsetDrop(w, evid)) return RXDF_LHS;
   out[RXDF_OUT_NEWIND] = 1;
   if (!outRow) return RXDF_LHS;
   if (w->countOnly) {
@@ -417,29 +449,7 @@ extern "C" int rxDfWalkStep(void *state, int i, double *out, int nOut) {
     if (w->doDose && isDose(evid)) w->di++;
     return RXDF_ROW;
   }
-  out[RXDF_OUT_RESETNO] = w->resetno + 1;
-  out[RXDF_OUT_EVID] = evid;
-  if (w->doDose) {
-    if (w->nmevid) {
-      if (isObs(evid)) {
-        out[RXDF_OUT_EVID] = (evid >= 10) ? evid + 91 : evid;
-        out[RXDF_OUT_SS] = 0;
-      } else {
-        rxDfWalkNmDose(w, evid, getDoseNumber(ind, w->di), out);
-        rxDfWalkNmAmt(w, i, out);
-      }
-    } else if (!isObs(evid)) {
-      out[RXDF_OUT_AMT] = getDoseNumber(ind, w->di);
-      w->di++;
-    }
-  }
-  if (evid == 3) {
-    double t = getTime_(ind->ix[i], ind) + ind->curShift - w->rx->maxShift;
-    if (fabs(t) < sqrt(DBL_EPSILON)) t = 0.0;
-    out[RXDF_OUT_TIME] = t;
-  } else {
-    out[RXDF_OUT_TIME] = getTime_(ind->ix[i], ind) + ind->curShift;
-  }
+  rxDfWalkRowCols(w, i, evid, out);
   return RXDF_ROW;
 }
 
