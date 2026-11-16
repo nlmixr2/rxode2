@@ -534,6 +534,46 @@ static inline void dfCountRowsForNmOutput(rx_solve *rx, int nsim, int nsub) {
 
 extern "C" void setupFkeepCache();
 
+// rxode2#1185: par_solve() prints each failed subject's reasons through the
+// aggregator, which a model compiled under suppressMessages() silences
+// (rxode2() records the setting when it compiles the model), so a
+// non-converged inductive linearization also has to name itself in the
+// condition the user sees -- the generic message gives no hint that 'hmax' is
+// the knob.
+static int rxDfIndLinNoConv(rx_solve *rx) {
+  for (int solveid = 0; solveid < (int)(rx->nsub * rx->nsim); solveid++){
+    if (rx->subjects[solveid].err & rxErrIndLinConverge) return 1;
+  }
+  return 0;
+}
+
+// Why rxode2_df() refuses the solve (an RXDF_REFUSE_* code), or
+// RXDF_REFUSE_NONE when it lays the rows out (failed subjects NA-filled, with
+// a warning).
+static int rxDfRefusal(rx_solve *rx, rx_solving_options *op) {
+  if (!op->badSolve) return RXDF_REFUSE_NONE;
+  if (op->naTime) return RXDF_REFUSE_NA_TIME;
+  // rxode2#1469: a model 'vv' cannot integrate is refused, not NA-filled
+  for (int solveid = 0; solveid < (int)(rx->nsub * rx->nsim); solveid++){
+    if (rx->subjects[solveid].err & rxErrVvNotPairs) return RXDF_REFUSE_VV;
+  }
+  if (rx->extraPushAbort) return RXDF_REFUSE_EXTRA_PUSH;
+  if (rx->ssInfDurAbort) return RXDF_REFUSE_SS_INF_DUR;
+  // without an id, sim.id or resetno column no row could say which failed
+  int nidCols = (rx->nsub > 1) + (rx->nsim > 1) + (rx->maxShift != 0.0);
+  if (nidCols == 0) {
+    return rxDfIndLinNoConv(rx) ? RXDF_REFUSE_INDLIN : RXDF_REFUSE_UNSOLVED;
+  }
+  return RXDF_REFUSE_NONE;
+}
+
+// Whether rxSolve() refuses the current solve rather than returning it (its
+// RXDF_REFUSE_* code), so a package solving through rxode2 can hand the same
+// problem to rxSolve() for its error
+extern "C" int rxDfSolveRefused(rx_solve *rx) {
+  return rxDfRefusal(rx, rx->op);
+}
+
 // Keep columns, as rxode2_df() makes them; shared with the rxDfKeep*() entry
 // points downstream packages get through the function-pointer table.
 
@@ -772,89 +812,62 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
   int ms = 0;
   if (rx->maxShift != 0.0) ms = 1;
   int nidCols = md + sm + ms;
-  if (op->badSolve){
-    if (op->naTime){
-      rxSolveFreeC();
-      int cmt = op->naTime/10;
-      int errNo = op->naTime - 10*cmt;
-      CharacterVector stateNames = rxStateNames(op->modNamePtr);
-      if (errNo == rxErrNaTimeLag) {
-        (Rf_errorcall)(R_NilValue,
-                     _("'alag(%s)' and maybe more items produce NA (could depend on state values)"),
-                     CHAR(STRING_ELT(stateNames, cmt)));
-      } else if (errNo == rxErrNaTimeRate) {
-        (Rf_errorcall)(R_NilValue,
-                     _("'rate(%s)' and maybe more items produce NA (could depend on state values)"),
-                     CHAR(STRING_ELT(stateNames, cmt)));
-      } else if (errNo == rxErrNaTimeDur) {
-        (Rf_errorcall)(R_NilValue,
-                     _("'dur(%s)' and maybe more items produce NA (could depend on state values)"),
-                     CHAR(STRING_ELT(stateNames, cmt)));
-      } else if (errNo == rxErrNaTimeAmtI) {
-        (Rf_errorcall)(R_NilValue,
-                     _("'amt(%s)' calculation during infusion and maybe more items produce NA (could depend on state values)"),
-                     CHAR(STRING_ELT(stateNames, cmt)));
-      } else if (errNo == rxErrNaTimeAmt) {
-        (Rf_errorcall)(R_NilValue,
-                     _("'amt(%s)' calculation and maybe more items produce NA (could depend on state values)"),
-                     CHAR(STRING_ELT(stateNames, cmt)));
-      } else {
-        (Rf_errorcall)(R_NilValue, _("NA time error %d"), errNo);
-      }
-      // (Rf_errorcall)(R_NilValue, "%s", _("'alag(.)'/'rate(.)'/'dur(.)' cannot depend on the state values"));
-    }
-    // rxode2#1185: par_solve() prints each failed subject's reasons through
-    // the aggregator, which a model compiled under suppressMessages() silences
-    // (rxode2() records the setting when it compiles the model), so a
-    // non-converged inductive linearization also has to name itself in the
-    // condition the user sees -- the generic message gives no hint that 'hmax'
-    // is the knob.
-    int indLinNoConv = 0;
-    for (int solveid = 0; solveid < (int)(rx->nsub * rx->nsim); solveid++){
-      if (rx->subjects[solveid].err & rxErrIndLinConverge) {
-        indLinNoConv = 1;
-        break;
-      }
-    }
-    // rxode2#1469: a model 'vv' cannot integrate is refused, not NA-filled
-    for (int solveid = 0; solveid < (int)(rx->nsub * rx->nsim); solveid++){
-      if (rx->subjects[solveid].err & rxErrVvNotPairs) {
-        rxSolveFreeC();
-        (Rf_errorcall)(R_NilValue, "%s",
-                       _("method='vv' (Velocity Verlet) needs the ODE states ordered as coordinate-momentum pairs: with N=ceiling(nstates/2), d/dt(state i) must equal state N+i for i=1..N (an odd last coordinate must have d/dt()=0), and no infusion or turning off may change a coordinate's derivative; use another method"));
-      }
-    }
-    if (nidCols == 0){
-      if (rx->extraPushAbort) {
-        rxSolveFreeC();
-        (Rf_errorcall)(R_NilValue,
-          _("evid_() pushed more than maxExtra=%d events per individual; increase maxExtra in rxControl()/rxSolve()"),
-          rx->maxExtra);
-      }
-      if (rx->ssInfDurAbort) {
-        rxSolveFreeC();
-        (Rf_errorcall)(R_NilValue, "%s",
-          _("specifying duration with a steady state constant infusion makes no sense"));
-      }
-      rxSolveFreeC();
-      if (indLinNoConv) {
-        (Rf_errorcall)(R_NilValue, "%s",
-                       _("inductive linearization did not converge; loosen 'atol'/'rtol' or raise 'maxsteps'"));
-      }
-      (Rf_errorcall)(R_NilValue, "%s", _("could not solve the system"));
+  int refusal = rxDfRefusal(rx, op);
+  if (refusal != RXDF_REFUSE_NONE) rxSolveFreeC();
+  switch (refusal) {
+  case RXDF_REFUSE_NA_TIME: {
+    int cmt = op->naTime/10;
+    int errNo = op->naTime - 10*cmt;
+    CharacterVector stateNames = rxStateNames(op->modNamePtr);
+    if (errNo == rxErrNaTimeLag) {
+      (Rf_errorcall)(R_NilValue,
+                   _("'alag(%s)' and maybe more items produce NA (could depend on state values)"),
+                   CHAR(STRING_ELT(stateNames, cmt)));
+    } else if (errNo == rxErrNaTimeRate) {
+      (Rf_errorcall)(R_NilValue,
+                   _("'rate(%s)' and maybe more items produce NA (could depend on state values)"),
+                   CHAR(STRING_ELT(stateNames, cmt)));
+    } else if (errNo == rxErrNaTimeDur) {
+      (Rf_errorcall)(R_NilValue,
+                   _("'dur(%s)' and maybe more items produce NA (could depend on state values)"),
+                   CHAR(STRING_ELT(stateNames, cmt)));
+    } else if (errNo == rxErrNaTimeAmtI) {
+      (Rf_errorcall)(R_NilValue,
+                   _("'amt(%s)' calculation during infusion and maybe more items produce NA (could depend on state values)"),
+                   CHAR(STRING_ELT(stateNames, cmt)));
+    } else if (errNo == rxErrNaTimeAmt) {
+      (Rf_errorcall)(R_NilValue,
+                   _("'amt(%s)' calculation and maybe more items produce NA (could depend on state values)"),
+                   CHAR(STRING_ELT(stateNames, cmt)));
     } else {
-      if (rx->extraPushAbort) {
-        rxSolveFreeC();
-        (Rf_errorcall)(R_NilValue,
-          _("evid_() pushed more than maxExtra=%d events per individual; increase maxExtra in rxControl()/rxSolve()"),
-          rx->maxExtra);
-      }
-      if (rx->ssInfDurAbort) {
-        rxSolveFreeC();
-        (Rf_errorcall)(R_NilValue, "%s",
-          _("specifying duration with a steady state constant infusion makes no sense"));
-      }
-      if (indLinNoConv) {
+      (Rf_errorcall)(R_NilValue, _("NA time error %d"), errNo);
+    }
+    break;
+  }
+  case RXDF_REFUSE_VV:
+    (Rf_errorcall)(R_NilValue, "%s",
+                   _("method='vv' (Velocity Verlet) needs the ODE states ordered as coordinate-momentum pairs: with N=ceiling(nstates/2), d/dt(state i) must equal state N+i for i=1..N (an odd last coordinate must have d/dt()=0), and no infusion or turning off may change a coordinate's derivative; use another method"));
+    break;
+  case RXDF_REFUSE_EXTRA_PUSH:
+    (Rf_errorcall)(R_NilValue,
+      _("evid_() pushed more than maxExtra=%d events per individual; increase maxExtra in rxControl()/rxSolve()"),
+      rx->maxExtra);
+    break;
+  case RXDF_REFUSE_SS_INF_DUR:
+    (Rf_errorcall)(R_NilValue, "%s",
+      _("specifying duration with a steady state constant infusion makes no sense"));
+    break;
+  case RXDF_REFUSE_INDLIN:
+    (Rf_errorcall)(R_NilValue, "%s",
+                   _("inductive linearization did not converge; loosen 'atol'/'rtol' or raise 'maxsteps'"));
+    break;
+  case RXDF_REFUSE_UNSOLVED:
+    (Rf_errorcall)(R_NilValue, "%s", _("could not solve the system"));
+    break;
+  default:
+    if (op->badSolve) {
+      // some subjects failed; their rows are NA
+      if (rxDfIndLinNoConv(rx)) {
         warning(_("some ID(s) did not converge the inductive linearization; These values are replaced with 'NA'; loosen 'atol'/'rtol' or raise 'maxsteps'"));
       } else {
         warning(_("some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'"));
@@ -1737,4 +1750,13 @@ extern "C" SEXP _rxTestDfKeepSlots(SEXP ptrs, SEXP doDoseS, SEXP lvlName) {
   SET_STRING_ELT(nm, 1, Rf_mkChar("levels"));
   Rf_setAttrib(ret, R_NamesSymbol, nm);
   return ret;
+}
+
+// Test hook: solves the set-up solve and returns slot 113's answer for it
+extern "C" SEXP _rxTestDfRefusedSlot(SEXP ptrs) {
+  typedef int (*refused_t)(rx_solve *);
+  refused_t refused = (refused_t) R_ExternalPtrAddrFn(VECTOR_ELT(ptrs, 113));
+  rx_solve *rx = &rx_global;
+  par_solve(rx);
+  return Rf_ScalarInteger(refused(rx));
 }
