@@ -44,6 +44,10 @@
   (`ss = 1` or `ss = 2`) during an infusion now cancels the infusion's stop
   record too.  The stop used to still apply, leaving the compartment at a net
   rate of `-rate` and the state negative (#1562).
+- Turning a compartment off (`evid = 2`, negative `cmt`) during an infusion
+  into it now cancels the infusion's stop record too, so the state no longer
+  goes negative and the stop no longer turns the compartment back on.  Its
+  event sensitivities are reset with it (#1562).
 - A simulation that stops with an error no longer leaves its draws for the
   next solve.  The residuals, simulated thetas and per-study draws it had
   made stayed behind, and the next solve without residuals of its own used
@@ -123,6 +127,11 @@
 - R's `CFLAGS` is now read once per session instead of running
   `R CMD config CFLAGS` before every model compile; it is re-read when a
   Makevars file changes (#1675, #1711).
+- `rxModelVars()` no longer has a `timeId` element, the session time of a
+  model's first translation that nothing read; the same model now serializes
+  identically across sessions.  `md5` and the `splitInfusion*` elements move
+  down one index, and `rxModelVars` saved by earlier versions are still read
+  correctly (#1729).
 
 ### Solving
 - With `rxSolve(..., nonmem = TRUE)`, a modeled infusion rate (`rate(cmt)`,
@@ -130,6 +139,20 @@
   computed with the data record that ends the interval, until the dose is
   delivered.  It used to stay at the rate of the dose record, so a covariate
   or `time` change during the infusion did not change it (#1586).
+- While a solver integrates toward a record, a time-varying covariate
+  interpolated with `locf` or `nocb` now keeps, at the ends of the interval,
+  the value it has inside it.  At the record a `locf` covariate took the
+  record's own value, which belongs to the next interval, and at the start of
+  the interval a `nocb` covariate took the previous record's, so a solver that
+  lands on the record, such as `dop853`, integrated the step with the wrong
+  value in its last (first) stage.  `dop853` now integrates a
+  piecewise-constant covariate exactly; results move at the level of the
+  solver tolerance wherever a step covariate changes at a record a solver
+  stops on, including next to a lagged dose or a record pushed by `evid_()`.
+  Resampled covariates (`resample = TRUE`) follow the same rule; outputs at a
+  record still report the record's value, and `linear` and `midpoint`
+  interpolation and the adjoint methods (`rk4s`, `dop853s`, ...) are
+  unchanged.
 - `rxSolve()` now stops with an error when an `rxControl()` object is passed
   as `params` or `events`, as it already did for `inits`, and a parameter list
   that is empty or whose first column is empty gives the parameter-size
@@ -169,6 +192,17 @@
 - `method = "liblsoda"` now accepts `dense = TRUE`, which lifts the `hmax`
   default like the other dense methods (LSODA already interpolates between
   its own steps), and `rxIsDense("liblsoda")` is `TRUE` (#1599).
+- `liblsoda`, `lsoda`, `lsode` and `bdf` now stop exactly at every record
+  that is not a plain observation (a dose, an infusion edge, an `mtime()` or
+  evid 2 record) and at an extra dose between records, instead of stepping
+  past it and interpolating back, and restart at an `mtime()` record as they
+  do at a dose.  A time window in the model that started at an `mtime()`
+  record was stepped over: an input switched on for 0.05 time units there
+  was missed entirely.  It is now caught at the default tolerances and at
+  tight ones.  With `istateReset = FALSE` the solver restarts neither at a
+  dose nor at an `mtime()` record, and such a window can still be missed.
+  Plain observation records are still stepped past and interpolated;
+  results at doses move within the tolerances.
 
 ### Steady state
 - A steady-state fixed-duration infusion shorter than `ii` into a compartment
@@ -227,6 +261,9 @@
 - A steady-state infusion lasting exactly `ii` (fixed `rate` or `dur`) into a
   compartment with an `alag()` now stays on until its own lagged dose ends;
   with `ssAtDoseTime = TRUE` it turned off `alag()` too early (#1590).
+- A steady-state dose with a modeled `dur()` that follows a zero-amount record
+  (for example a zero `evid = 5` replace) is now solved as an infusion; the
+  duration check read the wrong record and solved it as a bolus (#1602).
 
 ## New features
 

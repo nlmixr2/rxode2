@@ -1213,8 +1213,11 @@ either \code{atol}, \code{rtol} or \code{maxSS} have not
 been achieved.}
 
 \item{istateReset}{When \code{TRUE}, reset the \code{ISTATE} variable to 1 for
-lsoda and liblsoda with doses, like \code{deSolve}; When \code{FALSE}, do
-not reset the \code{ISTATE} variable with doses.}
+lsoda and liblsoda with doses, like \code{deSolve}, and restart the lsoda
+family (\code{liblsoda}, \code{lsoda}, \code{lsode}, \code{bdf}) at an \code{mtime()} record;
+When \code{FALSE}, do not reset the \code{ISTATE} variable with doses or at
+\code{mtime()} records, so a time window that starts at an \code{mtime()}
+record can be stepped over.}
 
 \item{subsetNonmem}{subset to NONMEM compatible EVIDs only.  By
 default \code{TRUE}.}
