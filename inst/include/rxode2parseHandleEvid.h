@@ -403,43 +403,83 @@ static inline double getAmt(rx_solving_options_ind *ind, int id, int cmt,
 // A fixed-duration infusion's rate is F*amt/dur with F read once, at its start
 // (rxode2#1568); evaluating a state-dependent f() again at the stop leaves a
 // residual rate.  The start records the rate it added under its stop record,
-// which the stop then removes.
-static inline void pushInfDurOn(rx_solving_options_ind *ind, double rate) {
+// followed by the `ns` forward-sensitivity rates (d(rate)/dp, p = 1..ns), which
+// the stop then removes.  `ns` is _infDurOnNs() for every entry so the stride
+// is fixed; a NULL `sens` stores zeros.
+static inline int _infDurOnNs(void) {
+  return (_rxEsActive && _rxEsNParam > 0) ? _rxEsNParam : 0;
+}
+
+static inline void pushInfDurOn(rx_solving_options_ind *ind, double rate,
+                                double *sens, int ns) {
   if (ind->idx < 0) return; // extra doses have no paired stop record
   int stop = -1;
   handleInfusionGetEndOfInfusionIndex(handleTlastInlineDoseIndex(ind), &stop,
                                       NULL, NULL, ind);
   if (stop < 0 || stop >= ind->ndoses) return;
   double rec = (double)ind->idose[stop];
-  int j;
+  int w = 2 + ns, j;
   for (j = 0; j < ind->infDurOnN; j++) {
-    if (ind->infDurOn[2*j] == rec) break; // the start was handled again
+    if (ind->infDurOn[w*j] == rec) break; // the start was handled again
   }
-  if (j == ind->infDurOnCap) {
-    int cap = ind->infDurOnCap + 8;
-    double *p = (double*)realloc(ind->infDurOn, 2*cap*sizeof(double));
+  if (w*(j+1) > ind->infDurOnCap) {
+    int cap = w*(j+8);
+    double *p = (double*)realloc(ind->infDurOn, cap*sizeof(double));
     if (p == NULL) return; // the stop falls back to evaluating f() again
     ind->infDurOn = p;
     ind->infDurOnCap = cap;
   }
-  ind->infDurOn[2*j] = rec;
-  ind->infDurOn[2*j+1] = rate;
+  double *e = ind->infDurOn + w*j;
+  e[0] = rec;
+  e[1] = rate;
+  for (int k = 0; k < ns; k++) e[2+k] = (sens != NULL) ? sens[k] : 0.0;
   if (j == ind->infDurOnN) ind->infDurOnN++;
 }
 
-// Rate the start of the infusion stopped by the current record added (and
-// forget it); returns 0 when no start recorded one.
-static inline int popInfDurOn(rx_solving_options_ind *ind, double *rate) {
+// Rate (and its `ns` sensitivities) the start of the infusion stopped by the
+// current record added, forgetting it; returns 0 when no start recorded one.
+static inline int popInfDurOn(rx_solving_options_ind *ind, double *rate,
+                              double *sens, int ns) {
   if (ind->idx < 0) return 0;
   double rec = (double)ind->ix[ind->idx];
+  int w = 2 + ns;
   for (int j = 0; j < ind->infDurOnN; j++) {
-    if (ind->infDurOn[2*j] == rec) {
-      *rate = ind->infDurOn[2*j+1];
+    double *e = ind->infDurOn + w*j;
+    if (e[0] == rec) {
+      *rate = e[1];
+      if (sens != NULL) for (int k = 0; k < ns; k++) sens[k] = e[2+k];
       ind->infDurOnN--;
-      ind->infDurOn[2*j] = ind->infDurOn[2*ind->infDurOnN];
-      ind->infDurOn[2*j+1] = ind->infDurOn[2*ind->infDurOnN+1];
+      memcpy(e, ind->infDurOn + w*ind->infDurOnN, w*sizeof(double));
       return 1;
     }
+  }
+  return 0;
+}
+
+// handleSS ignores the stop record of the steady-state infusion it starts and
+// ends that infusion with a fixed-rate extra stop instead.  At such a stop on
+// `cmt`, take the sensitivities its start recorded (under that ignored stop
+// record) and the rate it added, so both can be removed; returns 0 when none
+// were recorded.
+static inline int popInfDurOnSS(rx_solving_options_ind *ind, int cmt,
+                                double *rate, double *sens, int ns) {
+  int w = 2 + ns;
+  for (int j = 0; j < ind->infDurOnN; j++) {
+    double *e = ind->infDurOn + w*j;
+    int rec = (int)e[0], ign = 0;
+    for (int i = 0; i < ind->ignoredDosesN[0]; ++i) {
+      int d = ind->ignoredDoses[i];
+      if (d >= 0 && d < ind->ndoses && ind->idose[d] == rec) { ign = 1; break; }
+    }
+    if (!ign) continue;
+    int wh, c, wh100, whI, wh0;
+    getWh(getEvid(ind, rec), &wh, &c, &wh100, &whI, &wh0);
+    if (c != cmt || whI != EVIDF_INF_DUR) continue;
+    *rate = e[1];
+    if (sens != NULL) for (int k = 0; k < ns; k++) sens[k] = e[2+k];
+    ind->infDurOnN--;
+    memcpy(e, ind->infDurOn + w*ind->infDurOnN, w*sizeof(double));
+    return 1;
   }
   return 0;
 }
@@ -2027,16 +2067,45 @@ static inline int handle_evid(int evid, int neq,
         ind->curDose = tmp;
         ind->curDoseS[cmt] = ind->curDose;
       }
-      if (tmp > 0) {
-        tmp = getAmt(ind, id, cmt, tmp, xout, yp);
-        pushInfDurOn(ind, tmp);
-      } else {
+      {
+        // Event ("jump") sensitivities -- the rate F*amt/dur is a solver-applied
+        // forcing, so the sensitivity ODE misses d(rate)/dp = (amt/dur)*dF/dp
+        // over the infusion.  Mirror it on each sensitivity compartment: the
+        // start adds it with dF read at the start, the stop removes it.
+        int _esNp = (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState &&
+                     _rxEsNState * (1 + _rxEsNParam) <= neq && dF != NULL) ?
+          _rxEsNParam : 0;
+        double *_esDRate = (_esNp > 0) ?
+          (double*) calloc((size_t)_rxEsNState * _esNp, sizeof(double)) : NULL;
+        if (_esDRate == NULL) _esNp = 0;
+        int _esW = _infDurOnNs(); // every entry has this many sensitivities
         double _rateOn;
-        if (popInfDurOn(ind, &_rateOn)) {
+        if (tmp > 0) {
+          if (_esNp > 0) {
+            dF(id, xout, yp, _esDRate);
+            // d(rate)/dp for this cmt, at the front of the buffer
+            for (int _p = 0; _p < _esNp; _p++) {
+              _esDRate[_p] = tmp * _esDRate[cmt * _esNp + _p];
+            }
+          }
+          tmp = getAmt(ind, id, cmt, tmp, xout, yp);
+          pushInfDurOn(ind, tmp, _esDRate, _esW);
+        } else if (popInfDurOn(ind, &_rateOn, _esDRate, _esW)) {
           tmp = -_rateOn;
+          for (int _p = 0; _p < _esNp; _p++) _esDRate[_p] = -_esDRate[_p];
         } else {
+          if (_esNp > 0) {
+            dF(id, xout, yp, _esDRate);
+            for (int _p = 0; _p < _esNp; _p++) {
+              _esDRate[_p] = tmp * _esDRate[cmt * _esNp + _p];
+            }
+          }
           tmp = getAmt(ind, id, cmt, tmp, xout, yp);
         }
+        for (int _p = 0; _p < _esNp; _p++) {
+          InfusionRate[_rxEsNState + _p * _rxEsNState + cmt] += _esDRate[_p];
+        }
+        if (_esDRate != NULL) free(_esDRate);
       }
       {
         double *_esDydtPreB = _esInfusionDydtPre(id, xout, yp, neq);
@@ -2080,6 +2149,23 @@ static inline int handle_evid(int evid, int neq,
       // }
       {
       double *_esDydtPreB = _esInfusionDydtPre(id, xout, yp, neq);
+      // A fixed-rate extra stop ending a steady-state fixed-duration infusion
+      // removes the rate, and the f() sensitivity forcing, that infusion's
+      // start added (rxode2#1568).
+      if (tmp < 0.0 && ind->idx < 0 && ind->infDurOnN > 0) {
+        int _ns = _infDurOnNs();
+        double _rateOn;
+        double *_esB = (_ns > 0) ? (double*) calloc((size_t)_ns, sizeof(double)) : NULL;
+        if (popInfDurOnSS(ind, cmt, &_rateOn, _esB, _ns)) {
+          tmp = -_rateOn;
+          if (_esB != NULL && cmt < _rxEsNState && _rxEsNState * (1 + _ns) <= neq) {
+            for (int _p = 0; _p < _ns; _p++) {
+              InfusionRate[_rxEsNState + _p * _rxEsNState + cmt] -= _esB[_p];
+            }
+          }
+        }
+        if (_esB != NULL) free(_esB);
+      }
       InfusionRate[cmt] += tmp;
       // Infusion moving boundary from a modeled lag (see EVIDF_INF_DUR above):
       // [S] = -tmp*d(alag)/dp at each start/stop record.

@@ -78,6 +78,11 @@
   midpoint (#1654).
 
 ### Sensitivities
+- Forward sensitivities now include the `f()` of a fixed-duration infusion,
+  read at its start and removed at its stop, steady-state (`ss = 1`/`ss = 2`)
+  infusions shorter than `ii` included.  They were missing, so a parameter
+  reaching `f()` directly or through a state got a wrong sensitivity during
+  and after the infusion (#1568).
 - Forward sensitivities of a fixed-rate infusion (`rate=` without `dur=`) now
   include its parameter-dependent `f()`, which moves the infusion's stop.  The
   sensitivity with respect to a parameter reaching only `f()` used to stay 0
@@ -161,6 +166,10 @@
   its own steps), and `rxIsDense("liblsoda")` is `TRUE` (#1599).
 
 ### Steady state
+- A steady-state fixed-duration infusion shorter than `ii` into a compartment
+  whose `f()` depends on a state now stops by removing the rate its start
+  added.  The stop used the rate before the steady state was solved, leaving
+  a residual rate after the infusion (#1568).
 - A steady-state bolus now runs each dosing cycle on a clock from 0 to `ii`,
   as NONMEM does, so a model whose ODE reads `t` reaches a steady state.  The
   cycles used to keep advancing `t`, so the solve failed or returned values
