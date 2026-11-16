@@ -204,8 +204,11 @@
 #'     This option is only considered with `method="liblsoda"`.
 #'
 #' @param istateReset When `TRUE`, reset the `ISTATE` variable to 1 for
-#'     lsoda and liblsoda with doses, like `deSolve`; When `FALSE`, do
-#'     not reset the `ISTATE` variable with doses.
+#'     lsoda and liblsoda with doses, like `deSolve`, and restart the lsoda
+#'     family (`liblsoda`, `lsoda`, `lsode`, `bdf`) at an `mtime()` record;
+#'     When `FALSE`, do not reset the `ISTATE` variable with doses or at
+#'     `mtime()` records, so a time window that starts at an `mtime()`
+#'     record can be stepped over.
 #'
 #' @param indLinMatExpType This is them matrix exponential type that
 #'     is use for rxode2.  Currently the following are supported:
