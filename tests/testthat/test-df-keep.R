@@ -37,12 +37,10 @@ rxTest({
   for (.ad in list(FALSE, TRUE)) {
     test_that(paste0("the keep slots give rxSolve()'s keep columns, addDosing=", .ad), {
       .d <- .keepData()
-      .ref <- as.data.frame(rxSolve(.keepMod, .d, keep = .keepCols, addDosing = .ad,
-                                    returnType = "data.frame"))
+      .ref <- as.data.frame(rxSolve(.keepMod, .d, keep = .keepCols, addDosing = .ad, returnType = "data.frame"))
       rxSolve(.keepMod, .d, keep = .keepCols, addDosing = .ad, .setupOnly = 1L)
       on.exit(rxSolveFree(), add = TRUE)
-      .w <- .Call("_rxTestDfKeepSlots", .rxode2ptrs(), if (.ad) 3L else 0L, "grp",
-                  PACKAGE = "rxode2")
+      .w <- .Call("_rxTestDfKeepSlots", .rxode2ptrs(), if (.ad) 3L else 0L, "grp", PACKAGE = "rxode2")
       expect_named(.w$keep, .keepData0)
       for (.c in .keepData0) {
         expect_identical(.w$keep[[.c]], .ref[[.c]], label = .c)
@@ -58,8 +56,7 @@ rxTest({
     expect_identical(length(.n), 113L)
     expect_identical(
       .n[109:113],
-      c("rxode2rxDfKeepSetup", "rxode2rxDfKeepFirst", "rxode2rxDfKeepRow",
-        "rxode2rxDfKeepCols", "rxode2getDfLevels")
+      c("rxode2rxDfKeepSetup", "rxode2rxDfKeepFirst", "rxode2rxDfKeepRow", "rxode2rxDfKeepCols", "rxode2getDfLevels")
     )
   })
 })
