@@ -123,6 +123,11 @@
 - R's `CFLAGS` is now read once per session instead of running
   `R CMD config CFLAGS` before every model compile; it is re-read when a
   Makevars file changes (#1675, #1711).
+- `rxModelVars()` no longer has a `timeId` element, the session time of a
+  model's first translation that nothing read; the same model now serializes
+  identically across sessions.  `md5` and the `splitInfusion*` elements move
+  down one index, and `rxModelVars` saved by earlier versions are still read
+  correctly (#1729).
 
 ### Solving
 - `rxSolve()` now stops with an error when an `rxControl()` object is passed

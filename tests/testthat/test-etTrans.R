@@ -972,6 +972,29 @@ d/dt(blood)     = a*intestine - b*blood
     expect_equal(got, wantI)
   })
 
+  test_that("split directives are read from an rxModelVars saved with timeId (5.1.8 layout)", {
+    modSplit <- rxode2parse(
+      "
+      splitInfusionBolus(depot, depot, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "
+    )
+    expect_false("timeId" %in% names(modSplit))
+    .md5 <- which(names(modSplit) == "md5")
+    modOld <- c(
+      unclass(modSplit)[seq_len(.md5 - 1L)],
+      list(timeId = 1L),
+      unclass(modSplit)[seq(.md5, length(modSplit))]
+    )
+    class(modOld) <- class(modSplit)
+    e <- et(time = 0, amt = 10, rate = 5, cmt = "depot", ii = 12, addl = 1)
+    expect_equal(
+      as.data.frame(etTrans(e, modOld, addCmt = TRUE, keepDosingOnly = TRUE)),
+      as.data.frame(etTrans(e, modSplit, addCmt = TRUE, keepDosingOnly = TRUE))
+    )
+  })
+
   test_that("splitInfusionBolus() promotes plain boluses to modeled infusions for dur()/rate() targets", {
     modSplit <- rxode2parse(
       "
