@@ -36,10 +36,20 @@ devtools::load_all(quiet = TRUE)
     }),
     y0 = c(100, 0, 0),
     tf = 48
+  ),
+  dde = list(
+    m = rxode2({
+      d/dt(x) <- -1.2 * delay(x, 0.7) + 0.1 * w
+      d/dt(w) <- -0.5 * w
+      d/dt(v) <- delay(x, 1.4) - v
+    }),
+    y0 = c(1, 2, 0),
+    tf = 8
   )
 )
 
-## reference: rxode2's dop853 (stiff Robertson: liblsoda) at tight tolerance
+## reference: rxode2's dop853 (stiff Robertson: liblsoda) at tight tolerance;
+## the delay problem also runs Julia's DelayDiffEq (MethodOfSteps)
 .ref <- lapply(names(.models), function(.n) {
   .x <- .models[[.n]]
   .s <- rxSolve(
