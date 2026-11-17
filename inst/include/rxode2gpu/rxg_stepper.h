@@ -697,6 +697,48 @@ RXG_FN void _rxg_dense(int method, double hs, int i, const double *y,
   }
 }
 
+// Breakpoints t0 + sum_i k_i lag_i (sum_i k_i <= 6, the order up to which a
+// discontinuity still affects the methods), increasing
+RXG_FN void _rxg_bpBuild(rxg_hist *h) {
+  int n = 0, lo = 0;
+  h->bpDirty = 0;
+  // level 1 from t0, then each level adds every lag to the previous one
+  for (int lev = 0; lev < 6; lev++) {
+    int hi = n;
+    for (int p = (lev == 0) ? -1 : lo; p < hi; p++) {
+      double base = (p < 0) ? h->t0 : h->bp[p];
+      for (int k = 0; k < h->nlag; k++) {
+        double v = base + h->lag[k];
+        int dup = 0;
+        for (int q = 0; q < n && !dup; q++) dup = fabs(h->bp[q] - v) <= 1e-12*fabs(v);
+        if (!dup && n < RXG_NBP) h->bp[n++] = v;
+      }
+      if (lev == 0) break;
+    }
+    lo = hi;
+  }
+  // insertion sort (n is small)
+  for (int i = 1; i < n; i++) {
+    double v = h->bp[i];
+    int j = i - 1;
+    while (j >= 0 && h->bp[j] > v) {
+      h->bp[j + 1] = h->bp[j];
+      j--;
+    }
+    h->bp[j + 1] = v;
+  }
+  h->nbp = n;
+}
+
+// Distance from t to the next breakpoint after it (Inf: none)
+RXG_FN double _rxg_bpNext(rxg_hist *h, double t) {
+  if (h->bpDirty) _rxg_bpBuild(h);
+  for (int i = 0; i < h->nbp; i++) {
+    if (h->bp[i] > t*(1.0 + 4.0*RXG_EPS) + 4.0*RXG_MIN) return h->bp[i] - t;
+  }
+  return INFINITY;
+}
+
 // Record an accepted step of size hs from (t, y) in the delay() history;
 // returns 0 when it is full
 RXG_FN int _rxg_histPush(int method, double t, double hs, const double *y,
@@ -771,6 +813,18 @@ RXG_FN int rxg_integrate(int method, double t0, double t1, double *y,
     }
     int last = (ha >= rem);
     double hh = last ? rem : ha;
+    double tEnd = last ? t1 : t + dir*hh;
+#if RXG_HAS_DELAY
+    if (dir > 0.0) {
+      // land on the next breakpoint rather than step across it
+      double bp = _rxg_bpNext(c->hist, t);
+      if (bp <= hh) {
+        hh = bp;
+        tEnd = t + bp;
+        last = 1;
+      }
+    }
+#endif
     if (!fsal) _rxg_f(t, y, w.f0, c, cnt);
     fsal = 1;
     int ok = _rxg_tryStep(method, t, dir*hh, dir, y, &w, c, cnt);
@@ -790,7 +844,7 @@ RXG_FN int rxg_integrate(int method, double t0, double t1, double *y,
       break;
     }
 #endif
-    t = last ? t1 : t + dir*hh;
+    t = tEnd;
     _rxg_accept(method, y, &w, &fsal);
 #if RXG_HAS_DELAY
 #if RXG_HDEG >= 7

@@ -26,12 +26,21 @@
 // each state delay() reads (column RXG_DCOL(state)), the step's interpolant
 // y(t_old + s*h) = sum_j a_j s^j (j = 0..RXG_HDEG), then t_old and h.
 #define RXG_HREC ((RXG_HDEG + 1)*RXG_NDLY1 + 2)
+#define RXG_NLAG 4  // distinct delays tracked for breakpoints
+#define RXG_NBP 64  // breakpoints kept
 typedef struct rxg_hist {
   RXG_GLOBAL double *rec; // cap records of RXG_HREC values
   int n, cap;             // records used and available
   double t0;              // start of the history; pre-history before it
   double minT;            // smallest positive delay seen (caps the step)
   double ini[RXG_NEQ1];   // pre-history: the state at t0
+  // the constant pre-history leaves derivative discontinuities at t0 plus
+  // sums of the delays; steps land on them (as DelayDiffEq's constant_lags)
+  double lag[RXG_NLAG];   // distinct delays seen
+  int nlag;
+  double bp[RXG_NBP];     // breakpoints after t0, increasing
+  int nbp;
+  int bpDirty;            // a new delay was seen: rebuild bp
 } rxg_hist;
 
 // Everything rxg_dydt()/rxg_jac() read besides time and the states.  The
@@ -83,7 +92,23 @@ RXG_FN void rxg_histInit(rxg_hist *h, RXG_GLOBAL double *rec, int cap,
   h->cap = cap;
   h->t0 = t0;
   h->minT = INFINITY;
+  h->nlag = 0;
+  h->nbp = 0;
+  h->bpDirty = 0;
   for (int i = 0; i < RXG_NEQ; i++) h->ini[i] = y[i];
+}
+
+// Remember a delay for the breakpoints
+RXG_FN void _rxg_noteLag(rxg_hist *h, double T) {
+  if (!(T > 0.0) || !isfinite(T)) return;
+  if (T < h->minT) h->minT = T;
+  for (int k = 0; k < h->nlag; k++) {
+    if (fabs(h->lag[k] - T) <= 1e-12*T) return;
+  }
+  if (h->nlag < RXG_NLAG) {
+    h->lag[h->nlag++] = T;
+    h->bpDirty = 1;
+  }
 }
 
 // State i at t - T (model time t): the constant pre-history before the
@@ -91,7 +116,7 @@ RXG_FN void rxg_histInit(rxg_hist *h, RXG_GLOBAL double *rec, int cap,
 // last step's, extrapolated, past its end)
 RXG_FN double rxg_delay(const rxg_ctx *c, int i, double t, double T) {
   rxg_hist *h = c->hist;
-  if (T > 0.0 && T < h->minT) h->minT = T;
+  _rxg_noteLag(h, T);
   double td = t - c->curShift - T;
   int col = RXG_DCOL(i);
   if (h->n == 0 || td <= h->t0 || col < 0) return h->ini[i];

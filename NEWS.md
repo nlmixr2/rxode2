@@ -14,6 +14,14 @@
   `llik*()` are not GPU safe.  `rxode2parseGetTranslation()` keeps its
   columns.
 
+- Per-trajectory device integrators for GPU solving, in OpenCL C that also
+  builds as host C: `rkt54` (Tsitouras 5(4)), `vern76` (Verner 7(6)),
+  `ros54p` (Steinebach's Rosenbrock 5(4), Rodas5P) and the AutoSwitch
+  composites `"rkt54+ros54p"`/`"vern76+ros54p"` following the
+  `autoSwitch*` rules.  GPU-safe models may now use `delay()`: each subject
+  keeps a dense-output history and steps land on the breakpoints of the
+  constant pre-history.
+
 - `rxSymInvCholCreate()` builds block-diagonal omegas with
   `lotri::lotriMat()` instead of `Matrix::bdiag()`, removing the
   first-use `Matrix` namespace load (#1675); `Matrix` is no longer
