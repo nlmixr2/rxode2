@@ -424,6 +424,53 @@ rxTest({
     }
   })
 
+  test_that("the device special functions match the host at edges and in the tails", {
+    skip_on_cran()
+    .ex <- c(
+      "gammapInva(1, 0)",
+      "gammapInva(1, 1)",
+      "gammapInva(0, 0.5)",
+      "gammapInva(1, 1e-300)",
+      "gammaqInva(1, 0)",
+      "gammaqInva(1, 1)",
+      "gammaqInva(2, 1e-300)",
+      "gammapInva(3, 0.25)",
+      "gammapInv(200, 1e-300)",
+      "gammaqInv(1, 1e-300)",
+      "gammaqInv(1e-300, 1e-300)",
+      "gammapInv(1e-300, 0.5)",
+      "gammap(1e-300, 0.5)",
+      "gammaq(1e-12, 1)",
+      "uppergamma(1e-300, 0.5)",
+      "uppergamma(0.3, 1.2)",
+      "lowergamma(1e-300, 0.5)",
+      "gammapDer(0.5, 0)",
+      "ibeta(1, 1e-300, 0.999999999999)",
+      "ibeta(2, 1e-12, 0.9)",
+      "ibetaInv(200, 1, 1e-300)",
+      "ibetaInv(2, 1e-300, 1e-300)",
+      "ibetaInv(1e-300, 2, 0.999999999999)",
+      "ibetaInv(1, 3, 0.4)",
+      "ibetaInv(3, 1, 0.4)",
+      "studentTInv(1e-300, 0.5)",
+      "beta(1e300, 1)",
+      "beta(30, 40)",
+      "trigamma(1e-300)",
+      "lfactorial(1e-10)",
+      "factorial(0.3)"
+    )
+    .mf <- rxode2(paste(c(sprintf("o%d <- %s", seq_along(.ex), .ex), sprintf("d/dt(s%d) <- o%d", seq_along(.ex), seq_along(.ex))), collapse = "\n"))
+    expect_equal(.gpuSafe(.mf), 1L)
+    .host <- unlist(as.data.frame(rxSolve(.mf, events = et(0), returnType = "data.frame"))[
+      1,
+      paste0("o", seq_along(.ex))
+    ])
+    .dev <- .rxGpuHostEval(.rxGpuHostLib(.mf), 0, rep(0, length(.ex)), numeric(0))
+    for (.k in seq_along(.ex)) {
+      expect_equal(.dev[.k], unname(.host[.k]), tolerance = 1e-9, label = .ex[.k])
+    }
+  })
+
   test_that("the device code runs on an OpenCL device", {
     skip_on_cran()
     skip_if_not_installed("OpenCL")

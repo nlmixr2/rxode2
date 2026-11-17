@@ -8,9 +8,122 @@
 
 #ifdef RXG_FLOAT
 #define RXG_TINY 1e-30
+#define RXG_MIN FLT_MIN
 #else
 #define RXG_TINY 1e-300
+#define RXG_MIN DBL_MIN
 #endif
+
+////////////////////////////////////////////////////////////////////////////
+// R's lgamma1p(), log1pmx() and lbeta() (nmath pgamma.c, lbeta.c)
+
+RXG_FN double _rxg_logcf(double x, double i, double d, double eps) {
+  const double scalefactor = 1.157920892373161954235709850086879e77; // 2^256
+  double c1 = 2*d, c2 = i + d, c4 = c2 + d, a1 = c2;
+  double b1 = i*(c2 - i*x), b2 = d*d*x, a2 = c4*c2 - b2;
+  b2 = c4*b1 - i*b2;
+  while (fabs(a2*b1 - a1*b2) > fabs(eps*b1*b2)) {
+    double c3 = c2*c2*x;
+    c2 += d;
+    c4 += d;
+    a1 = c4*a2 - c3*a1;
+    b1 = c4*b2 - c3*b1;
+    c3 = c1*c1*x;
+    c1 += d;
+    c4 += d;
+    a2 = c4*a1 - c3*a2;
+    b2 = c4*b1 - c3*b2;
+    if (fabs(b2) > scalefactor) {
+      a1 /= scalefactor;
+      b1 /= scalefactor;
+      a2 /= scalefactor;
+      b2 /= scalefactor;
+    } else if (fabs(b2) < 1/scalefactor) {
+      a1 *= scalefactor;
+      b1 *= scalefactor;
+      a2 *= scalefactor;
+      b2 *= scalefactor;
+    }
+  }
+  return a2/b2;
+}
+// log(1 + x) - x
+RXG_FN double _rxg_log1pmx(double x) {
+  if (x > 1 || x < -0.79149064) return log1p(x) - x;
+  double r = x/(2 + x), y = r*r;
+  if (fabs(x) < 1e-2) {
+    return r*((((2.0/9*y + 2.0/7)*y + 2.0/5)*y + 2.0/3)*y - x);
+  }
+  return r*(2*y*_rxg_logcf(y, 3, 2, 1e-14) - x);
+}
+// log(gamma(1 + a)), accurate for small a
+RXG_FN double lgamma1p(double a) {
+  if (fabs(a) >= 0.5) return lgamma(a + 1);
+  // (zeta(i+2)-1)/(i+2)
+  const double coeffs[40] = {
+    0.3224670334241132182362075833230126e-0, 0.6735230105319809513324605383715000e-1,
+    0.2058080842778454787900092413529198e-1, 0.7385551028673985266273097291406834e-2,
+    0.2890510330741523285752988298486755e-2, 0.1192753911703260977113935692828109e-2,
+    0.5096695247430424223356548135815582e-3, 0.2231547584535793797614188036013401e-3,
+    0.9945751278180853371459589003190170e-4, 0.4492623673813314170020750240635786e-4,
+    0.2050721277567069155316650397830591e-4, 0.9439488275268395903987425104415055e-5,
+    0.4374866789907487804181793223952411e-5, 0.2039215753801366236781900709670839e-5,
+    0.9551412130407419832857179772951265e-6, 0.4492469198764566043294290331193655e-6,
+    0.2120718480555466586923135901077628e-6, 0.1004322482396809960872083050053344e-6,
+    0.4769810169363980565760193417246730e-7, 0.2271109460894316491031998116062124e-7,
+    0.1083865921489695409107491757968159e-7, 0.5183475041970046655121248647057669e-8,
+    0.2483674543802478317185008663991718e-8, 0.1192140140586091207442548202774640e-8,
+    0.5731367241678862013330194857961011e-9, 0.2759522885124233145178149692816341e-9,
+    0.1330476437424448948149715720858008e-9, 0.6422964563838100022082448087644648e-10,
+    0.3104424774732227276239215783404066e-10, 0.1502138408075414217093301048780668e-10,
+    0.7275974480239079662504549924814047e-11, 0.3527742476575915083615072228655483e-11,
+    0.1711991790559617908601084114443031e-11, 0.8315385841420284819798357793954418e-12,
+    0.4042200525289440065536008957032895e-12, 0.1966475631096616490411045679010286e-12,
+    0.9573630387838555763782200936508615e-13, 0.4664076026428374224576492565974577e-13,
+    0.2273736960065972320633279596737272e-13, 0.1109139947083452201658320007192334e-13
+  };
+  double lgam = 0.2273736845824652515226821577978691e-12*_rxg_logcf(-a/2, 42, 1, 1e-14);
+  for (int i = 39; i >= 0; i--) lgam = coeffs[i] - a*lgam;
+  return (a*lgam - 0.5772156649015328606065120900824024)*a - _rxg_log1pmx(a);
+}
+// gamma(1 + a) - 1
+RXG_FN double _rxg_g1pm1(double a) { return expm1(lgamma1p(a)); }
+
+RXG_FN double _rxg_lgammacor(double x) {
+  const double algmcs[5] = {
+    +.1666389480451863247205729650822e+0, -.1384948176067563840732986059135e-4,
+    +.9810825646924729426157171547487e-8, -.1809129475572494194263306266719e-10,
+    +.6221098041892605227126015543416e-13
+  };
+  if (x < 10) return R_NaN;
+  if (x >= 94906265.62425156) return 1/(x*12);
+  double t = 10/x;
+  double twox = (t*t*2 - 1)*2, b0 = 0, b1 = 0, b2 = 0;
+  for (int i = 1; i <= 5; i++) {
+    b2 = b1;
+    b1 = b0;
+    b0 = twox*b1 - b2 + algmcs[5 - i];
+  }
+  return (b0 - b2)*0.5/x;
+}
+RXG_FN double _rxg_lbeta(double a, double b) {
+  if (ISNAN(a) || ISNAN(b)) return a + b;
+  double p = fmin(a, b), q = fmax(a, b), corr;
+  if (p < 0) return R_NaN;
+  if (p == 0) return R_PosInf;
+  if (!R_FINITE(q)) return R_NegInf;
+  if (p >= 10) {
+    corr = _rxg_lgammacor(p) + _rxg_lgammacor(q) - _rxg_lgammacor(p + q);
+    return log(q)*-0.5 + 0.918938533204672741780329736406 + corr +
+      (p - 0.5)*log(p/(p + q)) + q*log1p(-p/(p + q));
+  }
+  if (q >= 10) {
+    corr = _rxg_lgammacor(q) - _rxg_lgammacor(p + q);
+    return lgamma(p) + corr + p - p*log(p + q) + (q - 0.5)*log1p(-p/(p + q));
+  }
+  if (p < 1e-306) return lgamma(p) + (lgamma(q) - lgamma(p + q));
+  return log(tgamma(p)*(tgamma(q)/tgamma(p + q)));
+}
 
 ////////////////////////////////////////////////////////////////////////////
 // Rmath helpers
@@ -126,7 +239,7 @@ RXG_FN double beta(double a, double b) {
   else if (a == 0 || b == 0) return R_PosInf;
   else if (!R_FINITE(a) || !R_FINITE(b)) return 0;
   if (a + b < 171.61447887182298) return (1/tgamma(a + b))*tgamma(a)*tgamma(b);
-  return exp(lgamma(a) + lgamma(b) - lgamma(a + b));
+  return exp(_rxg_lbeta(a, b));
 }
 
 // psi(x) and psi'(x): upward recurrence to x >= 10, then the asymptotic series
@@ -168,7 +281,9 @@ RXG_FN double trigamma(double x) {
   double f = 1.0/(x*x);
   double t = 1.0/x + 0.5*f + (1.0/x)*f*(1.0/6 + f*(-1.0/30 + f*(1.0/42 + f*(-1.0/30 +
              f*(5.0/66 + f*(-691.0/2730 + f*(7.0/6 + f*(-3617.0/510))))))));
-  return r + s*(a + t);
+  double ret = r + s*(a + t);
+  // R's trigamma() gives NaN when it overflows
+  return R_FINITE(ret) ? ret : R_NaN;
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -658,34 +773,70 @@ RXG_FN double _rxg_gcf(double a, double x) {
   }
   return h;
 }
+// Gamma(a,x) for 0 < a < 1 and 0 < x < a + 1, where Q = 1 - P would cancel:
+// Gamma(a,x) = ((Gamma(1+a) - 1) - (x^a - 1))/a - x^a sum_{n>=1} (-x)^n/(n!(a+n))
+// (returned times a/Gamma(1+a), i.e. Q, when regularized)
+RXG_FN double _rxg_igammaSmallA(double a, double x, int regularized) {
+  double t = 1.0, sum = 0.0;
+  for (int n = 1; n < 1000; n++) {
+    t *= -x/n;
+    double term = t/(a + n);
+    sum += term;
+    if (fabs(term) < fabs(sum)*RXG_EPS) break;
+  }
+  double g1 = _rxg_g1pm1(a), xa1 = expm1(a*log(x));
+  if (regularized) return ((g1 - xa1) - a*(xa1 + 1)*sum)/(1 + g1);
+  return (g1 - xa1)/a - (xa1 + 1)*sum;
+}
 // P or Q for 0 < x < Inf given g (1 or Gamma(a)) and the log prefactor;
 // summed in logs so x^a e^-x may overflow when the result does not
-RXG_FN double _rxg_igammaTail(double a, double x, int lower, double g, double lpre) {
+RXG_FN double _rxg_igammaTail(double a, double x, int lower, int regularized,
+                              double g, double lpre) {
   int series = (x < a + 1.0);
+  if (series && !lower && a < 1) return _rxg_igammaSmallA(a, x, regularized);
   double v = exp(lpre + log(series ? _rxg_gser(a, x) : _rxg_gcf(a, x)));
   if (lower == series) return v;
   return R_FINITE(g) ? g - v : g;
 }
-// lower = 1 for P, 0 for Q; regularized = 0 multiplies by Gamma(a)
+// x = Inf: P = 1, Q = 0 (the host gives these for a NaN a too)
+RXG_FN double _rxg_igammaInf(double a, int lower, int regularized) {
+  if (regularized) return lower ? 1.0 : 0.0;
+  if (ISNAN(a)) return lower ? a : 0.0;
+  double g = tgamma(a);
+  if (lower) return g;
+  return R_FINITE(g) ? 0.0 : R_NaN;
+}
+// lower = 1 for P, 0 for Q; regularized = 0 multiplies by Gamma(a).
+// Argument checks follow the host (boost with errors ignored).
 RXG_FN double _rxg_igamma(double a, double x, int lower, int regularized) {
-  if (ISNAN(a) || ISNAN(x)) return a + x;
-  if (a <= 0 || x < 0) return R_NaN;
+  if (ISNAN(x) || a <= 0 || x < 0) return R_NaN;
+  if (x == R_PosInf) return _rxg_igammaInf(a, lower, regularized);
+  if (ISNAN(a)) return a;
   double g = regularized ? 1.0 : tgamma(a);
   if (x == 0) return lower ? 0.0 : g;
-  if (!R_FINITE(x)) return lower ? g : 0.0;
+  // the host gives lowergamma(Inf, x) = 0 for x < 1, NaN otherwise
+  if (a == R_PosInf) return (lower && !regularized && x < 1) ? 0.0 : R_NaN;
   double lpre = a*log(x) - x - (regularized ? lgamma(a) : 0.0);
-  return _rxg_igammaTail(a, x, lower, g, lpre);
+  return _rxg_igammaTail(a, x, lower, regularized, g, lpre);
+}
+// log P (lower) or log Q for 0 < a, x < Inf
+RXG_FN double _rxg_igammaLog(double a, double x, int lower) {
+  int series = (x < a + 1.0);
+  if (series && !lower && a < 1) return log(_rxg_igammaSmallA(a, x, 1));
+  double l = a*log(x) - x - lgamma(a) + log(series ? _rxg_gser(a, x) : _rxg_gcf(a, x));
+  if (lower == series) return l;
+  return log1p(-exp(l));
 }
 RXG_FN double gammap(double a, double x) { return _rxg_igamma(a, x, 1, 1); }
 RXG_FN double gammaq(double a, double x) { return _rxg_igamma(a, x, 0, 1); }
 RXG_FN double lowergamma(double a, double x) { return _rxg_igamma(a, x, 1, 0); }
 RXG_FN double uppergamma(double a, double x) { return _rxg_igamma(a, x, 0, 0); }
 
-// d P(a,x)/dx
+// d P(a,x)/dx (argument checks follow the host)
 RXG_FN double gammapDer(double a, double x) {
-  if (ISNAN(a) || ISNAN(x)) return a + x;
-  if (a <= 0 || x < 0) return R_NaN;
+  if (ISNAN(x) || a <= 0 || x < 0) return R_NaN;
   if (x == 0) return (a > 1) ? 0.0 : ((a == 1) ? 1.0 : R_PosInf);
+  if (ISNAN(a) || !R_FINITE(a) || !R_FINITE(x)) return R_NaN;
   return exp((a - 1)*log(x) - x - lgamma(a));
 }
 
@@ -702,47 +853,58 @@ RXG_FN double _rxg_gammaInvStart(double a, double p, double q) {
   }
   t = 1 - a*(0.253 + a*0.12);
   if (p < t) return pow(p/t, 1/a);
-  return 1 - log(1 - (p - t)/(1 - t));
+  // 1 - (p - t)/(1 - t) = q/(1 - t), kept accurate for tiny q
+  return 1 - log(q/(1 - t));
 }
-// Halley iterations from x
+// Newton iterations on log x for log P (or log Q in the upper tail) = log p,
+// which stays accurate in the far tails where P and the density underflow
 RXG_FN double _rxg_gammaInvRefine(double a, double p, double q, double x) {
-  double t, u, err, a1 = a - 1, lna1 = 0, afac = 0, gln = lgamma(a);
-  if (a > 1) {
-    lna1 = log(a1);
-    afac = exp(a1*(lna1 - 1) - gln);
+  int lower = (p < 0.5);
+  if (!(x > 0)) {
+    // in the lower tail the answer underflows (the host gives DBL_MIN); in
+    // the upper tail the starting value failed, so start from 1
+    if (lower) return RXG_MIN;
+    x = 1.0;
   }
+  double lt = lower ? log(p) : log(q), gln = lgamma(a), y = log(x);
   for (int j = 0; j < 200; j++) {
-    if (x <= 0) return 0.0;
-    err = (p < 0.5) ? _rxg_igamma(a, x, 1, 1) - p : q - _rxg_igamma(a, x, 0, 1);
-    t = (a > 1) ? afac*exp(-(x - a1) + a1*(log(x) - lna1)) : exp(-x + a1*log(x) - gln);
-    if (t == 0) break;
-    u = err/t;
-    t = u/(1 - 0.5*fmin(1.0, u*((a - 1)/x - 1)));
-    x -= t;
-    if (x <= 0) x = 0.5*(x + t);
-    if (fabs(t) < 4*RXG_EPS*x) break;
+    x = exp(y);
+    double lf = _rxg_igammaLog(a, x, lower);
+    // d log F/d log x = x f(x)/F (negative for Q)
+    double dg = exp(a*log(x) - x - gln - lf);
+    if (!lower) dg = -dg;
+    if (!(fabs(dg) > 0) || !R_FINITE(dg) || !R_FINITE(lf)) break;
+    double dy = (lf - lt)/dg;
+    dy = fmax(-2.0, fmin(2.0, dy));
+    y -= dy;
+    if (fabs(dy) < 4*RXG_EPS) break;
   }
-  return x;
+  x = exp(y);
+  return (x < RXG_MIN) ? RXG_MIN : x;
 }
 // x with P(a,x) = p (q = 1 - p, given separately to keep the upper tail)
+// (argument checks follow the host)
 RXG_FN double _rxg_gammaInv(double a, double p, double q) {
-  if (ISNAN(a) || ISNAN(p) || ISNAN(q)) return a + p + q;
-  if (a <= 0 || p < 0 || p > 1) return R_NaN;
+  if (ISNAN(p) || ISNAN(q) || a <= 0 || p < 0 || p > 1) return R_NaN;
   if (p == 0) return 0.0;
   if (q == 0) return R_PosInf;
+  if (ISNAN(a) || !R_FINITE(a)) return R_NaN;
   return _rxg_gammaInvRefine(a, p, q, _rxg_gammaInvStart(a, p, q));
 }
 RXG_FN double gammapInv(double a, double p) { return _rxg_gammaInv(a, p, 1 - p); }
 RXG_FN double gammaqInv(double a, double q) { return _rxg_gammaInv(a, 1 - q, q); }
 
-// f(a) = P(a,x) - p (or q - Q(a,x) in the upper tail), decreasing in a
-RXG_FN double _rxg_gammaInvaF(double a, double x, double p, double q) {
-  return (p < 0.5) ? _rxg_igamma(a, x, 1, 1) - p : q - _rxg_igamma(a, x, 0, 1);
+// f(u) = log P(e^u, x) - log p (or log q - log Q in the upper tail),
+// decreasing in u = log a; logs keep the far tails accurate
+RXG_FN double _rxg_gammaInvaF(double u, double x, double p, double q) {
+  double a = exp(u);
+  if (p < 0.5) return _rxg_igammaLog(a, x, 1) - log(p);
+  return log(q) - _rxg_igammaLog(a, x, 0);
 }
-// bracket the root: on return f(lo) >= 0 >= f(hi) unless no bracket was found
+// bracket the root in u: on return f(lo) >= 0 >= f(hi) unless none was found
 RXG_FN void _rxg_gammaInvaBracket(double x, double p, double q, double *lo,
                                   double *hi, double *flo, double *fhi) {
-  *lo = fmax(x, 1.0);
+  *lo = log(fmax(x, 1.0));
   *flo = _rxg_gammaInvaF(*lo, x, p, q);
   *hi = *lo;
   *fhi = *flo;
@@ -750,7 +912,7 @@ RXG_FN void _rxg_gammaInvaBracket(double x, double p, double q, double *lo,
     for (int i = 0; i < 2000 && *fhi > 0; i++) {
       *lo = *hi;
       *flo = *fhi;
-      *hi *= 2;
+      *hi += 1.0;
       *fhi = _rxg_gammaInvaF(*hi, x, p, q);
     }
     return;
@@ -758,11 +920,11 @@ RXG_FN void _rxg_gammaInvaBracket(double x, double p, double q, double *lo,
   for (int i = 0; i < 2000 && *flo < 0; i++) {
     *hi = *lo;
     *fhi = *flo;
-    *lo *= 0.5;
+    *lo -= 1.0;
     *flo = _rxg_gammaInvaF(*lo, x, p, q);
   }
 }
-// Illinois iterations within [lo, hi]
+// Illinois iterations on u within [lo, hi]
 RXG_FN double _rxg_gammaInvaSolve(double x, double p, double q, double lo,
                                   double hi, double flo, double fhi) {
   int side = 0;
@@ -771,8 +933,8 @@ RXG_FN double _rxg_gammaInvaSolve(double x, double p, double q, double lo,
     r0 = r;
     r = (lo*fhi - hi*flo)/(fhi - flo);
     double fr = _rxg_gammaInvaF(r, x, p, q);
-    if (fr == 0 || fabs(hi - lo) < 4*RXG_EPS*fabs(r) ||
-        (i > 0 && fabs(r - r0) < 4*RXG_EPS*fabs(r))) break;
+    if (fr == 0 || fabs(hi - lo) < 4*RXG_EPS*fmax(1.0, fabs(r)) ||
+        (i > 0 && fabs(r - r0) < 4*RXG_EPS*fmax(1.0, fabs(r)))) break;
     if (fr > 0) {
       lo = r;
       flo = fr;
@@ -785,19 +947,23 @@ RXG_FN double _rxg_gammaInvaSolve(double x, double p, double q, double lo,
       side = -1;
     }
   }
-  return r;
+  return exp(r);
 }
 // a with P(a,x) = p: P decreases in a, so bracket and solve
 RXG_FN double _rxg_gammaInva(double x, double p, double q) {
-  if (ISNAN(x) || ISNAN(p) || ISNAN(q)) return x + p + q;
-  if (x < 0 || p < 0 || p > 1) return R_NaN;
-  // the host (boost with errors ignored) gives 0 at p = 0 and Inf at p = 1
-  if (p == 0) return 0.0;
-  if (q == 0) return R_PosInf;
+  // the host (boost with errors ignored) gives Inf at p = 0, DBL_MIN at
+  // p = 1, 0 at x = 0, Inf at x = Inf and Inf for a NaN p, in that order
+  if (p == 0) return R_PosInf;
+  if (q == 0) return RXG_MIN;
+  if (x == 0) return 0.0;
+  if (x == R_PosInf) return R_PosInf;
+  if (ISNAN(x) || x < 0) return R_NaN;
+  if (ISNAN(p) || ISNAN(q)) return R_PosInf;
+  if (p < 0 || p > 1) return R_NaN;
   double lo, hi, flo, fhi;
   _rxg_gammaInvaBracket(x, p, q, &lo, &hi, &flo, &fhi);
-  if (flo == 0) return lo;
-  if (fhi == 0) return hi;
+  if (flo == 0) return exp(lo);
+  if (fhi == 0) return exp(hi);
   if (!(flo > 0 && fhi < 0)) return R_NaN;
   return _rxg_gammaInvaSolve(x, p, q, lo, hi, flo, fhi);
 }
@@ -834,11 +1000,31 @@ RXG_FN double _rxg_betacf(double a, double b, double x) {
   }
   return h;
 }
-RXG_FN double _rxg_lbeta(double a, double b) {
-  return lgamma(a) + lgamma(b) - lgamma(a + b);
+// 1 - I_y(b, a) for b < 1e-6 a, where computing 1 - (1 - tiny) would lose it:
+// I_y(b,a) = y^b Gamma(a+b)/(Gamma(1+b) Gamma(a)) (1 + b sum_{n>=1} (1-a)_n y^n/(n!(b+n)))
+RXG_FN double _rxg_ibetaSmallB(double a, double b, double y) {
+  double t = 1.0, sum = 0.0;
+  for (int n = 1; n < 10000; n++) {
+    t *= (n - a)*y/n;
+    double term = t/(b + n);
+    sum += term;
+    if (fabs(term) <= fabs(sum)*RXG_EPS) break;
+  }
+  // log(Gamma(a+b)/Gamma(a)) to second order in b
+  double dl = b*digamma(a) + 0.5*b*b*trigamma(a);
+  return -expm1(b*log(y) + dl - lgamma1p(b) + log1p(b*sum));
 }
+// log I_x(a, b) for 0 < x < 1 and finite positive shapes
+RXG_FN double _rxg_ibetaLog(double a, double b, double x) {
+  double lbt = a*log(x) + b*log1p(-x) - _rxg_lbeta(a, b);
+  if (x < (a + 1)/(a + b + 2)) return lbt + log(_rxg_betacf(a, b, x)/a);
+  if (b < 1e-6*fmin(1.0, a)) return log(_rxg_ibetaSmallB(a, b, 1.0 - x));
+  return log1p(-exp(lbt)*_rxg_betacf(b, a, 1.0 - x)/b);
+}
+// (argument checks follow the host: an infinite shape gives NaN)
 RXG_FN double ibeta(double a, double b, double x) {
   if (ISNAN(a) || ISNAN(b) || ISNAN(x)) return a + b + x;
+  if (!R_FINITE(a) || !R_FINITE(b)) return R_NaN;
   if (a < 0 || b < 0 || (a == 0 && b == 0) || x < 0 || x > 1) return R_NaN;
   if (a == 0) return 1.0;
   if (b == 0) return 0.0;
@@ -846,10 +1032,12 @@ RXG_FN double ibeta(double a, double b, double x) {
   if (x == 1) return 1.0;
   double lbt = a*log(x) + b*log1p(-x) - _rxg_lbeta(a, b);
   if (x < (a + 1)/(a + b + 2)) return exp(lbt)*_rxg_betacf(a, b, x)/a;
+  if (b < 1e-6*fmin(1.0, a)) return _rxg_ibetaSmallB(a, b, 1.0 - x);
   return 1.0 - exp(lbt)*_rxg_betacf(b, a, 1.0 - x)/b;
 }
 RXG_FN double ibetaDer(double a, double b, double x) {
   if (ISNAN(a) || ISNAN(b) || ISNAN(x)) return a + b + x;
+  if (!R_FINITE(a) || !R_FINITE(b)) return R_NaN;
   if (a <= 0 || b <= 0 || x < 0 || x > 1) return R_NaN;
   if (x == 0) return (a > 1) ? 0.0 : ((a == 1) ? 1.0/beta(a, b) : R_PosInf);
   if (x == 1) return (b > 1) ? 0.0 : ((b == 1) ? 1.0/beta(a, b) : R_PosInf);
@@ -875,29 +1063,45 @@ RXG_FN double _rxg_ibetaInvStart(double a, double b, double p) {
   if (p < t/w) return pow(a*w*p, 1/a);
   return 1 - pow(b*w*(1 - p), 1/b);
 }
-// Halley iterations from x
+// Newton iterations on log x for log I_x(a, b) = log p (p < 0.5; the
+// upper half is solved through the symmetry I_x(a,b) = 1 - I_{1-x}(b,a))
 RXG_FN double _rxg_ibetaInvRefine(double a, double b, double p, double x) {
-  double a1 = a - 1, b1 = b - 1, t, u, err;
-  double afac = -_rxg_lbeta(a, b);
+  if (!(x > 0)) return RXG_MIN;
+  if (!(x < 1)) x = 0.5; // the starting value rounded to 1
+  double lt = log(p), lb = _rxg_lbeta(a, b), y = log(x);
   for (int j = 0; j < 200; j++) {
-    if (x == 0 || x == 1) return x;
-    err = ibeta(a, b, x) - p;
-    t = exp(a1*log(x) + b1*log1p(-x) + afac);
-    if (t == 0) break;
-    u = err/t;
-    t = u/(1 - 0.5*fmin(1.0, u*(a1/x - b1/(1 - x))));
-    x -= t;
-    if (x <= 0) x = 0.5*(x + t);
-    if (x >= 1) x = 0.5*(x + t + 1);
-    if (fabs(t) < 4*RXG_EPS*x && j > 0) break;
+    x = exp(y);
+    if (!(x < 1)) break;
+    double li = _rxg_ibetaLog(a, b, x);
+    // d log I/d log x = x f(x)/I
+    double dg = exp(a*log(x) + (b - 1)*log1p(-x) - lb - li);
+    if (!(dg > 0) || !R_FINITE(dg) || !R_FINITE(li)) break;
+    double dy = fmax(-2.0, fmin(2.0, (li - lt)/dg));
+    // stay below log(1) = 0
+    if (y - dy >= 0) dy = 0.5*y;
+    y -= dy;
+    if (fabs(dy) < 4*RXG_EPS) break;
   }
-  return x;
+  x = exp(y);
+  return (x < RXG_MIN) ? RXG_MIN : x;
 }
+// (argument checks follow the host: shapes <= 0, then the p = 0 and p = 1
+// boundaries, the a = 1 and b = 1 closed forms, then infinite shapes give NaN;
+// an underflowing quantile is DBL_MIN)
 RXG_FN double ibetaInv(double a, double b, double p) {
-  if (ISNAN(a) || ISNAN(b) || ISNAN(p)) return a + b + p;
-  if (a <= 0 || b <= 0 || p < 0 || p > 1) return R_NaN;
+  if (a <= 0 || b <= 0 || ISNAN(p) || p < 0 || p > 1) return R_NaN;
   if (p == 0) return 0.0;
   if (p == 1) return 1.0;
+  if (ISNAN(a) || ISNAN(b)) return R_NaN;
+  // closed forms (as the host)
+  if (b == 1) return fmax(exp(log(p)/a), RXG_MIN);
+  if (a == 1) return -expm1(log1p(-p)/b);
+  if (!R_FINITE(a) || !R_FINITE(b)) return R_NaN;
+  if (p > 0.5) {
+    double x = 1.0 - _rxg_ibetaInvRefine(b, a, 1 - p, _rxg_ibetaInvStart(b, a, 1 - p));
+    // 1 - y cannot carry a small x; refine those directly
+    return (x < 1e-8) ? _rxg_ibetaInvRefine(a, b, p, x) : x;
+  }
   return _rxg_ibetaInvRefine(a, b, p, _rxg_ibetaInvStart(a, b, p));
 }
 
@@ -952,6 +1156,7 @@ RXG_FN double studentTInv(double p, double nu) {
   if (p >= 1.0) return R_PosInf;
   if (p == 0.5) return 0.0;
   int lower = (p < 0.5);
+  if (nu == R_PosInf) return lower ? R_NegInf : R_PosInf;
   double q = lower ? 2.0*p : 2.0*(1.0 - p);
   double x = ibetaInv(0.5*nu, 0.5, q);
   if (!(x > 0.0)) return lower ? R_NegInf : R_PosInf;
