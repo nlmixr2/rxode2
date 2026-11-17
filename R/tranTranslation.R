@@ -73,20 +73,78 @@ rxode2parseGetTranslation <- function() {
 ## Builtin functions with a device (OpenCL) version: OpenCL C math or
 ## inst/include/rxode2gpu/rxg_prelude.h
 .rxGpuSafeBuiltin <- c(
-  "lgamma", "abs", "acos", "acosh", "asin", "asinh", "atan", "atan2", "atanh",
-  "cos", "cosh", "erf", "erfc", "exp", "gamma", "log", "sin", "sinh", "sqrt",
-  "tan", "tanh", "floor", "ceil", "ceiling", "trunc", "sign", "max", "min",
-  "logit", "expit", "gammafn", "lgammafn", "loggamma", "log1p", "expm1",
-  "factorial", "lfactorial", "lgamma1p", "log10", "log2", "phi", "normcdf",
-  "fabs", "pow", "R_pow", "R_pow_di", "Rx_pow_di", "Rx_pow", "is.nan",
-  "is.na", "is.finite", "is.infinite", "!", "==", "!=", ">=", "<=", "<", ">",
-  "&&", "||", "&", "|"
+  "lgamma",
+  "abs",
+  "acos",
+  "acosh",
+  "asin",
+  "asinh",
+  "atan",
+  "atan2",
+  "atanh",
+  "cos",
+  "cosh",
+  "erf",
+  "erfc",
+  "exp",
+  "gamma",
+  "log",
+  "sin",
+  "sinh",
+  "sqrt",
+  "tan",
+  "tanh",
+  "floor",
+  "ceil",
+  "ceiling",
+  "trunc",
+  "sign",
+  "max",
+  "min",
+  "logit",
+  "expit",
+  "gammafn",
+  "lgammafn",
+  "loggamma",
+  "log1p",
+  "expm1",
+  "factorial",
+  "lfactorial",
+  "lgamma1p",
+  "log10",
+  "log2",
+  "phi",
+  "normcdf",
+  "fabs",
+  "pow",
+  "R_pow",
+  "R_pow_di",
+  "Rx_pow_di",
+  "Rx_pow",
+  "is.nan",
+  "is.na",
+  "is.finite",
+  "is.infinite",
+  "!",
+  "==",
+  "!=",
+  ">=",
+  "<=",
+  "<",
+  ">",
+  "&&",
+  "||",
+  "&",
+  "|"
 )
 
 rxode2parseGetTranslationBuiltin <- function() {
   .n <- names(.parseEnv$.parseNum)
-  data.frame(n = .n, i = as.integer(setNames(.parseEnv$.parseNum, NULL)),
-             gpuSafe = as.integer(.n %in% .rxGpuSafeBuiltin))
+  data.frame(
+    n = .n,
+    i = as.integer(setNames(.parseEnv$.parseNum, NULL)),
+    gpuSafe = as.integer(.n %in% .rxGpuSafeBuiltin)
+  )
 }
 
 
