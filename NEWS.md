@@ -21,6 +21,10 @@
 
 ## Bug fixes
 
+- `gamma(x)` in a model now computes the Gamma function; it was translated to
+  `lgammafn()` and returned log-gamma.  This also affected `factorial()` and
+  `gammafn()` after a symengine round trip, which rewrites them as `gamma()`.
+
 - `rxSolve(..., addDosing = TRUE)` no longer crashes with a string
   assignment (`x <- "a"`) or a factor covariate in the output: the
   `rate`/`dur`/`ii` columns were allocated after the covariates but filled
