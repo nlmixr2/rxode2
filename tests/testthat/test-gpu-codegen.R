@@ -25,6 +25,35 @@ rxTest({
     expect_equal(.df$gpuSafe[.df$rxFun == "logit"], 1L)
     expect_equal(.df$gpuSafe[.df$rxFun == "myLogit"], 0L)
     expect_equal(names(rxode2parseGetTranslation()), names(.cur))
+    ## the same rxFun registered to a different C function is not gpu safe
+    .other <- .cur
+    .other$fun[.other$rxFun == "logit"] <- "myLogitC"
+    .other$package[.other$rxFun == "logit"] <- "myPkg"
+    rxode2parseAssignTranslation(.other)
+    .df <- .rxode2parseGetTranslationFull()
+    expect_equal(.df$gpuSafe[.df$rxFun == "logit"], 0L)
+    expect_equal(.df$gpuSafe[.df$rxFun == "expit"], 1L)
+    ## an explicit gpuSafe column is used as given
+    .exp <- .cur
+    .exp$gpuSafe <- .exp$rxFun == "rxnorm"
+    rxode2parseAssignTranslation(.exp)
+    .df <- .rxode2parseGetTranslationFull()
+    expect_equal(.df$gpuSafe[.df$rxFun == "rxnorm"], 1L)
+    expect_equal(.df$gpuSafe[.df$rxFun == "logit"], 0L)
+  })
+
+  test_that("the rxode2ll likelihoods are not gpu safe", {
+    .df <- .rxode2parseGetTranslationFull()
+    .ll <- .df$package == "rxode2ll"
+    expect_true(any(.ll))
+    expect_true(all(.df$gpuSafe[.ll] == 0L))
+    expect_equal(
+      .gpuSafe(rxode2({
+        d/dt(a) <- -k * a
+        ll <- llikNorm(a, 0, 1)
+      })),
+      0L
+    )
   })
 
   test_that("gpuSafe is set while parsing", {

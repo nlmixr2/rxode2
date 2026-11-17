@@ -122,13 +122,38 @@ SEXP _rxode2parse_preserve(SEXP x) {
    and _rxode2parse_preserve() allocates, so protect each frame until its columns
    are claimed; the protection is released before returning, never crossing the
    parse. */
+// The optional gpuSafe column, found by name and returned as an integer
+// vector; NULL (no function is gpu safe) when it is missing or not numeric
+static SEXP rxgGpuSafeColumn(SEXP df) {
+  SEXP nm = Rf_getAttrib(df, R_NamesSymbol);
+  if (TYPEOF(nm) != STRSXP) return NULL;
+  for (int i = Rf_length(nm); i--;) {
+    if (strcmp(CHAR(STRING_ELT(nm, i)), "gpuSafe")) continue;
+    SEXP col = VECTOR_ELT(df, i);
+    switch (TYPEOF(col)) {
+    case INTSXP:
+      return _rxode2parse_preserve(col);
+    case LGLSXP:
+    case REALSXP: {
+      // R_PreserveObject() allocates, so hold the copy until it is preserved
+      rxProtectGuard;
+      SEXP ret = _rxode2parse_preserve(rxP(Rf_coerceVector(col, INTSXP)));
+      rxUPAll();
+      return ret;
+    }
+    default:
+      return NULL;
+    }
+  }
+  return NULL;
+}
+
 void _rxode2parse_assignTranslationBuiltin(void) {
   rxProtectGuard;
   SEXP df = rxP(getRxode2ParseDfBuiltin());
   _rxode2parse_funName = _rxode2parse_preserve(VECTOR_ELT(df, 0));
   _rxode2parse_funNameInt = _rxode2parse_preserve(VECTOR_ELT(df, 1));
-  _rxode2parse_funNameGpuSafe = (Rf_length(df) > 2) ?
-    _rxode2parse_preserve(VECTOR_ELT(df, 2)) : NULL;
+  _rxode2parse_funNameGpuSafe = rxgGpuSafeColumn(df);
   rxUP(1);
 }
 
@@ -144,9 +169,8 @@ void _rxode2parse_assignTranslation(SEXP df) {
   _rxode2parse_functionArgMin = _rxode2parse_preserve(VECTOR_ELT(df, 5));
   _rxode2parse_functionArgMax = _rxode2parse_preserve(VECTOR_ELT(df, 6));
   _rxode2parse_functionThreadSafe = _rxode2parse_preserve(VECTOR_ELT(df, 7));
-  // gpuSafe is optional so a translation table without it still parses
-  _rxode2parse_functionGpuSafe = (Rf_length(df) > 8) ?
-    _rxode2parse_preserve(VECTOR_ELT(df, 8)) : NULL;
+  // gpuSafe is optional: without it no registered function is gpu safe
+  _rxode2parse_functionGpuSafe = rxgGpuSafeColumn(df);
   _rxode2parse_assignTranslationBuiltin();
   rxUP(1);
 }
