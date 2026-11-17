@@ -12,7 +12,10 @@ rxode2parseFuns <- function() {
 #'
 #' @param df data frame containing the character column names rxFun,
 #'   fun, type, package, packageFun and the integer column names
-#'   argMin and argMax
+#'   argMin, argMax and threadSafe.  An optional integer gpuSafe column
+#'   marks functions with a device (OpenCL) version; without it a
+#'   function keeps the gpuSafe value already registered for its rxFun
+#'   (0 for a new function)
 #' @return Nothing called for side effects
 #' @author Matthew L. Fidler
 #' @family Developer API
@@ -31,7 +34,16 @@ rxode2parseAssignTranslation <- function(df) {
   for (.i in .int) {
     .df[[.i]] <- as.integer(.df[[.i]])
   }
-  assign(".rxode2parseDf", .df, envir = .parseEnv)
+  .gpu <- df$gpuSafe
+  if (is.null(.gpu)) {
+    .cur <- .parseEnv$.rxode2parseDf
+    .gpu <- if (is.null(.cur$gpuSafe)) 0L else .cur$gpuSafe[match(.df$rxFun, .cur$rxFun)]
+  }
+  .gpu <- rep_len(as.integer(.gpu), nrow(.df))
+  .gpu[is.na(.gpu)] <- 0L
+  .full <- .df
+  .full$gpuSafe <- .gpu
+  assign(".rxode2parseDf", .full, envir = .parseEnv)
   invisible(.df)
 }
 
@@ -44,11 +56,37 @@ rxode2parseAssignTranslation <- function(df) {
 #' @examples
 #' rxode2parseGetTranslation()
 rxode2parseGetTranslation <- function() {
+  ## the released columns: reverse dependencies rbind() rows onto this
+  .df <- .parseEnv$.rxode2parseDf
+  .df[, setdiff(names(.df), "gpuSafe"), drop = FALSE]
+}
+
+#' The translation table with the gpuSafe column (read by the parser)
+#'
+#' @return data frame
+#' @noRd
+#' @author Matthew L. Fidler
+.rxode2parseGetTranslationFull <- function() {
   .parseEnv$.rxode2parseDf
 }
 
+## Builtin functions with a device (OpenCL) version: OpenCL C math or
+## inst/include/rxode2gpu/rxg_prelude.h
+.rxGpuSafeBuiltin <- c(
+  "lgamma", "abs", "acos", "acosh", "asin", "asinh", "atan", "atan2", "atanh",
+  "cos", "cosh", "erf", "erfc", "exp", "gamma", "log", "sin", "sinh", "sqrt",
+  "tan", "tanh", "floor", "ceil", "ceiling", "trunc", "sign", "max", "min",
+  "logit", "expit", "gammafn", "lgammafn", "loggamma", "log1p", "expm1",
+  "factorial", "lfactorial", "lgamma1p", "log10", "log2", "phi", "normcdf",
+  "fabs", "pow", "R_pow", "R_pow_di", "Rx_pow_di", "Rx_pow", "is.nan",
+  "is.na", "is.finite", "is.infinite", "!", "==", "!=", ">=", "<=", "<", ">",
+  "&&", "||", "&", "|"
+)
+
 rxode2parseGetTranslationBuiltin <- function() {
-  data.frame(n = names(.parseEnv$.parseNum), i = as.integer(setNames(.parseEnv$.parseNum, NULL)))
+  .n <- names(.parseEnv$.parseNum)
+  data.frame(n = .n, i = as.integer(setNames(.parseEnv$.parseNum, NULL)),
+             gpuSafe = as.integer(.n %in% .rxGpuSafeBuiltin))
 }
 
 
