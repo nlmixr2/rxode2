@@ -16,7 +16,7 @@ END_RCPP
 Rcpp::Function getRxFn(std::string name);
 
 extern "C" SEXP getRxode2ParseDf(void) {
-  Rcpp::Function getTran = Rcpp::as<Rcpp::Function>(getRxFn("rxode2parseGetTranslation"));
+  Rcpp::Function getTran = Rcpp::as<Rcpp::Function>(getRxFn(".rxode2parseGetTranslationFull"));
   return getTran();
 }
 

@@ -64,10 +64,25 @@ static inline void wprintValue(char *value, int isId) {
   }
 }
 
+// Identifiers whose C reads solver state make the model not GPU safe
+static inline void rxgNoteIdentifier(char *value) {
+  if (tb.gpu == 0) return;
+  if (!strcmp("CMT", value) || !rxstrcmpi("amt", value) ||
+      !rxstrcmpi("tlast", value) || !strcmp("rx__PTR__", value) ||
+      !strcmp("rx__isObs__", value) || !rxstrcmpi("mixnum", value) ||
+      !rxstrcmpi("mixest", value) || !rxstrcmpi("mixunif", value) ||
+      mixSelNum(value, NULL) != 0 ||
+      !strcmp("newind", value) || !strcmp("NEWIND", value) ||
+      !strcmp("rxFlag", value)) {
+    tb.gpu = 0;
+  }
+}
+
 void wprint_node(int depth, char *name, char *value, void *client_data) {
   (void)depth; (void)client_data;
   nodeInfo ni;
   niReset(&ni);
+  if (nodeHas(identifier) || nodeHas(identifier_r)) rxgNoteIdentifier(value);
   if (wprintSpecialValue(value)) return;
   if (nodeHas(identifier)) {
     if (wprintSpecialFun(value)) return;

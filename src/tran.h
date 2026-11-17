@@ -121,6 +121,7 @@ lhs symbols?
   int simflg;
   int nInvCdf;                /* root-finding inverse CDF call sites, for the memo */
   int thread;
+  int gpu; // 1 when the model can run as device (OpenCL) code
   int lastDdt;
   int nLlik;
   int lvlStr;
