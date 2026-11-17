@@ -1021,13 +1021,18 @@ RXG_FN double _rxg_ibetaLog(double a, double b, double x) {
   if (b < 1e-6*fmin(1.0, a)) return log(_rxg_ibetaSmallB(a, b, 1.0 - x));
   return log1p(-exp(lbt)*_rxg_betacf(b, a, 1.0 - x)/b);
 }
-// argument checks and edge values of ibeta() (following the host: an
-// infinite shape gives NaN); 1 when *out holds the answer
+// arguments (none NaN) outside ibeta()'s domain; an infinite shape is
+// outside it, as on the host
+RXG_FN int _rxg_ibetaOut(double a, double b, double x) {
+  if (!R_FINITE(a) || !R_FINITE(b)) return 1;
+  if (a < 0 || b < 0 || (a == 0 && b == 0)) return 1;
+  return (x < 0 || x > 1);
+}
+// argument checks and edge values of ibeta(); 1 when *out holds the answer
 RXG_FN int _rxg_ibetaEdge(double a, double b, double x, double *out) {
   if (ISNAN(a) || ISNAN(b) || ISNAN(x)) {
     *out = a + b + x;
-  } else if (!R_FINITE(a) || !R_FINITE(b) || a < 0 || b < 0 ||
-             (a == 0 && b == 0) || x < 0 || x > 1) {
+  } else if (_rxg_ibetaOut(a, b, x)) {
     *out = R_NaN;
   } else if (a == 0) {
     *out = 1.0;
