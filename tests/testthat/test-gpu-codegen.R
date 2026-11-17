@@ -409,6 +409,61 @@ rxTest({
     }
   })
 
+  test_that("the device code runs on an OpenCL device", {
+    skip_on_cran()
+    skip_if_not_installed("OpenCL")
+    ## the first device with double precision, if any
+    .dev <- NULL
+    for (.pl in tryCatch(OpenCL::oclPlatforms(), error = function(e) list())) {
+      for (.d in tryCatch(OpenCL::oclDevices(.pl), error = function(e) list())) {
+        if (any(grepl("cl_khr_fp64", OpenCL::oclInfo(.d)$exts, fixed = TRUE))) {
+          .dev <- .d
+          break
+        }
+      }
+      if (!is.null(.dev)) break
+    }
+    skip_if(is.null(.dev), "no OpenCL device with double precision")
+    .mv <- rxModelVars(.m)
+    .k <- c(
+      "__kernel void rxg_test(__global double *out, const unsigned int n,",
+      "                       __global const double *y, __global const double *p) {",
+      "  size_t i = get_global_id(0);",
+      "  if (i*RXG_NEQ >= n) return;",
+      "  double yy[RXG_NEQ1], dy[RXG_NEQ1];",
+      "  rxg_ctx c;",
+      "  for (int j = 0; j < RXG_NEQ; j++) { yy[j] = y[i*RXG_NEQ + j]; c.ir[j] = 0.0; c.on[j] = 1; }",
+      "  for (int j = 0; j < RXG_NPAR; j++) { c.p0[j] = c.p1[j] = p[i*RXG_NPAR + j]; }",
+      "  for (int j = 0; j < RXG_NLHS1; j++) { c.pl[j] = 0.0; }",
+      "  c.t0 = c.t1 = 0.0; c.curShift = 0.0; c.tpk = 0.0; c.covType = 0; c.nonmem = 0;",
+      "  c.lambda = 1.0; c.yj = 2.0; c.logitHi = 1.0; c.logitLow = 0.0;",
+      "  rxg_dydt((double)(i % 2)*3.0, yy, dy, &c);",
+      "  for (int j = 0; j < RXG_NEQ; j++) out[i*RXG_NEQ + j] = dy[j];",
+      "}"
+    )
+    .ctx <- OpenCL::oclContext(.dev, precision = "double")
+    .ker <- OpenCL::oclSimpleKernel(.ctx, "rxg_test", .rxGpuProgramSource(.m, extra = .k), "double")
+    set.seed(11)
+    .n <- 64
+    .neq <- length(.mv$state)
+    .np <- length(.mv$params)
+    .y <- runif(.n * .neq, 0.5, 10)
+    .pm <- matrix(rep(c(tka = log(1.2), tcl = 3, WT = 85, tv = 20, kin = 0.5, kout = 0.3)[.mv$params], .n), .np)
+    .pm[.mv$params == "WT", ] <- runif(.n, 50, 100)
+    .out <- as.numeric(OpenCL::oclRun(
+      .ker,
+      .n * .neq,
+      OpenCL::as.clBuffer(.y, .ctx),
+      OpenCL::as.clBuffer(as.vector(.pm), .ctx)
+    ))
+    .lib <- .rxGpuHostLib(.m)
+    .host <- unlist(lapply(seq_len(.n), function(.i) {
+      .rxGpuHostEval(.lib, ((.i - 1) %% 2) * 3, .y[(.i - 1) * .neq + seq_len(.neq)], .pm[, .i])
+    }))
+    ## drivers differ in how accurately they divide and take roots
+    expect_equal(.out, .host, tolerance = 1e-6)
+  })
+
   test_that("the device code is valid OpenCL C", {
     skip_on_cran()
     .clang <- Sys.which("clang")
