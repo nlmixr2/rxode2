@@ -1032,8 +1032,9 @@
 #'   result does not depend on the row order of the data; `"data"` processes
 #'   them in the order of the rows in the data, the way NONMEM does (records
 #'   a row expands to, like the reset of an `evid=4` dose or `addl` repeats,
-#'   follow that row).  Doses added while solving follow the records at the
-#'   same time.  An event table already translated by [etTrans()] keeps the
+#'   follow that row, so an `addl` repeat or a lagged dose landing on a
+#'   reset is wiped by it, as NONMEM cancels prior doses at a reset).  Doses
+#'   added while solving follow the records at the same time.  An event table already translated by [etTrans()] keeps the
 #'   order it was translated with.  By default (`NULL`) this is `"data"` when
 #'   `nonmem = TRUE` and `"evid"` otherwise.
 #'

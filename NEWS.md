@@ -98,6 +98,10 @@
   `approxfun(method = "constant", f = 0.5)` gives, not a step at the
   midpoint (#1654).
 
+- `?rxSolve` now states that with `tieOrder = "data"` an `addl` repeat or a
+  lagged dose landing on a co-timed reset (`evid` 3 or 4) is wiped by it,
+  as NONMEM cancels prior doses at a reset; tests pin both cases (#1720).
+
 ### Sensitivities
 - Forward sensitivities now include the `f()` of a fixed-duration infusion,
   read at its start and removed at its stop, steady-state (`ss = 1`/`ss = 2`)

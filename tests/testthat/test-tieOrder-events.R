@@ -21,6 +21,24 @@ rxTest({
     })
   }
 
+  # the same models with every dose to central lagged by 2
+  .tieOdeLag <- function() {
+    rxode2({
+      d / dt(central) <- -0.1 * central
+      alag(central) <- 2
+      cp <- central / 20
+    })
+  }
+
+  .tieLinLag <- function() {
+    rxode2({
+      cl <- 2
+      v <- 20
+      alag(central) <- 2
+      cp <- linCmt()
+    })
+  }
+
   # concentration from a bolus `a` at `t0`
   .bol <- function(t, a, t0) {
     ifelse(t >= t0, a * exp(-.k * (t - t0)), 0) / .v
@@ -127,6 +145,47 @@ rxTest({
         .tieData(.row(0, 1, 100), .row(10, 4, 100, rate = 10), .row(10, 1, 100)),
         ifelse(.obs < 10, .bol(.obs, 100, 0), .bol(.obs, 100, 10) + .inf(.obs, 10, 10, 20)),
         .tol
+      )
+    })
+
+    # NONMEM cancels prior doses at a reset ("prior doses are cancelled",
+    # Guide V 6.7.3; a reset "will deactivate any previous dose event record
+    # which happens to be active", Guide VI V.K), so an addl repeat or a
+    # lagged dose that lands on a reset row is wiped with tieOrder='data'
+    # (rxode2#1720).  The evid order resets first, so the dose survives.
+    test_that(paste0("tieOrder='data' wipes an addl repeat landing on a co-timed reset (", .m, ")"), {
+      .d <- .tieData(.row(0, 1, 100, ii = 10, addl = 1), .row(10, 3))
+      expect_equal(.tieSolve(.mod, .d, "data"), ifelse(.obs < 10, .bol(.obs, 100, 0), 0), tolerance = .tol)
+      expect_equal(
+        .tieSolve(.mod, .d, "evid"),
+        ifelse(.obs < 10, .bol(.obs, 100, 0), .bol(.obs, 100, 10)),
+        tolerance = .tol
+      )
+      .d <- .tieData(.row(0, 1, 100, ii = 10, addl = 1), .row(10, 4, 50))
+      expect_equal(
+        .tieSolve(.mod, .d, "data"),
+        ifelse(.obs < 10, .bol(.obs, 100, 0), .bol(.obs, 50, 10)),
+        tolerance = .tol
+      )
+      expect_equal(
+        .tieSolve(.mod, .d, "evid"),
+        ifelse(.obs < 10, .bol(.obs, 100, 0), .bol(.obs, 150, 10)),
+        tolerance = .tol
+      )
+    })
+
+    test_that(paste0("tieOrder='data' wipes a lagged dose landing on a co-timed reset (", .m, ")"), {
+      .modLag <- if (.m == "ode") .tieOdeLag() else .tieLinLag()
+      .d <- .tieData(.row(8, 1, 100), .row(10, 3))
+      expect_equal(.tieSolve(.modLag, .d, "data"), rep(0, length(.obs)), tolerance = .tol)
+      expect_equal(.tieSolve(.modLag, .d, "evid"), .bol(.obs, 100, 10), tolerance = .tol)
+      # the evid=4 dose is lagged too, so it enters at t=12
+      .d <- .tieData(.row(8, 1, 100), .row(10, 4, 50))
+      expect_equal(.tieSolve(.modLag, .d, "data"), .bol(.obs, 50, 12), tolerance = .tol)
+      expect_equal(
+        .tieSolve(.modLag, .d, "evid"),
+        .bol(.obs, 100, 10) + .bol(.obs, 50, 12),
+        tolerance = .tol
       )
     })
 
