@@ -124,6 +124,9 @@ rxTest({
     expect_true(.threadIndOn(rxode2({
       cp <- rxpois(3) + ribinom(4, 0.5) + rxnbinom(3, 0.2) + rxgeom(0.4)
     })))
+    expect_true(.threadIndOn(rxode2({
+      y <- rxord(0.5, 0.3)
+    })))
   })
 
   test_that("user C code keeps the per-call thread subject (#1726)", {

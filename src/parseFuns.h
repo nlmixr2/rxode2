@@ -415,6 +415,7 @@ static inline int handleFunctionSum(transFunctions *tf) {
     } else if (!strcmp("rxord", tf->v)) {
       sAppend(&sb, "_rxord(_cSub, %d, (double) ", ii);
       sAppend(&sbDt, "_rxord(_cSub, %d, (double) ", ii);
+      tb.rng = 1; // _rxord() draws with rxunif()
     } else if (!strcmp("mix", tf->v)) {
       sAppend(&sb, "_mix(_cSub, %d, (double) ", ii);
       sAppend(&sbDt, "_mix(_cSub, %d, (double) ", ii);
