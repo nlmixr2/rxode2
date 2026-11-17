@@ -1122,6 +1122,25 @@ static void writeRxgDevice(const char *cfile, const char *prefix,
   sAppend(&sbOut, "#define RXG_NEQ1 %d\n#define RXG_NLHS1 %d\n#define RXG_NPAR1 %d\n",
           nState > 0 ? nState : 1, nLhs > 0 ? nLhs : 1, nPar > 0 ? nPar : 1);
   sAppend(&sbOut, "#define RXG_HAS_JAC %d\n", (found_jac == 1 && good_jac == 1) ? 1 : 0);
+  sAppend(&sbOut, "#define RXG_HAS_DELAY %d\n", tb.hasDelay ? 1 : 0);
+  if (tb.hasDelay) {
+    // the delay() history keeps only the states delay() reads: column of a
+    // state (RXG_DCOL) and state of a column (RXG_DSTATE)
+    int nd = 0;
+    sbuf dc, ds;
+    sNull(&dc); sIni(&dc);
+    sNull(&ds); sIni(&ds);
+    for (int k = 0; k < tb.de.n; k++) {
+      if ((tb.dprop[k] & propDelay) == 0) continue;
+      sAppend(&dc, "(i) == __DDT%d__ ? %d : ", k, nd);
+      sAppend(&ds, "(j) == %d ? __DDT%d__ : ", nd, k);
+      nd++;
+    }
+    sAppend(&sbOut, "#define RXG_NDLY %d\n#define RXG_DCOL(i) (%s-1)\n#define RXG_DSTATE(j) (%s0)\n",
+            nd, dc.s, ds.s);
+    sFree(&dc);
+    sFree(&ds);
+  }
   sAppend(&sbOut, "%s", _rxgHdr.s);
   sAppend(&sbOut, "%s", "#include \"rxode2gpu/rxg_model.h\"\n");
   sAppend(&sbOut, "%s", body.s);
