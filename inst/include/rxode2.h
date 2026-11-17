@@ -133,7 +133,35 @@ typedef void (*t_rxDydtForce)(int *neq, double t, double *y, double *dydt);
 #define RXMVT_NO_ENGINE -7
 #define RXMVT_ALLOC_FAIL -8
 
+// The output-record walk rxSolve()'s data frame is built with (rxDfWalkInit,
+// rxDfWalkStep and rxDfWalkDull in src/rxode2_df.cpp), so a package solving
+// through rxode2 lays out the same rows.  rxDfWalkStep() returns one of these
+// for a record and fills `out` with the RXDF_OUT_* fields.  Outside the
+// __RXODE2PTR_H__ guard so downstream packages see them.
+#define RXDF_BAD -2  // the state or `out` buffer was rejected
+#define RXDF_SKIP -1 // no calc_lhs, no row (EVID 9)
+#define RXDF_LHS 0   // calc_lhs at RXDF_OUT_LHS_TIME, no row
+#define RXDF_ROW 1   // calc_lhs at RXDF_OUT_LHS_TIME, then a row
+#define RXDF_KNOT 2  // a lagged dose's knot: calc_lhs only
+#define RXDF_OUT_LHS_TIME 0 // time calc_lhs is called with
+#define RXDF_OUT_TIME 1     // the row's time column
+#define RXDF_OUT_RESETNO 2  // the row's resetno column (resets so far + 1)
+#define RXDF_OUT_EVID 3     // the evid column (NONMEM code when addDosing=TRUE)
+#define RXDF_OUT_CMT 4      // cmt, ss, rate, dur, ii: addDosing=TRUE only
+#define RXDF_OUT_SS 5
+#define RXDF_OUT_AMT 6      // amt: addDosing=TRUE or NA
+#define RXDF_OUT_RATE 7
+#define RXDF_OUT_DUR 8
+#define RXDF_OUT_II 9
+#define RXDF_OUT_SIMERR 10  // 1 when the record takes a simulated residual row
+#define RXDF_OUT_NEWIND 11  // 1 when the subject's newind is 2 after it
+#define RXDF_OUT_N 12
+
 #ifndef __RXODE2PTR_H__
+int rxDfWalkInit(void *state, int stateSize, rx_solve *rx,
+                 rx_solving_options_ind *ind, int doDose, int countOnly);
+int rxDfWalkStep(void *state, int i, double *out, int nOut);
+void rxDfWalkDull(const void *state, int *dull);
 int rxRmvtSetup(void **handle, int d, const double *mu, const double *sigma,
                 int isChol, const double *lower, const double *upper, double nu,
                 double a, double tol, double nlTol, int nlMaxiter);

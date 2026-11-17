@@ -49,6 +49,7 @@ lincmt-solve
 sens3
 adjoint-sens
 event-sensitivities-api
+df-walk
 symengine-translate-fixture
 # delay differential equations
 dde

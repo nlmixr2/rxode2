@@ -7,7 +7,19 @@
   first-use `Matrix` namespace load (#1675); `Matrix` is no longer
   suggested.
 
+- The record walk `rxSolve()` lays out its output rows with (which records
+  are rows, the reset time shift, the `addDosing` dose columns) is exported
+  to downstream packages through the function-pointer table as
+  `rxDfWalkInit()`, `rxDfWalkStep()` and `rxDfWalkDull()` (slots 105-107),
+  so a package solving through rxode2 lays out `rxSolve()`'s own rows
+  (nlmixr2/nlmixr2est#1356).
+
 ## Bug fixes
+
+- `rxSolve(..., addDosing = TRUE)` no longer crashes with a string
+  assignment (`x <- "a"`) or a factor covariate in the output: the
+  `rate`/`dur`/`ii` columns were allocated after the covariates but filled
+  before `time`, so every later column was written three positions off.
 
 ### Delay differential equations
 - `delay()` models now solve with `method = "dop5"` and `method = "bs"`.
