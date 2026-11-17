@@ -24,6 +24,12 @@
   `rx*()`/`ri*()` draw, `simeta()`/`simeps()`, a user function or another
   package's C function), saving that per-call cost elsewhere (#1726).
 
+- `rxDfSolveRefused()` (slot 113) tells a downstream package whether
+  `rxSolve()` would refuse the current solve (a `NA` event time, a model
+  `method = "vv"` cannot integrate, a single subject that failed, ...) rather
+  than return it with `NA` rows; `rxSolve()` decides with the same code
+  (nlmixr2/nlmixr2est#1356).
+
 ## Bug fixes
 
 - `gamma(x)` in a model now computes the Gamma function; it was translated to
