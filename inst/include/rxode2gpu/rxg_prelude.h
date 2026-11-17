@@ -159,7 +159,6 @@ RXG_FN double Rx_pow_di(double a, double b) {
 
 RXG_FN double ceiling(double a) { return ceil(a); }
 RXG_FN double loggamma(double a) { return lgamma(a); }
-RXG_FN double lgamma1p(double a) { return lgamma(a + 1.0); }
 RXG_FN double gammafn(double a) { return tgamma(a); }
 RXG_FN double lgammafn(double a) { return lgamma(a); }
 #define factorial(a) exp(lgamma1p(a))
