@@ -84,6 +84,21 @@ RXG_FN double _div0(double denom) {
 #endif
 }
 
+// R's R_pow() (arithmetic.c) when x or y is infinite (neither is NaN)
+RXG_FN double _rxg_pow_inf(double x, double y) {
+  if (!R_FINITE(x)) {
+    if (x > 0) return (y < 0.) ? 0. : R_PosInf;
+    if (R_FINITE(y) && y == floor(y)) {
+      return (y < 0.) ? 0. : (fmod(y, 2.) != 0 ? x : -x);
+    }
+  }
+  if (!R_FINITE(y) && x >= 0) {
+    if (y > 0) return (x >= 1) ? R_PosInf : 0.;
+    return (x < 1) ? R_PosInf : 0.;
+  }
+  return R_NaN;
+}
+
 // R's R_pow() (arithmetic.c)
 RXG_FN double R_pow(double x, double y) {
   if (x == 1. || y == 0.) return 1.;
@@ -97,19 +112,7 @@ RXG_FN double R_pow(double x, double y) {
     return pow(x, y);
   }
   if (ISNAN(x) || ISNAN(y)) return x + y;
-  if (!R_FINITE(x)) {
-    if (x > 0) return (y < 0.) ? 0. : R_PosInf;
-    if (R_FINITE(y) && y == floor(y)) {
-      return (y < 0.) ? 0. : (fmod(y, 2.) != 0 ? x : -x);
-    }
-  }
-  if (!R_FINITE(y)) {
-    if (x >= 0) {
-      if (y > 0) return (x >= 1) ? R_PosInf : 0.;
-      return (x < 1) ? R_PosInf : 0.;
-    }
-  }
-  return R_NaN;
+  return _rxg_pow_inf(x, y);
 }
 
 // R's R_pow_di() (arithmetic.c)
