@@ -17,11 +17,18 @@ typedef struct rxg_ctx {
   double tpk;           // record time PK statements read when nonmem != 0
   int covType;          // 0 p0; 1 linear; 2 p0 before the midpoint, p1 after
   int nonmem;           // rxControl(nonmem=TRUE)
+  double lambda, yj;    // transform-both-sides values (rx_lambda_, rx_yj_)
+  double logitHi, logitLow; // (rx_hi_, rx_low_)
 } rxg_ctx;
 
 #define _IR (_rxg->ir)
 #define _ON (_rxg->on)
 #define _PL (_rxg->pl)
+// per-call copies the generated code declares, seeded from the context
+#define rx_lambda_ _rxgLambda
+#define rx_yj_ _rxgYj
+#define rx_hi_ _rxgHi
+#define rx_low_ _rxgLow
 
 RXG_FN const double *rxg_par(const rxg_ctx *c, double t, double *pp) {
   if (c->covType == 0) return c->p0;

@@ -73,9 +73,7 @@ static inline void rxgNoteIdentifier(char *value) {
       !rxstrcmpi("mixest", value) || !rxstrcmpi("mixunif", value) ||
       mixSelNum(value, NULL) != 0 ||
       !strcmp("newind", value) || !strcmp("NEWIND", value) ||
-      !strcmp("rxFlag", value) || !strcmp("rx_lambda_", value) ||
-      !strcmp("rx_yj_", value) || !strcmp("rx_hi_", value) ||
-      !strcmp("rx_low_", value)) {
+      !strcmp("rxFlag", value)) {
     tb.gpu = 0;
   }
 }

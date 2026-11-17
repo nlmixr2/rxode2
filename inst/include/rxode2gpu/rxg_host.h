@@ -15,6 +15,10 @@ static void rxg_host_ctx(rxg_ctx *c, double *p0, double *p1, double *pl,
   c->t1 = tt[1];
   c->curShift = tt[2];
   c->tpk = tt[3];
+  c->lambda = tt[4];
+  c->yj = tt[5];
+  c->logitHi = tt[6];
+  c->logitLow = tt[7];
   c->covType = flags[0];
   c->nonmem = flags[1];
 }
