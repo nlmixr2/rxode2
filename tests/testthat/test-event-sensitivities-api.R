@@ -116,9 +116,8 @@ rxTest({
     expect_identical(names(.rxode2ptrs())[105], "rxode2setIndNewind")
   })
 
-  test_that("the output-record walk occupies slots 105-107, the last", {
+  test_that("the output-record walk occupies slots 105-107", {
     .n <- names(.rxode2ptrs())
-    expect_identical(length(.n), 108L)
     expect_identical(.n[106:108], c("rxode2rxDfWalkInit", "rxode2rxDfWalkStep", "rxode2rxDfWalkDull"))
   })
 

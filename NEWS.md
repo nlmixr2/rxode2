@@ -14,6 +14,11 @@
   so a package solving through rxode2 lays out `rxSolve()`'s own rows
   (nlmixr2/nlmixr2est#1356).
 
+- `rxSolve()`'s keep columns and factor-column templates are exported the same
+  way: `rxDfKeepSetup()`, `rxDfKeepFirst()`, `rxDfKeepRow()`, `rxDfKeepCols()`
+  and `getDfLevels()` (slots 108-112) read and type a row's keep columns as
+  `rxSolve()` does (nlmixr2/nlmixr2est#1356).
+
 ## Bug fixes
 
 - `rxSolve(..., addDosing = TRUE)` no longer crashes with a string

@@ -39,6 +39,7 @@
 #define SORT gfx::timsort
 #include "par_solve.h"
 #include "rxomp.h"
+#include "rxProtect.h"
 #include <Rcpp.h>
 #include "strncmp.h"
 #include "rxode2_altrep.h"
@@ -532,6 +533,104 @@ static inline void dfCountRowsForNmOutput(rx_solve *rx, int nsim, int nsub) {
 }
 
 extern "C" void setupFkeepCache();
+
+// Keep columns, as rxode2_df() makes them; shared with the rxDfKeep*() entry
+// points downstream packages get through the function-pointer table.
+
+// The typed column of keep item j (numeric, character, logical, factor or
+// integer, with the data's attributes)
+static SEXP rxDfKeepAlloc(int j, R_xlen_t n) {
+  int curType = get_fkeepType(j);
+  if (curType == 4) return assign_fkeepAttr(j, NumericVector(n));
+  if (curType == 1) return StringVector(n);
+  if (curType == 5) return assign_fkeepAttr(j, LogicalVector(n));
+  IntegerVector cur(n);
+  if (curType == 2) cur.attr("levels") = get_fkeepLevels(j);
+  return assign_fkeepAttr(j, cur);
+}
+
+// An integer/logical keep value (`na` for a missing one)
+static inline int rxDfKeepInt(double fv, int na) {
+  return (ISNA(fv) || std::isnan(fv)) ? na : (int)(fv);
+}
+
+// A character keep value's 1-based level, 0 for NA
+static inline int rxDfKeepStrIdx(double fv, int nLev) {
+  int idx = (R_IsNA(fv) || std::isnan(fv)) ? 0 : (int)fv;
+  if (idx < 0 || idx > nLev) idx = 0;
+  return idx;
+}
+
+// The keep values of record position i of a subject whose records start at
+// internal row `fid`
+static inline double rxDfKeepValue(int j, rx_solving_options_ind *ind, int fid, int i) {
+  return get_fkeep(j, fid + ind->ix[i], ind, fid);
+}
+
+// Set up the keep store for reading; returns the number of keep columns
+extern "C" int rxDfKeepSetup(rx_solve *rx) {
+  if (rx->nKeepF) setupFkeepCache();
+  return rx->nKeepF;
+}
+
+// The first internal row of subject `solveid` (rxode2_df()'s curi)
+extern "C" int rxDfKeepFirst(rx_solve *rx, int solveid) {
+  int nsub = (int)rx->nsub;
+  int first = (solveid / nsub) * nsub;
+  int curi = 0;
+  for (int s = first; s < solveid; ++s) curi += rx->subjects[s].n_all_times;
+  return curi;
+}
+
+// The keep values of the row at record position i, read at time t (the row's
+// calc_lhs time) into out[0..nkeep-1]
+extern "C" void rxDfKeepRow(rx_solve *rx, rx_solving_options_ind *ind, int solveid,
+                            int fid, int i, double t, double *out) {
+  int nkeep = rx->nKeepF;
+  if (nkeep == 0) return;
+  _update_par_ptr(t, solveid, rx, i);
+  for (int j = 0; j < nkeep; ++j) out[j] = rxDfKeepValue(j, ind, fid, i);
+}
+
+// The keep columns from rxDfKeepRow() values (a numeric matrix, one row per
+// output row): a named list typed as rxSolve() types them
+extern "C" SEXP rxDfKeepCols(SEXP vals) {
+  rx_solve *rx = &rx_global;
+  int nkeep = rx->nKeepF;
+  if (TYPEOF(vals) != REALSXP || Rf_ncols(vals) != nkeep) {
+    (Rf_errorcall)(R_NilValue, "%s", _("keep values do not match the keep columns"));
+  }
+  rxProtect rx_protect;
+  R_xlen_t n = Rf_nrows(vals);
+  const double *v = REAL(vals);
+  SEXP ret = rx_protect.protect(Rf_allocVector(VECSXP, nkeep));
+  for (int j = 0; j < nkeep; ++j) {
+    SEXP col = rxDfKeepAlloc(j, n);
+    SET_VECTOR_ELT(ret, j, col);
+    const double *vj = v + (R_xlen_t)j * n;
+    switch (TYPEOF(col)) {
+    case REALSXP:
+      for (R_xlen_t r = 0; r < n; ++r) REAL(col)[r] = vj[r];
+      break;
+    case LGLSXP:
+      for (R_xlen_t r = 0; r < n; ++r) LOGICAL(col)[r] = rxDfKeepInt(vj[r], NA_LOGICAL);
+      break;
+    case STRSXP: {
+      SEXP lvl = rx_protect.protect(get_fkeepLevels(j));
+      int nLev = Rf_length(lvl);
+      for (R_xlen_t r = 0; r < n; ++r) {
+        int idx = rxDfKeepStrIdx(vj[r], nLev);
+        SET_STRING_ELT(col, r, idx == 0 ? NA_STRING : STRING_ELT(lvl, idx - 1));
+      }
+      break;
+    }
+    default:
+      for (R_xlen_t r = 0; r < n; ++r) INTEGER(col)[r] = rxDfKeepInt(vj[r], NA_INTEGER);
+    }
+  }
+  Rf_setAttrib(ret, R_NamesSymbol, get_fkeepn());
+  return ret;
+}
 SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) {
   rx_solve *rx;
   rx = &rx_global;
@@ -901,20 +1000,7 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
   for (i = ncols + doseCols + nidCols + nmevid*5 - nkeep;
        i < ncols + doseCols + nidCols + nmevid*5;
        i++) {
-    int curType = get_fkeepType(j);
-    if (curType == 4) {
-      df[i] = assign_fkeepAttr(j, NumericVector(covKeepNrow));
-    } else if (curType == 1) {
-      df[i] = StringVector(covKeepNrow);
-    } else if (curType == 5) {
-      df[i] = assign_fkeepAttr(j, LogicalVector(covKeepNrow));
-    } else {
-      IntegerVector cur(covKeepNrow);
-      if (curType == 2) {
-        cur.attr("levels") = get_fkeepLevels(j);
-      }
-      df[i] = assign_fkeepAttr(j,cur);
-    }
+    df[i] = rxDfKeepAlloc(j, covKeepNrow);
     j++;
   }
   // tbs items
@@ -1184,19 +1270,15 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
           if (!covKeepShrunk || csim == 0) {
             if (nkeep && didUpdate_p == 0) _update_par_ptr(curT, solveid, rx, ind->idx);
             for (j = 0; j < nkeep; j++) {
-              double _fv = get_fkeep(j, curi + ind->ix[i], ind, curi);
+              double _fv = rxDfKeepValue(j, ind, curi, i);
               if (colType[jj_p] == REALSXP) {
                 colR[jj_p][ii] = _fv;
               } else if (colType[jj_p] == STRSXP) {
-                int _idx = (R_IsNA(_fv) || std::isnan(_fv)) ? 0 : (int)_fv;
-                if (_idx < 0 || _idx > strLevelCount[jj_p]) _idx = 0;
-                strIdx[jj_p][ii] = _idx;
+                strIdx[jj_p][ii] = rxDfKeepStrIdx(_fv, strLevelCount[jj_p]);
               } else if (colType[jj_p] == LGLSXP) {
-                if (ISNA(_fv) || std::isnan(_fv)) colI[jj_p][ii] = NA_LOGICAL;
-                else                              colI[jj_p][ii] = (int)(_fv);
+                colI[jj_p][ii] = rxDfKeepInt(_fv, NA_LOGICAL);
               } else {
-                if (ISNA(_fv) || std::isnan(_fv)) colI[jj_p][ii] = NA_INTEGER;
-                else                              colI[jj_p][ii] = (int)(_fv);
+                colI[jj_p][ii] = rxDfKeepInt(_fv, NA_INTEGER);
               }
               jj_p++;
             }
@@ -1596,5 +1678,63 @@ extern "C" SEXP _rxTestDfWalkSlots(SEXP ptrs, SEXP doDoseS) {
   ret[RXDF_OUT_N + 1] = IntegerVector::create(dull[0], dull[1], dull[2], dull[3]);
   nm[RXDF_OUT_N + 1] = "dull";
   ret.attr("names") = nm;
+  return ret;
+}
+
+// Test hook: as _rxTestDfWalkSlots(), but returns the keep columns of the rows
+// read through slots 108-111, and the getDfLevels() template (slot 112) of
+// `lvlName` (NULL for none)
+extern "C" SEXP _rxTestDfKeepSlots(SEXP ptrs, SEXP doDoseS, SEXP lvlName) {
+  typedef int (*init_t)(void *, int, rx_solve *, rx_solving_options_ind *, int, int);
+  typedef int (*step_t)(void *, int, double *, int);
+  typedef int (*kset_t)(rx_solve *);
+  typedef int (*kfirst_t)(rx_solve *, int);
+  typedef void (*krow_t)(rx_solve *, rx_solving_options_ind *, int, int, int, double, double *);
+  typedef SEXP (*kcols_t)(SEXP);
+  typedef SEXP (*lvl_t)(const char *, rx_solve *, R_xlen_t);
+  init_t init = (init_t) R_ExternalPtrAddrFn(VECTOR_ELT(ptrs, 105));
+  step_t step = (step_t) R_ExternalPtrAddrFn(VECTOR_ELT(ptrs, 106));
+  kset_t kset = (kset_t) R_ExternalPtrAddrFn(VECTOR_ELT(ptrs, 108));
+  kfirst_t kfirst = (kfirst_t) R_ExternalPtrAddrFn(VECTOR_ELT(ptrs, 109));
+  krow_t krow = (krow_t) R_ExternalPtrAddrFn(VECTOR_ELT(ptrs, 110));
+  kcols_t kcols = (kcols_t) R_ExternalPtrAddrFn(VECTOR_ELT(ptrs, 111));
+  lvl_t lvl = (lvl_t) R_ExternalPtrAddrFn(VECTOR_ELT(ptrs, 112));
+  int doDose = Rf_asInteger(doDoseS);
+  rx_solve *rx = &rx_global;
+  rx_solving_options *op = &op_global;
+  par_solve(rx);
+  int nkeep = kset(rx);
+  std::vector<char> buf((size_t)init(NULL, 0, rx, NULL, doDose, 0));
+  std::vector<double> row((size_t)nkeep + 1);
+  double o[RXDF_OUT_N];
+  int nr = 0;
+  std::vector<std::vector<double> > cols((size_t)nkeep);
+  for (int s = 0; s < (int)rx->nsub; ++s) {
+    rx_solving_options_ind *ind = &(rx->subjects[s]);
+    iniSubject(s, 1, ind, op, rx, update_inis);
+    init(buf.data(), (int)buf.size(), rx, ind, doDose, 0);
+    int fid = kfirst(rx, s);
+    for (int i = 0; i < ind->n_all_times; ++i) {
+      if (step(buf.data(), i, o, RXDF_OUT_N) != RXDF_ROW) continue;
+      krow(rx, ind, s, fid, i, o[RXDF_OUT_LHS_TIME], row.data());
+      for (int j = 0; j < nkeep; ++j) cols[(size_t)j].push_back(row[(size_t)j]);
+      nr++;
+    }
+  }
+  rxProtect rx_protect;
+  SEXP m = rx_protect.protect(Rf_allocMatrix(REALSXP, nr, nkeep));
+  for (int j = 0; j < nkeep; ++j) {
+    for (int r = 0; r < nr; ++r) REAL(m)[r + (R_xlen_t)j * nr] = cols[(size_t)j][(size_t)r];
+  }
+  SEXP keep = rx_protect.protect(kcols(m));
+  SEXP ret = rx_protect.protect(Rf_allocVector(VECSXP, 2));
+  SET_VECTOR_ELT(ret, 0, keep);
+  if (!Rf_isNull(lvlName)) {
+    SET_VECTOR_ELT(ret, 1, lvl(CHAR(STRING_ELT(lvlName, 0)), rx, 0));
+  }
+  SEXP nm = rx_protect.protect(Rf_allocVector(STRSXP, 2));
+  SET_STRING_ELT(nm, 0, Rf_mkChar("keep"));
+  SET_STRING_ELT(nm, 1, Rf_mkChar("levels"));
+  Rf_setAttrib(ret, R_NamesSymbol, nm);
   return ret;
 }
