@@ -583,6 +583,12 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
         }
       }
 
+      if (_rxgDev) {
+        // the transform-both-sides values: the model may assign them, so
+        // per-call copies seeded from the context
+        sAppend(&sbOut, "  double _rxgLambda = _rxg->lambda, _rxgYj = _rxg->yj, _rxgHi = _rxg->logitHi, _rxgLow = _rxg->logitLow;\n");
+        sAppend(&sbOut, "  (void)_rxgLambda; (void)_rxgYj; (void)_rxgHi; (void)_rxgLow;\n");
+      }
       prnt_vars(print_lastLhsValue, 0,"","\n", 12);
       if (_rxgDev) {
         sAppend(&sbOut, "  double _rxgPP[RXG_NPAR1];\n  const double *_PP = rxg_par(_rxg, __t, _rxgPP);\n  (void)_PP;\n");

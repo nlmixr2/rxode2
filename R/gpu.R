@@ -186,6 +186,8 @@
 #' @param t0,t1 interval ends
 #' @param curShift time shift
 #' @param tpk record time (used when `nonmem` is `TRUE`)
+#' @param tbs transform-both-sides values `rx_lambda_`, `rx_yj_`, `rx_hi_`
+#'   and `rx_low_`
 #' @param covType 0 constant, 1 linear, 2 midpoint
 #' @param nonmem rxControl(nonmem=)
 #' @param jac return the Jacobian (row major, `neq` x `neq`) instead
@@ -205,6 +207,7 @@
   t1 = t,
   curShift = 0,
   tpk = t,
+  tbs = c(1, 2, 1, 0),
   covType = 0L,
   nonmem = FALSE,
   jac = FALSE
@@ -226,7 +229,7 @@
     .pad(pl, lib$nlhs),
     .pad(ir, lib$neq),
     as.integer(if (lib$neq == 0L) 0L else on),
-    as.double(c(t0, t1, curShift, tpk)),
+    as.double(c(t0, t1, curShift, tpk, tbs)),
     as.integer(c(covType, nonmem))
   )
   .fn <- getNativeSymbolInfo(if (jac) "rxg_host_jac" else "rxg_host_dydt", lib$dll)

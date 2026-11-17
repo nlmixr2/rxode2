@@ -53,7 +53,8 @@
   OpenCL C derivative/Jacobian code.  The device code covers the math
   builtins, the neural network activations, `probit()`, the
   transform-both-sides functions, the incomplete gamma/beta families and the
-  Student t functions; random draws, `linCmt()`, Bessel functions and
+  Student t functions, including the transform-both-sides values
+  (`rx_lambda_` etc.); random draws, `linCmt()`, Bessel functions and
   `llik*()` are not GPU safe.  `rxode2parseGetTranslation()` keeps its
   columns.
 

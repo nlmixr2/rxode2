@@ -215,12 +215,24 @@ rxTest({
       })),
       0L
     )
-    expect_equal(
-      .gpuSafe(rxode2({
-        d/dt(a) <- -rxTBS(k, rx_lambda_, rx_yj_, rx_low_, rx_hi_) * a
-      })),
-      0L
-    )
+  })
+
+  test_that("the transform-both-sides values reach the device code", {
+    skip_on_cran()
+    ## read from the context, or assigned by the model
+    .mt <- rxode2({
+      rx_yj_ <- tr
+      d/dt(a) <- -rxTBS(k, rx_lambda_, rx_yj_, rx_low_, rx_hi_) * a
+      d/dt(b) <- rxTBSd(k, rx_lambda_, rx_yj_, rx_low_, rx_hi_)
+    })
+    expect_equal(.gpuSafe(.mt), 1L)
+    .lib <- .rxGpuHostLib(.mt)
+    .p <- c(tr = 1, k = 0.4)[rxModelVars(.mt)$params]
+    .tbs <- c(0.5, 7, 1, 0) # lambda, yj (overridden by the model), hi, low
+    .dy <- .rxGpuHostEval(.lib, 0, c(2, 0), .p, tbs = .tbs)
+    ## Yeo-Johnson with lambda 0.5 at 0.4 and its derivative
+    expect_equal(.dy[1], -((1.4^0.5 - 1) / 0.5) * 2, tolerance = 1e-12)
+    expect_equal(.dy[2], 1.4^-0.5, tolerance = 1e-12)
   })
 
   test_that("the device versions of rxode2's functions match the host", {
@@ -380,6 +392,7 @@ rxTest({
       "  for (int i = 0; i < RXG_NPAR1; i++) { c.p0[i] = c.p1[i] = 1.0; }",
       "  for (int i = 0; i < RXG_NLHS1; i++) { c.pl[i] = 0.0; }",
       "  c.t0 = 0.0; c.t1 = 1.0; c.curShift = 0.0; c.tpk = 0.0; c.covType = 0; c.nonmem = 0;",
+      "  c.lambda = 1.0; c.yj = 2.0; c.logitHi = 1.0; c.logitLow = 0.0;",
       "  rxg_dydt(0.5, y, dy, &c);",
       "  out[get_global_id(0)] = dy[0];",
       "}"
