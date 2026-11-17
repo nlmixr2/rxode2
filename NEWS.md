@@ -6,8 +6,12 @@
   translation tables now registers whether it is `gpuSafe` (like
   `threadSafe`), the parser records whether a whole model is GPU safe in
   `rxModelVars()$flags["gpuSafe"]`, and a GPU-safe model is also written as
-  OpenCL C derivative/Jacobian code.  `rxode2parseGetTranslation()` keeps
-  its columns.
+  OpenCL C derivative/Jacobian code.  The device code covers the math
+  builtins, the neural network activations, `probit()`, the
+  transform-both-sides functions, the incomplete gamma/beta families and the
+  Student t functions; random draws, `linCmt()`, Bessel functions and
+  `llik*()` are not GPU safe.  `rxode2parseGetTranslation()` keeps its
+  columns.
 
 - `rxSymInvCholCreate()` builds block-diagonal omegas with
   `lotri::lotriMat()` instead of `Matrix::bdiag()`, removing the
