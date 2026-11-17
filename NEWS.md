@@ -35,6 +35,11 @@
 
 ## Bug fixes
 
+- The R functions `gammapInva()` and `gammaqInva()` returned the results of
+  `gammapInv()` and `gammaqInv()` (their `.Call` entries were registered to
+  the wrong C functions).  They now return the shape `a`, as the same
+  functions in a model always did.
+
 - `gamma(x)` in a model now computes the Gamma function; it was translated to
   `lgammafn()` and returned log-gamma.  This also affected `factorial()` and
   `gammafn()` after a symengine round trip, which rewrites them as `gamma()`.
