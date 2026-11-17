@@ -24,6 +24,9 @@
   `rx*()`/`ri*()` draw, `simeta()`/`simeps()`, a user function or another
   package's C function), saving that per-call cost elsewhere (#1726).
 
+- `_update_par_ptr()`, called by every generated model function, returns
+  before its steady-state time check when the model has no covariates (#1726).
+
 ## Bug fixes
 
 - `gamma(x)` in a model now computes the Gamma function; it was translated to
