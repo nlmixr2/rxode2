@@ -273,9 +273,9 @@
 #' @return list with the states `y` (one row per time), the last step size
 #'   `h`, `istate` (2 is success), the counters `cnt` (steps, accepted,
 #'   rejected, derivative evaluations, Jacobians, LU factorizations),
-#'   `stiffIntervals` (intervals solved with ros54p) and `stiffEnd` (intervals
-#'   that ended on the stiff secondary) and `histN` (`delay()` history
-#'   records used)
+#'   `stiffIntervals` (intervals solved with ros54p), `stiffEnd` (intervals a
+#'   composite started on the stiff secondary, without probing) and `histN`
+#'   (`delay()` history records used)
 #' @noRd
 #' @author Matthew L. Fidler
 .rxGpuHostSolve <- function(
@@ -310,6 +310,7 @@
   .m <- .rxGpuMethods[match.arg(method, names(.rxGpuMethods))]
   .n <- max(1L, lib$neq)
   .nt <- length(times)
+  stopifnot(.nt >= 1L, length(on) == lib$neq)
   .v <- function(x, n) {
     x <- as.double(x)
     if (n == 0L) {

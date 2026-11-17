@@ -231,6 +231,106 @@ rxTest({
     }
   })
 
+  test_that("ros54p solves systems whose iteration matrix pivots", {
+    ## W = I/(h gamma) - J pivots in its second column after the first
+    ## column's multiplier is stored, the case the LU solve must order right
+    .m <- rxode2({
+      d/dt(a) <- -a
+      d/dt(b) <- -a - b
+      d/dt(c) <- -1e5 * b - c
+    })
+    .tm <- c(0, 0.5, 2)
+    .ex <- function(t) {
+      .a <- exp(-t)
+      .b <- -t * exp(-t)
+      c(.a, .b, 1e5 * t^2 / 2 * exp(-t))
+    }
+    .lib <- .rxGpuHostLib(.m)
+    .r <- .rxGpuHostSolve(.lib, "ros54p", .tm, c(1, 0, 0), numeric(0), atol = 1e-10, rtol = 1e-10)
+    expect_equal(.r$istate, 2L)
+    expect_equal(.r$y, rbind(.ex(0), .ex(0.5), .ex(2)), tolerance = 1e-8)
+    ## the LU itself: W = I/hg - J = [[2,0,0],[1,0,1],[0,1,0]] (hg = Inf)
+    ## pivots rows 2 and 3 after storing row 2's multiplier
+    .lu <- function(J, b) {
+      .r <- .C(
+        getNativeSymbolInfo("rxg_host_lu", .lib$dll),
+        as.double(t(J)),
+        Inf,
+        b = as.double(b),
+        ok = 0L,
+        NAOK = TRUE
+      )
+      .r$b
+    }
+    .W <- rbind(c(2, 0, 0), c(1, 0, 1), c(0, 1, 0))
+    expect_equal(.lu(-.W, c(2, 1, 0)), c(1, 0, 0))
+    set.seed(9)
+    .J <- matrix(rnorm(9), 3)
+    .b <- rnorm(3)
+    expect_equal(.lu(.J, .b), solve(-.J, .b))
+  })
+
+  test_that("the AutoSwitch composites see stiffness on the last step of an interval", {
+    ## one rkt54 step per output interval (a state negligible next to atol is
+    ## always accepted), each beyond its stability limit: h * 1e4 = 3.4
+    .m <- rxode2({
+      d/dt(y) <- -1e4 * y
+    })
+    .lib <- .rxGpuHostLib(.m)
+    .tm <- seq(0, 0.1, by = 3.4e-4)
+    ## (one stiff report makes the subject persistently stiff)
+    .r <- .rxGpuHostSolve(
+      .lib,
+      "rkt54+ros54p",
+      .tm,
+      1e-8,
+      numeric(0),
+      h = 3.4e-4,
+      atol = 1e-4,
+      rtol = 1e-4,
+      autoSwitchMaxStiff = 1L
+    )
+    expect_equal(.r$istate, 2L)
+    expect_gt(.r$stiffIntervals, 0L)
+    ## a composite started on ros54p counts that interval as stiff
+    .r <- .rxGpuHostSolve(
+      .lib,
+      "rkt54+ros54p",
+      c(0, 0.1),
+      1,
+      numeric(0),
+      autoSwitchStiffFirst = TRUE,
+      autoSwitchMaxNonstiff = 1L,
+      autoSwitchSwitchMax = 1L
+    )
+    expect_equal(.r$stiffEnd, 1L)
+  })
+
+  test_that("step size limits and starting steps are honored", {
+    .m <- rxode2({
+      d/dt(y) <- 1
+    })
+    .lib <- .rxGpuHostLib(.m)
+    ## hmin is a floor, not a failure before the first step
+    .r <- .rxGpuHostIntegrate(.lib, "rkt54", 0, 1, 0, numeric(0), hmin = 0.1)
+    expect_equal(.r$istate, 2L)
+    expect_equal(.r$y, 1)
+    ## the composites start from the given step
+    for (.meth in c("rkt54+ros54p", "vern76+ros54p")) {
+      .r <- .rxGpuHostIntegrate(.lib, .meth, 0, 1, 0, numeric(0), h = 1, mxstep = 1L)
+      expect_equal(.r$istate, 2L, label = .meth)
+      expect_equal(.r$y, 1, label = .meth)
+    }
+    ## a step that overflows is never accepted
+    .m <- rxode2({
+      d/dt(y) <- 1e307
+    })
+    .lib <- .rxGpuHostLib(.m)
+    .r <- .rxGpuHostIntegrate(.lib, "rkt54", 0, 1, 1.7e308, numeric(0), h = 1, mxstep = 50L)
+    expect_lt(.r$istate, 0L)
+    expect_true(all(is.finite(.r$y)))
+  })
+
   test_that("the device integrators report bad input", {
     .m <- rxode2({
       d/dt(y) <- -k * y
@@ -270,11 +370,79 @@ rxTest({
     expect_equal(.r$histN, 5L)
   })
 
+  test_that("delay() edge cases", {
+    ## a delay that shrinks within a step: x' = 1 + x(t - (1 - 0.9 t))
+    .m <- rxode2({
+      d/dt(x) <- 1 + delay(x, 1 - 0.9 * t)
+    })
+    .ref <- rxSolve(.m, et(c(0, 1)), inits = c(x = 0), method = "dop853", atol = 1e-12, rtol = 1e-12)
+    .lib <- .rxGpuHostLib(.m)
+    for (.meth in names(.rxGpuMethods)) {
+      .r <- .rxGpuHostIntegrate(.lib, .meth, 0, 1, 0, numeric(0), h = 1, atol = 1e-10, rtol = 1e-10)
+      expect_equal(.r$istate, 2L, label = .meth)
+      expect_equal(.r$y, .ref$x[2], tolerance = 1e-6, label = .meth)
+    }
+    ## starting at a negative time: x(-2) = 1, x(0) = -1/2 by the method of steps
+    .m <- rxode2({
+      d/dt(x) <- -delay(x, 1)
+    })
+    .lib <- .rxGpuHostLib(.m)
+    for (.meth in names(.rxGpuMethods)) {
+      .r <- .rxGpuHostIntegrate(.lib, .meth, -2, 0, 1, numeric(0), h = 1, atol = 1e-10, rtol = 1e-10, mxstep = 1000L)
+      expect_equal(.r$istate, 2L, label = .meth)
+      expect_equal(.r$y, -0.5, tolerance = 1e-9, label = .meth)
+    }
+    ## standalone evaluation has no history: delay() is the state passed
+    expect_equal(.rxGpuHostEval(.lib, 0, 3, numeric(0)), -3)
+    ## a composite restarting after a failed probe (out of steps, stiffness
+    ## not reported) drops the probe's history
+    .m <- rxode2({
+      d/dt(x) <- -delay(x, 0.2)
+      d/dt(s) <- -1e4 * (s - x)
+    })
+    .tm <- seq(0, 3, by = 0.5)
+    .ref <- rxSolve(.m, et(.tm), inits = c(x = 1, s = 1), method = "dop853", atol = 1e-12, rtol = 1e-12)
+    .lib <- .rxGpuHostLib(.m)
+    .r <- .rxGpuHostSolve(
+      .lib,
+      "rkt54+ros54p",
+      .tm,
+      c(1, 1),
+      numeric(0),
+      atol = 1e-10,
+      rtol = 1e-10,
+      mxstep = 200L,
+      autoSwitchNonstifftol = 1
+    )
+    expect_equal(.r$istate, 2L)
+    expect_gt(.r$stiffIntervals, 0L)
+    expect_lt(.r$histN, .r$cnt[["accept"]])
+    expect_equal(.r$y, unname(as.matrix(.ref[, c("x", "s")])), tolerance = 1e-7)
+  })
+
+  test_that("the host helpers check their input", {
+    .m <- .lorenz()
+    .lib <- .rxGpuHostLib(.m)
+    .p <- .par(.m, c(s = 10, r = 28, b = 8 / 3))
+    expect_error(.rxGpuHostSolve(.lib, "rkt54", c(0, 1), c(1, 0, 0), .p, on = 1L))
+    expect_error(.rxGpuHostSolve(.lib, "rkt54", numeric(0), c(1, 0, 0), .p))
+  })
+
   ## kernel integrating one subject per work-item
   ## (delay models get a history buffer of 2000 steps per work-item)
   .kernel <- function(method, delay = FALSE) {
     c(
-      sprintf("#define RXG_METHOD %d", .rxGpuMethods[[method]]),
+      ## by name, so the history degree sees the method (rxg_model.h)
+      sprintf(
+        "#define RXG_METHOD %s",
+        c(
+          rkt54 = "RXG_RKT54",
+          vern76 = "RXG_VERN76",
+          ros54p = "RXG_ROS54P",
+          "rkt54+ros54p" = "RXG_RKT54_ROS54P",
+          "vern76+ros54p" = "RXG_VERN76_ROS54P"
+        )[[method]]
+      ),
       "#include \"rxode2gpu/rxg_stepper.h\"",
       "__kernel void rxg_int(__global double *out, const unsigned int n,",
       "                      __global const double *y0, __global const double *p, const double t1",

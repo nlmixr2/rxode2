@@ -8,14 +8,21 @@
 #define RXG_HAS_DELAY 0
 #endif
 
+// Integrator codes (rxg_stepper.h); defined here so RXG_METHOD may name
+// one before the history degree below is chosen
+#define RXG_RKT54 1
+#define RXG_VERN76 2
+#define RXG_ROS54P 3
+#define RXG_RKT54_ROS54P 4  // AutoSwitch composites (rxg_solve())
+#define RXG_VERN76_ROS54P 5
+
 #ifndef RXG_NDLY
 #define RXG_NDLY 0
 #endif
 #define RXG_NDLY1 (RXG_NDLY > 0 ? RXG_NDLY : 1)
-// Degree of the history interpolant: 7 for vern76 (codes 2 and 5 of
-// rxg_stepper.h), 4 otherwise
+// Degree of the history interpolant: 7 for vern76, 4 otherwise
 #ifndef RXG_HDEG
-#if defined(RXG_METHOD) && RXG_METHOD != 2 && RXG_METHOD != 5
+#if defined(RXG_METHOD) && RXG_METHOD != RXG_VERN76 && RXG_METHOD != RXG_VERN76_ROS54P
 #define RXG_HDEG 4
 #else
 #define RXG_HDEG 7
