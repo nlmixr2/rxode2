@@ -167,9 +167,10 @@
     }
   }
   .info <- dyn.load(.dll)
-  ## bound first: R CMD check evaluates a literal .C(getNativeSymbolInfo(...))
+  ## through do.call(): R CMD check resolves the symbol of a literal .C() in
+  ## rxode2, but this one is in the model's host library
   .fn <- getNativeSymbolInfo("rxg_host_dims", .info)
-  .dim <- .C(.fn, d = integer(4))$d
+  .dim <- do.call(.C, list(.fn, d = integer(4)))$d
   .ret <- list(dll = .info, neq = .dim[1], nlhs = .dim[2], npar = .dim[3], hasJac = as.logical(.dim[4]))
   assign(.md5, .ret, envir = .rxGpuHostEnv)
   .ret
