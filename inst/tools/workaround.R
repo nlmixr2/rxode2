@@ -541,8 +541,67 @@ df <- setNames(
 df$rxFun <- df$fun
 df$argMax <- df$argMin <- NA_integer_
 df$threadSafe <- 1L
-## functions with a device (OpenCL) version in inst/include/rxode2gpu/rxg_prelude.h
-df$gpuSafe <- as.integer(df$fun %in% c("ReLU", "phi", "logit", "expit"))
+## functions with a device (OpenCL) version in inst/include/rxode2gpu/; the
+## random draws (rx*/ri*, simeta/simeps), linCmt() and the llik*() functions
+## (rxode2ll) have none
+df$gpuSafe <- as.integer(
+  df$fun %in%
+    c(
+      "ReLU",
+      "dReLU",
+      "GELU",
+      "dGELU",
+      "d2GELU",
+      "d3GELU",
+      "d4GELU",
+      "softplus",
+      "dsoftplus",
+      "d2softplus",
+      "d3softplus",
+      "d4softplus",
+      "SELU",
+      "dSELU",
+      "lReLU",
+      "dlReLU",
+      "Swish",
+      "dSwish",
+      "PReLU",
+      "dPReLU",
+      "dPReLUa",
+      "dPReLUa1",
+      "ELU",
+      "dELU",
+      "d2ELU",
+      "d2aELU",
+      "dELUa",
+      "d2ELUa",
+      "phi",
+      "phiU",
+      "logit",
+      "expit",
+      "probit",
+      "probitInv",
+      "gammap",
+      "gammaq",
+      "gammapInv",
+      "gammapInva",
+      "gammaqInv",
+      "gammaqInva",
+      "uppergamma",
+      "lowergamma",
+      "gammapDer",
+      "gammapDera",
+      "ibeta",
+      "ibetaDer",
+      "ibetaInv",
+      "ibetaDera",
+      "ibetaDerb",
+      "studentTDen",
+      "studentTCdf",
+      "studentTCdfDnu",
+      "studentTInv"
+    )
+)
 df <- df[, c("rxFun", "fun", "type", "package", "packageFun", "argMin", "argMax", "threadSafe", "gpuSafe")]
 df$rxFun <- gsub("_llik", "llik", df$rxFun)
 
