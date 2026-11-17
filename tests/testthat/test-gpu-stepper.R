@@ -1,6 +1,20 @@
 rxTest({
   .methods <- c("rkt54", "vern76", "ros54p")
 
+  ## the first OpenCL device with double precision (Mesa's rusticl fp64 is
+  ## not accurate enough to compare with)
+  .oclDouble <- function() {
+    for (.pl in tryCatch(OpenCL::oclPlatforms(), error = function(e) list())) {
+      for (.d in tryCatch(OpenCL::oclDevices(.pl), error = function(e) list())) {
+        .i <- OpenCL::oclInfo(.d)
+        if (any(grepl("cl_khr_fp64", .i$exts, fixed = TRUE)) && !grepl("radeonsi|rusticl", .i$name)) {
+          return(.d)
+        }
+      }
+    }
+    NULL
+  }
+
   .lorenz <- function() {
     rxode2({
       d/dt(x) <- s * (y - x)
@@ -232,13 +246,40 @@ rxTest({
     expect_equal(.r$y, 3)
   })
 
+  test_that("the device integrators solve delay differential equations", {
+    ## a delayed state, a state delay() does not read, and a second delay
+    .m <- rxode2({
+      d/dt(x) <- -k * delay(x, tau) + 0.1 * w
+      d/dt(w) <- -0.5 * w
+      d/dt(v) <- delay(x, 2 * tau) - v
+    })
+    .p <- c(k = 1.2, tau = 0.7)
+    .tm <- seq(0, 8, by = 0.25)
+    .ref <- rxSolve(.m, .p, et(.tm), inits = c(x = 1, w = 2, v = 0), method = "dop853", atol = 1e-12, rtol = 1e-12)
+    .ref <- unname(as.matrix(.ref[, c("x", "w", "v")]))
+    .lib <- .rxGpuHostLib(.m)
+    for (.meth in names(.rxGpuMethods)) {
+      .r <- .rxGpuHostSolve(.lib, .meth, .tm, c(1, 2, 0), .par(.m, .p), atol = 1e-10, rtol = 1e-10)
+      expect_equal(.r$istate, 2L, label = .meth)
+      expect_equal(.r$y, .ref, tolerance = 1e-7, label = .meth)
+      expect_gt(.r$histN, 0L)
+    }
+    ## a full history is reported
+    .r <- .rxGpuHostSolve(.lib, "rkt54", .tm, c(1, 2, 0), .par(.m, .p), atol = 1e-10, rtol = 1e-10, histCap = 5L)
+    expect_equal(.r$istate, -5L)
+    expect_equal(.r$histN, 5L)
+  })
+
   ## kernel integrating one subject per work-item
-  .kernel <- function(method) {
+  ## (delay models get a history buffer of 2000 steps per work-item)
+  .kernel <- function(method, delay = FALSE) {
     c(
       sprintf("#define RXG_METHOD %d", .rxGpuMethods[[method]]),
       "#include \"rxode2gpu/rxg_stepper.h\"",
       "__kernel void rxg_int(__global double *out, const unsigned int n,",
-      "                      __global const double *y0, __global const double *p, const double t1) {",
+      "                      __global const double *y0, __global const double *p, const double t1",
+      if (delay) "                      , __global double *hrec" else "",
+      "                      ) {",
       "  size_t i = get_global_id(0);",
       "  if (i*RXG_NEQ >= n) return;",
       "  double y[RXG_NEQ1];",
@@ -257,6 +298,7 @@ rxTest({
       "  o.hmin = 0.0; o.hmax = 0.0; o.mxstep = 100000;",
       "  o.nonstifftol = 0.9; o.stifftol = 0.9; o.maxStiff = 10; o.maxNonstiff = 3; o.switchMax = 5;",
       "  rxg_autoInit(&a, &o, 0);",
+      if (delay) "  rxg_hist hs; rxg_histInit(&hs, hrec + i*2000*RXG_HREC, 2000, 0.0, y); c.hist = &hs;" else "",
       "  double h = 0.0;",
       "  int st = rxg_solve(RXG_METHOD, 0.0, t1, y, &h, &c, &o, &a, cnt);",
       "  for (int j = 0; j < RXG_NEQ; j++) out[i*RXG_NEQ + j] = (st == RXG_SUCCESS) ? y[j] : NAN;",
@@ -267,18 +309,7 @@ rxTest({
   test_that("the device integrators run on an OpenCL device", {
     skip_on_cran()
     skip_if_not_installed("OpenCL")
-    .dev <- NULL
-    for (.pl in tryCatch(OpenCL::oclPlatforms(), error = function(e) list())) {
-      for (.d in tryCatch(OpenCL::oclDevices(.pl), error = function(e) list())) {
-        ## Mesa's rusticl fp64 is not accurate enough to compare with
-        .i <- OpenCL::oclInfo(.d)
-        if (any(grepl("cl_khr_fp64", .i$exts, fixed = TRUE)) && !grepl("radeonsi|rusticl", .i$name)) {
-          .dev <- .d
-          break
-        }
-      }
-      if (!is.null(.dev)) break
-    }
+    .dev <- .oclDouble()
     skip_if(is.null(.dev), "no OpenCL device with double precision")
     .m <- .lorenz()
     .lib <- .rxGpuHostLib(.m)
@@ -304,6 +335,45 @@ rxTest({
     }
   })
 
+  .dde <- function() {
+    rxode2({
+      d/dt(x) <- -k * delay(x, tau) + 0.1 * w
+      d/dt(w) <- -0.5 * w
+      d/dt(v) <- delay(x, 2 * tau) - v
+    })
+  }
+
+  test_that("delay models run on an OpenCL device", {
+    skip_on_cran()
+    skip_if_not_installed("OpenCL")
+    .dev <- .oclDouble()
+    skip_if(is.null(.dev), "no OpenCL device with double precision")
+    .m <- .dde()
+    .lib <- .rxGpuHostLib(.m)
+    .ctx <- OpenCL::oclContext(.dev, precision = "double")
+    set.seed(5)
+    .n <- 16
+    .y <- as.vector(rbind(runif(.n, 0.5, 2), runif(.n, 0, 2), rep(0, .n)))
+    .pm <- rbind(runif(.n, 0.5, 2), runif(.n, 0.3, 1))[match(rxModelVars(.m)$params, c("k", "tau")), ]
+    for (.meth in c(.methods, "vern76+ros54p")) {
+      .src <- .rxGpuProgramSource(.m, extra = .kernel(.meth, delay = TRUE))
+      .ker <- OpenCL::oclSimpleKernel(.ctx, "rxg_int", .src, "double")
+      .rec <- OpenCL::clBuffer(.ctx, .n * 2000 * 64, "double")
+      .out <- as.numeric(OpenCL::oclRun(
+        .ker,
+        .n * 3,
+        OpenCL::as.clBuffer(.y, .ctx),
+        OpenCL::as.clBuffer(as.vector(.pm), .ctx),
+        4,
+        .rec
+      ))
+      .host <- unlist(lapply(seq_len(.n), function(.i) {
+        .rxGpuHostIntegrate(.lib, .meth, 0, 4, .y[(.i - 1) * 3 + 1:3], .pm[, .i], atol = 1e-10, rtol = 1e-10)$y
+      }))
+      expect_equal(.out, .host, tolerance = 1e-8, label = .meth)
+    }
+  })
+
   test_that("the device integrators are valid OpenCL C", {
     skip_on_cran()
     .clang <- Sys.which("clang")
@@ -311,24 +381,31 @@ rxTest({
     .m <- .lorenz()
     .f <- tempfile(fileext = ".cl")
     on.exit(unlink(.f))
+    .clang1 <- function(.float) {
+      suppressWarnings(system2(
+        .clang,
+        c(
+          "-x",
+          "cl",
+          "-cl-std=CL1.2",
+          "-Xclang",
+          "-finclude-default-header",
+          if (.float) "-cl-single-precision-constant",
+          "-fsyntax-only",
+          .f
+        ),
+        stdout = TRUE,
+        stderr = TRUE
+      ))
+    }
+    .md <- .dde()
     for (.meth in c(.methods, "rkt54+ros54p")) {
       for (.float in c(FALSE, TRUE)) {
         writeLines(.rxGpuProgramSource(.m, float = .float, extra = .kernel(.meth)), .f)
-        .out <- suppressWarnings(system2(
-          .clang,
-          c(
-            "-x",
-            "cl",
-            "-cl-std=CL1.2",
-            "-Xclang",
-            "-finclude-default-header",
-            if (.float) "-cl-single-precision-constant",
-            "-fsyntax-only",
-            .f
-          ),
-          stdout = TRUE,
-          stderr = TRUE
-        ))
+        .out <- .clang1(.float)
+        expect_null(attr(.out, "status"), info = paste(c(.meth, .out), collapse = "\n"))
+        writeLines(.rxGpuProgramSource(.md, float = .float, extra = .kernel(.meth, delay = TRUE)), .f)
+        .out <- .clang1(.float)
         expect_null(attr(.out, "status"), info = paste(c(.meth, .out), collapse = "\n"))
       }
     }

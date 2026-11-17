@@ -3,6 +3,7 @@
 // .C() entry points for a model's device code compiled as host C (included
 // after the model's .cl file).
 #include <string.h>
+#include <stdlib.h>
 #include "rxode2gpu/rxg_stepper.h"
 
 static void rxg_host_ctx(rxg_ctx *c, double *p0, double *p1, double *pl,
@@ -22,6 +23,7 @@ static void rxg_host_ctx(rxg_ctx *c, double *p0, double *p1, double *pl,
   c->logitLow = tt[7];
   c->covType = flags[0];
   c->nonmem = flags[1];
+  c->hist = 0;
 }
 
 void rxg_host_dims(int *d) {
@@ -51,7 +53,8 @@ void rxg_host_jac(double *t, double *y, double *jac, double *p0, double *p1,
 // dw = {hmin, hmax, nonstifftol, stifftol, h (out: the last step size)}
 // iw = {method, mxstep, maxStiff, maxNonstiff, switchMax, stiffFirst,
 //       istate (out), intervals solved with ros54p (out), intervals ending
-//       on the stiff secondary (out)}
+//       on the stiff secondary (out), delay() history records available,
+//       records used (out)}
 // cnt has RXG_NCNT counters.
 void rxg_host_solve(double *y, double *tm, int *nt, double *dw, int *iw,
                     double *atol, double *rtol, int *cnt, double *p0,
@@ -72,6 +75,16 @@ void rxg_host_solve(double *y, double *tm, int *nt, double *dw, int *iw,
   o.maxNonstiff = iw[3];
   o.switchMax = iw[4];
   rxg_autoInit(&a, &o, iw[5]);
+#if RXG_HAS_DELAY
+  rxg_hist hist;
+  double *rec = (double*)malloc(sizeof(double)*RXG_HREC*(size_t)(iw[9] > 0 ? iw[9] : 1));
+  if (rec == NULL) {
+    iw[6] = RXG_ERR_HIST;
+    return;
+  }
+  rxg_histInit(&hist, rec, iw[9], tm[0], y);
+  c.hist = &hist;
+#endif
   double cur[RXG_NEQ1];
   double h = dw[4];
   int r = RXG_SUCCESS, sw = 0, nst = 0;
@@ -85,6 +98,10 @@ void rxg_host_solve(double *y, double *tm, int *nt, double *dw, int *iw,
     for (int j = 0; j < RXG_NEQ; j++) y[i*RXG_NEQ + j] = cur[j];
     if (r1 != RXG_SUCCESS) break;
   }
+#if RXG_HAS_DELAY
+  iw[10] = hist.n;
+  free(rec);
+#endif
   dw[4] = h;
   iw[6] = r;
   iw[7] = sw;

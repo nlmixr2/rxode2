@@ -269,11 +269,13 @@
 #' @param autoSwitchNonstifftol,autoSwitchStifftol as in `rxControl()`
 #' @param autoSwitchMaxStiff,autoSwitchMaxNonstiff as in `rxControl()`
 #' @param autoSwitchSwitchMax,autoSwitchStiffFirst as in `rxControl()`
+#' @param histCap steps the `delay()` history holds
 #' @return list with the states `y` (one row per time), the last step size
 #'   `h`, `istate` (2 is success), the counters `cnt` (steps, accepted,
 #'   rejected, derivative evaluations, Jacobians, LU factorizations),
 #'   `stiffIntervals` (intervals solved with ros54p) and `stiffEnd` (intervals
-#'   that ended on the stiff secondary)
+#'   that ended on the stiff secondary) and `histN` (`delay()` history
+#'   records used)
 #' @noRd
 #' @author Matthew L. Fidler
 .rxGpuHostSolve <- function(
@@ -295,6 +297,7 @@
   autoSwitchMaxNonstiff = 3L,
   autoSwitchSwitchMax = 5L,
   autoSwitchStiffFirst = FALSE,
+  histCap = 100000L,
   pl = rep(NA_real_, lib$nlhs),
   ir = rep(0, lib$neq),
   on = rep(1L, lib$neq),
@@ -334,6 +337,8 @@
         autoSwitchStiffFirst,
         0L,
         0L,
+        0L,
+        histCap,
         0L
       )),
       as.double(rep_len(atol, .n)),
@@ -355,7 +360,8 @@
     istate = .r$iw[7],
     cnt = stats::setNames(.r$cnt, c("step", "accept", "reject", "fev", "jac", "lu")),
     stiffIntervals = .r$iw[8],
-    stiffEnd = .r$iw[9]
+    stiffEnd = .r$iw[9],
+    histN = .r$iw[11]
   )
 }
 

@@ -35,6 +35,7 @@
 #define RXG_ERR_HMIN (-2)
 #define RXG_ERR_METHOD (-3)
 #define RXG_ERR_STIFF (-4) // stiffness detected (stiffness probe only)
+#define RXG_ERR_HIST (-5)  // the delay() history is full
 
 // counters (cnt[])
 #define RXG_CNT_STEP 0
@@ -45,7 +46,12 @@
 #define RXG_CNT_LU 5
 #define RXG_NCNT 6
 
-#define RXG_NK 10 // stage vectors kept (vern76 has the most)
+// stage vectors kept: vern76 has the most, 16 with its interpolant
+#if RXG_HAS_DELAY && RXG_HDEG >= 7
+#define RXG_NK 16
+#else
+#define RXG_NK 10
+#endif
 
 #ifndef RXG_MIN
 #ifdef RXG_FLOAT
@@ -564,6 +570,155 @@ RXG_FN void _rxg_accept(int method, double *y, rxg_work *w, int *fsal) {
   w->jacOk = 0;
 }
 
+#if RXG_HAS_DELAY
+// vern76's six extra stages for its 7th order interpolant (Verner's
+// RKV76.IIa dense output, as OrdinaryDiffEq's Vern7): stage 11 is
+// f(t + h, y1); k must hold 16 stage vectors
+RXG_FN void _rxg_vern76Extra(double t, double h, const double *y,
+                             rxg_work *w, const rxg_ctx *c, int *cnt) {
+  const double cc[5] = {0.29, 0.125, 0.25, 0.53, 0.79};
+  // rows: stages 12..16; columns: stages 1, 4..9, 11..15
+  const double A[60] = {
+    0.0523222769159969, 0.22495861826705715, 0.017443709248776376,
+    -0.007669379876829393, 0.03435896044073285, -0.0410209723009395,
+    0.025651133005205617, -0.0160443457, 0.0, 0.0, 0.0, 0.0,
+    0.053053341257859085, 0.12195301011401886, 0.017746840737602496,
+    -0.0005928372667681495, 0.008381833970853752, -0.01293369259698612,
+    0.009412056815253861, -0.005353253107275676, -0.06666729992455811,
+    0.0, 0.0, 0.0,
+    0.03887903257436304, -0.0024403203308301317, -0.0013928917214672623,
+    -0.00047446291558680135, 0.00039207932413159514, -0.00040554733285128004,
+    0.00019897093147716726, -0.00010278198793179169, 0.03385661513870267,
+    0.1814893063199928, 0.0, 0.0,
+    0.05723681204690013, 0.22265948066761182, 0.12344864200186899,
+    0.04006332526666491, -0.05269894848581452, 0.04765971214244523,
+    -0.02138895885042213, 0.015193891064036402, 0.12060546716289655,
+    -0.022779423016187374, 0.0, 0.0,
+    0.051372038802756814, 0.5414214473439406, 0.350399806692184,
+    0.14193112269692182, 0.10527377478429423, -0.031081847805874016,
+    -0.007401883149519145, -0.006377932504865363, -0.17325495908361865,
+    -0.18228156777622026, 0.0, 0.0
+  };
+  const int col[12] = {0, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14};
+  _rxg_f(t + h, w->y1, w->k + 10*RXG_NEQ1, c, cnt);
+  for (int s = 0; s < 5; s++) {
+    for (int i = 0; i < RXG_NEQ; i++) {
+      double a = 0.0;
+      for (int j = 0; j < 8 + s; j++) a += A[s*12 + j]*w->k[col[j]*RXG_NEQ1 + i];
+      w->e[i] = y[i] + h*a;
+    }
+    _rxg_f(t + cc[s]*h, w->e, w->k + (11 + s)*RXG_NEQ1, c, cnt);
+  }
+}
+
+// Interpolant coefficients of state i over an accepted step of size hs
+// from y to w->y1, a[j] for s^j (j = 0..RXG_HDEG):
+//   rkt54   Tsitouras' free 4th order interpolant
+//   ros54p  Rodas5P's dense output (Steinebach 2023)
+//   vern76  Verner's 7th order interpolant (after _rxg_vern76Extra())
+RXG_FN void _rxg_dense(int method, double hs, int i, const double *y,
+                       const rxg_work *w, double *a) {
+  // Tsitouras: b_s(theta) = sum_j R[s][j] theta^(j+1), stages 1..7
+  const double R[28] = {
+    1.0, -2.763706197274826, 2.9132554618219126, -1.0530884977290216,
+    0.0, 0.13169999999999998, -0.2234, 0.1017,
+    0.0, 3.9302962368947516, -5.941033872131505, 2.490627285651253,
+    0.0, -12.411077166933676, 30.33818863028232, -16.548102889244902,
+    0.0, 37.50931341651104, -88.1789048947664, 47.37952196281928,
+    0.0, -27.896526289197286, 65.09189467479366, -34.87065786149661,
+    0.0, 1.5, -4.0, 2.5
+  };
+  // Rodas5P: K_j = sum_s H[j][s] k_s
+  const double H[24] = {
+    25.948786856663858, -2.5579724845846235, 10.433815404888879, -2.3679251022685204,
+    0.524948541321073, 1.1241088310450404, 0.4272876194431874, -0.17202221070155493,
+    -9.91568850695171, -0.9689944594115154, 3.0438037242978453, -24.495224566215796,
+    20.176138334709044, 15.98066361424651, -6.789040303419874, -6.710236069923372,
+    11.419903575922262, 2.8879645146136994, 72.92137995996029, 80.12511834622643,
+    -52.072871366152654, -59.78993625266729, -0.15582684282751913, 4.883087185713722
+  };
+  for (int j = 0; j <= RXG_HDEG; j++) a[j] = 0.0;
+  a[0] = y[i];
+  if (method == RXG_RKT54) {
+    for (int j = 0; j < 4; j++) {
+      double v = 0.0;
+      for (int s = 0; s < 7; s++) v += R[s*4 + j]*w->k[s*RXG_NEQ1 + i];
+      a[j + 1] = hs*v;
+    }
+  } else if (method == RXG_ROS54P) {
+    double K[3];
+    for (int j = 0; j < 3; j++) {
+      double v = 0.0;
+      for (int s = 0; s < 8; s++) v += H[j*8 + s]*w->k[s*RXG_NEQ1 + i];
+      K[j] = v;
+    }
+    a[1] = w->y1[i] - y[i] + K[0];
+    a[2] = K[1] - K[0];
+    a[3] = K[2] - K[1];
+    a[4] = -K[2];
+  } else {
+#if RXG_HDEG >= 7
+    // Verner: b_s(theta) = sum_j V[s][j] theta^(j+1), stages 1, 4..9, 11..16
+    const double V[91] = {
+      1.0, -8.413387198332767, 33.675508884490895, -70.80159089484886,
+      80.64695108301298, -47.19413969837522, 11.133813442539243,
+      0.0, 8.754921980674396, -88.4596828699771, 346.9017638429916,
+      -629.2580030059837, 529.6773755604193, -167.35886986514018,
+      0.0, 8.913387586637922, -90.06081846893218, 353.1807459217058,
+      -640.6476819744374, 539.2646279047156, -170.38809442991547,
+      0.0, 5.1733120298478, -52.271115900055385, 204.9853867374073,
+      -371.8306118563603, 312.9880934374529, -98.89290352172495,
+      0.0, 16.79537744079696, -169.70040000059728, 665.4937727009246,
+      -1207.1638892336007, 1016.1291515818546, -321.06001557237494,
+      0.0, -10.005997536098665, 101.1005433052275, -396.47391512378437,
+      719.1787707014183, -605.3681033918824, 191.27439892797935,
+      0.0, 2.764708833638599, -27.934602637390462, 109.54779186137893,
+      -198.7128113064482, 167.26633571640318, -52.85010499525706,
+      0.0, -2.1696320280163506, 22.016696037569876, -86.90152427798948,
+      159.22388973861476, -135.9618306534588, 43.792401183280006,
+      0.0, -4.890070188793804, 22.75407737425176, -30.78034218537731,
+      -2.797194317207249, 31.369456637508403, -15.655927320381801,
+      0.0, 10.862170929551967, -50.542971417827104, 68.37148040407511,
+      6.213326521632409, -69.68006323194157, 34.776056794509195,
+      0.0, -11.37286691922923, 130.79058078246717, -488.65113677785604,
+      832.2148793276441, -664.7743368554426, 201.79288044241662,
+      0.0, -5.919778732715007, 63.27679965889219, -265.432682088738,
+      520.1009254140611, -467.412109533902, 155.3868452824017,
+      0.0, -10.492146197961823, 105.35538525188011, -409.43975011988937,
+      732.831448907654, -606.3044574733512, 188.0495196316683
+    };
+    const int st[13] = {0, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15};
+    for (int j = 0; j < 7; j++) {
+      double v = 0.0;
+      for (int s = 0; s < 13; s++) v += V[s*7 + j]*w->k[st[s]*RXG_NEQ1 + i];
+      a[j + 1] = hs*v;
+    }
+#endif
+  }
+}
+
+// Record an accepted step of size hs from (t, y) in the delay() history;
+// returns 0 when it is full
+RXG_FN int _rxg_histPush(int method, double t, double hs, const double *y,
+                         rxg_work *w, const rxg_ctx *c, int *cnt) {
+  rxg_hist *hi = c->hist;
+  if (hi->n >= hi->cap) return 0;
+#if RXG_HDEG >= 7
+  if (method == RXG_VERN76) _rxg_vern76Extra(t, hs, y, w, c, cnt);
+#endif
+  RXG_GLOBAL double *r = hi->rec + hi->n*RXG_HREC;
+  double a[RXG_HDEG + 1];
+  for (int j = 0; j < RXG_NDLY; j++) {
+    _rxg_dense(method, hs, RXG_DSTATE(j), y, w, a);
+    for (int d = 0; d <= RXG_HDEG; d++) r[d*RXG_NDLY1 + j] = a[d];
+  }
+  r[(RXG_HDEG + 1)*RXG_NDLY1] = t;
+  r[(RXG_HDEG + 1)*RXG_NDLY1 + 1] = hs;
+  hi->n++;
+  return 1;
+}
+#endif
+
 // Integrate y from t0 to t1 (either direction) with an adaptive method.
 // *h is the starting step size (<= 0: chosen here) and returns the size to
 // try next, for a warm start on the next interval.  cnt[] (RXG_NCNT) is
@@ -602,6 +757,10 @@ RXG_FN int rxg_integrate(int method, double t0, double t1, double *y,
   while (dir*(t1 - t) > 0.0) {
     double rem = fabs(t1 - t);
     ha = fmin(ha, hmax);
+#if RXG_HAS_DELAY
+    // never step past the shortest delay, so delay() reads recorded steps
+    ha = fmin(ha, c->hist->minT);
+#endif
     if (ha < fmax(o->hmin, 16.0*RXG_EPS*fmax(fabs(t), RXG_MIN)) && ha < rem) {
       ret = RXG_ERR_HMIN;
       break;
@@ -625,8 +784,23 @@ RXG_FN int rxg_integrate(int method, double t0, double t1, double *y,
     }
     cnt[RXG_CNT_ACC]++;
     int stiff = probe && _rxg_stiffCheck(st, method, dir*hh, w.k, w.ya, w.yb);
+#if RXG_HAS_DELAY
+    if (!_rxg_histPush(method, t, dir*hh, y, &w, c, cnt)) {
+      ret = RXG_ERR_HIST;
+      break;
+    }
+#endif
     t = last ? t1 : t + dir*hh;
     _rxg_accept(method, y, &w, &fsal);
+#if RXG_HAS_DELAY
+#if RXG_HDEG >= 7
+    if (method == RXG_VERN76) {
+      // stage 11 of the interpolant is the next step's f(t, y)
+      for (int i = 0; i < RXG_NEQ; i++) w.f0[i] = w.k[10*RXG_NEQ1 + i];
+      fsal = 1;
+    }
+#endif
+#endif
     // a step cut short to land on t1 says little about the next size
     ha = last ? fmax(hn, ha) : hn;
     if (stiff && !last) {
