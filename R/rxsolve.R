@@ -1023,12 +1023,12 @@
 #'   calls `$PK` at its records.  `d/dt()` and state-dependent statements keep
 #'   the continuous time (like `$DES`).  `addl` repeats, infusion ends,
 #'   lagged doses and doses added while solving do not end an interval;
-#'   `mtime()` times do.  A modeled rate (`rate()`, `RATE = -1`) is likewise
-#'   re-read on each interval from the record that ends it, like NONMEM's `R1`,
-#'   until the dose is delivered (not with event sensitivities or the adjoint,
-#'   which keep the rate of the dose).  Covariate interpolation is still set by
+#'   `mtime()` times do.  A modeled rate (`rate()`, `RATE = -1`) is re-read on
+#'   each interval from the record that ends it, like NONMEM's `R1` (see
+#'   `rateAtDoseTime`).  Covariate interpolation is still set by
 #'   `covsInterpolation`.  It also sets the default `tieOrder` to `"data"`
-#'   and turns on `addlKeepsCov` unless it is given.  By default `FALSE`.
+#'   and turns on `addlKeepsCov` and `durAtDoseTime` unless they are given.
+#'   By default `FALSE`.
 #'
 #' @param tieOrder How records of a subject that share a time are processed:
 #'   `"evid"` processes resets first, then doses, then observations, so the
@@ -1039,6 +1039,23 @@
 #'   same time.  An event table already translated by [etTrans()] keeps the
 #'   order it was translated with.  By default (`NULL`) this is `"data"` when
 #'   `nonmem = TRUE` and `"evid"` otherwise.
+#'
+#' @param rateAtDoseTime Boolean that when `TRUE` keeps a modeled rate
+#'   (`rate()`, `RATE = -1`) at the value read at its dose.  When `FALSE` (the
+#'   default) the rate is re-read at each data record until the dose is
+#'   delivered: the rate read at a record holds until the next one, or with
+#'   `nonmem = TRUE` the rate read with a record applies to the interval it
+#'   ends.  A re-read rate changes the rate and moves the end of the infusion
+#'   so the dose amount is kept.  Event sensitivities and the adjoint always
+#'   keep the rate of the dose.
+#'
+#' @param durAtDoseTime Boolean that when `TRUE` keeps a modeled duration
+#'   (`dur()`, `RATE = -2`) at the value read at its dose.  When `FALSE` it is
+#'   re-read at each data record like a modeled rate (see `rateAtDoseTime`):
+#'   the infusion then ends at its start plus the new duration, delivering
+#'   what is left evenly, or stops delivering when that end has passed.  By
+#'   default (`NULL`) this is `TRUE` with `nonmem = TRUE`, as NONMEM fixes
+#'   `D1` at the dose, and `FALSE` otherwise.
 #'
 #' @param linCmtGillK The total number of possible steps to determine the
 #'     optimal forward/central difference step size per parameter (by
@@ -1655,6 +1672,8 @@ rxSolve <- function(
   linCmtSensPhi = TRUE,
   nonmem = FALSE,
   tieOrder = NULL,
+  rateAtDoseTime = FALSE,
+  durAtDoseTime = NULL,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -1968,6 +1987,12 @@ rxSolve <- function(
       tieOrder <- if (nonmem) "data" else "evid"
     }
     checkmate::assertChoice(tieOrder, c("evid", "data"))
+    checkmate::assertLogical(rateAtDoseTime, any.missing = FALSE, len = 1)
+    if (is.null(durAtDoseTime)) {
+      # NONMEM fixes D1 at the dose
+      durAtDoseTime <- nonmem
+    }
+    checkmate::assertLogical(durAtDoseTime, any.missing = FALSE, len = 1)
     if (nonmem && missing(addlKeepsCov)) {
       # NONMEM keeps a dose record's covariates with the dose
       addlKeepsCov <- TRUE
@@ -2465,7 +2490,9 @@ rxSolve <- function(
       priorSigmaEl = priorSigmaEl,
       linCmtSensPhi = .linCmtSensPhi,
       nonmem = nonmem,
-      tieOrder = tieOrder
+      tieOrder = tieOrder,
+      rateAtDoseTime = rateAtDoseTime,
+      durAtDoseTime = durAtDoseTime
     )
     class(.ret) <- "rxControl"
     return(.ret)

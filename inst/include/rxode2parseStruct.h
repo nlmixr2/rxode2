@@ -671,6 +671,11 @@ typedef struct rx_solve_s {
   int addlKeepsCov;
   // hidden knots (evid 8) at lagged doses' record times, counted in nobs
   int nknot;
+  // rxControl(rateAtDoseTime=TRUE): a modeled rate keeps the value read at its
+  // dose; otherwise it is re-read at each data record (rxode2#1586)
+  int rateAtDoseTime;
+  // rxControl(durAtDoseTime=TRUE): the same for a modeled duration
+  int durAtDoseTime;
 } rx_solve;
 
 typedef void (*rxode2_assignFuns2_t)(rx_solve, rx_solving_options, t_F, t_LAG, t_RATE, t_DUR,t_calc_mtime, t_ME, t_IndF, t_getTime, t_locateTimeIndex, t_handle_evidL,t_getDur);

@@ -7,6 +7,17 @@
   first-use `Matrix` namespace load (#1675); `Matrix` is no longer
   suggested.
 
+- A modeled infusion rate (`rate(cmt)`, `RATE = -1`) or duration (`dur(cmt)`,
+  `RATE = -2`) is now re-read at each data record until the dose is
+  delivered, so a covariate or `time` change during the infusion changes it.
+  A new rate moves the end of the infusion; a new duration ends it at its
+  start plus that duration, or stops it when that time has passed.  By
+  default the value read at a record holds until the next record; with
+  `nonmem = TRUE` a rate follows NONMEM's `R1`, read with the record that ends
+  each interval, and a duration stays fixed like `D1`.  It used to stay at the
+  value read at the dose; `rxSolve(rateAtDoseTime = TRUE, durAtDoseTime =
+  TRUE)` restores that (#1586).
+
 ## Bug fixes
 
 ### Delay differential equations
@@ -134,11 +145,6 @@
   correctly (#1729).
 
 ### Solving
-- With `rxSolve(..., nonmem = TRUE)`, a modeled infusion rate (`rate(cmt)`,
-  `RATE = -1`) now follows NONMEM's `R1`: on each interval it runs at the rate
-  computed with the data record that ends the interval, until the dose is
-  delivered.  It used to stay at the rate of the dose record, so a covariate
-  or `time` change during the infusion did not change it (#1586).
 - While a solver integrates toward a record, a time-varying covariate
   interpolated with `locf` or `nocb` now keeps, at the ends of the interval,
   the value it has inside it.  At the record a `locf` covariate took the

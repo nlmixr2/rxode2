@@ -1,7 +1,8 @@
 rxTest({
-  # With rxSolve(..., nonmem = TRUE), a modeled rate (rate(cmt), RATE = -1)
-  # runs on (t[j-1], t[j]] at the rate computed with data record j until the
-  # dose is delivered, like NONMEM's R1 (rxode2#1586).
+  # A modeled rate (rate(cmt), RATE = -1) is re-read at each data record until
+  # the dose is delivered: by default the rate read at a record holds until the
+  # next one; with nonmem = TRUE it runs on (t[j-1], t[j]] at the rate computed
+  # with data record j, like NONMEM's R1 (rxode2#1586).
   .k <- 0.05
   .step <- function(a, h, r) a * exp(-.k * h) + r / .k * (1 - exp(-.k * h))
 
@@ -87,10 +88,50 @@ rxTest({
     }
   })
 
-  test_that("without nonmem = TRUE the rate is fixed at the dose", {
+  test_that("by default the rate read at a record holds until the next one", {
+    .a1 <- .step(0, 1, 12.5)
+    .a2 <- .step(.a1, 1, 25)
+    .a6 <- .step(.step(.a2, 1.25, 50), 2.75, 0)
+    .locf <- c(.a1, .a2, .a6) / 10
+    expect_equal(
+      .exact(.d, data.frame(time = numeric(0), amt = numeric(0)), function(j) 50 / .d$X[max(j - 1, 1)]) / 10,
+      .locf,
+      tolerance = 1e-12
+    )
+    for (.meth in c("liblsoda", "lsoda", "dop853")) {
+      for (.cov in c("nocb", "locf")) {
+        .s <- rxSolve(
+          .m,
+          .d,
+          method = .meth,
+          covsInterpolation = .cov,
+          addDosing = FALSE,
+          atol = 1e-12,
+          rtol = 1e-12,
+          returnType = "data.frame"
+        )
+        expect_equal(.s$cp, .locf, tolerance = 1e-8, info = paste(.meth, .cov))
+      }
+    }
+  })
+
+  test_that("rateAtDoseTime = TRUE keeps the rate read at the dose", {
     .b <- c(.step(0, 1, 12.5), .step(0, 2, 12.5), .step(0, 6, 12.5)) / 10
-    .s <- rxSolve(.m, .d, addDosing = FALSE, atol = 1e-12, rtol = 1e-12, returnType = "data.frame")
-    expect_equal(.s$cp, .b, tolerance = 1e-8)
+    for (.nm in c(TRUE, FALSE)) {
+      .s <- rxSolve(
+        .m,
+        .d,
+        nonmem = .nm,
+        rateAtDoseTime = TRUE,
+        addDosing = FALSE,
+        atol = 1e-12,
+        rtol = 1e-12,
+        returnType = "data.frame"
+      )
+      expect_equal(.s$cp, .b, tolerance = 1e-8, info = paste("nonmem", .nm))
+    }
+    expect_false(rxControl()$rateAtDoseTime)
+    expect_error(rxSolve(.m, .d, rateAtDoseTime = NA))
   })
 
   test_that("a time-dependent modeled rate reads the record time across addl doses", {
@@ -182,18 +223,56 @@ rxTest({
     expect_equal(.s$a, 1000, tolerance = 1e-6)
   })
 
-  test_that("a modeled duration is still fixed at the dose", {
-    .md <- rxode2({
-      cl <- 0.5
-      v <- 10
-      dur(central) <- X
-      d/dt(central) <- -cl / v * central
-      cp <- central / v
-    })
-    .dd <- .d
-    .dd$RATE[1] <- -2
-    .s1 <- rxSolve(.md, .dd, nonmem = TRUE, addDosing = FALSE, returnType = "data.frame")
-    .s2 <- rxSolve(.md, .dd, nonmem = FALSE, addDosing = FALSE, returnType = "data.frame")
-    expect_equal(.s1$cp, .s2$cp)
+  .md <- rxode2({
+    cl <- 0.5
+    v <- 10
+    dur(central) <- X
+    d/dt(central) <- -cl / v * central
+    cp <- central / v
+  })
+  .dd <- .d
+  .dd$RATE[1] <- -2
+
+  .durSolve <- function(d, ...) {
+    rxSolve(.md, d, addDosing = FALSE, atol = 1e-12, rtol = 1e-12, returnType = "data.frame", ...)$cp
+  }
+
+  test_that("a re-read modeled duration moves the end and spreads what is left", {
+    # t = 0: dur 4 (25/h); t = 1: dur 2, 75 left over (1, 2] (75/h)
+    .a1 <- .step(0, 1, 25)
+    .a2 <- .step(.a1, 1, 75)
+    .ref <- c(.a1, .a2, .step(.a2, 4, 0)) / 10
+    for (.meth in c("liblsoda", "lsoda", "dop853")) {
+      expect_equal(.durSolve(.dd, method = .meth), .ref, tolerance = 1e-8, info = .meth)
+    }
+  })
+
+  test_that("a modeled duration re-read into the past delivers no more", {
+    .dp <- .dd
+    .dp$X <- c(4, 0.5, 0.5, 0.5)
+    .a1 <- .step(0, 1, 25)
+    .ref <- c(.a1, .step(.a1, 1, 0), .step(.a1, 5, 0)) / 10
+    expect_equal(.durSolve(.dp), .ref, tolerance = 1e-8)
+    # the dose is already delivered when the duration grows again
+    .dg <- .dd
+    .dg$TIME <- c(0, 1, 5, 6)
+    .dg$X <- c(4, 2, 10, 10)
+    .a1 <- .step(0, 1, 25)
+    .a2 <- .step(.a1, 1, 75)
+    .ref <- c(.a1, .step(.a2, 3, 0), .step(.a2, 4, 0)) / 10
+    expect_equal(.durSolve(.dg), .ref, tolerance = 1e-8)
+  })
+
+  test_that("nonmem = TRUE fixes a modeled duration unless durAtDoseTime = FALSE", {
+    .fixed <- c(.step(0, 1, 25), .step(0, 2, 25), .step(.step(0, 4, 25), 2, 0)) / 10
+    expect_equal(.durSolve(.dd, nonmem = TRUE), .fixed, tolerance = 1e-8)
+    expect_equal(.durSolve(.dd, durAtDoseTime = TRUE), .fixed, tolerance = 1e-8)
+    # NOCB: (0, 1] reads dur 2 at t = 1 (100 over 2 h); (1, 2] reads dur 1, an
+    # end at 1 that has passed
+    .a1 <- .step(0, 1, 50)
+    .ref <- c(.a1, .step(.a1, 1, 0), .step(.a1, 5, 0)) / 10
+    expect_equal(.durSolve(.dd, nonmem = TRUE, durAtDoseTime = FALSE), .ref, tolerance = 1e-8)
+    expect_false(rxControl()$durAtDoseTime)
+    expect_true(rxControl(nonmem = TRUE)$durAtDoseTime)
   })
 })
