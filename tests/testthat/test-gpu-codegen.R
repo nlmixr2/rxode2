@@ -42,6 +42,21 @@ rxTest({
     expect_equal(.df$gpuSafe[.df$rxFun == "logit"], 0L)
   })
 
+  test_that("every registered gpuSafe function has a device definition", {
+    ## the flags come from the tags in inst/include/rxode2_model_shared.c
+    .hdr <- unlist(lapply(
+      list.files(file.path(.rxGpuIncludeDir(), "rxode2gpu"), full.names = TRUE),
+      readLines
+    ))
+    .defined <- function(f) {
+      any(grepl(sprintf("^RXG_FN [a-z ]+\\b%s\\(|^#define %s\\(", f, f), .hdr))
+    }
+    .df <- .rxode2parseGetTranslationFull()
+    .f <- .df$fun[.df$gpuSafe == 1L]
+    expect_true(length(.f) > 0)
+    expect_equal(.f[!vapply(.f, .defined, logical(1))], character(0))
+  })
+
   test_that("the rxode2ll likelihoods are not gpu safe", {
     .df <- .rxode2parseGetTranslationFull()
     .ll <- .df$package == "rxode2ll"

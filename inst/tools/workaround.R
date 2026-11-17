@@ -523,6 +523,14 @@ l3 <- l3[seq(w4, length(l3))]
 dfP <- l[seq(w1 + 1, w2 - 1)]
 
 dfP <- dfP[regexpr("^ *$", dfP) == -1]
+## flags: "// builtin gpuSafe: f g ..." lines list the builtins with a device
+## version; a trailing "// gpuSafe" or "// threadSafe=0" tags a registration
+.builtinRe <- "^ *// *builtin gpuSafe: *"
+gpuSafeBuiltin <- unlist(strsplit(sub(.builtinRe, "", grep(.builtinRe, dfP, value = TRUE)), " +"))
+gpuSafeBuiltin <- gpuSafeBuiltin[gpuSafeBuiltin != ""]
+dfP <- dfP[regexpr("^ *//", dfP) == -1]
+.tags <- ifelse(grepl("//", dfP, fixed = TRUE), sub("^[^/]*//", "", dfP), "")
+dfP <- sub(" *//.*$", "", dfP)
 df <- setNames(
   do.call(
     "rbind",
@@ -540,68 +548,8 @@ df <- setNames(
 
 df$rxFun <- df$fun
 df$argMax <- df$argMin <- NA_integer_
-df$threadSafe <- 1L
-## functions with a device (OpenCL) version in inst/include/rxode2gpu/; the
-## random draws (rx*/ri*, simeta/simeps), linCmt() and the llik*() functions
-## (rxode2ll) have none
-df$gpuSafe <- as.integer(
-  df$fun %in%
-    c(
-      "ReLU",
-      "dReLU",
-      "GELU",
-      "dGELU",
-      "d2GELU",
-      "d3GELU",
-      "d4GELU",
-      "softplus",
-      "dsoftplus",
-      "d2softplus",
-      "d3softplus",
-      "d4softplus",
-      "SELU",
-      "dSELU",
-      "lReLU",
-      "dlReLU",
-      "Swish",
-      "dSwish",
-      "PReLU",
-      "dPReLU",
-      "dPReLUa",
-      "dPReLUa1",
-      "ELU",
-      "dELU",
-      "d2ELU",
-      "d2aELU",
-      "dELUa",
-      "d2ELUa",
-      "phi",
-      "phiU",
-      "logit",
-      "expit",
-      "probit",
-      "probitInv",
-      "gammap",
-      "gammaq",
-      "gammapInv",
-      "gammapInva",
-      "gammaqInv",
-      "gammaqInva",
-      "uppergamma",
-      "lowergamma",
-      "gammapDer",
-      "gammapDera",
-      "ibeta",
-      "ibetaDer",
-      "ibetaInv",
-      "ibetaDera",
-      "ibetaDerb",
-      "studentTDen",
-      "studentTCdf",
-      "studentTCdfDnu",
-      "studentTInv"
-    )
-)
+df$threadSafe <- as.integer(!grepl("threadSafe *= *0", .tags))
+df$gpuSafe <- as.integer(grepl("\\bgpuSafe\\b", .tags))
 df <- df[, c("rxFun", "fun", "type", "package", "packageFun", "argMin", "argMax", "threadSafe", "gpuSafe")]
 df$rxFun <- gsub("_llik", "llik", df$rxFun)
 
@@ -629,6 +577,9 @@ df$argMax <- df$argMin
 
 dfStr <- deparse(df)
 dfStr[1] <- paste(".parseEnv$.rxode2parseDf <- ", dfStr[1])
+gpuStr <- deparse(gpuSafeBuiltin)
+gpuStr[1] <- paste(".parseEnv$.rxGpuSafeBuiltin <- ", gpuStr[1])
+dfStr <- c(dfStr, gpuStr)
 
 .writeIfChanged("R/dfIni.R", dfStr)
 
