@@ -336,6 +336,11 @@ extern "C" {
   extern rxDfKeepCols_t rxDfKeepCols;
   typedef SEXP (*getDfLevels_t)(const char *item, rx_solve *rx, R_xlen_t nrow);
   extern getDfLevels_t getDfLevels;
+  // Whether rxSolve() refuses the current solve (an RXDF_REFUSE_* code, 0 when
+  // it returns it), for a package that solves through rxode2 to hand the same
+  // problem to rxSolve() for its error.
+  typedef int (*rxDfSolveRefused_t)(rx_solve *rx);
+  extern rxDfSolveRefused_t rxDfSolveRefused;
 
   typedef void (*mexpit_t)(double *x, double *p, int n);
   extern mexpit_t mexpit;
@@ -529,6 +534,7 @@ extern "C" {
       rxDfKeepRow = (rxDfKeepRow_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 110));
       rxDfKeepCols = (rxDfKeepCols_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 111));
       getDfLevels = (getDfLevels_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 112));
+      rxDfSolveRefused = (rxDfSolveRefused_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 113));
     }
     return R_NilValue;
   }
@@ -647,6 +653,7 @@ extern "C" {
   rxDfKeepRow_t rxDfKeepRow = NULL;                     \
   rxDfKeepCols_t rxDfKeepCols = NULL;                   \
   getDfLevels_t getDfLevels = NULL;                     \
+  rxDfSolveRefused_t rxDfSolveRefused = NULL;           \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \

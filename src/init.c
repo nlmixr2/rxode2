@@ -531,6 +531,7 @@ void setIndSolveLast2(rx_solving_options_ind* ind, double* solveLast2);
 SEXP _rxTestThreadIdSlots(SEXP ptrs);
 SEXP _rxTestDfWalkSlots(SEXP ptrs, SEXP doDose);
 SEXP _rxTestDfKeepSlots(SEXP ptrs, SEXP doDose, SEXP lvlName);
+SEXP _rxTestDfRefusedSlot(SEXP ptrs);
 SEXP _rxode2_rxode2Ptr(void) {
   rxProtectGuard;
   // Create an external pointer for _lotriLstToMat
@@ -658,8 +659,9 @@ SEXP _rxode2_rxode2Ptr(void) {
   SEXP rxode2rxDfKeepRow = rxP(R_MakeExternalPtrFn((DL_FUNC)&rxDfKeepRow, R_NilValue, R_NilValue));
   SEXP rxode2rxDfKeepCols = rxP(R_MakeExternalPtrFn((DL_FUNC)&rxDfKeepCols, R_NilValue, R_NilValue));
   SEXP rxode2getDfLevels = rxP(R_MakeExternalPtrFn((DL_FUNC)&getDfLevels, R_NilValue, R_NilValue));
+  SEXP rxode2rxDfSolveRefused = rxP(R_MakeExternalPtrFn((DL_FUNC)&rxDfSolveRefused, R_NilValue, R_NilValue));
 
-#define nVec 113
+#define nVec 114
   SEXP ret = rxP(Rf_allocVector(VECSXP, nVec));
   SET_VECTOR_ELT(ret, 0, rxode2rxRmvnSEXP);
   SET_VECTOR_ELT(ret, 1, rxode2rxParProgress);
@@ -774,6 +776,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_VECTOR_ELT(ret, 110, rxode2rxDfKeepRow);
   SET_VECTOR_ELT(ret, 111, rxode2rxDfKeepCols);
   SET_VECTOR_ELT(ret, 112, rxode2getDfLevels);
+  SET_VECTOR_ELT(ret, 113, rxode2rxDfSolveRefused);
 
 
   SEXP retN = rxP(Rf_allocVector(STRSXP, nVec));
@@ -897,6 +900,7 @@ SEXP _rxode2_rxode2Ptr(void) {
   SET_STRING_ELT(retN, 110, Rf_mkChar("rxode2rxDfKeepRow"));
   SET_STRING_ELT(retN, 111, Rf_mkChar("rxode2rxDfKeepCols"));
   SET_STRING_ELT(retN, 112, Rf_mkChar("rxode2getDfLevels"));
+  SET_STRING_ELT(retN, 113, Rf_mkChar("rxode2rxDfSolveRefused"));
 
   // Nothing is validated here.  Every reverse dependency calls this at load, so a
   // check that fails takes them all down at once and they cannot be patched
@@ -988,6 +992,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxTestThreadIdSlots", (DL_FUNC) &_rxTestThreadIdSlots, 1},
     {"_rxTestDfWalkSlots", (DL_FUNC) &_rxTestDfWalkSlots, 2},
     {"_rxTestDfKeepSlots", (DL_FUNC) &_rxTestDfKeepSlots, 3},
+    {"_rxTestDfRefusedSlot", (DL_FUNC) &_rxTestDfRefusedSlot, 1},
     {"_rxode2_iniDparserPtr", (DL_FUNC) &_rxode2_iniDparserPtr, 1},
     {"_iniPreciseSumsPtr", (DL_FUNC) &iniPreciseSumsPtr, 1},
     {"_iniLotriPtr", (DL_FUNC) &iniLotriPtr, 1},

@@ -27,6 +27,12 @@
 - `_update_par_ptr()`, called by every generated model function, returns
   before its steady-state time check when the model has no covariates (#1726).
 
+- `rxDfSolveRefused()` (slot 113) tells a downstream package whether
+  `rxSolve()` would refuse the current solve (a `NA` event time, a model
+  `method = "vv"` cannot integrate, a single subject that failed, ...) rather
+  than return it with `NA` rows; `rxSolve()` decides with the same code
+  (nlmixr2/nlmixr2est#1356).
+
 ## Bug fixes
 
 - `gamma(x)` in a model now computes the Gamma function; it was translated to

@@ -51,6 +51,7 @@ adjoint-sens
 event-sensitivities-api
 df-walk
 df-keep
+df-refused
 symengine-translate-fixture
 # delay differential equations
 dde
