@@ -9,7 +9,8 @@
 //   RXG_SAFE_ZERO  0 or 1    (rxControl(safeZero=))
 //   RXG_SAFE_POW   0 or 1    (rxControl(safePow=))
 //   RXG_STD_POW    0 or 1    (rxControl(useStdPow=))
-//   RXG_FLOAT      solve in single precision (OpenCL only)
+//   RXG_FLOAT      solve in single precision (OpenCL only; build the program
+//                  with -cl-single-precision-constant so literals are float)
 #ifndef RXG_SAFE_LOG
 #define RXG_SAFE_LOG 1
 #endif
@@ -23,10 +24,24 @@
 #define RXG_STD_POW 0
 #endif
 
-#ifdef __OPENCL_VERSION__
+// OpenCL compilers define __OPENCL_VERSION__ or __OPENCL_C_VERSION__ (clang)
+#if defined(__OPENCL_VERSION__) || defined(__OPENCL_C_VERSION__)
+#define RXG_OPENCL 1
+#endif
+#ifdef RXG_OPENCL
 #ifdef RXG_FLOAT
 #define double float
 #define RXG_EPS FLT_EPSILON
+// without fp64 only the float (_F) constants are defined
+#ifndef M_PI
+#define M_PI M_PI_F
+#endif
+#ifndef M_LN2
+#define M_LN2 M_LN2_F
+#endif
+#ifndef M_SQRT1_2
+#define M_SQRT1_2 M_SQRT1_2_F
+#endif
 #else
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 #define RXG_EPS DBL_EPSILON
@@ -204,7 +219,8 @@ RXG_FN double phi(double q) { return 0.5*erfc(-q*M_SQRT1_2); }
 RXG_FN double ReLU(double x) { return (x > 0.0) ? x : 0.0; }
 
 // _max()/_min()/_sign() are varargs on the host; the count is a literal, so
-// select a fixed-arity version.  NaN propagates as in the host loop.
+// select a fixed-arity version.  As in the host loop, a NaN after the first
+// argument is skipped.
 RXG_FN double _rxg_max2(double a, double b) { return (b > a) ? b : a; }
 RXG_FN double _rxg_min2(double a, double b) { return (b < a) ? b : a; }
 #define _rxg_max1(a) (a)

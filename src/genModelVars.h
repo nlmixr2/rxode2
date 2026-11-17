@@ -50,7 +50,7 @@ static inline SEXP calcSLinCmt(void) {
   }
   // 1 when the model's d/dt() can run as device (OpenCL) code: every
   // function it calls is registered gpuSafe and it has none of these
-  INTEGER(sLinCmt)[18] = (tb.gpu && nmtime == 0 &&
+  INTEGER(sLinCmt)[18] = (tb.gpu && tb.simflg == 0 && nmtime == 0 &&
                           tb.evid_ == 0 && tb.linCmt == 0 &&
                           tb.hasDelay == 0 && tb.isMexp == 0 &&
                           tb.matn == 0 && tb.matnf == 0) ? 1 : 0;

@@ -57,6 +57,38 @@ rxTest({
     expect_equal(.f[!vapply(.f, .defined, logical(1))], character(0))
   })
 
+  test_that("a similarly named column does not stand in for gpuSafe", {
+    .full <- .rxode2parseGetTranslationFull()
+    on.exit(rxode2parseAssignTranslation(.full))
+    .cur <- rxode2parseGetTranslation()
+    .cur$gpuSafeNote <- 1L
+    rxode2parseAssignTranslation(.cur)
+    .df <- .rxode2parseGetTranslationFull()
+    expect_equal(.df$gpuSafe[.df$rxFun == "rxnorm"], 0L)
+    expect_equal(.df$gpuSafe[.df$rxFun == "logit"], 1L)
+  })
+
+  test_that("simeta()/simeps() and ID comparisons are not gpu safe", {
+    expect_equal(
+      .gpuSafe(rxode2({
+        simeta()
+        d/dt(a) <- -exp(ETA[1]) * a
+      })),
+      0L
+    )
+    expect_equal(
+      .gpuSafe(rxode2({
+        if (ID == "patient1") {
+          k2 <- 2
+        } else {
+          k2 <- 1
+        }
+        d/dt(a) <- -k2 * a
+      })),
+      0L
+    )
+  })
+
   test_that("the rxode2ll likelihoods are not gpu safe", {
     .df <- .rxode2parseGetTranslationFull()
     .ll <- .df$package == "rxode2ll"
@@ -418,6 +450,8 @@ rxTest({
       .h <- .host[, .k]
       .d <- .dev[, .k]
       expect_identical(is.finite(.h), is.finite(.d), label = .nm[.k])
+      ## non-finite results must agree exactly (NaN is not Inf)
+      expect_identical(.d[!is.finite(.h)], .h[!is.finite(.h)], label = .nm[.k])
       .ok <- is.finite(.h)
       .err <- abs(.h[.ok] - .d[.ok]) / pmax(abs(.h[.ok]), .floor[.k])
       expect_true(all(.err < .tol[.k]), label = sprintf("%s (max error %g)", .nm[.k], max(c(0, .err))))
@@ -457,7 +491,11 @@ rxTest({
       "beta(30, 40)",
       "trigamma(1e-300)",
       "lfactorial(1e-10)",
-      "factorial(0.3)"
+      "factorial(0.3)",
+      "gammapInv(1.5, 1e-300)",
+      "ibetaInv(1.125, 10, 1e-300)",
+      "ibetaInv(0.0005, 2, 0.75)",
+      "gammap(1e6, 1e6)"
     )
     .mf <- rxode2(paste(c(sprintf("o%d <- %s", seq_along(.ex), .ex), sprintf("d/dt(s%d) <- o%d", seq_along(.ex), seq_along(.ex))), collapse = "\n"))
     expect_equal(.gpuSafe(.mf), 1L)
@@ -467,7 +505,13 @@ rxTest({
     ])
     .dev <- .rxGpuHostEval(.rxGpuHostLib(.mf), 0, rep(0, length(.ex)), numeric(0))
     for (.k in seq_along(.ex)) {
-      expect_equal(.dev[.k], unname(.host[.k]), tolerance = 1e-9, label = .ex[.k])
+      .h <- unname(.host[.k])
+      ## relative to the host value, so a tiny one cannot pass as 0
+      if (is.finite(.h) && .h != 0) {
+        expect_lt(abs(.dev[.k] - .h) / abs(.h), 1e-9, label = .ex[.k])
+      } else {
+        expect_identical(.dev[.k], .h, label = .ex[.k])
+      }
     }
   })
 
@@ -531,6 +575,10 @@ rxTest({
     .clang <- Sys.which("clang")
     skip_if(!nzchar(.clang), "clang is not available")
     .k <- c(
+      ## the prelude must take its OpenCL branch, not the host C one
+      "#ifndef RXG_OPENCL",
+      "#error the device prelude did not detect OpenCL",
+      "#endif",
       "__kernel void rxg_check(__global double *out) {",
       "  double y[RXG_NEQ1], dy[RXG_NEQ1];",
       "  rxg_ctx c;",
@@ -545,13 +593,28 @@ rxTest({
     )
     .f <- tempfile(fileext = ".cl")
     on.exit(unlink(.f))
-    writeLines(.rxGpuProgramSource(.m, extra = .k), .f)
-    .out <- suppressWarnings(system2(
-      .clang,
-      c("-x", "cl", "-cl-std=CL1.2", "-Xclang", "-finclude-default-header", "-fsyntax-only", .f),
-      stdout = TRUE,
-      stderr = TRUE
-    ))
+    .cl <- function(float) {
+      writeLines(.rxGpuProgramSource(.m, float = float, extra = .k), .f)
+      suppressWarnings(system2(
+        .clang,
+        c(
+          "-x",
+          "cl",
+          "-cl-std=CL1.2",
+          "-Xclang",
+          "-finclude-default-header",
+          if (float) "-cl-single-precision-constant",
+          "-fsyntax-only",
+          .f
+        ),
+        stdout = TRUE,
+        stderr = TRUE
+      ))
+    }
+    .out <- .cl(FALSE)
+    expect_null(attr(.out, "status"), info = paste(.out, collapse = "\n"))
+    ## single precision builds with -cl-single-precision-constant
+    .out <- .cl(TRUE)
     expect_null(attr(.out, "status"), info = paste(.out, collapse = "\n"))
   })
 })

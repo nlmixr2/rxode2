@@ -1064,6 +1064,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
                           SEXP esD2LagCode, SEXP esD2RateCode, SEXP esD2DurCode,
                           SEXP esD3FCode, SEXP esDFQCode, SEXP esDLagJacCode,
                           SEXP esDLagQCode, SEXP esDDurQCode) {
+  _rxgDev = 0; // host code, even after an error left the device mode set
   // Event ("jump") sensitivities: the dLag/dF/dRate/dDur body lines are passed as
   // arguments (not a module global) so the setter and the codegen always run in
   // the same package instance -- the global channel was unreliable under

@@ -223,6 +223,10 @@
     stopifnot(length(x) == n)
     x
   }
+  .padInt <- function(x, n) {
+    stopifnot(length(x) == n)
+    x
+  }
   .args <- list(
     as.double(t),
     .pad(y, lib$neq),
@@ -231,7 +235,7 @@
     .pad(p1, lib$npar),
     .pad(pl, lib$nlhs),
     .pad(ir, lib$neq),
-    as.integer(if (lib$neq == 0L) 0L else on),
+    as.integer(if (lib$neq == 0L) 0L else .padInt(on, lib$neq)),
     as.double(c(t0, t1, curShift, tpk, tbs)),
     as.integer(c(covType, nonmem))
   )

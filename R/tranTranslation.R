@@ -35,7 +35,8 @@ rxode2parseAssignTranslation <- function(df) {
   for (.i in .int) {
     .df[[.i]] <- as.integer(.df[[.i]])
   }
-  .gpu <- df$gpuSafe
+  ## exact: $ on a data frame would partially match eg a gpuSafeNote column
+  .gpu <- df[["gpuSafe", exact = TRUE]]
   if (is.null(.gpu)) {
     ## a new or changed C function is not gpu safe; rows passed back
     ## unchanged (eg rbind() onto rxode2parseGetTranslation()) keep theirs
