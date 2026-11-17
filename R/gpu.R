@@ -167,7 +167,9 @@
     }
   }
   .info <- dyn.load(.dll)
-  .dim <- .C(getNativeSymbolInfo("rxg_host_dims", .info), d = integer(4))$d
+  ## bound first: R CMD check evaluates a literal .C(getNativeSymbolInfo(...))
+  .fn <- getNativeSymbolInfo("rxg_host_dims", .info)
+  .dim <- .C(.fn, d = integer(4))$d
   .ret <- list(dll = .info, neq = .dim[1], nlhs = .dim[2], npar = .dim[3], hasJac = as.logical(.dim[4]))
   assign(.md5, .ret, envir = .rxGpuHostEnv)
   .ret
