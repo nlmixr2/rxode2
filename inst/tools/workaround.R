@@ -541,7 +541,9 @@ df <- setNames(
 df$rxFun <- df$fun
 df$argMax <- df$argMin <- NA_integer_
 df$threadSafe <- 1L
-df <- df[, c("rxFun", "fun", "type", "package", "packageFun", "argMin", "argMax", "threadSafe")]
+## functions with a device (OpenCL) version in inst/include/rxode2gpu/rxg_prelude.h
+df$gpuSafe <- as.integer(df$fun %in% c("ReLU", "phi", "logit", "expit"))
+df <- df[, c("rxFun", "fun", "type", "package", "packageFun", "argMin", "argMax", "threadSafe", "gpuSafe")]
 df$rxFun <- gsub("_llik", "llik", df$rxFun)
 
 def <- def[!(def %in% df$rxFun)]
