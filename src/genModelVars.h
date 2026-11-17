@@ -21,6 +21,8 @@
 #include "parseParamMerge.h"
 #include "pkTime.h"
 
+extern int foundPast;
+
 static inline SEXP calcSLinCmt(void) {
   rxProtectGuard;
   SEXP sLinCmt = rxP(Rf_allocVector(INTSXP,19));
@@ -50,9 +52,10 @@ static inline SEXP calcSLinCmt(void) {
   }
   // 1 when the model's d/dt() can run as device (OpenCL) code: every
   // function it calls is registered gpuSafe and it has none of these
+  // (delay() reads the device history; a past() pre-history does not run there)
   INTEGER(sLinCmt)[18] = (tb.gpu && tb.simflg == 0 && nmtime == 0 &&
                           tb.evid_ == 0 && tb.linCmt == 0 &&
-                          tb.hasDelay == 0 && tb.isMexp == 0 &&
+                          foundPast == 0 && tb.isMexp == 0 &&
                           tb.matn == 0 && tb.matnf == 0) ? 1 : 0;
 
   SEXP sLinCmtN = rxP(Rf_allocVector(STRSXP, 19));

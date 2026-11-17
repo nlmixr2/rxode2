@@ -658,6 +658,9 @@ static inline void rxgNoteFunction(transFunctions *tf) {
   const char *v = tf->v;
   int n = functionNodeNargs(tf->pn);
   // the device max()/min()/sign() take a fixed number of arguments
+  // delay() reads the subject's history on the device (rxg_delay()); its
+  // sensitivity forms rxDelayD*() do not run there
+  if (!strcmp(v, "delay")) return;
   if (((!strcmp(v, "max") || !strcmp(v, "min")) && n > 8) ||
       (!strcmp(v, "sign") && n > 4)) {
     tb.gpu = 0;
