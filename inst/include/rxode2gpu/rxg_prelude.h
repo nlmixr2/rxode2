@@ -39,6 +39,9 @@
 #define RXG_FN static inline
 #endif
 
+#ifndef M_1_SQRT_2PI
+#define M_1_SQRT_2PI 0.398942280401432677939946059934
+#endif
 #ifndef NA_REAL
 #define NA_REAL NAN
 #endif
@@ -224,5 +227,7 @@ RXG_FN double _rxg_min2(double a, double b) { return (b < a) ? b : a; }
 #define _max(n, ...) _RXG_CAT(_rxg_max, n)(__VA_ARGS__)
 #define _min(n, ...) _RXG_CAT(_rxg_min, n)(__VA_ARGS__)
 #define _sign(n, ...) _RXG_CAT(_rxg_sign, n)(__VA_ARGS__)
+
+#include "rxode2gpu/rxg_special.h"
 
 #endif // RXG_PRELUDE_H

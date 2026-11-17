@@ -201,6 +201,173 @@ rxTest({
     expect_equal(.j, .fd, tolerance = 1e-7)
   })
 
+  test_that("gpuSafe follows the registered device functions", {
+    expect_equal(
+      .gpuSafe(rxode2({
+        d/dt(a) <- -GELU(k) * a + gammap(k, 2) + rxTBS(a, 0.5, 1, 0, 1)
+      })),
+      1L
+    )
+    ## R's Bessel functions allocate; the TBS per-subject values are solver state
+    expect_equal(
+      .gpuSafe(rxode2({
+        d/dt(a) <- -bessel_i(k, 1, 1) * a
+      })),
+      0L
+    )
+    expect_equal(
+      .gpuSafe(rxode2({
+        d/dt(a) <- -rxTBS(k, rx_lambda_, rx_yj_, rx_low_, rx_hi_) * a
+      })),
+      0L
+    )
+  })
+
+  test_that("the device versions of rxode2's functions match the host", {
+    skip_on_cran()
+    .fns <- list(
+      dReLU = 1,
+      GELU = 1,
+      dGELU = 1,
+      d2GELU = 1,
+      d3GELU = 1,
+      d4GELU = 1,
+      softplus = 1,
+      dsoftplus = 1,
+      d2softplus = 1,
+      d3softplus = 1,
+      d4softplus = 1,
+      SELU = 1,
+      dSELU = 1,
+      lReLU = 1,
+      dlReLU = 1,
+      Swish = 1,
+      dSwish = 1,
+      PReLU = 2,
+      dPReLU = 2,
+      dPReLUa = 2,
+      dPReLUa1 = 2,
+      ELU = 2,
+      dELU = 2,
+      d2ELU = 2,
+      d2aELU = 2,
+      dELUa = 2,
+      d2ELUa = 2,
+      phiU = 1,
+      erfinv = 1,
+      probit = 1,
+      probitInv = 1,
+      gammap = 2,
+      gammaq = 2,
+      gammapInv = 2,
+      gammapInva = 2,
+      gammaqInv = 2,
+      gammaqInva = 2,
+      uppergamma = 2,
+      lowergamma = 2,
+      gammapDer = 2,
+      gammapDera = 2,
+      ibeta = 3,
+      ibetaDer = 3,
+      ibetaInv = 3,
+      ibetaDera = 3,
+      ibetaDerb = 3,
+      studentTDen = 2,
+      studentTCdf = 2,
+      studentTCdfDnu = 2,
+      studentTInv = 2,
+      fmax2 = 2,
+      fmin2 = 2,
+      fsign = 2,
+      ftrunc = 1,
+      fprec = 2,
+      fround = 2,
+      logspace_add = 2,
+      logspace_sub = 2,
+      beta = 2,
+      digamma = 1,
+      trigamma = 1,
+      round = 1,
+      dabs = 1,
+      abs1 = 1,
+      rxTBS = 3,
+      rxTBSi = 3,
+      rxTBSd = 3,
+      rxTBSd2 = 3,
+      rxTBSdL = 3,
+      rxTBSdL2 = 3,
+      rxTBSdLx = 3
+    )
+    ## arguments: x in (0, 1), y in (0.5, 5), z in (0.5, 20); the TBS
+    ## functions take (x, lambda, transform) with the bounds 0 and 1
+    .args <- function(f, n) {
+      if (grepl("^rxTBS", f)) {
+        return(sprintf("%s(x, y - 1.5, tr, 0, 1)", f))
+      }
+      if (f %in% c("ibeta", "ibetaDer", "ibetaInv", "ibetaDera", "ibetaDerb")) {
+        return(sprintf("%s(y, z, x)", f))
+      }
+      if (f %in% c("gammapInva", "gammaqInva", "studentTInv")) {
+        return(sprintf("%s(y, x)", f))
+      }
+      if (f %in% c("gammapInv", "gammaqInv")) {
+        return(sprintf("%s(z, x)", f))
+      }
+      if (f %in% c("fprec", "fround")) {
+        return(sprintf("%s(10 * y * (x - 0.5), dig)", f))
+      }
+      if (f == "logspace_sub") {
+        return(sprintf("%s(z, y)", f))
+      }
+      if (f %in% c("digamma", "trigamma")) {
+        return(sprintf("%s(10 * x - 4.5)", f))
+      }
+      if (n == 1) {
+        return(sprintf("%s(10 * x - 5)", f))
+      }
+      sprintf("%s(%s)", f, paste(c("y", "z", "x")[seq_len(n)], collapse = ", "))
+    }
+    .nm <- names(.fns)
+    .lines <- c(
+      vapply(seq_along(.nm), function(.k) sprintf("o%d <- %s", .k, .args(.nm[.k], .fns[[.nm[.k]]])), ""),
+      vapply(seq_along(.nm), function(.k) sprintf("d/dt(s%d) <- o%d", .k, .k), "")
+    )
+    .mf <- rxode2(paste(.lines, collapse = "\n"))
+    expect_equal(.gpuSafe(.mf), 1L)
+    .lib <- .rxGpuHostLib(.mf)
+    set.seed(42)
+    .n <- 40
+    .p <- data.frame(
+      x = runif(.n, 0.01, 0.99),
+      y = runif(.n, 0.5, 5),
+      z = runif(.n, 0.5, 20),
+      tr = as.double(sample(0:7, .n, TRUE)),
+      dig = as.double(sample(0:6, .n, TRUE))
+    )
+    .s <- as.data.frame(rxSolve(.mf, params = .p, events = et(0), returnType = "data.frame"))
+    .host <- as.matrix(.s[, paste0("o", seq_along(.nm))])
+    .mv <- rxModelVars(.mf)
+    .dev <- t(vapply(
+      seq_len(.n),
+      function(.i) {
+        .rxGpuHostEval(.lib, 0, rep(0, .lib$neq), unlist(.p[.i, .mv$params]))
+      },
+      numeric(length(.nm))
+    ))
+    ## the shape derivatives are finite differences, which amplify rounding
+    .fd <- .nm %in% c("gammapDera", "ibetaDera", "ibetaDerb", "studentTCdfDnu")
+    .tol <- ifelse(.fd, 1e-6, 1e-11)
+    .floor <- ifelse(.fd, 1, 1e-6)
+    for (.k in seq_along(.nm)) {
+      .h <- .host[, .k]
+      .d <- .dev[, .k]
+      expect_identical(is.finite(.h), is.finite(.d), label = .nm[.k])
+      .ok <- is.finite(.h)
+      .err <- abs(.h[.ok] - .d[.ok]) / pmax(abs(.h[.ok]), .floor[.k])
+      expect_true(all(.err < .tol[.k]), label = sprintf("%s (max error %g)", .nm[.k], max(c(0, .err))))
+    }
+  })
+
   test_that("the device code is valid OpenCL C", {
     skip_on_cran()
     .clang <- Sys.which("clang")
