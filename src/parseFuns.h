@@ -72,6 +72,7 @@ static inline int handleSimFunctions(nodeInfo ni, char *name, int *i, int nch,
     D_ParseNode *xpn = d_get_child(pn, 0);
     char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
     aType(TLOGIC);
+    tb.rng = 1;
     if (!strcmp("simeta", v)) {
       foundF0=1;
       if ((tb.simflg & 1) == 0) tb.simflg += 1;
@@ -540,6 +541,13 @@ extern SEXP _rxode2parse_funNameInt;
 extern SEXP _rxode2parse_functionThreadSafe;
 
 
+extern SEXP _rxode2parse_functionPackageName;
+
+static inline int rxIsExtPkgFun(int kk) {
+  const char *pkg = R_CHAR(STRING_ELT(_rxode2parse_functionPackageName, kk));
+  return strcmp(pkg, "rxode2") && strcmp(pkg, "rxode2ll");
+}
+
 static inline int handleBadFunctions(transFunctions *tf) {
   // Split out to handle anticipated automatic conversion of R
   // functions to C
@@ -555,6 +563,8 @@ static inline int handleBadFunctions(transFunctions *tf) {
           argMax = INTEGER(_rxode2parse_functionArgMax)[kk];
           curThread = INTEGER(_rxode2parse_functionThreadSafe)[kk];
           if (curThread == 0) tb.thread = notThreadSafe;
+          // another package's C function may draw random numbers
+          if (rxIsExtPkgFun(kk)) tb.rng = 1;
           if (argMin == NA_INTEGER || argMax == NA_INTEGER) {
             argMin = argMax = -1;
             break;
@@ -622,6 +632,7 @@ static inline int handleBadFunctions(transFunctions *tf) {
         sAppendN(&sbDt, "_udf(\".rxUiUdfNone\",(double *) NULL, -42, (double) ", 51);
         sAppend(&sbt, "%s(", tf->v);
         tb.thread = notThreadSafe;
+        tb.rng = 1;
         tf->i[0] = 1;// Parse next arguments
         tf->depth[0]=1;
         return 1;
@@ -638,6 +649,7 @@ static inline int handleBadFunctions(transFunctions *tf) {
         sAppend(&sbDt, "_udf(\"%s\", __udf, %d, (double) ", tf->v, ii);
         sAppend(&sbt, "%s(", tf->v);
         tb.thread = notThreadSafe;
+        tb.rng = 1;
         tf->i[0] = 1;// Parse next arguments
         tf->depth[0]=1;
         return 1;

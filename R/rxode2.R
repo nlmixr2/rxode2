@@ -2637,7 +2637,12 @@ rxCompile.rxModelVars <- function(
         cat(.ret)
         sink()
         sink(.normalizePath(file.path(.dir, "extraC.h")))
-        cat(rxode2::.extraCnow())
+        .extraCtxt <- rxode2::.extraCnow()
+        if (any(nzchar(trimws(.extraCtxt)))) {
+          # user C code may draw random numbers, so keep _setThreadInd() per call
+          cat("#define _rxNeedThreadInd 1\n")
+        }
+        cat(.extraCtxt)
         sink()
         try(dyn.unload(.cDllFile), silent = TRUE)
         try(unlink(.cDllFile))

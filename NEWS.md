@@ -19,6 +19,11 @@
   and `getDfLevels()` (slots 108-112) read and type a row's keep columns as
   `rxSolve()` does (nlmixr2/nlmixr2est#1356).
 
+- Generated model functions set the thread's subject for the random-number
+  helpers on each call only when the model can draw random numbers (an
+  `rx*()`/`ri*()` draw, `simeta()`/`simeps()`, a user function or another
+  package's C function), saving that per-call cost elsewhere (#1726).
+
 ## Bug fixes
 
 - `rxSolve(..., addDosing = TRUE)` no longer crashes with a string
