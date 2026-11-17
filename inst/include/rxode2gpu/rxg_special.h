@@ -30,52 +30,50 @@ RXG_FN double fsign(double x, double y) {
 }
 RXG_FN double ftrunc(double x) { return trunc(x); }
 
+// R's fprec() (signif()) for x > 0 with |log10(x)| < 306
+RXG_FN double _rxg_fprecMid(double x, int e10) {
+  double pow10, p10 = 1.0;
+  if (e10 > 308) {
+    p10 = R_pow_di(10., e10 - 308);
+    e10 = 308;
+  }
+  if (e10 > 0) {
+    pow10 = R_pow_di(10., e10);
+    return (rint((x*pow10)*p10)/pow10)/p10;
+  }
+  pow10 = R_pow_di(10., -e10);
+  return rint((x/pow10))*pow10;
+}
+// ... and for very large or small x
+RXG_FN double _rxg_fprecExt(double x, double l10, int e10, int dig) {
+  int do_round = 308.25471555991674389 - l10 >= R_pow_di(10., -dig);
+  int e2 = dig + ((e10 > 0) ? 1 : -1)*22;
+  double p10 = R_pow_di(10., e2);
+  double P10 = R_pow_di(10., e10 - e2);
+  x *= p10;
+  x *= P10;
+  if (do_round) x += 0.5;
+  x = floor(x)/p10;
+  return x/P10;
+}
 // R's fprec() (signif())
 RXG_FN double fprec(double x, double digits) {
-  double l10, pow10, sgn, p10, P10;
-  int e10, e2, do_round, dig;
-  const int max10e = 308;
   if (ISNAN(x) || ISNAN(digits)) return x + digits;
   if (!R_FINITE(x)) return x;
   if (!R_FINITE(digits)) {
     if (digits > 0.0) return x;
-    else digits = 1.0;
+    digits = 1.0;
   }
   if (x == 0) return x;
-  dig = (int)round(digits);
+  int dig = (int)round(digits);
   if (dig > 22) return x;
-  else if (dig < 1) dig = 1;
-  sgn = 1.0;
-  if (x < 0.0) {
-    sgn = -sgn;
-    x = -x;
-  }
-  l10 = log10(x);
-  e10 = (int)(dig - 1 - floor(l10));
-  if (fabs(l10) < max10e - 2) {
-    p10 = 1.0;
-    if (e10 > max10e) {
-      p10 = R_pow_di(10., e10 - max10e);
-      e10 = max10e;
-    }
-    if (e10 > 0) {
-      pow10 = R_pow_di(10., e10);
-      return (sgn*(rint((x*pow10)*p10)/pow10)/p10);
-    } else {
-      pow10 = R_pow_di(10., -e10);
-      return (sgn*(rint((x/pow10))*pow10));
-    }
-  } else {
-    do_round = 308.25471555991674389 - l10 >= R_pow_di(10., -dig);
-    e2 = dig + ((e10 > 0) ? 1 : -1)*22;
-    p10 = R_pow_di(10., e2);
-    P10 = R_pow_di(10., e10 - e2);
-    x *= p10;
-    x *= P10;
-    if (do_round) x += 0.5;
-    x = floor(x)/p10;
-    return (sgn*x/P10);
-  }
+  if (dig < 1) dig = 1;
+  double sgn = (x < 0.0) ? -1.0 : 1.0;
+  x = fabs(x);
+  double l10 = log10(x);
+  int e10 = (int)(dig - 1 - floor(l10));
+  if (fabs(l10) < 308 - 2) return sgn*_rxg_fprecMid(x, e10);
+  return sgn*_rxg_fprecExt(x, l10, e10, dig);
 }
 
 // R's fround() (round(x, digits))
@@ -660,6 +658,14 @@ RXG_FN double _rxg_gcf(double a, double x) {
   }
   return h;
 }
+// P or Q for 0 < x < Inf given g (1 or Gamma(a)) and the log prefactor;
+// summed in logs so x^a e^-x may overflow when the result does not
+RXG_FN double _rxg_igammaTail(double a, double x, int lower, double g, double lpre) {
+  int series = (x < a + 1.0);
+  double v = exp(lpre + log(series ? _rxg_gser(a, x) : _rxg_gcf(a, x)));
+  if (lower == series) return v;
+  return R_FINITE(g) ? g - v : g;
+}
 // lower = 1 for P, 0 for Q; regularized = 0 multiplies by Gamma(a)
 RXG_FN double _rxg_igamma(double a, double x, int lower, int regularized) {
   if (ISNAN(a) || ISNAN(x)) return a + x;
@@ -668,15 +674,7 @@ RXG_FN double _rxg_igamma(double a, double x, int lower, int regularized) {
   if (x == 0) return lower ? 0.0 : g;
   if (!R_FINITE(x)) return lower ? g : 0.0;
   double lpre = a*log(x) - x - (regularized ? lgamma(a) : 0.0);
-  // summed in logs so x^a e^-x may overflow when the result does not
-  if (x < a + 1.0) {
-    double v = exp(lpre + log(_rxg_gser(a, x)));
-    if (lower) return v;
-    return R_FINITE(g) ? g - v : g;
-  }
-  double v = exp(lpre + log(_rxg_gcf(a, x)));
-  if (!lower) return v;
-  return R_FINITE(g) ? g - v : g;
+  return _rxg_igammaTail(a, x, lower, g, lpre);
 }
 RXG_FN double gammap(double a, double x) { return _rxg_igamma(a, x, 1, 1); }
 RXG_FN double gammaq(double a, double x) { return _rxg_igamma(a, x, 0, 1); }
@@ -691,32 +689,32 @@ RXG_FN double gammapDer(double a, double x) {
   return exp((a - 1)*log(x) - x - lgamma(a));
 }
 
-// x with P(a,x) = p (q = 1 - p, given separately to keep the upper tail)
-RXG_FN double _rxg_gammaInv(double a, double p, double q) {
-  if (ISNAN(a) || ISNAN(p) || ISNAN(q)) return a + p + q;
-  if (a <= 0 || p < 0 || p > 1) return R_NaN;
-  if (p == 0) return 0.0;
-  if (q == 0) return R_PosInf;
-  double x, t, u, err, a1 = a - 1, lna1 = 0, afac = 0, gln = lgamma(a);
+// starting value for _rxg_gammaInv() (Numerical Recipes' invgammp)
+RXG_FN double _rxg_gammaInvStart(double a, double p, double q) {
+  double t, x;
   if (a > 1) {
-    lna1 = log(a1);
-    afac = exp(a1*(lna1 - 1) - gln);
     double pp = (p < 0.5) ? p : q;
     t = sqrt(-2*log(pp));
     x = (2.30753 + t*0.27061)/(1 + t*(0.99229 + t*0.04481)) - t;
     if (p < 0.5) x = -x;
     double c = 1 - 1/(9*a) - x/(3*sqrt(a));
-    x = fmax(1e-3, a*c*c*c);
-  } else {
-    t = 1 - a*(0.253 + a*0.12);
-    if (p < t) x = pow(p/t, 1/a);
-    else x = 1 - log(1 - (p - t)/(1 - t));
+    return fmax(1e-3, a*c*c*c);
+  }
+  t = 1 - a*(0.253 + a*0.12);
+  if (p < t) return pow(p/t, 1/a);
+  return 1 - log(1 - (p - t)/(1 - t));
+}
+// Halley iterations from x
+RXG_FN double _rxg_gammaInvRefine(double a, double p, double q, double x) {
+  double t, u, err, a1 = a - 1, lna1 = 0, afac = 0, gln = lgamma(a);
+  if (a > 1) {
+    lna1 = log(a1);
+    afac = exp(a1*(lna1 - 1) - gln);
   }
   for (int j = 0; j < 200; j++) {
     if (x <= 0) return 0.0;
     err = (p < 0.5) ? _rxg_igamma(a, x, 1, 1) - p : q - _rxg_igamma(a, x, 0, 1);
-    if (a > 1) t = afac*exp(-(x - a1) + a1*(log(x) - lna1));
-    else t = exp(-x + a1*log(x) - gln);
+    t = (a > 1) ? afac*exp(-(x - a1) + a1*(log(x) - lna1)) : exp(-x + a1*log(x) - gln);
     if (t == 0) break;
     u = err/t;
     t = u/(1 - 0.5*fmin(1.0, u*((a - 1)/x - 1)));
@@ -726,47 +724,53 @@ RXG_FN double _rxg_gammaInv(double a, double p, double q) {
   }
   return x;
 }
+// x with P(a,x) = p (q = 1 - p, given separately to keep the upper tail)
+RXG_FN double _rxg_gammaInv(double a, double p, double q) {
+  if (ISNAN(a) || ISNAN(p) || ISNAN(q)) return a + p + q;
+  if (a <= 0 || p < 0 || p > 1) return R_NaN;
+  if (p == 0) return 0.0;
+  if (q == 0) return R_PosInf;
+  return _rxg_gammaInvRefine(a, p, q, _rxg_gammaInvStart(a, p, q));
+}
 RXG_FN double gammapInv(double a, double p) { return _rxg_gammaInv(a, p, 1 - p); }
 RXG_FN double gammaqInv(double a, double q) { return _rxg_gammaInv(a, 1 - q, q); }
 
-// a with P(a,x) = p: P decreases in a, so bracket and solve (Illinois)
-RXG_FN double _rxg_gammaInva(double x, double p, double q) {
-  if (ISNAN(x) || ISNAN(p) || ISNAN(q)) return x + p + q;
-  if (x < 0 || p < 0 || p > 1) return R_NaN;
-  // the host (boost with errors ignored) gives 0 at p = 0 and Inf at p = 1
-  if (p == 0) return 0.0;
-  if (q == 0) return R_PosInf;
-  int up = (p < 0.5);
-  double lo = fmax(x, 1.0), hi, flo, fhi;
-  // f(a) = P(a,x) - p (or q - Q(a,x)), decreasing in a
-#define _RXG_F(aa) (up ? _rxg_igamma(aa, x, 1, 1) - p : q - _rxg_igamma(aa, x, 0, 1))
-  flo = _RXG_F(lo);
-  hi = lo;
-  fhi = flo;
-  if (flo > 0) {
-    for (int i = 0; i < 2000 && fhi > 0; i++) {
-      lo = hi;
-      flo = fhi;
-      hi *= 2;
-      fhi = _RXG_F(hi);
+// f(a) = P(a,x) - p (or q - Q(a,x) in the upper tail), decreasing in a
+RXG_FN double _rxg_gammaInvaF(double a, double x, double p, double q) {
+  return (p < 0.5) ? _rxg_igamma(a, x, 1, 1) - p : q - _rxg_igamma(a, x, 0, 1);
+}
+// bracket the root: on return f(lo) >= 0 >= f(hi) unless no bracket was found
+RXG_FN void _rxg_gammaInvaBracket(double x, double p, double q, double *lo,
+                                  double *hi, double *flo, double *fhi) {
+  *lo = fmax(x, 1.0);
+  *flo = _rxg_gammaInvaF(*lo, x, p, q);
+  *hi = *lo;
+  *fhi = *flo;
+  if (*flo > 0) {
+    for (int i = 0; i < 2000 && *fhi > 0; i++) {
+      *lo = *hi;
+      *flo = *fhi;
+      *hi *= 2;
+      *fhi = _rxg_gammaInvaF(*hi, x, p, q);
     }
-  } else {
-    for (int i = 0; i < 2000 && flo < 0; i++) {
-      hi = lo;
-      fhi = flo;
-      lo *= 0.5;
-      flo = _RXG_F(lo);
-    }
+    return;
   }
-  if (flo == 0) return lo;
-  if (fhi == 0) return hi;
-  if (!(flo > 0 && fhi < 0)) return R_NaN;
+  for (int i = 0; i < 2000 && *flo < 0; i++) {
+    *hi = *lo;
+    *fhi = *flo;
+    *lo *= 0.5;
+    *flo = _rxg_gammaInvaF(*lo, x, p, q);
+  }
+}
+// Illinois iterations within [lo, hi]
+RXG_FN double _rxg_gammaInvaSolve(double x, double p, double q, double lo,
+                                  double hi, double flo, double fhi) {
   int side = 0;
   double r = lo, r0;
   for (int i = 0; i < 300; i++) {
     r0 = r;
     r = (lo*fhi - hi*flo)/(fhi - flo);
-    double fr = _RXG_F(r);
+    double fr = _rxg_gammaInvaF(r, x, p, q);
     if (fr == 0 || fabs(hi - lo) < 4*RXG_EPS*fabs(r) ||
         (i > 0 && fabs(r - r0) < 4*RXG_EPS*fabs(r))) break;
     if (fr > 0) {
@@ -781,8 +785,21 @@ RXG_FN double _rxg_gammaInva(double x, double p, double q) {
       side = -1;
     }
   }
-#undef _RXG_F
   return r;
+}
+// a with P(a,x) = p: P decreases in a, so bracket and solve
+RXG_FN double _rxg_gammaInva(double x, double p, double q) {
+  if (ISNAN(x) || ISNAN(p) || ISNAN(q)) return x + p + q;
+  if (x < 0 || p < 0 || p > 1) return R_NaN;
+  // the host (boost with errors ignored) gives 0 at p = 0 and Inf at p = 1
+  if (p == 0) return 0.0;
+  if (q == 0) return R_PosInf;
+  double lo, hi, flo, fhi;
+  _rxg_gammaInvaBracket(x, p, q, &lo, &hi, &flo, &fhi);
+  if (flo == 0) return lo;
+  if (fhi == 0) return hi;
+  if (!(flo > 0 && fhi < 0)) return R_NaN;
+  return _rxg_gammaInvaSolve(x, p, q, lo, hi, flo, fhi);
 }
 RXG_FN double gammapInva(double x, double p) { return _rxg_gammaInva(x, p, 1 - p); }
 RXG_FN double gammaqInva(double x, double q) { return _rxg_gammaInva(x, 1 - q, q); }
@@ -838,12 +855,9 @@ RXG_FN double ibetaDer(double a, double b, double x) {
   if (x == 1) return (b > 1) ? 0.0 : ((b == 1) ? 1.0/beta(a, b) : R_PosInf);
   return exp((a - 1)*log(x) + (b - 1)*log1p(-x) - _rxg_lbeta(a, b));
 }
-RXG_FN double ibetaInv(double a, double b, double p) {
-  if (ISNAN(a) || ISNAN(b) || ISNAN(p)) return a + b + p;
-  if (a <= 0 || b <= 0 || p < 0 || p > 1) return R_NaN;
-  if (p == 0) return 0.0;
-  if (p == 1) return 1.0;
-  double a1 = a - 1, b1 = b - 1, x, t, u, w, err;
+// starting value for ibetaInv() (Numerical Recipes' invbetai)
+RXG_FN double _rxg_ibetaInvStart(double a, double b, double p) {
+  double t, u, w, x;
   if (a >= 1 && b >= 1) {
     double pp = (p < 0.5) ? p : 1 - p;
     t = sqrt(-2*log(pp));
@@ -852,15 +866,18 @@ RXG_FN double ibetaInv(double a, double b, double p) {
     double al = (x*x - 3)/6;
     double h = 2/(1/(2*a - 1) + 1/(2*b - 1));
     w = (x*sqrt(al + h)/h) - (1/(2*b - 1) - 1/(2*a - 1))*(al + 5.0/6 - 2/(3*h));
-    x = a/(a + b*exp(2*w));
-  } else {
-    double lna = log(a/(a + b)), lnb = log(b/(a + b));
-    t = exp(a*lna)/a;
-    u = exp(b*lnb)/b;
-    w = t + u;
-    if (p < t/w) x = pow(a*w*p, 1/a);
-    else x = 1 - pow(b*w*(1 - p), 1/b);
+    return a/(a + b*exp(2*w));
   }
+  double lna = log(a/(a + b)), lnb = log(b/(a + b));
+  t = exp(a*lna)/a;
+  u = exp(b*lnb)/b;
+  w = t + u;
+  if (p < t/w) return pow(a*w*p, 1/a);
+  return 1 - pow(b*w*(1 - p), 1/b);
+}
+// Halley iterations from x
+RXG_FN double _rxg_ibetaInvRefine(double a, double b, double p, double x) {
+  double a1 = a - 1, b1 = b - 1, t, u, err;
   double afac = -_rxg_lbeta(a, b);
   for (int j = 0; j < 200; j++) {
     if (x == 0 || x == 1) return x;
@@ -875,6 +892,13 @@ RXG_FN double ibetaInv(double a, double b, double p) {
     if (fabs(t) < 4*RXG_EPS*x && j > 0) break;
   }
   return x;
+}
+RXG_FN double ibetaInv(double a, double b, double p) {
+  if (ISNAN(a) || ISNAN(b) || ISNAN(p)) return a + b + p;
+  if (a <= 0 || b <= 0 || p < 0 || p > 1) return R_NaN;
+  if (p == 0) return 0.0;
+  if (p == 1) return 1.0;
+  return _rxg_ibetaInvRefine(a, b, p, _rxg_ibetaInvStart(a, b, p));
 }
 
 ////////////////////////////////////////////////////////////////////////////
