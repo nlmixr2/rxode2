@@ -248,8 +248,10 @@ RXG_FN double digamma(double x) {
   if (x <= 0 && x == floor(x)) return R_NaN;
   double r = 0.0;
   if (x < 0) {
-    // reflection: psi(x) = psi(1 - x) - pi/tan(pi x)
-    r = -M_PI*cos(M_PI*x)/sin(M_PI*x);
+    // reflection: psi(x) = psi(1 - x) - pi/tan(pi x), with pi x reduced
+    // by the nearest integer so the poles keep their accuracy
+    double f = x - round(x);
+    r = -M_PI*cos(M_PI*f)/sin(M_PI*f);
     x = 1.0 - x;
   }
   while (x < 10.0) {
@@ -268,7 +270,7 @@ RXG_FN double trigamma(double x) {
   double r = 0.0, s = 1.0;
   if (x < 0) {
     // reflection: psi'(x) = pi^2/sin^2(pi x) - psi'(1 - x)
-    double sp = sin(M_PI*x);
+    double sp = sin(M_PI*(x - round(x))); // reduced as in digamma()
     r = M_PI*M_PI/(sp*sp);
     s = -1.0;
     x = 1.0 - x;
@@ -748,7 +750,8 @@ RXG_FN double dabs2(double x) { return 0.0; }
 // sum such that P(a,x) = exp(a log x - x - lgamma(a))*sum
 RXG_FN double _rxg_gser(double a, double x) {
   double ap = a, del = 1.0/a, sum = del;
-  for (int n = 0; n < 10000; n++) {
+  // about 10 sqrt(a) terms near x = a; the cap covers a up to ~1e10
+  for (int n = 0; n < 1000000; n++) {
     ap += 1.0;
     del *= x/ap;
     sum += del;
@@ -758,8 +761,10 @@ RXG_FN double _rxg_gser(double a, double x) {
 }
 // h such that Q(a,x) = exp(a log x - x - lgamma(a))*h
 RXG_FN double _rxg_gcf(double a, double x) {
-  double b = x + 1.0 - a, c = 1.0/RXG_TINY, d = 1.0/b, h = d;
-  for (int i = 1; i < 10000; i++) {
+  double b = x + 1.0 - a, c = 1.0/RXG_TINY;
+  if (fabs(b) < RXG_TINY) b = RXG_TINY; // x + 1 rounds to a for a huge a
+  double d = 1.0/b, h = d;
+  for (int i = 1; i < 1000000; i++) {
     double an = -i*(i - a);
     b += 2.0;
     d = an*d + b;
@@ -840,9 +845,11 @@ RXG_FN double gammapDer(double a, double x) {
   return exp((a - 1)*log(x) - x - lgamma(a));
 }
 
-// starting value for _rxg_gammaInv() (Numerical Recipes' invgammp)
+// starting value for _rxg_gammaInv() (Numerical Recipes' invgammp); for a
+// tiny p the small-x limit P = x^a/Gamma(1+a)
 RXG_FN double _rxg_gammaInvStart(double a, double p, double q) {
   double t, x;
+  if (p < 1e-10) return exp((log(p) + lgamma1p(a))/a);
   if (a > 1) {
     double pp = (p < 0.5) ? p : q;
     t = sqrt(-2*log(pp));
@@ -885,10 +892,13 @@ RXG_FN double _rxg_gammaInvRefine(double a, double p, double q, double x) {
 // x with P(a,x) = p (q = 1 - p, given separately to keep the upper tail)
 // (argument checks follow the host)
 RXG_FN double _rxg_gammaInv(double a, double p, double q) {
-  if (ISNAN(p) || ISNAN(q) || a <= 0 || p < 0 || p > 1) return R_NaN;
+  if (ISNAN(p) || ISNAN(q) || a <= 0 || p < 0 || p > 1 || q < 0 || q > 1) return R_NaN;
   if (p == 0) return 0.0;
   if (q == 0) return R_PosInf;
   if (ISNAN(a) || !R_FINITE(a)) return R_NaN;
+  // x <= 1 has P ~ x^a/Gamma(1+a), so when that root underflows so does the
+  // answer; the host gives DBL_MIN
+  if ((log(p) + lgamma1p(a))/a < log(RXG_MIN)) return RXG_MIN;
   return _rxg_gammaInvRefine(a, p, q, _rxg_gammaInvStart(a, p, q));
 }
 RXG_FN double gammapInv(double a, double p) { return _rxg_gammaInv(a, p, 1 - p); }
@@ -1065,9 +1075,15 @@ RXG_FN double ibetaDer(double a, double b, double x) {
   if (x == 1) return _rxg_ibetaDerEnd(b, a);
   return exp((a - 1)*log(x) + (b - 1)*log1p(-x) - _rxg_lbeta(a, b));
 }
-// starting value for ibetaInv() (Numerical Recipes' invbetai)
+// small-x limit of I_x(a,b) = x^a/(a B(a,b)), solved for x
+RXG_FN double _rxg_ibetaSmallX(double a, double b, double p) {
+  return exp((log(p) + log(a) + _rxg_lbeta(a, b))/a);
+}
+// starting value for ibetaInv() (Numerical Recipes' invbetai), or the
+// small-x limit for a tiny p
 RXG_FN double _rxg_ibetaInvStart(double a, double b, double p) {
   double t, u, w, x;
+  if (p < 1e-10) return _rxg_ibetaSmallX(a, b, p);
   if (a >= 1 && b >= 1) {
     double pp = (p < 0.5) ? p : 1 - p;
     t = sqrt(-2*log(pp));
@@ -1132,7 +1148,7 @@ RXG_FN int _rxg_ibetaInvEdge(double a, double b, double p, double *out) {
 // small x, so those are refined directly
 RXG_FN double _rxg_ibetaInvUpper(double a, double b, double p) {
   double x = 1.0 - _rxg_ibetaInvRefine(b, a, 1 - p, _rxg_ibetaInvStart(b, a, 1 - p));
-  return (x < 1e-8) ? _rxg_ibetaInvRefine(a, b, p, x) : x;
+  return (x < 1e-8) ? _rxg_ibetaInvRefine(a, b, p, _rxg_ibetaSmallX(a, b, p)) : x;
 }
 // (an underflowing quantile is DBL_MIN, as on the host)
 RXG_FN double ibetaInv(double a, double b, double p) {
