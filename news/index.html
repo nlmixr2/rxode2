@@ -129,8 +129,8 @@
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
-<ul><li>
-<code>rxSolve(..., addDosing = TRUE)</code> no longer crashes with a string assignment (<code>x &lt;- "a"</code>) or a factor covariate in the output: the <code>rate</code>/<code>dur</code>/<code>ii</code> columns were allocated after the covariates but filled before <code>time</code>, so every later column was written three positions off.</li>
+<ul><li><p><code>gamma(x)</code> in a model now computes the Gamma function; it was translated to <code>lgammafn()</code> and returned log-gamma. This also affected <code><a href="https://rdrr.io/pkg/symengine/man/mathfuns.html" class="external-link">factorial()</a></code> and <code>gammafn()</code> after a symengine round trip, which rewrites them as <code><a href="https://rdrr.io/r/base/Special.html" class="external-link">gamma()</a></code>.</p></li>
+<li><p><code>rxSolve(..., addDosing = TRUE)</code> no longer crashes with a string assignment (<code>x &lt;- "a"</code>) or a factor covariate in the output: the <code>rate</code>/<code>dur</code>/<code>ii</code> columns were allocated after the covariates but filled before <code>time</code>, so every later column was written three positions off.</p></li>
 </ul><div class="section level4">
 <h4 id="delay-differential-equations-development-version">Delay differential equations<a class="anchor" aria-label="anchor" href="#delay-differential-equations-development-version"></a></h4>
 <ul><li>
