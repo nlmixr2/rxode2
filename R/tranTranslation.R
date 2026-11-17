@@ -13,9 +13,10 @@ rxode2parseFuns <- function() {
 #' @param df data frame containing the character column names rxFun,
 #'   fun, type, package, packageFun and the integer column names
 #'   argMin, argMax and threadSafe.  An optional integer gpuSafe column
-#'   marks functions with a device (OpenCL) version; without it a
-#'   function keeps the gpuSafe value already registered for its rxFun
-#'   (0 for a new function)
+#'   marks functions with a device (OpenCL) version.  Without it the
+#'   functions are not gpu safe, except a row identical (rxFun, fun,
+#'   package and packageFun) to one already registered, which keeps its
+#'   value
 #' @return Nothing called for side effects
 #' @author Matthew L. Fidler
 #' @family Developer API
@@ -36,8 +37,11 @@ rxode2parseAssignTranslation <- function(df) {
   }
   .gpu <- df$gpuSafe
   if (is.null(.gpu)) {
+    ## a new or changed C function is not gpu safe; rows passed back
+    ## unchanged (eg rbind() onto rxode2parseGetTranslation()) keep theirs
     .cur <- .parseEnv$.rxode2parseDf
-    .gpu <- if (is.null(.cur$gpuSafe)) 0L else .cur$gpuSafe[match(.df$rxFun, .cur$rxFun)]
+    .key <- function(d) paste(d$rxFun, d$fun, d$package, d$packageFun, sep = "\r")
+    .gpu <- if (is.null(.cur$gpuSafe)) 0L else .cur$gpuSafe[match(.key(.df), .key(.cur))]
   }
   .gpu <- rep_len(as.integer(.gpu), nrow(.df))
   .gpu[is.na(.gpu)] <- 0L
