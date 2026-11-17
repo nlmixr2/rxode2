@@ -240,9 +240,6 @@
   now includes the doses of the earlier intervals that arrive inside the
   observed one; they were dropped, so the profile decayed from the trough
   instead of matching explicit dosing (#1499).
-- `linCmt()` models now follow `minSS = maxSS = n`, giving the profile after
-  exactly `n` prior doses as the equivalent ODE model does; they used to
-  return the exact steady state for every `n` (#1500).
 - A steady-state infusion lasting its whole dosing interval with a modeled
   `dur()` or `rate()` into a compartment with an `alag()` now stops at its
   lagged end even when the modeled duration rounds just above `ii`; it
@@ -256,7 +253,6 @@
   and a steady state converged by `minSS` doses (for example with
   `ssAtol`/`ssRtol` disabled) stops there.  They used to return the exact
   steady state for every `minSS` (#1500).
-
 - Every dose a steady-state record schedules between two records (the
   starts and ends of a steady-state infusion with `dur > ii` or with
   `alag() > ii`) is now applied at its own time with every solver.  Only
@@ -276,6 +272,9 @@
 - A steady-state dose with a modeled `dur()` that follows a zero-amount record
   (for example a zero `evid = 5` replace) is now solved as an infusion; the
   duration check read the wrong record and solved it as a bolus (#1602).
+- The off phase of a steady-state infusion, and every phase of one longer
+  than `ii`, now uses the covariates of the steady-state dose record, as
+  NONMEM does; it used the covariates of a later record (#1589).
 
 ## New features
 
