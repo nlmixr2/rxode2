@@ -154,10 +154,11 @@ static inline int nodeInf(char *value) {
   return 0;
 }
 
+// gamma() is the Gamma function; C's gamma() is log-gamma in glibc
 static inline int nodeFunGamma(char *value) {
   if (!strcmp("gamma",value)){
-    aAppendN("lgammafn", 8);
-    sAppendN(&sbt, "lgammafn", 8);
+    aAppendN("gammafn", 7);
+    sAppendN(&sbt, "gamma", 5);
     return 1;
   }
   return 0;
