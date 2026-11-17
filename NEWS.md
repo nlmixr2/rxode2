@@ -2,6 +2,13 @@
 
 ## New features
 
+- Groundwork for solving on GPUs (OpenCL): each function in the
+  translation tables now registers whether it is `gpuSafe` (like
+  `threadSafe`), the parser records whether a whole model is GPU safe in
+  `rxModelVars()$flags["gpuSafe"]`, and a GPU-safe model is also written as
+  OpenCL C derivative/Jacobian code.  `rxode2parseGetTranslation()` keeps
+  its columns.
+
 - `rxSymInvCholCreate()` builds block-diagonal omegas with
   `lotri::lotriMat()` instead of `Matrix::bdiag()`, removing the
   first-use `Matrix` namespace load (#1675); `Matrix` is no longer
