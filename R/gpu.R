@@ -107,13 +107,16 @@
 #'
 #' @param obj rxode2 model
 #' @param ... passed to `.rxGpuDefines()`
-#' @param extra extra source appended (eg a kernel)
+#' @param extra extra source appended (eg a kernel); its `rxode2gpu/`
+#'   includes are inlined too
 #' @return source string
 #' @noRd
 #' @author Matthew L. Fidler
 .rxGpuProgramSource <- function(obj, ..., extra = character(0)) {
   .s <- .rxGpuModelSource(obj)
-  paste(c(.rxGpuDefines(...), .rxGpuInline(.s$source), extra), collapse = "\n")
+  ## extra may #include the stepper (rxode2gpu/rxg_stepper.h)
+  .src <- paste(c(.s$source, extra), collapse = "\n")
+  paste(c(.rxGpuDefines(...), .rxGpuInline(.src)), collapse = "\n")
 }
 
 .rxGpuHostEnv <- new.env(parent = emptyenv())
@@ -136,9 +139,12 @@
     sprintf("#include \"%s\"", normalizePath(.s$file, winslash = "/")),
     "#include \"rxode2gpu/rxg_host.h\""
   )
-  .hdr <- unlist(lapply(c("rxg_prelude.h", "rxg_model.h", "rxg_host.h"), function(.h) {
-    readLines(file.path(.rxGpuIncludeDir(), "rxode2gpu", .h), warn = FALSE)
-  }))
+  .hdr <- unlist(lapply(
+    c("rxg_prelude.h", "rxg_special.h", "rxg_model.h", "rxg_stepper.h", "rxg_host.h"),
+    function(.h) {
+      readLines(file.path(.rxGpuIncludeDir(), "rxode2gpu", .h), warn = FALSE)
+    }
+  ))
   .md5 <- digest::digest(c(.src, .s$source, .hdr))
   .ret <- .rxGpuHostEnv[[.md5]]
   if (!is.null(.ret)) {
@@ -245,4 +251,123 @@
     return(matrix(.r, lib$neq, lib$neq, byrow = TRUE))
   }
   .r
+}
+
+## Device integrators (inst/include/rxode2gpu/rxg_stepper.h), named in
+## rxode2's style; "+" joins an AutoSwitch composite
+.rxGpuMethods <- c(rkt54 = 1L, vern76 = 2L, ros54p = 3L, "rkt54+ros54p" = 4L, "vern76+ros54p" = 5L)
+
+#' Solve over a time grid with a device integrator built as host C
+#'
+#' @inheritParams .rxGpuHostEval
+#' @param method one of `names(.rxGpuMethods)`
+#' @param times output times (the first is the start)
+#' @param h starting step size (0 chooses one)
+#' @param atol,rtol tolerances (recycled to the number of states)
+#' @param hmin,hmax step size limits (0: none)
+#' @param mxstep most steps per interval
+#' @param autoSwitchNonstifftol,autoSwitchStifftol as in `rxControl()`
+#' @param autoSwitchMaxStiff,autoSwitchMaxNonstiff as in `rxControl()`
+#' @param autoSwitchSwitchMax,autoSwitchStiffFirst as in `rxControl()`
+#' @return list with the states `y` (one row per time), the last step size
+#'   `h`, `istate` (2 is success), the counters `cnt` (steps, accepted,
+#'   rejected, derivative evaluations, Jacobians, LU factorizations),
+#'   `stiffIntervals` (intervals solved with ros54p) and `stiffEnd` (intervals
+#'   that ended on the stiff secondary)
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuHostSolve <- function(
+  lib,
+  method,
+  times,
+  y,
+  p0,
+  p1 = p0,
+  h = 0,
+  atol = 1e-8,
+  rtol = 1e-6,
+  hmin = 0,
+  hmax = 0,
+  mxstep = 70000L,
+  autoSwitchNonstifftol = 9 / 10,
+  autoSwitchStifftol = 9 / 10,
+  autoSwitchMaxStiff = 10L,
+  autoSwitchMaxNonstiff = 3L,
+  autoSwitchSwitchMax = 5L,
+  autoSwitchStiffFirst = FALSE,
+  pl = rep(NA_real_, lib$nlhs),
+  ir = rep(0, lib$neq),
+  on = rep(1L, lib$neq),
+  curShift = 0,
+  tpk = times[1],
+  tbs = c(1, 2, 1, 0),
+  covType = 0L,
+  nonmem = FALSE
+) {
+  .m <- .rxGpuMethods[match.arg(method, names(.rxGpuMethods))]
+  .n <- max(1L, lib$neq)
+  .nt <- length(times)
+  .v <- function(x, n) {
+    x <- as.double(x)
+    if (n == 0L) {
+      return(0)
+    }
+    stopifnot(length(x) == n)
+    x
+  }
+  .y <- double(.n * .nt)
+  .y[seq_len(lib$neq)] <- as.double(y)
+  .r <- do.call(
+    .C,
+    list(
+      getNativeSymbolInfo("rxg_host_solve", lib$dll),
+      y = .y,
+      as.double(times),
+      as.integer(.nt),
+      dw = as.double(c(hmin, hmax, autoSwitchNonstifftol, autoSwitchStifftol, h)),
+      iw = as.integer(c(
+        .m,
+        mxstep,
+        autoSwitchMaxStiff,
+        autoSwitchMaxNonstiff,
+        autoSwitchSwitchMax,
+        autoSwitchStiffFirst,
+        0L,
+        0L,
+        0L
+      )),
+      as.double(rep_len(atol, .n)),
+      as.double(rep_len(rtol, .n)),
+      cnt = integer(6),
+      .v(p0, lib$npar),
+      .v(p1, lib$npar),
+      .v(pl, lib$nlhs),
+      .v(ir, lib$neq),
+      as.integer(if (lib$neq == 0L) 0L else on),
+      as.double(c(times[1], times[.nt], curShift, tpk, tbs)),
+      as.integer(c(covType, nonmem)),
+      NAOK = TRUE
+    )
+  )
+  list(
+    y = matrix(.r$y, .nt, .n, byrow = TRUE),
+    h = .r$dw[5],
+    istate = .r$iw[7],
+    cnt = stats::setNames(.r$cnt, c("step", "accept", "reject", "fev", "jac", "lu")),
+    stiffIntervals = .r$iw[8],
+    stiffEnd = .r$iw[9]
+  )
+}
+
+#' Integrate one interval with a device integrator built as host C
+#'
+#' @inheritParams .rxGpuHostSolve
+#' @param t0,t1 interval
+#' @return list with the final `y`, the next step size `h`, `istate` and the
+#'   counters `cnt`
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuHostIntegrate <- function(lib, method, t0, t1, y, p0, p1 = p0, ...) {
+  .r <- .rxGpuHostSolve(lib, method, c(t0, t1), y, p0, p1, ...)
+  list(y = .r$y[2, seq_len(lib$neq)], h = .r$h, istate = .r$istate, cnt = .r$cnt)
 }
