@@ -24,6 +24,9 @@
   `rx*()`/`ri*()` draw, `simeta()`/`simeps()`, a user function or another
   package's C function), saving that per-call cost elsewhere (#1726).
 
+- `_update_par_ptr()`, called by every generated model function, returns
+  before its steady-state time check when the model has no covariates (#1726).
+
 - `rxDfSolveRefused()` (slot 113) tells a downstream package whether
   `rxSolve()` would refuse the current solve (a `NA` event time, a model
   `method = "vv"` cannot integrate, a single subject that failed, ...) rather
