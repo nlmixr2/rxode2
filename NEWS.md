@@ -19,7 +19,22 @@
   and `getDfLevels()` (slots 108-112) read and type a row's keep columns as
   `rxSolve()` does (nlmixr2/nlmixr2est#1356).
 
+- Generated model functions set the thread's subject for the random-number
+  helpers on each call only when the model can draw random numbers (an
+  `rx*()`/`ri*()` draw, `simeta()`/`simeps()`, a user function or another
+  package's C function), saving that per-call cost elsewhere (#1726).
+
+- `rxDfSolveRefused()` (slot 113) tells a downstream package whether
+  `rxSolve()` would refuse the current solve (a `NA` event time, a model
+  `method = "vv"` cannot integrate, a single subject that failed, ...) rather
+  than return it with `NA` rows; `rxSolve()` decides with the same code
+  (nlmixr2/nlmixr2est#1356).
+
 ## Bug fixes
+
+- `gamma(x)` in a model now computes the Gamma function; it was translated to
+  `lgammafn()` and returned log-gamma.  This also affected `factorial()` and
+  `gammafn()` after a symengine round trip, which rewrites them as `gamma()`.
 
 - `rxSolve(..., addDosing = TRUE)` no longer crashes with a string
   assignment (`x <- "a"`) or a factor covariate in the output: the

@@ -51,9 +51,8 @@ rxTest({
     })
   }
 
-  test_that("the keep and level slots occupy 108-112, the last", {
+  test_that("the keep and level slots occupy 108-112", {
     .n <- names(.rxode2ptrs())
-    expect_identical(length(.n), 113L)
     expect_identical(
       .n[109:113],
       c("rxode2rxDfKeepSetup", "rxode2rxDfKeepFirst", "rxode2rxDfKeepRow", "rxode2rxDfKeepCols", "rxode2getDfLevels")

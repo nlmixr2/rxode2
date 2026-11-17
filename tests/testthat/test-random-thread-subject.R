@@ -103,4 +103,40 @@ rxTest({
     expect_true(all(.e1$wt >= 60 & .e1$wt <= 80))
     expect_equal(c(wt = sum(.e1$wt), u = sum(.e1$u)), c(wt = 2606.25180489536, u = 18.4739381949803), tolerance = 1e-10)
   })
+
+  test_that("only models that can draw random numbers set the thread's subject per call (#1726)", {
+    .threadIndOn <- function(m) {
+      .c <- paste(readLines(rxC(m)), collapse = "\n")
+      expect_match(.c, "_rxSetThreadInd(_cSub);", fixed = TRUE)
+      grepl("#if 1 || defined(_rxNeedThreadInd)", .c, fixed = TRUE)
+    }
+    expect_false(.threadIndOn(rxode2({
+      cl <- exp(tcl + eta.cl)
+      d/dt(central) <- -cl / v * central
+    })))
+    expect_true(.threadIndOn(.rngModel))
+    expect_true(.threadIndOn(.rngEtaModel))
+    expect_true(.threadIndOn(rxode2({
+      d/dt(central) <- -cl / v * central
+      cp <- central / v + err
+      simeps()
+    })))
+    expect_true(.threadIndOn(rxode2({
+      cp <- rxpois(3) + ribinom(4, 0.5) + rxnbinom(3, 0.2) + rxgeom(0.4)
+    })))
+    expect_true(.threadIndOn(rxode2({
+      y <- rxord(0.5, 0.3)
+    })))
+  })
+
+  test_that("user C code keeps the per-call thread subject (#1726)", {
+    rxFun("rngUsr1726", "a", "double rngUsr1726(double a) {\n  return a;\n}\n")
+    withr::defer(suppressWarnings(rxRmFun("rngUsr1726")))
+    .m <- rxode2({
+      b <- rngUsr1726(a)
+    })
+    .h <- readLines(file.path(dirname(rxC(.m)), "extraC.h"))
+    expect_true("#define _rxNeedThreadInd 1" %in% .h)
+    expect_equal(rxSolve(.m, c(a = 3), et(1))$b, 3)
+  })
 })
