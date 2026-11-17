@@ -1021,26 +1021,43 @@ RXG_FN double _rxg_ibetaLog(double a, double b, double x) {
   if (b < 1e-6*fmin(1.0, a)) return log(_rxg_ibetaSmallB(a, b, 1.0 - x));
   return log1p(-exp(lbt)*_rxg_betacf(b, a, 1.0 - x)/b);
 }
-// (argument checks follow the host: an infinite shape gives NaN)
+// argument checks and edge values of ibeta() (following the host: an
+// infinite shape gives NaN); 1 when *out holds the answer
+RXG_FN int _rxg_ibetaEdge(double a, double b, double x, double *out) {
+  if (ISNAN(a) || ISNAN(b) || ISNAN(x)) {
+    *out = a + b + x;
+  } else if (!R_FINITE(a) || !R_FINITE(b) || a < 0 || b < 0 ||
+             (a == 0 && b == 0) || x < 0 || x > 1) {
+    *out = R_NaN;
+  } else if (a == 0) {
+    *out = 1.0;
+  } else if (b == 0 || x == 0) {
+    *out = 0.0;
+  } else if (x == 1) {
+    *out = 1.0;
+  } else {
+    return 0;
+  }
+  return 1;
+}
 RXG_FN double ibeta(double a, double b, double x) {
-  if (ISNAN(a) || ISNAN(b) || ISNAN(x)) return a + b + x;
-  if (!R_FINITE(a) || !R_FINITE(b)) return R_NaN;
-  if (a < 0 || b < 0 || (a == 0 && b == 0) || x < 0 || x > 1) return R_NaN;
-  if (a == 0) return 1.0;
-  if (b == 0) return 0.0;
-  if (x == 0) return 0.0;
-  if (x == 1) return 1.0;
+  double out;
+  if (_rxg_ibetaEdge(a, b, x, &out)) return out;
   double lbt = a*log(x) + b*log1p(-x) - _rxg_lbeta(a, b);
   if (x < (a + 1)/(a + b + 2)) return exp(lbt)*_rxg_betacf(a, b, x)/a;
   if (b < 1e-6*fmin(1.0, a)) return _rxg_ibetaSmallB(a, b, 1.0 - x);
   return 1.0 - exp(lbt)*_rxg_betacf(b, a, 1.0 - x)/b;
 }
+// the beta density at x = 0 for shape s at that end (the other shape o)
+RXG_FN double _rxg_ibetaDerEnd(double s, double o) {
+  if (s > 1) return 0.0;
+  return (s == 1) ? 1.0/beta(s, o) : R_PosInf;
+}
 RXG_FN double ibetaDer(double a, double b, double x) {
   if (ISNAN(a) || ISNAN(b) || ISNAN(x)) return a + b + x;
-  if (!R_FINITE(a) || !R_FINITE(b)) return R_NaN;
-  if (a <= 0 || b <= 0 || x < 0 || x > 1) return R_NaN;
-  if (x == 0) return (a > 1) ? 0.0 : ((a == 1) ? 1.0/beta(a, b) : R_PosInf);
-  if (x == 1) return (b > 1) ? 0.0 : ((b == 1) ? 1.0/beta(a, b) : R_PosInf);
+  if (!R_FINITE(a) || !R_FINITE(b) || a <= 0 || b <= 0 || x < 0 || x > 1) return R_NaN;
+  if (x == 0) return _rxg_ibetaDerEnd(a, b);
+  if (x == 1) return _rxg_ibetaDerEnd(b, a);
   return exp((a - 1)*log(x) + (b - 1)*log1p(-x) - _rxg_lbeta(a, b));
 }
 // starting value for ibetaInv() (Numerical Recipes' invbetai)
@@ -1085,23 +1102,38 @@ RXG_FN double _rxg_ibetaInvRefine(double a, double b, double p, double x) {
   x = exp(y);
   return (x < RXG_MIN) ? RXG_MIN : x;
 }
-// (argument checks follow the host: shapes <= 0, then the p = 0 and p = 1
-// boundaries, the a = 1 and b = 1 closed forms, then infinite shapes give NaN;
-// an underflowing quantile is DBL_MIN)
-RXG_FN double ibetaInv(double a, double b, double p) {
-  if (a <= 0 || b <= 0 || ISNAN(p) || p < 0 || p > 1) return R_NaN;
-  if (p == 0) return 0.0;
-  if (p == 1) return 1.0;
-  if (ISNAN(a) || ISNAN(b)) return R_NaN;
-  // closed forms (as the host)
-  if (b == 1) return fmax(exp(log(p)/a), RXG_MIN);
-  if (a == 1) return -expm1(log1p(-p)/b);
-  if (!R_FINITE(a) || !R_FINITE(b)) return R_NaN;
-  if (p > 0.5) {
-    double x = 1.0 - _rxg_ibetaInvRefine(b, a, 1 - p, _rxg_ibetaInvStart(b, a, 1 - p));
-    // 1 - y cannot carry a small x; refine those directly
-    return (x < 1e-8) ? _rxg_ibetaInvRefine(a, b, p, x) : x;
+// argument checks, boundaries and closed forms of ibetaInv() (following the
+// host: shapes <= 0, then the p = 0 and p = 1 boundaries, the a = 1 and b = 1
+// closed forms, then infinite shapes give NaN); 1 when *out holds the answer
+RXG_FN int _rxg_ibetaInvEdge(double a, double b, double p, double *out) {
+  if (a <= 0 || b <= 0 || ISNAN(p) || p < 0 || p > 1) {
+    *out = R_NaN;
+  } else if (p == 0 || p == 1) {
+    *out = p;
+  } else if (ISNAN(a) || ISNAN(b)) {
+    *out = R_NaN;
+  } else if (b == 1) {
+    *out = fmax(exp(log(p)/a), RXG_MIN);
+  } else if (a == 1) {
+    *out = -expm1(log1p(-p)/b);
+  } else if (!R_FINITE(a) || !R_FINITE(b)) {
+    *out = R_NaN;
+  } else {
+    return 0;
   }
+  return 1;
+}
+// the upper half through I_x(a,b) = 1 - I_{1-x}(b,a); 1 - y cannot carry a
+// small x, so those are refined directly
+RXG_FN double _rxg_ibetaInvUpper(double a, double b, double p) {
+  double x = 1.0 - _rxg_ibetaInvRefine(b, a, 1 - p, _rxg_ibetaInvStart(b, a, 1 - p));
+  return (x < 1e-8) ? _rxg_ibetaInvRefine(a, b, p, x) : x;
+}
+// (an underflowing quantile is DBL_MIN, as on the host)
+RXG_FN double ibetaInv(double a, double b, double p) {
+  double out;
+  if (_rxg_ibetaInvEdge(a, b, p, &out)) return out;
+  if (p > 0.5) return _rxg_ibetaInvUpper(a, b, p);
   return _rxg_ibetaInvRefine(a, b, p, _rxg_ibetaInvStart(a, b, p));
 }
 
