@@ -26,6 +26,16 @@ static void rxg_host_ctx(rxg_ctx *c, double *p0, double *p1, double *pl,
   c->hist = 0;
 }
 
+#if RXG_HAS_DELAY
+// Standalone evaluation has no history: delay() returns the state passed
+#define RXG_HOST_NOHIST(c, t, y) \
+  rxg_hist _nh;                  \
+  rxg_histInit(&_nh, 0, 0, t, y); \
+  (c).hist = &_nh
+#else
+#define RXG_HOST_NOHIST(c, t, y) (void)0
+#endif
+
 void rxg_host_dims(int *d) {
   d[0] = RXG_NEQ;
   d[1] = RXG_NLHS;
@@ -37,6 +47,7 @@ void rxg_host_dydt(double *t, double *y, double *dy, double *p0, double *p1,
                    double *pl, double *ir, int *on, double *tt, int *flags) {
   rxg_ctx c;
   rxg_host_ctx(&c, p0, p1, pl, ir, on, tt, flags);
+  RXG_HOST_NOHIST(c, t[0], y);
   rxg_dydt(t[0], y, dy, &c);
 }
 
@@ -44,17 +55,34 @@ void rxg_host_jac(double *t, double *y, double *jac, double *p0, double *p1,
                   double *pl, double *ir, int *on, double *tt, int *flags) {
   rxg_ctx c;
   rxg_host_ctx(&c, p0, p1, pl, ir, on, tt, flags);
+  RXG_HOST_NOHIST(c, t[0], y);
   for (int i = 0; i < RXG_NEQ*RXG_NEQ; i++) jac[i] = 0.0;
   rxg_jac(t[0], y, jac, RXG_NEQ, &c);
+}
+
+// Solve (I/hg - J) x = b with the integrators' LU (J row major); ok is 0
+// when the matrix is singular
+void rxg_host_lu(double *J, double *hg, double *b, int *ok) {
+#if RXG_SOLVE_ROS
+  double W[RXG_NEQ1*RXG_NEQ1], Jp[RXG_NEQ1*RXG_NEQ1];
+  int piv[RXG_NEQ1];
+  for (int i = 0; i < RXG_NEQ; i++) {
+    for (int j = 0; j < RXG_NEQ; j++) Jp[i*RXG_NEQ1 + j] = J[i*RXG_NEQ + j];
+  }
+  ok[0] = _rxg_luW(Jp, hg[0], W, piv);
+  if (ok[0]) _rxg_luSolve(W, piv, b);
+#else
+  ok[0] = 0;
+#endif
 }
 
 // Solve over the times tm[0..nt-1] from y (nt x neq, row t), keeping the
 // step sizes and the AutoSwitch state between intervals.
 // dw = {hmin, hmax, nonstifftol, stifftol, h (out: the last step size)}
 // iw = {method, mxstep, maxStiff, maxNonstiff, switchMax, stiffFirst,
-//       istate (out), intervals solved with ros54p (out), intervals ending
-//       on the stiff secondary (out), delay() history records available,
-//       records used (out)}
+//       istate (out), intervals solved with ros54p (out), intervals a
+//       composite started on the stiff secondary (out), delay() history
+//       records available, records used (out)}
 // cnt has RXG_NCNT counters.
 void rxg_host_solve(double *y, double *tm, int *nt, double *dw, int *iw,
                     double *atol, double *rtol, int *cnt, double *p0,
@@ -91,10 +119,10 @@ void rxg_host_solve(double *y, double *tm, int *nt, double *dw, int *iw,
   for (int j = 0; j < RXG_NEQ; j++) cur[j] = y[j];
   for (int i = 1; i < *nt; i++) {
     int lu0 = cnt[RXG_CNT_LU];
+    nst += a.mode;
     int r1 = rxg_solve(iw[0], tm[i - 1], tm[i], cur, &h, &c, &o, &a, cnt);
     if (r1 != RXG_SUCCESS) r = r1;
     if (cnt[RXG_CNT_LU] > lu0) sw++;
-    nst += a.mode;
     for (int j = 0; j < RXG_NEQ; j++) y[i*RXG_NEQ + j] = cur[j];
     if (r1 != RXG_SUCCESS) break;
   }

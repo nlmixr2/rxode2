@@ -13,13 +13,8 @@
 //               has df()/dy() lines, otherwise forward differences
 //
 // Define RXG_METHOD to one of these to build only that method (a kernel).
-#define RXG_RKT54 1
-#define RXG_VERN76 2
-#define RXG_ROS54P 3
+// (the method codes RXG_RKT54 ... are defined in rxg_model.h)
 
-// AutoSwitch composites (rxg_solve())
-#define RXG_RKT54_ROS54P 4
-#define RXG_VERN76_ROS54P 5
 
 #ifndef RXG_SOLVE_ROS
 #if defined(RXG_METHOD) && (RXG_METHOD == RXG_RKT54 || RXG_METHOD == RXG_VERN76)
@@ -103,11 +98,13 @@ RXG_FN double _rxg_sc(const rxg_opt *o, int i, double a, double b) {
   return o->atol[i] + o->rtol[i]*fmax(fabs(a), fabs(b));
 }
 
-// Root mean square of e[i]/sc(y0[i], y1[i]); non-finite values give Inf
+// Root mean square of e[i]/sc(y0[i], y1[i]); a non-finite candidate or
+// error gives Inf
 RXG_FN double _rxg_errNorm(const rxg_opt *o, const double *e,
                            const double *y0, const double *y1) {
   double s = 0.0;
   for (int i = 0; i < RXG_NEQ; i++) {
+    if (!isfinite(y1[i])) return INFINITY;
     double r = e[i]/_rxg_sc(o, i, y0[i], y1[i]);
     s += r*r;
   }
@@ -363,10 +360,14 @@ RXG_FN int _rxg_luW(const double *J, double hg, double *W, int *piv) {
 }
 
 // Solve W x = b in place with the factors from _rxg_luW()
+// (_rxg_luW() swaps whole rows, so every swap applies to b before the
+// forward substitution, as LAPACK's getrs)
 RXG_FN void _rxg_luSolve(const double *W, const int *piv, double *x) {
   for (int k = 0; k < RXG_NEQ; k++) {
     int p = piv[k];
     if (p != k) { double tmp = x[k]; x[k] = x[p]; x[p] = tmp; }
+  }
+  for (int k = 0; k < RXG_NEQ; k++) {
     for (int i = k + 1; i < RXG_NEQ; i++) x[i] -= W[i*RXG_NEQ1 + k]*x[k];
   }
   for (int k = RXG_NEQ - 1; k >= 0; k--) {
@@ -734,7 +735,7 @@ RXG_FN void _rxg_bpBuild(rxg_hist *h) {
 RXG_FN double _rxg_bpNext(rxg_hist *h, double t) {
   if (h->bpDirty) _rxg_bpBuild(h);
   for (int i = 0; i < h->nbp; i++) {
-    if (h->bp[i] > t*(1.0 + 4.0*RXG_EPS) + 4.0*RXG_MIN) return h->bp[i] - t;
+    if (h->bp[i] > t + 4.0*RXG_EPS*fabs(t) + 4.0*RXG_MIN) return h->bp[i] - t;
   }
   return INFINITY;
 }
@@ -799,11 +800,13 @@ RXG_FN int rxg_integrate(int method, double t0, double t1, double *y,
   while (dir*(t1 - t) > 0.0) {
     double rem = fabs(t1 - t);
     ha = fmin(ha, hmax);
+    // hmin is a floor: fail only when a step that small is rejected
+    if (o->hmin > 0.0) ha = fmax(ha, fmin(o->hmin, rem));
 #if RXG_HAS_DELAY
     // never step past the shortest delay, so delay() reads recorded steps
     ha = fmin(ha, c->hist->minT);
 #endif
-    if (ha < fmax(o->hmin, 16.0*RXG_EPS*fmax(fabs(t), RXG_MIN)) && ha < rem) {
+    if (ha < 16.0*RXG_EPS*fmax(fabs(t), RXG_MIN) && ha < rem) {
       ret = RXG_ERR_HMIN;
       break;
     }
@@ -829,10 +832,23 @@ RXG_FN int rxg_integrate(int method, double t0, double t1, double *y,
     fsal = 1;
     int ok = _rxg_tryStep(method, t, dir*hh, dir, y, &w, c, cnt);
     cnt[RXG_CNT_STEP]++;
+#if RXG_HAS_DELAY
+    if (c->hist->minT < hh*(1.0 - 4.0*RXG_EPS)) {
+      // a stage met a shorter delay than the step: it may have read past the
+      // history, so retry within that delay
+      cnt[RXG_CNT_REJ]++;
+      ha = c->hist->minT;
+      continue;
+    }
+#endif
     double err = ok ? _rxg_errNorm(o, w.e, y, w.y1) : INFINITY;
     double hn = _rxg_newH(hh, err, q, &ctl);
     if (err > 1.0) {
       cnt[RXG_CNT_REJ]++;
+      if (o->hmin > 0.0 && hh <= o->hmin) {
+        ret = RXG_ERR_HMIN;
+        break;
+      }
       ha = hn;
       continue;
     }
@@ -857,7 +873,9 @@ RXG_FN int rxg_integrate(int method, double t0, double t1, double *y,
 #endif
     // a step cut short to land on t1 says little about the next size
     ha = last ? fmax(hn, ha) : hn;
-    if (stiff && !last) {
+    // reported on any accepted step, the last of an interval included, as
+    // dop853 does; the composite then counts the interval as stiff
+    if (stiff) {
       st->tStop = t;
       ret = RXG_ERR_STIFF;
       break;
@@ -928,6 +946,9 @@ RXG_FN int rxg_integrateAuto(int primary, double t0, double t1, double *y,
   }
   double ys[RXG_NEQ1];
   for (int i = 0; i < RXG_NEQ; i++) ys[i] = y[i];
+#if RXG_HAS_DELAY
+  int n0 = c->hist->n;
+#endif
   a->st.tol = a->switched ? o->stifftol : o->nonstifftol;
   int r = rxg_integrate(primary, t0, t1, y, &(a->h0), c, o, &(a->st), cnt);
   int failed = (r != RXG_SUCCESS);
@@ -936,7 +957,11 @@ RXG_FN int rxg_integrateAuto(int primary, double t0, double t1, double *y,
     if (r == RXG_ERR_STIFF) {
       tf = a->st.tStop;
     } else {
+      // restart the interval, dropping the history the probe recorded
       for (int i = 0; i < RXG_NEQ; i++) y[i] = ys[i];
+#if RXG_HAS_DELAY
+      c->hist->n = n0;
+#endif
     }
     a->switched = 1;
     r = rxg_integrate(RXG_ROS54P, tf, t1, y, &(a->h1), c, o, 0, cnt);
@@ -945,18 +970,23 @@ RXG_FN int rxg_integrateAuto(int primary, double t0, double t1, double *y,
   return r;
 }
 
-// One interval with any method code, single or composite; h is the step
-// size of a single method
+// One interval with any method code, single or composite.  *h is the
+// starting step size (<= 0: chosen) and returns the next one; a composite
+// keeps one per method and uses *h to start a method that has none yet.
 RXG_FN int rxg_solve(int method, double t0, double t1, double *y, double *h,
                      const rxg_ctx *c, const rxg_opt *o, rxg_auto *a,
                      int *cnt) {
-  if (method == RXG_RKT54_ROS54P) {
-    return rxg_integrateAuto(RXG_RKT54, t0, t1, y, c, o, a, cnt);
+  if (method != RXG_RKT54_ROS54P && method != RXG_VERN76_ROS54P) {
+    return rxg_integrate(method, t0, t1, y, h, c, o, 0, cnt);
   }
-  if (method == RXG_VERN76_ROS54P) {
-    return rxg_integrateAuto(RXG_VERN76, t0, t1, y, c, o, a, cnt);
+  if (*h > 0.0) {
+    if (!(a->h0 > 0.0)) a->h0 = *h;
+    if (!(a->h1 > 0.0)) a->h1 = *h;
   }
-  return rxg_integrate(method, t0, t1, y, h, c, o, 0, cnt);
+  int primary = (method == RXG_RKT54_ROS54P) ? RXG_RKT54 : RXG_VERN76;
+  int r = rxg_integrateAuto(primary, t0, t1, y, c, o, a, cnt);
+  *h = (a->mode != 0) ? a->h1 : a->h0;
+  return r;
 }
 
 #endif // RXG_STEPPER_H
