@@ -1034,8 +1034,9 @@
 #'   a row expands to, like the reset of an `evid=4` dose or `addl` repeats,
 #'   follow that row, so an `addl` repeat or a lagged dose landing on a
 #'   reset is wiped by it, as NONMEM cancels prior doses at a reset).  Doses
-#'   added while solving follow the records at the same time.  An event table already translated by [etTrans()] keeps the
-#'   order it was translated with.  By default (`NULL`) this is `"data"` when
+#'   added while solving follow the records at the same time.  An event
+#'   table already translated by [etTrans()] keeps the order it was
+#'   translated with.  By default (`NULL`) this is `"data"` when
 #'   `nonmem = TRUE` and `"evid"` otherwise.
 #'
 #' @param linCmtGillK The total number of possible steps to determine the

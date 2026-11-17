@@ -1493,8 +1493,9 @@ them in the order of the rows in the data, the way NONMEM does (records
 a row expands to, like the reset of an \code{evid=4} dose or \code{addl} repeats,
 follow that row, so an \code{addl} repeat or a lagged dose landing on a
 reset is wiped by it, as NONMEM cancels prior doses at a reset).  Doses
-added while solving follow the records at the same time.  An event table already translated by \code{\link[=etTrans]{etTrans()}} keeps the
-order it was translated with.  By default (\code{NULL}) this is \code{"data"} when
+added while solving follow the records at the same time.  An event
+table already translated by \code{\link[=etTrans]{etTrans()}} keeps the order it was
+translated with.  By default (\code{NULL}) this is \code{"data"} when
 \code{nonmem = TRUE} and \code{"evid"} otherwise.}
 
 \item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that
