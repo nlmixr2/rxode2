@@ -303,6 +303,7 @@ static inline int handleStringEqualLhs(nodeInfo ni, char *name, int i, D_ParseNo
     case 2:
       tb.strCmpCurStr = v;
       if (isStringCmpId(tb.strCmpCurCov)) {
+        tb.gpu = 0; // reads the subject's ID from the host solver
         aAppendN("_cmp2(", 6);
         sAppend(&sb, "(&_solveData->subjects[_cSub])->idReal, \"ID\", %d, %s)",
                 tb.strCmpCurType, v);
