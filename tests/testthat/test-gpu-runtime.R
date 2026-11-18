@@ -322,7 +322,12 @@ rxTest({
     on.exit(unlink(.f))
     for (.m in list(.lorenz(), .dde())) {
       for (.float in c(FALSE, TRUE)) {
-        .src <- .rxGpuProgramSource(.m, float = .float, method = 5L, extra = "#include \"rxode2gpu/rxg_round.h\"")
+        .src <- .rxGpuProgramSource(
+          .rxGpuJacModel(.m),
+          float = .float,
+          method = 5L,
+          extra = "#include \"rxode2gpu/rxg_round.h\""
+        )
         writeLines(c(if (!.float) "#pragma OPENCL EXTENSION cl_khr_fp64 : enable", .src), .f)
         .out <- suppressWarnings(system2(
           .clang,
