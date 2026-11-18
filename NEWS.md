@@ -178,6 +178,12 @@
   correctly (#1729).
 
 ### Solving
+- The analytic Jacobian of a model that names a state before its `d/dt()`
+  (for example an initial condition such as `target(0) <- r0` above the
+  equations) is now stored at the state's index.  It was stored by the order
+  the states were first parsed, so the entries landed in the wrong cells and
+  the implicit methods (`ros4`, `ros43`, `sdirk43`, the `"primary+stiff"`
+  composites, ...) stalled or failed with `could not solve the system`.
 - While a solver integrates toward a record, a time-varying covariate
   interpolated with `locf` or `nocb` now keeps, at the ends of the interval,
   the value it has inside it.  At the record a `locf` covariate took the
