@@ -430,7 +430,10 @@ extern "C" void ind_gpu(rx_solve *rx, int solveid, t_dydt c_dydt,
   (void)c_dydt; (void)u_inis;
   rx_solving_options *op = rx->op;
   if (!rxGpuSolveCfg.on || rxGpuSolveCfg.round == NULL) {
-    (Rf_errorcall)(R_NilValue, _("the GPU solver is not set up"));
+    // may run on a team thread: report through the subject, never R
+    rx_solving_options_ind *ind = &(rx->subjects[solveid]);
+    ind->rc[0] = -2019;
+    return;
   }
   rxGpuReq q;
   q.alloc(1);
