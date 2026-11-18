@@ -50,6 +50,7 @@ typedef struct rxGpuSolveCfg_t {
   int on;                  // a GPU solve is set up
   int armed;               // installed by R for the next solve setup
   std::string key;         // the model it is for (model_vars name)
+  int gen;                 // bumped by every install: workspaces re-allocate
   int threads;             // OpenMP team of the host work
   rxGpuHostRound_t round;  // host build of the round
   rxGpuCl *cl;             // OpenCL run (NULL: CPU backend)
@@ -58,7 +59,7 @@ typedef struct rxGpuSolveCfg_t {
   std::vector<int> oi;
 } rxGpuSolveCfg_t;
 
-static rxGpuSolveCfg_t rxGpuSolveCfg = {0, 0, std::string(), 1, NULL, NULL, {0}, {}, {}};
+static rxGpuSolveCfg_t rxGpuSolveCfg = {0, 0, std::string(), 0, 1, NULL, NULL, {0}, {}, {}};
 
 // error texts of the device return codes (postSolve() indexes -istate-1)
 static const char *rxGpuErr[] = {
@@ -98,6 +99,89 @@ struct rxGpuReq {
     on.assign((size_t)n*d[RXG_D_NEQ1], 1);
   }
 };
+
+typedef struct rxGpuSub {
+  int id;        // subject id
+  int st;        // RXGS_*
+  int i;         // record
+  int istate;    // 1 restart, 2 continuing (device RXG_SUCCESS), < 0 failed
+  int bad;
+  int init;      // the next request starts the integrator state
+  int req;       // posted a request (y from xp to t1)
+  double xp, xout, t1, h;
+  double *yp;
+  int neq[2];
+} rxGpuSub;
+
+// Buffers reused across solves: allocated for the installed layout
+// (rxGpuSolveCfg.gen) and grown, never shrunk, with the number of rows.  A
+// subject's first request carries the init bits, so state a reused slot holds
+// from an earlier subject is never read.
+struct rxGpuWork {
+  int gen = -1;
+  int n = 0;
+  rxGpuReq q, q2;       // one request per slot, and the round's packed rows
+  rxGpuHostState st;    // AutoSwitch and delay() state per slot (host round)
+  std::vector<rxGpuSub> sub;
+  std::vector<int> active, map;
+  void ensure(int rows, bool host, bool batch) {
+    if (rows < 1) rows = 1;
+    if (gen == rxGpuSolveCfg.gen && rows <= n && (!host || !st.ad.empty())) return;
+    q.alloc(rows);
+    if (batch) {
+      q2.alloc(rows);
+      sub.assign((size_t)rows, rxGpuSub());
+      active.assign((size_t)rows, 0);
+      map.assign((size_t)rows, 0);
+    }
+    if (host) st.alloc(rows);
+    gen = rxGpuSolveCfg.gen;
+    n = rows;
+  }
+  void release() {
+    q = rxGpuReq();
+    q2 = rxGpuReq();
+    st = rxGpuHostState();
+    std::vector<rxGpuSub>().swap(sub);
+    std::vector<int>().swap(active);
+    std::vector<int>().swap(map);
+    gen = -1;
+    n = 0;
+  }
+};
+
+// par_gpu() runs on the main thread.  ind_solve() and steady state run one
+// subject at a time on any thread: each thread slot has a workspace, sized at
+// solve setup (rxGpuSolveWorkers()).  Everything is freed with the GPU setup
+// and when the package unloads (rxGpuSolveFreeAll()).
+static rxGpuWork rxGpuParWork;
+static std::vector<rxGpuWork> rxGpuOneWork;
+
+// One subject's workspace: its thread slot's, or the caller's own
+static rxGpuWork *rxGpuOneWorkFor(rx_solving_options *op, rxGpuWork &local) {
+  int t = rx_get_thread(op->cores);
+  rxGpuWork *w = (t >= 0 && (size_t)t < rxGpuOneWork.size()) ? &rxGpuOneWork[(size_t)t] : &local;
+  w->ensure(1, true, false);
+  return w;
+}
+
+// Solve setup (single threaded): a workspace for each of n thread slots
+extern "C" void rxGpuSolveWorkers(int n) {
+  if (n > 0 && (size_t)n > rxGpuOneWork.size()) rxGpuOneWork.resize((size_t)n);
+}
+
+// Free every GPU solve buffer (clearing the setup, unloading the package)
+extern "C" void rxGpuSolveFreeAll(void) {
+  rxGpuParWork.release();
+  std::vector<rxGpuWork>().swap(rxGpuOneWork);
+  std::vector<double>().swap(rxGpuSolveCfg.od);
+  std::vector<int>().swap(rxGpuSolveCfg.oi);
+  std::string().swap(rxGpuSolveCfg.key);
+  rxGpuSolveCfg.on = 0;
+  rxGpuSolveCfg.armed = 0;
+  rxGpuSolveCfg.round = NULL;
+  rxGpuSolveCfg.cl = NULL;
+}
 
 // Fill request row r: subject state sub integrates yp from xp to xout
 static void rxGpuFillReq(rxGpuReq &q, int r, int sub, int init, double h,
@@ -203,10 +287,10 @@ extern "C" void gpu_solveWith1Pt(int *neq, double *yp, double *xp, double xout,
     return;
   }
   if (op->neq > 0) {
-    rxGpuReq q;
-    q.alloc(1);
-    rxGpuHostState st;
-    st.alloc(1);
+    rxGpuWork local;
+    rxGpuWork *w = rxGpuOneWorkFor(op, local);
+    rxGpuReq &q = w->q;
+    rxGpuHostState &st = w->st;
     rxGpuFillReq(q, 0, 0, RXGS_INIT_ALL, 0.0, rx, op, ind, yp, *xp, xout);
     int r = rxGpuHostOne(q, st, yp, rxEffNeq(ind, op), NULL);
     if (r != 2) {
@@ -233,18 +317,6 @@ enum {
   RXGS_DONE
 };
 
-typedef struct rxGpuSub {
-  int id;        // subject id
-  int st;        // RXGS_*
-  int i;         // record
-  int istate;    // 1 restart, 2 continuing (device RXG_SUCCESS), < 0 failed
-  int bad;
-  int init;      // the next request starts the integrator state
-  int req;       // posted a request (y from xp to t1)
-  double xp, xout, t1, h;
-  double *yp;
-  int neq[2];
-} rxGpuSub;
 
 // Advance subject s until it posts a request (returns 1) or finishes
 // (returns 0).  Runs on the subject's slot; q row r receives the request.
@@ -455,10 +527,10 @@ extern "C" void ind_gpu(rx_solve *rx, int solveid, t_dydt c_dydt,
     ind->rc[0] = -2019;
     return;
   }
-  rxGpuReq q;
-  q.alloc(1);
-  rxGpuHostState st;
-  st.alloc(1);
+  rxGpuWork local;
+  rxGpuWork *w = rxGpuOneWorkFor(op, local);
+  rxGpuReq &q = w->q;
+  rxGpuHostState &st = w->st;
   rxGpuSub s;
   s.id = solveid;
   s.st = RXGS_INIT;
@@ -469,8 +541,9 @@ extern "C" void ind_gpu(rx_solve *rx, int solveid, t_dydt c_dydt,
 }
 
 // All subjects in batched rounds
-// The rounds; returns 0, or 1 when an OpenCL round failed.  The buffers
-// are freed when it returns, before par_gpu() raises any error.
+// The rounds; returns 0, or 1 when an OpenCL round failed, which par_gpu()
+// raises once the rounds have returned.  Its buffers are the reused
+// rxGpuParWork, freed when the GPU setup is cleared.
 static int par_gpu0(rx_solve *rx);
 
 extern "C" void par_gpu(rx_solve *rx) {
@@ -495,14 +568,13 @@ static int par_gpu0(rx_solve *rx) {
   if (nslot > nsolve) nslot = nsolve;
   int threads = rxGpuSolveCfg.threads > 0 ? rxGpuSolveCfg.threads : 1;
   uint32_t seed0 = getRxSeed1(op->cores);
-  std::vector<rxGpuSub> sub((size_t)(nslot > 0 ? nslot : 1));
-  rxGpuReq slotReq, roundReq;
-  slotReq.alloc(nslot > 0 ? nslot : 1);
-  roundReq.alloc(nslot > 0 ? nslot : 1);
-  rxGpuHostState hst;
-  if (rxGpuSolveCfg.cl == NULL) hst.alloc(nslot > 0 ? nslot : 1);
-  std::vector<int> active((size_t)(nslot > 0 ? nslot : 1), 0);
-  std::vector<int> map((size_t)(nslot > 0 ? nslot : 1), 0);
+  rxGpuWork &w = rxGpuParWork;
+  w.ensure(nslot, rxGpuSolveCfg.cl == NULL, true);
+  std::vector<rxGpuSub> &sub = w.sub;
+  rxGpuReq &slotReq = w.q, &roundReq = w.q2;
+  rxGpuHostState &hst = w.st;
+  std::vector<int> &active = w.active, &map = w.map;
+  for (int k = 0; k < nslot; k++) active[k] = 0;
   int next = 0;
   for (int k = 0; k < nslot; k++) {
     sub[k].id = rx->ordId[next++] - 1;
@@ -624,8 +696,7 @@ extern "C" void rxGpuSolveOneThread(void) {
 extern "C" SEXP _rxode2_rxGpuSolveSet(SEXP round, SEXP cl, SEXP dims, SEXP od,
                                       SEXP oi, SEXP threads, SEXP key) {
   if (Rf_isNull(round)) {
-    rxGpuSolveCfg.on = 0;
-    rxGpuSolveCfg.armed = 0;
+    rxGpuSolveFreeAll();
     rxGpuSolveCfg.round = NULL;
     rxGpuSolveCfg.cl = NULL;
     return R_NilValue;
@@ -652,6 +723,7 @@ extern "C" SEXP _rxode2_rxGpuSolveSet(SEXP round, SEXP cl, SEXP dims, SEXP od,
   rxGpuSolveCfg.od.assign(REAL(od), REAL(od) + Rf_length(od));
   rxGpuSolveCfg.oi.assign(INTEGER(oi), INTEGER(oi) + Rf_length(oi));
   rxGpuSolveCfg.threads = Rf_asInteger(threads);
+  rxGpuSolveCfg.gen++;
   rxGpuSolveCfg.key = CHAR(STRING_ELT(key, 0));
   rxGpuSolveCfg.on = 1;
   rxGpuSolveCfg.armed = 1;
