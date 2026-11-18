@@ -1435,8 +1435,10 @@ void parseFree(int last);
 void rxOptionsFree(void);
 void gFree(void);
 void rxFreeLast(void);
+void rxGpuSolveFreeAll(void);
 void R_unload_rxode2(DllInfo *info){
   gFree();
+  rxGpuSolveFreeAll();
   rxOptionsFree();
   rxOptionsIni();
   parseFree(1);
