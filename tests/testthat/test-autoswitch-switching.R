@@ -71,6 +71,26 @@ rxTest({
     expect_true(max(abs(.c$L - .ref$L)) < 1e-5)
   })
 
+  test_that("t54 and vern76 primaries probe stiffness like dop853 and the device integrators", {
+    ## As dop853 does (and the GPU composites), t54 and vern76 run the Hairer
+    ## stiffness estimate on every accepted step as a composite's primary and
+    ## hand over from where a stiff report stopped, so on TMDD the composite
+    ## switches (differs from the plain primary) and matches lsoda.
+    .ref <- rxSolve(.tmdd, .tmddEv, params = .tmddP, method = "lsoda", atol = 1e-12, rtol = 1e-12)
+    for (.p in c("t54", "vern76")) {
+      .d <- rxSolve(.tmdd, .tmddEv, params = .tmddP, method = .p)
+      for (.s in c("ros54p", "ros43")) {
+        .c <- rxSolve(.tmdd, .tmddEv, params = .tmddP, method = paste0(.p, "+", .s))
+        expect_false(identical(.c$L, .d$L), info = paste0(.p, "+", .s))
+        expect_true(max(abs(.c$L - .ref$L)) < 1e-5, info = paste0(.p, "+", .s))
+      }
+    }
+    ## the host and device composites switch alike
+    .h <- rxSolve(.tmdd, .tmddEv, params = .tmddP, method = "t54+ros54p")
+    .g <- suppressMessages(rxSolve(.tmdd, .tmddEv, params = .tmddP, method = "gpuT54+gpuRos54p", gpuBackend = "cpu"))
+    expect_equal(.g$L, .h$L, tolerance = 1e-5)
+  })
+
   test_that("a composite whose primary is not dop853 switches too", {
     ## dop5 and bs cannot solve stiff Robertson on their own; paired with a
     ## stiff secondary they must.  Before, their drivers ignored op->stiff2 and
