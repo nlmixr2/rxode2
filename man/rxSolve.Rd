@@ -1604,7 +1604,7 @@ behind the default.}
 \code{"gpuRos54p"}, \code{"gpuT54+gpuRos54p"}, \code{"gpuVern76+gpuRos54p"})
 integrate: \code{"opencl"} on an OpenCL device through the suggested
 \code{OpenCL} package, \code{"cpu"} with the same integrators built as host C on
-\code{cores} threads, or \code{"auto"} (the default) for OpenCL when a device with
+\code{cores} threads (at most \code{\link[=getRxThreads]{getRxThreads()}}), or \code{"auto"} (the default) for OpenCL when a device with
 the requested precision is available and the CPU otherwise
 (\code{options(rxode2.gpuBackend=)} pins what \code{"auto"} picks).  See
 \code{\link[=rxGpuInfo]{rxGpuInfo()}}.}
