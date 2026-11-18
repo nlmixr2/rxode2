@@ -1041,7 +1041,7 @@ rxGpuInfo <- function() {
 #'   src/gpu_solve.cpp)
 #' @noRd
 #' @author Matthew L. Fidler
-.rxGpuSolveInstall <- function(object, ctl, nsolve) {
+.rxGpuSolveInstall <- function(object, ctl, nsolve, key = rxModelVars(object)$trans[["model_vars"]]) {
   .meth <- .rxGpuSolveMethods[[as.character(ctl$method)]]
   .threads <- as.integer(ctl$cores)
   if (length(.threads) != 1L || is.na(.threads) || .threads < 1L) {
@@ -1111,7 +1111,7 @@ rxGpuInfo <- function() {
     .run$opt$od,
     .run$opt$oi,
     .threads,
-    rxModelVars(object)$trans[["model_vars"]]
+    key
   )
   ## the run (and its OpenCL buffers) lives until the solve is cleared
   .rxGpuSolveEnv$run <- .run
@@ -1129,6 +1129,39 @@ rxGpuInfo <- function() {
   .Call(`_rxode2_rxGpuSolveSet`, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
   .rxGpuSolveEnv$run <- NULL
   invisible(NULL)
+}
+
+#' Install the GPU setup for a solve set up from C
+#'
+#' rxSolve_() calls this once, at setup, for a GPU method whose model has no
+#' GPU setup installed by rxSolve() (nlmixr2est sets its solves up from C).
+#' The device code may come from the model with its Jacobian, which must keep
+#' the solved model's parameter, state and lhs order.
+#'
+#' @param object the model being solved
+#' @param ctl rxControl()
+#' @param params,events the solve's inputs
+#' @return `TRUE` when installed; `FALSE` (the host counterpart solves) when
+#'   the model cannot run as device code or anything fails
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuSolveInstallC <- function(object, ctl, params, events) {
+  tryCatch(
+    {
+      if (!.rxGpuSafe(object) || !is.null(.rxGpuSolveUnsupported(object, ctl, events))) {
+        return(FALSE)
+      }
+      .g <- suppressMessages(.rxGpuSolveModel(object, ctl$method))
+      .mv <- rxModelVars(object)
+      .gv <- rxModelVars(.g)
+      if (!identical(.mv$params, .gv$params) || !identical(.mv$state, .gv$state) || !identical(.mv$lhs, .gv$lhs)) {
+        return(FALSE)
+      }
+      suppressMessages(.rxGpuSolveInstall(.g, ctl, .rxGpuSolveCount(params, events, ctl), key = .mv$trans[["model_vars"]]))
+      TRUE
+    },
+    error = function(e) FALSE
+  )
 }
 
 #' An upper bound of the subject solves of an rxSolve() call
