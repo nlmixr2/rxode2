@@ -1134,7 +1134,7 @@
 #'   `"gpuRos54p"`, `"gpuT54+gpuRos54p"`, `"gpuVern76+gpuRos54p"`)
 #'   integrate: `"opencl"` on an OpenCL device through the suggested
 #'   `OpenCL` package, `"cpu"` with the same integrators built as host C on
-#'   `cores` threads, or `"auto"` (the default) for OpenCL when a device with
+#'   `cores` threads (at most [getRxThreads()]), or `"auto"` (the default) for OpenCL when a device with
 #'   the requested precision is available and the CPU otherwise
 #'   (`options(rxode2.gpuBackend=)` pins what `"auto"` picks).  See
 #'   [rxGpuInfo()].
