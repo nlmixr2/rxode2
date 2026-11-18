@@ -167,6 +167,12 @@
   Makevars file changes (#1675, #1711).
 
 ### Solving
+- The analytic Jacobian of a model that names a state before its `d/dt()`
+  (for example an initial condition such as `target(0) <- r0` above the
+  equations) is now stored at the state's index.  It was stored by the order
+  the states were first parsed, so the entries landed in the wrong cells and
+  the implicit methods (`ros4`, `ros43`, `sdirk43`, the `"primary+stiff"`
+  composites, ...) stalled or failed with `could not solve the system`.
 - The libode-based methods (`"t54"`, `"vern76"`, `"dop54"`, the implicit
   methods and the rest of that family) now integrate with the subject's
   tolerances, so a per-subject `tolFactor` loosens them as it does for the
