@@ -174,6 +174,10 @@
   correctly (#1729).
 
 ### Solving
+- Growing the per-thread dose pools for a solve with more cores than they
+  were sized for (`rxSolve(cores=)` above `OMP_NUM_THREADS`, for example) no
+  longer leaks three of their arrays: `freeExtraDosing()` never freed
+  `nAllocIgnoredDoses` or the outer `extraDoseTime`/`extraDoseDose` arrays.
 - While a solver integrates toward a record, a time-varying covariate
   interpolated with `locf` or `nocb` now keeps, at the ends of the interval,
   the value it has inside it.  At the record a `locf` covariate took the
