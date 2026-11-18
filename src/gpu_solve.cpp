@@ -110,8 +110,14 @@ static void rxGpuFillReq(rxGpuReq &q, int r, int sub, int init, double h,
   if (neq > d[RXG_D_NEQ1]) neq = d[RXG_D_NEQ1];
   if (npar > d[RXG_D_NPAR1]) npar = d[RXG_D_NPAR1];
   if (nlhs > d[RXG_D_NLHS1]) nlhs = d[RXG_D_NLHS1];
+  // yp holds the subject's effective states (setIndNeqOverride(), as
+  // nlmixr2est's prediction solves use); the states past them are not fed
+  // back into the leading ones, so they start at zero and are discarded
+  int eff = rxEffNeq(ind, op);
+  if (eff > neq) eff = neq;
   double *y = &q.y[(size_t)r*d[RXG_D_NEQ1]];
-  for (int j = 0; j < neq; j++) y[j] = yp[j];
+  for (int j = 0; j < eff; j++) y[j] = yp[j];
+  for (int j = eff; j < neq; j++) y[j] = 0.0;
   double *ir = &q.ir[(size_t)r*d[RXG_D_NEQ1]];
   int *on = &q.on[(size_t)r*d[RXG_D_NEQ1]];
   for (int j = 0; j < neq; j++) {
@@ -202,14 +208,14 @@ extern "C" void gpu_solveWith1Pt(int *neq, double *yp, double *xp, double xout,
     rxGpuHostState st;
     st.alloc(1);
     rxGpuFillReq(q, 0, 0, RXGS_INIT_ALL, 0.0, rx, op, ind, yp, *xp, xout);
-    int r = rxGpuHostOne(q, st, yp, op->neq, NULL);
+    int r = rxGpuHostOne(q, st, yp, rxEffNeq(ind, op), NULL);
     if (r != 2) {
       *istate = r;
       if (ind->rc[0] == 0) ind->rc[0] = -2019;
       return;
     }
   }
-  (void)neq;
+  (void)neq; // neq[0] is rxEffNeq(ind, op)
   *xp = xout;
   *istate = 1;
 }
@@ -425,9 +431,10 @@ static int rxGpuAdvance(rx_solve *rx, rx_solving_options *op, rxGpuSub *s,
   }
 }
 
-// Apply a request's result to its subject
-static void rxGpuResult(rxGpuSub *s, rxGpuReq &q, int r, int neq) {
+// Apply a request's result to its subject (its effective states, s->neq[0])
+static void rxGpuResult(rxGpuSub *s, rxGpuReq &q, int r) {
   const int *d = rxGpuSolveCfg.dims;
+  int neq = s->neq[0];
   if (neq > d[RXG_D_NEQ1]) neq = d[RXG_D_NEQ1];
   const double *y = &q.y[(size_t)r*d[RXG_D_NEQ1]];
   for (int j = 0; j < neq; j++) s->yp[j] = y[j];
@@ -457,7 +464,7 @@ extern "C" void ind_gpu(rx_solve *rx, int solveid, t_dydt c_dydt,
   s.st = RXGS_INIT;
   while (rxGpuAdvance(rx, op, &s, q, 0, 0)) {
     rxGpuHostOne(q, st, q.y.data(), op->neq, NULL);
-    rxGpuResult(&s, q, 0, op->neq);
+    rxGpuResult(&s, q, 0);
   }
 }
 
@@ -574,7 +581,7 @@ static int par_gpu0(rx_solve *rx) {
     }
     for (int r = 0; r < n; r++) {
       int k = map[r];
-      rxGpuResult(&sub[k], roundReq, r, op->neq);
+      rxGpuResult(&sub[k], roundReq, r);
       sub[k].req = 0;
     }
   }
@@ -608,6 +615,12 @@ extern "C" int rxGpuSolveSlots(void) {
   return rxGpuSolveCfg.on ? rxGpuSolveCfg.dims[RXG_D_NSUB] : 0;
 }
 
+// a solve that must run on one thread (NA times, ...) advances its subjects
+// on one thread too
+extern "C" void rxGpuSolveOneThread(void) {
+  rxGpuSolveCfg.threads = 1;
+}
+
 extern "C" SEXP _rxode2_rxGpuSolveSet(SEXP round, SEXP cl, SEXP dims, SEXP od,
                                       SEXP oi, SEXP threads, SEXP key) {
   if (Rf_isNull(round)) {
@@ -621,6 +634,10 @@ extern "C" SEXP _rxode2_rxGpuSolveSet(SEXP round, SEXP cl, SEXP dims, SEXP od,
     (Rf_errorcall)(R_NilValue, _("invalid host round"));
   }
   if (Rf_length(dims) != RXG_D_N) (Rf_errorcall)(R_NilValue, _("invalid GPU layout"));
+  if (TYPEOF(key) != STRSXP || Rf_length(key) != 1) (Rf_errorcall)(R_NilValue, _("invalid model key"));
+  // nothing is installed until every argument checks out
+  rxGpuSolveCfg.on = 0;
+  rxGpuSolveCfg.armed = 0;
   rxGpuCl *g = NULL;
   if (!Rf_isNull(cl)) {
     if (TYPEOF(cl) != EXTPTRSXP || R_ExternalPtrTag(cl) != Rf_install("rxGpuCl") ||
@@ -635,7 +652,6 @@ extern "C" SEXP _rxode2_rxGpuSolveSet(SEXP round, SEXP cl, SEXP dims, SEXP od,
   rxGpuSolveCfg.od.assign(REAL(od), REAL(od) + Rf_length(od));
   rxGpuSolveCfg.oi.assign(INTEGER(oi), INTEGER(oi) + Rf_length(oi));
   rxGpuSolveCfg.threads = Rf_asInteger(threads);
-  if (TYPEOF(key) != STRSXP || Rf_length(key) != 1) (Rf_errorcall)(R_NilValue, _("invalid model key"));
   rxGpuSolveCfg.key = CHAR(STRING_ELT(key, 0));
   rxGpuSolveCfg.on = 1;
   rxGpuSolveCfg.armed = 1;
