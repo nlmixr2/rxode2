@@ -161,7 +161,8 @@
   if (is.null(.c) || !.rxJacCacheOk(.c)) {
     .c <- tryCatch(
       {
-        .e <- .rxJacStateModel(obj)
+        ## symengine can warn while it differentiates special functions
+        .e <- suppressWarnings(.rxJacStateModel(obj))
         .e$md5 <- rxModelVars(.e$obj)$md5["parsed_md5"]
         .e
       },
