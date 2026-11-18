@@ -3480,7 +3480,9 @@ rxSolveCacheEnv$.order <- character()
       }
     },
     error = function(e) {
-      if (!is.null(errEnv)) assign("errMsg", conditionMessage(e), envir = errEnv)
+      if (!is.null(errEnv)) {
+        assign("errMsg", conditionMessage(e), envir = errEnv)
+      }
       .rxSolveCacheSet(.key, NA_character_)
       NA_character_
     }
@@ -3507,8 +3509,12 @@ rxSolveCacheEnv$.order <- character()
       }
       .a <- rxModelVars(object)
       .b <- rxModelVars(.c$obj)
-      if (!identical(.a$params, .b$params) || !identical(.a$state, .b$state) ||
-        !identical(.a$lhs, .b$lhs) || !identical(.a$stateProp, .b$stateProp)) {
+      if (
+        !identical(.a$params, .b$params) ||
+          !identical(.a$state, .b$state) ||
+          !identical(.a$lhs, .b$lhs) ||
+          !identical(.a$stateProp, .b$stateProp)
+      ) {
         return(NULL)
       }
       .c$obj

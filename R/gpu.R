@@ -717,7 +717,9 @@ rxGpuInfo <- function() {
     .v[seq_len(.k)] <- x[seq_len(.k)]
     .v
   }
-  if (is.null(maxAtolRtolFactor)) maxAtolRtolFactor <- Inf
+  if (is.null(maxAtolRtolFactor)) {
+    maxAtolRtolFactor <- Inf
+  }
   list(
     od = as.double(c(
       .tol(atol),
@@ -901,7 +903,15 @@ rxGpuInfo <- function() {
     as.vector(t(.m))
   }
   .lay <- run$lib$layout
-  .rd <- cbind(t0, t1, h, curShift, tpk, matrix(tbs, .n, 4, byrow = TRUE), rep_len(if (is.null(tolFactor)) 1 else as.double(tolFactor), .n))
+  .rd <- cbind(
+    t0,
+    t1,
+    h,
+    curShift,
+    tpk,
+    matrix(tbs, .n, 4, byrow = TRUE),
+    rep_len(if (is.null(tolFactor)) 1 else as.double(tolFactor), .n)
+  )
   .init <- ifelse(init, 3L, 0L)
   .ri <- cbind(as.integer(sub) - 1L, covType, as.integer(nonmem), .init, matrix(0L, .n, .lay["ri"] - 4L))
   list(
@@ -1031,8 +1041,10 @@ rxGpuInfo <- function() {
     ## are a steady-state flag (9, 10, 19, 20, 40)
     .v <- which(tolower(names(.e)) == "evid")
     .cl <- if (length(.v) > 0L) suppressWarnings(as.numeric(.e[[.v[1]]])) else numeric(0)
-    if ((length(.w) > 0L && any(.e[[.w[1]]] %in% 1:2)) ||
-      any(!is.na(.cl) & .cl >= 100 & (.cl %% 100) %in% c(9, 10, 19, 20, 40))) {
+    if (
+      (length(.w) > 0L && any(.e[[.w[1]]] %in% 1:2)) ||
+        any(!is.na(.cl) & .cl >= 100 & (.cl %% 100) %in% c(9, 10, 19, 20, 40))
+    ) {
       return("steady state in delay() models")
     }
   }
@@ -1177,7 +1189,9 @@ rxGpuInfo <- function() {
 .rxGpuSolveInstallC <- function(object, ctl, params, events) {
   tryCatch(
     {
-      if (is.null(events) && rxIs(params, "event.data.frame")) events <- params
+      if (is.null(events) && rxIs(params, "event.data.frame")) {
+        events <- params
+      }
       if (!.rxGpuSafe(object) || !is.null(.rxGpuSolveUnsupported(object, ctl, events))) {
         return(FALSE)
       }
@@ -1186,7 +1200,12 @@ rxGpuInfo <- function() {
       if (!.rxGpuSameLayout(.mv, rxModelVars(.g))) {
         return(FALSE)
       }
-      suppressMessages(.rxGpuSolveInstall(.g, ctl, .rxGpuSolveCount(params, events, ctl), key = .mv$trans[["model_vars"]]))
+      suppressMessages(.rxGpuSolveInstall(
+        .g,
+        ctl,
+        .rxGpuSolveCount(params, events, ctl),
+        key = .mv$trans[["model_vars"]]
+      ))
       TRUE
     },
     error = function(e) FALSE

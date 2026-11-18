@@ -297,8 +297,11 @@ rxTest({
       et(seq(0, 48, by = 6), id = 1:2)
     .one <- function(meth, be, tol, ...) {
       .s <- function(...) {
-        if (meth %in% .gpuMethods) .solve(.m, ev = .ev, method = meth, backend = be, ...) else
+        if (meth %in% .gpuMethods) {
+          .solve(.m, ev = .ev, method = meth, backend = be, ...)
+        } else {
           suppressMessages(rxSolve(.m, ev = .ev, method = meth, ...))
+        }
       }
       .r <- .s(params = .p, atol = 1e-8, rtol = 1e-6, cores = 1, ...)
       .r[.r$id == tol, "cp"]
@@ -336,18 +339,42 @@ rxTest({
   test_that("ros54p takes df/dt for time and changing covariates only", {
     .tm <- rxode2({d/dt(x) <- t})
     for (.meth in c("ros54p", "gpuRos54p")) {
-      .r <- suppressMessages(rxSolve(.tm, et(0, 10), inits = c(x = 0), method = .meth, gpuBackend = "cpu", atol = 1e-10, rtol = 1e-10))
+      .r <- suppressMessages(rxSolve(
+        .tm,
+        et(0, 10),
+        inits = c(x = 0),
+        method = .meth,
+        gpuBackend = "cpu",
+        atol = 1e-10,
+        rtol = 1e-10
+      ))
       expect_equal(tail(.r$x, 1), 50, tolerance = 1e-8, label = .meth)
     }
     .cm <- rxode2({d/dt(x) <- c1})
     .d <- data.frame(id = 1, time = c(0, 10), c1 = c(0, 10), evid = 0)
     for (.meth in c("ros54p", "gpuRos54p")) {
-      .r <- suppressMessages(rxSolve(.cm, .d, inits = c(x = 0), method = .meth, gpuBackend = "cpu",
-                                     covsInterpolation = "linear", atol = 1e-10, rtol = 1e-10))
+      .r <- suppressMessages(rxSolve(
+        .cm,
+        .d,
+        inits = c(x = 0),
+        method = .meth,
+        gpuBackend = "cpu",
+        covsInterpolation = "linear",
+        atol = 1e-10,
+        rtol = 1e-10
+      ))
       expect_equal(tail(.r$x, 1), 50, tolerance = 1e-8, label = .meth)
     }
     .am <- rxode2({d/dt(x) <- -k * x})
-    .r <- rxSolve(.am, et(seq(0, 10)), params = c(k = 0.3), inits = c(x = 1), method = "ros54p", atol = 1e-10, rtol = 1e-10)
+    .r <- rxSolve(
+      .am,
+      et(seq(0, 10)),
+      params = c(k = 0.3),
+      inits = c(x = 1),
+      method = "ros54p",
+      atol = 1e-10,
+      rtol = 1e-10
+    )
     expect_equal(.r$x, exp(-0.3 * .r$time), tolerance = 1e-9)
   })
 
