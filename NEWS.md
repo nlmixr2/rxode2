@@ -174,6 +174,10 @@
   correctly (#1729).
 
 ### Solving
+- Growing the per-thread dose pools for a solve with more cores than they
+  were sized for (`rxSolve(cores=)` above `OMP_NUM_THREADS`, for example) no
+  longer leaks three of their arrays: `freeExtraDosing()` never freed
+  `nAllocIgnoredDoses` or the outer `extraDoseTime`/`extraDoseDose` arrays.
 - The analytic Jacobian of a model that names a state before its `d/dt()`
   (for example an initial condition such as `target(0) <- r0` above the
   equations) is now stored at the state's index.  It was stored by the order
