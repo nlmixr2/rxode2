@@ -48,6 +48,13 @@
   `autoSwitch*` rules.  GPU-safe models may now use `delay()`: each subject
   keeps a dense-output history and steps land on the breakpoints of the
   constant pre-history.
+- OpenCL runtime for the device integrators: each round integrates every
+  waiting subject over its own interval, one subject per work-item, and keeps
+  each subject's AutoSwitch state and `delay()` history on the device between
+  rounds.  rxode2 calls OpenCL through the context and kernel of the
+  suggested `OpenCL` package and neither links OpenCL nor needs its headers;
+  the same round also runs as host C on OpenMP threads.  `rxGpuInfo()` lists
+  the OpenCL devices and whether each supports double precision.
 
 - `rxSymInvCholCreate()` builds block-diagonal omegas with
   `lotri::lotriMat()` instead of `Matrix::bdiag()`, removing the
