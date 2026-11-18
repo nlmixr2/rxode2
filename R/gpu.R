@@ -126,7 +126,30 @@
   .s <- .rxGpuModelSource(obj)
   ## extra may #include the stepper (rxode2gpu/rxg_stepper.h)
   .src <- paste(c(.s$source, extra), collapse = "\n")
-  paste(c(.rxGpuDefines(...), .rxGpuInline(.src)), collapse = "\n")
+  .src <- paste(c(.rxGpuDefines(...), .rxGpuInline(.src)), collapse = "\n")
+  if (isTRUE(list(...)$float)) {
+    .src <- .rxGpuFloatLiterals(.src)
+  }
+  .src
+}
+
+#' Make the floating literals of OpenCL C source single precision
+#'
+#' A device without `cl_khr_fp64` may reject a double literal such as `0.5`
+#' (the `OpenCL` package builds without `-cl-single-precision-constant`), so a
+#' single precision program suffixes each one with `f`.
+#'
+#' @param src OpenCL C source
+#' @return the source with float literals
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuFloatLiterals <- function(src) {
+  gsub(
+    "(?<![[:alnum:]_.])((?:[0-9]+\\.[0-9]*|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?|[0-9]+[eE][+-]?[0-9]+)(?![[:alnum:]_.])",
+    "\\1f",
+    src,
+    perl = TRUE
+  )
 }
 
 #' Does a model's device code carry its analytic Jacobian?
