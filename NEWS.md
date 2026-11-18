@@ -174,6 +174,11 @@
   correctly (#1729).
 
 ### Solving
+
+- An implicit method (`ros4`, `iem`, `ros43`, ...) in a solve set up from C,
+  as `nlmixr2` estimation does, now uses the model's analytic Jacobian, as
+  `rxSolve()` does; before, it read an empty Jacobian, so stiff fits ran
+  slowly or failed to solve.
 - The analytic Jacobian of a model that names a state before its `d/dt()`
   (for example an initial condition such as `target(0) <- r0` above the
   equations) is now stored at the state's index.  It was stored by the order
