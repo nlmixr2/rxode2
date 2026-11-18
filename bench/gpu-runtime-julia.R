@@ -7,10 +7,12 @@
 # builds and JIT compilation are excluded (each side is warmed up first);
 # times are medians of 5.
 #
-# Usage: Rscript bench/gpu-runtime-julia.R [julia] [sizes]
+# Usage: Rscript bench/gpu-runtime-julia.R [julia] [sizes] [csv]
 #   julia  path of the julia binary (default: julia on the PATH), run with as
 #          many threads as rxode2's CPU backend uses
 #   sizes  comma-separated ensemble sizes (default 1000,10000,100000)
+#   csv    results of an earlier run of bench/gpu-runtime-julia.jl (skips
+#          running julia)
 library(rxode2)
 .rxGpuRun <- utils::getFromNamespace(".rxGpuRun", "rxode2")
 .rxGpuRequests <- utils::getFromNamespace(".rxGpuRequests", "rxode2")
@@ -21,6 +23,19 @@ library(rxode2)
 .sizes <- if (length(.args) >= 2) .args[2] else "1000,10000,100000"
 .cores <- parallel::detectCores()
 .tol <- 1e-8
+
+## julia first: started after R has opened OpenCL contexts it can crash
+.csv <- if (length(.args) >= 3) .args[3] else tempfile(fileext = ".csv")
+if (length(.args) < 3) {
+  .st <- system2(
+    .julia,
+    c("-t", .cores, file.path("bench", "gpu-runtime-julia.jl"), .csv, .sizes),
+    stdout = "",
+    stderr = ""
+  )
+  if (.st != 0) stop("julia failed")
+}
+.jl <- utils::read.csv(.csv)
 
 .info <- rxGpuInfo()
 .dev <- which(.info$devices$fp64 & !grepl("rusticl", .info$devices$platform))[1]
@@ -88,17 +103,6 @@ for (.n in as.integer(strsplit(.sizes, ",")[[1]])) {
   }
 }
 
-.csv <- tempfile(fileext = ".csv")
-.st <- system2(
-  .julia,
-  c("-t", .cores, file.path("bench", "gpu-runtime-julia.jl"), .csv, .sizes),
-  stdout = "",
-  stderr = ""
-)
-if (.st != 0) {
-  stop("julia failed")
-}
-.jl <- utils::read.csv(.csv)
 .jl$backend <- ifelse(.jl$backend == "EnsembleThreads", paste0("EnsembleThreads-", .cores), .jl$backend)
 
 ## one row per problem, method and size; the end state of the last trajectory
