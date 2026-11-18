@@ -96,6 +96,16 @@ library(rxode2)
   .ev
 }
 
+## each subject's etas, drawn once so every method solves the same subjects
+.etas <- function(model, n) {
+  set.seed(7)
+  .nm <- if (model == "pk2") c("eta.ka", "eta.cl", "eta.v") else c("eta.cl", "eta.v", "eta.r0")
+  .om <- if (model == "pk2") c(0.2, 0.1, 0.1) else c(0.1, 0.1, 0.1)
+  .p <- data.frame(id = seq_len(n))
+  for (.i in seq_along(.nm)) .p[[.nm[.i]]] <- stats::rnorm(n, 0, sqrt(.om[.i]))
+  .p
+}
+
 ## an OpenCL device with double precision (not Mesa's rusticl)
 .dev <- NA_integer_
 if (requireNamespace("OpenCL", quietly = TRUE)) {
@@ -128,9 +138,10 @@ if (!is.na(.dev)) {
   )
 }
 
-.solve <- function(model, ev, case) {
+.solve <- function(model, par, ev, case) {
   .a <- list(
     model,
+    par,
     ev,
     method = case[1],
     atol = .tol[["atol"]],
@@ -151,11 +162,15 @@ for (.mn in c("pk2", "tmdd")) {
   .model <- if (.mn == "pk2") .pk2 else .tmdd
   for (.n in .sizes) {
     .ev <- .events(.mn, .n)
+    .par <- .etas(.mn, .n)
     .ref <- NULL
     for (.c in .cases) {
-      .r <- .solve(.model, .ev, .c) # warm-up (compiles, builds kernels)
+      ## explicit methods crawl on the stiff TMDD model: time them at the
+      ## smallest size only
+      if (.mn == "tmdd" && .n > min(.sizes) && .c[1] %in% c("dop853", "t54", "gpuT54")) next
+      .r <- .solve(.model, .par, .ev, .c) # warm-up (compiles, builds kernels)
       .t <- stats::median(vapply(seq_len(.reps), function(i) {
-        system.time(.r <<- .solve(.model, .ev, .c))[["elapsed"]]
+        system.time(.r <<- .solve(.model, .par, .ev, .c))[["elapsed"]]
       }, double(1)))
       if (is.null(.ref)) .ref <- .r$cp
       .out <- rbind(
