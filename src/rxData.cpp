@@ -1831,6 +1831,7 @@ double maxAtolRtolFactor = 0.1;
 extern "C" int rxModelTimeDep = 1;
 extern "C" int rxGpuSolveClaim(const char *key);
 extern "C" int rxGpuSolveSlots(void);
+extern "C" void rxGpuSolveOneThread(void);
 
 // Upper bound for a subject's accumulated tolerance MULTIPLIER.
 // `maxAtolRtolFactor` bounds the resulting tolerance, not the multiplier, and
@@ -6924,7 +6925,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       // before) integrates with its host counterpart: t54 (68), vern76 (28),
       // ros54p (108) and their AutoSwitch composites
       CharacterVector _trans = rxSolveDat->mv[RxMv_trans];
-      std::string _key = as<std::string>(_trans[RxMvTrans_model_vars]);
+      // the key names the model and the method the setup was built for
+      std::string _key = as<std::string>(_trans[RxMvTrans_model_vars]) + ":" + std::to_string(method);
       int _gpuOk = rxGpuSolveClaim(_key.c_str());
       if (!_gpuOk) {
         // set up from C (nlmixr2est): install it now, once (R at setup only)
@@ -7159,9 +7161,11 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       warning(_("since throwing warning with NA time, change to single threaded"));
       op->cores = 1;
     }
-    if (op->stiff >= 110 && op->stiff <= 114 && rxGpuSolveSlots() > op->cores) {
+    if (op->stiff >= 110 && op->stiff <= 114) {
+      // single threaded (NA times, ...) stays so for the subjects' host work
+      if (op->cores <= 1) rxGpuSolveOneThread();
       // each subject in flight owns a per-thread slot (src/gpu_solve.cpp)
-      op->cores = rxGpuSolveSlots();
+      if (rxGpuSolveSlots() > op->cores) op->cores = rxGpuSolveSlots();
     }
     seedEng((int)(op->cores));
     _p_ensureLinCmtA((int)op->cores);

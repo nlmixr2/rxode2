@@ -3855,7 +3855,9 @@ rxSolve.default <- function(
   # GPU methods: the device code of the model (with its Jacobian for the
   # ros54p methods), set up once here; src/gpu_solve.cpp runs the rounds
   if (isTRUE(.ctl$method %in% 110:114)) {
-    .gpuWhy <- .rxGpuSolveUnsupported(object, .ctl, events)
+    # an event data frame given as params is swapped into events later
+    .gpuEv <- if (is.null(events) && rxIs(params, "event.data.frame")) params else events
+    .gpuWhy <- .rxGpuSolveUnsupported(object, .ctl, .gpuEv)
     if (!is.null(.gpuWhy)) {
       if (.ctl$gpuBackend != "auto") {
         stop("the GPU methods do not support ", .gpuWhy, call. = FALSE)

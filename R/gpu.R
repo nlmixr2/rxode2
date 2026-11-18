@@ -997,6 +997,16 @@ rxGpuInfo <- function() {
 
 .rxGpuSolveEnv <- new.env(parent = emptyenv())
 
+#' Do two models share their parameter, state and lhs order?
+#'
+#' @param a,b `rxModelVars()` of each
+#' @return logical
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuSameLayout <- function(a, b) {
+  identical(a$params, b$params) && identical(a$state, b$state) && identical(a$lhs, b$lhs)
+}
+
 #' Why a GPU method cannot solve this problem (beyond device code)
 #'
 #' @param object rxode2 model
@@ -1017,8 +1027,21 @@ rxGpuInfo <- function() {
   if (isTRUE(rxModelVars(object)$flags[["hasDelay"]] == 1L) && (is.data.frame(events) || is.rxEt(events))) {
     .e <- as.data.frame(events)
     .w <- which(tolower(names(.e)) == "ss")
-    if (length(.w) > 0L && any(.e[[.w[1]]] %in% 1:2)) {
+    ## steady state is an ss column, or a classic evid whose last two digits
+    ## are a steady-state flag (9, 10, 19, 20, 40)
+    .v <- which(tolower(names(.e)) == "evid")
+    .cl <- if (length(.v) > 0L) suppressWarnings(as.numeric(.e[[.v[1]]])) else numeric(0)
+    if ((length(.w) > 0L && any(.e[[.w[1]]] %in% 1:2)) ||
+      any(!is.na(.cl) & .cl >= 100 & (.cl %% 100) %in% c(9, 10, 19, 20, 40))) {
       return("steady state in delay() models")
+    }
+  }
+  ## the host build of the device code comes from the model with its
+  ## Jacobian, which has to keep the parameter, state and lhs order
+  if (.rxGpuSafe(object)) {
+    .j <- .rxGpuJacModel(object)
+    if (!is.null(.j) && !.rxGpuSameLayout(rxModelVars(object), rxModelVars(.j))) {
+      return("a model whose Jacobian reorders its variables")
     }
   }
   ## the device code does not call registered dydt forcing hooks
@@ -1042,6 +1065,8 @@ rxGpuInfo <- function() {
 #' @noRd
 #' @author Matthew L. Fidler
 .rxGpuSolveInstall <- function(object, ctl, nsolve, key = rxModelVars(object)$trans[["model_vars"]]) {
+  ## the solve setup claims it for this model and method only
+  key <- paste0(key, ":", as.integer(ctl$method))
   .meth <- .rxGpuSolveMethods[[as.character(ctl$method)]]
   .threads <- as.integer(ctl$cores)
   if (length(.threads) != 1L || is.na(.threads) || .threads < 1L) {
@@ -1148,13 +1173,13 @@ rxGpuInfo <- function() {
 .rxGpuSolveInstallC <- function(object, ctl, params, events) {
   tryCatch(
     {
+      if (is.null(events) && rxIs(params, "event.data.frame")) events <- params
       if (!.rxGpuSafe(object) || !is.null(.rxGpuSolveUnsupported(object, ctl, events))) {
         return(FALSE)
       }
       .g <- suppressMessages(.rxGpuSolveModel(object, ctl$method))
       .mv <- rxModelVars(object)
-      .gv <- rxModelVars(.g)
-      if (!identical(.mv$params, .gv$params) || !identical(.mv$state, .gv$state) || !identical(.mv$lhs, .gv$lhs)) {
+      if (!.rxGpuSameLayout(.mv, rxModelVars(.g))) {
         return(FALSE)
       }
       suppressMessages(.rxGpuSolveInstall(.g, ctl, .rxGpuSolveCount(params, events, ctl), key = .mv$trans[["model_vars"]]))

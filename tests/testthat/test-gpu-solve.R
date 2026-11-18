@@ -201,6 +201,9 @@ rxTest({
     .ev <- et(amt = 1, ii = 1, ss = 1, cmt = "x") |> et(c(0.5, 1))
     expect_error(rxSolve(.d, .ev, method = "gpuVern76", gpuBackend = "cpu"), "steady state")
     expect_message(rxSolve(.d, .ev, method = "gpuVern76"), "default method")
+    ## ... also as a classic evid (110: steady-state bolus into x)
+    .cl <- data.frame(id = 1, time = c(0, 0.5, 1), evid = c(110, 0, 0), amt = c(1, 0, 0), ii = c(1, 0, 0))
+    expect_error(rxSolve(.d, .cl, method = "gpuVern76", gpuBackend = "cpu"), "steady state")
     ## resampled covariates may change inside an interval
     .p <- .pk()
     .ev <- as.data.frame(et(amt = 300) |> et(c(1, 4, 8)))
@@ -405,5 +408,23 @@ rxTest({
       expect_equal(.n, 2L, label = .gpuMethods[.i])
       expect_equal(.c$cp, .refs[[.i]], tolerance = 1e-12, label = .gpuMethods[.i])
     }
+  })
+
+  test_that("a GPU setup armed for one method is not claimed by another", {
+    .b <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - cl / v * center
+      cp <- center / v
+    })
+    .p <- data.frame(id = 1:3, ka = c(1, 1.5, 2), cl = 3, v = 30)
+    .ev <- et(amt = 300) |> et(seq(0, 24, by = 4)) |> et(id = 1:3)
+    .h <- suppressMessages(rxSolve(.b, .p, .ev, method = "vern76"))
+    ## arm a gpuT54 setup of this model, then solve with gpuVern76 while no
+    ## new setup gets installed: the solve must not run Tsitouras steps
+    .ctl <- rxControl(method = "gpuT54", gpuBackend = "cpu")
+    .rxGpuSolveInstall(.b, .ctl, 3L)
+    local_mocked_bindings(.rxGpuSolveInstall = function(object, ctl, nsolve, ...) ctl)
+    .g <- suppressMessages(rxSolve(.b, .p, .ev, method = "gpuVern76", gpuBackend = "cpu"))
+    expect_equal(.g$cp, .h$cp, tolerance = 1e-12)
   })
 })
