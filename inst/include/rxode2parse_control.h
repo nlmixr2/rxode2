@@ -211,6 +211,7 @@
 #define RxMvFlag_doseTime 18
 #define RxMvFlag_linCmtCarry 19
 #define RxMvFlag_gpuSafe 20
+#define RxMvFlag_timeDep 21
 
 #define RxMvTrans_lib_name 0
 #define RxMvTrans_jac 1

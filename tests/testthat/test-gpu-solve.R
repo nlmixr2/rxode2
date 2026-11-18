@@ -281,4 +281,82 @@ rxTest({
       expect_equal(.b$cp, .a$cp, tolerance = 1e-9, label = .meth)
     }
   })
+
+  test_that("a subject's tolFactor loosens its tolerances in the GPU and host methods", {
+    .m <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - cl / v * center
+      cp <- center / v
+    })
+    .p <- data.frame(id = 1:2, ka = 1.2, cl = 3, v = 30)
+    ## sparse sampling, so the steps follow the tolerances, not the records
+    .ev <- et(amt = 300, ii = 12, addl = 3, id = 1:2) |>
+      et(seq(0, 48, by = 6), id = 1:2)
+    .one <- function(meth, be, tol, ...) {
+      .s <- function(...) {
+        if (meth %in% .gpuMethods) .solve(.m, ev = .ev, method = meth, backend = be, ...) else
+          suppressMessages(rxSolve(.m, ev = .ev, method = meth, ...))
+      }
+      .r <- .s(params = .p, atol = 1e-8, rtol = 1e-6, cores = 1, ...)
+      .r[.r$id == tol, "cp"]
+    }
+    for (.be in .backends()) {
+      for (.meth in c(.gpuMethods, if (.be == "cpu") unique(.hostOf))) {
+        .lab <- paste(.meth, .be)
+        .base <- .one(.meth, .be, 2)
+        .f <- .one(.meth, .be, 2, tolFactor = c(1, 1e4))
+        .s1 <- .one(.meth, .be, 1, tolFactor = c(1, 1e4))
+        ## the loosened subject solves as if given atol 1e-4, rtol 1e-2 ...
+        .s <- if (.meth %in% .gpuMethods) {
+          .solve(.m, .ev, .meth, .be, params = .p, atol = 1e-4, rtol = 1e-2, cores = 1)
+        } else {
+          suppressMessages(rxSolve(.m, .p, .ev, method = .meth, atol = 1e-4, rtol = 1e-2, cores = 1))
+        }
+        expect_equal(.f, .s[.s$id == 2, "cp"], tolerance = 1e-12, label = .lab)
+        expect_false(isTRUE(all.equal(.f, .base, tolerance = 1e-10)), label = .lab)
+        ## ... and the other keeps its own
+        expect_equal(.s1, .base, tolerance = 1e-12, label = .lab)
+      }
+    }
+  })
+
+  test_that("timeDep flags models whose d/dt() reads time", {
+    .f <- function(m) rxModelVars(m)$flags[["timeDep"]]
+    expect_equal(.f(rxode2({d/dt(x) <- -k * x})), 0L)
+    expect_equal(.f(rxode2({tv <- 3; d/dt(x) <- -x / tv})), 0L)
+    expect_equal(.f(rxode2({d/dt(x) <- t})), 1L)
+    expect_equal(.f(rxode2({d/dt(x) <- -k * x + time})), 1L)
+    expect_equal(.f(rxode2({d/dt(x) <- -k * x + tad()})), 1L)
+    expect_equal(.f(rxode2({d/dt(x) <- -k * x + delay(x, 1)})), 1L)
+  })
+
+  test_that("ros54p takes df/dt for time and changing covariates only", {
+    .tm <- rxode2({d/dt(x) <- t})
+    for (.meth in c("ros54p", "gpuRos54p")) {
+      .r <- suppressMessages(rxSolve(.tm, et(0, 10), inits = c(x = 0), method = .meth, gpuBackend = "cpu", atol = 1e-10, rtol = 1e-10))
+      expect_equal(tail(.r$x, 1), 50, tolerance = 1e-8, label = .meth)
+    }
+    .cm <- rxode2({d/dt(x) <- c1})
+    .d <- data.frame(id = 1, time = c(0, 10), c1 = c(0, 10), evid = 0)
+    for (.meth in c("ros54p", "gpuRos54p")) {
+      .r <- suppressMessages(rxSolve(.cm, .d, inits = c(x = 0), method = .meth, gpuBackend = "cpu",
+                                     covsInterpolation = "linear", atol = 1e-10, rtol = 1e-10))
+      expect_equal(tail(.r$x, 1), 50, tolerance = 1e-8, label = .meth)
+    }
+    .am <- rxode2({d/dt(x) <- -k * x})
+    .r <- rxSolve(.am, et(seq(0, 10)), params = c(k = 0.3), inits = c(x = 1), method = "ros54p", atol = 1e-10, rtol = 1e-10)
+    expect_equal(.r$x, exp(-0.3 * .r$time), tolerance = 1e-9)
+  })
+
+  test_that("a registered dydt forcing hook makes ros54p take df/dt and the GPU methods fall back", {
+    .m <- rxode2({d/dt(x) <- 0})
+    .ev <- et(amt = 0) |> et(0, 2, by = 1)
+    .Call(`_rxode2_rxRegisterTestDydtForce`)
+    on.exit(.Call(`_rxode2_rxRemoveTestDydtForce`), add = TRUE)
+    .r <- rxSolve(.m, .ev, method = "ros54p", returnType = "data.frame")
+    expect_equal(.r$x, c(0, 1, 2), tolerance = 1e-8)
+    expect_error(rxSolve(.m, .ev, method = "gpuT54", gpuBackend = "cpu"), "forcing")
+    expect_message(.r <- rxSolve(.m, .ev, method = "gpuT54", returnType = "data.frame"), "default method")
+    expect_equal(.r$x, c(0, 1, 2), tolerance = 1e-5)
+  })
 })

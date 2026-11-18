@@ -82,10 +82,13 @@
   subject on an OpenCL device or with the same code on CPU threads.
   `rxControl()` gains `gpuBackend`, `gpuDevice`, `gpuPrecision` and
   `gpuBatch`.  A model that cannot run as device code solves with the host
-  counterpart of the method.
+  counterpart of the method.  Each subject integrates with its own
+  tolerances, so `tolFactor` and `atolRtolFactor_()` apply per subject.
 - New host method `"ros54p"` (Rodas5P, Steinebach's L-stable Rosenbrock 5(4)
   with the analytical Jacobian) and its AutoSwitch composites `"t54+ros54p"`
-  and `"vern76+ros54p"`.
+  and `"vern76+ros54p"`.  It evaluates the time derivative only for a model
+  that reads time (`rxModelVars()$flags["timeDep"]`) or a covariate that
+  changes over the interval.
 
 - `rxSymInvCholCreate()` builds block-diagonal omegas with
   `lotri::lotriMat()` instead of `Matrix::bdiag()`, removing the
@@ -362,6 +365,10 @@
   record still report the record's value, and `linear` and `midpoint`
   interpolation and the adjoint methods (`rk4s`, `dop853s`, ...) are
   unchanged.
+- The libode-based methods (`"t54"`, `"vern76"`, `"dop54"`, the implicit
+  methods and the rest of that family) now integrate with the subject's
+  tolerances, so a per-subject `tolFactor` loosens them as it does for the
+  other methods; before, they used the shared `atol`/`rtol`.
 - `rxSolve()` now stops with an error when an `rxControl()` object is passed
   as `params` or `events`, as it already did for `inits`, and a parameter list
   that is empty or whose first column is empty gives the parameter-size
