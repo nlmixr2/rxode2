@@ -146,4 +146,8 @@
 #define Rxc_linCmtSensPhi 141
 #define Rxc_nonmem 142
 #define Rxc_tieOrder 143
+#define Rxc_gpuBackend 144
+#define Rxc_gpuDevice 145
+#define Rxc_gpuPrecision 146
+#define Rxc_gpuBatch 147
 #endif // __rxode2_control_H__

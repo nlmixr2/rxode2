@@ -31,6 +31,17 @@
   uses the model's analytic Jacobian (generated symbolically when the model
   has no `df()/dy()` lines, as for the other Rosenbrock methods) and skips
   the time derivative for models that do not read time.
+- `rxSolve()` methods `"gpuRkt54"`, `"gpuVern76"`, `"gpuRos54p"`,
+  `"gpuRkt54+gpuRos54p"` and `"gpuVern76+gpuRos54p"` solve with the device
+  integrators in batched rounds: events (doses, steady state, lag times,
+  covariates) stay on the host and each round integrates every waiting
+  subject on an OpenCL device or with the same code on CPU threads.
+  `rxControl()` gains `gpuBackend`, `gpuDevice`, `gpuPrecision` and
+  `gpuBatch`.  A model that cannot run as device code solves with the host
+  counterpart of the method.
+- New host method `"ros54p"` (Rodas5P, Steinebach's L-stable Rosenbrock 5(4)
+  with the analytical Jacobian) and its AutoSwitch composites `"t54+ros54p"`
+  and `"vern76+ros54p"`.
 
 - `rxSymInvCholCreate()` builds block-diagonal omegas with
   `lotri::lotriMat()` instead of `Matrix::bdiag()`, removing the
