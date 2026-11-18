@@ -380,7 +380,7 @@
 )
 ## AutoSwitch composites that are single rxSolve() methods (they switch on
 ## the device, not through rxControl(stiff2=))
-.rxGpuSolveComposites <- c("gpuRkt54+gpuRos54p", "gpuVern76+gpuRos54p")
+.rxGpuSolveComposites <- c("gpuT54+gpuRos54p", "gpuVern76+gpuRos54p")
 
 #' Solve over a time grid with a device integrator built as host C
 #'

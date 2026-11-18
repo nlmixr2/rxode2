@@ -1155,8 +1155,8 @@
 #'   `bench/ss_anderson_1762.R` in the package sources for the benchmark
 #'   behind the default.
 #'
-#' @param gpuBackend Where the GPU methods (`"gpuRkt54"`, `"gpuVern76"`,
-#'   `"gpuRos54p"`, `"gpuRkt54+gpuRos54p"`, `"gpuVern76+gpuRos54p"`)
+#' @param gpuBackend Where the GPU methods (`"gpuT54"`, `"gpuVern76"`,
+#'   `"gpuRos54p"`, `"gpuT54+gpuRos54p"`, `"gpuVern76+gpuRos54p"`)
 #'   integrate: `"opencl"` on an OpenCL device through the suggested
 #'   `OpenCL` package, `"cpu"` with the same integrators built as host C on
 #'   `cores` threads, or `"auto"` (the default) for OpenCL when a device with
@@ -1523,10 +1523,10 @@ rxSolve <- function(
     "ros43",
     "ros6",
     "ros54p",
-    "gpuRkt54",
+    "gpuT54",
     "gpuVern76",
     "gpuRos54p",
-    "gpuRkt54+gpuRos54p",
+    "gpuT54+gpuRos54p",
     "gpuVern76+gpuRos54p",
     "backwardEuler",
     "gauss6",
@@ -6139,7 +6139,7 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'   `liblsoda` if Jacobian generation fails.  `"t54+ros54p"` and `"vern76+ros54p"`
 #'   are its AutoSwitch composites.
 #'
-#' * `"gpuRkt54"`, `"gpuVern76"`, `"gpuRos54p"`, `"gpuRkt54+gpuRos54p"`,
+#' * `"gpuT54"`, `"gpuVern76"`, `"gpuRos54p"`, `"gpuT54+gpuRos54p"`,
 #'   `"gpuVern76+gpuRos54p"` -- the same integrators (Tsitouras 5(4) as
 #'   `"t54"`, Verner 7(6) as `"vern76"`, Rodas5P as `"ros54p"` with the
 #'   analytical Jacobian, and their AutoSwitch composites) as device code: each
@@ -6604,10 +6604,10 @@ odeMethodToInt <- function(
     "ros43",
     "ros6",
     "ros54p",
-    "gpuRkt54",
+    "gpuT54",
     "gpuVern76",
     "gpuRos54p",
-    "gpuRkt54+gpuRos54p",
+    "gpuT54+gpuRos54p",
     "gpuVern76+gpuRos54p",
     "backwardEuler",
     "gauss6",
@@ -6787,10 +6787,10 @@ odeMethodToInt <- function(
     "ros43" = 31L,
     "ros6" = 32L,
     "ros54p" = 108L,
-    "gpuRkt54" = 110L,
+    "gpuT54" = 110L,
     "gpuVern76" = 111L,
     "gpuRos54p" = 112L,
-    "gpuRkt54+gpuRos54p" = 113L,
+    "gpuT54+gpuRos54p" = 113L,
     "gpuVern76+gpuRos54p" = 114L,
     "backwardEuler" = 33L,
     "gauss6" = 34L,
@@ -7028,10 +7028,10 @@ rxIsImplicit <- function(method) {
     "ros43" = 31L,
     "ros6" = 32L,
     "ros54p" = 108L,
-    "gpuRkt54" = 110L,
+    "gpuT54" = 110L,
     "gpuVern76" = 111L,
     "gpuRos54p" = 112L,
-    "gpuRkt54+gpuRos54p" = 113L,
+    "gpuT54+gpuRos54p" = 113L,
     "gpuVern76+gpuRos54p" = 114L,
     "backwardEuler" = 33L,
     "gauss6" = 34L,
@@ -7278,10 +7278,10 @@ rxIsStiff <- function(method) {
     "ros43" = 31L,
     "ros6" = 32L,
     "ros54p" = 108L,
-    "gpuRkt54" = 110L,
+    "gpuT54" = 110L,
     "gpuVern76" = 111L,
     "gpuRos54p" = 112L,
-    "gpuRkt54+gpuRos54p" = 113L,
+    "gpuT54+gpuRos54p" = 113L,
     "gpuVern76+gpuRos54p" = 114L,
     "backwardEuler" = 33L,
     "gauss6" = 34L,
@@ -7528,10 +7528,10 @@ rxIsNonStiff <- function(method) {
     "ros43" = 31L,
     "ros6" = 32L,
     "ros54p" = 108L,
-    "gpuRkt54" = 110L,
+    "gpuT54" = 110L,
     "gpuVern76" = 111L,
     "gpuRos54p" = 112L,
-    "gpuRkt54+gpuRos54p" = 113L,
+    "gpuT54+gpuRos54p" = 113L,
     "gpuVern76+gpuRos54p" = 114L,
     "backwardEuler" = 33L,
     "gauss6" = 34L,
@@ -7763,10 +7763,10 @@ rxIsDense <- function(method) {
     "ros43" = 31L,
     "ros6" = 32L,
     "ros54p" = 108L,
-    "gpuRkt54" = 110L,
+    "gpuT54" = 110L,
     "gpuVern76" = 111L,
     "gpuRos54p" = 112L,
-    "gpuRkt54+gpuRos54p" = 113L,
+    "gpuT54+gpuRos54p" = 113L,
     "gpuVern76+gpuRos54p" = 114L,
     "backwardEuler" = 33L,
     "gauss6" = 34L,
@@ -8119,10 +8119,10 @@ rxUiDeparse.rxControl <- function(object, var) {
           "ros43" = 31L,
           "ros6" = 32L,
           "ros54p" = 108L,
-          "gpuRkt54" = 110L,
+          "gpuT54" = 110L,
           "gpuVern76" = 111L,
           "gpuRos54p" = 112L,
-          "gpuRkt54+gpuRos54p" = 113L,
+          "gpuT54+gpuRos54p" = 113L,
           "gpuVern76+gpuRos54p" = 114L,
           "backwardEuler" = 33L,
           "gauss6" = 34L,
