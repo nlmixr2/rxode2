@@ -67,6 +67,8 @@
   `gpuBatch`.  A model that cannot run as device code solves with the host
   counterpart of the method.  Each subject integrates with its own
   tolerances, so `tolFactor` and `atolRtolFactor_()` apply per subject.
+  A solve set up without its GPU setup (from C, as nlmixr2est's FOCEi
+  does) integrates with the host counterpart.
 - New host method `"ros54p"` (Rodas5P, Steinebach's L-stable Rosenbrock 5(4)
   with the analytical Jacobian) and its AutoSwitch composites `"t54+ros54p"`
   and `"vern76+ros54p"`.  It evaluates the time derivative only for a model

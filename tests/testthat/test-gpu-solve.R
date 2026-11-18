@@ -359,4 +359,24 @@ rxTest({
     expect_message(.r <- rxSolve(.m, .ev, method = "gpuT54", returnType = "data.frame"), "default method")
     expect_equal(.r$x, c(0, 1, 2), tolerance = 1e-5)
   })
+
+  test_that("a GPU method set up without its GPU setup runs as the host counterpart", {
+    ## nlmixr2est's FOCEi sets solves up from C, so R installs nothing for them;
+    ## an earlier GPU solve of another model must not be used either
+    .a <- rxode2({d/dt(y) <- -k * y})
+    .b <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - cl / v * center
+      cp <- center / v
+    })
+    .p <- data.frame(id = 1:3, ka = c(1, 1.5, 2), cl = 3, v = 30)
+    .ev <- et(amt = 300) |> et(seq(0, 24, by = 4)) |> et(id = 1:3)
+    suppressMessages(rxSolve(.a, c(k = 0.2), et(0:5), inits = c(y = 1), method = "gpuT54", gpuBackend = "cpu"))
+    local_mocked_bindings(.rxGpuSolveInstall = function(object, ctl, nsolve) ctl)
+    for (.meth in .gpuMethods) {
+      .g <- suppressMessages(rxSolve(.b, .p, .ev, method = .meth, gpuBackend = "cpu"))
+      .h <- suppressMessages(rxSolve(.b, .p, .ev, method = .hostOf[[.meth]]))
+      expect_equal(.g$cp, .h$cp, tolerance = 1e-12, label = .meth)
+    }
+  })
 })

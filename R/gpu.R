@@ -1103,7 +1103,16 @@ rxGpuInfo <- function() {
     maxAtolRtolFactor = ctl$maxAtolRtolFactor
   )
   .round <- getNativeSymbolInfo("rxg_host_round", .run$lib$dll)$address
-  .Call(`_rxode2_rxGpuSolveSet`, .round, .run$ptr, .run$dims, .run$opt$od, .run$opt$oi, .threads)
+  .Call(
+    `_rxode2_rxGpuSolveSet`,
+    .round,
+    .run$ptr,
+    .run$dims,
+    .run$opt$od,
+    .run$opt$oi,
+    .threads,
+    rxModelVars(object)$trans[["model_vars"]]
+  )
   ## the run (and its OpenCL buffers) lives until the solve is cleared
   .rxGpuSolveEnv$run <- .run
   ## the per-thread pools serve both the slots and the output step's threads
@@ -1117,7 +1126,7 @@ rxGpuInfo <- function() {
 #' @noRd
 #' @author Matthew L. Fidler
 .rxGpuSolveClear <- function() {
-  .Call(`_rxode2_rxGpuSolveSet`, NULL, NULL, NULL, NULL, NULL, NULL)
+  .Call(`_rxode2_rxGpuSolveSet`, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
   .rxGpuSolveEnv$run <- NULL
   invisible(NULL)
 }
