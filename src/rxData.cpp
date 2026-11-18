@@ -6741,10 +6741,24 @@ List rxLinCmtSensDebug_() {
   return List::create(_["sensType"]=rx->sensType, _["sensH"]=rx->sensH);
 }
 
-// The methods that read calc_jac() (rxIsImplicit() in R): ros4, iem and
-// ros43/ros6/backwardEuler/gauss6/iiic6/radauiia5/geng5/sdirk43
+// The methods that read calc_jac() (rxIsImplicit() in R): ros4, iem,
+// ros43/ros6/backwardEuler/gauss6/iiic6/radauiia5/geng5/sdirk43 and ros54p
 static inline bool rxImplicitMethod(int m) {
-  return m == 13 || m == 14 || (m >= 31 && m <= 38);
+  return m == 13 || m == 14 || (m >= 31 && m <= 38) || m == 108;
+}
+
+// Swap in the model with its analytic Jacobian (see rxSolve_()); true when
+// swapped
+static bool rxJacSwapModel(RObject &object, rxSolve_t *rxSolveDat) {
+  CharacterVector _tr = rxSolveDat->mv[RxMv_trans];
+  if (as<std::string>(_tr[RxMvTrans_jac]) == "fulluser") return false;
+  Function _jm = getRxFn(".rxJacSolveModelC");
+  RObject _jo = _jm(object);
+  if (Rf_isNull(_jo)) return false;
+  object = _jo;
+  rxSolveDat->mv = rxModelVars(object);
+  rxSolveFreeObj = object;
+  return true;
 }
 
 // [[Rcpp::export]]
@@ -6884,16 +6898,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     // lines calc_jac() is an empty stub.  rxSolve() swaps in the model with its
     // Jacobian before calling here; a solve set up from C (nlmixr2est) gets the
     // same model now, once, when it keeps the parameter, state and lhs order.
-    CharacterVector _tr = rxSolveDat->mv[RxMv_trans];
-    if (as<std::string>(_tr[RxMvTrans_jac]) != "fulluser") {
-      Function _jm = getRxFn(".rxJacSolveModelC");
-      RObject _jo = _jm(object);
-      if (!Rf_isNull(_jo)) {
-        object = _jo;
-        rxSolveDat->mv = rxModelVars(object);
-        rxSolveFreeObj = object;
-      }
-    }
+    // (A GPU method's setup is keyed by the model as given; its host fallback
+    // swaps below.)
+    rxJacSwapModel(object, rxSolveDat);
   }
   if (rxSolveDat->isRxSolve || rxSolveDat->isEnvironment){
     rx_solve* rx = getRxSolve_();
@@ -7097,6 +7104,19 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
         case 112: method = 108; break;
         case 113: method = 68; op->stiff2 = 108; break;
         default: method = 28; op->stiff2 = 108; break;
+        }
+        // the host ros54p reads calc_jac(): the model with its Jacobian, as
+        // for any implicit solve set up from C
+        RObject _locked = object;
+        if ((method == 108 || op->stiff2 == 108) && rxJacSwapModel(object, rxSolveDat)) {
+          rxUnlock(_locked);
+          rxLock(object);
+          if (!rxDynLoad(object)) {
+            rxSolveFree();
+            stop(_("cannot load rxode2 dlls for this model"));
+          }
+          _rxModels[".lastMv"] = rxSolveDat->mv;
+          rxAssignPtr(rxSolveDat->mv);
         }
       }
     }
