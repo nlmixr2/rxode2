@@ -1480,6 +1480,12 @@ rxSolve <- function(
     "vern98",
     "ros43",
     "ros6",
+    "ros54p",
+    "gpuRkt54",
+    "gpuVern76",
+    "gpuRos54p",
+    "gpuRkt54+gpuRos54p",
+    "gpuVern76+gpuRos54p",
     "backwardEuler",
     "gauss6",
     "iiic6",
@@ -6463,6 +6469,12 @@ odeMethodToInt <- function(
     "vern98",
     "ros43",
     "ros6",
+    "ros54p",
+    "gpuRkt54",
+    "gpuVern76",
+    "gpuRos54p",
+    "gpuRkt54+gpuRos54p",
+    "gpuVern76+gpuRos54p",
     "backwardEuler",
     "gauss6",
     "iiic6",
@@ -6640,6 +6652,12 @@ odeMethodToInt <- function(
     "vern98" = 30L,
     "ros43" = 31L,
     "ros6" = 32L,
+    "ros54p" = 108L,
+    "gpuRkt54" = 110L,
+    "gpuVern76" = 111L,
+    "gpuRos54p" = 112L,
+    "gpuRkt54+gpuRos54p" = 113L,
+    "gpuVern76+gpuRos54p" = 114L,
     "backwardEuler" = 33L,
     "gauss6" = 34L,
     "iiic6" = 35L,
@@ -6791,7 +6809,12 @@ odeMethodToInt <- function(
     method <- .methodIdx
   } else if (checkmate::testIntegerish(method)) {
     method <- as.integer(method)
-  } else if (is.character(method) && length(method) == 1L && grepl("+", method, fixed = TRUE)) {
+  } else if (
+    is.character(method) &&
+      length(method) == 1L &&
+      grepl("+", method, fixed = TRUE) &&
+      !(method %in% .rxGpuSolveComposites)
+  ) {
     method <- .parseAutoSwitchMethod(method)
   } else {
     if (is.character(method) && length(method) > 1L) {
@@ -6837,7 +6860,7 @@ odeMethodToInt <- function(
 #' @export
 #' @family Solver options and performance
 rxIsImplicit <- function(method) {
-  .implicitCodes <- c(13L, 14L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L)
+  .implicitCodes <- c(13L, 14L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L, 108L)
   .methodIdx <- c(
     "lsoda" = 1L,
     "dop853" = 0L,
@@ -6870,6 +6893,12 @@ rxIsImplicit <- function(method) {
     "vern98" = 30L,
     "ros43" = 31L,
     "ros6" = 32L,
+    "ros54p" = 108L,
+    "gpuRkt54" = 110L,
+    "gpuVern76" = 111L,
+    "gpuRos54p" = 112L,
+    "gpuRkt54+gpuRos54p" = 113L,
+    "gpuVern76+gpuRos54p" = 114L,
     "backwardEuler" = 33L,
     "gauss6" = 34L,
     "iiic6" = 35L,
@@ -7060,6 +7089,8 @@ rxIsStiff <- function(method) {
     13L,
     14L,
     21L,
+    108L,
+    112L,
     31L,
     32L,
     33L,
@@ -7112,6 +7143,12 @@ rxIsStiff <- function(method) {
     "vern98" = 30L,
     "ros43" = 31L,
     "ros6" = 32L,
+    "ros54p" = 108L,
+    "gpuRkt54" = 110L,
+    "gpuVern76" = 111L,
+    "gpuRos54p" = 112L,
+    "gpuRkt54+gpuRos54p" = 113L,
+    "gpuVern76+gpuRos54p" = 114L,
     "backwardEuler" = 33L,
     "gauss6" = 34L,
     "iiic6" = 35L,
@@ -7297,11 +7334,13 @@ rxIsStiff <- function(method) {
 #' @export
 #' @family Solver options and performance
 rxIsNonStiff <- function(method) {
-  .switcherCodes <- c(1L, 2L, 3L)
+  .switcherCodes <- c(1L, 2L, 3L, 113L, 114L)
   .stiffCodes <- c(
     13L,
     14L,
     21L,
+    108L,
+    112L,
     31L,
     32L,
     33L,
@@ -7354,6 +7393,12 @@ rxIsNonStiff <- function(method) {
     "vern98" = 30L,
     "ros43" = 31L,
     "ros6" = 32L,
+    "ros54p" = 108L,
+    "gpuRkt54" = 110L,
+    "gpuVern76" = 111L,
+    "gpuRos54p" = 112L,
+    "gpuRkt54+gpuRos54p" = 113L,
+    "gpuVern76+gpuRos54p" = 114L,
     "backwardEuler" = 33L,
     "gauss6" = 34L,
     "iiic6" = 35L,
@@ -7583,6 +7628,12 @@ rxIsDense <- function(method) {
     "vern98" = 30L,
     "ros43" = 31L,
     "ros6" = 32L,
+    "ros54p" = 108L,
+    "gpuRkt54" = 110L,
+    "gpuVern76" = 111L,
+    "gpuRos54p" = 112L,
+    "gpuRkt54+gpuRos54p" = 113L,
+    "gpuVern76+gpuRos54p" = 114L,
     "backwardEuler" = 33L,
     "gauss6" = 34L,
     "iiic6" = 35L,
@@ -7832,7 +7883,8 @@ rxIsDense <- function(method) {
 #' @family Solver options and performance
 rxIsAutoSwitch <- function(method) {
   if (is.character(method)) {
-    return(grepl("+", method, fixed = TRUE))
+    ## the GPU composites are single methods (they switch on the device)
+    return(grepl("+", method, fixed = TRUE) & !(method %in% .rxGpuSolveComposites))
   }
   rep(FALSE, length(method))
 }
@@ -7932,6 +7984,12 @@ rxUiDeparse.rxControl <- function(object, var) {
           "vern98" = 30L,
           "ros43" = 31L,
           "ros6" = 32L,
+          "ros54p" = 108L,
+          "gpuRkt54" = 110L,
+          "gpuVern76" = 111L,
+          "gpuRos54p" = 112L,
+          "gpuRkt54+gpuRos54p" = 113L,
+          "gpuVern76+gpuRos54p" = 114L,
           "backwardEuler" = 33L,
           "gauss6" = 34L,
           "iiic6" = 35L,

@@ -353,6 +353,18 @@
 ## rxode2's style; "+" joins an AutoSwitch composite
 .rxGpuMethods <- c(rkt54 = 1L, vern76 = 2L, ros54p = 3L, "rkt54+ros54p" = 4L, "vern76+ros54p" = 5L)
 
+## rxSolve() method codes of the device integrators and their stepper names
+.rxGpuSolveMethods <- c(
+  "110" = "rkt54",
+  "111" = "vern76",
+  "112" = "ros54p",
+  "113" = "rkt54+ros54p",
+  "114" = "vern76+ros54p"
+)
+## AutoSwitch composites that are single rxSolve() methods (they switch on
+## the device, not through rxControl(stiff2=))
+.rxGpuSolveComposites <- c("gpuRkt54+gpuRos54p", "gpuVern76+gpuRos54p")
+
 #' Solve over a time grid with a device integrator built as host C
 #'
 #' @inheritParams .rxGpuHostEval
