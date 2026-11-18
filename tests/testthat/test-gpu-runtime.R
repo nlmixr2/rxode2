@@ -285,8 +285,21 @@ rxTest({
     .m <- .lorenz()
     .run <- .rxGpuRun(.m, "rkt54", 2L, device = .dev)
     .p <- .pmat(.m, 3, s = 10, r = 28, b = 8 / 3)
-    .q <- .rxGpuRequests(.run, 1:3, 0, 1, matrix(1, 3, 3), .p, init = TRUE)
-    expect_error(.rxGpuRound(.run, .q), "do not match")
+    ## subjects must exist in the run and appear once a round
+    expect_error(.rxGpuRequests(.run, 1:3, 0, 1, matrix(1, 3, 3), .p, init = TRUE))
+    expect_error(.rxGpuRequests(.run, c(1L, 1L), 0, 1, matrix(1, 2, 3), .p[1:2, ], init = TRUE))
+    .q <- .rxGpuRequests(.run, 1:2, 0, 1, matrix(1, 2, 3), .p[1:2, ], init = TRUE)
+    .q3 <- .q
+    .q3$n <- 3L
+    expect_error(.rxGpuRound(.run, .q3), "do not match")
+    .ri <- .rxGpuRun(.m, "rkt54", 2L, backend = "cpu")$lib$layout[["ri"]]
+    .qb <- .q
+    .qb$ri[1] <- 2L
+    expect_error(.rxGpuRound(.run, .qb), "invalid or repeated subject")
+    .qb$ri[c(1, .ri + 1)] <- 1L
+    expect_error(.rxGpuRound(.run, .qb), "invalid or repeated subject")
+    ## only a run can be released
+    expect_error(.Call(`_rxode2_rxGpuClFree`, .rxGpuContext(.dev)), "invalid OpenCL run")
     ## a kernel that is not a round kernel
     .ctx <- .rxGpuContext(.dev)
     .k <- OpenCL::oclSimpleKernel(
@@ -312,6 +325,42 @@ rxTest({
     .Call(`_rxode2_rxGpuClFree`, .run$ptr)
     .q <- .rxGpuRequests(.run, 1:2, 0, 1, matrix(1, 2, 3), .p[1:2, ], init = TRUE)
     expect_error(.rxGpuRound(.run, .q), "released")
+  })
+
+  test_that("a subject's first round starts fresh without init", {
+    skip_on_cran()
+    .m <- .dde()
+    .n <- 3L
+    .y0 <- matrix(c(1, 2, 0), .n, 3, byrow = TRUE)
+    .p <- .pmat(.m, .n, k = 1.2, tau = 0.7)
+    .one <- function(run, init) {
+      .q <- .rxGpuRequests(run, seq_len(.n), 0, 2, .y0, .p, init = init)
+      .rxGpuRound(run, .q)
+    }
+    .backs <- "cpu"
+    .dev <- NULL
+    if (requireNamespace("OpenCL", quietly = TRUE)) {
+      .dev <- .oclDouble()
+      if (!is.null(.dev)) .backs <- c(.backs, "opencl")
+    }
+    for (.be in .backs) {
+      for (.meth in c("rkt54", "rkt54+ros54p")) {
+        .a <- .one(.rxGpuRun(.m, .meth, .n, backend = .be, device = .dev), TRUE)
+        .b <- .one(.rxGpuRun(.m, .meth, .n, backend = .be, device = .dev), FALSE)
+        expect_equal(.b$istate, rep(2L, .n), label = paste(.be, .meth))
+        expect_equal(.b$y, .a$y, label = paste(.be, .meth))
+        expect_equal(.b$cnt, .a$cnt, label = paste(.be, .meth))
+      }
+    }
+    if ("opencl" %in% .backs) {
+      ## runs are released by R (no finalizer in rxode2's DLL)
+      .run <- .rxGpuRun(.m, "rkt54", .n, device = .dev)
+      .rxGpuRunRelease(.run$fin)
+      expect_error(.one(.run, TRUE), "released")
+      .rxGpuRunRelease(.run$fin)
+      rm(.run)
+      expect_no_error(gc())
+    }
   })
 
   test_that("the round kernel is valid OpenCL C", {

@@ -29,9 +29,12 @@
 #define RXG_RI (5 + RXG_NCNT)
 #define RXG_INIT_AUTO 1 // reset the AutoSwitch state
 #define RXG_INIT_HIST 2 // restart the delay() history at t0 from y
-// ad/ai: the AutoSwitch state per subject
+// ad/ai: the AutoSwitch state per subject; ai[RXG_AI_SEEN] is 1 once the
+// subject has run a round (its states are valid), so a subject's first
+// round starts fresh even without RXG_INIT_* bits
 #define RXG_AD 4
-#define RXG_AI 7
+#define RXG_AI_SEEN 7
+#define RXG_AI 8
 // hs: the delay() history header per subject (records in hrec)
 #define RXG_HHDR (7 + RXG_NEQ1 + RXG_NLAG + RXG_NBP)
 // od/oi: options shared by every request
@@ -73,6 +76,7 @@ RXG_FN void _rxg_autoSave(const rxg_auto *a, RXG_GLOBAL double *d,
   k[4] = a->switched;
   k[5] = a->st.iasti;
   k[6] = a->st.nonsti;
+  k[RXG_AI_SEEN] = 1;
 }
 
 #if RXG_HAS_DELAY
@@ -172,6 +176,9 @@ RXG_FN void rxg_round1(int i, RXG_GLOBAL double *y, RXG_GLOBAL double *rd,
   RXG_GLOBAL int *rii = ri + (size_t)i*RXG_RI;
   RXG_GLOBAL double *yi = y + (size_t)i*RXG_NEQ1;
   int s = rii[RXG_RI_SUB], init = rii[RXG_RI_INIT];
+  RXG_GLOBAL double *ads = ad + (size_t)s*RXG_AD;
+  RXG_GLOBAL int *ais = ai + (size_t)s*RXG_AI;
+  if (ais[RXG_AI_SEEN] != 1) init |= RXG_INIT_AUTO | RXG_INIT_HIST;
   rxg_ctx c;
   rxg_opt o;
   rxg_auto a;
@@ -181,8 +188,6 @@ RXG_FN void rxg_round1(int i, RXG_GLOBAL double *y, RXG_GLOBAL double *rd,
   for (int j = 0; j < RXG_NEQ1; j++) yy[j] = yi[j];
   _rxg_roundOpt(&o, od, oi);
   _rxg_roundCtx(&c, i, rdi, rii, p0, p1, pl, ir, on);
-  RXG_GLOBAL double *ads = ad + (size_t)s*RXG_AD;
-  RXG_GLOBAL int *ais = ai + (size_t)s*RXG_AI;
   if (init & RXG_INIT_AUTO) {
     rxg_autoInit(&a, &o, oi[RXG_OI_STIFFFIRST]);
   } else {
