@@ -121,16 +121,50 @@ counterpart, whatever `gpuBackend` says.
 ## Estimation with nlmixr2
 
 `nlmixr2` passes `rxControl()` to every solve, so a fit uses a GPU method
-by naming it there:
+by naming it there.  This model (from `bench/gpu-nlmixr2.R`) has a
+saturable term in its elimination:
 
 ```{r}
 library(nlmixr2)
+pk <- function() {
+  ini({
+    tka <- log(1.2)
+    tcl <- log(3)
+    tv <- log(30)
+    temax <- log(0.5)
+    eta.ka ~ 0.2
+    eta.cl ~ 0.1
+    eta.v ~ 0.1
+    prop.sd <- 0.1
+    add.sd <- 0.05
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v <- exp(tv + eta.v)
+    emax <- exp(temax)
+    d/dt(depot) <- -ka * depot
+    d/dt(center) <- ka * depot - cl / v * (1 + emax * center / (center + 50)) * center
+    cp <- center / v
+    cp ~ add(add.sd) + prop(prop.sd)
+  })
+}
+
+set.seed(42)
+ev <- et(amt = 300, ii = 12, addl = 2, cmt = "depot") |>
+  et(c(0.5, 1, 2, 4, 6, 12, 24, 30, 36)) |>
+  et(id = 1:500)
+sim <- rxSolve(pk, ev, addDosing = TRUE, returnType = "data.frame")
+dat <- sim[, c("id", "time", "evid", "amt", "cmt", "sim")]
+names(dat)[names(dat) == "sim"] <- "dv"
+dat$dv[dat$evid != 0] <- 0
+
 fit <- nlmixr2(
-  mod, dat, "saem",
+  pk, dat, "saem",
   control = saemControl(rxControl = rxControl(method = "gpuRos54p"))
 )
 fitHost <- nlmixr2(
-  mod, dat, "saem",
+  pk, dat, "saem",
   control = saemControl(rxControl = rxControl(method = "ros54p"))
 )
 ```
