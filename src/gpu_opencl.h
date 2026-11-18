@@ -30,6 +30,9 @@ typedef struct rxGpuCl {
   int dims[RXG_D_N];
 } rxGpuCl;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 int rxGpuClLoad(void);
 rxGpuCl *rxGpuClNew(void *ctx, void *queue, void *kernel, const int *dims,
                     const double *od, const int *oi, int single, int *err);
@@ -37,5 +40,8 @@ int rxGpuClRound(rxGpuCl *g, int n, double *y, double *rd, int *ri,
                  const double *p0, const double *p1, const double *pl,
                  const double *ir, const int *on);
 void rxGpuClFree(rxGpuCl *g);
+#ifdef __cplusplus
+}
+#endif
 
 #endif
