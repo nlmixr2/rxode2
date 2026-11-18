@@ -102,7 +102,11 @@ static void rxGpuFillReq(rxGpuReq &q, int r, int sub, int init, double h,
                          rx_solving_options_ind *ind, const double *yp,
                          double xp, double xout) {
   const int *d = rxGpuSolveCfg.dims;
+  // the device layout bounds every row
   int neq = op->neq, npar = rx->npars, nlhs = op->nlhs;
+  if (neq > d[RXG_D_NEQ1]) neq = d[RXG_D_NEQ1];
+  if (npar > d[RXG_D_NPAR1]) npar = d[RXG_D_NPAR1];
+  if (nlhs > d[RXG_D_NLHS1]) nlhs = d[RXG_D_NLHS1];
   double *y = &q.y[(size_t)r*d[RXG_D_NEQ1]];
   for (int j = 0; j < neq; j++) y[j] = yp[j];
   double *ir = &q.ir[(size_t)r*d[RXG_D_NEQ1]];
@@ -158,9 +162,9 @@ static int rxGpuHostOne(rxGpuReq &q, rxGpuHostState &st, double *yp,
                       q.on.data(), st.ad.data(), st.ai.data(), st.hs.data(),
                       st.hrec.data(), rxGpuSolveCfg.od.data(),
                       rxGpuSolveCfg.oi.data());
+  if (neq > d[RXG_D_NEQ1]) neq = d[RXG_D_NEQ1];
   for (int j = 0; j < neq; j++) yp[j] = q.y[j];
   if (h != NULL) *h = q.rd[RXGS_RD_H];
-  (void)d;
   return q.ri[RXGS_RI_ISTATE];
 }
 
@@ -407,6 +411,7 @@ static int rxGpuAdvance(rx_solve *rx, rx_solving_options *op, rxGpuSub *s,
 // Apply a request's result to its subject
 static void rxGpuResult(rxGpuSub *s, rxGpuReq &q, int r, int neq) {
   const int *d = rxGpuSolveCfg.dims;
+  if (neq > d[RXG_D_NEQ1]) neq = d[RXG_D_NEQ1];
   const double *y = &q.y[(size_t)r*d[RXG_D_NEQ1]];
   for (int j = 0; j < neq; j++) s->yp[j] = y[j];
   s->h = q.rd[(size_t)r*d[RXG_D_RD] + RXGS_RD_H];
@@ -544,8 +549,9 @@ extern "C" void par_gpu(rx_solve *rx) {
     }
   }
   setRxSeedFinal(seed0 + (uint32_t)nsolve);
-  // the rest of the solve (output) runs on the real team
-  op->cores = threads;
+  // the rest of the solve (output) runs on the real team, never wider than
+  // the pools op->cores sized
+  if (threads < op->cores) op->cores = threads;
   if (fail) {
     (Rf_errorcall)(R_NilValue, _("an OpenCL round failed"));
   }
