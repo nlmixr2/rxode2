@@ -2,7 +2,8 @@
 # model with the GPU methods (OpenCL and their CPU build) against host ODE
 # methods.  Every fit uses the same data, model and starting estimates; only
 # rxControl(method=, gpuBackend=) changes.  Covariance and tables are off, so
-# the time is the estimation (and the SAEM -2LL by quadrature).
+# the time is the estimation (and the SAEM -2LL by quadrature); the first
+# OpenCL fit of each estimation method also builds its kernel.
 #
 # Usage: Rscript bench/gpu-nlmixr2.R [sizes] [est]
 #   sizes  comma-separated numbers of subjects (default 500)
@@ -43,7 +44,7 @@ library(nlmixr2)
 
 ## an OpenCL device with double precision (not Mesa's rusticl)
 .dev <- NA_integer_
-if (requireNamespace("OpenCL", quietly = TRUE)) {
+if (requireNamespace("OpenCL", quietly = TRUE) && rxGpuInfo()$available) {
   .d <- rxGpuInfo()$devices
   .dev <- which(.d$fp64 & !grepl("rusticl", .d$platform))[1]
 }
