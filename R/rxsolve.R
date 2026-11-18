@@ -3454,6 +3454,69 @@ rxSolveCacheEnv$.order <- character()
   list(code = .fc, obj = rxode2(.fc))
 }
 
+#' The cached Jacobian-augmented model of a model
+#'
+#' The cache holds the compiled model, not just its text: re-parsing it on
+#' every solve costs O(nStates^2) (nlmixr2/rxode2#1307).
+#'
+#' @param object rxode2 model
+#' @param errEnv environment that receives `errMsg` when generation fails
+#' @return the cache entry (list with `code`, `obj` and `md5`), or
+#'   `NA_character_` when the Jacobian cannot be generated
+#' @noRd
+#' @author Matthew L. Fidler
+.rxJacCached <- function(object, errEnv = NULL) {
+  .key <- paste0(rxModelVars(object)$md5["parsed_md5"], "_jac")
+  tryCatch(
+    {
+      .cached <- .rxSolveCacheGet(.key)
+      if (!is.null(.cached) && .rxJacCacheOk(.cached)) {
+        .cached
+      } else {
+        .entry <- .rxJacStateModel(object)
+        .entry$md5 <- rxModelVars(.entry$obj)$md5["parsed_md5"]
+        .rxSolveCacheSet(.key, .entry)
+        .entry
+      }
+    },
+    error = function(e) {
+      if (!is.null(errEnv)) assign("errMsg", conditionMessage(e), envir = errEnv)
+      .rxSolveCacheSet(.key, NA_character_)
+      NA_character_
+    }
+  )
+}
+
+#' The Jacobian-augmented model for a solve set up from C
+#'
+#' rxSolve() swaps in the model with its analytic Jacobian before an implicit
+#' method solves; rxSolve_() calls this, once at setup, when a solve set up
+#' from C (nlmixr2est) reaches it without one.
+#'
+#' @param object the model being solved
+#' @return the model with its Jacobian when it keeps the parameter, state and
+#'   lhs order of `object`; otherwise `NULL`
+#' @noRd
+#' @author Matthew L. Fidler
+.rxJacSolveModelC <- function(object) {
+  tryCatch(
+    {
+      .c <- .rxJacCached(object)
+      if (identical(.c, NA_character_)) {
+        return(NULL)
+      }
+      .a <- rxModelVars(object)
+      .b <- rxModelVars(.c$obj)
+      if (!identical(.a$params, .b$params) || !identical(.a$state, .b$state) ||
+        !identical(.a$lhs, .b$lhs) || !identical(.a$stateProp, .b$stateProp)) {
+        return(NULL)
+      }
+      .c$obj
+    },
+    error = function(e) NULL
+  )
+}
+
 ## Is a cached Jacobian-augmented model entry still usable?  `NA_character_`
 ## marks a model whose Jacobian generation failed (kept so the failure is not
 ## retried); anything else must be an entry whose compiled model is still
@@ -4019,32 +4082,9 @@ rxSolve.default <- function(
     .mvCur <- rxModelVars(object)
     .jacType <- .mvCur$trans["jac"]
     if (.jacType != "fulluser") {
-      .key <- paste0(.mvCur$md5["parsed_md5"], "_jac")
       .jacEnv <- new.env(parent = emptyenv())
       .jacEnv$errMsg <- NULL
-      # The cache holds the compiled Jacobian-augmented model, not just its
-      # text.  Re-parsing that text on every solve costs O(nStates^2) -- the
-      # augmented model carries a df()/dy() line per Jacobian entry -- and every
-      # implicit method and every AutoSwitch composite went through here on
-      # every call (nlmixr2/rxode2#1307).
-      .jacCache <- tryCatch(
-        {
-          .cached <- .rxSolveCacheGet(.key)
-          if (!is.null(.cached) && .rxJacCacheOk(.cached)) {
-            .cached
-          } else {
-            .entry <- .rxJacStateModel(object)
-            .entry$md5 <- rxModelVars(.entry$obj)$md5["parsed_md5"]
-            .rxSolveCacheSet(.key, .entry)
-            .entry
-          }
-        },
-        error = function(e) {
-          assign("errMsg", conditionMessage(e), envir = .jacEnv)
-          .rxSolveCacheSet(.key, NA_character_)
-          NA_character_
-        }
-      )
+      .jacCache <- .rxJacCached(object, .jacEnv)
       if (!identical(.jacCache, NA_character_)) {
         .jacObject <- .jacCache$obj
         .jacMd5 <- .jacCache$md5
