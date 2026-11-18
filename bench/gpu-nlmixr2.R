@@ -1,16 +1,17 @@
 # Time nlmixr2 estimation (SAEM and FOCEi) of a simulated population PK
 # model with the GPU methods (OpenCL and their CPU build) against host ODE
 # methods.  Every fit uses the same data, model and starting estimates; only
-# rxControl(method=, gpuBackend=) changes.
+# rxControl(method=, gpuBackend=) changes.  Covariance and tables are off, so
+# the time is the estimation (and the SAEM -2LL by quadrature).
 #
 # Usage: Rscript bench/gpu-nlmixr2.R [sizes] [est]
-#   sizes  comma-separated numbers of subjects (default 500,2000)
+#   sizes  comma-separated numbers of subjects (default 500)
 #   est    comma-separated estimation methods (default saem,focei)
 library(rxode2)
 library(nlmixr2)
 
 .args <- commandArgs(TRUE)
-.sizes <- as.integer(strsplit(if (length(.args) >= 1) .args[1] else "500,2000", ",")[[1]])
+.sizes <- as.integer(strsplit(if (length(.args) >= 1) .args[1] else "500", ",")[[1]])
 .ests <- strsplit(if (length(.args) >= 2) .args[2] else "saem,focei", ",")[[1]]
 .cores <- parallel::detectCores()
 
@@ -76,12 +77,12 @@ for (.n in .sizes) {
     for (.c in .cases) {
       .ctl <- if (.est == "saem") {
         saemControl(
-          print = 0,
+          print = 0, calcTables = FALSE, covMethod = "",
           rxControl = rxControl(method = .c[1], gpuBackend = .c[2], gpuDevice = if (is.na(.dev)) NULL else .dev, cores = .cores)
         )
       } else {
         foceiControl(
-          print = 0,
+          print = 0, calcTables = FALSE, covMethod = "",
           rxControl = rxControl(method = .c[1], gpuBackend = .c[2], gpuDevice = if (is.na(.dev)) NULL else .dev, cores = .cores)
         )
       }

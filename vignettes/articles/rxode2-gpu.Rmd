@@ -166,6 +166,42 @@ pocl.  Times in ms, medians of 3.
 A GPU with double precision moves the OpenCL column further; these runs
 use a CPU OpenCL driver.
 
+### Population PK with dosing
+
+`bench/gpu-poppk.R` simulates 10000 subjects with doses, covariates and
+dense sampling, so each subject needs one round per record (171 for `pk2`,
+114 for `tmdd`):
+
+- `pk2`: two-compartment PK, oral doses then IV infusions, weight and a
+  time-varying creatinine clearance (non-stiff);
+- `tmdd`: target-mediated drug disposition with fast binding (stiff).
+
+Same machine, `atol = 1e-8`, `rtol = 1e-6`, times in ms.  "CPU build" is
+`gpuBackend = "cpu"`.
+
+| method | `pk2` | `tmdd` |
+|---|---:|---:|
+| `liblsoda` | 2015 | 3546 |
+| `t54` | 2759 | -- |
+| `ros54p` | 3837 | 4778 |
+| `"t54+ros54p"` | 2833 | 5966 |
+| `"vern76+ros54p"` | 3218 | 6332 |
+| `gpuT54`, CPU build | 2266 | -- |
+| `gpuRos54p`, CPU build | 2486 | 4409 |
+| `"gpuT54+gpuRos54p"`, CPU build | 2272 | 5340 |
+| `"gpuVern76+gpuRos54p"`, CPU build | 2313 | 5603 |
+| `gpuRos54p`, OpenCL | 4745 | 10026 |
+| `"gpuT54+gpuRos54p"`, OpenCL | 4146 | 12702 |
+
+- Explicit methods are not practical for `tmdd` (`t54` took 10.8 s and
+  `gpuT54` 7.5 s at 1000 subjects); the AutoSwitch composites detect the
+  stiffness and switch to `ros54p`, as `liblsoda` switches to BDF.
+- The host and device composites use the same stiffness test, so they
+  switch on the same subjects.
+- With a record per round, the per-round launch and transfer cost of a CPU
+  OpenCL driver outweighs the integration; on such a machine use the CPU
+  build.
+
 ## How it works
 
 1. Each subject runs rxode2's per-subject event loop as a resumable state
