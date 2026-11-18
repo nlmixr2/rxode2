@@ -38,6 +38,7 @@ typedef void (*rxGpuHostRound_t)(int *n, int *nthreads, double *y, double *rd,
 #define RXGS_RD_YJ 6
 #define RXGS_RD_HI 7
 #define RXGS_RD_LOW 8
+#define RXGS_RD_TOLF 9
 #define RXGS_RI_SUB 0
 #define RXGS_RI_COV 1
 #define RXGS_RI_NONMEM 2
@@ -149,6 +150,9 @@ static void rxGpuFillReq(rxGpuReq &q, int r, int sub, int init, double h,
   rd[RXGS_RD_YJ] = ind->yj;
   rd[RXGS_RD_HI] = ind->logitHi;
   rd[RXGS_RD_LOW] = ind->logitLow;
+  // the subject's sticky tolerance factor (atolRtolFactorC_()), read every
+  // request so a change between rounds applies to the next one
+  rd[RXGS_RD_TOLF] = ind->tolFactor;
   int *ri = &q.ri[(size_t)r*d[RXG_D_RI]];
   ri[RXGS_RI_SUB] = sub;
   ri[RXGS_RI_COV] = covType;

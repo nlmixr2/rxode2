@@ -50,8 +50,8 @@ extern "C" void ind_grk4a_0(rx_solve *rx, rx_solving_options *op, int solveid, i
   if (neqOde > 0) {
     solver = new RxGRK4A(c_dydt, calc_jac, neq, neqOde, ind, getSolve(0), (long unsigned)op->mxstep);
       solver->set_quiet(true);
-      if (op->atol2 != NULL) solver->set_abstol(op->ATOL);
-      if (op->rtol2 != NULL) solver->set_reltol(op->RTOL);
+      if (op->atol2 != NULL) solver->set_abstol(ind->atol2 != NULL ? ind->atol2[0] : op->ATOL);
+      if (op->rtol2 != NULL) solver->set_reltol(ind->rtol2 != NULL ? ind->rtol2[0] : op->RTOL);
   }
   double *yp;
 
@@ -196,8 +196,8 @@ extern "C" void grk4a_solveWith1Pt(int *neq, double *yp, double *xp, double xout
     if (neqOde > 0) {
     RxGRK4A solver(dydt, calc_jac, neq, neqOde, ind, yp, (long unsigned)op->mxstep);
     solver.set_quiet(true);
-    if (op->atol2 != NULL) solver.set_abstol(op->ATOL);
-    if (op->rtol2 != NULL) solver.set_reltol(op->RTOL);
+    if (op->atol2 != NULL) solver.set_abstol(ind->atol2 != NULL ? ind->atol2[0] : op->ATOL);
+    if (op->rtol2 != NULL) solver.set_reltol(ind->rtol2 != NULL ? ind->rtol2[0] : op->RTOL);
     grk4a_do_steps(&solver, ind, op, dydt, calc_jac, neq, yp, *xp, xout);
 
     if (ind->rc[0] < 0) { *istate = -1; return; }

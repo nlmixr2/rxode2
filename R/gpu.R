@@ -687,6 +687,7 @@ rxGpuInfo <- function() {
 #' Shared integrator options of a round
 #'
 #' @inheritParams .rxGpuHostSolve
+#' @param maxAtolRtolFactor cap on a request's loosened tolerances
 #' @return list with the doubles `od` and integers `oi` (rxg_round.h)
 #' @noRd
 #' @author Matthew L. Fidler
@@ -704,18 +705,28 @@ rxGpuInfo <- function() {
   autoSwitchMaxNonstiff = 3L,
   autoSwitchSwitchMax = 5L,
   autoSwitchStiffFirst = FALSE,
-  histCap = 5000L
+  histCap = 5000L,
+  maxAtolRtolFactor = Inf
 ) {
   .n <- max(1L, lib$neq)
   .m <- .rxGpuMethods[match.arg(method, names(.rxGpuMethods))]
+  ## as rxSolve() fills its tolerances: the given values, then the first
+  .tol <- function(x) {
+    .v <- rep(x[1], .n)
+    .k <- min(.n, length(x))
+    .v[seq_len(.k)] <- x[seq_len(.k)]
+    .v
+  }
+  if (is.null(maxAtolRtolFactor)) maxAtolRtolFactor <- Inf
   list(
     od = as.double(c(
-      rep_len(atol, .n),
-      rep_len(rtol, .n),
+      .tol(atol),
+      .tol(rtol),
       hmin,
       hmax,
       autoSwitchNonstifftol,
-      autoSwitchStifftol
+      autoSwitchStifftol,
+      maxAtolRtolFactor
     )),
     oi = as.integer(c(
       .m,
@@ -855,6 +866,7 @@ rxGpuInfo <- function() {
 #' @param init reset the subject's AutoSwitch state and restart its delay()
 #'   history at `t0` (first interval of a subject)
 #' @inheritParams .rxGpuHostEval
+#' @param tolFactor each subject's tolerance factor
 #' @return list of flat request vectors
 #' @noRd
 #' @author Matthew L. Fidler
@@ -875,7 +887,8 @@ rxGpuInfo <- function() {
   tpk = t0,
   tbs = c(1, 2, 1, 0),
   covType = 0L,
-  nonmem = FALSE
+  nonmem = FALSE,
+  tolFactor = 1
 ) {
   checkmate::assertIntegerish(sub, lower = 1, upper = run$nsub, any.missing = FALSE, min.len = 1, unique = TRUE)
   .lib <- run$lib
@@ -888,7 +901,7 @@ rxGpuInfo <- function() {
     as.vector(t(.m))
   }
   .lay <- run$lib$layout
-  .rd <- cbind(t0, t1, h, curShift, tpk, matrix(tbs, .n, 4, byrow = TRUE))
+  .rd <- cbind(t0, t1, h, curShift, tpk, matrix(tbs, .n, 4, byrow = TRUE), rep_len(if (is.null(tolFactor)) 1 else as.double(tolFactor), .n))
   .init <- ifelse(init, 3L, 0L)
   .ri <- cbind(as.integer(sub) - 1L, covType, as.integer(nonmem), .init, matrix(0L, .n, .lay["ri"] - 4L))
   list(
@@ -1008,6 +1021,10 @@ rxGpuInfo <- function() {
       return("steady state in delay() models")
     }
   }
+  ## the device code does not call registered dydt forcing hooks
+  if (.Call(`_rxode2_rxDydtForceN`) > 0L) {
+    return("registered dydt forcing (rxRegisterDydtForce())")
+  }
   ## a resampled covariate may change inside an interval
   if (!is.null(ctl$resample) && !isFALSE(ctl$resample)) {
     return("resampled covariates")
@@ -1082,7 +1099,8 @@ rxGpuInfo <- function() {
     autoSwitchMaxStiff = ctl$autoSwitchMaxStiff,
     autoSwitchMaxNonstiff = ctl$autoSwitchMaxNonstiff,
     autoSwitchSwitchMax = ctl$autoSwitchSwitchMax,
-    autoSwitchStiffFirst = isTRUE(as.logical(ctl$autoSwitchStiffFirst))
+    autoSwitchStiffFirst = isTRUE(as.logical(ctl$autoSwitchStiffFirst)),
+    maxAtolRtolFactor = ctl$maxAtolRtolFactor
   )
   .round <- getNativeSymbolInfo("rxg_host_round", .run$lib$dll)$address
   .Call(`_rxode2_rxGpuSolveSet`, .round, .run$ptr, .run$dims, .run$opt$od, .run$opt$oi, .threads)

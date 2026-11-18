@@ -18,7 +18,8 @@
 #define RXG_RD_YJ 6
 #define RXG_RD_HI 7
 #define RXG_RD_LOW 8
-#define RXG_RD 9
+#define RXG_RD_TOLF 9  // the subject's tolerance factor (ind->tolFactor)
+#define RXG_RD 10
 // ri: ints per request
 #define RXG_RI_SUB 0
 #define RXG_RI_COV 1
@@ -37,8 +38,9 @@
 #define RXG_AI 8
 // hs: the delay() history header per subject (records in hrec)
 #define RXG_HHDR (7 + RXG_NEQ1 + RXG_NLAG + RXG_NBP)
-// od/oi: options shared by every request
-#define RXG_OD (2*RXG_NEQ1 + 4) // atol, rtol, hmin, hmax, nonstifftol, stifftol
+// od/oi: options shared by every request; a request's tolerances are
+// min(tol*RXG_RD_TOLF, the cap), as iniSubject() sets them on the host
+#define RXG_OD (2*RXG_NEQ1 + 5) // atol, rtol, hmin, hmax, nonstifftol, stifftol, cap
 #define RXG_OI_METHOD 0
 #define RXG_OI_MXSTEP 1
 #define RXG_OI_MAXSTIFF 2
@@ -147,10 +149,12 @@ RXG_FN void _rxg_roundCtx(rxg_ctx *c, int i, RXG_GLOBAL const double *rd,
 }
 
 RXG_FN void _rxg_roundOpt(rxg_opt *o, RXG_GLOBAL const double *od,
-                          RXG_GLOBAL const int *oi) {
+                          RXG_GLOBAL const int *oi, double tolf) {
+  double cap = od[2*RXG_NEQ1 + 4];
   for (int j = 0; j < RXG_NEQ1; j++) {
-    o->atol[j] = od[j];
-    o->rtol[j] = od[RXG_NEQ1 + j];
+    double at = od[j]*tolf, rt = od[RXG_NEQ1 + j]*tolf;
+    o->atol[j] = at < cap ? at : cap;
+    o->rtol[j] = rt < cap ? rt : cap;
   }
   o->hmin = od[2*RXG_NEQ1];
   o->hmax = od[2*RXG_NEQ1 + 1];
@@ -186,7 +190,7 @@ RXG_FN void rxg_round1(int i, RXG_GLOBAL double *y, RXG_GLOBAL double *rd,
   int cnt[RXG_NCNT];
   for (int j = 0; j < RXG_NCNT; j++) cnt[j] = 0;
   for (int j = 0; j < RXG_NEQ1; j++) yy[j] = yi[j];
-  _rxg_roundOpt(&o, od, oi);
+  _rxg_roundOpt(&o, od, oi, rdi[RXG_RD_TOLF]);
   _rxg_roundCtx(&c, i, rdi, rii, p0, p1, pl, ir, on);
   if (init & RXG_INIT_AUTO) {
     rxg_autoInit(&a, &o, oi[RXG_OI_STIFFFIRST]);

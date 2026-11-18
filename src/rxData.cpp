@@ -1859,6 +1859,10 @@ extern "C" void setZeroMatrix(int which) {
 }
 
 double maxAtolRtolFactor = 0.1;
+// the model's d/dt() reads time (flags["timeDep"]; 1 for models built
+// before the flag): ros54p evaluates df/dt only then or with a covariate
+// changing over the interval
+extern "C" int rxModelTimeDep = 1;
 
 // Upper bound for a subject's accumulated tolerance MULTIPLIER.
 // `maxAtolRtolFactor` bounds the resulting tolerance, not the multiplier, and
@@ -5282,6 +5286,16 @@ extern "C" void rxRegisterDydtForce(t_rxDydtForce cb) {
   if (_rxNDydtForce < RX_MAX_DYDT_FORCE) _rxDydtForce[_rxNDydtForce++] = cb;
 }
 
+// registered forcing hooks (they make d/dt() time dependent, and the GPU
+// methods' device code does not call them)
+extern "C" int rxDydtForceN(void) {
+  return _rxNDydtForce;
+}
+
+extern "C" SEXP _rxode2_rxDydtForceN(void) {
+  return Rf_ScalarInteger(_rxNDydtForce);
+}
+
 extern "C" void rxRemoveDydtForce(t_rxDydtForce cb) {
   for (int i = 0; i < _rxNDydtForce; ++i) {
     if (_rxDydtForce[i] == cb) {
@@ -6987,6 +7001,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
     op->useDense = (int)asBool(rxControl[Rxc_dense], "dense");
     op->hasDelay = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_hasDelay];
+    rxModelTimeDep = (Rf_length(rxSolveDat->mv[RxMv_flags]) > RxMvFlag_timeDep) ?
+      INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_timeDep] : 1;
     // Build the delay-history column map: record dense history only for the ODE
     // states that delay() actually looks back on (propDelay bit in stateProp).
     // delayState[col] = ODE state index for history column `col`; delayCol[state]
