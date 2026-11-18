@@ -4132,8 +4132,8 @@ rxSolve.default <- function(
         envir = envir
       ))
     }
-    # stays installed after the solve (ind_solve() re-solves subjects, as
-    # nlmixr2 does) until the next GPU solve replaces it
+    # serves this solve's setup (and its ind_solve() re-solves); a solve set up
+    # without it, from C or for another model, uses the host counterpart
     .ctl <- .rxGpuSolveInstall(object, .ctl, .rxGpuSolveCount(params, events, .ctl))
   }
   .hasDelay <- isTRUE(rxModelVars(object)$flags[["hasDelay"]] == 1L)

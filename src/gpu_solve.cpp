@@ -48,6 +48,8 @@ typedef void (*rxGpuHostRound_t)(int *n, int *nthreads, double *y, double *rd,
 
 typedef struct rxGpuSolveCfg_t {
   int on;                  // a GPU solve is set up
+  int armed;               // installed by R for the next solve setup
+  std::string key;         // the model it is for (model_vars name)
   int threads;             // OpenMP team of the host work
   rxGpuHostRound_t round;  // host build of the round
   rxGpuCl *cl;             // OpenCL run (NULL: CPU backend)
@@ -56,7 +58,7 @@ typedef struct rxGpuSolveCfg_t {
   std::vector<int> oi;
 } rxGpuSolveCfg_t;
 
-static rxGpuSolveCfg_t rxGpuSolveCfg = {0, 1, NULL, NULL, {0}, {}, {}};
+static rxGpuSolveCfg_t rxGpuSolveCfg = {0, 0, std::string(), 1, NULL, NULL, {0}, {}, {}};
 
 // error texts of the device return codes (postSolve() indexes -istate-1)
 static const char *rxGpuErr[] = {
@@ -589,10 +591,23 @@ static int par_gpu0(rx_solve *rx) {
 //   dims    the layout (RXG_D_*; dims[RXG_D_NSUB] slots)
 //   od, oi  integrator options
 //   threads OpenMP team
+// Solve setup (rxSolve_()) of a GPU method: 1 when R installed the GPU setup
+// for this model just before (it then serves this solve and its ind_solve()
+// re-solves); 0 otherwise -- a solve set up from C, as nlmixr2est's FOCEi
+// does, or of another model -- and the method runs as its host counterpart.
+extern "C" int rxGpuSolveClaim(const char *key) {
+  int ok = rxGpuSolveCfg.on && rxGpuSolveCfg.armed && rxGpuSolveCfg.round != NULL &&
+    key != NULL && rxGpuSolveCfg.key == key;
+  rxGpuSolveCfg.armed = 0;
+  if (!ok) rxGpuSolveCfg.on = 0;
+  return ok;
+}
+
 extern "C" SEXP _rxode2_rxGpuSolveSet(SEXP round, SEXP cl, SEXP dims, SEXP od,
-                                      SEXP oi, SEXP threads) {
+                                      SEXP oi, SEXP threads, SEXP key) {
   if (Rf_isNull(round)) {
     rxGpuSolveCfg.on = 0;
+    rxGpuSolveCfg.armed = 0;
     rxGpuSolveCfg.round = NULL;
     rxGpuSolveCfg.cl = NULL;
     return R_NilValue;
@@ -615,7 +630,10 @@ extern "C" SEXP _rxode2_rxGpuSolveSet(SEXP round, SEXP cl, SEXP dims, SEXP od,
   rxGpuSolveCfg.od.assign(REAL(od), REAL(od) + Rf_length(od));
   rxGpuSolveCfg.oi.assign(INTEGER(oi), INTEGER(oi) + Rf_length(oi));
   rxGpuSolveCfg.threads = Rf_asInteger(threads);
+  if (TYPEOF(key) != STRSXP || Rf_length(key) != 1) (Rf_errorcall)(R_NilValue, _("invalid model key"));
+  rxGpuSolveCfg.key = CHAR(STRING_ELT(key, 0));
   rxGpuSolveCfg.on = 1;
+  rxGpuSolveCfg.armed = 1;
   return R_NilValue;
 }
 
