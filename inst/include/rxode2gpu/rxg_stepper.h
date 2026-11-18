@@ -168,12 +168,20 @@ RXG_FN double _rxg_hinit(double t, double dir, double hmax, int order,
 #define RXG_UNROLL
 #endif
 
+// The explicit steps inline with their literal tableaux so the stage loops
+// have constant trip counts (and unroll)
+#if defined(__GNUC__) || defined(__clang__) || defined(__OPENCL_VERSION__)
+#define RXG_FN_INLINE static inline __attribute__((always_inline))
+#else
+#define RXG_FN_INLINE RXG_FN
+#endif
+
 // One step of an explicit pair with ns stages, A packed by rows (row i has i
 // entries), b the solution weights, bt = b - bhat.  With fsal the stage after
 // the last is f(t + h, y1) (weight 0 in b), and k[0] holds f(t, y) on entry.
 // The states of stages sa and sb (sb == ns: the solution) go to ya and yb
 // for the stiffness probe.
-RXG_FN void _rxg_erkStep(int ns, int fsal, const double *A, const double *cc,
+RXG_FN_INLINE void _rxg_erkStep(int ns, int fsal, const double *A, const double *cc,
                          const double *b, const double *bt, double t,
                          double h, double *y, double *y1, double *e,
                          double *k, int sa, int sb, double *ya, double *yb,
@@ -218,7 +226,7 @@ RXG_FN void _rxg_erkStep(int ns, int fsal, const double *A, const double *cc,
 
 // stiffness probe: stage 6 and the FSAL stage, both at t + h; stability
 // size 3.5068
-RXG_FN void _rxg_rkt54Step(double t, double h, double *y, double *y1,
+RXG_FN_INLINE void _rxg_rkt54Step(double t, double h, double *y, double *y1,
                            double *e, double *k, double *ya, double *yb,
                            const rxg_ctx *c, int *cnt) {
   const double A[15] = {
@@ -261,7 +269,7 @@ RXG_FN void _rxg_rkt54Step(double t, double h, double *y, double *y1,
 }
 
 // stiffness probe: stages 9 and 10, both at t + h; stability size 4.64
-RXG_FN void _rxg_vern76Step(double t, double h, double *y, double *y1,
+RXG_FN_INLINE void _rxg_vern76Step(double t, double h, double *y, double *y1,
                             double *e, double *k, double *ya, double *yb,
                             const rxg_ctx *c, int *cnt) {
   const double A[45] = {
