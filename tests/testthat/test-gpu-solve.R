@@ -182,6 +182,66 @@ rxTest({
     }
   })
 
+  test_that("GPU methods refuse what they cannot solve and fall back under auto", {
+    ## delay() read by an output: the output step needs the host history
+    .m <- rxode2({
+      x(0) <- 0
+      d/dt(x) <- 1
+      lagged <- delay(x, 1)
+    })
+    .ev <- et(c(0, 1, 2, 3))
+    expect_error(rxSolve(.m, .ev, method = "gpuRkt54", gpuBackend = "cpu"), "delay")
+    expect_message(.r <- rxSolve(.m, .ev, method = "gpuRkt54"), "default method")
+    expect_equal(.r$lagged, c(0, 0, 1, 2), tolerance = 1e-6)
+    ## steady state with delay(): each interval would restart the history
+    .d <- rxode2({
+      d/dt(x) <- -x
+      d/dt(z) <- delay(x, 2) - z
+    })
+    .ev <- et(amt = 1, ii = 1, ss = 1, cmt = "x") |> et(c(0.5, 1))
+    expect_error(rxSolve(.d, .ev, method = "gpuVern76", gpuBackend = "cpu"), "steady state")
+    expect_message(rxSolve(.d, .ev, method = "gpuVern76"), "default method")
+    ## resampled covariates may change inside an interval
+    .p <- .pk()
+    .ev <- as.data.frame(et(amt = 300) |> et(c(1, 4, 8)))
+    .ev$wt <- 70
+    expect_error(
+      suppressMessages(rxSolve(.p, .ev, method = "gpuVern76", gpuBackend = "cpu", resample = TRUE, nSub = 2)),
+      "resampled"
+    )
+  })
+
+  test_that("GPU methods honor safeLog = 2", {
+    .m <- rxode2({
+      d/dt(x) <- log(k)
+    })
+    .ev <- et(c(0, 1))
+    for (.meth in c("gpuRkt54", "gpuRos54p")) {
+      .r <- rxSolve(.m, .ev, c(k = 0), inits = c(x = 0), method = .meth, gpuBackend = "cpu", safeLog = 2L)
+      expect_equal(.r$x[2], log(.Machine$double.eps), tolerance = 1e-8, label = .meth)
+    }
+  })
+
+  test_that("ros54p keeps its order for models that read time", {
+    .m <- rxode2({
+      d/dt(x) <- -2 * x + cos(3 * t)
+    })
+    .ev <- et(seq(0, 5, by = 0.5))
+    .ex <- function(t) (2 * cos(3 * t) + 3 * sin(3 * t)) / 13 + (1 - 2 / 13) * exp(-2 * t)
+    for (.meth in c("ros54p", "gpuRos54p")) {
+      .r <- suppressMessages(rxSolve(
+        .m,
+        .ev,
+        inits = c(x = 1),
+        method = .meth,
+        gpuBackend = "cpu",
+        atol = 1e-10,
+        rtol = 1e-10
+      ))
+      expect_equal(.r$x, .ex(.r$time), tolerance = 1e-8, label = .meth)
+    }
+  })
+
   test_that("ind_solve() re-solves subjects of a GPU solve (nlmixr2's per-subject loop)", {
     .m <- rxode2({
       d/dt(depot) <- -ka * depot
