@@ -399,7 +399,8 @@ RXG_FN int _rxg_luW(const double *J, double hg, double *W, int *piv) {
         W[i*RXG_NEQ1 + j] = sw ? a : b;
       }
     }
-    double inv = 1.0/W[k*RXG_NEQ1 + k];
+    double inv = ok ? 1.0/W[k*RXG_NEQ1 + k] : 0.0;
+    ok = ok && isfinite(inv);
     W[k*RXG_NEQ1 + k] = inv;
     RXG_UNROLL
     for (int i = k + 1; i < RXG_NEQ; i++) {
@@ -449,8 +450,10 @@ RXG_FN void _rxg_luSolve(const double *W, const int *piv, double *x) {
 
 #if RXG_WINV
 // Wi = W^-1 from the factors of _rxg_luW() (columns solved from unit
-// vectors), row major
-RXG_FN void _rxg_luInv(const double *W, const int *piv, double *Wi) {
+// vectors), row major; returns 0 when an entry overflows (the stages then
+// solve with the factors)
+RXG_FN int _rxg_luInv(const double *W, const int *piv, double *Wi) {
+  int ok = 1;
   RXG_UNROLL
   for (int j = 0; j < RXG_NEQ; j++) {
     double x[RXG_NEQ1];
@@ -458,8 +461,12 @@ RXG_FN void _rxg_luInv(const double *W, const int *piv, double *Wi) {
     for (int i = 0; i < RXG_NEQ; i++) x[i] = (i == j) ? 1.0 : 0.0;
     _rxg_luSolve(W, piv, x);
     RXG_UNROLL
-    for (int i = 0; i < RXG_NEQ; i++) Wi[i*RXG_NEQ1 + j] = x[i];
+    for (int i = 0; i < RXG_NEQ; i++) {
+      Wi[i*RXG_NEQ1 + j] = x[i];
+      ok = ok && isfinite(x[i]);
+    }
   }
+  return ok;
 }
 
 // x = Wi x
@@ -475,7 +482,11 @@ RXG_FN void _rxg_invSolve(const double *Wi, double *x) {
     x[i] = s;
   }
 }
-#define _rxg_wSolve(x) _rxg_invSolve(Wi, x)
+#define _rxg_wSolve(x)                              \
+  do {                                              \
+    if (useInv) _rxg_invSolve(Wi, x);               \
+    else _rxg_luSolve(W, piv, x);                   \
+  } while (0)
 #else
 #define _rxg_wSolve(x) _rxg_luSolve(W, piv, x)
 #endif
@@ -498,7 +509,7 @@ RXG_FN int _rxg_ros54pStep(double t, double h, double *y, double *y1,
   if (!_rxg_luW(J, h*0.21193756319429014, W, piv)) return 0;
 #if RXG_WINV
   double Wi[RXG_NEQ1*RXG_NEQ1];
-  _rxg_luInv(W, piv, Wi);
+  int useInv = _rxg_luInv(W, piv, Wi);
 #endif
   double ih = 1.0/h;
   double *k1 = k, *k2 = k + RXG_NEQ1, *k3 = k + 2*RXG_NEQ1,
