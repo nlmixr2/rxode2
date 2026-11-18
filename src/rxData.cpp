@@ -1866,6 +1866,7 @@ extern "C" int rxModelTimeDep = 1;
 extern "C" int rxGpuSolveClaim(const char *key);
 extern "C" int rxGpuSolveSlots(void);
 extern "C" void rxGpuSolveOneThread(void);
+extern "C" void rxGpuSolveWorkers(int n);
 
 // Upper bound for a subject's accumulated tolerance MULTIPLIER.
 // `maxAtolRtolFactor` bounds the resulting tolerance, not the multiplier, and
@@ -7332,6 +7333,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       if (op->cores <= 1) rxGpuSolveOneThread();
       // each subject in flight owns a per-thread slot (src/gpu_solve.cpp)
       if (rxGpuSolveSlots() > op->cores) op->cores = rxGpuSolveSlots();
+      // a reusable workspace per thread slot for ind_solve() and steady state
+      rxGpuSolveWorkers(op->cores);
     }
     seedEng((int)(op->cores));
     _p_ensureLinCmtA((int)op->cores);
