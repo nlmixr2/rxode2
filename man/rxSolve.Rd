@@ -37,8 +37,8 @@ rxSolve(
   method = c("liblsoda", "lsoda", "dop853", "indLin", "f78", "rk4", "ck54", "ab", "abm",
     "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode",
     "trapz", "ssp3", "f32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98",
-    "ros43", "ros6", "ros54p", "gpuRkt54", "gpuVern76", "gpuRos54p",
-    "gpuRkt54+gpuRos54p", "gpuVern76+gpuRos54p", "backwardEuler", "gauss6", "iiic6",
+    "ros43", "ros6", "ros54p", "gpuT54", "gpuVern76", "gpuRos54p",
+    "gpuT54+gpuRos54p", "gpuVern76+gpuRos54p", "backwardEuler", "gauss6", "iiic6",
     "radauiia5", "geng5", "sdirk43", "euler", "midpoint", "heun", "ssp22", "rk3",
     "ssp53", "s4", "r4", "ls44", "ls54", "ssp54", 
      "s5", "rk5", "c5", "l5", "lk5a",
@@ -405,7 +405,7 @@ Adaptive step size via its embedded 4th-order solution.  Requires an analytical
 Jacobian (auto-computed from the model when not provided); falls back to
 \code{liblsoda} if Jacobian generation fails.  \code{"t54+ros54p"} and \code{"vern76+ros54p"}
 are its AutoSwitch composites.
-\item \code{"gpuRkt54"}, \code{"gpuVern76"}, \code{"gpuRos54p"}, \code{"gpuRkt54+gpuRos54p"},
+\item \code{"gpuT54"}, \code{"gpuVern76"}, \code{"gpuRos54p"}, \code{"gpuT54+gpuRos54p"},
 \code{"gpuVern76+gpuRos54p"} -- the same integrators (Tsitouras 5(4) as
 \code{"t54"}, Verner 7(6) as \code{"vern76"}, Rodas5P as \code{"ros54p"} with the
 analytical Jacobian, and their AutoSwitch composites) as device code: each
@@ -1573,8 +1573,8 @@ began, so the result is that of \code{"iterate"}.  A fixed dose count
 \code{bench/ss_anderson_1762.R} in the package sources for the benchmark
 behind the default.}
 
-\item{gpuBackend}{Where the GPU methods (\code{"gpuRkt54"}, \code{"gpuVern76"},
-\code{"gpuRos54p"}, \code{"gpuRkt54+gpuRos54p"}, \code{"gpuVern76+gpuRos54p"})
+\item{gpuBackend}{Where the GPU methods (\code{"gpuT54"}, \code{"gpuVern76"},
+\code{"gpuRos54p"}, \code{"gpuT54+gpuRos54p"}, \code{"gpuVern76+gpuRos54p"})
 integrate: \code{"opencl"} on an OpenCL device through the suggested
 \code{OpenCL} package, \code{"cpu"} with the same integrators built as host C on
 \code{cores} threads, or \code{"auto"} (the default) for OpenCL when a device with

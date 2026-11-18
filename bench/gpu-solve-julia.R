@@ -59,7 +59,7 @@ if (is.na(.dev)) {
 )
 ## rxode2 step method (as in the Julia CSV), GPU method, host method
 .cases <- list(
-  c("lorenz", "rkt54", "gpuRkt54", "t54"),
+  c("lorenz", "rkt54", "gpuT54", "t54"),
   c("lorenz", "vern76", "gpuVern76", "vern76"),
   c("lorenz", "ros54p", "gpuRos54p", "ros54p"),
   c("robertson", "ros54p", "gpuRos54p", "ros54p")
