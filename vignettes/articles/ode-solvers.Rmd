@@ -270,10 +270,11 @@ rxSolve(model, events, method = "dop853+sdirk43")
 
 Within each ODE interval (the segment between events/observations),
 `rxode2` runs the primary (non-stiff) solver first.  If that probe
-reports stiffness -- because the non-stiff solver failed (its adaptive
-step size collapsed) or because DOP853's built-in dominant-eigenvalue
-stiffness estimator fired -- the interval is re-solved from its start
-with the stiff secondary.  This is a *reactive* scheme: rather than
+reports stiffness -- because the dominant-eigenvalue stiffness estimate of a
+`dop853`, `t54` or `vern76` primary fired, or because the non-stiff solver
+failed (its adaptive step size collapsed) -- the stiff secondary takes over:
+from the point the estimate fired, or from the start of the interval after a
+failure.  This is a *reactive* scheme: rather than
 computing a separate stiffness estimate at the composite level, it
 delegates detection to the primary's own per-step estimator and to solve
 success/failure.  Once consecutive stiff detections cross a threshold the
@@ -366,9 +367,11 @@ tight tolerances, and `sdirk43` when the stiff regions are severe.
 | `"dop853+ros43"` | -- | DOP853 primary; more robust stiff handling |
 | `"bs32+ros4"` | `AutoBS3(RosShamp4())` | Low-order primary; useful for rough problems or coarser tolerances |
 
-A `dop853` primary detects stiffness itself, from the estimate its steps already
-produce, and so can switch before it is in trouble.  Every other primary switches
-when it fails, which still works but costs the failed attempt.  `dense=TRUE` is
+A `dop853`, `t54` or `vern76` primary detects stiffness itself, from the
+estimate its steps already produce (Hairer's test, the one Julia's AutoSwitch
+uses), and so can switch before it is in trouble; the GPU composites use the same
+test.  Every other primary switches when it fails, which still works but costs
+the failed attempt.  `dense=TRUE` is
 supported for `"dop853+ros4"` only: the secondary has to be dense too (`ros4` is
 the only stiff method that is), and taking over a dense segment part-way through
 is implemented for a `dop853` primary.
