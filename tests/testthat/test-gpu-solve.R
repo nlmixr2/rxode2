@@ -182,6 +182,34 @@ rxTest({
     }
   })
 
+  test_that("ind_solve() re-solves subjects of a GPU solve (nlmixr2's per-subject loop)", {
+    .m <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - ke * center
+    })
+    .ev <- et(amt = 100, ii = 12, addl = 2, id = 1:6) |> et(seq(0, 36, by = 3), id = 1:6)
+    .drive <- function(method, ...) {
+      suppressMessages(rxSolve(
+        .m,
+        c(ka = 1, ke = 0.2),
+        .ev,
+        method = method,
+        cores = 2L,
+        atol = 1e-10,
+        rtol = 1e-10,
+        ...
+      ))
+      .Call("_rxode2_rxIndLinDriveTeam", 2L, FALSE, PACKAGE = "rxode2")
+    }
+    for (.meth in c("gpuVern76", "gpuRkt54+gpuRos54p")) {
+      .d <- .drive(.meth, gpuBackend = "cpu")
+      .h <- .drive(.hostOf[[.meth]])
+      expect_equal(unname(.d[["nsolve"]]), 6)
+      expect_equal(unname(.d[["errN"]]), 0)
+      expect_equal(unname(.d[["checksum"]]), unname(.h[["checksum"]]), tolerance = 1e-7, label = .meth)
+    }
+  })
+
   test_that("the OpenCL backend matches the CPU build", {
     skip_if(!("opencl" %in% .backends()), "no OpenCL device with double precision")
     .m <- .pk()
