@@ -2262,6 +2262,9 @@ extern "C" void ind_rkz10(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_ini
 extern "C" void ind_rko10(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 extern "C" void ind_rkh10(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 extern "C" void par_ros6(rx_solve *rx);
+extern "C" void gpu_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void ind_gpu(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void par_gpu(rx_solve *rx);
 extern "C" void ros54p_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void ind_ros54p(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 extern "C" void par_ros54p(rx_solve *rx);
@@ -2484,6 +2487,9 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 32:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); ros6_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
+    case 110: case 111: case 112: case 113: case 114: // device integrators (gpu_solve.cpp)
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); gpu_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 108:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); ros54p_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
@@ -9413,6 +9419,7 @@ static void ind_solve0(rx_solve *rx, unsigned int cid,
       case 31: ind_grk4a(rx, cid, c_dydt, u_inis); break;
       case 32: ind_ros6(rx, cid, c_dydt, u_inis); break;
       case 108: ind_ros54p(rx, cid, c_dydt, u_inis); break;
+      case 110: case 111: case 112: case 113: case 114: ind_gpu(rx, cid, c_dydt, u_inis); break;
       case 33: ind_backwardEuler(rx, cid, c_dydt, u_inis); break;
       case 34: ind_gauss6(rx, cid, c_dydt, u_inis); break;
       case 35: ind_iiic6(rx, cid, c_dydt, u_inis); break;
@@ -9874,6 +9881,7 @@ extern "C" void par_solve(rx_solve *rx) {
       case 31: par_grk4a(rx); break;
       case 32: par_ros6(rx); break;
       case 108: par_ros54p(rx); break;
+      case 110: case 111: case 112: case 113: case 114: par_gpu(rx); break;
       case 33: par_backwardEuler(rx); break;
       case 34: par_gauss6(rx); break;
       case 35: par_iiic6(rx); break;
@@ -10049,6 +10057,7 @@ extern "C" double rxLhsP(int i, rx_solve *rx, unsigned int id){
 #include "vern98.cpp"
 #include "grk4a.cpp"
 #include "implicit_solvers.cpp"
+#include "gpu_solve.cpp"
 #include "euler.cpp"
 #include "midpoint.cpp"
 #include "heun.cpp"

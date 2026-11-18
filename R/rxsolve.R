@@ -1130,6 +1130,22 @@
 #'   `bench/ss_anderson_1762.R` in the package sources for the benchmark
 #'   behind the default.
 #'
+#' @param gpuBackend Where the GPU methods (`"gpuRkt54"`, `"gpuVern76"`,
+#'   `"gpuRos54p"`, `"gpuRkt54+gpuRos54p"`, `"gpuVern76+gpuRos54p"`)
+#'   integrate: `"opencl"` on an OpenCL device through the suggested
+#'   `OpenCL` package, `"cpu"` with the same integrators built as host C on
+#'   `cores` threads, or `"auto"` (the default) for OpenCL when a device with
+#'   the requested precision is available and the CPU otherwise.  See
+#'   [rxGpuInfo()].
+#'
+#' @param gpuDevice OpenCL device (its `index` in `rxGpuInfo()$devices`);
+#'   `NULL` (the default) prefers a GPU with the requested precision.
+#'
+#' @param gpuPrecision `"double"` (the default) or `"float"` (OpenCL only).
+#'
+#' @param gpuBatch The most subjects the GPU methods integrate in one round
+#'   (default 4096).  Each needs its own scratch while it waits.
+#'
 #' @param linCmtGillK The total number of possible steps to determine the
 #'     optimal forward/central difference step size per parameter (by
 #'     the Gill 1983 method).  If 0, no optimal step size is
@@ -1755,6 +1771,10 @@ rxSolve <- function(
   durAtDoseTime = NULL,
   resetCancelsPending = TRUE,
   ssMethod = c("anderson", "iterate"),
+  gpuBackend = c("auto", "opencl", "cpu"),
+  gpuDevice = NULL,
+  gpuPrecision = c("double", "float"),
+  gpuBatch = 4096L,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -2080,6 +2100,10 @@ rxSolve <- function(
     } else {
       .ssMethod <- match(match.arg(ssMethod), c("iterate", "anderson")) - 1L
     }
+    gpuBackend <- match.arg(gpuBackend)
+    gpuPrecision <- match.arg(gpuPrecision)
+    checkmate::assertIntegerish(gpuDevice, lower = 1, len = 1, any.missing = FALSE, null.ok = TRUE)
+    checkmate::assertIntegerish(gpuBatch, lower = 1, len = 1, any.missing = FALSE)
     if (nonmem && missing(addlKeepsCov)) {
       # NONMEM keeps a dose record's covariates with the dose
       addlKeepsCov <- TRUE
@@ -2581,7 +2605,11 @@ rxSolve <- function(
       rateAtDoseTime = rateAtDoseTime,
       durAtDoseTime = durAtDoseTime,
       resetCancelsPending = resetCancelsPending,
-      ssMethod = .ssMethod
+      ssMethod = .ssMethod,
+      gpuBackend = gpuBackend,
+      gpuDevice = gpuDevice,
+      gpuPrecision = gpuPrecision,
+      gpuBatch = as.integer(gpuBatch)
     )
     class(.ret) <- "rxControl"
     return(.ret)
@@ -4199,6 +4227,33 @@ rxSolve.default <- function(
         }
       }
     }
+  }
+  # GPU methods: the device code of the model (with its Jacobian for the
+  # ros54p methods), set up once here; src/gpu_solve.cpp runs the rounds
+  if (isTRUE(.ctl$method %in% 110:114)) {
+    .gpuModel <- .rxGpuSolveModel(object, .ctl$method)
+    if (rxModelVars(.gpuModel)$md5["parsed_md5"] != rxModelVars(object)$md5["parsed_md5"]) {
+      object <- .gpuModel
+      force(params)
+      force(inits)
+      force(indOwnAlloc)
+      force(theta)
+      force(eta)
+      force(envir)
+      return(rxSolve.default(
+        object,
+        params = params,
+        events = .eventsUnmirrored,
+        inits = inits,
+        ...,
+        indOwnAlloc = indOwnAlloc,
+        theta = theta,
+        eta = eta,
+        envir = envir
+      ))
+    }
+    .ctl <- .rxGpuSolveInstall(object, .ctl, .rxGpuSolveCount(params, events, .ctl))
+    on.exit(.rxGpuSolveClear(), add = TRUE)
   }
   if (.ctl$addCov && length(.ctl$keep) > 0) {
     .mv <- rxModelVars(object)
