@@ -55,10 +55,13 @@ rxGpuInfo()
 #> $available
 #> [1] TRUE
 #>
+#> $fp64
+#> [1] TRUE
+#>
 #> $devices
-#>   index platform       name                      type  fp64
-#> 1     1 rusticl        AMD Radeon Graphics       gpu   FALSE
-#> 2     2 Portable ...   cpu-haswell-AMD Ryzen 7   cpu   TRUE
+#>   index                    platform                         device type  fp64
+#> 1     1                     rusticl            AMD Radeon Graphics  gpu FALSE
+#> 2     2 Portable Computing Language cpu-haswell-AMD Ryzen 7 PRO ...  cpu  TRUE
 ```
 
 ## Simulating
