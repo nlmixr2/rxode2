@@ -248,6 +248,29 @@ rxGpuCl *rxGpuClNew(void *ctx, void *queue, void *kernel, const int *dims,
     *err = 5;
     return NULL;
   }
+  // the subject states start zeroed: ai[RXG_AI_SEEN] = 0 starts a subject
+  // fresh on its first round
+  size_t nz = w[RXG_B_AI]*nsub;
+  if (w[RXG_B_AD]*nsub > nz) nz = w[RXG_B_AD]*nsub;
+  if (w[RXG_B_HS]*nsub > nz) nz = w[RXG_B_HS]*nsub;
+  void *zero = calloc(nz > 0 ? nz : 1, sizeof(double));
+  if (zero == NULL) {
+    rxGpuClFree(g);
+    *err = 3;
+    return NULL;
+  }
+  int zb[3] = {RXG_B_AD, RXG_B_AI, RXG_B_HS};
+  for (int i = 0; i < 3; i++) {
+    int b = zb[i];
+    if (rxcl.write(g->queue, g->buf[b], 1, 0,
+                   w[b]*nsub*rxGpuClElt(g, b), zero, 0, NULL, NULL) != RXCL_SUCCESS) {
+      free(zero);
+      rxGpuClFree(g);
+      *err = 6;
+      return NULL;
+    }
+  }
+  free(zero);
   return g;
 }
 
@@ -289,16 +312,19 @@ int rxGpuClRound(rxGpuCl *g, int n, double *y, double *rd, int *ri,
 // R interface: setup, and a round entry for the tests (the solver calls
 // rxGpuClRound() directly)
 
-static void rxGpuClFinalize(SEXP p) {
-  rxGpuCl *g = (rxGpuCl *)R_ExternalPtrAddr(p);
-  if (g != NULL) {
-    rxGpuClFree(g);
-    R_ClearExternalPtr(p);
-  }
+// A run is an external pointer tagged rxGpuCl.  It has no C finalizer (a
+// finalizer in this DLL would crash R once the DLL is unloaded); R releases
+// it through _rxode2_rxGpuClFree() while rxode2 is loaded (.rxGpuRun()).
+static SEXP rxGpuClTag(void) {
+  return Rf_install("rxGpuCl");
+}
+
+static int rxGpuClIsRun(SEXP p) {
+  return TYPEOF(p) == EXTPTRSXP && R_ExternalPtrTag(p) == rxGpuClTag();
 }
 
 static rxGpuCl *rxGpuClGet(SEXP p) {
-  if (TYPEOF(p) != EXTPTRSXP) (Rf_error)("invalid OpenCL run");
+  if (!rxGpuClIsRun(p)) (Rf_error)("invalid OpenCL run");
   rxGpuCl *g = (rxGpuCl *)R_ExternalPtrAddr(p);
   if (g == NULL) (Rf_error)("the OpenCL run was released");
   return g;
@@ -328,10 +354,14 @@ SEXP _rxode2_rxGpuClNew(SEXP ctx, SEXP queue, SEXP kernel, SEXP dims,
   if (Rf_length(od) != d[RXG_D_OD] || Rf_length(oi) != d[RXG_D_OI]) {
     (Rf_error)("the solver options do not match the model");
   }
+  // the R object first, so no allocation can fail while the run is live
+  // and unowned
+  SEXP ret = rxP(R_MakeExternalPtr(NULL, rxGpuClTag(), keep));
   int err = 0;
   rxGpuCl *g = rxGpuClNew(c, q, k, d, REAL(od), INTEGER(oi),
                              Rf_asLogical(single), &err);
   if (g == NULL) {
+    rxUPAll();
     switch (err) {
     case 1: (Rf_error)("cannot find the OpenCL library");
     case 2: (Rf_error)("the OpenCL kernel is not an rxode2 round kernel");
@@ -339,8 +369,7 @@ SEXP _rxode2_rxGpuClNew(SEXP ctx, SEXP queue, SEXP kernel, SEXP dims,
     default: (Rf_error)("cannot set up the OpenCL buffers (step %d)", err);
     }
   }
-  SEXP ret = rxP(R_MakeExternalPtr(g, R_NilValue, keep));
-  R_RegisterCFinalizerEx(ret, rxGpuClFinalize, TRUE);
+  R_SetExternalPtrAddr(ret, g);
   rxUPAll();
   return ret;
 }
@@ -361,6 +390,20 @@ SEXP _rxode2_rxGpuClRound(SEXP run, SEXP n, SEXP y, SEXP rd, SEXP ri,
       Rf_xlength(ir) < (R_xlen_t)nn*d[RXG_D_NEQ1] ||
       Rf_xlength(on) < (R_xlen_t)nn*d[RXG_D_NEQ1]) {
     (Rf_error)("the round's requests do not match the run");
+  }
+  // every request names a distinct subject of the run
+  {
+    int ns = d[RXG_D_NSUB];
+    char *seen = (char *)R_alloc((size_t)(ns > 0 ? ns : 1), sizeof(char));
+    memset(seen, 0, (size_t)(ns > 0 ? ns : 1));
+    const int *r = INTEGER(ri);
+    for (int i = 0; i < nn; i++) {
+      int sb = r[(R_xlen_t)i*d[RXG_D_RI]];
+      if (sb < 0 || sb >= ns || seen[sb]) {
+        (Rf_error)("request %d names an invalid or repeated subject", i + 1);
+      }
+      seen[sb] = 1;
+    }
   }
   SEXP yo = rxP(Rf_duplicate(y));
   SEXP rdo = rxP(Rf_duplicate(rd));
@@ -385,6 +428,11 @@ SEXP _rxode2_rxGpuClRound(SEXP run, SEXP n, SEXP y, SEXP rd, SEXP ri,
 }
 
 SEXP _rxode2_rxGpuClFree(SEXP run) {
-  rxGpuClFinalize(run);
+  if (!rxGpuClIsRun(run)) (Rf_error)("invalid OpenCL run");
+  rxGpuCl *g = (rxGpuCl *)R_ExternalPtrAddr(run);
+  if (g != NULL) {
+    rxGpuClFree(g);
+    R_ClearExternalPtr(run);
+  }
   return R_NilValue;
 }

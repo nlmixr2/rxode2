@@ -107,7 +107,10 @@ for (.n in as.integer(strsplit(.sizes, ",")[[1]])) {
 
 ## one row per problem, method and size; the end state of the last trajectory
 ## gives the largest relative difference from the rxode2 OpenCL result
-.ms <- function(x) sprintf("%.2f", 1000 * x)
+## a Julia backend that did not load (eg no OpenCL.jl) leaves no row: NA
+.one <- function(x) if (length(x) > 0L) x[1] else NA_real_
+.ms <- function(x) sprintf("%.2f", 1000 * .one(x))
+.u <- function(r) if (nrow(r) > 0L) unlist(r[1, c("u1", "u2", "u3")]) else rep(NA_real_, 3)
 .out <- NULL
 for (.i in seq_len(nrow(.rx))) {
   if (.rx$backend[.i] != "OpenCL-pocl") {
@@ -123,15 +126,15 @@ for (.i in seq_len(nrow(.rx))) {
     .out,
     data.frame(
       problem = .rx$problem[.i],
-      method = paste0(.rx$method[.i], " / ", .jg$julia),
+      method = paste0(.rx$method[.i], " / ", .one(.j$julia[.j$backend %in% c("OpenCL-pocl", "KA-CPU")])),
       n = .rx$n[.i],
       rx_opencl_ms = .ms(.rx$seconds[.i]),
       jl_opencl_ms = .ms(.jg$seconds),
       jl_kacpu_ms = .ms(.j$seconds[.j$backend == "KA-CPU"]),
       rx_openmp_ms = .ms(.rx$seconds[.k & .rx$backend != "OpenCL-pocl"]),
       jl_threads_ms = .ms(.jt$seconds),
-      reldiff_opencl = sprintf("%.1e", .rd(unlist(.jg[, c("u1", "u2", "u3")]))),
-      reldiff_threads = sprintf("%.1e", .rd(unlist(.jt[, c("u1", "u2", "u3")])))
+      reldiff_opencl = sprintf("%.1e", .rd(.u(.jg))),
+      reldiff_threads = sprintf("%.1e", .rd(.u(.jt)))
     )
   )
 }

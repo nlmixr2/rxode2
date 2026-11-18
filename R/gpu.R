@@ -735,7 +735,7 @@ rxGpuInfo <- function() {
   }
   .ctx <- .rxGpuContext(device, precision)
   .ker <- do.call(.rxGpuKernel, c(list(obj, method, .ctx, precision), .args[.defN]))
-  .ret$ptr <- .Call(
+  .ptr <- .Call(
     `_rxode2_rxGpuClNew`,
     .ctx,
     attr(.ctx, "queue"),
@@ -746,7 +746,27 @@ rxGpuInfo <- function() {
     precision == "float",
     list(.ctx, .ker)
   )
+  ## released from R while rxode2's DLL is loaded, never by a finalizer in
+  ## the DLL (which would crash R after the DLL is unloaded)
+  .fin <- new.env(parent = emptyenv())
+  .fin$ptr <- .ptr
+  reg.finalizer(.fin, .rxGpuRunRelease, onexit = TRUE)
+  .ret$ptr <- .ptr
+  .ret$fin <- .fin
   .ret
+}
+
+#' Release the device buffers of an OpenCL run (its finalizer)
+#'
+#' @param e environment holding the run's external pointer `ptr`
+#' @return `NULL`, invisibly
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuRunRelease <- function(e) {
+  if (is.loaded("_rxode2_rxGpuClFree", PACKAGE = "rxode2")) {
+    .Call("_rxode2_rxGpuClFree", e$ptr, PACKAGE = "rxode2")
+  }
+  invisible(NULL)
 }
 
 #' Requests of one round, in the layout of rxg_round.h
@@ -784,6 +804,7 @@ rxGpuInfo <- function() {
   covType = 0L,
   nonmem = FALSE
 ) {
+  checkmate::assertIntegerish(sub, lower = 1, upper = run$nsub, any.missing = FALSE, min.len = 1, unique = TRUE)
   .lib <- run$lib
   .n <- length(sub)
   .w <- function(x, k, w, fill) {
