@@ -151,6 +151,10 @@
 #define Rxc_ssMethod 147
 #define Rxc_doseAtRecord 148
 #define Rxc_addlCovAtTime 149
+#define Rxc_gpuBackend 150
+#define Rxc_gpuDevice 151
+#define Rxc_gpuPrecision 152
+#define Rxc_gpuBatch 153
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2
