@@ -2085,6 +2085,7 @@ extern "C" void rk43_solveWith1Pt(int *neq, double *yp, double *xp, double xout,
 extern "C" void dop54_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void vern65_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void vern76_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void vern76_solveWith1PtProbe(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void dop87_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void vern98_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void grk4a_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
@@ -2127,6 +2128,7 @@ extern "C" void rkbs32_solveWith1Pt(int *neq, double *yp, double *xp, double xou
 extern "C" void rkssp43_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void rkf45_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void rkt54_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkt54_solveWith1PtProbe(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void rks54_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void rkpp54_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void rkpp54b_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
@@ -2492,7 +2494,19 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); vern65_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 28:
-      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); vern76_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) {
+        preSolve(op, ind, *xp, xout, yp);
+        // as a composite's primary, with the stiffness probe dop853 and the
+        // device integrators use: a stiff report stops at the last accepted
+        // step (*xp) with *idid = -4, for the secondary to continue from
+        if (autoSwitchPrimary) {
+          vern76_solveWith1PtProbe(neq, yp, xp, xout, istate, op, ind);
+          if (*istate == -4) *idid = -4;
+        } else {
+          vern76_solveWith1Pt(neq, yp, xp, xout, istate, op, ind);
+        }
+        copyLinCmt(neq, ind, op, yp);
+      }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 29:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); dop87_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
@@ -2618,7 +2632,19 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkf45_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 68:
-      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkt54_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) {
+        preSolve(op, ind, *xp, xout, yp);
+        // as a composite's primary, with the stiffness probe dop853 and the
+        // device integrators use: a stiff report stops at the last accepted
+        // step (*xp) with *idid = -4, for the secondary to continue from
+        if (autoSwitchPrimary) {
+          rkt54_solveWith1PtProbe(neq, yp, xp, xout, istate, op, ind);
+          if (*istate == -4) *idid = -4;
+        } else {
+          rkt54_solveWith1Pt(neq, yp, xp, xout, istate, op, ind);
+        }
+        copyLinCmt(neq, ind, op, yp);
+      }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 69:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rks54_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
@@ -2888,8 +2914,9 @@ static void rxAutoSwitchCount(rx_solving_options *op, rx_solving_options_ind *in
 //
 // On a switch the secondary continues from wherever the probe got to rather
 // than redoing the interval, so a switch costs one integration
-// (nlmixr2/rxode2#1307).  Only a dop853 primary reports that point, so any
-// other primary restarts from the saved state.
+// (nlmixr2/rxode2#1307).  dop853, t54 and vern76 report that point (the last
+// two through their stiffness probe, src/ode_stiff_probe.h); after any other
+// failure the secondary restarts from the saved state.
 static inline void solveWith1PtComposite(int *neq, double *yp, double xout, double xp,
                                          int *i, int *istate,
                                          rx_solving_options *op,
@@ -2921,7 +2948,9 @@ static inline void solveWith1PtComposite(int *neq, double *yp, double xout, doub
     ind->rc[0] = 0; ind->err = 0; *istate = 1; idid = 1;
     // yp/xp are the probe's last fully accepted step when the primary is dop853
     // and it got anywhere; otherwise rewind to the interval start.
-    bool _continueFrom = (op->stiff == 0) &&
+    // A t54/vern76 probe's stiff report (idid -4) also stops at its last
+    // accepted step; any other failure rewinds.
+    bool _continueFrom = (op->stiff == 0 || idid == -4) &&
       ((xout > _xpOrig) ? (xp > _xpOrig && xp < xout)
                         : (xp < _xpOrig && xp > xout));
     if (!_continueFrom) {
@@ -7257,12 +7286,14 @@ static void rxAutoSwitchCount(rx_solving_options *op, rx_solving_options_ind *in
 // already run preSolve() and set neq[0] to the ODE dimension.
 //
 // A dop853 primary is called directly so it can carry its stiffness estimator's
-// state across intervals; any other primary goes through _rxSolveOneInterval
-// and, having no such estimator, switches only when it actually fails.  That is
-// the same contract the steady-state leg (solveWith1Pt) has always had.
+// state across intervals; any other primary goes through _rxSolveOneInterval.
+// t54 and vern76 run the same estimator there (src/ode_stiff_probe.h, as the
+// device integrators do) and report where they stopped; another primary
+// switches only when it actually fails.  That is the same contract the
+// steady-state leg (solveWith1Pt) has.
 // Composite segment for a primary that is not dop853: probe with the primary,
-// and on failure hand the interval to the stiff secondary from the start (only
-// dop853 reports where it stopped, so there is nothing to continue from).
+// and hand the interval to the stiff secondary from where a stiff report
+// stopped, or from the start after a failure.
 static int rxSegmentAutoSwitchGeneric(rx_solving_options *op,
                                       rx_solving_options_ind *ind, int *neq,
                                       double xp, double xout, double *yp,
@@ -7291,12 +7322,18 @@ static int rxSegmentAutoSwitchGeneric(rx_solving_options *op,
                       &idid, op, ind, iRec, NULL, eff);
   bool failed = (*istate <= 0 || idid <= 0 || ind->rc[0] == -2019 || ind->err != 0);
   if (failed) {
+    // a t54/vern76 probe's stiff report (idid -4) stops at its last accepted
+    // step, where the secondary continues; any other failure rewinds
+    bool cont = (idid == -4) && ((xout > xp) ? (xpLoc > xp && xpLoc < xout)
+                                             : (xpLoc < xp && xpLoc > xout));
     ind->rc[0] = 0;
     ind->err = 0;
     *istate = 1;
     idid = 1;
-    memcpy(yp, ypSave, (size_t)eff * sizeof(double));
-    xpLoc = xp;
+    if (!cont) {
+      memcpy(yp, ypSave, (size_t)eff * sizeof(double));
+      xpLoc = xp;
+    }
     _rxSolveOneInterval(op->stiff2, false, neq, yp, &xpLoc, xout, istate,
                         &idid, op, ind, iRec, NULL, eff);
   }

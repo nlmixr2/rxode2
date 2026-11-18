@@ -3,11 +3,11 @@
 #undef max
 #include "ode_rkt54_bridge.h"
 
-static inline void rkt54_do_steps(RxRkt54 *solver, rx_solving_options_ind *ind, rx_solving_options *op,
+static inline int rkt54_do_steps(RxRkt54 *solver, rx_solving_options_ind *ind, rx_solving_options *op,
                                     t_dydt c_dydt, int *neq, double *yp,
                                     double xp, double xout) {
   double tint = xout - xp;
-  if (tint == 0.0) return;
+  if (tint == 0.0) return 0;
   double dt = op->HMIN > 0.0 ? op->HMIN : 0.01;
   if (dt <= 0.0) dt = 0.01;
   if (dt > std::fabs(tint)) dt = std::fabs(tint);
@@ -17,10 +17,14 @@ static inline void rkt54_do_steps(RxRkt54 *solver, rx_solving_options_ind *ind, 
   solver->set_t(xp);
 try {
     solver->solve_adaptive(std::fabs(tint), std::fabs(dt), true);
+  } catch (const RxStiffStop &) {
+    // an AutoSwitch probe's stiff report: yp is the last accepted step
+    return 1;
   } catch (...) {
     if (ind->rc[0] == 0) ind->rc[0] = -2019;
     rxSolverFail(ind);
   }
+  return 0;
 }
 
 extern "C" void ind_rkt54_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,
@@ -194,6 +198,31 @@ extern "C" void rkt54_solveWith1Pt(int *neq, double *yp, double *xp, double xout
     if (op->atol2 != NULL) solver.set_abstol(ind->atol2 != NULL ? ind->atol2[0] : op->ATOL);
     if (op->rtol2 != NULL) solver.set_reltol(ind->rtol2 != NULL ? ind->rtol2[0] : op->RTOL);
     rkt54_do_steps(&solver, ind, op, dydt, neq, yp, *xp, xout);
+
+    if (ind->rc[0] < 0) { *istate = -1; return; }
+  }
+  *xp = xout;
+  *istate = 1;
+}
+
+// As an AutoSwitch composite's primary: with the stiffness probe, which on a
+// stiff report stops at the last accepted step (*xp) with *istate = -4
+extern "C" void rkt54_solveWith1PtProbe(int *neq, double *yp, double *xp, double xout,
+                                     int *istate, rx_solving_options *op,
+                                     rx_solving_options_ind *ind) {
+  int eff = rxEffNeq(ind, op);
+  int neqOde = eff - op->numLin - op->numLinSens;
+    if (neqOde > 0) {
+    RxRkt54 solver(dydt, neq, neqOde, ind, yp, (long unsigned)op->mxstep);
+    solver.set_quiet(true);
+    if (op->atol2 != NULL) solver.set_abstol(ind->atol2 != NULL ? ind->atol2[0] : op->ATOL);
+    if (op->rtol2 != NULL) solver.set_reltol(ind->rtol2 != NULL ? ind->rtol2[0] : op->RTOL);
+    solver.probe_.start(op, ind, 3.5068);
+    if (rkt54_do_steps(&solver, ind, op, dydt, neq, yp, *xp, xout)) {
+      *xp = solver.get_t();
+      *istate = -4;
+      return;
+    }
 
     if (ind->rc[0] < 0) { *istate = -1; return; }
   }
