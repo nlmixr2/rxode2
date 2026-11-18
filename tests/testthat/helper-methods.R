@@ -119,7 +119,12 @@
   "t54+sdirk43",
   "ros54p",
   "t54+ros54p",
-  "vern76+ros54p"
+  "vern76+ros54p",
+  "gpuRkt54",
+  "gpuVern76",
+  "gpuRos54p",
+  "gpuRkt54+gpuRos54p",
+  "gpuVern76+gpuRos54p"
 )
 # AutoSwitch composite methods: dop853 primary paired with each stiff
 # secondary that needs a Jacobian.  1st-order secondaries (iem,

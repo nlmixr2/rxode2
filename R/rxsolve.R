@@ -1135,7 +1135,8 @@
 #'   integrate: `"opencl"` on an OpenCL device through the suggested
 #'   `OpenCL` package, `"cpu"` with the same integrators built as host C on
 #'   `cores` threads, or `"auto"` (the default) for OpenCL when a device with
-#'   the requested precision is available and the CPU otherwise.  See
+#'   the requested precision is available and the CPU otherwise
+#'   (`options(rxode2.gpuBackend=)` pins what `"auto"` picks).  See
 #'   [rxGpuInfo()].
 #'
 #' @param gpuDevice OpenCL device (its `index` in `rxGpuInfo()$devices`);
@@ -4048,6 +4049,41 @@ rxSolve.default <- function(
   # solver so delay() can interpolate past states.  When delays are present,
   # default to the dense AutoSwitch composite "dop853+ros4" and turn on dense
   # output; a non-dense method requested explicitly is an error.
+  # GPU methods: the device code of the model (with its Jacobian for the
+  # ros54p methods), set up once here; src/gpu_solve.cpp runs the rounds
+  if (isTRUE(.ctl$method %in% 110:114) && !.rxGpuSafe(object) && .ctl$gpuBackend == "auto") {
+    # a model that cannot run as device code solves with the host
+    # counterpart of the method
+    .host <- .rxGpuHostMethod[[as.character(.ctl$method)]]
+    .minfo(paste0("the model cannot run as device code; solving with the host method \"", names(.host)[1], "\""))
+    .ctl$method <- .host[[1]]
+    .ctl$stiff2 <- .host[[2]]
+  }
+  if (isTRUE(.ctl$method %in% 110:114)) {
+    .gpuModel <- .rxGpuSolveModel(object, .ctl$method)
+    if (rxModelVars(.gpuModel)$md5["parsed_md5"] != rxModelVars(object)$md5["parsed_md5"]) {
+      object <- .gpuModel
+      force(params)
+      force(inits)
+      force(indOwnAlloc)
+      force(theta)
+      force(eta)
+      force(envir)
+      return(rxSolve.default(
+        object,
+        params = params,
+        events = .eventsUnmirrored,
+        inits = inits,
+        ...,
+        indOwnAlloc = indOwnAlloc,
+        theta = theta,
+        eta = eta,
+        envir = envir
+      ))
+    }
+    .ctl <- .rxGpuSolveInstall(object, .ctl, .rxGpuSolveCount(params, events, .ctl))
+    on.exit(.rxGpuSolveClear(), add = TRUE)
+  }
   .hasDelay <- isTRUE(rxModelVars(object)$flags[["hasDelay"]] == 1L)
   if (.hasDelay) {
     # delay() and evid_() pull the solver in opposite directions and cannot both
@@ -4115,7 +4151,9 @@ rxSolve.default <- function(
     # paths, and by liblsoda when dense = TRUE asks for it.
     # Other solvers cannot record dense history and are rejected.
     .stiff2 <- if (is.null(.ctl$stiff2)) 0L else as.integer(.ctl$stiff2)
-    if (.ctl$method >= 200L) {
+    if (.ctl$method %in% 110:114) {
+      # the device integrators keep each subject's delay() history themselves
+    } else if (.ctl$method >= 200L) {
       # discrete-adjoint rk4s methods record their own cubic-Hermite dense
       # history per accepted step and carry the backward anticipating term
       # (delayed Jacobian) in every backward fill -- explicit, stiff (ros4s,
@@ -4227,33 +4265,6 @@ rxSolve.default <- function(
         }
       }
     }
-  }
-  # GPU methods: the device code of the model (with its Jacobian for the
-  # ros54p methods), set up once here; src/gpu_solve.cpp runs the rounds
-  if (isTRUE(.ctl$method %in% 110:114)) {
-    .gpuModel <- .rxGpuSolveModel(object, .ctl$method)
-    if (rxModelVars(.gpuModel)$md5["parsed_md5"] != rxModelVars(object)$md5["parsed_md5"]) {
-      object <- .gpuModel
-      force(params)
-      force(inits)
-      force(indOwnAlloc)
-      force(theta)
-      force(eta)
-      force(envir)
-      return(rxSolve.default(
-        object,
-        params = params,
-        events = .eventsUnmirrored,
-        inits = inits,
-        ...,
-        indOwnAlloc = indOwnAlloc,
-        theta = theta,
-        eta = eta,
-        envir = envir
-      ))
-    }
-    .ctl <- .rxGpuSolveInstall(object, .ctl, .rxGpuSolveCount(params, events, .ctl))
-    on.exit(.rxGpuSolveClear(), add = TRUE)
   }
   if (.ctl$addCov && length(.ctl$keep) > 0) {
     .mv <- rxModelVars(object)
