@@ -399,6 +399,7 @@ odeMethodToInt("dop853")
 Other Solver options and performance:
 \code{\link[=forderForceBase]{forderForceBase()}},
 \code{\link[=getRxThreads]{getRxThreads()}},
+\code{\link[=rxGpuInfo]{rxGpuInfo()}},
 \code{\link[=rxIndLinState]{rxIndLinState()}},
 \code{\link[=rxIndLinStrategy]{rxIndLinStrategy()}},
 \code{\link[=rxIsAutoSwitch]{rxIsAutoSwitch()}},
