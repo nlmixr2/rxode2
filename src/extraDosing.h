@@ -152,48 +152,51 @@ static inline void allocExtraDosing(int ncores) {
   _globals.nAllocIgnoredDoses = tmpI;
 
 
-  int **tmpII = (int**)malloc((ncores+1) * sizeof(int*));
+  int **tmpII = (int**)calloc((size_t)ncores + 1, sizeof(int*));
   if (tmpII == NULL) {
     rxSolveFree();
     stop(_("ran out of memory"));
   }
   _globals.pendingDoses = tmpII;
 
-  tmpII = (int**)malloc((ncores+1) * sizeof(int*));
+  tmpII = (int**)calloc((size_t)ncores + 1, sizeof(int*));
   if (tmpII == NULL) {
     rxSolveFree();
     stop(_("ran out of memory"));
   }
   _globals.ignoredDoses = tmpII;
 
-  tmpII = (int**)malloc((ncores+1) * sizeof(int*));
+  tmpII = (int**)calloc((size_t)ncores + 1, sizeof(int*));
   if (tmpII == NULL) {
     rxSolveFree();
     stop(_("ran out of memory"));
   }
   _globals.extraDoseTimeIdx = tmpII;
 
-  tmpII = (int**)malloc((ncores+1) * sizeof(int*));
+  tmpII = (int**)calloc((size_t)ncores + 1, sizeof(int*));
   if (tmpII == NULL) {
     rxSolveFree();
     stop(_("ran out of memory"));
   }
   _globals.extraDoseEvid = tmpII;
 
-  double **tmpDD = (double**)malloc((ncores+1) * sizeof(double*));
+  double **tmpDD = (double**)calloc((size_t)ncores + 1, sizeof(double*));
   if (tmpDD == NULL) {
     rxSolveFree();
     stop(_("ran out of memory"));
   }
   _globals.extraDoseTime = tmpDD;
 
-  tmpDD = (double**)malloc((ncores+1) * sizeof(double*));
+  tmpDD = (double**)calloc((size_t)ncores + 1, sizeof(double*));
   if (tmpDD == NULL) {
     rxSolveFree();
     stop(_("ran out of memory"));
   }
   _globals.extraDoseDose = tmpDD;
 
+  // the tables start NULL and count every slot, so a failed allocation below
+  // leaves freeExtraDosing() everything allocated so far
+  _globals.extraDoseCores = ncores;
   double *tmpD;
   for (int i = 0; i < ncores; i++) {
     tmpI = (int*)malloc(EVID_EXTRA_SIZE * sizeof(int));
