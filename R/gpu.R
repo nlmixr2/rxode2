@@ -361,6 +361,14 @@
   "113" = "rkt54+ros54p",
   "114" = "vern76+ros54p"
 )
+## Host counterpart of each GPU method: name = list(method, stiff2)
+.rxGpuHostMethod <- list(
+  "110" = list(t54 = 68L, 0L),
+  "111" = list(vern76 = 28L, 0L),
+  "112" = list(ros54p = 108L, 0L),
+  "113" = list("t54+ros54p" = 68L, 108L),
+  "114" = list("vern76+ros54p" = 28L, 108L)
+)
 ## AutoSwitch composites that are single rxSolve() methods (they switch on
 ## the device, not through rxControl(stiff2=))
 .rxGpuSolveComposites <- c("gpuRkt54+gpuRos54p", "gpuVern76+gpuRos54p")
@@ -939,6 +947,10 @@ rxGpuInfo <- function() {
   }
   .batch <- as.integer(max(1L, min(ctl$gpuBatch, nsolve)))
   .backend <- ctl$gpuBackend
+  if (.backend == "auto") {
+    ## options(rxode2.gpuBackend = "cpu") pins what "auto" picks
+    .backend <- match.arg(getOption("rxode2.gpuBackend", "auto"), c("auto", "opencl", "cpu"))
+  }
   .dev <- ctl$gpuDevice
   if (.backend != "cpu") {
     .avail <- rxGpuInfo()
@@ -986,7 +998,8 @@ rxGpuInfo <- function() {
   .Call(`_rxode2_rxGpuSolveSet`, .round, .run$ptr, .run$dims, .run$opt$od, .run$opt$oi, .threads)
   ## the run (and its OpenCL buffers) lives until the solve is cleared
   .rxGpuSolveEnv$run <- .run
-  ctl$cores <- .batch
+  ## the per-thread pools serve both the slots and the output step's threads
+  ctl$cores <- max(.batch, .threads)
   ctl
 }
 
