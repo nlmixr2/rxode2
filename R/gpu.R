@@ -213,6 +213,13 @@
     .j <- .rxGpuJacModel(obj)
     if (!is.null(.j)) obj <- .j
   }
+  ## the model, its defines and the headers name the library: look it up
+  ## without rebuilding the source
+  .fast <- paste0("fast_", digest::digest(c(rxModelVars(obj)$md5, .rxGpuDefines(...), .rxGpuHdrMd5())))
+  .ret <- .rxGpuHostEnv[[.fast]]
+  if (!is.null(.ret)) {
+    return(.ret)
+  }
   .s <- .rxGpuModelSource(obj)
   .src <- c(
     .rxGpuDefines(...),
@@ -228,6 +235,7 @@
   .md5 <- digest::digest(c(.src, .s$source, .hdr))
   .ret <- .rxGpuHostEnv[[.md5]]
   if (!is.null(.ret)) {
+    assign(.fast, .ret, envir = .rxGpuHostEnv)
     return(.ret)
   }
   .dir <- file.path(rxTempDir(), "rxg")
@@ -275,6 +283,7 @@
     layout = stats::setNames(.dim[6:14], c("hrec", "hhdr", "rd", "ri", "ad", "ai", "od", "oi", "ncnt"))
   )
   assign(.md5, .ret, envir = .rxGpuHostEnv)
+  assign(.fast, .ret, envir = .rxGpuHostEnv)
   .ret
 }
 
@@ -635,20 +644,44 @@ rxGpuInfo <- function() {
   method <- match.arg(method, names(.rxGpuMethods))
   .m <- .rxGpuMethods[method]
   obj <- .rxGpuMethodModel(obj, method)
-  .src <- .rxGpuProgramSource(
-    obj,
-    ...,
-    float = precision == "float",
-    method = .m,
-    extra = "#include \"rxode2gpu/rxg_round.h\""
+  ## the model, the defines and the headers name the program
+  .key <- paste0(
+    "ker_",
+    attr(ctx, "rxIndex"),
+    "_",
+    precision,
+    "_",
+    digest::digest(c(rxModelVars(obj)$md5, method, .rxGpuDefines(...), .rxGpuHdrMd5()))
   )
-  .key <- paste0("ker_", attr(ctx, "rxIndex"), "_", precision, "_", digest::digest(.src))
   .ker <- .rxGpuClEnv[[.key]]
   if (is.null(.ker)) {
+    .src <- .rxGpuProgramSource(
+      obj,
+      ...,
+      float = precision == "float",
+      method = .m,
+      extra = "#include \"rxode2gpu/rxg_round.h\""
+    )
     .ker <- OpenCL::oclSimpleKernel(ctx, "rxg_kernel", .src, if (precision == "float") "single" else "double")
+    attr(.ker, "rxKey") <- .key
     assign(.key, .ker, envir = .rxGpuClEnv)
   }
   .ker
+}
+
+#' md5 of the device headers (once a session)
+#'
+#' @return character
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuHdrMd5 <- function() {
+  .h <- .rxGpuClEnv$hdrMd5
+  if (is.null(.h)) {
+    .f <- sort(list.files(file.path(.rxGpuIncludeDir(), "rxode2gpu"), full.names = TRUE))
+    .h <- digest::digest(unname(tools::md5sum(.f)))
+    assign("hdrMd5", .h, envir = .rxGpuClEnv)
+  }
+  .h
 }
 
 #' Shared integrator options of a round
@@ -718,6 +751,7 @@ rxGpuInfo <- function() {
   precision = c("double", "float"),
   device = NULL,
   cores = 1L,
+  reuse = FALSE,
   ...
 ) {
   backend <- match.arg(backend)
@@ -754,6 +788,17 @@ rxGpuInfo <- function() {
   }
   .ctx <- .rxGpuContext(device, precision)
   .ker <- do.call(.rxGpuKernel, c(list(obj, method, .ctx, precision), .args[.defN]))
+  ## a solve reuses the buffers of the last run of the same kernel, layout
+  ## and options (every subject's first request restarts its state)
+  .runKey <- if (reuse) paste0("run_", digest::digest(list(attr(.ker, "rxKey"), .dims, .opt))) else NULL
+  if (!is.null(.runKey)) {
+    .old <- .rxGpuClEnv[[.runKey]]
+    if (!is.null(.old) && !identical(.old$ptr, methods::new("externalptr"))) {
+      .ret$ptr <- .old$ptr
+      .ret$fin <- .old$fin
+      return(.ret)
+    }
+  }
   .ptr <- .Call(
     `_rxode2_rxGpuClNew`,
     .ctx,
@@ -772,6 +817,9 @@ rxGpuInfo <- function() {
   reg.finalizer(.fin, .rxGpuRunRelease, onexit = TRUE)
   .ret$ptr <- .ptr
   .ret$fin <- .fin
+  if (!is.null(.runKey)) {
+    assign(.runKey, list(ptr = .ptr, fin = .fin), envir = .rxGpuClEnv)
+  }
   .ret
 }
 
@@ -978,6 +1026,7 @@ rxGpuInfo <- function() {
     precision = ctl$gpuPrecision,
     device = .dev,
     cores = .threads,
+    reuse = TRUE,
     safeLog = isTRUE(ctl$safeLog),
     safeZero = isTRUE(ctl$safeZero),
     safePow = isTRUE(ctl$safePow),
