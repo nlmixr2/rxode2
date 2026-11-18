@@ -78,16 +78,32 @@ for (.n in .sizes) {
     for (.c in .cases) {
       .ctl <- if (.est == "saem") {
         saemControl(
-          print = 0, calcTables = FALSE, covMethod = "",
-          rxControl = rxControl(method = .c[1], gpuBackend = .c[2], gpuDevice = if (is.na(.dev)) NULL else .dev, cores = .cores)
+          print = 0,
+          calcTables = FALSE,
+          covMethod = "",
+          rxControl = rxControl(
+            method = .c[1],
+            gpuBackend = .c[2],
+            gpuDevice = if (is.na(.dev)) NULL else .dev,
+            cores = .cores
+          )
         )
       } else {
         foceiControl(
-          print = 0, calcTables = FALSE, covMethod = "",
-          rxControl = rxControl(method = .c[1], gpuBackend = .c[2], gpuDevice = if (is.na(.dev)) NULL else .dev, cores = .cores)
+          print = 0,
+          calcTables = FALSE,
+          covMethod = "",
+          rxControl = rxControl(
+            method = .c[1],
+            gpuBackend = .c[2],
+            gpuDevice = if (is.na(.dev)) NULL else .dev,
+            cores = .cores
+          )
         )
       }
-      .t <- system.time(.fit <- suppressMessages(suppressWarnings(nlmixr2(.model, .dat, .est, control = .ctl))))[["elapsed"]]
+      .t <- system.time(.fit <- suppressMessages(suppressWarnings(nlmixr2(.model, .dat, .est, control = .ctl))))[[
+        "elapsed"
+      ]]
       .out <- rbind(
         .out,
         data.frame(

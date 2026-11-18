@@ -102,7 +102,9 @@ library(rxode2)
   .nm <- if (model == "pk2") c("eta.ka", "eta.cl", "eta.v") else c("eta.cl", "eta.v", "eta.r0")
   .om <- if (model == "pk2") c(0.2, 0.1, 0.1) else c(0.1, 0.1, 0.1)
   .p <- data.frame(id = seq_len(n))
-  for (.i in seq_along(.nm)) .p[[.nm[.i]]] <- stats::rnorm(n, 0, sqrt(.om[.i]))
+  for (.i in seq_along(.nm)) {
+    .p[[.nm[.i]]] <- stats::rnorm(n, 0, sqrt(.om[.i]))
+  }
   .p
 }
 
@@ -167,12 +169,20 @@ for (.mn in c("pk2", "tmdd")) {
     for (.c in .cases) {
       ## explicit methods crawl on the stiff TMDD model: time them at the
       ## smallest size only
-      if (.mn == "tmdd" && .n > min(.sizes) && .c[1] %in% c("dop853", "t54", "gpuT54")) next
+      if (.mn == "tmdd" && .n > min(.sizes) && .c[1] %in% c("dop853", "t54", "gpuT54")) {
+        next
+      }
       .r <- .solve(.model, .par, .ev, .c) # warm-up (compiles, builds kernels)
-      .t <- stats::median(vapply(seq_len(.reps), function(i) {
-        system.time(.r <<- .solve(.model, .par, .ev, .c))[["elapsed"]]
-      }, double(1)))
-      if (is.null(.ref)) .ref <- .r$cp
+      .t <- stats::median(vapply(
+        seq_len(.reps),
+        function(i) {
+          system.time(.r <<- .solve(.model, .par, .ev, .c))[["elapsed"]]
+        },
+        double(1)
+      ))
+      if (is.null(.ref)) {
+        .ref <- .r$cp
+      }
       .out <- rbind(
         .out,
         data.frame(
