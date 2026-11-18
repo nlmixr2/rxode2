@@ -33,11 +33,14 @@ benefit from different tradeoffs:
   `liblsoda`, `dop853`, or `dop54`
 - TMDD, mechanistic PD, QSP, and transit-heavy systems often need
   stiffness-aware methods such as `liblsoda`, `ros4`, `ros43`,
-  `sdirk43`, or `cvode`
+  `ros54p`, `sdirk43`, or `cvode`
 - fixed-step methods such as `rk4`, `backwardEuler`, `gauss6`, or
   `radauiia5` are useful when you want controlled stepping between
   events, method-comparison experiments, or deterministic solver
   behavior for debugging
+- large populations (thousands of subjects or more) can run the
+  `gpu*` methods, which integrate many subjects at once on a GPU or
+  on CPU threads
 
 The `method` argument to `rxSolve()` selects the solver.  The four
 historic and therefore most commonly used methods are:
@@ -194,10 +197,11 @@ vanPol_auto <- rxode2(vanPol()$symengineModelNoPrune, calcJac = TRUE)
 |---|---|---|---|
 | General PK/PD work, stiffness uncertain | `liblsoda`, `lsoda` | Automatically switches between non-stiff and stiff behavior; very good default for mixed event schedules | ODEPACK/deSolve `lsoda`; Julia `lsoda()`; MATLAB has no direct LSODA wrapper and usually splits this choice between `ode45` and `ode15s`; Phoenix NLME closest match is `Auto-Detect` (LSODA) |
 | Smooth, mostly non-stiff PK/PD with many requested output times | `dop853`, `dop5`, `dop54`, `t54` | High-order explicit methods; efficient on smooth concentration-time problems | `dop54`/`dp54` is closest to MATLAB `ode45`; `t54` is the same method as Julia `Tsit5()`; `dop853` matches SciPy `DOP853`; Julia `DP5()` maps to `dop5`/`dop54`, `Vern7()` maps to `vern76`; Phoenix NLME analogs are `Non-Stiff (DOPRI5)` and `Non-Stiff (DVERK)` |
-| Moderate stiffness: TMDD, indirect response with fast turnover, enzyme models | `ros4`, `ros43`, `sdirk43` | Stiff-aware one-step methods that often behave well across dosing discontinuities | MATLAB users can think `ode23s` / `ode15s`; Julia analogs are `Rosenbrock23()`, `Rodas4P()`, `Rodas5P()`; Phoenix NLME users usually compare against `Auto-Detect` (LSODA) or `Stiff` (LSODE/BDF) |
+| Moderate stiffness: TMDD, indirect response with fast turnover, enzyme models | `ros4`, `ros43`, `ros54p`, `sdirk43` | Stiff-aware one-step methods that often behave well across dosing discontinuities | MATLAB users can think `ode23s` / `ode15s`; Julia analogs are `Rosenbrock23()`, `Rodas4P()`, and `Rodas5P()` (`ros54p`); Phoenix NLME users usually compare against `Auto-Detect` (LSODA) or `Stiff` (LSODE/BDF) |
 | Clearly stiff or larger systems where linear solver choice matters | `cvode` | CVODE gives Adams/BDF-style behavior with configurable linear solvers; supports `dense=TRUE` for efficient dense output using CVODE's native `CVodeGetDky` interpolation | Julia `CVODE_Adams()` / `CVODE_BDF()` in Sundials; MATLAB users usually compare against `ode15s`; Phoenix NLME analog is `Stiff` (LSODE/BDF) |
-| Stiffness uncertain, want fast non-stiff speed with automatic fallback | `"t54+ros4"`, `"t54+ros43"`, `"vern76+ros43"`, `"vern76+sdirk43"` | AutoSwitch: starts with the non-stiff solver; detects stiffness mid-solve and retries the interval with the implicit solver; switches back if the region becomes non-stiff again | Closest to Julia `AutoTsit5(RosShamp4())`/`AutoVern7(Rodas4P())`; note Julia's `Rosenbrock23()` has no exact rxode2 match (use `ros4` as the lowest-order Rosenbrock-family secondary); no direct MATLAB or NONMEM analog |
+| Stiffness uncertain, want fast non-stiff speed with automatic fallback | `"t54+ros4"`, `"t54+ros43"`, `"t54+ros54p"`, `"vern76+ros54p"`, `"vern76+sdirk43"` | AutoSwitch: starts with the non-stiff solver; detects stiffness mid-solve and retries the interval with the implicit solver; switches back if the region becomes non-stiff again | Closest to Julia `AutoTsit5(RosShamp4())`/`AutoTsit5(Rodas5P())`/`AutoVern7(Rodas5P())`; note Julia's `Rosenbrock23()` has no exact rxode2 match (use `ros4` as the lowest-order Rosenbrock-family secondary); no direct MATLAB or NONMEM analog |
 | Fixed-step comparison runs or debugging around dose/event boundaries | `rk4`, `trapz`, `backwardEuler`, `gauss6`, `iiic6`, `radauiia5`, `ros6` | Forces a controlled step size and makes solver-to-solver comparisons easier | Julia has direct families such as `Heun()`, `ImplicitEuler()`, `GaussLegendre`, `LobattoIIIC`, `RadauIIA5()`; MATLAB has fewer built-in fixed-step counterparts |
+| Large populations (thousands of subjects or more), simulation or estimation | `gpuT54`, `gpuVern76`, `gpuRos54p`, `"gpuT54+gpuRos54p"`, `"gpuVern76+gpuRos54p"` | Integrate every waiting subject at once on an OpenCL device (or the same code on CPU threads); events stay on the host | Julia DiffEqGPU's `EnsembleGPUKernel` with `GPUTsit5()`, `GPUVern7()`, `GPURodas5P()`; no MATLAB, NONMEM or Monolix analog |
 | Mostly linear compartment structure with sparse nonlinear pieces | `indLin` | Uses the specialized inductive linearization pathway instead of a general ODE stepper | Best compared with matrix-exponential or linearization workflows, not with `ode45`/`ode15s` directly; Phoenix NLME analogs are `Matrix Exponent` and `Exponent Higham` |
 
 ## How rxode2 solvers split by stiffness and adaptivity
@@ -243,11 +247,15 @@ turnover processes.
 - `ros4`, `ros43`: adaptive Rosenbrock methods for stiff or moderately
   stiff systems
 
+- `ros54p`: Rodas5P (Steinebach 2023), an adaptive 5th-order Rosenbrock
+  method with an embedded 4th-order error estimate and the model's
+  analytic Jacobian; the same method as Julia's `Rodas5P()`
+
 - `sdirk43`: adaptive singly diagonally implicit Runge-Kutta method
 
 These are closest in spirit to MATLAB `ode23s` / `ode15s` and to Julia
-methods such as `Rosenbrock23()`, `Rodas4P()`, `Rodas5P()`, and the
-Sundials `CVODE_*` wrappers.
+methods such as `Rosenbrock23()`, `Rodas4P()`, `Rodas5P()` (`ros54p`), and
+the Sundials `CVODE_*` wrappers.
 
 ### AutoSwitch composite methods
 
@@ -299,8 +307,8 @@ already a good general-purpose default.  AutoSwitch complements it:
 
 - **Matches Julia's ecosystem.**  Pharmacometric models built and
   tested in Julia with `AutoTsit5(Rosenbrock23())` or
-  `AutoVern7(Rodas5P())` can be matched closely by `"t54+ros43"` or
-  `"vern76+ros43"` in `rxode2` (though the switching methods are different).
+  `AutoVern7(Rodas5P())` can be matched closely by `"t54+ros4"` or
+  `"vern76+ros54p"` in `rxode2` (though the switching methods are different).
 
 #### When `liblsoda` is likely better
 
@@ -311,9 +319,9 @@ already a good general-purpose default.  AutoSwitch complements it:
 - When reproducibility across platforms is more important than per-method
   speed.
 
-#### Choosing a stiff secondary: `ros4`, `ros43`, or `sdirk43`?
+#### Choosing a stiff secondary: `ros4`, `ros43`, `ros54p`, or `sdirk43`?
 
-rxode2 has three main adaptive stiff secondaries:
+rxode2 has four main adaptive stiff secondaries:
 
 - **`ros4`** -- Boost's Kaps-Rentrop 4th-order Rosenbrock W-method.  A-stable.
   This is the lightest-overhead Rosenbrock option and the closest available
@@ -323,13 +331,19 @@ rxode2 has three main adaptive stiff secondaries:
 - **`ros43`** -- libode's GRK4A, a 4th-order A-stable Rosenbrock-Kaps-Rentrop
   method with an embedded 3rd-order error estimate.  More sophisticated than
   `ros4`; analogous to Julia's `Rodas4P()`.
+- **`ros54p`** -- Rodas5P, an 8-stage 5th-order Rosenbrock method with an
+  embedded 4th-order estimate; the same method as Julia's `Rodas5P()`.  It
+  uses the model's analytic Jacobian (generated symbolically when the model
+  has none) and evaluates the time derivative only when `d/dt()` reads time
+  or a covariate changes over the interval.  The higher order pays off at
+  tight tolerances.
 - **`sdirk43`** -- SDIRK 4(3), L-stable.  More robust for severely stiff
   problems (e.g., stiff oscillations, equilibrium reactions) where A-stability
   alone is not enough.
 
 For AutoSwitch pairs, prefer `ros4` when you want low switching overhead,
-`ros43` when you want reliable moderate-stiffness handling, and `sdirk43`
-when the stiff regions are severe.
+`ros43` when you want reliable moderate-stiffness handling, `ros54p` for
+tight tolerances, and `sdirk43` when the stiff regions are severe.
 
 #### Recommended AutoSwitch pairs
 
@@ -337,11 +351,13 @@ when the stiff regions are severe.
 |---|---|---|
 | `"t54+ros4"` | `AutoTsit5(RosShamp4())` | Tsit5 primary, lightweight Rosenbrock W-method secondary; closest to `AutoTsit5(Rosenbrock23())` but `ros4` is 4th order -- no exact 2nd-order Rosenbrock exists in rxode2 |
 | `"t54+ros43"` | `AutoTsit5(Rodas4P())` | Tsit5 primary, GRK4A secondary; more robust stiff handling than `ros4` |
+| `"t54+ros54p"` | `AutoTsit5(Rodas5P())` | Tsit5 primary, Rodas5P secondary; 5th-order stiff fallback for tight tolerances |
 | `"t54+sdirk43"` | `AutoTsit5(SDIRK43())` | L-stable stiff secondary; best for severely stiff problems |
 | `"vern65+ros4"` | -- | Verner 6(5) primary with lightweight stiff secondary |
 | `"vern65+ros43"` | -- | Verner 6(5) primary; good accuracy-to-speed balance |
 | `"vern76+ros4"` | `AutoVern7(RosShamp4())` | Higher-order primary with lighter stiff secondary |
 | `"vern76+ros43"` | `AutoVern7(Rodas4P())` | Higher-order primary; efficient on smooth, low-error-tolerance simulations |
+| `"vern76+ros54p"` | `AutoVern7(Rodas5P())` | Higher-order primary with a 5th-order Rosenbrock secondary; the pair DiffEqGPU uses for stiff ensembles |
 | `"vern76+sdirk43"` | `AutoVern7(SDIRK43())` | Higher-order primary with L-stable stiff backup |
 | `"vern98+ros4"` | `AutoVern9(RosShamp4())` | Highest-order primary with lighter stiff secondary |
 | `"vern98+ros43"` | `AutoVern9(Rodas4P())` | Highest-order primary; best on demanding tolerances |
@@ -458,6 +474,46 @@ For the full treatment -- worked examples, how the dense history is
 recorded and interpolated, mixed delay + ODE models, and estimation --
 see the dedicated article
 [Delay differential equations in rxode2](rxode2-delay-differential-equations.html).
+
+### GPU ensemble methods
+
+For thousands of subjects or more, the `gpu*` methods integrate every
+subject that is waiting at the same time in one batch: one OpenCL kernel
+launch, with one work-item per subject (the design of Julia's DiffEqGPU
+`EnsembleGPUKernel`).  Doses, steady state, lag times, covariates and
+resets stay on the host and run rxode2's usual per-subject event code, so
+results match the host methods.
+
+| GPU method | Host counterpart | Integrator |
+|---|---|---|
+| `"gpuT54"` | `"t54"` | Tsitouras 5(4) |
+| `"gpuVern76"` | `"vern76"` | Verner 7(6) |
+| `"gpuRos54p"` | `"ros54p"` | Rodas5P with the analytic Jacobian |
+| `"gpuT54+gpuRos54p"` | `"t54+ros54p"` | AutoSwitch on the device |
+| `"gpuVern76+gpuRos54p"` | `"vern76+ros54p"` | AutoSwitch on the device |
+
+```{r}
+rxGpuInfo()  # OpenCL devices and whether they support double precision
+rxSolve(model, params, events, method = "gpuRos54p")
+rxSolve(model, params, events, method = "gpuT54", gpuBackend = "cpu")
+```
+
+- `gpuBackend = "auto"` (the default) uses OpenCL when the suggested
+  `OpenCL` package finds a device with the requested precision, and
+  otherwise the same code compiled for the CPU and run on `cores`
+  threads.  `"opencl"` and `"cpu"` choose one explicitly.
+- `gpuPrecision = "float"` runs on devices without double precision;
+  loosen `atol`/`rtol` to match.
+- `gpuDevice` picks the OpenCL device; `gpuBatch` caps how many subjects
+  are in flight at once.
+- The model's `d/dt()` must be expressible as device code (no random
+  numbers, `linCmt()`, user R functions or similar).  A model that is not,
+  or a solve with resampled covariates or `delay()` outside `d/dt()`,
+  falls back to the host counterpart (or to the default method) with a
+  message under `"auto"`, and errors under an explicit backend.
+
+The worked examples, an `nlmixr2` estimation example and timings against
+Julia are in [Solving large populations on a GPU](rxode2-gpu.html).
 
 ### Fixed-step, stiff-suitable, or implicit methods
 
@@ -619,7 +675,7 @@ commonly used Julia solvers to their rxode2 equivalents.
 | `Rosenbrock23()` | (none exact) | Julia's 2nd/3rd-order Rosenbrock W-method (Shampine 1982); rxode2 has no direct 2nd/3rd-order Rosenbrock -- `ros4` (Boost 4th-order W-method) is the lowest-order adaptive Rosenbrock-family analog available |
 | `RosShamp4()` | `ros4` | Boost Kaps-Rentrop 4th-order Rosenbrock W-method; also the closest available analog to `Rosenbrock23()` (rxode2 has no 2nd/3rd-order Rosenbrock) |
 | `Rodas4P()` | `ros43` | GRK4A from libode -- 4th-order A-stable Rosenbrock with 3rd-order error estimate |
-| `Rodas5P()` | `ros43` | 5th-order in Julia; closest rxode2 analog remains `ros43` (4th-order) |
+| `Rodas5P()` | `ros54p` | Rodas5P (Steinebach 2023); same method, with the analytic Jacobian |
 | `RadauIIA5()` | `radauiia5` | Radau IIA 5th-order, 3 stages |
 | `GaussLegendre6()` | `gauss6` | Gauss-Legendre 6th-order |
 | `LobattoIIIC6()` | `iiic6` | Lobatto IIIC 6th-order |
@@ -628,15 +684,20 @@ commonly used Julia solvers to their rxode2 equivalents.
 | `CVODE_BDF()` | `cvode` | SUNDIALS CVODE in BDF mode (default) |
 | `AutoTsit5(Rosenbrock23())` | `"t54+ros4"` (closest; see note) | AutoSwitch: Tsitouras 5(4) + Boost Rosenbrock W-method; `ros4` is 4th order -- rxode2 has no 2nd/3rd-order Rosenbrock |
 | `AutoTsit5(Rodas4P())` | `"t54+ros43"` | AutoSwitch: Tsitouras 5(4) with GRK4A (4th-order Rosenbrock) stiff fallback |
+| `AutoTsit5(Rodas5P())` | `"t54+ros54p"` | AutoSwitch: Tsitouras 5(4) with Rodas5P stiff fallback |
 | `AutoTsit5(SDIRK43())` | `"t54+sdirk43"` | AutoSwitch: Tsitouras 5(4) with SDIRK 4(3) stiff fallback |
 | `AutoVern6(Rosenbrock23())` | `"vern65+ros4"` (closest; see note) | AutoSwitch: Verner 6(5) with Boost Rosenbrock W-method |
 | `AutoVern6(Rodas4P())` | `"vern65+ros43"` | AutoSwitch: Verner 6(5) with GRK4A stiff fallback |
 | `AutoVern7(Rosenbrock23())` | `"vern76+ros4"` (closest; see note) | AutoSwitch: Verner 7(6) with Boost Rosenbrock W-method |
 | `AutoVern7(Rodas4P())` | `"vern76+ros43"` | AutoSwitch: Verner 7(6) with GRK4A stiff fallback |
+| `AutoVern7(Rodas5P())` | `"vern76+ros54p"` | AutoSwitch: Verner 7(6) with Rodas5P stiff fallback |
 | `AutoVern7(SDIRK43())` | `"vern76+sdirk43"` | AutoSwitch: Verner 7(6) with SDIRK 4(3) stiff fallback |
 | `AutoVern9(Rosenbrock23())` | `"vern98+ros4"` (closest; see note) | AutoSwitch: Verner 9(8) with Boost Rosenbrock W-method |
 | `AutoVern9(Rodas4P())` | `"vern98+ros43"` | AutoSwitch: Verner 9(8) with GRK4A stiff fallback |
 | `AutoVern9(SDIRK43())` | `"vern98+sdirk43"` | AutoSwitch: Verner 9(8) with SDIRK 4(3) stiff fallback |
+| `GPUTsit5()` (`EnsembleGPUKernel`) | `"gpuT54"` | DiffEqGPU per-trajectory kernel; rxode2 batches subjects between events |
+| `GPUVern7()` (`EnsembleGPUKernel`) | `"gpuVern76"` | as above |
+| `GPURodas5P()` (`EnsembleGPUKernel`) | `"gpuRos54p"` | as above, with the analytic Jacobian |
 
 Note: for many of the very high-order Runge-Kutta families in `rxode2`, the
 closest naming culture is Julia's DifferentialEquations ecosystem rather than
@@ -676,6 +737,10 @@ Rosenbrock-family secondary.
   do population estimation; in Julia that is done by the closed-source
   Pumas or by NoLimits.jl, the counterparts of nlmixr2.  Turing.jl is a
   general Bayesian estimation routine, closer to nlmixr2bayes.
+- **GPU ensembles**: DiffEqGPU's `EnsembleGPUKernel` runs one trajectory
+  per GPU thread over the whole time span; rxode2's `gpu*` methods run the
+  same kind of kernel between events and keep dosing, steady state and
+  covariates on the host, so NONMEM-style event tables work unchanged.
 - **Interoperability**: The `JuliaCall` or `JuliaConnectoR` packages
   allow calling Julia's ODE solvers from R.
 
@@ -885,6 +950,7 @@ and scientific computing platforms across key features.
 | Analytical PK | linCmt (1-3 cmt) | Manual | ADVAN1-4 | PK model library (`pkmodel()`) | ModelingToolkit |
 | Matrix exponential | `matExp()` / `indLin` | expm() | ADVAN5/7 | -- | LinearAlgebra.exp |
 | Parallel subjects | OpenMP (built-in) | PCT add-on | MPI (parafile) | Multi-core; MPI on clusters | Threads.@threads |
+| GPU ensembles | `gpu*` methods (OpenCL) | PCT `gpuArray` | -- | -- | DiffEqGPU.jl |
 | NONMEM datasets | Native | Manual | Native | Via import | Manual |
 | Population estimation | nlmixr2 (Bayesian: nlmixr2bayes) | -- | Native | Native | Pumas (closed source), NoLimits.jl (Bayesian: Turing.jl) |
 | Universal differential equations | nlmixr2nn | Deep Learning Toolbox (`dlode45`) | -- | -- | DiffEqFlux.jl |
@@ -904,7 +970,12 @@ the [AutoSwitch composite methods](#autoswitch-composite-methods) section above.
 
 ### Adaptive, stiffness-aware, or stiff-suitable
 
-- `liblsoda`, `lsoda`, `cvode`, `ros4`, `ros43`, `sdirk43`
+- `liblsoda`, `lsoda`, `cvode`, `ros4`, `ros43`, `ros54p`, `sdirk43`
+
+### GPU ensemble methods
+
+- `gpuT54`, `gpuVern76`, `gpuRos54p`, `"gpuT54+gpuRos54p"`,
+  `"gpuVern76+gpuRos54p"`
 
 ### Fixed-step, stiff-suitable, or implicit
 
@@ -975,7 +1046,7 @@ pharmacometric workflow is:
    `dop853` or `dop54`
 
 3. if the system is stiff or nearly stiff, compare against `ros4`,
-   `ros43`, `sdirk43`, or `cvode`
+   `ros43`, `ros54p`, `sdirk43`, or `cvode`
 
 4. if stiffness is uncertain, try an AutoSwitch pair such as
    `"t54+ros4"`, `"t54+ros43"`, or `"vern76+ros43"` -- see the
@@ -986,6 +1057,9 @@ pharmacometric workflow is:
    `rk4`, `backwardEuler`, `gauss6`, or `radauiia5`
 
 6. if the model is mostly linear between events, try `indLin`
+
+7. if you simulate or estimate with thousands of subjects or more, try
+   the matching `gpu*` method (for example `gpuRos54p` for `ros54p`)
 
 That strategy is usually more valuable in pharmacometric practice than
 trying to optimize across every available high-order RK family from
@@ -1010,11 +1084,20 @@ the start.
 - Hairer E, Norsett SP, Wanner G (1993). Solving Ordinary Differential
   Equations I: Nonstiff Problems. 2nd ed. Springer.
 
+- Steinebach G (2023). Construction of Rosenbrock-Wanner method Rodas5P
+  and numerical benchmarks within the Julia Differential Equations
+  package. *BIT Numer Math* 63:27.
+
+- Utkarsh, Churavy V, Ma Y, Besard T, Srisuma P, Gymnich T, Gerlach AR,
+  Edelman A, Barbastathis G, Braatz RD, Rackauckas C (2024). Automated
+  translation and accelerated solving of differential equations on
+  multiple GPU platforms. *Comput Methods Appl Mech Eng* 419:116591.
+
 - Beal S, Sheiner LB, Boeckmann A, Bauer RJ (2009). NONMEM Users
   Guides. (1989--2009). Icon Development Solutions, Ellicott City, MD.
 
 ## Next steps
 
 - [Stiff systems and Jacobians](rxode2-stiff.html)
+- [Solving large populations on a GPU](rxode2-gpu.html)
 - [Speeding up solving](rxode2-speed.html)
-- [Dense output for fast solving](rxode2-dense-output.html)

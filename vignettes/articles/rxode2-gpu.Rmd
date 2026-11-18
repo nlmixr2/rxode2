@@ -1,0 +1,196 @@
+---
+title: "Solving large populations on a GPU"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{Solving large populations on a GPU}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+Population simulation and estimation solve the same small ODE system for
+many subjects.  The `gpu*` methods integrate every subject that is waiting
+to be integrated at the same time: one OpenCL kernel launch with one
+work-item per subject, after the per-trajectory design of Julia's DiffEqGPU
+(Utkarsh et al. 2024).  Doses, steady state, lag times, covariates and
+resets stay on the host and run rxode2's usual per-subject event code, so
+any event table that works with a host method works here.
+
+## Methods
+
+| GPU method | Host counterpart | Integrator | Julia DiffEqGPU |
+|---|---|---|---|
+| `"gpuT54"` | `"t54"` | Tsitouras 5(4) | `GPUTsit5()` |
+| `"gpuVern76"` | `"vern76"` | Verner 7(6) | `GPUVern7()` |
+| `"gpuRos54p"` | `"ros54p"` | Rodas5P with the analytic Jacobian | `GPURodas5P()` |
+| `"gpuT54+gpuRos54p"` | `"t54+ros54p"` | AutoSwitch on the device | -- |
+| `"gpuVern76+gpuRos54p"` | `"vern76+ros54p"` | AutoSwitch on the device | -- |
+
+The host counterpart solves any model with the same integrator, so a model
+can move between the two without changing its numerical method.
+
+## Requirements
+
+- The suggested `OpenCL` package (with an OpenCL driver for your GPU, or
+  pocl for CPUs) for `gpuBackend = "opencl"`.  rxode2 itself links no
+  OpenCL; without the package the methods still run with the CPU build.
+- A device with double precision (`cl_khr_fp64`), or
+  `gpuPrecision = "float"`.
+- A model whose `d/dt()` can be written as device code:
+  `rxModelVars(model)$flags["gpuSafe"]` is 1.  Random numbers, `linCmt()`,
+  `matExp()`, user R functions and similar keep a model on the host.
+
+```{r}
+library(rxode2)
+rxGpuInfo()
+#> $available
+#> [1] TRUE
+#>
+#> $devices
+#>   index platform       name                      type  fp64
+#> 1     1 rusticl        AMD Radeon Graphics       gpu   FALSE
+#> 2     2 Portable ...   cpu-haswell-AMD Ryzen 7   cpu   TRUE
+```
+
+## Simulating
+
+```{r}
+mod <- function() {
+  ini({
+    tka <- log(1.2)
+    tcl <- log(3)
+    tv <- log(30)
+    eta.ka ~ 0.2
+    eta.cl ~ 0.1
+    eta.v ~ 0.1
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl) * (wt / 70)^0.75
+    v <- exp(tv + eta.v)
+    d/dt(depot) <- -ka * depot
+    d/dt(center) <- ka * depot - cl / v * center
+    cp <- center / v
+  })
+}
+
+ev <- et(amt = 300, ii = 12, addl = 6) |>
+  et(seq(0, 96, by = 2)) |>
+  et(id = 1:20000)
+ev$wt <- 70
+
+sim <- rxSolve(mod, ev, method = "gpuRos54p")
+```
+
+The options, all in `rxControl()`:
+
+- `gpuBackend`: `"auto"` (default) uses OpenCL when a device with the
+  requested precision exists and otherwise the CPU build, on `cores`
+  threads; `"opencl"` and `"cpu"` choose explicitly.
+  `options(rxode2.gpuBackend = "cpu")` sets what `"auto"` picks.
+- `gpuDevice`: the device index from `rxGpuInfo()`.
+- `gpuPrecision`: `"double"` (default) or `"float"`; with `"float"` loosen
+  `atol` and `rtol` (for example to `1e-5` and `1e-4`).
+- `gpuBatch`: the most subjects in flight at once (default 16384).
+
+Each subject keeps its own tolerances, so a per-subject `tolFactor` (or
+`atolRtolFactor_()` from `nlmixr2est`) loosens only that subject.
+
+## When a model cannot run on the device
+
+Under `gpuBackend = "auto"` these solve on the host with a message: a model
+that is not GPU-safe uses the host counterpart; `delay()` read outside
+`d/dt()`, steady state in a `delay()` model, resampled covariates, or a
+registered `rxRegisterDydtForce()` hook use the model's default method.  An
+explicit `gpuBackend = "opencl"` or `"cpu"` stops with an error instead.
+
+## Estimation with nlmixr2
+
+`nlmixr2` passes `rxControl()` to every solve, so a fit uses a GPU method
+by naming it there:
+
+```{r}
+library(nlmixr2)
+fit <- nlmixr2(
+  mod, dat, "saem",
+  control = saemControl(rxControl = rxControl(method = "gpuRos54p"))
+)
+fitHost <- nlmixr2(
+  mod, dat, "saem",
+  control = saemControl(rxControl = rxControl(method = "ros54p"))
+)
+```
+
+BENCHMARK_NLMIXR2
+
+## Timings
+
+Whole `rxSolve()` calls (setup, event handling and the output data frame
+included) from `bench/gpu-solve-julia.R`, against Julia's DiffEqGPU
+`EnsembleGPUKernel` kernel and `EnsembleThreads`.  Ensembles: Lorenz on
+`t` in `[0, 1]` and Robertson on `[0, 1000]`, one parameter set per subject,
+`atol = rtol = 1e-8`; an AMD Ryzen 7 PRO 5850U (16 threads) with OpenCL on
+pocl.  Times in ms, medians of 3.
+
+| problem | GPU / host method | subjects | rxode2 GPU (OpenCL) | Julia GPU kernel (OpenCL) | rxode2 host | Julia threads |
+|---|---|---:|---:|---:|---:|---:|
+| lorenz | `gpuT54` / `t54` | 1e4 | 127 | 130 | 150 | 45 |
+| lorenz | `gpuRos54p` / `ros54p` | 1e4 | 174 | 257 | 506 | 583 |
+| robertson | `gpuRos54p` / `ros54p` | 1e4 | 134 | 157 | 269 | 408 |
+| lorenz | `gpuT54` / `t54` | 1e5 | 751 | 410 | 1362 | 459 |
+| lorenz | `gpuRos54p` / `ros54p` | 1e5 | 1208 | 791 | 4451 | 6659 |
+| robertson | `gpuRos54p` / `ros54p` | 1e5 | 900 | 538 | 2508 | 4489 |
+
+- The GPU methods are 1.5 to 4 times faster than their host counterparts.
+- Up to 1e4 subjects a whole `rxSolve()` with `gpuRos54p` is faster than
+  DiffEqGPU's bare kernel.  At 1e5 Julia is faster end to end: about 0.36 s
+  of rxode2's time there is `rxSolve()`'s own per-subject setup and output,
+  which every method pays.  The kernels alone (`bench/gpu-runtime-julia.R`)
+  are faster than DiffEqGPU's at every size.
+- The host `ros54p` is 1.5 to 1.8 times faster than Julia's threaded
+  `Rodas5P()`.
+- The end states agree with Julia's to 3e-9 (Lorenz) and 8e-8 (Robertson).
+
+A GPU with double precision moves the OpenCL column further; these runs
+use a CPU OpenCL driver.
+
+## How it works
+
+1. Each subject runs rxode2's per-subject event loop as a resumable state
+   machine that stops whenever it needs its states integrated from one
+   time to the next.
+2. A round collects every waiting subject and integrates all of them at
+   once: one kernel launch, or the same code compiled for the CPU on
+   `cores` threads.  No R code runs between rounds.
+3. The subjects take their new states, handle their next events, and the
+   loop repeats until all are done.
+
+The kernel is generated from the model: its `d/dt()` (and, for
+`gpuRos54p`, the analytic Jacobian) as OpenCL C, the integrator, and the
+special functions the model calls.  It is compiled once per model, method
+and device and cached for the session.
+
+## References
+
+- Utkarsh, Churavy V, Ma Y, Besard T, Srisuma P, Gymnich T, Gerlach AR,
+  Edelman A, Barbastathis G, Braatz RD, Rackauckas C (2024). Automated
+  translation and accelerated solving of differential equations on
+  multiple GPU platforms. *Comput Methods Appl Mech Eng* 419:116591.
+- Steinebach G (2023). Construction of Rosenbrock-Wanner method Rodas5P
+  and numerical benchmarks within the Julia Differential Equations
+  package. *BIT Numer Math* 63:27.
+
+## Next steps
+
+- [Choosing an ODE solver](ode-solvers.html)
+- [Speeding up solving](rxode2-speed.html)
+- [Stiff systems and Jacobians](rxode2-stiff.html)
