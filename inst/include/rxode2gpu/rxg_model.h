@@ -7,6 +7,9 @@
 #ifndef RXG_HAS_DELAY
 #define RXG_HAS_DELAY 0
 #endif
+#ifndef RXG_TIME
+#define RXG_TIME 1 // the model may read time
+#endif
 
 // Integrator codes (rxg_stepper.h); defined here so RXG_METHOD may name
 // one before the history degree below is chosen

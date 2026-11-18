@@ -135,4 +135,5 @@ for (.i in seq_len(nrow(.rx))) {
     )
   )
 }
+options(width = 200)
 print(.out, row.names = FALSE)

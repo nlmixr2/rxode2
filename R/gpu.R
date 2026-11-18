@@ -129,6 +129,70 @@
   paste(c(.rxGpuDefines(...), .rxGpuInline(.src)), collapse = "\n")
 }
 
+#' Does a model's device code carry its analytic Jacobian?
+#'
+#' @param obj rxode2 model
+#' @return logical
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuHasJac <- function(obj) {
+  .f <- .rxGpuModelFile(obj)
+  file.exists(.f) && any(readLines(.f, warn = FALSE) == "#define RXG_HAS_JAC 1")
+}
+
+#' The model with its analytic state Jacobian for the device integrators
+#'
+#' ros54p (alone or as the stiff half of a composite) uses the model's
+#' `df(state)/dy(state)` lines, generated symbolically as for every
+#' Rosenbrock method in rxode2 (`.rxJacStateModel()`, shared with
+#' `rxSolve()`'s cache).
+#'
+#' @param obj rxode2 model
+#' @return the model with the Jacobian, or `NULL` when it cannot be
+#'   generated as device code
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuJacModel <- function(obj) {
+  if (.rxGpuHasJac(obj)) {
+    return(obj)
+  }
+  .key <- paste0(rxModelVars(obj)$md5["parsed_md5"], "_jac")
+  .c <- .rxSolveCacheGet(.key)
+  if (is.null(.c) || !.rxJacCacheOk(.c)) {
+    .c <- tryCatch(
+      {
+        .e <- .rxJacStateModel(obj)
+        .e$md5 <- rxModelVars(.e$obj)$md5["parsed_md5"]
+        .e
+      },
+      error = function(e) NA_character_
+    )
+    .rxSolveCacheSet(.key, .c)
+  }
+  if (identical(.c, NA_character_) || !.rxGpuSafe(.c$obj) || !.rxGpuHasJac(.c$obj)) {
+    return(NULL)
+  }
+  .c$obj
+}
+
+#' Model whose device code a ros54p method compiles
+#'
+#' @param obj rxode2 model
+#' @param method integrator name
+#' @return model (with the Jacobian for ros54p methods)
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuMethodModel <- function(obj, method) {
+  if (!grepl("ros54p", method, fixed = TRUE)) {
+    return(obj)
+  }
+  .j <- .rxGpuJacModel(obj)
+  if (is.null(.j)) {
+    stop("'", method, "' needs the model's analytic Jacobian, which cannot be generated as device code", call. = FALSE)
+  }
+  .j
+}
+
 .rxGpuHostEnv <- new.env(parent = emptyenv())
 
 #' Compile a model's device code as host C
@@ -143,6 +207,11 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .rxGpuHostLib <- function(obj, ...) {
+  ## every method is built, so the Jacobian is added when it can be (ros54p)
+  if (.rxGpuSafe(obj)) {
+    .j <- .rxGpuJacModel(obj)
+    if (!is.null(.j)) obj <- .j
+  }
   .s <- .rxGpuModelSource(obj)
   .src <- c(
     .rxGpuDefines(...),
@@ -542,7 +611,9 @@ rxGpuInfo <- function() {
 #' @author Matthew L. Fidler
 .rxGpuKernel <- function(obj, method, ctx, precision = c("double", "float"), ...) {
   precision <- match.arg(precision)
-  .m <- .rxGpuMethods[match.arg(method, names(.rxGpuMethods))]
+  method <- match.arg(method, names(.rxGpuMethods))
+  .m <- .rxGpuMethods[method]
+  obj <- .rxGpuMethodModel(obj, method)
   .src <- .rxGpuProgramSource(
     obj,
     ...,
@@ -630,7 +701,9 @@ rxGpuInfo <- function() {
 ) {
   backend <- match.arg(backend)
   precision <- match.arg(precision)
+  method <- match.arg(method, names(.rxGpuMethods))
   checkmate::assertIntegerish(nsub, lower = 1, len = 1, any.missing = FALSE)
+  obj <- .rxGpuMethodModel(obj, method)
   .args <- list(...)
   .defN <- intersect(names(.args), c("safeLog", "safeZero", "safePow", "useStdPow"))
   .lib <- do.call(.rxGpuHostLib, c(list(obj), .args[.defN]))

@@ -3383,6 +3383,42 @@ rxSolveCacheEnv$.order <- character()
   invisible(value)
 }
 
+#' A model with its analytic state Jacobian (`df(state)/dy(state)` lines)
+#'
+#' Adds the symbolic Jacobian of the d/dt() lines (`calcJac = TRUE`), keeping
+#' only the state-by-state entries, as every Rosenbrock/implicit method needs.
+#'
+#' @param object rxode2 model
+#' @return list with the model `code` and the compiled model `obj`
+#' @noRd
+#' @author Matthew L. Fidler
+.rxJacStateModel <- function(object) {
+  .mvCur <- rxModelVars(object)
+  .mv <- suppressMessages({
+    rxModelVars(rxode2::rxode2(object, calcJac = TRUE))
+  })
+  .states <- .mvCur$state
+  .normCode <- strsplit(rxNorm(.mv), "\n")[[1]]
+  .origCode <- strsplit(rxNorm(.mvCur), "\n")[[1]]
+  # the Jacobian may read the PK record time (rx_time_pk~t)
+  .fc <- c(.origCode, setdiff(grep("^rx_time_pk~", .normCode, value = TRUE), .origCode))
+
+  for (.line in .normCode) {
+    if (grepl("^df\\(", .line)) {
+      .parts <- regmatches(.line, regexec("^df\\(([^)]+)\\)/dy\\(([^)]+)\\)", .line))[[1]]
+      if (length(.parts) == 3) {
+        if (.parts[2] %in% .states && .parts[3] %in% .states) {
+          if (!(.line %in% .origCode) && !(.line %in% .fc)) {
+            .fc <- c(.fc, .line)
+          }
+        }
+      }
+    }
+  }
+  .fc <- paste(.fc, collapse = "\n")
+  list(code = .fc, obj = rxode2(.fc))
+}
+
 ## Is a cached Jacobian-augmented model entry still usable?  `NA_character_`
 ## marks a model whose Jacobian generation failed (kept so the failure is not
 ## retried); anything else must be an entry whose compiled model is still
@@ -3910,30 +3946,8 @@ rxSolve.default <- function(
           if (!is.null(.cached) && .rxJacCacheOk(.cached)) {
             .cached
           } else {
-            .mv <- suppressMessages({
-              rxModelVars(rxode2::rxode2(object, calcJac = TRUE))
-            })
-            .states <- .mvCur$state
-            .normCode <- strsplit(rxNorm(.mv), "\n")[[1]]
-            .origCode <- strsplit(rxNorm(.mvCur), "\n")[[1]]
-            # the Jacobian may read the PK record time (rx_time_pk~t)
-            .fc <- c(.origCode, setdiff(grep("^rx_time_pk~", .normCode, value = TRUE), .origCode))
-
-            for (.line in .normCode) {
-              if (grepl("^df\\(", .line)) {
-                .parts <- regmatches(.line, regexec("^df\\(([^)]+)\\)/dy\\(([^)]+)\\)", .line))[[1]]
-                if (length(.parts) == 3) {
-                  if (.parts[2] %in% .states && .parts[3] %in% .states) {
-                    if (!(.line %in% .origCode) && !(.line %in% .fc)) {
-                      .fc <- c(.fc, .line)
-                    }
-                  }
-                }
-              }
-            }
-            .fc <- paste(.fc, collapse = "\n")
-            .jacObject <- rxode2(.fc)
-            .entry <- list(code = .fc, obj = .jacObject, md5 = rxModelVars(.jacObject)$md5["parsed_md5"])
+            .entry <- .rxJacStateModel(object)
+            .entry$md5 <- rxModelVars(.entry$obj)$md5["parsed_md5"]
             .rxSolveCacheSet(.key, .entry)
             .entry
           }

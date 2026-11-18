@@ -173,29 +173,43 @@ rxTest({
     }
   })
 
-  test_that("ros54p uses the model's df()/dy() Jacobian", {
+  test_that("ros54p uses the model's analytic df()/dy() Jacobian", {
     .ode <- "
       d/dt(y1) = -a*y1 + b*y2*y2
       d/dt(y2) = a*y1 - b*y2*y2 - c*y2
     "
-    .fd <- rxode2(.ode)
+    .gen <- rxode2(.ode)
     .an <- rxode2(paste(.ode, "
       df(y1)/dy(y1) = -a
       df(y1)/dy(y2) = 2*b*y2
       df(y2)/dy(y1) = a
       df(y2)/dy(y2) = -2*b*y2 - c
     "))
-    .lf <- .rxGpuHostLib(.fd)
+    ## without df()/dy() lines the Jacobian is generated symbolically, as
+    ## for every Rosenbrock method; never by finite differences
+    expect_false(.rxGpuHasJac(.gen))
+    expect_true(.rxGpuHasJac(.rxGpuJacModel(.gen)))
+    expect_identical(.rxGpuJacModel(.an), .an)
+    .lg <- .rxGpuHostLib(.gen)
     .la <- .rxGpuHostLib(.an)
-    expect_false(.lf$hasJac)
+    expect_true(.lg$hasJac)
     expect_true(.la$hasJac)
     .p <- c(a = 50, b = 3, c = 0.5)
-    .rf <- .rxGpuHostIntegrate(.lf, "ros54p", 0, 5, c(1, 0), .par(.fd, .p), atol = 1e-12, rtol = 1e-10)
+    .rg <- .rxGpuHostIntegrate(.lg, "ros54p", 0, 5, c(1, 0), .par(.gen, .p), atol = 1e-12, rtol = 1e-10)
     .ra <- .rxGpuHostIntegrate(.la, "ros54p", 0, 5, c(1, 0), .par(.an, .p), atol = 1e-12, rtol = 1e-10)
-    expect_equal(.ra$y, .rf$y, tolerance = 1e-8)
-    ## the analytic Jacobian costs no derivative evaluations
-    .perJac <- (.rf$cnt[["fev"]] - .ra$cnt[["fev"]]) / .ra$cnt[["jac"]]
-    expect_equal(.perJac, 2, tolerance = 0.2)
+    expect_equal(.ra$y, .rg$y, tolerance = 1e-12)
+    expect_equal(.ra$cnt, .rg$cnt)
+    ## an autonomous model: 8 derivative evaluations a step (no df/dt)
+    expect_lt(.rg$cnt[["fev"]], 8 * .rg$cnt[["step"]] + 4)
+    ## a model reading time also evaluates df/dt
+    .mt <- rxode2({
+      d/dt(y1) <- -a * y1 + sin(t)
+    })
+    .lt <- .rxGpuHostLib(.mt)
+    .rt <- .rxGpuHostIntegrate(.lt, "ros54p", 0, 5, 1, .par(.mt, c(a = 3)), atol = 1e-12, rtol = 1e-10)
+    expect_gte(.rt$cnt[["fev"]], 9 * .rt$cnt[["step"]])
+    .ex <- (exp(-15) * (1 + 1 / 10) + (3 * sin(5) - cos(5)) / 10)
+    expect_equal(.rt$y, .ex, tolerance = 1e-8)
   })
 
   test_that("the device integrators see infusions, off compartments and covariates", {
@@ -488,7 +502,12 @@ rxTest({
     .pm <- matrix(rep(.par(.m, c(s = 10, r = 28, b = 8 / 3)), .n), 3)
     .pm[rxModelVars(.m)$params == "r", ] <- runif(.n, 10, 30)
     for (.meth in c(.methods, "vern76+ros54p")) {
-      .ker <- OpenCL::oclSimpleKernel(.ctx, "rxg_int", .rxGpuProgramSource(.m, extra = .kernel(.meth)), "double")
+      .ker <- OpenCL::oclSimpleKernel(
+        .ctx,
+        "rxg_int",
+        .rxGpuProgramSource(.rxGpuMethodModel(.m, .meth), extra = .kernel(.meth)),
+        "double"
+      )
       .out <- as.numeric(OpenCL::oclRun(
         .ker,
         .n * 3,
@@ -524,7 +543,7 @@ rxTest({
     .y <- as.vector(rbind(runif(.n, 0.5, 2), runif(.n, 0, 2), rep(0, .n)))
     .pm <- rbind(runif(.n, 0.5, 2), runif(.n, 0.3, 1))[match(rxModelVars(.m)$params, c("k", "tau")), ]
     for (.meth in c(.methods, "vern76+ros54p")) {
-      .src <- .rxGpuProgramSource(.m, extra = .kernel(.meth, delay = TRUE))
+      .src <- .rxGpuProgramSource(.rxGpuMethodModel(.m, .meth), extra = .kernel(.meth, delay = TRUE))
       .ker <- OpenCL::oclSimpleKernel(.ctx, "rxg_int", .src, "double")
       .rec <- OpenCL::clBuffer(.ctx, .n * 2000 * 64, "double")
       .out <- as.numeric(OpenCL::oclRun(
@@ -569,10 +588,13 @@ rxTest({
     .md <- .dde()
     for (.meth in c(.methods, "rkt54+ros54p")) {
       for (.float in c(FALSE, TRUE)) {
-        writeLines(.rxGpuProgramSource(.m, float = .float, extra = .kernel(.meth)), .f)
+        writeLines(.rxGpuProgramSource(.rxGpuMethodModel(.m, .meth), float = .float, extra = .kernel(.meth)), .f)
         .out <- .clang1(.float)
         expect_null(attr(.out, "status"), info = paste(c(.meth, .out), collapse = "\n"))
-        writeLines(.rxGpuProgramSource(.md, float = .float, extra = .kernel(.meth, delay = TRUE)), .f)
+        writeLines(
+          .rxGpuProgramSource(.rxGpuMethodModel(.md, .meth), float = .float, extra = .kernel(.meth, delay = TRUE)),
+          .f
+        )
         .out <- .clang1(.float)
         expect_null(attr(.out, "status"), info = paste(c(.meth, .out), collapse = "\n"))
       }
