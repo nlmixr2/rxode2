@@ -603,6 +603,11 @@ extern "C" int rxGpuSolveClaim(const char *key) {
   return ok;
 }
 
+// slots the installed GPU setup needs (op->cores covers them)
+extern "C" int rxGpuSolveSlots(void) {
+  return rxGpuSolveCfg.on ? rxGpuSolveCfg.dims[RXG_D_NSUB] : 0;
+}
+
 extern "C" SEXP _rxode2_rxGpuSolveSet(SEXP round, SEXP cl, SEXP dims, SEXP od,
                                       SEXP oi, SEXP threads, SEXP key) {
   if (Rf_isNull(round)) {

@@ -379,4 +379,31 @@ rxTest({
       expect_equal(.g$cp, .h$cp, tolerance = 1e-12, label = .meth)
     }
   })
+
+  test_that("a GPU solve set up from C installs its GPU setup there", {
+    .b <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - cl / v * center
+      cp <- center / v
+    })
+    .p <- data.frame(id = 1:3, ka = c(1, 1.5, 2), cl = 3, v = 30)
+    .ev <- et(amt = 300) |> et(seq(0, 24, by = 4)) |> et(id = 1:3)
+    .refs <- lapply(.gpuMethods, function(.meth) {
+      suppressMessages(rxSolve(.b, .p, .ev, method = .meth, gpuBackend = "cpu"))$cp
+    })
+    ## rxSolve()'s own install is skipped (as for nlmixr2est); rxSolve_()
+    ## installs through .rxGpuSolveInstallC()
+    .real <- .rxGpuSolveInstall
+    .n <- 0L
+    local_mocked_bindings(.rxGpuSolveInstall = function(object, ctl, nsolve, ...) {
+      .n <<- .n + 1L
+      if (.n == 1L) ctl else .real(object, ctl, nsolve, ...)
+    })
+    for (.i in seq_along(.gpuMethods)) {
+      .n <- 0L
+      .c <- suppressMessages(rxSolve(.b, .p, .ev, method = .gpuMethods[.i], gpuBackend = "cpu"))
+      expect_equal(.n, 2L, label = .gpuMethods[.i])
+      expect_equal(.c$cp, .refs[[.i]], tolerance = 1e-12, label = .gpuMethods[.i])
+    }
+  })
 })
