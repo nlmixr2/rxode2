@@ -1072,6 +1072,10 @@ rxGpuInfo <- function() {
   if (length(.threads) != 1L || is.na(.threads) || .threads < 1L) {
     .threads <- getRxThreads()
   }
+  ## each round opens short parallel regions; a team on every logical CPU
+  ## (hyperthreads included) spins at their barriers, so it is capped at
+  ## rxode2's thread count
+  .threads <- as.integer(max(1L, min(.threads, getRxThreads())))
   .batch <- as.integer(max(1L, min(ctl$gpuBatch, nsolve)))
   .backend <- ctl$gpuBackend
   if (.backend == "auto") {
