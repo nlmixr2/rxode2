@@ -23,9 +23,23 @@ rxTest({
       .r <- rxSolve(.m, .ev, method = .meth)
       expect_equal(.r$cp, .ref, tolerance = 1e-5, label = .meth)
     }
-    ## the generated Jacobian indexes through the state macros
-    .c <- readLines(rxC(rxode2(.m, calcJac = TRUE)))
+    ## a user Jacobian of a reordered state indexes through the state macros
+    .j <- rxode2({
+      target(0) <- 1
+      d/dt(drug) <- -drug * target
+      d/dt(target) <- -target
+      df(drug)/dy(drug) <- -target
+      df(drug)/dy(target) <- -drug
+      df(target)/dy(target) <- -1
+    })
+    expect_equal(rxModelVars(.j)$state, c("drug", "target"))
+    .c <- readLines(rxC(.j))
     expect_true(any(grepl("__PDStateVar__[__DDT", .c, fixed = TRUE)))
     expect_false(any(grepl("__PDStateVar__\\[[0-9]", .c)))
+    expect_equal(
+      rxSolve(.j, et(seq(0, 5)), inits = c(drug = 1), method = "ros4")$drug,
+      rxSolve(.j, et(seq(0, 5)), inits = c(drug = 1), method = "dop853", atol = 1e-10, rtol = 1e-10)$drug,
+      tolerance = 1e-5
+    )
   })
 })
