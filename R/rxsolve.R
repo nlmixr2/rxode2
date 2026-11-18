@@ -178,7 +178,7 @@
 #'
 #'     For the adaptive methods `"f78"`, `"ck54"`, `"dop5"`, `"bs"`, `"f32"`,
 #'     `"rk43"`, `"dop54"`, `"vern65"`, `"vern76"`, `"dop87"`, `"vern98"`,
-#'     `"ros43"`, `"sdirk43"`, and all libode adaptive methods (`"bs32"`,
+#'     `"ros43"`, `"ros54p"`, `"sdirk43"`, the GPU methods, and all libode adaptive methods (`"bs32"`,
 #'     `"ssp43"`, `"f45"`, `"t54"`, `"s54"`, `"pp54"`, `"pp54b"`,
 #'     `"bs54"`, `"ss54"`, `"dp65"`, `"c65"`, `"tp64"`, `"v65r"`,
 #'     `"v65"`, `"dverk65"`, `"tf65"`, `"tp75"`, `"tmy7"`, `"tmy7s"`,
@@ -6119,6 +6119,22 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #'
 #' * `"ros6"` **(implicit)** -- Kaps-Wanner 6th-order A-stable Rosenbrock method (ROW6A) from libode.
 #'   Fixed step size (set with `hmin`). Requires Jacobian; falls back to `liblsoda` if unavailable.
+#'
+#' * `"ros54p"` **(implicit)** -- Steinebach's 8-stage L-stable Rosenbrock 5(4) method (Rodas5P).
+#'   Adaptive step size via its embedded 4th-order solution.  Requires an analytical
+#'   Jacobian (auto-computed from the model when not provided); falls back to
+#'   `liblsoda` if Jacobian generation fails.  `"t54+ros54p"` and `"vern76+ros54p"`
+#'   are its AutoSwitch composites.
+#'
+#' * `"gpuRkt54"`, `"gpuVern76"`, `"gpuRos54p"`, `"gpuRkt54+gpuRos54p"`,
+#'   `"gpuVern76+gpuRos54p"` -- the same integrators (Tsitouras 5(4) as
+#'   `"t54"`, Verner 7(6) as `"vern76"`, Rodas5P as `"ros54p"` with the
+#'   analytical Jacobian, and their AutoSwitch composites) as device code: each
+#'   round integrates every waiting subject at once, one subject per OpenCL
+#'   work-item, or on `cores` threads with the CPU build (`gpuBackend`).
+#'   Events stay on the host.  The model's `d/dt()` must be able to run as
+#'   device code; otherwise `gpuBackend = "auto"` solves with the host method
+#'   named above.  Supports `delay()`.
 #'
 #' * `"backwardEuler"` **(implicit)** -- Backward Euler (BDF-1), 1st-order L-stable fully implicit method from libode.
 #'   Fixed step size (set with `hmin`). Requires Jacobian; falls back to `liblsoda` if unavailable.
