@@ -1,5 +1,5 @@
 #ifdef IN_PAR_SOLVE
-// Batched solving with the device integrators (methods gpuRkt54, gpuVern76,
+// Batched solving with the device integrators (methods gpuT54, gpuVern76,
 // gpuRos54p and the device AutoSwitch composites, codes 110-114).
 //
 // Events stay on the host.  Each subject runs rxode2's per-subject loop

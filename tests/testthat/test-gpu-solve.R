@@ -1,10 +1,10 @@
 rxTest({
-  .gpuMethods <- c("gpuRkt54", "gpuVern76", "gpuRos54p", "gpuRkt54+gpuRos54p", "gpuVern76+gpuRos54p")
+  .gpuMethods <- c("gpuT54", "gpuVern76", "gpuRos54p", "gpuT54+gpuRos54p", "gpuVern76+gpuRos54p")
   .hostOf <- c(
-    gpuRkt54 = "t54",
+    gpuT54 = "t54",
     gpuVern76 = "vern76",
     gpuRos54p = "ros54p",
-    "gpuRkt54+gpuRos54p" = "t54+ros54p",
+    "gpuT54+gpuRos54p" = "t54+ros54p",
     "gpuVern76+gpuRos54p" = "vern76+ros54p"
   )
   ## the backends to check: always the CPU build; OpenCL when a device with
@@ -30,16 +30,16 @@ rxTest({
   }
 
   test_that("the GPU methods are named rxSolve() methods", {
-    expect_equal(unname(odeMethodToInt("gpuRkt54")), 110L)
+    expect_equal(unname(odeMethodToInt("gpuT54")), 110L)
     expect_equal(unname(odeMethodToInt("gpuVern76+gpuRos54p")), 114L)
     expect_equal(unname(odeMethodToInt("ros54p")), 108L)
-    expect_false(rxIsAutoSwitch("gpuRkt54+gpuRos54p"))
+    expect_false(rxIsAutoSwitch("gpuT54+gpuRos54p"))
     expect_true(rxIsAutoSwitch("t54+ros54p"))
     expect_true(rxIsStiff("gpuRos54p"))
     expect_true(rxIsStiff("ros54p"))
-    expect_true(rxIsNonStiff("gpuRkt54"))
-    expect_false(rxIsNonStiff("gpuRkt54+gpuRos54p"))
-    expect_false(rxIsStiff("gpuRkt54+gpuRos54p"))
+    expect_true(rxIsNonStiff("gpuT54"))
+    expect_false(rxIsNonStiff("gpuT54+gpuRos54p"))
+    expect_false(rxIsStiff("gpuT54+gpuRos54p"))
     expect_true(rxIsImplicit("ros54p"))
     expect_equal(unname(rxControl(method = "gpuRos54p")$method), 112L)
     expect_equal(rxControl(method = "t54+ros54p")$stiff2, 108L)
@@ -128,8 +128,8 @@ rxTest({
         expect_equal(.r$cp, .ref$cp, tolerance = 1e-7, label = paste(.be, .batch))
       }
       ## one and two threads give the same result
-      .a <- .solve(.m, .ev, "gpuRkt54+gpuRos54p", .be, nSub = 25, seed = 11, cores = 1, gpuBatch = 5)
-      .b <- .solve(.m, .ev, "gpuRkt54+gpuRos54p", .be, nSub = 25, seed = 11, cores = 2, gpuBatch = 5)
+      .a <- .solve(.m, .ev, "gpuT54+gpuRos54p", .be, nSub = 25, seed = 11, cores = 1, gpuBatch = 5)
+      .b <- .solve(.m, .ev, "gpuT54+gpuRos54p", .be, nSub = 25, seed = 11, cores = 2, gpuBatch = 5)
       expect_equal(.a$cp, .b$cp)
     }
   })
@@ -144,7 +144,7 @@ rxTest({
     .ini <- c(y1 = 1, y2 = 0, y3 = 0)
     .ref <- rxSolve(.rb, .ev, c(k1 = 0.04), inits = .ini, method = "liblsoda", atol = 1e-12, rtol = 1e-11)
     for (.be in .backends()) {
-      for (.meth in c("gpuRos54p", "gpuRkt54+gpuRos54p", "gpuVern76+gpuRos54p")) {
+      for (.meth in c("gpuRos54p", "gpuT54+gpuRos54p", "gpuVern76+gpuRos54p")) {
         .r <- .solve(.rb, .ev, .meth, .be, params = c(k1 = 0.04), inits = .ini, atol = 1e-10, rtol = 1e-8)
         expect_equal(.r$y1, .ref$y1, tolerance = 1e-6, label = paste(.be, .meth))
         expect_equal(.r$y3, .ref$y3, tolerance = 1e-6, label = paste(.be, .meth))
@@ -190,8 +190,8 @@ rxTest({
       lagged <- delay(x, 1)
     })
     .ev <- et(c(0, 1, 2, 3))
-    expect_error(rxSolve(.m, .ev, method = "gpuRkt54", gpuBackend = "cpu"), "delay")
-    expect_message(.r <- rxSolve(.m, .ev, method = "gpuRkt54"), "default method")
+    expect_error(rxSolve(.m, .ev, method = "gpuT54", gpuBackend = "cpu"), "delay")
+    expect_message(.r <- rxSolve(.m, .ev, method = "gpuT54"), "default method")
     expect_equal(.r$lagged, c(0, 0, 1, 2), tolerance = 1e-6)
     ## steady state with delay(): each interval would restart the history
     .d <- rxode2({
@@ -216,7 +216,7 @@ rxTest({
       d/dt(x) <- log(k)
     })
     .ev <- et(c(0, 1))
-    for (.meth in c("gpuRkt54", "gpuRos54p")) {
+    for (.meth in c("gpuT54", "gpuRos54p")) {
       .r <- rxSolve(.m, .ev, c(k = 0), inits = c(x = 0), method = .meth, gpuBackend = "cpu", safeLog = 2L)
       expect_equal(.r$x[2], log(.Machine$double.eps), tolerance = 1e-8, label = .meth)
     }
@@ -261,7 +261,7 @@ rxTest({
       ))
       .Call("_rxode2_rxIndLinDriveTeam", 2L, FALSE, PACKAGE = "rxode2")
     }
-    for (.meth in c("gpuVern76", "gpuRkt54+gpuRos54p")) {
+    for (.meth in c("gpuVern76", "gpuT54+gpuRos54p")) {
       .d <- .drive(.meth, gpuBackend = "cpu")
       .h <- .drive(.hostOf[[.meth]])
       expect_equal(unname(.d[["nsolve"]]), 6)

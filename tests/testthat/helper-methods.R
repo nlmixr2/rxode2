@@ -120,10 +120,10 @@
   "ros54p",
   "t54+ros54p",
   "vern76+ros54p",
-  "gpuRkt54",
+  "gpuT54",
   "gpuVern76",
   "gpuRos54p",
-  "gpuRkt54+gpuRos54p",
+  "gpuT54+gpuRos54p",
   "gpuVern76+gpuRos54p"
 )
 # AutoSwitch composite methods: dop853 primary paired with each stiff
@@ -161,10 +161,10 @@
   "ros54p",
   "t54+ros54p",
   "vern76+ros54p",
-  "gpuRkt54",
+  "gpuT54",
   "gpuVern76",
   "gpuRos54p",
-  "gpuRkt54+gpuRos54p",
+  "gpuT54+gpuRos54p",
   "gpuVern76+gpuRos54p"
 )
 .methods1 <- c("ddop853", "ddop5", "dbs", "dros4", "ddop853+dros4", "dcvode")
