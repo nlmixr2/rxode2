@@ -47,16 +47,19 @@ if (requireNamespace("OpenCL", quietly = TRUE)) {
   .dev <- which(.d$fp64 & !grepl("rusticl", .d$platform))[1]
 }
 
-## estimation method, ODE method, gpuBackend
+## ODE method and gpuBackend; liblsoda and the AutoSwitch composites switch
+## between non-stiff and stiff steps
 .cases <- list(
   c("liblsoda", "auto"),
   c("t54", "auto"),
   c("ros54p", "auto"),
+  c("t54+ros54p", "auto"),
   c("gpuT54", "cpu"),
-  c("gpuRos54p", "cpu")
+  c("gpuRos54p", "cpu"),
+  c("gpuT54+gpuRos54p", "cpu")
 )
 if (!is.na(.dev)) {
-  .cases <- c(.cases, list(c("gpuT54", "opencl"), c("gpuRos54p", "opencl")))
+  .cases <- c(.cases, list(c("gpuT54", "opencl"), c("gpuRos54p", "opencl"), c("gpuT54+gpuRos54p", "opencl")))
 }
 
 .out <- NULL
