@@ -1145,7 +1145,7 @@
 #' @param gpuPrecision `"double"` (the default) or `"float"` (OpenCL only).
 #'
 #' @param gpuBatch The most subjects the GPU methods integrate in one round
-#'   (default 4096).  Each needs its own scratch while it waits.
+#'   (default 16384).  Each needs its own scratch while it waits.
 #'
 #' @param linCmtGillK The total number of possible steps to determine the
 #'     optimal forward/central difference step size per parameter (by
@@ -1775,7 +1775,7 @@ rxSolve <- function(
   gpuBackend = c("auto", "opencl", "cpu"),
   gpuDevice = NULL,
   gpuPrecision = c("double", "float"),
-  gpuBatch = 4096L,
+  gpuBatch = 16384L,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,

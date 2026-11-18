@@ -173,7 +173,7 @@ rxSolve(
   gpuBackend = c("auto", "opencl", "cpu"),
   gpuDevice = NULL,
   gpuPrecision = c("double", "float"),
-  gpuBatch = 4096L,
+  gpuBatch = 16384L,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -1588,7 +1588,7 @@ the requested precision is available and the CPU otherwise
 \item{gpuPrecision}{\code{"double"} (the default) or \code{"float"} (OpenCL only).}
 
 \item{gpuBatch}{The most subjects the GPU methods integrate in one round
-(default 4096).  Each needs its own scratch while it waits.}
+(default 16384).  Each needs its own scratch while it waits.}
 
 \item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that
 is acceptable before issuing a warning/error about the gradient estimates.}
