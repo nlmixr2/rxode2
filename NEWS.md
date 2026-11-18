@@ -71,7 +71,10 @@
   rounds.  rxode2 calls OpenCL through the context and kernel of the
   suggested `OpenCL` package and neither links OpenCL nor needs its headers;
   the same round also runs as host C on OpenMP threads.  `rxGpuInfo()` lists
-  the OpenCL devices and whether each supports double precision.
+  the OpenCL devices and whether each supports double precision.  `ros54p`
+  uses the model's analytic Jacobian (generated symbolically when the model
+  has no `df()/dy()` lines, as for the other Rosenbrock methods) and skips
+  the time derivative for models that do not read time.
 
 - `rxSymInvCholCreate()` builds block-diagonal omegas with
   `lotri::lotriMat()` instead of `Matrix::bdiag()`, removing the

@@ -4,6 +4,7 @@
 #include "rxProtect.h"
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 /**
  * Generates a random string of 4 alphanumeric characters.
@@ -1094,6 +1095,29 @@ void writeSb(sbuf *sbb, FILE *fp){
 
 extern SEXP _goodFuns;
 
+// Does the normalized model read time (t or time)?  Conservative: any
+// identifier t or time counts.
+static int rxgUsesTime(const char *s) {
+  const char *p = s;
+  while (*p) {
+    if (isalpha((unsigned char)*p) || *p == '_' || *p == '.') {
+      const char *b = p;
+      while (*p && (isalnum((unsigned char)*p) || *p == '_' || *p == '.')) p++;
+      size_t n = (size_t)(p - b);
+      if ((n == 1 && b[0] == 't') ||
+          (n == 4 && (b[0] == 't' || b[0] == 'T') && (b[1] == 'i' || b[1] == 'I') &&
+           (b[2] == 'm' || b[2] == 'M') && (b[3] == 'e' || b[3] == 'E'))) {
+        return 1;
+      }
+    } else if (isdigit((unsigned char)*p)) {
+      while (*p && (isalnum((unsigned char)*p) || *p == '.')) p++;
+    } else {
+      p++;
+    }
+  }
+  return 0;
+}
+
 // Writes <c_file>l (eg model.cl): OpenCL C for rxg_dydt()/rxg_jac() for a
 // model whose flags["gpuSafe"] is 1.
 static void writeRxgDevice(const char *cfile, const char *prefix,
@@ -1123,6 +1147,8 @@ static void writeRxgDevice(const char *cfile, const char *prefix,
           nState > 0 ? nState : 1, nLhs > 0 ? nLhs : 1, nPar > 0 ? nPar : 1);
   sAppend(&sbOut, "#define RXG_HAS_JAC %d\n", (found_jac == 1 && good_jac == 1) ? 1 : 0);
   sAppend(&sbOut, "#define RXG_HAS_DELAY %d\n", tb.hasDelay ? 1 : 0);
+  // delay() reads the history at t - T: time dependent too
+  sAppend(&sbOut, "#define RXG_TIME %d\n", (tb.hasDelay || rxgUsesTime(sbNrm.s)) ? 1 : 0);
   if (tb.hasDelay) {
     // the delay() history keeps only the states delay() reads: column of a
     // state (RXG_DCOL) and state of a column (RXG_DSTATE)
