@@ -117,22 +117,26 @@ static void rxGpuFillReq(rxGpuReq &q, int r, int sub, int init, double h,
   }
   double *pl = &q.pl[(size_t)r*d[RXG_D_NLHS1]];
   for (int j = 0; j < nlhs; j++) pl[j] = ind->lhs ? ind->lhs[j] : NA_REAL;
-  // parameters and covariates at the ends and a quarter of the way in: a
-  // parameter linear through all three interpolates linearly on the device
-  // (covType 1); any other (locf, nocb, midpoint) is constant inside the
-  // interval, at its interior value
+  // parameters and covariates a quarter and three quarters of the way in
+  // (inside the interval, away from the records at its ends, which may be
+  // doses carrying other covariates): different values mean linear
+  // interpolation, extended to both ends (covType 1); equal values are
+  // constant (locf, nocb, midpoint, or no change)
   double *p0 = &q.p0[(size_t)r*d[RXG_D_NPAR1]];
   double *p1 = &q.p1[(size_t)r*d[RXG_D_NPAR1]];
-  _update_par_ptr(xp, ind->id, rx, ind->idx);
+  double dt = xout - xp;
+  _update_par_ptr(xp + 0.25*dt, ind->id, rx, ind->idx);
   for (int j = 0; j < npar; j++) p0[j] = ind->par_ptr[j];
-  _update_par_ptr(xout, ind->id, rx, ind->idx);
-  for (int j = 0; j < npar; j++) p1[j] = ind->par_ptr[j];
-  _update_par_ptr(xp + 0.25*(xout - xp), ind->id, rx, ind->idx);
+  _update_par_ptr(xp + 0.75*dt, ind->id, rx, ind->idx);
   for (int j = 0; j < npar; j++) {
-    double a = p0[j], b = p1[j], v = ind->par_ptr[j];
-    double sc = fmax(fmax(fabs(a), fabs(b)), 1.0);
-    int lin = (a != b) && fabs(v - (0.75*a + 0.25*b)) <= 1e-12*sc;
-    if (!lin) p0[j] = p1[j] = v;
+    double a = p0[j], b = ind->par_ptr[j];
+    if (a != b) {
+      // the line through (1/4, a) and (3/4, b) at 0 and 1
+      p0[j] = 1.5*a - 0.5*b;
+      p1[j] = 1.5*b - 0.5*a;
+    } else {
+      p1[j] = a;
+    }
   }
   int covType = 1;
   double *rd = &q.rd[(size_t)r*d[RXG_D_RD]];
