@@ -44,6 +44,7 @@ static inline void freeExtraDosing() {
         _globals.extraDoseTime[i] = NULL;
       }
     }
+    free(_globals.extraDoseTime);
     _globals.extraDoseTime=NULL;
   }
 
@@ -65,6 +66,7 @@ static inline void freeExtraDosing() {
         _globals.extraDoseDose[i] = NULL;
       }
     }
+    free(_globals.extraDoseDose);
     _globals.extraDoseDose=NULL;
   }
 
@@ -92,6 +94,11 @@ static inline void freeExtraDosing() {
     free(_globals.nIgnoredDoses);
   }
   _globals.nIgnoredDoses = NULL;
+
+  if (_globals.nAllocIgnoredDoses != NULL) {
+    free(_globals.nAllocIgnoredDoses);
+  }
+  _globals.nAllocIgnoredDoses = NULL;
 
   _globals.extraDoseCores = 0;
 }

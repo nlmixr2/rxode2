@@ -167,6 +167,8 @@
   Makevars file changes (#1675, #1711).
 
 ### Solving
+- Growing the per-thread dose pools for a solve with more cores than they
+  were sized for no longer leaks three of their arrays (found with valgrind).
 - AutoSwitch composites with a `t54` or `vern76` primary (`"t54+ros54p"`,
   `"vern76+ros43"`, ...) now run the same stiffness estimate as a `dop853`
   primary and the GPU composites on every accepted step, and hand the rest of
