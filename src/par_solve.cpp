@@ -2912,12 +2912,13 @@ static inline void solveWith1PtComposite(int *neq, double *yp, double xout, doub
                       op, ind, i, ctx, eff);
   bool _failed = (idid <= 0 || ind->rc[0] == -2019 || ind->err != 0);
   if (_failed) {
+    bool _stiffStop = (idid == -4);
     ind->rc[0] = 0; ind->err = 0; *istate = 1; idid = 1;
     // yp/xp are the probe's last fully accepted step when the primary is dop853
     // and it got anywhere; otherwise rewind to the interval start.
     // A t54/vern76 probe's stiff report (idid -4) also stops at its last
     // accepted step; any other failure rewinds.
-    bool _continueFrom = (op->stiff == 0 || idid == -4) &&
+    bool _continueFrom = (op->stiff == 0 || _stiffStop) &&
       ((xout > _xpOrig) ? (xp > _xpOrig && xp < xout)
                         : (xp < _xpOrig && xp > xout));
     if (!_continueFrom) {

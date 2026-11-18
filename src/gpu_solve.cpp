@@ -151,16 +151,18 @@ struct rxGpuWork {
 };
 
 // par_gpu() runs on the main thread.  ind_solve() and steady state run one
-// subject at a time on any thread: each thread slot has a workspace, sized at
-// solve setup (rxGpuSolveWorkers()).  Everything is freed with the GPU setup
-// and when the package unloads (rxGpuSolveFreeAll()).
+// subject at a time on any thread: each thread slot has a workspace for each,
+// sized at solve setup (rxGpuSolveWorkers()), since a steady-state leg runs
+// inside an ind_solve() subject.  Everything is freed with the GPU setup and
+// when the package unloads (rxGpuSolveFreeAll()).
 static rxGpuWork rxGpuParWork;
-static std::vector<rxGpuWork> rxGpuOneWork;
+static std::vector<rxGpuWork> rxGpuOneWork, rxGpuSsWork;
 
-// One subject's workspace: its thread slot's, or the caller's own
-static rxGpuWork *rxGpuOneWorkFor(rx_solving_options *op, rxGpuWork &local) {
+// One subject's workspace from pool: its thread slot's, or the caller's own
+static rxGpuWork *rxGpuOneWorkFor(rx_solving_options *op, rxGpuWork &local,
+                                  std::vector<rxGpuWork> &pool) {
   int t = rx_get_thread(op->cores);
-  rxGpuWork *w = (t >= 0 && (size_t)t < rxGpuOneWork.size()) ? &rxGpuOneWork[(size_t)t] : &local;
+  rxGpuWork *w = (t >= 0 && (size_t)t < pool.size()) ? &pool[(size_t)t] : &local;
   w->ensure(1, true, false);
   return w;
 }
@@ -168,12 +170,14 @@ static rxGpuWork *rxGpuOneWorkFor(rx_solving_options *op, rxGpuWork &local) {
 // Solve setup (single threaded): a workspace for each of n thread slots
 extern "C" void rxGpuSolveWorkers(int n) {
   if (n > 0 && (size_t)n > rxGpuOneWork.size()) rxGpuOneWork.resize((size_t)n);
+  if (n > 0 && (size_t)n > rxGpuSsWork.size()) rxGpuSsWork.resize((size_t)n);
 }
 
 // Free every GPU solve buffer (clearing the setup, unloading the package)
 extern "C" void rxGpuSolveFreeAll(void) {
   rxGpuParWork.release();
   std::vector<rxGpuWork>().swap(rxGpuOneWork);
+  std::vector<rxGpuWork>().swap(rxGpuSsWork);
   std::vector<double>().swap(rxGpuSolveCfg.od);
   std::vector<int>().swap(rxGpuSolveCfg.oi);
   std::string().swap(rxGpuSolveCfg.key);
@@ -288,7 +292,7 @@ extern "C" void gpu_solveWith1Pt(int *neq, double *yp, double *xp, double xout,
   }
   if (op->neq > 0) {
     rxGpuWork local;
-    rxGpuWork *w = rxGpuOneWorkFor(op, local);
+    rxGpuWork *w = rxGpuOneWorkFor(op, local, rxGpuSsWork);
     rxGpuReq &q = w->q;
     rxGpuHostState &st = w->st;
     rxGpuFillReq(q, 0, 0, RXGS_INIT_ALL, 0.0, rx, op, ind, yp, *xp, xout);
@@ -528,7 +532,7 @@ extern "C" void ind_gpu(rx_solve *rx, int solveid, t_dydt c_dydt,
     return;
   }
   rxGpuWork local;
-  rxGpuWork *w = rxGpuOneWorkFor(op, local);
+  rxGpuWork *w = rxGpuOneWorkFor(op, local, rxGpuOneWork);
   rxGpuReq &q = w->q;
   rxGpuHostState &st = w->st;
   rxGpuSub s;
