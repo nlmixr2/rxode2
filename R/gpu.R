@@ -790,13 +790,19 @@ rxGpuInfo <- function() {
   .ker <- do.call(.rxGpuKernel, c(list(obj, method, .ctx, precision), .args[.defN]))
   ## a solve reuses the buffers of the last run of the same kernel, layout
   ## and options (every subject's first request restarts its state)
-  .runKey <- if (reuse) paste0("run_", digest::digest(list(attr(.ker, "rxKey"), .dims, .opt))) else NULL
+  ## one cached run per kernel and layout: other options replace (and
+  ## release) it
+  .runKey <- if (reuse) paste0("run_", digest::digest(list(attr(.ker, "rxKey"), .dims))) else NULL
+  .optKey <- digest::digest(.opt)
   if (!is.null(.runKey)) {
     .old <- .rxGpuClEnv[[.runKey]]
     if (!is.null(.old) && !identical(.old$ptr, methods::new("externalptr"))) {
-      .ret$ptr <- .old$ptr
-      .ret$fin <- .old$fin
-      return(.ret)
+      if (identical(.old$opt, .optKey)) {
+        .ret$ptr <- .old$ptr
+        .ret$fin <- .old$fin
+        return(.ret)
+      }
+      .rxGpuRunRelease(.old$fin)
     }
   }
   .ptr <- .Call(
@@ -818,7 +824,7 @@ rxGpuInfo <- function() {
   .ret$ptr <- .ptr
   .ret$fin <- .fin
   if (!is.null(.runKey)) {
-    assign(.runKey, list(ptr = .ptr, fin = .fin), envir = .rxGpuClEnv)
+    assign(.runKey, list(ptr = .ptr, fin = .fin, opt = .optKey), envir = .rxGpuClEnv)
   }
   .ret
 }
@@ -978,6 +984,37 @@ rxGpuInfo <- function() {
 
 .rxGpuSolveEnv <- new.env(parent = emptyenv())
 
+#' Why a GPU method cannot solve this problem (beyond device code)
+#'
+#' @param object rxode2 model
+#' @param ctl rxControl()
+#' @param events rxSolve() events
+#' @return `NULL`, or the reason
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuSolveUnsupported <- function(object, ctl, events = NULL) {
+  ## the output step reads delay() from the host history, which a GPU solve
+  ## does not keep
+  .lines <- strsplit(rxNorm(object), "\n", fixed = TRUE)[[1]]
+  if (any(grepl("delay(", .lines[!grepl("^d/dt\\(", .lines)], fixed = TRUE))) {
+    return("delay() outside d/dt()")
+  }
+  ## steady state integrates each dosing interval on its own, which would
+  ## restart the delay() history
+  if (isTRUE(rxModelVars(object)$flags[["hasDelay"]] == 1L) && (is.data.frame(events) || is.rxEt(events))) {
+    .e <- as.data.frame(events)
+    .w <- which(tolower(names(.e)) == "ss")
+    if (length(.w) > 0L && any(.e[[.w[1]]] %in% 1:2)) {
+      return("steady state in delay() models")
+    }
+  }
+  ## a resampled covariate may change inside an interval
+  if (!is.null(ctl$resample) && !isFALSE(ctl$resample)) {
+    return("resampled covariates")
+  }
+  NULL
+}
+
 #' Install the GPU solve of the next rxSolve()
 #'
 #' @param object rxode2 model (with its Jacobian when needed)
@@ -1002,9 +1039,13 @@ rxGpuInfo <- function() {
   .dev <- ctl$gpuDevice
   if (.backend != "cpu") {
     .avail <- rxGpuInfo()
+    .fp <- .avail$devices$fp64
+    if (!is.null(.dev)) {
+      .fp <- .fp[.avail$devices$index == .dev]
+    }
     .ok <- .avail$available &&
-      nrow(.avail$devices) > 0L &&
-      (ctl$gpuPrecision == "float" || any(.avail$devices$fp64))
+      length(.fp) > 0L &&
+      (ctl$gpuPrecision == "float" || any(.fp))
     if (!.ok) {
       if (.backend == "opencl") {
         stop("no OpenCL device with ", ctl$gpuPrecision, " precision is available (see rxGpuInfo())", call. = FALSE)
@@ -1027,10 +1068,10 @@ rxGpuInfo <- function() {
     device = .dev,
     cores = .threads,
     reuse = TRUE,
-    safeLog = isTRUE(ctl$safeLog),
-    safeZero = isTRUE(ctl$safeZero),
-    safePow = isTRUE(ctl$safePow),
-    useStdPow = isTRUE(ctl$useStdPow),
+    safeLog = as.integer(ctl$safeLog),
+    safeZero = as.integer(ctl$safeZero),
+    safePow = as.integer(ctl$safePow),
+    useStdPow = as.integer(ctl$useStdPow),
     atol = ctl$atol,
     rtol = ctl$rtol,
     hmin = if (is.null(ctl$hmin)) 0 else ctl$hmin,

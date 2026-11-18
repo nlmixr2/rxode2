@@ -24,6 +24,8 @@ class OdeRODAS5P : public OdeEmbedded, protected OdeRosenbrock {
         \param[in] neq size of ODE system
         */
         OdeRODAS5P (unsigned long neq);
+        //!destructs
+        ~OdeRODAS5P ();
 
     protected:
         //function for taking a single step
@@ -31,6 +33,8 @@ class OdeRODAS5P : public OdeEmbedded, protected OdeRosenbrock {
         //coefficients: A (stage states) and C (stage corrections) below the
         //diagonal by rows, and the stage times
         double A_[28], C_[28], c_[8];
+        //df/dt at the start of the step
+        double *dT_;
 
 };
 
