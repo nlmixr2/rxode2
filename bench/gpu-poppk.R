@@ -108,7 +108,7 @@ library(rxode2)
 
 ## an OpenCL device with double precision (not Mesa's rusticl)
 .dev <- NA_integer_
-if (requireNamespace("OpenCL", quietly = TRUE)) {
+if (requireNamespace("OpenCL", quietly = TRUE) && rxGpuInfo()$available) {
   .d <- rxGpuInfo()$devices
   .dev <- which(.d$fp64 & !grepl("rusticl", .d$platform))[1]
 }

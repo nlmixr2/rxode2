@@ -114,7 +114,9 @@ Under `gpuBackend = "auto"` these solve on the host with a message: a model
 that is not GPU-safe uses the host counterpart; `delay()` read outside
 `d/dt()`, steady state in a `delay()` model, resampled covariates, or a
 registered `rxRegisterDydtForce()` hook use the model's default method.  An
-explicit `gpuBackend = "opencl"` or `"cpu"` stops with an error instead.
+explicit `gpuBackend = "opencl"` or `"cpu"` stops `rxSolve()` with an error
+instead.  Inside an `nlmixr2` fit such a solve always uses the host
+counterpart, whatever `gpuBackend` says.
 
 ## Estimation with nlmixr2
 
