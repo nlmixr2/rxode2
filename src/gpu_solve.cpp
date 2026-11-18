@@ -183,6 +183,13 @@ extern "C" void gpu_solveWith1Pt(int *neq, double *yp, double *xp, double xout,
     return;
   }
   rx_solve *rx = getRxSolve_();
+  if (rxGpuSolveCfg.dims[RXG_D_DELAY]) {
+    // the delay() history would restart every interval
+    rxSolveWarnPush(ind->id, "steady state is not supported with delay() by the GPU methods");
+    *istate = -3;
+    if (ind->rc[0] == 0) ind->rc[0] = -2019;
+    return;
+  }
   if (op->neq > 0) {
     rxGpuReq q;
     q.alloc(1);
@@ -449,11 +456,21 @@ extern "C" void ind_gpu(rx_solve *rx, int solveid, t_dydt c_dydt,
 }
 
 // All subjects in batched rounds
+// The rounds; returns 0, or 1 when an OpenCL round failed.  The buffers
+// are freed when it returns, before par_gpu() raises any error.
+static int par_gpu0(rx_solve *rx);
+
 extern "C" void par_gpu(rx_solve *rx) {
-  rx_solving_options *op = rx->op;
   if (!rxGpuSolveCfg.on || rxGpuSolveCfg.round == NULL) {
     (Rf_errorcall)(R_NilValue, _("the GPU solver is not set up"));
   }
+  if (par_gpu0(rx)) {
+    (Rf_errorcall)(R_NilValue, _("an OpenCL round failed"));
+  }
+}
+
+static int par_gpu0(rx_solve *rx) {
+  rx_solving_options *op = rx->op;
   int nslot = op->cores;
   if (rxGpuSolveCfg.cl != NULL && rxGpuSolveCfg.cl->dims[RXG_D_NSUB] < nslot) {
     nslot = rxGpuSolveCfg.cl->dims[RXG_D_NSUB];
@@ -559,9 +576,7 @@ extern "C" void par_gpu(rx_solve *rx) {
   // the rest of the solve (output) runs on the real team, never wider than
   // the pools op->cores sized
   if (threads < op->cores) op->cores = threads;
-  if (fail) {
-    (Rf_errorcall)(R_NilValue, _("an OpenCL round failed"));
-  }
+  return fail;
 }
 
 // R: install (or clear, with round NULL) the GPU solve of the next rxSolve()

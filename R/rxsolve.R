@@ -4051,13 +4051,25 @@ rxSolve.default <- function(
   # output; a non-dense method requested explicitly is an error.
   # GPU methods: the device code of the model (with its Jacobian for the
   # ros54p methods), set up once here; src/gpu_solve.cpp runs the rounds
-  if (isTRUE(.ctl$method %in% 110:114) && !.rxGpuSafe(object) && .ctl$gpuBackend == "auto") {
-    # a model that cannot run as device code solves with the host
-    # counterpart of the method
-    .host <- .rxGpuHostMethod[[as.character(.ctl$method)]]
-    .minfo(paste0("the model cannot run as device code; solving with the host method \"", names(.host)[1], "\""))
-    .ctl$method <- .host[[1]]
-    .ctl$stiff2 <- .host[[2]]
+  if (isTRUE(.ctl$method %in% 110:114)) {
+    .gpuWhy <- .rxGpuSolveUnsupported(object, .ctl, events)
+    if (!is.null(.gpuWhy)) {
+      if (.ctl$gpuBackend != "auto") {
+        stop("the GPU methods do not support ", .gpuWhy, call. = FALSE)
+      }
+      # the default solver of the model
+      .minfo(paste0("the GPU methods do not support ", .gpuWhy, "; solving with the default method"))
+      .hd <- isTRUE(rxModelVars(object)$flags[["hasDelay"]] == 1L)
+      .ctl$method <- if (.hd) 0L else 2L
+      .ctl$stiff2 <- if (.hd) 13L else 0L
+    } else if (!.rxGpuSafe(object) && .ctl$gpuBackend == "auto") {
+      # a model that cannot run as device code solves with the host
+      # counterpart of the method
+      .host <- .rxGpuHostMethod[[as.character(.ctl$method)]]
+      .minfo(paste0("the model cannot run as device code; solving with the host method \"", names(.host)[1], "\""))
+      .ctl$method <- .host[[1]]
+      .ctl$stiff2 <- .host[[2]]
+    }
   }
   if (isTRUE(.ctl$method %in% 110:114)) {
     .gpuModel <- .rxGpuSolveModel(object, .ctl$method)

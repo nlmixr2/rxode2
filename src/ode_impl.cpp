@@ -15,6 +15,7 @@
 #include <R.h>
 #include <Rinternals.h>
 
+#include <cfloat>
 #include "ode/ode_util.h"
 #include "ode/ode_io.h"
 #include "ode/ode_base.h"
@@ -1402,9 +1403,10 @@ void OdeROW6A::step_ (double dt) {
 // -- OdeRODAS5P ----------------------------------------------------------------
 // Rodas5P (Steinebach 2023) in libode's Rosenbrock form: with
 // Jac = I - gam*dt*J, stage s solves Jac k_s = gam*dt*f(t + c_s dt, u_s) +
-// gam*sum_j C_sj k_j, u_s = y + sum_j A_sj k_j.  The solution is u_8 + k_8
-// and the embedded (4th order) one u_8.  As the other Rosenbrock methods
-// here, df/dt is taken as zero.
+// gam*sum_j C_sj k_j + gam*dt^2*d_s*df/dt, u_s = y + sum_j A_sj k_j.  The
+// solution is u_8 + k_8 and the embedded (4th order) one u_8.  The Jacobian
+// is the model's (analytic); df/dt, which a model reading time or
+// interpolating covariates has, takes one evaluation at t + delta.
 
 OdeRODAS5P::OdeRODAS5P (unsigned long neq) :
     OdeEmbedded (neq, true, 4),
@@ -1442,6 +1444,11 @@ OdeRODAS5P::OdeRODAS5P (unsigned long neq) :
     };
     for (int i = 0; i < 28; i++) { A_[i] = A[i]; C_[i] = C[i]; }
     for (int i = 0; i < 8; i++) c_[i] = c[i];
+    dT_ = new double[neq]();
+}
+
+OdeRODAS5P::~OdeRODAS5P () {
+    delete [] dT_;
 }
 
 void OdeRODAS5P::step_ (double dt) {
@@ -1456,7 +1463,18 @@ void OdeRODAS5P::step_ (double dt) {
     set_ode_eval_time(t0);
     ode_fun_(sol_, k_[0]);
     clear_ode_eval_time();
-    for (i=0; i<neq_; i++) rhs_[i] = gam*dt*k_[0][i];
+    // df/dt by a forward difference in time (zero for an autonomous model)
+    volatile double t1 = t0 + std::sqrt(DBL_EPSILON)*ode_max2(std::fabs(t0), 1.0);
+    double dtd = t1 - t0;
+    set_ode_eval_time(t1);
+    ode_fun_(sol_, soltemp_);
+    clear_ode_eval_time();
+    for (i=0; i<neq_; i++) dT_[i] = (soltemp_[i] - k_[0][i])/dtd;
+    const double d[5] = {
+        0.21193756319429014, -0.42387512638858027, -0.3384627126235924,
+        1.8046452872882734, 2.325825639765069
+    };
+    for (i=0; i<neq_; i++) rhs_[i] = gam*dt*(k_[0][i] + dt*d[0]*dT_[i]);
     ode_solve_LU(Jac_, p_, rhs_, neq_, k_[0]);
 
     int ia = 0;
@@ -1473,6 +1491,7 @@ void OdeRODAS5P::step_ (double dt) {
             double a = 0.0;
             for (int j = 0; j < s; j++) a += C_[ia + j]*k_[j][i];
             rhs_[i] = gam*(dt*k_[s][i] + a);
+            if (s < 5) rhs_[i] += gam*dt*dt*d[s]*dT_[i];
         }
         ode_solve_LU(Jac_, p_, rhs_, neq_, k_[s]);
         ia += s;
