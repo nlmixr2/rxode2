@@ -1829,6 +1829,7 @@ double maxAtolRtolFactor = 0.1;
 // before the flag): ros54p evaluates df/dt only then or with a covariate
 // changing over the interval
 extern "C" int rxModelTimeDep = 1;
+extern "C" int rxGpuSolveClaim(const char *key);
 
 // Upper bound for a subject's accumulated tolerance MULTIPLIER.
 // `maxAtolRtolFactor` bounds the resulting tolerance, not the multiplier, and
@@ -6917,6 +6918,22 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
     op->cvodeLinSolver        = asInt(rxControl[Rxc_cvodeLinSolver], "cvodeLinSolver");
     op->stiff2                = asInt(rxControl[Rxc_stiff2], "stiff2");
+    if (method >= 110 && method <= 114) {
+      // a GPU method without a GPU setup for this model (installed by R just
+      // before) integrates with its host counterpart: t54 (68), vern76 (28),
+      // ros54p (108) and their AutoSwitch composites
+      CharacterVector _trans = rxSolveDat->mv[RxMv_trans];
+      std::string _key = as<std::string>(_trans[RxMvTrans_model_vars]);
+      if (!rxGpuSolveClaim(_key.c_str())) {
+        switch (method) {
+        case 110: method = 68; break;
+        case 111: method = 28; break;
+        case 112: method = 108; break;
+        case 113: method = 68; op->stiff2 = 108; break;
+        default: method = 28; op->stiff2 = 108; break;
+        }
+      }
+    }
     if (op->stiff2 > 0) {
       /* LSODA (1,2), CVODE (21), DLSODE (106,107) have internal switching and
          cannot be cleanly retried within an interval. */
