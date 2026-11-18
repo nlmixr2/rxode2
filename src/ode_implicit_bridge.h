@@ -10,6 +10,36 @@
 #include <stdexcept>
 #include <vector>
 #include <cmath>
+#include <type_traits>
+#include "ode/ode_rodas5p.h"
+
+extern "C" int rxModelTimeDep;
+extern "C" int rxDydtForceN(void);
+extern "C" void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx);
+
+// Whether d/dt() can change with time over [xp, xout]: the model reads time,
+// a registered dydt forcing hook (which gets t) is installed, covariates are
+// resampled (they can change anywhere inside an interval), or a linearly
+// interpolated covariate changes (the parameters a quarter and three
+// quarters of the way in differ, as the GPU methods check)
+static inline bool implicit_nonautonomous(rx_solving_options_ind *ind,
+                                          rx_solving_options *op,
+                                          double xp, double xout) {
+    if (rxModelTimeDep || rxDydtForceN() > 0) return true;
+    if (op->ncov == 0) return false;
+    rx_solve *rx = getRxSolve_();
+    if (rx->sample) return true;
+    int npar = rx->npars;
+    double dt = xout - xp;
+    std::vector<double> p0(npar);
+    _update_par_ptr(xp + 0.25*dt, ind->id, rx, ind->idx);
+    for (int j = 0; j < npar; j++) p0[j] = ind->par_ptr[j];
+    _update_par_ptr(xp + 0.75*dt, ind->id, rx, ind->idx);
+    for (int j = 0; j < npar; j++) {
+        if (p0[j] != ind->par_ptr[j]) return true;
+    }
+    return false;
+}
 
 template <class OdeSolver>
 class RxImplicit : public OdeSolver {
@@ -135,8 +165,11 @@ static inline void implicit_do_steps(rx_solving_options_ind *ind, rx_solving_opt
     solver.set_quiet(true);
     solver.set_t(xp);
     solver.prime_dt(std::fabs(dt));
-    solver.set_abstol(op->ATOL);
-    solver.set_reltol(op->RTOL);
+    solver.set_abstol(ind->atol2 != NULL ? ind->atol2[0] : op->ATOL);
+    solver.set_reltol(ind->rtol2 != NULL ? ind->rtol2[0] : op->RTOL);
+    if constexpr (std::is_same<OdeSolver, ode::OdeRODAS5P>::value) {
+        solver.set_nonautonomous(implicit_nonautonomous(ind, op, xp, xout));
+    }
     try {
         solver.solve_adaptive(std::fabs(tint), std::fabs(dt), true);
     } catch (...) {

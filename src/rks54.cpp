@@ -43,8 +43,8 @@ extern "C" void ind_rks54_0(rx_solve *rx, rx_solving_options *op, int solveid, i
   if (neqOde > 0) {
     solver = new RxRks54(c_dydt, neq, neqOde, ind, getSolve(0), (long unsigned)op->mxstep);
       solver->set_quiet(true);
-      if (op->atol2 != NULL) solver->set_abstol(op->ATOL);
-      if (op->rtol2 != NULL) solver->set_reltol(op->RTOL);
+      if (op->atol2 != NULL) solver->set_abstol(ind->atol2 != NULL ? ind->atol2[0] : op->ATOL);
+      if (op->rtol2 != NULL) solver->set_reltol(ind->rtol2 != NULL ? ind->rtol2[0] : op->RTOL);
   }
   double *yp;
   for (i = 0; i < ind->n_all_times; i++) {
@@ -191,8 +191,8 @@ extern "C" void rks54_solveWith1Pt(int *neq, double *yp, double *xp, double xout
     if (neqOde > 0) {
     RxRks54 solver(dydt, neq, neqOde, ind, yp, (long unsigned)op->mxstep);
     solver.set_quiet(true);
-    if (op->atol2 != NULL) solver.set_abstol(op->ATOL);
-    if (op->rtol2 != NULL) solver.set_reltol(op->RTOL);
+    if (op->atol2 != NULL) solver.set_abstol(ind->atol2 != NULL ? ind->atol2[0] : op->ATOL);
+    if (op->rtol2 != NULL) solver.set_reltol(ind->rtol2 != NULL ? ind->rtol2[0] : op->RTOL);
     rks54_do_steps(&solver, ind, op, dydt, neq, yp, *xp, xout);
 
     if (ind->rc[0] < 0) { *istate = -1; return; }

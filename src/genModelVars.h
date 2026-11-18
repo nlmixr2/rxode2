@@ -22,10 +22,11 @@
 #include "pkTime.h"
 
 extern int foundPast;
+int rxgUsesTime(const char *s);
 
 static inline SEXP calcSLinCmt(void) {
   rxProtectGuard;
-  SEXP sLinCmt = rxP(Rf_allocVector(INTSXP,19));
+  SEXP sLinCmt = rxP(Rf_allocVector(INTSXP,20));
   INTEGER(sLinCmt)[0] = tb.ncmt;
   INTEGER(sLinCmt)[1] = tb.hasKa;
   INTEGER(sLinCmt)[2] = tb.linB;
@@ -57,8 +58,10 @@ static inline SEXP calcSLinCmt(void) {
                           tb.evid_ == 0 && tb.linCmt == 0 &&
                           foundPast == 0 && tb.isMexp == 0 &&
                           tb.matn == 0 && tb.matnf == 0) ? 1 : 0;
+  // 1 when d/dt() can change with time at fixed states and parameters
+  INTEGER(sLinCmt)[19] = (tb.hasDelay || tb.linCmt || rxgUsesTime(sbNrm.s)) ? 1 : 0;
 
-  SEXP sLinCmtN = rxP(Rf_allocVector(STRSXP, 19));
+  SEXP sLinCmtN = rxP(Rf_allocVector(STRSXP, 20));
   SET_STRING_ELT(sLinCmtN, 0, Rf_mkChar("ncmt"));
   SET_STRING_ELT(sLinCmtN, 1, Rf_mkChar("ka"));
   SET_STRING_ELT(sLinCmtN, 2, Rf_mkChar("linB"));
@@ -78,6 +81,7 @@ static inline SEXP calcSLinCmt(void) {
   SET_STRING_ELT(sLinCmtN, 16, Rf_mkChar("linCmtBraw"));
   SET_STRING_ELT(sLinCmtN, 17, Rf_mkChar("pkTime"));
   SET_STRING_ELT(sLinCmtN, 18, Rf_mkChar("gpuSafe"));
+  SET_STRING_ELT(sLinCmtN, 19, Rf_mkChar("timeDep"));
   Rf_setAttrib(sLinCmt,   R_NamesSymbol, sLinCmtN);
   rxUPAll();
   return(sLinCmt);

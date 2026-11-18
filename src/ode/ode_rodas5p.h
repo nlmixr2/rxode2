@@ -26,6 +26,8 @@ class OdeRODAS5P : public OdeEmbedded, protected OdeRosenbrock {
         OdeRODAS5P (unsigned long neq);
         //!destructs
         ~OdeRODAS5P ();
+        //!whether f depends on t (df/dt is evaluated only then)
+        void set_nonautonomous (bool b) { nonAuto_ = b; }
 
     protected:
         //function for taking a single step
@@ -35,6 +37,7 @@ class OdeRODAS5P : public OdeEmbedded, protected OdeRosenbrock {
         double A_[28], C_[28], c_[8];
         //df/dt at the start of the step
         double *dT_;
+        bool nonAuto_;
 
 };
 
