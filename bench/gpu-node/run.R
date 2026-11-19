@@ -15,6 +15,9 @@
 .prefix <- path.expand(if (length(.args) >= 1) .args[1] else "~/rxode2-gpu-bench")
 .out <- if (length(.args) >= 2) .args[2] else format(Sys.time(), "gpu-bench-%Y%m%d-%H%M")
 .which <- strsplit(if (length(.args) >= 3) .args[3] else "solve,runtime,poppk,nlmixr2", ",")[[1]]
+## compiled models load from tempdir(): keep it off a noexec /tmp
+source(file.path("bench", "gpu-node", "tmpdir.R"))
+.rxGpuNodeTmp(.prefix)
 dir.create(.out, recursive = TRUE, showWarnings = FALSE)
 
 .julia <- file.path(.prefix, "julia", "bin", "julia")
