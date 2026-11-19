@@ -25,22 +25,18 @@ rxTest({
     expect_true(all(is.na(s$cp)))
   })
   test_that("the last pair column accumulates", {
-    s <- rxSolve(mk(3L, 1L, -7L, 4L * (linCmtCarryMaxPairs() - 1L) + 3L), ev,
-                 returnType = "data.frame")
+    s <- rxSolve(mk(3L, 1L, -7L, 4L * (linCmtCarryMaxPairs() - 1L) + 3L), ev, returnType = "data.frame")
     expect_equal(s$cp, c(1.0, 1.5))
   })
   test_that("a subject's carry starts at zero in every solve", {
     # only the columns written are cleared between solves, so a second solve
     # of an accumulating model, and a model that only reads a column another
     # model wrote, must both see zeros
-    s1 <- rxSolve(mk(3L, 1L, -7L, 4L * (linCmtCarryMaxPairs() - 1L) + 3L), ev,
-                  returnType = "data.frame")
-    s2 <- rxSolve(mk(3L, 1L, -7L, 4L * (linCmtCarryMaxPairs() - 1L) + 3L), ev,
-                  returnType = "data.frame")
+    s1 <- rxSolve(mk(3L, 1L, -7L, 4L * (linCmtCarryMaxPairs() - 1L) + 3L), ev, returnType = "data.frame")
+    s2 <- rxSolve(mk(3L, 1L, -7L, 4L * (linCmtCarryMaxPairs() - 1L) + 3L), ev, returnType = "data.frame")
     expect_equal(s1$cp, c(1.0, 1.5))
     expect_identical(s2$cp, s1$cp)
-    s3 <- rxSolve(mk(3L, 1L, -6L, 4L * (linCmtCarryMaxPairs() - 1L) + 3L), ev,
-                  returnType = "data.frame")
+    s3 <- rxSolve(mk(3L, 1L, -6L, 4L * (linCmtCarryMaxPairs() - 1L) + 3L), ev, returnType = "data.frame")
     expect_identical(s3$cp, c(0, 0))
   })
   test_that("the -5 advance carries the last pair column as it does the first", {
