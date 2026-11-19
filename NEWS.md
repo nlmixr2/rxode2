@@ -42,7 +42,8 @@
   allometric `0.75*log(V1/exp(tV1))` (recorded with covariate `-0.75`), was
   rewritten by nlmixr2's SAEM / mu-referenced methods to `covariate*theta`,
   silently dropping the `V1` dependence (nlmixr2/nlmixr2est#1437,
-  nlmixr2/nlmixr2est#1433).
+  nlmixr2/nlmixr2est#1433).  A term that is not exactly `theta*covariate`,
+  such as `(cl.wt + 1)*log(WT/70)`, is no longer recorded either.
 
 - The R functions `gammapInva()` and `gammaqInva()` returned the results of
   `gammapInv()` and `gammaqInv()` (their `.Call` entries were registered to

@@ -113,5 +113,9 @@ rxTest({
     expect_length(.mu2("cl.wt*lv", "lv <- log(WT) + eta.v"), 0L)
     expect_length(.mu2("cl.wt*lwv2", "vv <- exp(tv + eta.v); lwv2 <- log(WT/70)*vv"), 0L)
     expect_length(.mu2("cl.wt*lif", "if (tv > 1) { lif <- WT } else { lif <- 70 }"), 0L)
+    # theta-free derivative but not a product: rewriting to
+    # nlmixrMuDerCov*cl.wt would drop the `+ log(WT/70)` remainder
+    expect_length(.mu2("(cl.wt + 1)*log(WT/70)"), 0L)
+    expect_length(.mu2("(cl.wt + 1)*lwt", "lwt <- log(WT/70)"), 0L)
   })
 })

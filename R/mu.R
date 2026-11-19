@@ -405,32 +405,108 @@
   .ret
 }
 
-#' Does a mu3 term (one that reads model variables) depend only on covariates?
+.muRefEvalEnv <- new.env(parent = baseenv())
+.muRefEvalEnv$pow <- function(x, y) x^y
+.muRefEvalEnv$R_pow <- .muRefEvalEnv$pow
+.muRefEvalEnv$R_pow_di <- .muRefEvalEnv$pow
+.muRefEvalEnv$Rx_pow <- .muRefEvalEnv$pow
+.muRefEvalEnv$Rx_pow_di <- .muRefEvalEnv$pow
+.muRefEvalEnv$expit <- function(x, low = 0, high = 1) expit(x, low, high)
+.muRefEvalEnv$logit <- function(x, low = 0, high = 1) logit(x, low, high)
+
+#' Is a term exactly `theta * der`?
 #'
-#' Loads the model lines before the current one and the term into symengine, so
-#' every model variable is replaced by its definition, and checks that what is
-#' left reads only the theta, covariates and constants.
+#' Evaluates the term and `theta * der` (what the mu2 rewrite
+#' `nlmixrMuDerCov*theta` puts in its place) at three sets of dummy theta and
+#' covariate values; the term is a mu expression only when all three agree, so
+#' `(cl.wt + 1)*log(WT/70)`, whose derivative is theta free, is rejected.
 #'
-#' @param y term
+#' @param term term (language)
+#' @param der derivative of the term by `theta` (language)
 #' @param theta theta name
-#' @param env mu-reference environment (`.expr`, `.curLine`, `info`)
-#' @return `TRUE` when the resolved term depends only on `theta` and
-#'   covariates; `FALSE` otherwise (including when symengine cannot load it)
+#' @return `TRUE` when the values agree; `FALSE` otherwise (including when
+#'   the term cannot be evaluated)
 #' @noRd
 #' @author Matthew L. Fidler
+.muRefTermIsThetaTimesDer <- function(term, der, theta) {
+  .v <- setdiff(unique(c(all.vars(term), all.vars(der))), theta)
+  .th <- c(0.37, 1.61, -0.83)
+  for (.k in seq_along(.th)) {
+    .env <- new.env(parent = .muRefEvalEnv)
+    assign(theta, .th[.k], envir = .env)
+    for (.j in seq_along(.v)) {
+      assign(.v[.j], 0.5 + 0.731 * .k + 0.193 * .j, envir = .env)
+    }
+    .ok <- tryCatch(
+      {
+        .a <- eval(term, .env)
+        .b <- .th[.k] * eval(der, .env)
+        length(.a) == 1L &&
+          length(.b) == 1L &&
+          is.finite(.a) &&
+          is.finite(.b) &&
+          isTRUE(all.equal(as.numeric(.a), as.numeric(.b), tolerance = 1e-8))
+      },
+      error = function(e) FALSE
+    )
+    if (!.ok) {
+      return(FALSE)
+    }
+  }
+  TRUE
+}
+
+#' Is a mu2/mu3 term exactly `theta * covariate`, with a covariate coefficient?
+#'
+#' mu2: the term reads only covariates and constants.  mu3: it reads model
+#' variables, which are replaced by their definitions (`.muRefMu3Resolve()`);
+#' what is left may read only the theta, covariates and constants.  Either way
+#' the term must equal `theta * der` (`.muRefTermIsThetaTimesDer()`).
+#'
+#' @param y term
+#' @param der derivative of the term by `theta`
+#' @param theta theta name
+#' @param env mu-reference environment
+#' @return logical
+#' @noRd
+#' @author Matthew L. Fidler
+.muRefCovTermOk <- function(y, der, theta, env) {
+  if (all(setdiff(all.vars(y), theta) %in% env$info$dataCov)) {
+    return(.muRefTermIsThetaTimesDer(y, der, theta))
+  }
+  .r <- .muRefMu3Resolve(y, der, env)
+  if (is.null(.r)) {
+    return(FALSE)
+  }
+  all(setdiff(unique(c(all.vars(.r$term), all.vars(.r$der))), theta) %in% env$info$dataCov) &&
+    .muRefTermIsThetaTimesDer(.r$term, .r$der, theta)
+}
+
 .muRefMu3Cache <- new.env(parent = emptyenv())
 
-.muRefMu3TermIsCovariate <- function(y, theta, env) {
+#' Replace the model variables in a mu3 term and its derivative
+#'
+#' Loads the model lines before the current one with the term and derivative
+#' into symengine, so every model variable is replaced by its definition.
+#' Memoised like `.muRefThetaDerivative()`: only base arithmetic/elementary
+#' functions, so a redefined user function cannot give a stale answer.
+#'
+#' @param y term
+#' @param der derivative of the term
+#' @param env mu-reference environment (`.expr`, `.curLine`)
+#' @return `list(term=, der=)` as language, or `NULL` when symengine cannot
+#'   load them
+#' @noRd
+#' @author Matthew L. Fidler
+.muRefMu3Resolve <- function(y, der, env) {
   .i <- env$.curLine
   if (is.null(.i)) {
-    return(FALSE)
+    return(NULL)
   }
   .lines <- env$.expr[seq_len(.i - 1L)]
   .pre <- vapply(.lines, deparse1, character(1), USE.NAMES = FALSE)
-  .term <- paste0("rxdummyLhs=", deparse1(y))
-  # memoised like .muRefThetaDerivative(): only base arithmetic/elementary
-  # functions, so a redefined user function cannot give a stale answer
   .cache <- .muRefDerivCacheable(y) &&
+    .muRefDerivCacheable(der) &&
     all(vapply(
       .lines,
       function(x) {
@@ -439,20 +515,23 @@
       },
       logical(1)
     ))
-  .key <- paste(c(.pre, .term), collapse = "\n")
+  .key <- paste(c(.pre, paste0("rxdummyLhs=", deparse1(y)), paste0("rxdummyDer=", deparse1(der))), collapse = "\n")
   .r <- if (.cache) .muRefMu3Cache[[.key]] else NULL
   if (is.null(.r)) {
     .r <- try(
       {
         .s <- rxS(.key)
         # get() is masked once symengine is loaded; capture via assign()
-        .e <- eval(parse(text = 'assign("rxdummyMu3", with(.s, rxdummyLhs), envir = .s)'))
-        all.vars(str2lang(rxFromSE(.e)))
+        .t <- eval(parse(text = 'assign("rxdummyMu3", with(.s, rxdummyLhs), envir = .s)'))
+        .t <- rxFromSE(.t)
+        .d <- eval(parse(text = 'assign("rxdummyMu3", with(.s, rxdummyDer), envir = .s)'))
+        .d <- rxFromSE(.d)
+        list(term = str2lang(.t), der = str2lang(.d))
       },
       silent = TRUE
     )
     if (inherits(.r, "try-error")) {
-      .r <- NA_character_
+      .r <- NA
     }
     if (.cache) {
       if (length(ls(.muRefMu3Cache, all.names = TRUE)) > 10000L) {
@@ -461,7 +540,10 @@
       assign(.key, .r, envir = .muRefMu3Cache)
     }
   }
-  !anyNA(.r) && all(setdiff(.r, theta) %in% env$info$dataCov)
+  if (!is.list(.r)) {
+    return(NULL)
+  }
+  .r
 }
 
 #' Fill the derivative cache for a whole model in one symengine environment
@@ -623,15 +705,11 @@
             if (inherits(.thetaD, "try-error")) {
               .thetaD <- NULL
             }
-            if (
-              is.null(.thetaD) &&
-                !all(setdiff(all.vars(y), .thetas) %in% env$info$dataCov) &&
-                !.muRefMu3TermIsCovariate(y, .thetas, env)
-            ) {
-              # mu2 terms are built from covariates and constants; a term that
-              # reads a model variable is a mu3 term only when that variable
-              # resolves to covariates (`cl.wt*lwt`), not when it reaches a
-              # theta/eta/state (`cl.wt*V1`, `0.75*log(V1/exp(tV1))`).
+            if (is.null(.thetaD) && !.muRefCovTermOk(y, .extra, .thetas, env)) {
+              # only exact theta*covariate terms whose covariate depends on
+              # covariates and constants: not `cl.wt*V1` or
+              # `0.75*log(V1/exp(tV1))` (V1 reaches tV1/eta.V1), nor
+              # `(cl.wt + 1)*log(WT/70)` (not a product).
               return(NULL)
             }
             if (is.null(.thetaD)) {
