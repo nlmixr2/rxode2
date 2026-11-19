@@ -117,8 +117,11 @@ rxTest({
       .s <- withr::with_seed(3, as.data.frame(rxSolve(f(), .e, method = .m)))
       .ev <- .s[.s$sim == 1 & .s$evid == 0, ]
       expect_true(nrow(.ev) > 0, info = .m)
-      .g <- as.data.frame(rxSolve(ref(), et(amt = 100, cmt = "central") |>
-        et(sort(unique(c(seq(0, 48, by = 2), .ev$time))))))
+      .g <- as.data.frame(rxSolve(
+        ref(),
+        et(amt = 100, cmt = "central") |>
+          et(sort(unique(c(seq(0, 48, by = 2), .ev$time))))
+      ))
       expect_equal(.ev$rx.tteH.ev, .g$H[match(.ev$time, .g$time)], tolerance = 1e-4, info = .m)
       .pk <- .s[.s$evid == 2, ]
       expect_equal(.pk$central, .g$central[match(.pk$time, .g$time)], tolerance = 1e-4, info = .m)

@@ -28,8 +28,12 @@
   if (!grepl("delay(rx.tteH.", rxModelVars(model)$model["normModel"], fixed = TRUE)) {
     return(invisible())
   }
-  if (rxIs(events, "rx.event")) events <- as.data.frame(events)
-  if (!is.data.frame(events)) return(invisible())
+  if (rxIs(events, "rx.event")) {
+    events <- as.data.frame(events)
+  }
+  if (!is.data.frame(events)) {
+    return(invisible())
+  }
   .col <- function(name, default) {
     .c <- .rxTteCol(events, name)
     if (is.null(.c)) rep(default, nrow(events)) else events[[.c]]
@@ -39,11 +43,14 @@
   .amt <- .col("amt", 0)
   .evid <- .col("evid", 0)
   # the steady-state rule of _rxDeriveFlg(), plus classic steady-state evids
-  .isSs <- (.s %in% c(1, 2) & .ii > 0) | (.s == 1 & .ii == 0 & .amt == 0) |
+  .isSs <- (.s %in% c(1, 2) & .ii > 0) |
+    (.s == 1 & .ii == 0 & .amt == 0) |
     (.evid >= 100 & .evid %% 100 %in% c(9, 10, 19, 20, 40))
   if (any(.isSs, na.rm = TRUE)) {
-    stop("a delay() of a tte() cumulative hazard cannot be used with steady-state doses: the hazard has no steady state",
-         call. = FALSE)
+    stop(
+      "a delay() of a tte() cumulative hazard cannot be used with steady-state doses: the hazard has no steady state",
+      call. = FALSE
+    )
   }
   invisible()
 }

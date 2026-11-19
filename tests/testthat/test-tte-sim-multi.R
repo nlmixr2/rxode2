@@ -68,8 +68,7 @@ rxTest({
       })
     }
     # wt steps from 70 to 280 at 10
-    .d <- data.frame(id = rep(1:400, each = 3), time = rep(c(0, 10, 30), 400), evid = 0,
-                     wt = rep(c(70, 280, 280), 400))
+    .d <- data.frame(id = rep(1:400, each = 3), time = rep(c(0, 10, 30), 400), evid = 0, wt = rep(c(70, 280, 280), 400))
     .s <- withr::with_seed(3, as.data.frame(rxSolve(f(), .d)))
     expect_true(all(table(.s$id) == 2L))
     .ev <- .s[.s$sim == 1, ]
@@ -77,14 +76,17 @@ rxTest({
     expect_equal(.ev$rx.tteH.ev, .h, tolerance = 1e-6)
     expect_equal(nrow(.ev) / 400, 1 - exp(-0.9), tolerance = 0.1)
     # a constant covariate per subject
-    .d2 <- data.frame(id = rep(1:400, each = 2), time = rep(c(0, 30), 400), evid = 0,
-                      wt = rep(rep(c(140, 35), each = 200), each = 2))
+    .d2 <- data.frame(
+      id = rep(1:400, each = 2),
+      time = rep(c(0, 30), 400),
+      evid = 0,
+      wt = rep(rep(c(140, 35), each = 200), each = 2)
+    )
     .s2 <- withr::with_seed(4, as.data.frame(rxSolve(f(), .d2)))
     .e2 <- .s2[.s2$sim == 1, ]
     expect_equal(.e2$rx.tteH.ev, 0.01 * .e2$wt / 70 * .e2$time, tolerance = 1e-6)
     # linear interpolation from 70 at 0 to 280 at 30, also at the event rows
-    .d3 <- data.frame(id = rep(1:400, each = 2), time = rep(c(0, 30), 400), evid = 0,
-                      wt = rep(c(70, 280), 400))
+    .d3 <- data.frame(id = rep(1:400, each = 2), time = rep(c(0, 30), 400), evid = 0, wt = rep(c(70, 280), 400))
     .s3 <- withr::with_seed(5, as.data.frame(rxSolve(f(), .d3, covsInterpolation = "linear")))
     .e3 <- .s3[.s3$sim == 1, ]
     expect_true(nrow(.e3) > 100L)
@@ -113,11 +115,16 @@ rxTest({
         w <- wt
       })
     }
-    .d <- data.frame(id = 1, time = c(0, 5, 10), evid = c(0, 1, 0), amt = c(0, 10, 0),
-                     cmt = c(NA, "depot", NA), wt = c(0, NA, 10))
+    .d <- data.frame(
+      id = 1,
+      time = c(0, 5, 10),
+      evid = c(0, 1, 0),
+      amt = c(0, 10, 0),
+      cmt = c(NA, "depot", NA),
+      wt = c(0, NA, 10)
+    )
     for (.m in c("linear", "midpoint", "locf", "nocb")) {
-      .a <- withr::with_seed(1, as.data.frame(rxSolve(f(), .d, covsInterpolation = .m,
-                                                      addDosing = TRUE)))
+      .a <- withr::with_seed(1, as.data.frame(rxSolve(f(), .d, covsInterpolation = .m, addDosing = TRUE)))
       .b <- as.data.frame(rxSolve(g(), .d, covsInterpolation = .m, addDosing = TRUE))
       expect_equal(.a$w[.a$time == 5], .b$w[.b$time == 5], info = .m)
     }

@@ -57,10 +57,13 @@ rxTest({
     # censoring row at the end of the window
     .last <- .s[!duplicated(.s$id, fromLast = TRUE), ]
     expect_true(all(.last$time == 20 & .last$sim == 0))
-    .s3 <- withr::with_seed(3, as.data.frame(rxSolve(
-      f() |> model(ev ~ tte(haz, maxEventNumber = 3)),
-      et(c(0, 20)) |> et(id = 1:50)
-    )))
+    .s3 <- withr::with_seed(
+      3,
+      as.data.frame(rxSolve(
+        f() |> model(ev ~ tte(haz, maxEventNumber = 3)),
+        et(c(0, 20)) |> et(id = 1:50)
+      ))
+    )
     expect_true(all(tapply(.s3$sim, .s3$id, sum) <= 3))
   })
 
@@ -94,10 +97,22 @@ rxTest({
     expect_true(all(table(.s$id) == 11L))
     expect_true(all(.s$sim %in% c(0, 1)))
     expect_true(any(.s$sim == 1))
-    .s1 <- withr::with_seed(5, as.data.frame(rxSolve(
-      f() |> model(ev ~ tte(haz, eventType = "intervalCensored", maxEventNumber = 1, intervalLength = 10, rightCensoringTime = 100)),
-      et(0) |> et(id = 1:20)
-    )))
+    .s1 <- withr::with_seed(
+      5,
+      as.data.frame(rxSolve(
+        f() |>
+          model(
+            ev ~ tte(
+              haz,
+              eventType = "intervalCensored",
+              maxEventNumber = 1,
+              intervalLength = 10,
+              rightCensoringTime = 100
+            )
+          ),
+        et(0) |> et(id = 1:20)
+      ))
+    )
     # rows stop at the interval holding the first event
     .by <- split(.s1, .s1$id)
     for (.d in .by) {
@@ -146,7 +161,9 @@ rxTest({
     expect_error(rxSolve(.tteConst(), .e, method = "rk4s"), "adjoint")
     expect_error(rxSolve(.tteConst(), .e, method = "liblsodaadj"), "adjoint")
     # dense output falls back to the standard (hooked) record loop
-    expect_no_warning(.d <- withr::with_seed(1, as.data.frame(rxSolve(.tteConst(), .e, method = "dop853", dense = TRUE))))
+    expect_no_warning(
+      .d <- withr::with_seed(1, as.data.frame(rxSolve(.tteConst(), .e, method = "dop853", dense = TRUE)))
+    )
     expect_equal(.d$time, .a$time, tolerance = 1e-6)
   })
 

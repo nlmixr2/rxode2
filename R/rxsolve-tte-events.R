@@ -110,12 +110,16 @@
       if (is.na(.end)) {
         .end <- if (length(.tTte) > 0L) max(.tTte) else max(.tAll)
       }
-      if (!(.end > .start)) next
+      if (!(.end > .start)) {
+        next
+      }
       .t <- .start
       .role <- 1L
       if (.o$eventType == "intervalCensored") {
         .l <- .o$intervalLength
-        if (is.na(.l)) .l <- (.end - .start) / 10
+        if (is.na(.l)) {
+          .l <- (.end - .start) / 10
+        }
         .g <- if (.start + .l <= .end) seq(.start + .l, .end, by = .l) else numeric(0)
         if (length(.g) == 0L || .end - .g[length(.g)] > sqrt(.Machine$double.eps) * max(1, abs(.end))) {
           .g <- c(.g, .end)
@@ -140,7 +144,9 @@
       .a[[.time]] <- .t
       .a[[.evid]] <- .ev
       .a[[.dv]] <- -(1e6 + 10 * .j + .role)
-      if (!is.null(.cmt)) .a[[.cmt]] <- .cmtVal
+      if (!is.null(.cmt)) {
+        .a[[.cmt]] <- .cmtVal
+      }
       .add[[length(.add) + 1L]] <- .a
     }
     # the endpoint's own records stay for their covariates, out of the output

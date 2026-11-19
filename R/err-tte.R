@@ -77,7 +77,9 @@
   }
   if (!is.null(.args$eventType)) {
     .v <- .args$eventType
-    if (is.name(.v)) .v <- as.character(.v)
+    if (is.name(.v)) {
+      .v <- as.character(.v)
+    }
     if (!is.character(.v) || length(.v) != 1L || !(.v %in% .rxTteEventTypes)) {
       .ret$err <- c(
         .ret$err,
@@ -103,7 +105,9 @@
   }
   if (!is.null(.args$dropout)) {
     .v <- .args$dropout
-    if (is.name(.v)) .v <- c(T = TRUE, F = FALSE)[as.character(.v)]
+    if (is.name(.v)) {
+      .v <- c(T = TRUE, F = FALSE)[as.character(.v)]
+    }
     if (!is.logical(.v) || length(.v) != 1L || is.na(.v)) {
       .ret$err <- c(.ret$err, "'tte()' option 'dropout' must be TRUE or FALSE")
     } else {

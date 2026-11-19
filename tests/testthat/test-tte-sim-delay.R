@@ -8,7 +8,9 @@ rxTest({
     .ev <- s[s$sim == 1 & s$time > 0, ]
     unlist(lapply(split(.ev, .ev$id), function(.d) {
       .e <- as.data.frame(dose |> et(sort(unique(c(0, .d$time)))))
-      if (cnt) .e$cnt <- findInterval(.e$time, .d$time)
+      if (cnt) {
+        .e$cnt <- findInterval(.e$time, .d$time)
+      }
       .g <- .tight(ref(), .e)
       .g <- .g[!duplicated(.g$time, fromLast = TRUE), ]
       .g$H[match(.d$time, .g$time)]
