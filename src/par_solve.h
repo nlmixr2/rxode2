@@ -404,6 +404,8 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
       int r = ind->ix[k];
       if (r < 0) continue;
       int evid = getEvid(ind, r);
+      // a prior dose past the next reset is cancelled by that reset
+      if (evid == 3) break;
       if (!isDose(evid)) continue;
       double tRec = getAllTimes(ind, r);
       if (tRec > tReset || (tRec == tReset && r > reset)) continue;

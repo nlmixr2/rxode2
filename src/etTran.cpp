@@ -2255,13 +2255,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         // row is the earliest later one, or a tied one listed after it in
         // the data order; the input order of the rows does not matter
         const std::vector<std::pair<double, int> > &v = rs->second;
-        auto lo = std::lower_bound(v.begin(), v.end(), std::make_pair(ti, INT_MIN));
-        for (; lo != v.end(); ++lo) {
-          if (lo->first > ti || (capDataOrder && lo->second > i)) {
-            addlCap[i] = lo->first;
-            addlCapStrict[i] = capDataOrder;
-            break;
-          }
+        auto lo = capDataOrder ?
+          std::lower_bound(v.begin(), v.end(), std::make_pair(ti, i + 1)) :
+          std::upper_bound(v.begin(), v.end(), std::make_pair(ti, INT_MAX));
+        if (lo != v.end()) {
+          addlCap[i] = lo->first;
+          addlCapStrict[i] = capDataOrder;
         }
         continue;
       }
