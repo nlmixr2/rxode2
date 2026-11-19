@@ -7,8 +7,8 @@
 # Run from the rxode2 source directory (the scripts are under bench/).
 #
 # Usage: Rscript bench/gpu-node/run.R [prefix] [out] [which]
-#   prefix  setup.R's Julia directory (default ~/rxode2-gpu-bench); the R
-#           library is setup.R's too (RXODE2_GPU_LIB, else R_LIBS_USER)
+#   prefix  setup.R's install directory (default ~/rxode2-gpu-bench); its R
+#           library is prefix/Rlib, or RXODE2_GPU_LIB
 #   out     results directory (default gpu-bench-<date-time>)
 #   which   comma-separated subset of solve,runtime,poppk,nlmixr2 (default all)
 .args <- commandArgs(TRUE)
@@ -32,20 +32,21 @@ Sys.setenv(
   JULIA_DEPOT_PATH = file.path(.prefix, "julia-depot"),
   JULIA_PROJECT = file.path(.prefix, "julia-env")
 )
-## setup.R's R library (RXODE2_GPU_LIB, else R_LIBS_USER) first, here and in
-## each benchmark's R process
-.lib <- Sys.getenv("RXODE2_GPU_LIB", Sys.getenv("R_LIBS_USER"))
-if (!nzchar(.lib)) {
-  .lib <- file.path(
-    "~",
-    "R",
-    paste0(R.version$platform, "-library"),
-    paste(R.version$major, sub("\\..*", "", R.version$minor), sep = ".")
-  )
+## setup.R's R library and base R's only, here and in each benchmark's R
+## process
+.lib <- path.expand(Sys.getenv("RXODE2_GPU_LIB", file.path(.prefix, "Rlib")))
+## .libPaths() always adds the site libraries back: empty them first
+if (bindingIsLocked(".Library.site", baseenv())) {
+  unlockBinding(".Library.site", baseenv())
+  assign(".Library.site", character(0), envir = baseenv())
+  lockBinding(".Library.site", baseenv())
+} else {
+  assign(".Library.site", character(0), envir = baseenv())
 }
-.lib <- path.expand(strsplit(.lib, .Platform$path.sep, fixed = TRUE)[[1]][1])
-.libPaths(c(.lib, .libPaths()))
-Sys.setenv(R_LIBS = paste(.libPaths(), collapse = .Platform$path.sep), R_LIBS_USER = .lib)
+.libPaths(c(.lib, .Library))
+## child R processes (package builds, benchmarks) put .lib first and never use
+## the user library; the site library stays last for the site's Rprofile
+Sys.setenv(R_LIBS = .lib, R_LIBS_USER = .lib)
 if (
   !nzchar(system.file(package = "rxode2", lib.loc = .lib)) ||
     !("rxGpuInfo" %in% getNamespaceExports(loadNamespace("rxode2", lib.loc = .lib)))

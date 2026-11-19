@@ -1,8 +1,9 @@
 # Install what bench/gpu-node/run.R needs, on a machine with internet (eg a
-# cluster login node; the GPU node only runs run.R): rxode2 from GitHub, the
-# nlmixr2 packages and the OpenCL package into your R user library
-# (R_LIBS_USER, or RXODE2_GPU_LIB), and Julia with DiffEqGPU, OrdinaryDiffEq
-# and CUDA.jl into prefix.
+# cluster login node; the GPU node only runs run.R), all under prefix: an R
+# library (prefix/Rlib, or RXODE2_GPU_LIB) with rxode2 from GitHub, the
+# nlmixr2 packages, the OpenCL package and every dependency, and Julia with
+# DiffEqGPU, OrdinaryDiffEq and CUDA.jl.  The user and site R libraries are
+# never written, and no dependency is taken from them.
 #
 # Load the site's R, compiler and CUDA modules first: the OpenCL package
 # compiles against the CUDA toolkit's OpenCL headers and library (CUDA_HOME or
@@ -13,31 +14,32 @@
 #
 # Usage: Rscript bench/gpu-node/setup.R [ref] [prefix]
 #   ref     rxode2 GitHub ref (default nlmixr2/rxode2@gpu-vignette)
-#   prefix  Julia install directory (default ~/rxode2-gpu-bench)
+#   prefix  install directory (default ~/rxode2-gpu-bench)
 .args <- commandArgs(TRUE)
 .ref <- if (length(.args) >= 1) .args[1] else "nlmixr2/rxode2@gpu-vignette"
 .prefix <- path.expand(if (length(.args) >= 2) .args[2] else "~/rxode2-gpu-bench")
 .juliaVersion <- "1.11.5"
 
-## the R library: a writable one in your home (RXODE2_GPU_LIB, else R's user
-## library R_LIBS_USER), first in .libPaths() for this process and every
-## package build, so a site library is never written to or preferred
-.lib <- Sys.getenv("RXODE2_GPU_LIB", Sys.getenv("R_LIBS_USER"))
-if (!nzchar(.lib)) {
-  .lib <- file.path(
-    "~",
-    "R",
-    paste0(R.version$platform, "-library"),
-    paste(R.version$major, sub("\\..*", "", R.version$minor), sep = ".")
-  )
-}
-.lib <- path.expand(strsplit(.lib, .Platform$path.sep, fixed = TRUE)[[1]][1])
+## the R library: its own (RXODE2_GPU_LIB, else prefix/Rlib), searched with base
+## R's library only -- never the user or site libraries -- so every dependency
+## is installed there and the install is reproducible
+.lib <- path.expand(Sys.getenv("RXODE2_GPU_LIB", file.path(.prefix, "Rlib")))
 dir.create(.lib, recursive = TRUE, showWarnings = FALSE)
 if (file.access(.lib, 2L) != 0L) {
   stop("cannot write to the R library ", .lib, "; set RXODE2_GPU_LIB to a writable directory", call. = FALSE)
 }
-.libPaths(c(.lib, .libPaths()))
-Sys.setenv(R_LIBS = paste(.libPaths(), collapse = .Platform$path.sep), R_LIBS_USER = .lib)
+## .libPaths() always adds the site libraries back: empty them first
+if (bindingIsLocked(".Library.site", baseenv())) {
+  unlockBinding(".Library.site", baseenv())
+  assign(".Library.site", character(0), envir = baseenv())
+  lockBinding(".Library.site", baseenv())
+} else {
+  assign(".Library.site", character(0), envir = baseenv())
+}
+.libPaths(c(.lib, .Library))
+## child R processes (package builds, benchmarks) put .lib first and never use
+## the user library; the site library stays last for the site's Rprofile
+Sys.setenv(R_LIBS = .lib, R_LIBS_USER = .lib)
 options(repos = c(CRAN = "https://cloud.r-project.org"), Ncpus = max(1L, parallel::detectCores() - 1L))
 
 ## the OpenCL package needs CL/cl.h and libOpenCL; the CUDA toolkit has both
@@ -54,8 +56,7 @@ if (nzchar(.cuda)) {
   message("CUDA_HOME/EBROOTCUDA unset: the OpenCL package needs the OpenCL headers on the compiler's path")
 }
 
-## CRAN first (the hard dependencies of everything, into .lib even when a
-## site library has an older copy), then the development versions; stop at the
+## CRAN first (the hard dependencies of everything), then the development versions; stop at the
 ## first package that does not install
 .need <- function(pkgs) {
   .miss <- pkgs[!vapply(pkgs, function(p) nzchar(system.file(package = p, lib.loc = .lib)), logical(1))]
