@@ -405,10 +405,14 @@
   .ret
 }
 
+.muRefPureProductCache <- new.env(parent = emptyenv())
+
 #' Is a theta-affine term exactly `theta * (d term / d theta)`?
 #'
 #' The mu2 rewrite replaces the whole term by `covariate*theta`, which is only
 #' exact when the term vanishes at `theta = 0` (no theta-free remainder).
+#' Memoised like `.muRefThetaDerivative()` (same key and cacheability rule), so
+#' rebuilding a ui during model piping does not re-parse every term.
 #'
 #' @param y term
 #' @param theta theta name
@@ -416,6 +420,25 @@
 #'   (including when symengine cannot decide)
 #' @noRd
 .muRefThetaTermIsPureProduct <- function(y, theta) {
+  .cache <- .muRefDerivCacheable(y)
+  if (.cache) {
+    .key <- paste0(theta, "\n", deparse1(y))
+    .ret <- .muRefPureProductCache[[.key]]
+    if (!is.null(.ret)) {
+      return(.ret)
+    }
+  }
+  .ret <- .muRefThetaTermIsPureProductRaw(y, theta)
+  if (.cache) {
+    if (length(ls(.muRefPureProductCache, all.names = TRUE)) > 10000L) {
+      rm(list = ls(.muRefPureProductCache, all.names = TRUE), envir = .muRefPureProductCache)
+    }
+    assign(.key, .ret, envir = .muRefPureProductCache)
+  }
+  .ret
+}
+
+.muRefThetaTermIsPureProductRaw <- function(y, theta) {
   .r <- try({
     .s <- rxS(paste0("rxdummyLhs=", deparse1(y)))
     # Symbol(), not the bare string: subs() parses a string, which fails on
