@@ -181,7 +181,7 @@ rxSolve(
   tolFactor = NULL,
   serializeFile = NULL,
   dense = FALSE,
-  single = FALSE,
+  single = NA,
   cvodeLinSolver = c("dense", "band", "gmres", "bicgstab", "tfqmr"),
   autoSwitchNonstifftol = 9/10,
   autoSwitchStifftol = 9/10,
@@ -1636,9 +1636,11 @@ Silently ignored for non-dense single methods.  Not yet supported for
 \code{linCmt()} models (a warning is emitted and the standard path is used
 instead).}
 
-\item{single}{Logical; when \code{TRUE} the event table is solved in place: the
-columns the solve only reads are borrowed from the input data rather than
-copied.  Incompatible with \code{serializeFile}.  Default \code{FALSE}.}
+\item{single}{Logical; when \code{TRUE} the solver reads the translated event
+table's columns in place instead of copying them (it still copies when a
+record has a modeled rate or duration).  The default \code{NA} does this when
+the solve is single threaded or has one subject; \code{FALSE} always copies.
+Incompatible with \code{serializeFile}.}
 
 \item{cvodeLinSolver}{Character; selects the linear solver used by the CVODE
 integrator when \code{method = "cvode"}.  Ignored for all other methods.

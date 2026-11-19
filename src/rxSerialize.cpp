@@ -19,6 +19,7 @@ using namespace Rcpp;
 extern "C" rx_solve *getRxSolve_(void);
 extern "C" void rxOptionsIniEnsure(int mx, int cores);
 extern rx_globals _globals;
+extern "C" void rxFreeEvSlabs();
 
 static const char rxSerializeMagic[8] = {'R','X','O','D','E','2','S','Z'};
 static const uint32_t rxSerializeFormatVer = 9u;
@@ -1009,7 +1010,7 @@ SEXP rxRestoreState_(SEXP rawSexp) {
   {
     uint64_t expected = 5u * nall_rep;
     double *buf = sReadDoubleBlobExpected(f, expected, "gall_times_slab");
-    if (_globals.gall_times != NULL) free(_globals.gall_times);
+    rxFreeEvSlabs();
     _globals.gall_times = buf;
     _globals.gdv    = _globals.gall_times + nall_rep;
     _globals.gamt   = _globals.gdv        + nall_rep;

@@ -1159,9 +1159,11 @@
 #'   `linCmt()` models (a warning is emitted and the standard path is used
 #'   instead).
 #'
-#' @param single Logical; when `TRUE` the event table is solved in place: the
-#'   columns the solve only reads are borrowed from the input data rather than
-#'   copied.  Incompatible with `serializeFile`.  Default `FALSE`.
+#' @param single Logical; when `TRUE` the solver reads the translated event
+#'   table's columns in place instead of copying them (it still copies when a
+#'   record has a modeled rate or duration).  The default `NA` does this when
+#'   the solve is single threaded or has one subject; `FALSE` always copies.
+#'   Incompatible with `serializeFile`.
 #'
 #' @param cvodeLinSolver Character; selects the linear solver used by the CVODE
 #'   integrator when `method = "cvode"`.  Ignored for all other methods.
@@ -1673,7 +1675,7 @@ rxSolve <- function(
   tolFactor = NULL,
   serializeFile = NULL,
   dense = FALSE,
-  single = FALSE,
+  single = NA,
   cvodeLinSolver = c("dense", "band", "gmres", "bicgstab", "tfqmr"),
   autoSwitchNonstifftol = 9 / 10,
   autoSwitchStifftol = 9 / 10,
@@ -2103,7 +2105,7 @@ rxSolve <- function(
     checkmate::assertIntegerish(priorPdRetry, len = 1, lower = 1, any.missing = FALSE)
     priorPdRetry <- as.integer(priorPdRetry)
     checkmate::assertLogical(dense, len = 1, any.missing = FALSE)
-    checkmate::assertLogical(single, len = 1, any.missing = FALSE)
+    checkmate::assertLogical(single, len = 1)
     if (isTRUE(dense) && stiff2 > 0L && stiff2 != 13L) {
       warning(
         "dense output is not supported for the stiff method of this composite; ignoring dense=TRUE",
@@ -2472,7 +2474,7 @@ rxSolve <- function(
       linCmtSensPhi = .linCmtSensPhi,
       nonmem = nonmem,
       tieOrder = tieOrder,
-      single = single
+      single = as.logical(single)
     )
     class(.ret) <- "rxControl"
     return(.ret)

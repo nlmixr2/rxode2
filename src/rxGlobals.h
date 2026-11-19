@@ -99,11 +99,11 @@ struct rx_globals {
   int geta_pre_n = 0;            // capacity of geta_pre_alloc
   bool alloc=false;
   int64_t gall_times_n = 0; // actual allocation count of gall_times (representative, not expanded)
-  // single=TRUE: the solve reads the caller's data frame in place instead of
-  // copying it, so the columns it borrows have to be kept alive and the two
-  // buffers it still owns tracked separately from the borrowed ones.
-  bool singleMode=false;
-  SEXP singleDataFrame=R_NilValue;
-  int *gidose_own=NULL;
-  double *gdbl_own=NULL;
+  // single=: the event columns are read in place from the translated event
+  // table; gall_times..glimit and gevid/gcens then point into R memory, so only
+  // gEvOwnInt/gEvOwnDbl are freed and the table is preserved until gFree().
+  bool gEvBorrowed=false;
+  SEXP gEvBorrowedDf=NULL;
+  int *gEvOwnInt=NULL;
+  double *gEvOwnDbl=NULL;
 };

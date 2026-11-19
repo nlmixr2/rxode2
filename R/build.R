@@ -65,22 +65,13 @@ d/dt(blood)     = a*intestine - b*blood
 
   ett1 <- etTrans(et, mod, keepDosingOnly = TRUE)
   .n <- gsub("[.]", "_", names(attr(class(ett1), ".rxode2")))
-  # Add addlAdd and ssAdd slots used by etTransSingle (not present in regular etTrans output)
-  .nSingle <- c(.n, "addlAdd", "ssAdd")
 
-  cat(paste(paste0("#define RxTrans_", .nSingle, " ", seq_along(.nSingle) - 1), collapse = "\n"))
+  cat(paste(paste0("#define RxTrans_", .n, " ", seq_along(.n) - 1), collapse = "\n"))
   cat(paste0(
     "\n#define RxTransNames CharacterVector _en(",
     length(.n),
     ");",
     paste(paste0("_en[", seq_along(.n) - 1, ']="', .n, '";'), collapse = ""),
-    "e.names() = _en;"
-  ))
-  cat(paste0(
-    "\n#define RxTransNamesSingle CharacterVector _en(",
-    length(.nSingle),
-    ");",
-    paste(paste0("_en[", seq_along(.nSingle) - 1, ']="', .nSingle, '";'), collapse = ""),
     "e.names() = _en;"
   ))
   cat("\n")

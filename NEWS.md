@@ -2,16 +2,11 @@
 
 ## New features
 
-- `rxSolve(single=TRUE)` solves the event table in place instead of
-  copying it.  The columns the solve only reads (time, amt, evid, dv, ii,
-  cens, limit, the covariates) are borrowed from the caller's data frame
-  through the ALTREP col-view and CMT-translation classes rather than
-  copied into `_globals`, so a solve no longer needs a second copy of the
-  event table resident.  Only the buffers it genuinely owns -- a
-  translated `idose`, and stand-ins for any of dv/ii/limit the data does
-  not carry -- are allocated.  Defaults to `FALSE`; incompatible with
-  `serializeFile`, which needs a snapshot the borrowed columns cannot
-  give it.
+- `rxSolve(single=)` reads the translated event table's time, amt, evid,
+  dv, ii, cens and limit columns in place instead of copying them for the
+  solve.  The default `single=NA` does this when the solve is single threaded
+  or has one subject; `single=FALSE` always copies, and the table is still
+  copied when it has a modeled rate or duration or with `serializeFile`.
 
 - `rxSymInvCholCreate()` builds block-diagonal omegas with
   `lotri::lotriMat()` instead of `Matrix::bdiag()`, removing the
