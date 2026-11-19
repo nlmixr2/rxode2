@@ -20,6 +20,8 @@
 .ref <- if (length(.args) >= 1) .args[1] else "nlmixr2/rxode2@gpu-vignette"
 .prefix <- path.expand(if (length(.args) >= 2) .args[2] else "~/rxode2-gpu-bench")
 .juliaVersion <- "1.11.5"
+source(file.path("bench", "gpu-node", "tmpdir.R"))
+.rxGpuNodeTmp(.prefix)
 
 ## the R library: its own (RXODE2_GPU_LIB, else prefix/Rlib), searched with base
 ## R's library only -- never the user or site libraries -- so every dependency
