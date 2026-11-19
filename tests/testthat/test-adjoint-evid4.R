@@ -7,18 +7,25 @@ rxTest({
   .p <- c(ka = 1.2, k = 0.2, bio = 0.8)
   .cs <- names(.p)
   .scen <- list(
-    evid4 = et(amt = 100, cmt = "depot") |> et(time = 6, evid = 4, amt = 80, cmt = "depot") |>
+    evid4 = et(amt = 100, cmt = "depot") |>
+      et(time = 6, evid = 4, amt = 80, cmt = "depot") |>
       et(c(1, 3, 6, 6.5, 7, 10, 13)),
     # the same regimen written as a reset and a dose
-    resetDose = et(amt = 100, cmt = "depot") |> et(time = 6, evid = 3) |>
-      et(time = 6, amt = 80, cmt = "depot") |> et(c(1, 3, 6, 6.5, 7, 10, 13))
+    resetDose = et(amt = 100, cmt = "depot") |>
+      et(time = 6, evid = 3) |>
+      et(time = 6, amt = 80, cmt = "depot") |>
+      et(c(1, 3, 6, 6.5, 7, 10, 13))
   )
   # a replace or multiply right after a reset at the same time keeps the reset
   .scenJump <- list(
-    resetReplace = et(amt = 100, cmt = "depot") |> et(time = 2, evid = 3) |>
-      et(time = 2, evid = 5, amt = 7, cmt = "center") |> et(c(0, 1, 2, 3, 4)),
-    resetMultiply = et(amt = 100, cmt = "depot") |> et(time = 2, evid = 3) |>
-      et(time = 2, evid = 6, amt = 0.5, cmt = "center") |> et(c(0, 1, 2, 3, 4))
+    resetReplace = et(amt = 100, cmt = "depot") |>
+      et(time = 2, evid = 3) |>
+      et(time = 2, evid = 5, amt = 7, cmt = "center") |>
+      et(c(0, 1, 2, 3, 4)),
+    resetMultiply = et(amt = 100, cmt = "depot") |>
+      et(time = 2, evid = 3) |>
+      et(time = 2, evid = 6, amt = 0.5, cmt = "center") |>
+      et(c(0, 1, 2, 3, 4))
   )
   .check <- function(scen) {
     for (.nm in names(scen)) {
@@ -26,9 +33,15 @@ rxTest({
       .ref <- .adjFd(.txt, .ev, .p)
       # one method per backward sweep, liblsodaadj and cvodesadj
       for (.m in c("rk4s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj")) {
-        .a <- rxSolveAdjointRk4(.txt, .ev,
-          params = .p, calcSens = .cs, method = .m,
-          atol = 1e-10, rtol = 1e-10, hmin = if (.m == "rk4s") 0.001 else 0
+        .a <- rxSolveAdjointRk4(
+          .txt,
+          .ev,
+          params = .p,
+          calcSens = .cs,
+          method = .m,
+          atol = 1e-10,
+          rtol = 1e-10,
+          hmin = if (.m == "rk4s") 0.001 else 0
         )
         expect_equal(nrow(.a), length(.ref[[1]]), label = paste(.nm, .m, "rows"))
         for (.cn in names(.ref)) {
@@ -42,7 +55,9 @@ rxTest({
     for (.nm in names(.scen)) {
       .ev <- .scen[[.nm]]
       # the post-reset dose's d/d(bio) is genuinely nonzero
-      expect_gt(max(abs(.adjFd(.txt, .ev, .p)$rx__sens_depot_BY_bio__[.ev$time[is.na(.ev$evid) | .ev$evid == 0] > 6])), 10)
+      .obsT <- .ev$time[is.na(.ev$evid) | .ev$evid == 0]
+      .fd <- .adjFd(.txt, .ev, .p)
+      expect_gt(max(abs(.fd$rx__sens_depot_BY_bio__[.obsT > 6])), 10)
     }
     .check(.scen)
   })
@@ -57,20 +72,29 @@ rxTest({
     # itself.  liblsodaadj keeps one event per segment and cvodesadj cannot
     # yet transpose same-time events, so this covers the rk4s family.
     .scenSame <- list(
-      replaceDose = et(amt = 100, cmt = "depot") |> et(time = 3, evid = 5, amt = 0, cmt = "depot") |>
-        et(time = 3, amt = 80, cmt = "depot") |> et(c(1, 3, 4, 6)),
-      multiplyDose = et(amt = 100, cmt = "depot") |> et(time = 3, evid = 6, amt = 0, cmt = "depot") |>
-        et(time = 3, amt = 80, cmt = "depot") |> et(c(1, 3, 4, 6)),
-      multiplyDoseT0 = et(time = 0, evid = 6, amt = 3, cmt = "depot") |> et(amt = 100, cmt = "depot") |>
-        et(c(0, 1, 3))
+      replaceDose = et(amt = 100, cmt = "depot") |>
+        et(time = 3, evid = 5, amt = 0, cmt = "depot") |>
+        et(time = 3, amt = 80, cmt = "depot") |>
+        et(c(1, 3, 4, 6)),
+      multiplyDose = et(amt = 100, cmt = "depot") |>
+        et(time = 3, evid = 6, amt = 0, cmt = "depot") |>
+        et(time = 3, amt = 80, cmt = "depot") |>
+        et(c(1, 3, 4, 6)),
+      multiplyDoseT0 = et(time = 0, evid = 6, amt = 3, cmt = "depot") |> et(amt = 100, cmt = "depot") |> et(c(0, 1, 3))
     )
     for (.nm in names(.scenSame)) {
       .ev <- .scenSame[[.nm]]
       .ref <- .adjFd(.txt, .ev, .p)
       for (.m in c("rk4s", "ros4s", "radauiia5s", "dop853s+ros4s")) {
-        .a <- rxSolveAdjointRk4(.txt, .ev,
-          params = .p, calcSens = .cs, method = .m,
-          atol = 1e-10, rtol = 1e-10, hmin = if (.m == "rk4s") 0.001 else 0
+        .a <- rxSolveAdjointRk4(
+          .txt,
+          .ev,
+          params = .p,
+          calcSens = .cs,
+          method = .m,
+          atol = 1e-10,
+          rtol = 1e-10,
+          hmin = if (.m == "rk4s") 0.001 else 0
         )
         expect_equal(nrow(.a), length(.ref[[1]]), label = paste(.nm, .m, "rows"))
         for (.cn in names(.ref)) {
