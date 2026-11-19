@@ -1,0 +1,328 @@
+---
+title: "rxode2 model functions"
+output:
+  learnr::tutorial:
+    progressive: true
+runtime: shiny_prerendered
+description: >
+  Learn how to define rxode2 models using the modern model function (UI) syntax,
+  including initial estimates and model equations.
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+library(rxode2)
+library(ggplot2)
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Review: Syntax and Events
+
+Before we explore the `rxode2` UI syntax, let's refresh our memory on model syntax and event tables.
+
+### Exercise: A Simple Simulation
+
+Try to create an event table `ev` for a 100 mg dose at time 0, with sampling every hour for 24 hours. Then solve the provided model `m1Syntax`.
+
+```{r reviewEx, exercise=TRUE}
+m1Syntax <- rxode2({
+  ka <- 0.5; cl <- 1; v <- 10
+  d/dt(depot) <- -ka * depot
+  d/dt(center) <- ka * depot - cl/v * center
+  cp <- center/v
+})
+
+# Create event table ev here
+
+# Solve the model here
+
+```
+
+```{r reviewEx-solution}
+m1Syntax <- rxode2({
+  ka <- 0.5; cl <- 1; v <- 10
+  d/dt(depot) <- -ka * depot
+  d/dt(center) <- ka * depot - cl/v * center
+  cp <- center/v
+})
+
+ev <- et(amt = 100) |> et(0:24)
+res <- rxSolve(m1Syntax, ev)
+plot(res, cp)
+```
+
+## Introduction to Model Functions
+
+In `rxode2`, you can define a model using a standard R function. This approach is powerful because it allows you to package the model equations together with their initial parameter estimates and residual error models.
+
+A `rxode2` model function typically consists of two main blocks:
+- `ini({})`: Where you define the initial estimates for your parameters.
+- `model({})`: Where you define the model equations (ODEs, algebraic equations, and residual error models).
+
+### A Simple Example
+
+Here is a simple one-compartment model defined as a function:
+
+```r
+m1 <- function() {
+  ini({
+    tka <- log(0.5)
+    tcl <- log(1.0)
+    tv  <- log(10)
+    eta.ka ~ 0.1
+    eta.cl ~ 0.1
+    eta.v ~ 0.1
+    add.sd <- 0.1
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v  <- exp(tv + eta.v)
+    d/dt(depot) <- -ka * depot
+    d/dt(center) <- ka * depot - cl / v * center
+    cp <- center / v
+    cp ~ add(add.sd)
+  })
+}
+```
+
+## The `ini()` Block
+
+The `ini()` block is used to specify the parameters of your model. This includes "fixed effects" (population parameters) and "random effects" (between-subject variability).
+
+### Defining Fixed Effects
+
+Fixed effects can be defined in several ways:
+- Simple assignment: `tcl <- log(1.0)`
+- With bounds: `tcl <- c(0, log(1.0), 5)` (lower, estimate, upper)
+- Fixed values: `tcl <- fix(log(1.0))` or `tcl <- fix(0, log(1.0), 5)`
+
+#### Labels and Back-Transformations
+
+You can add human-readable labels and specify back-transformations for better reporting:
+
+- **`label("text")`**: Adds a description to a parameter.
+- **`backTransform(fun)`**: Explicitly defines how a parameter should be transformed for display (e.g., `exp()` for log-estimated parameters).
+
+```r
+tcl <- 1; label("Typical Value of Clearance (L/hr)"); backTransform(exp())
+```
+
+Note: Fixed parameters must use `fix()` or `fixed()`. The syntax `fixed=TRUE` within `c()` is not supported.
+
+### Defining Random Effects
+
+Random effects (variances) represent between-subject variability (BSV) and are defined using the `~` operator. `rxode2` uses the `lotri` package under the hood to handle these matrices.
+
+- **Simple Variance**: `etaCl ~ 0.1` specifies a variance of 0.1 for `etaCl`.
+- **Covariance Matrix**: You can define multiple variabilities and their covariances using a lower-triangular vector:
+  ```r
+  etaKa + etaCl ~ c(0.5,   # Variance of etaKa
+                    0.05,  # Covariance between etaKa and etaCl
+                    0.1)   # Variance of etaCl
+  ```
+- **Correlation Matrix**: Use `cor()` to specify **standard deviations** on the diagonal and **correlations** on the off-diagonal:
+  ```r
+  etaKa + etaCl ~ cor(0.7,   # SD of etaKa
+                      0.3,   # Correlation between etaKa and etaCl
+                      0.3)   # SD of etaCl
+  ```
+
+### Exercise: Define Advanced Parameters
+
+Try to complete the `ini()` block for a model with:
+- `ka` (log scale `tka`) with an estimate of 0.5 and a label "Absorption rate".
+- `cl` (log scale `tcl`) fixed to 1.0.
+- A covariance matrix for `etaKa` and `etaCl` with variances 0.2 and 0.1, and a covariance of 0.01.
+
+```{r iniEx, exercise=TRUE}
+myModel <- function() {
+  ini({
+    # Add tka with label here
+    
+    # Add tcl here (fixed)
+    
+    # Add etaKa and etaCl covariance matrix here
+    
+  })
+  model({
+    ka <- exp(tka + etaKa)
+    cl <- exp(tcl + etaCl)
+    d/dt(depot) <- -ka * depot
+    cp <- depot / 10
+    cp ~ add(0.1)
+  })
+}
+rxode2(myModel)
+```
+
+```{r iniEx-solution}
+myModel <- function() {
+  ini({
+    tka <- 0.5; label("Absorption rate")
+    tcl <- fix(1.0)
+    etaKa + etaCl ~ c(0.2, 0.01, 0.1)
+  })
+  model({
+    ka <- exp(tka + etaKa)
+    cl <- exp(tcl + etaCl)
+    d/dt(depot) <- -ka * depot
+    cp <- depot / 10
+    cp ~ add(0.1)
+  })
+}
+rxode2(myModel)
+```
+
+## The `model()` Block
+
+The `model()` block contains the mathematical description of your system.
+
+### ODEs and LHS Assignments
+
+- **ODEs**: Use Leibniz notation `d/dt(variable) <- ...`.
+- **LHS (Left-Hand Side)**: Ordinary assignments like `cp <- center / v`. These variables will be calculated at each time point.
+
+### Residual Error Models
+
+One of the modern features of `rxode2` is the ability to specify residual error models directly in the `model()` block using the `~` operator.
+
+Common error models include:
+- `add(sd)`: Additive error.
+- `prop(sd)`: Proportional error.
+- `add(add.sd) + prop(prop.sd)`: Combined additive and proportional error.
+- `lnorm(sd)`: Log-normal error (constant error on log-transformed data).
+
+### Transformations
+
+`rxode2` also supports transformations of the response variable directly in the error model line. These are important for:
+- **Normalizing data**: Making skewed distributions more symmetrical (closer to a normal distribution).
+- **Stabilizing variance**: Handling heteroscedasticity (where the error increases as the predicted value increases).
+
+The available transformations are:
+
+- **Box-Cox**: `boxCox(lambda)`
+  - **$\lambda = 1$**: Represents a **Normal distribution** (no transformation needed).
+  - **$\lambda = 0$**: Represents a **Log-normal distribution** (log-transformation).
+  - Box-Cox requires the response variable to be strictly positive ($y > 0$).
+
+- **Yeo-Johnson**: `yeoJohnson(lambda)`
+  - A generalization of Box-Cox that can handle **zero and negative values**.
+
+Example with transformation and additive error:
+```r
+cp ~ boxCox(lambda) + add(add.sd)
+```
+
+### Combined Error Models
+
+When you combine additive and proportional error, there are two common ways to represent the variance. You can specify which one to use by adding `combined1()` or `combined2()` to your error model:
+
+- **`combined1()`**: Represents the form $(SD_{add} + Pred \cdot SD_{prop})^2$.
+- **`combined2()`**: Represents the "standard" form $SD_{add}^2 + (Pred \cdot SD_{prop})^2$.
+
+If neither is specified, `rxode2` uses a default (usually `combined2()`).
+
+Example:
+```r
+cp ~ add(add.sd) + prop(prop.sd) + combined2()
+```
+
+### Exercise: Complete the Model
+
+Complete the `model()` block below. Define the concentration `cp` and an additive residual error model for it.
+
+```{r modelEx, exercise=TRUE}
+myModel <- function() {
+  ini({
+    tka <- log(0.5); tcl <- log(1.0); tv <- log(10)
+    add.sd <- 0.1
+  })
+  model({
+    ka <- exp(tka)
+    cl <- exp(tcl)
+    v  <- exp(tv)
+    d/dt(center) <- - cl / v * center
+    
+    # Define cp here
+    
+    # Define residual error for cp here
+    
+  })
+}
+rxode2(myModel)
+```
+
+```{r modelEx-solution}
+myModel <- function() {
+  ini({
+    tka <- log(0.5); tcl <- log(1.0); tv <- log(10)
+    add.sd <- 0.1
+  })
+  model({
+    ka <- exp(tka)
+    cl <- exp(tcl)
+    v  <- exp(tv)
+    d/dt(center) <- - cl / v * center
+    cp <- center / v
+    cp ~ add(add.sd)
+  })
+}
+rxode2(myModel)
+```
+
+## The UI Object
+
+When you pass your function to `rxode2()`, it creates a "UI object". This object contains all the information about your model in a structured format.
+
+### Inspecting the UI
+
+You can access different parts of the UI object using the `$` operator:
+- `$iniDf`: A data frame of the initial estimates.
+- `$model`: The model equations.
+- `$predDf`: A data frame describing the residual error models (predictions).
+- `$lstExpr`: The model expressed as a list of R expressions.
+
+### Exercise: Inspect a UI Object
+
+Run the following code to create a UI object and inspect its initial estimates data frame.
+
+```{r inspectUi, exercise=TRUE}
+m1 <- function() {
+  ini({
+    tka <- log(0.5)
+    tcl <- log(1.0)
+    tv  <- log(10)
+    eta.cl ~ 0.1
+    add.sd <- 0.1
+  })
+  model({
+    ka <- exp(tka)
+    cl <- exp(tcl + eta.cl)
+    v  <- exp(tv)
+    d/dt(center) <- - cl / v * center
+    cp <- center / v
+    cp ~ add(add.sd)
+  })
+}
+
+ui <- rxode2(m1)
+
+# Inspect the initial estimates
+print(ui$iniDf)
+
+# Inspect the prediction data frame
+print(ui$predDf)
+```
+
+## Summary
+
+In this tutorial, you learned:
+- How to define a `rxode2` model as an R function with `ini()` and `model()` blocks.
+- How to specify parameters, bounds, and random effects in `ini()`.
+- How to write ODEs and residual error models in `model()`.
+- How to create and inspect a `rxode2` UI object.
+
+## What's Next?
+
+Excellent! You now know how to define models using the `rxode2` function syntax. This is the foundation for building more complex and realistic models. In the next tutorial, **[rxode2 piping and modifying](rxode2-piping.Rmd)**, you'll learn how to easily adjust and extend these models without starting from scratch.
