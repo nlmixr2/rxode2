@@ -231,6 +231,17 @@ static inline int modeledInfusionKind(rx_solving_options_ind *ind, int on, int *
   return 0;
 }
 
+// whether the stop of the modeled infusion started by raw record `on` is
+// ignored, as a reset (ss = 1, evid = 4) that cancelled the infusion leaves it
+static inline int modeledStopIgnored(rx_solving_options_ind *ind, int on) {
+  int e = getDoseNumberFromIndexAny(ind, on + 1);
+  if (e < 0) return 0;
+  for (int k = 0; k < ind->ignoredDosesN[0]; ++k) {
+    if (ind->ignoredDoses[k] == e) return 1;
+  }
+  return 0;
+}
+
 // the rate of the modeled infusion into cmt started by raw record `on` when it
 // is running at sorted position i (time tNow): started at or before it, ends
 // after it.  0 when not running.
@@ -243,6 +254,7 @@ static inline double modeledRunningRate(rx_solving_options_ind *ind, int i, int 
   if (tOff < tNow || isSameTime(tOff, tNow)) return 0.0;
   double rate = -ind->dose[on + 1];
   if (!(rate > 0)) return 0.0;
+  if (modeledStopIgnored(ind, on)) return 0.0;
   if (!modeledRateStarted(ind, i, on, cmt)) return 0.0;
   return rate;
 }

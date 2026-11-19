@@ -526,7 +526,8 @@ struct rx_solving_options_ind_s {
   int    *infPair;
   // 1 for a record that is not a data record (an addl repeat or a record a
   // dose expands to), recorded by etTrans() only for a model whose PK-type
-  // statements read `time`; NULL otherwise.  _rxPkTime() skips these with
+  // statements read `time` or that has modeled rates or durations; NULL
+  // otherwise.  _rxPkTime() skips these with
   // rxControl(nonmem = TRUE) (rxode2#1429).  Covers the first n_all_times_orig
   // records.
   int    *pkSkip;

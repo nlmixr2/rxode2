@@ -16,7 +16,9 @@
   `nonmem = TRUE` a rate follows NONMEM's `R1`, read with the record that ends
   each interval, and a duration stays fixed like `D1`.  It used to stay at the
   value read at the dose; `rxSolve(rateAtDoseTime = TRUE, durAtDoseTime =
-  TRUE)` restores that (#1586).
+  TRUE)` restores that.  For a model with `rate()` or `dur()`, `etTrans()`
+  now also marks the records that are not data records (`addl` repeats and
+  the records a dose expands to), so they do not end an interval (#1586).
 
 ## Bug fixes
 

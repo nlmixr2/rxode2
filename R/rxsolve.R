@@ -1046,8 +1046,9 @@
 #'   delivered: the rate read at a record holds until the next one, or with
 #'   `nonmem = TRUE` the rate read with a record applies to the interval it
 #'   ends.  A re-read rate changes the rate and moves the end of the infusion
-#'   so the dose amount is kept.  Event sensitivities and the adjoint always
-#'   keep the rate of the dose.
+#'   so the dose amount is kept.  Steady-state doses, doses added while
+#'   solving, event sensitivities and the adjoint always keep the rate of the
+#'   dose.
 #'
 #' @param durAtDoseTime Boolean that when `TRUE` keeps a modeled duration
 #'   (`dur()`, `RATE = -2`) at the value read at its dose.  When `FALSE` it is

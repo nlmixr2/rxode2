@@ -223,6 +223,39 @@ rxTest({
     expect_equal(.s$a, 1000, tolerance = 1e-6)
   })
 
+  test_that("nonmem = TRUE does not read an addl repeat's covariates", {
+    .da <- .d
+    .da$II <- c(1.5, 0, 0, 0)
+    .da$ADDL <- c(1, 0, 0, 0)
+    .ref <- .exact(.da, data.frame(time = 1.5, amt = 100), function(j) 50 / .da$X[j]) / 10
+    .s <- rxSolve(.m, .da, nonmem = TRUE, addDosing = FALSE, atol = 1e-12, rtol = 1e-12, returnType = "data.frame")
+    expect_equal(.s$cp, .ref, tolerance = 1e-8)
+  })
+
+  test_that("an infusion a steady-state reset cancelled is not re-read", {
+    .dr <- data.frame(
+      ID = 1,
+      TIME = c(0, 1, 2, 6),
+      EVID = c(1, 1, 0, 0),
+      AMT = c(100, 10, 0, 0),
+      RATE = c(-1, 0, 0, 0),
+      SS = c(0, 1, 0, 0),
+      II = c(0, 24, 0, 0),
+      X = c(4, 2, 1, 1)
+    )
+    .solve <- function(...) {
+      rxSolve(.m, .dr, addDosing = FALSE, atol = 1e-12, rtol = 1e-12, returnType = "data.frame", ...)$cp
+    }
+    for (.nm in c(TRUE, FALSE)) {
+      expect_equal(
+        .solve(nonmem = .nm),
+        .solve(nonmem = .nm, rateAtDoseTime = TRUE),
+        tolerance = 1e-6,
+        info = paste("nonmem", .nm)
+      )
+    }
+  })
+
   .md <- rxode2({
     cl <- 0.5
     v <- 10

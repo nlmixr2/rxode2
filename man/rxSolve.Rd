@@ -1507,8 +1507,9 @@ default) the rate is re-read at each data record until the dose is
 delivered: the rate read at a record holds until the next one, or with
 \code{nonmem = TRUE} the rate read with a record applies to the interval it
 ends.  A re-read rate changes the rate and moves the end of the infusion
-so the dose amount is kept.  Event sensitivities and the adjoint always
-keep the rate of the dose.}
+so the dose amount is kept.  Steady-state doses, doses added while
+solving, event sensitivities and the adjoint always keep the rate of the
+dose.}
 
 \item{durAtDoseTime}{Boolean that when \code{TRUE} keeps a modeled duration
 (\code{dur()}, \code{RATE = -2}) at the value read at its dose.  When \code{FALSE} it is

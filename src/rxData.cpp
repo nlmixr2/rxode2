@@ -6845,7 +6845,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->rateAtDoseTime = (Rf_length(rxControl) > Rxc_rateAtDoseTime) ?
       (int)asBool(rxControl[Rxc_rateAtDoseTime], "rateAtDoseTime") : 0;
     rx->durAtDoseTime = (Rf_length(rxControl) > Rxc_durAtDoseTime) ?
-      (int)asBool(rxControl[Rxc_durAtDoseTime], "durAtDoseTime") : 0;
+      (int)asBool(rxControl[Rxc_durAtDoseTime], "durAtDoseTime") : rx->nonmem;
     tieOrderData_global = (rxControlTieOrder(rxControl) == "data");
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
