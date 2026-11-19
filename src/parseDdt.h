@@ -181,18 +181,9 @@ static inline int handleDdtAssign(nodeInfo ni, char *name, int i, D_ParseNode *p
       // keep it ignored.
       sAppendN(&sbt, "=", 1);
     }
-    return 1;
-  }
-  if (nodeHas(derivative) && i==5) {
-    char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
-    if (!strcmp("+", v) ||
-	!strcmp("-", v)){
-      // = + is output  or = InfusionRate + is outupt.
-    } else {
-      // = + is output  or = InfusionRate + is outupt.
-      aAppendN("+ ", 2);
-    }
-    /* Free(v); */
+    // the right-hand side is added to the infusion rate (or opens the
+    // parenthesis); any sign belongs to the expression itself
+    aAppendN("+ ", 2);
     return 1;
   }
   return 0;

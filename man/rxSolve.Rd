@@ -812,7 +812,7 @@ your sampling and events.  The value 0 is equivalent to infinite
 maximum absolute step size.
 
 Note that for dense output methods (\code{"dop853"}, \code{"dop5"}, \code{"bs"},
-\code{"ros4"}), \code{hmax} defaults to \code{NULL} to allow the solvers to
+\code{"ros4"}, \code{"cvode"}, \code{"liblsoda"}), \code{hmax} defaults to \code{NULL} to allow the solvers to
 determine the step size when \code{dense=TRUE}
 
 For \code{method="indLin"}, \code{hmax} caps how long an interval is treated
@@ -1213,8 +1213,11 @@ either \code{atol}, \code{rtol} or \code{maxSS} have not
 been achieved.}
 
 \item{istateReset}{When \code{TRUE}, reset the \code{ISTATE} variable to 1 for
-lsoda and liblsoda with doses, like \code{deSolve}; When \code{FALSE}, do
-not reset the \code{ISTATE} variable with doses.}
+lsoda and liblsoda with doses, like \code{deSolve}, and restart the lsoda
+family (\code{liblsoda}, \code{lsoda}, \code{lsode}, \code{bdf}) at an \code{mtime()} record;
+When \code{FALSE}, do not reset the \code{ISTATE} variable with doses or at
+\code{mtime()} records, so a time window that starts at an \code{mtime()}
+record can be stepped over.}
 
 \item{subsetNonmem}{subset to NONMEM compatible EVIDs only.  By
 default \code{TRUE}.}
@@ -1620,8 +1623,9 @@ controls.}
 \item{dense}{Logical; when \code{TRUE} and the method supports dense output,
 enables continuous interpolation so the solver can take large internal
 steps and reconstruct the solution cheaply at each observation time.
-Dense-capable single methods are \code{"dop853"}, \code{"dop5"}, \code{"bs"}, and
-\code{"ros4"}.  \code{"dop853+ros4"} is the only dense AutoSwitch composite: the
+Dense-capable single methods are \code{"dop853"}, \code{"dop5"}, \code{"bs"}, \code{"ros4"},
+\code{"cvode"} and \code{"liblsoda"} (which interpolates between its own steps
+either way; \code{dense = TRUE} lifts the \code{hmax} default).  \code{"dop853+ros4"} is the only dense AutoSwitch composite: the
 secondary must be dense too (\code{"ros4"} is the only stiff method that is),
 and handing a dense segment from the primary to the secondary mid-segment
 is implemented for a \code{"dop853"} primary.  Other composites solve densely

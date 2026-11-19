@@ -17,6 +17,7 @@ extern "C" {
 
 #include "../inst/include/rxode2.h"
 #include "rxThreadData.h"
+#include "rxode2lincmtLink.h"
 
 void par_rkf78(rx_solve *rx);
 extern "C" void ind_rkf78(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
@@ -389,7 +390,7 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
                                  rx_solve *rx, int *neq, double *xp, double *xout,
                                  double *yp, int *idid, t_update_inis u_inis) {
     ind->curShift -= rx->maxShift;
-    cancelRunningInfusionStops(ind, rx, op, ind->idx, neq[0]);
+    cancelRunningInfusionStops(ind, rx, op, ind->idx, neq[0], -1);
     // the modeled steady-state off these mark was cancelled with the rest
     if (_rxEsActive) { _esSSDurOffCmt = -1; _esSSRateOffCmt = -1; }
     for (unsigned int j = neq[0]; j--;) {
@@ -536,6 +537,10 @@ static inline void preSolve(rx_solving_options *op, rx_solving_options_ind *ind,
     ind->linCmtAlast = yp + op->linOffset;
     ind->tprior = xp + ind->curShift; // Set the time to the time to solve to.
     ind->tout   = xout + ind->curShift;
+    // steady-state cycles re-solve the same row over 0..ii from a new state;
+    // linCmtB()'s last-row memo is keyed on the row and time, not the state,
+    // so drop it (#1585)
+    if (ind->doSS) _p_linCmtBindFree(ind);
   }
   // NOTE: ind->_atEventTime is deliberately NOT set here.  evid_() is fired
   // once per record from updateSolve() (see par_solve.cpp) so that every

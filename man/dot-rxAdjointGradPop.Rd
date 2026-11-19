@@ -50,7 +50,8 @@ reference (\code{\link[=.rxAdjointGradEval]{.rxAdjointGradEval()}}).}
 the backward sweeps.}
 }
 \value{
-named numeric vector \code{dOFV/dtheta} over \code{calcSens}.
+named numeric vector \code{dOFV/dtheta} over \code{calcSens} (\code{THETA[n]}/\code{ETA[n]}
+spelled \code{THETA_n_}/\code{ETA_n_}).
 }
 \description{
 Computes \verb{dOFV/dtheta = sum_subjects dG_i/dtheta} with one backward sweep per

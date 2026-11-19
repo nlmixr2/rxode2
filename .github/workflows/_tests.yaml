@@ -1,0 +1,98 @@
+# Sharded NOT_CRAN test run, called by ci.yaml.  Each shard installs rxode2
+# from the checkout and runs the test files .github/scripts/ci-shards.R assigns to it:
+# "core" = tests/ci-core.txt (fast tier), "all" = every test file (full tier).
+name: _tests.yaml
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: git ref to check out ('' = the triggering ref)
+        type: string
+        default: ''
+      matrix:
+        description: JSON list of {os, r, subset, index, n} shards
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ${{ matrix.shard.os }}
+    name: ${{ matrix.shard.subset }} ${{ matrix.shard.index }}/${{ matrix.shard.n }} ${{ matrix.shard.os }} (${{ matrix.shard.r }})
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(inputs.matrix) }}
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      NOT_CRAN: 'true'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: ./.github/actions/setup-rxode2
+        with:
+          r-version: ${{ matrix.shard.r }}
+          pandoc: 'false'
+          extra-packages: |
+            any::testthat
+            any::xml2
+          needs: check
+
+      - name: Pick this shard's test files
+        shell: bash
+        run: |
+          f=$(Rscript .github/scripts/ci-shards.R ${{ matrix.shard.subset }} ${{ matrix.shard.index }} ${{ matrix.shard.n }})
+          echo "SHARD_FILTER=$f" >> "$GITHUB_ENV"
+
+      - name: Install rxode2
+        shell: bash
+        run: R CMD INSTALL --no-docs --no-multiarch --no-test-load .
+
+      # Same setup as tests/testthat.R, run in the package namespace
+      - name: Run tests
+        shell: Rscript {0}
+        run: |
+          .filter <- Sys.getenv("SHARD_FILTER")
+          if (identical(.filter, "^$")) {
+            message("no test files in this shard")
+            quit(save = "no")
+          }
+          library(rxode2)
+          library(testthat)
+          library(data.table)
+          options(rxode2.useLinCmt = FALSE)
+          testthat::test_dir(
+            "tests/testthat",
+            filter = .filter,
+            package = "rxode2",
+            load_package = "installed",
+            reporter = testthat::MultiReporter$new(list(
+              testthat::ProgressReporter$new(show_praise = FALSE),
+              testthat::JunitReporter$new(file = file.path(getwd(), "junit.xml"))
+            )),
+            stop_on_failure = TRUE
+          )
+
+      - name: Upload JUnit timings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-${{ matrix.shard.subset }}-${{ matrix.shard.os }}-${{ matrix.shard.r }}-${{ matrix.shard.index }}
+          path: junit.xml
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Upload snapshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshots-${{ matrix.shard.subset }}-${{ matrix.shard.os }}-${{ matrix.shard.r }}-${{ matrix.shard.index }}
+          path: tests/testthat/_snaps
+          if-no-files-found: ignore
+          retention-days: 7

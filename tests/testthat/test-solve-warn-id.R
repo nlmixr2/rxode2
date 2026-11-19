@@ -219,12 +219,54 @@ rxTest({
     })
     .ev <- et(amt = 100) |> et(seq(0, 200, by = 50)) |> et(id = 1:2)
     .out <- capture.output(suppressWarnings(rxSolve(.m, .ev, method = "dop853", maxsteps = 5L)))
-    .line <- grep("^\\[exit of dop853", .out, value = TRUE)
+    # one line: dop853's own, with no IDID line besides
+    .line <- grep("^\\[", .out, value = TRUE)
     expect_length(.line, 1L)
     expect_match(
       .line,
       "^\\[exit of dop853 at x = [-0-9.e+]+ \\+/- [-0-9.e+]+ \\([-0-9.e+]+/[-0-9.e+]+\\), more than nmax = 5 are needed\\]: 2 warning\\(s\\) for subject\\(s\\): 1, 2$"
     )
+  })
+
+  test_that("a dop853 step size that is not finite gives one line, with its x", {
+    .m <- rxode2("d/dt(y) <- -k * y")
+    .d <- data.frame(
+      ID = rep(101:104, each = 4),
+      TIME = rep(c(0, 0, 1, 2), 4),
+      EVID = rep(c(1, 0, 0, 0), 4),
+      AMT = rep(c(1, 0, 0, 0), 4),
+      CMT = "y"
+    )
+    # a NaN derivative makes the step size NaN; an infinite one makes it 0
+    .want <- c(
+      "NaN" = "^\\[exit of dop853 at x = [-0-9.e+]+, step size is not finite\\]: 1 warning\\(s\\) for subject\\(s\\): 103$",
+      "Inf" = "^\\[exit of dop853 at x = [-0-9.e+]+, step size too small h = [-0-9.e+]+\\]: 1 warning\\(s\\) for subject\\(s\\): 103$"
+    )
+    for (.k in names(.want)) {
+      .p <- data.frame(ID = 101:104, k = c(1, 1, as.numeric(.k), 1))
+      .out <- capture.output(suppressWarnings(rxSolve(.m, .d, params = .p, method = "dop853")))
+      .line <- grep("^\\[", .out, value = TRUE)
+      expect_length(.line, 1L)
+      expect_match(.line, .want[[.k]], label = .k)
+    }
+  })
+
+  test_that("a dop853+ros4 solve that switches to ros4 prints no dop853 line", {
+    # the composite's dop853 probe hands an interval it cannot step to ros4;
+    # that is not a failure, so dop853 says nothing
+    .m <- rxode2({
+      y1(0) <- 1
+      d/dt(y1) <- -0.04 * y1 + 1e4 * y2 * y3
+      d/dt(y2) <- 0.04 * y1 - 1e4 * y2 * y3 - 3e7 * y2^2
+      d/dt(y3) <- 3e7 * y2^2
+    })
+    .ev <- et(c(0.1, 1, 10, 100, 1000, 1e4, 1e5))
+    .w <- capture_warnings(
+      .out <- capture.output(.s <- as.data.frame(rxSolve(.m, .ev, method = "dop853+ros4", atol = 1e-6, rtol = 1e-6)))
+    )
+    expect_identical(.w, character(0))
+    expect_identical(.out, character(0))
+    expect_equal(.s$y1[.s$time == 1e5], 0.01786593, tolerance = 1e-5)
   })
 
   test_that("the dop853 step-size and intdy warnings give their x, h and t", {
@@ -236,7 +278,7 @@ rxTest({
     .ev <- et(seq(0, 2, by = 0.5)) |> et(id = 1:2)
     .p <- data.frame(y0 = c(0.1, 1))
     .out <- capture.output(suppressWarnings(rxSolve(.m, .ev, params = .p, method = "dop853")))
-    .line <- grep("^\\[exit of dop853", .out, value = TRUE)
+    .line <- grep("^\\[", .out, value = TRUE)
     expect_length(.line, 1L)
     expect_match(
       .line,

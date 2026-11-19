@@ -5,6 +5,7 @@
 #include "lsoda.h"
 #include "common.h"
 #include "lsoda_internal.h"
+#include "lsoda_rows.h"
 
 #include <math.h>
 #include "blas.h"
@@ -177,10 +178,8 @@ int stoda(struct lsoda_context_t * ctx, double *y, int jstart)
 				_rxC(ipup) = _rxC(miter);
 			_rxC(tn) += _rxC(h);
 			for (j = _rxC(nq); j >= 1; j--)
-				for (i1 = j; i1 <= _rxC(nq); i1++) {
-					for (i = 1; i <= neq; i++)
-						_rxC(yh)[i1][i] += _rxC(yh)[i1 + 1][i];
-				}
+				for (i1 = j; i1 <= _rxC(nq); i1++)
+					lsodaRowAdd(neq, _rxC(yh)[i1], _rxC(yh)[i1 + 1]);
 			pnorm = vmnorm0(neq, _rxC(yh)[1], _rxC(ewt));
 
 			int corflag = correction(ctx, y, pnorm, &del, &delp, told, &m);
@@ -226,8 +225,7 @@ int stoda(struct lsoda_context_t * ctx, double *y, int jstart)
 			_rxC(mused) = _rxC(meth);
 			for (j = 1; j <= (_rxC(nq) + 1); j++) {
 				r = _rxC(el)[j];
-				for (i = 1; i <= neq; i++)
-					_rxC(yh)[j][i] += r * _rxC(acor)[i];
+				lsodaRowAxpy(neq, _rxC(yh)[j], r, _rxC(acor));
 			}
 			_rxC(icount)--;
 			if (_rxC(icount) < 0) {
@@ -304,10 +302,8 @@ int stoda(struct lsoda_context_t * ctx, double *y, int jstart)
 			kflag--;
 			_rxC(tn) = told;
 			for (j = _rxC(nq); j >= 1; j--)
-				for (i1 = j; i1 <= _rxC(nq); i1++) {
-					for (i = 1; i <= neq; i++)
-						_rxC(yh)[i1][i] -= _rxC(yh)[i1 + 1][i];
-				}
+				for (i1 = j; i1 <= _rxC(nq); i1++)
+					lsodaRowSub(neq, _rxC(yh)[i1], _rxC(yh)[i1 + 1]);
 			_rxC(rmax) = 2.;
 			if (fabs(_rxC(h)) <= hmin * 1.00001) {
 				kflag = -1;
