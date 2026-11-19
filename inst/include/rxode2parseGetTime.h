@@ -103,11 +103,9 @@ static inline int isEvidType(int evid, int type) {
 #define isEvidModeledRateStart(evid) isEvidType(evid, EVIDF_MODEL_RATE_ON)
 #define isEvidModeledRateStop(evid) isEvidType(evid, EVIDF_MODEL_RATE_OFF)
 
-// Sorted position of data record `raw`; a covariate update reads ind->idx as
-// a sorted position.  At sort time, and in a record order no lag changed, the
-// record sits at its own slot.  sortInd() fills ix as it times each record, so
-// while it runs a later record (the start an ss-with-lag stop pairs with) has
-// no slot yet and is at its own.
+// Sorted position of data record `raw` (ind->ix is a permutation of the
+// records); a covariate update reads ind->idx as a sorted position.  At sort
+// time, and in a record order no lag changed, the record sits at its own slot.
 static inline int getSortedPosition(rx_solving_options_ind *ind, int raw) {
   if (raw < 0) return raw; // an extra dose is addressed by its negative index
   if (raw < ind->n_all_times && ind->ix[raw] == raw) return raw;
