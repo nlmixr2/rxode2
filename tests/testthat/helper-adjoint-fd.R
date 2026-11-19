@@ -1,3 +1,18 @@
+.adjFdSolve <- function(m, ev, p) {
+  .r <- rxSolve(
+    m,
+    ev,
+    params = p,
+    method = "dop853",
+    atol = 1e-13,
+    rtol = 1e-13,
+    ssAtol = 1e-13,
+    ssRtol = 1e-13,
+    maxSS = 50000
+  )
+  as.data.frame(.r)
+}
+
 # Central finite difference of rxSolve() for each parameter in `cs` at a relative
 # step h0, named like the adjoint output (rx__sens_<state>_BY_<param>__): dop853
 # with tight solver and steady-state tolerances.
@@ -9,10 +24,8 @@
     .pd <- p
     .pu[.pn] <- .pu[.pn] + .h
     .pd[.pn] <- .pd[.pn] - .h
-    .u <- as.data.frame(rxSolve(m, ev, params = .pu, method = "dop853", atol = 1e-13, rtol = 1e-13,
-      ssAtol = 1e-13, ssRtol = 1e-13, maxSS = 50000))
-    .d <- as.data.frame(rxSolve(m, ev, params = .pd, method = "dop853", atol = 1e-13, rtol = 1e-13,
-      ssAtol = 1e-13, ssRtol = 1e-13, maxSS = 50000))
+    .u <- .adjFdSolve(m, ev, .pu)
+    .d <- .adjFdSolve(m, ev, .pd)
     for (.s in rxStateOde(m)) {
       .ret[[paste0("rx__sens_", .s, "_BY_", .pn, "__")]] <- (.u[[.s]] - .d[[.s]]) / (2 * .h)
     }
