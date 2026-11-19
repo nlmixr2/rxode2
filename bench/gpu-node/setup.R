@@ -103,6 +103,12 @@ if (!file.exists(.julia)) {
 if (!file.exists(.julia)) {
   stop("no Julia binary at ", .julia, "; remove ", .jdir, " and rerun", call. = FALSE)
 }
+## run Julia through prefix/julia-run, without the modules' LD_LIBRARY_PATH:
+## their libcurl/OpenSSL/libstdc++ shadow Julia's own and Pkg segfaults
+.wrap <- file.path(.prefix, "julia-run")
+writeLines(c("#!/bin/sh", "unset LD_LIBRARY_PATH", paste0("exec ", shQuote(.julia), " \"$@\"")), .wrap)
+Sys.chmod(.wrap, "0755")
+.julia <- .wrap
 ## Julia must start here (exit 126: noexec filesystem; 137: killed, eg by a
 ## memory limit)
 .jst <- system2(.julia, "--version")

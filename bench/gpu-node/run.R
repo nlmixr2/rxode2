@@ -20,7 +20,8 @@ source(file.path("bench", "gpu-node", "tmpdir.R"))
 .rxGpuNodeTmp(.prefix)
 dir.create(.out, recursive = TRUE, showWarnings = FALSE)
 
-.julia <- file.path(.prefix, "julia", "bin", "julia")
+## setup.R's wrapper (Julia without the modules' LD_LIBRARY_PATH)
+.julia <- file.path(.prefix, "julia-run")
 ## the cores of this job (LSF: LSB_DJOB_NUMPROC; SLURM: SLURM_CPUS_PER_TASK),
 ## not every core of a shared node: rxode2, OpenMP and the benchmarks read
 ## OMP_NUM_THREADS
