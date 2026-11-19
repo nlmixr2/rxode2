@@ -28,6 +28,9 @@ rxTest({
     .s2 <- rxSolve(.s, .ev)
     expect_equal(.s2$output, .s$output)
     expect_true(all(.s2$output < 1000))
+    .o <- .s$output
+    rxSolve(.s, .ev, updateObject = TRUE)
+    expect_equal(.s$output, .o)
   })
 
   test_that(".rxIndLinSsAtol only changes the invented output sink", {

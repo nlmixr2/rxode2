@@ -3770,12 +3770,20 @@ rxSolve.default <- function(
       object <- .converted
     }
   }
-  if (.ctl$method == 3L && rxIs(object, "rxode2")) {
-    .sink <- get0(".rxIndLinSink", envir = object, inherits = FALSE)
+  if (.ctl$method == 3L) {
+    # an rxSolve object (updateObject = TRUE) solves the model it was built from
+    .sinkModel <- if (rxIs(object, "rxSolve")) {
+      object$env$.args.object
+    } else {
+      object
+    }
+    .sink <- if (rxIs(.sinkModel, "rxode2")) {
+      get0(".rxIndLinSink", envir = .sinkModel, inherits = FALSE)
+    }
     if (length(.sink) > 0L) {
       .ctl$ssAtol <- .rxIndLinSsAtol(
         .ctl$ssAtol,
-        rxModelVars(object)$state,
+        rxModelVars(.sinkModel)$state,
         .sink
       )
     }
