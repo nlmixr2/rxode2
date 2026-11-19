@@ -13,10 +13,6 @@
 #' @return nothing, called for its error
 #' @noRd
 #' @author Matthew L. Fidler
-# per-state ssAtol for a model converted to indLin form: the `output` sink the
-# conversion adds only accumulates eliminated drug, so it never reaches a steady
-# state and is left out of the ssAtol/ssRtol test (#1749).  `ssAtol` is given
-# for the source model's states, which are `state` without `sink`.
 # the `output` sink of a matExp() model: a state only `k_<cmt>_output` rates
 # create, with no rate or indLin() forcing of its own
 .rxIndLinSinkState <- function(mv) {
@@ -35,7 +31,8 @@
 # per-state ssAtol for an indLin solve: the `output` sink only accumulates
 # eliminated drug, so it never reaches a steady state and is left out of the
 # ssAtol/ssRtol test (#1749).  Other states keep the solver's positional rule
-# (a state past the end of `ssAtol` uses its first element).
+# (a state past the end of `ssAtol` uses its first element); a converted model
+# declares its source states first, so `output` follows them.
 .rxIndLinSsAtol <- function(ssAtol, state, sink) {
   .sink <- state %in% sink
   if (!any(.sink)) {

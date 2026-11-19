@@ -43,6 +43,8 @@ rxTest({
     .s2 <- rxSolve(.me, .p, .ev, method = "indLin", maxSS = 20000)
     expect_equal(.s1$output, .s2$output)
     expect_equal(.rxIndLinSinkState(rxModelVars(.me)), "output")
+    # source states come first, so a positional ssAtol still lines up
+    expect_equal(rxModelVars(.me)$state, c("depot", "central", "output"))
     expect_equal(.rxIndLinSinkState(rxModelVars(.ssSinkMod)), character(0))
   })
 
