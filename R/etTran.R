@@ -294,8 +294,7 @@ as.data.frame.rxEtTran <- function(x, row.names = NULL, optional = FALSE, ...) {
 #' @param keep Character vector of column names to keep
 #' @return An `rxEtTran` data frame with ALTREP columns
 #' @noRd
-etTransSingle <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE,
-                          iCov = NULL, keep = character(0)) {
+etTransSingle <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, iCov = NULL, keep = character(0)) {
   .Call(`_rxode2_etTransSingle`, inData, obj, addCmt, dropUnits, iCov, keep)
 }
 

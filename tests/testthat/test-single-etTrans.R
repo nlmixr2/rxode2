@@ -1,5 +1,4 @@
 rxTest({
-
   m <- function() {
     ini({ ka <- 1; cl <- 4; v <- 25 })
     model({
@@ -81,5 +80,4 @@ rxTest({
     expect_equal(r1$cp, r2$cp, tolerance = 1e-10)
     expect_equal(r1$label, r2$label)
   })
-
 })

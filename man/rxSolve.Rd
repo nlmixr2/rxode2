@@ -181,6 +181,7 @@ rxSolve(
   tolFactor = NULL,
   serializeFile = NULL,
   dense = FALSE,
+  single = FALSE,
   cvodeLinSolver = c("dense", "band", "gmres", "bicgstab", "tfqmr"),
   autoSwitchNonstifftol = 9/10,
   autoSwitchStifftol = 9/10,
@@ -1634,6 +1635,10 @@ only if you drop the secondary.  A warning is issued and \code{dense} is set to
 Silently ignored for non-dense single methods.  Not yet supported for
 \code{linCmt()} models (a warning is emitted and the standard path is used
 instead).}
+
+\item{single}{Logical; when \code{TRUE} the event table is solved in place: the
+columns the solve only reads are borrowed from the input data rather than
+copied.  Incompatible with \code{serializeFile}.  Default \code{FALSE}.}
 
 \item{cvodeLinSolver}{Character; selects the linear solver used by the CVODE
 integrator when \code{method = "cvode"}.  Ignored for all other methods.

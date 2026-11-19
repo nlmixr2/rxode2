@@ -1159,6 +1159,10 @@
 #'   `linCmt()` models (a warning is emitted and the standard path is used
 #'   instead).
 #'
+#' @param single Logical; when `TRUE` the event table is solved in place: the
+#'   columns the solve only reads are borrowed from the input data rather than
+#'   copied.  Incompatible with `serializeFile`.  Default `FALSE`.
+#'
 #' @param cvodeLinSolver Character; selects the linear solver used by the CVODE
 #'   integrator when `method = "cvode"`.  Ignored for all other methods.
 #'   Available choices and when to use them:
