@@ -35,6 +35,13 @@
 
 ## Bug fixes
 
+- mu-referencing no longer records a term as a `covariate*theta` (mu2) term
+  unless it is exactly that.  A term such as `0.75*log(V1/exp(tV1))` (an
+  allometric scaling on the individual `V1`) has a theta-free derivative but
+  also carries `0.75*log(V1)`; it was recorded with covariate `-0.75`, and
+  nlmixr2's SAEM / mu-referenced methods rewrote it to `-0.75*tV1`, silently
+  dropping the `V1` dependence of the parameter.
+
 - The R functions `gammapInva()` and `gammaqInva()` returned the results of
   `gammapInv()` and `gammaqInv()` (their `.Call` entries were registered to
   the wrong C functions).  They now return the shape `a`, as the same

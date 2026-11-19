@@ -405,6 +405,27 @@
   .ret
 }
 
+#' Is a theta-affine term exactly `theta * (d term / d theta)`?
+#'
+#' The mu2 rewrite replaces the whole term by `covariate*theta`, which is only
+#' exact when the term vanishes at `theta = 0` (no theta-free remainder).
+#'
+#' @param y term
+#' @param theta theta name
+#' @return `TRUE` when the remainder is symbolically zero; `FALSE` otherwise
+#'   (including when symengine cannot decide)
+#' @noRd
+.muRefThetaTermIsPureProduct <- function(y, theta) {
+  .r <- try({
+    .s <- rxS(paste0("rxdummyLhs=", deparse1(y)))
+    # Symbol(), not the bare string: subs() parses a string, which fails on
+    # dotted theta names such as `cl.wt`
+    .z <- symengine::subs(get("rxdummyLhs", .s), symengine::Symbol(.rxSEres(theta)), symengine::S(0L))
+    as.character(symengine::expand(.z))
+  }, silent = TRUE)
+  !inherits(.r, "try-error") && identical(.r, "0")
+}
+
 #' Fill the derivative cache for a whole model in one symengine environment
 #'
 #' Collects every product term with a single theta and derives them all from
@@ -563,6 +584,13 @@
             .thetaD <- try(.muRefExtractTheta(.extra, env), silent = TRUE)
             if (inherits(.thetaD, "try-error")) {
               .thetaD <- NULL
+            }
+            if (is.null(.thetaD) && !.muRefThetaTermIsPureProduct(y, .thetas)) {
+              # theta-free derivative only says the term is affine in theta;
+              # `0.75*log(V1/exp(tV1))` has derivative -0.75 but also carries
+              # 0.75*log(V1).  Rewriting it as `covariate*theta` would drop that
+              # remainder, so it is not a mu2 covariate term.
+              return(NULL)
             }
             if (is.null(.thetaD)) {
               # mu2 expression -- unless this line is a declared distribution's

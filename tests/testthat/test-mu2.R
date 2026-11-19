@@ -50,4 +50,33 @@ rxTest({
       expect_equal(f$mu2RefCovariateReplaceDataFrame, m2$mu2RefCovariateReplaceDataFrame)
     })
   }
+
+  test_that("a theta-affine term with a theta-free remainder is not a mu2 covariate", {
+    # 0.75*log(V1/exp(tV1)) has d/dtV1 = -0.75 (no theta), but it is not
+    # -0.75*tV1: it also carries 0.75*log(V1).  Recording it as a mu2 term made
+    # nlmixr2 rewrite it to `nlmixrMuDerCov*tV1`, silently dropping the V1
+    # (weight and eta.V1) dependence of CL under SAEM / mu-referenced methods.
+    f <- function() {
+      ini({
+        tV1 <- log(40); tCL <- log(5); tV2 <- log(40); tQ <- log(3)
+        wt.cl <- 0.75
+        eta.CL ~ 0.1; eta.V1 ~ 0.1; eta.V2 ~ 0.1
+        add.sd <- 1
+      })
+      model({
+        V1 <- exp(tV1 + log(WT/70) + eta.V1)
+        V2 <- exp(tV2 + log(WT/70) + eta.V2)
+        CL <- exp(tCL + 0.75*log(V1/exp(tV1)) + wt.cl*log(WT/70) + eta.CL)
+        Q <- exp(tQ + 0.75*log(V2/exp(tV2)))
+        cp <- linCmt(CL, Q, V1, V2)
+        cp ~ add(add.sd)
+      })
+    }
+    f <- f()
+    .df <- f$mu2RefCovariateReplaceDataFrame
+    expect_false(any(grepl("exp(tV", .df$modelExpression, fixed = TRUE)))
+    # the genuine theta*f(covariate) term on the same line is still detected
+    expect_equal(.df$modelExpression, "wt.cl * log(WT/70)")
+    expect_equal(.df$covariateParameter, "wt.cl")
+  })
 })
