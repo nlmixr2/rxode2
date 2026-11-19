@@ -161,7 +161,7 @@
 #'   maximum absolute step size.
 #'
 #'   Note that for dense output methods (`"dop853"`, `"dop5"`, `"bs"`,
-#'   `"ros4"`), `hmax` defaults to `NULL` to allow the solvers to
+#'   `"ros4"`, `"cvode"`, `"liblsoda"`), `hmax` defaults to `NULL` to allow the solvers to
 #'   determine the step size when `dense=TRUE`
 #'
 #'   For `method="indLin"`, `hmax` caps how long an interval is treated
@@ -204,8 +204,11 @@
 #'     This option is only considered with `method="liblsoda"`.
 #'
 #' @param istateReset When `TRUE`, reset the `ISTATE` variable to 1 for
-#'     lsoda and liblsoda with doses, like `deSolve`; When `FALSE`, do
-#'     not reset the `ISTATE` variable with doses.
+#'     lsoda and liblsoda with doses, like `deSolve`, and restart the lsoda
+#'     family (`liblsoda`, `lsoda`, `lsode`, `bdf`) at an `mtime()` record;
+#'     When `FALSE`, do not reset the `ISTATE` variable with doses or at
+#'     `mtime()` records, so a time window that starts at an `mtime()`
+#'     record can be stepped over.
 #'
 #' @param indLinMatExpType This is them matrix exponential type that
 #'     is use for rxode2.  Currently the following are supported:
@@ -432,7 +435,10 @@
 #'
 #' * `"linear"` interpolation, which interpolates the covariate
 #'     by solving the line between the observed covariates and extrapolating the new
-#'     covariate value.
+#'     covariate value.  A `linCmt()` model refuses it for a covariate
+#'     that varies within a subject and feeds the `linCmt()` parameters,
+#'     since its closed form cannot follow the ramp; use another method or
+#'     write the model as ODEs.
 #'
 #' * `"locf"` -- Last observation carried forward (the default).
 #'
@@ -894,9 +900,12 @@
 #'   doses not canceled with `SS=2` (the infusions started before
 #'   `SS=2` occurred are canceled, though).
 #'
-#' @param addlKeepsCov This determines if the additional dosing items
-#'   repeats the dose only (`FALSE`) or keeps the covariates at the
-#'   record of the dose (`TRUE`)
+#' @param addlKeepsCov This determines if a dose given at a time other
+#'   than its record's (an additional dosing item or a dose moved by
+#'   `alag()`) takes the time-varying covariates imputed at its actual
+#'   dosing time (`FALSE`) or keeps the covariates at the record of the
+#'   dose (`TRUE`, as NONMEM does).  By default `FALSE`, or `TRUE` with
+#'   `nonmem = TRUE`.
 #'
 #' @param addlDropSs When there are steady state doses with an `addl`
 #'   specification the steady state flag is dropped with repeated
@@ -1015,7 +1024,18 @@
 #'   the continuous time (like `$DES`).  `addl` repeats, infusion ends,
 #'   lagged doses and doses added while solving do not end an interval;
 #'   `mtime()` times do.  Covariate interpolation is still set by
-#'   `covsInterpolation`.  By default `FALSE`.
+#'   `covsInterpolation`.  It also sets the default `tieOrder` to `"data"`
+#'   and turns on `addlKeepsCov` unless it is given.  By default `FALSE`.
+#'
+#' @param tieOrder How records of a subject that share a time are processed:
+#'   `"evid"` processes resets first, then doses, then observations, so the
+#'   result does not depend on the row order of the data; `"data"` processes
+#'   them in the order of the rows in the data, the way NONMEM does (records
+#'   a row expands to, like the reset of an `evid=4` dose or `addl` repeats,
+#'   follow that row).  Doses added while solving follow the records at the
+#'   same time.  An event table already translated by [etTrans()] keeps the
+#'   order it was translated with.  By default (`NULL`) this is `"data"` when
+#'   `nonmem = TRUE` and `"evid"` otherwise.
 #'
 #' @param linCmtGillK The total number of possible steps to determine the
 #'     optimal forward/central difference step size per parameter (by
@@ -1127,8 +1147,9 @@
 #' @param dense Logical; when `TRUE` and the method supports dense output,
 #'   enables continuous interpolation so the solver can take large internal
 #'   steps and reconstruct the solution cheaply at each observation time.
-#'   Dense-capable single methods are `"dop853"`, `"dop5"`, `"bs"`, and
-#'   `"ros4"`.  `"dop853+ros4"` is the only dense AutoSwitch composite: the
+#'   Dense-capable single methods are `"dop853"`, `"dop5"`, `"bs"`, `"ros4"`,
+#'   `"cvode"` and `"liblsoda"` (which interpolates between its own steps
+#'   either way; `dense = TRUE` lifts the `hmax` default).  `"dop853+ros4"` is the only dense AutoSwitch composite: the
 #'   secondary must be dense too (`"ros4"` is the only stiff method that is),
 #'   and handing a dense segment from the primary to the secondary mid-segment
 #'   is implemented for a `"dop853"` primary.  Other composites solve densely
@@ -1630,6 +1651,7 @@ rxSolve <- function(
   linCmtSensH = 0.0001,
   linCmtSensPhi = TRUE,
   nonmem = FALSE,
+  tieOrder = NULL,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -1939,6 +1961,14 @@ rxSolve <- function(
       .linCmtSensPhi <- as.integer(linCmtSensPhi)
     }
     checkmate::assertLogical(nonmem, any.missing = FALSE, len = 1)
+    if (is.null(tieOrder)) {
+      tieOrder <- if (nonmem) "data" else "evid"
+    }
+    checkmate::assertChoice(tieOrder, c("evid", "data"))
+    if (nonmem && missing(addlKeepsCov)) {
+      # NONMEM keeps a dose record's covariates with the dose
+      addlKeepsCov <- TRUE
+    }
     checkmate::assertNumeric(linCmtGillFtol, lower = 0, finite = TRUE, any.missing = FALSE, len = 1)
     checkmate::assertIntegerish(linCmtGillK, lower = 0, any.missing = FALSE, len = 1)
     checkmate::assertNumeric(linCmtGillStep, lower = 0, finite = TRUE, any.missing = FALSE, len = 1)
@@ -2075,7 +2105,9 @@ rxSolve <- function(
       )
       dense <- FALSE
     }
-    if (isTRUE(dense) && method %in% c(0L, 10L, 11L, 13L) && (stiff2 == 0L || stiff2 == 13L) && missing(hmax)) {
+    if (
+      isTRUE(dense) && method %in% c(0L, 2L, 10L, 11L, 13L, 21L) && (stiff2 == 0L || stiff2 == 13L) && missing(hmax)
+    ) {
       ## .minfo("dense=TRUE: setting hmax=NULL so the solver can take steps larger than the observation spacing")
       hmax <- NULL
     }
@@ -2429,7 +2461,8 @@ rxSolve <- function(
       priorOmegaEl = priorOmegaEl,
       priorSigmaEl = priorSigmaEl,
       linCmtSensPhi = .linCmtSensPhi,
-      nonmem = nonmem
+      nonmem = nonmem,
+      tieOrder = tieOrder
     )
     class(.ret) <- "rxControl"
     return(.ret)
@@ -3353,6 +3386,111 @@ rxSolveCacheEnv$.order <- character()
   invisible(value)
 }
 
+#' A model with its analytic state Jacobian (`df(state)/dy(state)` lines)
+#'
+#' Adds the symbolic Jacobian of the d/dt() lines (`calcJac = TRUE`), keeping
+#' only the state-by-state entries, as every Rosenbrock/implicit method needs.
+#'
+#' @param object rxode2 model
+#' @return list with the model `code` and the compiled model `obj`
+#' @noRd
+#' @author Matthew L. Fidler
+.rxJacStateModel <- function(object) {
+  .mvCur <- rxModelVars(object)
+  .mv <- suppressMessages({
+    rxModelVars(rxode2::rxode2(object, calcJac = TRUE))
+  })
+  .states <- .mvCur$state
+  .normCode <- strsplit(rxNorm(.mv), "\n")[[1]]
+  .origCode <- strsplit(rxNorm(.mvCur), "\n")[[1]]
+  # the Jacobian may read the PK record time (rx_time_pk~t)
+  .fc <- c(.origCode, setdiff(grep("^rx_time_pk~", .normCode, value = TRUE), .origCode))
+
+  for (.line in .normCode) {
+    if (grepl("^df\\(", .line)) {
+      .parts <- regmatches(.line, regexec("^df\\(([^)]+)\\)/dy\\(([^)]+)\\)", .line))[[1]]
+      if (length(.parts) == 3) {
+        if (.parts[2] %in% .states && .parts[3] %in% .states) {
+          if (!(.line %in% .origCode) && !(.line %in% .fc)) {
+            .fc <- c(.fc, .line)
+          }
+        }
+      }
+    }
+  }
+  .fc <- paste(.fc, collapse = "\n")
+  list(code = .fc, obj = rxode2(.fc))
+}
+
+#' The cached Jacobian-augmented model of a model
+#'
+#' The cache holds the compiled model, not just its text: re-parsing it on
+#' every solve costs O(nStates^2) (nlmixr2/rxode2#1307).
+#'
+#' @param object rxode2 model
+#' @param errEnv environment that receives `errMsg` when generation fails
+#' @return the cache entry (list with `code`, `obj` and `md5`), or
+#'   `NA_character_` when the Jacobian cannot be generated
+#' @noRd
+#' @author Matthew L. Fidler
+.rxJacCached <- function(object, errEnv = NULL) {
+  .key <- paste0(rxModelVars(object)$md5["parsed_md5"], "_jac")
+  tryCatch(
+    {
+      .cached <- .rxSolveCacheGet(.key)
+      if (!is.null(.cached) && .rxJacCacheOk(.cached)) {
+        .cached
+      } else {
+        .entry <- .rxJacStateModel(object)
+        .entry$md5 <- rxModelVars(.entry$obj)$md5["parsed_md5"]
+        .rxSolveCacheSet(.key, .entry)
+        .entry
+      }
+    },
+    error = function(e) {
+      if (!is.null(errEnv)) {
+        assign("errMsg", conditionMessage(e), envir = errEnv)
+      }
+      .rxSolveCacheSet(.key, NA_character_)
+      NA_character_
+    }
+  )
+}
+
+#' The Jacobian-augmented model for a solve set up from C
+#'
+#' rxSolve() swaps in the model with its analytic Jacobian before an implicit
+#' method solves; rxSolve_() calls this, once at setup, when a solve set up
+#' from C (nlmixr2est) reaches it without one.
+#'
+#' @param object the model being solved
+#' @return the model with its Jacobian when it keeps the parameter, state and
+#'   lhs order of `object`; otherwise `NULL`
+#' @noRd
+#' @author Matthew L. Fidler
+.rxJacSolveModelC <- function(object) {
+  tryCatch(
+    {
+      .c <- .rxJacCached(object)
+      if (identical(.c, NA_character_)) {
+        return(NULL)
+      }
+      .a <- rxModelVars(object)
+      .b <- rxModelVars(.c$obj)
+      if (
+        !identical(.a$params, .b$params) ||
+          !identical(.a$state, .b$state) ||
+          !identical(.a$lhs, .b$lhs) ||
+          !identical(.a$stateProp, .b$stateProp)
+      ) {
+        return(NULL)
+      }
+      .c$obj
+    },
+    error = function(e) NULL
+  )
+}
+
 ## Is a cached Jacobian-augmented model entry still usable?  `NA_character_`
 ## marks a model whose Jacobian generation failed (kept so the failure is not
 ## retried); anything else must be an entry whose compiled model is still
@@ -3811,32 +3949,37 @@ rxSolve.default <- function(
       }
     }
     # delay() history is recorded on the dense dop853 path (default, and the
-    # dop853 leg of "dop853+ros4") and on the dense ros4 path (for stiff delay
-    # models).  Other solvers cannot record dense history and are rejected.
+    # dop853 leg of "dop853+ros4"), on the dense dop5, bs, ros4 and cvode
+    # paths, and by liblsoda when dense = TRUE asks for it.
+    # Other solvers cannot record dense history and are rejected.
     .stiff2 <- if (is.null(.ctl$stiff2)) 0L else as.integer(.ctl$stiff2)
     if (.ctl$method >= 200L) {
       # discrete-adjoint rk4s methods record their own cubic-Hermite dense
       # history per accepted step and carry the backward anticipating term
       # (delayed Jacobian) in every backward fill -- explicit, stiff (ros4s,
-      # radauiia5s) and the dop853s+ros4s composite -- so all support delay().
-    } else if (.ctl$method == 2L) {
+      # radauiia5s) and the dop853s+ros4s composite -- and cvodesadj records
+      # the history from CVODE's interpolant with the same backward term, so
+      # all support delay().
+    } else if (.ctl$method == 2L && !isTRUE(.ctl$dense)) {
       # liblsoda is the overall default; switch DDE models to dop853 + ros4
+      # (an explicit dense = TRUE keeps liblsoda)
       .ctl$method <- 0L
       .ctl$stiff2 <- 13L
       .ctl$dense <- TRUE
       .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
     } else if (
       (.ctl$method == 0L && (.stiff2 == 0L || .stiff2 == 13L)) ||
-        (.ctl$method == 13L && .stiff2 == 0L)
+        (.ctl$method %in% c(2L, 10L, 11L, 13L, 21L) && .stiff2 == 0L)
     ) {
-      # dop853 (optionally + ros4 secondary), or pure ros4 for stiff delays
+      # dop853 (optionally + ros4 secondary), or pure liblsoda (dense), dop5,
+      # bs, ros4 or cvode
       if (!isTRUE(.ctl$dense)) {
         .ctl$dense <- TRUE
         .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
       }
     } else {
       stop(
-        "delay differential equations require a dense solver; use method='dop853+ros4' (the default for delay models), 'dop853', or 'ros4' (stiff)", # nolint: line_length_linter.
+        "delay differential equations require a dense solver; use method='dop853+ros4' (the default for delay models), 'dop853', 'dop5', 'bs', 'ros4', 'cvode' (stiff) or 'liblsoda' with dense = TRUE", # nolint: line_length_linter.
         call. = FALSE
       )
     }
@@ -3861,54 +4004,9 @@ rxSolve.default <- function(
     .mvCur <- rxModelVars(object)
     .jacType <- .mvCur$trans["jac"]
     if (.jacType != "fulluser") {
-      .key <- paste0(.mvCur$md5["parsed_md5"], "_jac")
       .jacEnv <- new.env(parent = emptyenv())
       .jacEnv$errMsg <- NULL
-      # The cache holds the compiled Jacobian-augmented model, not just its
-      # text.  Re-parsing that text on every solve costs O(nStates^2) -- the
-      # augmented model carries a df()/dy() line per Jacobian entry -- and every
-      # implicit method and every AutoSwitch composite went through here on
-      # every call (nlmixr2/rxode2#1307).
-      .jacCache <- tryCatch(
-        {
-          .cached <- .rxSolveCacheGet(.key)
-          if (!is.null(.cached) && .rxJacCacheOk(.cached)) {
-            .cached
-          } else {
-            .mv <- suppressMessages({
-              rxModelVars(rxode2::rxode2(object, calcJac = TRUE))
-            })
-            .states <- .mvCur$state
-            .normCode <- strsplit(rxNorm(.mv), "\n")[[1]]
-            .origCode <- strsplit(rxNorm(.mvCur), "\n")[[1]]
-            # the Jacobian may read the PK record time (rx_time_pk~t)
-            .fc <- c(.origCode, setdiff(grep("^rx_time_pk~", .normCode, value = TRUE), .origCode))
-
-            for (.line in .normCode) {
-              if (grepl("^df\\(", .line)) {
-                .parts <- regmatches(.line, regexec("^df\\(([^)]+)\\)/dy\\(([^)]+)\\)", .line))[[1]]
-                if (length(.parts) == 3) {
-                  if (.parts[2] %in% .states && .parts[3] %in% .states) {
-                    if (!(.line %in% .origCode) && !(.line %in% .fc)) {
-                      .fc <- c(.fc, .line)
-                    }
-                  }
-                }
-              }
-            }
-            .fc <- paste(.fc, collapse = "\n")
-            .jacObject <- rxode2(.fc)
-            .entry <- list(code = .fc, obj = .jacObject, md5 = rxModelVars(.jacObject)$md5["parsed_md5"])
-            .rxSolveCacheSet(.key, .entry)
-            .entry
-          }
-        },
-        error = function(e) {
-          assign("errMsg", conditionMessage(e), envir = .jacEnv)
-          .rxSolveCacheSet(.key, NA_character_)
-          NA_character_
-        }
-      )
+      .jacCache <- .rxJacCached(object, .jacEnv)
       if (!identical(.jacCache, NA_character_)) {
         .jacObject <- .jacCache$obj
         .jacMd5 <- .jacCache$md5
@@ -4726,7 +4824,13 @@ rxSolve.rxSolve <- function(
       envir = envir
     ))
   }
-  .model <- as.character(.model)
+  # Re-solve the model that produced this solve, not its text, which would be
+  # re-parsed on every call (posologyr MAP estimation, levenc/posologyr#70).
+  # The model object keeps its DLL handle and event-sensitivity information.
+  .model <- object$env$.args.object
+  if (!inherits(.model, "rxode2")) {
+    .model <- rxModelVars(object)
+  }
   if (is.null(params)) {
     params <- object$.params.single
   }
@@ -7289,7 +7393,8 @@ rxIsNonStiff <- function(method) {
 #' accuracy on densely sampled grids.
 #'
 #' Dense-capable single methods are:
-#' `"dop853"` (0), `"dop5"` (10), `"bs"` (11), `"ros4"` (13).
+#' `"dop853"` (0), `"liblsoda"` (2), `"dop5"` (10), `"bs"` (11), `"ros4"` (13),
+#' `"cvode"` (21).
 #'
 #' For composite AutoSwitch methods (e.g. `"dop5+ros4"`), `TRUE` is returned
 #' only when **both** the primary and stiff secondary are dense-capable.
@@ -7305,8 +7410,9 @@ rxIsNonStiff <- function(method) {
 #' @examples
 #' rxIsDense("dop853")                       # TRUE
 #' rxIsDense("ros4")                         # TRUE
-#' rxIsDense("liblsoda")                     # FALSE
-#' rxIsDense(c("dop5", "bs", "cvode"))       # TRUE TRUE FALSE
+#' rxIsDense("liblsoda")                     # TRUE
+#' rxIsDense("lsoda")                        # FALSE
+#' rxIsDense(c("dop5", "bs", "cvode"))       # TRUE TRUE TRUE
 #' rxIsDense("dop5+ros4")                    # TRUE  (both dense)
 #' rxIsDense("dop5+ros43")                   # FALSE (ros43 not dense)
 #'
@@ -7314,7 +7420,9 @@ rxIsNonStiff <- function(method) {
 #' @export
 #' @family Solver options and performance
 rxIsDense <- function(method) {
-  .denseCodes <- c(0L, 10L, 11L, 13L)
+  .denseCodes <- c(0L, 2L, 10L, 11L, 13L, 21L)
+  # ros4 is the only dense stiff secondary of a composite
+  .denseStiff <- 13L
   .methodIdx <- c(
     "lsoda" = 1L,
     "dop853" = 0L,
@@ -7506,7 +7614,7 @@ rxIsDense <- function(method) {
           .parts <- .parseAutoSwitchMethod(.m)
           !is.null(.parts) &&
             as.integer(.parts["primary"]) %in% .denseCodes &&
-            as.integer(.parts["stiff"]) %in% .denseCodes
+            as.integer(.parts["stiff"]) %in% .denseStiff
         },
         logical(1)
       )

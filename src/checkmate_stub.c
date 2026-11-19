@@ -5,6 +5,7 @@
 #include <R_ext/Rdynload.h>
 #include <Rmath.h>
 #include "checkmate.h"
+#include "rxProtect.h"
 #include <ctype.h>
 
 // Some unexported functions which were re-implemented here (with some changes)
@@ -40,36 +41,31 @@ R_xlen_t check_strict_names(SEXP x) {
 void qstrict0(SEXP nn, const char *what){
   R_xlen_t pos = find_missing_string(nn);
   if (pos > 0) {
-    UNPROTECT(1);
     Rf_errorcall(R_NilValue, "Must have %s, but is NA at position %i", what, (int)(pos));
   }
   pos = Rf_any_duplicated(nn, FALSE);
 
   if (pos > 0) {
-    UNPROTECT(1);
     Rf_errorcall(R_NilValue, "Must have unique %s, but element %i is duplicated", what, (int)(pos));
   }
 
   if (Rf_isNull(nn)) {
-    UNPROTECT(1);
     Rf_errorcall(R_NilValue, "Must have %s", what);
   }
   pos = Rf_any_duplicated(nn, FALSE);
   if (pos > 0){
-    UNPROTECT(1);
     Rf_errorcall(R_NilValue, "Must have unique %s, but element %i is duplicated", what, (int)(pos));
   }
   pos = check_strict_names(nn);
   if (pos > 0){
-    UNPROTECT(1);
     Rf_errorcall(R_NilValue, "Must have %s according to R's variable naming conventions, but element %i does not comply", what, (int)(pos));
   }
-  UNPROTECT(1);
 }
 
 // By Matt
 void qstrict(SEXP x, const char *what) {
-  SEXP nn = PROTECT(Rf_getAttrib(x, R_NamesSymbol));
+  rxProtectGuard;
+  SEXP nn = rxP(Rf_getAttrib(x, R_NamesSymbol));
   qstrict0(nn, what);
-  UNPROTECT(1);
+  rxUPAll();
 }
