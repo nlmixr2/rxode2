@@ -13,6 +13,23 @@
 #' @return nothing, called for its error
 #' @noRd
 #' @author Matthew L. Fidler
+# per-state ssAtol for an ODE model converted to indLin form: the `output`
+# sink the conversion adds only accumulates eliminated drug, so it never reaches
+# a steady state and is left out of the ssAtol/ssRtol test (#1749)
+.rxIndLinSsAtol <- function(ssAtol, state, convertedState) {
+  .sink <- !(convertedState %in% state) & convertedState == "output"
+  if (!any(.sink)) {
+    return(ssAtol)
+  }
+  # states keep their own tolerance by name; one past the vector uses the first
+  .w <- match(convertedState, state)
+  .w[!is.na(.w) & .w > length(ssAtol)] <- 1L
+  .w[is.na(.w)] <- 1L
+  .ret <- ssAtol[.w]
+  .ret[.sink] <- .Machine$double.xmax
+  .ret
+}
+
 .rxAssertPositiveTol <- function(x, ..., .var.name = checkmate::vname(x)) {
   checkmate::assertNumeric(x, lower = 0, finite = TRUE, any.missing = FALSE, ..., .var.name = .var.name)
   if (any(x <= 0)) {
@@ -3739,6 +3756,11 @@ rxSolve.default <- function(
           assign(".rxIndLinModel", .converted, envir = .modelEnv)
         }
       }
+      .ctl$ssAtol <- .rxIndLinSsAtol(
+        .ctl$ssAtol,
+        rxModelVars(object)$state,
+        rxModelVars(.converted)$state
+      )
       object <- .converted
     }
   }
