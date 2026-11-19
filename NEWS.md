@@ -18,7 +18,47 @@
   value read at the dose; `rxSolve(rateAtDoseTime = TRUE, durAtDoseTime =
   TRUE)` restores that (#1586).
 
+- The record walk `rxSolve()` lays out its output rows with (which records
+  are rows, the reset time shift, the `addDosing` dose columns) is exported
+  to downstream packages through the function-pointer table as
+  `rxDfWalkInit()`, `rxDfWalkStep()` and `rxDfWalkDull()` (slots 105-107),
+  so a package solving through rxode2 lays out `rxSolve()`'s own rows
+  (nlmixr2/nlmixr2est#1356).
+
+- `rxSolve()`'s keep columns and factor-column templates are exported the same
+  way: `rxDfKeepSetup()`, `rxDfKeepFirst()`, `rxDfKeepRow()`, `rxDfKeepCols()`
+  and `getDfLevels()` (slots 108-112) read and type a row's keep columns as
+  `rxSolve()` does (nlmixr2/nlmixr2est#1356).
+
+- Generated model functions set the thread's subject for the random-number
+  helpers on each call only when the model can draw random numbers (an
+  `rx*()`/`ri*()` draw, `simeta()`/`simeps()`, a user function or another
+  package's C function), saving that per-call cost elsewhere (#1726).
+
+- `_update_par_ptr()`, called by every generated model function, returns
+  before its steady-state time check when the model has no covariates (#1726).
+
+- `rxDfSolveRefused()` (slot 113) tells a downstream package whether
+  `rxSolve()` would refuse the current solve (a `NA` event time, a model
+  `method = "vv"` cannot integrate, a single subject that failed, ...) rather
+  than return it with `NA` rows; `rxSolve()` decides with the same code
+  (nlmixr2/nlmixr2est#1356).
+
 ## Bug fixes
+
+- The R functions `gammapInva()` and `gammaqInva()` returned the results of
+  `gammapInv()` and `gammaqInv()` (their `.Call` entries were registered to
+  the wrong C functions).  They now return the shape `a`, as the same
+  functions in a model always did.
+
+- `gamma(x)` in a model now computes the Gamma function; it was translated to
+  `lgammafn()` and returned log-gamma.  This also affected `factorial()` and
+  `gammafn()` after a symengine round trip, which rewrites them as `gamma()`.
+
+- `rxSolve(..., addDosing = TRUE)` no longer crashes with a string
+  assignment (`x <- "a"`) or a factor covariate in the output: the
+  `rate`/`dur`/`ii` columns were allocated after the covariates but filled
+  before `time`, so every later column was written three positions off.
 
 ### Delay differential equations
 - `delay()` models now solve with `method = "dop5"` and `method = "bs"`.
@@ -145,6 +185,21 @@
   correctly (#1729).
 
 ### Solving
+
+- An implicit method (`ros4`, `iem`, `ros43`, ...) in a solve set up from C,
+  as `nlmixr2` estimation does, now uses the model's analytic Jacobian, as
+  `rxSolve()` does; before, it read an empty Jacobian, so stiff fits ran
+  slowly or failed to solve.
+- Growing the per-thread dose pools for a solve with more cores than they
+  were sized for (`rxSolve(cores=)` above `OMP_NUM_THREADS`, for example) no
+  longer leaks three of their arrays: `freeExtraDosing()` never freed
+  `nAllocIgnoredDoses` or the outer `extraDoseTime`/`extraDoseDose` arrays.
+- The analytic Jacobian of a model that names a state before its `d/dt()`
+  (for example an initial condition such as `target(0) <- r0` above the
+  equations) is now stored at the state's index.  It was stored by the order
+  the states were first parsed, so the entries landed in the wrong cells and
+  the implicit methods (`ros4`, `ros43`, `sdirk43`, the `"primary+stiff"`
+  composites, ...) stalled or failed with `could not solve the system`.
 - While a solver integrates toward a record, a time-varying covariate
   interpolated with `locf` or `nocb` now keeps, at the ends of the interval,
   the value it has inside it.  At the record a `locf` covariate took the
@@ -234,9 +289,6 @@
   now includes the doses of the earlier intervals that arrive inside the
   observed one; they were dropped, so the profile decayed from the trough
   instead of matching explicit dosing (#1499).
-- `linCmt()` models now follow `minSS = maxSS = n`, giving the profile after
-  exactly `n` prior doses as the equivalent ODE model does; they used to
-  return the exact steady state for every `n` (#1500).
 - A steady-state infusion lasting its whole dosing interval with a modeled
   `dur()` or `rate()` into a compartment with an `alag()` now stops at its
   lagged end even when the modeled duration rounds just above `ii`; it
@@ -250,7 +302,6 @@
   and a steady state converged by `minSS` doses (for example with
   `ssAtol`/`ssRtol` disabled) stops there.  They used to return the exact
   steady state for every `minSS` (#1500).
-
 - Every dose a steady-state record schedules between two records (the
   starts and ends of a steady-state infusion with `dur > ii` or with
   `alag() > ii`) is now applied at its own time with every solver.  Only
@@ -270,6 +321,9 @@
 - A steady-state dose with a modeled `dur()` that follows a zero-amount record
   (for example a zero `evid = 5` replace) is now solved as an infusion; the
   duration check read the wrong record and solved it as a bolus (#1602).
+- The off phase of a steady-state infusion, and every phase of one longer
+  than `ii`, now uses the covariates of the steady-state dose record, as
+  NONMEM does; it used the covariates of a later record (#1589).
 
 ## New features
 

@@ -6663,6 +6663,12 @@ List rxLinCmtSensDebug_() {
   return List::create(_["sensType"]=rx->sensType, _["sensH"]=rx->sensH);
 }
 
+// The methods that read calc_jac() (rxIsImplicit() in R): ros4, iem and
+// ros43/ros6/backwardEuler/gauss6/iiic6/radauiia5/geng5/sdirk43
+static inline bool rxImplicitMethod(int m) {
+  return m == 13 || m == 14 || (m >= 31 && m <= 38);
+}
+
 // [[Rcpp::export]]
 SEXP rxSolve_(const RObject &obj, const List &rxControl,
               const Nullable<CharacterVector> &specParams,
@@ -6792,6 +6798,24 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     object = rxode2(object);
     rxSolveDat->mv = rxModelVars(object);
     rxSolveFreeObj = object;
+  }
+  if (!rxSolveDat->isRxSolve && !rxSolveDat->isEnvironment &&
+      (rxImplicitMethod(asInt(rxControl[Rxc_method], "method")) ||
+       rxImplicitMethod(asInt(rxControl[Rxc_stiff2], "stiff2")))) {
+    // An implicit method needs the model's analytic Jacobian; without df()/dy()
+    // lines calc_jac() is an empty stub.  rxSolve() swaps in the model with its
+    // Jacobian before calling here; a solve set up from C (nlmixr2est) gets the
+    // same model now, once, when it keeps the parameter, state and lhs order.
+    CharacterVector _tr = rxSolveDat->mv[RxMv_trans];
+    if (as<std::string>(_tr[RxMvTrans_jac]) != "fulluser") {
+      Function _jm = getRxFn(".rxJacSolveModelC");
+      RObject _jo = _jm(object);
+      if (!Rf_isNull(_jo)) {
+        object = _jo;
+        rxSolveDat->mv = rxModelVars(object);
+        rxSolveFreeObj = object;
+      }
+    }
   }
   if (rxSolveDat->isRxSolve || rxSolveDat->isEnvironment){
     rx_solve* rx = getRxSolve_();
