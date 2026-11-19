@@ -105,6 +105,8 @@ SEXP qassertS(SEXP in, const char *test, const char *what);
 // nPastEvid is kept out of rx_solving_options to avoid breaking the
 // assignFuns2 ABI (which passes rx_solving_options by value).
 int nPastEvid_global = 0;
+// set when an iterated steady state stops at maxSS without converging (#1749)
+int ssNotConv_global = 0;
 
 RObject rxSolveFreeObj=R_NilValue;
 LogicalVector rxSolveFree();
@@ -5899,6 +5901,9 @@ List rxSolve_df(const RObject &obj,
   if (nPastEvid_global > 0) {
     warning(_("evid_() was called %d time(s) with time <= current solve time; those calls were ignored"), nPastEvid_global);
   }
+  if (ssNotConv_global) {
+    warning(_("steady state did not converge within 'maxSS' doses (increase with `rxSolve(..., maxSS=#)`)"));
+  }
   if (!rxIsNull(rxControl[Rxc_drop])) {
     dat = rxDrop(asCv(rxControl[Rxc_drop], "drop"), dat, asBool(rxControl[Rxc_warnDrop], "warnDrop"));
   }
@@ -6397,6 +6402,7 @@ static inline void iniRx(rx_solve* rx) {
   rx_solving_options* op = rx->op;
   op->badSolve = 0;
   nPastEvid_global = 0;
+  ssNotConv_global = 0;
   op->naTime = 0;
   op->ATOL = 1e-8; //absolute error
   op->RTOL = 1e-8; //relative error
@@ -7297,6 +7303,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
     op->badSolve = 0;
     nPastEvid_global = 0;
+    ssNotConv_global = 0;
     op->naTime = 0;
     op->abort = 0;
     op->ATOL = atolNV[0];          //absolute error
