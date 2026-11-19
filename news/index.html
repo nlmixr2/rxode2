@@ -226,6 +226,7 @@
 <li>A steady-state infusion lasting exactly <code>ii</code> (fixed <code>rate</code> or <code>dur</code>) into a compartment with an <code>alag()</code> now stays on until its own lagged dose ends; with <code>ssAtDoseTime = TRUE</code> it turned off <code>alag()</code> too early (<a href="https://github.com/nlmixr2/rxode2/issues/1590" class="external-link">#1590</a>).</li>
 <li>A steady-state dose with a modeled <code>dur()</code> that follows a zero-amount record (for example a zero <code>evid = 5</code> replace) is now solved as an infusion; the duration check read the wrong record and solved it as a bolus (<a href="https://github.com/nlmixr2/rxode2/issues/1602" class="external-link">#1602</a>).</li>
 <li>The off phase of a steady-state infusion, and every phase of one longer than <code>ii</code>, now uses the covariates of the steady-state dose record, as NONMEM does; it used the covariates of a later record (<a href="https://github.com/nlmixr2/rxode2/issues/1589" class="external-link">#1589</a>).</li>
+<li>A steady-state dose into a compartment with an <code>alag()</code> (even <code>alag() &lt;- 0</code>) now places the lag with the covariates of its own record; the segment after steady state used the covariates of the subject’s last record (<a href="https://github.com/nlmixr2/rxode2/issues/1589" class="external-link">#1589</a>).</li>
 </ul></div>
 </div>
 <div class="section level3">
