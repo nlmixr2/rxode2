@@ -93,9 +93,15 @@ if (!file.exists(.julia)) {
     .tgz,
     mode = "wb"
   )
+  ## the system tar (R's internal one ignores --strip-components)
   dir.create(.jdir, showWarnings = FALSE)
-  utils::untar(.tgz, exdir = .jdir, extras = "--strip-components=1")
+  if (system2("tar", c("-xzf", shQuote(.tgz), "-C", shQuote(.jdir), "--strip-components=1")) != 0L) {
+    stop("unpacking ", .tgz, " failed", call. = FALSE)
+  }
   unlink(.tgz)
+}
+if (!file.exists(.julia)) {
+  stop("no Julia binary at ", .julia, "; remove ", .jdir, " and rerun", call. = FALSE)
 }
 Sys.setenv(
   JULIA_DEPOT_PATH = file.path(.prefix, "julia-depot"),
@@ -116,7 +122,7 @@ if (!all(.jhave)) {
     "Pkg.precompile()"
   )
   if (system2(.julia, c("-e", shQuote(paste(.jl, collapse = "; ")))) != 0) {
-    stop("installing the Julia packages failed", call. = FALSE)
+    stop("installing the Julia packages failed (Julia's messages are above)", call. = FALSE)
   }
 }
 
