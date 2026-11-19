@@ -48,8 +48,8 @@ if (bindingIsLocked(".Library.site", baseenv())) {
 }
 .libPaths(c(.lib, .Library))
 ## child R processes (package builds, benchmarks) put .lib first and never use
-## the user library; the site library stays last for the site's Rprofile
-Sys.setenv(R_LIBS = .lib, R_LIBS_USER = .lib)
+## the user or site libraries (the site Rprofile is skipped, tmpdir.R)
+Sys.setenv(R_LIBS = .lib, R_LIBS_USER = .lib, R_LIBS_SITE = .lib)
 ## the steps that need the CUDA module, once (bench/gpu-node/cuda.R)
 source(file.path("bench", "gpu-node", "cuda.R"))
 .rxGpuNodeCuda(.prefix, .lib, .julia)
@@ -81,7 +81,7 @@ sink()
 .run <- function(name, script, args) {
   .log <- file.path(.out, paste0(name, ".log"))
   message("== ", name, " (", .log, ")")
-  .t <- system.time(.st <- system2(.rscript, c(script, args), stdout = .log, stderr = .log))[["elapsed"]]
+  .t <- system.time(.st <- system2(.rscript, c("--vanilla", script, args), stdout = .log, stderr = .log))[["elapsed"]]
   message("   exit ", .st, " after ", round(.t), " s")
   .st
 }
