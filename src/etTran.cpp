@@ -2664,6 +2664,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         limit.push_back(NA_REAL);
         cens.push_back(0);
         idxInput.push_back((int)i);
+        addlParent.push_back(-1);
         recImplied.push_back(0);
         doseRow.push_back(-1);
       }
@@ -3139,6 +3140,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           limit.push_back(NA_REAL);
           cens.push_back(0);
           idxInput.push_back((int)i);
+          addlParent.push_back(-1);
           recImplied.push_back(0);
           doseRow.push_back(-1);
         }
