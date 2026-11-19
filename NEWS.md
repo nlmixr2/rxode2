@@ -35,13 +35,6 @@
 
 ## Bug fixes
 
-- A model with an initial condition (`x(0) <- ...`) and a `linCmt()` written
-  inline in another state's `d/dt()` generated C code that did not compile
-  (`'__DDtStateVar_0__' undeclared`): the derivative was retyped as a
-  `linCmt()` statement and emitted into the initial-condition function.  This
-  is the shape of the SAEM model nlmixr2 builds for an effect compartment
-  driven by `linCmt()`.
-
 - The R functions `gammapInva()` and `gammaqInva()` returned the results of
   `gammapInv()` and `gammaqInv()` (their `.Call` entries were registered to
   the wrong C functions).  They now return the shape `a`, as the same
@@ -179,6 +172,10 @@
   identically across sessions.  `md5` and the `splitInfusion*` elements move
   down one index, and `rxModelVars` saved by earlier versions are still read
   correctly (#1729).
+- A model with an initial condition (`x(0) <- ...`) and a `linCmt()` written
+  inline in another state's `d/dt()` now compiles; it failed with
+  `'__DDtStateVar_0__' undeclared`.  This is the shape of the SAEM model
+  nlmixr2 builds for a `linCmt()`-driven effect compartment (#1755).
 
 ### Solving
 
