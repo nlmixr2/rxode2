@@ -2207,15 +2207,19 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       if (leading && (inEvid[i] == 3 || inEvid[i] == 4)) dropped[i] = 1;
       if (inEvid[i] != 3) leading = false;
     }
+    // the previous row's time when it is the same subject's, as the
+    // time-reset test below compares adjacent rows
+    int capLastId = NA_INTEGER;
     for (int i = 0; i < nIn; ++i) {
       int cid0 = idCol == -1 ? 1 : inId[i];
       auto it = lastT.find(cid0);
-      if (it != lastT.end()) prevTime[i] = it->second;
-      if (ISNA(inTime[i])) continue;
+      if (it != lastT.end() && capLastId == cid0) prevTime[i] = it->second;
+      if (ISNAN(inTime[i])) continue;
+      capLastId = cid0;
       lastT[cid0] = inTime[i];
       if ((inEvid[i] == 3 || inEvid[i] == 4) && !dropped[i]) {
         resets[cid0].push_back(std::make_pair(inTime[i], i));
-        if (!ISNA(prevTime[i]) && inTime[i] < prevTime[i]) movesBack.insert(cid0);
+        if (!ISNAN(prevTime[i]) && inTime[i] < prevTime[i]) movesBack.insert(cid0);
       }
     }
     for (auto &r : resets) std::sort(r.second.begin(), r.second.end());
@@ -2225,7 +2229,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       int lid = NA_INTEGER;
       double lt = NA_REAL;
       for (int i = 0; i < nIn && !movesBack.empty(); ++i) {
-        if (ISNA(inTime[i])) continue;
+        if (ISNAN(inTime[i])) continue;
         int cid0 = idCol == -1 ? 1 : inId[i];
         if (lid == cid0 && lt > inTime[i] && inEvid[i] != 3 && inEvid[i] != 4) {
           movesBack.clear();
@@ -2241,7 +2245,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       if ((inEvid[i] == 3 || inEvid[i] == 4) && !dropped[i]) upcoming[cid0] = i;
     }
     for (int i = 0; i < nIn; ++i) {
-      if (IntegerVector::is_na(inAddl[i]) || inAddl[i] <= 0 || ISNA(inTime[i])) continue;
+      if (IntegerVector::is_na(inAddl[i]) || inAddl[i] <= 0 || ISNAN(inTime[i])) continue;
       int cid0 = idCol == -1 ? 1 : inId[i];
       auto rs = resets.find(cid0);
       if (rs == resets.end()) continue;
@@ -2265,8 +2269,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       // input order
       for (int j = nextReset[i]; j != -1; j = nextReset[j]) {
         double tj = inTime[j];
-        if (ISNA(tj)) continue;
-        if (!ISNA(prevTime[j]) && tj < prevTime[j]) {
+        if (ISNAN(tj)) continue;
+        if (!ISNAN(prevTime[j]) && tj < prevTime[j]) {
           addlCap[i] = prevTime[j];
           addlCapStrict[i] = 1;
           break;
