@@ -191,6 +191,53 @@ rxTest({
     expect_equal(as.numeric(tmp2$pars["cov", ]), c(2, 3, 1))
   })
 
+  test_that("iCov string comparison re-levels a mixed-case covariate (#1656)", {
+    mod <- rxode2parse('c = Cov == "alpha"; d = "beta" == Cov')
+    ev <- et() |>
+      et(amt = 1, time = 0) |>
+      et(time = 1) |>
+      et(id = 1:3)
+    ic <- data.frame(
+      id = 1:3,
+      Cov = factor(c("beta", "gamma", "alpha"), levels = c("gamma", "beta", "alpha"))
+    )
+    tmp <- etTrans(ev, mod, iCov = ic)
+    tmp2 <- attr(class(tmp), ".rxode2.lst")
+    class(tmp2) <- NULL
+    expect_equal(as.numeric(tmp2$pars["Cov", ]), c(2, 3, 1))
+  })
+
+  test_that("rxSolve with an iCov string-compared covariate does not warn (#1656)", {
+    mod <- function() {
+      model({
+        isA <- (Cov == "alpha")
+        isB <- ("beta" == Cov)
+      })
+    }
+    ic <- data.frame(id = 1:3, Cov = c("beta", "gamma", "alpha"))
+    ev <- et(amt = 1, time = 0) |>
+      et(time = 1) |>
+      et(id = 1:3)
+    expect_no_warning(s <- rxSolve(mod, ev, iCov = ic, returnType = "data.frame"))
+    s <- s[order(s$id), ]
+    expect_equal(s$isA, c(0, 0, 1))
+    expect_equal(s$isB, c(1, 0, 0))
+    ev <- et(amt = 1, time = 0) |>
+      et(id = 1:3)
+    expect_no_warning(rxSolve(mod, ev, iCov = ic))
+    # the iCov solves leave the warnings on
+    d <- data.frame(id = 1, time = 1:2, Cov = c("alpha", "beta"))
+    m2 <- function() {
+      model({
+        isG <- (Cov == "gamma")
+      })
+    }
+    expect_warning(
+      etTrans(d, m2),
+      "'Cov' is compared to \"gamma\", which is not in the data"
+    )
+  })
+
   test_that("'allTimeVar=TRUE' emits an 'iCov' covariate as a per-row column", {
     # the per-row column for an 'iCov' covariate was never allocated under
     # 'allTimeVar', so taking it errored instead of returning the covariate
