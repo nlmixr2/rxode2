@@ -8,6 +8,7 @@
 #include <tuple>
 #include <unordered_set>
 #include <unordered_map>
+#include <climits>
 #include <set>
 #include <utility>
 #include "../inst/include/rxode2parse.h"
@@ -2195,21 +2196,73 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     std::vector<double> prevTime(nIn, NA_REAL);
     std::unordered_map<int, int> upcoming;
     std::unordered_map<int, double> lastT;
+    // each subject's resets as (time, row), and whether one moves time back
+    std::unordered_map<int, std::vector<std::pair<double, int> > > resets;
+    std::unordered_set<int> movesBack;
+    // resets ahead of every other record are dropped (evid 3) or given as
+    // plain doses (evid 4) below, so they cancel nothing
+    bool leading = true;
+    std::vector<char> dropped(nIn, 0);
+    for (int i = 0; i < nIn; ++i) {
+      if (leading && (inEvid[i] == 3 || inEvid[i] == 4)) dropped[i] = 1;
+      if (inEvid[i] != 3) leading = false;
+    }
     for (int i = 0; i < nIn; ++i) {
       int cid0 = idCol == -1 ? 1 : inId[i];
       auto it = lastT.find(cid0);
       if (it != lastT.end()) prevTime[i] = it->second;
-      if (!ISNA(inTime[i])) lastT[cid0] = inTime[i];
+      if (ISNA(inTime[i])) continue;
+      lastT[cid0] = inTime[i];
+      if ((inEvid[i] == 3 || inEvid[i] == 4) && !dropped[i]) {
+        resets[cid0].push_back(std::make_pair(inTime[i], i));
+        if (!ISNA(prevTime[i]) && inTime[i] < prevTime[i]) movesBack.insert(cid0);
+      }
+    }
+    for (auto &r : resets) std::sort(r.second.begin(), r.second.end());
+    // as below, a reset only moves time back when the data are otherwise
+    // sorted; unsorted data are sorted by time instead
+    {
+      int lid = NA_INTEGER;
+      double lt = NA_REAL;
+      for (int i = 0; i < nIn && !movesBack.empty(); ++i) {
+        if (ISNA(inTime[i])) continue;
+        int cid0 = idCol == -1 ? 1 : inId[i];
+        if (lid == cid0 && lt > inTime[i] && inEvid[i] != 3 && inEvid[i] != 4) {
+          movesBack.clear();
+        }
+        lid = cid0;
+        lt = inTime[i];
+      }
     }
     for (int i = nIn; i--;) {
       int cid0 = idCol == -1 ? 1 : inId[i];
       auto it = upcoming.find(cid0);
       if (it != upcoming.end()) nextReset[i] = it->second;
-      if (inEvid[i] == 3 || inEvid[i] == 4) upcoming[cid0] = i;
+      if ((inEvid[i] == 3 || inEvid[i] == 4) && !dropped[i]) upcoming[cid0] = i;
     }
     for (int i = 0; i < nIn; ++i) {
       if (IntegerVector::is_na(inAddl[i]) || inAddl[i] <= 0 || ISNA(inTime[i])) continue;
+      int cid0 = idCol == -1 ? 1 : inId[i];
+      auto rs = resets.find(cid0);
+      if (rs == resets.end()) continue;
       double ti = inTime[i];
+      if (movesBack.find(cid0) == movesBack.end()) {
+        // the records are processed by time, so the first reset after the
+        // row is the earliest later one, or a tied one listed after it in
+        // the data order; the input order of the rows does not matter
+        const std::vector<std::pair<double, int> > &v = rs->second;
+        auto lo = std::lower_bound(v.begin(), v.end(), std::make_pair(ti, INT_MIN));
+        for (; lo != v.end(); ++lo) {
+          if (lo->first > ti || (capDataOrder && lo->second > i)) {
+            addlCap[i] = lo->first;
+            addlCapStrict[i] = capDataOrder;
+            break;
+          }
+        }
+        continue;
+      }
+      // a reset that moves time back starts a new time frame: follow the
+      // input order
       for (int j = nextReset[i]; j != -1; j = nextReset[j]) {
         double tj = inTime[j];
         if (ISNA(tj)) continue;

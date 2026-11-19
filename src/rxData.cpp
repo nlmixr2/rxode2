@@ -129,7 +129,8 @@ bool rxControlResetCancelsPending(const List &control) {
 }
 // 1 when tied records keep their translated order while solving
 int tieOrderData_global = 0;
-// 1 when a reset cancels the lagged doses of the records before it
+// 1 when a reset cancels the lagged doses of the records before it (the
+// model has an alag())
 extern "C" int resetCancelsPending_global = 1;
 
 RObject et_(List input, List et__);
@@ -6881,7 +6882,11 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->nonmem = (Rf_length(rxControl) > Rxc_nonmem) ?
       (int)asBool(rxControl[Rxc_nonmem], "nonmem") : 0;
     tieOrderData_global = (rxControlTieOrder(rxControl) == "data");
-    resetCancelsPending_global = (int)rxControlResetCancelsPending(rxControl);
+    // only a lagged dose can still be ahead of a reset, so a model with no
+    // alag() skips the scan
+    resetCancelsPending_global = (int)rxControlResetCancelsPending(rxControl) &&
+      rxSolveDat->mv.size() > RxMv_alag &&
+      Rf_length(rxSolveDat->mv[RxMv_alag]) > 0;
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");

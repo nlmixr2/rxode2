@@ -182,6 +182,13 @@ rxTest({
       .want <- ifelse(.obs < 10, .bol(.obs, 100, 0), 0)
       .want[.obs == 10] <- .bol(10, 100, 0) + .bol(10, 100, 10)
       expect_equal(.tieSolve(.mod, .d, "data"), .want, tolerance = .tol)
+      # a reset listed before an earlier dose still cancels its later repeat
+      # (unsorted data are sorted by time; the observations come first)
+      .d <- rbind(.row(.obs, 0), .row(10, 3), .row(0, 1, 100, ii = 20, addl = 1))
+      .want <- ifelse(.obs < 10, .bol(.obs, 100, 0), 0)
+      expect_equal(suppressWarnings(.tieSolve(.mod, .d, "evid")), .want, tolerance = .tol)
+      .want[.obs == 10] <- .bol(10, 100, 0)
+      expect_equal(suppressWarnings(.tieSolve(.mod, .d, "data")), .want, tolerance = .tol)
       # repeats after the reset time
       .d <- .tieData(.row(0, 1, 100, ii = 10, addl = 3), .row(15, 3))
       .before <- .bol(.obs, 100, 0) + .bol(.obs, 100, 10)
