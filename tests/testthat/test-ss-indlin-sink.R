@@ -22,20 +22,23 @@ rxTest({
     }
   })
 
+  test_that("re-solving an indLin solve keeps the sink out of the test", {
+    .ev <- et(amt = 3, ss = 1, ii = 12) |> et(c(0, 6))
+    .s <- rxSolve(.ssSinkMod, .ev, method = "indLin")
+    .s2 <- rxSolve(.s, .ev)
+    expect_equal(.s2$output, .s$output)
+    expect_true(all(.s2$output < 1000))
+  })
+
   test_that(".rxIndLinSsAtol only changes the invented output sink", {
-    expect_equal(.rxIndLinSsAtol(1e-8, "center", "center"), 1e-8)
+    expect_equal(.rxIndLinSsAtol(1e-8, "center", character(0)), 1e-8)
     expect_equal(
-      .rxIndLinSsAtol(1e-8, "center", c("center", "output")),
+      .rxIndLinSsAtol(1e-8, c("center", "output"), "output"),
       c(1e-8, .Machine$double.xmax)
     )
     expect_equal(
-      .rxIndLinSsAtol(c(1e-8, 1e-6), c("a", "b"), c("a", "output", "b")),
+      .rxIndLinSsAtol(c(1e-8, 1e-6), c("a", "output", "b"), "output"),
       c(1e-8, .Machine$double.xmax, 1e-6)
-    )
-    # a model state named output is kept
-    expect_equal(
-      .rxIndLinSsAtol(1e-8, c("center", "output"), c("center", "output")),
-      1e-8
     )
   })
 })

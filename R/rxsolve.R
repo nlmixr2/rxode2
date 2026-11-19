@@ -13,16 +13,17 @@
 #' @return nothing, called for its error
 #' @noRd
 #' @author Matthew L. Fidler
-# per-state ssAtol for an ODE model converted to indLin form: the `output`
-# sink the conversion adds only accumulates eliminated drug, so it never reaches
-# a steady state and is left out of the ssAtol/ssRtol test (#1749)
-.rxIndLinSsAtol <- function(ssAtol, state, convertedState) {
-  .sink <- !(convertedState %in% state) & convertedState == "output"
+# per-state ssAtol for a model converted to indLin form: the `output` sink the
+# conversion adds only accumulates eliminated drug, so it never reaches a steady
+# state and is left out of the ssAtol/ssRtol test (#1749).  `ssAtol` is given
+# for the source model's states, which are `state` without `sink`.
+.rxIndLinSsAtol <- function(ssAtol, state, sink) {
+  .sink <- state %in% sink
   if (!any(.sink)) {
     return(ssAtol)
   }
   # states keep their own tolerance by name; one past the vector uses the first
-  .w <- match(convertedState, state)
+  .w <- match(state, state[!.sink])
   .w[!is.na(.w) & .w > length(ssAtol)] <- 1L
   .w[is.na(.w)] <- 1L
   .ret <- ssAtol[.w]
@@ -3752,16 +3753,31 @@ rxSolve.default <- function(
       if (is.null(.converted)) {
         .mexpCode <- rxToIndLin(object, calcSens = .calcSens)
         .converted <- rxode2(.mexpCode)
+        # remember the sink the conversion invented; a re-solve reaches the
+        # converted model directly
+        assign(
+          ".rxIndLinSink",
+          intersect(
+            setdiff(rxModelVars(.converted)$state, rxModelVars(object)$state),
+            "output"
+          ),
+          envir = .converted
+        )
         if (.useCache && is.environment(.modelEnv)) {
           assign(".rxIndLinModel", .converted, envir = .modelEnv)
         }
       }
+      object <- .converted
+    }
+  }
+  if (.ctl$method == 3L && rxIs(object, "rxode2")) {
+    .sink <- get0(".rxIndLinSink", envir = object, inherits = FALSE)
+    if (length(.sink) > 0L) {
       .ctl$ssAtol <- .rxIndLinSsAtol(
         .ctl$ssAtol,
         rxModelVars(object)$state,
-        rxModelVars(.converted)$state
+        .sink
       )
-      object <- .converted
     }
   }
   # Adjoint-sensitivity auto-switch (base method -> adjoint variant).  A model
