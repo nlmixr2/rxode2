@@ -87,6 +87,14 @@ the omega entries, which the strategies above redraw or discard.
 off diagonal.  A drawn matrix that is not positive definite is
 redrawn, see \code{priorPdRetry}.  \code{dfSub} is not used: an entry the
 \code{thetaMat} gives no variance stays at its estimate.
+\item \code{"invchol"} draws the same entries jointly with the thetas, but on the
+scale of the inverse Cholesky decomposition of the omega (with a log
+diagonal), so every drawn omega is positive definite and none is
+redrawn.  The \code{thetaMat} covariance of the entries is moved to that
+scale by the delta method at the \code{omega} estimate, which has to be
+positive definite.  Only the blocks of \code{omega} holding a drawn entry
+change, and an entry of such a block that the \code{thetaMat} gives no
+variance can move with the others.
 }}
 
 \item{omegaXform}{When taking \code{omega} values from the \code{thetaMat}
@@ -175,6 +183,8 @@ than equal to 10.
 \item \code{"tnpri"} draws the sigma entries jointly from the \code{thetaMat}, the
 same way \code{omegaSeparation="tnpri"} does for the omega; \code{dfObs} is
 not used.
+\item \code{"invchol"} draws them on the inverse Cholesky scale, the same way
+\code{omegaSeparation="invchol"} does for the omega.
 }}
 
 \item{sigmaXform}{When taking \code{sigma} values from the \code{thetaMat}
