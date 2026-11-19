@@ -119,6 +119,7 @@ lhs symbols?
   int nwhile;
   int nInd;
   int simflg;
+  int rng;                    /* model may draw random numbers (keeps _setThreadInd() per call) */
   int nInvCdf;                /* root-finding inverse CDF call sites, for the memo */
   int thread;
   int lastDdt;
@@ -561,6 +562,7 @@ static inline int allSpaces(char *v2) {
       allSpace=0;
       break;
     }
+    iii++;
   }
   return allSpace;
 }

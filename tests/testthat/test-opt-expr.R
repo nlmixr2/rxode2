@@ -348,9 +348,17 @@ rxTest({
     .ode <- c("d/dt(depot)=-exp(THETA[1])*depot", "d/dt(center)=exp(THETA[1])*depot-exp(THETA[2])*center")
     for (.nm in c("rx_expr_c1_0", "rx__disg_ic__depot__", "rx__disg_mod__f__depot__")) {
       .m <- paste(c(.ode, paste0(.nm, "=exp(THETA[3])"), .pad, paste0("cp=center*", .nm)), collapse = "\n")
-      .chunked <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L))
+      .warn <- if (startsWith(.nm, "rx_expr_")) "optimized more than once" else NA
+      expect_warning(
+        .chunked <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L)),
+        .warn
+      )
       # falls back to the whole-model call, so the model's own variable is untouched
-      expect_identical(.chunked, suppressMessages(rxOptExpr(.m, "model", chunkLines = 0L)))
+      expect_warning(
+        .whole <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 0L)),
+        .warn
+      )
+      expect_identical(.chunked, .whole)
       expect_true(grepl(.nm, .chunked, fixed = TRUE))
     }
   })
@@ -370,7 +378,10 @@ rxTest({
     # (a) re-optimizing an already-optimized model
     .once <- suppressMessages(rxOptExpr(paste(c(.base, .pad, "cp=center"), collapse = "\n")))
     expect_true(grepl("rx_expr_", .once))
-    .twice <- suppressMessages(rxOptExpr(.once, "model", chunkLines = 40L))
+    expect_warning(
+      .twice <- suppressMessages(rxOptExpr(.once, "model", chunkLines = 40L)),
+      "optimized more than once"
+    )
     expect_error(rxModelVars(.twice), NA)
     # no rx_expr_ left dangling as an input parameter
     expect_false(any(grepl("^rx_expr_", rxModelVars(.twice)$params)))

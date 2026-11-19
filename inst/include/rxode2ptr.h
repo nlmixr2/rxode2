@@ -307,6 +307,41 @@ extern "C" {
   typedef void (*setIndNewind_t)(rx_solving_options_ind* ind, int newind);
   extern setIndNewind_t setIndNewind;
 
+  // The record walk rxSolve()'s data frame is built with (RXDF_* in rxode2.h).
+  // rxDfWalkInit(NULL, 0, ...) gives the state size; a caller-owned buffer that
+  // large is then set up for one subject (returns 1, or 0 if too small), and
+  // rxDfWalkStep() walks its records in time order from position 0.  The state
+  // layout is opaque and may change between rxode2 versions.
+  typedef int (*rxDfWalkInit_t)(void *state, int stateSize, rx_solve *rx, rx_solving_options_ind *ind, int doDose, int countOnly);
+  extern rxDfWalkInit_t rxDfWalkInit;
+  typedef int (*rxDfWalkStep_t)(void *state, int i, double *out, int nOut);
+  extern rxDfWalkStep_t rxDfWalkStep;
+  typedef void (*rxDfWalkDull_t)(const void *state, int *dull);
+  extern rxDfWalkDull_t rxDfWalkDull;
+
+  // rxSolve()'s keep columns for rows a downstream package lays out itself:
+  // rxDfKeepSetup() readies the solve's keep store and gives the number of keep
+  // columns; rxDfKeepFirst() is a subject's first internal row; rxDfKeepRow()
+  // reads a row's values at its calc_lhs time (thread safe, like calc_lhs);
+  // rxDfKeepCols() (main thread) turns a numeric matrix of them into the named,
+  // typed columns rxSolve() returns.  getDfLevels() is the column template of a
+  // string lhs or factor covariate (a factor when it has levels).
+  typedef int (*rxDfKeepSetup_t)(rx_solve *rx);
+  extern rxDfKeepSetup_t rxDfKeepSetup;
+  typedef int (*rxDfKeepFirst_t)(rx_solve *rx, int solveid);
+  extern rxDfKeepFirst_t rxDfKeepFirst;
+  typedef void (*rxDfKeepRow_t)(rx_solve *rx, rx_solving_options_ind *ind, int solveid, int fid, int i, double t, double *out);
+  extern rxDfKeepRow_t rxDfKeepRow;
+  typedef SEXP (*rxDfKeepCols_t)(SEXP vals);
+  extern rxDfKeepCols_t rxDfKeepCols;
+  typedef SEXP (*getDfLevels_t)(const char *item, rx_solve *rx, R_xlen_t nrow);
+  extern getDfLevels_t getDfLevels;
+  // Whether rxSolve() refuses the current solve (an RXDF_REFUSE_* code, 0 when
+  // it returns it), for a package that solves through rxode2 to hand the same
+  // problem to rxSolve() for its error.
+  typedef int (*rxDfSolveRefused_t)(rx_solve *rx);
+  extern rxDfSolveRefused_t rxDfSolveRefused;
+
   typedef void (*mexpit_t)(double *x, double *p, int n);
   extern mexpit_t mexpit;
 
@@ -491,6 +526,15 @@ extern "C" {
       rxRmvtDraw = (rxRmvtDraw_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 102));
       rxRmvtFree = (rxRmvtFree_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 103));
       setIndNewind = (setIndNewind_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 104));
+      rxDfWalkInit = (rxDfWalkInit_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 105));
+      rxDfWalkStep = (rxDfWalkStep_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 106));
+      rxDfWalkDull = (rxDfWalkDull_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 107));
+      rxDfKeepSetup = (rxDfKeepSetup_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 108));
+      rxDfKeepFirst = (rxDfKeepFirst_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 109));
+      rxDfKeepRow = (rxDfKeepRow_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 110));
+      rxDfKeepCols = (rxDfKeepCols_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 111));
+      getDfLevels = (getDfLevels_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 112));
+      rxDfSolveRefused = (rxDfSolveRefused_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 113));
     }
     return R_NilValue;
   }
@@ -601,6 +645,15 @@ extern "C" {
   rxRmvtDraw_t rxRmvtDraw = NULL;                       \
   rxRmvtFree_t rxRmvtFree = NULL;                       \
   setIndNewind_t setIndNewind = NULL;                   \
+  rxDfWalkInit_t rxDfWalkInit = NULL;                   \
+  rxDfWalkStep_t rxDfWalkStep = NULL;                   \
+  rxDfWalkDull_t rxDfWalkDull = NULL;                   \
+  rxDfKeepSetup_t rxDfKeepSetup = NULL;                 \
+  rxDfKeepFirst_t rxDfKeepFirst = NULL;                 \
+  rxDfKeepRow_t rxDfKeepRow = NULL;                     \
+  rxDfKeepCols_t rxDfKeepCols = NULL;                   \
+  getDfLevels_t getDfLevels = NULL;                     \
+  rxDfSolveRefused_t rxDfSolveRefused = NULL;           \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \

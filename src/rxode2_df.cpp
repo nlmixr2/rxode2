@@ -39,6 +39,7 @@
 #define SORT gfx::timsort
 #include "par_solve.h"
 #include "rxomp.h"
+#include "rxProtect.h"
 #include <Rcpp.h>
 #include "strncmp.h"
 #include "rxode2_altrep.h"
@@ -176,6 +177,295 @@ static inline int rxDfInfusionStop(rx_solving_options_ind *ind, int i, int di_p,
   return sameEvid != -1 ? sameEvid : loose;
 }
 
+// The output-record walk: what rxode2_df() does at each record of a subject
+// before it writes the row.  rxode2_df() uses it for its row count and its fill,
+// and downstream packages get it through the function-pointer table, so the rows
+// a package lays out from its own solve are rxSolve()'s rows.
+#define RXDF_WALK_MAGIC 0x52584446
+typedef struct {
+  int magic;
+  int doDose, nmevid, subsetEvid, evid0, countOnly;
+  int di, resetno, evidPrev;
+  int dullRate, dullDur, dullSS, dullIi;
+  rx_solve *rx;
+  rx_solving_options_ind *ind;
+} rxDfWalkState;
+
+// With `state` NULL, the size the state needs.  Otherwise 1 when the state is
+// set up for `ind`, 0 when `stateSize` is too small.  `doDose` is rxSolve()'s
+// code (-1 addDosing=NULL, 0 FALSE, 1 NA, 2 TRUE, 3 TRUE with subsetNonmem);
+// `countOnly` walks without changing the subject, for counting rows.
+extern "C" int rxDfWalkInit(void *state, int stateSize, rx_solve *rx,
+                            rx_solving_options_ind *ind, int doDose, int countOnly) {
+  if (state == NULL) return (int)sizeof(rxDfWalkState);
+  if (stateSize < (int)sizeof(rxDfWalkState)) return 0;
+  rxDfWalkState *w = (rxDfWalkState*)state;
+  w->magic = RXDF_WALK_MAGIC;
+  w->doDose = 0;
+  w->nmevid = 0;
+  w->subsetEvid = 0;
+  w->evid0 = 0;
+  if (doDose == -1) {
+    w->evid0 = 1;
+  } else if (doDose == 2 || doDose == 3) {
+    w->doDose = 1;
+    w->nmevid = 1;
+    w->subsetEvid = (doDose == 3);
+  } else {
+    w->doDose = doDose;
+  }
+  w->countOnly = countOnly;
+  w->di = 0;
+  w->resetno = 0;
+  w->evidPrev = 0;
+  w->dullRate = w->dullDur = w->dullSS = w->dullIi = 1;
+  w->rx = rx;
+  w->ind = ind;
+  return 1;
+}
+
+// Which of the rate, dur, ss and ii columns stayed empty (1) over the walk
+extern "C" void rxDfWalkDull(const void *state, int *dull) {
+  const rxDfWalkState *w = (const rxDfWalkState*)state;
+  dull[0] = w->dullRate;
+  dull[1] = w->dullDur;
+  dull[2] = w->dullSS;
+  dull[3] = w->dullIi;
+}
+
+// The NONMEM evid code of a dose record (and the dull flags it clears)
+static inline int rxDfWalkNmEvidCode(rxDfWalkState *w, int evid, int whI, double curAmt) {
+  if (evid == 3) return 3;
+  if (whI == EVIDF_MODEL_RATE_OFF || whI == EVIDF_MODEL_DUR_OFF) {
+    w->dullRate = 0;
+    return (whI == EVIDF_MODEL_RATE_OFF) ? -1 : -2;
+  }
+  if (whI == EVIDF_REPLACE) return 5;
+  if (whI == EVIDF_MULT) return 6;
+  if (curAmt > 0) {
+    if (whI == EVIDF_INF_RATE || whI == EVIDF_MODEL_DUR_ON || whI == EVIDF_MODEL_RATE_ON) {
+      w->dullRate = 0;
+    } else if (whI == EVIDF_INF_DUR) {
+      w->dullDur = 0;
+    }
+    return 1;
+  }
+  if (whI == EVIDF_INF_RATE) {
+    w->dullRate = 0;
+    return -10;
+  }
+  if (whI == EVIDF_INF_DUR) {
+    w->dullDur = 0;
+    return -20;
+  }
+  return 1;
+}
+
+// The NONMEM ss column of a dose record (and the dull flags it clears)
+static inline double rxDfWalkNmSs(rxDfWalkState *w, int wh0) {
+  switch (wh0) {
+  case EVID0_SS2:
+    w->dullSS = 0;
+    return 2;
+  case EVID0_SS:
+    w->dullSS = 0;
+    return 1;
+  case 40:
+    w->dullRate = 0;
+    w->dullSS = 0;
+    w->dullIi = 0;
+    return 1;
+  default:
+    return 0;
+  }
+}
+
+// The NONMEM evid, cmt and ss columns of dose record position i
+static inline void rxDfWalkNmDose(rxDfWalkState *w, int evid, double curAmt, double *out) {
+  int wh = 0, cmt = 0, wh100 = 0, whI = 0, wh0 = 0;
+  getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
+  out[RXDF_OUT_EVID] = rxDfWalkNmEvidCode(w, evid, whI, curAmt);
+  if (evid == 2 || evid == 3) {
+    out[RXDF_OUT_CMT] = NA_REAL;
+  } else if (wh0 == 30) {
+    out[RXDF_OUT_CMT] = -cmt - 1;
+  } else {
+    out[RXDF_OUT_CMT] = cmt + 1;
+  }
+  out[RXDF_OUT_SS] = rxDfWalkNmSs(w, wh0);
+}
+
+// The NONMEM amt, rate, dur and ii columns of dose record position i; takes
+// the dose
+static inline void rxDfWalkNmAmt(rxDfWalkState *w, int i, double *out) {
+  rx_solving_options_ind *ind = w->ind;
+  double curIi = getIiNumber(ind, w->di);
+  if (curIi != 0) w->dullIi = 0;
+  double curAmt = getDoseNumber(ind, w->di++);
+  out[RXDF_OUT_II] = curIi;
+  out[RXDF_OUT_AMT] = NA_REAL;
+  out[RXDF_OUT_RATE] = NA_REAL;
+  out[RXDF_OUT_DUR] = NA_REAL;
+  switch (ind->whI) {
+  case EVIDF_MODEL_RATE_ON:
+    out[RXDF_OUT_AMT] = curAmt;
+    out[RXDF_OUT_RATE] = -1.0;
+    break;
+  case EVIDF_MODEL_DUR_ON:
+    out[RXDF_OUT_AMT] = curAmt;
+    out[RXDF_OUT_RATE] = -2.0;
+    break;
+  case EVIDF_MODEL_RATE_OFF:
+  case EVIDF_MODEL_DUR_OFF:
+    break;
+  case EVIDF_INF_DUR:
+  case EVIDF_INF_RATE:
+    if (curAmt >= 0) {
+      double curDur = 0.0;
+      int mateRec = rxDfInfusionStop(ind, i, w->di, curAmt, &(w->dullRate));
+      if (mateRec != -1) {
+        curDur = getTime_(mateRec, ind) - getTime_(ind->ix[i], ind);
+      }
+      out[RXDF_OUT_AMT] = curAmt * curDur;
+      if (ind->whI == EVIDF_INF_DUR) {
+        out[RXDF_OUT_DUR] = curDur;
+      } else {
+        out[RXDF_OUT_RATE] = curAmt;
+      }
+    }
+    break;
+  default:
+    out[RXDF_OUT_AMT] = curAmt;
+  }
+}
+
+// Before record position i: a reset (EVID 3) record before it shifts time
+static inline void rxDfWalkReset(rxDfWalkState *w, int i) {
+  rx_solving_options_ind *ind = w->ind;
+  if (!w->countOnly) ind->idx = i;
+  if (w->evidPrev != 3) return;
+  if (!w->countOnly) ind->curShift -= w->rx->maxShift;
+  w->resetno++;
+}
+
+// A dose record: its infusion type, the dull flags it clears and tlast
+static inline void rxDfWalkDoseStart(rxDfWalkState *w, int evid, double *curT) {
+  rx_solving_options_ind *ind = w->ind;
+  getWh(evid, &(ind->wh), &(ind->cmt), &(ind->wh100), &(ind->whI), &(ind->wh0));
+  switch (ind->whI) {
+  case EVIDF_INF_RATE:
+  case EVIDF_MODEL_DUR_ON:
+  case EVIDF_MODEL_DUR_OFF:
+  case EVIDF_MODEL_RATE_ON:
+  case EVIDF_MODEL_RATE_OFF:
+    w->dullRate = 0;
+    break;
+  case EVIDF_INF_DUR:
+    w->dullDur = 0;
+    break;
+  }
+  handleTlastInline(curT, ind);
+}
+
+// addDosing = TRUE with subsetNonmem: whether the record is left out (an
+// mtime() record, an infusion's modeled stop, a dose of no amount); rxode2_df()
+// leaves these before setting newind
+static inline bool rxDfWalkSubsetDrop(rxDfWalkState *w, int evid) {
+  if (isObs(evid) && evid >= 10) return true;
+  if (!isDose(evid)) return false;
+  int wh = 0, cmt = 0, wh100 = 0, whI = 0, wh0 = 0;
+  getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
+  if (whI == EVIDF_MODEL_RATE_OFF || whI == EVIDF_MODEL_DUR_OFF) {
+    w->dullRate = 0;
+    w->di++;
+    return true;
+  }
+  if (whI == EVIDF_INF_RATE || whI == EVIDF_MODEL_RATE_ON || whI == EVIDF_MODEL_DUR_ON) {
+    w->dullRate = 0;
+  } else if (whI == EVIDF_INF_DUR) {
+    w->dullDur = 0;
+  }
+  if (getDoseNumber(w->ind, w->di) <= 0) {
+    w->di++;
+    return true;
+  }
+  return false;
+}
+
+// The resetno, evid, dose and time columns of the row at position i
+static inline void rxDfWalkRowCols(rxDfWalkState *w, int i, int evid, double *out) {
+  rx_solving_options_ind *ind = w->ind;
+  out[RXDF_OUT_RESETNO] = w->resetno + 1;
+  out[RXDF_OUT_EVID] = evid;
+  if (w->doDose && w->nmevid && isObs(evid)) {
+    out[RXDF_OUT_EVID] = (evid >= 10) ? evid + 91 : evid;
+    out[RXDF_OUT_SS] = 0;
+  } else if (w->doDose && w->nmevid) {
+    rxDfWalkNmDose(w, evid, getDoseNumber(ind, w->di), out);
+    rxDfWalkNmAmt(w, i, out);
+  } else if (w->doDose && !isObs(evid)) {
+    out[RXDF_OUT_AMT] = getDoseNumber(ind, w->di);
+    w->di++;
+  }
+  double t = getTime_(ind->ix[i], ind) + ind->curShift;
+  if (evid == 3) {
+    t -= w->rx->maxShift;
+    if (fabs(t) < sqrt(DBL_EPSILON)) t = 0.0;
+  }
+  out[RXDF_OUT_TIME] = t;
+}
+
+// Check the walk state and output buffer, and reset the buffer
+static inline bool rxDfWalkOutInit(rxDfWalkState *w, double *out, int nOut) {
+  if (w == NULL || w->magic != RXDF_WALK_MAGIC) return false;
+  if (out == NULL || nOut < RXDF_OUT_N) return false;
+  for (int k = 0; k < RXDF_OUT_N; ++k) out[k] = NA_REAL;
+  out[RXDF_OUT_SIMERR] = 0;
+  out[RXDF_OUT_NEWIND] = 0;
+  return true;
+}
+
+// Whether the record is an output row under addDosing
+static inline int rxDfWalkOutRow(rxDfWalkState *w, int evid) {
+  if (w->doDose) return 1;
+  if (w->evid0 == 0) return isObs(evid);
+  return w->evid0 == 1 && evid == 0;
+}
+
+// Walk record position i (time order) of the subject; positions must be
+// walked in order from 0.  Returns RXDF_SKIP, RXDF_LHS, RXDF_ROW or RXDF_KNOT
+// (or RXDF_BAD) and fills out[0..RXDF_OUT_N-1].  The caller calls calc_lhs()
+// for every record that is not RXDF_SKIP, writes a row for RXDF_ROW and sets the
+// subject's newind to 2 when out[RXDF_OUT_NEWIND] is 1.
+extern "C" int rxDfWalkStep(void *state, int i, double *out, int nOut) {
+  rxDfWalkState *w = (rxDfWalkState*)state;
+  if (!rxDfWalkOutInit(w, out, nOut)) return RXDF_BAD;
+  rx_solving_options_ind *ind = w->ind;
+  rxDfWalkReset(w, i);
+  int evid = getEvid(ind, ind->ix[i]);
+  w->evidPrev = evid;
+  if (evid == 9) return RXDF_SKIP;
+  double curT = w->countOnly ? NA_REAL : getTime_(ind->ix[i], ind);
+  if (evid != 8 && isDose(evid) && !w->countOnly) rxDfWalkDoseStart(w, evid, &curT);
+  out[RXDF_OUT_LHS_TIME] = curT;
+  if (evid == 8) {
+    out[RXDF_OUT_NEWIND] = 1;
+    return RXDF_KNOT;
+  }
+  int outRow = rxDfWalkOutRow(w, evid);
+  out[RXDF_OUT_SIMERR] = outRow;
+  if (w->subsetEvid && rxDfWalkSubsetDrop(w, evid)) return RXDF_LHS;
+  out[RXDF_OUT_NEWIND] = 1;
+  if (!outRow) return RXDF_LHS;
+  if (w->countOnly) {
+    // the dose columns take the dose, so the count keeps the same dose index
+    if (w->doDose && isDose(evid)) w->di++;
+    return RXDF_ROW;
+  }
+  rxDfWalkRowCols(w, i, evid, out);
+  return RXDF_ROW;
+}
+
 extern "C" SEXP getDfLevels(const char *item, rx_solve *rx, R_xlen_t nrow) {
   int totN = rx->factorNames.n;
   int base = 0, curLen= rx->factorNs[0], curG=0;
@@ -220,7 +510,7 @@ static inline void dfCountRowsForNmOutput(rx_solve *rx, int nsim, int nsub) {
       di = 0;
       for (int i = 0; i < ntimes; i++){
         evid = getEvid(ind, ind->ix[i]);
-        if (evid == 9) continue; // not output in NONMEM
+        if (isHiddenEvid(evid)) continue; // not output in NONMEM
         if (isDose(evid)) {
           getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
           if (whI == EVIDF_MODEL_RATE_OFF  || whI == EVIDF_MODEL_DUR_OFF){
@@ -243,6 +533,144 @@ static inline void dfCountRowsForNmOutput(rx_solve *rx, int nsim, int nsub) {
 }
 
 extern "C" void setupFkeepCache();
+
+// rxode2#1185: par_solve() prints each failed subject's reasons through the
+// aggregator, which a model compiled under suppressMessages() silences
+// (rxode2() records the setting when it compiles the model), so a
+// non-converged inductive linearization also has to name itself in the
+// condition the user sees -- the generic message gives no hint that 'hmax' is
+// the knob.
+static int rxDfIndLinNoConv(rx_solve *rx) {
+  for (int solveid = 0; solveid < (int)(rx->nsub * rx->nsim); solveid++){
+    if (rx->subjects[solveid].err & rxErrIndLinConverge) return 1;
+  }
+  return 0;
+}
+
+// Why rxode2_df() refuses the solve (an RXDF_REFUSE_* code), or
+// RXDF_REFUSE_NONE when it lays the rows out (failed subjects NA-filled, with
+// a warning).
+static int rxDfRefusal(rx_solve *rx, rx_solving_options *op) {
+  if (!op->badSolve) return RXDF_REFUSE_NONE;
+  if (op->naTime) return RXDF_REFUSE_NA_TIME;
+  // rxode2#1469: a model 'vv' cannot integrate is refused, not NA-filled
+  for (int solveid = 0; solveid < (int)(rx->nsub * rx->nsim); solveid++){
+    if (rx->subjects[solveid].err & rxErrVvNotPairs) return RXDF_REFUSE_VV;
+  }
+  if (rx->extraPushAbort) return RXDF_REFUSE_EXTRA_PUSH;
+  if (rx->ssInfDurAbort) return RXDF_REFUSE_SS_INF_DUR;
+  // without an id, sim.id or resetno column no row could say which failed
+  int nidCols = (rx->nsub > 1) + (rx->nsim > 1) + (rx->maxShift != 0.0);
+  if (nidCols == 0) {
+    return rxDfIndLinNoConv(rx) ? RXDF_REFUSE_INDLIN : RXDF_REFUSE_UNSOLVED;
+  }
+  return RXDF_REFUSE_NONE;
+}
+
+// Whether rxSolve() refuses the current solve rather than returning it (its
+// RXDF_REFUSE_* code), so a package solving through rxode2 can hand the same
+// problem to rxSolve() for its error
+extern "C" int rxDfSolveRefused(rx_solve *rx) {
+  return rxDfRefusal(rx, rx->op);
+}
+
+// Keep columns, as rxode2_df() makes them; shared with the rxDfKeep*() entry
+// points downstream packages get through the function-pointer table.
+
+// The typed column of keep item j (numeric, character, logical, factor or
+// integer, with the data's attributes)
+static SEXP rxDfKeepAlloc(int j, R_xlen_t n) {
+  int curType = get_fkeepType(j);
+  if (curType == 4) return assign_fkeepAttr(j, NumericVector(n));
+  if (curType == 1) return StringVector(n);
+  if (curType == 5) return assign_fkeepAttr(j, LogicalVector(n));
+  IntegerVector cur(n);
+  if (curType == 2) cur.attr("levels") = get_fkeepLevels(j);
+  return assign_fkeepAttr(j, cur);
+}
+
+// An integer/logical keep value (`na` for a missing one)
+static inline int rxDfKeepInt(double fv, int na) {
+  return (ISNA(fv) || std::isnan(fv)) ? na : (int)(fv);
+}
+
+// A character keep value's 1-based level, 0 for NA
+static inline int rxDfKeepStrIdx(double fv, int nLev) {
+  int idx = (R_IsNA(fv) || std::isnan(fv)) ? 0 : (int)fv;
+  if (idx < 0 || idx > nLev) idx = 0;
+  return idx;
+}
+
+// The keep values of record position i of a subject whose records start at
+// internal row `fid`
+static inline double rxDfKeepValue(int j, rx_solving_options_ind *ind, int fid, int i) {
+  return get_fkeep(j, fid + ind->ix[i], ind, fid);
+}
+
+// Set up the keep store for reading; returns the number of keep columns
+extern "C" int rxDfKeepSetup(rx_solve *rx) {
+  if (rx->nKeepF) setupFkeepCache();
+  return rx->nKeepF;
+}
+
+// The first internal row of subject `solveid` (rxode2_df()'s curi)
+extern "C" int rxDfKeepFirst(rx_solve *rx, int solveid) {
+  int nsub = (int)rx->nsub;
+  int first = (solveid / nsub) * nsub;
+  int curi = 0;
+  for (int s = first; s < solveid; ++s) curi += rx->subjects[s].n_all_times;
+  return curi;
+}
+
+// The keep values of the row at record position i, read at time t (the row's
+// calc_lhs time) into out[0..nkeep-1]
+extern "C" void rxDfKeepRow(rx_solve *rx, rx_solving_options_ind *ind, int solveid,
+                            int fid, int i, double t, double *out) {
+  int nkeep = rx->nKeepF;
+  if (nkeep == 0) return;
+  _update_par_ptr(t, solveid, rx, i);
+  for (int j = 0; j < nkeep; ++j) out[j] = rxDfKeepValue(j, ind, fid, i);
+}
+
+// The keep columns from rxDfKeepRow() values (a numeric matrix, one row per
+// output row): a named list typed as rxSolve() types them
+extern "C" SEXP rxDfKeepCols(SEXP vals) {
+  rx_solve *rx = &rx_global;
+  int nkeep = rx->nKeepF;
+  if (TYPEOF(vals) != REALSXP || Rf_ncols(vals) != nkeep) {
+    (Rf_errorcall)(R_NilValue, "%s", _("keep values do not match the keep columns"));
+  }
+  rxProtect rx_protect;
+  R_xlen_t n = Rf_nrows(vals);
+  const double *v = REAL(vals);
+  SEXP ret = rx_protect.protect(Rf_allocVector(VECSXP, nkeep));
+  for (int j = 0; j < nkeep; ++j) {
+    SEXP col = rxDfKeepAlloc(j, n);
+    SET_VECTOR_ELT(ret, j, col);
+    const double *vj = v + (R_xlen_t)j * n;
+    switch (TYPEOF(col)) {
+    case REALSXP:
+      for (R_xlen_t r = 0; r < n; ++r) REAL(col)[r] = vj[r];
+      break;
+    case LGLSXP:
+      for (R_xlen_t r = 0; r < n; ++r) LOGICAL(col)[r] = rxDfKeepInt(vj[r], NA_LOGICAL);
+      break;
+    case STRSXP: {
+      SEXP lvl = rx_protect.protect(get_fkeepLevels(j));
+      int nLev = Rf_length(lvl);
+      for (R_xlen_t r = 0; r < n; ++r) {
+        int idx = rxDfKeepStrIdx(vj[r], nLev);
+        SET_STRING_ELT(col, r, idx == 0 ? NA_STRING : STRING_ELT(lvl, idx - 1));
+      }
+      break;
+    }
+    default:
+      for (R_xlen_t r = 0; r < n; ++r) INTEGER(col)[r] = rxDfKeepInt(vj[r], NA_INTEGER);
+    }
+  }
+  Rf_setAttrib(ret, R_NamesSymbol, get_fkeepn());
+  return ret;
+}
 SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) {
   rx_solve *rx;
   rx = &rx_global;
@@ -267,6 +695,8 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
   int evid0 = 0;
   int nmevid=0;
   int subsetEvid = 0;
+  // rxSolve()'s code, for the record walk (doDose0 is rewritten below)
+  const int doDoseWalk = doDose0;
   if (doDose0 == -1){
     nobs = rx->nobs2;
     doDose=0;
@@ -382,89 +812,62 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
   int ms = 0;
   if (rx->maxShift != 0.0) ms = 1;
   int nidCols = md + sm + ms;
-  if (op->badSolve){
-    if (op->naTime){
-      rxSolveFreeC();
-      int cmt = op->naTime/10;
-      int errNo = op->naTime - 10*cmt;
-      CharacterVector stateNames = rxStateNames(op->modNamePtr);
-      if (errNo == rxErrNaTimeLag) {
-        (Rf_errorcall)(R_NilValue,
-                     _("'alag(%s)' and maybe more items produce NA (could depend on state values)"),
-                     CHAR(STRING_ELT(stateNames, cmt)));
-      } else if (errNo == rxErrNaTimeRate) {
-        (Rf_errorcall)(R_NilValue,
-                     _("'rate(%s)' and maybe more items produce NA (could depend on state values)"),
-                     CHAR(STRING_ELT(stateNames, cmt)));
-      } else if (errNo == rxErrNaTimeDur) {
-        (Rf_errorcall)(R_NilValue,
-                     _("'dur(%s)' and maybe more items produce NA (could depend on state values)"),
-                     CHAR(STRING_ELT(stateNames, cmt)));
-      } else if (errNo == rxErrNaTimeAmtI) {
-        (Rf_errorcall)(R_NilValue,
-                     _("'amt(%s)' calculation during infusion and maybe more items produce NA (could depend on state values)"),
-                     CHAR(STRING_ELT(stateNames, cmt)));
-      } else if (errNo == rxErrNaTimeAmt) {
-        (Rf_errorcall)(R_NilValue,
-                     _("'amt(%s)' calculation and maybe more items produce NA (could depend on state values)"),
-                     CHAR(STRING_ELT(stateNames, cmt)));
-      } else {
-        (Rf_errorcall)(R_NilValue, _("NA time error %d"), errNo);
-      }
-      // (Rf_errorcall)(R_NilValue, "%s", _("'alag(.)'/'rate(.)'/'dur(.)' cannot depend on the state values"));
-    }
-    // rxode2#1185: par_solve() prints each failed subject's reasons through
-    // the aggregator, which a model compiled under suppressMessages() silences
-    // (rxode2() records the setting when it compiles the model), so a
-    // non-converged inductive linearization also has to name itself in the
-    // condition the user sees -- the generic message gives no hint that 'hmax'
-    // is the knob.
-    int indLinNoConv = 0;
-    for (int solveid = 0; solveid < (int)(rx->nsub * rx->nsim); solveid++){
-      if (rx->subjects[solveid].err & rxErrIndLinConverge) {
-        indLinNoConv = 1;
-        break;
-      }
-    }
-    // rxode2#1469: a model 'vv' cannot integrate is refused, not NA-filled
-    for (int solveid = 0; solveid < (int)(rx->nsub * rx->nsim); solveid++){
-      if (rx->subjects[solveid].err & rxErrVvNotPairs) {
-        rxSolveFreeC();
-        (Rf_errorcall)(R_NilValue, "%s",
-                       _("method='vv' (Velocity Verlet) needs the ODE states ordered as coordinate-momentum pairs: with N=ceiling(nstates/2), d/dt(state i) must equal state N+i for i=1..N (an odd last coordinate must have d/dt()=0), and no infusion or turning off may change a coordinate's derivative; use another method"));
-      }
-    }
-    if (nidCols == 0){
-      if (rx->extraPushAbort) {
-        rxSolveFreeC();
-        (Rf_errorcall)(R_NilValue,
-          _("evid_() pushed more than maxExtra=%d events per individual; increase maxExtra in rxControl()/rxSolve()"),
-          rx->maxExtra);
-      }
-      if (rx->ssInfDurAbort) {
-        rxSolveFreeC();
-        (Rf_errorcall)(R_NilValue, "%s",
-          _("specifying duration with a steady state constant infusion makes no sense"));
-      }
-      rxSolveFreeC();
-      if (indLinNoConv) {
-        (Rf_errorcall)(R_NilValue, "%s",
-                       _("inductive linearization did not converge; loosen 'atol'/'rtol' or raise 'maxsteps'"));
-      }
-      (Rf_errorcall)(R_NilValue, "%s", _("could not solve the system"));
+  int refusal = rxDfRefusal(rx, op);
+  if (refusal != RXDF_REFUSE_NONE) rxSolveFreeC();
+  switch (refusal) {
+  case RXDF_REFUSE_NA_TIME: {
+    int cmt = op->naTime/10;
+    int errNo = op->naTime - 10*cmt;
+    CharacterVector stateNames = rxStateNames(op->modNamePtr);
+    if (errNo == rxErrNaTimeLag) {
+      (Rf_errorcall)(R_NilValue,
+                   _("'alag(%s)' and maybe more items produce NA (could depend on state values)"),
+                   CHAR(STRING_ELT(stateNames, cmt)));
+    } else if (errNo == rxErrNaTimeRate) {
+      (Rf_errorcall)(R_NilValue,
+                   _("'rate(%s)' and maybe more items produce NA (could depend on state values)"),
+                   CHAR(STRING_ELT(stateNames, cmt)));
+    } else if (errNo == rxErrNaTimeDur) {
+      (Rf_errorcall)(R_NilValue,
+                   _("'dur(%s)' and maybe more items produce NA (could depend on state values)"),
+                   CHAR(STRING_ELT(stateNames, cmt)));
+    } else if (errNo == rxErrNaTimeAmtI) {
+      (Rf_errorcall)(R_NilValue,
+                   _("'amt(%s)' calculation during infusion and maybe more items produce NA (could depend on state values)"),
+                   CHAR(STRING_ELT(stateNames, cmt)));
+    } else if (errNo == rxErrNaTimeAmt) {
+      (Rf_errorcall)(R_NilValue,
+                   _("'amt(%s)' calculation and maybe more items produce NA (could depend on state values)"),
+                   CHAR(STRING_ELT(stateNames, cmt)));
     } else {
-      if (rx->extraPushAbort) {
-        rxSolveFreeC();
-        (Rf_errorcall)(R_NilValue,
-          _("evid_() pushed more than maxExtra=%d events per individual; increase maxExtra in rxControl()/rxSolve()"),
-          rx->maxExtra);
-      }
-      if (rx->ssInfDurAbort) {
-        rxSolveFreeC();
-        (Rf_errorcall)(R_NilValue, "%s",
-          _("specifying duration with a steady state constant infusion makes no sense"));
-      }
-      if (indLinNoConv) {
+      (Rf_errorcall)(R_NilValue, _("NA time error %d"), errNo);
+    }
+    break;
+  }
+  case RXDF_REFUSE_VV:
+    (Rf_errorcall)(R_NilValue, "%s",
+                   _("method='vv' (Velocity Verlet) needs the ODE states ordered as coordinate-momentum pairs: with N=ceiling(nstates/2), d/dt(state i) must equal state N+i for i=1..N (an odd last coordinate must have d/dt()=0), and no infusion or turning off may change a coordinate's derivative; use another method"));
+    break;
+  case RXDF_REFUSE_EXTRA_PUSH:
+    (Rf_errorcall)(R_NilValue,
+      _("evid_() pushed more than maxExtra=%d events per individual; increase maxExtra in rxControl()/rxSolve()"),
+      rx->maxExtra);
+    break;
+  case RXDF_REFUSE_SS_INF_DUR:
+    (Rf_errorcall)(R_NilValue, "%s",
+      _("specifying duration with a steady state constant infusion makes no sense"));
+    break;
+  case RXDF_REFUSE_INDLIN:
+    (Rf_errorcall)(R_NilValue, "%s",
+                   _("inductive linearization did not converge; loosen 'atol'/'rtol' or raise 'maxsteps'"));
+    break;
+  case RXDF_REFUSE_UNSOLVED:
+    (Rf_errorcall)(R_NilValue, "%s", _("could not solve the system"));
+    break;
+  default:
+    if (op->badSolve) {
+      // some subjects failed; their rows are NA
+      if (rxDfIndLinNoConv(rx)) {
         warning(_("some ID(s) did not converge the inductive linearization; These values are replaced with 'NA'; loosen 'atol'/'rtol' or raise 'maxsteps'"));
       } else {
         warning(_("some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'"));
@@ -488,28 +891,15 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
   }
   for (int _sid = 0; _sid < nsolve_df; _sid++) {
     rx_solving_options_ind *_sind = &rx->subjects[_sid];
-    int _di = 0, _subRows = 0, _subKk = 0;
+    int _subRows = 0, _subKk = 0;
+    rxDfWalkState _w;
+    rxDfWalkInit(&_w, (int)sizeof(_w), rx, _sind, doDoseWalk, 1);
+    double _wo[RXDF_OUT_N];
     for (int _ti = 0; _ti < _sind->n_all_times; _ti++) {
-      int _ev = getEvid(_sind, _sind->ix[_ti]);
-      if (_ev == 9) continue;
-      if (updateErr) {
-        if ((doDose && _ev != 9) || (evid0 == 0 && isObs(_ev)) || (evid0 == 1 && _ev == 0)) {
-          _subKk++;
-        }
-      }
-      if (subsetEvid == 1) {
-        if (isObs(_ev) && _ev >= 10) continue;
-        if (isDose(_ev)) {
-          int _wh=0, _cmt=0, _wh100=0, _whI=0, _wh0=0;
-          getWh(_ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
-          if (_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) { _di++; continue; }
-          if (getDoseNumber(_sind, _di) <= 0) { _di++; continue; }
-          _di++;
-        }
-      }
-      if (doDose || (evid0 == 0 && isObs(_ev)) || (evid0 == 1 && _ev == 0)) {
-        _subRows++;
-      }
+      int _wr = rxDfWalkStep(&_w, _ti, _wo, RXDF_OUT_N);
+      if (_wr == RXDF_SKIP || _wr == RXDF_KNOT) continue;
+      if (updateErr && _wo[RXDF_OUT_SIMERR] == 1.0) _subKk++;
+      if (_wr == RXDF_ROW) _subRows++;
     }
     subRowStart[_sid + 1] = subRowStart[_sid] + _subRows;
     subKkStart[_sid + 1]  = subKkStart[_sid]  + _subKk;
@@ -562,17 +952,21 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
     }
     // amt
     df[i++] = NumericVector(doseTimeNrow);
+    if (nmevid) {
+      // rate, dur, ii: the fill writes them right after amt, before time
+      df[i++] = NumericVector(doseTimeNrow);
+      df[i++] = NumericVector(doseTimeNrow);
+      df[i++] = NumericVector(doseTimeNrow);
+    }
   } else if (nevid2col) {
     df[i++] = IntegerVector((R_xlen_t)rx->nr);
   }
   doseCols += nevid2col;
   CharacterVector paramNames = rxParamNames(op->modNamePtr);
   CharacterVector fkeepNames = get_fkeepn();
-  // time comes in here
-  df[md + sm +ms + doseCols + 2*nmevid] = NumericVector(doseTimeNrow);
   CharacterVector lhsNames = rxLhsNames(op->modNamePtr);
-  // time
-  int i0 = md + sm + ms + doseCols + 2*nmevid;
+  // time, after the dose columns (cmt, ss, rate, dur and ii under nmevid)
+  int i0 = md + sm + ms + doseCols + 5*nmevid;
   df[i0] = NumericVector(doseTimeNrow);
   i0++;
 
@@ -591,11 +985,11 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
   i0+=nlhs;
 
   // Rest is numeric
-  for (i = i0; i < ncols + doseCols + nidCols + 2*nmevid; i++){
+  for (i = i0; i < ncols + doseCols + nidCols + 5*nmevid; i++){
     df[i] = NumericVector((R_xlen_t)rx->nr);
   }
   // These could be factors
-  j = ncols + doseCols + nidCols + 2*nmevid;
+  j = ncols + doseCols + nidCols + 5*nmevid;
   const char *charItem;
   int *par_cov = op->par_cov;
   SEXP tmp;
@@ -613,31 +1007,13 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
     df[j++] = getDfLevels(charItem, rx, covKeepNrow);
   }
   ncols += ncols2;
-  for (i = ncols + doseCols + nidCols + 2*nmevid;
-       i < ncols + doseCols + nidCols + nmevid*5 - nkeep;
-       i++){
-    df[i] = NumericVector(doseTimeNrow);
-  }
-  // keep items (when nmevid==0 these are the same positions as the main-block
-  // keep allocated by getDfLevels above; use covKeepNrow so the size matches).
+  // keep items (the same positions as the keep allocated by getDfLevels above;
+  // use covKeepNrow so the size matches).
   j = 0;
   for (i = ncols + doseCols + nidCols + nmevid*5 - nkeep;
        i < ncols + doseCols + nidCols + nmevid*5;
        i++) {
-    int curType = get_fkeepType(j);
-    if (curType == 4) {
-      df[i] = assign_fkeepAttr(j, NumericVector(covKeepNrow));
-    } else if (curType == 1) {
-      df[i] = StringVector(covKeepNrow);
-    } else if (curType == 5) {
-      df[i] = assign_fkeepAttr(j, LogicalVector(covKeepNrow));
-    } else {
-      IntegerVector cur(covKeepNrow);
-      if (curType == 2) {
-        cur.attr("levels") = get_fkeepLevels(j);
-      }
-      df[i] = assign_fkeepAttr(j,cur);
-    }
+    df[i] = rxDfKeepAlloc(j, covKeepNrow);
     j++;
   }
   // tbs items
@@ -695,7 +1071,7 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
     }
   }
   // Pre-compute LHS factor level counts for bounds checking in the fill loop.
-  int _lhsColStart = nidCols + doseCols + 2*nmevid + 1; // +1 for time column
+  int _lhsColStart = nidCols + doseCols + 5*nmevid + 1; // +1 for time column
   std::vector<int> lhsLevelCount(nlhs, 0);
   for (int _lhsJ = 0; _lhsJ < nlhs; _lhsJ++) {
     if (op->lhs_str[_lhsJ] == 1) {
@@ -774,79 +1150,40 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
       bool _writeDT = !doseTimeShrunk || csim == 0;
       int kk       = (errNrow > 0) ? min2(subKkStart[solveid], errNrow - 1) : 0;
       int curi     = subCuriStart[solveid];
-      int resetno_p = 0;
-      int di_p      = 0;
       int jj_p, j;
-      int evid_p = 0;
-      int wh_p, cmt_p, wh100_p, whI_p, wh0_p;
       // Shadow outer `ind` so that getSolve() macro works correctly.
       rx_solving_options_ind *ind = &(rx->subjects[solveid]);
       iniSubject(solveid, 1, ind, op, rx, update_inis);
       int ntimes_p    = ind->n_all_times;
       double *par_ptr_p = ind->par_ptr;
+      rxDfWalkState w_p;
+      rxDfWalkInit(&w_p, (int)sizeof(w_p), rx, ind, doDoseWalk, 0);
+      double o_p[RXDF_OUT_N];
 
       for (int i = 0; i < ntimes_p; i++) {
-        ind->idx = i;
-        if (evid_p == 3) {
-          ind->curShift -= rx->maxShift;
-          resetno_p++;
-        }
-        double curT = getTime_(ind->ix[ind->idx], ind);
-        evid_p = getEvid(ind, ind->ix[ind->idx]);
-        if (evid_p == 9) continue;
-        if (isDose(evid_p)) {
-          getWh(getEvid(ind, ind->ix[i]), &(ind->wh), &(ind->cmt), &(ind->wh100), &(ind->whI), &(ind->wh0));
-          switch (ind->whI) {
-          case EVIDF_INF_RATE:
-          case EVIDF_MODEL_DUR_ON:
-          case EVIDF_MODEL_DUR_OFF:
-          case EVIDF_MODEL_RATE_ON:
-          case EVIDF_MODEL_RATE_OFF:
-#pragma omp atomic write
-            dullRate = 0;
-            break;
-          case EVIDF_INF_DUR:
-#pragma omp atomic write
-            dullDur = 0;
-            break;
-          }
-          handleTlastInline(&curT, ind);
+        int wr_p = rxDfWalkStep(&w_p, i, o_p, RXDF_OUT_N);
+        if (wr_p == RXDF_SKIP) continue;
+        double curT = o_p[RXDF_OUT_LHS_TIME];
+        if (wr_p == RXDF_KNOT) {
+          // a lagged dose's knot is not output, but lag() of an lhs reads it
+          if (nlhs) calc_lhs(solveid, curT, getSolve(i), ind->lhs);
+          // a record, as the solve counts it for newind
+          ind->_newind = 2;
+          continue;
         }
         if (updateErr) {
           for (j = 0; j < errNcol; j++) {
             par_ptr_p[svar[j]] = errs[errNrow*j + kk];
           }
-          if ((doDose && evid_p != 9) || (evid0 == 0 && isObs(evid_p)) || (evid0 == 1 && evid_p == 0)) {
+          if (o_p[RXDF_OUT_SIMERR] == 1.0) {
             kk = min2(kk + 1, errNrow - 1);
           }
         }
         if (nlhs) {
           calc_lhs(solveid, curT, getSolve(i), ind->lhs);
         }
-        if (subsetEvid == 1) {
-          if (isObs(evid_p) && evid_p >= 10) continue;
-          if (isDose(evid_p)) {
-            getWh(evid_p, &wh_p, &cmt_p, &wh100_p, &whI_p, &wh0_p);
-            if (whI_p == EVIDF_MODEL_RATE_OFF || whI_p == EVIDF_MODEL_DUR_OFF) {
-#pragma omp atomic write
-              dullRate = 0;
-              di_p++;
-              continue;
-            } else if (whI_p == EVIDF_INF_RATE || whI_p == EVIDF_MODEL_RATE_ON || whI_p == EVIDF_MODEL_DUR_ON) {
-#pragma omp atomic write
-              dullRate = 0;
-            } else if (whI_p == EVIDF_INF_DUR) {
-#pragma omp atomic write
-              dullDur = 0;
-            }
-            if (getDoseNumber(ind, di_p) <= 0) {
-              di_p++;
-              continue;
-            }
-          }
-        }
         jj_p = 0;
-        if (doDose || (evid0 == 0 && isObs(evid_p)) || (evid0 == 1 && evid_p == 0)) {
+        if (wr_p == RXDF_ROW) {
           if (sm) { if (colI[jj_p] != nullptr) colI[jj_p][ii] = csim + 1;                                   jj_p++; }
           if (md) {
             if (colI[jj_p] != nullptr) {
@@ -854,202 +1191,29 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
             }
             jj_p++;
           }
-          if (ms) { colI[jj_p][ii] = resetno_p + 1; jj_p++; }
+          if (ms) { colI[jj_p][ii] = (int)o_p[RXDF_OUT_RESETNO]; jj_p++; }
           if (doDose) {
+            if (_writeDT) colI[jj_p][ii] = (int)o_p[RXDF_OUT_EVID];
+            jj_p++;
             if (nmevid) {
-              if (isObs(evid_p)) {
-                if (_writeDT) colI[jj_p][ii] = (evid_p >= 10) ? evid_p + 91 : evid_p; jj_p++;
-                if (_writeDT) colI[jj_p][ii] = NA_INTEGER; jj_p++;  // cmt
-                if (_writeDT) colI[jj_p][ii] = 0;          jj_p++;  // ss
-                if (_writeDT) colR[jj_p][ii] = NA_REAL;    jj_p++;  // amt
-                if (_writeDT) colR[jj_p][ii] = NA_REAL;    jj_p++;  // rate
-                if (_writeDT) colR[jj_p][ii] = NA_REAL;    jj_p++;  // dur
-                if (_writeDT) colR[jj_p][ii] = NA_REAL;    jj_p++;  // ii
-              } else {
-                getWh(evid_p, &wh_p, &cmt_p, &wh100_p, &whI_p, &wh0_p);
-                double curAmt = getDoseNumber(ind, di_p);
-                if (evid_p == 3) {
-                  if (_writeDT) colI[jj_p][ii] = 3;
-                } else if (whI_p == EVIDF_MODEL_RATE_OFF) {
-#pragma omp atomic write
-                  dullRate = 0;
-                  if (_writeDT) colI[jj_p][ii] = -1;
-                } else if (whI_p == EVIDF_MODEL_DUR_OFF) {
-#pragma omp atomic write
-                  dullRate = 0;
-                  if (_writeDT) colI[jj_p][ii] = -2;
-                } else {
-                  if (curAmt > 0) {
-                    if (whI_p == EVIDF_REPLACE) {
-                      if (_writeDT) colI[jj_p][ii] = 5;
-                    } else if (whI_p == EVIDF_MULT) {
-                      if (_writeDT) colI[jj_p][ii] = 6;
-                    } else {
-                      if (_writeDT) colI[jj_p][ii] = 1;
-                      if (whI_p == EVIDF_INF_RATE || whI_p == EVIDF_MODEL_DUR_ON || whI_p == EVIDF_MODEL_RATE_ON) {
-#pragma omp atomic write
-                        dullRate = 0;
-                      } else if (whI_p == EVIDF_INF_DUR) {
-#pragma omp atomic write
-                        dullDur = 0;
-                      }
-                    }
-                  } else {
-                    if (whI_p == EVIDF_INF_RATE) {
-#pragma omp atomic write
-                      dullRate = 0;
-                      if (_writeDT) colI[jj_p][ii] = -10;
-                    } else if (whI_p == EVIDF_INF_DUR) {
-#pragma omp atomic write
-                      dullDur = 0;
-                      if (_writeDT) colI[jj_p][ii] = -20;
-                    } else if (whI_p == EVIDF_REPLACE) {
-                      if (_writeDT) colI[jj_p][ii] = 5;
-                    } else if (whI_p == EVIDF_MULT) {
-                      if (_writeDT) colI[jj_p][ii] = 6;
-                    } else {
-                      if (_writeDT) colI[jj_p][ii] = 1;
-                      if (whI_p == EVIDF_INF_DUR) {
-#pragma omp atomic write
-                        dullDur = 0;
-                      }
-                    }
-                  }
-                }
-                jj_p++;  // evid column done
-                // cmt
-                if (evid_p == 2 || evid_p == 3) {
-                  if (_writeDT) colI[jj_p][ii] = NA_INTEGER;
-                } else if (wh0_p == 30) {
-                  if (_writeDT) colI[jj_p][ii] = -cmt_p - 1;
-                } else {
-                  if (_writeDT) colI[jj_p][ii] = cmt_p + 1;
-                }
-                jj_p++;
-                // ss
-                switch (wh0_p) {
-                case EVID0_SS2:
-#pragma omp atomic write
-                  dullSS = 0;
-                  if (_writeDT) colI[jj_p][ii] = 2;
-                  break;
-                case EVID0_SS:
-#pragma omp atomic write
-                  dullSS = 0;
-                  if (_writeDT) colI[jj_p][ii] = 1;
-                  break;
-                case 40:
-#pragma omp atomic write
-                  dullRate = 0;
-#pragma omp atomic write
-                  dullSS = 0;
-#pragma omp atomic write
-                  dullIi = 0;
-                  if (_writeDT) colI[jj_p][ii] = 1;
-                  break;
-                default:
-                  if (_writeDT) colI[jj_p][ii] = 0;
-                  break;
-                }
-                jj_p++;
-              }
+              // cmt, ss, then amt, rate, dur, ii
+              if (_writeDT) colI[jj_p][ii] = ISNA(o_p[RXDF_OUT_CMT]) ? NA_INTEGER : (int)o_p[RXDF_OUT_CMT];
+              jj_p++;
+              if (_writeDT) colI[jj_p][ii] = (int)o_p[RXDF_OUT_SS];
+              jj_p++;
+              if (_writeDT) colR[jj_p][ii] = o_p[RXDF_OUT_AMT];  jj_p++;
+              if (_writeDT) colR[jj_p][ii] = o_p[RXDF_OUT_RATE]; jj_p++;
+              if (_writeDT) colR[jj_p][ii] = o_p[RXDF_OUT_DUR];  jj_p++;
+              if (_writeDT) colR[jj_p][ii] = o_p[RXDF_OUT_II];   jj_p++;
             } else {
-              // !nmevid
-              if (_writeDT) colI[jj_p][ii] = evid_p;
+              if (_writeDT) colR[jj_p][ii] = o_p[RXDF_OUT_AMT];
               jj_p++;
-              if (isObs(evid_p)) {
-                if (_writeDT) colR[jj_p][ii] = NA_REAL;
-              } else {
-                if (_writeDT) colR[jj_p][ii] = getDoseNumber(ind, di_p);
-                di_p++;
-              }
-              jj_p++;
-            }
-            if (nmevid && isDose(evid_p)) {
-              double curIi   = getIiNumber(ind, di_p);
-              if (curIi != 0) {
-#pragma omp atomic write
-                dullIi = 0;
-              }
-              double curAmt_r = getDoseNumber(ind, di_p++);
-              if (!_writeDT) { jj_p += 4; } else switch (ind->whI) {
-              case EVIDF_MODEL_RATE_ON:
-                colR[jj_p][ii] = curAmt_r; jj_p++;
-                colR[jj_p][ii] = -1.0;     jj_p++;
-                colR[jj_p][ii] = NA_REAL;  jj_p++;
-                colR[jj_p][ii] = curIi;    jj_p++;
-                break;
-              case EVIDF_MODEL_DUR_ON:
-                colR[jj_p][ii] = curAmt_r; jj_p++;
-                colR[jj_p][ii] = -2.0;     jj_p++;
-                colR[jj_p][ii] = NA_REAL;  jj_p++;
-                colR[jj_p][ii] = curIi;    jj_p++;
-                break;
-              case EVIDF_MODEL_RATE_OFF:
-                colR[jj_p][ii] = NA_REAL; jj_p++;
-                colR[jj_p][ii] = NA_REAL; jj_p++;
-                colR[jj_p][ii] = NA_REAL; jj_p++;
-                colR[jj_p][ii] = curIi;   jj_p++;
-                break;
-              case EVIDF_MODEL_DUR_OFF:
-                colR[jj_p][ii] = NA_REAL; jj_p++;
-                colR[jj_p][ii] = NA_REAL; jj_p++;
-                colR[jj_p][ii] = NA_REAL; jj_p++;
-                colR[jj_p][ii] = curIi;   jj_p++;
-                break;
-              case EVIDF_INF_DUR:
-                if (curAmt_r < 0) {
-                  colR[jj_p][ii] = NA_REAL; jj_p++;
-                  colR[jj_p][ii] = NA_REAL; jj_p++;
-                  colR[jj_p][ii] = NA_REAL; jj_p++;
-                } else {
-                  double curDur = 0.0;
-                  int mateRec = rxDfInfusionStop(ind, i, di_p, curAmt_r, &dullRate);
-                  if (mateRec != -1) {
-                    curDur = getTime_(mateRec, ind) - getTime_(ind->ix[i], ind);
-                  }
-                  colR[jj_p][ii] = curAmt_r * curDur; jj_p++;
-                  colR[jj_p][ii] = NA_REAL;            jj_p++;
-                  colR[jj_p][ii] = curDur;             jj_p++;
-                }
-                colR[jj_p][ii] = curIi; jj_p++;
-                break;
-              case EVIDF_INF_RATE:
-                if (curAmt_r < 0) {
-                  colR[jj_p][ii] = NA_REAL; jj_p++;
-                  colR[jj_p][ii] = NA_REAL; jj_p++;
-                  colR[jj_p][ii] = NA_REAL; jj_p++;
-                } else {
-                  double curDur = 0.0;
-                  int mateRec = rxDfInfusionStop(ind, i, di_p, curAmt_r, &dullRate);
-                  if (mateRec != -1) {
-                    curDur = getTime_(mateRec, ind) - getTime_(ind->ix[i], ind);
-                  }
-                  colR[jj_p][ii] = curAmt_r * curDur; jj_p++;
-                  colR[jj_p][ii] = curAmt_r;           jj_p++;
-                  colR[jj_p][ii] = NA_REAL;            jj_p++;
-                }
-                colR[jj_p][ii] = curIi; jj_p++;
-                break;
-              default:
-                colR[jj_p][ii] = curAmt_r; jj_p++;
-                colR[jj_p][ii] = NA_REAL;  jj_p++;
-                colR[jj_p][ii] = NA_REAL;  jj_p++;
-                colR[jj_p][ii] = curIi;    jj_p++;
-              }
             }
           } else if (nevid2col) {
-            colI[jj_p][ii] = evid_p; jj_p++;
+            colI[jj_p][ii] = (int)o_p[RXDF_OUT_EVID]; jj_p++;
           }
           // time
-          if (_writeDT) {
-            if (evid_p == 3) {
-              colR[jj_p][ii] = getTime_(ind->ix[i], ind) + ind->curShift - rx->maxShift;
-              if (fabs(colR[jj_p][ii]) < sqrt(DBL_EPSILON)) colR[jj_p][ii] = 0.0;
-            } else {
-              colR[jj_p][ii] = getTime_(ind->ix[i], ind) + ind->curShift;
-            }
-          }
+          if (_writeDT) colR[jj_p][ii] = o_p[RXDF_OUT_TIME];
           jj_p++;
           // LHS
           if (nlhs) {
@@ -1119,19 +1283,15 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
           if (!covKeepShrunk || csim == 0) {
             if (nkeep && didUpdate_p == 0) _update_par_ptr(curT, solveid, rx, ind->idx);
             for (j = 0; j < nkeep; j++) {
-              double _fv = get_fkeep(j, curi + ind->ix[i], ind, curi);
+              double _fv = rxDfKeepValue(j, ind, curi, i);
               if (colType[jj_p] == REALSXP) {
                 colR[jj_p][ii] = _fv;
               } else if (colType[jj_p] == STRSXP) {
-                int _idx = (R_IsNA(_fv) || std::isnan(_fv)) ? 0 : (int)_fv;
-                if (_idx < 0 || _idx > strLevelCount[jj_p]) _idx = 0;
-                strIdx[jj_p][ii] = _idx;
+                strIdx[jj_p][ii] = rxDfKeepStrIdx(_fv, strLevelCount[jj_p]);
               } else if (colType[jj_p] == LGLSXP) {
-                if (ISNA(_fv) || std::isnan(_fv)) colI[jj_p][ii] = NA_LOGICAL;
-                else                              colI[jj_p][ii] = (int)(_fv);
+                colI[jj_p][ii] = rxDfKeepInt(_fv, NA_LOGICAL);
               } else {
-                if (ISNA(_fv) || std::isnan(_fv)) colI[jj_p][ii] = NA_INTEGER;
-                else                              colI[jj_p][ii] = (int)(_fv);
+                colI[jj_p][ii] = rxDfKeepInt(_fv, NA_INTEGER);
               }
               jj_p++;
             }
@@ -1146,7 +1306,25 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
           }
           ii++;
         }
-        ind->_newind = 2;
+        if (o_p[RXDF_OUT_NEWIND] == 1.0) ind->_newind = 2;
+      }
+      int dull_p[4];
+      rxDfWalkDull(&w_p, dull_p);
+      if (!dull_p[0]) {
+#pragma omp atomic write
+        dullRate = 0;
+      }
+      if (!dull_p[1]) {
+#pragma omp atomic write
+        dullDur = 0;
+      }
+      if (!dull_p[2]) {
+#pragma omp atomic write
+        dullSS = 0;
+      }
+      if (!dull_p[3]) {
+#pragma omp atomic write
+        dullIi = 0;
       }
       if (updateErr) {
         for (j = 0; j < errNcol; j++) {
@@ -1465,4 +1643,120 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
     df2=df;
   }
   return wrap(df2);
+}
+
+// Test hook: solves the set-up solve (rxSolve(..., .setupOnly = 1L)), then walks
+// every subject through the pointer table's slots 105-107, as a package linking
+// to rxode2 does, and returns the rows' columns plus the dull flags.
+extern "C" void par_solve(rx_solve *rx);
+extern "C" SEXP _rxTestDfWalkSlots(SEXP ptrs, SEXP doDoseS) {
+  typedef int (*init_t)(void *, int, rx_solve *, rx_solving_options_ind *, int, int);
+  typedef int (*step_t)(void *, int, double *, int);
+  typedef void (*dull_t)(const void *, int *);
+  init_t init = (init_t) R_ExternalPtrAddrFn(VECTOR_ELT(ptrs, 105));
+  step_t step = (step_t) R_ExternalPtrAddrFn(VECTOR_ELT(ptrs, 106));
+  dull_t dullF = (dull_t) R_ExternalPtrAddrFn(VECTOR_ELT(ptrs, 107));
+  int doDose = Rf_asInteger(doDoseS);
+  rx_solve *rx = &rx_global;
+  rx_solving_options *op = &op_global;
+  par_solve(rx);
+  std::vector<double> col[RXDF_OUT_N];
+  std::vector<int> id;
+  int dull[4] = {1, 1, 1, 1};
+  std::vector<char> buf((size_t)init(NULL, 0, rx, NULL, doDose, 0));
+  double o[RXDF_OUT_N];
+  for (int s = 0; s < (int)rx->nsub; ++s) {
+    rx_solving_options_ind *ind = &(rx->subjects[s]);
+    iniSubject(s, 1, ind, op, rx, update_inis);
+    if (init(buf.data(), (int)buf.size(), rx, ind, doDose, 0) != 1) Rf_error("walk state rejected");
+    for (int i = 0; i < ind->n_all_times; ++i) {
+      if (step(buf.data(), i, o, RXDF_OUT_N) != RXDF_ROW) continue;
+      id.push_back(s + 1);
+      for (int k = 0; k < RXDF_OUT_N; ++k) col[k].push_back(o[k]);
+    }
+    int d[4];
+    dullF(buf.data(), d);
+    for (int k = 0; k < 4; ++k) dull[k] = dull[k] && d[k];
+  }
+  List ret(RXDF_OUT_N + 2);
+  CharacterVector nm(RXDF_OUT_N + 2);
+  const char *names[RXDF_OUT_N] = {"lhsTime", "time", "resetno", "evid", "cmt", "ss", "amt",
+                                   "rate", "dur", "ii", "simErr", "newind"};
+  ret[0] = wrap(id);
+  nm[0] = "id";
+  for (int k = 0; k < RXDF_OUT_N; ++k) {
+    ret[k + 1] = wrap(col[k]);
+    nm[k + 1] = names[k];
+  }
+  ret[RXDF_OUT_N + 1] = IntegerVector::create(dull[0], dull[1], dull[2], dull[3]);
+  nm[RXDF_OUT_N + 1] = "dull";
+  ret.attr("names") = nm;
+  return ret;
+}
+
+// Test hook: as _rxTestDfWalkSlots(), but returns the keep columns of the rows
+// read through slots 108-111, and the getDfLevels() template (slot 112) of
+// `lvlName` (NULL for none)
+extern "C" SEXP _rxTestDfKeepSlots(SEXP ptrs, SEXP doDoseS, SEXP lvlName) {
+  typedef int (*init_t)(void *, int, rx_solve *, rx_solving_options_ind *, int, int);
+  typedef int (*step_t)(void *, int, double *, int);
+  typedef int (*kset_t)(rx_solve *);
+  typedef int (*kfirst_t)(rx_solve *, int);
+  typedef void (*krow_t)(rx_solve *, rx_solving_options_ind *, int, int, int, double, double *);
+  typedef SEXP (*kcols_t)(SEXP);
+  typedef SEXP (*lvl_t)(const char *, rx_solve *, R_xlen_t);
+  init_t init = (init_t) R_ExternalPtrAddrFn(VECTOR_ELT(ptrs, 105));
+  step_t step = (step_t) R_ExternalPtrAddrFn(VECTOR_ELT(ptrs, 106));
+  kset_t kset = (kset_t) R_ExternalPtrAddrFn(VECTOR_ELT(ptrs, 108));
+  kfirst_t kfirst = (kfirst_t) R_ExternalPtrAddrFn(VECTOR_ELT(ptrs, 109));
+  krow_t krow = (krow_t) R_ExternalPtrAddrFn(VECTOR_ELT(ptrs, 110));
+  kcols_t kcols = (kcols_t) R_ExternalPtrAddrFn(VECTOR_ELT(ptrs, 111));
+  lvl_t lvl = (lvl_t) R_ExternalPtrAddrFn(VECTOR_ELT(ptrs, 112));
+  int doDose = Rf_asInteger(doDoseS);
+  rx_solve *rx = &rx_global;
+  rx_solving_options *op = &op_global;
+  par_solve(rx);
+  int nkeep = kset(rx);
+  std::vector<char> buf((size_t)init(NULL, 0, rx, NULL, doDose, 0));
+  std::vector<double> row((size_t)nkeep + 1);
+  double o[RXDF_OUT_N];
+  int nr = 0;
+  std::vector<std::vector<double> > cols((size_t)nkeep);
+  for (int s = 0; s < (int)rx->nsub; ++s) {
+    rx_solving_options_ind *ind = &(rx->subjects[s]);
+    iniSubject(s, 1, ind, op, rx, update_inis);
+    init(buf.data(), (int)buf.size(), rx, ind, doDose, 0);
+    int fid = kfirst(rx, s);
+    for (int i = 0; i < ind->n_all_times; ++i) {
+      if (step(buf.data(), i, o, RXDF_OUT_N) != RXDF_ROW) continue;
+      krow(rx, ind, s, fid, i, o[RXDF_OUT_LHS_TIME], row.data());
+      for (int j = 0; j < nkeep; ++j) cols[(size_t)j].push_back(row[(size_t)j]);
+      nr++;
+    }
+  }
+  rxProtect rx_protect;
+  SEXP m = rx_protect.protect(Rf_allocMatrix(REALSXP, nr, nkeep));
+  for (int j = 0; j < nkeep; ++j) {
+    for (int r = 0; r < nr; ++r) REAL(m)[r + (R_xlen_t)j * nr] = cols[(size_t)j][(size_t)r];
+  }
+  SEXP keep = rx_protect.protect(kcols(m));
+  SEXP ret = rx_protect.protect(Rf_allocVector(VECSXP, 2));
+  SET_VECTOR_ELT(ret, 0, keep);
+  if (!Rf_isNull(lvlName)) {
+    SET_VECTOR_ELT(ret, 1, lvl(CHAR(STRING_ELT(lvlName, 0)), rx, 0));
+  }
+  SEXP nm = rx_protect.protect(Rf_allocVector(STRSXP, 2));
+  SET_STRING_ELT(nm, 0, Rf_mkChar("keep"));
+  SET_STRING_ELT(nm, 1, Rf_mkChar("levels"));
+  Rf_setAttrib(ret, R_NamesSymbol, nm);
+  return ret;
+}
+
+// Test hook: solves the set-up solve and returns slot 113's answer for it
+extern "C" SEXP _rxTestDfRefusedSlot(SEXP ptrs) {
+  typedef int (*refused_t)(rx_solve *);
+  refused_t refused = (refused_t) R_ExternalPtrAddrFn(VECTOR_ELT(ptrs, 113));
+  rx_solve *rx = &rx_global;
+  par_solve(rx);
+  return Rf_ScalarInteger(refused(rx));
 }

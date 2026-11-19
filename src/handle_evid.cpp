@@ -11,6 +11,7 @@
 #include "strncmp.h"
 #define _(String) (String)
 #include "../inst/include/rxode2.h"
+#include "rxProtect.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
 #include "../inst/include/rxode2parseGetTime.h"
 
@@ -175,9 +176,9 @@ extern "C" SEXP _rxode2_getDurTest(SEXP timeS, SEXP doseS, SEXP evidS,
   ind.ndoses = nDose;
   unsigned int p = 0;
   double dur = _getDur(INTEGER(lS)[0], &ind, INTEGER(backwardS)[0], &p);
-  SEXP ret = Rf_protect(Rf_allocVector(REALSXP, 2));
+  rxProtect rx_protect;
+  SEXP ret = rx_protect.protect(Rf_allocVector(REALSXP, 2));
   REAL(ret)[0] = dur;
   REAL(ret)[1] = (double)p;
-  Rf_unprotect(1);
   return ret;
 }
