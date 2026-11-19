@@ -1,7 +1,8 @@
-# Install what bench/gpu-node/run.R needs into one directory, on a machine with
-# internet (eg a cluster login node; the GPU node only runs run.R): an R
-# library with rxode2 from GitHub, the nlmixr2 packages and the OpenCL
-# package, and Julia with DiffEqGPU, OrdinaryDiffEq and CUDA.jl.
+# Install what bench/gpu-node/run.R needs, on a machine with internet (eg a
+# cluster login node; the GPU node only runs run.R): rxode2 from GitHub, the
+# nlmixr2 packages and the OpenCL package into your R user library
+# (R_LIBS_USER, or RXODE2_GPU_LIB), and Julia with DiffEqGPU, OrdinaryDiffEq
+# and CUDA.jl into prefix.
 #
 # Load the site's R, compiler and CUDA modules first: the OpenCL package
 # compiles against the CUDA toolkit's OpenCL headers and library (CUDA_HOME or
@@ -12,18 +13,31 @@
 #
 # Usage: Rscript bench/gpu-node/setup.R [ref] [prefix]
 #   ref     rxode2 GitHub ref (default nlmixr2/rxode2@gpu-vignette)
-#   prefix  install directory (default ~/rxode2-gpu-bench)
+#   prefix  Julia install directory (default ~/rxode2-gpu-bench)
 .args <- commandArgs(TRUE)
 .ref <- if (length(.args) >= 1) .args[1] else "nlmixr2/rxode2@gpu-vignette"
 .prefix <- path.expand(if (length(.args) >= 2) .args[2] else "~/rxode2-gpu-bench")
 .juliaVersion <- "1.11.5"
 
-.lib <- file.path(.prefix, "Rlib")
+## the R library: a writable one in your home (RXODE2_GPU_LIB, else R's user
+## library R_LIBS_USER), first in .libPaths() for this process and every
+## package build, so a site library is never written to or preferred
+.lib <- Sys.getenv("RXODE2_GPU_LIB", Sys.getenv("R_LIBS_USER"))
+if (!nzchar(.lib)) {
+  .lib <- file.path(
+    "~",
+    "R",
+    paste0(R.version$platform, "-library"),
+    paste(R.version$major, sub("\\..*", "", R.version$minor), sep = ".")
+  )
+}
+.lib <- path.expand(strsplit(.lib, .Platform$path.sep, fixed = TRUE)[[1]][1])
 dir.create(.lib, recursive = TRUE, showWarnings = FALSE)
+if (file.access(.lib, 2L) != 0L) {
+  stop("cannot write to the R library ", .lib, "; set RXODE2_GPU_LIB to a writable directory", call. = FALSE)
+}
 .libPaths(c(.lib, .libPaths()))
-## every package build (child R processes too) finds .lib first, so a site
-## library's older rxode2 or dependencies are never used
-Sys.setenv(R_LIBS = paste(.libPaths(), collapse = ":"), R_LIBS_USER = .lib)
+Sys.setenv(R_LIBS = paste(.libPaths(), collapse = .Platform$path.sep), R_LIBS_USER = .lib)
 options(repos = c(CRAN = "https://cloud.r-project.org"), Ncpus = max(1L, parallel::detectCores() - 1L))
 
 ## the OpenCL package needs CL/cl.h and libOpenCL; the CUDA toolkit has both
