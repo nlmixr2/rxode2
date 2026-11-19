@@ -7,7 +7,8 @@
 # Run from the rxode2 source directory (the scripts are under bench/).
 #
 # Usage: Rscript bench/gpu-node/run.R [prefix] [out] [which]
-#   prefix  setup.R's install directory (default ~/rxode2-gpu-bench)
+#   prefix  setup.R's Julia directory (default ~/rxode2-gpu-bench); the R
+#           library is setup.R's too (RXODE2_GPU_LIB, else R_LIBS_USER)
 #   out     results directory (default gpu-bench-<date-time>)
 #   which   comma-separated subset of solve,runtime,poppk,nlmixr2 (default all)
 .args <- commandArgs(TRUE)
@@ -16,7 +17,6 @@
 .which <- strsplit(if (length(.args) >= 3) .args[3] else "solve,runtime,poppk,nlmixr2", ",")[[1]]
 dir.create(.out, recursive = TRUE, showWarnings = FALSE)
 
-.lib <- file.path(.prefix, "Rlib")
 .julia <- file.path(.prefix, "julia", "bin", "julia")
 ## the cores of this job (LSF: LSB_DJOB_NUMPROC; SLURM: SLURM_CPUS_PER_TASK),
 ## not every core of a shared node: rxode2, OpenMP and the benchmarks read
@@ -28,12 +28,24 @@ if (!nzchar(.cores)) {
 ## rxode2_NUM_THREADS: all of them (rxode2 uses half the cores by default)
 Sys.setenv(OMP_NUM_THREADS = .cores, rxode2_NUM_THREADS = .cores)
 Sys.setenv(
-  R_LIBS = paste(c(.lib, .libPaths()), collapse = ":"),
   NOT_CRAN = "true",
   JULIA_DEPOT_PATH = file.path(.prefix, "julia-depot"),
   JULIA_PROJECT = file.path(.prefix, "julia-env")
 )
+## setup.R's R library (RXODE2_GPU_LIB, else R_LIBS_USER) first, here and in
+## each benchmark's R process
+.lib <- Sys.getenv("RXODE2_GPU_LIB", Sys.getenv("R_LIBS_USER"))
+if (!nzchar(.lib)) {
+  .lib <- file.path(
+    "~",
+    "R",
+    paste0(R.version$platform, "-library"),
+    paste(R.version$major, sub("\\..*", "", R.version$minor), sep = ".")
+  )
+}
+.lib <- path.expand(strsplit(.lib, .Platform$path.sep, fixed = TRUE)[[1]][1])
 .libPaths(c(.lib, .libPaths()))
+Sys.setenv(R_LIBS = paste(.libPaths(), collapse = .Platform$path.sep), R_LIBS_USER = .lib)
 if (
   !nzchar(system.file(package = "rxode2", lib.loc = .lib)) ||
     !("rxGpuInfo" %in% getNamespaceExports(loadNamespace("rxode2", lib.loc = .lib)))
