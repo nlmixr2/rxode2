@@ -390,16 +390,17 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
   if (rx == NULL) (Rf_errorcall)(R_NilValue, _("solve data is not loaded"));
   rx_solving_options_ind *ind, *indSample;
   ind = &(rx->subjects[id]);
+  // return before anything else for models without covariates
+  rx_solving_options *op = rx->op;
+  if (!op->do_par_cov) return;
+  if (ind->_update_par_ptr_in) return;
   double t = 0.0;
   if (!ISNA(ind->ssTime)) {
     t = ind->ssTime;
   } else {
     t = tt;
   }
-  if (ind->_update_par_ptr_in) return;
   int idx = idxIn;
-  rx_solving_options *op = rx->op;
-  if (!op->do_par_cov) return;
   RxSaveWh _saveWh(ind);
   // handle extra dose, and out of bounds idx values
   if (idx < 0 && ind->extraDoseN[0] > 0) {
