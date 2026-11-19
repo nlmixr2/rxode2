@@ -4,7 +4,7 @@ rxTest({
 
   test_that("clamp() is lo below, hi above and x between the bounds", {
     .m <- rxode2("y <- clamp(x, 0.01, 0.99)\nz <- min(max(x, 0.01), 0.99)")
-    .r <- rxSolve(.m, c(), .clampData(.x), covsInterpolation = "nocb", returnType = "data.frame")
+    .r <- rxSolve(.m, NULL, .clampData(.x), covsInterpolation = "nocb", returnType = "data.frame")
     expect_equal(.r$y, c(0.01, 0.01, 0.02, 0.5, 0.98, 0.99, 0.99))
     expect_equal(.r$y, .r$z)
   })
@@ -64,7 +64,7 @@ rxTest({
     .d <- with(.s, D(y, x))
     .d <- rxFromSE(.d)
     .m <- rxode2(paste0("d <- ", .d))
-    .r <- rxSolve(.m, c(), .clampData(c(-5, 0, 5)), covsInterpolation = "nocb", returnType = "data.frame")
+    .r <- rxSolve(.m, NULL, .clampData(c(-5, 0, 5)), covsInterpolation = "nocb", returnType = "data.frame")
     expect_equal(.r$d, c(0, 1, 0), tolerance = 1e-6)
   })
 
