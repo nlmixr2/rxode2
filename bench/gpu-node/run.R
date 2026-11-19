@@ -34,12 +34,23 @@ Sys.setenv(
   JULIA_PROJECT = file.path(.prefix, "julia-env")
 )
 .libPaths(c(.lib, .libPaths()))
+if (
+  !nzchar(system.file(package = "rxode2", lib.loc = .lib)) ||
+    !("rxGpuInfo" %in% getNamespaceExports(loadNamespace("rxode2", lib.loc = .lib)))
+) {
+  stop(
+    "no rxode2 with GPU methods in ",
+    .lib,
+    ": run bench/gpu-node/setup.R first and check that it finished",
+    call. = FALSE
+  )
+}
 
 ## what the node offers
 sink(file.path(.out, "info.log"), split = TRUE)
 print(Sys.time())
 print(utils::sessionInfo())
-cat("rxode2", format(packageVersion("rxode2")), "\n")
+cat("rxode2", format(packageVersion("rxode2")), "from", find.package("rxode2"), "\n")
 suppressMessages(library(rxode2))
 cat("threads", .cores, "of", parallel::detectCores(), "cores; rxode2 uses", getRxThreads(), "\n")
 print(rxGpuInfo())
