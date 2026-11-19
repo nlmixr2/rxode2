@@ -1054,7 +1054,9 @@ int rxgUsesTime(const char *s) {
 }
 
 // Writes <c_file>l (eg model.cl): OpenCL C for rxg_dydt()/rxg_jac() for a
-// model whose flags["gpuSafe"] is 1.
+// model whose flags["gpuSafe"] is 1.  nState counts the solved states only:
+// a cmt() without d/dt() (nlmixr2's endpoint compartments) comes after them
+// and is never integrated.
 static void writeRxgDevice(const char *cfile, const char *prefix,
                            const char *libname, const char *pMd5,
                            const char *libname2, int nState, int nLhs,
@@ -1356,7 +1358,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   fclose(fpIO);
   writeRxgDevice(CHAR(STRING_ELT(c_file,0)), CHAR(STRING_ELT(prefix,0)),
                  CHAR(STRING_ELT(libname, 0)), CHAR(STRING_ELT(pMd5,0)),
-                 CHAR(STRING_ELT(libname, 1)), nOrd, nLhs, nPar, gpuSafe);
+                 CHAR(STRING_ELT(libname, 1)), nOrd - tb.nExtra, nLhs, nPar, gpuSafe);
   parseFree(0);
   reset();
   _es_freeCode(); // event-sensitivity code is single-use per model

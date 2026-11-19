@@ -437,6 +437,27 @@ rxTest({
     }
   })
 
+  test_that("a cmt() without d/dt() is not a device state (nlmixr2's endpoint compartment, #1757)", {
+    .m <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - cl / v * center * (1 + emax * center / (center + 50))
+      cp <- center / v
+      cmt(cp)
+    })
+    expect_equal(rxModelVars(.m)$stateExtra, "cp")
+    expect_equal(.rxGpuHostLib(.m)$neq, 2L)
+    expect_match(.rxGpuModelSource(.m)$source, "#define RXG_NEQ 2\n", fixed = TRUE)
+    .p <- data.frame(id = 1:40, ka = seq(0.5, 2.5, length.out = 40), cl = 3, v = 30, emax = 0.5)
+    .ev <- et(amt = 300, ii = 12, addl = 2) |> et(c(0.5, 1, 2, 4, 6, 12, 24, 30, 36)) |> et(id = 1:40)
+    for (.be in .backends()) {
+      for (.meth in .gpuMethods) {
+        .g <- .solve(.m, .ev, .meth, .be, params = .p, cores = 2L)
+        .h <- suppressMessages(rxSolve(.m, .p, .ev, method = .hostOf[[.meth]]))
+        expect_equal(.g$cp, .h$cp, tolerance = 1e-6, label = paste(.meth, .be))
+      }
+    }
+  })
+
   test_that("a GPU setup armed for one method is not claimed by another", {
     .b <- rxode2({
       d/dt(depot) <- -ka * depot
