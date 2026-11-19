@@ -260,7 +260,8 @@ rxTest({
       f(depot) <- 0.8 * WT / 70
       alag(depot) <- 0.3
     })
-    # an infusion's stop (row 3) reads its start's row (1)
+    # an infusion's stop (row 4, after the hidden record at the lagged dose's
+    # data time) reads its start's row (1)
     inf <- data.frame(
       id = 1,
       time = c(0, 1, 4),
@@ -270,8 +271,8 @@ rxTest({
       cmt = "depot",
       WT = c(70, 100, 100)
     )
-    expect_equal(attr(etTrans(inf, mod), "rxDoseRow"), c(3L, 1L))
-    # a steady-state infusion's companions (rows 2 and 3) and its stop (5)
+    expect_equal(attr(etTrans(inf, mod), "rxDoseRow"), c(4L, 1L))
+    # a steady-state infusion's companions (rows 2 and 3) and its stop (6)
     # read the steady-state dose row
     ssInf <- data.frame(
       id = 1,
@@ -284,7 +285,7 @@ rxTest({
       cmt = "depot",
       WT = c(70, 100, 100)
     )
-    expect_equal(attr(etTrans(ssInf, mod), "rxDoseRow"), c(2L, 1L, 3L, 1L, 5L, 1L))
+    expect_equal(attr(etTrans(ssInf, mod), "rxDoseRow"), c(2L, 1L, 3L, 1L, 6L, 1L))
     # a bolus expands to no other record
     bolus <- data.frame(id = 1, time = c(0, 1), evid = c(1, 0), amt = c(80, 0), cmt = "depot", WT = c(70, 100))
     expect_null(attr(etTrans(bolus, mod), "rxDoseRow"))
