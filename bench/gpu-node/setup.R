@@ -7,6 +7,9 @@
 # compiles against the CUDA toolkit's OpenCL headers and library (CUDA_HOME or
 # EBROOTCUDA), and CUDA.jl is set to use that toolkit.
 #
+# It stops at the first package that fails; keep its output, eg
+#   Rscript bench/gpu-node/setup.R 2>&1 | tee ~/rxode2-gpu-setup.log
+#
 # Usage: Rscript bench/gpu-node/setup.R [ref] [prefix]
 #   ref     rxode2 GitHub ref (default nlmixr2/rxode2@gpu-vignette)
 #   prefix  install directory (default ~/rxode2-gpu-bench)
@@ -18,6 +21,9 @@
 .lib <- file.path(.prefix, "Rlib")
 dir.create(.lib, recursive = TRUE, showWarnings = FALSE)
 .libPaths(c(.lib, .libPaths()))
+## every package build (child R processes too) finds .lib first, so a site
+## library's older rxode2 or dependencies are never used
+Sys.setenv(R_LIBS = paste(.libPaths(), collapse = ":"), R_LIBS_USER = .lib)
 options(repos = c(CRAN = "https://cloud.r-project.org"), Ncpus = max(1L, parallel::detectCores() - 1L))
 
 ## the OpenCL package needs CL/cl.h and libOpenCL; the CUDA toolkit has both
@@ -34,11 +40,25 @@ if (nzchar(.cuda)) {
   message("CUDA_HOME/EBROOTCUDA unset: the OpenCL package needs the OpenCL headers on the compiler's path")
 }
 
-## CRAN first (dependencies of everything), then the development versions
-install.packages(c("remotes", "OpenCL", "nlmixr2"), lib = .lib, dependencies = TRUE)
-remotes::install_github("nlmixr2/lotri", lib = .lib, upgrade = "never")
-remotes::install_github(.ref, lib = .lib, upgrade = "never")
-remotes::install_github(c("nlmixr2/nlmixr2est", "nlmixr2/nlmixr2"), lib = .lib, upgrade = "never")
+## CRAN first (the hard dependencies of everything, into .lib even when a
+## site library has an older copy), then the development versions; stop at the
+## first package that does not install
+.need <- function(pkgs) {
+  .miss <- pkgs[!vapply(pkgs, function(p) nzchar(system.file(package = p, lib.loc = .lib)), logical(1))]
+  if (length(.miss) > 0L) {
+    stop("not installed in ", .lib, ": ", paste(.miss, collapse = ", "), " (see the messages above)", call. = FALSE)
+  }
+}
+.cran <- c("remotes", "OpenCL", "nlmixr2", "rxode2lincmt", "lotri", "dparser", "PreciseSums", "sitmo")
+install.packages(.cran, lib = .lib)
+.need(.cran)
+remotes::install_github("nlmixr2/lotri", lib = .lib, upgrade = "always", force = TRUE)
+remotes::install_github(.ref, lib = .lib, upgrade = "always", force = TRUE)
+remotes::install_github(c("nlmixr2/nlmixr2est", "nlmixr2/nlmixr2"), lib = .lib, upgrade = "never", force = TRUE)
+.need(c("rxode2", "nlmixr2est", "nlmixr2"))
+if (!("rxGpuInfo" %in% getNamespaceExports(loadNamespace("rxode2", lib.loc = .lib)))) {
+  stop("the rxode2 in ", .lib, " has no GPU methods: check that ", .ref, " is the GPU branch", call. = FALSE)
+}
 
 ## Julia in .prefix/julia, its packages in .prefix/julia-depot and the
 ## project .prefix/julia-env
@@ -73,5 +93,5 @@ if (system2(.julia, c("-e", shQuote(paste(.jl, collapse = "; ")))) != 0) {
 }
 
 library(rxode2, lib.loc = .lib)
-print(packageVersion("rxode2", lib.loc = .lib))
+cat("rxode2", format(packageVersion("rxode2", lib.loc = .lib)), "from", .ref, "\n")
 message("installed in ", .prefix)
