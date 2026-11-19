@@ -61,12 +61,34 @@ static inline void rk4sAddIni(const double *dx0, const double *lam, double *mu, 
   }
 }
 
+// Apply dose record i (evid ev, at t0) to the running sensitivity s of
+// rk4sIniOnlyFill: a bolus adds amt * dF/dp to its compartment's row, a
+// replace zeroes the row and a multiply scales it.
+static inline void rk4sIniOnlyDose(rx_solving_options *op, rx_solving_options_ind *ind, int i, int ev, double t0,
+                                   const std::vector<double> &dF, std::vector<double> &s,
+                                   int nBase, int np) {
+  int wh, c, wh100, whI, wh0;
+  getWh(ev, &wh, &c, &wh100, &whI, &wh0);
+  if (c < 0 || c >= nBase) return;
+  double *row = &s[c * np];
+  if (whI == 0) {
+    // an ss = 2 dose is superposed, not applied to the state
+    if (dF.empty() || wh0 == EVID0_SS2 || wh0 == EVID0_SS20) return;
+    double amt = getDose(ind, ind->ix[i]);
+    for (int p = 0; p < np; ++p) row[p] += amt * dF[c * np + p];
+  } else if (whI == EVIDF_REPLACE) {
+    for (int p = 0; p < np; ++p) row[p] = 0.0;
+  } else if (whI == EVIDF_MULT) {
+    double a = getAmt(ind, ind->id, c, getDoseIndex(ind, i), t0, getSolve(i));
+    for (int p = 0; p < np; ++p) row[p] *= a;
+  }
+}
+
 // A subject that took no forward step (only records at its first time) is
 // still at its initial conditions, changed only by the events at that time:
 // walking the records in order, the sensitivity starts at dX0/dp (0 when no
-// initial condition depends on a calcSens parameter), a reset restores dX0/dp,
-// a bolus adds amt * dF/dp to its compartment, a replace zeroes the
-// compartment's row and a multiply scales it.  Each observation reads the
+// initial condition depends on a calcSens parameter), a reset restores dX0/dp
+// and a dose applies through rk4sIniOnlyDose.  Each observation reads the
 // running value.
 static inline void rk4sIniOnlyFill(rx_solving_options *op, rx_solving_options_ind *ind, int cSub,
                                    int nBase, int np, int sensOff) {
@@ -90,26 +112,11 @@ static inline void rk4sIniOnlyFill(rx_solving_options *op, rx_solving_options_in
       continue;
     }
     if (ev == 3) {
-      if (dx0.empty()) std::fill(s.begin(), s.end(), 0.0);
+      if (dx0.empty()) s.assign(s.size(), 0.0);
       else s = dx0;
       continue;
     }
-    if (!isDose(ev)) continue;
-    int wh, c, wh100, whI, wh0;
-    getWh(ev, &wh, &c, &wh100, &whI, &wh0);
-    if (c < 0 || c >= nBase) continue;
-    double *row = &s[c * np];
-    if (whI == 0) {
-      // an ss = 2 dose is superposed, not applied to the state
-      if (dF.empty() || wh0 == EVID0_SS2 || wh0 == EVID0_SS20) continue;
-      double amt = getDose(ind, ind->ix[i]);
-      for (int p = 0; p < np; ++p) row[p] += amt * dF[c * np + p];
-    } else if (whI == EVIDF_REPLACE) {
-      for (int p = 0; p < np; ++p) row[p] = 0.0;
-    } else if (whI == EVIDF_MULT) {
-      double a = getAmt(ind, ind->id, c, getDoseIndex(ind, i), t0, getSolve(i));
-      for (int p = 0; p < np; ++p) row[p] *= a;
-    }
+    if (isDose(ev)) rk4sIniOnlyDose(op, ind, i, ev, t0, dF, s, nBase, np);
   }
 }
 
