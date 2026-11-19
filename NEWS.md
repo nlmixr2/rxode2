@@ -289,9 +289,9 @@
   read the actual time of the `addl` dose (#1583).
 
 ### Steady state
-- A steady state solved with `method = "indLin"` on a converted ODE model
-  never met `ssAtol`/`ssRtol`, because the `output` sink the conversion adds
-  keeps accumulating, so it always ran all `maxSS` doses.  The sink is now left
+- A steady state solved with `method = "indLin"` (or with a `rxToIndLin()`
+  model) never met `ssAtol`/`ssRtol`, because the `output` sink the conversion
+  adds keeps accumulating, so it always ran all `maxSS` doses.  The sink is now left
   out of the convergence test, so the steady state stops once the model states
   converge and `output` no longer carries `maxSS` doses of elimination (#1749).
 - A steady-state fixed-duration infusion shorter than `ii` into a compartment

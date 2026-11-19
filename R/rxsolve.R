@@ -17,6 +17,18 @@
 # conversion adds only accumulates eliminated drug, so it never reaches a steady
 # state and is left out of the ssAtol/ssRtol test (#1749).  `ssAtol` is given
 # for the source model's states, which are `state` without `sink`.
+# the `output` sink of a matExp() model: a state only `k_<cmt>_output` rates
+# create, with nothing leaving it
+.rxIndLinSinkState <- function(mv) {
+  if (length(mv$indLin) == 0L || !("output" %in% mv$state)) {
+    return(character(0))
+  }
+  if (any(grepl("^k[._]output[._]", c(mv$lhs, mv$params)))) {
+    return(character(0))
+  }
+  "output"
+}
+
 .rxIndLinSsAtol <- function(ssAtol, state, sink) {
   .sink <- state %in% sink
   if (!any(.sink)) {
@@ -3753,16 +3765,6 @@ rxSolve.default <- function(
       if (is.null(.converted)) {
         .mexpCode <- rxToIndLin(object, calcSens = .calcSens)
         .converted <- rxode2(.mexpCode)
-        # remember the sink the conversion invented; a re-solve reaches the
-        # converted model directly
-        assign(
-          ".rxIndLinSink",
-          intersect(
-            setdiff(rxModelVars(.converted)$state, rxModelVars(object)$state),
-            "output"
-          ),
-          envir = .converted
-        )
         if (.useCache && is.environment(.modelEnv)) {
           assign(".rxIndLinModel", .converted, envir = .modelEnv)
         }
@@ -3778,7 +3780,7 @@ rxSolve.default <- function(
       object
     }
     .sink <- if (rxIs(.sinkModel, "rxode2")) {
-      get0(".rxIndLinSink", envir = .sinkModel, inherits = FALSE)
+      .rxIndLinSinkState(rxModelVars(.sinkModel))
     }
     if (length(.sink) > 0L) {
       .ctl$ssAtol <- .rxIndLinSsAtol(

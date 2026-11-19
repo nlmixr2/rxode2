@@ -33,6 +33,19 @@ rxTest({
     expect_equal(.s$output, .o)
   })
 
+  test_that("a model converted with rxToIndLin() leaves the sink out too", {
+    .me <- rxode2(rxToIndLin(
+      "d/dt(depot) = -ka*depot\nd/dt(central) = ka*depot - cl/v*central\n"
+    ))
+    .ev <- et(amt = 100, cmt = "depot", ii = 12, ss = 1) |> et(c(0, 6))
+    .p <- c(ka = 1, cl = 1, v = 10)
+    .s1 <- rxSolve(.me, .p, .ev, method = "indLin", maxSS = 10000)
+    .s2 <- rxSolve(.me, .p, .ev, method = "indLin", maxSS = 20000)
+    expect_equal(.s1$output, .s2$output)
+    expect_equal(.rxIndLinSinkState(rxModelVars(.me)), "output")
+    expect_equal(.rxIndLinSinkState(rxModelVars(.ssSinkMod)), character(0))
+  })
+
   test_that(".rxIndLinSsAtol only changes the invented output sink", {
     expect_equal(.rxIndLinSsAtol(1e-8, "center", character(0)), 1e-8)
     expect_equal(
