@@ -119,22 +119,42 @@ rxTest({
   })
 
   test_that("rxSaveState() after a solve that read the events in place", {
+    # more parameters than event table columns
     mLow <- rxode2({
       d / dt(depot) <- -ka * depot
       d / dt(central) <- ka * depot - cl / v * central
-      cp <- central / v
+      cp <- central / v + p1 + p2 + p3 + p4 + p5
     })
     ev <- et(amt = 100, ii = 12, addl = 2) |> et(seq(0, 36, by = 1))
     .state <- function(single) {
-      rxSolve(mLow, c(ka = 1, cl = 4, v = 25), ev, single = single)
+      rxSolve(mLow, c(ka = 1, cl = 4, v = 25, p1 = 0, p2 = 0, p3 = 0, p4 = 0, p5 = 0), ev, single = single)
       rxSaveState_()
     }
     copied1 <- .state(FALSE)
     copied2 <- .state(FALSE)
     borrowed <- .state(TRUE)
-    # only the bytes that already differ between two copied solves may differ
+    # one double (a timing field) varies between any two solves; nothing else
+    # may differ
     expect_identical(length(borrowed), length(copied1))
-    expect_identical(which(borrowed != copied1), which(copied2 != copied1))
+    .vary <- which(copied2 != copied1)
+    .window <- if (length(.vary)) (min(.vary) - 7L):(max(.vary) + 7L) else integer(0)
+    expect_true(all(which(borrowed != copied1) %in% .window))
+  })
+
+  test_that("single= with a tte() endpoint matches copying", {
+    f <- function() {
+      ini({
+        lambda <- 0.1
+      })
+      model({
+        haz <- lambda
+        ev ~ tte(haz)
+      })
+    }
+    ev <- et(c(0, 30)) |> et(id = 1:20)
+    r1 <- withr::with_seed(1, as.data.frame(rxSolve(f(), ev, single = FALSE)))
+    r2 <- withr::with_seed(1, as.data.frame(rxSolve(f(), ev, single = TRUE)))
+    expect_equal(r2, r1)
   })
 
   test_that("single=TRUE is incompatible with serializeFile", {

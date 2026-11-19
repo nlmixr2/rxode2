@@ -106,4 +106,6 @@ struct rx_globals {
   SEXP gEvBorrowedDf=NULL;
   int *gEvOwnInt=NULL;
   double *gEvOwnDbl=NULL;
+  // ints allocated from gpar_cov on (gpar_cov, gpar_covInterp, glhs_str); -1 unknown
+  int64_t gEvIntTailN=-1;
 };

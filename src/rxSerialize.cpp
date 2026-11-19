@@ -317,26 +317,36 @@ SEXP rxSaveState_() {
   // gevid slab: allocated as 3*nall_rep + dfN*2 + strLhs.size() ints.
   uint64_t dfN = (rx->npars <= 0) ? 0 : rx->npars;
   uint64_t gevid_n = 3u * nall_rep + dfN * 2 + (uint64_t)op->nlhs;
-  if (_globals.gEvBorrowed) {
-    // single=: the columns live in the event table, not in one slab; write
-    // them in the copied slab layout so the restore is unchanged
+  // Gather the slabs from their parts: with single= the columns live in the
+  // event table rather than in one slab, and the int tail actually allocated
+  // (2 * data columns + nlhs) can be shorter than 2 * npars + nlhs, so pad it
+  // with zeros instead of reading past it.
+  {
     std::vector<double> dSlab(5u * nall_rep);
     const double *dSrc[5] = {_globals.gall_times, _globals.gdv, _globals.gamt,
                              _globals.gii, _globals.glimit};
     for (int k = 0; k < 5; ++k) {
-      std::copy(dSrc[k], dSrc[k] + nall_rep, dSlab.begin() + k * nall_rep);
+      if (dSrc[k] != NULL) {
+        std::copy(dSrc[k], dSrc[k] + nall_rep, dSlab.begin() + k * nall_rep);
+      }
     }
     sWriteDoubleBlob(f, dSlab.data(), dSlab.size(), "gall_times_slab");
-    std::vector<int> iSlab(gevid_n);
-    std::copy(_globals.gevid, _globals.gevid + nall_rep, iSlab.begin());
-    std::copy(_globals.gidose, _globals.gidose + nall_rep, iSlab.begin() + nall_rep);
-    std::copy(_globals.gcens, _globals.gcens + nall_rep, iSlab.begin() + 2u * nall_rep);
-    std::copy(_globals.gpar_cov, _globals.gpar_cov + (gevid_n - 3u * nall_rep),
-              iSlab.begin() + 3u * nall_rep);
+    std::vector<int> iSlab(gevid_n, 0);
+    const int *iSrc[3] = {_globals.gevid, _globals.gidose, _globals.gcens};
+    for (int k = 0; k < 3; ++k) {
+      if (iSrc[k] != NULL) {
+        std::copy(iSrc[k], iSrc[k] + nall_rep, iSlab.begin() + k * nall_rep);
+      }
+    }
+    uint64_t tailN = gevid_n - 3u * nall_rep;
+    if (_globals.gEvIntTailN >= 0 && (uint64_t)_globals.gEvIntTailN < tailN) {
+      tailN = (uint64_t)_globals.gEvIntTailN;
+    }
+    if (_globals.gpar_cov != NULL) {
+      std::copy(_globals.gpar_cov, _globals.gpar_cov + tailN,
+                iSlab.begin() + 3u * nall_rep);
+    }
     sWriteIntBlob(f, iSlab.data(), gevid_n, "gevid_slab");
-  } else {
-    sWriteDoubleBlob(f, _globals.gall_times, 5u * nall_rep, "gall_times_slab");
-    sWriteIntBlob(f, _globals.gevid, gevid_n, "gevid_slab");
   }
 
   // gcov: ncov * nall_rep doubles (representative events only)
@@ -1048,6 +1058,7 @@ SEXP rxRestoreState_(SEXP rawSexp) {
     _globals.gpar_cov = _globals.gcens;
     _globals.gpar_covInterp = _globals.gpar_cov + dfN;
     _globals.glhs_str = _globals.gpar_covInterp + dfN;
+    _globals.gEvIntTailN = (int64_t)(expected - 3u * nall_rep);
   }
 
   // gcov (ncov * nall_rep doubles)

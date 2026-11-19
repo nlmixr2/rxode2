@@ -1626,13 +1626,17 @@ extern "C" void rxFreeEvSlabs() {
   _globals.gamt = NULL;
   _globals.gii = NULL;
   _globals.glimit = NULL;
+  _globals.gEvIntTailN = -1;
 }
 
+extern "C" int rxTteN(void);
 // single=: can the solve read the event columns of `dataf` in place?  Only when
-// each is a plain (non-ALTREP) vector of the type the solver reads and no record
-// is a modeled rate/duration, whose stop time/rate the solver writes back into
-// the event arrays (updateDur()/updateRate()).
+// each is a plain (non-ALTREP) vector of the type the solver reads, the model
+// has no tte() endpoint (its events are written into dv/evid/all_times), and no
+// record is a modeled rate/duration, whose stop time/rate the solver writes
+// back into the event arrays (updateDur()/updateRate()).
 static bool rxCanBorrowEvents(SEXP dataf) {
+  if (rxTteN() > 0) return false;
   int cols[7] = {rxcTime, rxcAmt, rxcIi, rxcDv, rxcLimit, rxcEvid, rxcCens};
   for (int k = 0; k < 7; ++k) {
     if (cols[k] < 0) continue;
@@ -4572,6 +4576,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
       _globals.gcens = _globals.gidose + evid.size();
       _globals.gpar_cov = _globals.gcens + evid.size();//[dfN];
     }
+    _globals.gEvIntTailN = (int64_t)dfN*2 + (int64_t)strLhs.size();
     _globals.gpar_covInterp = _globals.gpar_cov + dfN; // [dfN]
     _globals.glhs_str = _globals.gpar_covInterp + dfN; // [strLhs.size()]
     std::copy(strLhs.begin(),strLhs.end(), &_globals.glhs_str[0]);
