@@ -103,6 +103,12 @@ if (!file.exists(.julia)) {
 if (!file.exists(.julia)) {
   stop("no Julia binary at ", .julia, "; remove ", .jdir, " and rerun", call. = FALSE)
 }
+## Julia must start here (exit 126: noexec filesystem; 137: killed, eg by a
+## memory limit)
+.jst <- system2(.julia, "--version")
+if (.jst != 0L) {
+  stop("Julia does not start (exit ", .jst, "): ", .julia, call. = FALSE)
+}
 Sys.setenv(
   JULIA_DEPOT_PATH = file.path(.prefix, "julia-depot"),
   JULIA_PROJECT = file.path(.prefix, "julia-env")
@@ -121,8 +127,9 @@ if (!all(.jhave)) {
     paste0("Pkg.add([", paste0("\"", .jpkgs[!.jhave], "\"", collapse = ", "), "])"),
     "Pkg.precompile()"
   )
-  if (system2(.julia, c("-e", shQuote(paste(.jl, collapse = "; ")))) != 0) {
-    stop("installing the Julia packages failed (Julia's messages are above)", call. = FALSE)
+  .jst <- system2(.julia, c("-e", shQuote(paste(.jl, collapse = "; "))))
+  if (.jst != 0L) {
+    stop("installing the Julia packages failed (exit ", .jst, "; Julia's messages are above)", call. = FALSE)
   }
 }
 
