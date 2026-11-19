@@ -5,9 +5,10 @@
 # DiffEqGPU, OrdinaryDiffEq and CUDA.jl.  The user and site R libraries are
 # never written, and no dependency is taken from them.
 #
-# Load the site's R, compiler and CUDA modules first: the OpenCL package
-# compiles against the CUDA toolkit's OpenCL headers and library (CUDA_HOME or
-# EBROOTCUDA), and CUDA.jl is set to use that toolkit.
+# Run it from the rxode2 source directory with the site's R and compiler
+# modules loaded.  The two steps that need the CUDA module (the OpenCL R
+# package and CUDA.jl's toolkit, bench/gpu-node/cuda.R) run here when CUDA is
+# loaded, and otherwise in run.R on the GPU node, offline.
 #
 # It stops at the first package that fails; keep its output, eg
 #   Rscript bench/gpu-node/setup.R 2>&1 | tee ~/rxode2-gpu-setup.log
@@ -42,20 +43,6 @@ if (bindingIsLocked(".Library.site", baseenv())) {
 Sys.setenv(R_LIBS = .lib, R_LIBS_USER = .lib)
 options(repos = c(CRAN = "https://cloud.r-project.org"), Ncpus = max(1L, parallel::detectCores() - 1L))
 
-## the OpenCL package needs CL/cl.h and libOpenCL; the CUDA toolkit has both
-.cuda <- Sys.getenv("CUDA_HOME", Sys.getenv("EBROOTCUDA"))
-if (nzchar(.cuda)) {
-  .add <- function(var, dir) {
-    .old <- Sys.getenv(var)
-    Sys.setenv(structure(if (nzchar(.old)) paste(dir, .old, sep = ":") else dir, names = var))
-  }
-  .add("CPATH", file.path(.cuda, "include"))
-  .add("LIBRARY_PATH", file.path(.cuda, "lib64"))
-  .add("LD_LIBRARY_PATH", file.path(.cuda, "lib64"))
-} else {
-  message("CUDA_HOME/EBROOTCUDA unset: the OpenCL package needs the OpenCL headers on the compiler's path")
-}
-
 ## CRAN first (the hard dependencies of everything), then the development versions; stop at the
 ## first package that does not install
 .need <- function(pkgs) {
@@ -64,9 +51,15 @@ if (nzchar(.cuda)) {
     stop("not installed in ", .lib, ": ", paste(.miss, collapse = ", "), " (see the messages above)", call. = FALSE)
   }
 }
-.cran <- c("remotes", "OpenCL", "nlmixr2", "rxode2lincmt", "lotri", "dparser", "PreciseSums", "sitmo")
+.cran <- c("remotes", "nlmixr2", "rxode2lincmt", "lotri", "dparser", "PreciseSums", "sitmo")
 install.packages(.cran, lib = .lib)
 .need(.cran)
+## the OpenCL package compiles against CUDA: its source now, its install by
+## cuda.R once CUDA is loaded
+dir.create(file.path(.prefix, "src"), showWarnings = FALSE)
+if (length(utils::download.packages("OpenCL", file.path(.prefix, "src"), type = "source")) == 0L) {
+  stop("downloading the OpenCL package source failed", call. = FALSE)
+}
 remotes::install_github("nlmixr2/lotri", lib = .lib, upgrade = "always", force = TRUE)
 remotes::install_github(.ref, lib = .lib, upgrade = "always", force = TRUE)
 remotes::install_github(c("nlmixr2/nlmixr2est", "nlmixr2/nlmixr2"), lib = .lib, upgrade = "never", force = TRUE)
@@ -98,14 +91,16 @@ Sys.setenv(
 .jl <- c(
   "using Pkg",
   "Pkg.add([\"DiffEqGPU\", \"OrdinaryDiffEq\", \"StaticArrays\", \"KernelAbstractions\", \"CUDA\"])",
-  "using CUDA",
-  ## the module's toolkit rather than an artifact download on the GPU node
-  if (nzchar(.cuda)) "CUDA.set_runtime_version!(v\"12.8\"; local_toolkit = true)" else "",
   "Pkg.precompile()"
 )
 if (system2(.julia, c("-e", shQuote(paste(.jl, collapse = "; ")))) != 0) {
   stop("installing the Julia packages failed")
 }
+
+## with CUDA loaded (eg setup.R run inside a GPU job) finish the CUDA steps now;
+## otherwise run.R does on the GPU node
+source(file.path("bench", "gpu-node", "cuda.R"))
+.rxGpuNodeCuda(.prefix, .lib, .julia)
 
 library(rxode2, lib.loc = .lib)
 cat("rxode2", format(packageVersion("rxode2", lib.loc = .lib)), "from", .ref, "\n")

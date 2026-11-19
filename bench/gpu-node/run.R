@@ -47,6 +47,9 @@ if (bindingIsLocked(".Library.site", baseenv())) {
 ## child R processes (package builds, benchmarks) put .lib first and never use
 ## the user library; the site library stays last for the site's Rprofile
 Sys.setenv(R_LIBS = .lib, R_LIBS_USER = .lib)
+## the steps that need the CUDA module, once (bench/gpu-node/cuda.R)
+source(file.path("bench", "gpu-node", "cuda.R"))
+.rxGpuNodeCuda(.prefix, .lib, .julia)
 if (
   !nzchar(system.file(package = "rxode2", lib.loc = .lib)) ||
     !("rxGpuInfo" %in% getNamespaceExports(loadNamespace("rxode2", lib.loc = .lib)))
