@@ -405,51 +405,35 @@
   .ret
 }
 
-.muRefPureProductCache <- new.env(parent = emptyenv())
-
-#' Is a theta-affine term exactly `theta * (d term / d theta)`?
+#' Does a mu3 term (one that reads model variables) depend only on covariates?
 #'
-#' The mu2 rewrite replaces the whole term by `covariate*theta`, which is only
-#' exact when the term vanishes at `theta = 0` (no theta-free remainder).
-#' Memoised like `.muRefThetaDerivative()` (same key and cacheability rule), so
-#' rebuilding a ui during model piping does not re-parse every term.
+#' Loads the model lines before the current one and the term into symengine, so
+#' every model variable is replaced by its definition, and checks that what is
+#' left reads only the theta, covariates and constants.
 #'
 #' @param y term
 #' @param theta theta name
-#' @return `TRUE` when the remainder is symbolically zero; `FALSE` otherwise
-#'   (including when symengine cannot decide)
+#' @param env mu-reference environment (`.expr`, `.curLine`, `info`)
+#' @return `TRUE` when the resolved term depends only on `theta` and
+#'   covariates; `FALSE` otherwise (including when symengine cannot load it)
 #' @noRd
-.muRefThetaTermIsPureProduct <- function(y, theta) {
-  .cache <- .muRefDerivCacheable(y)
-  if (.cache) {
-    .key <- paste0(theta, "\n", deparse1(y))
-    .ret <- .muRefPureProductCache[[.key]]
-    if (!is.null(.ret)) {
-      return(.ret)
-    }
+#' @author Matthew L. Fidler
+.muRefMu3TermIsCovariate <- function(y, theta, env) {
+  .i <- env$.curLine
+  if (is.null(.i)) {
+    return(FALSE)
   }
-  .ret <- .muRefThetaTermIsPureProductRaw(y, theta)
-  if (.cache) {
-    if (length(ls(.muRefPureProductCache, all.names = TRUE)) > 10000L) {
-      rm(list = ls(.muRefPureProductCache, all.names = TRUE), envir = .muRefPureProductCache)
-    }
-    assign(.key, .ret, envir = .muRefPureProductCache)
-  }
-  .ret
-}
-
-.muRefThetaTermIsPureProductRaw <- function(y, theta) {
+  .pre <- vapply(env$.expr[seq_len(.i - 1L)], deparse1, character(1), USE.NAMES = FALSE)
   .r <- try(
     {
-      .s <- rxS(paste0("rxdummyLhs=", deparse1(y)))
-      # Symbol(), not the bare string: subs() parses a string, which fails on
-      # dotted theta names such as `cl.wt`
-      .z <- symengine::subs(get("rxdummyLhs", .s), symengine::Symbol(.rxSEres(theta)), symengine::S(0L))
-      as.character(symengine::expand(.z))
+      .s <- rxS(paste(c(.pre, paste0("rxdummyLhs=", deparse1(y))), collapse = "\n"))
+      # get() is masked once symengine is loaded; capture via assign()
+      .e <- eval(parse(text = 'assign("rxdummyMu3", with(.s, rxdummyLhs), envir = .s)'))
+      all.vars(str2lang(rxFromSE(.e)))
     },
     silent = TRUE
   )
-  !inherits(.r, "try-error") && identical(.r, "0")
+  !inherits(.r, "try-error") && all(setdiff(.r, theta) %in% env$info$dataCov)
 }
 
 #' Fill the derivative cache for a whole model in one symengine environment
@@ -611,11 +595,15 @@
             if (inherits(.thetaD, "try-error")) {
               .thetaD <- NULL
             }
-            if (is.null(.thetaD) && !.muRefThetaTermIsPureProduct(y, .thetas)) {
-              # theta-free derivative only says the term is affine in theta;
-              # `0.75*log(V1/exp(tV1))` has derivative -0.75 but also carries
-              # 0.75*log(V1).  Rewriting it as `covariate*theta` would drop that
-              # remainder, so it is not a mu2 covariate term.
+            if (
+              is.null(.thetaD) &&
+                !all(setdiff(all.vars(y), .thetas) %in% env$info$dataCov) &&
+                !.muRefMu3TermIsCovariate(y, .thetas, env)
+            ) {
+              # mu2 terms are built from covariates and constants; a term that
+              # reads a model variable is a mu3 term only when that variable
+              # resolves to covariates (`cl.wt*lwt`), not when it reaches a
+              # theta/eta/state (`cl.wt*V1`, `0.75*log(V1/exp(tV1))`).
               return(NULL)
             }
             if (is.null(.thetaD)) {
@@ -1175,6 +1163,7 @@
     y <- x
     for (.i in seq_along(y)) {
       x <- y[[.i]]
+      env$.curLine <- .i
       if (
         identical(x[[1]], quote(`=`)) ||
           identical(x[[1]], quote(`~`))
@@ -1323,6 +1312,8 @@
     level = .level,
     cov = setdiff(.params, c(.theta, .eta, .level, names(rxInits(.mv))))
   )
+  # covariates that are never assigned in the model (mu2/mu3 coefficients)
+  .info$dataCov <- setdiff(.info$cov, c(.lhs, .mv$slhs, .state))
   .env$param <- list()
   .env$singleTheta <- NULL
   .env$body <- list()
@@ -1630,6 +1621,7 @@
   .rm <- intersect(
     c(
       ".curEval",
+      ".curLine",
       ".curLineClean",
       ".expr",
       ".found",
