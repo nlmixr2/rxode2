@@ -1,5 +1,10 @@
 
 static inline int isDiffFunction(transFunctions *tf) {
+  // lag0()/lead0()/diff0() behave like lag()/lead()/diff() but return 0 instead
+  // of NA on the first record (no prior value); tf->is0 flags this.
+  if (!strcmp("lag0", tf->v)) { tf->is0 = 1; return 1; }
+  if (!strcmp("lead0", tf->v)) { tf->is0 = 1; tf->isLead = 1; return 1; }
+  if (!strcmp("diff0", tf->v)) { tf->is0 = 1; tf->isDiff = 1; return 1; }
   return !strcmp("lag", tf->v) || (tf->isLead = !strcmp("lead", tf->v)) ||
     (tf->isDiff = !strcmp("diff", tf->v)) ||
     (tf->isFirst = !strcmp("first", tf->v)) ||
@@ -37,7 +42,11 @@ static inline int assertCorrectDiffArgs(transFunctions *tf, int nargs, int *lagN
     if (nargs == 2) {
       D_ParseNode *xpn = d_get_child(tf->pn, 3);
       char *v2 = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
-      if (strlen(v2) > 2){
+      // v2 is the second-argument region including its leading separator (eg
+      // ",1" or ", 1"); toInt(v2+1) skips that separator.  The gate must allow
+      // the no-space form ",1" (length 2), otherwise lagNo stays 0 and the
+      // normalized-text (sbt) emission for lag()/diff() is dropped.
+      if (strlen(v2) > 1){
 	*lagNo = toInt(v2+1);
 	if (tf->isLead && *lagNo != NA_INTEGER) *lagNo = -*lagNo;
       }
@@ -53,6 +62,29 @@ static inline int assertCorrectDiffArgs(transFunctions *tf, int nargs, int *lagN
 	return 1;
       }
     }
+  }
+  return 0;
+}
+
+// Record the lag of the variable v2 in tb.lag.  time/t is not a symbol: it
+// uses the record times (tb.lagTime) and *v2 becomes "t".  Any other name
+// that is not a model variable (reserved names, constants) is a syntax error.
+static inline int setDiffLag(transFunctions *tf, char **v2, int lagNo) {
+  if (!rxstrcmpi("time", *v2) || !strcmp("t", *v2)) {
+    *v2 = (char*)"t";
+    tb.lagTime = 1;
+    return 0;
+  }
+  if (new_or_ith(*v2)){
+    addSymbolStr(*v2);
+    tb.lag[NV-1] = lagNo;
+  } else if (tb.ix >= 0) {
+    tb.lag[tb.ix] = lagNo;
+  } else {
+    updateSyntaxCol();
+    sPrint(&_gbuf, _("'%s()' cannot be applied to '%s'"), tf->v, *v2);
+    trans_syntax_error_report_fn(_gbuf.s);
+    return 1;
   }
   return 0;
 }
@@ -76,12 +108,7 @@ static inline int handleFunctionDiff(transFunctions *tf) {
       lagNo = 1;
       if (tf->isLead) lagNo=-1;
       if (tf->isFirst || tf->isLast) lagNo=NA_INTEGER;
-      if (new_or_ith(v2)){
-        addSymbolStr(v2);
-        tb.lag[NV-1] = lagNo;
-      } else {
-        tb.lag[tb.ix] = lagNo;
-      }
+      if (setDiffLag(tf, &v2, lagNo)) {tb.fn=1; return 1;}
       tb.fn=1;
       sAppend(&sb,"%s_", tf->v);
       sAppend(&sbDt,"%s_", tf->v);
@@ -95,15 +122,12 @@ static inline int handleFunctionDiff(transFunctions *tf) {
       xpn = d_get_child(tf->pn, 2);
       v2 = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
       tb.fn=0;
-      if (new_or_ith(v2)){
-        addSymbolStr(v2);
-        tb.lag[NV-1] = lagNo;
-      } else {
-        tb.lag[tb.ix] = lagNo;
-      }
+      if (setDiffLag(tf, &v2, lagNo)) {tb.fn=1; return 1;}
       tb.fn=1;
       if (lagNo == 0){
+        // lag(x, 0) is x
         doDot2(&sb, &sbDt, v2);
+        sAppend(&sbt, "%s", v2);
         /* Free(v2); */
 	/* Free(tf->v); */
 	tf->i[0] = 4;// skip next arguments

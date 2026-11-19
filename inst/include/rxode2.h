@@ -21,22 +21,54 @@
 
 
 #define isDose(evid) ((evid) == 3 || (evid) >= 100)
-#define isObs(evid) ((evid) == 0 || (evid) == 2 || ((evid) >= 9 && (evid) <= 99))
+// evid 8: hidden covariate knot at a lagged dose's data time (#1584)
+#define isObs(evid) ((evid) == 0 || (evid) == 2 || ((evid) >= 8 && (evid) <= 99))
+#define isHiddenEvid(evid) ((evid) == 8 || (evid) == 9)
+// an observation-like record an integrator may step past (a knot is a stop)
+#define isPassObs(evid) (isObs(evid) && (evid) != 8)
 
 #include "rxode2_control.h"
+#include "rxode2prior.h"
 #include <stdint.h>    // for uint64_t rather than unsigned long long
 
 #ifndef __RXODE2PTR_H__  // directly refer to abi need to be excluded
-#define getSolve(idx) ind->solve + (op->neq)*(idx)
-#define getAdvan(idx) ind->solve + op->linOffset + op->neq*(idx)
+// Effective neq for the SOLVE LOOP and per-event SOLVE BUFFER stride.
+// Returns ind->neqOverride when set in [0, op->neq], else op->neq.
+// Allocations remain sized for op->neq; the override is always <= op->neq
+// (caller's contract).  Used by getSolve()/getAdvan() so that a per-
+// individual pred-mode solve writes and reads at the same compact stride
+// without mutating shared op->neq from a parallel worker thread.
+// An override does NOT narrow rx->fns: ME/IndF (and the calc_jac global) are
+// bound by rxAssignPtr(), which rxSolve() calls with the model that also sized
+// op->neq, and nothing rebinds them per individual -- nlmixr2est's odeSwap
+// swaps the dydt family into its own struct, which has no me/indf.  So a
+// generated ME()/IndF()/calc_jac() body still indexes by op->neq while an
+// override is armed, and a buffer handed to one must be sized op->neq even
+// where the surrounding loop runs to rxEffNeq() (rxode2#1200; see the shims in
+// src/expm.cpp).
+// NOTE: getAdvan() + neqOverride is unsupported when op->numLin > 0
+// (op->linOffset is computed from the full neq layout).  A linCmt() model
+// mixed with ODEs does reach nlmixr2est's FOCEi flow with numLin > 0 on the
+// predNoLhs model, so this is NOT covered by the model itself; nlmixr2est
+// translates those models with linToOde() before estimating (its issue #286),
+// which leaves numLin == 0 here.
+static inline int rxEffNeq(const rx_solving_options_ind *ind,
+                           const rx_solving_options *op) {
+  int o = ind->neqOverride;
+  return (o >= 0 && o <= op->neq) ? o : op->neq;
+}
+#define getSolve(idx) ind->solve + (rxEffNeq(ind, op))*(idx)
+#define getAdvan(idx) ind->solve + op->linOffset + (rxEffNeq(ind, op))*(idx)
 #endif
 
-#ifdef _isrxode2_
-
+#ifndef max2
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
+#endif
 #define isSameTime(xout, xp) (fabs((xout)-(xp))  <= 2.0*DBL_EPSILON*max2(fabs(xout),fabs(xp)))
 // use ~dop853 definition of same time
 #define isSameTimeDop(xout, xp) (0.1 * fabs((xout)-(xp)) <= fabs(xout) * 2.3E-16)
+
+#ifdef _isrxode2_
 
 #else
 
@@ -71,10 +103,129 @@ typedef void (*t_set_solve)(rx_solve *);
 
 typedef rx_solve *(*t_get_solve)(void);
 
-typedef void *(*t_assignFuns)(void);
+typedef void (*t_assignFuns)(void);
+
+// External parameter-block loader hook signature.  A package registers a
+// callback (via the rxode2 function-pointer table) that rxode2 invokes once per
+// solve, after gpars is filled and before integration, so it can overwrite
+// reserved par_ptr slots with externally-owned values (e.g. neural-network
+// weights).  gpars is laid out `npars` per column with `ncols` columns; write a
+// population-constant block to every column.  Defined outside the
+// __RXODE2PTR_H__ guard so downstream packages see the typedef.
+typedef void (*t_rxParLoader)(rx_solve *rx, double *gpars, int npars, int ncols);
+
+// dydt forcing hook: add forcing to state derivatives from generated model dydt.
+// Defined outside the __RXODE2PTR_H__ guard so downstream packages see the typedef.
+typedef void (*t_rxDydtForce)(int *neq, double t, double *y, double *dydt);
+
+// Status codes of the multivariate t sampler (rxRmvtSetup/rxRmvtDraw); >0 are
+// warnings (the handle is usable), <0 are errors.  Outside the __RXODE2PTR_H__
+// guard so downstream packages see them.
+#define RXMVT_OK 0
+#define RXMVT_WARN_INFEASIBLE 1
+#define RXMVT_WARN_SINGULAR 2
+#define RXMVT_BAD_ARGS -1
+#define RXMVT_BAD_BOUNDS -2
+#define RXMVT_NOT_PD -3
+#define RXMVT_BAD_DF -4
+#define RXMVT_NLEQ_FAIL -5
+#define RXMVT_ACCEPT_FAIL -6
+#define RXMVT_NO_ENGINE -7
+#define RXMVT_ALLOC_FAIL -8
+
+// The output-record walk rxSolve()'s data frame is built with (rxDfWalkInit,
+// rxDfWalkStep and rxDfWalkDull in src/rxode2_df.cpp), so a package solving
+// through rxode2 lays out the same rows.  rxDfWalkStep() returns one of these
+// for a record and fills `out` with the RXDF_OUT_* fields.  Outside the
+// __RXODE2PTR_H__ guard so downstream packages see them.
+#define RXDF_BAD -2  // the state or `out` buffer was rejected
+#define RXDF_SKIP -1 // no calc_lhs, no row (EVID 9)
+#define RXDF_LHS 0   // calc_lhs at RXDF_OUT_LHS_TIME, no row
+#define RXDF_ROW 1   // calc_lhs at RXDF_OUT_LHS_TIME, then a row
+#define RXDF_KNOT 2  // a lagged dose's knot: calc_lhs only
+#define RXDF_OUT_LHS_TIME 0 // time calc_lhs is called with
+#define RXDF_OUT_TIME 1     // the row's time column
+#define RXDF_OUT_RESETNO 2  // the row's resetno column (resets so far + 1)
+#define RXDF_OUT_EVID 3     // the evid column (NONMEM code when addDosing=TRUE)
+#define RXDF_OUT_CMT 4      // cmt, ss, rate, dur, ii: addDosing=TRUE only
+#define RXDF_OUT_SS 5
+#define RXDF_OUT_AMT 6      // amt: addDosing=TRUE or NA
+#define RXDF_OUT_RATE 7
+#define RXDF_OUT_DUR 8
+#define RXDF_OUT_II 9
+#define RXDF_OUT_SIMERR 10  // 1 when the record takes a simulated residual row
+#define RXDF_OUT_NEWIND 11  // 1 when the subject's newind is 2 after it
+#define RXDF_OUT_N 12
+// rxDfSolveRefused(): why rxSolve() refuses a solve instead of returning it
+#define RXDF_REFUSE_NONE 0       // returned (failed subjects NA, with a warning)
+#define RXDF_REFUSE_NA_TIME 1    // an alag()/rate()/dur()/amt() gave NA
+#define RXDF_REFUSE_VV 2         // method='vv' cannot integrate the model
+#define RXDF_REFUSE_EXTRA_PUSH 3 // evid_() pushed past maxExtra
+#define RXDF_REFUSE_SS_INF_DUR 4 // duration with a steady-state infusion
+#define RXDF_REFUSE_INDLIN 5     // one subject; indLin did not converge
+#define RXDF_REFUSE_UNSOLVED 6   // one subject; it could not be solved
 
 #ifndef __RXODE2PTR_H__
+int rxDfWalkInit(void *state, int stateSize, rx_solve *rx,
+                 rx_solving_options_ind *ind, int doDose, int countOnly);
+int rxDfWalkStep(void *state, int i, double *out, int nOut);
+void rxDfWalkDull(const void *state, int *dull);
+int rxDfKeepSetup(rx_solve *rx);
+int rxDfKeepFirst(rx_solve *rx, int solveid);
+void rxDfKeepRow(rx_solve *rx, rx_solving_options_ind *ind, int solveid,
+                 int fid, int i, double t, double *out);
+SEXP rxDfKeepCols(SEXP vals);
+SEXP getDfLevels(const char *item, rx_solve *rx, R_xlen_t nrow);
+int rxDfSolveRefused(rx_solve *rx);
+int rxRmvtSetup(void **handle, int d, const double *mu, const double *sigma,
+                int isChol, const double *lower, const double *upper, double nu,
+                double a, double tol, double nlTol, int nlMaxiter);
+int rxRmvtDraw(void *handle, double *out, int n);
+void rxRmvtFree(void *handle);
+#endif
+
+// Adjoint objective-gradient backward sweep (src/adjoint.cpp).  Its address is
+// exported to downstream packages through the rxode2 function-pointer table
+// (see _rxode2_rxode2Ptr in src/init.c and rxode2ptr.h); this direct declaration
+// is used only when building rxode2 itself (guarded off once rxode2ptr.h has
+// redeclared the name as a function pointer).
+#ifndef __RXODE2PTR_H__
+void rxode2AdjointSweep(double *tg, double *J, double *dP, double *cover,
+                        int *obsK, int ns, int np, int nt, int nobs, double *out,
+                        int nCj, int *cjK, int *cjCmt, double *cjAlpha,
+                        int nDual, int *dualK, double *dualW, double *dualC);
+void rxode2AdjointTrajSweep(double *tg, double *J, double *dP, int ns, int np,
+                            int nt, int *outK, int nOut, int *stateIdx,
+                            int nStates, double *result, int nCj, int *cjK,
+                            int *cjCmt, double *cjAlpha, int nDual, int *dualK,
+                            double *dualW, double *dualC);
 rx_solve *getRxSolve_(void);
+void rxSetSolveAtolRtol(double atol, double rtol);
+void rxGetSolveAtolRtol(double *atol, double *rtol);
+
+// External parameter-block loader hook register/remove (t_rxParLoader typedef
+// is above, outside the guard).  Direct declarations for building rxode2
+// itself; downstream packages get these as function pointers via the table.
+void rxRegisterParLoader(t_rxParLoader cb);
+void rxRegisterParLoaderNamed(const char* name, t_rxParLoader cb);
+void rxRemoveParLoader(t_rxParLoader cb);
+void rxRegisterDydtForce(t_rxDydtForce cb);
+void rxRemoveDydtForce(t_rxDydtForce cb);
+int getIndCmt(rx_solving_options* op, rx_solving_options_ind* ind, int kk);
+void setIndCmt(rx_solving_options* op, rx_solving_options_ind* ind, int kk, int cmt);
+// Event ("jump") sensitivity shape (src/par_solve.cpp); see the block comment
+// there for how a downstream package swaps shapes around a batch of solves.
+int rxode2EventSensShapeSize(void);
+int rxode2EventSensShapeSave(void *buf, int bufSize);
+int rxode2EventSensShapeRestore(const void *buf, int bufSize);
+void rxode2EventSensLoadFull(SEXP trans, int active, int nState, int nParam,
+                             int nParam2, int nParam3, int useCalcJac);
+void rxode2EventSensGetDims(int *active, int *nState, int *nParam, int *nParam2,
+                            int *nParam3, int *useCalcJac);
+void rxode2EventSensSetDims(int active, int nState, int nParam, int nParam2,
+                            int nParam3, int useCalcJac);
+void rxode2EventSensSetActive(int active);
+void rxode2EventSensDeactivate(void);
 #endif
 rx_solve *getRxSolve2_(void);
 rx_solve *getRxSolve(SEXP ptr);
@@ -85,7 +236,6 @@ void par_solve(rx_solve *rx);
 
 rx_solving_options *getRxOp(rx_solve *rx);
 
-SEXP rxode2_df(int doDose, int doTBS);
 SEXP rxode2_par_df(void);
 
 void rxOptionsIniEnsure(int mx, int cores);
@@ -130,34 +280,12 @@ static inline double _powerDi(double x, double lambda, int yj0, double low, doub
   _splitYj(&yj0, &dist,  &yj);
   switch(yj){
   case 7: // inverse-Yeo Johnson followed by pnorm
-    if (lambda == 1.0) {
-      yjd = x;
-    } else if (x >= 0){
-      if (lambda == 0) yjd = log1p(x);
-      else yjd = (pow(x + 1.0, lambda) - 1.0)/lambda;
-    } else {
-      if (lambda == 2.0) yjd = -log1p(-x);
-      else {
-	l2 = 2.0 - lambda;
-	yjd = (1.0 - pow(1.0 - x, l2))/l2;
-      }
-    }
-    return (high-low)*Rf_pnorm5(x, 0, 1, 1, 0)+low;
+    yjd = _powerDi(x, lambda, 1, low, high);
+    return (high-low)*Rf_pnorm5(yjd, 0, 1, 1, 0)+low;
   case 6: // probitInverse
     return (high-low)*Rf_pnorm5(x, 0, 1, 1, 0)+low;
   case 5: // inverse-Yeo-Johnson followed by expit
-    if (lambda == 1.0) {
-      yjd = x;
-    } else if (x >= 0){
-      if (lambda == 0) yjd = log1p(x);
-      else yjd = (pow(x + 1.0, lambda) - 1.0)/lambda;
-    } else {
-      if (lambda == 2.0) yjd = -log1p(-x);
-      else {
-	l2 = 2.0 - lambda;
-	yjd = (1.0 - pow(1.0 - x, l2))/l2;
-      }
-    }
+    yjd = _powerDi(x, lambda, 1, low, high);
     return (high-low)/(1+exp(-yjd))+low;
   case 4:
     return (high-low)/(1+exp(-x))+low; // expit
@@ -226,10 +354,8 @@ static inline double _powerD(double x, double lambda, int yj0, double low, doubl
     /* REprintf("%f %f %f\n", x, p, -log(1/p-1)); */
     return Rf_qnorm5(p, 0, 1, 1, 0);
   case 5: // logit followed by yeo-johnson
-    p = (x-low)/(high-low);
-    if (p >= 1) return R_NaN;
-    if (p <= 0) return R_NaN;
-    p = -log(1/p-1);
+    if (!(x > low && x < high)) return R_NaN;
+    p = log(x-low) - log(high-x);
     if (lambda == 1.0) return p;
     if (p >= 0){
       if (lambda == 0) return log1p(p);
@@ -240,11 +366,8 @@ static inline double _powerD(double x, double lambda, int yj0, double low, doubl
       return (1.0 - pow(1.0 - p, l2))/l2;
     }
   case 4: // logitNorm
-    p = (x-low)/(high-low);
-    if (p >= 1) return R_NaN;
-    if (p <= 0) return R_NaN;
-    /* REprintf("%f %f %f\n", x, p, -log(1/p-1)); */
-    return -log(1/p-1);
+    if (!(x > low && x < high)) return R_NaN;
+    return log(x-low) - log(high-x);
   case 3: // logNorm
     if (x <= _eps) x0= _eps;
     return log(x0);
@@ -292,13 +415,13 @@ static inline double _powerDD(double x, double lambda, int yj0, double low, doub
     hl = (high - low);
     return hl/(xl*(hl-xl));
   case 3:
-    if (x <= _eps) return x0 = _eps;
+    if (x <= _eps) x0 = _eps;
     return 1/x0;
   case 2:
     return 1.0;
   case 0:
     if (lambda == 1.0) return 1.0;
-    if (x <= _eps) return x0 = _eps;
+    if (x <= _eps) x0 = _eps;
     if (lambda == 0.0) return 1/x0;
     // pow(x,lambda)/lambda - 1/lambda
     return pow(x0, lambda-1);
@@ -308,7 +431,7 @@ static inline double _powerDD(double x, double lambda, int yj0, double low, doub
       if (lambda == 0.0) return 1.0/(x + 1.0);
       return pow(x + 1.0, lambda-1.0);
     } else {
-      if (lambda == 2.0) return -1/(1.0 - x);
+      if (lambda == 2.0) return 1/(1.0 - x);
       return pow(1.0 - x, 1.0-lambda);
     }
   }
@@ -318,29 +441,33 @@ static inline double _powerDD(double x, double lambda, int yj0, double low, doub
 static inline double _powerDDD(double x, double lambda, int yj0, double low, double high) __attribute__((unused));
 static inline double _powerDDD(double x, double lambda, int yj0, double low, double high){
   if (!R_finite(x)) return NA_REAL;
-  double x0 = x, hl, hl2, xl,  t1, dL, eri;
+  double x0 = x, hl, xl,  t1, dL, eri;
   int yj, dist;
   _splitYj(&yj0, &dist,  &yj);
   switch(yj){
   case 7:
+    // yj''(probit(x))*probit'(x)^2 + yj'(probit(x))*probit''(x)
     dL = _powerDD(x, lambda, 6, low, high);
-    return dL*dL*_powerDD(_powerD(x, lambda, 6, low, high), lambda, 1, low, high);
+    t1 = _powerD(x, lambda, 6, low, high);
+    return dL*dL*_powerDDD(t1, lambda, 1, low, high) +
+      _powerDD(t1, lambda, 1, low, high)*_powerDDD(x, lambda, 6, low, high);
   case 6: // derivative
     //10.026513098524*exp(erfinv(-1+2*(-low+x)/(high-low))^2)*M_SQRT_PI/2*exp((erfinv(-1+2*(-low+x)/(high-low)))^2)*erfinv(-1+2*(-low+x)/(high-low))/(high-low)^2
     hl = (high-low);
     eri = erfinv(-1+2*(-low+x)/hl);
     return 8.885765876316728650863*exp(2*eri*eri)*eri/(hl*hl);
   case 5:
-    //Derivative(logit(x), x)^2*Subs(Derivative(yeoJohnson(_xi_1), _xi_1, _xi_1), (_xi_1), (logit(x))) + Subs(Derivative(yeoJohnson(_xi_1), _xi_1), (_xi_1), (logit(x)))*Derivative(logit(x), x, x)
+    // yj''(logit(x))*logit'(x)^2 + yj'(logit(x))*logit''(x)
     dL = _powerDD(x, lambda, 4, low, high);
-    return dL*dL*_powerDD(_powerD(x, lambda, 4, low, high), lambda, 1, low, high);
+    t1 = _powerD(x, lambda, 4, low, high);
+    return dL*dL*_powerDDD(t1, lambda, 1, low, high) +
+      _powerDD(t1, lambda, 1, low, high)*_powerDDD(x, lambda, 4, low, high);
   case 4: // logit
-    // (high - low)^2/((-low + x)^4*(-1 + (high - low)/(-low + x))^2) - 2*(high - low)/((-low + x)^3*(-1 + (high - low)/(-low + x)))
+    // d2/dx2 logit((x-low)/(high-low)) = 1/(high-x)^2 - 1/(x-low)^2
     hl = (high - low);
-    hl2 = hl*hl;
     xl = (-low + x);
-    t1 = (-1.0 + hl/xl);
-    return 1.0*hl2/(hl2*hl2*t1*t1) - 2.0*hl/(xl*xl*xl*t1);
+    t1 = hl - xl;
+    return 1.0/(t1*t1) - 1.0/(xl*xl);
   case 3:
     if (x <= _eps) x0 = _eps;
     return -1/(x0*x0);
@@ -348,7 +475,7 @@ static inline double _powerDDD(double x, double lambda, int yj0, double low, dou
     return 0;
   case 0:
     if (lambda == 1.0) return 0;
-    if (x <= _eps) return x0 = _eps;
+    if (x <= _eps) x0 = _eps;
     if (lambda == 0.0) return -1/(x0*x0);
     // pow(x,lambda)/lambda - 1/lambda
     return (lambda-1)*pow(x0, lambda-2);
@@ -358,9 +485,109 @@ static inline double _powerDDD(double x, double lambda, int yj0, double low, dou
       if (lambda ==  0.0) return -1/((x + 1.0)*(x + 1.0));
       return (lambda-1.0)*pow(x + 1.0, lambda-2.0);
     } else {
-      if (lambda == 2.0) return -1/((1.0 - x)*(1.0 - x));
+      if (lambda == 2.0) return 1/((1.0 - x)*(1.0 - x));
       return -(1.0-lambda)*pow(1.0 - x, -lambda);
     }
+  }
+  return NA_REAL;
+}
+
+// Box-Cox VALUE lambda-derivatives at base b (>0), exponent lam.  y=(b^lam-1)/lam;
+// near lam=0, y ~ ln b + lam*(ln b)^2/2 + lam^2*(ln b)^3/6 gives the removable-singularity limits.
+static inline double _bcDL(double b, double lam) __attribute__((unused));
+static inline double _bcDL(double b, double lam){ // dy/dlam
+  if (b <= _eps) b = _eps;
+  double lb = log(b);
+  if (lam == 0.0) return 0.5*lb*lb;
+  double bl = pow(b, lam);
+  return bl*lb/lam - (bl - 1.0)/(lam*lam);
+}
+static inline double _bcDLx(double b, double lam) __attribute__((unused));
+static inline double _bcDLx(double b, double lam){ // d2y/(dlam db)
+  if (b <= _eps) b = _eps;
+  return pow(b, lam - 1.0)*log(b);
+}
+static inline double _bcDL2(double b, double lam) __attribute__((unused));
+static inline double _bcDL2(double b, double lam){ // d2y/dlam2
+  if (b <= _eps) b = _eps;
+  double lb = log(b);
+  if (lam == 0.0) return lb*lb*lb/3.0;
+  double bl = pow(b, lam);
+  return bl*lb*lb/lam - 2.0*bl*lb/(lam*lam) + 2.0*(bl - 1.0)/(lam*lam*lam);
+}
+// Yeo-Johnson VALUE lambda-derivatives (x>=0: base x+1, exp lam; x<0: base 1-x, exp 2-lam,
+// with the extra chain-rule signs from d(2-lam)/dlam=-1 and d(1-x)/dx=-1).
+static inline double _yjDL(double x, double lam) __attribute__((unused));
+static inline double _yjDL(double x, double lam){
+  if (x >= 0) return _bcDL(x + 1.0, lam);
+  return _bcDL(1.0 - x, 2.0 - lam);
+}
+static inline double _yjDLx(double x, double lam) __attribute__((unused));
+static inline double _yjDLx(double x, double lam){
+  if (x >= 0) return _bcDLx(x + 1.0, lam);
+  return -_bcDLx(1.0 - x, 2.0 - lam);
+}
+static inline double _yjDL2(double x, double lam) __attribute__((unused));
+static inline double _yjDL2(double x, double lam){
+  if (x >= 0) return _bcDL2(x + 1.0, lam);
+  return -_bcDL2(1.0 - x, 2.0 - lam);
+}
+
+// d(tbs)/dlambda -- the VALUE lambda-derivative of the both-sides transform (rxTBSdL).
+static inline double _powerDLambda(double x, double lambda, int yj0, double low, double high) __attribute__((unused));
+static inline double _powerDLambda(double x, double lambda, int yj0, double low, double high){
+  if (!R_finite(x)) return NA_REAL;
+  double p; int yj, dist;
+  _splitYj(&yj0, &dist, &yj);
+  switch(yj){
+  case 0: return _bcDL(x, lambda);                     // boxCox
+  case 1: return _yjDL(x, lambda);                     // yeoJohnson
+  case 2: case 3: case 4: case 6: return 0.0;          // norm/logNorm/logit/probit: no lambda
+  case 5: // logit then yeoJohnson
+    if (!(x > low && x < high)) return R_NaN; p = log(x-low) - log(high-x);
+    return _yjDL(p, lambda);
+  case 7: // probit then yeoJohnson
+    p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = Rf_qnorm5(p, 0, 1, 1, 0);
+    return _yjDL(p, lambda);
+  }
+  return NA_REAL;
+}
+// d2(tbs)/dlambda2 (rxTBSdL2).
+static inline double _powerDLambda2(double x, double lambda, int yj0, double low, double high) __attribute__((unused));
+static inline double _powerDLambda2(double x, double lambda, int yj0, double low, double high){
+  if (!R_finite(x)) return NA_REAL;
+  double p; int yj, dist;
+  _splitYj(&yj0, &dist, &yj);
+  switch(yj){
+  case 0: return _bcDL2(x, lambda);
+  case 1: return _yjDL2(x, lambda);
+  case 2: case 3: case 4: case 6: return 0.0;
+  case 5:
+    if (!(x > low && x < high)) return R_NaN; p = log(x-low) - log(high-x);
+    return _yjDL2(p, lambda);
+  case 7:
+    p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = Rf_qnorm5(p, 0, 1, 1, 0);
+    return _yjDL2(p, lambda);
+  }
+  return NA_REAL;
+}
+// d2(tbs)/(dlambda dx) (rxTBSdLx).  For the logit/probit-composed cases the inner transform p
+// is lambda-free, so d/dx chains through dp/dx = _powerDD(x, lambda, <innerYj>, low, high).
+static inline double _powerDLambdaX(double x, double lambda, int yj0, double low, double high) __attribute__((unused));
+static inline double _powerDLambdaX(double x, double lambda, int yj0, double low, double high){
+  if (!R_finite(x)) return NA_REAL;
+  double p; int yj, dist;
+  _splitYj(&yj0, &dist, &yj);
+  switch(yj){
+  case 0: return _bcDLx(x, lambda);
+  case 1: return _yjDLx(x, lambda);
+  case 2: case 3: case 4: case 6: return 0.0;
+  case 5:
+    if (!(x > low && x < high)) return R_NaN; p = log(x-low) - log(high-x);
+    return _yjDLx(p, lambda)*_powerDD(x, lambda, 4, low, high);
+  case 7:
+    p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = Rf_qnorm5(p, 0, 1, 1, 0);
+    return _yjDLx(p, lambda)*_powerDD(x, lambda, 6, low, high);
   }
   return NA_REAL;
 }
@@ -386,7 +613,7 @@ static inline double _powerL(double x, double lambda, int yj0, double low, doubl
     if (xl <= _eps) xl = _eps;
     hl = (high - low);
     hl2 = hl-xl;
-    if (xl <= _eps) hl2 = _eps;
+    if (hl2 <= _eps) hl2 = _eps;
     return log(hl)-log(xl)-log(hl2);
     /* return 0; */
   case 3:
@@ -429,6 +656,8 @@ static inline double _powerDL(double x, double lambda, int yj0, double low, doub
   int yj, dist;
   _splitYj(&yj0, &dist,  &yj);
   switch (yj){
+  case 7:
+    return _powerDL(_powerD(x, lambda, 6, low, hi), lambda, 1, low, hi);
   case 6:
     return 0; // does not depend on lambda
   case 5:
@@ -437,19 +666,19 @@ static inline double _powerDL(double x, double lambda, int yj0, double low, doub
     // For logit norm, no dependence on lambda
     return 0;
   case 3:
-    if (x <= _eps) x0 = _eps;
-    return log(x0);
+    // log-Jacobian of logNorm is -log(x): no dependence on lambda
+    return 0;
   case 2:
     // For normal transform no dependence of lambda
     return 0;
   case 0:
-    if (lambda == 1.0) return 0;
+    // d/dlambda[(lambda-1)*log(x)] = log(x) for every lambda
     if (x <= _eps) x0 = _eps;
     return log(x0);
   case 1:
-    if (lambda == 1.0) return 0;
+    // d/dlambda[(lambda-1)*log1p(x)] and d/dlambda[(1-lambda)*log1p(-x)]
     if (x >= 0) return log1p(x);
-    return -log1p(x);
+    return -log1p(-x);
   }
   return NA_REAL;
   // d = 0.0 for cox box
@@ -490,11 +719,69 @@ static inline double dabs2(double x) {
   extern "C" rx_solving_options op_global;
   extern "C" rx_solving_options_ind *inds_global;
   extern "C" rx_solving_options_ind *inds_thread;
+  // Event ("jump") sensitivities: model dF/dLag/dydt functions + runtime dims
+  // (defined in par_solve.cpp); used by handle_evid to inject dosing-parameter
+  // jumps.  dydt provides the Jacobian column by central difference.
+  extern "C" t_dF dF;
+  extern "C" t_dLag dLagEs;
+  extern "C" t_dRate dRateEs;
+  extern "C" t_dDur dDurEs;
+  extern "C" t_dF d2FEs;
+  extern "C" t_dLag d2LagEs;
+  extern "C" t_dRate d2RateEs;
+  extern "C" t_dDur d2DurEs;
+  extern "C" t_dF d3FEs;
+  extern "C" t_dF dFQEs;
+  extern "C" t_dLag dLagJacEs;
+  extern "C" t_dLag dLagQEs;
+  extern "C" t_dDur dDurQEs;
+  extern "C" t_DUR durEsFn;
+  extern "C" t_dydt dydtEs;
+  // matExp()/indLin() models have no functional dydt() (the primal system is
+  // solved by matrix-exponential propagation, not RHS evaluation), so the
+  // dtau/lag jump row's usual central-difference-of-dydt Jacobian column is
+  // always zero for them. `_rxEsUseCalcJac` (set alongside the dims, from the
+  // model's `mv$indLin`) tells handle_evid to read the Jacobian column from
+  // `calc_jac` instead for such models (populated via explicit df/dy lines
+  // rxSensMatExp() emits from its already-known Jacobian).
+  extern "C" t_calc_jac calc_jac;
+  extern "C" int _rxEsUseCalcJac;
+  extern "C" int _rxEsActive;
+  extern "C" int _rxEsNState;
+  extern "C" int _rxEsNParam;
+  extern "C" int _rxEsNParam2;
+  extern "C" int _rxEsNParam3;
+  extern "C" int _esSSDurOffCmt;
+  extern "C" int _esSSRateOffCmt;
 #else
   extern rx_solve rx_global;
   extern rx_solving_options op_global;
   extern rx_solving_options_ind *inds_global;
   extern rx_solving_options_ind *inds_thread;
+  extern t_dF dF;
+  extern t_dLag dLagEs;
+  extern t_dRate dRateEs;
+  extern t_dDur dDurEs;
+  extern t_dF d2FEs;
+  extern t_dLag d2LagEs;
+  extern t_dRate d2RateEs;
+  extern t_dDur d2DurEs;
+  extern t_dF d3FEs;
+  extern t_dF dFQEs;
+  extern t_dLag dLagJacEs;
+  extern t_dLag dLagQEs;
+  extern t_dDur dDurQEs;
+  extern t_DUR durEsFn;
+  extern t_dydt dydtEs;
+  extern t_calc_jac calc_jac;
+  extern int _rxEsUseCalcJac;
+  extern int _rxEsActive;
+  extern int _rxEsNState;
+  extern int _rxEsNParam;
+  extern int _rxEsNParam2;
+  extern int _rxEsNParam3;
+  extern int _esSSDurOffCmt;
+  extern int _esSSRateOffCmt;
 #endif
 
 

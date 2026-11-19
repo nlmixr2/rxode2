@@ -1,7 +1,5 @@
 rxTest({
-
   test_that("bad ui", {
-
     f <- function() {
       ini({
         sd <- 1
@@ -11,10 +9,8 @@ rxTest({
       })
     }
     expect_error(f(), "model")
-
   })
   test_that("issue nlmixr#501", {
-
     nlmixr_threecmt_mm_no_add_wtcl_pdtg_kout_delay <- function() {
       ini({
         tf_sc <- log(999)
@@ -113,8 +109,8 @@ rxTest({
         cp = center / v
         cp ~ add(add.sd)
       })
-      keep = "WT"
-      drop = "depot"
+      keep <- "WT"
+      drop <- "depot"
     }
 
     expect_warning(rxode2(one.compartment))
@@ -147,8 +143,8 @@ rxTest({
         cp = center / v
         cp ~ add(add.sd)
       })
-      keep = "WT"
-      drop = "depot"
+      keep <- "WT"
+      drop <- "depot"
     }
 
     expect_error(rxode2(one.compartment), "ini")
@@ -164,8 +160,8 @@ rxTest({
         add.sd <- 4
         cp ~ add(add.sd)
       })
-      keep = "WT"
-      drop = "depot"
+      keep <- "WT"
+      drop <- "depot"
     }
 
     expect_warning(
@@ -183,8 +179,8 @@ rxTest({
         eta.v ~ 0.1
         add.sd <- 0.7
       })
-      keep = "WT"
-      drop = "depot"
+      keep <- "WT"
+      drop <- "depot"
     }
 
     expect_error(
@@ -192,7 +188,6 @@ rxTest({
       regexp = "rxode2 model function requires one 'model({})' block",
       fixed = TRUE
     )
-
 
     one.compartment <- function() {
       ini({
@@ -222,8 +217,8 @@ rxTest({
         cp = center / v
         cp ~ add(add.sd)
       })
-      keep = "WT"
-      drop = "depot"
+      keep <- "WT"
+      drop <- "depot"
     }
 
     expect_error(
@@ -234,7 +229,6 @@ rxTest({
   })
 
   test_that("Duplicate parameters raise errors", {
-
     uif <- function() {
       ini({
         lCL <- 1.37
@@ -261,7 +255,6 @@ rxTest({
   })
 
   test_that("Un-estimated paramteres raise errors", {
-
     uif.ode <- function() {
       ini({
         lCL <- 1.37
@@ -291,7 +284,10 @@ rxTest({
       })
     }
 
-    expect_error(rxode2(uif.ode), rex::rex("the following parameter(s) were in the ini block but not in the model block: prop.err"))
+    expect_error(
+      rxode2(uif.ode),
+      rex::rex("the following parameter(s) were in the ini block but not in the model block: prop.err")
+    )
 
     uif <- function() {
       ini({
@@ -315,7 +311,6 @@ rxTest({
     }
 
     expect_error(rxode2(uif), rex::rex("endpoint parameter(s) missing, duplicated, or defined with '~'"))
-
 
     uif <- function() {
       ini({
@@ -339,13 +334,15 @@ rxTest({
     }
 
     expect_warning(
-      expect_error(rxode2(uif), rex::rex("the following parameter(s) were in the ini block but not in the model block: eta.v")),
+      expect_error(
+        rxode2(uif),
+        rex::rex("the following parameter(s) were in the ini block but not in the model block: eta.v")
+      ),
       regexp = "some etas defaulted to non-mu referenced"
     )
   })
 
   test_that("Residuals are population parameters", {
-
     uif <- function() {
       ini({
         tka <- exp(0.5)
@@ -367,11 +364,9 @@ rxTest({
     }
 
     expect_error(rxode2(uif), rex::rex("endpoint parameter(s) missing, duplicated, or defined with '~'"))
-
   })
 
   test_that("Parameters need to be named", {
-
     uif <- function() {
       ini({
         tka <- exp(0.5)
@@ -397,9 +392,9 @@ rxTest({
     expect_error(
       expect_message(
         rxode2(uif),
-        regexp="bad matrix specification"
+        regexp = "bad matrix specification"
       ),
-      regexp="lotri syntax errors above"
+      regexp = "lotri syntax errors above"
     )
 
     uif <- function() {
@@ -429,13 +424,11 @@ rxTest({
         rxode2(uif),
         rex::rex("matrix expression should be 'name ~ c(lower-tri)'")
       ),
-      regexp="lotri syntax errors above"
+      regexp = "lotri syntax errors above"
     )
-
   })
 
   test_that("Parameters cannot be missing or Infinite", {
-
     uif <- function() {
       ini({
         tka <- 1 / 0
@@ -481,9 +474,9 @@ rxTest({
     expect_error(
       expect_message(
         rxode2(uif),
-        regexp=rex::rex("estimate syntax unsupported: tka <- NA")
+        regexp = rex::rex("estimate syntax unsupported: tka <- NA")
       ),
-      regexp="lotri syntax errors above"
+      regexp = "lotri syntax errors above"
     )
 
     uif <- function() {
@@ -528,9 +521,7 @@ rxTest({
     }
 
     expect_error(rxode2(uif), NA)
-
   })
-
 
   test_that("modeled endpoints", {
     ocmt <- function() {
@@ -566,8 +557,8 @@ rxTest({
   })
 
   test_that("if/else in endpoints should error", {
-    
-    myModel_OS <- function(){           # TTE model for OS. Weibull baseline hazard.
+    myModel_OS <- function() {
+      # TTE model for OS. Weibull baseline hazard.
       ini({
 
         tLAM <- log(0.001)               # scale parameter
@@ -650,10 +641,9 @@ rxTest({
         Y ~ add(add.err)
       })
     }
-    
+
     expect_error(suppressMessages(rxode2(myModel_OS)))
-    
-    
+
     expect_error(suppressMessages(myModel_OS()))
   })
 })

@@ -1,0 +1,318 @@
+## The C common-subexpression pass must agree with the R walker BYTE FOR BYTE.
+##
+## The stored fixture (test-optexpr-fixture.R) covers the small and medium
+## cases.  This covers the one the C pass exists for: a second-order sensitivity
+## model, where the same subexpressions repeat across hundreds of statements and
+## the R walker's named-list counting is quadratic.  It is built here rather than
+## stored because generating it takes minutes.
+rxTest({
+  .sens2 <- function(model, vars) {
+    .env <- rxS(model)
+    paste(c(model, .rxJacobian(.env), .rxSens(.env, vars), .rxSens(.env, vars, vars)), collapse = "\n")
+  }
+
+  test_that("the C pass reproduces the R walker on a second-order model", {
+    skip_on_cran()
+    .m <- paste(
+      c(
+        "circ0 <- exp(lcirc0 + e1)",
+        "mtt <- exp(lmtt + e2)",
+        "slope <- exp(lslope + e3)",
+        "gamma <- exp(lgamma + e4)",
+        "ktr <- 4/mtt",
+        "fdbk <- (circ0/(circ + 1e-12))^gamma",
+        "edrug <- slope*centr",
+        "d/dt(centr) <- -ktr*centr",
+        "d/dt(prol) <- ktr*prol*(1 - edrug)*fdbk - ktr*prol",
+        "d/dt(tr1) <- ktr*prol - ktr*tr1",
+        "d/dt(circ) <- ktr*tr1 - ktr*circ",
+        "cp <- circ/circ0"
+      ),
+      collapse = "\n"
+    )
+    .txt <- .sens2(.m, c("lcirc0", "lmtt", "lslope", "lgamma"))
+    .norm <- rxNorm(.txt)
+
+    .c <- .rxOptExprC(.norm)
+    expect_false(is.na(.c)) # this model must not decline
+
+    withr::with_options(list(rxode2.optExprC = FALSE), {
+      .r <- suppressMessages(rxOptExpr(.txt, "model"))
+    })
+    expect_identical(.c, .r)
+  })
+
+  test_that("many nested replacements do not silently truncate", {
+    ## Reducing a candidate rewrites it in terms of the shorter ones, and each
+    ## rewrite makes it LONGER -- `(a+1)` (5 chars) becomes `rx_expr_0` (9).
+    ## A fixed-size buffer for the reduced text would run out and silently skip
+    ## a replacement, emitting text that differs from the R walker without
+    ## declining.  Found by review; this is the input that triggered it.
+    .terms <- paste(sprintf("(a+%d)", 1:17), collapse = "*")
+    .m <- paste0("x = ", .terms, "\ny = ", .terms)
+    .norm <- rxNorm(.m)
+    .c <- .rxOptExprC(.norm)
+    expect_false(is.na(.c))
+    withr::with_options(list(rxode2.optExprC = FALSE), {
+      .r <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 0L))
+    })
+    expect_identical(.c, .r)
+    ## and every temporary it defines is actually used, i.e. nothing was skipped
+    .defs <- grep("^rx_expr_[0-9]+~", strsplit(.c, "\n")[[1]], value = TRUE)
+    expect_gt(length(.defs), 10L)
+  })
+
+  test_that("negative literals fold the way R folds them", {
+    ## R's parser does NOT make `-1` an atomic double -- is.atomic(quote(-1)) is
+    ## FALSE and it is a call to unary minus, which is why R does not fold
+    ## `1 + -1` and neither may the C pass.  Raised twice in review on the
+    ## assumption that R folds these; it does not.
+    expect_false(is.atomic(quote(-1)))
+    for (.e in c("1 + -1", "1 / -1", "2 * -3", "-1 * x")) {
+      .m <- paste0("a = ", .e, " + q\nb = ", .e, " + q")
+      .c <- .rxOptExprC(rxNorm(.m))
+      withr::with_options(list(rxode2.optExprC = FALSE), {
+        .r <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 0L))
+      })
+      if (!is.na(.c)) expect_identical(.c, .r, info = .e)
+    }
+  })
+
+  test_that("the C pass is independent of the thread count", {
+    ## the count runs per statement across threads and is merged by
+    ## min(firstSeen); if that were wrong the rx_expr_ numbering would move
+    ## with the number of threads
+    skip_on_cran()
+    .m <- paste(
+      c(
+        "a <- exp(p1 + p2)",
+        "b <- exp(p1 + p2) + exp(p3 + p4)",
+        "d/dt(x) <- -exp(p1 + p2)*x + exp(p3 + p4)*a",
+        "d/dt(y) <- exp(p3 + p4)*x - exp(p1 + p2)*y",
+        "cp <- x/a + y/b"
+      ),
+      collapse = "\n"
+    )
+    .txt <- .sens2(.m, c("p1", "p2", "p3"))
+    .norm <- rxNorm(.txt)
+    .old <- rxCores()
+    on.exit(setRxThreads(.old), add = TRUE)
+    .res <- vapply(
+      c(1L, 2L, 4L),
+      function(n) {
+        setRxThreads(n)
+        .o <- .rxOptExprC(.norm)
+        if (is.na(.o)) NA_character_ else .o
+      },
+      character(1)
+    )
+    expect_false(any(is.na(.res)))
+    expect_identical(.res[1], .res[2])
+    expect_identical(.res[1], .res[3])
+  })
+
+  test_that("dparser is parsed in parallel only when it is thread safe (#1427)", {
+    .flag <- .Call(`_rxode2_rxDparserParallel`, NA)
+    expect_identical(.flag, utils::packageVersion("dparser") >= "1.3.1-14")
+    .old <- getRxThreads()
+    on.exit(
+      {
+        setRxThreads(.old)
+        .Call(`_rxode2_rxDparserParallel`, .flag)
+      },
+      add = TRUE
+    )
+    setRxThreads(2L)
+    skip_if(getRxThreads() < 2L, "needs 2 threads")
+    .Call(`_rxode2_rxDparserParallel`, FALSE)
+    expect_identical(.Call(`_rxode2_rxCsePickThreads`, 200L), 1L)
+    .Call(`_rxode2_rxDparserParallel`, TRUE)
+    expect_identical(.Call(`_rxode2_rxCsePickThreads`, 200L), 2L)
+    expect_identical(.Call(`_rxode2_rxCsePickThreads`, 10L), 1L)
+  })
+
+  test_that("parallel parses match serial ones with a thread-safe dparser (#1427)", {
+    .flag <- .Call(`_rxode2_rxDparserParallel`, NA)
+    skip_if_not(.flag, "dparser < 1.3.2 cannot parse concurrently")
+    .old <- getRxThreads()
+    on.exit(
+      {
+        setRxThreads(.old)
+        .Call(`_rxode2_rxDparserParallel`, .flag)
+      },
+      add = TRUE
+    )
+    setRxThreads(2L)
+    .norm <- rxNorm(paste(
+      sprintf("a%d <- exp(tka + eta1) * (t + %d) / (tcl + exp(eta2))", 1:200, 1:200),
+      collapse = "\n"
+    ))
+    .x <- sprintf("exp(tka + eta1) * (t + %d) / (tcl + exp(eta2)) + log(k%d + 1)", 1:300, 1:300)
+    .Call(`_rxode2_rxDparserParallel`, FALSE)
+    .cse <- .rxOptExprC(.norm)
+    .se <- .rxToSEC(.x)
+    expect_false(is.na(.cse))
+    .Call(`_rxode2_rxDparserParallel`, TRUE)
+    for (.i in 1:20) {
+      expect_identical(.rxOptExprC(.norm), .cse)
+      expect_identical(.rxToSEC(.x), .se)
+    }
+  })
+
+  test_that("a repeated lag() call is not hoisted above a self-recursive assignment (#1453)", {
+    .m <- paste(
+      "o = is.na(amt)",
+      "e = o*(DV - k) + (1 - o)*lag0(e, 1)",
+      "ep = lag0(e, 1)",
+      "y = ep*o + lag0(e, 1)*2",
+      "z = (DV - k)*2",
+      sep = "\n"
+    )
+    .c <- .rxOptExprC(rxNorm(.m))
+    expect_false(is.na(.c))
+    withr::with_options(list(rxode2.optExprC = FALSE), {
+      .r <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 0L))
+    })
+    expect_identical(.c, .r)
+    expect_false(grepl("~lag0(", .c, fixed = TRUE))
+    # the optimized model still parses (no lag() of e ahead of its assignment)
+    expect_error(rxode2(.c), NA)
+    # no history call of any kind is hoisted, by either pass
+    for (.fn in c("lag", "lag0", "lead", "lead0", "diff", "diff0", "first", "last")) {
+      .call <- if (.fn %in% c("first", "last")) paste0(.fn, "(cv)") else paste0(.fn, "(cv, 1)")
+      .m <- paste0("a = ", .call, "*2\nb = ", .call, "*3\nz = (DV - k)*2\nw = (DV - k)*3")
+      .c <- .rxOptExprC(rxNorm(.m))
+      expect_false(is.na(.c), info = .fn)
+      withr::with_options(list(rxode2.optExprC = FALSE), {
+        .r <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 0L))
+      })
+      expect_identical(.c, .r, info = .fn)
+      expect_false(grepl(paste0("~", .fn, "("), .c, fixed = TRUE), info = .fn)
+    }
+  })
+})
+
+test_that('CSE reserves temporary names across repeated passes', {
+  evaluate <- function(txt) {
+    env <- list2env(list(a = 2, b = 3, c = 7, d = 11))
+    eval(parse(text = gsub('~', '<-', txt, fixed = TRUE)), env)
+    env$y
+  }
+  for (name in c('rx_expr_0', 'rx_expr_cse_0', 'rx_expr_cse_cse_0')) {
+    txt <- paste0(name, '~a+b\ny=', name, '*(c+d)+(c+d)')
+    for (pass in 1:3) {
+      out <- .rxOptExprC(txt)
+      if (is.na(out)) {
+        expect_gt(pass, 1L)
+        break
+      }
+      expect_equal(evaluate(out), 108)
+      txt <- out
+    }
+  }
+})
+
+test_that('chunked CSE remains equivalent when optimized again', {
+  withr::local_options(rxode2.optExprChunkChars = 1L)
+  for (covariate in c('my_rx_expr_cov', 'my_rx_expr_cse_cov', 'my_rx_expr_cse_cse_cov')) {
+    original <- paste(
+      c(
+        sprintf('x%d=exp(a+b)*%s+%d', 1:5, covariate, 1:5),
+        sprintf('z%d=exp(c+d)*%s+%d', 1:5, covariate, 1:5),
+        'y=x1+x2+x3+x4+x5+z1+z2+z3+z4+z5'
+      ),
+      collapse = '\n'
+    )
+    once <- suppressMessages(rxOptExpr(original, chunkLines = 4L, parallel = 1L))
+    expect_warning(
+      twice <- suppressMessages(rxOptExpr(once, chunkLines = 0L)),
+      'optimized more than once'
+    )
+    params <- c(a = .2, b = .3, c = .7, d = 1.1, setNames(2, covariate))
+    solve <- function(txt) {
+      as.data.frame(rxSolve(
+        rxode2(txt),
+        params = params,
+        events = data.frame(time = 0, evid = 0, amt = 0)
+      ))
+    }
+    expected <- solve(original)
+    expect_equal(solve(once), expected, tolerance = 1e-10)
+    expect_equal(solve(twice), expected, tolerance = 1e-10)
+  }
+})
+
+test_that('the R CSE fallback preserves existing temporary names', {
+  withr::local_options(rxode2.optExprC = FALSE)
+  for (name in c('rx_expr_0', 'rx_expr_cse_0', 'rx_expr_cse_cse_0')) {
+    original <- paste0(name, '~a+b\ny=', name, '*(c+d)+(c+d)')
+    expect_warning(
+      optimized <- suppressMessages(rxOptExpr(original, chunkLines = 0L)),
+      'optimized more than once'
+    )
+    params <- c(a = 2, b = 3, c = 7, d = 11)
+    actual <- as.data.frame(rxSolve(
+      rxode2(optimized),
+      params = params,
+      events = data.frame(time = 0, evid = 0, amt = 0)
+    ))
+    expect_equal(actual$y, 108)
+  }
+})
+
+test_that('CSE keeps rx_expr_ when only other names contain it', {
+  evaluate <- function(txt, covariate) {
+    env <- list2env(setNames(list(2, 3, 7, 11, 5), c('a', 'b', 'c', 'd', covariate)))
+    eval(parse(text = gsub('~', '<-', txt, fixed = TRUE)), env)
+    env$y
+  }
+  for (covariate in c('my_rx_expr_cov', 'my_rx_expr_0', 'rx_expr_0x')) {
+    original <- paste0('y=', covariate, '*(c+d)+(c+d)+exp(a+b)*exp(a+b)')
+    expected <- evaluate(original, covariate)
+    native <- .rxOptExprC(rxNorm(original))
+    expect_false(is.na(native))
+    expect_match(native, '(^|\n)rx_expr_0~')
+    expect_equal(evaluate(native, covariate), expected)
+    withr::with_options(list(rxode2.optExprC = FALSE), {
+      expect_no_warning(fallback <- suppressMessages(rxOptExpr(original, chunkLines = 0L)))
+    })
+    expect_match(fallback, '(^|\n)rx_expr_0~')
+    expect_equal(evaluate(fallback, covariate), expected)
+  }
+})
+
+test_that('re-optimizing CSE output warns once, including chunked', {
+  withr::local_options(rxode2.optExprChunkChars = 1L)
+  original <- paste(
+    c(
+      sprintf('x%d=exp(a+b)*cov+%d', 1:5, 1:5),
+      sprintf('z%d=exp(c+d)*cov+%d', 1:5, 1:5),
+      'y=x1+x2+x3+x4+x5+z1+z2+z3+z4+z5'
+    ),
+    collapse = '\n'
+  )
+  expect_no_warning(once <- suppressMessages(rxOptExpr(original, chunkLines = 4L, parallel = 1L)))
+  expect_match(once, 'rx_expr_')
+  warned <- 0L
+  withCallingHandlers(
+    suppressMessages(rxOptExpr(once, chunkLines = 4L, parallel = 1L)),
+    warning = function(w) {
+      if (grepl('optimized more than once', conditionMessage(w))) {
+        warned <<- warned + 1L
+        invokeRestart('muffleWarning')
+      }
+    }
+  )
+  expect_equal(warned, 1L)
+})
+
+test_that('chunk renaming treats dotted names as whole identifiers', {
+  chunks <- list(c('rx_expr_0~a+b', 'x=rx_expr_0*rx_expr_cse_0.foo*(c+d)+(c+d)'))
+  expect_warning(
+    out <- .rxOptExprChunk(1L, chunks, 'model'),
+    'optimized more than once'
+  )
+  expect_match(out, 'rx_expr_c1_cse_0~c+d', fixed = TRUE)
+  expect_match(out, 'rx_expr_cse_0.foo', fixed = TRUE)
+  expect_false(grepl('(^|[^A-Za-z0-9_.])rx_expr_cse_0([^A-Za-z0-9_.]|$)', out))
+})

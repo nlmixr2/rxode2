@@ -21,7 +21,6 @@ rxTest({
       et(amt = 2 / 24, rate = -1, 0, addl = 9, ii = 1) |>
       et(seq(0, 10, by = 1 / 24))
 
-
     et2 <- et() |>
       et(amt = 2 / 24, rate = 2, 0, addl = 9, ii = 1) |>
       et(seq(0, 10, by = 1 / 24))
@@ -292,8 +291,15 @@ rxTest({
     mod <- rxode2(model = mod)
 
     par <- c(
-      CLp = CLp, CLh = CLh, fuinc = fuinc, Nh = Nh, V2 = Vh,
-      V1 = V1 - Sample.V, Sample.V = Sample.V, ke = ke, Cp1 = 0
+      CLp = CLp,
+      CLh = CLh,
+      fuinc = fuinc,
+      Nh = Nh,
+      V2 = Vh,
+      V1 = V1 - Sample.V,
+      Sample.V = Sample.V,
+      ke = ke,
+      Cp1 = 0
     )
 
     sim.ev <- et(seq(0, Days * 60 * 24, by = 1)) |>

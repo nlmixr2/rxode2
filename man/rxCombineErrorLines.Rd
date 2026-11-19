@@ -15,6 +15,7 @@ rxCombineErrorLines(
   lstExpr = NULL,
   useIf = TRUE,
   interpLines = NULL,
+  splitDoseLines = NULL,
   levelLines = NULL
 )
 }
@@ -41,6 +42,10 @@ defaults to the model expressions accessible by
 \item{useIf}{Use an \verb{if (CMT == X)} for endpoints}
 
 \item{interpLines}{Interpolation lines, if not present}
+
+\item{splitDoseLines}{Dose-splitting directive lines (\code{splitBolus()},
+\code{splitInfusion()}, \code{splitInfusionBolus()} or \code{splitBolusInfusion()});
+if not present, use the directive from the current model}
 
 \item{levelLines}{Levels lines for assigned strings.  If not
 present, use the interpolation lines from the current model.}
@@ -87,10 +92,10 @@ f <- rxode2(one.cmt)
 # You can get the simulation model easily by
 rxCombineErrorLines(f)
 
-# You can then get the compiled model by simply evaluting the model:
+# You can then get the compiled model by simply evaluating the model:
 r <- eval(rxCombineErrorLines(f))
 
-# This also works with multile endpoint models:
+# This also works with multiple endpoint models:
 pk.turnover.emax <- function() {
   ini({
     tktr <- log(1)

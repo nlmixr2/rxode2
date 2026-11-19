@@ -15,8 +15,10 @@ rxCores(verbose = FALSE)
 \arguments{
 \item{verbose}{Display the value of relevant OpenMP settings}
 
-\item{threads}{NULL (default) rereads environment variables. 0
-means to use all logical CPUs available. Otherwise a number >= 1}
+\item{threads}{NULL (default) rereads environment variables
+specified by OpenMP (\code{OMP_THREAD_LIMIT}).  If they are not
+specified, this determines based the logical cores available. 0
+means to use all logical CPU threads available. Otherwise a number >= 1}
 
 \item{percent}{If provided it should be a number between 2 and
 100; the percentage of logical CPUs to use. By default on
@@ -37,14 +39,13 @@ costly solving to occur. If the items which are likely to take
 more time are solved first, this wait is less likely to have an
 impact on the overall solving time.
 
-In rxode2 the IDs are sorted by the individual number of solving
-points (largest first). It also has a C interface that allows
-these IDs to be resorted by total time spent solving the
-equation.  This allows packages like nlmixr to sort by solving
-time if needed.
+rxode2 itself solves the ids in data order; the sort is reached
+through a C interface that resorts them by the total time each id has
+spent solving so far (largest first).  This allows packages like
+nlmixr2 to sort by solving time between iterations of a fit.
 
 Overall the the number of threads is throttled (restricted) for
-small tasks and sorting for IDs are suppressed.}
+small tasks and sorting for ids are suppressed.}
 }
 \value{
 number of threads that rxode2 uses
@@ -52,3 +53,31 @@ number of threads that rxode2 uses
 \description{
 Get/Set the number of threads that rxode2 uses
 }
+\examples{
+getRxThreads()
+.old <- getRxThreads()
+setRxThreads(1) # solve single threaded
+getRxThreads()
+setRxThreads(.old) # restore
+}
+\seealso{
+Other Solver options and performance:
+\code{\link[=forderForceBase]{forderForceBase()}},
+\code{\link[=odeMethodToInt]{odeMethodToInt()}},
+\code{\link[=rxIndLinState]{rxIndLinState()}},
+\code{\link[=rxIndLinStrategy]{rxIndLinStrategy()}},
+\code{\link[=rxIsAutoSwitch]{rxIsAutoSwitch()}},
+\code{\link[=rxIsDense]{rxIsDense()}},
+\code{\link[=rxIsImplicit]{rxIsImplicit()}},
+\code{\link[=rxIsNonStiff]{rxIsNonStiff()}},
+\code{\link[=rxIsStiff]{rxIsStiff()}},
+\code{\link[=rxMemSummary]{rxMemSummary()}},
+\code{\link[=rxMemoryEstimate]{rxMemoryEstimate()}},
+\code{\link[=rxOptExpr]{rxOptExpr()}},
+\code{\link[=rxProgress]{rxProgress()}},
+\code{\link[=rxSetProd]{rxSetProd()}},
+\code{\link[=rxSetProgressBar]{rxSetProgressBar()}},
+\code{\link[=rxSetSum]{rxSetSum()}},
+\code{\link[=rxSumProdModel]{rxSumProdModel()}}
+}
+\concept{Solver options and performance}

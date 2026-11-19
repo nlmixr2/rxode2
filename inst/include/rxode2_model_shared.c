@@ -17,8 +17,11 @@ rxode2_fn0i _prodType = NULL;
 rxode2_fn0i _sumType = NULL;
 
 _update_par_ptr_p _update_par_ptr=NULL;
+_rxPkTime_p _rxPkTime=NULL;
 _getParCov_p _getParCov=NULL;
 _setThreadInd_t _setThreadInd=NULL;
+_rxPushDose_t _rxPushDose=NULL;
+_rxDydtForce_t _rxDydtForceCb=NULL;
 linCmtA_p linCmtA;
 linCmtB_p linCmtB;
 _rx_asgn _rxode2_rxAssignPtr =NULL;
@@ -70,6 +73,19 @@ rxode2_fn2 gammapInva;
 rxode2_fn2 gammaqInv;
 rxode2_fn2 gammaqInva;
 
+/* inverse CDFs for declared non-normal random effects */
+rxode2_fn phiU;
+rxode2_fn2 gammapDera;
+rxode2_fn3 ibeta;
+rxode2_fn3 ibetaDer;
+rxode2_fn3 ibetaInv;
+rxode2_fn3 ibetaDera;
+rxode2_fn3 ibetaDerb;
+rxode2_fn2 studentTDen;
+rxode2_fn2 studentTCdf;
+rxode2_fn2 studentTCdfDnu;
+rxode2_fn2 studentTInv;
+
 rxode2_fn2 rxnorm;
 rxode2i_rxbinom rxbinom;
 rxode2i_rxbinom rxnbinom;
@@ -85,6 +101,7 @@ rxode2_ifn rxpois;
 rxode2_fn rxt_;
 rxode2_fn2 rxunif;
 rxode2_fn2 rxweibull;
+rxode2_fn2 rxlnorm;
 
 rxode2i2_fn2 rinorm;
 rxode2i2_ribinom ribinom;
@@ -158,8 +175,9 @@ rxode2_llikCauchyFun _llikCauchyDscale;
 
 
 rxode2_compareFactorVal_fn _compareFactorVal;
+rxode2_compareFactorInt_fn _compareFactorInt;
 
-double _prod(double *input, double *p, int type, int n, ...){
+static double _prod(double *input, double *p, int type, int n, ...){
   va_list valist;
   va_start(valist, n);
   for (unsigned int i = 0; i < n; i++){
@@ -169,7 +187,7 @@ double _prod(double *input, double *p, int type, int n, ...){
   return _prodPS(input, p, n, type);
 }
 
-double _udf(const char *funName, double *input, int n, ...) {
+static double _udf(const char *funName, double *input, int n, ...) {
   if (n == -42) (Rf_error)("%s", "this has a ui user function that cannot be called directly");
   va_list valist;
   va_start(valist, n);
@@ -180,7 +198,7 @@ double _udf(const char *funName, double *input, int n, ...) {
   return _evalUdf(funName, n, input);
 }
 
-double _sum(double *input, double *pld, int m, int type, int n, ...){
+static double _sum(double *input, double *pld, int m, int type, int n, ...){
   va_list valist;
   va_start(valist, n);
   for (unsigned int i = 0; i < n; i++){
@@ -196,7 +214,7 @@ double _sum(double *input, double *pld, int m, int type, int n, ...){
   return ret;
 }
 
-double _sign(unsigned int n, ...) {
+static double _sign(unsigned int n, ...) {
   va_list valist;
   va_start(valist, n);
   double s = 1;
@@ -210,7 +228,7 @@ double _sign(unsigned int n, ...) {
   return s;
 }
 
-double _mix(int _cSub, unsigned int n,  ...) {
+static double _mix(int _cSub, unsigned int n,  ...) {
   rx_solving_options_ind* ind = &(_solveData->subjects[_cSub]);
   va_list valist;
   double ret = NA_REAL;
@@ -329,6 +347,24 @@ double _min(unsigned int n, ...){
   return mn;
 }
 
+static void _obs(int _cSub, double _curTime, unsigned int n,  ...) {
+  rx_solving_options_ind* _ind = &(_solveData->subjects[_cSub]);
+  if (_ind->inLhs) {
+    return; // only push observations in ode solving
+  }
+  va_list valist;
+  va_start(valist, n);
+  double _t;
+  for (unsigned int i = 0; i < n; i++) {
+    _t = va_arg(valist, double);
+    // push observations after time
+    _rxPushDose(_ind, _curTime,
+                _curTime + _t, 0, 0, 1, 0, 0, 0, 0, 0);
+  }
+  va_end(valist);
+  return;
+}
+
 double _transit4P(int cmt, double t, unsigned int id, double n, double mtt, double bio){
   double nd = (double) n;
   double ktr = (nd+1)/mtt;
@@ -353,6 +389,234 @@ double _transit3P(int cmt, double t, unsigned int id, double n, double mtt){
   return exp(_safe_log(podo)+lktr+n*(lktr+_safe_log(tad))-ktr*(tad)-lgamma1p(nd));
 }
 
+// delay(state, T): value of ODE state `i` at time (t - T), used for delay
+// differential equations (Monolix delay() semantics).  Before the start of
+// integration the constant initial-condition history is returned.  Otherwise
+// the value is interpolated from the per-subject dense history recorded by the
+// solver, using the same 8th-order Dormand-Prince interpolant as dop853's
+// contd8(), so delayed states are obtained to the full accuracy of the solve.
+// Subject's evaluated initial state x(0) (rxode2#1441), else the literal one.
+static inline double _rxDelayIni(rx_solving_options_ind *_ind, int i) {
+  if (i < _ind->delayIniN) return _ind->delayIni[i];
+  return _solveData->op->inits[i];
+}
+// Lagged time t - T on the delay history's clock; also learns the smallest and
+// largest delays.  While handleSS() iterates (rxode2#1447) the clock is virtual
+// (delayTOff) and a delay longer than the dosing interval reads the previous
+// interval (the periodic orbit) rather than the start-up transient; for a
+// constant steady state (ii = 0) any recent interval (half the smallest delay).
+static inline double _rxDelayTd(rx_solving_options_ind *_ind, double t, double T) {
+  if (T > 0.0 && T < _ind->delayMinT) _ind->delayMinT = T;
+  if (T > _ind->delayMaxT) _ind->delayMaxT = T;
+  double td = t + _ind->delayTOff - T;
+  if (_ind->delaySS) {
+    double ii = _ind->delaySSii > 0.0 ? _ind->delaySSii : 0.5 * _ind->delayMinT;
+    if (ii > 0.0 && isfinite(ii) && T > ii) td += ii * (floor(T / ii) - 1.0);
+  }
+  return td;
+}
+// forward declaration of the model's non-constant pre-history (past()); the
+// default (no past()) returns the constant initial condition.
+double _rxPast(int _cSub, int _cmt, double __t, double *__zzStateVar__);
+double _rxDelay(rx_solving_options_ind *_ind, int i, double t, double T) {
+  // also learns the smallest delay so the solver can cap its step size and
+  // never step over the delay (keeping the lagged time inside recorded history)
+  double td = _rxDelayTd(_ind, t, T);
+  if (!_ind->delayHistOn || _ind->delayHistN == 0 || td <= _ind->delayT0) {
+    return _rxPast(_ind->id, i, td, (double*)0);   // pre-history: user past() or constant IC
+  }
+  int n = _ind->delayHistNeq;
+  int stride = _ind->delayHistStride;
+  double *hist = _ind->delayHist;
+  // History stores only the states delay() looks back on; map this state's ODE
+  // index to its compact history column.
+  int col = _solveData->op->delayCol[i];
+  if (col < 0) {
+    return _rxPast(_ind->id, i, td, (double*)0);   // defensive: past() or constant IC
+  }
+  // Records are sorted by increasing step start time (xold) and cover
+  // contiguous intervals [xold, xold+h].  Find the largest xold <= td; that
+  // record's dense polynomial interpolates td (extrapolating slightly when td
+  // falls in the in-progress, not-yet-recorded step, i.e. a delay below the
+  // current step size).
+  // t_old, h and the per-record solver type are stored in the last three slots
+  // of every record, regardless of solver, so the bracketing search and the
+  // interpolation dispatch are uniform even when a solve mixes dop853 and ros4
+  // steps (the dense AutoSwitch composite).
+  int lo = 0, hi = _ind->delayHistN - 1;
+  while (lo < hi) {
+    int mid = (lo + hi + 1) / 2;
+    if (hist[(size_t) mid * stride + (stride - 3)] <= td) lo = mid; else hi = mid - 1;
+  }
+  double *rec = hist + (size_t) lo * stride;
+  double xold = rec[stride - 3];
+  double h    = rec[stride - 2];
+  double s  = (td - xold) / h;
+  if (rec[stride - 1] == 1.0) {
+    // ros4 dense output is a cubic; reconstruct it from the four samples
+    // stored at s = 0, 1/3, 2/3, 1 via Lagrange interpolation.
+    double L0 = -4.5 * (s - 1.0/3.0) * (s - 2.0/3.0) * (s - 1.0);
+    double L1 = 13.5 * s * (s - 2.0/3.0) * (s - 1.0);
+    double L2 = -13.5 * s * (s - 1.0/3.0) * (s - 1.0);
+    double L3 = 4.5 * s * (s - 1.0/3.0) * (s - 2.0/3.0);
+    return L0 * rec[0 * n + col] + L1 * rec[1 * n + col] +
+           L2 * rec[2 * n + col] + L3 * rec[3 * n + col];
+  }
+  // dop853 8th-order dense interpolant (same polynomial as contd8())
+  double s1 = 1.0 - s;
+  return rec[0 * n + col] + s * (rec[1 * n + col] + s1 * (rec[2 * n + col] +
+         s * (rec[3 * n + col] + s1 * (rec[4 * n + col] + s * (rec[5 * n + col] +
+         s1 * (rec[6 * n + col] + s * rec[7 * n + col]))))));
+}
+
+// rxDelayD(state, T): time-derivative d/dt'[state(t')] at t' = t - T, i.e. the
+// derivative of the dense history interpolant.  Used by the forward-sensitivity
+// machinery for parameter-dependent delays (delay durations that depend on an
+// estimated parameter).  Before the start of integration the history is the
+// constant initial condition, so the derivative is 0.
+double _rxDelayD(rx_solving_options_ind *_ind, int i, double t, double T) {
+  double td = _rxDelayTd(_ind, t, T);
+  if (!_ind->delayHistOn || _ind->delayHistN == 0 || td <= _ind->delayT0) {
+    return 0.0;   // constant initial history -> zero time-derivative
+  }
+  int n = _ind->delayHistNeq;
+  int stride = _ind->delayHistStride;
+  double *hist = _ind->delayHist;
+  int col = _solveData->op->delayCol[i];
+  if (col < 0) {
+    return 0.0;   // constant initial history -> zero time-derivative defensive fallback
+  }
+  int lo = 0, hi = _ind->delayHistN - 1;
+  while (lo < hi) {
+    int mid = (lo + hi + 1) / 2;
+    if (hist[(size_t) mid * stride + (stride - 3)] <= td) lo = mid; else hi = mid - 1;
+  }
+  double *rec = hist + (size_t) lo * stride;
+  double xold = rec[stride - 3];
+  double h    = rec[stride - 2];
+  double s  = (td - xold) / h;
+  if (rec[stride - 1] == 1.0) {
+    // derivative of the ros4 cubic Lagrange interpolant (nodes 0,1/3,2/3,1)
+    double a = s - 1.0/3.0, b = s - 2.0/3.0, c = s - 1.0;
+    double L0d = -4.5 * (b*c + a*c + a*b);
+    double L1d = 13.5 * (b*c + s*c + s*b);
+    double L2d = -13.5 * (a*c + s*c + s*a);
+    double L3d = 4.5 * (a*b + s*b + s*a);
+    return (L0d * rec[0 * n + col] + L1d * rec[1 * n + col] +
+            L2d * rec[2 * n + col] + L3d * rec[3 * n + col]) / h;
+  }
+  // derivative of the dop853 8th-order interpolant: dy/dt' = (1/h) dy/ds,
+  // computed from the same nested (Horner) form as _rxDelay by carrying the
+  // value and its s-derivative together through each level (s1 = 1 - s).
+  double s1 = 1.0 - s;
+  double c0 = rec[0*n+col], c1 = rec[1*n+col], c2 = rec[2*n+col], c3 = rec[3*n+col];
+  double c4 = rec[4*n+col], c5 = rec[5*n+col], c6 = rec[6*n+col], c7 = rec[7*n+col];
+  double a6 = c6 + s * c7,    a6d = c7;
+  double a5 = c5 + s1 * a6,   a5d = -a6 + s1 * a6d;
+  double a4 = c4 + s * a5,    a4d = a5 + s * a5d;
+  double a3 = c3 + s1 * a4,   a3d = -a4 + s1 * a4d;
+  double a2 = c2 + s * a3,    a2d = a3 + s * a3d;
+  double a1 = c1 + s1 * a2,   a1d = -a2 + s1 * a2d;
+  double yd = a1 + s * a1d;   // d/ds of (c0 + s*a1)
+  return yd / h;
+}
+
+// rxDelayD2(state, T): second time-derivative d^2/dt'^2[state(t')] at t' = t - T,
+// i.e. the second derivative of the dense history interpolant.  Used by the
+// second-order forward sensitivities of parameter-dependent delays.  Constant
+// initial history -> 0.
+double _rxDelayD2(rx_solving_options_ind *_ind, int i, double t, double T) {
+  double td = _rxDelayTd(_ind, t, T);
+  if (!_ind->delayHistOn || _ind->delayHistN == 0 || td <= _ind->delayT0) {
+    return 0.0;
+  }
+  int n = _ind->delayHistNeq;
+  int stride = _ind->delayHistStride;
+  double *hist = _ind->delayHist;
+  int col = _solveData->op->delayCol[i];
+  if (col < 0) return 0.0;
+  int lo = 0, hi = _ind->delayHistN - 1;
+  while (lo < hi) {
+    int mid = (lo + hi + 1) / 2;
+    if (hist[(size_t) mid * stride + (stride - 3)] <= td) lo = mid; else hi = mid - 1;
+  }
+  double *rec = hist + (size_t) lo * stride;
+  double xold = rec[stride - 3];
+  double h    = rec[stride - 2];
+  double s  = (td - xold) / h;
+  if (rec[stride - 1] == 1.0) {
+    // second derivative of the ros4 cubic Lagrange interpolant (linear in s):
+    // for a cubic (s-a)(s-b)(s-c), d^2/ds^2 = 6s - 2(a+b+c).
+    double L0dd = -4.5 * (6.0 * s - 4.0);            // nodes 1/3,2/3,1 -> sum 2
+    double L1dd = 13.5 * (6.0 * s - 10.0 / 3.0);     // nodes 0,2/3,1   -> sum 5/3
+    double L2dd = -13.5 * (6.0 * s - 8.0 / 3.0);     // nodes 0,1/3,1   -> sum 4/3
+    double L3dd = 4.5 * (6.0 * s - 2.0);             // nodes 0,1/3,2/3 -> sum 1
+    return (L0dd * rec[0 * n + col] + L1dd * rec[1 * n + col] +
+            L2dd * rec[2 * n + col] + L3dd * rec[3 * n + col]) / (h * h);
+  }
+  // second derivative of the dop853 8th-order interpolant: d^2y/dt'^2 =
+  // (1/h^2) d^2y/ds^2, carrying value, first and second s-derivatives through
+  // the same nested Horner form (d^2/ds^2 of c+s*A = 2A'+s*A''; of c+s1*A =
+  // -2A'+s1*A'').
+  double s1 = 1.0 - s;
+  double c0 = rec[0*n+col], c1 = rec[1*n+col], c2 = rec[2*n+col], c3 = rec[3*n+col];
+  double c4 = rec[4*n+col], c5 = rec[5*n+col], c6 = rec[6*n+col], c7 = rec[7*n+col];
+  double a6 = c6 + s * c7,    a6d = c7,            a6dd = 0.0;
+  double a5 = c5 + s1 * a6,   a5d = -a6 + s1 * a6d, a5dd = -2.0 * a6d + s1 * a6dd;
+  double a4 = c4 + s * a5,    a4d = a5 + s * a5d,   a4dd = 2.0 * a5d + s * a5dd;
+  double a3 = c3 + s1 * a4,   a3d = -a4 + s1 * a4d, a3dd = -2.0 * a4d + s1 * a4dd;
+  double a2 = c2 + s * a3,    a2d = a3 + s * a3d,   a2dd = 2.0 * a3d + s * a3dd;
+  double a1 = c1 + s1 * a2,   a1d = -a2 + s1 * a2d, a1dd = -2.0 * a2d + s1 * a2dd;
+  (void) a1;
+  double ydd = 2.0 * a1d + s * a1dd;   // d^2/ds^2 of (c0 + s*a1)
+  return ydd / (h * h);
+}
+
+// rxDelayD3(state, T): third time-derivative d^3/dt'^3[state(t')] at t' = t - T.
+// Used by the third-order forward sensitivities of parameter-dependent delays
+// (breaking-point jump terms).  Constant initial history -> 0.
+double _rxDelayD3(rx_solving_options_ind *_ind, int i, double t, double T) {
+  double td = _rxDelayTd(_ind, t, T);
+  if (!_ind->delayHistOn || _ind->delayHistN == 0 || td <= _ind->delayT0) {
+    return 0.0;
+  }
+  int n = _ind->delayHistNeq;
+  int stride = _ind->delayHistStride;
+  double *hist = _ind->delayHist;
+  int col = _solveData->op->delayCol[i];
+  if (col < 0) return 0.0;
+  int lo = 0, hi = _ind->delayHistN - 1;
+  while (lo < hi) {
+    int mid = (lo + hi + 1) / 2;
+    if (hist[(size_t) mid * stride + (stride - 3)] <= td) lo = mid; else hi = mid - 1;
+  }
+  double *rec = hist + (size_t) lo * stride;
+  double xold = rec[stride - 3];
+  double h    = rec[stride - 2];
+  double s  = (td - xold) / h;
+  if (rec[stride - 1] == 1.0) {
+    // third derivative of the ros4 cubic Lagrange interpolant is constant
+    // (6 * leading coefficient); any higher derivative is 0.
+    return (-27.0 * rec[0 * n + col] + 81.0 * rec[1 * n + col] +
+            -81.0 * rec[2 * n + col] + 27.0 * rec[3 * n + col]) / (h * h * h);
+  }
+  // third derivative of the dop853 8th-order interpolant: d^3y/dt'^3 =
+  // (1/h^3) d^3y/ds^3, carrying value + first/second/third s-derivatives
+  // (d^3/ds^3 of c+s*A = 3A''+s*A'''; of c+s1*A = -3A''+s1*A''').
+  double s1 = 1.0 - s;
+  double c0 = rec[0*n+col], c1 = rec[1*n+col], c2 = rec[2*n+col], c3 = rec[3*n+col];
+  double c4 = rec[4*n+col], c5 = rec[5*n+col], c6 = rec[6*n+col], c7 = rec[7*n+col];
+  double a6 = c6 + s * c7,   a6d = c7,             a6dd = 0.0,                  a6ddd = 0.0;
+  double a5 = c5 + s1 * a6,  a5d = -a6 + s1 * a6d, a5dd = -2.0*a6d + s1*a6dd,   a5ddd = -3.0*a6dd + s1*a6ddd;
+  double a4 = c4 + s * a5,   a4d = a5 + s * a5d,   a4dd = 2.0*a5d + s*a5dd,     a4ddd = 3.0*a5dd + s*a5ddd;
+  double a3 = c3 + s1 * a4,  a3d = -a4 + s1 * a4d, a3dd = -2.0*a4d + s1*a4dd,   a3ddd = -3.0*a4dd + s1*a4ddd;
+  double a2 = c2 + s * a3,   a2d = a3 + s * a3d,   a2dd = 2.0*a3d + s*a3dd,     a2ddd = 3.0*a3dd + s*a3ddd;
+  double a1 = c1 + s1 * a2,  a1d = -a2 + s1 * a2d, a1dd = -2.0*a2d + s1*a2dd,   a1ddd = -3.0*a2dd + s1*a2ddd;
+  (void) a1; (void) a1d;
+  double yddd = 3.0 * a1dd + s * a1ddd;   // d^3/ds^3 of (c0 + s*a1)
+  return yddd / (h * h * h);
+}
+
 void _assignFuns0(void) {
   _evalUdf = (_udf_type) R_GetCCallable("rxode2", "_rxode2_evalUdf");
   _getRxSolve_ = (_getRxSolve_t) R_GetCCallable("rxode2","getRxSolve_");
@@ -368,9 +632,13 @@ void _assignFuns0(void) {
   _sumType=(rxode2_fn0i)R_GetCCallable("PreciseSums", "PreciseSums_sum_get");
   _ptrid=(rxode2_fn0i)R_GetCCallable("rxode2", "rxode2_current_fn_pointer_id");
   _compareFactorVal=(rxode2_compareFactorVal_fn) R_GetCCallable("rxode2", "compareFactorVal");
+  _compareFactorInt=(rxode2_compareFactorInt_fn) R_GetCCallable("rxode2", "compareFactorInt");
   _update_par_ptr = (_update_par_ptr_p) R_GetCCallable("rxode2","_update_par_ptr");
+  _rxPkTime = (_rxPkTime_p) R_GetCCallable("rxode2","_rxPkTime");
   _getParCov = (_getParCov_p) R_GetCCallable("rxode2","_getParCov");
   _setThreadInd = (_setThreadInd_t) R_GetCCallable("rxode2","_setThreadInd");
+  _rxPushDose   = (_rxPushDose_t)   R_GetCCallable("rxode2","_rxPushDose");
+  _rxDydtForceCb= (_rxDydtForce_t)  R_GetCCallable("rxode2","rxCallDydtForce");
   // dynamic start
   linCmtA=(linCmtA_p)R_GetCCallable("rxode2", "linCmtA");
   linCmtB=(linCmtB_p)R_GetCCallable("rxode2", "linCmtB");
@@ -389,6 +657,7 @@ void _assignFuns0(void) {
   rxt_ = (rxode2_fn)R_GetCCallable("rxode2","rxt_");
   rxunif = (rxode2_fn2)R_GetCCallable("rxode2","rxunif");
   rxweibull = (rxode2_fn2)R_GetCCallable("rxode2","rxweibull");
+  rxlnorm = (rxode2_fn2)R_GetCCallable("rxode2","rxlnorm");
   rinorm = (rxode2i2_fn2)R_GetCCallable("rxode2", "rinorm");
   ribinom = (rxode2i2_ribinom)R_GetCCallable("rxode2","ribinom");
   rinbinom = (rxode2i2_ribinom)R_GetCCallable("rxode2","rinbinom");
@@ -443,6 +712,17 @@ void _assignFuns0(void) {
   uppergamma = (rxode2_fn2) R_GetCCallable("rxode2","uppergamma");
   lowergamma = (rxode2_fn2) R_GetCCallable("rxode2","lowergamma");
   gammapDer  = (rxode2_fn2) R_GetCCallable("rxode2","gammapDer");
+  phiU = (rxode2_fn) R_GetCCallable("rxode2","phiU");
+  gammapDera = (rxode2_fn2) R_GetCCallable("rxode2","gammapDera");
+  ibeta = (rxode2_fn3) R_GetCCallable("rxode2","ibeta");
+  ibetaDer = (rxode2_fn3) R_GetCCallable("rxode2","ibetaDer");
+  ibetaInv = (rxode2_fn3) R_GetCCallable("rxode2","ibetaInv");
+  ibetaDera = (rxode2_fn3) R_GetCCallable("rxode2","ibetaDera");
+  ibetaDerb = (rxode2_fn3) R_GetCCallable("rxode2","ibetaDerb");
+  studentTDen = (rxode2_fn2) R_GetCCallable("rxode2","studentTDen");
+  studentTCdf = (rxode2_fn2) R_GetCCallable("rxode2","studentTCdf");
+  studentTCdfDnu = (rxode2_fn2) R_GetCCallable("rxode2","studentTCdfDnu");
+  studentTInv = (rxode2_fn2) R_GetCCallable("rxode2","studentTInv");
   logit = (rxode2_fn3) R_GetCCallable("rxode2", "logit");
   probit = (rxode2_fn3) R_GetCCallable("rxode2", "probit");
   expit = (rxode2_fn3) R_GetCCallable("rxode2", "expit");
@@ -507,7 +787,10 @@ void _assignFuns0(void) {
 }
 
 void _assignFuns(void) {
-  if (_assign_ptr == NULL){
+  // Re-initialize if rxode2 was reloaded: the registered function pointer will
+  // differ from the one stored at last init, revealing a stale _solveData.
+  if (_assign_ptr == NULL ||
+      _assign_ptr != (rxode2_assign_ptr)R_GetCCallable("rxode2","rxode2_assign_fn_pointers")){
     _assignFuns0();
   }
 }
@@ -526,8 +809,9 @@ void __assignFuns2(rx_solve rx,
                    t_handle_evidL handleEvid,
                    t_getDur getdur) {
   // assign start
-  static rxode2_assignFuns2 rxode2parse_assignFuns2 = NULL;
-  if (rxode2parse_assignFuns2 == NULL) rxode2parse_assignFuns2 = (rxode2_assignFuns2)(R_GetCCallable("rxode2", "_rxode2_assignFuns2"));
+  // Always look up via R_GetCCallable so that a reloaded rxode2 (new address)
+  // is used rather than a stale static pointer from a previous load session.
+  rxode2_assignFuns2_t rxode2parse_assignFuns2 = (rxode2_assignFuns2_t)(R_GetCCallable("rxode2", "_rxode2_assignFuns2"));
   rxode2parse_assignFuns2(rx, op, f, lag, rate, dur, mtime, me, indf, gettime, timeindex, handleEvid, getdur);
   // assign stop
 }

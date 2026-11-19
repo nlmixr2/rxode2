@@ -25,7 +25,8 @@ rxTest({
   })
 
   test_that("large params()", {
-    expect_error(tmp <- rxode2("param(tktr,tka,tcl,tv,poplogit,tec50,tkout,te0)
+    expect_error(
+      tmp <- rxode2("param(tktr,tka,tcl,tv,poplogit,tec50,tkout,te0)
 cmt(depot)
 cmt(gut)
 cmt(center)
@@ -43,11 +44,23 @@ rx_expr_0~CMT==6
 rx_pred_=effect*(rx_expr_0)+rx_expr_4*(CMT==5)*(1-(rx_expr_0))
 cmt(cp)
 cmt(pca)
-dvid(5, 6)"), NA)
+dvid(5, 6)"),
+      NA
+    )
 
-    expect_equal(rxModelVars(tmp)$param, c(
-      "tktr", "tka", "tcl", "tv", "poplogit", "tec50", "tkout", "te0",
-      "CMT"
-    ))
+    expect_equal(
+      rxModelVars(tmp)$param,
+      c(
+        "tktr",
+        "tka",
+        "tcl",
+        "tv",
+        "poplogit",
+        "tec50",
+        "tkout",
+        "te0",
+        "CMT"
+      )
+    )
   })
 })

@@ -19,8 +19,8 @@ rxTest({
         cp = center / v
         cp ~ add(add.sd)
       })
-      keep = "WT"
-      drop = "depot"
+      keep <- "WT"
+      drop <- "depot"
     }
 
     expect_warning(rxode2(one.compartment))
@@ -225,7 +225,7 @@ rxTest({
         eta3 ~ 0.2
       })
       model({
-        IETA1 <- 0 
+        IETA1 <- 0
         IETA2 <- 0
         IETA3 <- 0
         ETCL <- eta1 + IETA1
@@ -248,7 +248,8 @@ rxTest({
         IPRED <- F
         IRES <- DV - IPRED
         IWRES <- IRES / W
-      })}
+      })
+    }
     expect_error(fun(), NA)
   })
 })

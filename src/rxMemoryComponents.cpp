@@ -1,0 +1,338 @@
+// -*- mode: c++; c-basic-offset: 2; tab-width: 2; indent-tabs-mode: nil; -*-
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
+// [[Rcpp::interfaces(r,cpp)]]
+#include <RcppArmadillo.h>
+#include <cstring>
+#include "../inst/include/rxode2.h"       /* rxLlikSaveSize; pulls in rxode2parseStruct.h */
+#include "invCdfMemo.h"
+#include "../inst/include/rxMemoryCalc.h" /* rx_mem_layout, rxFillMemLayout()             */
+#include "rx2api.h"                       /* getSolvingOptionsInd(), getIndNallTimes()    */
+
+extern "C" rx_solve *getRxSolve_(void);
+
+using namespace Rcpp;
+
+//' Report the byte sizes of every rxode2 solver memory allocation
+//'
+//' Returns a named numeric vector of byte counts for every buffer rxode2
+//' allocates during \code{rxSolve()}.  Values are computed with the same
+//' formulas used by the actual allocator in \code{rxData.cpp} via the shared
+//' \code{rxFillMemLayout()} function, so any change to the allocator
+//' automatically changes the estimate.
+//'
+//' @param neq       Number of ODE states (\code{length(rxModelVars(model)$state)}).
+//' @param stateSize Effective \code{state.size()} passed to the solver.
+//'   For pure ODE models this equals \code{neq}; for linCmt-only models it
+//'   may be 0.  Use \code{neq} when in doubt.
+//' @param nlhs      Number of LHS (calculated) outputs.
+//' @param npars     Number of model parameters (for \code{gpars} estimate).
+//' @param neta      Number of random effects (etas).
+//' @param neps      Number of residual-error levels (epsilons).
+//' @param ncov      Number of time-varying covariates.
+//' @param nsim      Number of simulations.
+//' @param cores     Number of parallel OMP threads.
+//' @param nMtime    Number of model measurement times.
+//' @param extraCmt  Extra compartments (0, 1 = depot, 2 = depot+central).
+//' @param linB      1 if using an analytical linear-compartment model, else 0.
+//' @param nLlik     Number of log-likelihood terms (FOCEi).
+//' @param nIndSim   Per-individual simulation count (typically \code{neta+neps}).
+//' @param numLinSens Number of linear sensitivity parameters (FOCEi mixed models).
+//' @param numLin    Number of linear compartment terms (FOCEi mixed models).
+//' @param nsub      Number of subjects in ONE simulation (\code{rx$nsub});
+//'   the total individual count is \code{nsub * nsim}.
+//' @param nallTotal Total events across all subjects (sum of obs + doses).
+//' @param ndosesTotal Total dose events across all subjects.
+//' @param maxAllTimes Maximum events for any single subject.
+//' @param indOwnAlloc 1 if every individual gets its own event/solve arrays
+//'   (\code{op$indOwnAlloc}), else 0.  These are allocated ON TOP of
+//'   \code{gsolve}, whose \code{n0} region then goes unused.
+//' @param sample 1 when \code{rxControl(resample=)} asks for covariate
+//'   resampling, which allocates \code{gSampleCov}; else 0.
+//' @param nDelayState Number of ODE states \code{delay()} looks back on
+//'   (\code{op$nDelayState}); 0 for a model without \code{delay()}.  Drives
+//'   the per-individual dense-history bound.
+//'   The \code{linCmtB(which1 = -3)} rate history is charged at
+//'   \code{numLin} wide, which is the width \code{linCmtBRateSlot()} uses.
+//' @param stiff     The solving method (\code{op$stiff}); only 3
+//'   (\code{"indLin"}) allocates anything extra here.
+//' @param doIndLin  Which matrix-exponential driver runs: 0 not a
+//'   \code{matExp()} model, 1 pure matrix exponential, 2 plus a state-free
+//'   \code{indLin()} forcing, 3/4 true inductive linearization (the adaptive,
+//'   iterating driver).  These cost very different amounts.
+//' Not counted: a handful of fixed-size index tables whose sizes depend on
+//' values only the solver has (\code{gParPos}, the \code{gevid} tail holding
+//' \code{gpar_cov}/\code{glhs_str}, \code{gdelayCol}/\code{gdelayState},
+//' \code{gindLin}, \code{splitBolus}).  Each is tens to hundreds of ints and
+//' none scales with subjects or events, so they are left out rather than
+//' folded into a component whose scaling law is the useful part of it.
+//'
+//' @return Named numeric vector; each element is bytes for that allocation.
+//'   Also includes \code{sizeofInd} (bytes per \code{rx_solving_options_ind}
+//'   struct) and \code{rxLlikSaveSize} (the compile-time constant).
+//' @noRd
+// [[Rcpp::export]]
+NumericVector rxMemoryComponents_(
+  int    neq,
+  int    stateSize,
+  int    nlhs,
+  int    npars,
+  int    neta,
+  int    neps,
+  int    ncov,
+  int    nsim,
+  int    cores,
+  int    nMtime,
+  int    extraCmt,
+  int    linB,
+  int    nLlik,
+  int    nIndSim,
+  int    numLinSens,
+  int    numLin,
+  int    nsub,
+  double nallTotal,
+  double ndosesTotal,
+  double maxAllTimes,
+  int    stiff,
+  int    doIndLin,
+  int    indOwnAlloc,
+  int    sample,
+  int    nDelayState)
+{
+  rx_mem_layout _mem;
+  rxFillMemLayout(
+    neq,
+    stateSize,
+    nlhs,
+    nsim,
+    cores,
+    nMtime,
+    extraCmt,
+    linB,
+    nLlik,
+    nIndSim,
+    nsub,
+    (int64_t)nallTotal,
+    (int)maxAllTimes,
+    numLinSens,
+    numLin,
+    (int64_t)neq,          /* n4_actual: neq proxy for estimate */
+    (int64_t)neq,          /* n6_actual: neq proxy for estimate */
+    &_mem);
+
+  /* Byte counts for allocations outside gsolve/gon */
+  double b_gall_times  = 5.0  * nallTotal * sizeof(double);
+  double b_gevid       = 3.0  * nallTotal * sizeof(int);
+  double b_gcov        = (double)ncov * nallTotal * sizeof(double);
+  /* gpars is calloc'd at npars*max2(nsub, nPopPar) and inds_global at
+     nPopPar, where nPopPar = nsub*nsim -- both are sized by the TOTAL
+     individual count, not the per-simulation one. */
+  double b_gpars       = (double)npars * nsub * nsim * sizeof(double);
+  double b_gomega      = (double)(2 * neta + neta * neta) * sizeof(double);
+  double b_gsigma      = (double)(2 * neps + neps * neps) * sizeof(double);
+  double b_gall_timesS = (nsim > 1)
+                           ? 2.0 * (nsim - 1) * nallTotal * sizeof(double)
+                           : 0.0;
+  /* rx->ordId is the solve ORDER over individuals, not over events:
+     malloc(rx->nsub * rx->nsim * sizeof(int)) (src/rxData.cpp, where the local
+     is confusingly named `nall`). */
+  double b_ordId       = (double)nsub * nsim * sizeof(int);
+  /* the per-thread pointer table and its length array are allocated alongside
+     the per-thread infusion buffers themselves */
+  double b_gInfRate    = (double)cores * (neq + extraCmt) * sizeof(double) +
+    (double)cores * (sizeof(double*) + sizeof(int));
+  /* gSampleCov: only when rxControl(resample=) asks for it */
+  double b_gSampleCov  = sample ? (double)ncov * nsub * nsim * sizeof(int) : 0.0;
+  /* geta_pre_alloc (rxPreGenEta in src/rxthreefry.cpp): every individual's eta
+     draws generated up front, malloc(nsim*nsub*neta doubles), whenever the
+     model has etas and a nonzero omega */
+  double b_gEtaPre     = (neta > 0)
+    ? (double)nsub * nsim * neta * sizeof(double)
+    : 0.0;
+  double b_inds        = (double)nsub * nsim * sizeof(rx_solving_options_ind);
+
+  /* -- method="indLin" (src/expm.cpp) ---------------------------------------
+   *
+   * Unlike everything above, these scale with CORES and not with subjects: the
+   * exponential cache and the solver's Armadillo scratch are per thread, and a
+   * subject is solved start to finish on one thread.  `.rxOomChunkSize()` has
+   * to hold them out of its per-subject division for that reason.
+   *
+   * `m` is the dimension of the matrix actually exponentiated, which is NOT
+   * `neq`: `meOnly()` augments by one row per compartment carrying a nonzero
+   * forcing, and the iterating schemes augment further (exprb2 neq+1, exprb32
+   * neq+3, and the `indLinPmat()` phi fallback neq*(p+1), up to 3*neq).  Take
+   * the worst case each driver can reach, since the estimate exists to answer
+   * "will this fit", and an estimate that is too low is the useless kind.
+   */
+  double b_indLinCache = 0.0;
+  double b_indLinWork  = 0.0;
+  if (stiff == 3 && doIndLin > 0) {
+    const double dneq = (double) neq;
+    double m;
+    switch (doIndLin) {
+    case 1:  m = dneq + 1.0;  break;   /* pure matExp: augmented while infusing */
+    case 2:  m = 2.0 * dneq;  break;   /* + a forcing that may fill every row   */
+    default: m = 3.0 * dneq;  break;   /* iterating: the indLinPmat p=2 fallback */
+    }
+    /* The cache holds RX_INDLIN_EXPCACHE_N slots per thread, each a key and a
+     * value of m*m doubles -- but caching is SKIPPED above
+     * RX_INDLIN_EXPCACHE_MAXN2, so past that only the empty slots cost
+     * anything.  Both constants live in src/expm.cpp. */
+    const double slots  = 16.0;                     /* RX_INDLIN_EXPCACHE_N     */
+    const double maxN2  = 16384.0;                  /* RX_INDLIN_EXPCACHE_MAXN2 */
+    const double m2     = m * m;
+    const double perSlot = (m2 <= maxN2) ? 2.0 * m2 * sizeof(double) : 0.0;
+    /* An empty slot is still two std::vector headers plus the key fields. */
+    const double slotHdr = 2.0 * 24.0 + 2.0 * sizeof(double);
+    b_indLinCache = (double)cores * slots * (perSlot + slotHdr);
+    /* Scratch live at once in one thread.  The fixed-grid drivers (1/2) only
+     * ever hold meOnly()'s rate matrix and its augmented exponential; the
+     * iterating ones additionally hold the Jacobian, P(h), its inverse, the
+     * ramp and the Richardson table. */
+    const double sq = (doIndLin <= 2) ? (dneq*dneq + 2.0*m2)
+                                      : (12.0*dneq*dneq + 2.0*m2);
+    const double vec = (doIndLin <= 2) ? (4.0*dneq) : (25.0*dneq);
+    b_indLinWork = (double)cores * (sq + vec) * sizeof(double);
+  }
+
+  /* -- op->indOwnAlloc (rxAllocInd() in src/rxData.cpp) ----------------------
+   *
+   * Each individual gets its own event and solve arrays; gsolve is still
+   * calloc'd at gsolve_total, so this is memory on top of it rather than
+   * instead of it.  Zero for the ordinary case, where ind->solve just points
+   * into gsolve's n0 region.
+   */
+  double b_indOwn = 0.0;
+  if (indOwnAlloc) {
+    rx_ind_alloc _ia;
+    rxFillIndAllocTotal(neq, (int64_t)nallTotal, (int64_t)ndosesTotal,
+                        nsub, nsim, &_ia);
+    b_indOwn = (double)_ia.dbl * sizeof(double) + (double)_ia.i32 * sizeof(int);
+  }
+
+  /* -- per-individual history buffers (delay() and linCmtB rate history) -----
+   *
+   * Both grow by doubling inside the solve rather than being sized up front,
+   * so these are a documented BOUND rather than a mirror -- see
+   * rxDelayHistCap()/rxLinCmtRateHistCap() in inst/include/rxMemoryCalc.h.
+   * `maxAllTimes` is the busiest individual, so charging every individual at
+   * that capacity is the conservative reading.
+   */
+  double b_delayHist = 0.0;
+  double b_linRateHist = 0.0;
+  {
+    double nind = (double)nsub * nsim;
+    b_delayHist = nind *
+      (double)rxDelayHistCap((int64_t)maxAllTimes, nDelayState) * sizeof(double);
+    b_linRateHist = nind *
+      (double)rxLinCmtRateHistCap((int64_t)maxAllTimes, numLin) * sizeof(double);
+  }
+
+  NumericVector out = NumericVector::create(
+    Named("gsolve")        = (double)_mem.gsolve_total * sizeof(double),
+    Named("gsolve_n0")     = (double)_mem.n0           * sizeof(double),
+    Named("gon")           = (double)_mem.gon_total    * sizeof(int),
+    Named("gall_times")    = b_gall_times,
+    Named("gevid")         = b_gevid,
+    Named("gcov")          = b_gcov,
+    Named("gpars")         = b_gpars,
+    Named("gomega")        = b_gomega,
+    Named("gsigma")        = b_gsigma,
+    Named("gall_timesS")   = b_gall_timesS,
+    Named("ordId")         = b_ordId,
+    Named("gInfusionRate") = b_gInfRate,
+    Named("inds_global")   = b_inds,
+    Named("indLinExpCache")= b_indLinCache,
+    Named("indLinWork")    = b_indLinWork,
+    Named("indOwnAlloc")   = b_indOwn,
+    Named("gSampleCov")    = b_gSampleCov,
+    Named("gEtaPre")       = b_gEtaPre,
+    Named("delayHist")     = b_delayHist,
+    Named("linCmtRateHist")= b_linRateHist,
+    Named("sizeofInd")    = (double)sizeof(rx_solving_options_ind),
+    Named("rxLlikSaveSize")= (double)rxLlikSaveSize,
+    // Per-thread memo for the root-finding inverse CDFs (gammapInv, ibetaInv,
+    // studentTInv, ...).  Sized by the PARSER from what the model calls, so this
+    // is the exact cost, not a nominal one; a model calling none pays only the
+    // small default.
+    Named("invCdfMemo")    = rxInvCdfMemoBytes(cores));
+
+  return out;
+}
+
+// Per-subject record counts read through the ABI, plus the two strides.
+//
+// getSolvingOptionsInd() lives in src/rx2api.c, a separate translation unit
+// from the one that allocates the subject array, so a build where the two
+// disagree on the layout of rx_solving_options_ind walks the array at the
+// wrong stride and every subject but the first is read from the wrong address
+// (nlmixr2/nlmixr2est#1039).  A test compares `nAllTimes` -- read entirely
+// through the accessors downstream packages resolve -- against the dataset,
+// and `abiStride` against `localStride`, this translation unit's own view.
+//
+// Deliberately does NOT also read rx->subjects[i] directly: under the
+// staleness this exists to catch, one of the two views is walking at the
+// wrong stride, and the direct read is the one that would run off the end of
+// the allocation.  A test should fail, not read unallocated memory.
+//
+// Test-only; not exported to users.
+// [[Rcpp::export]]
+List rxTestAbiSubjectCounts_() {
+  rx_solve *rx = getRxSolve_();
+  int nsub = 0;
+  if (rx != NULL && rx->subjects != NULL) {
+    nsub = (int)((uint64_t)rx->nsub*(uint64_t)rx->nsim);
+  }
+  IntegerVector nAllTimes(nsub);
+  for (int i = 0; i < nsub; ++i) {
+    nAllTimes[i] = getIndNallTimes(getSolvingOptionsInd(rx, i));
+  }
+  return List::create(_["nAllTimes"] = nAllTimes,
+                      _["abiStride"] = (double)rxIndSize,
+                      _["localStride"] = (double)sizeof(rx_solving_options_ind));
+}
+
+// Does getSolvingOptionsInd() honour the PUBLISHED stride, or its own sizeof?
+//
+// The canary above only compares two views that a clean build makes equal.
+// This one builds the disagreement on purpose: a private array whose entries
+// are `pad` bytes further apart than sizeof(rx_solving_options_ind), with each
+// entry's n_all_times marked, and rxIndSize temporarily set to that stride.
+// An accessor that walks with its own sizeof reads the wrong entries for any
+// pad > 0; one that walks with rxIndSize reads the markers back.  Nothing is
+// solved and the array is this function's own, so the override cannot reach a
+// real solve -- but it IS a process global, so restore it before anything else
+// can run.
+//
+// Test-only; not exported to users.
+// [[Rcpp::export]]
+IntegerVector rxTestAbiStrideProbe_(int pad, int n) {
+  if (n <= 0 || pad < 0) return IntegerVector(0);
+  size_t stride = sizeof(rx_solving_options_ind) + (size_t)pad;
+  std::vector<char> buf(stride*(size_t)n, 0);
+  for (int i = 0; i < n; ++i) {
+    rx_solving_options_ind *ind =
+      (rx_solving_options_ind*)(&buf[0] + stride*(size_t)i);
+    ind->n_all_times = 1000 + i;
+  }
+  rx_solve fake;
+  rx_solving_options fakeOp;
+  std::memset(&fake, 0, sizeof(fake));
+  std::memset(&fakeOp, 0, sizeof(fakeOp));
+  fake.op = &fakeOp;
+  fake.subjects = (rx_solving_options_ind*)(&buf[0]);
+  fake.nsub = (unsigned int)n;
+  fake.nsim = 1;
+  std::vector<int> got((size_t)n, NA_INTEGER);
+  size_t saved = rxIndSize;
+  rxIndSize = stride;
+  for (int i = 0; i < n; ++i) {
+    got[(size_t)i] = getIndNallTimes(getSolvingOptionsInd(&fake, i));
+  }
+  rxIndSize = saved;
+  IntegerVector out(n);
+  for (int i = 0; i < n; ++i) out[i] = got[(size_t)i];
+  return out;
+}

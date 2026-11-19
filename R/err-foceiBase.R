@@ -16,7 +16,7 @@
     if (length(.w) == 1L) {
       return(str2lang(env$iniDf$name[.w]))
     } else {
-      stop("cannot find lambda", call.=FALSE)
+      stop("cannot find lambda", call. = FALSE)
     }
   }
   return(1)
@@ -120,14 +120,23 @@
     if (length(.w) == 1L) {
       .p1 <- str2lang(env$iniDf$name[.w])
     } else {
-      stop("cannot find additive standard deviation for '", .cnd, "'",
-           ifelse(length(env$predDf$condition) == 1L, "", "; this parameter could be estimated by another endpoint, to fix move outside of error expression."), call.=FALSE)
+      stop(
+        "cannot find additive standard deviation for '",
+        .cnd,
+        "'",
+        ifelse(
+          length(env$predDf$cond) == 1L,
+          "",
+          "; this parameter could be estimated by another endpoint, to fix move outside of error expression."
+        ),
+        call. = FALSE
+      )
     }
   }
   if (pred1$variance) {
     bquote(.(.p1))
   } else {
-    bquote((.(.p1)) ^ 2)
+    bquote((.(.p1))^2)
   }
 }
 
@@ -143,15 +152,16 @@
   .type <- as.character(pred1$errTypeF)
   if (.type == "f") {
     if (is.na(.f)) {
-      stop("for propF() or powF(), f must be part of the model and not estimated",
-           call.=FALSE)
+      stop("for propF() or powF(), f must be part of the model and not estimated", call. = FALSE)
     }
   }
-  switch(.type,
-         untransformed=quote(rx_pred_f_),
-         transformed=quote(rx_pred_),
-         f=str2lang(.f),
-         none=quote(rx_pred_f_))
+  switch(
+    .type,
+    untransformed = quote(rx_pred_f_),
+    transformed = quote(rx_pred_),
+    f = str2lang(.f),
+    none = quote(rx_pred_f_)
+  )
 }
 
 #' Get Variance for proportional error
@@ -171,7 +181,7 @@
     if (length(.w) == 1L) {
       .p1 <- str2lang(env$iniDf$name[.w])
     } else {
-      stop("cannot find proportional standard deviation", call.=FALSE)
+      stop("cannot find proportional standard deviation", call. = FALSE)
     }
   }
   if (pred1$variance) {
@@ -198,7 +208,7 @@
     if (length(.w) == 1L) {
       .p1 <- str2lang(env$iniDf$name[.w])
     } else {
-      stop("cannot find power standard deviation", call.=FALSE)
+      stop("cannot find power standard deviation", call. = FALSE)
     }
   }
   if (!is.na(pred1$c)) {
@@ -208,11 +218,11 @@
     if (length(.w) == 1L) {
       .p2 <- str2lang(env$iniDf$name[.w])
     } else {
-      stop("cannot find exponent of power expression", call.=FALSE)
+      stop("cannot find exponent of power expression", call. = FALSE)
     }
   }
   if (pred1$variance) {
-    bquote((.(.f))^(2*.(.p2)) * .(.p1))
+    bquote((.(.f))^(2 * .(.p2)) * .(.p1))
   } else {
     bquote(((.(.f))^(.(.p2)) * .(.p1))^2)
   }
@@ -234,7 +244,7 @@
     if (length(.w) == 1L) {
       .p1 <- str2lang(env$iniDf$name[.w])
     } else {
-      stop("cannot find additive standard deviation", call.=FALSE)
+      stop("cannot find additive standard deviation", call. = FALSE)
     }
   }
   .f <- .rxGetVarianceForErrorPropOrPowF(env, pred1)
@@ -246,7 +256,7 @@
     if (length(.w) == 1L) {
       .p2 <- str2lang(env$iniDf$name[.w])
     } else {
-      stop("cannot find proportional standard deviation", call.=FALSE)
+      stop("cannot find proportional standard deviation", call. = FALSE)
     }
   }
   if (pred1$addProp == "default") {
@@ -256,18 +266,17 @@
   }
   if (pred1$variance) {
     if (.addProp == "combined2") {
-      bquote((.(.p1))+ (.(.f))^2*.(.p2))
+      bquote((.(.p1)) + (.(.f))^2 * .(.p2))
     } else {
-      bquote( ( (sqrt(.(.p1))) + (.(.f)) * (sqrt(.(.p2))) ) ^ 2)
+      bquote(((sqrt(.(.p1))) + (.(.f)) * (sqrt(.(.p2))))^2)
     }
   } else {
     if (.addProp == "combined2") {
-      bquote((.(.p1))^2+ (.(.f))^2*(.(.p2))^2)
+      bquote((.(.p1))^2 + (.(.f))^2 * (.(.p2))^2)
     } else {
-      bquote( ( (.(.p1)) + (.(.f)) * (.(.p2)) ) ^ 2)
+      bquote(((.(.p1)) + (.(.f)) * (.(.p2)))^2)
     }
   }
-
 }
 
 #' Additive + Power
@@ -286,7 +295,7 @@
     if (length(.w) == 1L) {
       .p1 <- str2lang(env$iniDf$name[.w])
     } else {
-      stop("cannot find additive standard deviation", call.=FALSE)
+      stop("cannot find additive standard deviation", call. = FALSE)
     }
   }
   .f <- .rxGetVarianceForErrorPropOrPowF(env, pred1)
@@ -298,7 +307,7 @@
     if (length(.w) == 1L) {
       .p2 <- str2lang(env$iniDf$name[.w])
     } else {
-      stop("cannot find pow standard deviation", call.=FALSE)
+      stop("cannot find pow standard deviation", call. = FALSE)
     }
   }
   if (!is.na(pred1$c)) {
@@ -309,7 +318,7 @@
     if (length(.w) == 1L) {
       .p3 <- str2lang(env$iniDf$name[.w])
     } else {
-      stop("cannot find pow exponent", call.=FALSE)
+      stop("cannot find pow exponent", call. = FALSE)
     }
   }
   if (pred1$addProp == "default") {
@@ -319,15 +328,15 @@
   }
   if (pred1$variance) {
     if (.addProp == "combined2") {
-      return(bquote( (.(.p1)) + ( (.(.f))^(.(.p3)) )^2 * .(.p2)))
+      return(bquote((.(.p1)) + ((.(.f))^(.(.p3)))^2 * .(.p2)))
     } else {
-      return(bquote( ( sqrt(.(.p1)) + (.(.f)) ^ (.(.p3))* sqrt(.(.p2)) ) ^ 2))
+      return(bquote((sqrt(.(.p1)) + (.(.f))^(.(.p3)) * sqrt(.(.p2)))^2))
     }
   } else {
     if (.addProp == "combined2") {
-      return(bquote( (.(.p1))^2 + ( (.(.f))^(.(.p3)) )^2 * (.(.p2))^2))
+      return(bquote((.(.p1))^2 + ((.(.f))^(.(.p3)))^2 * (.(.p2))^2))
     } else {
-      return(bquote( ( (.(.p1)) + (.(.f)) ^ (.(.p3))* (.(.p2)) ) ^ 2))
+      return(bquote(((.(.p1)) + (.(.f))^(.(.p3)) * (.(.p2)))^2))
     }
   }
 }
@@ -340,13 +349,199 @@
 #' @keywords internal
 #' @export
 .rxGetVarianceForErrorType <- function(env, pred1) {
-  switch(as.character(pred1$errType),
-         "add"=.rxGetVarianceForErrorAdd(env, pred1), # 1
-         "prop"=.rxGetVarianceForErrorProp(env, pred1), # 2
-         "pow"=.rxGetVarianceForErrorPow(env, pred1), # 3
-         "add + prop"=.rxGetVarianceForErrorAddProp(env, pred1),# 4
-         "add + pow"=.rxGetVarianceForErrorAddPow(env, pred1) # 5
-         )
+  switch(
+    as.character(pred1$errType),
+    "add" = .rxGetVarianceForErrorAdd(env, pred1), # 1
+    "prop" = .rxGetVarianceForErrorProp(env, pred1), # 2
+    "pow" = .rxGetVarianceForErrorPow(env, pred1), # 3
+    "add + prop" = .rxGetVarianceForErrorAddProp(env, pred1), # 4
+    "add + pow" = .rxGetVarianceForErrorAddPow(env, pred1) # 5
+  )
+}
+
+#' Build the per-observation log-likelihood call for an AR(1) endpoint
+#'
+#' @param env parsed model environment
+#' @param pred1 single predDf row
+#' @param errNum endpoint number
+#' @param type distribution type (norm/dnorm/t/cauchy)
+#' @param dvTrans quoted transformed observed value
+#' @return function(meanLang, sdLang) returning the quoted llik call
+#' @author Matthew Fidler
+#' @noRd
+.rxArBuildLlik <- function(env, pred1, errNum, type, dvTrans) {
+  if (type == "t") {
+    .iniDf <- env$iniDf
+    .cnd <- pred1$cond
+    .w <- which(.iniDf$err == "t" & .iniDf$condition == .cnd)
+    if (length(.w) == 1) {
+      .nu <- str2lang(paste(.iniDf$name[.w]))
+    } else {
+      if (is.na(pred1$d)) {
+        stop("t distribution needs a proper degrees of freedom specified", call. = FALSE)
+      }
+      .nu <- str2lang(pred1$d)
+    }
+    function(.mean, .sd) {
+      if (errNum == 1) {
+        bquote(llikT(.(dvTrans), .(.nu), .(.mean), .(.sd)))
+      } else {
+        bquote(llikXT(.(errNum - 1), .(dvTrans), .(.nu), .(.mean), .(.sd)))
+      }
+    }
+  } else if (type == "cauchy") {
+    function(.mean, .sd) {
+      if (errNum == 1) {
+        bquote(llikCauchy(.(dvTrans), .(.mean), .(.sd)))
+      } else {
+        bquote(llikXCauchy(.(errNum - 1), .(dvTrans), .(.mean), .(.sd)))
+      }
+    }
+  } else {
+    function(.mean, .sd) {
+      if (errNum == 1) {
+        bquote(llikNorm(.(dvTrans), .(.mean), .(.sd)))
+      } else {
+        bquote(llikXNorm(.(errNum - 1), .(dvTrans), .(.mean), .(.sd)))
+      }
+    }
+  }
+}
+
+#' Previous-observation AR(1) residual, time gap and weight
+#'
+#' The residual `rx_arE_`, its time `rx_arT_` and the seen-an-observation flag
+#' `rx_arS_` are updated on observation records (`rx__isObs__`, internal evid
+#' 0) and carried through dose and `evid=2` records with `lag0()` (which reads
+#' the previous record's value even after the current assignment), so the
+#' previous residual is the previous observation's, whatever `DV` another
+#' record carries.  With several endpoints only this endpoint's observations
+#' (`CMT == cmt`) count, since the estimation prune flattens the `CMT` branches.  The first
+#' observation per subject has `rx_arS_` lagged 0, so `phi = 0` (marginal), and
+#' every term stays finite (the pruned `ifelse()` would give `0*NaN`) as long
+#' as the transformed prediction is finite on non-observation records (as with
+#' the default `safeLog`).
+#'
+#' @param env parsed model environment
+#' @param pred1 single predDf row
+#' @param .var dot-free endpoint variable name
+#' @param .dvTrans quoted transformed DV
+#' @param cor quoted AR(1) correlation
+#' @return list of quoted model lines defining `rx_arEp_` and `rx_arPhi_`
+#' @author Matthew Fidler
+#' @noRd
+.rxArEstPrevLines <- function(env, pred1, .var, .dvTrans, cor) {
+  .o <- str2lang(paste0("rx_arO_", .var))
+  .s <- str2lang(paste0("rx_arS_", .var))
+  .e <- str2lang(paste0("rx_arE_", .var))
+  .t <- str2lang(paste0("rx_arT_", .var))
+  .ep <- str2lang(paste0("rx_arEp_", .var))
+  .dt <- str2lang(paste0("rx_arDt_", .var))
+  .nf <- str2lang(paste0("rx_arNf_", .var))
+  .phi <- str2lang(paste0("rx_arPhi_", .var))
+  list(
+    if (length(env$predDf$line) > 1L) {
+      bquote(.(.o) <- rx__isObs__ * (CMT == .(as.numeric(pred1$cmt))))
+    } else {
+      bquote(.(.o) <- rx__isObs__)
+    },
+    bquote(.(.e) <- .(.o) * (.(.dvTrans) - rx_pred_) + (1 - .(.o)) * lag0(.(.e), 1)),
+    bquote(.(.t) <- .(.o) * time + (1 - .(.o)) * lag0(.(.t), 1)),
+    bquote(.(.s) <- .(.o) + (1 - .(.o)) * lag0(.(.s), 1)),
+    bquote(.(.ep) <- lag0(.(.e), 1)),
+    bquote(.(.dt) <- time - lag0(.(.t), 1)),
+    bquote(.(.nf) <- lag0(.(.s), 1)),
+    bquote(.(.phi) <- .(.nf) * .(cor)^.(.dt))
+  )
+}
+
+#' Generate the estimation lines for an AR(1) (`ar()`) endpoint
+#'
+#' Emits a continuous-time AR(1) conditional log-likelihood.  The marginal
+#' residual `rx.arE.<var> = DVtrans - pred` and last time `rx.arT.<var>` are
+#' plain lhs variables; their previous-observation values come from `lag0()`
+#' (which survives the symengine estimation prune), see `.rxArEstPrevLines()`.
+#' A normal endpoint is packed as `dnorm` so the engine takes the
+#' explicit-likelihood path.
+#'
+#' @param env parsed model environment
+#' @param pred1 single predDf row
+#' @param errNum endpoint number
+#' @param type distribution type (norm/dnorm/t/cauchy)
+#' @param yj transform code for this endpoint
+#' @param cor quoted AR(1) correlation
+#' @return list of quoted model lines
+#' @author Matthew Fidler
+#' @noRd
+.rxArEstLlikLines <- function(env, pred1, errNum, type, yj, cor) {
+  .distInt <- if (type == "norm") {
+    as.integer(factor("dnorm", levels = levels(pred1$distribution)))
+  } else {
+    as.integer(pred1$distribution)
+  }
+  .dvTrans <- .rxGetPredictionDVTransform(env, pred1, yj)
+  .buildLlik <- .rxArBuildLlik(env, pred1, errNum, type, .dvTrans)
+  # use dot-free names: the symengine sensitivity/derivative path mishandles
+  # dotted variable names inside a llik() argument, which breaks analytic
+  # gradients for the estimation model
+  .var <- gsub("[^A-Za-z0-9]", "_", pred1$var)
+  .phi <- str2lang(paste0("rx_arPhi_", .var))
+  .ep <- str2lang(paste0("rx_arEp_", .var))
+  c(
+    list(
+      bquote(rx_yj_ ~ .(yj + 10 * (.distInt - 1))),
+      bquote(rx_lambda_ ~ .(.rxGetLambdaFromPred1AndIni(env, pred1))),
+      bquote(rx_low_ ~ .(.rxGetLowBoundaryPred1AndIni(env, pred1))),
+      bquote(rx_hi_ ~ .(.rxGetHiBoundaryPred1AndIni(env, pred1))),
+      bquote(rx_pred_f_ ~ .(.rxGetPredictionF(env, pred1))),
+      bquote(rx_pred_ ~ .(.rxGetPredictionFTransform(env, pred1, yj))),
+      bquote(rx_rll_ ~ sqrt(.(.rxGetVarianceForErrorType(env, pred1))))
+    ),
+    .rxArEstPrevLines(env, pred1, .var, .dvTrans, cor),
+    list(
+      bquote(rx_pred_ ~ .(.buildLlik(bquote(rx_pred_ + .(.phi) * .(.ep)), bquote(rx_rll_ * sqrt(1 - .(.phi)^2))))),
+      quote(rx_r_ ~ 0)
+    )
+  )
+}
+
+#' AR(1) whitened residual in Gaussian norm (mean/variance) form
+#'
+#' Norm sibling of `.rxArEstLlikLines()` for the FOCEi inner model: instead of an
+#' explicit `llik`, the whitened conditional likelihood is expressed as a plain
+#' `norm` endpoint whose mean is `rx_pred_ + phi*e_prev` and whose variance is
+#' `R*(1 - phi^2)`.  Keeping the endpoint on the `norm` path lets FOCEi build the
+#' exact Almquist eta-Hessian (the `llik` path only has a first-order gradient).
+#'
+#' inheritParams .rxArEstLlikLines
+#'
+#' @return list of model lines
+#' @author Matthew Fidler
+#' @keywords internal
+#' @noRd
+.rxArEstNormLines <- function(env, pred1, errNum, type, yj, cor) {
+  .dvTrans <- .rxGetPredictionDVTransform(env, pred1, yj)
+  # dot-free names (the symengine sensitivity path mishandles dotted names)
+  .var <- gsub("[^A-Za-z0-9]", "_", pred1$var)
+  .phi <- str2lang(paste0("rx_arPhi_", .var))
+  .ep <- str2lang(paste0("rx_arEp_", .var))
+  # rx_arE_ uses the structural (transformed) prediction; rx_pred_ is then
+  # reassigned to the conditional mean and rx_r_ to the conditional variance.
+  c(
+    list(
+      bquote(rx_yj_ ~ .(yj + 10 * (as.integer(pred1$distribution) - 1))),
+      bquote(rx_lambda_ ~ .(.rxGetLambdaFromPred1AndIni(env, pred1))),
+      bquote(rx_low_ ~ .(.rxGetLowBoundaryPred1AndIni(env, pred1))),
+      bquote(rx_hi_ ~ .(.rxGetHiBoundaryPred1AndIni(env, pred1))),
+      bquote(rx_pred_f_ ~ .(.rxGetPredictionF(env, pred1))),
+      bquote(rx_pred_ ~ .(.rxGetPredictionFTransform(env, pred1, yj)))
+    ),
+    .rxArEstPrevLines(env, pred1, .var, .dvTrans, cor),
+    list(
+      bquote(rx_pred_ ~ rx_pred_ + .(.phi) * .(.ep)),
+      bquote(rx_r_ ~ .(.rxGetVarianceForErrorType(env, pred1)) * (1 - .(.phi)^2))
+    )
+  )
 }
 
 #' Handle the single error for normal or t distributions
@@ -359,6 +554,10 @@
 #'
 #' @param rxPredLlik A boolean indicating if the log likelihood should
 #'   be calculated for non-normal distributions.  By default `TRUE`.
+#'
+#' @param arNorm A boolean; when `TRUE`, emit the AR(1) norm
+#'   (conditional mean/variance) form used by the focei inner model.
+#'   By default `FALSE`.
 #'
 #' @return A list of the lines added.  The lines will contain
 #'
@@ -378,14 +577,30 @@
 #' - `rx_r_` The transformed variance
 #'
 #' @author Matthew Fidler
+#' @family Developer API
 #' @export
-.handleSingleErrTypeNormOrTFoceiBase <- function(env, pred1, errNum=1L, rxPredLlik=TRUE) {
+.handleSingleErrTypeNormOrTFoceiBase <- function(env, pred1, errNum = 1L, rxPredLlik = TRUE, arNorm = FALSE) {
   type <- pred1$distribution
   if (type %in% c("norm", "t", "cauchy", "dnorm")) {
-    .ret <- vector("list", ifelse(type == "norm", 7, ifelse(rxPredLlik, 9, 7)))
     .yj <- as.double(pred1$transform) - 1
-    .ret[[1]] <- bquote(rx_yj_ ~ .(.yj + 10*(as.integer(pred1$distribution)-1)))
-    .ret[[2]] <- bquote(rx_lambda_~.(.rxGetLambdaFromPred1AndIni(env, pred1)))
+    # AR(1), norm form (focei inner model): keep the endpoint on the Gaussian
+    # norm path (mean + variance) so the exact eta-Hessian is used.
+    if (arNorm && type == "norm") {
+      .arCorN <- .rxGetArCorLang(env, pred1)
+      if (!is.null(.arCorN)) {
+        return(.rxArEstNormLines(env, pred1, errNum, type, .yj, .arCorN))
+      }
+    }
+    .arCor <- if (rxPredLlik) .rxGetArCorLang(env, pred1) else NULL
+    if (!is.null(.arCor)) {
+      # AR(1) endpoint: emit a per-observation conditional log-likelihood
+      # whitened with lag() (a symengine-safe previous-residual accessor) and
+      # routed through the explicit-likelihood path
+      return(.rxArEstLlikLines(env, pred1, errNum, type, .yj, .arCor))
+    }
+    .ret <- vector("list", ifelse(type == "norm", 7, ifelse(rxPredLlik, 9, 7)))
+    .ret[[1]] <- bquote(rx_yj_ ~ .(.yj + 10 * (as.integer(pred1$distribution) - 1)))
+    .ret[[2]] <- bquote(rx_lambda_ ~ .(.rxGetLambdaFromPred1AndIni(env, pred1)))
     .ret[[3]] <- bquote(rx_low_ ~ .(.rxGetLowBoundaryPred1AndIni(env, pred1)))
     .ret[[4]] <- bquote(rx_hi_ ~ .(.rxGetHiBoundaryPred1AndIni(env, pred1)))
     .ret[[5]] <- bquote(rx_pred_f_ ~ .(.rxGetPredictionF(env, pred1)))
@@ -403,36 +618,42 @@
             .nu <- str2lang(paste(.iniDf$name[.w]))
           } else {
             if (is.na(pred1$d)) {
-              stop("t distribution needs a proper degrees of freedom specified",
-                   call. = FALSE)
+              stop("t distribution needs a proper degrees of freedom specified", call. = FALSE)
             }
             .nu <- str2lang(pred1$d)
           }
           if (errNum == 1) {
-            .ret[[8]] <- bquote(rx_pred_ ~ llikT(.(.rxGetPredictionDVTransform(env, pred1, .yj)),
-                                                 .(.nu), rx_pred_, rx_rll_))
+            .ret[[8]] <- bquote(
+              rx_pred_ ~ llikT(.(.rxGetPredictionDVTransform(env, pred1, .yj)), .(.nu), rx_pred_, rx_rll_)
+            )
           } else {
-            .ret[[8]] <- bquote(rx_pred_ ~ llikXT(.(errNum - 1),
-                                                  .(.rxGetPredictionDVTransform(env, pred1, .yj)),
-                                                 .(.nu), rx_pred_, rx_rll_))
+            .ret[[8]] <- bquote(
+              rx_pred_ ~ llikXT(
+                .(errNum - 1),
+                .(.rxGetPredictionDVTransform(env, pred1, .yj)),
+                .(.nu),
+                rx_pred_,
+                rx_rll_
+              )
+            )
           }
         } else if (type == "cauchy") {
           if (errNum == 1) {
-            .ret[[8]] <- bquote(rx_pred_ ~ llikCauchy(.(.rxGetPredictionDVTransform(env, pred1, .yj)),
-                                                      rx_pred_, rx_rll_))
+            .ret[[8]] <- bquote(
+              rx_pred_ ~ llikCauchy(.(.rxGetPredictionDVTransform(env, pred1, .yj)), rx_pred_, rx_rll_)
+            )
           } else {
-            .ret[[8]] <- bquote(rx_pred_ ~ llikXCauchy(.(errNum - 1),
-                                                       .(.rxGetPredictionDVTransform(env, pred1, .yj)),
-                                                       rx_pred_, rx_rll_))
+            .ret[[8]] <- bquote(
+              rx_pred_ ~ llikXCauchy(.(errNum - 1), .(.rxGetPredictionDVTransform(env, pred1, .yj)), rx_pred_, rx_rll_)
+            )
           }
         } else if (type == "dnorm") {
           if (errNum == 1) {
-            .ret[[8]] <- bquote(rx_pred_ ~ llikNorm(.(.rxGetPredictionDVTransform(env, pred1, .yj)),
-                                                    rx_pred_, rx_rll_))
+            .ret[[8]] <- bquote(rx_pred_ ~ llikNorm(.(.rxGetPredictionDVTransform(env, pred1, .yj)), rx_pred_, rx_rll_))
           } else {
-            .ret[[8]] <- bquote(rx_pred_ ~ llikXNorm(.(errNum - 1),
-                                                     .(.rxGetPredictionDVTransform(env, pred1, .yj)),
-                                                    rx_pred_, rx_rll_))
+            .ret[[8]] <- bquote(
+              rx_pred_ ~ llikXNorm(.(errNum - 1), .(.rxGetPredictionDVTransform(env, pred1, .yj)), rx_pred_, rx_rll_)
+            )
           }
         }
         .ret[[9]] <- quote(rx_r_ ~ 0)
@@ -457,66 +678,82 @@
 }
 
 .foceEstLLFun <- list(
-  "t"="llikT",
-  "pois"="llikPois",
-  "binom"="llikBinom",
-  "nbinom"="llikNbinom",
-  "nbinomMu"="llikNbinomMu",
-  "beta"="llikBeta",
-  "chisq"="llikChisq",
-  "dexp"="llikExp",
-  "f"="llikF",
-  "geom"="llikGeom",
-#  "hyper"="rhyper",
-  "unif"="llikUnif",
-  "weibull"="llikWeibull",
-  "cauchy"="llikCauchy",
-  "dgamma"="llikGamma",
-  "ordinal"="rordinal"
+  "t" = "llikT",
+  "pois" = "llikPois",
+  "binom" = "llikBinom",
+  "nbinom" = "llikNbinom",
+  "nbinomMu" = "llikNbinomMu",
+  "beta" = "llikBeta",
+  "chisq" = "llikChisq",
+  "dexp" = "llikExp",
+  "f" = "llikF",
+  "geom" = "llikGeom",
+  #  "hyper"="rhyper",
+  "unif" = "llikUnif",
+  "weibull" = "llikWeibull",
+  "cauchy" = "llikCauchy",
+  "dgamma" = "llikGamma",
+  "ordinal" = "rordinal"
 )
 
 .getOrdinalDistPred <- function(env, pred1) {
   # final should be log((DV==1)*prob1 + (DV==2)*prob2 + ... + (DV==n)*(1 - prob1 - prob2 - ...))
   .c <- env$lstExpr[[pred1$line[1]]][[3]]
-  .ce <- try(eval(.c), silent=TRUE)
-  if (inherits(.ce, "try-error")) {
-  } else if (inherits(.ce, "numeric") &&
-               !is.null(names(.ce))) {
+  .ce <- try(eval(.c), silent = TRUE)
+  if (inherits(.ce, "try-error")) {} else if (
+    inherits(.ce, "numeric") &&
+      !is.null(names(.ce))
+  ) {
     .n <- names(.ce)
     .ln <- length(.n)
     if (.n[.ln] != "") {
-      stop("last element in ordinal simulation of c(p1=0, p2=0.5, ...) must be a number, not a named number",
-           call.=FALSE)
+      stop(
+        "last element in ordinal simulation of c(p1=0, p2=0.5, ...) must be a number, not a named number",
+        call. = FALSE
+      )
     }
     .n <- .n[.n != ""]
     if (length(.n) != .ln - 1) {
       stop("names for ordinal simulation incorrect")
     }
-    .first <- vapply(seq_along(.n), function(i) {
-      paste0("(DV==",.ce[i],")*(", .n[i], ")")
-    }, character(1), USE.NAMES=FALSE)
-    .last <- paste0("(DV==", .ce[length(.n) + 1], ")*(1.0 -",paste(.n, collapse="-"),")")
-    .ret <- paste0("log(", paste(c(.first, .last), collapse="+"),")")
+    .first <- vapply(
+      seq_along(.n),
+      function(i) {
+        paste0("(DV==", .ce[i], ")*(", .n[i], ")")
+      },
+      character(1),
+      USE.NAMES = FALSE
+    )
+    .last <- paste0("(DV==", .ce[length(.n) + 1], ")*(1.0 -", paste(.n, collapse = "-"), ")")
+    .ret <- paste0("log(", paste(c(.first, .last), collapse = "+"), ")")
     return(str2lang(.ret))
   }
   if (length(.c) >= 2) {
-    .first <- vapply(seq(2, length(.c)), function(i) {
-      paste0("(DV==",(i-1),")*(",
-             deparse1(.c[[i]]),")")
-
-    }, character(1), USE.NAMES=FALSE)
-    .last <- vapply(seq(2, length(.c)), function(i) {
-      paste0("(", deparse1(.c[[i]]), ")")
-    }, character(1), USE.NAMES=FALSE)
-    .last <- paste0("(DV==", length(.c), ")*(1.0 -",paste(.last, collapse="-"),")")
-    .ret <- paste0("log(", paste(c(.first, .last), collapse="+"),")")
+    .first <- vapply(
+      seq(2, length(.c)),
+      function(i) {
+        paste0("(DV==", (i - 1), ")*(", deparse1(.c[[i]]), ")")
+      },
+      character(1),
+      USE.NAMES = FALSE
+    )
+    .last <- vapply(
+      seq(2, length(.c)),
+      function(i) {
+        paste0("(", deparse1(.c[[i]]), ")")
+      },
+      character(1),
+      USE.NAMES = FALSE
+    )
+    .last <- paste0("(DV==", length(.c), ")*(1.0 -", paste(.last, collapse = "-"), ")")
+    .ret <- paste0("log(", paste(c(.first, .last), collapse = "+"), ")")
     return(str2lang(.ret))
   } else {
     stop("not enough categories to estimate")
   }
 }
 
-.getQuotedDistributionAndLlikArgs <- function(env, pred1, errNum=1L) {
+.getQuotedDistributionAndLlikArgs <- function(env, pred1, errNum = 1L) {
   .dist <- as.character(pred1$distribution)
   if (.dist == "LL") {
     return(env$lstExpr[[pred1$line]][[3]])
@@ -526,20 +763,24 @@
   .nargs <- max(.errDist[[.dist]])
   .cnd <- pred1$cond
   .argName <- .namedArgumentsToPredDf[[.dist]]
-  .args <- vapply(seq(1:.nargs), function(.i) {
-    .curDist <- .argName[.i]
-    if (!is.na(pred1[[.curDist]])) {
-      return(pred1[[.curDist]])
-    } else {
-      .curDist <- paste0(.dist, ifelse(.i == 1, "", .i))
-      .w <- which(env$iniDf$err == .curDist & env$iniDf$condition == .cnd)
-      if (length(.w) == 1) {
-        return(env$iniDf$name[.w])
+  .args <- vapply(
+    seq(1:.nargs),
+    function(.i) {
+      .curDist <- .argName[.i]
+      if (!is.na(pred1[[.curDist]])) {
+        return(pred1[[.curDist]])
       } else {
-        return("")
+        .curDist <- paste0(.dist, ifelse(.i == 1, "", .i))
+        .w <- which(env$iniDf$err == .curDist & env$iniDf$condition == .cnd)
+        if (length(.w) == 1) {
+          return(env$iniDf$name[.w])
+        } else {
+          return("")
+        }
       }
-    }
-  }, character(1))
+    },
+    character(1)
+  )
   .d1 <- .foceEstLLFun[[.dist]]
   if (errNum != 1) {
     .d1 <- sub("^llik", "llikX", .d1)

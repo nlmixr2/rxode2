@@ -19,9 +19,14 @@ rxTest({
         p1 <- mod |>
           rxParams(
             params = c(
-              KA = 2.94E-01, TCl = 1.86E+01, V2 = 4.02E+01, # central
-              Q = 1.05E+01, V3 = 2.97E+02, # peripheral
-              Kin = 1, Kout = 1, EC50 = 200
+              KA = 2.94E-01,
+              TCl = 1.86E+01,
+              V2 = 4.02E+01, # central
+              Q = 1.05E+01,
+              V3 = 2.97E+02, # peripheral
+              Kin = 1,
+              Kout = 1,
+              EC50 = 200
             ),
             inits = c(eff = 1),
             omega = lotri(eta.Cl ~ 0.4^2)
@@ -54,9 +59,14 @@ rxTest({
           et(seq(0, 48, length.out = 100)) |>
           rxParams(
             params = c(
-              KA = 2.94E-01, TCl = 1.86E+01, V2 = 4.02E+01, # central
-              Q = 1.05E+01, V3 = 2.97E+02, # peripheral
-              Kin = 1, Kout = 1, EC50 = 200
+              KA = 2.94E-01,
+              TCl = 1.86E+01,
+              V2 = 4.02E+01, # central
+              Q = 1.05E+01,
+              V3 = 2.97E+02, # peripheral
+              Kin = 1,
+              Kout = 1,
+              EC50 = 200
             ),
             inits = c(eff = 1),
             omega = lotri(eta.Cl ~ 0.4^2)
@@ -76,12 +86,16 @@ rxTest({
         }
       }
     )
-    test_that(sprintf(
-      "mod > et > rxParams > %s == mod > rxParams > et > %s",
-      type, type
-    ), {
-      expect_equal(as.data.frame(p1), as.data.frame(p2))
-    })
+    test_that(
+      sprintf(
+        "mod > et > rxParams > %s == mod > rxParams > et > %s",
+        type,
+        type
+      ),
+      {
+        expect_equal(as.data.frame(p1), as.data.frame(p2))
+      }
+    )
   }
 
   fun("rxSolve")
@@ -92,9 +106,14 @@ rxTest({
   p1 <- mod |>
     rxParams(
       params = c(
-        KA = 2.94E-01, TCl = 1.86E+01, V2 = 4.02E+01, # central
-        Q = 1.05E+01, V3 = 2.97E+02, # peripheral
-        Kin = 1, Kout = 1, EC50 = 200
+        KA = 2.94E-01,
+        TCl = 1.86E+01,
+        V2 = 4.02E+01, # central
+        Q = 1.05E+01,
+        V3 = 2.97E+02, # peripheral
+        Kin = 1,
+        Kout = 1,
+        EC50 = 200
       ),
       inits = c(eff = 1),
       omega = lotri(eta.Cl ~ 0.4^2)
@@ -120,6 +139,65 @@ rxTest({
 
   test_that("Can update event table in pipline solve", {
     expect_true(is(ps1, "rxSolve"))
+  })
+
+  test_that("rxParams() pipeline starts from any model form rxSolve() takes (#1505)", {
+    pk <- function() {
+      model({
+        d/dt(depot) <- -ka * depot
+        d/dt(central) <- ka * depot - cl / v * central
+        cp <- central / v
+      })
+    }
+    p <- c(ka = 1.2, cl = 3.5, v = 25)
+    .ref <- rxSolve(pk, p, et(amt = 100) |> et(0:24))$cp
+    .pipe <- function(m) {
+      m |>
+        rxParams(params = p) |>
+        et(amt = 100) |>
+        et(0:24) |>
+        rxSolve()
+    }
+    expect_no_warning(.cp <- .pipe(pk)$cp)
+    expect_equal(.cp, .ref)
+    expect_equal(.pipe(pk())$cp, .ref)
+    expect_equal(.pipe(rxode2(pk))$cp, .ref)
+    expect_no_warning(.cp <- .pipe(rxode2(pk)$simulationModel)$cp)
+    expect_equal(.cp, .ref)
+    # without pipeline arguments rxParams() still lists the parameters
+    expect_equal(rxParams(pk), c("ka", "cl", "v"))
+    expect_equal(rxParams(pk()), c("ka", "cl", "v"))
+  })
+
+  test_that("rxParams() pipeline from a ui keeps its ini() and pipeline options (#1505)", {
+    pk <- function() {
+      ini({
+        tka <- log(1.2)
+        tcl <- log(3.5)
+        tv <- log(25)
+        eta.cl ~ 0.1
+      })
+      model({
+        ka <- exp(tka)
+        cl <- exp(tcl + eta.cl)
+        v <- exp(tv)
+        d/dt(depot) <- -ka * depot
+        d/dt(central) <- ka * depot - cl / v * central
+        cp <- central / v
+      })
+    }
+    .ev <- et(amt = 100) |> et(0:24)
+    .ref <- rxWithSeed(1, rxSolve(pk, .ev, nSub = 4))
+    .pipe <- rxWithSeed(
+      1,
+      pk |>
+        rxParams(nSub = 4) |>
+        et(amt = 100) |>
+        et(0:24) |>
+        rxSolve()
+    )
+    expect_equal(.pipe$cp, .ref$cp)
+    expect_equal(length(unique(.pipe$sim.id)), 4L)
   })
 })
 

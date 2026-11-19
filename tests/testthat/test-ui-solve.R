@@ -1,6 +1,5 @@
 rxTest({
   test_that("Test ui solve", {
-
     # Step 1 - Create a model specification
     f <- function() {
       ini({
@@ -48,7 +47,6 @@ rxTest({
     # Step 3 - set starting parameter estimates and initial
     # values of the state
 
-
     # Step 4 - Fit the model to the data
     expect_error(solve(u, qd), NA)
 
@@ -59,6 +57,21 @@ rxTest({
     u2 <- u$simulationIniModel
 
     expect_error(solve(u2, qd), NA)
+  })
 
+  test_that("grouped rxEt ui data source stays compressed", {
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 1:5000)
+
+    uiData <- .rxSolveUiEventData(ev)
+    full <- as.data.frame(ev)
+    grp <- .etGetGroups(.rxEtEnv(ev))
+
+    expect_true(is.data.frame(uiData))
+    expect_equal(nrow(uiData), nrow(grp[[1]]$data))
+    expect_lt(nrow(uiData), nrow(full))
+    expect_equal(unique(uiData$id), 1L)
   })
 })

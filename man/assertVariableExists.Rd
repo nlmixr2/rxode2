@@ -28,15 +28,41 @@ Assert a variable exists in the model
 \item \code{testVariableExists()}: Test if variable exists
 
 }}
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    tcl <- log(3)
+    tv <- log(30)
+    add.sd <- 0.7
+  })
+  model({
+    cl <- exp(tcl)
+    v <- exp(tv)
+    d/dt(central) <- -cl / v * central
+    cp <- central / v
+    cp ~ add(add.sd)
+  })
+}
+assertVariableExists(mod, "cp")
+testVariableExists(mod, "kel")
+}
+}
 \seealso{
-Other Assertions: 
-\code{\link{assertCompartmentExists}()},
-\code{\link{assertCompartmentName}()},
-\code{\link{assertCompartmentNew}()},
-\code{\link{assertRxUi}()},
-\code{\link{assertVariableNew}()},
-\code{\link{testIniDf}()},
-\code{\link{testRxUnbounded}()}
+Other Assertions:
+\code{\link[=assertCompartmentExists]{assertCompartmentExists()}},
+\code{\link[=assertCompartmentName]{assertCompartmentName()}},
+\code{\link[=assertCompartmentNew]{assertCompartmentNew()}},
+\code{\link[=assertRxUi]{assertRxUi()}},
+\code{\link[=assertVariableNew]{assertVariableNew()}},
+\code{\link[=rxHasAr]{rxHasAr()}},
+\code{\link[=rxPriorBuildSpec]{rxPriorBuildSpec()}},
+\code{\link[=rxPriorLogDensity]{rxPriorLogDensity()}},
+\code{\link[=rxPriorOmegaToCholOmegaInvGrad]{rxPriorOmegaToCholOmegaInvGrad()}},
+\code{\link[=rxUiPriors]{rxUiPriors()}},
+\code{\link[=testIniDf]{testIniDf()}},
+\code{\link[=testRxLinCmt]{testRxLinCmt()}},
+\code{\link[=testRxUnbounded]{testRxUnbounded()}}
 }
 \author{
 Matthew L. Fidler

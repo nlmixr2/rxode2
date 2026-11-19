@@ -145,7 +145,6 @@ rxTest({
     d / dt(blood) ~ a * intestine - b * blood
   })
 
-
   test_that("Ignore Compartment #2", {
     expect_equal(rxModelVars(mod)$state.ignore, c(0L, 1L))
     expect_equal(rxModelVars(mod)$state, c("intestine", "blood"))
@@ -160,6 +159,7 @@ rxTest({
   })
 
   test_that("ignore state corruption issue #857", {
+    # fmt: skip
     d_clean <-
       structure(list(
         amt = c(0, 150, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
@@ -176,7 +176,7 @@ rxTest({
         FORMTAB = c(1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L)
       ), row.names = c(NA, -18L), class = c("tbl_df", "tbl", "data.frame"))
 
-    fit_clean <- function () {
+    fit_clean <- function() {
       ini({
         e_f_fed <- fix(0)
         e_f_form <- fix(0)
@@ -214,5 +214,4 @@ rxTest({
     }
     expect_error(rxSolve(fit_clean, d_clean), NA)
   })
-
 })

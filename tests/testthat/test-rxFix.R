@@ -1,6 +1,5 @@
 rxTest({
   test_that("rxFix", {
-
     One.comp.transit.allo <- function() {
       ini({
         # Where initial conditions/variables are specified
@@ -33,15 +32,17 @@ rxTest({
 
     tmp <- rxFixPop(One.comp.transit.allo)
 
-    expect_equal(tmp$theta,
-                 c(lktr = 0.139761942375159, lcl = -1.89711998488588, lv = 1.94591014905531,
-                   prop.err = 0.15, add.err = 0.6))
+    expect_equal(
+      tmp$theta,
+      c(lktr = 0.139761942375159, lcl = -1.89711998488588, lv = 1.94591014905531, prop.err = 0.15, add.err = 0.6)
+    )
 
     tmp2 <- rxFixPop(tmp)
 
-    expect_equal(tmp2$theta,
-                 c(lktr = 0.139761942375159, lcl = -1.89711998488588, lv = 1.94591014905531,
-                   prop.err = 0.15, add.err = 0.6))
+    expect_equal(
+      tmp2$theta,
+      c(lktr = 0.139761942375159, lcl = -1.89711998488588, lv = 1.94591014905531, prop.err = 0.15, add.err = 0.6)
+    )
 
     tmp3 <- rxFixPop(tmp2, returnNull = TRUE)
 
@@ -153,17 +154,142 @@ rxTest({
 
     tmp <- rxFixPop(nlmixr_threecmt_mm_no_add_wtcl_pdtg_kout_delay2)
 
-    expect_equal(tmp$theta,
-                 c(tf_sc = 6.90675477864855, tf_infilt = 6.90675477864855, tka_sc = 6.90675477864855,
-                   tka_infilt = 6.90675477864855, tcl_low = 6.90675477864855, tcl_high = 6.90675477864855,
-                   tcl_c50 = 8.00636756765025, tv = 6.90675477864855, tq1 = 6.90675477864855,
-                   tvp1 = 2.30258509299405, tq2 = 6.90675477864855, tvp2 = 2.99573227355399,
-                   prop_err = 999, tg_bl = 6.90675477864855, tg_kel = 6.90675477864855,
-                   tg_ec50 = 8.51719319141624, tg_emax_kel = 0.693147180559945,
-                   ktr_tg = 6.90675477864855, prop_err_tg = 999))
-
-
+    expect_equal(
+      tmp$theta,
+      c(
+        tf_sc = 6.90675477864855,
+        tf_infilt = 6.90675477864855,
+        tka_sc = 6.90675477864855,
+        tka_infilt = 6.90675477864855,
+        tcl_low = 6.90675477864855,
+        tcl_high = 6.90675477864855,
+        tcl_c50 = 8.00636756765025,
+        tv = 6.90675477864855,
+        tq1 = 6.90675477864855,
+        tvp1 = 2.30258509299405,
+        tq2 = 6.90675477864855,
+        tvp2 = 2.99573227355399,
+        prop_err = 999,
+        tg_bl = 6.90675477864855,
+        tg_kel = 6.90675477864855,
+        tg_ec50 = 8.51719319141624,
+        tg_emax_kel = 0.693147180559945,
+        ktr_tg = 6.90675477864855,
+        prop_err_tg = 999
+      )
+    )
   })
 
+  test_that("rxFixPop excludes a fixed mixture proportion (mix() needs it named)", {
+    # a fixed mixture proportion must NOT be literally substituted -- mix() requires
+    # the proportion to be a named model-block variable, so re-parsing the
+    # substituted model would throw from mix() (the error leaked to the console when
+    # a downstream caller wrapped rxFixPop in try()).
+    .mixMod <- function() {
+      ini({
+        tcl1 <- log(2); tcl2 <- log(0.5); tv <- log(32)
+        eta.v ~ 0.1
+        p1 <- fix(0.5)
+        add.sd <- 0.7
+      })
+      model({
+        v <- exp(tv + eta.v)
+        cl <- mix(exp(tcl1), p1, exp(tcl2))
+        ke <- cl / v
+        d/dt(depot) <- -depot
+        d/dt(center) <- depot - ke * center
+        cp <- center / v
+        cp ~ add(add.sd)
+      })
+    }
+    .ui <- rxode2(.mixMod)
+    # the only fixed theta is the mixture proportion, so there is nothing to
+    # substitute -> NULL, and crucially no error from re-parsing mix().
+    expect_error(.res <- rxFixPop(.ui, returnNull = TRUE), NA)
+    expect_null(.res)
+    # p1 is still a named parameter in the model
+    expect_true("p1" %in% .ui$iniDf$name)
+  })
 
+  test_that("rxFixRes skips auto-generated literal residual rows (#1450)", {
+    .ord <- function() {
+      ini({
+        th <- 0
+        eta ~ 0.1
+      })
+      model({
+        p0 <- expit(th + eta)
+        Y ~ c(p0 = 0, 1)
+      })
+    }
+    expect_error(.res <- rxFixRes(.ord, returnNull = TRUE), NA)
+    expect_null(.res)
+    expect_error(.res <- rxFixRes(.ord), NA)
+    expect_equal(
+      .res$iniDf$name,
+      c("th", "eta", "rx.Y.ordinal", "rx.Y.ordinal2")
+    )
+
+    .mixed <- function() {
+      ini({
+        th <- 0
+        eta ~ 0.1
+        a <- fix(0.3)
+      })
+      model({
+        cp <- exp(th + eta)
+        cp ~ add(a) + prop(0.2)
+      })
+    }
+    expect_error(.res <- rxFixRes(.mixed), NA)
+    expect_false("a" %in% .res$iniDf$name)
+    expect_true("rx.cp.prop" %in% .res$iniDf$name)
+    expect_equal(.res$lstExpr[[2]], quote(a <- 0.3))
+    expect_equal(.res$lstExpr[[3]], quote(cp ~ add(a) + prop(0.2)))
+
+    .multi <- function() {
+      ini({
+        th <- 0
+        eta ~ 0.1
+        a <- fix(0.3)
+        b <- fix(0.4)
+      })
+      model({
+        cp <- exp(th + eta)
+        eff <- cp
+        cp ~ add(a)
+        eff ~ add(0.1) + prop(b)
+      })
+    }
+    expect_error(.res <- rxFixRes(.multi), NA)
+    expect_equal(.res$iniDf$name, c("th", "rx.eff.add", "eta"))
+    expect_equal(
+      .res$lstExpr,
+      list(
+        quote(cp <- exp(th + eta)),
+        quote(eff <- cp),
+        quote(a <- 0.3),
+        quote(cp ~ add(a)),
+        quote(b <- 0.4),
+        quote(eff ~ add(0.1) + prop(b))
+      )
+    )
+
+    # a fixed residual named before its endpoint is assigned before that use
+    .early <- function() {
+      ini({
+        th <- 0
+        eta ~ 0.1
+        a <- fix(0.3)
+      })
+      model({
+        eff <- exp(th + eta) + a
+        cp <- eff
+        cp ~ add(a)
+      })
+    }
+    expect_error(.res <- rxFixRes(.early), NA)
+    expect_equal(.res$lstExpr[[1]], quote(a <- 0.3))
+    expect_equal(.res$lstExpr[[2]], quote(eff <- exp(th + eta) + a))
+  })
 })

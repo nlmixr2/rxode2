@@ -17,29 +17,57 @@
   if (is.name(line[[2]])) {
     .var.name <- as.character(line[[2]])
   } else {
-    stop("to rename a variable you need to use 'newName=oldName' syntax",
-         call.=FALSE)
+    stop("to rename a variable you need to use 'newName=oldName' syntax", call. = FALSE)
   }
   if (!identical(line[[1]], quote(`<-`))) {
-    stop("to rename a variable you need to use '", .var.name, "=oldName' syntax",
-         call.=FALSE)
+    stop("to rename a variable you need to use '", .var.name, "=oldName' syntax", call. = FALSE)
   }
   if (!is.name(line[[3]])) {
-    stop("to rename a variable you need to use '", .var.name, "=oldName' syntax, where oldName is a variable",
-         call.=FALSE)
+    stop(
+      "to rename a variable you need to use '",
+      .var.name,
+      "=oldName' syntax, where oldName is a variable",
+      call. = FALSE
+    )
   } else {
     .var.name2 <- as.character(line[[3]])
   }
+  # A reserved name (`t`, `time`, `M_PI`, `E`, ...) reads back as that
+  # constant, so the renamed parameter would sit in the ini block doing
+  # nothing.
+  if (.rxIsReservedPipeName(.var.name)) {
+    stop(
+      "'",
+      .var.name,
+      "' is a reserved rxode2 variable; cannot rename '",
+      .var.name2,
+      "' to '",
+      .var.name,
+      "'",
+      call. = FALSE
+    )
+  }
   if (.var.name %in% vars) {
-    stop("the new variable '", .var.name,
-         "' is already present in the model; cannot replace '",
-         .var.name2, "' with '",
-         .var.name, "'",
-         call.=FALSE)
+    stop(
+      "the new variable '",
+      .var.name,
+      "' is already present in the model; cannot replace '",
+      .var.name2,
+      "' with '",
+      .var.name,
+      "'",
+      call. = FALSE
+    )
   }
   if (!(.var.name2 %in% vars)) {
-    stop("the old variable '", .var.name2, "' is not present in the model and cannot be renamed to '", .var.name, "'",
-         call.=FALSE)
+    stop(
+      "the old variable '",
+      .var.name2,
+      "' is not present in the model and cannot be renamed to '",
+      .var.name,
+      "'",
+      call. = FALSE
+    )
   }
   list(line[[2]], line[[3]], .var.name, .var.name2)
 }
@@ -51,64 +79,72 @@
 #' @return expression renamed
 #' @noRd
 #' @author Matthew L. Fidler
-.rxRenameRecursiveAll <- function(item, lst, isLhs=FALSE) {
+.rxRenameRecursiveAll <- function(item, lst, isLhs = FALSE) {
   if (is.atomic(item)) {
     return(item)
   }
   if (is.name(item)) {
-    .env <- new.env(parent=emptyenv())
+    .env <- new.env(parent = emptyenv())
     .env$new <- NULL
     lapply(seq_along(lst), function(i) {
-      if (!is.null(.env$new)) return(NULL)
+      if (!is.null(.env$new)) {
+        return(NULL)
+      }
       .curLst <- lst[[i]]
       .old <- .curLst[[2]]
       if (identical(item, .old)) {
         .env$new <- .curLst[[1]]
       }
-      return(NULL)
+      NULL
     })
     if (!is.null(.env$new)) {
       return(.env$new)
     }
-    return(item)
+    item
   } else if (is.call(item)) {
     if (isLhs && identical(item[[1]], quote(`/`))) {
       # handle d/dt() differently so that d doesn't get renamed
       .num <- item[[2]]
       .denom <- item[[3]]
-      if (is.call(.num)) .num <- as.call(lapply(.num, .rxRenameRecursiveAll, lst=lst, isLhs=TRUE))
-      if (is.call(.denom)) .denom <- as.call(lapply(.denom, .rxRenameRecursiveAll, lst=lst, isLhs=TRUE))
+      if (is.call(.num)) {
+        .num <- as.call(lapply(.num, .rxRenameRecursiveAll, lst = lst, isLhs = TRUE))
+      }
+      if (is.call(.denom)) {
+        .denom <- as.call(lapply(.denom, .rxRenameRecursiveAll, lst = lst, isLhs = TRUE))
+      }
       return(as.call(c(list(item[[1]]), .num, .denom)))
-    } else if (isLhs && length(item) == 2L &&
-                 is.numeric(item[[2]])) {
-      .env <- new.env(parent=emptyenv())
+    } else if (isLhs && length(item) == 2L && is.numeric(item[[2]])) {
+      .env <- new.env(parent = emptyenv())
       .env$new <- NULL
-      lapply(seq_along(lst),
-             function(i) {
-               if (!is.null(.env$new)) return(NULL)
-               .curLst <- lst[[i]]
-               .old <- .curLst[[2]]
-               if (identical(item[[1]], .old)) {
-                 .env$new <- .curLst[[1]]
-               }
-               return(NULL)
-             })
+      lapply(seq_along(lst), function(i) {
+        if (!is.null(.env$new)) {
+          return(NULL)
+        }
+        .curLst <- lst[[i]]
+        .old <- .curLst[[2]]
+        if (identical(item[[1]], .old)) {
+          .env$new <- .curLst[[1]]
+        }
+        NULL
+      })
       if (!is.null(.env$new)) {
         # handle x(0) = items
-        return(as.call(c(.env$new, lapply(item[-1], .rxRenameRecursiveAll, lst=lst, isLhs=isLhs))))
+        return(as.call(c(.env$new, lapply(item[-1], .rxRenameRecursiveAll, lst = lst, isLhs = isLhs))))
       }
     }
-    if (identical(item[[1]], quote(`=`)) ||
-          identical(item[[1]], quote(`<-`)) ||
-          identical(item[[1]], quote(`~`))) {
-      .elhs <- lapply(item[c(-1, -3)], .rxRenameRecursiveAll, lst=lst, isLhs=TRUE)
-      .erhs <- lapply(item[c(-1, -2)], .rxRenameRecursiveAll, lst=lst, isLhs=FALSE)
-      return(as.call(c(item[[1]], .elhs, .erhs)))
+    if (
+      identical(item[[1]], quote(`=`)) ||
+        identical(item[[1]], quote(`<-`)) ||
+        identical(item[[1]], quote(`~`))
+    ) {
+      .elhs <- lapply(item[c(-1, -3)], .rxRenameRecursiveAll, lst = lst, isLhs = TRUE)
+      .erhs <- lapply(item[c(-1, -2)], .rxRenameRecursiveAll, lst = lst, isLhs = FALSE)
+      as.call(c(item[[1]], .elhs, .erhs))
     } else {
-      return(as.call(c(list(item[[1]]), lapply(item[-1], .rxRenameRecursiveAll, lst=lst, isLhs=isLhs))))
+      as.call(c(list(item[[1]]), lapply(item[-1], .rxRenameRecursiveAll, lst = lst, isLhs = isLhs)))
     }
   } else {
-    stop("unknown expression", call.=FALSE)
+    stop("unknown expression", call. = FALSE)
   }
 }
 #' Rename all items in matrix dimnames
@@ -120,22 +156,30 @@
 #' @author Matthew L. Fidler
 .rxRenameAllMat <- function(mat, lst) {
   .d <- dimnames(mat)[[1]]
-  .d <- vapply(seq_along(.d), function(i) {
-    .env <- new.env(parent=emptyenv())
-    .env$new <- NULL
-    .cur <- .d[i]
-    lapply(seq_along(lst),
-           function(j) {
-             if (!is.null(.env$new)) return(NULL)
-             .curLst <- lst[[j]]
-             .old <- .curLst[[4]]
-             if (.cur == .old) {
-               .env$new <- .curLst[[3]]
-             }
-           })
-    if (!is.null(.env$new)) return(.env$new)
-    return(.cur)
-  }, character(1), USE.NAMES=FALSE)
+  .d <- vapply(
+    seq_along(.d),
+    function(i) {
+      .env <- new.env(parent = emptyenv())
+      .env$new <- NULL
+      .cur <- .d[i]
+      lapply(seq_along(lst), function(j) {
+        if (!is.null(.env$new)) {
+          return(NULL)
+        }
+        .curLst <- lst[[j]]
+        .old <- .curLst[[4]]
+        if (.cur == .old) {
+          .env$new <- .curLst[[3]]
+        }
+      })
+      if (!is.null(.env$new)) {
+        return(.env$new)
+      }
+      .cur
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
   dimnames(mat) <- list(.d, .d)
   mat
 }
@@ -150,43 +194,87 @@
 .rxRenameAll <- function(rxui, lst) {
   rxui <- rxUiDecompress(rxui)
   .iniDf <- rxui$iniDf
-  .iniDf$name <- vapply(seq_along(.iniDf$name),
-                        function(i) {
-                          .env <- new.env(parent=emptyenv())
-                          .env$new <- NULL
-                          .cur <- .iniDf$name[i]
-                          lapply(seq_along(lst),
-                                 function(j) {
-                                   if (!is.null(.env$new)) return(NULL)
-                                   .curLst <- lst[[j]]
-                                   .old <- .curLst[[4]]
-                                   if (.cur == .old) {
-                                     .env$new <- .curLst[[3]]
-                                   }
-                                 })
-                          if (!is.null(.env$new)) return(.env$new)
-                          return(.cur)
-                        }, character(1), USE.NAMES=FALSE)
+  .iniDf$name <- vapply(
+    seq_along(.iniDf$name),
+    function(i) {
+      .env <- new.env(parent = emptyenv())
+      .env$new <- NULL
+      .cur <- .iniDf$name[i]
+      lapply(seq_along(lst), function(j) {
+        if (!is.null(.env$new)) {
+          return(NULL)
+        }
+        .curLst <- lst[[j]]
+        .old <- .curLst[[4]]
+        if (.cur == .old) {
+          .env$new <- .curLst[[3]]
+        }
+      })
+      if (!is.null(.env$new)) {
+        return(.env$new)
+      }
+      .cur
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
+  ## A repeated (`same()`) block records the block it repeats BY NAME in
+  ## the `condition` column -- `id:same:<master>` on a diagonal row,
+  ## `id:same:<a>:<b>` on a covariance row.  Names are used precisely so
+  ## the marker survives RENUMBERING, but that means a RENAME has to be
+  ## followed here: left alone the marker points at a name that no longer
+  ## exists and `$omega` refuses to assemble with "refers to '<old>',
+  ## which is not in this block".
+  if (any(names(.iniDf) == "condition")) {
+    .sameMap <- stats::setNames(
+      vapply(lst, function(.l) as.character(.l[[3]]), character(1)),
+      vapply(lst, function(.l) as.character(.l[[4]]), character(1))
+    )
+    .wSame <- which(
+      !is.na(.iniDf$condition) &
+        grepl(":same:", .iniDf$condition, fixed = TRUE)
+    )
+    if (length(.wSame) > 0L) {
+      .iniDf$condition[.wSame] <-
+        vapply(
+          .iniDf$condition[.wSame],
+          function(.c) {
+            .p <- strsplit(.c, ":same:", fixed = TRUE)[[1]]
+            .nm <- strsplit(.p[2], ":", fixed = TRUE)[[1]]
+            .nm <- vapply(
+              .nm,
+              function(.n) {
+                if (is.na(.sameMap[.n])) .n else unname(.sameMap[.n])
+              },
+              character(1),
+              USE.NAMES = FALSE
+            )
+            paste0(.p[1], ":same:", paste(.nm, collapse = ":"))
+          },
+          character(1),
+          USE.NAMES = FALSE
+        )
+    }
+  }
   rxui$iniDf <- .iniDf
   if (exists("sigma", rxui)) {
-    assign("sigma", .rxRenameAllMat(get("sigma", envir=rxui), lst), envir=rxui)
+    assign("sigma", .rxRenameAllMat(get("sigma", envir = rxui), lst), envir = rxui)
   }
   if (exists("thetaMat", rxui)) {
-    assign("thetaMat", .rxRenameAllMat(get("thetaMat", envir=rxui), lst), envir=rxui)
+    assign("thetaMat", .rxRenameAllMat(get("thetaMat", envir = rxui), lst), envir = rxui)
   }
   if (exists("meta", rxui)) {
     .meta <- get("meta", rxui)
     if (exists("sigma", .meta)) {
-      assign("sigma", .rxRenameAllMat(get("sigma", envir=.meta), lst), envir=.meta)
+      assign("sigma", .rxRenameAllMat(get("sigma", envir = .meta), lst), envir = .meta)
     }
     if (exists("thetaMat", .meta)) {
-      assign("thetaMat", .rxRenameAllMat(get("thetaMat", envir=.meta), lst), envir=.meta)
+      assign("thetaMat", .rxRenameAllMat(get("thetaMat", envir = .meta), lst), envir = .meta)
     }
   }
-  rxui$lstExpr <- lapply(seq_along(rxui$lstExpr),
-                         function(i) {
-                           .rxRenameRecursiveAll(rxui$lstExpr[[i]], lst=lst)
-                         })
+  rxui$lstExpr <- lapply(seq_along(rxui$lstExpr), function(i) {
+    .rxRenameRecursiveAll(rxui$lstExpr[[i]], lst = lst)
+  })
 }
 
 #' Rename items inside of a `rxode2` ui model
@@ -240,24 +328,34 @@
 #'
 #' ocmt |> rxRename(cpParent=cp)
 #'
-rxRename <- function(.data, ..., envir=parent.frame()) {
+#' @family Model UI and piping
+rxRename <- function(.data, ..., envir = parent.frame()) {
   UseMethod("rxRename")
 }
 
 #' @rdname rxRename
 #' @export
-.rxRename <- function(.data, ..., envir=parent.frame()) {
+.rxRename <- function(.data, ..., envir = parent.frame()) {
   .inCompress <- FALSE
-  if (inherits(.data, "rxUi") &&
-        (is.list(.data) || inherits(.data, "raw"))) {
+  if (
+    inherits(.data, "rxUi") &&
+      (is.list(.data) || inherits(.data, "raw"))
+  ) {
     .inCompress <- TRUE
   }
   rxui <- assertRxUi(.data)
   if (is.list(rxui) || inherits(rxui, "raw")) {
     rxui <- rxUiDecompress(rxui)
   }
-  .vars <- unique(c(rxui$mv0$state, rxui$mv0$params, rxui$mv0$lhs, rxui$predDf$var, rxui$predDf$cond, rxui$iniDf$name))
-  .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir=envir)
+  .vars <- unique(c(
+    rxui$mv0$state,
+    rxui$mv0$params,
+    rxui$mv0$lhs,
+    .rxEndpointSourceVar(rxui),
+    rxui$predDf$cond,
+    rxui$iniDf$name
+  ))
+  .modelLines <- .quoteCallInfoLines(match.call(expand.dots = TRUE)[-(1:2)], envir = envir)
   .lst <- lapply(seq_along(.modelLines), function(i) {
     .assertRenameErrorModelLine(.modelLines[[i]], .vars)
   })
@@ -265,7 +363,7 @@ rxRename <- function(.data, ..., envir=parent.frame()) {
   .rxRenameAll(rxui, .lst)
   .ret <- rxui$fun()
   if (inherits(.data, "rxUi")) {
-    .ret <- .newModelAdjust(.ret, rxui, rename=TRUE)
+    .ret <- .newModelAdjust(.ret, rxui, rename = TRUE)
     if (.inCompress) {
       .ret <- rxUiCompress(.ret)
     }
@@ -280,32 +378,32 @@ rxRename <- function(.data, ..., envir=parent.frame()) {
 rename.rxUi <- function(.data, ...) {
   .lst <- as.list(match.call()[-1])
   .lst$.data <- .data
-  do.call(.rxRename, c(.lst, list(envir=parent.frame(2))))
+  do.call(.rxRename, c(.lst, list(envir = parent.frame(2))))
 }
 #' @rdname rxRename
 rename.function <- function(.data, ...) {
   .lst <- as.list(match.call()[-1])
   .lst$.data <- .data
-  do.call(.rxRename, c(.lst, list(envir=parent.frame(2))))
+  do.call(.rxRename, c(.lst, list(envir = parent.frame(2))))
 }
 #' @export
 #' @rdname rxRename
 rxRename.rxUi <- function(.data, ...) {
   .lst <- as.list(match.call()[-1])
   .lst$.data <- .data
-  do.call(.rxRename, c(.lst, list(envir=parent.frame(2))))
+  do.call(.rxRename, c(.lst, list(envir = parent.frame(2))))
 }
 #' @export
 #' @rdname rxRename
 rxRename.function <- function(.data, ...) {
   .lst <- as.list(match.call()[-1])
   .lst$.data <- .data
-  do.call(.rxRename, c(.lst, list(envir=parent.frame(2))))
+  do.call(.rxRename, c(.lst, list(envir = parent.frame(2))))
 }
 #' @export
 #' @rdname rxRename
 rxRename.default <- function(.data, ...) {
   .lst <- as.list(match.call()[-1])
   .lst$.data <- .data
-  do.call(.rxRename, c(.lst, list(envir=parent.frame(2))))
+  do.call(.rxRename, c(.lst, list(envir = parent.frame(2))))
 }

@@ -11,7 +11,6 @@ dy(0) = 0
 mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
 ")
 
-
   Vtpol2 <- rxode2("
 d/dt(y)  = dy
 d/dt(dy) = mu*(1-y^2)*dy - y

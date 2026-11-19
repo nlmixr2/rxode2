@@ -9,6 +9,7 @@
 \alias{rxSolve.nlmixr2FitCore}
 \alias{rxSolve.default}
 \alias{update.rxSolve}
+\alias{rxSolve.rxSolve}
 \alias{predict.rxode2}
 \alias{predict.function}
 \alias{predict.rxUi}
@@ -33,7 +34,28 @@ rxSolve(
   events = NULL,
   inits = NULL,
   scale = NULL,
-  method = c("liblsoda", "lsoda", "dop853", "indLin"),
+  method = c("liblsoda", "lsoda", "dop853", "indLin", "f78", "rk4", "ck54", "ab", "abm",
+    "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode",
+    "trapz", "ssp3", "f32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98",
+    "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43",
+    "euler", "midpoint", "heun", "ssp22", "rk3", "ssp53", "s4", "r4", "ls44", "ls54",
+    "ssp54", "s5", "rk5", "c5", "l5", "lk5a", "lk5b", "b6", "s7", "s8_10", "cv8",
+    "s8_12", "s10", 
+     "z10", "o10", "h10", "dp54", "v65e", "v76e", "dp87", "v98e",
+    "ssp33", "bs32", "ssp43", "f45", "t54", "s54", "pp54", "pp54b", "bs54", "ss54",
+    "dp65", "c65", "tp64", "v65r", "v65", "dverk65", "tf65", "tp75", "tmy7", "tmy7s",
+    "v76r", "ss76", "v78", "dverk78", "dp85", "tp86", "v87e", "v87r", "ev87", "k87",
+    "f89", "v89", "t98a", "v98r", "s98", "f108", "c108", "b109", "s1110a", "f1210",
+    "o129", "f1412", "lsode", "bdf", "rk4s", "eulers", "midpoints", "heuns", "dop5s",
+    "dop853s", "ck54s", "bs32s", "vern65s", 
+     "vern76s", "dop87s", "f78s", "ros4s",
+    "radauiia5s", "backwardEulers", "gauss6s", "sdirk43s", "iiic6s", "ros43s", "ros6s",
+    "geng5s", "rk3s", "rk43s", "cvodesadj", "liblsodaadj", "abs", "dop54s", "dp54s",
+    "vern98s", "f45s", "t54s", "pp54s", "pp54bs", "bs54s", "ss54s", "dp65s", "c65s",
+    "tp64s", "v65rs", "dverk65s", "tf65s", "tp75s", "tmy7sadj", "tmy7adj", "v76rs",
+    "ss76s", "v78s", "dverk78s", "dp85s", "tp86s", "v87es", "v87rs", "ev87s", "k87s",
+    "v89s", "t98as", "v98rs", "s98s", "c108s", "b109s", 
+     "s1110as", "o129s"),
   sigdig = NULL,
   atol = 1e-08,
   rtol = 1e-06,
@@ -44,6 +66,7 @@ rxSolve(
   hini = 0,
   maxordn = 12L,
   maxords = 5L,
+  order = 5L,
   ...,
   cores,
   covsInterpolation = c("locf", "linear", "nocb", "midpoint"),
@@ -56,7 +79,7 @@ rxSolve(
   sigmaUpper = Inf,
   nCoresRV = 1L,
   sigmaIsChol = FALSE,
-  sigmaSeparation = c("auto", "lkj", "separation"),
+  sigmaSeparation = c("auto", "lkj", "separation", "tnpri", "invchol"),
   sigmaXform = c("identity", "variance", "log", "nlmixrSqrt", "nlmixrLog",
     "nlmixrIdentity"),
   nDisplayProgress = 10000L,
@@ -72,7 +95,7 @@ rxSolve(
   omega = NULL,
   omegaDf = NULL,
   omegaIsChol = FALSE,
-  omegaSeparation = c("auto", "lkj", "separation"),
+  omegaSeparation = c("auto", "lkj", "separation", "tnpri", "invchol"),
   omegaXform = c("variance", "identity", "log", "nlmixrSqrt", "nlmixrLog",
     "nlmixrIdentity"),
   omegaLower = -Inf,
@@ -103,7 +126,7 @@ rxSolve(
   keep = NULL,
   indLinPhiTol = 1e-07,
   indLinPhiM = 0L,
-  indLinMatExpType = c("expokit", "Al-Mohy", "arma"),
+  indLinMatExpType = c("Al-Mohy", "expokit", "arma", "taylor"),
   indLinMatExpOrder = 6L,
   drop = NULL,
   idFactor = TRUE,
@@ -135,9 +158,12 @@ rxSolve(
   ss2cancelAllPending = FALSE,
   ssSolved = TRUE,
   linCmtSensType = c("auto", "endpoint5", "endpoint5G", "forward3", "forward3G", "AD",
-    "central", "forward", "forwardG", "forwardH", "centralH", "forward3H", "endpointH5",
-    "forwardG"),
+    "ADm", "ADr", "central", "forward", "forwardG", "forwardH", "centralH", "forward3H",
+    "endpointH5", "forwardG"),
   linCmtSensH = 1e-04,
+  linCmtSensPhi = TRUE,
+  nonmem = FALSE,
+  tieOrder = NULL,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -150,7 +176,36 @@ rxSolve(
   linCmtHmeanO = c("geometric", "arithmetic", "harmonic"),
   linCmtSuspect = 1e-06,
   linCmtForwardMax = 2L,
-  indOwnAlloc = TRUE,
+  indOwnAlloc = NA,
+  maxExtra = 1000L,
+  tolFactor = NULL,
+  serializeFile = NULL,
+  dense = FALSE,
+  cvodeLinSolver = c("dense", "band", "gmres", "bicgstab", "tfqmr"),
+  autoSwitchNonstifftol = 9/10,
+  autoSwitchStifftol = 9/10,
+  autoSwitchDtfac = 2,
+  autoSwitchMaxStiff = 10L,
+  autoSwitchMaxNonstiff = 3L,
+  autoSwitchStiffFirst = FALSE,
+  autoSwitchSwitchMax = 5L,
+  stiff2 = 0L,
+  useLinCmt = getOption("rxode2.useLinCmt", FALSE),
+  file = NULL,
+  chunkSize = NULL,
+  parallel = 0L,
+  zeroVarParamHandle = c("warn", "ignore", "keep"),
+  indLinStepSearch = c("secant", "exact", "none"),
+  indLinMaxIter = 20L,
+  indLinRichardson = c("auto", "always", "never", "always4", "always5"),
+  indLinIteration = c("auto", "picard", "newton", "exprb", "exprb32"),
+  indLinJac = c("auto", "symbolic", "fd"),
+  indLinForcing = c("ramp", "constant"),
+  usePrior = NA,
+  priorPdRetry = 10L,
+  priorOmega = NULL,
+  priorOmegaEl = NULL,
+  priorSigmaEl = NULL,
   envir = parent.frame()
 )
 
@@ -171,6 +226,7 @@ rxSolve(
   events = NULL,
   inits = NULL,
   ...,
+  useLinCmt = getOption("rxode2.useLinCmt", FALSE),
   theta = NULL,
   eta = NULL,
   envir = parent.frame()
@@ -182,6 +238,7 @@ rxSolve(
   events = NULL,
   inits = NULL,
   ...,
+  useLinCmt = getOption("rxode2.useLinCmt", FALSE),
   theta = NULL,
   eta = NULL,
   envir = parent.frame()
@@ -222,6 +279,17 @@ rxSolve(
 )
 
 \method{update}{rxSolve}(object, ...)
+
+\method{rxSolve}{rxSolve}(
+  object,
+  params = NULL,
+  events = NULL,
+  inits = NULL,
+  ...,
+  theta = NULL,
+  eta = NULL,
+  envir = parent.frame()
+)
 
 \method{predict}{rxode2}(object, ...)
 
@@ -268,7 +336,13 @@ model specification.}
 
 \item{params}{a numeric named vector with values for every
 parameter in the ODE system; the names must correspond to the
-parameter identifiers used in the ODE specification;}
+parameter identifiers used in the ODE specification.  A data
+frame or matrix gives one row per subject (or per subject and
+simulation), matched to the subjects by position in data order;
+an \code{id} column is not used to match them.  A one-row data frame
+or matrix is used for every subject, unless it has an \code{id}
+column and the data has more than one subject, which is an
+error;}
 
 \item{events}{an \code{eventTable} object describing the input
 (e.g., doses) to the dynamic system and observation sampling
@@ -292,27 +366,395 @@ variable by 2.}
 thread-based solving, and ignores user Jacobian specification.
 \item \code{"lsoda"} -- LSODA solver.  Does not support parallel thread-based
 solving, but allows user Jacobian specification.
-\item \code{"dop853"} -- DOP853 solver.  Does not support parallel thread-based
-solving nor user Jacobian specification
+\item \code{"dop853"} -- DOP853 solver.  Supports parallel thread-based solving;
+does not support user Jacobian specification.
 \item \code{"indLin"} -- Solving through inductive linearization.  The rxode2 dll
-must be setup specially to use this solving routine.
+must be setup specially to use this solving routine.  Supports
+parallel thread-based solving and honors \code{cores}.
+\item \code{"f78"} -- Runge-Kutta Fehlberg 78 solver using Boost's odeint library.
+\item \code{"rk4"} -- Runge-Kutta 4 solver using Boost's odeint library.
+\item \code{"ck54"} -- Cash-Karp 5(4) solver using Boost's odeint library.
+\item \code{"ab"} -- Adams-Bashforth multi-step solver with a direct implementation
+(order 1-8, default 5). Uses RK4 to initialize the derivative history and
+then applies the Adams-Bashforth extrapolation formula. Is a fixed-step
+method (step size controlled by \code{hmin}).
+\item \code{"abm"} -- Adams-Bashforth-Moulton solver using Boost's odeint library.
+\item \code{"dop5"} -- DOPRI5 solver using Boost's odeint library (supports dense output).
+\item \code{"bs"} -- Bulirsch-Stoer solver using Boost's odeint library (supports dense output).
+\item \code{"ros4"} \strong{(implicit)} -- Rosenbrock 4 solver using Boost's odeint library (supports dense output).
+Requires an analytical Jacobian (auto-computed from the model when not provided);
+falls back to \code{liblsoda} if Jacobian generation fails.
+\item \code{"ros43"} \strong{(implicit)} -- Kaps-Rentrop 4th-order A-stable Rosenbrock method (GRK4A) from libode.
+Adaptive step size via embedded 3rd-order error estimate.
+Requires an analytical Jacobian (auto-computed from the model when not provided);
+falls back to \code{liblsoda} if Jacobian generation fails.
+\item \code{"ros6"} \strong{(implicit)} -- Kaps-Wanner 6th-order A-stable Rosenbrock method (ROW6A) from libode.
+Fixed step size (set with \code{hmin}). Requires Jacobian; falls back to \code{liblsoda} if unavailable.
+\item \code{"backwardEuler"} \strong{(implicit)} -- Backward Euler (BDF-1), 1st-order L-stable fully implicit method from libode.
+Fixed step size (set with \code{hmin}). Requires Jacobian; falls back to \code{liblsoda} if unavailable.
+\item \code{"gauss6"} \strong{(implicit)} -- Gauss-Legendre 6th-order A-stable fully-implicit method (3 stages) from libode.
+Fixed step size. Requires Jacobian; falls back to \code{liblsoda} if unavailable.
+\item \code{"iiic6"} \strong{(implicit)} -- Lobatto IIIC 6th-order L-stable fully-implicit method (4 stages) from libode.
+Fixed step size. Requires Jacobian; falls back to \code{liblsoda} if unavailable.
+\item \code{"radauiia5"} \strong{(implicit)} -- Radau IIA 5th-order L-stable fully-implicit method (3 stages) from libode.
+Fixed step size (set with \code{hmin}). Requires Jacobian; falls back to \code{liblsoda} if unavailable.
+\item \code{"geng5"} \strong{(implicit)} -- Geng 5th-order symplectic fully-implicit method (3 stages) from libode.
+Fixed step size. Requires Jacobian; falls back to \code{liblsoda} if unavailable.
+\item \code{"sdirk43"} \strong{(implicit)} -- L-stable SDIRK 4(3) pair from libode.
+Adaptive step size via embedded 3rd-order error estimate.
+Requires Jacobian; falls back to \code{liblsoda} if unavailable.
+\item \code{"iem"} \strong{(implicit)} -- Implicit Euler solver using Boost's odeint library.
+Requires an explicit Jacobian (auto-generated via \code{calcJac=TRUE} when not provided).
+Uses Boost.uBLAS vectors and is a fixed-step method (step size controlled by \code{hmin}).
+\item \code{"sem"} -- Symplectic Euler solver using Boost's odeint library.
+Requires splitting the state into coordinate-momentum pairs (and
+automatically pads odd-dimensional systems).  Is a fixed-step
+method (step size controlled by \code{hmin}).
+\item \code{"sb3a"} -- Symplectic Runge-Kutta-Nystrom SB3A McLachlan stepper
+using Boost's odeint library.  Requires splitting the state into
+coordinate-momentum pairs (and automatically pads odd-dimensional
+systems).  Is a fixed-step method (step size controlled by
+\code{hmin}).
+\item \code{"sb3am4"} -- Symplectic Runge-Kutta-Nystrom SB3A M4 McLachlan
+stepper using Boost's odeint library.  Requires splitting the
+state into coordinate-momentum pairs (and automatically pads
+odd-dimensional systems).  Is a fixed-step method (step size
+controlled by \code{hmin}).
+\item \code{"vv"} -- Velocity Verlet stepper using Boost's odeint library.
+Requires the ODE states to be coordinate-momentum pairs: with
+\code{N = ceiling(nstates/2)}, \verb{d/dt(state i)} must equal \verb{state N+i}
+(an odd last coordinate must have a zero derivative).  Other models,
+or an infusion or turning off of a coordinate that breaks this, are
+refused with an error.  Is a fixed-step method (step size controlled
+by \code{hmin}).
+\item \code{"mm"} -- Modified Midpoint stepper using Boost's odeint library.
+Is a fixed-step method (step size controlled by \code{hmin}) and uses
+the \code{order} parameter to configure the number of intermediate
+steps.
+\item \code{"em"} -- Explicit Euler stepper using Boost's odeint library.
+Is a fixed-step method (step size controlled by \code{hmin}).
+\item \code{"cvode"} -- CVODE BDF stiff solver from the SUNDIALS library (sources
+and headers vendored into rxode2).  Supports thread-parallel solving and
+per-compartment absolute tolerances.
+\item \code{"trapz"} -- Explicit trapezoidal rule (Heun's method), a 2nd-order
+fixed-step Runge-Kutta method implemented via the libode library.
+Each inter-event interval is integrated with fixed steps of size
+\code{hmin} (default \code{0.01} when \code{hmin=0}).  If \code{hmin} would require
+more than \code{maxsteps} steps to span the interval, the step size is
+automatically enlarged to stay within that limit.  When an
+inter-event interval is shorter than the nominal step size (e.g.,
+two doses very close together), the step is silently clamped to the
+interval length so that short intervals are always handled correctly.
+Supports parallel thread-based solving and steady-state (\code{ss=1})
+dosing.  The method does not use \code{atol} or \code{rtol} (fixed-step; no
+error control).  Steady-state convergence is governed by \code{ssAtol},
+\code{ssRtol}, \code{minSS}, \code{maxSS}, and \code{strictSS}.
+\item \code{"ssp3"} -- Strong Stability-Preserving Runge-Kutta of order 3 (SSP-RK3,
+Shu-Osher method), implemented via the libode library.  A 3-stage,
+3rd-order explicit fixed-step method with superior non-oscillatory
+properties for problems with discontinuities or sharp fronts.  Uses
+the Butcher tableau c2=1, a21=1; c3=1/2, a31=1/4, a32=1/4;
+b1=1/6, b2=1/6, b3=2/3.  The step-size behavior, clamping, and
+steady-state options (\code{hmin}, \code{maxsteps}, \code{ssAtol}, \code{ssRtol},
+\code{minSS}, \code{maxSS}, \code{strictSS}) are identical to \code{"trapz"}.  Does
+not use \code{atol} or \code{rtol} (fixed-step; no error control).  Supports
+parallel thread-based solving and steady-state (\code{ss=1}) dosing.
+\item \code{"f32"} -- Fehlberg 3(2) embedded pair from libode (class \code{OdeRKF32}).
+A 3-stage, 3rd-order adaptive method with a built-in 2nd-order error
+estimate for automatic step-size control.  Tableau: c2=1, a21=1;
+c3=1/2, a31=1/4, a32=1/4; primary (3rd-order) weights d1=1/6, d2=1/6,
+d3=4/6; embedded (2nd-order) weights b1=1/2, b2=1/2.  Uses \code{atol} and \code{rtol}
+for error control.  The \code{hmin}
+parameter sets the initial step size (default \code{0.01}); subsequent steps
+are chosen adaptively.  The total number of accepted and rejected steps
+is bounded by \code{maxsteps}.  Supports parallel thread-based solving and
+steady-state (\code{ss=1}) dosing with convergence governed by \code{ssAtol},
+\code{ssRtol}, \code{minSS}, \code{maxSS}, and \code{strictSS}.
+\item \code{"rk43"} -- Runge-Kutta 4(3) pair from libode.  A 5-stage, 4th-order
+adaptive method with a built-in 3rd-order embedded error estimate for
+automatic step-size control.  Tableau: c2=1/3, a21=1/3; c3=2/3,
+a31=-1/3, a32=1; c4=1, a41=1, a42=-1, a43=1; a5j=bj (FSAL).
+Primary (4th-order) weights b1=b4=1/8, b2=b3=3/8; embedded (3rd-order)
+weights d1=1/12, d2=1/2, d3=1/4, d5=1/6.  Since a5j=bj the 5th stage
+evaluation is reused as the 1st stage of the next step (FSAL).
+Uses \code{atol} and \code{rtol} for error control.  The \code{hmin} parameter sets
+the initial step size (default \code{0.01}); subsequent steps are chosen
+adaptively.  The
+total number of steps is bounded by \code{maxsteps}.  Supports parallel
+thread-based solving and steady-state (\code{ss=1}) dosing with convergence
+governed by \code{ssAtol}, \code{ssRtol}, \code{minSS}, \code{maxSS}, and \code{strictSS}.
+\item \code{"dop54"} -- Dormand-Prince 5(4) FSAL method (Dormand & Prince 1980),
+implemented via the libode library.  The same algorithm as MATLAB's
+\code{ode45}.  A 7-stage, 5th-order adaptive method with an embedded
+4th-order error estimate for automatic step-size control (FSAL: the
+7th stage evaluation is reused as the 1st stage of the next step,
+giving effectively 6 function evaluations per accepted step).  Uses
+\code{atol} and \code{rtol} for error control.  The \code{hmin} parameter sets the
+initial step size (default \code{0.01}); subsequent steps are chosen
+adaptively.  The total number of steps is bounded by \code{maxsteps}.
+Supports parallel thread-based solving and steady-state (\code{ss=1})
+dosing with convergence governed by \code{ssAtol}, \code{ssRtol}, \code{minSS},
+\code{maxSS}, and \code{strictSS}.  NaN/Inf in derivatives (e.g. from NA
+parameters) is detected immediately and the solve exits with NA
+output for the affected subject.
+\item \code{"vern65"} -- Jim Verner's "most efficient" 6(5) FSAL pair (9 stages),
+implemented via the libode library using coefficients from Verner's own
+website (RKV65.IIIXb.Efficient).  A 6th-order adaptive method with an
+embedded 5th-order error estimate.  The sparse tableau (many zero
+a-coefficients) reduces function evaluations; the FSAL property means the
+9th stage evaluation is reused as the 1st stage of the next step, giving
+effectively 8 function evaluations per accepted step.  Uses \code{atol} and
+\code{rtol} for error control.  The \code{hmin} parameter sets the initial step
+size (default \code{0.01}); subsequent steps are chosen adaptively.  The total
+number of steps is bounded by \code{maxsteps}.  Supports parallel thread-based
+solving and steady-state (\code{ss=1}) dosing with convergence governed by
+\code{ssAtol}, \code{ssRtol}, \code{minSS}, \code{maxSS}, and \code{strictSS}.  NaN/Inf in
+derivatives is detected immediately and the solve exits with NA output.
+\item \code{"vern76"} -- Jim Verner's "most efficient" 7(6) pair (10 stages),
+implemented via the libode library using coefficients from Verner's own
+website (RKV76.IIa.Efficient).  A 7th-order adaptive method with an
+embedded 6th-order error estimate.  The sparse tableau reduces function
+evaluations per step.  Uses \code{atol} and \code{rtol} for error control.  The
+\code{hmin} parameter sets the initial step size (default \code{0.01}); subsequent
+steps are chosen adaptively.  The total number of steps is bounded by
+\code{maxsteps}.  Supports parallel thread-based solving and steady-state
+(\code{ss=1}) dosing with convergence governed by \code{ssAtol}, \code{ssRtol},
+\code{minSS}, \code{maxSS}, and \code{strictSS}.  NaN/Inf in derivatives is detected
+immediately and the solve exits with NA output.
+\item \code{"dop87"} -- Dormand-Prince 8(7) pair (13 stages), implemented via the
+libode library using coefficients from Hairer, Norsett and Wanner (1993)
+"Solving ODEs I" (2nd ed.).  An 8th-order adaptive method with an
+embedded 7th-order error estimate.  Both solutions are computed from the
+original state in the final step loop.  Uses \code{atol} and \code{rtol} for error
+control.  The \code{hmin} parameter sets the initial step size (default
+\code{0.01}); subsequent steps are chosen adaptively.  The total number of
+steps is bounded by \code{maxsteps}.  Supports parallel thread-based solving
+and steady-state (\code{ss=1}) dosing with convergence governed by \code{ssAtol},
+\code{ssRtol}, \code{minSS}, \code{maxSS}, and \code{strictSS}.  NaN/Inf in derivatives is
+detected immediately and the solve exits with NA output.
+\item \code{"vern98"} -- Jim Verner's "most efficient" 9(8) pair (16 stages),
+implemented via the libode library using coefficients from Verner's own
+website (RKV98.IIa.Efficient).  A 9th-order adaptive method with an
+embedded 8th-order error estimate.  The highly sparse tableau (stages
+8-16 use only \eqn{k_{0}}{x_0} and \eqn{k_{5..}}{k_5..}) minimizes function evaluations per
+step.  Both solutions are computed from the original state in the final
+step loop.  Uses \code{atol} and \code{rtol} for error control.  The \code{hmin}
+parameter sets the initial step size (default \code{0.01}); subsequent steps
+are chosen adaptively.  The total number of steps is bounded by
+\code{maxsteps}.  Supports parallel thread-based solving and steady-state
+(\code{ss=1}) dosing with convergence governed by \code{ssAtol}, \code{ssRtol},
+\code{minSS}, \code{maxSS}, and \code{strictSS}.  NaN/Inf in derivatives is detected
+immediately and the solve exits with NA output.
+}
+
+\strong{Aliases for existing methods} (no additional C++ code; \code{hmin}, \code{atol},
+\code{rtol}, and \code{maxsteps} follow the aliased method):
+\itemize{
+\item \code{"dp54"} -- alias for \code{"dop54"} (Dormand-Prince 5(4) FSAL, libode).
+\item \code{"v65e"} -- alias for \code{"vern65"} (Verner 6(5) efficient, libode).
+\item \code{"v76e"} -- alias for \code{"vern76"} (Verner 7(6) efficient, libode).
+\item \code{"dp87"} -- alias for \code{"dop87"} (Dormand-Prince 8(7), libode).
+\item \code{"v98e"} -- alias for \code{"vern98"} (Verner 9(8) efficient, libode).
+\item \code{"ssp33"} -- alias for \code{"ssp3"} (Strong Stability-Preserving RK3, libode).
+}
+
+\strong{libode fixed-step explicit methods}.  All use \code{hmin} as the fixed step
+size (default \code{0.01} when \code{hmin=0}); \code{atol} and \code{rtol} are ignored (no
+error control); \code{maxsteps} bounds the total number of steps; NaN/Inf in
+derivatives sets \code{ind$err} and the subject exits with NA output.  All
+support parallel thread-based solving.
+\itemize{
+\item \code{"euler"} -- Forward (explicit) Euler, 1st-order, 1 stage.  Requires a
+very small step size for accuracy (e.g., \code{hmin=1e-4}); intended for
+pedagogical use or method-comparison baselines.
+\item \code{"midpoint"} -- Explicit midpoint rule, 2nd-order, 2 stages.
+\item \code{"heun"} -- Heun's method (explicit trapezoid), 2nd-order, 2 stages.
+Identical in structure to \code{"trapz"} but uses the libode fixed-step driver.
+\item \code{"ssp22"} -- Strong Stability-Preserving 2-stage 2nd-order method
+(SSP-RK22), 2 stages.  Superior non-oscillatory properties near
+discontinuities.
+\item \code{"rk3"} -- Classical 3rd-order Runge-Kutta (Kutta 1901), 3 stages.
+\item \code{"ssp53"} -- Strong Stability-Preserving 5-stage 3rd-order method
+(SSP-RK53), 5 stages.  High SSP coefficient for hyperbolic PDEs or
+event-heavy ODE systems.
+\item \code{"s4"} -- Shanks 4th-order method, 4 stages.
+\item \code{"r4"} -- Ralston's 4th-order method, 4 stages.  Minimizes local
+truncation error among classical 4-stage 4th-order methods.
+\item \code{"ls44"} -- Low-storage 4th-order method, 4 stages.  Uses a 2-register
+update scheme that minimizes memory bandwidth at the cost of a less
+general tableau structure.
+\item \code{"ls54"} -- Low-storage 4th-order method, 5 stages.  Five-stage
+variant of the 2-register low-storage scheme.
+\item \code{"ssp54"} -- Strong Stability-Preserving 5-stage 4th-order method
+(SSP-RK54), 5 stages.
+\item \code{"s5"} -- Shanks 5th-order method, 5 stages.
+\item \code{"rk5"} -- Classical 5th-order Runge-Kutta, 6 stages.
+\item \code{"c5"} -- Cassity 5th-order method, 6 stages.
+\item \code{"l5"} -- Lawson 5th-order method, 6 stages.
+\item \code{"lk5a"} -- Luther-Konen 5th-order method, variant A, 6 stages.
+\item \code{"lk5b"} -- Luther-Konen 5th-order method, variant B, 6 stages.
+\item \code{"b6"} -- Butcher 6th-order method, 7 stages.
+\item \code{"s7"} -- Shanks 7th-order method, 9 stages.
+\item \code{"s8_10"} -- Shanks 8th-order method, 10 stages.
+\item \code{"cv8"} -- Cooper-Verner 8th-order method, 11 stages.
+\item \code{"s8_12"} -- Shanks 8th-order method, 12 stages.
+\item \code{"s10"} -- Stepanov 10th-order method, 15 stages.  Requires a moderate
+step size (e.g., \code{hmin=1.0}) because a single step is accurate to very
+high order.
+\item \code{"z10"} -- Zhang 10th-order method, 16 stages.
+\item \code{"o10"} -- Ono 10th-order method, 17 stages.
+\item \code{"h10"} -- Hairer 10th-order method, 17 stages.
+}
+
+\strong{libode adaptive (variable-step) explicit methods}.  All use \code{atol} and
+\code{rtol} for error control;
+\code{hmin} sets the initial step size (default \code{0.01} when \code{hmin=0}); \code{hmax}
+sets the maximum step size; \code{maxsteps} bounds total steps; NaN/Inf in
+derivatives sets \code{ind$err} and the subject exits with NA output.  All
+support parallel thread-based solving and steady-state (\code{ss=1}) dosing
+(convergence governed by \code{ssAtol}, \code{ssRtol}, \code{minSS}, \code{maxSS}, \code{strictSS}).
+\itemize{
+\item \code{"bs32"} -- Bogacki-Shampine 3(2) FSAL pair, 4 stages (Bogacki &
+Shampine 1989).  3rd-order primary with 2nd-order embedded error estimate.
+FSAL: the 4th-stage evaluation is reused as the 1st stage of the next
+step.  The same algorithm as Julia \code{BS3()} and MATLAB \code{ode23}.
+\item \code{"ssp43"} -- Strong Stability-Preserving 4(3) pair, 4 stages.
+Adaptive SSP method with a 3rd-order embedded error estimate.
+\item \code{"f45"} -- Fehlberg 4(5) pair, 6 stages (Fehlberg 1970).  4th-order
+primary solution with a 5th-order embedded estimate used for error
+control.
+\item \code{"t54"} -- Tsitouras 5(4) FSAL pair, 7 stages (Tsitouras 2011).
+5th-order primary with 4th-order embedded error estimate.  FSAL: the
+7th stage is reused as the 1st stage of the next step.  The same
+Butcher tableau as Julia's \code{Tsit5()}.
+\item \code{"s54"} -- Stepanov 5(4) FSAL pair, 7 stages.  5th-order primary
+with 4th-order embedded error estimate.
+\item \code{"pp54"} -- Papakostas-Papageorgiou 5(4) FSAL pair, 7 stages.
+\item \code{"pp54b"} -- Papakostas-Papageorgiou 5(4) variant B FSAL pair,
+7 stages.
+\item \code{"bs54"} -- Bogacki-Shampine 5(4) pair, 8 stages.  5th-order primary
+with 4th-order embedded error estimate (non-FSAL).
+\item \code{"ss54"} -- Sharp-Smart 5(4) pair, 7 stages.
+\item \code{"dp65"} -- Dormand-Prince 6(5) pair, 8 stages.  6th-order primary
+with 5th-order embedded error estimate.
+\item \code{"c65"} -- Calvo 6(5) pair, 9 stages.
+\item \code{"tp64"} -- Tsitouras-Papakostas 6(4) pair, 7 stages.  6th-order
+primary with 4th-order embedded error estimate.
+\item \code{"v65r"} -- Verner "robust" 6(5) FSAL pair, 9 stages.  Robust
+variant of Verner's 6(5) family with wider stability region.
+\item \code{"v65"} -- Verner 6(5) pair, 8 stages (non-FSAL).
+\item \code{"dverk65"} -- Verner DVERK 6(5) pair, 8 stages.  Coefficients from
+the classic DVERK Fortran code distributed by Hull and Enright.
+\item \code{"tf65"} -- Tsitouras-Famelis 6(5) FSAL pair, 9 stages.
+\item \code{"tp75"} -- Tsitouras-Papakostas 7(5) pair, 9 stages.  7th-order
+primary with 5th-order embedded error estimate.
+\item \code{"tmy7"} -- Tanaka-Muramatsu-Yamashita 7th-order pair, 10 stages.
+The same family as Julia's \code{TanYam7()}.
+\item \code{"tmy7s"} -- Tanaka-Muramatsu-Yamashita 7th-order stable variant,
+10 stages.  Alternative coefficient set with wider stability region.
+\item \code{"v76r"} -- Verner "robust" 7(6) pair, 10 stages.
+\item \code{"ss76"} -- Sharp-Smart 7(6) pair, 11 stages.
+\item \code{"v78"} -- Verner 7(8) pair, 13 stages.  7th-order primary with
+8th-order embedded error estimate.  Closest rxode2 analog to Julia
+\code{Vern8()}.
+\item \code{"dverk78"} -- Verner DVERK 7(8) pair, 13 stages.  Coefficients from
+the classic DVERK Fortran code; companion to \code{"dverk65"}.  Also close
+to Julia \code{Vern8()}.
+\item \code{"dp85"} -- Dormand-Prince 8(5) pair, 12 stages.  8th-order primary
+with 5th-order embedded error estimate.
+\item \code{"tp86"} -- Tsitouras-Papakostas 8(6) pair, 12 stages.  The same
+family as Julia's \code{TsitPap8()}.
+\item \code{"v87e"} -- Verner "efficient" 8(7) pair, 13 stages.
+\item \code{"v87r"} -- Verner "robust" 8(7) pair, 13 stages.
+\item \code{"ev87"} -- Enright-Verner 8(7) pair, 13 stages.
+\item \code{"k87"} -- Kovalnogov-Fedorov-Karpukhina-Simos 8(7) pair, 13 stages.
+\item \code{"f89"} -- Fehlberg 8(9) pair, 17 stages.  8th-order primary with
+9th-order embedded estimate.  Same family as MATLAB \code{ode89}.
+\item \code{"v89"} -- Verner 8(9) pair, 16 stages.  Alternative to \code{"f89"}
+in the same order bracket.  Also close to MATLAB \code{ode89}.
+\item \code{"t98a"} -- Tsitouras 9(8) variant A pair, 16 stages.
+\item \code{"v98r"} -- Verner "robust" 9(8) pair, 16 stages.
+\item \code{"s98"} -- Sharp 9(8) pair, 16 stages.
+\item \code{"f108"} -- Feagin 10(8) pair, 17 stages (Feagin 2007).  10th-order
+primary with 8th-order embedded error estimate.  The same method as
+Julia's \code{Feagin10()}.  The large number of stages carries elevated
+transcription-error risk; verified against Williams' libode canonical order test.
+\item \code{"c108"} -- Curtis 10(8) pair, 21 stages.
+\item \code{"b109"} -- Baker 10(9) pair, 21 stages.
+\item \code{"s1110a"} -- Stone 11(10) variant A pair, 26 stages.  11th-order
+primary; very few published references.
+\item \code{"f1210"} -- Feagin 12(10) pair, 25 stages (Feagin 2007).  12th-order
+primary with 10th-order embedded error estimate.  The same method as
+Julia's \code{Feagin12()}.  Elevated transcription-error risk due to many
+stages; verified against Williams' libode canonical order test.
+\item \code{"o129"} -- Ono 12(9) pair, 29 stages.
+\item \code{"f1412"} -- Feagin 14(12) pair, 35 stages (Feagin 2007).  14th-order
+primary with 12th-order embedded error estimate.  The same method as
+Julia's \code{Feagin14()}.  The highest-order method in rxode2; elevated
+transcription-error risk due to 35 stages; verified against
+Williams' libode canonical order test.
+}
+
+\strong{deSolve-derived Fortran solvers} (from the deSolve R package).  Both
+use non-reentrant Fortran COMMON blocks and therefore run single-threaded
+only, regardless of the \code{cores} setting.  They are BDF (Backward
+Differentiation Formula) stiff solvers and are most useful when you want
+behavior comparable to deSolve's \code{lsode()} or \code{bdf()}/\code{vode()} functions.
+\itemize{
+\item \code{"lsode"} -- DLSODE (Hindmarsh 1983, ODEPACK) in Adams (non-stiff) mode,
+MF=10.  Variable-order Adams method, order 1-12; no Jacobian evaluation.
+Corresponds to deSolve's \code{lsode(method="adams")}.  Adaptive step-size;
+error controlled by \code{atol} and \code{rtol}.
+\strong{Not thread-safe} -- always runs on a single core.
+\item \code{"bdf"} -- DLSODE (Hindmarsh 1983, ODEPACK) in BDF (stiff) mode, MF=22.
+Variable-order BDF method, order 1-5; internally generated dense Jacobian.
+Corresponds to deSolve's \code{bdf()} / \code{vode(method="bdf")}.  Adaptive
+step-size; error controlled by \code{atol} and \code{rtol}.
+\strong{Not thread-safe} -- always runs on a single core.
 }}
 
-\item{sigdig}{Specifies the "significant digits" that the ode
-solving requests.  When specified this controls the relative and
-absolute tolerances of the ODE solvers.  By default the tolerance
-is \code{0.5*10^(-sigdig-2)} for regular ODEs. For the
-sensitivity equations the default is \verb{0.5*10\\^(-sigdig-1.5)}
-(sensitivity changes only applicable for liblsoda).  This also
-controls the \code{atol}/\code{rtol} of the steady state solutions. The
-\code{ssAtol}/\code{ssRtol} is \verb{0.5*10\\^(-sigdig)} and for the sensitivities
-\verb{0.5*10\\^(-sigdig+0.625)}.  By default
-this is unspecified (\code{NULL}) and uses the standard \code{atol}/\code{rtol}.}
+\item{sigdig}{Specifies the "significant digits" that the ODE
+solving requests.  This is \code{NULL} by default, and while it is
+\code{NULL} it has no effect at all: \code{rxSolve()} uses the standard
+\code{atol}/\code{rtol} (and the standard sensitivity and steady-state
+tolerances).  \code{sigdig} only changes a tolerance when you ask for
+it explicitly.
+
+When it is supplied, the tolerances are derived with one
+solver-independent formula -- the same for stiff, non-stiff and
+auto-switching solvers.  The \code{rtol} exponent IS \code{sigdig} and
+\code{atol} sits three orders below it:
+\itemize{
+\item \code{rtol = 10^(-sigdig)}, \code{atol = 10^(-sigdig-3)}
+\item the sensitivity tolerances match the main solve, so
+\code{rtolSens = rtol} and \code{atolSens = atol} (gradients and
+covariances are built from them)
+\item the steady-state tolerances run one order looser than the
+corresponding main tolerance, so \code{ssRtol = ssRtolSens = 10*rtol}
+and \code{ssAtol = ssAtolSens = 10*atol}
+}
+
+Each of these is set only when you did not pass that tolerance
+yourself; a tolerance you supply always wins.  Because they are
+resolved independently, an explicit \code{atol}/\code{rtol} overrides the
+main solve but does \emph{not} propagate to the sensitivity or
+steady-state tolerances -- set those directly if you need them
+changed too.
+
+This mapping matches how \code{nlmixr2est} derives solver tolerances
+from its optimization \code{sigdig}, so a \code{sigdig} used for estimation
+and the same \code{sigdig} used for a plain \code{rxSolve()} mean the same
+thing.  Note it is keyed to \code{sigdig} as a request for that many
+significant digits, and is looser than the \code{atol}/\code{rtol} defaults
+for small \code{sigdig} -- at \code{sigdig = 4} it gives \code{rtol = 1e-4}
+against a default \code{rtol = 1e-6}.  Raise \code{sigdig}, or set
+\code{atol}/\code{rtol} directly, when you want a tighter solve.}
 
 \item{atol}{a numeric absolute tolerance (1e-8 by default) used
 by the ODE solver to determine if a good solution has been
 achieved;  This is also used in the solved linear model to check
-if prior doses do not add anything to the solution.}
+if prior doses do not add anything to the solution.  Must be
+\verb{> 0}.}
 
 \item{rtol}{a numeric relative tolerance (\code{1e-6} by default) used
 by the ODE solver to determine if a good solution has been
@@ -323,7 +765,43 @@ if prior doses do not add anything to the solution.}
 during one call to the solver. (5000 by default)}
 
 \item{hmin}{The minimum absolute step size allowed. The default
-value is 0.}
+value is 0.
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{For the fixed-step Boost methods `"rk4"`, `"trapz"`, `"ssp3"`, `"ab"`,
+`"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, `"em"`, `"ros6"`,
+`"backwardEuler"`, `"gauss6"`, `"iiic6"`, `"radauiia5"`, `"geng5"`, and the
+libode fixed-step family (`"euler"`, `"midpoint"`, `"heun"`, `"ssp22"`,
+`"rk3"`, `"ssp53"`, `"s4"`, `"r4"`, `"ls44"`, `"ls54"`,
+`"ssp54"`, `"s5"`, `"rk5"`, `"c5"`, `"l5"`, `"lk5a"`, `"lk5b"`,
+`"b6"`, `"s7"`, `"s8_10"`, `"cv8"`, `"s8_12"`, `"s10"`, `"z10"`,
+`"o10"`, `"h10"`), this specifies the fixed step size.
+If `hmin=0` (the default), it uses a default of `0.01` for `"rk4"`,
+`"trapz"`, `"ssp3"`, `"ros6"`, `"backwardEuler"`, `"gauss6"`, `"iiic6"`,
+`"radauiia5"`, `"geng5"`, and all libode fixed-step methods; `0.0001` for
+`"ab"`, `"abm"`, `"sem"`, `"sb3a"`, `"sb3am4"`, `"vv"`, `"mm"`, and `"em"`.
+If the requested step size would cause the number of steps to exceed
+`maxsteps`, the step size is automatically increased to ensure the
+integration completes within the `maxsteps` limit.  For `"trapz"`, the step
+is also silently clamped to the interval length when the inter-event
+interval is shorter than the nominal step size, so short intervals (e.g.,
+between closely spaced doses) are always handled correctly.
+
+For the adaptive methods `"f78"`, `"ck54"`, `"dop5"`, `"bs"`, `"f32"`,
+`"rk43"`, `"dop54"`, `"vern65"`, `"vern76"`, `"dop87"`, `"vern98"`,
+`"ros43"`, `"sdirk43"`, and all libode adaptive methods (`"bs32"`,
+`"ssp43"`, `"f45"`, `"t54"`, `"s54"`, `"pp54"`, `"pp54b"`,
+`"bs54"`, `"ss54"`, `"dp65"`, `"c65"`, `"tp64"`, `"v65r"`,
+`"v65"`, `"dverk65"`, `"tf65"`, `"tp75"`, `"tmy7"`, `"tmy7s"`,
+`"v76r"`, `"ss76"`, `"v78"`, `"dverk78"`, `"dp85"`, `"tp86"`,
+`"v87e"`, `"v87r"`, `"ev87"`, `"k87"`, `"f89"`, `"v89"`,
+`"t98a"`, `"v98r"`, `"s98"`, `"f108"`, `"c108"`, `"b109"`,
+`"s1110a"`, `"f1210"`, `"o129"`, `"f1412"`, the libode aliases
+`"dp54"`, `"v65e"`, `"v76e"`, `"dp87"`, `"v98e"`,
+`"ssp33"`, and the deSolve-derived methods `"lsode"`, `"bdf"`),
+this specifies the initial step size (default `0.01` when
+`hmin=0`); subsequent steps are chosen adaptively using `atol`, `rtol`,
+and `maxsteps`.
+}\if{html}{\out{</div>}}}
 
 \item{hmax}{The maximum absolute step size allowed.  When
 \code{hmax=NA} (default), uses the average difference +
@@ -331,7 +809,21 @@ hmaxSd*sd in times and sampling events. The \code{hmaxSd} is a user
 specified parameter and which defaults to zero.  When
 \code{hmax=NULL} rxode2 uses the maximum difference in times in
 your sampling and events.  The value 0 is equivalent to infinite
-maximum absolute step size.}
+maximum absolute step size.
+
+Note that for dense output methods (\code{"dop853"}, \code{"dop5"}, \code{"bs"},
+\code{"ros4"}, \code{"cvode"}, \code{"liblsoda"}), \code{hmax} defaults to \code{NULL} to allow the solvers to
+determine the step size when \code{dense=TRUE}
+
+For \code{method="indLin"}, \code{hmax} caps how long an interval is treated
+as having a CONSTANT matrix-exponential term before re-linearizing.
+A model with a state-dependent \code{indLin()} forcing now chooses its own
+relinearization step from a local error estimate, so \code{atol}/\code{rtol}
+(and \code{maxsteps}) are what control its accuracy and \code{hmax} only sets an
+upper bound on the step.  A model whose forcing reads no state, or
+which has none, has a rate matrix that is constant in the states, so
+there is no error to control and \code{hmax} only changes how many
+(mathematically equivalent) matrix exponentials are taken.}
 
 \item{hmaxSd}{The number of standard deviations of the time
 difference to add to hmax. The default is 0}
@@ -346,9 +838,14 @@ default value is determined by the solver (when \code{hini = 0})}
 \item{maxords}{The maximum order to be allowed for the stiff (BDF)
 method.  The default value is 5.  This can be between 1 and 5.}
 
+\item{order}{The order for the \code{"ab"}, \code{"abm"}, and \code{"mm"} methods.
+For \code{"ab"} and \code{"abm"}, the default is 5, and it can be between 1 and 8.
+For \code{"mm"} (Modified Midpoint), it represents the number of intermediate steps,
+the default is 5, and it must be a positive integer (>= 1).}
+
 \item{...}{Other arguments including scaling factors for each
-compartment.  This includes S# = numeric will scale a compartment
-# by a dividing the compartment amount by the scale factor,
+compartment.  This includes \code{S# =} numeric will scale a compartment
+\code{#} by a dividing the compartment amount by the scale factor,
 like NONMEM.}
 
 \item{cores}{Number of cores used in parallel ODE solving.  This
@@ -362,12 +859,16 @@ interpolated.  Currently this can be:
 \itemize{
 \item \code{"linear"} interpolation, which interpolates the covariate
 by solving the line between the observed covariates and extrapolating the new
-covariate value.
+covariate value.  A \code{linCmt()} model refuses it for a covariate
+that varies within a subject and feeds the \code{linCmt()} parameters,
+since its closed form cannot follow the ramp; use another method or
+write the model as ODEs.
 \item \code{"locf"} -- Last observation carried forward (the default).
 \item \code{"nocb"} -- Next Observation Carried Backward.  This is the same method
 that NONMEM uses.
-\item \code{"midpoint"} Last observation carried forward to midpoint; Next observation
-carried backward to midpoint.
+\item \code{"midpoint"} -- the mean of the two neighboring records over the whole
+interval between them, as \code{stats::approxfun(method = "constant", f = 0.5)}
+gives.
 
 For time-varying covariates where a missing value is present, the
 interpolation method will use either "locf" or "nocb" throughout
@@ -450,6 +951,11 @@ size is greater or equal to 10
 \item \code{"auto"} chooses \code{"lkj"} when the dimension of the
 matrix is less than 10 and \code{"separation"} when greater
 than equal to 10.
+\item \code{"tnpri"} draws the sigma entries jointly from the \code{thetaMat}, the
+same way \code{omegaSeparation="tnpri"} does for the omega; \code{dfObs} is
+not used.
+\item \code{"invchol"} draws them on the inverse Cholesky scale, the same way
+\code{omegaSeparation="invchol"} does for the omega.
 }}
 
 \item{sigmaXform}{When taking \code{sigma} values from the \code{thetaMat}
@@ -572,6 +1078,26 @@ size is greater or equal to 10
 \item \code{"auto"} chooses \code{"lkj"} when the dimension of the
 matrix is less than 10 and \code{"separation"} when greater
 than equal to 10.
+\item \code{"tnpri"} does not use a separation strategy at all: the omega
+entries themselves are carried in the \code{thetaMat} and are drawn from
+it jointly with the thetas, which is what a covariance step from
+NONMEM or 'nlmixr2' gives and what NONMEM calls \code{TNPRI}.  This keeps
+the off diagonal entries and the covariances between the thetas and
+the omega entries, which the strategies above redraw or discard.
+\code{omega} has to be a matrix, since the draws are added to it, and the
+\code{thetaMat} columns are matched to entries by name -- \code{om.eta.cl} or
+\code{eta.cl} for a diagonal, and \code{cov.eta.cl.eta.v} or \code{omega2.1} for an
+off diagonal.  A drawn matrix that is not positive definite is
+redrawn, see \code{priorPdRetry}.  \code{dfSub} is not used: an entry the
+\code{thetaMat} gives no variance stays at its estimate.
+\item \code{"invchol"} draws the same entries jointly with the thetas, but on the
+scale of the inverse Cholesky decomposition of the omega (with a log
+diagonal), so every drawn omega is positive definite and none is
+redrawn.  The \code{thetaMat} covariance of the entries is moved to that
+scale by the delta method at the \code{omega} estimate, which has to be
+positive definite.  Only the blocks of \code{omega} holding a drawn entry
+change, and an entry of such a block that the \code{thetaMat} gives no
+variance can move with the others.
 }}
 
 \item{omegaXform}{When taking \code{omega} values from the \code{thetaMat}
@@ -643,15 +1169,30 @@ created by reference (ie \code{setDt()}), which should be fast.
 }}
 
 \item{seed}{an object specifying if and how the random number
-generator should be initialized}
+generator should be initialized; when given, it takes precedence
+over an active \code{\link[=rxSetSeed]{rxSetSeed()}} stream for this solve, and the
+caller's \code{.Random.seed} is restored afterwards.  \code{\link[=rxControl]{rxControl()}} only
+stores it; the seed is applied when the control is used by a solve.
+Re-solving a result by assignment (eg \code{s$params <- p}) reapplies its
+seed, while \code{update()} uses only a \code{seed} it is given}
 
 \item{nsim}{represents the number of simulations.  For rxode2, if
 you supply single subject event tables (created with
 \verb{[eventTable()]})}
 
-\item{minSS}{Minimum number of iterations for a steady-state dose}
+\item{minSS}{Minimum number of doses given before a steady-state dose,
+counting the extra dose a lag time adds; the steady state stops once
+this many doses are given and \code{ssAtol}/\code{ssRtol} are met.  It is raised
+to the fewest doses the regimen needs (2 with a lag time, more with
+overlapping infusions or a lag longer than \code{ii}).  \code{minSS = maxSS = n}
+gives exactly the state after \code{n} prior doses (Monolix
+\code{nbdoses = n}).  \code{linCmt()} models follow both, stopping at \code{minSS}
+doses when converged there and otherwise using their exact steady
+state.  A constant infusion (\code{ii = 0}), which has no doses, takes at
+least 5 and up to \code{max(maxSS, 10000)} convergence steps.}
 
-\item{maxSS}{Maximum number of iterations for a steady-state dose}
+\item{maxSS}{Maximum number of doses given before a steady-state dose (at
+least \code{minSS})}
 
 \item{infSSstep}{Step size for determining if a constant infusion
 has reached steady state.  By default this is large value,
@@ -672,8 +1213,11 @@ either \code{atol}, \code{rtol} or \code{maxSS} have not
 been achieved.}
 
 \item{istateReset}{When \code{TRUE}, reset the \code{ISTATE} variable to 1 for
-lsoda and liblsoda with doses, like \code{deSolve}; When \code{FALSE}, do
-not reset the \code{ISTATE} variable with doses.}
+lsoda and liblsoda with doses, like \code{deSolve}, and restart the lsoda
+family (\code{liblsoda}, \code{lsoda}, \code{lsode}, \code{bdf}) at an \code{mtime()} record;
+When \code{FALSE}, do not reset the \code{ISTATE} variable with doses or at
+\code{mtime()} records, so a time window that starts at an \code{mtime()}
+record can be stepped over.}
 
 \item{subsetNonmem}{subset to NONMEM compatible EVIDs only.  By
 default \code{TRUE}.}
@@ -713,15 +1257,23 @@ exponential matrix.}
 \item{indLinMatExpType}{This is them matrix exponential type that
 is use for rxode2.  Currently the following are supported:
 \itemize{
-\item \code{Al-Mohy} Uses the exponential matrix method of Al-Mohy Higham (2009)
+\item \code{Al-Mohy} Uses the exponential matrix method of Al-Mohy Higham
+(2009); the default.  It is the fastest on the models where the
+exponential is a measurable share of the solve, and all four agree
+to solver tolerance.
 \item \code{arma} Use the exponential matrix from RcppArmadillo
 \item \code{expokit} Use the exponential matrix from Roger B. Sidje (1998)
+\item \code{taylor} Taylor scaling and squaring, needing no linear solve
 }}
 
 \item{indLinMatExpOrder}{an integer, the order of approximation to
-be used, for the \code{Al-Mohy} and \code{expokit} values.
-The best value for this depends on machine precision (and
-slightly on the matrix). We use \code{6} as a default.}
+be used, for the \code{expokit} value.  The best value for this
+depends on machine precision (and slightly on the matrix). We
+use \code{6} as a default.  It no longer applies to \code{Al-Mohy}, whose
+degree is not free to choose: each accuracy threshold in the
+Al-Mohy-Higham table belongs to one specific degree, so the
+degree and the scaling are selected together from the matrix
+norm.  \code{taylor} has always chosen its degree the same way.}
 
 \item{drop}{Columns to drop from the output}
 
@@ -746,7 +1298,7 @@ the parameters in the input dataset.}
 were not present.}
 
 \item{ssAtol}{Steady state atol convergence factor.  Can be
-a vector based on each state.}
+a vector based on each state.  Must be \verb{> 0}.}
 
 \item{ssRtol}{Steady state rtol convergence factor.  Can be a
 vector based on each state.}
@@ -754,7 +1306,11 @@ vector based on each state.}
 \item{safeZero}{Use safe zero divide. By default
 this is turned on but you may turn it off if you wish.}
 
-\item{safeLog}{Use safe log.  When enabled if your value that you are taking log() of is negative or zero, this will return \verb{log(machine epsilon)}.  By default this is turned on.}
+\item{safeLog}{Use safe log.  When enabled (\code{TRUE}, the default) if your value that you are taking log() of is
+negative or zero, this will return \verb{log(machine epsilon)}.  With \code{FALSE} both return the usual \code{NaN}/\code{-Inf}.  With
+\code{2} only zero is floored to \verb{log(machine epsilon)}; a \emph{negative} argument is treated as a domain error and returns
+\code{NaN}.  Use \code{2} when a hand-written likelihood takes \code{log()} of a parameter that must stay positive, so an invalid
+value propagates as \code{NaN} instead of a large finite number the optimizer could mistake for a good fit.}
 
 \item{safePow}{Use safe powers.  When enabled if your power is
 negative and your base is zero, this will return the \verb{machine epsilon^(negative power)}.  By default this is turned on.}
@@ -797,13 +1353,15 @@ Hence the default is \code{resampleID=TRUE}.}
 evaluated before exiting.  By default this is 100000}
 
 \item{atolSens}{Sensitivity atol, can be different than atol with
-liblsoda.  This allows a less accurate solve for gradients (if desired)}
+liblsoda.  This allows a less accurate solve for gradients (if
+desired).  Must be \verb{> 0}.}
 
 \item{rtolSens}{Sensitivity rtol, can be different than rtol with
 liblsoda.  This allows a less accurate solve for gradients (if desired)}
 
 \item{ssAtolSens}{Sensitivity absolute tolerance (atol) for
-calculating if steady state has been achieved for sensitivity compartments.}
+calculating if steady state has been achieved for sensitivity
+compartments.  Must be \verb{> 0}.}
 
 \item{ssRtolSens}{Sensitivity relative tolerance (rtol) for
 calculating if steady state has been achieved for sensitivity compartments.}
@@ -830,9 +1388,12 @@ solve, but continues solving passing through the \code{NA} time
 solved ODE (otherwise stopping can crash R)
 }}
 
-\item{addlKeepsCov}{This determines if the additional dosing items
-repeats the dose only (\code{FALSE}) or keeps the covariates at the
-record of the dose (\code{TRUE})}
+\item{addlKeepsCov}{This determines if a dose given at a time other
+than its record's (an additional dosing item or a dose moved by
+\code{alag()}) takes the time-varying covariates imputed at its actual
+dosing time (\code{FALSE}) or keeps the covariates at the record of the
+dose (\code{TRUE}, as NONMEM does).  By default \code{FALSE}, or \code{TRUE} with
+\code{nonmem = TRUE}.}
 
 \item{addlDropSs}{When there are steady state doses with an \code{addl}
 specification the steady state flag is dropped with repeated
@@ -856,9 +1417,28 @@ and does not mix ODEs with the solution.  The default is \code{TRUE}.}
 \item{linCmtSensType}{The type of linear compartment
 sensitivity/gradients to use.  The current options are:
 \itemize{
-\item \code{auto} -- for one compartment models this will use the \code{AD}
-method, for 2 and 3 compartment model this will use \code{forwardG}.
-\item \code{AD} -- automatic differentiation (using stan math)
+\item \code{auto} (the default) -- forward-mode automatic differentiation
+(\code{AD}).  On an optimized build forward mode is at least as fast as
+reverse mode for every number of requested sensitivity directions on
+every configuration (reverse is 2-4x slower on a three compartment
+oral model: its per-row tape build costs more than the extra forward
+passes), so \code{auto} resolves to \code{AD} on every solve path.
+\item \code{ADr} -- reverse-mode automatic differentiation
+(\verb{stan::math::jacobian}): each row is differentiated on its own
+nested tape with one adjoint sweep per compartment, independent of
+how many directions are requested.  The tape is per thread, so this
+solves across threads like \code{AD}.  Slower than \code{AD} on an optimized
+build; kept as an explicit option for validation.
+\item \code{AD} -- forward-mode automatic differentiation
+(\verb{stan::math::fvar}), differentiating the same analytic solution on
+the C++ stack with one pass per requested direction; matches \code{ADr}
+to round-off.
+\item \code{ADm} -- the same forward-mode differentiation carrying every
+requested direction through a single pass, so the solution itself
+(each exponential, division and eigen-decomposition) is evaluated
+once instead of once per direction.  Bitwise identical to \code{AD}, and
+unlike the amortized ordinary-row path it also shares the work on
+steady-state rows.
 \item \code{forward} -- forward sensitivity where the step size is
 determined by shi 2021 optimization (only once per problem)
 \item \code{forwardG} -- forward sensitivity where the step size is determined by the
@@ -879,8 +1459,42 @@ determined by the shi 2021 optimization for central differences
 
 \item{linCmtSensH}{The step size for the forward and central
 differences when using the option \code{centralH}, \code{forwardH},
-\code{foward3H} or \code{endpoint5H} options.
-#'}
+\code{foward3H} or \code{endpoint5H} options.}
+
+\item{linCmtSensPhi}{Which state-transition matrix a \code{linCmt()}
+sensitivity row propagates through, if any.  \code{TRUE} (the default) or
+\code{2} assembles the matrix and its parameter derivatives from their
+closed form in the constants the theta window already holds; that costs
+about one kernel evaluation, so it is assembled for any interval and
+cached where the interval repeats, and it carries the depot and
+infusion terms.  \code{1} assembles it instead by probing the kernel with
+unit-basis prior states, which costs one evaluation per direction per
+column and so is only worth paying on an interval that repeats;
+rate-bearing rows are excluded.  \code{FALSE} or \code{0} evaluates the closed
+form row by row in the order earlier versions used.  All three are the
+same exact closed-form solution evaluated in a different order, so they
+can differ in the last few digits; use \code{FALSE} to reproduce earlier
+results digit for digit.}
+
+\item{nonmem}{Boolean that when \code{TRUE} evaluates statements that do not
+depend on a state (like NONMEM's \verb{$PK}) with \code{time} set to the time of
+the data record that ends the interval being integrated, the way NONMEM
+calls \verb{$PK} at its records.  \code{d/dt()} and state-dependent statements keep
+the continuous time (like \verb{$DES}).  \code{addl} repeats, infusion ends,
+lagged doses and doses added while solving do not end an interval;
+\code{mtime()} times do.  Covariate interpolation is still set by
+\code{covsInterpolation}.  It also sets the default \code{tieOrder} to \code{"data"}
+and turns on \code{addlKeepsCov} unless it is given.  By default \code{FALSE}.}
+
+\item{tieOrder}{How records of a subject that share a time are processed:
+\code{"evid"} processes resets first, then doses, then observations, so the
+result does not depend on the row order of the data; \code{"data"} processes
+them in the order of the rows in the data, the way NONMEM does (records
+a row expands to, like the reset of an \code{evid=4} dose or \code{addl} repeats,
+follow that row).  Doses added while solving follow the records at the
+same time.  An event table already translated by \code{\link[=etTrans]{etTrans()}} keeps the
+order it was translated with.  By default (\code{NULL}) this is \code{"data"} when
+\code{nonmem = TRUE} and \code{"evid"} otherwise.}
 
 \item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that
 is acceptable before issuing a warning/error about the gradient estimates.}
@@ -908,7 +1522,7 @@ compartment numeric difference.}
 \item{linCmtScale}{The scale of the linear compartment model.  This
 is applied to sensitivity approximation using numeric
 differences.  When \code{TRUE} or \code{NULL} use default scaling, when
-\code{FALSE} use no scaling.  If it is one elment numeric, the value
+\code{FALSE} use no scaling.  If it is one element numeric, the value
 is duplicated 7 times and applies to all the parameters.
 Otherwise this is a seven element numeric vector implying the
 scaling for each of the linear compartmental model parameters.}
@@ -953,11 +1567,303 @@ gradient calculation, if the gradient is suspect another is taken
 (if this value is 2), and finally a third is calculated if the
 gradient is still suspect.}
 
-\item{indOwnAlloc}{Logical; when \code{TRUE} (default) each individual's
-\code{dose}, \code{ii}, \code{all_times}, and \code{solve} arrays are allocated
-independently via \code{malloc}/\code{calloc} rather than as pointers into
-a single global buffer.  This enables per-individual reallocation
-for future dose-pushing functionality.}
+\item{indOwnAlloc}{Logical; when \code{TRUE} each individual's \code{dose},
+\code{ii}, \code{all_times}, and \code{solve} arrays are allocated independently
+via \code{malloc}/\code{calloc} rather than as pointers into a single
+global buffer.  This enables per-individual reallocation for dose
+and observation-pushing with \code{evid_()} and related
+functions. When \code{FALSE} these arrays are allocated as a single
+global buffer, which is slightly faster and slightly more memory
+efficient but does not allow for dynamic dosing/observations.  By
+default this is \code{NA} which automatically decides based on if
+there is any dosing or observation pushing in the model.}
+
+\item{maxExtra}{Integer; maximum number of events (doses and
+observations) that \code{evid_()} may push per individual per solve.
+When an individual exceeds this limit the solve is aborted for
+that individual (output filled with \code{NA}) and an error is raised
+after the full parallel solve completes.  Set to \code{0L} to allow
+unlimited pushes (use with care -- cascading \code{evid_()} calls can
+grow without bound).  Default is \code{100L}.}
+
+\item{tolFactor}{A per-individual tolerance multiplier (>= 1.0, or
+\code{NULL} for no effect).  When supplied, each individual's
+\code{atol}, \code{rtol}, \code{ssAtol}, and \code{ssRtol} are multiplied by
+this factor before the ODE solver is called, loosening the
+tolerances for that individual.  This is useful when a small
+number of subjects are numerically stiff and would otherwise
+cause solve failures: pass a larger factor for the
+problematic subjects and leave the rest at 1.0 (or omit them).
+The effective tolerance is always capped at \code{maxAtolRtolFactor}.
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{`tolFactor` may be:
+* `NULL` (default) -- no adjustment applied.
+* A single numeric value -- the same factor is applied to
+  the first `length(tolFactor)` subjects in order.
+* A numeric vector -- applied element-wise to subjects in
+  the order they appear.
+* A **named** numeric vector -- names are matched to subject
+  IDs; unmatched subjects retain `tolFactor = 1.0`.
+
+The per-subject factors used (after matching) are stored back
+in the solved object and accessible via `$tolFactor`.
+}\if{html}{\out{</div>}}}
+
+\item{serializeFile}{Controls serialization-driven solves. When
+this is a file path, \code{rxSolve()} writes the pre-integration
+serialized state to that file and returns the file path invisibly
+without running the solve. When this is \code{TRUE}, \code{rxSolve()}
+writes the serialized state to a temporary \code{.rxbin} file, solves
+by reloading from that file, returns the solve result, and then
+removes the temporary file (mostly for testing). When solving
+from an existing serialization file via \code{rxSolve(model, "state.rxbin")}, only the model and serialization file are
+allowed because the file already stores the solve inputs and
+controls.}
+
+\item{dense}{Logical; when \code{TRUE} and the method supports dense output,
+enables continuous interpolation so the solver can take large internal
+steps and reconstruct the solution cheaply at each observation time.
+Dense-capable single methods are \code{"dop853"}, \code{"dop5"}, \code{"bs"}, \code{"ros4"},
+\code{"cvode"} and \code{"liblsoda"} (which interpolates between its own steps
+either way; \code{dense = TRUE} lifts the \code{hmax} default).  \code{"dop853+ros4"} is the only dense AutoSwitch composite: the
+secondary must be dense too (\code{"ros4"} is the only stiff method that is),
+and handing a dense segment from the primary to the secondary mid-segment
+is implemented for a \code{"dop853"} primary.  Other composites solve densely
+only if you drop the secondary.  A warning is issued and \code{dense} is set to
+\code{FALSE} when a composite stiff secondary does not support dense output.
+Silently ignored for non-dense single methods.  Not yet supported for
+\code{linCmt()} models (a warning is emitted and the standard path is used
+instead).}
+
+\item{cvodeLinSolver}{Character; selects the linear solver used by the CVODE
+integrator when \code{method = "cvode"}.  Ignored for all other methods.
+Available choices and when to use them:
+\itemize{
+\item \code{"dense"} (default) -- Direct LU factorization of the full Jacobian.
+Best for small to medium systems (typically fewer than ~50 compartments).
+Requires \code{O(n^2)} storage and \code{O(n^3)} work per Newton iteration.
+\item \code{"band"} -- Currently aliases to \code{"dense"}.  Kept for compatibility
+until rxode2 can determine model bandwidth safely during solve setup.
+\item \code{"gmres"} -- Generalized Minimal Residual iterative Krylov solver.
+Avoids explicit Jacobian formation, making it practical for large stiff
+systems (tens to hundreds of compartments) where LU factorization would
+dominate runtime.  Generally the first iterative solver to try.
+\item \code{"bicgstab"} -- Bi-Conjugate Gradient Stabilized iterative Krylov
+solver.  Similar use case to \code{"gmres"} but can converge faster on some
+non-symmetric problems.  Try if \code{"gmres"} is slow or fails to converge.
+\item \code{"tfqmr"} -- Transpose-Free Quasi-Minimal Residual iterative Krylov
+solver.  Another alternative for large systems; avoids the matrix
+transpose required by classical QMR.
+}
+
+For most pharmacometric models with fewer than ~50 compartments the default
+\code{"dense"} solver is fastest.  Switch to an iterative solver (\code{"gmres"} is
+a good first choice) only for large QSP or PBPK models where Jacobian
+factorization becomes the bottleneck.}
+
+\item{autoSwitchNonstifftol}{Numeric in \verb{(0, 1]}; the stiffness ratio at
+which an interval is called stiff.  Each accepted step of a \code{dop853}
+primary estimates the dominant eigenvalue and forms
+\code{rho * h / S(dop853)} with \code{S(dop853) = 6.1}; a step above
+\code{autoSwitchNonstifftol} is a stiff verdict, and 15 verdicts hand the rest
+of the interval to the stiff secondary.  Only a \code{dop853} primary carries
+this estimate; any other primary switches when it fails.  Default \code{9/10}.}
+
+\item{autoSwitchStifftol}{Numeric in \verb{(0, 1]}; the same ratio, but applied
+once the subject has already switched at least once -- that is, on the
+optimistic re-probe of the primary rather than on the first attempt.
+Lowering it below \code{autoSwitchNonstifftol} makes the re-probe give up
+sooner, so stiff mode is stickier.  Default \code{9/10}, equal to
+\code{autoSwitchNonstifftol}, i.e. a re-probe behaves like a first probe.}
+
+\item{autoSwitchDtfac}{Accepted for backwards compatibility and currently
+inert.  It scaled a suggested step size across a switch, for a predictive
+switching scheme that has been replaced by the reactive one described
+above.  Default \code{2.0}.}
+
+\item{autoSwitchMaxStiff}{Integer; number of consecutive intervals in which
+the primary reported stiffness before the solve stops probing it and stays
+on the stiff secondary.  Default \code{10L}.}
+
+\item{autoSwitchMaxNonstiff}{Integer; intervals to spend on the stiff
+secondary before optimistically probing the primary again.  Each probe
+that fails doubles the wait (capped at 64x), so a persistently stiff
+subject stops paying for probes.  Default \code{3L}.}
+
+\item{autoSwitchStiffFirst}{Logical; when \code{TRUE}, start each subject solve
+with the stiff solver instead of the non-stiff primary.  Default \code{FALSE}.}
+
+\item{autoSwitchSwitchMax}{Non-negative integer; minimum number of
+integration intervals that must elapse after a switch before the solver
+is allowed to switch back in the opposite direction.  Acts as an
+oscillation guard, and raises \code{autoSwitchMaxNonstiff} when it is larger.
+Set to \code{0L} to leave the wait to \code{autoSwitchMaxNonstiff} alone.
+Default \code{5L}.}
+
+\item{stiff2}{Integer method code for the stiff secondary solver used in
+AutoSwitch composite methods.  Normally set automatically when \code{method} is
+a composite string of the form \code{"primary+stiff"} (e.g.
+\code{"dop853+ros4"}); the \code{"+"} notation is the preferred way to configure
+composite solving and \code{stiff2} need not be supplied directly.  When
+supplied as a raw integer it must be a stiff method code as returned by
+\code{\link[=odeMethodToInt]{odeMethodToInt()}}; \code{0L} (the default) disables the stiff secondary and
+causes the solver to run as a plain non-composite method.  Dense output
+(\code{dense = TRUE}) is silently disabled when \code{stiff2} names a stiff method
+that does not support dense output; \code{"ros4"} (code \code{13L}) is the only
+stiff secondary that does support it.}
+
+\item{useLinCmt}{Logical; when \code{TRUE} and a function-style
+(\code{ini()}/\code{model()}) model contains linear-compartment ODEs that can be solved analytically,
+automatically convert them to a \code{linCmt()} call before solving.
+The detection and conversion use \code{\link[=odeToLin]{odeToLin()}}; the converted
+model is cached so the compilation cost is paid only once.  A
+model whose ODEs carry a term \code{linCmt()} cannot represent (an
+exogenous input such as \code{transit()} absorption, a zero-order or
+endogenous production rate, or a dose carried in a covariate
+column), or whose rates \code{linCmt()} would not rebuild exactly from
+the parameter names, or whose compartments it would renumber
+under event data addressing them by index, is solved with its
+original ODEs.  Set to \code{FALSE} to keep the original ODE solver.  This flag is also
+stored in the returned \code{\link[=rxControl]{rxControl()}} object so that downstream
+hooks (e.g. in nlmixr2) can read and apply it.  The default is a
+\code{useLinCmt} set in the model's meta block, else the
+\code{rxode2.useLinCmt} option, or \code{FALSE} when it is unset.}
+
+\item{file}{Character string giving a file path prefix for out-of-memory
+chunk solving. When set, \code{rxSolve()} splits subjects into chunks, writes
+each chunk's result to \verb{<file>_chunk_NNNNN.parquet} (or \code{.rds} if
+\code{arrow} is unavailable), and returns an \code{rxSolveOom} object. The manifest
+is saved to \verb{<file>_manifest.rds}. Set to \code{NULL} (default) to use the
+normal in-memory path.
+
+A chunked solve draws the parameters once in the parent so that every
+chunk shares them, which is what keeps subjects in different chunks in
+the same study.  Four things that draw cannot express are a clear error
+rather than a quietly different answer: a joint (TNPRI) draw of the
+omega/sigma entries a \code{thetaMat} carries, sigma uncertainty
+(\code{dfObs > 0}), a per-subject parameter \code{data.frame}/\code{matrix} alongside an
+\code{omega}/\code{thetaMat}, and \code{nSub} greater than the number of subjects the
+event table has.}
+
+\item{chunkSize}{Integer; number of subjects per chunk when \code{file} is
+set. If \code{NULL} (default), the chunk size is auto-computed from available
+free RAM using \code{rxMemoryEstimate()}.}
+
+\item{parallel}{Integer; number of \code{mirai} daemons to use for parallel
+chunk solving when \code{file} is set. \code{0L} (default) uses serial solving.
+Requires the \code{mirai} package.}
+
+\item{zeroVarParamHandle}{Determines what happens when \code{params}
+supplies a value for an omega/sigma item whose variance is zero
+(say \code{eta.base ~ fix(0)}).  Such an item is dropped from the matrix
+that is simulated from and given to the model as a literal zero
+instead; the options are:
+\itemize{
+\item \code{warn} (default) replace the supplied value with zero and warn
+\item \code{ignore} replace the supplied value with zero silently
+\item \code{keep} use the supplied value instead of zero
+}}
+
+\item{indLinStepSearch}{how \code{method="indLin"} picks the relaxation factor
+for its fixed-point iteration.  \code{"secant"} (the default) estimates the
+iteration's contraction ratio from the last two residuals and costs
+nothing extra; \code{"exact"} spends one more matrix exponential per iteration
+to locate the residual-minimizing factor in closed form; \code{"none"} is
+plain, undamped Picard iteration.  All three converge to the same answer
+-- the relaxation does not move the fixed point -- so this trades
+iterations against work per iteration.}
+
+\item{indLinMaxIter}{the maximum number of \code{method="indLin"} fixed-point
+iterations per relinearization step.  Running out is not an error: the
+iteration contracts in proportion to the step, so the solver reads it as
+a step that is too long and retries with a shorter one.}
+
+\item{indLinRichardson}{how far \code{method="indLin"} extrapolates each
+relinearization step.  The base step is second order; running it also at
+half length and combining removes the leading error term for third order
+at three fixed-point solves, and adding a quarter-length run gives a
+three-entry Romberg column for fourth order at seven.  Each level pays
+for itself only once the tolerance is tight enough that taking far fewer
+steps outweighs the extra solves per step: a second-order step needing
+\code{N} steps becomes a \code{p}-th order one needing about \code{N^(2/p)}, so third
+order wins once \code{3*N^(2/3) < N} (\code{N > 27}) and fourth once
+\code{7*N^(1/2) < 3*N^(2/3)} (\code{N > 161}).  \code{"auto"} (the default) starts each
+interval second order and raises the level as the step the controller
+settles on crosses those thresholds.  \code{"never"} (or \code{FALSE}), \code{"always"}
+(or \code{TRUE}, third order) and \code{"always4"} (fourth order) force the choice.}
+
+\item{indLinIteration}{how \code{method="indLin"} solves each relinearization
+step.  \code{"picard"} is the relaxed fixed-point iteration; \code{"newton"}
+replaces it with a Newton iteration, which removes the contraction
+condition so convergence stops limiting the step; \code{"exprb"} uses an
+exponential Rosenbrock step, which does not iterate at all -- it puts the
+full linearization into the exponential, so nothing can fail to converge.
+Their costs differ sharply by problem: on a non-stiff model the iteration
+never limits the step and Picard is cheapest, while on a stiff one it is
+the only thing limiting it.  \code{"auto"} (the default) therefore starts on
+Picard and switches only once steps are actually being cut for
+non-convergence, so a model that never needs a Jacobian never forms one.
+\code{"exprb32"} is the Luan-Ostermann third-order exponential Rosenbrock
+pair, which carries its own embedded error estimate and so does not need
+the extrapolation column that \code{"exprb"} takes its estimate from.}
+
+\item{indLinJac}{where the forcing Jacobian comes from when
+\code{method="indLin"} needs one, which is only under the \code{"newton"},
+\code{"exprb"} and \code{"exprb32"} iteration schemes -- Picard needs none, so a
+non-stiff model under the default \code{"auto"} scheme never forms one at
+all.  \code{"symbolic"} uses the model's own analytic Jacobian, available
+because the \code{matExp()} conversion emits \code{df()/dy()} lines, and costs no
+extra forcing evaluations; \code{"fd"} central-differences the forcing, at
+\verb{2n} evaluations per Jacobian.  \code{"auto"} (the default) takes the
+symbolic one when the model carries it and falls back to finite
+differences otherwise -- which is what happens above
+\code{getOption("rxode2.indLinJacMaxStates")} states, where the symbolic
+emission is skipped to bound the symengine work at model build, and on a
+sensitivity model, whose \code{df()/dy()} lines cover the physical states only.}
+
+\item{indLinForcing}{how \code{method="indLin"} carries the \code{indLin()} forcing
+across one relinearization step.  \code{"ramp"} (the default) evaluates it at
+both ends of the step and integrates the line between them exactly, with
+the rate matrix taken at the step midpoint; \code{"constant"} holds it fixed
+across the step and averages a start-linearized and an end-linearized
+answer to reach the same second order.  The ramp step is symmetric, so
+its error expands in even powers of the step alone and
+\code{indLinRichardson} removes two orders per extrapolation level from it
+rather than one -- which is where most of the difference between the two
+shows up, since the default \code{indLinRichardson="auto"} extrapolates.  It
+applies to the \code{"picard"} and \code{"newton"} schemes; the exponential
+Rosenbrock ones never freeze the forcing.}
+
+\item{usePrior}{Whether the prior distributions specified in the model's
+\code{ini({})} block drive the uncertainty simulation.  \code{NA} (or \code{"auto"},
+the default) uses them whenever the model has them and variability is
+being simulated (\code{nStud > 1}, or whatever \code{simVariability} forces);
+\code{TRUE} requires them, and is an error when the model has none or when
+no variability would be simulated; \code{FALSE} ignores them and falls back
+to a supplied \code{thetaMat}/\code{dfSub}.  In auto mode a \code{thetaMat} given at
+the call site, carried in the model's \code{meta} block, or from an nlmixr2
+fit's covariance takes precedence over the priors on the population
+parameters, which are then not read, so an estimate that is not its
+prior mean (a MAP estimate) still simulates; a prior entry it does not
+draw is named in a warning.  \code{TRUE} makes the priors replace it.  The prior degrees of
+freedom take precedence over a \code{dfSub} carried in \code{meta}, with a
+warning; one given at the call site wins over them instead.}
+
+\item{priorPdRetry}{How many times a prior draw of a covariance matrix is
+retried when it is not positive definite.  After that many tries the
+nearest positive definite matrix of the kept draws is used and a
+warning is given.  Only prior draws retry; \code{cvPost()} is unchanged.}
+
+\item{priorOmega}{Internal.  The per-block prior degrees of freedom of the
+omega, built from the \code{ini({})} block; not meant to be set directly.}
+
+\item{priorOmegaEl}{Internal.  Which \code{thetaMat} columns are omega elements
+of a joint prior; not meant to be set directly -- use
+\code{omegaSeparation="tnpri"}.}
+
+\item{priorSigmaEl}{Internal.  Which \code{thetaMat} columns are sigma elements
+of a joint prior; not meant to be set directly -- use
+\code{sigmaSeparation="tnpri"}.}
 
 \item{envir}{is the environment to look for R user functions
 (defaults to parent environment)}
@@ -1001,6 +1907,31 @@ handling options, rxode2's numerical stability options, rxode2's
 output options, and finally internal rxode2 options or compatibility
 options.
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    tka <- log(1); tcl <- log(0.1); tv <- log(10)
+    eta.cl ~ 0.1
+  })
+  model({
+    ka <- exp(tka); cl <- exp(tcl + eta.cl); v <- exp(tv)
+    d/dt(depot) <- -ka * depot
+    d/dt(center) <- ka * depot - cl / v * center
+    cp <- center / v
+  })
+}
+ev <- et(amt = 100, ii = 24, addl = 2) |> et(0:72)
+# typical subject (between-subject variability removed)
+s <- rxSolve(mod, ev, omega = NA)
+head(s)
+# change a parameter on the solved object; it re-solves
+s$tka <- log(2)
+head(s)
+# 10 subjects with between-subject variability
+s2 <- rxSolve(mod, ev, nSub = 10, seed = 42)
+}
+}
 \references{
 "New Scaling and Squaring Algorithm for the Matrix Exponential", by
 Awad H. Al-Mohy and Nicholas J. Higham, August 2009
@@ -1026,7 +1957,20 @@ Springer-Verlag (1993).
 }
 \seealso{
 \code{\link[=rxode2]{rxode2()}}
+
+Other Solving:
+\code{\link[=as.arrow]{as.arrow()}},
+\code{\link[=rxCbindStudyIndividual]{rxCbindStudyIndividual()}},
+\code{\link[=rxForcedPars]{rxForcedPars()}},
+\code{\link[=rxInjectedPars]{rxInjectedPars()}},
+\code{\link[=rxParLoader]{rxParLoader()}},
+\code{\link[=rxRegisterUiAssembled]{rxRegisterUiAssembled()}},
+\code{\link[=rxRegisterUiPrep]{rxRegisterUiPrep()}},
+\code{\link[=rxSetActiveParLoader]{rxSetActiveParLoader()}},
+\code{\link[=rxSetIni0]{rxSetIni0()}},
+\code{\link[=rxSolveChunked]{rxSolveChunked()}}
 }
 \author{
 Matthew Fidler, Melissa Hallow and  Wenping Wang
 }
+\concept{Solving}

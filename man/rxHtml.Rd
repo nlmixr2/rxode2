@@ -20,6 +20,40 @@ html code for rxSolve object
 \description{
 Format rxSolve and related objects as html.
 }
+\examples{
+\donttest{
+if (requireNamespace("knitr", quietly = TRUE)) {
+mod <- function() {
+  ini({
+    tcl <- log(3)
+    tv <- log(30)
+  })
+  model({
+    cl <- exp(tcl)
+    v <- exp(tv)
+    d/dt(central) <- -cl / v * central
+    cp <- central / v
+  })
+}
+s <- rxSolve(mod, et(amt = 100, cmt = "central") |> et(0:4))
+rxHtml(s)
+}
+}
+}
+\seealso{
+Other Utilities:
+\code{\link[=rxDerived]{rxDerived()}},
+\code{\link[=rxGetDefaultSerialize]{rxGetDefaultSerialize()}},
+\code{\link[=rxInv]{rxInv()}},
+\code{\link[=rxIsCurrent]{rxIsCurrent()}},
+\code{\link[=rxLock]{rxLock()}},
+\code{\link[=rxNumLoaded]{rxNumLoaded()}},
+\code{\link[=rxOmegaVarCovDeriv]{rxOmegaVarCovDeriv()}},
+\code{\link[=rxSuppressMsg]{rxSuppressMsg()}},
+\code{\link[=rxSymInvChol]{rxSymInvChol()}},
+\code{\link[=rxTempDir]{rxTempDir()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Utilities}

@@ -56,7 +56,10 @@ While this is easy enough to do, it is a bit tedious.  If you have
 rxode2 setup appropriately, you can use the computer algebra system
 sympy to calculate the Jacobian automatically.
 
-This is done by the rxode2 option `calcJac` option:
+This is done by the rxode2 option `calcJac` option.  This option
+applies to the low-level `rxode2()` model, so the model function is
+first converted to its low-level model code (see
+[Low-level models and other input styles](https://nlmixr2.github.io/rxode2/articles/rxode2-classic-models.html)):
 
 ```{r}
 Vtpol <- function() {

@@ -1,3 +1,43 @@
+# A ui with a subject eta and an occasion eta, and the same model without
+# etas, for population solves of a nested omega
+.pzIovUi <- function() {
+  ini({
+    tka <- 0.45
+    tcl <- 1
+    tv <- 3.45
+    add.sd <- 0.7
+    eta.v ~ 0.1
+    iov.cl ~ 0.1 | occ
+  })
+  model({
+    ka <- exp(tka)
+    cl <- exp(tcl + iov.cl)
+    v <- exp(tv + eta.v)
+    d / dt(depot) <- -ka * depot
+    d / dt(center) <- ka * depot - cl / v * center
+    cp <- center / v
+    cp ~ add(add.sd)
+  })
+}
+
+.pzNoEtaUi <- function() {
+  ini({
+    tka <- 0.45
+    tcl <- 1
+    tv <- 3.45
+    add.sd <- 0.7
+  })
+  model({
+    ka <- exp(tka)
+    cl <- exp(tcl)
+    v <- exp(tv)
+    d / dt(depot) <- -ka * depot
+    d / dt(center) <- ka * depot - cl / v * center
+    cp <- center / v
+    cp ~ add(add.sd)
+  })
+}
+
 rxTest({
   test_that("ordinal simulation", {
     # large simulation model #1
@@ -143,30 +183,29 @@ rxTest({
       })
     }
 
-     tmp <- rxode2(f)
+    tmp <- rxode2(f)
 
-     expect_error(tmp$simulationModel, NA)
-     expect_error(tmp$simulationIniModel, NA)
+    expect_error(tmp$simulationModel, NA)
+    expect_error(tmp$simulationIniModel, NA)
 
-     tmp1 <- tmp$simulationModel
+    tmp1 <- tmp$simulationModel
 
-     tmp2 <- tmp$simulationIniModel
+    tmp2 <- tmp$simulationIniModel
 
-     expect_true(inherits(as.function(tmp1), "function"))
-     expect_true(inherits(as.function(tmp2), "function"))
+    expect_true(inherits(as.function(tmp1), "function"))
+    expect_true(inherits(as.function(tmp2), "function"))
 
-     expect_true(inherits(as.rxUi(tmp1), "rxUi"))
-     expect_true(inherits(as.rxUi(tmp2), "rxUi"))
+    expect_true(inherits(as.rxUi(tmp1), "rxUi"))
+    expect_true(inherits(as.rxUi(tmp2), "rxUi"))
 
-    ev <- et(amt=0.7, ii=24, until=7 * 24, cmt=1) |>
-      et(seq(0.1, 24 * 8, by=12), cmt=1) |>
-      et(seq(0.1, 24 * 8, by=12), cmt=2) |>
-      et(id=1:20) |>
+    ev <- et(amt = 0.7, ii = 24, until = 7 * 24, cmt = 1) |>
+      et(seq(0.1, 24 * 8, by = 12), cmt = 1) |>
+      et(seq(0.1, 24 * 8, by = 12), cmt = 2) |>
+      et(id = 1:20) |>
       dplyr::as_tibble()
 
     rxWithSeed(42, {
-      s <- rxSolve(tmp, ev,
-                   returnType="tibble", addCov=TRUE)
+      s <- rxSolve(tmp, ev, returnType = "tibble", addCov = TRUE)
 
       s <- s |> dplyr::filter(CMT == 2)
       expect_equal(length(as.numeric(table(s$sim))), 2)
@@ -175,8 +214,7 @@ rxTest({
     })
 
     rxWithSeed(42, {
-      s <- rxSolve(tmp1, ev,
-                   returnType="tibble", addCov=TRUE)
+      s <- rxSolve(tmp1, ev, returnType = "tibble", addCov = TRUE)
 
       s <- s |> dplyr::filter(CMT == 2)
       expect_equal(length(as.numeric(table(s$sim))), 2)
@@ -185,8 +223,7 @@ rxTest({
     })
 
     rxWithSeed(42, {
-      s <- rxSolve(tmp2, ev,
-                   returnType="tibble", addCov=TRUE)
+      s <- rxSolve(tmp2, ev, returnType = "tibble", addCov = TRUE)
 
       s <- s |> dplyr::filter(CMT == 2)
       expect_equal(length(as.numeric(table(s$sim))), 2)
@@ -214,16 +251,14 @@ rxTest({
 
     expect_error(tmp$simulationModel, NA)
 
-    ev <- et(amt=0.7, ii=24, until=7 * 24, cmt=1) |>
-      et(seq(0.1, 24 * 8, by=12), cmt=1) |>
-      et(seq(0.1, 24 * 8, by=12), cmt=2) |>
-      et(id=1:20) |>
+    ev <- et(amt = 0.7, ii = 24, until = 7 * 24, cmt = 1) |>
+      et(seq(0.1, 24 * 8, by = 12), cmt = 1) |>
+      et(seq(0.1, 24 * 8, by = 12), cmt = 2) |>
+      et(id = 1:20) |>
       dplyr::as_tibble()
 
     rxWithSeed(42, {
-
-      s <- rxSolve(tmp, ev,
-                   returnType="tibble", addCov=TRUE)
+      s <- rxSolve(tmp, ev, returnType = "tibble", addCov = TRUE)
 
       s <- s |> dplyr::filter(CMT == 2)
       expect_equal(length(as.numeric(table(s$sim))), 2)
@@ -255,15 +290,14 @@ rxTest({
     expect_error(tmp$simulationModel, NA)
 
     ev <-
-      et(amt=0.7, ii=24, until=7 * 24, cmt=1) |>
-      et(seq(0.1, 24 * 8, by=12), cmt=1) |>
-      et(seq(0.1, 24 * 8, by=12), cmt=2) |>
-      et(id=1:20) |>
+      et(amt = 0.7, ii = 24, until = 7 * 24, cmt = 1) |>
+      et(seq(0.1, 24 * 8, by = 12), cmt = 1) |>
+      et(seq(0.1, 24 * 8, by = 12), cmt = 2) |>
+      et(id = 1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
-      expect_error(rxSolve(tmp, ev,
-                           returnType="tibble", addCov=TRUE), NA)
+      expect_error(rxSolve(tmp, ev, returnType = "tibble", addCov = TRUE), NA)
     })
   })
 
@@ -292,15 +326,14 @@ rxTest({
     expect_error(tmp$simulationModel, NA)
 
     ev <-
-      et(amt=0.7, ii=24, until=7 * 24, cmt=1) |>
-      et(seq(0.1, 24 * 8, by=12), cmt=1) |>
-      et(seq(0.1, 24 * 8, by=12), cmt=2) |>
-      et(id=1:20) |>
+      et(amt = 0.7, ii = 24, until = 7 * 24, cmt = 1) |>
+      et(seq(0.1, 24 * 8, by = 12), cmt = 1) |>
+      et(seq(0.1, 24 * 8, by = 12), cmt = 2) |>
+      et(id = 1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
-      expect_error(rxSolve(tmp, ev,
-                           returnType="tibble", addCov=TRUE), NA)
+      expect_error(rxSolve(tmp, ev, returnType = "tibble", addCov = TRUE), NA)
     })
   })
 
@@ -329,20 +362,19 @@ rxTest({
     expect_error(tmp$simulationModel, NA)
 
     ev <-
-      et(amt=0.7, ii=24, until=7 * 24, cmt=1) |>
-      et(seq(0.1, 24 * 8, by=12), cmt=1) |>
-      et(seq(0.1, 24 * 8, by=12), cmt=2) |>
-      et(id=1:20) |>
+      et(amt = 0.7, ii = 24, until = 7 * 24, cmt = 1) |>
+      et(seq(0.1, 24 * 8, by = 12), cmt = 1) |>
+      et(seq(0.1, 24 * 8, by = 12), cmt = 2) |>
+      et(id = 1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
-      expect_error(rxSolve(tmp, ev,
-                           returnType="tibble", addCov=TRUE), NA)
+      expect_error(rxSolve(tmp, ev, returnType = "tibble", addCov = TRUE), NA)
     })
   })
 
   test_that("t simulations", {
-     f <- function() {
+    f <- function() {
       ini({
         tcl <- log(0.008)
         tv <-  log(0.6)
@@ -369,15 +401,14 @@ rxTest({
     expect_true(regexpr("rxt[(]nu[)]", rxNorm(tmp$simulationModel)) != -1)
 
     ev <-
-      et(amt=0.7, ii=24, until=7 * 24, cmt=1) |>
-      et(seq(0.1, 24 * 8, by=12), cmt=1) |>
-      et(seq(0.1, 24 * 8, by=12), cmt=2) |>
-      et(id=1:20) |>
+      et(amt = 0.7, ii = 24, until = 7 * 24, cmt = 1) |>
+      et(seq(0.1, 24 * 8, by = 12), cmt = 1) |>
+      et(seq(0.1, 24 * 8, by = 12), cmt = 2) |>
+      et(id = 1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
-      expect_error(rxSolve(tmp, ev,
-                           returnType="tibble", addCov=TRUE), NA)
+      expect_error(rxSolve(tmp, ev, returnType = "tibble", addCov = TRUE), NA)
     })
   })
 
@@ -399,13 +430,12 @@ rxTest({
 
     expect_true(regexpr("rpois[(]", rxNorm(tmp$simulationModel)) != -1)
 
-    ev <- et(seq(0.1, 24 * 8, by=12)) |>
-      et(id=1:20) |>
+    ev <- et(seq(0.1, 24 * 8, by = 12)) |>
+      et(id = 1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
-      expect_error(rxSolve(tmp, ev,
-                           returnType="tibble", addCov=TRUE), NA)
+      expect_error(rxSolve(tmp, ev, returnType = "tibble", addCov = TRUE), NA)
     })
   })
 
@@ -429,13 +459,12 @@ rxTest({
 
     expect_true(regexpr("rxbinom[(]", rxNorm(tmp$simulationModel)) != -1)
 
-    ev <- et(seq(0.1, 24 * 8, by=12)) |>
-      et(id=1:20) |>
+    ev <- et(seq(0.1, 24 * 8, by = 12)) |>
+      et(id = 1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
-      expect_error(rxSolve(tmp, ev,
-                           returnType="tibble", addCov=TRUE), NA)
+      expect_error(rxSolve(tmp, ev, returnType = "tibble", addCov = TRUE), NA)
     })
   })
 
@@ -460,13 +489,12 @@ rxTest({
 
     expect_true(regexpr("rbeta[(]", rxNorm(tmp$simulationModel)) != -1)
 
-    ev <- et(seq(0.1, 24 * 8, by=12)) |>
-      et(id=1:20) |>
+    ev <- et(seq(0.1, 24 * 8, by = 12)) |>
+      et(id = 1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
-      expect_error(rxSolve(tmp, ev,
-                           returnType="tibble", addCov=TRUE), NA)
+      expect_error(rxSolve(tmp, ev, returnType = "tibble", addCov = TRUE), NA)
     })
   })
 
@@ -488,13 +516,12 @@ rxTest({
 
     expect_true(regexpr("rchisq[(]", rxNorm(tmp$simulationModel)) != -1)
 
-    ev <- et(seq(0.1, 24 * 8, by=12)) |>
-      et(id=1:20) |>
+    ev <- et(seq(0.1, 24 * 8, by = 12)) |>
+      et(id = 1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
-      expect_error(rxSolve(tmp, ev,
-                           returnType="tibble", addCov=TRUE), NA)
+      expect_error(rxSolve(tmp, ev, returnType = "tibble", addCov = TRUE), NA)
     })
   })
 
@@ -516,13 +543,12 @@ rxTest({
 
     expect_true(regexpr("rexp[(]", rxNorm(tmp$simulationModel)) != -1)
 
-    ev <- et(seq(0.1, 24 * 8, by=12)) |>
-      et(id=1:20) |>
+    ev <- et(seq(0.1, 24 * 8, by = 12)) |>
+      et(id = 1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
-      expect_error(rxSolve(tmp, ev,
-                           returnType="tibble", addCov=TRUE), NA)
+      expect_error(rxSolve(tmp, ev, returnType = "tibble", addCov = TRUE), NA)
     })
   })
 
@@ -562,11 +588,9 @@ rxTest({
 
   ## })
 
-
   #  "unif"="runif",
 
   test_that("unif simulations", {
-
     f <- function() {
       ini({
         ta <- 0.5
@@ -587,13 +611,12 @@ rxTest({
 
     expect_true(regexpr("runif[(]", rxNorm(tmp$simulationModel)) != -1)
 
-    ev <- et(seq(0.1, 24 * 8, by=12)) |>
-      et(id=1:20) |>
+    ev <- et(seq(0.1, 24 * 8, by = 12)) |>
+      et(id = 1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
-      expect_error(rxSolve(tmp, ev,
-                           returnType="tibble", addCov=TRUE), NA)
+      expect_error(rxSolve(tmp, ev, returnType = "tibble", addCov = TRUE), NA)
     })
   })
 
@@ -619,13 +642,12 @@ rxTest({
 
     expect_true(regexpr("rweibull[(]", rxNorm(tmp$simulationModel)) != -1)
 
-    ev <- et(seq(0.1, 24 * 8, by=12)) |>
-      et(id=1:20) |>
+    ev <- et(seq(0.1, 24 * 8, by = 12)) |>
+      et(id = 1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
-      expect_error(rxSolve(tmp, ev,
-                           returnType="tibble", addCov=TRUE), NA)
+      expect_error(rxSolve(tmp, ev, returnType = "tibble", addCov = TRUE), NA)
     })
   })
 
@@ -655,13 +677,12 @@ rxTest({
 
     expect_true(regexpr("rcauchy[(]", rxNorm(tmp$simulationModel)) != -1)
 
-    ev <- et(seq(0.1, 24 * 8, by=12)) |>
-      et(id=1:20) |>
+    ev <- et(seq(0.1, 24 * 8, by = 12)) |>
+      et(id = 1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
-      expect_error(rxSolve(tmp, ev,
-                           returnType="tibble", addCov=TRUE), NA)
+      expect_error(rxSolve(tmp, ev, returnType = "tibble", addCov = TRUE), NA)
     })
   })
 
@@ -686,13 +707,12 @@ rxTest({
 
     expect_true(regexpr("rgamma[(]", rxNorm(tmp$simulationModel)) != -1)
 
-    ev <- et(seq(0.1, 24 * 8, by=12)) |>
-      et(id=1:20) |>
+    ev <- et(seq(0.1, 24 * 8, by = 12)) |>
+      et(id = 1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
-      expect_error(rxSolve(tmp, ev,
-                           returnType="tibble", addCov=TRUE), NA)
+      expect_error(rxSolve(tmp, ev, returnType = "tibble", addCov = TRUE), NA)
     })
   })
 
@@ -714,13 +734,12 @@ rxTest({
 
     expect_true(regexpr("rgeom[(]", rxNorm(tmp$simulationModel)) != -1)
 
-    ev <- et(seq(0.1, 24 * 8, by=12)) |>
-      et(id=1:20) |>
+    ev <- et(seq(0.1, 24 * 8, by = 12)) |>
+      et(id = 1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
-      expect_error(rxSolve(tmp, ev,
-                           returnType="tibble", addCov=TRUE), NA)
+      expect_error(rxSolve(tmp, ev, returnType = "tibble", addCov = TRUE), NA)
     })
   })
 
@@ -751,30 +770,234 @@ rxTest({
 
     expect_true(regexpr("rxt[(]nu[)]", rxNorm(tmp$simulationModel)) != -1)
 
-    ev <- et(amt=0.7, ii=24, until=7 * 24, cmt=1) |>
-      et(seq(0.1, 24 * 8, by=12), cmt=1) |>
-      et(seq(0.1, 24 * 8, by=12), cmt=2) |>
-      et(id=1:20) |>
+    ev <- et(amt = 0.7, ii = 24, until = 7 * 24, cmt = 1) |>
+      et(seq(0.1, 24 * 8, by = 12), cmt = 1) |>
+      et(seq(0.1, 24 * 8, by = 12), cmt = 2) |>
+      et(id = 1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
-      .rx1 <- rxSolve(tmp, ev, addCov=TRUE)
+      .rx1 <- rxSolve(tmp, ev, addCov = TRUE)
       expect_true(all(.rx1$ipredSim != .rx1$sim))
       expect_true(all(.rx1$params$eta.cl != 0))
       expect_true(all(.rx1$params$eta.v != 0))
 
       suppressWarnings(
-        .rx2 <- rxSolve(tmp, ev, omega=NA, addCov=TRUE)
+        .rx2 <- rxSolve(tmp, ev, omega = NA, addCov = TRUE)
       )
       expect_true(all(.rx2$ipredSim != .rx2$sim))
       expect_true(all(.rx2$params$eta.cl == 0))
       expect_true(all(.rx2$params$eta.v == 0))
 
-      .rx3 <- rxSolve(tmp, ev, omega=NA, sigma=NA, addCov=TRUE)
+      .rx3 <- rxSolve(tmp, ev, omega = NA, sigma = NA, addCov = TRUE)
       expect_true(any(names(.rx3) == "pred"))
       expect_true(all(.rx3$params$eta.cl == 0))
       expect_true(all(.rx3$params$eta.v == 0))
     })
+  })
+
+  test_that(".rxParamsZero zeroes the etas of every level of a nested omega", {
+    .rxParamsZero <- getFromNamespace(".rxParamsZero", "rxode2")
+    .nested <- lotri::lotri(lotri::lotri(eta.v ~ 0.1) | id(nu = 100), lotri::lotri(iov.cl ~ 0.1) | occ(nu = 100))
+    expect_identical(.rxParamsZero(c(tcl = 1), .nested), c(tcl = 1, eta.v = 0, iov.cl = 0))
+    .df <- .rxParamsZero(data.frame(tcl = c(1, 2)), .nested)
+    expect_identical(.df, data.frame(tcl = c(1, 2), eta.v = c(0, 0), iov.cl = c(0, 0)))
+    .m <- .rxParamsZero(cbind(tcl = c(1, 2)), .nested)
+    expect_identical(colnames(.m), c("tcl", "eta.v", "iov.cl"))
+    expect_identical(unname(.m[, "iov.cl"]), c(0, 0))
+    # the same as a block-diagonal matrix of those etas
+    .mat <- lotri::lotriMat(.nested)
+    expect_identical(.rxParamsZero(c(tcl = 1), .nested), .rxParamsZero(c(tcl = 1), .mat))
+    # a data frame is not a nested omega: its names are the etas
+    expect_identical(.rxParamsZero(c(tcl = 1), as.data.frame(.mat)), c(tcl = 1, eta.v = 0, iov.cl = 0))
+  })
+
+  test_that("a population solve of a nested omega sets every eta to zero", {
+    .d <- nlmixr2data::theo_sd
+    .d$occ <- ifelse(.d$TIME < 6, 1L, 2L)
+    .s <- suppressWarnings(suppressMessages(rxSolve(.pzIovUi, .d, omega = NA, sigma = NA)))
+    .s0 <- suppressWarnings(suppressMessages(rxSolve(.pzNoEtaUi, .d, omega = NA, sigma = NA)))
+    expect_identical(c(unique(.s$params$eta.v), unique(.s$params$iov.cl)), c(0, 0))
+    expect_identical(.s$cp, .s0$cp)
+  })
+
+  test_that(".rxParamsZero keeps a multi-row params data.frame rectangular", {
+    # c() on a data.frame drops the data.frame class and returns a ragged list
+    # (per-id columns keep length nid, the appended zeros have length one), which
+    # was then read out of bounds while solving.
+    .omega <- matrix(0.1, 1, 1, dimnames = list("eta.base", "eta.base"))
+    .rxParamsZero <- getFromNamespace(".rxParamsZero", "rxode2")
+    .df <- data.frame(id = 1:4, tbase = as.numeric(1:4))
+
+    .out <- .rxParamsZero(.df, .omega)
+    expect_s3_class(.out, "data.frame")
+    expect_equal(nrow(.out), 4L)
+    expect_equal(.out$eta.base, rep(0.0, 4))
+    expect_equal(lengths(.out), c(id = 4L, tbase = 4L, eta.base = 4L))
+
+    # a zero row params stays a zero row data.frame
+    .out0 <- .rxParamsZero(.df[0, ], .omega)
+    expect_s3_class(.out0, "data.frame")
+    expect_equal(nrow(.out0), 0L)
+    expect_equal(.out0$eta.base, numeric(0))
+
+    # a matrix params keeps its dim -- c() would drop it the same way
+    .mat <- cbind(tbase = as.numeric(1:4))
+    .outM <- .rxParamsZero(.mat, .omega)
+    expect_true(is.matrix(.outM))
+    expect_equal(dim(.outM), c(4L, 2L))
+    expect_equal(colnames(.outM), c("tbase", "eta.base"))
+    expect_equal(.outM[, "eta.base"], rep(0.0, 4))
+
+    # a matrix already carrying the column has it zeroed rather than doubled
+    .outM2 <- .rxParamsZero(cbind(tbase = as.numeric(1:4), eta.base = 100), .omega)
+    expect_equal(colnames(.outM2), c("tbase", "eta.base"))
+    expect_equal(.outM2[, "eta.base"], rep(0.0, 4))
+
+    # a named numeric vector still gets the zeros appended
+    expect_equal(.rxParamsZero(c(tbase = 1.0), .omega), c(tbase = 1.0, eta.base = 0.0))
+
+    # a model with no random effects is a no-op rather than rep(0, NA)
+    expect_identical(.rxParamsZero(.df, NULL), .df)
+  })
+
+  test_that("omega=NA/sigma=NA solve correctly with a multi-row params data.frame", {
+    # Trivial on purpose: with omega=NA the etas are zero, so base == tbase
+    # exactly, with no solver tolerance involved.
+    f <- function() {
+      ini({
+        tbase <- 1
+        eta.base ~ 0.1
+        addSd <- 1
+      })
+      model({
+        base <- tbase + eta.base
+        base ~ add(addSd)
+      })
+    }
+    tmp <- rxode2(f)
+
+    .n <- 200L
+    .expected <- as.numeric(seq_len(.n))
+    .pars <- data.frame(id = seq_len(.n), tbase = .expected)
+    .ev <- data.frame(id = seq_len(.n), time = 0, evid = 0L, amt = 0)
+
+    # Identical input must give the identical, correct answer every time.  Note
+    # the corruption did NOT show up in the returned $params (which reported the
+    # etas as zero) -- only in the solved values, so assert on those.
+    for (.i in seq_len(20)) {
+      .rx <- suppressWarnings(
+        rxSolve(tmp, .ev, params = .pars, omega = NA, returnType = "data.frame")
+      )
+      expect_equal(.rx$base, .expected)
+    }
+
+    .rx <- suppressWarnings(
+      rxSolve(tmp, .ev, params = .pars, omega = NA, sigma = NA, returnType = "data.frame")
+    )
+    expect_equal(.rx$base, .expected)
+
+    # sigma=NA on its own used to error outright with a multi-row params.  The
+    # etas are still simulated here, so assert on the residual being zero
+    # (sim == base) rather than on the value of base.
+    .rx <- suppressWarnings(
+      rxSolve(tmp, .ev, params = .pars, sigma = NA, returnType = "data.frame")
+    )
+    expect_equal(.rx$sim, .rx$base)
+
+    # a matrix params is the same shape problem: c() drops its dim, which used
+    # to fail with "The following parameter(s) are required for solving"
+    .mat <- cbind(tbase = .expected, addSd = 1)
+    .rx <- suppressWarnings(
+      rxSolve(tmp, .ev, params = .mat, omega = NA, returnType = "data.frame")
+    )
+    expect_equal(.rx$base, .expected)
+
+    .rx <- suppressWarnings(
+      rxSolve(tmp, .ev, params = .mat, omega = NA, sigma = NA, returnType = "data.frame")
+    )
+    expect_equal(.rx$base, .expected)
+  })
+
+  test_that("omega=NA is a no-op for a model with no between subject variability", {
+    f <- function() {
+      ini({
+        tbase <- 1
+        addSd <- 1
+      })
+      model({
+        base <- tbase
+        base ~ add(addSd)
+      })
+    }
+    tmp <- rxode2(f)
+    .pars <- data.frame(id = 1:4, tbase = as.numeric(1:4))
+    .ev <- data.frame(id = 1:4, time = 0, evid = 0L, amt = 0)
+    # previously raised "invalid 'times' argument" from rep(0, dim(NULL)[1])
+    .rx <- suppressWarnings(
+      rxSolve(tmp, .ev, params = .pars, omega = NA, returnType = "data.frame")
+    )
+    expect_equal(.rx$base, as.numeric(1:4))
+  })
+
+  test_that("supplying one eta leaves the others simulated", {
+    f <- function() {
+      ini({
+        ta <- 0
+        tb <- 0
+        eta.a ~ 0.09
+        eta.b ~ 0.09
+        addSd <- 1
+      })
+      model({
+        a <- ta + eta.a
+        b <- tb + eta.b
+        base <- a + b
+        base ~ add(addSd)
+      })
+    }
+    tmp <- rxode2(f)
+    .n <- 8L
+    .ev <- data.frame(id = seq_len(.n), time = 0, evid = 0L, amt = 0)
+
+    # eta.a is supplied, so it is dropped from the omega -- but the subset that
+    # drops it took a single remaining eta down to a scalar, whose dim is NULL,
+    # and all(NULL == c(0L, 0L)) is TRUE, so the whole omega was dropped and
+    # eta.b was neither simulated nor supplied ("The following parameter(s) are
+    # required for solving: eta.b").  A matrix params reached this only once a
+    # matrix's column names became visible to that filter.
+    for (.pars in list(
+      data.frame(id = seq_len(.n), ta = 0, tb = 0, addSd = 1, eta.a = 0),
+      cbind(ta = 0, tb = 0, addSd = 1, eta.a = 0)[rep(1L, .n), , drop = FALSE]
+    )) {
+      .rx <- suppressWarnings(
+        rxSolve(tmp, .ev, params = .pars, returnType = "data.frame")
+      )
+      # eta.a was taken as given (a == ta == 0) and eta.b still varies
+      expect_equal(.rx$a, rep(0.0, .n))
+      expect_true(length(unique(.rx$b)) > 1L)
+    }
+  })
+
+  test_that("sigma=NA is a no-op for a model with no residual error", {
+    f <- function() {
+      ini({
+        tbase <- 1
+      })
+      model({
+        base <- tbase
+      })
+    }
+    tmp <- rxode2(f)
+    .pars <- data.frame(id = 1:4, tbase = as.numeric(1:4))
+    .ev <- data.frame(id = 1:4, time = 0, evid = 0L, amt = 0)
+    # simulationSigma is a 0x0 matrix here, so the old c() appended nothing but
+    # still dropped the data.frame class, failing with "The following
+    # parameter(s) are required for solving: tbase"
+    .rx <- suppressWarnings(
+      rxSolve(tmp, .ev, params = .pars, sigma = NA, returnType = "data.frame")
+    )
+    expect_equal(.rx$base, as.numeric(1:4))
   })
 
   test_that("negative binomial simulation", {
@@ -795,13 +1018,12 @@ rxTest({
     expect_error(tmp$simulationModel, NA)
     expect_true(regexpr("rxnbinom[(]n[,] *p[)]", rxNorm(tmp$simulationModel)) != -1)
 
-    ev <- et(seq(0.1, 24 * 8, by=12)) |>
-      et(id=1:20) |>
+    ev <- et(seq(0.1, 24 * 8, by = 12)) |>
+      et(id = 1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
-      expect_error(rxSolve(tmp, ev,
-                           returnType="tibble", addCov=TRUE), NA)
+      expect_error(rxSolve(tmp, ev, returnType = "tibble", addCov = TRUE), NA)
     })
   })
 
@@ -824,19 +1046,16 @@ rxTest({
     expect_error(tmp$simulationModel, NA)
     expect_true(regexpr("rxnbinomMu[(]n[,] *p[)]", rxNorm(tmp$simulationModel)) != -1)
 
-
-    ev <- et(seq(0.1, 24 * 8, by=12)) |>
-      et(id=1:20) |>
+    ev <- et(seq(0.1, 24 * 8, by = 12)) |>
+      et(id = 1:20) |>
       dplyr::as_tibble()
 
     rxWithPreserveSeed({
-      expect_error(rxSolve(tmp, ev,
-                           returnType="tibble", addCov=TRUE), NA)
+      expect_error(rxSolve(tmp, ev, returnType = "tibble", addCov = TRUE), NA)
     })
   })
 
-  test_that("model without params() works",{
-
+  test_that("model without params() works", {
     mod <- function() {
       model({
         ## Table 3 from Savic 2007
@@ -861,6 +1080,5 @@ rxTest({
     expect_error(mod$simulationIniModel, NA)
     expect_error(mod$symengineModelNoPrune, NA)
     expect_error(mod$symengineModelPrune, NA)
-
   })
 })

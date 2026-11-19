@@ -1,14 +1,45 @@
-# -*- mode: makefile-gmake -*-
 BH=@BH@
 RCPP=@RCPP@
-EG=@EG@
-SH=@SH@
 CXX_STD = CXX17
 
 ################################################################################
 ## Package library flags.
-PKG_LIBS    = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(SHLIB_OPENMP_CXXFLAGS) @SL@
+PKG_LIBS    = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(SHLIB_OPENMP_CXXFLAGS)
 
-# Release options
-PKG_CFLAGS  =  -D_isrxode2_
-PKG_CXXFLAGS = $(SHLIB_OPENMP_CXXFLAGS) -D_isrxode2_ -DBOOST_DISABLE_ASSERTS -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION -D_HAS_AUTO_PTR_ETC=0 -D_REENTRANT -@ISYSTEM@"$(BH)" -@ISYSTEM@"$(EG)" $(SH) -@ISYSTEM@"$(RCPP)"
+# The vendored SUNDIALS headers live in src/sundials_inc; PKG_CPPFLAGS
+# precedes the LinkingTo include flags (CLINK_CPPFLAGS) for C and C++.
+# R_NO_REMAP must be defined BEFORE any R header is included ("Writing R
+# Extensions": the remapping "can be eliminated by defining R_NO_REMAP
+# (before including any R headers)").  Setting it in a header of our own is
+# too late for any translation unit that has already pulled in R's headers,
+# which is what let R's `match` macro expand inside the `declare variant
+# match(...)` pragma in LLVM's omp.h and broke the clang builds.  Defining it
+# on the command line is the only way to guarantee it for every source.
+PKG_CPPFLAGS = -DR_NO_REMAP @SUNDIALS_INC@
+
+# Release options -- -O3 gives meaningful speedup on the ODE hot paths
+PKG_CFLAGS  =  -D_isrxode2_ @O2@
+PKG_CXXFLAGS = @O2@ $(SHLIB_OPENMP_CXXFLAGS) -D_isrxode2_ -DBOOST_DISABLE_ASSERTS -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION -D_HAS_AUTO_PTR_ETC=0 -D_REENTRANT -@ISYSTEM@"$(BH)" -@ISYSTEM@"$(RCPP)" -DARMA_DONT_USE_OPENMP
+
+# Filled in by configure only when the Fortran compiler is flang and flang
+# reports it cannot act on a C-only flag that this platform's FFLAGS carries;
+# removed for every other toolchain, leaving R's own ALL_FFLAGS in force.
+# Kept commented so this file stays a parseable makefile.  See
+# inst/tools/fflags.R.
+#@FFLAGS_FILTER@
+
+# Rebuild every object when any header changes.  Without this the objects carry
+# no header dependencies at all, so editing a shared header leaves stale objects
+# linking against the previous signature -- which either fails at LOAD time with
+# an undefined symbol, or silently keeps running the OLD code, long after a
+# build that reported success.
+#
+# `all:` MUST come first.  R prepends this file to its own makefiles
+# (tools:::.shlib_internal does `makefiles <- c("Makevars", makefiles)`), so the
+# first target HERE is the default goal for the whole build -- without the line
+# below, `$(OBJECTS)` would become that goal and every build would compile
+# objects and stop, producing no shared object at all.
+all: $(SHLIB)
+
+@HEADERS@
+$(OBJECTS): $(HEADERS)

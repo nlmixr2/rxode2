@@ -1,6 +1,25 @@
-rxTest({ # mostly tested in 'rxode2et'
-  test_that("warfarin model", {
+# A model with an eta and a time-varying covariate, and its events as a data
+# frame, for the tests that the caller's translated table is left alone
+.etCallerMod <- function() {
+  rxode2({
+    cl <- tcl * exp(eta.cl) * (WT / 70)
+    d / dt(depot) <- -ka * depot
+    d / dt(center) <- ka * depot - cl / v * center
+    cp <- center / v
+  })
+}
 
+.etCallerData <- function() {
+  .e <- as.data.frame(et(amt = 100) |> et(c(0.5, 1, 2, 4, 8)))
+  .e$id <- 1
+  .e$WT <- ifelse(.e$time > 3, 75, 70)
+  .e
+}
+
+rxTest({
+  # mostly tested in 'rxode2et'
+  test_that("warfarin model", {
+    skip_if_not_installed("nlmixr2data")
     warfarin <- nlmixr2data::warfarin
 
     mod <- rxode2({
@@ -63,63 +82,1254 @@ rxTest({ # mostly tested in 'rxode2et'
 
     expect_equal(as.double((t$sex == "male") * 1), t$sm)
     expect_equal(as.double((t$sex == "female") * 1), t$sf)
-
   })
 
   test_that("etTrans na time evid=2", {
-
-    mod <- rxode2parse("
+    mod <- rxode2parse(
+      "
 a = 6
 b = 0.6
 d/dt(intestine) = -a*intestine
 d/dt(blood)     = a*intestine - b*blood
-")
+"
+    )
 
-    et <- structure(list(time = c(0, 0.05, 0.1, 0.2, 0.3, NA),
-                         cmt = c("(default)", "(obs)", "intestine", "-intestine", "intestine", "out"),
-                         amt = c(0.0833333333333333, NA, 3, NA, 3, 3),
-                         rate = c(2, 0, 0, 0, 0, 0),
-                         ii = c(1, 0, 3, 0, 3, 0),
-                         addl = c(9L, 0L, 0L, 0L, 0L, 0L),
-                         evid = c(1L, 2L, 1L, 2L, 1L, 1L),
-                         ss = c(0L, 0L, 1L, 0L, 2L, 0L)),
-                    class = "data.frame",
-                    row.names = c(NA,-6L))
+    et <- structure(
+      list(
+        time = c(0, 0.05, 0.1, 0.2, 0.3, NA),
+        cmt = c("(default)", "(obs)", "intestine", "-intestine", "intestine", "out"),
+        amt = c(0.0833333333333333, NA, 3, NA, 3, 3),
+        rate = c(2, 0, 0, 0, 0, 0),
+        ii = c(1, 0, 3, 0, 3, 0),
+        addl = c(9L, 0L, 0L, 0L, 0L, 0L),
+        evid = c(1L, 2L, 1L, 2L, 1L, 1L),
+        ss = c(0L, 0L, 1L, 0L, 2L, 0L)
+      ),
+      class = "data.frame",
+      row.names = c(NA, -6L)
+    )
     skip_on_cran()
 
     expect_warning(expect_false(any(is.na(etTrans(et, mod)$TIME))))
+  })
 
+  test_that("etTrans uses model string comparison ordering for event data covariates", {
+    mod <- rxode2parse('c = cov == "alpha"; d = "beta" == cov')
+
+    dat <- data.frame(
+      id = c(1, 1, 2, 2, 3, 3),
+      time = c(0, 1, 0, 1, 0, 1),
+      amt = c(1, NA, 1, NA, 1, NA),
+      evid = c(1, 0, 1, 0, 1, 0),
+      cov = c("beta", "beta", "gamma", "gamma", "alpha", "alpha")
+    )
+
+    tmp <- etTrans(dat, mod, keep = "cov")
+    tmp2 <- attr(class(tmp), ".rxode2.lst")
+    class(tmp2) <- NULL
+
+    expect_equal(tmp2$levelInfo$cov, c("alpha", "beta", "gamma"))
+    expect_equal(as.numeric(tmp2$cov1$cov), c(2, 3, 1))
+  })
+
+  test_that("string comparison warns when a literal is not in the data (#1656)", {
+    d <- data.frame(id = 1, time = 1:3, tnom = c("1", "2", "3"))
+    m <- function() {
+      model({
+        is2 <- (tnom == "2")
+        is25 <- (tnom == "25")
+      })
+    }
+    expect_warning(
+      s <- rxSolve(m, d, returnType = "data.frame"),
+      "'tnom' is compared to \"25\", which is not in the data"
+    )
+    expect_equal(s$is2, c(0, 1, 0))
+    expect_equal(s$is25, c(0, 0, 0))
+    m2 <- function() {
+      model({
+        not25 <- (tnom != "25")
+      })
+    }
+    expect_warning(
+      s <- rxSolve(m2, d, returnType = "data.frame"),
+      "'tnom' is compared to \"25\", which is not in the data, so it never matches"
+    )
+    expect_equal(s$not25, c(1, 1, 1))
+  })
+
+  test_that("string comparison warns when the variable is not re-leveled (#1656)", {
+    m <- function() {
+      model({
+        isC <- (lvl == "c")
+      })
+    }
+    d <- data.frame(id = 1, time = 1:3, lvl = c(1, 2, 3))
+    expect_warning(
+      rxSolve(m, d, returnType = "data.frame"),
+      "'lvl' is compared to strings, but no character or factor data column"
+    )
+    expect_warning(
+      rxSolve(m, et(1:3), params = c(lvl = 1), returnType = "data.frame"),
+      "'lvl' is compared to strings, but no character or factor data column"
+    )
+    d$lvl <- c("a", "b", "c")
+    expect_no_warning(rxSolve(m, d, returnType = "data.frame"))
+  })
+
+  test_that("string comparison re-levels a mixed-case covariate by name (#1656)", {
+    d <- data.frame(id = 1, time = 1:4, Lvl = factor(c("a", "b", "c", "d")))
+    m <- function() {
+      model({
+        isC <- (Lvl == "c")
+        isB <- (Lvl == "b")
+      })
+    }
+    s <- rxSolve(m, d, returnType = "data.frame")
+    expect_equal(s$isC, c(0, 0, 1, 0))
+    expect_equal(s$isB, c(0, 1, 0, 0))
+    d2 <- d
+    d2$Lvl <- as.character(d2$Lvl)
+    s <- rxSolve(m, d2, returnType = "data.frame")
+    expect_equal(s$isC, c(0, 0, 1, 0))
+    expect_equal(s$isB, c(0, 1, 0, 0))
+    # case-distinct parameters each re-level against their own literals
+    m2 <- function() {
+      model({
+        a <- (lvl == "x")
+        b <- (Lvl == "y")
+      })
+    }
+    d3 <- data.frame(id = 1, time = 1:2, lvl = c("w", "x"), Lvl = c("y", "z"))
+    s <- rxSolve(m2, d3, returnType = "data.frame")
+    expect_equal(s$a, c(0, 1))
+    expect_equal(s$b, c(1, 0))
+  })
+
+  test_that("homogeneous solve events stay compressed through etTrans", {
+    mod <- rxode2parse(
+      "
+      ka = 1
+      d/dt(depot) = -ka * depot
+    "
+    )
+
+    ev <- et(time = 0, amt = 100, cmt = 1) |>
+      et(0:4) |>
+      et(id = 1:3)
+
+    prep <- .etPrepareSolveEvents(ev, rxControl())
+    grp <- .etGetGroups(.rxEtEnv(ev))
+
+    expect_equal(nrow(prep), nrow(grp[[1]]$data))
+    expect_equal(attr(prep, "rxHomIdLevels"), c("1", "2", "3"))
+
+    tr <- etTrans(prep, mod)
+    expect_equal(nrow(as.data.frame(tr)), nrow(prep))
+    expect_equal(attr(tr, "rxHomIdLevels"), c("1", "2", "3"))
+    expect_equal(as.integer(attr(tr, "rxHomGroups")[[1]]), 1:3)
+
+    trInfo <- attr(class(tr), ".rxode2.lst")
+    expect_equal(trInfo$idLvl, c("1", "2", "3"))
+  })
+
+  test_that("homogeneous grouped solve matches expanded solve output", {
+    mod <- rxode2({
+      KA <- 1
+      CL <- 1
+      V <- 10
+      C2 <- centr / V
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 1:3)
+
+    got <- as.data.frame(rxSolve(mod, ev))
+    want <- as.data.frame(rxSolve(mod, as.data.frame(ev)))
+
+    expect_equal(
+      got[, c("id", "time", "depot", "centr")],
+      want[, c("id", "time", "depot", "centr")]
+    )
+  })
+
+  test_that("homogeneous grouped dose-only solve keeps grouped ids", {
+    mod <- rxode2({
+      KA <- 1
+      CL <- 1
+      V <- 10
+      C2 <- centr / V
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev <- et(ev, id = 1:3)
+
+    got <- as.data.frame(rxSolve(mod, ev, from = 0, to = 24, by = 12))
+    want <- as.data.frame(rxSolve(mod, as.data.frame(ev), from = 0, to = 24, by = 12))
+
+    expect_equal(
+      got[, c("id", "time", "depot", "centr")],
+      want[, c("id", "time", "depot", "centr")]
+    )
+  })
+
+  test_that("homogeneous grouped dose-only solve prep keeps grouped attrs", {
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev <- et(ev, id = 1:3)
+
+    prep <- .etPrepareSolveEvents(ev, rxControl(from = 0, to = 24, by = 12))
+
+    expect_equal(attr(prep, "rxHomGroups"), list(1:3))
+    expect_equal(attr(prep, "rxHomIdLevels"), c("1", "2", "3"))
+    expect_equal(sort(unique(prep$id)), 1L)
+    expect_equal(sum(prep$evid == 0L), 3L)
+  })
+
+  test_that("grouped solve prep handles empty grouped data frames", {
+    ev <- data.frame(id = integer(0), time = numeric(0), evid = integer(0))
+    attr(ev, "rxHomGroups") <- list(1:2)
+    attr(ev, "rxHomIdLevels") <- c("1", "2")
+
+    prep <- .etPrepareGroupedSolveData(ev, rxControl())
+
+    expect_true(is.data.frame(prep))
+    expect_equal(nrow(prep), 0L)
+    expect_equal(attr(prep, "rxHomGroups"), list(1:2))
+  })
+
+  test_that("homogeneous grouped dose-only solve prep supports model iCov compression", {
+    mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev <- et(ev, id = 1:4)
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80))
+    ctl <- rxControl(iCov = iCov, from = 0, to = 24, by = 12)
+    prep <- .etGroupedSolveDataICov(ev, iCov, modelParams = rxModelVars(mod)$params)
+    prepEvents <- .etPrepareSolveEvents(prep$events, ctl)
+    ctl$iCov <- prep$iCov
+
+    got <- as.data.frame(rxSolveSEXP(mod, ctl, NULL, list(), c(KA = 1, CL = 7, V = 40), prepEvents, NULL, FALSE))
+    want <- as.data.frame(rxSolve(
+      mod,
+      as.data.frame(ev),
+      params = c(KA = 1, CL = 7, V = 40),
+      iCov = iCov,
+      from = 0,
+      to = 24,
+      by = 12
+    ))
+
+    expect_equal(
+      got[, c("id", "time", "depot", "centr")],
+      want[, c("id", "time", "depot", "centr")]
+    )
+  })
+
+  test_that("homogeneous grouped dose-only solve prep handles unit time defaults", {
+    mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+
+    ev <- et(amount.units = "mg", time.units = "hours")
+    ev <- et(ev, amt = 10000, cmt = 1)
+    ev <- et(ev, id = 1:4)
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80))
+
+    expect_no_error(
+      .sol <- solve(mod, ev, iCov = iCov, params = c(KA = 1, CL = 7, V = 40))
+    )
+    expect_true(nrow(as.data.frame(.sol)) > 0L)
+  })
+
+  test_that("homogeneous grouped dose-only solve keeps iCov keep-column output", {
+    mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev <- et(ev, id = 1:4)
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80), grp = c("a", "a", "b", "b"))
+
+    got <- suppressWarnings(
+      as.data.frame(
+        rxSolve(mod, ev, params = c(KA = 1, CL = 7, V = 40), iCov = iCov, keep = "grp", from = 0, to = 24, by = 12)
+      )
+    )
+    want <- suppressWarnings(
+      as.data.frame(
+        rxSolve(
+          mod,
+          as.data.frame(ev),
+          params = c(KA = 1, CL = 7, V = 40),
+          iCov = iCov,
+          keep = "grp",
+          from = 0,
+          to = 24,
+          by = 12
+        )
+      )
+    )
+
+    expect_equal(
+      got[, c("id", "time", "depot", "centr", "grp")],
+      want[, c("id", "time", "depot", "centr", "grp")]
+    )
+  })
+
+  test_that("homogeneous grouped solve matches expanded output when nsim is requested", {
+    mod <- rxode2({
+      KA <- 1
+      CL <- 1
+      V <- 10
+      C2 <- centr / V
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 1:3)
+
+    got <- as.data.frame(rxSolve(mod, ev, nsim = 2))
+    want <- as.data.frame(rxSolve(mod, as.data.frame(ev), nsim = 2))
+
+    expect_equal(
+      got[, c("id", "time", "depot", "centr")],
+      want[, c("id", "time", "depot", "centr")]
+    )
+  })
+
+  test_that("homogeneous rxEt routes nsim through nSub instead of nStud", {
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev <- et(ev, id = 1:3)
+
+    groupedCtl <- rxControl(nsim = 2, events = ev)
+    expandedCtl <- rxControl(nsim = 2, events = as.data.frame(ev))
+
+    expect_equal(groupedCtl$nSub, 2L)
+    expect_equal(groupedCtl$nStud, 1L)
+    expect_equal(expandedCtl$nSub, 1L)
+    expect_equal(expandedCtl$nStud, 2L)
+  })
+
+  test_that("rxSolve updates preserve grouped solve event attributes", {
+    on.exit(rxUnloadAll(), add = TRUE)
+    mod <- rxode2({
+      KA <- 1
+      CL <- 1
+      V <- 10
+      C2 <- centr / V
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 1:4)
+
+    s1 <- rxSolve(mod, ev)
+    .e1 <- attr(class(s1), ".rxode2.env")
+    .ev1 <- .e1$.args.events
+    .groups <- attr(.ev1, "rxHomGroups", exact = TRUE)
+    .idLvls <- attr(.ev1, "rxHomIdLevels", exact = TRUE)
+    expect_false(is.null(.groups))
+
+    s2 <- rxSolveUpdate(s1, "KA", rep(0.5, nrow(.ev1)))
+    .e2 <- attr(class(s2), ".rxode2.env")
+    .ev2 <- .e2$.args.events
+    expect_equal(attr(.ev2, "rxHomGroups"), .groups)
+    expect_equal(attr(.ev2, "rxHomIdLevels"), .idLvls)
+
+    s3 <- rxSolveUpdate(s2, "KA", 1)
+    .e3 <- attr(class(s3), ".rxode2.env")
+    .ev3 <- .e3$.args.events
+    expect_equal(attr(.ev3, "rxHomGroups"), .groups)
+    expect_equal(attr(.ev3, "rxHomIdLevels"), .idLvls)
+  })
+
+  test_that("rxSolve updates preserve grouped iCov keep-column output", {
+    on.exit(rxUnloadAll(), add = TRUE)
+    mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V2
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev <- et(ev, id = 1:4)
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80), grp = c("a", "a", "b", "b"))
+
+    s1 <- suppressWarnings(
+      rxSolve(mod, ev, params = c(KA = 1, CL = 7, V2 = 40), iCov = iCov, keep = "grp", from = 0, to = 24, by = 12)
+    )
+    .e1 <- attr(class(s1), ".rxode2.env")
+    .ev1 <- .e1$.args.events
+    expect_equal(sort(unique(as.data.frame(s1)$grp)), c("a", "b"))
+
+    s2 <- suppressWarnings(rxSolveUpdate(s1, "KA", rep(0.5, nrow(.ev1))))
+    .e2 <- attr(class(s2), ".rxode2.env")
+    .ev2 <- .e2$.args.events
+    expect_equal(attr(.ev2, "rxHomGroups"), attr(.ev1, "rxHomGroups"))
+    expect_equal(attr(.ev2, "rxHomIdLevels"), attr(.ev1, "rxHomIdLevels"))
+    expect_equal(sort(unique(as.data.frame(s2)$grp)), c("a", "b"))
+
+    s3 <- suppressWarnings(rxSolveUpdate(s2, "KA", 1))
+    .e3 <- attr(class(s3), ".rxode2.env")
+    .ev3 <- .e3$.args.events
+    expect_equal(attr(.ev3, "rxHomGroups"), attr(.ev1, "rxHomGroups"))
+    expect_equal(attr(.ev3, "rxHomIdLevels"), attr(.ev1, "rxHomIdLevels"))
+    expect_equal(sort(unique(as.data.frame(s3)$grp)), c("a", "b"))
+  })
+
+  test_that("homogeneous grouped solve supports model iCov compression", {
+    mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V2
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 1:4)
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80))
+
+    got <- as.data.frame(rxSolve(mod, ev, params = c(KA = 1, CL = 7, V2 = 40), iCov = iCov))
+    want <- as.data.frame(rxSolve(mod, as.data.frame(ev), params = c(KA = 1, CL = 7, V2 = 40), iCov = iCov))
+
+    expect_equal(
+      got[, c("id", "time", "depot", "centr")],
+      want[, c("id", "time", "depot", "centr")]
+    )
+  })
+
+  test_that("grouped solve data.frame infers iCov ids from homogeneous id levels", {
+    mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V2
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 101:104)
+
+    groupedDf <- .etGroupedSolveData(ev)
+    iCovNoId <- data.frame(WT = c(70, 70, 80, 80))
+
+    got <- as.data.frame(rxSolve(mod, groupedDf, params = c(KA = 1, CL = 7, V2 = 40), iCov = iCovNoId))
+    want <- as.data.frame(rxSolve(mod, as.data.frame(ev), params = c(KA = 1, CL = 7, V2 = 40), iCov = iCovNoId))
+
+    expect_equal(
+      got[, c("id", "time", "depot", "centr")],
+      want[, c("id", "time", "depot", "centr")]
+    )
+  })
+
+  test_that("grouped solve data.frame iCov split accepts factor representative ids", {
+    mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V2
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 1:4)
+    groupedDf <- .etGroupedSolveData(ev)
+    groupedDf$id <- factor(groupedDf$id)
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80))
+
+    got <- as.data.frame(rxSolve(mod, groupedDf, params = c(KA = 1, CL = 7, V2 = 40), iCov = iCov))
+    want <- as.data.frame(rxSolve(mod, as.data.frame(ev), params = c(KA = 1, CL = 7, V2 = 40), iCov = iCov))
+
+    expect_equal(
+      got[, c("id", "time", "depot", "centr")],
+      want[, c("id", "time", "depot", "centr")]
+    )
+  })
+
+  test_that("homogeneous grouped solve keeps iCov keep-column output", {
+    mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V2
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 1:4)
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80), grp = c("a", "a", "b", "b"))
+
+    got <- suppressWarnings(
+      as.data.frame(rxSolve(mod, ev, params = c(KA = 1, CL = 7, V2 = 40), iCov = iCov, keep = "grp"))
+    )
+    want <- suppressWarnings(
+      as.data.frame(rxSolve(mod, as.data.frame(ev), params = c(KA = 1, CL = 7, V2 = 40), iCov = iCov, keep = "grp"))
+    )
+
+    expect_equal(
+      got[, c("id", "time", "depot", "centr", "grp")],
+      want[, c("id", "time", "depot", "centr", "grp")]
+    )
+  })
+
+  test_that("homogeneous grouped iCov keep columns stay on grouped solve prep", {
+    mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V2
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 1:4)
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80), grp = c("a", "a", "b", "b"))
+
+    prep <- .etGroupedSolveDataICov(ev, iCov, keep = "grp", modelParams = rxModelVars(mod)$params)
+
+    expect_false(is.null(prep))
+    expect_equal(attr(prep$events, "rxHomGroups"), list(1:2, 3:4))
+    expect_equal(prep$iCov$id, 1:2)
+    expect_equal(prep$iCov$grp, c("a", "b"))
+  })
+
+  test_that("homogeneous grouped iCov split ignores unrelated iCov columns", {
+    mod <- rxode2({
+      WT2 <- WT/70
+      C2 <- centr / V2
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL * WT2 * C2
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev <- et(ev, id = 1:4)
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 70, 70), grp = c("a", "b", "c", "d"))
+
+    prep <- .etGroupedSolveDataICov(ev, iCov, modelParams = rxModelVars(mod)$params)
+
+    expect_false(is.null(prep))
+    expect_equal(attr(prep$events, "rxHomGroups"), list(1:4))
+    expect_equal(prep$iCov$id, 1L)
+    expect_equal(prep$iCov$WT, 70)
+  })
+
+  test_that("grouped iCov split aborts on incomplete representative groups", {
+    ev <- data.frame(id = 1L, time = 0, evid = 1L, amt = 100)
+    attr(ev, "rxHomGroups") <- list(1:2, 3:4)
+    attr(ev, "rxHomIdLevels") <- c("1", "2", "3", "4")
+    iCov <- data.frame(id = 1:4, WT = c(70, 70, 80, 80))
+
+    prep <- .etGroupedSolveDataFrameICov(ev, iCov, modelParams = "WT")
+
+    expect_null(prep)
+  })
+
+  test_that("grouped iCov split aborts on duplicate iCov ids", {
+    ev <- data.frame(id = c(1L, 2L), time = c(0, 0), evid = c(1L, 1L), amt = c(100, 100))
+    attr(ev, "rxHomGroups") <- list(1:2)
+    attr(ev, "rxHomIdLevels") <- c("1", "2")
+    iCov <- data.frame(id = c(1, 1, 2), WT = c(70, 75, 80))
+
+    prep <- .etGroupedSolveDataFrameICov(ev, iCov, modelParams = "WT")
+
+    expect_null(prep)
+  })
+
+  test_that("grouped iCov split aborts on coercion-colliding iCov ids", {
+    ev <- data.frame(id = c(1L, 2L), time = c(0, 0), evid = c(1L, 1L), amt = c(100, 100))
+    attr(ev, "rxHomGroups") <- list(1:2)
+    attr(ev, "rxHomIdLevels") <- c("1", "2")
+    iCov <- data.frame(id = c("1", "01", "2"), WT = c(70, 75, 80))
+
+    prep <- .etGroupedSolveDataFrameICov(ev, iCov, modelParams = "WT")
+
+    expect_null(prep)
+  })
+
+  test_that("keep from iCov is case-insensitive and does not warn missing", {
+    mod <- rxode2({
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL / V * centr
+      cp <- centr / V
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 1:2)
+    iCov <- data.frame(id = 1:2, wt = c(70, 80), sex = c("M", "F"))
+
+    expect_no_warning(
+      .sol <- rxSolve(mod, ev, params = c(KA = 1, CL = 7, V = 40), iCov = iCov, keep = c("WT", "SEX"))
+    )
+
+    .nm <- tolower(names(as.data.frame(.sol)))
+    expect_true("wt" %in% .nm)
+    expect_true("sex" %in% .nm)
+  })
+
+  test_that("missing keep columns still warn when only subset is in iCov", {
+    mod <- rxode2({
+      d/dt(depot) <- -KA * depot
+      d/dt(centr) <- KA * depot - CL / V * centr
+      cp <- centr / V
+    })
+
+    ev <- eventTable()
+    ev$add.dosing(dose = 100, nbr.doses = 2, dosing.interval = 12)
+    ev$add.sampling(c(0, 1, 2, 12, 13, 24))
+    ev <- et(ev, id = 1:2)
+    iCov <- data.frame(id = 1:2, wt = c(70, 80))
+
+    .warnings <- character()
+    withCallingHandlers(
+      rxSolve(mod, ev, params = c(KA = 1, CL = 7, V = 40), iCov = iCov, keep = c("WT", "MISSING_COL")),
+      warning = function(.w) {
+        .warnings <<- c(.warnings, conditionMessage(.w))
+        invokeRestart("muffleWarning")
+      }
+    )
+    expect_true(any(grepl("Cannot keep missing columns", .warnings, fixed = TRUE)))
+    expect_true(any(grepl("MISSING_COL", .warnings, fixed = TRUE)))
+    expect_false(any(grepl("\\bWT\\b", .warnings)))
+  })
+
+  test_that("splitBolus expands source bolus doses to all target compartments", {
+    modSplit <- rxode2parse(
+      "
+      splitBolus(depot, depot, central, peripheral)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+      d/dt(peripheral) <- 0
+    "
+    )
+
+    modBase <- rxode2parse(
+      "
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+      d/dt(peripheral) <- 0
+    "
+    )
+
+    eSplit <- et(time = 0, amt = 10, cmt = "depot", ii = 12, addl = 1)
+    eBase <- et(time = 0, amt = 10, cmt = "depot", ii = 12, addl = 1) |>
+      et(time = 0, amt = 10, cmt = "central", ii = 12, addl = 1) |>
+      et(time = 0, amt = 10, cmt = "peripheral", ii = 12, addl = 1)
+
+    got <- as.data.frame(etTrans(eSplit, modSplit, addCmt = TRUE, keepDosingOnly = TRUE))
+    want <- as.data.frame(etTrans(eBase, modBase, addCmt = TRUE, keepDosingOnly = TRUE))
+
+    got <- got[order(got$TIME, got$CMT, got$EVID), c("TIME", "CMT", "EVID", "AMT", "II")]
+    want <- want[order(want$TIME, want$CMT, want$EVID), c("TIME", "CMT", "EVID", "AMT", "II")]
+
+    expect_equal(got, want)
+  })
+
+  test_that("splitBolus can transfer a source bolus to one target compartment", {
+    modSplit <- rxode2parse(
+      "
+      splitBolus(depot, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "
+    )
+
+    modBase <- rxode2parse(
+      "
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "
+    )
+
+    eSplit <- et(time = 0, amt = 10, cmt = "depot", ii = 12, addl = 1)
+    eBase <- et(time = 0, amt = 10, cmt = "central", ii = 12, addl = 1)
+
+    got <- as.data.frame(etTrans(eSplit, modSplit, addCmt = TRUE, keepDosingOnly = TRUE))
+    want <- as.data.frame(etTrans(eBase, modBase, addCmt = TRUE, keepDosingOnly = TRUE))
+
+    got <- got[order(got$TIME, got$CMT, got$EVID), c("TIME", "CMT", "EVID", "AMT", "II")]
+    want <- want[order(want$TIME, want$CMT, want$EVID), c("TIME", "CMT", "EVID", "AMT", "II")]
+
+    expect_equal(got, want)
+  })
+
+  test_that("splitBolus allows source repeats but rejects duplicate targets", {
+    expect_no_error(rxode2parse(
+      "
+      splitBolus(depot, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "
+    ))
+
+    expect_no_error(rxode2parse(
+      "
+      splitBolus(depot, depot, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "
+    ))
+
+    expect_true(inherits(
+      try(
+        rxode2parse(
+          "
+      splitBolus(depot, central, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "
+        ),
+        silent = TRUE
+      ),
+      "try-error"
+    ))
+  })
+
+  test_that("model vars expose empty splitBolus when unused", {
+    mod <- rxode2parse(
+      "
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "
+    )
+
+    expect_equal(length(rxModelVars(mod)$splitBolus), 0)
+  })
+
+  test_that("splitInfusion expands source infusion doses to all target compartments", {
+    modSplit <- rxode2parse(
+      "
+      splitInfusion(depot, depot, central, peripheral)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+      d/dt(peripheral) <- 0
+    "
+    )
+
+    modBase <- rxode2parse(
+      "
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+      d/dt(peripheral) <- 0
+    "
+    )
+
+    eSplit <- et(time = 0, amt = 10, rate = 5, cmt = "depot", ii = 12, addl = 1)
+    eBase <- et(time = 0, amt = 10, rate = 5, cmt = "depot", ii = 12, addl = 1) |>
+      et(time = 0, amt = 10, rate = 5, cmt = "central", ii = 12, addl = 1) |>
+      et(time = 0, amt = 10, rate = 5, cmt = "peripheral", ii = 12, addl = 1)
+
+    got <- as.data.frame(etTrans(eSplit, modSplit, addCmt = TRUE, keepDosingOnly = TRUE))
+    want <- as.data.frame(etTrans(eBase, modBase, addCmt = TRUE, keepDosingOnly = TRUE))
+
+    got <- got[order(got$TIME, got$CMT, got$EVID), c("TIME", "CMT", "EVID", "AMT", "II")]
+    want <- want[order(want$TIME, want$CMT, want$EVID), c("TIME", "CMT", "EVID", "AMT", "II")]
+
+    expect_equal(got, want)
+  })
+
+  test_that("splitInfusion leaves bolus records alone", {
+    modSplit <- rxode2parse(
+      "
+      splitInfusion(depot, depot, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "
+    )
+
+    modBase <- rxode2parse(
+      "
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "
+    )
+
+    e <- et(time = 0, amt = 10, cmt = "depot", ii = 12, addl = 1)
+
+    got <- as.data.frame(etTrans(e, modSplit, addCmt = TRUE, keepDosingOnly = TRUE))
+    want <- as.data.frame(etTrans(e, modBase, addCmt = TRUE, keepDosingOnly = TRUE))
+
+    got <- got[order(got$TIME, got$CMT, got$EVID), c("TIME", "CMT", "EVID", "AMT", "II")]
+    want <- want[order(want$TIME, want$CMT, want$EVID), c("TIME", "CMT", "EVID", "AMT", "II")]
+
+    expect_equal(got, want)
+  })
+
+  test_that("splitInfusion splits modeled duration infusions", {
+    modSplit <- rxode2parse(
+      "
+      splitInfusion(depot, depot, central)
+      dur(depot) <- tk0
+      dur(central) <- tk0
+      d/dt(depot) <- -cl / v * depot
+      d/dt(central) <- -cl / v * central
+    "
+    )
+
+    modBase <- rxode2parse(
+      "
+      dur(depot) <- tk0
+      dur(central) <- tk0
+      d/dt(depot) <- -cl / v * depot
+      d/dt(central) <- -cl / v * central
+    "
+    )
+
+    eSplit <- et(time = 0, amt = 10, rate = -2, cmt = "depot")
+    eBase <- et(time = 0, amt = 10, rate = -2, cmt = "depot") |>
+      et(time = 0, amt = 10, rate = -2, cmt = "central")
+
+    got <- as.data.frame(etTrans(eSplit, modSplit, addCmt = TRUE, keepDosingOnly = TRUE))
+    want <- as.data.frame(etTrans(eBase, modBase, addCmt = TRUE, keepDosingOnly = TRUE))
+
+    got <- got[order(got$TIME, got$CMT, got$EVID), c("TIME", "CMT", "EVID", "AMT")]
+    want <- want[order(want$TIME, want$CMT, want$EVID), c("TIME", "CMT", "EVID", "AMT")]
+
+    expect_equal(got, want)
+    # both compartments get a modeled start/stop pair
+    expect_equal(sum(got$EVID %/% 10000 %% 10 == 8), 2)
+    expect_equal(sum(got$EVID %/% 10000 %% 10 == 6), 2)
+  })
+
+  test_that("splitInfusionBolus() handles bolus and infusion sources", {
+    modSplit <- rxode2parse(
+      "
+      splitInfusionBolus(depot, depot, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "
+    )
+
+    modBase <- rxode2parse(
+      "
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "
+    )
+
+    # bolus source
+    eB <- et(time = 0, amt = 10, cmt = "depot", ii = 12, addl = 1)
+    got <- as.data.frame(etTrans(eB, modSplit, addCmt = TRUE, keepDosingOnly = TRUE))
+    wantB <- as.data.frame(etTrans(
+      eB |> et(time = 0, amt = 10, cmt = "central", ii = 12, addl = 1),
+      modBase,
+      addCmt = TRUE,
+      keepDosingOnly = TRUE
+    ))
+    got <- got[order(got$TIME, got$CMT, got$EVID), c("TIME", "CMT", "EVID", "AMT", "II")]
+    wantB <- wantB[order(wantB$TIME, wantB$CMT, wantB$EVID), c("TIME", "CMT", "EVID", "AMT", "II")]
+    expect_equal(got, wantB)
+
+    # infusion source
+    eI <- et(time = 0, amt = 10, rate = 5, cmt = "depot", ii = 12, addl = 1)
+    got <- as.data.frame(etTrans(eI, modSplit, addCmt = TRUE, keepDosingOnly = TRUE))
+    wantI <- as.data.frame(etTrans(
+      eI |> et(time = 0, amt = 10, rate = 5, cmt = "central", ii = 12, addl = 1),
+      modBase,
+      addCmt = TRUE,
+      keepDosingOnly = TRUE
+    ))
+    got <- got[order(got$TIME, got$CMT, got$EVID), c("TIME", "CMT", "EVID", "AMT", "II")]
+    wantI <- wantI[order(wantI$TIME, wantI$CMT, wantI$EVID), c("TIME", "CMT", "EVID", "AMT", "II")]
+    expect_equal(got, wantI)
+  })
+
+  test_that("split directives are read from an rxModelVars saved with timeId (5.1.8 layout)", {
+    modSplit <- rxode2parse(
+      "
+      splitInfusionBolus(depot, depot, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "
+    )
+    expect_false("timeId" %in% names(modSplit))
+    .md5 <- which(names(modSplit) == "md5")
+    modOld <- c(
+      unclass(modSplit)[seq_len(.md5 - 1L)],
+      list(timeId = 1L),
+      unclass(modSplit)[seq(.md5, length(modSplit))]
+    )
+    class(modOld) <- class(modSplit)
+    e <- et(time = 0, amt = 10, rate = 5, cmt = "depot", ii = 12, addl = 1)
+    expect_equal(
+      as.data.frame(etTrans(e, modOld, addCmt = TRUE, keepDosingOnly = TRUE)),
+      as.data.frame(etTrans(e, modSplit, addCmt = TRUE, keepDosingOnly = TRUE))
+    )
+  })
+
+  test_that("splitInfusionBolus() promotes plain boluses to modeled infusions for dur()/rate() targets", {
+    modSplit <- rxode2parse(
+      "
+      splitInfusionBolus(depot, central, depot2)
+      dur(central) <- tk0
+      ka2 <- 1.2
+      d/dt(depot) <- -ka * depot
+      d/dt(depot2) <- -ka2 * depot2
+      d/dt(central) <- ka2 * depot2 - cl / v * central
+    "
+    )
+
+    eSplit <- et(time = 0, amt = 100, cmt = "depot")
+    got <- as.data.frame(etTrans(eSplit, modSplit, addCmt = TRUE, keepDosingOnly = TRUE))
+
+    cmtCentral <- which(modSplit$state == "central")
+    cmtDepot2 <- which(modSplit$state == "depot2")
+
+    # central has dur() -> modeled start/stop pair; depot2 -> plain bolus
+    wStart <- which(got$EVID %/% 10000 %% 10 == 8)
+    wStop <- which(got$EVID %/% 10000 %% 10 == 6)
+    expect_length(wStart, 1)
+    expect_length(wStop, 1)
+    expect_equal(got$CMT[wStart], cmtCentral)
+    expect_equal(got$CMT[wStop], cmtCentral)
+    # the start precedes its stop (positional pairing the solver relies on)
+    expect_true(wStart < wStop)
+    expect_equal(got$AMT[wStart], 100)
+    expect_equal(got$AMT[wStop], 100)
+
+    wBolus <- which(got$EVID %/% 10000 %% 10 == 0 & got$EVID >= 100)
+    expect_length(wBolus, 1)
+    expect_equal(got$CMT[wBolus], cmtDepot2)
+    expect_equal(got$AMT[wBolus], 100)
+
+    # no dose remains aimed at the source compartment
+    expect_false(cmtDepot2 == which(modSplit$state == "depot"))
+    expect_equal(sum(got$CMT == which(modSplit$state == "depot")), 0)
+  })
+
+  test_that("splitInfusionBolus() solves a mixed zero/first-order double absorption identically to explicit dosing", {
+    modSplit <- rxode2({
+      splitInfusionBolus(depot, central, depot2)
+      tk0 <- 4
+      dur(central) <- tk0
+      f(central) <- 0.7
+      f(depot2) <- 0.3
+      ka2 <- 1.2
+      cl <- 0.1
+      v <- 10
+      d/dt(depot) <- 0
+      d/dt(depot2) <- -ka2 * depot2
+      d/dt(central) <- ka2 * depot2 - cl / v * central
+    })
+
+    modBase <- rxode2({
+      tk0 <- 4
+      dur(central) <- tk0
+      f(central) <- 0.7
+      f(depot2) <- 0.3
+      ka2 <- 1.2
+      cl <- 0.1
+      v <- 10
+      d/dt(depot2) <- -ka2 * depot2
+      d/dt(central) <- ka2 * depot2 - cl / v * central
+    })
+
+    eSplit <- et(time = 0, amt = 100, cmt = "depot") |>
+      et(seq(0, 24, by = 0.5))
+    # explicit: zero-order path as a modeled-duration central dose,
+    # first-order path as a depot2 bolus
+    eBase <- et(time = 0, amt = 100, rate = -2, cmt = "central") |>
+      et(time = 0, amt = 100, cmt = "depot2") |>
+      et(seq(0, 24, by = 0.5))
+
+    sSplit <- rxSolve(modSplit, eSplit, addDosing = TRUE)
+    sBase <- rxSolve(modBase, eBase, addDosing = TRUE)
+
+    dSplit <- as.data.frame(sSplit)
+    dBase <- as.data.frame(sBase)
+    dSplit <- dSplit[dSplit$evid == 0, c("time", "central")]
+    dBase <- dBase[dBase$evid == 0, c("time", "central")]
+    expect_equal(dSplit$time, dBase$time)
+    expect_equal(dSplit$central, dBase$central, tolerance = 1e-6)
+  })
+
+  test_that("splitInfusion/splitInfusionBolus/splitBolusInfusion directives parse and reject misuse", {
+    expect_no_error(rxode2parse(
+      "
+      splitInfusion(depot, depot, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "
+    ))
+
+    expect_no_error(rxode2parse(
+      "
+      splitInfusionBolus(depot, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "
+    ))
+
+    # duplicate targets are rejected
+    expect_true(inherits(
+      try(
+        rxode2parse(
+          "
+      splitInfusionBolus(depot, central, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "
+        ),
+        silent = TRUE
+      ),
+      "try-error"
+    ))
+
+    expect_true(inherits(
+      try(
+        rxode2parse(
+          "
+      splitInfusion(depot, central, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "
+        ),
+        silent = TRUE
+      ),
+      "try-error"
+    ))
+
+    # only one splitting directive per model
+    expect_true(inherits(
+      try(
+        rxode2parse(
+          "
+      splitBolus(depot, central)
+      splitInfusionBolus(depot, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "
+        ),
+        silent = TRUE
+      ),
+      "try-error"
+    ))
+
+    expect_true(inherits(
+      try(
+        rxode2parse(
+          "
+      splitInfusion(depot, central)
+      splitInfusionBolus(depot, central)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "
+        ),
+        silent = TRUE
+      ),
+      "try-error"
+    ))
+  })
+
+  test_that("model vars expose empty splitInfusion/splitInfusionBolus/splitBolusInfusion when unused", {
+    mod <- rxode2parse(
+      "
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+    "
+    )
+
+    expect_equal(length(rxModelVars(mod)$splitInfusion), 0)
+    expect_equal(length(rxModelVars(mod)$splitInfusionBolus), 0)
+    expect_equal(length(rxModelVars(mod)$splitBolusInfusion), 0)
+  })
+
+  test_that("splitInfusion()/splitInfusionBolus()/splitBolusInfusion() mv and normalized model round-trip", {
+    f <- function() {
+      model({
+        splitInfusion(depot, depot, central, peripheral)
+      })
+    }
+
+    mv <- rxModelVars(f())
+    expect_equal(unname(mv$splitInfusion), c(1L, 1L, 2L, 3L))
+    expect_equal(unname(mv$splitBolus), integer(0))
+    expect_equal(unname(mv$splitInfusionBolus), integer(0))
+    expect_equal(unname(mv$splitBolusInfusion), integer(0))
+    expect_equal(setNames(mv$model["normModel"], NULL), "splitInfusion(depot,depot,central,peripheral);\n")
+
+    g <- function() {
+      model({
+        splitInfusionBolus(depot, central)
+      })
+    }
+
+    mv2 <- rxModelVars(g())
+    expect_equal(unname(mv2$splitInfusionBolus), c(1L, 2L))
+    expect_equal(setNames(mv2$model["normModel"], NULL), "splitInfusionBolus(depot,central);\n")
+
+    h <- function() {
+      model({
+        splitBolusInfusion(depot, depot2, central)
+      })
+    }
+
+    mv3 <- rxModelVars(h())
+    expect_equal(unname(mv3$splitBolusInfusion), c(1L, 2L, 3L))
+    expect_equal(setNames(mv3$model["normModel"], NULL), "splitBolusInfusion(depot,depot2,central);\n")
+  })
+
+  test_that("splitInfusionBolus() and splitBolusInfusion() differ by which target gets the infusion", {
+    mkMod <- function(directive) {
+      rxode2parse(sprintf(
+        "
+      %s(depot, central, depot2)
+      dur(central) <- tk0
+      dur(depot2) <- tk0
+      ka2 <- 1.2
+      d/dt(depot) <- -ka * depot
+      d/dt(depot2) <- -ka2 * depot2
+      d/dt(central) <- ka2 * depot2 - cl / v * central
+    ",
+        directive
+      ))
+    }
+
+    eSplit <- et(time = 0, amt = 100, cmt = "depot")
+    trans <- function(mod) {
+      got <- as.data.frame(etTrans(eSplit, mod, addCmt = TRUE, keepDosingOnly = TRUE))
+      got[order(got$TIME, got$CMT, got$EVID), c("TIME", "CMT", "EVID", "AMT")]
+    }
+
+    # both targets declare dur(); only the designated one is promoted
+    modIB <- mkMod("splitInfusionBolus")
+    modBI <- mkMod("splitBolusInfusion")
+    cmtCentral <- which(modIB$state == "central")
+    cmtDepot2 <- which(modIB$state == "depot2")
+
+    gotIB <- trans(modIB)
+    gotBI <- trans(modBI)
+    isStart <- function(d) d$EVID %/% 10000 %% 10 == 8
+    isStop <- function(d) d$EVID %/% 10000 %% 10 == 6
+    isBolusDose <- function(d) d$EVID %/% 10000 %% 10 == 0 & d$EVID >= 100
+
+    # splitInfusionBolus: FIRST target (central) gets the pair
+    expect_equal(sum(isStart(gotIB)), 1)
+    expect_equal(sum(isStop(gotIB)), 1)
+    expect_equal(gotIB$CMT[isStart(gotIB)], cmtCentral)
+    expect_equal(gotIB$CMT[isStop(gotIB)], cmtCentral)
+    expect_equal(sum(isBolusDose(gotIB)), 1)
+    expect_equal(gotIB$CMT[isBolusDose(gotIB)], cmtDepot2)
+
+    # splitBolusInfusion: LAST target (depot2) gets the pair
+    expect_equal(sum(isStart(gotBI)), 1)
+    expect_equal(sum(isStop(gotBI)), 1)
+    expect_equal(gotBI$CMT[isStart(gotBI)], cmtDepot2)
+    expect_equal(gotBI$CMT[isStop(gotBI)], cmtDepot2)
+    expect_equal(sum(isBolusDose(gotBI)), 1)
+    expect_equal(gotBI$CMT[isBolusDose(gotBI)], cmtCentral)
+
+    # the two directives produce different translations on this model
+    expect_false(isTRUE(all.equal(gotIB, gotBI)))
+  })
+
+  test_that("splitBolusInfusion() splits a bolus into bolus and infusion paths", {
+    modSplit <- rxode2parse(
+      "
+      splitBolusInfusion(depot, depot2, central)
+      dur(central) <- tk0
+      ka2 <- 1.2
+      d/dt(depot) <- -ka * depot
+      d/dt(depot2) <- -ka2 * depot2
+      d/dt(central) <- ka2 * depot2 - cl / v * central
+    "
+    )
+
+    eSplit <- et(time = 0, amt = 100, cmt = "depot")
+    got <- as.data.frame(etTrans(eSplit, modSplit, addCmt = TRUE, keepDosingOnly = TRUE))
+
+    cmtCentral <- which(modSplit$state == "central")
+    cmtDepot2 <- which(modSplit$state == "depot2")
+
+    # depot2 first target gets the plain bolus, central second gets the pair
+    wStart <- which(got$EVID %/% 10000 %% 10 == 8)
+    wStop <- which(got$EVID %/% 10000 %% 10 == 6)
+    expect_length(wStart, 1)
+    expect_length(wStop, 1)
+    expect_equal(got$CMT[wStart], cmtCentral)
+    expect_equal(got$CMT[wStop], cmtCentral)
+    expect_true(wStart < wStop)
+    expect_equal(got$AMT[wStart], 100)
+    expect_equal(got$AMT[wStop], 100)
+
+    wBolus <- which(got$EVID %/% 10000 %% 10 == 0 & got$EVID >= 100)
+    expect_length(wBolus, 1)
+    expect_equal(got$CMT[wBolus], cmtDepot2)
+    expect_equal(got$AMT[wBolus], 100)
+
+    expect_equal(sum(got$CMT == which(modSplit$state == "depot")), 0)
   })
 
   .Call(`_rxode2_etTransEvidIsObs`, FALSE)
   for (radi in 1:2) {
+    forderForceBase(switch(radi, TRUE, FALSE))
 
-    forderForceBase(switch(radi,TRUE, FALSE))
-
-    radix <- switch(radi,
-                    "base::order",
-                    "data.table::forder")
+    radix <- switch(radi, "base::order", "data.table::forder")
 
     # context(sprintf("etTrans checks (radix: %s)", radix))
     rxSetIni0(FALSE)
 
-    mod <- rxode2parse("
+    mod <- rxode2parse(
+      "
 a = 6
 b = 0.6
 d/dt(intestine) = -a*intestine
 d/dt(blood)     = a*intestine - b*blood
-")
+"
+    )
 
-    et <- structure(list(time = c(0, 0.05, 0.1, 0.2, 0.3, 0.5),
-                         cmt = c("(default)", "(obs)", "intestine", "-intestine", "intestine", "out"),
-                         amt = c(0.0833333333333333, NA, 3, NA, 3, 3),
-                         rate = c(2, 0, 0, 0, 0, 0),
-                         ii = c(1, 0, 3, 0, 3, 0),
-                         addl = c(9L, 0L, 0L, 0L, 0L, 0L),
-                         evid = c(1L, 2L, 1L, 2L, 1L, 1L),
-                         ss = c(0L, 0L, 1L, 0L, 2L, 0L)),
-                    class = "data.frame",
-                    row.names = c(NA, -6L))
+    et <- structure(
+      list(
+        time = c(0, 0.05, 0.1, 0.2, 0.3, 0.5),
+        cmt = c("(default)", "(obs)", "intestine", "-intestine", "intestine", "out"),
+        amt = c(0.0833333333333333, NA, 3, NA, 3, 3),
+        rate = c(2, 0, 0, 0, 0, 0),
+        ii = c(1, 0, 3, 0, 3, 0),
+        addl = c(9L, 0L, 0L, 0L, 0L, 0L),
+        evid = c(1L, 2L, 1L, 2L, 1L, 1L),
+        ss = c(0L, 0L, 1L, 0L, 2L, 0L)
+      ),
+      class = "data.frame",
+      row.names = c(NA, -6L)
+    )
 
     ## et <- eventTable()
     ## et$add.dosing(
@@ -185,10 +1395,19 @@ d/dt(blood)     = a*intestine - b*blood
       expect_equal(ett2$EVID[1:2], ett1$EVID[1:2])
     })
 
-    et <- structure(list(time = c(0, 0.05, 0.5), cmt = c("(default)", "(obs)",
-                                                         "-out"), amt = c(0.0833333333333333, NA, NA), rate = c(2, 0,
-                                                                                                                0), ii = c(1, 0, 0), addl = c(9L, 0L, 0L), evid = c(1L, 2L, 2L
-                                                                                                                                                                    )), class = "data.frame", row.names = c(NA, -3L))
+    et <- structure(
+      list(
+        time = c(0, 0.05, 0.5),
+        cmt = c("(default)", "(obs)", "-out"),
+        amt = c(0.0833333333333333, NA, NA),
+        rate = c(2, 0, 0),
+        ii = c(1, 0, 0),
+        addl = c(9L, 0L, 0L),
+        evid = c(1L, 2L, 2L)
+      ),
+      class = "data.frame",
+      row.names = c(NA, -3L)
+    )
     ## et <- eventTable()
     ## et$add.dosing(
     ##   dose = 2 / 24, rate = 2, start.time = 0,
@@ -199,15 +1418,19 @@ d/dt(blood)     = a*intestine - b*blood
     ##   et(amt = 3, time = 0.5, cmt = "-out") |>
     ##   as.data.frame()
 
-    et <- structure(list(time = c(0, 0.05, 0.5),
-                         cmt = c("(default)", "(obs)", "-out"),
-                         amt = c(0.0833333333333333, NA, NA),
-                         rate = c(2, 0, 0),
-                         ii = c(1, 0, 0),
-                         addl = c(9L, 0L, 0L),
-                         evid = c(1L, 2L, 2L)),
-                    class = "data.frame",
-                    row.names = c(NA, -3L))
+    et <- structure(
+      list(
+        time = c(0, 0.05, 0.5),
+        cmt = c("(default)", "(obs)", "-out"),
+        amt = c(0.0833333333333333, NA, NA),
+        rate = c(2, 0, 0),
+        ii = c(1, 0, 0),
+        addl = c(9L, 0L, 0L),
+        evid = c(1L, 2L, 2L)
+      ),
+      class = "data.frame",
+      row.names = c(NA, -3L)
+    )
 
     test_that("error for negative non ODE compartments", {
       expect_error(etTrans(et, mod, keepDosingOnly = TRUE))
@@ -215,14 +1438,19 @@ d/dt(blood)     = a*intestine - b*blood
       expect_error(etTrans(et, mod, keepDosingOnly = TRUE))
     })
 
-    et <- structure(list(time = c(0, 0.05, 0.25, 0.5),
-                         cmt = c("(default)", "(obs)", "out", "-out"),
-                         amt = c(0.0833333333333333, NA, 3, NA),
-                         rate = c(2, 0, 0, 0),
-                         ii = c(1, 0, 0, 0),
-                         addl = c(9L, 0L, 0L, 0L),
-                         evid = c(1L, 2L, 1L, 2L)),
-                    class = "data.frame", row.names = c(NA, -4L))
+    et <- structure(
+      list(
+        time = c(0, 0.05, 0.25, 0.5),
+        cmt = c("(default)", "(obs)", "out", "-out"),
+        amt = c(0.0833333333333333, NA, 3, NA),
+        rate = c(2, 0, 0, 0),
+        ii = c(1, 0, 0, 0),
+        addl = c(9L, 0L, 0L, 0L),
+        evid = c(1L, 2L, 1L, 2L)
+      ),
+      class = "data.frame",
+      row.names = c(NA, -4L)
+    )
 
     test_that("error for negative non ODE compartments after defined compartment", {
       expect_error(etTrans(et, mod, keepDosingOnly = TRUE))
@@ -230,18 +1458,59 @@ d/dt(blood)     = a*intestine - b*blood
       expect_error(etTrans(et, mod, keepDosingOnly = TRUE))
     })
 
-    et <- structure(list(time = c(0, 0.24), amt = c(NA_real_, 3),
-                         evid = c(0L, 4L)), class = "data.frame", row.names = c(NA, -2L))
+    et <- structure(
+      list(time = c(0, 0.24), amt = c(NA_real_, 3), evid = c(0L, 4L)),
+      class = "data.frame",
+      row.names = c(NA, -2L)
+    )
 
     test_that("EVID=4 makes sense", {
-        expect_equal(
-          etTrans(et, mod, keepDosingOnly = TRUE)$EVID,
-          c(0L, 3L, 101L)
-        )
+      expect_equal(
+        etTrans(et, mod, keepDosingOnly = TRUE)$EVID,
+        c(0L, 3L, 101L)
+      )
     })
 
+    test_that("evid=4 expanded through addl only resets on the first dose (matches NONMEM, issue #1351)", {
+      # NONMEM resets the compartment on the FIRST evid=4 occurrence only;
+      # the addl-repeated doses are plain doses, not additional resets.
+      # This is pinned by the real-NONMEM-derived fixture used in
+      # test-nmtest.R ("evid4"): its ADDL-equivalent rows are plain EVID=1
+      # after the initial EVID=4/SS record, never another EVID=4. See
+      # https://blog.nlmixr2.org/blog/2024-04-04-steady-state/ for the
+      # analogous ADDL+SS behavior. Do not "fix" this to reset on every
+      # addl repetition.
+      modAddl <- rxode2({
+        d/dt(central) <- -cl / v * central
+        cp <- central / v
+      })
+      pars <- c(cl = 1, v = 10)
 
-    mod <- rxode2parse("    CO = (187 * WT^0.81) * 60/1000
+      addlEt <- et(amt = 100, time = 2, evid = 4, ii = 12, addl = 2) |> et(seq(0, 40, by = 1))
+      explicitEt <- et(amt = 100, time = 2, evid = 4) |>
+        et(amt = 100, time = 14, evid = 4) |>
+        et(amt = 100, time = 26, evid = 4) |>
+        et(seq(0, 40, by = 1))
+
+      addl <- rxSolve(modAddl, pars, addlEt)
+      explicit <- rxSolve(modAddl, pars, explicitEt)
+
+      # the addl expansion resets once, then just doses -- it must NOT match
+      # the explicit form, which resets at every evid=4 occurrence
+      expect_false(isTRUE(all.equal(addl$cp, explicit$cp)))
+
+      # only-first-resets reference, expanded by hand
+      onlyFirstResetEt <- et(amt = 100, time = 2, evid = 4) |>
+        et(amt = 100, time = 14, evid = 1) |>
+        et(amt = 100, time = 26, evid = 1) |>
+        et(seq(0, 40, by = 1))
+      onlyFirstReset <- rxSolve(modAddl, pars, onlyFirstResetEt)
+
+      expect_equal(addl$cp, onlyFirstReset$cp)
+    })
+
+    mod <- rxode2parse(
+      "    CO = (187 * WT^0.81) * 60/1000
     QHT = 4 * CO/100
     QBR = 12 * CO/100
     QMU = 17 * CO/100
@@ -303,26 +1572,30 @@ d/dt(blood)     = a*intestine - b*blood
     d/dt(Kidneys) = QKI * (Arterial_Blood/VAB - Kidneys/KbKI/VKI)
     d/dt(Arterial_Blood) = QLU * (Lungs/KbLU/VLU - Arterial_Blood/VAB)
     d/dt(Venous_Blood) = QHT * Heart/KbHT/VHT + QBR * Brain/KbBR/VBR + QMU * Muscles/KbMU/VMU + QAD * Adipose/KbAD/VAD + QSK * Skin/KbSK/VSK + QLI * Liver/KbLI/VLI + QBO * Bones/KbBO/VBO + QKI * Kidneys/KbKI/VKI + QRB * Rest_of_Body/KbRB/VRB - QLU * Venous_Blood/VVB
-    d/dt(Rest_of_Body) = QRB * (Arterial_Blood/VAB - Rest_of_Body/KbRB/VRB)")
-
+    d/dt(Rest_of_Body) = QRB * (Arterial_Blood/VAB - Rest_of_Body/KbRB/VRB)"
+    )
 
     test_that("strange rate doesn't affect model", {
-      et1 <- test_path("etTrans1.qs2")
+      et1 <- test_path("etTrans1.rds")
       skip_if_not(file.exists(et1))
-      dat <- qs2::qs_read(et1)
+      dat <- readRDS(et1)
       expect_false(any(etTrans(dat, mod)$AMT < 0, na.rm = TRUE))
     })
 
     test_that("Missing evid gives the same results", {
+      skip_if_not_installed("nlmixr2data")
       theoSd <- nlmixr2data::theo_sd
       d <- theoSd[, names(theoSd) != "EVID"]
 
-      mod <- rxode2parse("
+      mod <- rxode2parse(
+        "
         ka <- exp(tka + eta.ka)
         cl <- exp(tcl + eta.cl)
         v <- exp(tv + eta.v)
         cp <- linCmt()
-      ", linear=TRUE)
+      ",
+        linear = TRUE
+      )
 
       t1 <- etTrans(theoSd, mod)
       t2 <- etTrans(d, mod)
@@ -371,13 +1644,14 @@ d/dt(blood)     = a*intestine - b*blood
     })
 
     ## Dat1= day month year
-    d1 <- data.frame(DV = 0,
-                     DAT1 = c("1-10-86", "1-10-86", "2-10-86"),
-                     TIME = c("9:15", "14:40", "8:30"),
-                     stringsAsFactors = FALSE)
+    d1 <- data.frame(
+      DV = 0,
+      DAT1 = c("1-10-86", "1-10-86", "2-10-86"),
+      TIME = c("9:15", "14:40", "8:30"),
+      stringsAsFactors = FALSE
+    )
 
-    d2 <- rbind(data.frame(ID = 1, d1, stringsAsFactors = F),
-                data.frame(ID = 2, d1, stringsAsFactors = F))
+    d2 <- rbind(data.frame(ID = 1, d1, stringsAsFactors = F), data.frame(ID = 2, d1, stringsAsFactors = F))
     d2[d2$ID == 2, "DAT1"] <- gsub("-10-", "-11-", d2[d2$ID == 2, "DAT1"])
 
     d3 <- d1
@@ -398,13 +1672,14 @@ d/dt(blood)     = a*intestine - b*blood
     })
 
     ## Dat2 = year month day
-    d1 <- data.frame(DAT2 = c("86-10-1", "86-10-1", "86-10-2"),
-                     TIME = c("9:15", "14:40", "8:30"),
-                     stringsAsFactors = FALSE)
+    d1 <- data.frame(
+      DAT2 = c("86-10-1", "86-10-1", "86-10-2"),
+      TIME = c("9:15", "14:40", "8:30"),
+      stringsAsFactors = FALSE
+    )
     d1$DV <- 0
 
-    d2 <- rbind(data.frame(ID = 1, d1, stringsAsFactors = F),
-                data.frame(ID = 2, d1, stringsAsFactors = F))
+    d2 <- rbind(data.frame(ID = 1, d1, stringsAsFactors = F), data.frame(ID = 2, d1, stringsAsFactors = F))
     d2[d2$ID == 2, "DAT2"] <- gsub("-10-", "-11-", d2[d2$ID == 2, "DAT2"])
 
     d3 <- d1
@@ -448,10 +1723,12 @@ d/dt(blood)     = a*intestine - b*blood
       expect_equal(c(0, 5.41666666666667, 23.25), tmp$TIME)
     })
 
-    d1 <- data.frame(DV = 0,
-                     DATE = c("10-1-86", "10-1-86", "10-2-86"),
-                     TIME = c("9:15", "14:40", "8:30"),
-                     stringsAsFactors = FALSE)
+    d1 <- data.frame(
+      DV = 0,
+      DATE = c("10-1-86", "10-1-86", "10-2-86"),
+      TIME = c("9:15", "14:40", "8:30"),
+      stringsAsFactors = FALSE
+    )
 
     d2 <- d1
     d2$DAT1 <- d2$DATE
@@ -468,11 +1745,12 @@ d/dt(blood)     = a*intestine - b*blood
       expect_error(etTrans(d4, mod))
     })
 
-
-    d1 <- data.frame(DV = 0,
-                     DATE = c("10-1-86", "10-1-86", "10-2-86"),
-                     TIME = c("9.15", "14:40", "8:30"),
-                     stringsAsFactors = FALSE)
+    d1 <- data.frame(
+      DV = 0,
+      DATE = c("10-1-86", "10-1-86", "10-2-86"),
+      TIME = c("9.15", "14:40", "8:30"),
+      stringsAsFactors = FALSE
+    )
 
     test_that("Bad Date/Time combination", {
       expect_error(etTrans(d1, mod))
@@ -480,63 +1758,76 @@ d/dt(blood)     = a*intestine - b*blood
 
     ## Test mixed classic rxode2 and NONMEM inputs
     test_that("mixed rxode2/NONMEM EVID/data gives a warning", {
-
-      mod <- rxode2parse("
+      mod <- rxode2parse(
+        "
         d1 <- exp(td1 + eta.d1)
         cl <- exp(tcl + eta.cl)
         d/dt(center) <- -cl / v * center
         dur(center) <- d1
         cp <- center / v
-      ")
+      "
+      )
 
-
-      d <- structure(list(
-        ID = c(1L, 1L, 1L),
-        TIME = c(0, 0, 0.25),
-        DV = c(0, 0.74, 2.84),
-        AMT = c(319.992, 0, 0),
-        EVID = c(101L, 0L, 0L),
-        WT = c(79.6, 79.6, 79.6),
-        RATE = c(-2, 0, 0)),
-        row.names = c(NA, 3L), class = "data.frame")
+      d <- structure(
+        list(
+          ID = c(1L, 1L, 1L),
+          TIME = c(0, 0, 0.25),
+          DV = c(0, 0.74, 2.84),
+          AMT = c(319.992, 0, 0),
+          EVID = c(101L, 0L, 0L),
+          WT = c(79.6, 79.6, 79.6),
+          RATE = c(-2, 0, 0)
+        ),
+        row.names = c(NA, 3L),
+        class = "data.frame"
+      )
 
       expect_warning(etTrans(d, mod), "'rate'")
 
-      d <- structure(list(
-        ID = c(1L, 1L, 1L),
-        TIME = c(0, 0, 0.25),
-        DV = c(0, 0.74, 2.84),
-        AMT = c(319.992, 0, 0),
-        EVID = c(101L, 0L, 0L),
-        WT = c(79.6, 79.6, 79.6),
-        DUR = c(-2, 0, 0)),
-        row.names = c(NA, 3L), class = "data.frame")
+      d <- structure(
+        list(
+          ID = c(1L, 1L, 1L),
+          TIME = c(0, 0, 0.25),
+          DV = c(0, 0.74, 2.84),
+          AMT = c(319.992, 0, 0),
+          EVID = c(101L, 0L, 0L),
+          WT = c(79.6, 79.6, 79.6),
+          DUR = c(-2, 0, 0)
+        ),
+        row.names = c(NA, 3L),
+        class = "data.frame"
+      )
 
       expect_warning(etTrans(d, mod), "'dur'")
 
-      d <- structure(list(
-        ID = c(1L, 1L, 1L),
-        TIME = c(0, 0, 0.25),
-        DV = c(0, 0.74, 2.84),
-        AMT = c(319.992, 0, 0),
-        EVID = c(101L, 0L, 0L),
-        WT = c(79.6, 79.6, 79.6),
-        SS = c(1, 0, 0),
-        II = c(24, 0, 0)),
-        row.names = c(NA, 3L), class = "data.frame")
+      d <- structure(
+        list(
+          ID = c(1L, 1L, 1L),
+          TIME = c(0, 0, 0.25),
+          DV = c(0, 0.74, 2.84),
+          AMT = c(319.992, 0, 0),
+          EVID = c(101L, 0L, 0L),
+          WT = c(79.6, 79.6, 79.6),
+          SS = c(1, 0, 0),
+          II = c(24, 0, 0)
+        ),
+        row.names = c(NA, 3L),
+        class = "data.frame"
+      )
 
       expect_warning(etTrans(d, mod), "'ss'")
-
     })
 
-    mod <- rxode2parse("    x1(0) = x10\n    d/dt(x1) = a * x1\n    Volume = x1;\ncmt(Volume);\n\n    nlmixr_pred <- Volume")
+    mod <- rxode2parse(
+      "    x1(0) = x10\n    d/dt(x1) = a * x1\n    Volume = x1;\ncmt(Volume);\n\n    nlmixr_pred <- Volume"
+    )
 
     test_that("DV=NA; issue #106", {
-
       RawData2 <- data.frame(
         ID = c(1, 1, 1, 1, 2, 2, 2, 2),
         TIME = c(0, 3, 4, 5, 0, 3, 4, 5),
-        DV = c(NA, 30, 80, 250, NA, 40, 150, 400))
+        DV = c(NA, 30, 80, 250, NA, 40, 150, 400)
+      )
 
       dat1 <- etTrans(RawData2, mod)
 
@@ -544,7 +1835,8 @@ d/dt(blood)     = a*intestine - b*blood
         ID = c(1, 1, 1, 1, 2, 2, 2, 2),
         TIME = c(0, 3, 4, 5, 0, 3, 4, 5),
         DV = c(NA, 30, 80, 250, NA, 40, 150, 400),
-        AMT = c(NA, NA, NA, NA, NA, NA, NA, NA))
+        AMT = c(NA, NA, NA, NA, NA, NA, NA, NA)
+      )
 
       dat1a <- etTrans(RawData2a, mod)
 
@@ -552,7 +1844,8 @@ d/dt(blood)     = a*intestine - b*blood
         ID = c(1, 1, 1, 1, 2, 2, 2, 2),
         TIME = c(0, 3, 4, 5, 0, 3, 4, 5),
         DV = c(NA, 30, 80, 250, NA, 40, 150, 400),
-        AMT = c(0, 0, 0, 0, 0, 0, 0, 0))
+        AMT = c(0, 0, 0, 0, 0, 0, 0, 0)
+      )
 
       dat1b <- etTrans(RawData2b, mod)
 
@@ -560,21 +1853,22 @@ d/dt(blood)     = a*intestine - b*blood
         ID = c(1, 1, 1, 1, 2, 2, 2, 2),
         TIME = c(0, 3, 4, 5, 0, 3, 4, 5),
         DV = c(NA, 30, 80, 250, NA, 40, 150, 400),
-        AMT = c(1, 0, 0, 0, 1, 0, 0, 0))
+        AMT = c(1, 0, 0, 0, 1, 0, 0, 0)
+      )
 
       dat1c <- etTrans(RawData2c, mod)
 
       expect_equal(dat1a$EVID, c(2L, 0L, 0L, 0L, 2L, 0L, 0L, 0L))
       expect_equal(dat1a$EVID, dat1b$EVID)
       expect_equal(dat1c$EVID, c(101L, 0L, 0L, 0L, 101L, 0L, 0L, 0L))
-
     })
 
     RawData3 <- data.frame(
       ID = c(1, 1, 1, 1, 2, 2, 2, 2),
       TIME = c(0, 3, 4, 5, 0, 3, 4, 5),
       DV = c(0, 30, 80, 250, 0, 40, 150, 400),
-      EVID = c(2, 0, 0, 0, 2, 0, 0, 0))
+      EVID = c(2, 0, 0, 0, 2, 0, 0, 0)
+    )
 
     dat2 <- etTrans(RawData3, mod)
 
@@ -583,7 +1877,8 @@ d/dt(blood)     = a*intestine - b*blood
       TIME = c(0, 3, 4, 5, 0, 3, 4, 5),
       DV = c(0, 30, 80, 250, 0, 40, 150, 400),
       EVID = c(2, 0, 0, 0, 2, 0, 0, 0),
-      CMT = c(1, 0, 0, 0, 1, 0, 0, 0))
+      CMT = c(1, 0, 0, 0, 1, 0, 0, 0)
+    )
 
     dat3 <- etTrans(RawData4, mod)
 
@@ -610,15 +1905,17 @@ d/dt(blood)     = a*intestine - b*blood
     })
 
     test_that("X(0) should be at time zero; see issue #105", {
-
-      mod <- rxode2parse("    x1(0) = x10\n    d/dt(x1) = a * x1\n    Volume = x1;\ncmt(Volume);\n\n    nlmixr_pred <- Volume")
+      mod <- rxode2parse(
+        "    x1(0) = x10\n    d/dt(x1) = a * x1\n    Volume = x1;\ncmt(Volume);\n\n    nlmixr_pred <- Volume"
+      )
 
       rxSetIni0(FALSE)
 
       RawData2 <- data.frame(
         ID = c(1, 1, 1, 2, 2, 2),
         TIME = c(3, 4, 5, 3, 4, 5),
-        DV = c(30, 80, 250, 40, 150, 400))
+        DV = c(30, 80, 250, 40, 150, 400)
+      )
 
       expect_warning(dat1 <- etTrans(RawData2, mod))
 
@@ -629,19 +1926,20 @@ d/dt(blood)     = a*intestine - b*blood
 
       expect_equal(dat1$TIME, c(0, 3, 4, 5, 0, 3, 4, 5))
       expect_equal(dat1$EVID, c(9L, 0L, 0L, 0L, 9L, 0L, 0L, 0L))
-
     })
 
     rxSetIni0(TRUE)
     test_that("censoring checks", {
-
-      mod <- rxode2parse("
+      mod <- rxode2parse(
+        "
 a = 6
 b = 0.6
 d/dt(intestine) = -a*intestine
 d/dt(blood)     = a*intestine - b*blood
-")
+"
+      )
 
+      # fmt: skip
       et <- structure(list(time = c(0, 0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7,
                                     0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2,
                                     2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3, 3.1, 3.2, 3.3,
@@ -784,54 +2082,75 @@ d/dt(blood)     = a*intestine - b*blood
     })
 
     test_that("rxode2 constant infusion taken to steady state", {
-
-      et <- structure(list(time = 0, amt = 0, rate = 10, ii = 0, evid = 1L,
-                           ss = 1L), class = "data.frame", row.names = c(NA, -1L))
-
-      trn1 <- etTrans(et, mod, keepDosingOnly = TRUE) |> as.data.frame()
-
-      expect_equal(structure(list(
-        ID = structure(1L, class = "factor", .Label = "1"),
-        TIME = 0, EVID = 10140L, AMT = 10, II = 0, DV = NA_real_
-      ),
-      class = "data.frame", row.names = c(NA, -1L)
-      ), trn1)
-
-      et <- structure(list(time = 0, amt = 0, rate = -1, ii = 0, evid = 1L,
-                           ss = 1L), class = "data.frame", row.names = c(NA, -1L))
+      et <- structure(
+        list(time = 0, amt = 0, rate = 10, ii = 0, evid = 1L, ss = 1L),
+        class = "data.frame",
+        row.names = c(NA, -1L)
+      )
 
       trn1 <- etTrans(et, mod, keepDosingOnly = TRUE) |> as.data.frame()
 
-      expect_equal(structure(list(
-        ID = structure(1L, class = "factor", .Label = "1"),
-        TIME = 0, EVID = 90140L, AMT = 0, II = 0, DV = NA_real_
-      ),
-      class = "data.frame", row.names = c(NA, -1L)
-      ), trn1)
+      expect_equal(
+        structure(
+          list(
+            ID = structure(1L, class = "factor", levels = "1"),
+            TIME = 0,
+            EVID = 10140L,
+            AMT = 10,
+            II = 0,
+            DV = NA_real_
+          ),
+          class = "data.frame",
+          row.names = c(NA, -1L)
+        ),
+        trn1
+      )
+
+      et <- structure(
+        list(time = 0, amt = 0, rate = -1, ii = 0, evid = 1L, ss = 1L),
+        class = "data.frame",
+        row.names = c(NA, -1L)
+      )
+
+      trn1 <- etTrans(et, mod, keepDosingOnly = TRUE) |> as.data.frame()
+
+      expect_equal(
+        structure(
+          list(
+            ID = structure(1L, class = "factor", levels = "1"),
+            TIME = 0,
+            EVID = 90140L,
+            AMT = 0,
+            II = 0,
+            DV = NA_real_
+          ),
+          class = "data.frame",
+          row.names = c(NA, -1L)
+        ),
+        trn1
+      )
     })
 
     ## etTrans example from xgxr + nlmixr + ggpmx
     test_that("etTrans", {
-      lst <- qs2::qs_read(test_path("test-etTrans-1.qs2"))
+      lst <- readRDS(test_path("test-etTrans-1.rds"))
       events2 <- lst$events
       events2 <- events2[, names(events2) != "CENS"]
 
       # suppressWarnings() is used on the outside because the rxSetIni0(FALSE)
       # warning only occurs once per session
-      t0 <- suppressWarnings(etTrans(events2, rxode2parse(lst$object),
-                                          FALSE, FALSE, FALSE, FALSE, NULL, character(0)))
+      t0 <- suppressWarnings(etTrans(events2, rxode2parse(lst$object), FALSE, FALSE, FALSE, FALSE, NULL, character(0)))
       expect_s3_class(t0, "rxEtTran")
 
-      t1 <- etTrans(events2, rxode2parse(lst$object),
-                         FALSE, FALSE, FALSE, TRUE, NULL, character(0))
+      t1 <- etTrans(events2, rxode2parse(lst$object), FALSE, FALSE, FALSE, TRUE, NULL, character(0))
       expect_s3_class(t1, "rxEtTran")
     })
 
     test_that("etTrans drop levels are correct", {
+      dat <- readRDS(test_path("etTrans-drop.rds"))
 
-      dat <- qs2::qs_read(test_path("etTrans-drop.qs2"))
-
-      mod <- rxode2parse("
+      mod <- rxode2parse(
+        "
         lka <- log(0.1) # log Ka
         lv <- log(10) # Log Vc
         lcl <- log(4) # Log Cl
@@ -846,59 +2165,192 @@ d/dt(blood)     = a*intestine - b*blood
         q <- exp(lq)
         vp <- exp(lvp)
         cp <- linCmt()
-      ", linear = TRUE)
+      ",
+        linear = TRUE
+      )
 
       # suppressWarnings() is used on the outside because the rxSetIni0(FALSE)
       # warning only occurs once per session
-      suppressWarnings(expect_warning(expect_warning(
-        tmp <- etTrans(dat, mod),
-        regexp="while censoring is included"), regexp="IDs without observations"
-        ))
+      suppressWarnings(expect_warning(
+        expect_warning(
+          tmp <- etTrans(dat, mod),
+          regexp = "while censoring is included"
+        ),
+        regexp = "IDs without observations"
+      ))
       lvls <- c(
-        "32", "33", "35", "36", "37", "40", "41", "42", "43", "47",
-        "48", "49", "50", "51", "54", "55", "57", "59", "61", "62", "63",
-        "64", "65", "66", "67", "68", "69", "70", "71", "72", "73", "74",
-        "75", "76", "77", "78", "79", "80", "81", "82", "83", "84", "85",
-        "86", "87", "88", "89", "90", "91", "92", "93", "94", "95", "96",
-        "97", "98", "99", "100", "101", "102", "103", "104", "105", "106",
-        "107", "108", "109", "110", "111", "112", "113", "114", "115",
-        "116", "117", "118", "119", "120", "121", "122", "123", "124",
-        "125", "126", "127", "128", "129", "130", "131", "132", "133",
-        "134", "135", "136", "137", "138", "139", "140", "141", "142",
-        "143", "144", "145", "146", "147", "148", "149", "150", "151",
-        "152", "153", "154", "155", "156", "157", "158", "159", "160",
-        "161", "162", "163", "164", "165", "166", "167", "168", "169",
-        "170", "171", "172", "173", "174", "175", "176", "177", "178",
-        "179", "180"
+        "32",
+        "33",
+        "35",
+        "36",
+        "37",
+        "40",
+        "41",
+        "42",
+        "43",
+        "47",
+        "48",
+        "49",
+        "50",
+        "51",
+        "54",
+        "55",
+        "57",
+        "59",
+        "61",
+        "62",
+        "63",
+        "64",
+        "65",
+        "66",
+        "67",
+        "68",
+        "69",
+        "70",
+        "71",
+        "72",
+        "73",
+        "74",
+        "75",
+        "76",
+        "77",
+        "78",
+        "79",
+        "80",
+        "81",
+        "82",
+        "83",
+        "84",
+        "85",
+        "86",
+        "87",
+        "88",
+        "89",
+        "90",
+        "91",
+        "92",
+        "93",
+        "94",
+        "95",
+        "96",
+        "97",
+        "98",
+        "99",
+        "100",
+        "101",
+        "102",
+        "103",
+        "104",
+        "105",
+        "106",
+        "107",
+        "108",
+        "109",
+        "110",
+        "111",
+        "112",
+        "113",
+        "114",
+        "115",
+        "116",
+        "117",
+        "118",
+        "119",
+        "120",
+        "121",
+        "122",
+        "123",
+        "124",
+        "125",
+        "126",
+        "127",
+        "128",
+        "129",
+        "130",
+        "131",
+        "132",
+        "133",
+        "134",
+        "135",
+        "136",
+        "137",
+        "138",
+        "139",
+        "140",
+        "141",
+        "142",
+        "143",
+        "144",
+        "145",
+        "146",
+        "147",
+        "148",
+        "149",
+        "150",
+        "151",
+        "152",
+        "153",
+        "154",
+        "155",
+        "156",
+        "157",
+        "158",
+        "159",
+        "160",
+        "161",
+        "162",
+        "163",
+        "164",
+        "165",
+        "166",
+        "167",
+        "168",
+        "169",
+        "170",
+        "171",
+        "172",
+        "173",
+        "174",
+        "175",
+        "176",
+        "177",
+        "178",
+        "179",
+        "180"
       )
       expect_equal(attr(class(tmp), ".rxode2.lst")$idLvl, lvls)
       expect_equal(levels(tmp$ID), lvls)
     })
 
     test_that("phantom doses", {
-
-      mod <- rxode2parse("
+      mod <- rxode2parse(
+        "
 a = 6
 b = 0.6
 d/dt(intestine) = -a*intestine
 d/dt(blood)     = a*intestine - b*blood
-")
+"
+      )
 
-      d <- structure(list(time = c(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
-                          cmt = c(2L, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA),
-                          amt = c(3, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA),
-                          evid = c(7L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L)),
-                     class = "data.frame", row.names = c(NA, -11L))
+      d <- structure(
+        list(
+          time = c(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
+          cmt = c(2L, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA),
+          amt = c(3, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA),
+          evid = c(7L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L)
+        ),
+        class = "data.frame",
+        row.names = c(NA, -11L)
+      )
 
       tran <- etTrans(d, mod)
 
       expect_equal(tran$EVID[1], 250L)
-
     })
 
     test_that("non time varying covariates with evid=9", {
-
-      rx <- rxode2parse("
+      rx <- rxode2parse(
+        "
         param(lkng, ltau, lec50, kmax, propErr, addErr, cp, tumor0)
         kng <- exp(lkng)
         tau <- exp(ltau)
@@ -923,26 +2375,29 @@ d/dt(blood)     = a*intestine - b*blood
         sim <- rxTBSi(rx_pred_ + sqrt(rx_r_) * err.tumor, rx_lambda_,
                       rx_yj_, rx_low_, rx_hi_)
         dvid(5)
-      ")
+      "
+      )
 
-      prepfit <- qs2::qs_deserialize(qs2::base91_decode("unjXVBZLQAAAAAAAAAJVRi~RksD((ZIAC\"><F{v88I2FDtT`p=!J`hs:WxsI6|6,IuC%gDH+mFjX(N{HboiZ5n0Q;LWx=A`:{:*IkQPk9BGQlH;hobe}QOy(cAYBOK:S3[vc}mZ+;U!29wz,@=zL;L1tet)2dC:N4|<7a^.HNHfd!&)I/gbbQi!,K:<KN&aY6|7KXqUM*]uC8S[>T<`zENuiFYnYN2t\"(dTlN}R}JBSMj:xk<fRLA+0]`DKxO:>dRkU2.Hls(6sxU%^`V=yU=kIprAz@_zoP$<;)Ncaf;UtY?2W]IBExZy{6jQf*(_$gpJ0*rda7>@~Z41(U7+jJvV%RP,viFGZ+Pi/oP{MS4M6wpanBC@KEQ={V0Qz$jE&yckCNoCm^EZ6t8.8D`RyJM$In8&6WltZl>{Ipfn%?oe\"=)/=K}4k}1Y^PC]2TeqN+FzF,i#3$kEad?y\"A*^q968;[M~&&enrSI!R2zrxdlne$Z,El\"o,:5T!Q>p;8J7Fd@):\"cRC30{zs^Klg@j@3LM\"W,lph~Nk!AdxA_qSROy5lKY;Q)jK.W$7t&P~{$:1kOLEJ,5HM)Sdq2D|N)`ajt$$l_5TevW!_YY(HKT;X9OhYb]CF>:m6rORwWxkS5B^|/.XAv3QV)T]nW[jbP3qv8`TU:,w6F?Ph:(e%;Tbj:qbjy)dUllvHgXd}X({c[S#zWiX#Fzc[r|Y^[SvPr+HncW&*A}>w3Bv9C3]t(M?s*.N\"Ma09`eR)DR/3V~u;r[AW9]oi>jsoWt7qiCcXXm~7w9%jR5Ew#*~:]TPmelT:IMaSIR2<u$A_uEmdi^>wnBN]9DB~NtUUky0z`z({aQtS+e@1^agdI)o{#J)*tc_1jWROq1m!3^5X&FKz4(z%=!tj0oywZW:H9yymTXI/9}bb1esj9#|ZcC\"6xaY2FMBJn]soSYv~1D6b@SMrX,;4=@Pe.PeE|^7)wc^Wq{h3*FxSZ/fE!,e{w!U$z]>.{A#4EXOyAC(0G9VbE%nS#PKuN{_N:|&a|HaWdi!09Efp]|Ko\"\":,z{5O_E<[RiXWQB[ps+<%5#/c6F7C)5i^1a4upsI]3]a}Py4S|p:b;vd,}YI/[FxJ$xIkl21g+BvPT;`u!#JjqQgri#xo5+n!Zs!}OCSJ/=WCv?;0Am[b:#?C76%5p#aDM;Mp[<>#p,*Hlg>3_GSt7$Pd&fUi9.4X\"o)q9h\"eo+gK7wDdf;;<o:S+cPF,C&[<)&)]E;ni^3]58Q0plY.W0olGn#%FgM(jsyq)KN);eN{Tqnf|\"sPcGreEio}SO0~l\"_|]I%_Nj2_8#swiP#i$#O9,<0QeICWt;J?U)>3Nl}38EK*?Q?NW2%RXN)hJbGM*XGj#L]6nCEXfp>2V2PYz*u?[@em%D$vm3gSHgnjEmF\"&3oW3yFr,cmHW>xtS3~Kpz,I^llzQ!Lz2p23vT;0aKB$.A^/mb=cRVl[.6B5([wd2lufQ]=0Me@CjR#=y+)[I(effT$R(~dS;[3jJ0YX>\"Ye7V_i##!6G?A,sG+1Z]L!\"8ms/wAJ70)92hN`/g_ELokpM5v+FX4+4\"LZbX)sdFKc8Q?[}.F^6m2dH1}OG{Z.GSv+bK?rw6mZ)8`FA\"&fv!qVo(Nc;Z(yRLAqbDjt.R+(W|X;<X`+cVA7c}pvd;*Up*L9:^Ej*X=?]VL@?DVJ`S~SVu5C}8w:QcE2G=id0<@dBKU5=6]wBg@JaJ$On3X?D_K~C^xl`s]rmu`zUljf7J7%sqgPtPfh>l7VVDNwz.{\"7m9a2Jd(}[$$wPrmueWkKQbyh1.;MWBclCrs{u0WcV1T*99;=$+e%7/@Y(%,0Tv2|0.]ll`8!w1p@(2^]s!~ENT_>1N#7kbW`aAddc=4NSKl{=k=t\"IwnrM?)3?Tv!f|Sq!9EB3R+.8j~a[[RB>u9+Z5`l&2xcje19;@Sc[f?c?kw8,`.2.R/UvMq2H~D!]7f4qZa.!E2RG(}7=_c(f[I1QGKb={Oo5wd7s(e>ha(q)n~gJSOHV9tl|vP4v^UYw#CUbe+yn~irgWOL}w.cS2zb4G|cP:4HxmnOZ~b47m\"Y(r0>qXO*[,)iD;FeV#.b?Qc{8qIkPWiT?QOs>M7GR1(t^1wiMb?NSBx3pxBfiYG!}.2<+wP$.J<54~9fq!YnzW6c&0nM%!+g.pL<Txs?wxz{a`Q$p}=_EB\"#[;>|zw}]Tz;:5K<@;$[$dg+#Xd^.h+y@0Q{.n+2n6WGoqFCJ,qZAvW&#rHg9N<_|%r13U\"yS(O@e><Aa?}H65v8fDYsr9e&9Lv,vT4Z;.0_Q7qfZ:5F:6iV3zmO<C)+[;%7SmdDT?deX51XE:5}Yd(LrfiD@N][V3)Gw_P0WTAg)Bd(HE^!c&nO|*vKd$p`J4=eefy.oE2tEPoOL,3@k@vWjLx/8OdtyWwChziM9M#Z~~?wmK%FLVRHgfg81xk^)gjq,K0A~0/s29/V3,6kiA+>H[I,k~B9vnnLZfM0!BZcY!h}{ibK&scur64`(I,xOiNQUH>G,:AKi;;:8N!$=(H/A_O5*u[3\"}KS9)NQSXu{#2ki?Ng|H1[:DEo2vLbg|lr7F>qw@C%dA:^?HSaxKjz>xRK=HQla%I>yrOeXtn#?ptZ6$asInr}CX(oC?AzFA"))
+      prepfit <- readRDS(test_path("etTrans-prepfit.rds"))
 
-      trans <- etTrans(prepfit,rx)
+      trans <- etTrans(prepfit, rx)
 
       expect_true(all(names(trans) != "tumor0"))
-      expect_true(any(names(attr(class(trans), ".rxode2.lst")$cov1) =="tumor0"))
-
+      expect_true(any(names(attr(class(trans), ".rxode2.lst")$cov1) == "tumor0"))
     })
   }
 
   .Call(`_rxode2_etTransEvidIsObs`, TRUE)
 
   test_that("test etTran on addl ss items", {
-
-    rx <- rxode2parse("
+    rx <- rxode2parse(
+      "
       cp <- linCmt(ka, cl, v)
-    ", linear=TRUE)
+    ",
+      linear = TRUE
+    )
 
+    # fmt: skip
     e <- structure(list(time = c(0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
                                  11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
                                  27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42,
@@ -997,24 +2452,23 @@ d/dt(blood)     = a*intestine - b*blood
                    row.names = c(NA, -82L))
 
     # should not drop the off infusion record
-    t <- etTrans(e, rx, addlDropSs=FALSE)
+    t <- etTrans(e, rx, addlDropSs = FALSE)
 
     expect_equal(t$TIME[length(t$TIME)], 82)
     expect_equal(t$AMT[length(t$AMT)], -10)
     expect_equal(t$EVID[length(t$EVID)], 10210L)
     expect_equal(t$II[length(t$II)], 0)
 
-    t2 <- t |> dplyr::filter(AMT>0)
+    t2 <- t |> dplyr::filter(AMT > 0)
 
     expect_equal(t2$TIME, c(0, 24, 48, 72))
     expect_true(all(t2$AMT == 10))
     expect_true(all(t2$EVID == 10210L))
   })
 
-
   test_that("warning for all na", {
-
-    mod1 <- rxode2parse("
+    mod1 <- rxode2parse(
+      "
       d/dt(A_centr) <- -A_centr * (CLI / V1I + 204 / V1I) + 204 * A_periph / V2I
       d/dt(A_periph) <- 204 * A_centr / V1I - 204 * A_periph / V2I
       d/dt(A_circ) <- -4 * A_circ * exp(-ETA[2] - THETA[2]) + 4 * A_tr3 * exp(-ETA[2] - THETA[2])
@@ -1027,7 +2481,8 @@ d/dt(blood)     = a*intestine - b*blood
       A_tr2(0) <- exp(ETA[1] + THETA[1])
       d/dt(A_tr3) <- 4 * A_tr2 * exp(-ETA[2] - THETA[2]) - 4 * A_tr3 * exp(-ETA[2] - THETA[2])
       A_tr3(0) <- exp(ETA[1] + THETA[1])
-    ")
+    "
+    )
 
     d3na <- data.frame(
       ID = c(1L, 1L, 1L, 1L, 1L, 1L, 2L, 2L, 2L, 2L),
@@ -1039,7 +2494,7 @@ d/dt(blood)     = a*intestine - b*blood
       EVID = c(10101L, 0L, 10101L, 0L, 0L, 0L, 10101L, 0L, 10101L, 0L)
     )
 
-    expect_warning(etTrans(d3na, mod1, addlDropSs=FALSE), "column 'V1I' has only 'NA' values for id '2'")
+    expect_warning(etTrans(d3na, mod1, addlDropSs = FALSE), "column 'V1I' has only 'NA' values for id '2'")
 
     d3na <-
       data.frame(
@@ -1052,13 +2507,12 @@ d/dt(blood)     = a*intestine - b*blood
         EVID = c(10101L, 0L, 10101L, 0L, 0L, 0L, 10101L, 0L, 10101L, 0L)
       )
 
-    expect_warning(etTrans(d3na, mod1, addlDropSs=FALSE), NA)
-
+    expect_warning(etTrans(d3na, mod1, addlDropSs = FALSE), NA)
   })
 
   test_that("na ids give error", {
-
-    mod1 <- rxode2parse("
+    mod1 <- rxode2parse(
+      "
     mw_anon <- 50000
     mw_convert_anon <- 1 / mw_anon * 1e3
     kel_anon <- log(2)/(hl_anon/60/24)
@@ -1075,8 +2529,10 @@ d/dt(blood)     = a*intestine - b*blood
     d/dt(central_target) <- kform_target - kel_target*free_central_target - kel_anon*bound_umolL # Units are umol/L
     f(depot_anon) <- f_anon
     central_target(0) <- conc_target_ss
-    ")
+    "
+    )
 
+    # fmt: skip
     mydata <-
       structure(list(conc_target_ss = c(NA, 0.12, NA, NA, NA, NA,
                                         NA, NA, NA, NA, NA, NA, NA, 0.12, NA, NA, NA, NA, NA, NA, NA,
@@ -1102,266 +2558,666 @@ d/dt(blood)     = a*intestine - b*blood
 
     mydata$ID[mydata$EVID == 0] <- NA
 
-    expect_error(etTrans(mydata, mod1, addlDropSs=FALSE))
+    expect_error(etTrans(mydata, mod1, addlDropSs = FALSE))
 
     mydata$ID <- as.double(mydata$ID)
 
-    expect_error(etTrans(mydata, mod1, addlDropSs=FALSE))
+    expect_error(etTrans(mydata, mod1, addlDropSs = FALSE))
 
     mydata$ID <- as.character(mydata$ID)
 
-    expect_error(etTrans(mydata, mod1, addlDropSs=FALSE))
-
+    expect_error(etTrans(mydata, mod1, addlDropSs = FALSE))
   })
 
-
   test_that("error with missing 'amt' but dosing evid", {
-
-    mod <- rxode2parse("
+    mod <- rxode2parse(
+      "
 a = 6
 b = 0.6
 d/dt(intestine) = -a*intestine
 d/dt(blood)     = a*intestine - b*blood
-")
+"
+    )
 
     dSimple <-
       data.frame(ID = 1, EVID = c(1, 0), cmt = c("depot", "central"), DV = c(NA, 1), TIME = 0:1)
-    expect_error(etTrans(dSimple, mod, addlDropSs=FALSE), "EVID=1")
+    expect_error(etTrans(dSimple, mod, addlDropSs = FALSE), "EVID=1")
 
     dSimple <-
-      data.frame(ID = 1, EVID = c(1, 0), cmt = c("depot", "central"), DV = c(NA, 1), TIME = 0:1, AMT=NA)
-    expect_error(etTrans(dSimple, mod, addlDropSs=FALSE), "evid: 1")
+      data.frame(ID = 1, EVID = c(1, 0), cmt = c("depot", "central"), DV = c(NA, 1), TIME = 0:1, AMT = NA)
+    expect_error(etTrans(dSimple, mod, addlDropSs = FALSE), "evid: 1")
 
     dSimple <-
       data.frame(ID = 1, EVID = c(7, 0), cmt = c("depot", "central"), DV = c(NA, 1), TIME = 0:1)
-    expect_error(etTrans(dSimple, mod, addlDropSs=FALSE), "EVID=7")
+    expect_error(etTrans(dSimple, mod, addlDropSs = FALSE), "EVID=7")
 
     dSimple <-
-      data.frame(ID = 1, EVID = c(7, 0), cmt = c("depot", "central"), DV = c(NA, 1), TIME = 0:1, amt=NA)
-    expect_error(etTrans(dSimple, mod, addlDropSs=FALSE), "evid: 7")
+      data.frame(ID = 1, EVID = c(7, 0), cmt = c("depot", "central"), DV = c(NA, 1), TIME = 0:1, amt = NA)
+    expect_error(etTrans(dSimple, mod, addlDropSs = FALSE), "evid: 7")
 
     dSimple <-
-      data.frame(ID = 1,
-                 EVID = c(0, 4, 0),
-                 cmt = c("central", "depot", "central"),
-                 DV = c(1, NA, 1),
-                 TIME = c(0, 0, 1))
+      data.frame(ID = 1, EVID = c(0, 4, 0), cmt = c("central", "depot", "central"), DV = c(1, NA, 1), TIME = c(0, 0, 1))
 
-    expect_error(etTrans(dSimple, mod, addlDropSs=FALSE), "EVID=4")
+    expect_error(etTrans(dSimple, mod, addlDropSs = FALSE), "EVID=4")
 
     dSimple <-
-      data.frame(ID = 1, EVID = c(0, 4, 0), cmt = c("central", "depot", "central"), DV = c(1, NA, 1), TIME = c(0, 0:1), amt=NA)
-    expect_error(etTrans(dSimple, mod, addlDropSs=FALSE), "evid: 4")
-
+      data.frame(
+        ID = 1,
+        EVID = c(0, 4, 0),
+        cmt = c("central", "depot", "central"),
+        DV = c(1, NA, 1),
+        TIME = c(0, 0:1),
+        amt = NA
+      )
+    expect_error(etTrans(dSimple, mod, addlDropSs = FALSE), "evid: 4")
 
     dSimple <-
       data.frame(ID = 1, EVID = c(5, 0), cmt = c("depot", "central"), DV = c(NA, 1), TIME = 0:1)
-    expect_error(etTrans(dSimple, mod, addlDropSs=FALSE), "EVID=5")
+    expect_error(etTrans(dSimple, mod, addlDropSs = FALSE), "EVID=5")
 
     dSimple <-
-      data.frame(ID = 1, EVID = c(5, 0), cmt = c("depot", "central"), DV = c(NA, 1), TIME = 0:1, amt=NA)
-    expect_error(etTrans(dSimple, mod, addlDropSs=FALSE), "evid: 5")
+      data.frame(ID = 1, EVID = c(5, 0), cmt = c("depot", "central"), DV = c(NA, 1), TIME = 0:1, amt = NA)
+    expect_error(etTrans(dSimple, mod, addlDropSs = FALSE), "evid: 5")
 
     dSimple <-
       data.frame(ID = 1, EVID = c(6, 0), cmt = c("depot", "central"), DV = c(NA, 1), TIME = 0:1)
-    expect_error(etTrans(dSimple, mod, addlDropSs=FALSE), "EVID=6")
+    expect_error(etTrans(dSimple, mod, addlDropSs = FALSE), "EVID=6")
 
     dSimple <-
-      data.frame(ID = 1, EVID = c(7, 0), cmt = c("depot", "central"), DV = c(NA, 1), TIME = 0:1, amt=NA)
-    expect_error(etTrans(dSimple, mod, addlDropSs=FALSE), "evid: 7")
+      data.frame(ID = 1, EVID = c(7, 0), cmt = c("depot", "central"), DV = c(NA, 1), TIME = 0:1, amt = NA)
+    expect_error(etTrans(dSimple, mod, addlDropSs = FALSE), "evid: 7")
+  })
+
+  # the whole message etTrans(d, mod) stops with, or NULL
+  .etErr <- function(d, mod) {
+    tryCatch(
+      {
+        etTrans(d, mod)
+        NULL
+      },
+      error = conditionMessage
+    )
+  }
+  # the missing-evid stop's message for a subject and row
+  .etMissingEvidMsg <- function(id, row) {
+    sprintf(
+      "'evid' is missing on a record with dose information ('amt', 'rate' or 'dur'); use 1 for a dose or 0 for an observation (id: %s row: %d)",
+      id,
+      row
+    )
+  }
+
+  test_that("a missing EVID on a record with dose information is an error, not a dropped dose", {
+    mod <- rxode2parse(
+      "
+d/dt(depot) = -1.5*depot
+d/dt(central) = 1.5*depot - 0.2*central
+"
+    )
+    .msg <- .etMissingEvidMsg
+    .d <- data.frame(ID = 1, TIME = c(0, 1), DV = c(NA, 1), AMT = c(100, 0), EVID = c(NA, 0), CMT = 2)
+    expect_identical(.etErr(.d, mod), .msg(1, 1))
+    # lower-case columns, and no ID column (one subject, 1)
+    expect_identical(.etErr(setNames(.d, tolower(names(.d))), mod), .msg(1, 1))
+    expect_identical(.etErr(.d[names(.d) != "ID"], mod), .msg(1, 1))
+    # a negative or NaN amount, or a DV on the record, does not make it an observation
+    for (.amt in c(-5, NaN)) {
+      .d$AMT[1] <- .amt
+      expect_identical(.etErr(.d, mod), .msg(1, 1))
+    }
+    .d$DV[1] <- 3
+    expect_identical(.etErr(.d, mod), .msg(1, 1))
+    # nor does a fixed or modeled rate or duration with no amount, as a constant
+    # infusion (ss = 1 with a rate) has
+    .d <- data.frame(ID = 1, TIME = c(0, 1), DV = c(NA, 1), AMT = 0, EVID = c(NA, 0), CMT = 2)
+    for (.rate in c(10, -1, -2)) {
+      .r <- .d
+      .r$RATE <- c(.rate, 0)
+      expect_identical(.etErr(.r, mod), .msg(1, 1))
+    }
+    for (.dur in c(2, -1, -2)) {
+      .r <- .d
+      .r$DUR <- c(.dur, 0)
+      expect_identical(.etErr(.r, mod), .msg(1, 1))
+    }
+    .r <- .d
+    .r$RATE <- c(10, 0)
+    .r$SS <- c(1, 0)
+    expect_identical(.etErr(.r, mod), .msg(1, 1))
+    # a NaN or other negative rate or duration is no dose information: the record
+    # is an observation, as it is with no EVID column
+    for (.col in c("RATE", "DUR")) {
+      for (.v in c(NaN, -3)) {
+        .r <- .d
+        .r$DV[1] <- 3
+        .r[[.col]] <- c(.v, 0)
+        .lab <- paste(.col, .v)
+        expect_identical(etTrans(.r, mod)$EVID, c(0L, 0L), label = .lab)
+        expect_identical(etTrans(.r[names(.r) != "EVID"], mod)$EVID, c(0L, 0L), label = .lab)
+      }
+    }
+    # both columns present: a rate with a zero duration is dose information, and a
+    # NaN rate beside a duration is the classification's own error
+    .r <- .d
+    .r$RATE <- c(10, 0)
+    .r$DUR <- c(0, 0)
+    expect_identical(.etErr(.r, mod), .msg(1, 1))
+    .r$RATE <- c(NaN, 0)
+    .r$DUR <- c(2, 0)
+    expect_identical(.etErr(.r, mod), "'rate' and/or 'dur' are not specified correctly (id: 1 row: 1)")
+    # the subject's ID and the record's row in the data as given: subjects in
+    # first-seen order that is not alphabetical, times out of order
+    .m <- data.frame(
+      ID = c("b", "b", "a", "a"),
+      TIME = c(0, 1, 1, 0),
+      DV = c(NA, 1, NA, 2),
+      AMT = c(100, 0, 100, 0),
+      EVID = c(1, 0, NA, 0),
+      CMT = 2
+    )
+    expect_identical(.etErr(.m, mod), .msg("a", 3))
+    # with no amount, rate or duration a missing EVID is an observation
+    for (.amt in c(0, NA)) {
+      .d$AMT[1] <- .amt
+      .d$DV[1] <- 3
+      expect_identical(etTrans(.d, mod)$EVID, c(0L, 0L))
+    }
+    # with no EVID column a nonzero AMT is a dose, and so is a missing MDV with an
+    # amount when the MDV column stands in for the EVID
+    .d <- data.frame(ID = 1, TIME = c(0, 1), DV = c(NA, 1), AMT = c(100, 0), CMT = 2)
+    expect_identical(etTrans(.d, mod)$EVID, c(201L, 0L))
+    .d$MDV <- c(NA, 0)
+    expect_identical(etTrans(.d, mod)$EVID, c(201L, 0L))
+  })
+
+  # the warnings for records etTrans() reads differently from their face value
+  .etObsDoseMsg <- function(rows) {
+    paste0("'evid' 0 with a missing 'dv' and a nonzero 'amt' is read as a dose\nrows: ", rows)
+  }
+  .etMdvObsDoseMsg <- function(rows) {
+    paste0("'mdv' 0 with a missing 'dv' and a nonzero 'amt' is read as a dose\nrows: ", rows)
+  }
+  .etMdvNaMsg <- function(rows) {
+    paste0("a missing 'mdv' with a zero 'amt' is read as 'evid' 2, not a dose\nrows: ", rows)
+  }
+  .etWarnModel <- function() {
+    rxode2(
+      "
+d/dt(depot) = -1.5*depot
+d/dt(central) = 1.5*depot - 0.2*central
+cp = central
+"
+    )
+  }
+
+  test_that("an EVID 0 record with no DV and a nonzero amount is read as a dose", {
+    mod <- .etWarnModel()
+    .d <- data.frame(ID = 1, TIME = 0:3, EVID = c(1, 0, 0, 0), AMT = c(100, 0, 50, 0), DV = c(NA, 1, NA, 2), CMT = 2)
+    .w <- capture_warnings(.e <- etTrans(.d, mod))
+    expect_identical(.w, .etObsDoseMsg("3"))
+    # the record is a bolus of 50 into central, as an EVID 1 record is
+    .dose <- .d
+    .dose$EVID[3] <- 1
+    .ref <- etTrans(.dose, mod)
+    expect_identical(.e$EVID, .ref$EVID)
+    expect_identical(.e$EVID[.e$TIME == 2], 201L)
+    expect_identical(.e$AMT[.e$TIME == 2], 50)
+    # so the solve doses it
+    .s <- suppressWarnings(as.data.frame(rxSolve(mod, .d, atol = 1e-10, rtol = 1e-10, returnType = "data.frame")))
+    expect_equal(.s, as.data.frame(rxSolve(mod, .dose, atol = 1e-10, rtol = 1e-10, returnType = "data.frame")))
+    # ... adding 50 * exp(-0.2) to central an hour later
+    .none <- .d
+    .none$AMT[3] <- 0
+    .s0 <- as.data.frame(rxSolve(mod, .none, atol = 1e-10, rtol = 1e-10, returnType = "data.frame"))
+    expect_equal(.s$central[.s$time == 3] - .s0$central[.s0$time == 3], 50 * exp(-0.2), tolerance = 1e-8)
+    # with a fixed rate or duration it is the infusion an evid 1 record is
+    for (.col in c("RATE", "DUR")) {
+      .r <- .d
+      .r[[.col]] <- c(0, 0, if (.col == "RATE") 25 else 2, 0)
+      .rd <- .r
+      .rd$EVID[3] <- 1
+      expect_identical(capture_warnings(.e <- etTrans(.r, mod)), .etObsDoseMsg("3"), label = .col)
+      .ref <- etTrans(.rd, mod)
+      expect_identical(.e$EVID, .ref$EVID, label = .col)
+      expect_identical(.e$TIME, .ref$TIME, label = .col)
+      expect_identical(.e$AMT, .ref$AMT, label = .col)
+      # 10201 a fixed-rate infusion into central, 20201 a fixed-duration one
+      expect_true(any(.e$EVID == if (.col == "RATE") 10201L else 20201L), label = .col)
+    }
+    # a negative amount too; MDV = 1, an observation that is missing, is left as it is
+    .d$AMT[3] <- -5
+    expect_identical(capture_warnings(etTrans(.d, mod)), .etObsDoseMsg("3"))
+    .d$AMT[3] <- 50
+    .d$MDV <- c(1, 0, 1, 0)
+    expect_identical(capture_warnings(.e <- etTrans(.d, mod)), character(0))
+    expect_identical(.e$EVID[.e$TIME == 2], 2L)
+  })
+
+  test_that("a missing MDV with a zero amount is read as EVID 2, not a dose", {
+    mod <- .etWarnModel()
+    # MDV stands in for the EVID: no EVID column
+    .d <- data.frame(ID = 1, TIME = 0:3, MDV = c(1, 0, NA, 0), AMT = c(100, 0, 0, 0), DV = c(NA, 1, NA, 2), CMT = 2)
+    .w <- capture_warnings(.e <- etTrans(.d, mod))
+    expect_identical(.w, .etMdvNaMsg("3"))
+    # the record is read as an EVID 2 record is, and not as a dose of 0 (201)
+    .ref <- .d[names(.d) != "MDV"]
+    .ref$EVID <- c(1, 0, 2, 0)
+    expect_identical(.e$EVID, etTrans(.ref, mod)$EVID)
+    expect_false(201L %in% .e$EVID[.e$TIME == 2])
+    # so the solve has no dose at time 2
+    .s <- suppressWarnings(as.data.frame(rxSolve(mod, .d, addDosing = TRUE, returnType = "data.frame")))
+    expect_equal(.s, as.data.frame(rxSolve(mod, .ref, addDosing = TRUE, returnType = "data.frame")))
+    expect_identical(.s$amt[.s$time == 2 & !is.na(.s$amt)], numeric(0))
+    # a missing MDV with an amount is still a dose
+    .d$AMT[3] <- 20
+    expect_identical(capture_warnings(.e <- etTrans(.d, mod)), character(0))
+    expect_identical(.e$EVID[.e$TIME == 2], 201L)
+  })
+
+  test_that("a missing MDV dose keeps its rate or duration, as MDV 1 or no EVID column does", {
+    mod <- .etWarnModel()
+    .base <- data.frame(ID = 1, TIME = c(0, 1), MDV = c(NA, 0), AMT = c(100, 0), DV = c(NA, 1), CMT = 2)
+    for (.col in c("RATE", "DUR")) {
+      .d <- .base
+      .d[[.col]] <- c(if (.col == "RATE") 25 else 2, 0)
+      expect_identical(capture_warnings(.e <- etTrans(.d, mod)), character(0), label = .col)
+      .d1 <- .d
+      .d1$MDV[1] <- 1
+      .ref <- etTrans(.d1, mod)
+      expect_identical(.e$EVID, .ref$EVID, label = .col)
+      expect_identical(.e$TIME, .ref$TIME, label = .col)
+      expect_identical(.e$AMT, .ref$AMT, label = .col)
+      expect_true(any(.e$EVID == if (.col == "RATE") 10201L else 20201L), label = .col)
+    }
+    # a zero amount with a steady-state constant infusion rate
+    .d <- data.frame(
+      ID = 1,
+      TIME = c(0, 1),
+      MDV = c(NA, 0),
+      AMT = 0,
+      RATE = c(10, 0),
+      SS = c(1, 0),
+      II = 0,
+      DV = c(NA, 1),
+      CMT = 2
+    )
+    .ref <- .d[names(.d) != "MDV"]
+    expect_identical(capture_warnings(.e <- etTrans(.d, mod)), character(0))
+    expect_identical(.e$EVID, etTrans(.ref, mod)$EVID)
+    expect_identical(.e$EVID[1], 10240L)
+    # a zero amount with a duration, or a missing amount with a rate, is not
+    # read as an infusion (no NaN or NA stop time)
+    .d <- data.frame(ID = 1, TIME = c(0, 1), MDV = c(NA, 0), AMT = c(0, 0), DUR = c(2, 0), DV = c(NA, 1), CMT = 2)
+    expect_false(anyNA(etTrans(.d, mod)$TIME))
+    .d <- data.frame(ID = 1, TIME = c(0, 1), MDV = c(NA, 0), AMT = c(NA, 0), RATE = c(25, 0), DV = c(NA, 1), CMT = 2)
+    expect_error(etTrans(.d, mod), "'amt' value NA for dose event")
+    # a negative CMT turns the compartment off, as with MDV 1, and does not warn
+    .d <- data.frame(
+      ID = 1,
+      TIME = 0:3,
+      MDV = c(1, NA, 1, 0),
+      AMT = c(100, 0, 100, 0),
+      RATE = 0,
+      DV = c(NA, NA, NA, 2),
+      CMT = c(2, -2, 2, 2)
+    )
+    for (.k in list(c(0, 0), c(50, 25))) {
+      .d$AMT[2] <- .k[1]
+      .d$RATE[2] <- .k[2]
+      expect_identical(capture_warnings(.e <- etTrans(.d, mod)), character(0))
+      expect_identical(.e$EVID, c(201L, 230L, 201L, 0L))
+    }
+  })
+
+  test_that("an EVID 0 dose with an MDV column, NaN values or a negative CMT", {
+    mod <- .etWarnModel()
+    # an MDV of 0 or NA beside the EVID 0 does not stop the dose
+    .d <- data.frame(
+      ID = 1,
+      TIME = 0:3,
+      EVID = c(1, 0, 0, 0),
+      MDV = c(1, 0, 0, 0),
+      AMT = c(100, 0, 50, 0),
+      DV = c(NA, 1, NA, 2),
+      CMT = 2
+    )
+    for (.mdv in list(0L, NA_integer_)) {
+      .d$MDV[3] <- .mdv
+      expect_identical(capture_warnings(.e <- etTrans(.d, mod)), .etObsDoseMsg("3"))
+      expect_identical(.e$EVID[.e$TIME == 2], 201L)
+    }
+    # a NaN DV is missing; a NaN AMT is not a dose
+    .d <- data.frame(ID = 1, TIME = 0:2, EVID = c(1, 0, 0), AMT = c(100, 50, 0), DV = c(NA, NaN, 2), CMT = 2)
+    expect_identical(capture_warnings(.e <- etTrans(.d, mod)), .etObsDoseMsg("2"))
+    expect_identical(.e$EVID[.e$TIME == 1], 201L)
+    .d$AMT[2] <- NaN
+    .d$DV[2] <- NA
+    expect_identical(capture_warnings(.e <- etTrans(.d, mod)), character(0))
+    expect_identical(.e$EVID[.e$TIME == 1], 0L)
+    # a negative CMT turns the compartment off, with or without a rate
+    .d <- data.frame(
+      ID = 1,
+      TIME = 0:3,
+      EVID = c(1, 0, 1, 0),
+      AMT = c(100, 50, 100, 0),
+      DV = c(NA, NA, NA, 2),
+      CMT = c(2, -2, 2, 2)
+    )
+    for (.rate in c(0, 25)) {
+      .d$RATE <- c(0, .rate, 0, 0)
+      expect_identical(capture_warnings(.e <- etTrans(.d, mod)), character(0))
+      expect_identical(.e$EVID, c(201L, 230L, 201L, 0L))
+    }
+  })
+
+  test_that("both readings warn, each naming its rows, and clean data warns of neither", {
+    mod <- .etWarnModel()
+    .d <- data.frame(
+      ID = c(1, 1, 1, 2, 2, 2),
+      TIME = c(0, 1, 2, 0, 1, 2),
+      MDV = c(1, 0, NA, 1, 0, 0),
+      AMT = c(100, 0, 0, 100, 25, 0),
+      DV = c(NA, 1, NA, NA, NA, 2),
+      CMT = 2
+    )
+    .w <- capture_warnings(.e <- etTrans(.d, mod))
+    expect_identical(.w, c(.etMdvObsDoseMsg("5"), .etMdvNaMsg("3")))
+    # the MDV 0 record is a dose of 25 into central
+    expect_identical(.e$EVID[.e$ID == 2 & .e$TIME == 1], 201L)
+    expect_identical(.e$AMT[.e$ID == 2 & .e$TIME == 1], 25)
+    .d$MDV[3] <- 1
+    .d$DV[5] <- 3
+    expect_identical(capture_warnings(etTrans(.d, mod)), character(0))
+    # the rows are capped at ten
+    .m <- data.frame(
+      ID = 1,
+      TIME = 0:14,
+      EVID = c(1, rep(0, 14)),
+      AMT = c(100, rep(5, 12), 0, 0),
+      DV = c(rep(NA, 13), 1, 2),
+      CMT = 2
+    )
+    expect_identical(capture_warnings(etTrans(.m, mod)), .etObsDoseMsg("2, 3, 4, 5, 6, 7, 8, 9, 10, 11, ... (2 more)"))
+  })
+
+  test_that("the rate and duration errors name the subject by its ID", {
+    mod <- rxode2parse(
+      "
+d/dt(depot) = -1.5*depot
+d/dt(central) = 1.5*depot - 0.2*central
+"
+    )
+    .d <- data.frame(
+      ID = "subjA",
+      TIME = c(0, 1),
+      AMT = c(100, 0),
+      RATE = c(10, 0),
+      DUR = c(2, 0),
+      EVID = c(1, 0),
+      CMT = 2,
+      DV = c(NA, 1)
+    )
+    expect_error(etTrans(.d, mod), "'rate' and/or 'dur' are not specified correctly (id: subjA row: 1)", fixed = TRUE)
+    # a steady-state constant infusion with a fixed, then a modeled, duration
+    .d <- data.frame(
+      ID = "subjA",
+      TIME = c(0, 1),
+      AMT = 0,
+      SS = c(1, 0),
+      II = 0,
+      DUR = c(2, 0),
+      EVID = c(1, 0),
+      CMT = 2,
+      DV = c(NA, 1)
+    )
+    .msg <- "specifying duration with a steady state constant infusion makes no sense (id: subjA row: 1)"
+    expect_error(etTrans(.d, mod), .msg, fixed = TRUE)
+    .d$DUR[1] <- -2
+    expect_error(etTrans(.d, mod), .msg, fixed = TRUE)
   })
 
   test_that("etTrans lag ss", {
-    mod <- rxode2parse("
+    # the hidden knot (evid 8) at each lagged dose's time is tested in
+    # test-alag-cov-data-time.R
+    .noKnot <- function(x) x[x$EVID != 8L, ]
+    mod <- rxode2parse(
+      "
 a = 6
 b = 0.6
 d/dt(intestine) = -a*intestine
 alag(intestine) = lag
 d/dt(blood)     = a*intestine - b*blood
-")
+"
+    )
 
-    d <- data.frame(time=c(0, 1),
-                    amt=c(100, 0),
-                    ii=c(24, 0),
-                    evid=c(1,0),
-                    ss=c(1, 0))
+    d <- data.frame(time = c(0, 1), amt = c(100, 0), ii = c(24, 0), evid = c(1, 0), ss = c(1, 0))
 
-    tmp <- etTrans(d, mod)
+    tmp <- .noKnot(etTrans(d, mod))
 
     expect_equal(tmp$TIME, c(0, 0, 1))
     expect_equal(tmp$EVID, c(109L, 101L, 0L))
     expect_equal(tmp$II, c(24, 0, 0))
     expect_equal(tmp$AMT, c(100, 100, NA))
 
+    d <- data.frame(time = c(0, 1), amt = c(100, 0), ii = c(24, 0), evid = c(1, 0), ss = c(2, 0))
 
-    d <- data.frame(time=c(0, 1),
-                    amt=c(100, 0),
-                    ii=c(24, 0),
-                    evid=c(1,0),
-                    ss=c(2, 0))
-
-    tmp <- etTrans(d, mod, addlDropSs=FALSE)
+    tmp <- .noKnot(etTrans(d, mod, addlDropSs = FALSE))
 
     expect_equal(tmp$TIME, c(0, 0, 1))
     expect_equal(tmp$EVID, c(119L, 101L, 0L))
     expect_equal(tmp$II, c(24, 0, 0))
     expect_equal(tmp$AMT, c(100, 100, NA))
 
-    d <- data.frame(time=c(0, 1),
-                    amt=c(100, 0),
-                    ii=c(24, 0),
-                    evid=c(1,0),
-                    ss=c(1, 0),
-                    rate=c(5, 0))
+    d <- data.frame(time = c(0, 1), amt = c(100, 0), ii = c(24, 0), evid = c(1, 0), ss = c(1, 0), rate = c(5, 0))
 
-    tmp <- etTrans(d, mod, addlDropSs=FALSE)
+    tmp <- .noKnot(etTrans(d, mod, addlDropSs = FALSE))
 
     expect_equal(tmp$TIME, c(0, 0, 0, 1, 20))
     expect_equal(tmp$EVID, c(10109L, 10108L, 10101L, 0L, 10101L))
     expect_equal(tmp$II, c(24, 24, 0, 0, 0))
     expect_equal(tmp$AMT, c(5, -5, 5, NA, -5))
 
+    d <- data.frame(time = c(0, 1), amt = c(100, 0), ii = c(24, 0), evid = c(1, 0), ss = c(1, 0), dur = c(20, 0))
 
-    d <- data.frame(time=c(0, 1),
-                    amt=c(100, 0),
-                    ii=c(24, 0),
-                    evid=c(1,0),
-                    ss=c(1, 0),
-                    dur=c(20, 0))
-
-    tmp <- etTrans(d, mod, addlDropSs=FALSE)
+    tmp <- .noKnot(etTrans(d, mod, addlDropSs = FALSE))
 
     expect_equal(tmp$TIME, c(0, 0, 0, 1, 20))
     expect_equal(tmp$EVID, c(20109L, 20108L, 20101L, 0L, 20101L))
     expect_equal(tmp$II, c(24, 24, 0, 0, 0))
     expect_equal(tmp$AMT, c(5, -5, 5, NA, -5))
 
-    d <- data.frame(time=c(0, 1),
-                    amt=c(100, 0),
-                    ii=c(24, 0),
-                    evid=c(1,0),
-                    ss=c(2, 0),
-                    rate=c(5, 0))
+    d <- data.frame(time = c(0, 1), amt = c(100, 0), ii = c(24, 0), evid = c(1, 0), ss = c(2, 0), rate = c(5, 0))
 
-    tmp <- etTrans(d, mod, addlDropSs=FALSE)
+    tmp <- .noKnot(etTrans(d, mod, addlDropSs = FALSE))
 
     expect_equal(tmp$TIME, c(0, 0, 0, 1, 20))
     expect_equal(tmp$EVID, c(10119L, 10108L, 10101L, 0L, 10101L))
     expect_equal(tmp$II, c(24, 24, 0, 0, 0))
     expect_equal(tmp$AMT, c(5, -5, 5, NA, -5))
 
-    d <- data.frame(time=c(0, 1),
-                    amt=c(100, 0),
-                    ii=c(24, 0),
-                    evid=c(1,0),
-                    ss=c(2, 0),
-                    dur=c(20, 0))
+    d <- data.frame(time = c(0, 1), amt = c(100, 0), ii = c(24, 0), evid = c(1, 0), ss = c(2, 0), dur = c(20, 0))
 
-    tmp <- etTrans(d, mod, addlDropSs=FALSE)
+    tmp <- .noKnot(etTrans(d, mod, addlDropSs = FALSE))
 
     expect_equal(tmp$TIME, c(0, 0, 0, 1, 20))
     expect_equal(tmp$EVID, c(20119L, 20108L, 20101L, 0L, 20101L))
     expect_equal(tmp$II, c(24, 24, 0, 0, 0))
     expect_equal(tmp$AMT, c(5, -5, 5, NA, -5))
 
-    d <- data.frame(time=c(0, 200),
-                    amt=c(100, 0),
-                    ii=c(24, 0),
-                    evid=c(1,0),
-                    ss=c(1, 0),
-                    rate=c(5, 0),
-                    addl=c(3, 0))
+    d <- data.frame(
+      time = c(0, 200),
+      amt = c(100, 0),
+      ii = c(24, 0),
+      evid = c(1, 0),
+      ss = c(1, 0),
+      rate = c(5, 0),
+      addl = c(3, 0)
+    )
 
-    tmp <- etTrans(d, mod, addlDropSs=FALSE)
+    tmp <- .noKnot(etTrans(d, mod, addlDropSs = FALSE))
 
     expect_equal(tmp$TIME, c(0, 0, 0, 20, 24, 24, 24, 44, 48, 48, 48, 68, 72, 72, 72, 92, 200))
-    expect_equal(tmp$EVID, c(10109L, 10108L, 10101L, 10101L, 10109L, 10108L, 10101L, 10101L,
-                             10109L, 10108L, 10101L, 10101L, 10109L, 10108L, 10101L, 10101L, 0L))
+    expect_equal(
+      tmp$EVID,
+      c(
+        10109L,
+        10108L,
+        10101L,
+        10101L,
+        10109L,
+        10108L,
+        10101L,
+        10101L,
+        10109L,
+        10108L,
+        10101L,
+        10101L,
+        10109L,
+        10108L,
+        10101L,
+        10101L,
+        0L
+      )
+    )
     expect_equal(tmp$AMT, c(5, -5, 5, -5, 5, -5, 5, -5, 5, -5, 5, -5, 5, -5, 5, -5, NA))
     expect_equal(tmp$II, c(24, 24, 0, 0, 24, 24, 0, 0, 24, 24, 0, 0, 24, 24, 0, 0, 0))
 
+    d <- data.frame(
+      time = c(0, 200),
+      amt = c(100, 0),
+      ii = c(24, 0),
+      evid = c(1, 0),
+      ss = c(1, 0),
+      dur = c(20, 0),
+      addl = c(3, 0)
+    )
 
-    d <- data.frame(time=c(0, 200),
-                    amt=c(100, 0),
-                    ii=c(24, 0),
-                    evid=c(1,0),
-                    ss=c(1, 0),
-                    dur=c(20, 0),
-                    addl=c(3, 0))
-
-    tmp <- etTrans(d, mod, addlDropSs=FALSE)
+    tmp <- .noKnot(etTrans(d, mod, addlDropSs = FALSE))
 
     expect_equal(tmp$TIME, c(0, 0, 0, 20, 24, 24, 24, 44, 48, 48, 48, 68, 72, 72, 72, 92, 200))
-    expect_equal(tmp$EVID, c(20109L, 20108L, 20101L, 20101L, 20109L, 20108L, 20101L, 20101L,
-                             20109L, 20108L, 20101L, 20101L, 20109L, 20108L, 20101L, 20101L, 0L))
+    expect_equal(
+      tmp$EVID,
+      c(
+        20109L,
+        20108L,
+        20101L,
+        20101L,
+        20109L,
+        20108L,
+        20101L,
+        20101L,
+        20109L,
+        20108L,
+        20101L,
+        20101L,
+        20109L,
+        20108L,
+        20101L,
+        20101L,
+        0L
+      )
+    )
     expect_equal(tmp$AMT, c(5, -5, 5, -5, 5, -5, 5, -5, 5, -5, 5, -5, 5, -5, 5, -5, NA))
     expect_equal(tmp$II, c(24, 24, 0, 0, 24, 24, 0, 0, 24, 24, 0, 0, 24, 24, 0, 0, 0))
 
-    d <- data.frame(time=c(0, 200),
-                    amt=c(100, 0),
-                    ii=c(24, 0),
-                    evid=c(1,0),
-                    ss=c(2, 0),
-                    rate=c(5, 0),
-                    addl=c(3, 0))
+    d <- data.frame(
+      time = c(0, 200),
+      amt = c(100, 0),
+      ii = c(24, 0),
+      evid = c(1, 0),
+      ss = c(2, 0),
+      rate = c(5, 0),
+      addl = c(3, 0)
+    )
 
-    tmp <- etTrans(d, mod, addlDropSs=FALSE)
+    tmp <- .noKnot(etTrans(d, mod, addlDropSs = FALSE))
 
     expect_equal(tmp$TIME, c(0, 0, 0, 20, 24, 24, 24, 44, 48, 48, 48, 68, 72, 72, 72, 92, 200))
-    expect_equal(tmp$EVID, c(10119L, 10108L, 10101L, 10101L, 10119L, 10108L, 10101L, 10101L,
-                             10119L, 10108L, 10101L, 10101L, 10119L, 10108L, 10101L, 10101L, 0L))
+    expect_equal(
+      tmp$EVID,
+      c(
+        10119L,
+        10108L,
+        10101L,
+        10101L,
+        10119L,
+        10108L,
+        10101L,
+        10101L,
+        10119L,
+        10108L,
+        10101L,
+        10101L,
+        10119L,
+        10108L,
+        10101L,
+        10101L,
+        0L
+      )
+    )
     expect_equal(tmp$AMT, c(5, -5, 5, -5, 5, -5, 5, -5, 5, -5, 5, -5, 5, -5, 5, -5, NA))
     expect_equal(tmp$II, c(24, 24, 0, 0, 24, 24, 0, 0, 24, 24, 0, 0, 24, 24, 0, 0, 0))
 
+    d <- data.frame(
+      time = c(0, 200),
+      amt = c(100, 0),
+      ii = c(24, 0),
+      evid = c(1, 0),
+      ss = c(2, 0),
+      dur = c(20, 0),
+      addl = c(3, 0)
+    )
 
-    d <- data.frame(time=c(0, 200),
-                    amt=c(100, 0),
-                    ii=c(24, 0),
-                    evid=c(1,0),
-                    ss=c(2, 0),
-                    dur=c(20, 0),
-                    addl=c(3, 0))
-
-    tmp <- etTrans(d, mod, addlDropSs=FALSE)
+    tmp <- .noKnot(etTrans(d, mod, addlDropSs = FALSE))
 
     expect_equal(tmp$TIME, c(0, 0, 0, 20, 24, 24, 24, 44, 48, 48, 48, 68, 72, 72, 72, 92, 200))
-    expect_equal(tmp$EVID, c(20119L, 20108L, 20101L, 20101L, 20119L, 20108L, 20101L, 20101L,
-                             20119L, 20108L, 20101L, 20101L, 20119L, 20108L, 20101L, 20101L, 0L))
+    expect_equal(
+      tmp$EVID,
+      c(
+        20119L,
+        20108L,
+        20101L,
+        20101L,
+        20119L,
+        20108L,
+        20101L,
+        20101L,
+        20119L,
+        20108L,
+        20101L,
+        20101L,
+        20119L,
+        20108L,
+        20101L,
+        20101L,
+        0L
+      )
+    )
     expect_equal(tmp$AMT, c(5, -5, 5, -5, 5, -5, 5, -5, 5, -5, 5, -5, 5, -5, 5, -5, NA))
     expect_equal(tmp$II, c(24, 24, 0, 0, 24, 24, 0, 0, 24, 24, 0, 0, 24, 24, 0, 0, 0))
 
     # addl on bolus
 
-    d <- data.frame(time=c(0, 200),
-                    amt=c(100, 0),
-                    ii=c(24, 0),
-                    evid=c(1,0),
-                    ss=c(1, 0),
-                    addl=c(3,0))
+    d <- data.frame(time = c(0, 200), amt = c(100, 0), ii = c(24, 0), evid = c(1, 0), ss = c(1, 0), addl = c(3, 0))
 
-    tmp <- etTrans(d, mod, addlDropSs=FALSE)
+    tmp <- .noKnot(etTrans(d, mod, addlDropSs = FALSE))
 
     expect_equal(tmp$TIME, c(0, 0, 24, 24, 48, 48, 72, 72, 200))
     expect_equal(tmp$EVID, c(109L, 101L, 109L, 101L, 109L, 101L, 109L, 101L, 0L))
     expect_equal(tmp$AMT, c(100, 100, 100, 100, 100, 100, 100, 100, NA))
     expect_equal(tmp$II, c(24, 0, 24, 0, 24, 0, 24, 0, 0))
 
-    d <- data.frame(time=c(0, 200),
-                    amt=c(100, 0),
-                    ii=c(24, 0),
-                    evid=c(1,0),
-                    ss=c(2, 0),
-                    addl=c(3,0))
+    d <- data.frame(time = c(0, 200), amt = c(100, 0), ii = c(24, 0), evid = c(1, 0), ss = c(2, 0), addl = c(3, 0))
 
-    tmp <- etTrans(d, mod, addlDropSs=FALSE)
+    tmp <- .noKnot(etTrans(d, mod, addlDropSs = FALSE))
 
     expect_equal(tmp$TIME, c(0, 0, 24, 24, 48, 48, 72, 72, 200))
     expect_equal(tmp$EVID, c(119L, 101L, 119L, 101L, 119L, 101L, 119L, 101L, 0L))
     expect_equal(tmp$AMT, c(100, 100, 100, 100, 100, 100, 100, 100, NA))
     expect_equal(tmp$II, c(24, 0, 24, 0, 24, 0, 24, 0, 0))
 
-
-    mod <- rxode2parse("
+    mod <- rxode2parse(
+      "
 a = 6
 b = 0.6
 d/dt(intestine) = -a*intestine
@@ -1369,16 +3225,12 @@ alag(intestine) = lag
 dur(intestine) = di
 rate(intestine) = ri
 d/dt(blood)     = a*intestine - b*blood
-")
+"
+    )
 
-    d <- data.frame(time=c(0, 1),
-                    amt=c(100, 0),
-                    ii=c(24, 0),
-                    evid=c(1,0),
-                    ss=c(1, 0),
-                    rate=c(-1, 0))
+    d <- data.frame(time = c(0, 1), amt = c(100, 0), ii = c(24, 0), evid = c(1, 0), ss = c(1, 0), rate = c(-1, 0))
 
-    tmp <- etTrans(d, mod, addlDropSs=FALSE)
+    tmp <- .noKnot(etTrans(d, mod, addlDropSs = FALSE))
 
     expect_equal(tmp$TIME, c(0, 0, 0, 1))
     expect_equal(tmp$EVID, c(90109L, 90101L, 70101L, 0L))
@@ -1389,7 +3241,6 @@ d/dt(blood)     = a*intestine - b*blood
   test_that("cmt translation gives appropriate results #938", {
     rxWithSeed(5447, {
       withr::with_seed(5447, {
-
         my_model <- function() {
           ini({
             # Typical Value of System Parameters
@@ -1468,12 +3319,7 @@ d/dt(blood)     = a*intestine - b*blood
           })
         }
 
-
-        sd_sam <- c(c(15, 30)/60/24,
-                   c(1, 3, 6, 12)/24,
-                   c(1, 3, 7, 14, 21))
-
-
+        sd_sam <- c(c(15, 30) / 60 / 24, c(1, 3, 6, 12) / 24, c(1, 3, 7, 14, 21))
 
         ev <- et()
 
@@ -1483,136 +3329,234 @@ d/dt(blood)     = a*intestine - b*blood
         nsub <- 10
         scens <- list(
           sd3iv = list(
-            desc    = "SD 3 mg IV",
-            cmt     = "Ac",
-            dtimes  = 0,
-            tsam    = sd_sam,
-            damts   = 3),
+            desc = "SD 3 mg IV",
+            cmt = "Ac",
+            dtimes = 0,
+            tsam = sd_sam,
+            damts = 3
+          ),
           sd3sc = list(
             desc = "SD 3 mg SC",
-            cmt  = "At",
-            dtimes  = 0,
+            cmt = "At",
+            dtimes = 0,
             tsam = sd_sam,
-            damts= 30),
+            damts = 30
+          ),
           sd10iv = list(
-            desc    = "SD 30 mg IV",
-            cmt     = "Ac",
-            dtimes  = 0,
-            tsam    = sd_sam,
-            damts   = 30)
+            desc = "SD 30 mg IV",
+            cmt = "Ac",
+            dtimes = 0,
+            tsam = sd_sam,
+            damts = 30
+          )
         )
 
         max_sub <- 0
-        set.seed(5447)
-        rxSetSeed(5447)
-        ev   <- et()
-        iCov <- NULL
-        for(scen in names(scens)){
-          # Generating subject IDs
-          scen_subs      <- c(1:nsub)+max_sub
+        rxWithSeed(
+          5447,
+          {
+            ev <- et()
+            iCov <- NULL
+            for (scen in names(scens)) {
+              # Generating subject IDs
+              scen_subs <- c(1:nsub) + max_sub
 
-          # Generating covariates
-          scen_sex       <- sample(c(0,1),nsub,replace=TRUE)
-          scen_subtype   <- sample(c(0,1),nsub,replace=TRUE)
-          scen_wt        <- exp(rnorm(nsub, 0, sd=.1))*70
-          for(tmp_sub_idx in 1:length(scen_subs)){
-            tmp_ev <-
-              et(id   = scen_subs[tmp_sub_idx],
-                 amt  = scens[[scen]][["damts"]]*conv,
-                 time = scens[[scen]][["dtimes"]],
-                 cmt  = scens[[scen]][["cmt"]]
-                 ) |>
-              et(id   = scen_subs[tmp_sub_idx],
-                 time = unique(c(scens[[scen]][["tsam"]])),
-                 cmt   = "C_ng_ml"
-                 ) |>
-              et(id   = scen_subs[tmp_sub_idx],
-                 time = unique(c(scens[[scen]][["tsam"]])),
-                 cmt   = "BM_obs"
-                 )
-            ev <- etRbind(ev, tmp_ev)
-            iCov <- rbind(iCov,
-                         data.frame(
-                           id      = scen_subs[tmp_sub_idx],
-                           sex     = scen_sex[[tmp_sub_idx]],
-                           wt      = scen_wt[[tmp_sub_idx]],
-                           subtype = scen_subtype[[tmp_sub_idx]]))
-          }
-          max_sub <- max(scen_subs)
-        }
-        sim <- rxSolve(my_model, events=ev, iCov=iCov)
+              # Generating covariates
+              scen_sex <- sample(c(0, 1), nsub, replace = TRUE)
+              scen_subtype <- sample(c(0, 1), nsub, replace = TRUE)
+              scen_wt <- exp(rnorm(nsub, 0, sd = .1)) * 70
+              for (tmp_sub_idx in seq_along(scen_subs)) {
+                tmp_ev <-
+                  et(
+                    id = scen_subs[tmp_sub_idx],
+                    amt = scens[[scen]][["damts"]] * conv,
+                    time = scens[[scen]][["dtimes"]],
+                    cmt = scens[[scen]][["cmt"]]
+                  ) |>
+                  et(id = scen_subs[tmp_sub_idx], time = unique(c(scens[[scen]][["tsam"]])), cmt = "C_ng_ml") |>
+                  et(id = scen_subs[tmp_sub_idx], time = unique(c(scens[[scen]][["tsam"]])), cmt = "BM_obs")
+                ev <- etRbind(ev, tmp_ev)
+                iCov <- rbind(
+                  iCov,
+                  data.frame(
+                    id = scen_subs[tmp_sub_idx],
+                    sex = scen_sex[[tmp_sub_idx]],
+                    wt = scen_wt[[tmp_sub_idx]],
+                    subtype = scen_subtype[[tmp_sub_idx]]
+                  )
+                )
+              }
+              max_sub <- max(scen_subs)
+            }
+            sim <- rxSolve(my_model, events = ev, iCov = iCov)
 
-        expect_true(!any(is.na(sim$ipredSim)))
-
+            expect_true(!any(is.na(sim$ipredSim)))
+          },
+          rxseed = 5447
+        )
       })
     })
   })
 })
 
 
-test_that("warning on translation (#780)", {
+rxTest({
+  test_that("warning on translation (#780)", {
+    p <- test_path("test-etTrans-780.rds")
+    skip_if_not(file.exists(p))
+    dat <- readRDS(p)
 
-  p <- test_path("test-etTrans-780.qs2")
-  skip_if_not(file.exists(p))
-  dat <- qs2::qs_read(p)
+    m <- rxode2parse(
+      "
+      param(Kpm_pop, V_pop, k_pop, k12_pop, k21_pop, ka_pop,
+            km_pop, a1_Cp, b1_Cp, a2_Cm, b2_Cm, omega_Kpm, omega_V,
+            omega_k, omega_k12, omega_k21, omega_ka, omega_km)
+      cmt(depot)
+      cmt(central)
+      cmt(cmt2)
+      cmt(cmt3)
+      Kpm = exp(Kpm_pop + omega_Kpm)
+      V = exp(V_pop + omega_V)
+      k = exp(k_pop + omega_k)
+      k12 = exp(k12_pop + omega_k12)
+      k21 = exp(k21_pop + omega_k21)
+      ka = exp(ka_pop + omega_ka)
+      km = exp(km_pop + omega_km)
+      d/dt(depot) = -ka * depot
+      d/dt(central) = -k12 * central + k21 * cmt2 + ka * depot -
+        k * central - Kpm * central
+      Cp = central/V
+      d/dt(cmt2) = +k12 * central - k21 * cmt2
+      d/dt(cmt3) = +Kpm * central - km * cmt3
+      Cm = cmt3/V
+      y1_Cp = Cp
+      if (CMT == 5) {
+        rx_yj_ ~ 2
+        rx_lambda_ ~ 1
+        rx_low_ ~ 0
+        rx_hi_ ~ 1
+        rx_pred_f_ ~ y1_Cp
+        rx_pred_ ~ rx_pred_f_
+        rx_r_ ~ ((a1_Cp) + (rx_pred_f_) * (b1_Cp))^2
+        ipredSim = rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_,
+                          rx_hi_)
+        sim = rxTBSi(rx_pred_ + sqrt(rx_r_) * rxerr.y1_Cp,
+                     rx_lambda_, rx_yj_, rx_low_, rx_hi_)
+      }
+      y2_Cm = Cm
+      if (CMT == 6) {
+        rx_yj_ ~ 2
+        rx_lambda_ ~ 1
+        rx_low_ ~ 0
+        rx_hi_ ~ 1
+        rx_pred_f_ ~ y2_Cm
+        rx_pred_ ~ rx_pred_f_
+        rx_r_ ~ ((a2_Cm) + (rx_pred_f_) * (b2_Cm))^2
+        ipredSim = rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_,
+                          rx_hi_)
+        sim = rxTBSi(rx_pred_ + sqrt(rx_r_) * rxerr.y2_Cm,
+                     rx_lambda_, rx_yj_, rx_low_, rx_hi_)
+      }
+      iwres = (DV - rx_pred_)/sqrt(rx_r_)
+      ires = DV - rx_pred_
+      cmt(y1_Cp)
+      cmt(y2_Cm)
+      dvid(5, 6)
+    "
+    )
 
-  m <- rxode2parse("
-    param(Kpm_pop, V_pop, k_pop, k12_pop, k21_pop, ka_pop,
-          km_pop, a1_Cp, b1_Cp, a2_Cm, b2_Cm, omega_Kpm, omega_V,
-          omega_k, omega_k12, omega_k21, omega_ka, omega_km)
-    cmt(depot)
-    cmt(central)
-    cmt(cmt2)
-    cmt(cmt3)
-    Kpm = exp(Kpm_pop + omega_Kpm)
-    V = exp(V_pop + omega_V)
-    k = exp(k_pop + omega_k)
-    k12 = exp(k12_pop + omega_k12)
-    k21 = exp(k21_pop + omega_k21)
-    ka = exp(ka_pop + omega_ka)
-    km = exp(km_pop + omega_km)
-    d/dt(depot) = -ka * depot
-    d/dt(central) = -k12 * central + k21 * cmt2 + ka * depot -
-      k * central - Kpm * central
-    Cp = central/V
-    d/dt(cmt2) = +k12 * central - k21 * cmt2
-    d/dt(cmt3) = +Kpm * central - km * cmt3
-    Cm = cmt3/V
-    y1_Cp = Cp
-    if (CMT == 5) {
-      rx_yj_ ~ 2
-      rx_lambda_ ~ 1
-      rx_low_ ~ 0
-      rx_hi_ ~ 1
-      rx_pred_f_ ~ y1_Cp
-      rx_pred_ ~ rx_pred_f_
-      rx_r_ ~ ((a1_Cp) + (rx_pred_f_) * (b1_Cp))^2
-      ipredSim = rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_,
-                        rx_hi_)
-      sim = rxTBSi(rx_pred_ + sqrt(rx_r_) * rxerr.y1_Cp,
-                   rx_lambda_, rx_yj_, rx_low_, rx_hi_)
+    expect_warning(etTrans(dat, m), NA)
+
+    test_that("etTrans(combineDvid=TRUE) does not read past a length-1 vector", {
+      ## Before the fix combineDvid was read at index [1] of the (length-1) logical,
+      ## warning "subscript out of bounds (index 1 >= vector size 1)" and using an
+      ## out-of-bounds value as the dvid-combine flag.
+      mod <- rxode2({
+        d/dt(center) <- -kel * center
+        cp <- center / v
+      })
+      d <- data.frame(ID = 1L, TIME = c(0, 1, 2), DV = c(0, 5, 3), AMT = c(100, 0, 0), EVID = c(1, 0, 0))
+      expect_warning(etTrans(d, mod, combineDvid = TRUE), NA)
+    })
+  })
+
+  test_that("translation does not slow down with the subject count alone", {
+    skip_on_cran()
+    skip_on_ci()
+    # Whether an id has been seen is tested once per input row against
+    # allId/obsId/zeroId/doseId, which hold one entry per subject.  As
+    # std::find() linear scans that made translation O(rows * subjects): with
+    # the rows held fixed, going from 100 to 12000 subjects cost 12.6x.  Hold
+    # the row count constant and only redistribute it over more subjects, so
+    # the only thing that changes is the number of ids.
+    .fixedRows <- function(nSub, nRow = 40000) {
+      nPer <- nRow / nSub
+      data.frame(
+        ID = rep(seq_len(nSub), each = nPer),
+        TIME = rep(seq_len(nPer), times = nSub),
+        x = seq(-100, 0, length.out = nRow),
+        EVID = 0,
+        AMT = 0
+      )
     }
-    y2_Cm = Cm
-    if (CMT == 6) {
-      rx_yj_ ~ 2
-      rx_lambda_ ~ 1
-      rx_low_ ~ 0
-      rx_hi_ ~ 1
-      rx_pred_f_ ~ y2_Cm
-      rx_pred_ ~ rx_pred_f_
-      rx_r_ ~ ((a2_Cm) + (rx_pred_f_) * (b2_Cm))^2
-      ipredSim = rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_,
-                        rx_hi_)
-      sim = rxTBSi(rx_pred_ + sqrt(rx_r_) * rxerr.y2_Cm,
-                   rx_lambda_, rx_yj_, rx_low_, rx_hi_)
+    mod <- rxode2({
+      eff <- slopeA * x
+    })
+    # A single etTrans() on this data can run faster than the OS timer's
+    # resolution (observed reading exactly 0 elapsed on a Windows CI runner),
+    # which would make any per-call comparison spuriously pass or fail.  Time
+    # a batch of calls inside one system.time() so the measured interval is
+    # always well above the clock granularity, on any platform.
+    .minElapsed <- function(d, batches = 3L, reps = 20L) {
+      min(vapply(
+        seq_len(batches),
+        function(i) {
+          system.time(
+            for (r in seq_len(reps)) {
+              invisible(rxode2::etTrans(d, mod))
+            }
+          )[["elapsed"]]
+        },
+        numeric(1)
+      ))
     }
-    iwres = (DV - rx_pred_)/sqrt(rx_r_)
-    ires = DV - rx_pred_
-    cmt(y1_Cp)
-    cmt(y2_Cm)
-    dvid(5, 6)
-  ")
 
-  expect_warning(etTrans(dat, m), NA)
+    # the same rows either way, only spread over more ids.  (The translated
+    # row count is NOT the same -- splitting the rows over more subjects adds
+    # per-subject records -- so only the input is held equal here.)
+    .few <- .fixedRows(50)
+    .many <- .fixedRows(5000)
+    expect_equal(nrow(.few), nrow(.many))
+    expect_equal(length(unique(.many$ID)), 5000L)
 
+    invisible(rxode2::etTrans(.fixedRows(50, 1000), mod)) # warm up
+    expect_lt(.minElapsed(.many), 3 * .minElapsed(.few))
+  })
+
+  test_that("rxSolve() and etTrans() leave the caller's translated table as it was", {
+    # each reference is built apart, so it shares nothing an in-place write
+    # would change; identical() compares the class's hidden translation too
+    .m <- .etCallerMod()
+    .p <- c(ka = 1, tcl = 2, v = 10, eta.cl = 0)
+    .d <- etTrans(.etCallerData(), .m, allTimeVar = TRUE)
+    .ref <- etTrans(.etCallerData(), .m, allTimeVar = TRUE)
+    expect_identical(.d, .ref)
+    invisible(suppressWarnings(rxSolve(.m, .p, .d)))
+    expect_identical(.d, .ref)
+    # translating again without allTimeVar makes a new table
+    .x <- etTrans(.d, .m, allTimeVar = FALSE)
+    expect_identical(.d, .ref)
+    expect_false(attr(class(.x), ".rxode2.lst")$allTimeVar)
+    # a single-level lotri omega reads the translation on another path
+    .d2 <- etTrans(.etCallerData(), .m)
+    .ref2 <- etTrans(.etCallerData(), .m)
+    invisible(suppressWarnings(rxSolve(
+      .m,
+      .p[-4],
+      .d2,
+      omega = lotri::lotri(lotri::lotri(eta.cl ~ 0.1) | id(nu = 100)),
+      nSub = 1
+    )))
+    expect_identical(.d2, .ref2)
+  })
 })

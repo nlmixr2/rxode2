@@ -11,7 +11,7 @@ rxTest({
   test_that("blank names works", {
     expect_equal(
       suppressWarnings(rxInits(m1, c(0, 0, 0, 1), rxState(m1), 0)),
-      structure(c(0, 0, 0, 1), .Names = c("depot", "centr", "peri", "eff"))
+      structure(c(0, 0, 0, 1), names = c("depot", "centr", "peri", "eff"))
     )
   })
 
@@ -39,7 +39,6 @@ rxTest({
   })
 
   .rxWithOptions(list(rxode2.syntax.allow.ini = TRUE), {
-
     ## out <- rxode2({
     ##     theta[1] = 3
     ##     eta[1] = 2
@@ -60,25 +59,34 @@ rxTest({
       eff(0) <- theta1 + eta1
     })
 
+    expect_equal(c(depot = 0L, centr = 0L, peri = 0L, eff = 1L), rxModelVars(fini)$stateProp)
+
     theta <-
       c(
-        KA = 2.94E-01, CL = 1.86E+01, V2 = 4.02E+01, # central
-        Q = 1.05E+01, V3 = 2.97E+02, # peripheral
-        Kin = 1, Kout = 1, EC50 = 200, eta1 = 0, theta1 = 1
+        KA = 2.94E-01,
+        CL = 1.86E+01,
+        V2 = 4.02E+01, # central
+        Q = 1.05E+01,
+        V3 = 2.97E+02, # peripheral
+        Kin = 1,
+        Kout = 1,
+        EC50 = 200,
+        eta1 = 0,
+        theta1 = 1
       ) # effects
 
-      ev <- eventTable(amount.units = "mg", time.units = "hours")
-      ev$add.dosing(dose = 10000, nbr.doses = 10, dosing.interval = 12)
-      ev$add.dosing(dose = 20000, nbr.doses = 5, start.time = 120, dosing.interval = 24)
-      ev$add.sampling(0:240)
+    ev <- eventTable(amount.units = "mg", time.units = "hours")
+    ev$add.dosing(dose = 10000, nbr.doses = 10, dosing.interval = 12)
+    ev$add.dosing(dose = 20000, nbr.doses = 5, start.time = 120, dosing.interval = 24)
+    ev$add.sampling(0:240)
 
-      s <- fini |> solve(theta, ev)
+    s <- fini |> solve(theta, ev)
 
-      expect_equal(as.data.frame(s)[1, "eff"], 1)
+    expect_equal(as.data.frame(s)[1, "eff"], 1)
 
-      rxDelete(fini)
+    rxDelete(fini)
 
-      fini <- rxode2({
+    fini <- rxode2({
         C2 <- centr / V2
         C3 <- peri / V3
         d / dt(depot) <- -KA * depot
@@ -88,36 +96,44 @@ rxTest({
         eff(0) <- theta1 + eta1
       })
 
-      theta <-
-        c(
-          KA = 2.94E-01, CL = 1.86E+01, V2 = 4.02E+01, # central
-          Q = 1.05E+01, V3 = 2.97E+02, # peripheral
-          Kin = 1, Kout = 1, EC50 = 200, eta1 = 0, theta1 = 1
-        ) # effects
+    # This should flag that the ini state has been used.
+    expect_equal(rxModelVars(fini)$stateProp, c(depot = 0L, centr = 0L, peri = 0L, eff = 1L))
 
-        ev <- eventTable(amount.units = "mg", time.units = "hours")
-        ev$add.dosing(dose = 10000, nbr.doses = 10, dosing.interval = 12)
-        ev$add.dosing(dose = 20000, nbr.doses = 5, start.time = 120, dosing.interval = 24)
-        ev$add.sampling(0:240)
+    theta <-
+      c(
+        KA = 2.94E-01,
+        CL = 1.86E+01,
+        V2 = 4.02E+01, # central
+        Q = 1.05E+01,
+        V3 = 2.97E+02, # peripheral
+        Kin = 1,
+        Kout = 1,
+        EC50 = 200,
+        eta1 = 0,
+        theta1 = 1
+      ) # effects
 
-        s <- fini |> solve(theta, ev)
+    ev <- eventTable(amount.units = "mg", time.units = "hours")
+    ev$add.dosing(dose = 10000, nbr.doses = 10, dosing.interval = 12)
+    ev$add.dosing(dose = 20000, nbr.doses = 5, start.time = 120, dosing.interval = 24)
+    ev$add.sampling(0:240)
 
-        expect_equal(as.data.frame(s)[1, "eff"], 1)
+    s <- fini |> solve(theta, ev)
 
-        theta["eta1"] <- 0.5
+    expect_equal(as.data.frame(s)[1, "eff"], 1)
 
-        s <- fini |> solve(theta, ev)
-        expect_equal(as.data.frame(s)[1, "eff"], 1.5)
+    theta["eta1"] <- 0.5
 
-        theta["eta1"] <- -0.5
+    s <- fini |> solve(theta, ev)
+    expect_equal(as.data.frame(s)[1, "eff"], 1.5)
 
-        s <- fini |> solve(theta, ev)
-        expect_equal(as.data.frame(s)[1, "eff"], 0.5)
+    theta["eta1"] <- -0.5
 
+    s <- fini |> solve(theta, ev)
+    expect_equal(as.data.frame(s)[1, "eff"], 0.5)
 
-
-        ## Now with rxGetModel
-        m1 <- rxGetModel({
+    ## Now with rxGetModel
+    m1 <- rxGetModel({
           C2 <- centr / V2
           C3 <- peri / V3
           d / dt(depot) <- -KA * depot
@@ -126,12 +142,12 @@ rxTest({
           d / dt(eff) <- Kin - Kout * (1 - C2 / (EC50 + C2)) * eff
         })
 
-        test_that("blank names works", {
-          expect_equal(
-            suppressWarnings(rxInits(m1, c(0, 0, 0, 1), rxState(m1), 0)),
-            structure(c(0, 0, 0, 1), .Names = c("depot", "centr", "peri", "eff"))
-          )
-        })
+    test_that("blank names works", {
+      expect_equal(
+        suppressWarnings(rxInits(m1, c(0, 0, 0, 1), rxState(m1), 0)),
+        structure(c(0, 0, 0, 1), names = c("depot", "centr", "peri", "eff"))
+      )
+    })
   })
 
   .rxWithOptions(list(rxode2.syntax.allow.ini = TRUE), {
@@ -153,9 +169,31 @@ rxTest({
     })
 
     test_that("Initial conditions are zero length before and after compile", {
-      expect_equal(rxModelVars("KA=exp(THETA[1]);\nCL=exp(THETA[2]+ETA[1]);\nV=exp(THETA[3]+ETA[2]);\nd/dt(depot)=-KA*depot;\nd/dt(centr)=KA*depot-CL/V*centr;\nrx_yj_=2;\nrx_lambda_=1;\nrx_pred_f_~centr;\nrx_pred_=centr;\nrx_r_=(THETA[4])^2;\n")$ini, structure(numeric(0), .Names = character(0)))
+      expect_equal(
+        rxModelVars(
+          "KA=exp(THETA[1]);\nCL=exp(THETA[2]+ETA[1]);\nV=exp(THETA[3]+ETA[2]);\nd/dt(depot)=-KA*depot;\nd/dt(centr)=KA*depot-CL/V*centr;\nrx_yj_=2;\nrx_lambda_=1;\nrx_pred_f_~centr;\nrx_pred_=centr;\nrx_r_=(THETA[4])^2;\n"
+        )$ini,
+        structure(numeric(0), names = character(0))
+      )
       tmp <- rxode2("KA=exp(THETA[1]);\nCL=exp(THETA[2]+ETA[1]);\nV=exp(THETA[3]+ETA[2]);\nd/dt(depot)=-KA*depot;\nd/dt(centr)=KA*depot-CL/V*centr;\nrx_yj_=2;\nrx_lambda_=1;\nrx_pred_f_~centr;\nrx_pred_=centr;\nrx_r_=(THETA[4])^2;\n")
-      expect_equal(rxModelVars(tmp)$ini, structure(numeric(0), .Names = character(0)))
+      expect_equal(rxModelVars(tmp)$ini, structure(numeric(0), names = character(0)))
     })
+  })
+
+  test_that("rxSolve() and rxInits() name a copy of an unnamed vector, not the caller's", {
+    .m <- rxode2({
+      d / dt(depot) <- -ka * depot
+      d / dt(center) <- ka * depot - cl / v * center
+    })
+    .ini <- c(0, 0)
+    expect_warning(
+      rxSolve(.m, c(ka = 1, cl = 2, v = 10), et(amt = 100) |> et(0:2), inits = .ini),
+      "Assumed order of inputs"
+    )
+    expect_identical(.ini, c(0, 0))
+    .v <- c(0, 0)
+    expect_warning(.r <- rxInits(.m, .v, rxState(.m)), "Assumed order of inputs")
+    expect_identical(.v, c(0, 0))
+    expect_identical(.r, c(depot = 0, center = 0))
   })
 })

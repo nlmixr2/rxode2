@@ -180,7 +180,6 @@ ctx->nfcn    Number of function calls.
 #include <limits.h>
 
 typedef void (*FcnEqDiff)(int *nptr, double x, double *y, double *f);
-typedef void (*SolTrait)(long int nr, double xold, double x, double* y, int *nptr, int* irtrn);
 
 /* Context struct holding all solver state, enabling thread-safe reentrant calls.
    Previously these were file-scope static variables in dop853.c. */
@@ -191,8 +190,45 @@ typedef struct {
   double       *yy1, *k1, *k2, *k3, *k4, *k5, *k6, *k7, *k8, *k9, *k10;
   double       *rcont1, *rcont2, *rcont3, *rcont4;
   double       *rcont5, *rcont6, *rcont7, *rcont8;
+  void         *userdata;
+  int          subject_id; /* rxode2 subject id (-1 if unknown); used by the
+                              message aggregator to attribute warnings */
 } dop853_ctx_t;
 
+/* AutoSwitch stiffness-probe state, carried ACROSS dop853() calls.
+
+   rxode2 calls dop853() once per interval/segment, and dopcor()'s counters are
+   per call, so with the stock gating (test every nstiff-th accepted step, give
+   up after maxStiff verdicts) a switch would need maxStiff + nstiff accepted
+   steps inside one interval -- which a PK observation interval never takes.
+   Passing this struct lets the estimate, the verdict counters and the accepted
+   step count survive from one interval to the next, so the detector behaves as
+   it does in Hairer's standalone usage (and as Julia's AutoSwitch does), while
+   passing NULL keeps the original per-call behavior exactly.
+
+   `xLast` is an output: the last x whose step was fully accepted.  On any
+   failure return y still holds the state at that x, so the caller can hand the
+   stiff secondary a partly-integrated interval instead of restarting it. */
+typedef struct {
+  /* in/out -- persisted between calls */
+  double   hlamb;      /* Hairer II dominant-eigenvalue estimate, h*rho(J) */
+  long int iasti;      /* consecutive stiff verdicts */
+  long int nonsti;     /* non-stiff verdicts since the last stiff one */
+  long int naccpt;     /* accepted steps counted across calls (drives nstiff) */
+  /* in -- tuning */
+  double   threshold;  /* hlamb limit; <= 0 uses dop853's stability size, 6.1 */
+  long int maxStiff;   /* verdicts before reporting stiffness; <= 0 uses 15 */
+  /* out */
+  double   xLast;      /* last fully accepted x (== the initial x if none) */
+} dop853_stiff_t;
+
+/* SolTrait defined after dop853_ctx_t so the callback can receive ctx and userdata */
+typedef void (*SolTrait)(long int nr, double xold, double x, double *y,
+                         int *nptr, dop853_ctx_t *ctx, void *userdata,
+                         int *irtrn);
+
+/* Dense output interpolant: 0-based component index ii, valid only inside solout */
+double contd8(dop853_ctx_t *ctx, int ii, double x);
 
 extern int dop853
  (int *nptr,      /* dimension of the system <= INT_MAX-1*/
@@ -218,5 +254,8 @@ extern int dop853
   long int nstiff,     /* test for stiffness */
   int nrdens, /* number of components for which dense outpout is required */
   int* icont, /* indexes of components for which dense output is required, >= nrdens */
-  int licont  /* declared length of icon */
+  int licont, /* declared length of icon */
+  void *userdata, /* passed through to solout callback */
+  int subject_id, /* rxode2 subject id (-1 if N/A); used by message aggregator */
+  dop853_stiff_t *stiffState /* persistent stiffness-probe state, or NULL */
  );

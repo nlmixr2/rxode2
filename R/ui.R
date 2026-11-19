@@ -1,3 +1,17 @@
+#' Do the accumulated `ini({})` lines parse as a complete statement?
+#'
+#' A `; label()` may only be appended where the statement is finished; the lines
+#' are wrapped in a block so completeness is judged in the context they occupy.
+#'
+#' @param lines `ini({})` source lines accumulated for the current statement
+#' @return `TRUE` when the lines parse as complete R code
+#' @author Matthew Fidler
+#' @noRd
+.rxIniLinesComplete <- function(lines) {
+  .txt <- paste0("{\n", paste(lines, collapse = "\n"), "\n}")
+  !inherits(try(parse(text = .txt, keep.source = FALSE), silent = TRUE), "try-error")
+}
+
 #' Replace comments with label()
 #'
 #' @param src source function
@@ -5,36 +19,67 @@
 #' @author Matthew Fidler
 #' @noRd
 .rxReplaceCommentWithLabel <- function(src) {
-  .env <- new.env(parent=emptyenv())#match.call(expand.dots = TRUE)[-(1:2)]
+  .env <- new.env(parent = emptyenv()) #match.call(expand.dots = TRUE)[-(1:2)]
   .env$inIni <- FALSE
   .env$convertLabel <- FALSE
+  # lines of the `ini({})` statement being accumulated; a `; label()` may only be
+  # appended once they parse as complete
+  .env$pending <- character(0)
   .regIni <- rex::rex(boundary, or("ini", "lotri"), "(", any_spaces, "{", any_spaces)
   .regOther1 <- rex::rex(any_spaces, "}", any_spaces, ")", any_spaces)
   .regOther2 <- rex::rex(any_spaces, "model", any_spaces, "(", any_spaces, "{", any_spaces)
-  .regCommentOnBlankLine <- "^ *#+ *(.*) *$"
-  .regLabel <- "^( *[^\n\"]+) *#+ *(.*) *$"
-  .ret <- vapply(src,
-                 function(line) {
-                   if (regexpr(.regIni, line, perl=TRUE) != -1) {
-                     assign("inIni", TRUE, envir=.env)
-                   } else if (regexpr(.regOther1, line, perl=TRUE) != -1) {
-                     assign("inIni", FALSE, envir=.env)
-                   } else if (regexpr(.regOther2, line, perl=TRUE) != -1) {
-                     assign("inIni", FALSE, envir=.env)
-                   } else if (.env$inIni) {
-                     if (regexpr(.regCommentOnBlankLine, line) != -1) {
-                     } else if (regexpr(.regLabel, line) != -1) {
-                       .env$convertLabel <- TRUE
-                       .label <- deparse1(sub(.regLabel, "\\2", line))
-                       return(sub(.regLabel, paste0("\\1; label(", .label, ")"), line))
-                     }
-                   }
-                   line
-                 }, character(1), USE.NAMES = FALSE)
+  # any whitespace may precede the `#`.  With spaces only, a tab-indented
+  # comment-only line fell through to .regLabel, whose code group then captured
+  # just the tab; the bare `; label()` that produced parses -- a leading `;` is
+  # legal -- so it silently became the label of the PRECEDING parameter.
+  .regCommentOnBlankLine <- "^[[:space:]]*#+ *(.*) *$"
+  # `#` is excluded from the code group so it stops at the FIRST `#`.  POSIX ERE
+  # is leftmost-longest, so a greedy `[^\n"]+` ran on to the LAST `#` and left
+  # the earlier one in the emitted code, where it commented out the label() just
+  # appended -- `x <- 1 ## Lbl` and `x <- 1 # a # b` lost their label entirely.
+  # Outside a string R code cannot contain `#`, and strings are already excluded
+  # by the `"` in the same bracket.
+  .regLabel <- "^( *[^\n\"#]+) *#+ *(.*) *$"
+  .ret <- vapply(
+    src,
+    function(line) {
+      if (regexpr(.regIni, line, perl = TRUE) != -1) {
+        assign("inIni", TRUE, envir = .env)
+        assign("pending", character(0), envir = .env)
+      } else if (regexpr(.regOther1, line, perl = TRUE) != -1) {
+        assign("inIni", FALSE, envir = .env)
+      } else if (regexpr(.regOther2, line, perl = TRUE) != -1) {
+        assign("inIni", FALSE, envir = .env)
+      } else if (.env$inIni) {
+        assign("pending", c(.env$pending, line), envir = .env)
+        .complete <- .rxIniLinesComplete(.env$pending)
+        if (.complete) {
+          assign("pending", character(0), envir = .env)
+        }
+        if (regexpr(.regCommentOnBlankLine, line) != -1) {} else if (!.complete) {
+          # a comment inside an unfinished statement stays a comment; a
+          # `;` here would split the statement and the re-parse below
+          # would fail (rxode2 issue 1318)
+        } else if (regexpr(.regLabel, line) != -1) {
+          .env$convertLabel <- TRUE
+          .label <- deparse1(sub(.regLabel, "\\2", line))
+          # `.label` is already escaped by deparse1(); assemble the line with
+          # paste0() rather than sub()'s replacement so it stays that way.
+          # sub() parses backslashes in a replacement and strips one level,
+          # which turned a `"` or `\` in the comment into an unparsable
+          # label() (rxode2 issue 1195).
+          return(paste0(sub(.regLabel, "\\1", line), "; label(", .label, ")"))
+        }
+      }
+      line
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
   if (.env$convertLabel) {
     cli::cli_alert_info("parameter labels from comments will be replaced by 'label()'")
   }
-  .ret <- deparse(eval(parse(text=paste(.ret, collapse="\n"), keep.source=FALSE)))
+  .ret <- deparse(eval(parse(text = paste(.ret, collapse = "\n"), keep.source = FALSE)))
   .ret
 }
 
@@ -61,49 +106,174 @@
 #' @return A more normalized function
 #' @author Matthew L. Fidler
 #' @noRd
+#' Move `dist()` declarations from `ini({})` into `model({})`
+#'
+#' `dist()` is accepted in either block, and `model({})` is where it belongs: it
+#' is a distributional statement, like the residual error, and only there can a
+#' distribution parameter be an expression the model has already computed --
+#' `aCl <- exp(lclm + bWT*(WT - 70))` followed by
+#' `dist(cl) ~ dgamma(shape = 1/exp(lclrv), rate = 1/(exp(lclrv)*aCl))`.
+#'
+#' Rather than carry two code paths, the `ini({})` form is rewritten into the
+#' `model({})` one here, before anything else looks at the function.  So there
+#' is exactly one representation downstream, and `ini({})` is sugar.
+#'
+#' Two shapes ARE otherwise produced, and they are not interchangeable: the
+#' model-block form emits its inverse-CDF line in place at the declaration,
+#' while the ini-block form left the model untouched and had
+#' `rxEtaDistExpand()` prepend that line later.  Anything reading the
+#' UNEXPANDED ui therefore saw a different model depending on where the user
+#' wrote the declaration -- which is how a warm start that rewrites the model
+#' block came to work for one form and silently do nothing for the other.
+#'
+#' Placed at the TOP of the model block: an `ini({})` declaration is parsed
+#' before the model exists, so its arguments can only name population
+#' parameters, and those are always in scope there.
+#'
+#' @param fun model function
+#' @return `fun`, with any `ini({})` `dist()` lines moved to the model block
+#' @noRd
+#' @author Matthew L. Fidler
+.rxEtaDistIniToModel <- function(fun) {
+  .lst <- as.list(body(fun)[-1])
+  .isBlock <- function(nm) {
+    which(vapply(
+      seq_along(.lst),
+      function(x) {
+        .e <- .lst[[x]]
+        is.call(.e) && length(.e) >= 1L && identical(.e[[1]], as.name(nm))
+      },
+      logical(1)
+    ))
+  }
+  .wi <- .isBlock("ini")
+  .wm <- .isBlock("model")
+  if (length(.wi) != 1L || length(.wm) != 1L) {
+    return(fun)
+  }
+  if (length(.lst[[.wi]]) < 2L || length(.lst[[.wm]]) < 2L) {
+    return(fun)
+  }
+  .iniBody <- .lst[[.wi]][[2]]
+  .modBody <- .lst[[.wm]][[2]]
+  if (!is.call(.iniBody) || !identical(.iniBody[[1]], quote(`{`))) {
+    return(fun)
+  }
+  if (!is.call(.modBody) || !identical(.modBody[[1]], quote(`{`))) {
+    return(fun)
+  }
+  .iniExpr <- as.list(.iniBody)[-1]
+  .isDecl <- vapply(
+    .iniExpr,
+    function(.e) {
+      is.call(.e) &&
+        identical(.e[[1]], quote(`~`)) &&
+        length(.e) == 3L &&
+        is.call(.e[[2]]) &&
+        is.name(.e[[2]][[1]]) &&
+        as.character(.e[[2]][[1]]) %in% c("dist", "etaDist")
+    },
+    logical(1)
+  )
+  if (!any(.isDecl)) {
+    return(fun)
+  }
+  .lst[[.wi]][[2]] <- as.call(c(list(quote(`{`)), .iniExpr[!.isDecl]))
+  .lst[[.wm]][[2]] <- as.call(c(list(quote(`{`)), .iniExpr[.isDecl], as.list(.modBody)[-1]))
+  .fun2 <- function() {}
+  body(.fun2) <- as.call(c(list(quote(`{`)), .lst))
+  environment(.fun2) <- environment(fun)
+  .fun2
+}
+
 .rxFunctionRearrange <- function(fun) {
   .lst <- as.list(body(fun)[-1])
   .idx <- seq_along(.lst)
-  .w <- which(vapply(.idx, function(x) {
-    identical(.lst[[x]][[1]], quote(`ini`))
-  }, logical(1), USE.NAMES=TRUE))
-  if (length(.w) == 0) {
-  } else if (length(.w) != 1) {
-    stop("rxode2 model function can only have one 'ini({})' block",
-         call.=FALSE)
+  .w <- which(vapply(
+    .idx,
+    function(x) {
+      identical(.lst[[x]][[1]], quote(`ini`))
+    },
+    logical(1),
+    USE.NAMES = TRUE
+  ))
+  if (length(.w) == 0) {} else if (length(.w) != 1) {
+    stop("rxode2 model function can only have one 'ini({})' block", call. = FALSE)
   }
   if (identical(.lst[[length(.lst)]][[1]], quote(`model`))) {
     return(fun)
   }
-  .w <- which(vapply(.idx, function(x) {
-    identical(.lst[[x]][[1]], quote(`model`))
-  }, logical(1), USE.NAMES=TRUE))
+  .w <- which(vapply(
+    .idx,
+    function(x) {
+      identical(.lst[[x]][[1]], quote(`model`))
+    },
+    logical(1),
+    USE.NAMES = TRUE
+  ))
   if (length(.w) != 1) {
-    stop("rxode2 model function requires one 'model({})' block",
-         call.=FALSE)
+    stop("rxode2 model function requires one 'model({})' block", call. = FALSE)
   }
-  warning("'model({})' is not on the last line of the function, rearranging; function cannot be called directly to produce model object",
-          call.=FALSE)
-  .fun2 <- function() {
-  }
+  warning(
+    "'model({})' is not on the last line of the function, rearranging; function cannot be called directly to produce model object", # nolint: line_length_linter.
+    call. = FALSE
+  )
+  .fun2 <- function() {}
   body(.fun2) <- as.call(lapply(c(-1L, .idx[-.w], .w), function(i) {
-    if (i == -1L) return(quote(`{`))
+    if (i == -1L) {
+      return(quote(`{`))
+    }
     .lst[[i]]
   }))
   .fun2
 }
 
+#' Make sure occasion (IOV) variables use locf interpolation
+#'
+#' @param iniDf ini data frame of the model
+#' @param mv model variables of the model
+#' @return nothing, errors when an occasion variable declares a
+#'   non-locf interpolation
+#' @noRd
+#' @author Matthew L. Fidler
+.rxUiIovLocf <- function(iniDf, mv) {
+  .interp <- mv$interp
+  if (!is.factor(.interp) || length(.interp) == 0L) {
+    return(invisible())
+  }
+  .w <- which(!is.na(iniDf$condition) & is.na(iniDf$err))
+  .occ <- setdiff(unique(.lotriBaseCondition(iniDf$condition[.w])), "id")
+  .occ <- intersect(.occ, names(.interp))
+  .bad <- .occ[!(as.character(.interp[.occ]) %in% c("default", "locf"))]
+  if (length(.bad) > 0L) {
+    stop(
+      "occasion variable(s) ",
+      paste0("'", .bad, "' (", as.character(.interp[.bad]), ")", collapse = ", "),
+      " must use 'locf' interpolation",
+      call. = FALSE
+    )
+  }
+  invisible()
+}
+
 .rxFunction2ui <- function(fun) {
-  .fun <- .rxFunctionRearrange(eval(parse(text=paste(.rxFunction2string(fun), collapse="\n"))))
+  .fun <- .rxEtaDistIniToModel(
+    .rxFunctionRearrange(eval(parse(text = paste(.rxFunction2string(fun), collapse = "\n"))))
+  )
+  # `.fun` is re-created from source, so pass on where the original was defined
+  .funEnv <- .udfEnv$modelFunEnv
+  .udfEnv$modelFunEnv <- environment(fun)
+  on.exit(.udfEnv$modelFunEnv <- .funEnv, add = TRUE)
   .ret <- .fun()
+  .udfEnv$modelFunEnv <- .funEnv
   # Save $model like nlmixr UI used to...
   .ret <- rxUiDecompress(.ret)
-  assign("model", fun, envir=.ret)
+  assign("model", fun, envir = .ret)
   rxUiCompress(.ret)
 }
 
-.lastIni <- NULL
-.lastIniQ <- NULL
+.rxState$lastIni <- NULL
+.rxState$lastIniQ <- NULL
 
 #' Ini block for rxode2/nlmixr models
 #'
@@ -237,11 +407,12 @@
 #' @export
 ini <- function(x, ..., envir = parent.frame(), append = NULL) {
   if (is(substitute(x), "{")) {
-    .ini <- eval(bquote(lotri::lotri(.(substitute(x)),
-                                     cov=TRUE, rcm=TRUE)),
-                 envir=envir)
-    assignInMyNamespace(".lastIni", .ini)
-    assignInMyNamespace(".lastIniQ", bquote(.(substitute(x))))
+    .ini <- eval(
+      bquote(lotri::lotri(.(substitute(x)), cov = TRUE, rcm = TRUE)),
+      envir = envir
+    )
+    .rxState$lastIni <- .ini
+    .rxState$lastIniQ <- bquote(.(substitute(x)))
     return(invisible(.ini))
   }
   UseMethod("ini")
@@ -285,76 +456,158 @@ ini <- function(x, ..., envir = parent.frame(), append = NULL) {
 #' @author Matthew Fidler
 #'
 #' @export
-model <- function(x, ..., append=FALSE, auto=getOption("rxode2.autoVarPiping", TRUE),
-                  cov=NULL, envir=parent.frame()) {
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     tka <- log(1.1)
+#'     tcl <- log(3)
+#'     tv <- log(30)
+#'     eta.cl ~ 0.1
+#'     add.sd <- 0.7
+#'   })
+#'   model({
+#'     ka <- exp(tka)
+#'     cl <- exp(tcl + eta.cl)
+#'     v <- exp(tv)
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'     cp ~ add(add.sd)
+#'   })
+#' }
+#' # extract the model block
+#' model(mod)
+#' # replace a line; the new parameter tcl.wt is added to ini()
+#' mod |> model(cl <- exp(tcl + eta.cl) * (WT / 70)^tcl.wt)
+#' # append a line after cp
+#' mod |> model(auc <- cp * 12, append = cp)
+#' }
+model <- function(
+  x,
+  ...,
+  append = FALSE,
+  auto = getOption("rxode2.autoVarPiping", TRUE),
+  cov = NULL,
+  envir = parent.frame()
+) {
   if (is(substitute(x), "{")) {
-    .funName <- try(as.character(as.list(with(envir, match.call()))[[1]]), silent=TRUE)
-    if (inherits(.funName, "try-error")) {
+    .funExpr <- try(as.list(with(envir, match.call()))[[1]], silent = TRUE)
+    if (inherits(.funExpr, "try-error")) {
       .funName <- NULL
-    } else if (length(.funName) == 1L && exists(.funName, envir=parent.env(envir))) {
-      .udfEnvSet(parent.env(envir))
+    } else {
+      .funName <- try(.rxModelNameFromExpr(.funExpr, envir = envir), silent = TRUE)
+      if (inherits(.funName, "try-error")) {
+        .funName <- NULL
+      }
+      # the user function environment follows the model function itself, which
+      # is only known when it was called by name
+      if (
+        is.symbol(.funExpr) &&
+          exists(as.character(.funExpr), envir = parent.env(envir))
+      ) {
+        .udfEnvLocal(parent.env(envir))
+      }
     }
-    .ini <- .lastIni
-    .iniQ <- .lastIniQ
+    .ini <- .rxState$lastIni
+    .iniQ <- .rxState$lastIniQ
     if (is.null(.ini)) {
-      .ini <- data.frame(ntheta=integer(0),
-                         neta1=numeric(0),
-                         neta2=numeric(0),
-                         name=character(0),
-                         lower=numeric(0),
-                         est=numeric(0),
-                         upper=numeric(0),
-                         fix=logical(0),
-                         label=character(0),
-                         backTransform=character(0),
-                         condition=character(0),
-                         err=character(0))
+      .ini <- data.frame(
+        ntheta = integer(0),
+        neta1 = numeric(0),
+        neta2 = numeric(0),
+        name = character(0),
+        lower = numeric(0),
+        est = numeric(0),
+        upper = numeric(0),
+        fix = logical(0),
+        label = character(0),
+        backTransform = character(0),
+        condition = character(0),
+        err = character(0)
+      )
       .iniQ <- NULL
       ## stop("ini({}) block must be called before the model block",
       ##      call.=FALSE)
     }
-    assignInMyNamespace(".lastIni", NULL)
-    assignInMyNamespace(".lastIniQ", NULL)
+    .rxState$lastIni <- NULL
+    .rxState$lastIniQ <- NULL
+    # user functions the model function defines or encloses live in the model
+    # (its meta), are found first and are converted to C for this model only
+    # (#1416)
+    .meta <- new.env(parent = emptyenv())
+    .closure <- .udfEnv$modelFunEnv
+    .udfEnv$modelFunEnv <- NULL
+    if (!is.environment(.closure)) {
+      .closure <- parent.env(envir)
+    }
+    .udfFuns <- .udfModelFuns(substitute(x), envir, .closure)
+    for (.i in ls(.udfFuns, all.names = TRUE)) {
+      assign(.i, get(.i, envir = .udfFuns), envir = .meta)
+    }
+    .udfModelLocal(.meta)
     .mod <- .rxMuRef(eval(bquote(.errProcessExpression(quote(.(substitute(x))), .ini))))
-    .meta <- new.env(parent=emptyenv())
     if (!identical(envir, globalenv())) {
-      for (.i in ls(envir, all.names=TRUE)) {
-        assign(.i, get(.i, envir), .meta)
+      for (.i in ls(envir, all.names = TRUE)) {
+        if (.i != ".simModelBase") {
+          assign(.i, get(.i, envir), .meta)
+        }
       }
     }
     .mod$meta <- .meta
     .mod$sticky <- character(0)
     .w <- which(!is.na(.mod$iniDf$err) & !is.na(.mod$iniDf$neta1))
     if (length(.w) > 0) {
-      stop("the parameter(s) '", paste(.mod$iniDf$name[.w], collapse="', '"), "' cannot be an error and between subject variability",
-           call.=FALSE)
+      stop(
+        "the parameter(s) '",
+        paste(.mod$iniDf$name[.w], collapse = "', '"),
+        "' cannot be an error and between subject variability",
+        call. = FALSE
+      )
     }
-    assign("modelName", .funName, envir=.mod)
+    .rxUiIovLocf(.mod$iniDf, .mod$mv0)
+    assign("modelName", .funName, envir = .mod)
     class(.mod) <- "rxUi"
+    ## let packages attach parse-time state to the freshly assembled ui.  This
+    ## MUST run before rxUiCompress(): a compressed ui is a list, and
+    ## rxUiDecompress() returns a fresh environment on every call, so an
+    ## in-place assignment made any later is invisible to the caller.
+    .rxRunUiAssembledHooks(.mod)
     return(rxUiCompress(.mod))
   }
-  on.exit({.varSelect$cov <- NULL})
+  on.exit(
+    {
+      .varSelect$cov <- NULL
+    },
+    add = TRUE
+  )
   UseMethod("model")
 }
 
 #' @export
 #' @rdname model
-model.default <- function(x, ..., append=FALSE, cov=NULL, envir=parent.frame()) {
+model.default <- function(x, ..., append = FALSE, cov = NULL, envir = parent.frame()) {
   stop("rxode2 does not know how to handle this model statement")
 }
 
 #' @export
-print.rxUi <-function(x, ...) {
+print.rxUi <- function(x, ...) {
   .md <- x$modelDesc
-  cat(cli::cli_format_method({
-    cli::cli_h1("{.md}")
-  }), "\n")
+  cat(
+    cli::cli_format_method({
+      cli::cli_h1("{.md}")
+    }),
+    "\n"
+  )
   .theta <- x$theta
   .omega <- x$omega
   if (length(x$iniDf$cond) > 0) {
-    cat(cli::cli_format_method({
-      cli::cli_h2("Initalization:")
-    }), "\n")
+    cat(
+      cli::cli_format_method({
+        cli::cli_h2("Initalization:")
+      }),
+      "\n"
+    )
   }
   if (length(.theta) > 0) {
     cat(paste0(crayon::bold("Fixed Effects"), " (", crayon::bold$blue("$theta"), "):"), "\n")
@@ -367,17 +620,23 @@ print.rxUi <-function(x, ...) {
     }
   }
   if (length(x$state) > 0) {
-    cat(paste0(crayon::bold("\nStates"), " (", crayon::bold$blue("$state"), " or ", crayon::bold$blue("$stateDf"), "):"), "\n")
-    print(rxUiGet.stateDf(list(x,TRUE)))
+    cat(
+      paste0(crayon::bold("\nStates"), " (", crayon::bold$blue("$state"), " or ", crayon::bold$blue("$stateDf"), "):"),
+      "\n"
+    )
+    print(rxUiGet.stateDf(list(x, TRUE)))
   }
   # Multiple Endpoint
   .me <- x$multipleEndpoint
   if (!is.null(.me)) {
     .met <- crayon::bold("Multiple Endpoint Model")
     .med <- crayon::bold$blue("$multipleEndpoint")
-    cat(cli::cli_format_method({
-      cli::cli_h2("{.met} ({.med}):")
-    }), "\n")
+    cat(
+      cli::cli_format_method({
+        cli::cli_h2("{.met} ({.med}):")
+      }),
+      "\n"
+    )
     print(.me)
     if (getOption("rxode2.combine.dvid", TRUE)) {
       cat("  * If dvids are outside this range, all dvids are re-numered sequentially, ie 1,7, 10 becomes 1,2,3 etc\n")
@@ -390,9 +649,12 @@ print.rxUi <-function(x, ...) {
   if (!is.null(.mu)) {
     .muU <- crayon::bold(paste0(ifelse(use.utf(), "\u03bc", "mu"), "-referencing"))
     .muR <- crayon::bold$blue("$muRefTable")
-    cat(cli::cli_format_method({
-      cli::cli_h2("{.muU} ({.muR}):")
-    }), "\n")
+    cat(
+      cli::cli_format_method({
+        cli::cli_h2("{.muU} ({.muR}):")
+      }),
+      "\n"
+    )
     print(.mu)
     cat("\n")
   }
@@ -446,16 +708,20 @@ print.rxUi <-function(x, ...) {
 #' print(class(f))
 #' print(is.environment(f))
 #'
+#' @family Model UI and piping
 rxUiDecompress <- function(ui) {
-  if (!inherits(ui, "rxUi")) return(ui)
-  if (is.environment(ui))  return(ui)
+  if (!inherits(ui, "rxUi")) {
+    return(ui)
+  }
+  if (is.environment(ui)) {
+    return(ui)
+  }
   if (inherits(ui, "raw")) {
     rxReq("qs")
-    warning("decompression of an rxUi object from rxode2 < 4.0 requires qs which is not on CRAN",
-            call.=FALSE)
+    warning("decompression of an rxUi object from rxode2 < 4.0 requires qs which is not on CRAN", call. = FALSE)
     .ret <- .Call(`_rxode2_qsDes`, ui)
   } else if (is.list(ui)) {
-    .ret <- list2env(ui, parent=emptyenv())
+    .ret <- list2env(ui, parent = emptyenv())
   }
   class(.ret) <- "rxUi"
   .ret
@@ -464,9 +730,11 @@ rxUiDecompress <- function(ui) {
 #' @rdname rxUiDecompress
 #' @export
 rxUiCompress <- function(ui) {
-  if (!inherits(ui, "rxUi")) return(ui)
+  if (!inherits(ui, "rxUi")) {
+    return(ui)
+  }
   if (is.environment(ui)) {
-    .ls <- ls(ui, all.names=TRUE)
+    .ls <- ls(ui, all.names = TRUE)
     .ret <- lapply(.ls, function(nm) {
       get(nm, ui)
     })

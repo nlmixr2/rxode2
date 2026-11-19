@@ -26,12 +26,14 @@ using namespace arma;
 #include <boost/random/exponential_distribution.hpp>
 #include <boost/random/fisher_f_distribution.hpp>
 #include <boost/random/gamma_distribution.hpp>
+#include <boost/random/lognormal_distribution.hpp>
 #include <boost/random/geometric_distribution.hpp>
 #include <boost/random/poisson_distribution.hpp>
 #include <boost/random/student_t_distribution.hpp>
 #include <boost/random/weibull_distribution.hpp>
 
 #include "rxnbinom.h"
+#include "rxtrunc.h"
 
 extern "C" {
   extern rx_solve rx_global;
@@ -46,6 +48,16 @@ extern "C" void setRxSeedFinal(uint32_t seed);
 arma::vec getLowerVec(int type, rx_solve* rx);
 arma::vec getUpperVec(int type, rx_solve* rx);
 arma::mat getArmaMat(int type, int csim, rx_solve* rx);
+
+// C accessors into rx_globals (defined in rxData.cpp)
+extern "C" {
+  double* rxEtaPreGetOrAlloc(int nsolve_neta);
+  double* rxGetEtaPre(void);
+  void    rxEtaPreDeactivate(void);
+  void    rxEtaPreFree(void);
+  int     rxGetNOmega(void);
+  int     rxIsZeroOmega(void);
+}
 
 //[[Rcpp::export]]
 SEXP rxRmvn_(NumericMatrix A_, arma::rowvec mu, arma::mat sigma,
@@ -75,31 +87,24 @@ SEXP rxRmvn_(NumericMatrix A_, arma::rowvec mu, arma::mat sigma,
   if (d != (int)sigma.n_rows) stop("length(mu) != ncol(sigma)");
   if (d != (int)A_.ncol()) stop("length(mu) != ncol(A)");
 
-  uint32_t seed = getRxSeed1(ncores);
+  // Draw serially from one stream so the result does not depend on ncores
+  // (#1376); only the transform below runs in parallel.
+  {
+    arma::mat A(A_.begin(), A_.nrow(), A_.ncol(), false, true);
+    sitmo::threefry eng;
+    eng.seed(getRxSeed1(1));
+    boost::random::normal_distribution<> snorm(0.0, 1.0);
+    for (int i = 0; i < n*d; ++i) {
+      A[i] = snorm(eng);
+    }
+  }
 #ifdef _OPENMP
 #pragma omp parallel num_threads(ncores) if(ncores > 1)
   {
 #endif
     arma::mat A(A_.begin(), A_.nrow(), A_.ncol(), false, true);
-    sitmo::threefry eng;
-#ifdef _OPENMP
-    eng.seed(seed+rx_get_thread(op_global.cores));
-#else
-    eng.seed(seed);
-#endif
-
-    boost::random::normal_distribution<> snorm(0.0, 1.0);
-
     double acc;
     arma::rowvec work(d);
-#ifdef _OPENMP
-#pragma omp for schedule(static)
-#endif
-    for (int thread = 0; thread < ncores; ++thread) {
-      for (int i = thread; i < n*d; i += ncores) {
-        A[i] = snorm(eng);
-      }
-    }
     if (d == 1){
       double sd = ch(0, 0);
 #ifdef _OPENMP
@@ -155,32 +160,21 @@ void rxRmvn2_(arma::mat& A, arma::rowvec mu, arma::mat sigma,
   if (d != (int)sigma.n_rows) stop("length(mu) != ncol(sigma)");
   if (d != (int)A.n_cols) stop("length(mu) != ncol(A)");
 
-  uint32_t seed = getRxSeed1(ncores);
+  // Serial draw, as in rxRmvn_(), so the result does not depend on ncores
+  {
+    sitmo::threefry eng;
+    eng.seed(getRxSeed1(1));
+    boost::random::normal_distribution<> snorm(0.0, 1.0);
+    for (int i = 0; i < n*d; ++i) {
+      A[i] = snorm(eng);
+    }
+  }
 #ifdef _OPENMP
 #pragma omp parallel num_threads(ncores) if(ncores > 1)
   {
 #endif
-
-    sitmo::threefry eng;
-
-#ifdef _OPENMP
-    eng.seed(seed+rx_get_thread(op_global.cores));
-#else
-    eng.seed(seed);
-#endif
-
-    boost::random::normal_distribution<> snorm(0.0, 1.0);
-
     double acc;
     arma::rowvec work(d);
-#ifdef _OPENMP
-#pragma omp for schedule(static)
-#endif
-    for (int thread = 0; thread < ncores; ++thread) {
-      for (int i = thread; i < n*d; i += ncores){
-        A[i] = snorm(eng);
-      }
-    }
     if (d == 1){
       double sd = ch(0, 0);
 #ifdef _OPENMP
@@ -373,17 +367,82 @@ List rxMvnrnd(int n, arma::mat& L, arma::vec& l,
   return ret;
 }
 
-typedef struct {
-  // return(list(L=L,l=l,u=u,perm=perm))
-  arma::mat L;
-  arma::vec l;
-  arma::vec u;
-  arma::uvec perm;
+// Index k >= j of the smallest marginal probability for column j of cholperm
+static int cholpermMinDim(const arma::mat& Sig, const arma::mat& L, const arma::vec& z,
+                          const arma::vec& l, const arma::vec& u, int j, int d,
+                          double eps) {
+  arma::span I = span(j,d-1);
+  arma::vec D = Sig.diag();
+  arma::vec sv(1);
+  if (j > 1){
+    arma::vec r(j);
+    std::fill_n(r.begin(), j, 1.0);
+    sv = D(I) - (L(I, span(0, j-1)) % L(I, span(0, j-1))) * r;
+  } else if (j == 1){
+    sv =D(I)-L(I,0) % L(I,0);
+  } else {
+    sv = D(I);
+  }
+  for(int kk=sv.size(); kk--;){
+    if (sv[kk] < 0) sv[kk] = sqrt(eps);
+    else sv[kk] = sqrt(sv[kk]);
+  }
+  arma::vec tl;
+  arma::vec tu;
+  if (j == 0){
+    tl = l(I)/sv;
+    tu = u(I)/sv;
+  } else {
+    arma::vec colsV;
+    if (j >1){
+      colsV=L(I,span(0, j-1)) * z(span(0,j-1));
+    } else {
+      colsV=L(I,0)*z(0);
+    }
+    tl = (l(I) - colsV)/sv;
+    tu = (u(I) - colsV)/sv;
+  }
+  double minPr=R_PosInf;
+  int k=0;
+  for (int kk = j; kk < d; ++kk){
+    double pr = lnNpr(tl[kk-j], tu[kk-j]);
+    if (pr < minPr) {
+      minPr = pr;
+      k = kk;
+    }
+  }
+  return k;
+}
 
-} rx_cholperms;
+// Column j of the Cholesky factor L; returns false when Sig is not PSD
+static bool cholpermColumn(const arma::mat& Sig, arma::mat& L, int j, int d,
+                           double eps) {
+  arma::vec sv;
+  if (j == 0){
+    sv=Sig(j,j)-L(j,0) * L(j,0);
+  } else {
+    sv=Sig(j,j)-accu(L(j,span(0,j-1)) % L(j,span(0,j-1)));
+  }
+  if (sv(0) < -0.001) return false;
+  if (sv(0) < 0) sv(0) =eps;
+  L(j,j)= sqrt(sv(0));
+  if (j >= d-1) return true;
+  if (j > 1){
+    L(span(j+1,d-1), j) = (Sig(span(j+1,d-1),j)-
+                           L(span(j+1,d-1),span(0,j-1)) *
+                           trans(L(j,span(0,(j-1))))) / L(j,j);
+  } else if (j == 1){
+    L(span(j+1,d-1),j) = (Sig(span(j+1,d-1),j)-
+                          L(span(j+1,d-1),0) *
+                          L(j,0)) / L(j,j);
+  } else {
+    L(span(j+1,d-1),j)=Sig(span((j+1),d-1),j)/L(j,j);
+  }
+  return true;
+}
 
-rx_cholperms cholperm(arma::mat Sig, arma::vec& cl, arma::vec& cu,
-                      double eps=1e-10){
+rx_cholperms cholpermCore(arma::mat Sig, const arma::vec& cl, const arma::vec& cu,
+                          double eps, int& status){
   // #  Computes permuted lower Cholesky factor L for Sig
   // #  by permuting integration limit vectors l and u.
   // #  Outputs perm, such that Sig(perm,perm)=L%*%t(L).
@@ -393,6 +452,7 @@ rx_cholperms cholperm(arma::mat Sig, arma::vec& cl, arma::vec& cu,
   // #  "Monte Carlo evaluation of multivariate normal integrals and
   // #  sensitivity to variate ordering",
   // #  In: Advances in Numerical Methods and Applications, pages 120--126
+  status = 0;
   arma::vec l=cl;
   arma::vec u=cu;
   int d = l.n_elem;
@@ -401,49 +461,8 @@ rx_cholperms cholperm(arma::mat Sig, arma::vec& cl, arma::vec& cu,
   arma::mat L(d,d, arma::fill::zeros);
   arma::vec z(d, arma::fill::zeros);
   for (int j = 0; j < d; ++j){
-    arma::vec pr(d);
-    std::fill_n(pr.begin(), d, R_PosInf);
-    arma::span I = span(j,d-1);
-    arma::vec D = Sig.diag();
-    arma::vec sv(1);
-    if (j > 1){
-      arma::vec r(j);
-      std::fill_n(r.begin(), j, 1.0);
-      sv = D(I) - (L(I, span(0, j-1)) % L(I, span(0, j-1))) * r;
-    } else if (j == 1){
-      sv =D(I)-L(I,0) % L(I,0);
-    } else {
-      sv = D(I);
-    }
-    for(int kk=sv.size(); kk--;){
-      if (sv[kk] < 0) sv[kk] = sqrt(eps);
-      else sv[kk] = sqrt(sv[kk]);
-    }
-    arma::vec colsV;
-    if (j >1){
-      colsV=L(I,span(0, j-1)) * z(span(0,j-1));
-    } else if (j==1){
-      colsV=L(I,0)*z(0);
-    }
-    arma::vec tl;
-    arma::vec tu;
-    if (j == 0){
-      tl = l(I)/sv;
-      tu = u(I)/sv;
-    } else {
-      tl = (l(I) - colsV)/sv;
-      tu = (u(I) - colsV)/sv;
-    }
-    double minPr=R_PosInf;
-    int k=0;
-    for (int kk = j; kk < d; ++kk){
-      pr[kk] = lnNpr(tl[kk-j], tu[kk-j]);
-      if (pr[kk] < minPr) {
-        minPr = pr[kk];
-        k = kk;
-      }
-    }
     // find smallest marginal dimension
+    int k = cholpermMinDim(Sig, L, z, l, u, j, d, eps);
     // flip dimensions k-->j
     arma::uvec jk(2); jk(0) = j; jk(1) = k;
     arma::uvec kj(2); kj(0) = k; kj(1) = j;
@@ -457,42 +476,31 @@ rx_cholperms cholperm(arma::mat Sig, arma::vec& cl, arma::vec& cu,
     // update integration limits
     l(jk) = l(kj); u(jk) = u(kj);
     //construct L sequentially via Cholesky computation
-    if (j == 0){
-      sv=Sig(j,j)-L(j,0) * L(j,0);
-    } else {
-      sv=Sig(j,j)-accu(L(j,span(0,j-1)) % L(j,span(0,j-1)));
-    }
-    if (sv(0) < -0.001){
-      stop("'Sigma' is not positive semi-definite");
-    }
-    if (sv(0) < 0) sv(0) =eps;
-    L(j,j)= sqrt(sv(0));
-    if (j < d-1 ){
-      if (j > 1){
-        L(span(j+1,d-1), j) = (Sig(span(j+1,d-1),j)-
-                               L(span(j+1,d-1),span(0,j-1)) *
-                               trans(L(j,span(0,(j-1))))) / L(j,j);
-      } else if (j == 1){
-        L(span(j+1,d-1),j) = (Sig(span(j+1,d-1),j)-
-                              L(span(j+1,d-1),0) *
-                              L(j,0)) / L(j,j);
-      } else if (j == 0){
-        L(span(j+1,d-1),j)=Sig(span((j+1),d-1),j)/L(j,j);
-      }
+    if (!cholpermColumn(Sig, L, j, d, eps)) {
+      status = 1;
+      rx_cholperms bad;
+      return bad;
     }
     // find mean value, z(j), of truncated normal:
-    tl = (l(j) - L(j, span(0, j)) * z(span(0, j))) / L(j,j);
-    tu = (u(j) - L(j, span(0, j)) * z(span(0, j))) / L(j, j);
+    arma::vec tl = (l(j) - L(j, span(0, j)) * z(span(0, j))) / L(j,j);
+    arma::vec tu = (u(j) - L(j, span(0, j)) * z(span(0, j))) / L(j, j);
     double w = lnNpr(tl(0), tu(0));
     // 1/sqrt(2*pi) = M_1_SQRT_2PI
     z[j] = (exp(-0.5 * tl(0)*tl(0) - w) - exp(-0.5* tu(0) * tu(0) - w)) * M_1_SQRT_2PI;
-    // Rprintf("tl: %f, tu: %f, w: %f, z: %f\n", tl(0), tu(0), w, z[j]);
   }
   rx_cholperms ret;
   ret.L = L;
   ret.l = l;
   ret.u = u;
   ret.perm=perm;
+  return ret;
+}
+
+rx_cholperms cholperm(arma::mat Sig, arma::vec& cl, arma::vec& cu,
+                      double eps=1e-10){
+  int status = 0;
+  rx_cholperms ret = cholpermCore(Sig, cl, cu, eps, status);
+  if (status != 0) stop("'Sigma' is not positive semi-definite");
   return ret;
 }
 
@@ -725,10 +733,10 @@ arma::mat mvrandn(arma::vec lin, arma::vec uin, arma::mat Sig, int n,
     arma::mat curZ  = out.Z;
     // idx=-log(runif(n))>(psistar-logpr); # acceptance tests
     for (int i = n; i--;){
-      if (out.u[i] > (psistar-logpr[i]) &&
-          all(outC.l < curZ.col(i)) &&
-          all(outC.u > curZ.col(i))) {
-        ret.col(accepted) =curZ.col(i);
+      if (out.u[i] <= (psistar-logpr[i])) continue;
+      arma::vec y = Lfull * curZ.col(i);
+      if (all(outC.l < y) && all(outC.u > y)) {
+        ret.col(accepted) = y;
         accepted++;
         if (accepted == n) break;
       }
@@ -739,17 +747,24 @@ arma::mat mvrandn(arma::vec lin, arma::vec uin, arma::mat Sig, int n,
     } else if (iter> 1e4){
       if (accepted == 0) {
         stop(_("could not sample from truncated normal"));
-      } else if (accepted > 1) {
+      } else {
         Rf_warningcall(R_NilValue, _("sample of size %d which is smaller than requested 'n' returned"), accepted);
-        ret = ret.rows(0, accepted);
+        ret = ret.cols(0, accepted - 1);
         break;
       }
     }
   }
+  // Undo the permutation: column perm[j] of the result is permuted dimension j
   ret = trans(ret);
-  ret = ret.cols(outC.perm);
-  return ret;
+  arma::mat ret2(ret.n_rows, ret.n_cols);
+  ret2.cols(outC.perm) = ret;
+  return ret2;
 }
+
+static void rxMvrandnEng(arma::mat& A, const arma::rowvec& mu, const arma::mat& sigma,
+                         const arma::vec& lower, const arma::vec& upper,
+                         sitmo::threefry& eng, double a, double tol,
+                         double nlTol, int nlMaxiter);
 
 void rxMvrandn__(arma::mat& A,
                  arma::rowvec mu, arma::mat sigma, arma::vec lower,
@@ -757,56 +772,24 @@ void rxMvrandn__(arma::mat& A,
                  double a=0.4, double tol = 2.05, double nlTol=1e-10, int nlMaxiter=100){
   int n = A.n_rows;
   int d = mu.n_elem;
-  arma::mat ch;
   if (n < 1) stop(_("n should be a positive integer"));
   if (ncores < 1) stop(_("'ncores' has to be greater than one"));
   if (d != (int)sigma.n_cols) stop("length(mu) != ncol(sigma)");
   if (d != (int)sigma.n_rows) stop("length(mu) != ncol(sigma)");
   if (d != (int)A.n_cols) stop("length(mu) != ncol(A)");
-
-  if (sigma.is_zero()){
-    if (d == 1){
-      for (int i = 0; i < n; ++i) {
-        A[i] = mu(0);
-      }
+  if (sigma.is_zero()) {
+    if (d == 1) {
+      for (int i = 0; i < n; ++i) A[i] = mu(0);
     } else {
       A.zeros();
       A.each_row() += mu;
     }
-  } else {
-    uint32_t seed = getRxSeed1(ncores);
-
-#ifdef _OPENMP
-#pragma omp parallel num_threads(ncores) if(ncores > 1)
-    {
-#endif
-
-      sitmo::threefry eng;
-      eng.seed(seed+rx_get_thread(op_global.cores));
-
-      arma::vec low = lower-trans(mu);
-      arma::vec up = upper-trans(mu);
-
-      if (d == 1){
-        double sd = sqrt(sigma(0,0));
-        double l=low(0)/sd;
-        double u=up(0)/sd;
-#ifdef _OPENMP
-#pragma omp for schedule(static)
-#endif
-        for (int i = 0; i < n; ++i) {
-          A[i] = sd*trandn(l, u, eng, a, tol)+mu(0);
-        }
-      } else {
-        arma::mat ret = mvrandn(low, up, sigma, n, eng, a, tol,
-                                nlTol, nlMaxiter, ncores);
-        ret.each_row() += mu;
-        std::copy(ret.begin(), ret.end(), A.begin());
-      }
-    }
-#ifdef _OPENMP
+    return;
   }
-#endif
+  // One serial stream, so the draws do not depend on ncores (#1376)
+  sitmo::threefry eng;
+  eng.seed(getRxSeed1(1));
+  rxMvrandnEng(A, mu, sigma, lower, upper, eng, a, tol, nlTol, nlMaxiter);
 }
 
 //[[Rcpp::export]]
@@ -820,20 +803,68 @@ arma::mat rxMvrandn_(NumericMatrix A_,
 }
 
 std::vector<sitmo::threefry> _eng;
+// Engines reserved for the in-solve simeta()/simeps() resample; see
+// simEngKey() for why they cannot share _eng.
+std::vector<sitmo::threefry> _engSim;
+
+// rxSolve() restores R's RNG state between seedEng() and the parameter
+// simulation, so the runif()-derived seeds handed out by getRxSeed1() repeat
+// there: _eng's keys are the same ones cvPost()/rxRmvn_() go on to use for the
+// simulated etas.  Keying the resample engines off a threefry draw instead of
+// off `seed` itself keeps simeta()/simeps() from replaying those parameters.
+static inline uint32_t simEngKey(uint32_t seed) {
+  sitmo::threefry k;
+  k.seed(seed);
+  return (uint32_t)(k() & 0xffffffffU);
+}
+
+// Disjoint regions of one key's threefry stream: thread engine t of seedEng()
+// starts at t << 48, so every thread shares one seed and seedEng() reserves the
+// same number of seeds at any thread count; in-model draws start at 1 << 63
+// (setSeedEngLhs()), clear of the solve's stream from the same key (#1376).
+#define RX_THREAD_STREAM_SHIFT 48
+#define RX_LHS_STREAM_OFFSET (1ULL << 63)
+
+static inline void seedEngAt(sitmo::threefry& eng, uint32_t key,
+                             unsigned long long offset) {
+  eng.seed(key);
+  if (offset != 0) eng.discard(offset);
+}
 
 extern "C" void seedEng(int ncores) {
-  uint32_t seed = getRxSeed1(ncores);
+  uint32_t seed = getRxSeed1(1);
   _eng.clear();
+  _engSim.clear();
   for (int i= 0; i < ncores; i++) {
+    unsigned long long offset = (unsigned long long)i << RX_THREAD_STREAM_SHIFT;
     sitmo::threefry eng0;
-    eng0.seed(seed + i);
+    seedEngAt(eng0, seed, offset);
     _eng.push_back(eng0);
+    sitmo::threefry engSim0;
+    seedEngAt(engSim0, simEngKey(seed), offset);
+    _engSim.push_back(engSim0);
   }
-  seed = getRxSeed1(ncores);
+  getRxSeed1(1);
 }
 
 extern "C" void setSeedEng1(uint32_t seed) {
-  (_eng[rx_get_thread(op_global.cores)]).seed(seed);
+  int thread = rx_get_thread(op_global.cores);
+  (_eng[thread]).seed(seed);
+  if (thread < (int)_engSim.size()) {
+    (_engSim[thread]).seed(simEngKey(seed));
+  }
+}
+
+// Seeds the in-model (calc_lhs) draws of `solveid` with the key the solve gave
+// that subject (seed0 + id), at RX_LHS_STREAM_OFFSET so they neither replay the
+// solve's stream nor advance the seed sequence (#1376).
+extern "C" void setSeedEngLhs(uint32_t seed0, int solveid) {
+  uint32_t key = seed0 + (uint32_t)solveid;
+  int thread = rx_get_thread(op_global.cores);
+  seedEngAt(_eng[thread], key, RX_LHS_STREAM_OFFSET);
+  if (thread < (int)_engSim.size()) {
+    seedEngAt(_engSim[thread], simEngKey(key), RX_LHS_STREAM_OFFSET);
+  }
 }
 
 //' This seeds the engine based on the number of cores used in random number generation
@@ -850,6 +881,18 @@ RObject rxSeedEng(int ncores = 1){
   return R_NilValue;
 }
 
+extern rx_solving_options_ind **inds_threadSubj;
+extern int inds_threadSubjN;
+
+// The subject this thread is evaluating the model for, read in place: the one
+// _setThreadInd() or _setIndPointersByThread() last named, or the thread's
+// copy in inds_thread when no slot is allocated.
+static inline rx_solving_options_ind *rxThreadInd() {
+  int t = rx_get_thread(op_global.cores);
+  if (t < inds_threadSubjN && inds_threadSubj[t] != NULL) return inds_threadSubj[t];
+  return &inds_thread[t];
+}
+
 static inline double _rxnbinom__(double size, double p) {
   boost::random::negative_binomial_distribution_r<> dist(size, p);
   return (double) dist(_eng[rx_get_thread(op_global.cores)]);
@@ -862,13 +905,13 @@ static inline double _rxnbinom_mu_(double size, double mu) {
 
 extern "C" double rxnbinomMu(int size, double mu) {
   if (ISNA(size) || ISNA(mu)) return NA_REAL;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (!ind->inLhs) return 0;
   return _rxnbinom_mu_(size, mu);
 }
 
 extern "C" double rinbinomMu(int id, int size, double mu){
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni == 1) {
     if (ISNA(size) || ISNA(mu)) {
       ind->simIni[id] = NA_REAL;
@@ -906,13 +949,13 @@ IntegerVector rxnbinomMu_(int size, double mu, int n, int ncores){
 
 extern "C" double rxnbinom(int size, double prob) {
   if (ISNA(size) || ISNA(prob)) return NA_REAL;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (!ind->inLhs) return 0;
   return _rxnbinom__(size, prob);
 }
 
 extern "C" double rinbinom(int id, int size, double prob){
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni == 1) {
     if (ISNA(size) || ISNA(prob)) {
       ind->simIni[id] = NA_REAL;
@@ -951,14 +994,14 @@ IntegerVector rxnbinom_(double size, double prob, int n, int ncores){
 
 extern "C" double rxbinom(int n, double prob){
   if (ISNA(n) || ISNA(prob)) return NA_REAL;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (!ind->inLhs) return 0;
   boost::random::binomial_distribution<int> d(n, prob);
   return (double)d(_eng[rx_get_thread(op_global.cores)]);
 }
 
 extern "C" double ribinom(int id, int n, double prob){
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni == 1) {
     if (ISNA(n) || ISNA(prob)) {
       ind->simIni[id] = NA_REAL;
@@ -997,7 +1040,7 @@ IntegerVector rxbinom_(int n0, double prob, int n, int ncores){
 }
 
 extern "C" double rxcauchy(double location, double scale){
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ISNA(location) || ISNA(scale)) return NA_REAL;
   if (!ind->inLhs) return 0;
   boost::random::cauchy_distribution<double> d(location, scale);
@@ -1005,7 +1048,7 @@ extern "C" double rxcauchy(double location, double scale){
 }
 
 extern "C" double ricauchy(int id, double location, double scale){
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni == 1) {
     if (ISNA(location) || ISNA(scale)) {
       ind->simIni[id] = NA_REAL;
@@ -1045,7 +1088,7 @@ NumericVector rxcauchy_(double location, double scale, int n, int ncores) {
 
 extern "C" double rxchisq(double df){
   if (ISNA(df)) return NA_REAL;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (!ind->inLhs) return 0;
   // Non central not supported in C++11
   boost::random::chi_squared_distribution<double> d(df);
@@ -1053,7 +1096,7 @@ extern "C" double rxchisq(double df){
 }
 
 extern "C" double richisq(int id, double df){
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni == 1) {
     if (ISNA(df)) {
       ind->simIni[id] = NA_REAL;
@@ -1094,14 +1137,14 @@ NumericVector rxchisq_(double df, int n, int ncores){
 
 extern "C" double rxexp(double rate){
   if (ISNA(rate)) return NA_REAL;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (!ind->inLhs) return 0;
   boost::random::exponential_distribution<double> d(rate);
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 
 extern "C" double riexp(int id, double rate){
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni) {
     if (ISNA(rate)) {
       ind->simIni[id] = NA_REAL;
@@ -1141,14 +1184,14 @@ NumericVector rxexp_(double rate, int n, int ncores){
 
 extern "C" double rxf(double df1, double df2) {
   if (ISNA(df1) || ISNA(df2)) return NA_REAL;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (!ind->inLhs) return 0;
   boost::random::fisher_f_distribution<double> d(df1, df2);
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 
 extern "C" double rif(int id, double df1, double df2){
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni) {
     if (ISNA(df1) || ISNA(df2)) {
       ind->simIni[id] = NA_REAL;
@@ -1196,11 +1239,11 @@ double rxgamma(rx_solving_options_ind* ind, double shape, double rate){
 
 extern "C" double rxgamma(double shape, double rate){
   // R uses rate; C++ uses scale
-  return rxgamma(&inds_thread[rx_get_thread(op_global.cores)], shape, rate);
+  return rxgamma(rxThreadInd(), shape, rate);
 }
 
 extern "C" double rigamma(int id, double shape, double rate) {
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni) {
     if (ISNA(shape) || ISNA(rate)) {
       ind->simIni[id] = NA_REAL;
@@ -1239,8 +1282,68 @@ NumericVector rxgamma_(double shape, double rate, int n, int ncores){
 }
 
 
+// Lognormal.  Same shape as rxgamma above in every respect that matters:
+// boost distribution, drawn from the SAME threefry engine indexed by thread, so
+// it inherits the per-thread reproducibility rather than opening a second
+// stream.  A distribution that is declarable with dist() has to be simulable
+// too -- a model is written once and then both fitted and simulated from.
+double rxlnorm(rx_solving_options_ind* ind, double meanlog, double sdlog){
+  if (ISNA(meanlog) || ISNA(sdlog)) return NA_REAL;
+  if (!ind->inLhs) return 0;
+  boost::random::lognormal_distribution<double> d(meanlog, sdlog);
+  return d(_eng[rx_get_thread(op_global.cores)]);
+}
+
+extern "C" double rxlnorm(double meanlog, double sdlog){
+  return rxlnorm(rxThreadInd(), meanlog, sdlog);
+}
+
+extern "C" double rilnorm(int id, double meanlog, double sdlog) {
+  rx_solving_options_ind* ind = rxThreadInd();
+  if (ind->isIni) {
+    if (ISNA(meanlog) || ISNA(sdlog)) {
+      ind->simIni[id] = NA_REAL;
+    } else {
+      boost::random::lognormal_distribution<double> d(meanlog, sdlog);
+      ind->simIni[id] = d(_eng[rx_get_thread(op_global.cores)]);
+    }
+  }
+  return ind->simIni[id];
+}
+
+//[[Rcpp::export]]
+NumericVector rxlnorm_(double meanlog, double sdlog, int n, int ncores){
+  NumericVector ret(n);
+  int n2 = ret.size();
+  boost::random::lognormal_distribution<double> d(meanlog, sdlog);
+  double *retD = ret.begin();
+
+#ifdef _OPENMP
+#pragma omp parallel num_threads(ncores) if(ncores > 1)
+  {
+#endif
+
+#ifdef _OPENMP
+#pragma omp for schedule(static)
+#endif
+    for (int thread = 0; thread < ncores; ++thread) {
+      for (int i = thread; i < n2; i += ncores){
+        retD[i] = d(_eng[rx_get_thread(op_global.cores)]);
+      }
+    }
+#ifdef _OPENMP
+  }
+#endif
+  return ret;
+}
+
 extern "C" void _setThreadInd(int cid) {
-  inds_thread[rx_get_thread(op_global.cores)] = rx_global.subjects[cid];
+  int t = rx_get_thread(op_global.cores);
+  if (t < inds_threadSubjN) {
+    inds_threadSubj[t] = &rx_global.subjects[cid];
+  } else {
+    inds_thread[t] = rx_global.subjects[cid];
+  }
 }
 
 double rxbeta(rx_solving_options_ind* ind, double shape1, double shape2) {
@@ -1252,12 +1355,12 @@ double rxbeta(rx_solving_options_ind* ind, double shape1, double shape2) {
 }
 
 extern "C" double rxbeta(double shape1, double shape2) {
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   return rxbeta(ind, shape1, shape2);
 }
 
 extern "C" double ribeta(int id, double shape1, double shape2) {
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni == 1) {
     if (ISNA(shape1) || ISNA(shape2)) {
       ind->simIni[id] = NA_REAL;
@@ -1301,14 +1404,14 @@ NumericVector rxbeta_(double shape1, double shape2, int n, int ncores){
 
 extern "C" double rxgeom(double prob){
   if (ISNA(prob)) return NA_REAL;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (!ind->inLhs) return 0;
   boost::random::geometric_distribution<int> d(prob);
   return (double) d(_eng[rx_get_thread(op_global.cores)]);
 }
 
 extern "C" double rigeom(int id, double prob){
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni) {
     if (ISNA(prob)) {
       ind->simIni[id] = NA_REAL;
@@ -1348,14 +1451,36 @@ IntegerVector rxgeom_(double prob, int n, int ncores){
 
 extern "C" double rxnorm(double mean, double sd){
   if (ISNA(mean) || ISNA(sd)) return NA_REAL;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (!ind->inLhs) return 0.0;
   boost::random::normal_distribution<double> d(mean, sd);
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 
+// Raw normal draw from the current thread's threefry engine, WITHOUT the inLhs
+// solve-context gate that rxnorm() applies.  Exposed via the function-pointer
+// table for downstream packages (nlmixr2est importance sampling) that seed a
+// per-subject stream with setSeedEng1(seed0 + id) -- after setRxThreadId() sets
+// the OpenMP thread id -- and then draw directly.
+extern "C" double rxNormEng(double mean, double sd){
+  if (ISNA(mean) || ISNA(sd)) return NA_REAL;
+  boost::random::normal_distribution<double> d(mean, sd);
+  return d(_eng[rx_get_thread(op_global.cores)]);
+}
+
+// Raw uniform(low, hi) draw from the current thread's threefry engine, the
+// uniform peer of rxNormEng() (no inLhs solve-context gate).  Exposed via the
+// function-pointer table so downstream packages can draw threefry uniforms from
+// a seeded per-subject stream (setSeedEng1 + setRxThreadId), e.g. for MCMC
+// accept/reject steps.
+extern "C" double rxUnifEng(double low, double hi){
+  if (ISNA(low) || ISNA(hi)) return NA_REAL;
+  std::uniform_real_distribution<double> d(low, hi);
+  return d(_eng[rx_get_thread(op_global.cores)]);
+}
+
 extern "C" double rinorm(int id, double mean, double sd) {
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni) {
     if (ISNA(mean) || ISNA(sd)) {
       ind->simIni[id] = NA_REAL;
@@ -1395,14 +1520,14 @@ NumericVector rxnorm_(double mean, double sd, int n, int ncores){
 
 extern "C" double rxpois(double lambda){
   if (ISNA(lambda)) return NA_REAL;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (!ind->inLhs) return 0.0;
   boost::random::poisson_distribution<int> d(lambda);
   return (double)d(_eng[rx_get_thread(op_global.cores)]);
 }
 
 extern "C" double ripois(int id, double lambda){
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni == 1){
     if (ISNA(lambda)) {
       ind->simIni[id] = NA_REAL;
@@ -1442,14 +1567,14 @@ IntegerVector rxpois_(double lambda, int n, int ncores){
 
 extern "C" double rxt_(double df){
   if (ISNA(df)) return NA_REAL;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (!ind->inLhs) return 0.0;
   boost::random::student_t_distribution<double> d(df);
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 
 extern "C" double rit_(int id, double df){
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind != NULL && ind->isIni == 1){
     if (ISNA(df)) {
       ind->simIni[id] = NA_REAL;
@@ -1500,11 +1625,11 @@ double rxunif(rx_solving_options_ind* ind, double low, double hi) {
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 extern "C" double rxunif(double low, double hi) {
-  return rxunif(&inds_thread[rx_get_thread(op_global.cores)], low, hi);
+  return rxunif(rxThreadInd(), low, hi);
 }
 
 extern "C" double riunif(int id, double low, double hi) {
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind != NULL && ind->isIni == 1) {
     if (ISNA(low) || ISNA(hi)) {
       ind->simIni[id] = NA_REAL;
@@ -1552,7 +1677,7 @@ NumericVector rxunif_(double low, double hi, int n, int ncores){
 
 extern "C" double rxweibull(double shape, double scale) {
   if (ISNA(shape) || ISNA(scale)) return NA_REAL;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (!ind->inLhs) return 0.0;
   boost::random::weibull_distribution<double> d(shape, scale);
   return d(_eng[rx_get_thread(op_global.cores)]);
@@ -1560,7 +1685,7 @@ extern "C" double rxweibull(double shape, double scale) {
 
 
 extern "C" double riweibull(int id, double shape, double scale){
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->isIni) {
     if (ISNA(shape) || ISNA(scale)) {
       ind->simIni[id] = NA_REAL;
@@ -1619,7 +1744,7 @@ SEXP rxRmvn0(NumericMatrix& A_, arma::rowvec mu, arma::mat sigma,
   if (trunc){
     arma::mat sigma0 = sigma;
     if (isChol){
-      sigma0 = sigma * sigma.t();
+      sigma0 = trans(trimatu(sigma)) * trimatu(sigma);
     }
     IntegerVector dm = as<IntegerVector>(A_.attr("dim"));
     // int n = dm[0];
@@ -1646,7 +1771,7 @@ void rxRmvnA(arma::mat & A_, arma::rowvec & mu, arma::mat &sigma,
   if (trunc){
     arma::mat sigma0 = sigma;
     if (isChol){
-      sigma0 = sigma * sigma.t();
+      sigma0 = trans(trimatu(sigma)) * trimatu(sigma);
     }
     arma::vec lower0 = fillVec(lower, A_.n_cols);
     arma::vec upper0 = fillVec(upper, A_.n_cols);
@@ -1654,6 +1779,100 @@ void rxRmvnA(arma::mat & A_, arma::rowvec & mu, arma::mat &sigma,
                 upper0, ncores, a, tol, nlTol,nlMaxiter);
   } else {
     rxRmvn2_(A_, mu, sigma, ncores, isChol);
+  }
+}
+
+// Serial variant of rxRmvn2_() that draws from an already seeded engine.
+static void rxRmvn2Eng(arma::mat& A, const arma::rowvec& mu, const arma::mat& sigma,
+                       sitmo::threefry& eng, bool isChol=false) {
+  int n = A.n_rows;
+  int d = mu.n_elem;
+  if (n < 1 || d < 1) return;
+  arma::mat ch;
+  if (sigma.is_zero()) {
+    ch = sigma;
+  } else if (isChol) {
+    ch = arma::trimatu(sigma);
+  } else {
+    ch = arma::trimatu(arma::chol(sigma));
+  }
+  boost::random::normal_distribution<> snorm(0.0, 1.0);
+  for (int i = 0; i < n*d; ++i) {
+    A[i] = snorm(eng);
+  }
+  if (d == 1) {
+    double sd = ch(0, 0);
+    for (int i = 0; i < n; ++i) {
+      A[i] = A[i]*sd + mu(0);
+    }
+  } else {
+    arma::rowvec work(d);
+    for (int ir = 0; ir < n; ++ir) {
+      for (int ic = d; ic--;) {
+        double acc = 0.0;
+        for (int ii = 0; ii <= ic; ++ii) {
+          acc += A.at(ir, ii) * ch.at(ii, ic);
+        }
+        work.at(ic) = acc;
+      }
+      work += mu;
+      A(arma::span(ir), arma::span::all) = work;
+    }
+  }
+}
+
+// Serial variant of rxMvrandn__() that draws from an already seeded engine.
+static void rxMvrandnEng(arma::mat& A, const arma::rowvec& mu, const arma::mat& sigma,
+                         const arma::vec& lower, const arma::vec& upper,
+                         sitmo::threefry& eng, double a=0.4, double tol=2.05,
+                         double nlTol=1e-10, int nlMaxiter=100) {
+  int n = A.n_rows;
+  int d = mu.n_elem;
+  if (n < 1 || d < 1) return;
+  if (sigma.is_zero()) {
+    if (d == 1) {
+      for (int i = 0; i < n; ++i) A[i] = mu(0);
+    } else {
+      A.zeros();
+      A.each_row() += mu;
+    }
+    return;
+  }
+  arma::vec low = lower - trans(mu);
+  arma::vec up  = upper - trans(mu);
+  if (d == 1) {
+    double sd = sqrt(sigma(0, 0));
+    double l = low(0)/sd;
+    double u = up(0)/sd;
+    for (int i = 0; i < n; ++i) {
+      A[i] = sd*trandn(l, u, eng, a, tol) + mu(0);
+    }
+  } else {
+    arma::mat ret = mvrandn(low, up, sigma, n, eng, a, tol, nlTol, nlMaxiter, 1);
+    ret.each_row() += mu;
+    // mvrandn() may return fewer rows than requested; the rest are NA
+    A.fill(NA_REAL);
+    A.rows(0, ret.n_rows - 1) = ret;
+  }
+}
+
+// Armadillo-only simulation drawing from an already seeded engine; this is the
+// in-solve counterpart of rxRmvnA().
+static void rxRmvnAEng(arma::mat& A, const arma::rowvec& mu, const arma::mat& sigma,
+                       arma::vec& lower, arma::vec& upper, sitmo::threefry& eng,
+                       bool isChol=false, double a=0.4, double tol=2.05,
+                       double nlTol=1e-10, int nlMaxiter=100) {
+  bool trunc = anyFinite(lower) || anyFinite(upper);
+  if (trunc) {
+    arma::mat sigma0 = sigma;
+    if (isChol) {
+      sigma0 = trans(trimatu(sigma)) * trimatu(sigma);
+    }
+    arma::vec lower0 = fillVec(lower, A.n_cols);
+    arma::vec upper0 = fillVec(upper, A.n_cols);
+    rxMvrandnEng(A, mu, sigma0, lower0, upper0, eng, a, tol, nlTol, nlMaxiter);
+  } else {
+    rxRmvn2Eng(A, mu, sigma, eng, isChol);
   }
 }
 
@@ -1670,12 +1889,64 @@ void simvar(double *out, int type, int csim, rx_solve* rx) {
   arma::rowvec mu(n, arma::fill::zeros);
   arma::mat sigma = getArmaMat(type, csim, rx);
 
+  // simeta()/simeps() run inside the parallel solve, so the draw has to come
+  // from this thread's engine (seeded on the main thread by seedEng() and
+  // setSeedEng1()).  rxRmvnA() would re-seed with getRxSeed1(), which uses R's
+  // RNG and must never be called from an OpenMP worker thread.
+  int thread = rx_get_thread(op_global.cores);
   // FIXME? allow changing of a, tol nlTol and nlMaxiter?
-  rxRmvnA(A, mu, sigma, lower, upper, 1, false, 0.4, 2.05, 1e-10, 100);
+  if (thread < 0 || thread >= (int)_engSim.size()) {
+    // Not seeded; should not happen during a solve.  Use a per-thread stream
+    // rather than reaching for R's RNG off the main thread.
+    static thread_local sitmo::threefry engFallback;
+    rxRmvnAEng(A, mu, sigma, lower, upper, engFallback, false, 0.4, 2.05, 1e-10, 100);
+    return;
+  }
+  rxRmvnAEng(A, mu, sigma, lower, upper, _engSim[thread], false, 0.4, 2.05, 1e-10, 100);
 }
+// ---------------------------------------------------------------------------
+// rxPreGenEta: pre-generate all nsolve * neta eta draws before the parallel
+// solve loop.  Subjects then read from the buffer in simeta() without calling
+// rxRmvnA() per subject -- eliminating per-subject Cholesky + draw overhead.
+//
+// Handles two cases:
+//   nOmega == 1: single omega matrix -> generate all nsolve rows in one call
+//   nOmega  > 1: per-simulation omega -> generate nsub rows per simulation
+// ---------------------------------------------------------------------------
+extern "C" void rxPreGenEta(rx_solve *rx, int ncores) {
+  if (rx->neta <= 0 || rxIsZeroOmega()) return;
+
+  int nsolve = (int)((uint32_t)rx->nsim * (uint32_t)rx->nsub);
+  int neta   = rx->neta;
+
+  double *buf = rxEtaPreGetOrAlloc(nsolve * neta);
+  if (!buf) return; // allocation failure -- fall back to per-subject draws
+
+  arma::vec lower = getLowerVec(1, rx);
+  arma::vec upper = getUpperVec(1, rx);
+  arma::rowvec mu(neta, arma::fill::zeros);
+
+  if (rxGetNOmega() == 1) {
+    // All subjects share the same omega -- one big batch call
+    arma::mat A(buf, nsolve, neta, false, true);
+    arma::mat sigma = getArmaMat(1, 0, rx);
+    rxRmvnA(A, mu, sigma, lower, upper, ncores, false, 0.4, 2.05, 1e-10, 100);
+  } else {
+    // Per-simulation omega: generate nsub rows for each simulation
+    int nsub = (int)rx->nsub;
+    int nsim = (int)rx->nsim;
+    for (int csim = 0; csim < nsim; csim++) {
+      double *ptr = buf + (ptrdiff_t)csim * nsub * neta;
+      arma::mat A(ptr, nsub, neta, false, true);
+      arma::mat sigma = getArmaMat(1, csim, rx);
+      rxRmvnA(A, mu, sigma, lower, upper, 1, false, 0.4, 2.05, 1e-10, 100);
+    }
+  }
+}
+
 extern "C" void simeps(void) {
   rx_solve* rx = &rx_global;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind->inLhs == 1) { // only change while calculating the lhs
     // In this case the par_ptr will be updated with the new values, but they are out of order
     arma::mat out(1, rx->neps);
@@ -1694,39 +1965,155 @@ extern "C" void simeps(void) {
 
 extern "C" void simeta(void) {
   rx_solve* rx = &rx_global;
-  rx_solving_options_ind* ind = &inds_thread[rx_get_thread(op_global.cores)];
+  rx_solving_options_ind* ind = rxThreadInd();
   if (ind != NULL && ind->isIni == 1) { // only initialize at beginning
-    // In this case the par_ptr will be updated with the new values, but they are out of order
-    arma::mat out(1, rx->neta);
-    // ind->id  = csub+csim*nsub;
-    int csim = std::floor((double)(ind->id)/((double)rx->nsub));
-    simvar(&out[0], 1, csim, rx);
     double *par_ptr = ind->par_ptr;
-    for (int j=0; j < rx->neta; j++){
-      // The error pointer is updated if needed
-      // REprintf("j: %d\n", j );
-      // REprintf("ovar[j]: %d\n", op->ovar[j]);
-      par_ptr[rx->ovar[j]] = out[j];
-      // REprintf("out[j]: %d\n", out[j]);
+    double *pre = rxGetEtaPre();
+    if (pre) {
+      // Fast path: read pre-generated row for this subject/sim
+      double *row = pre + (ptrdiff_t)(ind->id) * rx->neta;
+      for (int j = 0; j < rx->neta; j++) {
+        par_ptr[rx->ovar[j]] = row[j];
+      }
+    } else {
+      // Fallback: draw one MVN sample on the fly (legacy path, or zeroOmega)
+      arma::mat out(1, rx->neta);
+      int csim = (int)std::floor((double)(ind->id)/((double)rx->nsub));
+      simvar(&out[0], 1, csim, rx);
+      for (int j = 0; j < rx->neta; j++) {
+        par_ptr[rx->ovar[j]] = out[j];
+      }
     }
   }
 }
 
-//[[Rcpp::export]]
-SEXP rxRmvnSEXP(SEXP nS,
-                SEXP muS, SEXP sigmaS,
-                SEXP lowerS, SEXP upperS, SEXP ncoresS, SEXP isCholS,
-                SEXP keepNamesS,
-                SEXP aS, SEXP tolS, SEXP nlTolS, SEXP nlMaxiterS){
-  BEGIN_RCPP
-    int type = TYPEOF(sigmaS);
-  bool isSigmaList = (type == VECSXP);
-  int d=0;
+// Fills A with multivariate normal (df=Inf) or t draws
+static void rxRmvGen0(NumericMatrix& A, arma::rowvec& mu, arma::mat& sigma,
+                      arma::vec& lower, arma::vec& upper, int ncores, bool isChol,
+                      double a, double tol, double nlTol, int nlMaxiter, double df) {
+  if (!R_FINITE(df)) {
+    rxRmvn0(A, mu, sigma, lower, upper, ncores, isChol, a, tol, nlTol, nlMaxiter);
+    return;
+  }
+  arma::mat A0(A.begin(), A.nrow(), A.ncol(), false, true);
+  rxRmvt0(A0, mu, sigma, lower, upper, df, isChol, a, tol, nlTol, nlMaxiter);
+}
+
+// First (or only) scale matrix of rxRmvnSEXP/rxRmvtSEXP; validates a list of them
+static NumericMatrix rxRmvGetSigma0(SEXP sigmaS, bool isSigmaList, List& sigmaList) {
   NumericMatrix sigma0;
-  NumericVector muNV;
-  List sigmaList;
+  if (!isSigmaList) {
+    qassertS(sigma0, "M", "sigma");
+    if (Rf_isMatrix(sigmaS)) sigma0 = as<NumericMatrix>(sigmaS);
+    return sigma0;
+  }
+  sigmaList = as<List>(sigmaS);
+  if (sigmaList.size() == 0) {
+    stop(_("when 'sigma' is a list, it has to have at least 1 element"));
+  }
+  if (!Rf_isMatrix(sigmaList[0])){
+    stop(_("'sigma' must be a list of square symmetric matrices"));
+  }
+  qassertS(sigmaList[0], "M", "sigma[[0]]");
+  sigma0 = as<NumericMatrix>(sigmaList[0]);
+  int d  = sigma0.nrow();
+  if (d != sigma0.ncol()) {
+    stop("'sigma[[0]]' must a square matrix");
+  }
+  for (int i = sigmaList.size()-1; i--;){
+    NumericMatrix sigmaTmp = as<NumericMatrix>(sigmaList[i]);
+    if (d != sigmaTmp.nrow() || d != sigmaTmp.ncol()) {
+      stop(_("'sigma' list element %d does not match dimension of first matrix"), i+1);
+    }
+  }
+  return sigma0;
+}
+
+static CharacterVector rxRmvGetDimnames(NumericMatrix& sigma0) {
   CharacterVector dimnames;
-  arma::mat sigma;
+  if (sigma0.hasAttribute("dimnames")){
+    List curL = as<List>(sigma0.attr("dimnames"));
+    if (!Rf_isNull(curL[0])){
+      dimnames = as<CharacterVector>(curL[0]);
+    } else {
+      dimnames = as<CharacterVector>(curL[1]);
+    }
+  }
+  return dimnames;
+}
+
+// mu (zeros when NULL); takes or checks the names against dimnames
+static NumericVector rxRmvGetMu(SEXP muS, int d, CharacterVector& dimnames) {
+  NumericVector muNV;
+  if (Rf_isNull(muS)) {
+    muNV = NumericVector(d);
+    std::fill(muNV.begin(),muNV.end(), 0);
+  } else if (qtest(muS, "I+")) {
+    muNV = as<NumericVector>(muS);
+  } else {
+    qassertS(muS, "R+", "mu");
+    muNV = as<NumericVector>(muS);
+  }
+  if (muNV.size() != d) {
+    stop(_("'mu' length must match 'sigma' dimensions"));
+  }
+  if (!muNV.hasAttribute("names")) return muNV;
+  if (dimnames.size() == 0) {
+    dimnames = as<CharacterVector>(muNV.attr("names"));
+    return muNV;
+  }
+  CharacterVector dimnames2 = as<CharacterVector>(muNV.attr("names"));
+  if (dimnames2.size() != dimnames.size()) stop("malformed 'muNV' 'sigma'");
+  for (int i = dimnames2.size(); i--;) {
+    if (as<std::string>(dimnames[i]) != as<std::string>(dimnames2[i])) {
+      stop("'mu' and 'sigma' names have to have the same order");
+    }
+  }
+  return muNV;
+}
+
+// A bound recycled from length 1 to d
+static NumericVector rxRmvGetBound(SEXP boundS, int d, const char* msg) {
+  NumericVector in = as<NumericVector>(boundS);
+  if (in.size() == 1) {
+    NumericVector ret(d);
+    std::fill(ret.begin(), ret.end(), in[0]);
+    return ret;
+  }
+  if (in.size() != d) stop(msg);
+  return in;
+}
+
+// Stacks n draws per element of a list of scale matrices
+static NumericMatrix rxRmvGenList(List& sigmaList, int n, int d,
+                                  arma::rowvec& mu, arma::vec& lower,
+                                  arma::vec& upper, int ncores, bool isChol,
+                                  double a, double tol, double nlTol,
+                                  int nlMaxiter, double df) {
+  int sListN = sigmaList.size();
+  NumericMatrix retNM(n*sListN, d);
+  for (int i = 0; i < sListN; ++i) {
+    NumericMatrix Acur(n, d);
+    arma::mat sigma=as<arma::mat>(sigmaList[i]);
+    rxRmvGen0(Acur, mu, sigma, lower, upper, ncores, isChol,
+              a, tol, nlTol, nlMaxiter, df);
+    for (int j = 0; j < d; ++j) {
+      std::copy(Acur.begin()  + n*j,
+                Acur.begin()  + n*(j+1),
+                retNM.begin() + n*sListN*j + i*n);
+    }
+  }
+  return retNM;
+}
+
+static SEXP rxRmvGenSEXP(SEXP nS,
+                         SEXP muS, SEXP sigmaS,
+                         SEXP lowerS, SEXP upperS, SEXP ncoresS, SEXP isCholS,
+                         SEXP keepNamesS,
+                         SEXP aS, SEXP tolS, SEXP nlTolS, SEXP nlMaxiterS,
+                         double df){
+  bool isSigmaList = (TYPEOF(sigmaS) == VECSXP);
+  List sigmaList;
   NumericMatrix A;
   int n=0;
   qassertS(aS, "R1[0,)", "a");
@@ -1738,44 +2125,14 @@ SEXP rxRmvnSEXP(SEXP nS,
   qassertS(nlMaxiterS, "X1[0,)", "nlMaxiter");
   int nlMaxiter=as<int>(nlMaxiterS);
   qassertS(lowerS, "R+", "lower");
-  NumericVector lowerIn = as<NumericVector>(lowerS);
-  NumericVector lowerNV;
   qassertS(ncoresS, "X1[1,)", "ncores");
   int ncores = as<int>(ncoresS);
-  // arma::vec lower, arma::vec upper, int ncores=1, bool isChol=false,
   qassertS(isCholS, "B1", "isChol");
   bool isChol = as<bool>(isCholS);
   qassertS(keepNamesS, "B1", "keepNames");
   bool keepNames = as<bool>(keepNamesS);
-
-  // get sigma0
-  if (isSigmaList){
-    sigmaList = as<List>(sigmaS);
-    if (sigmaList.size() == 0) {
-      stop(_("when 'sigma' is a list, it has to have at least 1 element"));
-    }
-    if (!Rf_isMatrix(sigmaList[0])){
-      stop(_("'sigma' must be a list of square symmetric matrices"));
-    }
-    qassertS(sigmaList[0], "M", "sigma[[0]]");
-    sigma0 = as<NumericMatrix>(sigmaList[0]);
-    d  = sigma0.nrow();
-    if (d != sigma0.ncol()) {
-      stop("'sigma[[0]]' must a square matrix");
-    }
-    for (int i = sigmaList.size()-1; i--;){
-      NumericMatrix sigmaTmp = as<NumericMatrix>(sigmaList[i]);
-      if (d != sigmaTmp.nrow() || d != sigmaTmp.ncol()) {
-        stop(_("'sigma' list element %d does not match dimension of first matrix"), i+1);
-      }
-    }
-  } else if (Rf_isMatrix(sigmaS)) {
-    qassertS(sigma0, "M", "sigma");
-    sigma0 = as<NumericMatrix>(sigmaS);
-    d = sigma0.nrow();
-  } else {
-    qassertS(sigma0, "M", "sigma");
-  }
+  NumericMatrix sigma0 = rxRmvGetSigma0(sigmaS, isSigmaList, sigmaList);
+  int d = sigma0.nrow();
   if (Rf_isMatrix(nS)) {
     A = as<NumericMatrix>(nS);
     n = A.nrow();
@@ -1784,59 +2141,12 @@ SEXP rxRmvnSEXP(SEXP nS,
     n = as<int>(nS);
     A = NumericMatrix(n, d);
   }
-  if (sigma0.hasAttribute("dimnames")){
-    List curL = as<List>(sigma0.attr("dimnames"));
-    if (!Rf_isNull(curL[0])){
-      dimnames = as<CharacterVector>(curL[0]);
-    } else {
-      dimnames = as<CharacterVector>(curL[1]);
-    }
-  }
-  // get mu
-  if (Rf_isNull(muS)) {
-    muNV = NumericVector(d);
-    std::fill(muNV.begin(),muNV.end(), 0);
-  } else if (qtest(muS, "I+")) {
-    muNV = as<NumericVector>(muS);
-  } else {
-    qassertS(muS, "R+", "mu");
-    muNV = as<NumericVector>(muS);
-  }
-  arma::rowvec mu = as<arma::rowvec>(muNV);
-  if (muNV.size() != d) {
-    stop(_("'mu' length must match 'sigma' dimensions"));
-  }
-  if (muNV.hasAttribute("names")) {
-    if (dimnames.size() == 0) {
-      dimnames = as<CharacterVector>(muNV.attr("names"));
-    } else {
-      CharacterVector dimnames2 = as<CharacterVector>(muNV.attr("names"));
-      if (dimnames2.size() != dimnames.size()) stop("malformed 'muNV' 'sigma'");
-      for (int i = dimnames2.size(); i--;) {
-        if (as<std::string>(dimnames[i]) != as<std::string>(dimnames2[i])) {
-          stop("'mu' and 'sigma' names have to have the same order");
-        }
-      }
-    }
-  }
-  if (lowerIn.size() == 1) {
-    lowerNV = NumericVector(d);
-    std::fill(lowerNV.begin(), lowerNV.end(), lowerIn[0]);
-  } else {
-    if (lowerIn.size() != d)
-      stop("'lower' needs to match the dimension of 'mu' and 'sigma' or be 1");
-    lowerNV = lowerIn;
-  }
-  NumericVector upperIn = as<NumericVector>(upperS);
-  NumericVector upperNV;
-  if (upperIn.size() == 1) {
-    upperNV = NumericVector(d);
-    std::fill(upperNV.begin(), upperNV.end(), upperIn[0]);
-  } else {
-    if (upperIn.size() != d)
-      stop("'upper' needs to match the dimension of 'mu' and 'sigma' or be 1");
-    upperNV = upperIn;
-  }
+  CharacterVector dimnames = rxRmvGetDimnames(sigma0);
+  arma::rowvec mu = as<arma::rowvec>(rxRmvGetMu(muS, d, dimnames));
+  NumericVector lowerNV = rxRmvGetBound(lowerS, d,
+                                        "'lower' needs to match the dimension of 'mu' and 'sigma' or be 1");
+  NumericVector upperNV = rxRmvGetBound(upperS, d,
+                                        "'upper' needs to match the dimension of 'mu' and 'sigma' or be 1");
   for (int i = 0; i < d; ++i) {
     if (upperNV[i] <= lowerNV[i]) {
       stop("'upper[%d]' <= 'lower[%d]'", i+1, i+1);
@@ -1844,35 +2154,43 @@ SEXP rxRmvnSEXP(SEXP nS,
   }
   arma::vec lower = as<arma::vec>(lowerNV);
   arma::vec upper = as<arma::vec>(upperNV);
-  SEXP retS;
   if (isSigmaList) {
-    int sListN = sigmaList.size();
-    NumericMatrix retNM(n*sListN, d);
-    for (int i = 0; i < sListN; ++i) {
-      NumericMatrix Acur(n, d);
-      sigma=as<arma::mat>(sigmaList[i]);
-      rxRmvn0(Acur, mu, sigma, lower, upper, ncores, isChol,
-              a, tol, nlTol, nlMaxiter);
-      for (int j = 0; j < d; ++j) {
-        std::copy(Acur.begin()  + n*j,
-                  Acur.begin()  + n*(j+1),
-                  retNM.begin() + n*sListN*j + i*n);
-      }
-    }
-    if (keepNames && dimnames.size() > 0) {
-      retNM.attr("dimnames") = List::create(R_NilValue, dimnames);
-    }
-    retS = as<SEXP>(retNM);
+    A = rxRmvGenList(sigmaList, n, d, mu, lower, upper, ncores, isChol,
+                     a, tol, nlTol, nlMaxiter, df);
   } else {
-    sigma=as<arma::mat>(sigma0);
-    rxRmvn0(A, mu, sigma, lower, upper, ncores, isChol,
-            a, tol, nlTol, nlMaxiter);
-    if (keepNames && dimnames.size() > 0) {
-      A.attr("dimnames") = List::create(R_NilValue, dimnames);
-    }
-    retS = as<SEXP>(A);
+    arma::mat sigma=as<arma::mat>(sigma0);
+    rxRmvGen0(A, mu, sigma, lower, upper, ncores, isChol,
+              a, tol, nlTol, nlMaxiter, df);
   }
-  return retS;
+  if (keepNames && dimnames.size() > 0) {
+    A.attr("dimnames") = List::create(R_NilValue, dimnames);
+  }
+  return as<SEXP>(A);
+}
+
+//[[Rcpp::export]]
+SEXP rxRmvnSEXP(SEXP nS,
+                SEXP muS, SEXP sigmaS,
+                SEXP lowerS, SEXP upperS, SEXP ncoresS, SEXP isCholS,
+                SEXP keepNamesS,
+                SEXP aS, SEXP tolS, SEXP nlTolS, SEXP nlMaxiterS){
+  BEGIN_RCPP
+    return rxRmvGenSEXP(nS, muS, sigmaS, lowerS, upperS, ncoresS, isCholS,
+                        keepNamesS, aS, tolS, nlTolS, nlMaxiterS, R_PosInf);
+  END_RCPP
+    }
+
+//[[Rcpp::export]]
+SEXP rxRmvtSEXP(SEXP nS,
+                SEXP muS, SEXP sigmaS, SEXP dfS,
+                SEXP lowerS, SEXP upperS, SEXP ncoresS, SEXP isCholS,
+                SEXP keepNamesS,
+                SEXP aS, SEXP tolS, SEXP nlTolS, SEXP nlMaxiterS){
+  BEGIN_RCPP
+    qassertS(dfS, "N1(0,]", "df");
+  double df = as<double>(dfS);
+  return rxRmvGenSEXP(nS, muS, sigmaS, lowerS, upperS, ncoresS, isCholS,
+                      keepNamesS, aS, tolS, nlTolS, nlMaxiterS, df);
   END_RCPP
     }
 

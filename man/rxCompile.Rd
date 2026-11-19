@@ -25,6 +25,7 @@ rxCompile(
   force = FALSE,
   modName = NULL,
   package = NULL,
+  eventSensCode = rep("", 13L),
   ...
 )
 
@@ -35,6 +36,7 @@ rxCompile(
   force = FALSE,
   modName = NULL,
   package = NULL,
+  eventSensCode = rep("", 13L),
   ...
 )
 
@@ -88,6 +90,16 @@ simple ASCII alphanumeric characters starting with a letter.}
 
 \item{...}{Other arguments sent to the \code{\link[=rxTrans]{rxTrans()}}
 function.}
+
+\item{eventSensCode}{character vector of length 13 giving the C body
+lines for the event ("jump") sensitivity helper functions
+\code{dLag}/\code{dF}/\code{dRate}/\code{dDur}/\code{d2F}/\code{d2Lag}/\code{d2Rate}/\code{d2Dur}/\code{d3F}/\code{dFQ}/
+\code{dLagJac}/\code{dLagQ}/\code{dDurQ} (in that order).  These are the per-model
+dosing-parameter total-derivative assignments produced by the
+event-sensitivity code generator and are emitted verbatim into the
+corresponding generated functions.  The default of thirteen empty
+strings produces trivial (no-op) helpers, which is what
+non-sensitivity models and \code{eventSens = "fd"} models use.}
 }
 \value{
 An rxDll object that has the following components
@@ -105,9 +117,37 @@ using the \code{\link[=.Call]{.Call()}} function.
 This is the compilation workhorse creating the rxode2 model DLL
 files.
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    k <- 0.1
+  })
+  model({
+    d/dt(A) <- -k * A
+  })
+}
+dll <- rxCompile(rxModelVars(mod()), dir = file.path(tempdir(), "rxCompile"))
+dll
+}
+}
 \seealso{
 \code{\link[=rxode2]{rxode2()}}
+
+Other Model definition:
+\code{\link[=rxClean]{rxClean()}},
+\code{\link[=rxCreateCache]{rxCreateCache()}},
+\code{\link[=rxDelete]{rxDelete()}},
+\code{\link[=rxLastCompile]{rxLastCompile()}},
+\code{\link[=rxNorm]{rxNorm()}},
+\code{\link{rxReservedKeywords}},
+\code{\link[=rxSupportedFuns]{rxSupportedFuns()}},
+\code{\link{rxSyntaxFunctions}},
+\code{\link[=rxUnloadAll]{rxUnloadAll()}},
+\code{\link[=rxode2]{rxode2()}},
+\code{\link[=summary.rxode2]{summary.rxode2()}}
 }
 \author{
 Matthew L.Fidler
 }
+\concept{Model definition}

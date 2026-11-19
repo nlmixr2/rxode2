@@ -1,5 +1,5 @@
 ---
-title: "Using Prior Data for ODE solving"
+title: "Simulating from observed data"
 date: "`r Sys.Date()`"
 output:
   html_document:
@@ -17,3 +17,8 @@ knitr::opts_chunk$set(
 cat(unlist(knitr::knit_child(text = readLines("../man-roxygen/rmdhunks/prior-data.Rmd"),
                              envir = environment(), quiet = TRUE)), sep="\n")
 ```
+
+## Next steps
+
+- [Simulating populations](rxode2-sim-var.html)
+- [Covariates](rxode2-covariates.html)

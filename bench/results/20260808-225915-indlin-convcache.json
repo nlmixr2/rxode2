@@ -1,0 +1,21 @@
+{
+  "label": "indlin-convcache",
+  "timestamp": "2026-08-08T22:59:15",
+  "git": "ecac359b3",
+  "quick": false,
+  "nbig": 5000,
+  "cores": null,
+  "cases": {
+    "compile_ode": 0.035919,
+    "solve_single_ode": 0.016256,
+    "solve_single_lin": 0.013099,
+    "solve_pop_ode": 1.036638,
+    "solve_pop_lin": 1.163563,
+    "solve_pop_cov": 1.346692,
+    "solve_single_indlin_lin": 0.01487,
+    "solve_single_indlin_mm": 0.02803,
+    "solve_single_indlin_convert": 0.010549,
+    "solve_pop_indlin_mm": 2.707562,
+    "et_build": 0.004556
+  }
+}

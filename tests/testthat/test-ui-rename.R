@@ -1,6 +1,5 @@
 rxTest({
   test_that("rename for ui makes sense", {
-
     ocmt <- function() {
       ini({
         tka <- exp(0.45)
@@ -37,12 +36,12 @@ rxTest({
     expect_true("cpParent" %in% f$predDf$var)
     expect_true("cpParent" %in% f$predDf$cond)
 
-    f <- dplyr::rename(ocmt, cp.parent=cp)
+    f <- dplyr::rename(ocmt, cp.parent = cp)
     expect_true("cp.parent" %in% f$mv0$lhs)
     expect_true("cp.parent" %in% f$predDf$var)
     expect_true("cp.parent" %in% f$predDf$cond)
 
-    f2 <- dplyr::rename(f, depot.parent=depot)
+    f2 <- dplyr::rename(f, depot.parent = depot)
     expect_true("depot.parent" %in% f2$mv0$state)
 
     ocmt <- function() {
@@ -89,12 +88,11 @@ rxTest({
       })
     }
 
-    f <- dplyr::rename(ocmt, alag=lag)
+    f <- dplyr::rename(ocmt, alag = lag)
 
     expect_equal(f$lstExpr[[6]], quote(lag(depot) <- alag))
 
     # now test that d/dt(item) remains intact
-
 
     ocmt <- function() {
       ini({
@@ -116,7 +114,7 @@ rxTest({
       })
     }
 
-    f <- dplyr::rename(ocmt, alag=d)
+    f <- dplyr::rename(ocmt, alag = d)
     expect_equal(f$lstExpr[[6]], quote(lag(depot) <- alag))
 
     ocmt <- function() {
@@ -148,11 +146,9 @@ rxTest({
     expect_equal(tmp$lstExpr[[6]], quote(rate(dcmt) <- 1))
     expect_equal(tmp$lstExpr[[7]], quote(dur(dcmt) <- 1))
     expect_equal(tmp$lstExpr[[8]], quote(alag(dcmt) <- 1))
-
   })
 
   test_that("rename with sigma and thetaMat", {
-
     f <- function() {
       description <- "BOLUS_2CPT_CLV1QV2 SINGLE DOSE FOCEI (120 Ind/2280 Obs) runODE032"
       dfObs <- 2280
@@ -225,39 +221,41 @@ rxTest({
 
     f2 <- rxRename(f, eta.cl=eta1, eta.v=eta2, eta.q=eta3, eta.v2=eta4, eps=eps1)
 
-    expect_equal(sort(intersect(dimnames(f2$omega)[[1]],
-                                c("eta.cl", "eta.v", "eta.q", "eta.v2"))),
-                 c("eta.cl", "eta.q", "eta.v", "eta.v2"))
+    expect_equal(
+      sort(intersect(dimnames(f2$omega)[[1]], c("eta.cl", "eta.v", "eta.q", "eta.v2"))),
+      c("eta.cl", "eta.q", "eta.v", "eta.v2")
+    )
 
-    expect_equal(sort(intersect(dimnames(f2$thetaMat)[[1]],
-                                c("eta.cl", "eta.v", "eta.q", "eta.v2", "eps"))),
-                 c("eps", "eta.cl", "eta.q", "eta.v", "eta.v2"))
+    expect_equal(
+      sort(intersect(dimnames(f2$thetaMat)[[1]], c("eta.cl", "eta.v", "eta.q", "eta.v2", "eps"))),
+      c("eps", "eta.cl", "eta.q", "eta.v", "eta.v2")
+    )
 
     expect_equal(dimnames(f2$sigma)[[1]], "eps")
 
     f <- rxUiDecompress(f)
     f$sigma <- f$meta$sigma
     f$thetaMat <- f$meta$thetaMat
-    rm("sigma", envir=f$meta)
-    rm("thetaMat", envir=f$meta)
+    rm("sigma", envir = f$meta)
+    rm("thetaMat", envir = f$meta)
     f <- rxUiCompress(f)
 
     f3 <- rxRename(f, eta.cl=eta1, eta.v=eta2, eta.q=eta3, eta.v2=eta4, eps=eps1)
 
-    expect_equal(sort(intersect(dimnames(f3$omega)[[1]],
-                                c("eta.cl", "eta.v", "eta.q", "eta.v2"))),
-                 c("eta.cl", "eta.q", "eta.v", "eta.v2"))
+    expect_equal(
+      sort(intersect(dimnames(f3$omega)[[1]], c("eta.cl", "eta.v", "eta.q", "eta.v2"))),
+      c("eta.cl", "eta.q", "eta.v", "eta.v2")
+    )
 
-    expect_equal(sort(intersect(dimnames(f3$thetaMat)[[1]],
-                                c("eta.cl", "eta.v", "eta.q", "eta.v2", "eps"))),
-                 c("eps", "eta.cl", "eta.q", "eta.v", "eta.v2"))
+    expect_equal(
+      sort(intersect(dimnames(f3$thetaMat)[[1]], c("eta.cl", "eta.v", "eta.q", "eta.v2", "eps"))),
+      c("eps", "eta.cl", "eta.q", "eta.v", "eta.v2")
+    )
 
     expect_equal(dimnames(f3$sigma)[[1]], "eps")
-
   })
 
   test_that("rename doesn't change parent ui", {
-
     f <- function() {
       description <- "BOLUS_2CPT_CLV1QV2 SINGLE DOSE FOCEI (120 Ind/2280 Obs) runODE032"
       dfObs <- 2280
@@ -311,12 +309,14 @@ rxTest({
                  omega.3.1 = 0, omega.3.2 = 0, eta3 = -0.00012977,
                  omega.4.1 = 0, omega.4.2 = 0, omega.4.3 = 0, eta4 = 0.00051019)
       })
-      validation <- c("IPRED relative difference compared to Nonmem IPRED: 0%; 95% percentile: (0%,0%); rtol=6.43e-06",
-                      "IPRED absolute difference compared to Nonmem IPRED: 95% percentile: (2.19e-05, 0.0418); atol=0.00167",
-                      "IWRES relative difference compared to Nonmem IWRES: 0%; 95% percentile: (0%,0.01%); rtol=8.99e-06",
-                      "IWRES absolute difference compared to Nonmem IWRES: 95% percentile: (1.82e-07, 4.63e-05); atol=3.65e-06",
-                      "PRED relative difference compared to Nonmem PRED: 0%; 95% percentile: (0%,0%); rtol=6.41e-06",
-                      "PRED absolute difference compared to Nonmem PRED: 95% percentile: (1.41e-07,0.00382) atol=6.41e-06")
+      validation <- c(
+        "IPRED relative difference compared to Nonmem IPRED: 0%; 95% percentile: (0%,0%); rtol=6.43e-06",
+        "IPRED absolute difference compared to Nonmem IPRED: 95% percentile: (2.19e-05, 0.0418); atol=0.00167",
+        "IWRES relative difference compared to Nonmem IWRES: 0%; 95% percentile: (0%,0.01%); rtol=8.99e-06",
+        "IWRES absolute difference compared to Nonmem IWRES: 95% percentile: (1.82e-07, 4.63e-05); atol=3.65e-06",
+        "PRED relative difference compared to Nonmem PRED: 0%; 95% percentile: (0%,0%); rtol=6.41e-06",
+        "PRED absolute difference compared to Nonmem PRED: 95% percentile: (1.41e-07,0.00382) atol=6.41e-06"
+      )
       ini({
         theta1 <- 1.37034036528946
         label("log Cl")
@@ -371,8 +371,5 @@ rxTest({
     expect_false(any(dimnames(f3$thetaMat)[[1]] == "theta4"))
     expect_false(any(dimnames(f$thetaMat)[[1]] == "Vp"))
     expect_true(any(dimnames(f$thetaMat)[[1]] == "theta4"))
-
   })
-
-
 })

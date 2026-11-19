@@ -2,9 +2,40 @@
 ////////////////////////////////////////////////////////////////////////////////
 // rxode2 parsing function routines
 
+#include <ctype.h>
 #include "threadSafeConstants.h"
+#include "rxProtect.h"
 
 SEXP rxode2_getUdf2(const char *fun, const int nargs);
+
+// defined below, used by the adaptive dosing statement handlers
+static inline void rxPushDoseNoteArg(const char *fn, const char *arg, const char *v);
+
+// number of arguments of a `function` parse node: `f()` has 0, not 1
+static inline int functionNodeNargs(D_ParseNode *fPn) {
+  int ii = d_get_number_of_children(d_get_child(fPn, 3)) + 1;
+  if (ii == 1) {
+    D_ParseNode *xpn = d_get_child(fPn, 2);
+    char *v2 = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
+    if (allSpaces(v2)) return 0;
+  }
+  return ii;
+}
+
+// `f(, b)`: the grammar's first argument is optional, so an empty one
+// followed by a comma has to be refused here
+static inline int assertNoEmptyFirstArg(D_ParseNode *fPn, const char *fn) {
+  if (d_get_number_of_children(d_get_child(fPn, 3)) == 0) return 0;
+  D_ParseNode *xpn = d_get_child(fPn, 2);
+  char *v2 = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
+  if (allSpaces(v2)) {
+    updateSyntaxCol();
+    sPrint(&_gbuf, _("'%s' has an empty first argument"), fn);
+    trans_syntax_error_report_fn(_gbuf.s);
+    return 1;
+  }
+  return 0;
+}
 
 static inline int isAtFunctionArg(const char *name) {
   return !strcmp("(", name) ||
@@ -41,14 +72,15 @@ static inline int handleSimFunctions(nodeInfo ni, char *name, int *i, int nch,
     D_ParseNode *xpn = d_get_child(pn, 0);
     char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
     aType(TLOGIC);
+    tb.rng = 1;
     if (!strcmp("simeta", v)) {
       foundF0=1;
       if ((tb.simflg & 1) == 0) tb.simflg += 1;
     } else {
       if ((tb.simflg & 2) == 0) tb.simflg += 2;
     }
-    sAppend(&sb, "%s(_cSub);\n  _SYNC_%s_;", v, v);
-    sAppend(&sbDt, "%s(_cSub);\n  _SYNC_%s_;", v, v);
+    sAppend(&sb, "%s();\n  _SYNC_%s_;", v, v);
+    sAppend(&sbDt, "%s();\n  _SYNC_%s_;", v, v);
     sAppend(&sbt, "%s();", v);
     addLine(&sbPm, "%s\n", sb.s);
     addLine(&sbPmDt, "%s\n", sbDt.s);
@@ -57,6 +89,162 @@ static inline int handleSimFunctions(nodeInfo ni, char *name, int *i, int nch,
     /* Free(v); */
     ENDLINE;
     return 1;
+  }
+  return 0;
+}
+
+static inline int handleObsStatement(nodeInfo ni, char *name, int *i, int nch,
+                                     D_ParseNode *pn) {
+  if (nodeHas(obs_statement) && *i == 0) {
+    D_ParseNode *fPn = d_get_child(pn, 0);
+    D_ParseNode *xpn = d_get_child(fPn, 0);
+    char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
+    if (strcmp(v, "obs")) {
+      updateSyntaxCol();
+      trans_syntax_error_report_fn(_("only 'obs()' can be used as a standalone function statement"));
+    }
+    *i = nch;
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+    tb.evid_ = 1;
+    aType(TEVID);
+    if (assertNoEmptyFirstArg(fPn, "obs")) return 1;
+    int ii = functionNodeNargs(fPn);
+    if (ii == 0) {
+      updateSyntaxCol();
+      trans_syntax_error_report_fn(_("'obs' needs at least one argument"));
+      return 1;
+    }
+    D_ParseNode *xpn0 = d_get_child(fPn, 2);
+    char *v0 = (char*)rc_dup_str(xpn0->start_loc.s, xpn0->end);
+    sAppend(&sb, "_obs(_cSub, t, %d, (double) %s", ii, v0);
+    sAppend(&sbDt, "_obs(_cSub, t, %d, (double) %s", ii, v0);
+    sAppend(&sbt, "obs(%s", v0);
+    rxPushDoseNoteArg("obs", "value", v0);
+    D_ParseNode *rest = d_get_child(fPn, 3);
+    for (int j = 0; j < ii - 1; ++j) {
+      char *cur = (char*)rc_dup_str(d_get_child(rest, j)->start_loc.s,
+                                    d_get_child(rest, j)->end);
+      char *arg = cur + 1;
+      while (*arg == ' ' || *arg == '\t') arg++;
+      rxPushDoseNoteArg("obs", "value", arg);
+      sAppend(&sb, ", (double) %s", arg);
+      sAppend(&sbDt, ", (double) %s", arg);
+      sAppend(&sbt, ", %s", arg);
+    }
+    sAppendN(&sb, ");", 2);
+    sAppendN(&sbDt, ");", 2);
+    sAppendN(&sbt, ");", 2);
+    addLine(&sbPm, "%s\n", sb.s);
+    addLine(&sbPmDt, "%s\n", sbDt.s);
+    sAppend(&sbNrm, "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
+    ENDLINE;
+    return 1;
+  }
+  return 0;
+}
+
+/* Shared implementation of the dose-splitting directives.  splitKind
+ * selects which declaration table receives the source-then-target de
+ * indexes: 0 splitBolus(), 1 splitInfusion(), 2 splitInfusionBolus(),
+ * 3 splitBolusInfusion().  Only one splitting directive of any kind is
+ * supported per model: they all rewrite the same translated dose
+ * records, so combining them would make the result depend on the pass
+ * order. */
+static inline int handleSplitStatementKind(nodeInfo ni, char *name, int *i, int nch,
+                                           D_ParseNode *pn, int splitKind) {
+  const char *fname = splitKind == 0 ? "splitBolus" : (splitKind == 1 ? "splitInfusion" : (splitKind == 2 ? "splitInfusionBolus" : "splitBolusInfusion"));
+  if (tb.splitBolusN != 0 || tb.splitInfusionN != 0 || tb.splitInfusionBolusN != 0 || tb.splitBolusInfusionN != 0) {
+    updateSyntaxCol();
+    trans_syntax_error_report_fn(_("only one 'splitBolus()', 'splitInfusion()', 'splitInfusionBolus()' or 'splitBolusInfusion()' statement is supported per model"));
+  }
+  *i = nch;
+  sb.o = 0; sbDt.o = 0; sbt.o = 0;
+  D_ParseNode *cSrc = d_get_child(pn, 2);
+  D_ParseNode *c1 = d_get_child(pn, 4);
+  D_ParseNode *rest = d_get_child(pn, 5);
+  int nTargets = d_get_number_of_children(rest) + 1;
+  int nCmts = nTargets + 1;
+  char **vals = (char**)R_Calloc(nCmts, char*);
+  vals[0] = (char*)rc_dup_str(cSrc->start_loc.s, cSrc->end);
+  vals[1] = (char*)rc_dup_str(c1->start_loc.s, c1->end);
+  for (int j = 0; j < nTargets - 1; ++j) {
+    char *cur = (char*)rc_dup_str(d_get_child(rest, j)->start_loc.s,
+                                  d_get_child(rest, j)->end);
+    vals[j + 2] = cur + 1;
+    while (*vals[j + 2] == ' ' || *vals[j + 2] == '\t') vals[j + 2]++;
+  }
+  const char *dupMsg =
+    splitKind == 0 ? _("'splitBolus()' target compartments must all be different") :
+    (splitKind == 1 ? _("'splitInfusion()' target compartments must all be different") :
+    (splitKind == 2 ? _("'splitInfusionBolus()' target compartments must all be different") :
+                      _("'splitBolusInfusion()' target compartments must all be different")));
+  for (int j = 1; j < nCmts; ++j) {
+    for (int k = j + 1; k < nCmts; ++k) {
+      if (!strcmp(vals[j], vals[k])) {
+        updateSyntaxCol();
+        trans_syntax_error_report_fn((char*)dupMsg);
+      }
+    }
+  }
+  int *dst = splitKind == 0 ? tb.splitBolus : (splitKind == 1 ? tb.splitInfusion : (splitKind == 2 ? tb.splitInfusionBolus : tb.splitBolusInfusion));
+  for (int j = 0; j < nCmts; ++j) {
+    int hasLhs = isCmtLhsStatement(ni, name, vals[j]);
+    if (new_de(vals[j], fromCMTprop)) {
+      add_de(ni, name, vals[j], hasLhs, fromCMTprop);
+    } else {
+      new_or_ith(vals[j]);
+    }
+    dst[j] = tb.id + 1;
+  }
+  if (splitKind == 0) {
+    tb.splitBolusN = nCmts;
+  } else if (splitKind == 1) {
+    tb.splitInfusionN = nCmts;
+  } else if (splitKind == 2) {
+    tb.splitInfusionBolusN = nCmts;
+  } else {
+    tb.splitBolusInfusionN = nCmts;
+  }
+  sAppend(&sbt, "%s(%s", fname, vals[0]);
+  for (int j = 1; j < nCmts; ++j) {
+    sAppend(&sbt, ",%s", vals[j]);
+  }
+  sAppend(&sbt, ");");
+  sAppend(&sbNrm, "%s\n", sbt.s);
+  addLine(&sbNrmL, "%s\n", sbt.s);
+  R_Free(vals);
+  return 1;
+}
+
+static inline int handleSplitBolusStatement(nodeInfo ni, char *name, int *i, int nch,
+                                            D_ParseNode *pn) {
+  if (nodeHas(splitBolus_statement) && *i == 0) {
+    return handleSplitStatementKind(ni, name, i, nch, pn, 0);
+  }
+  return 0;
+}
+
+static inline int handleSplitInfusionStatement(nodeInfo ni, char *name, int *i, int nch,
+                                               D_ParseNode *pn) {
+  if (nodeHas(splitInfusion_statement) && *i == 0) {
+    return handleSplitStatementKind(ni, name, i, nch, pn, 1);
+  }
+  return 0;
+}
+
+static inline int handleSplitInfusionBolusStatement(nodeInfo ni, char *name, int *i, int nch,
+                                               D_ParseNode *pn) {
+  if (nodeHas(splitInfusionBolus_statement) && *i == 0) {
+    return handleSplitStatementKind(ni, name, i, nch, pn, 2);
+  }
+  return 0;
+}
+
+static inline int handleSplitBolusInfusionStatement(nodeInfo ni, char *name, int *i, int nch,
+                                               D_ParseNode *pn) {
+  if (nodeHas(splitBolusInfusion_statement) && *i == 0) {
+    return handleSplitStatementKind(ni, name, i, nch, pn, 3);
   }
   return 0;
 }
@@ -71,12 +259,14 @@ typedef struct transFunctions {
   int isT;
   int isUnif;
   int isWeibull;
+  int isLnorm;
   int isNormV;
   int isCauchy;
   int isLead;
   int isFirst;
   int isLast;
   int isDiff;
+  int is0; // lag0()/diff0()/lead0(): return 0 instead of NA on the first record
   int isLinB;
   int isPnorm;
 
@@ -99,6 +289,8 @@ typedef struct transFunctions {
   int isTfirst0;
 
   int isInd;
+
+  int isDelay;
   nodeInfo ni;
   char *name;
   int *i;
@@ -119,12 +311,14 @@ static inline void transFunctionsIni(transFunctions *tf) {
   tf->isT=0;
   tf->isUnif=0;
   tf->isWeibull=0;
+  tf->isLnorm=0;
   tf->isNormV=0;
   tf->isCauchy=0;
   tf->isLead=0;
   tf->isFirst=0;
   tf->isLast=0;
   tf->isDiff=0;
+  tf->is0=0;
   tf->isLinB=0;
   tf->isPnorm=0;
 
@@ -148,6 +342,8 @@ static inline void transFunctionsIni(transFunctions *tf) {
   tf->isTfirst0 = 0;
 
   tf->isInd=0;
+
+  tf->isDelay=0;
 }
 
 transFunctions _tf;
@@ -197,8 +393,13 @@ static inline int handleFunctionSum(transFunctions *tf) {
   if (!strcmp("prod",tf->v)   || !strcmp("sum", tf->v) || !strcmp("sign",  tf->v) ||
       !strcmp("max", tf->v)   || !strcmp("min", tf->v) ||
       !strcmp("rxord", tf->v) ||
-      !strcmp("mix", tf->v)) {
-    int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
+      !strcmp("mix", tf->v) || !strcmp("obs", tf->v)) {
+    int ii = functionNodeNargs(tf->pn);
+    if (ii == 0) {
+      updateSyntaxCol();
+      sPrint(&_gbuf, _("'%s' needs at least one argument"), tf->v);
+      trans_syntax_error_report_fn(_gbuf.s);
+    }
     if (!strcmp("prod", tf->v)) {
       sAppend(&sb, "_prod(_p, _input, _solveData->prodType, %d, (double) ", ii);
       sAppend(&sbDt, "_prod(_p, _input, _solveData->prodType, %d, (double) ", ii);
@@ -214,14 +415,21 @@ static inline int handleFunctionSum(transFunctions *tf) {
     } else if (!strcmp("rxord", tf->v)) {
       sAppend(&sb, "_rxord(_cSub, %d, (double) ", ii);
       sAppend(&sbDt, "_rxord(_cSub, %d, (double) ", ii);
+      tb.rng = 1; // _rxord() draws with rxunif()
     } else if (!strcmp("mix", tf->v)) {
       sAppend(&sb, "_mix(_cSub, %d, (double) ", ii);
       sAppend(&sbDt, "_mix(_cSub, %d, (double) ", ii);
-      if (ii % 2 == 0 || ii < 3) {
+      if (ii != 0 && (ii % 2 == 0 || ii < 3)) {
         sPrint(&_gbuf,
                _("'mix' takes an odd number of arguments (and at least 3) supplied %d"),
                ii);
         /* Free(v2); */
+        trans_syntax_error_report_fn(_gbuf.s);
+      }
+      if (tb.mixSel != 0 && tb.mixSel != (ii + 1)/2) {
+        sPrint(&_gbuf,
+               _("'mix' cannot change the number of arguments (%d) in a model (ie mixnum from %d to %d)"),
+               ii, tb.mixSel, (ii + 1)/2);
         trans_syntax_error_report_fn(_gbuf.s);
       }
       if (tb.hasMix == 0) {
@@ -233,6 +441,10 @@ static inline int handleFunctionSum(transFunctions *tf) {
         /* Free(v2); */
         trans_syntax_error_report_fn(_gbuf.s);
       }
+    } else if (!strcmp("obs", tf->v)) {
+      sAppend(&sb, "_obs(_cSub, t, %d, (double) ", ii);
+      sAppend(&sbDt, "_obs(_cSub, t, %d, (double) ", ii);
+      tb.evid_ = 1;
     } else {
       sAppend(&sb, "_%s(%d, (double) ", tf->v, ii);
       sAppend(&sbDt, "_%s(%d, (double) ", tf->v, ii);
@@ -253,6 +465,7 @@ static inline int handleFunctionSum(transFunctions *tf) {
 
 static inline int handleFunctionsExceptLinCmt(transFunctions *tf) {
   return handleFunctionDosenum(tf) ||
+    handleFunctionDelay(tf) ||
     handleFunctionTad(tf) ||
     handleFunctionSum(tf) ||
     handleFunctionLogit(tf) ||
@@ -272,6 +485,42 @@ static inline int handleFunctionsExceptLinCmt(transFunctions *tf) {
 }
 
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
+
+#include "invCdfMemo.h"
+
+// Count the ROOT-FINDING inverse CDFs this model calls, and size their memo.
+//
+// These are the expensive special functions -- each is a Newton/Halley iteration
+// whose every step evaluates the full forward CDF -- and a declared non-normal
+// random effect puts one in a MODEL LINE, i.e. on the per-record path, with
+// arguments that only change per subject.  The memo turns that back into once
+// per subject, but only if it has a slot for every call site: with one slot per
+// table, several declarations evict each other on every record and none ever
+// hits (measured: 1 slot 1.85x, 4 slots 3.0x on two declared etas).
+//
+// The count is a property of the parsed model, which is why it is taken here.
+// Eight slots per call site gives room for the perturbed argument sets a
+// finite-difference or sensitivity pass evaluates alongside the nominal one, and
+// the floor keeps the default for models that call none.
+//
+// chi-squared, inverse-chi-squared, scaled-inverse-chi-squared and studentT all
+// reach one of these through the catalog's own expansions, so counting these
+// names covers them.
+static inline void handleInvCdfFunctions(transFunctions *tf) {
+  if (!strcmp("gammapInv",   tf->v) || !strcmp("gammaqInv",   tf->v) ||
+      !strcmp("gammapInva",  tf->v) || !strcmp("gammaqInva",  tf->v) ||
+      !strcmp("ibetaInv",    tf->v) || !strcmp("studentTInv", tf->v)) {
+    // EXACT, from the parsed model: four slots per call site.
+    //
+    // Measured on two declared etas -- 1 slot 1.85x, 4 slots 3.0x, 64 slots
+    // 3.1x -- so two per site already recovers essentially all of it, and four
+    // leaves room for the perturbed argument sets a finite-difference pass
+    // evaluates beside the nominal one.  No floor beyond the setter's minimum: a
+    // model calling none of these allocates none.
+    tb.nInvCdf++;
+    rxSetInvCdfMemoSize(4 * tb.nInvCdf);
+  }
+}
 
 static inline void handleLlFunctions(transFunctions *tf) {
   if (!strncmp("llikX", tf->v, 5)) {
@@ -293,6 +542,13 @@ extern SEXP _rxode2parse_funNameInt;
 extern SEXP _rxode2parse_functionThreadSafe;
 
 
+extern SEXP _rxode2parse_functionPackageName;
+
+static inline int rxIsExtPkgFun(int kk) {
+  const char *pkg = R_CHAR(STRING_ELT(_rxode2parse_functionPackageName, kk));
+  return strcmp(pkg, "rxode2") && strcmp(pkg, "rxode2ll");
+}
+
 static inline int handleBadFunctions(transFunctions *tf) {
   // Split out to handle anticipated automatic conversion of R
   // functions to C
@@ -300,7 +556,7 @@ static inline int handleBadFunctions(transFunctions *tf) {
   int curThread = 0;
   for (int j = Rf_length(_goodFuns); j--;){
     if (!strcmp(CHAR(STRING_ELT(_goodFuns, j)),tf->v)){
-      int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
+      int ii = functionNodeNargs(tf->pn);
       int argMin=-1, argMax=-1;
       for (int kk = Rf_length(_rxode2parse_rxFunctionName); kk--;) {
         if (!strcmp(CHAR(STRING_ELT(_rxode2parse_rxFunctionName, kk)),tf->v)) {
@@ -308,6 +564,8 @@ static inline int handleBadFunctions(transFunctions *tf) {
           argMax = INTEGER(_rxode2parse_functionArgMax)[kk];
           curThread = INTEGER(_rxode2parse_functionThreadSafe)[kk];
           if (curThread == 0) tb.thread = notThreadSafe;
+          // another package's C function may draw random numbers
+          if (rxIsExtPkgFun(kk)) tb.rng = 1;
           if (argMin == NA_INTEGER || argMax == NA_INTEGER) {
             argMin = argMax = -1;
             break;
@@ -351,33 +609,31 @@ static inline int handleBadFunctions(transFunctions *tf) {
       }
       // Save log-likelihood information
       handleLlFunctions(tf);
+      // Size the inverse-CDF memo from what this model actually calls
+      handleInvCdfFunctions(tf);
       foundFun = 1;
       j=0;
       break;
     }
   }
   if (foundFun == 0){
-    int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
-    if (ii == 1) {
-      D_ParseNode *xpn = d_get_child(tf->pn, 2);
-      char *v2 = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
-      int allSpace=allSpaces(v2);
-      if (allSpace) ii = 0;
-    }
-    SEXP lst = PROTECT(rxode2_getUdf2(tf->v, ii));
+    int ii = functionNodeNargs(tf->pn);
+    rxProtectGuard;
+    SEXP lst = rxP(rxode2_getUdf2(tf->v, ii));
     int udf = INTEGER(VECTOR_ELT(lst, 0))[0];
     const char *udfInfo = R_CHAR(STRING_ELT(VECTOR_ELT(lst, 1), 0));
-    UNPROTECT(1);
+    rxUPAll();
     if (udf == NA_INTEGER) {
       sPrint(&_gbuf, "%s", udfInfo);
       updateSyntaxCol();
       trans_syntax_error_report_fn(_gbuf.s);
     } else {
       if (udf == -42) {
-        sAppend(&sb, "_udf(\".rxUiUdfNone\", (double *) NULL, -42, (double) ", ii);
-        sAppend(&sbDt, "_udf(\".rxUiUdfNone\",(double *) NULL, -42, (double) ", ii);
+        sAppendN(&sb, "_udf(\".rxUiUdfNone\", (double *) NULL, -42, (double) ", 52);
+        sAppendN(&sbDt, "_udf(\".rxUiUdfNone\",(double *) NULL, -42, (double) ", 51);
         sAppend(&sbt, "%s(", tf->v);
         tb.thread = notThreadSafe;
+        tb.rng = 1;
         tf->i[0] = 1;// Parse next arguments
         tf->depth[0]=1;
         return 1;
@@ -394,6 +650,7 @@ static inline int handleBadFunctions(transFunctions *tf) {
         sAppend(&sbDt, "_udf(\"%s\", __udf, %d, (double) ", tf->v, ii);
         sAppend(&sbt, "%s(", tf->v);
         tb.thread = notThreadSafe;
+        tb.rng = 1;
         tf->i[0] = 1;// Parse next arguments
         tf->depth[0]=1;
         return 1;
@@ -415,6 +672,11 @@ static inline int handleFunctions(nodeInfo ni, char *name, int *i, int *depth, i
     tf->xpn = xpn;
     tf->pn = pn;
     tf->v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
+    if (assertNoEmptyFirstArg(pn, tf->v)) {
+      // skip the call so its handler does not also act on the empty argument
+      tf->i[0] = tf->nch;
+      return 1;
+    }
     if (handleFunctionsExceptLinCmt(tf)) {
       return 1;
     } else if (handleFunctionLinCmt(tf)){
@@ -422,6 +684,561 @@ static inline int handleFunctions(nodeInfo ni, char *name, int *i, int *depth, i
     } else if (handleBadFunctions(tf)) {
       return 1;
     }
+  }
+  return 0;
+}
+
+static inline int isStrInteger(const char *s) {
+  if (!s || *s == '\0') return 0;
+  if (*s == '+' || *s == '-') s++;
+  if (!isdigit((unsigned char)*s)) return 0;
+  while (*s) {
+    if (!isdigit((unsigned char)*s)) return 0;
+    s++;
+  }
+  return 1;
+}
+
+// The adaptive dosing statements (evid_(), bolus(), infuse(), infuseDur(),
+// replace(), multiply(), phantom(), obs()) consume their arguments as raw text
+// and skip the parse-tree children, so an identifier appearing *only* there is
+// never registered as a model variable; the generated C then references an
+// undeclared symbol and the model fails to build with a compiler error that
+// looks like a broken toolchain.  Record the identifiers here and check them
+// once the whole model has been parsed -- the variable may legitimately be
+// assigned further down the model.  See #1231.  The scan is split into the
+// per-token helpers below, driven by the loop in rxPushDoseNoteArg().
+static inline int rxDoseArgIsNumStart(const char *p) {
+  return isdigit((unsigned char)(*p)) || (*p == '.' && isdigit((unsigned char)(p[1])));
+}
+
+static inline int rxDoseArgIsIdStart(const char *p) {
+  return isalpha((unsigned char)(*p)) || *p == '.' || *p == '_';
+}
+
+// numeric literal, including an exponent like 1e-7; the exponent digits are
+// picked up by the next pass through the tokenizer loop
+static inline const char *rxDoseArgSkipNum(const char *p) {
+  while (isdigit((unsigned char)(*p)) || *p == '.') p++;
+  if (*p == 'e' || *p == 'E') {
+    p++;
+    if (*p == '+' || *p == '-') p++;
+  }
+  return p;
+}
+
+// string literal (a compartment name); skip it wholesale
+static inline const char *rxDoseArgSkipStr(const char *p) {
+  char quote = *p;
+  p++;
+  while (*p != '\0' && *p != quote) p++;
+  if (*p == quote) p++;
+  return p;
+}
+
+static inline void rxDoseArgRecord(const char *fn, const char *arg, const char *st, int len) {
+  char nm[128];
+  if (len <= 0 || len >= (int)sizeof(nm)) return;
+  memcpy(nm, st, (size_t)len);
+  nm[len] = '\0';
+  addLine(&sbDoseArgVar, "%s", nm);
+  addLine(&sbDoseArgCtx, "undeclared '%s' in '%s' of '%s()'; assign first: '%sVal <- %s'",
+          nm, arg, fn, arg, nm);
+}
+
+static inline const char *rxDoseArgSkipId(const char *fn, const char *arg, const char *p) {
+  const char *st = p;
+  while (isalnum((unsigned char)(*p)) || *p == '.' || *p == '_') p++;
+  const char *q = p;
+  while (*q == ' ' || *q == '\t') q++;
+  // a function call or a THETA[]/ETA[] reference, not a plain variable
+  if (*q != '(' && *q != '[') rxDoseArgRecord(fn, arg, st, (int)(p - st));
+  return p;
+}
+
+static inline void rxPushDoseNoteArg(const char *fn, const char *arg, const char *v) {
+  if (v == NULL) return;
+  const char *p = v;
+  while (*p != '\0') {
+    if (rxDoseArgIsNumStart(p)) {
+      p = rxDoseArgSkipNum(p);
+    } else if (*p == '"' || *p == '\'') {
+      p = rxDoseArgSkipStr(p);
+    } else if (rxDoseArgIsIdStart(p)) {
+      p = rxDoseArgSkipId(fn, arg, p);
+    } else {
+      p++;
+    }
+  }
+}
+
+static inline int rxDoseArgInLines(vLines *l, int n, const char *v) {
+  for (int i = 0; i < n; i++) {
+    if (!strcmp(l->line[i], v)) return 1;
+  }
+  return 0;
+}
+
+static inline int rxDoseArgIsConstant(const char *v) {
+  static const char *constants[] = {"pi", "NA", "NaN", "Inf",
+                                    "T", "F", "TRUE", "FALSE"};
+  for (int i = 0; i < (int)(sizeof(constants)/sizeof(*constants)); i++) {
+    if (!strcmp(constants[i], v)) return 1;
+  }
+  return 0;
+}
+
+// Is `v` something the model already knows about -- a variable/parameter, a
+// compartment, a string-assigned variable, or a reserved name?
+static inline int rxPushDoseArgIsDeclared(const char *v) {
+  return isReservedVariable(v) ||
+    rxDoseArgIsConstant(v) ||
+    rxDoseArgInLines(&tb.ss, NV, v) ||
+    rxDoseArgInLines(&tb.de, tb.de.n, v) ||
+    rxDoseArgInLines(&tb.str, tb.str.n, v);
+}
+
+// Register an identifier used only in a dosing argument (eg a data column in
+// bolus(DOSE * 30)) as a model input, as if it appeared on a right-hand side.
+// Returns 0 when it cannot be a model variable (a reserved or forbidden name).
+static inline int rxPushDoseArgRegister(const char *v) {
+  int oldFn = tb.fn;
+  tb.fn = 0;
+  int isNew = new_or_ith(v);
+  tb.fn = oldFn;
+  if (!isNew) return 0;
+  addSymbolStr((char*)v);
+  tb.lh[NV-1] = notLHS;
+  tb.lho[NV-1] = 0;
+  tb.interp[NV-1] = 0;
+  tb.lag[NV-1] = 0;
+  tb.alag[NV-1] = 0;
+  tb.ini[NV-1] = 0;
+  tb.mtime[NV-1] = 0;
+  tb.iniv[NV-1] = 0.0;
+  tb.ini0[NV-1] = 0;
+  return 1;
+}
+
+// Resolve the identifiers collected by rxPushDoseNoteArg() that the model never
+// declares.  Run after the whole model has been parsed, so a variable assigned
+// below the dosing statement still counts as declared.  Anything else becomes a
+// model input (parameter or covariate); only a name that cannot be one is an
+// error.  See #1231.
+static inline void assertAdaptiveDosingArgsDeclared(void) {
+  for (int j = 0; j < sbDoseArgVar.n; j++) {
+    const char *v = sbDoseArgVar.line[j];
+    if (rxPushDoseArgIsDeclared(v)) continue;
+    if (rxPushDoseArgRegister(v)) continue;
+    int dup = 0; // only complain once per name
+    for (int k = 0; k < j; k++) {
+      if (!strcmp(sbDoseArgVar.line[k], v)) { dup = 1; break; }
+    }
+    if (dup) continue;
+    sPrint(&_gbuf, "%s", sbDoseArgCtx.line[j]);
+    updateSyntaxCol();
+    trans_syntax_error_report_fn0(_gbuf.s);
+  }
+}
+
+// Skip leading blanks.
+static inline char *rxPushDoseSkipBlank(char *v) {
+  while (*v == ' ' || *v == '\t') v++;
+  return v;
+}
+
+// Strip the quotes from a quoted compartment name, in place.
+static inline void rxPushDoseUnquote(char **pv) {
+  char *v = *pv;
+  if (*v != '\'' && *v != '"') return;
+  char quote = *v;
+  v++;
+  char *tmp = v;
+  while (*tmp && *tmp != '\0') tmp++;
+  while (tmp > v && (tmp[-1] == ' ' || tmp[-1] == '\t')) tmp--;
+  if (tmp > v && tmp[-1] == quote) tmp--;
+  tmp[0] = '\0';
+  *pv = v;
+}
+
+static inline const char *rxPushDoseCmtExpr(nodeInfo ni, char *name, char *vCmt) {
+  vCmt = rxPushDoseSkipBlank(vCmt);
+  // A leading '-' names the compartment to turn off (the negative CMT the
+  // event table takes from its column).  Resolve the compartment normally and
+  // negate the result, so the shared translator sees the same signal either
+  // way.
+  int off = (*vCmt == '-');
+  if (off) vCmt = rxPushDoseSkipBlank(vCmt + 1);
+  if (isStrInteger(vCmt)) {
+    sPrint(&_gbuf, off ? "(int)(-(%s))" : "(int)(%s)", vCmt);
+    return _gbuf.s;
+  }
+  rxPushDoseUnquote(&vCmt);
+  int hasLhs = isCmtLhsStatement(ni, name, vCmt);
+  if (new_de(vCmt, fromCMTprop)) {
+    add_de(ni, name, vCmt, hasLhs, fromCMTprop);
+    tb.dprop[tb.id] |= propDoseRef;  // dose target -- not an ODE state, must not conflict with linCmt
+    aProp(tb.de.n);
+  } else {
+    new_or_ith(vCmt);
+    aProp(tb.ix);
+  }
+  // while DDT# is 0-indexed, the _rxPushDose() is 1-indexed, so add 1
+  // to the DDT# for the _rxPushDose() call
+  sPrint(&_gbuf, off ? "(-(__DDT%d__ + 1))" : "(__DDT%d__ + 1)", tb.id);
+  return _gbuf.s;
+}
+
+static inline int handleBolusStatement(nodeInfo ni, char *name, int *i, int nch,
+                                       D_ParseNode *pn) {
+  if (nodeHas(bolus_statement) && *i == 0) {
+    tb.evid_ = 1;
+    *i = nch; // skip all children; we process the whole statement at once
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+    // Children: 0='bolus', 1='(', 2=amt, 3=',', 4=cmt, 5=',',
+    //           6=ii, 7=',', 8=addl, 9=',', 10=ss, 11=')'
+    D_ParseNode *cAmt  = d_get_child(pn, 2);
+    D_ParseNode *cCmt  = d_get_child(pn, 4);
+    D_ParseNode *cIi   = d_get_child(pn, 6);
+    D_ParseNode *cAddl = d_get_child(pn, 8);
+    D_ParseNode *cSs   = d_get_child(pn, 10);
+    char *vAmt  = (char*)rc_dup_str(cAmt->start_loc.s,  cAmt->end);
+    char *vCmt  = (char*)rc_dup_str(cCmt->start_loc.s,  cCmt->end);
+    char *vIi   = (char*)rc_dup_str(cIi->start_loc.s,   cIi->end);
+    char *vAddl = (char*)rc_dup_str(cAddl->start_loc.s, cAddl->end);
+    char *vSs   = (char*)rc_dup_str(cSs->start_loc.s,   cSs->end);
+    aType(TEVID);
+    rxPushDoseNoteArg("bolus", "amt",  vAmt);
+    rxPushDoseNoteArg("bolus", "ii",   vIi);
+    rxPushDoseNoteArg("bolus", "addl", vAddl);
+    rxPushDoseNoteArg("bolus", "ss",   vSs);
+
+    // Children: 0='evid_', 1='(', 2=time, 3=',', 4=evid, 5=',', 6=amt, 7=',',
+    //           8=cmt, 9=',', 10=rate, 11=',', 12=ii, 13=',', 14=addl, 15=',',
+    //           16=ss, 17=')'
+    const char *cmtExpr = rxPushDoseCmtExpr(ni, name, vCmt);
+    sAppend(&sb,  "_rxPushDose(_ind, t, t, 1, %s, %s, 0.0, %s, (int)(%s), (int)(%s), 0);\n",
+            vAmt, cmtExpr, vIi, vAddl, vSs);
+    sAppend(&sbDt,  "_rxPushDose(_ind, t, t, 1, %s, %s, 0.0, %s, (int)(%s), (int)(%s), 0);\n",
+            vAmt, cmtExpr, vIi, vAddl, vSs);
+    sAppend(&sbt, "bolus(%s, %s, %s, %s, %s);",
+            vAmt, vCmt, vIi, vAddl, vSs);
+    addLine(&sbPm,   "%s\n", sb.s);
+    addLine(&sbPmDt, "%s\n", sbDt.s);
+    sAppend(&sbNrm,  "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
+    ENDLINE;
+    return 1;
+  }
+  return 0;
+}
+
+static inline int handleInfuseStatement(nodeInfo ni, char *name, int *i, int nch,
+                                        D_ParseNode *pn) {
+  if (nodeHas(infuse_statement) && *i == 0) {
+    tb.evid_ = 1;
+    *i = nch; // skip all children; we process the whole statement at once
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+
+    // Children: 0='infuse', 1='(', 2=amt, 3=',', 4=rate, 5=',',
+    //           6=cmt, 7=',', 8=ii, 9=',', 10=addl, 11=','
+    //           12=ss, 13=')'
+    D_ParseNode *cAmt  = d_get_child(pn, 2);
+    D_ParseNode *cRate = d_get_child(pn, 4);
+    D_ParseNode *cCmt  = d_get_child(pn, 6);
+    D_ParseNode *cIi   = d_get_child(pn, 8);
+    D_ParseNode *cAddl = d_get_child(pn, 10);
+    D_ParseNode *cSs   = d_get_child(pn, 12);
+
+    char *vAmt  = (char*)rc_dup_str(cAmt->start_loc.s,  cAmt->end);
+    char *vRate = (char*)rc_dup_str(cRate->start_loc.s,  cRate->end);
+    char *vCmt  = (char*)rc_dup_str(cCmt->start_loc.s,  cCmt->end);
+    char *vIi   = (char*)rc_dup_str(cIi->start_loc.s,   cIi->end);
+    char *vAddl = (char*)rc_dup_str(cAddl->start_loc.s, cAddl->end);
+    char *vSs   = (char*)rc_dup_str(cSs->start_loc.s,   cSs->end);
+    aType(TEVID);
+    rxPushDoseNoteArg("infuse", "amt",  vAmt);
+    rxPushDoseNoteArg("infuse", "rate", vRate);
+    rxPushDoseNoteArg("infuse", "ii",   vIi);
+    rxPushDoseNoteArg("infuse", "addl", vAddl);
+    rxPushDoseNoteArg("infuse", "ss",   vSs);
+
+    // Children: 0='evid_', 1='(', 2=time, 3=',', 4=evid, 5=',', 6=amt, 7=',',
+    //           8=cmt, 9=',', 10=rate, 11=',', 12=ii, 13=',', 14=addl, 15=',',
+    //           16=ss, 17=')'
+    const char *cmtExpr = rxPushDoseCmtExpr(ni, name, vCmt);
+    //                                        amt,cmt,
+    sAppend(&sb,  "_rxPushDose(_ind, t, t, 1, %s, %s, %s, %s, (int)(%s), (int)(%s), 2);\n",
+            vAmt, cmtExpr, vRate, vIi, vAddl, vSs);
+    sAppend(&sbDt,  "_rxPushDose(_ind, t, t, 1, %s, %s, %s, %s, (int)(%s), (int)(%s), 2);\n",
+            vAmt, cmtExpr, vRate, vIi, vAddl, vSs);
+
+    // Children: 0='infuse', 1='(', 2=amt, 3=',', 4=rate, 5=',',
+    //           6=cmt, 7=',', 8=ii, 9=',', 10=addl, 11=','
+    //           12=ss, 13=')'
+    sAppend(&sbt, "infuse(%s, %s, %s, %s, %s, %s);",
+            vAmt, vRate, vCmt, vIi, vAddl, vSs);
+    addLine(&sbPm,   "%s\n", sb.s);
+    addLine(&sbPmDt, "%s\n", sbDt.s);
+    sAppend(&sbNrm,  "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
+    ENDLINE;
+    return 1;
+  }
+  return 0;
+}
+
+static inline int handleInfuseDurStatement(nodeInfo ni, char *name, int *i, int nch,
+                                           D_ParseNode *pn) {
+  if (nodeHas(infuseDur_statement) && *i == 0) {
+    tb.evid_ = 1;
+    *i = nch; // skip all children; we process the whole statement at once
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+
+    D_ParseNode *cAmt  = d_get_child(pn, 2);
+    D_ParseNode *cDur  = d_get_child(pn, 4);
+    D_ParseNode *cCmt  = d_get_child(pn, 6);
+    D_ParseNode *cIi   = d_get_child(pn, 8);
+    D_ParseNode *cAddl = d_get_child(pn, 10);
+    D_ParseNode *cSs   = d_get_child(pn, 12);
+
+    char *vAmt  = (char*)rc_dup_str(cAmt->start_loc.s,  cAmt->end);
+    char *vDur  = (char*)rc_dup_str(cDur->start_loc.s,  cDur->end);
+    char *vCmt  = (char*)rc_dup_str(cCmt->start_loc.s,  cCmt->end);
+    char *vIi   = (char*)rc_dup_str(cIi->start_loc.s,   cIi->end);
+    char *vAddl = (char*)rc_dup_str(cAddl->start_loc.s, cAddl->end);
+    char *vSs   = (char*)rc_dup_str(cSs->start_loc.s,   cSs->end);
+    aType(TEVID);
+    rxPushDoseNoteArg("infuseDur", "amt",  vAmt);
+    rxPushDoseNoteArg("infuseDur", "dur",  vDur);
+    rxPushDoseNoteArg("infuseDur", "ii",   vIi);
+    rxPushDoseNoteArg("infuseDur", "addl", vAddl);
+    rxPushDoseNoteArg("infuseDur", "ss",   vSs);
+
+    const char *cmtExpr = rxPushDoseCmtExpr(ni, name, vCmt);
+    sAppend(&sb,  "_rxPushDose(_ind, t, t, 1, %s, %s, %s, %s, (int)(%s), (int)(%s), 3);\n",
+            vAmt, cmtExpr, vDur, vIi, vAddl, vSs);
+    sAppend(&sbDt,  "_rxPushDose(_ind, t, t, 1, %s, %s, %s, %s, (int)(%s), (int)(%s), 3);\n",
+            vAmt, cmtExpr, vDur, vIi, vAddl, vSs);
+    sAppend(&sbt, "infuseDur(%s, %s, %s, %s, %s, %s);",
+            vAmt, vDur, vCmt, vIi, vAddl, vSs);
+    addLine(&sbPm,   "%s\n", sb.s);
+    addLine(&sbPmDt, "%s\n", sbDt.s);
+    sAppend(&sbNrm,  "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
+    ENDLINE;
+    return 1;
+  }
+  return 0;
+}
+
+static inline int handleReplaceStatement(nodeInfo ni, char *name, int *i, int nch,
+                                       D_ParseNode *pn) {
+  if (nodeHas(replace_statement) && *i == 0) {
+    tb.evid_ = 1;
+    *i = nch; // skip all children; we process the whole statement at once
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+
+    // Children: 0= 'replace', 1='(', 2=amt, 3=',', 4=cmt, 5=')'
+    D_ParseNode *cAmt  = d_get_child(pn, 2);
+    D_ParseNode *cCmt = d_get_child(pn, 4);
+
+    char *vAmt  = (char*)rc_dup_str(cAmt->start_loc.s,  cAmt->end);
+    char *vCmt  = (char*)rc_dup_str(cCmt->start_loc.s,  cCmt->end);
+    aType(TEVID);
+
+    // Children: 0='evid_', 1='(', 2=time, 3=',', 4=evid, 5=',', 6=amt, 7=',',
+    //           8=cmt, 9=',', 10=rate, 11=',', 12=ii, 13=',', 14=addl, 15=',',
+    //           16=ss, 17=')'
+    const char *cmtExpr = rxPushDoseCmtExpr(ni, name, vCmt);
+
+    tb.evid_ = 1;
+    *i = nch; // skip all children; we process the whole statement at once
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+    aType(TEVID);
+    rxPushDoseNoteArg("replace", "amt", vAmt);
+    sAppend(&sb,   "_rxPushDose(_ind, t, t, 5, %s, %s, 0, 0, 0, 0, 0);\n",
+            vAmt, cmtExpr);
+    sAppend(&sbDt, "_rxPushDose(_ind, t, t, 5, %s, %s, 0, 0, 0, 0, 0);\n",
+            vAmt, cmtExpr);
+    sAppend(&sbt,  "replace(%s, %s);", vAmt, vCmt);
+    addLine(&sbPm,   "%s\n", sb.s);
+    addLine(&sbPmDt, "%s\n", sbDt.s);
+    sAppend(&sbNrm,  "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
+    ENDLINE;
+    return 1;
+  }
+  return 0;
+}
+
+static inline int handleMultiplyStatement(nodeInfo ni, char *name, int *i, int nch,
+                                         D_ParseNode *pn) {
+  if (nodeHas(multiply_statement) && *i == 0) {
+    tb.evid_ = 1;
+    *i = nch; // skip all children; we process the whole statement at once
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+
+    // Children: 0= 'replace', 1='(', 2=amt, 3=',', 4=cmt, 5=')'
+    D_ParseNode *cAmt  = d_get_child(pn, 2);
+    D_ParseNode *cCmt = d_get_child(pn, 4);
+
+    char *vAmt  = (char*)rc_dup_str(cAmt->start_loc.s,  cAmt->end);
+    char *vCmt  = (char*)rc_dup_str(cCmt->start_loc.s,  cCmt->end);
+    aType(TEVID);
+
+    // Children: 0='evid_', 1='(', 2=time, 3=',', 4=evid, 5=',', 6=amt, 7=',',
+    //           8=cmt, 9=',', 10=rate, 11=',', 12=ii, 13=',', 14=addl, 15=',',
+    //           16=ss, 17=')'
+    const char *cmtExpr = rxPushDoseCmtExpr(ni, name, vCmt);
+
+    tb.evid_ = 1;
+    *i = nch; // skip all children; we process the whole statement at once
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+    aType(TEVID);
+    rxPushDoseNoteArg("multiply", "amt", vAmt);
+    sAppend(&sb,   "_rxPushDose(_ind, t, t, 6, %s, %s, 0, 0, 0, 0, 0);\n",
+            vAmt, cmtExpr);
+    sAppend(&sbDt, "_rxPushDose(_ind, t, t, 6, %s, %s, 0, 0, 0, 0, 0);\n",
+            vAmt, cmtExpr);
+    sAppend(&sbt,  "multiply(%s, %s);", vAmt, vCmt);
+    addLine(&sbPm,   "%s\n", sb.s);
+    addLine(&sbPmDt, "%s\n", sbDt.s);
+    sAppend(&sbNrm,  "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
+    ENDLINE;
+    return 1;
+  }
+  return 0;
+}
+
+
+static inline int handlePhantomStatement(nodeInfo ni, char *name, int *i, int nch,
+                                         D_ParseNode *pn) {
+  if (nodeHas(phantom_statement) && *i == 0) {
+    tb.evid_ = 1;
+    *i = nch; // skip all children; we process the whole statement at once
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+    // Children: 0='bolus', 1='(', 2=amt, 3=',', 4=cmt, 5=',',
+    //           6=ii, 7=',', 8=addl, 9=',', 10=ss, 11=')'
+    D_ParseNode *cAmt  = d_get_child(pn, 2);
+    D_ParseNode *cCmt  = d_get_child(pn, 4);
+    D_ParseNode *cIi   = d_get_child(pn, 6);
+    D_ParseNode *cAddl = d_get_child(pn, 8);
+    D_ParseNode *cSs   = d_get_child(pn, 10);
+    char *vAmt  = (char*)rc_dup_str(cAmt->start_loc.s,  cAmt->end);
+    char *vCmt  = (char*)rc_dup_str(cCmt->start_loc.s,  cCmt->end);
+    char *vIi   = (char*)rc_dup_str(cIi->start_loc.s,   cIi->end);
+    char *vAddl = (char*)rc_dup_str(cAddl->start_loc.s, cAddl->end);
+    char *vSs   = (char*)rc_dup_str(cSs->start_loc.s,   cSs->end);
+    aType(TEVID);
+
+    // Children: 0='evid_', 1='(', 2=time, 3=',', 4=evid, 5=',', 6=amt, 7=',',
+    //           8=cmt, 9=',', 10=rate, 11=',', 12=ii, 13=',', 14=addl, 15=',',
+    //           16=ss, 17=')'
+    rxPushDoseNoteArg("phantom", "amt",  vAmt);
+    rxPushDoseNoteArg("phantom", "ii",   vIi);
+    rxPushDoseNoteArg("phantom", "addl", vAddl);
+    rxPushDoseNoteArg("phantom", "ss",   vSs);
+    const char *cmtExpr = rxPushDoseCmtExpr(ni, name, vCmt);
+    sAppend(&sb,  "_rxPushDose(_ind, t, t, 7, %s, %s, 0.0, %s, (int)(%s), (int)(%s), 0);\n",
+            vAmt, cmtExpr, vIi, vAddl, vSs);
+    sAppend(&sbDt,  "_rxPushDose(_ind, t, t, 7, %s, %s, 0.0, %s, (int)(%s), (int)(%s), 0);\n",
+            vAmt, cmtExpr, vIi, vAddl, vSs);
+    sAppend(&sbt, "phantom(%s, %s, %s, %s, %s);",
+            vAmt, vCmt, vIi, vAddl, vSs);
+    addLine(&sbPm,   "%s\n", sb.s);
+    addLine(&sbPmDt, "%s\n", sbDt.s);
+    sAppend(&sbNrm,  "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
+    ENDLINE;
+    return 1;
+  }
+  return 0;
+}
+
+static inline int handleResetStatement(nodeInfo ni, char *name, int *i, int nch,
+                                            D_ParseNode *pn) {
+  if (nodeHas(reset_statement) && *i == 0) {
+    tb.evid_ = 1;
+    *i = nch; // skip all children; we process the whole statement at once
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+    aType(TEVID);
+    sAppendN(&sb,   "_rxPushDose(_ind, t, t, 3, 0, 1, 0, 0, 0, 0, 0);\n", 49);
+    sAppendN(&sbDt, "_rxPushDose(_ind, t, t, 3, 0, 1, 0, 0, 0, 0, 0);\n", 49);
+    sAppendN(&sbt,  "reset();", 8);
+    addLine(&sbPm,   "%s\n", sb.s);
+    addLine(&sbPmDt, "%s\n", sbDt.s);
+    sAppend(&sbNrm,  "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
+    ENDLINE;
+    return 1;
+  }
+  return 0;
+}
+
+static inline int handleMatExpStatement(nodeInfo ni, char *name, int *i, int nch,
+                                         D_ParseNode *pn) {
+  if (nodeHas(matExp_statement) && *i == 0) {
+    tb.isMexp = 1;
+    *i = nch; // skip all children
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+    sAppend(&sbt, "matExp();");
+    sAppend(&sbNrm, "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
+    ENDLINE;
+    return 1;
+  }
+  return 0;
+}
+
+static inline int handleEvidStatement(nodeInfo ni, char *name, int *i, int nch,
+                                       D_ParseNode *pn) {
+  if (nodeHas(evid_statement) && *i == 0) {
+    tb.evid_ = 1;
+    *i = nch; // skip all children; we process the whole statement at once
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+    // Grammar: 'evid_' '(' e0 ',' e1 ',' e2 ',' e3 ',' e4 ',' e5 ',' e6 ',' e7 ')'
+    // Children: 0='evid_', 1='(', 2=time, 3=',', 4=evid, 5=',', 6=amt, 7=',',
+    //           8=cmt, 9=',', 10=rate, 11=',', 12=ii, 13=',', 14=addl, 15=',',
+    //           16=ss, 17=')'
+    D_ParseNode *cTime = d_get_child(pn, 2);
+    D_ParseNode *cEvid = d_get_child(pn, 4);
+    D_ParseNode *cAmt  = d_get_child(pn, 6);
+    D_ParseNode *cCmt  = d_get_child(pn, 8);
+    D_ParseNode *cRate = d_get_child(pn, 10);
+    D_ParseNode *cIi   = d_get_child(pn, 12);
+    D_ParseNode *cAddl = d_get_child(pn, 14);
+    D_ParseNode *cSs   = d_get_child(pn, 16);
+    char *vTime = (char*)rc_dup_str(cTime->start_loc.s, cTime->end);
+    char *vEvid = (char*)rc_dup_str(cEvid->start_loc.s, cEvid->end);
+    char *vAmt  = (char*)rc_dup_str(cAmt->start_loc.s,  cAmt->end);
+    char *vCmt  = (char*)rc_dup_str(cCmt->start_loc.s,  cCmt->end);
+    char *vRate = (char*)rc_dup_str(cRate->start_loc.s,  cRate->end);
+    char *vIi   = (char*)rc_dup_str(cIi->start_loc.s,   cIi->end);
+    char *vAddl = (char*)rc_dup_str(cAddl->start_loc.s, cAddl->end);
+    char *vSs   = (char*)rc_dup_str(cSs->start_loc.s,   cSs->end);
+    aType(TEVID);
+    rxPushDoseNoteArg("evid_", "time", vTime);
+    rxPushDoseNoteArg("evid_", "evid", vEvid);
+    rxPushDoseNoteArg("evid_", "amt",  vAmt);
+    rxPushDoseNoteArg("evid_", "rate", vRate);
+    rxPushDoseNoteArg("evid_", "ii",   vIi);
+    rxPushDoseNoteArg("evid_", "addl", vAddl);
+    rxPushDoseNoteArg("evid_", "ss",   vSs);
+    const char *cmtExpr = rxPushDoseCmtExpr(ni, name, vCmt);
+    sAppend(&sb,  "_rxPushDose(_ind, t, %s, (int)(%s), %s, %s, %s, %s, (int)(%s), (int)(%s), 0);\n",
+            vTime, vEvid, vAmt, cmtExpr, vRate, vIi, vAddl, vSs);
+    sAppend(&sbDt, "_rxPushDose(_ind, t, %s, (int)(%s), %s, %s, %s, %s, (int)(%s), (int)(%s), 0);\n",
+            vTime, vEvid, vAmt, cmtExpr, vRate, vIi, vAddl, vSs);
+    sAppend(&sbt, "evid_(%s, %s, %s, %s, %s, %s, %s, %s);",
+            vTime, vEvid, vAmt, vCmt, vRate, vIi, vAddl, vSs);
+    addLine(&sbPm,   "%s\n", sb.s);
+    addLine(&sbPmDt, "%s\n", sbDt.s);
+    sAppend(&sbNrm,  "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
+    ENDLINE;
+    return 1;
   }
   return 0;
 }
@@ -434,7 +1251,7 @@ static inline int handlePrintf(nodeInfo ni, char *name, int i, D_ParseNode *xpn)
       sbt.o=0;
       tb.thread = notThreadSafe;
       aType(PPRN);
-      aAppendN("Rprintf(", 8);
+      aAppendN("_rxPrintf(", 10);
       sAppendN(&sbt,"printf(", 7);
       sb.o--;sbDt.o--;sbt.o--;
     }

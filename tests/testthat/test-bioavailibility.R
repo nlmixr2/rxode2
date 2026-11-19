@@ -31,13 +31,15 @@ rxTest({
     d/dt(blood) <- a * intestine - b * blood
   })
 
-  ms <- c("liblsoda", "lsoda", "dop853")
+  ms <- .methods0
   for (m in ms) {
     et <- eventTable(time.units = "days")
     et$add.sampling(seq(0, 10, by = 1 / 24))
     et$add.dosing(
-      dose = 2 / 24, strt.time = 0,
-      nbr.doses = 10, dosing.interval = 1
+      dose = 2 / 24,
+      strt.time = 0,
+      nbr.doses = 10,
+      dosing.interval = 1
     )
 
     solve1 <- solve(mod, et, method = m)
@@ -47,12 +49,13 @@ rxTest({
       expect_false(all(solve1$blood == solve2$blood))
     })
 
-
     et <- eventTable(time.units = "days")
     et$add.sampling(seq(0, 10, by = 1 / 24))
     et$add.dosing(
-      dose = 2 / 24 * 2, strt.time = 0,
-      nbr.doses = 10, dosing.interval = 1
+      dose = 2 / 24 * 2,
+      strt.time = 0,
+      nbr.doses = 10,
+      dosing.interval = 1
     )
 
     solve3 <- solve(mod, et, method = m)
@@ -64,8 +67,10 @@ rxTest({
     et <- eventTable(time.units = "days")
     et$add.sampling(seq(0, 10, by = 1 / 24))
     et$add.dosing(
-      dose = 2 / 24 * 0.5, strt.time = 0,
-      nbr.doses = 10, dosing.interval = 1
+      dose = 2 / 24 * 0.5,
+      strt.time = 0,
+      nbr.doses = 10,
+      dosing.interval = 1
     )
 
     solve4a <- solve(mod, et, method = m)
@@ -73,8 +78,10 @@ rxTest({
     et <- eventTable(time.units = "days")
     et$add.sampling(seq(0, 10, by = 1 / 24))
     et$add.dosing(
-      dose = 2 / 24, strt.time = 0,
-      nbr.doses = 10, dosing.interval = 1
+      dose = 2 / 24,
+      strt.time = 0,
+      nbr.doses = 10,
+      dosing.interval = 1
     )
     test_that(sprintf("F=0.5 is equivalent to halving the dose (%s)", m), {
       solve4b <- solve(mod4, et, method = m)

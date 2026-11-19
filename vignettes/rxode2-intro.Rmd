@@ -28,3 +28,9 @@ applied more generally to any ODE model.
 
 ```{r child='../man/rmdhunks/rxode2-intro-chunk.Rmd'}
 ```
+
+# Next steps
+
+- [Model syntax](rxode2-syntax.html)
+- [Which dosing page do I need?](rxode2-dosing-overview.html)
+- [How do I...?](rxode2-cookbook.html)

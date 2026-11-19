@@ -1,0 +1,17 @@
+{
+  "label": "baseline",
+  "timestamp": "2026-06-11T16:25:42",
+  "git": "a8d16e0e4",
+  "quick": false,
+  "nbig": 5000,
+  "cores": null,
+  "cases": {
+    "compile_ode": 0.064245,
+    "solve_single_ode": 0.053484,
+    "solve_single_lin": 0.095505,
+    "solve_pop_ode": 2.12022,
+    "solve_pop_lin": 2.466877,
+    "solve_pop_cov": 4.992939,
+    "et_build": 0.007666
+  }
+}

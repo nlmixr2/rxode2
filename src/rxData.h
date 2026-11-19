@@ -4,6 +4,8 @@
 #ifndef __RXDATA_H__
 #define __RXDATA_H__
 
+#include "rxPrintfFormat.h"
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -14,7 +16,7 @@ extern "C" {
   SEXP get_fkeepChar(int col, double val);
   double *getLlikSave(void);
   SEXP get_fkeepn(void);
-  void cliAlert(const char *format, ...);
+  void cliAlert(const char *format, ...) R_PRINTF_FORMAT(1, 2);
   void setZeroMatrix(int which);
   double * getAol(int n, double atol);
   double * getRol(int n, double rtol);
@@ -39,6 +41,14 @@ extern "C" {
   int isProgSupported(void);
 
   void updateExtraDoseGlobals(rx_solving_options_ind* ind);
+
+  // Pre-generated eta buffer -- used by rxthreefry.cpp
+  double* rxEtaPreGetOrAlloc(int nsolve_neta);
+  double* rxGetEtaPre(void);
+  void    rxEtaPreDeactivate(void);
+  void    rxEtaPreFree(void);
+  int     rxGetNOmega(void);
+  int     rxIsZeroOmega(void);
 
 #if defined(__cplusplus)
 }

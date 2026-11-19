@@ -49,14 +49,17 @@ rxTest({
   ## Statements don't require ; now.
   goodParse(
     "comments must be outside statements #1",
-    "d/dt(y) = 1   # bad comment;")
+    "d/dt(y) = 1   # bad comment;"
+  )
 
   goodParse(
     'missing end of statement ";" dosen\'t cause errors',
     paste(
       sep = "\n",
       "d/dt(depot) = -ka * depot",
-      "d/dt(centr) =  ka * depot - kout * centr;"))
+      "d/dt(centr) =  ka * depot - kout * centr;"
+    )
+  )
 
   badParse(
     "arithmetic syntax error",
@@ -69,17 +72,23 @@ rxTest({
   )
 
   ## added ** operator
-  goodParse("existing operator **",
-            code = paste(
-              sep = "\n",
-              "d/dt(y) = -ka;",
-              "C1 = ka *  y**2;"))
-  badParse("unexistent operator %",
-           code = paste(
-             sep = "\n",
-             "remainder = 4 % 3;",
-             "d/dt(y) = -ka;",
-             "C1 = ka * y;"))
+  goodParse(
+    "existing operator **",
+    code = paste(
+      sep = "\n",
+      "d/dt(y) = -ka;",
+      "C1 = ka *  y**2;"
+    )
+  )
+  badParse(
+    "unexistent operator %",
+    code = paste(
+      sep = "\n",
+      "remainder = 4 % 3;",
+      "d/dt(y) = -ka;",
+      "C1 = ka * y;"
+    )
+  )
 
   badParse(
     desc = 'incorrect "if" statement',
@@ -90,7 +99,9 @@ rxTest({
       "else {", # missing "}"'
       "   F = 0.75;",
       "};",
-      "d/dt(y) = F * y;"))
+      "d/dt(y) = F * y;"
+    )
+  )
 
   badParse(
     desc = "illegal variable name (starting w. a digit)",
@@ -98,7 +109,9 @@ rxTest({
       sep = "\n",
       "F = 0.75;",
       "12foo_bar = 1.0/2.0;",
-      "d/dt(y) = F * y;"))
+      "d/dt(y) = F * y;"
+    )
+  )
 
   goodParse(
     desc = "dot in variable name (ini0)",
@@ -154,19 +167,24 @@ rxTest({
       sep = "\n",
       "F = 0.75;",
       ".foo.bar = 0.5;",
-      "d/dt(y) = F * y;"))
+      "d/dt(y) = F * y;"
+    )
+  )
 
   badParse(
     desc = "Assignment with <<- not supported",
-    "d/dt(y_1) <<- F*y")
+    "d/dt(y_1) <<- F*y"
+  )
 
   goodParse(
     desc = "Assignment with <- supported #1",
-    "d/dt(y_1) <- F*y")
+    "d/dt(y_1) <- F*y"
+  )
 
   goodParse(
     desc = "Assignment with <- supported #2",
-    "y_1(0) <- 1;d/dt(y_1) = F*y_1")
+    "y_1(0) <- 1;d/dt(y_1) = F*y_1"
+  )
 
   goodParse(
     desc = "Assignment with <- supported #3",
@@ -199,7 +217,7 @@ dy(0) = 0
 ## mu
 mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
 "
-)
+  )
 
   badParse(
     desc = "Defining df(var1)/dy(var2) where var1 is not a state variable.",
@@ -217,7 +235,7 @@ dy(0) = 0
 ## mu
 mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
 "
-)
+  )
 
   goodParse(
     desc = "Defining df(var1)/dy(var2) where var1 is a state variable.",
@@ -234,7 +252,7 @@ dy(0) = 0
 ## mu
 mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
 "
-)
+  )
 
   goodParse(
     desc = "Defining df(var1)/dy(var2) where var2 is a variable.",
@@ -252,7 +270,7 @@ dy(0) = 0
 ## mu
 mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
 "
-)
+  )
 
   badParse(
     desc = "Defining df(var1)/dy(var2) where var2 is a calculated value.",
@@ -270,7 +288,7 @@ dy(0) = 0
 ## mu
 mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
 "
-)
+  )
 
   goodParse(
     desc = "a*b/c^2",
@@ -348,7 +366,6 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     "d/dt(x)=(THETA[1]+ETA[1])*x\ndf(x)/dy(THETA[1]) = 1\ndf(x)/dy(ETA[1]) = 1\n"
   )
 
-
   for (v in c("f", "F", "alag", "lag", "rate", "dur")) {
     badParse(
       sprintf("%s cannot depend on jacobain info", v),
@@ -389,7 +406,9 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
   goodParse("x=ifelse(!(matt),0,1)", "x=ifelse(!(matt),0,1)")
   goodParse("x=ifelse((!matt),0,1)", "x=ifelse((!matt),0,1)")
 
-  goodParse("mix lincmt with lags etc", "popCl <- 1
+  goodParse(
+    "mix lincmt with lags etc",
+    "popCl <- 1
     popV <- 20
     popKa <- 1
     popVp <- 10
@@ -429,7 +448,8 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     dur(central) <- popDurCentral * exp(bsvDurCentral)
     cp <- linCmt()
     d/dt(ce) = keo*(cp-ce)
-    effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));")
+    effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));"
+  )
 
   withr::with_options(list("rxode2.syntax.require.ode.first" = TRUE), {
     badParse(
@@ -479,7 +499,9 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     )
   })
 
-  badParse("cmt(depot) doesn't work with linCmt()", "popCl <- 1
+  badParse(
+    "cmt(depot) doesn't work with linCmt()",
+    "popCl <- 1
     cmt(depot)
     popV <- 20
     popKa <- 1
@@ -520,9 +542,12 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     dur(central) <- popDurCentral * exp(bsvDurCentral)
     cp <- linCmt()
     d/dt(ce) = keo*(cp-ce)
-    effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));")
+    effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));"
+  )
 
-  badParse("cmt(central) doesn't work with linCmt()", "popCl <- 1
+  badParse(
+    "cmt(central) doesn't work with linCmt()",
+    "popCl <- 1
     cmt(central)
     popV <- 20
     popKa <- 1
@@ -563,7 +588,8 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     dur(central) <- popDurCentral * exp(bsvDurCentral)
     cp <- linCmt()
     d/dt(ce) = keo*(cp-ce)
-    effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));")
+    effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));"
+  )
 
   badParse("theta0", "a = theta[0]")
   badParse("eta0", "a = eta[0]")
@@ -578,7 +604,6 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
   badParse("if1", "if=3")
   badParse("if2", "a=if+3")
   badParse("if3", "d/dt(if)=matt")
-
 
   badParse("cmt1", "cmt=3")
   goodParse("cmt2", "a=cmt+3")
@@ -645,10 +670,7 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
   goodParse("while-break", "a=1;while(1){a=a+3; break;}")
   badParse("while-break-bad", "a=1;while(1){a=a+3;}; break;")
 
-  goodParse("Dotted initial conditions",
-            paste(c("d/dt(C.A) = - 1",
-                    "C.A(0) = A"), collapse="\n"))
-
+  goodParse("Dotted initial conditions", paste(c("d/dt(C.A) = - 1", "C.A(0) = A"), collapse = "\n"))
 
   # From rxode2parse
   badParse <- function(desc, code) {
@@ -668,14 +690,17 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
   ## Statements don't require ; now.
   goodParse(
     "comments must be outside statements #1",
-    "d/dt(y) = 1   # bad comment;")
+    "d/dt(y) = 1   # bad comment;"
+  )
 
   goodParse(
     'missing end of statement ";" dosen\'t cause errors',
     paste(
       sep = "\n",
       "d/dt(depot) = -ka * depot",
-      "d/dt(centr) =  ka * depot - kout * centr;"))
+      "d/dt(centr) =  ka * depot - kout * centr;"
+    )
+  )
 
   badParse(
     "arithmetic syntax error",
@@ -688,17 +713,23 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
   )
 
   ## added ** operator
-  goodParse("existing operator **",
-            code = paste(
-              sep = "\n",
-              "d/dt(y) = -ka;",
-              "C1 = ka *  y**2;"))
-  badParse("unexistent operator %",
-           code = paste(
-             sep = "\n",
-             "remainder = 4 % 3;",
-             "d/dt(y) = -ka;",
-             "C1 = ka * y;"))
+  goodParse(
+    "existing operator **",
+    code = paste(
+      sep = "\n",
+      "d/dt(y) = -ka;",
+      "C1 = ka *  y**2;"
+    )
+  )
+  badParse(
+    "unexistent operator %",
+    code = paste(
+      sep = "\n",
+      "remainder = 4 % 3;",
+      "d/dt(y) = -ka;",
+      "C1 = ka * y;"
+    )
+  )
 
   badParse(
     desc = 'incorrect "if" statement',
@@ -709,7 +740,9 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
       "else {", # missing "}"'
       "   F = 0.75;",
       "};",
-      "d/dt(y) = F * y;"))
+      "d/dt(y) = F * y;"
+    )
+  )
 
   badParse(
     desc = "illegal variable name (starting w. a digit)",
@@ -717,7 +750,9 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
       sep = "\n",
       "F = 0.75;",
       "12foo_bar = 1.0/2.0;",
-      "d/dt(y) = F * y;"))
+      "d/dt(y) = F * y;"
+    )
+  )
 
   goodParse(
     desc = "dot in variable name (ini0)",
@@ -773,19 +808,24 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
       sep = "\n",
       "F = 0.75;",
       ".foo.bar = 0.5;",
-      "d/dt(y) = F * y;"))
+      "d/dt(y) = F * y;"
+    )
+  )
 
   badParse(
     desc = "Assignment with <<- not supported",
-    "d/dt(y_1) <<- F*y")
+    "d/dt(y_1) <<- F*y"
+  )
 
   goodParse(
     desc = "Assignment with <- supported #1",
-    "d/dt(y_1) <- F*y")
+    "d/dt(y_1) <- F*y"
+  )
 
   goodParse(
     desc = "Assignment with <- supported #2",
-    "y_1(0) <- 1;d/dt(y_1) = F*y_1")
+    "y_1(0) <- 1;d/dt(y_1) = F*y_1"
+  )
 
   goodParse(
     desc = "Assignment with <- supported #3",
@@ -818,7 +858,7 @@ dy(0) = 0
 ## mu
 mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
 "
-)
+  )
 
   badParse(
     desc = "Defining df(var1)/dy(var2) where var1 is not a state variable.",
@@ -836,7 +876,7 @@ dy(0) = 0
 ## mu
 mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
 "
-)
+  )
 
   goodParse(
     desc = "Defining df(var1)/dy(var2) where var1 is a state variable.",
@@ -853,7 +893,7 @@ dy(0) = 0
 ## mu
 mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
 "
-)
+  )
 
   goodParse(
     desc = "Defining df(var1)/dy(var2) where var2 is a variable.",
@@ -871,7 +911,7 @@ dy(0) = 0
 ## mu
 mu = 1 ## nonstiff; 10 moderately stiff; 1000 stiff
 "
-)
+  )
 
   badParse(
     desc = "Defining df(var1)/dy(var2) where var2 is a calculated value.",
@@ -889,7 +929,7 @@ dy(0) = 0
 ## mu
 mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
 "
-)
+  )
 
   goodParse(
     desc = "a*b/c^2",
@@ -967,7 +1007,6 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     "d/dt(x)=(THETA[1]+ETA[1])*x\ndf(x)/dy(THETA[1]) = 1\ndf(x)/dy(ETA[1]) = 1\n"
   )
 
-
   for (v in c("f", "F", "alag", "lag", "rate", "dur")) {
     badParse(
       sprintf("%s cannot depend on jacobain info", v),
@@ -1002,7 +1041,9 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
   goodParse("x=ifelse(!(matt),0,1)", "x=ifelse(!(matt),0,1)")
   goodParse("x=ifelse((!matt),0,1)", "x=ifelse((!matt),0,1)")
 
-  goodParse("mix lincmt with lags etc", "popCl <- 1
+  goodParse(
+    "mix lincmt with lags etc",
+    "popCl <- 1
     popV <- 20
     popKa <- 1
     popVp <- 10
@@ -1042,12 +1083,13 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     dur(central) <- popDurCentral * exp(bsvDurCentral)
     cp <- linCmt()
     d/dt(ce) = keo*(cp-ce)
-    effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));")
+    effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));"
+  )
 
   withr::with_options(list("rxode2.syntax.require.ode.first" = TRUE), {
-  badParse(
-    "Still cannot take undefined compartments",
-    "popCl <- 1
+    badParse(
+      "Still cannot take undefined compartments",
+      "popCl <- 1
     popV <- 20
     popKa <- 1
     popVp <- 10
@@ -1089,9 +1131,12 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     cp <- linCmt()
     d/dt(ce) = keo*(cp-ce)
     effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));"
-  )})
+    )
+  })
 
-  badParse("cmt(depot) doesn't work with linCmt()", "popCl <- 1
+  badParse(
+    "cmt(depot) doesn't work with linCmt()",
+    "popCl <- 1
     cmt(depot)
     popV <- 20
     popKa <- 1
@@ -1132,9 +1177,12 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     dur(central) <- popDurCentral * exp(bsvDurCentral)
     cp <- linCmt()
     d/dt(ce) = keo*(cp-ce)
-    effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));")
+    effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));"
+  )
 
-  badParse("cmt(central) doesn't work with linCmt()", "popCl <- 1
+  badParse(
+    "cmt(central) doesn't work with linCmt()",
+    "popCl <- 1
     cmt(central)
     popV <- 20
     popKa <- 1
@@ -1175,7 +1223,8 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     dur(central) <- popDurCentral * exp(bsvDurCentral)
     cp <- linCmt()
     d/dt(ce) = keo*(cp-ce)
-    effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));")
+    effect = E0 - Emax*(Ce^gamma)/((Ce^gamma)+(Ec50^gamma));"
+  )
 
   badParse("theta0", "a = theta[0]")
   badParse("eta0", "a = eta[0]")
@@ -1190,7 +1239,6 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
   badParse("if1", "if=3")
   badParse("if2", "a=if+3")
   badParse("if3", "d/dt(if)=matt")
-
 
   badParse("cmt1", "cmt=3")
   goodParse("cmt2", "a=cmt+3")
@@ -1257,29 +1305,21 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
   goodParse("while-break", "a=1;while(1){a=a+3; break;}")
   badParse("while-break-bad", "a=1;while(1){a=a+3;}; break;")
 
-  goodParse("Dotted initial conditions",
-            paste(c("d/dt(C.A) = - 1",
-                    "C.A(0) = A"), collapse="\n"))
+  goodParse("Dotted initial conditions", paste(c("d/dt(C.A) = - 1", "C.A(0) = A"), collapse = "\n"))
 
-  goodParse("Less than expression",
-            "a <- 3 < -1")
+  goodParse("Less than expression", "a <- 3 < -1")
 
-  badParse("Double assignment",
-           "a <- 3 <- 1")
+  badParse("Double assignment", "a <- 3 <- 1")
 
+  badParse("Double assignment#2", "a = 3 = 1")
 
-  badParse("Double assignment#2",
-           "a = 3 = 1")
-
-  badParse("Double assignment #3",
-           "a <- 3 -> b")
-
+  badParse("Double assignment #3", "a <- 3 -> b")
 
   test_that("after isn't shown or garbled", {
-    t <-try(rxode2parse("a+b<-fun+fun  +  fun"))
+    t <- try(rxode2parse("a+b<-fun+fun  +  fun"))
     expect_true(inherits(t, "try-error"))
-    print(attr(t,"condition")$message)
-    expect_true(regexpr("after", attr(t,"condition")$message)==-1)
+    print(attr(t, "condition")$message)
+    expect_true(regexpr("after", attr(t, "condition")$message) == -1)
   })
 
   test_that("throws parsing error with wrong number of arguments", {
@@ -1287,7 +1327,7 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     expect_error(rxode2parse("a= llikNorm(a, b, c, d, f)"))
 
     .trans2 <- .trans
-    .w <- which(.trans2$rxFun=="llikNorm")
+    .w <- which(.trans2$rxFun == "llikNorm")
     .trans2$argMax[.w] <- 4L
     rxode2parseAssignTranslation(.trans2)
 
@@ -1312,42 +1352,41 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
     expect_error(rxode2parse("a=cos(b, c, d, e, f)"))
   })
 
-
   test_that("linear compartmental error", {
-    expect_error(rxode2parse('f(central) <- 1 + f_study1 * (STUDYID == "Study 1")\nka <- exp(tka + eta.ka)\ncl <- exp(tcl + eta.cl)\nv <- exp(tv + eta.v)\ncp <- linCmt()', linear=TRUE), NA)
-
-
+    expect_error(
+      rxode2parse(
+        'f(central) <- 1 + f_study1 * (STUDYID == "Study 1")\nka <- exp(tka + eta.ka)\ncl <- exp(tcl + eta.cl)\nv <- exp(tv + eta.v)\ncp <- linCmt()',
+        linear = TRUE
+      ),
+      NA
+    )
   })
-
 
   test_that("TIME conundrums", {
-
-    p <- rxode2parse("param(emax_fcfb,lec50,le0,let50_emax,propSd,etale0,TIME,PK);\ne0=exp(le0+etale0);\nemax=emax_fcfb;\nec50=exp(lec50);\net50_emax=exp(let50_emax);\nfoo=e0*(1+emax*(TIME/168)/(et50_emax+(TIME/168))*PK/(ec50+PK));\nrx_yj_~2;\nrx_lambda_~1;\nrx_low_~0;\nrx_hi_~1;\nrx_pred_f_~foo;\nrx_pred_~rx_pred_f_;\nrx_r_~(rx_pred_f_*propSd)^2;\nipredSim=rxTBSi(rx_pred_,rx_lambda_,rx_yj_,rx_low_,rx_hi_);\nsim=rxTBSi(rx_pred_+sqrt(rx_r_)*err.foo,rx_lambda_,rx_yj_,rx_low_,rx_hi_);\ncmt(foo);\ndvid(1);\n")
+    p <- rxode2parse(
+      "param(emax_fcfb,lec50,le0,let50_emax,propSd,etale0,TIME,PK);\ne0=exp(le0+etale0);\nemax=emax_fcfb;\nec50=exp(lec50);\net50_emax=exp(let50_emax);\nfoo=e0*(1+emax*(TIME/168)/(et50_emax+(TIME/168))*PK/(ec50+PK));\nrx_yj_~2;\nrx_lambda_~1;\nrx_low_~0;\nrx_hi_~1;\nrx_pred_f_~foo;\nrx_pred_~rx_pred_f_;\nrx_r_~(rx_pred_f_*propSd)^2;\nipredSim=rxTBSi(rx_pred_,rx_lambda_,rx_yj_,rx_low_,rx_hi_);\nsim=rxTBSi(rx_pred_+sqrt(rx_r_)*err.foo,rx_lambda_,rx_yj_,rx_low_,rx_hi_);\ncmt(foo);\ndvid(1);\n"
+    )
 
     expect_false(any(p$params == "TIME"))
-
   })
-
 
   test_that("pow problems", {
     expect_error(rxode2parse("pow=3+4"), NA)
 
-    rxode2parse("pow=4\nif (CMT==5){pow = 3+1+pow(4, 3)}\npow2 = pow*2", code="rxode2parse_test_code.c")
+    rxode2parse("pow=4\nif (CMT==5){pow = 3+1+pow(4, 3)}\npow2 = pow*2", code = "rxode2parse_test_code.c")
     expect_true(file.exists("rxode2parse_test_code.c"))
     if (file.exists("rxode2parse_test_code.c")) {
       lines <- readLines("rxode2parse_test_code.c")
       unlink("rxode2parse_test_code.c")
       expect_false(file.exists("rxode2parse_test_code.c"))
-      expect_true(any(regexpr("+pow(4,3)", lines, fixed=TRUE) != -1))
-      expect_true(any(regexpr("_rxNotFun_pow=", lines, fixed=TRUE) != -1))
-      expect_true(any(regexpr("=_rxNotFun_pow*2", lines, fixed=TRUE) != -1))
-      expect_true(any(regexpr("(_CMT==5)", lines, fixed=TRUE)) != -1)
+      expect_true(any(regexpr("+pow(4,3)", lines, fixed = TRUE) != -1))
+      expect_true(any(regexpr("_rxNotFun_pow=", lines, fixed = TRUE) != -1))
+      expect_true(any(regexpr("=_rxNotFun_pow*2", lines, fixed = TRUE) != -1))
+      expect_true(any(regexpr("(_CMT==5)", lines, fixed = TRUE)) != -1)
     }
   })
 
   test_that("cmt/locf interaction", {
-    expect_equal(rxNorm(rxModelVars("cmt(a);\nlocf(b);d/dt(a)=b*kel")),
-                 "cmt(a);\nlocf(b);\nd/dt(a)=b*kel;\n")
+    expect_equal(rxNorm(rxModelVars("cmt(a);\nlocf(b);d/dt(a)=b*kel")), "cmt(a);\nlocf(b);\nd/dt(a)=b*kel;\n")
   })
-
 })

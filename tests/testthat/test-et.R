@@ -1,26 +1,391 @@
 rxTest({
-  test_that("et import rate=-2", {
+  library(withr)
 
-    d <- data.frame(id = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
-                    time = c(0, 2, 12.5, 24.5, 37, 48, 60.5, 72.5, 85.3, 96.5, 108.5, 112.5),
-                    amt = c(25, 0, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 0),
-                    rate = c(-2, 0, -2, -2, -2, -2, -2, -2, -2, -2, -2, 0))
-    d2 <- as.data.frame(et(d))
-    expect_equal(d2$rate, c(-2, NA_real_, -2, -2, -2, -2, -2, -2, -2, -2, -2, NA_real_))
-
-
+  test_that("ev$id has data-frame semantics (#1154)", {
+    ev <- et(amt = 100, cmt = "depot") |> et(seq(0, 24, by = 1)) |> et(id = 1:3)
+    .df <- as.data.frame(ev, all = TRUE)
+    # per-row id column, matching as.data.frame(ev)$id
+    expect_equal(ev$id, .df$id)
+    expect_equal(length(ev$id), nrow(.df))
+    # unique ids remain available via the env
+    expect_equal(ev$env$ids, 1:3)
+    # idiomatic subset returns only subject 3, doses included
+    .sub <- as.data.frame(ev[ev$id == 3, ])
+    expect_equal(unique(.sub$id), 3L)
+    expect_equal(nrow(.sub), sum(.df$id == 3L))
+    expect_equal(sum(.sub$evid != 0L), 1L)
+    # a logical row index that cannot recycle cleanly errors
+    expect_error(ev[c(TRUE, FALSE, TRUE), ], "logical row index")
+    expect_error(ev[c(TRUE, FALSE, TRUE), "time"], "logical row index")
+    # length-0 and length-1 logical indices keep data-frame semantics
+    expect_equal(nrow(as.data.frame(ev[logical(0), ])), 0L)
+    expect_equal(nrow(as.data.frame(ev[TRUE, ], all = TRUE)), nrow(.df))
+    # reading ev$id does not consume the RNG stream (windowed addl doses
+    # draw times on materialization)
+    .evw <- et(data.frame(
+      id = 1L,
+      time = 0,
+      low = 0,
+      high = 1,
+      cmt = "depot",
+      amt = 100,
+      ii = 24,
+      addl = 1L,
+      evid = 1L
+    ))
+    .a <- withr::with_seed(42, as.data.frame(.evw, all = TRUE))
+    .b <- withr::with_seed(42, {
+      invisible(.evw$id)
+      as.data.frame(.evw, all = TRUE)
+    })
+    expect_equal(.a$time, .b$time)
+    expect_equal(.evw$id, .a$id)
+    # per-subject covariate assignment round-trips through as.data.frame
+    ev$wt <- 50 + 20 * ev$id
+    .df2 <- as.data.frame(ev)
+    expect_true("wt" %in% names(.df2))
+    expect_equal(as.numeric(tapply(.df2$wt, .df2$id, unique)), c(70, 90, 110))
+    # assigning an unshown canonical column round-trips too
+    .evc <- et(0:5)
+    .evc$cmt <- "depot"
+    expect_true("cmt" %in% names(as.data.frame(.evc)))
+    expect_equal(unique(as.data.frame(.evc)$cmt), "depot")
   })
 
+  test_that("covariates riding along on an imported data frame stay hidden", {
+    # a covariate that came in with the imported data frame is not shown by
+    # default; downstream packages join it back on and would otherwise get
+    # duplicated `wt.x`/`wt.y` columns
+    .ev <- et(data.frame(id = 1, time = 0, evid = 1, cmt = 1, amt = 10, wt = 70))
+    expect_false("wt" %in% names(as.data.frame(.ev)))
+    expect_true("wt" %in% names(as.data.frame(.ev, all = TRUE)))
+    # the hidden covariate is still used when solving
+    .ev <- add.sampling(.ev, 0:3)
+    expect_false("wt" %in% names(as.data.frame(.ev)))
+    .m <- rxode2("v = 10 * (wt / 70)\nd/dt(ac) = -0.1 * ac\ncc = ac / v")
+    expect_equal(suppressWarnings(unique(rxSolve(.m, .ev)$v)), 10)
+    # an explicitly assigned covariate is still shown, and survives copies,
+    # row subsets and rbind
+    .ev$wt2 <- 80
+    expect_true("wt2" %in% names(as.data.frame(.ev)))
+    expect_true("wt2" %in% names(as.data.frame(.ev$copy())))
+    expect_true("wt2" %in% names(as.data.frame(.ev[1:2, ])))
+    expect_true("wt2" %in% names(as.data.frame(etRbind(.ev, .ev))))
+    expect_false("wt" %in% names(as.data.frame(etRbind(.ev, .ev))))
+    # ... and through the vctrs rebuild path (vec_slice/vec_restore/vec_c)
+    expect_true("wt2" %in% names(as.data.frame(vctrs::vec_slice(.ev, 1))))
+    expect_false("wt" %in% names(as.data.frame(vctrs::vec_slice(.ev, 1))))
+    expect_true("wt2" %in% names(as.data.frame(vctrs::vec_c(.ev, .ev))))
+    # deleting the column forgets it rather than recording it
+    .ev$wt2 <- NULL
+    expect_false("wt2" %in% names(as.data.frame(.ev)))
+    expect_false("wt2" %in% .rxEtEnv(.ev)$extraCols)
+    .evn <- et(0:5)
+    .evn$never <- NULL
+    expect_equal(.rxEtEnv(.evn)$extraCols, character(0))
+  })
+
+  test_that("explicitly assigned columns survive etExpand/etSeq/simulate", {
+    # these three rebuild the event table environment from scratch, so each
+    # has to carry `extraCols` over or the assigned column silently becomes a
+    # hidden imported covariate (#1154)
+    .eve <- et(amt = 3, ii = 24, addl = 2) |> et(0:5) |> et(id = 1:3)
+    .eve$wt <- 70
+    expect_true("wt" %in% names(as.data.frame(etExpand(.eve))))
+    expect_equal(.rxEtEnv(etExpand(.eve))$extraCols, "wt")
+
+    .evq <- suppressWarnings(etSeq(.eve, .eve))
+    expect_true("wt" %in% names(as.data.frame(.evq)))
+    expect_equal(.rxEtEnv(.evq)$extraCols, "wt")
+
+    .evs <- et(amt = 3) |> et(0:5)
+    .evs$wt <- 70
+    .evsim <- suppressWarnings(simulate(.evs))
+    expect_true("wt" %in% names(as.data.frame(.evsim)))
+    expect_equal(.rxEtEnv(.evsim)$extraCols, "wt")
+
+    # a covariate that merely rode along is still not resurrected by any of them
+    .evi <- et(data.frame(id = 1, time = 0, evid = 1, cmt = 1, amt = 10, wt = 70))
+    .evi <- add.sampling(.evi, 0:3)
+    expect_false("wt" %in% names(as.data.frame(etExpand(.evi))))
+    expect_false("wt" %in% names(as.data.frame(suppressWarnings(simulate(.evi)))))
+  })
+
+  test_that("dplyr verbs degrade an event table preview to a plain data frame", {
+    skip_if_not_installed("dplyr")
+    # the preview marking describes the frame the accessor returned; once a
+    # dplyr verb rewrites it, it is the caller's own data frame and must print
+    # like one instead of hiding columns it no longer describes
+    .ev <- et(amt = 3) |> et(0:5)
+    .ev$wt <- 70
+    .p <- .ev$get.dosing()
+    expect_s3_class(.p, "rxEtPreview")
+    for (.f in list(
+      function(x) x[c("time", "amt")],
+      function(x) dplyr::select(x, "time", "amt"),
+      function(x) dplyr::relocate(x, "amt"),
+      function(x) dplyr::mutate(x, z = 1),
+      function(x) dplyr::filter(x, TRUE)
+    )) {
+      .out <- .f(.p)
+      expect_false(inherits(.out, "rxEtPreview"))
+      expect_s3_class(.out, "data.frame")
+    }
+    # a bare rename keeps the marking on purpose -- `.etKeepCols()` hides only
+    # the names that were marked, so the renamed column keeps printing
+    expect_s3_class(dplyr::rename(.p, tm = "time"), "rxEtPreview")
+    expect_true(any(grepl("\\btm\\b", utils::capture.output(print(dplyr::rename(.p, tm = "time"))))))
+    # a row subset keeps every column, so the marking still describes it and
+    # the hidden columns stay hidden (this is what the `[` method must NOT undo)
+    for (.r in list(.p[1, ], utils::head(.p), .p[0, ], .p[.p$amt > 0, ])) {
+      expect_s3_class(.r, "rxEtPreview")
+      expect_false(any(grepl("\\brate\\b", utils::capture.output(print(.r)))))
+    }
+    expect_false(inherits(dplyr::slice(.p, 1), "rxEtPreview"))
+    # selecting every column by name is still a column subset: `[.data.frame`
+    # drops the marker attributes there, so the class must not be left behind
+    # pointing at nothing
+    for (.a in list(.p[TRUE], .p[names(.p)], .p[, names(.p)])) {
+      expect_false(inherits(.a, "rxEtPreview"))
+      expect_null(attr(.a, "rxEtShow", exact = TRUE))
+    }
+    # `[` keeps base semantics: drop=, matrix indexing and row filters
+    expect_equal(.p[, "amt"], as.data.frame(.p)[["amt"]])
+    expect_false(inherits(.p[, "amt", drop = FALSE], "rxEtPreview"))
+    expect_equal(ncol(.p[, "amt", drop = FALSE]), 1L)
+    expect_equal(nrow(.p[.p$amt > 0, ]), sum(.p$amt > 0))
+    expect_equal(.p[1, 2], as.data.frame(.p)[1, 2])
+    # a compressed preview is the exception: its groups count rows and print()
+    # builds the `id` column and the "N individuals" header from them, so a row
+    # subset must give up the marking rather than print a header that lies
+    .evg <- et(amt = 3) |> et(0:5)
+    .evg$wt <- 70
+    .g <- (.evg |> et(id = 1:4))$get.sampling()
+    expect_s3_class(.g, "rxEtPreview")
+    # the whole preview prints the synthesized `id` under a group header
+    expect_false("id" %in% names(.g))
+    expect_true(any(grepl("\\bid\\b", utils::capture.output(print(.g)))))
+    expect_true(any(grepl("compressed preview", utils::capture.output(print(.g)))))
+    expect_false(inherits(.g[1:2, ], "rxEtPreview"))
+    expect_false(any(grepl("compressed preview", utils::capture.output(print(.g[1:2, ])))))
+    # every row still present keeps it, since the groups still describe it
+    expect_s3_class(.g[seq_len(nrow(.g)), ], "rxEtPreview")
+    # the untouched preview still hides the columns it was marked to hide,
+    # but every column is there for programmatic access
+    expect_false(any(grepl("\\brate\\b", utils::capture.output(print(.p)))))
+    expect_true("rate" %in% names(.p))
+    # once columns are picked it is a plain data frame that prints all of them,
+    # including one that was hidden while it was marked
+    .k <- .p[c("time", "rate")]
+    expect_false(inherits(.k, "rxEtPreview"))
+    expect_true(any(grepl("\\brate\\b", utils::capture.output(print(.k)))))
+  })
+
+  test_that("explicitly assigned columns show up in print(ev) (#1154)", {
+    withr::local_options(list(width = 120))
+    .hasWt <- function(x) any(grepl("\\bwt\\b", utils::capture.output(print(x))))
+    .ev <- et(amt = 3, ii = 24, until = 96) |> et(seq(0, 96, by = 12))
+    expect_false(.hasWt(.ev))
+    .ev$wt <- 70
+    # the assigned column is part of the printed tibble, not swallowed
+    expect_true(.hasWt(.ev))
+    expect_true(any(grepl("\\b70\\b", utils::capture.output(print(.ev)))))
+    # and it is part of the accessor the printout points at
+    expect_true("wt" %in% names(.ev$get.EventTable()))
+    # deleting it takes it back out of the printout
+    .ev$wt <- NULL
+    expect_false(.hasWt(.ev))
+    expect_false("wt" %in% names(.ev$get.EventTable()))
+    # the compressed multi-subject preview shows it too
+    .evi <- et(amt = 3) |> et(0:5)
+    .evi$wt <- 70
+    .evi <- .evi |> et(id = 1:4)
+    .prev <- .etPreviewData(.rxEtEnv(.evi), "all")
+    expect_s3_class(.prev, "rxEtPreview")
+    expect_equal(attr(.prev, "rxEtExtraCols"), "wt")
+    expect_true(.hasWt(.evi))
+    expect_true(.hasWt(.prev))
+    expect_true(.hasWt(.evi$get.dosing()))
+    expect_true(.hasWt(.evi$get.sampling()))
+    # a covariate that only rode along with an imported data frame stays
+    # hidden even once another column is assigned explicitly
+    .evd <- et(data.frame(time = c(0, 1), amt = c(100, NA), evid = c(1, 0), covar = c(50, 50)))
+    .evd$wt <- 70
+    .hasCovar <- function(x) any(grepl("\\bcovar\\b", utils::capture.output(print(x))))
+    expect_true(.hasWt(.evd))
+    expect_false(.hasCovar(.evd))
+    expect_true("wt" %in% names(.evd$get.EventTable()))
+    expect_false("covar" %in% names(.evd$get.EventTable()))
+    # an unshown canonical column stays hidden as well
+    expect_false(any(grepl("\\bdur\\b", utils::capture.output(print(.evd)))))
+    # a canonical column that is not shown by default is unaffected
+    expect_equal(
+      .etDisplayCols(c("time", "amt", "wt"), c(time = TRUE, amt = TRUE, cmt = FALSE), "wt"),
+      c("time", "amt", "wt")
+    )
+    # `pre` columns lead, and columns absent from the data are dropped
+    expect_equal(
+      .etDisplayCols(c("id", "time", "wt"), c(time = TRUE, amt = TRUE), c("wt", "gone"), pre = "id"),
+      c("id", "time", "wt")
+    )
+    # an extra column that is also canonical is not duplicated
+    expect_equal(.etDisplayCols(c("time", "cmt"), c(time = TRUE, cmt = TRUE), "cmt"), c("time", "cmt"))
+  })
+
+  test_that("get.dosing()/get.sampling() print display columns only (#1154)", {
+    withr::local_options(list(width = 120))
+    .out <- function(x) utils::capture.output(print(x))
+    .has <- function(x, nm) any(grepl(paste0("\\b", nm, "\\b"), .out(x)))
+    .evd <- et(data.frame(time = c(0, 1, 2), amt = c(100, NA, NA), evid = c(1, 0, 0), covar = c(50, 50, 50)))
+    .evd$wt <- 70
+    for (.f in list(.evd$get.dosing(), .evd$get.sampling())) {
+      # the un-grouped accessor now prints the same columns print(ev) does
+      expect_s3_class(.f, "rxEtPreview")
+      expect_true(.has(.f, "wt"))
+      expect_true(.has(.f, "time"))
+      expect_false(.has(.f, "covar"))
+      expect_false(.has(.f, "dur"))
+      expect_false(.has(.f, "high"))
+      # but every column is still there for programmatic access
+      expect_true(all(c("covar", "dur", "high", "wt") %in% names(.f)))
+      expect_equal(.f$covar, rep(50, nrow(.f)))
+    }
+    # no compressed-preview header for an un-grouped table
+    expect_false(any(grepl("compressed preview", .out(.evd$get.dosing()))))
+    # a column renamed afterwards is not silently hidden
+    .r <- .evd$get.dosing()
+    names(.r)[names(.r) == "time"] <- "Time"
+    expect_true(.has(.r, "Time"))
+    expect_false(.has(.r, "covar"))
+    # keeping only hidden columns prints them rather than nothing
+    .k <- .evd$get.dosing()[, c("low", "high"), drop = FALSE]
+    expect_true(.has(.k, "low"))
+    # assigning into the frame makes it the caller's own data frame, so a
+    # column reusing a hidden name is not silently suppressed
+    .a <- .evd$get.dosing()
+    .a$covar <- NULL
+    .a$covar <- "new"
+    expect_false(inherits(.a, "rxEtPreview"))
+    expect_true(.has(.a, "covar"))
+    .b <- .evd$get.dosing()
+    .b[["covar"]] <- 1
+    expect_false(inherits(.b, "rxEtPreview"))
+    .c <- .evd$get.dosing()
+    .c[1, "amt"] <- 5
+    expect_false(inherits(.c, "rxEtPreview"))
+    # duplicated column names are not collapsed away by the column filter
+    expect_equal(
+      .etKeepCols(
+        c("time", "amt", "amt", "low"),
+        c("time", "amt", "amt", "low"),
+        c(time = TRUE, amt = TRUE, low = FALSE)
+      ),
+      c("time", "amt", "amt")
+    )
+    # nothing left to show falls back to showing everything
+    expect_equal(
+      .etKeepCols(c("low", "high"), c("low", "high"), c(time = TRUE, low = FALSE, high = FALSE)),
+      c("low", "high")
+    )
+    # no marked columns recorded behaves like filtering on what is there
+    expect_equal(.etKeepCols(c("time", "low"), NULL, c(time = TRUE, low = FALSE)), "time")
+    # units and row names survive the display marking
+    skip_if_not_installed("units")
+    .evu <- et(timeUnits = "hr") |>
+      et(amt = 100, ii = 12, until = 24) |>
+      et(seq(0, 24, by = 6))
+    withr::with_options(list(rxode2.homogenous = FALSE), {
+      .d <- .evu$get.dosing()
+      expect_true(inherits(.d$time, "units"))
+      expect_equal(rownames(.d), "1")
+      expect_equal(as.numeric(.d$ii), 12)
+      expect_true(.has(.d, "addl"))
+      expect_false(.has(.d, "low"))
+    })
+  })
+
+  test_that("assigned columns survive a data frame round trip (#1154)", {
+    withr::local_options(list(width = 120))
+    .has <- function(x, nm) {
+      any(grepl(paste0("\\b", nm, "\\b"), utils::capture.output(print(x))))
+    }
+    .ev <- et(data.frame(time = c(0, 1, 2), amt = c(100, NA, NA), evid = c(1, 0, 0), covar = c(50, 50, 50)))
+    .ev$wt <- 70
+    .df <- as.data.frame(.ev)
+    expect_equal(attr(.df, "rxEtExtraCols"), "wt")
+    # et(), $import.EventTable(), $importEventTable() and as.et() all keep the
+    # assigned column visible without promoting the imported covariate
+    .rt <- et(.df)
+    expect_true(.has(.rt, "wt"))
+    expect_false(.has(.rt, "covar"))
+    expect_equal(.etExtraCols(.rxEtEnv(.rt)), "wt")
+    expect_true(.has(et(as.data.frame(.rt)), "wt")) # and again, repeatedly
+    expect_true(.has(as.et(.df), "wt"))
+    .i1 <- et()
+    .i1$import.EventTable(.df)
+    expect_true(.has(.i1, "wt"))
+    expect_false(.has(.i1, "covar"))
+    .i2 <- et()
+    .i2$importEventTable(.df)
+    expect_true(.has(.i2, "wt"))
+    expect_false(.has(.i2, "covar"))
+    # all = TRUE carries the hidden covariate as data but not as a shown column
+    .all <- et(as.data.frame(.ev, all = TRUE))
+    expect_true(.has(.all, "wt"))
+    expect_false(.has(.all, "covar"))
+    expect_true("covar" %in% names(as.data.frame(.all, all = TRUE)))
+    # a NONMEM-style uppercase name is renamed on import, and the tag is
+    # renamed with it so the column does not vanish (it shows before the trip)
+    .up <- et(time = 1, amt = 100)
+    .up$SS <- 3
+    expect_true(.has(.up, "SS"))
+    .upRt <- et(as.data.frame(.up))
+    expect_equal(.etExtraCols(.rxEtEnv(.upRt)), "ss")
+    expect_true(.has(.upRt, "ss"))
+    # a tag naming a column that is not in the frame is ignored
+    .bad <- as.data.frame(.ev)
+    attr(.bad, "rxEtExtraCols") <- c("wt", "nosuchcolumn")
+    expect_equal(.etExtraCols(.rxEtEnv(et(.bad))), "wt")
+    # a data frame built by hand carries no tag, so its covariates stay hidden
+    .plain <- et(data.frame(time = c(0, 1), amt = c(1, NA), evid = c(1, 0), cv = c(2, 2)))
+    expect_false(.has(.plain, "cv"))
+    expect_null(attr(as.data.frame(.plain), "rxEtExtraCols"))
+    # dropping the column drops the tag, so it does not come back
+    .ev$wt <- NULL
+    expect_null(attr(as.data.frame(.ev), "rxEtExtraCols"))
+    expect_false(.has(et(as.data.frame(.ev)), "wt"))
+  })
+
+  test_that("dplyr verbs drop the get.dosing() display marking", {
+    skip_if_not_installed("dplyr")
+    withr::local_options(list(width = 120))
+    .out <- function(x) utils::capture.output(print(x))
+    .evd <- et(data.frame(time = c(0, 1, 2), amt = c(100, NA, NA), evid = c(1, 0, 0), covar = c(50, 50, 50)))
+    .evd$wt <- 70
+    # dplyr keeps the class but drops the marker attributes, so degrade to a
+    # plain data frame the way `rxEt` does instead of printing a stale subset
+    .m <- dplyr::mutate(.evd$get.dosing(), wt2 = 1)
+    expect_false(inherits(.m, "rxEtPreview"))
+    expect_true(any(grepl("\\bwt2\\b", .out(.m))))
+    .s <- dplyr::filter(.evd$get.sampling(), .data$time > 1)
+    expect_false(inherits(.s, "rxEtPreview"))
+    expect_equal(nrow(.s), 1L)
+  })
+
+  test_that("et import rate=-2", {
+    d <- data.frame(
+      id = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+      time = c(0, 2, 12.5, 24.5, 37, 48, 60.5, 72.5, 85.3, 96.5, 108.5, 112.5),
+      amt = c(25, 0, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 0),
+      rate = c(-2, 0, -2, -2, -2, -2, -2, -2, -2, -2, -2, 0)
+    )
+    d2 <- as.data.frame(et(d))
+    expect_equal(d2$rate, c(-2, NA_real_, -2, -2, -2, -2, -2, -2, -2, -2, -2, NA_real_))
+  })
 
   for (radi in c(1, 2)) {
-    forderForceBase(switch(radi,
-                           TRUE,
-                           FALSE
-                           ))
-    radix <- switch(radi,
-                    "base::order",
-                    "data.table::forder"
-                    )
+    forderForceBase(switch(radi, TRUE, FALSE))
+    radix <- switch(radi, "base::order", "data.table::forder")
 
     # context(sprintf("Test event Table et(...) sort:%s", radix))
     et <- et()
@@ -73,8 +438,6 @@ rxTest({
       expect_true(all(et$cmt == 1L))
     })
 
-
-
     et1 <- et(1:10, id = 1:10)
 
     test_that("Observation only table check", {
@@ -85,7 +448,17 @@ rxTest({
       expect_true(et1$show["id"])
       expect_false(et1$show["cmt"])
       expect_equal(et1$get.dosing(), NULL)
-      expect_equal(length(et1$get.sampling()$time), 100)
+      ## homogeneous path returns compressed (10 time-points); non-homogeneous returns 100
+      expect_equal(length(et1$get.sampling()$time), if (.rxGetHomogenous()) 10L else 100L)
+    })
+
+    test_that("get.sampling homogeneous vs non-homogeneous path", {
+      ## default homogeneous: compressed per-group view
+      withr::local_options(rxode2.homogenous = TRUE)
+      expect_equal(length(et1$get.sampling()$time), 10L)
+      ## non-homogeneous: fully materialized across all subjects
+      withr::local_options(rxode2.homogenous = FALSE)
+      expect_equal(length(et1$get.sampling()$time), 100L)
     })
 
     ## now resize down
@@ -102,7 +475,6 @@ rxTest({
       expect_equal(et2$get.dosing(), NULL)
       expect_equal(length(et2$get.sampling()$time), 10)
     })
-
 
     ## now resize back up
     et3 <- et2 |>
@@ -134,7 +506,6 @@ rxTest({
     eti7 <- et(10) |>
       et(id = 2)
 
-
     eti8 <- et(10, id = 1)
     eti9 <- et(10) |>
       et(id = 1)
@@ -152,7 +523,6 @@ rxTest({
     eti14 <- et(list(c(10, 11)), amt = 10, id = 1)
     eti15 <- et(list(c(10, 11)), amt = 10) |>
       et(id = 1)
-
 
     eti16 <- et(list(c(10, 11)), id = 2)
     eti17 <- et(list(c(10, 11))) |>
@@ -173,48 +543,47 @@ rxTest({
     ## Now do it with dosing/sampling windows
 
     test_that("Make sure that et only has IDs 2 and 3.", {
-      expect_equal(eti$id, 2:3)
-      expect_equal(eti1$id, 3:4)
-      expect_equal(eti2$id, 3)
-      expect_equal(eti3$id, 3:4)
-      expect_equal(eti4$id, 3)
-      expect_equal(eti5$id, 2:3)
-      expect_equal(eti6$id, 2)
-      expect_equal(eti7$id, 2)
-      expect_equal(eti8$id, 1)
+      expect_equal(unique(eti$id), 2:3)
+      expect_equal(unique(eti1$id), 3:4)
+      expect_equal(unique(eti2$id), 3)
+      expect_equal(unique(eti3$id), 3:4)
+      expect_equal(unique(eti4$id), 3)
+      expect_equal(unique(eti5$id), 2:3)
+      expect_equal(unique(eti6$id), 2)
+      expect_equal(unique(eti7$id), 2)
+      expect_equal(unique(eti8$id), 1)
       expect_true(eti8$env$show["id"])
-      expect_equal(eti9$id, 1)
+      expect_equal(unique(eti9$id), 1)
       expect_true(eti9$env$show["id"])
-      expect_equal(eti10$id, 1)
+      expect_equal(unique(eti10$id), 1)
       expect_true(eti10$env$show["id"])
-      expect_equal(eti11$id, 1)
+      expect_equal(unique(eti11$id), 1)
       expect_true(eti11$env$show["id"])
-      expect_equal(eti12$id, 1)
+      expect_equal(unique(eti12$id), 1)
       expect_true(eti12$env$show["id"])
-      expect_equal(eti13$id, 1)
+      expect_equal(unique(eti13$id), 1)
       expect_true(eti13$env$show["id"])
-      expect_equal(eti14$id, 1)
+      expect_equal(unique(eti14$id), 1)
       expect_true(eti14$env$show["id"])
-      expect_equal(eti15$id, 1)
+      expect_equal(unique(eti15$id), 1)
       expect_true(eti15$env$show["id"])
-      expect_equal(eti16$id, 2)
+      expect_equal(unique(eti16$id), 2)
       expect_true(eti16$env$show["id"])
-      expect_equal(eti17$id, 2)
+      expect_equal(unique(eti17$id), 2)
       expect_true(eti17$env$show["id"])
-      expect_equal(eti18$id, 2)
+      expect_equal(unique(eti18$id), 2)
       expect_true(eti18$env$show["id"])
-      expect_equal(eti19$id, 2)
+      expect_equal(unique(eti19$id), 2)
       expect_true(eti19$env$show["id"])
-      expect_equal(eti20$id, 2:3)
+      expect_equal(unique(eti20$id), 2:3)
       expect_true(eti20$env$show["id"])
-      expect_equal(eti21$id, 2:3)
+      expect_equal(unique(eti21$id), 2:3)
       expect_true(eti21$env$show["id"])
-      expect_equal(eti22$id, 2:3)
+      expect_equal(unique(eti22$id), 2:3)
       expect_true(eti22$env$show["id"])
-      expect_equal(eti23$id, 2:3)
+      expect_equal(unique(eti23$id), 2:3)
       expect_true(eti23$env$show["id"])
     })
-
 
     test_that("Observation only table check", {
       expect_equal(et1$nobs, 100L)
@@ -224,7 +593,8 @@ rxTest({
       expect_true(et1$show["id"])
       expect_false(et1$show["cmt"])
       expect_equal(et1$get.dosing(), NULL)
-      expect_equal(length(et1$get.sampling()$time), 100)
+      ## homogeneous path returns compressed (10 time-points); non-homogeneous returns 100
+      expect_equal(length(et1$get.sampling()$time), if (.rxGetHomogenous()) 10L else 100L)
     })
 
     ## Check adding different units of time, rate, amt work
@@ -240,8 +610,7 @@ rxTest({
       e2 <- e |>
         et(amt = units::set_units(0.0003, "lb"), time = 0.5)
 
-      expect_equal(e2$amt[e2$time == units::set_units(0.5, hr)],
-                   units::set_units(units::set_units(0.0003, lb), mg))
+      expect_equal(e2$amt[e2$time == units::set_units(0.5, hr)], units::set_units(units::set_units(0.0003, lb), mg))
       e2 <- e |> et(units::set_units(30, min))
       expect_true(any(e2$time == units::set_units(0.5, hr)))
       e2 <- e |> et(time = 0.25, rate = units::set_units(30, ug / min), amt = units::set_units(4, ug))
@@ -264,12 +633,11 @@ rxTest({
       et <- et()
       et$import.EventTable(etDf)
 
-      expect_equal(et$ii, e$ii)
-      expect_equal(et$rate, e$rate)
+      expect_equal(as.numeric(et$ii), as.numeric(e$ii))
+      expect_equal(as.numeric(et$rate), as.numeric(e$rate))
     })
 
     test_that("seq works with wait", {
-
       e1 <- et(amt = 100, ii = 24, addl = 6)
 
       e2 <- et(amt = 200, ii = 24, addl = 6)
@@ -278,58 +646,68 @@ rxTest({
 
       e4 <- seq(e1, wait = 72, e2, wait = 72, e1) |> as.data.frame()
 
-      expect_equal(structure(list(
-        time = c(0, 216, 432),
-        amt = c(100, 200, 100),
-        ii = c(24, 24, 24),
-        addl = c(6L, 6L, 6L),
-        evid = c(1L, 1L, 1L)
-      ),
-      class = "data.frame",
-      row.names = c(NA, -3L)
-      ), e4)
+      expect_equal(
+        structure(
+          list(
+            time = c(0, 216, 432),
+            amt = c(100, 200, 100),
+            ii = c(24, 24, 24),
+            addl = c(6L, 6L, 6L),
+            evid = c(1L, 1L, 1L)
+          ),
+          class = "data.frame",
+          row.names = c(NA, -3L)
+        ),
+        e4
+      )
 
       e5 <- etSeq(e1, wait = 72, e2, wait = 72, e1, waitII = "+ii") |>
         as.data.frame()
 
-      expect_equal(structure(list(
-        time = c(0, 240, 480),
-        amt = c(100, 200, 100),
-        ii = c(24, 24, 24),
-        addl = c(6L, 6L, 6L),
-        evid = c(1L, 1L, 1L)
-      ),
-      class = "data.frame",
-      row.names = c(NA, -3L)
-      ), e5)
+      expect_equal(
+        structure(
+          list(
+            time = c(0, 240, 480),
+            amt = c(100, 200, 100),
+            ii = c(24, 24, 24),
+            addl = c(6L, 6L, 6L),
+            evid = c(1L, 1L, 1L)
+          ),
+          class = "data.frame",
+          row.names = c(NA, -3L)
+        ),
+        e5
+      )
 
       e1 <- et(amt = 500)
       e2 <- et(amt = 250, ii = 24, addl = 4)
 
       expect_equal(
-        structure(list(
-          time = c(0, 24),
-          amt = c(500, 250),
-          ii = c(0, 24),
-          addl = c(0L, 4L),
-          evid = c(1L, 1L)
-        ),
-        class = "data.frame",
-        row.names = c(NA, -2L)
+        structure(
+          list(
+            time = c(0, 24),
+            amt = c(500, 250),
+            ii = c(0, 24),
+            addl = c(0L, 4L),
+            evid = c(1L, 1L)
+          ),
+          class = "data.frame",
+          row.names = c(NA, -2L)
         ),
         c(e1, e2) |> as.data.frame()
       )
 
       expect_equal(
-        structure(list(
-          time = c(0, 120, 144),
-          amt = c(250, 500, 250),
-          ii = c(24, 0, 24),
-          addl = c(4L, 0L, 4L),
-          evid = c(1L, 1L, 1L)
-        ),
-        class = "data.frame",
-        row.names = c(NA, -3L)
+        structure(
+          list(
+            time = c(0, 120, 144),
+            amt = c(250, 500, 250),
+            ii = c(24, 0, 24),
+            addl = c(4L, 0L, 4L),
+            evid = c(1L, 1L, 1L)
+          ),
+          class = "data.frame",
+          row.names = c(NA, -3L)
         ),
         c(e2, e1, e2) |> as.data.frame()
       )
@@ -341,15 +719,16 @@ rxTest({
       e4 <- suppressWarnings(c(e1, e3) |> as.data.frame())
 
       expect_equal(
-        structure(list(
-          time = c(0, 24),
-          amt = c(500, 200),
-          ii = c(0, 0),
-          addl = c(0L, 0L),
-          evid = c(1L, 1L)
-        ),
-        class = "data.frame",
-        row.names = c(NA, -2L)
+        structure(
+          list(
+            time = c(0, 24),
+            amt = c(500, 200),
+            ii = c(0, 0),
+            addl = c(0L, 0L),
+            evid = c(1L, 1L)
+          ),
+          class = "data.frame",
+          row.names = c(NA, -2L)
         ),
         e4
       )
@@ -357,19 +736,19 @@ rxTest({
       e4 <- suppressWarnings(c(e1, e3, ii = 12) |> as.data.frame())
 
       expect_equal(
-        structure(list(
-          time = c(0, 12),
-          amt = c(500, 200),
-          ii = c(0, 0),
-          addl = c(0L, 0L),
-          evid = c(1L, 1L)
-        ),
-        class = "data.frame",
-        row.names = c(NA, -2L)
+        structure(
+          list(
+            time = c(0, 12),
+            amt = c(500, 200),
+            ii = c(0, 0),
+            addl = c(0L, 0L),
+            evid = c(1L, 1L)
+          ),
+          class = "data.frame",
+          row.names = c(NA, -2L)
         ),
         e4
       )
-
 
       e1 <- et(amt = 100, ii = 24, addl = 6) |>
         et(seq(0, 2 * 168, by = 0.1))
@@ -384,30 +763,32 @@ rxTest({
       e4 <- rbind(e1, e2, e3)
       expect_equal(
         e4 |> dplyr::select(id, time, amt, ii, addl) |> as.data.frame(),
-        structure(list(
-          id = c(1L, 1L, 1L, 2L, 2L, 2L, 3L, 3L, 4L, 5L),
-          time = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
-          amt = c(100, 50, 200, 100, 50, 200, 100, 50, 100, 100),
-          ii = c(24, 12, 24, 24, 12, 24, 24, 12, 24, 24),
-          addl = c(6L, 13L, 2L, 6L, 13L, 2L, 6L, 13L, 6L, 6L)
-        ),
-        class = "data.frame",
-        row.names = c(NA, -10L)
+        structure(
+          list(
+            id = c(1L, 1L, 1L, 2L, 2L, 2L, 3L, 3L, 4L, 5L),
+            time = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+            amt = c(100, 50, 200, 100, 50, 200, 100, 50, 100, 100),
+            ii = c(24, 12, 24, 24, 12, 24, 24, 12, 24, 24),
+            addl = c(6L, 13L, 2L, 6L, 13L, 2L, 6L, 13L, 6L, 6L)
+          ),
+          class = "data.frame",
+          row.names = c(NA, -10L)
         )
       )
 
       e4 <- rbind(e1, e2, e3, id = "unique")
       expect_equal(
         e4 |> dplyr::select(id, time, amt, ii, addl) |> as.data.frame(),
-        structure(list(
-          id = 1:10,
-          time = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
-          amt = c(100, 100, 100, 100, 100, 50, 50, 50, 200, 200),
-          ii = c(24, 24, 24, 24, 24, 12, 12, 12, 24, 24),
-          addl = c(6L, 6L, 6L, 6L, 6L, 13L, 13L, 13L, 2L, 2L)
-        ),
-        class = "data.frame",
-        row.names = c(NA, -10L)
+        structure(
+          list(
+            id = 1:10,
+            time = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+            amt = c(100, 100, 100, 100, 100, 50, 50, 50, 200, 200),
+            ii = c(24, 24, 24, 24, 24, 12, 12, 12, 24, 24),
+            addl = c(6L, 6L, 6L, 6L, 6L, 13L, 13L, 13L, 2L, 2L)
+          ),
+          class = "data.frame",
+          row.names = c(NA, -10L)
         )
       )
     })
@@ -446,13 +827,16 @@ rxTest({
       expect_true(all(et2$time > et2$low))
     })
 
-    et <- et(list(
-      c(0, 1),
-      c(1, 4),
-      c(4, 8),
-      c(8, 12),
-      c(12, 24)
-    ), cmt = 1) |>
+    et <- et(
+      list(
+        c(0, 1),
+        c(1, 4),
+        c(4, 8),
+        c(8, 12),
+        c(12, 24)
+      ),
+      cmt = 1
+    ) |>
       et(amt = 10) |>
       et(c(11, 13), amt = 10, addl = 3, ii = 12)
 
@@ -570,7 +954,7 @@ rxTest({
 
     toto <- rep(sch1, times = 10, wait = units::set_units(19, "days"))
 
-    expect_equal(toto$time, seq(0, by = 504, length.out = 10))
+    expect_equal(as.numeric(toto$time), seq(0, by = 504, length.out = 10))
 
     sch1 <- et(timeUnits = "hr") |>
       et(amt = 100, ii = 24, until = units::set_units(2, "days")) |>
@@ -599,13 +983,15 @@ rxTest({
   })
 
   test_that("can use 'evid=0' with time entries", {
-    expect_error(et(amt = 10, cmt = 1, time = 0, evid = 1, id = 1) |>
-                   et(time = c(0, 10, 20), evid = 0), NA)
-
+    expect_error(
+      et(amt = 10, cmt = 1, time = 0, evid = 1, id = 1) |>
+        et(time = c(0, 10, 20), evid = 0),
+      NA
+    )
   })
 
   test_that("extra doses are not added (nlmixr2/rxode2et#2)", {
-    foo <- et(amt=10, id=1:2) |> et(time=1, id=2:3)
+    foo <- et(amt = 10, id = 1:2) |> et(time = 1, id = 2:3)
     expect_equal(
       foo$id[!is.na(foo$amt)],
       1:2
@@ -613,21 +999,23 @@ rxTest({
   })
 
   test_that("event table id, (rxode2et#4)", {
-    expect_error(et(amt = 10, time = 0, evid = 1, id = 1:5) |>
-                   et(amt = 100, time = 0, evid = 1, id = 6:10) |>
-                   et(amt = 1000, time = 0, evid = 1, id = 11), NA)
-
+    expect_error(
+      et(amt = 10, time = 0, evid = 1, id = 1:5) |>
+        et(amt = 100, time = 0, evid = 1, id = 6:10) |>
+        et(amt = 1000, time = 0, evid = 1, id = 11),
+      NA
+    )
   })
 
   test_that("event table non-zero time", {
-    suppressWarnings(expect_warning(et(amt=1.153846, ii=24*7*6, until=24*7*6*2) |>
-                                      et(amt=1.153846, time=24*7*6*(2+8),
-                                         ii=24*7*8, until=24*7), "until"))
+    suppressWarnings(expect_warning(
+      et(amt = 1.153846, ii = 24 * 7 * 6, until = 24 * 7 * 6 * 2) |>
+        et(amt = 1.153846, time = 24 * 7 * 6 * (2 + 8), ii = 24 * 7 * 8, until = 24 * 7),
+      "until"
+    ))
   })
 
-
   test_that("event table cmt needs to be evaluated #16", {
-
     dosing_df <- data.frame(
       DOSE = c(0.1, 0.5),
       CMT = c("A", "B"),
@@ -639,26 +1027,27 @@ rxTest({
     # The below should work... but does not
     sub_df <- dosing_df[1, , drop = T]
 
-    expect_error(et(
-      amt = sub_df$DOSE,
-      cmt = sub_df$CMT,
-      time = sub_df$TIME,
-      evid = 1,
-      id = 1:5
-    ) |>
-      add.sampling(time = samp_t), NA)
-
+    expect_error(
+      et(
+        amt = sub_df$DOSE,
+        cmt = sub_df$CMT,
+        time = sub_df$TIME,
+        evid = 1,
+        id = 1:5
+      ) |>
+        add.sampling(time = samp_t),
+      NA
+    )
   })
 
   test_that("toTrialDuration works", {
-    trialEnd = 2
-    ev <- et(data.frame(id = rep(1:2, 3),  time = c(13, 14, 13.5, 14.5, 15.3, 16.5)))
+    trialEnd <- 2
+    ev <- et(data.frame(id = rep(1:2, 3), time = c(13, 14, 13.5, 14.5, 15.3, 16.5)))
     res <- toTrialDuration(ev, trialEnd = trialEnd, interval = 0.5)
     expect_setequal(res$time, c(13, 13.5, 14, 14.5, 15, 14, 14.5, 15, 15.5, 16))
   })
 
   test_that("Ad issue #23", {
-
     cmti <- "Ad"
     dose_nmol <- 3
     dosing <- et(time = 0, amt = dose_nmol, cmt = cmti)
@@ -668,11 +1057,9 @@ rxTest({
     dosing <- et(time = 0, amt = dose_nmol, cmt = cmtj)
 
     expect_equal(dosing$cmt, "cmtj")
-
   })
 
   test_that("test import with NA time", {
-
     e <- et()
 
     expect_warning(e$importEventTable(data.frame(
@@ -684,14 +1071,12 @@ rxTest({
       DOSE = 300,
       COVAR = 1
     )))
-
   })
 
-
   test_that("another import", {
-
     e <- et()
 
+    # fmt: skip
     expect_warning(e$importEventTable(data.frame(ID = c("A131", "A131", "A131", "A131", "A131",
                                                         "A131", "A131", "A131", "A131", "A131", "A131", "A131", "A131",
                                                         "A131", "A131", "A131", "A131", "A131", "A131", "A131", "A131",
@@ -847,15 +1232,24 @@ rxTest({
                                                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
                                                  )))
-
   })
 
   test_that("as.character.rxEvid", {
     expect_equal(
       as.character.rxEvid(-1:9),
-      c("-1:Invalid", "0:Observation", "1:Dose (Add)", "2:Other", "3:Reset",
-        "4:Reset&Dose", "5:Replace", "6:Multiply", "7:Transit", "8:Invalid",
-        "9:Invalid")
+      c(
+        "-1:Invalid",
+        "0:Observation",
+        "1:Dose (Add)",
+        "2:Other",
+        "3:Reset",
+        "4:Reset&Dose",
+        "5:Replace",
+        "6:Multiply",
+        "7:Transit",
+        "8:Invalid",
+        "9:Invalid"
+      )
     )
     expect_equal(
       as.character.rxEvid("A"),
@@ -868,58 +1262,302 @@ rxTest({
   })
 
   test_that("sampling windows versus PopED windows", {
-
-    e1 <- et(list(c(0.1, 1, 50),
-                  c(0.5, 2, 50),
-                  c(0.5, 3, 50),
-                  c(0.5, 25, 50),
-                  c(0.5, 25, 50),
-                  c(0.5, 30, 50),
-                  c(0.5, 50, 80),
-                  c(0.5, 60, 90))) |>
-      et(amt=100)
+    e1 <- et(list(
+      c(0.1, 1, 50),
+      c(0.5, 2, 50),
+      c(0.5, 3, 50),
+      c(0.5, 25, 50),
+      c(0.5, 25, 50),
+      c(0.5, 30, 50),
+      c(0.5, 50, 80),
+      c(0.5, 60, 90)
+    )) |>
+      et(amt = 100)
     expect_equal(attr(class(e1), ".rxode2.lst")$randomType, 1L)
 
     expect_warning(simulate(e1))
 
-    e2 <- et(list(c(0.1, 50),
-                  c(0.5,  50),
-                  c(0.5, 50),
-                  c(0.5, 50),
-                  c(0.5, 50),
-                  c(0.5, 50),
-                  c(0.5, 80),
-                  c(0.5, 90))) |>
-      et(amt=100)
+    e2 <- et(list(c(0.1, 50), c(0.5, 50), c(0.5, 50), c(0.5, 50), c(0.5, 50), c(0.5, 50), c(0.5, 80), c(0.5, 90))) |>
+      et(amt = 100)
 
     expect_equal(attr(class(e2), ".rxode2.lst")$randomType, 2L)
 
     expect_warning(simulate(e2), NA)
 
-    e3 <- et(list(c(1, .1, NA),
-                  c(2, .1),
-                  c(3, .1),
-                  c(4, .1),
-                  c(5, .1),
-                  c(6, .1),
-                  c(7, .1),
-                  c(8, .1))) |>
-      et(amt=100)
+    e3 <- et(list(
+      c(0.9, 1.1),
+      c(1.9, 2.1),
+      c(2.9, 3.1),
+      c(3.9, 4.1),
+      c(4.9, 5.1),
+      c(5.9, 6.1),
+      c(6.9, 7.1),
+      c(7.9, 8.1)
+    )) |>
+      et(amt = 100)
 
-    expect_equal(attr(class(e3), ".rxode2.lst")$randomType, 3L)
+    expect_equal(attr(class(e3), ".rxode2.lst")$randomType, 2L)
 
-    expect_warning(simulate(e3), NA)
+    e4 <- et(list(c(4, 0.5, NA))) |>
+      et(id = 1:10000)
 
+    expect_equal(attr(class(e4), ".rxode2.lst")$randomType, 3L)
+    df4 <- as.data.frame(e4)
+    expect_equal(df4$low[1], 4)
+    expect_equal(df4$high[1], 0.5)
 
+    e5 <- simulate(e4, seed = 42)
+    expect_equal(mean(as.numeric(e5$time)), 4, tolerance = 0.1)
+    expect_equal(sd(as.numeric(e5$time)), 0.5, tolerance = 0.1)
+
+    e6 <- et(list(c(4, 2, NA))) |>
+      et(id = 1:10000)
+    expect_equal(attr(class(e6), ".rxode2.lst")$randomType, 3L)
+    df6 <- as.data.frame(e6)
+    expect_equal(df6$low[1], 4)
+    expect_equal(df6$high[1], 2)
+
+    e7 <- simulate(e6, seed = 42)
+    expect_equal(mean(as.numeric(e7$time)), 4, tolerance = 0.1)
+    expect_equal(sd(as.numeric(e7$time)), 2, tolerance = 0.1)
+  })
+
+  test_that("dosing window simulation", {
+    e1 <- et(amt = 100, time = list(c(0, 1))) |>
+      et(id = 1:10000)
+    e2 <- simulate(e1, seed = 42)
+    df <- as.data.frame(e2)
+    expect_equal(mean(df$time), 0.5, tolerance = 0.1)
+    expect_equal(sd(df$time), sqrt(1 / 12), tolerance = 0.1)
+
+    e3 <- et(amt = 100, time = list(c(4, 0.5, NA))) |>
+      et(id = 1:10000)
+    e4 <- simulate(e3, seed = 42)
+    df <- as.data.frame(e4)
+    expect_equal(mean(df$time), 4, tolerance = 0.1)
+    expect_equal(sd(df$time), 0.5, tolerance = 0.1)
   })
 
   test_that("adding an ID in the improper order will not cause an issue", {
-
     e <- et(1:10) |>
-      et(id=rev(1:10))
+      et(id = rev(1:10))
 
     expect_equal(unique(e$id), 1:10)
-
   })
 
+  test_that("et improper piped arguments #722", {
+    expect_error(
+      et(amt = 0, cmt = central, id = c(1:10)) |>
+        et(c(0, 1), cmt = Cc),
+      NA
+    )
+  })
+
+  test_that("et can add doses per id (#725)", {
+    expect_error(
+      rxWithSeed(100, {
+        sim.cov <- data.frame(id = 1:10, wt = rnorm(10, 70, 10))
+
+        e_1 <- et(id = sim.cov$id) %>%
+          add.dosing(start.time = 0, dose = 600000 * sim.cov$wt, nbr.doses = 14, dosing.interval = 8, dur = 15 / 60) %>%
+          add.dosing(
+            start.time = (5 + 9) * 24,
+            dose = 600000 * sim.cov$wt,
+            nbr.doses = 14,
+            dosing.interval = 8,
+            dur = 15 / 60
+          ) %>%
+          add.sampling(seq(from = 0, to = 24 * 21, by = 0.25)) %>%
+          as.data.frame %>%
+          merge(sim.cov, by = "id")
+      }),
+      NA
+    )
+  })
+
+  test_that("when solving without observations, they are assumed (#858)", {
+    mod3 <- function() {
+      ini({
+        TKA   <- 2.94E-01
+        TCL   <- 1.86E+01
+        TV2   <-4.02E+01
+        TQ    <-1.05E+01
+        TV3   <-2.97E+02
+        TKin  <- 1
+        TKout <- 1
+        TEC50 <-200
+      })
+      model({
+        KA            <- TKA
+        CL            <- TCL * (WT / 70) ^ 0.75
+        V2            <- TV2
+        Q             <- TQ
+        V3            <- TV3
+        Kin           <- TKin
+        Kout          <- TKout
+        EC50          <- TEC50
+        Tz            <- 8
+        amp           <- 0.1
+        C2            <- central/V2
+        C3            <- peri/V3
+        d/dt(depot)   <- -KA*depot
+        d/dt(central) <- KA*depot - CL*C2 - Q*C2 + Q*C3
+        d/dt(peri)    <-                    Q*C2 - Q*C3
+        d/dt(eff)     <-  Kin - Kout*(1-C2/(EC50+C2))*eff
+        eff(0)        <- 1  ## This specifies that the effect compartment starts at 1.
+      })
+    }
+
+    ev <- et(amount.units = "mg", time.units = "hours") %>%
+      et(amt = 10000, cmt = 1) %>%
+      et(id = 1:4)
+
+    rxWithSeed(
+      10,
+      {
+        r1 <- solve(mod3, ev, iCov = data.frame(id = 1:4, WT = rnorm(4, 70, 10)))
+      },
+      rxseed = 10
+    )
+
+    expect_true(nrow(r1) > 0)
+  })
+
+  test_that("Fix for #732", {
+    rxWithSeed(
+      123,
+      {
+        # Setup the rxode2 event table
+        eventTable <- et(amt = 320, evid = 1, cmt = 1, time = 0) |>
+          et(amt = 320, evid = 1, cmt = 2, time = 0) |>
+          et(list(
+            c(0.1, 0.4), # sampling windows for first profile
+            c(0.3, 0.9),
+            c(0.7, 1.5),
+            c(1.5, 2.5),
+            c(2.5, 4),
+            c(4, 6),
+            c(6, 8.5),
+            c(8.75, 10),
+            c(10, 12),
+            c(23, 27)
+          )) |>
+          et(amt = 320, evid = 4, time = 72, cmt = 1) |> # reset & dose
+          et(amt = 320, evid = 1, time = 72, cmt = 2) |> # dose afterward
+          et(list(
+            c(72.1, 72.4),
+            c(72.3, 72.9),
+            c(72.7, 73.5),
+            c(73.5, 74.5),
+            c(74.5, 78.5),
+            c(76, 78),
+            c(78, 80.5),
+            c(80.75, 82),
+            c(82, 84),
+            c(95, 100)
+          )) |>
+          et(id = 1:14) # Number of subjects to sample
+
+        # Now define the nlmixr2/rxode2 model used for both estimation and simulation
+        mod <- function() {
+          # Parameters
+          ini({
+            tka <- 0.45; label("Ka (first order absorption)")
+            trate <- 0.4 ; label("Zero order rate")
+            tcl <- 1; label("Cl")
+            tv <- 3.45; label("V")
+            fDepot <- logit(0.5) ; label("amount of dose in first order absorption")
+            eta.ka ~ 0.6
+            eta.cl ~ 0.3
+            eta.v ~ 0.1
+            add.sd <- 0.7
+          })
+          # and a model block with the error specification and model specification
+          model({
+            ka <- exp(tka + eta.ka)
+            cl <- exp(tcl + eta.cl)
+            v <- exp(tv + eta.v)
+            d/dt(depot) = -ka * depot
+            d/dt(center) = ka * depot - cl / v * center
+
+            f(depot) <- expit(fDepot)
+            f(center) <- 1-expit(fDepot)
+            rate(center) <- exp(trate)
+
+            cp = center / v
+            cp ~ add(add.sd)
+          })
+        }
+
+        mod <- mod()
+
+        # Simulate the data
+        d <- rxSolve(mod, eventTable, addDosing = TRUE)
+
+        expect_equal(
+          d |>
+            dplyr::filter(evid == 1 & cmt == 2) |>
+            dplyr::pull(time) |>
+            unique(),
+          c(0, 72)
+        )
+
+        function() {
+          ini({
+            tka <- 0.45
+            label("Ka (first order absorption)")
+            trate <- 0.4
+            label("Zero order rate")
+            tcl <- 1
+            label("Cl")
+            tv <- 3.45
+            label("V")
+            fDepot <- 0
+            label("amount of dose in first order absorption")
+            add.sd <- c(0, 0.7)
+            eta.ka ~ 0.6
+            eta.cl ~ 0.3
+            eta.v ~ 0.1
+          })
+          model({
+            ka <- exp(tka + eta.ka)
+            cl <- exp(tcl + eta.cl)
+            v <- exp(tv + eta.v)
+
+            f(depot) <- expit(fDepot, 0, 1)
+            f(center) <- 1 - expit(fDepot, 0, 1)
+            rate(center) <- exp(trate)
+            cp = linCmt()
+            cp ~ add(add.sd)
+          })
+        }
+      },
+      rxseed = 123
+    )
+  })
+
+  test_that("Only adds dose for subject 1, Fix for #723", {
+    sub_ids <- c(1, 2, 3, 4, 5)
+
+    # creating observations
+    obs_times <- c(0:20)
+    events <- et(time = obs_times, id = sub_ids)
+
+    for (sub_id in sub_ids) {
+      events <- etRbind(
+        events,
+        # This does not work
+        et(cmt = "Ac", amt = c(1, 1, 1), time = c(0, 1, 2), id = as.character(sub_id))
+      )
+    }
+
+    events |> dplyr::filter(id == 2 & cmt == "Ac") |> nrow() |> expect_equal(3)
+  })
+
+  test_that("$expand() issue #721", {
+    ev <- et()
+    ev <- ev %>%
+      et(id = 1:10, amt = 1:10, dosing.to = 1, ii = 14, addl = 5, rate = (1:10) / (15 / 60 / 24))
+    expect_error(ev$expand(), NA)
+  })
 })

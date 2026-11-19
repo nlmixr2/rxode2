@@ -16,7 +16,7 @@ ODE states only
 Get the ODE states only
 }
 \examples{
-
+\donttest{
 mod <- rxode2({
   Cp <- linCmt(Cl, V, Q2, V2, Q3, V3)
   ke0 <- log(2)/(50)
@@ -36,8 +36,19 @@ mod <- rxode2({
 rxStateOde(mod)
 
 rxState(mod)
+}
 
+}
+\seealso{
+Other Query model information:
+\code{\link[=rxDfdy]{rxDfdy()}},
+\code{\link[=rxInits]{rxInits()}},
+\code{\link[=rxLhs]{rxLhs()}},
+\code{\link[=rxModelVars]{rxModelVars()}},
+\code{\link[=rxParams]{rxParams()}},
+\code{\link[=rxState]{rxState()}}
 }
 \author{
 Matthew L. Fidler
 }
+\concept{Query model information}

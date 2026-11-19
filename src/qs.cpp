@@ -4,16 +4,6 @@
 #include "../inst/include/rxode2parse.h"
 
 Rcpp::Function loadNamespaceQs("loadNamespace", R_BaseNamespace);
-Rcpp::Environment qsNs;
-bool loadQsC = false;
-
-
-static void loadQs() {
-  if (!loadQsC) {
-    qsNs = loadNamespaceQs("qs2");
-    loadQsC = true;
-  }
-}
 
 extern "C" SEXP _rxode2_qsDes(SEXP const x) {
 BEGIN_RCPP
@@ -26,19 +16,16 @@ END_RCPP
 Rcpp::Function getRxFn(std::string name);
 
 extern "C" SEXP getRxode2ParseDf(void) {
-  loadQs();
   Rcpp::Function getTran = Rcpp::as<Rcpp::Function>(getRxFn("rxode2parseGetTranslation"));
   return getTran();
 }
 
 extern "C" SEXP getRxode2ParseDfBuiltin(void) {
-  loadQs();
   Rcpp::Function getTran = Rcpp::as<Rcpp::Function>(getRxFn("rxode2parseGetTranslationBuiltin"));
   return getTran();
 }
 
 extern "C" SEXP getRxode2ParseGetPointerAssignment(void) {
-  loadQs();
   Rcpp::Function getPtr = Rcpp::as<Rcpp::Function>(getRxFn("rxode2parseGetPointerAssignment"));
   return getPtr();
 }
@@ -98,8 +85,8 @@ Rcpp::CharacterVector rxGetSerialType_(SEXP raw) {
   unsigned char QS2_MAGIC_BITS[] = {0x0B,0x0E,0x0A,0xC1};
   unsigned char QDATA_MAGIC_BITS[] = {0x0B,0x0E,0x0A,0xCD};
   unsigned char QS_LEGACY_MAGIC_BITS[] = {0x0B,0x0E,0x0A,0x0C};
-  // Version-2 serialization first writes a header indicating the format (normally ‘X\n’ for an XDR
-  // format binary save, but ‘A\n’, ASCII, and ‘B\n’, native word-order binary, can also occur)
+  // Version-2 serialization first writes a header indicating the format (normally 'X\n' for an XDR
+  // format binary save, but 'A\n', ASCII, and 'B\n', native word-order binary, can also occur)
   unsigned char BASE_MAGIC_BITSX[] = {0x58,0x0A};
   unsigned char BASE_MAGIC_BITSA[] = {0x41,0x0A};
   unsigned char BASE_MAGIC_BITSB[] = {0x42,0x0A};

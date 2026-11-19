@@ -24,16 +24,13 @@ rxTest({
                                         0.01, 1,
                                         -0.01, 0.01, 1))
     )
-    expect_equal(dimnames(f$omega)[[1]],
-                 c("eta.v", "eta.ka", "eta.cl"))
-
+    expect_equal(dimnames(f$omega)[[1]], c("eta.v", "eta.ka", "eta.cl"))
 
     suppressMessages(
       f <- rxode2(one.cmt) |>
         ini(eta.v + eta.cl ~ c(1,
                                0.01, 1))
     )
-    expect_equal(dimnames(f$omega)[[1]],
-                 c("eta.ka", "eta.v", "eta.cl"))
+    expect_equal(dimnames(f$omega)[[1]], c("eta.ka", "eta.v", "eta.cl"))
   })
 })

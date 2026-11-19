@@ -1,7 +1,6 @@
 rxTest({
   if (!.Call(`_rxode2_isIntel`)) {
     test_that("lhs ui accessors", {
-
       oneCmtAllo <- function() {
         ini({
           lka <- log(0.1)
@@ -26,13 +25,33 @@ rxTest({
 
       f <- rxode2(oneCmtAllo)
 
+      expect_equal(
+        f$lhsVar,
+        c(
+          cl = "etalcl",
+          ka = "lka",
+          cl = "lcl",
+          cl = "allo_cl",
+          vc = "lvc",
+          vc = "allo_vc",
+          cl = "WEIGHT_BL",
+          vc = "WEIGHT_BL"
+        )
+      )
 
-      expect_equal(f$lhsVar,
-                   c(cl = "etalcl", ka = "lka", cl = "lcl", cl = "allo_cl", vc = "lvc", vc = "allo_vc", cl = "WEIGHT_BL", vc = "WEIGHT_BL"))
-
-      expect_equal(f$varLhs,
-                   c(etalcl = "cl", lka = "ka", lcl = "cl", allo_cl = "cl", lvc = "vc", allo_vc = "vc", WEIGHT_BL = "cl", WEIGHT_BL = "vc"))
-
+      expect_equal(
+        f$varLhs,
+        c(
+          etalcl = "cl",
+          lka = "ka",
+          lcl = "cl",
+          allo_cl = "cl",
+          lvc = "vc",
+          allo_vc = "vc",
+          WEIGHT_BL = "cl",
+          WEIGHT_BL = "vc"
+        )
+      )
 
       expect_equal(f$etaLhs, c(etalcl = "cl"))
       expect_equal(f$lhsEta, c(cl = "etalcl"))
@@ -40,12 +59,9 @@ rxTest({
       expect_equal(f$thetaLhs, c(lka = "ka", lcl = "cl", allo_cl = "cl", lvc = "vc", allo_vc = "vc"))
       expect_equal(f$lhsTheta, c(ka = "lka", cl = "lcl", cl = "allo_cl", vc = "lvc", vc = "allo_vc"))
 
-      expect_equal(f$covLhs,
-                   c(WEIGHT_BL = "cl", WEIGHT_BL = "vc"))
+      expect_equal(f$covLhs, c(WEIGHT_BL = "cl", WEIGHT_BL = "vc"))
 
-      expect_equal(f$lhsCov,
-                   c(cl = "WEIGHT_BL", vc = "WEIGHT_BL"))
-
+      expect_equal(f$lhsCov, c(cl = "WEIGHT_BL", vc = "WEIGHT_BL"))
     })
   }
 })

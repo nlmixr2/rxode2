@@ -14,6 +14,7 @@
 #'
 #' ReLU(c(-1, 0, 1, 2))
 #'
+#' \donttest{
 #' # Can also be used in rxode2:
 #' x <- rxode2({
 #'    r=ReLU(time)
@@ -22,9 +23,10 @@
 #' e <- et(c(-1, 0, 1, 2))
 #'
 #' rxSolve(x, e)
+#' }
 #'
 ReLU <- function(x) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
   .Call(`_rxode2_activationF`, x, 2L)
 }
 #' Derivative of the Rectified Linear Unit (ReLU) Activation Function
@@ -43,6 +45,7 @@ ReLU <- function(x) {
 #'
 #' dReLU(c(-1, 0, 1, 2))
 #'
+#' \donttest{
 #' # Can also be used in rxode2:
 #' x <- rxode2({
 #'    r=dReLU(time)
@@ -51,7 +54,8 @@ ReLU <- function(x) {
 #' e <- et(c(-1, 0, 1, 2))
 #'
 #' rxSolve(x, e)
+#' }
 dReLU <- function(x) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
   .Call(`_rxode2_activationF`, x, 7L)
 }

@@ -1,19 +1,35 @@
 # This get/sets a control option from the rxode2 UI
 
-
 #' rxRemoveControl options for UI object
 #'
 #' @param ui rxode2 ui object
 #' @return Nothing, called for side effects
 #' @author Matthew L. Fidler
 #' @export
+#' @family Model UI and piping
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     tcl <- log(3)
+#'   })
+#'   model({
+#'     cl <- exp(tcl)
+#'     d/dt(central) <- -cl * central
+#'   })
+#' }
+#' ui <- rxUiDecompress(rxode2(mod))
+#' rxSetControl(ui, list(addProp = "combined1"))
+#' rxRemoveControl(ui)
+#' rxGetControl(ui, "addProp", "combined2") # back to the default
+#' }
 rxRemoveControl <- function(ui) {
   if (is.list(ui) || inherits(ui, "raw")) {
-    stop("cannot remove from compressed 'rxUi'\nfirst decompress with `rxode2::rxUiDecompress()'",
-         call.=FALSE)
+    stop("cannot remove from compressed 'rxUi'\nfirst decompress with `rxode2::rxUiDecompress()'", call. = FALSE)
   }
-  if (exists("control", ui))
-    rm("control", envir=ui)
+  if (exists("control", ui)) {
+    rm("control", envir = ui)
+  }
   invisible()
 }
 
@@ -26,9 +42,25 @@ rxRemoveControl <- function(ui) {
 #' @return Nothing, called for side effects
 #' @author Matthew L. Fidler
 #' @export
+#' @family Model UI and piping
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     tcl <- log(3)
+#'   })
+#'   model({
+#'     cl <- exp(tcl)
+#'     d/dt(central) <- -cl * central
+#'   })
+#' }
+#' ui <- rxUiDecompress(rxode2(mod))
+#' rxSetControl(ui, list(addProp = "combined1"))
+#' rxGetControl(ui, "addProp", "combined2")
+#' }
 rxSetControl <- function(ui, control) {
   if (inherits(control, "list")) {
-    assign("control", control, envir=ui)
+    assign("control", control, envir = ui)
   } else {
     stop("control must be a list-like object")
   }
@@ -42,19 +74,19 @@ rxSetControl <- function(ui, control) {
 #' @param value Value of control to modify
 #' @return Nothing; called for the side effects
 #' @author Matthew L. Fidler
+#' @family Developer API
 #' @export
 rxAssignControlValue <- function(ui, option, value) {
   if (is.list(ui)) {
-    stop("cannot assign value to compressed 'rxUi'\nfirst decompress with `rxode2::rxUiDecompress()'",
-         call.=FALSE)
+    stop("cannot assign value to compressed 'rxUi'\nfirst decompress with `rxode2::rxUiDecompress()'", call. = FALSE)
   }
-  if (exists("control", envir=ui)) {
-    .ctl <- get("control", envir=ui)
+  if (exists("control", envir = ui)) {
+    .ctl <- get("control", envir = ui)
   } else {
     .ctl <- list()
   }
   .ctl[[option]] <- value
-  assign("control", .ctl, envir=ui)
+  assign("control", .ctl, envir = ui)
   invisible()
 }
 #'  rxGetControl option from ui
@@ -66,10 +98,31 @@ rxAssignControlValue <- function(ui, option, value) {
 #' @return Option (if present) or default value
 #' @author Matthew L. Fidler
 #' @export
+#' @family Model UI and piping
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     tcl <- log(3)
+#'   })
+#'   model({
+#'     cl <- exp(tcl)
+#'     d/dt(central) <- -cl * central
+#'   })
+#' }
+#' ui <- rxUiDecompress(rxode2(mod))
+#' rxGetControl(ui, "addProp", "combined2") # no control yet: the default
+#' rxSetControl(ui, list(addProp = "combined1"))
+#' rxGetControl(ui, "addProp", "combined2")
+#' }
 rxGetControl <- function(ui, option, default) {
   ui <- rxUiDecompress(ui)
-  if (!exists("control", envir=ui)) return(default)
-  .ctl <- get("control", envir=ui)
-  if (option %in% names(.ctl)) return(.ctl[[option]])
+  if (!exists("control", envir = ui)) {
+    return(default)
+  }
+  .ctl <- get("control", envir = ui)
+  if (option %in% names(.ctl)) {
+    return(.ctl[[option]])
+  }
   default
 }

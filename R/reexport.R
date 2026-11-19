@@ -1,3 +1,7 @@
+#' @return Inherited from parent routine
+#' @name reexports
+#' @keywords internal
+NULL
 
 #' @importFrom ggplot2 scale_type
 #' @export

@@ -34,8 +34,14 @@ bid$add.sampling(96 + 0:24)
 # init values
 theta <-
   c(
-    KA = 2.94E-01, CL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
-    Kin = 1, Kout = 1, EC50 = 200
+    KA = 2.94E-01,
+    CL = 1.86E+01,
+    V2 = 4.02E+01,
+    Q = 1.05E+01,
+    V3 = 2.97E+02,
+    Kin = 1,
+    Kout = 1,
+    EC50 = 200
   )
 
 qd.cp <- m1$solve(theta, qd, inits = c(0, 0, 0, 1))
@@ -44,21 +50,18 @@ bid.cp <- m1$solve(theta, bid, inits = c(0, 0, 0, 1))
 cp.plot <-
   function(cp, xlab = "Time (days)", ...) {
     xtime <- cp[, "time"]
-    matplot(xtime, cp[, c("depot", "centr", "peri")],
-      type = "l", ...,
-      xlab = xlab, ylab = "Drug amount (ug)"
-    )
+    matplot(xtime, cp[, c("depot", "centr", "peri")], type = "l", ..., xlab = xlab, ylab = "Drug amount (ug)")
 
-    legend("topright",
+    legend(
+      "topright",
       legend = c("Depot", "Central", "Peripheral"),
       title = "Compartment",
-      col = 1:3, lty = 1:3, bty = "n"
+      col = 1:3,
+      lty = 1:3,
+      bty = "n"
     )
 
-    plot(xtime, cp[, "eff"],
-      type = "l", ...,
-      xlab = xlab, ylab = "Effect compartment"
-    )
+    plot(xtime, cp[, "eff"], type = "l", ..., xlab = xlab, ylab = "Effect compartment")
   }
 
 cp.plot(qd.cp, main = "QD dosing, 5 days")

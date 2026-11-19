@@ -4,15 +4,25 @@
     assignInMyNamespace("guide_none", .ggplot2$guide_none)
   }
   if (compareVersion(as.character(packageVersion("ggplot2")), "3.3.6.9000") < 0) {
-    assignInMyNamespace("GeomAmt",
-                        ggplot2::ggproto("GeomAmt", ggplot2::GeomSegment,
-                                         required_aes = c("x", "y", "xend", "yend"),
-                                         default_aes = ggplot2::aes(colour = "black", linetype = "dotted", size = 0.5, alpha = 1, fill = "black")))
+    assignInMyNamespace(
+      "GeomAmt",
+      ggplot2::ggproto(
+        "GeomAmt",
+        ggplot2::GeomSegment,
+        required_aes = c("x", "y", "xend", "yend"),
+        default_aes = ggplot2::aes(colour = "black", linetype = "dotted", size = 0.5, alpha = 1, fill = "black")
+      )
+    )
   } else {
-    assignInMyNamespace("GeomAmt",
-                        ggplot2::ggproto("GeomAmt", ggplot2::GeomSegment,
-                                         required_aes = c("x", "y", "xend", "yend"),
-                                         default_aes = ggplot2::aes(colour = "black", linetype = "dotted", linewidth = 0.5, alpha = 1, fill = "black")))
+    assignInMyNamespace(
+      "GeomAmt",
+      ggplot2::ggproto(
+        "GeomAmt",
+        ggplot2::GeomSegment,
+        required_aes = c("x", "y", "xend", "yend"),
+        default_aes = ggplot2::aes(colour = "black", linetype = "dotted", linewidth = 0.5, alpha = 1, fill = "black")
+      )
+    )
   }
 }
 .hasUnits <- FALSE
@@ -22,6 +32,7 @@
 #' used to allow rxode2 to have binary linkage to nlmixr2est.
 #'
 #' @return a list of function pointers
+#' @family Developer API
 #' @export
 #' @author Matthew L. Fidler
 #' @examples
@@ -31,45 +42,89 @@
   .Call(`_rxode2_rxode2Ptr`, PACKAGE = "rxode2")
 }
 
+#' Compiler-environment hygiene for model builds
+#'
+#' Some packages permanently leak build environment variables into the
+#' session -- notably `rstan::stan_model()` sets `PKG_CPPFLAGS` (with a
+#' forced C++ `-include`), `PKG_LIBS` and `USE_CXX17` and never restores
+#' them -- and `R CMD SHLIB` then applies them to rxode2's C model
+#' compiles, which die with "compilation terminated".  At load time
+#' rxode2 snapshots these variables; every model build swaps the
+#' snapshot in for the duration of the compile and restores the session
+#' values afterward, so rxode2 always compiles no matter what another
+#' package did to the build environment.
+#'
+#' (If rxode2 is loaded AFTER the leak has already happened the snapshot
+#' captures the leaked values; loading rxode2 before compiling Stan
+#' models -- the usual order -- captures the clean state.)
+#' @noRd
+.rxCompileEnvVars <- c("PKG_CPPFLAGS", "PKG_CXXFLAGS", "PKG_CFLAGS", "PKG_LIBS", "PKG_FFLAGS", "USE_CXX17", "USE_CXX14")
+.rxCompileEnvClean <- new.env(parent = emptyenv())
+
+#' Evaluate `expr` with the load-time (clean) compiler environment
+#' @noRd
+.rxWithCleanCompileEnv <- function(expr) {
+  .clean <- get0("snapshot", envir = .rxCompileEnvClean)
+  if (is.null(.clean)) {
+    return(force(expr))
+  }
+  .cur <- Sys.getenv(.rxCompileEnvVars, unset = NA_character_)
+  .set <- function(vals) {
+    for (.v in .rxCompileEnvVars) {
+      if (is.na(vals[[.v]])) {
+        Sys.unsetenv(.v)
+      } else {
+        do.call(Sys.setenv, stats::setNames(list(vals[[.v]]), .v))
+      }
+    }
+  }
+  .set(.clean)
+  on.exit(.set(.cur), add = TRUE)
+  force(expr)
+}
+
 ## nocov start
 .onLoad <- function(libname, pkgname) {
+  # snapshot the build environment BEFORE anything can leak into it (see
+  # .rxWithCleanCompileEnv)
+  assign("snapshot", Sys.getenv(.rxCompileEnvVars, unset = NA_character_), envir = .rxCompileEnvClean)
+  ## a worker started inside an event scope starts silent (see rxEvent.R)
+  .rxEventInitDepth()
   .ver <- .rxVersion
   .ver["version"] <- as.character(utils::packageVersion("rxode2"))
   assignInMyNamespace(".rxVersion", .ver)
-  requireNamespace("data.table", quietly=TRUE)
-  if (requireNamespace("pillar", quietly = TRUE)) {
-    .s3register("pillar::type_sum", "rxEvid")
-    .s3register("pillar::type_sum", "rxRateDur")
-    .s3register("pillar::pillar_shaft", "rxEvid")
-    .s3register("pillar::pillar_shaft", "rxRateDur")
-  }
-  if (requireNamespace("tibble", quietly = TRUE)) {
-    .s3register("tibble::as_tibble", "rxEt")
-  }
-  if (requireNamespace("data.table", quietly = TRUE)) {
-    .s3register("data.table::as.data.table", "rxEt")
-  }
-  if (requireNamespace("dplyr", quietly=TRUE)) {
-    .s3register("dplyr::rename", "rxUi")
-    .s3register("dplyr::rename", "function")
-  }
-  if (requireNamespace("nlme", quietly=TRUE)) {
-    .s3register("nlme::fixef", "rxUi")
-    .s3register("nlme::fixef", "function")
-  }
-  if (requireNamespace("units", quietly = TRUE)) {
-    .s3register("units::set_units", "rxEt")
-    .s3register("units::set_units", "rxRateDur")
-    .s3register("units::drop_units", "rxEt")
-    .s3register("units::units<-", "rxEvid")
-    .s3register("units::drop_units", "rxSolve")
-    assignInMyNamespace(".hasUnits", TRUE)
-  } else {
-    assignInMyNamespace(".hasUnits", FALSE)
-  }
-  if (requireNamespace("digest", quietly = TRUE)) {
-    .s3register("digest::sha1", "rxUi")
-  }
+  ## data.table is an Imports and is used unconditionally, so keep it eager
+  requireNamespace("data.table", quietly = TRUE)
+  ## `.s3register()` registers immediately when the other namespace is
+  ## already loaded and otherwise installs an onLoad hook, so the suggested
+  ## packages must not be loaded here -- doing so made `library(rxode2)`
+  ## pay for pillar/arrow/units/dplyr on every session.
+  .s3register("pillar::type_sum", "rxEvid")
+  .s3register("pillar::type_sum", "rxRateDur")
+  .s3register("pillar::pillar_shaft", "rxEvid")
+  .s3register("pillar::pillar_shaft", "rxRateDur")
+  .s3register("tibble::as_tibble", "rxEt")
+  .s3register("tibble::as_tibble", "rxSolveOom")
+  .s3register("data.table::as.data.table", "rxEt")
+  .s3register("data.table::as.data.table", "rxSolveOom")
+  .s3register("arrow::as_arrow_table", "rxSolveOom")
+  .s3register("dplyr::dplyr_reconstruct", "rxEt")
+  .s3register("dplyr::dplyr_reconstruct", "rxEtPreview")
+  .s3register("dplyr::filter", "rxEt")
+  .s3register("dplyr::select", "rxEt")
+  .s3register("dplyr::rename", "rxEt")
+  .s3register("dplyr::mutate", "rxEt")
+  .s3register("dplyr::rename", "rxUi")
+  .s3register("dplyr::rename", "function")
+  .s3register("nlme::fixef", "rxUi")
+  .s3register("nlme::fixef", "function")
+  .s3register("units::set_units", "rxEt")
+  .s3register("units::set_units", "rxRateDur")
+  .s3register("units::drop_units", "rxEt")
+  .s3register("units::units<-", "rxEvid")
+  .s3register("units::drop_units", "rxSolve")
+  .s3register("digest::sha1", "rxUi")
+  assignInMyNamespace(".hasUnits", nzchar(system.file(package = "units")))
   .s3register("lotri::as.lotri", "call")
   backports::import(pkgname)
   ## Setup rxode2.prefer.tbl
@@ -81,6 +136,9 @@
   }
   .ggplot2Fix()
   .linkAll()
+  # re-link whenever rxode2lincmt's namespace is loaded again (reinstall,
+  # load_all), so rxode2 never keeps addresses into an old DLL
+  .rxode2lincmtRelinkHook()
   forderForceBase(FALSE)
 } ## nocov end
 
@@ -94,12 +152,38 @@
 
 .iniDparserPtr <- function() {
   .Call(`_rxode2_iniDparserPtr`, dparser::.dparsePtr())
+  # dparser 1.3.2 made dparse() safe to call from several threads at once (#1427)
+  .Call(`_rxode2_rxDparserParallel`, utils::packageVersion("dparser") >= "1.3.1-14")
+  invisible()
+}
+
+# Host table (struct offsets + host functions) first, then the linCmt
+# entry points; neither side validates anything (see CLAUDE.md)
+.iniRxode2lincmt <- function() {
+  rxode2lincmt::.rxode2lincmtIniHost(.Call(`_rxode2_rxode2lincmtHost`))
+  .Call(`_rxode2_iniRxode2lincmtPtrs`, rxode2lincmt::.rxode2lincmtPtr())
+}
+
+# Installs the rxode2lincmt onLoad re-link hook exactly once: a previous
+# rxode2 load's hook is replaced rather than piled up, and the hook looks up
+# .linkAll() in the live rxode2 namespace so it never calls an unloaded one.
+.rxode2lincmtRelinkHook <- function() {
+  .event <- packageEvent("rxode2lincmt", "onLoad")
+  .keep <- Filter(function(h) !isTRUE(attr(h, "rxode2Relink")), getHook(.event))
+  .relink <- function(...) {
+    if (isNamespaceLoaded("rxode2")) {
+      get(".linkAll", envir = asNamespace("rxode2"))()
+    }
+  }
+  attr(.relink, "rxode2Relink") <- TRUE
+  setHook(.event, c(.keep, list(.relink)), action = "replace")
 }
 
 .linkAll <- function() {
   .iniLotriPtrs()
   .iniPreciseSumsPtr()
   .iniDparserPtr()
+  .iniRxode2lincmt()
 }
 
 
@@ -118,7 +202,10 @@
   .ggplot2Fix()
   v <- utils::packageVersion("rxode2")
   packageStartupMessage(
-    "rxode2 ", v, " using ", getRxThreads(verbose = FALSE),
+    "rxode2 ",
+    v,
+    " using ",
+    getRxThreads(verbose = FALSE),
     " threads (see ?getRxThreads)",
     ifelse(.cacheIsTemp, "\n  no cache: create with `rxCreateCache()`", "")
   )
@@ -140,6 +227,7 @@
 .onUnload <- function(libpath) {
   ## nocov start
   rxUnloadAll()
+  .udfEnvRelease()
   gc() # Force garbage collection finalization
   library.dynam.unload("rxode2", libpath)
   ## nocov end
@@ -149,7 +237,9 @@
   if (!file.exists(.tmp)) {
     dir.create(.tmp, recursive = TRUE, showWarnings = FALSE)
   } else if (!file.exists(file.path(.tmp, paste0(rxode2.md5, ".md5")))) {
-    if (!.cacheIsTemp) packageStartupMessage("detected new version of rxode2, cleaning cache")
+    if (!.cacheIsTemp) {
+      packageStartupMessage("detected new version of rxode2, cleaning cache")
+    }
     unlink(.tmp, recursive = TRUE, force = TRUE)
     dir.create(.tmp, recursive = TRUE, showWarnings = FALSE)
     writeLines("rxode2", file.path(.tmp, paste0(rxode2.md5, ".md5")))
@@ -163,6 +253,9 @@
 #'
 #' @return rxode2 temporary directory.
 #' @export
+#' @family Utilities
+#' @examples
+#' rxTempDir()
 rxTempDir <- function() {
   if (is.null(getFromNamespace(".rxTempDir0", "rxode2"))) {
     .tmp <- Sys.getenv("rxTempDir")
@@ -205,6 +298,12 @@ rxTempDir <- function() {
 #' @author Matthew Fidler
 #'
 #' @export
+#' @family Model definition
+#' @examples
+#' # writes to the user cache directory, so only run interactively
+#' if (interactive()) {
+#'   rxCreateCache()
+#' }
 rxCreateCache <- function() {
   .tmp <- R_user_dir("rxode2", "cache")
   assignInMyNamespace(".cacheDefault", R_user_dir("rxode2", "cache"))
@@ -212,7 +311,7 @@ rxCreateCache <- function() {
   .tmp <- .normalizePath(.tmp)
   Sys.setenv(rxTempDir = .tmp)
   utils::assignInMyNamespace(".rxTempDir0", .tmp)
-  options(rxode2.cache.directory=.tmp)
+  options(rxode2.cache.directory = .tmp)
   invisible()
 }
 
@@ -222,11 +321,28 @@ rxCreateCache <- function() {
 #' @return nothing; called for side effects
 #' @keywords internal
 #' @export
+## Cache of memoised function names; computed once on first rxForget() call.
+.rxMemoisedFns <- NULL
+
+#' Clear memoise caches for rxode2
+#'
+#' @return nothing; called for side effects
+#' @keywords internal
+#' @export
 rxForget <- function() {
-  for (fn in ls(envir = getNamespace("rxode2"))) {
-    if (memoise::is.memoised(getFromNamespace(fn, "rxode2"))) {
-      memoise::forget(getFromNamespace(fn, "rxode2"))
-    }
+  if (is.null(.rxMemoisedFns)) {
+    .ns <- getNamespace("rxode2")
+    .fns <- Filter(
+      function(fn) {
+        .v <- get(fn, envir = .ns, inherits = FALSE)
+        is.function(.v) && memoise::is.memoised(.v)
+      },
+      ls(envir = .ns)
+    )
+    assignInMyNamespace(".rxMemoisedFns", .fns)
+  }
+  for (.fn in .rxMemoisedFns) {
+    memoise::forget(getFromNamespace(.fn, "rxode2"))
   }
 }
 
@@ -261,6 +377,7 @@ rxForget <- function() {
 #'
 #' # If you  want to suppress messages from rxode2 in other packages, you can use
 #' # this function
+#' @family Utilities
 rxSuppressMsg <- function() {
   if (requireNamespace("knitr", quietly = TRUE)) {
     if (!is.null(knitr::opts_knit$get("rmarkdown.pandoc.to"))) {
@@ -287,12 +404,13 @@ rxSuppressMsg <- function() {
 #'
 #' @author Matthew L. Fidler
 #' @return nothing; called for side effects
+#' @family Developer API
 #' @export
 rxSyncOptions <- function(setDefaults = c("none", "permissive", "strict")) {
   setDefaults <- match.arg(setDefaults)
   if (setDefaults == "permissive") {
-    options(rxode2.syntax.allow.ini=TRUE)
+    options(rxode2.syntax.allow.ini = TRUE)
   } else if (setDefaults == "strict") {
-    options(rxode2.syntax.allow.ini=FALSE)
+    options(rxode2.syntax.allow.ini = FALSE)
   }
 }

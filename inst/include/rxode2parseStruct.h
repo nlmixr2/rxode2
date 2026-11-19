@@ -1,3 +1,9 @@
+// Extra event slots pre-allocated in ind->solve / indOwnAllocN to absorb
+// _rxPushDose growth without requiring a solve-buffer realloc mid-integration.
+#ifndef EVID_EXTRA_SIZE
+#define EVID_EXTRA_SIZE 16
+#endif
+
 typedef struct sbuf {
   char *s;        /* curr print buffer */
   int sN;
@@ -19,6 +25,53 @@ typedef struct vLines {
 #define rxode2naTimeInputIgnore 1
 #define rxode2naTimeInputWarn   2
 #define rxode2naTimeInputError  3
+
+/* stateProp bit marking an ODE state referenced by delay(state, T).  Must match
+   propDelay in src/tran.h. */
+#define rxDelayStateProp 262144
+
+struct rx_solving_options_ind_s;
+typedef struct rx_solving_options_ind_s rx_solving_options_ind;
+
+struct rx_solve_s;
+typedef struct rx_solve_s rx_solve;
+
+typedef double (*t_F)(int _cSub,  int _cmt, double _amt, double t, double *y);
+typedef double (*t_LAG)(int _cSub,  int _cmt, double t, double *y);
+typedef double (*t_RATE)(int _cSub,  int _cmt, double _amt, double t, double *y);
+typedef double (*t_DUR)(int _cSub,  int _cmt, double _amt, double t, double *y);
+// Event ("jump") sensitivities: total derivatives of the modeled alag / F
+// fractions wrt each first-order sensitivity parameter, written into a flat
+// per-subject buffer indexed (cmt0 * nSensParam + paramIdx).  Fill-all-states in
+// one call (like Lag/F fill all _alag/_f), evaluated at the supplied state y.
+typedef void (*t_dLag)(int _cSub, double t, double *y, double *_dLagSave);
+typedef void (*t_dF)(int _cSub, double t, double *y, double *_dFSave);
+typedef void (*t_dRate)(int _cSub, double t, double *y, double *_dRateSave);
+typedef void (*t_dDur)(int _cSub, double t, double *y, double *_dDurSave);
+
+typedef void (*t_calc_mtime)(int cSub, double *mtime, double *y);
+
+typedef void (*t_ME)(int _cSub, double _t, double t, double *_mat, const double *__zzStateVar__);
+typedef void (*t_IndF)(int _cSub, double _t, double t, double *_mat, const double *__zzStateVar__);
+
+typedef double (*t_getTime)(int idx, rx_solving_options_ind *ind);
+typedef int (*t_locateTimeIndex)(double obs_time,  rx_solving_options_ind *ind);
+typedef int (*t_handle_evidL)(int evid, double *yp, double xout, int id, rx_solving_options_ind *ind) ;
+typedef double (*t_getDur)(int l, rx_solving_options_ind *ind, int backward, unsigned int *p);
+
+typedef struct {
+  t_F f;
+  t_LAG lag;
+  t_RATE rate;
+  t_DUR dur;
+  t_calc_mtime mtime;
+  t_ME me;
+  t_IndF indf;
+  t_getTime gettime;
+  t_locateTimeIndex timeindex;
+  t_handle_evidL handleEvid;
+  t_getDur getdur;
+} rx_fn_pointers;
 
 typedef struct {
   // These options should not change based on an individual solve
@@ -64,6 +117,9 @@ typedef struct {
   int indLinPhiM;
   int indLinMatExpType;
   int indLinMatExpOrder;
+  int indLinStepSearch; // 0 = none, 1 = secant, 2 = exact
+  int indLinMaxIter;
+  int indLinRichardson; // 1 = Richardson-extrapolate to third order
   int nDisplayProgress;
   int ncoresRV;
   int isChol;
@@ -82,11 +138,59 @@ typedef struct {
   int depotLin;
   int linOffset;
   int ssSolved;
+  int useDense;
+  int hasDelay; /* model uses delay() -- record dense history for DDE lookups */
+  int nDelayState; /* number of ODE states delay() looks back on (history columns) */
+  int *delayState; /* [nDelayState] their ODE state indices (history column -> state) */
+  int *delayCol;   /* [neq] ODE state index -> history column, -1 if not delayed */
   int indOwnAlloc;
+  int cvodeLinSolver;
+  int    stiff2;                /* secondary method code (stiff); 0 = no autoswitch */
+  int    autoSwitchMaxStiff;    /* consecutive stiff detections before switching (default 10) */
+  int    autoSwitchMaxNonstiff; /* consecutive nonstiff detections before switching back (default 3) */
+  int    autoSwitchStiffFirst;  /* start with stiff algorithm (default 0 = FALSE) */
+  double autoSwitchNonstifftol; /* stiffness ratio threshold in non-stiff mode (default 0.9) */
+  double autoSwitchStifftol;    /* non-stiffness ratio threshold in stiff mode (default 0.9) */
+  double autoSwitchDtfac;       /* dt multiplier on switch-to-stiff; divides on switch-back (default 2.0) */
+  int    autoSwitchSwitchMax;   /* min intervals after a switch before switch-back allowed (default 5) */
+  /* --- discrete-adjoint (rk4s and other `<base>s` methods) layout --- */
+  int    adjoint;               /* 0 = off; 1 = in-engine discrete-adjoint mode */
+  int    adjNbase;              /* number of base ODE states (stepped forward) */
+  int    adjNp;                 /* number of adjoint parameters (calcSens count) */
+  int    adjFxOff;              /* lhs index where F_X block starts (row-major i*ns+j) */
+  int    adjFpOff;              /* lhs index where F_p block starts (i*np+p) */
+  int    adjDfOff;              /* lhs index where dF/dtheta block starts (k*np+p); -1 if none */
+  int    adjJpOff;              /* lhs index where dJ/dtheta block starts ((i*ns+j)*np+p); -1 if none (Rosenbrock) */
+  int    adjJyOff;              /* lhs index where dJ/dy=f'' block starts ((i*ns+j)*ns+c); -1 if none (Rosenbrock nonlinear) */
+  int    adjFxdOff;             /* lhs index where DDE delayed-Jacobian F_Xd block starts (i*ns+j); -1 if no delay() */
+  int    adjTauOff;             /* lhs index where DDE delay-duration tau block starts (i*ns+j); -1 if no delay() */
+  int    adjDtauOff;            /* lhs index where DDE dtau/dp block starts ((i*ns+j)*np+p); -1 if no delay() (dose-jump) */
+  int    adjDlagOff;           /* lhs index where dlag/dtheta block starts (k*np+p); -1 if no modeled alag() (transversality) */
+  int    adjDrateOff;          /* lhs index where drate/dtheta block starts (k*np+p); -1 if no modeled rate() (infusion dual) */
+  int    adjSensOff;            /* solve-vector index where rx__sens_* output slots begin */
+  int    cmtCov;               /* covariate index (into par_cov/cov_ptr) of the CMT covariate, cached at setup; -1 if the model has no CMT covariate (single endpoint) */
+  int    indLinIteration;      /* method="indLin" substep scheme: 0 picard, 1 newton, 2 exprb, 3 auto (stiffness-gated) */
+  int    indLinJac;            /* forcing Jacobian source: 0 auto, 1 symbolic (calc_jac - A), 2 finite difference */
+  int    indLinForcing;        /* forcing over a substep: 0 constant, 1 linear ramp between its endpoint values */
+  /* Bitmask over the linCmt() block's physical compartments (bit c = block
+     index c, 0 = depot when oral) of those carrying a modeled alag().  Set at
+     solve setup from the model's stateProp; read by linCmtBdoseTime()
+     (which1 = -3) to tell whether every dose reaching the linear system
+     really does share one delay (nlmixr2/rxode2#1119, #1237).  0 when the
+     model declares no modeled alag() on a linCmt() compartment. */
+  int    linCmtLagMask;
+  /* Bitmask over the same block of the compartments whose DOSE the model
+     moves or scales -- a modeled alag() (propAlag) or f() (propF).  Gates the
+     per-origin decomposition of the linCmt() amounts that answers the
+     PER-COMPARTMENT dose-time and bioavailability sensitivities
+     (linCmtB which1 = -9 / -10, src/linCmt.cpp).  Tracking costs one extra
+     kernel evaluation per origin per step, so a model that cannot use it
+     pays nothing.  Superset of linCmtLagMask. */
+  int    linCmtOriginMask;
 } rx_solving_options;
 
 
-typedef struct {
+struct rx_solving_options_ind_s {
   double bT;
   int *slvr_counter;
   int *dadt_counter;
@@ -123,6 +227,7 @@ typedef struct {
   // 2 5
   // 3 6
   int n_all_times;
+  int n_all_times_orig;
   int nevid2;
   int ixds;
   int ndoses;
@@ -243,12 +348,214 @@ typedef struct {
   // or setIndTolFactor() persists across re-solves for stiff individuals.
   double tolFactor;
 
+  // Per-individual neq override; -1 means use op->neq (default).  Set
+  // via setIndNeqOverride()/getIndNeqOverride() so that downstream
+  // packages (e.g. nlmixr2est's predOde / shi21EtaGeneral) can solve
+  // with a different neq for a single individual without mutating the
+  // shared op->neq from a parallel worker thread.  Cleared by
+  // restoring -1.
+  int neqOverride;
+
   // When 1, this individual owns its dose/ii/all_times/solve arrays
   // (independently malloc'd, not pointers into the global buffer)
   int indOwnAlloc;
-} rx_solving_options_ind;
+  int indOwnAllocN;     // allocated capacity for event arrays (>= n_all_times)
+  int solveAllocN;      // allocated capacity for ind->solve in units of events (neq doubles each)
+  int idoseOwnAllocN;   // allocated capacity for idose (>= ndoses)
+  int _atEventTime;     // set at an evid_() firing record; consumed once in calc_lhs
+  int nPushedExtra;      // count of events pushed via evid_() for this individual this solve
+  int    autoMethod;             /* 0 = using primary (non-stiff), 1 = using secondary (stiff) */
+  int    autoCount;              /* positive = consecutive stiff detections; negative = nonstiff */
+  double autoHcur;               /* current suggested step size for autoswitch (tracks dtfac scaling) */
+  int    autoLastSwitchIntervals; /* intervals elapsed since last permanent method switch */
+  // Delay differential equation (DDE) dense history.  Each record stores the
+  // dop853 dense-output coefficients for one accepted step so that delay()
+  // can interpolate any past state.  Layout per record (stride doubles):
+  //   rcont1[0..neq-1], rcont2[..], ..., rcont8[..], xold, h
+  double *delayHist;       /* flat ring/grow buffer, or NULL when unused */
+  int     delayHistN;      /* number of step records currently stored */
+  int     delayHistCap;    /* capacity in records */
+  int     delayHistStride; /* doubles per record (8*neq+2 dop853, 4*neq+2 ros4) */
+  int     delayHistNeq;    /* neq used when building records */
+  int     delayHistType;   /* 0 = dop853 dense (rcont), 1 = ros4 cubic samples */
+  int     delayHistOn;     /* 1 while recording is active for this subject */
+  double  delayT0;         /* initial time; history before this is the IC */
+  double  delayMinT;       /* smallest delay duration seen; caps the step size */
+  int     delayWarmed;     /* 1 once the RHS has been evaluated to learn delays */
+  // linCmtB(which1 = -3) (the dose-time/moving-boundary sensitivity, see
+  // src/linCmt.cpp) needs the infusion rate at output time, but
+  // ind->InfusionRate is only maintained while solving -- rxode2_df.cpp's
+  // output pass clears it (nlmixr2/rxode2#1236).  linCmtB() records the live
+  // rate here, once per output index, while it is actually being solved
+  // (mirroring how the amounts themselves are cached via getAdvan()/Alast);
+  // linCmtBdoseTime() reads it back on a re-query (the output pass, or any
+  // backward re-query of an already-solved index) instead of the
+  // (by-then-cleared) live rate.  Flat idx-major layout: idx*linCmtRateHistW
+  // + j, j in [0, linCmtRateHistW).  Kept after the solve (freed with the
+  // subject) so the output pass can still read it, like delayHist above.
+  double *linCmtRateHist;   /* flat idx-indexed rate history, or NULL when unused */
+  int     linCmtRateHistCap; /* capacity in idx slots */
+  int     linCmtRateHistW;   /* doubles per idx slot (op->numLin); realloc if changed */
+  // Cumulative sensitivity carry state for the linCmt()-time-varying-covariate
+  // fix (project_lincmt_timevarying_covariate_bug): d(Alast_i)/d(eta), one
+  // column per carried (linCmt-parameter, eta) pair, one row per linCmt()
+  // compartment (up to 4, ncmt+oral0 <= 3+1). Up to RX_LINCMT_CARRY_MAXPAIRS
+  // simultaneous pairs (8 covers an eta on every one of the 7 linCmt()
+  // parameters plus one spare; ~256 bytes/subject, still tiny). Fixed flat,
+  // row-major, stride RX_LINCMT_CARRY_MAXPAIRS regardless of the model's
+  // actual m so iniSubject() can reset it without needing to know m --
+  // linCmtB(which1=-5/-6/-7, src/linCmt.cpp) only ever reads/writes the top
+  // m rows. The model-build layer (nlmixr2est's carry codegen) must enforce
+  // the pair cap BEFORE emitting code; linCmtB itself guards an out-of-range
+  // pair index by returning NA (visible poison, never an out-of-bounds
+  // write). Reset to all-zero each subject (Alast starts at 0, so
+  // d(Alast_0)/d(eta) = 0), mirroring how linCmtSave is reset above.
+  // Opt-in: unused unless a model actually requests which1=-5/-6/-7.
+#define RX_LINCMT_CARRY_MAXPAIRS 8
+  double linCmtCarryT[4*RX_LINCMT_CARRY_MAXPAIRS];
+  // Time of this subject's previous which1=-5 carry advance.  calc_lhs fires
+  // exactly once per event row in solve order (dose rows included, output
+  // filtering notwithstanding), but in the post-solve lhs pass ind->tprior is
+  // stale (frozen at the solve's final interval), so the -5 advance derives
+  // its interval dt from its OWN previous invocation time instead.  NAN =
+  // no prior advance (first row -> dt 0, harmless: the carry state is 0).
+  double linCmtCarryTlast;
+  // Runtime per-subject fast path for the which1=-5 carry advance: while this
+  // subject's theta vector (p1..ka as passed to -5) has been IDENTICAL on
+  // every row of the CURRENT solve pass, the carried recurrence telescopes to
+  // G*J (the production constant-theta Jacobian is exact there), so the
+  // advance's m forward-mode transition-matrix passes can be skipped and the
+  // carry/tracker columns left un-multiplied -- the emitted -7 adds then
+  // accumulate G*(J_i - J_{i-1}), which sums to exactly G*J_n.  Within-pass
+  // only by construction: both fields reset at iniSubject(), which fires
+  // before every lhs walk, so etas changing BETWEEN inner iterations never
+  // enter the comparison.  0 = no row seen this pass, 1 = constant so far,
+  // 2 = variation seen (slow path for the rest of the pass).
+  double linCmtCarryPrevTheta[7];
+  int linCmtCarryVarying;
+  // Event ("jump") sensitivities: deferred moving-boundary jump for non-dosed
+  // compartments.  At a modeled-lag dose the sensitivity of a compartment that
+  // does NOT receive the bolus has a genuine jump discontinuity at the arrival
+  // time tau; its reported value at an output coincident with tau must be the
+  // pre-jump left limit (matching the reported left-continuous state), while
+  // t > tau must see the post-jump value.  handle_evid accumulates the non-dosed
+  // jump here instead of into yp; preSolve flushes it into yp at the first step
+  // that advances past tau.  Per-thread slice of _globals.gEsPendingJump.
+  double *esPendingJump;   /* per-thread neq buffer, or NULL when unused */
+  double  esPendingTau;    /* event time the pending jump belongs to */
+  int     esHasPending;    /* 1 while a deferred jump is waiting to be flushed */
+  rx_fn_pointers *fns;
+  rx_solving_options *op;
+  rx_solve *rx;
+  // AutoSwitch: dop853's stiffness-probe state, carried across the per-interval
+  // dop853() calls of one subject solve (dop853_stiff_t, src/dop853.h).  The
+  // probe is per interval, so without this the accepted-step count and the
+  // verdict counters restart every few steps and the detector can never reach
+  // its limit.  Reset per subject solve in iniSubject().
+  //
+  // APPENDED AT THE END ON PURPOSE: everything above keeps its offset, so a
+  // downstream object file built against an older copy of this header still
+  // finds every field it knows about where it expects it.
+  double   autoStiffHlamb;  /* h*rho(J) estimate carried between intervals */
+  long int autoStiffIasti;  /* consecutive stiff verdicts */
+  long int autoStiffNonsti; /* clean verdicts since the last stiff one */
+  long int autoStiffNaccpt; /* accepted steps across the subject's intervals */
+  int      autoBackoff;     /* re-probe wait multiplier while on the secondary */
+  // linCmtB()'s per-INDIVIDUAL carried state (rxode2lincmt's linCmt.cpp): the theta-keyed
+  // window of hoisted closed-form constants and the last-row value memo.  Both
+  // are state whose value ACROSS calls is the whole point, so they belong to
+  // the individual rather than to whichever thread happens to be running it --
+  // owned by a thread they had to be keyed on the subject id and were thrown
+  // away whenever another individual landed on the same slot.  Pure scratch
+  // (the kernel work matrices and object, in rxode2lincmt) stays per thread; only the
+  // carried state is here.
+  //
+  // Opaque on purpose: this is a C header and the state holds C++ members.
+  // Allocated on first touch inside the solve and released with the subject in
+  // rxFreeInd(), the same lifecycle linCmtRateHist and delayHist above use.
+  void    *linCmtBind;      /* linCmtBind*, or NULL before first touch */
+  // Per-ORIGIN decomposition of the linCmt() amounts: row q holds the part of
+  // the amount vector that arrived through doses into linCmt block
+  // compartment q.  The system is linear, so the rows sum to the amounts, and
+  // each row obeys the same dynamics as the amounts with the regimen
+  // restricted to compartment q -- which is exactly what the PER-COMPARTMENT
+  // dose-time sensitivity needs: delaying only compartment q's doses gives
+  // dA/dL_q = -(M A^(q) + r^(q)) (linCmtB which1 = -9), and scaling only its
+  // dose gives dA/dF_q = A^(q)/F_q (which1 = -10).  That answers the
+  // mixed-route regimen -- a lagged depot alongside an unlagged central --
+  // which the single shared delay of which1 = -3 has to refuse
+  // (nlmixr2/rxode2#1119 part B, #1237).
+  //
+  // Fixed stride RX_LINCMT_ORIGIN_MAX regardless of the model's actual
+  // m = ncmt + oral0 so iniSubject() can reset it without knowing m:
+  // linCmtOrigin[q*RX_LINCMT_ORIGIN_MAX + j].  Only rows/cols < m are used.
+  // Opt-in: maintained only when op->linCmtOriginMask is nonzero.
+#define RX_LINCMT_ORIGIN_MAX 4
+  double  linCmtOrigin[RX_LINCMT_ORIGIN_MAX*RX_LINCMT_ORIGIN_MAX];
+  int     linCmtOriginSeeded; /* 0 until this subject's first advance seeded it */
+  // linCmtOrigin above is the decomposition at the START of the row
+  // linCmtOriginIdx names -- the analogue of Alast -- and linCmtOriginOut is
+  // the advanced result for that row.  They have to be separate because a
+  // model that mixes linCmt() with ODEs re-enters linCmtB() many times WITHIN
+  // one row (dydt fires at every internal solver step), so the advance must be
+  // a pure function of the row's entry state, exactly as the amounts are a
+  // pure function of Alast.  The last call for the row wins, which is the same
+  // convention copyLinCmt() applies to the amounts (it evaluates dydt once at
+  // ind->tout and copies what that produced).  linCmtOriginIdx = -1 means no
+  // row has been advanced for this subject yet.
+  double  linCmtOriginOut[RX_LINCMT_ORIGIN_MAX*RX_LINCMT_ORIGIN_MAX];
+  int     linCmtOriginOutSeeded;
+  int     linCmtOriginIdx;
+  /* ind->linSS the row named by linCmtOriginIdx was advanced under.  A
+     steady-state linCmt() record runs its SS solve and the normal advance
+     that follows it at the SAME idx (handleSSbolus(), src/par_solve.cpp), so
+     idx alone does not identify the row -- keying on both keeps the normal
+     advance building on the SS result instead of discarding it. */
+  int     linCmtOriginSS;
+  // Per-idx history of the above, kept for the same reason linCmtRateHist is:
+  // the output pass re-queries an already-solved index after the live state
+  // has moved on.  Flat idx-major, idx*linCmtOriginHistW + k.
+  double *linCmtOriginHist;   /* flat idx-indexed origin history, or NULL when unused */
+  int     linCmtOriginHistCap; /* capacity in idx slots */
+  int     linCmtOriginHistW;   /* doubles per idx slot (m*RX_LINCMT_ORIGIN_MAX) */
+  // Fixed rate/duration infusion pairing recorded by etTrans(): infPair[i] is
+  // the offset from record i to the record that starts/stops the same
+  // infusion, 0 when none is recorded.  NULL unless the start/stop scans would
+  // pair this subject's infusions wrongly (nlmixr2/rxode2#1348).  Covers the
+  // first n_all_times_orig records; pushed doses are never recorded here.
+  int    *infPair;
+  // 1 for a record that is not a data record (an addl repeat or a record a
+  // dose expands to), recorded by etTrans() only for a model whose PK-type
+  // statements read `time`; NULL otherwise.  _rxPkTime() skips these with
+  // rxControl(nonmem = TRUE) (rxode2#1429).  Covers the first n_all_times_orig
+  // records.
+  int    *pkSkip;
+  // delay() pre-history: this subject's evaluated initial state (after the
+  // x(0) <- expr assignments, before any dose), captured by iniSubject() for a
+  // delay() model so a parameter or computed x(0) is honored (rxode2#1441).
+  // Kept after the solve for the output pass; freed in rxFreeInd().
+  double *delayIni;
+  int     delayIniCap; /* allocated length of delayIni */
+  int     delayIniN;   /* valid entries; 0 = use op->inits */
+  // Steady-state delay() history (rxode2#1447): while handleSS() iterates a
+  // delay() model each sub-solve records history on a continuous virtual
+  // clock; delayTOff (virtual - solver time) is added to every delay() lookup
+  // and every recorded step.  0 outside the steady-state solve.
+  double  delayTOff;
+  double  delaySSClock; /* virtual time reached by the steady-state solve */
+  int     delaySS;      /* 1 while handleSS() records delay() history */
+  double  delaySSii;    /* dosing interval of that steady state (0 = constant) */
+  double  delayMaxT;    /* largest delay duration seen */
+  // Fixed-duration infusions in progress: (stop record, rate its start added,
+  // then the rate's forward sensitivities) entries, so the stop removes what
+  // its start added rather than re-evaluating a state-dependent f()
+  // (rxode2#1568).  Owned by the subject, freed in rxFreeInd().
+  double *infDurOn;
+  int     infDurOnCap; /* allocated doubles in infDurOn */
+  int     infDurOnN;   /* entries in use */
+};
 
-typedef struct {
+typedef struct rx_solve_s {
   rx_solving_options_ind *subjects;
   rx_solving_options *op;
   uint32_t nsub;
@@ -300,6 +607,14 @@ typedef struct {
   int ndiff;
   int sensType;
   double sensH;
+  // Transition-matrix propagation of the sequential row Jacobian: 1 = auto
+  // (engage where the row gap repeats, see linCmtSeqTailJac), 0 = off (the
+  // tail's own operation order).  Both evaluate the same exact closed form.
+  int linCmtSensPhi;
+  // Whether the model reads raw amount-Jacobian rows
+  // (linCmtB(which1 >= 0, which2 >= 0)); parse-time metadata -- the
+  // sequential evaluator writes the full Jacobian block either way.
+  int linCmtBraw;
   int linB;
 
   // flag to determine if the linear compartment model has first order
@@ -328,7 +643,37 @@ typedef struct {
   // Add mixture number flag
   int mixnum;
   int input_mixnum;
+
+  // Maximum number of events that evid_() may push per individual per solve.
+  // 0 = unlimited.  Exceeding the limit aborts the individual with NA output.
+  int maxExtra;
+  // Set to 1 (atomically) when any individual exceeds maxExtra; checked after
+  // the solve completes to emit an error.
+  int extraPushAbort;
+  // Set to 1 (atomically) when evid_()/infuse()/infuseDur() push a steady-state
+  // constant infusion (flg 40) paired with a duration (modeled rate=-2 or fixed
+  // dur); checked after the solve completes to emit an error, mirroring the
+  // rejection etTran.cpp already applies to the same combination in the event
+  // table (rxode2#1350).
+  int ssInfDurAbort;
+  int *splitBolus;
+  int splitBolusN;
+  int *splitInfusionBolus;
+  int splitInfusionBolusN;
+  int *splitBolusInfusion;
+  int splitBolusInfusionN;
+  rx_fn_pointers fns;
+  // rxControl(nonmem=TRUE): PK-type statements read the record time
+  // (_rxPkTime(), rxode2#1429)
+  int nonmem;
+  // rxControl(addlKeepsCov=TRUE): a dose moved by alag() carries its record's
+  // covariates; otherwise they are imputed at its actual dosing time (#1584)
+  int addlKeepsCov;
+  // hidden knots (evid 8) at lagged doses' record times, counted in nobs
+  int nknot;
 } rx_solve;
+
+typedef void (*rxode2_assignFuns2_t)(rx_solve, rx_solving_options, t_F, t_LAG, t_RATE, t_DUR,t_calc_mtime, t_ME, t_IndF, t_getTime, t_locateTimeIndex, t_handle_evidL,t_getDur);
 
 static inline void sNull(sbuf *sbb) {
   sbb->s = NULL;
@@ -347,18 +692,3 @@ static inline void lineNull(vLines *sbb) {
   sbb->n  = 0;
   sbb->o  = 0;
 }
-
-typedef double (*t_F)(int _cSub,  int _cmt, double _amt, double t, double *y);
-typedef double (*t_LAG)(int _cSub,  int _cmt, double t, double *y);
-typedef double (*t_RATE)(int _cSub,  int _cmt, double _amt, double t, double *y);
-typedef double (*t_DUR)(int _cSub,  int _cmt, double _amt, double t, double *y);
-
-typedef void (*t_calc_mtime)(int cSub, double *mtime, double *y);
-
-typedef void (*t_ME)(int _cSub, double _t, double t, double *_mat, const double *__zzStateVar__);
-typedef void (*t_IndF)(int _cSub, double _t, double t, double *_mat);
-
-typedef double (*t_getTime)(int idx, rx_solving_options_ind *ind);
-typedef int (*t_locateTimeIndex)(double obs_time,  rx_solving_options_ind *ind);
-typedef int (*t_handle_evidL)(int evid, double *yp, double xout, int id, rx_solving_options_ind *ind) ;
-typedef double (*t_getDur)(int l, rx_solving_options_ind *ind, int backward, unsigned int *p);

@@ -75,6 +75,26 @@ size is greater or equal to 10
 \item \code{"auto"} chooses \code{"lkj"} when the dimension of the
 matrix is less than 10 and \code{"separation"} when greater
 than equal to 10.
+\item \code{"tnpri"} does not use a separation strategy at all: the omega
+entries themselves are carried in the \code{thetaMat} and are drawn from
+it jointly with the thetas, which is what a covariance step from
+NONMEM or 'nlmixr2' gives and what NONMEM calls \code{TNPRI}.  This keeps
+the off diagonal entries and the covariances between the thetas and
+the omega entries, which the strategies above redraw or discard.
+\code{omega} has to be a matrix, since the draws are added to it, and the
+\code{thetaMat} columns are matched to entries by name -- \code{om.eta.cl} or
+\code{eta.cl} for a diagonal, and \code{cov.eta.cl.eta.v} or \code{omega2.1} for an
+off diagonal.  A drawn matrix that is not positive definite is
+redrawn, see \code{priorPdRetry}.  \code{dfSub} is not used: an entry the
+\code{thetaMat} gives no variance stays at its estimate.
+\item \code{"invchol"} draws the same entries jointly with the thetas, but on the
+scale of the inverse Cholesky decomposition of the omega (with a log
+diagonal), so every drawn omega is positive definite and none is
+redrawn.  The \code{thetaMat} covariance of the entries is moved to that
+scale by the delta method at the \code{omega} estimate, which has to be
+positive definite.  Only the blocks of \code{omega} holding a drawn entry
+change, and an entry of such a block that the \code{thetaMat} gives no
+variance can move with the others.
 }}
 
 \item{omegaXform}{When taking \code{omega} values from the \code{thetaMat}
@@ -160,6 +180,11 @@ size is greater or equal to 10
 \item \code{"auto"} chooses \code{"lkj"} when the dimension of the
 matrix is less than 10 and \code{"separation"} when greater
 than equal to 10.
+\item \code{"tnpri"} draws the sigma entries jointly from the \code{thetaMat}, the
+same way \code{omegaSeparation="tnpri"} does for the omega; \code{dfObs} is
+not used.
+\item \code{"invchol"} draws them on the inverse Cholesky scale, the same way
+\code{omegaSeparation="invchol"} does for the omega.
 }}
 
 \item{sigmaXform}{When taking \code{sigma} values from the \code{thetaMat}
@@ -213,6 +238,30 @@ a data frame with the simulated subjects
 \description{
 Simulate Parameters from a Theta/Omega specification
 }
+\examples{
+rxWithSeed(42, {
+  rxSimThetaOmega(
+    params = c(tka = 1, tcl = 2),
+    omega = lotri::lotri(eta.ka ~ 0.1), nSub = 3
+  )
+})
+}
+\seealso{
+Other Variability and uncertainty:
+\code{\link[=confint.rxSolve]{confint.rxSolve()}},
+\code{\link[=cvPost]{cvPost()}},
+\code{\link[=dfWishart]{dfWishart()}},
+\code{\link[=rinvchisq]{rinvchisq()}},
+\code{\link[=rxEtaDistExpand]{rxEtaDistExpand()}},
+\code{\link[=rxEtaDistMuRef]{rxEtaDistMuRef()}},
+\code{\link[=rxPp]{rxPp()}},
+\code{\link[=rxRmvn]{rxRmvn()}},
+\code{\link[=rxRmvt]{rxRmvt()}},
+\code{\link[=rxUiEtaDistAnchors]{rxUiEtaDistAnchors()}},
+\code{\link[=rxUiEtaDists]{rxUiEtaDists()}},
+\code{\link[=swapMatListWithCube]{swapMatListWithCube()}}
+}
 \author{
 Matthew L.Fidler
 }
+\concept{Variability and uncertainty}

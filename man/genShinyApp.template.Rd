@@ -27,7 +27,8 @@ shiny app is generated. Defaults to \code{TRUE}.}
 
 \item{ODE.config}{model name compiled and list of parameters sent to \code{\link[=rxSolve]{rxSolve()}}.}
 
-\item{statevars}{List of statevars passed to to the \code{\link[=write.template.ui]{write.template.ui()}} function.  This usually isn't called directly.
+\item{statevars}{List of statevars passed to to the \code{\link[=write.template.ui]{write.template.ui()}} function.  This usually isn't called
+directly.
 
 A PK/PD model is defined using \code{\link[=rxode2]{rxode2()}}, and
 a set of parameters and initial values are defined.  Then
@@ -65,21 +66,26 @@ their specific \code{rxode2} models.
 }
 \examples{
 \donttest{
-# remove myapp when the example is complete
-on.exit(unlink("myapp", recursive = TRUE, force = TRUE))
+# create in a temp dir so nothing is left in the working directory
+.appDir <- tempfile("myapp")
+on.exit(unlink(.appDir, recursive = TRUE, force = TRUE))
 # create the shiny app example (template)
-genShinyApp.template(appDir = "myapp")
+genShinyApp.template(appDir = .appDir)
 # run the shiny app
 if (requireNamespace("shiny", quietly=TRUE)) {
   library(shiny)
-  # runApp("myapp") # Won't launch in environments without browsers
+  # runApp(.appDir) # Won't launch in environments without browsers
 }
 }
 }
 \seealso{
 \code{\link[=rxode2]{rxode2()}},\code{\link[=eventTable]{eventTable()}}, and the package \pkg{shiny} (\url{https://shiny.posit.co}).
+
+Other Shiny:
+\code{\link[=rxShiny]{rxShiny()}}
 }
 \concept{PK/PD}
+\concept{Shiny}
 \concept{pharmacometrics}
 \keyword{nonlinear}
 \keyword{simulation}

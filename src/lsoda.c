@@ -8,7 +8,9 @@
 #include <R.h>
 #include <Rinternals.h>
 
-void RSprintf(const char *format, ...);
+#include "rxPrintfFormat.h"
+void RSprintf(const char *format, ...) R_PRINTF_FORMAT(1, 2);
+#include "solveWarn.h"
 
 /*
   This is a reentrant-friendly version of the LSODA library.
@@ -164,6 +166,10 @@ tam@wri.com
 	return ctx->state; \
 }
 
+/* An intdy() failure (tout outside the last step; intdy() pushes its
+   reason) is a hard failure, as in hardfailure(): the state at tout was
+   never computed, so returning success would pass the last step's state on
+   as tout's. */
 #define intdyreturn() \
 { \
 	int iflag = intdy(ctx, tout, 0, y);  \
@@ -172,6 +178,8 @@ tam@wri.com
 		for (i = 1; i <= neq; i++) \
 			y[i] = _rxC(yh)[1][i]; \
 		*t = _rxC(tn); \
+		ctx->state = -3; \
+		return ctx->state; \
 	} \
 	*t = tout; \
 	ctx->state = 2; \
@@ -307,7 +315,14 @@ static int alloc_mem(struct lsoda_context_t * ctx) {
 	long ipvtoff = offset;
 	offset += (1 + nyh) * sizeof(int);
 
-	_rxC(memory) = malloc(offset);
+	/* calloc (not malloc): the Nordsieck history (yh), Jacobian workspace (wm),
+	   acor/savf, etc. share this block and parts are read before the integrator
+	   writes them on some paths (e.g. a first stiff/BDF step at an extreme eta).
+	   Leaving them uninitialised makes a solve non-deterministic -- surfaced by
+	   valgrind as reads of uninitialised lsoda work memory inside FOCEi/impmap
+	   inner solves, and downstream as an occasional blown-up importance-sampling
+	   fit after a prior (parallel) fit.  Zeroing is cheap and defined. */
+	_rxC(memory) = calloc(offset, 1);
     if (_rxC(memory) == NULL) {
       RSprintf(_("[lsoda] failed to allocate memory of size %ld bytes\n"), (long) offset);
       return 0;
@@ -678,6 +693,9 @@ int lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 			_rxC(h) = h0;
 			for (i = 1; i <= neq; i++)
 				_rxC(yh)[2][i] *= h0;
+			/* discrete-adjoint: record the initial Nordsieck point
+			   (t0, y0=yh[1], h0) for the t0 quadrature term. */
+			if (ctx->common->adjInit) ctx->common->adjInit(ctx);
 		}			/* if ( ctx->state == 1 )   */
 		/*
 		   Block d.
@@ -767,16 +785,16 @@ int lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 				softfailure(-2, "lsoda -- at t = %g, too much accuracy requested\n  for precision of machine, suggested\n scaling factor = %g\n", *t, tolsf);
 			}
 			if ((_rxC(tn) + _rxC(h)) == _rxC(tn)) {
+				/* Floor-rounding step size: t + h is indistinguishable from t,
+				   so the solver is about to take a no-op step. Aggregate the
+				   warning by message text so a flood across subjects/
+				   iterations collapses to one summary line. The legacy
+				   `mxhnil`-based throttle (per-ctx counter) is now redundant
+				   for our purposes; keep _rxC(nhnil) ticking so anything that
+				   introspects it still sees the count. */
 				_rxC(nhnil)++;
-				if (_rxC(nhnil) <= opt->mxhnil) {
-				  RSprintf(_("lsoda -- warning..internal t = %g and _rxC(h) = %g are\n"), _rxC(tn), _rxC(h));
-				  RSprintf(_("         such that in the machine, t + _rxC(h) = t on the next step\n"));
-				  RSprintf(_("         solver will continue anyway.\n"));
-					if (_rxC(nhnil) == opt->mxhnil) {
-					  RSprintf(_("lsoda -- above warning has been issued %d times,\n"), _rxC(nhnil));
-					  RSprintf(_("         it will not be issued again for this problem\n"));
-					}
-				}
+				rxSolveWarnPush(_rxC(id),
+				                "lsoda -- internal t + h = t (h too small for machine precision)");
 			}
 			/*
 			   Call stoda
@@ -801,6 +819,10 @@ int lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 				   Then, in any case, check for stop conditions.
 				 */
 				jstart = 1;
+				/* discrete-adjoint: record this accepted step's linearisation
+				   point (tn, converged y=yh[1]) + metadata (hu, nqu, el). */
+				if (ctx->common->adjPush) ctx->common->adjPush(ctx);
+				if (ctx->common->stepPush) ctx->common->stepPush(ctx);
 				if (_rxC(meth) != _rxC(mused)) {
 					_rxC(tsw) = _rxC(tn);
 					jstart = -1;

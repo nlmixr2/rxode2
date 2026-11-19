@@ -7,7 +7,8 @@ extern int needSort;
 void updateSyntaxCol(void);
 void trans_syntax_error_report_fn(char *err);
 void parseFree(int last);
-void RSprintf(const char *format, ...);
+#include "rxPrintfFormat.h"
+void RSprintf(const char *format, ...) R_PRINTF_FORMAT(1, 2);
 
 SEXP _rxode2parse_trans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
                         SEXP isEscIn, SEXP inME, SEXP goodFuns, SEXP fullPrintIn);
@@ -20,6 +21,13 @@ typedef struct symtab {
   vLines strVal; /* symbol string for rxode2 assigned strings */
   int *strValI; /* which variable is assigned a string */
   int *strValII; /* The number that the string is assigned (what C sees) */
+  vLines strCmp; /* symbol string: compared covariates in first-seen order */
+  vLines strCmpVal; /* compared strings in first-seen order */
+  int *strCmpN; /* number of compared strings per covariate */
+  int *strCmpValI; /* which covariate index each compared string belongs to */
+  const char *strCmpCurCov; /* current comparison covariate while parsing */
+  const char *strCmpCurStr; /* current comparison string while parsing */
+  int strCmpCurType; /* current string comparison operator while parsing */
   int lhi; // ith for lhs
   int *lho; /* lhs order */
   int *lh;        /*
@@ -74,6 +82,7 @@ lhs symbols?
   int pi; // # param
   int isPi; // # pi?
   int isNA; // # pi?
+  int lagTime; // lag()/lead()/diff()/first()/last() of time?
   int linCmt; // Unparsed linear compartment
   int linCmtCmt; // Are all non linear-system compartments derived from cmt()
   int linCmtN; // Unparsed linear compartment
@@ -91,13 +100,17 @@ lhs symbols?
   int hasCentralCmt;
   int hasKa;
   int allocS;
+  int allocNV;
   int allocSV;
+  int allocSC;
+  int allocSCV;
   int allocD;
   int matn;
   int matnf;
   int ncmt;
   int linB;
   int ndiff; // flag of the linCmtB derivatives requested
+  int linCmtBraw; // model reads raw linCmtB amount-Jacobian rows (which1 >= 0)
   // curPropN
   int curPropN;
   int depotN;
@@ -106,19 +119,135 @@ lhs symbols?
   int nwhile;
   int nInd;
   int simflg;
+  int rng;                    /* model may draw random numbers (keeps _setThreadInd() per call) */
+  int nInvCdf;                /* root-finding inverse CDF call sites, for the memo */
   int thread;
   int lastDdt;
   int nLlik;
   int lvlStr;
   int dummyLhs;
   int hasMix; // Has mixture function
+  int mixSel; // Component count declared by rx_mixsel_<k>_<n>_ selectors
+  int evid_; // pushing evid_() flag
+  int *splitBolus; // source then target de indexes (+1)
+  int splitBolusN;
+  int *splitInfusion; // source then target de indexes (+1)
+  int splitInfusionN;
+  int *splitInfusionBolus; // source then target de indexes (+1)
+  int splitInfusionBolusN;
+  int *splitBolusInfusion; // source then target de indexes (+1)
+  int splitBolusInfusionN;
+  int isMexp;
+  int hasDdt;
+  int curDdt; // currently parsing the RHS of a d/dt() statement
+  int hasIndLinProp;
+  // Every assignment and every indLin(state) <- expr forcing, in source order,
+  // with the symbols its right-hand side reads.  Replayed in genModelVars to
+  // report which states carry a state-dependent forcing (wIndLin).
+  int *stmtT; // target: symbol index (stmtK 0) or de index (stmtK 1)
+  int *stmtK; // 0 = ordinary assignment, 1 = indLin() forcing
+  int *stmtC; // inside an if/while/ifelse block, so it may not run
+  int *stmtR0; // first stmtRef index
+  int *stmtRn; // number of stmtRef entries
+  int stmtN;
+  int stmtAlloc;
+  int *stmtRef; // symbols read, grouped by statement
+  int stmtRefN;
+  int stmtRefAlloc;
+  int curStmt; // statement being parsed, -1 outside one
+  int curIndLin; // 1 + de index while parsing an indLin() RHS, 0 otherwise
+  int curLhs; // symbol index being assigned, -1 outside an assignment
+  int nCond; // depth of the enclosing if/while/ifelse blocks
+  int hasDelay; // Has delay() function (delay differential equation)
 } symtab;
 
 extern symtab tb;
 
+static inline int parse_micro_constant(const char *name, char *cmt1, char *cmt2) {
+  int non_depleting = 0;
+  char name_copy[256];
+  int len = (int)strlen(name);
+  if (len >= 256) return 0;
+  strcpy(name_copy, name);
+
+  if (len > 3 && strcmp(name_copy + len - 3, "_nd") == 0) {
+    non_depleting = 1;
+    name_copy[len - 3] = '\0';
+  } else if (len > 3 && strcmp(name_copy + len - 3, ".nd") == 0) {
+    non_depleting = 1;
+    name_copy[len - 3] = '\0';
+  }
+
+  // Check for dot separator: k.cmt1.cmt2 or K.cmt1.cmt2
+  if ((name_copy[0] == 'k' || name_copy[0] == 'K') && name_copy[1] == '.') {
+    const char *first_dot = name_copy + 1;
+    const char *second_dot = strchr(first_dot + 1, '.');
+    if (second_dot && second_dot != first_dot + 1 && *(second_dot + 1) != '\0') {
+      if (strchr(second_dot + 1, '.') == NULL) {
+        int len1 = (int)(second_dot - (first_dot + 1));
+        if (len1 < 100) {
+          memcpy(cmt1, first_dot + 1, len1);
+          cmt1[len1] = '\0';
+          int len2 = (int)strlen(second_dot + 1);
+          if (len2 < 100) {
+            strcpy(cmt2, second_dot + 1);
+            return non_depleting ? 2 : 1;
+          }
+        }
+      }
+    }
+  }
+  // Check for underscore separator: k_cmt1_cmt2 or K_cmt1_cmt2
+  if ((name_copy[0] == 'k' || name_copy[0] == 'K') && name_copy[1] == '_') {
+    // 1. Try to match against existing compartments in tb.de.line
+    for (int i = 0; i < tb.de.n; i++) {
+      const char *c1 = tb.de.line[i];
+      int len1 = (int)strlen(c1);
+      if (strncmp(name_copy + 2, c1, len1) == 0 && name_copy[2 + len1] == '_') {
+        const char *c2_start = name_copy + 2 + len1 + 1;
+        // Verify c2_start is also a registered compartment
+        for (int j = 0; j < tb.de.n; j++) {
+          const char *c2 = tb.de.line[j];
+          if (strcmp(c2_start, c2) == 0) {
+            if (len1 < 100 && strlen(c2) < 100) {
+              strcpy(cmt1, c1);
+              strcpy(cmt2, c2);
+              return non_depleting ? 2 : 1;
+            }
+          }
+        }
+      }
+    }
+    // 2. Fallback: if there is exactly one more underscore in name (e.g. k_depot_central)
+    const char *first_us = name_copy + 1;
+    const char *second_us = strchr(first_us + 1, '_');
+    if (second_us && second_us != first_us + 1 && *(second_us + 1) != '\0') {
+      if (strchr(second_us + 1, '_') == NULL) {
+        int len1 = (int)(second_us - (first_us + 1));
+        if (len1 < 100) {
+          memcpy(cmt1, first_us + 1, len1);
+          cmt1[len1] = '\0';
+          int len2 = (int)strlen(second_us + 1);
+          if (len2 < 100) {
+            strcpy(cmt2, second_us + 1);
+            return non_depleting ? 2 : 1;
+          }
+        }
+      }
+    }
+  }
+  return 0;
+}
+
 extern vLines depotLines;
 extern vLines centralLines;
 extern vLines sbPm, sbPmDt, sbNrmL;
+// scratch line buffer used to rewrite sbNrmL (see mergeNormParamStatements)
+extern vLines sbNrmL2;
+// Identifiers seen inside an adaptive dosing argument, and a description of
+// where each came from.  Checked once the whole model has been parsed, since
+// the variable may be assigned further down (see #1231).
+extern vLines sbDoseArgVar, sbDoseArgCtx;
 
 #define FBIO 1
 #define ALAG 2
@@ -142,6 +271,8 @@ extern vLines sbPm, sbPmDt, sbNrmL;
 #define TMATF 20
 #define TLIN 21
 #define TNONE 22
+#define TEVID 23
+#define PAST 24
 
 // new de type
 #define fromDDT 2
@@ -193,6 +324,7 @@ typedef struct nodeInfo {
   int printf_statement;
   int prod;
   int rate;
+  int past;
   int selection_statement;
   int selection_statement__9;
   int break_statement;
@@ -202,6 +334,10 @@ typedef struct nodeInfo {
   int theta0_noout;
   int theta;
   int cmt_statement;
+  int splitBolus_statement;
+  int splitInfusion_statement;
+  int splitInfusionBolus_statement;
+  int splitBolusInfusion_statement;
   int param_statement;
   int interp_statement;
   int dvid_statementI;
@@ -212,11 +348,25 @@ typedef struct nodeInfo {
   int equality_str1;
   int equality_str2;
   int simfun_statement;
+  int obs_statement;
+  int evid_statement;
+  int bolus_statement;
+  int infuse_statement;
+  int infuseDur_statement;
+  int reset_statement;
+  int replace_statement;
+  int multiply_statement;
+  int phantom_statement;
   int relational_op;
   int string;
+  int mod_expression;
+  int indLin_prop;
+  int matExp_statement;
 } nodeInfo;
 
 static inline void niReset(nodeInfo *ni){
+  ni->indLin_prop = -1;
+  ni->matExp_statement = -1;
   ni->mtime = -1;
   ni->alag = -1;
   ni->assignment = -1;
@@ -254,7 +404,7 @@ static inline void niReset(nodeInfo *ni){
   ni->printf_statement = -1;
   ni->prod = -1;
   ni->rate = -1;
-  ni->rate = -1;
+  ni->past = -1;
   ni->selection_statement = -1;
   ni->selection_statement__9 = -1;
   ni->break_statement = -1;
@@ -264,6 +414,10 @@ static inline void niReset(nodeInfo *ni){
   ni->theta0 = -1;
   ni->theta0_noout = -1;
   ni->cmt_statement = -1;
+  ni->splitBolus_statement = -1;
+  ni->splitInfusion_statement = -1;
+  ni->splitInfusionBolus_statement = -1;
+  ni->splitBolusInfusion_statement = -1;
   ni->param_statement = -1;
   ni->interp_statement = -1;
   ni->dvid_statementI = -1;
@@ -274,8 +428,18 @@ static inline void niReset(nodeInfo *ni){
   ni->equality_str1 = -1;
   ni->equality_str2 = -1;
   ni->simfun_statement = -1;
+  ni->obs_statement = -1;
+  ni->evid_statement = -1;
+  ni->bolus_statement = -1;
+  ni->infuse_statement = -1;
+  ni->infuseDur_statement = -1;
+  ni->reset_statement = -1;
+  ni->multiply_statement = -1;
+  ni->phantom_statement = -1;
+  ni->replace_statement = -1;
   ni->relational_op = -1;
   ni->string = -1;
+  ni->mod_expression = -1;
 }
 
 #define STRINGIFY(...) STRINGIFY_AUX(__VA_ARGS__)
@@ -304,9 +468,10 @@ extern sbuf _gbuf, _mv;
 extern char *gBuf;
 extern int gBufFree;
 extern int gBufLast;
+extern int gBufLastPrinted;
 
 extern int maxSumProdN, SumProdLD, foundF0, foundF, foundLag, foundRate, foundDur,
-  good_jac, extraCmt, badMd5, maxUdf;
+  foundPast, good_jac, extraCmt, badMd5, maxUdf;
 extern unsigned int found_jac, nmtime;
 
 extern sbuf sbNrm;
@@ -331,11 +496,48 @@ extern sbuf sb, sbDt; /* buffer w/ current parsed & translated line */
 extern sbuf sbt;
 
 
-#define ENDLINE tb.ixL=-1; tb.didEq=0; tb.NEnd=NV;
+#define ENDLINE tb.ixL=-1; tb.didEq=0; tb.NEnd=NV; tb.curLhs=-1; tb.curStmt=-1;
 
 #define aAppendN(str, len) sAppendN(&sb, str, len); sAppendN(&sbDt, str, len);
 #define aProp(prop) curLineProp(&sbPm, prop); curLineProp(&sbPmDt, prop); curLineProp(&sbNrmL, prop);
 #define aType(type) curLineType(&sbPm, type); curLineType(&sbPmDt, type); curLineType(&sbNrmL, type);
+
+// One unsigned index, no leading zero, terminated by '_'.  Advances *sp past
+// the terminator; returns 0 (and leaves *sp alone) when the text is anything
+// else.
+static inline int mixSelIdx(const char **sp) {
+  const char *p = *sp;
+  int k = 0;
+  if (*p < '1' || *p > '9') return 0; // no leading zero, no empty index
+  for (; *p >= '0' && *p <= '9'; p++) {
+    k = k*10 + (*p - '0');
+    if (k > 100000) return 0;         // implausible; not a selector
+  }
+  if (*p != '_') return 0;
+  *sp = p + 1;
+  return k;
+}
+
+// A mix() call that has been through symengine comes back with the call
+// expanded to one selector per component, named rx_mixsel_<k>_<n>_ -- "the
+// k-th of n components".  The TOTAL is spelled out rather than inferred from
+// the largest k present, because a component whose expression folds to zero
+// (any sensitivity of a mixture w.r.t. an eta that only one component uses)
+// drops its selector out of the expression entirely.
+//
+// Returns k (>= 1), or 0 when the name is an ordinary variable; when it is a
+// selector and nTot is non-NULL, *nTot is set to n.
+static inline int mixSelNum(const char *s, int *nTot) {
+  if (strncmp(s, "rx_mixsel_", 10)) return 0;
+  const char *p = s + 10;
+  int k = mixSelIdx(&p);
+  if (k == 0) return 0;
+  int n = mixSelIdx(&p);
+  if (n == 0 || *p != '\0') return 0; // rx_mixsel_<k>_<n>_ and nothing more
+  if (k > n) return 0;
+  if (nTot != NULL) *nTot = n;
+  return k;
+}
 
 static inline int toInt(char *v2){
   errno = 0;
@@ -360,6 +562,7 @@ static inline int allSpaces(char *v2) {
       allSpace=0;
       break;
     }
+    iii++;
   }
   return allSpace;
 }
@@ -395,5 +598,15 @@ char *getLine (char *src, int line, int *lloc);
 
 #define propPodo0 32768
 #define propDose0 65536
+// compartment name referenced as a dose target (bolus/infuse/etc.) in a linCmt model;
+// not an ODE state -- prevents false conflict with addLinCmt's dprop==0 check
+#define propDoseRef 131072
+// ODE state referenced by delay(state, T): the solver records dense delay
+// history only for states carrying this bit.  Must match rxDelayStateProp in
+// inst/include/rxode2parseStruct.h.
+#define propDelay 262144
+// ODE state carrying a user-specified non-constant delay() pre-history via
+// past(state, tau) <- expr.
+#define propPast 524288
 
 #endif // __TRAN_H__

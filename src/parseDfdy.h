@@ -26,14 +26,16 @@ static inline int handleRhsDf(nodeInfo ni, char *name, int i, D_ParseNode *xpn, 
     default: {
       char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
       aType(TJAC);
-      sAppend(&sbDt, "__PDStateVar_%s_SeP_",v);
+      sAppendN(&sbDt, "__PDStateVar_", 13);
+      doDot(&sbDt, v);
+      sAppendN(&sbDt, "_SeP_", 5);
       sAppend(&sbt,"df(%s)/dy(",v);
       if (new_de(v, 0)) {
         updateSyntaxCol();
         sPrint(&_gbuf,_("d/dt(%s) needs to be defined before using a Jacobians for this state"),v);
         trans_syntax_error_report_fn(_gbuf.s);
       } else {
-        sAppend(&sb, "__PDStateVar__[%d*(__NROWPD__)+",tb.id);
+        sAppend(&sb, "__PDStateVar__[__DDT%d__*(__NROWPD__)+",tb.id);
       }
     }
     }
@@ -49,16 +51,23 @@ static inline int handleLhsDf(nodeInfo ni, char *name, int i, D_ParseNode *xpn, 
     char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
     // New statement
     aType(TJAC);
+    // A Jacobian entry df(state)/dy(var) is an integration-time expression, so
+    // delay()/rxDelayD() are valid here too (e.g. d f/d(param) = delay(state,T)).
+    tb.curDdt = 1;
     sb.o = 0; sbDt.o = 0;
     sbt.o = 0;
-    sAppend(&sbDt,"__PDStateVar_%s_SeP_",v);
+    sAppendN(&sbDt, "__PDStateVar_", 13);
+    doDot(&sbDt, v);
+    sAppendN(&sbDt, "_SeP_", 5);
     sAppend(&sbt,"df(%s)/dy(",v);
     if (new_de(v, 0)){
       updateSyntaxCol();
       sPrint(&_gbuf,_("d/dt(%s) needs to be defined before using a Jacobians for this state"),v);
       trans_syntax_error_report_fn(_gbuf.s);
     } else {
-      sAppend(&sb,"__PDStateVar__[%d*(__NROWPD__)+",tb.id);
+      // the state's index (__DDTn__), not its parse order: a state named before
+      // its d/dt() (eg by an initial condition) is reordered
+      sAppend(&sb,"__PDStateVar__[__DDT%d__*(__NROWPD__)+",tb.id);
     }
     new_or_ith(v);
     tb.cdf = tb.ix;
@@ -85,12 +94,13 @@ static inline void handleDyThetaEta(nodeInfo ni, char *name, int i, D_ParseNode 
     sAppend(&sbDt, "%s__",_gbuf.s);
     *ii = 1;
   } else {
-    sAppend(&sbDt, "%s__",v);
+    doDot(&sbDt, v);
+    sAppendN(&sbDt, "__", 2);
     sAppend(&sbt, "%s)",v);
     new_or_ith(v);
     if (tb.lh[tb.ix] == isState){
       new_de(v, 0);
-      sAppend(&sb, "%d]",tb.id);
+      sAppend(&sb, "__DDT%d__]",tb.id);
     } else {
       sAppendN(&sb, "0]",2);
       good_jac = 0;
@@ -107,7 +117,16 @@ static inline int handleDy(nodeInfo ni, char *name, int i, D_ParseNode *xpn, int
       aAppendN(" = ", 3);
       sAppendN(&sbt ,"=", 1);
       if (*ii == 1){
-        new_or_ith(_gbuf.s);
+        // df(state)/dy(THETA[n]) or dy(ETA[n]): _gbuf holds the synthetic
+        // name (_THETA_n_ / _ETA_n_).  Unlike the identifier form -- which the
+        // tree walk already registered before this point -- that name is not a
+        // symbol yet, so new_or_ith() leaves tb.ix = -2.  Storing that into
+        // tb.dy[] makes assertCorrectDfDy() read tb.ss.line[-2] (out of
+        // bounds).  Register it and take its index, as handleIdentifier() does.
+        if (new_or_ith(_gbuf.s)) {
+          addSymbolStr(_gbuf.s);
+          tb.ix = NV - 1;
+        }
       } else {
         new_or_ith(v);
       }

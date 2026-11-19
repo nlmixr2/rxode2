@@ -18,10 +18,13 @@
 #define NPARS 60
 #include <RcppArmadillo.h>
 #include "nearPD.h"
+#include "invChol.h"
 #include <Rmath.h>
 #include <thread>
 #include <string>
 #include <vector>
+#include <algorithm>  // std::stable_sort in sortIds()
+#include <numeric>    // std::iota in sortIds()
 #include <sys/stat.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -32,8 +35,15 @@
 #include "../inst/include/rxode2parseVer.h"
 #include "../inst/include/rxode2random_fillVec.h"
 #include "rxomp.h"
+#include "rxode2lincmtLink.h"
 #include "rxMemAvail.h"
+#include "solveWarn.h"
 #include "strncmp.h"
+#include "rxode2_altrep.h"
+#include "rxode2_df.h"
+#include "rxProtect.h"
+#include "../inst/include/rxMemoryCalc.h"
+#include "rxSbufFormat.h"
 #define _(String) (String)
 #define rxModelVars(a) rxModelVars_(a)
 #define min2( a , b )  ( (a) < (b) ? (a) : (b) )
@@ -43,17 +53,24 @@ using namespace Rcpp;
 using namespace arma;
 
 extern "C" void seedEng(int ncores);
-extern "C" void ensureLinCmtA(int nCores);
-extern "C" void ensureLinCmtB(int nCores);
+extern "C" void ensureLsodaCtxPool(int nCores);
+extern "C" void ensureIndLinExpCache(int nCores);
+extern "C" void ensureRworkPool(int nCores, int lrw, int liw);
 
 #include "cbindThetaOmega.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
+#include "../inst/include/rxode2parseGetTime.h" // defines updateRate/updateDur forward-declared in handleEvid.h
 #include "rxThreadData.h"
 
 #include "threadSafeConstants.h"
+#include "linCmtSensType.h"
 //#include "seed.h"
 
-extern "C" void RSprintf(const char *format, ...);
+SEXP rxSaveState_();         // defined in rxSerialize.cpp
+SEXP rxRestoreState_(SEXP pathSexp);      // defined in rxSerialize.cpp
+bool rxIsSerializeFile_(SEXP pathSexp);   // defined in rxSerialize.cpp
+#include "rxPrintfFormat.h"
+extern "C" void RSprintf(const char *format, ...) R_PRINTF_FORMAT(1, 2);
 extern "C" int getRxThreads(const int64_t n, const bool throttle);
 extern "C" double *global_InfusionRate(unsigned int mx);
 extern "C" void rxOptionsFree();
@@ -63,6 +80,12 @@ extern "C" void rxClearFuns();
 extern "C" void rxFreeLast();
 extern "C" void rxode2_assign_fn_pointers(SEXP);
 extern "C" int getThrottle();
+// Raises an index error an accessor recorded from inside a parallel region,
+// where Rf_error() could not run (rx2api.c).  Declared here rather than by
+// including rx2api.h: that header declares rxSetSilentErr() void while this
+// file defines it bool, so pulling it in breaks on an unrelated pre-existing
+// mismatch.
+extern "C" void rxApiErrRaise(void);
 extern "C" int getRxThreads(const int64_t n, const bool throttle);
 extern "C" void rxode2_assign_fn_pointers_(const char *mv);
 extern "C" void setSilentErr(int silent);
@@ -76,6 +99,10 @@ extern "C" double rxunifmix(rx_solving_options_ind* ind);
 
 SEXP qassertS(SEXP in, const char *test, const char *what);
 
+// nPastEvid is kept out of rx_solving_options to avoid breaking the
+// assignFuns2 ABI (which passes rx_solving_options by value).
+int nPastEvid_global = 0;
+
 RObject rxSolveFreeObj=R_NilValue;
 LogicalVector rxSolveFree();
 List etTrans(List inData, const RObject &obj, bool addCmt,
@@ -85,7 +112,16 @@ List etTrans(List inData, const RObject &obj, bool addCmt,
              bool addlKeepsCov,
              bool addlDropSs,
              bool ssAtDoseTime,
-             Nullable<List> iCovIn = R_NilValue);
+             Nullable<List> iCovIn = R_NilValue,
+             std::string tieOrder = "evid");
+// rxControl(tieOrder=); a control list built before that slot existed gets
+// the historical evid order
+std::string rxControlTieOrder(const List &control) {
+  if (Rf_length(control) <= Rxc_tieOrder) return "evid";
+  return as<std::string>(control[Rxc_tieOrder]);
+}
+// 1 when tied records keep their translated order while solving
+int tieOrderData_global = 0;
 
 RObject et_(List input, List et__);
 
@@ -176,22 +212,14 @@ bool rxIs_list(const RObject &obj, std::string cls){
     std::string cur;
     for (unsigned int i = classattr.size(); i--; ){
       cur = as<std::string>(classattr[i]);
-      if (cur == cls) {
-        if (cls == "rxEt") {
-          List ce = as<List>(classattr.attr(".rxode2.lst"));
-          List lobj = List(obj);
-          int nobs = asInt(ce["nobs"], "nobs");
-          int ndose = asInt(ce["ndose"], "ndose");
-          if (lobj.size() != 12) {
-            lobj.attr("class") = CharacterVector::create("data.frame");
-            return false;
-          }
-          if ( (as<IntegerVector>(lobj[0])).size() != ndose + nobs) {
-            lobj.attr("class") = CharacterVector::create("data.frame");
-            return false;
-          }
+      if (cur == "rxEt") {
+        hasEt = true;
+        if (cls == "rxEt" || cls == "eventTable") {
           return true;
-        } else if (cls == "rxSolve") {
+        }
+      }
+      if (cur == cls) {
+        if (cls == "rxSolve") {
           Environment e = as<Environment>(classattr.attr(".rxode2.env"));
           List lobj = List(obj);
           CharacterVector cls2= CharacterVector::create("data.frame");
@@ -278,7 +306,7 @@ bool rxIs_list(const RObject &obj, std::string cls){
         return rxHasEventNames(cv);
       }
     } else if (hasEt) {
-      return (cls == "rx.event");
+      return (cls == "rx.event" || cls == "eventTable");
     } else {
       return false;
     }
@@ -364,6 +392,10 @@ List rxDrop(CharacterVector drop, List input, bool warnDrop) {
 // [[Rcpp::export]]
 bool rxIs(const RObject &obj, std::string cls){
   if (obj == NULL) return false;
+  if (cls == "altrep") return ALTREP(obj);
+  if (cls == "seqrep") return is_rx_seqrep(obj);
+  if (cls == "repint") return is_rx_rep_int(obj);
+  if (cls == "repstr") return is_rx_rep_str(obj);
   if (cls == "units"){
     if (obj.hasAttribute("class")){
       CharacterVector cls = obj.attr("class");
@@ -456,6 +488,7 @@ Function requireNamespace("requireNamespace", R_BaseNamespace);
 Environment cliNS = loadNamespace("cli");
 Function cliAlert0 = as<Function>(cliNS["cli_alert_info"]);
 
+extern "C" void cliAlert(const char *format, ...) R_PRINTF_FORMAT(1, 2);
 extern "C" void cliAlert(const char *format, ...) {
   va_list args;
   char buffer[256];
@@ -487,7 +520,6 @@ RObject rxSimSigma(const RObject &sigma,
                    NumericVector upperIn = NumericVector::create(R_PosInf),
                    double a=0.4, double tol = 2.05, double nlTol=1e-10,
                    int nlMaxiter=100){
-
   if (nObs < 1){
     rxSolveFree();
     stop(_("refusing to simulate %d items"),nObs);
@@ -755,8 +787,8 @@ List rxModelVars_rxode2(const RObject &obj){
 //'
 //' @noRd
 List rxModelVars_blank() {
-  List ret(31);
-  CharacterVector retN(31);
+  List ret(35);
+  CharacterVector retN(35);
   ret[0]  = CharacterVector::create(); // params
   retN[0] = "params";
   ret[1]  = CharacterVector::create(); // lhs
@@ -813,7 +845,7 @@ List rxModelVars_blank() {
   ret[19] = CharacterVector::create();
   retN[19] = "alag";
 
-  ret[20] = IntegerVector::create(0); // timeId
+  ret[20] = IntegerVector::create(0); // udf
   retN[20] = "udf";
 
   IntegerVector interp = IntegerVector::create();
@@ -830,7 +862,7 @@ List rxModelVars_blank() {
 
   LogicalVector lhsStr = LogicalVector::create();
   lhsStr.attr("names") = CharacterVector::create();
-  ret[23] = lhsStr; // md5
+  ret[23] = lhsStr; // lhsStr
   retN[23] = "lhsStr";
 
   IntegerVector stateProp = IntegerVector::create();
@@ -858,12 +890,25 @@ List rxModelVars_blank() {
   ret[28] = lhsOrd;
   retN[28] = "lhsOrd";
 
+  ret[29] = IntegerVector::create(0); // splitBolus
+  retN[29] = "splitBolus";
 
-  ret[29] = IntegerVector::create(0); // timeId
-  retN[29] = "timeId";
+  List strCmpParams;
+  strCmpParams.attr("names") = CharacterVector::create();
+  ret[30] = strCmpParams; // strCmpParams
+  retN[30] = "strCmpParams";
 
-  ret[30] =CharacterVector::create(_["file_md5"] = "", _["parsed_md5"] = ""); // md5
-  retN[30] = "md5";
+  ret[31] = CharacterVector::create(_["file_md5"] = "", _["parsed_md5"] = ""); // md5
+  retN[31] = "md5";
+
+  ret[32] = IntegerVector::create(0); // splitInfusion
+  retN[32] = "splitInfusion";
+
+  ret[33] = IntegerVector::create(0); // splitInfusionBolus
+  retN[33] = "splitInfusionBolus";
+
+  ret[34] = IntegerVector::create(0); // splitBolusInfusion
+  retN[34] = "splitBolusInfusion";
 
   ret.attr("names") = retN;
   ret.attr("class") = "rxModelVars";
@@ -877,11 +922,28 @@ List rxModelVars_blank() {
 //' @return model variables
 //'
 //' @noRd
+// True when the text holds no statement at all -- only whitespace and '#'
+// comments.  The grammar cannot match that (`statement_list : (statement)+`,
+// and `statement` is deliberately not nullable; see inst/tran.g), so it is
+// routed to the blank model here, which is where "" has always gone.
+static inline bool rxModelIsBlankText(const std::string &s) {
+  for (size_t i = 0; i < s.size(); ++i) {
+    char c = s[i];
+    if (c == ' ' || c == '\t' || c == '\r' || c == '\n') continue;
+    if (c == '#') {
+      while (i < s.size() && s[i] != '\n') ++i;
+      continue;
+    }
+    return false;
+  }
+  return true;
+}
+
 List rxModelVars_character(const RObject &obj){
   CharacterVector modList = asCv(obj, "rxModelVars_character(obj)");
   if (modList.size() == 1){
     std::string sobj =as<std::string>(obj);
-    if (sobj == ""){
+    if (rxModelIsBlankText(sobj)){
       // Blank rxode2 model
       return rxModelVars_blank();
     } else if (fileExists(sobj)) {
@@ -1082,6 +1144,22 @@ List rxModelVars_(const RObject &obj){
 //' @family Query model information
 //' @author Matthew L.Fidler
 //' @export
+//' @examples
+//' \donttest{
+//' f <- function() {
+//'   ini({
+//'     ka <- 0.5; cl <- 1; v <- 10
+//'   })
+//'   model({
+//'     d/dt(depot) <- -ka * depot
+//'     d/dt(central) <- ka * depot - cl / v * central
+//'     cp <- central / v
+//'   })
+//' }
+//' m <- f()
+//' rxState(m)
+//' rxState(m, "central")
+//' }
 // [[Rcpp::export]]
 RObject rxState(const RObject &obj = R_NilValue, RObject state = R_NilValue){
   List modVar = rxModelVars(obj);
@@ -1132,6 +1210,20 @@ CharacterVector rxParams_(const RObject &obj){
 //'
 //' @family Query model information
 //' @export
+//' @family Sensitivities
+//' @examples
+//' \donttest{
+//' f <- function() {
+//'   ini({
+//'     k <- 0.1
+//'   })
+//'   model({
+//'     d/dt(x) <- -k * x
+//'     df(x)/dy(x) <- -k
+//'   })
+//' }
+//' rxDfdy(f())
+//' }
 //[[Rcpp::export]]
 CharacterVector rxDfdy(const RObject &obj){
   List modVar = rxModelVars(obj);
@@ -1150,6 +1242,20 @@ CharacterVector rxDfdy(const RObject &obj){
 //' @family Query model information
 //' @author Matthew L.Fidler
 //' @export
+//' @examples
+//' \donttest{
+//' f <- function() {
+//'   ini({
+//'     ka <- 0.5; cl <- 1; v <- 10
+//'   })
+//'   model({
+//'     d/dt(depot) <- -ka * depot
+//'     d/dt(central) <- ka * depot - cl / v * central
+//'     cp <- central / v
+//'   })
+//' }
+//' rxLhs(f())
+//' }
 //[[Rcpp::export]]
 CharacterVector rxLhs(const RObject &obj){
   List modVar = rxModelVars(obj);
@@ -1189,6 +1295,8 @@ NumericVector rxInits0(const RObject &obj,
     if (nvec.size() > 0){
       if (!nvec.hasAttribute("names")){
         if (!req.isNull() && nreq.size() == nvec.size()){
+          // name a copy: nvec is the caller's own vector (inits = , scale =)
+          nvec = clone(nvec);
           nvec.attr("names") = req;
           nvecNames = req;
           std::string wstr = "Assumed order of inputs: ";
@@ -1455,132 +1563,155 @@ NumericVector rxSetupScale(const RObject &obj,
   return ret;
 }
 
-struct rx_globals {
-  double *gLin;
-  double *gLlikSave;
-  double *gSolveLast2;
-  double *gSolveLast;
-  double *gSolveSave;
-  int *gon;
-  double *gIndSim;
-  double *gsolve;
-  double **gInfusionRate;    // per-thread independently allocated buffers
-  int    *gInfusionRateN;    // allocation count per thread (neq + extraCmt)
-  int     nInfusionRateThreads; // number of threads allocated
-  double *gTlastS;
-  double *gTfirstS;
-  double *gCurDoseS;
-  double *gall_times;
-  double *gall_timesS;
-  int *gix;
-  double *gdv;
-  double *glimit;
-  int *gcens;
-  double *gamt;
-  double *gamtS;
-  double *gii;
-  double *glhs;
-  double *gcov;
-  double *ginits;
-  double *gscale;
-  double *gatol2;
-  double *grtol2;
-  double *gssAtol;
-  double *gssRtol;
-  double *gpars;
-  double *gLinSave;
-  double *gLinDummy;
-  //ints
-  int *gevid;
-  int *gBadDose;
-  int *grc;
-  int *gidose;
-  int *gpar_cov;
-  int *gpar_covInterp;
-  int *glhs_str;
+#include "rxGlobals.h"
 
-  int *gParPos;
-  int *gParPos2;
-
-  int *gsvar;
-  int *govar;
-  int *gsiV;
-  int *gsi;
-  //
-  int *slvr_counter;
-  int *dadt_counter;
-  int *jac_counter;
-  int *gSampleCov;
-  double *gmtime;
-  double *gmtime0;
-  double *gsigma = NULL;
-  int nSigma = 0;
-  double *gomega = NULL;
-  int nOmega = 0;
-  int *ordId = NULL;
-  bool zeroTheta = false;
-  bool zeroOmega = false;
-  bool zeroSigma = false;
-  int *gindLin = NULL;
-
-  // extra dosing information
-  int ** pendingDoses = NULL;
-  int *  nPendingDoses = NULL;
-  int *  nAllocPendingDoses = NULL;
-  int ** ignoredDoses = NULL;
-  int *  nIgnoredDoses = NULL;
-  int *  nAllocIgnoredDoses = NULL;
-
-  // new dosing information
-
-  int    **extraDoseTimeIdx = NULL;
-  double **extraDoseTime    = NULL;
-  int    **extraDoseEvid    = NULL;
-  double **extraDoseDose    = NULL;
-  int     *extraDoseN       = NULL;
-  int     *extraDoseAllocN  = NULL;
-
-  int extraDoseCores = 0;
-
-  // time per thread
-  double *timeThread = NULL;
-
-  // Per-thread tolerance arrays for thread-safe atolRtolFactor_().
-  // Each thread gets its own slice of size op->neq so modifications
-  // in atolRtolFactor_() never race between threads.
-  double *gatol2Thread = NULL;
-  double *grtol2Thread = NULL;
-  double *gssAtolThread = NULL;
-  double *gssRtolThread = NULL;
-
-  bool alloc=false;
+extern bool rxEtTransStrCmpQuiet;
+// Quiets etTrans string-comparison warnings while in scope; keep the scope to
+// one etTransR() call, whose R errors return as C++ exceptions (an Rf_warningcall
+// longjmp would skip the destructor)
+struct rxEtTransStrCmpQuietGuard {
+  bool old;
+  rxEtTransStrCmpQuietGuard(bool quiet) : old(rxEtTransStrCmpQuiet) {
+    if (quiet) rxEtTransStrCmpQuiet = true;
+  }
+  ~rxEtTransStrCmpQuietGuard() { rxEtTransStrCmpQuiet = old; }
 };
 
+extern std::vector<std::string> rxEtTransStrCmpParams;
+SEXP rxStrCmpParamCol(SEXP cur, List mv, std::string par);
+// Names the character and factor columns of a 'params' data frame for etTrans
+// (rxEtTransStrCmpParams) while in scope
+struct rxEtTransStrCmpParamsGuard {
+  rxEtTransStrCmpParamsGuard(RObject par) {
+    rxEtTransStrCmpParams.clear();
+    if (!Rf_inherits(par, "data.frame")) return;
+    SEXP nms = Rf_getAttrib(par, R_NamesSymbol);
+    for (int i = 0; i < Rf_length(par); ++i) {
+      SEXP col = VECTOR_ELT(par, i);
+      if (TYPEOF(col) == STRSXP || Rf_isFactor(col)) {
+        rxEtTransStrCmpParams.push_back(CHAR(STRING_ELT(nms, i)));
+      }
+    }
+  }
+  ~rxEtTransStrCmpParamsGuard() { rxEtTransStrCmpParams.clear(); }
+};
 
 rx_globals _globals;
 
 #include "extraDosing.h"
 
+// ---------------------------------------------------------------------------
+// Pre-generated eta buffer accessors (C linkage for rxthreefry.cpp)
+// ---------------------------------------------------------------------------
+extern "C" {
+
+  // Ensure buffer has at least nsolve*neta doubles. Returns pointer to buffer.
+  double* rxEtaPreGetOrAlloc(int nsolve_neta) {
+    if (nsolve_neta > _globals.geta_pre_n) {
+      free(_globals.geta_pre_alloc);
+      _globals.geta_pre_alloc = (double*)malloc((size_t)nsolve_neta * sizeof(double));
+      _globals.geta_pre_n     = (_globals.geta_pre_alloc ? nsolve_neta : 0);
+    }
+    _globals.geta_pre = _globals.geta_pre_alloc;
+    return _globals.geta_pre;
+  }
+
+  // Return current pre-gen buffer (NULL if not allocated / not active).
+  double* rxGetEtaPre(void) { return _globals.geta_pre; }
+
+  // Deactivate: set active pointer to NULL, keep underlying allocation for reuse.
+  void rxEtaPreDeactivate(void) { _globals.geta_pre = NULL; }
+
+  // Free buffer and reset counters.
+  void rxEtaPreFree(void) {
+    free(_globals.geta_pre_alloc);
+    _globals.geta_pre_alloc = NULL;
+    _globals.geta_pre       = NULL;
+    _globals.geta_pre_n     = 0;
+  }
+
+  // Number of omega matrices (1 = same for all sims, >1 = per-sim omega).
+  int rxGetNOmega(void) { return _globals.nOmega; }
+
+  // True when omega is zero (skip pre-gen).
+  int rxIsZeroOmega(void) { return _globals.zeroOmega ? 1 : 0; }
+
+} // extern "C"
+
+// --- Cross-DLL OpenMP thread-id override (Windows static-libgomp fix) --------
+// When rxode2's per-individual solve is driven from an EXTERNAL OpenMP team
+// (e.g. nlmixr2est's FOCEi innerOpt), rxode2's own statically-linked libgomp
+// returns omp_get_thread_num()==0 for every foreign thread, collapsing all
+// per-thread buffers (LSODA ctx pool, glhs, gon, tol arrays, ...) onto slot 0
+// -> concurrent writes / lsoda_free -> heap corruption (Windows segment heap;
+// benign on Linux's single shared libgomp).  The external driver supplies the
+// correct per-thread id via setRxThreadId(); when set (>=0) rxode2 uses it
+// instead of omp_get_thread_num().  thread_local is compiler TLS (per-OS-
+// thread), so the same OS thread that sets the id also runs the solve.  Inside
+// rxode2's own par_solve the override stays -1 and omp_get_thread_num()
+// (correct within rxode2's own team) is used.
+static thread_local int _rxThreadIdOverride = -1;
+extern "C" void setRxThreadId(int id) { _rxThreadIdOverride = id; }
+extern "C" int getRxThreadId(void) { return _rxThreadIdOverride; }
+
+// Test hook: setRxThreadId() and getRxThreadId() called through the pointer
+// table's slots 65 and 99, as a package linking to rxode2 calls them; returns
+// the ids read after setting 5 and then -1
+extern "C" SEXP _rxTestThreadIdSlots(SEXP ptrs) {
+  void (*set)(int) = (void (*)(int)) R_ExternalPtrAddrFn(VECTOR_ELT(ptrs, 65));
+  int (*get)(void) = (int (*)(void)) R_ExternalPtrAddrFn(VECTOR_ELT(ptrs, 99));
+  int old = get();
+  set(5);
+  int a = get();
+  set(-1);
+  int b = get();
+  set(old);
+  rxProtect rx_protect;
+  SEXP ret = rx_protect.protect(Rf_allocVector(INTSXP, 2));
+  INTEGER(ret)[0] = a;
+  INTEGER(ret)[1] = b;
+  return ret;
+}
+static inline int _rxTid(void) {
+  int t = _rxThreadIdOverride;
+  if (t < 0) t = omp_get_thread_num();
+  if (t < 0) return 0;
+  // Every `_globals` per-thread slice is sized by op->cores, recorded in
+  // nInfusionRateThreads when they are allocated, and op->cores is the
+  // CONTRACT: no caller may run a team wider than the count it set.  So `t >=
+  // mx` cannot happen in a correct caller, and the clamp is a backstop, not a
+  // supported mode -- see the longer note on rx_get_thread() in rxomp.h.
+  //
+  // Clamping rather than letting it through, for the reason given there: a
+  // thread id at or past the count indexes out of bounds, and gInfusionRate[]
+  // is an array of pointers, so it yields a garbage pointer (a NULL there
+  // segfaults in iniSubject) while the flat arrays (gon, gTlastS,
+  // gatol2Thread, ...) are silently overrun.
+  int mx = _globals.nInfusionRateThreads;
+  if (mx <= 0) return 0;
+  return (t < mx) ? t : mx - 1;
+}
+
 static inline double *getLinCmtSaveThread() {
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
-  return _globals.gLinSave + (op->numLinSens+op->numLin)*omp_get_thread_num();
+  return _globals.gLinSave + (op->numLinSens+op->numLin)*_rxTid();
 }
 
 static inline double *getLinCmtDummyThread() {
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
-  return _globals.gLinDummy + (op->neq)*omp_get_thread_num();
+  return _globals.gLinDummy + (op->neq)*_rxTid();
 }
 
 static inline double *getAlagFamilyPointerFromThreadId(double *ptr) {
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
-  return ptr + (op->neq + op->extraCmt)*omp_get_thread_num();
+  return ptr + (op->neq + op->extraCmt)*_rxTid();
 }
 
 static inline double *getInfusionRateThread() {
-  return _globals.gInfusionRate[omp_get_thread_num()];
+  return _globals.gInfusionRate[_rxTid()];
 }
 
 static inline double *getTlastSThread() {
@@ -1595,10 +1726,40 @@ static inline double *getCurDoseSThread() {
   return getAlagFamilyPointerFromThreadId(_globals.gCurDoseS);
 }
 
+extern rx_solving_options_ind **inds_threadCur;
+extern int inds_threadCurN;
+extern rx_solving_options_ind **inds_threadSubj;
+extern int inds_threadSubjN;
+
+// The individual this thread is currently solving, or NULL between solves.
+static inline rx_solving_options_ind **curIndSlot(rx_solving_options *op) {
+  if (inds_threadCur == NULL) return NULL;
+  int _t = rx_get_thread(op->cores);
+  if (_t < 0 || _t >= inds_threadCurN) return NULL;
+  return inds_threadCur + _t;
+}
+
+// Point this individual at the scratch belonging to the thread solving it.
+// Called from iniSubject(), so once per subject per thread.
+//
+// Everything indexed by rx_get_thread()/_rxTid() below is exclusive to one
+// thread ONLY because op->cores bounds the team -- that is the contract, and
+// the pools are sized to it.  Two threads landing on one slot would share the
+// infusion rates, the pending and ignored dose arrays, `gon` and `solveLast`,
+// which is the integration's own state and not something a lock here could
+// paper over.  If you are tempted to widen a team past op->cores, this is what
+// breaks; raise op->cores instead.
 extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
   rx_solve* rx = getRxSolve_();
   rx_solving_options* op = rx->op;
-  inds_thread[rx_get_thread(op_global.cores)] = *ind;
+  inds_thread[rx_get_thread(op->cores)] = *ind;
+  // the random-number helpers read the subject itself through this slot
+  int _tSubj = rx_get_thread(op->cores);
+  if (_tSubj < inds_threadSubjN) inds_threadSubj[_tSubj] = ind;
+  // ... and the individual itself, for writes that have to reach the subject
+  // rather than the copy (atolRtolFactorC_'s sticky tolerance factor).
+  rx_solving_options_ind **_cur = curIndSlot(op);
+  if (_cur != NULL) *_cur = ind;
   int ncmt = (op->neq + op->extraCmt);
   if (ncmt) {
     ind->InfusionRate = getInfusionRateThread();
@@ -1608,30 +1769,31 @@ extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->linCmtSave = getLinCmtSaveThread();
     ind->linCmtDummy = getLinCmtDummyThread();
 
-    ind->ignoredDoses = _globals.ignoredDoses[omp_get_thread_num()];
-    ind->ignoredDosesN = &(_globals.nIgnoredDoses[omp_get_thread_num()]);
+    ind->ignoredDoses = _globals.ignoredDoses[_rxTid()];
+    ind->ignoredDosesN = &(_globals.nIgnoredDoses[_rxTid()]);
     ind->ignoredDosesN[0] = 0; // reset
-    ind->ignoredDosesAllocN = &(_globals.nAllocIgnoredDoses[omp_get_thread_num()]);
+    ind->ignoredDosesAllocN = &(_globals.nAllocIgnoredDoses[_rxTid()]);
 
-    ind->pendingDoses = _globals.pendingDoses[omp_get_thread_num()];
-    ind->pendingDosesN = &(_globals.nPendingDoses[omp_get_thread_num()]);
+    ind->pendingDoses = _globals.pendingDoses[_rxTid()];
+    ind->pendingDosesN = &(_globals.nPendingDoses[_rxTid()]);
     ind->pendingDosesN[0] = 0; // reset
-    ind->pendingDosesAllocN = &(_globals.nAllocPendingDoses[omp_get_thread_num()]);
+    ind->pendingDosesAllocN = &(_globals.nAllocPendingDoses[_rxTid()]);
 
-    ind->extraDoseN = &(_globals.extraDoseN[omp_get_thread_num()]);
+    ind->extraDoseN = &(_globals.extraDoseN[_rxTid()]);
     ind->extraDoseN[0] = 0; //reset
-    ind->extraDoseAllocN = &(_globals.extraDoseAllocN[omp_get_thread_num()]);
-    ind->extraDoseTimeIdx = _globals.extraDoseTimeIdx[omp_get_thread_num()];
-    ind->extraDoseTime = _globals.extraDoseTime[omp_get_thread_num()];
-    ind->extraDoseEvid = _globals.extraDoseEvid[omp_get_thread_num()];
-    ind->extraDoseDose = _globals.extraDoseDose[omp_get_thread_num()];
+    ind->extraDoseAllocN = &(_globals.extraDoseAllocN[_rxTid()]);
+    ind->extraDoseTimeIdx = _globals.extraDoseTimeIdx[_rxTid()];
+    ind->extraDoseTime = _globals.extraDoseTime[_rxTid()];
+    ind->extraDoseEvid = _globals.extraDoseEvid[_rxTid()];
+    ind->extraDoseDose = _globals.extraDoseDose[_rxTid()];
     ind->idxExtra = 0;
     ind->extraSorted = 0;
 
-    ind->on = _globals.gon + ncmt*omp_get_thread_num();
-    ind->solveSave = _globals.gSolveSave + op->neq*omp_get_thread_num();
-    ind->solveLast = _globals.gSolveLast + op->neq*omp_get_thread_num();
-    ind->solveLast2 = _globals.gSolveLast2 + op->neq*omp_get_thread_num();
+    ind->on = _globals.gon + ncmt*_rxTid();
+    ind->solveSave = _globals.gSolveSave + op->neq*_rxTid();
+    ind->solveLast = _globals.gSolveLast + op->neq*_rxTid();
+    ind->solveLast2 = _globals.gSolveLast2 + op->neq*_rxTid();
+    ind->esPendingJump = _globals.gEsPendingJump + op->neq*_rxTid();
   } else {
     ind->InfusionRate = NULL;
     ind->tlastS = NULL;
@@ -1641,24 +1803,27 @@ extern "C" void _setIndPointersByThread(rx_solving_options_ind *ind) {
     ind->solveSave = NULL;
     ind->solveLast = NULL;
     ind->solveLast2 = NULL;
+    ind->esPendingJump = NULL;
     ind->linCmtSave = NULL;
   }
   if (rx->nMtime > 0) {
-    ind->mtime0 = _globals.gmtime0 + rx->nMtime * omp_get_thread_num();
+    ind->mtime0 = _globals.gmtime0 + rx->nMtime * _rxTid();
   } else {
     ind->mtime0 = NULL;
   }
-  ind->timeThread = _globals.timeThread + rx->maxAllTimes*omp_get_thread_num();
-  ind->llikSave = _globals.gLlikSave + op->nLlik*rxLlikSaveSize*omp_get_thread_num();
-  ind->lhs = _globals.glhs+op->nlhs*omp_get_thread_num();
+  if (!ind->indOwnAlloc) {
+    ind->timeThread = _globals.timeThread + rx->maxAllTimes*_rxTid();
+  }
+  ind->llikSave = _globals.gLlikSave + op->nLlik*rxLlikSaveSize*_rxTid();
+  ind->lhs = _globals.glhs+op->nlhs*_rxTid();
   // Point the individual's tolerance arrays at the current thread's
   // slice.  iniSubject() will then multiply them by ind->tolFactor to
   // apply any sticky loosening.  No conditional needed here: tolFactor
   // is always valid (set to 1.0 by setupRxInd() on first allocation).
-  ind->atol2  = _globals.gatol2Thread  + op->neq * omp_get_thread_num();
-  ind->rtol2  = _globals.grtol2Thread  + op->neq * omp_get_thread_num();
-  ind->ssAtol = _globals.gssAtolThread + op->neq * omp_get_thread_num();
-  ind->ssRtol = _globals.gssRtolThread + op->neq * omp_get_thread_num();
+  ind->atol2  = _globals.gatol2Thread  + op->neq * _rxTid();
+  ind->rtol2  = _globals.grtol2Thread  + op->neq * _rxTid();
+  ind->ssAtol = _globals.gssAtolThread + op->neq * _rxTid();
+  ind->ssRtol = _globals.gssRtolThread + op->neq * _rxTid();
 }
 
 extern "C" void setZeroMatrix(int which) {
@@ -1677,14 +1842,34 @@ extern "C" void setZeroMatrix(int which) {
 
 double maxAtolRtolFactor = 0.1;
 
+// Upper bound for a subject's accumulated tolerance MULTIPLIER.
+// `maxAtolRtolFactor` bounds the resulting tolerance, not the multiplier, and
+// iniSubject() applies that bound when it scales the base tolerances; this only
+// keeps repeated atolRtolFactorC_() calls from running the factor to infinity.
+#define maxTolFactor 1e12
+
+//[[Rcpp::interfaces(cpp)]]
 //[[Rcpp::export]]
 void atolRtolFactor_(double factor) {
+  // this is NOT thread safe and is intended for backward compatibility only.
+  // it will eventually go away but nlmixr2est 5.0 needs this interface.
+  rx_solve* rx = getRxSolve_();
+  rx_solving_options* op = rx->op;
+  for (int i = op->neq;i--;){
+    _globals.grtol2[i] = min2(_globals.grtol2[i]*factor, maxAtolRtolFactor);
+    _globals.gatol2[i] = min2(_globals.gatol2[i]*factor, maxAtolRtolFactor);
+  }
+  op->ATOL = min2(op->ATOL*factor, maxAtolRtolFactor);
+  op->RTOL = min2(op->RTOL*factor, maxAtolRtolFactor);
+}
+
+extern "C" void atolRtolFactorC_(double factor) {
   rx_solve *rx = getRxSolve_();
   rx_solving_options *op = rx->op;
 
-  // Modify only the current thread's tolerance arrays — fully thread-safe,
+  // Modify only the current thread's tolerance arrays -- fully thread-safe,
   // no critical section needed because each thread has its own slice.
-  int _threadId = omp_get_thread_num();
+  int _threadId = _rxTid();
   double *_atol2  = _globals.gatol2Thread  + op->neq * _threadId;
   double *_rtol2  = _globals.grtol2Thread  + op->neq * _threadId;
   double *_ssAtol = _globals.gssAtolThread + op->neq * _threadId;
@@ -1697,11 +1882,16 @@ void atolRtolFactor_(double factor) {
     _ssRtol[_i] = min2(_ssRtol[_i] * factor, maxAtolRtolFactor);
   }
 
-  // Persist the cumulative factor on the individual currently being solved
-  // on this thread so that iniSubject() can reapply it on every re-solve.
-  rx_solving_options_ind *_ind = &(inds_thread[rx_get_thread(op->cores)]);
+  // Persist the cumulative factor on the individual being solved so that
+  // iniSubject() reapplies it on every re-solve.  It has to be the individual
+  // itself, not `inds_thread[]`, which is a copy: a factor written there is
+  // lost when the next subject overwrites the slot.  Note this is a
+  // multiplier, so it is bounded by maxTolFactor and not by
+  // maxAtolRtolFactor (which bounds the tolerance iniSubject() derives).
+  rx_solving_options_ind **_cur = curIndSlot(op);
+  rx_solving_options_ind *_ind = (_cur == NULL) ? NULL : *_cur;
   if (_ind != NULL) {
-    _ind->tolFactor = min2(_ind->tolFactor * factor, maxAtolRtolFactor);
+    _ind->tolFactor = min2(_ind->tolFactor * factor, maxTolFactor);
   }
   // Note: op->ATOL and op->RTOL are deliberately NOT modified here to
   // avoid races between threads sharing the op structure.
@@ -1714,6 +1904,44 @@ extern "C" double * getAol(int n, double atol){
 extern "C" double * getRol(int n, double rtol) {
   return _globals.grtol2;
 }
+
+// Set the current solve's ODE absolute/relative tolerances to exact values (all
+// compartments and threads), clearing any sticky per-subject loosening.  Used by
+// downstream packages to tighten the covariance-step solves; pair with
+// rxGetSolveAtolRtol to save and restore.
+extern "C" void rxSetSolveAtolRtol(double atol, double rtol) {
+  rx_solve* rx = getRxSolve_();
+  if (rx == NULL) return;
+  rx_solving_options* op = rx->op;
+  if (op == NULL) return;
+  int neq = op->neq;
+  op->ATOL = atol;
+  op->RTOL = rtol;
+  for (int i = neq; i--;) {
+    _globals.gatol2[i]  = atol;
+    _globals.grtol2[i]  = rtol;
+    _globals.gssAtol[i] = atol;
+    _globals.gssRtol[i] = rtol;
+  }
+  int cores = op->cores;
+  for (int t = 0; t < cores; t++) {
+    double *a  = _globals.gatol2Thread  + neq*t;
+    double *r  = _globals.grtol2Thread  + neq*t;
+    double *sa = _globals.gssAtolThread + neq*t;
+    double *sr = _globals.gssRtolThread + neq*t;
+    for (int i = neq; i--;) { a[i]=atol; r[i]=rtol; sa[i]=atol; sr[i]=rtol; }
+  }
+  uint32_t nall = rx->nsub*rx->nsim;
+  for (uint32_t s = 0; s < nall; s++) rx->subjects[s].tolFactor = 1.0;
+}
+
+// Report the current solve's base ODE absolute/relative tolerances (op->ATOL/RTOL).
+extern "C" void rxGetSolveAtolRtol(double *atol, double *rtol) {
+  rx_solve* rx = getRxSolve_();
+  if (rx == NULL || rx->op == NULL) { *atol = NA_REAL; *rtol = NA_REAL; return; }
+  *atol = rx->op->ATOL;
+  *rtol = rx->op->RTOL;
+}
 // This sets up the constant covariates if ev1 is rxEtTran
 static inline void gparsCovSetupConstant(RObject &ev1, int npars){
   if (rxIs(ev1, "rxEtTran")) {
@@ -1721,9 +1949,24 @@ static inline void gparsCovSetupConstant(RObject &ev1, int npars){
     CharacterVector tmpCls = ev1.attr("class");
     List envCls = tmpCls.attr(".rxode2.lst");
     NumericMatrix iniPars = envCls[RxTrans_pars];
+    SEXP homGroupsS = Rf_getAttrib(ev1, Rf_install("rxHomGroups"));
     // Copy the pre-filled covariates into the parameter values.
     for (int j = (int)rx->nsim; j--; ){
-      std::copy(iniPars.begin(), iniPars.end(), &_globals.gpars[0]+(int)rx->nsub*npars*j);
+      double *cur = &_globals.gpars[0] + (int)rx->nsub * npars * j;
+      if (!Rf_isNull(homGroupsS)) {
+        List homGroups = as<List>(homGroupsS);
+        int outCol = 0;
+        for (int hg = 0; hg < homGroups.size(); ++hg) {
+          IntegerVector ids = as<IntegerVector>(homGroups[hg]);
+          for (int rid = 0; rid < ids.size(); ++rid, ++outCol) {
+            for (int p = 0; p < npars; ++p) {
+              cur[outCol * npars + p] = iniPars(p, hg);
+            }
+          }
+        }
+      } else {
+        std::copy(iniPars.begin(), iniPars.end(), cur);
+      }
     }
     IntegerVector parPos = envCls["covParPos0"];
     std::copy(parPos.begin(), parPos.end(), &_globals.gParPos2[0]);
@@ -1751,15 +1994,34 @@ void rxFreeErrs(){
 
 static void rxAllocInd(rx_solving_options_ind *ind, rx_solving_options *op) {
   int nat = ind->n_all_times;
+  int nd  = ind->ndoses;
 
-  // dose and ii are indexed by ALL event indices (0..n_all_times-1), not just ndoses
-  double *newDose  = nat > 0 ? (double*)malloc(nat * sizeof(double)) : NULL;
-  double *newIi    = nat > 0 ? (double*)malloc(nat * sizeof(double)) : NULL;
-  double *newAT    = nat > 0 ? (double*)malloc(nat * sizeof(double)) : NULL;
-  double *newSolve = (double*)calloc((int64_t)op->neq * nat, sizeof(double));
+  // dose, ii, all_times, evid indexed by ALL event indices (0..n_all_times-1).
+  // Allocate nat+1 elements so that the [idx+1] "plus-one" macros
+  // (setDoseP1, getDoseP1, setAllTimesP1, getAllTimesP1, getEvidP1) are always
+  // within bounds even when idx == nat-1.  The guard element is zero-initialised
+  // and must never be written with a meaningful value.
+  double *newDose  = nat > 0 ? (double*)calloc(nat + 1, sizeof(double)) : NULL;
+  double *newIi    = nat > 0 ? (double*)calloc(nat + 1, sizeof(double)) : NULL;
+  double *newAT    = nat > 0 ? (double*)calloc(nat + 1, sizeof(double)) : NULL;
+  // Allocate solve with EVID_EXTRA_SIZE extra event slots so that _rxPushDose
+  // can grow n_all_times by up to EVID_EXTRA_SIZE without OOB in the solve loop.
+  // updateSolve() will realloc further if needed (safe there -- between ODE steps).
+  int solveN = nat + EVID_EXTRA_SIZE;
+  double *newSolve = (double*)calloc((int64_t)op->neq * solveN, sizeof(double));
+  // Extended ownership: evid, ix (sortInd re-initialises), timeThread (sortInd fills), idose
+  // evid also gets +1 guard element for getEvidP1.
+  int    *newEvid  = nat > 0 ? (int*)   calloc(nat + 1, sizeof(int))   : NULL;
+  // ix and timeThread get +1 guard so any accidental [nat] access doesn't corrupt
+  // adjacent heap metadata.  idose gets +1 for the same reason.
+  int    *newIx    = nat > 0 ? (int*)   calloc(nat + 1, sizeof(int))   : NULL;
+  double *newTT    = nat > 0 ? (double*)calloc(nat + 1, sizeof(double)): NULL;
+  int    *newIdose = nd  > 0 ? (int*)   calloc(nd  + 1, sizeof(int))   : NULL;
 
-  if ((nat > 0 && (!newDose || !newIi || !newAT)) || !newSolve) {
+  if ((nat > 0 && (!newDose || !newIi || !newAT || !newEvid || !newIx || !newTT)) ||
+      !newSolve || (nd > 0 && !newIdose)) {
     free(newDose); free(newIi); free(newAT); free(newSolve);
+    free(newEvid); free(newIx); free(newTT); free(newIdose);
     rxSolveFree();
     (Rf_error)(_("cannot allocate per-individual memory"));
   }
@@ -1767,23 +2029,63 @@ static void rxAllocInd(rx_solving_options_ind *ind, rx_solving_options *op) {
     memcpy(newDose, ind->dose,      nat * sizeof(double));
     memcpy(newIi,   ind->ii,        nat * sizeof(double));
     memcpy(newAT,   ind->all_times, nat * sizeof(double));
+    memcpy(newEvid, ind->evid,      nat * sizeof(int));
+    // ix and timeThread: sortInd re-initialises both; no copy needed
+    // guard elements [nat] remain zero from calloc
+  }
+  if (nd > 0) {
+    memcpy(newIdose, ind->idose, nd * sizeof(int));
   }
 
-  ind->dose        = newDose;
-  ind->ii          = newIi;
-  ind->all_times   = newAT;
-  ind->solve       = newSolve;
-  ind->indOwnAlloc = 1;
+  ind->dose           = newDose;
+  ind->ii             = newIi;
+  ind->all_times      = newAT;
+  ind->solve          = newSolve;
+  ind->evid           = newEvid;
+  ind->ix             = newIx;
+  ind->timeThread     = newTT;
+  ind->idose          = newIdose;
+  ind->indOwnAlloc    = 1;
+  ind->indOwnAllocN   = nat;
+  ind->solveAllocN    = solveN;
+  ind->idoseOwnAllocN = nd;
 }
 
 static void rxFreeInd(rx_solving_options_ind *ind) {
   if (ind->indOwnAlloc) {
-    free(ind->dose);      ind->dose = NULL;
-    free(ind->ii);        ind->ii = NULL;
-    free(ind->all_times); ind->all_times = NULL;
-    free(ind->solve);     ind->solve = NULL;
+    free(ind->dose);       ind->dose = NULL;
+    free(ind->ii);         ind->ii = NULL;
+    free(ind->all_times);  ind->all_times = NULL;
+    free(ind->solve);      ind->solve = NULL;
+    free(ind->evid);       ind->evid = NULL;
+    free(ind->ix);         ind->ix = NULL;
+    free(ind->timeThread); ind->timeThread = NULL;
+    free(ind->idose);      ind->idose = NULL;
     ind->indOwnAlloc = 0;
   }
+  // The delay() dense history is allocated by the solver (rxDelayHistSlot) and
+  // kept after the solve so the output data frame's lhs recalculation can still
+  // interpolate delayed states; it is released here with the subject.
+  free(ind->delayHist);
+  ind->delayHist = NULL;
+  ind->delayHistCap = 0;
+  ind->delayHistStride = 0;
+  ind->delayHistNeq = 0;
+  ind->delayHistN = 0;
+  ind->delayHistOn = 0;
+  free(ind->delayIni);
+  ind->delayIni = NULL;
+  ind->delayIniCap = 0;
+  ind->delayIniN = 0;
+  free(ind->infDurOn);
+  ind->infDurOn = NULL;
+  ind->infDurOnCap = 0;
+  ind->infDurOnN = 0;
+  // linCmtB()'s rate / per-origin histories (kept after the solve like
+  // delayHist above) and its per-individual carried state are allocated in
+  // rxode2lincmt, so they are freed there too.
+  _p_linCmtFreeInd(ind);
+  _p_linCmtBindFree(ind);
 }
 
 extern "C" void gFree(){
@@ -1813,14 +2115,27 @@ extern "C" void gFree(){
   _globals.gpars=NULL;
   if (_globals.gParPos != NULL) free(_globals.gParPos);
   _globals.gParPos=NULL;
+  // gParPos2, gsvar, govar are sub-pointers within gParPos slab; null after free
+  _globals.gParPos2=NULL;
+  _globals.gsvar=NULL;
+  _globals.govar=NULL;
   if (_globals.gevid != NULL) free(_globals.gevid);
   _globals.gevid=NULL;
+  if (_globals.ginfPair != NULL) free(_globals.ginfPair);
+  _globals.ginfPair=NULL;
+  if (_globals.gpkSkip != NULL) free(_globals.gpkSkip);
+  _globals.gpkSkip=NULL;
   if (_globals.gall_times != NULL) free(_globals.gall_times);
   _globals.gall_times=NULL;
+  _globals.gall_times_n = 0;
   if (_globals.gcov != NULL) free(_globals.gcov);
   _globals.gcov=NULL;
   if (_rxGetErrs != NULL) free(_rxGetErrs);
   _rxGetErrs=NULL;
+  if (_globals.gdelayState != NULL) { R_Free(_globals.gdelayState); _globals.gdelayState = NULL; }
+  if (_globals.gdelayCol != NULL) { R_Free(_globals.gdelayCol); _globals.gdelayCol = NULL; }
+  if (_globals.galagCmt != NULL) { R_Free(_globals.galagCmt); _globals.galagCmt = NULL; }
+  _globals.galagCmtN = 0;
   _globals.alloc = false;
 }
 
@@ -1829,7 +2144,6 @@ extern "C" double *rxGetErrs(){
   if (_rxModels.exists(".sigma")){
     NumericMatrix sigma = _rxModels[".sigma"];
     if (_rxGetErrs == NULL){
-      if (_rxGetErrs != NULL) free(_rxGetErrs);
       _rxGetErrs = (double*)calloc(sigma.ncol()*sigma.nrow(), sizeof(double));
       if (_rxGetErrs == NULL) {
         rxSolveFree();
@@ -1941,6 +2255,200 @@ void rxSimTheta(CharacterVector &thetaN,
 }
 
 
+// A NONMEM TNPRI draws the omega *elements* as part of one joint normal
+// with the thetas.  Drawn that way the omega is not guaranteed positive
+// definite, so a study whose draw is not gets the whole joint vector
+// redrawn, up to `priorPdRetry` times.  If none of them is, every kept
+// draw is projected onto the positive definite cone and the closest
+// projection is used.
+//
+// That fallback is biased: `rxNearPD()` projects onto the *boundary* of
+// the cone and taking the closest projection then picks the least
+// positive definite draw, so a study that reaches it is not a draw from
+// the stated prior.  It warns for that reason.
+// Which thetaMat column carries each entry.  Matched by *name* rather
+// than by position: a column can be dropped before the draw (an item the
+// model does not have, or a zero variance), which would shift every index.
+static std::vector<int> rxPriorElCols(const CharacterVector &elN,
+                                      const CharacterVector &thetaN) {
+  std::vector<int> col(elN.size(), -1);
+  for (int r = 0; r < elN.size(); ++r) {
+    for (int j = 0; j < thetaN.size(); ++j) {
+      if (elN[r] == thetaN[j]) { col[r] = j; break; }
+    }
+  }
+  return col;
+}
+
+// One candidate matrix: the point estimate with the drawn deviation added
+// into each entry the prior names.  The matrix is symmetric, so an off
+// diagonal is written both ways.  `"invchol"` moves the entries on the
+// inverse Cholesky scale instead.
+static arma::mat rxPriorCand(const rxInvCholJoint &ic,
+                             const arma::mat &cur, const arma::mat &base,
+                             const IntegerMatrix &el,
+                             const std::vector<int> &col,
+                             const NumericVector &dev, int dim) {
+  if (ic.on) return rxInvCholJointCand(ic, cur, dev, col);
+  arma::mat cand = cur;
+  for (int r = 0; r < el.nrow(); ++r) {
+    if (col[r] < 0) continue;
+    int a = el(r, 0) - 1, b = el(r, 1) - 1;
+    if (a < 0 || b < 0 || a >= dim || b >= dim) continue;
+    cand(a, b) = base(a, b) + dev[col[r]];
+    cand(b, a) = cand(a, b);
+  }
+  return cand;
+}
+
+// The reason the matrix has to be positive definite is that the draw that
+// uses it takes its Cholesky, so that is the test.  `is_sympd()` is
+// stricter and would reject a projection that is perfectly usable.
+static bool rxPriorUsable(const arma::mat &m) {
+  arma::mat chk;
+  return arma::chol(chk, m);
+}
+
+// The fallback: project every kept draw onto the positive definite cone
+// and take the closest projection that worked.
+//
+// `rxNearPD()` copies its input into `ret` when it fails, which would give
+// a distance of zero and win the comparison -- so the flag decides, not the
+// distance.
+static bool rxPriorNearest(const rxInvCholJoint &ic,
+                           const std::vector<NumericVector> &keep,
+                           const arma::mat &cur, const arma::mat &base,
+                           const IntegerMatrix &el,
+                           const std::vector<int> &col, int dim,
+                           arma::mat &bestMat, NumericVector &bestDev) {
+  double best = -1.0;
+  for (size_t k = 0; k < keep.size(); ++k) {
+    arma::mat bad = rxPriorCand(ic, cur, base, el, col, keep[k], dim);
+    arma::mat np;
+    if (!rxNearPD(np, 0.5 * (bad + bad.t()))) continue;
+    if (!rxPriorUsable(np)) continue;
+    double d = arma::norm(np - bad, "fro");
+    if (best < 0.0 || d < best) { best = d; bestMat = np; bestDev = keep[k]; }
+  }
+  return best >= 0.0;
+}
+
+// A pure TNPRI has no `cvPost()` draw to seed the list, so it arrives
+// empty; a model that also gives a block degrees of freedom does, and
+// those draws must not be thrown away.
+static void rxPriorSeedList(List &matList, const arma::mat &base,
+                            const CharacterVector &matN, int nStud) {
+  if (matList.size() != 0) return;
+  matList = List(nStud);
+  for (int i = 0; i < nStud; ++i) {
+    NumericMatrix cur = wrap(base);
+    cur.attr("dimnames") = List::create(matN, matN);
+    matList[i] = cur;
+  }
+}
+
+static void rxPriorJointMat(NumericMatrix &thetaM,
+                            CharacterVector &thetaN,
+                            List &omegaList,
+                            NumericMatrix &omegaM,
+                            CharacterVector &omegaN,
+                            const RObject &priorOmegaEl,
+                            const Nullable<NumericMatrix> &thetaMat,
+                            const Nullable<NumericVector> &thetaDf,
+                            const bool &thetaIsChol,
+                            const NumericVector &thetaLower,
+                            const NumericVector &thetaUpper,
+                            int nCoresRV,
+                            int nStud,
+                            int priorPdRetry,
+                            const char *what,
+                            const rxInvCholJoint &ic) {
+  if (Rf_isNull(priorOmegaEl)) return;
+  IntegerMatrix el = as<IntegerMatrix>(priorOmegaEl);
+  if (el.nrow() == 0) return;
+  RObject elDn = el.attr("dimnames");
+  if (Rf_isNull(elDn)) {
+    rxSolveFree();
+    stop(_("'prior%sEl' must name its rows"), what);
+  }
+  std::vector<int> col = rxPriorElCols(as<CharacterVector>((as<List>(elDn))[0]),
+                                       thetaN);
+  int dim = omegaN.size();
+  arma::mat base = as<arma::mat>(omegaM);
+  rxPriorSeedList(omegaList, base, omegaN, nStud);
+  // every `thetaMat` entry had zero variance and was pruned, so there is
+  // nothing to draw: the entries stay at their estimates
+  if (thetaM.nrow() < nStud) return;
+  int nFallback = 0;
+  for (int i = 0; i < nStud; ++i) {
+    arma::mat cur = as<arma::mat>(as<NumericMatrix>(omegaList[i]));
+    // attempt 0 is the row the joint draw already made -- do not waste it
+    NumericVector dev = thetaM(i, _);
+    std::vector<NumericVector> keep;
+    arma::mat cand = rxPriorCand(ic, cur, base, el, col, dev, dim);
+    for (int k = 1; !rxPriorUsable(cand) && k <= priorPdRetry; ++k) {
+      keep.push_back(dev);
+      if (k == priorPdRetry) break;
+      // the WHOLE joint vector is redrawn, not just the failing entries
+      NumericMatrix one =
+        as<NumericMatrix>(rxSimSigma(wrap(thetaMat), wrap(thetaDf), nCoresRV,
+                                     thetaIsChol, 1, true, thetaLower,
+                                     thetaUpper));
+      dev = one(0, _);
+      cand = rxPriorCand(ic, cur, base, el, col, dev, dim);
+    }
+    if (!keep.empty() && !rxPriorUsable(cand)) {
+      if (!rxPriorNearest(ic, keep, cur, base, el, col, dim, cand, dev)) {
+        rxSolveFree();
+        stop(_("could not draw a positive definite '%s' from the prior for study %d after %d tries"),
+             what, i + 1, priorPdRetry);
+      }
+      nFallback++;
+    }
+    thetaM(i, _) = dev;
+    NumericMatrix out = wrap(cand);
+    out.attr("dimnames") = List::create(omegaN, omegaN);
+    omegaList[i] = out;
+  }
+  if (nFallback > 0) {
+    warning(_("%d of %d studies needed the nearest positive definite '%s' after %d prior draws; those studies are not draws from the stated prior"),
+            nFallback, nStud, what, priorPdRetry);
+  }
+}
+
+// `"invchol"` draws the entries on the inverse Cholesky scale, so the
+// thetaMat covariance `cov` is moved there before anything is drawn from it
+static void rxInvCholThetaMat(rxInvCholJoint &ic, arma::mat &cov,
+                              bool &haveCov,
+                              const Nullable<NumericMatrix> &thetaMat,
+                              const bool &thetaIsChol, const RObject &mat,
+                              const bool &matIsChol,
+                              const RObject &priorEl, const char *what) {
+  if (Rf_isNull(priorEl) || thetaMat.isNull() || !rxIs(mat, "matrix")) return;
+  if (matIsChol) {
+    rxSolveFree();
+    stop(_("'%sSeparation=\"invchol\"' needs '%s' as a covariance, not its Cholesky decomposition"),
+         what, what);
+  }
+  IntegerMatrix el = as<IntegerMatrix>(priorEl);
+  RObject elDn = el.attr("dimnames");
+  NumericMatrix tm(thetaMat);
+  if (el.nrow() == 0 || Rf_isNull(elDn) || !tm.hasAttribute("dimnames")) return;
+  if (!haveCov) {
+    arma::mat t = as<arma::mat>(tm);
+    cov = thetaIsChol ? arma::mat(t.t() * t) : t;
+    haveCov = true;
+  }
+  CharacterVector tn = as<CharacterVector>((as<List>(tm.attr("dimnames")))[1]);
+  std::vector<int> col =
+    rxPriorElCols(as<CharacterVector>((as<List>(elDn))[0]), tn);
+  if (!rxInvCholJointSetup(ic, cov, as<arma::mat>(mat), el, col)) {
+    rxSolveFree();
+    stop(_("'%sSeparation=\"invchol\"' needs a positive definite '%s'"),
+         what, what);
+  }
+}
+
 void rxSimOmega(bool &simOmega,
                 bool &omegaSep,
                 NumericMatrix &omegaM,
@@ -1960,7 +2468,8 @@ void rxSimOmega(bool &simOmega,
                 double dfSub = 0,
                 uint32_t nStud = 1,
                 uint32_t nSub = 1,
-                const LogicalVector &simVariability = LogicalVector::create(NA_LOGICAL)) {
+                const LogicalVector &simVariability = LogicalVector::create(NA_LOGICAL),
+                const RObject &priorOmega = R_NilValue) {
   int j;
   bool simVar;
   if (simVariability[0] == NA_LOGICAL) {
@@ -2035,7 +2544,27 @@ void rxSimOmega(bool &simOmega,
     }
   }
   if (simVar){
-    if (dfSub > 0 && simOmega) {
+    // `priorOmega` is the `ini({})` block's per block degrees of freedom,
+    // shaped as a 'lotri'.  `cvPost_()` already draws per block from one of
+    // those: it ignores the scalar `nu` argument and reads each block's own,
+    // then reassembles the full matrix -- which is the whole of the NWPRI
+    // omega half.  A block with no prior carries `nu = 1`, which is how
+    // `cvPost_()` spells "leave this one at its point estimate".
+    if (!Rf_isNull(priorOmega) && simOmega) {
+      RObject ol = _rxode2_cvPost_(as<SEXP>(R_NilValue),
+                                   as<SEXP>(priorOmega),
+                                   as<SEXP>(IntegerVector::create(nStud)),
+                                   as<SEXP>(LogicalVector::create(false)),
+                                   as<SEXP>(LogicalVector::create(false)),
+                                   as<SEXP>(IntegerVector::create(1)),
+                                   as<SEXP>(IntegerVector::create(1)));
+      // `cvPost_()` returns a bare matrix when n == 1 and a list otherwise
+      if (TYPEOF(ol) == VECSXP) {
+        omegaList = ol;
+      } else {
+        omegaList = List::create(ol);
+      }
+    } else if (dfSub > 0 && simOmega) {
       if (omegaSep) {
         int defaultType = 2;
         if (omegaSeparation == "auto"){
@@ -2122,24 +2651,13 @@ arma::mat getArmaMat(int type, int csim, rx_solve* rx) {
   }
 }
 
-//' Simulate Parameters from a Theta/Omega specification
-//'
-//' @param params Named Vector of rxode2 model parameters
-//'
-//' @param nObs Number of observations to simulate (with `sigma` matrix)
-//'
-//' @inheritParams rxSolve
-//'
-//' @param simSubjects boolean indicated rxode2 should simulate subjects in studies (`TRUE`,
-//'         default) or studies (`FALSE`)
-//'
-//' @return a data frame with the simulated subjects
-//'
-//' @author Matthew L.Fidler
-//'
-//' @export
-//[[Rcpp::export]]
-List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
+// The exported `rxSimThetaOmega()` below is frozen at 28 arguments: it is
+// registered with that arity in `src/init.c`, re-exported through
+// `R_RegisterCCallable()` and declared in `inst/include/rxode2_RcppExports.h`,
+// so changing its signature would break every already-built reverse
+// dependency.  The prior simulation arguments go on this internal one
+// instead, and the exported function forwards defaults for them.
+List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
                      const RObject &omega= R_NilValue,
                      const Nullable<NumericVector> &omegaDf= R_NilValue,
                      const NumericVector &omegaLower = NumericVector::create(R_NegInf),
@@ -2166,7 +2684,11 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
                      double dfSub = 0,
                      double dfObs = 0,
                      bool simSubjects=true,
-                     const LogicalVector &simVariability = LogicalVector::create(NA_LOGICAL)) {
+                     const LogicalVector &simVariability = LogicalVector::create(NA_LOGICAL),
+                     const RObject &priorOmega = R_NilValue,
+                     const RObject &priorOmegaEl = R_NilValue,
+                     int priorPdRetry = 10,
+                     const RObject &priorSigmaEl = R_NilValue) {
   if (nSub > 0 && nStud > 0 && (int64_t)nSub * nStud > INT_MAX) {
     stop(_("the combination of subjects (%d) and studies (%d) is too large"), nSub, nStud);
   }
@@ -2194,9 +2716,32 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
   bool simTheta = false;
   IntegerVector thetaPar(parN.size());
   int i, j, k;
+  rxInvCholJoint omegaIc, sigmaIc;
+  Nullable<NumericMatrix> thetaMatUse = thetaMat;
+  // `Nullable` does not protect what it holds, so this does
+  NumericMatrix thetaMatHold;
+  bool thetaIsCholUse = thetaIsChol;
+  if (simVar) {
+    arma::mat cov;
+    bool haveCov = false;
+    if (omegaSeparation == "invchol") {
+      rxInvCholThetaMat(omegaIc, cov, haveCov, thetaMat, thetaIsChol, omega,
+                        omegaIsChol, priorOmegaEl, "omega");
+    }
+    if (sigmaSeparation == "invchol") {
+      rxInvCholThetaMat(sigmaIc, cov, haveCov, thetaMat, thetaIsChol, sigma,
+                        sigmaIsChol, priorSigmaEl, "sigma");
+    }
+    if (omegaIc.on || sigmaIc.on) {
+      thetaMatHold = wrap(cov);
+      thetaMatHold.attr("dimnames") = NumericMatrix(thetaMat).attr("dimnames");
+      thetaMatUse = Nullable<NumericMatrix>(thetaMatHold);
+      thetaIsCholUse = false;
+    }
+  }
   rxSimTheta(thetaN, parN, thetaPar, thetaM, simTheta,
-             thetaMat, thetaLower, thetaUpper, thetaDf,
-             thetaIsChol, nStud, nCoresRV, simVariability);
+             thetaMatUse, thetaLower, thetaUpper, thetaDf,
+             thetaIsCholUse, nStud, nCoresRV, simVariability);
   bool simOmega = false;
   bool omegaSep=false;
   NumericMatrix omegaM;
@@ -2206,12 +2751,35 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
 
   if (nSub > 1 && rxIsNull(omega)){
     // rxSolveFree();
-    warning(_("multi-subject simulation without without 'omega'"));
+    warning(_("multi-subject simulation without 'omega'"));
   }
+  // "tnpri" draws every entry from the `thetaMat`, so an entry it carries
+  // no variance for stays at its estimate rather than coming from the
+  // `dfSub` inverse Wishart (#1388).  Only when the joint draw will run:
+  // without `priorOmegaEl` (a direct `rxSimThetaOmega()` call) it would
+  // leave nothing to seed the per-study list.
+  double dfSubSim = ((omegaSeparation == "tnpri" || omegaSeparation == "invchol") &&
+                     !Rf_isNull(priorOmegaEl)) ? 0.0 : dfSub;
   rxSimOmega(simOmega, omegaSep, omegaM, omegaN, omegaMC,
              omegaList, thetaN, thetaM, "omega", omega, omegaDf,
              omegaLower, omegaUpper, omegaIsChol,
-             omegaSeparation, omegaXform, dfSub, nStud, nSub, simVariability);
+             omegaSeparation, omegaXform, dfSubSim, nStud, nSub, simVariability,
+             priorOmega);
+  // Whether the omega varies by study at all.  `dfSub` is the only source
+  // today; a prior draw leaves it at 0, so every gate that decides whether
+  // the drawn matrix is used, exported, or handed to `simeta()` has to ask
+  // this instead -- otherwise the matrices are built and then silently
+  // thrown away.
+  bool omegaByStudy = (dfSub > 0 || !Rf_isNull(priorOmega) ||
+                       !Rf_isNull(priorOmegaEl));
+  // The joint (TNPRI) draw runs here rather than in place of rxSimTheta():
+  // `omegaList` does not exist until after `rxSimOmega()`, and this needs
+  // both it and the drawn `thetaM`.
+  if (simOmega && simVar) {
+    rxPriorJointMat(thetaM, thetaN, omegaList, omegaM, omegaN, priorOmegaEl,
+                    thetaMatUse, thetaDf, thetaIsCholUse, thetaLower, thetaUpper,
+                    nCoresRV, nStud, priorPdRetry, "omega", omegaIc);
+  }
   arma::mat tmp = as<arma::mat>(omegaM);
   if (tmp.is_zero()) {
     setZeroMatrix(2);
@@ -2222,10 +2790,21 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
   CharacterVector sigmaN;
   NumericMatrix sigmaMC;
   List sigmaList;
+  double dfObsSim = ((sigmaSeparation == "tnpri" || sigmaSeparation == "invchol") &&
+                     !Rf_isNull(priorSigmaEl)) ? 0.0 : dfObs;
   rxSimOmega(simSigma, sigmaSep, sigmaM, sigmaN, sigmaMC,
              sigmaList, thetaN, thetaM, "sigma", sigma, sigmaDf,
              sigmaLower, sigmaUpper, sigmaIsChol,
-             sigmaSeparation, sigmaXform, dfObs, nStud, nObs, simVariability);
+             sigmaSeparation, sigmaXform, dfObsSim, nStud, nObs, simVariability);
+  // the sigma equivalent of `omegaByStudy`: a joint draw leaves `dfObs` at
+  // zero, so every gate that decides whether the drawn sigma is used has to
+  // ask this instead
+  bool sigmaByStudy = (dfObs > 0 || !Rf_isNull(priorSigmaEl));
+  if (simSigma && simVar) {
+    rxPriorJointMat(thetaM, thetaN, sigmaList, sigmaM, sigmaN, priorSigmaEl,
+                    thetaMatUse, thetaDf, thetaIsCholUse, thetaLower, thetaUpper,
+                    nCoresRV, nStud, priorPdRetry, "sigma", sigmaIc);
+  }
 
   tmp = as<arma::mat>(sigmaM);
   if (tmp.is_zero()) {
@@ -2278,7 +2857,7 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
     }
     // Now Omega Covariates
     if (ocol > 0) {
-      if (dfSub > 0 && simVar) {
+      if (omegaByStudy && simVar) {
         // nm = ret0[j]; // parameter column
         RObject ol = wrap(omegaList[i]);
         RObject nm0 = rxSimSigma(wrap(omegaList[i]), wrap(omegaDf), nCoresRV, false, nSub,
@@ -2298,7 +2877,7 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
     }
     if (scol > 0) {
       if (simSubjects) {
-        if (dfObs > 0  && simVar) {
+        if (sigmaByStudy && simVar) {
           nm1 = as<NumericMatrix>(rxSimSigma(as<RObject>(sigmaList[i]), as<RObject>(sigmaDf), nCoresRV, false, nObs*nSub,
                                              false, sigmaLower, sigmaUpper));
         } else {
@@ -2312,7 +2891,7 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
           }
         }
       } else {
-        if (dfObs > 0  && simVar) {
+        if (sigmaByStudy && simVar) {
           nm1 = as<NumericMatrix>(rxSimSigma(as<RObject>(sigmaList[i]), as<RObject>(sigmaDf), nCoresRV, false, nObs,
                                              false, sigmaLower, sigmaUpper));
         } else {
@@ -2342,27 +2921,29 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
   ret0.attr("class") = "data.frame";
   ret0.attr("row.names") = IntegerVector::create(NA_INTEGER,-nSub*nStud);
   getRxModels();
-  if (ret1.nrow() > 1) {
+  // publish any draw, including a single row (#1364); otherwise rxSolve_ falls
+  // back to the sigma covariance matrix, which would be read as the residuals
+  if (ret1.nrow() > 0) {
     ret1.attr("dimnames") = List::create(R_NilValue, sigmaN);
     _rxModels[".sigma"] = ret1;
   }
   if (simTheta) {
     _rxModels[".theta"] = thetaM;
   }
-  if (dfSub > 0 && simVar) {
+  if (omegaByStudy && simVar) {
     _rxModels[".omegaL"] = omegaList;
     _rxModels[".omegaN"] = omegaN;
   } else if (Rf_isMatrix(omega)) {
     _rxModels[".omegaN"]= as<CharacterVector>((as<List>((as<NumericMatrix>(omega)).attr("dimnames")))[1]);
   }
-  if (dfObs > 0 && simVar) {
+  if (sigmaByStudy && simVar) {
     _rxModels[".sigmaL"] = sigmaList;
   }
   if (Rf_isNull(sigma) || rxIsChar(sigma) || Rf_length(sigma) == 0) {
   } else {
     // Fill in sigma information for simeta()
     arma::mat sigma0;
-    if (dfObs > 0 && simVar) {
+    if (sigmaByStudy && simVar) {
       sigma0 = as<arma::mat>(sigmaList[0]);
       if (_globals.gsigma != NULL) free(_globals.gsigma);
       rx->neps = sigma0.n_rows;
@@ -2415,7 +2996,7 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
   } else {
     // Fill in omega information for simeta()
     arma::mat omega0;
-    if (dfSub > 0 && simVar) {
+    if (omegaByStudy && simVar) {
       omega0 = as<arma::mat>(omegaList[0]);
       rx->neta = omega0.n_rows;
       if (_globals.gomega != NULL) free(_globals.gomega);
@@ -2460,6 +3041,69 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
   return ret0;
 }
 
+//' Simulate Parameters from a Theta/Omega specification
+//'
+//' @param params Named Vector of rxode2 model parameters
+//'
+//' @param nObs Number of observations to simulate (with `sigma` matrix)
+//'
+//' @inheritParams rxSolve
+//'
+//' @param simSubjects boolean indicated rxode2 should simulate subjects in studies (`TRUE`,
+//'         default) or studies (`FALSE`)
+//'
+//' @return a data frame with the simulated subjects
+//'
+//' @author Matthew L.Fidler
+//'
+//' @export
+//' @family Variability and uncertainty
+//' @examples
+//' rxWithSeed(42, {
+//'   rxSimThetaOmega(
+//'     params = c(tka = 1, tcl = 2),
+//'     omega = lotri::lotri(eta.ka ~ 0.1), nSub = 3
+//'   )
+//' })
+//[[Rcpp::export]]
+List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
+                     const RObject &omega= R_NilValue,
+                     const Nullable<NumericVector> &omegaDf= R_NilValue,
+                     const NumericVector &omegaLower = NumericVector::create(R_NegInf),
+                     const NumericVector &omegaUpper = NumericVector::create(R_PosInf),
+                     const bool &omegaIsChol = false,
+                     std::string omegaSeparation= "auto",//("lkj", "separation")
+                     const int omegaXform = 1,
+                     int nSub = 1,
+                     const Nullable<NumericMatrix> &thetaMat = R_NilValue,
+                     const NumericVector &thetaLower = NumericVector::create(R_NegInf),
+                     const NumericVector &thetaUpper = NumericVector::create(R_PosInf),
+                     const Nullable<NumericVector> &thetaDf  = R_NilValue,
+                     const bool &thetaIsChol = false,
+                     int nStud = 1,
+                     const RObject sigma = R_NilValue,
+                     const NumericVector &sigmaLower = NumericVector::create(R_NegInf),
+                     const NumericVector &sigmaUpper = NumericVector::create(R_PosInf),
+                     const Nullable<NumericVector> &sigmaDf= R_NilValue,
+                     const bool &sigmaIsChol = false,
+                     std::string sigmaSeparation= "auto",//("lkj", "separation")
+                     const int sigmaXform = 1,
+                     int nCoresRV = 1,
+                     int nObs = 1,
+                     double dfSub = 0,
+                     double dfObs = 0,
+                     bool simSubjects=true,
+                     const LogicalVector &simVariability = LogicalVector::create(NA_LOGICAL)) {
+  return rxSimThetaOmega0(params, omega, omegaDf, omegaLower, omegaUpper,
+                          omegaIsChol, omegaSeparation, omegaXform, nSub,
+                          thetaMat, thetaLower, thetaUpper, thetaDf,
+                          thetaIsChol, nStud, sigma, sigmaLower, sigmaUpper,
+                          sigmaDf, sigmaIsChol, sigmaSeparation, sigmaXform,
+                          nCoresRV, nObs, dfSub, dfObs, simSubjects,
+                          simVariability,
+                          R_NilValue, R_NilValue, 10, R_NilValue);
+}
+
 #define defrx_params R_NilValue
 #define defrx_events R_NilValue
 #define defrx_inits R_NilValue
@@ -2490,6 +3134,11 @@ List rxSimThetaOmega(const Nullable<NumericVector> &params    = R_NilValue,
 
 RObject rxCurObj;
 
+//[[Rcpp::export]]
+void rxSolveSetCurObj_(SEXP obj) {
+  rxCurObj = as<RObject>(obj);
+}
+
 Nullable<Environment> rxrxode2env(RObject obj);
 
 std::string rxDll(RObject obj);
@@ -2499,34 +3148,33 @@ extern RObject evCur;
 List getEtRxsolve(Environment e) {
   if (!e.exists(".et")) {
     RObject eventso = e[".args.events"];
-    List emptyLst(0);
-    RObject et = et_(emptyLst, emptyLst);
-    evCur = et;
-    et_(List::create(_["data"] = eventso), List::create("importQuiet"));
+    Function asEt = getRxFn("as.et");
+    RObject et = asEt(eventso);
     e[".et"] = et;
+    evCur = et;
     Function parse2("parse", R_BaseNamespace);
     Function eval2("eval", R_BaseNamespace);
     // eventTable style methods
-    e["get.EventTable"] = eval2(_["expr"]   = parse2(_["text"]="function() .et$get.EventTable()"),
+    e["get.EventTable"] = eval2(_["expr"]   = parse2(_["text"]="function() .et"),
                                 _["envir"]  = e);
     e["get.obs.rec"] = eval2(_["expr"]   = parse2(_["text"]="function() .et$get.obs.rec()"),
                              _["envir"]  = e);
     e["get.nobs"] = eval2(_["expr"]   = parse2(_["text"]="function() .et$get.nobs()"),
                           _["envir"]  = e);
-    e["add.dosing"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.newEt <- .et; .newEt$add.dosing(...); invisible(rxSolve(.args.object,events=.newEt, updateObject=TRUE))}"),
+    e["add.dosing"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.et$add.dosing(...); invisible(rxSolve(.args.object,events=.et, updateObject=TRUE))}"),
                             _["envir"]  = e);
-    e["clear.dosing"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.newEt <- .et; .newEt$clear.dosing(...); invisible(rxSolve(.args.object,events=.newEt, updateObject=TRUE))}"),
+    e["clear.dosing"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.et$clear.dosing(...); invisible(rxSolve(.args.object,events=.et, updateObject=TRUE))}"),
                               _["envir"]  = e);
     e["get.dosing"] = eval2(_["expr"]   = parse2(_["text"]="function() .et$get.dosing()"),
                             _["envir"]  = e);
 
-    e["add.sampling"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.newEt <- .et; .newEt$add.sampling(...); invisible(rxSolve(.args.object,events=.et,updateObject=TRUE))}"),
+    e["add.sampling"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.et$add.sampling(...); invisible(rxSolve(.args.object,events=.et,updateObject=TRUE))}"),
                               _["envir"]  = e);
 
-    e["clear.sampling"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.newEt <- .et; .newEt$clear.sampling(...); invisible(rxSolve(.args.object,events=.newEt,updateObject=TRUE))}"),
+    e["clear.sampling"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.et$clear.sampling(...); invisible(rxSolve(.args.object,events=.et,updateObject=TRUE))}"),
                                 _["envir"]  = e);
 
-    e[".replace.sampling"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.newEt <- .et; .newEt$clear.sampling(); .newEt$add.sampling(...); invisible(rxSolve(.args.object,events=.newEt,updateObject=TRUE))}"),
+    e[".replace.sampling"] = eval2(_["expr"]   = parse2(_["text"]="function(...) {.et$clear.sampling(); .et$add.sampling(...); invisible(rxSolve(.args.object,events=.et,updateObject=TRUE))}"),
                                    _["envir"]  = e);
 
     e["get.sampling"] = eval2(_["expr"]   = parse2(_["text"]="function() .et$get.sampling()"),
@@ -2543,183 +3191,35 @@ List getEtRxsolve(Environment e) {
   return e[".et"];
 }
 
-inline void updateParNames0(CharacterVector &ret, Environment &e,
-                            const std::string& what){
-  if (e.exists(what)) {
-    CharacterVector out = e[what];
-    CharacterVector in = out.names();
-    for (unsigned int i = ret.size(); i--;){
-      for (int j = in.size(); j--;){
-        if (as<std::string>(ret[i]) == as<std::string>(in[j])){
-          ret[i] = out[j];
-          break;
-        }
-      }
-    }
-  }
-}
-
-CharacterVector updateParNames(CharacterVector parNames, Environment e){
-  CharacterVector ret = parNames;
-  updateParNames0(ret, e, ".nestTheta");
-  updateParNames0(ret, e, ".nestEta");
-  return parNames;
-}
-
-// This updates the evironment post solve after running.  Defers some
-// computational cost until the rxSolve is looked at by the user.
-void updateSolveEnvPost(Environment e){
+// A solve's $params (with .params.single), $counts and event table are each
+// built, in R or by getEtRxsolve(), on the first access that needs them
+static inline void rxSolveEnsureParams(Environment e){
   if (!e.exists(".params.dat")) {
-    List mv = rxModelVars(as<RObject>(e));
-    NumericVector mvIni = mv[RxMv_ini];
-    CharacterVector pars = mv[RxMv_params];
-    RObject parso = e[".args.params"];
-    IntegerVector ppos = e[".par.pos"];
-    bool IsIni = e[".par.pos.ini"];
-    CharacterVector idLevels = as<CharacterVector>(e[".idLevels"]);
-    if (rxIsNumInt(parso) || rxIsNull(parso)) {
-      double *tmp=(double*)calloc(ppos.size(),sizeof(double));
-      if (tmp == NULL){
-        rxSolveFree();
-        stop(_("ran out of memory during 'updateSolveEnvPost'"));
-      }
-      // NumericVector   prs(ppos.size()-nrm);
-      // CharacterVector prsn(ppos.size()-nrm+1);
-      NumericVector parNumeric;
-      if (!rxIsNull(parso)){
-        parNumeric= as<NumericVector>(parso);
-      }
-      unsigned int i, j=0;
-      for (i = 0; i < ppos.size(); i++){
-        if (ppos[i] > 0){ // User specified parameter
-          if (IsIni){
-            tmp[j] = mvIni[ppos[i]-1];
-          } else {
-            tmp[j] = parNumeric[ppos[i]-1];
-          }
-          // prsn[j] = pars[i];
-          j++;
-        } else if (ppos[i] < 0) { // ini specified parameter.
-          tmp[j] = mvIni[-ppos[i]-1];
-          // prsn[j] = pars[i];
-          j++;
-        }
-      }
-      NumericVector prs(j);
-      CharacterVector prsn(j);
-      std::copy(&tmp[0],&tmp[0]+j,prs.begin());
-      free(tmp);
-      j=0;
-      for (i = 0; i < ppos.size(); i++){
-        if (ppos[i] != 0){ // User specified parameter
-          prsn[j] = pars[i];
-          j++;
-        }
-      }
-      prsn = updateParNames(prsn, e);
-      prs.names() = prsn;
-      e[".params.single"] = prs;
-      List pd(prs.size());
-      for (unsigned int j = prs.size();j--;){
-        pd[j] = NumericVector::create(prs[j]);
-      }
-      pd.names() = prsn;
-      pd.attr("class") = "data.frame";
-      pd.attr("row.names") = IntegerVector::create(NA_INTEGER,-1);
-      e[".params.dat"] = pd;
-      e["counts"] = DataFrame::create(_["slvr"]=e[".slvr.counter"],
-                                      _["dadt"]=e[".dadt.counter"],
-                                      _["jac"]=e[".jac.counter"]);
-    } else {
-      DataFrame parsdf = as<DataFrame>(parso);
-      int extran = 0;
-      int nsub = e[".nsub"], nsim=e[".nsim"];
-      int nrm=0;
-      for (unsigned int i = ppos.size(); i--;){
-        if (ppos[i] == 0){ // Covariate or simulated variable.
-          nrm++;
-        }
-      }
-      if (nsub > 1) extran++;
-      if (nsim > 1) extran++;
-      CharacterVector prsn(ppos.size() - nrm + extran);
-      List prsl(ppos.size() - nrm + extran);
-      unsigned int i, j=0;
-      if (nsim > 1) {
-        IntegerVector tmp(parsdf.nrow());
-        for (unsigned int k = parsdf.nrow(); k--;){
-          tmp[k] = (k / nsub)+1;
-        }
-        prsn[j]="sim.id";
-        prsl[j] = tmp;
-        j++;
-      }
-      if (nsub > 1) {
-        IntegerVector tmp(parsdf.nrow());
-        for (unsigned int k = parsdf.nrow(); k--;){
-          tmp[k] = (k % nsub)+1;
-        }
-        if (idLevels.size() > 0){
-          tmp.attr("class") = CharacterVector::create("factor");
-          tmp.attr("levels") = idLevels;
-        }
-        prsl[j] = tmp;
-        prsn[j]="id";
-        j++;
-      }
-      for (i = 0; i < ppos.size();i++){
-        if (ppos[i] > 0) { // User specified parameter
-          prsl[j] = parsdf[ppos[i]-1];
-          prsn[j] = pars[i];
-          j++;
-        } else if (ppos[i] < 0) { // ini specified parameter.
-          NumericVector tmp(parsdf.nrow(), mvIni[-ppos[i]-1]);
-          prsl[j] = tmp;
-          prsn[j] = pars[i];
-          j++;
-        }
-      }
-      prsn = updateParNames(prsn, e);
-      prsl.names() = prsn;
-      prsl.attr("class") = "data.frame";
-      prsl.attr("row.names") = IntegerVector::create(NA_INTEGER,-parsdf.nrow());
-      e[".params.dat"] = prsl;
-      if (parsdf.nrow() == 1){
-        NumericVector prsnv(prsl.size());
-        for (j = prsl.size(); j--;){
-          prsnv[j] = (as<NumericVector>(prsl[j]))[0];
-        }
-        prsnv.names() = prsn;
-        e[".params.single"] = prsnv;
-      } else {
-        e[".params.single"] = R_NilValue;
-      }
-      List cnt(extran+3);
-      CharacterVector cntn(extran+3);
-      j = 0;
-      if (nsim > 1) {
-        cntn[j]="sim.id";
-        cnt[j] = prsl["sim.id"];
-        j++;
-      }
-      if (nsub > 1) {
-        cntn[j]="id";
-        cnt[j] = prsl["id"];
-        j++;
-      }
-      cntn[j] = "slvr";
-      cnt[j++] = e[".slvr.counter"];
-      cntn[j] = "dadt";
-      cnt[j++] = e[".dadt.counter"];
-      cntn[j] = "jac";
-      cnt[j++] = e[".jac.counter"];
-      cnt.names() = cntn;
-      cnt.attr("class") = "data.frame";
-      cnt.attr("row.names") = IntegerVector::create(NA_INTEGER,-parsdf.nrow());
-      e["counts"] = cnt;
-    }
+    Function materialize = getRxFn(".rxSolveMaterializeParams");
+    materialize(e, e);
   }
-  getEtRxsolve(e);
+}
+
+static inline void rxSolveEnsureCounts(Environment e){
+  if (!e.exists("counts")) {
+    Function materialize = getRxFn(".rxSolveMaterializeCounts");
+    materialize(e);
+  }
+}
+
+// The event table and the eventTable-style methods getEtRxsolve() adds
+static const char* etCacheNames[] = {
+  ".et", "add.dosing", "clear.dosing", "add.sampling",
+  "clear.sampling", ".replace.sampling", "get.dosing",
+  "get.sampling", "get.obs.rec", "get.EventTable",
+  "import.EventTable", "get.units", "get.nobs", nullptr
+};
+
+static inline bool rxSolveIsEtName(const std::string& sarg){
+  for (int i = 0; etCacheNames[i] != nullptr; i++) {
+    if (sarg == etCacheNames[i]) return true;
+  }
+  return false;
 }
 
 extern "C" void freeExtraDosingC() {
@@ -2729,6 +3229,14 @@ extern "C" void freeExtraDosingC() {
 
 extern "C" void allocExtraDosingC() {
   allocExtraDosing(omp_get_max_threads());
+}
+
+// Called from par_solve(), the one choke point every solve goes through --
+// including a downstream package driving par_solve directly rather than
+// through rxSolve_()'s setup.  Runs before the parallel region, and
+// iniSubject() (which hands these pools out) runs inside it.
+extern "C" void ensureExtraDosingC(int ncores) {
+  ensureExtraDosing(ncores);
 }
 
 void resetFkeep();
@@ -2751,13 +3259,18 @@ LogicalVector rxSolveFree(){
   rx_solve* rx = getRxSolve_();
   // Free per-individual owned arrays (inds_global still valid here)
   if (rx->subjects != NULL) {
-    for (uint32_t _i = 0; _i < rx->nsub; _i++) {
+    for (uint32_t _i = 0; _i < rx->nsub*rx->nsim; _i++) {
       rxFreeInd(&rx->subjects[_i]);
     }
   }
   // Free the solve id order
   if (rx->par_sample != NULL) free(rx->par_sample);
   rx->par_sample=NULL;
+  if (rx->splitBolus != NULL) free(rx->splitBolus);
+  rx->splitBolus = NULL;
+  rx->splitBolusN = 0;
+  // linCmtScale points into an R vector (via REAL()), never malloc'd -- just null it
+  rx->linCmtScale = NULL;
   if (_globals.ordId != NULL) free(_globals.ordId);
   _globals.ordId = rx->ordId = NULL;
   // Free the omega info
@@ -2789,6 +3302,8 @@ LogicalVector rxSolveFree(){
 
   if (_globals.gall_timesS != NULL) free(_globals.gall_timesS);
   _globals.gall_timesS = NULL;
+  // gamtS is a sub-pointer within gall_timesS; null after free
+  _globals.gamtS = NULL;
   rxOptionsFree(); // f77 losda free
   rxOptionsIni();// realloc f77 lsoda cache
   rxClearFuns(); // Assign all the global ODE solving functions to NULL pointers
@@ -2803,19 +3318,33 @@ extern "C" void rxSolveFreeC() {
 
 List keepFcov;
 List keepFcovType;
+static std::vector<int>     _keepCovIdx;
+static std::vector<double*> _keepCovPtrs;
 
 extern void resetFkeep() {
   keepFcov = List::create();
   keepFcovType = List::create();
+  _keepCovIdx.clear();
+  _keepCovPtrs.clear();
+}
+
+extern "C" void setupFkeepCache() {
+  int n = keepFcov.size();
+  _keepCovIdx.resize(n);
+  _keepCovPtrs.resize(n);
+  List keepFcovI = keepFcov.attr("keepCov");
+  for (int i = 0; i < n; i++) {
+    _keepCovIdx[i] = as<int>(keepFcovI[i]);
+    _keepCovPtrs[i] = (_keepCovIdx[i] == 0) ? REAL(keepFcov[i]) : nullptr;
+  }
 }
 
 
 extern "C" double get_fkeep(int col, int id, rx_solving_options_ind *ind,int fid) {
   // fid is the first index of the id for keep
-  List keepFcovI= keepFcov.attr("keepCov");
-  int idx = keepFcovI[col];
+  int idx = _keepCovIdx[col];
   if (idx == 0) {
-    double *vals = REAL(keepFcov[col]);
+    double *vals = _keepCovPtrs[col];
     double val = vals[id];
     if (R_IsNA(val) || R_IsNaN(val)) {
       rx_solve* rx = getRxSolve_();
@@ -2826,11 +3355,15 @@ extern "C" double get_fkeep(int col, int id, rx_solving_options_ind *ind,int fid
         while (i >= fid && (R_IsNA(vals[i]) || R_IsNaN(vals[i]))) {
           i--;
         }
-        // if it can't be found find the next non-NA value
-        if (R_IsNA(vals[i]) || R_IsNaN(vals[i])) {
+        // if it can't be found (i < fid) find the next non-NA value;
+        // guard the index so we never dereference vals[fid-1] / past the id block
+        if (i < fid) {
           i = id;
-          while (i < fid  + ind->n_all_times && (R_IsNA(vals[i]) || R_IsNaN(vals[i]))) {
+          while (i < fid + ind->n_all_times && (R_IsNA(vals[i]) || R_IsNaN(vals[i]))) {
             i++;
+          }
+          if (i >= fid + ind->n_all_times) {
+            return val; // entire id block is NA
           }
         }
         return vals[i];
@@ -2840,11 +3373,14 @@ extern "C" double get_fkeep(int col, int id, rx_solving_options_ind *ind,int fid
         while (i < fid + ind->n_all_times && (R_IsNA(vals[i]) || R_IsNaN(vals[i]))) {
           i++;
         }
-        // if it can't be found find the previous non-NA value
-        if (R_IsNA(vals[i]) || R_IsNaN(vals[i])) {
+        // if it can't be found find the previous non-NA value; guard the index
+        if (i >= fid + ind->n_all_times) {
           i = id;
           while (i >= fid && (R_IsNA(vals[i]) || R_IsNaN(vals[i]))) {
             i--;
+          }
+          if (i < fid) {
+            return val; // entire id block is NA
           }
         }
         return vals[i];
@@ -2884,15 +3420,49 @@ extern "C" SEXP assign_fkeepAttr(int col, SEXP in) {
 extern "C" SEXP get_fkeepChar(int col, double val) {
   List cur = keepFcovType[col];
   StringVector levels = cur[1];
-  int i = (int)(val - 1.0);
   if (R_IsNA(val) || R_IsNaN(val)) {
+    return NA_STRING;
+  }
+  int i = (int)(val - 1.0);
+  if (i < 0 || i >= levels.size()) {
     return NA_STRING;
   }
   return wrap(levels[i]);
 }
 
 extern "C" SEXP get_fkeepn() {
-  return as<SEXP>(keepFcov.attr("names"));
+  SEXP names = keepFcov.attr("names");
+  if (Rf_isNull(names)) {
+    CharacterVector ret(0);
+    return wrap(ret);
+  }
+  return names;
+}
+
+// Should sortIds() re-order the solve by accumulated run time?
+//
+// The throttle SUPPRESSES the sort for problems too small to gain from it: with
+// `nall` subject-solves, `cores` threads and the `throttle` from
+// ?setRxThreads, the sort is skipped when nall*throttle <= cores, and taken
+// otherwise.  A single thread never reorders because there is no other thread
+// to wait on.
+//
+// 64-bit because `throttle` is user-settable to any positive int
+// (setRxThreads(throttle=) / rxode2_THROTTLE) and `nall` reaches INT_MAX, so
+// the product overflows 32 bits; `cores` is widened rather than cast to
+// unsigned so a non-positive value compares as itself.
+static inline bool sortIdsWanted(int cores, uint32_t nall, int throttle) {
+  return cores > 1 && (int64_t)nall * (int64_t)throttle > (int64_t)cores;
+}
+
+extern "C" SEXP _rxode2_sortIdsWanted_(SEXP coresS, SEXP nallS, SEXP throttleS) {
+  int cores = Rf_asInteger(coresS), throttle = Rf_asInteger(throttleS);
+  double nall = Rf_asReal(nallS);
+  if (cores == NA_INTEGER || throttle == NA_INTEGER || ISNA(nall) ||
+      nall < 0 || nall > (double)UINT32_MAX) {
+    Rf_error("%s", _("'cores', 'nall' and 'throttle' must be non-NA, with 0 <= 'nall' <= 2^32-1"));
+  }
+  return Rf_ScalarLogical(sortIdsWanted(cores, (uint32_t)nall, throttle));
 }
 
 extern "C" void sortIds(rx_solve* rx, int ini) {
@@ -2905,6 +3475,7 @@ extern "C" void sortIds(rx_solve* rx, int ini) {
   }
   uint32_t nall = rx->nsub*rx->nsim;
   // Perhaps throttle this to nall*X
+  if (ini == 2 && rx->ordId != NULL) return;
   if (ini) {
     if (_globals.ordId != NULL) free(_globals.ordId);
     _globals.ordId=NULL;
@@ -2914,19 +3485,30 @@ extern "C" void sortIds(rx_solve* rx, int ini) {
       stop(_("memory for solve order could not be allocated"));
     }
     std::iota(rx->ordId,rx->ordId+nall,1);
-  } else if (rx->op->cores > 1 && (uint32_t)rx->op->cores >= nall*(uint32_t)getThrottle()) {
-    // Here we order based on run times.  This way this iteratively
-    // changes the order based on run-time.
-    NumericVector solveTime(nall);
-    IntegerVector ord;
+  } else if (sortIdsWanted(rx->op->cores, nall, getThrottle())) {
+    // Order the solve by each subject's accumulated run time, most expensive
+    // first, so that a long solve is not what a thread picks up last.  Because
+    // `solveTime` keeps accumulating, each pass re-ranks on everything solved
+    // so far.
+    //
+    // Sorted here rather than through rxode2's .order1(): a caller invokes this
+    // once per solve pass of an estimation, where .order1()'s data.table round
+    // trip (~300us for a few hundred subjects) costs more than the ordering it
+    // computes saves.  stable_sort on a descending comparator is
+    // order(decreasing=TRUE): ties keep their original, ascending, position.
+    //
+    // rx->ordId is allocated by the ini branch above, which every caller of
+    // this branch has already run (directly, or as sortIds(rx, 2)).
+    std::vector<double> solveTime(nall);
     for (uint32_t i = 0; i < nall; i++) {
       ind = &(rx->subjects[i]);
       solveTime[i] = ind->solveTime;
     }
-    Function order1 = getRxFn(".order1"); // decreasing
-    ord = order1(solveTime, _["decreasing"] = LogicalVector::create(true));
-    // This assumes that this has already been created
-    std::copy(ord.begin(), ord.end(), rx->ordId);
+    std::vector<int> ord(nall);
+    std::iota(ord.begin(), ord.end(), 0);
+    std::stable_sort(ord.begin(), ord.end(),
+                     [&solveTime](int a, int b) { return solveTime[a] > solveTime[b]; });
+    for (uint32_t i = 0; i < nall; i++) rx->ordId[i] = ord[i] + 1;
   }
 }
 
@@ -3018,8 +3600,12 @@ static inline SEXP rxSolve_update(const RObject &object,
   if (e.exists(".params.dat")){
     e.remove(".params.dat");
   }
-  if (e.exists(".et")){
-    e.remove(".et");
+  if (e.exists("counts")){
+    e.remove("counts");
+  }
+  // Remove cached event-table functions to be re-created from .args.events
+  for (int _i = 0; etCacheNames[_i] != nullptr; _i++) {
+    if (e.exists(etCacheNames[_i])) e.remove(etCacheNames[_i]);
   }
   if(e.exists(".sigma")){
     if (Rf_isMatrix(e[".sigma"])) {
@@ -3056,7 +3642,7 @@ static inline SEXP rxSolve_update(const RObject &object,
   List dat = as<List>(rxSolve_(new_object, newRxControl, R_NilValue, extraArgs,
                                new_params, new_events, new_inits, 0));
   if (rxSolveDat->updateObject && as<bool>(e[".real.update"])){
-    List old = as<List>(rxCurObj);
+    List old = lobj;
     //Should I zero out the List...?
     CharacterVector oldNms = old.names();
     CharacterVector nms = dat.names();
@@ -3067,6 +3653,9 @@ static inline SEXP rxSolve_update(const RObject &object,
       }
       old.attr("class") = dat.attr("class");
       old.attr("row.names") = dat.attr("row.names");
+      if (update_events) {
+        e[".args.events"] = new_events;
+      }
       return old;
     } else {
       warning(_("can not update object"));
@@ -3088,23 +3677,31 @@ static inline void rxSolve_ev1Update(const RObject &obj,
                                      const RObject &params,
                                      RObject &ev1,
                                      const RObject &inits,
-                                     rxSolve_t* rxSolveDat){
-  rx_solve* rx = getRxSolve_();
-  if (rxIs(ev1, "rxEt")) {
-    CharacterVector cls = ev1.attr("class");
-    List etE = cls.attr(".rxode2.lst");
-    int nobs = asInt(etE["nobs"], "nobs");
-    if (nobs == 0){
-      // KEEP/DROP?
-      if (rxSolveDat->hasICov) {
-        Rf_warningcall(R_NilValue, "'iCov' ignored when there are no samples/observations in the input dataset");
-      }
-      List ev1a = etTrans(as<List>(ev1), obj, rxSolveDat->hasCmt,
-                          false, false, true, R_NilValue,
-                          rxControl[Rxc_keepF],
-                          rxControl[Rxc_addlKeepsCov],
-                          rxControl[Rxc_addlDropSs],
-                          rxControl[Rxc_ssAtDoseTime]);
+                                                                        rxSolve_t* rxSolveDat){
+                                     rx_solve* rx = getRxSolve_();
+                                     Function etTransR = getRxFn("etTrans");
+                                     if (rxIs(ev1, "rxEt")) {
+                                       CharacterVector cls = ev1.attr("class");
+                                       List etE = cls.attr(".rxode2.lst");
+                                       int nobs = asInt(etE["nobs"], "nobs");
+                                       if (nobs == 0){
+                                         // KEEP/DROP?
+                                         if (rxSolveDat->hasICov) {
+                                           Rf_warningcall(R_NilValue, "'iCov' ignored when there are no samples/observations in the input dataset");
+                                         }
+                                         List ev1a;
+                                         {
+                                           // no 'iCov' here: quiet its string-comparison warnings
+                                           rxEtTransStrCmpQuietGuard strCmpQuiet(rxSolveDat->hasICov);
+                                           ev1a = etTransR(ev1, obj, rxSolveDat->hasCmt,
+                                                              false, false, true, R_NilValue,
+                                                              rxControl[Rxc_keepF],
+                                                              rxControl[Rxc_addlKeepsCov],
+                                                              rxControl[Rxc_addlDropSs],
+                                                              rxControl[Rxc_ssAtDoseTime],
+                                                              R_NilValue,
+                                                              rxControlTieOrder(rxControl));
+                                         }
       rxSolveDat->labelID=true;
       CharacterVector tmpC = ev1a.attr("class");
       List tmpL = tmpC.attr(".rxode2.lst");
@@ -3167,20 +3764,126 @@ static inline void rxSolve_ev1Update(const RObject &obj,
       }
       NumericVector newObs(lenOut);
       // ((to - from)/(length.out - 1))
-      List et = as<List>(ev1);
       for (int i = lenOut; i--;){
         newObs[i]=by*i+from;
       }
       rx->nobs2 = lenOut;
-      ev1 = et_(List::create(newObs), as<List>(ev1));
+      Function etFun = getRxFn("et");
+      ev1 = etFun(ev1, wrap(newObs));
+      {
+        rxEtTransStrCmpQuietGuard strCmpQuiet(rxSolveDat->hasICov);
+        ev1 = etTransR(ev1, obj, rxSolveDat->hasCmt,
+                       false, false, false, R_NilValue,
+                       rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                       rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                       R_NilValue,
+                       rxControlTieOrder(rxControl));
+      }
     }
   }
+  // No class is "rxEtTrans" (a translated table is "rxEtTran"), so every data
+  // frame, translated or not, goes through etTransR(): it re-translates a
+  // table made for another model and returns one made for this model as it
+  // is.  Skipping translated tables here would solve one made for another
+  // model with that model's layout.
   if (rxIs(ev1, "data.frame") && !rxIs(ev1, "rxEtTrans")) {
-    ev1 = as<List>(etTrans(as<List>(ev1), obj, rxSolveDat->hasCmt,
-                           false, false, true, R_NilValue,
+    List ev1k;
+    {
+      rxEtTransStrCmpQuietGuard strCmpQuiet(rxSolveDat->hasICov);
+      ev1k = etTransR(ev1, obj, rxSolveDat->hasCmt,
+                      false, false, true, R_NilValue,
                            rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
                            rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
-                           rxControl[Rxc_iCov]));
+                           R_NilValue,
+                           rxControlTieOrder(rxControl));
+    }
+    CharacterVector tmpCk = ev1k.attr("class");
+    List tmpLk = tmpCk.attr(".rxode2.lst");
+    if (asInt(tmpLk[RxTrans_nobs], "nobs") == 0) {
+      int lenOut = 200;
+      double by = NA_REAL;
+      double to;
+      double from = 0.0;
+      NumericVector tmp;
+      IntegerVector tmpI;
+      rxSolveDat->labelID=true;
+      rxSolveDat->idLevels = asCv(tmpLk[RxTrans_idLvl], "idLvl");
+      List keep0 = tmpLk[RxTrans_keepL];
+      List keep = keep0[0];
+      _rxModels[".fkeep"] = keep0;
+      keepFcov=keep;
+      keepFcovType = keep0[1];
+      rx->nKeepF = keepFcov.size();
+      if (rxIsNumInt(rxControl[Rxc_from])){
+        tmp = asNv(rxControl[Rxc_from], "from");
+        if (tmp.size() != 1){
+          rxSolveFree();
+          stop(_("'from' must be of length 1"));
+        }
+        from = tmp[0];
+      }
+      if (rxIsNumInt(rxControl[Rxc_to])){
+        tmp = asNv(rxControl[Rxc_to], "to");
+        if (tmp.size() != 1){
+          rxSolveFree();
+          stop(_("'to' must be of length 1"));
+        }
+        to = tmp[0];
+      } else {
+        to = (max(as<NumericVector>(ev1k["TIME"]))+24);
+      }
+      if (rxIsNumInt(rxControl[Rxc_by])){
+        tmp = asNv(rxControl[Rxc_by], "by");
+        if (tmp.size() != 1){
+          rxSolveFree();
+          stop(_("'by' must be of length 1"));
+        }
+        by = tmp[0];
+      }
+      if (rxIsNumInt(rxControl[Rxc_length_out])){
+        tmpI = asIv(rxControl[Rxc_length_out], "length.out");
+        if (tmpI.size() != 1){
+          rxSolveFree();
+          stop(_("'length.out' must be of length 1"));
+        }
+        lenOut = tmpI[0];
+        if (!ISNA(by)){
+          rxSolveFree();
+          stop(_("cannot use both 'by' and 'length.out' for rxode2 simulations"));
+        }
+        by = (to-from)/(lenOut-1);
+      } else if (ISNA(by)) {
+        lenOut=200;
+        by = (to-from)/(lenOut-1);
+      } else {
+        lenOut= (int)((to-from)/by+1.0);
+      }
+      NumericVector newObs(lenOut);
+      for (int i = lenOut; i--;){
+        newObs[i]=by*i+from;
+      }
+      rx->nobs2 = lenOut;
+      Function asEtFun = getRxFn("as.et");
+      Function etFun = getRxFn("et");
+      RObject evEt = asEtFun(ev1);
+      evEt = etFun(evEt, wrap(newObs));
+      ev1 = etTransR(evEt, obj, rxSolveDat->hasCmt,
+                     false, false, false, R_NilValue,
+                     rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                     rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                     rxControl[Rxc_iCov],
+                     rxControlTieOrder(rxControl));
+    } else if (Rf_isNull(rxControl[Rxc_iCov])) {
+      // Same arguments as ev1k; reuse it rather than translating twice
+      ev1 = ev1k;
+    } else {
+      ev1 = etTransR(ev1, obj, rxSolveDat->hasCmt,
+                     false, false, true, R_NilValue,
+                     rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                     rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                     rxControl[Rxc_iCov],
+                     rxControlTieOrder(rxControl));
+    }
     rxSolveDat->labelID=true;
     CharacterVector tmpC = ev1.attr("class");
     List tmpL = tmpC.attr(".rxode2.lst");
@@ -3190,6 +3893,50 @@ static inline void rxSolve_ev1Update(const RObject &obj,
     _rxModels[".fkeep"] = keep0;
     keepFcov=keep;
     keepFcovType = keep0[1];
+    // Homogeneous/grouped event tables share representative translated rows across
+    // multiple real IDs; keep vectors must be expanded to match per-subject output order.
+    SEXP homGroupsS0 = Rf_getAttrib(ev1, Rf_install("rxHomGroups"));
+    if (!Rf_isNull(homGroupsS0) && keepFcov.size() > 0) {
+      DataFrame evDf = as<DataFrame>(ev1);
+      IntegerVector idKeep = as<IntegerVector>(evDf[0]);
+      int nRowsKeep = idKeep.size();
+      List homGroups0 = as<List>(homGroupsS0);
+      int nHomGroups = homGroups0.size();
+      std::vector<int> rowStart(nHomGroups, -1);
+      std::vector<int> rowLen(nHomGroups, 0);
+      for (int _i = 0; _i < nRowsKeep; ++_i) {
+        int rid = idKeep[_i];
+        if (rid >= 1 && rid <= nHomGroups) {
+          int gi = rid - 1;
+          if (rowStart[gi] == -1) rowStart[gi] = _i;
+          rowLen[gi]++;
+        }
+      }
+      int expandedRows = 0;
+      for (int gi = 0; gi < nHomGroups; ++gi) {
+        if (rowStart[gi] == -1 || rowLen[gi] == 0) continue;
+        expandedRows += rowLen[gi] * Rf_length(homGroups0[gi]);
+      }
+      if (expandedRows > 0 && expandedRows != nRowsKeep) {
+        for (int _k = 0; _k < keepFcov.size(); ++_k) {
+          NumericVector cur = as<NumericVector>(keepFcov[_k]);
+          if (cur.size() != nRowsKeep) continue;
+          NumericVector out(expandedRows, NA_REAL);
+          int at = 0;
+          for (int gi = 0; gi < nHomGroups; ++gi) {
+            if (rowStart[gi] == -1 || rowLen[gi] == 0) continue;
+            int reps = Rf_length(homGroups0[gi]);
+            for (int rep = 0; rep < reps; ++rep) {
+              std::copy(cur.begin() + rowStart[gi],
+                        cur.begin() + rowStart[gi] + rowLen[gi],
+                        out.begin() + at);
+              at += rowLen[gi];
+            }
+          }
+          keepFcov[_k] = out;
+        }
+      }
+    }
     rx->nKeepF = keepFcov.size();
     rxcEvid = 2;
     rxcTime = 1;
@@ -3264,6 +4011,42 @@ static inline void rxSolve_ev1Update(const RObject &obj,
   }
   // Rcpp::print(ev1);
   _rxModels[".lastEv1"] = ev1;
+}
+
+// A homogeneous event table stores ONE representative subject per group and the
+// real ids in `rxHomGroups`, so the raw record counts are one group's worth.
+// Expand `rx->nall`/`nobs`/`nobs2`/`nevid9` the way the setup pass does -- the
+// residual (`sigma`) draw is sized from these, and an unexpanded count simulates
+// the residual for the first subject only.  Returns the expanded subject count,
+// or 0 for a table that is not homogeneous, which is left untouched.
+static inline unsigned int rxExpandHomGroupCounts(rx_solve *rx,
+                                                  const RObject &ev1,
+                                                  const IntegerVector &id,
+                                                  const IntegerVector &evid) {
+  RObject hgs = Rf_getAttrib(ev1, Rf_install("rxHomGroups"));
+  if (Rf_isNull(hgs)) return 0;
+  List hgl = as<List>(hgs);
+  int nHg = hgl.size();
+  unsigned int nSub0 = 0;
+  for (int _hg = 0; _hg < nHg; ++_hg) {
+    nSub0 += Rf_length(hgl[_hg]);
+  }
+  int nall = 0, nobs = 0, nobs2 = 0, evid9 = 0, nknot = 0;
+  for (int _j = 0; _j < evid.size(); ++_j) {
+    int _gi = id[_j] - 1;
+    int _mult = (_gi >= 0 && _gi < nHg) ? Rf_length(hgl[_gi]) : 1;
+    nall += _mult;
+    if (isObs(evid[_j])) nobs += _mult;
+    if (evid[_j] == 0) nobs2 += _mult;
+    if (isHiddenEvid(evid[_j])) evid9 += _mult;
+    if (evid[_j] == 8) nknot += _mult;
+  }
+  rx->nall = nall;
+  rx->nobs = nobs;
+  rx->nobs2 = nobs2;
+  rx->nevid9 = evid9;
+  rx->nknot = nknot;
+  return nSub0;
 }
 
 // This function simulates individual parameter values and residual
@@ -3349,6 +4132,7 @@ static inline void rxSolve_simulate(const RObject &obj,
 
   op->ncoresRV = nCoresRV;
   rx->nevid9 = 0;
+  rx->nknot = 0;
 
   if (!thetaMat.isNull() || !rxIsNull(omega) || !rxIsNull(sigma)){
     // Simulated Variable3
@@ -3382,9 +4166,13 @@ static inline void rxSolve_simulate(const RObject &obj,
           }
           if (isObs(evid[j])) rx->nobs++;
           if (evid[j] == 0) rx->nobs2++;
-          if (evid[j] == 9) evid9++;
+          if (isHiddenEvid(evid[j])) evid9++;
+          if (evid[j] == 8) rx->nknot++;
         }
         rx->nevid9 = evid9;
+        // Get true number of subjects if this is a homogenous event table.
+        unsigned int hgSub = rxExpandHomGroupCounts(rx, ev1, id, evid);
+        if (hgSub > 0) nSub0 = hgSub;
       } else {
         nSub0 =1;
         DataFrame dataf = as<DataFrame>(ev1);
@@ -3394,7 +4182,8 @@ static inline void rxSolve_simulate(const RObject &obj,
         for (unsigned int j =rx->nall; j--;){
           if (isObs(evid[j])) rx->nobs++;
           if (evid[j] == 0) rx->nobs2++;
-          if (evid[j] == 9) evid9++;
+          if (isHiddenEvid(evid[j])) evid9++;
+          if (evid[j] == 8) rx->nknot++;
         }
         rx->nevid9= evid9;
       }
@@ -3438,7 +4227,7 @@ static inline void rxSolve_simulate(const RObject &obj,
     if (!cbindPar1) {
       params0 = as<Nullable<NumericVector>>(rxSolveDat->par1);
     }
-    List lst = rxSimThetaOmega(params0,
+    List lst = rxSimThetaOmega0(params0,
                                omega,
                                omegaDf,
                                asNv(rxControl[Rxc_omegaLower], "omegaLower"),
@@ -3458,7 +4247,11 @@ static inline void rxSolve_simulate(const RObject &obj,
                                asInt(rxControl[Rxc_sigmaXform], "sigmaXform"),
                                nCoresRV, curObs,
                                dfSub, dfObs, simSubjects,
-                               simVariability);
+                               simVariability,
+                               rxControl[Rxc_priorOmega],
+                               rxControl[Rxc_priorOmegaEl],
+                               asInt(rxControl[Rxc_priorPdRetry], "priorPdRetry"),
+                               rxControl[Rxc_priorSigmaEl]);
     if (cbindPar1) {
       lst = cbindThetaOmega(rxSolveDat->par1, lst);
       rxSolveDat->par1cbind = true;
@@ -3550,6 +4343,16 @@ extern "C" void setupRxInd(rx_solving_options_ind* ind, int first) {
   ind->logitHi          = 1;
   ind->isIni            = 0;
   ind->_update_par_ptr_in = 0;
+  ind->linCmtHparIndex  = -2;
+  ind->autoMethod = 0;
+  ind->autoCount  = 0;
+  ind->autoHcur   = 0.0;
+  ind->autoLastSwitchIntervals = 0;
+  ind->autoStiffHlamb  = 0.0;
+  ind->autoStiffIasti  = 0;
+  ind->autoStiffNonsti = 0;
+  ind->autoStiffNaccpt = 0;
+  ind->autoBackoff     = 0;
   if (first){
     ind->solveTime  = 0.0;
     ind->nBadDose = 0;
@@ -3559,6 +4362,10 @@ extern "C" void setupRxInd(rx_solving_options_ind* ind, int first) {
     // on subsequent calls (first == 0) so that stiff individuals retain
     // their loosened tolerances across re-solves.
     ind->tolFactor = 1.0;
+    // neqOverride = -1 means "use op->neq".  Reset on first allocation
+    // only; downstream callers (e.g. nlmixr2est) set/restore this
+    // per-call and we do not want to clobber an in-flight override.
+    ind->neqOverride = -1;
   }
 }
 
@@ -3577,6 +4384,27 @@ static inline NumericVector getMixUnif(const RObject &ev1)  {
   } else {
   }
   return mixUnif;
+}
+
+// A mixest supplied per individual (from the data or from iCov) arrives in
+// mixunif carrying the >= 1.0 sentinel.  _mix() decodes that sentinel, but a
+// model whose mix() call was expanded to rx_mixsel_<k>_ selectors never calls
+// _mix() -- it reads ind->mixest directly -- so decode it here as well.
+static inline void rxSetIndMix(rx_solving_options_ind* ind, unsigned int nsub,
+                               const NumericVector& mixUnif) {
+  ind->mixest = 0;
+  if (nsub >= (unsigned int)mixUnif.size()) {
+    ind->mixunif = rxunifmix(ind);
+  } else {
+    ind->mixunif = mixUnif[nsub];
+    if (ind->mixunif >= 1.0) ind->mixest = (int) trunc(ind->mixunif);
+  }
+}
+
+// hmax=NA: mean time difference + hmaxSd*sd; the sd needs >= 2 differences
+static inline double rxHmaxMean(double mean, double ss, double n, double hmaxSd) {
+  if (n < 2.0 || hmaxSd == 0.0 || !(ss > 0.0)) return mean;
+  return mean + hmaxSd*sqrt(ss/(n-1));
 }
 
 // This loops through the data to put each individual into the
@@ -3627,6 +4455,16 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     DataFrame dataf = as<DataFrame>(ev1);
     CharacterVector dfNames = dataf.names();
     int dfN = dfNames.size();
+    SEXP homGroupsS = Rf_getAttrib(ev1, Rf_install("rxHomGroups"));
+    bool hasHomGroups = !Rf_isNull(homGroupsS);
+    List homGroups;
+    int homNsub = 0;
+    if (hasHomGroups) {
+      homGroups = as<List>(homGroupsS);
+      for (int hg = 0; hg < homGroups.size(); ++hg) {
+        homNsub += Rf_length(homGroups[hg]);
+      }
+    }
     IntegerVector evid  = as<IntegerVector>(dataf[rxcEvid]);
     IntegerVector si = as<IntegerVector>(rxSolveDat->mv[RxMv_state_ignore]);
     IntegerVector strLhs = as<IntegerVector>(rxSolveDat->mv[RxMv_lhsStr]);
@@ -3639,29 +4477,83 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     std::copy(evid.begin(),evid.end(), &_globals.gevid[0]);
     _globals.gidose = _globals.gevid + evid.size();
     _globals.gcens = _globals.gidose + evid.size();
-    _globals.gpar_cov = _globals.gidose + evid.size();//[dfN];
+    _globals.gpar_cov = _globals.gcens + evid.size();//[dfN];
     _globals.gpar_covInterp = _globals.gpar_cov + dfN; // [dfN]
     _globals.glhs_str = _globals.gpar_covInterp + dfN; // [strLhs.size()]
     std::copy(strLhs.begin(),strLhs.end(), &_globals.glhs_str[0]);
+    // fixed infusion start/stop pairs etTrans() recorded as 1-based row pairs
+    // (nlmixr2/rxode2#1348), stored per record as the offset to the mate
+    if (_globals.ginfPair != NULL) free(_globals.ginfPair);
+    _globals.ginfPair = NULL;
+    SEXP infPairS = Rf_getAttrib(ev1, Rf_install("rxInfPair"));
+    if (TYPEOF(infPairS) == INTSXP && Rf_length(infPairS) > 1) {
+      int nr = evid.size();
+      _globals.ginfPair = (int*)calloc(nr, sizeof(int));
+      if (_globals.ginfPair == NULL){
+        rxSolveFree();
+        stop(_("can not allocate enough memory to load infusion pairing"));
+      }
+      int *ip = INTEGER(infPairS);
+      for (int k = 0; k + 1 < Rf_length(infPairS); k += 2) {
+        int s0 = ip[k] - 1, e0 = ip[k+1] - 1;
+        if (s0 < 0 || s0 >= nr) continue;
+        if (ip[k+1] == 0) {
+          // a fixed-infusion start with no stop record of its own
+          _globals.ginfPair[s0] = RX_INF_UNPAIRED;
+          continue;
+        }
+        if (e0 < 0 || e0 >= nr || s0 == e0) continue;
+        _globals.ginfPair[s0] = e0 - s0;
+        _globals.ginfPair[e0] = s0 - e0;
+      }
+    }
+    // rows that are not data records, for PK-type time with nonmem=TRUE
+    // (rxode2#1429), as 1-based row numbers
+    if (_globals.gpkSkip != NULL) free(_globals.gpkSkip);
+    _globals.gpkSkip = NULL;
+    SEXP pkSkipS = Rf_getAttrib(ev1, Rf_install("rxPkSkip"));
+    if (TYPEOF(pkSkipS) == INTSXP && Rf_length(pkSkipS) > 0) {
+      int nr = evid.size();
+      _globals.gpkSkip = (int*)calloc(nr, sizeof(int));
+      if (_globals.gpkSkip == NULL){
+        rxSolveFree();
+        stop(_("can not allocate enough memory to load record types"));
+      }
+      int *ip = INTEGER(pkSkipS);
+      for (int k = 0; k < Rf_length(pkSkipS); ++k) {
+        if (ip[k] >= 1 && ip[k] <= nr) _globals.gpkSkip[ip[k] - 1] = 1;
+      }
+    }
     int ntot = 1;
 
     IntegerVector id(evid.size(), 1);
     if (rxcId > -1){
       id    = as<IntegerVector>(dataf[rxcId]);
-      int lastid = NA_INTEGER;
-      int nid = 0;
-      for (int ii = 0; ii < id.size(); ii++){
-        if (id[ii] != lastid){
-          lastid = id[ii];
-          nid++;
+      int nid = homNsub;
+      if (!hasHomGroups) {
+        int lastid = NA_INTEGER;
+        nid = 0;
+        for (int ii = 0; ii < id.size(); ii++){
+          if (id[ii] != lastid){
+            lastid = id[ii];
+            nid++;
+          }
         }
       }
-      // if (nid == 0){
-      // } else
-      if (nid == rxSolveDat->nPopPar || rxSolveDat->nPopPar == 1){
+      // One `rx_solving_options_ind` is needed per individual SOLVE, that is
+      // `nsub*nsim`, which is `nPopPar` whenever the parameters were expanded
+      // per subject (`nPopPar == 1` is a single population set, i.e. nsim=1 and
+      // one solve per subject).  Multiplying nid by nPopPar over-allocated by a
+      // factor of nsub: a large study then either exhausted memory or overflowed
+      // `int` and reported "nothing to solve" (nlmixr2/nlmixr2#412).
+      if (nid == 0 || rxSolveDat->nPopPar == 0) {
+        // both were 0 under the old expression too, so the ntot <= 0 guard
+        // below keeps firing exactly where it used to
+        ntot = 0;
+      } else if (nid > rxSolveDat->nPopPar) {
         ntot = nid;
       } else {
-        ntot = nid*rxSolveDat->nPopPar;
+        ntot = rxSolveDat->nPopPar;
       }
     } else {
       if (rxSolveDat->nPopPar != 0) ntot = rxSolveDat->nPopPar;
@@ -3684,6 +4576,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     rxOptionsIniEnsure(ntot, op->cores);
     if (_globals.gall_times != NULL) free(_globals.gall_times);
     _globals.gall_times = (double*)calloc(5*time0.size(), sizeof(double));
+    _globals.gall_times_n = (int64_t)time0.size();
     std::copy(time0.begin(), time0.end(), &_globals.gall_times[0]);
     _globals.gdv = _globals.gall_times + time0.size(); // Perhaps allocate zero size if missing?
     _globals.gamt = _globals.gdv + time0.size();
@@ -3721,6 +4614,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     IntegerVector interp0 = as<IntegerVector>(rxSolveDat->mv[RxMv_interp]);
     //
     bool isLinearOrMidpointInterp = op->is_locf == 0 || op->is_locf == 3;
+    op->cmtCov = -1;   // covariate index of the CMT covariate; -1 = none (single endpoint)
     for (i = dfN; i--;){
       for (j = rx->npars; j--;){
         if (pars[j] == dfNames[i]){
@@ -3730,6 +4624,11 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           // the rxControl() object
           const char *curDf = dfNames[i];
           int curDfN = strlen(curDf);
+          // cache the CMT covariate's covariate-index so getIndCmt can read the
+          // per-observation endpoint (cov_ptr) without a per-call name comparison.
+          if (op->cmtCov < 0 && curDfN == 3 && !strncmpci(curDf, "CMT", 3)) {
+            op->cmtCov = ncov;
+          }
           _globals.gpar_covInterp[ncov] = interp0[j] - 2;
           if ((isLinearOrMidpointInterp &&
                _globals.gpar_covInterp[ncov] == -1) ||
@@ -3752,10 +4651,61 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
                 break;
               }
             }
-
           }
           covPos[ncov] = i;
           ncov++;
+        }
+      }
+    }
+    // linCmt() advances each interval with the covariates at its middle, so it
+    // cannot follow a linear ramp; refuse "linear" for a covariate that varies
+    // within a subject and feeds the linCmt() parameters, rather than silently
+    // giving the midpoint solution.  The dependencies (.rxLinCmtDepends) are
+    // looked up only once a varying covariate is found.
+    if (op->numLin > 0) {
+      bool haveDeps = false;
+      RObject linDeps = R_NilValue;
+      for (int ic = 0; ic < ncov; ic++) {
+        if (ic == op->cmtCov) continue;
+        int curInterp = _globals.gpar_covInterp[ic];
+        if (!(curInterp == 0 || (curInterp == -1 && op->is_locf == 0))) continue;
+        NumericVector curCov = as<NumericVector>(dataf[covPos[ic]]);
+        int lastId = NA_INTEGER;
+        double firstVal = NA_REAL;
+        for (int ir = 0; ir < curCov.size(); ir++) {
+          if (id[ir] != lastId) {
+            lastId = id[ir];
+            firstVal = NA_REAL;
+          }
+          double curVal = curCov[ir];
+          if (ISNAN(curVal)) continue;
+          if (ISNAN(firstVal)) {
+            firstVal = curVal;
+          } else if (curVal != firstVal) {
+            std::string covName = as<std::string>(dfNames[covPos[ic]]);
+            if (!haveDeps) {
+              Environment rxode2ns = Environment::namespace_env("rxode2");
+              Function linCmtDepends = rxode2ns[".rxLinCmtDepends"];
+              linDeps = linCmtDepends(rxSolveDat->mv);
+              haveDeps = true;
+            }
+            if (!Rf_isNull(linDeps)) {
+              CharacterVector deps = as<CharacterVector>(linDeps);
+              // the parameter name, which may differ in case from the column
+              std::string parName = as<std::string>(pars[_globals.gpar_cov[ic] - 1]);
+              bool feedsLin = false;
+              for (int id0 = 0; id0 < deps.size(); id0++) {
+                if (as<std::string>(deps[id0]) == parName) {
+                  feedsLin = true;
+                  break;
+                }
+              }
+              if (!feedsLin) break;
+            }
+            rxSolveFree();
+            stop(_("'linear' interpolation of time-varying covariate '%s' on a linCmt() parameter is not supported; use covsInterpolation = \"locf\", \"nocb\" or \"midpoint\" (or declare that interpolation for '%s' in the model), or write the model as ODEs"),
+                 covName.c_str(), covName.c_str());
+          }
         }
       }
     }
@@ -3771,160 +4721,315 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     op->par_cov_interp = &(_globals.gpar_covInterp[0]);
     op->ncov=ncov;
     op->do_par_cov = (ncov > 0);
+    // Each covariate column is copied out of dataf once per subject below.
+    // Coerce every column to double once, here, so the copies read a plain
+    // pointer.  A column that is already double is not copied at all, but an
+    // integer column -- CMT, when the model reads it as a covariate -- would
+    // otherwise be converted in full for each subject.  covD keeps the coerced
+    // columns alive so covDp[] stays valid for the copies below.
+    List covD(ncov);
+    std::vector<double*> covDp(ncov, NULL);
+    for (int ic = 0; ic < ncov; ic++) {
+      NumericVector curCovD = as<NumericVector>(dataf[covPos[ic]]);
+      covD[ic]  = curCovD;
+      covDp[ic] = REAL(curCovD);
+    }
     // Make sure the covariates are a #ncov * all times size
     int ids = id.size();
     // Get the number of subjects
     // Get the number of observations
     // Get the number of doses
-    int nall = 0, nobst=0, lasti =0, ii=0, nobs2t=0, nevid9=0;
-    nsub = 0;
-    ind = &(rx->subjects[0]);
-    setupRxInd(ind, 1);
-    j=0;
-    rx->maxAllTimes=0;
-    int lastId = id[0]-42;
-    for (i = 0; i < ids; i++) {
-      if (lastId != id[i]) {
-        if (nall != 0) {
-          // Finalize last solve.
-          ind->n_all_times    = ndoses+nobs;
-          if (rx->mixnum) {
-            ind->mixest = 0;
-            if (nsub >= mixUnif.size()) {
-              ind->mixunif = rxunifmix(ind);
-            } else {
-              ind->mixunif = mixUnif[nsub];
-            }
-          }
-          if (ind->n_all_times > rx->maxAllTimes) rx->maxAllTimes= ind->n_all_times;
-          ind->cov_ptr = &(_globals.gcov[curcovi]);
-          for (ii = 0; ii < ncov; ii++){
-            NumericVector cur = as<NumericVector>(dataf[covPos[ii]]);
-            std::copy(cur.begin()+lasti, cur.begin()+lasti+ind->n_all_times,
-                      _globals.gcov+curcovi);
-            curcovi += ind->n_all_times;
-          }
-          nsub++;
-          if (doMean){
-            hmax1s = hmax1s/(hmax1n-1);
-            hmax1  = hmax1m;
-            ind->HMAX = hmax1;
-          } else if (hmax0 == 0.0){
-            ind->HMAX = hmax1;
-          } else {
-            ind->HMAX = hmax0;
-          }
+    if (hasHomGroups) {
+      int nall = 0, nobst=0, lasti =0, ii=0, nobs2t=0, nevid9=0, nknot=0;
+      int groupNobs2 = 0, groupNevid9 = 0, groupNevid2 = 0, groupNknot = 0, groupHasEvid2 = 0;
+      nsub = 0;
+      j=0;
+      rx->maxAllTimes=0;
+      int lastId = id[0]-42;
+      double groupHmax1 = 0.0, groupHmax1m = 0.0, groupHmax1mo = 0.0;
+      double groupHmax1s = 0.0, groupHmax1n = 0.0;
+      auto finalizeGroup = [&](int startRow) {
+        if (nobs + ndoses == 0) return;
+        int groupIndex = id[startRow] - 1;
+        IntegerVector curIds = as<IntegerVector>(homGroups[groupIndex]);
+        int groupNAll = ndoses + nobs;
+        double *groupCov = &(_globals.gcov[curcovi]);
+        for (ii = 0; ii < ncov; ii++){
+          double *cur = covDp[ii];
+          std::copy(cur+lasti, cur+lasti+groupNAll,
+                    _globals.gcov+curcovi);
+          curcovi += groupNAll;
+        }
+        double curHmax = hmax0;
+        if (doMean) {
+          curHmax = rxHmaxMean(groupHmax1m, groupHmax1s, groupHmax1n,
+                               asDouble(rxControl[Rxc_hmaxSd], "hmaxSd"));
+        } else if (hmax0 == 0.0) {
+          curHmax = groupHmax1;
+        }
+        if (groupNAll > rx->maxAllTimes) rx->maxAllTimes = groupNAll;
+        for (int gid = 0; gid < curIds.size(); ++gid) {
           ind = &(rx->subjects[nsub]);
           setupRxInd(ind, 1);
+          ind->id               = nsub+1;
+          ind->idReal           = curIds[gid];
+          ind->all_times        = &_globals.gall_times[startRow];
+          ind->dv               = &_globals.gdv[startRow];
+          ind->limit            = &_globals.glimit[startRow];
+          ind->cens             = &_globals.gcens[startRow];
+          ind->evid             = &_globals.gevid[startRow];
+          ind->idose            = &_globals.gidose[startRow];
+          ind->dose             = &_globals.gamt[startRow];
+          ind->ii               = &_globals.gii[startRow];
+          ind->infPair          = _globals.ginfPair ? &_globals.ginfPair[startRow] : NULL;
+          ind->pkSkip           = _globals.gpkSkip ? &_globals.gpkSkip[startRow] : NULL;
+          ind->cov_ptr          = groupCov;
+          ind->n_all_times      = groupNAll;
+          ind->n_all_times_orig = groupNAll;
+          ind->ndoses           = ndoses;
+          ind->nevid2           = groupNevid2;
+          ind->HMAX             = curHmax;
+          // A homogeneous group is ONE translated subject, so the per-id
+          // mixest vector is indexed by the group, not by the expanded
+          // subject counter.
+          if (rx->mixnum) rxSetIndMix(ind, (unsigned int)groupIndex, mixUnif);
+          nsub++;
         }
-        // Setup the pointers.
-        ind->id               = nsub+1;
-        ind->idReal           = id[i];
-        ind->all_times        = &_globals.gall_times[i];
-        ind->dv = &_globals.gdv[i];
-        ind->limit = &_globals.glimit[i];
-        ind->cens = &_globals.gcens[i];
-        ind->evid           = &_globals.gevid[i];
-        ind->idose          = &_globals.gidose[i];
-        ind->dose           = &_globals.gamt[i];
-        ind->ii             = &_globals.gii[i];
-        lasti = i;
-
-        hmax1m=0.0;
-        hmax1s=0.0;
-        hmax1n=0.0;
-        hmax1 = 0.0;
-        lastId=id[i];
-        j=i;
-        ind->ndoses=0;
-        ind->nevid2=0;
-        ndoses=0;
-        nobs=0;
-        tlast = NA_REAL;
-      }
-      // Create index
-      _globals.gii[i] = datIi[i];
-      _globals.gamt[i] = amt[i];
-
-      if (isDose(_globals.gevid[i])){
-        _globals.gidose[j] = i-lasti;
-        ind->ndoses++;
-        ndoses++; nall++; j++;
-        if (_globals.gevid[i] == 3) {
+        if (groupHasEvid2) rx->hasEvid2 = 1;
+        nall += groupNAll * curIds.size();
+        nobst += nobs * curIds.size();
+        nobs2t += groupNobs2 * curIds.size();
+        nevid9 += groupNevid9 * curIds.size();
+        nknot += groupNknot * curIds.size();
+      };
+      ndoses=0;
+      nobs=0;
+      tlast = NA_REAL;
+      for (i = 0; i < ids; i++) {
+        if (lastId != id[i]) {
+          if (i != 0) {
+            finalizeGroup(lasti);
+          }
+          lasti = i;
+          lastId = id[i];
+          j = i;
+          ndoses = 0;
+          nobs = 0;
+          groupNobs2 = 0;
+          groupNevid9 = 0;
+          groupNknot = 0;
+          groupNevid2 = 0;
+          groupHasEvid2 = 0;
+          groupHmax1m = 0.0;
+          groupHmax1s = 0.0;
+          groupHmax1n = 0.0;
+          groupHmax1 = 0.0;
           tlast = NA_REAL;
         }
-      } else {
-        nobs++; nobst++; nall++;
-        if (_globals.gevid[i] == 2) {
-          ind->nevid2++;
-          rx->hasEvid2 = 1;
-        }
-        if (_globals.gevid[i] == 0) nobs2t++;
-        if (_globals.gevid[i] == 9) nevid9++;
-        if (!ISNA(tlast)) {
-          tmp = time0[i]-tlast;
-          if (tmp < 0){
-            rxSolveFree();
-            stop(_("data must be ordered by 'ID' and 'TIME' variables"));
+        _globals.gii[i] = datIi[i];
+        _globals.gamt[i] = amt[i];
+        if (isDose(_globals.gevid[i])){
+          _globals.gidose[j] = i-lasti;
+          ndoses++;
+          j++;
+          if (_globals.gevid[i] == 3) {
+            tlast = NA_REAL;
           }
-          hmax1n++;
-          hmax1mo = hmax1m;
-          hmax1m += (tmp-hmax1m)/hmax1n;
-          hmax1s += (tmp-hmax1m)*(tmp-hmax1mo);
-          hmax2n++;
-          hmax2mo = hmax2m;
-          hmax2m += (tmp-hmax2m)/hmax2n;
-          hmax2s += (tmp-hmax2m)*(tmp-hmax2mo);
-          if (tmp > hmax1){
-            hmax1 = tmp;
-            if (hmax1 > hmax2){
-              hmax2=hmax1;
+        } else {
+          nobs++;
+          if (_globals.gevid[i] == 2) {
+            groupNevid2++;
+            groupHasEvid2 = 1;
+          } else if (_globals.gevid[i] == 8) {
+            // a hidden knot is no observation either
+            groupNevid2++;
+          }
+          if (_globals.gevid[i] == 0) groupNobs2++;
+          if (isHiddenEvid(_globals.gevid[i])) groupNevid9++;
+          if (_globals.gevid[i] == 8) groupNknot++;
+          if (!ISNA(tlast)) {
+            tmp = time0[i]-tlast;
+            if (tmp < 0){
+              rxSolveFree();
+              stop(_("data must be ordered by 'ID' and 'TIME' variables"));
+            }
+            groupHmax1n++;
+            groupHmax1mo = groupHmax1m;
+            groupHmax1m += (tmp-groupHmax1m)/groupHmax1n;
+            groupHmax1s += (tmp-groupHmax1m)*(tmp-groupHmax1mo);
+            hmax2n++;
+            hmax2mo = hmax2m;
+            hmax2m += (tmp-hmax2m)/hmax2n;
+            hmax2s += (tmp-hmax2m)*(tmp-hmax2mo);
+            if (tmp > groupHmax1){
+              groupHmax1 = tmp;
+              if (groupHmax1 > hmax2){
+                hmax2 = groupHmax1;
+              }
             }
           }
         }
+        tlast = time0[i];
       }
-      tlast = time0[i];
-    }
-    if (doMean){
-      hmax2  = hmax2m;
-    }
-    rx->nobs = nobst;
-    rx->nobs2 = nobs2t;
-    rx->nall = nall;
-    rx->nevid9 = nevid9;
-    // Finalize the prior individual
-    ind->n_all_times    = ndoses+nobs;
-    if (rx->mixnum) {
-      ind->mixest = 0;
-      if (nsub >= mixUnif.size()) {
-        ind->mixunif = rxunifmix(ind);
+      finalizeGroup(lasti);
+      if (doMean){
+        hmax2  = hmax2m;
+      }
+      rx->nobs = nobst;
+      rx->nobs2 = nobs2t;
+      rx->nall = nall;
+      rx->nevid9 = nevid9;
+      rx->nknot = nknot;
+      if (doMean || hmax0 == 0.0){
+        op->hmax2 = hmax2;
       } else {
-        ind->mixunif = mixUnif[nsub];
+        op->hmax2 = hmax0;
       }
-    }
-    if (ind->n_all_times > rx->maxAllTimes) rx->maxAllTimes= ind->n_all_times;
-    ind->cov_ptr = &(_globals.gcov[curcovi]);
-    for (ii = 0; ii < ncov; ii++){
-      NumericVector cur = as<NumericVector>(dataf[covPos[ii]]);
-      std::copy(cur.begin()+lasti, cur.begin()+lasti+ind->n_all_times,
-                _globals.gcov+curcovi);
-      curcovi += ind->n_all_times;
-    }
-    if (doMean || hmax0 == 0.0){
-      op->hmax2 = hmax2;
+      rx->nsub= nsub;
     } else {
-      op->hmax2 = hmax0;
-    }
-    nsub++;
-    rx->nsub= nsub;
-    if (doMean){
-      hmax1s = hmax1s/(hmax1n-1);
-      hmax1  = hmax1m;
-      ind->HMAX = hmax1 + asDouble(rxControl[Rxc_hmaxSd], "hmaxSd")*sqrt(hmax1s);
-    } else if (hmax0 == 0.0){
-      ind->HMAX = hmax1;
-    } else {
-      ind->HMAX = hmax0;
+      int nall = 0, nobst=0, lasti =0, ii=0, nobs2t=0, nevid9=0, nknot=0;
+      nsub = 0;
+      ind = &(rx->subjects[0]);
+      setupRxInd(ind, 1);
+      j=0;
+      rx->maxAllTimes=0;
+      int lastId = id[0]-42;
+      for (i = 0; i < ids; i++) {
+        if (lastId != id[i]) {
+          if (nall != 0) {
+            // Finalize last solve.
+            ind->n_all_times    = ndoses+nobs;
+            ind->n_all_times_orig = ind->n_all_times;
+            if (rx->mixnum) rxSetIndMix(ind, nsub, mixUnif);
+            if (ind->n_all_times > rx->maxAllTimes) rx->maxAllTimes= ind->n_all_times;
+            ind->cov_ptr = &(_globals.gcov[curcovi]);
+            for (ii = 0; ii < ncov; ii++){
+              double *cur = covDp[ii];
+              std::copy(cur+lasti, cur+lasti+ind->n_all_times,
+                        _globals.gcov+curcovi);
+              curcovi += ind->n_all_times;
+            }
+            nsub++;
+            if (doMean){
+              ind->HMAX = rxHmaxMean(hmax1m, hmax1s, hmax1n,
+                                     asDouble(rxControl[Rxc_hmaxSd], "hmaxSd"));
+            } else if (hmax0 == 0.0){
+              ind->HMAX = hmax1;
+            } else {
+              ind->HMAX = hmax0;
+            }
+            ind = &(rx->subjects[nsub]);
+            setupRxInd(ind, 1);
+          }
+          // Setup the pointers.
+          ind->id               = nsub+1;
+          ind->idReal           = id[i];
+          ind->all_times        = &_globals.gall_times[i];
+          ind->dv = &_globals.gdv[i];
+          ind->limit = &_globals.glimit[i];
+          ind->cens = &_globals.gcens[i];
+          ind->evid           = &_globals.gevid[i];
+          ind->idose          = &_globals.gidose[i];
+          ind->dose           = &_globals.gamt[i];
+          ind->ii             = &_globals.gii[i];
+          ind->infPair        = _globals.ginfPair ? &_globals.ginfPair[i] : NULL;
+          ind->pkSkip         = _globals.gpkSkip ? &_globals.gpkSkip[i] : NULL;
+          lasti = i;
+
+          hmax1m=0.0;
+          hmax1s=0.0;
+          hmax1n=0.0;
+          hmax1 = 0.0;
+          lastId=id[i];
+          j=i;
+          ind->ndoses=0;
+          ind->nevid2=0;
+          ndoses=0;
+          nobs=0;
+          tlast = NA_REAL;
+        }
+        // Create index
+        _globals.gii[i] = datIi[i];
+        _globals.gamt[i] = amt[i];
+
+        if (isDose(_globals.gevid[i])){
+          _globals.gidose[j] = i-lasti;
+          ind->ndoses++;
+          ndoses++; nall++; j++;
+          if (_globals.gevid[i] == 3) {
+            tlast = NA_REAL;
+          }
+        } else {
+          nobs++; nobst++; nall++;
+          if (_globals.gevid[i] == 2) {
+            ind->nevid2++;
+            rx->hasEvid2 = 1;
+          } else if (_globals.gevid[i] == 8) {
+            // a hidden knot is no observation either
+            ind->nevid2++;
+          }
+          if (_globals.gevid[i] == 0) nobs2t++;
+          if (isHiddenEvid(_globals.gevid[i])) nevid9++;
+          if (_globals.gevid[i] == 8) nknot++;
+          if (!ISNA(tlast)) {
+            tmp = time0[i]-tlast;
+            if (tmp < 0){
+              rxSolveFree();
+              stop(_("data must be ordered by 'ID' and 'TIME' variables"));
+            }
+            hmax1n++;
+            hmax1mo = hmax1m;
+            hmax1m += (tmp-hmax1m)/hmax1n;
+            hmax1s += (tmp-hmax1m)*(tmp-hmax1mo);
+            hmax2n++;
+            hmax2mo = hmax2m;
+            hmax2m += (tmp-hmax2m)/hmax2n;
+            hmax2s += (tmp-hmax2m)*(tmp-hmax2mo);
+            if (tmp > hmax1){
+              hmax1 = tmp;
+              if (hmax1 > hmax2){
+                hmax2=hmax1;
+              }
+            }
+          }
+        }
+        tlast = time0[i];
+      }
+      if (doMean){
+        hmax2  = hmax2m;
+      }
+      rx->nobs = nobst;
+      rx->nobs2 = nobs2t;
+      rx->nall = nall;
+      rx->nevid9 = nevid9;
+      rx->nknot = nknot;
+      // Finalize the prior individual
+      ind->n_all_times    = ndoses+nobs;
+      ind->n_all_times_orig = ind->n_all_times;
+      if (rx->mixnum) rxSetIndMix(ind, nsub, mixUnif);
+      if (ind->n_all_times > rx->maxAllTimes) rx->maxAllTimes= ind->n_all_times;
+      ind->cov_ptr = &(_globals.gcov[curcovi]);
+      for (ii = 0; ii < ncov; ii++){
+        double *cur = covDp[ii];
+        std::copy(cur+lasti, cur+lasti+ind->n_all_times,
+                  _globals.gcov+curcovi);
+        curcovi += ind->n_all_times;
+      }
+      if (doMean || hmax0 == 0.0){
+        op->hmax2 = hmax2;
+      } else {
+        op->hmax2 = hmax0;
+      }
+      nsub++;
+      rx->nsub= nsub;
+      if (doMean){
+        ind->HMAX = rxHmaxMean(hmax1m, hmax1s, hmax1n,
+                               asDouble(rxControl[Rxc_hmaxSd], "hmaxSd"));
+      } else if (hmax0 == 0.0){
+        ind->HMAX = hmax1;
+      } else {
+        ind->HMAX = hmax0;
+      }
     }
   }
 }
@@ -4008,6 +5113,21 @@ static inline void rxSolve_parOrder(const RObject &obj, const List &rxControl,
         }
       }
     }
+    // Next, check event-derived covariates before falling back to model ini
+    // defaults so dual lhs/param variables like `Nominal = Nominal` use the
+    // data value when it is present.
+    if (!curPar){
+      for (j = 1; j < mvCov1N.size(); j++) {
+        const char *p1 = CHAR(mvCov1N[j]);
+        if (!strcmp(p0, p1)){
+          // These are setup once and don't need to be updated
+          _globals.gParPos[i] = 0; // These are set at run-time and "dont" matter.
+          curPar = true;
+          rxSolveDat->eGparPos[i]=_globals.gParPos[i];
+          break;
+        }
+      }
+    }
     // last, check for $ini values
     if (!curPar){
       for (j = mvIniN.size(); j--;){
@@ -4017,17 +5137,6 @@ static inline void rxSolve_parOrder(const RObject &obj, const List &rxControl,
           _globals.gParPos[i] = -j - 1;
           rxSolveDat->eGparPos[i]=_globals.gParPos[i];
           break;
-        }
-      }
-    }
-    if (!curPar){
-      for (j = 1; j < mvCov1N.size(); j++) {
-        const char *p1 = CHAR(mvCov1N[j]);
-        if (!strcmp(p0, p1)){
-          // These are setup once and don't need to be updated
-          _globals.gParPos[i] = 0; // These are set at run-time and "dont" matter.
-          curPar = true;
-          rxSolveDat->eGparPos[i]=_globals.gParPos[i];
         }
       }
     }
@@ -4049,6 +5158,246 @@ static inline void rxSolve_parOrder(const RObject &obj, const List &rxControl,
 }
 
 static inline void rxSolve_assignGpars(rxSolve_t* rxSolveDat);
+
+// ---- external parameter-block loader hooks --------------------------------
+// Packages (e.g. rxode2nn) register a callback that runs once per solve, after
+// gpars is populated from the supplied parameters and before integration, so
+// they can overwrite reserved par_ptr slots with externally-owned values (e.g.
+// neural-network weights held in a torch module).  This runs single-threaded,
+// before the parallel per-subject solve, so callbacks writing gpars are safe.
+// gpars is laid out npars per column with `ncols` columns (>= nsub*nsim and
+// nPopPar); a population-constant block is written to every column.
+typedef void (*t_rxParLoader)(rx_solve* rx, double* gpars, int npars, int ncols);
+#define RX_MAX_PAR_LOADERS 32
+static t_rxParLoader _rxParLoaders[RX_MAX_PAR_LOADERS] = {NULL};
+// Each loader has a NAME (empty = "unnamed").  A model that needs a specific
+// injector flags its name (via rxParLoader() -> _rxActiveParLoader, below); a
+// NAMED loader then runs ONLY for a model that flags it, so an injector (e.g. a
+// package's neural-network weight loader) cannot clobber an unrelated model's
+// par_ptr just because it happens to be registered.  Unnamed loaders keep the
+// legacy "run on every solve" behavior for backward compatibility.
+static std::string _rxParLoaderNames[RX_MAX_PAR_LOADERS];
+static int _rxNParLoaders = 0;
+static std::string _rxActiveParLoader;  // set per-solve; empty = no named loader
+
+static void rxRegisterParLoaderImpl(const char* name, t_rxParLoader cb) {
+  if (cb == NULL) return;
+  for (int i = 0; i < _rxNParLoaders; ++i) if (_rxParLoaders[i] == cb) return;
+  if (_rxNParLoaders < RX_MAX_PAR_LOADERS) {
+    _rxParLoaderNames[_rxNParLoaders] = (name == NULL) ? std::string() : std::string(name);
+    _rxParLoaders[_rxNParLoaders++] = cb;
+  } else {
+    // registration usually happens during a package's .onLoad(); fail loudly so a
+    // dropped injector is diagnosable instead of silently never running.
+    Rf_warning("rxode2: parameter-loader registry full (max %d); loader '%s' not registered",
+               RX_MAX_PAR_LOADERS, (name == NULL) ? "<unnamed>" : name);
+  }
+}
+
+extern "C" void rxRegisterParLoader(t_rxParLoader cb) {
+  rxRegisterParLoaderImpl(NULL, cb);            // unnamed -> legacy always-run
+}
+
+// Register a loader under a "<package>:<function>" name so it dispatches only to
+// models that flag that name.
+extern "C" void rxRegisterParLoaderNamed(const char* name, t_rxParLoader cb) {
+  rxRegisterParLoaderImpl(name, cb);
+}
+
+extern "C" void rxRemoveParLoader(t_rxParLoader cb) {
+  for (int i = 0; i < _rxNParLoaders; ++i) {
+    if (_rxParLoaders[i] == cb) {
+      for (int k = i; k < _rxNParLoaders - 1; ++k) {
+        _rxParLoaders[k] = _rxParLoaders[k + 1];
+        _rxParLoaderNames[k] = _rxParLoaderNames[k + 1];
+      }
+      _rxParLoaders[--_rxNParLoaders] = NULL;
+      _rxParLoaderNames[_rxNParLoaders].clear();
+      return;
+    }
+  }
+}
+
+// The active injector flag for the next solve: set from the model about to be
+// solved (rxSetActiveParLoader), READ by rxCallParLoaders to dispatch to the
+// matching named loader, and cleared afterward by the R on-exit hook
+// .rxClearActiveParLoaderC() -- rxCallParLoaders does not clear it itself.
+extern "C" SEXP _rxode2_rxSetActiveParLoader(SEXP nameSxp) {
+  _rxActiveParLoader = (TYPEOF(nameSxp) == STRSXP && Rf_length(nameSxp) >= 1) ?
+    std::string(CHAR(STRING_ELT(nameSxp, 0))) : std::string();
+  return R_NilValue;
+}
+extern "C" SEXP _rxode2_rxClearActiveParLoader(void) {
+  _rxActiveParLoader.clear();
+  return R_NilValue;
+}
+
+// ---- dydt forcing hooks ---------------------------------------------------
+// Packages register a callback the generated model invokes at the end of its RHS
+// (dydt) evaluation, so they can ADD forcing to designated state derivatives --
+// e.g. the b_j = dR/dg * dg/dw_j term for NN-weight forward-sensitivity
+// (variational) states, on top of the J*s_j part rxode2's sensitivity codegen
+// already produces.  Called inside the per-subject solve (possibly parallel), so
+// callbacks must be thread-safe (read-only shared state, write only their own
+// dydt slots).  neq[0]=nstate, neq[1]=cSub.
+typedef void (*t_rxDydtForce)(int *neq, double t, double *y, double *dydt);
+#define RX_MAX_DYDT_FORCE 32
+static t_rxDydtForce _rxDydtForce[RX_MAX_DYDT_FORCE] = {NULL};
+static int _rxNDydtForce = 0;
+
+extern "C" void rxRegisterDydtForce(t_rxDydtForce cb) {
+  if (cb == NULL) return;
+  for (int i = 0; i < _rxNDydtForce; ++i) if (_rxDydtForce[i] == cb) return;
+  if (_rxNDydtForce < RX_MAX_DYDT_FORCE) _rxDydtForce[_rxNDydtForce++] = cb;
+}
+
+extern "C" void rxRemoveDydtForce(t_rxDydtForce cb) {
+  for (int i = 0; i < _rxNDydtForce; ++i) {
+    if (_rxDydtForce[i] == cb) {
+      for (int k = i; k < _rxNDydtForce - 1; ++k) _rxDydtForce[k] = _rxDydtForce[k + 1];
+      _rxDydtForce[--_rxNDydtForce] = NULL;
+      return;
+    }
+  }
+}
+
+// Invoked by generated model dydt (resolved via R_GetCCallable at model load).
+// Fast no-op when nothing is registered -- one branch per RHS evaluation.
+extern "C" void rxCallDydtForce(int *neq, double t, double *y, double *dydt) {
+  for (int i = 0; i < _rxNDydtForce; ++i) _rxDydtForce[i](neq, t, y, dydt);
+}
+
+// Parameters injected by the loaders on the most recent solve, captured by
+// diffing the population parameter block (column 0) before/after the loaders.
+// Lets the solved object save/restore externally-injected values (e.g. trained
+// neural-network weights) so re-solving from the object reproduces them even in
+// a session where the injecting package's buffer is gone.
+static std::vector<int> _rxInjIdx;
+static std::vector<double> _rxInjVal;
+
+// Forced parameters for the current solve: (0-based param index, value) pairs set
+// from R (a model/ui's `forcedPars` slot resolved to solve-param indices) and
+// injected into EVERY gpars column before the registered par-loaders run.  This
+// is the first-class, plugin-free forcing mechanism: a ui carries its forced
+// values (e.g. trained NN weights) and every solve of that ui reproduces them, so
+// a fit is self-contained and portable.  Population-constant (same value in every
+// column), single-threaded (set before the parallel per-subject solve).
+static std::vector<int> _rxForcedIdx;
+static std::vector<double> _rxForcedVal;
+
+extern "C" SEXP _rxode2_rxSetForcedPars(SEXP idx, SEXP val) {
+  int n = Rf_length(idx);
+  if (Rf_length(val) != n) Rf_error("forcedPars idx/val length mismatch");
+  rxProtect rx_protect;
+  SEXP idxI = rx_protect.protect(Rf_coerceVector(idx, INTSXP));
+  SEXP valR = rx_protect.protect(Rf_coerceVector(val, REALSXP));
+  _rxForcedIdx.assign(INTEGER(idxI), INTEGER(idxI) + n);
+  _rxForcedVal.assign(REAL(valR), REAL(valR) + n);
+  return R_NilValue;
+}
+
+extern "C" SEXP _rxode2_rxClearForcedPars(void) {
+  _rxForcedIdx.clear();
+  _rxForcedVal.clear();
+  return R_NilValue;
+}
+
+static inline void rxCallParLoaders(rx_solve* rx, int npars, int ncols) {
+  _rxInjIdx.clear();
+  _rxInjVal.clear();
+  if (_rxNParLoaders == 0 && _rxForcedIdx.empty()) return;
+  static std::vector<double> pre;
+  pre.assign(&_globals.gpars[0], &_globals.gpars[0] + npars);   // subject 0 block
+  // ui-driven forced parameters: write to every subject/sim column first, so a
+  // registered loader (if any) can still override them.
+  for (size_t f = 0; f < _rxForcedIdx.size(); ++f) {
+    int k = _rxForcedIdx[f];
+    if (k < 0 || k >= npars) continue;
+    double v = _rxForcedVal[f];
+    for (int c = 0; c < ncols; ++c) _globals.gpars[(size_t)c * npars + k] = v;
+  }
+  for (int i = 0; i < _rxNParLoaders; ++i) {
+    // an UNNAMED loader runs always (legacy); a NAMED loader runs only when the
+    // model being solved flags its name (_rxActiveParLoader), so a package's
+    // injector never touches an unrelated model's par_ptr.
+    if (!_rxParLoaderNames[i].empty() && _rxParLoaderNames[i] != _rxActiveParLoader) continue;
+    _rxParLoaders[i](rx, &_globals.gpars[0], npars, ncols);
+  }
+  for (int k = 0; k < npars; ++k) {
+    if (_globals.gpars[k] != pre[k]) {
+      _rxInjIdx.push_back(k);
+      _rxInjVal.push_back(_globals.gpars[k]);
+    }
+  }
+}
+
+// Injected params from the last solve as list(index0 = <0-based par indices>,
+// value = <injected values>); the R layer maps indices to parameter names.
+extern "C" SEXP _rxode2_rxGetInjectedPars(void) {
+  int n = (int) _rxInjIdx.size();
+  rxProtect rx_protect;
+  SEXP idx = rx_protect.protect(Rf_allocVector(INTSXP, n));
+  SEXP val = rx_protect.protect(Rf_allocVector(REALSXP, n));
+  for (int i = 0; i < n; ++i) {
+    INTEGER(idx)[i] = _rxInjIdx[i];
+    REAL(val)[i] = _rxInjVal[i];
+  }
+  SEXP ret = rx_protect.protect(Rf_allocVector(VECSXP, 2));
+  SET_VECTOR_ELT(ret, 0, idx);
+  SET_VECTOR_ELT(ret, 1, val);
+  return ret;
+}
+
+// Test-only par loaders (tests/testthat/test-par-loader.R): confirm that
+// multiple registered loaders are applied in series -- A writes a sentinel to
+// parameter 0, B to parameter 1.
+extern "C" void rxTestParLoaderA(rx_solve* rx, double* gpars, int npars, int ncols) {
+  (void) rx;
+  if (npars < 1) return;
+  for (int c = 0; c < ncols; ++c) gpars[(size_t) c * npars + 0] = 111.0;
+}
+extern "C" void rxTestParLoaderB(rx_solve* rx, double* gpars, int npars, int ncols) {
+  (void) rx;
+  if (npars < 2) return;
+  for (int c = 0; c < ncols; ++c) gpars[(size_t) c * npars + 1] = 222.0;
+}
+extern "C" SEXP _rxode2_rxRegisterTestParLoaders(SEXP nSEXP) {
+  int n = Rf_asInteger(nSEXP);
+  rxRegisterParLoader(rxTestParLoaderA);
+  if (n >= 2) rxRegisterParLoader(rxTestParLoaderB);
+  return R_NilValue;
+}
+extern "C" SEXP _rxode2_rxRemoveTestParLoaders(void) {
+  rxRemoveParLoader(rxTestParLoaderA);
+  rxRemoveParLoader(rxTestParLoaderB);
+  return R_NilValue;
+}
+
+// Test-only NAMED par loader: registers loader A under a caller-supplied name so
+// tests can confirm it fires only for a model that flags that name.
+extern "C" SEXP _rxode2_rxRegisterTestParLoaderNamed(SEXP nameSEXP) {
+  if (TYPEOF(nameSEXP) != STRSXP || Rf_length(nameSEXP) < 1) {
+    (Rf_error)("'name' must be a character string");
+  }
+  rxRegisterParLoaderNamed(CHAR(STRING_ELT(nameSEXP, 0)), rxTestParLoaderA);
+  return R_NilValue;
+}
+
+// Test-only dydt forcing (tests/testthat/test-par-loader.R): adds a constant to
+// the first state's derivative, so a solve shows the forcing was integrated.
+extern "C" void rxTestDydtForce(int *neq, double t, double *y, double *dydt) {
+  (void) t; (void) y;
+  if (neq == NULL || neq[0] < 1) return;   // guard: runs for every model solved
+  dydt[0] += 1.0;
+}
+extern "C" SEXP _rxode2_rxRegisterTestDydtForce(void) {
+  rxRegisterDydtForce(rxTestDydtForce);
+  return R_NilValue;
+}
+extern "C" SEXP _rxode2_rxRemoveTestDydtForce(void) {
+  rxRemoveDydtForce(rxTestDydtForce);
+  return R_NilValue;
+}
 
 static inline void rxSolve_resample(const RObject &obj,
                                     const List &rxControl,
@@ -4197,6 +5546,82 @@ static inline void rxSolve_resample(const RObject &obj,
   }
 }
 
+// Which columns of the params data frame a model parameter reads (gParPos)
+static inline std::vector<bool> rxSolve_parDfUsed(rxSolve_t* rxSolveDat) {
+  rx_solve* rx = getRxSolve_();
+  unsigned int n = rxSolveDat->parDf.size();
+  std::vector<bool> used(n, false);
+  for (int k = 0; k < rx->npars; ++k) {
+    int pos = _globals.gParPos[k];
+    if (pos > 0 && pos <= (int)n) used[pos - 1] = true;
+  }
+  return used;
+}
+
+// Column j of the params data frame as numbers, in `out`.  A column no model
+// parameter reads (an id, a label) is converted only when it is numeric, and
+// is otherwise left NA, unread (returns false); a character or factor column
+// a parameter reads is converted as etTrans() converts a data column
+// (rxStrCmpParamCol()).
+static inline bool rxSolve_parDfCol(rxSolve_t* rxSolveDat, const std::vector<bool>& used,
+                                    int j, NumericVector& out) {
+  RObject col = rxSolveDat->parDf[j];
+  if (!used[j] && !Rf_isNumeric(col) && !Rf_isLogical(col)) return false;
+  if (TYPEOF(col) == STRSXP || Rf_isFactor(col)) {
+    CharacterVector parNames = rxSolveDat->parDf.names();
+    col = rxStrCmpParamCol(col, rxSolveDat->mv, as<std::string>(parNames[j]));
+  }
+  out = NumericVector(col);
+  return true;
+}
+
+// A one-row parameter data frame or matrix is one set for every subject, as a
+// named vector is, and is expanded here to a row per subject.
+static inline void rxSolve_parOneRow(rxSolve_t* rxSolveDat, uint32_t nsub) {
+  if (rxSolveDat->parType == 1 || rxSolveDat->nPopPar != 1 || nsub <= 1) return;
+  int ncol = rxSolveDat->nmP.size();
+  NumericMatrix mat(nsub, ncol);
+  std::vector<bool> used;
+  if (rxSolveDat->parType == 2) used = rxSolve_parDfUsed(rxSolveDat);
+  for (int j = 0; j < ncol; ++j) {
+    double v;
+    if (rxSolveDat->parType == 2) {
+      NumericVector col;
+      v = rxSolve_parDfCol(rxSolveDat, used, j, col) ? col[0] : NA_REAL;
+    } else {
+      v = rxSolveDat->parMat(0, j);
+    }
+    std::fill_n(mat.begin() + (R_xlen_t)j * nsub, nsub, v);
+  }
+  rxSolveDat->parMat = mat;
+  rxSolveDat->parType = 3;
+  rxSolveDat->nPopPar = nsub;
+}
+
+// A one-row parameter data frame or matrix with an id column names one
+// subject, so with more subjects in the data it is an error, whatever the
+// solve would do with the row (recycle it, or simulate from it).  Run on the
+// user's params, before simulation replaces them; the subjects are etTrans()'s
+// labels.  The message is .rxParamsOneRowIdMsg()'s, which a chunked solve also
+// uses.
+static inline void rxSolve_parOneRowIdCheck(rxSolve_t* rxSolveDat) {
+  SEXP p = rxSolveDat->par1;
+  bool oneRow = false;
+  if (Rf_inherits(p, "data.frame")) {
+    oneRow = Rf_length(p) > 0 && Rf_length(VECTOR_ELT(p, 0)) == 1;
+  } else if (Rf_isMatrix(p)) {
+    oneRow = Rf_nrows(p) == 1;
+  }
+  if (!oneRow || rxSolveDat->idLevels.size() <= 1) return;
+  Function msgFn = getRxFn(".rxParamsOneRowIdMsg");
+  RObject msg = msgFn(rxSolveDat->par1, rxSolveDat->idLevels);
+  if (!Rf_isNull(msg)) {
+    std::string m = as<std::string>(msg);
+    rxSolveFree();
+    stop(m);
+  }
+}
+
 // Normalizes parameter input
 // It will also load the parameters into the solving data structure.
 static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxControl,
@@ -4211,6 +5636,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
   rx_solving_options* op = rx->op;
   rx_solving_options_ind* ind;
   int64_t curEvent = 0, curSolve=0; int curIdx = 0;
+  rxSolve_parOneRow(rxSolveDat, rx->nsub);
   switch(rxSolveDat->parType) {
   case 1: // NumericVector
     {
@@ -4232,12 +5658,19 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
       rx->nsim=1;
     }
   case 2: // DataFrame
-    // Convert to NumericMatrix
+    // Convert to NumericMatrix, column by column (rxSolve_parDfCol())
     {
       unsigned int parDfi = rxSolveDat->parDf.size();
       rxSolveDat->parMat = NumericMatrix(rxSolveDat->nPopPar,parDfi);
+      std::vector<bool> used = rxSolve_parDfUsed(rxSolveDat);
       while (parDfi--){
-        rxSolveDat->parMat(_,parDfi)=NumericVector(rxSolveDat->parDf[parDfi]);
+        NumericVector col;
+        if (rxSolve_parDfCol(rxSolveDat, used, parDfi, col)) {
+          rxSolveDat->parMat(_,parDfi) = col;
+        } else {
+          NumericMatrix::Column unread = rxSolveDat->parMat(_, parDfi);
+          std::fill(unread.begin(), unread.end(), NA_REAL);
+        }
       }
       rxSolveDat->parMat.attr("dimnames") = List::create(R_NilValue, rxSolveDat->parDf.names());
     }
@@ -4245,6 +5678,11 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
     {
       gparsCovSetup(rx->npars, rxSolveDat->nPopPar, rx->nsub*rx->nsim, ev1, rx);
       rxSolve_assignGpars(rxSolveDat);
+      {
+        int _ncols = (int)(rx->nsub*rx->nsim);
+        if (rxSolveDat->nPopPar > _ncols) _ncols = rxSolveDat->nPopPar;
+        rxCallParLoaders(rx, rx->npars, _ncols);
+      }
       rxSolve_resample(obj, rxControl, specParams, extraArgs, pars, ev1,
                        inits, rxSolveDat);
       curSolve=0;
@@ -4264,11 +5702,24 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
           stop(_("ran out of memory"));
         }
         _globals.gamtS= _globals.gall_timesS + (rx->nsim-1)*rx->nall;
-        for (uint32_t iii = 0; iii < rx->nsim-1; ++iii) {
-          std::copy(_globals.gamt, _globals.gamt + rx->nall,
-                    _globals.gamtS + iii*rx->nall);
-          std::copy(_globals.gall_times, _globals.gall_times + rx->nall,
-                    _globals.gall_timesS + iii*rx->nall);
+        // _globals.gamt / _globals.gall_times hold _globals.gall_times_n base
+        // events.  When subjects share one event table that is a single
+        // subject's worth and rx->nall is the full per-sim total
+        // (== nsub * gall_times_n); copying rx->nall from the gall_times_n-sized
+        // source is a heap over-read.  Tile the base table across each
+        // replicate's nall-sized block so every subject sub-region is filled and
+        // the source is never read past its gall_times_n elements.
+        int64_t _base = (int64_t)_globals.gall_times_n;
+        if (_base > 0) {
+          for (uint32_t iii = 0; iii < rx->nsim-1; ++iii) {
+            for (int64_t _off = 0; _off < (int64_t)rx->nall; _off += _base) {
+              int64_t _len = ((int64_t)rx->nall - _off < _base) ? ((int64_t)rx->nall - _off) : _base;
+              std::copy(_globals.gamt, _globals.gamt + _len,
+                        _globals.gamtS + (int64_t)iii*rx->nall + _off);
+              std::copy(_globals.gall_times, _globals.gall_times + _len,
+                        _globals.gall_timesS + (int64_t)iii*rx->nall + _off);
+            }
+          }
         }
       }
       for (unsigned int simNum = rx->nsim; simNum--;) {
@@ -4295,6 +5746,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
               ind->cov_ptr = indS.cov_ptr;
             }
             ind->n_all_times =indS.n_all_times;
+            ind->n_all_times_orig = indS.n_all_times;
             if (rx->mixnum) {
               // In this case, it is a new individual so rxunifmix is
               // always selected.
@@ -4311,7 +5763,12 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
             ind->ndoses = indS.ndoses;
             ind->nevid2 = indS.nevid2;
             ind->ii   = &(indS.ii[0]);
+            ind->infPair = indS.infPair;
+            ind->pkSkip = indS.pkSkip;
             ind->evid =&(indS.evid[0]);
+            ind->dv    = &(indS.dv[0]);
+            ind->limit = &(indS.limit[0]);
+            ind->cens  = &(indS.cens[0]);
             ind->id=id+1;
             ind->idReal = indS.idReal;
             if (rx->needSort == 0) {
@@ -4334,7 +5791,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
           ind->simIni = &_globals.gIndSim[curSimIni];
           curSimIni += nIndSim;
           curSolve += (int64_t)(op->neq)*ind->n_all_times;
-          ind->ix = &_globals.gix[curIdx];
+          if (!op->indOwnAlloc) ind->ix = &_globals.gix[curIdx];
           curEvent += eLen;
           curIdx += ind->n_all_times;
           if (rx->sample) {
@@ -4363,6 +5820,13 @@ LogicalVector rxSolveSetup() {
   return _globals.alloc;
 }
 
+// The same flag from C: is there a global solve to read, or has `rxSolveFree()`
+// already released the per-individual arrays?  `rx->subjects` stays non-NULL
+// across a free (it points at `inds_global`, which only `rxFreeLast()` releases)
+// and `rx->nsub` keeps its stale value, so a pointer check alone is not enough
+// to tell a live solve from a freed one.
+extern "C" int rxSolveIsSetup(void) { return _globals.alloc ? 1 : 0; }
+
 // This creates the final dataset from the currently solved object.
 // Most of this is a direct C call, but some items are done in C++
 List rxSolve_df(const RObject &obj,
@@ -4379,6 +5843,10 @@ List rxSolve_df(const RObject &obj,
     rxSolveFree();
     stop(_("aborted solve"));
   }
+  // An accessor handed a bad index from inside a parallel region could not
+  // raise there (see rxApiError in rx2api.c); this is the serial boundary that
+  // reports it, so the bug surfaces rather than being swallowed.
+  rxApiErrRaise();
   int doDose = 0;
   if (rxSolveDat->addDosing.isNull()){
     // only evid=0
@@ -4397,33 +5865,44 @@ List rxSolve_df(const RObject &obj,
   int doTBS = (rx->matrix == 3);
   if (doTBS) rx->matrix=2;
   if (rx->matrix == 4 || rx->matrix == 5) rx->matrix=2;
-  List dat = rxode2_df(doDose, doTBS);
+
+  // Determine:
+  // 1. Is the id=1, 2, 3 etc
+  // 2. What are the id levels as integers (filled in lvlI)
+  bool isIdentity = false;
+  std::vector<int> lvlI;
+  if (rxSolveDat->convertInt && rx->nsub > 1) {
+    CharacterVector lvlC = rxSolveDat->idLevels;
+    lvlI.resize(lvlC.size());
+    isIdentity = true;
+    for (int j = (int)lvlC.size(); j--;) {
+      lvlI[j] = atoi(CHAR(lvlC[j]));
+      if (lvlI[j] != j + 1) isIdentity = false;
+    }
+  }
+
+  List dat = rxode2_df(doDose, doTBS, lvlI, isIdentity);
   if (rx->whileexit) {
     warning(_("exited from at least one while after %d iterations, (increase with `rxSolve(..., maxwhile=#)`)"), rx->maxwhile);
+  }
+  if (nPastEvid_global > 0) {
+    warning(_("evid_() was called %d time(s) with time <= current solve time; those calls were ignored"), nPastEvid_global);
   }
   if (!rxIsNull(rxControl[Rxc_drop])) {
     dat = rxDrop(asCv(rxControl[Rxc_drop], "drop"), dat, asBool(rxControl[Rxc_warnDrop], "warnDrop"));
   }
-  if (rxSolveDat->idFactor && rxSolveDat->labelID && rx->nsub > 1){
-    IntegerVector did = as<IntegerVector>(dat["id"]);
-    did.attr("levels") = rxSolveDat->idLevels;
-    did.attr("class") = "factor";
-  }
-  if (rxSolveDat->convertInt && rx->nsub > 1){
-    CharacterVector lvlC = rxSolveDat->idLevels;
-    IntegerVector lvlI(lvlC.size());
-    for (int j = lvlC.size(); j--;) {
-      lvlI[j] = atoi(CHAR(lvlC[j]));
+  // Apply factor conversion only for character (non-integer) IDs.
+  if (rxSolveDat->idFactor && rxSolveDat->labelID && rx->nsub > 1
+      && !rxSolveDat->convertInt) {
+    SEXP didS = dat["id"];
+    if (!ALTREP(didS)) {
+      RObject did = didS;
+      did.attr("levels") = rxSolveDat->idLevels;
+      did.attr("class") = "factor";
     }
-    IntegerVector did = as<IntegerVector>(dat["id"]);
-    IntegerVector did2(did.size());
-    for (int j = did.size(); j--;){
-      did2[j] = lvlI[did[j]-1];
-    }
-    dat["id"] = did2;
   }
   if (rxSolveDat->addTimeUnits){
-    NumericVector tmpN = as<NumericVector>(dat["time"]);
+    RObject tmpN = dat["time"];
     tmpN.attr("class") = "units";
     tmpN.attr("units") = rxSolveDat->timeUnitsU;
   }
@@ -4431,11 +5910,11 @@ List rxSolve_df(const RObject &obj,
   if (rx->add_cov && (rx->matrix == 2 || rx->matrix == 0) &&
       rxSolveDat->covUnits.hasAttribute("names")){
     CharacterVector nmC = rxSolveDat->covUnits.attr("names");
-    NumericVector tmpN, tmpN2;
+    NumericVector tmpN;
     for (unsigned int i = nmC.size(); i--;){
       tmpN = rxSolveDat->covUnits[i];
       if (rxIs(tmpN, "units")){
-        tmpN2 = dat[as<std::string>(nmC[i])];
+        RObject tmpN2 = dat[as<std::string>(nmC[i])];
         tmpN2.attr("class") = "units";
         tmpN2.attr("units") = tmpN.attr("units");
       }
@@ -4528,8 +6007,23 @@ static inline Environment rxSolve_genenv(const RObject &object,
   e[".slvr.counter"] = slvr_counterIv;
   e[".dadt.counter"] = dadt_counterIv;
   e[".jac.counter"] = jac_counterIv;
+  // the parameters par-loaders injected into this solve, if any, kept now:
+  // their buffer holds the last solve's, so a later solve would overwrite them
+  if (!_rxInjIdx.empty()) {
+    RObject injectedPars = _rxode2_rxGetInjectedPars();
+    e[".injectedPars.raw"] = injectedPars;
+  }
   e[".nsub"] = (int)rx->nsub;
   e[".nsim"] = (int)rx->nsim;
+  {
+    NumericVector _tf((int)rx->nsub);
+    CharacterVector _idLevels = as<CharacterVector>(rxSolveDat->idLevels);
+    for (uint32_t _si = 0; _si < rx->nsub; _si++) {
+      _tf[_si] = rx->subjects[_si].tolFactor;
+    }
+    if ((int)_idLevels.size() == (int)rx->nsub) _tf.names() = _idLevels;
+    e[".tolFactor"] = _tf;
+  }
   e[".init.dat"] = rxSolveDat->initsC;
   CharacterVector units = CharacterVector::create(amountUnits[0], timeUnits[0]);
   units.names() = CharacterVector::create("dosing","time");
@@ -4612,6 +6106,58 @@ int getNRows(RObject obj){
 
 rxSolve_t rxSolveDatLast;
 
+static inline List rxSolveDatState(rxSolve_t* rxSolveDat){
+  return List::create(
+    _["addDosing"] = rxSolveDat->addDosing,
+    _["timeUnitsU"] = rxSolveDat->timeUnitsU,
+    _["addTimeUnits"] = rxSolveDat->addTimeUnits,
+    _["covUnits"] = rxSolveDat->covUnits,
+    _["par1"] = rxSolveDat->par1,
+    _["usePar1"] = rxSolveDat->usePar1,
+    _["par1cbind"] = rxSolveDat->par1cbind,
+    _["swappedEvents"] = rxSolveDat->swappedEvents,
+    _["par1ini"] = rxSolveDat->par1ini,
+    _["initsC"] = rxSolveDat->initsC,
+    _["nSize"] = rxSolveDat->nSize,
+    _["fromIni"] = rxSolveDat->fromIni,
+    _["eGparPos"] = rxSolveDat->eGparPos,
+    _["idFactor"] = rxSolveDat->idFactor,
+    _["labelID"] = rxSolveDat->labelID,
+    _["idLevels"] = rxSolveDat->idLevels,
+    _["convertInt"] = rxSolveDat->convertInt
+  );
+}
+
+static inline void rxSolveDatLoadState(rxSolve_t* rxSolveDat, SEXP stateSEXP){
+  if (Rf_isNull(stateSEXP)) return;
+  List state(stateSEXP);
+  SEXP tmp = state["addDosing"];
+  rxSolveDat->addDosing = as<Nullable<LogicalVector>>(tmp);
+  tmp = state["timeUnitsU"];
+  if (!Rf_isNull(tmp)) rxSolveDat->timeUnitsU = tmp;
+  rxSolveDat->addTimeUnits = as<bool>(state["addTimeUnits"]);
+  tmp = state["covUnits"];
+  if (!Rf_isNull(tmp)) rxSolveDat->covUnits = as<List>(tmp);
+  tmp = state["par1"];
+  if (!Rf_isNull(tmp)) rxSolveDat->par1 = tmp;
+  rxSolveDat->usePar1 = as<bool>(state["usePar1"]);
+  rxSolveDat->par1cbind = as<bool>(state["par1cbind"]);
+  rxSolveDat->swappedEvents = as<bool>(state["swappedEvents"]);
+  tmp = state["par1ini"];
+  if (!Rf_isNull(tmp)) rxSolveDat->par1ini = tmp;
+  tmp = state["initsC"];
+  if (!Rf_isNull(tmp)) rxSolveDat->initsC = as<NumericVector>(tmp);
+  rxSolveDat->nSize = as<uint32_t>(state["nSize"]);
+  rxSolveDat->fromIni = as<bool>(state["fromIni"]);
+  tmp = state["eGparPos"];
+  if (!Rf_isNull(tmp)) rxSolveDat->eGparPos = as<IntegerVector>(tmp);
+  rxSolveDat->idFactor = as<bool>(state["idFactor"]);
+  rxSolveDat->labelID = as<bool>(state["labelID"]);
+  tmp = state["idLevels"];
+  if (!Rf_isNull(tmp)) rxSolveDat->idLevels = as<CharacterVector>(tmp);
+  rxSolveDat->convertInt = as<bool>(state["convertInt"]);
+}
+
 static inline void rxSolveSaveRxSolve(rxSolve_t* rxSolveDat){
   rxSolveDatLast = rxSolveDat[0];
   // Assigned as a precaution against R's gc()
@@ -4680,6 +6226,38 @@ static inline SEXP rxSolve_finalize(const RObject &obj,
   if (_globals.zeroSigma) {
     cliAlert(_("zero 'sigma', no unexplained variability"));
   }
+  {
+    SEXP _tfSEXP = rxControl[Rxc_tolFactor];
+    if (!Rf_isNull(_tfSEXP) && (TYPEOF(_tfSEXP) == REALSXP || TYPEOF(_tfSEXP) == INTSXP)) {
+      NumericVector _tf = as<NumericVector>(_tfSEXP);
+      SEXP _tfNames = Rf_getAttrib(_tfSEXP, R_NamesSymbol);
+      bool _named = (!Rf_isNull(_tfNames)) && (Rf_length(_tfNames) == (int)_tf.size());
+      if (_named) {
+        CharacterVector _ids = as<CharacterVector>(rxSolveDat->idLevels);
+        CharacterVector _tfn = as<CharacterVector>(_tfNames);
+        int _tnSize = (int)_tfn.size();
+        for (uint32_t _si = 0; _si < rx->nsub; _si++) {
+          std::string _sid = as<std::string>(_ids[_si]);
+          for (int _j = 0; _j < _tnSize; _j++) {
+            if (as<std::string>(_tfn[_j]) == _sid) {
+              rx->subjects[_si].tolFactor = _tf[_j];
+              break;
+            }
+          }
+        }
+      } else {
+        uint32_t _n = std::min((uint32_t)_tf.size(), rx->nsub);
+        for (uint32_t _si = 0; _si < _n; _si++) {
+          rx->subjects[_si].tolFactor = _tf[_si];
+        }
+      }
+    }
+  }
+  // An rxSolve() prints only its own solve warnings: an ind_solve() caller that
+  // has not flushed (babelmixr2's PopED) loses its lines rather than passing them
+  // to this solve's subjects.  SAEM calls par_solve() directly, so the reasons its
+  // subjects pushed in between survive until its flush.
+  rxSolveWarnReset();
   par_solve(rx);
 #ifdef rxSolveT
   RSprintf("  Time1: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
@@ -4688,7 +6266,6 @@ static inline SEXP rxSolve_finalize(const RObject &obj,
 
   List dat = rxSolve_df(obj, rxControl, specParams, extraArgs,
                         params, events, inits, rxSolveDat);
-
 #ifdef rxSolveT
   RSprintf("  Time2: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
@@ -4768,6 +6345,7 @@ static inline void iniRx(rx_solve* rx) {
   rx->simflg = 0;
   rx->nall = 0;
   rx->nevid9 = 0;
+  rx->nknot = 0;
   rx->nobs = 0;
   rx->nobs2 = 0;
   rx->nr = 0;
@@ -4788,6 +6366,7 @@ static inline void iniRx(rx_solve* rx) {
   rx->safeLog = 1;
   rx->useStdPow = 0;
   rx->ss2cancelAllPending = false;
+  rx->addlKeepsCov = 0;
   rx->sumType = 1; // pairwise
   rx->prodType = 1; // long double
   rx->hasFactors = 0;
@@ -4798,9 +6377,15 @@ static inline void iniRx(rx_solve* rx) {
   rx->maxShift = 0.0;
   rx->maxwhile = 100000;
   rx->whileexit= 0;
+  rx->maxExtra = 100;
+  rx->extraPushAbort = 0;
+  rx->ssInfDurAbort = 0;
+  rx->splitBolus = NULL;
+  rx->splitBolusN = 0;
 
   rx_solving_options* op = rx->op;
   op->badSolve = 0;
+  nPastEvid_global = 0;
   op->naTime = 0;
   op->ATOL = 1e-8; //absolute error
   op->RTOL = 1e-8; //relative error
@@ -4813,7 +6398,31 @@ static inline void iniRx(rx_solve* rx) {
   op->nlhs = 0;
   op->neq = 0;
   op->stiff = 0;
+  op->useDense = 0;
+  op->adjoint = 0;
+  op->adjNbase = 0;
+  op->adjNp = 0;
+  op->adjFxOff = 0;
+  op->adjFpOff = 0;
+  op->adjDfOff = -1;
+  op->adjJpOff = -1;
+  op->adjJyOff = -1;
+  op->adjFxdOff = -1;
+  op->adjTauOff = -1;
+  op->adjDtauOff = -1;
+  op->adjDlagOff = -1;
+  op->adjDrateOff = -1;
+  op->adjSensOff = 0;
+  op->hasDelay = 0;
   op->ncov = 0;
+  op->stiff2 = 0;
+  op->autoSwitchMaxStiff    = 10;
+  op->autoSwitchMaxNonstiff = 3;
+  op->autoSwitchStiffFirst  = 0;
+  op->autoSwitchNonstifftol = 0.9;
+  op->autoSwitchStifftol    = 0.9;
+  op->autoSwitchDtfac       = 2.0;
+  op->autoSwitchSwitchMax   = 5;
   op->par_cov = NULL;
   op->par_cov_interp = NULL;
   op->lhs_str = NULL;
@@ -4834,8 +6443,14 @@ static inline void iniRx(rx_solve* rx) {
   op->indLinN = 0;
   op->indLinPhiTol = 1e-7;
   op->indLinPhiM = 0;
-  op->indLinMatExpType = 2;
+  op->indLinMatExpType = 3; // Al-Mohy; see rxsolve.R's indLinMatExpType
   op->indLinMatExpOrder = 6;
+  op->indLinStepSearch = 1; // secant
+  op->indLinMaxIter = 20;
+  op->indLinRichardson = 2; // auto
+  op->indLinIteration = 3;  // auto (stiffness-gated)
+  op->indLinJac = 0; // auto: symbolic when the model carries one
+  op->indLinForcing = 1; // ramp: integrate the forcing as a line over the substep
   op->nDisplayProgress = 10000;
   op->isChol = 0;
   op->nsvar = 0;
@@ -4852,12 +6467,207 @@ static inline void iniRx(rx_solve* rx) {
   op->numLin = 0;
   op->depotLin = 0;
   op->linOffset = 0;
+  op->linCmtLagMask = 0;
+  op->linCmtOriginMask = 0;
   rx->svar = _globals.gsvar;
   rx->ovar = _globals.govar;
   op->nLlik = 0;
+  op->cvodeLinSolver = 1;
+}
+
+static inline void rxLoadSplitBolus(List mv, rx_solve *rx) {
+  IntegerVector splitBolus = mv[RxMv_splitBolus];
+  if (splitBolus.size() < 2) return;
+  rx->splitBolusN = splitBolus.size();
+  rx->splitBolus = (int*)malloc(rx->splitBolusN * sizeof(int));
+  if (rx->splitBolus == NULL) {
+    rxSolveFree();
+    stop(_("ran out of memory"));
+  }
+  std::copy(INTEGER(splitBolus), INTEGER(splitBolus) + rx->splitBolusN, rx->splitBolus);
 }
 
 void getLinInfo(List mv, int &numLinSens, int &numLin, int &depotLin);
+
+// Bitmask of the linCmt() block's physical compartments carrying a modeled
+// alag(), for op->linCmtLagMask.  `mv[RxMv_stateProp]` is parallel to
+// `mv[RxMv_state]`, which is the compartment order, and the linCmt() block is
+// the trailing `numLin + numLinSens` compartments, so block index c is state
+// index `linOffset + c`.  propAlag is src/tran.h's bit 4 (not included here).
+static inline int rxLinCmtPropMask(List mv, int linOffset, int numLin, int bits) {
+  if (numLin <= 0 || mv.size() <= RxMv_stateProp) return 0;
+  IntegerVector stateProp = mv[RxMv_stateProp];
+  int mask = 0;
+  int n = stateProp.size();
+  int nLin = numLin < 31 ? numLin : 31;   // same clamp linCmtDoseScan() uses
+  for (int c = 0; c < nLin; ++c) {
+    int i = linOffset + c;
+    if (i < 0 || i >= n) continue;
+    if ((stateProp[i] & bits) != 0) mask |= (1 << c);
+  }
+  return mask;
+}
+
+static inline int rxLinCmtLagMask(List mv, int linOffset, int numLin) {
+  return rxLinCmtPropMask(mv, linOffset, numLin, 4);
+}
+
+// Per-compartment "has a modeled alag()" table for _rxPushDose(), so a pushed
+// steady-state dose into a lagged compartment expands the way the event table
+// does (rxode2#1349).  op->linCmtLagMask answers the same question but only
+// for the linCmt() block and only for its first 31 compartments; an ODE model
+// can have more states than that, so this is a plain array over all of them.
+// Uses mv[RxMv_alag] -- the same 1-based compartment list etTran.cpp reads --
+// rather than the stateProp bit, so both engines agree by construction.
+static inline void rxLoadAlagCmt(List mv, int neq, bool ssAtDoseTime) {
+  if (_globals.galagCmt != NULL) {
+    R_Free(_globals.galagCmt);
+    _globals.galagCmt = NULL;
+  }
+  _globals.galagCmtN = 0;
+  if (neq <= 0) return;
+  _globals.galagCmt = R_Calloc(neq, int);
+  _globals.galagCmtN = neq;
+  // etTrans() only rewrites a steady-state dose to its unlagged form under
+  // ssAtDoseTime, so an all-zero table is the right answer when it is off
+  if (!ssAtDoseTime) return;
+  if (mv.size() <= RxMv_alag) return;
+  IntegerVector alag = mv[RxMv_alag];
+  for (int i = 0; i < alag.size(); ++i) {
+    int c = alag[i];
+    if (c >= 1 && c <= neq) _globals.galagCmt[c - 1] = 1;
+  }
+}
+
+// Compartments whose DOSE the model moves or scales -- a modeled alag()
+// (propAlag, bit 4) or f() (propF, bit 2) -- for op->linCmtOriginMask.
+static inline int rxLinCmtOriginMask(List mv, int linOffset, int numLin) {
+  return rxLinCmtPropMask(mv, linOffset, numLin, 2 | 4);
+}
+
+static int _rxSolveCallN = 0;
+
+// Restore serialized state then run integration + build output data frame.
+// [[Rcpp::export]]
+SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
+                              const RObject &solveState,
+                              const List &rxControl,
+                              const Nullable<CharacterVector> &specParams,
+                              const Nullable<List> &extraArgs,
+                              const RObject &params, const RObject &events,
+                              const RObject &inits) {
+  // Load compiled model and assign function pointers
+  if (!rxDynLoad(obj)) {
+    (Rf_error)(_("rxSolve: cannot load rxode2 dll for model"));
+  }
+
+  // Take the model variables BEFORE the restore.  rxModelVars_() can run R --
+  // a model that came from another package and no longer validates is
+  // re-parsed here -- and nothing that runs R belongs between rxRestoreState_()
+  // and the solve it set up.  This is also the order the ordinary rxSolve_()
+  // path uses: model vars first, then op.
+  List mvRaw = rxModelVars_(obj);
+
+  // Restore the pre-integration solve state from binary file.
+  // rxRestoreState_ calls rxSolveFreeC() (which clears ODE function pointers),
+  // then rebuilds inds_global via rxOptionsIniEnsure and populates per-subject data.
+  rxRestoreState_(rawObj);
+  // Re-assign ODE function pointers cleared by rxSolveFreeC inside rxRestoreState_.
+  // rxUpdateFuns sets rx->subjects = inds_global (same pointer restored above).
+  rxAssignPtr(SEXP(obj));
+
+  // Build a minimal rxSolveDat for the finalize path.
+  // DO NOT memset -- rxSolve_t contains Rcpp objects (List, RObject, etc.)
+  // whose constructors initialize internal SEXP to R_NilValue; memset would
+  // corrupt those to NULL pointer, causing VECTOR_ELT crashes.
+  rxSolve_t rxSolveDat{};
+  rxSolveDat.updateObject  = false;
+  rxSolveDat.isRxSolve     = false;
+  rxSolveDat.isEnvironment = false;
+  rxSolveDat.hasCmt        = false;
+  rxSolveDat.addDosing = as<Nullable<LogicalVector>>(rxControl[Rxc_addDosing]);
+  rxSolveDatLoadState(&rxSolveDat, solveState);
+  if (Rf_isNull(solveState)) {
+    getRxSolve_()->matrix = 2;
+  }
+
+  // Mirror the setup calls that rxSolve_ does before rxSolve_finalize.
+  // rxRestoreState_ rebuilds op (including op->neq and op->cores) and
+  // inds_global, but the thread-local pools are not serialized and must
+  // be re-created here.
+  {
+    rx_solve* rx = getRxSolve_();
+    rx_solving_options* op = rx->op;
+    if (op->cores == 0) op->cores = 1;
+    // Which linCmt() compartments carry a modeled alag() is a property of the
+    // MODEL, so take it from the model rather than the stream: a stream
+    // written before format 6 does not carry it at all, and would otherwise
+    // leave the mask at 0 and let linCmtB(which1 = -3) answer a mixed-delay
+    // regimen it should refuse (nlmixr2/rxode2#1119).  Only when the model
+    // describes the layout that was just restored, though -- otherwise the
+    // stream's own value (format 6 and later) is the better answer.
+    if (mvRaw.size() > RxMv_state) {
+      CharacterVector mvState = mvRaw[RxMv_state];
+      if (mvState.size() == op->neq) {
+        op->linCmtLagMask = rxLinCmtLagMask(mvRaw, op->linOffset, op->numLin);
+        op->linCmtOriginMask = rxLinCmtOriginMask(mvRaw, op->linOffset, op->numLin);
+      }
+      // rxRestoreState_() frees the globals, so this has to be rebuilt here
+      // exactly as linCmtLagMask above is
+      rxLoadAlagCmt(mvRaw, op->neq, asBool(rxControl[Rxc_ssAtDoseTime], "ssAtDoseTime"));
+    }
+    seedEng((int)(op->cores));
+    _p_ensureLinCmtA((int)op->cores);
+    _p_ensureLinCmtB((int)op->cores);
+    ensureLsodaCtxPool((int)op->cores);
+    ensureIndLinExpCache((int)op->cores);
+    ensureExtraDosing((int)op->cores);
+    int _bneq = (int)op->neq;
+    int _lrw, _liw;
+    if (op->stiff == 107) {
+      /* bdf: DVODE BDF (MF=22): LRW = 22+9*NEQ+2*NEQ^2, LIW = 30+NEQ */
+      _lrw = 22 + 9 * _bneq + 2 * _bneq * _bneq;
+      _liw = 30 + _bneq;
+    } else if (op->stiff == 106) {
+      /* lsode: DVODE Adams (MF=10): LRW = 20+16*NEQ, LIW = 30.
+       * Standard LSODA sizing covers LRW; use 30+NEQ for LIW. */
+      _lrw = 22 + _bneq * std::max(16, _bneq + 9);
+      _liw = 30 + _bneq;
+    } else {
+      _lrw = 22 + _bneq * std::max(16, _bneq + 9);
+      _liw = 20 + _bneq;
+    }
+    ensureRworkPool((int)op->cores, _lrw, _liw);
+  }
+
+  return rxSolve_finalize(obj, rxControl, specParams, extraArgs,
+                          params, events, inits, &rxSolveDat);
+}
+extern "C" int solveMethodThreadSafe(rx_solving_options* op) {
+  int stiff = op->stiff;
+  /* lsoda (1), lsode (106), and bdf (107) use non-reentrant Fortran COMMON
+   * blocks and must run single-threaded.  indLin (3) was on this list by
+   * association and is not one of them: its default backend (matexp_MH09) is
+   * plain C with a stack workspace, its one Fortran backend (matexpRBS) uses
+   * automatic arrays with no SAVE/COMMON, and its caches are already per
+   * thread (src/expm.cpp). */
+  return stiff != 1 && stiff != 106 && stiff != 107;
+}
+
+// Test-only accessor for the linCmt() finite-difference control values that
+// land in the global rx_solve struct (nlmixr2/rxode2#1276): rx->sensType and
+// rx->sensH must come from their own, distinct rxControl slots.
+// [[Rcpp::export]]
+List rxLinCmtSensDebug_() {
+  rx_solve *rx = getRxSolve_();
+  return List::create(_["sensType"]=rx->sensType, _["sensH"]=rx->sensH);
+}
+
+// The methods that read calc_jac() (rxIsImplicit() in R): ros4, iem and
+// ros43/ros6/backwardEuler/gauss6/iiic6/radauiia5/geng5/sdirk43
+static inline bool rxImplicitMethod(int m) {
+  return m == 13 || m == 14 || (m >= 31 && m <= 38);
+}
 
 // [[Rcpp::export]]
 SEXP rxSolve_(const RObject &obj, const List &rxControl,
@@ -4865,10 +6675,13 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
               const Nullable<List> &extraArgs,
               const RObject &params, const RObject &events, const RObject &inits,
               const int setupOnly){
+  _rxSolveCallN++;
   if (setupOnly == 0){
     rxSolveFree();
   }
   rxDropB = false;
+
+  // Solve-from-file dispatch has been moved to R (rxSolve.default).
 #ifdef rxSolveT
   clock_t _lastT0 = clock();
 #endif
@@ -4967,22 +6780,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     } else {
       object = obj;
     }
-    if (method == 3){
-      rxSolveDat->mv = rxModelVars(object);
-      rxSolveFreeObj = object;
-      List indLin = rxSolveDat->mv[RxMv_indLin];
-      if (indLin.size() == 0){
-        Function rxode2 = getRxFn("rxode2");
-        object = rxode2(object, _["indLin"]=true);
-        rxSolveDat->mv = rxModelVars(object);
-        rxSolveFreeObj = object;
-      } // else {
-      //  object =obj;
-      // }
-    } else {
-      rxSolveDat->mv = rxModelVars(object);
-      rxSolveFreeObj = object;
-    }
+    rxSolveDat->mv = rxModelVars(object);
+    rxSolveFreeObj = object;
   }
   if (rxSolveDat->mv.size() == 0) {
     // sometimes the model variables have not been assigned, but this
@@ -5000,10 +6799,32 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rxSolveDat->mv = rxModelVars(object);
     rxSolveFreeObj = object;
   }
+  if (!rxSolveDat->isRxSolve && !rxSolveDat->isEnvironment &&
+      (rxImplicitMethod(asInt(rxControl[Rxc_method], "method")) ||
+       rxImplicitMethod(asInt(rxControl[Rxc_stiff2], "stiff2")))) {
+    // An implicit method needs the model's analytic Jacobian; without df()/dy()
+    // lines calc_jac() is an empty stub.  rxSolve() swaps in the model with its
+    // Jacobian before calling here; a solve set up from C (nlmixr2est) gets the
+    // same model now, once, when it keeps the parameter, state and lhs order.
+    CharacterVector _tr = rxSolveDat->mv[RxMv_trans];
+    if (as<std::string>(_tr[RxMvTrans_jac]) != "fulluser") {
+      Function _jm = getRxFn(".rxJacSolveModelC");
+      RObject _jo = _jm(object);
+      if (!Rf_isNull(_jo)) {
+        object = _jo;
+        rxSolveDat->mv = rxModelVars(object);
+        rxSolveFreeObj = object;
+      }
+    }
+  }
   if (rxSolveDat->isRxSolve || rxSolveDat->isEnvironment){
     rx_solve* rx = getRxSolve_();
     iniRx(rx);
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");
+    rx->maxExtra = asInt(rxControl[Rxc_maxExtra], "maxExtra");
+    rx->extraPushAbort = 0;
+    rx->ssInfDurAbort = 0;
+    rxLoadSplitBolus(rxSolveDat->mv, rx);
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
     return rxSolve_update(object, rxControl, specParams,
@@ -5029,10 +6850,30 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->simflg  = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_simflg];
     rx->ndiff   =  INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_ndiff];
     rx->sensType= asInt(rxControl[Rxc_linCmtSensType], "linCmtSensType");
-    rx->sensH   = asDouble(rxControl[Rxc_linCmtSensType], "linCmtSensH");
+    // "auto" resolves here, at the one place the control is read, so every
+    // solve path (threaded rxSolve() and ind_solve()) sees the same method.
+    rx->sensType = linCmtSensResolveAuto(rx->sensType, rx->ndiff,
+                                         INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_ncmt],
+                                         INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_ka]);
+    // flag 16 only exists in model variables parsed by this version
+    rx->linCmtBraw = (Rf_length(rxSolveDat->mv[RxMv_flags]) > RxMvFlag_linCmtBraw) ?
+      INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_linCmtBraw] : 1;
+    rx->sensH   = asDouble(rxControl[Rxc_linCmtSensH], "linCmtSensH");
+    // A control list built before this slot existed (an older reverse
+    // dependency's) gets the same route rxSolve()'s own default resolves to,
+    // so the two cannot drift: 2 = the closed-form transition matrix.
+    rx->linCmtSensPhi = (Rf_length(rxControl) > Rxc_linCmtSensPhi) ?
+      asInt(rxControl[Rxc_linCmtSensPhi], "linCmtSensPhi") : 2;
+    rx->nonmem = (Rf_length(rxControl) > Rxc_nonmem) ?
+      (int)asBool(rxControl[Rxc_nonmem], "nonmem") : 0;
+    tieOrderData_global = (rxControlTieOrder(rxControl) == "data");
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");
+    rx->maxExtra = asInt(rxControl[Rxc_maxExtra], "maxExtra");
+    rx->extraPushAbort = 0;
+    rx->ssInfDurAbort = 0;
+    rxLoadSplitBolus(rxSolveDat->mv, rx);
     rx_solving_options* op = rx->op;
     op->naTimeInputWarn = 0;
     op->naTimeInput = asInt(rxControl[Rxc_naTimeHandle], "naTimeHandle");
@@ -5077,8 +6918,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->linCmtSuspect = asDouble(rxControl[Rxc_linCmtSuspect], "linCmtSuspect");
     rx->linCmtForwardMax = asInt(rxControl[Rxc_linCmtForwardMax], "linCmtForwardMax");
 
-    // since linCmtB is not parallel, no need to copy into
-    // a different solving memory space
+    // linCmtScale is read-only during parallel solving; shared pointer is safe
     rx->linCmtScale = REAL(rxControl[Rxc_linCmtScale]);
 
     rx->needSort = as<int>(rxSolveDat->mv[RxMv_needSort]);
@@ -5090,23 +6930,215 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->safeLog = asInt(rxControl[Rxc_safeLog], "safeLog");
     rx->useStdPow = asInt(rxControl[Rxc_useStdPow], "useStdPow");
     rx->ss2cancelAllPending = asInt(rxControl[Rxc_ss2cancelAllPending], "ss2cancelAllPending");
+    rx->addlKeepsCov = (int)asBool(rxControl[Rxc_addlKeepsCov], "addlKeepsCov");
     op->ssSolved = asInt(rxControl[Rxc_ssSolved], "ssSolved");
     op->indOwnAlloc = asInt(rxControl[Rxc_indOwnAlloc], "indOwnAlloc");
+    if (op->indOwnAlloc == -1) {
+      op->indOwnAlloc = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_evid_];
+    }
+    op->useDense = (int)asBool(rxControl[Rxc_dense], "dense");
+    op->hasDelay = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_hasDelay];
+    // Build the delay-history column map: record dense history only for the ODE
+    // states that delay() actually looks back on (propDelay bit in stateProp).
+    // delayState[col] = ODE state index for history column `col`; delayCol[state]
+    // is the inverse (-1 for states with no delay), used by _rxDelay to read its
+    // compacted column.  Both are indexed in increasing ODE-state order, the same
+    // order stateProp / the runtime dense coefficients use.
+    op->nDelayState = 0;
+    op->delayState = NULL;
+    op->delayCol = NULL;
+    if (op->hasDelay) {
+      IntegerVector _stateProp = rxSolveDat->mv[RxMv_stateProp];
+      int _nState = _stateProp.size();
+      int _nAlloc = _nState > 0 ? _nState : 1;
+      if (_globals.gdelayCol != NULL) R_Free(_globals.gdelayCol);
+      if (_globals.gdelayState != NULL) R_Free(_globals.gdelayState);
+      _globals.gdelayCol = R_Calloc(_nAlloc, int);
+      _globals.gdelayState = R_Calloc(_nAlloc, int);
+      int _col = 0;
+      for (int _s = 0; _s < _nState; _s++) {
+        if (_stateProp[_s] & rxDelayStateProp) {
+          _globals.gdelayCol[_s] = _col;
+          _globals.gdelayState[_col] = _s;
+          _col++;
+        } else {
+          _globals.gdelayCol[_s] = -1;
+        }
+      }
+      // Defensive fallback: if hasDelay is set but no state carried the bit
+      // (should not happen), record every state -- the pre-compaction behavior.
+      if (_col == 0) {
+        for (int _s = 0; _s < _nState; _s++) {
+          _globals.gdelayCol[_s] = _s;
+          _globals.gdelayState[_s] = _s;
+        }
+        _col = _nState;
+      }
+      op->nDelayState = _col;
+      op->delayState = _globals.gdelayState;
+      op->delayCol = _globals.gdelayCol;
+    }
+    op->cvodeLinSolver        = asInt(rxControl[Rxc_cvodeLinSolver], "cvodeLinSolver");
+    op->stiff2                = asInt(rxControl[Rxc_stiff2], "stiff2");
+    if (op->stiff2 > 0) {
+      /* LSODA (1,2), CVODE (21), DLSODE (106,107) have internal switching and
+         cannot be cleanly retried within an interval. */
+      if (op->stiff2 == 1 || op->stiff2 == 2 ||
+          op->stiff2 == 21 ||
+          op->stiff2 == 106 || op->stiff2 == 107) {
+        (Rf_error)("stiff2=%d is not allowed for AutoSwitch; use a single-step "
+                   "stiff method (e.g. ros4=13, grk4a=31)", op->stiff2);
+      }
+      if (method == 1 || method == 2 || method == 21 ||
+          method == 106 || method == 107) {
+        (Rf_error)("AutoSwitch (stiff2>0) requires a single-step primary method; "
+                   "stiff=%d is not compatible", method);
+      }
+    }
+    op->autoSwitchMaxStiff    = asInt(rxControl[Rxc_autoSwitchMaxStiff], "autoSwitchMaxStiff");
+    op->autoSwitchMaxNonstiff = asInt(rxControl[Rxc_autoSwitchMaxNonstiff], "autoSwitchMaxNonstiff");
+    op->autoSwitchStiffFirst  = asInt(rxControl[Rxc_autoSwitchStiffFirst], "autoSwitchStiffFirst");
+    op->autoSwitchNonstifftol = asDouble(rxControl[Rxc_autoSwitchNonstifftol], "autoSwitchNonstifftol");
+    op->autoSwitchStifftol    = asDouble(rxControl[Rxc_autoSwitchStifftol], "autoSwitchStifftol");
+    op->autoSwitchDtfac       = asDouble(rxControl[Rxc_autoSwitchDtfac], "autoSwitchDtfac");
+    op->autoSwitchSwitchMax   = asInt(rxControl[Rxc_autoSwitchSwitchMax], "autoSwitchSwitchMax");
+    if (op->useDense) {
+      /* Dense output is only supported for dop853(0), liblsoda(2), dop5(10),
+         bs(11), ros4(13), cvode(21). */
+      int _primDense = (method == 0 || method == 2 || method == 10 || method == 11 ||
+                        method == 13 || method == 21);
+      /* For AutoSwitch composites (stiff2>0) the stiff secondary must be dense
+         too -- only ros4(13) is -- and the dense segment driver that hands a
+         segment from the primary to the secondary exists only for a dop853
+         primary, so that is the one dense composite. */
+      int _autoActive = (op->stiff2 > 0);
+      int _stifDense = !_autoActive || (op->stiff2 == 13 && method == 0);
+      if (!_primDense || !_stifDense) {
+        op->useDense = 0;
+      }
+    }
+    if (op->useDense && (op->numLin > 0 || op->numLinSens > 0)) {
+      Rf_warning("dense output not yet supported for linCmt models; using standard dop853");
+      op->useDense = 0;
+    }
+    // A dense segment integrates across every observation between two key
+    // events at once, so an observation is only filled in once the segment has
+    // closed.  A model that pushes its own events cannot work that way: the
+    // event it decides on at an observation has to be applied before the solver
+    // moves past that observation (rxode2#1214).
+    // Keyed on the PARSER flag, not op->indOwnAlloc: rxSolve.default() defaults
+    // indOwnAlloc to TRUE, so that would disable dense output for every model
+    // -- including the delay() models whose history needs it.
+    //
+    // delay() needs that dense output (a non-dense method records no history
+    // and silently returns wrong lagged values), so a model asking for both is
+    // asking for two incompatible things.  Refuse instead of dropping one of
+    // them.  rxSolve() refuses this earlier with a fuller message; this is the
+    // backstop for a caller that reaches solver setup another way.
+    if (op->hasDelay && INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_evid_]) {
+      (Rf_error)("a model cannot combine delay() with evid_() event pushing: "
+                 "delay() requires dense output, which cannot apply an event "
+                 "pushed at an observation");
+    }
+    if (op->useDense && INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_evid_]) {
+      Rf_warning("dense output not yet supported for models that push events with evid_(); using standard output");
+      op->useDense = 0;
+    }
     op->stiff = method;
 
+    if (method == 206 || method == 239 || method == 240 || method == 241 || method == 210 || method == 200 || method == 207 || method == 265 || method == 227 || method == 228 || method == 229 || method == 205 || method == 213 || method == 236 || method == 233 || method == 234 || method == 238 || method == 235 || method == 231 || method == 232 || method == 237 || method == 243 || method == 225 || method == 221 || method == 202 || method == 226 || method == 230 || method == 208 || method == 282 || method == 300 || method == 301 || method == 302 || method == 304 || method == 267 || method == 268 || method == 270 || method == 271 || method == 272 || method == 273 || method == 274 || method == 275 || method == 276 || method == 277 || method == 279 || method == 280 || method == 281 || method == 283 || method == 284 || method == 285 || method == 286 || method == 287 || method == 288 || method == 289 || method == 290 || method == 291 || method == 292 || method == 293 || method == 295 || method == 296 || method == 297 || method == 298) {
+      // discrete-adjoint explicit-RK methods: rk4s (206), eulers (239),
+      // midpoints (240), heuns (241), dop5s (210, adaptive).  Derive the layout
+      // by scanning model names.
+      // States are [base ODE states..., rx__sens_* output slots...]; lhs carry
+      // the F_X (rx__adjFX_i_j__) then F_p (rx__adjFP_i_p__) blocks emitted by
+      // .rxAdjointExpand.  HARD GUARD: absent the F_X/F_p lhs, error (no silent
+      // bare-primal solve).
+      CharacterVector _adjSt = rxSolveDat->mv[RxMv_state];
+      CharacterVector _adjLhs = rxSolveDat->mv[RxMv_lhs];
+      int _nBase = 0;
+      for (int _i = 0; _i < _adjSt.size(); ++_i) {
+        if (strncmp(CHAR(_adjSt[_i]), "rx__sens_", 9) != 0) _nBase++;
+      }
+      int _fxOff = -1, _fpOff = -1, _dfOff = -1, _jpOff = -1, _jyOff = -1, _fxdOff = -1, _tauOff = -1, _dtauOff = -1, _dlagOff = -1, _drateOff = -1;
+      for (int _i = 0; _i < _adjLhs.size(); ++_i) {
+        const char *_s = CHAR(_adjLhs[_i]);
+        if (_fxOff < 0 && strcmp(_s, "rx__adjFX_0_0__") == 0) _fxOff = _i;
+        if (_fpOff < 0 && strcmp(_s, "rx__adjFP_0_0__") == 0) _fpOff = _i;
+        if (_dfOff < 0 && strcmp(_s, "rx__adjdF_0_0__") == 0) _dfOff = _i;
+        if (_jpOff < 0 && strcmp(_s, "rx__adjJp_0_0_0__") == 0) _jpOff = _i;
+        if (_jyOff < 0 && strcmp(_s, "rx__adjJy_0_0_0__") == 0) _jyOff = _i;
+        if (_fxdOff < 0 && strcmp(_s, "rx__adjFXd_0_0__") == 0) _fxdOff = _i;    // DDE delayed Jacobian
+        if (_tauOff < 0 && strcmp(_s, "rx__adjTau_0_0__") == 0) _tauOff = _i;    // DDE delay durations
+        if (_dtauOff < 0 && strcmp(_s, "rx__adjDtau_0_0_0__") == 0) _dtauOff = _i; // DDE dtau/dp (dose-jump)
+        if (_dlagOff < 0 && strcmp(_s, "rx__adjDlag_0_0__") == 0) _dlagOff = _i; // modeled-alag transversality
+        if (_drateOff < 0 && strcmp(_s, "rx__adjDrate_0_0__") == 0) _drateOff = _i; // modeled-rate infusion dual
+      }
+      int _nSens = (int)_adjSt.size() - _nBase;
+      if (_fxOff < 0 || _fpOff < 0 || _nBase <= 0) {
+        // A malformed expansion (has rx__sens_* output slots but is missing
+        // the F_X/F_p Jacobian lhs) is a hard error: solving would silently
+        // fill the sens columns with zeros.  A genuinely PLAIN model (no
+        // rx__sens_* slots at all) carries no sensitivity request, so an
+        // adjoint method may run FORWARD-ONLY on it (op->adjoint stays 0) --
+        // this lets the explicit/multistep adjoint variants be exercised as
+        // ordinary forward solvers (e.g. the cov/nmtest covariate + dosing
+        // regression suite).  The implicit/Rosenbrock/CVODES adjoint variants
+        // size their LU factorization from the adjoint-augmented system, so
+        // they cannot run forward-only (bare DGETRF dimension error / crash)
+        // -- keep the hard guard for those method codes.
+        int _stiffAdj = (method == 213 || method == 221 || method == 231 ||
+                         method == 232 || method == 233 || method == 234 ||
+                         method == 235 || method == 236 || method == 237 ||
+                         method == 238);
+        if (_nSens > 0 || _nBase <= 0 || _stiffAdj) {
+          (Rf_error)("method='rk4s' requires the adjoint expansion in the "
+                     "expanded ODE (build with calcSens / rxode2::.rxAdjointExpand); "
+                     "the rx__adjFX_*/rx__adjFP_* Jacobian lhs were not found");
+        }
+        // plain explicit/multistep model: forward-only, leave op->adjoint == 0
+      } else {
+        op->adjoint = 1;
+        op->adjNbase = _nBase;
+        op->adjNp = _nSens / _nBase;
+        op->adjFxOff = _fxOff;
+        op->adjFpOff = _fpOff;
+        op->adjDfOff = _dfOff;
+        op->adjJpOff = _jpOff;
+        op->adjJyOff = _jyOff;
+        op->adjFxdOff = _fxdOff;
+        op->adjTauOff = _tauOff;
+        op->adjDtauOff = _dtauOff;
+        op->adjDlagOff = _dlagOff;
+        op->adjDrateOff = _drateOff;
+        op->adjSensOff = _nBase;
+      }
+    }
+
     rxSolveDat->throttle = false;
-    if (method != 2 && method != 0) {
+    if (!solveMethodThreadSafe(op)) { // dop853 and liblsoda should be thread safe
       op->cores = 1;//getRxThreads(1, false);
     } else {
       op->cores = asInt(rxControl[Rxc_cores], "cores");
       int thread = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_thread];
+      // linCmtB is thread safe on the AD Jacobian paths: each thread evaluates
+      // its own subject on its own __linCmtB[rx_get_thread()] slot, forward
+      // mode with stack-local fvar and reverse mode on STAN_THREADS' per-thread
+      // tape.  linCmtSensAdThreadSafe() (linCmtSensType.h) is the shared
+      // classifier -- only the finite-difference paths (first-subject
+      // scaling/step setup) keep the single-core guard.
+      int linCmtBThreadSafe = linCmtSensAdThreadSafe(rx->sensType);
       if (op->cores == 0) {
         switch (thread) {
         case threadSafeRepNumThread:
-          // Thread safe, but possibly not reproducible
-          if (op->cores > 1) {
-            op->stiff = method = 4;
-          }
+          // Every par_* solver seeds its RNG per-subject as
+          // seed0 + rx->ordId[solveid] - 1 immediately before solving that
+          // subject (see par_solve.cpp), so the result is already a pure
+          // function of solveid and does not depend on which thread picks up
+          // which subject or on scheduling order.  There is therefore nothing
+          // to gain by silently swapping the user's requested solver for
+          // liblsodaR here -- doing so previously changed the solver a user
+          // explicitly named without any message (issue #1240).
           rxSolveDat->throttle = false;
           break;
         case threadSafe:
@@ -5120,16 +7152,20 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
           rxSolveDat->throttle = false;
           break;
         case notThreadLinCmtB:
-          op->cores = 1;
-          rxSolveDat->throttle = false;
+          if (linCmtBThreadSafe) {
+            op->cores = getRxThreads(INT_MAX, false);
+            rxSolveDat->throttle = true;
+          } else {
+            op->cores = 1;
+            rxSolveDat->throttle = false;
+          }
           break;
         }
       } else {
         switch (thread) {
         case threadSafeRepNumThread:
-          if (op->cores > 1) {
-            op->stiff = method = 4;
-          }
+          // See the op->cores == 0 arm above: the RNG stream is already
+          // reproducible per solveid, so no solver swap is needed here either.
           break;
         case threadSafe:
           // Thread safe, and reproducible
@@ -5142,8 +7178,13 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
           rxSolveDat->throttle = false;
           break;
         case notThreadLinCmtB:
-          op->cores = 1;
-          rxSolveDat->throttle = false;
+          if (linCmtBThreadSafe) {
+            // Thread safe (forward-mode AD); keep the user-requested core count.
+            rxSolveDat->throttle = true;
+          } else {
+            op->cores = 1;
+            rxSolveDat->throttle = false;
+          }
           break;
         }
       }
@@ -5156,8 +7197,28 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       op->cores = 1;
     }
     seedEng((int)(op->cores));
-    ensureLinCmtA((int)op->cores);
-    ensureLinCmtB((int)op->cores);
+    _p_ensureLinCmtA((int)op->cores);
+    _p_ensureLinCmtB((int)op->cores);
+    ensureLsodaCtxPool((int)op->cores);
+    ensureIndLinExpCache((int)op->cores);
+    ensureExtraDosing((int)op->cores);
+
+    CharacterVector _mvState = rxSolveDat->mv[RxMv_state];
+    int _bneq = (int)_mvState.size();
+    int _lrw2, _liw2;
+    if (op->stiff == 107) {
+      /* bdf: DVODE BDF (MF=22): 22+9N+2N^2 doubles, 30+N ints */
+      _lrw2 = 22 + 9 * _bneq + 2 * _bneq * _bneq;
+      _liw2 = 30 + _bneq;
+    } else if (op->stiff == 106) {
+      /* lsode: DVODE Adams (MF=10): LSODA sizing for doubles, 30+N ints */
+      _lrw2 = 22 + _bneq * std::max(16, _bneq + 9);
+      _liw2 = 30 + _bneq;
+    } else {
+      _lrw2 = 22 + _bneq * std::max(16, _bneq + 9);
+      _liw2 = 20 + _bneq;
+    }
+    ensureRworkPool((int)op->cores, _lrw2, _liw2);
 
     // Now set up events and parameters
     RObject par0 = params;
@@ -5178,8 +7239,11 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _lastT0 = clock();
 #endif// rxSolveT
     // Update event table with observations if they are missing
-    rxSolve_ev1Update(object, rxControl, specParams, extraArgs, params,
-                      ev1, inits, rxSolveDat);
+    {
+      rxEtTransStrCmpParamsGuard strCmpParams(rxSolveDat->par1);
+      rxSolve_ev1Update(object, rxControl, specParams, extraArgs, params,
+                        ev1, inits, rxSolveDat);
+    }
 
 #ifdef rxSolveT
     RSprintf("Time6: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
@@ -5202,11 +7266,15 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->numLin = numLin;
     op->depotLin = depotLin;
     op->linOffset = op->neq - numLin - numLinSens;
+    op->linCmtLagMask = rxLinCmtLagMask(rxSolveDat->mv, op->linOffset, numLin);
+    op->linCmtOriginMask = rxLinCmtOriginMask(rxSolveDat->mv, op->linOffset, numLin);
+    rxLoadAlagCmt(rxSolveDat->mv, op->neq, asBool(rxControl[Rxc_ssAtDoseTime], "ssAtDoseTime"));
     op->nLlik = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_nLlik];
     if (!Rf_isNull(rxControl[Rxc_nLlikAlloc])) {
       op->nLlik = max2(asInt(rxControl[Rxc_nLlikAlloc],"control$nLlikAlloc"), op->nLlik);
     }
     op->badSolve = 0;
+    nPastEvid_global = 0;
     op->naTime = 0;
     op->abort = 0;
     op->ATOL = atolNV[0];          //absolute error
@@ -5223,6 +7291,37 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->indLinMatExpType=asInt(rxControl[Rxc_indLinMatExpType], "indLinMatExpType");
     op->indLinPhiM = asInt(rxControl[Rxc_indLinPhiM],"indLinPhiM");
     op->indLinMatExpOrder=asInt(rxControl[Rxc_indLinMatExpOrder], "indLinMatExpOrder");
+    op->indLinStepSearch=asInt(rxControl[Rxc_indLinStepSearch], "indLinStepSearch");
+    op->indLinMaxIter=asInt(rxControl[Rxc_indLinMaxIter], "indLinMaxIter");
+    op->indLinRichardson=asInt(rxControl[Rxc_indLinRichardson], "indLinRichardson");
+    op->indLinIteration=asInt(rxControl[Rxc_indLinIteration], "indLinIteration");
+    op->indLinJac=asInt(rxControl[Rxc_indLinJac], "indLinJac");
+    op->indLinForcing=asInt(rxControl[Rxc_indLinForcing], "indLinForcing");
+    // The symbolic forcing Jacobian cannot be trusted on a sensitivity model.
+    // indLinForcingJacSym() wants calc_jac over the WHOLE system, but
+    // rxSensMatExp() emits df()/dy() rows for the physical block only -- it has
+    // to, because _esJacColF() (rxode2parseHandleEvid.h) calls calc_jac with a
+    // buffer sized by the physical state count.  `calc_jac - A` would therefore
+    // hand back -A for every sensitivity row, which newton merely converges
+    // slowly through but exprb/exprb32 use directly and get a wrong answer from.
+    // Difference the forcing instead; that is right for every row, and only the
+    // newton/exprb schemes ever ask for one.
+    //
+    // An explicit "symbolic" is downgraded too, not just "auto": the same thing
+    // indLinUseSymJac() already does when the model carries no df()/dy() at all
+    // ("cannot force what is not there").
+    //
+    // Deliberately blunt.  An ODE model built with calcSens= and then converted
+    // by method="indLin"'s auto-conversion has df()/dy() for every compartment,
+    // sensitivity ones included, so its symbolic Jacobian would have been fine;
+    // it loses nothing but the 2n forcing evaluations, and only under the
+    // schemes that ask for a Jacobian at all.  Whether calc_jac spans the system
+    // is a property of which generator wrote the model, which is not something
+    // modelVars records -- so err toward the source that is right either way.
+    if (op->indLinJac != 2 &&
+        Rf_length(as<SEXP>(rxSolveDat->mv[RxMv_sens])) > 0) {
+      op->indLinJac = 2;
+    }
     List indLin = rxSolveDat->mv[RxMv_indLin];
     op->doIndLin=0;
     if (indLin.size() == 4){
@@ -5289,11 +7388,13 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rxSolveDat->addTimeUnits = false;
     if (rxIs(ev1, "rxEtTran")){
       CharacterVector cls = ev1.attr("class");
-      List evT = cls.attr(".rxode2.lst");
+      // a shallow copy: ev1 can be the caller's own translated table
+      List evT = Rf_shallow_duplicate(cls.attr(".rxode2.lst"));
       evT.attr("class") = R_NilValue;
       rxSolveDat->covUnits = evT[RxTrans_covUnits];
       rxSolveDat->maxItemsPerId = evT[RxTrans_maxItemsPerId];
     }
+    rxSolve_parOneRowIdCheck(rxSolveDat);
     rxSolveDat->par1ini = rxSolveDat->par1;
     // This will update par1 with simulated values
 #ifdef rxSolveT
@@ -5398,111 +7499,112 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
            rx->nsim);
     }
     IntegerVector linCmtI = rxSolveDat->mv[RxMv_flags];
-    int64_t n0 = rx->nall*state.size()*rx->nsim;
-    int64_t nsave = op->neq*op->cores;
-    int64_t n2  = (int64_t)rx->nMtime*rx->nsub*rx->nsim; // mtime/id calculated for everyone and sorted at once. Need it full size
-    int64_t n3  = op->neq*rxSolveDat->nSize;
-    int64_t n3a_c = ((int64_t)op->neq + op->extraCmt) * op->cores;
-    //REprintf("n3a_c: %d, cores: %d\n", op->cores);
+
+    // Compute inits and scale first so their actual sizes feed into the layout.
 #ifdef rxSolveT
     RSprintf("Time12a: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
 #endif // rxSolveT
-
     rxSolveDat->initsC = rxInits(object, inits, state, 0.0);
-
 #ifdef rxSolveT
     RSprintf("Time12b: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
 #endif // rxSolveT
-
-    int64_t n4 = rxSolveDat->initsC.size();
-    int64_t n5_c = (int64_t)lhs.size()*op->cores;
-    int64_t nllik_c = (int64_t)rxLlikSaveSize*op->nLlik*op->cores;
     // The initial conditions cannot be changed for each individual; If
     // they do they need to be a parameter.
     NumericVector scaleC = rxSetupScale(object, scale, extraArgs);
-    int64_t n6 = scaleC.size();
-    int64_t nIndSim = rx->nIndSim;
-    int64_t n7 =  nIndSim * (int64_t)rx->nsub * rx->nsim;
-    int64_t n8 = (int64_t)rx->maxAllTimes*op->cores;
-    int64_t n9 = ((int64_t)op->numLinSens+op->numLin)*op->cores;
-    int64_t n10 = (int64_t)(op->neq)*op->cores;
-    int64_t n11 = 4 * op->neq * op->cores; // per-thread tolerance arrays (atol2, rtol2, ssAtol, ssRtol)
-    int64_t nmtime0_c = (int64_t)rx->nMtime * op->cores;
-    int64_t nlin = (int64_t)(rx->linB)* 7* rx->nsub * rx->nsim;
-    // Guard 1: fast hard limit — n0 > INT_MAX means gsolve alone exceeds ~16 GB.
+
+    // Fill layout using the single formula source (inst/include/rxMemoryCalc.h).
+    // All element counts and the two calloc totals (gsolve_total, gon_total)
+    // are computed here; nothing is duplicated below.
+    rx_mem_layout _mem;
+    rxFillMemLayout(
+      op->neq,
+      (int)state.size(),                      /* state_size: exact, not neq proxy */
+      (int)lhs.size(),                         /* nlhs */
+      (int)rx->nsim,
+      op->cores,
+      rx->nMtime,
+      op->extraCmt,
+      rx->linB,
+      op->nLlik,
+      rx->nIndSim,
+      (int)rx->nsub,
+      (int64_t)rx->nall,
+      rx->maxAllTimes,
+      op->numLinSens,
+      op->numLin,
+      (int64_t)rxSolveDat->initsC.size(),     /* n4_actual */
+      (int64_t)scaleC.size(),                 /* n6_actual */
+      &_mem);
+
+    // Guard 1: fast hard limit -- n0 > INT_MAX means gsolve alone exceeds ~16 GB.
     // Portable, zero-cost backstop that catches the dominant overflow path.
-    if (n0 > (int64_t)INT_MAX) {
+    if (_mem.n0 > (int64_t)INT_MAX) {
       rxSolveFree();
       stop(_("the solver buffer (%lld elements, %.1f GB) is too large for rxSolve to handle; "
-             "reduce the number of timepoints or simulations"),
-           (long long)n0, (double)n0 * sizeof(double) / 1e9);
+             "reduce the number of timepoints or simulations; "
+             "use rxSolve(..., file = 'prefix') to solve in chunks"),
+           (long long)_mem.n0, (double)_mem.n0 * sizeof(double) / 1e9);
     }
     // Guard 2: platform-specific available-memory check (advisory; see rxMemAvail.h).
     // Returns UINT64_MAX on unsupported platforms, skipping the check.
     {
-      int64_t _totalElems = nlin + n0 + 3*nsave + n2 + n4 + n5_c + n6 +
-                            n7 + n8 + n9 + n10 + n11 + nmtime0_c + 5*op->neq + 4*n3a_c + nllik_c;
-      uint64_t _needed = (uint64_t)_totalElems * sizeof(double);
+      uint64_t _needed = (uint64_t)_mem.gsolve_total * sizeof(double);
       uint64_t _avail  = rxAvailableMemoryBytes();
       if (_avail != UINT64_MAX && _needed > _avail) {
         rxSolveFree();
         stop(_("the solver requires %.1f GB but only %.1f GB appears available; "
-               "reduce the number of timepoints or simulations"),
+               "reduce the number of timepoints or simulations; "
+               "use rxSolve(..., file = 'prefix') to solve in chunks"),
              (double)_needed / 1e9, (double)_avail / 1e9);
       }
     }
     if (_globals.gsolve != NULL) free(_globals.gsolve);
-    _globals.gsolve = (double*)calloc(nlin+n0+3*nsave+n2+ n4+n5_c+n6+ n7 + n8 +
-                                      n9 + n10 + n11 + nmtime0_c +
-                                      5*op->neq + 4*n3a_c + nllik_c,
-                                      sizeof(double));// [n0]
+    _globals.gsolve = (double*)calloc(_mem.gsolve_total, sizeof(double));
 #ifdef rxSolveT
-    RSprintf("Time12c (double alloc %d): %f\n",n0+nLin+n2+7*n3+n4+n5+n6+ 5*op->neq,((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
+    RSprintf("Time12c (double alloc): %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
 #endif // rxSolveT
-    if (_globals.gsolve == NULL){
+    if (_globals.gsolve == NULL) {
       rxSolveFree();
-      int64_t _totalElems = nlin + n0 + 3*nsave + n2 + n4 + n5_c + n6 +
-                            n7 + n8 + n9 + n10 + n11 + nmtime0_c + 5*op->neq + 4*n3a_c + nllik_c;
       stop(_("could not allocate enough memory for solving (%.1f GB requested)"),
-           (double)_totalElems * sizeof(double) / 1e9);
+           (double)_mem.gsolve_total * sizeof(double) / 1e9);
     }
-    _globals.gLin = _globals.gsolve + n0; // [nlin]
-    _globals.gLlikSave = _globals.gLin + nlin; // [nllik_c]
-    _globals.gSolveSave  = _globals.gLlikSave + nllik_c; //[nsave]
-    _globals.gSolveLast  = _globals.gSolveSave + nsave; // [nsave]
-    _globals.gSolveLast2 = _globals.gSolveLast + nsave; // [nsave]
-    _globals.gmtime      = _globals.gSolveLast2 + nsave; // [n2]
+    // Pointer layout within gsolve -- field names match rx_mem_layout members.
+    _globals.gLin        = _globals.gsolve     + _mem.n0;
+    _globals.gLlikSave   = _globals.gLin        + _mem.nlin;
+    _globals.gSolveSave  = _globals.gLlikSave   + _mem.nllik_c;
+    _globals.gSolveLast  = _globals.gSolveSave  + _mem.nsave;
+    _globals.gSolveLast2 = _globals.gSolveLast  + _mem.nsave;
+    _globals.gEsPendingJump = _globals.gSolveLast2 + _mem.nsave;
+    _globals.gmtime      = _globals.gEsPendingJump + _mem.nsave;
     // gInfusionRate is now allocated per-thread independently (see below)
-    _globals.ginits = _globals.gmtime + n2; // [n4]
+    _globals.ginits      = _globals.gmtime      + _mem.n2;
     std::copy(rxSolveDat->initsC.begin(), rxSolveDat->initsC.end(), &_globals.ginits[0]);
     op->inits = &_globals.ginits[0];
-    _globals.glhs = _globals.ginits + n4; // [n5_c]
-    // initially NA_REAL
-    //std::fill_n(_globals.glhs,n5, NA_REAL); // TOO slow
-    _globals.gscale = _globals.glhs + n5_c; //[n6]
-    std::copy(scaleC.begin(),scaleC.end(),&_globals.gscale[0]);
+    _globals.glhs        = _globals.ginits      + _mem.n4;
+    _globals.gscale      = _globals.glhs        + _mem.n5_c;
+    std::copy(scaleC.begin(), scaleC.end(), &_globals.gscale[0]);
     op->scale = &_globals.gscale[0];
-    _globals.gatol2=_globals.gscale   + n6; //[op->neq]
-    _globals.grtol2=_globals.gatol2   + op->neq;  //[op->neq]
-    _globals.gssRtol=_globals.grtol2  + op->neq; //[op->neq]
-    _globals.gssAtol=_globals.gssRtol + op->neq; //[op->neq]
-    // All NA_REAL fill are below;  one statement to initialize them all
-    rx->ypNA = _globals.gssAtol + op->neq; // [op->neq]
-    _globals.gTlastS = rx->ypNA + op->neq; // [n3a_c]
-    _globals.gTfirstS  = _globals.gTlastS + n3a_c; // [n3a]
-    _globals.gCurDoseS = _globals.gTfirstS + n3a_c; // [n3a]
-    _globals.gIndSim   = _globals.gCurDoseS + n3a_c;// [n7]
-    _globals.gLinSave  = _globals.gIndSim + n7; // [n9]
-    _globals.gLinDummy = _globals.gLinSave + n9; // [n10]
-    _globals.timeThread = _globals.gLinDummy + n10;
-    _globals.gatol2Thread  = _globals.timeThread + n8; // [op->neq * op->cores]
+    _globals.gatol2      = _globals.gscale      + _mem.n6;
+    _globals.grtol2      = _globals.gatol2      + op->neq;
+    _globals.gssRtol     = _globals.grtol2      + op->neq;
+    _globals.gssAtol     = _globals.gssRtol     + op->neq;
+    // All NA_REAL fill are below; one statement to initialize them all
+    rx->ypNA             = _globals.gssAtol     + op->neq;
+    _globals.gTlastS     = rx->ypNA             + op->neq;
+    _globals.gTfirstS    = _globals.gTlastS     + _mem.n3a_c;
+    _globals.gCurDoseS   = _globals.gTfirstS    + _mem.n3a_c;
+    _globals.gIndSim     = _globals.gCurDoseS   + _mem.n3a_c;
+    _globals.gLinSave    = _globals.gIndSim     + _mem.n7;
+    _globals.gLinDummy   = _globals.gLinSave    + _mem.n9;
+    _globals.timeThread  = _globals.gLinDummy   + _mem.n10;
+    _globals.gatol2Thread  = _globals.timeThread  + _mem.n8;
     _globals.grtol2Thread  = _globals.gatol2Thread  + op->neq * op->cores;
     _globals.gssAtolThread = _globals.grtol2Thread  + op->neq * op->cores;
     _globals.gssRtolThread = _globals.gssAtolThread + op->neq * op->cores;
-    _globals.gmtime0       = _globals.gssRtolThread + op->neq * op->cores; // [nmtime0_c]
+    _globals.gmtime0       = _globals.gssRtolThread + op->neq * op->cores;
 
     // Allocate gInfusionRate per-thread independently so each thread's buffer
     // can be realloc'd without disturbing others
@@ -5568,22 +7670,21 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _lastT0 = clock();
 #endif // rxSolveT
     if (_globals.gon != NULL) free(_globals.gon);
-    _globals.gon = (int*)calloc(n3a_c + n3 + (uint64_t)4*rxSolveDat->nSize + (uint64_t)rx->nall*rx->nsim, sizeof(int)); // [n3a_c]
+    _globals.gon = (int*)calloc(_mem.gon_total, sizeof(int));
 #ifdef rxSolveT
-    RSprintf("Time12e (int alloc %d):  %f\n", n1+n3 + 4*rxSolveDat->nSize, ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
+    RSprintf("Time12e (int alloc): %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
 #endif // rxSolveT
-    if (_globals.gon == NULL){
+    if (_globals.gon == NULL) {
       rxSolveFree();
       stop(_("could not allocate enough memory for solving (gon)"));
     }
-    //std::fill_n(&_globals.gon[0], n, 1);
-    _globals.gBadDose = _globals.gon + n3a_c; // [n3]
-    _globals.grc = _globals.gBadDose + n3; //[nSize]; needs to match the whole dataset
-    _globals.slvr_counter = _globals.grc + rxSolveDat->nSize; //[nSize]
-    _globals.dadt_counter = _globals.slvr_counter + rxSolveDat->nSize; // [nSize]
-    _globals.jac_counter = _globals.dadt_counter + rxSolveDat->nSize; // [nSize]
-    _globals.gix = _globals.jac_counter+rxSolveDat->nSize; // rx->nall*rx->nsim
+    _globals.gBadDose    = _globals.gon          + _mem.n3a_c;
+    _globals.grc         = _globals.gBadDose     + _mem.n3;
+    _globals.slvr_counter = _globals.grc         + rxSolveDat->nSize;
+    _globals.dadt_counter = _globals.slvr_counter + rxSolveDat->nSize;
+    _globals.jac_counter  = _globals.dadt_counter + rxSolveDat->nSize;
+    _globals.gix          = _globals.jac_counter  + rxSolveDat->nSize;
 
 #ifdef rxSolveT
     RSprintf("Time13: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
@@ -5592,6 +7693,18 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rxSolve_normalizeParms(object, rxControl, specParams, extraArgs,
                            pars, ev1, inits, rxSolveDat);
     sortIds(rx, 1);
+    // write pre-integration state if serializeFile is set
+
+    RObject _sf = rxControl[Rxc_serializeFile];
+    if (!rxIsNull(_sf) && Rf_isString(_sf) && LENGTH(_sf) == 1) {
+      if (STRING_ELT(_sf, 0) != NA_STRING) {
+        RObject _pathSexp(Rf_ScalarString(STRING_ELT(_sf, 0)));
+        RObject cState(rxSaveState_());
+        Function saveFn = getRxFn(".rxSaveStateBundle");
+          saveFn(_pathSexp, cState, object, rxSolveDatState(rxSolveDat),
+                 params, events, inits);
+      }
+    }
 
     if (setupOnly){
       setupOnlyObj = obj;
@@ -5602,8 +7715,10 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     _lastT0 = clock();
 #endif// rxSolveT
 
-    SEXP ret = rxSolve_finalize(object, rxControl, specParams, extraArgs, params, events,
-                                inits, rxSolveDat);
+    // rxSolve_finalize() returns a bare SEXP; keep it protected until return.
+    rxProtect rx_protect;
+    SEXP ret = rx_protect.protect(rxSolve_finalize(object, rxControl, specParams, extraArgs,
+                                                   params, events, inits, rxSolveDat));
     if (!rxIsNull(setupOnlyObj)) {
       rxUnlock(setupOnlyObj);
       setupOnlyObj = R_NilValue;
@@ -5634,11 +7749,18 @@ RObject rxSolveGet_rxSolve(RObject &obj, std::string &sarg, LogicalVector &exact
     retS.attr("class") = "rxModelText";
     return(retS);
   }
-  updateSolveEnvPost(e);
+  if (sarg == "counts") {
+    rxSolveEnsureCounts(e);
+  } else if (sarg == ".params.dat" || sarg == ".params.single") {
+    rxSolveEnsureParams(e);
+  } else if (rxSolveIsEtName(sarg)) {
+    getEtRxsolve(e);
+  }
   if (e.exists(sarg)){
     return e[sarg];
   }
   if (sarg == "params" || sarg == "par" || sarg == "pars" || sarg == "param"){
+    rxSolveEnsureParams(e);
     List ret = clone(as<List>(e[".params.dat"]));
     return ret;
   } else if (sarg == "inits" || sarg == "init"){
@@ -5652,10 +7774,14 @@ RObject rxSolveGet_rxSolve(RObject &obj, std::string &sarg, LogicalVector &exact
     return e[".sigmaL"];
   } else if ((sarg == "omega.list" || sarg == "omegaList") && e.exists(".omegaL")){
     return e[".omegaL"];
+  } else if (sarg == "tolFactor") {
+    if (e.exists(".tolFactor")) return e[".tolFactor"];
+    return R_NilValue;
   } else if ((sarg == "theta.list" || sarg == "thetaList")) {
     return e[".thetaL"];
   }
   // Now parameters
+  rxSolveEnsureParams(e);
   List pars = clone(List(e[".params.dat"]));
   CharacterVector nmp = pars.names();
   n = pars.size();
@@ -5760,8 +7886,16 @@ CharacterVector rxSolveDollarNames(RObject obj){
   List lst = as<List>(obj);
   CharacterVector cls = lst.attr("class");
   Environment e = as<Environment>(cls.attr(".rxode2.env"));
-  updateSolveEnvPost(e);
-  int nExtra = 6;
+  rxSolveEnsureParams(e);
+  // $counts and the eventTable-style methods are listed before they are built
+  std::vector<std::string> lazyNames;
+  if (!e.exists("counts")) lazyNames.push_back("counts");
+  for (int i = 0; etCacheNames[i] != nullptr; i++) {
+    if (etCacheNames[i][0] != '.' && !e.exists(etCacheNames[i])) {
+      lazyNames.push_back(etCacheNames[i]);
+    }
+  }
+  int nExtra = 7 + (int)lazyNames.size();
   if (e.exists(".theta")) nExtra++;
   if (e.exists(".sigmaL")) nExtra++;
   if (e.exists(".thetaL")) nExtra++;
@@ -5799,6 +7933,9 @@ CharacterVector rxSolveDollarNames(RObject obj){
   for (unsigned int i = envl.size(); i--;){
     ret[j++] = envl[i];
   }
+  for (unsigned int i = 0; i < lazyNames.size(); i++){
+    ret[j++] = lazyNames[i];
+  }
 
   ret[j++] = "env";
   ret[j++] = "model";
@@ -5806,6 +7943,7 @@ CharacterVector rxSolveDollarNames(RObject obj){
   ret[j++] = "inits";
   ret[j++] = "t";
   ret[j++] = "rxode2";
+  ret[j++] = "tolFactor";
   if (e.exists(".theta")) ret[j++] = "thetaMat";
   if (e.exists(".sigmaL")) ret[j++] = "sigmaList";
   if (e.exists(".thetaL")) ret[j++] = "thetaList";
@@ -5910,13 +8048,13 @@ RObject rxSolveUpdate(RObject obj,
         } else if (sarg == "t" || sarg == "time"){
           CharacterVector classattr = obj.attr("class");
           Environment e = as<Environment>(classattr.attr(".rxode2.env"));
-          updateSolveEnvPost(e);
+          getEtRxsolve(e);
           Function f = as<Function>(e[".replace.sampling"]);
           return f(value);
         } else {
           CharacterVector classattr = obj.attr("class");
           Environment e = as<Environment>(classattr.attr(".rxode2.env"));
-          updateSolveEnvPost(e);
+          rxSolveEnsureParams(e);
           if (rxIsNull(e[".params.dat"])) {
             rxSolveFree();
             stop(_("cannot update nonexistent parameters"));
@@ -5972,6 +8110,10 @@ RObject rxSolveUpdate(RObject obj,
                 newEvents.attr("names") = newEventsNames;
                 newEvents.attr("class") = "data.frame";
                 newEvents.attr("row.names") = IntegerVector::create(NA_INTEGER,-nc);
+                SEXP homGroupsS = Rf_getAttrib(events, Rf_install("rxHomGroups"));
+                SEXP homIdLevelsS = Rf_getAttrib(events, Rf_install("rxHomIdLevels"));
+                if (!Rf_isNull(homGroupsS)) Rf_setAttrib(newEvents, Rf_install("rxHomGroups"), homGroupsS);
+                if (!Rf_isNull(homIdLevelsS)) Rf_setAttrib(newEvents, Rf_install("rxHomIdLevels"), homIdLevelsS);
                 return rxSolve_(obj, rxControl,
                                 CharacterVector::create("params","events"),
                                 R_NilValue,
@@ -6025,6 +8167,10 @@ RObject rxSolveUpdate(RObject obj,
                 newEvents.attr("names") = newEventsNames;
                 newEvents.attr("class") = "data.frame";
                 newEvents.attr("row.names") = IntegerVector::create(NA_INTEGER,-nc);
+                SEXP homGroupsS = Rf_getAttrib(events, Rf_install("rxHomGroups"));
+                SEXP homIdLevelsS = Rf_getAttrib(events, Rf_install("rxHomIdLevels"));
+                if (!Rf_isNull(homGroupsS)) Rf_setAttrib(newEvents, Rf_install("rxHomGroups"), homGroupsS);
+                if (!Rf_isNull(homIdLevelsS)) Rf_setAttrib(newEvents, Rf_install("rxHomIdLevels"), homIdLevelsS);
                 return rxSolve_(obj,rxControl,
                                 CharacterVector::create("events", "params"),
                                 R_NilValue,
@@ -6167,6 +8313,7 @@ Nullable<Environment> rxrxode2env(RObject obj){
 //' Get rxode2 model from object
 //' @param obj rxode2 family of objects
 //' @return rxode2 model
+//' @family Developer API
 //' @export
 //[[Rcpp::export]]
 RObject rxGetrxode2(RObject obj){
@@ -6189,6 +8336,21 @@ RObject rxGetrxode2(RObject obj){
 //' @return boolean indicating if this was built with current rxode2
 //'
 //' @export
+//' @family Utilities
+//' @examples
+//' \donttest{
+//' f <- function() {
+//'   ini({
+//'     ka <- 0.5; cl <- 1; v <- 10
+//'   })
+//'   model({
+//'     d/dt(depot) <- -ka * depot
+//'     d/dt(central) <- ka * depot - cl / v * central
+//'     cp <- central / v
+//'   })
+//' }
+//' rxIsCurrent(f()$simulationModel)
+//' }
 //[[Rcpp::export]]
 bool rxIsCurrent(RObject obj){
   List mv = rxModelVars(obj);
@@ -6209,6 +8371,7 @@ bool rxIsCurrent(RObject obj){
 //' Assign pointer based on model variables
 //' @param object rxode2 family of objects
 //' @return nothing, called for side effects
+//' @family Developer API
 //' @export
 //[[Rcpp::export]]
 void rxAssignPtr(SEXP object = R_NilValue){
@@ -6237,16 +8400,24 @@ void rxAssignPtr(SEXP object = R_NilValue){
 }
 
 extern "C" void updateExtraDoseGlobals(rx_solving_options_ind* ind) {
-  _globals.ignoredDoses[omp_get_thread_num()] = ind->ignoredDoses;
-  _globals.pendingDoses[omp_get_thread_num()] = ind->pendingDoses;
-  _globals.extraDoseTimeIdx[omp_get_thread_num()] = ind->extraDoseTimeIdx;
-  _globals.extraDoseTime[omp_get_thread_num()] = ind->extraDoseTime;
-  _globals.extraDoseEvid[omp_get_thread_num()] = ind->extraDoseEvid;
-  _globals.extraDoseDose[omp_get_thread_num()] = ind->extraDoseDose;
+  _globals.ignoredDoses[_rxTid()] = ind->ignoredDoses;
+  _globals.pendingDoses[_rxTid()] = ind->pendingDoses;
+  _globals.extraDoseTimeIdx[_rxTid()] = ind->extraDoseTimeIdx;
+  _globals.extraDoseTime[_rxTid()] = ind->extraDoseTime;
+  _globals.extraDoseEvid[_rxTid()] = ind->extraDoseEvid;
+  _globals.extraDoseDose[_rxTid()] = ind->extraDoseDose;
 }
 
 extern "C" void rxAssignPtrC(SEXP obj){
   rxAssignPtr(obj);
+}
+
+static inline std::string rxDllFromSlot(SEXP rxDllSlot) {
+  if (TYPEOF(rxDllSlot) == ENVSXP) {
+    Environment rxDllEnv = as<Environment>(rxDllSlot);
+    return as<std::string>(rxDllEnv["dll"]);
+  }
+  return as<std::string>((as<List>(rxDllSlot))["dll"]);
 }
 
 //' Return the DLL associated with the rxode2 object
@@ -6263,7 +8434,7 @@ extern "C" void rxAssignPtrC(SEXP obj){
 //' @keywords internal
 //' @author Matthew L.Fidler
 //' @export
-//[[Rcpp::export]]
+// [[Rcpp::export]]
 std::string rxDll(RObject obj){
   if (rxIs(obj,"rxode2")){
     Environment e = as<Environment>(obj);
@@ -6272,7 +8443,7 @@ std::string rxDll(RObject obj){
       Function rxPkgDll = getRxFn(".rxPkgDll");
       return(as<std::string>(rxPkgDll(wrap(obj))));
     }
-    return as<std::string>((as<List>(e["rxDll"]))["dll"]);
+    return rxDllFromSlot(e["rxDll"]);
   } else if (rxIs(obj,"rxSolve")) {
     CharacterVector cls = obj.attr("class");
     Environment e = as<Environment>(cls.attr(".rxode2.env"));
@@ -6291,7 +8462,7 @@ std::string rxDll(RObject obj){
       stop(_("can not figure out the DLL for this object"));
     } else {
       Environment e = as<Environment>(en);
-      return as<std::string>((as<List>(e["rxDll"]))["dll"]);
+      return rxDllFromSlot(e["rxDll"]);
     }
   }
 }
@@ -6407,6 +8578,23 @@ bool rxDynLoad(RObject obj){
 //' @return nothing; called for side effects
 //'
 //' @export
+//' @family Utilities
+//' @examples
+//' \donttest{
+//' f <- function() {
+//'   ini({
+//'     ka <- 0.5; cl <- 1; v <- 10
+//'   })
+//'   model({
+//'     d/dt(depot) <- -ka * depot
+//'     d/dt(central) <- ka * depot - cl / v * central
+//'     cp <- central / v
+//'   })
+//' }
+//' m <- f()$simulationModel
+//' rxLock(m)
+//' rxUnlock(m)
+//' }
 //[[Rcpp::export]]
 RObject rxLock(RObject obj){
   getRxModels();
@@ -6484,6 +8672,7 @@ bool rxUnload_ = true;
 //'
 //' # Garbage collection will unload unused rxode2 dlls
 //' rxAllowUnload(TRUE);
+//' @family Developer API
 //' @export
 //' @author Matthew Fidler
 //[[Rcpp::export]]
@@ -6578,6 +8767,22 @@ bool rxDynUnload(RObject obj){
 //'
 //' @author Matthew L.Fidler
 //' @export
+//' @family Model definition
+//' @examples
+//' \donttest{
+//' f <- function() {
+//'   ini({
+//'     ka <- 0.5; cl <- 1; v <- 10
+//'   })
+//'   model({
+//'     d/dt(depot) <- -ka * depot
+//'     d/dt(central) <- ka * depot - cl / v * central
+//'     cp <- central / v
+//'   })
+//' }
+//' m <- f()$simulationModel
+//' rxDelete(m)
+//' }
 //[[Rcpp::export]]
 bool rxDelete(RObject obj){
   if (rxIs(obj, "rxode2")){

@@ -1,10 +1,16 @@
-.udfEnv <- new.env(parent=emptyenv())
+.udfEnv <- new.env(parent = emptyenv())
 .udfEnv$fun <- list()
 .udfEnv$udf <- integer(0)
 .udfEnv$envir <- NULL
+## depth of nested .udfEnvLocal() scopes and the envir to restore when the
+## outermost one exits
+.udfEnv$depth <- 0L
+.udfEnv$envirOuter <- NULL
+.udfEnv$scopeFrame <- NULL
+## the R function each user function name resolved to, used at solve time
+.udfEnv$funObj <- list()
 .udfEnv$envList <- list()
 .udfEnv$searchList <- list()
-.udfEnv$hashSearchList <- new.env(parent = emptyenv())
 .udfEnv$rxSEeqUsr <- NULL
 .udfEnv$rxCcode <- NULL
 .udfEnv$symengineFs <- new.env(parent = emptyenv())
@@ -14,6 +20,18 @@
 .udfEnv$bestFunHasDots <- FALSE
 .udfEnv$bestNargs <- NA_integer_
 .udfEnv$bestEqArgs <- FALSE
+## user functions a model carries itself (see .udfModelLocal()), innermost last
+.udfEnv$modelStack <- list()
+## closure environment of the model function .rxFunction2ui() is rebuilding
+.udfEnv$modelFunEnv <- NULL
+## model user functions already tried for C, by name
+.udfEnv$modelC <- list()
+## model user function environments the current parse used, those a compiled
+## model may still need (see .udfModelKeep()) and the ones the current solve
+## uses
+.udfEnv$modelUsed <- list()
+.udfEnv$modelList <- list()
+.udfEnv$modelSolve <- list()
 #' Get the udf strings for creating model md5
 #'
 #' @return string vector
@@ -21,31 +39,45 @@
 #' @author Matthew L. Fidler
 #' @keywords internal
 .udfMd5Info <- function() {
-  .tmp <- ls(.udfEnv$symengineFs, all.names=TRUE)
-  .env <- new.env(parent=emptyenv())
+  .udfModelPrune()
+  .tmp <- ls(.udfEnv$symengineFs, all.names = TRUE)
+  .env <- new.env(parent = emptyenv())
   .env$found <- FALSE
-  .ret <- vapply(.tmp, function(x) {
-    .cur <- .udfEnv$fun[[x]]
-    if (!is.null(.cur)) {
-      .env$found <- TRUE
-    }
-    x
-  }, character(1), USE.NAMES = FALSE)
+  .ret <- vapply(
+    .tmp,
+    function(x) {
+      .cur <- .udfEnv$fun[[x]]
+      if (!is.null(.cur)) {
+        .env$found <- TRUE
+      }
+      x
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
+  # the C code, so a same-named function with a new body recompiles
+  .ret <- c(.ret, unname(.udfEnv$rxCcode))
   if (.env$found) {
-    .ret <- c(.ret, data.table::address(.udfEnv$envir),
-              # don't cache md5 changes every run:
-              as.character(Sys.time()))
+    .ret <- c(
+      .ret,
+      data.table::address(.udfEnv$envir),
+      # don't cache md5 changes every run:
+      as.character(Sys.time())
+    )
   }
   .ret
 }
 #' Generate extraC information for rxode2 models
 #'
 #' @param extraC Additional extraC from rxode2 compile optioioins
+#' @param extraCmodel named C code of the model's own user functions, used in
+#'   place of any registered function of the same name
 #' @return Nothing, called for side effects
 #' @export
 #' @author Matthew L. Fidler
 #' @keywords internal
-.extraC <- function(extraC = NULL) {
+.extraC <- function(extraC = NULL, extraCmodel = NULL) {
+  .udfModelPrune()
   if (!is.null(extraC)) {
     if (file.exists(extraC)) {
       .ret <- sprintf("#include \"%s\"\n", extraC)
@@ -55,8 +87,18 @@
   } else {
     .ret <- ""
   }
-  if (length(.udfEnv$rxCcode) > 0L) {
-    .ret <- sprintf("%s\n%s\n", .ret, paste(.udfEnv$rxCcode, collapse = "\n"))
+  .code <- .udfEnv$rxCcode
+  if (length(extraCmodel) > 0L) {
+    # static, so a model always calls its own function: model DLLs are loaded
+    # globally, and on Linux a same-named function in another model's DLL
+    # would otherwise be called instead
+    extraCmodel <- sub("^double ", "static double ", extraCmodel)
+    # model functions may call each other in any order, so declare them first
+    .proto <- paste0(sub("[)] *[{].*$", ");", sub("\n.*$", "", extraCmodel)), collapse = "\n")
+    .code <- c(.proto, .code[!(names(.code) %in% names(extraCmodel))], extraCmodel)
+  }
+  if (length(.code) > 0L) {
+    .ret <- sprintf("%s\n%s\n", .ret, paste(.code, collapse = "\n"))
   }
   .udfEnv$extraCnow <- .ret
   return(invisible())
@@ -91,14 +133,15 @@ rxFunParse <- function(name, args, cCode) {
   if (!is.character(name) || length(name) != 1L) {
     stop("name argument must be a length-one character vector", call. = FALSE)
   }
-  if (missing(cCode)) stop("a new function requires a C function so it can be used in rxode2", call. = FALSE)
+  if (missing(cCode)) {
+    stop("a new function requires a C function so it can be used in rxode2", call. = FALSE)
+  }
   if (any(name == names(.udfEnv$rxSEeqUsr))) {
-    stop("already defined user function '", name, "', remove it fist ('rxRmFun')",
-         call. = FALSE
-         )
+    stop("already defined user function '", name, "', remove it fist ('rxRmFun')", call. = FALSE)
   }
   suppressWarnings(rxRmFunParse(name))
   .udfEnv$rxSEeqUsr <- c(.udfEnv$rxSEeqUsr, setNames(length(args), name))
+  .rxSEinvalidate()
   .udfEnv$rxCcode <- c(.udfEnv$rxCcode, setNames(cCode, name))
   assign(name, symengine::Function(name), envir = .udfEnv$symengineFs)
   return(invisible())
@@ -133,7 +176,9 @@ rxFunParse <- function(name, args, cCode) {
 #' @keywords internal
 .rxC <- function(fun) {
   .w <- which(names(.udfEnv$rxCcode) == fun)
-  if (length(.w) == 1) return(setNames(.udfEnv$rxCcode[fun], NULL))
+  if (length(.w) == 1) {
+    return(setNames(.udfEnv$rxCcode[fun], NULL))
+  }
   NULL
 }
 
@@ -141,8 +186,7 @@ rxFunParse <- function(name, args, cCode) {
 #' @export
 rxRmFunParse <- function(name) {
   if (!is.character(name) || length(name) != 1L) {
-    stop("name argument must be a length-one character vector",
-         call. = FALSE)
+    stop("name argument must be a length-one character vector", call. = FALSE)
   }
   if (!any(name == names(.udfEnv$rxSEeqUsr))) {
     warning("no user function '", name, "' to remove", call. = FALSE)
@@ -150,6 +194,7 @@ rxRmFunParse <- function(name) {
   .w <- which(name == names(.udfEnv$rxSEeqUsr))
   if (length(.w) == 1L) {
     .udfEnv$rxSEeqUsr <- .udfEnv$rxSEeqUsr[-.w]
+    .rxSEinvalidate()
   }
   .w <- which(name == names(.udfEnv$rxCcode))
   if (length(.w) == 1L) {
@@ -158,12 +203,14 @@ rxRmFunParse <- function(name) {
   .rxD <- rxode2parseD()
   if (exists(name, envir = .rxD)) {
     if (!grepl("^rx_", name)) {
-      .d <- get(name, envir=.rxD)
+      .d <- get(name, envir = .rxD)
       lapply(names(formals(.d[[1]])), function(v) {
         suppressWarnings(rxRmFunParse(paste0("rx_", name, "_d_", v)))
       })
     }
     rm(list = name, envir = .rxD)
+    ## the C translator caches these as templates; see .rxDtemplates()
+    .rxSEinvalidate()
   }
   if (exists(name, envir = .udfEnv$symengineFs)) {
     rm(list = name, envir = .udfEnv$symengineFs)
@@ -172,28 +219,134 @@ rxRmFunParse <- function(name) {
 }
 
 
+#' Number of past environments kept for finding user defined functions
+#'
+#' Every `$` on a `rxUi`, every `rxSolve()` and every `rxode2()` records the
+#' environment it was called from here, and an entry pins that environment --
+#' usually a call frame that is otherwise dead -- for as long as it is kept.
+#' An unbounded list therefore grew for the life of the session and could not
+#' be reclaimed by `gc()`.  Keeping the most recent ones preserves the search
+#' (a long-lived environment, e.g. the global environment, is simply re-added
+#' the next time it is used) while bounding what is held.
+#'
+#' @return integer limit, at least 1
+#' @noRd
+.udfSearchListMax <- function() {
+  .n <- getOption("rxode2.udfSearchLimit", 20L)
+  if (!checkmate::testIntegerish(.n, lower = 1, len = 1, any.missing = FALSE)) {
+    return(20L)
+  }
+  as.integer(.n)
+}
 
 .udfAddToSearch <- function(envir) {
+  if (!is.environment(envir) && !is.list(envir)) {
+    return(invisible())
+  }
   if (is.list(envir)) {
-    lapply(seq_along(envir),
-           function(i) {
-             .udfAddToSearch(envir[[i]])
-           })
+    lapply(seq_along(envir), function(i) {
+      .udfAddToSearch(envir[[i]])
+    })
     return(invisible())
   }
-  if (length(.udfEnv$searchList) == 0L) {
-    .udfEnv$searchList <- list(envir)
-    .udfEnv$hashSearchList[[data.table::address(envir)]] <- TRUE
+  .lst <- .udfEnv$searchList
+  ## `identical()` on environments is a pointer comparison, so membership over
+  ## a bounded list is cheap.  The list used to be indexed by a hash keyed on
+  ## `data.table::address()`, which had to mint a new name per environment --
+  ## and R interns every name it is given for the life of the session, so the
+  ## index leaked too, just more slowly than the list it indexed.
+  for (.i in seq_along(.lst)) {
+    if (identical(.lst[[.i]], envir)) {
+      return(invisible())
+    }
   }
-  if (exists(data.table::address(envir), envir = .udfEnv$hashSearchList, inherits = FALSE)) {
-    return(invisible())
+  ## appended, so the search order (oldest environment first) is unchanged;
+  ## only environments older than the limit are forgotten
+  .lst <- c(.lst, list(envir))
+  .max <- .udfSearchListMax()
+  if (length(.lst) > .max) {
+    .lst <- .lst[seq(length(.lst) - .max + 1L, length(.lst))]
   }
-  .udfEnv$searchList <- c(.udfEnv$searchList, list(envir))
-  .udfEnv$hashSearchList[[data.table::address(envir)]] <- TRUE
+  .udfEnv$searchList <- .lst
   invisible()
 }
 
-#' Setup the UDF environment (for querying user defined funtions)
+#' Whether a stack frame is rxode2's own (never where user functions live)
+#'
+#' (a) A frame of a function of the rxode2 namespace, (b) of a closure made in
+#' such a frame, or (c) of a base function (like `lapply()`) called from one.
+#' Not `topenv()`, which is rxode2's namespace for test code too.
+#'
+#' @param i frame number to classify
+#' @param frames,parents `sys.frames()` and `sys.parents()` for the stack
+#' @param fns list of the stack's functions (`sys.function()`), or `NULL` to
+#'   look them up as needed
+#' @return logical
+#' @noRd
+.udfIsRxFrame <- function(i, frames, parents, fns = NULL) {
+  .env <- environment(if (is.null(fns)) sys.function(i) else fns[[i]])
+  if (is.null(.env)) {
+    return(FALSE)
+  }
+  if (identical(.env, parent.env(environment()))) {
+    return(TRUE)
+  }
+  if (identical(.env, .BaseNamespaceEnv)) {
+    return(parents[i] > 0L && parents[i] < i && .udfIsRxFrame(parents[i], frames, parents, fns))
+  }
+  if (isNamespace(.env) || identical(.env, globalenv())) {
+    return(FALSE)
+  }
+  for (.j in seq_len(i - 1L)) {
+    if (identical(frames[[.j]], .env)) {
+      return(.udfIsRxFrame(.j, frames, parents, fns))
+    }
+  }
+  FALSE
+}
+
+#' Frames `$.rxUi` records for finding user functions
+#'
+#' Its caller and the caller's caller, each moved up past rxode2's own frames
+#' (`.udfIsRxFrame()`); `f1` and `f2` where `sys.parents()` stops decreasing
+#' (as under `rlang::eval_tidy()`).
+#'
+#' @param n frame number of the `$.rxUi` call
+#' @param f1,f2 `parent.frame(1)` and `parent.frame(2)` of that call
+#' @return list of two environments
+#' @noRd
+.udfUserFrames <- function(n, f1, f2) {
+  .frames <- sys.frames()
+  .parents <- sys.parents()
+  # move frame `p` up past rxode2's own frames; NA where parents stop decreasing
+  .up <- function(p) {
+    while (p > 0L && .udfIsRxFrame(p, .frames, .parents)) {
+      if (.parents[p] >= p) {
+        return(NA_integer_)
+      }
+      p <- .parents[p]
+    }
+    p
+  }
+  if (.parents[n] >= n) {
+    return(list(f1, f2))
+  }
+  .p1 <- .up(.parents[n])
+  .p2 <- if (!is.na(.p1) && .p1 > 0L) .up(.parents[.p1]) else 0L
+  if (is.na(.p1) || is.na(.p2)) {
+    return(list(f1, f2))
+  }
+  list(
+    if (.p1 > 0L) .frames[[.p1]] else globalenv(),
+    if (.p2 > 0L) .frames[[.p2]] else globalenv()
+  )
+}
+
+#' Setup the UDF environment (for querying user defined functions)
+#'
+#' Outside of an rxode2 call the most recent environment becomes the primary
+#' one; inside an rxode2 call (see `.udfEnvLocal()`) the call's environment is
+#' kept and `env` is only added to the search list.
 #'
 #' @param env environment where user defined functions are queried. If NULL return current environment
 #' @return environment
@@ -201,15 +354,95 @@ rxRmFunParse <- function(name) {
 #' @author Matthew L. Fidler
 #' @keywords internal
 .udfEnvSet <- function(env) {
-  if (is.null(.udfEnv$envir)) {
-    if (is.list(env)) {
-      .udfEnv$envir <- env[[1]]
-    } else {
-      .udfEnv$envir <- env
-    }
+  if (is.null(env)) {
+    return(invisible(.udfEnv$envir))
+  }
+  .udfEnvEndDeadScope()
+  .env <- .udfFirstEnv(env)
+  if (is.environment(.env) && (.udfEnv$depth == 0L || is.null(.udfEnv$envir))) {
+    .udfEnv$envir <- .env
   }
   .udfAddToSearch(env)
   return(invisible(.udfEnv$envir))
+}
+
+#' First environment in an environment or list of environments
+#'
+#' @param env environment or list of environments (may contain NULL)
+#' @return environment or NULL
+#' @noRd
+.udfFirstEnv <- function(env) {
+  if (is.environment(env)) {
+    return(env)
+  }
+  if (is.list(env)) {
+    for (.e in env) {
+      if (is.environment(.e)) {
+        return(.e)
+      }
+    }
+  }
+  NULL
+}
+
+#' Set the UDF environment for the duration of the calling function
+#'
+#' The outermost call makes `env` the primary environment for user function
+#' lookup and restores the previous one when it exits, so a caller's frame is
+#' neither kept for the session nor preferred by later, unrelated calls.
+#' Nested calls only add `env` to the search list.
+#'
+#' @param env environment or list of environments
+#' @param frame frame whose exit ends the scope
+#' @return primary environment, invisibly
+#' @noRd
+.udfEnvLocal <- function(env, frame = parent.frame()) {
+  .udfEnvEndDeadScope()
+  .udfAddToSearch(env)
+  if (.udfEnv$depth == 0L) {
+    .env <- .udfFirstEnv(env)
+    .udfEnv$envirOuter <- .udfEnv$envir
+    .udfEnv$scopeFrame <- frame
+    if (is.environment(.env)) {
+      .udfEnv$envir <- .env
+    }
+  }
+  .udfEnv$depth <- .udfEnv$depth + 1L
+  do.call(base::on.exit, list(quote(.udfEnvUnlocal()), add = TRUE), envir = frame)
+  invisible(.udfEnv$envir)
+}
+
+#' End a `.udfEnvLocal()` scope whose frame is gone
+#'
+#' This happens when its restore was dropped by a later `on.exit()` without
+#' `add = TRUE`.
+#'
+#' @return nothing, called for side effects
+#' @noRd
+.udfEnvEndDeadScope <- function() {
+  .udfModelPrune()
+  if (
+    .udfEnv$depth > 0L &&
+      !any(vapply(sys.frames(), identical, logical(1), .udfEnv$scopeFrame))
+  ) {
+    .udfEnv$depth <- 1L
+    .udfEnvUnlocal()
+  }
+  invisible()
+}
+
+#' End a `.udfEnvLocal()` scope
+#'
+#' @return nothing, called for side effects
+#' @noRd
+.udfEnvUnlocal <- function() {
+  .udfEnv$depth <- max(.udfEnv$depth - 1L, 0L)
+  if (.udfEnv$depth == 0L) {
+    .udfEnv$envir <- .udfEnv$envirOuter
+    .udfEnv$envirOuter <- NULL
+    .udfEnv$scopeFrame <- NULL
+  }
+  invisible()
 }
 #' Lock/Unlock environment for getting R user functions
 #'
@@ -221,11 +454,33 @@ rxRmFunParse <- function(name) {
 #' @export
 #' @author Matthew L. Fidler
 #' @keywords internal
-.udfEnvReset <- function(lock=TRUE) {
+.udfEnvReset <- function(lock = TRUE) {
   .udfEnv$fun <- list()
   .udfEnv$searchList <- list()
-  .udfEnv$hashSearchList <- new.env(parent = emptyenv())
+  .udfEnv$modelSolve <- list()
 }
+
+#' Release every environment kept for finding user defined functions
+#'
+#' Run by `.onUnload()` before its `gc()`, so the call frames these pin
+#' can be collected while rxode2 is still loaded.
+#'
+#' @return Nothing, called for side effects
+#' @noRd
+.udfEnvRelease <- function() {
+  .udfEnvReset()
+  .udfEnv$envir <- NULL
+  .udfEnv$envList <- list()
+  .udfEnv$bestFun <- NULL
+  .udfEnv$bestFunEnv <- NULL
+  .udfEnv$modelStack <- list()
+  .udfEnv$modelUsed <- list()
+  .udfEnv$modelList <- list()
+  .udfEnv$modelFunEnv <- NULL
+  .rxToSE.envir$parent <- NULL
+  .rxFromSE.envir$parent <- NULL
+}
+
 #' See if the UI function exists in given environment.
 #'
 #' If other functions have been declared, make sure they exist too.
@@ -240,25 +495,38 @@ rxRmFunParse <- function(name) {
 #' @export
 #' @author Matthew L. Fidler
 #' @keywords internal
-.udfExists <- function(fun, nargs, envir, doList=TRUE) {
-  if (is.null(envir)) return(FALSE)
-  .e <- exists(fun, mode="function", envir=envir)
-  if (!.e) return(FALSE)
+.udfExists <- function(fun, nargs, envir, doList = TRUE) {
+  if (is.null(envir)) {
+    return(FALSE)
+  }
+  .e <- exists(fun, mode = "function", envir = envir)
+  if (!.e) {
+    return(FALSE)
+  }
   # ok now see if it makes sense
-  .fun <- get(fun, mode="function", envir=envir)
+  .fun <- get(fun, mode = "function", envir = envir)
   .f <- formals(.fun)
   .bestHasDots <- any(names(.f) == "...")
   .nargs <- length(.f)
   .bestEqArgs <- .nargs == nargs
-  if (.bestEqArgs) { # We want the function to match the declared number of arguments
-    if (!.bestHasDots) { # We don't want ... arguments
+  if (.bestEqArgs) {
+    # We want the function to match the declared number of arguments
+    if (!.bestHasDots) {
+      # We don't want ... arguments
       if (doList) {
         # In the case of multiple user functions, make sure the other
         # user functions also exist in this environment
-        if (!all(vapply(seq_along(.udfEnv$fun), function(i) {
-          .info <- .udfEnv$fun[[i]]
-          return(.udfExists(.info[[1]], .info[[2]], envir=envir, doList=FALSE))
-        }, logical(1), USE.NAMES = FALSE))) {
+        if (
+          !all(vapply(
+            seq_along(.udfEnv$fun),
+            function(i) {
+              .info <- .udfEnv$fun[[i]]
+              return(.udfExists(.info[[1]], .info[[2]], envir = envir, doList = FALSE))
+            },
+            logical(1),
+            USE.NAMES = FALSE
+          ))
+        ) {
           if (is.null(.udfEnv$bestFun)) {
             .udfEnv$bestFun <- .fun
           }
@@ -297,61 +565,94 @@ rxRmFunParse <- function(name) {
   .nargs <- .rxUdfUiNarg(fun)
   if (is.integer(.nargs) && !is.na(.nargs)) {
     if (.nargs > 0L && nargs != .nargs) {
-      return(list(nargs=NA_integer_,
-                  sprintf("rxode2 ui user defined R function has %d arguments, but supplied %d",
-                          .nargs, nargs)))
+      return(list(
+        nargs = NA_integer_,
+        sprintf("rxode2 ui user defined R function has %d arguments, but supplied %d", .nargs, nargs)
+      ))
     } else if (.nargs <= 0L) {
-      return(list(nargs=NA_integer_,
-                  "rxode2 ui user defined R needs to be setup with a positive number of arguments"))
+      return(list(
+        nargs = NA_integer_,
+        "rxode2 ui user defined R needs to be setup with a positive number of arguments"
+      ))
     } else {
-      return(list(nargs=-42L,
-                  ".rxUiUdfNone"))
+      return(list(nargs = -42L, ".rxUiUdfNone"))
     }
   }
-  if (is.null(.udfEnv$envir)) {
-    return(list(nargs=NA_integer_,
-                "rxode2 cannot determine which environment the user defined functions are located"))
+  ## outside of any rxode2 call nothing may be set; look from the global env
+  .envir <- .udfEnv$envir
+  if (!is.environment(.envir)) {
+    .envir <- globalenv()
   }
   .udfEnv$bestFun <- NULL
   .udfEnv$bestFunHasDots <- FALSE
   .udfEnv$bestEqArgs <- TRUE
   .found <- FALSE
-  if (!.udfExists(fun, nargs, .udfEnv$envir)) {
+  .modelEnv <- .udfModelEnvFor(fun)
+  if (is.environment(.modelEnv)) {
+    # a model's own function wins, and need not share an environment with
+    # the other user functions it calls
+    .fun <- .udfEnv$fun
+    .udfEnv$fun <- list()
+    .found <- .udfExists(fun, nargs, .modelEnv)
+    .udfEnv$fun <- .fun
+  } else if (
+    !.udfExists(fun, nargs, .envir) &&
+      !(is.environment(.udfEnv$envirOuter) && .udfExists(fun, nargs, .udfEnv$envirOuter))
+  ) {
     # search prior environments with UDFs, assign the first one in the environments that match
     if (length(.udfEnv$searchList) > 0L) {
-      if (any(vapply(seq_along(.udfEnv$searchList), function(i) {
-        .udfExists(fun, nargs, .udfEnv$searchList[[i]])
-      },  logical(1), USE.NAMES = FALSE))) {
+      if (
+        any(vapply(
+          seq_along(.udfEnv$searchList),
+          function(i) {
+            .udfExists(fun, nargs, .udfEnv$searchList[[i]])
+          },
+          logical(1),
+          USE.NAMES = FALSE
+        ))
+      ) {
         .found <- TRUE
       }
     }
   } else {
     .found <- TRUE
   }
+  if (!.found && is.null(.udfEnv$bestFun)) {
+    # last, a model whose functions a caller of `$` may still use
+    .modelEnv <- .udfModelEnvFor(fun, weak = TRUE)
+    if (is.environment(.modelEnv)) {
+      .fun <- .udfEnv$fun
+      .udfEnv$fun <- list()
+      .found <- .udfExists(fun, nargs, .modelEnv)
+      .udfEnv$fun <- .fun
+    }
+  }
   if (.udfEnv$bestFunHasDots) {
-    return(list(nargs=NA_integer_,
-                "rxode2 user defined R cannot have '...' arguments"))
+    return(list(nargs = NA_integer_, "rxode2 user defined R cannot have '...' arguments"))
   }
   if (!.udfEnv$bestEqArgs) {
-    return(list(nargs=NA_integer_,
-                sprintf("rxode2 user defined R function has %d arguments, but supplied %d",
-                        .udfEnv$bestNargs, nargs)))
+    return(list(
+      nargs = NA_integer_,
+      sprintf("rxode2 user defined R function has %d arguments, but supplied %d", .udfEnv$bestNargs, nargs)
+    ))
   }
   if (!.found) {
-    .msg <- sprintf("function '%s' is not supported; user function not found",
-                    fun)
-    return(list(nargs=NA_integer_, .msg))
+    .msg <- sprintf("function '%s' is not supported; user function not found", fun)
+    return(list(nargs = NA_integer_, .msg))
   }
 
   .fun <- .udfEnv$bestFun
-  .udfEnv$envir <- .udfEnv$bestFunEnv
-  .udfEnv$fun[[fun]] <- list(fun, nargs)
+  if (identical(.udfEnv$bestFunEnv, .modelEnv)) {
+    .udfModelUsed(.modelEnv)
+  } else {
+    .udfEnv$envir <- .udfEnv$bestFunEnv
+    .udfEnv$fun[[fun]] <- list(fun, nargs)
+  }
   .w <- which(names(.udfEnv$udf) == fun)
   if (length(.w) == 0L) {
     .udfEnv$udf <- c(.udfEnv$udf, setNames(nargs, fun))
   }
-  return(list(nargs=nargs,
-              fun))
+  return(list(nargs = nargs, fun))
 }
 
 #' This function is run before starting a rxode2 solve to make sure
@@ -366,37 +667,47 @@ rxRmFunParse <- function(name) {
 #' @noRd
 #' @author Matthew L. Fidler
 .setupUdf <- function(iv) {
-  if (!is.environment(.udfEnv$envir)) return(FALSE)
   .w <- which(is.na(iv))
   iv <- iv[-.w]
   .n <- names(iv)
-  .env <- new.env(parent=emptyenv())
+  .env <- new.env(parent = emptyenv())
   .env$needRecompile <- FALSE
-  lapply(.n,
-         function(n) {
-           .oldArg <- iv[n]
-           .new <- .getUdfInfo(n, .oldArg)
-           if (any(names(.udfEnv$rxSEeqUsr) == n)) {
-             .c <- .udfEnv$rxSEeqUsr[n]
-             if (.c == .new[[1]]) {
-               message("compiled with R user function '", n, "'; now there is a clashing C user function")
-               .env$needRecompile <- TRUE
-               message("triggered a recompile to use the C user function (they are always preferred)")
-             } else {
-               stop("there is both C and R user functions '", n, "' with a different number of arguments\n  since rxode2 prefers C, you will need to rename your R user function to use it")
-
-             }
-           }
-           if (is.na(.new[[1]])) {
-             stop(.new[[2]], call.=FALSE)
-           } else if (.new[[1]] != .oldArg) {
-             stop("'", n,
-                  "' had ", .oldArg, " arguments when model was compiled, now it has ",
-                  .new[[1]], " arguments",
-                  call.=FALSE)
-           }
-           NULL
-         })
+  lapply(.n, function(n) {
+    .oldArg <- iv[n]
+    .new <- .getUdfInfo(n, .oldArg)
+    if (any(names(.udfEnv$rxSEeqUsr) == n)) {
+      .c <- .udfEnv$rxSEeqUsr[n]
+      if (.c == .new[[1]]) {
+        message("compiled with R user function '", n, "'; now there is a clashing C user function")
+        .env$needRecompile <- TRUE
+        message("triggered a recompile to use the C user function (they are always preferred)")
+      } else {
+        stop(
+          "there is both C and R user functions '",
+          n,
+          "' with a different number of arguments\n  since rxode2 prefers C, you will need to rename your R user function to use it" # nolint: line_length_linter.
+        )
+      }
+    }
+    if (is.na(.new[[1]])) {
+      stop(.new[[2]], call. = FALSE)
+    } else if (.new[[1]] != .oldArg) {
+      stop(
+        "'",
+        n,
+        "' had ",
+        .oldArg,
+        " arguments when model was compiled, now it has ",
+        .new[[1]],
+        " arguments",
+        call. = FALSE
+      )
+    }
+    ## the function this solve calls; parsing another model with a
+    ## same-named function must not change it
+    .udfEnv$funObj[[n]] <- .udfEnv$bestFun
+    NULL
+  })
   .env$needRecompile
 }
 #' Reset the tracking of user defined functions
@@ -408,6 +719,9 @@ rxRmFunParse <- function(name) {
 #' @author Matthew L. Fidler
 .udfReset <- function() {
   .udfEnv$udf <- integer(0)
+  ## functions that must share an environment are per model
+  .udfEnv$fun <- list()
+  .udfEnv$modelUsed <- list()
 }
 
 #' This gets the user defined functions information for incorporation
@@ -418,11 +732,19 @@ rxRmFunParse <- function(name) {
 #' @author Matthew L. Fidler
 #' @noRd
 .udfInfo <- function() {
-  if (length(.udfEnv$udf) == 0) return(integer(0))
-  if (!is.environment(.udfEnv$envir)) return(integer(0))
+  if (length(.udfEnv$udf) == 0) {
+    return(integer(0))
+  }
+  .model <- vapply(.udfEnv$modelUsed, .udfModelKeep, character(1))
+  if (!is.environment(.udfEnv$envir)) {
+    if (length(.model) == 0L) {
+      return(integer(0))
+    }
+    return(c(.udfEnv$udf, setNames(rep(NA_integer_, length(.model)), .model)))
+  }
   .addr <- data.table::address(.udfEnv$envir)
   .udfEnv$envList[[.addr]] <- .udfEnv$envir
-  c(.udfEnv$udf, setNames(NA_integer_, .addr))
+  c(.udfEnv$udf, setNames(rep(NA_integer_, length(.model) + 1L), c(.addr, .model)))
 }
 
 #' Use the udf model variable information to get the environment where
@@ -435,10 +757,19 @@ rxRmFunParse <- function(name) {
 #' @author Matthew L. Fidler
 #' @keywords internal
 .udfEnvSetUdf <- function(udf) {
-  if (length(udf) == 0L) return(invisible())
+  if (length(udf) == 0L) {
+    return(invisible())
+  }
+  .udfEnv$modelSolve <- list()
   .w <- which(is.na(udf))
   .addr <- names(udf)[.w]
-  .env <- .udfEnv$envList[[.addr]]
+  .model <- startsWith(.addr, "model:")
+  .udfModelSolve(.addr[.model])
+  .addr <- .addr[!.model]
+  if (length(.addr) == 0L) {
+    return(invisible())
+  }
+  .env <- .udfEnv$envList[[.addr[1]]]
   if (is.environment(.env)) {
     .udfAddToSearch(.env)
     ## .udfEnv$envir <- .env
@@ -456,12 +787,23 @@ rxRmFunParse <- function(name) {
 #' @author Matthew L. Fidler
 #' @keywords internal
 .udfCallFunArg <- function(fun, args) {
-  paste0("'", fun, "(",
-         paste(vapply(seq_along(args),
-                function(i) {
-                  as.character(args[[i]])
-                }, character(1), USE.NAMES=FALSE), collapse=", "),
-         ")': ")
+  paste0(
+    "'",
+    fun,
+    "(",
+    paste(
+      vapply(
+        seq_along(args),
+        function(i) {
+          as.character(args[[i]])
+        },
+        character(1),
+        USE.NAMES = FALSE
+      ),
+      collapse = ", "
+    ),
+    ")': "
+  )
 }
 #' This is the function that is always called for every user function in rxode2
 #'
@@ -473,17 +815,27 @@ rxRmFunParse <- function(name) {
 #' @noRd
 #' @author Matthew L. Fidler
 .udfCall <- function(fun, args) {
-  .ret <- try(do.call(fun, args, envir=.udfEnv$envir), silent=TRUE)
-  if (inherits(.ret, "try-error")) {
-    .msg <- try(attr(.ret, "condition")$message, silent=TRUE)
-    if (inherits(.msg, "try-error")) .msg <- "Unknown Error"
-    # This can error since it isn't threaded
-    stop(paste0(.udfCallFunArg(fun, args), .msg), call.=FALSE)
+  ## the function resolved when the solve was set up; the lookup environment
+  ## may already have been restored when a compiled solve calls back
+  .fun <- .udfEnv$funObj[[fun]]
+  if (is.null(.fun)) {
+    .fun <- fun
   }
-  if (checkmate::testNumeric(.ret, len=1)) {
+  .envir <- .udfEnv$envir
+  if (!is.environment(.envir)) {
+    .envir <- globalenv()
+  }
+  .ret <- try(do.call(.fun, args, envir = .envir), silent = TRUE)
+  if (inherits(.ret, "try-error")) {
+    .msg <- try(attr(.ret, "condition")$message, silent = TRUE)
+    if (inherits(.msg, "try-error")) {
+      .msg <- "Unknown Error"
+    }
+    # This can error since it isn't threaded
+    stop(paste0(.udfCallFunArg(fun, args), .msg), call. = FALSE)
+  }
+  if (checkmate::testNumeric(.ret, len = 1)) {
     return(as.double(.ret))
   }
-  stop(paste0(.udfCallFunArg(fun, args), "needs to return a length 1 numeric"),
-       call.=FALSE)
-  .ret
+  stop(paste0(.udfCallFunArg(fun, args), "needs to return a length 1 numeric"), call. = FALSE)
 }

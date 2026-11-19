@@ -17,15 +17,17 @@ rxTest({
       s9 <- sum(R_pow(prod(2, 3), 2), 6)
     })
 
-    s <- rxSolve(rx,
-                 params = c(
-                   a = 1e16 - 2.,
-                   b = 1. - 2.^-53,
-                   c = -(1e16 - 2.),
-                   d = -(1. - 2.^-53)
-                 ), et,
-                 sumType = "fsum"
-                 )
+    s <- rxSolve(
+      rx,
+      params = c(
+        a = 1e16 - 2.,
+        b = 1. - 2.^-53,
+        c = -(1e16 - 2.),
+        d = -(1. - 2.^-53)
+      ),
+      et,
+      sumType = "fsum"
+    )
 
     expect_identical(s$s1, 1e-100)
     expect_identical(s$s2, 2.0^53 - 1.0)

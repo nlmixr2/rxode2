@@ -2,7 +2,6 @@ rxTest({
   if (!.Call(`_rxode2_isIntel`)) {
     # Was nlmixr issue #161
     test_that("Log-scaled vs Back-transformed parameters", {
-
       run7.mod <- function() {
         ini({
           tcl <- log(0.008) ; label("typical value of clearance")
@@ -26,7 +25,9 @@ rxTest({
       expectTransform <- function(ui, name, transform) {
         curEval <- ui$muRefCurEval
         w <- which(curEval$parameter == name)
-        if (length(w) != 1) return(expect_equal(transform, ""))
+        if (length(w) != 1) {
+          return(expect_equal(transform, ""))
+        }
         expect_equal(transform, curEval$curEval[w])
       }
 
@@ -35,7 +36,6 @@ rxTest({
       expectTransform(ui, "tv", "exp")
       expectTransform(ui, "all.cl", "")
       expectTransform(ui, "add.err", "")
-
     })
   }
 })

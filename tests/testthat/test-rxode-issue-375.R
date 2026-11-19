@@ -1,6 +1,5 @@
 rxTest({
   test_that("mixing omega and sigma with parameter data frame; RxODE#375", {
-
     lognCv <- function(x) {
       log((x / 100)^2 + 1)
     }
@@ -17,7 +16,6 @@ rxTest({
       pk <- C2 * exp(err2)
     })
 
-
     ev <- eventTable(amount.units = "mg", time.units = "hours") |>
       add.dosing(dose = 10000, nbr.doses = 10, dosing.interval = 12, dosing.to = 2) |>
       add.dosing(dose = 20000, nbr.doses = 5, start.time = 120, dosing.interval = 24, dosing.to = 2) |>
@@ -30,8 +28,14 @@ rxTest({
     omega <- matrix(0.2, dimnames = list("eta.Cl", "eta.Cl"))
 
     theta <- c(
-      KA = 2.94E-01, TCL = 1.86E+01, V2 = 4.02E+01, Q = 1.05E+01, V3 = 2.97E+02,
-      Kin = 1, Kout = 1, EC50 = 200
+      KA = 2.94E-01,
+      TCL = 1.86E+01,
+      V2 = 4.02E+01,
+      Q = 1.05E+01,
+      V3 = 2.97E+02,
+      Kin = 1,
+      Kout = 1,
+      EC50 = 200
     )
 
     thetaMat <- diag(length(theta)) * lognCv(5)
@@ -45,9 +49,10 @@ rxTest({
 
     par <- rxCbindStudyIndividual(par, data.frame(WT = rnorm(nStud * nSub, 70, 10)))
 
-    expect_error(rxSolve(mod2, ev, par,
-                         omega = omega, sigma = sigma, dfSub = 100, dfObs = 400,
-                         nStud = nStud, nSub = nSub), NA)
+    expect_error(
+      rxSolve(mod2, ev, par, omega = omega, sigma = sigma, dfSub = 100, dfObs = 400, nStud = nStud, nSub = nSub),
+      NA
+    )
 
     # Nesting:
     ## mod <- rxode2({
@@ -64,7 +69,6 @@ rxTest({
     ##   ef0 = eff + add.sd
     ## })
 
-
     ## et(amountUnits="mg", timeUnits="hours") |>
     ##   et(amt=10000, addl=9,ii=12,cmt="depot") |>
     ##   et(time=120, amt=2000, addl=4, ii=14, cmt="depot") |>
@@ -79,7 +83,6 @@ rxTest({
     ##   dplyr::mutate(inv=ifelse(id < 10, 1, 2)) |>
     ##   dplyr::as_tibble() ->
     ##   ev
-
 
     ## theta <- c("TKA"=0.294, "TCl"=18.6, "V2"=40.2,
     ##            "Q"=10.5, "V3"=297, "Kin"=1, "Kout"=1, "EC50"=200)
@@ -106,7 +109,6 @@ rxTest({
     ##                  iov.Ka ~ 0.01) | occ(nu=200),
     ##            lotri(inv.Cl ~ 0.02,
     ##                  inv.Ka ~ 0.02) | inv(nu=10))
-
 
     ## sigma <- lotri(prop.sd ~ .25,
     ##            add.sd~ 0.125)

@@ -23,31 +23,35 @@ rxTest({
   et1$add.sampling(24)
   et1$add.sampling(seq(from = 24 + 8, to = 5 * 24, by = 8))
 
-
   test_that("rxode2 event table 1 was created", {
     expect_true(inherits(et1, "rxEt"))
     expect_equal(et1$get.nobs(), 38)
     expect_equal(length(et1$get.dosing()[, 1]), 1)
   })
 
-  o1.first <- suppressWarnings(rxSolve(m1,
-                                       params = c(
-                                         KA = .291, CL = 18.6, V2 = 40.2, Q = 10.5, V3 = 297.0,
-                                         Kin = 1.0, Kout = 1.0, EC50 = 200.0
-                                       ),
-                                       events = et1,
-                                       inits = c(0, 0, 0, 1)
-                                       ))
+  o1.first <- suppressWarnings(rxSolve(
+    m1,
+    params = c(
+      KA = .291,
+      CL = 18.6,
+      V2 = 40.2,
+      Q = 10.5,
+      V3 = 297.0,
+      Kin = 1.0,
+      Kout = 1.0,
+      EC50 = 200.0
+    ),
+    events = et1,
+    inits = c(0, 0, 0, 1)
+  ))
 
   test_that("filter works", {
     expect_equal((o1.first |> dplyr::filter(time <= 5))$time, 0:5)
   })
 
-
   test_that("distinct works", {
     expect_equal(sum((o1.first |> dplyr::distinct())$time == 24), 1)
   })
-
 
   test_that("slice works", {
     expect_equal((o1.first |> dplyr::slice(2:4))$time, 1:3)
@@ -71,7 +75,19 @@ rxTest({
   test_that("top n works", {
     expect_equal(
       round(as.data.frame(dplyr::top_n(o1.first, 3, depot)), 4),
-      structure(list(time = c(48, 72, 96), C2 = c(4.762, 5.7649, 6.3537), C3 = c(12.3885, 15.0829, 16.6647), depot = c(10009.2745, 10009.2745, 10009.2745), centr = c(191.4312, 231.7507, 255.4203), peri = c(3679.3816, 4479.633, 4949.4198), eff = c(1.0247, 1.0298, 1.0328)), row.names = c(NA, -3L), class = "data.frame")
+      structure(
+        list(
+          time = c(48, 72, 96),
+          C2 = c(4.762, 5.7649, 6.3537),
+          C3 = c(12.3885, 15.0829, 16.6647),
+          depot = c(10009.2745, 10009.2745, 10009.2745),
+          centr = c(191.4312, 231.7507, 255.4203),
+          peri = c(3679.3816, 4479.633, 4949.4198),
+          eff = c(1.0247, 1.0298, 1.0328)
+        ),
+        row.names = c(NA, -3L),
+        class = "data.frame"
+      )
     )
   })
 
@@ -96,13 +112,19 @@ rxTest({
   })
 
   test_that("rename works", {
-    expect_equal(names(o1.first |> dplyr::rename(Cdepot = C2)), c("time", "Cdepot", "C3", "depot", "centr", "peri", "eff"))
+    expect_equal(
+      names(o1.first |> dplyr::rename(Cdepot = C2)),
+      c("time", "Cdepot", "C3", "depot", "centr", "peri", "eff")
+    )
   })
 
   tmp <- round(o1.first |> dplyr::arrange(C2), 4)
 
   attr(tmp, ".env") <- NULL
   test_that("arrange works", {
+    # the pinned solution is rounded to 4 decimals, so a change well inside the
+    # solver tolerance can still flip a last digit; compare at 1e-6
+    # fmt: skip
     expect_equal(
       round(o1.first |> dplyr::arrange(C2), 4),
       structure(
@@ -115,7 +137,8 @@ rxTest({
           peri = c(0, 2316.2102, 2316.2102, 2366.3378, 2416.9649, 2467.8913, 2518.8413, 2569.4374, 2619.1665, 2667.3335, 3679.3816, 2713.0005, 2754.9056, 4479.633, 2791.3549, 4949.4198, 5225.2075, 4340.9686, 2820.0816, 5296.6982, 2838.0603, 5857.7582, 6187.1279, 2841.2708, 2824.4011, 2780.4942, 2700.5673, 4644.3219, 5785.7365, 2573.2913, 6455.803, 6849.1648, 2384.9597, 2120.2772, 270.6751, 1765.1486, 1314.0348, 787.3677),
           eff = c(1, 1.0159, 1.0159, 1.0166, 1.0174, 1.0183, 1.0195, 1.021, 1.0228, 1.0252, 1.0247, 1.0282, 1.0322, 1.0298, 1.0373, 1.0328, 1.0346, 1.0387, 1.044, 1.0449, 1.0529, 1.0485, 1.0506, 1.0644, 1.0795, 1.0988, 1.1229, 1.1359, 1.1434, 1.1518, 1.1478, 1.1504, 1.1838, 1.2141, 1.084, 1.2335, 1.2275, 1.1795)
         ),
-        row.names = c(NA, -38L), class = "data.frame")
+        row.names = c(NA, -38L), class = "data.frame"),
+      tolerance = 1e-6
     )
   })
 })

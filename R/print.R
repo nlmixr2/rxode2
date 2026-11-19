@@ -32,7 +32,74 @@ print.rxRateDur <- function(x, ...) {
 }
 
 .h2 <- function(x) {
-  cli::cli_text(crayon::bold(paste0(cli::symbol$line, cli::symbol$line, " ", x, " ", cli::symbol$line, cli::symbol$line)))
+  cli::cli_text(crayon::bold(paste0(
+    cli::symbol$line,
+    cli::symbol$line,
+    " ",
+    x,
+    " ",
+    cli::symbol$line,
+    cli::symbol$line
+  )))
+}
+
+.etPreviewGroupLabel <- function(ids) {
+  ids <- sort(unique(as.integer(ids)))
+  if (length(ids) == 0L) {
+    return("0 individuals")
+  }
+  if (length(ids) == 1L) {
+    return(sprintf("1 individual (id %s)", ids))
+  }
+  if (all(diff(ids) == 1L)) {
+    return(sprintf("%s individuals (ids %s:%s)", length(ids), ids[1], ids[length(ids)]))
+  }
+  sprintf("%s individuals", length(ids))
+}
+
+#' @export
+print.rxEtPreview <- function(x, ...) {
+  .groups <- attr(x, "rxEtPreviewGroups", exact = TRUE)
+  if (length(.groups) > 0L) {
+    if (length(.groups) == 1L) {
+      cat(sprintf("-- compressed preview for %s --\n", .etPreviewGroupLabel(.groups[[1]]$ids)))
+    } else {
+      cat(sprintf("-- compressed preview for %s groups --\n", length(.groups)))
+      .n <- min(5L, length(.groups))
+      for (.i in seq_len(.n)) {
+        cat(sprintf("   group %s: %s\n", .i, .etPreviewGroupLabel(.groups[[.i]]$ids)))
+      }
+      if (length(.groups) > 5L) {
+        cat(sprintf("   ... (and %s more groups)\n", length(.groups) - 5L))
+      }
+    }
+  }
+  .df <- x
+  class(.df) <- "data.frame"
+  if (!("id" %in% names(.df)) && length(.groups) > 0L) {
+    .idList <- lapply(.groups, function(.g) {
+      .formattedId <- if (length(.g$ids) == 1L) as.integer(.g$ids) else .formatIds(.g$ids)
+      rep(.formattedId, .g$nRow)
+    })
+    .idCol <- unlist(.idList)
+    if (length(.idCol) == nrow(.df)) {
+      .df <- cbind(id = .idCol, .df)
+    }
+  }
+  .show <- attr(x, "rxEtShow", exact = TRUE)
+  if (!is.null(.show)) {
+    .df <- .df[,
+      .etKeepCols(
+        names(.df), # nolint
+        attr(x, "rxEtMarkedCols", exact = TRUE),
+        .show,
+        attr(x, "rxEtExtraCols", exact = TRUE)
+      ),
+      drop = FALSE
+    ]
+  }
+  print(tibble::as_tibble(.df), ...)
+  invisible(x)
 }
 
 #' @export
@@ -42,24 +109,34 @@ print.rxEt <- function(x, ...) {
     .et1 <- paste0("EventTable with ", x$nobs + x$ndose, " records")
     .et2 <- NULL
     .units <- x$.units
-    .maxId <- length(x$IDs)
+    .maxId <- length(x$ids)
     if (.maxId != 1) {
       .et2 <- sprintf("   %s individuals", .maxId)
     }
     .et3 <- sprintf(
       "   %s dosing records (see %s$%s(); add with %s or %s)",
-      x$ndose, bound, "get.dosing", "add.dosing", "et"
+      x$ndose,
+      bound,
+      "get.dosing",
+      "add.dosing",
+      "et"
     )
     .et4 <- sprintf(
       "   %s observation times (see %s$%s(); add with %s or %s)",
-      x$nobs, bound, "get.sampling", "add.sampling",
+      x$nobs,
+      bound,
+      "get.sampling",
+      "add.sampling",
       "et"
     )
     .et5 <- NULL
     if (x$show["addl"]) {
       .et5 <- sprintf(
         "   multiple doses in `addl` columns, expand with %s$%s(); or %s(%s)",
-        bound, "expand", "etExpand", bound
+        bound,
+        "expand",
+        "etExpand",
+        bound
       )
     }
     .et <- c(.et2, .et3, .et4, .et5)
@@ -67,7 +144,8 @@ print.rxEt <- function(x, ...) {
     names(.df) <- .et1
     class(.df) <- c(
       sprintf("EventTable Info: %s", bound),
-      "paged_df", "data.frame"
+      "paged_df",
+      "data.frame"
     )
     .out <- utils::capture.output({
       print(.df)
@@ -75,34 +153,68 @@ print.rxEt <- function(x, ...) {
     .nb <- TRUE
     if (length(.out) > 0) {
       .nb <- FALSE
-      cat(cli::cli_format_method({
-        .h2(.et1)
-        cli::cli_text(sprintf(
-          "   %s dosing records (see %s$%s(); add with %s or %s)\n",
-          x$ndose, crayon::yellow(bound), crayon::blue("get.dosing"),
-          crayon::blue("add.dosing"), crayon::blue("et")))
-        cli::cli_text(sprintf(
-          "   %s observation times (see %s$%s(); add with %s or %s)\n",
-          x$nobs, crayon::yellow(bound), crayon::blue("get.sampling"),
-          crayon::blue("add.sampling"), crayon::blue("et")))
-        if (x$show["addl"]) {
+      cat(
+        cli::cli_format_method({
+          .h2(.et1)
           cli::cli_text(sprintf(
-            "   multiple doses in `addl` columns, expand with %s$%s(); or %s(%s)\n",
-            crayon::yellow(bound), crayon::blue("expand"),
-            crayon::blue("etExpand"), crayon::yellow(bound)
+            "   %s dosing records (see %s$%s(); add with %s or %s)\n",
+            x$ndose,
+            crayon::yellow(bound),
+            crayon::blue("get.dosing"),
+            crayon::blue("add.dosing"),
+            crayon::blue("et")
           ))
-        }
-      }), sep = "\n")
-
-
+          cli::cli_text(sprintf(
+            "   %s observation times (see %s$%s(); add with %s or %s)\n",
+            x$nobs,
+            crayon::yellow(bound),
+            crayon::blue("get.sampling"),
+            crayon::blue("add.sampling"),
+            crayon::blue("et")
+          ))
+          if (x$show["addl"]) {
+            cli::cli_text(sprintf(
+              "   multiple doses in `addl` columns, expand with %s$%s(); or %s(%s)\n",
+              crayon::yellow(bound),
+              crayon::blue("expand"),
+              crayon::blue("etExpand"),
+              crayon::yellow(bound)
+            ))
+          }
+        }),
+        sep = "\n"
+      )
     }
     if (x$nobs != 0 || x$ndose != 0) {
       if (!.nb) {
-        cat(cli::cli_format_method({
-          .h2(paste0("First part of ", crayon::yellow(bound), ":"))
-        }), sep = "\n")
+        cat(
+          cli::cli_format_method({
+            .h2(paste0("First part of ", crayon::yellow(bound), ":"))
+          }),
+          sep = "\n"
+        )
       }
-      print(tibble::as_tibble(data.frame(.etAddCls(x))))
+      .preview <- .etPreviewData(.rxEtEnv(x), "all")
+      # re-tagging columns is a `[[<-`, which drops the display marking
+      .previewCls <- class(.preview)
+      if (!is.null(.preview[["evid"]])) {
+        class(.preview[["evid"]]) <- c("rxEvid", class(.preview[["evid"]]))
+      }
+      for (.nm in c("rate", "dur")) {
+        if (!is.null(.preview[[.nm]])) {
+          class(.preview[[.nm]]) <- c("rxRateDur", class(.preview[[.nm]]))
+        }
+      }
+      class(.preview) <- .previewCls
+      .env <- .rxEtEnv(x)
+      .showCols <- .etDisplayCols(names(.preview), .env$show, .etExtraCols(.env)) # nolint
+      if (inherits(.preview, "rxEtPreview") && .maxId > 1L) {
+        print(.preview)
+      } else {
+        .df <- .preview[, .showCols, drop = FALSE]
+        class(.df) <- "data.frame"
+        print(tibble::as_tibble(.df))
+      }
     }
     invisible(x)
   } else {
@@ -160,11 +272,22 @@ print.rxode2 <- function(x, ...) {
   } else {
     .dll <- substr(.dll, 1, nchar(.dll) - nchar(.Platform$dynlib.ext) - 1)
   }
-  cat(paste0(
-    crayon::bold("rxode2 "), .rxVersion["version"], " model named ", .pkg,
-    crayon::yellow$bold(getOption("rxode2.dll.print", .dll)), .new, " model (", .ico, .msg,
-    .msg2, ")."
-  ), "\n")
+  cat(
+    paste0(
+      crayon::bold("rxode2 "),
+      .rxVersion["version"],
+      " model named ",
+      .pkg,
+      crayon::yellow$bold(getOption("rxode2.dll.print", .dll)),
+      .new,
+      " model (",
+      .ico,
+      .msg,
+      .msg2,
+      ")."
+    ),
+    "\n"
+  )
   .indLin <- rxModelVars(x)$indLin
   if (length(.indLin) > 0) {
     cat(crayon::bold("  indLin: "))
@@ -217,33 +340,46 @@ print.rxode2 <- function(x, ...) {
 print.rxCoef <- function(x, ...) {
   .rxDllObj <- x$rxode2
   if (length(rxParams(.rxDllObj)) > 0) {
-    cat(cli::cli_format_method({
-      .h2("User supplied parameters:")
-    }), "\n")
+    cat(
+      cli::cli_format_method({
+        .h2("User supplied parameters:")
+      }),
+      "\n"
+    )
     print(rxode2::rxInits(.rxDllObj, NULL, rxode2::rxParams(.rxDllObj), NA, TRUE))
-    cat(cli::cli_format_method({
-      .h2("User initial conditions:")
-    }), "\n")
+    cat(
+      cli::cli_format_method({
+        .h2("User initial conditions:")
+      }),
+      "\n"
+    )
     .tmp <- rxode2::rxInits(.rxDllObj, NULL, rxode2::rxState(.rxDllObj), 0, TRUE)
     if (length(x$sens) > 0) {
       .tmp <- .tmp[regexpr(getFromNamespace("regSens", "rxode2"), names(.tmp)) == -1]
     }
     print(.tmp)
   }
-  cat(cli::cli_format_method({
-    .h2("Compartments:")
-  }), "\n")
+  cat(
+    cli::cli_format_method({
+      .h2("Compartments:")
+    }),
+    "\n"
+  )
   .tmp <- rxode2::rxState(.rxDllObj)
   if (length(.tmp) > 0) {
     names(.tmp) <- paste0("cmt=", seq_along(.tmp))
     if (length(x$sens) > 0) {
       .tmp1 <- .tmp[regexpr(getFromNamespace("regSens", "rxode2"), .tmp) == -1]
       print(.tmp1)
-      cat(cli::cli_format_method({
-        .h2("Sensitivities:")
-      }), "\n")
+      cat(
+        cli::cli_format_method({
+          .h2("Sensitivities:")
+        }),
+        "\n"
+      )
       .tmp2 <- gsub(
-        getFromNamespace("regSens", "rxode2"), "d/dt(d(\\1)/d(\\2))",
+        getFromNamespace("regSens", "rxode2"),
+        "d/dt(d(\\1)/d(\\2))",
         .tmp[regexpr(regSens, .tmp) != -1]
       )
       print(.tmp2)
@@ -283,7 +419,6 @@ print.rxDll <- function(x, ...) {
   }
   invisible(x)
 }
-
 
 
 #' @export
@@ -349,17 +484,21 @@ print.rxSolve <- function(x, ...) {
       .bound <- .args$bound
     } else {
       .bound <- .getBound(x, parent.frame(2))
-      assignInMyNamespace(".getBoundRemember", .bound)
-      on.exit({
-        assignInMyNamespace(".getBoundRemember", NULL)
-      }, add=TRUE)
+      .rxState$getBoundRemember <- .bound
+      on.exit(
+        {
+          .rxState$getBoundRemember <- NULL
+        },
+        add = TRUE
+      )
     }
     if (.nb) {
       .df <- x$pars
       if (rxIs(.df, "data.frame")) {
         .cls <- c(
           paste0("Parameters ", .bound, "$params"),
-          "paged_df", "data.frame"
+          "paged_df",
+          "data.frame"
         )
         class(.df) <- .cls
         .out <- utils::capture.output({
@@ -373,7 +512,8 @@ print.rxSolve <- function(x, ...) {
       .df <- as.data.frame(t(x$inits))
       .cls <- c(
         paste0("Initial\u00A0State ", .bound, "$inits"),
-        "paged_df", "data.frame"
+        "paged_df",
+        "data.frame"
       )
       class(.df) <- .cls
       .out <- utils::capture.output({
@@ -386,7 +526,8 @@ print.rxSolve <- function(x, ...) {
       .df <- x
       .cls <- c(
         paste0("Solved\u00A0Data: ", .bound),
-        "paged_df", "data.frame"
+        "paged_df",
+        "data.frame"
       )
       class(.df) <- .cls
       print(.df)
@@ -394,20 +535,29 @@ print.rxSolve <- function(x, ...) {
     } else {
       .summary <- any(names(.args) == ".summary")
       if (!.summary) {
-        cat(cli::cli_format_method({
-          .h2(crayon::bold("Solved rxode2 object"))
-        }), sep = "\n")
+        cat(
+          cli::cli_format_method({
+            .h2(crayon::bold("Solved rxode2 object"))
+          }),
+          sep = "\n"
+        )
       }
       NextMethod()
       if (.summary) {
-        cat(cli::cli_format_method({
-          .h2(crayon::bold("Summary of data (object):"))
-        }), sep = "\n")
+        cat(
+          cli::cli_format_method({
+            .h2(crayon::bold("Summary of data (object):"))
+          }),
+          sep = "\n"
+        )
         print(summary.data.frame(x))
       } else {
-        cat(cli::cli_format_method({
-          .h2(crayon::bold("First part of data (object):"))
-        }), sep = "\n")
+        cat(
+          cli::cli_format_method({
+            .h2(crayon::bold("First part of data (object):"))
+          }),
+          sep = "\n"
+        )
         .isDplyr <- requireNamespace("tibble", quietly = TRUE) &&
           getOption("rxode2.display.tbl", TRUE)
         if (!.isDplyr) {
@@ -435,13 +585,19 @@ print.rxModelText <- function(x, ...) {
   .code[1] <- "rxode2({"
   .code[length(.code)] <- "})"
   if (.summary) {
-    cat(cli::cli_format_method({
-      .h2(.fmt3("Model", .bound, "model"))
-    }), sep = "\n")
+    cat(
+      cli::cli_format_method({
+        .h2(.fmt3("Model", .bound, "model"))
+      }),
+      sep = "\n"
+    )
   } else {
-    cat(cli::cli_format_method({
-      .h2(crayon::bold("rxode2 Model Syntax"))
-    }), sep = "\n")
+    cat(
+      cli::cli_format_method({
+        .h2(crayon::bold("rxode2 Model Syntax"))
+      }),
+      sep = "\n"
+    )
   }
   cat(paste(.code, collapse = "\n"), "\n")
 }
@@ -487,6 +643,7 @@ print.rxSymInvCholEnv <- function(x, ...) {
 
 #' @inherit base::print
 #' @return This returns invisibly the model variables object
+#' @family Developer API
 #' @export
 print.rxModelVars <- function(x, ...) {
   .bound <- .getBound(x, parent.frame(2))

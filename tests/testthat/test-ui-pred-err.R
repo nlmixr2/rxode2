@@ -96,7 +96,6 @@ rxTest({
 
     expect_error(suppressMessages(rxode2(fn2)))
 
-
     fn3 <- function() {
       ini({
         tKA <- 1

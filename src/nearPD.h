@@ -8,6 +8,11 @@
 using namespace arma;
 
 
+// Nearest positive definite matrix.  Returns false when the projection
+// fails, and copies the input into `ret` when it does -- so the flag has
+// to be honored rather than the distance between the two.
+bool rxNearPD(arma::mat &ret, const arma::mat in);
+
 unsigned int rxNearPdChol(Rcpp::NumericMatrix &ret, Rcpp::NumericMatrix x,
                           bool isChol = false);
 

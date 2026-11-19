@@ -167,6 +167,8 @@ additive+proportional+cauchy,combined1,yeoJohnson(probit()),var ~ yeoJohnson(lam
 additive+proportional+cauchy,combined2,yeoJohnson(probit()),var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined2(),addProp=2,response variable
 additive+power+cauchy,combined1,yeoJohnson(probit()),"var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() + combined1()",addProp=1,response variable
 additive+power+cauchy,combined2,yeoJohnson(probit()),"var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() +combined2()",addProp=2,response variable
+autocorrelated (constant),,None,var ~ add(add.sd) + ar(cor),,response variable
+autocorrelated (additive+proportional),,None,var ~ add(add.sd) + prop(prop.sd) + ar(cor),,response variable
 poission,,none,cmt ~ dpois(lamba),,compartment specification
 binomial,,none,"cmt ~ dbinom(n, p)",,compartment specification
 beta,,none,"cmt ~ dbeta(alpha, beta)",,compartment specification

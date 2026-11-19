@@ -17,15 +17,38 @@ The value or an error
 \description{
 Verify that a compartment would be new to the model
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    tcl <- log(3)
+    tv <- log(30)
+  })
+  model({
+    cl <- exp(tcl)
+    v <- exp(tv)
+    d/dt(central) <- -cl / v * central
+  })
+}
+assertCompartmentNew(mod, "peripheral")
+try(assertCompartmentNew(mod, "central")) # already a compartment
+}
+}
 \seealso{
-Other Assertions: 
-\code{\link{assertCompartmentExists}()},
-\code{\link{assertCompartmentName}()},
-\code{\link{assertRxUi}()},
-\code{\link{assertVariableExists}()},
-\code{\link{assertVariableNew}()},
-\code{\link{testIniDf}()},
-\code{\link{testRxUnbounded}()}
+Other Assertions:
+\code{\link[=assertCompartmentExists]{assertCompartmentExists()}},
+\code{\link[=assertCompartmentName]{assertCompartmentName()}},
+\code{\link[=assertRxUi]{assertRxUi()}},
+\code{\link[=assertVariableExists]{assertVariableExists()}},
+\code{\link[=assertVariableNew]{assertVariableNew()}},
+\code{\link[=rxHasAr]{rxHasAr()}},
+\code{\link[=rxPriorBuildSpec]{rxPriorBuildSpec()}},
+\code{\link[=rxPriorLogDensity]{rxPriorLogDensity()}},
+\code{\link[=rxPriorOmegaToCholOmegaInvGrad]{rxPriorOmegaToCholOmegaInvGrad()}},
+\code{\link[=rxUiPriors]{rxUiPriors()}},
+\code{\link[=testIniDf]{testIniDf()}},
+\code{\link[=testRxLinCmt]{testRxLinCmt()}},
+\code{\link[=testRxUnbounded]{testRxUnbounded()}}
 }
 \author{
 Matthew Fidler & Bill Denney

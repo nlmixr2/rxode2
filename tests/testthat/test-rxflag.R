@@ -1,6 +1,5 @@
 rxTest({
   test_that("rxFlag works", {
-    
     mod2 <- rxode2({
       a <- 6
       b <- 0.6
@@ -10,14 +9,16 @@ rxTest({
       printf("%f\n", rxFlag)
       flag <- rxFlag
     }, fullPrint=FALSE)
-    
+
     obs <- units::set_units(seq(0, 10, by = 1 / 24), "days")
 
     et <- eventTable(time.units = "days")
     et$add.sampling(obs)
     et$add.dosing(
-      dose = 2 / 24, start.time = 0,
-      nbr.doses = 10, dosing.interval = 1
+      dose = 2 / 24,
+      start.time = 0,
+      nbr.doses = 10,
+      dosing.interval = 1
     )
 
     sink("flag.csv")
@@ -49,6 +50,5 @@ rxTest({
 
     expect_true(all(solve2$flag == 11))
     expect_equal(sort(unique(f3$flag)), c(1, 5, 11))
-
   })
 })

@@ -1,5 +1,5 @@
 ---
-title: "rxode2 and deSolve: A Feature Comparison"
+title: "Comparing rxode2 with deSolve"
 ---
 
 ```{r, include = FALSE}
@@ -20,7 +20,7 @@ different niches.
 - **deSolve** is a general-purpose ODE/DAE/DDE solver library that
   accepts ODE right-hand sides written as plain R functions (or
   optionally compiled C/Fortran).  It exposes a broad collection of
-  solvers (LSODA, LSODE, LSODES, vode, daspk, radau, rkF45, …) and is
+  solvers (LSODA, LSODE, LSODES, vode, daspk, radau, rkF45, ...) and is
   the de-facto standard for ODE solving in R across ecology, chemistry,
   epidemiology, and many other fields.
 
@@ -31,7 +31,7 @@ different niches.
   with nlmixr2 for population parameter estimation and accepts
   NONMEM-format event datasets directly.
 
-Both are on CRAN.  deSolve is BSD-licensed; rxode2 is GPL (≥ 3).
+Both are on CRAN.  deSolve is GPL (>= 2) licensed; rxode2 is GPL (>= 3).
 
 ---
 
@@ -56,13 +56,22 @@ fast execution.
 ```{r}
 library(rxode2)
 
-mod <- rxode2({
-  KA   <- exp(tka + eta.ka)
-  CL   <- exp(tcl + eta.cl)
-  d/dt(depot) <- -KA * depot
-  d/dt(centr) <- KA * depot - CL / V * centr
-  cp          <- centr / V
-})
+mod <- function() {
+  ini({
+    tka <- -0.5
+    tcl <- 1
+    V <- 10
+    eta.ka ~ 0.09
+    eta.cl ~ 0.09
+  })
+  model({
+    KA   <- exp(tka + eta.ka)
+    CL   <- exp(tcl + eta.cl)
+    d/dt(depot) <- -KA * depot
+    d/dt(centr) <- KA * depot - CL / V * centr
+    cp          <- centr / V
+  })
+}
 ```
 
 In deSolve the equivalent is an R function (slow by default) or a
@@ -109,7 +118,7 @@ and sampling schedules without writing a raw data frame:
 ev <- et(amt = 100, ii = 24, addl = 6) |>   # 7 doses, q24 h
   et(seq(0, 168, by = 1))                    # hourly observations
 
-rxSolve(mod, ev, params = c(tka = -0.5, tcl = 1, V = 10))
+rxSolve(mod, ev) # parameters come from ini({})
 ```
 
 deSolve supports events via a separate `events` list argument, but it
@@ -124,7 +133,7 @@ OpenMP.  A 1000-subject simulation automatically uses all available
 cores with no extra code.
 
 ```{r}
-rxSolve(mod, ev, omega = omega_mat, nSub = 1000)  # parallel by default
+rxSolve(mod, ev, nSub = 1000)  # parallel by default
 ```
 
 deSolve integrates a single trajectory per call.  Parallelism across
@@ -133,16 +142,12 @@ subjects must be implemented by the user, typically with `parallel`,
 
 ### Between-subject variability and population simulation
 
-rxode2 natively draws random effects from an omega matrix, applies them
+rxode2 natively draws random effects from an omega matrix (here the
+`eta.ka ~ 0.09` and `eta.cl ~ 0.09` lines in `ini({})`), applies them
 per subject, and returns a combined data frame ready for analysis:
 
 ```{r}
-omega <- lotri(eta.ka ~ 0.09, eta.cl ~ 0.09)
-
-sim <- rxSolve(mod, ev,
-               params  = c(tka = -0.5, tcl = 1, V = 10),
-               omega   = omega,
-               nSub    = 200)
+sim <- rxSolve(mod, ev, nSub = 200)
 ```
 
 deSolve has no concept of omega matrices, random effects, or
@@ -156,20 +161,31 @@ models specified directly inside the model block, with the result
 returned alongside the deterministic prediction:
 
 ```{r}
-mod_err <- rxode2({
-  KA <- exp(tka + eta.ka)
-  CL <- exp(tcl + eta.cl)
-  d/dt(depot) <- -KA * depot
-  d/dt(centr) <- KA * depot - CL / V * centr
-  cp          <- centr / V
-  cp_obs      <- cp * (1 + prop.err) + add.err
-})
+mod_err <- function() {
+  ini({
+    tka <- -0.5
+    tcl <- 1
+    V <- 10
+    eta.ka ~ 0.09
+    eta.cl ~ 0.09
+    add.sd <- 0.1
+    prop.sd <- 0.1
+  })
+  model({
+    KA <- exp(tka + eta.ka)
+    CL <- exp(tcl + eta.cl)
+    d/dt(depot) <- -KA * depot
+    d/dt(centr) <- KA * depot - CL / V * centr
+    cp          <- centr / V
+    cp ~ add(add.sd) + prop(prop.sd)
+  })
+}
 ```
 
 deSolve returns only the deterministic ODE trajectory; residual error
 must be added as a post-processing step.
 
-### Analytical 1–3 compartment PK solutions with exact gradients
+### Analytical 1-3 compartment PK solutions with exact gradients
 
 `linCmt()` provides closed-form solutions for one-, two-, and
 three-compartment pharmacokinetic models.  Gradients are computed via
@@ -204,11 +220,13 @@ rxode2 model objects support R's native pipe (`|>`) to copy and
 modify a model without rewriting the full specification:
 
 ```{r}
-base <- rxode2({
-  d/dt(depot) <- -KA * depot
-  d/dt(centr) <- KA * depot - CL / V * centr
-  cp          <- centr / V
-})
+base <- function() {
+  model({
+    d/dt(depot) <- -KA * depot
+    d/dt(centr) <- KA * depot - CL / V * centr
+    cp          <- centr / V
+  })
+}
 
 full <- base |>
   model({ KA <- exp(tka + eta.ka); CL <- exp(tcl + eta.cl) },
@@ -234,7 +252,7 @@ fit <- nlmixr(mod_lincmt, theo_sd, est = "focei")
 
 ### Phantom / transit dose event type
 
-rxode2 supports EVID=7 for phantom / transit doses — a concept with no
+rxode2 supports EVID=7 for phantom / transit doses -- a concept with no
 direct equivalent in deSolve.
 
 ### deSolve-format event data frames accepted by rxode2
@@ -254,7 +272,7 @@ eventdat <- data.frame(
 ```
 
 rxode2 translates this automatically to its internal EVID codes
-(`"add"` → EVID=1, `"mult"` → EVID=6, `"rep"` → EVID=5) via
+(`"add"` -> EVID=1, `"mult"` -> EVID=6, `"rep"` -> EVID=5) via
 `etTrans()`, so the same event data frame can be used with either
 package:
 
@@ -263,7 +281,7 @@ package:
 deSolve::ode(y0, times, func = derivs, parms = NULL,
              events = list(data = eventdat))
 
-# rxode2 usage — accepts the same data frame via et()
+# rxode2 usage -- accepts the same data frame via et()
 e <- et(eventdat) |> et(seq(0, 10, by = 0.1))
 rxSolve(mod, e)
 ```
@@ -280,9 +298,52 @@ The rxode2 EVID equivalents are:
 ### Time-after-dose tracking
 
 rxode2 provides built-in functions for tracking time after the most
-recent dose — `tad()`, `tad0()`, `tad(cmt)`, and `tad0(cmt)` — usable
+recent dose -- `tad()`, `tad0()`, `tad(cmt)`, and `tad0(cmt)` -- usable
 directly inside model equations.  deSolve has no equivalent; the user
 must track this manually.
+
+### Out-of-memory (larger-than-RAM) simulation
+
+A population simulation can produce a result too large to hold in RAM.
+rxode2 handles this directly: passing a `file` prefix to `rxSolve()`
+splits the subjects into chunks, solves each, writes it to a Parquet
+file (falling back to `.rds` when `arrow` is unavailable), and returns a
+lightweight object that reads chunks lazily.  The chunk size is
+auto-computed from available RAM (`rxMemoryEstimate()`), and the on-disk
+chunks can be queried lazily with `dplyr`/`arrow` or DuckDB so that
+filtering and aggregation are pushed down and the full result never has
+to be materialized.  deSolve returns an in-memory matrix or data frame
+only.
+
+```{r}
+res <- rxSolve(mod, ev, nSub = 1000, file = tempfile("rx")) # disk-backed chunks
+res |> as.arrow() |> dplyr::filter(time > 24) |> dplyr::collect()
+```
+
+### Distributed / cluster parallelism via mirai
+
+In addition to OpenMP threading within a single call, rxode2 can
+dispatch chunks of subjects to `mirai` daemons (`rxSolve(..., parallel =
+n)`), which enables distributed and HPC/cluster execution and composes
+with the out-of-memory path above.  In deSolve, cross-process
+parallelism is left entirely to the user.
+
+### Automatic ODE-to-`linCmt()` conversion
+
+When a model's ODE system is a 1-3 compartment linear PK system, rxode2
+can detect this and transparently solves it with the fast analytical
+`linCmt()` path (`rxSolve(..., useLinCmt = TRUE)` or
+`options(rxode2.useLinCmt = TRUE)`), falling
+back to the ODE solver if the converted model cannot be compiled.
+deSolve always integrates the ODEs numerically.
+
+### Event / jump and higher-order sensitivities
+
+Beyond first-order forward sensitivities, rxode2 generates exact
+sensitivities up to third order and *jump* (event) sensitivities -- the
+derivative of the solution with respect to dosing parameters such as
+bioavailability, lag time, infusion rate, duration, and amount.  deSolve
+has no symbolic-sensitivity machinery.
 
 ---
 
@@ -306,25 +367,42 @@ in R:
 | `rk4` | classic fixed-step RK4 |
 | `euler` | explicit Euler (teaching) |
 
-rxode2 offers three backends: thread-safe C LSODA (default), Fortran
-LSODA, and DOP853.  Most pharmacometric models are stiff and well
+rxode2 offers thread-safe C LSODA (default), Fortran LSODA, DOP853, a
+stiff Rosenbrock method (`ros4`), and AutoSwitch composite methods (for
+example `method = "dop853+ros4"`) that probe each segment with a
+non-stiff primary and fall back to a stiff secondary only where
+stiffness is detected.  Most pharmacometric models are stiff and well
 served by LSODA, but rxode2 does not currently offer sparse Jacobian
-solvers, DAE solvers, or delay-differential equation solvers.
+solvers or DAE solvers.  (rxode2 *does* now solve delay differential
+equations -- see below.)
 
 ### Delay differential equations (DDEs)
 
-deSolve's `dede()` function solves delay differential equations where
-the RHS depends on the history of the state vector.  rxode2 does not
-support DDEs.
+Both packages solve delay differential equations, with different
+mechanisms.  deSolve's `dede()` lets the right-hand side look up the
+state (`lagvalue()`) or its derivative (`lagderiv()`) at *any* past
+time, which is fully general.  rxode2 provides the `delay(state, T)`
+model function, which evaluates an ODE state at the fixed past time
+`t - T` (the same semantics as Monolix's `delay()`); values are
+interpolated from the solver's 8th-order dense output, so they carry the
+full accuracy of the integration, and rxode2 automatically generates
+forward sensitivities for `delay()` models so they can be estimated with
+gradient-based methods in nlmixr2.
 
 ```{r}
-# deSolve only
+# deSolve: arbitrary-history DDE
 dde_model <- function(t, y, parms, lag) {
   list(c(-parms["r"] * y[1] * (1 - lagvalue(t - lag, 1) / parms["K"])))
 }
-
 deSolve::dede(y0, times, func = dde_model, parms = parms,
               lag = 1.5, method = "dde23")
+
+# rxode2: delay() on an ODE right-hand side
+mod_dde <- function() {
+  model({
+    d/dt(y) <- -r * y * (1 - delay(y, tau) / K)
+  })
+}
 ```
 
 ### Differential-algebraic equations (DAEs)
@@ -357,8 +435,8 @@ not expose solver internals to the same degree.
 
 ### General-purpose use outside pharmacometrics
 
-deSolve imposes no domain-specific structure.  Any system of ODEs —
-ecological, chemical, mechanical, epidemiological — can be solved by
+deSolve imposes no domain-specific structure.  Any system of ODEs --
+ecological, chemical, mechanical, epidemiological -- can be solved by
 writing a function with the signature `f(t, y, parms)`.  rxode2's
 feature set (dosing events, omega matrices, NONMEM datasets) is
 designed specifically for pharmacometric workflows and is unnecessary
@@ -366,7 +444,7 @@ overhead for general ODE work.
 
 ### Solving a model in pure R (no compilation)
 
-deSolve can solve any R-function ODE right away — no compilation step.
+deSolve can solve any R-function ODE right away -- no compilation step.
 This makes it simple for quick explorations, teaching, or prototyping
 where compilation latency matters:
 
@@ -393,7 +471,7 @@ differences arise at scale:
 
 | Scenario | deSolve | rxode2 |
 |----------|---------|--------|
-| Single trajectory, R RHS | baseline | ~10–100× faster (compiled C) |
+| Single trajectory, R RHS | baseline | ~10-100x faster (compiled C) |
 | Single trajectory, C RHS | fast | comparable |
 | Population (n = 1000) | requires manual parallelism | parallel by default (OpenMP) |
 | Iterative estimation calls | no built-in support | fast (pre/post overhead separated) |
@@ -408,25 +486,29 @@ compiled C code and OpenMP parallelism.
 
 | Feature | rxode2 | deSolve |
 |---------|--------|---------|
-| License | GPL ≥ 3 | BSD |
+| License | GPL >= 3 | GPL >= 2 |
 | CRAN | yes | yes |
 | Model language | compiled C (mini-language) | R function (or C/Fortran) |
 | Compilation step | yes (cached) | no (for R RHS) |
 | LSODA (thread-safe C) | yes | yes (Fortran) |
 | DOP853 solver | yes | yes (`rkF45` / `ode45`) |
+| AutoSwitch composite solvers (`"dop853+ros4"`) | yes | no |
 | DAE solver | no | yes (`daspk`) |
-| DDE solver | no | yes (`dede`) |
+| DDE solver | yes (`delay()`, dense output, with sensitivities) | yes (`dede`, general history) |
 | Sparse Jacobian solver | no | yes (`lsodes`) |
 | Root finding / threshold | no | yes (`lsodar`) |
 | OpenMP parallelism | yes (built-in) | no (manual) |
+| Distributed / cluster parallelism | yes (`mirai`) | no (manual) |
+| Out-of-memory / disk-backed solve | yes (`rxSolve(file=)`, Parquet/DuckDB) | no |
 | Population simulation (IIV) | yes (omega matrices) | no (manual) |
 | Residual error simulation | yes (in model) | no (manual) |
 | NONMEM-format datasets | yes | no |
 | `et()` dosing API | yes | no |
 | Multiple dosing (addl, ii) | yes | manual |
 | Infusion rate/duration | yes | manual |
-| Analytical 1–3 cmt PK | `linCmt()` | no |
-| Symbolic Jacobians | yes | no |
+| Analytical 1-3 cmt PK | `linCmt()` | no |
+| Symbolic Jacobians | yes (up to 3rd order + jump sensitivities) | no |
+| Automatic ODE -> `linCmt()` conversion | yes (`useLinCmt=TRUE`) | no |
 | Parameter estimation | via nlmixr2 | via `FME` or manual |
 | Model piping (`\|>`) | yes | no |
 | NONMEM model import | `nonmem2rx` | no |
@@ -444,3 +526,9 @@ compiled C code and OpenMP parallelism.
 - [rxode2 user manual](https://nlmixr2.github.io/rxode2-manual/)
 - [nlmixr2 package](https://nlmixr2.github.io/nlmixr2/)
 - [FME: Flexible Modelling Environment](https://cran.r-project.org/package=FME)
+
+## Next steps
+
+- [Introduction to rxode2](rxode2-intro.html)
+- [How do I...?](rxode2-cookbook.html)
+- [Low-level models and other input styles](rxode2-classic-models.html)

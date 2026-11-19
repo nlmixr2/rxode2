@@ -59,6 +59,24 @@ rxSolve(model, et)
 }
 
 }
+\seealso{
+Other Log-likelihood functions:
+\code{\link[=llikBeta]{llikBeta()}},
+\code{\link[=llikBinom]{llikBinom()}},
+\code{\link[=llikCauchy]{llikCauchy()}},
+\code{\link[=llikChisq]{llikChisq()}},
+\code{\link[=llikExp]{llikExp()}},
+\code{\link[=llikF]{llikF()}},
+\code{\link[=llikGamma]{llikGamma()}},
+\code{\link[=llikGeom]{llikGeom()}},
+\code{\link[=llikNbinom]{llikNbinom()}},
+\code{\link[=llikNbinomMu]{llikNbinomMu()}},
+\code{\link[=llikNorm]{llikNorm()}},
+\code{\link[=llikPois]{llikPois()}},
+\code{\link[=llikUnif]{llikUnif()}},
+\code{\link[=llikWeibull]{llikWeibull()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Log-likelihood functions}

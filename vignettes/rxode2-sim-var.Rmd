@@ -1,5 +1,5 @@
 ---
-title: "rxode2 Simulation"
+title: "Simulating populations"
 date: "`r Sys.Date()`"
 output:
   html_document:
@@ -17,3 +17,9 @@ options(knitr.table.format = "html")
 
 ```{r child='../man-roxygen/rmdhunks/sim-var.Rmd'}
 ```
+
+# Next steps
+
+- [Parameter uncertainty](rxode2-parameter-uncertainty.html)
+- [Summarizing simulations with confint()](rxode2-confint.html)
+- [Speeding up solving](rxode2-speed.html)

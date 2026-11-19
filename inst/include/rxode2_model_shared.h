@@ -3,16 +3,59 @@
 #include <rxode2.h>
 #include <float.h>
 
+/* Thread-safe Rprintf wrapper for generated model code.
+ * On non-master OpenMP threads calling Rprintf directly crashes R on Windows
+ * (R_MAIN must be accessed from the R thread only).  This wrapper suppresses
+ * output on worker threads so the model can compile printf() statements
+ * safely even when subjects are solved in parallel. */
+#include <stdarg.h>
+/* the format of a model's printf() is a string literal, so -Wformat checks its
+ * arguments; R_PRINTF_FORMAT is R's (R_ext/Print.h) */
+#ifndef R_PRINTF_FORMAT
+#define R_PRINTF_FORMAT(M, N)
+#endif
+static inline void _rxPrintf(const char *fmt, ...) R_PRINTF_FORMAT(1, 2);
+#ifdef _OPENMP
+/* R's `match` macro breaks the `declare variant match(...)` pragma in LLVM's omp.h */
+#pragma push_macro("match")
+#undef match
+#include <omp.h>
+#pragma pop_macro("match")
+static inline void _rxPrintf(const char *fmt, ...) {
+  if (omp_get_thread_num() == 0) {
+    va_list args;
+    va_start(args, fmt);
+    Rvprintf(fmt, args);
+    va_end(args);
+  }
+}
+#else
+static inline void _rxPrintf(const char *fmt, ...) {
+  va_list args;
+  va_start(args, fmt);
+  Rvprintf(fmt, args);
+  va_end(args);
+}
+#endif
+
 #define _evid getEvid(_ind, _ind->ix[_ind->idx])
 #define amt (isDose(_evid) ?  getDose(_ind,_ind->ixds) : NA_REAL)
-#define JAC_Rprintf Rprintf
+#define _rxIsObs ((double)(_evid == 0))
+#define JAC_Rprintf _rxPrintf
 #define _idx (_solveData->subjects[_cSub]).idx
-#define JAC0_Rprintf if ((_solveData->subjects[_cSub]).jac_counter == 0) Rprintf
-#define ODE_Rprintf Rprintf
-#define ODE0_Rprintf if ((_solveData->subjects[_cSub]).dadt_counter == 0) Rprintf
-#define LHS_Rprintf Rprintf
+#define JAC0_Rprintf if ((_solveData->subjects[_cSub]).jac_counter == 0) _rxPrintf
+#define ODE_Rprintf _rxPrintf
+#define ODE0_Rprintf if ((_solveData->subjects[_cSub]).dadt_counter == 0) _rxPrintf
+#define LHS_Rprintf _rxPrintf
 static inline double _safe_log_(double a, rx_solve *rx) {
-  if (rx->safeLog) {
+  if (rx->safeLog == 2) {
+    // Zero is a benign numerical touch (a prediction landing exactly on 0), so it keeps
+    // the floor.  A NEGATIVE argument is a domain error: it must propagate as NaN rather
+    // than the large finite log(DBL_EPSILON), which a likelihood written as -log(sigma)
+    // otherwise reads as a +36 reward for an invalid sigma.
+    if (a < 0) return R_NaN;
+    return (a == 0) ? log(DBL_EPSILON) : log(a);
+  } else if (rx->safeLog) {
     return (a <= 0) ? log(DBL_EPSILON) : log(a);
   } else {
     return log(a);
@@ -58,6 +101,23 @@ static inline double Rx_pow_di_(double a, double b, rx_solve *rx) {
   }
 }
 #define Rx_pow_di(a, b) Rx_pow_di_(a, b, _solveData)
+
+// Names rxode2 accepts that C does not provide.  The parser takes these
+// spellings (they are in .parseFuns, via the symengine tables in
+// R/symengine.R) and codegen emits the rxode2 name verbatim as the C name, so
+// without these the model parses and then fails to compile.
+//
+// ceiling() is what R users write for C's ceil(); it is locally constant and
+// differentiates to 0 (.rxSElocallyConstant).  loggamma() is symengine's name
+// for lgamma(), which symengine differentiates natively to polygamma(0, x),
+// so it reaches C only when a model uses that spelling directly.
+static inline double ceiling(double a) {
+  return ceil(a);
+}
+
+static inline double loggamma(double a) {
+  return lgamma(a);
+}
 #define abs_log1p(x) (((x) + 1.0 > 0.0) ? log1p(x) : (((x) + 1.0 > 0.0) ? log1p(-x) : 0.0))
 #define abs_log(x) ((&_solveData->safeZero && fabs(x) <= sqrt(DBL_EPSILON)) ? log(sqrt(DBL_EPSILON)) : (((x) > 0.0) ? log(x) ? (((x) == 0) ? 0.0 : log(-x))))
 #define _IR (_ind->InfusionRate)
@@ -76,6 +136,9 @@ static inline double Rx_pow_di_(double a, double b, rx_solve *rx) {
 #define rxTBSi(x, lm, yj, hi, low) _powerDi(x,  lm, (int)(yj), hi, low)
 #define rxTBSd(x, lm, yj, hi, low) _powerDD(x, lm, (int)(yj), hi, low)
 #define rxTBSd2(x, lm, yj, hi, low) _powerDDD(x, lm, (int)(yj), hi, low)
+#define rxTBSdL(x, lm, yj, hi, low) _powerDLambda(x, lm, (int)(yj), hi, low)
+#define rxTBSdL2(x, lm, yj, hi, low) _powerDLambda2(x, lm, (int)(yj), hi, low)
+#define rxTBSdLx(x, lm, yj, hi, low) _powerDLambdaX(x, lm, (int)(yj), hi, low)
 #define normcdf(x) phi(x)
 #define _getIndSim(id, val) (_ind->isIni == 1 ? \
                              (_ind->simIni[id] = (val)) : \
@@ -118,6 +181,8 @@ static inline double Rx_pow_di_(double a, double b, rx_solve *rx) {
 #define riunif1(id, x) riunif(id, x,1.0)
 #undef rweibull
 #define rweibull(x,y) rxweibull(x,y)
+#define rlnorm(x,y) rxlnorm(x,y)
+#define rxlnorm1(x) rxlnorm( x, 1.0)
 #define rxweibull1(x) rxweibull( x, 1.0)
 #define riweibull1(id, x) riweibull( id, x, 1.0)
 #define rweibull1(x) rxweibull( x, 1.0)
@@ -208,6 +273,9 @@ static inline double Rx_pow_di_(double a, double b, rx_solve *rx) {
 #define _qnorm1(x) qnorm(x, 0.0, 1.0, 1, 0)
 #define _qnorm2(x, mu) qnorm(x, mu, 1.0, 1, 0)
 #define _qnorm3(x, mu, sd) qnorm(x, mu, sd, 1, 0)
+#define _dnorm1(x) dnorm(x, 0.0, 1.0, 0)
+#define _dnorm2(x, mu) dnorm(x, mu, 1.0, 0)
+#define _dnorm3(x, mu, sd) dnorm(x, mu, sd, 0)
 #define norminv(x) qnorm(x, 0.0, 1.0, 1, 0)
 #define probitt(x) qnorm(x, 0.0, 1.0, 1, 0)
 #define _logit1(x) logit(x, 0.0, 1.0)
@@ -272,11 +340,14 @@ static inline double Rx_pow_di_(double a, double b, rx_solve *rx) {
 #define CmT CMT
 #define cMT CMT
 #define _cmp2(val, valStr, type, cmpStr) (type ? _compareFactorVal(val, valStr, cmpStr) : !_compareFactorVal(val, valStr, cmpStr))
+#define _cmp2d(val, valStr, type, cmpInt) (type ? _compareFactorInt(val, valStr, cmpInt) : !_compareFactorInt(val, valStr, cmpInt))
 // equality_str1 : string ('!=' | '==' ) identifier_r; //type=1 is equal, type=0 not equal
 #define _cmp1(cmpStr, type, val, valStr) (type ? _compareFactorVal(val, valStr, cmpStr) : !_compareFactorVal(val, valStr, cmpStr))
+#define _cmp1d(cmpStr, type, val, cmpInt) (type ? _compareFactorInt(val, cmpStr, cmpInt) : !_compareFactorInt(val, cmpStr, cmpInt))
 
 // Types for par pointers.r
 typedef int (*rxode2_compareFactorVal_fn)(int val, const char *factor, const char *value);
+typedef int (*rxode2_compareFactorInt_fn)(int val, const char *factor, int value);
 typedef double (*rxode2_fn) (double x);
 typedef double (*rxode2_ifn) (double x);
 typedef double (*rxode2_fn2) (double x, double y);
@@ -307,7 +378,7 @@ typedef double (*rxode2i_fn2i) (double x, int i);
 
 typedef int (*rxode2i2_fn0i) (int id);
 typedef double (*rxode2i2_fn) (int id, double x);
-typedef int (*rxode2i2_ifn) (int id, double x);
+typedef double (*rxode2i2_ifn) (int id, double x);
 typedef double (*rxode2i2_fn2) (int id, double x, double y);
 typedef double (*rxode2i2_fn3i) (int id, double x, double y, int i);
 typedef double (*rxode2i2_fn2i) (int id, double x, int i);
@@ -322,9 +393,9 @@ typedef SEXP (*_rxGetModelLibType)(const char *s);
 typedef  SEXP (*_rx_asgn) (SEXP objectSEXP);
 typedef int(*_rxIsCurrentC_type)(SEXP);
 typedef double(*_rxSumType)(double *, int, double *, int, int);
-typedef double(*_udf_type)(const char *fun, int, double *);
+typedef double(*_udf_type)(const char *fun, int, const double *);
 
-typedef void(*_simfun)(int id);
+typedef void(*_simfun)(void);
 
 typedef double(*_rxProdType)(double*, double*, int, int);
 
@@ -350,6 +421,13 @@ typedef double (*linCmtB_p) (rx_solve *rx, int id,
                              double ka);
 
 typedef void (*_update_par_ptr_p)(double t, unsigned int id, rx_solve *rx, int idx);
+// record time PK-type statements read under nocb (rxode2#1429)
+typedef double (*_rxPkTime_p)(double t, unsigned int id, rx_solve *rx);
+
+/* dydt forcing hook: generated model calls this at the end of its RHS (dydt) so a
+   plugin can add forcing to state derivatives (e.g. b_j for NN-weight variational
+   states).  neq[0]=nstate, neq[1]=cSub; y=states, dydt=DADT array to add into. */
+typedef void (*_rxDydtForce_t)(int *neq, double t, double *y, double *dydt);
 
 typedef double (*_getParCov_p)(unsigned int id, rx_solve *rx, int parNo, int idx);
 
@@ -376,6 +454,9 @@ typedef double (*rxode2_llikGammaFun) (double *in, double x, double shape, doubl
 typedef double (*rxode2_llikCauchyFun) (double *in, double x, double location, double scale);
 
 typedef void (*_setThreadInd_t) (int);
+typedef int  (*_rxPushDose_t)(rx_solving_options_ind *, double,
+                               double, int, double, int,
+                               double, double, int, int, int);
 typedef void (*rxode2_assignFuns2_t)(rx_solve, rx_solving_options, t_F, t_LAG, t_RATE, t_DUR,t_calc_mtime, t_ME, t_IndF, t_getTime, t_locateTimeIndex, t_handle_evidL,t_getDur);
 
 #endif // __rxode2_model_shared_H__

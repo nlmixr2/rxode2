@@ -147,7 +147,7 @@ rxTest({
   df <- data.frame(
     ID = c("not", "matt"),
     TIME = c(0, 1),
-    cmt = structure(1:2, .Label = c("depot", "central"), class = "factor")
+    cmt = structure(1:2, levels = c("depot", "central"), class = "factor")
   )
 
   tmp <- rxSolve(f3, df)

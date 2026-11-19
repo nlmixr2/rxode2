@@ -1,5 +1,34 @@
 #ifndef PARSELINCMTAPPLYCMTS_H
 #define PARSELINCMTAPPLYCMTS_H
+#include "linCmtDiffConstant.h"
+
+// A model may READ the sensitivity states (rx__sens_<cmt>_BY_<slot>) as
+// plain symbols with no linCmtB(-2, .) call in the text (the direct
+// buffer-read emission).  The ndiff mask that makes the solve fill those
+// columns is otherwise set only by linCmtB call arguments
+// (handleFunctionLinCmt), so scan the symbol table for referenced sens
+// state names and register their slots; a non-central row read also needs
+// the full Jacobian rows (linCmtBraw), matching the raw-read registration.
+static inline void linCmtScanSensSymbolRefs(void) {
+  for (int i = 0; i < NV; i++) {
+    const char *s = tb.ss.line[i];
+    if (strncmp(s, "rx__sens_", 9) != 0) continue;
+    const char *by = strstr(s + 9, "_BY_");
+    if (by == NULL) continue;
+    const char *slot = by + 4;
+    if (!strcmp(slot, "p1")) addLinCmtBdiff(diffP1);
+    else if (!strcmp(slot, "v1")) addLinCmtBdiff(diffV1);
+    else if (!strcmp(slot, "p2")) addLinCmtBdiff(diffP2);
+    else if (!strcmp(slot, "p3")) addLinCmtBdiff(diffP3);
+    else if (!strcmp(slot, "p4")) addLinCmtBdiff(diffP4);
+    else if (!strcmp(slot, "p5")) addLinCmtBdiff(diffP5);
+    else if (!strcmp(slot, "ka")) addLinCmtBdiff(diffKa);
+    else continue;
+    if (strncmp(s + 9, "central_BY_", 11) != 0) {
+      tb.linCmtBraw = 1;
+    }
+  }
+}
 /*
  * This function adds a linear compartment from linCmt() to the model.
  *
@@ -182,6 +211,8 @@ extern void calcLinCmt(void) {
       break;
     }
     if (tb.linB) {
+      // Register slots read as bare sens-state symbols (no -2 call).
+      linCmtScanSensSymbolRefs();
       // Sensitivities are also present.
       switch (tb.ncmt) {
       case 1:

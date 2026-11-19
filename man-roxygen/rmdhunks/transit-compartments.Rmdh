@@ -5,7 +5,7 @@ You can specify this in a similar manner as the original paper. Note
 that we use `evid=7` instead of `evid=1` for these sorts of transit
 compartment models. `evid=7` is the transit compartment model/phantom
 event. This puts the dose in the `dose()` function and calculates time
-since last dose `tad()` but doesn’t actually put the dose in the
+since last dose `tad()` but doesn't actually put the dose in the
 compartment. This allows the `transit()` function to easily apply to the
 compartment.
 

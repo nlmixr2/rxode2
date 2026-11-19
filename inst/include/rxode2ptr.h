@@ -10,6 +10,135 @@ extern "C" {
   typedef SEXP (*_rxode2_rxRmvnSEXP_t)(SEXP nSSEXP, SEXP muSSEXP, SEXP sigmaSSEXP, SEXP lowerSSEXP, SEXP upperSSEXP, SEXP ncoresSSEXP, SEXP isCholSSEXP, SEXP keepNamesSSEXP, SEXP aSSEXP, SEXP tolSSEXP, SEXP nlTolSSEXP, SEXP nlMaxiterSSEXP);
   extern _rxode2_rxRmvnSEXP_t _rxode2_rxRmvnSEXP_;
 
+  // Adjoint objective-gradient backward sweep (src/adjoint.cpp); installed into
+  // the downstream package's function-pointer table by iniRxodePtrs().
+  typedef void (*rxode2AdjointSweep_t)(double *tg, double *J, double *dP, double *cover, int *obsK, int ns, int np, int nt, int nobs, double *out, int nCj, int *cjK, int *cjCmt, double *cjAlpha, int nDual, int *dualK, double *dualW, double *dualC);
+  extern rxode2AdjointSweep_t rxode2AdjointSweep;
+
+  // Full-trajectory adjoint sweep: dy_k(t_i)/dp for every state of interest,
+  // output time, and parameter (adjoint counterpart of forward sensitivity's
+  // rx__sens_<state>_BY_<param>__ columns); see src/adjoint.cpp for the layout.
+  typedef void (*rxode2AdjointTrajSweep_t)(double *tg, double *J, double *dP, int ns, int np, int nt, int *outK, int nOut, int *stateIdx, int nStates, double *result, int nCj, int *cjK, int *cjCmt, double *cjAlpha, int nDual, int *dualK, double *dualW, double *dualC);
+  extern rxode2AdjointTrajSweep_t rxode2AdjointTrajSweep;
+
+  // Shared prior log-density kernel (nlmixr2/nlmixr2est#929, src/priorDensity.cpp):
+  // pure C++, no R/Rcpp touch, safe from inside an OpenMP-parallel objective.
+  // Build the spec once (R/priorDensity.R's rxPriorBuildSpec(), main thread
+  // only) and call this per evaluation.
+  typedef double (*rxPriorLogDensityEval_t)(const rx_prior_spec_t *spec, const double *theta, int thetaLen, const double *omega, int omegaDim, double *gradTheta, double *gradOmega);
+  extern rxPriorLogDensityEval_t rxPriorLogDensityEval;
+  typedef bool (*rxPriorOmegaToCholOmegaInvGrad_t)(const double *omegaBlock, int p, const double *gradOmegaBlock, double *gradCholOmegaInv);
+  extern rxPriorOmegaToCholOmegaInvGrad_t rxPriorOmegaToCholOmegaInvGrad;
+
+  // Set / get the current solve's exact ODE atol/rtol (for tightening the cov step).
+  typedef void (*rxSetSolveAtolRtol_t)(double atol, double rtol);
+  extern rxSetSolveAtolRtol_t rxSetSolveAtolRtol;
+  typedef void (*rxGetSolveAtolRtol_t)(double *atol, double *rtol);
+  extern rxGetSolveAtolRtol_t rxGetSolveAtolRtol;
+
+  // threefry RNG engine entry points (src/rxthreefry.cpp); downstream packages
+  // seed a per-subject stream with setSeedEng1(getRxSeed1(cores) + id) -- after
+  // setRxThreadId() sets the OpenMP thread -- then draw with rxNormEng().
+  typedef uint32_t (*getRxSeed1_t)(int ncores);
+  extern getRxSeed1_t getRxSeed1;
+  typedef void (*setSeedEng1_t)(uint32_t seed);
+  extern setSeedEng1_t setSeedEng1;
+  typedef void (*seedEng_t)(int ncores);
+  extern seedEng_t seedEng;
+  typedef double (*rxNormEng_t)(double mean, double sd);
+  extern rxNormEng_t rxNormEng;
+  typedef double (*rxUnifEng_t)(double low, double hi);
+  extern rxUnifEng_t rxUnifEng;
+  // Multivariate t (truncated by Botev and L'Ecuyer 2015 tilting): rxRmvtSetup()
+  // solves the tilting once into *handle (sigma column-major d x d, the upper
+  // Cholesky factor when isChol; NULL mu/lower/upper mean 0/-Inf/Inf; truncation
+  // needs a finite nu >= 1).  rxRmvtDraw() writes n draws column-major (n x d)
+  // from the current thread's engine (setRxThreadId() + setSeedEng1() as for
+  // rxNormEng()); threads may share one handle.  Both return an RXMVT_* status
+  // (rxode2.h).  Free with rxRmvtFree().
+  typedef SEXP (*_rxode2_rxRmvtSEXP_t)(SEXP nS, SEXP muS, SEXP sigmaS, SEXP dfS, SEXP lowerS, SEXP upperS, SEXP ncoresS, SEXP isCholS, SEXP keepNamesS, SEXP aS, SEXP tolS, SEXP nlTolS, SEXP nlMaxiterS);
+  extern _rxode2_rxRmvtSEXP_t _rxode2_rxRmvtSEXP_;
+  typedef int (*rxRmvtSetup_t)(void **handle, int d, const double *mu, const double *sigma, int isChol, const double *lower, const double *upper, double nu, double a, double tol, double nlTol, int nlMaxiter);
+  extern rxRmvtSetup_t rxRmvtSetup;
+  typedef int (*rxRmvtDraw_t)(void *handle, double *out, int n);
+  extern rxRmvtDraw_t rxRmvtDraw;
+  typedef void (*rxRmvtFree_t)(void *handle);
+  extern rxRmvtFree_t rxRmvtFree;
+  // Per-observation CMT.  Returns 1 when the model has no CMT covariate (every
+  // observation is compartment 1) but NA_INTEGER when the covariate is present and
+  // this row's value is missing -- so "no compartment recorded" is distinguishable
+  // from "compartment 1".  For the old lenient behaviour, map NA_INTEGER to 1.
+  typedef int (*getIndCmt_t)(rx_solving_options* op, rx_solving_options_ind* ind, int kk);
+  extern getIndCmt_t getIndCmt;
+  // Writer for the CMT covariate (inverse of getIndCmt); lets a downstream
+  // package re-base the CMT column without touching op->cmtCov / ind->cov_ptr.
+  typedef void (*setIndCmt_t)(rx_solving_options* op, rx_solving_options_ind* ind, int kk, int cmt);
+  extern setIndCmt_t setIndCmt;
+
+  // Event ("jump") sensitivity shape.  A shape is one model's six dims
+  // (active/nState/nParam/nParam2/nParam3/useCalcJac) plus its dosing-derivative
+  // function pointers; rxode2 holds exactly one installed at a time.  To solve
+  // peer models with different shapes through a shared solve pool, save the
+  // installed shape into a caller-owned buffer of rxode2EventSensShapeSize()
+  // bytes, install the batch's shape (rxode2EventSensLoadFull() from the model's
+  // `trans`, or a previously saved buffer), solve, then restore:
+  //
+  //   std::vector<char> saved(rxode2EventSensShapeSize());
+  //   rxode2EventSensShapeSave(saved.data(), saved.size());
+  //   rxode2EventSensShapeRestore(peer.data(), peer.size());  // solve the batch
+  //   rxode2EventSensShapeRestore(saved.data(), saved.size());
+  //
+  // Both take the buffer's capacity and refuse to touch a buffer that is too
+  // small, so a mis-sized allocation fails cleanly instead of running off its
+  // end.  The layout is opaque and may change between rxode2 versions: a buffer
+  // rxode2 does not recognize is rejected rather than installed, and a buffer
+  // must never be serialized or reused across sessions.  A saved shape also
+  // holds pointers INTO the model's shared library, so unloading that model
+  // (rxUnload()) invalidates it -- re-install with rxode2EventSensLoadFull()
+  // rather than restoring a shape saved before the unload.  These globals are
+  // read inside the OpenMP solve loops, so install and restore only at batch
+  // boundaries, never from a parallel region or while a solve is running.
+  // Neither calls Rf_error, so a C++ caller is not longjmp'd past its
+  // destructors; both return 1 on success and 0 if the buffer was rejected.
+  typedef int (*rxode2EventSensShapeSize_t)(void);
+  extern rxode2EventSensShapeSize_t rxode2EventSensShapeSize;
+  typedef int (*rxode2EventSensShapeSave_t)(void *buf, int bufSize);
+  extern rxode2EventSensShapeSave_t rxode2EventSensShapeSave;
+  typedef int (*rxode2EventSensShapeRestore_t)(const void *buf, int bufSize);
+  extern rxode2EventSensShapeRestore_t rxode2EventSensShapeRestore;
+  // Install a model's shape from its `trans` vector (all six dims).
+  typedef void (*rxode2EventSensLoadFull_t)(SEXP trans, int active, int nState, int nParam, int nParam2, int nParam3, int useCalcJac);
+  extern rxode2EventSensLoadFull_t rxode2EventSensLoadFull;
+  // Read / write the dims only (any getter pointer may be NULL to skip it).
+  typedef void (*rxode2EventSensGetDims_t)(int *active, int *nState, int *nParam, int *nParam2, int *nParam3, int *useCalcJac);
+  extern rxode2EventSensGetDims_t rxode2EventSensGetDims;
+  typedef void (*rxode2EventSensSetDims_t)(int active, int nState, int nParam, int nParam2, int nParam3, int useCalcJac);
+  extern rxode2EventSensSetDims_t rxode2EventSensSetDims;
+  // Toggle the active flag only / turn the jumps off and zero the dims.
+  typedef void (*rxode2EventSensSetActive_t)(int active);
+  extern rxode2EventSensSetActive_t rxode2EventSensSetActive;
+  typedef void (*rxode2EventSensDeactivate_t)(void);
+  extern rxode2EventSensDeactivate_t rxode2EventSensDeactivate;
+
+  // Per-individual ODE solve buffer-pointer swap (nlmixr2est impmap gradient):
+  // save the originals, install private larger buffers for a higher-state
+  // sensitivity solve (with setOpNeq), then restore.  getIndSolve() already
+  // returns ind->solve.
+  typedef void (*setIndSolvePtr_t)(rx_solving_options_ind* ind, double* solve);
+  extern setIndSolvePtr_t setIndSolvePtr;
+  typedef double *(*getIndSolveSave_t)(rx_solving_options_ind* ind);
+  extern getIndSolveSave_t getIndSolveSave;
+  typedef void (*setIndSolveSave_t)(rx_solving_options_ind* ind, double* solveSave);
+  extern setIndSolveSave_t setIndSolveSave;
+  typedef double *(*getIndSolveLast_t)(rx_solving_options_ind* ind);
+  extern getIndSolveLast_t getIndSolveLast;
+  typedef void (*setIndSolveLast_t)(rx_solving_options_ind* ind, double* solveLast);
+  extern setIndSolveLast_t setIndSolveLast;
+  typedef double *(*getIndSolveLast2_t)(rx_solving_options_ind* ind);
+  extern getIndSolveLast2_t getIndSolveLast2;
+  typedef void (*setIndSolveLast2_t)(rx_solving_options_ind* ind, double* solveLast2);
+  extern setIndSolveLast2_t setIndSolveLast2;
+
   typedef int (*par_progress_t)(int c, int n, int d, int cores, clock_t t0, int stop);
   extern par_progress_t par_progress;
 
@@ -173,6 +302,46 @@ extern "C" {
   typedef void (*setIndMixest_t)(rx_solving_options_ind* ind, int mixest);
   extern setIndMixest_t setIndMixest;
 
+  // A subject's newind (the model's `newind`): 1 at its first record, 2 after.
+  // A walk over the records with calc_lhs sets it before each, as rxode2's does.
+  typedef void (*setIndNewind_t)(rx_solving_options_ind* ind, int newind);
+  extern setIndNewind_t setIndNewind;
+
+  // The record walk rxSolve()'s data frame is built with (RXDF_* in rxode2.h).
+  // rxDfWalkInit(NULL, 0, ...) gives the state size; a caller-owned buffer that
+  // large is then set up for one subject (returns 1, or 0 if too small), and
+  // rxDfWalkStep() walks its records in time order from position 0.  The state
+  // layout is opaque and may change between rxode2 versions.
+  typedef int (*rxDfWalkInit_t)(void *state, int stateSize, rx_solve *rx, rx_solving_options_ind *ind, int doDose, int countOnly);
+  extern rxDfWalkInit_t rxDfWalkInit;
+  typedef int (*rxDfWalkStep_t)(void *state, int i, double *out, int nOut);
+  extern rxDfWalkStep_t rxDfWalkStep;
+  typedef void (*rxDfWalkDull_t)(const void *state, int *dull);
+  extern rxDfWalkDull_t rxDfWalkDull;
+
+  // rxSolve()'s keep columns for rows a downstream package lays out itself:
+  // rxDfKeepSetup() readies the solve's keep store and gives the number of keep
+  // columns; rxDfKeepFirst() is a subject's first internal row; rxDfKeepRow()
+  // reads a row's values at its calc_lhs time (thread safe, like calc_lhs);
+  // rxDfKeepCols() (main thread) turns a numeric matrix of them into the named,
+  // typed columns rxSolve() returns.  getDfLevels() is the column template of a
+  // string lhs or factor covariate (a factor when it has levels).
+  typedef int (*rxDfKeepSetup_t)(rx_solve *rx);
+  extern rxDfKeepSetup_t rxDfKeepSetup;
+  typedef int (*rxDfKeepFirst_t)(rx_solve *rx, int solveid);
+  extern rxDfKeepFirst_t rxDfKeepFirst;
+  typedef void (*rxDfKeepRow_t)(rx_solve *rx, rx_solving_options_ind *ind, int solveid, int fid, int i, double t, double *out);
+  extern rxDfKeepRow_t rxDfKeepRow;
+  typedef SEXP (*rxDfKeepCols_t)(SEXP vals);
+  extern rxDfKeepCols_t rxDfKeepCols;
+  typedef SEXP (*getDfLevels_t)(const char *item, rx_solve *rx, R_xlen_t nrow);
+  extern getDfLevels_t getDfLevels;
+  // Whether rxSolve() refuses the current solve (an RXDF_REFUSE_* code, 0 when
+  // it returns it), for a package that solves through rxode2 to hand the same
+  // problem to rxSolve() for its error.
+  typedef int (*rxDfSolveRefused_t)(rx_solve *rx);
+  extern rxDfSolveRefused_t rxDfSolveRefused;
+
   typedef void (*mexpit_t)(double *x, double *p, int n);
   extern mexpit_t mexpit;
 
@@ -189,6 +358,66 @@ extern "C" {
   // Set the per-individual sticky tolerance factor
   typedef void (*setIndTolFactor_t)(rx_solving_options_ind *ind, double tolFactor);
   extern setIndTolFactor_t setIndTolFactor;
+
+  // Get the per-individual neq override (-1 = use op->neq)
+  typedef int (*getIndNeqOverride_t)(rx_solving_options_ind *ind);
+  extern getIndNeqOverride_t getIndNeqOverride;
+
+  // Set the per-individual neq override (pass -1 to clear)
+  typedef void (*setIndNeqOverride_t)(rx_solving_options_ind *ind, int neq);
+  extern setIndNeqOverride_t setIndNeqOverride;
+
+  typedef void (*rxSetSilentErr_t)(int silent);
+  extern rxSetSilentErr_t rxSetSilentErr;
+
+  typedef int (*getOrdId_t)(rx_solve *rx, int solveid);
+  extern getOrdId_t getOrdId;
+
+  typedef int (*solveMethodThreadSafe_t)(rx_solving_options* op);
+  extern solveMethodThreadSafe_t solveMethodThreadSafe;
+  // Thread-safe C-level tolerance adjustment -- no Rcpp/PROTECT overhead, safe from OMP threads
+  typedef void (*atolRtolFactor_t)(double factor);
+  extern atolRtolFactor_t atolRtolFactor_;
+
+  typedef int (*rxInt_t)(SEXP x, R_xlen_t i);
+  extern rxInt_t rxInt;
+
+  typedef double (*rxReal_t)(SEXP x, R_xlen_t i);
+  extern rxReal_t rxReal;
+
+  typedef int (*getRxNsim_t)(rx_solve *rx);
+  extern getRxNsim_t getRxNsim;
+
+  typedef void (*setRxThreadId_t)(int id);
+  extern setRxThreadId_t setRxThreadId;
+
+  // The id setRxThreadId() last set on the calling thread, or -1 when none
+  // is (rxode2 then takes omp_get_thread_num() from its own OpenMP runtime),
+  // so a caller can check the id rxode2 will use.
+  typedef int (*getRxThreadId_t)(void);
+  extern getRxThreadId_t getRxThreadId;
+
+  // Register / remove an external parameter-block loader (t_rxParLoader from
+  // rxode2.h); rxode2 calls registered loaders once per solve so a package can
+  // fill reserved par_ptr slots with externally-owned values.
+  typedef void (*rxRegisterParLoader_t)(t_rxParLoader cb);
+  extern rxRegisterParLoader_t rxRegisterParLoader;
+  typedef void (*rxRemoveParLoader_t)(t_rxParLoader cb);
+  extern rxRemoveParLoader_t rxRemoveParLoader;
+  // Register a NAMED loader ("<package>:<function>") that runs only for a model
+  // flagging that name (rxParLoader()), so an injector never touches an unrelated
+  // model's par_ptr.
+  typedef void (*rxRegisterParLoaderNamed_t)(const char* name, t_rxParLoader cb);
+  extern rxRegisterParLoaderNamed_t rxRegisterParLoaderNamed;
+
+  // Register / remove a dydt forcing hook (t_rxDydtForce from rxode2.h); the
+  // generated model calls all registered hooks at the end of its RHS so a
+  // package can add forcing to state derivatives (e.g. NN-weight variational
+  // states).
+  typedef void (*rxRegisterDydtForce_t)(t_rxDydtForce cb);
+  extern rxRegisterDydtForce_t rxRegisterDydtForce;
+  typedef void (*rxRemoveDydtForce_t)(t_rxDydtForce cb);
+  extern rxRemoveDydtForce_t rxRemoveDydtForce;
 
   static inline SEXP iniRxodePtrs0(SEXP p) {
     if (_rxode2_rxRmvnSEXP_ == NULL) {
@@ -248,6 +477,64 @@ extern "C" {
       setRxMixnum = (setRxMixnum_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 53));
       getIndTolFactor = (getIndTolFactor_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 54));
       setIndTolFactor = (setIndTolFactor_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 55));
+      getIndNeqOverride = (getIndNeqOverride_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 56));
+      setIndNeqOverride = (setIndNeqOverride_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 57));
+      rxSetSilentErr = (rxSetSilentErr_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 58));
+      getOrdId       = (getOrdId_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 59));
+      solveMethodThreadSafe = (solveMethodThreadSafe_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 60));
+      atolRtolFactor_ = (atolRtolFactor_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 61));
+      rxInt = (rxInt_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 62));
+      rxReal = (rxReal_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 63));
+      getRxNsim = (getRxNsim_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 64));
+      setRxThreadId = (setRxThreadId_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 65));
+      rxode2AdjointSweep = (rxode2AdjointSweep_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 66));
+      rxode2AdjointTrajSweep = (rxode2AdjointTrajSweep_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 67));
+      rxSetSolveAtolRtol = (rxSetSolveAtolRtol_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 68));
+      rxGetSolveAtolRtol = (rxGetSolveAtolRtol_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 69));
+      getRxSeed1 = (getRxSeed1_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 70));
+      setSeedEng1 = (setSeedEng1_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 71));
+      seedEng = (seedEng_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 72));
+      rxNormEng = (rxNormEng_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 73));
+      setIndSolvePtr = (setIndSolvePtr_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 74));
+      getIndSolveSave = (getIndSolveSave_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 75));
+      setIndSolveSave = (setIndSolveSave_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 76));
+      getIndSolveLast = (getIndSolveLast_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 77));
+      setIndSolveLast = (setIndSolveLast_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 78));
+      getIndSolveLast2 = (getIndSolveLast2_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 79));
+      setIndSolveLast2 = (setIndSolveLast2_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 80));
+      rxUnifEng = (rxUnifEng_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 81));
+      getIndCmt = (getIndCmt_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 82));
+      setIndCmt = (setIndCmt_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 83));
+      rxode2EventSensShapeSize = (rxode2EventSensShapeSize_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 84));
+      rxode2EventSensShapeSave = (rxode2EventSensShapeSave_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 85));
+      rxode2EventSensShapeRestore = (rxode2EventSensShapeRestore_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 86));
+      rxode2EventSensLoadFull = (rxode2EventSensLoadFull_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 87));
+      rxode2EventSensGetDims = (rxode2EventSensGetDims_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 88));
+      rxode2EventSensSetDims = (rxode2EventSensSetDims_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 89));
+      rxode2EventSensSetActive = (rxode2EventSensSetActive_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 90));
+      rxode2EventSensDeactivate = (rxode2EventSensDeactivate_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 91));
+      rxRegisterParLoader = (rxRegisterParLoader_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 92));
+      rxRemoveParLoader = (rxRemoveParLoader_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 93));
+      rxRegisterDydtForce = (rxRegisterDydtForce_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 94));
+      rxRemoveDydtForce = (rxRemoveDydtForce_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 95));
+      rxRegisterParLoaderNamed = (rxRegisterParLoaderNamed_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 96));
+      rxPriorLogDensityEval = (rxPriorLogDensityEval_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 97));
+      rxPriorOmegaToCholOmegaInvGrad = (rxPriorOmegaToCholOmegaInvGrad_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 98));
+      getRxThreadId = (getRxThreadId_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 99));
+      _rxode2_rxRmvtSEXP_ = (_rxode2_rxRmvtSEXP_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 100));
+      rxRmvtSetup = (rxRmvtSetup_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 101));
+      rxRmvtDraw = (rxRmvtDraw_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 102));
+      rxRmvtFree = (rxRmvtFree_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 103));
+      setIndNewind = (setIndNewind_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 104));
+      rxDfWalkInit = (rxDfWalkInit_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 105));
+      rxDfWalkStep = (rxDfWalkStep_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 106));
+      rxDfWalkDull = (rxDfWalkDull_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 107));
+      rxDfKeepSetup = (rxDfKeepSetup_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 108));
+      rxDfKeepFirst = (rxDfKeepFirst_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 109));
+      rxDfKeepRow = (rxDfKeepRow_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 110));
+      rxDfKeepCols = (rxDfKeepCols_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 111));
+      getDfLevels = (getDfLevels_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 112));
+      rxDfSolveRefused = (rxDfSolveRefused_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, 113));
     }
     return R_NilValue;
   }
@@ -309,6 +596,64 @@ extern "C" {
   setRxMixnum_t setRxMixnum = NULL;                     \
   getIndTolFactor_t getIndTolFactor = NULL;             \
   setIndTolFactor_t setIndTolFactor = NULL;             \
+  getIndNeqOverride_t getIndNeqOverride = NULL;         \
+  setIndNeqOverride_t setIndNeqOverride = NULL;         \
+  rxSetSilentErr_t rxSetSilentErr = NULL;               \
+  getOrdId_t getOrdId = NULL;                           \
+  solveMethodThreadSafe_t solveMethodThreadSafe = NULL; \
+  atolRtolFactor_t atolRtolFactor_ = NULL;              \
+  rxInt_t rxInt = NULL;                                 \
+  rxReal_t rxReal = NULL;                               \
+  getRxNsim_t getRxNsim = NULL;                         \
+  setRxThreadId_t setRxThreadId = NULL;                 \
+  rxode2AdjointSweep_t rxode2AdjointSweep = NULL;        \
+  rxode2AdjointTrajSweep_t rxode2AdjointTrajSweep = NULL; \
+  rxSetSolveAtolRtol_t rxSetSolveAtolRtol = NULL;        \
+  rxGetSolveAtolRtol_t rxGetSolveAtolRtol = NULL;        \
+  getRxSeed1_t getRxSeed1 = NULL;                       \
+  setSeedEng1_t setSeedEng1 = NULL;                     \
+  seedEng_t seedEng = NULL;                             \
+  rxNormEng_t rxNormEng = NULL;                         \
+  rxUnifEng_t rxUnifEng = NULL;                         \
+  getIndCmt_t getIndCmt = NULL;                         \
+  setIndSolvePtr_t setIndSolvePtr = NULL;               \
+  getIndSolveSave_t getIndSolveSave = NULL;             \
+  setIndSolveSave_t setIndSolveSave = NULL;             \
+  getIndSolveLast_t getIndSolveLast = NULL;             \
+  setIndSolveLast_t setIndSolveLast = NULL;             \
+  getIndSolveLast2_t getIndSolveLast2 = NULL;           \
+  setIndSolveLast2_t setIndSolveLast2 = NULL;           \
+  setIndCmt_t setIndCmt = NULL;                         \
+  rxode2EventSensShapeSize_t rxode2EventSensShapeSize = NULL;       \
+  rxode2EventSensShapeSave_t rxode2EventSensShapeSave = NULL;       \
+  rxode2EventSensShapeRestore_t rxode2EventSensShapeRestore = NULL; \
+  rxode2EventSensLoadFull_t rxode2EventSensLoadFull = NULL;         \
+  rxode2EventSensGetDims_t rxode2EventSensGetDims = NULL;           \
+  rxode2EventSensSetDims_t rxode2EventSensSetDims = NULL;           \
+  rxode2EventSensSetActive_t rxode2EventSensSetActive = NULL;       \
+  rxode2EventSensDeactivate_t rxode2EventSensDeactivate = NULL;     \
+  rxRegisterParLoader_t rxRegisterParLoader = NULL;     \
+  rxRemoveParLoader_t rxRemoveParLoader = NULL;         \
+  rxRegisterDydtForce_t rxRegisterDydtForce = NULL;     \
+  rxRemoveDydtForce_t rxRemoveDydtForce = NULL;         \
+  rxRegisterParLoaderNamed_t rxRegisterParLoaderNamed = NULL; \
+  rxPriorLogDensityEval_t rxPriorLogDensityEval = NULL; \
+  rxPriorOmegaToCholOmegaInvGrad_t rxPriorOmegaToCholOmegaInvGrad = NULL; \
+  getRxThreadId_t getRxThreadId = NULL;                 \
+  _rxode2_rxRmvtSEXP_t _rxode2_rxRmvtSEXP_ = NULL;      \
+  rxRmvtSetup_t rxRmvtSetup = NULL;                     \
+  rxRmvtDraw_t rxRmvtDraw = NULL;                       \
+  rxRmvtFree_t rxRmvtFree = NULL;                       \
+  setIndNewind_t setIndNewind = NULL;                   \
+  rxDfWalkInit_t rxDfWalkInit = NULL;                   \
+  rxDfWalkStep_t rxDfWalkStep = NULL;                   \
+  rxDfWalkDull_t rxDfWalkDull = NULL;                   \
+  rxDfKeepSetup_t rxDfKeepSetup = NULL;                 \
+  rxDfKeepFirst_t rxDfKeepFirst = NULL;                 \
+  rxDfKeepRow_t rxDfKeepRow = NULL;                     \
+  rxDfKeepCols_t rxDfKeepCols = NULL;                   \
+  getDfLevels_t getDfLevels = NULL;                     \
+  rxDfSolveRefused_t rxDfSolveRefused = NULL;           \
   SEXP iniRxodePtrs(SEXP ptr) {                         \
     return iniRxodePtrs0(ptr);                          \
   }                                                     \
