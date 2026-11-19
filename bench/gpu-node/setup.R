@@ -103,10 +103,25 @@ if (!file.exists(.julia)) {
 if (!file.exists(.julia)) {
   stop("no Julia binary at ", .julia, "; remove ", .jdir, " and rerun", call. = FALSE)
 }
-## run Julia through prefix/julia-run, without the modules' LD_LIBRARY_PATH:
-## their libcurl/OpenSSL/libstdc++ shadow Julia's own and Pkg segfaults
+## run Julia through prefix/julia-run: without the modules' LD_LIBRARY_PATH
+## (their libcurl/OpenSSL/libstdc++ shadow Julia's own and Pkg segfaults);
+## packages from GitHub with the system git rather than pkg.julialang.org,
+## which a corporate proxy may cut off; the system CA certificates (any
+## corporate CA).  Each setting can be overridden from the environment.
 .wrap <- file.path(.prefix, "julia-run")
-writeLines(c("#!/bin/sh", "unset LD_LIBRARY_PATH", paste0("exec ", shQuote(.julia), " \"$@\"")), .wrap)
+writeLines(
+  c(
+    "#!/bin/sh",
+    "unset LD_LIBRARY_PATH",
+    "export JULIA_PKG_SERVER=\"${JULIA_PKG_SERVER-}\"",
+    "export JULIA_PKG_USE_CLI_GIT=\"${JULIA_PKG_USE_CLI_GIT-true}\"",
+    "for f in /etc/pki/tls/certs/ca-bundle.crt /etc/ssl/certs/ca-certificates.crt; do",
+    "  if [ -z \"$JULIA_SSL_CA_ROOTS_PATH\" ] && [ -f \"$f\" ]; then export JULIA_SSL_CA_ROOTS_PATH=\"$f\"; fi",
+    "done",
+    paste0("exec ", shQuote(.julia), " \"$@\"")
+  ),
+  .wrap
+)
 Sys.chmod(.wrap, "0755")
 .julia <- .wrap
 ## Julia must start here (exit 126: noexec filesystem; 137: killed, eg by a
