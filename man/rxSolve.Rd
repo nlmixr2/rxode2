@@ -1194,7 +1194,9 @@ state.  A constant infusion (\code{ii = 0}), which has no doses, takes at
 least 5 and up to \code{max(maxSS, 10000)} convergence steps.}
 
 \item{maxSS}{Maximum number of doses given before a steady-state dose (at
-least \code{minSS})}
+least \code{minSS}).  When \code{minSS < maxSS} and \code{ssAtol}/\code{ssRtol} are still
+unmet after \code{maxSS} doses, the last iterate is used and \code{rxSolve()}
+warns once.}
 
 \item{infSSstep}{Step size for determining if a constant infusion
 has reached steady state.  By default this is large value,
