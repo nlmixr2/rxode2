@@ -156,6 +156,14 @@ typedef void (*t_rxDydtForce)(int *neq, double t, double *y, double *dydt);
 #define RXDF_OUT_SIMERR 10  // 1 when the record takes a simulated residual row
 #define RXDF_OUT_NEWIND 11  // 1 when the subject's newind is 2 after it
 #define RXDF_OUT_N 12
+// rxDfSolveRefused(): why rxSolve() refuses a solve instead of returning it
+#define RXDF_REFUSE_NONE 0       // returned (failed subjects NA, with a warning)
+#define RXDF_REFUSE_NA_TIME 1    // an alag()/rate()/dur()/amt() gave NA
+#define RXDF_REFUSE_VV 2         // method='vv' cannot integrate the model
+#define RXDF_REFUSE_EXTRA_PUSH 3 // evid_() pushed past maxExtra
+#define RXDF_REFUSE_SS_INF_DUR 4 // duration with a steady-state infusion
+#define RXDF_REFUSE_INDLIN 5     // one subject; indLin did not converge
+#define RXDF_REFUSE_UNSOLVED 6   // one subject; it could not be solved
 
 #ifndef __RXODE2PTR_H__
 int rxDfWalkInit(void *state, int stateSize, rx_solve *rx,
@@ -168,6 +176,7 @@ void rxDfKeepRow(rx_solve *rx, rx_solving_options_ind *ind, int solveid,
                  int fid, int i, double t, double *out);
 SEXP rxDfKeepCols(SEXP vals);
 SEXP getDfLevels(const char *item, rx_solve *rx, R_xlen_t nrow);
+int rxDfSolveRefused(rx_solve *rx);
 int rxRmvtSetup(void **handle, int d, const double *mu, const double *sigma,
                 int isChol, const double *lower, const double *upper, double nu,
                 double a, double tol, double nlTol, int nlMaxiter);
