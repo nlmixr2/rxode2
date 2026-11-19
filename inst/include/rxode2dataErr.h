@@ -21,6 +21,8 @@
 #define rxErrCorruptET2       131072
 #define rxErrSync             262144
 #define rxErrSync2            524288
+// rxErrModeledFss2* are no longer set (ss=2 with f() solves, #1602); kept so
+// the bit numbering is unchanged
 #define rxErrModeledFss2      1048576
 #define rxErrModeledFss2n2    2097152
 #define rxErrModeledFss2n3    4194304

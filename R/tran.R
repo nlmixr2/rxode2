@@ -95,7 +95,6 @@ rxode2parse <- function(
       .ret$alag
     ))
   )
-  .ret$timeId <- -1L
   .ret$md5 <- md5
   if (.isStr == 1L) {
     ## Now update trans.

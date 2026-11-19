@@ -144,6 +144,7 @@
 #define Rxc_priorSigmaEl 140
 #define Rxc_linCmtSensPhi 141
 #define Rxc_nonmem 142
+#define Rxc_tieOrder 143
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2
@@ -175,11 +176,10 @@
 #define RxMv_lhsOrd 28
 #define RxMv_splitBolus 29
 #define RxMv_strCmpParams 30
-#define RxMv_timeId 31
-#define RxMv_md5 32
-#define RxMv_splitInfusion 33
-#define RxMv_splitInfusionBolus 34
-#define RxMv_splitBolusInfusion 35
+#define RxMv_md5 31
+#define RxMv_splitInfusion 32
+#define RxMv_splitInfusionBolus 33
+#define RxMv_splitBolusInfusion 34
 #define RxMvFlag_ncmt 0
 #define RxMvFlag_ka 1
 #define RxMvFlag_linB 2

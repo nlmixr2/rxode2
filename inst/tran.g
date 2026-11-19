@@ -189,7 +189,7 @@ ini0f     : identifier_r '(0)' ('=' | '<-' ) logical_or_expression;
 
 ini        : identifier_r ('=' | '<-' ) ini_const;
 
-derivative : 'd/dt' '(' identifier_r_no_output ')' ('=' | '<-' | '~') ('+' | '-' | ) logical_or_expression;
+derivative : 'd/dt' '(' identifier_r_no_output ')' ('=' | '<-' | '~') logical_or_expression;
 der_rhs    : 'd/dt' '(' identifier_r_no_output ')';
 
 dfdy        : 'df' '(' identifier_r_no_output ')/dy(' (theta0_noout | theta_noout | eta_noout | identifier_r_no_output) ')' ('=' | '<-' ) logical_or_expression;
@@ -288,7 +288,7 @@ primary_expression
 
 ifelse : 'ifelse' '(' logical_or_expression ',' logical_or_expression ',' logical_or_expression ')' ;
 
-function : function_name '(' (logical_or_expression)* (',' logical_or_expression)* ')' ;
+function : function_name '(' (logical_or_expression)? (',' logical_or_expression)* ')' ;
 
 function_name: identifier | 'lag';
 
