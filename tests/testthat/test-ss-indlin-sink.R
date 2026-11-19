@@ -80,6 +80,14 @@ rxTest({
     expect_equal(.s3$output, 100, tolerance = 1e-3)
     .m4 <- rxode2("matExp()\nk_center_output = 1\nindLin(output) <- -1\n")
     expect_equal(.rxIndLinSinkState(rxModelVars(.m4)), character(0))
+    # read by another state's forcing
+    .m5 <- rxode2(
+      "matExp()\nk_center_output = 1\nindLin(center) <- 1e-6 * output\n"
+    )
+    expect_equal(.rxIndLinSinkState(rxModelVars(.m5)), character(0))
+    # read by an output calculation
+    .m6 <- rxode2("matExp()\nk_center_output = 1\ntot <- center + output\n")
+    expect_equal(.rxIndLinSinkState(rxModelVars(.m6)), character(0))
   })
 
   test_that("$solve() on a compiled rxToIndLin() model leaves the sink out", {

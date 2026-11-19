@@ -14,14 +14,22 @@
 #' @noRd
 #' @author Matthew L. Fidler
 # the `output` sink of a matExp() model: a state only `k_<cmt>_output` rates
-# create, with no rate or indLin() forcing of its own
+# create, which nothing reads and which has no rate or indLin() forcing of its
+# own
 .rxIndLinSinkState <- function(mv) {
   if (length(mv$indLin) == 0L || !("output" %in% mv$state)) {
     return(character(0))
   }
-  if ("output" %in% names(mv$indLin$wIndLin) || "rx_indLin_output" %in% c(mv$lhs, mv$slhs)) {
+  # `output` as a name of its own, not inside `k_<cmt>_output`
+  if (
+    grepl(
+      "(^|[^A-Za-z0-9_.])output([^A-Za-z0-9_.]|$)",
+      mv$model["normModel"]
+    )
+  ) {
     return(character(0))
   }
+  # a rate out of `output`
   if (any(grepl("^k[._]output[._]", c(mv$lhs, mv$slhs, mv$params)))) {
     return(character(0))
   }
