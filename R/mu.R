@@ -439,13 +439,16 @@
 }
 
 .muRefThetaTermIsPureProductRaw <- function(y, theta) {
-  .r <- try({
-    .s <- rxS(paste0("rxdummyLhs=", deparse1(y)))
-    # Symbol(), not the bare string: subs() parses a string, which fails on
-    # dotted theta names such as `cl.wt`
-    .z <- symengine::subs(get("rxdummyLhs", .s), symengine::Symbol(.rxSEres(theta)), symengine::S(0L))
-    as.character(symengine::expand(.z))
-  }, silent = TRUE)
+  .r <- try(
+    {
+      .s <- rxS(paste0("rxdummyLhs=", deparse1(y)))
+      # Symbol(), not the bare string: subs() parses a string, which fails on
+      # dotted theta names such as `cl.wt`
+      .z <- symengine::subs(get("rxdummyLhs", .s), symengine::Symbol(.rxSEres(theta)), symengine::S(0L))
+      as.character(symengine::expand(.z))
+    },
+    silent = TRUE
+  )
   !inherits(.r, "try-error") && identical(.r, "0")
 }
 
