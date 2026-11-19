@@ -23,7 +23,7 @@
   if (length(mv$indLin) == 0L || !("output" %in% mv$state)) {
     return(character(0))
   }
-  if ("output" %in% names(mv$indLin$wIndLin)) {
+  if ("output" %in% names(mv$indLin$wIndLin) || "rx_indLin_output" %in% c(mv$lhs, mv$slhs)) {
     return(character(0))
   }
   if (any(grepl("^k[._]output[._]", c(mv$lhs, mv$slhs, mv$params)))) {
