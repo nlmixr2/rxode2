@@ -361,7 +361,9 @@
 #'     least 5 and up to `max(maxSS, 10000)` convergence steps.
 #'
 #' @param maxSS Maximum number of doses given before a steady-state dose (at
-#'     least `minSS`)
+#'     least `minSS`).  When `minSS < maxSS` and `ssAtol`/`ssRtol` are still
+#'     unmet after `maxSS` doses, the last iterate is used and `rxSolve()`
+#'     warns once.
 #'
 #' @param strictSS Boolean indicating if a strict steady-state is
 #'     required. If a strict steady-state is (`TRUE`) required
