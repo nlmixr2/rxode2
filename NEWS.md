@@ -180,6 +180,11 @@
   correctly (#1729).
 
 ### Solving
+
+- An implicit method (`ros4`, `iem`, `ros43`, ...) in a solve set up from C,
+  as `nlmixr2` estimation does, now uses the model's analytic Jacobian, as
+  `rxSolve()` does; before, it read an empty Jacobian, so stiff fits ran
+  slowly or failed to solve.
 - Growing the per-thread dose pools for a solve with more cores than they
   were sized for (`rxSolve(cores=)` above `OMP_NUM_THREADS`, for example) no
   longer leaks three of their arrays: `freeExtraDosing()` never freed
