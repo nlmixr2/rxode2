@@ -15,7 +15,8 @@ library(rxode2)
 .args <- commandArgs(TRUE)
 .julia <- if (length(.args) >= 1) .args[1] else Sys.which("julia")
 .sizes <- if (length(.args) >= 2) .args[2] else "1000,10000,100000"
-.cores <- parallel::detectCores()
+## threads: OMP_NUM_THREADS when set (eg the cores a batch job was given)
+.cores <- as.integer(Sys.getenv("OMP_NUM_THREADS", parallel::detectCores()))
 .tol <- 1e-8
 
 ## julia first: started after R has opened OpenCL contexts it can crash

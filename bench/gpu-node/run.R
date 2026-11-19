@@ -18,6 +18,14 @@ dir.create(.out, recursive = TRUE, showWarnings = FALSE)
 
 .lib <- file.path(.prefix, "Rlib")
 .julia <- file.path(.prefix, "julia", "bin", "julia")
+## the cores of this job (LSF: LSB_DJOB_NUMPROC; SLURM: SLURM_CPUS_PER_TASK),
+## not every core of a shared node: rxode2, OpenMP and the benchmarks read
+## OMP_NUM_THREADS
+.cores <- Sys.getenv("LSB_DJOB_NUMPROC", Sys.getenv("SLURM_CPUS_PER_TASK", Sys.getenv("OMP_NUM_THREADS")))
+if (!nzchar(.cores)) {
+  .cores <- parallel::detectCores()
+}
+Sys.setenv(OMP_NUM_THREADS = .cores)
 Sys.setenv(
   R_LIBS = paste(c(.lib, .libPaths()), collapse = ":"),
   NOT_CRAN = "true",
@@ -32,6 +40,7 @@ print(Sys.time())
 print(utils::sessionInfo())
 cat("rxode2", format(packageVersion("rxode2")), "\n")
 suppressMessages(library(rxode2))
+cat("threads", .cores, "of", parallel::detectCores(), "cores\n")
 print(rxGpuInfo())
 cat(system2("nvidia-smi", stdout = TRUE, stderr = TRUE), sep = "\n")
 cat(system2(.julia, "--version", stdout = TRUE), sep = "\n")
