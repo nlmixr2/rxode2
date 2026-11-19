@@ -19,4 +19,19 @@ rxTest({
       "gammapDer(x,y)"
     )
   })
+
+  test_that("gammapInva()/gammaqInva() invert in the shape, as in models", {
+    .x <- c(0.5, 1, 3)
+    .p <- c(0.3, 0.7, 0.5)
+    ## a with gammap(a, x) = p (they returned gammapInv()/gammaqInv() before)
+    expect_equal(gammap(gammapInva(.x, .p), .x), .p, tolerance = 1e-10)
+    expect_equal(gammaq(gammaqInva(.x, .p), .x), .p, tolerance = 1e-10)
+    .m <- rxode2({
+      ga <- gammapInva(x, p)
+      gq <- gammaqInva(x, p)
+    })
+    .s <- rxSolve(.m, data.frame(x = .x, p = .p), et(0), returnType = "data.frame")
+    expect_equal(gammapInva(.x, .p), .s$ga)
+    expect_equal(gammaqInva(.x, .p), .s$gq)
+  })
 })

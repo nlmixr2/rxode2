@@ -58,6 +58,16 @@ int cvode_ctx_dense_do_step(cvode_ctx_t *ctx, double *yp, double tout_dir);
 // t must lie within the last completed step interval.
 // Returns 1 on success, -1 on failure.
 int cvode_ctx_dense_calc_state(cvode_ctx_t *ctx, double t, double *yp);
+// Stop the next CV_ONE_STEP calls at tstop (cleared once it is reached).
+int cvode_ctx_set_stop_time(cvode_ctx_t *ctx, double tstop);
+// Maximum step size (0 = no limit).
+int cvode_ctx_set_max_step(cvode_ctx_t *ctx, double hmax);
+// Time tn reached by the last internal step and its size h, so
+// cvode_ctx_dense_calc_state is valid on [tn - h, tn].
+int cvode_ctx_last_step(cvode_ctx_t *ctx, double *tn, double *h);
+// Restart the integration at its current time and state (order 1, fresh
+// step size); the stop time must be set again.  Returns 1 or -1.
+int cvode_ctx_restart(cvode_ctx_t *ctx);
 
 #ifdef __cplusplus
 }
