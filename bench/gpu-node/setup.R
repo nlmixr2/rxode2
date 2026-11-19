@@ -41,8 +41,8 @@ if (bindingIsLocked(".Library.site", baseenv())) {
 }
 .libPaths(c(.lib, .Library))
 ## child R processes (package builds, benchmarks) put .lib first and never use
-## the user library; the site library stays last for the site's Rprofile
-Sys.setenv(R_LIBS = .lib, R_LIBS_USER = .lib)
+## the user or site libraries (the site Rprofile is skipped, tmpdir.R)
+Sys.setenv(R_LIBS = .lib, R_LIBS_USER = .lib, R_LIBS_SITE = .lib)
 options(repos = c(CRAN = "https://cloud.r-project.org"), Ncpus = max(1L, parallel::detectCores() - 1L))
 
 ## CRAN first (the hard dependencies of everything), then the development versions; stop at the
