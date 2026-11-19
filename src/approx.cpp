@@ -188,6 +188,18 @@ static inline double rxRecValue(int raw, double *y, int is_locf,
                   ind->n_all_times_orig, op, 0);
 }
 
+// When sorted record `pos` is a record a dose row expands to, set *out to that
+// row's value, reset ind's cache and return true; otherwise return false
+static inline bool rxDoseRowCov(rx_solving_options_ind *ind, rx_solving_options_ind *indSample,
+                                int pos, double *y, int is_locf, rx_solving_options *op,
+                                double *out) {
+  int linked = rxRecCovRow(indSample, pos);
+  if (linked < 0 || linked == indSample->ix[pos]) return false;
+  *out = rxRecValue(linked, y, is_locf, indSample, op);
+  ind->cacheME = 0;
+  return true;
+}
+
 // Linear interpolation between records i and j, moved past NA values
 template <typename TimeFn>
 static inline double rxApproxLinear(double v, int i, int j, double *y, int n, int nOrig,
@@ -599,13 +611,9 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
             ind->cacheME=0;
             continue;
           }
-          int linked = rxRecCovRow(indSample, idxSample);
-          if (linked >= 0 && linked != indSample->ix[idxSample]) {
-            // a record a dose row expands to reads that row
-            ind->par_ptr[op->par_cov[k]-1] = rxRecValue(linked, y, is_locf, indSample, op);
-            ind->cacheME=0;
-            continue;
-          }
+          // a record a dose row expands to reads that row
+          if (rxDoseRowCov(ind, indSample, idxSample, y, is_locf, op,
+                           &(ind->par_ptr[op->par_cov[k]-1]))) continue;
           ind->par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, is_locf,
                                                     indSample, op, 0);
           if (idx == 0){
@@ -703,20 +711,16 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           if (!pushed && idxSample == 0 &&
               isSameTimeOp(t, rxRecMatchTime(indSample, idxSample))) {
             // y is in record order; a lagged dose can move record 0 off sorted slot 0
-            int linked = rxRecCovRow(indSample, 0);
-            par_ptr[op->par_cov[k]-1] = (linked >= 0 && linked != indSample->ix[0]) ?
-              rxRecValue(linked, y, is_locf, indSample, op) :
-              getValue(0, y, is_locf, indSample, op, 0);
+            if (!rxDoseRowCov(ind, indSample, 0, y, is_locf, op,
+                              &(par_ptr[op->par_cov[k]-1]))) {
+              par_ptr[op->par_cov[k]-1] = getValue(0, y, is_locf, indSample, op, 0);
+            }
             ind->cacheME=0;
           } else if (!pushed && idxSample > 0 && idxSample < indSample->n_all_times &&
                      isSameTimeOp(t, rxRecMatchTime(indSample, idxSample))) {
-            int linked = rxRecCovRow(indSample, idxSample);
-            if (linked >= 0 && linked != indSample->ix[idxSample]) {
-              // a record a dose row expands to reads that row
-              par_ptr[op->par_cov[k]-1] = rxRecValue(linked, y, is_locf, indSample, op);
-              ind->cacheME=0;
-              continue;
-            }
+            // a record a dose row expands to reads that row
+            if (rxDoseRowCov(ind, indSample, idxSample, y, is_locf, op,
+                             &(par_ptr[op->par_cov[k]-1]))) continue;
             par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, is_locf,
                                                  indSample, op, 0);
             if (!isSameTimeOp(getValue(idxSample, y, is_locf,
