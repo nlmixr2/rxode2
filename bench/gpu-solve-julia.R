@@ -1,9 +1,9 @@
 # Time whole rxSolve() calls with the GPU methods (OpenCL and their CPU
 # build) and their host counterparts against DiffEqGPU's EnsembleGPUKernel
-# and OrdinaryDiffEq's EnsembleThreads on the ensembles of
-# bench/gpu-runtime-julia.jl.  Unlike bench/gpu-runtime-julia.R (one bare
-# round), these times include rxSolve()'s setup, the per-subject event
-# handling and the output data frame.
+# (pocl OpenCL and, with CUDA.jl, CUDA) and OrdinaryDiffEq's EnsembleThreads
+# on the ensembles of bench/gpu-runtime-julia.jl.  Unlike
+# bench/gpu-runtime-julia.R (one bare round), these times include rxSolve()'s
+# setup, the per-subject event handling and the output data frame.
 #
 # Usage: Rscript bench/gpu-solve-julia.R [julia] [sizes] [csv]
 #   julia  path of the julia binary (default: julia on the PATH)
@@ -117,6 +117,7 @@ for (.n in as.integer(strsplit(.sizes, ",")[[1]])) {
         n = .n,
         rx_gpu_opencl = .ms(.gcl$s),
         jl_gpu_opencl = .ms(.j$seconds[.j$backend == "OpenCL-pocl"]),
+        jl_gpu_cuda = .ms(.j$seconds[.j$backend == "CUDA"]),
         rx_gpu_cpu = .ms(.gcpu$s),
         jl_gpu_kacpu = .ms(.j$seconds[.j$backend == "KA-CPU"]),
         rx_host = .ms(.host$s),

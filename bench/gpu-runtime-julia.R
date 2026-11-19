@@ -130,10 +130,12 @@ for (.i in seq_len(nrow(.rx))) {
       n = .rx$n[.i],
       rx_opencl_ms = .ms(.rx$seconds[.i]),
       jl_opencl_ms = .ms(.jg$seconds),
+      jl_cuda_ms = .ms(.j$seconds[.j$backend == "CUDA"]),
       jl_kacpu_ms = .ms(.j$seconds[.j$backend == "KA-CPU"]),
       rx_openmp_ms = .ms(.rx$seconds[.k & .rx$backend != "OpenCL-pocl"]),
       jl_threads_ms = .ms(.jt$seconds),
       reldiff_opencl = sprintf("%.1e", .rd(.u(.jg))),
+      reldiff_cuda = sprintf("%.1e", .rd(.u(.j[.j$backend == "CUDA", ]))),
       reldiff_threads = sprintf("%.1e", .rd(.u(.jt)))
     )
   )
