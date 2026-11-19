@@ -46,15 +46,39 @@ rxTest({
     expect_equal(.rxIndLinSinkState(rxModelVars(.ssSinkMod)), character(0))
   })
 
-  test_that(".rxIndLinSsAtol only changes the invented output sink", {
+  test_that(".rxIndLinSsAtol only changes the output sink", {
     expect_equal(.rxIndLinSsAtol(1e-8, "center", character(0)), 1e-8)
     expect_equal(
       .rxIndLinSsAtol(1e-8, c("center", "output"), "output"),
       c(1e-8, .Machine$double.xmax)
     )
+    # positional, as the solver reads it
     expect_equal(
-      .rxIndLinSsAtol(c(1e-8, 1e-6), c("a", "output", "b"), "output"),
-      c(1e-8, .Machine$double.xmax, 1e-6)
+      .rxIndLinSsAtol(c(1e-8, 1e-7, 1e-5), c("a", "output", "b"), "output"),
+      c(1e-8, .Machine$double.xmax, 1e-5)
     )
+    .x <- .rxIndLinSsAtol(c(1e-8, 1e-6), c("a", "b", "output"), "output")
+    expect_equal(.x, c(1e-8, 1e-6, .Machine$double.xmax))
+    expect_equal(.rxIndLinSsAtol(.x, c("a", "b", "output"), "output"), .x)
+  })
+
+  test_that("an output compartment with a rate out of it is not a sink", {
+    .m <- rxode2("matExp()\nk_center_output ~ k12\nk_output_center ~ k21\n")
+    expect_equal(.rxIndLinSinkState(rxModelVars(.m)), character(0))
+    .m2 <- rxode2("matExp()\nk_center_output = k12\nk_output_center = k21\n")
+    expect_equal(.rxIndLinSinkState(rxModelVars(.m2)), character(0))
+  })
+
+  test_that("$solve() on a compiled rxToIndLin() model leaves the sink out", {
+    .me <- rxode2(rxToIndLin(
+      "d/dt(depot) = -ka*depot\nd/dt(central) = ka*depot - cl/v*central\n"
+    ))
+    .ev <- et(amt = 100, cmt = "depot", ii = 12, ss = 1) |> et(c(0, 6))
+    .p <- c(ka = 1, cl = 1, v = 10)
+    expect_equal(
+      as.data.frame(.me$solve(.p, .ev, method = "indLin"))$output,
+      rxSolve(.me, .p, .ev, method = "indLin")$output
+    )
+    expect_true(all(rxSolve(.me, .p, .ev, method = "indLin")$output < 1e4))
   })
 })

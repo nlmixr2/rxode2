@@ -23,22 +23,24 @@
   if (length(mv$indLin) == 0L || !("output" %in% mv$state)) {
     return(character(0))
   }
-  if (any(grepl("^k[._]output[._]", c(mv$lhs, mv$params)))) {
+  if (any(grepl("^k[._]output[._]", c(mv$lhs, mv$slhs, mv$params)))) {
     return(character(0))
   }
   "output"
 }
 
+# per-state ssAtol for an indLin solve: the `output` sink only accumulates
+# eliminated drug, so it never reaches a steady state and is left out of the
+# ssAtol/ssRtol test (#1749).  Other states keep the solver's positional rule
+# (a state past the end of `ssAtol` uses its first element).
 .rxIndLinSsAtol <- function(ssAtol, state, sink) {
   .sink <- state %in% sink
   if (!any(.sink)) {
     return(ssAtol)
   }
-  # states keep their own tolerance by name; one past the vector uses the first
-  .w <- match(state, state[!.sink])
-  .w[!is.na(.w) & .w > length(ssAtol)] <- 1L
-  .w[is.na(.w)] <- 1L
-  .ret <- ssAtol[.w]
+  .ret <- rep(ssAtol[1], length(state))
+  .n <- min(length(state), length(ssAtol))
+  .ret[seq_len(.n)] <- ssAtol[seq_len(.n)]
   .ret[.sink] <- .Machine$double.xmax
   .ret
 }
@@ -3772,22 +3774,11 @@ rxSolve.default <- function(
       object <- .converted
     }
   }
-  if (.ctl$method == 3L) {
-    # an rxSolve object (updateObject = TRUE) solves the model it was built from
-    .sinkModel <- if (rxIs(object, "rxSolve")) {
-      object$env$.args.object
-    } else {
-      object
-    }
-    .sink <- if (rxIs(.sinkModel, "rxode2")) {
-      .rxIndLinSinkState(rxModelVars(.sinkModel))
-    }
+  if (.ctl$method == 3L && !inherits(object, c("function", "rxUi"))) {
+    .mvSink <- rxModelVars(object)
+    .sink <- .rxIndLinSinkState(.mvSink)
     if (length(.sink) > 0L) {
-      .ctl$ssAtol <- .rxIndLinSsAtol(
-        .ctl$ssAtol,
-        rxModelVars(.sinkModel)$state,
-        .sink
-      )
+      .ctl$ssAtol <- .rxIndLinSsAtol(.ctl$ssAtol, .mvSink$state, .sink)
     }
   }
   # Adjoint-sensitivity auto-switch (base method -> adjoint variant).  A model
