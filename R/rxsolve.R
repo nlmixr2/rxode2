@@ -1027,7 +1027,8 @@
 #'   read the time of the first data record at or after it (NONMEM's `F1`,
 #'   `R1` and `D1`).  Covariate interpolation is still set by
 #'   `covsInterpolation`.  It also sets the default `tieOrder` to `"data"`
-#'   and turns on `addlKeepsCov` unless it is given.  By default `FALSE`.
+#'   and turns on `addlKeepsCov` unless it is given.  By default `FALSE`,
+#'   when they read the actual time of the `addl` dose.
 #'
 #' @param tieOrder How records of a subject that share a time are processed:
 #'   `"evid"` processes resets first, then doses, then observations, so the

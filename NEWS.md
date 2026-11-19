@@ -255,8 +255,8 @@
   results at doses move within the tolerances.
 - With `rxSolve(..., nonmem = TRUE)`, `f()`, `rate()` and `dur()` of an
   `addl` repeat now read `time` as the first data record at or after the
-  repeat, as NONMEM evaluates `F1`, `R1` and `D1`; they used to read the
-  repeat's own time (#1583).
+  repeat, as NONMEM evaluates `F1`, `R1` and `D1`; by default they still
+  read the actual time of the `addl` dose (#1583).
 
 ### Steady state
 - A steady-state fixed-duration infusion shorter than `ii` into a compartment
