@@ -258,6 +258,10 @@
   dose nor at an `mtime()` record, and such a window can still be missed.
   Plain observation records are still stepped past and interpolated;
   results at doses move within the tolerances.
+- With `rxSolve(..., nonmem = TRUE)`, `f()`, `rate()` and `dur()` of an
+  `addl` repeat now read `time` as the first data record at or after the
+  repeat, as NONMEM evaluates `F1`, `R1` and `D1`; by default they still
+  read the actual time of the `addl` dose (#1583).
 
 ### Steady state
 - A steady-state fixed-duration infusion shorter than `ii` into a compartment
