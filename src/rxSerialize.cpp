@@ -594,6 +594,41 @@ static int *sReadIntBlobExpected(MemReader *f, uint64_t expected_n, const char *
   return buf;
 }
 
+// Reads a subject's per-record int blob (n_all_times_orig ints, or none) and
+// appends it to `all`, noting its offset in off[si]
+static void sReadRecordIntBlob(MemReader *f, rx_solving_options_ind *ind, uint32_t si,
+                               std::vector<int> &all, std::vector<int64_t> &off,
+                               const char *what) {
+  uint64_t n;
+  int *buf = sReadIntBlob(f, &n, what);
+  if (n > 0) {
+    if (n != (uint64_t)(ind->n_all_times_orig > 0 ? ind->n_all_times_orig : 0)) {
+      free(buf);
+      (Rf_error)("rxRestoreState: %s size mismatch (file: %llu, expected: %d)",
+                 what, (unsigned long long)n, ind->n_all_times_orig);
+    }
+    off[si] = (int64_t)all.size();
+    all.insert(all.end(), buf, buf + n);
+  }
+  free(buf);
+}
+
+// Replaces the global per-record array *glob with `all` and points each
+// subject's `member` into it; nothing when `all` is empty
+static void sInstallRecordInts(int **glob, const std::vector<int> &all,
+                               const std::vector<int64_t> &off,
+                               rx_solving_options_ind *inds, uint32_t nsub,
+                               int *rx_solving_options_ind::*member, const char *what) {
+  if (all.empty()) return;
+  if (*glob != NULL) free(*glob);
+  *glob = (int *)malloc(all.size() * sizeof(int));
+  if (!*glob) (Rf_error)("rxRestoreState: out of memory for %s", what);
+  std::copy(all.begin(), all.end(), *glob);
+  for (uint32_t si = 0; si < nsub; si++) {
+    if (off[si] >= 0) inds[si].*member = *glob + off[si];
+  }
+}
+
 // Helper to read directly into a pre-allocated double buffer
 static void sReadDoubleDirect(MemReader *f, double *dest, uint64_t expected_n, const char *what) {
   uint64_t n = sReadU64(f, what);
@@ -1235,51 +1270,10 @@ SEXP rxRestoreState_(SEXP rawSexp) {
       ind->idoseOwnAllocN = nd;
     }
 
-    if (fmt >= 8u) {
-      uint64_t n;
-      int *buf = sReadIntBlob(f, &n, "infPair");
-      if (n > 0) {
-        // the array covers exactly the records getInfusionMateRecord() reads
-        if (n != (uint64_t)(ind->n_all_times_orig > 0 ? ind->n_all_times_orig : 0)) {
-          free(buf);
-          (Rf_error)("rxRestoreState: infPair size mismatch (file: %llu, expected: %d)",
-                     (unsigned long long)n, ind->n_all_times_orig);
-        }
-        infPairOff[si] = (int64_t)infPairAll.size();
-        infPairAll.insert(infPairAll.end(), buf, buf + n);
-      }
-      free(buf);
-    }
-
-    if (fmt >= 9u) {
-      uint64_t n;
-      int *buf = sReadIntBlob(f, &n, "pkSkip");
-      if (n > 0) {
-        if (n != (uint64_t)(ind->n_all_times_orig > 0 ? ind->n_all_times_orig : 0)) {
-          free(buf);
-          (Rf_error)("rxRestoreState: pkSkip size mismatch (file: %llu, expected: %d)",
-                     (unsigned long long)n, ind->n_all_times_orig);
-        }
-        pkSkipOff[si] = (int64_t)pkSkipAll.size();
-        pkSkipAll.insert(pkSkipAll.end(), buf, buf + n);
-      }
-      free(buf);
-    }
-
-    if (fmt >= 10u) {
-      uint64_t n;
-      int *buf = sReadIntBlob(f, &n, "doseRow");
-      if (n > 0) {
-        if (n != (uint64_t)(ind->n_all_times_orig > 0 ? ind->n_all_times_orig : 0)) {
-          free(buf);
-          (Rf_error)("rxRestoreState: doseRow size mismatch (file: %llu, expected: %d)",
-                     (unsigned long long)n, ind->n_all_times_orig);
-        }
-        doseRowOff[si] = (int64_t)doseRowAll.size();
-        doseRowAll.insert(doseRowAll.end(), buf, buf + n);
-      }
-      free(buf);
-    }
+    // infPair covers exactly the records getInfusionMateRecord() reads
+    if (fmt >= 8u) sReadRecordIntBlob(f, ind, si, infPairAll, infPairOff, "infPair");
+    if (fmt >= 9u) sReadRecordIntBlob(f, ind, si, pkSkipAll, pkSkipOff, "pkSkip");
+    if (fmt >= 10u) sReadRecordIntBlob(f, ind, si, doseRowAll, doseRowOff, "doseRow");
 
     // timeThread: not restored (recomputed from ix by solver)
     // Allocate a private timeThread buffer for this subject
@@ -1308,35 +1302,12 @@ SEXP rxRestoreState_(SEXP rawSexp) {
     ind->rc           = _globals.grc + si;
   }
 
-  if (!infPairAll.empty()) {
-    if (_globals.ginfPair != NULL) free(_globals.ginfPair);
-    _globals.ginfPair = (int *)malloc(infPairAll.size() * sizeof(int));
-    if (!_globals.ginfPair) (Rf_error)("rxRestoreState: out of memory for infPair");
-    std::copy(infPairAll.begin(), infPairAll.end(), _globals.ginfPair);
-    for (uint32_t si = 0; si < nsub; si++) {
-      if (infPairOff[si] >= 0) inds[si].infPair = _globals.ginfPair + infPairOff[si];
-    }
-  }
-
-  if (!pkSkipAll.empty()) {
-    if (_globals.gpkSkip != NULL) free(_globals.gpkSkip);
-    _globals.gpkSkip = (int *)malloc(pkSkipAll.size() * sizeof(int));
-    if (!_globals.gpkSkip) (Rf_error)("rxRestoreState: out of memory for pkSkip");
-    std::copy(pkSkipAll.begin(), pkSkipAll.end(), _globals.gpkSkip);
-    for (uint32_t si = 0; si < nsub; si++) {
-      if (pkSkipOff[si] >= 0) inds[si].pkSkip = _globals.gpkSkip + pkSkipOff[si];
-    }
-  }
-
-  if (!doseRowAll.empty()) {
-    if (_globals.gdoseRow != NULL) free(_globals.gdoseRow);
-    _globals.gdoseRow = (int *)malloc(doseRowAll.size() * sizeof(int));
-    if (!_globals.gdoseRow) (Rf_error)("rxRestoreState: out of memory for doseRow");
-    std::copy(doseRowAll.begin(), doseRowAll.end(), _globals.gdoseRow);
-    for (uint32_t si = 0; si < nsub; si++) {
-      if (doseRowOff[si] >= 0) inds[si].doseRow = _globals.gdoseRow + doseRowOff[si];
-    }
-  }
+  sInstallRecordInts(&_globals.ginfPair, infPairAll, infPairOff, inds, nsub,
+                     &rx_solving_options_ind::infPair, "infPair");
+  sInstallRecordInts(&_globals.gpkSkip, pkSkipAll, pkSkipOff, inds, nsub,
+                     &rx_solving_options_ind::pkSkip, "pkSkip");
+  sInstallRecordInts(&_globals.gdoseRow, doseRowAll, doseRowOff, inds, nsub,
+                     &rx_solving_options_ind::doseRow, "doseRow");
 
   // -- Section 10: op->indLin convergence set --------------------------------
   {
