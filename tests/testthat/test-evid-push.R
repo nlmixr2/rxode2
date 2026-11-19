@@ -1069,12 +1069,11 @@ rxTest({
 
     f <- f()
     expect_equal(
-      tail(names(rxModelVars(f)), 8),
+      tail(names(rxModelVars(f)), 7),
       c(
         "lhsOrd",
         "splitBolus",
         "strCmpParams",
-        "timeId",
         "md5",
         "splitInfusion",
         "splitInfusionBolus",

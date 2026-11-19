@@ -9,6 +9,7 @@
 #define __RX_TO_SE_EMIT_H__
 
 #include "rxToSEnode.h"
+#include "seNum.h"
 
 /* .rxSEreserved: these names mean something to symengine, so rxToSE() shadows
    them.  .rxFromSE() maps rx_SymPy_Res_<name> back. */
@@ -50,8 +51,35 @@ static const rtCnt rtCnts[] = {
 #define rtNcnts ((int)(sizeof(rtCnts)/sizeof(rtCnts[0])))
 
 static const char *rtFail(seCtx *ctx) {
-  ctx->failed = 1;
-  return "";
+  return seFailWhy(ctx, SE_WHY_OTHER);
+}
+
+static const char *rtFailWhy(seCtx *ctx, int why) {
+  return seFailWhy(ctx, why);
+}
+
+/* ..curCall while the arguments of a call are converted */
+static int rtPush(seCtx *ctx, const char *call) {
+  if (!ctx->collect || call == NULL) return 1;
+  if (ctx->ncall >= 64) { rtFail(ctx); return 0; }
+  ctx->callStack[ctx->ncall++] = call;
+  return 1;
+}
+
+static void rtPop(seCtx *ctx, const char *call) {
+  if (ctx->collect && call != NULL && ctx->ncall > 0) ctx->ncall--;
+}
+
+/* paste(..curCall[..curCall != ""], collapse = "."), "" when empty */
+static const char *rtCallPath(seCtx *ctx) {
+  const char *out = "";
+  int i, first = 1;
+  for (i = 0; i < ctx->ncall; i++) {
+    if (ctx->callStack[i][0] == '\0') continue;
+    out = first ? ctx->callStack[i] : seCat(ctx, out, ".", ctx->callStack[i], NULL, NULL, NULL);
+    first = 0;
+  }
+  return out;
 }
 
 /* .rxToSEDualVarFunction: names that are both a variable and a function.  Used
@@ -101,29 +129,32 @@ static const rtOp2 rtOps2[] = {
 #define rtNops2 ((int)(sizeof(rtOps2)/sizeof(rtOps2[0])))
 
 /* .rxSEsingle: one-argument rewrites */
-typedef struct { const char *name, *open, *close; } rtOp1;
+/* `call` is what .rxToSECall() pushes on ..curCall while it converts the
+   argument (.rxSEsingle's third element; NULL for the dedicated handlers of
+   pnorm/qnorm/fabs, which push nothing) */
+typedef struct { const char *name, *open, *close, *call; } rtOp1;
 
 static const rtOp1 rtOps1[] = {
-  {"digamma",    "polygamma(0,",        ")"},
-  {"trigamma",   "polygamma(1,",        ")"},
-  {"tetragamma", "polygamma(2,",        ")"},
-  {"pentagamma", "polygamma(3,",        ")"},
-  {"cospi",      "cos(pi*(",            "))"},
-  {"sinpi",      "sin(pi*(",            "))"},
-  {"tanpi",      "tan(pi*(",            "))"},
-  {"log1p",      "log(1+",              ")"},
-  {"expm1",      "(exp(",               ")-1)"},
-  {"factorial",  "gamma(",              "+1)"},
-  {"lfactorial", "lgamma(",             "+1)"},
-  {"lgamma1p",   "lgamma(",             "+1)"},
-  {"log10",      "log(",                ")/log(10)"},
-  {"log2",       "log(",                ")/log(2)"},
-  {"log1pexp",   "log(1+exp(",          "))"},
-  {"phi",        "0.5*(1+erf((",        ")/sqrt(2)))"},
-  {"pnorm",      "0.5*(1+erf((",        ")/sqrt(2)))"},
-  {"normcdf",    "0.5*(1+erf((",        ")/sqrt(2)))"},
-  {"qnorm",      "sqrt(2)*erfinv(2*(",  ")-1)"},
-  {"fabs",       "abs0(",               ")"}
+  {"digamma",    "polygamma(0,",        ")", "psigamma"},
+  {"trigamma",   "polygamma(1,",        ")", "psigamma"},
+  {"tetragamma", "polygamma(2,",        ")", "psigamma"},
+  {"pentagamma", "polygamma(3,",        ")", "psigamma"},
+  {"cospi",      "cos(pi*(",            "))", "cos"},
+  {"sinpi",      "sin(pi*(",            "))", "sin"},
+  {"tanpi",      "tan(pi*(",            "))", "tan"},
+  {"log1p",      "log(1+",              ")", "log"},
+  {"expm1",      "(exp(",               ")-1)", "exp"},
+  {"factorial",  "gamma(",              "+1)", "gamma"},
+  {"lfactorial", "lgamma(",             "+1)", "lgamma"},
+  {"lgamma1p",   "lgamma(",             "+1)", "lgamma"},
+  {"log10",      "log(",                ")/log(10)", "log"},
+  {"log2",       "log(",                ")/log(2)", "log"},
+  {"log1pexp",   "log(1+exp(",          "))", "log1pexp"},
+  {"phi",        "0.5*(1+erf((",        ")/sqrt(2)))", NULL},
+  {"pnorm",      "0.5*(1+erf((",        ")/sqrt(2)))", NULL},
+  {"normcdf",    "0.5*(1+erf((",        ")/sqrt(2)))", NULL},
+  {"qnorm",      "sqrt(2)*erfinv(2*(",  ")-1)", NULL},
+  {"fabs",       "abs0(",               ")", NULL}
 };
 #define rtNops1 ((int)(sizeof(rtOps1)/sizeof(rtOps1[0])))
 
@@ -146,22 +177,56 @@ static const char *rtPassFns[] = {
 /* collect an arg_list's left spine in source order; see seParseNode.h */
 #define rtArgs(pn, args, max) seArgsFlattenT(rtPt, (pn), (args), (max))
 
+/* .rxToSESquareBracket()'s bookkeeping for one THETA[n]/ETA[n] -- the
+   index, and the ..curCall path it was read under -- for R to replay */
+static int rtRecordIndex(seCtx *ctx, int isTheta, int n) {
+  const char *path = rtCallPath(ctx);
+  int **ix = isTheta ? &ctx->thetas : &ctx->etas;
+  int *nix = isTheta ? &ctx->nthetas : &ctx->netas;
+  int *mix = isTheta ? &ctx->mthetas : &ctx->metas;
+  const char ***fn = isTheta ? &ctx->thetaFuns : &ctx->etaFuns;
+  int *nfn = isTheta ? &ctx->nthetaFuns : &ctx->netaFuns;
+  int *mfn = isTheta ? &ctx->mthetaFuns : &ctx->metaFuns;
+  if (!seGrow(ctx, (void**) ix, nix, mix, sizeof(int)) ||
+      !seGrow(ctx, (void**) fn, nfn, mfn, sizeof(char*))) {
+    return 0;
+  }
+  (*ix)[(*nix)++] = n;
+  (*fn)[(*nfn)++] = path;
+  return 1;
+}
+
+/* is ix a plain positive integer as.character() writes back unchanged?
+   (THETA[01] is THETA_1_ in R, which this does not reproduce) */
+static int rtPlainIndex(const char *ix) {
+  const char *p;
+  if (*ix < '1' || *ix > '9' || strlen(ix) > 9) return 0;
+  for (p = ix; *p != '\0'; p++) {
+    if (*p < '0' || *p > '9') return 0;
+  }
+  return 1;
+}
+
 /* THETA[1] -> THETA_1_ */
 static const char *rtIndex(seCtx *ctx, D_ParseNode *pn) {
   const char *nm = rtNodeText(ctx, d_get_child(pn, 0));
   const char *ix = rtNodeText(ctx, d_get_child(pn, 2));
-  const char *p;
-  if (strcmp(nm, "THETA") != 0 && strcmp(nm, "ETA") != 0) return rtFail(ctx);
-  for (p = ix; *p != '\0'; p++) {
-    if (*p < '0' || *p > '9') return rtFail(ctx);
-  }
-  if (*ix == '\0') return rtFail(ctx);
+  int isTheta = strcmp(nm, "THETA") == 0;
+  if (!isTheta && strcmp(nm, "ETA") != 0) return rtFail(ctx);
+  if (!rtPlainIndex(ix)) return rtFail(ctx);
+  if (ctx->collect && !rtRecordIndex(ctx, isTheta, atoi(ix))) return rtFail(ctx);
   return seCat(ctx, nm, "_", ix, "_", NULL, NULL);
 }
 
 static const char *rtSymbol(seCtx *ctx, D_ParseNode *pn) {
   const char *raw = rtNodeText(ctx, pn);
   int i;
+  if (ctx->collect) {
+    if (!seGrow(ctx, (void**) &ctx->syms, &ctx->nsyms, &ctx->msyms, sizeof(char*))) {
+      return rtFail(ctx);
+    }
+    ctx->syms[ctx->nsyms++] = raw;
+  }
   /* NA and dosenum0 raise in rxToSE(); let the R walker produce the message */
   if (strcmp(raw, "NA") == 0 || strcmp(raw, "dosenum0") == 0) return rtFail(ctx);
   /* a bare dual variable/function name means the call */
@@ -190,7 +255,9 @@ static const char *rtCall1(seCtx *ctx, const char *name, D_ParseNode **args) {
     const char *a;
     if (name[0] != rtOps1[i].name[0]) continue;
     if (strcmp(name, rtOps1[i].name) != 0) continue;
+    if (!rtPush(ctx, rtOps1[i].call)) return "";
     a = rtEmit(ctx, args[0]);
+    rtPop(ctx, rtOps1[i].call);
     if (ctx->failed) return "";
     return seCat(ctx, rtOps1[i].open, a, rtOps1[i].close, NULL, NULL, NULL);
   }
@@ -227,11 +294,14 @@ static const char *rtCallPass(seCtx *ctx, const char *name,
         strcmp(rtNodeText(ctx, args[0]), "1") == 0) {
       return "E";
     }
+    /* the generic branch of .rxToSECall() pushes the function's name */
+    if (!rtPush(ctx, rtPassFns[i])) return "";
     for (j = 0; j < nargs; j++) {
       const char *a = rtEmit(ctx, args[j]);
-      if (ctx->failed) return "";
+      if (ctx->failed) { rtPop(ctx, rtPassFns[i]); return ""; }
       body = (j == 0) ? a : seCat(ctx, body, ",", a, NULL, NULL, NULL);
     }
+    rtPop(ctx, rtPassFns[i]);
     return seCat(ctx, name, "(", body, ")", NULL, NULL);
   }
   return NULL;
@@ -260,7 +330,9 @@ static const char *rtCall(seCtx *ctx, D_ParseNode *pn) {
   }
   got = rtCallPass(ctx, name, args, nargs);
   if (got != NULL) return got;
-  return rtFail(ctx);                 /* user function, linCmt, llik, ... */
+  /* user function, linCmt, llik, ...: the R walker's answer can depend on R
+     functions in the caller's environment, so it is not cached */
+  return rtFailWhy(ctx, SE_WHY_UNKNOWN_FN);
 }
 
 /* a binary operator that rxToSE() rewrites into a call */
@@ -302,16 +374,25 @@ static const char *rtEmitBinary(seCtx *ctx, D_ParseNode *pn) {
   return seCat(ctx, a, op, b, NULL, NULL, NULL);
 }
 
+static const char *rtEmitNode(seCtx *ctx, D_ParseNode *pn);
+
 static const char *rtEmit(seCtx *ctx, D_ParseNode *pn) {
   if (ctx->failed) return "";
-  const char *name = rtNodeName(pn);
-  rtNodeInfo ni;
+  if (ctx->depth >= SE_MAX_DEPTH) return seFailWhy(ctx, SE_WHY_DEEP);
+  ctx->depth++;
+  const char *r = rtEmitNode(ctx, pn);
+  ctx->depth--;
+  return r;
+}
+
+static const char *rtEmitNode(seCtx *ctx, D_ParseNode *pn) {
   int nch = d_get_number_of_children(pn);
-  rtNiReset(&ni);
 
   if (rtNodeHas(symbol)) return rtSymbol(ctx, pn);
   if (rtNodeHas(number) || rtNodeHas(integer_num) || rtNodeHas(float_num)) {
-    return rtNodeText(ctx, pn);
+    /* R parses the number and writes it back with as.character(): 1.50 is
+       1.5 and 1e5 is 1e+05 */
+    return seDblToStr(ctx, R_strtod(rtNodeText(ctx, pn), NULL));
   }
   if (rtNodeHas(index_expression)) return rtIndex(ctx, pn);
   if (rtNodeHas(function_call)) return rtCall(ctx, pn);

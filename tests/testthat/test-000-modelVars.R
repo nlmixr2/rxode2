@@ -34,12 +34,7 @@ d/dt(y3) = a3*y1*y2
 
     expect_equal(rxModelVars(rigid), rxModelVars(rigid$cmpMgr$rxDll()))
     expect_equal(rxModelVars(rigid), rxModelVars(out))
-    # Drop the 'timeId' element because it is the compilation time, and it may
-    # differ if the system is heavily loaded
-    rigid0_compare <- rigid0[setdiff(names(rigid0), "timeId")]
-    rigid_compare <- rxModelVars(rigid)
-    rigid_compare <- rigid_compare[setdiff(names(rigid_compare), "timeId")]
-    expect_equal(rigid0_compare, rigid_compare)
+    expect_equal(rigid0, rxModelVars(rigid))
   })
 
   test_that("modelvars track exhaustive string comparison covariates", {
@@ -79,10 +74,7 @@ if (covB == \"same\" ||
     .expectStrCmpParams(parsed, expected)
     .expectStrCmpParams(rxModelVars(compiled), expected)
 
-    parsedCompare <- parsed[setdiff(names(parsed), "timeId")]
-    compiledCompare <- rxModelVars(compiled)
-    compiledCompare <- compiledCompare[setdiff(names(compiledCompare), "timeId")]
-    expect_equal(parsedCompare, compiledCompare)
+    expect_equal(parsed, rxModelVars(compiled))
   })
 
   test_that("blank modelvars has same size", {
@@ -92,12 +84,11 @@ if (covB == \"same\" ||
     expect_length(blank$strCmpParams, 0)
     expect_equal(names(blank$strCmpParams), character(0))
     expect_equal(
-      tail(names(full), 8),
+      tail(names(full), 7),
       c(
         "lhsOrd",
         "splitBolus",
         "strCmpParams",
-        "timeId",
         "md5",
         "splitInfusion",
         "splitInfusionBolus",
