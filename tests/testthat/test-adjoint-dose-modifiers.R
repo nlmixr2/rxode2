@@ -10,8 +10,11 @@ rxTest({
   # closed form for a bolus fd*100 landing at lg (every observation is after it)
   .faKnown <- function(p, tt) {
     .lg <- if ("lg" %in% names(p)) "lg" else "0"
-    .depot <- deriv(stats::as.formula(sprintf("~ fd * 100 * exp(-ka * (t - %s))", .lg)), names(p),
-      function.arg = c(names(p), "t"))
+    .depot <- deriv(
+      stats::as.formula(sprintf("~ fd * 100 * exp(-ka * (t - %s))", .lg)),
+      names(p),
+      function.arg = c(names(p), "t")
+    )
     .center <- deriv(
       stats::as.formula(sprintf("~ fd * 100 * ka / (ka - k) * (exp(-k * (t - %s)) - exp(-ka * (t - %s)))", .lg, .lg)),
       names(p),
@@ -33,16 +36,24 @@ rxTest({
       # the dose lands inside the sweep
       fAlag = list(txt = .faTxt, p = .faP),
       # the dose lands at t0, where the backward sweep stops
-      f = list(txt = "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\nf(depot) <- fd", p = .faP[c("ka", "k", "fd")])
+      f = list(
+        txt = "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\nf(depot) <- fd",
+        p = .faP[c("ka", "k", "fd")]
+      )
     )
     for (.nm in names(.mods)) {
       .known <- .faKnown(.mods[[.nm]]$p, .tt)
       # abs has no f()/alag() dual
       for (.meth in c("rk4s", "dop853s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj")) {
         .a <- rxSolveAdjointRk4(
-          .mods[[.nm]]$txt, .faEv,
-          params = .mods[[.nm]]$p, calcSens = names(.mods[[.nm]]$p), method = .meth,
-          atol = 1e-10, rtol = 1e-10, hmin = if (.meth == "rk4s") 0.001 else 0
+          .mods[[.nm]]$txt,
+          .faEv,
+          params = .mods[[.nm]]$p,
+          calcSens = names(.mods[[.nm]]$p),
+          method = .meth,
+          atol = 1e-10,
+          rtol = 1e-10,
+          hmin = if (.meth == "rk4s") 0.001 else 0
         )
         .a <- .a[.a$time %in% .tt, , drop = FALSE]
         for (.cn in names(.known)) {
@@ -90,8 +101,20 @@ rxTest({
       list(txt = "alag(depot) <- lg", p = c(lg = 0.7), ev = .faEv, what = "alag()", use = .both),
       list(txt = "rate(depot) <- r", p = c(r = 40), ev = .rateEv, what = "rate()", use = "method='rk4s'"),
       list(txt = "dur(depot) <- dd", p = c(dd = 2.5), ev = .durEv, what = "dur()", use = "method='rk4s'"),
-      list(txt = "f(depot) <- fd\nalag(depot) <- lg", p = c(fd = 0.7, lg = 0.7), ev = .faEv, what = "f(), alag()", use = .both),
-      list(txt = "f(depot) <- fd\nrate(depot) <- r", p = c(fd = 0.7, r = 40), ev = .rateEv, what = "f(), rate()", use = "method='rk4s'")
+      list(
+        txt = "f(depot) <- fd\nalag(depot) <- lg",
+        p = c(fd = 0.7, lg = 0.7),
+        ev = .faEv,
+        what = "f(), alag()",
+        use = .both
+      ),
+      list(
+        txt = "f(depot) <- fd\nrate(depot) <- r",
+        p = c(fd = 0.7, r = 40),
+        ev = .rateEv,
+        what = "f(), rate()",
+        use = "method='rk4s'"
+      )
     )
     for (.k in .kinds) {
       .p <- c(ka = 1.2, k = 0.14, .k$p)
@@ -107,7 +130,14 @@ rxTest({
     for (.txt in c("f(depot) <- 0.7\nalag(depot) <- 0.5", "f(depot) <- fd\nalag(depot) <- lg")) {
       .p <- c(ka = 1.2, k = 0.14, fd = 0.7, lg = 0.5)
       .known <- .faKnown(.p, .tt)
-      .a <- rxSolveAdjointRk4(paste(.base, .txt, sep = "\n"), .faEv, params = .p, calcSens = c("ka", "k"), method = "abs", hmin = 0.001)
+      .a <- rxSolveAdjointRk4(
+        paste(.base, .txt, sep = "\n"),
+        .faEv,
+        params = .p,
+        calcSens = c("ka", "k"),
+        method = "abs",
+        hmin = 0.001
+      )
       .a <- .a[.a$time %in% .tt, , drop = FALSE]
       for (.cn in grep("_BY_(ka|k)__$", names(.known), value = TRUE)) {
         expect_lt(max(abs(.a[[.cn]] - .known[[.cn]])), 1e-6, label = paste(.txt, .cn))
@@ -116,7 +146,14 @@ rxTest({
     # without modeled dosing abs still gives the sensitivities
     .tt <- c(1, 2, 4, 8, 12)
     .known <- .faKnown(c(ka = 1.2, k = 0.14, fd = 1), .tt)
-    .a <- rxSolveAdjointRk4(.base, .faEv, params = c(ka = 1.2, k = 0.14), calcSens = c("ka", "k"), method = "abs", hmin = 0.001)
+    .a <- rxSolveAdjointRk4(
+      .base,
+      .faEv,
+      params = c(ka = 1.2, k = 0.14),
+      calcSens = c("ka", "k"),
+      method = "abs",
+      hmin = 0.001
+    )
     .a <- .a[.a$time %in% .tt, , drop = FALSE]
     for (.cn in grep("_BY_(ka|k)__$", names(.known), value = TRUE)) {
       expect_lt(max(abs(.a[[.cn]] - .known[[.cn]])), 1e-6, label = .cn)
@@ -153,16 +190,24 @@ rxTest({
     .fTxt <- "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\nf(depot) <- fd"
     .scen <- list(
       # an observation at a dose time reads the post-dose state
-      obsAtT0 = list(txt = .fTxt, ev = et(amt = 100, cmt = "depot") |> et(c(0, 1, 2, 4)), p = c(ka = 1.2, k = 0.14, fd = 0.5)),
+      obsAtT0 = list(
+        txt = .fTxt,
+        ev = et(amt = 100, cmt = "depot") |> et(c(0, 1, 2, 4)),
+        p = c(ka = 1.2, k = 0.14, fd = 0.5)
+      ),
       obsAtDose = list(
-        txt = .fTxt, ev = et(amt = 100, cmt = "depot") |> et(amt = 60, cmt = "depot", time = 3) |> et(c(1, 3, 5, 8)),
+        txt = .fTxt,
+        ev = et(amt = 100, cmt = "depot") |> et(amt = 60, cmt = "depot", time = 3) |> et(c(1, 3, 5, 8)),
         p = c(ka = 1.2, k = 0.14, fd = 0.5)
       ),
       # a reset, then a dose observed at its own time (a reset and a dose at
       # the same time, and an observation at a reset, are separate cases)
       afterReset = list(
         txt = .fTxt,
-        ev = et(amt = 100, cmt = "depot") |> et(time = 4, evid = 3) |> et(amt = 70, cmt = "depot", time = 5) |> et(c(1, 3, 5, 6, 9)),
+        ev = et(amt = 100, cmt = "depot") |>
+          et(time = 4, evid = 3) |>
+          et(amt = 70, cmt = "depot", time = 5) |>
+          et(c(1, 3, 5, 6, 9)),
         p = c(ka = 1.2, k = 0.14, fd = 0.5)
       ),
       fAlagDoses = list(
@@ -175,9 +220,15 @@ rxTest({
       .k <- .scen[[.nm]]
       .fd <- .doseFd(.k$txt, .k$ev, .k$p, names(.k$p))
       for (.meth in c("rk4s", "dop853s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj")) {
-        .a <- rxSolveAdjointRk4(.k$txt, .k$ev,
-          params = .k$p, calcSens = names(.k$p), method = .meth,
-          atol = 1e-12, rtol = 1e-12, hmin = if (.meth == "rk4s") 0.001 else 0
+        .a <- rxSolveAdjointRk4(
+          .k$txt,
+          .k$ev,
+          params = .k$p,
+          calcSens = names(.k$p),
+          method = .meth,
+          atol = 1e-12,
+          rtol = 1e-12,
+          hmin = if (.meth == "rk4s") 0.001 else 0
         )
         for (.cn in names(.fd)) {
           expect_lt(max(abs(.a[[.cn]] - .fd[[.cn]])), 1e-6, label = paste(.nm, .meth, .cn))
@@ -188,10 +239,23 @@ rxTest({
     .ev <- et(amt = 100, cmt = "depot") |> et(c(0, 1, 2, 4, 8)) |> et(id = 1:2)
     .pd <- data.frame(id = 1:2, ka = 1.2, k = 0.14, fd = c(0.5, 0.9))
     for (.meth in c("rk4s", "dop853s", "ros4s", "radauiia5s", "dop853s+ros4s", "liblsodaadj", "cvodesadj")) {
-      .a <- rxSolveAdjointRk4(.fTxt, .ev, params = .pd, calcSens = c("ka", "k", "fd"), method = .meth,
-        atol = 1e-12, rtol = 1e-12, hmin = if (.meth == "rk4s") 0.001 else 0)
+      .a <- rxSolveAdjointRk4(
+        .fTxt,
+        .ev,
+        params = .pd,
+        calcSens = c("ka", "k", "fd"),
+        method = .meth,
+        atol = 1e-12,
+        rtol = 1e-12,
+        hmin = if (.meth == "rk4s") 0.001 else 0
+      )
       for (.id in 1:2) {
-        .fd <- .doseFd(.fTxt, et(amt = 100, cmt = "depot") |> et(c(0, 1, 2, 4, 8)), unlist(.pd[.id, -1]), c("ka", "k", "fd"))
+        .fd <- .doseFd(
+          .fTxt,
+          et(amt = 100, cmt = "depot") |> et(c(0, 1, 2, 4, 8)),
+          unlist(.pd[.id, -1]),
+          c("ka", "k", "fd")
+        )
         .ai <- .a[.a$id == .id, ]
         for (.cn in names(.fd)) {
           expect_lt(max(abs(.ai[[.cn]] - .fd[[.cn]])), 1e-6, label = paste("subject", .id, .meth, .cn))
