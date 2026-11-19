@@ -2180,8 +2180,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   // resetCancelsPending: NONMEM cancels prior doses at a reset (rxode2#1720),
   // so the addl repeats of a row stop at the first reset of its subject
   // processed after it -- a later row at a later time, or at the same time
-  // when ties keep the data order (the evid order resets first).  A reset that
-  // moves time back cancels the repeats after the row before it.
+  // when ties keep the data order (the evid order resets first).  The data
+  // order keeps a repeat at the reset's own time: it is processed before the
+  // reset, which wipes it.  A reset that moves time back cancels the repeats
+  // after the row before it.
   std::vector<double> addlCap;
   std::vector<char> addlCapStrict;
   if (resetCancelsPending && hasEvid && !evidIsMDV && addlCol != -1) {
@@ -2218,6 +2220,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
         if (tj > ti || (tj == ti && capDataOrder)) {
           addlCap[i] = tj;
+          addlCapStrict[i] = capDataOrder;
           break;
         }
       }

@@ -1040,10 +1040,11 @@
 #' @param resetCancelsPending When `TRUE` (default), a reset (`evid` 3 or
 #'   4) cancels the doses of the records processed before it that have not
 #'   yet entered: the remaining `addl` repeats and lagged (`alag()`) doses,
-#'   as NONMEM does.  When `FALSE` they are given after the reset.  Doses
-#'   added while solving are not cancelled, and an event table already
-#'   translated by [etTrans()] keeps the `addl` repeats it was translated
-#'   with.
+#'   as NONMEM does.  When `FALSE` they are given after the reset.  A dose
+#'   added while solving is cancelled only when it is lagged past the reset,
+#'   a reset added while solving cancels lagged doses but not `addl`
+#'   repeats, and an event table already translated by [etTrans()] keeps the
+#'   `addl` repeats it was translated with.
 #'
 #' @param linCmtGillK The total number of possible steps to determine the
 #'     optimal forward/central difference step size per parameter (by

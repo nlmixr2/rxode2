@@ -176,6 +176,12 @@ rxTest({
         ifelse(.obs < 10, .bol(.obs, 100, 0), .bol(.obs, 150, 10)),
         tolerance = .tol
       )
+      # the data order processes a repeat at the reset's time before the
+      # reset, so an observation listed before the reset sees it
+      .d <- .tieData(.row(0, 1, 100, ii = 10, addl = 1), .row(10, 3), obsFirst = TRUE)
+      .want <- ifelse(.obs < 10, .bol(.obs, 100, 0), 0)
+      .want[.obs == 10] <- .bol(10, 100, 0) + .bol(10, 100, 10)
+      expect_equal(.tieSolve(.mod, .d, "data"), .want, tolerance = .tol)
       # repeats after the reset time
       .d <- .tieData(.row(0, 1, 100, ii = 10, addl = 3), .row(15, 3))
       .before <- .bol(.obs, 100, 0) + .bol(.obs, 100, 10)

@@ -1500,8 +1500,11 @@ when \code{nonmem = TRUE} and \code{"evid"} otherwise.}
 \item{resetCancelsPending}{When \code{TRUE} (default), a reset (\code{evid} 3 or
 4) cancels the doses of the records processed before it that have not
 yet entered: the remaining \code{addl} repeats and lagged (\code{alag()}) doses,
-as NONMEM does.  When \code{FALSE} they are given after the reset.  Doses
-added while solving are not cancelled.}
+as NONMEM does.  When \code{FALSE} they are given after the reset.  A dose
+added while solving is cancelled only when it is lagged past the reset,
+a reset added while solving cancels lagged doses but not \code{addl}
+repeats, and an event table already translated by \code{\link[=etTrans]{etTrans()}} keeps the
+\code{addl} repeats it was translated with.}
 
 \item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that
 is acceptable before issuing a warning/error about the gradient estimates.}
