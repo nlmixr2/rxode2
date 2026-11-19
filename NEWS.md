@@ -259,6 +259,10 @@
   dose nor at an `mtime()` record, and such a window can still be missed.
   Plain observation records are still stepped past and interpolated;
   results at doses move within the tolerances.
+- With `rxSolve(..., nonmem = TRUE)`, `f()`, `rate()` and `dur()` of an
+  `addl` repeat now read `time` as the first data record at or after the
+  repeat, as NONMEM evaluates `F1`, `R1` and `D1`; by default they still
+  read the actual time of the `addl` dose (#1583).
 
 ### Steady state
 - A steady-state fixed-duration infusion shorter than `ii` into a compartment
@@ -369,6 +373,17 @@
   thetas, like `"tnpri"`, but on the inverse Cholesky scale (the `thetaMat`
   is moved there by the delta method), so every drawn matrix is positive
   definite and none is redrawn (#1486).
+
+- Time-to-event endpoints can be simulated with `ev ~ tte(haz, ...)`, using
+  the options of Monolix's `{type=event}` definitions (`eventType`,
+  `maxEventNumber`, `rightCensoringTime`, `intervalLength`) plus `dropout`.
+  The cumulative hazard is a hidden model state, event times are found with
+  a root finder, and the simulation returns Monolix/NONMEM-style rows.
+  `tteTime(ev)` and `tteCount(ev)` give the last event time and the event
+  count inside the model.  Every ODE solving `method` except the adjoint
+  sensitivity methods can simulate them, the hazard may use `delay()`,
+  and steady-state doses hold the cumulative hazard fixed (a `delay()` of
+  the cumulative hazard is refused with them).
 
 - `minSS` and `maxSS` now accept any count from 1, and `maxSS` may equal
   `minSS`, so `minSS = maxSS = n` gives exactly the state after `n` doses
