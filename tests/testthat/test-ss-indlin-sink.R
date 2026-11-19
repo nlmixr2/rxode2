@@ -67,6 +67,15 @@ rxTest({
     expect_equal(.rxIndLinSinkState(rxModelVars(.m)), character(0))
     .m2 <- rxode2("matExp()\nk_center_output = k12\nk_output_center = k21\n")
     expect_equal(.rxIndLinSinkState(rxModelVars(.m2)), character(0))
+    # an indLin() loss on output gives it a steady state of its own
+    .m3 <- rxode2("matExp()\nk_center_output = 1\nindLin(output) <- -0.01*output\n")
+    expect_equal(.rxIndLinSinkState(rxModelVars(.m3)), character(0))
+    .s3 <- rxSolve(
+      .m3,
+      et(amt = 1, ii = 1, ss = 1, cmt = "center") |> et(0),
+      method = "indLin"
+    )
+    expect_equal(.s3$output, 100, tolerance = 1e-3)
   })
 
   test_that("$solve() on a compiled rxToIndLin() model leaves the sink out", {

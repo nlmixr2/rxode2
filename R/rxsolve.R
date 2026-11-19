@@ -18,9 +18,12 @@
 # state and is left out of the ssAtol/ssRtol test (#1749).  `ssAtol` is given
 # for the source model's states, which are `state` without `sink`.
 # the `output` sink of a matExp() model: a state only `k_<cmt>_output` rates
-# create, with nothing leaving it
+# create, with no rate or indLin() forcing of its own
 .rxIndLinSinkState <- function(mv) {
   if (length(mv$indLin) == 0L || !("output" %in% mv$state)) {
+    return(character(0))
+  }
+  if ("output" %in% names(mv$indLin$wIndLin)) {
     return(character(0))
   }
   if (any(grepl("^k[._]output[._]", c(mv$lhs, mv$slhs, mv$params)))) {
