@@ -314,12 +314,30 @@ SEXP rxSaveState_() {
 
   // gall_times slab: 5*nall_rep doubles (all_times, dv, amt, ii, limit)
   // Allocated for the representative events only, not the expanded subject count.
-  sWriteDoubleBlob(f, _globals.gall_times, 5u * nall_rep, "gall_times_slab");
-
   // gevid slab: allocated as 3*nall_rep + dfN*2 + strLhs.size() ints.
   uint64_t dfN = (rx->npars <= 0) ? 0 : rx->npars;
   uint64_t gevid_n = 3u * nall_rep + dfN * 2 + (uint64_t)op->nlhs;
-  sWriteIntBlob(f, _globals.gevid, gevid_n, "gevid_slab");
+  if (_globals.gEvBorrowed) {
+    // single=: the columns live in the event table, not in one slab; write
+    // them in the copied slab layout so the restore is unchanged
+    std::vector<double> dSlab(5u * nall_rep);
+    const double *dSrc[5] = {_globals.gall_times, _globals.gdv, _globals.gamt,
+                             _globals.gii, _globals.glimit};
+    for (int k = 0; k < 5; ++k) {
+      std::copy(dSrc[k], dSrc[k] + nall_rep, dSlab.begin() + k * nall_rep);
+    }
+    sWriteDoubleBlob(f, dSlab.data(), dSlab.size(), "gall_times_slab");
+    std::vector<int> iSlab(gevid_n);
+    std::copy(_globals.gevid, _globals.gevid + nall_rep, iSlab.begin());
+    std::copy(_globals.gidose, _globals.gidose + nall_rep, iSlab.begin() + nall_rep);
+    std::copy(_globals.gcens, _globals.gcens + nall_rep, iSlab.begin() + 2u * nall_rep);
+    std::copy(_globals.gpar_cov, _globals.gpar_cov + (gevid_n - 3u * nall_rep),
+              iSlab.begin() + 3u * nall_rep);
+    sWriteIntBlob(f, iSlab.data(), gevid_n, "gevid_slab");
+  } else {
+    sWriteDoubleBlob(f, _globals.gall_times, 5u * nall_rep, "gall_times_slab");
+    sWriteIntBlob(f, _globals.gevid, gevid_n, "gevid_slab");
+  }
 
   // gcov: ncov * nall_rep doubles (representative events only)
   sWriteDoubleBlob(f, _globals.gcov, (uint64_t)op->ncov * nall_rep, "gcov");

@@ -3303,7 +3303,11 @@ LogicalVector rxSolveFree(){
   }
   _rxode2_udfReset();
   resetFkeep();
-  if (!_globals.alloc) return true;
+  if (!_globals.alloc) {
+    // a setup that failed after reading the event table in place (single=)
+    rxFreeEvSlabs();
+    return true;
+  }
   rx_solve* rx = getRxSolve_();
   // Free per-individual owned arrays (inds_global still valid here)
   if (rx->subjects != NULL) {

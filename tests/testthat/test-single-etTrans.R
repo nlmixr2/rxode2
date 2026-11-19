@@ -91,6 +91,52 @@ rxTest({
     expect_equal(as.data.frame(tr), tr0)
   })
 
+  test_that("single= matches copying: distinct subjects on several cores", {
+    ev <- as.data.frame(et(amt = 100, ii = 24, addl = 2, id = 1:4) |> et(seq(0, 72, by = 2)))
+    ev$amt[!is.na(ev$amt)] <- ev$amt[!is.na(ev$amt)] * ev$id[!is.na(ev$amt)]
+    .cmp(m, ev, cores = 2L)
+  })
+
+  test_that("single= with a modeled rate falls back to copying", {
+    mRate <- function() {
+      ini({
+        ka <- 1
+        cl <- 4
+        v <- 25
+        r <- 50
+      })
+      model({
+        d / dt(depot) <- -ka * depot
+        d / dt(central) <- ka * depot - cl / v * central
+        rate(depot) <- r
+        cp <- central / v
+      })
+    }
+    tr <- etTrans(et(amt = 100, rate = -1) |> et(seq(0, 24, by = 1)), mRate)
+    tr0 <- as.data.frame(tr)
+    .cmp(mRate, tr)
+    expect_equal(as.data.frame(tr), tr0)
+  })
+
+  test_that("rxSaveState() after a solve that read the events in place", {
+    mLow <- rxode2({
+      d / dt(depot) <- -ka * depot
+      d / dt(central) <- ka * depot - cl / v * central
+      cp <- central / v
+    })
+    ev <- et(amt = 100, ii = 12, addl = 2) |> et(seq(0, 36, by = 1))
+    .state <- function(single) {
+      rxSolve(mLow, c(ka = 1, cl = 4, v = 25), ev, single = single)
+      rxSaveState_()
+    }
+    copied1 <- .state(FALSE)
+    copied2 <- .state(FALSE)
+    borrowed <- .state(TRUE)
+    # only the bytes that already differ between two copied solves may differ
+    expect_identical(length(borrowed), length(copied1))
+    expect_identical(which(borrowed != copied1), which(copied2 != copied1))
+  })
+
   test_that("single=TRUE is incompatible with serializeFile", {
     expect_error(
       rxSolve(m, et(amt = 100) |> et(0:2), single = TRUE, serializeFile = TRUE),
