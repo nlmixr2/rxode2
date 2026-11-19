@@ -127,9 +127,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
   assign("..vars", .pars, envir = model)
   ## .malert("calculate jacobian")
   rxProgress(dim(.jac)[1])
-  on.exit({
-    rxProgressAbort()
-  })
+  on.exit(.rxProgressExit())
   ## Two passes rather than one.  symengine::D() has to stay serial (this
   ## build has no thread-safe refcounting), but the translation afterwards
   ## does not, and doing it in one batch also pays rxFromSE()'s fixed per-call
@@ -230,6 +228,48 @@ rxExpandGrid <- function(x, y, type = 0L) {
   .lines
 }
 
+# calcSens names, or an expression over them, as the symengine model holds them:
+# THETA[n] and ETA[n] become THETA_n_ and ETA_n_.
+.rxSensNameSE <- function(vars) {
+  gsub("\\b(THETA|ETA)\\[([0-9]+)\\]", "\\1_\\2_", vars)
+}
+
+# Bind the THETA[n]/ETA[n] (or THETA_n_/ETA_n_) entries of params as THETA/ETA
+# vectors in envir, so rxFromSE() text, which spells them THETA[n], evaluates.
+.rxSensBindIdx <- function(params, envir) {
+  .se <- .rxSensNameSE(names(params))
+  .val <- as.numeric(unlist(params, use.names = FALSE))
+  for (.v in c("THETA", "ETA")) {
+    .re <- paste0("^", .v, "_([0-9]+)_$")
+    .w <- grepl(.re, .se)
+    if (any(.w)) {
+      .i <- as.integer(sub(.re, "\\1", .se[.w]))
+      .x <- rep(NA_real_, max(.i))
+      .x[.i] <- .val[.w]
+      assign(.v, .x, envir = envir)
+    }
+  }
+  invisible(envir)
+}
+
+# calcSens names for the forward sensitivity build (.rxSensNameSE()).  Only the
+# model's parameters (`params`, from rxParams()) can be differentiated: a state
+# or a calculated variable would give a meaningless column, and an unknown name
+# would stop the build with "Aborted calculation", so either is an error naming it.
+.rxSensVarNames <- function(vars, params) {
+  .se <- .rxSensNameSE(vars)
+  .bad <- vars[!(.se %in% .rxSensNameSE(params))]
+  if (length(.bad) > 0L) {
+    stop(
+      "cannot calculate sensitivities with respect to ",
+      paste(.bad, collapse = ", "),
+      ": not a parameter of the model",
+      call. = FALSE
+    )
+  }
+  .se
+}
+
 ## Assumes .rxJacobian called on model c(state,vars)
 #'  Sensitivity for model
 #'
@@ -271,9 +311,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
     }
     .malert("calculate sensitivities")
     rxProgress(dim(.grd)[1])
-    on.exit({
-      rxProgressAbort()
-    })
+    on.exit(.rxProgressExit())
     lapply(c(.grd$ddtS, .grd$ddS2), function(x) {
       assign(x, symengine::Symbol(x), envir = model)
     })
@@ -382,9 +420,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
   }
   .malert("calculate adjoint sensitivities")
   rxProgress(length(states) * (length(.state) + length(vars)))
-  on.exit({
-    rxProgressAbort()
-  })
+  on.exit(.rxProgressExit())
   .ret <- character(0)
   for (.k in states) {
     ## costate block: for each state i, -sum_j (df_j/dy_i) * lambda_{k,j}

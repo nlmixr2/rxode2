@@ -52,6 +52,7 @@ with(s, D(rx__d_dt_central__, ka))
 }
 \seealso{
 Other Symbolic tools:
+\code{\link[=rxSymEngineCacheReset]{rxSymEngineCacheReset()}},
 \code{\link[=rxToSE]{rxToSE()}}
 }
 \author{

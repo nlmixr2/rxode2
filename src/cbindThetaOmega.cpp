@@ -31,7 +31,7 @@ List cbindThetaOmegaNM(NumericMatrix& inputParameters, List& individualParameter
       NumericVector cur = inputParameters(_, i);
       ret[i] = cur;
     }
-  } else if (tot %  nstud == 0) {
+  } else if (nstud > 0 && tot % nstud == 0) {
     int nsub = tot / nstud;
     for (int i = inputN.size(); i--; ) {
       NumericVector cur(tot);
@@ -53,19 +53,48 @@ List cbindThetaOmegaNM(NumericMatrix& inputParameters, List& individualParameter
 }
 
 List cbindThetaOmegaL(List& inputParameters, List& individualParameters) {
+  if (inputParameters.size() == 0) {
+    rxError("input parameter data.frame does not match the number of studies (nStud) or total number of simulated subjects (nStud*nSub)");
+  }
   int tot = Rf_length(individualParameters[0]);
   int nstud = Rf_length(inputParameters[0]);
   List ret(inputParameters.size() + individualParameters.size()) ;
   CharacterVector inputN = inputParameters.attr("names");
   CharacterVector individualN = individualParameters.attr("names");
+  // A character or factor column is kept as it is; rxSolve converts it as
+  // etTrans() converts a data column, if a parameter reads it.
   if (nstud == tot) {
     for (int i = inputN.size(); i--;) {
+      if (TYPEOF(inputParameters[i]) == STRSXP || Rf_isFactor(inputParameters[i])) {
+        ret[i] = inputParameters[i];
+        continue;
+      }
       NumericVector cur = as<NumericVector>(inputParameters[i]);
       ret[i] = cur;
     }
-  } else if (tot %  nstud == 0) {
+  } else if (nstud > 0 && tot % nstud == 0) {
     int nsub = tot / nstud;
     for (int i = inputN.size(); i--; ) {
+      if (TYPEOF(inputParameters[i]) == STRSXP) {
+        CharacterVector curIn = inputParameters[i];
+        CharacterVector cur(tot);
+        for (int j=0; j < nstud; j++) {
+          for (int k=0; k < nsub; k++) cur[j*nsub + k] = curIn[j];
+        }
+        ret[i] = cur;
+        continue;
+      }
+      if (Rf_isFactor(inputParameters[i])) {
+        IntegerVector curIn = inputParameters[i];
+        IntegerVector cur(tot);
+        for (int j=0; j < nstud; j++) {
+          std::fill_n(&cur[0] + j*nsub, nsub, curIn[j]);
+        }
+        cur.attr("levels") = curIn.attr("levels");
+        cur.attr("class") = curIn.attr("class");
+        ret[i] = cur;
+        continue;
+      }
       NumericVector cur(tot);
       NumericVector curIn = as<NumericVector>(inputParameters[i]);
       for (int j=0; j < nstud; j++) {

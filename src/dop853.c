@@ -463,7 +463,9 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
       if (ctx->nstep > nmax)
         {
           /* if (fileout) */
-	  rxSolveWarnPushStat(ctx->subject_id, 1, &x, "exit of dop853 at x = %%v, more than nmax = %li are needed", nmax);
+	  /* a composite's probe (st given) hands a failed interval to its stiff
+	     solver, which reports a failure that is final */
+	  if (st == NULL) rxSolveWarnPushStat(ctx->subject_id, 1, &x, "exit of dop853 at x = %%v, more than nmax = %li are needed", nmax);
           ctx->xout = x;
           ctx->hout = h;
           DOPCOR_RETURN(-2);
@@ -474,7 +476,7 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
           /* if (fileout) */
 	  {
 	    double xh[2] = {x, h};
-	    rxSolveWarnPushStat(ctx->subject_id, 2, xh, "exit of dop853 at x = %%v, step size too small h = %%v");
+	    if (st == NULL) rxSolveWarnPushStat(ctx->subject_id, 2, xh, "exit of dop853 at x = %%v, step size too small h = %%v");
 	  }
           ctx->xout = x;
           ctx->hout = h;
@@ -784,6 +786,7 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
 
       h = hnew;
       if (!R_FINITE(h)) {
+        if (st == NULL) rxSolveWarnPushStat(ctx->subject_id, 1, &x, "exit of dop853 at x = %%v, step size is not finite");
         ctx->xout = x;
         ctx->hout = h;
         DOPCOR_RETURN(-3);
