@@ -418,22 +418,50 @@
 #'   covariates; `FALSE` otherwise (including when symengine cannot load it)
 #' @noRd
 #' @author Matthew L. Fidler
+.muRefMu3Cache <- new.env(parent = emptyenv())
+
 .muRefMu3TermIsCovariate <- function(y, theta, env) {
   .i <- env$.curLine
   if (is.null(.i)) {
     return(FALSE)
   }
-  .pre <- vapply(env$.expr[seq_len(.i - 1L)], deparse1, character(1), USE.NAMES = FALSE)
-  .r <- try(
-    {
-      .s <- rxS(paste(c(.pre, paste0("rxdummyLhs=", deparse1(y))), collapse = "\n"))
-      # get() is masked once symengine is loaded; capture via assign()
-      .e <- eval(parse(text = 'assign("rxdummyMu3", with(.s, rxdummyLhs), envir = .s)'))
-      all.vars(str2lang(rxFromSE(.e)))
-    },
-    silent = TRUE
-  )
-  !inherits(.r, "try-error") && all(setdiff(.r, theta) %in% env$info$dataCov)
+  .lines <- env$.expr[seq_len(.i - 1L)]
+  .pre <- vapply(.lines, deparse1, character(1), USE.NAMES = FALSE)
+  .term <- paste0("rxdummyLhs=", deparse1(y))
+  # memoised like .muRefThetaDerivative(): only base arithmetic/elementary
+  # functions, so a redefined user function cannot give a stale answer
+  .cache <- .muRefDerivCacheable(y) &&
+    all(vapply(
+      .lines,
+      function(x) {
+        (identical(x[[1]], quote(`=`)) || identical(x[[1]], quote(`~`))) &&
+          .muRefDerivCacheable(x[[3]])
+      },
+      logical(1)
+    ))
+  .key <- paste(c(.pre, .term), collapse = "\n")
+  .r <- if (.cache) .muRefMu3Cache[[.key]] else NULL
+  if (is.null(.r)) {
+    .r <- try(
+      {
+        .s <- rxS(.key)
+        # get() is masked once symengine is loaded; capture via assign()
+        .e <- eval(parse(text = 'assign("rxdummyMu3", with(.s, rxdummyLhs), envir = .s)'))
+        all.vars(str2lang(rxFromSE(.e)))
+      },
+      silent = TRUE
+    )
+    if (inherits(.r, "try-error")) {
+      .r <- NA_character_
+    }
+    if (.cache) {
+      if (length(ls(.muRefMu3Cache, all.names = TRUE)) > 10000L) {
+        rm(list = ls(.muRefMu3Cache, all.names = TRUE), envir = .muRefMu3Cache)
+      }
+      assign(.key, .r, envir = .muRefMu3Cache)
+    }
+  }
+  !anyNA(.r) && all(setdiff(.r, theta) %in% env$info$dataCov)
 }
 
 #' Fill the derivative cache for a whole model in one symengine environment
