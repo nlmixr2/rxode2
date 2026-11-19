@@ -75,13 +75,17 @@ rxGetDistributionSimulationLines.tte <- function(line) {
     return(numeric(0))
   }
   .w <- which(predDf$distribution == "tte")
-  .code <- vapply(seq_along(.w), function(.k) {
-    .pred1 <- predDf[.w[.k], ]
-    .origin <- !is.null(env) && isTRUE(.rxTteOptions(env, .pred1)$origin)
-    # no cmt yet while parsing (the model variables only need a number)
-    .cmt <- if (length(.pred1$cmt) == 1L && !is.na(.pred1$cmt)) as.numeric(.pred1$cmt) else 0
-    (if (.origin) -1 else 1) * (.k + 100 * .cmt)
-  }, numeric(1))
+  .code <- vapply(
+    seq_along(.w),
+    function(.k) {
+      .pred1 <- predDf[.w[.k], ]
+      .origin <- !is.null(env) && isTRUE(.rxTteOptions(env, .pred1)$origin)
+      # no cmt yet while parsing (the model variables only need a number)
+      .cmt <- if (length(.pred1$cmt) == 1L && !is.na(.pred1$cmt)) as.numeric(.pred1$cmt) else 0
+      (if (.origin) -1 else 1) * (.k + 100 * .cmt)
+    },
+    numeric(1)
+  )
   stats::setNames(.code, predDf$cond[.w])
 }
 

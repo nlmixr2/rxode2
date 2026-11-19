@@ -79,7 +79,9 @@
 #' @return logical
 #' @noRd
 .rxTteIsCarryLine <- function(line) {
-  is.call(line) && length(line) == 3L &&
-    identical(line[[1]], quote(`<-`)) && is.name(line[[2]]) &&
+  is.call(line) &&
+    length(line) == 3L &&
+    identical(line[[1]], quote(`<-`)) &&
+    is.name(line[[2]]) &&
     grepl("^rx_tte[A-Z][A-Za-z]*_", as.character(line[[2]]))
 }

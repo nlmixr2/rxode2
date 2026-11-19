@@ -2,7 +2,9 @@ rxTest({
   # estimation-style model: every endpoint's likelihood lines, with the
   # likelihood kept as an output column
   .tteEstModel <- function(ui) {
-    if (is.function(ui)) ui <- ui()
+    if (is.function(ui)) {
+      ui <- ui()
+    }
     .p <- ui$predDf
     .err <- lapply(seq_len(nrow(.p)), function(i) {
       .handleSingleErrTypeNormOrTFoceiBase(ui, .p[i, ], i)
@@ -14,9 +16,18 @@ rxTest({
   }
   .tteLl <- function(f, d, p, cmt = NULL) {
     # pruned like the estimation models (endpoint branches become products)
-    .s <- rxSolve(rxode2(rxPrune(.tteEstModel(f))), d, params = p, returnType = "data.frame",
-                  atol = 1e-12, rtol = 1e-12, addDosing = FALSE)
-    if (!is.null(cmt)) .s <- .s[.s$CMT == cmt, ]
+    .s <- rxSolve(
+      rxode2(rxPrune(.tteEstModel(f))),
+      d,
+      params = p,
+      returnType = "data.frame",
+      atol = 1e-12,
+      rtol = 1e-12,
+      addDosing = FALSE
+    )
+    if (!is.null(cmt)) {
+      .s <- .s[.s$CMT == cmt, ]
+    }
     sum(.s$rx_pred_)
   }
   .wH <- function(t, lam, k) (lam * t)^k
@@ -61,8 +72,7 @@ rxTest({
       })
     }
     # a start record at 2 (late entry): the hazard before it does not count
-    .d <- data.frame(id = 1, time = c(0, 2, 3, 7, 10), dv = c(NA, 0, 1, 1, 0),
-                     evid = c(2, 0, 0, 0, 0))
+    .d <- data.frame(id = 1, time = c(0, 2, 3, 7, 10), dv = c(NA, 0, 1, 1, 0), evid = c(2, 0, 0, 0, 0))
     expect_equal(
       .tteLl(fw, .d, c(lam = 0.1, k = 1.5)),
       log(.wh(3, 0.1, 1.5)) + log(.wh(7, 0.1, 1.5)) - (.wH(10, 0.1, 1.5) - .wH(2, 0.1, 1.5)),
@@ -169,8 +179,13 @@ rxTest({
       tolerance = 1e-6
     )
     # the other endpoint's DV stays out of the tte log-likelihood
-    .s <- rxSolve(rxode2(rxPrune(.tteEstModel(f))), .d, params = c(ke = 0.2, lam = 0.1, add.sd = 0.1),
-                  returnType = "data.frame", addDosing = FALSE)
+    .s <- rxSolve(
+      rxode2(rxPrune(.tteEstModel(f))),
+      .d,
+      params = c(ke = 0.2, lam = 0.1, add.sd = 0.1),
+      returnType = "data.frame",
+      addDosing = FALSE
+    )
     expect_true(all(is.finite(.s$rx_pred_)))
   })
 
