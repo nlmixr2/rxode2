@@ -18,6 +18,8 @@ library(rxode2)
 .reps <- if (length(.args) >= 2) as.integer(.args[2]) else 3L
 ## threads: OMP_NUM_THREADS when set (eg the cores a batch job was given)
 .cores <- as.integer(Sys.getenv("OMP_NUM_THREADS", parallel::detectCores()))
+## all of them (rxode2 uses half the cores by default)
+setRxThreads(.cores)
 .tol <- c(atol = 1e-8, rtol = 1e-6)
 
 .pk2 <- function() {

@@ -25,7 +25,8 @@ dir.create(.out, recursive = TRUE, showWarnings = FALSE)
 if (!nzchar(.cores)) {
   .cores <- parallel::detectCores()
 }
-Sys.setenv(OMP_NUM_THREADS = .cores)
+## rxode2_NUM_THREADS: all of them (rxode2 uses half the cores by default)
+Sys.setenv(OMP_NUM_THREADS = .cores, rxode2_NUM_THREADS = .cores)
 Sys.setenv(
   R_LIBS = paste(c(.lib, .libPaths()), collapse = ":"),
   NOT_CRAN = "true",
@@ -40,7 +41,7 @@ print(Sys.time())
 print(utils::sessionInfo())
 cat("rxode2", format(packageVersion("rxode2")), "\n")
 suppressMessages(library(rxode2))
-cat("threads", .cores, "of", parallel::detectCores(), "cores\n")
+cat("threads", .cores, "of", parallel::detectCores(), "cores; rxode2 uses", getRxThreads(), "\n")
 print(rxGpuInfo())
 cat(system2("nvidia-smi", stdout = TRUE, stderr = TRUE), sep = "\n")
 cat(system2(.julia, "--version", stdout = TRUE), sep = "\n")
