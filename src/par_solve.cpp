@@ -474,7 +474,8 @@ static void rxSolveErrPush(int id, int err) {
 rx_solving_options op_global;
 extern int nPastEvid_global;
 extern int ssNotConv_global;
-// flag an iterated steady state that used maxSS doses without converging
+// flag an iterated steady state that used maxSS doses without converging;
+// minSS = maxSS asks for that many doses, so it is not flagged
 static inline void ssNotConverged(int minSS, int maxSS) {
   if (minSS < maxSS) {
 #pragma omp atomic write
@@ -3200,7 +3201,7 @@ extern "C" void handleSSbolus(int *neq,
                        istate, op, ind, u_inis, ctx, xout2, xp2, curIi,
                        canBreak, adjustEvidBolusLag, minSS, maxSS);
   // canBreak is only unset when maxSS doses were given without converging
-  if (!*canBreak) ssNotConverged(minSS, maxSS);
+  if (!*canBreak) ssNotConverged(op->minSS, op->maxSS);
   ind->ssTime = NA_REAL;
 }
 
@@ -3499,7 +3500,7 @@ extern "C" void solveSSinf(int *neq,
                         istate, op, ind, u_inis, ctx, xout2, xp2, infBixds, bi,
                         infEixds, ei, curIi, dur, dur2, canBreak, ssStart,
                         minSS, maxSS)) {
-    ssNotConverged(minSS, maxSS);
+    ssNotConverged(op->minSS, op->maxSS);
   }
   ind->ssTime = NA_REAL;
 }
@@ -3648,7 +3649,9 @@ extern "C" void solveSSinfLargeDur(int *neq,
     }
     *xp2 = *xout2;
   }
-  if (ranOut) ssNotConverged(minSS, maxSS);
+  // the first period is compared at another point of the cycle, so a short
+  // maxSS can run out with converged periods; flag only an unconverged last one
+  if (ranOut && !*canBreak) ssNotConverged(op->minSS, op->maxSS);
   ind->ssTime = NA_REAL;
 }
 

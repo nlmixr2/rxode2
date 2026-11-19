@@ -70,6 +70,27 @@ rxTest({
     )
   })
 
+  test_that("a converged infusion longer than ii with a small maxSS does not warn", {
+    .lin <- rxode2({
+      d / dt(cent) <- -k * cent
+    })
+    .ev <- et(amt = 100, ii = 8, ss = 1, dur = 12, cmt = "cent") |> et(1:8)
+    expect_no_warning(rxSolve(.lin, c(k = 2), .ev, minSS = 3, maxSS = 6))
+  })
+
+  test_that("the warning is given when lag offsets clamp maxSS down to minSS", {
+    .lagMod <- rxode2({
+      d / dt(depot) <- -ka * depot
+      d / dt(cent) <- ka * depot - Vmax * cent / (Km + cent)
+      alag(depot) <- 1
+    })
+    .ev <- et(amt = 1000, ii = 8, ss = 1) |> et(seq(0, 8, length.out = 5))
+    expect_warning(
+      rxSolve(.lagMod, .mmPar, .ev, minSS = 1, maxSS = 2),
+      .ssWarn
+    )
+  })
+
   test_that("the warning does not carry over to the next solve", {
     .ev <- et(amt = 1000, ii = 8, ss = 1) |> et(seq(0, 8, length.out = 5))
     suppressWarnings(rxSolve(.mmMod, .mmPar, .ev, maxSS = 50))

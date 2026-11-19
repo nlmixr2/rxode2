@@ -6274,6 +6274,7 @@ static inline SEXP rxSolve_finalize(const RObject &obj,
   // to this solve's subjects.  SAEM calls par_solve() directly, so the reasons its
   // subjects pushed in between survive until its flush.
   rxSolveWarnReset();
+  ssNotConv_global = 0;
   par_solve(rx);
 #ifdef rxSolveT
   RSprintf("  Time1: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
@@ -6402,7 +6403,6 @@ static inline void iniRx(rx_solve* rx) {
   rx_solving_options* op = rx->op;
   op->badSolve = 0;
   nPastEvid_global = 0;
-  ssNotConv_global = 0;
   op->naTime = 0;
   op->ATOL = 1e-8; //absolute error
   op->RTOL = 1e-8; //relative error
@@ -7303,7 +7303,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
     op->badSolve = 0;
     nPastEvid_global = 0;
-    ssNotConv_global = 0;
     op->naTime = 0;
     op->abort = 0;
     op->ATOL = atolNV[0];          //absolute error
