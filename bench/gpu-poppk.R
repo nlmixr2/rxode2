@@ -16,7 +16,8 @@ library(rxode2)
 .args <- commandArgs(TRUE)
 .sizes <- as.integer(strsplit(if (length(.args) >= 1) .args[1] else "1000,10000,50000", ",")[[1]])
 .reps <- if (length(.args) >= 2) as.integer(.args[2]) else 3L
-.cores <- parallel::detectCores()
+## threads: OMP_NUM_THREADS when set (eg the cores a batch job was given)
+.cores <- as.integer(Sys.getenv("OMP_NUM_THREADS", parallel::detectCores()))
 .tol <- c(atol = 1e-8, rtol = 1e-6)
 
 .pk2 <- function() {

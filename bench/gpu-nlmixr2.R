@@ -14,7 +14,8 @@ library(nlmixr2)
 .args <- commandArgs(TRUE)
 .sizes <- as.integer(strsplit(if (length(.args) >= 1) .args[1] else "500", ",")[[1]])
 .ests <- strsplit(if (length(.args) >= 2) .args[2] else "saem,focei", ",")[[1]]
-.cores <- parallel::detectCores()
+## threads: OMP_NUM_THREADS when set (eg the cores a batch job was given)
+.cores <- as.integer(Sys.getenv("OMP_NUM_THREADS", parallel::detectCores()))
 
 ## one-compartment oral PK with an Emax effect on elimination (ODE, so every
 ## method integrates it)
