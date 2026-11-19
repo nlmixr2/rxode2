@@ -17,6 +17,26 @@ nothing, but will error if \code{x} would not be new
 \description{
 Assert a variable would be new to the model
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    tcl <- log(3)
+    tv <- log(30)
+    add.sd <- 0.7
+  })
+  model({
+    cl <- exp(tcl)
+    v <- exp(tv)
+    d/dt(central) <- -cl / v * central
+    cp <- central / v
+    cp ~ add(add.sd)
+  })
+}
+assertVariableNew(mod, "kel")
+try(assertVariableNew(mod, "cp")) # already in the model
+}
+}
 \seealso{
 Other Assertions:
 \code{\link[=assertCompartmentExists]{assertCompartmentExists()}},
@@ -24,11 +44,13 @@ Other Assertions:
 \code{\link[=assertCompartmentNew]{assertCompartmentNew()}},
 \code{\link[=assertRxUi]{assertRxUi()}},
 \code{\link[=assertVariableExists]{assertVariableExists()}},
+\code{\link[=rxHasAr]{rxHasAr()}},
 \code{\link[=rxPriorBuildSpec]{rxPriorBuildSpec()}},
 \code{\link[=rxPriorLogDensity]{rxPriorLogDensity()}},
 \code{\link[=rxPriorOmegaToCholOmegaInvGrad]{rxPriorOmegaToCholOmegaInvGrad()}},
 \code{\link[=rxUiPriors]{rxUiPriors()}},
 \code{\link[=testIniDf]{testIniDf()}},
+\code{\link[=testRxLinCmt]{testRxLinCmt()}},
 \code{\link[=testRxUnbounded]{testRxUnbounded()}}
 }
 \author{

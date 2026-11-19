@@ -64,6 +64,28 @@ static inline int csIsThetaEta(const char *s) {
   return p[0] == ']' && p[1] == '\0';
 }
 
+/* does the text call lag()/lead()/diff()/first()/last() (or a 0 variant)?
+   Such a call reads a stored value, so hoisting it could move a self-recursive
+   `x = f(lag(x, 1))` reference above the assignment of x, which the parser
+   rejects; it is never a candidate (R/rxOptExpr.R `.rxOptHistRe`). */
+static inline int csHasHistCall(const char *s) {
+  static const char *fns[] = {"lag0(", "lead0(", "diff0(", "lag(", "lead(",
+                              "diff(", "first(", "last(", NULL};
+  const char *p;
+  int i;
+  for (p = s; *p != '\0'; p++) {
+    if (p > s) {
+      char b = p[-1];
+      if ((b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z') ||
+          (b >= '0' && b <= '9') || b == '_' || b == '.') continue;
+    }
+    for (i = 0; fns[i] != NULL; i++) {
+      if (!strncmp(p, fns[i], strlen(fns[i]))) return 1;
+    }
+  }
+  return 0;
+}
+
 typedef struct csCand {
   const char *key;      /* the text machine A builds */
   char *reduced;        /* the same, with shorter candidates substituted in */

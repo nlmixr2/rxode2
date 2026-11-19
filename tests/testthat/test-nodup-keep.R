@@ -1,6 +1,5 @@
 rxTest({
   test_that("nodup-keep", {
-
     #rxode2 issue #169
     mod3 <- rxode2({
       KA=2.94E-01
@@ -23,15 +22,15 @@ rxTest({
     ev <- readRDS(test_path("nodup-keep-ev.rds"))
 
     rxWithSeed(10, {
+      r1 <- solve(
+        mod3,
+        ev,
+        # Create individual covariate data-frame
+        keep = "WT",
+        returnType = "data.frame"
+      )
 
-      r1 <- solve(mod3, ev,
-                  # Create individual covariate data-frame
-                  keep="WT", returnType="data.frame")
-
-      expect_length(which(names(r1)=="WT"), 1)
+      expect_length(which(names(r1) == "WT"), 1)
     })
-
-
   })
-
 })

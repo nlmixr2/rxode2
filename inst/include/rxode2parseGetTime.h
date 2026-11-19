@@ -278,6 +278,11 @@ static inline int handleInfusionStartDefault(int *startIdx, int *endIdx,
                                              rx_solve *rx, rx_solving_options *op,
                                              rx_solving_options_ind *ind) {
   // This finds the duration based on the end of infusion
+  int mate = getInfusionMateDoseNumber(ind, *endIdx);
+  if (mate != -1 && mate < *endIdx) {
+    *startIdx = mate;
+    return 1;
+  }
   int curEvid = getEvid(ind, ind->idose[*endIdx]);
   int jj = 0;
   for (*startIdx = 0; *startIdx < ind->ndoses; (*startIdx)++) {

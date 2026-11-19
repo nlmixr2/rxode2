@@ -1,6 +1,5 @@
 rxTest({
   test_that("single or multiple endpoint model", {
-
     # Test for rxode2 issue #17
     f <- function() {
       ini({

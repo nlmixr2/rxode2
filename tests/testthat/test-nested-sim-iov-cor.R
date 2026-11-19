@@ -1,5 +1,4 @@
 test_that("a correlated occasion block is no longer refused outright", {
-
   ## the whole point: `| occ` etas may now covary
   .f <- function() {
     ini({
@@ -28,7 +27,6 @@ test_that("a correlated occasion block is no longer refused outright", {
 })
 
 test_that("nested simulation gives each parameter its own variance", {
-
   ## The omega a nesting level draws from is built by `lotriSep()`
   ## stamping the level's block once per nesting unit, so it is laid out
   ## occasion-major with the parameters INSIDE each stamp.
@@ -58,8 +56,7 @@ test_that("nested simulation gives each parameter its own variance", {
                                    cc ~ 100) | occ(nu = 1e6))
 
   withr::with_seed(3, {
-    .s <- suppressWarnings(rxSolve(.mod, .ev, omega = .om, sigma = NULL,
-                                   nDisplayProgress = 1e6))
+    .s <- suppressWarnings(rxSolve(.mod, .ev, omega = .om, sigma = NULL, nDisplayProgress = 1e6))
   })
   .p <- .s$params
 
@@ -71,7 +68,6 @@ test_that("nested simulation gives each parameter its own variance", {
 })
 
 test_that("nested simulation carries a correlated occasion block", {
-
   ## the point of the whole exercise: IOV parameters may covary, and the
   ## covariance has to land WITHIN an occasion, not between occasions
   skip_on_cran()
@@ -93,8 +89,7 @@ test_that("nested simulation carries a correlated occasion block", {
                         occ(nu = 1e6))
 
   withr::with_seed(5, {
-    .s <- suppressWarnings(rxSolve(.mod, .ev, omega = .om, sigma = NULL,
-                                   nDisplayProgress = 1e6))
+    .s <- suppressWarnings(rxSolve(.mod, .ev, omega = .om, sigma = NULL, nDisplayProgress = 1e6))
   })
   .p <- .s$params
 
@@ -108,14 +103,11 @@ test_that("nested simulation carries a correlated occasion block", {
   }
 
   ## and the occasions stay independent of each other
-  expect_equal(cov(.p[["iov.cl(occ==1)"]], .p[["iov.cl(occ==2)"]]), 0,
-               tolerance = 0.02)
-  expect_equal(cov(.p[["iov.cl(occ==1)"]], .p[["iov.v(occ==2)"]]), 0,
-               tolerance = 0.02)
+  expect_equal(cov(.p[["iov.cl(occ==1)"]], .p[["iov.cl(occ==2)"]]), 0, tolerance = 0.02)
+  expect_equal(cov(.p[["iov.cl(occ==1)"]], .p[["iov.v(occ==2)"]]), 0, tolerance = 0.02)
 })
 
 test_that("several nesting levels each keep their own variances", {
-
   ## The reindex has to leave each level's slice of the parameter vector
   ## where it was and only reorder WITHIN it, so more than one level at a
   ## time is the case that would catch a bookkeeping slip.  The existing
@@ -139,20 +131,15 @@ test_that("several nesting levels each keep their own variances", {
     lotri::lotri(eye.cl ~ 0.02, eye.v ~ 9) | eye(nu = 1e6))
 
   withr::with_seed(21, {
-    .s <- suppressWarnings(rxSolve(.mod, .ev, omega = .om, sigma = NULL,
-                                   nDisplayProgress = 1e6))
+    .s <- suppressWarnings(rxSolve(.mod, .ev, omega = .om, sigma = NULL, nDisplayProgress = 1e6))
   })
   .p <- .s$params
 
   for (.k in 1:2) {
-    expect_equal(var(.p[[paste0("occ.cl(occ==", .k, ")")]]), 0.01,
-                 tolerance = 0.15)
-    expect_equal(var(.p[[paste0("occ.v(occ==", .k, ")")]]), 4,
-                 tolerance = 0.15)
-    expect_equal(var(.p[[paste0("eye.cl(eye==", .k, ")")]]), 0.02,
-                 tolerance = 0.2)
-    expect_equal(var(.p[[paste0("eye.v(eye==", .k, ")")]]), 9,
-                 tolerance = 0.15)
+    expect_equal(var(.p[[paste0("occ.cl(occ==", .k, ")")]]), 0.01, tolerance = 0.15)
+    expect_equal(var(.p[[paste0("occ.v(occ==", .k, ")")]]), 4, tolerance = 0.15)
+    expect_equal(var(.p[[paste0("eye.cl(eye==", .k, ")")]]), 0.02, tolerance = 0.2)
+    expect_equal(var(.p[[paste0("eye.v(eye==", .k, ")")]]), 9, tolerance = 0.15)
   }
   ## and the id level is untouched by the levels below it
   expect_equal(var(.p$eta.cl), 0.5, tolerance = 0.15)

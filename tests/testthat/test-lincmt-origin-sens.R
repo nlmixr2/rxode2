@@ -16,27 +16,49 @@ rxTest({
     # q = 0 is the dosed compartment in every case (depot when oral, central
     # otherwise), so -9 asks for exactly the delay the model declares.
     .cases <- list(
-      list(nm = "1cmt IV bolus", ncmt = 1, oral0 = 0,
-           e = et(amt = 100, cmt = "central") |> et(seq(0.1, 24, 0.5))),
-      list(nm = "1cmt IV multiple infusion", ncmt = 1, oral0 = 0,
-           e = et(amt = 100, rate = 50, ii = 8, addl = 3, cmt = "central") |>
-             et(seq(0.1, 40, 0.5))),
-      list(nm = "1cmt IV steady-state bolus", ncmt = 1, oral0 = 0,
-           e = et(amt = 100, ii = 8, ss = 1, cmt = "central") |>
-             et(seq(0.1, 8, 0.25))),
-      list(nm = "1cmt oral multiple bolus", ncmt = 1, oral0 = 1,
-           e = et(amt = 100, ii = 8, addl = 3, cmt = "depot") |>
-             et(seq(0.1, 40, 0.5))),
-      list(nm = "2cmt IV bolus", ncmt = 2, oral0 = 0,
-           e = et(amt = 100, cmt = "central") |> et(seq(0.1, 24, 0.5))),
-      list(nm = "2cmt oral infusion", ncmt = 2, oral0 = 1,
-           e = et(amt = 100, rate = 50, cmt = "depot") |> et(seq(0.1, 24, 0.5))),
-      list(nm = "3cmt IV multiple bolus", ncmt = 3, oral0 = 0,
-           e = et(amt = 100, ii = 8, addl = 3, cmt = "central") |>
-             et(seq(0.1, 40, 0.5))),
-      list(nm = "3cmt oral steady-state bolus", ncmt = 3, oral0 = 1,
-           e = et(amt = 100, ii = 8, ss = 1, cmt = "depot") |>
-             et(seq(0.1, 8, 0.25)))
+      list(nm = "1cmt IV bolus", ncmt = 1, oral0 = 0, e = et(amt = 100, cmt = "central") |> et(seq(0.1, 24, 0.5))),
+      list(
+        nm = "1cmt IV multiple infusion",
+        ncmt = 1,
+        oral0 = 0,
+        e = et(amt = 100, rate = 50, ii = 8, addl = 3, cmt = "central") |>
+          et(seq(0.1, 40, 0.5))
+      ),
+      list(
+        nm = "1cmt IV steady-state bolus",
+        ncmt = 1,
+        oral0 = 0,
+        e = et(amt = 100, ii = 8, ss = 1, cmt = "central") |>
+          et(seq(0.1, 8, 0.25))
+      ),
+      list(
+        nm = "1cmt oral multiple bolus",
+        ncmt = 1,
+        oral0 = 1,
+        e = et(amt = 100, ii = 8, addl = 3, cmt = "depot") |>
+          et(seq(0.1, 40, 0.5))
+      ),
+      list(nm = "2cmt IV bolus", ncmt = 2, oral0 = 0, e = et(amt = 100, cmt = "central") |> et(seq(0.1, 24, 0.5))),
+      list(
+        nm = "2cmt oral infusion",
+        ncmt = 2,
+        oral0 = 1,
+        e = et(amt = 100, rate = 50, cmt = "depot") |> et(seq(0.1, 24, 0.5))
+      ),
+      list(
+        nm = "3cmt IV multiple bolus",
+        ncmt = 3,
+        oral0 = 0,
+        e = et(amt = 100, ii = 8, addl = 3, cmt = "central") |>
+          et(seq(0.1, 40, 0.5))
+      ),
+      list(
+        nm = "3cmt oral steady-state bolus",
+        ncmt = 3,
+        oral0 = 1,
+        e = et(amt = 100, ii = 8, ss = 1, cmt = "depot") |>
+          et(seq(0.1, 8, 0.25))
+      )
     )
     for (.case in .cases) {
       .m <- .rxOriginModel(.case$ncmt, .case$oral0, 0L)
@@ -135,13 +157,18 @@ rxTest({
 
   test_that("linCmtB(-9) is per-individual", {
     .m <- .rxOriginModel(2L, 1L, 0L)
-    .e <- do.call(rbind, lapply(1:5, function(i) {
-      .d <- as.data.frame(et(amt = 100, cmt = "depot") |>
-                            et(amt = 50, cmt = "central", time = 0) |>
-                            et(seq(0.1, 24, 1)))
-      .d$id <- i
-      .d
-    }))
+    .e <- do.call(
+      rbind,
+      lapply(1:5, function(i) {
+        .d <- as.data.frame(
+          et(amt = 100, cmt = "depot") |>
+            et(amt = 50, cmt = "central", time = 0) |>
+            et(seq(0.1, 24, 1))
+        )
+        .d$id <- i
+        .d
+      })
+    )
     .s <- rxSolve(.m, .e, params = .p)
     .f <- .fd(.m, .e, "eta_lag")
     expect_true(.rel(.s$d9, .f) < 1e-6)

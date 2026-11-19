@@ -1,8 +1,6 @@
 if (tolower(Sys.info()[["sysname"]]) == "linux") {
   rxTest({
-
     test_that("table step for linCmtB", {
-
       skip_if_not_installed("nlmixr2data")
       pars <- test_path("lincmt-solve-focei-sol.rds")
       skip_if_not(file.exists(pars))
@@ -43,22 +41,20 @@ if (tolower(Sys.info()[["sysname"]]) == "linux") {
         dvid(3)
       })
 
-
-      expect_error(rxSolve(rx, pars,
-                           nlmixr2data::theo_sd),
-                   NA)
-
+      expect_error(rxSolve(rx, pars, nlmixr2data::theo_sd), NA)
     })
 
     test_that("mixed ode/linCmt() zero observation issue(s)", {
-
       rxWithSeed(1, {
-
-        pk <- c(cl=0.2,v2=3.5,q=.4,v3=3.5,ka=.2,f=.7)
+        pk <- c(cl = 0.2, v2 = 3.5, q = .4, v3 = 3.5, ka = .2, f = .7)
         nn <- 100
-        rands <- matrix(runif(4*nn),nn)
-        pdpars <- dplyr::tibble(ec50=(300/28*pk["f"]/pk["cl"])*(0.1+0.9*rands[,1]),emax=-0.9+10.9*rands[,2],
-                                gamma=1+3*rands[,3],ke0=log(2)/(5+45*rands[,4]))
+        rands <- matrix(runif(4 * nn), nn)
+        pdpars <- dplyr::tibble(
+          ec50 = (300 / 28 * pk["f"] / pk["cl"]) * (0.1 + 0.9 * rands[, 1]),
+          emax = -0.9 + 10.9 * rands[, 2],
+          gamma = 1 + 3 * rands[, 3],
+          ke0 = log(2) / (5 + 45 * rands[, 4])
+        )
         rxmod1 <- RxODE({
           Cp       <- linCmt(ka,cl,v2,v3,q)
           d/dt(Ce) <- (Cp-Ce)*ke0
@@ -66,58 +62,63 @@ if (tolower(Sys.info()[["sysname"]]) == "linux") {
         })
 
         et1 <- et() |>
-          et(c(seq(0,7*7,.2),seq(7*7,52*7,1))) |> ## sampling
-          add.dosing(dose=300*pk["f"],dosing.to=1,nbr.doses=13,dosing.interval=28,start.time=0)  ## dosing
+          et(c(seq(0, 7 * 7, .2), seq(7 * 7, 52 * 7, 1))) |> ## sampling
+          add.dosing(dose = 300 * pk["f"], dosing.to = 1, nbr.doses = 13, dosing.interval = 28, start.time = 0) ## dosing
 
-          res1 <- rxSolve(rxmod1,cbind(as.list(pk),pdpars),et1)
+        res1 <- rxSolve(rxmod1, cbind(as.list(pk), pdpars), et1)
 
-          ### Note 1: bug occurs when including several sets of parameters
-          res1 <- rxSolve(rxmod1,cbind(as.list(pk),pdpars),et1)
+        ### Note 1: bug occurs when including several sets of parameters
+        res1 <- rxSolve(rxmod1, cbind(as.list(pk), pdpars), et1)
 
-          expect_length(res1 |> dplyr::filter(time>0 & Cp==0) |> dplyr::pull(time),0)
+        expect_length(res1 |> dplyr::filter(time > 0 & Cp == 0) |> dplyr::pull(time), 0)
 
-          ### Note 2: Bug also occurs when simulating one set of parameters at a time
-          res2 <- do.call("rbind", lapply(1:nn, function(x) {
-            rxSolve(rxmod1,unlist(c(pk,as.data.frame(pdpars[x,]))),et1)
-          }))
+        ### Note 2: Bug also occurs when simulating one set of parameters at a time
+        res2 <- do.call(
+          "rbind",
+          lapply(1:nn, function(x) {
+            rxSolve(rxmod1, unlist(c(pk, as.data.frame(pdpars[x, ]))), et1)
+          })
+        )
 
-          expect_length(res2 |> dplyr::filter(time>0 & Cp==0) |> dplyr::pull(time), 0)
-
+        expect_length(res2 |> dplyr::filter(time > 0 & Cp == 0) |> dplyr::pull(time), 0)
       })
     })
-
   })
 
   rxTest({
-
     tol <- 5e-5 ## Current difference for all equations
     types <- 1:6
 
     for (type in types) {
+      .txt <- switch(
+        type,
+        "linear", #1
+        "sensitivity AD", #2
+        "sensitivity forward", #3
+        "sensitivity central", #4
+        "sensitivity forward3", #5
+        "sensitivity endpoint5"
+      ) #6
 
-      .txt <- switch(type,
-                     "linear", #1
-                     "sensitivity AD", #2
-                     "sensitivity forward", #3
-                     "sensitivity central", #4
-                     "sensitivity forward3", #5
-                     "sensitivity endpoint5") #6
+      sens <- switch(
+        type,
+        "linCmtA", # 1
+        "linCmtB", # 2
+        "linCmtB", # 3
+        "linCmtB", # 4
+        "linCmtB", # 5
+        "linCmtB"
+      ) # 6
 
-      sens <- switch(type,
-                     "linCmtA", # 1
-                     "linCmtB", # 2
-                     "linCmtB", # 3
-                     "linCmtB", # 4
-                     "linCmtB", # 5
-                     "linCmtB") # 6
-
-      linCmtSensType <- switch(type,
-                               "AD", #1
-                               "AD", #2
-                               "forward", #3
-                               "central", #4
-                               "forward3", #5
-                               "endpoint5") #6
+      linCmtSensType <- switch(
+        type,
+        "AD", #1
+        "AD", #2
+        "forward", #3
+        "central", #4
+        "forward3", #5
+        "endpoint5"
+      ) #6
 
       etSsB <- et() |>
         et(amt = 3) |>
@@ -153,7 +154,7 @@ if (tolower(Sys.info()[["sysname"]]) == "linux") {
         expect_equal(o1$C2, s1$C2, tolerance = tol)
       })
 
-      o1 <- rxSolve(ode.1c, params = c(V = 20, CL = 25), events = etSsI, addDosing = TRUE, returnType="data.frame")
+      o1 <- rxSolve(ode.1c, params = c(V = 20, CL = 25), events = etSsI, addDosing = TRUE, returnType = "data.frame")
 
       expect_true("rate" %in% names(o1))
 
@@ -163,8 +164,7 @@ if (tolower(Sys.info()[["sysname"]]) == "linux") {
         expect_equal(o1$C2, s1$C2, tolerance = tol)
       })
 
-      o1 <- rxSolve(ode.1c, params = c(V = 20, CL = 25), events = etSsR,
-                    addDosing = TRUE, returnType = "data.frame")
+      o1 <- rxSolve(ode.1c, params = c(V = 20, CL = 25), events = etSsR, addDosing = TRUE, returnType = "data.frame")
 
       expect_true("rate" %in% names(o1))
       expect_true("ss" %in% names(o1))
@@ -271,10 +271,9 @@ if (tolower(Sys.info()[["sysname"]]) == "linux") {
 
       o1 <- ode.1c.ka |> solve(params = c(V = 20, CL = 25, KA = 2), events = etSsB)
       s1 <- sol.1c.ka |> solve(params = c(V = 20, CL = 25, KA = 2), events = etSsB)
-      test_that(sprintf("one compartment bolus steady state to depot compartment (%s)",
-                        .txt), {
-                          expect_equal(o1$C2, s1$C2, tolerance = tol)
-                        })
+      test_that(sprintf("one compartment bolus steady state to depot compartment (%s)", .txt), {
+        expect_equal(o1$C2, s1$C2, tolerance = tol)
+      })
 
       o1 <- ode.1c.ka |> solve(params = c(V = 20, CL = 25, KA = 2), events = etSsI)
       s1 <- sol.1c.ka |> solve(params = c(V = 20, CL = 25, KA = 2), events = etSsI)
@@ -352,7 +351,6 @@ if (tolower(Sys.info()[["sysname"]]) == "linux") {
         expect_equal(o2$C2, s2$C2, tolerance = tol)
       })
 
-
       o2 <- ode.2c.ka |> solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsR)
       s2 <- sol.2c.ka |> solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3), events = etSsR)
       test_that(sprintf("two compartment infusion steady state to depot compartment, tau (%s)", .txt), {
@@ -396,40 +394,51 @@ if (tolower(Sys.info()[["sysname"]]) == "linux") {
       linCmtSens = sens, linCmtSensType = linCmtSensType
       )
 
-      o3 <- ode.3c.ka |> solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsB)
-      s3 <- sol.3c.ka |> solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsB)
-      test_that(sprintf("three compartment bolus steady state to depot compartment (%s)",
-                        .txt), {
-                          expect_equal(o3$C2, s3$C2, tolerance = tol)
-                        })
+      o3 <- ode.3c.ka |>
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsB)
+      s3 <- sol.3c.ka |>
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsB)
+      test_that(sprintf("three compartment bolus steady state to depot compartment (%s)", .txt), {
+        expect_equal(o3$C2, s3$C2, tolerance = tol)
+      })
 
-      o3 <- ode.3c.ka |> solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsI)
-      s3 <- sol.3c.ka |> solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsI)
+      o3 <- ode.3c.ka |>
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsI)
+      s3 <- sol.3c.ka |>
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsI)
       test_that(sprintf("three compartment infusion steady state to depot compartment, tau (%s)", .txt), {
         expect_equal(o3$C2, s3$C2, tolerance = tol)
       })
 
-      o3 <- ode.3c.ka |> solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsR)
-      s3 <- sol.3c.ka |> solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsR)
+      o3 <- ode.3c.ka |>
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsR)
+      s3 <- sol.3c.ka |>
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsR)
       test_that("three compartment infusion steady state to depot compartment", {
         expect_equal(o3$C2, s3$C2, tolerance = tol)
       })
 
       ## B2
-      o3 <- ode.3c.ka |> solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsB2)
-      s3 <- sol.3c.ka |> solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsB2)
+      o3 <- ode.3c.ka |>
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsB2)
+      s3 <- sol.3c.ka |>
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsB2)
       test_that("three compartment bolus steady state to central compartment", {
         expect_equal(o3$C2, s3$C2, tolerance = tol)
       })
 
-      o3 <- ode.3c.ka |> solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsI2)
-      s3 <- sol.3c.ka |> solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsI2)
+      o3 <- ode.3c.ka |>
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsI2)
+      s3 <- sol.3c.ka |>
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsI2)
       test_that("three compartment infusion steady state to central compartment, tau", {
         expect_equal(o3$C2, s3$C2, tolerance = tol)
       })
 
-      o3 <- ode.3c.ka |> solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsR2)
-      s3 <- sol.3c.ka |> solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsR2)
+      o3 <- ode.3c.ka |>
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsR2)
+      s3 <- sol.3c.ka |>
+        solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3), events = etSsR2)
       test_that("three compartment infusion steady state to central compartment", {
         expect_equal(o3$C2, s3$C2, tolerance = tol)
       })
@@ -531,10 +540,7 @@ if (tolower(Sys.info()[["sysname"]]) == "linux") {
       test_that("Gives the correct parameters for THETAs", {
         expect_equal(
           s.2c$params,
-          structure(list("THETA[1]" = 20, "THETA[2]" = 25),
-                    class = "data.frame",
-                    row.names = c(NA, -1L)
-                    )
+          structure(list("THETA[1]" = 20, "THETA[2]" = 25), class = "data.frame", row.names = c(NA, -1L))
         )
       })
 
@@ -1539,9 +1545,12 @@ if (tolower(Sys.info()[["sysname"]]) == "linux") {
             solve(params = c(V = 20, CL = 25, KA = 2, fDepot = fd, fCenter = fc), events = et)
           s.1c <- sol.1c.ka |>
             solve(params = c(V = 20, CL = 25, KA = 2, fDepot = fd, fCenter = fc), events = et)
-          test_that(sprintf("1 compartment solved models and ODEs same for mixed oral, iv and infusion + Fd=%f,Fc=%f", fd, fc), {
-            expect_equal(o.1c$C2, s.1c$C2, tolerance = tol)
-          })
+          test_that(
+            sprintf("1 compartment solved models and ODEs same for mixed oral, iv and infusion + Fd=%f,Fc=%f", fd, fc),
+            {
+              expect_equal(o.1c$C2, s.1c$C2, tolerance = tol)
+            }
+          )
         }
       }
 
@@ -1575,11 +1584,16 @@ if (tolower(Sys.info()[["sysname"]]) == "linux") {
 
       for (fd in c(0.5, 1, 2)) {
         for (fc in c(0.5, 1, 2)) {
-          o.2c <- ode.2c.ka |> solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3, fDepot = fd, fCenter = fc), events = et)
-          s.2c <- sol.2c.ka |> solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3, fDepot = fd, fCenter = fc), events = et)
-          test_that(sprintf("2 compartment solved models and ODEs same for mixed oral, iv and infusion + Fd=%f,Fc=%f", fd, fc), {
-            expect_equal(o.2c$C2, s.2c$C2, tolerance = tol)
-          })
+          o.2c <- ode.2c.ka |>
+            solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3, fDepot = fd, fCenter = fc), events = et)
+          s.2c <- sol.2c.ka |>
+            solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3, fDepot = fd, fCenter = fc), events = et)
+          test_that(
+            sprintf("2 compartment solved models and ODEs same for mixed oral, iv and infusion + Fd=%f,Fc=%f", fd, fc),
+            {
+              expect_equal(o.2c$C2, s.2c$C2, tolerance = tol)
+            }
+          )
         }
       }
 
@@ -1611,18 +1625,41 @@ if (tolower(Sys.info()[["sysname"]]) == "linux") {
       for (fd in c(0.5, 1, 2)) {
         for (fc in c(0.5, 1, 2)) {
           o.3c <- ode.3c.ka |>
-            solve(params = c(
-              V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7,
-              V3 = 400, KA = 0.3, fDepot = fd, fCenter = fc
-            ), events = et)
+            solve(
+              params = c(
+                V = 40,
+                CL = 18,
+                V2 = 297,
+                Q = 10,
+                Q2 = 7,
+                V3 = 400,
+                KA = 0.3,
+                fDepot = fd,
+                fCenter = fc
+              ),
+              events = et
+            )
           s.3c <- sol.3c.ka |>
-            solve(params = c(
-              V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3,
-              fDepot = fd, fCenter = fc
-            ), events = et)
-          test_that(sprintf("3 compartment solved models and ODEs same for mixed oral, iv and infusion + Fd=%f,Fc=%f", fd, fc), {
-            expect_equal(o.3c$C2, s.3c$C2, tolerance = tol)
-          })
+            solve(
+              params = c(
+                V = 40,
+                CL = 18,
+                V2 = 297,
+                Q = 10,
+                Q2 = 7,
+                V3 = 400,
+                KA = 0.3,
+                fDepot = fd,
+                fCenter = fc
+              ),
+              events = et
+            )
+          test_that(
+            sprintf("3 compartment solved models and ODEs same for mixed oral, iv and infusion + Fd=%f,Fc=%f", fd, fc),
+            {
+              expect_equal(o.3c$C2, s.3c$C2, tolerance = tol)
+            }
+          )
         }
       }
 
@@ -1660,9 +1697,12 @@ if (tolower(Sys.info()[["sysname"]]) == "linux") {
         for (fc in c(1, 2, 10)) {
           o.1c <- ode.1c.ka |> solve(params = c(V = 20, CL = 25, KA = 2, lagDepot = fd, lagCenter = fc), events = et)
           s.1c <- sol.1c.ka |> solve(params = c(V = 20, CL = 25, KA = 2, lagDepot = fd, lagCenter = fc), events = et)
-          test_that(sprintf("1 compartment solved models and ODEs same for mixed oral, iv and infusion + Fd=%f,Fc=%f", fd, fc), {
-            expect_equal(o.1c$C2, s.1c$C2, tolerance = tol)
-          })
+          test_that(
+            sprintf("1 compartment solved models and ODEs same for mixed oral, iv and infusion + Fd=%f,Fc=%f", fd, fc),
+            {
+              expect_equal(o.1c$C2, s.1c$C2, tolerance = tol)
+            }
+          )
         }
       }
 
@@ -1695,9 +1735,12 @@ if (tolower(Sys.info()[["sysname"]]) == "linux") {
             solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3, lagDepot = fd, lagCenter = fc), events = et)
           s.2c <- sol.2c.ka |>
             solve(params = c(V = 40, CL = 18, V2 = 297, Q = 10, KA = 0.3, lagDepot = fd, lagCenter = fc), events = et)
-          test_that(sprintf("2 compartment solved models and ODEs same for mixed oral, iv and infusion + Fd=%f,Fc=%f", fd, fc), {
-            expect_equal(o.2c$C2, s.2c$C2, tolerance = tol)
-          })
+          test_that(
+            sprintf("2 compartment solved models and ODEs same for mixed oral, iv and infusion + Fd=%f,Fc=%f", fd, fc),
+            {
+              expect_equal(o.2c$C2, s.2c$C2, tolerance = tol)
+            }
+          )
         }
       }
 
@@ -1731,17 +1774,42 @@ if (tolower(Sys.info()[["sysname"]]) == "linux") {
 
       for (fd in c(1, 2, 10)) {
         for (fc in c(1, 2, 10)) {
-          o.3c <- ode.3c.ka |> solve(params = c(
-            V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7,
-            V3 = 400, KA = 0.3, lagDepot = fd, lagCenter = fc
-          ), events = et)
-          s.3c <- sol.3c.ka |> solve(params = c(
-            V = 40, CL = 18, V2 = 297, Q = 10, Q2 = 7, V3 = 400, KA = 0.3,
-            lagDepot = fd, lagCenter = fc
-          ), events = et)
-          test_that(sprintf("3 compartment solved models and ODEs same for mixed oral, iv and infusion + Fd=%f,Fc=%f", fd, fc), {
-            expect_equal(o.3c$C2, s.3c$C2, tolerance = tol)
-          })
+          o.3c <- ode.3c.ka |>
+            solve(
+              params = c(
+                V = 40,
+                CL = 18,
+                V2 = 297,
+                Q = 10,
+                Q2 = 7,
+                V3 = 400,
+                KA = 0.3,
+                lagDepot = fd,
+                lagCenter = fc
+              ),
+              events = et
+            )
+          s.3c <- sol.3c.ka |>
+            solve(
+              params = c(
+                V = 40,
+                CL = 18,
+                V2 = 297,
+                Q = 10,
+                Q2 = 7,
+                V3 = 400,
+                KA = 0.3,
+                lagDepot = fd,
+                lagCenter = fc
+              ),
+              events = et
+            )
+          test_that(
+            sprintf("3 compartment solved models and ODEs same for mixed oral, iv and infusion + Fd=%f,Fc=%f", fd, fc),
+            {
+              expect_equal(o.3c$C2, s.3c$C2, tolerance = tol)
+            }
+          )
         }
       }
 
@@ -1967,10 +2035,11 @@ if (tolower(Sys.info()[["sysname"]]) == "linux") {
         add.dosing(dose = 3, nbr.doses = 6, dosing.interval = 8) |>
         add.sampling(0:48)
 
-      s.1c <- ode.1cs2 |> solve(
-        params = c(V = 20, CL = 25, mt1 = 0.5, mt2 = 1.75),
-        events = et
-      )
+      s.1c <- ode.1cs2 |>
+        solve(
+          params = c(V = 20, CL = 25, mt1 = 0.5, mt2 = 1.75),
+          events = et
+        )
 
       test_that("mtime with solved systems work", {
         expect_equal(s.1c$time[1:4], c(0, 0.5, 1, 1.75))
@@ -2118,7 +2187,6 @@ if (tolower(Sys.info()[["sysname"]]) == "linux") {
 
   rxTest({
     test_that("zero clearance solve #261", {
-
       rx <- rxode2({
         param(tlag, tka, tv, tcl, cl_crcl, cl_hep, cl_cyp2d6, cl_cyp3a_inh,
               cl_cyp3a_ind, cl_sexf, cl_japanese, prop_err, add_err,
@@ -2169,31 +2237,28 @@ if (tolower(Sys.info()[["sysname"]]) == "linux") {
       })
 
       d_sim <-
-        et(amt=4) |>
-        et(time=0:24) |>
+        et(amt = 4) |>
+        et(time = 0:24) |>
         as.data.frame() |>
         dplyr::mutate(
-          japanese=0,
-          sex=0,
-          cyp3a_ind=0,
-          cyp3a_inh=0,
-          cyp2d6=0,
-          hepatic_impair=0,
-          crcl=80
+          japanese = 0,
+          sex = 0,
+          cyp3a_ind = 0,
+          cyp3a_inh = 0,
+          cyp2d6 = 0,
+          hepatic_impair = 0,
+          crcl = 80
         )
 
       f <- rxSolve(rx, d_sim)
 
       expect_false(any(is.na(f$sim) | is.nan(f$sim)))
       expect_false(any(is.na(f$ipredSim) | is.nan(f$ipredSim)))
-
     })
-
 
     # test mixed ODE and solved models
 
     test_that("mixed ode and solved models", {
-
       ode <- rxode2({
         lka <- 0.45
         lcl <- 1
@@ -2228,16 +2293,14 @@ if (tolower(Sys.info()[["sysname"]]) == "linux") {
       d$ID <- 1
 
       for (meth in c("liblsoda", "lsoda", "dop853", "f78")) {
-        dOde <- rxSolve(ode, d, meth=meth)
+        dOde <- rxSolve(ode, d, meth = meth)
 
-        dLin <- rxSolve(lin, d, meth=meth)
+        dLin <- rxSolve(lin, d, meth = meth)
 
         expect_equal(dOde$Cc, dLin$Cc, tolerance = 1e-4)
 
         expect_equal(dOde$accum, dLin$accum, tolerance = 1e-4)
-
       }
     })
   })
-
 }

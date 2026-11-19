@@ -1,5 +1,4 @@
 rxTest({
-
   .rxode2 <- loadNamespace("rxode2")
 
   ## 'lotri' 1.0.5 adds a `prior` column to the ini data frame for prior
@@ -9,26 +8,41 @@ rxTest({
   ## hand so they hold either way.
 
   .iniDfNoPrior <- function() {
-    data.frame(ntheta=c(1L, NA_integer_),
-               neta1=c(NA_real_, 1),
-               neta2=c(NA_real_, 1),
-               name=c("tka", "eta.ka"),
-               lower=c(-Inf, -Inf),
-               est=c(0.45, 0.6),
-               upper=c(Inf, Inf),
-               fix=c(FALSE, FALSE),
-               label=NA_character_,
-               backTransform=NA_character_,
-               condition=c(NA_character_, "id"),
-               err=NA_character_,
-               stringsAsFactors=FALSE)
+    data.frame(
+      ntheta = c(1L, NA_integer_),
+      neta1 = c(NA_real_, 1),
+      neta2 = c(NA_real_, 1),
+      name = c("tka", "eta.ka"),
+      lower = c(-Inf, -Inf),
+      est = c(0.45, 0.6),
+      upper = c(Inf, Inf),
+      fix = c(FALSE, FALSE),
+      label = NA_character_,
+      backTransform = NA_character_,
+      condition = c(NA_character_, "id"),
+      err = NA_character_,
+      stringsAsFactors = FALSE
+    )
   }
 
   .iniDfWithPrior <- function() {
     .df <- .iniDfNoPrior()
     .df$prior <- c("dnorm(0, 10)", NA_character_)
-    .df[, c("ntheta", "neta1", "neta2", "name", "lower", "est", "upper",
-            "fix", "label", "backTransform", "condition", "prior", "err")]
+    .df[, c(
+      "ntheta",
+      "neta1",
+      "neta2",
+      "name",
+      "lower",
+      "est",
+      "upper",
+      "fix",
+      "label",
+      "backTransform",
+      "condition",
+      "prior",
+      "err"
+    )]
   }
 
   test_that("testIniDf() accepts an iniDf with and without a prior column", {
@@ -38,11 +52,21 @@ rxTest({
   })
 
   test_that(".iniDfMatchColumns() reshapes a hand built row to either shape", {
-    .row <- data.frame(ntheta=NA_integer_, neta1=2, neta2=1,
-                       name="(eta.ka,eta.cl)", lower=-Inf, est=0.01, upper=Inf,
-                       fix=FALSE, label=NA_character_,
-                       backTransform=NA_character_, condition="id",
-                       err=NA_character_, stringsAsFactors=FALSE)
+    .row <- data.frame(
+      ntheta = NA_integer_,
+      neta1 = 2,
+      neta2 = 1,
+      name = "(eta.ka,eta.cl)",
+      lower = -Inf,
+      est = 0.01,
+      upper = Inf,
+      fix = FALSE,
+      label = NA_character_,
+      backTransform = NA_character_,
+      condition = "id",
+      err = NA_character_,
+      stringsAsFactors = FALSE
+    )
 
     ## a target without `prior` leaves the row alone
     .noPrior <- .rxode2$.iniDfMatchColumns(.row, .iniDfNoPrior())
@@ -58,8 +82,7 @@ rxTest({
     ## and an extra column on the row is dropped rather than breaking rbind
     .extra <- .row
     .extra$prior <- "dnorm(0, 1)"
-    expect_equal(names(.rxode2$.iniDfMatchColumns(.extra, .iniDfNoPrior())),
-                 names(.iniDfNoPrior()))
+    expect_equal(names(.rxode2$.iniDfMatchColumns(.extra, .iniDfNoPrior())), names(.iniDfNoPrior()))
   })
 
   test_that("piping still works whichever lotri is installed", {
@@ -89,5 +112,4 @@ rxTest({
     ## promotes a new parameter, which uses the ini row template
     expect_error(suppressMessages(model(u, ka <- exp(tka + eta.ka + newpar))), NA)
   })
-
 })

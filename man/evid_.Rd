@@ -125,4 +125,15 @@ m2 <- rxode2({
 more convenient ways to interact with adaptive observations and
 events include \code{\link[=bolus]{bolus()}} \code{\link[=infuse]{infuse()}}, \code{\link[=infuseDur]{infuseDur()}},
 \code{\link[=reset]{reset()}}.
+
+Other In-model dosing:
+\code{\link[=bolus]{bolus()}},
+\code{\link[=infuse]{infuse()}},
+\code{\link[=infuseDur]{infuseDur()}},
+\code{\link[=multiply]{multiply()}},
+\code{\link[=obs]{obs()}},
+\code{\link[=phantom]{phantom()}},
+\code{\link[=replace]{replace()}},
+\code{\link[=reset]{reset()}}
 }
+\concept{In-model dosing}

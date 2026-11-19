@@ -3,6 +3,8 @@
 \name{rxParams}
 \alias{rxParams}
 \alias{rxParams.rxode2}
+\alias{rxParams.function}
+\alias{rxParams.rxUi}
 \alias{rxParams.rxSolve}
 \alias{rxParams.rxEt}
 \alias{rxParam}
@@ -11,6 +13,40 @@
 rxParams(obj, ...)
 
 \method{rxParams}{rxode2}(
+  obj,
+  constants = TRUE,
+  ...,
+  params = NULL,
+  inits = NULL,
+  iCov = NULL,
+  keep = NULL,
+  thetaMat = NULL,
+  omega = NULL,
+  dfSub = NULL,
+  sigma = NULL,
+  dfObs = NULL,
+  nSub = NULL,
+  nStud = NULL
+)
+
+\method{rxParams}{`function`}(
+  obj,
+  constants = TRUE,
+  ...,
+  params = NULL,
+  inits = NULL,
+  iCov = NULL,
+  keep = NULL,
+  thetaMat = NULL,
+  omega = NULL,
+  dfSub = NULL,
+  sigma = NULL,
+  dfObs = NULL,
+  nSub = NULL,
+  nStud = NULL
+)
+
+\method{rxParams}{rxUi}(
   obj,
   constants = TRUE,
   ...,
@@ -77,7 +113,13 @@ without recompiling the rxode2 model.}
 
 \item{params}{a numeric named vector with values for every
 parameter in the ODE system; the names must correspond to the
-parameter identifiers used in the ODE specification;}
+parameter identifiers used in the ODE specification.  A data
+frame or matrix gives one row per subject (or per subject and
+simulation), matched to the subjects by position in data order;
+an \code{id} column is not used to match them.  A one-row data frame
+or matrix is used for every subject, unless it has an \code{id}
+column and the data has more than one subject, which is an
+error;}
 
 \item{inits}{a vector of initial values of the state variables
 (e.g., amounts in each compartment), and the order in this
@@ -129,13 +171,32 @@ character vector listing the parameters in the model.
 This returns the model's parameters that are required to solve the
 ODE system, and can be used to pipe parameters into an rxode2 solve
 }
+\examples{
+\donttest{
+pk <- function() {
+  model({
+    d/dt(depot) <- -ka * depot
+    d/dt(central) <- ka * depot - cl / v * central
+    cp <- central / v
+  })
+}
+rxParams(pk)
+# pipe the parameter values into a solve
+pk |>
+  rxParams(params = c(ka = 1.2, cl = 3.5, v = 25)) |>
+  et(amt = 100) |>
+  et(0:24) |>
+  rxSolve()
+}
+}
 \seealso{
 Other Query model information:
 \code{\link[=rxDfdy]{rxDfdy()}},
 \code{\link[=rxInits]{rxInits()}},
 \code{\link[=rxLhs]{rxLhs()}},
 \code{\link[=rxModelVars]{rxModelVars()}},
-\code{\link[=rxState]{rxState()}}
+\code{\link[=rxState]{rxState()}},
+\code{\link[=rxStateOde]{rxStateOde()}}
 }
 \author{
 Matthew L.Fidler

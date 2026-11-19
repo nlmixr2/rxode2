@@ -1,6 +1,5 @@
 rxTest({
   test_that("Simulate Error, issue #670", {
-
     m <- function() {
       ini({
         lfdose_max <- -0.1
@@ -44,6 +43,7 @@ rxTest({
 
     m <- m()
 
+    # fmt: skip
     d <-
       structure(list(ID = c("A131", "A131", "A131", "A131", "A131",
                             "A131", "A131", "A131", "A131", "A131", "A131", "A131", "A131",
@@ -202,6 +202,5 @@ rxTest({
                 class = "data.frame")
 
     expect_error(rxSolve(object = m, events = d), NA)
-
   })
 })

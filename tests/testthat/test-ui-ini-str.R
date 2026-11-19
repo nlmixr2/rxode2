@@ -27,14 +27,14 @@ rxTest({
 
       theta <- tmp$theta
 
-      fixItems <- setNames(rep("fix",length(theta)), names(theta))
+      fixItems <- setNames(rep("fix", length(theta)), names(theta))
       suppressMessages(
         ui <- tmp |> ini(fixItems)
       )
 
       expect_true(all(ui$iniDf$fix[!is.na(ui$iniDf$ntheta)]))
 
-      unfixItems <- setNames(rep("unfix",length(theta)), names(theta))
+      unfixItems <- setNames(rep("unfix", length(theta)), names(theta))
 
       suppressMessages(
         ui2 <- ui |> ini(unfixItems)

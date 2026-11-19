@@ -1,5 +1,5 @@
 ---
-title: "Matrix Exponential Solving in rxode2"
+title: "Matrix exponential solving"
 ---
 
 ```{r, include = FALSE}
@@ -134,13 +134,16 @@ change with the solution, which is exactly what the matrix exponential assumes
 does not happen -- so rxode2 rejects one:
 
 ```r
-rxode2("
-matExp()
-cmt(central)
-vmax <- 10
-km <- 5
-k_central_output = vmax/(km + central)
-")
+mmBad <- function() {
+  model({
+    matExp()
+    cmt(central)
+    vmax <- 10
+    km <- 5
+    k_central_output <- vmax/(km + central)
+  })
+}
+mmBad()
 #> Error: matrix exponential rate constant 'k_central_output' depends on the
 #> compartment 'central'; rate constants must be constant in the states --
 #> put the state-dependent part in 'indLin(central) <- ...' instead
@@ -390,32 +393,44 @@ purely for ordering; they do not change the model mathematics.
 
 ```{r}
 ## ERROR: matExp() cannot be combined with d/dt()
-rxode2({
-  matExp()
-  d/dt(depot) <- -ka * depot
-})
+bad1 <- function() {
+  model({
+    matExp()
+    d/dt(depot) <- -ka * depot
+  })
+}
+bad1()
 #> :ERR: Matrix exponential models cannot be used with any ODEs
 
 ## ERROR: self-transfer is not allowed
-rxode2({
-  matExp()
-  k_depot_depot <- 0.1
-})
+bad2 <- function() {
+  model({
+    matExp()
+    k_depot_depot <- 0.1
+  })
+}
+bad2()
 #> :ERR: transfer from a compartment to itself (e.g., k_cmt1_cmt1) is not allowed
 
 ## ERROR: indLin() without matExp()
-rxode2({
-  cmt(depot)
-  indLin(depot) <- 0.5
-})
+bad3 <- function() {
+  model({
+    cmt(depot)
+    indLin(depot) <- 0.5
+  })
+}
+bad3()
 #> :ERR: indLin() cannot be used without matExp() defined in the model
 
 ## ERROR: a rate constant that reads a compartment
-rxode2({
-  matExp()
-  cmt(central)
-  k_central_output <- vmax / (km + central)
-})
+bad4 <- function() {
+  model({
+    matExp()
+    cmt(central)
+    k_central_output <- vmax / (km + central)
+  })
+}
+bad4()
 #> :ERR: matrix exponential rate constant 'k_central_output' depends on the
 #>       compartment 'central'; rate constants must be constant in the states --
 #>       put the state-dependent part in 'indLin(central) <- ...' instead
@@ -601,3 +616,8 @@ Full matrix exponential support during estimation is upcoming.
 - Beal S, Sheiner LB, Boeckmann A, Bauer RJ (2009). NONMEM Users Guides
   (1989--2009). Icon Development Solutions, Ellicott City, MD. (ADVAN5/7
   documentation for K(i,j) rate-constant specification.)
+
+## Next steps
+
+- [Choosing an ODE solver](ode-solvers.html)
+- [Model types: ODEs, linCmt() and mixed](rxode2-model-types.html)

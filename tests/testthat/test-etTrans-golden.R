@@ -12,7 +12,6 @@
 ## hide exactly the 1-ulp and ordering drift this harness exists to catch.
 
 rxTest({
-
   skip_if_not_installed("nlmixr2data")
   skip_if_not(dir.exists(.etTransGoldenDir()))
 

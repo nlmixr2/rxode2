@@ -10,10 +10,33 @@ for (.ncmt in 1:3) {
       .n <- if (.deriv) .nstate + .ncmt * (2L * .ncmt + .oral0) + .oral0 else .nstate
       for (.st in c(3L, 30L, 31L, 32L)) {
         for (.dt in c(0.5, 3)) {
-          .keep(sprintf("modelDouble_c%d_o%d_d%d_st%d_dt%g", .ncmt, .oral0, .deriv, .st, .dt),
-                .linCmtModelDouble(.dt, 2, 20, 3, 40, 1, 80, 1.1,
-                                   c(100, numeric(.n - 1L)), c(5, numeric(.nstate - 1L)),
-                                   .ncmt, .oral0, 1L, .deriv, 0L, 0, 0, 0, 0L, 0L, .st, 0.001))
+          .keep(
+            sprintf("modelDouble_c%d_o%d_d%d_st%d_dt%g", .ncmt, .oral0, .deriv, .st, .dt),
+            .linCmtModelDouble(
+              .dt,
+              2,
+              20,
+              3,
+              40,
+              1,
+              80,
+              1.1,
+              c(100, numeric(.n - 1L)),
+              c(5, numeric(.nstate - 1L)),
+              .ncmt,
+              .oral0,
+              1L,
+              .deriv,
+              0L,
+              0,
+              0,
+              0,
+              0L,
+              0L,
+              .st,
+              0.001
+            )
+          )
         }
       }
     }

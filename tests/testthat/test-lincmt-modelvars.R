@@ -6,8 +6,7 @@ rxTest({
   .rx <- loadNamespace("rxode2")
 
   .isExpanded <- function(model) {
-    !any(regexpr("(^|[^[:alnum:]._])linCmt[[:space:]]*\\(",
-                 rxNorm(rxModelVars(model))) != -1L)
+    !any(regexpr("(^|[^[:alnum:]._])linCmt[[:space:]]*\\(", rxNorm(rxModelVars(model))) != -1L)
   }
 
   test_that("a linCmt() model recompiles from its own model variables", {
@@ -31,8 +30,7 @@ rxTest({
     expect_true(.isExpanded(.m))
     expect_equal(rxModelVars(.m)$flags[["ncmt"]], 1L)
 
-    .s <- rxSolve(.m, et(amt = 100) |> et(0:3),
-                  params = c(tk = -1, tv = 3))
+    .s <- rxSolve(.m, et(amt = 100) |> et(0:3), params = c(tk = -1, tv = 3))
     expect_true(all(is.finite(.s$cp)))
   })
 
@@ -78,8 +76,7 @@ rxTest({
     .m <- rxode2(rxModelVars(f()))
     expect_true(.isExpanded(.m))
     expect_true("eff" %in% rxState(.m))
-    .s <- rxSolve(.m, et(amt = 100) |> et(0:3),
-                  params = c(tk = -1, tv = 3, tkin = 0.1))
+    .s <- rxSolve(.m, et(amt = 100) |> et(0:3), params = c(tk = -1, tv = 3, tkin = 0.1))
     expect_true(all(is.finite(.s$eff)))
   })
 
@@ -122,15 +119,20 @@ rxTest({
     expect_equal(rxState(rxode2(.cmt)), "linCmt")
 
     # an expanded call is expanded however few compartments it declares
-    .lin0 <- rxModelVars(paste0("cp=linCmtA(rx__PTR__, t, 0, 0, 0, -1, 2, ",
-                                "k, v, 0.0, 0.0, 0.0, 0.0, 0.0);\n"))
+    .lin0 <- rxModelVars(paste0("cp=linCmtA(rx__PTR__, t, 0, 0, 0, -1, 2, ", "k, v, 0.0, 0.0, 0.0, 0.0, 0.0);\n"))
     expect_false(.rx$.rxHasUnexpandedLinCmt(.lin0))
   })
 
   test_that("re-parsing model variables keeps the ini and state layout", {
-    .mv <- rxModelVars(paste("k=0.1;", "v=10;", "cp=linCmt();",
-                             "kin=1;", "d/dt(eff)=kin-kin*eff*cp;",
-                             "eff(0)=1;", sep = "\n"))
+    .mv <- rxModelVars(paste(
+      "k=0.1;",
+      "v=10;",
+      "cp=linCmt();",
+      "kin=1;",
+      "d/dt(eff)=kin-kin*eff*cp;",
+      "eff(0)=1;",
+      sep = "\n"
+    ))
     .m <- rxode2(.mv)
     expect_equal(rxInits(.m)[["eff"]], 1)
     expect_equal(rxInits(.m)[["k"]], 0.1)
@@ -141,8 +143,21 @@ rxTest({
     # cache key of every model that goes through it
     .mv2 <- rxModelVars(setNames(rxNorm(.mv), NULL))
     expect_equal(.mv2$md5[["parsed_md5"]], .mv$md5[["parsed_md5"]])
-    for (.n in c("params", "lhs", "state", "ini", "dvid", "alag", "slhs",
-                 "interp", "strAssign", "udf", "stateOrd", "lhsOrd", "flags")) {
+    for (.n in c(
+      "params",
+      "lhs",
+      "state",
+      "ini",
+      "dvid",
+      "alag",
+      "slhs",
+      "interp",
+      "strAssign",
+      "udf",
+      "stateOrd",
+      "lhsOrd",
+      "flags"
+    )) {
       expect_equal(.mv2[[.n]], .mv[[.n]], info = .n)
     }
   })

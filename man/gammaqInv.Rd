@@ -47,6 +47,25 @@ gammaqInv(1:3, 1:3 / 3.1)
 
 gammaqInva(1:3, 1:3 / 3.1)
 }
+\seealso{
+Other Special functions:
+\code{\link[=boxCox]{boxCox()}},
+\code{\link[=delay]{delay()}},
+\code{\link[=erf]{erf()}},
+\code{\link[=gammap]{gammap()}},
+\code{\link[=gammapDer]{gammapDer()}},
+\code{\link[=gammapInv]{gammapInv()}},
+\code{\link[=gammaq]{gammaq()}},
+\code{\link[=logit]{logit()}},
+\code{\link[=lowergamma]{lowergamma()}},
+\code{\link[=mexpit]{mexpit()}},
+\code{\link[=mlogit]{mlogit()}},
+\code{\link[=phi]{phi()}},
+\code{\link[=phiU]{phiU()}},
+\code{\link[=probit]{probit()}},
+\code{\link[=uppergamma]{uppergamma()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Special functions}

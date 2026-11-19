@@ -32,7 +32,7 @@ static inline void mm_do_steps(rx_solving_options_ind *ind, rx_solving_options *
       stepper.do_step(sys, state, t, current_dt);
     } catch(const std::exception& e) {
       if (ind->rc[0] == 0) ind->rc[0] = -2019;
-      ind->err = 1;
+      rxSolverFail(ind);
       break;
     }
 
@@ -97,8 +97,9 @@ extern "C" void ind_mm_0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         badSolveExit(i);
         localBadSolve = 1;
       } else {
-        if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                            xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
+        while (!localBadSolve &&
+               handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                               xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
             if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
               preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
 
@@ -124,20 +125,6 @@ extern "C" void ind_mm_0(rx_solve *rx, rx_solving_options *op, int solveid, int 
               ind->ixds = ixds;
               ind->idx = idx;
               ind->idxExtra++;
-              if (!isSameTime(xout, ind->extraDoseNewXout)) {
-                preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-
-                if (neqOde > 0) {
-                    zero_copy_state state(yp, neqOde);
-                    mm_do_steps(ind, op, sys, state, ind->extraDoseNewXout, xout);
-                }
-
-                copyLinCmt(neq, ind, op, yp);
-                const char* err_msg = "mm failed";
-                postSolve(neq, &istate, ind->rc, &idx, yp, &err_msg, 19, false, ind, op, rx);
-                if (*(ind->rc) < 0) localBadSolve = 1;
-                ind->extraDoseNewXout = xout;
-              }
               xp = ind->extraDoseNewXout;
             }
         }
@@ -157,7 +144,6 @@ extern "C" void ind_mm_0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         xp = xout;
       }
     }
-    ind->_newind = 2;
     if (!localBadSolve){
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
@@ -186,6 +172,7 @@ extern "C" void ind_mm_0(rx_solve *rx, rx_solving_options *op, int solveid, int 
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       if (_mtime_requeued) i--;
     }
+    rxNewindAfterRecord(ind, i);
     ind->solvedIdx = i;
   }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
@@ -211,8 +198,6 @@ extern "C" void par_mm(rx_solve *rx){
   int nsolve = (int)(nsim*nsub);
 
   uint32_t seed0 = getRxSeed1(cores);
-  int abort = 0;
-
 #ifdef _OPENMP
 #pragma omp parallel for num_threads(cores)
 #endif
@@ -220,24 +205,10 @@ extern "C" void par_mm(rx_solve *rx){
     int neq[2];
     neq[0] = op->neq;
     neq[1] = 0;
-    int localAbort;
-#ifdef _OPENMP
-#pragma omp atomic read
-#endif
-    localAbort = abort;
-    if (localAbort == 0){
-      // rx->ordId walks positions (sortIds); the drivers take subject ids.
-      int _id = rx->ordId[solveid] - 1;
-      setSeedEng1(seed0 + _id);
-      ind_mm_0(rx, op, _id, neq, dydt, update_inis);
-
-      if (op->badSolve) {
-#ifdef _OPENMP
-#pragma omp atomic write
-#endif
-        abort = 1;
-      }
-    }
+    // rx->ordId walks positions (sortIds); the drivers take subject ids.
+    int _id = rx->ordId[solveid] - 1;
+    setSeedEng1(seed0 + _id);
+    ind_mm_0(rx, op, _id, neq, dydt, update_inis);
   }
   // close the per-subject seed block: the loop consumed nsolve seeds, not
   // cores, and the next solve must not re-use any of them

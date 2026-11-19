@@ -1,5 +1,5 @@
 ---
-title: "Dual Absorption Models with splitBolus()"
+title: "Dual absorption with splitBolus()"
 date: "`r Sys.Date()`"
 output:
   html_document:
@@ -171,3 +171,8 @@ fast pathway has been nearly exhausted.
 
 - More than two pathways are possible-simply list additional target
   compartments in `splitBolus()` and add corresponding `f()` modifiers.
+
+## Next steps
+
+- [Dosing event types](rxode2-event-types.html)
+- [Dosing from inside the model](adaptive-dosing.html)

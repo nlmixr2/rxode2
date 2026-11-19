@@ -9,9 +9,10 @@
 ##  * `.udfAddToSearch()` appended the calling environment to an unbounded list
 ##    (indexed by a hash that had to mint a new name per environment).
 ##
-## The cheap invariants that guarantee those three run by default.  The tests
-## that measure process memory are opt-in: they need `ps`, they are slow, and a
-## machine under memory pressure can move RSS underneath them.  Run them with
+## The cheap invariants that guarantee those three run by default (the search
+## list's are in test-udf-search-list.R).  The tests that measure process memory
+## are opt-in: they need `ps`, they are slow, and a machine under memory
+## pressure can move RSS underneath them.  Run them with
 ##
 ##     Sys.setenv(RXODE2_MEMORY_TEST = "true")
 
@@ -25,13 +26,14 @@
 
 .rxSkipUnlessMemoryTest <- function() {
   testthat::skip_on_cran()
-  testthat::skip_if_not(identical(Sys.getenv("RXODE2_MEMORY_TEST"), "true"),
-                        "set RXODE2_MEMORY_TEST=true to run the memory-growth tests")
+  testthat::skip_if_not(
+    identical(Sys.getenv("RXODE2_MEMORY_TEST"), "true"),
+    "set RXODE2_MEMORY_TEST=true to run the memory-growth tests"
+  )
   testthat::skip_if_not_installed("ps")
 }
 
 rxTest({
-
   test_that("translating the same model twice does not grow the memoise cache", {
     .model <- "d/dt(memoTest) = -kMemoTest*memoTest;\n"
     .cache <- environment(rxTrans.character)$`_cache`
@@ -59,14 +61,11 @@ rxTest({
     # parser on the second model
     .mv <- .rxModelVarsCharacter(.m1)
     expect_equal(.mv$state, "stateOne")
-    expect_equal(rxNorm(getFromNamespace(".rxModelVarsLast", "rxode2")),
-                 rxNorm(.mv))
+    expect_equal(rxNorm(.rxState$modelVarsLast), rxNorm(.mv))
   })
 
   test_that("the parse prefix is a function of the model, not of the call", {
-    # read the namespace, not the attached copy: `assignInMyNamespace()` in
-    # `.rxModelVarsCharacter()` updates the namespace binding only
-    .prefix <- function() getFromNamespace(".rxModelVarsCCache", "rxode2")[[3]]
+    .prefix <- function() .rxState$modelVarsCCache[[3]]
     .m1 <- "d/dt(prefixTest) = -kPrefixTest*prefixTest;\n"
     .m2 <- "d/dt(prefixTest2) = -kPrefixTest2*prefixTest2;\n"
     invisible(.rxModelVarsCharacter(.m1))
@@ -89,43 +88,10 @@ rxTest({
     .model <- "d/dt(forceTest) = -kForceTest*forceTest;\n"
     .mod <- rxode2(.model)
     on.exit(try(rxDelete(.mod), silent = TRUE))
-    invisible(rxNorm(.model))   # a cache hit, after the model was built
+    invisible(rxNorm(.model)) # a cache hit, after the model was built
     rxDelete(.mod)
     expect_no_error(.mod$compile())
     expect_true(rxDllLoaded(.mod))
-  })
-
-  test_that("the user function search list is bounded", {
-    .mod <- function() {
-      ini({
-        tkaSearch <- 0.5
-        addSdSearch <- 0.7
-      })
-      model({
-        kaSearch <- exp(tkaSearch)
-        d/dt(depotSearch) <- -kaSearch * depotSearch
-        cpSearch <- depotSearch
-        cpSearch ~ add(addSdSearch)
-      })
-    }
-    .ui <- rxode2(.mod)
-    # every one of these records the (fresh, and immediately dead) frame it was
-    # called from; the list used to keep all of them
-    for (.i in seq_len(50)) {
-      invisible(.ui$theta)
-    }
-    expect_lte(length(.udfEnv$searchList), .udfSearchListMax())
-
-    withr::with_options(list(rxode2.udfSearchLimit = 5), {
-      for (.i in seq_len(20)) {
-        invisible(.ui$theta)
-      }
-      expect_lte(length(.udfEnv$searchList), 5L)
-    })
-    # a bad option value falls back to the default rather than erroring
-    withr::with_options(list(rxode2.udfSearchLimit = "many"), {
-      expect_equal(.udfSearchListMax(), 20L)
-    })
   })
 
   test_that("repeated translation does not grow process memory", {
@@ -185,5 +151,4 @@ rxTest({
     # of which a full gc() could reclaim
     expect_lt(.cells() - .before, 5)
   })
-
 })

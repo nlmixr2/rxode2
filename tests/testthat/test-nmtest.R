@@ -1,5 +1,4 @@
 rxTest({
-
   ## devtools::load_all()
 
   skip_if_not_installed("nlmixr2data")
@@ -39,7 +38,6 @@ rxTest({
     if (mode == 2) dur(central) <- dur2
     cp <- linCmt()*1000
   }, linCmtSens = "linCmtB")
-
 
   elf <- rxode2({
     cl <- 1.1
@@ -126,13 +124,17 @@ rxTest({
     d/dt(Ce) <- (Cp-Ce)*ke0
   }, linCmtSens = "linCmtB")
 
-
   library(ggplot2)
 
-  solveEqual <- function(id, plot = p, meth="A",
-                         modifyData = c("none", "dur", "rate"),
-                         addlKeepsCov = TRUE, addlDropSs=TRUE,
-                         ss2cancelAllPending=FALSE) {
+  solveEqual <- function(
+    id,
+    plot = p,
+    meth = "A",
+    modifyData = c("none", "dur", "rate"),
+    addlKeepsCov = TRUE,
+    addlDropSs = TRUE,
+    ss2cancelAllPending = FALSE
+  ) {
     # Preserve the caller's method name for the test titles.  `meth` is
     # rewritten below (e.g. the dense composite "ddop853+dros4" becomes
     # "dop853+ros4" with a separate `dense` flag), which would otherwise
@@ -150,23 +152,23 @@ rxTest({
     } else if (meth == "B" || meth == "Bo" || meth == "Bs") {
       lin <- "B"
       meth <- "liblsoda"
-    } else  if (meth == "ddop853") {
+    } else if (meth == "ddop853") {
       lin <- "ode"
       meth <- "dop853"
       dense <- TRUE
-    } else  if (meth == "dcvode") {
+    } else if (meth == "dcvode") {
       lin <- "ode"
       meth <- "cvode"
       dense <- TRUE
-    } else  if (meth == "ddop5") {
+    } else if (meth == "ddop5") {
       lin <- "ode"
       meth <- "dop5"
       dense <- TRUE
-    } else  if (meth == "dbs") {
+    } else if (meth == "dbs") {
       lin <- "ode"
       meth <- "bs"
       dense <- TRUE
-    } else  if (meth == "dros4") {
+    } else if (meth == "dros4") {
       lin <- "ode"
       meth <- "ros4"
       dense <- TRUE
@@ -174,16 +176,16 @@ rxTest({
       lin <- "ode"
       meth <- "dop853+ros4"
       dense <- TRUE
-    } else  if (meth == "Ad") {
+    } else if (meth == "Ad") {
       lin <- "A"
       meth <- "dop853"
-    } else  if (meth == "Bd") {
+    } else if (meth == "Bd") {
       lin <- "B"
       meth <- "dop853"
-    } else  if (meth == "Al") {
+    } else if (meth == "Al") {
       lin <- "A"
       meth <- "lsoda"
-    } else  if (meth == "Bl") {
+    } else if (meth == "Bl") {
       lin <- "B"
       meth <- "lsoda"
     } else if (meth == "B" || meth == "Bo" || meth == "Bs") {
@@ -193,13 +195,13 @@ rxTest({
       lin <- "ode"
     }
 
-    noLag <-  all(d[d$id == id & d$evid != 0,]$lagt == 0)
-    hasRate <- any(d[d$id == id & d$evid != 0,]$rate != 0)
-    hasModeledRate <- any(d[d$id == id & d$evid != 0,]$mode == 1)
-    hasModeledDur  <- any(d[d$id == id & d$evid != 0, ]$mode == 2)
+    noLag <- all(d[d$id == id & d$evid != 0, ]$lagt == 0)
+    hasRate <- any(d[d$id == id & d$evid != 0, ]$rate != 0)
+    hasModeledRate <- any(d[d$id == id & d$evid != 0, ]$mode == 1)
+    hasModeledDur <- any(d[d$id == id & d$evid != 0, ]$mode == 2)
     hasChangedF <- any(d[d$id == id & d$evid != 0, ]$bioav != 1)
     modifyData <- match.arg(modifyData)
-    d <- d[d$id == id,]
+    d <- d[d$id == id, ]
     rate <- unlist(as.vector(d[d$evid != 0, "rate"]))
     ii0 <- all(d$ii == 0)
     oneRate <- (length(rate) == 1L)
@@ -210,107 +212,181 @@ rxTest({
       }
     }
     if (modifyData == "rate" && hasRate && !hasModeledRate && !hasModeledDur && oneRate && !ii0 && !dose1) {
-      if (p) message("modified rate to be modeled")
-      rate <- d[d$evid != 0, "rate", drop=FALSE]
+      if (p) {
+        message("modified rate to be modeled")
+      }
+      rate <- d[d$evid != 0, "rate", drop = FALSE]
       rate <- rate$rate
       if (length(rate) == 1) {
         d$rat2 <- rate
-        d$rate <- ifelse(d$rate==0, 0, -1)
+        d$rate <- ifelse(d$rate == 0, 0, -1)
         d$mode <- 1
       }
       ## print(etTrans(d, f, addlDropSs=addlDropSs))
-    } else if (modifyData == "dur" && hasRate && !hasModeledRate && !hasModeledDur && !hasChangedF && oneRate && !ii0 && !dose1) {
-      if (p) message("modified dur to be modeled")
+    } else if (
+      modifyData == "dur" && hasRate && !hasModeledRate && !hasModeledDur && !hasChangedF && oneRate && !ii0 && !dose1
+    ) {
+      if (p) {
+        message("modified dur to be modeled")
+      }
       rate <- as.numeric(d[d$evid != 0, "rate"])
       amt <- as.numeric(d[d$evid != 0, "amt"])
       if (length(rate) == 1) {
-        d$dur2 <- amt/rate
-        d$rate <- ifelse(d$rate==0, 0, -2)
+        d$dur2 <- amt / rate
+        d$rate <- ifelse(d$rate == 0, 0, -2)
         d$mode <- 2
-        assign(".d", d, envir=globalenv())
+        assign(".d", d, envir = globalenv())
       }
     } else if (any(modifyData == c("dur", "rate"))) {
       if (p) {
         message("skipping because cannot be modified")
-        print(list(modifyData=modifyData,
-                   noLag=noLag,
-                   hasRate=hasRate,
-                   hasModeledRate=hasModeledRate,
-                   hasModeledDur= hasModeledDur,
-                   hasChangedF=hasChangedF))
+        print(list(
+          modifyData = modifyData,
+          noLag = noLag,
+          hasRate = hasRate,
+          hasModeledRate = hasModeledRate,
+          hasModeledDur = hasModeledDur,
+          hasChangedF = hasChangedF
+        ))
       }
       return(invisible())
     }
     if (plot) {
-      print(ggplot(d, aes(time, cp)) +
-              geom_point(col="red") +
-              rxode2::rxTheme() +
-              ggtitle(paste0("id=", id)))
+      print(
+        ggplot(d, aes(time, cp)) +
+          geom_point(col = "red") +
+          rxode2::rxTheme() +
+          ggtitle(paste0("id=", id))
+      )
       ## print(etTrans(d, fl))
       if (lin == "A") {
-        s1 <- rxSolve(lfl, d, method=meth, addlKeepsCov = addlKeepsCov,
-                      addlDropSs=addlDropSs,
-                      ss2cancelAllPending=ss2cancelAllPending,
-                      ssSolved=ssSolved, dense=dense)
+        s1 <- rxSolve(
+          lfl,
+          d,
+          method = meth,
+          addlKeepsCov = addlKeepsCov,
+          addlDropSs = addlDropSs,
+          ss2cancelAllPending = ss2cancelAllPending,
+          ssSolved = ssSolved,
+          dense = dense
+        )
       } else if (lin == "B") {
-        s1 <- rxSolve(lbfl, d, method=meth, addlKeepsCov = addlKeepsCov,
-                      addlDropSs=addlDropSs,
-                      ss2cancelAllPending=ss2cancelAllPending,
-                      ssSolved=ssSolved, dense=dense)
+        s1 <- rxSolve(
+          lbfl,
+          d,
+          method = meth,
+          addlKeepsCov = addlKeepsCov,
+          addlDropSs = addlDropSs,
+          ss2cancelAllPending = ss2cancelAllPending,
+          ssSolved = ssSolved,
+          dense = dense
+        )
       } else if (lin == "Ao") {
-        s1 <- rxSolve(elfl, d, method=meth, addlKeepsCov = addlKeepsCov,
-                      addlDropSs=addlDropSs,
-                      ss2cancelAllPending=ss2cancelAllPending,
-                      ssSolved=ssSolved, dense=dense)
+        s1 <- rxSolve(
+          elfl,
+          d,
+          method = meth,
+          addlKeepsCov = addlKeepsCov,
+          addlDropSs = addlDropSs,
+          ss2cancelAllPending = ss2cancelAllPending,
+          ssSolved = ssSolved,
+          dense = dense
+        )
       } else if (lin == "Bo") {
-        s1 <- rxSolve(elbfl, d, method=meth, addlKeepsCov = addlKeepsCov,
-                      addlDropSs=addlDropSs,
-                      ss2cancelAllPending=ss2cancelAllPending,
-                      ssSolved=ssSolved, dense=dense)
+        s1 <- rxSolve(
+          elbfl,
+          d,
+          method = meth,
+          addlKeepsCov = addlKeepsCov,
+          addlDropSs = addlDropSs,
+          ss2cancelAllPending = ss2cancelAllPending,
+          ssSolved = ssSolved,
+          dense = dense
+        )
       } else {
-        s1 <- rxSolve(fl, d, method=meth, addlKeepsCov = addlKeepsCov,
-                      addlDropSs=addlDropSs,
-                      ss2cancelAllPending=ss2cancelAllPending,
-                      ssSolved=ssSolved, dense=dense)
+        s1 <- rxSolve(
+          fl,
+          d,
+          method = meth,
+          addlKeepsCov = addlKeepsCov,
+          addlDropSs = addlDropSs,
+          ss2cancelAllPending = ss2cancelAllPending,
+          ssSolved = ssSolved,
+          dense = dense
+        )
       }
       if (!noLag) {
-        print(plot(s1, cp) +
-                geom_point(data=d, aes(x=time, y=cp), col="red") +
-                ggtitle(paste0("id=", id, "(lag)")))
+        print(
+          plot(s1, cp) +
+            geom_point(data = d, aes(x = time, y = cp), col = "red") +
+            ggtitle(paste0("id=", id, "(lag)"))
+        )
       } else {
         message("================================================== ")
         message("f without lag")
         message("================================================== ")
         if (lin == "A") {
-          s2 <- rxSolve(lf, d, method=meth, addlKeepsCov = addlKeepsCov,
-                        addlDropSs=addlDropSs,
-                        ss2cancelAllPending=ss2cancelAllPending,
-                        ssSolved=ssSolved, dense=dense)
+          s2 <- rxSolve(
+            lf,
+            d,
+            method = meth,
+            addlKeepsCov = addlKeepsCov,
+            addlDropSs = addlDropSs,
+            ss2cancelAllPending = ss2cancelAllPending,
+            ssSolved = ssSolved,
+            dense = dense
+          )
         } else if (lin == "B") {
-          s2 <- rxSolve(lbf, d, method=meth, addlKeepsCov = addlKeepsCov,
-                        addlDropSs=addlDropSs,
-                        ss2cancelAllPending=ss2cancelAllPending,
-                        ssSolved=ssSolved, dense=dense)
+          s2 <- rxSolve(
+            lbf,
+            d,
+            method = meth,
+            addlKeepsCov = addlKeepsCov,
+            addlDropSs = addlDropSs,
+            ss2cancelAllPending = ss2cancelAllPending,
+            ssSolved = ssSolved,
+            dense = dense
+          )
         } else if (lin == "Ao") {
-          s2 <- rxSolve(elf, d, method=meth, addlKeepsCov = addlKeepsCov,
-                        addlDropSs=addlDropSs,
-                        ss2cancelAllPending=ss2cancelAllPending,
-                        ssSolved=ssSolved, dense=dense)
+          s2 <- rxSolve(
+            elf,
+            d,
+            method = meth,
+            addlKeepsCov = addlKeepsCov,
+            addlDropSs = addlDropSs,
+            ss2cancelAllPending = ss2cancelAllPending,
+            ssSolved = ssSolved,
+            dense = dense
+          )
         } else if (lin == "Bo") {
-          s2 <- rxSolve(elbf, d, method=meth, addlKeepsCov = addlKeepsCov,
-                        addlDropSs=addlDropSs,
-                        ss2cancelAllPending=ss2cancelAllPending,
-                        ssSolved=ssSolved, dense=dense)
+          s2 <- rxSolve(
+            elbf,
+            d,
+            method = meth,
+            addlKeepsCov = addlKeepsCov,
+            addlDropSs = addlDropSs,
+            ss2cancelAllPending = ss2cancelAllPending,
+            ssSolved = ssSolved,
+            dense = dense
+          )
         } else {
-          s2 <- rxSolve(f, d, method=meth, addlKeepsCov = addlKeepsCov,
-                        addlDropSs=addlDropSs,
-                        ss2cancelAllPending=ss2cancelAllPending,
-                        ssSolved=ssSolved, dense=dense)
+          s2 <- rxSolve(
+            f,
+            d,
+            method = meth,
+            addlKeepsCov = addlKeepsCov,
+            addlDropSs = addlDropSs,
+            ss2cancelAllPending = ss2cancelAllPending,
+            ssSolved = ssSolved,
+            dense = dense
+          )
         }
-        return(plot(s1, cp) +
-                 geom_point(data=d, aes(x=time, y=cp), col="red") +
-                 geom_line(data=s2, aes(x=time, y=cp), col="blue", alpha=0.5, linewidth=2) +
-                 ggtitle(paste0("id=", id, "(nolag)")))
+        return(
+          plot(s1, cp) +
+            geom_point(data = d, aes(x = time, y = cp), col = "red") +
+            geom_line(data = s2, aes(x = time, y = cp), col = "blue", alpha = 0.5, linewidth = 2) +
+            ggtitle(paste0("id=", id, "(nolag)"))
+        )
       }
       ## print(etTrans(d, fl))
     } else {
@@ -325,53 +401,63 @@ rxTest({
         sub <- 96
       }
       if (noLag) {
-        test_that(paste0("nmtest id:", id, " no alag; method: ", .methLabel, "; modifyData:", modifyData, "; addlDropSs: ", addlDropSs, "; lin=", lin, "; ssSolved=", ssSolved),
+        test_that(
+          paste0(
+            "nmtest id:",
+            id,
+            " no alag; method: ",
+            .methLabel,
+            "; modifyData:",
+            modifyData,
+            "; addlDropSs: ",
+            addlDropSs,
+            "; lin=",
+            lin,
+            "; ssSolved=",
+            ssSolved
+          ),
+          {
+            if (lin == "A") {
+              s1 <- rxSolve(lf, d, method = meth, addlKeepsCov = addlKeepsCov, addlDropSs = addlDropSs, dense = dense)
+            } else if (lin == "B") {
+              s1 <- rxSolve(lbf, d, method = meth, addlKeepsCov = addlKeepsCov, addlDropSs = addlDropSs, dense = dense)
+            } else {
+              s1 <- rxSolve(f, d, method = meth, addlKeepsCov = addlKeepsCov, addlDropSs = addlDropSs, dense = dense)
+            }
+            expect_equal(s1$cp[s1$time >= sub], d[d$id == id & d$evid == 0 & d$time >= sub, ]$cp, tolerance = 0.1)
+          }
+        )
+      }
+      test_that(
+        paste0(
+          "nmtest id:",
+          id,
+          " alag; method: ",
+          .methLabel,
+          "; modifyData:",
+          modifyData,
+          "; addlDropSs: ",
+          addlDropSs,
+          "; lin=",
+          lin,
+          "; ssSolved=",
+          ssSolved
+        ),
         {
           if (lin == "A") {
-            s1 <- rxSolve(lf, d, method=meth,
-                          addlKeepsCov = addlKeepsCov,
-                          addlDropSs=addlDropSs, dense=dense)
+            s1 <- rxSolve(lfl, d, method = meth, addlKeepsCov = addlKeepsCov, addlDropSs = addlDropSs, dense = dense)
           } else if (lin == "B") {
-            s1 <- rxSolve(lbf, d, method=meth,
-                          addlKeepsCov = addlKeepsCov,
-                          addlDropSs=addlDropSs, dense=dense)
+            s1 <- rxSolve(lfl, d, method = meth, addlKeepsCov = addlKeepsCov, addlDropSs = addlDropSs, dense = dense)
+          } else if (lin == "Ao") {
+            s1 <- rxSolve(elfl, d, method = meth, addlKeepsCov = addlKeepsCov, addlDropSs = addlDropSs, dense = dense)
+          } else if (lin == "Bo") {
+            s1 <- rxSolve(elfl, d, method = meth, addlKeepsCov = addlKeepsCov, addlDropSs = addlDropSs, dense = dense)
           } else {
-            s1 <- rxSolve(f, d, method=meth,
-                          addlKeepsCov = addlKeepsCov,
-                          addlDropSs=addlDropSs, dense=dense)
+            s1 <- rxSolve(fl, d, method = meth, addlKeepsCov = addlKeepsCov, addlDropSs = addlDropSs, dense = dense)
           }
-          expect_equal(s1$cp[s1$time >= sub],
-                       d[d$id == id & d$evid == 0 & d$time >= sub,]$cp,
-                       tolerance = 0.1)
-        })
-      }
-      test_that(paste0("nmtest id:", id, " alag; method: ", .methLabel, "; modifyData:", modifyData,"; addlDropSs: ", addlDropSs, "; lin=", lin, "; ssSolved=", ssSolved),
-      {
-        if (lin == "A") {
-          s1 <- rxSolve(lfl, d, method=meth,
-                        addlKeepsCov = addlKeepsCov,
-                        addlDropSs=addlDropSs, dense=dense)
-        } else if (lin == "B") {
-          s1 <- rxSolve(lfl, d, method=meth,
-                        addlKeepsCov = addlKeepsCov,
-                        addlDropSs=addlDropSs, dense=dense)
-        } else if (lin == "Ao") {
-          s1 <- rxSolve(elfl, d, method=meth,
-                        addlKeepsCov = addlKeepsCov,
-                        addlDropSs=addlDropSs, dense=dense)
-        } else if (lin == "Bo") {
-          s1 <- rxSolve(elfl, d, method=meth,
-                        addlKeepsCov = addlKeepsCov,
-                        addlDropSs=addlDropSs, dense=dense)
-        } else {
-          s1 <- rxSolve(fl, d, method=meth,
-                        addlKeepsCov = addlKeepsCov,
-                        addlDropSs=addlDropSs, dense=dense)
+          expect_equal(s1$cp[s1$time >= sub], d[d$id == id & d$evid == 0 & d$time >= sub, ]$cp, tolerance = 0.1)
         }
-        expect_equal(s1$cp[s1$time >= sub],
-                     d[d$id == id & d$evid == 0 & d$time >= sub,]$cp,
-                     tolerance = 0.1)
-      })
+      )
     }
   }
 
@@ -380,7 +466,6 @@ rxTest({
   id <- unique(d$id)
 
   # id = 12
-
 
   p <- FALSE
 
@@ -397,7 +482,7 @@ rxTest({
     i <- id[((.mi - 1L) %% length(id)) + 1L]
     for (modifyData in modDat) {
       for (addlDropSs in c(TRUE, FALSE)) {
-        solveEqual(i, meth=meth, modifyData=modifyData, addlDropSs=addlDropSs)
+        solveEqual(i, meth = meth, modifyData = modifyData, addlDropSs = addlDropSs)
       }
     }
   })
@@ -411,14 +496,11 @@ rxTest({
   ## Need to check steady state infusion as well as infusions where ii=dur with lag times
 
   ## modeled equivalents of 425, 525
-
 })
 
 rxTest({
   test_that("evid4", {
-
     df <- readRDS(test_path("nmtest-evid4.rds"))
-
 
     evid4 <- function() {
       ini({
@@ -459,14 +541,13 @@ rxTest({
       })
     }
 
+    f1 <- rxSolve(evid4, df[1:5, ], addDosing = TRUE, returnType = "data.frame")
 
-    f1 <- rxSolve(evid4, df[1:5,], addDosing=TRUE, returnType="data.frame")
+    f1o <- rxSolve(evid4ode, df[1:5, ], addDosing = TRUE, returnType = "data.frame")
 
-    f1o <- rxSolve(evid4ode, df[1:5,], addDosing=TRUE, returnType="data.frame")
+    f2 <- rxSolve(evid4, df, addDosing = TRUE, returnType = "data.frame")
 
-    f2 <- rxSolve(evid4, df, addDosing=TRUE, returnType="data.frame")
-
-    f2o <- rxSolve(evid4ode, df, addDosing=TRUE, returnType="data.frame")
+    f2o <- rxSolve(evid4ode, df, addDosing = TRUE, returnType = "data.frame")
 
     expect_equal(f1$lin, f2$lin[seq_along(f1$lin)])
 
@@ -475,6 +556,5 @@ rxTest({
     expect_equal(f1$lin, f1o$lin, tolerance = 1e-6)
 
     expect_equal(f2$lin, f2o$lin, tolerance = 1e-6)
-
   })
 })

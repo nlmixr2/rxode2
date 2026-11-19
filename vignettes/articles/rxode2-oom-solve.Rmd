@@ -1,5 +1,5 @@
 ---
-title: "Out-of-memory solving with rxode2"
+title: "Out-of-memory solving"
 ---
 
 ```{r, include = FALSE}
@@ -315,3 +315,8 @@ custom parallel workflows.
 ```{r session}
 sessionInfo()
 ```
+
+## Next steps
+
+- [Speeding up solving](rxode2-speed.html)
+- [Parallel solving with mirai](rxode2-mirai-parallel.html)

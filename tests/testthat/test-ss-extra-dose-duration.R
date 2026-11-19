@@ -1,5 +1,4 @@
 rxTest({
-
   # rxode2 issue #1321 -- the steady-state/modeled-lag infusion paths append
   # "extra" doses (pushDosingEvent()) whose amounts live in ind->extraDose*, not
   # in ind->idose.  The dose-history duration lookup used to fall back to an
@@ -14,16 +13,14 @@ rxTest({
 
   # true steady state, built by repeating the regimen long enough to converge
   .longRun <- function(rate, ii = 12, amt = 100, addl = 40) {
-    .e <- et(et(amt = amt, rate = rate, ii = ii, addl = addl, cmt = "cen"),
-             seq(0, 40, by = 4) + addl * ii)
+    .e <- et(et(amt = amt, rate = rate, ii = ii, addl = addl, cmt = "cen"), seq(0, 40, by = 4) + addl * ii)
     .r <- rxSolve(.ssLagModel, .e, returnType = "data.frame")
     .r <- .r[.r$time >= addl * ii, ]
     .r$cen
   }
 
   .ssRun <- function(rate, ii = 12, amt = 100, ss = 1) {
-    .e <- et(et(amt = amt, rate = rate, ss = ss, ii = ii, cmt = "cen"),
-             seq(0, 40, by = 4))
+    .e <- et(et(amt = amt, rate = rate, ss = ss, ii = ii, cmt = "cen"), seq(0, 40, by = 4))
     rxSolve(.ssLagModel, .e, returnType = "data.frame")$cen
   }
 
@@ -40,10 +37,45 @@ rxTest({
   test_that("ss=1 infusion with a modeled lag holds the plateau (dur == ii)", {
     # amt/rate = 12 == ii = 12, so steady state is a continuous infusion whose
     # plateau is rate/kel; it holds for the whole inter-dose interval
-    .e <- et(et(amt = 100, rate = 100 / 12, ss = 1, ii = 12, cmt = "cen"),
-             seq(0, 12, by = 1))
+    .e <- et(et(amt = 100, rate = 100 / 12, ss = 1, ii = 12, cmt = "cen"), seq(0, 12, by = 1))
     .r <- rxSolve(.ssLagModel, .e, returnType = "data.frame")
     expect_equal(.r$cen, rep((100 / 12) / 0.1, length(.r$cen)), tolerance = 1e-5)
+  })
+
+  test_that("ss=1 infusion with a modeled lag stops at the lagged end (dur == ii, issue #1592)", {
+    expect_equal(.ssRun(100 / 12), .longRun(100 / 12), tolerance = 1e-4)
+    .e <- et(et(amt = 100, dur = 12, ss = 1, ii = 12, cmt = "cen"), seq(0, 40, by = 4))
+    expect_equal(rxSolve(.ssLagModel, .e, returnType = "data.frame")$cen, .longRun(100 / 12), tolerance = 1e-4)
+  })
+
+  test_that("ss=1 dur == ii infusion with a lag longer than ii stops at the lagged end (issue #1592)", {
+    .m <- rxode2({
+      alag(cen) <- 15
+      d / dt(cen) <- -0.1 * cen
+    })
+    .e <- et(et(amt = 100, rate = 100 / 12, ss = 1, ii = 12, cmt = "cen"), seq(0, 40, by = 4))
+    .r <- rxSolve(.m, .e, returnType = "data.frame")$cen
+    .e2 <- et(et(amt = 100, rate = 100 / 12, ii = 12, addl = 40, cmt = "cen"), seq(0, 40, by = 4) + 40 * 12)
+    .r2 <- rxSolve(.m, .e2, returnType = "data.frame")
+    expect_equal(.r, .r2$cen[.r2$time >= 40 * 12], tolerance = 1e-4)
+  })
+
+  test_that("ss=1 modeled dur/rate == ii infusion with a modeled lag stops at the lagged end (issue #1592)", {
+    for (.lag in c(3, 8.1, 15)) {
+      for (.spec in c("dur(cen) <- 12", "rate(cen) <- 100/12")) {
+        .m <- rxode2(paste0("alag(cen) <- ", .lag, "\n", .spec, "\nd/dt(cen) <- -0.1*cen"))
+        .rate <- if (grepl("dur", .spec)) -2 else -1
+        .e <- et(et(amt = 100, rate = .rate, ss = 1, ii = 12, cmt = "cen"), seq(0, 40, by = 4))
+        .r <- rxSolve(.m, .e, returnType = "data.frame")$cen
+        .e2 <- et(et(amt = 100, rate = .rate, ii = 12, addl = 40, cmt = "cen"), seq(0, 40, by = 4) + 40 * 12)
+        .r2 <- rxSolve(.m, .e2, returnType = "data.frame")
+        expect_equal(.r, .r2$cen[.r2$time >= 40 * 12], tolerance = 1e-4)
+      }
+    }
+  })
+
+  test_that("ss=2 dur == ii infusion with a modeled lag and no prior regimen matches ss=1 (issue #1592)", {
+    expect_equal(.ssRun(100 / 12, ss = 2), .ssRun(100 / 12), tolerance = 1e-6)
   })
 
   test_that("ss=1 modeled-duration infusion with a modeled lag solves", {
@@ -52,8 +84,7 @@ rxTest({
       dur(cen) <- 5
       d / dt(cen) <- -0.1 * cen
     })
-    .e <- et(et(amt = 100, rate = -2, ss = 1, ii = 12, cmt = "cen"),
-             seq(0, 40, by = 4))
+    .e <- et(et(amt = 100, rate = -2, ss = 1, ii = 12, cmt = "cen"), seq(0, 40, by = 4))
     .r <- rxSolve(.m, .e, returnType = "data.frame")
     expect_true(all(is.finite(.r$cen)))
     # same shape as the fixed-duration equivalent
@@ -66,8 +97,7 @@ rxTest({
       rate(cen) <- 20
       d / dt(cen) <- -0.1 * cen
     })
-    .e <- et(et(amt = 100, rate = -1, ss = 1, ii = 12, cmt = "cen"),
-             seq(0, 40, by = 4))
+    .e <- et(et(amt = 100, rate = -1, ss = 1, ii = 12, cmt = "cen"), seq(0, 40, by = 4))
     .r <- rxSolve(.m, .e, returnType = "data.frame")
     expect_true(all(is.finite(.r$cen)))
     expect_equal(.r$cen, .ssRun(20), tolerance = 1e-4)
@@ -97,8 +127,7 @@ rxTest({
     # interval overlaps itself, which is what makes the on/off pairing in
     # handleTlastInlineDurExtra() non-trivial
     for (.rate in c(20, 5, 2.5)) {
-      .e <- et(et(amt = 100, rate = .rate, ss = 1, ii = 12, cmt = "cen"),
-               seq(0, 40, by = 4))
+      .e <- et(et(amt = 100, rate = .rate, ss = 1, ii = 12, cmt = "cen"), seq(0, 40, by = 4))
       .r <- rxSolve(.histModel, .e, returnType = "data.frame")
       # from the lagged infusion onward the reported dose is the amount, not the
       # rate and not 0
@@ -124,5 +153,4 @@ rxTest({
       expect_equal(.r$ta[.r$time > 27], .r$time[.r$time > 27] - 27)
     }
   })
-
 })

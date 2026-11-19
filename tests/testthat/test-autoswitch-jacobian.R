@@ -20,8 +20,7 @@ rxTest({
   .ev <- et(seq(0, 3, by = 0.5))
   .ref <- rxSolve(.stiff, .ev, method = "lsoda", atol = 1e-10, rtol = 1e-10)
 
-  .implicit <- c("ros4", "iem", "ros43", "ros6", "backwardEuler",
-                 "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43")
+  .implicit <- c("ros4", "iem", "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43")
 
   test_that("rxIsImplicit() flags exactly the Jacobian-needing methods", {
     expect_true(all(rxIsImplicit(.implicit)))
@@ -33,16 +32,13 @@ rxTest({
     for (.s in .implicit) {
       .m <- paste0("dop853+", .s)
       .x <- rxSolve(.stiff, .ev, method = .m, atol = 1e-8, rtol = 1e-8)
-      expect_false(any(is.na(.x$a)),
-                   info = paste(.m, "produced NA (Jacobian not hooked up?)"))
-      expect_true(max(abs(.x$a - .ref$a)) < 1e-5,
-                  info = paste(.m, "did not match the reference solution"))
+      expect_false(any(is.na(.x$a)), info = paste(.m, "produced NA (Jacobian not hooked up?)"))
+      expect_true(max(abs(.x$a - .ref$a)) < 1e-5, info = paste(.m, "did not match the reference solution"))
     }
   })
 
   test_that("the dense dop853+ros4 composite generates and uses the Jacobian", {
-    .x <- rxSolve(.stiff, .ev, method = "dop853+ros4", dense = TRUE,
-                  atol = 1e-8, rtol = 1e-8)
+    .x <- rxSolve(.stiff, .ev, method = "dop853+ros4", dense = TRUE, atol = 1e-8, rtol = 1e-8)
     expect_false(any(is.na(.x$a)))
     expect_true(max(abs(.x$a - .ref$a)) < 1e-5)
   })
@@ -63,8 +59,7 @@ rxTest({
       et(amt = 10, ii = 1, ss = 1, cmt = "a") |>
       et(seq(0, 1, by = 0.1))
     .refss <- rxSolve(.stiff, .ssEv, method = "lsoda", atol = 1e-10, rtol = 1e-10)
-    .xss <- rxSolve(.stiff, .ssEv, method = "dop853+ros4", dense = TRUE,
-                    atol = 1e-8, rtol = 1e-8)
+    .xss <- rxSolve(.stiff, .ssEv, method = "dop853+ros4", dense = TRUE, atol = 1e-8, rtol = 1e-8)
     expect_false(any(is.na(.xss$a)))
     ## not stale: the steady-state trajectory genuinely varies across the
     ## interval (the bug pinned every post-dose observation to one value).
@@ -103,20 +98,47 @@ rxTest({
     # step the wide augmented system.  This exercises the composite ACTUALLY
     # switching to the stiff secondary on a forward-sens model (not just the primal).
     .rob <- "d/dt(a) = -k1*a + k2*b*cc\nd/dt(b) = k1*a - k2*b*cc - k3*b*b\nd/dt(cc) = k3*b*b"
-    .cs <- c("k1", "k2", "k3"); .p <- c(k1 = 0.04, k2 = 1e4, k3 = 3e7); .ini <- c(a = 1, b = 0, cc = 0)
+    .cs <- c("k1", "k2", "k3")
+    .p <- c(k1 = 0.04, k2 = 1e4, k3 = 3e7)
+    .ini <- c(a = 1, b = 0, cc = 0)
     .ev <- et(c(0.1, 1, 10, 100))
     .scol <- as.vector(outer(c("a", "b", "cc"), .cs, function(s, pn) sprintf("rx__sens_%s_BY_%s__", s, pn)))
-    .ref <- as.data.frame(suppressWarnings(rxSolve(rxode2(.rob, calcSens = .cs), .ev,
-                                                   params = .p, inits = .ini, method = "lsoda", atol = 1e-10, rtol = 1e-10)))
+    .ref <- as.data.frame(suppressWarnings(rxSolve(
+      rxode2(.rob, calcSens = .cs),
+      .ev,
+      params = .p,
+      inits = .ini,
+      method = "lsoda",
+      atol = 1e-10,
+      rtol = 1e-10
+    )))
     .mj <- rxode2(.rob, calcSens = .cs, calcJac = TRUE)
     ## pure dop853 fails on the stiff augmented system ...
-    expect_error(suppressWarnings(rxSolve(.mj, .ev, params = .p, inits = .ini, method = "dop853", atol = 1e-8, rtol = 1e-8)))
+    expect_error(suppressWarnings(rxSolve(
+      .mj,
+      .ev,
+      params = .p,
+      inits = .ini,
+      method = "dop853",
+      atol = 1e-8,
+      rtol = 1e-8
+    )))
     ## ... but the composite switches to ros4 (analytic Jacobian) and matches lsoda.
-    .x <- as.data.frame(suppressWarnings(rxSolve(.mj, .ev, params = .p, inits = .ini,
-                                                 method = "dop853+ros4", atol = 1e-8, rtol = 1e-8)))
+    .x <- as.data.frame(suppressWarnings(rxSolve(
+      .mj,
+      .ev,
+      params = .p,
+      inits = .ini,
+      method = "dop853+ros4",
+      atol = 1e-8,
+      rtol = 1e-8
+    )))
     expect_false(any(is.na(.x$a)))
-    .sref <- max(1, max(abs(unlist(.ref[.scol])), na.rm = TRUE)); .mx <- 0
-    for (cn in .scol) .mx <- max(.mx, max(abs(.x[[cn]] - .ref[[cn]]), na.rm = TRUE))
+    .sref <- max(1, max(abs(unlist(.ref[.scol])), na.rm = TRUE))
+    .mx <- 0
+    for (cn in .scol) {
+      .mx <- max(.mx, max(abs(.x[[cn]] - .ref[[cn]]), na.rm = TRUE))
+    }
     expect_lt(.mx / .sref, 1e-3)
   })
 })

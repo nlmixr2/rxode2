@@ -79,7 +79,7 @@ rxSolve(
   sigmaUpper = Inf,
   nCoresRV = 1L,
   sigmaIsChol = FALSE,
-  sigmaSeparation = c("auto", "lkj", "separation", "tnpri"),
+  sigmaSeparation = c("auto", "lkj", "separation", "tnpri", "invchol"),
   sigmaXform = c("identity", "variance", "log", "nlmixrSqrt", "nlmixrLog",
     "nlmixrIdentity"),
   nDisplayProgress = 10000L,
@@ -95,7 +95,7 @@ rxSolve(
   omega = NULL,
   omegaDf = NULL,
   omegaIsChol = FALSE,
-  omegaSeparation = c("auto", "lkj", "separation", "tnpri"),
+  omegaSeparation = c("auto", "lkj", "separation", "tnpri", "invchol"),
   omegaXform = c("variance", "identity", "log", "nlmixrSqrt", "nlmixrLog",
     "nlmixrIdentity"),
   omegaLower = -Inf,
@@ -162,6 +162,8 @@ rxSolve(
     "endpointH5", "forwardG"),
   linCmtSensH = 1e-04,
   linCmtSensPhi = TRUE,
+  nonmem = FALSE,
+  tieOrder = NULL,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -224,7 +226,7 @@ rxSolve(
   events = NULL,
   inits = NULL,
   ...,
-  useLinCmt = TRUE,
+  useLinCmt = getOption("rxode2.useLinCmt", FALSE),
   theta = NULL,
   eta = NULL,
   envir = parent.frame()
@@ -236,7 +238,7 @@ rxSolve(
   events = NULL,
   inits = NULL,
   ...,
-  useLinCmt = TRUE,
+  useLinCmt = getOption("rxode2.useLinCmt", FALSE),
   theta = NULL,
   eta = NULL,
   envir = parent.frame()
@@ -334,7 +336,13 @@ model specification.}
 
 \item{params}{a numeric named vector with values for every
 parameter in the ODE system; the names must correspond to the
-parameter identifiers used in the ODE specification;}
+parameter identifiers used in the ODE specification.  A data
+frame or matrix gives one row per subject (or per subject and
+simulation), matched to the subjects by position in data order;
+an \code{id} column is not used to match them.  A one-row data frame
+or matrix is used for every subject, unless it has an \code{id}
+column and the data has more than one subject, which is an
+error;}
 
 \item{events}{an \code{eventTable} object describing the input
 (e.g., doses) to the dynamic system and observation sampling
@@ -413,9 +421,12 @@ state into coordinate-momentum pairs (and automatically pads
 odd-dimensional systems).  Is a fixed-step method (step size
 controlled by \code{hmin}).
 \item \code{"vv"} -- Velocity Verlet stepper using Boost's odeint library.
-Requires splitting the state into coordinate-momentum pairs (and
-automatically pads odd-dimensional systems).  Is a fixed-step
-method (step size controlled by \code{hmin}).
+Requires the ODE states to be coordinate-momentum pairs: with
+\code{N = ceiling(nstates/2)}, \verb{d/dt(state i)} must equal \verb{state N+i}
+(an odd last coordinate must have a zero derivative).  Other models,
+or an infusion or turning off of a coordinate that breaks this, are
+refused with an error.  Is a fixed-step method (step size controlled
+by \code{hmin}).
 \item \code{"mm"} -- Modified Midpoint stepper using Boost's odeint library.
 Is a fixed-step method (step size controlled by \code{hmin}) and uses
 the \code{order} parameter to configure the number of intermediate
@@ -742,7 +753,8 @@ against a default \code{rtol = 1e-6}.  Raise \code{sigdig}, or set
 \item{atol}{a numeric absolute tolerance (1e-8 by default) used
 by the ODE solver to determine if a good solution has been
 achieved;  This is also used in the solved linear model to check
-if prior doses do not add anything to the solution.}
+if prior doses do not add anything to the solution.  Must be
+\verb{> 0}.}
 
 \item{rtol}{a numeric relative tolerance (\code{1e-6} by default) used
 by the ODE solver to determine if a good solution has been
@@ -800,7 +812,7 @@ your sampling and events.  The value 0 is equivalent to infinite
 maximum absolute step size.
 
 Note that for dense output methods (\code{"dop853"}, \code{"dop5"}, \code{"bs"},
-\code{"ros4"}), \code{hmax} defaults to \code{NULL} to allow the solvers to
+\code{"ros4"}, \code{"cvode"}, \code{"liblsoda"}), \code{hmax} defaults to \code{NULL} to allow the solvers to
 determine the step size when \code{dense=TRUE}
 
 For \code{method="indLin"}, \code{hmax} caps how long an interval is treated
@@ -847,12 +859,16 @@ interpolated.  Currently this can be:
 \itemize{
 \item \code{"linear"} interpolation, which interpolates the covariate
 by solving the line between the observed covariates and extrapolating the new
-covariate value.
+covariate value.  A \code{linCmt()} model refuses it for a covariate
+that varies within a subject and feeds the \code{linCmt()} parameters,
+since its closed form cannot follow the ramp; use another method or
+write the model as ODEs.
 \item \code{"locf"} -- Last observation carried forward (the default).
 \item \code{"nocb"} -- Next Observation Carried Backward.  This is the same method
 that NONMEM uses.
-\item \code{"midpoint"} Last observation carried forward to midpoint; Next observation
-carried backward to midpoint.
+\item \code{"midpoint"} -- the mean of the two neighboring records over the whole
+interval between them, as \code{stats::approxfun(method = "constant", f = 0.5)}
+gives.
 
 For time-varying covariates where a missing value is present, the
 interpolation method will use either "locf" or "nocb" throughout
@@ -936,7 +952,10 @@ size is greater or equal to 10
 matrix is less than 10 and \code{"separation"} when greater
 than equal to 10.
 \item \code{"tnpri"} draws the sigma entries jointly from the \code{thetaMat}, the
-same way \code{omegaSeparation="tnpri"} does for the omega.
+same way \code{omegaSeparation="tnpri"} does for the omega; \code{dfObs} is
+not used.
+\item \code{"invchol"} draws them on the inverse Cholesky scale, the same way
+\code{omegaSeparation="invchol"} does for the omega.
 }}
 
 \item{sigmaXform}{When taking \code{sigma} values from the \code{thetaMat}
@@ -1069,7 +1088,16 @@ the omega entries, which the strategies above redraw or discard.
 \code{thetaMat} columns are matched to entries by name -- \code{om.eta.cl} or
 \code{eta.cl} for a diagonal, and \code{cov.eta.cl.eta.v} or \code{omega2.1} for an
 off diagonal.  A drawn matrix that is not positive definite is
-redrawn, see \code{priorPdRetry}.
+redrawn, see \code{priorPdRetry}.  \code{dfSub} is not used: an entry the
+\code{thetaMat} gives no variance stays at its estimate.
+\item \code{"invchol"} draws the same entries jointly with the thetas, but on the
+scale of the inverse Cholesky decomposition of the omega (with a log
+diagonal), so every drawn omega is positive definite and none is
+redrawn.  The \code{thetaMat} covariance of the entries is moved to that
+scale by the delta method at the \code{omega} estimate, which has to be
+positive definite.  Only the blocks of \code{omega} holding a drawn entry
+change, and an entry of such a block that the \code{thetaMat} gives no
+variance can move with the others.
 }}
 
 \item{omegaXform}{When taking \code{omega} values from the \code{thetaMat}
@@ -1141,15 +1169,30 @@ created by reference (ie \code{setDt()}), which should be fast.
 }}
 
 \item{seed}{an object specifying if and how the random number
-generator should be initialized}
+generator should be initialized; when given, it takes precedence
+over an active \code{\link[=rxSetSeed]{rxSetSeed()}} stream for this solve, and the
+caller's \code{.Random.seed} is restored afterwards.  \code{\link[=rxControl]{rxControl()}} only
+stores it; the seed is applied when the control is used by a solve.
+Re-solving a result by assignment (eg \code{s$params <- p}) reapplies its
+seed, while \code{update()} uses only a \code{seed} it is given}
 
 \item{nsim}{represents the number of simulations.  For rxode2, if
 you supply single subject event tables (created with
 \verb{[eventTable()]})}
 
-\item{minSS}{Minimum number of iterations for a steady-state dose}
+\item{minSS}{Minimum number of doses given before a steady-state dose,
+counting the extra dose a lag time adds; the steady state stops once
+this many doses are given and \code{ssAtol}/\code{ssRtol} are met.  It is raised
+to the fewest doses the regimen needs (2 with a lag time, more with
+overlapping infusions or a lag longer than \code{ii}).  \code{minSS = maxSS = n}
+gives exactly the state after \code{n} prior doses (Monolix
+\code{nbdoses = n}).  \code{linCmt()} models follow both, stopping at \code{minSS}
+doses when converged there and otherwise using their exact steady
+state.  A constant infusion (\code{ii = 0}), which has no doses, takes at
+least 5 and up to \code{max(maxSS, 10000)} convergence steps.}
 
-\item{maxSS}{Maximum number of iterations for a steady-state dose}
+\item{maxSS}{Maximum number of doses given before a steady-state dose (at
+least \code{minSS})}
 
 \item{infSSstep}{Step size for determining if a constant infusion
 has reached steady state.  By default this is large value,
@@ -1170,8 +1213,11 @@ either \code{atol}, \code{rtol} or \code{maxSS} have not
 been achieved.}
 
 \item{istateReset}{When \code{TRUE}, reset the \code{ISTATE} variable to 1 for
-lsoda and liblsoda with doses, like \code{deSolve}; When \code{FALSE}, do
-not reset the \code{ISTATE} variable with doses.}
+lsoda and liblsoda with doses, like \code{deSolve}, and restart the lsoda
+family (\code{liblsoda}, \code{lsoda}, \code{lsode}, \code{bdf}) at an \code{mtime()} record;
+When \code{FALSE}, do not reset the \code{ISTATE} variable with doses or at
+\code{mtime()} records, so a time window that starts at an \code{mtime()}
+record can be stepped over.}
 
 \item{subsetNonmem}{subset to NONMEM compatible EVIDs only.  By
 default \code{TRUE}.}
@@ -1252,7 +1298,7 @@ the parameters in the input dataset.}
 were not present.}
 
 \item{ssAtol}{Steady state atol convergence factor.  Can be
-a vector based on each state.}
+a vector based on each state.  Must be \verb{> 0}.}
 
 \item{ssRtol}{Steady state rtol convergence factor.  Can be a
 vector based on each state.}
@@ -1260,7 +1306,11 @@ vector based on each state.}
 \item{safeZero}{Use safe zero divide. By default
 this is turned on but you may turn it off if you wish.}
 
-\item{safeLog}{Use safe log.  When enabled (\code{TRUE}, the default) if your value that you are taking log() of is negative or zero, this will return \verb{log(machine epsilon)}.  With \code{FALSE} both return the usual \code{NaN}/\code{-Inf}.  With \code{2} only zero is floored to \verb{log(machine epsilon)}; a \emph{negative} argument is treated as a domain error and returns \code{NaN}.  Use \code{2} when a hand-written likelihood takes \code{log()} of a parameter that must stay positive, so an invalid value propagates as \code{NaN} instead of a large finite number the optimizer could mistake for a good fit.}
+\item{safeLog}{Use safe log.  When enabled (\code{TRUE}, the default) if your value that you are taking log() of is
+negative or zero, this will return \verb{log(machine epsilon)}.  With \code{FALSE} both return the usual \code{NaN}/\code{-Inf}.  With
+\code{2} only zero is floored to \verb{log(machine epsilon)}; a \emph{negative} argument is treated as a domain error and returns
+\code{NaN}.  Use \code{2} when a hand-written likelihood takes \code{log()} of a parameter that must stay positive, so an invalid
+value propagates as \code{NaN} instead of a large finite number the optimizer could mistake for a good fit.}
 
 \item{safePow}{Use safe powers.  When enabled if your power is
 negative and your base is zero, this will return the \verb{machine epsilon^(negative power)}.  By default this is turned on.}
@@ -1303,13 +1353,15 @@ Hence the default is \code{resampleID=TRUE}.}
 evaluated before exiting.  By default this is 100000}
 
 \item{atolSens}{Sensitivity atol, can be different than atol with
-liblsoda.  This allows a less accurate solve for gradients (if desired)}
+liblsoda.  This allows a less accurate solve for gradients (if
+desired).  Must be \verb{> 0}.}
 
 \item{rtolSens}{Sensitivity rtol, can be different than rtol with
 liblsoda.  This allows a less accurate solve for gradients (if desired)}
 
 \item{ssAtolSens}{Sensitivity absolute tolerance (atol) for
-calculating if steady state has been achieved for sensitivity compartments.}
+calculating if steady state has been achieved for sensitivity
+compartments.  Must be \verb{> 0}.}
 
 \item{ssRtolSens}{Sensitivity relative tolerance (rtol) for
 calculating if steady state has been achieved for sensitivity compartments.}
@@ -1336,9 +1388,12 @@ solve, but continues solving passing through the \code{NA} time
 solved ODE (otherwise stopping can crash R)
 }}
 
-\item{addlKeepsCov}{This determines if the additional dosing items
-repeats the dose only (\code{FALSE}) or keeps the covariates at the
-record of the dose (\code{TRUE})}
+\item{addlKeepsCov}{This determines if a dose given at a time other
+than its record's (an additional dosing item or a dose moved by
+\code{alag()}) takes the time-varying covariates imputed at its actual
+dosing time (\code{FALSE}) or keeps the covariates at the record of the
+dose (\code{TRUE}, as NONMEM does).  By default \code{FALSE}, or \code{TRUE} with
+\code{nonmem = TRUE}.}
 
 \item{addlDropSs}{When there are steady state doses with an \code{addl}
 specification the steady state flag is dropped with repeated
@@ -1420,6 +1475,26 @@ form row by row in the order earlier versions used.  All three are the
 same exact closed-form solution evaluated in a different order, so they
 can differ in the last few digits; use \code{FALSE} to reproduce earlier
 results digit for digit.}
+
+\item{nonmem}{Boolean that when \code{TRUE} evaluates statements that do not
+depend on a state (like NONMEM's \verb{$PK}) with \code{time} set to the time of
+the data record that ends the interval being integrated, the way NONMEM
+calls \verb{$PK} at its records.  \code{d/dt()} and state-dependent statements keep
+the continuous time (like \verb{$DES}).  \code{addl} repeats, infusion ends,
+lagged doses and doses added while solving do not end an interval;
+\code{mtime()} times do.  Covariate interpolation is still set by
+\code{covsInterpolation}.  It also sets the default \code{tieOrder} to \code{"data"}
+and turns on \code{addlKeepsCov} unless it is given.  By default \code{FALSE}.}
+
+\item{tieOrder}{How records of a subject that share a time are processed:
+\code{"evid"} processes resets first, then doses, then observations, so the
+result does not depend on the row order of the data; \code{"data"} processes
+them in the order of the rows in the data, the way NONMEM does (records
+a row expands to, like the reset of an \code{evid=4} dose or \code{addl} repeats,
+follow that row).  Doses added while solving follow the records at the
+same time.  An event table already translated by \code{\link[=etTrans]{etTrans()}} keeps the
+order it was translated with.  By default (\code{NULL}) this is \code{"data"} when
+\code{nonmem = TRUE} and \code{"evid"} otherwise.}
 
 \item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that
 is acceptable before issuing a warning/error about the gradient estimates.}
@@ -1548,8 +1623,9 @@ controls.}
 \item{dense}{Logical; when \code{TRUE} and the method supports dense output,
 enables continuous interpolation so the solver can take large internal
 steps and reconstruct the solution cheaply at each observation time.
-Dense-capable single methods are \code{"dop853"}, \code{"dop5"}, \code{"bs"}, and
-\code{"ros4"}.  \code{"dop853+ros4"} is the only dense AutoSwitch composite: the
+Dense-capable single methods are \code{"dop853"}, \code{"dop5"}, \code{"bs"}, \code{"ros4"},
+\code{"cvode"} and \code{"liblsoda"} (which interpolates between its own steps
+either way; \code{dense = TRUE} lifts the \code{hmax} default).  \code{"dop853+ros4"} is the only dense AutoSwitch composite: the
 secondary must be dense too (\code{"ros4"} is the only stiff method that is),
 and handing a dense segment from the primary to the secondary mid-segment
 is implemented for a \code{"dop853"} primary.  Other composites solve densely
@@ -1636,8 +1712,8 @@ causes the solver to run as a plain non-composite method.  Dense output
 that does not support dense output; \code{"ros4"} (code \code{13L}) is the only
 stiff secondary that does support it.}
 
-\item{useLinCmt}{Logical; when \code{TRUE} and the model contains
-linear-compartment ODEs that can be solved analytically,
+\item{useLinCmt}{Logical; when \code{TRUE} and a function-style
+(\code{ini()}/\code{model()}) model contains linear-compartment ODEs that can be solved analytically,
 automatically convert them to a \code{linCmt()} call before solving.
 The detection and conversion use \code{\link[=odeToLin]{odeToLin()}}; the converted
 model is cached so the compilation cost is paid only once.  A
@@ -1649,9 +1725,9 @@ the parameter names, or whose compartments it would renumber
 under event data addressing them by index, is solved with its
 original ODEs.  Set to \code{FALSE} to keep the original ODE solver.  This flag is also
 stored in the returned \code{\link[=rxControl]{rxControl()}} object so that downstream
-hooks (e.g. in nlmixr2) can read and apply it.  The default is to
-use the value of \code{rxode2.useLinCmt} option (which when specified
-is \code{TRUE} by default).}
+hooks (e.g. in nlmixr2) can read and apply it.  The default is a
+\code{useLinCmt} set in the model's meta block, else the
+\code{rxode2.useLinCmt} option, or \code{FALSE} when it is unset.}
 
 \item{file}{Character string giving a file path prefix for out-of-memory
 chunk solving. When set, \code{rxSolve()} splits subjects into chunks, writes
@@ -1764,9 +1840,14 @@ the default) uses them whenever the model has them and variability is
 being simulated (\code{nStud > 1}, or whatever \code{simVariability} forces);
 \code{TRUE} requires them, and is an error when the model has none or when
 no variability would be simulated; \code{FALSE} ignores them and falls back
-to a supplied \code{thetaMat}/\code{dfSub}.  The priors take precedence over a
-\code{thetaMat}/\code{dfSub} carried in the model's \code{meta} block, with a warning;
-one given at the call site wins over the priors instead.}
+to a supplied \code{thetaMat}/\code{dfSub}.  In auto mode a \code{thetaMat} given at
+the call site, carried in the model's \code{meta} block, or from an nlmixr2
+fit's covariance takes precedence over the priors on the population
+parameters, which are then not read, so an estimate that is not its
+prior mean (a MAP estimate) still simulates; a prior entry it does not
+draw is named in a warning.  \code{TRUE} makes the priors replace it.  The prior degrees of
+freedom take precedence over a \code{dfSub} carried in \code{meta}, with a
+warning; one given at the call site wins over them instead.}
 
 \item{priorPdRetry}{How many times a prior draw of a covariance matrix is
 retried when it is not positive definite.  After that many tries the
@@ -1826,6 +1907,31 @@ handling options, rxode2's numerical stability options, rxode2's
 output options, and finally internal rxode2 options or compatibility
 options.
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    tka <- log(1); tcl <- log(0.1); tv <- log(10)
+    eta.cl ~ 0.1
+  })
+  model({
+    ka <- exp(tka); cl <- exp(tcl + eta.cl); v <- exp(tv)
+    d/dt(depot) <- -ka * depot
+    d/dt(center) <- ka * depot - cl / v * center
+    cp <- center / v
+  })
+}
+ev <- et(amt = 100, ii = 24, addl = 2) |> et(0:72)
+# typical subject (between-subject variability removed)
+s <- rxSolve(mod, ev, omega = NA)
+head(s)
+# change a parameter on the solved object; it re-solves
+s$tka <- log(2)
+head(s)
+# 10 subjects with between-subject variability
+s2 <- rxSolve(mod, ev, nSub = 10, seed = 42)
+}
+}
 \references{
 "New Scaling and Squaring Algorithm for the Matrix Exponential", by
 Awad H. Al-Mohy and Nicholas J. Higham, August 2009
@@ -1851,7 +1957,20 @@ Springer-Verlag (1993).
 }
 \seealso{
 \code{\link[=rxode2]{rxode2()}}
+
+Other Solving:
+\code{\link[=as.arrow]{as.arrow()}},
+\code{\link[=rxCbindStudyIndividual]{rxCbindStudyIndividual()}},
+\code{\link[=rxForcedPars]{rxForcedPars()}},
+\code{\link[=rxInjectedPars]{rxInjectedPars()}},
+\code{\link[=rxParLoader]{rxParLoader()}},
+\code{\link[=rxRegisterUiAssembled]{rxRegisterUiAssembled()}},
+\code{\link[=rxRegisterUiPrep]{rxRegisterUiPrep()}},
+\code{\link[=rxSetActiveParLoader]{rxSetActiveParLoader()}},
+\code{\link[=rxSetIni0]{rxSetIni0()}},
+\code{\link[=rxSolveChunked]{rxSolveChunked()}}
 }
 \author{
 Matthew Fidler, Melissa Hallow and  Wenping Wang
 }
+\concept{Solving}

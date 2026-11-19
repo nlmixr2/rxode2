@@ -20,19 +20,24 @@
 
 suppressMessages(devtools::load_all(.benchRoot, quiet = TRUE))
 
-.reps  <- if (.quick) 3L else 10L
-.npop  <- if (.quick) 500L else 2000L
+.reps <- if (.quick) 3L else 10L
+.npop <- if (.quick) 500L else 2000L
 
 cat(sprintf("rxode2 version: %s\n", as.character(packageVersion("rxode2"))))
 cat(sprintf("reps=%d  npop=%d\n\n", .reps, .npop))
 
 ## Median wall-clock time (seconds) of expr over .reps reps after one warmup.
 .timeIt <- function(expr, reps = .reps) {
-  eval(expr, envir = parent.frame())  # warmup
-  ts <- vapply(seq_len(reps), function(i) {
-    t0 <- Sys.time(); eval(expr, envir = parent.frame())
-    as.numeric(Sys.time() - t0, units = "secs")
-  }, numeric(1))
+  eval(expr, envir = parent.frame()) # warmup
+  ts <- vapply(
+    seq_len(reps),
+    function(i) {
+      t0 <- Sys.time()
+      eval(expr, envir = parent.frame())
+      as.numeric(Sys.time() - t0, units = "secs")
+    },
+    numeric(1)
+  )
   median(ts)
 }
 
@@ -120,7 +125,7 @@ cat(sprintf("reps=%d  npop=%d\n\n", .reps, .npop))
 cat("Compiling models ...\n")
 m1ode <- suppressMessages(rxode2(.def1cmt))
 m1lin <- suppressMessages(rxode2(.def1cmtLin))
-m1ctl <- suppressMessages(odeToLin(m1ode))    # pre-converted, compiled once
+m1ctl <- suppressMessages(odeToLin(m1ode)) # pre-converted, compiled once
 
 m2ode <- suppressMessages(rxode2(.def2cmt))
 m2lin <- suppressMessages(rxode2(.def2cmtLin))
@@ -135,27 +140,32 @@ ev <- et(amt = 300, ii = 12, addl = 13) |> et(seq(0, 168, by = 0.5))
 ## Verify correctness (odeToLin matches linCmt)
 .chk <- function(label, r1, r2) {
   d <- max(abs(r1$cp - r2$cp), na.rm = TRUE)
-  cat(sprintf("  %-40s max|diff| = %.2e  [%s]\n", label, d,
-              if (d < 1e-6) "PASS" else "FAIL"))
+  cat(sprintf("  %-40s max|diff| = %.2e  [%s]\n", label, d, if (d < 1e-6) "PASS" else "FAIL"))
 }
 cat("\nCorrectness (ODE tight-tol vs odeToLin, same seed):\n")
-.chk("1cmt odeToLin vs ODE (tight)",
-     suppressMessages(rxSolve(m1ode, ev, nSub = 10, seed = 42, atol = 1e-12, rtol = 1e-10)),
-     suppressMessages(rxSolve(m1ctl, ev, nSub = 10, seed = 42)))
-.chk("2cmt odeToLin vs ODE (tight)",
-     suppressMessages(rxSolve(m2ode, ev, nSub = 10, seed = 42, atol = 1e-12, rtol = 1e-10)),
-     suppressMessages(rxSolve(m2ctl, ev, nSub = 10, seed = 42)))
-.chk("3cmt odeToLin vs ODE (tight)",
-     suppressMessages(rxSolve(m3ode, ev, nSub = 10, seed = 42, atol = 1e-12, rtol = 1e-10)),
-     suppressMessages(rxSolve(m3ctl, ev, nSub = 10, seed = 42)))
+.chk(
+  "1cmt odeToLin vs ODE (tight)",
+  suppressMessages(rxSolve(m1ode, ev, nSub = 10, seed = 42, atol = 1e-12, rtol = 1e-10)),
+  suppressMessages(rxSolve(m1ctl, ev, nSub = 10, seed = 42))
+)
+.chk(
+  "2cmt odeToLin vs ODE (tight)",
+  suppressMessages(rxSolve(m2ode, ev, nSub = 10, seed = 42, atol = 1e-12, rtol = 1e-10)),
+  suppressMessages(rxSolve(m2ctl, ev, nSub = 10, seed = 42))
+)
+.chk(
+  "3cmt odeToLin vs ODE (tight)",
+  suppressMessages(rxSolve(m3ode, ev, nSub = 10, seed = 42, atol = 1e-12, rtol = 1e-10)),
+  suppressMessages(rxSolve(m3ctl, ev, nSub = 10, seed = 42))
+)
 
 ## -------------------------------------------------------------------------
 ## Timing
 ## -------------------------------------------------------------------------
 
 .header <- function(s) cat(sprintf("\n=== %s ===\n", s))
-.row    <- function(label, t_ms) cat(sprintf("  %-28s %7.2f ms\n", label, t_ms))
-.ratio  <- function(t_num, t_den) sprintf("%.2fx", t_den / t_num)
+.row <- function(label, t_ms) cat(sprintf("  %-28s %7.2f ms\n", label, t_ms))
+.ratio <- function(t_num, t_den) sprintf("%.2fx", t_den / t_num)
 
 .time_ms <- function(expr) .timeIt(expr) * 1000
 
@@ -164,76 +174,94 @@ t1s_ode <- .time_ms(quote(suppressMessages(rxSolve(m1ode, ev))))
 t1s_lin <- .time_ms(quote(suppressMessages(rxSolve(m1lin, ev))))
 t1s_ctl <- .time_ms(quote(suppressMessages(rxSolve(m1ctl, ev))))
 t1s_use <- .time_ms(quote(suppressMessages(rxSolve(m1ode, ev, useLinCmt = TRUE))))
-.row("1cmt ODE",                 t1s_ode)
-.row("1cmt linCmt (native)",     t1s_lin)
+.row("1cmt ODE", t1s_ode)
+.row("1cmt linCmt (native)", t1s_lin)
 .row("1cmt odeToLin (compiled)", t1s_ctl)
-.row("1cmt useLinCmt=TRUE",      t1s_use)
-cat(sprintf("  speedup odeToLin vs ODE: %s   useLinCmt vs ODE: %s\n",
-            .ratio(t1s_ctl, t1s_ode), .ratio(t1s_use, t1s_ode)))
+.row("1cmt useLinCmt=TRUE", t1s_use)
+cat(sprintf(
+  "  speedup odeToLin vs ODE: %s   useLinCmt vs ODE: %s\n",
+  .ratio(t1s_ctl, t1s_ode),
+  .ratio(t1s_use, t1s_ode)
+))
 
 t2s_ode <- .time_ms(quote(suppressMessages(rxSolve(m2ode, ev))))
 t2s_lin <- .time_ms(quote(suppressMessages(rxSolve(m2lin, ev))))
 t2s_ctl <- .time_ms(quote(suppressMessages(rxSolve(m2ctl, ev))))
 t2s_use <- .time_ms(quote(suppressMessages(rxSolve(m2ode, ev, useLinCmt = TRUE))))
-.row("2cmt ODE",                 t2s_ode)
-.row("2cmt linCmt (native)",     t2s_lin)
+.row("2cmt ODE", t2s_ode)
+.row("2cmt linCmt (native)", t2s_lin)
 .row("2cmt odeToLin (compiled)", t2s_ctl)
-.row("2cmt useLinCmt=TRUE",      t2s_use)
-cat(sprintf("  speedup odeToLin vs ODE: %s   useLinCmt vs ODE: %s\n",
-            .ratio(t2s_ctl, t2s_ode), .ratio(t2s_use, t2s_ode)))
+.row("2cmt useLinCmt=TRUE", t2s_use)
+cat(sprintf(
+  "  speedup odeToLin vs ODE: %s   useLinCmt vs ODE: %s\n",
+  .ratio(t2s_ctl, t2s_ode),
+  .ratio(t2s_use, t2s_ode)
+))
 
 t3s_ode <- .time_ms(quote(suppressMessages(rxSolve(m3ode, ev))))
 t3s_lin <- .time_ms(quote(suppressMessages(rxSolve(m3lin, ev))))
 t3s_ctl <- .time_ms(quote(suppressMessages(rxSolve(m3ctl, ev))))
 t3s_use <- .time_ms(quote(suppressMessages(rxSolve(m3ode, ev, useLinCmt = TRUE))))
-.row("3cmt ODE",                 t3s_ode)
-.row("3cmt linCmt (native)",     t3s_lin)
+.row("3cmt ODE", t3s_ode)
+.row("3cmt linCmt (native)", t3s_lin)
 .row("3cmt odeToLin (compiled)", t3s_ctl)
-.row("3cmt useLinCmt=TRUE",      t3s_use)
-cat(sprintf("  speedup odeToLin vs ODE: %s   useLinCmt vs ODE: %s\n",
-            .ratio(t3s_ctl, t3s_ode), .ratio(t3s_use, t3s_ode)))
+.row("3cmt useLinCmt=TRUE", t3s_use)
+cat(sprintf(
+  "  speedup odeToLin vs ODE: %s   useLinCmt vs ODE: %s\n",
+  .ratio(t3s_ctl, t3s_ode),
+  .ratio(t3s_use, t3s_ode)
+))
 
 .header(sprintf("population solve (%d subjects)", .npop))
 t1p_ode <- .time_ms(quote(suppressMessages(rxSolve(m1ode, ev, nSub = .npop))))
 t1p_lin <- .time_ms(quote(suppressMessages(rxSolve(m1lin, ev, nSub = .npop))))
 t1p_ctl <- .time_ms(quote(suppressMessages(rxSolve(m1ctl, ev, nSub = .npop))))
 t1p_use <- .time_ms(quote(suppressMessages(rxSolve(m1ode, ev, nSub = .npop, useLinCmt = TRUE))))
-.row("1cmt ODE",                 t1p_ode)
-.row("1cmt linCmt (native)",     t1p_lin)
+.row("1cmt ODE", t1p_ode)
+.row("1cmt linCmt (native)", t1p_lin)
 .row("1cmt odeToLin (compiled)", t1p_ctl)
-.row("1cmt useLinCmt=TRUE",      t1p_use)
-cat(sprintf("  speedup odeToLin vs ODE: %s   useLinCmt vs ODE: %s\n",
-            .ratio(t1p_ctl, t1p_ode), .ratio(t1p_use, t1p_ode)))
+.row("1cmt useLinCmt=TRUE", t1p_use)
+cat(sprintf(
+  "  speedup odeToLin vs ODE: %s   useLinCmt vs ODE: %s\n",
+  .ratio(t1p_ctl, t1p_ode),
+  .ratio(t1p_use, t1p_ode)
+))
 
 t2p_ode <- .time_ms(quote(suppressMessages(rxSolve(m2ode, ev, nSub = .npop))))
 t2p_lin <- .time_ms(quote(suppressMessages(rxSolve(m2lin, ev, nSub = .npop))))
 t2p_ctl <- .time_ms(quote(suppressMessages(rxSolve(m2ctl, ev, nSub = .npop))))
 t2p_use <- .time_ms(quote(suppressMessages(rxSolve(m2ode, ev, nSub = .npop, useLinCmt = TRUE))))
-.row("2cmt ODE",                 t2p_ode)
-.row("2cmt linCmt (native)",     t2p_lin)
+.row("2cmt ODE", t2p_ode)
+.row("2cmt linCmt (native)", t2p_lin)
 .row("2cmt odeToLin (compiled)", t2p_ctl)
-.row("2cmt useLinCmt=TRUE",      t2p_use)
-cat(sprintf("  speedup odeToLin vs ODE: %s   useLinCmt vs ODE: %s\n",
-            .ratio(t2p_ctl, t2p_ode), .ratio(t2p_use, t2p_ode)))
+.row("2cmt useLinCmt=TRUE", t2p_use)
+cat(sprintf(
+  "  speedup odeToLin vs ODE: %s   useLinCmt vs ODE: %s\n",
+  .ratio(t2p_ctl, t2p_ode),
+  .ratio(t2p_use, t2p_ode)
+))
 
 t3p_ode <- .time_ms(quote(suppressMessages(rxSolve(m3ode, ev, nSub = .npop))))
 t3p_lin <- .time_ms(quote(suppressMessages(rxSolve(m3lin, ev, nSub = .npop))))
 t3p_ctl <- .time_ms(quote(suppressMessages(rxSolve(m3ctl, ev, nSub = .npop))))
 t3p_use <- .time_ms(quote(suppressMessages(rxSolve(m3ode, ev, nSub = .npop, useLinCmt = TRUE))))
-.row("3cmt ODE",                 t3p_ode)
-.row("3cmt linCmt (native)",     t3p_lin)
+.row("3cmt ODE", t3p_ode)
+.row("3cmt linCmt (native)", t3p_lin)
 .row("3cmt odeToLin (compiled)", t3p_ctl)
-.row("3cmt useLinCmt=TRUE",      t3p_use)
-cat(sprintf("  speedup odeToLin vs ODE: %s   useLinCmt vs ODE: %s\n",
-            .ratio(t3p_ctl, t3p_ode), .ratio(t3p_use, t3p_ode)))
+.row("3cmt useLinCmt=TRUE", t3p_use)
+cat(sprintf(
+  "  speedup odeToLin vs ODE: %s   useLinCmt vs ODE: %s\n",
+  .ratio(t3p_ctl, t3p_ode),
+  .ratio(t3p_use, t3p_ode)
+))
 
 .header("odeToLin conversion overhead (one-time cost)")
 t_conv1 <- .time_ms(quote(suppressMessages(odeToLin(m1ode))))
 t_conv2 <- .time_ms(quote(suppressMessages(odeToLin(m2ode))))
 t_conv3 <- .time_ms(quote(suppressMessages(odeToLin(m3ode))))
-.row("odeToLin(1cmt ODE)",  t_conv1)
-.row("odeToLin(2cmt ODE)",  t_conv2)
-.row("odeToLin(3cmt ODE)",  t_conv3)
+.row("odeToLin(1cmt ODE)", t_conv1)
+.row("odeToLin(2cmt ODE)", t_conv2)
+.row("odeToLin(3cmt ODE)", t_conv3)
 cat(sprintf("  (incl. model compilation; amortized over all subsequent solves)\n"))
 
 cat("\n")

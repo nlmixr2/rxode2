@@ -9,8 +9,10 @@
 #' @author Matthew L. Fidler
 .lotriFun <- function(name) {
   .ns <- asNamespace("lotri")
-  if (!exists(name, envir=.ns, inherits=FALSE)) return(NULL)
-  get(name, envir=.ns, inherits=FALSE)
+  if (!exists(name, envir = .ns, inherits = FALSE)) {
+    return(NULL)
+  }
+  get(name, envir = .ns, inherits = FALSE)
 }
 
 #' Strip the `:same:` suffix from a condition (see `lotri::lotriBaseCondition()`)
@@ -21,8 +23,12 @@
 #' @author Matthew L. Fidler
 .lotriBaseCondition <- function(condition) {
   .f <- .lotriFun("lotriBaseCondition")
-  if (!is.null(.f)) return(.f(condition))
-  if (length(condition) == 0L) return(character(0))
+  if (!is.null(.f)) {
+    return(.f(condition))
+  }
+  if (length(condition) == 0L) {
+    return(character(0))
+  }
   sub(":same:.*$", "", as.character(condition))
 }
 
@@ -36,8 +42,12 @@
 #' @author Matthew L. Fidler
 .lotriSameMap <- function(iniDf) {
   .f <- .lotriFun("lotriSameMap")
-  if (!is.null(.f)) return(.f(iniDf))
+  if (!is.null(.f)) {
+    return(.f(iniDf))
+  }
   .w <- which(!is.na(iniDf$neta1) & iniDf$neta1 == iniDf$neta2)
-  if (length(.w) == 0L) return(integer(0))
+  if (length(.w) == 0L) {
+    return(integer(0))
+  }
   integer(max(iniDf$neta1[.w]))
 }

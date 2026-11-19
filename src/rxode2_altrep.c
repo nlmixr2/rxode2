@@ -25,6 +25,7 @@
 #endif
 #include <Rinternals.h>
 #include <R_ext/Altrep.h>
+#include "rxProtect.h"
 #include <string.h>
 
 #include "rxode2_altrep.h"
@@ -61,7 +62,8 @@ static SEXP rx_seqrep_materialize(SEXP x) {
   if (d2 != R_NilValue) return d2;
 
   R_xlen_t len = rx_seqrep_Length(x);
-  SEXP mat = PROTECT(Rf_allocVector(INTSXP, len));
+  rxProtectGuard;
+  SEXP mat = rxP(Rf_allocVector(INTSXP, len));
   int *p = INTEGER(mat);
   const int *d = INTEGER(R_altrep_data1(x));
   int n_vals  = d[0];
@@ -71,7 +73,7 @@ static SEXP rx_seqrep_materialize(SEXP x) {
   if (block <= 0) {
     for (R_xlen_t i = 0; i < len; i++) p[i] = NA_INTEGER;
     R_set_altrep_data2(x, mat);
-    UNPROTECT(1);
+    rxUPAll();
     return mat;
   }
 
@@ -92,7 +94,7 @@ static SEXP rx_seqrep_materialize(SEXP x) {
     filled += chunk;
   }
   R_set_altrep_data2(x, mat);
-  UNPROTECT(1);
+  rxUPAll();
   return mat;
 }
 
@@ -164,14 +166,15 @@ static SEXP rx_rep_int_materialize(SEXP x) {
   SEXP base = VECTOR_ELT(R_altrep_data1(x), 1);
   R_xlen_t n = XLENGTH(base);
   R_xlen_t times = rx_rep_times(x);
-  mat = PROTECT(Rf_allocVector(INTSXP, n * times));
+  rxProtectGuard;
+  mat = rxP(Rf_allocVector(INTSXP, n * times));
   int *out = INTEGER(mat);
   const int *src = INTEGER(base);
   for (R_xlen_t t = 0; t < times; ++t) {
     memcpy(out + t * n, src, (size_t)n * sizeof(int));
   }
   R_set_altrep_data2(x, mat);
-  UNPROTECT(1);
+  rxUPAll();
   return mat;
 }
 
@@ -203,14 +206,15 @@ static SEXP rx_rep_lgl_materialize(SEXP x) {
   SEXP base = VECTOR_ELT(R_altrep_data1(x), 1);
   R_xlen_t n = XLENGTH(base);
   R_xlen_t times = rx_rep_times(x);
-  mat = PROTECT(Rf_allocVector(LGLSXP, n * times));
+  rxProtectGuard;
+  mat = rxP(Rf_allocVector(LGLSXP, n * times));
   int *out = LOGICAL(mat);
   const int *src = LOGICAL(base);
   for (R_xlen_t t = 0; t < times; ++t) {
     memcpy(out + t * n, src, (size_t)n * sizeof(int));
   }
   R_set_altrep_data2(x, mat);
-  UNPROTECT(1);
+  rxUPAll();
   return mat;
 }
 
@@ -242,14 +246,15 @@ static SEXP rx_rep_real_materialize(SEXP x) {
   SEXP base = VECTOR_ELT(R_altrep_data1(x), 1);
   R_xlen_t n = XLENGTH(base);
   R_xlen_t times = rx_rep_times(x);
-  mat = PROTECT(Rf_allocVector(REALSXP, n * times));
+  rxProtectGuard;
+  mat = rxP(Rf_allocVector(REALSXP, n * times));
   double *out = REAL(mat);
   const double *src = REAL(base);
   for (R_xlen_t t = 0; t < times; ++t) {
     memcpy(out + t * n, src, (size_t)n * sizeof(double));
   }
   R_set_altrep_data2(x, mat);
-  UNPROTECT(1);
+  rxUPAll();
   return mat;
 }
 
@@ -281,12 +286,13 @@ static SEXP rx_rep_str_materialize(SEXP x) {
   SEXP base = rx_rep_base(x);
   R_xlen_t n = XLENGTH(base);
   R_xlen_t times = rx_rep_times(x);
-  mat = PROTECT(Rf_allocVector(STRSXP, n * times));
+  rxProtectGuard;
+  mat = rxP(Rf_allocVector(STRSXP, n * times));
   for (R_xlen_t t = 0; t < times; ++t)
     for (R_xlen_t j = 0; j < n; ++j)
       SET_STRING_ELT(mat, t * n + j, STRING_ELT(base, j));
   R_set_altrep_data2(x, mat);
-  UNPROTECT(1);
+  rxUPAll();
   return mat;
 }
 
@@ -481,12 +487,13 @@ static int rx_cmt_trans_Elt(SEXP x, R_xlen_t i) {
 static SEXP rx_cmt_trans_materialize(SEXP x) {
   SEXP d2 = R_altrep_data2(x);
   if (TYPEOF(d2) == INTSXP) return d2;
+  rxProtectGuard;
   R_xlen_t n = rx_cmt_trans_Length(x);
-  SEXP mat = PROTECT(Rf_allocVector(INTSXP, n));
+  SEXP mat = rxP(Rf_allocVector(INTSXP, n));
   SEXP d1  = R_altrep_data1(x);
   for (R_xlen_t i = 0; i < n; i++) INTEGER(mat)[i] = rx_cmt_trans_lookup(d1, i);
   R_set_altrep_data2(x, mat);
-  UNPROTECT(1);
+  rxUPAll();
   return mat;
 }
 
@@ -562,52 +569,57 @@ void rxode2_init_altrep_class(DllInfo *info) {
 
 /* ---- Factory ----------------------------------------------------------- */
 SEXP rxode2_make_seqrep(int n_vals, int run_len, R_xlen_t total_len) {
-  SEXP d1 = PROTECT(Rf_allocVector(INTSXP, 3));
+  rxProtectGuard;
+  SEXP d1 = rxP(Rf_allocVector(INTSXP, 3));
   INTEGER(d1)[0] = n_vals;
   INTEGER(d1)[1] = run_len;
   INTEGER(d1)[2] = (int)total_len; /* safe: rx->nr <= INT_MAX (checked earlier) */
   SEXP out = R_new_altrep(rx_seqrep_class, d1, R_NilValue);
-  UNPROTECT(1);
+  rxUPAll();
   return out;
 }
 
 SEXP rxode2_make_rep_int(SEXP base, int times) {
-  SEXP d1 = PROTECT(Rf_allocVector(VECSXP, 2));
-  SEXP ti = PROTECT(Rf_ScalarInteger(times < 0 ? 0 : times));
+  rxProtectGuard;
+  SEXP d1 = rxP(Rf_allocVector(VECSXP, 2));
+  SEXP ti = rxP(Rf_ScalarInteger(times < 0 ? 0 : times));
   SET_VECTOR_ELT(d1, 0, ti);
   SET_VECTOR_ELT(d1, 1, base);
   SEXP out = R_new_altrep(rx_rep_int_class, d1, R_NilValue);
-  UNPROTECT(2);
+  rxUPAll();
   return out;
 }
 
 SEXP rxode2_make_rep_lgl(SEXP base, int times) {
-  SEXP d1 = PROTECT(Rf_allocVector(VECSXP, 2));
-  SEXP ti = PROTECT(Rf_ScalarInteger(times < 0 ? 0 : times));
+  rxProtectGuard;
+  SEXP d1 = rxP(Rf_allocVector(VECSXP, 2));
+  SEXP ti = rxP(Rf_ScalarInteger(times < 0 ? 0 : times));
   SET_VECTOR_ELT(d1, 0, ti);
   SET_VECTOR_ELT(d1, 1, base);
   SEXP out = R_new_altrep(rx_rep_lgl_class, d1, R_NilValue);
-  UNPROTECT(2);
+  rxUPAll();
   return out;
 }
 
 SEXP rxode2_make_rep_real(SEXP base, int times) {
-  SEXP d1 = PROTECT(Rf_allocVector(VECSXP, 2));
-  SEXP ti = PROTECT(Rf_ScalarInteger(times < 0 ? 0 : times));
+  rxProtectGuard;
+  SEXP d1 = rxP(Rf_allocVector(VECSXP, 2));
+  SEXP ti = rxP(Rf_ScalarInteger(times < 0 ? 0 : times));
   SET_VECTOR_ELT(d1, 0, ti);
   SET_VECTOR_ELT(d1, 1, base);
   SEXP out = R_new_altrep(rx_rep_real_class, d1, R_NilValue);
-  UNPROTECT(2);
+  rxUPAll();
   return out;
 }
 
 SEXP rxode2_make_rep_str(SEXP base, int times) {
-  SEXP d1 = PROTECT(Rf_allocVector(VECSXP, 2));
-  SEXP ti = PROTECT(Rf_ScalarInteger(times < 0 ? 0 : times));
+  rxProtectGuard;
+  SEXP d1 = rxP(Rf_allocVector(VECSXP, 2));
+  SEXP ti = rxP(Rf_ScalarInteger(times < 0 ? 0 : times));
   SET_VECTOR_ELT(d1, 0, ti);
   SET_VECTOR_ELT(d1, 1, base);
   SEXP out = R_new_altrep(rx_rep_str_class, d1, R_NilValue);
-  UNPROTECT(2);
+  rxUPAll();
   return out;
 }
 
@@ -677,11 +689,12 @@ SEXP make_rx_col_view_real(SEXP col) {
  *            for integer-only input where direct indexing is used
  */
 SEXP make_rx_cmt_trans(SEXP orig_col, SEXP cmt_nums, SEXP cmt_names) {
-  SEXP d1 = PROTECT(Rf_allocVector(VECSXP, 3));
+  rxProtectGuard;
+  SEXP d1 = rxP(Rf_allocVector(VECSXP, 3));
   SET_VECTOR_ELT(d1, 0, orig_col);
   SET_VECTOR_ELT(d1, 1, cmt_nums);
   SET_VECTOR_ELT(d1, 2, cmt_names);
   SEXP out = R_new_altrep(rx_cmt_trans_class, d1, R_NilValue);
-  UNPROTECT(1);
+  rxUPAll();
   return out;
 }

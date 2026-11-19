@@ -23,7 +23,9 @@ rxTest({
     for (.s in .cases) {
       .c <- .rxFromSEC(.s, 1L)
       # declining is always allowed; disagreeing is not
-      if (is.na(.c)) next
+      if (is.na(.c)) {
+        next
+      }
       expect_false(grepl("rxQ__", .c, fixed = TRUE), label = .s)
       expect_equal(.c, .rTxt(.s), label = .s)
     }

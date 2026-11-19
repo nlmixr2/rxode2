@@ -24,10 +24,10 @@
 #' rxSolve(x, e)
 #' }
 #'
-ELU <- function(x, alpha=1) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
-  checkmate::assertNumeric(alpha, finite=TRUE, any.missing=FALSE)
-  .df <- data.frame(x=x, alpha=alpha)
+ELU <- function(x, alpha = 1) {
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
+  checkmate::assertNumeric(alpha, finite = TRUE, any.missing = FALSE)
+  .df <- data.frame(x = x, alpha = alpha)
   .Call(`_rxode2_activationF2`, .df$x, .df$alpha, 1L)
 }
 #' Derivatives of the Exponential Linear Unit (ELU) Activation Function
@@ -62,45 +62,45 @@ ELU <- function(x, alpha=1) {
 #' e <- et(c(-1, 0, 1, 2))
 #' rxSolve(r, e)
 #' }
-dELU <- function(x, alpha=1) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
-  checkmate::assertNumeric(alpha, finite=TRUE, any.missing=FALSE)
-  .df <- data.frame(x=x, alpha=alpha)
+dELU <- function(x, alpha = 1) {
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
+  checkmate::assertNumeric(alpha, finite = TRUE, any.missing = FALSE)
+  .df <- data.frame(x = x, alpha = alpha)
   .Call(`_rxode2_activationF2`, .df$x, .df$alpha, 2L)
 }
 
 #' @rdname dELU
 #' @export
-d2ELU <- function(x, alpha=1) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
-  checkmate::assertNumeric(alpha, finite=TRUE, any.missing=FALSE)
-  .df <- data.frame(x=x, alpha=alpha)
+d2ELU <- function(x, alpha = 1) {
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
+  checkmate::assertNumeric(alpha, finite = TRUE, any.missing = FALSE)
+  .df <- data.frame(x = x, alpha = alpha)
   .Call(`_rxode2_activationF2`, .df$x, .df$alpha, 3L)
 }
 
 #' @rdname dELU
 #' @export
-d2aELU <- function(x, alpha=1) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
-  checkmate::assertNumeric(alpha, finite=TRUE, any.missing=FALSE)
-  .df <- data.frame(x=x, alpha=alpha)
+d2aELU <- function(x, alpha = 1) {
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
+  checkmate::assertNumeric(alpha, finite = TRUE, any.missing = FALSE)
+  .df <- data.frame(x = x, alpha = alpha)
   .Call(`_rxode2_activationF2`, .df$x, .df$alpha, 4L)
 }
 
 #' @rdname dELU
 #' @export
-dELUa <- function(x, alpha=1) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
-  checkmate::assertNumeric(alpha, finite=TRUE, any.missing=FALSE)
-  .df <- data.frame(x=x, alpha=alpha)
+dELUa <- function(x, alpha = 1) {
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
+  checkmate::assertNumeric(alpha, finite = TRUE, any.missing = FALSE)
+  .df <- data.frame(x = x, alpha = alpha)
   .Call(`_rxode2_activationF2`, .df$x, .df$alpha, 5L)
 }
 
 #' @rdname dELU
 #' @export
-d2ELUa <- function(x, alpha=1) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
-  checkmate::assertNumeric(alpha, finite=TRUE, any.missing=FALSE)
-  .df <- data.frame(x=x, alpha=alpha)
+d2ELUa <- function(x, alpha = 1) {
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
+  checkmate::assertNumeric(alpha, finite = TRUE, any.missing = FALSE)
+  .df <- data.frame(x = x, alpha = alpha)
   .Call(`_rxode2_activationF2`, .df$x, .df$alpha, 6L)
 }

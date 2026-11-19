@@ -50,9 +50,11 @@
     .ret <- call("-", location, q) # location-q
   }
   if (!rxUdfUiIsValue(scale, 1, env = env)) {
-    if (is.call(.ret) &&
-          identical(.ret[[1]], quote(`-`)) &&
-          length(.ret) == 3L) {
+    if (
+      is.call(.ret) &&
+        identical(.ret[[1]], quote(`-`)) &&
+        length(.ret) == 3L
+    ) {
       .ret <- str2lang(paste0("(", deparse1(.ret), ")")) # -(location-q) or -(-q)
     }
     .ret <- call("/", .ret, scale) # -(location-q)/scale or -(-q)/scale
@@ -90,7 +92,7 @@ rxUdfUi.plogis <- function(fun) {
   .q <- rxUdfUiExpr(.args$q, env = .env)
   .location <- rxUdfUiExpr(.args$location, env = .env)
   .scale <- rxUdfUiExpr(.args$scale, env = .env)
-  .lowerTail <- rxUdfUiFlag(.args$lower.tail, arg="lower.tail", funName="plogis", env = .env)
-  .logP <- rxUdfUiFlag(.args$log.p, arg="log.p", funName="plogis", env = .env)
+  .lowerTail <- rxUdfUiFlag(.args$lower.tail, arg = "lower.tail", funName = "plogis", env = .env)
+  .logP <- rxUdfUiFlag(.args$log.p, arg = "log.p", funName = "plogis", env = .env)
   list(replace = .plogisRxLang(.q, .location, .scale, .lowerTail, .logP, env = .env))
 }

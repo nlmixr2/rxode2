@@ -28,7 +28,8 @@
 // `indLin()` runs inside `par_indLin`'s `omp parallel for`, so nothing in this
 // file may use the R API or throw: `RSprintf` is the thread-safe printer (it
 // prints from the master thread only and honors the silent-error flag).
-extern "C" void RSprintf(const char *format, ...);
+#include "rxPrintfFormat.h"
+extern "C" void RSprintf(const char *format, ...) R_PRINTF_FORMAT(1, 2);
 
 using namespace Rcpp;
 

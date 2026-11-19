@@ -7,7 +7,8 @@ extern int needSort;
 void updateSyntaxCol(void);
 void trans_syntax_error_report_fn(char *err);
 void parseFree(int last);
-void RSprintf(const char *format, ...);
+#include "rxPrintfFormat.h"
+void RSprintf(const char *format, ...) R_PRINTF_FORMAT(1, 2);
 
 SEXP _rxode2parse_trans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
                         SEXP isEscIn, SEXP inME, SEXP goodFuns, SEXP fullPrintIn);
@@ -81,6 +82,7 @@ lhs symbols?
   int pi; // # param
   int isPi; // # pi?
   int isNA; // # pi?
+  int lagTime; // lag()/lead()/diff()/first()/last() of time?
   int linCmt; // Unparsed linear compartment
   int linCmtCmt; // Are all non linear-system compartments derived from cmt()
   int linCmtN; // Unparsed linear compartment
@@ -98,6 +100,7 @@ lhs symbols?
   int hasCentralCmt;
   int hasKa;
   int allocS;
+  int allocNV;
   int allocSV;
   int allocSC;
   int allocSCV;
@@ -116,6 +119,8 @@ lhs symbols?
   int nwhile;
   int nInd;
   int simflg;
+  int rng;                    /* model may draw random numbers (keeps _setThreadInd() per call) */
+  int nInvCdf;                /* root-finding inverse CDF call sites, for the memo */
   int thread;
   int lastDdt;
   int nLlik;
@@ -126,6 +131,12 @@ lhs symbols?
   int evid_; // pushing evid_() flag
   int *splitBolus; // source then target de indexes (+1)
   int splitBolusN;
+  int *splitInfusion; // source then target de indexes (+1)
+  int splitInfusionN;
+  int *splitInfusionBolus; // source then target de indexes (+1)
+  int splitInfusionBolusN;
+  int *splitBolusInfusion; // source then target de indexes (+1)
+  int splitBolusInfusionN;
   int isMexp;
   int hasDdt;
   int curDdt; // currently parsing the RHS of a d/dt() statement
@@ -324,6 +335,9 @@ typedef struct nodeInfo {
   int theta;
   int cmt_statement;
   int splitBolus_statement;
+  int splitInfusion_statement;
+  int splitInfusionBolus_statement;
+  int splitBolusInfusion_statement;
   int param_statement;
   int interp_statement;
   int dvid_statementI;
@@ -401,6 +415,9 @@ static inline void niReset(nodeInfo *ni){
   ni->theta0_noout = -1;
   ni->cmt_statement = -1;
   ni->splitBolus_statement = -1;
+  ni->splitInfusion_statement = -1;
+  ni->splitInfusionBolus_statement = -1;
+  ni->splitBolusInfusion_statement = -1;
   ni->param_statement = -1;
   ni->interp_statement = -1;
   ni->dvid_statementI = -1;
@@ -451,6 +468,7 @@ extern sbuf _gbuf, _mv;
 extern char *gBuf;
 extern int gBufFree;
 extern int gBufLast;
+extern int gBufLastPrinted;
 
 extern int maxSumProdN, SumProdLD, foundF0, foundF, foundLag, foundRate, foundDur,
   foundPast, good_jac, extraCmt, badMd5, maxUdf;
@@ -544,6 +562,7 @@ static inline int allSpaces(char *v2) {
       allSpace=0;
       break;
     }
+    iii++;
   }
   return allSpace;
 }

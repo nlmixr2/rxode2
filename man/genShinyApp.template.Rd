@@ -27,7 +27,8 @@ shiny app is generated. Defaults to \code{TRUE}.}
 
 \item{ODE.config}{model name compiled and list of parameters sent to \code{\link[=rxSolve]{rxSolve()}}.}
 
-\item{statevars}{List of statevars passed to to the \code{\link[=write.template.ui]{write.template.ui()}} function.  This usually isn't called directly.
+\item{statevars}{List of statevars passed to to the \code{\link[=write.template.ui]{write.template.ui()}} function.  This usually isn't called
+directly.
 
 A PK/PD model is defined using \code{\link[=rxode2]{rxode2()}}, and
 a set of parameters and initial values are defined.  Then
@@ -79,8 +80,12 @@ if (requireNamespace("shiny", quietly=TRUE)) {
 }
 \seealso{
 \code{\link[=rxode2]{rxode2()}},\code{\link[=eventTable]{eventTable()}}, and the package \pkg{shiny} (\url{https://shiny.posit.co}).
+
+Other Shiny:
+\code{\link[=rxShiny]{rxShiny()}}
 }
 \concept{PK/PD}
+\concept{Shiny}
 \concept{pharmacometrics}
 \keyword{nonlinear}
 \keyword{simulation}

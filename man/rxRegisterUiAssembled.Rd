@@ -33,6 +33,39 @@ survives model piping and \code{saveRDS()}.  A hook must not reorder
 \code{rxModelVars(ui)$params}, must be cheap, and must be a no-op for models it
 does not own.
 }
+\examples{
+\donttest{
+rxRegisterUiAssembled("myPkg:tag", function(ui) {
+  assign("myTag", "built", envir = ui)
+  assign("sticky", unique(c(ui$sticky, "myTag")), envir = ui)
+})
+mod <- function() {
+  ini({
+    k <- 0.1
+  })
+  model({
+    d/dt(A) <- -k * A
+  })
+}
+u <- rxode2(mod)
+rxUiDecompress(u)$myTag
+rxRemoveUiAssembled("myPkg:tag")
+}
+}
+\seealso{
+Other Solving:
+\code{\link[=as.arrow]{as.arrow()}},
+\code{\link[=rxCbindStudyIndividual]{rxCbindStudyIndividual()}},
+\code{\link[=rxForcedPars]{rxForcedPars()}},
+\code{\link[=rxInjectedPars]{rxInjectedPars()}},
+\code{\link[=rxParLoader]{rxParLoader()}},
+\code{\link[=rxRegisterUiPrep]{rxRegisterUiPrep()}},
+\code{\link[=rxSetActiveParLoader]{rxSetActiveParLoader()}},
+\code{\link[=rxSetIni0]{rxSetIni0()}},
+\code{\link[=rxSolve]{rxSolve()}},
+\code{\link[=rxSolveChunked]{rxSolveChunked()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Solving}

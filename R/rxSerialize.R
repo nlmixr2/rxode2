@@ -22,8 +22,15 @@ rxSaveState <- function(file) {
 #' @param cState The raw vector from C++
 #' @param object Optional rxode2 model object used to persist model identity
 #' @noRd
-.rxSaveStateBundle <- function(file, cState, object = NULL, solveState = NULL,
-                               params = NULL, events = NULL, inits = NULL) {
+.rxSaveStateBundle <- function(
+  file,
+  cState,
+  object = NULL,
+  solveState = NULL,
+  params = NULL,
+  events = NULL,
+  inits = NULL
+) {
   .model <- rxModels_()
   .bundle <- list(
     cState = cState,
@@ -104,18 +111,15 @@ rxSaveState <- function(file) {
 #' @noRd
 .rxValidateStateBundleModel <- function(object, bundle, file) {
   .modelId <- bundle$modelId
-  if (is.null(.modelId) || length(.modelId) != 1L || is.na(.modelId) ||
-      identical(.modelId, "")) {
-    stop(sprintf("Serialization file '%s' is missing model identity", file),
-         call. = FALSE)
+  if (is.null(.modelId) || length(.modelId) != 1L || is.na(.modelId) || identical(.modelId, "")) {
+    stop(sprintf("Serialization file '%s' is missing model identity", file), call. = FALSE)
   }
   .currentId <- .rxSerializeModelId(object)
   if (is.null(.currentId)) {
     stop("Unable to determine model identity for serialized solve", call. = FALSE)
   }
   if (!identical(.currentId, .modelId)) {
-    stop(sprintf("Serialization file '%s' does not match the supplied model", file),
-         call. = FALSE)
+    stop(sprintf("Serialization file '%s' does not match the supplied model", file), call. = FALSE)
   }
   invisible(TRUE)
 }

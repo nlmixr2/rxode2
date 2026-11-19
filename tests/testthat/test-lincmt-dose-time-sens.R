@@ -9,15 +9,19 @@ rxTest({
   # A(t; L) = A(t - L; 0) and the derivative is exactly -dA/dt.  Every case
   # below is checked against a central finite difference of the concentration.
 
-  .p <- c(tcl = log(4), tv = log(20), tka = log(1.1), tq = log(2),
-          tv2 = log(50), eta_lag = 0.1)
+  .p <- c(tcl = log(4), tv = log(20), tka = log(1.1), tq = log(2), tv2 = log(50), eta_lag = 0.1)
 
   .fdCol <- function(m, e, col, h = 1e-5, inits = NULL) {
-    .p1 <- .p; .p1[["eta_lag"]] <- .p[["eta_lag"]] + h
-    .p0 <- .p; .p0[["eta_lag"]] <- .p[["eta_lag"]] - h
+    .p1 <- .p
+    .p1[["eta_lag"]] <- .p[["eta_lag"]] + h
+    .p0 <- .p
+    .p0[["eta_lag"]] <- .p[["eta_lag"]] - h
     .go <- function(.pp) {
-      if (is.null(inits)) rxSolve(m, e, params = .pp)[[col]]
-      else rxSolve(m, e, params = .pp, inits = inits)[[col]]
+      if (is.null(inits)) {
+        rxSolve(m, e, params = .pp)[[col]]
+      } else {
+        rxSolve(m, e, params = .pp, inits = inits)[[col]]
+      }
     }
     (.go(.p1) - .go(.p0)) / (2 * h)
   }
@@ -32,8 +36,7 @@ rxTest({
           cp <- linCmtB(rx__PTR__, t, 1, 1, 0, -1, -1, 1, cl, v, 0, 0, 0, 0, 0)
           dcp <- lag * linCmtB(rx__PTR__, t, 1, 1, 0, -3, -3, 1, cl, v, 0, 0, 0, 0, 0)
         }),
-        e = eventTable() |> add.dosing(dose = 100, cmt = "central") |>
-          add.sampling(seq(0.1, 12, 0.25))
+        e = eventTable() |> add.dosing(dose = 100, cmt = "central") |> add.sampling(seq(0.1, 12, 0.25))
       ),
       list(
         nm = "1cmt IV multiple bolus",
@@ -78,8 +81,7 @@ rxTest({
           cp <- linCmtB(rx__PTR__, t, 2, 2, 0, -1, -1, 1, cl, v, q, v2, 0, 0, 0)
           dcp <- lag * linCmtB(rx__PTR__, t, 2, 2, 0, -3, -3, 1, cl, v, q, v2, 0, 0, 0)
         }),
-        e = eventTable() |> add.dosing(dose = 100, cmt = "central") |>
-          add.sampling(seq(0.1, 24, 0.25))
+        e = eventTable() |> add.dosing(dose = 100, cmt = "central") |> add.sampling(seq(0.1, 24, 0.25))
       ),
       list(
         nm = "2cmt oral multiple bolus",
@@ -103,15 +105,13 @@ rxTest({
           cp <- linCmtB(rx__PTR__, t, 3, 3, 0, -1, -1, 1, cl, v, q, v2, q2, v3, 0)
           dcp <- lag * linCmtB(rx__PTR__, t, 3, 3, 0, -3, -3, 1, cl, v, q, v2, q2, v3, 0)
         }),
-        e = eventTable() |> add.dosing(dose = 100, cmt = "central") |>
-          add.sampling(seq(0.1, 24, 0.25))
+        e = eventTable() |> add.dosing(dose = 100, cmt = "central") |> add.sampling(seq(0.1, 24, 0.25))
       )
     )
     for (.c in .cases) {
       .s <- rxSolve(.c$m, .c$e, params = .p)
-      expect_true(max(abs(.s$dcp)) > 1e-3, info = .c$nm)  # not trivially zero
-      expect_equal(.s$dcp, .fdCol(.c$m, .c$e, "cp"),
-                   tolerance = 1e-5, info = .c$nm)
+      expect_true(max(abs(.s$dcp)) > 1e-3, info = .c$nm) # not trivially zero
+      expect_equal(.s$dcp, .fdCol(.c$m, .c$e, "cp"), tolerance = 1e-5, info = .c$nm)
     }
   })
 
@@ -123,8 +123,7 @@ rxTest({
       dDepot <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -3, 0, 1, cl, v, 0, 0, 0, 0, ka)
       dCentral <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -3, 1, 1, cl, v, 0, 0, 0, 0, ka)
     })
-    e <- eventTable() |> add.dosing(dose = 100, cmt = "depot") |>
-      add.sampling(seq(0.1, 12, 0.25))
+    e <- eventTable() |> add.dosing(dose = 100, cmt = "depot") |> add.sampling(seq(0.1, 12, 0.25))
     s <- rxSolve(m, e, params = .p)
     expect_equal(s$dDepot, .fdCol(m, e, "depot"), tolerance = 1e-5)
     expect_equal(s$dCentral, .fdCol(m, e, "central"), tolerance = 1e-5)
@@ -146,8 +145,7 @@ rxTest({
           cp <- linCmtB(rx__PTR__, t, 1, 1, 0, -1, -1, 1, cl, v, 0, 0, 0, 0, 0)
           dcp <- lag * linCmtB(rx__PTR__, t, 1, 1, 0, -3, -3, 1, cl, v, 0, 0, 0, 0, 0)
         }),
-        e = eventTable() |> add.dosing(dose = 100, rate = 25, cmt = "central") |>
-          add.sampling(seq(0.1, 12, 0.25))
+        e = eventTable() |> add.dosing(dose = 100, rate = 25, cmt = "central") |> add.sampling(seq(0.1, 12, 0.25))
       ),
       list(
         nm = "1cmt IV multiple infusions",
@@ -169,8 +167,7 @@ rxTest({
           cp <- linCmtB(rx__PTR__, t, 1, 1, 0, -1, -1, 1, cl, v, 0, 0, 0, 0, 0)
           dcp <- lag * linCmtB(rx__PTR__, t, 1, 1, 0, -3, -3, 1, cl, v, 0, 0, 0, 0, 0)
         }),
-        e = eventTable() |> add.dosing(dose = 100, dur = 4, cmt = "central") |>
-          add.sampling(seq(0.1, 12, 0.25))
+        e = eventTable() |> add.dosing(dose = 100, dur = 4, cmt = "central") |> add.sampling(seq(0.1, 12, 0.25))
       ),
       list(
         nm = "1cmt oral infusion into depot",
@@ -180,8 +177,7 @@ rxTest({
           cp <- linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, cl, v, 0, 0, 0, 0, ka)
           dcp <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -3, -3, 1, cl, v, 0, 0, 0, 0, ka)
         }),
-        e = eventTable() |> add.dosing(dose = 100, rate = 10, cmt = "depot") |>
-          add.sampling(seq(0.1, 24, 0.25))
+        e = eventTable() |> add.dosing(dose = 100, rate = 10, cmt = "depot") |> add.sampling(seq(0.1, 24, 0.25))
       ),
       list(
         nm = "2cmt IV infusion into central (with peripheral)",
@@ -192,8 +188,7 @@ rxTest({
           cp <- linCmtB(rx__PTR__, t, 2, 2, 0, -1, -1, 1, cl, v, q, v2, 0, 0, 0)
           dcp <- lag * linCmtB(rx__PTR__, t, 2, 2, 0, -3, -3, 1, cl, v, q, v2, 0, 0, 0)
         }),
-        e = eventTable() |> add.dosing(dose = 100, rate = 10, cmt = "central") |>
-          add.sampling(seq(0.1, 24, 0.25))
+        e = eventTable() |> add.dosing(dose = 100, rate = 10, cmt = "central") |> add.sampling(seq(0.1, 24, 0.25))
       ),
       list(
         nm = "linCmt() mixed with an ODE compartment (numLin < neq), infusion",
@@ -204,16 +199,14 @@ rxTest({
           dcp <- lag * linCmtB(rx__PTR__, t, 1, 1, 0, -3, -3, 1, cl, v, 0, 0, 0, 0, 0)
           d/dt(ce) <- (cp - ce) * ke0
         }),
-        e = eventTable() |> add.dosing(dose = 100, rate = 25, cmt = "central") |>
-          add.sampling(seq(0.1, 12, 0.25))
+        e = eventTable() |> add.dosing(dose = 100, rate = 25, cmt = "central") |> add.sampling(seq(0.1, 12, 0.25))
       )
     )
     for (.c in .cases) {
       .s <- rxSolve(.c$m, .c$e, params = .p)
       expect_false(any(is.na(.s$dcp)), info = .c$nm)
-      expect_true(max(abs(.s$dcp)) > 1e-3, info = .c$nm)  # not trivially zero
-      expect_equal(.s$dcp, .fdCol(.c$m, .c$e, "cp"),
-                   tolerance = 1e-5, info = .c$nm)
+      expect_true(max(abs(.s$dcp)) > 1e-3, info = .c$nm) # not trivially zero
+      expect_equal(.s$dcp, .fdCol(.c$m, .c$e, "cp"), tolerance = 1e-5, info = .c$nm)
     }
   })
 
@@ -229,15 +222,17 @@ rxTest({
       cp <- linCmtB(rx__PTR__, t, 1, 1, 0, -1, -1, 1, cl, v, 0, 0, 0, 0, 0)
       dcp <- lag * linCmtB(rx__PTR__, t, 1, 1, 0, -3, -3, 1, cl, v, 0, 0, 0, 0, 0)
     })
-    e <- eventTable() |> add.dosing(dose = 100, rate = 25, cmt = "central") |>
-      add.sampling(seq(0.1, 12, 0.25))
+    e <- eventTable() |> add.dosing(dose = 100, rate = 25, cmt = "central") |> add.sampling(seq(0.1, 12, 0.25))
     s <- rxSolve(m, e, params = .p, method = "dop853")
     expect_false(any(is.na(s$dcp)))
     h <- 1e-5
-    p1 <- .p; p1[["eta_lag"]] <- .p[["eta_lag"]] + h
-    p0 <- .p; p0[["eta_lag"]] <- .p[["eta_lag"]] - h
+    p1 <- .p
+    p1[["eta_lag"]] <- .p[["eta_lag"]] + h
+    p0 <- .p
+    p0[["eta_lag"]] <- .p[["eta_lag"]] - h
     fd <- (rxSolve(m, e, params = p1, method = "dop853")$cp -
-             rxSolve(m, e, params = p0, method = "dop853")$cp) / (2 * h)
+      rxSolve(m, e, params = p0, method = "dop853")$cp) /
+      (2 * h)
     expect_equal(s$dcp, fd, tolerance = 1e-5)
   })
 
@@ -263,7 +258,7 @@ rxTest({
     for (.nm in names(.es)) {
       s <- rxSolve(m, .es[[.nm]], params = .p)
       expect_true(all(is.na(s$dcp)), info = .nm)
-      expect_false(any(is.na(s$cp)), info = .nm)   # the model itself still solves
+      expect_false(any(is.na(s$cp)), info = .nm) # the model itself still solves
     }
   })
 
@@ -301,10 +296,9 @@ rxTest({
     })
     e <- et(seq(0.1, 12, 0.5))
     s <- rxSolve(m, e, params = .p, inits = c(central = 100))
-    expect_true(max(abs(s$cp)) > 1e-3)   # the amounts really do decay
+    expect_true(max(abs(s$cp)) > 1e-3) # the amounts really do decay
     expect_equal(s$dcp, rep(0, nrow(s)))
-    expect_equal(.fdCol(m, e, "cp", inits = c(central = 100)), rep(0, nrow(s)),
-                 tolerance = 1e-8)
+    expect_equal(.fdCol(m, e, "cp", inits = c(central = 100)), rep(0, nrow(s)), tolerance = 1e-8)
   })
 
   test_that("linCmtB(-3) refuses a regimen mixing lagged and unlagged doses", {
@@ -331,12 +325,11 @@ rxTest({
         dcp <- lag * linCmtB(rx__PTR__, t, 3, 2, 1, -3, -3, 1, cl, v, q, v2, 0, 0, ka)
       })
     )
-    e <- et(amt = 100, cmt = "depot") |> et(amt = 50, cmt = "central", time = 0) |>
-      et(seq(0.1, 24, 0.25))
+    e <- et(amt = 100, cmt = "depot") |> et(amt = 50, cmt = "central", time = 0) |> et(seq(0.1, 24, 0.25))
     for (.nm in names(.ms)) {
       s <- rxSolve(.ms[[.nm]], e, params = .p)
       expect_true(all(is.na(s$dcp)), info = .nm)
-      expect_false(any(is.na(s$cp)), info = .nm)   # the model itself still solves
+      expect_false(any(is.na(s$cp)), info = .nm) # the model itself still solves
       # and the lagged-only regimen of the same model is still exact
       eL <- et(amt = 100, cmt = "depot") |> et(seq(0.1, 24, 0.25))
       sL <- rxSolve(.ms[[.nm]], eL, params = .p)
@@ -355,8 +348,7 @@ rxTest({
       cp <- linCmtB(rx__PTR__, t, 2, 1, 1, -1, -1, 1, cl, v, 0, 0, 0, 0, ka)
       dcp <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -3, -3, 1, cl, v, 0, 0, 0, 0, ka)
     })
-    e <- et(amt = 100, cmt = "depot") |> et(amt = 0, cmt = "central", time = 0) |>
-      et(seq(0.1, 24, 0.25))
+    e <- et(amt = 100, cmt = "depot") |> et(amt = 0, cmt = "central", time = 0) |> et(seq(0.1, 24, 0.25))
     s <- rxSolve(m, e, params = .p)
     expect_false(any(is.na(s$dcp)))
     expect_equal(s$dcp, .fdCol(m, e, "cp"), tolerance = 1e-5)
@@ -435,13 +427,11 @@ rxTest({
       dcp <- lag * linCmtB(rx__PTR__, t, 2, 1, 1, -3, -3, 1, cl, v, 0, 0, 0, 0, ka)
     })
     .es <- list(
-      "depot only (subset of the lagged set)" =
-        et(amt = 100, cmt = "depot") |> et(seq(0.1, 24, 0.25)),
-      "central only (subset of the lagged set)" =
-        et(amt = 100, cmt = "central") |> et(seq(0.1, 24, 0.25)),
-      "both lagged compartments" =
-        et(amt = 100, cmt = "depot") |> et(amt = 50, cmt = "central", time = 0) |>
-          et(seq(0.1, 24, 0.25))
+      "depot only (subset of the lagged set)" = et(amt = 100, cmt = "depot") |> et(seq(0.1, 24, 0.25)),
+      "central only (subset of the lagged set)" = et(amt = 100, cmt = "central") |> et(seq(0.1, 24, 0.25)),
+      "both lagged compartments" = et(amt = 100, cmt = "depot") |>
+        et(amt = 50, cmt = "central", time = 0) |>
+        et(seq(0.1, 24, 0.25))
     )
     for (.nm in names(.es)) {
       s <- rxSolve(m, .es[[.nm]], params = .p)
@@ -462,8 +452,7 @@ rxTest({
       dcp <- lag * linCmtB(rx__PTR__, t, 1, 1, 0, -3, -3, 1, cl, v, 0, 0, 0, 0, 0)
       d/dt(ce) <- (cp - ce) * ke0
     })
-    e <- et(amt = 100, cmt = "central") |> et(amt = 5, cmt = "ce", time = 1) |>
-      et(seq(0.1, 12, 0.25))
+    e <- et(amt = 100, cmt = "central") |> et(amt = 5, cmt = "ce", time = 1) |> et(seq(0.1, 12, 0.25))
     s <- rxSolve(m, e, params = .p)
     expect_false(any(is.na(s$dcp)))
     expect_equal(s$dcp, .fdCol(m, e, "cp"), tolerance = 1e-5)
@@ -478,8 +467,7 @@ rxTest({
       cp <- linCmtB(rx__PTR__, t, 1, 1, 0, -1, -1, 1, cl, v, 0, 0, 0, 0, 0)
       bad <- linCmtB(rx__PTR__, t, 1, 1, 0, -3, 7, 1, cl, v, 0, 0, 0, 0, 0)
     })
-    e <- eventTable() |> add.dosing(dose = 100, cmt = "central") |>
-      add.sampling(seq(0.1, 12, 0.25))
+    e <- eventTable() |> add.dosing(dose = 100, cmt = "central") |> add.sampling(seq(0.1, 12, 0.25))
     s <- rxSolve(m, e, params = .p)
     expect_true(all(is.na(s$bad)))
   })

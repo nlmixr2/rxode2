@@ -1,5 +1,5 @@
 ---
-title: "Modifying Models"
+title: "Modifying models"
 ---
 
 ```{r, include = FALSE}
@@ -970,3 +970,9 @@ ini(f) <- ini
 
 print(f)
 ```
+
+## Next steps
+
+- [The rxode2 model object](rxode2-ui-object.html)
+- [Covariates](rxode2-covariates.html)
+- [Simulating populations](rxode2-sim-var.html)

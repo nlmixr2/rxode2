@@ -1,6 +1,7 @@
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 #include "codegen.h"
+#include "rxProtect.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -115,13 +116,21 @@ SEXP _rxode2parse_preserve(SEXP x) {
   return x;
 }
 
+/* The getters' frames may be unreferenced (the builtin one is rebuilt per call)
+   and _rxode2parse_preserve() allocates, so protect each frame until its columns
+   are claimed; the protection is released before returning, never crossing the
+   parse. */
 void _rxode2parse_assignTranslationBuiltin(void) {
-  SEXP df = getRxode2ParseDfBuiltin();
+  rxProtectGuard;
+  SEXP df = rxP(getRxode2ParseDfBuiltin());
   _rxode2parse_funName = _rxode2parse_preserve(VECTOR_ELT(df, 0));
   _rxode2parse_funNameInt = _rxode2parse_preserve(VECTOR_ELT(df, 1));
+  rxUP(1);
 }
 
 void _rxode2parse_assignTranslation(SEXP df) {
+  rxProtectGuard;
+  rxP(df);
   _rxode2parse_unprotect();
   _rxode2parse_rxFunctionName = _rxode2parse_preserve(VECTOR_ELT(df, 0));
   _rxode2parse_functionName = _rxode2parse_preserve(VECTOR_ELT(df, 1));
@@ -132,6 +141,7 @@ void _rxode2parse_assignTranslation(SEXP df) {
   _rxode2parse_functionArgMax = _rxode2parse_preserve(VECTOR_ELT(df, 6));
   _rxode2parse_functionThreadSafe = _rxode2parse_preserve(VECTOR_ELT(df, 7));
   _rxode2parse_assignTranslationBuiltin();
+  rxUP(1);
 }
 
 void _rxode2parse_unprotect(void) {
@@ -148,6 +158,20 @@ void _rxode2parse_unprotect(void) {
 }
 
 #include "codegen2.h"
+#include "pkTime.h"
+
+// Lines that read `time` as the record time (see pkTime.h); NULL when
+// the function being generated never does.
+static int *_pkLine = NULL;
+
+static inline void appendModelLine(int i, const char *line) {
+  if (_pkLine != NULL && _pkLine[i]) {
+    sAppendN(&sbOut, "  ", 2);
+    pkTimeAppendLine(&sbOut, line);
+  } else {
+    sAppend(&sbOut, "  %s", line);
+  }
+}
 
 SEXP _rxode2_rxQs(SEXP);
 SEXP _rxode2_rxQr(SEXP);
@@ -205,7 +229,7 @@ void prnt_vars(int scenario, int lhs, const char *pre_str, const char *post_str,
 
 
 
-void print_aux_info(char *model, const char *prefix, const char *libname, const char *pMd5, const char *timeId,
+void print_aux_info(const char *prefix, const char *libname,
                     const char *libname2){
   sbuf bufw;
   sNull(&bufw);
@@ -216,7 +240,8 @@ void print_aux_info(char *model, const char *prefix, const char *libname, const 
   sAppend(&sbOut,"extern void %sdydt_lsoda(int *neq, double *t, double *A, double *DADT)\n{\n  %sdydt(neq, *t, A, DADT);\n}\n", prefix, prefix);
   sAppend(&sbOut, "extern int %sdydt_liblsoda(double __t, double *y, double *ydot, void *data)\n{\n  int *neq = (int*)(data);\n  %sdydt(neq, __t, y, ydot);\n  return(0);\n}\n",
           prefix,prefix);
-  sAppend(&sbOut,"extern void %scalc_jac_lsoda(int *neq, double *t, double *A,int *ml, int *mu, double *JAC, int *nrowpd){\n  // Update all covariate parameters\n  %scalc_jac(neq, *t, A, JAC, *nrowpd);\n}\n",
+  // calc_jac is row major; DLSODA/DLSODE read PD(nrowpd, neq) column major.
+  sAppend(&sbOut,"extern void %scalc_jac_lsoda(int *neq, double *t, double *A,int *ml, int *mu, double *JAC, int *nrowpd){\n  %scalc_jac(neq, *t, A, JAC, *nrowpd);\n  int _n = neq[0], _r = *nrowpd;\n  for (int _i = 0; _i < _n; _i++) {\n    for (int _j = _i + 1; _j < _n; _j++) {\n      double _tmp = JAC[_i*_r + _j];\n      JAC[_i*_r + _j] = JAC[_j*_r + _i];\n      JAC[_j*_r + _i] = _tmp;\n    }\n  }\n}\n",
           prefix, prefix);
 
   printRInit(libname, libname2, prefix);
@@ -226,22 +251,23 @@ void print_aux_info(char *model, const char *prefix, const char *libname, const 
 
 extern SEXP getRxode2ParseDf(void);
 
-void codegen(char *model, int show_ode, const char *prefix, const char *libname, const char *pMd5, const char *timeId, const char *libname2) {
+void codegen(int show_ode, const char *prefix, const char *libname, const char *pMd5, const char *libname2) {
+  _pkLine = NULL;
   _rxode2parse_assignTranslation(getRxode2ParseDf());
   _rxode2parse_packages = getRxode2ParseGetPointerAssignment();
   if (show_ode == ode_printaux) {
-    print_aux_info(model, prefix, libname, pMd5, timeId, libname2);
+    print_aux_info(prefix, libname, libname2);
   } else {
     int i, j;
     char *buf;
     if (show_ode == ode_dydt){
       const char *extra = "";
       if (strncmp("rx_", libname, 3) != 0) extra = libname;
-      writeHeader(md5, extra);
+      writeHeader(pMd5, extra);
       for (int i = Rf_length(_rxode2parse_functionName); i--;) {
         sAppend(&sbOut, "#define %s _rx%s%s%ld_%s_%s\n",
                 R_CHAR(STRING_ELT(_rxode2parse_functionName, i)),
-                extra, md5, __timeId++,
+                extra, pMd5, __timeId++,
                 R_CHAR(STRING_ELT(_rxode2parse_functionName, i)),
                 genRandomChar());
       }
@@ -264,6 +290,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       prnt_vars(print_lhsLags, 1, "", "", 13);
       // And covariate/parameter lags
       prnt_vars(print_paramLags, 1, "", "", 15);
+      printTimeLags();
       // Add sync PP define
       prnt_vars(print_simeps, 1, "#define _SYNC_simeps_ for (int _svari=_solveData->neps; _svari--;){", "}\n", 15);
       prnt_vars(print_simeta, 1, "#define _SYNC_simeta_ for (int _ovari=_solveData->neta; _ovari--;){", "}\n", 16);
@@ -278,6 +305,9 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         }
       }
       sAppendN(&sbOut,"#include \"extraC.h\"\n", 20);
+      // Only the random-number helpers read the slot _setThreadInd() names;
+      // user C code (extraC.h defines _rxNeedThreadInd) may call them too.
+      sAppend(&sbOut, "#if %d || defined(_rxNeedThreadInd)\n#define _rxSetThreadInd(x) _setThreadInd(x)\n#else\n#define _rxSetThreadInd(x) (void)(x)\n#endif\n", tb.rng);
       writeBody1();
       for (int i = Rf_length(_rxode2parse_functionName); i--;) {
         sAppend(&sbOut,"  %s = (%s) R_GetCCallable(\"%s\", \"%s\");\n",
@@ -309,11 +339,11 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
               "#if defined(__GNUC__) || defined(__clang__)\n"
               "__attribute__((hot))\n"
               "#endif\nvoid ");
-      sAppend(&sbOut, "%sdydt(int *_neq, double __t, double * __restrict__ __zzStateVar__, double * __restrict__ __DDtStateVar__)\n{\n  int _itwhile = 0;\n  (void)_itwhile;\n  int _cSub = _neq[1];\n  double t = __t + _solveData->subjects[_neq[1]].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=1;\n  int _wasAtEventTime = _ind->_atEventTime; _ind->_atEventTime = 0;\n  (void)_wasAtEventTime;\n", prefix);
+      sAppend(&sbOut, "%sdydt(int *_neq, double __t, double * __restrict__ __zzStateVar__, double * __restrict__ __DDtStateVar__)\n{\n  int _itwhile = 0;\n  (void)_itwhile;\n  int _cSub = _neq[1];\n  double t = __t + _solveData->subjects[_neq[1]].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n  _ind->_rxFlag=1;\n  int _wasAtEventTime = _ind->_atEventTime; _ind->_atEventTime = 0;\n  (void)_wasAtEventTime;\n", prefix);
     } else if (show_ode == ode_jac){
-      sAppend(&sbOut, "// Jacobian derived vars\nvoid %scalc_jac(int *_neq, double __t, double *__zzStateVar__, double *__PDStateVar__, unsigned int __NROWPD__) {\n  int _itwhile = 0;\n  (void)_itwhile;\n    int _cSub=_neq[1];\n  double t = __t + _solveData->subjects[_neq[1]].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=2;\n", prefix);
+      sAppend(&sbOut, "// Jacobian derived vars\nvoid %scalc_jac(int *_neq, double __t, double *__zzStateVar__, double *__PDStateVar__, unsigned int __NROWPD__) {\n  int _itwhile = 0;\n  (void)_itwhile;\n    int _cSub=_neq[1];\n  double t = __t + _solveData->subjects[_neq[1]].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n  _ind->_rxFlag=2;\n", prefix);
     } else if (show_ode == ode_ini){
-      sAppend(&sbOut,  "// Functional based initial conditions.\nvoid %sinis(int _cSub, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  \n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n _ind->_rxFlag=3;\n", prefix);
+      sAppend(&sbOut,  "// Functional based initial conditions.\nvoid %sinis(int _cSub, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  \n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n _ind->_rxFlag=3;\n", prefix);
       if (foundF0){
         sAppendN(&sbOut, "  double t=0;\n", 14);
       }
@@ -327,7 +357,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
             nnn+=1;
           }
         }
-        sAppend(&sbOut,  "// Functional based bioavailability (returns amount)\ndouble %sF(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double _f[%d];\n  (void)_f;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n    rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=4;\n",
+        sAppend(&sbOut,  "// Functional based bioavailability (returns amount)\ndouble %sF(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double _f[%d];\n  (void)_f;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n    rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n  _ind->_rxFlag=4;\n",
                 prefix, nnn);
         for (int jjj = nnn; jjj--;){
           sAppend(&sbOut, "  _f[%d]=1.0;\n",jjj);
@@ -346,7 +376,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
             nnn+=1;
           }
         }
-        sAppend(&sbOut,  "// Functional based absorption lag\ndouble %sLag(int _cSub,  int _cmt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double _alag[%d];\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=5;\n",
+        sAppend(&sbOut,  "// Functional based absorption lag\ndouble %sLag(int _cSub,  int _cmt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double _alag[%d];\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n  _ind->_rxFlag=5;\n",
                 prefix, nnn);
         for (int jjj = nnn; jjj--;){
           sAppend(&sbOut, "  _alag[%d]=0.0;\n",jjj);
@@ -365,7 +395,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
             nnn+=1;
           }
         }
-        sAppend(&sbOut,  "// Modeled zero-order rate\ndouble %sRate(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n    int _itwhile = 0;\n  (void)_itwhile;\n  double _rate[%d];\n   double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=6;\n",
+        sAppend(&sbOut,  "// Modeled zero-order rate\ndouble %sRate(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n    int _itwhile = 0;\n  (void)_itwhile;\n  double _rate[%d];\n   double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n  _ind->_rxFlag=6;\n",
                 prefix, nnn);
         for (int jjj = nnn; jjj--;){
           sAppend(&sbOut, "  _rate[%d]=0.0;\n",jjj);
@@ -384,7 +414,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
             nnn+=1;
           }
         }
-        sAppend(&sbOut,  "// Modeled zero-order duration\ndouble %sDur(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n double _dur[%d];\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n    rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=7;\n",
+        sAppend(&sbOut,  "// Modeled zero-order duration\ndouble %sDur(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n double _dur[%d];\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n    rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n  _ind->_rxFlag=7;\n",
                 prefix, nnn);
         for (int jjj = nnn; jjj--;){
           sAppend(&sbOut, "  _dur[%d]=0.0;\n",jjj);
@@ -405,30 +435,30 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
             nnn+=1;
           }
         }
-        sAppend(&sbOut,  "// Non-constant delay() pre-history\ndouble _rxPast(int _cSub, int _cmt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double _past[%d];\n  (void)_past;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=11;\n",
+        sAppend(&sbOut,  "// Non-constant delay() pre-history\ndouble _rxPast(int _cSub, int _cmt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double _past[%d];\n  (void)_past;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n  _ind->_rxFlag=11;\n",
                 nnn);
         // default: the constant initial condition (states with no past() keep
         // the previous constant-history behavior)
         for (int jjj = nnn; jjj--;){
-          sAppend(&sbOut, "  _past[%d]=_solveData->op->inits[%d];\n", jjj, jjj);
+          sAppend(&sbOut, "  _past[%d]=_rxDelayIni(_ind, %d);\n", jjj, jjj);
         }
       } else {
         // body left open; the catch-all close ("}\n") at the end finishes it
-        sAppend(&sbOut,  "// Non-constant delay() pre-history\ndouble _rxPast(int _cSub, int _cmt, double __t, double *__zzStateVar__){\n  (void)_cSub; (void)__t; (void)__zzStateVar__;\n  return _solveData->op->inits[_cmt];\n");
+        sAppend(&sbOut,  "// Non-constant delay() pre-history\ndouble _rxPast(int _cSub, int _cmt, double __t, double *__zzStateVar__){\n  (void)__t; (void)__zzStateVar__;\n  return _rxDelayIni(&(_solveData->subjects[_cSub]), _cmt);\n");
       }
     } else if (show_ode == ode_mtime){
       if (nmtime){
-        sAppend(&sbOut,  "// Model Times\nvoid %smtime(int _cSub, double *_mtime, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double t = 0;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=8;\n",
+        sAppend(&sbOut,  "// Model Times\nvoid %smtime(int _cSub, double *_mtime, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double t = 0;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n  _ind->_rxFlag=8;\n",
                 prefix);
       } else {
         sAppend(&sbOut,  "// Model Times\nvoid %smtime(int _cSub, double *_mtime, double *__zzStateVar__){\n",
                 prefix);
       }
     } else if (show_ode == ode_mexp){
-      sAppend(&sbOut, "// Matrix Exponential (%d)\nvoid %sME(int _cSub, double _t, double __t, double *_mat, const double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=9;\n",
+      sAppend(&sbOut, "// Matrix Exponential (%d)\nvoid %sME(int _cSub, double _t, double __t, double *_mat, const double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n  _ind->_rxFlag=9;\n",
               tb.matn, prefix);
     } else if (show_ode == ode_indLinVec) {
-      sAppend(&sbOut, "// Inductive linearization Matf\nvoid %sIndF(int _cSub, double _t, double __t, double *_matf, const double *__zzStateVar__){\n int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=10;\n", prefix);
+      sAppend(&sbOut, "// Inductive linearization Matf\nvoid %sIndF(int _cSub, double _t, double __t, double *_matf, const double *__zzStateVar__){\n int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n  _ind->_rxFlag=10;\n", prefix);
     } else if (ode_is_es_dcode(show_ode)) {
       // Event ("jump") sensitivities: total derivative of the modeled
       // alag / F / rate / dur wrt each first-order sensitivity parameter,
@@ -448,7 +478,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         (show_ode == ode_d2Dur)?"d2(dur)/dp/dq" :
         (show_ode == ode_d3F)  ? "d3(F)/dp/dq/dr" :
         (show_ode == ode_dFQ)  ? "d(F)/dq" :
-        (show_ode == ode_dLagJac) ? "d(J[k][c])/dq" :
+        (show_ode == ode_dLagJac) ? "d(f_k)/dq" :
         (show_ode == ode_dLagQ) ? "d(alag)/dq" : "d(dur)/dq";
       const char *_esFun =
         (show_ode == ode_dLag) ? "dLag" :
@@ -479,14 +509,14 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
       sAppend(&sbOut,
               "// Event-sensitivity %s\nvoid %s%s(int _cSub, double __t, double *__zzStateVar__, double *%s){\n"
               "  int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n"
-              "  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=5;\n  (void)%s;\n",
+              "  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n  _ind->_rxFlag=5;\n  (void)%s;\n",
               _esDesc, prefix, _esFun, _esBuf, _esBuf);
     } else {
       sAppend(&sbOut,  "// prj-specific derived vars\n"
               "#if defined(__GNUC__) || defined(__clang__)\n"
               "__attribute__((hot))\n"
               "#endif\n"
-              "void %scalc_lhs(int _cSub, double __t, double * __restrict__ __zzStateVar__, double *_lhs) {\n    int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=11;\n  int _wasAtEventTime = _ind->_atEventTime; _ind->_atEventTime = 0; (void)_wasAtEventTime;\n", prefix);
+              "void %scalc_lhs(int _cSub, double __t, double * __restrict__ __zzStateVar__, double *_lhs) {\n    int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n  _ind->_rxFlag=11;\n  int _wasAtEventTime = _ind->_atEventTime; _ind->_atEventTime = 0; (void)_wasAtEventTime;\n", prefix);
     }
     if ((show_ode == ode_jac && found_jac == 1 && good_jac == 1) ||
         (show_ode != ode_jac && show_ode != ode_ini && show_ode != ode_fbio &&
@@ -538,6 +568,17 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         sAppendN(&sbOut, "  _update_par_ptr(_t, _cSub, _solveData, _idx);\n", 48);
       } else {
         sAppendN(&sbOut, "  _update_par_ptr(__t, _cSub, _solveData, _idx);\n", 49);
+      }
+      // _tPK: the time PK-type statements read (pkTime.h); only the functions
+      // the integrator calls between records read the record time
+      _pkLine = NULL;
+      if (show_ode == ode_dydt || show_ode == ode_jac ||
+          show_ode == ode_mexp || show_ode == ode_indLinVec) {
+        int *pkLine = (int*)R_alloc(sbPm.n > 0 ? sbPm.n : 1, sizeof(int));
+        if (pkTimeClassify(pkLine) > 0) _pkLine = pkLine;
+        if (_pkLine != NULL) {
+          sAppend(&sbOut, "  double _tPK = _rxPkTime(t, _cSub, _solveData);\n  (void)_tPK;\n");
+        }
       }
       prnt_vars(print_populateParameters, 1, "", "\n",show_ode);                   /* pass system pars */
       if (show_ode != ode_past){
@@ -616,7 +657,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
             // hoist delay() into a common-subexpression assignment -- emitting it
             // into _rxPast would recurse (_rxDelay -> _rxPast -> _rxDelay ...).
             if (!(show_ode == ode_past && strstr(_taLine, "_rxDelay") != NULL)) {
-              sAppend(&sbOut, "  %s", _taLine);
+              appendModelLine(i, _taLine);
             }
           }
           break;
@@ -627,7 +668,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
               tb.ix = sbPm.lProp[i];
               if (tb.lh[tb.ix] == isLHS || tb.lh[tb.ix] == isLHSstr ||
                   tb.lh[tb.ix] == isLHSparam){
-                sAppend(&sbOut,"  %s",show_ode == ode_dydt ? sbPm.line[i] : sbPmDt.line[i]);
+                appendModelLine(i, show_ode == ode_dydt ? sbPm.line[i] : sbPmDt.line[i]);
               }
             }
           }
@@ -672,7 +713,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
           break;
         case TLOGIC:
           if (tb.isMexp || (show_ode != ode_mexp && show_ode != ode_indLinVec)){
-            sAppend(&sbOut,"  %s",(show_ode == ode_dydt || show_ode == ode_mexp || show_ode == ode_indLinVec) ? sbPm.line[i] : sbPmDt.line[i]);
+            appendModelLine(i, (show_ode == ode_dydt || show_ode == ode_mexp || show_ode == ode_indLinVec) ? sbPm.line[i] : sbPmDt.line[i]);
           }
           break;
         case TMAT0:
@@ -779,7 +820,7 @@ void codegen(char *model, int show_ode, const char *prefix, const char *libname,
         }
         break;
       case ode_dLagJac:
-        // Event-sensitivity d(J[k][c])/dq assignment lines (may be empty)
+        // Event-sensitivity d(f_k)/dq assignment lines (may be empty)
         if (_es_dLagJacCode != NULL && _es_dLagJacCode[0] != '\0') {
           sAppend(&sbOut, "\n%s\n", _es_dLagJacCode);
         }
@@ -923,7 +964,7 @@ void writeSb(sbuf *sbb, FILE *fp){
 extern SEXP _goodFuns;
 
 SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
-                          SEXP pMd5, SEXP timeId, SEXP mvLast,
+                          SEXP pMd5, SEXP mvLast,
                           SEXP goodFuns, SEXP esDLagCode, SEXP esDFCode,
                           SEXP esDRateCode, SEXP esDDurCode, SEXP esD2FCode,
                           SEXP esD2LagCode, SEXP esD2RateCode, SEXP esD2DurCode,
@@ -964,14 +1005,14 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   fpIO = fopen(CHAR(STRING_ELT(c_file,0)), "wb");
   err_msg((intptr_t) fpIO, "error opening output c file\n", -2);
 
-  if (badMd5){
+  if (badMd5 || md5 == NULL){
     SET_STRING_ELT(VECTOR_ELT(mvLast, RxMv_md5), 0, Rf_mkChar(""));
   } else {
     SET_STRING_ELT(VECTOR_ELT(mvLast, RxMv_md5), 0, Rf_mkChar(md5));
   }
-  SET_STRING_ELT(VECTOR_ELT(mvLast, RxMv_model), 1, Rf_mkChar(me_code));
-  int pro = 0;
-  SEXP trans = PROTECT(VECTOR_ELT(mvLast, RxMv_trans)); pro++;
+  SET_STRING_ELT(VECTOR_ELT(mvLast, RxMv_model), 1, Rf_mkChar(me_code == NULL ? "" : me_code));
+  rxProtectGuard;
+  SEXP trans = rxP(VECTOR_ELT(mvLast, RxMv_trans));
   sbuf buf; sNull(&buf);
   sIni(&buf);
   if (strcmp(CHAR(STRING_ELT(trans, 0)), CHAR(STRING_ELT(libname, 0)))) {
@@ -1018,7 +1059,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
     SET_STRING_ELT(trans, 21, Rf_mkChar(buf.s)); // IndF
   }
   //sPrint(&_mv, "%s", CHAR(STRING_ELT(PROTECT(_rxode2_rxQs(mvLast)), 0))); pro++;
-  SEXP rawMV = PROTECT(_rxode2_rxQs(mvLast)); pro++;
+  SEXP rawMV = rxP(_rxode2_rxQs(mvLast));
   sPrint(&_mv,"   SEXP rw    = PROTECT(Rf_allocVector(RAWSXP, %d));pro++;\n", Rf_length(rawMV));
   unsigned char *raw = RAW(rawMV);
   sAppendN(&_mv, "    unsigned char r[]={", 23);
@@ -1037,10 +1078,10 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   sFree(&sbOut);
   sIniTo(&sbOut, (int)((sbPm.sN)*5.3));
 
-  SEXP stateOrd = PROTECT(VECTOR_ELT(mvLast, RxMv_stateOrd)); pro++;
+  SEXP stateOrd = rxP(VECTOR_ELT(mvLast, RxMv_stateOrd));
   int nOrd = Rf_length(stateOrd);
   if (nOrd > 0) {
-    SEXP stateOrdNames = PROTECT(Rf_getAttrib(stateOrd, R_NamesSymbol)); pro++;
+    SEXP stateOrdNames = rxP(Rf_getAttrib(stateOrd, R_NamesSymbol));
     int *stateOrdInt = INTEGER(stateOrd);
     sAppend(&sbOut, "// Define translation state order for %d states\n", Rf_length(stateOrd));
     // Re-key the __DDT defines by each state's actual tb.de index, so that
@@ -1110,10 +1151,10 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
     writeSb(&sbOut, fpIO);
     sbOut.o = 0;
   }
-  SEXP lhsOrd = PROTECT(VECTOR_ELT(mvLast, RxMv_lhsOrd)); pro++;
+  SEXP lhsOrd = rxP(VECTOR_ELT(mvLast, RxMv_lhsOrd));
   int  nLhs  =  Rf_length(lhsOrd);
   if (nLhs > 0) {
-    SEXP lhsOrdNames = PROTECT(Rf_getAttrib(lhsOrd, R_NamesSymbol)); pro++;
+    SEXP lhsOrdNames = rxP(Rf_getAttrib(lhsOrd, R_NamesSymbol));
     int *lhsOrdInt = INTEGER(lhsOrd);
     sAppend(&sbOut, "// Define %d LHS values\n", nLhs);
     for (int i = 0; i < nLhs; i++){
@@ -1123,7 +1164,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
     writeSb(&sbOut, fpIO);
     sbOut.o = 0;
   }
-  UNPROTECT(pro);
+  rxUPAll();
   // show_ode = 1 dydt
   // show_ode = 2 Jacobian
   // show_ode = 3 Ini statement
@@ -1152,7 +1193,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   gCode(ode_d2Dur);  // second-order event-sensitivity d2(dur)/dp/dq
   gCode(ode_d3F);    // third-order event-sensitivity d3(F)/dp/dq/dr
   gCode(ode_dFQ);    // event-sensitivity d(F)/dq (Phase H1 dtau/lag row)
-  gCode(ode_dLagJac);// event-sensitivity d(J[k][c])/dq (Phase H1 dtau/lag row)
+  gCode(ode_dLagJac);// event-sensitivity d(f_k)/dq (Phase H1 dtau/lag row)
   gCode(ode_dLagQ);  // event-sensitivity d(alag)/dq (Phase H1 dtau/lag row guard)
   gCode(ode_dDurQ);  // event-sensitivity d(dur)/dq (modeled-DUR continuous-forcing 2nd order)
   gCode(4); // Registration

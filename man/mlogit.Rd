@@ -73,6 +73,25 @@ mlogit(0.1, 0.2, 0.3)
 mlogit(0.1, 0.2, 0.3, returnRoot = TRUE)
 
 }
+\seealso{
+Other Special functions:
+\code{\link[=boxCox]{boxCox()}},
+\code{\link[=delay]{delay()}},
+\code{\link[=erf]{erf()}},
+\code{\link[=gammap]{gammap()}},
+\code{\link[=gammapDer]{gammapDer()}},
+\code{\link[=gammapInv]{gammapInv()}},
+\code{\link[=gammaq]{gammaq()}},
+\code{\link[=gammaqInv]{gammaqInv()}},
+\code{\link[=logit]{logit()}},
+\code{\link[=lowergamma]{lowergamma()}},
+\code{\link[=mexpit]{mexpit()}},
+\code{\link[=phi]{phi()}},
+\code{\link[=phiU]{phiU()}},
+\code{\link[=probit]{probit()}},
+\code{\link[=uppergamma]{uppergamma()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Special functions}

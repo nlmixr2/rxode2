@@ -582,12 +582,21 @@ extern "C" SEXP _gammaqInva(SEXP a, SEXP z) {
   return ret;
 }
 
+// log(x-low)-log(high-x) keeps precision near the bounds; -Inf/Inf at them, like qlogis()
 extern "C" double logit(double x, double low, double high) {
-  return _powerD(x, 1.0, 4, low, high);
+  if (ISNAN(x)) return x;
+  if (!(low < high)) return R_NaN;
+  if (x == low) return R_NegInf;
+  if (x == high) return R_PosInf;
+  if (x < low || x > high) return R_NaN;
+  return log(x-low) - log(high-x);
 }
 
+// expit(-Inf)=low and expit(Inf)=high, like plogis()
 extern "C" double expit(double alpha, double low, double high) {
-  return _powerDi(alpha, 1.0, 4, low, high);
+  if (ISNAN(alpha)) return alpha;
+  if (!R_finite(alpha) && !ISNAN(low) && !ISNAN(high)) return alpha > 0 ? high : low;
+  return (high-low)/(1+exp(-alpha))+low;
 }
 
 extern "C" double probit(double x, double low, double high) {
@@ -916,7 +925,13 @@ extern "C" SEXP _rxode2_powerD(SEXP xS, SEXP lowS, SEXP highS, SEXP lambdaS, SEX
   }
   SEXP ret = rx_protect.protect(Rf_allocVector(REALSXP, lenx));
   double *retD = REAL(ret);
-  if (inverse) {
+  if (yj == 4) {
+    // logit()/expit() (no lambda): same code as the compiled model functions
+    for (int i = lenx; i--;){
+      double cur = isD ? xD[i] : (xI[i] == NA_INTEGER ? NA_REAL : (double)(xI[i]));
+      retD[i] = inverse ? expit(cur, low, high) : logit(cur, low, high);
+    }
+  } else if (inverse) {
     if (isD) {
       for (int i = lenx; i--;){
         retD[i] = _powerDi(xD[i], lambda, yj, low, high);
@@ -1089,6 +1104,31 @@ extern "C" double phi(double q) {
   return pnorm(q, 0.0, 1.0, 1, 0);
 }
 
+// phi() bounded away from 0 and 1.
+//
+// This is the first half of a declared non-normal random effect (see
+// `rxEtaDistExpand()`): the latent eta is standard normal, `phiU()` maps
+// it to a uniform, and the family's inverse CDF maps that to the random
+// effect.  `phi()` saturates to exactly 0 or 1 in double precision around
+// |q| = 8.3, where the inverse CDF would return an infinity and take the
+// whole solve with it, which is why NONMEM's own version of this adds a
+// DEL of 1e-7.
+//
+// The bound is 1e-15 rather than NONMEM's 1e-7: it is the smallest value
+// that still keeps every quantile function finite, so the tails are
+// clipped as late as double precision allows.  The derivative table
+// reports d(phiU)/dq as dnorm(q) with no clamp branch -- at the |q| where
+// the clamp binds dnorm(q) is itself below 1e-14, so the two agree to
+// within their own accuracy, and a hard zero there would stall the inner
+// optimizer instead.
+#define RX_PHIU_EPS 1e-15
+extern "C" double phiU(double q) {
+  double u = pnorm(q, 0.0, 1.0, 1, 0);
+  if (u < RX_PHIU_EPS) return RX_PHIU_EPS;
+  if (u > 1.0 - RX_PHIU_EPS) return 1.0 - RX_PHIU_EPS;
+  return u;
+}
+
 extern "C" SEXP _rxode2_phi(SEXP q) {
   rxProtect rx_protect;
   int type = TYPEOF(q);
@@ -1159,3 +1199,89 @@ extern "C" SEXP _rxode2_getClassicEvid(SEXP cmtS, SEXP amtS, SEXP rateS,
   // UNPROTECT
   return retS;
 }
+
+////////////////////////////////////////////////////////////////////////////
+// R level access to the quantile functions a declared non-normal random
+// effect is built from.
+//
+// One generic recycling wrapper per arity rather than the hand rolled
+// per function SEXP loops above it: there are ten of these, they are all
+// plain vectorized doubles, and repeating that loop ten times would be
+// ten places for a length or type check to drift apart.
+
+extern "C" double ibeta_(double, double, double);
+extern "C" double ibetaDer(double, double, double);
+extern "C" double ibetaInv(double, double, double);
+extern "C" double ibetaDera(double, double, double);
+extern "C" double ibetaDerb(double, double, double);
+extern "C" double gammapDera(double, double);
+extern "C" double studentTDen(double, double);
+extern "C" double studentTCdf(double, double);
+extern "C" double studentTCdfDnu(double, double);
+extern "C" double studentTInv(double, double);
+
+static inline SEXP rxAsRealArg(SEXP x, const char *nm, rxProtect &pro) {
+  int t = TYPEOF(x);
+  if (t == REALSXP) return x;
+  if (t == INTSXP || t == LGLSXP) return pro.protect(Rf_coerceVector(x, REALSXP));
+  (Rf_errorcall)(R_NilValue, _("'%s' needs to be a number"), nm);
+  return R_NilValue; // nocov
+}
+
+// recycles every argument to the longest one, the way R's own arithmetic
+// does; a zero length argument makes the result zero length
+static SEXP rxVecN(SEXP *args, int nArg, void *fn) {
+  rxProtect rx_protect;
+  const char *nms[3] = {"a", "b", "c"};
+  double *p[3];
+  int len[3];
+  int n = 0;
+  for (int i = 0; i < nArg; ++i) {
+    SEXP cur = rxAsRealArg(args[i], nms[i], rx_protect);
+    p[i] = REAL(cur);
+    len[i] = Rf_length(cur);
+    if (len[i] == 0) return Rf_allocVector(REALSXP, 0);
+    if (len[i] > n) n = len[i];
+  }
+  SEXP ret = rx_protect.protect(Rf_allocVector(REALSXP, n));
+  double *r = REAL(ret);
+  for (int j = 0; j < n; ++j) {
+    if (nArg == 1) {
+      r[j] = ((double(*)(double))fn)(p[0][j % len[0]]);
+    } else if (nArg == 2) {
+      r[j] = ((double(*)(double, double))fn)(p[0][j % len[0]], p[1][j % len[1]]);
+    } else {
+      r[j] = ((double(*)(double, double, double))fn)(p[0][j % len[0]], p[1][j % len[1]],
+                                                     p[2][j % len[2]]);
+    }
+  }
+  return ret;
+}
+
+#define RX_VEC1(NM, FN)                                 \
+  extern "C" SEXP NM(SEXP a) {                          \
+    SEXP args[1] = {a};                                 \
+    return rxVecN(args, 1, (void *)&FN);                \
+  }
+#define RX_VEC2(NM, FN)                                 \
+  extern "C" SEXP NM(SEXP a, SEXP b) {                  \
+    SEXP args[2] = {a, b};                              \
+    return rxVecN(args, 2, (void *)&FN);                \
+  }
+#define RX_VEC3(NM, FN)                                 \
+  extern "C" SEXP NM(SEXP a, SEXP b, SEXP c) {          \
+    SEXP args[3] = {a, b, c};                           \
+    return rxVecN(args, 3, (void *)&FN);                \
+  }
+
+RX_VEC1(_rxode2_phiU, phiU)
+RX_VEC2(_rxode2_gammapDera, gammapDera)
+RX_VEC3(_rxode2_ibeta, ibeta_)
+RX_VEC3(_rxode2_ibetaDer, ibetaDer)
+RX_VEC3(_rxode2_ibetaInv, ibetaInv)
+RX_VEC3(_rxode2_ibetaDera, ibetaDera)
+RX_VEC3(_rxode2_ibetaDerb, ibetaDerb)
+RX_VEC2(_rxode2_studentTDen, studentTDen)
+RX_VEC2(_rxode2_studentTCdf, studentTCdf)
+RX_VEC2(_rxode2_studentTCdfDnu, studentTCdfDnu)
+RX_VEC2(_rxode2_studentTInv, studentTInv)

@@ -17,7 +17,7 @@ rxTest({
   test_that("the throttle suppresses the sort only below its documented cutoff", {
     # cutoff: sort <=> nall*throttle > cores
     expect_false(.rxSortIdsWanted(cores = 8L, nall = 4L, throttle = 2L)) # 8 == 8
-    expect_true(.rxSortIdsWanted(cores = 8L, nall = 5L, throttle = 2L))  # 10 > 8
+    expect_true(.rxSortIdsWanted(cores = 8L, nall = 5L, throttle = 2L)) # 10 > 8
     expect_false(.rxSortIdsWanted(cores = 8L, nall = 3L, throttle = 2L)) # 6 < 8
 
     # throttle = 1 moves the cutoff to one subject per thread

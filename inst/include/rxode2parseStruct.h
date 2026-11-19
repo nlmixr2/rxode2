@@ -518,6 +518,41 @@ struct rx_solving_options_ind_s {
   double *linCmtOriginHist;   /* flat idx-indexed origin history, or NULL when unused */
   int     linCmtOriginHistCap; /* capacity in idx slots */
   int     linCmtOriginHistW;   /* doubles per idx slot (m*RX_LINCMT_ORIGIN_MAX) */
+  // Fixed rate/duration infusion pairing recorded by etTrans(): infPair[i] is
+  // the offset from record i to the record that starts/stops the same
+  // infusion, 0 when none is recorded.  NULL unless the start/stop scans would
+  // pair this subject's infusions wrongly (nlmixr2/rxode2#1348).  Covers the
+  // first n_all_times_orig records; pushed doses are never recorded here.
+  int    *infPair;
+  // 1 for a record that is not a data record (an addl repeat or a record a
+  // dose expands to), recorded by etTrans() only for a model whose PK-type
+  // statements read `time`; NULL otherwise.  _rxPkTime() skips these with
+  // rxControl(nonmem = TRUE) (rxode2#1429).  Covers the first n_all_times_orig
+  // records.
+  int    *pkSkip;
+  // delay() pre-history: this subject's evaluated initial state (after the
+  // x(0) <- expr assignments, before any dose), captured by iniSubject() for a
+  // delay() model so a parameter or computed x(0) is honored (rxode2#1441).
+  // Kept after the solve for the output pass; freed in rxFreeInd().
+  double *delayIni;
+  int     delayIniCap; /* allocated length of delayIni */
+  int     delayIniN;   /* valid entries; 0 = use op->inits */
+  // Steady-state delay() history (rxode2#1447): while handleSS() iterates a
+  // delay() model each sub-solve records history on a continuous virtual
+  // clock; delayTOff (virtual - solver time) is added to every delay() lookup
+  // and every recorded step.  0 outside the steady-state solve.
+  double  delayTOff;
+  double  delaySSClock; /* virtual time reached by the steady-state solve */
+  int     delaySS;      /* 1 while handleSS() records delay() history */
+  double  delaySSii;    /* dosing interval of that steady state (0 = constant) */
+  double  delayMaxT;    /* largest delay duration seen */
+  // Fixed-duration infusions in progress: (stop record, rate its start added,
+  // then the rate's forward sensitivities) entries, so the stop removes what
+  // its start added rather than re-evaluating a state-dependent f()
+  // (rxode2#1568).  Owned by the subject, freed in rxFreeInd().
+  double *infDurOn;
+  int     infDurOnCap; /* allocated doubles in infDurOn */
+  int     infDurOnN;   /* entries in use */
 };
 
 typedef struct rx_solve_s {
@@ -623,7 +658,19 @@ typedef struct rx_solve_s {
   int ssInfDurAbort;
   int *splitBolus;
   int splitBolusN;
+  int *splitInfusionBolus;
+  int splitInfusionBolusN;
+  int *splitBolusInfusion;
+  int splitBolusInfusionN;
   rx_fn_pointers fns;
+  // rxControl(nonmem=TRUE): PK-type statements read the record time
+  // (_rxPkTime(), rxode2#1429)
+  int nonmem;
+  // rxControl(addlKeepsCov=TRUE): a dose moved by alag() carries its record's
+  // covariates; otherwise they are imputed at its actual dosing time (#1584)
+  int addlKeepsCov;
+  // hidden knots (evid 8) at lagged doses' record times, counted in nobs
+  int nknot;
 } rx_solve;
 
 typedef void (*rxode2_assignFuns2_t)(rx_solve, rx_solving_options, t_F, t_LAG, t_RATE, t_DUR,t_calc_mtime, t_ME, t_IndF, t_getTime, t_locateTimeIndex, t_handle_evidL,t_getDur);

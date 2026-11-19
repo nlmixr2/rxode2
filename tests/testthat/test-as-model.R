@@ -1,7 +1,6 @@
 rxTest({
   if (!.Call(`_rxode2_isIntel`)) {
     test_that("as.model expression", {
-
       is.model <- function(x) {
         expect_true(is.call(x))
         expect_true(identical(x[[1]], quote(`model`)))
@@ -46,22 +45,23 @@ rxTest({
 
       is.model(as.model(ui))
 
-      model <- c("model({",
-                 "ka <- exp(tka + eta.ka)",
-                 "cl <- exp(tcl + eta.cl)",
-                 "v <- exp(tv + eta.v)",
-                 "d/dt(depot) = -ka * depot",
-                 "d/dt(center) = ka * depot - cl / v * center",
-                 "cp = center / v",
-                 "cp ~ add(add.sd)",
-                 "})")
+      model <- c(
+        "model({",
+        "ka <- exp(tka + eta.ka)",
+        "cl <- exp(tcl + eta.cl)",
+        "v <- exp(tv + eta.v)",
+        "d/dt(depot) = -ka * depot",
+        "d/dt(center) = ka * depot - cl / v * center",
+        "cp = center / v",
+        "cp ~ add(add.sd)",
+        "})"
+      )
 
       is.model(as.model(model))
 
-      model <- paste(model, collapse="\n")
+      model <- paste(model, collapse = "\n")
 
       is.model(as.model(model))
-
     })
   }
 })

@@ -1,5 +1,5 @@
 ---
-title: "Event Tables after 5.0.2: Architecture and Benchmark"
+title: "Event table architecture"
 date: "`r Sys.Date()`"
 output:
   html_document:
@@ -450,3 +450,8 @@ lazy design.
 ```{r}
 sessionInfo()
 ```
+
+## Next steps
+
+- [Building event tables with et()](rxode2-event-table.html)
+- [Combining event tables](rxode2-event-table-combine.html)

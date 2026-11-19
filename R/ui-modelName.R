@@ -13,11 +13,17 @@
 .rxModelNameScalar <- function(x) {
   # a try-error is a character vector; without this its message would become
   # the model name
-  if (is.null(x) || inherits(x, "try-error")) return(NULL)
-  .ret <- try(as.character(x), silent=TRUE)
-  if (inherits(.ret, "try-error")) return(NULL)
+  if (is.null(x) || inherits(x, "try-error")) {
+    return(NULL)
+  }
+  .ret <- try(as.character(x), silent = TRUE)
+  if (inherits(.ret, "try-error")) {
+    return(NULL)
+  }
   .ret <- .ret[!is.na(.ret) & nzchar(.ret)]
-  if (length(.ret) == 0L) return(NULL)
+  if (length(.ret) == 0L) {
+    return(NULL)
+  }
   .ret[[1L]]
 }
 
@@ -54,8 +60,7 @@
 #' @noRd
 #' @author Bill Denney
 .rxModelNameUnwrapParens <- function(expr) {
-  while (is.call(expr) && length(expr) == 2L &&
-           identical(expr[[1L]], quote(`(`))) {
+  while (is.call(expr) && length(expr) == 2L && identical(expr[[1L]], quote(`(`))) {
     expr <- expr[[2L]]
   }
   expr
@@ -76,7 +81,7 @@
 
 #' Environment holding the name supplied by an assignment operator
 #' @noRd
-.rxModelNameEnv <- new.env(parent=emptyenv())
+.rxModelNameEnv <- new.env(parent = emptyenv())
 .rxModelNameEnv$lhs <- NULL
 
 #' Name a model from the left hand side of an assignment
@@ -122,9 +127,11 @@ rxModelNameLhs <- function(value) {
     .rxModelNameEnv$lhs <- NULL
     return(invisible(NULL))
   }
-  if (!checkmate::testCharacter(value, len=1L, any.missing=FALSE, min.chars=1L)) {
-    stop("'rxModelNameLhs()' must be called with a single non-empty character, NULL, or without any arguments",
-         call.=FALSE)
+  if (!checkmate::testCharacter(value, len = 1L, any.missing = FALSE, min.chars = 1L)) {
+    stop(
+      "'rxModelNameLhs()' must be called with a single non-empty character, NULL, or without any arguments",
+      call. = FALSE
+    )
   }
   .rxModelNameEnv$lhs <- value
   invisible(value)
@@ -184,8 +191,10 @@ rxModelName <- function(x, ...) {
 #' @export
 rxModelName.default <- function(x, ...) {
   # `...` is never forced here; the name comes from the call itself
-  .ret <- try(deparse(x, width.cutoff=500L, nlines=1L), silent=TRUE)
-  if (inherits(.ret, "try-error")) return(NULL)
+  .ret <- try(deparse(x, width.cutoff = 500L, nlines = 1L), silent = TRUE)
+  if (inherits(.ret, "try-error")) {
+    return(NULL)
+  }
   .rxModelNameScalar(.rxModelNameTrim(.ret))
 }
 
@@ -205,19 +214,23 @@ rxModelName.default <- function(x, ...) {
 #' @author Matthew L. Fidler
 .rxModelNameDispatch <- function(expr, envir) {
   .head <- expr[[1L]]
-  .cls <- try(sub("^.*:::?", "", deparse1(.head)), silent=TRUE)
-  if (inherits(.cls, "try-error") ||
-        !checkmate::testCharacter(.cls, len=1L, any.missing=FALSE, min.chars=1L)) {
+  .cls <- try(sub("^.*:::?", "", deparse1(.head)), silent = TRUE)
+  if (
+    inherits(.cls, "try-error") ||
+      !checkmate::testCharacter(.cls, len = 1L, any.missing = FALSE, min.chars = 1L)
+  ) {
     return(NULL)
   }
-  .method <- try(utils::getS3method("rxModelName", .cls, optional=TRUE), silent=TRUE)
-  if (inherits(.method, "try-error") || is.null(.method)) return(NULL)
+  .method <- try(utils::getS3method("rxModelName", .cls, optional = TRUE), silent = TRUE)
+  if (inherits(.method, "try-error") || is.null(.method)) {
+    return(NULL)
+  }
   .args <- as.list(expr)[-1L]
   # name-match the arguments when the function itself can be found, so a method
   # can read them by name however the user wrote the call
-  .fun <- try(eval(.head, envir=envir), silent=TRUE)
+  .fun <- try(eval(.head, envir = envir), silent = TRUE)
   if (is.function(.fun) && !is.primitive(.fun)) {
-    .matched <- try(match.call(.fun, expr), silent=TRUE)
+    .matched <- try(match.call(.fun, expr), silent = TRUE)
     if (!inherits(.matched, "try-error")) .args <- as.list(.matched)[-1L]
   }
   .x <- expr
@@ -225,9 +238,11 @@ rxModelName.default <- function(x, ...) {
   # the generic itself, not `rxode2::rxModelName`, so this follows the loaded
   # rxode2 rather than an installed one
   .call <- as.call(c(list(rxModelName, bquote(quote(.(.x)))), .args))
-  .ret <- try(eval(.call, envir=envir), silent=TRUE)
-  if (inherits(.ret, "try-error") ||
-        !checkmate::testCharacter(.ret, len=1L, any.missing=FALSE, min.chars=1L)) {
+  .ret <- try(eval(.call, envir = envir), silent = TRUE)
+  if (
+    inherits(.ret, "try-error") ||
+      !checkmate::testCharacter(.ret, len = 1L, any.missing = FALSE, min.chars = 1L)
+  ) {
     return(NULL)
   }
   .ret
@@ -250,31 +265,43 @@ rxModelName.default <- function(x, ...) {
 #'   be named
 #' @noRd
 #' @author Bill Denney and Matthew L. Fidler
-.rxModelNameFromExpr <- function(expr, envir=parent.frame()) {
-  if (missing(expr)) return(rxModelNameLhs())
+.rxModelNameFromExpr <- function(expr, envir = parent.frame()) {
+  if (missing(expr)) {
+    return(rxModelNameLhs())
+  }
   # A call is never the empty symbol, so it is safe to hand to another closure;
   # `substitute()` of a missing argument is, and passing that on would raise
   # "argument is missing" -- it stays in this frame and its name is "", which
   # .rxModelNameScalar() turns into NULL.
-  if (is.call(expr)) expr <- .rxModelNameUnwrapParens(expr)
+  if (is.call(expr)) {
+    expr <- .rxModelNameUnwrapParens(expr)
+  }
   if (is.symbol(expr) || is.character(expr)) {
     # same answer as deparsing, and the only form that reaches the empty symbol
-    .ret <- .rxModelNameScalar(try(as.character(expr), silent=TRUE))
-    if (!is.null(.ret)) return(.ret)
+    .ret <- .rxModelNameScalar(try(as.character(expr), silent = TRUE))
+    if (!is.null(.ret)) {
+      return(.ret)
+    }
     return(rxModelNameLhs())
   }
   # an anonymous model function names nothing, whether it is a definition or
   # the function value itself
-  if (.rxModelNameIsFunctionExpr(expr)) return(rxModelNameLhs())
+  if (.rxModelNameIsFunctionExpr(expr)) {
+    return(rxModelNameLhs())
+  }
   if (is.call(expr)) {
     .ret <- .rxModelNameDispatch(expr, envir)
-    if (!is.null(.ret)) return(.ret)
+    if (!is.null(.ret)) {
+      return(.ret)
+    }
     .lhs <- rxModelNameLhs()
     if (!is.null(.lhs)) return(.lhs)
   }
   # nlines keeps this cheap no matter how large the deparsed object would be
-  .ret <- try(deparse(expr, width.cutoff=500L, nlines=1L), silent=TRUE)
-  if (inherits(.ret, "try-error")) return(NULL)
+  .ret <- try(deparse(expr, width.cutoff = 500L, nlines = 1L), silent = TRUE)
+  if (inherits(.ret, "try-error")) {
+    return(NULL)
+  }
   .rxModelNameScalar(.rxModelNameTrim(.ret))
 }
 
@@ -300,22 +327,28 @@ rxModelName.default <- function(x, ...) {
 #'
 #' rxModelNameFromExpr(quote(readModelDb("PK_1cmt")))
 #'
-rxModelNameFromExpr <- function(expr, envir=parent.frame()) {
-  if (missing(expr)) return(rxModelNameLhs())
-  .rxModelNameFromExpr(expr, envir=envir)
+rxModelNameFromExpr <- function(expr, envir = parent.frame()) {
+  if (missing(expr)) {
+    return(rxModelNameLhs())
+  }
+  .rxModelNameFromExpr(expr, envir = envir)
 }
 
 #' @export
 #' @rdname rxUiGet
 rxUiGet.modelName <- function(x, ...) {
   .ui <- x[[1]]
-  if (exists("modelName", envir=.ui)) {
-    return(.rxModelNameScalar(get("modelName", envir=.ui)))
+  if (exists("modelName", envir = .ui)) {
+    return(.rxModelNameScalar(get("modelName", envir = .ui)))
   }
-  if (!exists("meta", envir=.ui)) return(NULL)
-  .meta <- get("meta", envir=.ui)
-  if (!is.environment(.meta) || !exists("modelName", envir=.meta)) return(NULL)
-  .rxModelNameScalar(get("modelName", envir=.meta))
+  if (!exists("meta", envir = .ui)) {
+    return(NULL)
+  }
+  .meta <- get("meta", envir = .ui)
+  if (!is.environment(.meta) || !exists("modelName", envir = .meta)) {
+    return(NULL)
+  }
+  .rxModelNameScalar(get("modelName", envir = .meta))
 }
 attr(rxUiGet.modelName, "desc") <- "Name of the model"
 attr(rxUiGet.modelName, "rstudio") <- NA # passthrough

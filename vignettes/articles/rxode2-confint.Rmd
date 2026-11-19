@@ -295,3 +295,8 @@ See also the [parameter uncertainty
 article](rxode2-parameter-uncertainty.html) for how to build the
 `thetaMat`/`nStud` simulation the band is meant for, and the [VPC
 article](rxode2-vpc.html) for the diagnostic version of the same idea.
+
+## Next steps
+
+- [Plotting results](rxode2-plot.html)
+- [Visual predictive checks](rxode2-vpc.html)

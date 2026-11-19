@@ -1,5 +1,6 @@
 #include "../inst/include/rxode2.h"
 #include "rx2api.h"
+#include "rxPrintfFormat.h"
 
 rx_solve *getRxSolve_(void);
 
@@ -63,6 +64,7 @@ extern int rxInParallel(void);
 // reason -- no OpenMP pragmas are available here.
 extern void rxApiErrRecord(const char *msg);
 
+static void rxApiError(const char *fmt, ...) R_PRINTF_FORMAT(1, 2);
 static void rxApiError(const char *fmt, ...) {
   char buf[512];
   va_list ap;
@@ -195,6 +197,14 @@ void setIndMixest(rx_solving_options_ind* ind, int mixest) {
     return;
   }
   ind->mixest = mixest;
+}
+
+void setIndNewind(rx_solving_options_ind* ind, int newind) {
+  if (newind != 1 && newind != 2) {
+    rxApiError("[setIndNewind]: newind (%d) should be 1 or 2", newind);
+    return;
+  }
+  ind->_newind = newind;
 }
 
 int getRxMixnum(rx_solve *rx) {
@@ -438,7 +448,8 @@ int getRxNall(rx_solve *rx) {
 
 int getRxNobs(rx_solve *rx) {
   rx = rxSolveOrError(rx, __func__);
-  return rx->nobs;
+  // a lagged dose's hidden knot is no observation
+  return rx->nobs - rx->nknot;
 }
 
 int getRxNobs2(rx_solve *rx) {

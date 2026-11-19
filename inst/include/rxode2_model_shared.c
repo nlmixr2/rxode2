@@ -17,6 +17,7 @@ rxode2_fn0i _prodType = NULL;
 rxode2_fn0i _sumType = NULL;
 
 _update_par_ptr_p _update_par_ptr=NULL;
+_rxPkTime_p _rxPkTime=NULL;
 _getParCov_p _getParCov=NULL;
 _setThreadInd_t _setThreadInd=NULL;
 _rxPushDose_t _rxPushDose=NULL;
@@ -72,6 +73,19 @@ rxode2_fn2 gammapInva;
 rxode2_fn2 gammaqInv;
 rxode2_fn2 gammaqInva;
 
+/* inverse CDFs for declared non-normal random effects */
+rxode2_fn phiU;
+rxode2_fn2 gammapDera;
+rxode2_fn3 ibeta;
+rxode2_fn3 ibetaDer;
+rxode2_fn3 ibetaInv;
+rxode2_fn3 ibetaDera;
+rxode2_fn3 ibetaDerb;
+rxode2_fn2 studentTDen;
+rxode2_fn2 studentTCdf;
+rxode2_fn2 studentTCdfDnu;
+rxode2_fn2 studentTInv;
+
 rxode2_fn2 rxnorm;
 rxode2i_rxbinom rxbinom;
 rxode2i_rxbinom rxnbinom;
@@ -87,6 +101,7 @@ rxode2_ifn rxpois;
 rxode2_fn rxt_;
 rxode2_fn2 rxunif;
 rxode2_fn2 rxweibull;
+rxode2_fn2 rxlnorm;
 
 rxode2i2_fn2 rinorm;
 rxode2i2_ribinom ribinom;
@@ -378,14 +393,33 @@ double _transit3P(int cmt, double t, unsigned int id, double n, double mtt){
 // the value is interpolated from the per-subject dense history recorded by the
 // solver, using the same 8th-order Dormand-Prince interpolant as dop853's
 // contd8(), so delayed states are obtained to the full accuracy of the solve.
+// Subject's evaluated initial state x(0) (rxode2#1441), else the literal one.
+static inline double _rxDelayIni(rx_solving_options_ind *_ind, int i) {
+  if (i < _ind->delayIniN) return _ind->delayIni[i];
+  return _solveData->op->inits[i];
+}
+// Lagged time t - T on the delay history's clock; also learns the smallest and
+// largest delays.  While handleSS() iterates (rxode2#1447) the clock is virtual
+// (delayTOff) and a delay longer than the dosing interval reads the previous
+// interval (the periodic orbit) rather than the start-up transient; for a
+// constant steady state (ii = 0) any recent interval (half the smallest delay).
+static inline double _rxDelayTd(rx_solving_options_ind *_ind, double t, double T) {
+  if (T > 0.0 && T < _ind->delayMinT) _ind->delayMinT = T;
+  if (T > _ind->delayMaxT) _ind->delayMaxT = T;
+  double td = t + _ind->delayTOff - T;
+  if (_ind->delaySS) {
+    double ii = _ind->delaySSii > 0.0 ? _ind->delaySSii : 0.5 * _ind->delayMinT;
+    if (ii > 0.0 && isfinite(ii) && T > ii) td += ii * (floor(T / ii) - 1.0);
+  }
+  return td;
+}
 // forward declaration of the model's non-constant pre-history (past()); the
 // default (no past()) returns the constant initial condition.
 double _rxPast(int _cSub, int _cmt, double __t, double *__zzStateVar__);
 double _rxDelay(rx_solving_options_ind *_ind, int i, double t, double T) {
-  double td = t - T;
-  // Learn the smallest delay so the solver can cap its step size and never
-  // step over the delay (keeping the lagged time inside recorded history).
-  if (T > 0.0 && T < _ind->delayMinT) _ind->delayMinT = T;
+  // also learns the smallest delay so the solver can cap its step size and
+  // never step over the delay (keeping the lagged time inside recorded history)
+  double td = _rxDelayTd(_ind, t, T);
   if (!_ind->delayHistOn || _ind->delayHistN == 0 || td <= _ind->delayT0) {
     return _rxPast(_ind->id, i, td, (double*)0);   // pre-history: user past() or constant IC
   }
@@ -439,8 +473,7 @@ double _rxDelay(rx_solving_options_ind *_ind, int i, double t, double T) {
 // estimated parameter).  Before the start of integration the history is the
 // constant initial condition, so the derivative is 0.
 double _rxDelayD(rx_solving_options_ind *_ind, int i, double t, double T) {
-  double td = t - T;
-  if (T > 0.0 && T < _ind->delayMinT) _ind->delayMinT = T;
+  double td = _rxDelayTd(_ind, t, T);
   if (!_ind->delayHistOn || _ind->delayHistN == 0 || td <= _ind->delayT0) {
     return 0.0;   // constant initial history -> zero time-derivative
   }
@@ -491,8 +524,7 @@ double _rxDelayD(rx_solving_options_ind *_ind, int i, double t, double T) {
 // second-order forward sensitivities of parameter-dependent delays.  Constant
 // initial history -> 0.
 double _rxDelayD2(rx_solving_options_ind *_ind, int i, double t, double T) {
-  double td = t - T;
-  if (T > 0.0 && T < _ind->delayMinT) _ind->delayMinT = T;
+  double td = _rxDelayTd(_ind, t, T);
   if (!_ind->delayHistOn || _ind->delayHistN == 0 || td <= _ind->delayT0) {
     return 0.0;
   }
@@ -542,8 +574,7 @@ double _rxDelayD2(rx_solving_options_ind *_ind, int i, double t, double T) {
 // Used by the third-order forward sensitivities of parameter-dependent delays
 // (breaking-point jump terms).  Constant initial history -> 0.
 double _rxDelayD3(rx_solving_options_ind *_ind, int i, double t, double T) {
-  double td = t - T;
-  if (T > 0.0 && T < _ind->delayMinT) _ind->delayMinT = T;
+  double td = _rxDelayTd(_ind, t, T);
   if (!_ind->delayHistOn || _ind->delayHistN == 0 || td <= _ind->delayT0) {
     return 0.0;
   }
@@ -601,6 +632,7 @@ void _assignFuns0(void) {
   _compareFactorVal=(rxode2_compareFactorVal_fn) R_GetCCallable("rxode2", "compareFactorVal");
   _compareFactorInt=(rxode2_compareFactorInt_fn) R_GetCCallable("rxode2", "compareFactorInt");
   _update_par_ptr = (_update_par_ptr_p) R_GetCCallable("rxode2","_update_par_ptr");
+  _rxPkTime = (_rxPkTime_p) R_GetCCallable("rxode2","_rxPkTime");
   _getParCov = (_getParCov_p) R_GetCCallable("rxode2","_getParCov");
   _setThreadInd = (_setThreadInd_t) R_GetCCallable("rxode2","_setThreadInd");
   _rxPushDose   = (_rxPushDose_t)   R_GetCCallable("rxode2","_rxPushDose");
@@ -623,6 +655,7 @@ void _assignFuns0(void) {
   rxt_ = (rxode2_fn)R_GetCCallable("rxode2","rxt_");
   rxunif = (rxode2_fn2)R_GetCCallable("rxode2","rxunif");
   rxweibull = (rxode2_fn2)R_GetCCallable("rxode2","rxweibull");
+  rxlnorm = (rxode2_fn2)R_GetCCallable("rxode2","rxlnorm");
   rinorm = (rxode2i2_fn2)R_GetCCallable("rxode2", "rinorm");
   ribinom = (rxode2i2_ribinom)R_GetCCallable("rxode2","ribinom");
   rinbinom = (rxode2i2_ribinom)R_GetCCallable("rxode2","rinbinom");
@@ -677,6 +710,17 @@ void _assignFuns0(void) {
   uppergamma = (rxode2_fn2) R_GetCCallable("rxode2","uppergamma");
   lowergamma = (rxode2_fn2) R_GetCCallable("rxode2","lowergamma");
   gammapDer  = (rxode2_fn2) R_GetCCallable("rxode2","gammapDer");
+  phiU = (rxode2_fn) R_GetCCallable("rxode2","phiU");
+  gammapDera = (rxode2_fn2) R_GetCCallable("rxode2","gammapDera");
+  ibeta = (rxode2_fn3) R_GetCCallable("rxode2","ibeta");
+  ibetaDer = (rxode2_fn3) R_GetCCallable("rxode2","ibetaDer");
+  ibetaInv = (rxode2_fn3) R_GetCCallable("rxode2","ibetaInv");
+  ibetaDera = (rxode2_fn3) R_GetCCallable("rxode2","ibetaDera");
+  ibetaDerb = (rxode2_fn3) R_GetCCallable("rxode2","ibetaDerb");
+  studentTDen = (rxode2_fn2) R_GetCCallable("rxode2","studentTDen");
+  studentTCdf = (rxode2_fn2) R_GetCCallable("rxode2","studentTCdf");
+  studentTCdfDnu = (rxode2_fn2) R_GetCCallable("rxode2","studentTCdfDnu");
+  studentTInv = (rxode2_fn2) R_GetCCallable("rxode2","studentTInv");
   logit = (rxode2_fn3) R_GetCCallable("rxode2", "logit");
   probit = (rxode2_fn3) R_GetCCallable("rxode2", "probit");
   expit = (rxode2_fn3) R_GetCCallable("rxode2", "expit");

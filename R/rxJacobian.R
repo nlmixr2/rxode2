@@ -57,10 +57,14 @@ rxExpandGrid <- function(x, y, type = 0L) {
   .sym <- function(name) get(name, envir = model, inherits = FALSE)
   for (.p in ls(envir = model, all.names = TRUE)) {
     .m <- regexec("^k[_.]([^_.]+)[_.]([^_.]+)$", .p)[[1L]]
-    if (length(.m) == 1L) next
+    if (length(.m) == 1L) {
+      next
+    }
     .from <- substring(.p, .m[2L], .m[2L] + attr(.m, "match.length")[2L] - 1L)
     .to <- substring(.p, .m[3L], .m[3L] + attr(.m, "match.length")[3L] - 1L)
-    if (!(.from %in% .states)) next  # check names, not integer values
+    if (!(.from %in% .states)) {
+      next
+    } # check names, not integer values
     .rate <- .sym(.p)
     .ddt[[.from]] <- .ddt[[.from]] - .rate * .sym(.from)
     if (.to %in% .states) {
@@ -123,9 +127,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
   assign("..vars", .pars, envir = model)
   ## .malert("calculate jacobian")
   rxProgress(dim(.jac)[1])
-  on.exit({
-    rxProgressAbort()
-  })
+  on.exit(.rxProgressExit())
   ## Two passes rather than one.  symengine::D() has to stay serial (this
   ## build has no thread-safe refcounting), but the translation afterwards
   ## does not, and doing it in one batch also pays rxFromSE()'s fixed per-call
@@ -158,56 +160,114 @@ rxExpandGrid <- function(x, y, type = 0L) {
 #' @author Matthew L. Fidler
 #' @keywords internal
 .rxFwdSensJacBlock <- function(model, state, params) {
-  .ns <- length(state); .np <- length(params)
-  .fx <- function(i, j) get0(paste0("rx__df_", state[i], "_dy_", state[j], "__"),
-                             envir = model, inherits = FALSE)
-  .fp <- function(i, p) get0(paste0("rx__df_", state[i], "_dy_", params[p], "__"),
-                             envir = model, inherits = FALSE)
+  .ns <- length(state)
+  .np <- length(params)
+  .fx <- function(i, j) get0(paste0("rx__df_", state[i], "_dy_", state[j], "__"), envir = model, inherits = FALSE)
+  .fp <- function(i, p) get0(paste0("rx__df_", state[i], "_dy_", params[p], "__"), envir = model, inherits = FALSE)
   .sn <- function(i, p) paste0("rx__sens_", state[i], "_BY_", params[p], "__")
   # differentiate by the symengine-side name: a state called `e`/`I`/`Catalan`
   # is bound under rx_SymPy_Res_* (#1359)
   .stateSe <- .rxSEres(state)
   .lines <- character(0)
   .emit <- function(lhsSt, rhsSt, e) {
-    if (is.null(e)) return(invisible())
+    if (is.null(e)) {
+      return(invisible())
+    }
     .txt <- rxode2::rxFromSE(e)
-    if (!identical(.txt, "0") && nzchar(.txt))
+    if (!identical(.txt, "0") && nzchar(.txt)) {
       .lines[[length(.lines) + 1L]] <<- sprintf("df(%s)/dy(%s)=%s", lhsSt, rhsSt, .txt)
+    }
   }
   ## base x base and sens x sens (block-diagonal per parameter): both are F_X,
   ## re-emitted without differentiation.
-  for (i in seq_len(.ns)) for (j in seq_len(.ns)) .emit(state[i], state[j], .fx(i, j))
-  for (p in seq_len(.np)) for (i in seq_len(.ns)) for (k in seq_len(.ns))
-    .emit(.sn(i, p), .sn(k, p), .fx(i, k))
-  ## sens x base: the only block that needs new derivatives; identically zero
-  ## whenever F_X and F_p are state-independent (linear systems).
-  for (i in seq_len(.ns)) for (j in seq_len(.ns)) {
-    .dF_X_k <- list()
-    for (k in seq_len(.ns)) {
-      .fxik <- .fx(i, k); if (is.null(.fxik)) next
-      .d <- symengine::D(.fxik, .stateSe[j])
-      if (paste(.d) != "0") {
-        .dF_X_k[[k]] <- .d
+  for (i in seq_len(.ns)) {
+    for (j in seq_len(.ns)) {
+      .emit(state[i], state[j], .fx(i, j))
+    }
+  }
+  for (p in seq_len(.np)) {
+    for (i in seq_len(.ns)) {
+      for (k in seq_len(.ns)) {
+        .emit(.sn(i, p), .sn(k, p), .fx(i, k))
       }
     }
-    for (p in seq_len(.np)) {
-      .acc <- NULL
-      for (k in seq_along(.dF_X_k)) {
-        .d <- .dF_X_k[[k]]
-        if (!is.null(.d)) {
-          .term <- .d * symengine::Symbol(.sn(k, p))
-          .acc <- if (is.null(.acc)) .term else .acc + .term
+  }
+  ## sens x base: the only block that needs new derivatives; identically zero
+  ## whenever F_X and F_p are state-independent (linear systems).
+  for (i in seq_len(.ns)) {
+    for (j in seq_len(.ns)) {
+      .dF_X_k <- list()
+      for (k in seq_len(.ns)) {
+        .fxik <- .fx(i, k)
+        if (is.null(.fxik)) {
+          next
+        }
+        .d <- symengine::D(.fxik, .stateSe[j])
+        if (paste(.d) != "0") {
+          .dF_X_k[[k]] <- .d
         }
       }
-      .fpip <- .fp(i, p)
-      if (!is.null(.fpip)) {
-        .d <- symengine::D(.fpip, .stateSe[j])
-        if (paste(.d) != "0") .acc <- if (is.null(.acc)) .d else .acc + .d
+      for (p in seq_len(.np)) {
+        .acc <- NULL
+        for (k in seq_along(.dF_X_k)) {
+          .d <- .dF_X_k[[k]]
+          if (!is.null(.d)) {
+            .term <- .d * symengine::Symbol(.sn(k, p))
+            .acc <- if (is.null(.acc)) .term else .acc + .term
+          }
+        }
+        .fpip <- .fp(i, p)
+        if (!is.null(.fpip)) {
+          .d <- symengine::D(.fpip, .stateSe[j])
+          if (paste(.d) != "0") .acc <- if (is.null(.acc)) .d else .acc + .d
+        }
+        .emit(.sn(i, p), state[j], .acc)
       }
-      .emit(.sn(i, p), state[j], .acc)
     }
   }
   .lines
+}
+
+# calcSens names, or an expression over them, as the symengine model holds them:
+# THETA[n] and ETA[n] become THETA_n_ and ETA_n_.
+.rxSensNameSE <- function(vars) {
+  gsub("\\b(THETA|ETA)\\[([0-9]+)\\]", "\\1_\\2_", vars)
+}
+
+# Bind the THETA[n]/ETA[n] (or THETA_n_/ETA_n_) entries of params as THETA/ETA
+# vectors in envir, so rxFromSE() text, which spells them THETA[n], evaluates.
+.rxSensBindIdx <- function(params, envir) {
+  .se <- .rxSensNameSE(names(params))
+  .val <- as.numeric(unlist(params, use.names = FALSE))
+  for (.v in c("THETA", "ETA")) {
+    .re <- paste0("^", .v, "_([0-9]+)_$")
+    .w <- grepl(.re, .se)
+    if (any(.w)) {
+      .i <- as.integer(sub(.re, "\\1", .se[.w]))
+      .x <- rep(NA_real_, max(.i))
+      .x[.i] <- .val[.w]
+      assign(.v, .x, envir = envir)
+    }
+  }
+  invisible(envir)
+}
+
+# calcSens names for the forward sensitivity build (.rxSensNameSE()).  Only the
+# model's parameters (`params`, from rxParams()) can be differentiated: a state
+# or a calculated variable would give a meaningless column, and an unknown name
+# would stop the build with "Aborted calculation", so either is an error naming it.
+.rxSensVarNames <- function(vars, params) {
+  .se <- .rxSensNameSE(vars)
+  .bad <- vars[!(.se %in% .rxSensNameSE(params))]
+  if (length(.bad) > 0L) {
+    stop(
+      "cannot calculate sensitivities with respect to ",
+      paste(.bad, collapse = ", "),
+      ": not a parameter of the model",
+      call. = FALSE
+    )
+  }
+  .se
 }
 
 ## Assumes .rxJacobian called on model c(state,vars)
@@ -223,7 +283,9 @@ rxExpandGrid <- function(x, y, type = 0L) {
 .rxSens <- function(model, vars, vars2, vars3) {
   .state <- rxStateOde(model)
   if (length(.state) > 0L) {
-    if (missing(vars)) vars <- get("..vars", envir = model)
+    if (missing(vars)) {
+      vars <- get("..vars", envir = model)
+    }
     if (missing(vars2)) {
       ## delay differential equations: reject state-dependent delays before the
       ## progress bar opens (so the error message is not masked).
@@ -232,9 +294,11 @@ rxExpandGrid <- function(x, y, type = 0L) {
       ## second- and higher-order: parameter-dependent delays are not yet
       ## supported (moving breaking points -> jump discontinuities); reject
       ## before the progress bar so the message is not masked.
-      .rxDelayValidateHigherOrderSE(model, union(union(vars, vars2),
-                                                 if (missing(vars3)) NULL else vars3),
-                                    thirdOrder = !missing(vars3))
+      .rxDelayValidateHigherOrderSE(
+        model,
+        union(union(vars, vars2), if (missing(vars3)) NULL else vars3),
+        thirdOrder = !missing(vars3)
+      )
       ## third-order only covers linear delays; reject nonlinear ones early too.
       if (!missing(vars3)) .rxDelayValidate3rdLinearSE(model)
     }
@@ -247,9 +311,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
     }
     .malert("calculate sensitivities")
     rxProgress(dim(.grd)[1])
-    on.exit({
-      rxProgressAbort()
-    })
+    on.exit(.rxProgressExit())
     lapply(c(.grd$ddtS, .grd$ddS2), function(x) {
       assign(x, symengine::Symbol(x), envir = model)
     })
@@ -274,8 +336,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
     names(.ret) <- rownames(.grd)
     .w <- which(!is.na(.s0se))
     if (length(.w) > 0L) {
-      .ret[.w] <- paste0(.ret[.w], "\n", .grd$s0r[.w], "=",
-                         .rxFromSEvec(.s0se[.w]), "+0.0")
+      .ret[.w] <- paste0(.ret[.w], "\n", .grd$s0r[.w], "=", .rxFromSEvec(.s0se[.w]), "+0.0")
     }
     if (!missing(vars3)) {
       ## Delay differential equations: add the third-order delayed (variational)
@@ -338,12 +399,15 @@ rxExpandGrid <- function(x, y, type = 0L) {
     assign("..adjoint", NULL, envir = model)
     return(NULL)
   }
-  if (missing(vars)) vars <- get("..vars", envir = model)
-  if (missing(states) || is.null(states)) states <- .state
+  if (missing(vars)) {
+    vars <- get("..vars", envir = model)
+  }
+  if (missing(states) || is.null(states)) {
+    states <- .state
+  }
   states <- intersect(.state, states)
   if (length(states) == 0L) {
-    stop("adjoint 'states' of interest must be a subset of the ODE states",
-      call. = FALSE)
+    stop("adjoint 'states' of interest must be a subset of the ODE states", call. = FALSE)
   }
   ## register the costate (lambda) compartments as bare symbols so they survive
   ## assembly of the backward right-hand sides
@@ -356,16 +420,18 @@ rxExpandGrid <- function(x, y, type = 0L) {
   }
   .malert("calculate adjoint sensitivities")
   rxProgress(length(states) * (length(.state) + length(vars)))
-  on.exit({
-    rxProgressAbort()
-  })
+  on.exit(.rxProgressExit())
   .ret <- character(0)
   for (.k in states) {
     ## costate block: for each state i, -sum_j (df_j/dy_i) * lambda_{k,j}
     for (.i in .state) {
-      .terms <- vapply(.state, function(.j) {
-        paste0("rx__df_", .j, "_dy_", .i, "__*", .lamName(.k, .j))
-      }, character(1L))
+      .terms <- vapply(
+        .state,
+        function(.j) {
+          paste0("rx__df_", .j, "_dy_", .i, "__*", .lamName(.k, .j))
+        },
+        character(1L)
+      )
       .expr <- paste0("with(model,-(", paste(.terms, collapse = "+"), "))")
       .l <- eval(parse(text = .expr))
       .ret <- c(.ret, paste0("d/dt(", .lamName(.k, .i), ")=", rxFromSE(.l)))
@@ -373,13 +439,16 @@ rxExpandGrid <- function(x, y, type = 0L) {
     }
     ## quadrature block: for each param p, -sum_j lambda_{k,j} * (df_j/dp)
     for (.p in vars) {
-      .terms <- vapply(.state, function(.j) {
-        paste0(.lamName(.k, .j), "*rx__df_", .j, "_dy_", .p, "__")
-      }, character(1L))
+      .terms <- vapply(
+        .state,
+        function(.j) {
+          paste0(.lamName(.k, .j), "*rx__df_", .j, "_dy_", .p, "__")
+        },
+        character(1L)
+      )
       .expr <- paste0("with(model,-(", paste(.terms, collapse = "+"), "))")
       .l <- eval(parse(text = .expr))
-      .ret <- c(.ret, paste0("d/dt(rx__sens_", .k, "_BY_", .p, "__)=",
-                             rxFromSE(.l)))
+      .ret <- c(.ret, paste0("d/dt(rx__sens_", .k, "_BY_", .p, "__)=", rxFromSE(.l)))
       rxTick()
     }
   }
@@ -397,7 +466,8 @@ rxExpandGrid <- function(x, y, type = 0L) {
   })
   if (!identical(.tmp, character())) {
     if (!any(.tmp == .goodFns)) {
-      stop(sprintf(gettext("'%s' is from '%s' and cannot be used in this context"), deparse1(substitute(x)), .tmp),
+      stop(
+        sprintf(gettext("'%s' is from '%s' and cannot be used in this context"), deparse1(substitute(x)), .tmp),
         call. = FALSE
       )
     }
@@ -433,7 +503,8 @@ rxExpandGrid <- function(x, y, type = 0L) {
   if (length(.curDvid) > 1) {
     .dvidF <- paste0(
       "\ndvid(",
-      paste(.curDvid, collapse = ","), ");\n"
+      paste(.curDvid, collapse = ","),
+      ");\n"
     )
   } else {
     .dvidF <- ""
@@ -466,13 +537,24 @@ rxExpandGrid <- function(x, y, type = 0L) {
 #' @return Character vector of restore lines, one per captured call
 #' @noRd
 .restoreAdaptiveDosing <- function(captures) {
-  vapply(captures, function(cap) {
-    paste0("if (", cap$capVar, ") { ", cap$original, " }")
-  }, character(1L), USE.NAMES = FALSE)
+  vapply(
+    captures,
+    function(cap) {
+      paste0("if (", cap$capVar, ") { ", cap$original, " }")
+    },
+    character(1L),
+    USE.NAMES = FALSE
+  )
 }
 
-.rxLoadPrune <- function(mod, doConst = TRUE, promoteLinSens = TRUE, fullModel = FALSE,
-                         addProp = c("combined2", "combined1")) {
+.rxLoadPrune <- function(
+  mod,
+  doConst = TRUE,
+  promoteLinSens = TRUE,
+  fullModel = FALSE,
+  addProp = c("combined2", "combined1"),
+  pkTime = FALSE
+) {
   addProp <- match.arg(addProp)
   ## if (fullModel) {
   ##   .malert("pruning branches ({.code if}/{.code else}) of full model...")
@@ -489,7 +571,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
   ## } else {
   ##   .malert("loading into {.pkg symengine} environment...")
   ## }
-  .newmod <- rxS(.newmod, doConst, promoteLinSens = promoteLinSens)
+  .newmod <- rxS(.newmod, doConst, promoteLinSens = promoteLinSens, pkTime = pkTime)
   if (length(.captures) > 0L) {
     .newmod$..capturedEvid <- .captures
     .newmod$..restoreLines <- .restoreAdaptiveDosing(.captures)

@@ -57,12 +57,12 @@ source(file.path("bench", "lincmt_subject_ad_proto.R"))
 # here since no such option exists yet, but naming and grouping already
 # anticipate that.
 # ---------------------------------------------------------------------------
-linCmtSubjectADControl <- function(maxDosesInPhase2 = 5,
-                                   supersededDoseCountCeiling = 30,
-                                   timeVaryingRelTol = 1e-8) {
-  list(maxDosesInPhase2 = maxDosesInPhase2,
-      supersededDoseCountCeiling = supersededDoseCountCeiling,
-      timeVaryingRelTol = timeVaryingRelTol)
+linCmtSubjectADControl <- function(maxDosesInPhase2 = 5, supersededDoseCountCeiling = 30, timeVaryingRelTol = 1e-8) {
+  list(
+    maxDosesInPhase2 = maxDosesInPhase2,
+    supersededDoseCountCeiling = supersededDoseCountCeiling,
+    timeVaryingRelTol = timeVaryingRelTol
+  )
 }
 
 # ---------------------------------------------------------------------------
@@ -124,19 +124,24 @@ detectTimeVaryingTheta <- function(thetaMat, control = linCmtSubjectADControl())
 # ---------------------------------------------------------------------------
 checkCovariateInterpolationSupported <- function(interpMethod, varies) {
   interpMethod <- tolower(as.character(interpMethod))
-  if (!varies) return(invisible(TRUE)) # constant theta -- interpolation method is moot
+  if (!varies) {
+    return(invisible(TRUE))
+  } # constant theta -- interpolation method is moot
   if (interpMethod %in% c("linear", "0")) {
-    stop(paste0(
-      "linCmt() does not support 'linear' covariate interpolation for a ",
-      "covariate that actually varies across this subject's records: ",
-      "linCmt() samples a covariate once per dose/observation row and treats ",
-      "it as constant across the whole elapsed interval to the next row, ",
-      "which is exact for 'locf'/'nocb'/'midpoint' (all genuinely piecewise-",
-      "constant) but not for 'linear' (genuinely continuous between ",
-      "covariate records) -- this combination is not supported on the ",
-      "rxode2 side. Use covsInterpolation='locf'/'nocb'/'midpoint', or solve ",
-      "this model as an ODE (d/dt()) instead of linCmt()."),
-      call. = FALSE)
+    stop(
+      paste0(
+        "linCmt() does not support 'linear' covariate interpolation for a ",
+        "covariate that actually varies across this subject's records: ",
+        "linCmt() samples a covariate once per dose/observation row and treats ",
+        "it as constant across the whole elapsed interval to the next row, ",
+        "which is exact for 'locf'/'nocb'/'midpoint' (all genuinely piecewise-",
+        "constant) but not for 'linear' (genuinely continuous between ",
+        "covariate records) -- this combination is not supported on the ",
+        "rxode2 side. Use covsInterpolation='locf'/'nocb'/'midpoint', or solve ",
+        "this model as an ODE (d/dt()) instead of linCmt()."
+      ),
+      call. = FALSE
+    )
   }
   invisible(TRUE)
 }
@@ -174,8 +179,10 @@ chooseDoseObsStrategy <- function(time, evid, control = linCmtSubjectADControl()
     return(list(strategy = "superposition", reason = "no doses -- nothing to roll through"))
   }
   if (nDoses <= maxDosesInPhase2) {
-    return(list(strategy = "superposition",
-               reason = sprintf("only %d doses total, already <= the phase-2 cap (%d)", nDoses, maxDosesInPhase2)))
+    return(list(
+      strategy = "superposition",
+      reason = sprintf("only %d doses total, already <= the phase-2 cap (%d)", nDoses, maxDosesInPhase2)
+    ))
   }
 
   k <- nDoses - maxDosesInPhase2 # doses 1..k -> phase 1; the rest -> phase 2
@@ -184,20 +191,38 @@ chooseDoseObsStrategy <- function(time, evid, control = linCmtSubjectADControl()
   obsAtOrBeforeSplit <- obsIdx[time[obsIdx] <= splitTime + 1e-9]
   if (length(obsAtOrBeforeSplit) > 0) {
     if (nDoses <= supersededDoseCountCeiling) {
-      return(list(strategy = "superposition",
-                 reason = sprintf(
-                   "%d observation(s) fall inside the would-be dose-heavy phase 1 -- hybrid's phase 1 can't extract gradients there yet; %d doses is still <= the ceiling (%d) for superposition alone",
-                   length(obsAtOrBeforeSplit), nDoses, supersededDoseCountCeiling)))
+      return(list(
+        strategy = "superposition",
+        reason = sprintf(
+          "%d observation(s) fall inside the would-be dose-heavy phase 1 -- hybrid's phase 1 can't extract gradients there yet; %d doses is still <= the ceiling (%d) for superposition alone",
+          length(obsAtOrBeforeSplit),
+          nDoses,
+          supersededDoseCountCeiling
+        )
+      ))
     }
-    return(list(strategy = "forward",
-               reason = sprintf(
-                 "%d observation(s) fall inside the would-be dose-heavy phase 1, AND %d doses exceeds the ceiling (%d) for superposition alone -- neither specialized strategy applies safely",
-                 length(obsAtOrBeforeSplit), nDoses, supersededDoseCountCeiling)))
+    return(list(
+      strategy = "forward",
+      reason = sprintf(
+        "%d observation(s) fall inside the would-be dose-heavy phase 1, AND %d doses exceeds the ceiling (%d) for superposition alone -- neither specialized strategy applies safely",
+        length(obsAtOrBeforeSplit),
+        nDoses,
+        supersededDoseCountCeiling
+      )
+    ))
   }
 
-  list(strategy = "hybrid", splitTime = splitTime, splitDoseIdx = k,
-      reason = sprintf("%d doses collapse into a flat-cost phase-1 roll-through; %d remain for phase 2 (cap %d), with no phase-1 observations to worry about",
-                       k, nDoses - k, maxDosesInPhase2))
+  list(
+    strategy = "hybrid",
+    splitTime = splitTime,
+    splitDoseIdx = k,
+    reason = sprintf(
+      "%d doses collapse into a flat-cost phase-1 roll-through; %d remain for phase 2 (cap %d), with no phase-1 observations to worry about",
+      k,
+      nDoses - k,
+      maxDosesInPhase2
+    )
+  )
 }
 
 # ---------------------------------------------------------------------------
@@ -213,20 +238,29 @@ chooseDoseObsStrategy <- function(time, evid, control = linCmtSubjectADControl()
 # chosen: an unsupported "linear" combination errors immediately rather than
 # silently returning a wrong gradient or value from any strategy below.
 # ---------------------------------------------------------------------------
-chooseLinCmtSubjectADStrategy <- function(time, evid, thetaMat,
-                                          control = linCmtSubjectADControl(),
-                                          interpMethod = "locf") {
+chooseLinCmtSubjectADStrategy <- function(
+  time,
+  evid,
+  thetaMat,
+  control = linCmtSubjectADControl(),
+  interpMethod = "locf"
+) {
   tv <- detectTimeVaryingTheta(thetaMat, control)
   checkCovariateInterpolationSupported(interpMethod, tv$varies)
   if (tv$varies) {
-    return(list(strategy = "etaCovariate", timeVarying = tv,
-               reason = "time-varying covariate detected on column(s) in thetaMat",
-               caveat = paste("only the 1-cmt-IV single-eta prototype",
-                              "(linCmtSubjectReverseADEtaCovariateProto /",
-                              "linCmtSubjectForwardADEtaCovariateProto) currently",
-                              "implements the correct cumulative-sensitivity fix;",
-                              "other geometries have no shipped fix yet -- see",
-                              "project_lincmt_timevarying_covariate_bug")))
+    return(list(
+      strategy = "etaCovariate",
+      timeVarying = tv,
+      reason = "time-varying covariate detected on column(s) in thetaMat",
+      caveat = paste(
+        "only the 1-cmt-IV single-eta prototype",
+        "(linCmtSubjectReverseADEtaCovariateProto /",
+        "linCmtSubjectForwardADEtaCovariateProto) currently",
+        "implements the correct cumulative-sensitivity fix;",
+        "other geometries have no shipped fix yet -- see",
+        "project_lincmt_timevarying_covariate_bug"
+      )
+    ))
   }
   chooseDoseObsStrategy(time, evid, control)
 }
@@ -240,9 +274,19 @@ chooseLinCmtSubjectADStrategy <- function(time, evid, thetaMat,
 # ---------------------------------------------------------------------------
 .runChosenStrategy <- function(cfg, time, evid, amt, dur, choice) {
   nAlast <- .linCmtNalast(cfg$ncmt, cfg$oral0)
-  cfgR <- list(p1 = cfg$p1, v1 = cfg$v1, p2 = cfg$p2, p3 = cfg$p3, p4 = cfg$p4, p5 = cfg$p5,
-              ka = cfg$ka, rate = rep(0, cfg$nstate),
-              ncmt = cfg$ncmt, oral0 = cfg$oral0, trans = cfg$trans)
+  cfgR <- list(
+    p1 = cfg$p1,
+    v1 = cfg$v1,
+    p2 = cfg$p2,
+    p3 = cfg$p3,
+    p4 = cfg$p4,
+    p5 = cfg$p5,
+    ka = cfg$ka,
+    rate = rep(0, cfg$nstate),
+    ncmt = cfg$ncmt,
+    oral0 = cfg$oral0,
+    trans = cfg$trans
+  )
   obsIdx <- which(evid == 0)
 
   if (choice$strategy == "forward") {
@@ -255,13 +299,21 @@ chooseLinCmtSubjectADStrategy <- function(time, evid, thetaMat,
     out <- list()
     for (i in seq_along(time)) {
       if (evid[i] == 1 && dur[i] > 0) {
-        rOn <- cfgR; rOn$rate <- { r <- rep(0, cfg$nstate); r[1] <- amt[i] / dur[i]; r }
+        rOn <- cfgR
+        rOn$rate <- {
+          r <- rep(0, cfg$nstate)
+          r[1] <- amt[i] / dur[i]
+          r
+        }
         s <- .linCmtCall(time[i] - tPrev, rOn, alast, sensType = 30L)
-        alast <- s$Alast; tPrev <- time[i]
+        alast <- s$Alast
+        tPrev <- time[i]
       } else {
         s <- .linCmtCall(time[i] - tPrev, cfgR, alast, sensType = 30L)
         alast <- s$Alast
-        if (evid[i] == 1) alast[1] <- alast[1] + amt[i]
+        if (evid[i] == 1) {
+          alast[1] <- alast[1] + amt[i]
+        }
         tPrev <- time[i]
         if (evid[i] == 0) out[[length(out) + 1]] <- s$J
       }
@@ -272,11 +324,27 @@ chooseLinCmtSubjectADStrategy <- function(time, evid, thetaMat,
   if (choice$strategy == "superposition") {
     obsT <- time[obsIdx]
     doseIdx <- which(evid == 1)
-    doseT <- time[doseIdx]; doseAmt <- amt[doseIdx]; doseDur <- dur[doseIdx]
-    proto <- .Call(`_rxode2_linCmtSubjectSuperpositionADProto`,
-                   obsT, doseT, doseAmt, doseDur,
-                   cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
-                   cfg$ncmt, cfg$oral0, cfg$trans, 0L)
+    doseT <- time[doseIdx]
+    doseAmt <- amt[doseIdx]
+    doseDur <- dur[doseIdx]
+    proto <- .Call(
+      `_rxode2_linCmtSubjectSuperpositionADProto`,
+      obsT,
+      doseT,
+      doseAmt,
+      doseDur,
+      cfg$p1,
+      cfg$v1,
+      cfg$p2,
+      cfg$p3,
+      cfg$p4,
+      cfg$p5,
+      cfg$ka,
+      cfg$ncmt,
+      cfg$oral0,
+      cfg$trans,
+      0L
+    )
     return(lapply(proto, function(x) x$J))
   }
 
@@ -304,13 +372,30 @@ chooseLinCmtSubjectADStrategy <- function(time, evid, thetaMat,
     # same rate-on/rate-off step-splitting .checkHybridDoseObsInfusion uses.)
     obsT <- time[obsIdx] - splitTime
     doseT <- time[p2DoseIdx] - splitTime
-    doseAmt <- amt[p2DoseIdx]; doseDur <- dur[p2DoseIdx]
+    doseAmt <- amt[p2DoseIdx]
+    doseDur <- dur[p2DoseIdx]
 
-    proto <- .Call(`_rxode2_linCmtSubjectHybridDoseObsADProto`,
-                   phase1Dt, phase1Amt, phase1Rate,
-                   obsT, doseT, doseAmt, doseDur,
-                   cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
-                   cfg$ncmt, cfg$oral0, cfg$trans, 0L)
+    proto <- .Call(
+      `_rxode2_linCmtSubjectHybridDoseObsADProto`,
+      phase1Dt,
+      phase1Amt,
+      phase1Rate,
+      obsT,
+      doseT,
+      doseAmt,
+      doseDur,
+      cfg$p1,
+      cfg$v1,
+      cfg$p2,
+      cfg$p3,
+      cfg$p4,
+      cfg$p5,
+      cfg$ka,
+      cfg$ncmt,
+      cfg$oral0,
+      cfg$trans,
+      0L
+    )
     return(lapply(proto, function(x) x$J))
   }
 
@@ -319,21 +404,39 @@ chooseLinCmtSubjectADStrategy <- function(time, evid, thetaMat,
 
 .oracleWalk <- function(cfg, time, evid, amt, dur) {
   nAlast <- .linCmtNalast(cfg$ncmt, cfg$oral0)
-  cfgR <- list(p1 = cfg$p1, v1 = cfg$v1, p2 = cfg$p2, p3 = cfg$p3, p4 = cfg$p4, p5 = cfg$p5,
-              ka = cfg$ka, rate = rep(0, cfg$nstate),
-              ncmt = cfg$ncmt, oral0 = cfg$oral0, trans = cfg$trans)
+  cfgR <- list(
+    p1 = cfg$p1,
+    v1 = cfg$v1,
+    p2 = cfg$p2,
+    p3 = cfg$p3,
+    p4 = cfg$p4,
+    p5 = cfg$p5,
+    ka = cfg$ka,
+    rate = rep(0, cfg$nstate),
+    ncmt = cfg$ncmt,
+    oral0 = cfg$oral0,
+    trans = cfg$trans
+  )
   alast <- numeric(nAlast)
   tPrev <- 0
   out <- list()
   for (i in seq_along(time)) {
     if (evid[i] == 1 && dur[i] > 0) {
-      rOn <- cfgR; rOn$rate <- { r <- rep(0, cfg$nstate); r[1] <- amt[i] / dur[i]; r }
+      rOn <- cfgR
+      rOn$rate <- {
+        r <- rep(0, cfg$nstate)
+        r[1] <- amt[i] / dur[i]
+        r
+      }
       s <- .linCmtCall(time[i] - tPrev, rOn, alast, sensType = 3L)
-      alast <- s$Alast; tPrev <- time[i]
+      alast <- s$Alast
+      tPrev <- time[i]
     } else {
       s <- .linCmtCall(time[i] - tPrev, cfgR, alast, sensType = 3L)
       alast <- s$Alast
-      if (evid[i] == 1) alast[1] <- alast[1] + amt[i]
+      if (evid[i] == 1) {
+        alast[1] <- alast[1] + amt[i]
+      }
       tPrev <- time[i]
       if (evid[i] == 0) out[[length(out) + 1]] <- s$J
     }
@@ -348,14 +451,21 @@ chooseLinCmtSubjectADStrategy <- function(time, evid, thetaMat,
 
   choice <- chooseLinCmtSubjectADStrategy(time, evid, thetaMat)
   strategyOk <- is.null(expectStrategy) || identical(choice$strategy, expectStrategy)
-  message(sprintf("  [%s/%s] dispatcher chose: %-13s (%s)%s",
-                  name, cfg$name, choice$strategy, choice$reason,
-                  if (strategyOk) "" else sprintf("  ** expected %s **", expectStrategy)))
+  message(sprintf(
+    "  [%s/%s] dispatcher chose: %-13s (%s)%s",
+    name,
+    cfg$name,
+    choice$strategy,
+    choice$reason,
+    if (strategyOk) "" else sprintf("  ** expected %s **", expectStrategy)
+  ))
 
   oracleJ <- .oracleWalk(cfg, time, evid, amt, dur)
   gotJ <- .runChosenStrategy(cfg, time, evid, amt, dur, choice)
   worst <- 0
-  for (i in seq_along(oracleJ)) worst <- max(worst, max(abs(oracleJ[[i]] - gotJ[[i]])))
+  for (i in seq_along(oracleJ)) {
+    worst <- max(worst, max(abs(oracleJ[[i]] - gotJ[[i]])))
+  }
   r <- .report(sprintf("dispatch[%s/%s]", name, cfg$name), worst)
   r$strategyOk <- strategyOk
   r$strategy <- choice$strategy
@@ -372,20 +482,38 @@ runDispatchTests <- function() {
     # dense observations, no more dosing.
     doseT <- seq(0, by = 0.5, length.out = 20)
     obsT <- max(doseT) + 0.3 * seq_len(15)
-    time <- c(doseT, obsT); evid <- c(rep(1, 20), rep(0, 15))
-    amt <- c(rep(100, 20), rep(0, 15)); dur <- rep(0, 35)
+    time <- c(doseT, obsT)
+    evid <- c(rep(1, 20), rep(0, 15))
+    amt <- c(rep(100, 20), rep(0, 15))
+    dur <- rep(0, 35)
     ord <- order(time)
-    add(.checkDispatchScenario(cfg, "doseHeavyThenObsHeavy", time[ord], evid[ord], amt[ord], dur[ord],
-                               expectStrategy = "hybrid"))
+    add(.checkDispatchScenario(
+      cfg,
+      "doseHeavyThenObsHeavy",
+      time[ord],
+      evid[ord],
+      amt[ord],
+      dur[ord],
+      expectStrategy = "hybrid"
+    ))
 
     # Scenario B: few doses, many observations -- superposition's own sweet spot.
     doseT <- 0
     obsT <- 0.3 * seq_len(20)
-    time <- c(doseT, obsT); evid <- c(1, rep(0, 20))
-    amt <- c(100, rep(0, 20)); dur <- rep(0, 21)
+    time <- c(doseT, obsT)
+    evid <- c(1, rep(0, 20))
+    amt <- c(100, rep(0, 20))
+    dur <- rep(0, 21)
     ord <- order(time)
-    add(.checkDispatchScenario(cfg, "fewDosesManyObs", time[ord], evid[ord], amt[ord], dur[ord],
-                               expectStrategy = "superposition"))
+    add(.checkDispatchScenario(
+      cfg,
+      "fewDosesManyObs",
+      time[ord],
+      evid[ord],
+      amt[ord],
+      dur[ord],
+      expectStrategy = "superposition"
+    ))
 
     # Scenario C: dense multi-dosing with an observation after EVERY dose --
     # no clean split exists (observations pervade any candidate phase 1) and
@@ -397,19 +525,27 @@ runDispatchTests <- function() {
     evid <- as.vector(rbind(rep(1, n), rep(0, n)))
     amt <- as.vector(rbind(rep(100, n), rep(0, n)))
     dur <- rep(0, 2 * n)
-    add(.checkDispatchScenario(cfg, "denseInterleaved", time, evid, amt, dur,
-                               expectStrategy = "forward"))
+    add(.checkDispatchScenario(cfg, "denseInterleaved", time, evid, amt, dur, expectStrategy = "forward"))
 
     # Scenario D: a handful of doses (<= maxDosesInPhase2), no rich
     # observation tail either -- should still just pick superposition (too
     # few doses to bother with a hybrid split).
     doseT <- c(0, 1, 2)
     obsT <- c(0.5, 1.5, 2.5, 3.5)
-    time <- c(doseT, obsT); evid <- c(rep(1, 3), rep(0, 4))
-    amt <- c(rep(100, 3), rep(0, 4)); dur <- rep(0, 7)
+    time <- c(doseT, obsT)
+    evid <- c(rep(1, 3), rep(0, 4))
+    amt <- c(rep(100, 3), rep(0, 4))
+    dur <- rep(0, 7)
     ord <- order(time)
-    add(.checkDispatchScenario(cfg, "fewDosesFewObs", time[ord], evid[ord], amt[ord], dur[ord],
-                               expectStrategy = "superposition"))
+    add(.checkDispatchScenario(
+      cfg,
+      "fewDosesFewObs",
+      time[ord],
+      evid[ord],
+      amt[ord],
+      dur[ord],
+      expectStrategy = "superposition"
+    ))
   }
 
   # Scenario E: time-varying covariate detection (1cmt-iv only, matching the
@@ -418,38 +554,61 @@ runDispatchTests <- function() {
   thetaMat <- matrix(c(1.0, 20, 1.6, 20), nrow = 2, byrow = TRUE) # CL steps 1.0 -> 1.6
   choice <- chooseLinCmtSubjectADStrategy(c(0, 1), c(1, 0), thetaMat)
   ok <- identical(choice$strategy, "etaCovariate")
-  message(sprintf("  [timeVaryingDetect/%s] dispatcher chose: %-13s %s",
-                  cfg$name, choice$strategy, if (ok) "-- PASS" else "-- FAIL (expected etaCovariate)"))
+  message(sprintf(
+    "  [timeVaryingDetect/%s] dispatcher chose: %-13s %s",
+    cfg$name,
+    choice$strategy,
+    if (ok) "-- PASS" else "-- FAIL (expected etaCovariate)"
+  ))
   add(list(name = "timeVaryingDetect", pass = ok, strategyOk = ok))
 
   # Scenario F: covariate-interpolation-method gate. "linear" + genuinely
   # varying theta must error; "locf"/"nocb"/"midpoint" + varying, and
   # "linear" + CONSTANT theta (moot -- nothing to interpolate), must all
   # proceed normally.
-  errorsOnLinear <- tryCatch({
-    chooseLinCmtSubjectADStrategy(c(0, 1), c(1, 0), thetaMat, interpMethod = "linear")
-    FALSE
-  }, error = function(e) grepl("linear", conditionMessage(e), fixed = TRUE))
-  message(sprintf("  [interpMethod=linear, varies] %s", if (errorsOnLinear) "errored as expected -- PASS" else "FAIL (should have errored)"))
+  errorsOnLinear <- tryCatch(
+    {
+      chooseLinCmtSubjectADStrategy(c(0, 1), c(1, 0), thetaMat, interpMethod = "linear")
+      FALSE
+    },
+    error = function(e) grepl("linear", conditionMessage(e), fixed = TRUE)
+  )
+  message(sprintf(
+    "  [interpMethod=linear, varies] %s",
+    if (errorsOnLinear) "errored as expected -- PASS" else "FAIL (should have errored)"
+  ))
   add(list(name = "interpLinearErrors", pass = errorsOnLinear, strategyOk = errorsOnLinear))
 
   okOthers <- TRUE
   for (m in c("locf", "nocb", "midpoint")) {
-    ok_m <- tryCatch({
-      chooseLinCmtSubjectADStrategy(c(0, 1), c(1, 0), thetaMat, interpMethod = m)
-      TRUE
-    }, error = function(e) FALSE)
-    message(sprintf("  [interpMethod=%s, varies] %s", m, if (ok_m) "proceeded as expected -- PASS" else "FAIL (should not have errored)"))
+    ok_m <- tryCatch(
+      {
+        chooseLinCmtSubjectADStrategy(c(0, 1), c(1, 0), thetaMat, interpMethod = m)
+        TRUE
+      },
+      error = function(e) FALSE
+    )
+    message(sprintf(
+      "  [interpMethod=%s, varies] %s",
+      m,
+      if (ok_m) "proceeded as expected -- PASS" else "FAIL (should not have errored)"
+    ))
     okOthers <- okOthers && ok_m
   }
   add(list(name = "interpOthersProceed", pass = okOthers, strategyOk = okOthers))
 
   constantTheta <- matrix(c(1.0, 20, 1.0, 20), nrow = 2, byrow = TRUE)
-  okConstantLinear <- tryCatch({
-    chooseLinCmtSubjectADStrategy(c(0, 1), c(1, 0), constantTheta, interpMethod = "linear")
-    TRUE
-  }, error = function(e) FALSE)
-  message(sprintf("  [interpMethod=linear, constant theta] %s", if (okConstantLinear) "proceeded as expected -- PASS" else "FAIL (should not have errored, nothing to interpolate)"))
+  okConstantLinear <- tryCatch(
+    {
+      chooseLinCmtSubjectADStrategy(c(0, 1), c(1, 0), constantTheta, interpMethod = "linear")
+      TRUE
+    },
+    error = function(e) FALSE
+  )
+  message(sprintf(
+    "  [interpMethod=linear, constant theta] %s",
+    if (okConstantLinear) "proceeded as expected -- PASS" else "FAIL (should not have errored, nothing to interpolate)"
+  ))
   add(list(name = "interpLinearMootWhenConstant", pass = okConstantLinear, strategyOk = okConstantLinear))
 
   pass <- vapply(results, function(r) isTRUE(r$pass) && isTRUE(r$strategyOk), logical(1))

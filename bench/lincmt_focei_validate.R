@@ -28,11 +28,17 @@ m1cmt <- function() {
 }
 
 fitFOCEi <- function(model, data, sensType) {
-  nlmixr2(model, data, "focei",
-          control = foceiControl(print = 0,
-                                 maxOuterIterations = 100,
-                                 maxInnerIterations = 300,
-                                 rxControl = rxode2::rxControl(linCmtSensType = sensType)))
+  nlmixr2(
+    model,
+    data,
+    "focei",
+    control = foceiControl(
+      print = 0,
+      maxOuterIterations = 100,
+      maxInnerIterations = 300,
+      rxControl = rxode2::rxControl(linCmtSensType = sensType)
+    )
+  )
 }
 
 cat("\n=== 1-cmt oral: forward AD ('AD') ===\n")
@@ -51,11 +57,15 @@ params_fwd <- fit_fwd$parFixedDf[, c("Estimate", "SE")]
 params_rev <- fit_rev$parFixedDf[, c("Estimate", "SE")]
 rownames(params_fwd) <- rownames(fit_fwd$parFixedDf)
 rownames(params_rev) <- rownames(fit_rev$parFixedDf)
-cat("Forward:\n"); print(params_fwd)
-cat("Reverse:\n"); print(params_rev)
+cat("Forward:\n")
+print(params_fwd)
+cat("Reverse:\n")
+print(params_rev)
 
-max_est_diff <- max(abs(params_fwd$Estimate - params_rev$Estimate) /
-                      (abs(params_rev$Estimate) + 1e-10))
+max_est_diff <- max(
+  abs(params_fwd$Estimate - params_rev$Estimate) /
+    (abs(params_rev$Estimate) + 1e-10)
+)
 cat(sprintf("Max relative difference in estimates: %.2e\n", max_est_diff))
 
 ## ---------- 2-cmt oral linCmt model ----------------------------------------
@@ -91,18 +101,24 @@ cat("Forward (AD): ", fit2_fwd$objective, "\n")
 cat("Reverse (ADr):", fit2_rev$objective, "\n")
 cat("Delta:        ", abs(fit2_fwd$objective - fit2_rev$objective), "\n")
 
-max_est_diff2 <- max(abs(fit2_fwd$parFixedDf$Estimate - fit2_rev$parFixedDf$Estimate) /
-                       (abs(fit2_rev$parFixedDf$Estimate) + 1e-10))
+max_est_diff2 <- max(
+  abs(fit2_fwd$parFixedDf$Estimate - fit2_rev$parFixedDf$Estimate) /
+    (abs(fit2_rev$parFixedDf$Estimate) + 1e-10)
+)
 cat(sprintf("Max relative difference in estimates: %.2e\n", max_est_diff2))
 
 ## ---------- Summary ---------------------------------------------------------
 cat("\n========== PHASE 4 VALIDATION SUMMARY ==========\n")
 ok1 <- abs(fit_fwd$objective - fit_rev$objective) < 1e-3
 ok2 <- abs(fit2_fwd$objective - fit2_rev$objective) < 1e-3
-cat(sprintf("1-cmt oral  OFV match (< 1e-3): %s  (delta = %.2e)\n",
-            if (ok1) "PASS" else "FAIL",
-            abs(fit_fwd$objective - fit_rev$objective)))
-cat(sprintf("2-cmt IV    OFV match (< 1e-3): %s  (delta = %.2e)\n",
-            if (ok2) "PASS" else "FAIL",
-            abs(fit2_fwd$objective - fit2_rev$objective)))
+cat(sprintf(
+  "1-cmt oral  OFV match (< 1e-3): %s  (delta = %.2e)\n",
+  if (ok1) "PASS" else "FAIL",
+  abs(fit_fwd$objective - fit_rev$objective)
+))
+cat(sprintf(
+  "2-cmt IV    OFV match (< 1e-3): %s  (delta = %.2e)\n",
+  if (ok2) "PASS" else "FAIL",
+  abs(fit2_fwd$objective - fit2_rev$objective)
+))
 cat("=================================================\n")

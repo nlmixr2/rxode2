@@ -14,7 +14,7 @@
 #include <errno.h>
 #define _(String) (String)
 #include "../inst/include/rxode2parse.h"
-#include "../inst/include/rxode2parseSbuf.h"
+#include "rxSbufFormat.h"
 #include "tran.h"
 
 #include "threadSafeConstants.h"
@@ -116,6 +116,16 @@ static inline int nodePtr(char *value) {
   return 0;
 }
 
+// rx__isObs__: 1 on an observation record (internal evid 0), else 0
+static inline int nodeIsObs(char *value) {
+  if (!strcmp("rx__isObs__",value)){
+    aAppendN("_rxIsObs", 8);
+    sAppendN(&sbt, "rx__isObs__", 11);
+    return 1;
+  }
+  return 0;
+}
+
 static inline int nodeNaN(char *value){
   if (!strcmp("NaN",value)){
     aAppendN("NAN", 3);
@@ -136,22 +146,19 @@ static inline int nodeNA(char *value) {
 
 static inline int nodeInf(char *value) {
   if (!strcmp("Inf",value)){
-    if (sbt.o > 0 && sbt.s[sbt.o-1] == '-'){
-      sb.o--; sbDt.o--;
-      aAppendN("R_NegInf", 8);
-    } else {
-      aAppendN("R_PosInf", 8);
-    }
+    // Any preceding '-' stays in the C code, so '1 - Inf' is not '1R_NegInf'
+    aAppendN("R_PosInf", 8);
     sAppendN(&sbt,"Inf", 3);
     return 1;
   }
   return 0;
 }
 
+// gamma() is the Gamma function; C's gamma() is log-gamma in glibc
 static inline int nodeFunGamma(char *value) {
   if (!strcmp("gamma",value)){
-    aAppendN("lgammafn", 8);
-    sAppendN(&sbt, "lgammafn", 8);
+    aAppendN("gammafn", 7);
+    sAppendN(&sbt, "gamma", 5);
     return 1;
   }
   return 0;

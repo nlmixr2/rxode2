@@ -1,5 +1,4 @@
 rxTest({
-
   mod <- rxode2({
     d/dt(depot) <- -KA * depot
     d/dt(centr) <- KA * depot - CL / V * centr
@@ -10,8 +9,8 @@ rxTest({
   p <- data.frame(
     KA = 0.3,
     CL = seq(1, 8, length.out = 16),
-    V  = 40,
-    Q  = 10,
+    V = 40,
+    Q = 10,
     V2 = 300
   )
 
@@ -31,8 +30,7 @@ rxTest({
     rxSolve(mod, p, et, method = "dop853", cores = 1, atol = 1e-8, rtol = 1e-6)
   )
   s_vec <- suppressWarnings(
-    rxSolve(mod, p, et, method = "dop853", cores = 1,
-            atol = rep(1e-8, 3), rtol = rep(1e-6, 3))
+    rxSolve(mod, p, et, method = "dop853", cores = 1, atol = rep(1e-8, 3), rtol = rep(1e-6, 3))
   )
 
   test_that("scalar and equal per-compartment tolerances give identical results for dop853", {
@@ -48,26 +46,21 @@ rxTest({
   })
 
   # Dense-path parity: cores=1 vs cores=2
-  s_d1 <- suppressWarnings(rxSolve(mod, p, et, method = "dop853",
-                                    dense = TRUE, cores = 1))
-  s_d2 <- suppressWarnings(rxSolve(mod, p, et, method = "dop853",
-                                    dense = TRUE, cores = 2))
+  s_d1 <- suppressWarnings(rxSolve(mod, p, et, method = "dop853", dense = TRUE, cores = 1))
+  s_d2 <- suppressWarnings(rxSolve(mod, p, et, method = "dop853", dense = TRUE, cores = 2))
 
   test_that("dop853 dense: cores=1 and cores=2 give identical results", {
     expect_equal(as.data.frame(s_d1), as.data.frame(s_d2))
   })
 
-  s_nd <- suppressWarnings(rxSolve(mod, p, et, method = "dop853",
-                                    dense = FALSE, cores = 1))
+  s_nd <- suppressWarnings(rxSolve(mod, p, et, method = "dop853", dense = FALSE, cores = 1))
 
   test_that("dop853 dense=TRUE matches dense=FALSE (cores=1)", {
     expect_equal(as.data.frame(s_d1), as.data.frame(s_nd), tolerance = 1e-5)
   })
 
-  s_d2a <- suppressWarnings(rxSolve(mod, p, et, method = "dop853",
-                                     dense = TRUE, cores = 2))
-  s_d2b <- suppressWarnings(rxSolve(mod, p, et, method = "dop853",
-                                     dense = TRUE, cores = 2))
+  s_d2a <- suppressWarnings(rxSolve(mod, p, et, method = "dop853", dense = TRUE, cores = 2))
+  s_d2b <- suppressWarnings(rxSolve(mod, p, et, method = "dop853", dense = TRUE, cores = 2))
 
   test_that("parallel dense dop853 is deterministic across repeated calls", {
     expect_equal(as.data.frame(s_d2a), as.data.frame(s_d2b))
@@ -105,22 +98,139 @@ rxTest({
   lapply(unique(d$id), function(id) {
     di <- d[d$id == id, ]
     for (addlDropSs in c(TRUE, FALSE)) {
-      test_that(paste0("dop853 dense==nodense nmtest id:", id,
-                       " addlDropSs:", addlDropSs), {
-        s_nodense <- rxSolve(f, di, method = "dop853", dense = FALSE,
-                             addlDropSs = addlDropSs)
-        s_dense   <- rxSolve(f, di, method = "dop853",
-                             addlDropSs = addlDropSs)
+      test_that(paste0("dop853 dense==nodense nmtest id:", id, " addlDropSs:", addlDropSs), {
+        s_nodense <- rxSolve(f, di, method = "dop853", dense = FALSE, addlDropSs = addlDropSs)
+        s_dense <- rxSolve(f, di, method = "dop853", addlDropSs = addlDropSs)
         expect_equal(s_nodense$cp, s_dense$cp, tolerance = 1e-5)
       })
-      test_that(paste0("dop853 dense==nodense nmtest id:", id,
-                       " alag addlDropSs:", addlDropSs), {
-        s_nodense <- rxSolve(fl, di, method = "dop853", dense = FALSE,
-                             addlDropSs = addlDropSs)
-        s_dense   <- rxSolve(fl, di, method = "dop853",
-                             addlDropSs = addlDropSs)
+      test_that(paste0("dop853 dense==nodense nmtest id:", id, " alag addlDropSs:", addlDropSs), {
+        s_nodense <- rxSolve(fl, di, method = "dop853", dense = FALSE, addlDropSs = addlDropSs)
+        s_dense <- rxSolve(fl, di, method = "dop853", addlDropSs = addlDropSs)
         expect_equal(s_nodense$cp, s_dense$cp, tolerance = 1e-5)
       })
+    }
+  })
+  # the subjects named by every "exit of dop853" line of a solve's output (the
+  # aggregator can split one failure over several lines)
+  .dopExitIds <- function(out) {
+    .l <- grep("exit of dop853", out, value = TRUE)
+    sort(as.integer(unlist(strsplit(sub("^.*for subject\\(s\\): ", "", .l), ", ", fixed = TRUE))))
+  }
+
+  test_that("a subject whose dop853 solve fails leaves the later subjects solved", {
+    # y(0) = 1 with dy/dt = y^2 blows up at t = 1 (y = 1/(1 - t)); y(0) = 0.1 does
+    # not: y = 1/(10 - t), so with 0.2 added at t = 0.25, y(0.5) is .y05 (0.327323)
+    .m <- rxode2({
+      y(0) <- y0
+      d/dt(y) <- y^2
+    })
+    .ev <- et(amt = 0.2, time = 0.25, cmt = "y") |> et(seq(0, 2, by = 0.5)) |> et(id = 1:3)
+    .p <- data.frame(y0 = c(1, 0.1, 0.1))
+    .y05 <- 1 / (1 / (1 / 9.75 + 0.2) - 0.25)
+    .msg <- "some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'"
+    for (.dense in c(FALSE, TRUE)) {
+      for (.cores in c(1L, 2L)) {
+        .lab <- paste("dense", .dense, "cores", .cores)
+        .w <- capture_warnings(
+          .out <- capture.output(
+            .s <- rxSolve(.m, .ev, params = .p, method = "dop853", dense = .dense, cores = .cores)
+          )
+        )
+        expect_identical(.w, .msg, label = .lab)
+        .d <- as.data.frame(.s)
+        .y <- .d$y[.d$time == 0.5]
+        expect_true(is.na(.y[1]), label = .lab)
+        expect_equal(.y[2:3], c(.y05, .y05), tolerance = 1e-9, label = .lab)
+        # the failing subject is still reported
+        expect_identical(.dopExitIds(.out), 1L, label = .lab)
+      }
+    }
+    # a later failing subject after a good one is reported too, and no subject zeroed
+    .p <- data.frame(y0 = c(0.1, 1, 1))
+    .w <- capture_warnings(
+      .out <- capture.output(.s <- rxSolve(.m, .ev, params = .p, method = "dop853", cores = 1L))
+    )
+    expect_identical(.w, .msg)
+    .d <- as.data.frame(.s)
+    expect_equal(.d$y[.d$time == 0.5][1], .y05, tolerance = 1e-9)
+    expect_true(all(is.na(.d$y[.d$time == 0.5][2:3])))
+    expect_identical(.dopExitIds(.out), c(2L, 3L))
+  })
+
+  test_that("a dop853 failure inside a lagged dose's segment leaves the other subjects solved", {
+    # the dose at 0 is lagged to 1.5, so the solve to it is an extra-dose segment;
+    # subject 1 (y0 = 1) blows up at t = 1 inside it.  y0 = 0.1 gives y = 1/(10 - t)
+    # up to 1.5, then 0.2 is added: y(2) = 1/(1/(1/8.5 + 0.2) - 0.5)
+    .m <- rxode2({
+      y(0) <- y0
+      alag(y) <- 1.5
+      d/dt(y) <- y^2
+    })
+    .ev <- et(amt = 0.2, time = 0, cmt = "y") |> et(c(0.5, 2)) |> et(id = 1:3)
+    .p <- data.frame(y0 = c(1, 0.1, 0.1))
+    .y2 <- 1 / (1 / (1 / 8.5 + 0.2) - 0.5)
+    .msg <- "some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'"
+    for (.dense in c(FALSE, TRUE)) {
+      for (.cores in c(1L, 2L)) {
+        .lab <- paste("dense", .dense, "cores", .cores)
+        .w <- capture_warnings(
+          .out <- capture.output(
+            .s <- rxSolve(.m, .ev, params = .p, method = "dop853", dense = .dense, cores = .cores)
+          )
+        )
+        expect_identical(.w, .msg, label = .lab)
+        .d <- as.data.frame(.s)
+        expect_true(all(is.na(.d$y[.d$id == 1])), label = .lab)
+        expect_equal(.d$y[.d$id != 1 & .d$time == 0.5], rep(1 / 9.5, 2), tolerance = 1e-9, label = .lab)
+        expect_equal(.d$y[.d$id != 1 & .d$time == 2], rep(.y2, 2), tolerance = 1e-9, label = .lab)
+        expect_identical(.dopExitIds(.out), 1L, label = .lab)
+      }
+    }
+  })
+
+  test_that("dop853 keeps the state after a pushed infusion stop between two records", {
+    # An ss = 1 infusion longer than ii leaves the previous period's infusion
+    # running until dur - ii = 0.5, a stop pushed between the records at 0.25
+    # and 0.75.  The piece after that stop must be integrated once.
+    withr::local_options(rxode2.useLinCmt = FALSE)
+    .m <- rxode2("d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center")
+    .p <- c(ka = 1.2, k = 0.2)
+    .tt <- c(0.25, 0.75, 1, 4)
+    .ev <- et(amt = 100, rate = 8, ii = 12, ss = 1, cmt = "depot") |> et(.tt)
+    # depot by superposition of the infusions of every period (rate 8 for 12.5)
+    .depot <- vapply(
+      .tt,
+      function(t) {
+        .t0 <- -12 * (0:400)
+        .te <- pmin(t, .t0 + 12.5)
+        sum(ifelse(.te > .t0, 8 / 1.2 * (1 - exp(-1.2 * (.te - .t0))) * exp(-1.2 * (t - .te)), 0))
+      },
+      numeric(1)
+    )
+    .ctl <- list(params = .p, atol = 1e-12, rtol = 1e-12, ssAtol = 1e-12, ssRtol = 1e-12, maxsteps = 1e6)
+    .ref <- as.data.frame(do.call(rxSolve, c(list(.m, .ev, method = "liblsoda"), .ctl)))
+    expect_equal(.ref$depot, .depot, tolerance = 1e-9)
+    for (.dense in c(FALSE, TRUE)) {
+      .s <- as.data.frame(do.call(rxSolve, c(list(.m, .ev, method = "dop853", dense = .dense), .ctl)))
+      expect_equal(.s$time, .tt, label = paste("dense", .dense))
+      expect_equal(.s$depot, .depot, tolerance = 1e-9, label = paste("dense", .dense))
+      expect_equal(.s$center, .ref$center, tolerance = 1e-9, label = paste("dense", .dense))
+    }
+    # the same with a lag time, and doses pushed by bolus() inside the model,
+    # which fall between records too: dop853 agrees with liblsoda
+    .ml <- rxode2("d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\nalag(depot) <- lg")
+    .mb <- rxode2("d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center\nif (t >= 1 && t < 1.5) {\n  bolus(50, depot, 0.7, 2, 0)\n}")
+    .cases <- list(
+      lagged = list(m = .ml, ev = .ev, p = c(.p, lg = 0.6)),
+      pushedBolus = list(m = .mb, ev = et(c(0.5, 1, 2, 3, 5)), p = .p)
+    )
+    for (.nm in names(.cases)) {
+      .k <- .cases[[.nm]]
+      .c <- c(list(params = .k$p), .ctl[-1])
+      .r <- as.data.frame(do.call(rxSolve, c(list(.k$m, .k$ev, method = "liblsoda"), .c)))
+      .d <- as.data.frame(do.call(rxSolve, c(list(.k$m, .k$ev, method = "dop853"), .c)))
+      expect_equal(.d$depot, .r$depot, tolerance = 1e-9, label = .nm)
+      expect_equal(.d$center, .r$center, tolerance = 1e-9, label = .nm)
     }
   })
 })

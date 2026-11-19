@@ -48,16 +48,20 @@ rxTest({
       f(A_absorption) <- Fh * FaFg
     })
 
-
     s1 <- rxSolve(mod1, d, params = c(CLH = 2, CLD = 10, V_centr = 77, V_peri = 10), returnType = "data.frame")
     s2 <- rxSolve(mod2, d, params = setNames(c(2, 10, 77, 10), paste0("THETA[", 1:4, "]")), returnType = "data.frame")
     s2 <- s2[, names(s1)]
     expect_equal(s1, s2)
 
-    s3 <- rxSolve(mod2, d,
-                  params = c(c(CLR = 0, ka = 0, FQ_LV = 2.604, BW = 6.2, RBP = 0.679, FaFg = 1), setNames(c(2, 10, 77, 10), paste0("THETA[", 1:4, "]"))),
-                  returnType = "data.frame"
-                  )
+    s3 <- rxSolve(
+      mod2,
+      d,
+      params = c(
+        c(CLR = 0, ka = 0, FQ_LV = 2.604, BW = 6.2, RBP = 0.679, FaFg = 1),
+        setNames(c(2, 10, 77, 10), paste0("THETA[", 1:4, "]"))
+      ),
+      returnType = "data.frame"
+    )
 
     s3 <- s3[, names(s1)]
     expect_equal(s1, s3)

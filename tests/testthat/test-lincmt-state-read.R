@@ -20,8 +20,7 @@ gq  = rx__sens_peripheral1_BY_p2/V
     mC <- rxode2(paste0(base, callReads))
     # diffP1 | diffV1 | diffP2 = 2 + 4 + 8
     expect_equal(rxModelVars(mS)$flags[["ndiff"]], 14L)
-    expect_equal(rxModelVars(mS)$flags[["ndiff"]],
-                 rxModelVars(mC)$flags[["ndiff"]])
+    expect_equal(rxModelVars(mS)$flags[["ndiff"]], rxModelVars(mC)$flags[["ndiff"]])
     # a non-central row reference requires the full Jacobian rows
     expect_equal(rxModelVars(mS)$flags[["linCmtBraw"]], 1L)
     ev <- et(amt = 100, ii = 12, addl = 3) %>% et(seq(0.5, 48, by = 0.5))

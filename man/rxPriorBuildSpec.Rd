@@ -17,12 +17,36 @@ external pointer to a \code{rx_prior_spec_t}
 }
 \description{
 The one-time, R-only (main-thread) half of the kernel: parses the
-\code{prior} column and hands the result to \code{src/priorDensity.cpp} as a
-heap-allocated \code{rx_prior_spec_t}, wrapped in an R external pointer with a
-finalizer. \code{rxPriorLogDensityEval()} (\code{inst/include/rxode2prior.h}) --
+\code{prior} column and hands the result to \code{src/priorDensity.cpp} as an
+\code{rx_prior_spec_t} in R vectors owned by the returned R external pointer,
+which R frees with it. \code{rxPriorLogDensityEval()} (\code{inst/include/rxode2prior.h}) --
 reachable through rxode2's C function-pointer table -- then evaluates it
 with no R/Rcpp call of any kind, safe to call from inside an
 OpenMP-parallel objective/gradient evaluation.
+}
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    tcl <- log(3)
+    tv <- log(30)
+    add.sd <- c(0, 0.7)
+    prior(tcl) ~ dnorm(0, 10)
+  })
+  model({
+    cl <- exp(tcl)
+    v <- exp(tv)
+    d/dt(central) <- -cl / v * central
+    cp <- central / v
+    cp ~ add(add.sd)
+  })
+}
+# priors need 'lotri' >= 1.0.5
+if (utils::packageVersion("lotri") >= "1.0.5") {
+  spec <- rxPriorBuildSpec(mod)
+  inherits(spec, "externalptr")
+}
+}
 }
 \seealso{
 Other Assertions:
@@ -32,10 +56,12 @@ Other Assertions:
 \code{\link[=assertRxUi]{assertRxUi()}},
 \code{\link[=assertVariableExists]{assertVariableExists()}},
 \code{\link[=assertVariableNew]{assertVariableNew()}},
+\code{\link[=rxHasAr]{rxHasAr()}},
 \code{\link[=rxPriorLogDensity]{rxPriorLogDensity()}},
 \code{\link[=rxPriorOmegaToCholOmegaInvGrad]{rxPriorOmegaToCholOmegaInvGrad()}},
 \code{\link[=rxUiPriors]{rxUiPriors()}},
 \code{\link[=testIniDf]{testIniDf()}},
+\code{\link[=testRxLinCmt]{testRxLinCmt()}},
 \code{\link[=testRxUnbounded]{testRxUnbounded()}}
 }
 \author{

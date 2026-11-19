@@ -1,5 +1,5 @@
 ---
-title: "Classic rxode2 Events"
+title: "Classic evid codes"
 date: "`r Sys.Date()`"
 output:
   html_document:
@@ -18,3 +18,8 @@ Sys.setenv(RSTUDIO_CONSOLE_WIDTH=80)
 
 ```{r child='events-classic.Rmdh'}
 ```
+
+## Next steps
+
+- [Dataset columns](rxode2-dataset-columns.html)
+- [Low-level models and other input styles](rxode2-classic-models.html)

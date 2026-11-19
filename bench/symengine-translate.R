@@ -28,11 +28,12 @@ options(rxprogress.disable = TRUE)
 ## Linear chain of n compartments with n parameters: the cheapest way to scale
 ## states and parameters together and watch the O(S^2*P) sensitivity blow-up.
 .chain <- function(n) {
-  .l <- c(sprintf("k%d <- exp(lk%d + eta%d)", seq_len(n), seq_len(n), seq_len(n)),
-          "d/dt(a1) <- -k1*a1",
-          if (n > 1) sprintf("d/dt(a%d) <- k%d*a%d - k%d*a%d",
-                             2:n, 1:(n - 1), 1:(n - 1), 2:n, 2:n),
-          sprintf("cp <- a%d", n))
+  .l <- c(
+    sprintf("k%d <- exp(lk%d + eta%d)", seq_len(n), seq_len(n), seq_len(n)),
+    "d/dt(a1) <- -k1*a1",
+    if (n > 1) sprintf("d/dt(a%d) <- k%d*a%d - k%d*a%d", 2:n, 1:(n - 1), 1:(n - 1), 2:n, 2:n),
+    sprintf("cp <- a%d", n)
+  )
   paste(.l, collapse = "\n")
 }
 
@@ -54,10 +55,10 @@ cat("build: ", .label, "\n")
 cat(sprintf("%4s %8s %8s %8s %9s\n", "n", "rxS", "jac", "sens", "total"))
 for (n in c(3L, 6L, 10L, 15L)) {
   .r <- tryCatch(.time1(.chain(n)), error = function(e) {
-    message("  n=", n, " failed: ", conditionMessage(e)); NULL
+    message("  n=", n, " failed: ", conditionMessage(e))
+    NULL
   })
   if (!is.null(.r)) {
-    cat(sprintf("%4d %8.3f %8.3f %8.3f %9.3f\n",
-                n, .r[["rxS"]], .r[["jac"]], .r[["sens"]], .r[["total"]]))
+    cat(sprintf("%4d %8.3f %8.3f %8.3f %9.3f\n", n, .r[["rxS"]], .r[["jac"]], .r[["sens"]], .r[["total"]]))
   }
 }

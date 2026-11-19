@@ -8,16 +8,15 @@
 #' @return The value of the expression or a list with the value of
 #'     the expression and a list of warning messages
 #' @author Matthew L. Fidler
+#' @family Developer API
 #' @export
 .collectWarnings <- function(expr, lst = FALSE) {
   .ws <- NULL
   .thisEnv <- environment()
   .ret <- suppressWarnings(
-    withCallingHandlers(expr,
-      warning = function(w) {
-        assign(".ws", unique(c(w$message, .ws)), .thisEnv)
-      }
-    )
+    withCallingHandlers(expr, warning = function(w) {
+      assign(".ws", unique(c(w$message, .ws)), .thisEnv)
+    })
   )
   if (lst) {
     return(list(.ret, .ws))
@@ -28,4 +27,3 @@
     return(.ret)
   }
 }
-

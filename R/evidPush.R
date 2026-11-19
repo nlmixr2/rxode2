@@ -111,7 +111,8 @@
 #' }
 #'
 #' @export
-evid_ <- function(time, evid, amt, cmt=1, rate=0, ii=0, addl=0, ss=0.0) {
+#' @family In-model dosing
+evid_ <- function(time, evid, amt, cmt = 1, rate = 0, ii = 0, addl = 0, ss = 0.0) {
   stop("'evid_()' can only be used inside an rxode2 model block", call. = FALSE)
 }
 
@@ -124,8 +125,12 @@ evid_ <- function(time, evid, amt, cmt=1, rate=0, ii=0, addl=0, ss=0.0) {
 ## The string case matters because `deparse1("depot")` keeps the quotes,
 ## which the grammar then mis-parses (e.g. bolus(50, "depot, 0, 0, 0)).
 .rxUdfUiCmt <- function(cmt) {
-  if (is.null(cmt)) return("1")
-  if (is.character(cmt)) return(cmt)
+  if (is.null(cmt)) {
+    return("1")
+  }
+  if (is.character(cmt)) {
+    return(cmt)
+  }
   deparse1(cmt)
 }
 
@@ -135,34 +140,35 @@ evid_ <- function(time, evid, amt, cmt=1, rate=0, ii=0, addl=0, ss=0.0) {
 rxUdfUi.evid_ <- function(fun) {
   .dummy <- function(time, evid, amt, cmt, rate, ii, addl, ss) {}
   .mc <- match.call(.dummy, fun)
-  .time    <- deparse1(.mc$time)
+  .time <- deparse1(.mc$time)
   .evid <- deparse1(.mc$evid)
-  .amt   <- deparse1(.mc$amt)
+  .amt <- deparse1(.mc$amt)
 
-  .cmt  <- .rxUdfUiCmt(.mc$cmt)
+  .cmt <- .rxUdfUiCmt(.mc$cmt)
 
-  .rate   <- deparse1(.mc$rate)
+  .rate <- deparse1(.mc$rate)
   if (.rate == "NULL") {
     .rate <- "0"
   }
 
-  .ii   <- deparse1(.mc$ii)
+  .ii <- deparse1(.mc$ii)
   if (.ii == "NULL") {
     .ii <- "0"
   }
 
-  .addl   <- deparse1(.mc$addl)
+  .addl <- deparse1(.mc$addl)
   if (.addl == "NULL") {
     .addl <- "0"
   }
 
-  .ss   <- deparse1(.mc$ss)
+  .ss <- deparse1(.mc$ss)
   if (.ss == "NULL") {
     .ss <- "0"
   }
 
-  list(replace = paste0("evid_(", .time, ",", .evid, ",", .amt, ",", .cmt,
-                        ",", .rate, ",", .ii, ",", .addl, ",", .ss, ")"))
+  list(
+    replace = paste0("evid_(", .time, ",", .evid, ",", .amt, ",", .cmt, ",", .rate, ",", .ii, ",", .addl, ",", .ss, ")")
+  )
 }
 #' Administer a bolus dose inside a rxode2 model
 #'
@@ -190,6 +196,25 @@ rxUdfUi.evid_ <- function(fun) {
 #'
 #' @export
 #' @author Matthew L. Fidler
+#' @family In-model dosing
+#' @examples
+#' \donttest{
+#' # extra 50 unit bolus into the depot at t = 12
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     mtime(at) <- 12
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'     if (t >= at && t < at + 0.5) bolus(50, depot)
+#'   })
+#' }
+#' s <- rxSolve(f, et(amt = 100) |> et(0:24))
+#' s[s$time >= 11 & s$time <= 14, ]
+#' }
 bolus <- function(amt, cmt = 1, ii = 0, addl = 0, ss = 0) {
   stop("'bolus()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -200,21 +225,21 @@ bolus <- function(amt, cmt = 1, ii = 0, addl = 0, ss = 0) {
 rxUdfUi.bolus <- function(fun) {
   .dummy <- function(amt, cmt, ii, addl, ss) {}
   .mc <- match.call(.dummy, fun)
-  .amt   <- deparse1(.mc$amt)
+  .amt <- deparse1(.mc$amt)
 
-  .cmt  <- .rxUdfUiCmt(.mc$cmt)
+  .cmt <- .rxUdfUiCmt(.mc$cmt)
 
-  .ii   <- deparse1(.mc$ii)
+  .ii <- deparse1(.mc$ii)
   if (.ii == "NULL") {
     .ii <- "0"
   }
 
-  .addl   <- deparse1(.mc$addl)
+  .addl <- deparse1(.mc$addl)
   if (.addl == "NULL") {
     .addl <- "0"
   }
 
-  .ss   <- deparse1(.mc$ss)
+  .ss <- deparse1(.mc$ss)
   if (.ss == "NULL") {
     .ss <- "0"
   }
@@ -247,6 +272,25 @@ rxUdfUi.bolus <- function(fun) {
 #'
 #' @export
 #' @author Matthew L. Fidler
+#' @family In-model dosing
+#' @examples
+#' \donttest{
+#' # 50 unit infusion at rate 10 into central at t = 12
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     mtime(at) <- 12
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'     if (t >= at && t < at + 0.5) infuse(50, 10, central)
+#'   })
+#' }
+#' s <- rxSolve(f, et(amt = 100) |> et(0:24))
+#' s[s$time >= 11 & s$time <= 14, ]
+#' }
 infuse <- function(amt, rate, cmt = 1, ii = 0, addl = 0, ss = 0) {
   stop("'infuse()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -261,11 +305,17 @@ rxUdfUi.infuse <- function(fun) {
   .rate <- deparse1(.mc$rate)
   .cmt <- .rxUdfUiCmt(.mc$cmt)
   .ii <- deparse1(.mc$ii)
-  if (.ii == "NULL") .ii <- "0"
+  if (.ii == "NULL") {
+    .ii <- "0"
+  }
   .addl <- deparse1(.mc$addl)
-  if (.addl == "NULL") .addl <- "0"
+  if (.addl == "NULL") {
+    .addl <- "0"
+  }
   .ss <- deparse1(.mc$ss)
-  if (.ss == "NULL") .ss <- "0"
+  if (.ss == "NULL") {
+    .ss <- "0"
+  }
   list(replace = paste0("infuse(", .amt, ",", .rate, ",", .cmt, ",", .ii, ",", .addl, ",", .ss, ")"))
 }
 
@@ -297,6 +347,25 @@ rxUdfUi.infuse <- function(fun) {
 #'
 #' @export
 #' @author Matthew L. Fidler
+#' @family In-model dosing
+#' @examples
+#' \donttest{
+#' # 50 unit infusion over 5 time units into central at t = 12
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     mtime(at) <- 12
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'     if (t >= at && t < at + 0.5) infuseDur(50, 5, central)
+#'   })
+#' }
+#' s <- rxSolve(f, et(amt = 100) |> et(0:24))
+#' s[s$time >= 11 & s$time <= 14, ]
+#' }
 infuseDur <- function(amt, dur, cmt = 1, ii = 0, addl = 0, ss = 0) {
   stop("'infuseDur()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -311,11 +380,17 @@ rxUdfUi.infuseDur <- function(fun) {
   .dur <- deparse1(.mc$dur)
   .cmt <- .rxUdfUiCmt(.mc$cmt)
   .ii <- deparse1(.mc$ii)
-  if (.ii == "NULL") .ii <- "0"
+  if (.ii == "NULL") {
+    .ii <- "0"
+  }
   .addl <- deparse1(.mc$addl)
-  if (.addl == "NULL") .addl <- "0"
+  if (.addl == "NULL") {
+    .addl <- "0"
+  }
   .ss <- deparse1(.mc$ss)
-  if (.ss == "NULL") .ss <- "0"
+  if (.ss == "NULL") {
+    .ss <- "0"
+  }
   list(replace = paste0("infuseDur(", .amt, ",", .dur, ",", .cmt, ",", .ii, ",", .addl, ",", .ss, ")"))
 }
 
@@ -341,6 +416,25 @@ rxUdfUi.infuseDur <- function(fun) {
 #' Past-time pushes (where `time < t`) are silently ignored and counted;
 #' a warning is issued after solving.
 #'
+#' @family In-model dosing
+#' @examples
+#' \donttest{
+#' # reset all compartments at t = 12
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     mtime(at) <- 12
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'     if (t >= at && t < at + 0.5) reset()
+#'   })
+#' }
+#' s <- rxSolve(f, et(amt = 100) |> et(0:24))
+#' s[s$time >= 11 & s$time <= 14, ]
+#' }
 reset <- function() {
   stop("'reset()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -369,6 +463,25 @@ reset <- function() {
 #' Past-time pushes (where `time < t`) are silently ignored and counted;
 #' a warning is issued after solving.
 #'
+#' @family In-model dosing
+#' @examples
+#' \donttest{
+#' # set the central amount to 25 at t = 12
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     mtime(at) <- 12
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'     if (t >= at && t < at + 0.5) replace(25, central)
+#'   })
+#' }
+#' s <- rxSolve(f, et(amt = 100) |> et(0:24))
+#' s[s$time >= 11 & s$time <= 14, ]
+#' }
 replace <- function(amt, cmt = 1) {
   stop("'replace()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -378,7 +491,7 @@ replace <- function(amt, cmt = 1) {
 #' @keywords internal
 #' @rdname rxUdfUi
 rxUdfUi.replace <- function(fun) {
-  .dummy <- function(amt, cmt=1) {}
+  .dummy <- function(amt, cmt = 1) {}
   .mc <- match.call(.dummy, fun)
   .amt <- deparse1(.mc$amt)
   .cmt <- .rxUdfUiCmt(.mc$cmt)
@@ -410,6 +523,25 @@ rxUdfUi.replace <- function(fun) {
 #' Past-time pushes (where `time < t`) are silently ignored and counted;
 #' a warning is issued after solving.
 #'
+#' @family In-model dosing
+#' @examples
+#' \donttest{
+#' # halve the central amount at t = 12
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     mtime(at) <- 12
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'     if (t >= at && t < at + 0.5) multiply(0.5, central)
+#'   })
+#' }
+#' s <- rxSolve(f, et(amt = 100) |> et(0:24))
+#' s[s$time >= 11 & s$time <= 14, ]
+#' }
 multiply <- function(amt, cmt = 1) {
   stop("'multiply()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -419,7 +551,7 @@ multiply <- function(amt, cmt = 1) {
 #' @keywords internal
 #' @rdname rxUdfUi
 rxUdfUi.multiply <- function(fun) {
-  .dummy <- function(amt, cmt=1) {}
+  .dummy <- function(amt, cmt = 1) {}
   .mc <- match.call(.dummy, fun)
   .amt <- deparse1(.mc$amt)
   .cmt <- .rxUdfUiCmt(.mc$cmt)
@@ -452,6 +584,26 @@ rxUdfUi.multiply <- function(fun) {
 #'
 #' @export
 #' @author Matthew L. Fidler
+#' @family In-model dosing
+#' @examples
+#' \donttest{
+#' # phantom dose at t = 12 resets tad() without adding drug
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     mtime(at) <- 12
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'     td <- tad(depot)
+#'     if (t >= at && t < at + 0.5) phantom(100, depot)
+#'   })
+#' }
+#' s <- rxSolve(f, et(amt = 100) |> et(0:24))
+#' s[s$time >= 11 & s$time <= 14, ]
+#' }
 phantom <- function(amt, cmt = 1, ii = 0, addl = 0, ss = 0) {
   stop("'phantom()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -462,21 +614,21 @@ phantom <- function(amt, cmt = 1, ii = 0, addl = 0, ss = 0) {
 rxUdfUi.phantom <- function(fun) {
   .dummy <- function(amt, cmt, ii, addl, ss) {}
   .mc <- match.call(.dummy, fun)
-  .amt   <- deparse1(.mc$amt)
+  .amt <- deparse1(.mc$amt)
 
-  .cmt  <- .rxUdfUiCmt(.mc$cmt)
+  .cmt <- .rxUdfUiCmt(.mc$cmt)
 
-  .ii   <- deparse1(.mc$ii)
+  .ii <- deparse1(.mc$ii)
   if (.ii == "NULL") {
     .ii <- "0"
   }
 
-  .addl   <- deparse1(.mc$addl)
+  .addl <- deparse1(.mc$addl)
   if (.addl == "NULL") {
     .addl <- "0"
   }
 
-  .ss   <- deparse1(.mc$ss)
+  .ss <- deparse1(.mc$ss)
   if (.ss == "NULL") {
     .ss <- "0"
   }
@@ -519,6 +671,22 @@ rxUdfUi.phantom <- function(fun) {
 #'
 #' @export
 #' @author Matthew L. Fidler
+#' @family In-model dosing
+#' @examples
+#' \donttest{
+#' f <- function() {
+#'   ini({
+#'     cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     d/dt(central) <- -cl / v * central
+#'     cp <- central / v
+#'     # add observations at t + 0.5, t + 1.5 and t + 3
+#'     if (t < 1) obs(0.5, 1.5, 3)
+#'   })
+#' }
+#' rxSolve(f, et(amt = 100) |> et(c(0, 24)))
+#' }
 obs <- function(...) {
   stop("'obs()' can only be used inside an rxode2 model block", call. = FALSE)
 }
@@ -529,18 +697,18 @@ obs <- function(...) {
 rxUdfUi.obs <- function(fun) {
   .mc1 <- fun
   .mc1[[1]] <- quote(`list`)
-  .mc1 <- try(eval(.mc1), silent=TRUE)
+  .mc1 <- try(eval(.mc1), silent = TRUE)
   if (inherits(.mc1, "try-error")) {
-    list(replace=deparse1(fun))
+    list(replace = deparse1(fun))
   } else {
-    .mc1 <- try(unlist(.mc1, recursive=TRUE, use.names=FALSE), silent=TRUE)
+    .mc1 <- try(unlist(.mc1, recursive = TRUE, use.names = FALSE), silent = TRUE)
     if (inherits(.mc1, "try-error")) {
-      list(replace=deparse1(fun))
+      list(replace = deparse1(fun))
     } else if (is.numeric(.mc1) || is.integer(.mc1)) {
       .obs <- as.character(.mc1)
-      list(replace = paste0("obs(", paste(.obs, collapse=", "), ")"))
+      list(replace = paste0("obs(", paste(.obs, collapse = ", "), ")"))
     } else {
-      list(replace=deparse1(fun))
+      list(replace = deparse1(fun))
     }
   }
 }

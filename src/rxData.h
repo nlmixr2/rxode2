@@ -4,6 +4,8 @@
 #ifndef __RXDATA_H__
 #define __RXDATA_H__
 
+#include "rxPrintfFormat.h"
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -14,7 +16,7 @@ extern "C" {
   SEXP get_fkeepChar(int col, double val);
   double *getLlikSave(void);
   SEXP get_fkeepn(void);
-  void cliAlert(const char *format, ...);
+  void cliAlert(const char *format, ...) R_PRINTF_FORMAT(1, 2);
   void setZeroMatrix(int which);
   double * getAol(int n, double atol);
   double * getRol(int n, double rtol);

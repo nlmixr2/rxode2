@@ -16,6 +16,7 @@
 #' rinvchisq(3, 4, 1) ## Scale = 1, degrees of freedom = 4
 #' rinvchisq(2, 4, 2) ## Scale = 2, degrees of freedom = 4
 #' @export
+#' @family Variability and uncertainty
 rinvchisq <- function(n = 1L, nu = 1.0, scale = 1) {
     .Call(`_rxode2_rinvchisq`, n, nu, scale)
 }
@@ -34,6 +35,7 @@ rinvchisq <- function(n = 1L, nu = 1.0, scale = 1) {
 #' @return A correlation sample from the LKJ distribution
 #'
 #' @author Matthew Fidler (translated to RcppArmadillo) and Emma Schwager
+#' @family Developer API
 #' @export
 #' @keywords internal
 rLKJ1 <- function(d, eta = 1.0, cholesky = FALSE) {
@@ -63,6 +65,7 @@ rLKJcvLsd1 <- function(logSd, logSdSD, eta = 1.0) {
 #'
 #' @author Matthew Fidler
 #' @keywords internal
+#' @family Developer API
 #' @export
 invWR1d <- function(d, nu, omegaIsChol = FALSE) {
     .Call(`_rxode2_invWR1d`, d, nu, omegaIsChol)
@@ -143,6 +146,12 @@ getCmtNum_ <- function(cmt, mv, sens = TRUE) {
 #' @return the boolean ini0, though this is called for its side effects
 #'
 #' @export
+#' @family Solving
+#' @examples
+#' # initial conditions at the first record time rather than time zero
+#' rxSetIni0(FALSE)
+#' # restore the default
+#' rxSetIni0(TRUE)
 rxSetIni0 <- function(ini0 = TRUE) {
     .Call(`_rxode2_rxSetIni0`, ini0)
 }
@@ -220,6 +229,12 @@ cmtSupportsOff_ <- function(cmt, mv) {
 #'   steady concentration at the actual time of dose, otherwise when
 #'   `FALSE` the doses are shifted
 #'
+#' @param tieOrder How records that share a subject and time are ordered:
+#'   `"evid"` (the default) puts resets first, then doses, then
+#'   observations; `"data"` keeps the order of the rows in `inData`, the
+#'   way NONMEM processes its records.  Records a row expands to (the reset
+#'   of an `evid=4` dose, `addl` repeats, infusion ends) follow that row.
+#'
 #' @inheritParams rxSolve
 #'
 #' @return Object for solving in rxode2
@@ -227,8 +242,8 @@ cmtSupportsOff_ <- function(cmt, mv) {
 #' @keywords internal
 #'
 #' @export
-etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar = FALSE, keepDosingOnly = FALSE, combineDvid = NULL, keep = character(0), addlKeepsCov = FALSE, addlDropSs = TRUE, ssAtDoseTime = TRUE, iCov = NULL) {
-    .Call(`_rxode2_etTrans`, inData, obj, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid, keep, addlKeepsCov, addlDropSs, ssAtDoseTime, iCov)
+etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar = FALSE, keepDosingOnly = FALSE, combineDvid = NULL, keep = character(0), addlKeepsCov = FALSE, addlDropSs = TRUE, ssAtDoseTime = TRUE, iCov = NULL, tieOrder = "evid") {
+    .Call(`_rxode2_etTrans`, inData, obj, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid, keep, addlKeepsCov, addlDropSs, ssAtDoseTime, iCov, tieOrder)
 }
 
 rxEtTransAsDataFrame_ <- function(inData1) {
@@ -355,6 +370,10 @@ rxIndLin_ <- function(states) {
 
 convertId_ <- function(x) {
     .Call(`_rxode2_convertId_`, x)
+}
+
+rxInvChol_ <- function(x, type) {
+    .Call(`_rxode2_rxInvChol_`, x, type)
 }
 
 #' Variance-covariance (non-Cholesky) Omega parameterization derivatives (C++)
@@ -560,6 +579,22 @@ rxModelVars_ <- function(obj) {
 #' @family Query model information
 #' @author Matthew L.Fidler
 #' @export
+#' @examples
+#' \donttest{
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'   })
+#' }
+#' m <- f()
+#' rxState(m)
+#' rxState(m, "central")
+#' }
 rxState <- function(obj = NULL, state = NULL) {
     .Call(`_rxode2_rxState`, obj, state)
 }
@@ -581,6 +616,20 @@ rxParams_ <- function(obj) {
 #'
 #' @family Query model information
 #' @export
+#' @family Sensitivities
+#' @examples
+#' \donttest{
+#' f <- function() {
+#'   ini({
+#'     k <- 0.1
+#'   })
+#'   model({
+#'     d/dt(x) <- -k * x
+#'     df(x)/dy(x) <- -k
+#'   })
+#' }
+#' rxDfdy(f())
+#' }
 rxDfdy <- function(obj) {
     .Call(`_rxode2_rxDfdy`, obj)
 }
@@ -596,6 +645,20 @@ rxDfdy <- function(obj) {
 #' @family Query model information
 #' @author Matthew L.Fidler
 #' @export
+#' @examples
+#' \donttest{
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'   })
+#' }
+#' rxLhs(f())
+#' }
 rxLhs <- function(obj) {
     .Call(`_rxode2_rxLhs`, obj)
 }
@@ -678,6 +741,14 @@ atolRtolFactor_ <- function(factor) {
 #' @author Matthew L.Fidler
 #'
 #' @export
+#' @family Variability and uncertainty
+#' @examples
+#' rxWithSeed(42, {
+#'   rxSimThetaOmega(
+#'     params = c(tka = 1, tcl = 2),
+#'     omega = lotri::lotri(eta.ka ~ 0.1), nSub = 3
+#'   )
+#' })
 rxSimThetaOmega <- function(params = NULL, omega = NULL, omegaDf = NULL, omegaLower = as.numeric( c(R_NegInf)), omegaUpper = as.numeric( c(R_PosInf)), omegaIsChol = FALSE, omegaSeparation = "auto", omegaXform = 1L, nSub = 1L, thetaMat = NULL, thetaLower = as.numeric( c(R_NegInf)), thetaUpper = as.numeric( c(R_PosInf)), thetaDf = NULL, thetaIsChol = FALSE, nStud = 1L, sigma = NULL, sigmaLower = as.numeric( c(R_NegInf)), sigmaUpper = as.numeric( c(R_PosInf)), sigmaDf = NULL, sigmaIsChol = FALSE, sigmaSeparation = "auto", sigmaXform = 1L, nCoresRV = 1L, nObs = 1L, dfSub = 0, dfObs = 0, simSubjects = TRUE, simVariability = as.logical( c(NA_LOGICAL))) {
     .Call(`_rxode2_rxSimThetaOmega`, params, omega, omegaDf, omegaLower, omegaUpper, omegaIsChol, omegaSeparation, omegaXform, nSub, thetaMat, thetaLower, thetaUpper, thetaDf, thetaIsChol, nStud, sigma, sigmaLower, sigmaUpper, sigmaDf, sigmaIsChol, sigmaSeparation, sigmaXform, nCoresRV, nObs, dfSub, dfObs, simSubjects, simVariability)
 }
@@ -742,6 +813,7 @@ rxRmModelLib_ <- function(str) {
 #' Get rxode2 model from object
 #' @param obj rxode2 family of objects
 #' @return rxode2 model
+#' @family Developer API
 #' @export
 rxGetrxode2 <- function(obj) {
     .Call(`_rxode2_rxGetrxode2`, obj)
@@ -754,6 +826,21 @@ rxGetrxode2 <- function(obj) {
 #' @return boolean indicating if this was built with current rxode2
 #'
 #' @export
+#' @family Utilities
+#' @examples
+#' \donttest{
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'   })
+#' }
+#' rxIsCurrent(f()$simulationModel)
+#' }
 rxIsCurrent <- function(obj) {
     .Call(`_rxode2_rxIsCurrent`, obj)
 }
@@ -761,6 +848,7 @@ rxIsCurrent <- function(obj) {
 #' Assign pointer based on model variables
 #' @param object rxode2 family of objects
 #' @return nothing, called for side effects
+#' @family Developer API
 #' @export
 rxAssignPtr <- function(object = NULL) {
     invisible(.Call(`_rxode2_rxAssignPtr`, object))
@@ -834,6 +922,23 @@ rxDynLoad <- function(obj) {
 #' @return nothing; called for side effects
 #'
 #' @export
+#' @family Utilities
+#' @examples
+#' \donttest{
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'   })
+#' }
+#' m <- f()$simulationModel
+#' rxLock(m)
+#' rxUnlock(m)
+#' }
 rxLock <- function(obj) {
     .Call(`_rxode2_rxLock`, obj)
 }
@@ -857,6 +962,7 @@ rxUnlock <- function(obj) {
 #'
 #' # Garbage collection will unload unused rxode2 dlls
 #' rxAllowUnload(TRUE);
+#' @family Developer API
 #' @export
 #' @author Matthew Fidler
 rxAllowUnload <- function(allow) {
@@ -891,6 +997,22 @@ rxDynUnload <- function(obj) {
 #'
 #' @author Matthew L.Fidler
 #' @export
+#' @family Model definition
+#' @examples
+#' \donttest{
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'   })
+#' }
+#' m <- f()$simulationModel
+#' rxDelete(m)
+#' }
 rxDelete <- function(obj) {
     .Call(`_rxode2_rxDelete`, obj)
 }
@@ -933,6 +1055,9 @@ rxSetSilentErr <- function(silent) {
 #' @return inverse or pseudo inverse of matrix.
 #'
 #' @export
+#' @family Utilities
+#' @examples
+#' rxInv(matrix(c(2, 1, 1, 2), 2))
 rxInv <- function(matrix) {
     .Call(`_rxode2_rxInv`, matrix)
 }
@@ -974,6 +1099,13 @@ rxInv <- function(matrix) {
 #' @author Matthew L. Fidler
 #'
 #' @export
+#' @family Utilities
+#' @examples
+#' omega <- lotri::lotri(a + b ~ c(1, 0.5, 1))
+#' x <- rxSymInvCholCreate(omega, create.env = FALSE)
+#' rxSymInvChol(x, x$ini, "omegaInv")
+#' # derivative of Omega^-1 with respect to the first theta
+#' rxSymInvChol(x, x$ini, "d(omegaInv)", 1L)
 rxSymInvChol <- function(invObjOrMatrix, theta = NULL, type = "cholOmegaInv", thetaNumber = 0L) {
     .Call(`_rxode2_rxSymInvChol`, invObjOrMatrix, theta, type, thetaNumber)
 }
@@ -1052,8 +1184,16 @@ rxTestAbiStrideProbe_ <- function(pad, n) {
     .Call(`_rxode2_rxTestAbiStrideProbe_`, pad, n)
 }
 
-rxOptRep_ <- function(input) {
-    .Call(`_rxode2_rxOptRep_`, input)
+rxOptRep_ <- function(input, prefix = "rx_expr_") {
+    .Call(`_rxode2_rxOptRep_`, input, prefix)
+}
+
+rxRmvtTilt_ <- function(sigma, lower, upper, df) {
+    .Call(`_rxode2_rxRmvtTilt_`, sigma, lower, upper, df)
+}
+
+rxRmvtTeamDraw_ <- function(mu, sigma, df, lower, upper, n, nid, nthreads, seed) {
+    .Call(`_rxode2_rxRmvtTeamDraw_`, mu, sigma, df, lower, upper, n, nid, nthreads, seed)
 }
 
 #' Save the pre-integration rxode2 solver state to a binary file
@@ -1159,6 +1299,10 @@ rxgamma_ <- function(shape, rate, n, ncores) {
     .Call(`_rxode2_rxgamma_`, shape, rate, n, ncores)
 }
 
+rxlnorm_ <- function(meanlog, sdlog, n, ncores) {
+    .Call(`_rxode2_rxlnorm_`, meanlog, sdlog, n, ncores)
+}
+
 rxbeta_ <- function(shape1, shape2, n, ncores) {
     .Call(`_rxode2_rxbeta_`, shape1, shape2, n, ncores)
 }
@@ -1193,6 +1337,10 @@ rxRmvn0 <- function(A_, mu, sigma, lower, upper, ncores = 1L, isChol = FALSE, a 
 
 rxRmvnSEXP <- function(nS, muS, sigmaS, lowerS, upperS, ncoresS, isCholS, keepNamesS, aS, tolS, nlTolS, nlMaxiterS) {
     .Call(`_rxode2_rxRmvnSEXP`, nS, muS, sigmaS, lowerS, upperS, ncoresS, isCholS, keepNamesS, aS, tolS, nlTolS, nlMaxiterS)
+}
+
+rxRmvtSEXP <- function(nS, muS, sigmaS, dfS, lowerS, upperS, ncoresS, isCholS, keepNamesS, aS, tolS, nlTolS, nlMaxiterS) {
+    .Call(`_rxode2_rxRmvtSEXP`, nS, muS, sigmaS, dfS, lowerS, upperS, ncoresS, isCholS, keepNamesS, aS, tolS, nlTolS, nlMaxiterS)
 }
 
 rpp_ <- function(nS, lambdaS, gammaS, probS, t0S, tmaxS, randomOrderS) {

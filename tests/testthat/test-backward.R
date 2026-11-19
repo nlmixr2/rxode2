@@ -1,9 +1,6 @@
 rxTest({
-
   test_that("error with wd specified but modName not specified", {
-
-expect_error(rxode2("cp<-cent/vc;d/dt(gutcp)<--ka*gutcp;d/dt(cent)<-(ka*gutcp)-q/vc*cent+q/vp*pericp-((vmax*cp)/vc)/(km+cp);d/dt(pericp)<-cent*q/vc-q/vp*pericp;f(gutcp)=bio;alag(gutcp)<-lag;gutcp(0)<-0;cent(0)<-0;pericp(0)<-0;", wd=getwd()))
-
+    expect_error(rxode2("cp<-cent/vc;d/dt(gutcp)<--ka*gutcp;d/dt(cent)<-(ka*gutcp)-q/vc*cent+q/vp*pericp-((vmax*cp)/vc)/(km+cp);d/dt(pericp)<-cent*q/vc-q/vp*pericp;f(gutcp)=bio;alag(gutcp)<-lag;gutcp(0)<-0;cent(0)<-0;pericp(0)<-0;", wd=getwd()))
   })
 
   ## Dynmodel routines
@@ -25,12 +22,140 @@ expect_error(rxode2("cp<-cent/vc;d/dt(gutcp)<--ka*gutcp;d/dt(cent)<-(ka*gutcp)-q
 
   ev <- eventTable()
   ev$add.sampling(c(0, c(15, 30, 60, 90, 120, 150, 210, 270, 330, 360, 390, 420, 450, 480)))
-  theta <- structure(c(190, 0.65, 0.92, 0.0793, 0.64, 0.292, 9.63), names = c("MIT", "CVI2", "F", "CL", "V2", "Q", "V3"))
+  theta <- structure(
+    c(190, 0.65, 0.92, 0.0793, 0.64, 0.292, 9.63),
+    names = c("MIT", "CVI2", "F", "CL", "V2", "Q", "V3")
+  )
 
   val1 <- sys1$solve(theta, ev, atol = 1e-6, rtol = 1e-6)
 
   ## Prior rxode2 solving...
-  val2 <- structure(c(0, 15, 30, 60, 90, 120, 150, 210, 270, 330, 360, 390, 420, 450, 480, 0, 0.00468853094648131, 0.373067597127217, 2.06008521781962, 3.11868121404469, 3.61478640740494, 3.77791523493719, 3.57583622912201, 3.07240077291895, 2.50781365737478, 2.23759663817273, 1.98421582221308, 1.75065831378882, 1.53813326790626, 1.34666851432174, 0, 0.00275724533602532, 0.779135520764223, 12.5294880193912, 29.5561651547891, 42.805783957353, 50.756288454544, 54.6956530842046, 50.0020491493438, 42.249424648696, 38.1457972477322, 34.1486661506102, 30.3627294500035, 26.8473328340894, 23.6307416646032, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 3.14159265358979, 3.14159265358979, 3.14159265358979, 3.14159265358979, 3.14159265358979, 3.14159265358979, 3.14159265358979, 3.14159265358979, 3.14159265358979, 3.14159265358979, 3.14159265358979, 3.14159265358979, 3.14159265358979, 3.14159265358979, 3.14159265358979, 0, 0.00555514066938253, 0.241306787665833, 0.863322464865012, 0.937389549382366, 0.809244619745276, 0.654268731228509, 0.409232361102111, 0.256995004576163, 0.164606161831775, 0.132752793640541, 0.107575895938534, 0.0875618379140851, 0.0715643817688998, 0.0587112500960777, 0, 0.00732582960387705, 0.582918120511276, 3.21888315284315, 4.87293939694483, 5.64810376157022, 5.90299255458936, 5.58724410800314, 4.80062620768586, 3.9184588396481, 3.49624474714489, 3.10033722220793, 2.73540361529503, 2.40333323110352, 2.10416955362771, 0, 0.00028631831111374, 0.0809071153441561, 1.30108909858683, 3.06917602853469, 4.44504506306884, 5.27064262248639, 5.6797147543307, 5.19232078394016, 4.38727151076802, 3.96114197795765, 3.54607125136139, 3.15293140706163, 2.78788502950045, 2.45386725489129), dim = c(15L, 8L), dimnames = list(NULL, c("time", "centr", "peri", "dose", "pi", "fI", "C2", "C3")))
+  val2 <- structure(
+    c(
+      0,
+      15,
+      30,
+      60,
+      90,
+      120,
+      150,
+      210,
+      270,
+      330,
+      360,
+      390,
+      420,
+      450,
+      480,
+      0,
+      0.00468853094648131,
+      0.373067597127217,
+      2.06008521781962,
+      3.11868121404469,
+      3.61478640740494,
+      3.77791523493719,
+      3.57583622912201,
+      3.07240077291895,
+      2.50781365737478,
+      2.23759663817273,
+      1.98421582221308,
+      1.75065831378882,
+      1.53813326790626,
+      1.34666851432174,
+      0,
+      0.00275724533602532,
+      0.779135520764223,
+      12.5294880193912,
+      29.5561651547891,
+      42.805783957353,
+      50.756288454544,
+      54.6956530842046,
+      50.0020491493438,
+      42.249424648696,
+      38.1457972477322,
+      34.1486661506102,
+      30.3627294500035,
+      26.8473328340894,
+      23.6307416646032,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      200,
+      3.14159265358979,
+      3.14159265358979,
+      3.14159265358979,
+      3.14159265358979,
+      3.14159265358979,
+      3.14159265358979,
+      3.14159265358979,
+      3.14159265358979,
+      3.14159265358979,
+      3.14159265358979,
+      3.14159265358979,
+      3.14159265358979,
+      3.14159265358979,
+      3.14159265358979,
+      3.14159265358979,
+      0,
+      0.00555514066938253,
+      0.241306787665833,
+      0.863322464865012,
+      0.937389549382366,
+      0.809244619745276,
+      0.654268731228509,
+      0.409232361102111,
+      0.256995004576163,
+      0.164606161831775,
+      0.132752793640541,
+      0.107575895938534,
+      0.0875618379140851,
+      0.0715643817688998,
+      0.0587112500960777,
+      0,
+      0.00732582960387705,
+      0.582918120511276,
+      3.21888315284315,
+      4.87293939694483,
+      5.64810376157022,
+      5.90299255458936,
+      5.58724410800314,
+      4.80062620768586,
+      3.9184588396481,
+      3.49624474714489,
+      3.10033722220793,
+      2.73540361529503,
+      2.40333323110352,
+      2.10416955362771,
+      0,
+      0.00028631831111374,
+      0.0809071153441561,
+      1.30108909858683,
+      3.06917602853469,
+      4.44504506306884,
+      5.27064262248639,
+      5.6797147543307,
+      5.19232078394016,
+      4.38727151076802,
+      3.96114197795765,
+      3.54607125136139,
+      3.15293140706163,
+      2.78788502950045,
+      2.45386725489129
+    ),
+    dim = c(15L, 8L),
+    dimnames = list(NULL, c("time", "centr", "peri", "dose", "pi", "fI", "C2", "C3"))
+  )
 
   val2 <- val2[, dimnames(val1)[[2]]]
 
@@ -80,20 +205,131 @@ expect_error(rxode2("cp<-cent/vc;d/dt(gutcp)<--ka*gutcp;d/dt(cent)<-(ka*gutcp)-q
     rx__sens_rx_r__BY_ETA_3___ <- 0
   })
 
-
   et <- eventTable()
-  et$import.EventTable(structure(list(time = c(0, 0, 0.25, 0.57, 1.12, 2.02, 3.82, 5.1, 7.03, 9.05, 12.12, 24, 24.37, 48, 72, 96, 120, 144, 144, 144.25, 144.57, 145.12, 146.02, 147.82, 149.1, 151.03, 153.05, 156.12, 168.37), evid = c(101L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 101L, 0L, 101L, 101L, 101L, 101L, 101L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L), amt = c(4.02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4.02, 0, 4.02, 4.02, 4.02, 4.02, 4.02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)), names = c("time", "evid", "amt"), row.names = c(NA, 29L), class = "data.frame"))
+  et$import.EventTable(structure(
+    list(
+      time = c(
+        0,
+        0,
+        0.25,
+        0.57,
+        1.12,
+        2.02,
+        3.82,
+        5.1,
+        7.03,
+        9.05,
+        12.12,
+        24,
+        24.37,
+        48,
+        72,
+        96,
+        120,
+        144,
+        144,
+        144.25,
+        144.57,
+        145.12,
+        146.02,
+        147.82,
+        149.1,
+        151.03,
+        153.05,
+        156.12,
+        168.37
+      ),
+      evid = c(
+        101L,
+        0L,
+        0L,
+        0L,
+        0L,
+        0L,
+        0L,
+        0L,
+        0L,
+        0L,
+        0L,
+        101L,
+        0L,
+        101L,
+        101L,
+        101L,
+        101L,
+        101L,
+        0L,
+        0L,
+        0L,
+        0L,
+        0L,
+        0L,
+        0L,
+        0L,
+        0L,
+        0L,
+        0L
+      ),
+      amt = c(
+        4.02,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        4.02,
+        0,
+        4.02,
+        4.02,
+        4.02,
+        4.02,
+        4.02,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      )
+    ),
+    names = c("time", "evid", "amt"),
+    row.names = c(NA, 29L),
+    class = "data.frame"
+  ))
 
   args <- list(
-    object = object, et, invisible = 1, epsilon = 1e-04, cov = NULL, atol = 1e-06,
-    rtol = 1e-06, maxsteps = 99999, numDeriv.method = "simple",
-    c.hess = NULL, estimate = FALSE, inner.opt = "n1qn1", add.grad = FALSE,
-    eta = structure(c(0.23787542222305, -0.528088850787306, -0.219490126341574), dim = c(1L, 3L)), theta = c(
-      0.261713493062619, -3.18457293837742,
-      -0.824924506160168, 1.01900805433423
-    ), do.solve = FALSE
+    object = object,
+    et,
+    invisible = 1,
+    epsilon = 1e-04,
+    cov = NULL,
+    atol = 1e-06,
+    rtol = 1e-06,
+    maxsteps = 99999,
+    numDeriv.method = "simple",
+    c.hess = NULL,
+    estimate = FALSE,
+    inner.opt = "n1qn1",
+    add.grad = FALSE,
+    eta = structure(c(0.23787542222305, -0.528088850787306, -0.219490126341574), dim = c(1L, 3L)),
+    theta = c(
+      0.261713493062619,
+      -3.18457293837742,
+      -0.824924506160168,
+      1.01900805433423
+    ),
+    do.solve = FALSE
   )
-
 
   object <- rxode2({
     d / dt(depot) <- prod(-depot, exp(ETA[1] + THETA[1]))
@@ -132,91 +368,112 @@ expect_error(rxode2("cp<-cent/vc;d/dt(gutcp)<--ka*gutcp;d/dt(cent)<-(ka*gutcp)-q
 
   theta <-
     c(
-      KA = 2.94E-01, CL = 1.86E+01, V2 = 4.02E+01, # central
-      Q = 1.05E+01, V3 = 2.97E+02, # peripheral
-      Kin = 1, Kout = 1, EC50 = 200
+      KA = 2.94E-01,
+      CL = 1.86E+01,
+      V2 = 4.02E+01, # central
+      Q = 1.05E+01,
+      V3 = 2.97E+02, # peripheral
+      Kin = 1,
+      Kout = 1,
+      EC50 = 200
     ) # effects
 
-    inits <- c(eff = 1)
+  inits <- c(eff = 1)
 
-    x <- solve(mod1, theta, ev, inits)
+  x <- solve(mod1, theta, ev, inits)
 
-    test_that("Can retrieve initial conditions.", {
-      expect_equal(x$eff0, 1)
-      expect_equal(x$eff.0, 1)
-      expect_equal(x$eff_0, 1)
-      expect_equal(x$centr0, 0)
-      expect_equal(x$centr.0, 0)
-      expect_equal(x$centr_0, 0)
-      expect_equal(x$depot0, 0)
-      expect_equal(x$depot.0, 0)
-      expect_equal(x$depot_0, 0)
-      expect_equal(x$peri0, 0)
-      expect_equal(x$peri.0, 0)
-      expect_equal(x$peri_0, 0)
-    })
+  test_that("Can retrieve initial conditions.", {
+    expect_equal(x$eff0, 1)
+    expect_equal(x$eff.0, 1)
+    expect_equal(x$eff_0, 1)
+    expect_equal(x$centr0, 0)
+    expect_equal(x$centr.0, 0)
+    expect_equal(x$centr_0, 0)
+    expect_equal(x$depot0, 0)
+    expect_equal(x$depot.0, 0)
+    expect_equal(x$depot_0, 0)
+    expect_equal(x$peri0, 0)
+    expect_equal(x$peri.0, 0)
+    expect_equal(x$peri_0, 0)
+  })
 
-    test_that("Can Update initial conditions", {
-      x$eff0 <- 2
-      expect_equal(x$eff[1], 2)
-      x$eff.0 <- 1
-      expect_equal(x$eff[1], 1)
-      x$eff_0 <- 0.5
-      expect_equal(x$eff[1], 0.5)
-    })
+  test_that("Can Update initial conditions", {
+    x$eff0 <- 2
+    expect_equal(x$eff[1], 2)
+    x$eff.0 <- 1
+    expect_equal(x$eff[1], 1)
+    x$eff_0 <- 0.5
+    expect_equal(x$eff[1], 0.5)
+  })
 
-    for (.homogenous in c(FALSE, TRUE)) {
-      withr::with_options(list(rxode2.homogenous = .homogenous), {
-        .label <- if (.homogenous) " (homogenous=TRUE)" else " (homogenous=FALSE)"
+  for (.homogenous in c(FALSE, TRUE)) {
+    withr::with_options(list(rxode2.homogenous = .homogenous), {
+      .label <- if (.homogenous) " (homogenous=TRUE)" else " (homogenous=FALSE)"
 
-        x <- solve(mod1, theta, ev, inits)
+      x <- solve(mod1, theta, ev, inits)
 
-        test_that(paste0("Add sampling makes sense", .label), {
-          ## Piping does not update object, like dplyr.
-          tmp <- x |> add.sampling(0.5)
-          expect_equal(as.numeric(tmp$time[2]), 0.5)
-          expect_equal(as.numeric(x$time[2]), 1)
-          ## $ access updates object.
-          expect_warning(x$add.sampling(0.5), NA) # from issue #750
-          expect_equal(as.numeric(x$time[2]), 0.5)
-        })
-
-        x <- solve(mod1, theta, ev, inits)
-
-        test_that(paste0("Add dosing makes sense", .label), {
-          tmp <- x |> add.dosing(dose = 500, start.time = 0.5)
-          expect_equal(as.numeric(tmp$get.dosing()$time[2]), 0.5)
-          expect_equal(as.numeric(x$get.dosing()$time[2]), 120)
-          x$add.dosing(0.5)
-          expect_equal(as.numeric(x$get.dosing()$time[2]), 0)
-        })
+      test_that(paste0("Add sampling makes sense", .label), {
+        ## Piping does not update object, like dplyr.
+        tmp <- x |> add.sampling(0.5)
+        expect_equal(as.numeric(tmp$time[2]), 0.5)
+        expect_equal(as.numeric(x$time[2]), 1)
+        ## $ access updates object.
+        expect_warning(x$add.sampling(0.5), NA) # from issue #750
+        expect_equal(as.numeric(x$time[2]), 0.5)
       })
-    }
 
-    x <- solve(mod1, theta, ev, inits)
+      x <- solve(mod1, theta, ev, inits)
 
-    x$t <- seq(0, 5, length.out = 20)
-
-    test_that("Changing sampling makes sense.", {
-      expect_equal(length(x$t), 20)
-      expect_equal(as.numeric(min(x$t)), 0)
-      expect_equal(as.numeric(max(x$t)), 5)
+      test_that(paste0("Add dosing makes sense", .label), {
+        tmp <- x |> add.dosing(dose = 500, start.time = 0.5)
+        expect_equal(as.numeric(tmp$get.dosing()$time[2]), 0.5)
+        expect_equal(as.numeric(x$get.dosing()$time[2]), 120)
+        x$add.dosing(0.5)
+        expect_equal(as.numeric(x$get.dosing()$time[2]), 0)
+      })
     })
+  }
 
-    x <- solve(mod1, theta, ev, inits)
-    t1 <- x$centr
+  x <- solve(mod1, theta, ev, inits)
 
-    x$Q <- 5
+  x$t <- seq(0, 5, length.out = 20)
 
-    t2 <- x$centr
+  test_that("Changing sampling makes sense.", {
+    expect_equal(length(x$t), 20)
+    expect_equal(as.numeric(min(x$t)), 0)
+    expect_equal(as.numeric(max(x$t)), 5)
+  })
 
-    test_that("Changing parameters change values.", {
-      expect_true(!(all(t1 == t2)))
-    })
+  x <- solve(mod1, theta, ev, inits)
+  t1 <- x$centr
 
-    x <- rxModelVars(c("tka=THETA[1];", "tcl=THETA[2];", "tv=THETA[3];", "thwt=THETA[4];", "add.err=THETA[5];", "eta.ka=ETA[1];", "eta.cl=ETA[2];", "eta.v=ETA[3];", "ka=exp(tka+eta.ka);", "cl=exp(tcl+eta.cl+thwt*WT);", "v=exp(tv+eta.v);", "d/dt(depot)=-ka*depot;", "d/dt(center)=ka*depot-cl/v*center;", "cp=center/v;", "nlmixr_pred=cp;"))
+  x$Q <- 5
 
-    test_that("rxModelVars takes character vector.", {
-      expect_s3_class(x, "rxModelVars")
-    })
+  t2 <- x$centr
+
+  test_that("Changing parameters change values.", {
+    expect_true(!(all(t1 == t2)))
+  })
+
+  x <- rxModelVars(c(
+    "tka=THETA[1];",
+    "tcl=THETA[2];",
+    "tv=THETA[3];",
+    "thwt=THETA[4];",
+    "add.err=THETA[5];",
+    "eta.ka=ETA[1];",
+    "eta.cl=ETA[2];",
+    "eta.v=ETA[3];",
+    "ka=exp(tka+eta.ka);",
+    "cl=exp(tcl+eta.cl+thwt*WT);",
+    "v=exp(tv+eta.v);",
+    "d/dt(depot)=-ka*depot;",
+    "d/dt(center)=ka*depot-cl/v*center;",
+    "cp=center/v;",
+    "nlmixr_pred=cp;"
+  ))
+
+  test_that("rxModelVars takes character vector.", {
+    expect_s3_class(x, "rxModelVars")
+  })
 })

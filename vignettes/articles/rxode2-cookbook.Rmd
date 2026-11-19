@@ -1,0 +1,273 @@
+---
+title: "How do I...?"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+Short answers to common tasks.  Each recipe is a few lines of code with
+a link to the page that explains it in full.
+
+All recipes use this one-compartment oral model with between-subject
+variability and proportional residual error:
+
+```{r setup}
+library(rxode2)
+
+mod <- function() {
+  ini({
+    tka <- log(1.15)
+    tcl <- log(0.135)
+    tv <- log(8)
+    eta.ka ~ 0.6
+    eta.cl ~ 0.3
+    eta.v ~ 0.1
+    prop.sd <- 0.1
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v <- exp(tv + eta.v)
+    d/dt(depot) <- -ka * depot
+    d/dt(center) <- ka * depot - cl / v * center
+    cp <- center / v
+    cp ~ prop(prop.sd)
+  })
+}
+```
+
+## Dosing
+
+### ...give a dose every 12 hours for a week?
+
+```{r}
+ev <- et(amt = 300, ii = 12, until = 168) |>
+  et(seq(0, 168, by = 1))
+s <- rxSolve(mod, ev)
+plot(s, cp)
+```
+
+More: [Building event tables with et()](rxode2-event-table.html).
+
+### ...give a loading dose followed by maintenance doses?
+
+```{r}
+ev <- et(amt = 600) |>
+  et(time = 12, amt = 300, ii = 12, until = 168) |>
+  et(seq(0, 168, by = 1))
+```
+
+More: [Combining event tables](rxode2-event-table-combine.html).
+
+### ...give an infusion?
+
+Give the duration with `dur` (or the rate with `rate`), dosing into the
+central compartment:
+
+```{r}
+ev <- et(amt = 300, dur = 2, cmt = "center") |>
+  et(seq(0, 24, by = 0.5))
+```
+
+More: [Dosing event types](rxode2-event-types.html#infusion-doses).
+
+### ...start at steady state?
+
+```{r}
+ev <- et(amt = 300, ii = 12, ss = 1) |>
+  et(seq(0, 24, by = 0.5))
+```
+
+More: [Dosing event types](rxode2-event-types.html#steady-state).
+
+### ...use my own NONMEM-style dataset?
+
+Pass the data frame straight to `rxSolve()`; columns are matched by
+name (`ID`, `TIME`, `AMT`, `EVID`, `CMT`, ...):
+
+```{r}
+d <- data.frame(ID = 1, TIME = c(0, 1, 2, 4, 8, 12),
+                AMT = c(300, 0, 0, 0, 0, 0), EVID = c(1, 0, 0, 0, 0, 0),
+                CMT = c("depot", rep("center", 5)))
+s <- rxSolve(mod, d)
+```
+
+More: [Dataset columns](rxode2-dataset-columns.html).
+
+### ...dose based on the current model state?
+
+Use `bolus()`, `infuse()` and friends inside `model()`.
+
+More: [Dosing from inside the model](adaptive-dosing.html).
+
+## Simulation
+
+### ...simulate the typical individual (no variability)?
+
+```{r}
+ev <- et(amt = 300, ii = 12, until = 72) |>
+  et(seq(0, 72, by = 0.5))
+s <- rxSolve(zeroRe(mod), ev)
+```
+
+More: `?zeroRe`.
+
+### ...simulate a population?
+
+```{r}
+s <- rxSolve(mod, ev, nSub = 100)
+```
+
+Each subject draws its own `eta` values from the `ini()` block.  More:
+[Simulating populations](rxode2-sim-var.html).
+
+### ...get simulated observations with residual error?
+
+The endpoint `cp ~ prop(prop.sd)` adds residual error; the simulated
+observation is in the `sim` column, the prediction stays in `cp`
+(subjects simulated with `nSub` are numbered in `sim.id`):
+
+```{r}
+head(s[, c("sim.id", "time", "cp", "sim")])
+```
+
+### ...make a simulation reproducible?
+
+```{r}
+s1 <- rxSolve(mod, ev, nSub = 10, seed = 42)
+s2 <- rxSolve(mod, ev, nSub = 10, seed = 42)
+all.equal(s1$sim, s2$sim)
+```
+
+More: `?rxWithSeed`.
+
+### ...add parameter uncertainty?
+
+Give a covariance matrix for the population parameters with `thetaMat`
+and the number of studies with `nStud`:
+
+```{r}
+s <- rxSolve(mod, ev, nSub = 20, nStud = 5,
+             thetaMat = lotri::lotri(tcl ~ 0.01, tv ~ 0.01))
+```
+
+More: [Parameter uncertainty](rxode2-parameter-uncertainty.html).
+
+### ...summarize a simulation with prediction intervals?
+
+```{r}
+s <- rxSolve(mod, ev, nSub = 200, seed = 42)
+ci <- confint(s, "sim", level = 0.90)
+plot(ci)
+```
+
+More: [Summarizing simulations with confint()](rxode2-confint.html).
+
+### ...simulate between-occasion variability?
+
+More: [Nesting levels](rxode2-nesting.html).
+
+## Covariates
+
+### ...add a covariate effect?
+
+Pipe a new line into the model; the covariate `WT` becomes an input:
+
+```{r}
+modWt <- mod |>
+  model(cl <- exp(tcl + eta.cl) * (WT / 70)^0.75)
+```
+
+More: [Modifying models](Modifying-Models.html).
+
+### ...give each subject their own covariate value?
+
+```{r}
+s <- rxSolve(modWt, ev,
+             iCov = data.frame(id = 1:4, WT = c(50, 70, 90, 110)))
+```
+
+More: [Covariates](rxode2-covariates.html).
+
+### ...use a covariate that changes over time?
+
+Add it as a column of the data; values are interpolated between rows:
+
+```{r}
+d <- as.data.frame(et(amt = 300, ii = 24, until = 96) |>
+                     et(seq(0, 96, by = 4)))
+d$WT <- 70 - d$time / 24
+s <- rxSolve(modWt, d)
+```
+
+More: [Covariates](rxode2-covariates.html).
+
+## Output and speed
+
+### ...get output only at specific times?
+
+```{r}
+ev <- et(amt = 300) |> et(c(0.5, 1, 2, 4, 8, 12, 24))
+rxSolve(zeroRe(mod), ev)
+```
+
+### ...keep input columns in the output?
+
+```{r}
+d$GROUP <- "A"
+s <- rxSolve(modWt, d, keep = c("WT", "GROUP"))
+head(s[, c("time", "cp", "WT", "GROUP")])
+```
+
+### ...plot the result?
+
+```{r}
+plot(s, cp)
+```
+
+More: [Plotting](rxode2-plot.html).
+
+### ...solve faster?
+
+Use more threads for multi-subject problems:
+
+```{r}
+s <- rxSolve(mod, ev, nSub = 100, cores = 2)
+```
+
+More: [Speeding up solving](rxode2-speed.html).
+
+### ...solve a population too large for memory?
+
+More: [Out-of-memory solving](rxode2-oom-solve.html).
+
+## Models
+
+### ...change an initial estimate or fix a parameter?
+
+```{r}
+mod2 <- mod |> ini(tcl = log(0.2))
+mod3 <- mod |> ini(tv = fix)
+```
+
+More: [Modifying models](Modifying-Models.html).
+
+### ...see one line of a model?
+
+```{r}
+modelExtract(mod, cl)
+```
+
+### ...use a low-level `rxode2()` model or classic event table?
+
+More: [Low-level models and other input styles](rxode2-classic-models.html).
+
+## Next steps
+
+- [Introduction to rxode2](rxode2-intro.html)
+- [Which dosing page do I need?](rxode2-dosing-overview.html)
+- [Simulating populations](rxode2-sim-var.html)

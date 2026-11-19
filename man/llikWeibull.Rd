@@ -36,7 +36,7 @@ llikWeibull(1, 1, 10)
 et  <- et(seq(0.001, 1, length.out=10))
 et$shape <- 1
 et$scale <- 10
- 
+
 model <- function() {
   model({
     fx <- llikWeibull(time, shape, scale)
@@ -48,6 +48,24 @@ model <- function() {
 rxSolve(model, et)
 }
 }
+\seealso{
+Other Log-likelihood functions:
+\code{\link[=llikBeta]{llikBeta()}},
+\code{\link[=llikBinom]{llikBinom()}},
+\code{\link[=llikCauchy]{llikCauchy()}},
+\code{\link[=llikChisq]{llikChisq()}},
+\code{\link[=llikExp]{llikExp()}},
+\code{\link[=llikF]{llikF()}},
+\code{\link[=llikGamma]{llikGamma()}},
+\code{\link[=llikGeom]{llikGeom()}},
+\code{\link[=llikNbinom]{llikNbinom()}},
+\code{\link[=llikNbinomMu]{llikNbinomMu()}},
+\code{\link[=llikNorm]{llikNorm()}},
+\code{\link[=llikPois]{llikPois()}},
+\code{\link[=llikT]{llikT()}},
+\code{\link[=llikUnif]{llikUnif()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Log-likelihood functions}

@@ -3,9 +3,9 @@ rxTest({
     .s <- rxMemSummary(nobs = c(10L, 20L), ndoses = c(5L, 8L))
     expect_s3_class(.s, "rxMemSummary")
     expect_s3_class(.s, "data.frame")
-    expect_equal(.s$nobs,   c(10L, 20L))
+    expect_equal(.s$nobs, c(10L, 20L))
     expect_equal(.s$ndoses, c(5L, 8L))
-    expect_equal(.s$id,     1:2)
+    expect_equal(.s$id, 1:2)
   })
 
   test_that("rxMemSummary accepts explicit id", {
@@ -14,21 +14,21 @@ rxTest({
   })
 
   test_that("rxMemoryEstimate returns correct class", {
-    .s   <- rxMemSummary(nobs = 100L, ndoses = 20L)
+    .s <- rxMemSummary(nobs = 100L, ndoses = 20L)
     .est <- rxMemoryEstimate(.s, neq = 2L, nlhs = 1L, npars = 3L)
     expect_s3_class(.est, "rxMemoryEstimate")
   })
 
   test_that("rxMemoryEstimate total equals the bytes actually allocated", {
-    .s     <- rxMemSummary(nobs = 100L, ndoses = 20L)
-    .est   <- rxMemoryEstimate(.s, neq = 2L, nlhs = 1L, npars = 3L)
-    .meta  <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes", "freeRamBytes", "effectiveSubs")
+    .s <- rxMemSummary(nobs = 100L, ndoses = 20L)
+    .est <- rxMemoryEstimate(.s, neq = 2L, nlhs = 1L, npars = 3L)
+    .meta <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes", "freeRamBytes", "effectiveSubs")
     .comps <- .est[!names(.est) %in% c(.meta, names(.rxMemSubItems))]
     expect_equal(as.numeric(.est$total), sum(vapply(.comps, as.numeric, numeric(1))))
   })
 
   test_that("gsolve_n0 is reported but not double-counted in total", {
-    .s   <- rxMemSummary(nobs = 100L, ndoses = 20L)
+    .s <- rxMemSummary(nobs = 100L, ndoses = 20L)
     .est <- rxMemoryEstimate(.s, neq = 2L, nlhs = 1L, npars = 3L)
     # `[[` throughout: `$` partial-matches, so a missing `gsolve` would
     # silently resolve to `gsolve_n0` and the comparison would pass vacuously
@@ -39,25 +39,24 @@ rxTest({
     expect_lt(as.numeric(.est[["gsolve_n0"]]), as.numeric(.est[["gsolve"]]))
     # summing every reported element would exceed total by exactly n0
     .meta <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes", "freeRamBytes", "effectiveSubs")
-    .all  <- sum(vapply(.est[!names(.est) %in% .meta], as.numeric, numeric(1)))
+    .all <- sum(vapply(.est[!names(.est) %in% .meta], as.numeric, numeric(1)))
     expect_equal(.all - as.numeric(.est[["gsolve_n0"]]), as.numeric(.est[["total"]]))
   })
 
   test_that("every sub-item is smaller than the component it belongs to", {
-    .s   <- rxMemSummary(nobs = 100L, ndoses = 20L)
+    .s <- rxMemSummary(nobs = 100L, ndoses = 20L)
     .est <- rxMemoryEstimate(.s, neq = 2L, nlhs = 1L, npars = 3L)
     for (.sub in names(.rxMemSubItems)) {
       expect_true(.sub %in% names(.est))
       expect_true(.rxMemSubItems[[.sub]] %in% names(.est))
-      expect_lte(as.numeric(.est[[.sub]]),
-                 as.numeric(.est[[unname(.rxMemSubItems[[.sub]])]]))
+      expect_lte(as.numeric(.est[[.sub]]), as.numeric(.est[[unname(.rxMemSubItems[[.sub]])]]))
     }
   })
 
   test_that(".getRamBytes()/.getFreeRamBytes() query RAM natively", {
-    .ram  <- .getRamBytes()
+    .ram <- .getRamBytes()
     .free <- .getFreeRamBytes()
-    expect_true(is.numeric(.ram)  && length(.ram)  == 1L)
+    expect_true(is.numeric(.ram) && length(.ram) == 1L)
     expect_true(is.numeric(.free) && length(.free) == 1L)
     # Windows, macOS and Linux all have a native C path; none should be NA
     expect_gt(.ram, 0)
@@ -70,7 +69,7 @@ rxTest({
   })
 
   test_that("rxMemoryEstimate contains memory availability metadata", {
-    .s   <- rxMemSummary(nobs = 100L, ndoses = 20L)
+    .s <- rxMemSummary(nobs = 100L, ndoses = 20L)
     .est <- rxMemoryEstimate(.s, neq = 1L)
     expect_true("outputData" %in% names(.est))
     expect_gt(as.numeric(.est$outputData), 0)
@@ -80,20 +79,22 @@ rxTest({
     .fb <- .est$freeRamBytes
     expect_true(is.numeric(.rb))
     expect_true(is.numeric(.fb))
-    if (!is.na(.rb)) expect_gt(.rb, 0)
+    if (!is.na(.rb)) {
+      expect_gt(.rb, 0)
+    }
     if (!is.na(.fb)) expect_gt(.fb, 0)
   })
 
   test_that("rxMemoryEstimate accepts nobs/ndoses data.frame", {
-    .df  <- data.frame(id = 1:3, nobs = c(10L, 20L, 30L), ndoses = c(2L, 4L, 6L))
+    .df <- data.frame(id = 1:3, nobs = c(10L, 20L, 30L), ndoses = c(2L, 4L, 6L))
     .est <- rxMemoryEstimate(.df, neq = 1L)
     expect_s3_class(.est, "rxMemoryEstimate")
     expect_equal(nrow(attr(.est, "summary")), 3L)
   })
 
   test_that("rxMemoryEstimate accepts evid event-table data.frame", {
-    .df  <- data.frame(
-      id   = c(1L, 1L, 1L, 2L, 2L),
+    .df <- data.frame(
+      id = c(1L, 1L, 1L, 2L, 2L),
       evid = c(1L, 0L, 0L, 1L, 0L)
     )
     .est <- rxMemoryEstimate(.df, neq = 1L)
@@ -101,7 +102,7 @@ rxTest({
     .summ <- attr(.est, "summary")
     expect_equal(nrow(.summ), 2L)
     expect_equal(.summ$ndoses[.summ$id == 1L], 1L)
-    expect_equal(.summ$nobs[.summ$id == 1L],   2L)
+    expect_equal(.summ$nobs[.summ$id == 1L], 2L)
   })
 
   test_that("rxMemoryEstimate summarizes large compressed rxEt without losing ids", {
@@ -207,7 +208,7 @@ rxTest({
   })
 
   test_that("print.rxMemoryEstimate runs without error", {
-    .s   <- rxMemSummary(nobs = 50L, ndoses = 10L)
+    .s <- rxMemSummary(nobs = 50L, ndoses = 10L)
     .est <- rxMemoryEstimate(.s, neq = 1L)
     expect_output(print(.est), "rxSolve\\(\\) memory estimate")
     expect_output(print(.est), "Total:")
@@ -217,18 +218,17 @@ rxTest({
   })
 
   test_that("print.rxMemoryEstimate keeps n0 under gsolve and percents to 100", {
-    .s   <- rxMemSummary(nobs = 500L, ndoses = 50L)
+    .s <- rxMemSummary(nobs = 500L, ndoses = 50L)
     .est <- rxMemoryEstimate(.s, neq = 3L, nlhs = 2L, npars = 4L)
     .out <- utils::capture.output(print(.est))
-    .iG  <- grep("gsolve \\(double buffer total\\)", .out, fixed = FALSE)
-    .iN  <- grep("|_ n0:", .out, fixed = TRUE)
+    .iG <- grep("gsolve \\(double buffer total\\)", .out, fixed = FALSE)
+    .iN <- grep("|_ n0:", .out, fixed = TRUE)
     expect_length(.iG, 1L)
     expect_length(.iN, 1L)
     # the sub-item is printed on the line directly below its parent
     expect_equal(.iN, .iG + 1L)
     .pctOf <- function(lines) {
-      as.numeric(sub(".*\\(\\s*([0-9.]+)%\\).*", "\\1",
-                     grep("%\\)", lines, value = TRUE)))
+      as.numeric(sub(".*\\(\\s*([0-9.]+)%\\).*", "\\1", grep("%\\)", lines, value = TRUE)))
     }
     # the percentage base excludes sub-items, so the non-sub-item lines sum to 100
     expect_equal(sum(.pctOf(.out[-.iN])), 100, tolerance = 0.5)
@@ -236,9 +236,7 @@ rxTest({
     # which is what makes it readable as a piece of its parent
     .n0pct <- .pctOf(.out[.iN])
     expect_length(.n0pct, 1L)
-    expect_equal(.n0pct,
-                 100 * as.numeric(.est[["gsolve_n0"]]) / as.numeric(.est[["total"]]),
-                 tolerance = 0.05)
+    expect_equal(.n0pct, 100 * as.numeric(.est[["gsolve_n0"]]) / as.numeric(.est[["total"]]), tolerance = 0.05)
   })
 
   test_that("indOwnAlloc per-individual arrays are counted, and only when on", {
@@ -272,10 +270,13 @@ rxTest({
     # exactly what rxAllocInd() callocs: neq*(nat+EVID_EXTRA_SIZE) doubles for
     # solve, 4*(nat+1) doubles for dose/ii/all_times/timeThread, 2*(nat+1) ints
     # for evid/ix, and (nd+1) ints for idose
-    .neq <- 2; .nat <- 220; .nd <- 20
-    expect_equal(as.numeric(.ePush[["indOwnAlloc"]]),
-                 .neq * (.nat + 16) * 8 + 4 * (.nat + 1) * 8 +
-                   2 * (.nat + 1) * 4 + (.nd + 1) * 4)
+    .neq <- 2
+    .nat <- 220
+    .nd <- 20
+    expect_equal(
+      as.numeric(.ePush[["indOwnAlloc"]]),
+      .neq * (.nat + 16) * 8 + 4 * (.nat + 1) * 8 + 2 * (.nat + 1) * 4 + (.nd + 1) * 4
+    )
   })
 
   test_that("control$indOwnAlloc overrides the model's evid_ flag", {
@@ -285,12 +286,9 @@ rxTest({
       cp <- center / v
     })
     .s <- rxMemSummary(nobs = 200L, ndoses = 20L)
-    .off <- rxMemoryEstimate(.s, model = .plain,
-                             control = rxControl(indOwnAlloc = FALSE))
-    .on  <- rxMemoryEstimate(.s, model = .plain,
-                             control = rxControl(indOwnAlloc = TRUE))
-    .dflt <- rxMemoryEstimate(.s, model = .plain,
-                              control = rxControl(indOwnAlloc = NA))
+    .off <- rxMemoryEstimate(.s, model = .plain, control = rxControl(indOwnAlloc = FALSE))
+    .on <- rxMemoryEstimate(.s, model = .plain, control = rxControl(indOwnAlloc = TRUE))
+    .dflt <- rxMemoryEstimate(.s, model = .plain, control = rxControl(indOwnAlloc = NA))
     expect_equal(as.numeric(.off[["indOwnAlloc"]]), 0)
     expect_gt(as.numeric(.on[["indOwnAlloc"]]), 0)
     # NA means "let the model decide", and this model says no
@@ -302,8 +300,7 @@ rxTest({
   test_that("indOwnAlloc scales with subjects and simulations", {
     .b <- function(nsub) {
       .s <- rxMemSummary(nobs = rep(100L, nsub), ndoses = rep(10L, nsub))
-      as.numeric(rxMemoryEstimate(.s, neq = 2L,
-                                  control = rxControl(indOwnAlloc = TRUE))[["indOwnAlloc"]])
+      as.numeric(rxMemoryEstimate(.s, neq = 2L, control = rxControl(indOwnAlloc = TRUE))[["indOwnAlloc"]])
     }
     expect_equal(.b(4L), 4 * .b(1L))
 
@@ -311,17 +308,38 @@ rxTest({
     # count (rxControl(nsim=) also sets nStud, which rescales nsub)
     .c <- function(nsim) {
       unname(rxMemoryComponents_(
-        neq = 2L, stateSize = 2L, nlhs = 0L, npars = 2L, neta = 0L, neps = 0L,
-        ncov = 0L, nsim = nsim, cores = 1L, nMtime = 0L, extraCmt = 0L, linB = 0L,
-        nLlik = 0L, nIndSim = 0L, numLinSens = 0L, numLin = 0L, nsub = 1L,
-        nallTotal = 110, ndosesTotal = 10, maxAllTimes = 110, stiff = -1L,
-        doIndLin = 0L, indOwnAlloc = 1L, sample = 0L, nDelayState = 0L)[["indOwnAlloc"]])
+        neq = 2L,
+        stateSize = 2L,
+        nlhs = 0L,
+        npars = 2L,
+        neta = 0L,
+        neps = 0L,
+        ncov = 0L,
+        nsim = nsim,
+        cores = 1L,
+        nMtime = 0L,
+        extraCmt = 0L,
+        linB = 0L,
+        nLlik = 0L,
+        nIndSim = 0L,
+        numLinSens = 0L,
+        numLin = 0L,
+        nsub = 1L,
+        nallTotal = 110,
+        ndosesTotal = 10,
+        maxAllTimes = 110,
+        stiff = -1L,
+        doIndLin = 0L,
+        indOwnAlloc = 1L,
+        sample = 0L,
+        nDelayState = 0L
+      )[["indOwnAlloc"]])
     }
     expect_equal(.c(3L), 3 * .c(1L))
   })
 
   test_that("rxMemoryEstimate scales with subject count", {
-    .s1 <- rxMemSummary(nobs = rep(50L, 10L),  ndoses = rep(5L, 10L))
+    .s1 <- rxMemSummary(nobs = rep(50L, 10L), ndoses = rep(5L, 10L))
     .s2 <- rxMemSummary(nobs = rep(50L, 100L), ndoses = rep(5L, 100L))
     .e1 <- rxMemoryEstimate(.s1, neq = 2L, npars = 3L)
     .e2 <- rxMemoryEstimate(.s2, neq = 2L, npars = 3L)
@@ -334,81 +352,81 @@ rxTest({
       d/dt(depot)  <- -ka * depot
       d/dt(center) <- ka * depot - cl / v * center
     })
-    .s   <- rxMemSummary(nobs = 100L, ndoses = 10L)
+    .s <- rxMemSummary(nobs = 100L, ndoses = 10L)
     .est <- rxMemoryEstimate(.s, model = .mod)
     expect_s3_class(.est, "rxMemoryEstimate")
     expect_gt(as.integer(.est$sizeofInd), 0L)
   })
 
   test_that("rxControl cores and nsim increase memory estimate", {
-    .s     <- rxMemSummary(nobs = 100L, ndoses = 10L)
-    .base  <- rxMemoryEstimate(.s, neq = 2L, npars = 3L)
+    .s <- rxMemSummary(nobs = 100L, ndoses = 10L)
+    .base <- rxMemoryEstimate(.s, neq = 2L, npars = 3L)
     .ctrl4 <- rxControl(cores = 4L)
-    .est4  <- rxMemoryEstimate(.s, neq = 2L, npars = 3L, control = .ctrl4)
+    .est4 <- rxMemoryEstimate(.s, neq = 2L, npars = 3L, control = .ctrl4)
     expect_gt(.est4$total, .base$total)
   })
 
   test_that("addDosing increases estimated output data memory", {
-    .s       <- rxMemSummary(nobs = 100L, ndoses = 10L)
-    .base    <- rxMemoryEstimate(.s, neq = 2L, nlhs = 1L)
-    .ctrl    <- rxControl(addDosing = TRUE)
-    .dosing  <- rxMemoryEstimate(.s, neq = 2L, nlhs = 1L, control = .ctrl)
+    .s <- rxMemSummary(nobs = 100L, ndoses = 10L)
+    .base <- rxMemoryEstimate(.s, neq = 2L, nlhs = 1L)
+    .ctrl <- rxControl(addDosing = TRUE)
+    .dosing <- rxMemoryEstimate(.s, neq = 2L, nlhs = 1L, control = .ctrl)
     expect_gt(as.numeric(.dosing$outputData), as.numeric(.base$outputData))
   })
 
   test_that("rxControl omega sets neta, sigma sets neps", {
-    .s    <- rxMemSummary(nobs = 100L, ndoses = 10L)
+    .s <- rxMemSummary(nobs = 100L, ndoses = 10L)
     .ctrl <- rxControl(
       omega = lotri::lotri(eta.ka ~ 0.09, eta.cl ~ 0.04)
     )
-    .est  <- rxMemoryEstimate(.s, neq = 2L, npars = 3L, control = .ctrl)
+    .est <- rxMemoryEstimate(.s, neq = 2L, npars = 3L, control = .ctrl)
     expect_gt(.est$gomega, 0)
   })
 
   test_that("rxControl nLlikAlloc raises nLlik floor", {
-    .s     <- rxMemSummary(nobs = 100L, ndoses = 10L)
-    .base  <- rxMemoryEstimate(.s, neq = 2L, nLlik = 1L)
-    .ctrl  <- rxControl(nLlikAlloc = 5L)
-    .est   <- rxMemoryEstimate(.s, neq = 2L, nLlik = 1L, control = .ctrl)
+    .s <- rxMemSummary(nobs = 100L, ndoses = 10L)
+    .base <- rxMemoryEstimate(.s, neq = 2L, nLlik = 1L)
+    .ctrl <- rxControl(nLlikAlloc = 5L)
+    .est <- rxMemoryEstimate(.s, neq = 2L, nLlik = 1L, control = .ctrl)
     expect_gt(.est$total, .base$total)
   })
 
   test_that("rxControl nSub overrides data subject count per study", {
-    .s    <- rxMemSummary(nobs = rep(100L, 5L), ndoses = rep(10L, 5L))
+    .s <- rxMemSummary(nobs = rep(100L, 5L), ndoses = rep(10L, 5L))
     .base <- rxMemoryEstimate(.s, neq = 2L)
     .ctrl <- rxControl(nSub = 50L)
-    .est  <- rxMemoryEstimate(.s, neq = 2L, control = .ctrl)
+    .est <- rxMemoryEstimate(.s, neq = 2L, control = .ctrl)
     expect_equal(.est$effectiveSubs, 50L)
   })
 
   test_that("rxControl nSub and nStud multiply: nSub overrides data subjects", {
-    .s    <- rxMemSummary(nobs = rep(100L, 5L), ndoses = rep(10L, 5L))
+    .s <- rxMemSummary(nobs = rep(100L, 5L), ndoses = rep(10L, 5L))
     .ctrl <- rxControl(nSub = 10L, nStud = 5L)
-    .est  <- rxMemoryEstimate(.s, neq = 2L, control = .ctrl)
+    .est <- rxMemoryEstimate(.s, neq = 2L, control = .ctrl)
     expect_equal(.est$effectiveSubs, 50L)
   })
 
   test_that("rxControl nSub=1 leaves subject count data-derived", {
-    .s    <- rxMemSummary(nobs = rep(100L, 5L), ndoses = rep(10L, 5L))
+    .s <- rxMemSummary(nobs = rep(100L, 5L), ndoses = rep(10L, 5L))
     .ctrl <- rxControl(nSub = 1L)
-    .est  <- rxMemoryEstimate(.s, neq = 2L, control = .ctrl)
+    .est <- rxMemoryEstimate(.s, neq = 2L, control = .ctrl)
     expect_equal(.est$effectiveSubs, 5L)
   })
 
   test_that("rxControl nStud multiplies data subject count", {
-    .s    <- rxMemSummary(nobs = rep(100L, 5L), ndoses = rep(10L, 5L))
+    .s <- rxMemSummary(nobs = rep(100L, 5L), ndoses = rep(10L, 5L))
     .base <- rxMemoryEstimate(.s, neq = 2L)
     .ctrl <- rxControl(nStud = 100L)
-    .est  <- rxMemoryEstimate(.s, neq = 2L, control = .ctrl)
+    .est <- rxMemoryEstimate(.s, neq = 2L, control = .ctrl)
     expect_equal(.est$effectiveSubs, 500L)
     expect_gt(.est$total, .base$total)
   })
 
   test_that("rxControl nStud with 1-subject dataset scales correctly", {
-    .s    <- rxMemSummary(nobs = 100L, ndoses = 10L)
+    .s <- rxMemSummary(nobs = 100L, ndoses = 10L)
     .base <- rxMemoryEstimate(.s, neq = 2L)
     .ctrl <- rxControl(nStud = 100L)
-    .est  <- rxMemoryEstimate(.s, neq = 2L, control = .ctrl)
+    .est <- rxMemoryEstimate(.s, neq = 2L, control = .ctrl)
     expect_equal(.est$effectiveSubs, 100L)
     expect_gt(.est$total, .base$total)
   })
@@ -420,34 +438,30 @@ rxTest({
     # the extra-sim copies in gall_timesS instead.  Either way the ODE state
     # matrix has to grow -- it did not before, by a factor of the replicate
     # count, which is the direction that makes the OOM guard useless.
-    .s <- rxMemSummary(nobs = 100L, ndoses = 10L)          # 1 subject, 110 events
+    .s <- rxMemSummary(nobs = 100L, ndoses = 10L) # 1 subject, 110 events
     .b <- rxMemoryEstimate(.s, neq = 2L)
     .g <- function(ctrl) rxMemoryEstimate(.s, neq = 2L, control = ctrl)
     .nStud <- .g(rxControl(nStud = 100L))
-    .nSub  <- .g(rxControl(nSub = 100L))
-    .nsim  <- .g(rxControl(nsim = 100L))
+    .nSub <- .g(rxControl(nSub = 100L))
+    .nsim <- .g(rxControl(nsim = 100L))
 
     for (.e in list(.nStud, .nSub, .nsim)) {
       expect_equal(as.integer(.e[["effectiveSubs"]]), 100L)
       # the ODE state output matrix is 100 individuals' worth in every form
-      expect_equal(as.numeric(.e[["gsolve_n0"]]),
-                   100 * as.numeric(.b[["gsolve_n0"]]))
+      expect_equal(as.numeric(.e[["gsolve_n0"]]), 100 * as.numeric(.b[["gsolve_n0"]]))
       # so are the per-individual arrays
       expect_equal(as.numeric(.e[["gpars"]]), 100 * as.numeric(.b[["gpars"]]))
-      expect_equal(as.numeric(.e[["inds_global"]]),
-                   100 * as.numeric(.b[["inds_global"]]))
+      expect_equal(as.numeric(.e[["inds_global"]]), 100 * as.numeric(.b[["inds_global"]]))
       expect_equal(as.numeric(.e[["ordId"]]), 100 * as.numeric(.b[["ordId"]]))
     }
 
     # nSub grows the event table of one simulation ...
-    expect_equal(as.numeric(.nSub[["gall_times"]]),
-                 100 * as.numeric(.b[["gall_times"]]))
+    expect_equal(as.numeric(.nSub[["gall_times"]]), 100 * as.numeric(.b[["gall_times"]]))
     expect_equal(as.numeric(.nSub[["gevid"]]), 100 * as.numeric(.b[["gevid"]]))
     expect_equal(as.numeric(.nSub[["gall_timesS"]]), 0)
     # ... while nStud leaves it alone and pays for the replicates in
     # gall_timesS, which is malloc(2*(nsim-1)*nall) in rxData.cpp
-    expect_equal(as.numeric(.nStud[["gall_times"]]),
-                 as.numeric(.b[["gall_times"]]))
+    expect_equal(as.numeric(.nStud[["gall_times"]]), as.numeric(.b[["gall_times"]]))
     expect_equal(as.numeric(.nStud[["gall_timesS"]]), 2 * 99 * 110 * 8)
     # rxControl(nsim=) is just the nStud form spelled differently
     expect_equal(as.numeric(.nsim[["total"]]), as.numeric(.nStud[["total"]]))
@@ -475,14 +489,12 @@ rxTest({
   test_that("gSampleCov is charged only when resample asks for it", {
     .s <- rxMemSummary(nobs = rep(100L, 4L), ndoses = rep(10L, 4L))
     .off <- rxMemoryEstimate(.s, neq = 2L, ncov = 3L)
-    .on  <- rxMemoryEstimate(.s, neq = 2L, ncov = 3L,
-                             control = rxControl(resample = "WT"))
+    .on <- rxMemoryEstimate(.s, neq = 2L, ncov = 3L, control = rxControl(resample = "WT"))
     expect_equal(as.numeric(.off[["gSampleCov"]]), 0)
     expect_equal(as.numeric(.on[["gSampleCov"]]), 3 * 4 * 1 * 4)
     # ncov * nsub * nsim: with nsim left at 1 the nsim factor is invisible, so
     # pin it with a replicate count too
-    .onStud <- rxMemoryEstimate(.s, neq = 2L, ncov = 3L,
-                                control = rxControl(resample = "WT", nStud = 10L))
+    .onStud <- rxMemoryEstimate(.s, neq = 2L, ncov = 3L, control = rxControl(resample = "WT", nStud = 10L))
     expect_equal(as.numeric(.onStud[["gSampleCov"]]), 3 * 4 * 10 * 4)
   })
 
@@ -530,7 +542,7 @@ rxTest({
   test_that("linCmtRateHist is charged at numLin wide, and only when numLin > 0", {
     .s <- rxMemSummary(nobs = rep(100L, 2L), ndoses = rep(10L, 2L))
     .off <- rxMemoryEstimate(.s, neq = 2L)
-    .on  <- rxMemoryEstimate(.s, neq = 2L, numLin = 3L)
+    .on <- rxMemoryEstimate(.s, neq = 2L, numLin = 3L)
     expect_equal(as.numeric(.off[["linCmtRateHist"]]), 0)
     # capacity doubles from 64 to at least 110 -> 128, width numLin
     expect_equal(as.numeric(.on[["linCmtRateHist"]]), 2 * 128 * 3 * 8)
@@ -546,8 +558,7 @@ rxTest({
     expect_equal(as.numeric(.none[["gEtaPre"]]), 0)
     expect_equal(as.numeric(.eta[["gEtaPre"]]), 4 * 1 * 2 * 8)
     # and it follows the replicate count, like every other per-individual cost
-    .studs <- rxMemoryEstimate(.s, neq = 2L,
-                               control = rxControl(omega = .om, nStud = 10L))
+    .studs <- rxMemoryEstimate(.s, neq = 2L, control = rxControl(omega = .om, nStud = 10L))
     expect_equal(as.numeric(.studs[["gEtaPre"]]), 10 * as.numeric(.eta[["gEtaPre"]]))
   })
 
@@ -642,8 +653,7 @@ rxTest({
     expect_equal(.fromSolveOverride$effectiveSubs, .fromEventsOverride$effectiveSubs)
     expect_equal(as.numeric(.fromSolveOverride$total), as.numeric(.fromEventsOverride$total))
     expect_equal(as.numeric(.fromSolveOverride$gall_times), as.numeric(.fromEventsOverride$gall_times))
-    expect_false(isTRUE(all.equal(as.numeric(.fromSolveOverride$total),
-                                  as.numeric(.fromSolveDefault$total))))
+    expect_false(isTRUE(all.equal(as.numeric(.fromSolveOverride$total), as.numeric(.fromSolveDefault$total))))
   })
 
   test_that("rxMemoryEstimate file/bundle/rxSolve parity for same dose-only grouped solve", {
@@ -692,19 +702,17 @@ rxTest({
   .memIl <- suppressMessages(rxode2(rxToIndLin(paste0(
     "d/dt(depot) = -ka*depot\n",
     "d/dt(central) = ka*depot - vmax*(central/v)/(km + central/v)\n"))))
-  .memEv <- as.data.frame(et(amt = 100, cmt = "depot") |> et(seq(0, 24, by = 1)) |>
-                            et(id = 1:100))
+  .memEv <- as.data.frame(et(amt = 100, cmt = "depot") |> et(seq(0, 24, by = 1)) |> et(id = 1:100))
 
   test_that(".rxMemDoIndLin names the driver the model will run", {
-    expect_equal(.rxMemDoIndLin(rxModelVars(.memOde)), 0L)   # not a matExp model
-    expect_equal(.rxMemDoIndLin(rxModelVars(.memPure)), 1L)  # pure matrix exponential
-    expect_equal(.rxMemDoIndLin(rxModelVars(.memFree)), 2L)  # + state-free forcing
-    expect_equal(.rxMemDoIndLin(rxModelVars(.memIl)), 4L)    # inductive linearization
+    expect_equal(.rxMemDoIndLin(rxModelVars(.memOde)), 0L) # not a matExp model
+    expect_equal(.rxMemDoIndLin(rxModelVars(.memPure)), 1L) # pure matrix exponential
+    expect_equal(.rxMemDoIndLin(rxModelVars(.memFree)), 2L) # + state-free forcing
+    expect_equal(.rxMemDoIndLin(rxModelVars(.memIl)), 4L) # inductive linearization
   })
 
   test_that("an ODE model is charged nothing for indLin", {
-    .e <- rxMemoryEstimate(.memEv, model = .memOde,
-                           control = rxControl(cores = 4L, method = "liblsoda"))
+    .e <- rxMemoryEstimate(.memEv, model = .memOde, control = rxControl(cores = 4L, method = "liblsoda"))
     expect_equal(as.numeric(.e$indLinExpCache), 0)
     expect_equal(as.numeric(.e$indLinWork), 0)
   })
@@ -712,8 +720,7 @@ rxTest({
   test_that("a matExp() model is charged even when the control says otherwise", {
     # rxSolve() force-selects method 3 for any matExp() model, so the control
     # cannot veto the allocation.
-    .e <- rxMemoryEstimate(.memEv, model = .memPure,
-                           control = rxControl(cores = 4L, method = "liblsoda"))
+    .e <- rxMemoryEstimate(.memEv, model = .memPure, control = rxControl(cores = 4L, method = "liblsoda"))
     expect_gt(as.numeric(.e$indLinExpCache), 0)
     expect_gt(as.numeric(.e$indLinWork), 0)
   })
@@ -738,10 +745,9 @@ rxTest({
     # for the state-free forcing) and the iterating one holding the Jacobian,
     # P(h), its inverse, the ramp and the Richardson table
     .neq <- length(rxModelVars(.memPure)$state)
-    .m <- .neq + 1                       # doIndLin 1: augmented while infusing
+    .m <- .neq + 1 # doIndLin 1: augmented while infusing
     .e <- rxMemoryEstimate(.memEv, model = .memPure, control = rxControl(cores = 4L))
-    expect_equal(as.numeric(.e[["indLinWork"]]),
-                 4 * ((.neq * .neq + 2 * .m * .m) + 4 * .neq) * 8)
+    expect_equal(as.numeric(.e[["indLinWork"]]), 4 * ((.neq * .neq + 2 * .m * .m) + 4 * .neq) * 8)
     # and it is per thread
     .e1 <- rxMemoryEstimate(.memEv, model = .memPure, control = rxControl(cores = 1L))
     expect_equal(as.numeric(.e[["indLinWork"]]), 4 * as.numeric(.e1[["indLinWork"]]))
@@ -749,8 +755,7 @@ rxTest({
 
   test_that("the indLin estimate is per thread, not per subject", {
     .cache <- function(nc) {
-      as.numeric(rxMemoryEstimate(.memEv, model = .memIl,
-                                  control = rxControl(cores = nc))$indLinExpCache)
+      as.numeric(rxMemoryEstimate(.memEv, model = .memIl, control = rxControl(cores = nc))$indLinExpCache)
     }
     expect_equal(.cache(4L), 4 * .cache(1L))
     expect_equal(.cache(8L), 8 * .cache(1L))
@@ -758,13 +763,11 @@ rxTest({
 
   test_that("indLin components are included in the total", {
     .e <- rxMemoryEstimate(.memEv, model = .memIl, control = rxControl(cores = 4L))
-    .meta <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes", "freeRamBytes",
-               "effectiveSubs")
+    .meta <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes", "freeRamBytes", "effectiveSubs")
     .comps <- .e[!names(.e) %in% c(.meta, names(.rxMemSubItems))]
     expect_true("indLinExpCache" %in% names(.comps))
     expect_true("indLinWork" %in% names(.comps))
-    expect_equal(as.numeric(.e$total),
-                 sum(vapply(.comps, as.numeric, numeric(1))))
+    expect_equal(as.numeric(.e$total), sum(vapply(.comps, as.numeric, numeric(1))))
   })
 
   test_that("the exponential cache stops being charged once it stops caching", {
@@ -773,14 +776,35 @@ rxTest({
     # than growing without bound.  The iterating driver reaches it at 3*neq.
     .cache <- function(neq, doIndLin) {
       unname(rxMemoryComponents_(
-        neq = neq, stateSize = neq, nlhs = 0L, npars = neq, neta = 0L, neps = 0L,
-        ncov = 0L, nsim = 1L, cores = 4L, nMtime = 0L, extraCmt = 0L, linB = 0L,
-        nLlik = 0L, nIndSim = 0L, numLinSens = 0L, numLin = 0L, nsub = 10L,
-        nallTotal = 100, ndosesTotal = 10, maxAllTimes = 10, stiff = 3L,
-        doIndLin = doIndLin, indOwnAlloc = 0L, sample = 0L, nDelayState = 0L)[["indLinExpCache"]])
+        neq = neq,
+        stateSize = neq,
+        nlhs = 0L,
+        npars = neq,
+        neta = 0L,
+        neps = 0L,
+        ncov = 0L,
+        nsim = 1L,
+        cores = 4L,
+        nMtime = 0L,
+        extraCmt = 0L,
+        linB = 0L,
+        nLlik = 0L,
+        nIndSim = 0L,
+        numLinSens = 0L,
+        numLin = 0L,
+        nsub = 10L,
+        nallTotal = 100,
+        ndosesTotal = 10,
+        maxAllTimes = 10,
+        stiff = 3L,
+        doIndLin = doIndLin,
+        indOwnAlloc = 0L,
+        sample = 0L,
+        nDelayState = 0L
+      )[["indLinExpCache"]])
     }
-    expect_gt(.cache(42L, 3L), .cache(10L, 3L))   # 3*42 = 126, still cached
-    expect_lt(.cache(43L, 3L), .cache(42L, 3L))   # 3*43 = 129, over the cap
+    expect_gt(.cache(42L, 3L), .cache(10L, 3L)) # 3*42 = 126, still cached
+    expect_lt(.cache(43L, 3L), .cache(42L, 3L)) # 3*43 = 129, over the cap
     expect_lt(.cache(128L, 1L), .cache(127L, 1L)) # pure matExp: neq+1
   })
 })

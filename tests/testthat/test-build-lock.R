@@ -30,7 +30,8 @@ rxTest({
     expect_true(file.exists(.lock) && !dir.exists(.lock))
     .m2 <- withr::with_options(
       list(rxode2.buildLockTimeout = 2),
-      rxode2::rxode2("d/dt(sLockA) <- -sLockA\nyLockA <- sLockA * 2"))
+      rxode2::rxode2("d/dt(sLockA) <- -sLockA\nyLockA <- sLockA * 2")
+    )
     expect_s3_class(.m2, "rxode2")
     expect_false(file.exists(.lock))
   })
@@ -48,11 +49,12 @@ rxTest({
     .m2 <- withr::with_options(
       list(rxode2.buildLockTimeout = 1),
       suppressMessages(
-        rxode2::rxode2("d/dt(sLockB) <- -sLockB\nyLockB <- sLockB * 3")))
+        rxode2::rxode2("d/dt(sLockB) <- -sLockB\nyLockB <- sLockB * 3")
+      )
+    )
     expect_s3_class(.m2, "rxode2")
     # solving proves the takeover produced a real dll, not just a file
-    .s <- rxode2::rxSolve(.m2, rxode2::et(0:3), c(sLockB = 1),
-                          returnType = "data.frame")
+    .s <- rxode2::rxSolve(.m2, rxode2::et(0:3), c(sLockB = 1), returnType = "data.frame")
     expect_equal(.s$yLockB, .s$sLockB * 3)
   })
 })

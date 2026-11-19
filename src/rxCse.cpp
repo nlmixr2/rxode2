@@ -7,6 +7,7 @@
  * or nothing, is in rxCseRun.h.
  */
 #include "rxCseRun.h"
+#include "rxProtect.h"
 
 /* Hand the finished text to R under R_UnwindProtect: Rf_mkChar() allocates and
    can longjmp, and `outText` is malloc'd, so the cleanup is what frees it on
@@ -39,6 +40,11 @@ static const char **csReadLines(SEXP linesVec, R_xlen_t n) {
   return in;
 }
 
+/* the thread count rxCse would use for `n` statements, for the tests */
+extern "C" SEXP _rxode2_rxCsePickThreads(SEXP n) {
+  return Rf_ScalarInteger(csPickThreads((R_xlen_t) Rf_asInteger(n)));
+}
+
 extern "C" SEXP _rxode2_rxCse(SEXP linesVec) {
   R_xlen_t n;
   const char **in;
@@ -61,7 +67,8 @@ extern "C" SEXP _rxode2_rxCse(SEXP linesVec) {
   if (outText == NULL) return Rf_ScalarString(NA_STRING);
   {
     csFinish fin; fin.text = outText;
-    SEXP cont = PROTECT(R_MakeUnwindCont());
+    rxProtect rx_protect;
+    SEXP cont = rx_protect.protect(R_MakeUnwindCont());
     ret = R_UnwindProtect(csFinishFun, &fin, csFinishClean, &fin, cont);
     /* csFinishClean() NULLs the pointer, so this frees it if the cleanup did
        not already run and is a no-op if it did.  Correct either way: whether
@@ -69,7 +76,6 @@ extern "C" SEXP _rxode2_rxCse(SEXP linesVec) {
        take on faith. */
     free(fin.text);
     fin.text = NULL;
-    UNPROTECT(1);
   }
   return ret;
 }

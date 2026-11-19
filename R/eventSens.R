@@ -13,7 +13,9 @@
 #' @return The resolved mode string.
 #' @noRd
 .rxEventSensMode <- function(mode = NULL) {
-  if (is.null(mode)) mode <- getOption("rxode2.eventSens", "jump")
+  if (is.null(mode)) {
+    mode <- getOption("rxode2.eventSens", "jump")
+  }
   mode <- as.character(mode)[1L]
   if (!mode %in% c("jump", "fd", "both", "fdAll")) {
     stop("'eventSens' must be one of \"jump\", \"fd\", \"both\", or \"fdAll\"", call. = FALSE)
@@ -56,8 +58,7 @@
       }
     }
   }
-  data.frame(sens = sens, state = .state, param = .param,
-             stringsAsFactors = FALSE)
+  data.frame(sens = sens, state = .state, param = .param, stringsAsFactors = FALSE)
 }
 
 #' Split a second-order sensitivity state name into (state, p, q)
@@ -95,8 +96,7 @@
       }
     }
   }
-  data.frame(sens = sens, state = .state, p = .p, q = .q,
-             stringsAsFactors = FALSE)
+  data.frame(sens = sens, state = .state, p = .p, q = .q, stringsAsFactors = FALSE)
 }
 
 #' Split a third-order sensitivity state name into (state, p, q, r)
@@ -135,8 +135,7 @@
       }
     }
   }
-  data.frame(sens = sens, state = .state, p = .p, q = .q, r = .r,
-             stringsAsFactors = FALSE)
+  data.frame(sens = sens, state = .state, p = .p, q = .q, r = .r, stringsAsFactors = FALSE)
 }
 
 #' Build the event-sensitivity index map for a model
@@ -160,12 +159,16 @@
 .rxEventSensMap <- function(obj) {
   .mv <- rxModelVars(obj)
   .sens <- .mv$sens
-  if (is.null(.sens) || length(.sens) == 0L) return(NULL)
+  if (is.null(.sens) || length(.sens) == 0L) {
+    return(NULL)
+  }
   .states <- .mv$normal.state
   .ord <- .mv$stateOrd
   .split <- .rxEventSensSplit(.sens, .states)
   .split <- .split[!is.na(.split$state), , drop = FALSE]
-  if (nrow(.split) == 0L) return(NULL)
+  if (nrow(.split) == 0L) {
+    return(NULL)
+  }
   .split$sensCmt <- unname(.ord[.split$sens])
   .split$stateCmt <- unname(.ord[.split$state])
   .sensParams <- unique(.split$param)
@@ -206,6 +209,10 @@
   ## event compartments: those carrying a modeled alag/F/rate/dur
   ## (mv$alag plus stateProp bit flags; see .rxEventSensProp)
   .prop <- .rxEventSensProp(.mv)
+  ## Only physical states: a delay() model puts alag()/f() on its sensitivity
+  ## compartments, which the runtime would index as states.
+  .phys <- unname(.ord[.statesWithSens])
+  .prop <- lapply(.prop, function(.c) .c[.c %in% .phys])
   list(
     states = .statesWithSens,
     nState = length(.statesWithSens),
@@ -234,12 +241,21 @@
 #' @noRd
 .rxLinCmtNameCollision <- function(obj) {
   .mv <- rxModelVars(obj)
-  if (.rxLinNcmt(.mv)["numLin"] <= 0L) return(character(0))
+  if (.rxLinNcmt(.mv)["numLin"] <= 0L) {
+    return(character(0))
+  }
   .reservedPhys <- grep("^rx__sens_", .rxLinCmt(.mv), value = TRUE, invert = TRUE)
-  if (length(.reservedPhys) == 0L) return(character(0))
+  if (length(.reservedPhys) == 0L) {
+    return(character(0))
+  }
   .norm <- rxNorm(obj)
-  .reservedPhys[vapply(.reservedPhys, function(.nm)
-    grepl(paste0("d/dt(", .nm, ")"), .norm, fixed = TRUE), logical(1))]
+  .reservedPhys[vapply(
+    .reservedPhys,
+    function(.nm) {
+      grepl(paste0("d/dt(", .nm, ")"), .norm, fixed = TRUE)
+    },
+    logical(1)
+  )]
 }
 
 #' ODE (non-linCmt) physical states of a model
@@ -270,15 +286,23 @@
 #' @noRd
 .rxEventSensLayoutOk <- function(states, sensParams, map1) {
   .ns <- length(states)
-  if (.ns == 0L || length(sensParams) == 0L) return(FALSE)
+  if (.ns == 0L || length(sensParams) == 0L) {
+    return(FALSE)
+  }
   ## every (state, param) pair must be present exactly once
-  if (nrow(map1) != .ns * length(sensParams)) return(FALSE)
+  if (nrow(map1) != .ns * length(sensParams)) {
+    return(FALSE)
+  }
   .k <- match(map1$state, states)
   .p <- match(map1$param, sensParams)
-  if (anyNA(.k) || anyNA(.p)) return(FALSE)
+  if (anyNA(.k) || anyNA(.p)) {
+    return(FALSE)
+  }
   ## the states themselves must be compartments 1..nState (`cmt < nState` is
   ## how the runtime decides a dosed compartment is one of them)
-  if (!identical(as.integer(map1$stateCmt), as.integer(.k))) return(FALSE)
+  if (!identical(as.integer(map1$stateCmt), as.integer(.k))) {
+    return(FALSE)
+  }
   identical(as.integer(map1$sensCmt), as.integer(.ns + (.p - 1L) * .ns + .k))
 }
 
@@ -296,23 +320,33 @@
   .mv <- rxModelVars(obj)
   .lin <- .rxLinNcmt(.mv)
   if (.lin["numLin"] <= 0L) {
-    if (!.rxEventSensLayoutOk(map$states, map$sensParams, map$map)) return(NULL)
+    if (!.rxEventSensLayoutOk(map$states, map$sensParams, map$map)) {
+      return(NULL)
+    }
     return(map)
   }
   ## Defensive: a linCmt reserved-name collision (see .rxLinCmtNameCollision)
   ## yields silently-incorrect sensitivities; disable jump.  (Such models
   ## downgrade to FD upstream via .rxEventSensEffectiveMode, so this is a guard
   ## for any path that still reaches here.)
-  if (length(.rxLinCmtNameCollision(obj)) > 0L) return(NULL)
+  if (length(.rxLinCmtNameCollision(obj)) > 0L) {
+    return(NULL)
+  }
   .odeStates <- .rxEventSensOdeStates(.mv)
   ## Pure linCmt: no ODE compartment can carry an analytic jump.
-  if (length(.odeStates) == 0L) return(NULL)
+  if (length(.odeStates) == 0L) {
+    return(NULL)
+  }
   .stateCmt <- unname(map$stateCmt[.odeStates])
   ## The jump runtime assumes ODE states are the leading contiguous block
   ## [1..nState]. If not, keep behavior safe by disabling jump for this model.
-  if (anyNA(.stateCmt) || !identical(.stateCmt, seq_along(.stateCmt))) return(NULL)
+  if (anyNA(.stateCmt) || !identical(.stateCmt, seq_along(.stateCmt))) {
+    return(NULL)
+  }
   .map1 <- map$map[map$map$state %in% .odeStates, , drop = FALSE]
-  if (nrow(.map1) == 0L) return(NULL)
+  if (nrow(.map1) == 0L) {
+    return(NULL)
+  }
   ## Keep `map$sensParams`' order: it is the order of the sensitivity
   ## COMPARTMENTS, which is what the runtime addresses with (nState + p*nState
   ## + k) and what `.rxEventSensCLines()` builds its parameter index from.
@@ -322,12 +356,15 @@
   ## The linCmt() block sits after the ODE states and their sensitivity
   ## compartments, so the assumed (nState + p*nState + k) addressing still has
   ## to hold for the ODE part; verify against the true indices.
-  if (!.rxEventSensLayoutOk(.odeStates, .sensParams, .map1)) return(NULL)
+  if (!.rxEventSensLayoutOk(.odeStates, .sensParams, .map1)) {
+    return(NULL)
+  }
   .map2 <- map$map2
   if (!is.null(.map2) && nrow(.map2) > 0L) {
     .map2 <- .map2[
       .map2$state %in% .odeStates & .map2$p %in% .sensParams,
-      , drop = FALSE
+      ,
+      drop = FALSE
     ]
     if (nrow(.map2) == 0L) .map2 <- NULL
   }
@@ -335,7 +372,8 @@
   if (!is.null(.map3) && nrow(.map3) > 0L) {
     .map3 <- .map3[
       .map3$state %in% .odeStates & .map3$p %in% .sensParams,
-      , drop = FALSE
+      ,
+      drop = FALSE
     ]
     if (nrow(.map3) == 0L) .map3 <- NULL
   }
@@ -367,16 +405,24 @@
 #' @return Effective mode string (`jump`, `fd`, or `both`).
 #' @noRd
 .rxEventSensEffectiveMode <- function(requested, obj) {
-  if (identical(requested, "fdAll") || identical(requested, "fd")) return("fd")
+  if (identical(requested, "fdAll") || identical(requested, "fd")) {
+    return("fd")
+  }
   .mv <- rxModelVars(obj)
-  if (.rxLinNcmt(.mv)["numLin"] <= 0L) return(requested)
+  if (.rxLinNcmt(.mv)["numLin"] <= 0L) {
+    return(requested)
+  }
   ## Mixed ODE+linCmt(): the ODE compartments keep the analytic jump (their
   ## sensitivity compartments are ordinary solved states; the linCmt() block
   ## sits after them and is untouched by the injection).
-  if (length(.rxEventSensOdeStates(.mv)) == 0L) return("fd")
+  if (length(.rxEventSensOdeStates(.mv)) == 0L) {
+    return("fd")
+  }
   ## A d/dt() on a linCmt()-reserved name conflates the two compartments, so
   ## the ODE state never gets its sensitivity expansion.
-  if (length(.rxLinCmtNameCollision(obj)) > 0L) return("fd")
+  if (length(.rxLinCmtNameCollision(obj)) > 0L) {
+    return("fd")
+  }
   ## The moving-boundary jump for a modeled alag()/f()/rate()/dur() on a
   ## linCmt() COMPARTMENT is not implemented: linCmt amounts and their
   ## sensitivities are recomputed from linCmt's own analytic solution every
@@ -385,7 +431,9 @@
   .linCmt <- unname(.mv$stateOrd[.rxLinCmt(.mv)])
   .prop <- .rxEventSensProp(.mv)
   .eventCmt <- unique(c(.prop$lagCmt, .prop$fCmt, .prop$rateCmt, .prop$durCmt))
-  if (any(.eventCmt %in% .linCmt[!is.na(.linCmt)])) return("fd")
+  if (any(.eventCmt %in% .linCmt[!is.na(.linCmt)])) {
+    return("fd")
+  }
   requested
 }
 
@@ -402,11 +450,52 @@
 #' @return Effective mode string.
 #' @noRd
 .rxEventSensModeForMap <- function(mode, obj) {
-  if (identical(mode, "fd")) return("fd")
+  if (identical(mode, "fd")) {
+    return("fd")
+  }
   .map <- .rxEventSensMap(obj)
-  if (is.null(.map)) return(mode)
-  if (is.null(.rxEventSensFilterMap(obj, .map))) return("fd")
+  if (is.null(.map)) {
+    return(mode)
+  }
+  if (is.null(.rxEventSensFilterMap(obj, .map))) {
+    return("fd")
+  }
+  if (.rxEventSensStateLag(obj, .map)) {
+    return("fd")
+  }
   mode
+}
+
+#' Does a modeled alag() depend on the states?
+#'
+#' A state-dependent lag is evaluated at the dose's own time (or the initial
+#' state), so its d(tau)/dp needs the sensitivities at that time; the jump
+#' runtime only has them at the arrival time, so such models use "fd".
+#'
+#' @param obj rxode2 model (or model variables)
+#' @param map result of `.rxEventSensMap(obj)`
+#' @return `TRUE` when any modeled alag() depends on a state
+#' @author Matthew L. Fidler
+#' @noRd
+.rxEventSensStateLag <- function(obj, map) {
+  if (length(map$lagCmt) == 0L) {
+    return(FALSE)
+  }
+  .model <- .rxLoadPrune(obj)
+  for (.c in map$lagCmt) {
+    .symName <- paste0("rx_lag_", map$states[match(.c, map$stateCmt)], "_")
+    if (!exists(.symName, envir = .model)) {
+      next
+    }
+    .sym <- get(.symName, envir = .model)
+    for (.s in map$states) {
+      .d <- tryCatch(symengine::D(.sym, .rxSEres(.s)), error = function(e) NULL)
+      if (!is.null(.d) && !(rxFromSE(.d) %in% c("0", "0.0"))) {
+        return(TRUE)
+      }
+    }
+  }
+  FALSE
 }
 
 #' Decode which compartments carry modeled alag/F/rate/dur
@@ -423,12 +512,16 @@
   .prop <- mv$stateProp
   ## stateProp bit flags (src/tran.h): propF=2, propAlag=4, propRate=8, propDur=16
   .bit <- function(flag) {
-    if (is.null(.prop)) return(integer(0))
+    if (is.null(.prop)) {
+      return(integer(0))
+    }
     .nm <- names(.prop)[bitwAnd(as.integer(.prop), flag) != 0L]
     sort(unname(.ord[.nm]))
   }
   .lag <- .bit(4L)
-  if (length(.lag) == 0L && !is.null(mv$alag)) .lag <- sort(as.integer(mv$alag))
+  if (length(.lag) == 0L && !is.null(mv$alag)) {
+    .lag <- sort(as.integer(mv$alag))
+  }
   list(lagCmt = .lag, fCmt = .bit(2L), rateCmt = .bit(8L), durCmt = .bit(16L))
 }
 
@@ -446,29 +539,38 @@
 #'   the model has no linCmt event-timing sensitivities.
 #' @noRd
 .rxLinCmtEventSensPairs <- function(obj, calcSens) {
-  if (is.null(calcSens) || length(calcSens) == 0L) return(NULL)
+  if (is.null(calcSens) || length(calcSens) == 0L) {
+    return(NULL)
+  }
   .mv <- rxModelVars(obj)
-  if (.rxLinNcmt(.mv)["numLin"] <= 0L) return(NULL)
+  if (.rxLinNcmt(.mv)["numLin"] <= 0L) {
+    return(NULL)
+  }
   ## linCmt physical compartments (reserved names that are not sens compartments)
   .linPhys <- grep("^rx__sens_", .rxLinCmt(.mv), value = TRUE, invert = TRUE)
-  if (length(.linPhys) == 0L) return(NULL)
+  if (length(.linPhys) == 0L) {
+    return(NULL)
+  }
   .norm <- strsplit(rxNorm(obj), "\n", fixed = TRUE)[[1]]
   .rows <- list()
   for (.kind in c("alag", "f")) {
     .re <- paste0("^", .kind, "\\(([^)]+)\\)=(.*);$")
     for (.line in grep(.re, .norm, value = TRUE)) {
       .cmt <- sub(.re, "\\1", .line)
-      if (!(.cmt %in% .linPhys)) next
+      if (!(.cmt %in% .linPhys)) {
+        next
+      }
       .rhs <- sub(.re, "\\2", .line)
       .vars <- tryCatch(all.vars(str2lang(.rhs)), error = function(e) character(0))
       for (.p in intersect(.vars, calcSens)) {
         .rows[[length(.rows) + 1L]] <-
-          data.frame(state = .cmt, param = .p, kind = .kind,
-                     stringsAsFactors = FALSE)
+          data.frame(state = .cmt, param = .p, kind = .kind, stringsAsFactors = FALSE)
       }
     }
   }
-  if (length(.rows) == 0L) return(NULL)
+  if (length(.rows) == 0L) {
+    return(NULL)
+  }
   .df <- do.call(rbind, .rows)
   .df$cmt <- unname(.mv$stateOrd[.df$state])
   .df[!duplicated(.df[c("state", "param")]), , drop = FALSE]
@@ -481,9 +583,13 @@
 #' @return list of matching call objects (possibly empty).
 #' @noRd
 .rxFindNamedCalls <- function(expr, fname) {
-  if (!is.call(expr)) return(list())
+  if (!is.call(expr)) {
+    return(list())
+  }
   .out <- if (identical(as.character(expr[[1]])[1], fname)) list(expr) else list()
-  for (.a in as.list(expr)[-1]) .out <- c(.out, .rxFindNamedCalls(.a, fname))
+  for (.a in as.list(expr)[-1]) {
+    .out <- c(.out, .rxFindNamedCalls(.a, fname))
+  }
   .out
 }
 
@@ -522,17 +628,22 @@
 .rxLinCmtDoseTimeSensUsed <- function(mv) {
   .norm <- strsplit(rxNorm(mv), "\n", fixed = TRUE)[[1]]
   .lines <- grep("linCmtB(", .norm, fixed = TRUE, value = TRUE)
-  if (length(.lines) == 0L) return(FALSE)
+  if (length(.lines) == 0L) {
+    return(FALSE)
+  }
   .constEnv <- .rxLinCmtConstEnv(.norm)
   for (.line in .lines) {
     .rhs <- sub("^[^=]*=(.*);$", "\\1", .line)
     .expr <- tryCatch(str2lang(.rhs), error = function(e) NULL)
-    if (is.null(.expr)) next
+    if (is.null(.expr)) {
+      next
+    }
     for (.call in .rxFindNamedCalls(.expr, "linCmtB")) {
       .args <- as.list(.call)[-1]
-      if (length(.args) < 6L) next
-      .which1 <- tryCatch(eval(.args[[6]], envir = .constEnv),
-                          error = function(e) NA_real_)
+      if (length(.args) < 6L) {
+        next
+      }
+      .which1 <- tryCatch(eval(.args[[6]], envir = .constEnv), error = function(e) NA_real_)
       if (isTRUE(.which1 == -3)) return(TRUE)
     }
   }
@@ -548,15 +659,21 @@
 #' @noRd
 .rxLinCmtDoseTimeLagExprs <- function(mv) {
   .linPhys <- grep("^rx__sens_", .rxLinCmt(mv), value = TRUE, invert = TRUE)
-  if (length(.linPhys) == 0L) return(NULL)
+  if (length(.linPhys) == 0L) {
+    return(NULL)
+  }
   .norm <- strsplit(rxNorm(mv), "\n", fixed = TRUE)[[1]]
   .re <- "^alag\\(([^)]+)\\)=(.*);$"
   .lines <- grep(.re, .norm, value = TRUE)
-  if (length(.lines) == 0L) return(NULL)
+  if (length(.lines) == 0L) {
+    return(NULL)
+  }
   .cmt <- sub(.re, "\\1", .lines)
   .expr <- sub(.re, "\\2", .lines)
   .keep <- .cmt %in% .linPhys
-  if (!any(.keep)) return(NULL)
+  if (!any(.keep)) {
+    return(NULL)
+  }
   stats::setNames(.expr[.keep], .cmt[.keep])
 }
 
@@ -591,19 +708,28 @@
 #' @return invisibly `NULL`; called for the `stop()` side effect.
 #' @noRd
 .rxLinCmtDoseTimeSensCheck <- function(mv) {
-  if (!.rxLinCmtDoseTimeSensUsed(mv)) return(invisible(NULL))
+  if (!.rxLinCmtDoseTimeSensUsed(mv)) {
+    return(invisible(NULL))
+  }
   .lag <- .rxLinCmtDoseTimeLagExprs(mv)
-  if (length(.lag) == 0L) return(invisible(NULL))
+  if (length(.lag) == 0L) {
+    return(invisible(NULL))
+  }
   .cmts <- unique(names(.lag))
   if (length(.cmts) < 2L || length(unique(unname(.lag))) < 2L) {
     return(invisible(NULL))
   }
-  stop("'linCmtB(which1 = -3)' (the dose-time sensitivity) assumes every ",
-       "dose feeding the linear system shares one alag(); this model lags ",
-       "linCmt() compartment(s) '", paste(.cmts, collapse = "', '"),
-       "' differently ('", paste(unique(unname(.lag)), collapse = "' vs '"),
-       "'), which it cannot represent -- use the per-compartment ",
-       "'linCmtB(which1 = -9)' instead; see nlmixr2/rxode2#1237", call. = FALSE)
+  stop(
+    "'linCmtB(which1 = -3)' (the dose-time sensitivity) assumes every ",
+    "dose feeding the linear system shares one alag(); this model lags ",
+    "linCmt() compartment(s) '",
+    paste(.cmts, collapse = "', '"),
+    "' differently ('",
+    paste(unique(unname(.lag)), collapse = "' vs '"),
+    "'), which it cannot represent -- use the per-compartment ",
+    "'linCmtB(which1 = -9)' instead; see nlmixr2/rxode2#1237",
+    call. = FALSE
+  )
 }
 
 #' Free symbols of a dosing expression in symengine (SE-mangled) names
@@ -616,10 +742,13 @@
 #' @return character vector of free-symbol names (empty for constants).
 #' @noRd
 .rxEventSensFreeSyms <- function(sym) {
-  if (is.numeric(sym)) return(character(0))
+  if (is.numeric(sym)) {
+    return(character(0))
+  }
   tryCatch(
     vapply(symengine::free_symbols(sym), as.character, character(1)),
-    error = function(e) character(0))
+    error = function(e) character(0)
+  )
 }
 
 #' Total derivative of one dosing-parameter expression wrt a parameter
@@ -643,7 +772,9 @@
     .tot <- symengine::D(sym, .rxSEres(param))
   }
   for (.l in states) {
-    if (!(.rxSEres(.l) %in% .vars)) next
+    if (!(.rxSEres(.l) %in% .vars)) {
+      next
+    }
     .dl <- symengine::D(sym, .rxSEres(.l))
     .dlTxt <- rxFromSE(.dl)
     if (.dlTxt != "0" && .dlTxt != "0.0") {
@@ -652,7 +783,9 @@
       .tot <- if (is.null(.tot)) .term else .tot + .term
     }
   }
-  if (is.null(.tot)) return("0")
+  if (is.null(.tot)) {
+    return("0")
+  }
   rxFromSE(.tot)
 }
 
@@ -671,7 +804,9 @@
     .tot <- symengine::D(sym, .rxSEres(param))
   }
   for (.l in states) {
-    if (!(.rxSEres(.l) %in% .vars)) next
+    if (!(.rxSEres(.l) %in% .vars)) {
+      next
+    }
     .dl <- symengine::D(sym, .rxSEres(.l))
     .dlTxt <- rxFromSE(.dl)
     if (.dlTxt != "0" && .dlTxt != "0.0") {
@@ -696,7 +831,9 @@
 #' @noRd
 .rxEventSensD2Expr <- function(sym, p, q, states) {
   .tot <- .rxEventSensD2Sym(sym, p, q, states)
-  if (is.null(.tot)) return("0")
+  if (is.null(.tot)) {
+    return("0")
+  }
   rxFromSE(.tot)
 }
 
@@ -711,7 +848,9 @@
 #' @noRd
 .rxEventSensD2Sym <- function(sym, p, q, states) {
   .dgp <- .rxEventSensDSym(sym, p, states)
-  if (is.null(.dgp)) return(NULL)
+  if (is.null(.dgp)) {
+    return(NULL)
+  }
   ## SE-mangled free symbols (see .rxEventSensFreeSyms)
   .vars <- .rxEventSensFreeSyms(.dgp)
   .tot <- NULL
@@ -721,9 +860,13 @@
   }
   ## state-coupling: d/dx_l * S^q_l
   for (.l in states) {
-    if (!(.rxSEres(.l) %in% .vars)) next
+    if (!(.rxSEres(.l) %in% .vars)) {
+      next
+    }
     .dxl <- symengine::D(.dgp, .rxSEres(.l))
-    if (rxFromSE(.dxl) %in% c("0", "0.0")) next
+    if (rxFromSE(.dxl) %in% c("0", "0.0")) {
+      next
+    }
     .Sq <- symengine::S(paste0("rx__sens_", .l, "_BY_", q, "__"))
     .term <- .dxl * .Sq
     .tot <- if (is.null(.tot)) .term else .tot + .term
@@ -731,9 +874,13 @@
   ## first-order-sensitivity coupling: d/d(S^p_l) * S^{pq}_l
   for (.l in states) {
     .Spl <- paste0("rx__sens_", .l, "_BY_", p, "__")
-    if (!(.Spl %in% .vars)) next
+    if (!(.Spl %in% .vars)) {
+      next
+    }
     .dSpl <- symengine::D(.dgp, symengine::S(.Spl))
-    if (rxFromSE(.dSpl) %in% c("0", "0.0")) next
+    if (rxFromSE(.dSpl) %in% c("0", "0.0")) {
+      next
+    }
     .Spq <- symengine::S(paste0("rx__sens_", .l, "_BY_", p, "_BY_", q, "__"))
     .term <- .dSpl * .Spq
     .tot <- if (is.null(.tot)) .term else .tot + .term
@@ -756,7 +903,9 @@
 #' @noRd
 .rxEventSensD3Expr <- function(sym, p, q, r, states) {
   .dgpq <- .rxEventSensD2Sym(sym, p, q, states)
-  if (is.null(.dgpq)) return("0")
+  if (is.null(.dgpq)) {
+    return("0")
+  }
   .vars <- .rxEventSensFreeSyms(.dgpq)
   .tot <- NULL
   ## direct partial wrt r
@@ -765,9 +914,13 @@
   }
   ## state-coupling: d/dx_l * S^r_l
   for (.l in states) {
-    if (!(.rxSEres(.l) %in% .vars)) next
+    if (!(.rxSEres(.l) %in% .vars)) {
+      next
+    }
     .dxl <- symengine::D(.dgpq, .rxSEres(.l))
-    if (rxFromSE(.dxl) %in% c("0", "0.0")) next
+    if (rxFromSE(.dxl) %in% c("0", "0.0")) {
+      next
+    }
     .Sr <- symengine::S(paste0("rx__sens_", .l, "_BY_", r, "__"))
     .term <- .dxl * .Sr
     .tot <- if (is.null(.tot)) .term else .tot + .term
@@ -775,9 +928,13 @@
   ## p-chain coupling: d/d(S^p_l) * S^{pr}_l
   for (.l in states) {
     .Spl <- paste0("rx__sens_", .l, "_BY_", p, "__")
-    if (!(.Spl %in% .vars)) next
+    if (!(.Spl %in% .vars)) {
+      next
+    }
     .dSpl <- symengine::D(.dgpq, symengine::S(.Spl))
-    if (rxFromSE(.dSpl) %in% c("0", "0.0")) next
+    if (rxFromSE(.dSpl) %in% c("0", "0.0")) {
+      next
+    }
     .Spr <- symengine::S(paste0("rx__sens_", .l, "_BY_", p, "_BY_", r, "__"))
     .term <- .dSpl * .Spr
     .tot <- if (is.null(.tot)) .term else .tot + .term
@@ -785,9 +942,13 @@
   ## q-chain coupling: d/d(S^q_l) * S^{qr}_l
   for (.l in states) {
     .Sql <- paste0("rx__sens_", .l, "_BY_", q, "__")
-    if (!(.Sql %in% .vars)) next
+    if (!(.Sql %in% .vars)) {
+      next
+    }
     .dSql <- symengine::D(.dgpq, symengine::S(.Sql))
-    if (rxFromSE(.dSql) %in% c("0", "0.0")) next
+    if (rxFromSE(.dSql) %in% c("0", "0.0")) {
+      next
+    }
     .Sqr <- symengine::S(paste0("rx__sens_", .l, "_BY_", q, "_BY_", r, "__"))
     .term <- .dSql * .Sqr
     .tot <- if (is.null(.tot)) .term else .tot + .term
@@ -795,14 +956,20 @@
   ## pq-chain coupling: d/d(S^{pq}_l) * S^{pqr}_l
   for (.l in states) {
     .Spql <- paste0("rx__sens_", .l, "_BY_", p, "_BY_", q, "__")
-    if (!(.Spql %in% .vars)) next
+    if (!(.Spql %in% .vars)) {
+      next
+    }
     .dSpql <- symengine::D(.dgpq, symengine::S(.Spql))
-    if (rxFromSE(.dSpql) %in% c("0", "0.0")) next
+    if (rxFromSE(.dSpql) %in% c("0", "0.0")) {
+      next
+    }
     .Spqr <- symengine::S(paste0("rx__sens_", .l, "_BY_", p, "_BY_", q, "_BY_", r, "__"))
     .term <- .dSpql * .Spqr
     .tot <- if (is.null(.tot)) .term else .tot + .term
   }
-  if (is.null(.tot)) return("0")
+  if (is.null(.tot)) {
+    return("0")
+  }
   rxFromSE(.tot)
 }
 
@@ -820,9 +987,15 @@
 #'   first-order sensitivities.
 #' @noRd
 .rxEventSensDerivs <- function(obj, map = NULL) {
-  if (is.null(map)) map <- .rxEventSensMap(obj)
-  if (is.null(map)) return(NULL)
-  .model <- .rxLoadPrune(obj)
+  if (is.null(map)) {
+    map <- .rxEventSensMap(obj)
+  }
+  if (is.null(map)) {
+    return(NULL)
+  }
+  # numeric defaults (`lg <- 0.3`) stay symbolic so their derivatives survive
+  # lazy: the costly symbolic load runs only if a modeled alag/F/rate/dur reads it
+  delayedAssign(".model", .rxLoadPrune(obj, doConst = FALSE))
   .states <- map$states
   .params <- map$sensParams
   .cmtName <- function(cmt) map$states[match(cmt, map$stateCmt)]
@@ -831,21 +1004,26 @@
     for (.c in cmts) {
       .nm <- .cmtName(.c)
       .symName <- paste0("rx_", kind, "_", .nm, "_")
-      if (!exists(.symName, envir = .model)) next
+      if (!exists(.symName, envir = .model)) {
+        next
+      }
       .sym <- get(.symName, envir = .model)
       for (.p in .params) {
         .e <- .rxEventSensDExpr(.model, .sym, .p, .states)
         if (.e != "0" && .e != "0.0") {
           .rows[[length(.rows) + 1L]] <-
-            data.frame(cmt = .c, cmtName = .nm, param = .p, expr = .e,
-                       stringsAsFactors = FALSE)
+            data.frame(cmt = .c, cmtName = .nm, param = .p, expr = .e, stringsAsFactors = FALSE)
         }
       }
     }
     if (length(.rows) == 0L) {
-      return(data.frame(cmt = integer(0), cmtName = character(0),
-                        param = character(0), expr = character(0),
-                        stringsAsFactors = FALSE))
+      return(data.frame(
+        cmt = integer(0),
+        cmtName = character(0),
+        param = character(0),
+        expr = character(0),
+        stringsAsFactors = FALSE
+      ))
     }
     do.call(rbind, .rows)
   }
@@ -853,9 +1031,14 @@
   ## when map2 is present
   .build2 <- function(cmts, kind) {
     if (is.null(map$map2)) {
-      return(data.frame(cmt = integer(0), cmtName = character(0),
-                        p = character(0), q = character(0), expr = character(0),
-                        stringsAsFactors = FALSE))
+      return(data.frame(
+        cmt = integer(0),
+        cmtName = character(0),
+        p = character(0),
+        q = character(0),
+        expr = character(0),
+        stringsAsFactors = FALSE
+      ))
     }
     .p2 <- unique(map$map2$p)
     .q2 <- unique(map$map2$q)
@@ -863,32 +1046,44 @@
     for (.c in cmts) {
       .nm <- .cmtName(.c)
       .symName <- paste0("rx_", kind, "_", .nm, "_")
-      if (!exists(.symName, envir = .model)) next
+      if (!exists(.symName, envir = .model)) {
+        next
+      }
       .sym <- get(.symName, envir = .model)
       for (.p in .p2) {
         for (.q in .q2) {
           .e <- .rxEventSensD2Expr(.sym, .p, .q, .states)
           if (.e != "0" && .e != "0.0") {
             .rows[[length(.rows) + 1L]] <-
-              data.frame(cmt = .c, cmtName = .nm, p = .p, q = .q, expr = .e,
-                         stringsAsFactors = FALSE)
+              data.frame(cmt = .c, cmtName = .nm, p = .p, q = .q, expr = .e, stringsAsFactors = FALSE)
           }
         }
       }
     }
     if (length(.rows) == 0L) {
-      return(data.frame(cmt = integer(0), cmtName = character(0),
-                        p = character(0), q = character(0), expr = character(0),
-                        stringsAsFactors = FALSE))
+      return(data.frame(
+        cmt = integer(0),
+        cmtName = character(0),
+        p = character(0),
+        q = character(0),
+        expr = character(0),
+        stringsAsFactors = FALSE
+      ))
     }
     do.call(rbind, .rows)
   }
   ## 3rd-order table: additive-bolus `F` row only, indexed (cmt, p, q, r)
   .build3 <- function(cmts, kind) {
     if (is.null(map$map3)) {
-      return(data.frame(cmt = integer(0), cmtName = character(0),
-                        p = character(0), q = character(0), r = character(0),
-                        expr = character(0), stringsAsFactors = FALSE))
+      return(data.frame(
+        cmt = integer(0),
+        cmtName = character(0),
+        p = character(0),
+        q = character(0),
+        r = character(0),
+        expr = character(0),
+        stringsAsFactors = FALSE
+      ))
     }
     .p3 <- unique(map$map3$p)
     .q3 <- unique(map$map3$q)
@@ -897,7 +1092,9 @@
     for (.c in cmts) {
       .nm <- .cmtName(.c)
       .symName <- paste0("rx_", kind, "_", .nm, "_")
-      if (!exists(.symName, envir = .model)) next
+      if (!exists(.symName, envir = .model)) {
+        next
+      }
       .sym <- get(.symName, envir = .model)
       for (.p in .p3) {
         for (.q in .q3) {
@@ -905,17 +1102,22 @@
             .e <- .rxEventSensD3Expr(.sym, .p, .q, .r, .states)
             if (.e != "0" && .e != "0.0") {
               .rows[[length(.rows) + 1L]] <-
-                data.frame(cmt = .c, cmtName = .nm, p = .p, q = .q, r = .r,
-                           expr = .e, stringsAsFactors = FALSE)
+                data.frame(cmt = .c, cmtName = .nm, p = .p, q = .q, r = .r, expr = .e, stringsAsFactors = FALSE)
             }
           }
         }
       }
     }
     if (length(.rows) == 0L) {
-      return(data.frame(cmt = integer(0), cmtName = character(0),
-                        p = character(0), q = character(0), r = character(0),
-                        expr = character(0), stringsAsFactors = FALSE))
+      return(data.frame(
+        cmt = integer(0),
+        cmtName = character(0),
+        p = character(0),
+        q = character(0),
+        r = character(0),
+        expr = character(0),
+        stringsAsFactors = FALSE
+      ))
     }
     do.call(rbind, .rows)
   }
@@ -927,81 +1129,104 @@
     for (.c in cmts) {
       .nm <- .cmtName(.c)
       .symName <- paste0("rx_", kind, "_", .nm, "_")
-      if (!exists(.symName, envir = .model)) next
+      if (!exists(.symName, envir = .model)) {
+        next
+      }
       .sym <- get(.symName, envir = .model)
       for (.q in qParams) {
         .e <- .rxEventSensDExpr(.model, .sym, .q, .states)
         if (.e != "0" && .e != "0.0") {
           .rows[[length(.rows) + 1L]] <-
-            data.frame(cmt = .c, cmtName = .nm, param = .q, expr = .e,
-                       stringsAsFactors = FALSE)
+            data.frame(cmt = .c, cmtName = .nm, param = .q, expr = .e, stringsAsFactors = FALSE)
         }
       }
     }
     if (length(.rows) == 0L) {
-      return(data.frame(cmt = integer(0), cmtName = character(0),
-                        param = character(0), expr = character(0),
-                        stringsAsFactors = FALSE))
+      return(data.frame(
+        cmt = integer(0),
+        cmtName = character(0),
+        param = character(0),
+        expr = character(0),
+        stringsAsFactors = FALSE
+      ))
     }
     do.call(rbind, .rows)
   }
-  ## d(J[k][c])/dq table: the total derivative of the physical Jacobian column
-  ## wrt a calcSens2 parameter; J[k][c] = d(rx__d_dt_<k>__)/dx_c is available
-  ## symbolically for every model type.  Indexed (cmt, k, q): cmt = the
+  ## d(f_k)/dq table: the total derivative of the physical right-hand side
+  ## rx__d_dt_<k>__ wrt a calcSens2 parameter (partial + sum_l df_k/dx_l * S^q_l).
+  ## The runtime evaluates it before and after the dose so the 2nd-order dtau
+  ## row gets d/dq [f_k(x-) - f_k(x+)] exactly.  Indexed (cmt, k, q): cmt = the
   ## lag-carrying compartment, k = 0-based physical-state row.
-  .buildJacQ <- function(cmts) {
+  .buildRhsQ <- function(cmts) {
     if (is.null(map$map2)) {
-      return(data.frame(cmt = integer(0), k = integer(0), q = character(0),
-                        expr = character(0), stringsAsFactors = FALSE))
+      return(data.frame(
+        cmt = integer(0),
+        k = integer(0),
+        q = character(0),
+        expr = character(0),
+        stringsAsFactors = FALSE
+      ))
     }
     .q2 <- unique(map$map2$q)
     .rows <- list()
     for (.c in cmts) {
-      .cName <- .cmtName(.c)
       for (.kIdx in seq_along(.states)) {
         .kName <- .states[.kIdx]
         .fSymName <- paste0("rx__d_dt_", .kName, "__")
-        if (!exists(.fSymName, envir = .model)) next
+        if (!exists(.fSymName, envir = .model)) {
+          next
+        }
         .fSym <- get(.fSymName, envir = .model)
-        .Jkc <- tryCatch(symengine::D(.fSym, .rxSEres(.cName)),
-                         error = function(e) NULL)
-        if (is.null(.Jkc)) next
-        .JkcTxt <- rxFromSE(.Jkc)
-        if (.JkcTxt == "0" || .JkcTxt == "0.0") next
         for (.q in .q2) {
-          .dJ <- .rxEventSensDSym(.Jkc, .q, .states)
-          if (is.null(.dJ)) next
-          .e <- rxFromSE(.dJ)
+          .dF <- .rxEventSensDSym(.fSym, .q, .states)
+          if (is.null(.dF)) {
+            next
+          }
+          .e <- rxFromSE(.dF)
           if (.e != "0" && .e != "0.0") {
             .rows[[length(.rows) + 1L]] <-
-              data.frame(cmt = .c, k = .kIdx - 1L, q = .q, expr = .e,
-                         stringsAsFactors = FALSE)
+              data.frame(cmt = .c, k = .kIdx - 1L, q = .q, expr = .e, stringsAsFactors = FALSE)
           }
         }
       }
     }
     if (length(.rows) == 0L) {
-      return(data.frame(cmt = integer(0), k = integer(0), q = character(0),
-                        expr = character(0), stringsAsFactors = FALSE))
+      return(data.frame(
+        cmt = integer(0),
+        k = integer(0),
+        q = character(0),
+        expr = character(0),
+        stringsAsFactors = FALSE
+      ))
     }
     do.call(rbind, .rows)
   }
   .q2All <- if (is.null(map$map2)) character(0) else unique(map$map2$q)
-  list(lag = .build(map$lagCmt, "lag"), f = .build(map$fCmt, "f"),
-       rate = .build(map$rateCmt, "rate"), dur = .build(map$durCmt, "dur"),
-       f2 = .build2(map$fCmt, "f"), lag2 = .build2(map$lagCmt, "lag"),
-       rate2 = .build2(map$rateCmt, "rate"), dur2 = .build2(map$durCmt, "dur"),
-       f3 = .build3(map$fCmt, "f"),
-       fq = .buildQ(map$fCmt, "f", .q2All),
-       lagJacQ = .buildJacQ(map$lagCmt),
-       ## d(alag)/dq safety guard: when q also drives the same event's alag,
-       ## the product-rule 2nd-order dtau row misses a Leibniz/moving-boundary
-       ## term (dS^p_k/dt * dLag_q[c]); this table lets the runtime skip those
-       ## (cmt, q) pairs rather than inject a wrong nonzero value.
-       lagQ = .buildQ(map$lagCmt, "lag", .q2All),
-       ## d(dur)/dq for the quotient-rule 2nd derivative of rate=F*amt/dur,
-       ## in calcSens2's own index space (like fq/lagQ)
-       durQ = .buildQ(map$durCmt, "dur", .q2All))
+  list(
+    lag = .build(map$lagCmt, "lag"),
+    f = .build(map$fCmt, "f"),
+    rate = .build(map$rateCmt, "rate"),
+    dur = .build(map$durCmt, "dur"),
+    f2 = .build2(map$fCmt, "f"),
+    lag2 = .build2(map$lagCmt, "lag"),
+    rate2 = .build2(map$rateCmt, "rate"),
+    dur2 = .build2(map$durCmt, "dur"),
+    f3 = .build3(map$fCmt, "f"),
+    fq = .buildQ(map$fCmt, "f", .q2All),
+    lagRhsQ = .buildRhsQ(map$lagCmt),
+    ## FALSE when some state has no symbolic right-hand side (matExp()), so the
+    ## runtime falls back to the calc_jac linearization
+    lagRhsQOk = length(map$lagCmt) == 0L ||
+      all(vapply(paste0("rx__d_dt_", .states, "__"), exists, logical(1), envir = .model)),
+    ## d(alag)/dq safety guard: when q also drives the same event's alag,
+    ## the product-rule 2nd-order dtau row misses a Leibniz/moving-boundary
+    ## term (dS^p_k/dt * dLag_q[c]); this table lets the runtime skip those
+    ## (cmt, q) pairs rather than inject a wrong nonzero value.
+    lagQ = .buildQ(map$lagCmt, "lag", .q2All),
+    ## d(dur)/dq for the quotient-rule 2nd derivative of rate=F*amt/dur,
+    ## in calcSens2's own index space (like fq/lagQ)
+    durQ = .buildQ(map$durCmt, "dur", .q2All)
+  )
 }
 
 #' Rewrite indexed nlmixr2 parameters into their codegen locals
@@ -1030,7 +1255,7 @@
     }
     expr
   }
-  .rw(.rw(expr, "THETA"), "ETA")     # THETA before ETA (ETA[ nests inside THETA[)
+  .rw(.rw(expr, "THETA"), "ETA") # THETA before ETA (ETA[ nests inside THETA[)
 }
 
 #' Generate the C assignment lines for the dLag / dF functions
@@ -1047,14 +1272,18 @@
 #'   vectors `lag` and `f` of C assignment lines; `NULL` if `info` is `NULL`.
 #' @noRd
 .rxEventSensCLines <- function(info) {
-  if (is.null(info)) return(NULL)
-  .pp <- info$params                     # declared param names (plain THETA_n_ vs indexed)
+  if (is.null(info)) {
+    return(NULL)
+  }
+  .pp <- info$params # declared param names (plain THETA_n_ vs indexed)
   .params <- info$map$sensParams
   .np <- length(.params)
   .pIdx <- stats::setNames(seq_along(.params) - 1L, .params)
   .lines <- function(tab, buf) {
-    if (is.null(tab) || nrow(tab) == 0L) return(character(0))
-    .cmt0 <- tab$cmt - 1L                      # 0-based, matches _alag[_cmt]
+    if (is.null(tab) || nrow(tab) == 0L) {
+      return(character(0))
+    }
+    .cmt0 <- tab$cmt - 1L # 0-based, matches _alag[_cmt]
     .idx <- .cmt0 * .np + .pIdx[tab$param]
     sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr, .pp))
   }
@@ -1063,7 +1292,9 @@
   .np2 <- length(.q2)
   .qIdx <- stats::setNames(seq_along(.q2) - 1L, .q2)
   .lines2 <- function(tab, buf) {
-    if (is.null(tab) || nrow(tab) == 0L) return(character(0))
+    if (is.null(tab) || nrow(tab) == 0L) {
+      return(character(0))
+    }
     .cmt0 <- tab$cmt - 1L
     .idx <- .cmt0 * (.np * .np2) + .pIdx[tab$p] * .np2 + .qIdx[tab$q]
     sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr, .pp))
@@ -1074,24 +1305,32 @@
   .np3 <- length(.r3)
   .rIdx <- stats::setNames(seq_along(.r3) - 1L, .r3)
   .lines3 <- function(tab, buf) {
-    if (is.null(tab) || nrow(tab) == 0L) return(character(0))
+    if (is.null(tab) || nrow(tab) == 0L) {
+      return(character(0))
+    }
     .cmt0 <- tab$cmt - 1L
-    .idx <- .cmt0 * (.np * .np2 * .np3) + .pIdx[tab$p] * (.np2 * .np3) +
-      .qIdx[tab$q] * .np3 + .rIdx[tab$r]
+    .idx <- .cmt0 * (.np * .np2 * .np3) + .pIdx[tab$p] * (.np2 * .np3) + .qIdx[tab$q] * .np3 + .rIdx[tab$r]
     sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr, .pp))
   }
   ## d(F)/dq buffer: (cmt0*np2 + qIdx), q in calcSens2's own index space
   .linesQ <- function(tab, buf) {
-    if (is.null(tab) || nrow(tab) == 0L) return(character(0))
+    if (is.null(tab) || nrow(tab) == 0L) {
+      return(character(0))
+    }
     .cmt0 <- tab$cmt - 1L
     .idx <- .cmt0 * .np2 + .qIdx[tab$param]
     sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr, .pp))
   }
-  ## d(J[k][c])/dq buffer: (cmt0*(nState*np2) + k*np2 + qIdx), sized
-  ## nState*nState*np2 (every possible cmt slot, like the other buffers)
+  ## d(f_k)/dq buffer: (cmt0*(nState*np2) + k*np2 + qIdx), sized
+  ## nState*nState*np2 (every possible cmt slot, like the other buffers),
+  ## followed by np2 slots mapping each calcSens2 index to its calcSens index
+  ## (-1 when absent) so the runtime can read S^q from the 1st-order block, and
+  ## one flag that is 1 when the d(f_k)/dq table is complete.
   .ns <- info$map$nState
   .linesJacQ <- function(tab, buf) {
-    if (is.null(tab) || nrow(tab) == 0L) return(character(0))
+    if (is.null(tab) || nrow(tab) == 0L) {
+      return(character(0))
+    }
     .cmt0 <- tab$cmt - 1L
     .idx <- .cmt0 * (.ns * .np2) + tab$k * .np2 + .qIdx[tab$q]
     sprintf("  %s[%d] = %s;", buf, .idx, .rxEventSensCExpr(tab$expr, .pp))
@@ -1113,7 +1352,16 @@
     dur2 = .lines2(info$derivs$dur2, "_d2DurSave"),
     f3 = .lines3(info$derivs$f3, "_d3FSave"),
     fq = .linesQ(info$derivs$fq, "_dFQSave"),
-    lagJacQ = .linesJacQ(info$derivs$lagJacQ, "_dLagJacSave"),
+    lagRhsQ = c(
+      .linesJacQ(info$derivs$lagRhsQ, "_dLagJacSave"),
+      if (.np2 > 0L) {
+        .qp <- .pIdx[.q2]
+        c(
+          sprintf("  _dLagJacSave[%d] = %d;", .ns * .ns * .np2 + .qIdx, ifelse(is.na(.qp), -1L, .qp)),
+          sprintf("  _dLagJacSave[%d] = %d;", .ns * .ns * .np2 + .np2, as.integer(isTRUE(info$derivs$lagRhsQOk)))
+        )
+      }
+    ),
     lagQ = .linesQ(info$derivs$lagQ, "_dLagQSave"),
     durQ = .linesQ(info$derivs$durQ, "_dDurQSave")
   )
@@ -1132,9 +1380,21 @@
 .rxEventSensCodeStrings <- function(info) {
   .cl <- .rxEventSensCLines(info)
   .join <- function(x) if (is.null(.cl) || length(x) == 0L) "" else paste(x, collapse = "\n")
-  c(.join(.cl$lag), .join(.cl$f), .join(.cl$rate), .join(.cl$dur), .join(.cl$f2),
-    .join(.cl$lag2), .join(.cl$rate2), .join(.cl$dur2), .join(.cl$f3),
-    .join(.cl$fq), .join(.cl$lagJacQ), .join(.cl$lagQ), .join(.cl$durQ))
+  c(
+    .join(.cl$lag),
+    .join(.cl$f),
+    .join(.cl$rate),
+    .join(.cl$dur),
+    .join(.cl$f2),
+    .join(.cl$lag2),
+    .join(.cl$rate2),
+    .join(.cl$dur2),
+    .join(.cl$f3),
+    .join(.cl$fq),
+    .join(.cl$lagRhsQ),
+    .join(.cl$lagQ),
+    .join(.cl$durQ)
+  )
 }
 
 #' Does this model need the `calc_jac`-based dtau/lag Jacobian column?
@@ -1173,10 +1433,15 @@
   .nParam2 <- if (is.null(.info$map$map2)) 0L else length(unique(.info$map$map2$q))
   ## number of third-order (calcSens3) parameters; 0 when no Phase H1 path
   .nParam3 <- if (is.null(.info$map$map3)) 0L else length(unique(.info$map$map3$r))
-  invisible(.Call(`_rxode2_eventSensSetDims`, 1L,
-                  as.integer(.nState), as.integer(.nParam), as.integer(.nParam2),
-                  as.integer(.nParam3),
-                  as.integer(.rxEventSensUseCalcJac(object))))
+  invisible(.Call(
+    `_rxode2_eventSensSetDims`,
+    1L,
+    as.integer(.nState),
+    as.integer(.nParam),
+    as.integer(.nParam2),
+    as.integer(.nParam3),
+    as.integer(.rxEventSensUseCalcJac(object))
+  ))
 }
 
 #' Read the installed event-sensitivity runtime dims
@@ -1232,15 +1497,24 @@
 #' @keywords internal
 rxEventSensLoadModel <- function(model) {
   .info <- tryCatch(model$eventSensInfo, error = function(e) NULL)
-  if (is.null(.info) || identical(.info$mode, "fd")) return(invisible(FALSE))
+  if (is.null(.info) || identical(.info$mode, "fd")) {
+    return(invisible(FALSE))
+  }
   .trans <- rxModelVars(model)$trans
   .nState <- .info$map$nState
   .nParam <- length(.info$map$sensParams)
   .nParam2 <- if (is.null(.info$map$map2)) 0L else length(unique(.info$map$map2$q))
   .nParam3 <- if (is.null(.info$map$map3)) 0L else length(unique(.info$map$map3$r))
-  .Call(`_rxode2_eventSensLoadFull`, .trans, 1L, as.integer(.nState),
-        as.integer(.nParam), as.integer(.nParam2), as.integer(.nParam3),
-        as.integer(.rxEventSensUseCalcJac(model)))
+  .Call(
+    `_rxode2_eventSensLoadFull`,
+    .trans,
+    1L,
+    as.integer(.nState),
+    as.integer(.nParam),
+    as.integer(.nParam2),
+    as.integer(.nParam3),
+    as.integer(.rxEventSensUseCalcJac(model))
+  )
   invisible(TRUE)
 }
 
@@ -1266,11 +1540,17 @@ rxEventSensDeactivate <- function() {
 #' @return A list `(mode, map, derivs)` or `NULL`.
 #' @noRd
 .rxEventSensInfo <- function(obj, mode) {
-  if (identical(mode, "fd")) return(NULL)
+  if (identical(mode, "fd")) {
+    return(NULL)
+  }
   .map <- .rxEventSensMap(obj)
-  if (is.null(.map)) return(NULL)
+  if (is.null(.map)) {
+    return(NULL)
+  }
   .map <- .rxEventSensFilterMap(obj, .map)
-  if (is.null(.map)) return(NULL)
-  list(mode = mode, map = .map, derivs = .rxEventSensDerivs(obj, map = .map),
-       params = rxModelVars(obj)$params)   # declared param names (plain vs indexed)
+  if (is.null(.map)) {
+    return(NULL)
+  }
+  # declared param names (plain vs indexed)
+  list(mode = mode, map = .map, derivs = .rxEventSensDerivs(obj, map = .map), params = rxModelVars(obj)$params)
 }

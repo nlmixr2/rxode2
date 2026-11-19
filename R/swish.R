@@ -32,7 +32,7 @@
 #' }
 #'
 Swish <- function(x) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
   .Call(`_rxode2_activationF`, x, 6L)
 }
 
@@ -57,6 +57,6 @@ Swish <- function(x) {
 #' rxSolve(x, e)
 #' }
 dSwish <- function(x) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
   .Call(`_rxode2_activationF`, x, 18L)
 }

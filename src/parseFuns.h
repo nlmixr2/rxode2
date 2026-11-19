@@ -4,11 +4,38 @@
 
 #include <ctype.h>
 #include "threadSafeConstants.h"
+#include "rxProtect.h"
 
 SEXP rxode2_getUdf2(const char *fun, const int nargs);
 
 // defined below, used by the adaptive dosing statement handlers
 static inline void rxPushDoseNoteArg(const char *fn, const char *arg, const char *v);
+
+// number of arguments of a `function` parse node: `f()` has 0, not 1
+static inline int functionNodeNargs(D_ParseNode *fPn) {
+  int ii = d_get_number_of_children(d_get_child(fPn, 3)) + 1;
+  if (ii == 1) {
+    D_ParseNode *xpn = d_get_child(fPn, 2);
+    char *v2 = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
+    if (allSpaces(v2)) return 0;
+  }
+  return ii;
+}
+
+// `f(, b)`: the grammar's first argument is optional, so an empty one
+// followed by a comma has to be refused here
+static inline int assertNoEmptyFirstArg(D_ParseNode *fPn, const char *fn) {
+  if (d_get_number_of_children(d_get_child(fPn, 3)) == 0) return 0;
+  D_ParseNode *xpn = d_get_child(fPn, 2);
+  char *v2 = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
+  if (allSpaces(v2)) {
+    updateSyntaxCol();
+    sPrint(&_gbuf, _("'%s' has an empty first argument"), fn);
+    trans_syntax_error_report_fn(_gbuf.s);
+    return 1;
+  }
+  return 0;
+}
 
 static inline int isAtFunctionArg(const char *name) {
   return !strcmp("(", name) ||
@@ -45,14 +72,15 @@ static inline int handleSimFunctions(nodeInfo ni, char *name, int *i, int nch,
     D_ParseNode *xpn = d_get_child(pn, 0);
     char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
     aType(TLOGIC);
+    tb.rng = 1;
     if (!strcmp("simeta", v)) {
       foundF0=1;
       if ((tb.simflg & 1) == 0) tb.simflg += 1;
     } else {
       if ((tb.simflg & 2) == 0) tb.simflg += 2;
     }
-    sAppend(&sb, "%s(_cSub);\n  _SYNC_%s_;", v, v);
-    sAppend(&sbDt, "%s(_cSub);\n  _SYNC_%s_;", v, v);
+    sAppend(&sb, "%s();\n  _SYNC_%s_;", v, v);
+    sAppend(&sbDt, "%s();\n  _SYNC_%s_;", v, v);
     sAppend(&sbt, "%s();", v);
     addLine(&sbPm, "%s\n", sb.s);
     addLine(&sbPmDt, "%s\n", sbDt.s);
@@ -79,13 +107,19 @@ static inline int handleObsStatement(nodeInfo ni, char *name, int *i, int nch,
     sb.o = 0; sbDt.o = 0; sbt.o = 0;
     tb.evid_ = 1;
     aType(TEVID);
-    int ii = d_get_number_of_children(d_get_child(fPn, 3)) + 1;
+    if (assertNoEmptyFirstArg(fPn, "obs")) return 1;
+    int ii = functionNodeNargs(fPn);
+    if (ii == 0) {
+      updateSyntaxCol();
+      trans_syntax_error_report_fn(_("'obs' needs at least one argument"));
+      return 1;
+    }
     D_ParseNode *xpn0 = d_get_child(fPn, 2);
     char *v0 = (char*)rc_dup_str(xpn0->start_loc.s, xpn0->end);
-    rxPushDoseNoteArg("obs", "value", v0);
     sAppend(&sb, "_obs(_cSub, t, %d, (double) %s", ii, v0);
     sAppend(&sbDt, "_obs(_cSub, t, %d, (double) %s", ii, v0);
     sAppend(&sbt, "obs(%s", v0);
+    rxPushDoseNoteArg("obs", "value", v0);
     D_ParseNode *rest = d_get_child(fPn, 3);
     for (int j = 0; j < ii - 1; ++j) {
       char *cur = (char*)rc_dup_str(d_get_child(rest, j)->start_loc.s,
@@ -110,56 +144,107 @@ static inline int handleObsStatement(nodeInfo ni, char *name, int *i, int nch,
   return 0;
 }
 
+/* Shared implementation of the dose-splitting directives.  splitKind
+ * selects which declaration table receives the source-then-target de
+ * indexes: 0 splitBolus(), 1 splitInfusion(), 2 splitInfusionBolus(),
+ * 3 splitBolusInfusion().  Only one splitting directive of any kind is
+ * supported per model: they all rewrite the same translated dose
+ * records, so combining them would make the result depend on the pass
+ * order. */
+static inline int handleSplitStatementKind(nodeInfo ni, char *name, int *i, int nch,
+                                           D_ParseNode *pn, int splitKind) {
+  const char *fname = splitKind == 0 ? "splitBolus" : (splitKind == 1 ? "splitInfusion" : (splitKind == 2 ? "splitInfusionBolus" : "splitBolusInfusion"));
+  if (tb.splitBolusN != 0 || tb.splitInfusionN != 0 || tb.splitInfusionBolusN != 0 || tb.splitBolusInfusionN != 0) {
+    updateSyntaxCol();
+    trans_syntax_error_report_fn(_("only one 'splitBolus()', 'splitInfusion()', 'splitInfusionBolus()' or 'splitBolusInfusion()' statement is supported per model"));
+  }
+  *i = nch;
+  sb.o = 0; sbDt.o = 0; sbt.o = 0;
+  D_ParseNode *cSrc = d_get_child(pn, 2);
+  D_ParseNode *c1 = d_get_child(pn, 4);
+  D_ParseNode *rest = d_get_child(pn, 5);
+  int nTargets = d_get_number_of_children(rest) + 1;
+  int nCmts = nTargets + 1;
+  char **vals = (char**)R_Calloc(nCmts, char*);
+  vals[0] = (char*)rc_dup_str(cSrc->start_loc.s, cSrc->end);
+  vals[1] = (char*)rc_dup_str(c1->start_loc.s, c1->end);
+  for (int j = 0; j < nTargets - 1; ++j) {
+    char *cur = (char*)rc_dup_str(d_get_child(rest, j)->start_loc.s,
+                                  d_get_child(rest, j)->end);
+    vals[j + 2] = cur + 1;
+    while (*vals[j + 2] == ' ' || *vals[j + 2] == '\t') vals[j + 2]++;
+  }
+  const char *dupMsg =
+    splitKind == 0 ? _("'splitBolus()' target compartments must all be different") :
+    (splitKind == 1 ? _("'splitInfusion()' target compartments must all be different") :
+    (splitKind == 2 ? _("'splitInfusionBolus()' target compartments must all be different") :
+                      _("'splitBolusInfusion()' target compartments must all be different")));
+  for (int j = 1; j < nCmts; ++j) {
+    for (int k = j + 1; k < nCmts; ++k) {
+      if (!strcmp(vals[j], vals[k])) {
+        updateSyntaxCol();
+        trans_syntax_error_report_fn((char*)dupMsg);
+      }
+    }
+  }
+  int *dst = splitKind == 0 ? tb.splitBolus : (splitKind == 1 ? tb.splitInfusion : (splitKind == 2 ? tb.splitInfusionBolus : tb.splitBolusInfusion));
+  for (int j = 0; j < nCmts; ++j) {
+    int hasLhs = isCmtLhsStatement(ni, name, vals[j]);
+    if (new_de(vals[j], fromCMTprop)) {
+      add_de(ni, name, vals[j], hasLhs, fromCMTprop);
+    } else {
+      new_or_ith(vals[j]);
+    }
+    dst[j] = tb.id + 1;
+  }
+  if (splitKind == 0) {
+    tb.splitBolusN = nCmts;
+  } else if (splitKind == 1) {
+    tb.splitInfusionN = nCmts;
+  } else if (splitKind == 2) {
+    tb.splitInfusionBolusN = nCmts;
+  } else {
+    tb.splitBolusInfusionN = nCmts;
+  }
+  sAppend(&sbt, "%s(%s", fname, vals[0]);
+  for (int j = 1; j < nCmts; ++j) {
+    sAppend(&sbt, ",%s", vals[j]);
+  }
+  sAppend(&sbt, ");");
+  sAppend(&sbNrm, "%s\n", sbt.s);
+  addLine(&sbNrmL, "%s\n", sbt.s);
+  R_Free(vals);
+  return 1;
+}
+
 static inline int handleSplitBolusStatement(nodeInfo ni, char *name, int *i, int nch,
                                             D_ParseNode *pn) {
   if (nodeHas(splitBolus_statement) && *i == 0) {
-    if (tb.splitBolusN != 0) {
-      updateSyntaxCol();
-      trans_syntax_error_report_fn(_("only one 'splitBolus()' statement is supported per model"));
-    }
-    *i = nch;
-    sb.o = 0; sbDt.o = 0; sbt.o = 0;
-    D_ParseNode *cSrc = d_get_child(pn, 2);
-    D_ParseNode *c1 = d_get_child(pn, 4);
-    D_ParseNode *rest = d_get_child(pn, 5);
-    int nTargets = d_get_number_of_children(rest) + 1;
-    int nCmts = nTargets + 1;
-    char **vals = (char**)R_Calloc(nCmts, char*);
-    vals[0] = (char*)rc_dup_str(cSrc->start_loc.s, cSrc->end);
-    vals[1] = (char*)rc_dup_str(c1->start_loc.s, c1->end);
-    for (int j = 0; j < nTargets - 1; ++j) {
-      char *cur = (char*)rc_dup_str(d_get_child(rest, j)->start_loc.s,
-                                    d_get_child(rest, j)->end);
-      vals[j + 2] = cur + 1;
-      while (*vals[j + 2] == ' ' || *vals[j + 2] == '\t') vals[j + 2]++;
-    }
-    for (int j = 1; j < nCmts; ++j) {
-      for (int k = j + 1; k < nCmts; ++k) {
-        if (!strcmp(vals[j], vals[k])) {
-          updateSyntaxCol();
-          trans_syntax_error_report_fn(_("'splitBolus()' target compartments must all be different"));
-        }
-      }
-    }
-    for (int j = 0; j < nCmts; ++j) {
-      int hasLhs = isCmtLhsStatement(ni, name, vals[j]);
-      if (new_de(vals[j], fromCMTprop)) {
-        add_de(ni, name, vals[j], hasLhs, fromCMTprop);
-      } else {
-        new_or_ith(vals[j]);
-      }
-      tb.splitBolus[j] = tb.id + 1;
-    }
-    tb.splitBolusN = nCmts;
-    sAppend(&sbt, "splitBolus(%s", vals[0]);
-    for (int j = 1; j < nCmts; ++j) {
-      sAppend(&sbt, ",%s", vals[j]);
-    }
-    sAppend(&sbt, ");");
-    sAppend(&sbNrm, "%s\n", sbt.s);
-    addLine(&sbNrmL, "%s\n", sbt.s);
-    R_Free(vals);
-    return 1;
+    return handleSplitStatementKind(ni, name, i, nch, pn, 0);
+  }
+  return 0;
+}
+
+static inline int handleSplitInfusionStatement(nodeInfo ni, char *name, int *i, int nch,
+                                               D_ParseNode *pn) {
+  if (nodeHas(splitInfusion_statement) && *i == 0) {
+    return handleSplitStatementKind(ni, name, i, nch, pn, 1);
+  }
+  return 0;
+}
+
+static inline int handleSplitInfusionBolusStatement(nodeInfo ni, char *name, int *i, int nch,
+                                               D_ParseNode *pn) {
+  if (nodeHas(splitInfusionBolus_statement) && *i == 0) {
+    return handleSplitStatementKind(ni, name, i, nch, pn, 2);
+  }
+  return 0;
+}
+
+static inline int handleSplitBolusInfusionStatement(nodeInfo ni, char *name, int *i, int nch,
+                                               D_ParseNode *pn) {
+  if (nodeHas(splitBolusInfusion_statement) && *i == 0) {
+    return handleSplitStatementKind(ni, name, i, nch, pn, 3);
   }
   return 0;
 }
@@ -174,6 +259,7 @@ typedef struct transFunctions {
   int isT;
   int isUnif;
   int isWeibull;
+  int isLnorm;
   int isNormV;
   int isCauchy;
   int isLead;
@@ -225,6 +311,7 @@ static inline void transFunctionsIni(transFunctions *tf) {
   tf->isT=0;
   tf->isUnif=0;
   tf->isWeibull=0;
+  tf->isLnorm=0;
   tf->isNormV=0;
   tf->isCauchy=0;
   tf->isLead=0;
@@ -307,7 +394,12 @@ static inline int handleFunctionSum(transFunctions *tf) {
       !strcmp("max", tf->v)   || !strcmp("min", tf->v) ||
       !strcmp("rxord", tf->v) ||
       !strcmp("mix", tf->v) || !strcmp("obs", tf->v)) {
-    int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
+    int ii = functionNodeNargs(tf->pn);
+    if (ii == 0) {
+      updateSyntaxCol();
+      sPrint(&_gbuf, _("'%s' needs at least one argument"), tf->v);
+      trans_syntax_error_report_fn(_gbuf.s);
+    }
     if (!strcmp("prod", tf->v)) {
       sAppend(&sb, "_prod(_p, _input, _solveData->prodType, %d, (double) ", ii);
       sAppend(&sbDt, "_prod(_p, _input, _solveData->prodType, %d, (double) ", ii);
@@ -323,10 +415,11 @@ static inline int handleFunctionSum(transFunctions *tf) {
     } else if (!strcmp("rxord", tf->v)) {
       sAppend(&sb, "_rxord(_cSub, %d, (double) ", ii);
       sAppend(&sbDt, "_rxord(_cSub, %d, (double) ", ii);
+      tb.rng = 1; // _rxord() draws with rxunif()
     } else if (!strcmp("mix", tf->v)) {
       sAppend(&sb, "_mix(_cSub, %d, (double) ", ii);
       sAppend(&sbDt, "_mix(_cSub, %d, (double) ", ii);
-      if (ii % 2 == 0 || ii < 3) {
+      if (ii != 0 && (ii % 2 == 0 || ii < 3)) {
         sPrint(&_gbuf,
                _("'mix' takes an odd number of arguments (and at least 3) supplied %d"),
                ii);
@@ -393,6 +486,42 @@ static inline int handleFunctionsExceptLinCmt(transFunctions *tf) {
 
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
 
+#include "invCdfMemo.h"
+
+// Count the ROOT-FINDING inverse CDFs this model calls, and size their memo.
+//
+// These are the expensive special functions -- each is a Newton/Halley iteration
+// whose every step evaluates the full forward CDF -- and a declared non-normal
+// random effect puts one in a MODEL LINE, i.e. on the per-record path, with
+// arguments that only change per subject.  The memo turns that back into once
+// per subject, but only if it has a slot for every call site: with one slot per
+// table, several declarations evict each other on every record and none ever
+// hits (measured: 1 slot 1.85x, 4 slots 3.0x on two declared etas).
+//
+// The count is a property of the parsed model, which is why it is taken here.
+// Eight slots per call site gives room for the perturbed argument sets a
+// finite-difference or sensitivity pass evaluates alongside the nominal one, and
+// the floor keeps the default for models that call none.
+//
+// chi-squared, inverse-chi-squared, scaled-inverse-chi-squared and studentT all
+// reach one of these through the catalog's own expansions, so counting these
+// names covers them.
+static inline void handleInvCdfFunctions(transFunctions *tf) {
+  if (!strcmp("gammapInv",   tf->v) || !strcmp("gammaqInv",   tf->v) ||
+      !strcmp("gammapInva",  tf->v) || !strcmp("gammaqInva",  tf->v) ||
+      !strcmp("ibetaInv",    tf->v) || !strcmp("studentTInv", tf->v)) {
+    // EXACT, from the parsed model: four slots per call site.
+    //
+    // Measured on two declared etas -- 1 slot 1.85x, 4 slots 3.0x, 64 slots
+    // 3.1x -- so two per site already recovers essentially all of it, and four
+    // leaves room for the perturbed argument sets a finite-difference pass
+    // evaluates beside the nominal one.  No floor beyond the setter's minimum: a
+    // model calling none of these allocates none.
+    tb.nInvCdf++;
+    rxSetInvCdfMemoSize(4 * tb.nInvCdf);
+  }
+}
+
 static inline void handleLlFunctions(transFunctions *tf) {
   if (!strncmp("llikX", tf->v, 5)) {
     D_ParseNode *xpn = d_get_child(tf->pn,2);
@@ -413,6 +542,13 @@ extern SEXP _rxode2parse_funNameInt;
 extern SEXP _rxode2parse_functionThreadSafe;
 
 
+extern SEXP _rxode2parse_functionPackageName;
+
+static inline int rxIsExtPkgFun(int kk) {
+  const char *pkg = R_CHAR(STRING_ELT(_rxode2parse_functionPackageName, kk));
+  return strcmp(pkg, "rxode2") && strcmp(pkg, "rxode2ll");
+}
+
 static inline int handleBadFunctions(transFunctions *tf) {
   // Split out to handle anticipated automatic conversion of R
   // functions to C
@@ -420,7 +556,7 @@ static inline int handleBadFunctions(transFunctions *tf) {
   int curThread = 0;
   for (int j = Rf_length(_goodFuns); j--;){
     if (!strcmp(CHAR(STRING_ELT(_goodFuns, j)),tf->v)){
-      int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
+      int ii = functionNodeNargs(tf->pn);
       int argMin=-1, argMax=-1;
       for (int kk = Rf_length(_rxode2parse_rxFunctionName); kk--;) {
         if (!strcmp(CHAR(STRING_ELT(_rxode2parse_rxFunctionName, kk)),tf->v)) {
@@ -428,6 +564,8 @@ static inline int handleBadFunctions(transFunctions *tf) {
           argMax = INTEGER(_rxode2parse_functionArgMax)[kk];
           curThread = INTEGER(_rxode2parse_functionThreadSafe)[kk];
           if (curThread == 0) tb.thread = notThreadSafe;
+          // another package's C function may draw random numbers
+          if (rxIsExtPkgFun(kk)) tb.rng = 1;
           if (argMin == NA_INTEGER || argMax == NA_INTEGER) {
             argMin = argMax = -1;
             break;
@@ -471,33 +609,31 @@ static inline int handleBadFunctions(transFunctions *tf) {
       }
       // Save log-likelihood information
       handleLlFunctions(tf);
+      // Size the inverse-CDF memo from what this model actually calls
+      handleInvCdfFunctions(tf);
       foundFun = 1;
       j=0;
       break;
     }
   }
   if (foundFun == 0){
-    int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
-    if (ii == 1) {
-      D_ParseNode *xpn = d_get_child(tf->pn, 2);
-      char *v2 = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
-      int allSpace=allSpaces(v2);
-      if (allSpace) ii = 0;
-    }
-    SEXP lst = PROTECT(rxode2_getUdf2(tf->v, ii));
+    int ii = functionNodeNargs(tf->pn);
+    rxProtectGuard;
+    SEXP lst = rxP(rxode2_getUdf2(tf->v, ii));
     int udf = INTEGER(VECTOR_ELT(lst, 0))[0];
     const char *udfInfo = R_CHAR(STRING_ELT(VECTOR_ELT(lst, 1), 0));
-    UNPROTECT(1);
+    rxUPAll();
     if (udf == NA_INTEGER) {
       sPrint(&_gbuf, "%s", udfInfo);
       updateSyntaxCol();
       trans_syntax_error_report_fn(_gbuf.s);
     } else {
       if (udf == -42) {
-        sAppend(&sb, "_udf(\".rxUiUdfNone\", (double *) NULL, -42, (double) ", ii);
-        sAppend(&sbDt, "_udf(\".rxUiUdfNone\",(double *) NULL, -42, (double) ", ii);
+        sAppendN(&sb, "_udf(\".rxUiUdfNone\", (double *) NULL, -42, (double) ", 52);
+        sAppendN(&sbDt, "_udf(\".rxUiUdfNone\",(double *) NULL, -42, (double) ", 51);
         sAppend(&sbt, "%s(", tf->v);
         tb.thread = notThreadSafe;
+        tb.rng = 1;
         tf->i[0] = 1;// Parse next arguments
         tf->depth[0]=1;
         return 1;
@@ -514,6 +650,7 @@ static inline int handleBadFunctions(transFunctions *tf) {
         sAppend(&sbDt, "_udf(\"%s\", __udf, %d, (double) ", tf->v, ii);
         sAppend(&sbt, "%s(", tf->v);
         tb.thread = notThreadSafe;
+        tb.rng = 1;
         tf->i[0] = 1;// Parse next arguments
         tf->depth[0]=1;
         return 1;
@@ -535,6 +672,11 @@ static inline int handleFunctions(nodeInfo ni, char *name, int *i, int *depth, i
     tf->xpn = xpn;
     tf->pn = pn;
     tf->v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
+    if (assertNoEmptyFirstArg(pn, tf->v)) {
+      // skip the call so its handler does not also act on the empty argument
+      tf->i[0] = tf->nch;
+      return 1;
+    }
     if (handleFunctionsExceptLinCmt(tf)) {
       return 1;
     } else if (handleFunctionLinCmt(tf)){
@@ -656,13 +798,38 @@ static inline int rxPushDoseArgIsDeclared(const char *v) {
     rxDoseArgInLines(&tb.str, tb.str.n, v);
 }
 
-// Report the identifiers collected by rxPushDoseNoteArg() that the model never
+// Register an identifier used only in a dosing argument (eg a data column in
+// bolus(DOSE * 30)) as a model input, as if it appeared on a right-hand side.
+// Returns 0 when it cannot be a model variable (a reserved or forbidden name).
+static inline int rxPushDoseArgRegister(const char *v) {
+  int oldFn = tb.fn;
+  tb.fn = 0;
+  int isNew = new_or_ith(v);
+  tb.fn = oldFn;
+  if (!isNew) return 0;
+  addSymbolStr((char*)v);
+  tb.lh[NV-1] = notLHS;
+  tb.lho[NV-1] = 0;
+  tb.interp[NV-1] = 0;
+  tb.lag[NV-1] = 0;
+  tb.alag[NV-1] = 0;
+  tb.ini[NV-1] = 0;
+  tb.mtime[NV-1] = 0;
+  tb.iniv[NV-1] = 0.0;
+  tb.ini0[NV-1] = 0;
+  return 1;
+}
+
+// Resolve the identifiers collected by rxPushDoseNoteArg() that the model never
 // declares.  Run after the whole model has been parsed, so a variable assigned
-// below the dosing statement still counts as declared.  See #1231.
+// below the dosing statement still counts as declared.  Anything else becomes a
+// model input (parameter or covariate); only a name that cannot be one is an
+// error.  See #1231.
 static inline void assertAdaptiveDosingArgsDeclared(void) {
   for (int j = 0; j < sbDoseArgVar.n; j++) {
     const char *v = sbDoseArgVar.line[j];
     if (rxPushDoseArgIsDeclared(v)) continue;
+    if (rxPushDoseArgRegister(v)) continue;
     int dup = 0; // only complain once per name
     for (int k = 0; k < j; k++) {
       if (!strcmp(sbDoseArgVar.line[k], v)) { dup = 1; break; }

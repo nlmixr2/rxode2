@@ -1,5 +1,5 @@
 ---
-title: "Exposure-Response Simulation with rxode2"
+title: "Exposure-response simulation"
 ---
 
 ```{r, include = FALSE}
@@ -264,3 +264,8 @@ ggplot(aucBin, aes(x = AUC, y = resp)) +
 <!-- - Use the ETA/EPS resampling vignette when you want to resample -->
 <!--   variability from an existing dataset rather than sampling from -->
 <!--   parametric distributions. -->
+
+## Next steps
+
+- [Clinical trial simulation](rxode2-clinical-trial-sim.html)
+- [Visual predictive checks](rxode2-vpc.html)

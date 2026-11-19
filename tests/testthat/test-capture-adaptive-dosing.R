@@ -16,7 +16,7 @@ rxTest({
     expect_length(caps, 1L)
     expect_equal(caps[[1]]$id, 1L)
     expect_match(caps[[1]]$original, "evid_")
-    expect_match(caps[[1]]$condition, "t")     # condition contains t
+    expect_match(caps[[1]]$condition, "t") # condition contains t
     expect_equal(caps[[1]]$capVar, "rxCaptureId1")
   })
 
@@ -40,26 +40,29 @@ rxTest({
     # (evid_, bolus, infuse, infuseDur, reset, replace, multiply, phantom, obs)
     # Each is wrapped in a simple model; correct arg counts per grammar.
     cases <- list(
-      list(fn = "evid_",     call = "evid_(t+12, 1, 50, 1, 0, 0, 0, 0)"),
-      list(fn = "bolus",     call = "bolus(50, 1, 0, 0, 0)"),
-      list(fn = "infuse",    call = "infuse(50, 10, 1, 0, 0, 0)"),
+      list(fn = "evid_", call = "evid_(t+12, 1, 50, 1, 0, 0, 0, 0)"),
+      list(fn = "bolus", call = "bolus(50, 1, 0, 0, 0)"),
+      list(fn = "infuse", call = "infuse(50, 10, 1, 0, 0, 0)"),
       list(fn = "infuseDur", call = "infuseDur(50, 2, 1, 0, 0, 0)"),
-      list(fn = "reset",     call = "reset()"),
-      list(fn = "replace",   call = "replace(50, 1)"),
-      list(fn = "multiply",  call = "multiply(0.5, 1)"),
-      list(fn = "phantom",   call = "phantom(50, 1, 0, 0, 0)"),
-      list(fn = "obs",       call = "obs(cp)")
+      list(fn = "reset", call = "reset()"),
+      list(fn = "replace", call = "replace(50, 1)"),
+      list(fn = "multiply", call = "multiply(0.5, 1)"),
+      list(fn = "phantom", call = "phantom(50, 1, 0, 0, 0)"),
+      list(fn = "obs", call = "obs(cp)")
     )
     for (case in cases) {
       model_str <- paste0(
         "d/dt(A) <- -ka * A\ncp <- A/vd\nif (t > 0) {\n  ",
-        case$call, "\n}"
+        case$call,
+        "\n}"
       )
       m <- tryCatch(
         suppressMessages(rxode2(model_str)),
         error = function(e) NULL
       )
-      if (is.null(m)) next   # skip if parser rejects (e.g. obs)
+      if (is.null(m)) {
+        next
+      } # skip if parser rejects (e.g. obs)
       pruned <- rxPrune(m)
       caps <- attr(pruned, "capturedEvid")
       expect_false(
@@ -70,8 +73,7 @@ rxTest({
         !is.null(caps) && length(caps) >= 1L,
         info = paste0(case$fn, " should produce at least one capture")
       )
-      expect_match(caps[[1]]$original, case$fn,
-                   info = paste0(case$fn, " original should be stored"))
+      expect_match(caps[[1]]$original, case$fn, info = paste0(case$fn, " original should be stored"))
     }
   })
 
@@ -142,10 +144,8 @@ rxTest({
 
   test_that(".restoreAdaptiveDosing builds correct if-wrapped restore lines", {
     caps <- list(
-      list(id = 1L, original = "bolus(50, 1, 0, 0, 0)", condition = "(t<24)",
-           capVar = "rxCaptureId1"),
-      list(id = 2L, original = "reset()", condition = "1",
-           capVar = "rxCaptureId2")
+      list(id = 1L, original = "bolus(50, 1, 0, 0, 0)", condition = "(t<24)", capVar = "rxCaptureId1"),
+      list(id = 2L, original = "reset()", condition = "1", capVar = "rxCaptureId2")
     )
     lines <- .restoreAdaptiveDosing(caps)
     expect_equal(lines[[1]], "if (rxCaptureId1) { bolus(50, 1, 0, 0, 0) }")

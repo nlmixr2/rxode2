@@ -35,7 +35,6 @@ rxTest({
 
           expect_equal(data.frame(et), data.frame(et2)[, c("time", "amt", "rate", "ii", "addl")])
 
-
           d <- 3
           et <- et() |>
             et(amt = d, dur = dur) |>

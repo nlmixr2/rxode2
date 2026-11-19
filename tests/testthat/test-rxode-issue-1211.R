@@ -11,8 +11,7 @@ ifelse(t<2, b <- 1, b <- 2)
 d/dt(a) <- -a + b*kin
 ")
     expect_s3_class(m, "rxode2")
-    expect_equal(rxNorm(m),
-                 "kin=3;\nif (t<2){\nb=1;\n}\nelse {\nb=2;\n}\nd/dt(a)=-a+b*kin;\n")
+    expect_equal(rxNorm(m), "kin=3;\nif (t<2){\nb=1;\n}\nelse {\nb=2;\n}\nd/dt(a)=-a+b*kin;\n")
   })
 
   test_that("ifelse() statement form compiles after a d/dt()", {
@@ -22,8 +21,7 @@ ifelse(t<2, b <- 1, b <- 2)
 d/dt(c2) <- b
 ")
     expect_s3_class(m, "rxode2")
-    expect_equal(rxNorm(m),
-                 "d/dt(a)=-a;\nif (t<2){\nb=1;\n}\nelse {\nb=2;\n}\nd/dt(c2)=b;\n")
+    expect_equal(rxNorm(m), "d/dt(a)=-a;\nif (t<2){\nb=1;\n}\nelse {\nb=2;\n}\nd/dt(c2)=b;\n")
   })
 
   test_that("ifelse() statement form normalizes to a re-parsable fixed point", {
@@ -54,8 +52,7 @@ d/dt(c2) <- b
 ")
     expect_equal(rxNorm(.ie), rxNorm(.if))
     .ev <- et(seq(0, 5, by = 0.5)) |> et(amt = 10, cmt = 1)
-    expect_equal(rxSolve(.ie, .ev, returnType = "data.frame"),
-                 rxSolve(.if, .ev, returnType = "data.frame"))
+    expect_equal(rxSolve(.ie, .ev, returnType = "data.frame"), rxSolve(.if, .ev, returnType = "data.frame"))
   })
 
   test_that("ifelse() statement form carries break inside a while()", {
@@ -66,19 +63,24 @@ while (q > 0) {
 }
 d/dt(a) <- -a + q
 ")
-    expect_equal(rxNorm(m),
-                 paste0("q=1;\nwhile (q>0){\nif (q<0.4){\nbreak;\n}\nelse {\n",
-                        "q=q-0.25;\n}\n}\nd/dt(a)=-a+q;\n"))
+    expect_equal(
+      rxNorm(m),
+      paste0("q=1;\nwhile (q>0){\nif (q<0.4){\nbreak;\n}\nelse {\n", "q=q-0.25;\n}\n}\nd/dt(a)=-a+q;\n")
+    )
     .s <- rxSolve(m, et(0:3) |> et(amt = 10, cmt = 1), returnType = "data.frame")
     expect_equal(unique(.s$q), 0.25)
   })
 
   test_that("ifelse() statement form works in symengine derivatives", {
     .mod <- function(cond) {
-      sprintf(paste0("ka <- exp(tka)\ncl <- exp(tcl)\nv <- exp(tv)\n%s\n",
-                     "d/dt(depot) <- -ka*depot\n",
-                     "d/dt(center) <- ka*depot - cl/v*center*fac\ncp <- center/v"),
-              cond)
+      sprintf(
+        paste0(
+          "ka <- exp(tka)\ncl <- exp(tcl)\nv <- exp(tv)\n%s\n",
+          "d/dt(depot) <- -ka*depot\n",
+          "d/dt(center) <- ka*depot - cl/v*center*fac\ncp <- center/v"
+        ),
+        cond
+      )
     }
     .ie <- .mod("ifelse(t < 2, fac <- 1, fac <- 2)")
     .if <- .mod("if (t < 2) { fac <- 1 } else { fac <- 2 }")

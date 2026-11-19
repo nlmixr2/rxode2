@@ -24,10 +24,10 @@
 #' rxSolve(x, e)
 #' }
 #'
-PReLU <- function(x, alpha=1) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
-  checkmate::assertNumeric(alpha, finite=TRUE, any.missing=FALSE)
-  .df <- data.frame(x=x, alpha=alpha)
+PReLU <- function(x, alpha = 1) {
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
+  checkmate::assertNumeric(alpha, finite = TRUE, any.missing = FALSE)
+  .df <- data.frame(x = x, alpha = alpha)
   .Call(`_rxode2_activationF2`, .df$x, .df$alpha, 7L)
 }
 #' Derivatives Parametric ReLU Activation Function
@@ -60,27 +60,27 @@ PReLU <- function(x, alpha=1) {
 #' e <- et(c(-1, 0, 1, 2))
 #' rxSolve(r, e)
 #' }
-dPReLU <- function(x, alpha=1) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
-  checkmate::assertNumeric(alpha, finite=TRUE, any.missing=FALSE)
-  .df <- data.frame(x=x, alpha=alpha)
+dPReLU <- function(x, alpha = 1) {
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
+  checkmate::assertNumeric(alpha, finite = TRUE, any.missing = FALSE)
+  .df <- data.frame(x = x, alpha = alpha)
   .Call(`_rxode2_activationF2`, .df$x, .df$alpha, 8L)
 }
 
 #' @rdname dPReLU
 #' @export
-dPReLUa <- function(x, alpha=1) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
-  checkmate::assertNumeric(alpha, finite=TRUE, any.missing=FALSE)
-  .df <- data.frame(x=x, alpha=alpha)
+dPReLUa <- function(x, alpha = 1) {
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
+  checkmate::assertNumeric(alpha, finite = TRUE, any.missing = FALSE)
+  .df <- data.frame(x = x, alpha = alpha)
   .Call(`_rxode2_activationF2`, .df$x, .df$alpha, 9L)
 }
 
 #' @rdname dPReLU
 #' @export
-dPReLUa1 <- function(x, alpha=1) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
-  checkmate::assertNumeric(alpha, finite=TRUE, any.missing=FALSE)
-  .df <- data.frame(x=x, alpha=alpha)
+dPReLUa1 <- function(x, alpha = 1) {
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
+  checkmate::assertNumeric(alpha, finite = TRUE, any.missing = FALSE)
+  .df <- data.frame(x = x, alpha = alpha)
   .Call(`_rxode2_activationF2`, .df$x, .df$alpha, 10L)
 }

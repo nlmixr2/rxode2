@@ -1,5 +1,4 @@
 rxTest({
-
   ## rx->sensH (the fixed finite-difference step for the forwardH/centralH/
   ## forward3H/endpoint5H linCmtSensType options) was populated by re-reading
   ## the linCmtSensType control slot instead of its own linCmtSensH slot, so a
@@ -21,7 +20,6 @@ rxTest({
   ev <- eventTable() |> add.dosing(dose = 100) |> add.sampling(seq(0.5, 8, by = 0.5))
 
   test_that("linCmtSensH lands in rx->sensH, not rx->sensType's value (#1276)", {
-
     invisible(rxSolve(rx, ev, linCmtSensType = "forwardH", linCmtSensH = 0.0055))
     .d <- .rxLinCmtSensDebug()
     expect_equal(.d$sensType, 10)
@@ -43,7 +41,5 @@ rxTest({
     .d <- .rxLinCmtSensDebug()
     expect_equal(.d$sensType, 3)
     expect_equal(.d$sensH, 1e-4)
-
   })
-
 })

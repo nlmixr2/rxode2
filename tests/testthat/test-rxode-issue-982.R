@@ -48,7 +48,6 @@ rxTest({
       expect_equal(as.character(sort(unique(sol$occ))), c("1", "2", "3"))
       expect_true(all(is.finite(sol$iov.cl)))
       expect_true(any(!is.na(sol$sim)))
-
     })
   })
 })

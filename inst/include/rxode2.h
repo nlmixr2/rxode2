@@ -21,7 +21,11 @@
 
 
 #define isDose(evid) ((evid) == 3 || (evid) >= 100)
-#define isObs(evid) ((evid) == 0 || (evid) == 2 || ((evid) >= 9 && (evid) <= 99))
+// evid 8: hidden covariate knot at a lagged dose's data time (#1584)
+#define isObs(evid) ((evid) == 0 || (evid) == 2 || ((evid) >= 8 && (evid) <= 99))
+#define isHiddenEvid(evid) ((evid) == 8 || (evid) == 9)
+// an observation-like record an integrator may step past (a knot is a stop)
+#define isPassObs(evid) (isObs(evid) && (evid) != 8)
 
 #include "rxode2_control.h"
 #include "rxode2prior.h"
@@ -99,7 +103,7 @@ typedef void (*t_set_solve)(rx_solve *);
 
 typedef rx_solve *(*t_get_solve)(void);
 
-typedef void *(*t_assignFuns)(void);
+typedef void (*t_assignFuns)(void);
 
 // External parameter-block loader hook signature.  A package registers a
 // callback (via the rxode2 function-pointer table) that rxode2 invokes once per
@@ -113,6 +117,72 @@ typedef void (*t_rxParLoader)(rx_solve *rx, double *gpars, int npars, int ncols)
 // dydt forcing hook: add forcing to state derivatives from generated model dydt.
 // Defined outside the __RXODE2PTR_H__ guard so downstream packages see the typedef.
 typedef void (*t_rxDydtForce)(int *neq, double t, double *y, double *dydt);
+
+// Status codes of the multivariate t sampler (rxRmvtSetup/rxRmvtDraw); >0 are
+// warnings (the handle is usable), <0 are errors.  Outside the __RXODE2PTR_H__
+// guard so downstream packages see them.
+#define RXMVT_OK 0
+#define RXMVT_WARN_INFEASIBLE 1
+#define RXMVT_WARN_SINGULAR 2
+#define RXMVT_BAD_ARGS -1
+#define RXMVT_BAD_BOUNDS -2
+#define RXMVT_NOT_PD -3
+#define RXMVT_BAD_DF -4
+#define RXMVT_NLEQ_FAIL -5
+#define RXMVT_ACCEPT_FAIL -6
+#define RXMVT_NO_ENGINE -7
+#define RXMVT_ALLOC_FAIL -8
+
+// The output-record walk rxSolve()'s data frame is built with (rxDfWalkInit,
+// rxDfWalkStep and rxDfWalkDull in src/rxode2_df.cpp), so a package solving
+// through rxode2 lays out the same rows.  rxDfWalkStep() returns one of these
+// for a record and fills `out` with the RXDF_OUT_* fields.  Outside the
+// __RXODE2PTR_H__ guard so downstream packages see them.
+#define RXDF_BAD -2  // the state or `out` buffer was rejected
+#define RXDF_SKIP -1 // no calc_lhs, no row (EVID 9)
+#define RXDF_LHS 0   // calc_lhs at RXDF_OUT_LHS_TIME, no row
+#define RXDF_ROW 1   // calc_lhs at RXDF_OUT_LHS_TIME, then a row
+#define RXDF_KNOT 2  // a lagged dose's knot: calc_lhs only
+#define RXDF_OUT_LHS_TIME 0 // time calc_lhs is called with
+#define RXDF_OUT_TIME 1     // the row's time column
+#define RXDF_OUT_RESETNO 2  // the row's resetno column (resets so far + 1)
+#define RXDF_OUT_EVID 3     // the evid column (NONMEM code when addDosing=TRUE)
+#define RXDF_OUT_CMT 4      // cmt, ss, rate, dur, ii: addDosing=TRUE only
+#define RXDF_OUT_SS 5
+#define RXDF_OUT_AMT 6      // amt: addDosing=TRUE or NA
+#define RXDF_OUT_RATE 7
+#define RXDF_OUT_DUR 8
+#define RXDF_OUT_II 9
+#define RXDF_OUT_SIMERR 10  // 1 when the record takes a simulated residual row
+#define RXDF_OUT_NEWIND 11  // 1 when the subject's newind is 2 after it
+#define RXDF_OUT_N 12
+// rxDfSolveRefused(): why rxSolve() refuses a solve instead of returning it
+#define RXDF_REFUSE_NONE 0       // returned (failed subjects NA, with a warning)
+#define RXDF_REFUSE_NA_TIME 1    // an alag()/rate()/dur()/amt() gave NA
+#define RXDF_REFUSE_VV 2         // method='vv' cannot integrate the model
+#define RXDF_REFUSE_EXTRA_PUSH 3 // evid_() pushed past maxExtra
+#define RXDF_REFUSE_SS_INF_DUR 4 // duration with a steady-state infusion
+#define RXDF_REFUSE_INDLIN 5     // one subject; indLin did not converge
+#define RXDF_REFUSE_UNSOLVED 6   // one subject; it could not be solved
+
+#ifndef __RXODE2PTR_H__
+int rxDfWalkInit(void *state, int stateSize, rx_solve *rx,
+                 rx_solving_options_ind *ind, int doDose, int countOnly);
+int rxDfWalkStep(void *state, int i, double *out, int nOut);
+void rxDfWalkDull(const void *state, int *dull);
+int rxDfKeepSetup(rx_solve *rx);
+int rxDfKeepFirst(rx_solve *rx, int solveid);
+void rxDfKeepRow(rx_solve *rx, rx_solving_options_ind *ind, int solveid,
+                 int fid, int i, double t, double *out);
+SEXP rxDfKeepCols(SEXP vals);
+SEXP getDfLevels(const char *item, rx_solve *rx, R_xlen_t nrow);
+int rxDfSolveRefused(rx_solve *rx);
+int rxRmvtSetup(void **handle, int d, const double *mu, const double *sigma,
+                int isChol, const double *lower, const double *upper, double nu,
+                double a, double tol, double nlTol, int nlMaxiter);
+int rxRmvtDraw(void *handle, double *out, int n);
+void rxRmvtFree(void *handle);
+#endif
 
 // Adjoint objective-gradient backward sweep (src/adjoint.cpp).  Its address is
 // exported to downstream packages through the rxode2 function-pointer table
@@ -284,10 +354,8 @@ static inline double _powerD(double x, double lambda, int yj0, double low, doubl
     /* REprintf("%f %f %f\n", x, p, -log(1/p-1)); */
     return Rf_qnorm5(p, 0, 1, 1, 0);
   case 5: // logit followed by yeo-johnson
-    p = (x-low)/(high-low);
-    if (p >= 1) return R_NaN;
-    if (p <= 0) return R_NaN;
-    p = -log(1/p-1);
+    if (!(x > low && x < high)) return R_NaN;
+    p = log(x-low) - log(high-x);
     if (lambda == 1.0) return p;
     if (p >= 0){
       if (lambda == 0) return log1p(p);
@@ -298,11 +366,8 @@ static inline double _powerD(double x, double lambda, int yj0, double low, doubl
       return (1.0 - pow(1.0 - p, l2))/l2;
     }
   case 4: // logitNorm
-    p = (x-low)/(high-low);
-    if (p >= 1) return R_NaN;
-    if (p <= 0) return R_NaN;
-    /* REprintf("%f %f %f\n", x, p, -log(1/p-1)); */
-    return -log(1/p-1);
+    if (!(x > low && x < high)) return R_NaN;
+    return log(x-low) - log(high-x);
   case 3: // logNorm
     if (x <= _eps) x0= _eps;
     return log(x0);
@@ -479,7 +544,7 @@ static inline double _powerDLambda(double x, double lambda, int yj0, double low,
   case 1: return _yjDL(x, lambda);                     // yeoJohnson
   case 2: case 3: case 4: case 6: return 0.0;          // norm/logNorm/logit/probit: no lambda
   case 5: // logit then yeoJohnson
-    p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = -log(1/p-1);
+    if (!(x > low && x < high)) return R_NaN; p = log(x-low) - log(high-x);
     return _yjDL(p, lambda);
   case 7: // probit then yeoJohnson
     p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = Rf_qnorm5(p, 0, 1, 1, 0);
@@ -498,7 +563,7 @@ static inline double _powerDLambda2(double x, double lambda, int yj0, double low
   case 1: return _yjDL2(x, lambda);
   case 2: case 3: case 4: case 6: return 0.0;
   case 5:
-    p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = -log(1/p-1);
+    if (!(x > low && x < high)) return R_NaN; p = log(x-low) - log(high-x);
     return _yjDL2(p, lambda);
   case 7:
     p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = Rf_qnorm5(p, 0, 1, 1, 0);
@@ -518,7 +583,7 @@ static inline double _powerDLambdaX(double x, double lambda, int yj0, double low
   case 1: return _yjDLx(x, lambda);
   case 2: case 3: case 4: case 6: return 0.0;
   case 5:
-    p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = -log(1/p-1);
+    if (!(x > low && x < high)) return R_NaN; p = log(x-low) - log(high-x);
     return _yjDLx(p, lambda)*_powerDD(x, lambda, 4, low, high);
   case 7:
     p = (x-low)/(high-low); if (p >= 1 || p <= 0) return R_NaN; p = Rf_qnorm5(p, 0, 1, 1, 0);

@@ -15,7 +15,8 @@
 #include <Rinternals.h>
 
 
-void RSprintf(const char *format, ...);
+#include "rxPrintfFormat.h"
+void RSprintf(const char *format, ...) R_PRINTF_FORMAT(1, 2);
 #include "solveWarn.h"
 
 int intdy(struct lsoda_context_t * ctx, double t, int k, double *dky)
@@ -52,12 +53,15 @@ int intdy(struct lsoda_context_t * ctx, double t, int k, double *dky)
 	  RSprintf(_("[intdy] k = %d illegal\n"), k);
 	  return -1;
 	}
-	tp = _rxC(tn) - _rxC(hu) - 100. * ETA * (_rxC(tn) + _rxC(hu));
+	/* dlsoda.f: TP = TN - HU - 100*UROUND*SIGN(ABS(TN)+ABS(HU),HU); the
+	   magnitudes keep the window from shrinking at negative times, the sign
+	   widens it in the step's direction */
+	tp = _rxC(tn) - _rxC(hu) - 100. * ETA * copysign(fabs(_rxC(tn)) + fabs(_rxC(hu)), _rxC(hu));
 	if ((t - tp) * (t - _rxC(tn)) > 0.) {
 	  /* Integrator asked to interpolate at a time outside [tcur - hu, tcur].
 	     Aggregate by message text; par_solve / nlmixr2est emits one
 	     summary line per distinct message at iteration boundaries. */
-	  rxSolveWarnPush(_rxC(id), "intdy -- t = %g illegal");
+	  rxSolveWarnPushStat(_rxC(id), 1, &t, "intdy -- t = %%v illegal");
 	  return -2;
 	}
 	s = (t - _rxC(tn)) / _rxC(h);

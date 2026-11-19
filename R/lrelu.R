@@ -16,7 +16,7 @@
 #' rxSolve(r, e)
 #' }
 lReLU <- function(x) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
   .Call(`_rxode2_activationF`, x, 5L)
 }
 
@@ -39,6 +39,6 @@ lReLU <- function(x) {
 #' }
 #'
 dlReLU <- function(x) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
   .Call(`_rxode2_activationF`, x, 8L)
 }

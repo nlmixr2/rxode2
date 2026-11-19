@@ -1,40 +1,32 @@
 // -*- mode: C++; c-indent-level: 2; c-basic-offset: 2; indent-tabs-mode: nil; -*-
+static inline void handleFunctionPnormError(transFunctions *tf) {
+  if (tf->isPnorm) {
+    trans_syntax_error_report_fn(_("'pnorm' in rxode2 takes 1-3 arguments pnorm(q, mean, sd)"));
+  } else if (!strcmp("qnorm", tf->v)) {
+    trans_syntax_error_report_fn(_("'qnorm' in rxode2 takes 1-3 arguments qnorm(p, mean, sd)"));
+  } else {
+    trans_syntax_error_report_fn(_("'dnorm' in rxode2 takes 1-3 arguments dnorm(x, mean, sd)"));
+  }
+}
+
 static inline int handleFunctionPnorm(transFunctions *tf) {
   if ((tf->isPnorm = !strcmp("pnorm", tf->v)) ||
-      !strcmp("qnorm", tf->v)){
+      !strcmp("qnorm", tf->v) || !strcmp("dnorm", tf->v)) {
     int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
+    int bad = ii > 3;
     if (ii == 1) {
       D_ParseNode *xpn = d_get_child(tf->pn, 2);
       char *v2 = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
-      int allSpace=allSpaces(v2);
+      bad = allSpaces(v2);
       /* Free(v2); */
-      if (allSpace){
-        updateSyntaxCol();
-        if (tf->isPnorm){
-          trans_syntax_error_report_fn(_("'pnorm' in rxode2 takes 1-3 arguments pnorm(q, mean, sd)"));
-        } else {
-          trans_syntax_error_report_fn(_("'qnorm' in rxode2 takes 1-3 arguments pnorm(p, mean, sd)"));
-        }
-      } else {
-        sAppend(&sb, "_%s1(", tf->v);
-        sAppend(&sbDt,"_%s1(", tf->v);
-        sAppend(&sbt, "%s(", tf->v);
-      }
-    } else if (ii == 2) {
-      sAppend(&sb,"_%s2(", tf->v);
-      sAppend(&sbDt,"_%s2(", tf->v);
-      sAppend(&sbt, "%s(", tf->v);
-    } else if (ii == 3) {
-      sAppend(&sb,"_%s3(", tf->v);
-      sAppend(&sbDt,"_%s3(", tf->v);
-      sAppend(&sbt, "%s(", tf->v);
-    } else {
+    }
+    if (bad) {
       updateSyntaxCol();
-      if (tf->isPnorm){
-        trans_syntax_error_report_fn(_("'pnorm' in rxode2 takes 1-3 arguments pnorm(q, mean, sd)"));
-      } else {
-        trans_syntax_error_report_fn(_("'qnorm' in rxode2 takes 1-3 arguments pnorm(p, mean, sd)"));
-      }
+      handleFunctionPnormError(tf);
+    } else {
+      sAppend(&sb, "_%s%d(", tf->v, ii);
+      sAppend(&sbDt,"_%s%d(", tf->v, ii);
+      sAppend(&sbt, "%s(", tf->v);
     }
     tf->i[0] = 1;// Parse next arguments
     tf->depth[0]=1;
@@ -82,7 +74,9 @@ static inline int isRxnormOrRelatedNode(transFunctions *tf) {
     (tf->isUnif = !strcmp("rxunif", tf->v) ||
      !strcmp("runif", tf->v) || (tf->isInd = !strcmp("riunif", tf->v))) ||
     (tf->isWeibull = !strcmp("rxweibull", tf->v) ||
-     !strcmp("rweibull", tf->v) || (tf->isInd = !strcmp("riweibull", tf->v)));
+     !strcmp("rweibull", tf->v) || (tf->isInd = !strcmp("riweibull", tf->v))) ||
+    (tf->isLnorm = !strcmp("rxlnorm", tf->v) ||
+     !strcmp("rlnorm", tf->v) || (tf->isInd = !strcmp("rilnorm", tf->v)));
 }
 
 static inline int assertCorrectRxnormArgs2(transFunctions *tf, int nargs) {
@@ -111,6 +105,11 @@ static inline int assertCorrectRxnormArgs12(transFunctions *tf, int nargs) {
     if (tf->isWeibull){
       updateSyntaxCol();
       trans_syntax_error_report_fn(_("'riweibull'/'rxweibull'/'rweibull' takes 1-2 arguments 'rxweibull(shape, scale)'"));
+      return 1;
+    }
+    if (tf->isLnorm){
+      updateSyntaxCol();
+      trans_syntax_error_report_fn(_("'rilnorm'/'rxlnorm'/'rlnorm' takes 1-2 arguments 'rxlnorm(meanlog, sdlog)'"));
       return 1;
     }
   }
@@ -149,6 +148,7 @@ static inline int assertCorrectRxnormArgs(transFunctions *tf, int nargs) {
 static inline int handleFunctionRxnorm(transFunctions *tf) {
   if (isRxnormOrRelatedNode(tf)) {
     if (tb.thread != 0) tb.thread = 2;
+    tb.rng = 1;
     int nargs = getFunctionNargs(tf, 3);
     if (assertCorrectRxnormArgs(tf, nargs)) return 1;
     switch (nargs) {
@@ -227,6 +227,7 @@ static inline int assertCorrectRxchisqArgs(transFunctions *tf, int nargs) {
 static inline int handleFunctionRchisq(transFunctions *tf) {
   if (isRchisqOrRelatedNode(tf)) {
     if (tb.thread != 0) tb.thread = 2;
+    tb.rng = 1;
     int nargs = getFunctionNargs(tf, 3);
     if (assertCorrectRxchisqArgs(tf, nargs)) return 1;
     switch(nargs){
@@ -300,6 +301,7 @@ static inline int assertCorrectGeomArgs(transFunctions *tf, int nargs) {
 static inline int handleFunctionRgeom(transFunctions *tf) {
   if (isRgeomOrRelated(tf)) {
     if (tb.thread != 0) tb.thread = 2;
+    tb.rng = 1;
     int nargs = getFunctionNargs(tf, 3);
     if (assertCorrectGeomArgs(tf, nargs)) return 1;
     if (tf->isInd) {
@@ -323,6 +325,7 @@ static inline int handleFunctionRbinom(transFunctions *tf) {
       !strcmp("rxbinom", tf->v) ||
       (tf->isInd = !strcmp("ribinom", tf->v))) {
     if (tb.thread != 0) tb.thread = 2;
+    tb.rng = 1;
     int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
     if (ii != 2){
       updateSyntaxCol();
@@ -349,6 +352,7 @@ static inline int handleFunctionRnbinomMu(transFunctions *tf) {
       !strcmp("rxnbinomMu", tf->v) ||
       (tf->isInd = !strcmp("rinbinomMu", tf->v))) {
     if (tb.thread != 0) tb.thread = 2;
+    tb.rng = 1;
     int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
     if (ii != 2){
       updateSyntaxCol();
@@ -375,6 +379,7 @@ static inline int handleFunctionRnbinom(transFunctions *tf) {
       !strcmp("rxnbinom", tf->v) ||
       (tf->isInd = !strcmp("rinbinom", tf->v))) {
     if (tb.thread != 0) tb.thread = 2;
+    tb.rng = 1;
     int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
     if (ii != 2){
       updateSyntaxCol();

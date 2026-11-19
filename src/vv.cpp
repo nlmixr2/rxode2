@@ -7,6 +7,7 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#include <cfloat>
 
 struct vv_system {
     rx_solving_options_ind *ind_;
@@ -36,6 +37,18 @@ struct vv_system {
 
         c_dydt_(neq_, t, y_temp_.data(), dy_temp_.data());
 
+        // Velocity Verlet takes d/dt(q_i) = p_i; refuse models that do not
+        // (the padded momentum of an odd system is 0).
+        for (int i = 0; i < N_; ++i) {
+            double dq = dy_temp_[i], p = y_temp_[N_ + i];
+            if (dq != p && !(std::isnan(dq) && std::isnan(p)) &&
+                !(R_FINITE(dq) && R_FINITE(p) &&
+                  std::abs(dq - p) <= 64.0 * DBL_EPSILON * std::max(std::abs(dq), std::abs(p)))) {
+                ind_->err |= rxErrVvNotPairs;
+                break;
+            }
+        }
+
         std::copy(dy_temp_.begin() + N_, dy_temp_.end(), a.data_);
     }
 };
@@ -64,7 +77,7 @@ static inline void vv_do_steps(rx_solving_options_ind *ind, rx_solving_options *
       stepper.do_step(sys, state, t, current_dt);
     } catch(const std::exception& e) {
       if (ind->rc[0] == 0) ind->rc[0] = -2019;
-      ind->err = 1;
+      rxSolverFail(ind);
       break;
     }
 
@@ -130,8 +143,9 @@ extern "C" void ind_vv_0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         badSolveExit(i);
         localBadSolve = 1;
       } else {
-        if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                            xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
+        while (!localBadSolve &&
+               handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                               xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
             if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
               preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
 
@@ -167,30 +181,6 @@ extern "C" void ind_vv_0(rx_solve *rx, rx_solving_options *op, int solveid, int 
               ind->ixds = ixds;
               ind->idx = idx;
               ind->idxExtra++;
-              if (!isSameTime(xout, ind->extraDoseNewXout)) {
-                preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-
-                if (neqOde > 0) {
-                    int N = (neqOde + 1) / 2;
-                    zero_copy_state q(N);
-                    zero_copy_state p(N);
-                    std::copy(yp, yp + N, q.begin());
-                    std::copy(yp + N, yp + neqOde, p.begin());
-                    if (2 * N > neqOde) {
-                        p[N - 1] = 0.0;
-                    }
-                    auto state = std::make_pair(q, p);
-                    vv_do_steps(ind, op, sys, state, ind->extraDoseNewXout, xout);
-                    std::copy(state.first.begin(), state.first.end(), yp);
-                    std::copy(state.second.begin(), state.second.begin() + (neqOde - N), yp + N);
-                }
-
-                copyLinCmt(neq, ind, op, yp);
-                const char* err_msg = "vv failed";
-                postSolve(neq, &istate, ind->rc, &idx, yp, &err_msg, 18, false, ind, op, rx);
-                if (*(ind->rc) < 0) localBadSolve = 1;
-                ind->extraDoseNewXout = xout;
-              }
               xp = ind->extraDoseNewXout;
             }
         }
@@ -220,7 +210,6 @@ extern "C" void ind_vv_0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         xp = xout;
       }
     }
-    ind->_newind = 2;
     if (!localBadSolve){
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
@@ -249,6 +238,7 @@ extern "C" void ind_vv_0(rx_solve *rx, rx_solving_options *op, int solveid, int 
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       if (_mtime_requeued) i--;
     }
+    rxNewindAfterRecord(ind, i);
     ind->solvedIdx = i;
   }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
@@ -274,8 +264,6 @@ extern "C" void par_vv(rx_solve *rx){
   int nsolve = (int)(nsim*nsub);
 
   uint32_t seed0 = getRxSeed1(cores);
-  int abort = 0;
-
 #ifdef _OPENMP
 #pragma omp parallel for num_threads(cores)
 #endif
@@ -283,24 +271,10 @@ extern "C" void par_vv(rx_solve *rx){
     int neq[2];
     neq[0] = op->neq;
     neq[1] = 0;
-    int localAbort;
-#ifdef _OPENMP
-#pragma omp atomic read
-#endif
-    localAbort = abort;
-    if (localAbort == 0){
-      // rx->ordId walks positions (sortIds); the drivers take subject ids.
-      int _id = rx->ordId[solveid] - 1;
-      setSeedEng1(seed0 + _id);
-      ind_vv_0(rx, op, _id, neq, dydt, update_inis);
-
-      if (op->badSolve) {
-#ifdef _OPENMP
-#pragma omp atomic write
-#endif
-        abort = 1;
-      }
-    }
+    // rx->ordId walks positions (sortIds); the drivers take subject ids.
+    int _id = rx->ordId[solveid] - 1;
+    setSeedEng1(seed0 + _id);
+    ind_vv_0(rx, op, _id, neq, dydt, update_inis);
   }
   // close the per-subject seed block: the loop consumed nsolve seeds, not
   // cores, and the next solve must not re-use any of them

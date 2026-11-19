@@ -170,12 +170,44 @@ static inline int getStringCmpCovIndex(const char *cov) {
   return tb.strCmp.n-1;
 }
 
+static inline int get_str_assign_int(int val, const char *s);
+
+// Index of `cov` among the string-assigned variables, or -1
+static inline int getStrAssignIndex(const char *cov) {
+  for (int i = 0; i < tb.str.n; ++i) {
+    if (!strcmp(tb.str.line[i], cov)) return i;
+  }
+  return -1;
+}
+
+// A string variable first compared, then assigned: number its assigned
+// values in the order already used by the comparisons
+static inline void seedStrAssignFromCmp(int strId) {
+  for (int i = 0; i < tb.strCmp.n; ++i) {
+    if (!strcmp(tb.strCmp.line[i], tb.str.line[strId])) {
+      for (int j = 0; j < tb.strCmpVal.n; ++j) {
+        if (tb.strCmpValI[j] == i) {
+          get_str_assign_int(strId, tb.strCmpVal.line[j]);
+        }
+      }
+      return;
+    }
+  }
+}
+
 static inline int addStringCmpValue(const char *cov, char *val) {
-  int covIndex = getStringCmpCovIndex(cov);
-  int valueIndex = 0;
   char *normVal = R_Calloc(strlen(val) + 1, char);
   strcpy(normVal, val);
   normalizeStringCmpValue(normVal);
+  int strId = getStrAssignIndex(cov);
+  if (strId != -1) {
+    // string-assigned variable: share the assignment numbering
+    int ret = get_str_assign_int(strId, normVal);
+    R_Free(normVal);
+    return ret;
+  }
+  int covIndex = getStringCmpCovIndex(cov);
+  int valueIndex = 0;
   for (int i = 0; i < tb.strCmpVal.n; ++i) {
     if (tb.strCmpValI[i] == covIndex) {
       valueIndex++;

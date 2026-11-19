@@ -1,4 +1,3 @@
-
 #' GELU activation function
 #' @param x numeric vector
 #' @return numeric vector
@@ -18,7 +17,7 @@
 #' }
 #'
 GELU <- function(x) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
   .Call(`_rxode2_activationF`, x, 1L)
 }
 
@@ -46,27 +45,27 @@ GELU <- function(x) {
 #' rxSolve(r, et)
 #' }
 dGELU <- function(x) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
   .Call(`_rxode2_activationF`, x, 9L)
 }
 
 #' @rdname dGELU
 #' @export
 d2GELU <- function(x) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
   .Call(`_rxode2_activationF`, x, 10L)
 }
 
 #' @rdname dGELU
 #' @export
 d3GELU <- function(x) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
   .Call(`_rxode2_activationF`, x, 11L)
 }
 
 #' @rdname dGELU
 #' @export
 d4GELU <- function(x) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
   .Call(`_rxode2_activationF`, x, 12L)
 }

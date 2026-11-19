@@ -1,6 +1,5 @@
 rxTest({
   test_that("evid=3 reset time", {
-
     mod1 <- rxode2({
       KA <- 2.94E-01
       CL <- 1.86E+01
@@ -40,8 +39,7 @@ rxTest({
 
     expect_equal(tmp$TIME, et$time)
 
-    et2 <- rbind(data.frame(id=1, et[, names(et) != "id"]),
-                 data.frame(id=2, et[, names(et) != "id"]))
+    et2 <- rbind(data.frame(id = 1, et[, names(et) != "id"]), data.frame(id = 2, et[, names(et) != "id"]))
 
     tmp <- etTrans(et2, mod1)
 
@@ -66,7 +64,6 @@ rxTest({
     expect_true(!all(x$C2[x$resetno == 1] == x$C2[x$resetno == 2]))
     expect_true(x$eff[1] == 1)
   })
-
 
   test_that("evid=3 reset time mixed", {
     mod1 <- rxode2({
@@ -112,10 +109,7 @@ rxTest({
     expect_true(x$eff[1] == 1)
   })
 
-
-
   test_that("evid=3 reset time linCmt", {
-
     mod1 <- rxode2({
       KA <- 2.94E-01
       CL <- 1.86E+01
@@ -220,21 +214,21 @@ rxTest({
     # Using 3 subjects with slightly different observation schedules so
     # maxShift (computed globally) is > 0, which was the trigger for the bug.
     ev <- dplyr::bind_rows(
-      data.frame(id = 1, time = 0,  evid = 4, amt = 320, ii = 12, ss = 1, cmt = 1),
-      data.frame(id = 1, time = 0,  evid = 0, amt = 0,   ii = 0,  ss = 0, cmt = 1, dv = NA),
-      data.frame(id = 1, time = 0.5, evid = 0, amt = 0,  ii = 0,  ss = 0, cmt = 1, dv = NA),
-      data.frame(id = 1, time = 1,  evid = 0, amt = 0,   ii = 0,  ss = 0, cmt = 1, dv = NA),
+      data.frame(id = 1, time = 0, evid = 4, amt = 320, ii = 12, ss = 1, cmt = 1),
+      data.frame(id = 1, time = 0, evid = 0, amt = 0, ii = 0, ss = 0, cmt = 1, dv = NA),
+      data.frame(id = 1, time = 0.5, evid = 0, amt = 0, ii = 0, ss = 0, cmt = 1, dv = NA),
+      data.frame(id = 1, time = 1, evid = 0, amt = 0, ii = 0, ss = 0, cmt = 1, dv = NA),
       data.frame(id = 1, time = 12, evid = 101, amt = 320, ii = 0, ss = 0, cmt = 1),
-      data.frame(id = 1, time = 12.5, evid = 0, amt = 0, ii = 0,  ss = 0, cmt = 1, dv = NA),
-      data.frame(id = 2, time = 0,  evid = 4, amt = 320, ii = 12, ss = 1, cmt = 1),
-      data.frame(id = 2, time = 0.3, evid = 0, amt = 0,  ii = 0,  ss = 0, cmt = 1, dv = NA),
-      data.frame(id = 2, time = 1,  evid = 0, amt = 0,   ii = 0,  ss = 0, cmt = 1, dv = NA),
+      data.frame(id = 1, time = 12.5, evid = 0, amt = 0, ii = 0, ss = 0, cmt = 1, dv = NA),
+      data.frame(id = 2, time = 0, evid = 4, amt = 320, ii = 12, ss = 1, cmt = 1),
+      data.frame(id = 2, time = 0.3, evid = 0, amt = 0, ii = 0, ss = 0, cmt = 1, dv = NA),
+      data.frame(id = 2, time = 1, evid = 0, amt = 0, ii = 0, ss = 0, cmt = 1, dv = NA),
       data.frame(id = 2, time = 12, evid = 101, amt = 320, ii = 0, ss = 0, cmt = 1),
-      data.frame(id = 2, time = 12.8, evid = 0, amt = 0, ii = 0,  ss = 0, cmt = 1, dv = NA),
-      data.frame(id = 3, time = 0,  evid = 4, amt = 320, ii = 12, ss = 1, cmt = 1),
-      data.frame(id = 3, time = 0.2, evid = 0, amt = 0,  ii = 0,  ss = 0, cmt = 1, dv = NA),
+      data.frame(id = 2, time = 12.8, evid = 0, amt = 0, ii = 0, ss = 0, cmt = 1, dv = NA),
+      data.frame(id = 3, time = 0, evid = 4, amt = 320, ii = 12, ss = 1, cmt = 1),
+      data.frame(id = 3, time = 0.2, evid = 0, amt = 0, ii = 0, ss = 0, cmt = 1, dv = NA),
       data.frame(id = 3, time = 12, evid = 101, amt = 320, ii = 0, ss = 0, cmt = 1),
-      data.frame(id = 3, time = 12.4, evid = 0, amt = 0, ii = 0,  ss = 0, cmt = 1, dv = NA)
+      data.frame(id = 3, time = 12.4, evid = 0, amt = 0, ii = 0, ss = 0, cmt = 1, dv = NA)
     )
 
     suppressWarnings({
@@ -245,11 +239,13 @@ rxTest({
     obs_ode <- x_ode[!is.na(x_ode$cp), ]
     obs_lin <- x_lin[!is.na(x_lin$cp), ]
 
-    expect_true(all(obs_ode$t_ad >= 0),
-                info = paste("ODE model: negative tad values found:",
-                             paste(obs_ode$t_ad[obs_ode$t_ad < 0], collapse = ", ")))
-    expect_true(all(obs_lin$t_ad >= 0),
-                info = paste("linCmt model: negative tad values found:",
-                             paste(obs_lin$t_ad[obs_lin$t_ad < 0], collapse = ", ")))
+    expect_true(
+      all(obs_ode$t_ad >= 0),
+      info = paste("ODE model: negative tad values found:", paste(obs_ode$t_ad[obs_ode$t_ad < 0], collapse = ", "))
+    )
+    expect_true(
+      all(obs_lin$t_ad >= 0),
+      info = paste("linCmt model: negative tad values found:", paste(obs_lin$t_ad[obs_lin$t_ad < 0], collapse = ", "))
+    )
   })
 })

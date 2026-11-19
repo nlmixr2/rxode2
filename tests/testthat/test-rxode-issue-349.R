@@ -1,6 +1,5 @@
 rxTest({
   test_that("Zero variances; RxODE#299", {
-
     mod <- rxode2({
       eff(0) <- 1
       C2 <- centr / V2
@@ -20,9 +19,14 @@ rxTest({
 
     ## Variability
     theta <- c(
-      KA = 2.94E-01, TCl = 1.86E+01, V2 = 4.02E+01, # central
-      Q = 1.05E+01, V3 = 2.97E+02, # peripheral
-      Kin = 1, Kout = 1, EC50 = 200
+      KA = 2.94E-01,
+      TCl = 1.86E+01,
+      V2 = 4.02E+01, # central
+      Q = 1.05E+01,
+      V3 = 2.97E+02, # peripheral
+      Kin = 1,
+      Kout = 1,
+      EC50 = 200
     ) # effects
 
     omega <- lotri(eta.Cl ~ 0.4^2)
@@ -31,11 +35,18 @@ rxTest({
     tMat <- tcrossprod(tmp, tmp) / (8^2)
     dimnames(tMat) <- list(NULL, names(theta))
 
-    sim <- rxSolve(mod, theta, ev,
-                   omega = omega, nSub = 100, sigma = sigma, thetaMat = tMat, nStud = 10,
-                   dfSub = 10, dfObs = 100
-                   )
-
+    sim <- rxSolve(
+      mod,
+      theta,
+      ev,
+      omega = omega,
+      nSub = 100,
+      sigma = sigma,
+      thetaMat = tMat,
+      nStud = 10,
+      dfSub = 10,
+      dfObs = 100
+    )
 
     omega <- lotri(eta.Cl ~ 0)
     sigma <- lotri(eff.err ~ 0, cp.err ~ 0)
@@ -46,9 +57,16 @@ rxTest({
     suppressMessages(expect_error(
       x <-
         rxSolve(
-          mod, theta, ev,
-          omega = omega, nSub = 100, sigma = sigma, thetaMat = tMat, nStud = 10,
-          dfSub = 10, dfObs = 100
+          mod,
+          theta,
+          ev,
+          omega = omega,
+          nSub = 100,
+          sigma = sigma,
+          thetaMat = tMat,
+          nStud = 10,
+          dfSub = 10,
+          dfObs = 100
         ),
       NA
     ))

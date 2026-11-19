@@ -39,6 +39,7 @@
 #' rxCbindStudyIndividual(tmat, ev1)
 #'
 #' @export
+#' @family Solving
 rxCbindStudyIndividual <- function(studyParameters, individualParameters) {
   if (!inherits(individualParameters, "data.frame")) {
     stop("'individualParameters' must  be a data frame", call. = FALSE)

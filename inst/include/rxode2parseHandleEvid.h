@@ -2,6 +2,7 @@
 #ifndef __RXODE2PARSEHANDLEVID_H___
 #define __RXODE2PARSEHANDLEVID_H___
 
+#include <limits.h>
 #include "rxode2parse.h"
 #include "rxode2EventTranslate.h"
 //#include "rxThreadData.h"
@@ -20,6 +21,7 @@ extern "C" {
   int handle_evidL(int evid, double *yp, double xout, int id, rx_solving_options_ind *ind);
   void handleTlast(double *time, rx_solving_options_ind *ind);
   double _getDur(int l, rx_solving_options_ind *ind, int backward, unsigned int *p);
+  void updateExtraDoseGlobals(rx_solving_options_ind* ind);
 
 #else
   #define _getDur _rxode2parse_getDur
@@ -54,10 +56,73 @@ static inline void setDoseNumber(rx_solving_options_ind *ind, int i, int j, doub
   setDoseP1(ind, ind->idose[i] + j, value)
 }
 
+static inline int getDoseNumberFromIndex(rx_solving_options_ind *ind, int idx) {
+  // bisection https://en.wikipedia.org/wiki/Binary_search_algorithm
+  int l = 0, r = ind->ndoses-1, m=0, idose = 0;
+  while(l <= r){
+    m = FLOOR((l+r)/2);
+    idose= ind->idose[m];
+    if (idose < idx) l = m+1;
+    else if (idose > idx) r = m-1;
+    else return m;
+  }
+  return -1;
+}
+
+// ind->infPair entry for a fixed-infusion start etTrans() knows has no stop
+// record -- a classic internal evid written straight into the data.  The scans
+// would otherwise hand it the stop of another infusion at the same rate.
+#define RX_INF_UNPAIRED INT_MIN
+
+// Is record `i` a fixed-infusion start known to have no stop record?
+static inline int isInfusionUnpaired(rx_solving_options_ind *ind, int i) {
+  if (ind->infPair == NULL || i < 0 || i >= ind->n_all_times_orig) return 0;
+  return ind->infPair[i] == RX_INF_UNPAIRED;
+}
+
+// Record that starts/stops the same fixed rate/duration infusion as record
+// `i`, or -1 when etTrans() recorded no pairing for it.  Two infusions into
+// one compartment at the same rate have records that differ only in time, so
+// the start/stop scans cannot tell which stop belongs to which start; etTrans()
+// records the pairing whenever those scans would get it wrong
+// (nlmixr2/rxode2#1348).  The mate is re-checked so a stale table is ignored.
+static inline int getInfusionMateRecord(rx_solving_options_ind *ind, int i) {
+  if (ind->infPair == NULL || i < 0 || i >= ind->n_all_times_orig) return -1;
+  int off = ind->infPair[i];
+  if (off == 0 || off == RX_INF_UNPAIRED) return -1;
+  int m = i + off;
+  if (m < 0 || m >= ind->n_all_times_orig) return -1;
+  if (getEvid(ind, m) != getEvid(ind, i) || getDose(ind, m) != -getDose(ind, i)) return -1;
+  return m;
+}
+
+// Dose number (index into ind->idose) of the mate of dose number `l`, or -1.
+static inline int getInfusionMateDoseNumber(rx_solving_options_ind *ind, int l) {
+  if (ind->infPair == NULL || l < 0 || l >= ind->ndoses) return -1;
+  int m = getInfusionMateRecord(ind, ind->idose[l]);
+  if (m == -1) return -1;
+  int ml = getDoseNumberFromIndex(ind, m);
+  if (ml != -1) return ml;
+  // idose is not guaranteed ascending once doses are pushed at solve time
+  for (int j = 0; j < ind->ndoses; j++) {
+    if (ind->idose[j] == m) return j;
+  }
+  return -1;
+}
+
 static inline void handleInfusionGetEndOfInfusionIndex(int idx, int *infEixds,
 																											 rx_solve *rx,
                                                        rx_solving_options *op,
 																											 rx_solving_options_ind *ind) {
+	// the pairing etTrans() recorded, else the ordinal scan below.  A start
+	// etTrans() marked as having no stop record (RX_INF_UNPAIRED) still falls
+	// through to that scan: here -1 means the steady-state solve fails
+	// (wrongSSDur, src/par_solve.cpp), so a classic steady-state infusion record
+	// written without a stop keeps the duration the scan gives it rather than
+	// turning data that solves today into a bad solve.  Only the reporting paths
+	// (_getDur(), rxDfInfusionStop()) honour the marker.
+	*infEixds = getInfusionMateDoseNumber(ind, idx);
+	if (*infEixds > idx) return;
 	int curEvid = getEvid(ind, ind->idose[idx]);
 	double curAmt = getDoseNumber(ind, idx);
 	int lastKnownOff = 0;
@@ -87,19 +152,6 @@ static inline void handleInfusionGetEndOfInfusionIndex(int idx, int *infEixds,
 		}
 		if (*infEixds != -1) break;
 	}
-}
-
-static inline int getDoseNumberFromIndex(rx_solving_options_ind *ind, int idx) {
-  // bisection https://en.wikipedia.org/wiki/Binary_search_algorithm
-  int l = 0, r = ind->ndoses-1, m=0, idose = 0;
-  while(l <= r){
-    m = FLOOR((l+r)/2);
-    idose= ind->idose[m];
-    if (idose < idx) l = m+1;
-    else if (idose > idx) r = m-1;
-    else return m;
-  }
-  return -1;
 }
 
 // Dose index (into ind->idose) of the record currently being handled.
@@ -348,6 +400,90 @@ static inline double getAmt(rx_solving_options_ind *ind, int id, int cmt,
   return ret;
 }
 
+// A fixed-duration infusion's rate is F*amt/dur with F read once, at its start
+// (rxode2#1568); evaluating a state-dependent f() again at the stop leaves a
+// residual rate.  The start records the rate it added under its stop record,
+// followed by the `ns` forward-sensitivity rates (d(rate)/dp, p = 1..ns), which
+// the stop then removes.  `ns` is _infDurOnNs() for every entry so the stride
+// is fixed; a NULL `sens` stores zeros.
+static inline int _infDurOnNs(void) {
+  return (_rxEsActive && _rxEsNParam > 0) ? _rxEsNParam : 0;
+}
+
+static inline void pushInfDurOn(rx_solving_options_ind *ind, double rate,
+                                double *sens, int ns) {
+  if (ind->idx < 0) return; // extra doses have no paired stop record
+  int stop = -1;
+  handleInfusionGetEndOfInfusionIndex(handleTlastInlineDoseIndex(ind), &stop,
+                                      NULL, NULL, ind);
+  if (stop < 0 || stop >= ind->ndoses) return;
+  double rec = (double)ind->idose[stop];
+  int w = 2 + ns, j;
+  for (j = 0; j < ind->infDurOnN; j++) {
+    if (ind->infDurOn[w*j] == rec) break; // the start was handled again
+  }
+  if (w*(j+1) > ind->infDurOnCap) {
+    int cap = w*(j+8);
+    double *p = (double*)realloc(ind->infDurOn, cap*sizeof(double));
+    if (p == NULL) return; // the stop falls back to evaluating f() again
+    ind->infDurOn = p;
+    ind->infDurOnCap = cap;
+  }
+  double *e = ind->infDurOn + w*j;
+  e[0] = rec;
+  e[1] = rate;
+  for (int k = 0; k < ns; k++) e[2+k] = (sens != NULL) ? sens[k] : 0.0;
+  if (j == ind->infDurOnN) ind->infDurOnN++;
+}
+
+// Rate (and its `ns` sensitivities) the start of the infusion stopped by the
+// current record added, forgetting it; returns 0 when no start recorded one.
+static inline int popInfDurOn(rx_solving_options_ind *ind, double *rate,
+                              double *sens, int ns) {
+  if (ind->idx < 0) return 0;
+  double rec = (double)ind->ix[ind->idx];
+  int w = 2 + ns;
+  for (int j = 0; j < ind->infDurOnN; j++) {
+    double *e = ind->infDurOn + w*j;
+    if (e[0] == rec) {
+      *rate = e[1];
+      if (sens != NULL) for (int k = 0; k < ns; k++) sens[k] = e[2+k];
+      ind->infDurOnN--;
+      memcpy(e, ind->infDurOn + w*ind->infDurOnN, w*sizeof(double));
+      return 1;
+    }
+  }
+  return 0;
+}
+
+// handleSS ignores the stop record of the steady-state infusion it starts and
+// ends that infusion with a fixed-rate extra stop instead.  At such a stop on
+// `cmt`, take the sensitivities its start recorded (under that ignored stop
+// record) and the rate it added, so both can be removed; returns 0 when none
+// were recorded.
+static inline int popInfDurOnSS(rx_solving_options_ind *ind, int cmt,
+                                double *rate, double *sens, int ns) {
+  int w = 2 + ns;
+  for (int j = 0; j < ind->infDurOnN; j++) {
+    double *e = ind->infDurOn + w*j;
+    int rec = (int)e[0], ign = 0;
+    for (int i = 0; i < ind->ignoredDosesN[0]; ++i) {
+      int d = ind->ignoredDoses[i];
+      if (d >= 0 && d < ind->ndoses && ind->idose[d] == rec) { ign = 1; break; }
+    }
+    if (!ign) continue;
+    int wh, c, wh100, whI, wh0;
+    getWh(getEvid(ind, rec), &wh, &c, &wh100, &whI, &wh0);
+    if (c != cmt || whI != EVIDF_INF_DUR) continue;
+    *rate = e[1];
+    if (sens != NULL) for (int k = 0; k < ns; k++) sens[k] = e[2+k];
+    ind->infDurOnN--;
+    memcpy(e, ind->infDurOn + w*ind->infDurOnN, w*sizeof(double));
+    return 1;
+  }
+  return 0;
+}
+
 static inline int isIgnoredDose(rx_solving_options_ind *ind, int ixds) {
   for (int i = 0; i < ind->ignoredDosesN[0]; ++i) {
     if (ind->idx < 0 ) {
@@ -383,10 +519,150 @@ static inline int pushIgnoredDose(int doseIdx, rx_solving_options_ind *ind) {
       op->badSolve = 1;
       return 0;
     }
+#ifndef _isrxode2parse_
+    // the thread's next subject re-reads the list from the globals
+    updateExtraDoseGlobals(ind);
+#endif
   }
   ind->ignoredDoses[ind->ignoredDosesN[0]] = doseIdx;
   ind->ignoredDosesN[0] = ind->ignoredDosesN[0]+1;
   return re;
+}
+
+// The dose number of record `r`; idose is not guaranteed ascending once doses
+// are pushed at solve time, so fall back to a linear search.
+static inline int getDoseNumberFromIndexAny(rx_solving_options_ind *ind, int r) {
+  int l = getDoseNumberFromIndex(ind, r);
+  if (l != -1) return l;
+  for (int j = 0; j < ind->ndoses; j++) {
+    if (ind->idose[j] == r) return j;
+  }
+  return -1;
+}
+
+// Is dose record `r` an infusion start that sets a compartment's rate?
+static inline int isInfusionStartRecord(int wh0, int whI) {
+  if (wh0 == EVID0_REGULAR) return 1;
+  // a phantom modeled start still sets the rate (its stop is regular)
+  return wh0 == EVID0_PHANTOM &&
+    (whI == EVIDF_MODEL_RATE_ON || whI == EVIDF_MODEL_DUR_ON);
+}
+
+// The dose number of the stop of a modeled start `r`: the record right after
+// it (getDoseIndexPlus1()); pushed doses keep that, but not idose order.
+static inline int getModeledInfusionStop(rx_solving_options_ind *ind, int r,
+                                         int cmt, int whI) {
+  if (r + 1 >= ind->n_all_times) return -1;
+  int sWh, sCmt, sWh100, sWhI, sWh0;
+  getWh(getEvid(ind, r + 1), &sWh, &sCmt, &sWh100, &sWhI, &sWh0);
+  if (sCmt != cmt || sWhI != whI - 2) return -1;
+  return getDoseNumberFromIndexAny(ind, r + 1);
+}
+
+// The dose number of the stop of the infusion started by record `r`, or -1.
+static inline int getInfusionStopDoseNumber(rx_solving_options_ind *ind,
+                                            rx_solve *rx,
+                                            rx_solving_options *op,
+                                            int r, int cmt, int whI) {
+  int l = getDoseNumberFromIndexAny(ind, r);
+  if (l == -1) return -1;
+  int e = -1;
+  if (whI == EVIDF_INF_RATE || whI == EVIDF_INF_DUR) {
+    // a start with no stop record must not take a later infusion's stop
+    if (getDoseNumber(ind, l) <= 0 || isInfusionUnpaired(ind, r)) return -1;
+    handleInfusionGetEndOfInfusionIndex(l, &e, rx, op, ind);
+  } else if (whI == EVIDF_MODEL_RATE_ON || whI == EVIDF_MODEL_DUR_ON) {
+    e = getModeledInfusionStop(ind, r, cmt, whI);
+  }
+  return e;
+}
+
+// Ignore stop dose `e` when its record is still ahead of position `pos`.
+static inline void ignoreStopAfter(rx_solving_options_ind *ind, int pos, int e) {
+  int er = ind->idose[e];
+  for (int kk = pos + 1; kk < ind->n_all_times; ++kk) {
+    if (ind->ix[kk] == er) {
+      pushIgnoredDose(e, ind);
+      return;
+    }
+  }
+}
+
+// A reset (evid 3/4, ss=1) zeros InfusionRate and so cancels every running
+// data-table infusion; ignore the stop records still ahead of it, or each
+// would leave the compartment at -rate (nlmixr2/rxode2#1562).  `pos` is the
+// reset's position in ind->ix; call before InfusionRate is zeroed.  `onlyCmt`
+// limits it to one compartment (one turned off), -1 for all.
+static inline void cancelRunningInfusionStops(rx_solving_options_ind *ind,
+                                              rx_solve *rx,
+                                              rx_solving_options *op,
+                                              int pos, int neq, int onlyCmt) {
+  int wh, cmt, wh100, whI, wh0;
+  // an earlier evid=3 already cancelled every infusion that started before it
+  for (int k = (pos < ind->n_all_times ? pos : ind->n_all_times); k--;) {
+    int r = ind->ix[k];
+    int evid = getEvid(ind, r);
+    if (evid == 3) break;
+    if (!isDose(evid)) continue;
+    getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
+    if (!isInfusionStartRecord(wh0, whI) ||
+        cmt < 0 || cmt >= neq || (onlyCmt >= 0 && cmt != onlyCmt) ||
+        ind->InfusionRate[cmt] == 0.0) continue;
+    int e = getInfusionStopDoseNumber(ind, rx, op, r, cmt, whI);
+    if (e >= 0) ignoreStopAfter(ind, pos, e);
+  }
+}
+
+// The same for the infusions steady state pushes into the extra-dose pool, for
+// compartment `cmt` cancelled at `time` while its pending doses are kept (an
+// ss=2 dose) or when it is turned off.
+// Same-rate infusions pair first in first out, so when the pool holds
+// `running` more pending stops than starts, its first `running` stops belong to
+// the running infusions.  Two such regimens with different durations cannot be
+// told apart, the limitation handleTlastInlineDurExtra() documents.
+static inline int isIgnoredExtraDose(rx_solving_options_ind *ind, int i) {
+  for (int k = 0; k < ind->ignoredDosesN[0]; ++k) {
+    if (ind->ignoredDoses[k] == -1-i) return 1;
+  }
+  return 0;
+}
+
+// Does pool stop `i` (amount `amt` at `t`) belong to an infusion running at
+// `time`?  It does when the later pending stops do not outnumber the starts.
+static inline int isRunningExtraInfusionStop(rx_solving_options_ind *ind,
+                                             int i, int cmt, int whI,
+                                             double amt, double t,
+                                             double time) {
+  int wh, oc, wh100, oWhI, wh0;
+  int nStart = 0, nLaterStop = 0;
+  for (int j = 0; j < ind->extraDoseN[0]; ++j) {
+    int o = -1-j;
+    if (j == i || isIgnoredExtraDose(ind, j)) continue;
+    getWh(getEvid(ind, o), &wh, &oc, &wh100, &oWhI, &wh0);
+    double oAmt = getDose(ind, o), ot = getAllTimes(ind, o);
+    if (oc != cmt || oWhI != whI || (oAmt != amt && oAmt != -amt) ||
+        ot <= time) continue;
+    if (oAmt > 0) nStart++;
+    else if (ot > t || (ot == t && j > i)) nLaterStop++;
+  }
+  return nLaterStop >= nStart;
+}
+
+static inline void cancelRunningExtraInfusionStops(rx_solving_options_ind *ind,
+                                                   int cmt, double time) {
+  if (ind->InfusionRate[cmt] == 0.0) return;
+  int wh, c, wh100, whI, wh0;
+  for (int i = 0; i < ind->extraDoseN[0]; ++i) {
+    int cur = -1-i;
+    if (isIgnoredExtraDose(ind, i)) continue;
+    getWh(getEvid(ind, cur), &wh, &c, &wh100, &whI, &wh0);
+    double amt = getDose(ind, cur), t = getAllTimes(ind, cur);
+    if (c != cmt || (whI != EVIDF_INF_RATE && whI != EVIDF_INF_DUR) ||
+        amt >= 0 || t <= time) continue;
+    if (isRunningExtraInfusionStop(ind, i, cmt, whI, amt, t, time)) {
+      pushIgnoredDose(cur, ind);
+    }
+  }
 }
 
 static inline int pushPendingDose(int doseIdx, rx_solving_options_ind *ind) {
@@ -539,6 +815,10 @@ static inline int pushUniqueDosingEvent(double time, double amt, int evid,
 // Forward declarations: defined in rxode2parseGetTime.h (included after this header)
 static inline void updateRate(int idx, rx_solving_options_ind *ind, double *yp);
 static inline void updateDur(int idx, rx_solving_options_ind *ind, double *yp);
+static inline void handleInfusionGetStartOfInfusionIndex(int *startIdx, int *endIdx,
+                                                         double *amt, int *idx,
+                                                         rx_solve *rx, rx_solving_options *op,
+                                                         rx_solving_options_ind *ind);
 
 // Event ("jump") sensitivities: apply a 1st-order dtau/alag moving-boundary jump
 // to sensitivity compartment `slot` (state esK, param p), or DEFER it.  The
@@ -601,26 +881,14 @@ static inline void _esMoveDeferredToPending(rx_solving_options_ind *ind, double 
   if (_any) { ind->esHasPending = 1; ind->esPendingTau = tau; }
 }
 
-// Event ("jump") sensitivities: physical Jacobian column J[.,cmt] and
-// f_cmt = dydt(pre-event state)[cmt], needed by the dtau (event-time) jump
-// rows in the paper's replace/additive/multiplicative tables.  Source
-// depends on model type (see _rxEsUseCalcJac, set from mv$indLin):
-//   - matExp()/indLin() models: dydt() is a no-op stub (matrix-exponential
-//     primal solve, not RHS evaluation), so the column comes from calc_jac,
-//     and f_cmt from ME() and IndF() -- the rate matrix dotted with the
-//     current state plus the forcing.  NOT from the Jacobian row: that is
-//     f_cmt only while the whole right-hand side is A.X.
-//   - ordinary ODE models: calc_jac is normally an empty stub (only
-//     populated by explicit user-written df/dy lines) but dydt is fully
-//     functional, so the column comes from a central difference of dydt and
-//     f_cmt from the average of the two perturbed evaluations already
-//     computed for it (accurate to O(eps^2), avoids a third dydt call).
-// `_esJcol` (size >= ns) and `*_esFc` are left untouched if neither source
-// is available (caller must pre-zero/guard on the relevant function pointer).
-// Pass `_esFc = NULL` when the caller's jump row has no f_cmt term.
-// matExp()/indLin(): the column straight out of calc_jac, and the Jacobian row
-// dotted with the state as a provisional f_cmt (the right answer whenever the
-// model has no forcing; _esJacColMeF() replaces it when it does).
+// Event ("jump") sensitivities: physical Jacobian column J[.,cmt] (and
+// optionally f_cmt), the linearized fallback of _esDtauRow() and the
+// matExp() source of the 2nd-order rows.  matExp()/indLin() models
+// (_rxEsUseCalcJac) read it from calc_jac, with the Jacobian row dotted with
+// the state as f_cmt; ordinary ODE models take a central difference of dydt,
+// with f_cmt the average of the two evaluations.  `_esJcol` (size >= ns) and
+// `*_esFc` are left untouched if neither source is available; pass
+// `_esFc = NULL` when no f_cmt is needed.
 static inline void _esJacColCalcJac(int *_esNj, double xout, double *yp, int cmt,
                                     int ns, double *_esJcol, double *_esFc) {
   double *_esPD = (double*) calloc((size_t)ns * ns, sizeof(double));
@@ -633,39 +901,6 @@ static inline void _esJacColCalcJac(int *_esNj, double xout, double *yp, int cmt
   }
   if (_esFc != NULL) *_esFc = _f;
   free(_esPD);
-}
-
-// f_cmt for a matExp()/indLin() model, from the rate matrix and the forcing.
-//
-// The Jacobian row dotted with the state is f_cmt only for a model whose whole
-// right-hand side is A.X.  Once part of it lives in an indLin() forcing --
-// which is where rxode2#1186/#1187 put every nonlinear term -- J is A + dF/dX,
-// so that dot product both misses F(X) and double counts (dF/dX).X.  ME() is
-// the rate matrix (column major, A[i][j] = _mat[j*neq + i]) and IndF() is the
-// forcing, seeded with the infusion rate, which is part of the true right-hand
-// side at this instant too.  Leaves `*_esFc` alone if ME() is unavailable.
-static inline void _esJacColMeF(int id, double xout, double *yp, int cmt,
-                                int neq, double *_esFc,
-                                rx_solving_options_ind *ind) {
-  rx_solve *_esRx = (ind != NULL && ind->rx) ? ind->rx : &rx_global;
-  t_ME _esME = _esRx->fns.me;
-  if (_esME == NULL) return;
-  double *_esA = (double*) calloc((size_t)neq * neq, sizeof(double));
-  if (_esA == NULL) return;
-  _esME(id, xout, xout, _esA, yp);
-  double _fa = 0.0;
-  for (int _j = 0; _j < neq; _j++) _fa += _esA[_j * neq + cmt] * yp[_j];
-  free(_esA);
-  t_IndF _esIndF = _esRx->fns.indf;
-  if (_esIndF != NULL) {
-    double *_esFv = (double*) calloc((size_t)neq, sizeof(double));
-    if (_esFv != NULL) {
-      _esIndF(id, xout, xout, _esFv, yp);
-      _fa += _esFv[cmt];
-      free(_esFv);
-    }
-  }
-  *_esFc = _fa;
 }
 
 // Ordinary ODE: central difference of dydt about yp[cmt], which yields f_cmt as
@@ -697,9 +932,6 @@ static inline void _esJacColF(int id, double xout, double *yp, int cmt, int ns,
   int _esNj[2]; _esNj[0] = neq; _esNj[1] = id;
   if (_rxEsUseCalcJac) {
     _esJacColCalcJac(_esNj, xout, yp, cmt, ns, _esJcol, _esFc);
-    // Only the replace/multiply dtau rows need f_cmt; the additive-bolus rows
-    // pass NULL and skip the two extra evaluations.
-    if (_esFc != NULL) _esJacColMeF(id, xout, yp, cmt, neq, _esFc, ind);
   } else if (dydtEs != NULL) {
     _esJacColFd(_esNj, xout, yp, cmt, ns, neq, _esJcol, _esFc);
   }
@@ -709,6 +941,362 @@ static inline void _esJacColF(int id, double xout, double *yp, int cmt, int ns,
 // _esJacColF())?  Mirrors the guard the additive-bolus dtau row already used.
 static inline int _esHaveJacCol(void) {
   return _rxEsUseCalcJac ? (calc_jac != NULL) : (dydtEs != NULL);
+}
+
+// State count ME()/IndF() write: the compiled one when known.
+static inline int _esMeN(rx_solve *rx, int neq) {
+  if (rx->op == NULL || rx->op->neq <= 0) return neq;
+  return rx->op->neq;
+}
+
+// matExp()/indLin() right-hand side: the augmented rate matrix times the
+// state plus forcing.  ME()/IndF() write the compiled state count (op->neq,
+// column major), so the state is padded to it (as indLinME() in expm.cpp).
+static inline int _esRhsFullMe(int id, double xout, double *y, int neq,
+                               double *fOut, rx_solve *rx) {
+  t_ME _esME = rx->fns.me;
+  if (_esME == NULL) return 0;
+  int _nMe = _esMeN(rx, neq);
+  int _nY = _nMe > neq ? _nMe : neq;
+  double *_esBuf = (double*) calloc((size_t)_nMe * _nMe + 2 * (size_t)_nY, sizeof(double));
+  if (_esBuf == NULL) return 0;
+  double *_esA = _esBuf, *_esFv = _esBuf + (size_t)_nMe * _nMe, *_esYa = _esFv + _nY;
+  memcpy(_esYa, y, (size_t)neq * sizeof(double));
+  _esME(id, xout, xout, _esA, _esYa);
+  if (rx->fns.indf != NULL) rx->fns.indf(id, xout, xout, _esFv, _esYa);
+  int _nK = neq < _nMe ? neq : _nMe;
+  for (int _k = 0; _k < neq; _k++) fOut[_k] = 0.0;
+  for (int _k = 0; _k < _nK; _k++) {
+    double _fa = _esFv[_k];
+    for (int _j = 0; _j < _nMe; _j++) _fa += _esA[_j * _nMe + _k] * _esYa[_j];
+    fOut[_k] = _fa;
+  }
+  free(_esBuf);
+  return 1;
+}
+
+// Full right-hand side (all neq rows, including the sensitivity equations)
+// into `fOut`: dydt for ODE models, _esRhsFullMe() for matExp()/indLin()
+// models.  Returns 0 (fOut untouched) when neither source is available.
+static inline int _esRhsFull(int id, double xout, double *y, int neq,
+                             double *fOut, rx_solving_options_ind *ind) {
+  if (_rxEsUseCalcJac) {
+    rx_solve *_esRx = (ind != NULL && ind->rx) ? ind->rx : &rx_global;
+    return _esRhsFullMe(id, xout, y, neq, fOut, _esRx);
+  }
+  if (dydtEs == NULL) return 0;
+  int _esNj[2]; _esNj[0] = neq; _esNj[1] = id;
+  dydtEs(_esNj, xout, y, fOut);
+  return 1;
+}
+
+// Physical right-hand side f(y) (rows 0..ns-1) into `fOut`.
+static inline int _esRhs(int id, double xout, double *y, int ns, int neq,
+                         double *fOut, rx_solving_options_ind *ind) {
+  double *_esF = (double*) calloc((size_t)neq, sizeof(double));
+  if (_esF == NULL) return 0;
+  int _ok = _esRhsFull(id, xout, y, neq, _esF, ind);
+  if (_ok) memcpy(fOut, _esF, (size_t)ns * sizeof(double));
+  free(_esF);
+  return _ok;
+}
+
+// Exact saltation f(x-) - f(x+) - fcCoef*[k==cmt]*f_cmt(x-) into `row`;
+// returns 0 (row zeroed) when f cannot be evaluated.
+static inline int _esDtauRowExact(int id, double xout, double *yp, int cmt, int ns,
+                                  int neq, double xcPost, double fcCoef, double *row,
+                                  rx_solving_options_ind *ind) {
+  double *_esFPost = (double*) calloc((size_t)ns, sizeof(double));
+  if (_esFPost == NULL) return 0;
+  int _ok = _esRhs(id, xout, yp, ns, neq, row, ind);
+  if (_ok) {
+    double _esXc = yp[cmt];
+    yp[cmt] = xcPost;
+    _ok = _esRhs(id, xout, yp, ns, neq, _esFPost, ind);
+    yp[cmt] = _esXc; // restore pre-event state
+  }
+  if (_ok) {
+    double _esFc = row[cmt];
+    for (int _k = 0; _k < ns; _k++) row[_k] -= _esFPost[_k];
+    row[cmt] -= fcCoef * _esFc;
+  } else {
+    for (int _k = 0; _k < ns; _k++) row[_k] = 0.0;
+  }
+  free(_esFPost);
+  return _ok;
+}
+
+// Event-time (dtau) saltation row for an event that sets x_cmt to `xcPost`:
+//   row[k] = f_k(x-) - f_k(x+) - fcCoef*[k==cmt]*f_cmt(x-)
+// (fcCoef: 0 additive, 1 replace, 1-alpha multiply).  Exact for a right-hand
+// side that is nonlinear in the states; the linearization J[k][cmt]*(x- - x+)
+// is used only when f itself cannot be evaluated (matExp() without ME()).
+// Returns 0 (row zeroed) when no source is available.
+static inline int _esDtauRow(int id, double xout, double *yp, int cmt, int ns,
+                             int neq, double xcPost, double fcCoef, double *row,
+                             rx_solving_options_ind *ind) {
+  for (int _k = 0; _k < ns; _k++) row[_k] = 0.0;
+  if (_esDtauRowExact(id, xout, yp, cmt, ns, neq, xcPost, fcCoef, row, ind)) return 1;
+  if (!_esHaveJacCol()) return 0;
+  double _esFc = 0.0;
+  _esJacColF(id, xout, yp, cmt, ns, neq, row, fcCoef != 0.0 ? &_esFc : NULL, ind);
+  double _esDx = yp[cmt] - xcPost;
+  for (int _k = 0; _k < ns; _k++) row[_k] *= _esDx;
+  row[cmt] -= fcCoef * _esFc;
+  return 1;
+}
+
+// One side (step h) of _esDtauRowDt()'s central difference, accumulated into
+// `out` with weight sgn/(2*eps).  `fm` is f(x-); `fa`/`fb`/`ys` are scratch.
+static inline int _esDtauRowDtSide(int id, double xout, double *yp, int cmt, int ns,
+                                   int neq, double xcPost, double gx, double h,
+                                   double w, double *fm, double *fa, double *fb,
+                                   double *ys, double *out,
+                                   rx_solving_options_ind *ind) {
+  memcpy(ys, yp, (size_t)neq * sizeof(double));
+  for (int _k = 0; _k < ns; _k++) ys[_k] += h * fm[_k];
+  if (!_esRhs(id, xout + h, ys, ns, neq, fa, ind)) return 0;
+  ys[cmt] = xcPost + h * gx * fm[cmt];
+  if (!_esRhs(id, xout + h, ys, ns, neq, fb, ind)) return 0;
+  for (int _k = 0; _k < ns; _k++) {
+    double _esD = fa[_k] - fb[_k];
+    if (_k == cmt) _esD -= (1.0 - gx) * fa[cmt];
+    out[_k] += w * _esD;
+  }
+  return 1;
+}
+
+// d/dtau of the _esDtauRow() saltation along the trajectory (x- moves with
+// f(x-) and explicit time; x+_c = g(x-_c) moves with gx*f_c(x-), gx = dg/dx_c),
+// by a central difference.  The 2nd-order dtau rows need it when q also drives
+// the event time; it vanishes only for a linear, autonomous right-hand side.
+static inline int _esDtauRowDt(int id, double xout, double *yp, int cmt, int ns,
+                               int neq, double xcPost, double gx, double *out,
+                               rx_solving_options_ind *ind) {
+  double *_esBuf = (double*) calloc((size_t)ns * 3 + (size_t)neq, sizeof(double));
+  if (_esBuf == NULL) return 0;
+  double *_esFm = _esBuf, *_esFa = _esBuf + ns, *_esFb = _esBuf + 2 * ns;
+  double *_esYs = _esBuf + 3 * ns;
+  double _esAt = xout < 0 ? -xout : xout;
+  double _esEps = 6e-6 * (_esAt > 1.0 ? _esAt : 1.0);
+  for (int _k = 0; _k < ns; _k++) out[_k] = 0.0;
+  int _ok = _esRhs(id, xout, yp, ns, neq, _esFm, ind) &&
+    _esDtauRowDtSide(id, xout, yp, cmt, ns, neq, xcPost, gx, _esEps, 0.5 / _esEps,
+                     _esFm, _esFa, _esFb, _esYs, out, ind) &&
+    _esDtauRowDtSide(id, xout, yp, cmt, ns, neq, xcPost, gx, -_esEps, -0.5 / _esEps,
+                     _esFm, _esFa, _esFb, _esYs, out, ind);
+  free(_esBuf);
+  return _ok;
+}
+
+// dLagJac output: G[k][q] = d(f_k)/dq (total) for each lag compartment
+// (cmt*(ns*np2) + k*np2 + q), then np2 slots mapping each calcSens2 index to
+// its calcSens index (-1 when absent), then a flag that is 1 when G is
+// complete (0 for matExp(), which has no symbolic right-hand side).  Caller
+// frees.
+static inline double *_esRhsQ(int id, double xout, double *y, int ns, int np2) {
+  size_t _n = (size_t)ns * ns * np2;
+  double *_esG = (double*) calloc(_n + (size_t)np2 + 1, sizeof(double));
+  if (_esG == NULL) return NULL;
+  for (int _q = 0; _q < np2; _q++) _esG[_n + _q] = -1.0;
+  dLagJacEs(id, xout, y, _esG);
+  return _esG;
+}
+
+static inline int _esRhsQOk(double *G, int ns, int np2) {
+  return G != NULL && G[(size_t)ns * ns * np2 + np2] == 1.0;
+}
+
+static inline int _esQToP(double *G, int ns, int np, int np2, int q) {
+  if (G == NULL) return -1;
+  int _p = (int) G[(size_t)ns * ns * np2 + q];
+  return (_p >= 0 && _p < np) ? _p : -1;
+}
+
+// Overwrite G[cmt][.][q] with the sensitivity rows of the full right-hand side
+// (dS^q_k/dt = d(f_k)/dq) for every q that is also a calcSens parameter; this
+// covers matExp(), which has no symbolic d(f_k)/dq table.
+static inline void _esGOverlay(int id, double xout, double *y, int ns, int np,
+                               int np2, int neq, int cmt, double *G,
+                               rx_solving_options_ind *ind) {
+  if (G == NULL) return;
+  double *_esR = (double*) calloc((size_t)neq, sizeof(double));
+  if (_esR == NULL) return;
+  if (_esRhsFull(id, xout, y, neq, _esR, ind)) {
+    for (int _q = 0; _q < np2; _q++) {
+      int _p = _esQToP(G, ns, np, np2, _q);
+      if (_p < 0) continue;
+      for (int _k = 0; _k < ns; _k++) {
+        G[cmt * (ns * np2) + _k * np2 + _q] = _esR[ns + _p * ns + _k];
+      }
+    }
+  }
+  free(_esR);
+}
+
+// State shared by the _esReplMult2() term helpers.
+typedef struct {
+  double *dLag, *dF, *d2Lag, *d2F, *dLagQ, *dFQ; // event-parameter derivatives
+  double *rPre, *rFix, *rPost;                    // full RHS: pre, fixed-time post, post
+  double *dDt, *D, *fm;                           // d(D)/dtau, saltation D, f(x-)
+  double *yPre, *map;
+  int cmt, ns, np, np2, isMult, haveR, haveDt;
+  double gx, rawAmt, xc;
+} _esRm2;
+
+// Fixed-time d(gp_p)/dq on the event row.
+static inline double _esRm2Value(const _esRm2 *s, int p, int q, int pq) {
+  int c = s->cmt, ns = s->ns, np = s->np, np2 = s->np2;
+  double d2F = s->d2F[c * (np * np2) + p * np2 + q];
+  if (!s->isMult) return s->rawAmt * d2F;
+  double sqc = (pq >= 0) ? s->yPre[ns + pq * ns + c] : 0.0;
+  return s->rawAmt * (s->dFQ[c * np2 + q] * s->yPre[ns + p * ns + c] +
+                      sqc * s->dF[c * np + p] + s->xc * d2F);
+}
+
+// Fixed-time d/dq of D_k*tau_p; d(D_k)/dq comes from d(f_k)/dq = dS^q_k/dt.
+static inline double _esRm2Lag(const _esRm2 *s, int p, int q, int pq, int k) {
+  int c = s->cmt, ns = s->ns, np = s->np, np2 = s->np2;
+  double tp = s->dLag[c * np + p];
+  double t = s->D[k] * s->d2Lag[c * (np * np2) + p * np2 + q];
+  if (tp == 0.0 || !s->haveR || pq < 0) return t;
+  int gi = ns + pq * ns + k;
+  double dDq = s->rPre[gi] - s->rFix[gi];
+  if (k == c) {
+    dDq -= (1.0 - s->gx) * s->rPre[gi];
+    if (s->isMult) dDq += s->rawAmt * s->dFQ[c * np2 + q] * s->fm[c];
+  }
+  return t + dDq * tp;
+}
+
+// Moving-boundary term when q also drives the event time.
+static inline double _esRm2Move(const _esRm2 *s, int p, int q, int k) {
+  int c = s->cmt, ns = s->ns, np = s->np;
+  double tq = s->dLagQ[c * s->np2 + q];
+  if (tq == 0.0 || !s->haveDt) return 0.0;
+  int gi = ns + p * ns + k;
+  double l = (k == c ? s->gx : 1.0) * s->rPre[gi] - s->rPost[gi] +
+    s->dDt[k] * s->dLag[c * np + p];
+  if (k == c && s->isMult) l += s->rawAmt * s->dF[c * np + p] * s->fm[c];
+  return l * tq;
+}
+
+// Fill the event-parameter derivative tables at the pre-event state.
+static inline void _esRm2Tables(_esRm2 *s, int id, double xout) {
+  if (dLagEs != NULL) dLagEs(id, xout, s->yPre, s->dLag);
+  if (dF != NULL) dF(id, xout, s->yPre, s->dF);
+  if (d2LagEs != NULL) d2LagEs(id, xout, s->yPre, s->d2Lag);
+  if (d2FEs != NULL) d2FEs(id, xout, s->yPre, s->d2F);
+  if (dLagQEs != NULL) dLagQEs(id, xout, s->yPre, s->dLagQ);
+  if (dFQEs != NULL) dFQEs(id, xout, s->yPre, s->dFQ);
+}
+
+// Full right-hand side before the event, after it at fixed time (S+ =
+// gx*S_c- + gp on the event row) and after the full 1st-order jump.  `y` is
+// neq scratch.
+static inline void _esRm2Rhs(_esRm2 *s, int id, double xout, double xcPost,
+                             int neq, double *y, rx_solving_options_ind *ind) {
+  int c = s->cmt, ns = s->ns, np = s->np;
+  s->haveR = _esRhsFull(id, xout, s->yPre, neq, s->rPre, ind);
+  if (s->haveR) memcpy(s->fm, s->rPre, (size_t)ns * sizeof(double));
+  memcpy(y, s->yPre, (size_t)neq * sizeof(double));
+  y[c] = xcPost;
+  for (int _p = 0; _p < np; _p++) {
+    double _gp = s->rawAmt * s->dF[c * np + _p] * (s->isMult ? s->xc : 1.0);
+    y[ns + _p * ns + c] = s->gx * s->yPre[ns + _p * ns + c] + _gp;
+  }
+  if (s->haveR) s->haveR = _esRhsFull(id, xout, y, neq, s->rFix, ind);
+  for (int _p = 0; _p < np; _p++) {
+    double _tp = s->dLag[c * np + _p];
+    for (int _k = 0; _k < ns; _k++) y[ns + _p * ns + _k] += s->D[_k] * _tp;
+  }
+  if (s->haveR) s->haveR = _esRhsFull(id, xout, y, neq, s->rPost, ind);
+}
+
+// Scratch size and layout for _esReplMult2(); returns the neq scratch state.
+static inline size_t _esRm2Size(int ns, int np, int np2, int neq) {
+  size_t _nsnp = (size_t)ns * np;
+  return 2 * _nsnp * (1 + (size_t)np2) + 2 * (size_t)ns * np2 +
+    4 * (size_t)neq + 3 * (size_t)ns;
+}
+
+static inline double *_esRm2Init(_esRm2 *s, double *buf, int ns, int np, int np2,
+                                 int neq) {
+  size_t _nsnp = (size_t)ns * np, _nsq = (size_t)ns * np2;
+  s->ns = ns; s->np = np; s->np2 = np2;
+  s->dLag = buf; s->dF = s->dLag + _nsnp;
+  s->d2Lag = s->dF + _nsnp; s->d2F = s->d2Lag + _nsnp * np2;
+  s->dLagQ = s->d2F + _nsnp * np2; s->dFQ = s->dLagQ + _nsq;
+  s->rPre = s->dFQ + _nsq; s->rFix = s->rPre + neq; s->rPost = s->rFix + neq;
+  s->dDt = s->rPost + neq; s->D = s->dDt + ns; s->fm = s->D + ns;
+  return s->fm + ns;
+}
+
+// Does any calcSens2 parameter move this event's time?
+static inline int _esRm2AnyLagQ(const _esRm2 *s) {
+  for (int _q = 0; _q < s->np2; _q++) {
+    if (s->dLagQ[s->cmt * s->np2 + _q] != 0.0) return 1;
+  }
+  return 0;
+}
+
+// d(D)/dtau into s->dDt when q can move the event time; 1 when available.
+static inline int _esRm2HaveDt(_esRm2 *s, int id, double xout, double xcPost,
+                               int neq, int hasRow, rx_solving_options_ind *ind) {
+  if (!hasRow || !s->haveR || !_esRm2AnyLagQ(s)) return 0;
+  return _esDtauRowDt(id, xout, s->yPre, s->cmt, s->ns, neq, xcPost, s->gx, s->dDt, ind);
+}
+
+// Add the S^{pq} increments into yp (layout: matExp p-outer, ODE q-outer).
+static inline void _esRm2Apply(const _esRm2 *s, double *yp, int hasRow) {
+  int ns = s->ns, np = s->np, np2 = s->np2;
+  for (int _p = 0; _p < np; _p++) {
+    for (int _q = 0; _q < np2; _q++) {
+      int _pq = _esQToP(s->map, ns, np, np2, _q);
+      for (int _k = 0; _k < ns; _k++) {
+        double _t = _esRm2Move(s, _p, _q, _k);
+        if (_k == s->cmt) _t += _esRm2Value(s, _p, _q, _pq);
+        if (hasRow) _t += _esRm2Lag(s, _p, _q, _pq, _k);
+        if (_t == 0.0) continue;
+        int _c2 = _rxEsUseCalcJac ? (ns * (1 + np) + _k + ns * (_p * np2 + _q)) :
+          (ns * (1 + np) + _k + ns * (_p + _q * np));
+        yp[_c2] += _t;
+      }
+    }
+  }
+}
+
+// Second-order jump of a replace (gx = 0) or multiply (gx = alpha) event at
+// tau.  The 1st-order map is S^p_c+ = gx*S^p_c- + gp_p + D_c*tau_p, S^p_k+ =
+// S^p_k- + D_k*tau_p with D the _esDtauRow() saltation and gp_p = d(F*amt)/dp
+// (times x_c for multiply).  Differentiating it wrt q at fixed time and adding
+// the moving-boundary term (when tau_q != 0) gives the S^{pq} increments added
+// here; the caller has already applied gx*S^{pq}_c-.  d(f_k)/dq and dS^p/dt
+// are sensitivity rows of the full right-hand side (_esRhsFull), so ODE and
+// matExp() models share the formula.  `yPre` is the full pre-event state;
+// `row` (D) may be NULL when the event time is fixed.
+static inline void _esReplMult2(int id, double xout, double *yp, double *yPre,
+                                int cmt, int ns, int np, int neq, double gx,
+                                double xcPost, double rawAmt, int isMult,
+                                double *row, rx_solving_options_ind *ind) {
+  int np2 = _rxEsNParam2;
+  if (np2 <= 0 || dLagJacEs == NULL || ns * (1 + np) + ns * np * np2 > neq) return;
+  double *_esBuf = (double*) calloc(_esRm2Size(ns, np, np2, neq), sizeof(double));
+  double *_esMap = _esRhsQ(id, xout, yPre, ns, np2);
+  if (_esBuf != NULL && _esMap != NULL) {
+    _esRm2 s;
+    double *_esY = _esRm2Init(&s, _esBuf, ns, np, np2, neq);
+    s.yPre = yPre; s.map = _esMap;
+    s.cmt = cmt; s.isMult = isMult;
+    s.gx = gx; s.rawAmt = rawAmt; s.xc = yPre[cmt];
+    _esRm2Tables(&s, id, xout);
+    if (row != NULL) memcpy(s.D, row, (size_t)ns * sizeof(double));
+    _esRm2Rhs(&s, id, xout, xcPost, neq, _esY, ind);
+    s.haveDt = _esRm2HaveDt(&s, id, xout, xcPost, neq, row != NULL, ind);
+    _esRm2Apply(&s, yp, row != NULL);
+  }
+  free(_esBuf);
+  free(_esMap);
 }
 
 // Second-order infusion-boundary jump (Phase F/H1's remaining infusion gap):
@@ -943,7 +1531,9 @@ static inline int handle_evid(int evid, int neq,
   double tmp;
   getWh(evid, &(ind->wh), &(ind->cmt), &(ind->wh100), &(ind->whI), &(ind->wh0));
   handleTlastInline(&xout, ind);
-  if (ind->wh0 == EVID0_SSINF) {
+  // An out-of-range cmt falls through to the bad-dose handling below so
+  // handleSS() never indexes InfusionRate[] past its end.
+  if (ind->wh0 == EVID0_SSINF && ind->cmt >= 0 && ind->cmt < neq) {
     ind->ixds++;
     ind->solved = ind->idx;
     return 1;
@@ -973,8 +1563,24 @@ static inline int handle_evid(int evid, int neq,
     rx_solving_options *op = (ind->op ? ind->op : &op_global);
     //if (syncIdx(ind) == 0) return 0;
     if (ind->wh0 == EVID0_OFF) {
+      if (ind->idx >= 0) {
+        rx_solve *rx = (ind->rx ? ind->rx : &rx_global);
+        cancelRunningInfusionStops(ind, rx, op, ind->idx, neq, cmt);
+      }
+      cancelRunningExtraInfusionStops(ind, cmt, xout);
+      if (_rxEsActive && _esSSDurOffCmt == cmt) _esSSDurOffCmt = -1;
+      if (_rxEsActive && _esSSRateOffCmt == cmt) _esSSRateOffCmt = -1;
       yp[cmt]=op->inits[cmt];
       InfusionRate[cmt] = 0;
+      // and its event sensitivities, whose forcing the ignored stop no longer
+      // removes
+      if (_rxEsActive && cmt < _rxEsNState &&
+          _rxEsNState * (1 + _rxEsNParam) <= neq) {
+        for (int _k = cmt + _rxEsNState; _k < op->neq; _k += _rxEsNState) {
+          yp[_k] = op->inits[_k];
+          InfusionRate[_k] = 0;
+        }
+      }
       ind->cacheME=0;
       ind->on[cmt] = 0;
       return 1;
@@ -1209,14 +1815,6 @@ static inline int handle_evid(int evid, int neq,
             if (_esB != NULL) free(_esB);
             if (_esFB != NULL) free(_esFB);
           }
-        }
-        if (ind->wh0 == EVID0_SS2 &&
-            getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp) !=
-            getDoseIndex(ind, ind->idx)) {
-          if (!(ind->err & rxErrModeledFss2)){
-            ind->err += rxErrModeledFss2;
-          }
-          return 0;
         }
       }
       break;
@@ -1478,14 +2076,6 @@ static inline int handle_evid(int evid, int neq,
       if (_esDydtPreB2 != NULL) free(_esDydtPreB2);
       }
       ind->cacheME=0;
-      if (ind->wh0 == EVID0_SS2 &&
-          getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp) !=
-          getDoseIndex(ind, ind->idx)) {
-        if (!(ind->err & rxErrModeledFss2n2)){
-          ind->err += rxErrModeledFss2n2;
-        }
-        return 0;
-      }
       break;
     case EVIDF_INF_DUR:
       // In this case bio-availability changes the rate, but the
@@ -1496,7 +2086,46 @@ static inline int handle_evid(int evid, int neq,
         ind->curDose = tmp;
         ind->curDoseS[cmt] = ind->curDose;
       }
-      tmp = getAmt(ind, id, cmt, tmp, xout, yp);
+      {
+        // Event ("jump") sensitivities -- the rate F*amt/dur is a solver-applied
+        // forcing, so the sensitivity ODE misses d(rate)/dp = (amt/dur)*dF/dp
+        // over the infusion.  Mirror it on each sensitivity compartment: the
+        // start adds it with dF read at the start, the stop removes it.
+        int _esNp = (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState &&
+                     _rxEsNState * (1 + _rxEsNParam) <= neq && dF != NULL) ?
+          _rxEsNParam : 0;
+        double *_esDRate = (_esNp > 0) ?
+          (double*) calloc((size_t)_rxEsNState * _esNp, sizeof(double)) : NULL;
+        if (_esDRate == NULL) _esNp = 0;
+        int _esW = _infDurOnNs(); // every entry has this many sensitivities
+        double _rateOn;
+        if (tmp > 0) {
+          if (_esNp > 0) {
+            dF(id, xout, yp, _esDRate);
+            // d(rate)/dp for this cmt, at the front of the buffer
+            for (int _p = 0; _p < _esNp; _p++) {
+              _esDRate[_p] = tmp * _esDRate[cmt * _esNp + _p];
+            }
+          }
+          tmp = getAmt(ind, id, cmt, tmp, xout, yp);
+          pushInfDurOn(ind, tmp, _esDRate, _esW);
+        } else if (popInfDurOn(ind, &_rateOn, _esDRate, _esW)) {
+          tmp = -_rateOn;
+          for (int _p = 0; _p < _esNp; _p++) _esDRate[_p] = -_esDRate[_p];
+        } else {
+          if (_esNp > 0) {
+            dF(id, xout, yp, _esDRate);
+            for (int _p = 0; _p < _esNp; _p++) {
+              _esDRate[_p] = tmp * _esDRate[cmt * _esNp + _p];
+            }
+          }
+          tmp = getAmt(ind, id, cmt, tmp, xout, yp);
+        }
+        for (int _p = 0; _p < _esNp; _p++) {
+          InfusionRate[_rxEsNState + _p * _rxEsNState + cmt] += _esDRate[_p];
+        }
+        if (_esDRate != NULL) free(_esDRate);
+      }
       {
         double *_esDydtPreB = _esInfusionDydtPre(id, xout, yp, neq);
         InfusionRate[cmt] += tmp;
@@ -1523,12 +2152,6 @@ static inline int handle_evid(int evid, int neq,
         if (_esDydtPreB != NULL) free(_esDydtPreB);
       }
       ind->cacheME=0;
-      if (ind->wh0 == EVID0_SS2 && tmp != getDoseIndex(ind, ind->idx)) {
-        if (!(ind->err & rxErrModeledFss2n3)){
-          ind->err += rxErrModeledFss2n3;
-        }
-        return 0;
-      }
       break;
     case EVIDF_INF_RATE:
       // In this case bio-availability changes the duration, but the
@@ -1545,6 +2168,23 @@ static inline int handle_evid(int evid, int neq,
       // }
       {
       double *_esDydtPreB = _esInfusionDydtPre(id, xout, yp, neq);
+      // A fixed-rate extra stop ending a steady-state fixed-duration infusion
+      // removes the rate, and the f() sensitivity forcing, that infusion's
+      // start added (rxode2#1568).
+      if (tmp < 0.0 && ind->idx < 0 && ind->infDurOnN > 0) {
+        int _ns = _infDurOnNs();
+        double _rateOn;
+        double *_esB = (_ns > 0) ? (double*) calloc((size_t)_ns, sizeof(double)) : NULL;
+        if (popInfDurOnSS(ind, cmt, &_rateOn, _esB, _ns)) {
+          tmp = -_rateOn;
+          if (_esB != NULL && cmt < _rxEsNState && _rxEsNState * (1 + _ns) <= neq) {
+            for (int _p = 0; _p < _ns; _p++) {
+              InfusionRate[_rxEsNState + _p * _rxEsNState + cmt] -= _esB[_p];
+            }
+          }
+        }
+        if (_esB != NULL) free(_esB);
+      }
       InfusionRate[cmt] += tmp;
       // Infusion moving boundary from a modeled lag (see EVIDF_INF_DUR above):
       // [S] = -tmp*d(alag)/dp at each start/stop record.
@@ -1561,6 +2201,38 @@ static inline int handle_evid(int evid, int neq,
         // Second-order moving-boundary term (product rule + Leibniz), see
         // _esInfusionBoundary2ndOrder()'s own comment for the derivation.
         _esInfusionBoundary2ndOrder(id, xout, yp, cmt, _ns, neq, tmp, _esDydtPreB);
+      }
+      // Infusion stop moved by f() (rxode2#1676): f() scales the amount, so the
+      // stop is t0 + lag + f*dur (handleInfusionItem(), f read at the raw start
+      // t0).  The forcing drops by rate = -tmp there, so the sensitivity jumps by
+      // rate*d(tstop)/dp = rate*dur*dF/dp.  First order only.
+      if (tmp < 0.0 && ind->idx >= 0 && dF != NULL && _rxEsActive &&
+          _rxEsNParam > 0 && cmt < _rxEsNState &&
+          _rxEsNState * (1 + _rxEsNParam) <= neq &&
+          _esSSDurOffCmt != cmt && _esSSRateOffCmt != cmt &&
+          ind->wh0 != EVID0_RATEADJ && ind->wh0 != EVID0_SSINF &&
+          ind->wh0 != EVID0_SS0 && ind->wh0 != EVID0_SS20) {
+        // the start handleInfusionItem() paired this stop with
+        int _esRec = ind->ix[ind->idx], _esStop = -1, _esStart = -1;
+        double _esAmtStop = getDose(ind, _esRec);
+        rx_solve *_esRx = (ind->rx ? ind->rx : &rx_global);
+        rx_solving_options *_esOp = (ind->op ? ind->op : &op_global);
+        handleInfusionGetStartOfInfusionIndex(&_esStart, &_esStop, &_esAmtStop,
+                                              &_esRec, _esRx, _esOp, ind);
+        if (_esStart >= 0 && _esStart < ind->ndoses &&
+            _esStop >= 0 && _esStop < ind->ndoses) {
+          int _ns = _rxEsNState, _np = _rxEsNParam;
+          double _esT0 = getAllTimes(ind, ind->idose[_esStart]);
+          double _esDur = getAllTimes(ind, ind->idose[_esStop]) - _esT0;
+          double *_esFB = (double*) calloc((size_t)_ns * _np, sizeof(double));
+          if (_esFB != NULL) {
+            dF(id, _esT0, yp, _esFB);
+            for (int _p = 0; _p < _np; _p++) {
+              yp[_ns + _p * _ns + cmt] += -tmp * _esDur * _esFB[cmt * _np + _p];
+            }
+            free(_esFB);
+          }
+        }
       }
       // Forward eventSens fix (modeled dur() STEADY STATE): solveSSinf re-expresses
       // a modeled dur ss infusion as this fixed-rate INF_RATE window, so the
@@ -1621,28 +2293,27 @@ static inline int handle_evid(int evid, int neq,
       if (_esDydtPreB != NULL) free(_esDydtPreB);
       }
       ind->cacheME=0;
-      if (ind->wh0 == EVID0_SS2 && getDoseIndex(ind, ind->idx) > 0 &&
-          getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp) !=
-          getDoseIndex(ind, ind->idx)) {
-        if (!(ind->err & rxErrModeledFss2n3)){
-          ind->err += rxErrModeledFss2n3;
-        }
-      }
       break;
     case EVIDF_REPLACE: // replace
       ind->on[cmt] = 1;
       // Event ("jump") sensitivities -- replacement (plan Section 0, Table 1).
-      // The replaced state is set to a value that (for a constant replacement)
-      // does not depend on the parameters, so its sensitivity wrt every
-      // parameter is reset to 0.  Done BEFORE the physical replace so the
-      // pre-event state is still available.  Sens compartment for (state k,
-      // param p) = nState + p*nState + k.
+      // The replaced state is set to xi = F*amt, so its sensitivity wrt p is
+      // reset to amt*dF/dp (0 without a modeled F).  Done BEFORE the physical
+      // replace so the pre-event state is still available.  Sens compartment
+      // for (state k, param p) = nState + p*nState + k.
       if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && _rxEsNState * (1 + _rxEsNParam) <= neq) {
         int _ns = _rxEsNState;
         int _np = _rxEsNParam;
+        double _esRawAmt = getDoseIndex(ind, ind->idx);
+        double *_esYPre = (double*) malloc((size_t)neq * sizeof(double));
+        if (_esYPre != NULL) memcpy(_esYPre, yp, (size_t)neq * sizeof(double));
+        double *_esDFB = (dF != NULL) ? (double*) calloc((size_t)_ns * _np, sizeof(double)) : NULL;
+        if (_esDFB != NULL) dF(id, xout, yp, _esDFB);
         for (int _p = 0; _p < _np; _p++) {
-          yp[_ns + _p * _ns + cmt] = 0.0;
+          yp[_ns + _p * _ns + cmt] = (_esDFB != NULL) ? _esRawAmt * _esDFB[cmt * _np + _p] : 0.0;
         }
+        if (_esDFB != NULL) free(_esDFB);
+        double *_esRow = NULL;
         // Second-order (Hessian path): a constant replacement value has an
         // identically zero second derivative wrt any parameter pair too (same
         // reasoning as the first-order row above) -- zero the 2nd-order
@@ -1677,35 +2348,41 @@ static inline int handle_evid(int evid, int neq,
         // compartment (raw event-table replace/multiply records, not the
         // in-model replace()/multiply() plugins, which route param-dependent
         // values through a different, already-correct captured-dosing path
-        // -- see the plan's Phase B "B2" note): dxk/dtau = J[k,c]*(x1-xi),
-        // with an extra -f_c term for k==c (paper Table 1).  x1 = pre-event
-        // state (BEFORE the physical replace just below), xi = replacement
-        // value.
-        if (dLagEs != NULL && _esHaveJacCol()) {
+        // -- see the plan's Phase B "B2" note): the saltation
+        // dxk/dtau = f_k(x-) - f_k(x+) - [k==c]*f_c(x-), x+ = x- with x_c = xi
+        // (exact for nonlinear f; paper Table 1 is its linearization).
+        double _esXi = getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);
+        if (dLagEs != NULL) {
           double *_esDLagB = (double*) calloc((size_t)_ns * _np, sizeof(double));
-          double *_esJcol = (double*) calloc((size_t)_ns, sizeof(double));
-          if (_esDLagB != NULL && _esJcol != NULL) {
+          _esRow = (double*) calloc((size_t)_ns, sizeof(double));
+          if (_esRow != NULL && !_esDtauRow(id, xout, yp, cmt, _ns, neq, _esXi, 1.0, _esRow, ind)) {
+            free(_esRow);
+            _esRow = NULL;
+          }
+          if (_esDLagB != NULL && _esRow != NULL) {
             dLagEs(id, xout, yp, _esDLagB);
-            double _esFc = 0.0;
-            _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol, &_esFc, ind);
-            double _esX1 = yp[cmt];
-            double _esXi = getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);
-            for (int _p = 0; _p < _np; _p++) {
-              double _esDLagP = _esDLagB[cmt * _np + _p];
-              if (_esDLagP != 0.0) {
-                for (int _esK = 0; _esK < _ns; _esK++) {
-                  double _esTerm = _esJcol[_esK] * (_esX1 - _esXi);
-                  if (_esK == cmt) _esTerm -= _esFc;
-                  // non-dosed compartments deferred to preSolve (coincident-time fix)
-                  _esApplyOrDeferJump(ind, yp, _ns + _p * _ns + _esK, _esK, cmt,
-                                      _esTerm * _esDLagP, xout);
+            {
+              for (int _p = 0; _p < _np; _p++) {
+                double _esDLagP = _esDLagB[cmt * _np + _p];
+                if (_esDLagP != 0.0) {
+                  for (int _esK = 0; _esK < _ns; _esK++) {
+                    // non-dosed compartments deferred to preSolve (coincident-time fix)
+                    _esApplyOrDeferJump(ind, yp, _ns + _p * _ns + _esK, _esK, cmt,
+                                        _esRow[_esK] * _esDLagP, xout);
+                  }
                 }
               }
             }
           }
           if (_esDLagB != NULL) free(_esDLagB);
-          if (_esJcol != NULL) free(_esJcol);
         }
+        // 2nd order: value (F) and event-time (alag) terms; gx = 0
+        if (_esYPre != NULL) {
+          _esReplMult2(id, xout, yp, _esYPre, cmt, _ns, _np, neq, 0.0, _esXi,
+                       _esRawAmt, 0, _esRow, ind);
+          free(_esYPre);
+        }
+        if (_esRow != NULL) free(_esRow);
       }
       yp[cmt] = getAmt(ind, id, cmt, getDoseIndex(ind, ind->idx), xout, yp);     //dosing before obs
       break;
@@ -1721,9 +2398,18 @@ static inline int handle_evid(int evid, int neq,
           int _ns = _rxEsNState;
           int _np = _rxEsNParam;
           double _esX1 = yp[cmt]; // pre-event state, before the *= alpha below
+          double _esRawAmt = getDoseIndex(ind, ind->idx);
+          double *_esYPre = (double*) malloc((size_t)neq * sizeof(double));
+          if (_esYPre != NULL) memcpy(_esYPre, yp, (size_t)neq * sizeof(double));
+          // alpha = F*amt: S^p_c+ = alpha*S^p_c- + x1*amt*dF/dp
+          double *_esDFB = (dF != NULL) ? (double*) calloc((size_t)_ns * _np, sizeof(double)) : NULL;
+          if (_esDFB != NULL) dF(id, xout, yp, _esDFB);
           for (int _p = 0; _p < _np; _p++) {
             yp[_ns + _p * _ns + cmt] *= _esAlpha;
+            if (_esDFB != NULL) yp[_ns + _p * _ns + cmt] += _esX1 * _esRawAmt * _esDFB[cmt * _np + _p];
           }
+          if (_esDFB != NULL) free(_esDFB);
+          double *_esRow = NULL;
           // Second-order (Hessian path): alpha is treated as parameter-fixed
           // for this row (same convention as first order -- a parameter-
           // dependent VALUE routes through the captured-dosing path instead,
@@ -1756,31 +2442,41 @@ static inline int handle_evid(int evid, int neq,
             }
           }
           // dtau row (event time), only if the lag is modeled (same B2 scope
-          // note as EVIDF_REPLACE above): dxk/dtau = (1-alpha)*J[k,c]*x1,
-          // with an extra -(1-alpha)*f_c term for k==c (paper Table 3).
-          if (dLagEs != NULL && _esHaveJacCol()) {
+          // note as EVIDF_REPLACE above): the saltation
+          // dxk/dtau = f_k(x-) - f_k(x+) - [k==c]*(1-alpha)*f_c(x-),
+          // x+ = x- with x_c = alpha*x1 (paper Table 3 is its linearization).
+          if (dLagEs != NULL) {
             double *_esDLagB = (double*) calloc((size_t)_ns * _np, sizeof(double));
-            double *_esJcol = (double*) calloc((size_t)_ns, sizeof(double));
-            if (_esDLagB != NULL && _esJcol != NULL) {
+            _esRow = (double*) calloc((size_t)_ns, sizeof(double));
+            if (_esRow != NULL && !_esDtauRow(id, xout, yp, cmt, _ns, neq, _esAlpha * _esX1,
+                                              1.0 - _esAlpha, _esRow, ind)) {
+              free(_esRow);
+              _esRow = NULL;
+            }
+            if (_esDLagB != NULL && _esRow != NULL) {
               dLagEs(id, xout, yp, _esDLagB);
-              double _esFc = 0.0;
-              _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol, &_esFc, ind);
-              double _esOneMAlpha = 1.0 - _esAlpha;
-              for (int _p = 0; _p < _np; _p++) {
-                double _esDLagP = _esDLagB[cmt * _np + _p];
-                if (_esDLagP != 0.0) {
-                  for (int _esK = 0; _esK < _ns; _esK++) {
-                    double _esTerm = _esOneMAlpha * (_esJcol[_esK] * _esX1 - (_esK == cmt ? _esFc : 0.0));
-                    // non-dosed compartments deferred to preSolve (coincident-time fix)
-                    _esApplyOrDeferJump(ind, yp, _ns + _p * _ns + _esK, _esK, cmt,
-                                        _esTerm * _esDLagP, xout);
+              {
+                for (int _p = 0; _p < _np; _p++) {
+                  double _esDLagP = _esDLagB[cmt * _np + _p];
+                  if (_esDLagP != 0.0) {
+                    for (int _esK = 0; _esK < _ns; _esK++) {
+                      // non-dosed compartments deferred to preSolve (coincident-time fix)
+                      _esApplyOrDeferJump(ind, yp, _ns + _p * _ns + _esK, _esK, cmt,
+                                          _esRow[_esK] * _esDLagP, xout);
+                    }
                   }
                 }
               }
             }
             if (_esDLagB != NULL) free(_esDLagB);
-            if (_esJcol != NULL) free(_esJcol);
           }
+          // 2nd order: value (F) and event-time (alag) terms; gx = alpha
+          if (_esYPre != NULL) {
+            _esReplMult2(id, xout, yp, _esYPre, cmt, _ns, _np, neq, _esAlpha,
+                         _esAlpha * _esX1, _esRawAmt, 1, _esRow, ind);
+            free(_esYPre);
+          }
+          if (_esRow != NULL) free(_esRow);
         }
         yp[cmt] *= _esAlpha;     //dosing before obs
       }
@@ -1806,29 +2502,18 @@ static inline int handle_evid(int evid, int neq,
           // Phase H1-dtau Leibniz term prerequisite: dS^p_k/dt BEFORE any of
           // this event's jumps are applied (captured now, before the ddelta/
           // dtau blocks below mutate yp's sensitivity compartments in place).
-          // ODE models only (dydtEs is a no-op stub for matExp/indLin).
-          double *_esDydtPre = NULL;
-          if (!_rxEsUseCalcJac && dydtEs != NULL) {
-            _esDydtPre = (double*) calloc((size_t)neq, sizeof(double));
-            if (_esDydtPre != NULL) {
-              int _esNjPre[2]; _esNjPre[0] = neq; _esNjPre[1] = id;
-              dydtEs(_esNjPre, xout, yp, _esDydtPre);
-            }
+          // Full right-hand side (dydt, or the augmented rate matrix for
+          // matExp()/indLin()).
+          double *_esDydtPre = (double*) calloc((size_t)neq, sizeof(double));
+          if (_esDydtPre != NULL && !_esRhsFull(id, xout, yp, neq, _esDydtPre, ind)) {
+            free(_esDydtPre);
+            _esDydtPre = NULL;
           }
-          // matExp()/indLin() models: dydtEs is a no-op stub, so g=dS^p_k/dt
-          // can't be read from it directly. But indLin's whole premise is a
-          // CONSTANT (time-invariant) Jacobian over the interval -- the
-          // k_from_to rate constants are parameter-functions only, never
-          // state-dependent -- so dS^p_k/dt = sum_l J[k][l]*S^p_l is LINEAR
-          // in S^p, meaning g+ - g- = sum_l J[k][l]*(S^p_l|post - S^p_l|pre)
-          // EXACTLY (no approximation, unlike the general nonlinear-ODE
-          // case). Capture the pre-jump 1st-order sensitivity block now
-          // (before ddelta/dtau mutate it) so the difference can be formed
-          // later from the (by-then-mutated) yp; the physical ns x ns
-          // Jacobian itself is already available via calc_jac (the same
-          // source `_esJacColF` uses for the 1st-order dtau row).
+          // Without a full right-hand side (calc_jac only), g+ - g- falls back
+          // to sum_l J[k][l]*(S^p_l|post - S^p_l|pre) from this pre-jump
+          // snapshot (exact when the rate matrix does not depend on p).
           double *_esSensPre = NULL;
-          if (_rxEsUseCalcJac) {
+          if (_rxEsUseCalcJac && _esDydtPre == NULL) {
             _esSensPre = (double*) calloc((size_t)_ns * _np, sizeof(double));
             if (_esSensPre != NULL) {
               memcpy(_esSensPre, yp + _ns, (size_t)_ns * _np * sizeof(double));
@@ -1840,6 +2525,19 @@ static inline int handle_evid(int evid, int neq,
           // 2nd/3rd-order Leibniz rows have read yp's post-jump 1st-order block.
           double *_esDeferBuf = (ind->esPendingJump != NULL) ?
             (double*) calloc((size_t)_ns * _np, sizeof(double)) : NULL;
+          // dtau saltation f(x-) - f(x+) (filled by the 1st-order dtau row) and
+          // the 2nd-order row's G[k][q] = d(f_k)/dq at the pre-event state
+          // (captured here, before ddelta/dtau mutate the sensitivities) and
+          // at the post-dose state (captured just before the dtau row).
+          double *_esSalt = NULL;
+          double *_esGPre = NULL;
+          double *_esGPost = NULL;
+          if (d2LagEs != NULL && dLagJacEs != NULL && dLagEs != NULL &&
+              _rxEsNParam2 > 0 &&
+              _ns * (1 + _np) + _ns * _np * _rxEsNParam2 <= neq) {
+            _esGPre = _esRhsQ(id, xout, yp, _ns, _rxEsNParam2);
+            _esGOverlay(id, xout, yp, _ns, _np, _rxEsNParam2, neq, cmt, _esGPre, ind);
+          }
           // ddelta row (bioavailability)
           if (dF != NULL) {
             double *_dFB = (double*) calloc((size_t)_ns * _np, sizeof(double));
@@ -1934,13 +2632,33 @@ static inline int handle_evid(int evid, int neq,
           // to match how those lines are emitted). Ordinary ODE models keep
           // the central-difference-of-dydt approach (calc_jac is normally an
           // empty stub for them -- only populated by user-written df/dy).
-          if (dLagEs != NULL && _esHaveJacCol()) {
+          // The saltation is exact: f(x-) - f(x+) with x+ = x- + delta*e_c
+          // (the paper's -J[k][c]*delta is its linearization, wrong once f is
+          // nonlinear in the states).
+          //
+          // Second-order prerequisite: G[k][q] = d(f_k)/dq (total, via S^q)
+          // at the post-dose state with the post-ddelta S^q, so the 2nd-order
+          // row can form d/dq [f_k(x-) - f_k(x+)] exactly.
+          if (_esGPre != NULL) {
+            double *_esYG = (double*) malloc((size_t)neq * sizeof(double));
+            if (_esYG != NULL) {
+              memcpy(_esYG, yp, (size_t)neq * sizeof(double));
+              _esYG[cmt] += _esDelta;
+              _esGPost = _esRhsQ(id, xout, _esYG, _ns, _rxEsNParam2);
+              _esGOverlay(id, xout, _esYG, _ns, _np, _rxEsNParam2, neq, cmt, _esGPost, ind);
+              free(_esYG);
+            }
+          }
+          if (dLagEs != NULL) {
             double *_esDLagB = (double*) calloc((size_t)_ns * _np, sizeof(double));
-            double *_esJcol = (double*) calloc((size_t)_ns, sizeof(double));
-            if (_esDLagB != NULL && _esJcol != NULL) {
+            _esSalt = (double*) calloc((size_t)_ns, sizeof(double));
+            if (_esSalt != NULL &&
+                !_esDtauRow(id, xout, yp, cmt, _ns, neq, yp[cmt] + _esDelta, 0.0, _esSalt, ind)) {
+              free(_esSalt);
+              _esSalt = NULL;
+            }
+            if (_esDLagB != NULL && _esSalt != NULL) {
               dLagEs(id, xout, yp, _esDLagB);
-              // NULL: the additive-bolus dtau row has no f_c term
-              _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol, NULL, ind);
               for (int _p = 0; _p < _np; _p++) {
                 double _esDLagP = _esDLagB[cmt * _np + _p];
                 if (_esDLagP != 0.0) {
@@ -1949,24 +2667,22 @@ static inline int handle_evid(int evid, int neq,
                     // non-dosed part recorded for deferral (coincident-time fix)
                     _esApplyJumpRecordNonDosed(yp, _esDeferBuf, _ns,
                                                _ns + _p * _ns + _esK, _esK, cmt,
-                                               -_esJcol[_esK] * _esDelta * _esDLagP);
+                                               _esSalt[_esK] * _esDLagP);
                   }
                 }
               }
             }
             if (_esDLagB != NULL) free(_esDLagB);
-            if (_esJcol != NULL) free(_esJcol);
           }
           // Second-order dtau row (Phase H1's dtau/lag row): d/dq of the
           // 1st-order dtau jump above, by the product rule applied to
-          // -J[k][c]*delta*dLag_p[c]:
-          //   -dJdq[k][c]*delta*dLag_p[c]              (Jacobian coupling)
-          //   -J[k][c]*(amt*dFQ[c][q])*dLag_p[c]        (delta = F*amt coupling)
-          //   -J[k][c]*delta*d2Lag[p][q][c]             (dLag itself coupling)
-          // dJdq[k][c] = d(J[k][c])/dq, the total derivative of the physical
-          // Jacobian column (`.rxEventSensDerivs()`'s "lagJacQ" table,
-          // computed symbolically from the model's own d/dt() RHS -- see the
-          // plan's Phase H1-dtau note).
+          // Salt[k]*dLag_p[c], Salt[k] = f_k(x-) - f_k(x+):
+          //   (G-[k][q] - G+[k][q])*dLag_p[c]   (d(Salt[k])/dq at fixed time)
+          //   Salt[k]*d2Lag[p][q][c]            (dLag itself coupling)
+          // G[k][q] = d(f_k)/dq, the total derivative of the physical RHS
+          // (`.rxEventSensDerivs()`'s "lagRhsQ" table, compiled as dLagJac);
+          // G- at (x-, S^q-), G+ at (x- + delta*e_c, S^q- + amt*dF_q*e_c), so
+          // the difference also carries the delta = F*amt coupling.
           //
           // PLUS a Leibniz/moving-boundary term whenever q ALSO drives this
           // same alag (dLag_q[c] != 0): the three terms above hold time FIXED
@@ -2010,16 +2726,21 @@ static inline int handle_evid(int evid, int neq,
           // added the full (p,q) result IS symmetric again, so getting the
           // per-model-type index right (rather than relying on symmetry to
           // paper over it) is what makes both model types correct together.
-          if (d2LagEs != NULL && dLagJacEs != NULL && _esHaveJacCol() &&
-              _rxEsNParam2 > 0 &&
-              _ns * (1 + _np) + _ns * _np * _rxEsNParam2 <= neq) {
+          if (_esSalt != NULL && _esGPre != NULL && _esGPost != NULL) {
             int _np2 = _rxEsNParam2;
             double *_esDLagB2 = (double*) calloc((size_t)_ns * _np, sizeof(double));
-            double *_esJcol2 = (double*) calloc((size_t)_ns, sizeof(double));
             double *_esD2LagB = (double*) calloc((size_t)_ns * _np * _np2, sizeof(double));
-            double *_esDFQB = (double*) calloc((size_t)_ns * _np2, sizeof(double));
-            double *_esJacQB = (double*) calloc((size_t)_ns * _ns * _np2, sizeof(double));
             double *_esDLagQB = (double*) calloc((size_t)_ns * _np2, sizeof(double));
+            // matExp(): no symbolic RHS, so d(Salt)/dq falls back to the
+            // linearization -J[k][c]*amt*dF/dq (exact for its linear system)
+            int _esGOk = _esRhsQOk(_esGPre, _ns, _np2);
+            double *_esJcolL = NULL, *_esDFQL = NULL;
+            if (!_esGOk && _esHaveJacCol()) {
+              _esJcolL = (double*) calloc((size_t)_ns, sizeof(double));
+              _esDFQL = (double*) calloc((size_t)_ns * _np2, sizeof(double));
+              if (_esJcolL != NULL) _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcolL, NULL, ind);
+              if (_esDFQL != NULL && dFQEs != NULL) dFQEs(id, xout, yp, _esDFQL);
+            }
             // matExp()/indLin() only: the full physical ns x ns Jacobian
             // (row-major, J[k][l] = _esFullJac[k*ns+l]), needed for the
             // Leibniz term's `sum_l J[k][l]*(S^p_l|post - S^p_l|pre)`.
@@ -2031,13 +2752,9 @@ static inline int handle_evid(int evid, int neq,
                 calc_jac(_esNjF, xout, yp, _esFullJac, (unsigned int) _ns);
               }
             }
-            if (_esDLagB2 != NULL && _esJcol2 != NULL && _esD2LagB != NULL &&
-                _esDFQB != NULL && _esJacQB != NULL && _esDLagQB != NULL) {
+            if (_esDLagB2 != NULL && _esD2LagB != NULL && _esDLagQB != NULL) {
               dLagEs(id, xout, yp, _esDLagB2);
-              _esJacColF(id, xout, yp, cmt, _ns, neq, _esJcol2, NULL, ind);
               d2LagEs(id, xout, yp, _esD2LagB);
-              if (dFQEs != NULL) dFQEs(id, xout, yp, _esDFQB);
-              dLagJacEs(id, xout, yp, _esJacQB);
               if (dLagQEs != NULL) dLagQEs(id, xout, yp, _esDLagQB);
               // Does ANY calcSens2 param also drive this event's alag? The
               // Leibniz term below needs dS^p_./dt regardless of whether p
@@ -2049,6 +2766,18 @@ static inline int handle_evid(int evid, int neq,
               int _esAnyLagQ = 0;
               for (int _qq = 0; _qq < _np2; _qq++) {
                 if (_esDLagQB[cmt * _np2 + _qq] != 0.0) { _esAnyLagQ = 1; break; }
+              }
+              // d(Salt)/dtau along the trajectory: the moving-boundary term's
+              // tau_p*tau_q piece (zero for a linear, autonomous RHS).
+              double *_esDSaltDt = NULL;
+              if (_esAnyLagQ) {
+                _esDSaltDt = (double*) calloc((size_t)_ns, sizeof(double));
+                if (_esDSaltDt != NULL &&
+                    !_esDtauRowDt(id, xout, yp, cmt, _ns, neq, yp[cmt] + _esDelta,
+                                  1.0, _esDSaltDt, ind)) {
+                  free(_esDSaltDt);
+                  _esDSaltDt = NULL;
+                }
               }
               for (int _p = 0; _p < _np; _p++) {
                 double _esDLagP2 = _esDLagB2[cmt * _np + _p];
@@ -2071,9 +2800,10 @@ static inline int handle_evid(int evid, int neq,
                       memcpy(_esYTemp, yp, (size_t)neq * sizeof(double));
                       _esYTemp[cmt] += _esDelta;
                       _esDydtPostP = (double*) calloc((size_t)neq, sizeof(double));
-                      if (_esDydtPostP != NULL) {
-                        int _esNjPost[2]; _esNjPost[0] = neq; _esNjPost[1] = id;
-                        dydtEs(_esNjPost, xout, _esYTemp, _esDydtPostP);
+                      if (_esDydtPostP != NULL &&
+                          !_esRhsFull(id, xout, _esYTemp, neq, _esDydtPostP, ind)) {
+                        free(_esDydtPostP);
+                        _esDydtPostP = NULL;
                       }
                       free(_esYTemp);
                     }
@@ -2093,20 +2823,24 @@ static inline int handle_evid(int evid, int neq,
                 }
                 for (int _q = 0; _q < _np2; _q++) {
                   double _esD2LagPQ = _esD2LagB[cmt * (_np * _np2) + _p * _np2 + _q];
-                  double _esDFQc = _esDFQB[cmt * _np2 + _q];
                   double _esDLagQq = _esDLagQB[cmt * _np2 + _q];
                   for (int _esK = 0; _esK < _ns; _esK++) {
-                    double _esDJdq = _esJacQB[cmt * (_ns * _np2) + _esK * _np2 + _q];
+                    int _esGi = cmt * (_ns * _np2) + _esK * _np2 + _q;
+                    double _esDSaltQ = (_esGOk || _esQToP(_esGPre, _ns, _np, _np2, _q) >= 0) ?
+                      _esGPre[_esGi] - _esGPost[_esGi] :
+                      ((_esJcolL != NULL && _esDFQL != NULL) ?
+                       -_esJcolL[_esK] * _esRawAmt * _esDFQL[cmt * _np2 + _q] : 0.0);
                     // Compartment layout is model-type-specific -- see the
                     // note above (rxSensMatExp: p-outer/q-inner; ordinary
                     // ODE models via rxExpandSens2_: q-outer/p-inner).
                     int _c2 = _rxEsUseCalcJac ?
                       (_ns * (1 + _np) + _esK + _ns * (_p * _np2 + _q)) :
                       (_ns * (1 + _np) + _esK + _ns * (_p + _q * _np));
-                    double _esTerm = -_esDJdq * _esDelta * _esDLagP2
-                      - _esJcol2[_esK] * (_esRawAmt * _esDFQc) * _esDLagP2
-                      - _esJcol2[_esK] * _esDelta * _esD2LagPQ;
+                    double _esTerm = _esDSaltQ * _esDLagP2 + _esSalt[_esK] * _esD2LagPQ;
                     if (_esDLagQq != 0.0) {
+                      if (_esDSaltDt != NULL) {
+                        _esTerm += _esDSaltDt[_esK] * _esDLagP2 * _esDLagQq;
+                      }
                       if (_esDydtPostP != NULL && _esDydtPre != NULL) {
                         double _esGpost = _esDydtPostP[_ns + _p * _ns + _esK];
                         double _esGpre = _esDydtPre[_ns + _p * _ns + _esK];
@@ -2121,14 +2855,14 @@ static inline int handle_evid(int evid, int neq,
                 if (_esDydtPostP != NULL) free(_esDydtPostP);
                 if (_esGdiff != NULL) free(_esGdiff);
               }
+              if (_esDSaltDt != NULL) free(_esDSaltDt);
             }
             if (_esFullJac != NULL) free(_esFullJac);
             if (_esDLagB2 != NULL) free(_esDLagB2);
-            if (_esJcol2 != NULL) free(_esJcol2);
             if (_esD2LagB != NULL) free(_esD2LagB);
-            if (_esDFQB != NULL) free(_esDFQB);
-            if (_esJacQB != NULL) free(_esJacQB);
             if (_esDLagQB != NULL) free(_esDLagQB);
+            if (_esJcolL != NULL) free(_esJcolL);
+            if (_esDFQL != NULL) free(_esDFQL);
           }
           // Now that the 2nd/3rd-order rows have read yp's post-jump 1st-order
           // block, defer the non-dosed 1st-order jump (coincident-time fix).
@@ -2136,6 +2870,9 @@ static inline int handle_evid(int evid, int neq,
           if (_esDeferBuf != NULL) free(_esDeferBuf);
           if (_esDydtPre != NULL) free(_esDydtPre);
           if (_esSensPre != NULL) free(_esSensPre);
+          if (_esSalt != NULL) free(_esSalt);
+          if (_esGPre != NULL) free(_esGPre);
+          if (_esGPost != NULL) free(_esGPost);
         }
         yp[cmt] += _esDelta;     //dosing before obs
       }

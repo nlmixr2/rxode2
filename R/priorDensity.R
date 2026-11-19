@@ -26,8 +26,10 @@
 ##   reports -- `dnorm()`/`stdNormal()`, `dcauchy()` (including the
 ##   half-Cauchy case, `prior(add.sd) ~ dcauchy(0, 5)` with `add.sd`'s own
 ##   `lower = 0`), the joint theta+omega `multiNormal()` block (an `om.<eta>`
-##   member addresses the raw omega value), and a textbook inverse-Wishart
-##   on an omega block.
+##   member addresses the raw omega value), a textbook inverse-Wishart
+##   on an omega block, and lotri's other univariate continuous families
+##   (`prior-density-families.R`), each truncated to the parameter's own
+##   bounds.
 ## - `"nwpri"`: NONMEM's own `$PRIOR NWPRI` parameterization (NONMEM7
 ##   Technical Guide, "Three Stage EM Analysis", eq. 1.154-1.171). Theta
 ##   reuses the same multivariate-normal math (eq. 1.156 is the textbook MVN
@@ -54,23 +56,51 @@
 ##   conversion. A method that estimates Omega directly (SAEM) uses the
 ##   returned gradient as-is.
 ##
-## Neither `"nwpri"` nor `"tnpri"` has a Cauchy analogue, so both refuse
-## one; `"tnpri"` also refuses `invWishart()` (that is `"nwpri"`'s own
-## mechanism, not `"tnpri"`'s).
+## Neither `"nwpri"` nor `"tnpri"` has a Cauchy (or any other non-normal
+## univariate) analogue, so both refuse one; `"tnpri"` also refuses
+## `invWishart()` (that is `"nwpri"`'s own mechanism, not `"tnpri"`'s).
 
 #' Distributions `rxPriorLogDensity()` can evaluate
 #'
 #' @noRd
-.rxPriorDensityStanNames <- c("normal", "std_normal", "cauchy",
-                              "multi_normal", "inv_wishart")
+.rxPriorDensityStanNames <- c(
+  "normal",
+  "std_normal",
+  "cauchy",
+  "multi_normal",
+  "inv_wishart",
+  names(.rxPriorUniFamilies)
+)
 
 #' Prior-term type codes shared with `src/priorDensity.cpp`
 #'
 #' Must match `rx_prior_term_t.type` in `inst/include/rxode2prior.h`.
 #'
 #' @noRd
-.rxPriorTermTypeCode <- c(normal=0L, cauchy=1L, multiNormal=2L,
-                          invWishart=3L, invWishartNwpri=4L)
+.rxPriorTermTypeCode <- c(
+  normal = 0L,
+  cauchy = 1L,
+  multiNormal = 2L,
+  invWishart = 3L,
+  invWishartNwpri = 4L,
+  lognormal = 5L,
+  gamma = 6L,
+  invGamma = 7L,
+  weibull = 8L,
+  frechet = 9L,
+  pareto = 10L,
+  paretoType2 = 11L,
+  beta = 12L,
+  uniform = 13L,
+  studentT = 14L,
+  doubleExponential = 15L,
+  logistic = 16L,
+  gumbel = 17L,
+  skewDoubleExponential = 18L,
+  expModNormal = 19L,
+  skewNormal = 20L,
+  vonMises = 21L
+)
 
 #' The covariance matrix a `multiNormal()` prior carries, without going
 #' through `lotri::lotri()`'s own validation
@@ -97,16 +127,28 @@
 #' @author Matthew L. Fidler
 .rxPriorCovMatFromNames <- function(names, prior) {
   .p <- .rxPriorParse(prior)
-  if (is.null(.p)) return(NULL)
+  if (is.null(.p)) {
+    return(NULL)
+  }
   for (.a in .p$args) {
-    if (!(is.call(.a) && identical(.a[[1]], quote(`lotri`)))) next
+    if (!(is.call(.a) && identical(.a[[1]], quote(`lotri`)))) {
+      next
+    }
     .b <- .a[[2]]
-    if (is.call(.b) && identical(.b[[1]], quote(`{`))) .b <- .b[[2]]
-    if (!(is.call(.b) && identical(.b[[1]], quote(`~`)))) return(NULL)
-    .vec <- try(eval(.b[[3]], envir=.rxPriorEvalEnv()), silent=TRUE)
-    if (inherits(.vec, "try-error") || !is.numeric(.vec)) return(NULL)
+    if (is.call(.b) && identical(.b[[1]], quote(`{`))) {
+      .b <- .b[[2]]
+    }
+    if (!(is.call(.b) && identical(.b[[1]], quote(`~`)))) {
+      return(NULL)
+    }
+    .vec <- try(eval(.b[[3]], envir = .rxPriorEvalEnv()), silent = TRUE)
+    if (inherits(.vec, "try-error") || !is.numeric(.vec)) {
+      return(NULL)
+    }
     .n <- length(names)
-    if (length(.vec) != .n * (.n + 1) / 2) return(NULL)
+    if (length(.vec) != .n * (.n + 1) / 2) {
+      return(NULL)
+    }
     .m <- matrix(0, .n, .n)
     .k <- 1L
     ## row-major lower triangle (row i's entries (i,1)..(i,i) in order),
@@ -139,9 +181,15 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .rxPriorDensityStop <- function(name, prior, why) {
-  stop("cannot evaluate the prior on '", paste(name, collapse="', '"),
-       "' (", paste(prior, collapse=", "), "): ", why,
-       call.=FALSE)
+  stop(
+    "cannot evaluate the prior on '",
+    paste(name, collapse = "', '"),
+    "' (",
+    paste(prior, collapse = ", "),
+    "): ",
+    why,
+    call. = FALSE
+  )
 }
 
 #' The omega block a diagonal `iniDf` row belongs to
@@ -154,7 +202,7 @@
 .rxPriorOmegaBlockFor <- function(ui, name) {
   .omega <- ui$omega
   .blks <- if (inherits(.omega, "lotri")) {
-    unlist(lapply(.omega, lotri::lotriMatInv), recursive=FALSE)
+    unlist(lapply(.omega, lotri::lotriMatInv), recursive = FALSE)
   } else if (!is.matrix(.omega) || dim(.omega)[1] == 0L) {
     list()
   } else {
@@ -185,10 +233,18 @@
   .old <- unname(seenPrior[keys])
   .conflict <- !is.na(.old) & .old != prior
   if (any(.conflict)) {
-    stop("'", paste(keys[.conflict], collapse="', '"), "' carries two ",
-         "different priors ('", paste(unique(.old[.conflict]), collapse="', '"),
-         "' and '", prior, "'); this can only happen on a hand-edited or ",
-         "piped 'iniDf'", call.=FALSE)
+    stop(
+      "'",
+      paste(keys[.conflict], collapse = "', '"),
+      "' carries two ",
+      "different priors ('",
+      paste(unique(.old[.conflict]), collapse = "', '"),
+      "' and '",
+      prior,
+      "'); this can only happen on a hand-edited or ",
+      "piped 'iniDf'",
+      call. = FALSE
+    )
   }
   seenPrior[keys] <- prior
   seenPrior
@@ -207,11 +263,13 @@
 #' @return list of terms; each is `list(type=, names=, ...)`
 #' @noRd
 #' @author Matthew L. Fidler
-.rxPriorDensityTerms <- function(ui, method=c("general", "nwpri", "tnpri")) {
+.rxPriorDensityTerms <- function(ui, method = c("general", "nwpri", "tnpri")) {
   method <- match.arg(method)
   ui <- rxode2::assertRxUi(ui)
   .iniDf <- ui$iniDf
-  if (is.null(.iniDf) || !any(names(.iniDf) == "prior")) return(list())
+  if (is.null(.iniDf) || !any(names(.iniDf) == "prior")) {
+    return(list())
+  }
   .w <- which(!is.na(.iniDf$prior))
   .terms <- list()
   .seen <- character(0)
@@ -234,54 +292,88 @@
       ## `om.<eta>` is how this kernel spells an omega diagonal element
       ## internally (matching `.rxPriorThetaMat()`); a population
       ## parameter that happens to be named that way would be ambiguous
-      stop("the population parameter '", .name, "' collides with this ",
-           "kernel's internal 'om.<eta>' spelling of an omega element; ",
-           "rename the parameter", call.=FALSE)
+      stop(
+        "the population parameter '",
+        .name,
+        "' collides with this ",
+        "kernel's internal 'om.<eta>' spelling of an omega element; ",
+        "rename the parameter",
+        call. = FALSE
+      )
     }
     .key <- if (.isOmega) paste0("om.", .name) else .name
     .prior <- .iniDf$prior[.i]
     .seenPrior <- .rxPriorMarkSeen(.seenPrior, .key, .prior)
-    if (.key %in% .seen) next
+    if (.key %in% .seen) {
+      next
+    }
     .p <- .rxPriorParse(.prior)
     if (is.null(.p) || is.na(.p$stanName)) {
       .rxPriorDensityStop(.key, .prior, "the distribution is not known to 'lotri'")
     }
     if (.p$stanName %in% .rxOmegaDfStanNames) {
       if (!identical(.p$stanName, "inv_wishart")) {
-        .rxPriorDensityStop(.key, .prior, paste0("'", .p$fn, "' is not yet evaluated by ",
-                                          "rxPriorLogDensity(); only 'invWishart()' is"))
+        .rxPriorDensityStop(
+          .key,
+          .prior,
+          paste0("'", .p$fn, "' is not yet evaluated by ", "rxPriorLogDensity(); only 'invWishart()' is")
+        )
       }
       if (identical(method, "tnpri")) {
-        .rxPriorDensityStop(.key, .prior,
-                     paste0("'invWishart()' is not part of the TNPRI method; use ",
-                            "method=\"nwpri\" for an omega degrees-of-freedom prior"))
+        .rxPriorDensityStop(
+          .key,
+          .prior,
+          paste0(
+            "'invWishart()' is not part of the TNPRI method; use ",
+            "method=\"nwpri\" for an omega degrees-of-freedom prior"
+          )
+        )
       }
       if (length(.p$args) > 1L) {
-        .rxPriorDensityStop(.key, .prior,
-                     paste0("an explicit inverse-Wishart scale matrix argument is not ",
-                            "yet supported; only 'invWishart(nu)', which uses the ",
-                            "block's own values as the scale, is implemented"))
+        .rxPriorDensityStop(
+          .key,
+          .prior,
+          paste0(
+            "an explicit inverse-Wishart scale matrix argument is not ",
+            "yet supported; only 'invWishart(nu)', which uses the ",
+            "block's own values as the scale, is implemented"
+          )
+        )
       }
       .blk <- .rxPriorOmegaBlockFor(ui, .name)
       if (is.null(.blk)) {
         .rxPriorDensityStop(.key, .prior, "could not find the omega block this prior is on")
       }
-      .nu <- try(eval(.p$args[[1]], envir=.rxPriorEvalEnv()), silent=TRUE)
+      .nu <- try(eval(.p$args[[1]], envir = .rxPriorEvalEnv()), silent = TRUE)
       if (inherits(.nu, "try-error") || length(.nu) != 1L || !is.finite(.nu)) {
         .rxPriorDensityStop(.key, .prior, "the degrees of freedom could not be read back")
       }
       .nm <- dimnames(.blk)[[1]]
       if (.nu <= length(.nm) - 1) {
-        .rxPriorDensityStop(.nm, .prior,
-                     paste0("an inverse Wishart on a ", length(.nm), "x", length(.nm),
-                            " block needs degrees of freedom greater than ",
-                            length(.nm) - 1, ", but ", .nu, " was given"))
+        .rxPriorDensityStop(
+          .nm,
+          .prior,
+          paste0(
+            "an inverse Wishart on a ",
+            length(.nm),
+            "x",
+            length(.nm),
+            " block needs degrees of freedom greater than ",
+            length(.nm) - 1,
+            ", but ",
+            .nu,
+            " was given"
+          )
+        )
       }
       .omKeys <- paste0("om.", .nm)
       .seenPrior <- .rxPriorMarkSeen(.seenPrior, .omKeys, .prior)
       .terms[[length(.terms) + 1L]] <- list(
-        type=if (identical(method, "nwpri")) "invWishartNwpri" else "invWishart",
-        names=.omKeys, nu=as.double(.nu), Psi=.blk)
+        type = if (identical(method, "nwpri")) "invWishartNwpri" else "invWishart",
+        names = .omKeys,
+        nu = as.double(.nu),
+        Psi = .blk
+      )
       .seen <- c(.seen, .omKeys)
       next
     }
@@ -296,54 +388,98 @@
       if (is.null(.nm) || is.null(.cov)) {
         .rxPriorDensityStop(.key, .prior, "the covariance could not be read back")
       }
-      .mu <- try(eval(.p$args[[1]], envir=.rxPriorEvalEnv()), silent=TRUE)
+      .mu <- try(eval(.p$args[[1]], envir = .rxPriorEvalEnv()), silent = TRUE)
       if (inherits(.mu, "try-error")) {
         .rxPriorDensityStop(.nm, .prior, "the mean vector could not be read back")
       }
       .mu <- rep_len(as.double(.mu), length(.nm))
       ## a joint block member that is itself an omega element is spelled
       ## with the same `om.` prefix `.rxPriorThetaMat()` uses
-      .nm <- vapply(.nm, function(n) {
-        if (any(!is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2 & .iniDf$name == n)) {
-          paste0("om.", n)
-        } else n
-      }, character(1), USE.NAMES=FALSE)
+      .nm <- vapply(
+        .nm,
+        function(n) {
+          if (any(!is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2 & .iniDf$name == n)) {
+            paste0("om.", n)
+          } else {
+            n
+          }
+        },
+        character(1),
+        USE.NAMES = FALSE
+      )
       dimnames(.cov) <- list(.nm, .nm)
       .seenPrior <- .rxPriorMarkSeen(.seenPrior, .nm, .prior)
       ## "tnpri" builds the exact same term as "general" here -- the prior
       ## is on the raw omega value either way; see the file header comment
-      .terms[[length(.terms) + 1L]] <- list(type="multiNormal", names=.nm,
-                                            mu=.mu, Sigma=.cov)
+      .terms[[length(.terms) + 1L]] <- list(type = "multiNormal", names = .nm, mu = .mu, Sigma = .cov)
       .seen <- c(.seen, .nm)
       next
     }
     if (.p$stanName %in% c("normal", "std_normal", "cauchy")) {
       if (identical(.p$stanName, "cauchy") && method %in% c("nwpri", "tnpri")) {
-        .rxPriorDensityStop(.key, .prior,
-                     paste0("'dcauchy()' is not part of NONMEM's ",
-                            toupper(method), " prior machinery; use ",
-                            "method=\"general\" for a Cauchy prior"))
+        .rxPriorDensityStop(
+          .key,
+          .prior,
+          paste0(
+            "'dcauchy()' is not part of NONMEM's ",
+            toupper(method),
+            " prior machinery; use ",
+            "method=\"general\" for a Cauchy prior"
+          )
+        )
       }
       if (identical(.p$stanName, "std_normal")) {
-        .mu <- 0; .sd <- 1
+        .mu <- 0
+        .sd <- 1
       } else {
-        .mu <- try(eval(.p$args[[1]], envir=.rxPriorEvalEnv()), silent=TRUE)
-        .sd <- try(eval(.p$args[[2]], envir=.rxPriorEvalEnv()), silent=TRUE)
+        .mu <- try(eval(.p$args[[1]], envir = .rxPriorEvalEnv()), silent = TRUE)
+        .sd <- try(eval(.p$args[[2]], envir = .rxPriorEvalEnv()), silent = TRUE)
         if (inherits(.mu, "try-error") || inherits(.sd, "try-error")) {
           .rxPriorDensityStop(.key, .prior, "the parameters could not be read back")
         }
       }
       .terms[[length(.terms) + 1L]] <- list(
-        type=if (identical(.p$stanName, "cauchy")) "cauchy" else "normal",
-        names=.key, mu=as.double(.mu), sd=as.double(.sd),
-        lower=.iniDf$lower[.i], upper=.iniDf$upper[.i])
+        type = if (identical(.p$stanName, "cauchy")) "cauchy" else "normal",
+        names = .key,
+        mu = as.double(.mu),
+        sd = as.double(.sd),
+        lower = .iniDf$lower[.i],
+        upper = .iniDf$upper[.i]
+      )
       .seen <- c(.seen, .key)
       next
     }
-    .rxPriorDensityStop(.key, .prior,
-                 paste0("'", .p$fn, "' is not yet evaluated by rxPriorLogDensity(); ",
-                        "supported distributions are '",
-                        paste(.rxPriorDensityStanNames, collapse="', '"), "'"))
+    if (.p$stanName %in% names(.rxPriorUniFamilies)) {
+      if (method %in% c("nwpri", "tnpri")) {
+        .rxPriorDensityStop(
+          .key,
+          .prior,
+          paste0(
+            "'",
+            .p$fn,
+            "()' is not part of NONMEM's ",
+            toupper(method),
+            " prior machinery; use ",
+            "method=\"general\""
+          )
+        )
+      }
+      .terms[[length(.terms) + 1L]] <- .rxPriorUniTerm(.key, .prior, .p, .iniDf$lower[.i], .iniDf$upper[.i])
+      .seen <- c(.seen, .key)
+      next
+    }
+    .rxPriorDensityStop(
+      .key,
+      .prior,
+      paste0(
+        "'",
+        .p$fn,
+        "' is not yet evaluated by rxPriorLogDensity(); ",
+        "supported distributions are '",
+        paste(.rxPriorDensityStanNames, collapse = "', '"),
+        "'"
+      )
+    )
   }
   .terms
 }
@@ -370,9 +506,14 @@
   .d <- which(!is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2)
   .idx <- .iniDf$neta1[.d]
   if (length(.idx) > 0L && !isTRUE(all.equal(sort(.idx), as.double(seq_along(.idx))))) {
-    stop("the model's omega diagonal indices ('neta1') are not a dense ",
-         "1:n sequence (", paste(sort(.idx), collapse=", "), "); this can ",
-         "only happen on a hand-edited or piped 'iniDf'", call.=FALSE)
+    stop(
+      "the model's omega diagonal indices ('neta1') are not a dense ",
+      "1:n sequence (",
+      paste(sort(.idx), collapse = ", "),
+      "); this can ",
+      "only happen on a hand-edited or piped 'iniDf'",
+      call. = FALSE
+    )
   }
   .iniDf$name[.d][order(.idx)]
 }
@@ -396,7 +537,7 @@
     if (grepl("^[(].*,.*[)]$", .eta)) {
       .w <- which(!is.na(.iniDf$neta1) & .iniDf$neta1 != .iniDf$neta2 & .iniDf$name == .eta)
       if (length(.w) != 1L) {
-        stop("could not find the omega covariance element '", .eta, "'", call.=FALSE)
+        stop("could not find the omega covariance element '", .eta, "'", call. = FALSE)
       }
       .e1 <- as.integer(.iniDf$neta1[.w])
       .e2 <- as.integer(.iniDf$neta2[.w])
@@ -409,23 +550,28 @@
       ## that C++ code as an out-of-bounds omega[][] read/write.
       .diag <- !is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2
       if (!(.e1 %in% .iniDf$neta1[.diag]) || !(.e2 %in% .iniDf$neta1[.diag])) {
-        stop("the omega covariance element '", .eta, "' references an eta ",
-             "index with no corresponding diagonal omega element; this can ",
-             "only happen on a hand-edited or piped 'iniDf'", call.=FALSE)
+        stop(
+          "the omega covariance element '",
+          .eta,
+          "' references an eta ",
+          "index with no corresponding diagonal omega element; this can ",
+          "only happen on a hand-edited or piped 'iniDf'",
+          call. = FALSE
+        )
       }
-      return(list(thetaIdx=0L, etaIdx=.e1, etaIdx2=.e2))
+      return(list(thetaIdx = 0L, etaIdx = .e1, etaIdx2 = .e2))
     }
     .w <- which(!is.na(.iniDf$neta1) & .iniDf$neta1 == .iniDf$neta2 & .iniDf$name == .eta)
     if (length(.w) != 1L) {
-      stop("could not find the omega element '", .eta, "'", call.=FALSE)
+      stop("could not find the omega element '", .eta, "'", call. = FALSE)
     }
-    list(thetaIdx=0L, etaIdx=as.integer(.iniDf$neta1[.w]), etaIdx2=0L)
+    list(thetaIdx = 0L, etaIdx = as.integer(.iniDf$neta1[.w]), etaIdx2 = 0L)
   } else {
     .w <- which(is.na(.iniDf$neta1) & .iniDf$name == key)
     if (length(.w) != 1L) {
-      stop("could not find the population parameter '", key, "'", call.=FALSE)
+      stop("could not find the population parameter '", key, "'", call. = FALSE)
     }
-    list(thetaIdx=as.integer(.iniDf$ntheta[.w]), etaIdx=0L, etaIdx2=0L)
+    list(thetaIdx = as.integer(.iniDf$ntheta[.w]), etaIdx = 0L, etaIdx2 = 0L)
   }
 }
 
@@ -435,14 +581,21 @@
 #' @param ui rxode2 ui model
 #' @param terms list from `.rxPriorDensityTerms()`
 #' @return list of parallel `type`/`n`/`thetaIdx`/`etaIdx`/`mu`/`scale`/
-#'   `lower`/`upper`/`nu` vectors (see `src/priorDensity.cpp`)
+#'   `lower`/`upper`/`nu`/`etaIdx2`/`muLen` vectors (see `src/priorDensity.cpp`)
 #' @noRd
 #' @author Matthew L. Fidler
 .rxPriorFlattenSpec <- function(ui, terms) {
-  .type <- integer(0); .n <- integer(0)
-  .thetaIdx <- integer(0); .etaIdx <- integer(0); .etaIdx2 <- integer(0)
-  .mu <- numeric(0); .scale <- numeric(0)
-  .lower <- numeric(0); .upper <- numeric(0); .nu <- numeric(0)
+  .type <- integer(0)
+  .n <- integer(0)
+  .thetaIdx <- integer(0)
+  .etaIdx <- integer(0)
+  .etaIdx2 <- integer(0)
+  .mu <- numeric(0)
+  .muLen <- integer(0)
+  .scale <- numeric(0)
+  .lower <- numeric(0)
+  .upper <- numeric(0)
+  .nu <- numeric(0)
   ## validate the omega numbering is dense (see .rxPriorEtaOrder()) before
   ## computing any etaIdx from it -- only when a term actually needs it, so
   ## a model with unusual (but unused) omega structure stays a no-op
@@ -452,11 +605,21 @@
   for (.t in terms) {
     .type <- c(.type, .rxPriorTermTypeCode[[.t$type]])
     .n <- c(.n, length(.t$names))
-    .idx <- lapply(.t$names, .rxPriorKeyIndex, ui=ui)
+    .idx <- lapply(.t$names, .rxPriorKeyIndex, ui = ui)
     .thetaIdx <- c(.thetaIdx, vapply(.idx, `[[`, integer(1), "thetaIdx"))
     .etaIdx <- c(.etaIdx, vapply(.idx, `[[`, integer(1), "etaIdx"))
     .etaIdx2 <- c(.etaIdx2, vapply(.idx, `[[`, integer(1), "etaIdx2"))
-    if (.t$type %in% c("normal", "cauchy")) {
+    .muLen <- c(.muLen, length(.t$names))
+    if (!is.null(.t$par)) {
+      ## a univariate family: mu carries its hyperparameters and scale its
+      ## precomputed log normalizing constant (see rxode2prior.h)
+      .mu <- c(.mu, .t$par)
+      .muLen[length(.muLen)] <- length(.t$par)
+      .scale <- c(.scale, .t$logConst)
+      .lower <- c(.lower, .t$lower)
+      .upper <- c(.upper, .t$upper)
+      .nu <- c(.nu, 0)
+    } else if (.t$type %in% c("normal", "cauchy")) {
       .mu <- c(.mu, .t$mu)
       .scale <- c(.scale, .t$sd)
       .lower <- c(.lower, .t$lower)
@@ -478,16 +641,27 @@
       .nu <- c(.nu, .t$nu)
     }
   }
-  list(type=.type, n=.n, thetaIdx=.thetaIdx, etaIdx=.etaIdx, mu=.mu, scale=.scale,
-       lower=.lower, upper=.upper, nu=.nu, etaIdx2=.etaIdx2)
+  list(
+    type = .type,
+    n = .n,
+    thetaIdx = .thetaIdx,
+    etaIdx = .etaIdx,
+    mu = .mu,
+    scale = .scale,
+    lower = .lower,
+    upper = .upper,
+    nu = .nu,
+    etaIdx2 = .etaIdx2,
+    muLen = .muLen
+  )
 }
 
 #' Build the C spec `rxPriorLogDensityEval()` (and the C API) evaluates
 #'
 #' The one-time, R-only (main-thread) half of the kernel: parses the
-#' `prior` column and hands the result to `src/priorDensity.cpp` as a
-#' heap-allocated `rx_prior_spec_t`, wrapped in an R external pointer with a
-#' finalizer. `rxPriorLogDensityEval()` (`inst/include/rxode2prior.h`) --
+#' `prior` column and hands the result to `src/priorDensity.cpp` as an
+#' `rx_prior_spec_t` in R vectors owned by the returned R external pointer,
+#' which R frees with it. `rxPriorLogDensityEval()` (`inst/include/rxode2prior.h`) --
 #' reachable through rxode2's C function-pointer table -- then evaluates it
 #' with no R/Rcpp call of any kind, safe to call from inside an
 #' OpenMP-parallel objective/gradient evaluation.
@@ -499,10 +673,33 @@
 #' @family Assertions
 #' @author Matthew L. Fidler
 #' @export
-rxPriorBuildSpec <- function(ui, method=c("general", "nwpri", "tnpri")) {
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     tcl <- log(3)
+#'     tv <- log(30)
+#'     add.sd <- c(0, 0.7)
+#'     prior(tcl) ~ dnorm(0, 10)
+#'   })
+#'   model({
+#'     cl <- exp(tcl)
+#'     v <- exp(tv)
+#'     d/dt(central) <- -cl / v * central
+#'     cp <- central / v
+#'     cp ~ add(add.sd)
+#'   })
+#' }
+#' # priors need 'lotri' >= 1.0.5
+#' if (utils::packageVersion("lotri") >= "1.0.5") {
+#'   spec <- rxPriorBuildSpec(mod)
+#'   inherits(spec, "externalptr")
+#' }
+#' }
+rxPriorBuildSpec <- function(ui, method = c("general", "nwpri", "tnpri")) {
   method <- match.arg(method)
   ui <- rxode2::assertRxUi(ui)
-  .terms <- .rxPriorDensityTerms(ui, method=method)
+  .terms <- .rxPriorDensityTerms(ui, method = method)
   .spec <- .rxPriorFlattenSpec(ui, .terms)
   .Call(`_rxode2_rxPriorBuildSpec`, .spec)
 }
@@ -542,8 +739,10 @@ rxPriorBuildSpec <- function(ui, method=c("general", "nwpri", "tnpri")) {
 #'   raw-omega `om.<eta>` treatment as `"general"` (Monolix's
 #'   Bayesian-estimation assumption is on the natural parameter, same as
 #'   here -- `chol(Omega^-1)` is FOCEI's own internal affair, not this
-#'   kernel's). Neither `"nwpri"` nor `"tnpri"` has a Cauchy analogue, so
-#'   both refuse one.
+#'   kernel's). Neither `"nwpri"` nor `"tnpri"` has a Cauchy (or any
+#'   other non-normal univariate) analogue, so both refuse one. Under
+#'   `"general"`, every univariate continuous 'lotri' family except
+#'   `wiener()` is evaluated, truncated to the parameter's own bounds.
 #' @return list with `value` (scalar log density, summed over every prior
 #'   term), `gradTheta` (named numeric, d/dtheta) and `gradOmega` (a matrix
 #'   the same dimension as `omega`, d/dOmega, or `NULL` when `omega` was
@@ -587,22 +786,30 @@ rxPriorBuildSpec <- function(ui, method=c("general", "nwpri", "tnpri")) {
 #'   rxPriorLogDensity(one.cmt, theta=c(tka=0.1, add.sd=0.5))
 #' }
 #' }
-rxPriorLogDensity <- function(ui, theta=NULL, omega=NULL, method=c("general", "nwpri", "tnpri")) {
+rxPriorLogDensity <- function(ui, theta = NULL, omega = NULL, method = c("general", "nwpri", "tnpri")) {
   method <- match.arg(method)
   ui <- rxode2::assertRxUi(ui)
   .iniDf <- ui$iniDf
-  .terms <- .rxPriorDensityTerms(ui, method=method)
+  .terms <- .rxPriorDensityTerms(ui, method = method)
   if (length(.terms) == 0L) {
-    return(list(value=0, gradTheta=numeric(0),
-               gradOmega=if (is.null(omega)) NULL else {
-                 .g <- matrix(0, nrow(omega), ncol(omega), dimnames=dimnames(omega)); .g
-               }))
+    return(list(
+      value = 0,
+      gradTheta = numeric(0),
+      gradOmega = if (is.null(omega)) {
+        NULL
+      } else {
+        .g <- matrix(0, nrow(omega), ncol(omega), dimnames = dimnames(omega))
+        .g
+      }
+    ))
   }
   .spec <- .rxPriorFlattenSpec(ui, .terms)
   .specPtr <- .Call(`_rxode2_rxPriorBuildSpec`, .spec)
 
-  .nTheta <- suppressWarnings(max(.iniDf$ntheta, na.rm=TRUE))
-  if (!is.finite(.nTheta)) .nTheta <- 0L
+  .nTheta <- suppressWarnings(max(.iniDf$ntheta, na.rm = TRUE))
+  if (!is.finite(.nTheta)) {
+    .nTheta <- 0L
+  }
   .thetaFull <- numeric(.nTheta)
   .thetaKeys <- unique(unlist(lapply(.terms, function(t) t$names[!startsWith(t$names, "om.")])))
   for (.k in .thetaKeys) {
@@ -611,36 +818,50 @@ rxPriorLogDensity <- function(ui, theta=NULL, omega=NULL, method=c("general", "n
 
   .etaOrder <- .rxPriorEtaOrder(ui)
   .nEta <- length(.etaOrder)
-  .omegaFull <- if (.nEta == 0L) matrix(0, 0, 0) else {
+  .omegaFull <- if (.nEta == 0L) {
+    matrix(0, 0, 0)
+  } else {
     if (is.null(omega)) {
       matrix(0, .nEta, .nEta)
     } else {
-      .m <- omega[.etaOrder, .etaOrder, drop=FALSE]
+      .m <- omega[.etaOrder, .etaOrder, drop = FALSE]
       matrix(as.numeric(.m), .nEta, .nEta)
     }
   }
   .needsOmega <- any(vapply(.terms, function(t) any(startsWith(t$names, "om.")), logical(1)))
   if (.needsOmega && is.null(omega)) {
     .omKeys <- unlist(lapply(.terms, function(t) t$names[startsWith(t$names, "om.")]))
-    stop("the model has a prior on the omega element(s) '",
-         paste(unique(substring(.omKeys, 4)), collapse="', '"),
-         "', so 'omega' must be given", call.=FALSE)
+    stop(
+      "the model has a prior on the omega element(s) '",
+      paste(unique(substring(.omKeys, 4)), collapse = "', '"),
+      "', so 'omega' must be given",
+      call. = FALSE
+    )
   }
 
   .r <- .Call(`_rxode2_rxPriorLogDensity`, .specPtr, .thetaFull, .omegaFull)
   .gradThetaFull <- .r[[2]]
-  .gradTheta <- setNames(vapply(.thetaKeys, function(k) {
-    .gradThetaFull[.rxPriorKeyIndex(ui, k)$thetaIdx]
-  }, double(1)), .thetaKeys)
-  if (length(.gradTheta) == 0L) .gradTheta <- numeric(0)
+  .gradTheta <- setNames(
+    vapply(
+      .thetaKeys,
+      function(k) {
+        .gradThetaFull[.rxPriorKeyIndex(ui, k)$thetaIdx]
+      },
+      double(1)
+    ),
+    .thetaKeys
+  )
+  if (length(.gradTheta) == 0L) {
+    .gradTheta <- numeric(0)
+  }
 
   .gradOmega <- NULL
   if (!is.null(omega)) {
-    .gradOmegaCanon <- matrix(.r[[3]], .nEta, .nEta, dimnames=list(.etaOrder, .etaOrder))
-    .gradOmega <- .gradOmegaCanon[rownames(omega), colnames(omega), drop=FALSE]
+    .gradOmegaCanon <- matrix(.r[[3]], .nEta, .nEta, dimnames = list(.etaOrder, .etaOrder))
+    .gradOmega <- .gradOmegaCanon[rownames(omega), colnames(omega), drop = FALSE]
     dimnames(.gradOmega) <- dimnames(omega)
   }
-  list(value=.r[[1]], gradTheta=.gradTheta, gradOmega=.gradOmega)
+  list(value = .r[[1]], gradTheta = .gradTheta, gradOmega = .gradOmega)
 }
 
 #' Chain-rule a natural-scale omega gradient into FOCEI's cholOmegaInv scale
@@ -680,12 +901,16 @@ rxPriorLogDensity <- function(ui, theta=NULL, omega=NULL, method=c("general", "n
 rxPriorOmegaToCholOmegaInvGrad <- function(omega, gradOmega) {
   .p <- nrow(omega)
   if (.p != ncol(omega) || !identical(dim(omega), dim(gradOmega))) {
-    stop("'omega' and 'gradOmega' must be square matrices of the same dimension",
-         call.=FALSE)
+    stop("'omega' and 'gradOmega' must be square matrices of the same dimension", call. = FALSE)
   }
-  .ret <- .Call(`_rxode2_rxPriorOmegaToCholOmegaInvGrad`, matrix(as.numeric(omega), .p, .p),
-               matrix(as.numeric(gradOmega), .p, .p))
-  if (is.null(.ret)) return(NULL)
+  .ret <- .Call(
+    `_rxode2_rxPriorOmegaToCholOmegaInvGrad`,
+    matrix(as.numeric(omega), .p, .p),
+    matrix(as.numeric(gradOmega), .p, .p)
+  )
+  if (is.null(.ret)) {
+    return(NULL)
+  }
   dimnames(.ret) <- dimnames(omega)
   .ret
 }
@@ -699,8 +924,7 @@ rxPriorOmegaToCholOmegaInvGrad <- function(omega, gradOmega) {
 #' @author Matthew L. Fidler
 .rxPriorGetTheta <- function(key, theta) {
   if (is.null(theta) || !(key %in% names(theta))) {
-    stop("the model has a prior on '", key, "', so 'theta' must name it",
-         call.=FALSE)
+    stop("the model has a prior on '", key, "', so 'theta' must name it", call. = FALSE)
   }
   unname(theta[[key]])
 }

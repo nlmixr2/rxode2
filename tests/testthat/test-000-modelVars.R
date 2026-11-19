@@ -5,8 +5,7 @@ rxTest({
     for (.nm in names(expected)) {
       expect_s3_class(obj$strCmpParams[[.nm]], "factor")
       expect_equal(levels(obj$strCmpParams[[.nm]]), levels(expected[[.nm]]))
-      expect_equal(as.character(obj$strCmpParams[[.nm]]),
-                   as.character(expected[[.nm]]))
+      expect_equal(as.character(obj$strCmpParams[[.nm]]), as.character(expected[[.nm]]))
     }
   }
 
@@ -31,17 +30,11 @@ d/dt(y3) = a3*y1*y2
     et <- eventTable()
     et$add.sampling(seq(0, 20, by = 0.01))
 
-
     out <- solve(rigid, et)
 
     expect_equal(rxModelVars(rigid), rxModelVars(rigid$cmpMgr$rxDll()))
     expect_equal(rxModelVars(rigid), rxModelVars(out))
-    # Drop the 'timeId' element because it is the compilation time, and it may
-    # differ if the system is heavily loaded
-    rigid0_compare <- rigid0[setdiff(names(rigid0), "timeId")]
-    rigid_compare <- rxModelVars(rigid)
-    rigid_compare <- rigid_compare[setdiff(names(rigid_compare), "timeId")]
-    expect_equal(rigid0_compare, rigid_compare)
+    expect_equal(rigid0, rxModelVars(rigid))
   })
 
   test_that("modelvars track exhaustive string comparison covariates", {
@@ -70,12 +63,9 @@ if (covB == \"same\" ||
 "
 
     expected <- list(
-      covB = factor(c("same", "gamma", "alpha"),
-                    levels = c("same", "gamma", "alpha")),
-      covA = factor(c("alpha", "beta", "shared"),
-                    levels = c("alpha", "beta", "shared")),
-      covC = factor(c("shared", "omega"),
-                    levels = c("shared", "omega"))
+      covB = factor(c("same", "gamma", "alpha"), levels = c("same", "gamma", "alpha")),
+      covA = factor(c("alpha", "beta", "shared"), levels = c("alpha", "beta", "shared")),
+      covC = factor(c("shared", "omega"), levels = c("shared", "omega"))
     )
 
     parsed <- rxGetModel(modTxt)
@@ -84,19 +74,26 @@ if (covB == \"same\" ||
     .expectStrCmpParams(parsed, expected)
     .expectStrCmpParams(rxModelVars(compiled), expected)
 
-    parsedCompare <- parsed[setdiff(names(parsed), "timeId")]
-    compiledCompare <- rxModelVars(compiled)
-    compiledCompare <- compiledCompare[setdiff(names(compiledCompare), "timeId")]
-    expect_equal(parsedCompare, compiledCompare)
+    expect_equal(parsed, rxModelVars(compiled))
   })
 
   test_that("blank modelvars has same size", {
     blank <- rxModelVars("")
-    full <-  rxModelVars("y = 1")
+    full <- rxModelVars("y = 1")
     expect_equal(length(rxModelVars(blank)), length(full))
     expect_length(blank$strCmpParams, 0)
     expect_equal(names(blank$strCmpParams), character(0))
-    expect_equal(tail(names(full), 5),
-                 c("lhsOrd", "splitBolus", "strCmpParams", "timeId", "md5"))
+    expect_equal(
+      tail(names(full), 7),
+      c(
+        "lhsOrd",
+        "splitBolus",
+        "strCmpParams",
+        "md5",
+        "splitInfusion",
+        "splitInfusionBolus",
+        "splitBolusInfusion"
+      )
+    )
   })
 })

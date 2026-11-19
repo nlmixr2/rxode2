@@ -8,8 +8,7 @@ rxTest({
 
   test_that("ceiling() parses, compiles and matches ceil()", {
     .m <- rxode2::rxode2("b = t; y1 = ceiling(b); y2 = ceil(b)\nd/dt(x) = -x")
-    .r <- rxode2::rxSolve(.m, rxode2::et(seq(0, 4, by = 0.5)) |> rxode2::et(amt = 1),
-                          returnType = "data.frame")
+    .r <- rxode2::rxSolve(.m, rxode2::et(seq(0, 4, by = 0.5)) |> rxode2::et(amt = 1), returnType = "data.frame")
     expect_equal(.r$y1, .r$y2)
     expect_equal(.r$y1, ceiling(.r$time))
   })
@@ -32,8 +31,7 @@ rxTest({
   test_that("a sensitivity model using ceiling() builds and solves", {
     .m <- rxode2::rxode2("cl = ceiling(lcl)*0.1 + 0.5\nd/dt(A) = -cl*A",
                          calcSens = "lcl")
-    .r <- rxode2::rxSolve(.m, rxode2::et(0:3) |> rxode2::et(amt = 1),
-                          params = c(lcl = 1.7), returnType = "data.frame")
+    .r <- rxode2::rxSolve(.m, rxode2::et(0:3) |> rxode2::et(amt = 1), params = c(lcl = 1.7), returnType = "data.frame")
     expect_true("rx__sens_A_BY_lcl__" %in% names(.r))
     expect_true(all(.r$rx__sens_A_BY_lcl__ == 0))
   })

@@ -24,6 +24,11 @@
 #' @return Nothing
 #' @author Matthew L. Fidler
 #' @export
+#' @family Solver options and performance
+#' @examples
+#' .old <- utils::getFromNamespace(".rxIndLinStrategy", "rxode2")
+#' rxIndLinStrategy("split")
+#' rxIndLinStrategy(.old) # restore
 rxIndLinStrategy <- function(strategy = c("curState", "split")) {
   assignInMyNamespace(".rxIndLinStrategy", match.arg(strategy))
 }
@@ -43,16 +48,21 @@ rxIndLinStrategy <- function(strategy = c("curState", "split")) {
 #' @return Nothing
 #' @author Matthew Fidler
 #' @export
+#' @family Solver options and performance
+#' @examples
+#' .old <- utils::getFromNamespace(".rxIndLinState", "rxode2")
+#' # factor terms of the central equation by central, then depot
+#' rxIndLinState(list(central = c("central", "depot")))
+#' rxIndLinState(.old) # restore
 rxIndLinState <- function(preferred = NULL) {
   if (is.null(preferred)) {
     return(assignInMyNamespace(".rxIndLinState", preferred))
   }
   checkmate::assertList(preferred, names = "unique")
   lapply(seq_along(preferred), function(x) {
-    if (!checkmate::checkCharacter(preferred[[x]],
-      names = "unnamed"
-    )) {
-      stop(sprintf(gettext("'rxIndLinState' list element '%s' must be a unnamed character vector"), names(preferred)[x]),
+    if (!checkmate::checkCharacter(preferred[[x]], names = "unnamed")) {
+      stop(
+        sprintf(gettext("'rxIndLinState' list element '%s' must be a unnamed character vector"), names(preferred)[x]),
         call. = FALSE
       )
     }
@@ -68,8 +78,7 @@ rxIndLinState <- function(preferred = NULL) {
       ## cannot parse a dotted identifier (`eta.Cl`) and that is an ordinary
       ## rxode2 name.  Expansion is a simplification, not a requirement, so
       ## give up on it rather than on the conversion.
-      tryCatch(symengine::S(as.character(line)),
-               error = function(e2) line)
+      tryCatch(symengine::S(as.character(line)), error = function(e2) line)
     }
   )
   ## rxFromSE() needs a Basic; if the fallback above handed back the original
@@ -102,9 +111,10 @@ rxIndLinState <- function(preferred = NULL) {
     # the result cosmetically, so fall back to the plain product rather than
     # losing a variable or failing the whole conversion: `-1*x` instead of `-x`
     # is uglier but identical.
-    if (any(x %in% names(.rxSEreserved))) return(.txt)
-    tryCatch(as.character(symengine::S(.txt)),
-             error = function(e) .txt)
+    if (any(x %in% names(.rxSEreserved))) {
+      return(.txt)
+    }
+    tryCatch(as.character(symengine::S(.txt)), error = function(e) .txt)
   }
   sapply(.ret, function(x) {
     .mult <- eval(parse(text = paste0("rxSplitPlusQ(quote(", x, "),mult=TRUE)")))
@@ -196,7 +206,7 @@ rxIndLinState <- function(preferred = NULL) {
   return(c(.ret, paste0(.fullIndLin)))
 }
 
-.indLinInfo <- list()
+.rxState$indLinInfo <- list()
 
 #' This creates the inductive linearization pieces to integrate into
 #' a rxode2 model.
@@ -225,9 +235,7 @@ rxIndLinState <- function(preferred = NULL) {
   .states <- rxState(.env)
   rxProgress(length(.states))
   .minfo("create inductive linearization matrices")
-  on.exit({
-    rxProgressAbort()
-  })
+  on.exit(.rxProgressExit())
   .ret <- eval(parse(text = rxIndLin_(.states)))
   .w <- setNames(which(.ret[, "indLin"] == "TRUE") - 1, NULL)
   .fullIndLin <- length(.w) > 0
@@ -250,7 +258,7 @@ rxIndLinState <- function(preferred = NULL) {
     )
     .code <- c(.code, paste("_rxF=", as.vector(.ret1)))
   }
-  assignInMyNamespace(".indLinInfo", .ret)
+  .rxState$indLinInfo <- .ret
   rxProgressStop()
   .malert("indLin is in development and results subject to change")
   return(paste(.code, collapse = "\n"))

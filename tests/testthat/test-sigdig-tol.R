@@ -5,8 +5,7 @@ rxTest({
   # (stiff, non-stiff, auto-switching).
 
   test_that("sigdig sets the same tolerances for every solver", {
-    for (m in c("liblsoda", "lsoda", "dop853", "dop5", "ros4", "cvode", "bdf",
-                "dop853+ros4")) {
+    for (m in c("liblsoda", "lsoda", "dop853", "dop5", "ros4", "cvode", "bdf", "dop853+ros4")) {
       .c <- rxControl(sigdig = 4, method = m)
       expect_equal(.c$rtol, 1e-4, info = m)
       expect_equal(.c$atol, 1e-7, info = m)

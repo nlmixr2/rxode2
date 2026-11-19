@@ -38,7 +38,7 @@ llikNorm(0)
 llikNorm(seq(-2,2,length.out=10), full=TRUE)
 
 # With rxode2 you can use:
- 
+
 et <- et(-3, 3, length.out=10)
 et$mu <- 0
 et$sigma <- 1
@@ -55,6 +55,24 @@ ret <- rxSolve(model, et)
 ret
 }
 }
+\seealso{
+Other Log-likelihood functions:
+\code{\link[=llikBeta]{llikBeta()}},
+\code{\link[=llikBinom]{llikBinom()}},
+\code{\link[=llikCauchy]{llikCauchy()}},
+\code{\link[=llikChisq]{llikChisq()}},
+\code{\link[=llikExp]{llikExp()}},
+\code{\link[=llikF]{llikF()}},
+\code{\link[=llikGamma]{llikGamma()}},
+\code{\link[=llikGeom]{llikGeom()}},
+\code{\link[=llikNbinom]{llikNbinom()}},
+\code{\link[=llikNbinomMu]{llikNbinomMu()}},
+\code{\link[=llikPois]{llikPois()}},
+\code{\link[=llikT]{llikT()}},
+\code{\link[=llikUnif]{llikUnif()}},
+\code{\link[=llikWeibull]{llikWeibull()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Log-likelihood functions}

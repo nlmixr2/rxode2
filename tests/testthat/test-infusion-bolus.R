@@ -1,7 +1,6 @@
 rxTest({
   if (!.Call(`_rxode2_isIntel`)) {
     test_that("infusion + bolus works correctly", {
-
       d <- test_path("test-infusion-bolus.rds")
       skip_if_not(file.exists(d))
       dataset <- readRDS(d)
@@ -41,11 +40,9 @@ rxTest({
 
       etTrans(dataset, f$simulationModel)
 
-
       s <- rxSolve(f, dataset, addDosing = TRUE)
       expect_true(any(names(s) == "rate"))
       expect_equal(names(s)[2], "resetno")
-
     })
   }
 })

@@ -72,3 +72,23 @@ s <- rxSolve(rx, et)
 }
 
 }
+\seealso{
+Other Random variables:
+\code{\link[=binomProbs]{binomProbs()}},
+\code{\link[=meanProbs]{meanProbs()}},
+\code{\link[=rxbeta]{rxbeta()}},
+\code{\link[=rxbinom]{rxbinom()}},
+\code{\link[=rxcauchy]{rxcauchy()}},
+\code{\link[=rxchisq]{rxchisq()}},
+\code{\link[=rxf]{rxf()}},
+\code{\link[=rxgamma]{rxgamma()}},
+\code{\link[=rxgeom]{rxgeom()}},
+\code{\link[=rxnbinom]{rxnbinom()}},
+\code{\link[=rxnormV]{rxnormV()}},
+\code{\link[=rxord]{rxord()}},
+\code{\link[=rxpois]{rxpois()}},
+\code{\link[=rxt]{rxt()}},
+\code{\link[=rxunif]{rxunif()}},
+\code{\link[=rxweibull]{rxweibull()}}
+}
+\concept{Random variables}

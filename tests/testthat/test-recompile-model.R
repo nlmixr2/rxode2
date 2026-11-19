@@ -1,5 +1,5 @@
 rxTest({
-  # `_rxode2_codegen` emits C from the parser's global `.rxModelVarsLast`, so
+  # `_rxode2_codegen` emits C from the parser's global `.rxState$modelVarsLast`, so
   # rxCompile() has to make sure the parsed model is the one it was handed.
   # It used to re-parse only when NO model was loaded, which meant a recompile
   # requested while some other model was the parsed one wrote that other model's
@@ -15,7 +15,8 @@ rxTest({
 
     ## make an unrelated model the parser's current one
     rxode2:::.rxModelVarsCharacter(
-      "d/dt(recompileB) = -kRecompileB * recompileB - kRecompileB2 * recompileB")
+      "d/dt(recompileB) = -kRecompileB * recompileB - kRecompileB2 * recompileB"
+    )
 
     .dll <- rxCompile(.mv, force = TRUE)
 
@@ -34,7 +35,8 @@ rxTest({
 
     ## and leave an unrelated model as the parsed one
     rxode2:::.rxModelVarsCharacter(
-      "d/dt(reloadB) = -kReloadB * reloadB - kReloadB2 * reloadB")
+      "d/dt(reloadB) = -kReloadB * reloadB - kReloadB2 * reloadB"
+    )
 
     rxLoad(.mod)
     expect_equal(rxModelVars(.mod)$params, .params)

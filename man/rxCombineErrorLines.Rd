@@ -43,7 +43,9 @@ defaults to the model expressions accessible by
 
 \item{interpLines}{Interpolation lines, if not present}
 
-\item{splitDoseLines}{Split dose lines, if not present}
+\item{splitDoseLines}{Dose-splitting directive lines (\code{splitBolus()},
+\code{splitInfusion()}, \code{splitInfusionBolus()} or \code{splitBolusInfusion()});
+if not present, use the directive from the current model}
 
 \item{levelLines}{Levels lines for assigned strings.  If not
 present, use the interpolation lines from the current model.}

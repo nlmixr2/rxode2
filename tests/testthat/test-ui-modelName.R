@@ -47,11 +47,9 @@ rxTest({
 
   test_that(".rxModelNameFromExpr() collapses expressions to one name", {
     expect_equal(.rxModelNameFromExpr(quote(one.cmt)), "one.cmt")
-    expect_equal(.rxModelNameFromExpr(quote(readModelDb("PK_1cmt"))),
-                 "readModelDb(\"PK_1cmt\")")
+    expect_equal(.rxModelNameFromExpr(quote(readModelDb("PK_1cmt"))), "readModelDb(\"PK_1cmt\")")
     # a made-up namespace: a real one here would be an undeclared `::` in tests
-    expect_equal(.rxModelNameFromExpr(quote(modelLib::readModelDb("PK_1cmt"))),
-                 "modelLib::readModelDb(\"PK_1cmt\")")
+    expect_equal(.rxModelNameFromExpr(quote(modelLib::readModelDb("PK_1cmt"))), "modelLib::readModelDb(\"PK_1cmt\")")
     expect_equal(.rxModelNameFromExpr(quote(lst$mod)), "lst$mod")
     expect_equal(.rxModelNameFromExpr("one.cmt"), "one.cmt")
     # the `(` needed to call an anonymous function is not part of a name
@@ -75,7 +73,8 @@ rxTest({
     }))
     # anything wider than .rxModelNameMaxWidth is truncated, still one string
     .wide <- .rxModelNameFromExpr(str2lang(
-      paste0("makeModel(", paste0("arg", 1:40, " = ", 1:40, collapse = ", "), ")")))
+      paste0("makeModel(", paste0("arg", 1:40, " = ", 1:40, collapse = ", "), ")")
+    ))
     expect_equal(nchar(.wide), .rxModelNameMaxWidth)
     expect_true(endsWith(.wide, "..."))
     expect_true(startsWith(.wide, "makeModel(arg1 = 1, "))
@@ -113,18 +112,21 @@ rxTest({
     expect_equal(.oneCmt()$modelName, ".oneCmt")
 
     # a call is deparsed to one string instead of one element per call part
-    expect_equal(rxode2(.getTestModel("PK_1cmt"))$modelName,
-                 ".getTestModel(\"PK_1cmt\")")
+    expect_equal(rxode2(.getTestModel("PK_1cmt"))$modelName, ".getTestModel(\"PK_1cmt\")")
 
     # an anonymous model has no name of its own
-    expect_null(rxode2(function() {
+    expect_null(
+      rxode2(function() {
       ini({a <- 1})
       model({b <- a})
-    })$modelName)
-    expect_null((function() {
-      ini({a <- 1})
-      model({b <- a})
-    })()$modelName)
+    })$modelName
+    )
+    expect_null(
+      (function() {
+        ini({a <- 1})
+        model({b <- a})
+      })()$modelName
+    )
     # a function reaching rxode2() as a value, with no expression naming it
     expect_null(do.call(rxode2, list(.oneCmt))$modelName)
 
@@ -169,8 +171,7 @@ rxTest({
       .calls <<- .calls + 1L
       .oneCmt
     }
-    registerS3method("rxModelName", ".rxTestModelDb",
-                     function(x, ...) list(...)$name)
+    registerS3method("rxModelName", ".rxTestModelDb", function(x, ...) list(...)$name)
 
     expect_equal(rxode2(.rxTestModelDb("PK_1cmt"))$modelName, "PK_1cmt")
     # the model producing function runs once; if the call reached the method
@@ -180,12 +181,10 @@ rxTest({
     # arguments are matched to the called function, so a method reads them by
     # name however the call was written
     expect_equal(rxode2(.rxTestModelDb(name = "PK_1cmt"))$modelName, "PK_1cmt")
-    expect_equal(rxode2(.rxTestModelDb(quiet = FALSE, "PK_1cmt"))$modelName,
-                 "PK_1cmt")
+    expect_equal(rxode2(.rxTestModelDb(quiet = FALSE, "PK_1cmt"))$modelName, "PK_1cmt")
 
     # the name is the method's, not the deparsed call, and it survives piping
-    expect_equal((rxode2(.rxTestModelDb("PK_1cmt")) |> ini(tka = 0.5))$modelName,
-                 "PK_1cmt")
+    expect_equal((rxode2(.rxTestModelDb("PK_1cmt")) |> ini(tka = 0.5))$modelName, "PK_1cmt")
 
     # the method wins over the name being assigned to
     rxModelNameLhs("mod")
@@ -203,17 +202,14 @@ rxTest({
       })
       expect_equal(rxode2(.rxTestModelDb("PK_1cmt"))$modelName, .expected)
     }
-    registerS3method("rxModelName", ".rxTestModelDb",
-                     function(x, ...) stop("no name here"))
+    registerS3method("rxModelName", ".rxTestModelDb", function(x, ...) stop("no name here"))
     expect_equal(rxode2(.rxTestModelDb("PK_1cmt"))$modelName, .expected)
 
     # the method sees the call it is naming
-    registerS3method("rxModelName", ".rxTestModelDb",
-                     function(x, ...) paste0("db:", deparse1(x[[2]])))
+    registerS3method("rxModelName", ".rxTestModelDb", function(x, ...) paste0("db:", deparse1(x[[2]])))
     expect_equal(rxode2(.rxTestModelDb("PK_1cmt"))$modelName, "db:\"PK_1cmt\"")
 
-    expect_equal(rxModelName(quote(.rxTestModelDb("PK_1cmt"))),
-                 ".rxTestModelDb(\"PK_1cmt\")")
+    expect_equal(rxModelName(quote(.rxTestModelDb("PK_1cmt"))), ".rxTestModelDb(\"PK_1cmt\")")
     expect_equal(rxModelName.default(quote(one.cmt)), "one.cmt")
   })
 
@@ -239,23 +235,30 @@ rxTest({
     # a call with no method is named by the assignment instead of its own text
     expect_equal(rxode2(.getTestModel("PK_1cmt"))$modelName, "mod")
     # so is an anonymous model
-    expect_equal(rxode2(function() {
+    expect_equal(
+      rxode2(function() {
       ini({a <- 1})
       model({b <- a})
-    })$modelName, "mod")
-    expect_equal((function() {
-      ini({a <- 1})
-      model({b <- a})
-    })()$modelName, "mod")
+    })$modelName,
+      "mod"
+    )
+    expect_equal(
+      (function() {
+        ini({a <- 1})
+        model({b <- a})
+      })()$modelName,
+      "mod"
+    )
 
     # once cleared it does not leak into a later model
     rxModelNameLhs(NULL)
-    expect_equal(rxode2(.getTestModel("PK_1cmt"))$modelName,
-                 ".getTestModel(\"PK_1cmt\")")
-    expect_null(rxode2(function() {
+    expect_equal(rxode2(.getTestModel("PK_1cmt"))$modelName, ".getTestModel(\"PK_1cmt\")")
+    expect_null(
+      rxode2(function() {
       ini({a <- 1})
       model({b <- a})
-    })$modelName)
+    })$modelName
+    )
   })
 
   test_that("$modelName normalizes values stored by other packages", {

@@ -1,6 +1,5 @@
 rxTest({
   test_that("simulate zeros tests", {
-
     # from nonmem2R
     f <- function() {
       description <- "PK"
@@ -140,48 +139,45 @@ rxTest({
     }
     f <- f()
 
-    e <- et(amt=100) |> et(seq(0,20))
+    e <- et(amt = 100) |> et(seq(0, 20))
     e$FLAG <- 1
 
     expect_error(rxSolve(f, e), NA)
 
     m <- f$simulationModel
 
-    expect_error(rxSolve(m, params=f$theta, events=e, omega=f$omega), NA)
+    expect_error(rxSolve(m, params = f$theta, events = e, omega = f$omega), NA)
 
     # ok now try just the control
 
-    .ctl <- rxControl(omega=lotri::lotri(eta1~0.0))
+    .ctl <- rxControl(omega = lotri::lotri(eta1~0.0))
     expect_equal(.ctl$omega, NULL)
     expect_equal(.ctl$.zeros, "eta1")
 
-    .ctl <- rxControl(omega=lotri::lotri(eta1+eta2~c(0.0, 0.0, 1)))
+    .ctl <- rxControl(omega = lotri::lotri(eta1+eta2~c(0.0, 0.0, 1)))
     expect_equal(.ctl$omega, lotri::lotri(eta2~1.0))
     expect_equal(.ctl$.zeros, "eta1")
 
-    .ctl <- rxControl(omega=lotri::lotri(eta1+eta2~c(0.0, 0.0, 1)),
-                      omegaLower=c(-1, -1), omegaUpper=c(1,1))
+    .ctl <- rxControl(omega = lotri::lotri(eta1+eta2~c(0.0, 0.0, 1)), omegaLower = c(-1, -1), omegaUpper = c(1, 1))
     expect_equal(.ctl$omega, lotri::lotri(eta2~1.0))
     expect_equal(.ctl$.zeros, "eta1")
-    expect_equal(.ctl$omegaLower, c(eta1=-1, eta2=-1))
-    expect_equal(.ctl$omegaUpper, c(eta1=1, eta2=1))
+    expect_equal(.ctl$omegaLower, c(eta1 = -1, eta2 = -1))
+    expect_equal(.ctl$omegaUpper, c(eta1 = 1, eta2 = 1))
 
     # sigma
-    .ctl <- rxControl(sigma=lotri::lotri(eps1~0.0))
+    .ctl <- rxControl(sigma = lotri::lotri(eps1~0.0))
     expect_equal(.ctl$sigma, NULL)
     expect_equal(.ctl$.zeros, "eps1")
 
-    .ctl <- rxControl(sigma=lotri::lotri(eps1+eps2~c(0.0, 0.0, 1)))
+    .ctl <- rxControl(sigma = lotri::lotri(eps1+eps2~c(0.0, 0.0, 1)))
     expect_equal(.ctl$sigma, lotri::lotri(eps2~1.0))
     expect_equal(.ctl$.zeros, "eps1")
 
-    .ctl <- rxControl(sigma=lotri::lotri(eps1+eps2~c(0.0, 0.0, 1)),
-                      sigmaLower=c(-1, -1), sigmaUpper=c(1,1))
+    .ctl <- rxControl(sigma = lotri::lotri(eps1+eps2~c(0.0, 0.0, 1)), sigmaLower = c(-1, -1), sigmaUpper = c(1, 1))
     expect_equal(.ctl$sigma, lotri::lotri(eps2~1.0))
     expect_equal(.ctl$.zeros, "eps1")
-    expect_equal(.ctl$sigmaLower, c(eps1=-1, eps2=-1))
-    expect_equal(.ctl$sigmaUpper, c(eps1=1, eps2=1))
-
+    expect_equal(.ctl$sigmaLower, c(eps1 = -1, eps2 = -1))
+    expect_equal(.ctl$sigmaUpper, c(eps1 = 1, eps2 = 1))
   })
 
   test_that("a zeroed omega item reaches a matrix params too", {
@@ -207,12 +203,14 @@ rxTest({
     # parameter(s) are required for solving: eta.base"
     .mat <- cbind(tbase = .expected, addSd = 1)
     .rx <- suppressWarnings(
-      rxSolve(tmp, .ev, params = .mat, returnType = "data.frame"))
+      rxSolve(tmp, .ev, params = .mat, returnType = "data.frame")
+    )
     expect_equal(.rx$base, .expected)
 
     .df <- data.frame(id = seq_len(.n), tbase = .expected, addSd = 1)
     .rx <- suppressWarnings(
-      rxSolve(tmp, .ev, params = .df, returnType = "data.frame"))
+      rxSolve(tmp, .ev, params = .df, returnType = "data.frame")
+    )
     expect_equal(.rx$base, .expected)
 
     # a ui model never gets here when params supplies the item: the omega
@@ -222,13 +220,14 @@ rxTest({
     # matrix is NULL).
     .matEta <- cbind(tbase = .expected, addSd = 1, eta.base = 5)
     .rx <- suppressWarnings(
-      rxSolve(tmp, .ev, params = .matEta, returnType = "data.frame"))
+      rxSolve(tmp, .ev, params = .matEta, returnType = "data.frame")
+    )
     expect_equal(.rx$base, .expected + 5)
 
-    .dfEta <- data.frame(id = seq_len(.n), tbase = .expected, addSd = 1,
-                         eta.base = 5)
+    .dfEta <- data.frame(id = seq_len(.n), tbase = .expected, addSd = 1, eta.base = 5)
     .rx <- suppressWarnings(
-      rxSolve(tmp, .ev, params = .dfEta, returnType = "data.frame"))
+      rxSolve(tmp, .ev, params = .dfEta, returnType = "data.frame")
+    )
     expect_equal(.rx$base, .expected + 5)
   })
 
@@ -243,12 +242,11 @@ rxTest({
 
     .solve <- function(params, ...) {
       suppressMessages(
-        rxSolve(tmp, .ev, params = params, omega = .om,
-                returnType = "data.frame", ...))$base
+        rxSolve(tmp, .ev, params = params, omega = .om, returnType = "data.frame", ...)
+      )$base
     }
 
-    for (.p in list(cbind(tbase = .expected, eta.base = 5),
-                    data.frame(tbase = .expected, eta.base = 5))) {
+    for (.p in list(cbind(tbase = .expected, eta.base = 5), data.frame(tbase = .expected, eta.base = 5))) {
       # default: the supplied value is replaced by zero, and says so
       expect_warning(.solve(.p), "replaced by zero")
       expect_equal(suppressWarnings(.solve(.p)), .expected)
@@ -261,8 +259,7 @@ rxTest({
     }
 
     # nothing supplied for it: filled in with zero, and no warning either way
-    for (.p in list(cbind(tbase = .expected),
-                    data.frame(tbase = .expected))) {
+    for (.p in list(cbind(tbase = .expected), data.frame(tbase = .expected))) {
       expect_silent(.rx <- .solve(.p))
       expect_equal(.rx, .expected)
       expect_silent(.rx <- .solve(.p, zeroVarParamHandle = "keep"))
@@ -270,17 +267,13 @@ rxTest({
     }
 
     # nothing supplied for it -> zero it whatever the handle says
-    expect_equal(.rxZeroVarParams("eta.base", c(tbase = 1), "keep"),
-                 "eta.base")
-    expect_equal(.rxZeroVarParams("eta.base",
-                                           c(tbase = 1, eta.base = 5), "keep"),
-                 character(0))
+    expect_equal(.rxZeroVarParams("eta.base", c(tbase = 1), "keep"), "eta.base")
+    expect_equal(.rxZeroVarParams("eta.base", c(tbase = 1, eta.base = 5), "keep"), character(0))
 
     # a control from an older rxode2 has no such element at all
     expect_warning(
-      expect_equal(.rxZeroVarParams("eta.base", c(tbase = 1, eta.base = 5),
-                                             NULL),
-                   "eta.base"),
-      "replaced by zero")
+      expect_equal(.rxZeroVarParams("eta.base", c(tbase = 1, eta.base = 5), NULL), "eta.base"),
+      "replaced by zero"
+    )
   })
 })

@@ -15,17 +15,31 @@
 #   compareLinCmtSens(30L)              # diff a candidate sensType vs the oracle
 
 .linCmtModelDouble <- utils::getFromNamespace("linCmtModelDouble", "rxode2")
-.linCmtCall <- function(dt, cfg, alast, sensType = 3L, type = 0L,
-                        tau = 0, tinf = 0, amt = 0, bolusCmt = 0L) {
+.linCmtCall <- function(dt, cfg, alast, sensType = 3L, type = 0L, tau = 0, tinf = 0, amt = 0, bolusCmt = 0L) {
   .linCmtModelDouble(
-        dt,
-        cfg$p1, cfg$v1, cfg$p2, cfg$p3, cfg$p4, cfg$p5, cfg$ka,
-        as.double(alast), as.double(cfg$rate),
-        cfg$ncmt, cfg$oral0, cfg$trans,
-        TRUE,            # deriv
-        type, tau, tinf, amt, bolusCmt,
-        0L,              # ndiff (0 -> use sensType path)
-        as.integer(sensType), 0.001)
+    dt,
+    cfg$p1,
+    cfg$v1,
+    cfg$p2,
+    cfg$p3,
+    cfg$p4,
+    cfg$p5,
+    cfg$ka,
+    as.double(alast),
+    as.double(cfg$rate),
+    cfg$ncmt,
+    cfg$oral0,
+    cfg$trans,
+    TRUE, # deriv
+    type,
+    tau,
+    tinf,
+    amt,
+    bolusCmt,
+    0L, # ndiff (0 -> use sensType path)
+    as.integer(sensType),
+    0.001
+  )
 }
 
 # getNalast() for the deriv path: ncmt + oral0 + ncmt*npars + oral0,
@@ -37,8 +51,7 @@
 
 # Panel of configurations: 1/2/3-compartment, IV and oral, trans = 1 (CL/V).
 .linCmtConfigs <- function() {
-  mk <- function(name, ncmt, oral0,
-                 p1, v1, p2 = 0, p3 = 0, p4 = 0, p5 = 0, ka = 0) {
+  mk <- function(name, ncmt, oral0, p1, v1, p2 = 0, p3 = 0, p4 = 0, p5 = 0, ka = 0) {
     nstate <- ncmt + oral0
     rate <- rep(0, nstate)
     # Fresh bolus of 100 into the first solved compartment (depot for oral,
@@ -48,16 +61,29 @@
     amounts[1] <- 100
     nAlast <- .linCmtNalast(ncmt, oral0)
     alast0 <- c(amounts, numeric(nAlast - nstate))
-    list(name = name, ncmt = ncmt, oral0 = oral0, trans = 1L,
-         p1 = p1, v1 = v1, p2 = p2, p3 = p3, p4 = p4, p5 = p5, ka = ka,
-         rate = rate, alast0 = alast0, nstate = nstate)
+    list(
+      name = name,
+      ncmt = ncmt,
+      oral0 = oral0,
+      trans = 1L,
+      p1 = p1,
+      v1 = v1,
+      p2 = p2,
+      p3 = p3,
+      p4 = p4,
+      p5 = p5,
+      ka = ka,
+      rate = rate,
+      alast0 = alast0,
+      nstate = nstate
+    )
   }
   list(
-    mk("1cmt-iv",   1L, 0L, p1 = 1.0, v1 = 20),
+    mk("1cmt-iv", 1L, 0L, p1 = 1.0, v1 = 20),
     mk("1cmt-oral", 1L, 1L, p1 = 1.0, v1 = 20, ka = 1.1),
-    mk("2cmt-iv",   2L, 0L, p1 = 1.0, v1 = 20, p2 = 2.0, p3 = 40),
+    mk("2cmt-iv", 2L, 0L, p1 = 1.0, v1 = 20, p2 = 2.0, p3 = 40),
     mk("2cmt-oral", 2L, 1L, p1 = 1.0, v1 = 20, p2 = 2.0, p3 = 40, ka = 1.1),
-    mk("3cmt-iv",   3L, 0L, p1 = 1.0, v1 = 20, p2 = 2.0, p3 = 40, p4 = 0.5, p5 = 60),
+    mk("3cmt-iv", 3L, 0L, p1 = 1.0, v1 = 20, p2 = 2.0, p3 = 40, p4 = 0.5, p5 = 60),
     mk("3cmt-oral", 3L, 1L, p1 = 1.0, v1 = 20, p2 = 2.0, p3 = 40, p4 = 0.5, p5 = 60, ka = 1.1)
   )
 }
@@ -73,10 +99,8 @@
   alast2 <- s1$Alast
   s2 <- .linCmtCall(dt, cfg, alast2, sensType = sensType)
   list(
-    interval1 = list(val = as.numeric(s1$val), J = as.numeric(s1$J),
-                     Jg = as.numeric(s1$Jg)),
-    interval2 = list(val = as.numeric(s2$val), J = as.numeric(s2$J),
-                     Jg = as.numeric(s2$Jg))
+    interval1 = list(val = as.numeric(s1$val), J = as.numeric(s1$J), Jg = as.numeric(s1$Jg)),
+    interval2 = list(val = as.numeric(s2$val), J = as.numeric(s2$J), Jg = as.numeric(s2$Jg))
   )
 }
 
@@ -94,7 +118,9 @@ buildLinCmtRecord <- function(sensType = 3L) {
 
 .linCmtResultsDir <- function() {
   d <- file.path("bench", "results")
-  if (!dir.exists(d)) dir.create(d, recursive = TRUE)
+  if (!dir.exists(d)) {
+    dir.create(d, recursive = TRUE)
+  }
   d
 }
 
@@ -108,8 +134,7 @@ writeLinCmtOracle <- function(sensType = 3L) {
     stop("jsonlite required to write the oracle")
   }
   rec <- buildLinCmtRecord(sensType)
-  jsonlite::write_json(rec, .linCmtOraclePath(),
-                       digits = 16, auto_unbox = TRUE, pretty = TRUE)
+  jsonlite::write_json(rec, .linCmtOraclePath(), digits = 16, auto_unbox = TRUE, pretty = TRUE)
   message("wrote ", length(rec), " cases to ", .linCmtOraclePath())
   invisible(rec)
 }
@@ -121,8 +146,10 @@ compareLinCmtSens <- function(sensType, tol = 1e-6) {
     stop("jsonlite required to read the oracle")
   }
   oracle <- jsonlite::read_json(.linCmtOraclePath(), simplifyVector = TRUE)
-  cand   <- buildLinCmtRecord(sensType)
-  worstAbs <- 0; worstRel <- 0; worstWhere <- NA_character_
+  cand <- buildLinCmtRecord(sensType)
+  worstAbs <- 0
+  worstRel <- 0
+  worstWhere <- NA_character_
   nonFinite <- character(0)
   for (key in names(oracle)) {
     for (iv in c("interval1", "interval2")) {
@@ -130,34 +157,40 @@ compareLinCmtSens <- function(sensType, tol = 1e-6) {
         o <- as.numeric(oracle[[key]][[iv]][[fld]])
         c0 <- as.numeric(cand[[key]][[iv]][[fld]])
         if (length(o) != length(c0)) {
-          stop(sprintf("length mismatch %s/%s/%s: %d vs %d",
-                       key, iv, fld, length(o), length(c0)))
+          stop(sprintf("length mismatch %s/%s/%s: %d vs %d", key, iv, fld, length(o), length(c0)))
         }
         # Any non-finite candidate entry is an automatic failure -- never let
         # NaN/Inf slip past which.max(), which silently ignores NaN.
         if (any(!is.finite(c0))) {
-          nonFinite <- c(nonFinite,
-                         sprintf("%s/%s/%s", key, iv, fld))
+          nonFinite <- c(nonFinite, sprintf("%s/%s/%s", key, iv, fld))
         }
         ad <- abs(o - c0)
         ad[!is.finite(ad)] <- Inf
         rd <- ad / pmax(abs(o), 1e-8)
         mi <- which.max(ad)
         if (length(mi) && is.finite(ad[mi]) && ad[mi] > worstAbs) {
-          worstAbs <- ad[mi]; worstRel <- rd[mi]
+          worstAbs <- ad[mi]
+          worstRel <- rd[mi]
           worstWhere <- sprintf("%s/%s/%s[%d]", key, iv, fld, mi)
         }
       }
     }
   }
   pass <- worstAbs <= tol && length(nonFinite) == 0L
-  message(sprintf("sensType %d vs oracle: worst |diff| = %.3e (rel %.3e) at %s -> %s",
-                  sensType, worstAbs, worstRel, worstWhere,
-                  if (pass) "PASS" else "FAIL"))
+  message(sprintf(
+    "sensType %d vs oracle: worst |diff| = %.3e (rel %.3e) at %s -> %s",
+    sensType,
+    worstAbs,
+    worstRel,
+    worstWhere,
+    if (pass) "PASS" else "FAIL"
+  ))
   if (length(nonFinite) > 0L) {
-    message(sprintf("  %d non-finite candidate field(s), e.g. %s",
-                    length(nonFinite), paste(utils::head(nonFinite, 3), collapse = ", ")))
+    message(sprintf(
+      "  %d non-finite candidate field(s), e.g. %s",
+      length(nonFinite),
+      paste(utils::head(nonFinite, 3), collapse = ", ")
+    ))
   }
-  invisible(list(pass = pass, worstAbs = worstAbs, worstRel = worstRel,
-                 where = worstWhere, nonFinite = nonFinite))
+  invisible(list(pass = pass, worstAbs = worstAbs, worstRel = worstRel, where = worstWhere, nonFinite = nonFinite))
 }

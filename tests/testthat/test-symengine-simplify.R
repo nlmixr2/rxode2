@@ -49,15 +49,38 @@ rxTest({
   })
 
   test_that("the C emitter and the R walker agree on all of these", {
-    .in <- c("1/1", "2*3", "6/3", "2+3", "1/gamma(2)", "a/1", "a*1", "1*a",
-             "a+0", "0+a", "a-0", "a/gamma(2)", "0-a", "1/a", "0/a",
-             "pi*2", "2*pi", "pi/2", "1/pi", "log(2)", "sqrt(2)", "a*(2+3)")
+    .in <- c(
+      "1/1",
+      "2*3",
+      "6/3",
+      "2+3",
+      "1/gamma(2)",
+      "a/1",
+      "a*1",
+      "1*a",
+      "a+0",
+      "0+a",
+      "a-0",
+      "a/gamma(2)",
+      "0-a",
+      "1/a",
+      "0/a",
+      "pi*2",
+      "2*pi",
+      "pi/2",
+      "1/pi",
+      "log(2)",
+      "sqrt(2)",
+      "a*(2+3)"
+    )
     .withC <- withr::with_options(
       list(rxode2.symengineC = TRUE),
-      vapply(.in, function(x) rxode2::rxFromSE(x), character(1), USE.NAMES = FALSE))
+      vapply(.in, function(x) rxode2::rxFromSE(x), character(1), USE.NAMES = FALSE)
+    )
     .withR <- withr::with_options(
       list(rxode2.symengineC = FALSE),
-      vapply(.in, function(x) rxode2::rxFromSE(x), character(1), USE.NAMES = FALSE))
+      vapply(.in, function(x) rxode2::rxFromSE(x), character(1), USE.NAMES = FALSE)
+    )
     expect_equal(.withC, .withR)
   })
 })

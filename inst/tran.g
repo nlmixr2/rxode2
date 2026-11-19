@@ -1,5 +1,10 @@
 //loop
-statement_list : (statement)+ ;
+// Leading ';' are taken here and trailing ones by `end_statement`, so a run of
+// semicolons has exactly one parse.  A bare `';'` statement made `a;` parse
+// both as `a end_statement(';')` and as `a` then `';'`; that ambiguity was
+// resolved over the whole preceding `statement_list`, making parse time
+// quadratic in model length (#1398).
+statement_list : end_statement (statement)+ | ';' end_statement ;
 
 statement
   : assignment end_statement
@@ -26,6 +31,9 @@ statement
   | interp_statement end_statement
   | cmt_statement end_statement
   | splitBolus_statement end_statement
+  | splitInfusion_statement end_statement
+  | splitInfusionBolus_statement end_statement
+  | splitBolusInfusion_statement end_statement
   | dvid_statementI end_statement
   | break_statement end_statement
   | simfun_statement end_statement
@@ -40,23 +48,16 @@ statement
   | reset_statement end_statement
   | compound_statement
   | selection_statement
-  | ifelse_statement
-  // At least one ';'.  `end_statement` is `(';')*`, so writing it bare here
-  // made `statement` nullable, and `(statement)+` above then admits any number
-  // of empty statements at every position -- an ambiguity dparser resolves by
-  // greediness, at a cost quadratic in the length of the whole model.  Blank
-  // lines are consumed as whitespace, not as a statement, so requiring the
-  // semicolon costs nothing and makes the parse linear.
-  | ';' end_statement ;
+  | ifelse_statement ;
 
 
-compound_statement : '{' statement_list? '}' ;
+compound_statement : '{' statement_list? '}' end_statement ;
 
 ifelse_statement
    : 'ifelse' '(' logical_or_expression ','  statement ',' statement ')' end_statement;
 
 selection_statement
-  :   "(if|while)" '(' logical_or_expression ')' statement ('else' statement)?;
+  :   "(if|while)" '(' logical_or_expression ')' body_statement ('else' body_statement)?;
 
 break_statement
     : 'break';
@@ -145,6 +146,27 @@ splitBolus_statement
       (',' identifier_r_no_output)*
       ')';
 
+splitInfusion_statement
+    : 'splitInfusion' '('
+      identifier_r_no_output ','
+      identifier_r_no_output
+      (',' identifier_r_no_output)*
+      ')';
+
+splitInfusionBolus_statement
+    : 'splitInfusionBolus' '('
+      identifier_r_no_output ','
+      identifier_r_no_output
+      (',' identifier_r_no_output)*
+      ')';
+
+splitBolusInfusion_statement
+    : 'splitBolusInfusion' '('
+      identifier_r_no_output ','
+      identifier_r_no_output
+      (',' identifier_r_no_output)*
+      ')';
+
 param_statement
     : "params?" '(' (identifier_r | theta0 | theta | eta) (',' (identifier_r | theta0 | theta | eta) )*  ')';
 
@@ -167,7 +189,7 @@ ini0f     : identifier_r '(0)' ('=' | '<-' ) logical_or_expression;
 
 ini        : identifier_r ('=' | '<-' ) ini_const;
 
-derivative : 'd/dt' '(' identifier_r_no_output ')' ('=' | '<-' | '~') ('+' | '-' | ) logical_or_expression;
+derivative : 'd/dt' '(' identifier_r_no_output ')' ('=' | '<-' | '~') logical_or_expression;
 der_rhs    : 'd/dt' '(' identifier_r_no_output ')';
 
 dfdy        : 'df' '(' identifier_r_no_output ')/dy(' (theta0_noout | theta_noout | eta_noout | identifier_r_no_output) ')' ('=' | '<-' ) logical_or_expression;
@@ -266,7 +288,7 @@ primary_expression
 
 ifelse : 'ifelse' '(' logical_or_expression ',' logical_or_expression ',' logical_or_expression ')' ;
 
-function : function_name '(' (logical_or_expression)* (',' logical_or_expression)* ')' ;
+function : function_name '(' (logical_or_expression)? (',' logical_or_expression)* ')' ;
 
 function_name: identifier | 'lag';
 
@@ -280,8 +302,8 @@ identifier_r: identifier_r_extra | identifier_r_1 | identifier_r_2 ;
 identifier_r_no_output: identifier_r_no_output_1 | identifier_r_no_output_2 | identifier_r_extra;
 
 identifier_r_extra: 'alag' | 'f'| 'F' | 'rate' | 'dur' | 'lag' | 'past' |
-  'evid_' | 'bolus' | 'infuse' | 'infuseDur' | 'splitBolus' | 'replace' |
-  'reset';
+  'evid_' | 'bolus' | 'infuse' | 'infuseDur' | 'splitBolus' | 'splitInfusion' |
+  'splitInfusionBolus' | 'splitBolusInfusion' | 'replace' | 'reset';
 
 theta: ('THETA' | 'theta') '[' decimalintNo0 ']';
 eta: ('ETA' | 'eta') '[' decimalintNo0 ']';
@@ -306,3 +328,8 @@ identifier_r_no_output_2: "[.]+[a-zA-Z_][a-zA-Z0-9_.]*" $term -4;
 identifier: "[a-zA-Z][a-zA-Z0-9_.]*" $term -4;
 whitespace: ( "[ \t\r\n]+" | singleLineComment )*;
 singleLineComment: '#' "[^\n]*";
+
+// An if/while body may be a bare `;` (an empty body); nowhere else is a lone
+// `;` a statement.  Defined last so the generated `rule__N` names used in
+// src/tran.h and src/parseLogical.h keep their numbers.
+body_statement : statement | ';' end_statement ;

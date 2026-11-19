@@ -10,7 +10,9 @@ stopifnot(length(.args) == 2L)
 .maxAbsDiff <- function(a, b) {
   .a <- suppressWarnings(as.numeric(unlist(a)))
   .b <- suppressWarnings(as.numeric(unlist(b)))
-  if (length(.a) != length(.b)) return(NA_real_)
+  if (length(.a) != length(.b)) {
+    return(NA_real_)
+  }
   max(abs(.a - .b), na.rm = TRUE)
 }
 
@@ -19,7 +21,9 @@ stopifnot(length(.args) == 2L)
 .all <- union(names(.a), names(.b))
 .bad <- 0L
 for (.n in .all) {
-  if (identical(.a[[.n]], .b[[.n]])) next
+  if (identical(.a[[.n]], .b[[.n]])) {
+    next
+  }
   .bad <- .bad + 1L
   cat(sprintf("DIFF %-50s max|a-b| = %s\n", .n, format(.maxAbsDiff(.a[[.n]], .b[[.n]]))))
 }

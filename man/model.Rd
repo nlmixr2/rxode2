@@ -94,6 +94,63 @@ called before \code{model} block
 \description{
 Model block for rxode2/nlmixr models
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    tka <- log(1.1)
+    tcl <- log(3)
+    tv <- log(30)
+    eta.cl ~ 0.1
+    add.sd <- 0.7
+  })
+  model({
+    ka <- exp(tka)
+    cl <- exp(tcl + eta.cl)
+    v <- exp(tv)
+    d/dt(depot) <- -ka * depot
+    d/dt(central) <- ka * depot - cl / v * central
+    cp <- central / v
+    cp ~ add(add.sd)
+  })
+}
+# extract the model block
+model(mod)
+# replace a line; the new parameter tcl.wt is added to ini()
+mod |> model(cl <- exp(tcl + eta.cl) * (WT / 70)^tcl.wt)
+# append a line after cp
+mod |> model(auc <- cp * 12, append = cp)
+}
+}
+\seealso{
+Other Model UI and piping:
+\code{\link[=as.ini]{as.ini()}},
+\code{\link[=as.model]{as.model()}},
+\code{\link[=as.rxUi]{as.rxUi()}},
+\code{\link[=coef.rxUi]{coef.rxUi()}},
+\code{\link[=indLin]{indLin()}},
+\code{\link[=ini.rxUi]{ini.rxUi()}},
+\code{\link[=ini<-]{ini<-()}},
+\code{\link[=linCmtMicro]{linCmtMicro()}},
+\code{\link[=linToOde]{linToOde()}},
+\code{\link[=model<-]{model<-()}},
+\code{\link[=modelExtract]{modelExtract()}},
+\code{\link[=odeToLin]{odeToLin()}},
+\code{\link[=rxAppendModel]{rxAppendModel()}},
+\code{\link[=rxFixPop]{rxFixPop()}},
+\code{\link[=rxFixRes]{rxFixRes()}},
+\code{\link[=rxGetControl]{rxGetControl()}},
+\code{\link[=rxRemoveControl]{rxRemoveControl()}},
+\code{\link[=rxRename]{rxRename()}},
+\code{\link[=rxSetControl]{rxSetControl()}},
+\code{\link[=rxSetCovariateNamesForPiping]{rxSetCovariateNamesForPiping()}},
+\code{\link[=rxSetPipingAuto]{rxSetPipingAuto()}},
+\code{\link[=rxUiDecompress]{rxUiDecompress()}},
+\code{\link[=rxode2<-]{rxode2<-()}},
+\code{\link[=update.rxUi]{update.rxUi()}},
+\code{\link[=zeroRe]{zeroRe()}}
+}
 \author{
 Matthew Fidler
 }
+\concept{Model UI and piping}

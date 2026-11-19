@@ -12,9 +12,11 @@ rxTest({
     .n <- rxNorm(.m)
     expect_true(grepl("rx__sens_center_BY_e__", .n, fixed = TRUE))
     expect_false(grepl("rx_SymPy_Res_", .n, fixed = TRUE))
-    expect_true(grepl(paste0("d/dt(rx__sens_center_BY_e__)=-exp(e+tcl)*center-",
-                             "exp(e+tcl)*rx__sens_center_BY_e__"),
-                      .n, fixed = TRUE))
+    expect_true(grepl(
+      paste0("d/dt(rx__sens_center_BY_e__)=-exp(e+tcl)*center-", "exp(e+tcl)*rx__sens_center_BY_e__"),
+      .n,
+      fixed = TRUE
+    ))
   })
 
   test_that("a parameter named like a constant solves like any other name", {
@@ -25,10 +27,22 @@ rxTest({
              calcSens = TRUE)
     }
     .ev <- et(amt = 100) |> et(seq(0, 24, by = 2))
-    .a <- rxSolve(.mk("e"), .ev, params = c(tka = 0.4, tcl = -0.1, e = 0.2),
-                  returnType = "data.frame", atol = 1e-11, rtol = 1e-11)
-    .b <- rxSolve(.mk("ee"), .ev, params = c(tka = 0.4, tcl = -0.1, ee = 0.2),
-                  returnType = "data.frame", atol = 1e-11, rtol = 1e-11)
+    .a <- rxSolve(
+      .mk("e"),
+      .ev,
+      params = c(tka = 0.4, tcl = -0.1, e = 0.2),
+      returnType = "data.frame",
+      atol = 1e-11,
+      rtol = 1e-11
+    )
+    .b <- rxSolve(
+      .mk("ee"),
+      .ev,
+      params = c(tka = 0.4, tcl = -0.1, ee = 0.2),
+      returnType = "data.frame",
+      atol = 1e-11,
+      rtol = 1e-11
+    )
     names(.a) <- sub("_BY_e__", "_BY_ee__", names(.a), fixed = TRUE)
     expect_equal(sort(names(.a)), sort(names(.b)))
     expect_equal(as.matrix(.a[names(.b)]), as.matrix(.b))
@@ -38,26 +52,47 @@ rxTest({
     # .rxEventSensDExpr() tested the model-side name against symengine-side free
     # symbols, so the term was silently dropped rather than erroring
     .mk <- function(v) {
-      sprintf(paste0("ka=exp(tka);\ncl=exp(tcl);\nf(depot)=expit(%s);\n",
-                     "d/dt(depot)=-ka*depot;\n",
-                     "d/dt(center)=ka*depot-cl*center;\n"), v)
+      sprintf(
+        paste0(
+          "ka=exp(tka);\ncl=exp(tcl);\nf(depot)=expit(%s);\n",
+          "d/dt(depot)=-ka*depot;\n",
+          "d/dt(center)=ka*depot-cl*center;\n"
+        ),
+        v
+      )
     }
     .ev <- et(amt = 100) |> et(seq(0, 24, by = 2))
     .p <- c(tka = 0.4, tcl = -0.1)
-    .a <- rxSolve(rxode2(.mk("e"), calcSens = "e", eventSens = "jump"), .ev,
-                  params = c(.p, e = 0.2), returnType = "data.frame",
-                  atol = 1e-11, rtol = 1e-11)
-    .b <- rxSolve(rxode2(.mk("ee"), calcSens = "ee", eventSens = "jump"), .ev,
-                  params = c(.p, ee = 0.2), returnType = "data.frame",
-                  atol = 1e-11, rtol = 1e-11)
+    .a <- rxSolve(
+      rxode2(.mk("e"), calcSens = "e", eventSens = "jump"),
+      .ev,
+      params = c(.p, e = 0.2),
+      returnType = "data.frame",
+      atol = 1e-11,
+      rtol = 1e-11
+    )
+    .b <- rxSolve(
+      rxode2(.mk("ee"), calcSens = "ee", eventSens = "jump"),
+      .ev,
+      params = c(.p, ee = 0.2),
+      returnType = "data.frame",
+      atol = 1e-11,
+      rtol = 1e-11
+    )
     expect_equal(.a$rx__sens_center_BY_e__, .b$rx__sens_center_BY_ee__)
     # and it is the real derivative, not zero
     .mb <- rxode2(.mk("e"))
     .h <- 1e-6
-    .fd <- (rxSolve(.mb, .ev, params = c(.p, e = 0.2 + .h),
-                    returnType = "data.frame", atol = 1e-11, rtol = 1e-11)$center -
-            rxSolve(.mb, .ev, params = c(.p, e = 0.2 - .h),
-                    returnType = "data.frame", atol = 1e-11, rtol = 1e-11)$center) / (2 * .h)
+    .fd <- (rxSolve(
+      .mb,
+      .ev,
+      params = c(.p, e = 0.2 + .h),
+      returnType = "data.frame",
+      atol = 1e-11,
+      rtol = 1e-11
+    )$center -
+      rxSolve(.mb, .ev, params = c(.p, e = 0.2 - .h), returnType = "data.frame", atol = 1e-11, rtol = 1e-11)$center) /
+      (2 * .h)
     expect_lt(max(abs(.a$rx__sens_center_BY_e__ - .fd)), 1e-5)
     expect_gt(max(abs(.fd)), 1)
   })
@@ -71,13 +106,11 @@ rxTest({
   })
 
   test_that("adjoint sensitivities accept a parameter named like a constant", {
-    .m <- rxS(rxGetModel("d/dt(depot)=-ka*depot;\nd/dt(center)=ka*depot-(e/v)*center;\n"),
-              TRUE, promoteLinSens = FALSE)
+    .m <- rxS(rxGetModel("d/dt(depot)=-ka*depot;\nd/dt(center)=ka*depot-(e/v)*center;\n"), TRUE, promoteLinSens = FALSE)
     .v <- c("ka", "e", "v")
     invisible(.rxJacobian(.m, c(rxStateOde(.m), .v)))
     .adj <- .rxAdjoint(.m, .v, "center")
-    expect_true(any(grepl("d/dt(rx__sens_center_BY_e__)=rx__adjLambda_center_center__*center/v",
-                          .adj, fixed = TRUE)))
+    expect_true(any(grepl("d/dt(rx__sens_center_BY_e__)=rx__adjLambda_center_center__*center/v", .adj, fixed = TRUE)))
     expect_false(any(grepl("rx_SymPy_Res_", .adj, fixed = TRUE)))
     expect_false(any(grepl("2.718", .adj, fixed = TRUE)))
   })
@@ -110,8 +143,7 @@ rxTest({
     # .rxDelaySensJumpMap() re-parses the rxFromSE() text of d/dt() with
     # symengine::S(), which reads a model-side `e` as Euler's number: the jump
     # amplitude came out as -(M_E)*(1.5) instead of -(e)*(1.5)
-    .m <- .rxDelaySensJumpMap("cl=0.3;\nd/dt(cen)=-cl*cen+e*delay(cen,1.5*e);\n",
-                              "e")
+    .m <- .rxDelaySensJumpMap("cl=0.3;\nd/dt(cen)=-cl*cen+e*delay(cen,1.5*e);\n", "e")
     expect_true(any(grepl("f(rx__sens_cen_BY_e__)=-(e)*(1.5)", .m$alagf, fixed = TRUE)))
     expect_false(any(grepl("M_E", .m$alagf, fixed = TRUE)))
   })
@@ -121,8 +153,7 @@ rxTest({
     # duration text has to be translated before it is evaluated there -- otherwise
     # it evaluates to a plain numeric, the "Basic" check fails and the
     # breaking-point corrections are dropped
-    .m <- .rxDelaySensJumpMap("cl=0.3;\nd/dt(cen)=-cl*cen+0.1*delay(cen,1.5*E);\n",
-                              "E")
+    .m <- .rxDelaySensJumpMap("cl=0.3;\nd/dt(cen)=-cl*cen+0.1*delay(cen,1.5*E);\n", "E")
     expect_true(any(grepl("alag(rx__sens_cen_BY_E__)", .m$alagf, fixed = TRUE)))
     expect_true(any(grepl("f(rx__sens_cen_BY_E__)=-(0.1)*(1.5)", .m$alagf, fixed = TRUE)))
   })

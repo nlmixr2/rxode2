@@ -1,9 +1,7 @@
 rxTest({
-
   ## A prior that an estimation method cannot use must be an error rather
   ## than silently ignored, otherwise the fit quietly does something other
   ## than what the model says.
-
 
   .modNoPriors <- function() {
     f <- function() {
@@ -36,7 +34,7 @@ rxTest({
     u <- .modNoPriors()
     .ini <- u$iniDf
     .ini$prior <- NULL
-    assign("iniDf", .ini, envir=u)
+    assign("iniDf", .ini, envir = u)
     expect_false("prior" %in% names(u$iniDf))
     expect_error(assertRxUiNoPriors(u), NA)
     expect_error(assertRxUiNormalPriors(u), NA)
@@ -47,7 +45,7 @@ rxTest({
     .ini <- u$iniDf
     .ini$prior <- NA_character_
     .ini$prior[.ini$name == "tka"] <- "dnorm(0, 10)"
-    assign("iniDf", .ini, envir=u)
+    assign("iniDf", .ini, envir = u)
 
     expect_error(assertRxUiNoPriors(u), "tka")
     expect_error(assertRxUiNoPriors(u), "cannot use")
@@ -60,7 +58,7 @@ rxTest({
     .ini$prior <- NA_character_
     .ini$prior[.ini$name == "tka"] <- "dnorm(0, 10)"
     .ini$prior[.ini$name == "tcl"] <- "std_normal()"
-    assign("iniDf", .ini, envir=u)
+    assign("iniDf", .ini, envir = u)
 
     expect_error(assertRxUiNormalPriors(u), NA)
     ## it still counts as a prior for the no-priors assertion
@@ -74,7 +72,7 @@ rxTest({
     .ini$prior <- NA_character_
     .ini$prior[.ini$name == "tka"] <- "dnorm(0, 10)"
     .ini$prior[.ini$name == "tcl"] <- "dgamma(2, 1)"
-    assign("iniDf", .ini, envir=u)
+    assign("iniDf", .ini, envir = u)
 
     expect_error(assertRxUiNormalPriors(u), "tcl")
     expect_error(assertRxUiNormalPriors(u), "only supports normal priors")
@@ -88,7 +86,7 @@ rxTest({
     .ini <- u$iniDf
     .ini$prior <- NA_character_
     .ini$prior[.ini$name == "tka"] <- "normal(0, 10)"
-    assign("iniDf", .ini, envir=u)
+    assign("iniDf", .ini, envir = u)
     expect_error(assertRxUiNormalPriors(u), NA)
   })
 
@@ -101,7 +99,7 @@ rxTest({
     .ini$prior <- NA_character_
     .txt <- "multiNormal(0, lotri(tka + tcl ~ c(1, 0.01, 1)))"
     .ini$prior[.ini$name %in% c("tka", "tcl")] <- .txt
-    assign("iniDf", .ini, envir=u)
+    assign("iniDf", .ini, envir = u)
 
     expect_error(assertRxUiNormalPriors(u), NA)
     expect_error(assertRxUiNoPriors(u))
@@ -113,7 +111,7 @@ rxTest({
     .ini <- u$iniDf
     .ini$prior <- NA_character_
     .ini$prior[.ini$name == "eta.ka"] <- "lkjCorr(2)"
-    assign("iniDf", .ini, envir=u)
+    assign("iniDf", .ini, envir = u)
     expect_error(assertRxUiNormalPriors(u), "lkjCorr")
   })
 
@@ -124,7 +122,7 @@ rxTest({
     .ini <- u$iniDf
     .ini$prior <- NA_character_
     .ini$prior[.ini$name == "eta.ka"] <- "invWishart(4)"
-    assign("iniDf", .ini, envir=u)
+    assign("iniDf", .ini, envir = u)
 
     expect_error(assertRxUiNoOmegaDf(u), "eta.ka")
     expect_error(assertRxUiNoOmegaDf(u), "invWishart")
@@ -143,14 +141,14 @@ rxTest({
     .ini <- u$iniDf
     .ini$prior <- NA_character_
     .ini$prior[.ini$name == "tka"] <- "dnorm(0, 10)"
-    assign("iniDf", .ini, envir=u)
+    assign("iniDf", .ini, envir = u)
     expect_error(assertRxUiNoOmegaDf(u), NA)
 
     ## and neither is an lkjCorr(), which is a correlation prior rather
     ## than degrees of freedom
     .ini$prior[.ini$name == "tka"] <- NA_character_
     .ini$prior[.ini$name == "eta.ka"] <- "lkjCorr(2)"
-    assign("iniDf", .ini, envir=u)
+    assign("iniDf", .ini, envir = u)
     expect_error(assertRxUiNoOmegaDf(u), NA)
   })
 
@@ -162,21 +160,21 @@ rxTest({
     .ini <- u$iniDf
     .ini$prior <- NA_character_
     .ini$prior[.ini$name == "eta.ka"] <- "dnorm(0, 0.1)"
-    assign("iniDf", .ini, envir=u)
+    assign("iniDf", .ini, envir = u)
 
     expect_error(assertRxUiNoOmegaNormalPriors(u), "eta.ka")
     expect_error(assertRxUiNoOmegaNormalPriors(u), "normal prior on the omega")
 
     ## a Wishart on the same omega is not a normal prior, so it passes
     .ini$prior[.ini$name == "eta.ka"] <- "invWishart(4)"
-    assign("iniDf", .ini, envir=u)
+    assign("iniDf", .ini, envir = u)
     expect_error(assertRxUiNoOmegaNormalPriors(u), NA)
 
     ## and a normal prior on a *population* parameter is not an omega
     ## prior, so it passes too
     .ini$prior[.ini$name == "eta.ka"] <- NA_character_
     .ini$prior[.ini$name == "tka"] <- "dnorm(0, 10)"
-    assign("iniDf", .ini, envir=u)
+    assign("iniDf", .ini, envir = u)
     expect_error(assertRxUiNoOmegaNormalPriors(u), NA)
   })
 
@@ -186,7 +184,7 @@ rxTest({
     ## no priors at all
     u <- .modNoPriors()
     expect_false(testRxUiPriors(u))
-    expect_true(testRxUiNormalPriors(u))    # vacuously, as the assert passes
+    expect_true(testRxUiNormalPriors(u)) # vacuously, as the assert passes
     expect_false(testRxUiOmegaDf(u))
     expect_false(testRxUiOmegaNormalPriors(u))
 
@@ -194,7 +192,7 @@ rxTest({
     .ini <- u$iniDf
     .ini$prior <- NA_character_
     .ini$prior[.ini$name == "tka"] <- "dnorm(0, 10)"
-    assign("iniDf", .ini, envir=u)
+    assign("iniDf", .ini, envir = u)
     expect_true(testRxUiPriors(u))
     expect_true(testRxUiNormalPriors(u))
     expect_false(testRxUiOmegaDf(u))
@@ -203,7 +201,7 @@ rxTest({
     ## NWPRI: degrees of freedom on the omega
     .ini$prior[.ini$name == "tka"] <- NA_character_
     .ini$prior[.ini$name == "eta.ka"] <- "invWishart(4)"
-    assign("iniDf", .ini, envir=u)
+    assign("iniDf", .ini, envir = u)
     expect_true(testRxUiPriors(u))
     expect_false(testRxUiNormalPriors(u))
     expect_true(testRxUiOmegaDf(u))
@@ -211,7 +209,7 @@ rxTest({
 
     ## TNPRI: a normal prior on the omega
     .ini$prior[.ini$name == "eta.ka"] <- "dnorm(0, 0.1)"
-    assign("iniDf", .ini, envir=u)
+    assign("iniDf", .ini, envir = u)
     expect_true(testRxUiPriors(u))
     expect_true(testRxUiNormalPriors(u))
     expect_false(testRxUiOmegaDf(u))
@@ -229,13 +227,15 @@ rxTest({
     .ini$prior <- NA_character_
     .ini$prior[.ini$name == "tka"] <- "dnorm(0, 10)"
     .ini$prior[.ini$name == "eta.ka"] <- "invWishart(4)"
-    assign("iniDf", .ini, envir=u)
+    assign("iniDf", .ini, envir = u)
 
     .p <- rxUiPriors(u)
     expect_true(inherits(.p, "data.frame"))
     expect_equal(nrow(.p), 2L)
-    expect_true(all(c("name", "prior", "neta1", "neta2", "lower", "upper") %in%
-                      names(.p)))
+    expect_true(all(
+      c("name", "prior", "neta1", "neta2", "lower", "upper") %in%
+        names(.p)
+    ))
     ## the population parameter has no eta numbers, the omega does
     expect_true(is.na(.p$neta1[.p$name == "tka"]))
     expect_false(is.na(.p$neta1[.p$name == "eta.ka"]))
@@ -276,14 +276,14 @@ rxTest({
     expect_equal(u$iniDf$prior[u$iniDf$name == "eta.cl"], "invWishart(4)")
 
     ## the ini block prints them, naming the whole block for the matrix one
-    .ini <- paste(deparse(u$iniFun), collapse=" ")
-    expect_true(grepl("prior(tka) ~ dnorm(0, 10)", .ini, fixed=TRUE))
-    expect_true(grepl("prior(eta.cl, eta.v) ~ invWishart(4)", .ini, fixed=TRUE))
+    .ini <- paste(deparse(u$iniFun), collapse = " ")
+    expect_true(grepl("prior(tka) ~ dnorm(0, 10)", .ini, fixed = TRUE))
+    expect_true(grepl("prior(eta.cl, eta.v) ~ invWishart(4)", .ini, fixed = TRUE))
 
     ## and so does printing the model itself
-    .out <- paste(capture.output(print(u)), collapse="\n")
-    expect_true(grepl("prior(tka) ~ dnorm(0, 10)", .out, fixed=TRUE))
-    expect_true(grepl("prior(eta.cl, eta.v) ~ invWishart(4)", .out, fixed=TRUE))
+    .out <- paste(capture.output(print(u)), collapse = "\n")
+    expect_true(grepl("prior(tka) ~ dnorm(0, 10)", .out, fixed = TRUE))
+    expect_true(grepl("prior(eta.cl, eta.v) ~ invWishart(4)", .out, fixed = TRUE))
 
     ## what is printed is valid input that gives the same priors back
     .again <- eval(u$iniFun)
@@ -295,8 +295,7 @@ rxTest({
     .ini <- u$iniDf
     .ini$prior <- NA_character_
     .ini$prior[.ini$name == "tka"] <- "this is not a call("
-    assign("iniDf", .ini, envir=u)
+    assign("iniDf", .ini, envir = u)
     expect_error(assertRxUiNormalPriors(u))
   })
-
 })

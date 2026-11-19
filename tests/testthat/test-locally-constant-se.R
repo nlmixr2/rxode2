@@ -6,9 +6,16 @@ rxTest({
   # 0 almost everywhere.  The same load bug hit every other function symengine
   # has no method for; see "every parser-known function loads into symengine".
 
-  .locallyConstant <- c("floor(p/24)", "ceil(p/24)", "round(p/24)",
-                        "trunc(p/24)", "sign(p-12)", "fround(p,2)",
-                        "fprec(p,3)", "ftrunc(p)")
+  .locallyConstant <- c(
+    "floor(p/24)",
+    "ceil(p/24)",
+    "round(p/24)",
+    "trunc(p/24)",
+    "sign(p-12)",
+    "fround(p,2)",
+    "fprec(p,3)",
+    "ftrunc(p)"
+  )
 
   test_that("locally constant functions load into symengine", {
     for (.e in c(.locallyConstant, "fsign(p-12,q)")) {
@@ -28,19 +35,20 @@ rxTest({
     .tbl <- .tbl[!is.na(.tbl) & .tbl >= 1 & .tbl <= 5]
     # linCmtA/linCmtB need a solved-system pointer, not a plain lhs, and the
     # internal-only spellings are deliberately not accepted by the parser
-    .tbl <- .tbl[!(names(.tbl) %in% c("linCmtA", "linCmtB",
-                                      .rxSEinternalOnly))]
+    .tbl <- .tbl[!(names(.tbl) %in% c("linCmtA", "linCmtB", .rxSEinternalOnly))]
     for (.nm in names(.tbl)) {
       .args <- paste(paste0("p", seq_len(.tbl[[.nm]])), collapse = ",")
       .m <- paste0("fl=", .nm, "(", .args, ")\nd/dt(A)=-fl*A\n")
-      .s <- suppressWarnings(try(rxS(.m, TRUE, promoteLinSens = FALSE),
-                                 silent = TRUE))
+      .s <- suppressWarnings(try(rxS(.m, TRUE, promoteLinSens = FALSE), silent = TRUE))
       expect_false(inherits(.s, "try-error"), info = .nm)
       # and the loaded value really is a symengine object, not a try-error
       # character vector emitted into the model as `fl=.expr`
       if (!inherits(.s, "try-error")) {
-        expect_true(any(grepl(paste0("^fl=", .nm, "\\("), .s$..lhs)) ||
-                      !any(grepl("\\.expr", .s$..lhs)), info = .nm)
+        expect_true(
+          any(grepl(paste0("^fl=", .nm, "\\("), .s$..lhs)) ||
+            !any(grepl("\\.expr", .s$..lhs)),
+          info = .nm
+        )
       }
     }
   })
@@ -60,8 +68,7 @@ rxTest({
     expect_equal(rxFromSE("Derivative(ftrunc(p), eta1)"), "0")
     # the Subs(Derivative(...)) form symengine actually produces when the
     # argument is not a bare symbol
-    expect_equal(rxFromSE("Subs(Derivative(floor(_xi_1), _xi_1), (_xi_1), (p/24))"),
-                 "0")
+    expect_equal(rxFromSE("Subs(Derivative(floor(_xi_1), _xi_1), (_xi_1), (p/24))"), "0")
     # higher-order derivatives collapse to zero too
     expect_equal(rxFromSE("Derivative(floor(_xi_1), _xi_1, _xi_1)"), "0")
   })
@@ -101,15 +108,20 @@ rxTest({
     .m <- suppressMessages(rxode2(paste0(
       "r=round(p)\nc1=ceil(p)\nfl=floor(p)\ntr=trunc(p)\nsg=sign(p)\n",
       "fr=fround(p,1)\nfp=fprec(p,2)\nfs=fsign(p,q)\nd/dt(A)=0\n")))
-    .txt <- c(r = "round(p)", c1 = "ceil(p)", fl = "floor(p)", tr = "trunc(p)",
-              sg = "sign(p)", fr = "fround(p,1)", fp = "fprec(p,2)",
-              fs = "fsign(p,q)")
-    for (.p in list(c(p = 2.5, q = 0), c(p = -2.5, q = 0), c(p = 1.26, q = -1),
-                    c(p = -3.5, q = 2))) {
+    .txt <- c(
+      r = "round(p)",
+      c1 = "ceil(p)",
+      fl = "floor(p)",
+      tr = "trunc(p)",
+      sg = "sign(p)",
+      fr = "fround(p,1)",
+      fp = "fprec(p,2)",
+      fs = "fsign(p,q)"
+    )
+    for (.p in list(c(p = 2.5, q = 0), c(p = -2.5, q = 0), c(p = 1.26, q = -1), c(p = -3.5, q = 2))) {
       .s <- rxSolve(.m, .p, et(0), returnType = "data.frame", addDosing = FALSE)
       for (.n in names(.txt)) {
-        expect_equal(.rxAdjEvalNum(.txt[[.n]], .p), .s[[.n]],
-                     info = paste(.txt[[.n]], paste(.p, collapse = ",")))
+        expect_equal(.rxAdjEvalNum(.txt[[.n]], .p), .s[[.n]], info = paste(.txt[[.n]], paste(.p, collapse = ",")))
       }
     }
   })
@@ -118,8 +130,7 @@ rxTest({
     # `(y >= 0) ? fabs(x) : -fabs(x)`, so y == 0 counts as positive and the
     # derivative cannot be written with sign(y), whose value there is 0
     .m <- suppressMessages(rxode2("fs=fsign(p,q)\nd/dt(A)=0\n"))
-    .s <- rxSolve(.m, c(p = 2.5, q = 0), et(0), returnType = "data.frame",
-                  addDosing = FALSE)
+    .s <- rxSolve(.m, c(p = 2.5, q = 0), et(0), returnType = "data.frame", addDosing = FALSE)
     expect_equal(.s$fs, 2.5)
 
     expect_equal(rxFromSE("Derivative(fsign(x, y), x)"), "sign(x)*fsign(1, y)")
@@ -135,14 +146,18 @@ rxTest({
     # single-element Subs -- including the second argument of a two-argument form
     expect_equal(
       rxFromSE("Subs(Derivative(fround(_xi_1, n), _xi_1), (_xi_1), (3.0*p))"),
-      "0")
+      "0"
+    )
     expect_equal(
       rxFromSE("Subs(Derivative(fsign(1.0 + p, _xi_2), _xi_2), (_xi_2), (2.0*p))"),
-      "0")
+      "0"
+    )
     # the same variable in both arguments gives one Subs per position
     # (rxFromSE() captures its argument, so build the text first)
-    .both <- paste0("Subs(Derivative(fsign(_xi_1, 2.0*p), _xi_1), (_xi_1), (1.0 + p))",
-                    " + 2.0*Subs(Derivative(fsign(1.0 + p, _xi_2), _xi_2), (_xi_2), (2.0*p))")
+    .both <- paste0(
+      "Subs(Derivative(fsign(_xi_1, 2.0*p), _xi_1), (_xi_1), (1.0 + p))",
+      " + 2.0*Subs(Derivative(fsign(1.0 + p, _xi_2), _xi_2), (_xi_2), (2.0*p))"
+    )
     # the second Subs collapses to 0 and the x+0 identity then drops the term
     # entirely, which is the same statement as before: nothing of the
     # differentiated fsign() survives
@@ -168,15 +183,17 @@ d/dt(center)=ka*depot - cl/v*center*(1+fl)
 cp=center/v
 "
     expect_error(suppressMessages(rxode2(.m, calcSens = TRUE, calcJac = TRUE)), NA)
-    expect_error(suppressMessages(rxode2(.m, calcSens = "eta1", calcSens2 = "eta1",
-                                         calcJac = TRUE)), NA)
+    expect_error(
+      suppressMessages(rxode2(.m, calcSens = "eta1", calcSens2 = "eta1",
+                                         calcJac = TRUE)),
+      NA
+    )
   })
 
   test_that("ftrunc() takes one argument, like C's Rf_ftrunc()", {
     .m <- suppressMessages(rxode2("ft=ftrunc(p)\ntr=trunc(p)\nd/dt(A)=0\n"))
     for (.p in c(2.7, -2.7, 0, 1)) {
-      .s <- rxSolve(.m, c(p = .p), et(0), returnType = "data.frame",
-                    addDosing = FALSE)
+      .s <- rxSolve(.m, c(p = .p), et(0), returnType = "data.frame", addDosing = FALSE)
       expect_equal(.s$ft, trunc(.p), info = as.character(.p))
       expect_equal(.s$ft, .s$tr, info = as.character(.p))
     }

@@ -23,7 +23,7 @@
 #' }
 #'
 SELU <- function(x) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
   .Call(`_rxode2_activationF`, x, 4L)
 }
 
@@ -46,6 +46,6 @@ SELU <- function(x) {
 #' rxSolve(x, e)
 #' }
 dSELU <- function(x) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
   .Call(`_rxode2_activationF`, x, 17L)
 }

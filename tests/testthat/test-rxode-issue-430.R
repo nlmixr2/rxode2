@@ -22,8 +22,24 @@ rxTest({
 
     dataset <- readRDS("test-issue-430.rds") # This dataset contains 3 boluses given at time 0, 24 & 48
 
-    r2 <- rxode2::rxSolve(object = model, params = theta, omega = NULL, sigma = NULL, events = dataset, cores = 2, returnType = "data.frame")
-    r1 <- rxode2::rxSolve(object = model, params = theta, omega = NULL, sigma = NULL, events = dataset, cores = 1, returnType = "data.frame")
+    r2 <- rxode2::rxSolve(
+      object = model,
+      params = theta,
+      omega = NULL,
+      sigma = NULL,
+      events = dataset,
+      cores = 2,
+      returnType = "data.frame"
+    )
+    r1 <- rxode2::rxSolve(
+      object = model,
+      params = theta,
+      omega = NULL,
+      sigma = NULL,
+      events = dataset,
+      cores = 1,
+      returnType = "data.frame"
+    )
 
     expect_equal(r1, r2)
   })

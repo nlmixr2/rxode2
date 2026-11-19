@@ -17,6 +17,34 @@ expression
 \description{
 Here it means that it evaluates to a variable or a number.
 }
+\examples{
+# in a rxUdfUi handler, collapse arguments that evaluate to a value
+rxUdfUiExpr(quote(2 * 3))
+n <- "cp"
+rxUdfUiExpr(quote(n)) # a character value becomes the variable cp
+rxUdfUiExpr(quote(ka * depot)) # unevaluable expressions are kept
+}
+\seealso{
+Other User functions:
+\code{\link[=linMod]{linMod()}},
+\code{\link[=mix]{mix()}},
+\code{\link[=rxD]{rxD()}},
+\code{\link[=rxFun]{rxFun()}},
+\code{\link[=rxIntToBase]{rxIntToBase()}},
+\code{\link[=rxIntToLetter]{rxIntToLetter()}},
+\code{\link[=rxUdfUiControl]{rxUdfUiControl()}},
+\code{\link[=rxUdfUiData]{rxUdfUiData()}},
+\code{\link[=rxUdfUiEst]{rxUdfUiEst()}},
+\code{\link[=rxUdfUiFlag]{rxUdfUiFlag()}},
+\code{\link[=rxUdfUiIniDf]{rxUdfUiIniDf()}},
+\code{\link[=rxUdfUiIniLhs]{rxUdfUiIniLhs()}},
+\code{\link[=rxUdfUiIsValue]{rxUdfUiIsValue()}},
+\code{\link[=rxUdfUiLhs.dist]{rxUdfUiLhs.dist()}},
+\code{\link[=rxUdfUiMv]{rxUdfUiMv()}},
+\code{\link[=rxUdfUiNum]{rxUdfUiNum()}},
+\code{\link[=rxUdfUiParsing]{rxUdfUiParsing()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{User functions}

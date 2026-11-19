@@ -26,6 +26,36 @@ with that name runs, so an injector never overwrites an unrelated model's
 ui (a sticky item, so it survives model piping) like \code{\link[=rxForcedPars]{rxForcedPars()}}; set it to
 \code{NULL} to clear.
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    k <- 0.1
+  })
+  model({
+    d/dt(A) <- -k * A
+  })
+}
+u <- rxode2(mod)
+rxParLoader(u) <- "myPkg:myLoader"
+rxParLoader(u)
+rxParLoader(u) <- NULL
+}
+}
+\seealso{
+Other Solving:
+\code{\link[=as.arrow]{as.arrow()}},
+\code{\link[=rxCbindStudyIndividual]{rxCbindStudyIndividual()}},
+\code{\link[=rxForcedPars]{rxForcedPars()}},
+\code{\link[=rxInjectedPars]{rxInjectedPars()}},
+\code{\link[=rxRegisterUiAssembled]{rxRegisterUiAssembled()}},
+\code{\link[=rxRegisterUiPrep]{rxRegisterUiPrep()}},
+\code{\link[=rxSetActiveParLoader]{rxSetActiveParLoader()}},
+\code{\link[=rxSetIni0]{rxSetIni0()}},
+\code{\link[=rxSolve]{rxSolve()}},
+\code{\link[=rxSolveChunked]{rxSolveChunked()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Solving}

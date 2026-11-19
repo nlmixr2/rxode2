@@ -8,7 +8,8 @@
 #include <R.h>
 #include <Rinternals.h>
 
-void RSprintf(const char *format, ...);
+#include "rxPrintfFormat.h"
+void RSprintf(const char *format, ...) R_PRINTF_FORMAT(1, 2);
 #include "solveWarn.h"
 
 /*
@@ -165,6 +166,10 @@ tam@wri.com
 	return ctx->state; \
 }
 
+/* An intdy() failure (tout outside the last step; intdy() pushes its
+   reason) is a hard failure, as in hardfailure(): the state at tout was
+   never computed, so returning success would pass the last step's state on
+   as tout's. */
 #define intdyreturn() \
 { \
 	int iflag = intdy(ctx, tout, 0, y);  \
@@ -173,6 +178,8 @@ tam@wri.com
 		for (i = 1; i <= neq; i++) \
 			y[i] = _rxC(yh)[1][i]; \
 		*t = _rxC(tn); \
+		ctx->state = -3; \
+		return ctx->state; \
 	} \
 	*t = tout; \
 	ctx->state = 2; \
@@ -815,6 +822,7 @@ int lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 				/* discrete-adjoint: record this accepted step's linearisation
 				   point (tn, converged y=yh[1]) + metadata (hu, nqu, el). */
 				if (ctx->common->adjPush) ctx->common->adjPush(ctx);
+				if (ctx->common->stepPush) ctx->common->stepPush(ctx);
 				if (_rxC(meth) != _rxC(mused)) {
 					_rxC(tsw) = _rxC(tn);
 					jstart = -1;

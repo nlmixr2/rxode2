@@ -15,7 +15,7 @@
 #include "../inst/include/rxode2parse.h"
 #include "../inst/include/rxode2_control.h"
 #include "tran.h"
-#include "../inst/include/rxode2parseSbuf.h"
+#include "rxSbufFormat.h"
 
 // show_ode = 1 dydt
 #define ode_dydt 1
@@ -69,10 +69,11 @@
 // show_ode == 31 event-sensitivity d(F)/dq, q in calcSens2's index space
 // (Phase H1's dtau/lag row: feeds d(delta)/dq = amt*dFQ[c][q])
 #define ode_dFQ 31
-// show_ode == 32 event-sensitivity d(J[k][c])/dq -- total derivative of the
-// PHYSICAL Jacobian column wrt a calcSens2 parameter (Phase H1's dtau/lag
-// row).  Buffer is (nState x nState x np2), NOT the usual (nState x nParam)
-// dosing-parameter shape -- see `.rxEventSensCLines()$lagJacQ`.
+// show_ode == 32 event-sensitivity d(f_k)/dq -- total derivative of the
+// PHYSICAL right-hand side wrt a calcSens2 parameter (Phase H1's dtau/lag
+// row; the name dLagJac is historical).  Buffer is (nState x nState x np2)
+// plus the calcSens2 -> calcSens map and a completeness flag -- see
+// `.rxEventSensCLines()$lagRhsQ`.
 #define ode_dLagJac 32
 // show_ode == 33 event-sensitivity d(alag)/dq, q in calcSens2's index space
 // (Phase H1's dtau/lag row SAFETY GUARD: nonzero here means q ALSO drives
@@ -129,11 +130,15 @@ static inline void printPDStateVar(int show_ode, int scenario) {
       buf2 = tb.ss.line[tb.dy[i]];
       // This is for dydt/ LHS/ or jacobian for df(state)/dy(parameter)
       if (show_ode == ode_dydt || show_ode == ode_lhs || tb.sdfdy[i] == 1){
-	if (scenario == print_double){
-	  sAppend(&sbOut,"  double __PDStateVar_%s_SeP_%s__;\n",buf1,buf2);
+	if (scenario == print_double) {
+	  sAppendN(&sbOut, "  double __PDStateVar_", 22);
 	} else {
-	  sAppend(&sbOut,"  (void)__PDStateVar_%s_SeP_%s__;\n",buf1,buf2);
+	  sAppendN(&sbOut, "  (void)__PDStateVar_", 21);
 	}
+	doDot(&sbOut, buf1);
+	sAppendN(&sbOut, "_SeP_", 5);
+	doDot(&sbOut, buf2);
+	sAppendN(&sbOut, "__;\n", 4);
       }
     }
   }
@@ -283,6 +288,29 @@ static inline void printParamLags(char *buf, int *j, int i) {
   doDot(&sbOut, buf);
   sAppend(&sbOut, "(x,y) (ISNA(_getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx + (y))) ? 0.0 : _getParCov(_cSub, _solveData, %d, (&_solveData->subjects[_cSub])->idx + (y)))\n", *j, *j);
   j[0]=j[0]+1;
+}
+
+// lag()/lead()/diff()/first()/last() of time: the time of another record of
+// the current subject (NA outside the records or on the evid=9 start record)
+static inline void printTimeLags(void) {
+  if (!tb.lagTime) return;
+  sAppend(&sbOut, "#define _rxRecTime(k) (((k) < 0 || (k) >= (&_solveData->subjects[_cSub])->n_all_times || getEvid((&_solveData->subjects[_cSub]), (&_solveData->subjects[_cSub])->ix[(k)]) == 9) ? NA_REAL : getAllTimes((&_solveData->subjects[_cSub]), (&_solveData->subjects[_cSub])->ix[(k)]))\n");
+  sAppend(&sbOut, "#define _rxRecTimeIdx (&_solveData->subjects[_cSub])->idx\n");
+  sAppend(&sbOut, "#define _rxRecTime0(k) (ISNA(_rxRecTime(k)) ? 0.0 : _rxRecTime(k))\n");
+  sAppend(&sbOut, "#define lag_t1(x) _rxRecTime(_rxRecTimeIdx - 1)\n");
+  sAppend(&sbOut, "#define lag_t(x,y) _rxRecTime(_rxRecTimeIdx - (y))\n");
+  sAppend(&sbOut, "#define lead_t1(x) _rxRecTime(_rxRecTimeIdx + 1)\n");
+  sAppend(&sbOut, "#define lead_t(x,y) _rxRecTime(_rxRecTimeIdx + (y))\n");
+  sAppend(&sbOut, "#define diff_t1(x) ((x) - _rxRecTime(_rxRecTimeIdx - 1))\n");
+  sAppend(&sbOut, "#define diff_t(x,y) ((x) - _rxRecTime(_rxRecTimeIdx - (y)))\n");
+  sAppend(&sbOut, "#define first_t1(x) _rxRecTime(((&_solveData->subjects[_cSub])->n_all_times > 0 && getEvid((&_solveData->subjects[_cSub]), (&_solveData->subjects[_cSub])->ix[0]) == 9) ? 1 : 0)\n");
+  sAppend(&sbOut, "#define last_t1(x) _rxRecTime((&_solveData->subjects[_cSub])->n_all_times - 1)\n");
+  sAppend(&sbOut, "#define lag0_t1(x) _rxRecTime0(_rxRecTimeIdx - 1)\n");
+  sAppend(&sbOut, "#define lag0_t(x,y) _rxRecTime0(_rxRecTimeIdx - (y))\n");
+  sAppend(&sbOut, "#define lead0_t1(x) _rxRecTime0(_rxRecTimeIdx + 1)\n");
+  sAppend(&sbOut, "#define lead0_t(x,y) _rxRecTime0(_rxRecTimeIdx + (y))\n");
+  sAppend(&sbOut, "#define diff0_t1(x) ((x) - _rxRecTime0(_rxRecTimeIdx - 1))\n");
+  sAppend(&sbOut, "#define diff0_t(x,y) ((x) - _rxRecTime0(_rxRecTimeIdx - (y)))\n");
 }
 
 static inline void printLhsLag(char *buf, int *j, int i) {
@@ -461,23 +489,22 @@ static inline void printRInit(const char *libname, const char *libname2, const c
   sAppend(&sbOut, "  if (!Rf_isNull(_mv)){\n    _rxRmModelLib(\"%smodel_vars\");\n  }\n  UNPROTECT(1);\n}\n", prefix);
 }
 
-void print_aux_info(char *model, const char *prefix, const char *libname, const char *pMd5, const char *timeId,
+void print_aux_info(const char *prefix, const char *libname,
 		    const char *libname2);
 
-void codegen(char *model, int show_ode, const char *prefix, const char *libname, const char *pMd5, const char *timeId, const char *libname2);
+void codegen(int show_ode, const char *prefix, const char *libname, const char *pMd5, const char *libname2);
 void writeSb(sbuf *sbb, FILE *fp);
 
 #define gCode(i) (&sbOut)->s[0]='\0';		\
   (&sbOut)->o=0;				\
-  codegen(gBuf, i, CHAR(STRING_ELT(prefix,0)),	\
+  codegen(i, CHAR(STRING_ELT(prefix,0)),	\
 	  CHAR(STRING_ELT(libname, 0)),		\
 	  CHAR(STRING_ELT(pMd5,0)),		\
-	  CHAR(STRING_ELT(timeId, 0)),		\
 	  CHAR(STRING_ELT(libname, 1)));					\
   writeSb(&sbOut, fpIO);
 
 SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
-                          SEXP pMd5, SEXP timeId, SEXP mvLast, SEXP goodFuns,
+                          SEXP pMd5, SEXP mvLast, SEXP goodFuns,
                           SEXP esDLagCode, SEXP esDFCode,
                           SEXP esDRateCode, SEXP esDDurCode, SEXP esD2FCode,
                           SEXP esD2LagCode, SEXP esD2RateCode, SEXP esD2DurCode,

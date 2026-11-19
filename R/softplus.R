@@ -22,7 +22,7 @@
 #' }
 #'
 softplus <- function(x) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
   .Call(`_rxode2_activationF`, x, 3L)
 }
 
@@ -50,24 +50,24 @@ softplus <- function(x) {
 #' }
 #'
 dsoftplus <- function(x) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
   .Call(`_rxode2_activationF`, x, 13L)
 }
 
 #' @rdname dsoftplus
 d2softplus <- function(x) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
   .Call(`_rxode2_activationF`, x, 14L)
 }
 
 #' @rdname dsoftplus
 d3softplus <- function(x) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
   .Call(`_rxode2_activationF`, x, 15L)
 }
 
 #' @rdname dsoftplus
 d4softplus <- function(x) {
-  checkmate::assertNumeric(x, finite=TRUE, any.missing=FALSE)
+  checkmate::assertNumeric(x, finite = TRUE, any.missing = FALSE)
   .Call(`_rxode2_activationF`, x, 16L)
 }

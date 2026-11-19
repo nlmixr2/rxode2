@@ -67,18 +67,25 @@ extern "C" {
 // is always the nonzero, primary index for an off-diagonal member too.
 typedef struct rx_prior_term_t {
   int type;      // 0=normal, 1=cauchy, 2=multiNormal, 3=invWishart (general),
-                 // 4=invWishart (NONMEM NWPRI)
+                 // 4=invWishart (NONMEM NWPRI), 5-21=a univariate family
+                 // (5 lognormal, 6 gamma, 7 inv_gamma, 8 weibull,
+                 // 9 frechet, 10 pareto, 11 pareto_type_2, 12 beta,
+                 // 13 uniform, 14 student_t, 15 double_exponential,
+                 // 16 logistic, 17 gumbel, 18 skew_double_exponential,
+                 // 19 exp_mod_normal, 20 skew_normal, 21 von_mises)
   int n;         // number of members (1 for normal/cauchy)
   int *thetaIdx; // length n; 0 when member k is an omega element
   int *etaIdx;   // length n; 0 when member k is a population parameter
   int *etaIdx2;  // length n; 0 unless member k is an off-diagonal omega
                  // covariance cell, in which case it is that cell's SECOND
                  // (1-based) eta index -- see the field-level comment above
-  double *mu;    // length n; unused (NULL) for invWishart
-  double *scale; // normal/cauchy: length-1 sd/scale. multiNormal: n*n
+  double *mu;    // length n; unused (NULL) for invWishart. Types 5-21:
+                 // the family's hyperparameters (Stan order), n is still 1
+  double *scale; // normal/cauchy: length-1 sd/scale. Types 5-21: length-1
+                 // log normalizing constant, truncation included. multiNormal: n*n
                  // row-major covariance Sigma. invWishart (3 or 4): n*n
                  // row-major scale matrix Psi (the block's own ini() values).
-  double lower;  // truncation bounds (normal/cauchy only; +-Inf otherwise)
+  double lower;  // truncation bounds (normal/cauchy/types 5-21; +-Inf otherwise)
   double upper;
   double nu;     // invWishart (3): classical degrees of freedom. invWishart
                  // (4): NONMEM's "rho" -- the invWishart(rho) argument as
@@ -114,14 +121,13 @@ extern "C" {
 // contribution is left at 0 for that term.
 //
 // `spec` comes from R/priorDensity.R's rxPriorBuildSpec(), an R external
-// pointer whose finalizer is the ONLY thing that frees it -- there is
-// deliberately no exported "free this spec now" entry point. A raw void*
-// obtained via R_ExternalPtrAddr() and a same-process finalizer both firing
-// on the same allocation is a double free; the caller must instead keep
-// the R external pointer object itself alive (referenced from wherever it
-// stores its own fit state) for as long as it calls this function, and let
-// R's garbage collector reclaim it in the ordinary way once that reference
-// is dropped.
+// pointer that owns the spec's memory (R vectors in its protected slot), so
+// R frees the spec with the pointer -- there is deliberately no exported
+// "free this spec now" entry point, and no finalizer in rxode2's DLL, which
+// may be unloaded first. The caller must keep the R external pointer object
+// itself alive (referenced from wherever it stores its own fit state) for as
+// long as it calls this function, and let R's garbage collector reclaim it
+// in the ordinary way once that reference is dropped.
 double rxPriorLogDensityEval(const rx_prior_spec_t *spec,
                               const double *theta, int thetaLen,
                               const double *omega, int omegaDim,

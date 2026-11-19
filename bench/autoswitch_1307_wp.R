@@ -13,10 +13,12 @@ source("bench/autoswitch_1307_models.R")
 
 rxode2::setRxThreads(as.integer(Sys.getenv("BENCH_THREADS", "1")))
 
-TOLS <- list(default = list(),
-             `1e-6`  = list(atol = 1e-6,  rtol = 1e-6),
-             `1e-8`  = list(atol = 1e-8,  rtol = 1e-8),
-             `1e-10` = list(atol = 1e-10, rtol = 1e-10))
+TOLS <- list(
+  default = list(),
+  `1e-6` = list(atol = 1e-6, rtol = 1e-6),
+  `1e-8` = list(atol = 1e-8, rtol = 1e-8),
+  `1e-10` = list(atol = 1e-10, rtol = 1e-10)
+)
 METHODS <- c("liblsoda", "dop853", "ros4", "dop853+ros4")
 
 res <- NULL
@@ -24,10 +26,11 @@ for (nm in names(mods)) {
   mod <- mods[[nm]]
   ref <- .solve(mod, list(method = "liblsoda", atol = 1e-13, rtol = 1e-13), 1L)[[mod$out]]
   sc <- pmax(abs(ref), 1e-8 * max(abs(ref)))
-  for (tn in names(TOLS)) for (mn in METHODS) {
-    a <- .solve(mod, c(list(method = mn), TOLS[[tn]]), 1L)[[mod$out]]
-    res <- rbind(res, data.frame(model = nm, tol = tn, method = mn,
-                                 relerr = max(abs(a - ref) / sc)))
+  for (tn in names(TOLS)) {
+    for (mn in METHODS) {
+      a <- .solve(mod, c(list(method = mn), TOLS[[tn]]), 1L)[[mod$out]]
+      res <- rbind(res, data.frame(model = nm, tol = tn, method = mn, relerr = max(abs(a - ref) / sc)))
+    }
   }
 }
 print(res, row.names = FALSE)

@@ -6,6 +6,7 @@
 #include <RcppArmadillo.h>
 #include <cstring>
 #include "../inst/include/rxode2.h"       /* rxLlikSaveSize; pulls in rxode2parseStruct.h */
+#include "invCdfMemo.h"
 #include "../inst/include/rxMemoryCalc.h" /* rx_mem_layout, rxFillMemLayout()             */
 #include "rx2api.h"                       /* getSolvingOptionsInd(), getIndNallTimes()    */
 
@@ -251,7 +252,12 @@ NumericVector rxMemoryComponents_(
     Named("delayHist")     = b_delayHist,
     Named("linCmtRateHist")= b_linRateHist,
     Named("sizeofInd")    = (double)sizeof(rx_solving_options_ind),
-    Named("rxLlikSaveSize")= (double)rxLlikSaveSize);
+    Named("rxLlikSaveSize")= (double)rxLlikSaveSize,
+    // Per-thread memo for the root-finding inverse CDFs (gammapInv, ibetaInv,
+    // studentTInv, ...).  Sized by the PARSER from what the model calls, so this
+    // is the exact cost, not a nominal one; a model calling none pays only the
+    // small default.
+    Named("invCdfMemo")    = rxInvCdfMemoBytes(cores));
 
   return out;
 }

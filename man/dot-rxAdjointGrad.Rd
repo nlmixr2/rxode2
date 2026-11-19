@@ -51,7 +51,8 @@ values reduce the covariate-interpolation error.}
 the backward sweeps.}
 }
 \value{
-named numeric vector \code{dG/dtheta} over \code{calcSens}.
+named numeric vector \code{dG/dtheta} over \code{calcSens} (\code{THETA[n]}/\code{ETA[n]}
+spelled \code{THETA_n_}/\code{ETA_n_}).
 }
 \description{
 Computes \code{dG/dtheta} for every parameter with a single backward sweep.

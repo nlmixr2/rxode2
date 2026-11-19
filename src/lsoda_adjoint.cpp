@@ -150,7 +150,8 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   ind_liblsoda0(rx, op, opt, solveid, c_dydt_ll, u_inis);
   lsAdjActive = false;
 
-  if (op->badSolve || ind->err != 0 || lsAdjSteps.empty() || lsAdjSegs.empty()) return;
+  // this subject's failure, not op->badSolve, which any subject's sets
+  if (ind->rc[0] < 0 || ind->err != 0 || lsAdjSteps.empty() || lsAdjSegs.empty()) return;
   lsAdjSegs.back().stepEnd = lsAdjSteps.size();     // close the final segment
   size_t nStep = lsAdjSteps.size();
 

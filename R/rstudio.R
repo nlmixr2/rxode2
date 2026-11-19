@@ -9,16 +9,18 @@
 #' .rstudioComplete()
 .rstudioComplete <- function() {
   ## sys.calls() is expensive; autocomplete can only fire in interactive sessions
-  if (!interactive()) return(FALSE)
-  .sc <- try(sys.calls(), silent=TRUE)
+  if (!interactive()) {
+    return(FALSE)
+  }
+  .sc <- try(sys.calls(), silent = TRUE)
   if (inherits(.sc, "try-error")) {
     return(FALSE)
   }
-  .sc <- try(.sc[[1]], silent=TRUE)
+  .sc <- try(.sc[[1]], silent = TRUE)
   if (inherits(.sc, "try-error")) {
     return(FALSE)
-   }
-  .sc <- try(.sc[[1]], silent=TRUE)
+  }
+  .sc <- try(.sc[[1]], silent = TRUE)
   if (inherits(.sc, "try-error")) {
     return(FALSE)
   }

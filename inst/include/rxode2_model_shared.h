@@ -9,6 +9,12 @@
  * output on worker threads so the model can compile printf() statements
  * safely even when subjects are solved in parallel. */
 #include <stdarg.h>
+/* the format of a model's printf() is a string literal, so -Wformat checks its
+ * arguments; R_PRINTF_FORMAT is R's (R_ext/Print.h) */
+#ifndef R_PRINTF_FORMAT
+#define R_PRINTF_FORMAT(M, N)
+#endif
+static inline void _rxPrintf(const char *fmt, ...) R_PRINTF_FORMAT(1, 2);
 #ifdef _OPENMP
 /* R's `match` macro breaks the `declare variant match(...)` pragma in LLVM's omp.h */
 #pragma push_macro("match")
@@ -34,6 +40,7 @@ static inline void _rxPrintf(const char *fmt, ...) {
 
 #define _evid getEvid(_ind, _ind->ix[_ind->idx])
 #define amt (isDose(_evid) ?  getDose(_ind,_ind->ixds) : NA_REAL)
+#define _rxIsObs ((double)(_evid == 0))
 #define JAC_Rprintf _rxPrintf
 #define _idx (_solveData->subjects[_cSub]).idx
 #define JAC0_Rprintf if ((_solveData->subjects[_cSub]).jac_counter == 0) _rxPrintf
@@ -174,6 +181,8 @@ static inline double loggamma(double a) {
 #define riunif1(id, x) riunif(id, x,1.0)
 #undef rweibull
 #define rweibull(x,y) rxweibull(x,y)
+#define rlnorm(x,y) rxlnorm(x,y)
+#define rxlnorm1(x) rxlnorm( x, 1.0)
 #define rxweibull1(x) rxweibull( x, 1.0)
 #define riweibull1(id, x) riweibull( id, x, 1.0)
 #define rweibull1(x) rxweibull( x, 1.0)
@@ -264,6 +273,9 @@ static inline double loggamma(double a) {
 #define _qnorm1(x) qnorm(x, 0.0, 1.0, 1, 0)
 #define _qnorm2(x, mu) qnorm(x, mu, 1.0, 1, 0)
 #define _qnorm3(x, mu, sd) qnorm(x, mu, sd, 1, 0)
+#define _dnorm1(x) dnorm(x, 0.0, 1.0, 0)
+#define _dnorm2(x, mu) dnorm(x, mu, 1.0, 0)
+#define _dnorm3(x, mu, sd) dnorm(x, mu, sd, 0)
 #define norminv(x) qnorm(x, 0.0, 1.0, 1, 0)
 #define probitt(x) qnorm(x, 0.0, 1.0, 1, 0)
 #define _logit1(x) logit(x, 0.0, 1.0)
@@ -366,7 +378,7 @@ typedef double (*rxode2i_fn2i) (double x, int i);
 
 typedef int (*rxode2i2_fn0i) (int id);
 typedef double (*rxode2i2_fn) (int id, double x);
-typedef int (*rxode2i2_ifn) (int id, double x);
+typedef double (*rxode2i2_ifn) (int id, double x);
 typedef double (*rxode2i2_fn2) (int id, double x, double y);
 typedef double (*rxode2i2_fn3i) (int id, double x, double y, int i);
 typedef double (*rxode2i2_fn2i) (int id, double x, int i);
@@ -381,9 +393,9 @@ typedef SEXP (*_rxGetModelLibType)(const char *s);
 typedef  SEXP (*_rx_asgn) (SEXP objectSEXP);
 typedef int(*_rxIsCurrentC_type)(SEXP);
 typedef double(*_rxSumType)(double *, int, double *, int, int);
-typedef double(*_udf_type)(const char *fun, int, double *);
+typedef double(*_udf_type)(const char *fun, int, const double *);
 
-typedef void(*_simfun)(int id);
+typedef void(*_simfun)(void);
 
 typedef double(*_rxProdType)(double*, double*, int, int);
 
@@ -409,6 +421,8 @@ typedef double (*linCmtB_p) (rx_solve *rx, int id,
                              double ka);
 
 typedef void (*_update_par_ptr_p)(double t, unsigned int id, rx_solve *rx, int idx);
+// record time PK-type statements read under nocb (rxode2#1429)
+typedef double (*_rxPkTime_p)(double t, unsigned int id, rx_solve *rx);
 
 /* dydt forcing hook: generated model calls this at the end of its RHS (dydt) so a
    plugin can add forcing to state derivatives (e.g. b_j for NN-weight variational

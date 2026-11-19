@@ -2,7 +2,10 @@
 
 If you have a package and would like to include pre-compiled rxode2
 models in your package it is easy to create the package. You simple
-make the package with the `rxPkg()` command.
+make the package with the `rxPkg()` command.  Packaged models are
+compiled low-level `rxode2()` models (see
+[Low-level models and other input styles](https://nlmixr2.github.io/rxode2/articles/rxode2-classic-models.html));
+a model function can be converted with `$simulationModel`.
 
 ```
 library(rxode2);

@@ -38,7 +38,7 @@ llikUnif(1, -2, 2)
 et  <- et(seq(1,1, length.out=4))
 et$alpha <- -2
 et$beta <- 2
- 
+
 model <- function() {
   model({
     fx <- llikUnif(time, alpha, beta)
@@ -50,6 +50,24 @@ model <- function() {
 rxSolve(model, et)
 }
 }
+\seealso{
+Other Log-likelihood functions:
+\code{\link[=llikBeta]{llikBeta()}},
+\code{\link[=llikBinom]{llikBinom()}},
+\code{\link[=llikCauchy]{llikCauchy()}},
+\code{\link[=llikChisq]{llikChisq()}},
+\code{\link[=llikExp]{llikExp()}},
+\code{\link[=llikF]{llikF()}},
+\code{\link[=llikGamma]{llikGamma()}},
+\code{\link[=llikGeom]{llikGeom()}},
+\code{\link[=llikNbinom]{llikNbinom()}},
+\code{\link[=llikNbinomMu]{llikNbinomMu()}},
+\code{\link[=llikNorm]{llikNorm()}},
+\code{\link[=llikPois]{llikPois()}},
+\code{\link[=llikT]{llikT()}},
+\code{\link[=llikWeibull]{llikWeibull()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Log-likelihood functions}

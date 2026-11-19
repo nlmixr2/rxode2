@@ -39,7 +39,6 @@ rxTest({
   test_that("re-linking is idempotent", {
     .linkAll()
     expect_true(all(.Call(`_rxode2_rxode2lincmtLinked`)))
-    expect_identical(rxode2lincmt::.rxode2lincmtHostInfo()$offsets,
-                     .Call(`_rxode2_rxode2lincmtHost`)[[1]])
+    expect_identical(rxode2lincmt::.rxode2lincmtHostInfo()$offsets, .Call(`_rxode2_rxode2lincmtHost`)[[1]])
   })
 })

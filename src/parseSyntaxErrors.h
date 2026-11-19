@@ -13,6 +13,7 @@ char *getLine (char *src, int line, int *lloc) {
     (Rf_error)(_("source offset overflow in getLine"));
   }
   *lloc = i + (int)col;
+  if (lloc == &gBufLast) gBufLastPrinted = 1;
   char *buf = R_Calloc((int)col + 1, char);
   memcpy(buf, src + i, col);
   buf[col] = '\0';

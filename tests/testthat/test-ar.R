@@ -1,14 +1,12 @@
 rxTest({
-
   # helper: pooled within-subject lag-k autocorrelation of a residual vector
-  .arLagCor <- function(res, id, k=1) {
-    .prev <- ave(res, id, FUN=function(x) c(rep(NA, k), head(x, -k)))
+  .arLagCor <- function(res, id, k = 1) {
+    .prev <- ave(res, id, FUN = function(x) c(rep(NA, k), head(x, -k)))
     .ok <- !is.na(.prev)
     cor(res[.ok], .prev[.ok])
   }
 
   test_that("ar() parses and stores per-endpoint information", {
-
     .estCor <- function() {
       ini({tcl <- log(1); tv <- log(10); add.sd <- 0.5; ar1.cor <- 0.5})
       model({
@@ -124,27 +122,28 @@ rxTest({
   test_that("ar() works with a variety of transformably-normal error models", {
     # each case pairs an ini block (only the params it uses) with an rhs
     .cases <- list(
-      c("add.sd <- 0.5; prop.sd <- 0.1; ar1.cor <- 0.4",
-        "add(add.sd) + prop(prop.sd) + ar(ar1.cor)"),
-      c("add.sd <- 0.5; ar1.cor <- 0.4",
-        "lnorm(add.sd) + ar(ar1.cor)"),
-      c("add.sd <- 0.5; df <- 5; lam <- 0.5; ar1.cor <- 0.4",
-        "add(add.sd) + dt(df) + yeoJohnson(lam) + ar(ar1.cor)"),
-      c("add.sd <- 0.5; lam <- 0.5; ar1.cor <- 0.4",
-        "add(add.sd) + boxCox(lam) + ar(ar1.cor)"),
-      c("ar1.cor <- 0.4",
-        "cauchy() + ar(ar1.cor)"))
+      c("add.sd <- 0.5; prop.sd <- 0.1; ar1.cor <- 0.4", "add(add.sd) + prop(prop.sd) + ar(ar1.cor)"),
+      c("add.sd <- 0.5; ar1.cor <- 0.4", "lnorm(add.sd) + ar(ar1.cor)"),
+      c("add.sd <- 0.5; df <- 5; lam <- 0.5; ar1.cor <- 0.4", "add(add.sd) + dt(df) + yeoJohnson(lam) + ar(ar1.cor)"),
+      c("add.sd <- 0.5; lam <- 0.5; ar1.cor <- 0.4", "add(add.sd) + boxCox(lam) + ar(ar1.cor)"),
+      c("ar1.cor <- 0.4", "cauchy() + ar(ar1.cor)")
+    )
     for (.case in .cases) {
       .txt <- paste0(
         "function() {\n",
-        "  ini({tcl <- log(1); tv <- log(10); ", .case[1], "})\n",
+        "  ini({tcl <- log(1); tv <- log(10); ",
+        .case[1],
+        "})\n",
         "  model({\n",
         "    cl <- exp(tcl); v <- exp(tv)\n",
         "    d/dt(central) <- -cl / v * central\n",
         "    cp <- central / v\n",
-        "    cp ~ ", .case[2], "\n",
-        "  })\n}")
-      .f <- eval(parse(text=.txt))
+        "    cp ~ ",
+        .case[2],
+        "\n",
+        "  })\n}"
+      )
+      .f <- eval(parse(text = .txt))
       expect_error(rxode2(.f), NA)
     }
   })
@@ -190,13 +189,13 @@ rxTest({
       })
     }
     .txt <- vapply(rxCombineErrorLines(rxode2(.f)), deparse1, character(1))
-    .all <- paste(.txt, collapse="\n")
+    .all <- paste(.txt, collapse = "\n")
     # the self-referential AR(1) residual recurrence via lag0(), mirroring the
     # estimation likelihood (previous residual/time via lag0(), NaN-safe
     # first-record indicator via 1 - is.na(lag(...)))
-    expect_true(grepl("rx.arRes.cp", .all, fixed=TRUE))
-    expect_true(grepl("lag0(rx.arRes.cp, 1)", .all, fixed=TRUE))
-    expect_true(grepl("is.na(lag(rx.arT.cp, 1))", .all, fixed=TRUE))
+    expect_true(grepl("rx.arRes.cp", .all, fixed = TRUE))
+    expect_true(grepl("lag0(rx.arRes.cp, 1)", .all, fixed = TRUE))
+    expect_true(grepl("is.na(lag(rx.arT.cp, 1))", .all, fixed = TRUE))
   })
 
   test_that("ar() simulation reproduces the target autocorrelation and stationary variance", {
@@ -210,14 +209,14 @@ rxTest({
       })
     }
     ui <- rxode2(.f)
-    ev <- et(amt=100, cmt="central") %>% et(0:200)
-    s <- rxWithSeed(42, rxSolve(ui, ev, nSub=200, returnType="data.frame"))
+    ev <- et(amt = 100, cmt = "central") %>% et(0:200)
+    s <- rxWithSeed(42, rxSolve(ui, ev, nSub = 200, returnType = "data.frame"))
     .res <- s$sim - s$ipredSim
     # stationary marginal variance stays add.sd (pooled, unbiased)
-    expect_equal(sd(.res), 2, tolerance=0.05)
+    expect_equal(sd(.res), 2, tolerance = 0.05)
     # continuous-time decay: lag-k correlation = cor^k on the unit grid
-    expect_equal(.arLagCor(.res, s$sim.id, 1), 0.8, tolerance=0.03)
-    expect_equal(.arLagCor(.res, s$sim.id, 2), 0.64, tolerance=0.03)
+    expect_equal(.arLagCor(.res, s$sim.id, 1), 0.8, tolerance = 0.03)
+    expect_equal(.arLagCor(.res, s$sim.id, 2), 0.64, tolerance = 0.03)
   })
 
   test_that("ar(0) reduces to iid residuals", {
@@ -231,10 +230,10 @@ rxTest({
       })
     }
     ui <- suppressMessages(rxode2(.f) |> ini(ar1.cor=0))
-    ev <- et(amt=100, cmt="central") %>% et(0:100)
-    s <- rxWithSeed(7, rxSolve(ui, ev, nSub=200, returnType="data.frame"))
+    ev <- et(amt = 100, cmt = "central") %>% et(0:100)
+    s <- rxWithSeed(7, rxSolve(ui, ev, nSub = 200, returnType = "data.frame"))
     .res <- s$sim - s$ipredSim
-    expect_equal(.arLagCor(.res, s$sim.id, 1), 0, tolerance=0.03)
+    expect_equal(.arLagCor(.res, s$sim.id, 1), 0, tolerance = 0.03)
   })
 
   test_that("ar() correlation decays with the actual time gap (continuous AR(1))", {
@@ -249,18 +248,18 @@ rxTest({
     }
     ui <- rxode2(.f)
     # gaps of 1 then 2 repeated: 0,1,3,4,6,7,...
-    .t <- as.vector(rbind(seq(0, 300, by=3), seq(1, 301, by=3)))
+    .t <- as.vector(rbind(seq(0, 300, by = 3), seq(1, 301, by = 3)))
     .t <- sort(.t[.t <= 300])
-    ev <- et(amt=100, cmt="central") %>% et(.t)
-    s <- rxWithSeed(11, rxSolve(ui, ev, nSub=300, returnType="data.frame"))
+    ev <- et(amt = 100, cmt = "central") %>% et(.t)
+    s <- rxWithSeed(11, rxSolve(ui, ev, nSub = 300, returnType = "data.frame"))
     s$res <- s$sim - s$ipredSim
-    .prev <- ave(s$res, s$sim.id, FUN=function(x) c(NA, head(x, -1)))
-    .dt <- ave(s$time, s$sim.id, FUN=function(x) c(NA, diff(x)))
+    .prev <- ave(s$res, s$sim.id, FUN = function(x) c(NA, head(x, -1)))
+    .dt <- ave(s$time, s$sim.id, FUN = function(x) c(NA, diff(x)))
     # correlation across a gap of 1 vs a gap of 2 should be 0.8 vs 0.8^2
     .c1 <- cor(s$res[!is.na(.prev) & .dt == 1], .prev[!is.na(.prev) & .dt == 1])
     .c2 <- cor(s$res[!is.na(.prev) & .dt == 2], .prev[!is.na(.prev) & .dt == 2])
-    expect_equal(.c1, 0.8, tolerance=0.04)
-    expect_equal(.c2, 0.64, tolerance=0.04)
+    expect_equal(.c1, 0.8, tolerance = 0.04)
+    expect_equal(.c2, 0.64, tolerance = 0.04)
   })
 
   test_that("ar() is independent per endpoint in a multiple-endpoint model", {
@@ -276,17 +275,16 @@ rxTest({
       })
     }
     ui <- rxode2(.f)
-    ev <- et(amt=100, cmt="central") %>%
-      et(0:120, cmt="cp") %>%
-      et(0:120, cmt="ef")
-    s <- rxWithSeed(5, rxSolve(ui, ev, nSub=150, returnType="data.frame"))
+    ev <- et(amt = 100, cmt = "central") %>%
+      et(0:120, cmt = "cp") %>%
+      et(0:120, cmt = "ef")
+    s <- rxWithSeed(5, rxSolve(ui, ev, nSub = 150, returnType = "data.frame"))
     s$res <- s$sim - s$ipredSim
     .cp <- s[s$CMT == 2, ]
     .ef <- s[s$CMT == 3, ]
-    expect_equal(.arLagCor(.cp$res, .cp$sim.id, 1), 0.9, tolerance=0.04)
-    expect_equal(.arLagCor(.ef$res, .ef$sim.id, 1), 0.3, tolerance=0.04)
+    expect_equal(.arLagCor(.cp$res, .cp$sim.id, 1), 0.9, tolerance = 0.04)
+    expect_equal(.arLagCor(.ef$res, .ef$sim.id, 1), 0.3, tolerance = 0.04)
   })
-
 })
 
 rxTest({
@@ -311,12 +309,115 @@ rxTest({
     }
     .ui <- .f()
     expect_equal(.ui$predDf$var, c("rx.cp.phase1", "rx.cp.phase2"))
-    .all <- paste(vapply(rxCombineErrorLines(.ui), deparse1, character(1)),
-                  collapse="\n")
-    expect_true(grepl("rx.arRes.rx.cp.phase1", .all, fixed=TRUE))
-    expect_true(grepl("rx.arRes.rx.cp.phase2", .all, fixed=TRUE))
+    .all <- paste(vapply(rxCombineErrorLines(.ui), deparse1, character(1)), collapse = "\n")
+    expect_true(grepl("rx.arRes.rx.cp.phase1", .all, fixed = TRUE))
+    expect_true(grepl("rx.arRes.rx.cp.phase2", .all, fixed = TRUE))
     # each endpoint uses its own correlation, found through the `| cond`
-    expect_true(grepl("ar1.cor", .all, fixed=TRUE))
-    expect_true(grepl("ar2.cor", .all, fixed=TRUE))
+    expect_true(grepl("ar1.cor", .all, fixed = TRUE))
+    expect_true(grepl("ar2.cor", .all, fixed = TRUE))
+  })
+})
+
+rxTest({
+  test_that("ar() estimation lines key the previous residual on observation records (#1453)", {
+    .f <- function() {
+      ini({tcl <- log(1); tv <- log(10); add.sd <- 0.5; ar1.cor <- 0.7})
+      model({
+        cl <- exp(tcl); v <- exp(tv)
+        d/dt(central) <- -cl / v * central
+        cp <- central / v
+        cp ~ add(add.sd) + ar(ar1.cor)
+      })
+    }
+    .ui <- rxode2(.f)
+    .toModel <- function(lines) {
+      .txt <- vapply(
+        lines,
+        function(l) {
+          if (identical(l[[1]], quote(`~`))) {
+            l[[1]] <- quote(`=`)
+          }
+          deparse1(l)
+        },
+        character(1)
+      )
+      rxode2(paste(c("cl <- exp(tcl); v <- exp(tv)",
+                     "d/dt(central) <- -cl / v * central",
+                     "cp <- central / v", .txt), collapse = "\n"))
+    }
+    .p <- c(tcl = log(1), tv = log(10), add.sd = 0.5, ar1.cor = 0.7)
+    # dose at 0 (before any observation) and a dose between observations
+    .d <- data.frame(
+      id = 1,
+      time = c(0, 0.5, 1.5, 2, 2.5, 3, 4),
+      amt = c(100, NA, NA, 100, NA, NA, NA),
+      evid = c(1, 0, 0, 1, 0, 2, 0),
+      DV = c(NA, 9, 8, NA, 15, NA, 12)
+    )
+    .obs <- which(.d$evid == 0)
+    for (.arNorm in c(TRUE, FALSE)) {
+      .m <- .toModel(.handleSingleErrTypeNormOrTFoceiBase(.ui, .ui$predDf[1, ], 1L, arNorm = .arNorm))
+      .s <- rxSolve(.m, .d, .p, addDosing = TRUE, returnType = "data.frame")
+      .d2 <- .d
+      .d2$DV[.d2$evid != 0] <- 1e6 # whatever a non-observation carries must not matter
+      .s2 <- rxSolve(.m, .d2, .p, addDosing = TRUE, returnType = "data.frame")
+      expect_equal(.s$rx_pred_[.obs], .s2$rx_pred_[.obs])
+      .so <- .s[.s$evid == 0, ]
+      .res <- .d$DV[.obs] - .so$rx_pred_f_
+      # first observation: marginal likelihood
+      expect_equal(.so$rx_arPhi_cp[1], 0)
+      expect_equal(.so$rx_arEp_cp[1], 0)
+      # later observations: previous OBSERVATION's residual and time gap,
+      # skipping the dose at t=2 and the evid=2 record at t=3
+      expect_equal(.so$rx_arEp_cp[-1], head(.res, -1))
+      expect_equal(.so$rx_arDt_cp[-1], diff(.d$time[.obs]))
+      expect_equal(.so$rx_arPhi_cp[-1], 0.7^diff(.d$time[.obs]))
+      if (.arNorm) {
+        expect_equal(.so$rx_r_, 0.25 * (1 - .so$rx_arPhi_cp^2))
+      }
+    }
+  })
+})
+
+rxTest({
+  test_that("ar() estimation chains stay per endpoint when the CMT branches are flattened (#1453)", {
+    .f <- function() {
+      ini({tcl <- log(1); tv <- log(10); a1 <- 0.5; a2 <- 2; c1 <- 0.7; c2 <- 0.3})
+      model({
+        cl <- exp(tcl); v <- exp(tv)
+        d/dt(central) <- -cl / v * central
+        cp <- central / v
+        ef <- 100 - central / v
+        cp ~ add(a1) + ar(c1)
+        ef ~ add(a2) + ar(c2)
+      })
+    }
+    .ui <- rxode2(.f)
+    .l <- lapply(1:2, function(i) .handleSingleErrTypeNormOrTFoceiBase(.ui, .ui$predDf[i, ], i, arNorm = TRUE))
+    # useIf = FALSE: every endpoint's lines run on every record, like the pruned model
+    .m <- eval(rxCombineErrorLines(.ui, errLines = .l, useIf = FALSE))
+    .d <- data.frame(
+      id = 1,
+      time = c(0, 1, 1, 2, 3, 3),
+      amt = c(100, NA, NA, NA, NA, NA),
+      evid = c(1, 0, 0, 0, 0, 0),
+      cmt = c("central", "cp", "ef", "cp", "ef", "cp"),
+      DV = c(NA, 9, 91, 8, 93, 7)
+    )
+    .s <- rxSolve(
+      .m,
+      .d,
+      c(tcl = 0, tv = log(10), a1 = 0.5, a2 = 2, c1 = 0.7, c2 = 0.3),
+      addDosing = TRUE,
+      returnType = "data.frame"
+    )
+    .cp <- .s[.s$evid == 0 & .s$CMT == .ui$predDf$cmt[1], ]
+    .ef <- .s[.s$evid == 0 & .s$CMT == .ui$predDf$cmt[2], ]
+    .resCp <- c(9, 8, 7) - .cp$cp
+    .resEf <- c(91, 93) - .ef$ef
+    expect_equal(.cp$rx_arPhi_cp, c(0, 0.7, 0.7))
+    expect_equal(.cp$rx_arEp_cp[-1], head(.resCp, -1))
+    expect_equal(.ef$rx_arPhi_ef, c(0, 0.3^2))
+    expect_equal(.ef$rx_arEp_ef[-1], head(.resEf, -1))
   })
 })

@@ -7,7 +7,7 @@
 #include <stdint.h>   /* dj: import intptr_t */
 //#include "ode.h"
 #include "../inst/include/rxode2.h"
-#include "../inst/include/rxode2parseSbuf.h"
+#include "rxSbufFormat.h"
 #include "getOption.h"
 #include "parseLinCmt.h"
 #include "tran.h"
@@ -26,6 +26,19 @@
 #include <dparserPtr.h>
 
 dparserPtrIni
+
+/* dparser before 1.3.2 shared one static vector across dparse() calls, so
+   parsing on several threads at once crashed (#1427).  Set at load. */
+int rxDparserParallel = 0;
+
+/* set the flag from a non-NA logical; returns the previous value */
+SEXP _rxode2_rxDparserParallel(SEXP set) {
+  int old = rxDparserParallel;
+  if (TYPEOF(set) == LGLSXP && Rf_xlength(set) == 1 && LOGICAL(set)[0] != NA_LOGICAL) {
+    rxDparserParallel = LOGICAL(set)[0];
+  }
+  return Rf_ScalarLogical(old);
+}
 
 
 #include "tran.g.d_parser.h"
@@ -101,10 +114,26 @@ sbuf sbNrm;
 sbuf sbExtra;
 vLines depotLines, centralLines;
 
+// Owned copies: codegen reads md5/me_code in a later .Call, after the argument
+// CHARSXPs they came from may have been collected (#1421).
 const char *model_prefix = NULL;
 const char *me_code = NULL;
 const char *md5 = NULL;
 int badMd5 = 0;
+
+static void setOwnedStr(const char **dst, const char *src) {
+  size_t n = strlen(src) + 1;
+  char *cp = (char*)malloc(n);
+  if (cp == NULL) (Rf_error)("out of memory copying parser string");
+  memcpy(cp, src, n);
+  if (*dst != NULL) free((void*)(*dst));
+  *dst = cp;
+}
+
+static void freeOwnedStr(const char **dst) {
+  if (*dst != NULL) free((void*)(*dst));
+  *dst = NULL;
+}
 int foundF=0,foundLag=0, foundRate=0, foundDur=0, foundPast=0, foundF0=0, needSort=0;
 
 sbuf sbOut;
@@ -117,6 +146,8 @@ void updateSyntaxCol(void);
 char *gBuf;
 int gBufFree=0;
 int gBufLast = 0;
+// set once a model line has been echoed, so gBufLast ends that line
+int gBufLastPrinted = 0;
 D_Parser *curP=NULL;
 D_ParseNode *_pn = 0;
 
@@ -174,6 +205,9 @@ static inline int parseNodePossiblySkipRecursion(nodeInfo ni, char *name, D_Pars
       handleSimFunctions(ni, name, i, nch, pn) ||
       handleObsStatement(ni, name, i, nch, pn) ||
       handleSplitBolusStatement(ni, name, i, nch, pn) ||
+      handleSplitInfusionStatement(ni, name, i, nch, pn) ||
+      handleSplitInfusionBolusStatement(ni, name, i, nch, pn) ||
+      handleSplitBolusInfusionStatement(ni, name, i, nch, pn) ||
       // evid_() dose-push
       handleEvidStatement(ni, name, i, nch, pn) ||
       handleBolusStatement(ni, name, i, nch, pn) ||
@@ -276,6 +310,9 @@ void parseFreeLast(void) {
   freeP();
   sFree(&_bufw);
   sFree(&_bufw2);
+  freeOwnedStr(&model_prefix);
+  freeOwnedStr(&me_code);
+  freeOwnedStr(&md5);
 }
 
 sbuf sbErr1;
@@ -320,6 +357,9 @@ void parseFree(int last) {
   R_Free(tb.lag);
   R_Free(tb.alag);
   R_Free(tb.splitBolus);
+  R_Free(tb.splitInfusion);
+  R_Free(tb.splitInfusionBolus);
+  R_Free(tb.splitBolusInfusion);
   R_Free(tb.ini);
   R_Free(tb.mtime);
   R_Free(tb.iniv);
@@ -436,6 +476,12 @@ void reset(void) {
   tb.alagn  = 0;
   tb.splitBolus = R_Calloc(MXSYM, int);
   tb.splitBolusN = 0;
+  tb.splitInfusion = R_Calloc(MXSYM, int);
+  tb.splitInfusionN = 0;
+  tb.splitInfusionBolus = R_Calloc(MXSYM, int);
+  tb.splitInfusionBolusN = 0;
+  tb.splitBolusInfusion = R_Calloc(MXSYM, int);
+  tb.splitBolusInfusionN = 0;
   tb.dvid	= R_Calloc(MXDER, int);
   tb.thread     = 1; // Thread safe flag
   tb.dvidn      = 0;
@@ -455,6 +501,7 @@ void reset(void) {
   tb.pi		= 0;
   tb.isPi       = 0;
   tb.isNA       = 0;
+  tb.lagTime    = 0;
   tb.linCmt     = 0;
   tb.linCmtCmt  = 0;
   tb.linCmtN    = -100;
@@ -470,7 +517,7 @@ void reset(void) {
   tb.hasDepotCmt = 0;
   tb.hasCentralCmt = 0;
   tb.hasKa      = 0;
-  tb.allocS	= MXSYM;
+  tb.allocNV	= MXSYM;
   tb.allocD	= MXDER;
   tb.allocS = MXDER;
   tb.allocSV = MXDER;
@@ -490,7 +537,9 @@ void reset(void) {
   tb.dummyLhs   = 0;
   tb.nInd       = 0;
   tb.simflg     = 0;
+  tb.rng        = 0;
   tb.nLlik      = 0;
+  tb.nInvCdf    = 0;
   tb.hasMix     = 0;
   tb.mixSel     = 0;
   tb.evid_      = 0;
@@ -535,6 +584,7 @@ void reset(void) {
   foundRate=0;
   foundPast=0;
   gBufLast=0;
+  gBufLastPrinted=0;
   lastStrLoc=0;
   lastSyntaxErrorLine=0;
   needSort=0;
@@ -721,14 +771,14 @@ static inline int setupTrans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP 
   set_d_verbose_level(0);
 
   if (Rf_isString(prefix) && Rf_length(prefix) == 1){
-    model_prefix = CHAR(STRING_ELT(prefix,0));
+    setOwnedStr(&model_prefix, CHAR(STRING_ELT(prefix,0)));
   } else {
     _rxode2parse_unprotect();
     err_trans("model prefix must be specified");
   }
 
   if (Rf_isString(inME) && Rf_length(inME) == 1){
-    me_code = CHAR(STRING_ELT(inME,0));
+    setOwnedStr(&me_code, CHAR(STRING_ELT(inME,0)));
   } else {
     freeP();
     _rxode2parse_unprotect();
@@ -736,12 +786,13 @@ static inline int setupTrans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP 
   }
 
   if (Rf_isString(model_md5) && Rf_length(model_md5) == 1){
-    md5 = CHAR(STRING_ELT(model_md5,0));
+    setOwnedStr(&md5, CHAR(STRING_ELT(model_md5,0)));
     badMd5 = 0;
     if (strlen(md5)!= 32){
       badMd5=1;
     }
   } else {
+    setOwnedStr(&md5, "");
     badMd5=1;
   }
   return isStr;
@@ -751,7 +802,9 @@ static inline void finalizeSyntaxError(void) {
   if (rx_syntax_error){
     if(!rx_suppress_syntax_info){
       if (gBuf[gBufLast] != '\0'){
-	gBufLast++;
+	// skip the newline ending the last echoed line; when only a post-parse
+	// error (no line echoed yet) was reported, start at the first character
+	if (gBufLastPrinted) gBufLast++;
 	RSprintf("\n:%03d: ", lastSyntaxErrorLine);
 	for (; gBuf[gBufLast] != '\0'; gBufLast++){
 	  if (gBuf[gBufLast] == '\n'){

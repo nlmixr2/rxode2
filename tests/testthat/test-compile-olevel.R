@@ -4,8 +4,16 @@ rxTest({
   # ALL_CFLAGS = $(PKG_CFLAGS) $(CPICFLAGS) $(SHLIB_CFLAGS) $(CFLAGS),
   # so R's own -O2 came last and the compiler took that one.
   test_that(".rxCompileOMakevars() puts the requested -O where CFLAGS wins", {
-    .rcf <- gsub("\n", "", rawToChar(sys::exec_internal(
-      file.path(R.home("bin"), "R"), c("CMD", "config", "CFLAGS"))$stdout))
+    .rcf <- gsub(
+      "\n",
+      "",
+      rawToChar(
+        sys::exec_internal(
+          file.path(R.home("bin"), "R"),
+          c("CMD", "config", "CFLAGS")
+        )$stdout
+      )
+    )
     skip_if(.rcf == "", "no R CFLAGS to work from")
 
     withr::with_options(list(rxode2.compile.O = "3"), {
@@ -20,18 +28,15 @@ rxTest({
       # exactly the requested level, and no leftover -O to override it
       expect_equal(regmatches(.cf, gregexpr("-O[0-9a-zA-Z]+", .cf))[[1]], "-O3")
       # R's other flags survive -- only the -O is swapped
-      .kept <- setdiff(strsplit(trimws(.rcf), " +")[[1]], c("-O0","-O1","-O2","-O3","-Os","-Og"))
+      .kept <- setdiff(strsplit(trimws(.rcf), " +")[[1]], c("-O0", "-O1", "-O2", "-O3", "-Os", "-Og"))
       expect_true(all(vapply(.kept, function(.k) grepl(.k, .cf, fixed = TRUE), logical(1))))
     })
   })
 
   test_that(".rxCompileOMakevars() declines when there is nothing to change", {
-    expect_null(withr::with_options(list(rxode2.compile.O = character(0)),
-                                    .rxCompileOMakevars()))
-    expect_null(withr::with_options(list(rxode2.compile.O = ""),
-                                    .rxCompileOMakevars()))
-    expect_null(withr::with_options(list(rxode2.compile.O = NA_character_),
-                                    .rxCompileOMakevars()))
+    expect_null(withr::with_options(list(rxode2.compile.O = character(0)), .rxCompileOMakevars()))
+    expect_null(withr::with_options(list(rxode2.compile.O = ""), .rxCompileOMakevars()))
+    expect_null(withr::with_options(list(rxode2.compile.O = NA_character_), .rxCompileOMakevars()))
   })
 
   test_that("a user CFLAGS still wins over the option", {
@@ -51,5 +56,26 @@ rxTest({
         expect_identical(.cf[2], "CFLAGS = -O0 -my-flag")
       })
     })
+  })
+})
+
+rxTest({
+  test_that("R CMD config CFLAGS is cached, and re-read when a Makevars changes", {
+    .user <- tempfile("Makevars-user-")
+    writeLines("CFLAGS = -O1 -first-flag", .user)
+    on.exit(unlink(.user), add = TRUE)
+    withr::with_envvar(list(R_MAKEVARS_USER = .user), {
+      .a <- .rxRConfigCflags()
+      skip_if(.a == "", "no R CFLAGS to work from")
+      expect_match(.a, "-first-flag", fixed = TRUE)
+      .b <- .rxRConfigCflags()
+      expect_identical(.b, .a)
+      # editing the file (new mtime) invalidates the cache
+      writeLines("CFLAGS = -O1 -second-flag", .user)
+      Sys.setFileTime(.user, Sys.time() + 10)
+      expect_match(.rxRConfigCflags(), "-second-flag", fixed = TRUE)
+    })
+    # repointing R_MAKEVARS_USER invalidates it too
+    expect_false(grepl("-second-flag", .rxRConfigCflags(), fixed = TRUE))
   })
 })

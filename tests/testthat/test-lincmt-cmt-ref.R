@@ -1,5 +1,4 @@
 rxTest({
-
   ## Reading materialized linCmt() compartment amounts (central / peripheral1 /
   ## peripheral2 / depot) in model equations *under an error model*.  An
   ## endpoint injects an observation compartment that used to shift the linCmt
@@ -15,14 +14,12 @@ rxTest({
     .rO <- suppressMessages(rxSolve(ode, ev, useLinCmt = FALSE))
     for (.c in cols) {
       expect_true(.c %in% names(.rL), info = paste0(.c, " present in linCmt solve"))
-      expect_false(all(.rL[[.c]] == 0),
-                   label = paste0(.c, " must not be identically zero (the bug)"))
-      expect_equal(.rL[[.c]], .rO[[.c]], tolerance = .tol,
-                   label = paste0(.c, " (linCmt) vs ", .c, " (ODE)"))
+      expect_false(all(.rL[[.c]] == 0), label = paste0(.c, " must not be identically zero (the bug)"))
+      expect_equal(.rL[[.c]], .rO[[.c]], tolerance = .tol, label = paste0(.c, " (linCmt) vs ", .c, " (ODE)"))
     }
   }
   .evIV <- et(amt = 100, cmt = "central") |> et(seq(0, 48, by = 2))
-  .evPO <- et(amt = 100, cmt = "depot")   |> et(seq(0, 48, by = 2))
+  .evPO <- et(amt = 100, cmt = "depot") |> et(seq(0, 48, by = 2))
 
   test_that("2-cmt IV: peripheral1 amount and concentration resolve under an error model", {
     .lin <- suppressMessages(rxode2(function() {
@@ -173,5 +170,4 @@ rxTest({
     }))
     .chk(.lin, .ode, .evIV, c("Cc", "Cp1"))
   })
-
 })

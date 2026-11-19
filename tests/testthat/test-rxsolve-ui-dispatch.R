@@ -7,7 +7,6 @@
 ## explicit by calling from an environment parented on the global environment,
 ## so the re-dispatch is exercised however the suite is run.
 rxTest({
-
   .rxSolveAsUser <- function(...) {
     .env <- new.env(parent = globalenv())
     .env$.args <- list(...)
@@ -69,10 +68,10 @@ rxTest({
     .e <- et(amt = 10) |> et(seq(0, 24, length.out = 13))
     .s <- .rxSolveAsUser(.u, events = .e, method = "indLin")
     expect_true(inherits(.s, "rxSolve"))
-    expect_equal(.s$cp,
-                 .rxSolveAsUser(.u, events = .e, method = "liblsoda",
-                                useLinCmt = FALSE, atol = 1e-12, rtol = 1e-12)$cp,
-                 tolerance = 1e-8)
+    expect_equal(
+      .s$cp,
+      .rxSolveAsUser(.u, events = .e, method = "liblsoda", useLinCmt = FALSE, atol = 1e-12, rtol = 1e-12)$cp,
+      tolerance = 1e-8
+    )
   })
-
 })

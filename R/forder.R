@@ -2,39 +2,57 @@
 .forderEnv$useBase <- FALSE
 
 
-.forder3 <- function(c1,c2,c3, decreasing=FALSE) {
-  data.table::data.table(c1=c1,
-                         c2=c2,
-                         c3=c3,
-                         decreasing=decreasing,
-                         na.last=TRUE)[order(c1, c2, c3), which=TRUE]
+# Below this many rows building a data.table costs more than base's radix sort
+# (it ran once per etTrans() in posologyr MAP estimation, levenc/posologyr#70).
+# Both give the same stable, NA-last order, except that base ties NA with NaN
+# where data.table puts NaN first, so a double with missing values keeps
+# data.table.
+.forderMinRows <- 1e5
+
+.forderUseBase <- function(...) {
+  .cols <- list(...)
+  length(.cols[[1]]) < .forderMinRows &&
+    !any(vapply(.cols, function(x) is.double(x) && anyNA(x), logical(1)))
 }
 
-.border3 <- function(c1,c2,c3, decreasing=FALSE) {
-  base::order(c1, c2, c3, decreasing=decreasing, na.last=NA, method="radix")
+.forder3 <- function(c1, c2, c3, decreasing = FALSE) {
+  if (.forderUseBase(c1, c2, c3)) {
+    return(base::order(c1, c2, c3, na.last = TRUE, method = "radix"))
+  }
+  data.table::data.table(c1 = c1, c2 = c2, c3 = c3, decreasing = decreasing, na.last = TRUE)[
+    order(c1, c2, c3),
+    which = TRUE
+  ]
 }
 
-.forder1 <- function(c1, decreasing=FALSE) {
-  data.table::data.table(c1=c1)[order(c1, decreasing=decreasing, na.last=TRUE), which=TRUE]
+.border3 <- function(c1, c2, c3, decreasing = FALSE) {
+  base::order(c1, c2, c3, decreasing = decreasing, na.last = NA, method = "radix")
 }
 
-.border1 <- function(c1, decreasing=FALSE) {
-  base::order(c1, na.last=NA, decreasing=decreasing, method="radix")
+.forder1 <- function(c1, decreasing = FALSE) {
+  if (.forderUseBase(c1)) {
+    return(base::order(c1, decreasing = decreasing, na.last = TRUE, method = "radix"))
+  }
+  data.table::data.table(c1 = c1)[order(c1, decreasing = decreasing, na.last = TRUE), which = TRUE]
 }
 
-.order1 <- function(c1, decreasing=FALSE) {
+.border1 <- function(c1, decreasing = FALSE) {
+  base::order(c1, na.last = NA, decreasing = decreasing, method = "radix")
+}
+
+.order1 <- function(c1, decreasing = FALSE) {
   if (.forderEnv$useBase) {
-    .border1(c1, decreasing=decreasing)
+    .border1(c1, decreasing = decreasing)
   } else {
-    .forder1(c1, decreasing=decreasing)
+    .forder1(c1, decreasing = decreasing)
   }
 }
 
-.order3 <- function(c1,c2,c3, decreasing=FALSE) {
+.order3 <- function(c1, c2, c3, decreasing = FALSE) {
   if (.forderEnv$useBase) {
-    .border3(c1,c2,c3, decreasing=decreasing)
+    .border3(c1, c2, c3, decreasing = decreasing)
   } else {
-    .forder3(c1,c2,c3, decreasing=decreasing)
+    .forder3(c1, c2, c3, decreasing = decreasing)
   }
 }
 #' Force using base order for rxode2 radix sorting
@@ -53,7 +71,8 @@
 #' }
 #' @export
 #' @keywords internal
-forderForceBase <- function(forceBase = FALSE){
+#' @family Solver options and performance
+forderForceBase <- function(forceBase = FALSE) {
   if (forceBase) {
     .forderEnv$useBase <- forceBase
   } else if (requireNamespace("data.table", quietly = TRUE)) {
@@ -82,6 +101,5 @@ forderForceBase <- function(forceBase = FALSE){
 #'   suppresses it.
 #' @noRd
 .rxSortIdsWanted <- function(cores, nall, throttle) {
-  .Call(`_rxode2_sortIdsWanted_`, as.integer(cores), as.double(nall),
-        as.integer(throttle))
+  .Call(`_rxode2_sortIdsWanted_`, as.integer(cores), as.double(nall), as.integer(throttle))
 }

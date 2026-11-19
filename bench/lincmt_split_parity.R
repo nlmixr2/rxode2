@@ -15,8 +15,7 @@ setRxThreads(4L)
 
 .out <- list()
 .keep <- function(name, expr) {
-  .out[[name]] <<- tryCatch(suppressWarnings(expr),
-                            error = function(e) paste("ERROR:", conditionMessage(e)))
+  .out[[name]] <<- tryCatch(suppressWarnings(expr), error = function(e) paste("ERROR:", conditionMessage(e)))
   invisible(NULL)
 }
 .solve <- function(...) rxSolve(..., returnType = "data.frame")

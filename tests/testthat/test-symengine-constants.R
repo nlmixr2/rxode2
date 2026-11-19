@@ -9,7 +9,10 @@ rxTest({
   test_that("a parameter named like a symengine constant is not shadowed", {
     for (.v in setdiff(.cnst, "E")) {
       .s <- rxS(rxModelVars(paste0(
-        "cl=exp(tcl+", .v, ");\nd/dt(center)=-cl*center;\n")))
+        "cl=exp(tcl+",
+        .v,
+        ");\nd/dt(center)=-cl*center;\n"
+      )))
       .b <- .s[[.v]]
       .cl <- .s$cl
       expect_true(inherits(.b, "Basic"), info = .v)
@@ -78,8 +81,7 @@ rxTest({
 
   test_that("lag() of a variable named like a symengine constant round-trips", {
     # .rxToSELagOrLead()'s .vref() wraps the variable in symengine::S()
-    expect_equal(rxNorm("b=lag(e,1);\nd/dt(center)=-b*center;\n"),
-                 "b=lag(e,1);\nd/dt(center)=-b*center;\n")
+    expect_equal(rxNorm("b=lag(e,1);\nd/dt(center)=-b*center;\n"), "b=lag(e,1);\nd/dt(center)=-b*center;\n")
     .s <- rxS(rxModelVars("b=lag(e,1);\nd/dt(center)=-b*center;\n"))
     expect_true(any(grepl("lag(e,1)", .s$..lhs, fixed = TRUE)))
   })
@@ -95,10 +97,8 @@ rxTest({
   })
 
   test_that(".rxSEres() mangles only the reserved names", {
-    expect_equal(.rxSEres(c("e", "cl", "I", "eta.cl")),
-                 c("rx_SymPy_Res_e", "cl", "rx_SymPy_Res_I", "eta.cl"))
+    expect_equal(.rxSEres(c("e", "cl", "I", "eta.cl")), c("rx_SymPy_Res_e", "cl", "rx_SymPy_Res_I", "eta.cl"))
     expect_equal(.rxSEres(character(0)), character(0))
-    expect_equal(.rxSEres(names(.rxSEreserved)),
-                 paste0("rx_SymPy_Res_", names(.rxSEreserved)))
+    expect_equal(.rxSEres(names(.rxSEreserved)), paste0("rx_SymPy_Res_", names(.rxSEreserved)))
   })
 })

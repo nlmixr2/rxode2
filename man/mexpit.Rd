@@ -27,7 +27,8 @@ This ensures one remaining probability will add to one, that is
 
 \deqn{p_N = \frac{1}{1+\sum_{j=1}^{N-1} e^{x_j}}}
 
-For the function \code{dmexpit()}, the element-wise derivatives are calculated; that is, it returns the diagonal of the Jacobian matrix, \eqn{d p_i / d x_i}, not the full Jacobian with off-diagonal terms.
+For the function \code{dmexpit()}, the element-wise derivatives are calculated; that is, it returns the diagonal of the
+Jacobian matrix, \eqn{d p_i / d x_i}, not the full Jacobian with off-diagonal terms.
 }
 \examples{
 
@@ -42,6 +43,25 @@ mlogit(p)
 
 
 }
+\seealso{
+Other Special functions:
+\code{\link[=boxCox]{boxCox()}},
+\code{\link[=delay]{delay()}},
+\code{\link[=erf]{erf()}},
+\code{\link[=gammap]{gammap()}},
+\code{\link[=gammapDer]{gammapDer()}},
+\code{\link[=gammapInv]{gammapInv()}},
+\code{\link[=gammaq]{gammaq()}},
+\code{\link[=gammaqInv]{gammaqInv()}},
+\code{\link[=logit]{logit()}},
+\code{\link[=lowergamma]{lowergamma()}},
+\code{\link[=mlogit]{mlogit()}},
+\code{\link[=phi]{phi()}},
+\code{\link[=phiU]{phiU()}},
+\code{\link[=probit]{probit()}},
+\code{\link[=uppergamma]{uppergamma()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Special functions}

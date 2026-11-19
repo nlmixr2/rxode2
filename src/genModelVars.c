@@ -11,8 +11,8 @@ SEXP generateModelVars(void) {
   calcNextra();
 
   rxProtectGuard;
-  SEXP lst   = rxP(Rf_allocVector(VECSXP, 31));
-  SEXP names = rxP(Rf_allocVector(STRSXP, 31));
+  SEXP lst   = rxP(Rf_allocVector(VECSXP, 35));
+  SEXP names = rxP(Rf_allocVector(STRSXP, 35));
 
   SEXP sNeedSort = rxP(Rf_allocVector(INTSXP,1));
   int *iNeedSort  = INTEGER(sNeedSort);
@@ -172,16 +172,45 @@ SEXP generateModelVars(void) {
 
   SEXP alagVarSexp = rxP(Rf_allocVector(INTSXP, tb.alagn));
   SEXP splitBolusSexp = rxP(Rf_allocVector(INTSXP, tb.splitBolusN));
+  SEXP splitInfusionSexp = rxP(Rf_allocVector(INTSXP, tb.splitInfusionN));
+  SEXP splitInfusionBolusSexp = rxP(Rf_allocVector(INTSXP, tb.splitInfusionBolusN));
+  SEXP splitBolusInfusionSexp = rxP(Rf_allocVector(INTSXP, tb.splitBolusInfusionN));
   SEXP strCmpParams = rxP(Rf_allocVector(VECSXP, tb.strCmp.n));
   SEXP strCmpParamsN = rxP(Rf_allocVector(STRSXP, tb.strCmp.n));
   SEXP factorCls = rxP(Rf_allocVector(STRSXP, 1));
   int *alagVar = INTEGER(alagVarSexp);
   int *splitBolus = INTEGER(splitBolusSexp);
-  int *ordFI = INTEGER(ordF);
+  int *splitInfusion = INTEGER(splitInfusionSexp);
+  int *splitInfusionBolus = INTEGER(splitInfusionBolusSexp);
+  int *splitBolusInfusion = INTEGER(splitBolusInfusionSexp);
+  // Directives store the parse index (tb.id + 1); map it to the compartment
+  // number, states then extra states as populateStateVectors() numbers them
+  // (rxode2#1452).
+  int *ordFP = INTEGER(ordF);
+  SEXP ordFInv = rxP(Rf_allocVector(INTSXP, tb.de.n));
+  int *ordFI = INTEGER(ordFInv);
+  int nCmtI = 0;
+  for (int pass = 1; pass >= 0; --pass) {
+    for (int i = 0; i < tb.de.n; ++i) {
+      if ((tb.idu[ordFP[i]-1] == 1) == pass) ordFI[ordFP[i]-1] = ++nCmtI;
+    }
+  }
   SET_STRING_ELT(factorCls, 0, Rf_mkChar("factor"));
 
   for (int i = 0; i < tb.splitBolusN; ++i) {
     splitBolus[i] = ordFI[tb.splitBolus[i]-1];
+  }
+
+  for (int i = 0; i < tb.splitInfusionN; ++i) {
+    splitInfusion[i] = ordFI[tb.splitInfusion[i]-1];
+  }
+
+  for (int i = 0; i < tb.splitInfusionBolusN; ++i) {
+    splitInfusionBolus[i] = ordFI[tb.splitInfusionBolus[i]-1];
+  }
+
+  for (int i = 0; i < tb.splitBolusInfusionN; ++i) {
+    splitBolusInfusion[i] = ordFI[tb.splitBolusInfusion[i]-1];
   }
 
   for (int i = 0; i < tb.strCmp.n; ++i) {
@@ -380,6 +409,20 @@ SEXP generateModelVars(void) {
 
   SET_STRING_ELT(names, 30, Rf_mkChar("strCmpParams"));
   SET_VECTOR_ELT(lst,   30, strCmpParams);
+
+  /* md5 (31) is filled in on the R side (rxode2.R/tran.R); the named NULL
+     placeholder keeps its index stable. */
+  SET_STRING_ELT(names, 31, Rf_mkChar("md5"));
+  SET_VECTOR_ELT(lst,   31, R_NilValue);
+
+  SET_STRING_ELT(names, 32, Rf_mkChar("splitInfusion"));
+  SET_VECTOR_ELT(lst,   32, splitInfusionSexp);
+
+  SET_STRING_ELT(names, 33, Rf_mkChar("splitInfusionBolus"));
+  SET_VECTOR_ELT(lst,   33, splitInfusionBolusSexp);
+
+  SET_STRING_ELT(names, 34, Rf_mkChar("splitBolusInfusion"));
+  SET_VECTOR_ELT(lst,   34, splitBolusInfusionSexp);
 
 
   Rf_setAttrib(tran,  R_NamesSymbol, trann);

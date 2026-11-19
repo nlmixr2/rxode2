@@ -16,16 +16,14 @@ rxTest({
 
   .solve <- function() {
     .m <- rxode2({ d/dt(a) <- -0.1 * a })
-    .ev <- data.frame(id = rep(1:3, each = 3), time = rep(c(0, 1, 2), 3),
-                      amt = 0, evid = 0, cmt = "a")
+    .ev <- data.frame(id = rep(1:3, each = 3), time = rep(c(0, 1, 2), 3), amt = 0, evid = 0, cmt = "a")
     invisible(rxSolve(.m, NULL, .ev, cores = 2, returnType = "data.frame"))
   }
 
   test_that("a bad index raises directly when there is no region to unwind", {
     skip_if_not(rxCores() >= 2L, "needs 2 threads")
     .solve()
-    expect_error(.Call("_rxode2_rxApiErrTest_", FALSE, PACKAGE = "rxode2"),
-                 "getIndIx")
+    expect_error(.Call("_rxode2_rxApiErrTest_", FALSE, PACKAGE = "rxode2"), "getIndIx")
   })
 
   # A recorded error is global state; clear it so one test cannot fail another.

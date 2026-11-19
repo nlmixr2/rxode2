@@ -37,3 +37,22 @@ yeoJohnson(10, 0.5)
 yeoJohnsonInv(4.32, 0.5)
 
 }
+\seealso{
+Other Special functions:
+\code{\link[=delay]{delay()}},
+\code{\link[=erf]{erf()}},
+\code{\link[=gammap]{gammap()}},
+\code{\link[=gammapDer]{gammapDer()}},
+\code{\link[=gammapInv]{gammapInv()}},
+\code{\link[=gammaq]{gammaq()}},
+\code{\link[=gammaqInv]{gammaqInv()}},
+\code{\link[=logit]{logit()}},
+\code{\link[=lowergamma]{lowergamma()}},
+\code{\link[=mexpit]{mexpit()}},
+\code{\link[=mlogit]{mlogit()}},
+\code{\link[=phi]{phi()}},
+\code{\link[=phiU]{phiU()}},
+\code{\link[=probit]{probit()}},
+\code{\link[=uppergamma]{uppergamma()}}
+}
+\concept{Special functions}

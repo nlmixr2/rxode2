@@ -1,14 +1,12 @@
-#ifndef R_NO_REMAP
-#define R_NO_REMAP
-#endif
+// R_NO_REMAP is set on the command line (-DR_NO_REMAP in src/Makevars.in),
+// which is the only way to have it in effect BEFORE any R header is included,
+// as "Writing R Extensions" requires.  Defining it here instead was wrong: by
+// the time this header is read the including source has usually pulled in R's
+// headers already, so R's `match` macro was still defined and expanded inside
+// the `declare variant match(...)` pragma in LLVM's omp.h.
 #ifdef _OPENMP
 #include <pthread.h>
-// R_NO_REMAP above is too late when R headers came first; R's `match` macro
-// then breaks the `declare variant match(...)` pragma in LLVM's omp.h.
-#pragma push_macro("match")
-#undef match
 #include <omp.h>
-#pragma pop_macro("match")
 
 #ifdef __cplusplus
 extern "C" {

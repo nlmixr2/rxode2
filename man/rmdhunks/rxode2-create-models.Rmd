@@ -1,67 +1,11 @@
-
 ## Creating rxode2 models
 
-
-The ODE-based model specification may be coded inside four places:
-
-- Inside a `rxode2({})` block statements:
+The recommended way to write an `rxode2` model is a model function
+with an `ini({})` block (parameter values) and a `model({})` block
+(equations):
 
 ``` r
 library(rxode2)
-mod <- rxode2({
-  # simple assignment
-  C2 <- centr/V2
-
-  # time-derivative assignment
-  d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
-})
-```
-
-- Inside a `rxode2("")` string statement:
-
-``` r
-mod <- rxode2("
-  # simple assignment
-  C2 <- centr/V2
-
-  # time-derivative assignment
-  d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
-")
-```
-
-- In a file name to be loaded by rxode2:
-
-``` r
-writeLines("
-  # simple assignment
-  C2 <- centr/V2
-
-  # time-derivative assignment
-  d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
-", "modelFile.rxode2")
-mod <- rxode2(filename='modelFile.rxode2')
-unlink("modelFile.rxode2")
-```
-
-- In a model function which can be parsed by `rxode2`:
-
-``` r
-mod <- function() {
-  model({
-    # simple assignment
-    C2 <- centr/V2
-
-    # time-derivative assignment
-    d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
-  })
-}
-
-mod <- rxode2(mod) # or simply mod() if the model is at the end of the function
-
-# These model functions often have residual components and initial
-# (`ini({})`) conditions attached as well. For example the
-# theophylline model can be written as:
-
 one.compartment <- function() {
   ini({
     tka <- 0.45 # Log Ka
@@ -83,20 +27,18 @@ one.compartment <- function() {
   })
 }
 
-# after parsing the model
-mod <- one.compartment()
+# parse the model into a rxode2 ui object
+mod <- one.compartment() # or rxode2(one.compartment)
 ```
 
-For the block statement, character string or text file an internal
-`rxode2` compilation manager translates the ODE system into C,
-compiles it and loads it into the R session.  The
-call to `rxode2` produces an object of class `rxode2` which
-consists of a list-like structure (environment) with various member
-functions.
+The parameter values in `ini({})` are used when solving, so the model
+can be solved directly with `rxSolve(mod, events)`.  Initial
+conditions of the states can be set in the model block with
+`state(0) <- value`.
 
-For the last type of model (a model function), a call to `rxode2`
-creates a parsed `rxode2` ui that can be translated to the `rxode2`
-compilation model.
+Calling the function creates a parsed `rxode2` user interface object
+(`rxUi`) which is translated into an `rxode2` compiled model when
+solved:
 
 ``` r
 mod$simulationModel
@@ -106,5 +48,17 @@ mod$simulationIniModel
 ```
 
 This is the same type of function required for `nlmixr2` estimation
-and can be extended and modified by model piping.  For this reason
-will be focused on in the documentation.
+and can be extended and modified by model piping.  For this reason it
+is the form used throughout the documentation.
+
+The model equations can also be given directly to `rxode2()`, without
+an `ini({})` block:
+
+- a `rxode2({})` block of statements;
+- a `rxode2("")` character string;
+- a file, `rxode2(filename="modelFile.rxode2")`.
+
+These low-level forms create an `rxode2` compiled model object; the
+parameters are then supplied when solving with `params=`.  See
+<https://nlmixr2.github.io/rxode2/articles/rxode2-classic-models.html>
+for these forms and when to use them.

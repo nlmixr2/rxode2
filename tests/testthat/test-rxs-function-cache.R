@@ -11,8 +11,10 @@ rxTest({
 
   test_that("the rxS() function closures are pre-built and shared", {
     # built with the package, so they are there before any rxS() call
-    expect_true(all(c("linCmtA", "linCmtB", "delay", "lag0", "rxTBS") %in%
-                      ls(.cache)))
+    expect_true(all(
+      c("linCmtA", "linCmtB", "delay", "lag0", "rxTBS") %in%
+        ls(.cache)
+    ))
 
     # one closure per name, not one per rxS() call
     expect_identical(.rxFun("linCmtA"), .rxFun("linCmtA"))
@@ -28,13 +30,11 @@ rxTest({
   })
 
   test_that("user functions registered at run time are loaded into rxS()", {
-    on.exit(suppressWarnings(try(rxRmFun("cacheUdf"), silent = TRUE)),
-            add = TRUE)
+    on.exit(suppressWarnings(try(rxRmFun("cacheUdf"), silent = TRUE)), add = TRUE)
     .ddt <- function(mod) {
       as.character(eval(quote(rx__d_dt_x__), envir = rxS(rxModelVars(mod))))
     }
-    rxFun("cacheUdf", c("a", "b"),
-          "double cacheUdf(double a, double b) { return a + b; }")
+    rxFun("cacheUdf", c("a", "b"), "double cacheUdf(double a, double b) { return a + b; }")
     expect_equal(.ddt("d/dt(x) <- -cacheUdf(a, b)*x"), "-x*cacheUdf(a, b)")
     # not known when the package was built, so it is built on first use
     expect_true("cacheUdf" %in% ls(.cache))
@@ -42,18 +42,20 @@ rxTest({
     # the closure only carries the name, so re-registering the same function
     # with a different number of arguments still translates
     rxRmFun("cacheUdf")
-    rxFun("cacheUdf", c("a", "b", "c"),
-          "double cacheUdf(double a, double b, double c) { return a+b+c; }")
-    expect_equal(.ddt("d/dt(x) <- -cacheUdf(a, b, c)*x"),
-                 "-x*cacheUdf(a, b, c)")
+    rxFun("cacheUdf", c("a", "b", "c"), "double cacheUdf(double a, double b, double c) { return a+b+c; }")
+    expect_equal(.ddt("d/dt(x) <- -cacheUdf(a, b, c)*x"), "-x*cacheUdf(a, b, c)")
 
     # a derivative table added with rxD() after the package was built is picked
     # up by rxS() the same way -- it comes from ls(rxode2parseD()), not from the
     # build-time name list
-    rxD("cacheUdf", list(
-      function(a, b, c) "1",
-      function(a, b, c) "1",
-      function(a, b, c) "1"))
+    rxD(
+      "cacheUdf",
+      list(
+        function(a, b, c) "1",
+        function(a, b, c) "1",
+        function(a, b, c) "1"
+      )
+    )
     expect_true("cacheUdf" %in% ls(rxode2parseD()))
     .s <- rxS(rxModelVars("d/dt(x) <- -cacheUdf(a, b, c)*x"))
     expect_identical(mget("cacheUdf", envir = .s)[[1]], .cache[["cacheUdf"]])

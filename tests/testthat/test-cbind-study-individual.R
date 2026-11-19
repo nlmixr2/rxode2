@@ -1,38 +1,46 @@
 if (FALSE) {
   # Setup the test data
-  lognCv <- function(x){log((x/100)^2+1)}
+  lognCv <- function(x) {
+    log((x / 100)^2 + 1)
+  }
 
   rxWithSeed(32, {
     nSub <- 3
     nStud <- 2
 
-    theta <- c(lka=log(0.5), # log ka
-               lCl=log(5), # log Cl
-               lV=log(300) # log V
+    theta <- c(
+      lka = log(0.5), # log ka
+      lCl = log(5), # log Cl
+      lV = log(300) # log V
     )
 
     thetaMat <- lotri(lCl ~ lognCv(5),
                       lV  ~ lognCv(5),
                       lka ~ lognCv(5))
 
-    nev <- nSub*nStud
+    nev <- nSub * nStud
 
-    ev1 <- data.frame(COV1=rnorm(nev,50,30),COV2=rnorm(nev,75,10),
-                      COV3=sample(c(1.0,2.0),nev,replace=TRUE))
+    ev1 <- data.frame(
+      COV1 = rnorm(nev, 50, 30),
+      COV2 = rnorm(nev, 75, 10),
+      COV3 = sample(c(1.0, 2.0), nev, replace = TRUE)
+    )
 
-    tmat <-rxRmvn(nStud, theta[dimnames(thetaMat)[[1]]], thetaMat)
+    tmat <- rxRmvn(nStud, theta[dimnames(thetaMat)[[1]]], thetaMat)
 
     x1 <- rxCbindStudyIndividual(tmat, ev1)
 
     nev <- nStud
 
-    ev2 <- data.frame(COV1=rnorm(nev,50,30),COV2=rnorm(nev,75,10),
-                      COV3=sample(c(1.0,2.0),nev,replace=TRUE))
-
+    ev2 <- data.frame(
+      COV1 = rnorm(nev, 50, 30),
+      COV2 = rnorm(nev, 75, 10),
+      COV3 = sample(c(1.0, 2.0), nev, replace = TRUE)
+    )
 
     x2 <- rxCbindStudyIndividual(tmat, ev2)
   })
-  saveRDS(list(tmat=tmat, ev1=ev1, ev2=ev2, x1=x1, x2=x2), "data-cbind-study-individual.rds")
+  saveRDS(list(tmat = tmat, ev1 = ev1, ev2 = ev2, x1 = x1, x2 = x2), "data-cbind-study-individual.rds")
 }
 
 rxTest({

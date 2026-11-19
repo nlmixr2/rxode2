@@ -13,7 +13,9 @@
 environment
 }
 \description{
-Setup the UDF environment (for querying user defined functions)
+Outside of an rxode2 call the most recent environment becomes the primary
+one; inside an rxode2 call (see \code{.udfEnvLocal()}) the call's environment is
+kept and \code{env} is only added to the search list.
 }
 \author{
 Matthew L. Fidler

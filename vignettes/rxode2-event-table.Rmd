@@ -1,9 +1,9 @@
 ---
-title: "Easy rxode2 Event Tables"
+title: "Building event tables with et()"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Easy rxode2 Event Tables}
+  %\VignetteIndexEntry{Building event tables with et()}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -16,6 +16,11 @@ options(width=80, cli.width=80)
 Sys.setenv(RSTUDIO_CONSOLE_WIDTH=80)
 ```
 
-# Creating rxode2's event tables
+
 ```{r child='events-et.Rmdh'}
 ```
+
+## Next steps
+
+- [Combining event tables](rxode2-event-table-combine.html)
+- [Simulating populations](rxode2-sim-var.html)

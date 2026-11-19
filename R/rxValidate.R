@@ -10,11 +10,20 @@
 #' @author Matthew L. Fidler
 #' @return nothing
 #' @export
-rxValidate <- function(type = NULL, skipOnCran=TRUE) {
+#' @examples
+#' \dontrun{
+#' # run the full test suite (slow)
+#' rxValidate(TRUE)
+#' # only the tests whose file names match "basic"
+#' rxValidate("basic")
+#' }
+rxValidate <- function(type = NULL, skipOnCran = TRUE) {
   if (is(substitute(type), "{")) {
     if (isTRUE(skipOnCran)) {
-      if (!identical(Sys.getenv("NOT_CRAN"), "true") ||
-            !identical(Sys.getenv("rxTest"), "")) {
+      if (
+        !identical(Sys.getenv("NOT_CRAN"), "true") ||
+          !identical(Sys.getenv("rxTest"), "")
+      ) {
         return(invisible())
       }
     }
@@ -42,11 +51,14 @@ rxValidate <- function(type = NULL, skipOnCran=TRUE) {
         if (!identical(conditionMessage(m), " \n")) {
           tryInvokeRestart("muffleMessage")
         }
-      }))
+      }
+    ))
   }
   pt <- proc.time()
   .filter <- NULL
-  if (is.null(type)) type <- FALSE
+  if (is.null(type)) {
+    type <- FALSE
+  }
   if (is.character(type)) {
     .filter <- type
     type <- TRUE
@@ -56,13 +68,13 @@ rxValidate <- function(type = NULL, skipOnCran=TRUE) {
     .oldRxTest <- Sys.getenv("rxTest")
     Sys.setenv("NOT_CRAN" = "true") # nolint
     Sys.setenv("rxTest" = "") # nolint
-    on.exit(Sys.setenv("NOT_CRAN" = .oldCran, "rxTest"=.oldRxTest)) # nolint
+    on.exit(Sys.setenv("NOT_CRAN" = .oldCran, "rxTest" = .oldRxTest)) # nolint
   } else if (type == FALSE) {
     .oldCran <- Sys.getenv("NOT_CRAN")
     .oldRxTest <- Sys.getenv("rxTest")
     Sys.setenv("NOT_CRAN" = "false") # nolint
     Sys.setenv("rxTest" = "false") # nolint
-    on.exit(Sys.setenv("NOT_CRAN" = .oldCran, "rxTest"=.oldRxTest)) # nolint
+    on.exit(Sys.setenv("NOT_CRAN" = .oldCran, "rxTest" = .oldRxTest)) # nolint
   }
   .rxWithOptions(list(testthat.progress.max_fails = 10000000000), {
     path <- file.path(system.file("tests", package = "rxode2"), "testthat")

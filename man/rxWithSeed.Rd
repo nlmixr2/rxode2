@@ -56,4 +56,9 @@ rxWithSeed(1, {
 }
 \seealso{
 rxGetSeed, rxSetSeed
+
+Other Random seeds:
+\code{\link[=rxGetSeed]{rxGetSeed()}},
+\code{\link[=rxSetSeed]{rxSetSeed()}}
 }
+\concept{Random seeds}

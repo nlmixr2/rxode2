@@ -61,6 +61,35 @@ invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devto
 # Or: R CMD check .
 ```
 
+### CI (GitHub Actions)
+
+`.github/workflows/ci.yaml` runs in two tiers, chosen by its `gate` job;
+`result` is the single check to require.
+
+- **fast** (every push to a PR targeting main, push to main, a `/ci` PR
+  comment): the air format check, the rxProtect check
+  (`.github/scripts/check-protect.sh`), lint of the changed files, the CRAN-mirror
+  check (`_check.yaml`: one tarball, `R CMD check --as-cran` on
+  linux/windows/macOS release with `NOT_CRAN=false` and 2 OpenMP threads, so
+  `rxTest({})` blocks skip as on CRAN), and the core NOT_CRAN tests listed in
+  `tests/ci-core.txt`.
+- **full** (nightly when main changed, a `/cifull` PR comment, manual run):
+  fast plus R-devel/oldrel checks, every test file on all three OSes,
+  coverage and a pkgdown build.
+
+Comments count only from owners/members/collaborators. Stacked PRs,
+documentation-only PRs and draft PRs (until marked ready, or commented `/ci`)
+run nothing. Retargeting a stacked PR to main starts the fast tier via
+`ci-retarget.yaml`; other PR edits start no run. `/ci` reruns the PR's own run
+for its head commit rather than starting a second one. A test file that covers a
+major feature belongs in `tests/ci-core.txt`. Shards are balanced from
+`tests/ci-timings.csv`; refresh it from a full run's `junit-*` artifacts with
+`.github/scripts/ci-test-timings.R` (`.github/scripts/ci-shards.R` does the
+split). The shared setup (R, dependencies, ccache) is
+`.github/actions/setup-rxode2`. A failing run on main (push or nightly) opens
+or comments on a `ci-main-failure-<tier>` issue listing the commits since the
+last green run; the next green run closes it.
+
 ### Get generated C code and C code errors from model
 
 When trying to get the underlying generated code from a model that
@@ -276,17 +305,19 @@ arguments`. When manipulating symengine objects programmatically:
 - C files use `#define STRICT_R_HEADERS` and `#define USE_FC_LEN_T`
 - C++ files use `#define R_NO_REMAP` to avoid R API name pollution
 - OpenMP support is conditional via `rxomp.h`
-- Instead of using PROTECT/UNPROTECT:
-  - In C:
-    - begin functions that typically need PROTECT/UNPROTECT with `rxProtectGuard;`
-    - Use PROTECT->rxP()/UNPROTECT->rxUP()
-    - Use rxUPAll() to unprotect everything before returning since
-      `rxP()`/`rxUP()` counts the number of protected expressions in the functions
-  - in C++:
-    - For functions where protection is needed:
-    - Create a protection object `rxProtect rx_protect;`
-    - Use `rx_protect.protect()` instead of `PROTECT()`; `UNPROTECT`
-      will be handled when the object goes out of scope.
+- **Never write raw `PROTECT()`/`UNPROTECT()` (or `Rf_protect`/`Rf_unprotect`)
+  in C or C++.** CI fails on it (`.github/scripts/check-protect.sh`, run it
+  locally before pushing); this includes one-line fixes to existing code.
+  - C++: declare `rxProtect rx_protect;` (`src/rxProtect.h`) and wrap each
+    allocation in `rx_protect.protect(x)`; it unprotects when it leaves scope,
+    so write no `UNPROTECT` and no unprotect before `return`.  Use
+    `rx_protect.unprotect(n)` only to release temporaries inside a loop.
+  - C: begin the function with `rxProtectGuard;`, use `rxP()`/`rxUP()` in place
+    of `PROTECT`/`UNPROTECT`, and `rxUPAll()` before returning, since
+    `rxP()`/`rxUP()` count the protected expressions in the function.
+  - Exempt: generated code (`RcppExports.cpp`, model C emitted as strings by
+    `codegen.h`).  A line that genuinely must stay raw ends with the comment
+    `// check-protect: allow (<reason>)`.
   - EXCEPTION -- objects that must outlive a `longjmp`: `rxProtectGuard`'s
     cleanup does NOT fire on `Rf_error`, so anything claimed by one function and
     released by another with an error possible in between (the parse translation
@@ -413,6 +444,31 @@ nlmixr2est's `src/init.c`.)
 - Keep comments and documentation terse. Condense multi-line explanations to
   one-liners, and drop worked examples and numeric anecdotes (e.g. "matches to
   ~1e-6", "up to order 8"). State the fact, not the story behind it.
+- **Every new exported, user-facing roxygen topic gets exactly one `@family`**
+  (Rcpp exports: `//' @family` in `src/*.cpp`, then `Rcpp::compileAttributes()`).
+  The family both adds the "Other <family>:" See also links and files the topic
+  into the pkgdown reference index, whose sections select with
+  `has_concept("<family>")` in `_pkgdown.yml`. Reuse an existing family name
+  (`grep -rh "@family" R src | sort | uniq -c`); add a new family only together
+  with a matching `has_concept()` section. Developer-only exports (used by nlmixr2 and
+  extension packages) get `@family Developer API` and no examples.
+  `pkgdown::check_pkgdown()` fails on a topic in neither.
+- Every new article (`vignettes/*.Rmd`, `vignettes/articles/*.Rmd`) must be added
+  both to the `articles:` index and to a navbar menu in `_pkgdown.yml`. Keep
+  top-level navbar labels to one short word; long labels push the search box
+  off-screen.
+- Article titles: sentence case, task-oriented, no "rxode2" prefix unless it
+  disambiguates (comparisons are "Comparing rxode2 with X"), at most ~45
+  characters, set only in the YAML `title:` (and `VignetteIndexEntry`). The
+  navbar item text must equal the article title.
+- Every article ends with a `Next steps` section (2-3 links along the reading
+  path), written in the `.Rmd` wrapper, never in a shared `.Rmdh`/rmdhunk.
+- Examples, articles and rmdhunks use the function form
+  (`function() { ini({}); model({}) }`). Low-level `rxode2({})`/`rxode2("")`
+  models and classic event tables are documented only in
+  `vignettes/articles/rxode2-classic-models.Rmd` (and where a page is about
+  them, e.g. C functions from a package). Examples that compile a model go in
+  `\donttest{}`.
 - Shorten multi-paragraph roxygen descriptions to a single compact paragraph,
   but keep every `@param`, `@return`, `@author`, `@export`, and `@keywords` tag.
 - Organize `NEWS.md` per version (`# rxode2 X.Y.Z`): user-facing changes first
@@ -499,7 +555,7 @@ Evidence:
   is emitted once, before the series.
 - Regression tests: `test-etTrans.R` `"evid=4 expanded through addl only
   resets on the first dose (matches NONMEM, issue #1351)"` and
-  `test-evid-push-infusion.R` `"a pushed evid=4 dose repeated with addl resets
+  `test-evid-push-addl.R` `"a pushed evid=4 dose repeated with addl resets
   only once"`.
 
 ### There is ONE event translator -- keep it that way
@@ -549,3 +605,17 @@ Two verification gates, both cheap, both required after ANY change here:
   same events through the `rxTranslateOneEvent_()` `.Call` hook and requires
   them to agree record for record. There are no known divergences; the
   list may only shrink.
+
+## CRAN tests: never assert on timing
+
+- Never put a wall-clock timing expectation in a test that can run on CRAN:
+  no `expect_lt()`/`expect_true()` on `Sys.time()` differences,
+  `system.time()`, `proc.time()`, `bench`/`microbenchmark` results, or any
+  other elapsed-time threshold. CRAN check machines are shared and heavily
+  loaded, so elapsed time there is random and a timing assertion fails at
+  random. Example: nlmixr2plot `test-model-diagram.R` asserted a
+  `modelGraph()` call took < 30 s; on CRAN it took 48.4 s and failed.
+- Test the result, not the speed. If a speed regression guard is really
+  needed, put it only in a test that starts with `skip_on_cran()` (or the
+  package's own CRAN skip helper), and never in examples or vignettes.
+- Tests that take more than a few seconds should also skip on CRAN.

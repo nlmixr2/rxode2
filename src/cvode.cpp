@@ -11,16 +11,22 @@ static int cvode_rhs_trampoline(double t, double *y, double *ydot, void *data) {
   return dydt_liblsoda(t, y, ydot, data);
 }
 
-// Called from the handleSS dispatch (case 21).
+// Called from the handleSS dispatch (case 21), which sets only rc on a
+// failure: a CVode failure here is the solver's, named after the solve, as
+// the main loop's postSolve() names it.
 extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double xout,
                                     int *istate, rx_solving_options *op,
                                     rx_solving_options_ind *ind, void *ctx_ptr) {
-  if (!ctx_ptr) { *istate = -1; return; }
+  if (!ctx_ptr) { *istate = -1; rxSolverFail(ind); return; }
   cvode_ctx_t *ctx = (cvode_ctx_t *)ctx_ptr;
   int neqOde = neq[0] - op->numLin - op->numLinSens;
   if (neqOde <= 0) { *xp_ptr = xout; *istate = 1; return; }
   *istate = cvode_ctx_integrate(ctx, yp, *xp_ptr, xout);
-  if (*istate >= 0) *xp_ptr = xout;
+  if (*istate >= 0) {
+    *xp_ptr = xout;
+  } else {
+    rxSolverFail(ind);
+  }
 }
 
 extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,
@@ -75,6 +81,7 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
                                  (void *)neq, cvodeLinSolver);
     if (!cvode_ctx) {
       ind->rc[0] = -2019;
+      rxSolverFail(ind);
       ind->solveTime += ((double)(clock() - t0_clock)) / CLOCKS_PER_SEC;
       return;
     }
@@ -112,9 +119,10 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
         localBadSolve = 1;
       } else {
         if (!localBadSolve) {
-          if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                              xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis,
-                              cvode_ctx ? (void *)cvode_ctx : NULL)) {
+          while (!localBadSolve &&
+                 handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                                 xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis,
+                                 cvode_ctx ? (void *)cvode_ctx : NULL)) {
             if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
               preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
               if (neqOde > 0 && cvode_ctx) {
@@ -137,17 +145,6 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
               ind->ixds = ixds;
               ind->idx  = idx;
               ind->idxExtra++;
-              if (!isSameTime(xout, ind->extraDoseNewXout)) {
-                preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-                if (neqOde > 0 && cvode_ctx) {
-                  istate = cvode_ctx_integrate(cvode_ctx, yp,
-                                               ind->extraDoseNewXout, xout);
-                }
-                copyLinCmt(neq, ind, op, yp);
-                postSolve(neq, &istate, ind->rc, &i, yp, NULL, 0, false, ind, op, rx);
-                if (*(ind->rc) < 0) localBadSolve = 1;
-                ind->extraDoseNewXout = xout;
-              }
               xp = ind->extraDoseNewXout;
             }
           }
@@ -166,7 +163,6 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
       }
     }
 
-    ind->_newind = 2;
     if (!localBadSolve) {
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
@@ -196,6 +192,7 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       if (_mtime_requeued) i--;
     }
+    rxNewindAfterRecord(ind, i);
     ind->solvedIdx = i;
   }
 
@@ -208,7 +205,7 @@ extern "C" void par_cvode_dense(rx_solve *rx);
 
 extern "C" void ind_cvode(rx_solve *rx, int solveid, t_update_inis u_inis) {
   rx_solving_options *op = rx->op;
-  if (op->useDense) { ind_cvode_dense(rx, solveid, u_inis); return; }
+  if (op->useDense || op->hasDelay) { ind_cvode_dense(rx, solveid, u_inis); return; }
   int neq[2];
   neq[0] = op->neq;
   neq[1] = 0;
@@ -217,7 +214,7 @@ extern "C" void ind_cvode(rx_solve *rx, int solveid, t_update_inis u_inis) {
 
 extern "C" void par_cvode(rx_solve *rx) {
   rx_solving_options *op = rx->op;
-  if (op->useDense) { par_cvode_dense(rx); return; }
+  if (op->useDense || op->hasDelay) { par_cvode_dense(rx); return; }
 #ifdef _OPENMP
   int cores = op->cores;
 #else
@@ -228,8 +225,6 @@ extern "C" void par_cvode(rx_solve *rx) {
   int      nsolve = (int)(nsim * nsub);
 
   uint32_t seed0 = getRxSeed1(cores);
-  int abort = 0;
-
 #ifdef _OPENMP
 #pragma omp parallel for num_threads(cores)
 #endif
@@ -237,23 +232,10 @@ extern "C" void par_cvode(rx_solve *rx) {
     int neq[2];
     neq[0] = op->neq;
     neq[1] = 0;
-    int localAbort;
-#ifdef _OPENMP
-#pragma omp atomic read
-#endif
-    localAbort = abort;
-    if (localAbort == 0) {
-      // rx->ordId walks positions (sortIds); the drivers take subject ids.
-      int _id = rx->ordId[solveid] - 1;
-      setSeedEng1(seed0 + _id);
-      ind_cvode_0(rx, op, _id, neq, update_inis);
-      if (op->badSolve) {
-#ifdef _OPENMP
-#pragma omp atomic write
-#endif
-        abort = 1;
-      }
-    }
+    // rx->ordId walks positions (sortIds); the drivers take subject ids.
+    int _id = rx->ordId[solveid] - 1;
+    setSeedEng1(seed0 + _id);
+    ind_cvode_0(rx, op, _id, neq, update_inis);
   }
   // close the per-subject seed block: the loop consumed nsolve seeds, not
   // cores, and the next solve must not re-use any of them
