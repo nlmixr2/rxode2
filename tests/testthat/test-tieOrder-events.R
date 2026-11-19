@@ -72,14 +72,14 @@ rxTest({
     .d[order(.d$TIME), ]
   }
 
-  .tieSolve <- function(mod, d, tieOrder) {
-    rxSolve(mod, d, tieOrder = tieOrder, addDosing = FALSE, returnType = "data.frame")$cp
+  .tieSolve <- function(mod, d, tieOrder, ...) {
+    rxSolve(mod, d, tieOrder = tieOrder, addDosing = FALSE, returnType = "data.frame", ...)$cp
   }
 
   # both tie orders give `want`
-  .expectBoth <- function(mod, d, want, tol) {
-    expect_equal(.tieSolve(mod, d, "evid"), want, tolerance = tol)
-    expect_equal(.tieSolve(mod, d, "data"), want, tolerance = tol)
+  .expectBoth <- function(mod, d, want, tol, ...) {
+    expect_equal(.tieSolve(mod, d, "evid", ...), want, tolerance = tol)
+    expect_equal(.tieSolve(mod, d, "data", ...), want, tolerance = tol)
   }
 
   for (.m in c("ode", "linCmt")) {
@@ -150,43 +150,71 @@ rxTest({
 
     # NONMEM cancels prior doses at a reset ("prior doses are cancelled",
     # Guide V 6.7.3; a reset "will deactivate any previous dose event record
-    # which happens to be active", Guide VI V.K), so an addl repeat or a
-    # lagged dose that lands on a reset row is wiped with tieOrder='data'
-    # (rxode2#1720).  The evid order resets first, so the dose survives.
-    test_that(paste0("tieOrder='data' wipes an addl repeat landing on a co-timed reset (", .m, ")"), {
+    # which happens to be active", Guide VI V.K), so by default an addl repeat
+    # or a lagged dose still to come at a reset is dropped in both tie orders
+    # (rxode2#1720).  resetCancelsPending = FALSE gives them after the reset,
+    # where the data order still wipes one landing on the reset itself.
+    test_that(paste0("a reset cancels the addl repeats still to come (", .m, ")"), {
       .d <- .tieData(.row(0, 1, 100, ii = 10, addl = 1), .row(10, 3))
-      expect_equal(.tieSolve(.mod, .d, "data"), ifelse(.obs < 10, .bol(.obs, 100, 0), 0), tolerance = .tol)
+      .expectBoth(.mod, .d, ifelse(.obs < 10, .bol(.obs, 100, 0), 0), .tol)
       expect_equal(
-        .tieSolve(.mod, .d, "evid"),
+        .tieSolve(.mod, .d, "data", resetCancelsPending = FALSE),
+        ifelse(.obs < 10, .bol(.obs, 100, 0), 0),
+        tolerance = .tol
+      )
+      expect_equal(
+        .tieSolve(.mod, .d, "evid", resetCancelsPending = FALSE),
         ifelse(.obs < 10, .bol(.obs, 100, 0), .bol(.obs, 100, 10)),
         tolerance = .tol
       )
       .d <- .tieData(.row(0, 1, 100, ii = 10, addl = 1), .row(10, 4, 50))
+      .want <- ifelse(.obs < 10, .bol(.obs, 100, 0), .bol(.obs, 50, 10))
+      .expectBoth(.mod, .d, .want, .tol)
+      expect_equal(.tieSolve(.mod, .d, "data", resetCancelsPending = FALSE), .want, tolerance = .tol)
       expect_equal(
-        .tieSolve(.mod, .d, "data"),
-        ifelse(.obs < 10, .bol(.obs, 100, 0), .bol(.obs, 50, 10)),
-        tolerance = .tol
-      )
-      expect_equal(
-        .tieSolve(.mod, .d, "evid"),
+        .tieSolve(.mod, .d, "evid", resetCancelsPending = FALSE),
         ifelse(.obs < 10, .bol(.obs, 100, 0), .bol(.obs, 150, 10)),
         tolerance = .tol
       )
+      # repeats after the reset time
+      .d <- .tieData(.row(0, 1, 100, ii = 10, addl = 3), .row(15, 3))
+      .before <- .bol(.obs, 100, 0) + .bol(.obs, 100, 10)
+      .expectBoth(.mod, .d, ifelse(.obs < 15, .before, 0), .tol)
+      .expectBoth(
+        .mod,
+        .d,
+        ifelse(.obs < 15, .before, .bol(.obs, 100, 20) + .bol(.obs, 100, 30)),
+        .tol,
+        resetCancelsPending = FALSE
+      )
     })
 
-    test_that(paste0("tieOrder='data' wipes a lagged dose landing on a co-timed reset (", .m, ")"), {
+    test_that(paste0("a reset cancels the lagged doses still to come (", .m, ")"), {
       .modLag <- if (.m == "ode") .tieOdeLag() else .tieLinLag()
       .d <- .tieData(.row(8, 1, 100), .row(10, 3))
-      expect_equal(.tieSolve(.modLag, .d, "data"), rep(0, length(.obs)), tolerance = .tol)
-      expect_equal(.tieSolve(.modLag, .d, "evid"), .bol(.obs, 100, 10), tolerance = .tol)
+      .expectBoth(.modLag, .d, rep(0, length(.obs)), .tol)
+      expect_equal(.tieSolve(.modLag, .d, "data", resetCancelsPending = FALSE), rep(0, length(.obs)), tolerance = .tol)
+      expect_equal(
+        .tieSolve(.modLag, .d, "evid", resetCancelsPending = FALSE),
+        .bol(.obs, 100, 10),
+        tolerance = .tol
+      )
       # the evid=4 dose is lagged too, so it enters at t=12
       .d <- .tieData(.row(8, 1, 100), .row(10, 4, 50))
-      expect_equal(.tieSolve(.modLag, .d, "data"), .bol(.obs, 50, 12), tolerance = .tol)
+      .expectBoth(.modLag, .d, .bol(.obs, 50, 12), .tol)
       expect_equal(
-        .tieSolve(.modLag, .d, "evid"),
+        .tieSolve(.modLag, .d, "evid", resetCancelsPending = FALSE),
         .bol(.obs, 100, 10) + .bol(.obs, 50, 12),
         tolerance = .tol
       )
+      # a dose at t=9 enters at t=11, after the reset at t=10
+      .d <- .tieData(.row(9, 1, 100), .row(10, 3))
+      .expectBoth(.modLag, .d, rep(0, length(.obs)), .tol)
+      .expectBoth(.modLag, .d, .bol(.obs, 100, 11), .tol, resetCancelsPending = FALSE)
+      # a lagged infusion is cancelled with its stop
+      .d <- .tieData(.row(9, 1, 100, rate = 10), .row(10, 3))
+      .expectBoth(.modLag, .d, rep(0, length(.obs)), .tol)
+      .expectBoth(.modLag, .d, .inf(.obs, 10, 11, 21), .tol, resetCancelsPending = FALSE)
     })
 
     test_that(

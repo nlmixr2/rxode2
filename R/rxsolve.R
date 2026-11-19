@@ -1032,12 +1032,18 @@
 #'   result does not depend on the row order of the data; `"data"` processes
 #'   them in the order of the rows in the data, the way NONMEM does (records
 #'   a row expands to, like the reset of an `evid=4` dose or `addl` repeats,
-#'   follow that row, so an `addl` repeat or a lagged dose landing on a
-#'   reset is wiped by it, as NONMEM cancels prior doses at a reset).  Doses
-#'   added while solving follow the records at the same time.  An event
-#'   table already translated by [etTrans()] keeps the order it was
-#'   translated with.  By default (`NULL`) this is `"data"` when
-#'   `nonmem = TRUE` and `"evid"` otherwise.
+#'   follow that row).  Doses added while solving follow the records at the
+#'   same time.  An event table already translated by [etTrans()] keeps the
+#'   order it was translated with.  By default (`NULL`) this is `"data"`
+#'   when `nonmem = TRUE` and `"evid"` otherwise.
+#'
+#' @param resetCancelsPending When `TRUE` (default), a reset (`evid` 3 or
+#'   4) cancels the doses of the records processed before it that have not
+#'   yet entered: the remaining `addl` repeats and lagged (`alag()`) doses,
+#'   as NONMEM does.  When `FALSE` they are given after the reset.  Doses
+#'   added while solving are not cancelled, and an event table already
+#'   translated by [etTrans()] keeps the `addl` repeats it was translated
+#'   with.
 #'
 #' @param linCmtGillK The total number of possible steps to determine the
 #'     optimal forward/central difference step size per parameter (by
@@ -1654,6 +1660,7 @@ rxSolve <- function(
   linCmtSensPhi = TRUE,
   nonmem = FALSE,
   tieOrder = NULL,
+  resetCancelsPending = TRUE,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -1967,6 +1974,7 @@ rxSolve <- function(
       tieOrder <- if (nonmem) "data" else "evid"
     }
     checkmate::assertChoice(tieOrder, c("evid", "data"))
+    checkmate::assertLogical(resetCancelsPending, any.missing = FALSE, len = 1)
     if (nonmem && missing(addlKeepsCov)) {
       # NONMEM keeps a dose record's covariates with the dose
       addlKeepsCov <- TRUE
@@ -2464,7 +2472,8 @@ rxSolve <- function(
       priorSigmaEl = priorSigmaEl,
       linCmtSensPhi = .linCmtSensPhi,
       nonmem = nonmem,
-      tieOrder = tieOrder
+      tieOrder = tieOrder,
+      resetCancelsPending = resetCancelsPending
     )
     class(.ret) <- "rxControl"
     return(.ret)

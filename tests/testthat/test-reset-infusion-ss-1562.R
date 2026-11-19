@@ -10,8 +10,8 @@ rxTest({
   .o <- c(1, 3, 4.5, 6, 8)
   .meths <- c("liblsoda", "lsoda", "dop853")
 
-  .solve <- function(mod, ev, meth, cmt = "depot") {
-    rxSolve(mod, ev, .p, method = meth)[[cmt]]
+  .solve <- function(mod, ev, meth, cmt = "depot", ...) {
+    rxSolve(mod, ev, .p, method = meth, ...)[[cmt]]
   }
 
   test_that("an infusion started at an ss=1 dose time is cancelled by its reset", {
@@ -81,15 +81,17 @@ rxTest({
   })
 
   test_that("a reset during an addl repeat of a steady-state infusion cancels it", {
-    # the repeat at 12 is cancelled at 14; the one at 24 runs
+    # the repeat at 12 is cancelled at 14; the one at 24 runs only when the
+    # reset keeps the pending repeats (rxode2#1720)
     o <- c(13, 15, 17, 20, 30)
     ev <- et(amt = 100, rate = 25, ii = 12, ss = 1, addl = 2, cmt = "depot") |>
       et(time = 14, evid = 3) |>
       et(o)
     want <- et(time = 24, amt = 100, rate = 25, cmt = "depot") |> et(o)
     for (meth in .meths) {
-      d <- .solve(.m, ev, meth)
+      d <- .solve(.m, ev, meth, resetCancelsPending = FALSE)
       expect_equal(d[o > 14], .solve(.m, want, meth)[o > 14], tolerance = 1e-6)
+      expect_equal(.solve(.m, ev, meth)[o > 14], rep(0, 4), tolerance = 1e-6)
     }
   })
 })

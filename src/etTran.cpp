@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <tuple>
 #include <unordered_set>
+#include <unordered_map>
 #include <set>
 #include <utility>
 #include "../inst/include/rxode2parse.h"
@@ -1352,6 +1353,11 @@ List rxModelVars_(const RObject &obj); // model variables section
 //'   way NONMEM processes its records.  Records a row expands to (the reset
 //'   of an `evid=4` dose, `addl` repeats, infusion ends) follow that row.
 //'
+//' @param resetCancelsPending When `TRUE` (default), the `addl` repeats of a
+//'   record that a later reset (`evid` 3 or 4) is processed after are
+//'   dropped from that reset's time on, as NONMEM cancels prior doses at a
+//'   reset.
+//'
 //' @inheritParams rxSolve
 //'
 //' @return Object for solving in rxode2
@@ -1368,7 +1374,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
              bool addlDropSs = true,
              bool ssAtDoseTime=true,
              Nullable<List> iCov = R_NilValue,
-             std::string tieOrder = "evid") {
+             std::string tieOrder = "evid",
+             bool resetCancelsPending = true) {
 #ifdef rxSolveT
   clock_t _lastT0 = clock();
 #endif
@@ -2170,6 +2177,52 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   bool hasReset = false;
   double maxShift = 0;
   bool warnNaTime=false;
+  // resetCancelsPending: NONMEM cancels prior doses at a reset (rxode2#1720),
+  // so the addl repeats of a row stop at the first reset of its subject
+  // processed after it -- a later row at a later time, or at the same time
+  // when ties keep the data order (the evid order resets first).  A reset that
+  // moves time back cancels the repeats after the row before it.
+  std::vector<double> addlCap;
+  std::vector<char> addlCapStrict;
+  if (resetCancelsPending && hasEvid && !evidIsMDV && addlCol != -1) {
+    int nIn = inTime.size();
+    bool capDataOrder = (tieOrder == "data");
+    addlCap.assign(nIn, R_PosInf);
+    addlCapStrict.assign(nIn, 0);
+    std::vector<int> nextReset(nIn, -1);
+    std::vector<double> prevTime(nIn, NA_REAL);
+    std::unordered_map<int, int> upcoming;
+    std::unordered_map<int, double> lastT;
+    for (int i = 0; i < nIn; ++i) {
+      int cid0 = idCol == -1 ? 1 : inId[i];
+      auto it = lastT.find(cid0);
+      if (it != lastT.end()) prevTime[i] = it->second;
+      if (!ISNA(inTime[i])) lastT[cid0] = inTime[i];
+    }
+    for (int i = nIn; i--;) {
+      int cid0 = idCol == -1 ? 1 : inId[i];
+      auto it = upcoming.find(cid0);
+      if (it != upcoming.end()) nextReset[i] = it->second;
+      if (inEvid[i] == 3 || inEvid[i] == 4) upcoming[cid0] = i;
+    }
+    for (int i = 0; i < nIn; ++i) {
+      if (IntegerVector::is_na(inAddl[i]) || inAddl[i] <= 0 || ISNA(inTime[i])) continue;
+      double ti = inTime[i];
+      for (int j = nextReset[i]; j != -1; j = nextReset[j]) {
+        double tj = inTime[j];
+        if (ISNA(tj)) continue;
+        if (!ISNA(prevTime[j]) && tj < prevTime[j]) {
+          addlCap[i] = prevTime[j];
+          addlCapStrict[i] = 1;
+          break;
+        }
+        if (tj > ti || (tj == ti && capDataOrder)) {
+          addlCap[i] = tj;
+          break;
+        }
+      }
+    }
+  }
   // This section of the code:
   // - Loops over the input dataset
   // - Changes nonmem-style evid to classic rxode events
@@ -2880,6 +2933,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       int nOcc = _rxAddlCount(cii, caddl);
       for (int rep = 0; rep < nOcc; ++rep) {
         if (rep > 0) ctime += cii;
+        if (rep > 0 && !addlCap.empty() &&
+            (ctime > addlCap[i] || (ctime == addlCap[i] && !addlCapStrict[i]))) {
+          break;
+        }
         double occIi = 0.0;
         int occFlg = _rxAddlOccurrence(rep, flg, cii, caddl, addlDropSs, &occIi);
         rx_translated_event ev;

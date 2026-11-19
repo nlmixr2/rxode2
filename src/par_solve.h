@@ -386,11 +386,43 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
     if (ncmt) ind->pendingDosesN[0] = 0;
 		return 1;
 	}
+  extern int resetCancelsPending_global;
+  // rxSolve(resetCancelsPending=TRUE): NONMEM cancels prior doses at a reset
+  // (rxode2#1720).  A dose whose record comes before the reset at ix position
+  // `pos` (an earlier record time, or the same time and translated first) but
+  // that is processed after it -- a lagged dose -- is ignored, with its
+  // infusion's stop; etTrans() already dropped the addl repeats.  A reset
+  // pushed while solving is translated last, hence the record-time test.
+  static inline void cancelPendingPriorDoses(rx_solving_options_ind *ind,
+                                             rx_solve *rx, rx_solving_options *op,
+                                             int pos, int neq) {
+    if (!resetCancelsPending_global || pos < 0 || pos >= ind->n_all_times) return;
+    int reset = ind->ix[pos];
+    double tReset = getAllTimes(ind, reset);
+    int wh, cmt, wh100, whI, wh0;
+    for (int k = pos + 1; k < ind->n_all_times; ++k) {
+      int r = ind->ix[k];
+      if (r < 0) continue;
+      int evid = getEvid(ind, r);
+      if (!isDose(evid)) continue;
+      double tRec = getAllTimes(ind, r);
+      if (tRec > tReset || (tRec == tReset && r > reset)) continue;
+      int l = getDoseNumberFromIndexAny(ind, r);
+      if (l < 0) continue;
+      getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
+      if (isInfusionStartRecord(wh0, whI) && cmt >= 0 && cmt < neq) {
+        int e = getInfusionStopDoseNumber(ind, rx, op, r, cmt, whI);
+        if (e >= 0) ignoreStopAfter(ind, pos, e);
+      }
+      pushIgnoredDose(l, ind);
+    }
+  }
   static inline void handleEvid3(rx_solving_options_ind *ind, rx_solving_options *op,
                                  rx_solve *rx, int *neq, double *xp, double *xout,
                                  double *yp, int *idid, t_update_inis u_inis) {
     ind->curShift -= rx->maxShift;
     cancelRunningInfusionStops(ind, rx, op, ind->idx, neq[0], -1);
+    cancelPendingPriorDoses(ind, rx, op, ind->idx, neq[0]);
     // the modeled steady-state off these mark was cancelled with the rest
     if (_rxEsActive) { _esSSDurOffCmt = -1; _esSSRateOffCmt = -1; }
     for (unsigned int j = neq[0]; j--;) {
