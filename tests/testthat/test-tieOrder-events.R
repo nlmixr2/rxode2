@@ -189,6 +189,9 @@ rxTest({
       expect_equal(suppressWarnings(.tieSolve(.mod, .d, "evid")), .want, tolerance = .tol)
       .want[.obs == 10] <- .bol(10, 100, 0)
       expect_equal(suppressWarnings(.tieSolve(.mod, .d, "data")), .want, tolerance = .tol)
+      # unsorted: the repeat at the reset's time follows the reset's row
+      .d <- rbind(.row(.obs, 0), .row(10, 3), .row(0, 1, 100, ii = 10, addl = 1))
+      expect_equal(suppressWarnings(.tieSolve(.mod, .d, "data")), .want, tolerance = .tol)
       # repeats after the reset time
       .d <- .tieData(.row(0, 1, 100, ii = 10, addl = 3), .row(15, 3))
       .before <- .bol(.obs, 100, 0) + .bol(.obs, 100, 10)

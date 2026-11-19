@@ -2260,7 +2260,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           std::upper_bound(v.begin(), v.end(), std::make_pair(ti, INT_MAX));
         if (lo != v.end()) {
           addlCap[i] = lo->first;
-          addlCapStrict[i] = capDataOrder;
+          // a repeat at the reset's time is emitted with its row, so the data
+          // order processes it before the reset only when the row comes first
+          addlCapStrict[i] = capDataOrder && i < lo->second;
         }
         continue;
       }

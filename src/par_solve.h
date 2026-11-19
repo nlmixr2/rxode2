@@ -393,30 +393,41 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
   // that is processed after it -- a lagged dose -- is ignored, with its
   // infusion's stop; etTrans() already dropped the addl repeats.  A reset
   // pushed while solving is translated last, hence the record-time test.
+  // Is record `r` a dose whose record comes before the reset record `reset`?
+  static inline int isPriorDoseRecord(rx_solving_options_ind *ind, int r,
+                                      int reset, double tReset) {
+    if (r < 0 || !isDose(getEvid(ind, r))) return 0;
+    double tRec = getAllTimes(ind, r);
+    return tRec < tReset || (tRec == tReset && r < reset);
+  }
+  // Ignore dose record `r` at the reset at ix position `pos`, with its
+  // infusion's stop.
+  static inline void ignoreDoseAtReset(rx_solving_options_ind *ind, rx_solve *rx,
+                                       rx_solving_options *op, int r, int pos,
+                                       int neq) {
+    int l = getDoseNumberFromIndexAny(ind, r);
+    if (l < 0) return;
+    int wh, cmt, wh100, whI, wh0;
+    getWh(getEvid(ind, r), &wh, &cmt, &wh100, &whI, &wh0);
+    if (isInfusionStartRecord(wh0, whI) && cmt >= 0 && cmt < neq) {
+      int e = getInfusionStopDoseNumber(ind, rx, op, r, cmt, whI);
+      if (e >= 0) ignoreStopAfter(ind, pos, e);
+    }
+    pushIgnoredDose(l, ind);
+  }
   static inline void cancelPendingPriorDoses(rx_solving_options_ind *ind,
                                              rx_solve *rx, rx_solving_options *op,
                                              int pos, int neq) {
     if (!resetCancelsPending_global || pos < 0 || pos >= ind->n_all_times) return;
     int reset = ind->ix[pos];
     double tReset = getAllTimes(ind, reset);
-    int wh, cmt, wh100, whI, wh0;
     for (int k = pos + 1; k < ind->n_all_times; ++k) {
       int r = ind->ix[k];
-      if (r < 0) continue;
-      int evid = getEvid(ind, r);
       // a prior dose past the next reset is cancelled by that reset
-      if (evid == 3) break;
-      if (!isDose(evid)) continue;
-      double tRec = getAllTimes(ind, r);
-      if (tRec > tReset || (tRec == tReset && r > reset)) continue;
-      int l = getDoseNumberFromIndexAny(ind, r);
-      if (l < 0) continue;
-      getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
-      if (isInfusionStartRecord(wh0, whI) && cmt >= 0 && cmt < neq) {
-        int e = getInfusionStopDoseNumber(ind, rx, op, r, cmt, whI);
-        if (e >= 0) ignoreStopAfter(ind, pos, e);
+      if (r >= 0 && getEvid(ind, r) == 3) break;
+      if (isPriorDoseRecord(ind, r, reset, tReset)) {
+        ignoreDoseAtReset(ind, rx, op, r, pos, neq);
       }
-      pushIgnoredDose(l, ind);
     }
   }
   static inline void handleEvid3(rx_solving_options_ind *ind, rx_solving_options *op,
