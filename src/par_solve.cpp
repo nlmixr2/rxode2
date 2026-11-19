@@ -475,9 +475,10 @@ rx_solving_options op_global;
 extern int nPastEvid_global;
 extern int ssNotConv_global;
 // flag an iterated steady state that used maxSS doses without converging;
-// minSS = maxSS asks for that many doses, so it is not flagged
-static inline void ssNotConverged(int minSS, int maxSS) {
-  if (minSS < maxSS) {
+// minSS = maxSS asks for that many doses, and a failed solve (rc +/-2019) is
+// reported on its own, so neither is flagged
+static inline void ssNotConverged(int minSS, int maxSS, int rc) {
+  if (minSS < maxSS && rc != 2019 && rc != -2019) {
 #pragma omp atomic write
     ssNotConv_global = 1;
   }
@@ -3201,7 +3202,7 @@ extern "C" void handleSSbolus(int *neq,
                        istate, op, ind, u_inis, ctx, xout2, xp2, curIi,
                        canBreak, adjustEvidBolusLag, minSS, maxSS);
   // canBreak is only unset when maxSS doses were given without converging
-  if (!*canBreak) ssNotConverged(op->minSS, op->maxSS);
+  if (!*canBreak) ssNotConverged(op->minSS, op->maxSS, ind->rc[0]);
   ind->ssTime = NA_REAL;
 }
 
@@ -3500,7 +3501,7 @@ extern "C" void solveSSinf(int *neq,
                         istate, op, ind, u_inis, ctx, xout2, xp2, infBixds, bi,
                         infEixds, ei, curIi, dur, dur2, canBreak, ssStart,
                         minSS, maxSS)) {
-    ssNotConverged(op->minSS, op->maxSS);
+    ssNotConverged(op->minSS, op->maxSS, ind->rc[0]);
   }
   ind->ssTime = NA_REAL;
 }
@@ -3651,7 +3652,7 @@ extern "C" void solveSSinfLargeDur(int *neq,
   }
   // the first period is compared at another point of the cycle, so a short
   // maxSS can run out with converged periods; flag only an unconverged last one
-  if (ranOut && !*canBreak) ssNotConverged(op->minSS, op->maxSS);
+  if (ranOut && !*canBreak) ssNotConverged(op->minSS, op->maxSS, ind->rc[0]);
   ind->ssTime = NA_REAL;
 }
 
@@ -3762,7 +3763,8 @@ extern "C" void handleSSinf8(int *neq,
     *xp2=*xout;
     *istate=1;
   }
-  if (ranOut) ssNotConverged(minSS, maxSS);
+  // the step count actually run, which the user's minSS/maxSS do not fix
+  if (ranOut) ssNotConverged(minSS, maxSS, ind->rc[0]);
   ind->ssTime = NA_REAL;
 }
 
