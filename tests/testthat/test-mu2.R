@@ -98,7 +98,8 @@ rxTest({
       ))
       .f()$mu2RefCovariateReplaceDataFrame$covariate
     }
-    # two covariates and constants
+    # covariates and constants
+    expect_equal(.mu2("cl.wt*log(WT/70)"), "log(0.0142857142857143 * WT)")
     expect_equal(.mu2("cl.wt*log(WT/70)*SEX"), "SEX * log(0.0142857142857143 * WT)")
     expect_equal(.mu2("cl.wt*log(70)"), "4.24849524204936")
     # mu3 (nlmixr2est evaluates these through symengine): model variables that
