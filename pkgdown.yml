@@ -53,12 +53,13 @@ articles:
   articles/rxode2-sticky: rxode2-sticky.html
   rxode2-stiff: rxode2-stiff.html
   rxode2-syntax: rxode2-syntax.html
+  articles/rxode2-time-to-event: rxode2-time-to-event.html
   rxode2-transit-compartments: rxode2-transit-compartments.html
   rxode2-tutorials: rxode2-tutorials.html
   articles/rxode2-ui-object: rxode2-ui-object.html
   articles/rxode2-vpc: rxode2-vpc.html
   rxode2-wt: rxode2-wt.html
-last_built: 2026-11-19T20:38Z
+last_built: 2026-11-19T21:01Z
 urls:
   reference: https://nlmixr2.github.io/rxode2/reference
   article: https://nlmixr2.github.io/rxode2/articles

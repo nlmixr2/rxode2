@@ -73,6 +73,7 @@ be supplied via a compiled rxode2 model object or overridden individually."><met
     <li><a class="dropdown-item" href="../articles/rxode2-confint.html">Summarizing simulations with confint()</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-eta-eps-resampling.html">ETA and EPS resampling</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-phase-residual-error.html">Phase 1 vs phase 3 residual error</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-time-to-event.html">Simulating time-to-event endpoints</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Output</h6></li>
     <li><a class="dropdown-item" href="../articles/rxode2-data-frame.html">Working with solved data frames</a></li>
@@ -373,7 +374,7 @@ change to the allocation formulas propagates here automatically.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   delayHist (per-individual delay() history, bound) 0 B ( 0.0%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   linCmtRateHist (per-individual linCmt rates, bound) 0 B ( 0.0%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Subjects: 1  |  sizeof(rx_solving_options_ind): 1752 B  |  0.0% of RAM (16.76 GB)  |  0.0% of available memory (14.84 GB available)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Subjects: 1  |  sizeof(rx_solving_options_ind): 1752 B  |  0.0% of RAM (16.76 GB)  |  0.0% of available memory (14.82 GB available)</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># With rxControl: population simulation with omega and 4 cores</span></span></span>
 <span class="r-in"><span><span class="va">ctrl</span> <span class="op">&lt;-</span> <span class="fu">rxode2</span><span class="fu">::</span><span class="fu"><a href="rxSolve.html">rxControl</a></span><span class="op">(</span></span></span>
@@ -407,7 +408,7 @@ change to the allocation formulas propagates here automatically.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   delayHist (per-individual delay() history, bound) 0 B ( 0.0%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   linCmtRateHist (per-individual linCmt rates, bound) 0 B ( 0.0%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Subjects: 1  |  sizeof(rx_solving_options_ind): 1752 B  |  0.0% of RAM (16.76 GB)  |  0.0% of available memory (14.84 GB available)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Subjects: 1  |  sizeof(rx_solving_options_ind): 1752 B  |  0.0% of RAM (16.76 GB)  |  0.0% of available memory (14.82 GB available)</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
