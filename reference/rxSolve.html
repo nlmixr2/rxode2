@@ -1766,9 +1766,12 @@ the data record that ends the interval being integrated, the way NONMEM
 calls <code>$PK</code> at its records.  <code>d/dt()</code> and state-dependent statements keep
 the continuous time (like <code>$DES</code>).  <code>addl</code> repeats, infusion ends,
 lagged doses and doses added while solving do not end an interval;
-<code>mtime()</code> times do.  Covariate interpolation is still set by
+<code>mtime()</code> times do.  <code>f()</code>, <code>rate()</code> and <code>dur()</code> of an <code>addl</code> repeat
+read the time of the first data record at or after it (NONMEM's <code>F1</code>,
+<code>R1</code> and <code>D1</code>).  Covariate interpolation is still set by
 <code>covsInterpolation</code>.  It also sets the default <code>tieOrder</code> to <code>"data"</code>
-and turns on <code>addlKeepsCov</code> unless it is given.  By default <code>FALSE</code>.</p></dd>
+and turns on <code>addlKeepsCov</code> unless it is given.  By default <code>FALSE</code>,
+when they read the actual time of the <code>addl</code> dose.</p></dd>
 
 
 <dt id="arg-tieorder">tieOrder<a class="anchor" aria-label="anchor" href="#arg-tieorder"></a></dt>
