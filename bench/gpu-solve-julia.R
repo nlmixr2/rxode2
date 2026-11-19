@@ -17,6 +17,8 @@ library(rxode2)
 .sizes <- if (length(.args) >= 2) .args[2] else "1000,10000,100000"
 ## threads: OMP_NUM_THREADS when set (eg the cores a batch job was given)
 .cores <- as.integer(Sys.getenv("OMP_NUM_THREADS", parallel::detectCores()))
+## all of them (rxode2 uses half the cores by default)
+setRxThreads(.cores)
 .tol <- 1e-8
 
 ## julia first: started after R has opened OpenCL contexts it can crash
