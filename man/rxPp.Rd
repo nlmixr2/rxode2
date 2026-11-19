@@ -72,6 +72,22 @@ rxPp(10, 1 / 10, prob = function(x) {
 })
 
 }
+\seealso{
+Other Variability and uncertainty:
+\code{\link[=confint.rxSolve]{confint.rxSolve()}},
+\code{\link[=cvPost]{cvPost()}},
+\code{\link[=dfWishart]{dfWishart()}},
+\code{\link[=rinvchisq]{rinvchisq()}},
+\code{\link[=rxEtaDistExpand]{rxEtaDistExpand()}},
+\code{\link[=rxEtaDistMuRef]{rxEtaDistMuRef()}},
+\code{\link[=rxRmvn]{rxRmvn()}},
+\code{\link[=rxRmvt]{rxRmvt()}},
+\code{\link[=rxSimThetaOmega]{rxSimThetaOmega()}},
+\code{\link[=rxUiEtaDistAnchors]{rxUiEtaDistAnchors()}},
+\code{\link[=rxUiEtaDists]{rxUiEtaDists()}},
+\code{\link[=swapMatListWithCube]{swapMatListWithCube()}}
+}
 \author{
 Matthew Fidler
 }
+\concept{Variability and uncertainty}

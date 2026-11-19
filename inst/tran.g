@@ -1,5 +1,10 @@
 //loop
-statement_list : (statement)+ ;
+// Leading ';' are taken here and trailing ones by `end_statement`, so a run of
+// semicolons has exactly one parse.  A bare `';'` statement made `a;` parse
+// both as `a end_statement(';')` and as `a` then `';'`; that ambiguity was
+// resolved over the whole preceding `statement_list`, making parse time
+// quadratic in model length (#1398).
+statement_list : end_statement (statement)+ | ';' end_statement ;
 
 statement
   : assignment end_statement
@@ -13,56 +18,150 @@ statement
   | alag       end_statement
   | rate       end_statement
   | dur        end_statement
+  | past       end_statement
   | derivative end_statement
   | dfdy       end_statement
   | mtime      end_statement
   | mat0       end_statement
   | matF       end_statement
+  | indLin_prop end_statement
+  | matExp_statement end_statement
   | printf_statement end_statement
   | param_statement end_statement
   | interp_statement end_statement
   | cmt_statement end_statement
   | splitBolus_statement end_statement
+  | splitInfusion_statement end_statement
+  | splitInfusionBolus_statement end_statement
+  | splitBolusInfusion_statement end_statement
   | dvid_statementI end_statement
   | break_statement end_statement
   | simfun_statement end_statement
+  | obs_statement end_statement
   | evid_statement end_statement
+  | bolus_statement end_statement
+  | infuse_statement end_statement
+  | infuseDur_statement end_statement
+  | replace_statement end_statement
+  | multiply_statement end_statement
+  | phantom_statement end_statement
+  | reset_statement end_statement
   | compound_statement
   | selection_statement
-  | ifelse_statement
-  | end_statement ;
+  | ifelse_statement ;
 
 
-compound_statement : '{' statement_list? '}' ;
+compound_statement : '{' statement_list? '}' end_statement ;
 
 ifelse_statement
    : 'ifelse' '(' logical_or_expression ','  statement ',' statement ')' end_statement;
 
 selection_statement
-  :   "(if|while)" '(' logical_or_expression ')' statement ('else' statement)?;
+  :   "(if|while)" '(' logical_or_expression ')' body_statement ('else' body_statement)?;
 
 break_statement
     : 'break';
 
 simfun_statement : "(simeps|simeta)" '(' ')' ;
 
+obs_statement : function ;
+
+/* A leading '-' names the compartment to TURN OFF, the same signal the event
+   table takes from a negative CMT column. */
+cmt_evid: string |  identifier_r_no_output | decimalintNo0 | cmt_evid_off ;
+cmt_evid_off: '-' ( string | identifier_r_no_output | decimalintNo0 ) ;
+
 evid_statement
   : 'evid_' '('
     logical_or_expression ','   /* time  */
     logical_or_expression ','   /* evid  */
     logical_or_expression ','   /* amt   */
-    logical_or_expression ','   /* cmt   */
+    cmt_evid              ','   /* cmt   */
     logical_or_expression ','   /* rate  */
     logical_or_expression ','   /* ii    */
-    logical_or_expression ','   /* addl  */
-    logical_or_expression       /* ss    */
+    decimalint            ','   /* addl  */
+    ssVal                      /* ss    */
     ')' ;
+
+bolus_statement
+    : 'bolus' '('
+            logical_or_expression ','   /* amt   */
+            cmt_evid              ','   /* cmt   */
+            logical_or_expression ','   /* ii    */
+            decimalint            ','   /* addl  */
+            ssVal                       /* ss    */
+            ')' ;
+
+infuse_statement
+    : 'infuse' '('
+            logical_or_expression ','   /* amt   */
+            logical_or_expression ','   /* rate  */
+            cmt_evid              ','   /* cmt   */
+            logical_or_expression ','   /* ii    */
+            decimalint            ','   /* addl  */
+            ssVal                      /* ss    */
+            ')' ;
+
+infuseDur_statement
+    : 'infuseDur' '('
+            logical_or_expression ','   /* amt   */
+            logical_or_expression ','   /* dur  */
+            cmt_evid              ','   /* cmt   */
+            logical_or_expression ','   /* ii    */
+            decimalint            ','   /* addl  */
+            ssVal                      /* ss    */
+            ')' ;
+
+replace_statement
+    : 'replace' '('
+            logical_or_expression ','   /* amt   */
+            cmt_evid   /* cmt   */
+            ')' ;
+
+multiply_statement
+    : 'multiply' '('
+            logical_or_expression ','   /* amt   */
+            cmt_evid   /* cmt   */
+            ')' ;
+
+phantom_statement
+    : 'phantom' '('
+            logical_or_expression ','   /* amt   */
+            cmt_evid              ','   /* cmt   */
+            logical_or_expression ','   /* ii    */
+            decimalint            ','   /* addl  */
+            ssVal                       /* ss    */
+            ')' ;
+
+reset_statement
+    : 'reset' '(' ')' ;
 
 cmt_statement
     : 'cmt' '(' identifier_r_no_output ')';
 
 splitBolus_statement
     : 'splitBolus' '('
+      identifier_r_no_output ','
+      identifier_r_no_output
+      (',' identifier_r_no_output)*
+      ')';
+
+splitInfusion_statement
+    : 'splitInfusion' '('
+      identifier_r_no_output ','
+      identifier_r_no_output
+      (',' identifier_r_no_output)*
+      ')';
+
+splitInfusionBolus_statement
+    : 'splitInfusionBolus' '('
+      identifier_r_no_output ','
+      identifier_r_no_output
+      (',' identifier_r_no_output)*
+      ')';
+
+splitBolusInfusion_statement
+    : 'splitBolusInfusion' '('
       identifier_r_no_output ','
       identifier_r_no_output
       (',' identifier_r_no_output)*
@@ -90,7 +189,7 @@ ini0f     : identifier_r '(0)' ('=' | '<-' ) logical_or_expression;
 
 ini        : identifier_r ('=' | '<-' ) ini_const;
 
-derivative : 'd/dt' '(' identifier_r_no_output ')' ('=' | '<-' | '~') ('+' | '-' | ) logical_or_expression;
+derivative : 'd/dt' '(' identifier_r_no_output ')' ('=' | '<-' | '~') logical_or_expression;
 der_rhs    : 'd/dt' '(' identifier_r_no_output ')';
 
 dfdy        : 'df' '(' identifier_r_no_output ')/dy(' (theta0_noout | theta_noout | eta_noout | identifier_r_no_output) ')' ('=' | '<-' ) logical_or_expression;
@@ -100,6 +199,7 @@ fbio        : ('f' | 'F')  '(' identifier_r_no_output ')' ('=' | '<-' | '~' ) lo
 alag        : ('alag' | 'lag')  '(' identifier_r_no_output ')' ('=' | '<-' | '~' ) logical_or_expression;
 rate        : 'rate'  '(' identifier_r_no_output ')' ('=' | '<-' | '~' ) logical_or_expression;
 dur        : 'dur'  '(' identifier_r_no_output ')' ('=' | '<-' | '~' ) logical_or_expression;
+past       : 'past'  '(' identifier_r_no_output ',' logical_or_expression ')' ('=' | '<-' | '~' ) logical_or_expression;
 
 
 
@@ -118,6 +218,10 @@ levels_str1 : 'levels' '(' identifier_r_no_output ')' ('=' | '<-' | '~' )
 mat0: '_rxM' '=' logical_or_expression;
 
 matF: '_rxF' '=' logical_or_expression;
+
+indLin_prop : 'indLin' '(' identifier_r_no_output ')' ('=' | '<-' | '~' ) logical_or_expression;
+
+matExp_statement : 'matExp' '(' ')' ;
 
 mtime     : 'mtime' '(' identifier_r_no_output ')' ('=' | '<-' | '~') logical_or_expression;
 
@@ -184,7 +288,7 @@ primary_expression
 
 ifelse : 'ifelse' '(' logical_or_expression ',' logical_or_expression ',' logical_or_expression ')' ;
 
-function : function_name '(' (logical_or_expression)* (',' logical_or_expression)* ')' ;
+function : function_name '(' (logical_or_expression)? (',' logical_or_expression)* ')' ;
 
 function_name: identifier | 'lag';
 
@@ -197,7 +301,9 @@ identifier_r: identifier_r_extra | identifier_r_1 | identifier_r_2 ;
 
 identifier_r_no_output: identifier_r_no_output_1 | identifier_r_no_output_2 | identifier_r_extra;
 
-identifier_r_extra: 'alag' | 'f'| 'F' | 'rate' | 'dur' | 'lag';
+identifier_r_extra: 'alag' | 'f'| 'F' | 'rate' | 'dur' | 'lag' | 'past' |
+  'evid_' | 'bolus' | 'infuse' | 'infuseDur' | 'splitBolus' | 'splitInfusion' |
+  'splitInfusionBolus' | 'splitBolusInfusion' | 'replace' | 'reset';
 
 theta: ('THETA' | 'theta') '[' decimalintNo0 ']';
 eta: ('ETA' | 'eta') '[' decimalintNo0 ']';
@@ -207,7 +313,7 @@ theta_noout: ('THETA' | 'theta') '[' decimalintNo0 ']';
 eta_noout: ('ETA' | 'eta') '[' decimalintNo0 ']';
 theta0_noout: ('THETA' | 'theta' | 'ETA' | 'eta');
 
-
+ssVal: "0|1|2|3" $term -1;
 decimalintNo0: "([1-9][0-9]*)" $term -1;
 decimalint: "0|([1-9][0-9]*)" $term -1;
 string: string1 | string2;
@@ -222,3 +328,8 @@ identifier_r_no_output_2: "[.]+[a-zA-Z_][a-zA-Z0-9_.]*" $term -4;
 identifier: "[a-zA-Z][a-zA-Z0-9_.]*" $term -4;
 whitespace: ( "[ \t\r\n]+" | singleLineComment )*;
 singleLineComment: '#' "[^\n]*";
+
+// An if/while body may be a bare `;` (an empty body); nowhere else is a lone
+// `;` a statement.  Defined last so the generated `rule__N` names used in
+// src/tran.h and src/parseLogical.h keep their numbers.
+body_statement : statement | ';' end_statement ;

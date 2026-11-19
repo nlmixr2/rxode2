@@ -39,7 +39,8 @@
 #'
 #' }
 #' @export
-rxnormV  <- function(mean = 0, sd = 1, n = 1L, ncores = 1L) {
+#' @family Random variables
+rxnormV <- function(mean = 0, sd = 1, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(mean, len = 1)
   checkmate::assertNumeric(sd, lower = 0, len = 1)
   checkmate::assertCount(n)
@@ -50,7 +51,6 @@ rxnormV  <- function(mean = 0, sd = 1, n = 1L, ncores = 1L) {
 #' @rdname rxnormV
 #' @export
 rxnorm <- rxnormV
-
 
 
 #' Simulate random Poisson variable from threefry generator
@@ -85,6 +85,7 @@ rxnorm <- rxnormV
 #'
 #' }
 #' @export
+#' @family Random variables
 rxpois <- function(lambda, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(lambda, len = 1)
   checkmate::assertCount(n)
@@ -123,9 +124,12 @@ rxpois <- function(lambda, n = 1L, ncores = 1L) {
 #' s <- rxSolve(rx, et)
 #' }
 #' @export
+#' @family Random variables
 rxt <- function(df, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(df, len = 1, lower = 0)
-  if (df == 0) stop("'df' must be greater than 0", call. = FALSE)
+  if (df == 0) {
+    stop("'df' must be greater than 0", call. = FALSE)
+  }
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
@@ -166,6 +170,7 @@ rxt <- function(df, n = 1L, ncores = 1L) {
 #' }
 #'
 #' @export
+#' @family Random variables
 rxunif <- function(min = 0, max = 1, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(min, len = 1)
   checkmate::assertNumeric(max, len = 1)
@@ -212,6 +217,7 @@ rxunif <- function(min = 0, max = 1, n = 1L, ncores = 1L) {
 #'
 #' }
 #' @export
+#' @family Random variables
 rxweibull <- function(shape, scale = 1, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(shape, len = 1)
   checkmate::assertNumeric(scale, len = 1)
@@ -256,6 +262,7 @@ rxweibull <- function(shape, scale = 1, n = 1L, ncores = 1L) {
 #' }
 #'
 #' @export
+#' @family Random variables
 rxgeom <- function(prob, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(prob, len = 1, lower = 0, upper = 1)
   checkmate::assertCount(n)
@@ -300,11 +307,16 @@ rxgeom <- function(prob, n = 1L, ncores = 1L) {
 #'
 #' }
 #' @export
+#' @family Random variables
 rxbeta <- function(shape1, shape2, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(shape1, len = 1, lower = 0)
-  if (shape1 == 0) stop("'shape1' cannot be 0", call. = FALSE)
+  if (shape1 == 0) {
+    stop("'shape1' cannot be 0", call. = FALSE)
+  }
   checkmate::assertNumeric(shape2, len = 1, lower = 0)
-  if (shape2 == 0) stop("'shape2' cannot be 0", call. = FALSE)
+  if (shape2 == 0) {
+    stop("'shape2' cannot be 0", call. = FALSE)
+  }
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
@@ -349,11 +361,16 @@ rxbeta <- function(shape1, shape2, n = 1L, ncores = 1L) {
 #' }
 #'
 #' @export
+#' @family Random variables
 rxgamma <- function(shape, rate = 1, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(shape, len = 1, lower = 0)
-  if (shape == 0) stop("'shape' cannot be 0", call. = FALSE)
+  if (shape == 0) {
+    stop("'shape' cannot be 0", call. = FALSE)
+  }
   checkmate::assertNumeric(rate, len = 1, lower = 0)
-  if (rate == 0) stop("'rate' cannot be 0", call. = FALSE)
+  if (rate == 0) {
+    stop("'rate' cannot be 0", call. = FALSE)
+  }
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
@@ -395,11 +412,16 @@ rxgamma <- function(shape, rate = 1, n = 1L, ncores = 1L) {
 #' }
 #'
 #' @export
+#' @family Random variables
 rxf <- function(df1, df2, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(df1, len = 1, lower = 0)
-  if (df1 == 0) stop("'df1' cannot be 0", call. = FALSE)
+  if (df1 == 0) {
+    stop("'df1' cannot be 0", call. = FALSE)
+  }
   checkmate::assertNumeric(df2, len = 1, lower = 0)
-  if (df2 == 0) stop("'df2' cannot be 0", call. = FALSE)
+  if (df2 == 0) {
+    stop("'df2' cannot be 0", call. = FALSE)
+  }
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
@@ -442,9 +464,12 @@ rxf <- function(df1, df2, n = 1L, ncores = 1L) {
 #' }
 #'
 #' @export
+#' @family Random variables
 rxexp <- function(rate, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(rate, len = 1, lower = 0)
-  if (rate == 0) stop("'rate' cannot be 0", call. = FALSE)
+  if (rate == 0) {
+    stop("'rate' cannot be 0", call. = FALSE)
+  }
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
@@ -488,9 +513,12 @@ rxexp <- function(rate, n = 1L, ncores = 1L) {
 #' }
 #'
 #' @export
+#' @family Random variables
 rxchisq <- function(df, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(df, len = 1, lower = 0)
-  if (df == 0) stop("'df' cannot be 0", call. = FALSE)
+  if (df == 0) {
+    stop("'df' cannot be 0", call. = FALSE)
+  }
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
@@ -532,10 +560,13 @@ rxchisq <- function(df, n = 1L, ncores = 1L) {
 #' }
 #'
 #' @export
+#' @family Random variables
 rxcauchy <- function(location = 0, scale = 1, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(location, len = 1)
   checkmate::assertNumeric(scale, len = 1, lower = 0)
-  if (scale == 0) stop("'scale' cannot be 0", call. = FALSE)
+  if (scale == 0) {
+    stop("'scale' cannot be 0", call. = FALSE)
+  }
   checkmate::assertCount(n)
   checkmate::assertCount(ncores)
   rxSeedEng(ncores)
@@ -570,12 +601,19 @@ rxcauchy <- function(location = 0, scale = 1, n = 1L, ncores = 1L) {
 #' rxord(0.3, 0.3)
 #'
 #' @export
+#' @family Random variables
 rxord <- function(...) {
   .args <- c(...)
-  if (any(.args < 0)) return(NA_real_)
-  if (any(.args > 1)) return(NA_real_)
+  if (any(.args < 0)) {
+    return(NA_real_)
+  }
+  if (any(.args > 1)) {
+    return(NA_real_)
+  }
   .sum <- sum(.args)
-  if (.sum >= 1) return(NA_real_)
+  if (.sum >= 1) {
+    return(NA_real_)
+  }
   .v <- rxunif()
   .args <- cumsum(.args)
   .Call(`_rxode2_rxordSelect`, .v, .args)
@@ -615,6 +653,7 @@ rxord <- function(...) {
 #' }
 #'
 #' @export
+#' @family Random variables
 rxbinom <- function(size, prob, n = 1L, ncores = 1L) {
   checkmate::assertNumeric(prob, len = 1, lower = 0, upper = 1)
   checkmate::assertCount(size)
@@ -672,14 +711,13 @@ rxbinom <- function(size, prob, n = 1L, ncores = 1L) {
 #'
 #' }
 #' @export
+#' @family Random variables
 rxnbinom <- function(size, prob, mu, n = 1L, ncores = 1L) {
-
   if (!missing(mu)) {
     if (!missing(prob)) {
-      stop("only one of 'mu' or 'prob' can be specified",
-           call.=FALSE)
+      stop("only one of 'mu' or 'prob' can be specified", call. = FALSE)
     } else {
-      return(rxnbinomMu(size=size, mu=mu, n=n, ncores=ncores))
+      return(rxnbinomMu(size = size, mu = mu, n = n, ncores = ncores))
     }
   }
   checkmate::assertNumeric(prob, len = 1, lower = 0, upper = 1)
@@ -760,6 +798,7 @@ rxnbinomMu <- function(size, mu, n = 1L, ncores = 1L) {
 #'   1/(1+abs(x))
 #' })
 #'
+#' @family Variability and uncertainty
 rxPp <- function(n, lambda, gamma = 1.0, prob = NULL, t0 = 0.0, tmax = Inf, randomOrder = FALSE) {
   checkmate::assertNumeric(t0, len = 1, any.missing = FALSE)
   checkmate::assertNumeric(tmax, len = 1, any.missing = FALSE, lower = t0)
@@ -780,6 +819,7 @@ rxPp <- function(n, lambda, gamma = 1.0, prob = NULL, t0 = 0.0, tmax = Inf, rand
 #' @param n number of subject simulated
 #' @return data frame with et combined with simulated omega matrix values
 #' @author Matthew Fidler
+#' @family Developer API
 #' @export
 .cbindOme <- function(et, mat, n) {
   .Call(`_cbindOme`, et, mat, as.integer(n)) # nolint
@@ -804,6 +844,7 @@ rxPp <- function(n, lambda, gamma = 1.0, prob = NULL, t0 = 0.0, tmax = Inf, rand
 #'
 #' # This is provided for NONMEM-like compatibility in rxode2 models
 #' @export
+#' @family Special functions
 phi <- function(q) {
   .Call(`_phi`, q)
 }
@@ -814,11 +855,11 @@ phi <- function(q) {
 #' @param n Number of columns
 #' @return Data frame with repeated vec
 #' @author Matthew Fidler
+#' @family Developer API
 #' @export
 .vecDf <- function(vec, n) {
   .Call(`_vecDF`, vec, as.integer(n)) # nolint
 }
-
 
 
 #' Expand parameters
@@ -990,9 +1031,16 @@ phi <- function(q) {
 #' returnChol = TRUE
 #' )
 #' @export
-cvPost <- function(nu, omega, n = 1L, omegaIsChol = FALSE, returnChol = FALSE,
-                   type = c("invWishart", "lkj", "separation"),
-                   diagXformType = c("log", "identity", "variance", "nlmixrSqrt", "nlmixrLog", "nlmixrIdentity")) {
+#' @family Variability and uncertainty
+cvPost <- function(
+  nu,
+  omega,
+  n = 1L,
+  omegaIsChol = FALSE,
+  returnChol = FALSE,
+  type = c("invWishart", "lkj", "separation"),
+  diagXformType = c("log", "identity", "variance", "nlmixrSqrt", "nlmixrLog", "nlmixrIdentity")
+) {
   if (is.null(nu) && n == 1L) {
     return(omega)
   }
@@ -1000,7 +1048,8 @@ cvPost <- function(nu, omega, n = 1L, omegaIsChol = FALSE, returnChol = FALSE,
     .type <- as.integer(type)
   } else {
     .type <- as.vector(c(
-      "invWishart" = 1L, "lkj" = 2L,
+      "invWishart" = 1L,
+      "lkj" = 2L,
       "separation" = 3L
     )[match.arg(type)])
   }
@@ -1011,16 +1060,17 @@ cvPost <- function(nu, omega, n = 1L, omegaIsChol = FALSE, returnChol = FALSE,
   } else {
     .xform <- setNames(
       c(
-        "variance" = 6L, "log" = 5L,
-        "identity" = 4L, "nlmixrSqrt" = 1L,
+        "variance" = 6L,
+        "log" = 5L,
+        "identity" = 4L,
+        "nlmixrSqrt" = 1L,
         "nlmixrLog" = 2L,
         "nlmixrIdentity" = 3L
       )[match.arg(diagXformType)],
       NULL
     )
   }
-  .ret <- .Call(`_rxode2_cvPost_`, nu, omega, n,
-                omegaIsChol, returnChol, .type, .xform)
+  .ret <- .Call(`_rxode2_cvPost_`, nu, omega, n, omegaIsChol, returnChol, .type, .xform)
   return(.ret)
 }
 
@@ -1054,6 +1104,7 @@ cvPost <- function(nu, omega, n = 1L, omegaIsChol = FALSE, returnChol = FALSE,
 #'
 #' rxGetSeed()
 #'
+#' @family Random seeds
 rxGetSeed <- function() {
   .Call(`_rxode2_rxGetSeed`)
 }
@@ -1137,6 +1188,7 @@ rxGetSeed <- function() {
 #' \url{https://www.johndcook.com/blog/2016/01/29/random-number-generator-seed-mistakes/}
 #'
 #' @export
+#' @family Random seeds
 rxSetSeed <- function(seed) {
   .Call(`_rxSetSeed`, seed)
   invisible()
@@ -1170,10 +1222,13 @@ rxSetSeed <- function(seed) {
 #' @author Matthew L. Fidler
 .rxGetSeed <- function() {
   if (!exists(".Random.seed", globalenv(), mode = "integer", inherits = FALSE)) {
-    return(list(seed=NULL, kind=NULL, rxseed=rxGetSeed()))
+    return(list(seed = NULL, kind = NULL, rxseed = rxGetSeed()))
   }
-  list(seed = get(".Random.seed", globalenv(), mode = "integer",
-                  inherits = FALSE), kind = RNGkind(), rxseed=rxGetSeed())
+  list(
+    seed = get(".Random.seed", globalenv(), mode = "integer", inherits = FALSE),
+    kind = RNGkind(),
+    rxseed = rxGetSeed()
+  )
 }
 #' Set the random seed for the session
 #'
@@ -1190,7 +1245,7 @@ rxSetSeed <- function(seed) {
     .rxGetSeed()
   } else {
     do.call(RNGkind, args = as.list(seed$kind))
-    suppressWarnings(.Call(`_rxode2_setGlobalSeed`, seed$seed))
+    .Call(`_rxode2_setGlobalSeed`, seed$seed)
   }
   rxSetSeed(seed$rxseed)
   invisible(NULL)
@@ -1220,8 +1275,15 @@ rxSetSeed <- function(seed) {
 #' }, rxseed=3)
 #'
 #' @export
-rxWithSeed <- function(seed, code, rxseed=rxGetSeed(), kind = "default", normal.kind = "default",
-                       sample.kind = "default") {
+#' @family Random seeds
+rxWithSeed <- function(
+  seed,
+  code,
+  rxseed = rxGetSeed(),
+  kind = "default",
+  normal.kind = "default",
+  sample.kind = "default"
+) {
   force(seed)
   force(rxseed)
   force(kind)
@@ -1358,7 +1420,8 @@ rxWithPreserveSeed <- function(code) {
 #' rxRmvn(4, setNames(1:d, paste0("a", 1:d)), matL)
 #' @author Matthew Fidler, Zdravko Botev and some from Matteo Fasiolo
 #'
-#' @references The thread safe multivariate normal was inspired from the `mvnfast` package by Matteo Fasiolo <https://CRAN.R-project.org/package=mvnfast>
+#' @references The thread safe multivariate normal was inspired from the `mvnfast` package by Matteo Fasiolo
+#' <https://CRAN.R-project.org/package=mvnfast>
 #'
 #' @references The concept of the truncated multivariate normal was
 #'   taken from Zdravko Botev Botev (2017) \doi{10.1111/rssb.12162}
@@ -1366,16 +1429,112 @@ rxWithPreserveSeed <- function(code) {
 #'   converted to thread safe simulation;
 #'
 #' @export
-rxRmvn <- function(n, mu = NULL, sigma, lower = -Inf, upper = Inf, ncores = 1, isChol = FALSE,
-                   keepNames = TRUE, a = 0.4, tol = 2.05, nlTol = 1e-10, nlMaxiter = 100L) {
+#' @family Variability and uncertainty
+rxRmvn <- function(
+  n,
+  mu = NULL,
+  sigma,
+  lower = -Inf,
+  upper = Inf,
+  ncores = 1,
+  isChol = FALSE,
+  keepNames = TRUE,
+  a = 0.4,
+  tol = 2.05,
+  nlTol = 1e-10,
+  nlMaxiter = 100L
+) {
   .ret <- .Call(
-    `_rxode2_rxRmvnSEXP`, n, mu, sigma, lower, upper, ncores,
-    isChol, keepNames, a, tol, nlTol, nlMaxiter
+    `_rxode2_rxRmvnSEXP`,
+    n,
+    mu,
+    sigma,
+    lower,
+    upper,
+    ncores,
+    isChol,
+    keepNames,
+    a,
+    tol,
+    nlTol,
+    nlMaxiter
   )
   if (is.matrix(n)) {
     return(invisible())
   }
   return(.ret)
+}
+
+#' Simulate from a (truncated) multivariate t distribution
+#'
+#' Draws from the multivariate t with location `mu`, scale matrix `sigma` and
+#' `df` degrees of freedom using the thread-safe threefry simulator; when
+#' `lower`/`upper` are finite, draws are exact by the exponential tilting
+#' acceptance-rejection method of Botev and L'Ecuyer (2015).
+#'
+#' @inheritParams rxRmvn
+#'
+#' @param sigma Scale matrix of the multivariate t, or a list of scale
+#'   matrices (as in [rxRmvn()]).
+#'
+#' @param mu location vector
+#'
+#' @param df degrees of freedom; `Inf` gives the multivariate normal
+#'   ([rxRmvn()]).  Truncated draws require `df >= 1`.
+#'
+#' @return Same as [rxRmvn()]
+#'
+#' @references Botev ZI and L'Ecuyer P (2015) Efficient estimation and
+#'   simulation of the truncated multivariate student-t distribution.
+#'   2015 Winter Simulation Conference \doi{10.1109/WSC.2015.7408180}
+#'
+#' @author Matthew Fidler
+#'
+#' @examples
+#'
+#' sigma <- matrix(c(4, 1.8, 1.8, 1), 2)
+#'
+#' rxRmvt(4, c(0, 0), sigma, df = 5)
+#'
+#' rxRmvt(4, c(0, 0), sigma, df = 5, lower = c(-1, 0), upper = c(2, Inf))
+#'
+#' @export
+#' @family Variability and uncertainty
+rxRmvt <- function(
+  n,
+  mu = NULL,
+  sigma,
+  df,
+  lower = -Inf,
+  upper = Inf,
+  ncores = 1,
+  isChol = FALSE,
+  keepNames = TRUE,
+  a = 0.4,
+  tol = 2.05,
+  nlTol = 1e-10,
+  nlMaxiter = 100L
+) {
+  .ret <- .Call(
+    `_rxode2_rxRmvtSEXP`,
+    n,
+    mu,
+    sigma,
+    df,
+    lower,
+    upper,
+    ncores,
+    isChol,
+    keepNames,
+    a,
+    tol,
+    nlTol,
+    nlMaxiter
+  )
+  if (is.matrix(n)) {
+    return(invisible())
+  }
+  .ret
 }
 
 #' @export
@@ -1404,26 +1563,27 @@ rxUdfUi.rxnbinom <- rxUdfUi.rxpois
 #'
 #' @noRd
 #' @author Matthew L. Fidler
-.rxnbinom <- function(size, prob, mu, pre="rx") {
+.rxnbinom <- function(size, prob, mu, pre = "rx") {
   .size <- as.character(substitute(size))
   .dp <- deparse1(substitute(size))
   .tmp <- suppressWarnings(try(force(size), silent = TRUE))
   .size <- .uiArg(.size, .tmp, .dp)
 
   if (!missing(mu)) {
-    if (!missing(prob))
+    if (!missing(prob)) {
       stop("'prob' and 'mu' both specified")
+    }
     .mu <- as.character(substitute(mu))
     .dp <- deparse1(substitute(mu))
     .tmp <- suppressWarnings(try(force(mu), silent = TRUE))
     .mu <- .uiArg(.mu, .tmp, .dp)
-    return(list(replace=paste0(pre, "nbinomMu(", .size, ", ", .mu, ")")))
+    return(list(replace = paste0(pre, "nbinomMu(", .size, ", ", .mu, ")")))
   }
   .prob <- as.character(substitute(prob))
   .dp <- deparse1(substitute(prob))
   .tmp <- suppressWarnings(try(force(prob), silent = TRUE))
   .prob <- .uiArg(.prob, .tmp, .dp)
-  list(replace = paste0(pre, "nbinom(", .size, ", ",  .prob, ")"))
+  list(replace = paste0(pre, "nbinom(", .size, ", ", .prob, ")"))
 }
 
 #' @rdname rxUdfUi

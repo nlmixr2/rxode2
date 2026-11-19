@@ -14,7 +14,7 @@
 #include <errno.h>
 #define _(String) (String)
 #include "../inst/include/rxode2parse.h"
-#include "../inst/include/rxode2parseSbuf.h"
+#include "rxSbufFormat.h"
 #include "tran.h"
 
 #include "threadSafeConstants.h"
@@ -37,6 +37,29 @@ static inline int nodeMixest(char *value) {
     return 1;
   }
   return 0;
+}
+
+// rx_mixsel_<k>_<n>_ is the per-component selector an expanded mix() leaves
+// behind; it reads as (mixest == k) and, unlike a bare mixest == k, keeps the
+// component count visible to the parser (tb.mixSel).
+static inline int nodeMixSel(char *value) {
+  int n = 0;
+  int k = mixSelNum(value, &n);
+  if (k == 0) return 0;
+  // both the selector form and a literal mix() must agree on the count; the
+  // combined value genModelVars() reports takes mix() first, so a silent
+  // disagreement would report the wrong number of components
+  if ((tb.mixSel != 0 && tb.mixSel != n) ||
+      (tb.hasMix != 0 && tb.hasMix != n)) {
+    updateSyntaxCol();
+    trans_syntax_error_report_fn((char*)_("a mixture model cannot change its number of components"));
+    return 1;
+  }
+  tb.mixSel = n;
+  sAppend(&sb,   "(_solveData->subjects[_cSub].mixest == %d)", k);
+  sAppend(&sbDt, "(_solveData->subjects[_cSub].mixest == %d)", k);
+  sAppend(&sbt,  "rx_mixsel_%d_%d_", k, n);
+  return 1;
 }
 
 static inline int nodeMixunif(char *value) {
@@ -93,6 +116,16 @@ static inline int nodePtr(char *value) {
   return 0;
 }
 
+// rx__isObs__: 1 on an observation record (internal evid 0), else 0
+static inline int nodeIsObs(char *value) {
+  if (!strcmp("rx__isObs__",value)){
+    aAppendN("_rxIsObs", 8);
+    sAppendN(&sbt, "rx__isObs__", 11);
+    return 1;
+  }
+  return 0;
+}
+
 static inline int nodeNaN(char *value){
   if (!strcmp("NaN",value)){
     aAppendN("NAN", 3);
@@ -113,22 +146,19 @@ static inline int nodeNA(char *value) {
 
 static inline int nodeInf(char *value) {
   if (!strcmp("Inf",value)){
-    if (sbt.o > 0 && sbt.s[sbt.o-1] == '-'){
-      sb.o--; sbDt.o--;
-      aAppendN("R_NegInf", 8);
-    } else {
-      aAppendN("R_PosInf", 8);
-    }
+    // Any preceding '-' stays in the C code, so '1 - Inf' is not '1R_NegInf'
+    aAppendN("R_PosInf", 8);
     sAppendN(&sbt,"Inf", 3);
     return 1;
   }
   return 0;
 }
 
+// gamma() is the Gamma function; C's gamma() is log-gamma in glibc
 static inline int nodeFunGamma(char *value) {
   if (!strcmp("gamma",value)){
-    aAppendN("lgammafn", 8);
-    sAppendN(&sbt, "lgammafn", 8);
+    aAppendN("gammafn", 7);
+    sAppendN(&sbt, "gamma", 5);
     return 1;
   }
   return 0;
@@ -193,8 +223,9 @@ static inline int nodeFunLinCmtB(char *value) {
     sAppendN(&sbt,"linCmtB", 7);
     tb.linCmt=2;
 
-    // right now linCmtB isn't thread safe,
-    // the Jacobian can cause a null free in stan math currently.
+    // Mark the model as linCmtB-bearing.  The solve-time thread decision
+    // (rxData.cpp) threads the forward-mode AD Jacobian path and keeps the
+    // reverse-mode AD (stan shared arena) and finite-difference paths serial.
     if (tb.thread == threadSafe) {
       tb.thread = notThreadLinCmtB;
     }

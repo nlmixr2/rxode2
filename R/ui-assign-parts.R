@@ -6,14 +6,37 @@
 #' @return rxode2 related object
 #' @export
 #' @author Matthew L. Fidler
-`model<-` <- function(x, envir=environment(x), value) {
+#' @family Model UI and piping
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     tcl <- log(3)
+#'     tv <- log(30)
+#'   })
+#'   model({
+#'     cl <- exp(tcl)
+#'     v <- exp(tv)
+#'     d/dt(central) <- -cl / v * central
+#'   })
+#' }
+#' ui <- rxode2(mod)
+#' model(ui) <- quote(model({
+#'   cl <- exp(tcl)
+#'   v <- exp(tv)
+#'   d/dt(central) <- -cl / v * central
+#'   cp <- central / v
+#' }))
+#' ui
+#' }
+`model<-` <- function(x, envir = environment(x), value) {
   UseMethod("model<-")
 }
 #' @export
-`model<-.default` <- function(x, envir=environment(x), value) {
+`model<-.default` <- function(x, envir = environment(x), value) {
   .ret <- try(as.rxUi(x), silent = TRUE)
   if (inherits(.ret, "try-error")) {
-    stop("cannot figure out what to do with model assignment", call.=FALSE)
+    stop("cannot figure out what to do with model assignment", call. = FALSE)
   }
   .model <- as.model(force(value))
   .ini <- .ret$iniFun
@@ -31,14 +54,35 @@
 #' @return rxode2 related object
 #' @export
 #' @author Matthew L. Fidler
-`ini<-` <- function(x, envir=environment(x), value) {
+#' @family Model UI and piping
+#' @examples
+#' \donttest{
+#' mod <- function() {
+#'   ini({
+#'     tcl <- log(3)
+#'     tv <- log(30)
+#'   })
+#'   model({
+#'     cl <- exp(tcl)
+#'     v <- exp(tv)
+#'     d/dt(central) <- -cl / v * central
+#'   })
+#' }
+#' ui <- rxode2(mod)
+#' ini(ui) <- quote(ini({
+#'   tcl <- log(4)
+#'   tv <- log(40)
+#' }))
+#' ui
+#' }
+`ini<-` <- function(x, envir = environment(x), value) {
   UseMethod("ini<-")
 }
 #' @export
-`ini<-.default` <- function(x, envir=environment(x), value) {
+`ini<-.default` <- function(x, envir = environment(x), value) {
   .ret <- try(as.rxUi(x), silent = TRUE)
   if (inherits(.ret, "try-error")) {
-    stop("cannot figure out what to do with ini assignment", call.=FALSE)
+    stop("cannot figure out what to do with ini assignment", call. = FALSE)
   }
   .ini <- as.ini(force(value))
   .model <- .ret$modelFun
@@ -54,7 +98,7 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .getAllSigEnv <- function(model) {
-  .lsModel <- ls(envir=model)
+  .lsModel <- ls(envir = model)
   setdiff(.lsModel, .rxUiBlessed)
 }
 
@@ -65,7 +109,7 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .getDropEnv <- function(model) {
-  .lsModel <- ls(envir=model)
+  .lsModel <- ls(envir = model)
   setdiff(.lsModel, c(.rxUiBlessed, model$sticky))
 }
 #' This gets the additional items kept if a significant item changed
@@ -75,7 +119,7 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .getKeepEnv <- function(model) {
-  .lsModel <- ls(envir=model)
+  .lsModel <- ls(envir = model)
   .ret <- setdiff(.lsModel, .rxUiBlessed)
   .ret[.ret %in% model$sticky]
 }
@@ -95,12 +139,16 @@
 .modelsNearlySame <- function(newModel, oldModel) {
   # first check to see if this is a "significant" change.
   if (identical(newModel$modelFun, oldModel$modelFun)) {
-    .pre <- oldModel$iniDf[,c("name", "est")]
+    .pre <- oldModel$iniDf[, c("name", "est")]
     names(.pre)[2] <- "estPre"
-    .post <- newModel$iniDf[,c("name", "est")]
-    .both <- merge(.pre, .post, all.x=TRUE, all.y=TRUE, by="name")
-    if (any(is.na(.both$est))) return(FALSE)
-    if (any(is.na(.both$estPre))) return(FALSE)
+    .post <- newModel$iniDf[, c("name", "est")]
+    .both <- merge(.pre, .post, all.x = TRUE, all.y = TRUE, by = "name")
+    if (any(is.na(.both$est))) {
+      return(FALSE)
+    }
+    if (any(is.na(.both$estPre))) {
+      return(FALSE)
+    }
     if (all(abs(.both$est - .both$estPre) < 1e-10)) {
       return(TRUE)
     }
@@ -117,39 +165,47 @@
 #'   The class needs to be adjusted and needs to be compressed
 #' @noRd
 #' @author Matthew L. Fidler
-.newModelAdjust <- function(newModel, oldModel, rename=FALSE) {
+.newModelAdjust <- function(newModel, oldModel, rename = FALSE) {
   newModel <- rxUiDecompress(newModel)
   oldModel <- rxUiDecompress(oldModel)
   lapply(c("meta", "sticky", "model", "modelName"), function(x) {
-    if (exists(x, envir=oldModel)) {
-      assign(x, get(x, envir=oldModel), envir=newModel)
+    if (exists(x, envir = oldModel)) {
+      if (x == "meta") {
+        # meta must be forked, not shared by reference: the simulation-model
+        # cache (`.simModelBase`) lives in meta, so a shared env lets either
+        # model pick up the other's cached simulation model after piping.
+        # This is the invariant rxUiGet.simulationModel documents and
+        # .copyUi() already follows.  The fork is shallow (see
+        # .copyMetaForPiping) so metadata carried over keeps the reference
+        # semantics it had when meta was shared.
+        assign(x, .copyMetaForPiping(get(x, envir = oldModel)), envir = newModel)
+      } else {
+        assign(x, get(x, envir = oldModel), envir = newModel)
+      }
     }
   })
   if (rename || .modelsNearlySame(newModel, oldModel)) {
-    lapply(.getAllSigEnv(oldModel),
-           function(x) {
-             assign(x, get(x, envir=oldModel), envir=newModel)
-           })
+    lapply(.getAllSigEnv(oldModel), function(x) {
+      assign(x, get(x, envir = oldModel), envir = newModel)
+    })
     return(newModel)
   }
   .drop <- .getDropEnv(oldModel)
   .keep <- .getKeepEnv(oldModel)
   lapply(.keep, function(v) {
-    assign(v, get(v, envir=oldModel), envir=newModel)
+    assign(v, get(v, envir = oldModel), envir = newModel)
   })
   lapply(.drop, function(v) {
-    if (exists(v, envir=newModel)) {
-      rm(list=v, envir=newModel)
+    if (exists(v, envir = newModel)) {
+      rm(list = v, envir = newModel)
     }
   })
   if (length(.drop) > 0) {
     cli::cli_alert("significant model change detected")
     if (length(.keep) > 0) {
-      cli::cli_alert(sprintf("kept in model: '%s'",
-                             paste(paste0("$", .keep), collapse="', '")))
+      cli::cli_alert(sprintf("kept in model: '%s'", paste(paste0("$", .keep), collapse = "', '")))
     }
-    cli::cli_alert(sprintf("removed from model: '%s'",
-                           paste(paste0("$", .drop), collapse="', '")))
+    cli::cli_alert(sprintf("removed from model: '%s'", paste(paste0("$", .drop), collapse = "', '")))
   }
   newModel
 }
@@ -173,7 +229,9 @@
   .clsModel <- class(x)
   .model <- rxUiDecompress(x)
   .modelFun <- .model$fun # don't use as-function to avoid environment issues
-  if (!inherits(.modelFun, "function")) stop("wrong input for 'x' in .bodySetRxUi", call.=FALSE)
+  if (!inherits(.modelFun, "function")) {
+    stop("wrong input for 'x' in .bodySetRxUi", call. = FALSE)
+  }
   body(.modelFun) <- value
   .modelFun()
 }
@@ -182,7 +240,7 @@
 #' information (like data)
 #'
 #' @param x The rxUi object
-#' @param envir environment where the assignment ocurs
+#' @param envir environment where the assignment occurs
 #' @param value the value that will be assigned
 #' @return The rxode2 ui/function
 #' @export
@@ -239,27 +297,27 @@
 #'
 #' rxode2(ui) <- two.compartment
 #'
-`rxode2<-` <- function(x, envir=environment(x), value) {
+#' @family Model UI and piping
+`rxode2<-` <- function(x, envir = environment(x), value) {
   UseMethod("rxode2<-")
 }
 #' @rdname rxode2-set
 #' @export
-`rxode2<-.function` <- function(x, envir=environment(x), value) {
+`rxode2<-.function` <- function(x, envir = environment(x), value) {
   .val <- force(value)
   if (inherits(.val, "{")) {
     .fun <- function() {} #nolint
     body(.fun) <- .val
     return(.fun)
   } else if (!inherits(value, "function")) {
-    stop("cannot figure out how to assign this to the with rxode()<-",
-         call.=FALSE)
+    stop("cannot figure out how to assign this to the with rxode()<-", call. = FALSE)
   }
   return(force(value))
 }
 
 #' @rdname rxode2-set
 #' @export
-`rxode2<-.default` <- function(x, envir=environment(x), value) {
+`rxode2<-.default` <- function(x, envir = environment(x), value) {
   force(value)
   .v <- value
   if (inherits(value, "function")) {
@@ -267,7 +325,7 @@
   } else if (inherits(value, "rxUi")) {
     value <- body(as.function(value))
   } else if (!inherits(value, "{")) {
-    stop("do not know how to assign this", call.=FALSE)
+    stop("do not know how to assign this", call. = FALSE)
   }
   .ret <- .bodySetRxUi(x, envir = parent.frame(), value)
   if (inherits(x, "rxUi")) {
@@ -285,13 +343,13 @@
 
 #'@rdname rxode2-set
 #'@export
-`rxode<-` <- function(x, envir=environment(x), value) {
+`rxode<-` <- function(x, envir = environment(x), value) {
   UseMethod("rxode2<-")
 }
 
 #'@rdname rxode2-set
 #'@export
-`RxODE<-` <- function(x, envir=environment(x), value) {
+`RxODE<-` <- function(x, envir = environment(x), value) {
   UseMethod("rxode2<-")
 }
 
@@ -299,7 +357,7 @@
 `$<-.rxUi` <- function(x, name, value) {
   .raw <- is.list(x) || inherits(x, "raw")
   if (!.raw) {
-    assign(name, value, envir=x)
+    assign(name, value, envir = x)
     return(x)
   }
   .x <- x
@@ -313,11 +371,10 @@
   }
   .x <- rxUiDecompress(.x)
   if (exists(name, .x)) {
-    stop("'", name, "' is a fixed UI component and should not be overwritten",
-         call.=FALSE)
+    stop("'", name, "' is a fixed UI component and should not be overwritten", call. = FALSE)
   }
   .meta <- get("meta", .x)
-  assign(name, value, envir=.meta)
+  assign(name, value, envir = .meta)
   .x <- rxUiCompress(.x)
   .x
 }

@@ -3,13 +3,14 @@ rxTest({
     test_that("tests the internal df repetition routines", {
       expect_equal(
         .vecDf(c(a = 1, b = 1, c = 3), 3),
-        structure(list(
-          a = c(1, 1, 1),
-          b = c(1, 1, 1),
-          c = c(3, 3, 3)
-        ),
-        row.names = c(NA, -3L),
-        class = "data.frame"
+        structure(
+          list(
+            a = c(1, 1, 1),
+            b = c(1, 1, 1),
+            c = c(3, 3, 3)
+          ),
+          row.names = c(NA, -3L),
+          class = "data.frame"
         )
       )
       expect_error(.vecDf(c(a = 1, b = 1, c = 3), 0))
@@ -25,7 +26,8 @@ rxTest({
       )
 
       theta <- data.frame(
-        a = as.double(1:4), b = as.double(5:8),
+        a = as.double(1:4),
+        b = as.double(5:8),
         c = as.double(9:12)
       )
 

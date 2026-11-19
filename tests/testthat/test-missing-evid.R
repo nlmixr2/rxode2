@@ -13,7 +13,7 @@ rxTest({
   m <- "liblsoda"
   d <- 3
 
-  for (m in c("liblsoda", "lsoda", "dop853")) {
+  for (m in .methods0) {
     test_that(sprintf("missing evid tests for %s", m), {
       for (dur in c(0.5, 1)) {
         for (ii in seq(2, 24, by = 2)) {
@@ -34,7 +34,6 @@ rxTest({
           et2 <- et(et)
 
           expect_equal(data.frame(et), data.frame(et2)[, c("time", "amt", "rate", "ii", "addl")])
-
 
           d <- 3
           et <- et() |>

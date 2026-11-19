@@ -27,17 +27,28 @@ ode.1c.ka$simulationModel
 But compartments defined before all the differential equations is not supported;  So the model below:
 
 ```
-ode.1c.ka <- rxode2({
+ode.1c.ka <- function() {
+  model({
     cmt(eff)
-    C2 = center/V;
+    C2 = center/V
     d / dt(depot) = -KA * depot
     d/dt(center) = KA * depot - CL*C2
-})
+  })
+}
+ode.1c.ka <- ode.1c.ka()
 ```
 
 will give an error:
 
 ```
-Error in rxModelVars_(obj) : 
-  Evaluation error: Compartment 'eff' needs differential equations defined.
+rxode2 model syntax error:
+================================================================================
+:ERR: compartment 'eff' needs differential equations defined:
+
+:001: cmt(eff)
+:002: C2 = center/V
+:003: d/dt(depot) = -KA * depot
+:004: d/dt(center) = KA * depot - CL * C2
+================================================================================
+Error : syntax errors (see above)
 ```

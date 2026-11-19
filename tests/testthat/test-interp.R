@@ -1,6 +1,5 @@
 rxTest({
   test_that("interpolation functions", {
-
     tmp <- rxModelVars("locf(a);\n ret=a+b")
 
     expect_equal(rxNorm(tmp), "locf(a);\nret=a+b;\n")
@@ -14,7 +13,19 @@ rxTest({
     expect_equal(as.character(tmp$interp["b"]), "default")
 
     expect_error(rxModelVars("params(b, a);\nlocf(a);\nnocb(a);\n ret=a+b"))
+  })
 
+  test_that("line number increments correctly after interpolation error", {
+    tmp <- normalizePath(tempfile(), mustWork = FALSE)
+    on.exit(unlink(tmp))
+    .rxWithSinkBoth(tmp, {
+      expect_error(rxModelVars("params(b, a);\nlocf(a);\nnocb(a);\n ret=a+b"))
+    })
+    lines <- paste(readLines(tmp), collapse = "\n")
+    expect_true(grepl(":004:", lines))
+  })
+
+  test_that("interpolation functions (continued)", {
     tmp <- rxModelVars("params(b, a);\nlinear(a);\n ret=a+b")
 
     expect_equal(as.character(tmp$interp["a"]), "linear")
@@ -27,12 +38,9 @@ rxTest({
     tmp <- rxModelVars("params(b, a);\nmidpoint(a);\n ret=a+b")
     expect_equal(as.character(tmp$interp["a"]), "midpoint")
     expect_equal(as.character(tmp$interp["b"]), "default")
-
-
   })
 
   test_that("ui $interpLines", {
-
     f <- function() {
       ini({
         tka <- 0.45
@@ -59,11 +67,10 @@ rxTest({
 
     ui <- rxode(f)
 
-    expect_equal(ui$interpLines,
-                 list(str2lang("linear(WT)"),
-                      str2lang("locf(b)"),
-                      str2lang("nocb(c)"),
-                      str2lang("midpoint(d)")))
+    expect_equal(
+      ui$interpLines,
+      list(str2lang("linear(WT)"), str2lang("locf(b)"), str2lang("nocb(c)"), str2lang("midpoint(d)"))
+    )
 
     f <- function() {
       ini({
@@ -91,11 +98,10 @@ rxTest({
 
     ui <- rxode(f)
 
-    expect_equal(ui$interpLines,
-                 list(str2lang("linear(WT)"),
-                      str2lang("locf(b)"),
-                      str2lang("nocb(c)"),
-                      str2lang("midpoint(d)")))
+    expect_equal(
+      ui$interpLines,
+      list(str2lang("linear(WT)"), str2lang("locf(b)"), str2lang("nocb(c)"), str2lang("midpoint(d)"))
+    )
 
     f <- function() {
       ini({
@@ -120,8 +126,7 @@ rxTest({
 
     ui <- rxode(f)
 
-    expect_equal(ui$interpLines,
-                 list(str2lang("locf(WT, b, d, c)")))
+    expect_equal(ui$interpLines, list(str2lang("locf(WT, b, d, c)")))
 
     f <- function() {
       ini({
@@ -146,12 +151,9 @@ rxTest({
     ui <- rxode(f)
 
     expect_null(ui$interpLines)
-
   })
 
-
   test_that("interp $simulationModel", {
-
     f <- function() {
       ini({
         tka <- 0.45
@@ -218,7 +220,6 @@ rxTest({
 
     ui <- rxode(f)
 
-
     expect_error(ui$simulationModel, NA)
 
     mod <- ui$simulationModel
@@ -236,13 +237,9 @@ rxTest({
     expect_true(rxModelVars(mod)$interp["b"] == "default")
     expect_true(rxModelVars(mod)$interp["c"] == "default")
     expect_true(rxModelVars(mod)$interp["d"] == "default")
-
-
   })
 
-
   test_that("time varying character/factors should not be interpolated by linear solving", {
-
     f <- function() {
       ini({
         tka <- 0.45
@@ -266,19 +263,18 @@ rxTest({
       })
     }
 
-
-    et <- et(amt=100) |>
+    et <- et(amt = 100) |>
       et(0:24) |>
       as.data.frame()
 
-    et$OCC  <- "first"
+    et$OCC <- "first"
     et$OCC[et$time > 12] <- "second"
 
     f <- suppressWarnings(f()$simulationIniModel)
-    expect_warning(rxSolve(f, et, covsInterpolation="linear"))
-    expect_warning(rxSolve(f, et, covsInterpolation="nocb"), NA)
-    expect_warning(rxSolve(f, et, covsInterpolation="locf"), NA)
-    expect_warning(rxSolve(f, et, covsInterpolation="midpoint"))
+    expect_warning(rxSolve(f, et, covsInterpolation = "linear"))
+    expect_warning(rxSolve(f, et, covsInterpolation = "nocb"), NA)
+    expect_warning(rxSolve(f, et, covsInterpolation = "locf"), NA)
+    expect_warning(rxSolve(f, et, covsInterpolation = "midpoint"))
 
     f <- function() {
       ini({
@@ -391,6 +387,5 @@ rxTest({
     f <- suppressWarnings(f()$simulationIniModel)
 
     expect_warning(rxSolve(f, et), NA)
-
   })
 })

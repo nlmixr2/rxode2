@@ -1,6 +1,7 @@
 #define USE_FC_LEN_T
 #define STRICT_R_HEADERS
 #include <Rcpp.h>
+#include "rxProtect.h"
 #include <R.h>
 #include "../inst/include/rxode2parse.h"
 
@@ -30,7 +31,7 @@ List cbindThetaOmegaNM(NumericMatrix& inputParameters, List& individualParameter
       NumericVector cur = inputParameters(_, i);
       ret[i] = cur;
     }
-  } else if (tot %  nstud == 0) {
+  } else if (nstud > 0 && tot % nstud == 0) {
     int nsub = tot / nstud;
     for (int i = inputN.size(); i--; ) {
       NumericVector cur(tot);
@@ -40,7 +41,7 @@ List cbindThetaOmegaNM(NumericMatrix& inputParameters, List& individualParameter
       ret[i] = cur;
     }
   } else {
-    stop("input parameter matrix does not match the number of studies (nStud) or total number of simulated subjects (nStud*nSub)");
+    rxError("input parameter matrix does not match the number of studies (nStud) or total number of simulated subjects (nStud*nSub)");
   }
   for (int i = individualN.size(); i--; ) {
     ret[inputN.size() + i] = individualParameters[i];
@@ -52,19 +53,48 @@ List cbindThetaOmegaNM(NumericMatrix& inputParameters, List& individualParameter
 }
 
 List cbindThetaOmegaL(List& inputParameters, List& individualParameters) {
+  if (inputParameters.size() == 0) {
+    rxError("input parameter data.frame does not match the number of studies (nStud) or total number of simulated subjects (nStud*nSub)");
+  }
   int tot = Rf_length(individualParameters[0]);
   int nstud = Rf_length(inputParameters[0]);
   List ret(inputParameters.size() + individualParameters.size()) ;
   CharacterVector inputN = inputParameters.attr("names");
   CharacterVector individualN = individualParameters.attr("names");
+  // A character or factor column is kept as it is; rxSolve converts it as
+  // etTrans() converts a data column, if a parameter reads it.
   if (nstud == tot) {
     for (int i = inputN.size(); i--;) {
+      if (TYPEOF(inputParameters[i]) == STRSXP || Rf_isFactor(inputParameters[i])) {
+        ret[i] = inputParameters[i];
+        continue;
+      }
       NumericVector cur = as<NumericVector>(inputParameters[i]);
       ret[i] = cur;
     }
-  } else if (tot %  nstud == 0) {
+  } else if (nstud > 0 && tot % nstud == 0) {
     int nsub = tot / nstud;
     for (int i = inputN.size(); i--; ) {
+      if (TYPEOF(inputParameters[i]) == STRSXP) {
+        CharacterVector curIn = inputParameters[i];
+        CharacterVector cur(tot);
+        for (int j=0; j < nstud; j++) {
+          for (int k=0; k < nsub; k++) cur[j*nsub + k] = curIn[j];
+        }
+        ret[i] = cur;
+        continue;
+      }
+      if (Rf_isFactor(inputParameters[i])) {
+        IntegerVector curIn = inputParameters[i];
+        IntegerVector cur(tot);
+        for (int j=0; j < nstud; j++) {
+          std::fill_n(&cur[0] + j*nsub, nsub, curIn[j]);
+        }
+        cur.attr("levels") = curIn.attr("levels");
+        cur.attr("class") = curIn.attr("class");
+        ret[i] = cur;
+        continue;
+      }
       NumericVector cur(tot);
       NumericVector curIn = as<NumericVector>(inputParameters[i]);
       for (int j=0; j < nstud; j++) {
@@ -73,7 +103,7 @@ List cbindThetaOmegaL(List& inputParameters, List& individualParameters) {
       ret[i] = cur;
     }
   } else {
-    stop("input parameter data.frame does not match the number of studies (nStud) or total number of simulated subjects (nStud*nSub)");
+    rxError("input parameter data.frame does not match the number of studies (nStud) or total number of simulated subjects (nStud*nSub)");
   }
   for (int i = individualN.size(); i--; ) {
     ret[inputN.size() + i] = individualParameters[i];
@@ -101,7 +131,7 @@ List cbindThetaOmega(RObject inputParameters, List &individualParameters) {
      ret[1] = individualParameters;
      return ret;
   } else {
-    stop(_("unexpected parameter object"));
+    rxError(_("unexpected parameter object"));
   }
   ret[0] = List::create();
   ret[1] = individualParameters;
@@ -110,9 +140,10 @@ List cbindThetaOmega(RObject inputParameters, List &individualParameters) {
 
 
 extern "C" SEXP _rxode2_rxCbindStudyIndividual(SEXP inputParameters, SEXP individualParameters) {
+  rxProtect rx_protect;
   RObject ip = as<RObject>(inputParameters);
   List ip2 = as<List>(individualParameters);
-  SEXP ret = PROTECT(as<SEXP>(cbindThetaOmega(ip, ip2)[0]));
-  UNPROTECT(1);
+  SEXP ret = rx_protect.protect(as<SEXP>(cbindThetaOmega(ip, ip2)[0]));
+  // UNPROTECT
   return ret;
 }

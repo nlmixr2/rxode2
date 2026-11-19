@@ -14,6 +14,8 @@ bool useRxSeed = false;
 
 uint32_t rxSeed = 0;
 
+static uint32_t rxLastSeed = 0;
+
 extern "C" SEXP _rxode2_rxSetSeed(SEXP intIn) {
   int type = TYPEOF(intIn);
   if (Rf_length(intIn) != 1) {
@@ -53,7 +55,13 @@ extern "C" uint32_t getRxSeed1(int ncores) {
     seed = static_cast<uint32_t>(seedD);
     seed = min2(seed, std::numeric_limits<uint32_t>::max() - ncores - 1);
   }
+  rxLastSeed = seed;
   return seed;
+}
+
+// The last seed handed out by getRxSeed1(), without advancing anything
+extern "C" uint32_t getRxLastSeed(void) {
+  return rxLastSeed;
 }
 
 extern "C" void setRxSeedFinal(uint32_t seed) {
@@ -62,7 +70,7 @@ extern "C" void setRxSeedFinal(uint32_t seed) {
   }
 }
 
-extern "C" void _rxode2_setGlobalSeed(SEXP seed) {
+extern "C" SEXP _rxode2_setGlobalSeed(SEXP seed) {
   Rcpp::Environment g = Rcpp::Environment::global_env();
   if (Rf_isNull(seed)) {
     g.remove(".Random.seed");
@@ -76,6 +84,7 @@ extern "C" void _rxode2_setGlobalSeed(SEXP seed) {
   } else {
     (Rf_errorcall)(R_NilValue, "%s", _("'seed' must be an integer vector"));
   }
+  return R_NilValue;
 }
 
 

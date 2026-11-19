@@ -1,4 +1,4 @@
-.asFunctionEnv <- new.env(parent=emptyenv())
+.asFunctionEnv <- new.env(parent = emptyenv())
 .asFunctionEnv$rx <- NULL
 #' @export
 as.function.rxUi <- function(x, ...) {
@@ -14,23 +14,15 @@ as.function.rxode2tos <- function(x, ...) {
 
 #' @export
 as.function.rxode2 <- function(x, ...) {
-  eval(str2lang(paste(c("function() {",
-    "model({",
-    rxNorm(x),
-    "})",
-    "}"), collapse="\n")))
+  eval(str2lang(paste(c("function() {", "model({", rxNorm(x), "})", "}"), collapse = "\n")))
 }
 
 #' @export
 as.function.character <- function(x, ...) {
   if (length(x) != 1) {
-    x <- paste(x, collapse="\n")
+    x <- paste(x, collapse = "\n")
   }
-  eval(str2lang(paste(c("function() {",
-                        "model({",
-                        rxNorm(x),
-                        "})",
-                        "}"), collapse="\n")))
+  eval(str2lang(paste(c("function() {", "model({", rxNorm(x), "})", "}"), collapse = "\n")))
 }
 
 

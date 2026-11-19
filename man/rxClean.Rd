@@ -18,6 +18,27 @@ TRUE if successful
 \description{
 This cleans up any rxode2 loaded DLLs
 }
+\examples{
+# unloads all model DLLs and empties the rxode2 cache directory
+if (interactive()) {
+  rxClean()
+}
+}
+\seealso{
+Other Model definition:
+\code{\link[=rxCompile]{rxCompile()}},
+\code{\link[=rxCreateCache]{rxCreateCache()}},
+\code{\link[=rxDelete]{rxDelete()}},
+\code{\link[=rxLastCompile]{rxLastCompile()}},
+\code{\link[=rxNorm]{rxNorm()}},
+\code{\link{rxReservedKeywords}},
+\code{\link[=rxSupportedFuns]{rxSupportedFuns()}},
+\code{\link{rxSyntaxFunctions}},
+\code{\link[=rxUnloadAll]{rxUnloadAll()}},
+\code{\link[=rxode2]{rxode2()}},
+\code{\link[=summary.rxode2]{summary.rxode2()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Model definition}

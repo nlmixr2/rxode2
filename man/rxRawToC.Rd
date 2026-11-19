@@ -4,12 +4,12 @@
 \alias{rxRawToC}
 \title{Convert a Raw Vector or R object to C Code}
 \usage{
-rxRawToC(raw, type = c("xz", "qs2", "qdata", "base", "bzip2"))
+rxRawToC(raw, type = c("xz", "base", "bzip2"))
 }
 \arguments{
 \item{raw}{vector or R object to convert}
 
-\item{type}{serialization type; one of "qs2", "qdata", "base", "xz" or "bzip2".}
+\item{type}{serialization type; one of "base", "xz" or "bzip2".}
 }
 \value{
 raw vector for conversion to C in the codegen procedure

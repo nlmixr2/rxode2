@@ -16,7 +16,7 @@ binomProbs(x, ...)
   n = 0L,
   m = 0L,
   pred = FALSE,
-  piMethod = c("lim"),
+  piMethod = "lim",
   M = 5e+05,
   tol = .Machine$double.eps^0.25,
   ciMethod = c("wilson", "wilsonCorrect", "agrestiCoull", "wald", "wc", "ac"),
@@ -123,7 +123,7 @@ binomProbs(x, na.rm=TRUE)
 \item Newcombe, R. G. (1998). "Two-sided confidence intervals for the single
 proportion: comparison of seven methods". Statistics
 in Medicine. 17 (8):
-857–872. doi:10.1002/(SICI)1097-0258(19980430)17:8<857::AID-SIM777>3.0.CO;2-E. PMID
+857-872. doi:10.1002/(SICI)1097-0258(19980430)17:8<857::AID-SIM777>3.0.CO;2-E. PMID
 9595616.
 \item Hezhi Lu, Hua Jin,
 A new prediction interval for binomial random variable based on inferential models,
@@ -135,6 +135,26 @@ ISSN 0378-3758,
 https://doi.org/10.1016/j.jspi.2019.07.001.
 }
 }
+\seealso{
+Other Random variables:
+\code{\link[=meanProbs]{meanProbs()}},
+\code{\link[=rxbeta]{rxbeta()}},
+\code{\link[=rxbinom]{rxbinom()}},
+\code{\link[=rxcauchy]{rxcauchy()}},
+\code{\link[=rxchisq]{rxchisq()}},
+\code{\link[=rxexp]{rxexp()}},
+\code{\link[=rxf]{rxf()}},
+\code{\link[=rxgamma]{rxgamma()}},
+\code{\link[=rxgeom]{rxgeom()}},
+\code{\link[=rxnbinom]{rxnbinom()}},
+\code{\link[=rxnormV]{rxnormV()}},
+\code{\link[=rxord]{rxord()}},
+\code{\link[=rxpois]{rxpois()}},
+\code{\link[=rxt]{rxt()}},
+\code{\link[=rxunif]{rxunif()}},
+\code{\link[=rxweibull]{rxweibull()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Random variables}

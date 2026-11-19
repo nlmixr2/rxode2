@@ -1,11 +1,11 @@
 library(tidyverse)
 
 itdepends::dep_usage_pkg("RxODE") |>
-    count(pkg, sort = TRUE) |>
-    as.data.frame
+  count(pkg, sort = TRUE) |>
+  as.data.frame()
 
 
-if (FALSE){
+if (FALSE) {
   ## Creating optimized models for linCmt Advan
   ## rate 1-3 cmt
   m <- RxODE({
@@ -26,7 +26,7 @@ if (FALSE){
   message(rxOptExpr(rxNorm(m)))
 
   ## Now 1 compartment oral
-  m <-RxODE({
+  m <- RxODE({
     A1 <- A1last*exp(-t*ka)+b1
     A2 <- A1last*ka/(ka-k20)*(exp(-t*k20)-exp(-t*ka))+A2last*exp(-t*k20)+b2
   })
@@ -55,9 +55,7 @@ if (FALSE){
   })
 
   env <- rxS(m)
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n",
-                "A3=", paste0(env$A3),"\n")
+  mod <- paste0("A1=", paste0(env$A1), "\n", "A2=", paste0(env$A2), "\n", "A3=", paste0(env$A3), "\n")
 
   message(rxOptExpr(mod))
 
@@ -157,7 +155,6 @@ if (FALSE){
 
   message(rxOptExpr(rxNorm(m)))
 
-
   ## Now paramterizations
 
   m <- RxODE({
@@ -254,12 +251,8 @@ if (FALSE){
     A3= -((k23*r1-A1last*k23*ka)*exp(-ka*t))/(ka^2+(-beta-alpha)*ka+alpha*beta)+(((k23*ka-beta*k23)*r2+k23*ka*r1+((-A2last-A1last)*beta*k23+A3last*beta^2-A3last*E2*beta)*ka+A2last*beta^2*k23-A3last*beta^3+A3last*E2*beta^2)*exp(-beta*t))/((beta^2-alpha*beta)*ka-beta^3+alpha*beta^2)-(((k23*ka-alpha*k23)*r2+k23*ka*r1+((-A2last-A1last)*alpha*k23+A3last*alpha^2-A3last*E2*alpha)*ka+A2last*alpha^2*k23-A3last*alpha^3+A3last*E2*alpha^2)*exp(-alpha*t))/((alpha*beta-alpha^2)*ka-alpha^2*beta+alpha^3)+(k23*r2+k23*r1)/(alpha*beta);
   })
 
-
   env <- rxS(m)
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n",
-                "A3=", paste0(env$A3),"\n")
-
+  mod <- paste0("A1=", paste0(env$A1), "\n", "A2=", paste0(env$A2), "\n", "A3=", paste0(env$A3), "\n")
 
   tmp2 <- RxODE(rxOptExpr(mod))
 
@@ -303,11 +296,20 @@ if (FALSE){
 
   env <- rxS(m)
 
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n",
-                "A3=", paste0(env$A3),"\n",
-                "A4=", paste0(env$A4),"\n")
-
+  mod <- paste0(
+    "A1=",
+    paste0(env$A1),
+    "\n",
+    "A2=",
+    paste0(env$A2),
+    "\n",
+    "A3=",
+    paste0(env$A3),
+    "\n",
+    "A4=",
+    paste0(env$A4),
+    "\n"
+  )
 
   tmp2 <- RxODE(rxOptExpr(mod))
 
@@ -326,8 +328,7 @@ if (FALSE){
 
   env <- rxS(m)
 
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n")
+  mod <- paste0("A1=", paste0(env$A1), "\n", "A2=", paste0(env$A2), "\n")
 
   m <- RxODE({
     r1=0
@@ -339,9 +340,7 @@ if (FALSE){
 
   env <- rxS(m)
 
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n")
-
+  mod <- paste0("A1=", paste0(env$A1), "\n", "A2=", paste0(env$A2), "\n")
 
   m <- RxODE({
     r2=0
@@ -355,9 +354,7 @@ if (FALSE){
 
   env <- rxS(m)
 
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n",
-                "A3=", paste0(env$A3))
+  mod <- paste0("A1=", paste0(env$A1), "\n", "A2=", paste0(env$A2), "\n", "A3=", paste0(env$A3))
 
   m <- RxODE({
     r1=0
@@ -371,9 +368,7 @@ if (FALSE){
 
   env <- rxS(m)
 
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n",
-                "A3=", paste0(env$A3))
+  mod <- paste0("A1=", paste0(env$A1), "\n", "A2=", paste0(env$A2), "\n", "A3=", paste0(env$A3))
 
   m <- RxODE({
     r2=0
@@ -389,10 +384,20 @@ if (FALSE){
 
   env <- rxS(m)
 
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n",
-                "A3=", paste0(env$A3),"\n",
-                "A4=", paste0(env$A4),"\n")
+  mod <- paste0(
+    "A1=",
+    paste0(env$A1),
+    "\n",
+    "A2=",
+    paste0(env$A2),
+    "\n",
+    "A3=",
+    paste0(env$A3),
+    "\n",
+    "A4=",
+    paste0(env$A4),
+    "\n"
+  )
 
   m <- RxODE({
     r1=0
@@ -408,10 +413,20 @@ if (FALSE){
 
   env <- rxS(m)
 
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n",
-                "A3=", paste0(env$A3),"\n",
-                "A4=", paste0(env$A4),"\n")
+  mod <- paste0(
+    "A1=",
+    paste0(env$A1),
+    "\n",
+    "A2=",
+    paste0(env$A2),
+    "\n",
+    "A3=",
+    paste0(env$A3),
+    "\n",
+    "A4=",
+    paste0(env$A4),
+    "\n"
+  )
 
   ## 2 compartment infusion
   m <- RxODE({
@@ -423,8 +438,7 @@ if (FALSE){
 
   env <- rxS(m)
 
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n")
+  mod <- paste0("A1=", paste0(env$A1), "\n", "A2=", paste0(env$A2), "\n")
 
   ## 3 compartment infusion
   m <- RxODE({
@@ -436,12 +450,9 @@ if (FALSE){
     A3=A3last*(eL1*(E1-lambda1)*(E2-lambda1)/((lambda2-lambda1)*(lambda3-lambda1))+eL2*(E1-lambda2)*(E2-lambda2)/((lambda1-lambda2)*(lambda3-lambda2))+eL3*(E1-lambda3)*(E2-lambda3)/((lambda1-lambda3)*(lambda2-lambda3)))+eL1*(J-A1last*k13*lambda1)/((lambda1-lambda2)*(lambda1-lambda3))+eL2*(A1last*k13*lambda2-J)/((lambda1-lambda2)*(lambda2-lambda3))+eL3*(A1last*k13*lambda3-J)/((lambda1-lambda3)*(lambda3-lambda2))+r1*k13*(E2/(lambda1*lambda2*lambda3)-eL1*(E2-lambda1)/(lambda1*(lambda2-lambda1)*(lambda3-lambda1))-eL2*(E2-lambda2)/(lambda2*(lambda1-lambda2)*(lambda3-lambda2))-eL3*(E2-lambda3)/(lambda3*(lambda1-lambda3)*(lambda2-lambda3)))
   })
 
-
   env <- rxS(m)
 
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n",
-                "A3=", paste0(env$A3),"\n")
+  mod <- paste0("A1=", paste0(env$A1), "\n", "A2=", paste0(env$A2), "\n", "A3=", paste0(env$A3), "\n")
 
   ## Two compartment steady state
 
@@ -458,8 +469,7 @@ if (FALSE){
 
   env <- rxS(m)
 
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n")
+  mod <- paste0("A1=", paste0(env$A1), "\n", "A2=", paste0(env$A2), "\n")
 
   ## Three compartment tau steady state
 
@@ -487,12 +497,9 @@ if (FALSE){
     A3 <- A3term1+A3term2            #Amount in the second-peripheral compartment
   })
 
-
   env <- rxS(m)
 
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n",
-                "A3=", paste0(env$A2),"\n")
+  mod <- paste0("A1=", paste0(env$A1), "\n", "A2=", paste0(env$A2), "\n", "A3=", paste0(env$A2), "\n")
 
   ## IV bolus steady state
   ## 2 compartment
@@ -504,8 +511,7 @@ if (FALSE){
     A2=(((A2last*E1+A1last*k12)-A2last*lambda1)*exp(-t*lambda1)-((A2last*E1+A1last*k12)-A2last*lambda2)*exp(-t*lambda2))/(lambda2-lambda1)+r1*k12*(1/(lambda1*lambda2)+exp(-t*lambda1)/(lambda1*(lambda1-lambda2))-exp(-t*lambda2)/(lambda2*(lambda1-lambda2)))
   })
   env <- rxS(m)
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n")
+  mod <- paste0("A1=", paste0(env$A1), "\n", "A2=", paste0(env$A2), "\n")
 
   ##  Then calculate at t after tinf
   m <- RxODE({
@@ -518,8 +524,7 @@ if (FALSE){
   })
 
   env <- rxS(m)
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n")
+  mod <- paste0("A1=", paste0(env$A1), "\n", "A2=", paste0(env$A2), "\n")
 
   ## Three compartment model
   m <- RxODE({
@@ -536,9 +541,7 @@ if (FALSE){
   })
 
   env <- rxS(m)
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n",
-                "A3=", paste0(env$A3),"\n")
+  mod <- paste0("A1=", paste0(env$A1), "\n", "A2=", paste0(env$A2), "\n", "A3=", paste0(env$A3), "\n")
   ## Now use A1last to A3 last from above with t=tinf
   m <- RxODE({
     A1last=r1*(E2*E3/(lambda1*lambda2*lambda3) - exp(-tinf*lambda1)*(E2 - lambda1)*(E3 - lambda1)/((-lambda1 + lambda3)*(-lambda1 + lambda2)*lambda1) - exp(-tinf*lambda2)*(E3 - lambda2)*(E2 - lambda2)/((lambda1 - lambda2)*(-lambda2 + lambda3)*lambda2) - exp(-tinf*lambda3)*(E2 - lambda3)*(E3 - lambda3)/((lambda1 - lambda3)*(lambda2 - lambda3)*lambda3))
@@ -567,13 +570,11 @@ if (FALSE){
   })
 
   env <- rxS(m)
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n",
-                "A3=", paste0(env$A3),"\n")
+  mod <- paste0("A1=", paste0(env$A1), "\n", "A2=", paste0(env$A2), "\n", "A3=", paste0(env$A3), "\n")
 
   ## Oral steady state tau
   ## 1 compartment
-  m <-RxODE({
+  m <- RxODE({
     A1last = b1
     A2last = 0
     A1 <- A1last*exp(-t*ka)
@@ -581,10 +582,9 @@ if (FALSE){
   })
 
   env <- rxS(m)
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n")
+  mod <- paste0("A1=", paste0(env$A1), "\n", "A2=", paste0(env$A2), "\n")
 
-  m <-RxODE({
+  m <- RxODE({
     A1last = 0
     A2last = b2
     A1 <- A1last*exp(-t*ka)
@@ -592,8 +592,7 @@ if (FALSE){
   })
 
   env <- rxS(m)
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n")
+  mod <- paste0("A1=", paste0(env$A1), "\n", "A2=", paste0(env$A2), "\n")
 
   ## 2 compartment oral SS deriv
   m <- RxODE({
@@ -614,9 +613,7 @@ if (FALSE){
   })
 
   env <- rxS(m)
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n",
-                "A3=", paste0(env$A3),"\n")
+  mod <- paste0("A1=", paste0(env$A1), "\n", "A2=", paste0(env$A2), "\n", "A3=", paste0(env$A3), "\n")
 
   m <- RxODE({
     A1last = 0
@@ -636,9 +633,7 @@ if (FALSE){
   })
 
   env <- rxS(m)
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n",
-                "A3=", paste0(env$A3),"\n")
+  mod <- paste0("A1=", paste0(env$A1), "\n", "A2=", paste0(env$A2), "\n", "A3=", paste0(env$A3), "\n")
 
   ## 3 compartment oral SS deriv
   m <- RxODE({
@@ -671,11 +666,20 @@ if (FALSE){
   })
 
   env <- rxS(m)
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n",
-                "A3=", paste0(env$A3),"\n",
-                "A4=", paste0(env$A4),"\n")
-
+  mod <- paste0(
+    "A1=",
+    paste0(env$A1),
+    "\n",
+    "A2=",
+    paste0(env$A2),
+    "\n",
+    "A3=",
+    paste0(env$A3),
+    "\n",
+    "A4=",
+    paste0(env$A4),
+    "\n"
+  )
 
   m <- RxODE({
     A1last = 0
@@ -707,10 +711,20 @@ if (FALSE){
   })
 
   env <- rxS(m)
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n",
-                "A3=", paste0(env$A3),"\n",
-                "A4=", paste0(env$A4),"\n")
+  mod <- paste0(
+    "A1=",
+    paste0(env$A1),
+    "\n",
+    "A2=",
+    paste0(env$A2),
+    "\n",
+    "A3=",
+    paste0(env$A3),
+    "\n",
+    "A4=",
+    paste0(env$A4),
+    "\n"
+  )
 
   ## Ka rate equations for steady state
 
@@ -724,8 +738,7 @@ if (FALSE){
   })
 
   env <- rxS(m)
-  mod <- gsub("[-]t[*]", "-tinf*", paste0("A1last=", paste0(env$A1),"\n",
-                                          "A2last=", paste0(env$A2),"\n"))
+  mod <- gsub("[-]t[*]", "-tinf*", paste0("A1last=", paste0(env$A1), "\n", "A2last=", paste0(env$A2), "\n"))
 
   ## With amounts at tinf, solve to steady state
   m <- RxODE({
@@ -736,10 +749,7 @@ if (FALSE){
   })
 
   env <- rxS(m)
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n")
-
-
+  mod <- paste0("A1=", paste0(env$A1), "\n", "A2=", paste0(env$A2), "\n")
 
   ## First solve tinf
   m <- RxODE({
@@ -751,8 +761,7 @@ if (FALSE){
   })
 
   env <- rxS(m)
-  mod <- gsub("[-]t[*]", "-tinf*", paste0("A1last=", paste0(env$A1),"\n",
-                                          "A2last=", paste0(env$A2),"\n"))
+  mod <- gsub("[-]t[*]", "-tinf*", paste0("A1last=", paste0(env$A1), "\n", "A2last=", paste0(env$A2), "\n"))
 
   ## With amounts at tinf, solve to steady state
   m <- RxODE({
@@ -763,8 +772,7 @@ if (FALSE){
   })
 
   env <- rxS(m)
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n")
+  mod <- paste0("A1=", paste0(env$A1), "\n", "A2=", paste0(env$A2), "\n")
 
   ## 2 compartment oral steady state rate tau
   ## First solve to tinf
@@ -779,11 +787,13 @@ if (FALSE){
   })
 
   env <- rxS(m)
-  mod <- gsub("[-]t[*]", "-tinf*", paste0("A1last=", paste0(env$A1),"\n",
-                                          "A2last=", paste0(env$A2),"\n",
-                                          "A3last=", paste0(env$A3),"\n"))
+  mod <- gsub(
+    "[-]t[*]",
+    "-tinf*",
+    paste0("A1last=", paste0(env$A1), "\n", "A2last=", paste0(env$A2), "\n", "A3last=", paste0(env$A3), "\n")
+  )
 
-    m <-RxODE({
+  m <- RxODE({
         A1last=r1/ka - exp(-tinf*ka)*r1/ka
 A2last=r1*k32/(beta*alpha) + exp(-tinf*ka)*r1*(-k32 + ka)/(beta*alpha + ka*(-alpha - beta) + ka^2.0) - exp(-tinf*alpha)*r1*ka*(-alpha + k32)/(-beta*alpha^2.0 + ka*(beta*alpha - alpha^2.0) + alpha^3.0) + exp(-tinf*beta)*r1*ka*(-beta + k32)/(beta^2.0*alpha + ka*(-beta*alpha + beta^2.0) - beta^3.0)
         A3last=r1*k23/(beta*alpha) - exp(-tinf*ka)*r1*k23/(beta*alpha + ka*(-alpha - beta) + ka^2.0) - exp(-tinf*alpha)*r1*ka*k23/(-beta*alpha^2.0 + ka*(beta*alpha - alpha^2.0) + alpha^3.0) + exp(-tinf*beta)*r1*ka*k23/(beta^2.0*alpha + ka*(-beta*alpha + beta^2.0) - beta^3.0)
@@ -800,13 +810,11 @@ A2last=r1*k32/(beta*alpha) + exp(-tinf*ka)*r1*(-k32 + ka)/(beta*alpha + ka*(-alp
   })
 
   env <- rxS(m)
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n",
-                "A3=", paste0(env$A3),"\n")
+  mod <- paste0("A1=", paste0(env$A1), "\n", "A2=", paste0(env$A2), "\n", "A3=", paste0(env$A3), "\n")
 
-    message(rxOptExpr(mod))
+  message(rxOptExpr(mod))
 
-#####
+  #####
   ## r2 w/ steady state
   m <- RxODE({
     A1last=0
@@ -819,11 +827,13 @@ A2last=r1*k32/(beta*alpha) + exp(-tinf*ka)*r1*(-k32 + ka)/(beta*alpha + ka*(-alp
   })
 
   env <- rxS(m)
-  mod <- gsub("[-]t[*]", "-tinf*", paste0("A1last=", paste0(env$A1),"\n",
-                                          "A2last=", paste0(env$A2),"\n",
-                                          "A3last=", paste0(env$A3),"\n"))
+  mod <- gsub(
+    "[-]t[*]",
+    "-tinf*",
+    paste0("A1last=", paste0(env$A1), "\n", "A2last=", paste0(env$A2), "\n", "A3last=", paste0(env$A3), "\n")
+  )
 
-  m <-RxODE({
+  m <- RxODE({
     A1last=0
 A2last=r2*k32/(beta*alpha) - exp(-tinf*alpha)*r2*(-k32*alpha + ka*(-alpha + k32) + alpha^2.0)/(-beta*alpha^2.0 + ka*(beta*alpha - alpha^2.0) + alpha^3.0) + exp(-tinf*beta)*r2*(-k32*beta + ka*(-beta + k32) + beta^2.0)/(beta^2.0*alpha + ka*(-beta*alpha + beta^2.0) - beta^3.0)
 A3last=r2*k23/(beta*alpha) - exp(-tinf*alpha)*r2*(-k23*alpha + ka*k23)/(-beta*alpha^2.0 + ka*(beta*alpha - alpha^2.0) + alpha^3.0) + exp(-tinf*beta)*r2*(-k23*beta + ka*k23)/(beta^2.0*alpha + ka*(-beta*alpha + beta^2.0) - beta^3.0)
@@ -842,17 +852,42 @@ A3last=r2*k23/(beta*alpha) - exp(-tinf*alpha)*r2*(-k23*alpha + ka*k23)/(-beta*al
 
   env <- rxS(m)
 
-  mod <- gsub("\\b(ka|k[1-4][1-4]|r[1-2])\\b", "(*\\1)",
-              gsub("exp[(]-tinf[*]beta[)]", "eiB",
-             gsub("exp[(]-tinf[*]alpha[)]", "eiA",
-                  gsub("exp[(]-t[*]alpha[)]", "eA",
-                       gsub("exp[(]-t[*]beta[)]", "eB",
-                       gsub("exp(-t*ka)", "eKa",
-             gsub("exp(-ka*tinf)", "eiKa",
-                  gsub("(alpha|beta)\\^([1-4])[.][0]", "\\1\\2",
-                       paste0("A1=", paste0(env$A1),"\n",
-                              "A2=", paste0(env$A2),"\n",
-                              "A3=", paste0(env$A3),"\n")), fixed=TRUE), fixed=TRUE))))), perl=TRUE)
+  mod <- gsub(
+    "\\b(ka|k[1-4][1-4]|r[1-2])\\b",
+    "(*\\1)",
+    gsub(
+      "exp[(]-tinf[*]beta[)]",
+      "eiB",
+      gsub(
+        "exp[(]-tinf[*]alpha[)]",
+        "eiA",
+        gsub(
+          "exp[(]-t[*]alpha[)]",
+          "eA",
+          gsub(
+            "exp[(]-t[*]beta[)]",
+            "eB",
+            gsub(
+              "exp(-t*ka)",
+              "eKa",
+              gsub(
+                "exp(-ka*tinf)",
+                "eiKa",
+                gsub(
+                  "(alpha|beta)\\^([1-4])[.][0]",
+                  "\\1\\2",
+                  paste0("A1=", paste0(env$A1), "\n", "A2=", paste0(env$A2), "\n", "A3=", paste0(env$A3), "\n")
+                ),
+                fixed = TRUE
+              ),
+              fixed = TRUE
+            )
+          )
+        )
+      )
+    ),
+    perl = TRUE
+  )
 
   ## 3 compartment oral steady state infusion with tau
   m <- RxODE({
@@ -868,10 +903,24 @@ A3last=r2*k23/(beta*alpha) - exp(-tinf*alpha)*r2*(-k23*alpha + ka*k23)/(-beta*al
   })
 
   env <- rxS(m)
-  mod <- gsub("[-]t[*]", "-tinf*", paste0("A1last=", paste0(env$A1),"\n",
-                                          "A2last=", paste0(env$A2),"\n",
-                                          "A3last=", paste0(env$A3),"\n",
-                                          "A4last=", paste0(env$A4),"\n"))
+  mod <- gsub(
+    "[-]t[*]",
+    "-tinf*",
+    paste0(
+      "A1last=",
+      paste0(env$A1),
+      "\n",
+      "A2last=",
+      paste0(env$A2),
+      "\n",
+      "A3last=",
+      paste0(env$A3),
+      "\n",
+      "A4last=",
+      paste0(env$A4),
+      "\n"
+    )
+  )
 
   m2 <- RxODE(paste0(mod,"\n",
                     gsub("KA", "ka", gsub("\\blambda([1-3])\\b", "lam\\1", "\nB = A3last*k32+A4last*k42
@@ -899,22 +948,44 @@ A3last=r2*k23/(beta*alpha) - exp(-tinf*alpha)*r2*(-k23*alpha + ka*k23)/(-beta*al
 
   env <- rxS(m2)
 
-  mod2 <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n",
-                "A3=", paste0(env$A3),"\n",
-                "A4=", paste0(env$A4),"\n")
+  mod2 <- paste0(
+    "A1=",
+    paste0(env$A1),
+    "\n",
+    "A2=",
+    paste0(env$A2),
+    "\n",
+    "A3=",
+    paste0(env$A3),
+    "\n",
+    "A4=",
+    paste0(env$A4),
+    "\n"
+  )
 
-  m2 <- gsub("\\b(ka|k[1-4][1-4]|r[1])\\b", "(*\\1)",
-             gsub("exp[(]-lam([1-3])[*]tinf[)]", "eiL\\1",
-             gsub("exp[(]-t[*]lam([1-3])[)]", "eL\\1", gsub("exp(-t*ka)", "eKa",
-             gsub("exp(-ka*tinf)", "eiKa",
-                  gsub("(lam[1-4]|ka)\\^([1-4])[.][0]", "\\1\\2",
-                       mod2), fixed=TRUE), fixed=TRUE))), perl=TRUE)
+  m2 <- gsub(
+    "\\b(ka|k[1-4][1-4]|r[1])\\b",
+    "(*\\1)",
+    gsub(
+      "exp[(]-lam([1-3])[*]tinf[)]",
+      "eiL\\1",
+      gsub(
+        "exp[(]-t[*]lam([1-3])[)]",
+        "eL\\1",
+        gsub(
+          "exp(-t*ka)",
+          "eKa",
+          gsub("exp(-ka*tinf)", "eiKa", gsub("(lam[1-4]|ka)\\^([1-4])[.][0]", "\\1\\2", mod2), fixed = TRUE),
+          fixed = TRUE
+        )
+      )
+    ),
+    perl = TRUE
+  )
 
-    message(rxOptExpr(mod))
+  message(rxOptExpr(mod))
 
-
-    m <- RxODE({
+  m <- RxODE({
     A1last=0
     A2last=0
     A3last=0
@@ -927,10 +998,24 @@ A3last=r2*k23/(beta*alpha) - exp(-tinf*alpha)*r2*(-k23*alpha + ka*k23)/(-beta*al
   })
 
   env <- rxS(m)
-  mod <- gsub("[-]t[*]", "-tinf*", paste0("A1last=", paste0(env$A1),"\n",
-                                          "A2last=", paste0(env$A2),"\n",
-                                          "A3last=", paste0(env$A3),"\n",
-                                          "A4last=", paste0(env$A4),"\n"))
+  mod <- gsub(
+    "[-]t[*]",
+    "-tinf*",
+    paste0(
+      "A1last=",
+      paste0(env$A1),
+      "\n",
+      "A2last=",
+      paste0(env$A2),
+      "\n",
+      "A3last=",
+      paste0(env$A3),
+      "\n",
+      "A4last=",
+      paste0(env$A4),
+      "\n"
+    )
+  )
 
   m <- RxODE({
     A1last=0
@@ -962,11 +1047,20 @@ A3last=r2*k23/(beta*alpha) - exp(-tinf*alpha)*r2*(-k23*alpha + ka*k23)/(-beta*al
   })
 
   env <- rxS(m)
-  mod <- paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n",
-                "A3=", paste0(env$A3),"\n",
-                "A4=", paste0(env$A4),"\n")
-
+  mod <- paste0(
+    "A1=",
+    paste0(env$A1),
+    "\n",
+    "A2=",
+    paste0(env$A2),
+    "\n",
+    "A3=",
+    paste0(env$A3),
+    "\n",
+    "A4=",
+    paste0(env$A4),
+    "\n"
+  )
 
   ## 3 compartment bolus steady state redo
 
@@ -1000,23 +1094,42 @@ A3last=r2*k23/(beta*alpha) - exp(-tinf*alpha)*r2*(-k23*alpha + ka*k23)/(-beta*al
 
   env <- rxS(m)
 
-  mod <- gsub("\\b(ka|k[1-4][1-4]|[rb][1-2])\\b", "(*\\1)",
-              gsub("exp[(]-t[*]lambda([1-3])[)]", "eL\\1", paste0("A1=", paste0(env$A1),"\n",
-                "A2=", paste0(env$A2),"\n",
-                "A3=", paste0(env$A3),"\n")))
+  mod <- gsub(
+    "\\b(ka|k[1-4][1-4]|[rb][1-2])\\b",
+    "(*\\1)",
+    gsub(
+      "exp[(]-t[*]lambda([1-3])[)]",
+      "eL\\1",
+      paste0("A1=", paste0(env$A1), "\n", "A2=", paste0(env$A2), "\n", "A3=", paste0(env$A3), "\n")
+    )
+  )
 
-  env <- rxS("A1last=0
+  env <- rxS(
+    "A1last=0
 A2last=0
 A3last=0
 r2=0
 A1=r1/ka-((r1-A1last*ka)*exp(-ka*t))/ka
 A2=(((ka-k32)*r1-A1last*ka^2+A1last*k32*ka)*exp(-ka*t))/(ka^2+(-beta-alpha)*ka+alpha*beta)+((((k32-beta)*ka-beta*k32+beta^2)*r2+(k32-beta)*ka*r1+((-A3last-A2last-A1last)*beta*k32+(A2last+A1last)*beta^2)*ka+(A3last+A2last)*beta^2*k32-A2last*beta^3)*exp(-beta*t))/((beta^2-alpha*beta)*ka-beta^3+alpha*beta^2)-((((k32-alpha)*ka-alpha*k32+alpha^2)*r2+(k32-alpha)*ka*r1+((-A3last-A2last-A1last)*alpha*k32+(A2last+A1last)*alpha^2)*ka+(A3last+A2last)*alpha^2*k32-A2last*alpha^3)*exp(-alpha*t))/((alpha*beta-alpha^2)*ka-alpha^2*beta+alpha^3)+(k32*r2+k32*r1)/(alpha*beta)
-A3=-((k23*r1-A1last*k23*ka)*exp(-ka*t))/(ka^2+(-beta-alpha)*ka+alpha*beta)+(((k23*ka-beta*k23)*r2+k23*ka*r1+((-A2last-A1last)*beta*k23+A3last*beta^2-A3last*E2*beta)*ka+A2last*beta^2*k23-A3last*beta^3+A3last*E2*beta^2)*exp(-beta*t))/((beta^2-alpha*beta)*ka-beta^3+alpha*beta^2)-(((k23*ka-alpha*k23)*r2+k23*ka*r1+((-A2last-A1last)*alpha*k23+A3last*alpha^2-A3last*E2*alpha)*ka+A2last*alpha^2*k23-A3last*alpha^3+A3last*E2*alpha^2)*exp(-alpha*t))/((alpha*beta-alpha^2)*ka-alpha^2*beta+alpha^3)+(k23*r2+k23*r1)/(alpha*beta)")
+A3=-((k23*r1-A1last*k23*ka)*exp(-ka*t))/(ka^2+(-beta-alpha)*ka+alpha*beta)+(((k23*ka-beta*k23)*r2+k23*ka*r1+((-A2last-A1last)*beta*k23+A3last*beta^2-A3last*E2*beta)*ka+A2last*beta^2*k23-A3last*beta^3+A3last*E2*beta^2)*exp(-beta*t))/((beta^2-alpha*beta)*ka-beta^3+alpha*beta^2)-(((k23*ka-alpha*k23)*r2+k23*ka*r1+((-A2last-A1last)*alpha*k23+A3last*alpha^2-A3last*E2*alpha)*ka+A2last*alpha^2*k23-A3last*alpha^3+A3last*E2*alpha^2)*exp(-alpha*t))/((alpha*beta-alpha^2)*ka-alpha^2*beta+alpha^3)+(k23*r2+k23*r1)/(alpha*beta)"
+  )
 
-  env2 <- rxS(paste0(gsub("-t[*]", "-tinf*", paste0("A1last=", paste0(env$A1),"\n",
-         "A2last=", paste0(env$A2),"\n",
-         "A3last=", paste0(env$A3),"\n")),
-         gsub("lambda2", "beta", (gsub("lambda1", "alpha", gsub("KA", "ka", "
+  env2 <- rxS(paste0(
+    gsub(
+      "-t[*]",
+      "-tinf*",
+      paste0("A1last=", paste0(env$A1), "\n", "A2last=", paste0(env$A2), "\n", "A3last=", paste0(env$A3), "\n")
+    ),
+    gsub(
+      "lambda2",
+      "beta",
+      (gsub(
+        "lambda1",
+        "alpha",
+        gsub(
+          "KA",
+          "ka",
+          "
 E2=k20+k23
 E3=k32
 A2term1 = (((A2last*E3+A3last*k32)-A2last*lambda1)*exp(-t*lambda1)-((A2last*E3+A3last*k32)-A2last*lambda2)*exp(-t*lambda2))/(lambda2-lambda1)
@@ -1027,22 +1140,46 @@ A2term1 = (((A2last*E3+A3last*k32)-A2last*lambda1)*exp(-t*lambda1)-((A2last*E3+A
     A3term2 = A1last*KA*k23*(exp(-t*KA)/((lambda1-KA)*(lambda2-KA))+exp(-t*lambda1)/((lambda2-lambda1)*(KA-lambda1))+exp(-t*lambda2)/((lambda1-lambda2)*(KA-lambda2)))
     A3 = A3term1+A3term2  #Amount in the peripheral compartment
 
-    A1 = A1last*exp(-t*KA)"))))))
+    A1 = A1last*exp(-t*KA)"
+        )
+      ))
+    )
+  ))
 
-
-  m <- gsub("\\b(ka|k[1-4][0-4]|r[1-2])\\b", "(*\\1)",
-              gsub("exp[(]-tinf[*]beta[)]", "eiB",
-             gsub("exp[(]-tinf[*]alpha[)]", "eiA",
-                  gsub("exp[(]-t[*]alpha[)]", "eA",
-                       gsub("exp[(]-t[*]beta[)]", "eB",
-                            gsub("exp(-t*ka)", "eKa",
-                                 gsub("exp(-ka*tinf)", "eiKa",
-                                      gsub("(alpha|beta|ka)\\^([1-4])[.][0]", "\\1\\2",
-                                           paste0("A1=", env2$A1,"\n",
-                                                  "A2=", env2$A2,"\n",
-                                                  "A3=", env2$A3,"\n")), fixed=TRUE), fixed=TRUE))))),
-       perl=TRUE)
-
-
-
+  m <- gsub(
+    "\\b(ka|k[1-4][0-4]|r[1-2])\\b",
+    "(*\\1)",
+    gsub(
+      "exp[(]-tinf[*]beta[)]",
+      "eiB",
+      gsub(
+        "exp[(]-tinf[*]alpha[)]",
+        "eiA",
+        gsub(
+          "exp[(]-t[*]alpha[)]",
+          "eA",
+          gsub(
+            "exp[(]-t[*]beta[)]",
+            "eB",
+            gsub(
+              "exp(-t*ka)",
+              "eKa",
+              gsub(
+                "exp(-ka*tinf)",
+                "eiKa",
+                gsub(
+                  "(alpha|beta|ka)\\^([1-4])[.][0]",
+                  "\\1\\2",
+                  paste0("A1=", env2$A1, "\n", "A2=", env2$A2, "\n", "A3=", env2$A3, "\n")
+                ),
+                fixed = TRUE
+              ),
+              fixed = TRUE
+            )
+          )
+        )
+      )
+    ),
+    perl = TRUE
+  )
 }

@@ -13,6 +13,9 @@
 #include <R.h>
 #include <Rinternals.h>
 
+#include "rxPrintfFormat.h"
+void RSprintf(const char *format, ...) R_PRINTF_FORMAT(1, 2);
+#include "solveWarn.h"
 #define _(String) (String)
 
 /* All former static variables are now in dop853_ctx_t (see dop853.h).
@@ -118,7 +121,7 @@ static double hinit (int *nptr, FcnEqDiff fcn, double x, double* y,
 
 
 /* dense output function */
-static double contd8 (dop853_ctx_t *ctx, int ii, double x)
+double contd8 (dop853_ctx_t *ctx, int ii, double x)
 {
   int i;
   double       s, s1;
@@ -132,7 +135,7 @@ static double contd8 (dop853_ctx_t *ctx, int ii, double x)
 
   if (i == INT_MAX)
     {
-      Rprintf (_("no dense output available for %uth component"), ii);
+      RSprintf(_("no dense output available for %uth component"), ii);
       return 0.0;
     }
 
@@ -145,18 +148,71 @@ static double contd8 (dop853_ctx_t *ctx, int ii, double x)
 } /* contd8 */
 
 
+/* The stiffness probe's state travels in and out of dopcor: seeded from the
+   caller's dop853_stiff_t so the estimate and the verdict counters survive from
+   one interval to the next, and written back on every exit.  Kept in these two
+   helpers rather than inline so dopcor carries one call each instead of the
+   defaulting and the NULL check repeated at every seed and every return. */
+static void dopStiffBegin (dop853_stiff_t *out, const dop853_stiff_t *st, double x)
+{
+  out->hlamb = 0.0;
+  out->iasti = 0;
+  out->nonsti = 0;
+  out->naccpt = 0;
+  out->threshold = 6.1;   /* dop853's real-axis stability size */
+  out->maxStiff = 15;     /* Hairer's verdict count */
+  out->xLast = x;
+  if (st == NULL)
+    return;
+  out->hlamb = st->hlamb;
+  out->iasti = st->iasti;
+  out->nonsti = st->nonsti;
+  out->naccpt = st->naccpt;
+  if (st->threshold > 0.0)
+    out->threshold = st->threshold;
+  if (st->maxStiff > 0)
+    out->maxStiff = st->maxStiff;
+}
+
+static void dopStiffEnd (dop853_stiff_t *st, double hlamb, long int iasti,
+                         long int nonsti, long int naccpt, double xLast)
+{
+  if (st == NULL)
+    return;
+  st->hlamb  = hlamb;
+  st->iasti  = iasti;
+  st->nonsti = nonsti;
+  st->naccpt = naccpt;
+  st->xLast  = xLast;
+}
+
+/* The macro reads dopcor's locals, so it is only valid inside dopcor and is
+   #undef'd right after it. */
+#define DOPCOR_RETURN(v) do {                                           \
+    dopStiffEnd (st, hlamb, iasti, nonsti, naccptAll, xAcc);            \
+    return (v);                                                         \
+  } while (0)
+
 /* core integrator */
 static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double* y, double xend,
                    double hmax, double h, double* rtoler, double* atoler,
                    int itoler, FILE* fileout, SolTrait solout, int iout,
                    long int nmax, double uround, int meth, long int nstiff, double safe,
-                   double beta, double fac1, double fac2, int* icont)
+                   double beta, double fac1, double fac2, int* icont,
+                   dop853_stiff_t *st)
 {
   int n = nptr[0];
   double   facold, expo1, fac, facc1, facc2, fac11, posneg, xph;
   double   atoli, rtoli, hlamb, err, sk, hnew, ydiff, bspl;
   double   stnum, stden, sqr, err2, erri, deno;
-  int      iasti, iord, irtrn, reject, last, nonsti = 0;
+  int      iord, irtrn, reject, last;
+  long int iasti, nonsti;
+  /* Accepted-step count and stiffness verdict counters.  When `st` is supplied
+     they continue from the previous interval; xAcc is reported back as the last
+     fully accepted x.  DOPCOR_RETURN writes them back on every exit. */
+  long int naccptAll, stiffMax;
+  double   stiffLim, xAcc;
+  dop853_stiff_t sp;
   int i, j;
   double   c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c14, c15, c16;
   double   b1, b6, b7, b8, b9, b10, b11, b12, bhh1, bhh2, bhh3;
@@ -370,8 +426,14 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
   atoli = atoler[0];
   rtoli = rtoler[0];
   last  = 0;
-  hlamb = 0.0;
-  iasti = 0;
+  dopStiffBegin (&sp, st, x);
+  hlamb     = sp.hlamb;
+  iasti     = sp.iasti;
+  nonsti    = sp.nonsti;
+  naccptAll = sp.naccpt;
+  stiffLim  = sp.threshold;
+  stiffMax  = sp.maxStiff;
+  xAcc      = sp.xLast;
   fcn (nptr, x, y, k1);
   hmax = fabs (hmax);
   iord = 8;
@@ -386,12 +448,12 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
       irtrn = 1;
       ctx->hout = 1.0;
       ctx->xout = x;
-      solout (ctx->naccpt+1, ctx->xold, x, y, nptr, &irtrn);
+      solout (ctx->naccpt+1, ctx->xold, x, y, nptr, ctx, ctx->userdata, &irtrn);
       if (irtrn < 0)
         {
           /* if (fileout) */
-	  Rprintf(_("exit of dop853 at x = %.16e\n"), x);
-          return 2;
+	  RSprintf(_("exit of dop853 at x = %.16e\n"), x);
+          DOPCOR_RETURN(2);
         }
     }
 
@@ -401,19 +463,24 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
       if (ctx->nstep > nmax)
         {
           /* if (fileout) */
-	  Rprintf (_("exit of dop853 at x = %.16e, more than nmax = %li are needed\n"), x, nmax);
+	  /* a composite's probe (st given) hands a failed interval to its stiff
+	     solver, which reports a failure that is final */
+	  if (st == NULL) rxSolveWarnPushStat(ctx->subject_id, 1, &x, "exit of dop853 at x = %%v, more than nmax = %li are needed", nmax);
           ctx->xout = x;
           ctx->hout = h;
-          return -2;
+          DOPCOR_RETURN(-2);
         }
 
       if (0.1 * fabs(h) <= fabs(x) * uround)
         {
           /* if (fileout) */
-	  Rprintf (_("exit of dop853 at x = %.16e, step size too small h = %.16e\n"), x, h);
+	  {
+	    double xh[2] = {x, h};
+	    if (st == NULL) rxSolveWarnPushStat(ctx->subject_id, 2, xh, "exit of dop853 at x = %%v, step size too small h = %%v");
+	  }
           ctx->xout = x;
           ctx->hout = h;
-          return -3;
+          DOPCOR_RETURN(-3);
         }
 
       if ((x + 1.01*h - xend) * posneg > 0.0)
@@ -519,11 +586,13 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
 
           facold = max_d (err, 1.0E-4);
           ctx->naccpt++;
+          naccptAll++;
           fcn (nptr, xph, k5, k4);
           ctx->nfcn++;
 
-          /* stiffness detection */
-          if (!(ctx->naccpt % nstiff) || (iasti > 0))
+          /* stiffness detection -- gated on naccptAll, which continues across
+             calls when the caller supplies a dop853_stiff_t */
+          if (nstiff > 0 && (!(naccptAll % nstiff) || (iasti > 0)))
             {
               stnum = 0.0;
               stden = 0.0;
@@ -535,24 +604,51 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
                   stden += sqr*sqr;
                 }
               if (stden > 0.0)
-                hlamb = h * sqrt (stnum / stden);
-              if (hlamb > 6.1)
+                hlamb = fabs (h) * sqrt (stnum / stden);
+              else
+                /* The step moved the state by nothing measurable, so it carries
+                   no stiffness signal.  Hairer keeps the previous estimate here,
+                   which is fine within one call because that estimate is one
+                   step old -- but this one persists across intervals, so a value
+                   left over from an earlier stiff stretch would be read as a
+                   fresh stiff verdict on a flat trajectory.  Score it clean, as
+                   the per-call code did by starting hlamb at zero. */
+                hlamb = 0.0;
+              if (hlamb > stiffLim)
                 {
                   nonsti = 0;
                   iasti++;
-                  if (iasti == 15)
+                  if (iasti >= stiffMax)
                     {
-		      Rprintf (_("the problem seems to become stiff at x = %.16e\n"), x);
+                      /* Stiffness detection is enabled only as the AutoSwitch
+                         composite's primary probe (nstiff>0); the -4 return is
+                         caught by the composite and handled transparently by
+                         switching to the stiff secondary (ros4), so this is not
+                         a user-facing warning.  Standalone dop853 disables the
+                         detector (nstiff<0), so it never reaches here.
+
+                         The verdict counters are cleared because the caller is
+                         about to act on this report: leaving them at the limit
+                         would make every later probe report stiffness on its
+                         first accepted step, with no way back. */
+                      iasti = 0;
+                      nonsti = 0;
 		      ctx->xout = x;
 		      ctx->hout = h;
-		      return -4;
+		      DOPCOR_RETURN(-4);
                     }
                 }
               else
                 {
                   nonsti++;
-                  if (nonsti == 6)
-                    iasti = 0;
+                  /* six clean verdicts clear the alarm -- and clear the clean
+                     count too, so the rule applies again the next time one is
+                     raised (Hairer's `nonsti == 6` fires at most once) */
+                  if (nonsti >= 6)
+                    {
+                      iasti = 0;
+                      nonsti = 0;
+                    }
                 }
             }
 
@@ -648,17 +744,18 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
           memcpy (y, k5, n * sizeof(double));
           ctx->xold = x;
           x = xph;
+          xAcc = x;   /* y now holds the solution at x */
 
           if (iout)
             {
               ctx->hout = h;
               ctx->xout = x;
-              solout (ctx->naccpt+1, ctx->xold, x, y, nptr, &irtrn);
+              solout (ctx->naccpt+1, ctx->xold, x, y, nptr, ctx, ctx->userdata, &irtrn);
               if (irtrn < 0)
                 {
                   /* if (fileout) */
-		  Rprintf ( _("exit of dop853 at x = %.16e\n"), x);
-                  return 2;
+		  RSprintf( _("exit of dop853 at x = %.16e\n"), x);
+                  DOPCOR_RETURN(2);
                 }
             }
 
@@ -667,7 +764,7 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
             {
               ctx->hout=hnew;
               ctx->xout = x;
-              return 1;
+              DOPCOR_RETURN(1);
             }
 
           if (fabs(hnew) > hmax)
@@ -688,9 +785,17 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
         }
 
       h = hnew;
+      if (!R_FINITE(h)) {
+        if (st == NULL) rxSolveWarnPushStat(ctx->subject_id, 1, &x, "exit of dop853 at x = %%v, step size is not finite");
+        ctx->xout = x;
+        ctx->hout = h;
+        DOPCOR_RETURN(-3);
+      }
     }
 
 } /* dopcor */
+
+#undef DOPCOR_RETURN
 
 
 /* front-end */
@@ -698,7 +803,8 @@ int dop853
 (int *nptr, FcnEqDiff fcn, double x, double* y, double xend, double* rtoler,
  double* atoler, int itoler, SolTrait solout, int iout, FILE* fileout, double uround,
  double safe, double fac1, double fac2, double beta, double hmax, double h,
- long int nmax, int meth, long int nstiff, int nrdens, int* icont, int licont)
+ long int nmax, int meth, long int nstiff, int nrdens, int* icont, int licont,
+ void *userdata, int subject_id, dop853_stiff_t *stiffState)
 {
   dop853_ctx_t ctx;
   int          arret, idid;
@@ -714,14 +820,19 @@ int dop853
   ctx.rcont5 = ctx.rcont6 = ctx.rcont7 = ctx.rcont8 = NULL;
   ctx.yy1 = ctx.k1 = ctx.k2 = ctx.k3 = ctx.k4 = ctx.k5 = NULL;
   ctx.k6 = ctx.k7 = ctx.k8 = ctx.k9 = ctx.k10 = NULL;
+  ctx.userdata = userdata;
+  ctx.subject_id = subject_id;
 
   arret = 0;
+  /* so a caller reading xLast after an input-validation failure sees the
+     interval start rather than a stale value */
+  if (stiffState != NULL) stiffState->xLast = x;
 
   /* n, the dimension of the system */
   if (n == INT_MAX)
     {
       /* if (fileout) */
-      Rprintf (_("system too big, max. n = %u\n"), INT_MAX-1);
+      RSprintf(_("system too big, max. n = %u\n"), INT_MAX-1);
       arret = 1;
     }
 
@@ -731,7 +842,7 @@ int dop853
   else if (nmax <= 0)
     {
       /* if (fileout) */
-      Rprintf ( _("wrong input, nmax = %li\n"), nmax);
+      RSprintf( _("wrong input, nmax = %li\n"), nmax);
       arret = 1;
     }
 
@@ -741,21 +852,24 @@ int dop853
   else if ((meth <= 0) || (meth >= 2))
     {
       /* if (fileout) */
-      Rprintf (_("curious input, meth = %i\n"), meth);
+      RSprintf(_("curious input, meth = %i\n"), meth);
       arret = 1;
     }
 
-  /* nstiff, parameter for stiffness detection */
+  /* nstiff, parameter for stiffness detection.  A negative value switches the
+     detector off outright; it used to be turned into nmax+10 so the modulo
+     could never fire, which stops working now that the accepted-step count can
+     continue across calls. */
   if (!nstiff)
     nstiff = 1000;
   else if (nstiff < 0)
-    nstiff = nmax + 10;
+    nstiff = -1;
 
   /* iout, switch for calling solout */
   if ((iout < 0) || (iout > 2))
     {
       /* if (fileout) */
-      Rprintf ( _("wrong input, iout = %i\n"), iout);
+      RSprintf( _("wrong input, iout = %i\n"), iout);
       arret = 1;
     }
 
@@ -763,7 +877,7 @@ int dop853
   if (nrdens > n)
     {
       /* if (fileout) */
-      Rprintf ( _("curious input, nrdens = %u\n"), nrdens);
+      RSprintf( _("curious input, nrdens = %u\n"), nrdens);
       arret = 1;
     }
   else if (nrdens)
@@ -784,7 +898,7 @@ int dop853
           !ctx.rcont6 || !ctx.rcont7 || !ctx.rcont8 || (!ctx.indir && (nrdens < n)))
         {
           /* if (fileout) */
-	  Rprintf ( _("not enough free memory for rcont12345678&indir\n"));
+	  RSprintf( _("not enough free memory for rcont12345678&indir\n"));
           arret = 1;
         }
 
@@ -792,13 +906,13 @@ int dop853
       if (nrdens == n)
         {
           if (icont)
-            Rprintf ( _("warning : when nrdens = n there is no need allocating memory for icont\n"));
+            RSprintf( _("warning : when nrdens = n there is no need allocating memory for icont\n"));
           ctx.nrds = n;
         }
       else if (licont < nrdens)
         {
           /* if (fileout) */
-	  Rprintf ( _("insufficient storage for icont, min. licont = %u\n"), nrdens);
+	  RSprintf( _("insufficient storage for icont, min. licont = %u\n"), nrdens);
           arret = 1;
         }
       else
@@ -925,7 +1039,8 @@ int dop853
   else
     {
       idid = dopcor (&ctx, nptr, fcn, x, y, xend, hmax, h, rtoler, atoler, itoler, fileout,
-                     solout, iout, nmax, uround, meth, nstiff, safe, beta, fac1, fac2, icont);
+                     solout, iout, nmax, uround, meth, nstiff, safe, beta, fac1, fac2, icont,
+                     stiffState);
       R_Free (ctx.k10);
       R_Free (ctx.k9);
       R_Free (ctx.k8);

@@ -40,8 +40,11 @@ static inline int isOperatorOrPrintingIdentifier(nodeInfo ni, const char *name){
 
 static inline int isSkipChild(nodeInfo ni, const char *name, int i) {
   return ((i == 3 || i == 4 || i < 2) &&
-	  (nodeHas(derivative) ||nodeHas(fbio) || nodeHas(alag) ||
-	   nodeHas(rate) || nodeHas(dur))) ||
+          (nodeHas(derivative) ||nodeHas(fbio) || nodeHas(alag) ||
+           nodeHas(rate) || nodeHas(dur) || nodeHas(indLin_prop))) ||
+    // past(state, tau) <- expr : visit child 2 (state) and child 7 (expr);
+    // skip 'past' '(' , tau ) and the assignment operator
+    (nodeHas(past) && (i < 2 || i == 3 || i == 4 || i == 5 || i == 6)) ||
     ((i == 3 || i < 2) && nodeHas(der_rhs)) ||
     (nodeHas(dfdy)     && i< 2)  ||
     (nodeHas(dfdy_rhs) && i< 2) ||
@@ -84,13 +87,21 @@ static inline int handleIfElse(nodeInfo ni, char *name, int i) {
     if (i == 0){
       return 1;
     } else if (i == 1){
+      // reset the buffers; they still hold the preceding statement's text
+      // (each statement handler is what clears them)
+      sb.o=0;sbDt.o=0; sbt.o=0;
       aAppendN("if (", 4);
       sAppendN(&sbt, "if (", 4);
       return 1;
     } else if (i == 3){
       aType(TLOGIC);
+      // Both branch statements only run conditionally; see
+      // handleCmtPropertyIndLin().
+      tb.nCond++;
       aAppendN(") {", 3);
-      sAppendN(&sbt,") {", 3);
+      // normalized text uses the same spelling as 'if (...){' so rxNorm() is a
+      // fixed point when the statement is re-parsed
+      sAppendN(&sbt,"){", 2);
       addLine(&sbPm, "%s\n", sb.s);
       addLine(&sbPmDt, "%s\n", sbDt.s);
       sAppend(&sbNrm, "%s\n", sbt.s);
@@ -101,13 +112,14 @@ static inline int handleIfElse(nodeInfo ni, char *name, int i) {
       sb.o=0;sbDt.o=0; sbt.o=0;
       aType(TLOGIC);
       aAppendN("}\nelse {", 8);
-      sAppendN(&sbt,"}\nelse {", 1);
+      sAppendN(&sbt,"}\nelse {", 8);
       addLine(&sbPm, "%s\n", sb.s);
       addLine(&sbPmDt, "%s\n", sbDt.s);
       sAppend(&sbNrm, "%s\n", sbt.s);
       addLine(&sbNrmL, "%s\n", sbt.s);
       return 1;
     } else if (i == 7){
+      if (tb.nCond > 0) tb.nCond--;
       sb.o=0;sbDt.o=0; sbt.o=0;
       aType(TLOGIC);
       aAppendN("}", 1);
@@ -124,23 +136,114 @@ static inline int handleIfElse(nodeInfo ni, char *name, int i) {
   return 0;
 }
 
+static inline void clearStringCmpCurrent(void) {
+  tb.strCmpCurCov = NULL;
+  tb.strCmpCurStr = NULL;
+  tb.strCmpCurType = -1;
+}
+
+static inline int isStringCmpId(const char *v) {
+  return !strcmp(v, "id") || !strcmp(v, "ID") || !strcmp(v, "Id");
+}
+
+static inline void normalizeStringCmpValue(char *v) {
+  size_t n = strlen(v);
+  if (n >= 2 && ((v[0] == '"' && v[n-1] == '"') ||
+                 (v[0] == '\'' && v[n-1] == '\''))) {
+    memmove(v, v+1, n-2);
+    v[n-2] = 0;
+  }
+}
+
+static inline int getStringCmpCovIndex(const char *cov) {
+  for (int i = 0; i < tb.strCmp.n; ++i) {
+    if (!strcmp(tb.strCmp.line[i], cov)) {
+      return i;
+    }
+  }
+  if (tb.strCmp.n + 1 > tb.allocSC) {
+    tb.allocSC += MXDER;
+    tb.strCmpN = R_Realloc(tb.strCmpN, tb.allocSC, int);
+  }
+  addLine(&(tb.strCmp), "%s", cov);
+  tb.strCmpN[tb.strCmp.n-1] = 0;
+  return tb.strCmp.n-1;
+}
+
+static inline int get_str_assign_int(int val, const char *s);
+
+// Index of `cov` among the string-assigned variables, or -1
+static inline int getStrAssignIndex(const char *cov) {
+  for (int i = 0; i < tb.str.n; ++i) {
+    if (!strcmp(tb.str.line[i], cov)) return i;
+  }
+  return -1;
+}
+
+// A string variable first compared, then assigned: number its assigned
+// values in the order already used by the comparisons
+static inline void seedStrAssignFromCmp(int strId) {
+  for (int i = 0; i < tb.strCmp.n; ++i) {
+    if (!strcmp(tb.strCmp.line[i], tb.str.line[strId])) {
+      for (int j = 0; j < tb.strCmpVal.n; ++j) {
+        if (tb.strCmpValI[j] == i) {
+          get_str_assign_int(strId, tb.strCmpVal.line[j]);
+        }
+      }
+      return;
+    }
+  }
+}
+
+static inline int addStringCmpValue(const char *cov, char *val) {
+  char *normVal = R_Calloc(strlen(val) + 1, char);
+  strcpy(normVal, val);
+  normalizeStringCmpValue(normVal);
+  int strId = getStrAssignIndex(cov);
+  if (strId != -1) {
+    // string-assigned variable: share the assignment numbering
+    int ret = get_str_assign_int(strId, normVal);
+    R_Free(normVal);
+    return ret;
+  }
+  int covIndex = getStringCmpCovIndex(cov);
+  int valueIndex = 0;
+  for (int i = 0; i < tb.strCmpVal.n; ++i) {
+    if (tb.strCmpValI[i] == covIndex) {
+      valueIndex++;
+      if (!strcmp(tb.strCmpVal.line[i], normVal)) {
+        R_Free(normVal);
+        return valueIndex;
+      }
+    }
+  }
+  if (tb.strCmpVal.n + 1 > tb.allocSCV) {
+    tb.allocSCV += MXDER;
+    tb.strCmpValI = R_Realloc(tb.strCmpValI, tb.allocSCV, int);
+  }
+  tb.strCmpValI[tb.strCmpVal.n] = covIndex;
+  tb.strCmpN[covIndex] += 1;
+  addLine(&(tb.strCmpVal), "%s", normVal);
+  R_Free(normVal);
+  return valueIndex + 1;
+}
+
 static inline int handleStringEqualRhs(nodeInfo ni, char *name, int i, D_ParseNode *xpn) {
   if (nodeHas(equality_str1)){
     char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
     switch(i) {
     case 0:
       // string
-      aAppendN("_cmp1(", 6);
-      sAppend(&sb, "%s, ", v);
-      sAppend(&sbDt, "%s, ", v);
+      clearStringCmpCurrent();
+      tb.strCmpCurStr = v;
       sAppend(&sbt, "%s", v);
       /* Free(v); */
       return 1;
     case 1:
       if (!strcmp(v, "==")) {
-	aAppendN("1, ", 3);
+        tb.strCmpCurType = 1;
       } else {
-	aAppendN("0, ", 3);
+        tb.strCmpCurType = 0;
       }
       sAppend(&sbt, "%s", v);
       /* Free(v); */
@@ -148,14 +251,26 @@ static inline int handleStringEqualRhs(nodeInfo ni, char *name, int i, D_ParseNo
     case 2:
       // identifier_r
       // val, valstr
-      if (!strcmp(v, "id") || !strcmp(v, "ID") || !strcmp(v, "Id")){
-	aAppendN("(&_solveData->subjects[_cSub])->idReal, \"ID\")", 45);
-	sAppendN(&sbt, "ID", 2);
+      tb.strCmpCurCov = v;
+      if (isStringCmpId(v)){
+        aAppendN("_cmp1(", 6);
+        sAppend(&sb, "%s, %d, (&_solveData->subjects[_cSub])->idReal, \"ID\")",
+                tb.strCmpCurStr, tb.strCmpCurType);
+        sAppend(&sbDt, "%s, %d, (&_solveData->subjects[_cSub])->idReal, \"ID\")",
+                tb.strCmpCurStr, tb.strCmpCurType);
+        sAppendN(&sbt, "ID", 2);
+        clearStringCmpCurrent();
       } else {
-	if (new_or_ith(v)) addSymbolStr(v);
-	sAppend(&sb, "%s, \"%s\")", v, v);
-	sAppend(&sbDt, "%s, \"%s\")", v, v);
-	sAppend(&sbt, "%s", v);
+        if (new_or_ith(v)) addSymbolStr(v);
+        int cmpInt = 0;
+        if (tb.strCmpCurStr != NULL) {
+          cmpInt = addStringCmpValue(tb.strCmpCurCov, (char*)tb.strCmpCurStr);
+        }
+        aAppendN("_cmp1d(", 7);
+        sAppend(&sb, "%s, %d, %s, %d)", tb.strCmpCurStr, tb.strCmpCurType, v, cmpInt);
+        sAppend(&sbDt, "%s, %d, %s, %d)", tb.strCmpCurStr, tb.strCmpCurType, v, cmpInt);
+        sAppend(&sbt, "%s", v);
+        clearStringCmpCurrent();
       }
       return 1;
     }
@@ -168,29 +283,44 @@ static inline int handleStringEqualLhs(nodeInfo ni, char *name, int i, D_ParseNo
     char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
     switch(i) {
     case 0:
-      aAppendN("_cmp2(", 6);
-      if (!strcmp(v, "id") || !strcmp(v, "ID") || !strcmp(v, "Id")){
-        aAppendN("(&_solveData->subjects[_cSub])->idReal, \"ID\", ", 46);
+      clearStringCmpCurrent();
+      tb.strCmpCurCov = v;
+      if (isStringCmpId(v)){
         sAppendN(&sbt, "ID", 2);
       } else {
         if (new_or_ith(v)) addSymbolStr(v);
-        sAppend(&sb, "%s, \"%s\", ", v, v);
-        sAppend(&sbDt, "%s, \"%s\", ", v, v);
         sAppend(&sbt, "%s", v);
       }
       return 1;
     case 1:
       if (!strcmp(v, "==")) {
-        aAppendN("1, ", 3);
+        tb.strCmpCurType = 1;
       } else {
-        aAppendN("0, ", 3);
+        tb.strCmpCurType = 0;
       }
       sAppend(&sbt, "%s", v);
       return 1;
     case 2:
-      sAppend(&sb, "%s)", v);
-      sAppend(&sbDt, "%s)", v);
+      tb.strCmpCurStr = v;
+      if (isStringCmpId(tb.strCmpCurCov)) {
+        aAppendN("_cmp2(", 6);
+        sAppend(&sb, "(&_solveData->subjects[_cSub])->idReal, \"ID\", %d, %s)",
+                tb.strCmpCurType, v);
+        sAppend(&sbDt, "(&_solveData->subjects[_cSub])->idReal, \"ID\", %d, %s)",
+                tb.strCmpCurType, v);
+      } else {
+        int cmpInt = 0;
+        if (tb.strCmpCurCov != NULL) {
+          cmpInt = addStringCmpValue(tb.strCmpCurCov, v);
+        }
+        aAppendN("_cmp2d(", 7);
+        sAppend(&sb, "%s, \"%s\", %d, %d)",
+                tb.strCmpCurCov, tb.strCmpCurCov, tb.strCmpCurType, cmpInt);
+        sAppend(&sbDt, "%s, \"%s\", %d, %d)",
+                tb.strCmpCurCov, tb.strCmpCurCov, tb.strCmpCurType, cmpInt);
+      }
       sAppend(&sbt, "%s", v);
+      clearStringCmpCurrent();
       return 1;
     }
   }
@@ -212,8 +342,8 @@ static inline int assertLogicalNoWhileElse(nodeInfo ni, char *name, int i, D_Par
       v = (char*)rc_dup_str(xpn2->start_loc.s, xpn2->end);
       if (v[0] == 0) {
       } else {
-	updateSyntaxCol();
-	trans_syntax_error_report_fn(_("'while' cannot be followed by 'else' (did you mean 'if'/'else')"));
+        updateSyntaxCol();
+        trans_syntax_error_report_fn(_("'while' cannot be followed by 'else' (did you mean 'if'/'else')"));
       }
     }
     return 1;
@@ -224,6 +354,9 @@ static inline int assertLogicalNoWhileElse(nodeInfo ni, char *name, int i, D_Par
 static inline int handleLogicalIfOrWhile(nodeInfo ni, char *name, int i, D_ParseNode *pn, D_ParseNode *xpn, int *isWhile) {
   if (nodeHas(selection_statement) && i==1) {
     sb.o = 0; sbDt.o = 0; sbt.o = 0;
+    // Statements inside the block (including its 'else') only run
+    // conditionally; see handleCmtPropertyIndLin().
+    tb.nCond++;
     if (*isWhile) {
       sAppendN(&sb, "_itwhile=0;\nwhile (", 19);
       sAppendN(&sbDt, "_itwhile=0;\nwhile (", 19);
@@ -305,6 +438,7 @@ static inline int handleLogicalExpr(nodeInfo ni, char *name, int i, D_ParseNode 
 
 static inline int finalizeLineSelectionStatement(nodeInfo ni, char *name, int isWhile) {
   if (nodeHas(selection_statement)){
+    if (tb.nCond > 0) tb.nCond--;
     sb.o = 0; sbDt.o = 0; sbt.o = 0;
     aType(TLOGIC);
     /* aType(300); */

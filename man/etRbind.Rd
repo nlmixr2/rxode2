@@ -40,12 +40,12 @@ inter-dose interval no matter the length of the wait time or
 inter-dose interval
 }}
 
-\item{id}{This is how rbind will handle IDs.  There are two different types of options:
+\item{id}{This is how rbind will handle ids.  There are two different types of options:
 \itemize{
-\item \code{merge} with \code{id="merge"}, the IDs are merged together,
-overlapping IDs would be merged into a single event table.
-\item \code{unique} with \code{id="unique"}, the IDs will be renumbered
-so that the IDs in all the event tables are not overlapping.
+\item \code{merge} with \code{id="merge"}, the ids are merged together,
+overlapping ids would be merged into a single event table.
+\item \code{unique} with \code{id="unique"}, the ids will be renumbered
+so that the ids in all the event tables are not overlapping.
 }}
 
 \item{deparse.level}{The \code{deparse.level} of a traditional
@@ -160,9 +160,27 @@ Pharmacometrics and Systems Pharmacology, 5(1), 3-10. ISSN 2163-8306
 \code{\link{add.dosing}}, \code{\link{et}},
 \code{\link{etRep}}, \code{\link{etRbind}},
 \code{\link{rxode2}}
+
+Other Event tables:
+\code{\link[=add.dosing]{add.dosing()}},
+\code{\link[=add.sampling]{add.sampling()}},
+\code{\link[=as.et]{as.et()}},
+\code{\link[=et]{et()}},
+\code{\link[=etExpand]{etExpand()}},
+\code{\link[=etRep]{etRep()}},
+\code{\link[=etSeq]{etSeq()}},
+\code{\link[=eventTable]{eventTable()}},
+\code{\link[=is.rxEt]{is.rxEt()}},
+\code{\link[=rxEventTableFile]{rxEventTableFile()}},
+\code{\link[=splitBolus]{splitBolus()}},
+\code{\link{splitBolusInfusion-directive}},
+\code{\link[=splitInfusion]{splitInfusion()}},
+\code{\link{splitInfusionBolus-directive}},
+\code{\link[=toTrialDuration]{toTrialDuration()}}
 }
 \author{
 Matthew L Fidler
 
 Matthew L Fidler, Wenping Wang
 }
+\concept{Event tables}

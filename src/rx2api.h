@@ -1,9 +1,26 @@
 #ifndef __RX2API_H__
 #define __RX2API_H__
+#include <stddef.h>
 #if defined(__cplusplus)
 extern "C" {
 #endif
   // rx2api.h
+
+  // Stride, in bytes, of one entry of the subject array (`rx->subjects`).
+  // Written by rxOptionsIniEnsure() (par_solve.cpp) from the same
+  // `sizeof(rx_solving_options_ind)` it allocates the array with, and read
+  // back by getSolvingOptionsInd() below rather than that function's own
+  // `sizeof`.  This file is the package's ABI surface and is a separate
+  // translation unit from the one that owns the array, so taking the stride
+  // from its own view of the struct made a correct subject pointer depend on
+  // the two views agreeing.  They do not have to: R's default make rules
+  // track no header dependencies, so an object file whose own source did not
+  // change is linked in unchanged after a change to the struct, and the two
+  // views then differ by exactly the appended bytes.  The array is laid out
+  // at the allocator's stride, so that is the one to walk it with
+  // (nlmixr2/nlmixr2est#1039).  A plain global, not a field of `rx_solve`:
+  // reading a field would put the layout back in the loop.
+  extern size_t rxIndSize;
 
   // This function gets the global rx solving options
   rx_solving_options* getSolvingOptions(rx_solve* rx);
@@ -73,11 +90,19 @@ extern "C" {
   // Get the index of the current solve
   int getIndIdx(rx_solving_options_ind* ind);
 
+  // Per-observation endpoint from the CMT covariate (cached op->cmtCov); 1 if none
+  int getIndCmt(rx_solving_options* op, rx_solving_options_ind* ind, int kk);
+
   // Get the mixest of the current solve
   int getIndMixest(rx_solving_options_ind* ind);
 
   // Set the individual mixest
   void setIndMixest(rx_solving_options_ind* ind, int mixest);
+
+  // Set the individual's newind, which a model reads as `newind`: 1 at the
+  // subject's first record, 2 after it.  rxode2's own walk over the records
+  // (rxode2_df.cpp) sets it; a caller that walks them with calc_lhs sets it too.
+  void setIndNewind(rx_solving_options_ind* ind, int newind);
 
   // Get the number of mixtures in the rxode2 problem
   int getRxMixnum(rx_solve *rx);
@@ -132,6 +157,9 @@ extern "C" {
   // Get the number of observations excluding evid=2
   int getRxNobs2(rx_solve *rx);
 
+  // Get the number of simulations (nsim); equals nPopPar/nsub when evenly divisible
+  int getRxNsim(rx_solve *rx);
+
   // Get the number of parameters loaded
   int getRxNpars(rx_solve *rx);
 
@@ -146,6 +174,32 @@ extern "C" {
   // tolerances; use when an individual is too stiff to solve at the
   // requested tolerance so the factor persists across re-solves.
   void setIndTolFactor(rx_solving_options_ind *ind, double tolFactor);
+
+  // Get the per-individual neq override.  Returns -1 when no override
+  // is in effect (caller should fall back to op->neq).  Use to solve
+  // a single individual with a different effective neq without
+  // mutating the shared op->neq from a parallel worker thread.
+  int getIndNeqOverride(rx_solving_options_ind *ind);
+
+  // Set the per-individual neq override.  Pass -1 to clear the
+  // override.  Caller is responsible for restoring the prior value
+  // (RAII guard in nlmixr2est).
+  void setIndNeqOverride(rx_solving_options_ind *ind, int neq);
+
+  void rxSetSilentErr(int silent);
+
+  int getOrdId(rx_solve *rx, int solveid);
+
+  int solveMethodThreadSafe(rx_solving_options* op);
+
+  void atolRtolFactor_(double factor);
+
+  // An out-of-range index handed to one of the accessors above cannot raise
+  // from inside an OpenMP region -- Rf_error() longjmps past the runtime's own
+  // state on a worker thread.  It is recorded instead; these report it.
+  // rxApiErrRaise() must be called on the main thread, outside any region.
+  int rxApiErrPending(void);
+  void rxApiErrRaise(void);
 
 #if defined(__cplusplus)
 }

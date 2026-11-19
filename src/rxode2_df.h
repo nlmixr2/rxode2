@@ -4,14 +4,8 @@
 #ifndef __RXODE2_DF_H__
 #define __RXODE2_DF_H__
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
 
-  SEXP rxode2_df(int doDose0, int doTBS);
+SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity);
 
-#if defined(__cplusplus)
-}
-#endif
 
 #endif // __RXODE2_DF_H__

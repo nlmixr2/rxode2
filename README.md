@@ -22,15 +22,15 @@ downloads](https://cranlogs.r-pkg.org/badges/rxode2)](https://cran.r-project.org
 
 ## Overview
 
-**rxode2** is an R package for solving and simulating from ode-based
-models. These models are convert the rxode2 mini-language to C and
-create a compiled dll for fast solving. ODE solving using rxode2 has a
+**rxode2** is an R package for solving and simulating from ODE-based
+models. rxode2 converts its mini-language to C and
+creates a compiled dll for fast solving. ODE solving using rxode2 has a
 few key parts:
 
 - `rxode2()` which creates the C code for fast ODE solving based on a
   [simple
   syntax](https://nlmixr2.github.io/rxode2/articles/rxode2-syntax.html)
-  related to Leibnitz notation.
+  related to Leibniz notation.
 - The event data, which can be:
   - a `NONMEM` or `deSolve` [compatible data
     frame](https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html),
@@ -48,9 +48,27 @@ few key parts:
     parallelized](https://nlmixr2.github.io/rxode2/articles/rxode2-speed.html).
   - With single subject the [output data frame is
     adaptive](https://nlmixr2.github.io/rxode2/articles/rxode2-data-frame.html)
-  - Covariances and other metrics of uncertanty can be used to [simulate
+  - Covariances and other metrics of uncertainty can be used to [simulate
     while
     solving](https://nlmixr2.github.io/rxode2/articles/rxode2-sim-var.html)
+
+## Where to go next
+
+- **New to rxode2?** Start with the
+  [introduction](https://nlmixr2.github.io/rxode2/articles/rxode2-intro.html)
+  and the [model
+  syntax](https://nlmixr2.github.io/rxode2/articles/rxode2-syntax.html).
+- **Dosing:** [dataset
+  format](https://nlmixr2.github.io/rxode2/articles/rxode2-event-types.html)
+  and [event
+  tables](https://nlmixr2.github.io/rxode2/articles/rxode2-event-table.html).
+- **Simulation:** [population
+  simulation](https://nlmixr2.github.io/rxode2/articles/rxode2-sim-var.html)
+  and [worked
+  examples](https://nlmixr2.github.io/rxode2/articles/rxode2-clinical-trial-sim.html).
+- **Function reference:** [all
+  functions](https://nlmixr2.github.io/rxode2/reference/index.html), grouped
+  by task.
 
 ## Installation
 
@@ -67,7 +85,7 @@ development version for MacOS and for Windows so you don’t have to wait
 for package compilation:
 
 ``` r
-install.packages(c("dparser", "rxode2ll", "rxode2"),
+install.packages(c("dparser", "rxode2ll", "rxode2lincmt", "rxode2"),
                  repos=c(nlmixr2="https://nlmixr2.r-universe.dev",
                          CRAN="https://cloud.r-project.org"))
 ```
@@ -76,6 +94,7 @@ If this doesn’t work you install the development version of rxode2 with
 
 ``` r
 devtools::install_github("nlmixr2/rxode2ll")
+devtools::install_github("nlmixr2/rxode2lincmt")
 devtools::install_github("nlmixr2/rxode2")
 ```
 
@@ -165,20 +184,13 @@ instructions:
 
 ## Development version
 
-Since the development version of rxode2 uses StanHeaders, you will need
-to make sure your compiler is setup to support C++14, as described in
-the [rstan setup
-page](https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started#configuration-of-the-c-toolchain).
-For R 4.0, I do not believe this requires modifying the windows
-toolchain any longer (so it is much easier to setup).
-
-Once the C++ toolchain is setup appropriately, you can install the
-development version from [GitHub](https://github.com/nlmixr2/rxode2)
-with:
+You can install the development version from
+[GitHub](https://github.com/nlmixr2/rxode2) with:
 
 ``` r
 # install.packages("devtools")
 devtools::install_github("nlmixr2/rxode2ll")
+devtools::install_github("nlmixr2/rxode2lincmt")
 devtools::install_github("nlmixr2/rxode2")
 ```
 

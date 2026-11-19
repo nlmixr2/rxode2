@@ -47,3 +47,21 @@ docs/
 revdep/
 /src/sbuf.c
 docs
+/src/implicit_euler_rxode2.hpp
+inst/tools/workaround.Rout
+src/StanHeaders.def
+/.vexp/
+/..Rcheck/
+/tools/
+/.vscode/
+/.mcp.json
+/.claude/
+/.cache/
+tests/testthat/Rplots.pdf
+tests/testthat/_problems/
+
+# Build artifacts (R CMD build/INSTALL/check output)
+*.Rcheck/
+*.tar.gz
+*.tgz
+inst/tools/*.Rout

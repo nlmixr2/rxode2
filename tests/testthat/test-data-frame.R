@@ -31,8 +31,14 @@ rxTest({
     suppressWarnings(rxSolve(
       m1,
       params = c(
-        KA = .291, CL = 18.6, V2 = 40.2, Q = 10.5, V3 = 297.0,
-        Kin = 1.0, Kout = 1.0, EC50 = 200.0
+        KA = .291,
+        CL = 18.6,
+        V2 = 40.2,
+        Q = 10.5,
+        V3 = 297.0,
+        Kin = 1.0,
+        Kout = 1.0,
+        EC50 = 200.0
       ),
       events = et1,
       inits = c(0, 0, 0, 1)
@@ -109,10 +115,10 @@ rxTest({
   })
 
   test_that("rownames lookup & assignment makes sense", {
-    expect_equal(rownames(o1.first), paste(seq_len(length(o1.first[, 1]))))
-    rownames(o1.first) <- paste("row", seq_len(length(o1.first$depot)))
-    expect_equal(rownames(o1.first), paste("row", seq_len(length(o1.first$depot))))
+    expect_equal(rownames(o1.first), paste(seq_along(o1.first[, 1])))
+    rownames(o1.first) <- paste("row", seq_along(o1.first$depot))
+    expect_equal(rownames(o1.first), paste("row", seq_along(o1.first$depot)))
     rownames(o1.first) <- NULL
-    expect_equal(rownames(o1.first), paste(seq_len(length(o1.first[, 1]))))
+    expect_equal(rownames(o1.first), paste(seq_along(o1.first[, 1])))
   })
 })

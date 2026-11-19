@@ -6,4 +6,7 @@
 #' \item{Meaning}{Reserved Keyword Meaning}
 #' \item{Alias}{Keyword Alias}
 #' }
+#' @family Model definition
+#' @examples
+#' head(rxReservedKeywords)
 "rxReservedKeywords"

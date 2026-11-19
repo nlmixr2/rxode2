@@ -1,5 +1,5 @@
 rxTest({
-
+  # fmt: skip
   evi <- structure(list(time = c(
     0,
     0, 0.5, 0.5, 0.969, 0.9833, 1, 1.5, 1.77253, 1.9333, 2, 2.5,
@@ -946,9 +946,11 @@ rxTest({
   row.names = c(NA, -2545L)
   )
 
-  theta <- structure(list(CL = 19.616, V1 = 105.67, Q = 6.903, V2 = 29.373),
-                     class = "data.frame", row.names = c(NA, -1L)
-                     )
+  theta <- structure(
+    list(CL = 19.616, V1 = 105.67, Q = 6.903, V2 = 29.373),
+    class = "data.frame",
+    row.names = c(NA, -1L)
+  )
 
   m1 <- rxode2({
     C2 <- centr / V1
@@ -959,7 +961,6 @@ rxTest({
   })
 
   test_that("Solving can make sense", {
-
     x <- rxSolve(m1, params = theta, events = evi)
     expect_false(all(x$centr == 0))
 
@@ -977,6 +978,52 @@ rxTest({
 
     x <- rxSolve(m1, params = theta, events = evi, method = "lsoda", hmax = 0)
     expect_false(all(x$centr == 0))
+  })
 
+  test_that("default hmax solves a subject with a single time difference (#1501)", {
+    m <- rxode2({
+      d/dt(c) <- -k * c
+    })
+    .exp <- 100 * exp(-0.05)
+    .hom <- et(amt = 100) |> et(0.5) |> et(id = 1:3)
+    expect_false(is.null(attr(.etPrepareSolveEvents(.hom, rxControl()), "rxHomGroups")))
+    .evs <- list(
+      et(amt = 100) |> et(0.5),
+      # identical subjects share one homogeneous group
+      .hom,
+      # different event times (non-homogeneous); a single time difference in a
+      # middle and in the last subject
+      rbind(
+        data.frame(id = 1, time = c(0, 0.5, 1.5), evid = c(1, 0, 0), amt = c(100, 0, 0)),
+        data.frame(id = 2, time = c(0, 0.5), evid = c(1, 0), amt = c(100, 0)),
+        data.frame(id = 3, time = c(0, 0.5, 1), evid = c(1, 0, 0), amt = c(100, 0, 0)),
+        data.frame(id = 4, time = c(0, 0.5), evid = c(1, 0), amt = c(100, 0))
+      )
+    )
+    for (.e in .evs) {
+      for (.m in c("dop853", "liblsoda", "lsoda")) {
+        for (.sd in c(0, 1)) {
+          .s <- rxSolve(m, .e, params = c(k = 0.1), method = .m, hmaxSd = .sd)
+          .c <- .s$c[.s$time == 0.5]
+          expect_true(all(is.finite(.c)))
+          expect_equal(.c, rep(.exp, length(.c)), tolerance = 1e-5)
+        }
+      }
+    }
+  })
+
+  test_that("hmaxSd widens the default hmax of a subject that is not last (#1501)", {
+    m <- rxode2({
+      d/dt(c) <- -k * c
+    })
+    # id 1: gaps 0.01 and 19.99, so hmaxSd moves its hmax across the 19.99 gap
+    .e <- rbind(
+      data.frame(id = 1, time = c(0, 0.01, 20), evid = c(1, 0, 0), amt = c(100, 0, 0)),
+      data.frame(id = 2, time = c(0, 0.5), evid = c(1, 0), amt = c(100, 0))
+    )
+    .dadt <- function(sd) {
+      rxSolve(m, .e, params = c(k = 0.001), method = "dop853", hmaxSd = sd, atol = 1, rtol = 1)$counts$dadt[1]
+    }
+    expect_lt(.dadt(10), .dadt(0))
   })
 })

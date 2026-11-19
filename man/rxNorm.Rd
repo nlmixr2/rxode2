@@ -30,6 +30,34 @@ Normalized Normal syntax (no comments)
 \description{
 This get the syntax preferred model for processing
 }
+\examples{
+\donttest{
+mod <- function() {
+  ini({
+    k <- 0.1
+  })
+  model({
+    d/dt(A) <- -k * A
+  })
+}
+cat(rxNorm(mod()))
+}
+}
+\seealso{
+Other Model definition:
+\code{\link[=rxClean]{rxClean()}},
+\code{\link[=rxCompile]{rxCompile()}},
+\code{\link[=rxCreateCache]{rxCreateCache()}},
+\code{\link[=rxDelete]{rxDelete()}},
+\code{\link[=rxLastCompile]{rxLastCompile()}},
+\code{\link{rxReservedKeywords}},
+\code{\link[=rxSupportedFuns]{rxSupportedFuns()}},
+\code{\link{rxSyntaxFunctions}},
+\code{\link[=rxUnloadAll]{rxUnloadAll()}},
+\code{\link[=rxode2]{rxode2()}},
+\code{\link[=summary.rxode2]{summary.rxode2()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Model definition}

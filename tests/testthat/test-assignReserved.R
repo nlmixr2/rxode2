@@ -1,5 +1,4 @@
-test_that("when reserved variables are assigned, parser should error",{
-
+test_that("when reserved variables are assigned, parser should error", {
   expect_error(rxode2({
     C2 <- centr/V2
     C3 <- peri/V3
@@ -10,5 +9,4 @@ test_that("when reserved variables are assigned, parser should error",{
     d/dt(eff)   <- Kin - Kout*(1-C2/(EC50+C2))*eff
     t <- 1
   }))
-
 })

@@ -111,7 +111,7 @@ static inline int handleRemainingAssignments(nodeInfo ni, char *name, int i, D_P
 static inline int isLineAssignmentStatement(nodeInfo ni, char *name) {
   return nodeHas(assignment) || nodeHas(ini) || nodeHas(dfdy) ||
     nodeHas(ini0) || nodeHas(ini0f) || nodeHas(fbio) || nodeHas(alag) || nodeHas(rate) ||
-    nodeHas(dur) || nodeHas(mtime);
+    nodeHas(dur) || nodeHas(past) || nodeHas(mtime) || nodeHas(indLin_prop);
 }
 
 static inline char * getLineAfterAssign(char *c) {
@@ -216,5 +216,12 @@ static inline void finalizeLine(nodeInfo ni, char *name, D_ParseNode *pn, int is
     finalizeLineStrAssign(ni, name) ||
     finalizeLineLevelStr(ni, name)
     ;
+  // Leaving a finalized statement: clear the "delay() is allowed here" flag set
+  // for d/dt() and df()/dy() right-hand sides (see handleDdtAssign/handleLhsDf)
+  // and the "inside an indLin() forcing" flag (see handleCmtPropertyIndLin).
+  if (tmp) {
+    tb.curDdt = 0;
+    tb.curIndLin = 0;
+  }
   (void) tmp;
 }

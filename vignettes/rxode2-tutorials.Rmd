@@ -1,8 +1,8 @@
 ---
-title: "Interactive Tutorials"
+title: "Interactive tutorials"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Interactive Tutorials}
+  %\VignetteIndexEntry{Interactive tutorials}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -44,3 +44,8 @@ learnr::run_tutorial("rxode2-05-covariates-and-data", "rxode2")
 ## rxode2 Advanced Features
 learnr::run_tutorial("rxode2-06-advanced-features", "rxode2")
 ```
+
+# Next steps
+
+- [Introduction to rxode2](rxode2-intro.html)
+- [How do I...?](rxode2-cookbook.html)

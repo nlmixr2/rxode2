@@ -1,8 +1,7 @@
 rxTest({
   if (!.Call(`_rxode2_isIntel`)) {
     test_that("ui props", {
-
-      fun_odes  <- function() {
+      fun_odes <- function() {
         description <- "Dupilumab PK model (Kovalenko 2020)"
         reference <- "Kovalenko P, Davis JD, Li M, et al. Base and Covariate Population Pharmacokinetic Analyses of Dupilumab Using Phase 3 Data. Clinical Pharmacology in Drug Development. 2020;9(6):756-767. doi:10.1002/cpdd.780"
         # Model 1 from table 1 and supplementary Table 2 in the publication and its
@@ -106,33 +105,44 @@ rxTest({
         })
       }
 
-      obj_ana = rxode2(fun_ana)
-      obj_odes = rxode2(fun_odes)
+      obj_ana <- rxode2(fun_ana)
+      obj_odes <- rxode2(fun_odes)
 
-      expect_equal(obj_ana$props,
-                   list(pop = c("lfdepot", "lka", "lcl", "lv", "lvp", "lq", "allocl", "allov"),
-                        resid = "prop.err",
-                        group = list(id = c("etafdepot", "etaka", "etacl", "etav", "etavp", "etaq")),
-                        linCmt = TRUE,
-                        cmt = c("depot", "central"),
-                        output = list(primary = c("fdepot", "ka", "wtnorm", "cl", "q", "v", "vp"),
-                                      secondary = character(0),
-                                      endpoint = "Cc",
-                                      state = c("depot", "central")),
-                        cmtProp=data.frame(Compartment = "depot", Property = "f")))
+      expect_equal(
+        obj_ana$props,
+        list(
+          pop = c("lfdepot", "lka", "lcl", "lv", "lvp", "lq", "allocl", "allov"),
+          resid = "prop.err",
+          group = list(id = c("etafdepot", "etaka", "etacl", "etav", "etavp", "etaq")),
+          linCmt = TRUE,
+          cmt = c("depot", "central"),
+          output = list(
+            primary = c("fdepot", "ka", "wtnorm", "cl", "q", "v", "vp"),
+            secondary = character(0),
+            endpoint = "Cc",
+            state = c("depot", "central")
+          ),
+          cmtProp = data.frame(Compartment = "depot", Property = "f")
+        )
+      )
 
-      expect_equal(obj_odes$props,
-                   list(pop = c("lvc", "lke", "lkcp", "Mpc", "lka", "lMTT", "lVm", "Km", "lfdepot", "e_wt_vc"),
-                        resid = c("cppropSd", "cpaddSd"),
-                        group = list(id = c("etalvc", "etalke", "etalka", "etalvm", "etamtt")),
-                        linCmt = FALSE,
-                        cmt = c("depot", "transit1", "transit2", "transit3", "central", "periph"),
-                        output = list(primary = c("vc", "ke", "kcp", "ka", "MTT", "Vm", "kpc"),
-                                      secondary = "ktr",
-                                      endpoint = "Cc",
-                                      state = c("depot", "transit1", "transit2", "transit3", "central", "periph")),
-                        cmtProp=data.frame(Compartment="depot", Property="f")))
-
+      expect_equal(
+        obj_odes$props,
+        list(
+          pop = c("lvc", "lke", "lkcp", "Mpc", "lka", "lMTT", "lVm", "Km", "lfdepot", "e_wt_vc"),
+          resid = c("cppropSd", "cpaddSd"),
+          group = list(id = c("etalvc", "etalke", "etalka", "etalvm", "etamtt")),
+          linCmt = FALSE,
+          cmt = c("depot", "transit1", "transit2", "transit3", "central", "periph"),
+          output = list(
+            primary = c("vc", "ke", "kcp", "ka", "MTT", "Vm", "kpc"),
+            secondary = "ktr",
+            endpoint = "Cc",
+            state = c("depot", "transit1", "transit2", "transit3", "central", "periph")
+          ),
+          cmtProp = data.frame(Compartment = "depot", Property = "f")
+        )
+      )
 
       fun_ana2 <- function() {
         description <- "Two compartment PK model with linear clearance for average monoclonal antibodies (Davda 2014)"
@@ -174,22 +184,26 @@ rxTest({
 
       tmp <- fun_ana2()
 
-      expect_equal(tmp$props,
-                   list(pop = c("lfdepot", "lka", "lcl", "lv", "lvp", "lq", "allocl", "allov"),
-                        resid = "prop.err",
-                        group = list(id = c("etafdepot", "etaka", "etacl", "etav", "etavp", "etaq")),
-                        linCmt = TRUE,
-                        cmt = c("depot", "central"),
-                        output = list(primary = c("fdepot", "ka", "wtnorm", "cl", "q", "v", "vp"),
-                                      secondary = character(0),
-                                      endpoint = character(0),
-                                      state = c("depot", "central")),
-                        cmtProp=data.frame(Compartment = "depot", Property = "f")))
-
+      expect_equal(
+        tmp$props,
+        list(
+          pop = c("lfdepot", "lka", "lcl", "lv", "lvp", "lq", "allocl", "allov"),
+          resid = "prop.err",
+          group = list(id = c("etafdepot", "etaka", "etacl", "etav", "etavp", "etaq")),
+          linCmt = TRUE,
+          cmt = c("depot", "central"),
+          output = list(
+            primary = c("fdepot", "ka", "wtnorm", "cl", "q", "v", "vp"),
+            secondary = character(0),
+            endpoint = character(0),
+            state = c("depot", "central")
+          ),
+          cmtProp = data.frame(Compartment = "depot", Property = "f")
+        )
+      )
     })
 
     test_that("linCmt single compartment parses correctly", {
-
       mod <- function() {
         ini({
           cl <- 0.1
@@ -206,27 +220,26 @@ rxTest({
 
       expect_error(mod$props, NA)
 
-      expect_equal(mod$props,
-                   list(pop = c("cl", "vc"),
-                        resid = "err.sd",
-                        group = structure(list(), names = character(0)),
-                        linCmt = TRUE,
-                        cmt = "central",
-                        output = list(primary = character(0),
-                                      secondary = character(0),
-                                      endpoint = "Cc",
-                                      state = "central"),
-                        cmtProp=NULL))
-
+      expect_equal(
+        mod$props,
+        list(
+          pop = c("cl", "vc"),
+          resid = "err.sd",
+          group = structure(list(), names = character(0)),
+          linCmt = TRUE,
+          cmt = "central",
+          output = list(primary = character(0), secondary = character(0), endpoint = "Cc", state = "central"),
+          cmtProp = NULL
+        )
+      )
     })
 
     test_that("state based endpoint", {
-
       oncology_sdm_lobo_2002 <- function() {
         description <- "Signal transduction model for delayed concentration effects on cancer cell growth"
         reference <- "Lobo ED, Balthasar JP. Pharmacodynamic modeling of chemotherapeutic effects: Application of a transit compartment model to characterize methotrexate effects in vitro. AAPS J. 2002;4(4):212-222. doi:10.1208/ps040442"
-        depends<-"Cc"
-        units<-list(time="hr")
+        depends <- "Cc"
+        units <- list(time = "hr")
         # Values for lkng, ltau, lec50, and kmax are for methotrexate from Lobo 2002,
         # Table 2.  propErr and addErr are added as reasonable values though not from
         # Lobo 2002 where no value is apparent in the paper.
@@ -254,13 +267,12 @@ rxTest({
         })
       }
 
-      rx_obj = rxode2::rxode2(oncology_sdm_lobo_2002)
+      rx_obj <- rxode2::rxode2(oncology_sdm_lobo_2002)
 
       expect_equal(rx_obj$props$output$endpoint, "tumorVol")
     })
 
     test_that("bad ui props", {
-
       f <- function() {
         dosing <- c("central", "depot")
         ini({

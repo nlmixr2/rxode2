@@ -14,6 +14,15 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
   if (!strcmp("linCmtA", tf->v) ||
       (tf->isLinB=!strcmp("linCmtB", tf->v))) {
     D_ParseNode *xpn1 = d_get_child(tf->pn, 3);
+    int ii = d_get_number_of_children(xpn1) + 1;
+    int minArgs = tf->isLinB ? 7 : 5;
+    if (ii < minArgs) {
+      updateSyntaxCol();
+      sPrint(&_gbuf, _("'%s' takes at least %d arguments"),
+             tf->v, minArgs);
+      trans_syntax_error_report_fn(_gbuf.s);
+      return 1;
+    }
     D_ParseNode *xpn2 = d_get_child(xpn1, 1);
     char *v2 = (char*)rc_dup_str(xpn2->start_loc.s, xpn2->end);
     tb.linCmtN = toInt(v2+1);
@@ -29,7 +38,15 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
 
     if (tf->isLinB) tf->isLinB=1;
     tb.linB = tf->isLinB;
-    aType(TLIN);
+    // TLIN marks "this statement calls linCmt()", which keeps it out of the
+    // F/alag/rate/dur/past functions.  It must not overwrite a line type that
+    // already routes the statement elsewhere: a df()/dy() entry (TJAC) belongs
+    // to calc_jac/calc_lhs, and retyping it emitted `__PDStateVar__[...]` into
+    // dydt, where that argument does not exist -- the model did not compile
+    // (rxode2#1215).
+    if (sbPm.lType[sbPm.n] != TJAC) {
+      aType(TLIN);
+    }
     if (tf->isLinB) {
       // Here we figure out what derivatives are requested.
       // This allows the linCmtB Jacobian to focus only on
@@ -44,7 +61,10 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
       v2 = (char*)rc_dup_str(xpn2->start_loc.s, xpn2->end);
       int which2 = toInt(v2+1);
 
-      if (which2 == -2) {
+      if (which2 == -2 && which1 >= 0 && which1 < tb.ncmt + tb.hasKa) {
+        // Amount read for compartment which1 (linCmtBread's fx case): no
+        // derivative column is requested, nothing to register.
+      } else if (which2 == -2) {
         // amounts in function are returned
 
         // which1 is the compartment number, but it includes the
@@ -181,12 +201,35 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
           break;
         case 211: // 1 compartment, oral, which2=2
         case 421: // 2 compartment, oral, which2=4
-        case 621: // 2 compartment, oral, which2=6
+        case 631: // 3 compartment, oral, which2=6
           addLinCmtBdiff(diffKa);
           break;
         default:
           REprintf("Unknown linCmtB which1=-2: %d\n", sw);
           return 0;
+        }
+      } else if (which1 >= 0 && which2 >= 0) {
+        // Direct amount-Jacobian read J(which1=row, which2=theta column)
+        // (the linCmt() sensitivity-carry codegen, nlmixr2est phase 3b.3):
+        // without registering the column's derivative here ndiff stays 0,
+        // the solve computes no Jacobian, and the read restores zeros.
+        // Column order matches linCmtFillTheta: p1, v1[, p2, p3[, p4, p5]]
+        // then ka at 2*ncmt when oral.
+        tb.linCmtBraw = 1;
+        if (tb.hasKa && which2 == 2*tb.ncmt) {
+          addLinCmtBdiff(diffKa);
+        } else if (which2 == 0) {
+          addLinCmtBdiff(diffP1);
+        } else if (which2 == 1) {
+          addLinCmtBdiff(diffV1);
+        } else if (which2 == 2) {
+          addLinCmtBdiff(diffP2);
+        } else if (which2 == 3) {
+          addLinCmtBdiff(diffP3);
+        } else if (which2 == 4) {
+          addLinCmtBdiff(diffP4);
+        } else if (which2 == 5) {
+          addLinCmtBdiff(diffP5);
         }
       }
     }

@@ -1,14 +1,12 @@
 rxTest({
   # Individual keep AGE==AGE2
   if (!.Call(`_rxode2_isIntel`)) {
-
     test_that("Make sure the keep gives the right values", {
       TVQ <- 4
       TVV3 <- 7
       dat <- data.frame(AGE = c(20, 30), ID = c(10, 20)) |>
         dplyr::mutate(id = seq(from = 1, to = dplyr::n())) |>
         dplyr::rename(NMID = ID)
-
 
       par.tab <- data.frame(
         ThetaKa = c(0.7, 0.9),
@@ -68,27 +66,26 @@ rxTest({
         dplyr::group_by(id) |>
         tidyr::fill(DOSE, .direction = "downup") |>
         dplyr::ungroup() |>
-        dplyr::mutate(Cycle = dplyr::case_when(
-          time <= 12 ~ 1, #
-          time >= 12 ~ 2, #
-          TRUE ~ 0
-        )) |>
+        dplyr::mutate(
+          Cycle = dplyr::case_when(
+            time <= 12 ~ 1, #
+            time >= 12 ~ 2, #
+            TRUE ~ 0
+          )
+        ) |>
         dplyr::as_tibble()
 
       ev_ref <- ev_ref |>
         dplyr::left_join(tabtot, by = "id") |>
         dplyr::as_tibble()
 
-      PK.ev_ref2 <- rxSolve(mod1,
-                            events = ev_ref, cores = 2,
-                            seed = 123, addCov = TRUE, keep = c("Cycle", "AGE")
-                            )
+      PK.ev_ref2 <- rxSolve(mod1, events = ev_ref, cores = 2, seed = 123, addCov = TRUE, keep = c("Cycle", "AGE"))
 
       expect_equal(PK.ev_ref2$AGE, PK.ev_ref2$AGE2)
     })
 
     test_that("rxSolve 'keep' maintains character output (#190/#622)", {
-
+      skip_if_not_installed("nlmixr2data")
       one.cmt <- function() {
         ini({
           tka <- 0.45
@@ -154,15 +151,13 @@ rxTest({
       expect_true(is.na(d$lSEX[4]))
 
       expect_error(rxSolve(one.cmt, events = d, keep = c("eSEX")))
-
     })
 
     test_that("rxSolve 'keep' does not crash and keeps correct values #756", {
-
-      qs <- test_path("keep-756.qs2")
+      qs <- test_path("keep-756.rds")
       skip_if_not(file.exists(qs), "Test file not found")
 
-      d <- qs2::qs_read(qs)
+      d <- readRDS(qs)
 
       mod <- function() {
         ini({
@@ -193,47 +188,69 @@ rxTest({
         })
       }
 
-      expect_error(rxSolve(mod, d, keep="target_name"), NA)
+      expect_error(rxSolve(mod, d, keep = "target_name"), NA)
 
-      tmp <- rxSolve(mod, d, keep="target_name", addDosing=FALSE)
+      tmp <- rxSolve(mod, d, keep = "target_name", addDosing = FALSE)
 
       expect_false(any(is.na(tmp$target_name)))
 
-      tmp <- rxSolve(mod, d, keep="target_name", addDosing=TRUE, keepInterpolation="na")
+      tmp <- rxSolve(mod, d, keep = "target_name", addDosing = TRUE, keepInterpolation = "na")
 
       expect_true(any(is.na(tmp$target_name)))
 
-      tmp <- rxSolve(mod, d, keep="target_name", addDosing=TRUE, keepInterpolation="locf")
+      tmp <- rxSolve(mod, d, keep = "target_name", addDosing = TRUE, keepInterpolation = "locf")
 
       expect_false(any(is.na(tmp$target_name)))
 
-      tmp <- rxSolve(mod, d, keep="target_name", addDosing=TRUE, keepInterpolation="nocb")
+      tmp <- rxSolve(mod, d, keep = "target_name", addDosing = TRUE, keepInterpolation = "nocb")
 
       expect_false(any(is.na(tmp$target_name)))
-
 
       ## print(head(tmp[,c("id", "amt", "target_name")]))
 
-      et <- etTrans(d, mod, keep="target_name")
+      et <- etTrans(d, mod, keep = "target_name")
       et2 <- attr(class(et), ".rxode2.lst")
       class(et2) <- NULL
 
-      expect_equal(length(et2$keepL$keepL[[1]]),
-                   length(et$ID))
+      expect_equal(length(et2$keepL$keepL[[1]]), length(et$ID))
 
       class(et) <- "data.frame"
-      et <- cbind(et, k=et2$keepL$keepL[[1]])
+      et <- cbind(et, k = et2$keepL$keepL[[1]])
 
-      d2 <- d |> dplyr::filter(EVID==1) |> dplyr::select(ID, TIME) |>
-        dplyr::mutate(i=1)
+      d2 <- d |> dplyr::filter(EVID == 1) |> dplyr::select(ID, TIME) |> dplyr::mutate(i = 1)
 
       # only variables in the dataset are considered NA
-      expect_true(merge(et, d2, all.x=TRUE) |>
-                    dplyr::filter(i!= 1) |> dplyr::pull(k) |>
-                    is.na() |> all())
+      expect_true(
+        merge(et, d2, all.x = TRUE) |>
+          dplyr::filter(i != 1) |>
+          dplyr::pull(k) |>
+          is.na() |>
+          all()
+      )
 
       ## s <- rxSolve(mod, d, keep="target_name")
-
     })
   }
+
+  test_that("keep column with leading/trailing NA for the first subject (no OOB)", {
+    ## Before the fix, get_fkeep's LOCF/NOCB scan could exit at i = fid-1 (reads
+    ## vals[-1] for the first subject) or i = fid + n_all_times (past the id
+    ## block) and dereference that out-of-bounds element.  Here the first
+    ## subject's leading/trailing keep values are NA, forcing the scan off the
+    ## end of the id block.
+    mod <- rxode2({
+      d/dt(center) <- -kel * center
+      cp <- center / v
+    })
+    d <- data.frame(ID = 1L, TIME = 0:3, AMT = c(100, 0, 0, 0), EVID = c(1L, 0L, 0L, 0L), WT = c(NA, NA, 70, 72))
+    s <- rxSolve(mod, d, params = c(kel = 0.2, v = 10), keep = "WT", keepInterpolation = "locf")
+    ## leading NA at the first observation forward-fills to the first available
+    ## value (70), not garbage read from vals[-1]
+    expect_equal(s$WT, c(70, 70, 72))
+
+    d2 <- data.frame(ID = 1L, TIME = 0:3, AMT = c(100, 0, 0, 0), EVID = c(1L, 0L, 0L, 0L), WT = c(70, 72, NA, NA))
+    s2 <- rxSolve(mod, d2, params = c(kel = 0.2, v = 10), keep = "WT", keepInterpolation = "nocb")
+    ## trailing NA falls back to the last available value (72)
+    expect_equal(s2$WT, c(72, 72, 72))
+  })
 })

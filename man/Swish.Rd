@@ -24,6 +24,7 @@ The switch activation function is defined as:
 
 Swish(c(-1, 0, 1, 2))
 
+\donttest{
 # Can also be used in rxode2:
 x <- rxode2({
    r<- Swish(time)
@@ -32,25 +33,26 @@ x <- rxode2({
 e <- et(c(-1, 0, 1, 2))
 
 rxSolve(x, e)
+}
 
 }
 \seealso{
-Other Activation Functions: 
-\code{\link{ELU}()},
-\code{\link{GELU}()},
-\code{\link{PReLU}()},
-\code{\link{ReLU}()},
-\code{\link{SELU}()},
-\code{\link{dELU}()},
-\code{\link{dGELU}()},
-\code{\link{dPReLU}()},
-\code{\link{dReLU}()},
-\code{\link{dSELU}()},
-\code{\link{dSwish}()},
-\code{\link{dlReLU}()},
-\code{\link{dsoftplus}()},
-\code{\link{lReLU}()},
-\code{\link{softplus}()}
+Other Activation Functions:
+\code{\link[=ELU]{ELU()}},
+\code{\link[=GELU]{GELU()}},
+\code{\link[=PReLU]{PReLU()}},
+\code{\link[=ReLU]{ReLU()}},
+\code{\link[=SELU]{SELU()}},
+\code{\link[=dELU]{dELU()}},
+\code{\link[=dGELU]{dGELU()}},
+\code{\link[=dPReLU]{dPReLU()}},
+\code{\link[=dReLU]{dReLU()}},
+\code{\link[=dSELU]{dSELU()}},
+\code{\link[=dSwish]{dSwish()}},
+\code{\link[=dlReLU]{dlReLU()}},
+\code{\link[=dsoftplus]{dsoftplus()}},
+\code{\link[=lReLU]{lReLU()}},
+\code{\link[=softplus]{softplus()}}
 }
 \author{
 Matthew Fidler

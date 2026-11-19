@@ -7,7 +7,7 @@
 #include <stdint.h>   /* dj: import intptr_t */
 //#include "ode.h"
 #include "../inst/include/rxode2.h"
-#include "../inst/include/rxode2parseSbuf.h"
+#include "rxSbufFormat.h"
 #include "getOption.h"
 #include "parseLinCmt.h"
 #include "tran.h"
@@ -26,6 +26,19 @@
 #include <dparserPtr.h>
 
 dparserPtrIni
+
+/* dparser before 1.3.2 shared one static vector across dparse() calls, so
+   parsing on several threads at once crashed (#1427).  Set at load. */
+int rxDparserParallel = 0;
+
+/* set the flag from a non-NA logical; returns the previous value */
+SEXP _rxode2_rxDparserParallel(SEXP set) {
+  int old = rxDparserParallel;
+  if (TYPEOF(set) == LGLSXP && Rf_xlength(set) == 1 && LOGICAL(set)[0] != NA_LOGICAL) {
+    rxDparserParallel = LOGICAL(set)[0];
+  }
+  return Rf_ScalarLogical(old);
+}
 
 
 #include "tran.g.d_parser.h"
@@ -95,15 +108,33 @@ sbuf firstErr;
 int firstErrD=0;
 
 vLines sbPm, sbPmDt, sbNrmL;
+vLines sbNrmL2;
+vLines sbDoseArgVar, sbDoseArgCtx;
 sbuf sbNrm;
 sbuf sbExtra;
 vLines depotLines, centralLines;
 
+// Owned copies: codegen reads md5/me_code in a later .Call, after the argument
+// CHARSXPs they came from may have been collected (#1421).
 const char *model_prefix = NULL;
 const char *me_code = NULL;
 const char *md5 = NULL;
 int badMd5 = 0;
-int foundF=0,foundLag=0, foundRate=0, foundDur=0, foundF0=0, needSort=0;
+
+static void setOwnedStr(const char **dst, const char *src) {
+  size_t n = strlen(src) + 1;
+  char *cp = (char*)malloc(n);
+  if (cp == NULL) (Rf_error)("out of memory copying parser string");
+  memcpy(cp, src, n);
+  if (*dst != NULL) free((void*)(*dst));
+  *dst = cp;
+}
+
+static void freeOwnedStr(const char **dst) {
+  if (*dst != NULL) free((void*)(*dst));
+  *dst = NULL;
+}
+int foundF=0,foundLag=0, foundRate=0, foundDur=0, foundPast=0, foundF0=0, needSort=0;
 
 sbuf sbOut;
 
@@ -115,6 +146,8 @@ void updateSyntaxCol(void);
 char *gBuf;
 int gBufFree=0;
 int gBufLast = 0;
+// set once a model line has been echoed, so gBufLast ends that line
+int gBufLastPrinted = 0;
 D_Parser *curP=NULL;
 D_ParseNode *_pn = 0;
 
@@ -156,6 +189,7 @@ static inline void add_de(nodeInfo ni, char *name, char *v, int hasLhs, int from
 #include "parseDfdy.h"
 #include "parseCmtProperties.h"
 #include "parseDdt.h"
+#include "rxProtect.h"
 
 static inline int parseNodePossiblySkipRecursion(nodeInfo ni, char *name, D_ParseNode *pn, D_ParseNode *xpn,
 						 int *i, int nch, int *depth) {
@@ -169,9 +203,21 @@ static inline int parseNodePossiblySkipRecursion(nodeInfo ni, char *name, D_Pars
   if (handleIfElse(ni, name, *i) ||
       // simeta()/simeps()
       handleSimFunctions(ni, name, i, nch, pn) ||
+      handleObsStatement(ni, name, i, nch, pn) ||
       handleSplitBolusStatement(ni, name, i, nch, pn) ||
+      handleSplitInfusionStatement(ni, name, i, nch, pn) ||
+      handleSplitInfusionBolusStatement(ni, name, i, nch, pn) ||
+      handleSplitBolusInfusionStatement(ni, name, i, nch, pn) ||
       // evid_() dose-push
       handleEvidStatement(ni, name, i, nch, pn) ||
+      handleBolusStatement(ni, name, i, nch, pn) ||
+      handleInfuseStatement(ni, name, i, nch, pn) ||
+      handleInfuseDurStatement(ni, name, i, nch, pn) ||
+      handleReplaceStatement(ni, name, i, nch, pn) ||
+      handleResetStatement(ni, name, i, nch, pn) ||
+      handleMatExpStatement(ni, name, i, nch, pn) ||
+      handleMultiplyStatement(ni, name, i, nch, pn) ||
+      handlePhantomStatement(ni, name, i, nch, pn) ||
       handleStringEqualityStatements(ni, name, *i, xpn) ||
       handleDvidStatement(ni, name, xpn, pn) ||
       handleStartInterpStatement(ni, name, i, xpn, pn) ||
@@ -188,7 +234,7 @@ static inline int parseNodeAfterRecursion(nodeInfo ni, char *name, D_ParseNode *
   if (handlePrintf(ni, name, *i, xpn) ||
       handleJac(ni, name, *i, xpn, ii, found) ||
       handleLogicalExpr(ni, name, *i, pn, xpn, isWhile) ||
-      handleCmtProperty(ni, name, *i, xpn) ||
+      handleCmtProperty(ni, name, *i, pn, xpn) ||
       handleDdtAssign(ni, name, *i, pn, xpn) ||
       handleDdtRhs(ni, name, xpn) ||
       handleStrAssign(ni, name, *i, pn, xpn) ||
@@ -220,6 +266,16 @@ void wprint_parsetree(D_ParserTables pt, D_ParseNode *pn, int depth, print_node_
   if (handleLevelStr(ni, name, value)) return;
   if (nch != 0) {
     int isWhile=0;
+    // param()/params() and the interpolation statements (locf()/linear()/
+    // nocb()/midpoint()) build their normalized text by appending to sbt and
+    // read it back in finalizeLineParam()/finalizeLineInterp().  Unlike an
+    // assignment, neither resets sbt when the statement starts, so following an
+    // assignment they spliced that line's text into their own -- e.g.
+    // "y=z*a;param(a,c);" normalized to "paramy=z*a(a,c);", which no longer
+    // parses (nlmixr2/rxode2#1279).
+    if (nodeHas(param_statement) || nodeHas(interp_statement)) {
+      sClear(&sb); sClear(&sbDt); sClear(&sbt);
+    }
     if (nodeHas(power_expression)) {
       aAppendN("Rx_pow(", 7);
     } else if (nodeHas(mod_expression)) {
@@ -254,6 +310,9 @@ void parseFreeLast(void) {
   freeP();
   sFree(&_bufw);
   sFree(&_bufw2);
+  freeOwnedStr(&model_prefix);
+  freeOwnedStr(&me_code);
+  freeOwnedStr(&md5);
 }
 
 sbuf sbErr1;
@@ -277,19 +336,30 @@ void parseFree(int last) {
   lineFree(&sbPm);
   lineFree(&sbPmDt);
   lineFree(&sbNrmL);
+  lineFree(&sbNrmL2);
+  lineFree(&sbDoseArgVar);
+  lineFree(&sbDoseArgCtx);
   lineFree(&(tb.ss));
   lineFree(&(tb.de));
   lineFree(&(tb.str));
   lineFree(&(tb.strVal));
+  lineFree(&(tb.strCmp));
+  lineFree(&(tb.strCmpVal));
   lineFree(&depotLines);
   lineFree(&centralLines);
   lineFree(&_dupStrs);
   linCmtGenFree(&_linCmtGenStruct);
   R_Free(tb.lh);
+  // tb.lho is R_Calloc'd beside tb.lh in reset(); freeing one and not the other
+  // leaked MXSYM*sizeof(int) on every model parse (~200 KB, invisible to gc()).
+  R_Free(tb.lho);
   R_Free(tb.interp);
   R_Free(tb.lag);
   R_Free(tb.alag);
   R_Free(tb.splitBolus);
+  R_Free(tb.splitInfusion);
+  R_Free(tb.splitInfusionBolus);
+  R_Free(tb.splitBolusInfusion);
   R_Free(tb.ini);
   R_Free(tb.mtime);
   R_Free(tb.iniv);
@@ -297,10 +367,18 @@ void parseFree(int last) {
   R_Free(tb.di);
   R_Free(tb.didx);
   R_Free(tb.dprop);
+  R_Free(tb.stmtT);
+  R_Free(tb.stmtK);
+  R_Free(tb.stmtC);
+  R_Free(tb.stmtR0);
+  R_Free(tb.stmtRn);
+  R_Free(tb.stmtRef);
   R_Free(tb.si);
   R_Free(tb.sin);
   R_Free(tb.strValI);
   R_Free(tb.strValII);
+  R_Free(tb.strCmpN);
+  R_Free(tb.strCmpValI);
   R_Free(tb.idi);
   R_Free(tb.isi);
   R_Free(tb.idu);
@@ -355,6 +433,8 @@ void reset(void) {
   lineIni(&sbPm);
   lineIni(&sbPmDt);
   lineIni(&sbNrmL);
+  lineIni(&sbDoseArgVar);
+  lineIni(&sbDoseArgCtx);
   lineIni(&depotLines);
   lineIni(&centralLines);
   lineIni(&_dupStrs);
@@ -375,12 +455,20 @@ void reset(void) {
   tb.di		= R_Calloc(MXDER, int);
   tb.didx   = R_Calloc(MXDER, int);
   tb.dprop  = R_Calloc(MXDER, int);
+  tb.stmtT   = R_Calloc(MXSYM, int);
+  tb.stmtK   = R_Calloc(MXSYM, int);
+  tb.stmtC   = R_Calloc(MXSYM, int);
+  tb.stmtR0  = R_Calloc(MXSYM, int);
+  tb.stmtRn  = R_Calloc(MXSYM, int);
+  tb.stmtRef = R_Calloc(MXSYM, int);
   tb.didxn  = 1;
   tb.si     = R_Calloc(MXDER, int);
   tb.sin    = R_Calloc(MXDER, int);
   tb.idi	= R_Calloc(MXDER, int);
   tb.strValI= R_Calloc(MXDER, int);
   tb.strValII= R_Calloc(MXDER, int);
+  tb.strCmpN= R_Calloc(MXDER, int);
+  tb.strCmpValI= R_Calloc(MXDER, int);
   tb.isi    = R_Calloc(MXDER, int);
   tb.idu	= R_Calloc(MXDER, int);
   tb.lag	= R_Calloc(MXSYM, int);
@@ -388,6 +476,12 @@ void reset(void) {
   tb.alagn  = 0;
   tb.splitBolus = R_Calloc(MXSYM, int);
   tb.splitBolusN = 0;
+  tb.splitInfusion = R_Calloc(MXSYM, int);
+  tb.splitInfusionN = 0;
+  tb.splitInfusionBolus = R_Calloc(MXSYM, int);
+  tb.splitInfusionBolusN = 0;
+  tb.splitBolusInfusion = R_Calloc(MXSYM, int);
+  tb.splitBolusInfusionN = 0;
   tb.dvid	= R_Calloc(MXDER, int);
   tb.thread     = 1; // Thread safe flag
   tb.dvidn      = 0;
@@ -407,6 +501,7 @@ void reset(void) {
   tb.pi		= 0;
   tb.isPi       = 0;
   tb.isNA       = 0;
+  tb.lagTime    = 0;
   tb.linCmt     = 0;
   tb.linCmtCmt  = 0;
   tb.linCmtN    = -100;
@@ -422,14 +517,17 @@ void reset(void) {
   tb.hasDepotCmt = 0;
   tb.hasCentralCmt = 0;
   tb.hasKa      = 0;
-  tb.allocS	= MXSYM;
+  tb.allocNV	= MXSYM;
   tb.allocD	= MXDER;
   tb.allocS = MXDER;
   tb.allocSV = MXDER;
+  tb.allocSC = MXDER;
+  tb.allocSCV = MXDER;
   tb.matn	= 0;
   tb.matnf	= 0;
   tb.ncmt	= 0;
   tb.ndiff  = 0;
+  tb.linCmtBraw = 0;
   tb.linB	= 0;
   tb.curPropN	= 0;
   tb.depotN	= -1;
@@ -439,9 +537,28 @@ void reset(void) {
   tb.dummyLhs   = 0;
   tb.nInd       = 0;
   tb.simflg     = 0;
+  tb.rng        = 0;
   tb.nLlik      = 0;
+  tb.nInvCdf    = 0;
   tb.hasMix     = 0;
+  tb.mixSel     = 0;
   tb.evid_      = 0;
+  tb.isMexp     = 0;
+  tb.hasDdt     = 0;
+  tb.curDdt     = 0;
+  tb.hasIndLinProp = 0;
+  tb.stmtN      = 0;
+  tb.stmtAlloc  = MXSYM;
+  tb.stmtRefN   = 0;
+  tb.stmtRefAlloc = MXSYM;
+  tb.curStmt    = -1;
+  tb.curIndLin  = 0;
+  tb.curLhs     = -1;
+  tb.nCond      = 0;
+  tb.hasDelay   = 0;
+  tb.strCmpCurCov = NULL;
+  tb.strCmpCurStr = NULL;
+  tb.strCmpCurType = -1;
 
   // Reset Arrays
   // Reset integers
@@ -465,7 +582,9 @@ void reset(void) {
   foundF=0;
   foundLag=0;
   foundRate=0;
+  foundPast=0;
   gBufLast=0;
+  gBufLastPrinted=0;
   lastStrLoc=0;
   lastSyntaxErrorLine=0;
   needSort=0;
@@ -488,52 +607,51 @@ void reset(void) {
 
 static void rxSyntaxError(struct D_Parser *ap);
 
-static inline void assertCorrectDfDy(void) {
-  char *buf1, *buf2, bufe[2048];
-  int i, j, found, islhs;
-  for (i=0; i<tb.ndfdy; i++) {                     /* name state vars */
-    buf1=tb.ss.line[tb.df[i]];
-    found=0;
-    for (j=0; j<tb.de.n; j++) {                     /* name state vars */
-      buf2=tb.ss.line[tb.di[j]];
-      if (!strcmp(buf1, buf2)){
-	found=1;
-	break;
-      }
+// Is `var` the name of one of the model's state variables?
+static inline int dfDyIsState(const char *var) {
+  int j;
+  for (j=0; j<tb.de.n; j++) {                       /* name state vars */
+    if (!strcmp(var, tb.ss.line[tb.di[j]])) return 1;
+  }
+  return 0;
+}
+
+// Is `var` a parameter, ie is dfdy entry `i` a df(State)/dy(Parameter)?  Records
+// that on tb.sdfdy[i] when it is.
+static inline int dfDyIsParameter(int i, const char *var) {
+  int j, islhs;
+  for (j=0; j<NV; j++) {
+    islhs = tb.lh[j];
+    if (islhs>1 && tb.lh[i] != isLhsStateExtra) continue; /* is a state var */
+    if ((islhs != 1 || tb.ini[j] == 1) && !strcmp(var, tb.ss.line[j])){
+      tb.sdfdy[i] = 1;
+      return 1;
     }
-    if (!found){
-      buf2=tb.ss.line[tb.dy[i]];
-      snprintf(bufe, 2048, NOSTATE,buf1,buf2,buf1);
+  }
+  return 0;
+}
+
+static inline void assertCorrectDfDy(void) {
+  char *num, *den, bufe[2048];
+  int i;
+  for (i=0; i<tb.ndfdy; i++) {                     /* name state vars */
+    // A df()/dy() whose numerator or denominator never resolved to a symbol
+    // (e.g. a re-parsed df(state)/dy(THETA[n]) Jacobian where the THETA index
+    // was not registered) leaves tb.df[i]/tb.dy[i] negative; indexing
+    // tb.ss.line with it reads out of bounds and crashes.  Such an entry
+    // cannot be validated, so skip it rather than segfault.
+    if (tb.df[i] < 0 || tb.df[i] >= NV || tb.dy[i] < 0 || tb.dy[i] >= NV) {
+      continue;
+    }
+    num=tb.ss.line[tb.df[i]];
+    den=tb.ss.line[tb.dy[i]];
+    if (!dfDyIsState(num)){
+      snprintf(bufe, 2048, NOSTATE,num,den,num);
       trans_syntax_error_report_fn0(bufe);
     }
-    // Now the dy()
-    buf1=tb.ss.line[tb.dy[i]];
-    found=0;
-    for (j=0; j<tb.de.n; j++) {                     /* name state vars */
-      buf2=tb.ss.line[tb.di[j]];
-      if (!strcmp(buf1, buf2)){
-	found=1;
-	break;
-      }
-    }
-    if (!found){
-      for (j=0; j<NV; j++) {
-	islhs = tb.lh[j];
-	buf2=tb.ss.line[j];
-	if (islhs>1 && tb.lh[i] != isLhsStateExtra) continue; /* is a state var */
-	buf2=tb.ss.line[j];
-	if ((islhs != 1 || tb.ini[j] == 1) &&!strcmp(buf1, buf2)){
-	  found=1;
-	  // This is a df(State)/dy(Parameter)
-	  tb.sdfdy[i] = 1;
-	  break;
-	}
-      }
-    }
-    if (!found){
-      buf2=tb.ss.line[tb.df[i]];
-      buf2=tb.ss.line[tb.dy[i]];
-      snprintf(bufe,2048,NOSTATEVAR,buf1,buf2,buf2);
+    // Now the dy(); it may name either a state or a parameter
+    if (!dfDyIsState(den) && !dfDyIsParameter(i, den)){
+      snprintf(bufe,2048,NOSTATEVAR,den,den,den);
       trans_syntax_error_report_fn0(bufe);
     }
   }
@@ -565,10 +683,16 @@ void trans_internal(const char* parse_file, int isStr){
   lineIni(&sbPm);
   lineIni(&sbPmDt);
   lineIni(&sbNrmL);
+  lineIni(&sbDoseArgVar);
+  lineIni(&sbDoseArgCtx);
   // do not free these, they remain until next parse for quick parsing of linCmt() models
   lineIni(&depotLines);
   lineIni(&centralLines);
 
+  /* TODO(long-term): switch to udparse() once dparser-R ships a version that
+   * exports that symbol to CRAN.  udparse() accepts an unsigned int for
+   * buf_len, eliminating the silent (int)strlen truncation on inputs >= INT_MAX
+   * bytes.  Track at https://github.com/nlmixr2/dparser-R */
   _pn= dparse(curP, gBuf, (int)strlen(gBuf));
   if (!_pn || curP->syntax_errors) {
     rx_syntax_error = 1;
@@ -576,14 +700,64 @@ void trans_internal(const char* parse_file, int isStr){
     wprint_parsetree(parser_tables_rxode2parse, _pn, 0, wprint_node, NULL);
     // Determine Jacobian vs df/dvar
     assertCorrectDfDy();
+
+    if (tb.isMexp && tb.hasDdt) {
+      trans_syntax_error_report_fn0("Matrix exponential models cannot be used with any ODEs");
+    }
+    if (tb.hasIndLinProp && !tb.isMexp) {
+      trans_syntax_error_report_fn0("indLin() cannot be used without matExp() defined in the model");
+    }
+    assertAdaptiveDosingArgsDeclared();
+    nodeInfo dummyNi;
+    niReset(&dummyNi);
+    for (int j = 0; j < NV; j++) {
+      char cmt1[100];
+      char cmt2[100];
+      if (parse_micro_constant(tb.ss.line[j], cmt1, cmt2)) {
+        if (!strcmp(cmt1, cmt2)) {
+          updateSyntaxCol();
+          trans_syntax_error_report_fn0("transfer from a compartment to itself (e.g., k_cmt1_cmt1) is not allowed");
+        }
+        if (tb.isMexp) {
+          if (new_de(cmt1, fromCMT)) {
+            add_de(dummyNi, "matExp", cmt1, 0, fromCMT);
+          }
+          if (new_de(cmt2, fromCMT)) {
+            add_de(dummyNi, "matExp", cmt2, 0, fromCMT);
+          }
+        }
+      }
+    }
+    if (tb.isMexp) {
+      for (int i = 0; i < tb.de.n; i++) {
+        const char *name = tb.de.line[i];
+        if (strncmp(name, "rx", 2) != 0) {
+          if (strchr(name, '_') != NULL || strchr(name, '.') != NULL) {
+            updateSyntaxCol();
+            trans_syntax_error_report_fn0("compartments in matrix exponential models cannot contain '_' or '.' unless they start with 'rx'");
+          }
+        }
+      }
+      tb.statei = tb.de.n;
+      for (int i = 0; i < tb.de.n; i++) {
+        tb.didx[i] = abs(tb.didx[i]);
+        tb.idu[i] = 1;
+      }
+      // Has to come after the loop above: that is what registers the
+      // compartments, so the state list is not complete until it has run.
+      assertNoStateDependentMicro();
+    }
   }
 }
 
 
-extern int _rxode2parse_protected;
+SEXP _rxode2parse_preserve(SEXP x);
 static inline int setupTrans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
                              SEXP isEscIn, SEXP inME, SEXP goodFuns, SEXP fullPrintIn) {
-  _goodFuns = PROTECT(goodFuns); _rxode2parse_protected++;
+  /* claimed for the whole parse, and released by _rxode2parse_unprotect() --
+     see the comment on _rxode2parse_preserve() in codegen.c for why this
+     cannot be a PROTECT */
+  _goodFuns = _rxode2parse_preserve(goodFuns);
   // Make sure buffers are initialized.
   isEsc=INTEGER(isEscIn)[0];
   fullPrint=INTEGER(fullPrintIn)[0];
@@ -597,14 +771,14 @@ static inline int setupTrans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP 
   set_d_verbose_level(0);
 
   if (Rf_isString(prefix) && Rf_length(prefix) == 1){
-    model_prefix = CHAR(STRING_ELT(prefix,0));
+    setOwnedStr(&model_prefix, CHAR(STRING_ELT(prefix,0)));
   } else {
     _rxode2parse_unprotect();
     err_trans("model prefix must be specified");
   }
 
   if (Rf_isString(inME) && Rf_length(inME) == 1){
-    me_code = CHAR(STRING_ELT(inME,0));
+    setOwnedStr(&me_code, CHAR(STRING_ELT(inME,0)));
   } else {
     freeP();
     _rxode2parse_unprotect();
@@ -612,12 +786,13 @@ static inline int setupTrans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP 
   }
 
   if (Rf_isString(model_md5) && Rf_length(model_md5) == 1){
-    md5 = CHAR(STRING_ELT(model_md5,0));
+    setOwnedStr(&md5, CHAR(STRING_ELT(model_md5,0)));
     badMd5 = 0;
     if (strlen(md5)!= 32){
       badMd5=1;
     }
   } else {
+    setOwnedStr(&md5, "");
     badMd5=1;
   }
   return isStr;
@@ -627,7 +802,9 @@ static inline void finalizeSyntaxError(void) {
   if (rx_syntax_error){
     if(!rx_suppress_syntax_info){
       if (gBuf[gBufLast] != '\0'){
-	gBufLast++;
+	// skip the newline ending the last echoed line; when only a post-parse
+	// error (no line echoed yet) was reported, start at the first character
+	if (gBufLastPrinted) gBufLast++;
 	RSprintf("\n:%03d: ", lastSyntaxErrorLine);
 	for (; gBuf[gBufLast] != '\0'; gBufLast++){
 	  if (gBuf[gBufLast] == '\n'){
@@ -660,19 +837,24 @@ SEXP getRxode2ParseDf(void);
 
 SEXP _rxode2_trans(SEXP parse_file, SEXP prefix, SEXP model_md5, SEXP parseStr,
                    SEXP isEscIn, SEXP inME, SEXP goodFuns, SEXP fullPrintIn){
+  rxProtectGuard;
   const char *in = NULL;
   _rxode2parse_assignTranslation(getRxode2ParseDf());
   int isStr = setupTrans(parse_file, prefix, model_md5, parseStr, isEscIn, inME, goodFuns, fullPrintIn);
   in = CHAR(STRING_ELT(parse_file,0));
   trans_internal(in, isStr);
-  SEXP lst = PROTECT(generateModelVars());
+  SEXP lst = rxP(generateModelVars());
+  if (rx_syntax_error) {
+    rxUP(1);
+  }
   finalizeSyntaxError();
-  UNPROTECT(1);
+  rxUP(1);
   _rxode2parse_unprotect();
   return lst;
 }
 
 SEXP _rxode2_parseModel(SEXP type){
+  rxProtectGuard;
   if (!sbPm.o){
     _rxode2parse_unprotect();
     err_trans("model no longer loaded in memory");
@@ -681,37 +863,59 @@ SEXP _rxode2_parseModel(SEXP type){
   SEXP pm;
   switch (iT){
   case 1:
-    pm = PROTECT(Rf_allocVector(STRSXP, sbPmDt.n));
+    pm = rxP(Rf_allocVector(STRSXP, sbPmDt.n));
     for (int i = 0; i < sbPmDt.n; i++){
       SET_STRING_ELT(pm, i, Rf_mkChar(sbPmDt.line[i]));
     }
     break;
   default:
-    pm = PROTECT(Rf_allocVector(STRSXP, sbPm.n));
+    pm = rxP(Rf_allocVector(STRSXP, sbPm.n));
     for (int i = 0; i < sbPm.n; i++){
       SET_STRING_ELT(pm, i, Rf_mkChar(sbPm.line[i]));
     }
     break;
   }
-  UNPROTECT(1);
+  rxUP(1);
   return pm;
 }
 
 SEXP _rxode2_codeLoaded(void){
-  SEXP pm = PROTECT(Rf_allocVector(INTSXP, 1));
+  rxProtectGuard;
+  SEXP pm = rxP(Rf_allocVector(INTSXP, 1));
   if (!sbPm.o || !sbNrm.o){
     INTEGER(pm)[0]=0;
   } else {
     INTEGER(pm)[0]=1;
   }
-  UNPROTECT(1);
+  rxUP(1);
   return pm;
 }
 
 SEXP _rxode2_isLinCmt(void) {
-  SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));
+  rxProtectGuard;
+  SEXP ret = rxP(Rf_allocVector(INTSXP, 1));
   INTEGER(ret)[0]=tb.linCmt;
-  UNPROTECT(1);
+  rxUP(1);
+  return ret;
+}
+
+// Vectorized R interface to isReservedName(); see .rxIsReservedName()
+SEXP _rxode2_rxIsReservedName(SEXP inSEXP) {
+  rxProtectGuard;
+  if (TYPEOF(inSEXP) != STRSXP) {
+    (Rf_error)(_("'x' must be a character vector"));
+  }
+  int n = Rf_length(inSEXP);
+  SEXP ret = rxP(Rf_allocVector(LGLSXP, n));
+  for (int i = 0; i < n; ++i) {
+    SEXP cur = STRING_ELT(inSEXP, i);
+    if (cur == NA_STRING) {
+      LOGICAL(ret)[i] = NA_LOGICAL;
+    } else {
+      LOGICAL(ret)[i] = isReservedName(CHAR(cur)) ? 1 : 0;
+    }
+  }
+  rxUP(1);
   return ret;
 }
 
@@ -723,7 +927,20 @@ SEXP _rxode2_isLinCmt(void) {
 // Taken from dparser and changed to use R_Calloc
 char * rc_dup_str(const char *s, const char *e) {
   lastStr=s;
-  int l = e ? e-s : (int)strlen(s);
+  int l;
+  if (e) {
+    ptrdiff_t diff = e - s;
+    if (diff < 0 || diff > (ptrdiff_t)INT_MAX) {
+      (Rf_error)(_("string segment too long in rc_dup_str"));
+    }
+    l = (int)diff;
+  } else {
+    size_t sLen = strlen(s);
+    if (sLen > (size_t)INT_MAX) {
+      (Rf_error)(_("string too long in rc_dup_str"));
+    }
+    l = (int)sLen;
+  }
   syntaxErrorExtra=min(l-1, 40);
   addLine(&_dupStrs, "%.*s", l, s);
   return _dupStrs.line[_dupStrs.n-1];
@@ -735,6 +952,8 @@ void transIniNull(void) {
   lineNull(&(tb.de));
   lineNull(&(tb.str));
   lineNull(&(tb.strVal));
+  lineNull(&(tb.strCmp));
+  lineNull(&(tb.strCmpVal));
   sNull(&(sb));
   sNull(&(sbDt));
   sNull(&(sbt));
@@ -746,6 +965,9 @@ void transIniNull(void) {
   lineNull(&(sbPm));
   lineNull(&(sbPmDt));
   lineNull(&(sbNrmL));
+  lineNull(&(sbNrmL2));
+  lineNull(&(sbDoseArgVar));
+  lineNull(&(sbDoseArgCtx));
   lineNull(&(depotLines));
   lineNull(&(centralLines));
   sNull(&(_gbuf));

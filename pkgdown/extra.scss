@@ -1,0 +1,14 @@
+// Keep the top navbar on one line so the search box and GitHub icon stay visible
+.navbar .nav-link {
+  white-space: nowrap;
+}
+
+@media (min-width: 992px) and (max-width: 1199.98px) {
+  .navbar .navbar-nav .nav-link {
+    padding-left: 0.35rem;
+    padding-right: 0.35rem;
+  }
+  .navbar form[role="search"] input {
+    width: 9rem;
+  }
+}

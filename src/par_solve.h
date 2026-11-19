@@ -17,7 +17,97 @@ extern "C" {
 
 #include "../inst/include/rxode2.h"
 #include "rxThreadData.h"
+#include "rxode2lincmtLink.h"
 
+void par_rkf78(rx_solve *rx);
+extern "C" void ind_rkf78(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+void par_trapz(rx_solve *rx);
+extern "C" void ind_trapz(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void trapz_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+void par_ssp3(rx_solve *rx);
+extern "C" void ind_ssp3(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void ssp3_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+void par_rkf32(rx_solve *rx);
+extern "C" void ind_rkf32(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void rkf32_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+void par_rk43(rx_solve *rx);
+extern "C" void ind_rk43(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void rk43_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+void par_dop54(rx_solve *rx);
+extern "C" void ind_dop54(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void dop54_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+void par_vern65(rx_solve *rx);
+extern "C" void ind_vern65(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void vern65_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+void par_vern76(rx_solve *rx);
+extern "C" void ind_vern76(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void vern76_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+void par_dop87(rx_solve *rx);
+extern "C" void ind_dop87(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void dop87_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+void par_vern98(rx_solve *rx);
+extern "C" void ind_vern98(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void vern98_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+void par_rk4(rx_solve *rx);
+extern "C" void ind_rk4(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+void par_rk4s(rx_solve *rx);
+extern "C" void ind_rk4s(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void par_cvodesadj(rx_solve *rx);
+extern "C" void ind_cvodesadj(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void par_liblsodaadj(rx_solve *rx);
+extern "C" void ind_liblsodaadj(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void par_ab_adj(rx_solve *rx);
+extern "C" void ind_ab_adj(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+void par_ck54(rx_solve *rx);
+extern "C" void ind_ck54(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+void par_ab(rx_solve *rx);
+extern "C" void ind_ab(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+void par_abm(rx_solve *rx);
+extern "C" void ind_abm(rx_solve *rx, int solveid,
+                        t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_dop5(rx_solve *rx);
+
+extern "C" void ind_dop5(rx_solve *rx, int solveid,
+                         t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_bs(rx_solve *rx);
+
+extern "C" void ind_bs(rx_solve *rx, int solveid,
+                         t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_ros4(rx_solve *rx);
+extern "C" void ind_ros4(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_dros4(rx_solve *rx);
+extern "C" void ind_dros4(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_iem(rx_solve *rx);
+extern "C" void ind_iem(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_sem(rx_solve *rx);
+extern "C" void ind_sem(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_sb3a(rx_solve *rx);
+extern "C" void ind_sb3a(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_sb3am4(rx_solve *rx);
+extern "C" void ind_sb3am4(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_vv(rx_solve *rx);
+extern "C" void ind_vv(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_mm(rx_solve *rx);
+extern "C" void ind_mm(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_em(rx_solve *rx);
+extern "C" void ind_em(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+
+extern "C" void par_cvode(rx_solve *rx);
+extern "C" void ind_cvode(rx_solve *rx, int solveid, t_update_inis u_inis);
+extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double xout,
+                                    int *istate, rx_solving_options *op,
+                                    rx_solving_options_ind *ind, void *ctx_ptr);
 
 	void sortInd(rx_solving_options_ind *ind);
 
@@ -26,9 +116,61 @@ extern "C" {
   extern double maxAtolRtolFactor;
 
 
+  // Forget every dose the per-origin decomposition of the linCmt() amounts
+  // has attributed (linCmtB which1 = -9/-10, src/linCmt.cpp), so the next
+  // advance starts from a system nothing has been given yet.  Both callers
+  // mean exactly that: a fresh subject, and an EVID 3 reset, which
+  // re-establishes the compartments from op->inits -- initial conditions,
+  // not a dose, and so not something a delay moves.  Clearing `seeded` is
+  // what tells that first advance to subtract op->inits rather than book it
+  // as a phantom dose.
+  static inline void linCmtOriginReset(rx_solving_options_ind *ind) {
+    memset(ind->linCmtOrigin, 0, sizeof(ind->linCmtOrigin));
+    memset(ind->linCmtOriginOut, 0, sizeof(ind->linCmtOriginOut));
+    ind->linCmtOriginSeeded = 0;
+    ind->linCmtOriginOutSeeded = 0;
+    ind->linCmtOriginIdx = -1;
+    ind->linCmtOriginSS = 0;
+  }
+
+  // newind during the solve: 1 for the subject's first record (its dose
+  // functions and evid_() pushes included), 2 after it, as the output table
+  // has it.  The hidden evid 9 start record, which the table skips, is not
+  // that first record: it sees 2 and the record after it sees 1.
+  static inline int rxNewindFirst(rx_solving_options_ind *ind) {
+    return (ind->n_all_times > 0 && getEvid(ind, ind->ix[0]) == 9) ? 2 : 1;
+  }
+  // The same, for the order an mtime() requeue of slot 0 re-sorts into at the
+  // top of the next iteration (reSortMainTimeline(); mtime records take their
+  // new ind->mtime time there): does the evid 9 start record come first?
+  static inline int rxNewindFirstResort(rx_solving_options_ind *ind) {
+    int e9 = -1;
+    for (int j = 0; j < ind->n_all_times; ++j) {
+      if (getEvid(ind, ind->ix[j]) == 9) { e9 = ind->ix[j]; break; }
+    }
+    if (e9 < 0) return 1;
+    double t9 = ind->timeThread[e9];
+    for (int j = 0; j < ind->n_all_times; ++j) {
+      int raw = ind->ix[j], ev = getEvid(ind, raw);
+      if (raw == e9) continue;
+      double tj = (ev >= 10 && ev <= 99) ? ind->mtime[ev - 10] : ind->timeThread[raw];
+      if (tj < t9 || (tj == t9 && (ev == 3 || ev > 9))) return 1;
+    }
+    return 2;
+  }
+  // newind for the record after slot i; an mtime() requeue of slot 0 (i == -1)
+  // runs slot 0 again.
+  static inline void rxNewindAfterRecord(rx_solving_options_ind *ind, int i) {
+    if (i < 0) ind->_newind = rxNewindFirstResort(ind);
+    else ind->_newind = (i == 0 && getEvid(ind, ind->ix[0]) == 9) ? 1 : 2;
+  }
+
 	static inline int iniSubject(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
 															 t_update_inis u_inis) {
 		ind->_rxFlag=1;
+    ind->fns = &(rx->fns);
+    ind->op = op;
+    ind->rx = rx;
     ind->linSS=0;
     ind->linSScmt=0;
     ind->linSSvar=0.0;
@@ -37,19 +179,18 @@ extern "C" {
     ind->linCmtAlast = NULL;
     ind->ssTime = NA_REAL;
     _setIndPointersByThread(ind);
-    // Apply this individual's sticky tolerance factor to the thread-local
-    // tolerance arrays.  _setIndPointersByThread() has already reset
-    // ind->atol2/rtol2/ssAtol/ssRtol to the per-thread global baseline.
-    // Multiplying by tolFactor here means the ODE solver immediately sees
-    // the correct loosened tolerances without any further call to
-    // atolRtolFactor_().  For most individuals tolFactor == 1.0 (set by
-    // setupRxInd()), so this loop costs only a few multiplications.
-    if (ind->atol2 != NULL) {
+    // This individual's sticky tolerance factor, applied to the thread-local
+    // tolerance arrays.  Derived from the solve's base tolerances
+    // (op->atol2 ...) rather than from what the arrays hold: they belong to
+    // the THREAD, so they still carry the previous subject's loosening, and
+    // scaling those would give this subject a tolerance that depends on what
+    // ran before it.
+    if (ind->atol2 != NULL && op->atol2 != NULL) {
       for (int _i = op->neq; _i--;) {
-        ind->atol2[_i]  = min2(ind->atol2[_i]  * ind->tolFactor, maxAtolRtolFactor);
-        ind->rtol2[_i]  = min2(ind->rtol2[_i]  * ind->tolFactor, maxAtolRtolFactor);
-        ind->ssAtol[_i] = min2(ind->ssAtol[_i] * ind->tolFactor, maxAtolRtolFactor);
-        ind->ssRtol[_i] = min2(ind->ssRtol[_i] * ind->tolFactor, maxAtolRtolFactor);
+        ind->atol2[_i]  = min2(op->atol2[_i]  * ind->tolFactor, maxAtolRtolFactor);
+        ind->rtol2[_i]  = min2(op->rtol2[_i]  * ind->tolFactor, maxAtolRtolFactor);
+        ind->ssAtol[_i] = min2(op->ssAtol[_i] * ind->tolFactor, maxAtolRtolFactor);
+        ind->ssRtol[_i] = min2(op->ssRtol[_i] * ind->tolFactor, maxAtolRtolFactor);
       }
     }
 		for (int i=rxLlikSaveSize*op->nLlik; i--;) {
@@ -63,11 +204,39 @@ extern "C" {
     // interleave with original observations are not silently dropped.
     if (inLhs == 0) ind->n_all_times = ind->n_all_times_orig;
 		ind->id=solveid;
+    // A solve's failure marks are its own: nothing else clears them between two
+    // solves of one subject (nlmixr2est solves a subject again on the same ind)
+    if (inLhs == 0 && ind->rc != NULL) {
+      ind->rc[0] = 0;
+      ind->err = 0;
+    }
+    // AutoSwitch state is per subject solve.  It lives here rather than in
+    // setupRxInd() because op (and therefore the autoSwitch* controls) is only
+    // known at solve time, and because ind structs are reused across the
+    // solveids of a simulation.  inLhs==1 is the output pass, after the solve.
+    if (inLhs == 0) {
+      ind->autoMethod = (op->autoSwitchStiffFirst != 0) ? 1 : 0;
+      ind->autoCount = 0;
+      ind->autoLastSwitchIntervals = 0;
+      ind->autoStiffHlamb = 0.0;
+      ind->autoStiffIasti = 0;
+      ind->autoStiffNonsti = 0;
+      ind->autoStiffNaccpt = 0;
+      ind->autoBackoff = 0;
+    }
 		ind->cacheME=0;
 		ind->curShift=0.0;
 		ind->lastIsSs2 = false;
     ind->idxLow=0;
     ind->idxHi=0;
+    // Event ("jump") sensitivities: clear any deferred non-dosed dtau jump so it
+    // does not leak across subjects; keep the buffer zeroed when idle (the flush
+    // in preSolve re-zeros it after each use).
+    ind->esHasPending = 0;
+    ind->esPendingTau = NA_REAL;
+    if (ind->esPendingJump != NULL) {
+      memset(ind->esPendingJump, 0, rxEffNeq(ind, op)*sizeof(double));
+    }
 		// neq[0] = op->neq
     int ncmt = (op->neq + op->extraCmt);
 		for (int j = ncmt; j--;) {
@@ -77,6 +246,7 @@ extern "C" {
 			ind->tfirstS[j] = NA_REAL;
 			ind->curDoseS[j] = NA_REAL;
 		}
+		ind->infDurOnN = 0;
 		ind->inLhs = inLhs;
 		for (int j = op->nlhs; j--;) {
       if (op->lhs_str[j] == 1) {
@@ -90,24 +260,78 @@ extern "C" {
       if (u_inis != NULL) {
         ind->isIni = 1;
         // Also can update individual random variables (if needed)
-        if (inLhs == 0) memcpy(ind->solve, op->inits, op->neq*sizeof(double));
+        // Use rxEffNeq() for the memcpy length: under a per-individual
+        // neqOverride (predNeq < op->neq), the per-event buffer stride is
+        // predNeq, so writing op->neq doubles into slot 0 would clobber the
+        // start of slot 1 (which sits at offset predNeq, not op->neq).
+        if (inLhs == 0) memcpy(ind->solve, op->inits, rxEffNeq(ind, op)*sizeof(double));
         u_inis(solveid, ind->solve); // Update initial conditions @ current time
         ind->isIni = 0;
       } else if (rx->nMtime && inLhs == 0 && op->neq > 0) {
         // No u_inis but state-dep mtime needs initial values in ind->solve
-        memcpy(ind->solve, op->inits, op->neq*sizeof(double));
+        memcpy(ind->solve, op->inits, rxEffNeq(ind, op)*sizeof(double));
       }
 		}
+    // delay() pre-history is the evaluated x(0), not the literal op->inits
+    // (rxode2#1441); slot 0 holds it now, before handle_evid adds any dose.
+    if (inLhs == 0) {
+      ind->delayIniN = 0;
+      int _nIni = rxEffNeq(ind, op);
+      if (op->hasDelay && u_inis != NULL && _nIni > 0) {
+        if (ind->delayIniCap < _nIni) {
+          double *_p = (double*)realloc(ind->delayIni, _nIni*sizeof(double));
+          if (_p != NULL) {
+            ind->delayIni = _p;
+            ind->delayIniCap = _nIni;
+          }
+        }
+        if (ind->delayIniCap >= _nIni) {
+          memcpy(ind->delayIni, ind->solve, _nIni*sizeof(double));
+          ind->delayIniN = _nIni;
+        }
+      }
+    }
+    // Reset ind->linCmtSave -- the PER-THREAD linCmt() inter-event amount
+    // ("alast") save buffer (gLinSave sliced by thread id in
+    // getLinCmtSaveThread()), shared by every subject run on the same OpenMP
+    // thread and never otherwise cleared.  This is a cross-subject leak: when
+    // linCmt() takes its restore path (solvedIdx >= idx -- e.g. in the
+    // pre-dose window a modeled alag() creates) it returns without rewriting
+    // linCmtSave, and linSolve()/copyLinCmt() then copy the previous
+    // subject's amounts into this subject's solve buffer, which later steps
+    // use as Alast.  Wrong for every subject after the first on a thread
+    // whenever cores < nSub.  Slot 0 of the per-subject advance buffer
+    // (getAdvan(0)) needs no reset here: the op->inits memcpy above covers it,
+    // and it must NOT be zeroed -- nonzero linCmt() initial amounts supplied
+    // via inits= ride along in op->inits and are honored from slot 0.
+    // Pure-ODE models (numLin == numLinSens == 0) are skipped -> ODE solves
+    // are unchanged.
+    if ((op->numLin + op->numLinSens) > 0 && ind->linCmtSave != NULL) {
+      memset(ind->linCmtSave, 0,
+             (size_t)(op->numLin + op->numLinSens) * sizeof(double));
+    }
+    // Reset ind->linCmtCarryT -- the cumulative d(Alast_i)/d(eta) carry state
+    // for the linCmt()-time-varying-covariate fix (see rxode2parseStruct.h
+    // and linCmtB()'s which1=-5/-6/-7 in linCmt.cpp). Alast starts at 0 for
+    // a fresh subject, so its sensitivity does too; the full fixed-size
+    // buffer (4 rows x RX_LINCMT_CARRY_MAXPAIRS pair columns) is memset
+    // (not gated on m or the pair count actually in use).
+    if ((op->numLin + op->numLinSens) > 0) {
+      memset(ind->linCmtCarryT, 0, sizeof(ind->linCmtCarryT));
+      ind->linCmtCarryTlast = NAN;
+      ind->linCmtCarryVarying = 0;
+      linCmtOriginReset(ind);
+    }
     // Compute model times using ind->solve (which has user-specified inits after u_inis).
     // ind->solve is always a valid calloc'd pointer, unlike op->inits which may be unset.
     if (rx->nMtime) {
       if (inLhs == 0 || op->neq == 0) {
         // ODE solve pass (inLhs==0) or LHS-only model (neq==0): initialise mtime.
-        // Compute mtime with actual initial state → mtime_init[k].
+        // Compute mtime with actual initial state -> mtime_init[k].
         double *_initState = (inLhs == 0 && op->neq > 0) ? ind->solve : op->inits;
-        calc_mtime(solveid, ind->mtime, _initState);
+        if (ind->fns && ind->fns->mtime) ind->fns->mtime(solveid, ind->mtime, _initState);
 
-        // Compute mtime with zero state → base (state-independent) time mtime_base[k].
+        // Compute mtime with zero state -> base (state-independent) time mtime_base[k].
         // If base <= init, place event at base so the solver is forced to visit base,
         // then recomputeMtimeIfNeeded re-evaluates with actual state(base) and reschedules
         // to base + f(state(base)) >= base.  This is the correct semantics: state-dep offset
@@ -117,10 +341,10 @@ extern "C" {
         double _baseMtime[90];
         if (op->neq > 0) {
           double *_zeroState = new double[op->neq]();  // zero-initialised
-          calc_mtime(solveid, _baseMtime, _zeroState);
+          if (ind->fns && ind->fns->mtime) ind->fns->mtime(solveid, _baseMtime, _zeroState);
           delete[] _zeroState;
         } else {
-          calc_mtime(solveid, _baseMtime, _initState);
+          if (ind->fns && ind->fns->mtime) ind->fns->mtime(solveid, _baseMtime, _initState);
         }
         std::fill_n(ind->mtime0, rx->nMtime, R_NegInf);
         for (int k = 0; k < rx->nMtime; k++) {
@@ -132,7 +356,7 @@ extern "C" {
           ind->mtime0[k] = ind->mtime[k];  // trigger = initial placement
         }
       }
-      // else: LHS pass (inLhs==1, neq>0) — preserve ind->mtime[k] set by the ODE
+      // else: LHS pass (inLhs==1, neq>0) -- preserve ind->mtime[k] set by the ODE
       // solve (including any recomputeMtimeIfNeeded updates).  getTime_ returns
       // ind->mtime[evid-10] so using the correct final time is essential for the
       // output dataframe to show the actual event time, not the trigger time.
@@ -151,7 +375,8 @@ extern "C" {
       // sortInd and may have re-sorted for state-dep lag; preserve that order so
       // getSolve(i) positions in rxode2_df agree with the solve loop.
       sortInd(ind);
-      // Note: op->badSolve is NOT checked here — it is a shared global flag.
+      if (inLhs == 0) ind->_newind = rxNewindFirst(ind);
+      // Note: op->badSolve is NOT checked here -- it is a shared global flag.
       // In parallel mode another thread's failed solve would prevent THIS
       // individual from initializing.  Bad-solve state is handled per-individual
       // via localBadSolve / *rc in the caller.
@@ -161,11 +386,13 @@ extern "C" {
     if (ncmt) ind->pendingDosesN[0] = 0;
 		return 1;
 	}
-  static inline void handleEvid3(rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
-                                 int *neq, double *xp, double *xout,  double *yp,
-                                 int *idid,
-                                 t_update_inis u_inis) {
+  static inline void handleEvid3(rx_solving_options_ind *ind, rx_solving_options *op,
+                                 rx_solve *rx, int *neq, double *xp, double *xout,
+                                 double *yp, int *idid, t_update_inis u_inis) {
     ind->curShift -= rx->maxShift;
+    cancelRunningInfusionStops(ind, rx, op, ind->idx, neq[0], -1);
+    // the modeled steady-state off these mark was cancelled with the rest
+    if (_rxEsActive) { _esSSDurOffCmt = -1; _esSSRateOffCmt = -1; }
     for (unsigned int j = neq[0]; j--;) {
       ind->InfusionRate[j] = 0;
       ind->on[j] = 1;
@@ -179,7 +406,17 @@ extern "C" {
     *xout -= rx->maxShift;
     *xp = *xout;
     ind->linCmtAlast = yp ;
+    linCmtOriginReset(ind);
     ind->ixds++;
+    // Reset dose-tracking after time reset so tad is never negative post-reset.
+    // Any dose that fires after this EVID=3 re-establishes tlast from scratch.
+    int _ncmt = op->neq + op->extraCmt;
+    for (int _j = _ncmt; _j--;) {
+      ind->tlastS[_j]   = NA_REAL;
+      ind->curDoseS[_j] = NA_REAL;
+    }
+    ind->tlast   = NA_REAL;
+    ind->curDose = NA_REAL;
   }
 
 #if defined(__cplusplus)
@@ -223,7 +460,10 @@ static inline int handleExtraDose(int *neq,
     int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
     ind->idx = -1-trueIdx;
     double time = getAllTimes(ind, ind->idx);
-    while (!isSameTimeOp(time, xp) && time < xp && ind->idxExtra < ind->extraDoseN[0]) {
+    // bound before the increment; every extra dose can be before xp (e.g. two
+    // modeled duration steady state doses tied at one time), and reading
+    // extraDoseTimeIdx[extraDoseN[0]] then walks off the end of the pool
+    while (!isSameTimeOp(time, xp) && time < xp && ind->idxExtra + 1 < ind->extraDoseN[0]) {
       ind->idxExtra++;
       trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
       ind->idx = -1-trueIdx;
@@ -276,13 +516,38 @@ static inline int handleExtraDose(int *neq,
 
 static inline void preSolve(rx_solving_options *op, rx_solving_options_ind *ind,
                             double &xp, double &xout, double *yp) {
+  // Event ("jump") sensitivities: flush the deferred non-dosed dtau jump.  It is
+  // recorded at a modeled-lag dose arrival time tau but withheld from yp so that
+  // any output coincident with tau reports the pre-jump left limit for
+  // compartments that did not receive the bolus.  This is the first integration
+  // step that advances past tau (preSolve is only called when xout != xp), so
+  // adding the jump here makes every t > tau see the post-jump value -- identical
+  // to applying it at the dose event, since no integration occurred in between.
+  // Invariant: a flush happens between any two distinct event times, so all
+  // pending accumulation shares the single time esPendingTau.
+  if (ind->esHasPending && ind->esPendingJump != NULL &&
+      isSameTime(ind->esPendingTau, xp)) {
+    int _n = rxEffNeq(ind, op);
+    for (int j = _n; j--;) yp[j] += ind->esPendingJump[j];
+    memset(ind->esPendingJump, 0, (size_t)_n*sizeof(double));
+    ind->esHasPending = 0;
+  }
   // First set the last values of time and compartment values
   if (op->numLin > 0) {
     ind->linCmtAlast = yp + op->linOffset;
     ind->tprior = xp + ind->curShift; // Set the time to the time to solve to.
     ind->tout   = xout + ind->curShift;
+    // steady-state cycles re-solve the same row over 0..ii from a new state;
+    // linCmtB()'s last-row memo is keyed on the row and time, not the state,
+    // so drop it (#1585)
+    if (ind->doSS) _p_linCmtBindFree(ind);
   }
-  ind->_atEventTime = 1;
+  // NOTE: ind->_atEventTime is deliberately NOT set here.  evid_() is fired
+  // once per record from updateSolve() (see par_solve.cpp) so that every
+  // method -- ODE, linCmt() and indLin() alike -- pushes the event at the
+  // record it was decided at.  Setting it here fired evid_() from dydt() at
+  // the START of the next integration interval, i.e. after the solver had
+  // already been asked to integrate past the pushed event's own time.
 }
 
 

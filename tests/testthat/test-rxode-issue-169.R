@@ -19,11 +19,30 @@ rxTest({
       eff(0) <- 1
     })
     trans <- etTrans(Book4, mod1)
-    
-    expect_equal(trans$EVID, c(
-      101L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 101L, 0L, 0L, 0L, 0L,
-      0L, 0L, 0L, 0L
-    ))
+
+    expect_equal(
+      trans$EVID,
+      c(
+        101L,
+        0L,
+        0L,
+        0L,
+        0L,
+        0L,
+        0L,
+        0L,
+        0L,
+        101L,
+        0L,
+        0L,
+        0L,
+        0L,
+        0L,
+        0L,
+        0L,
+        0L
+      )
+    )
     expect_true(all(trans$II == 0.0))
   })
 })

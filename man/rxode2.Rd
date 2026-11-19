@@ -15,11 +15,14 @@ rxode2(
   debug = FALSE,
   calcJac = NULL,
   calcSens = NULL,
+  calcSens2 = NULL,
+  calcSens3 = NULL,
   collapseModel = FALSE,
   package = NULL,
   ...,
   linCmtSens = c("linCmtA", "linCmtB"),
   indLin = FALSE,
+  eventSens = NULL,
   verbose = FALSE,
   fullPrint = getOption("rxode2.fullPrint", FALSE),
   envir = parent.frame()
@@ -34,11 +37,14 @@ RxODE(
   debug = FALSE,
   calcJac = NULL,
   calcSens = NULL,
+  calcSens2 = NULL,
+  calcSens3 = NULL,
   collapseModel = FALSE,
   package = NULL,
   ...,
   linCmtSens = c("linCmtA", "linCmtB"),
   indLin = FALSE,
+  eventSens = NULL,
   verbose = FALSE,
   fullPrint = getOption("rxode2.fullPrint", FALSE),
   envir = parent.frame()
@@ -53,11 +59,14 @@ rxode(
   debug = FALSE,
   calcJac = NULL,
   calcSens = NULL,
+  calcSens2 = NULL,
+  calcSens3 = NULL,
   collapseModel = FALSE,
   package = NULL,
   ...,
   linCmtSens = c("linCmtA", "linCmtB"),
   indLin = FALSE,
+  eventSens = NULL,
   verbose = FALSE,
   fullPrint = getOption("rxode2.fullPrint", FALSE),
   envir = parent.frame()
@@ -110,7 +119,32 @@ compiled with verbose debugging information turned on.}
 Jacobain according to the specified ODEs.}
 
 \item{calcSens}{boolean indicating if rxode2 will calculate the
-sensitivities according to the specified ODEs.}
+sensitivities according to the specified ODEs.  May also be a
+character vector of the states/parameters whose first-order
+sensitivities (\verb{rx__sens_<state>_BY_<param>__}) should be
+generated.}
+
+\item{calcSens2}{character vector (or \code{NULL}) requesting
+second-order sensitivities in addition to the first-order ones
+from \code{calcSens}.  When supplied, rxode2 also generates the
+\verb{rx__sens_<state>_BY_<p>_BY_<q>__} compartments (the Hessian
+path), where \code{p} ranges over \code{calcSens} and \code{q} over
+\code{calcSens2}.  Used, for example, for population (\code{THETA})
+second-order event sensitivities.  \code{NULL} (the default) skips the
+second-order generation.}
+
+\item{calcSens3}{character vector (or \code{NULL}) requesting third-order
+sensitivities in addition to the first- and second-order ones.
+Requires \code{calcSens2} to also be supplied (every \code{calcSens3}
+parameter needs its own already-built second-order sensitivity
+compartment, from the pairing of \code{calcSens2} with \code{calcSens3}, to
+reference -- so \code{calcSens3} should be a subset of \code{calcSens2},
+which itself should be a subset of \code{calcSens}, mirroring how
+\code{calcSens2} is used everywhere else in rxode2 today).  When
+supplied, generates the \verb{rx__sens_<state>_BY_<p>_BY_<q>_BY_<r>__}
+compartments, where \code{p} ranges over \code{calcSens}, \code{q} over
+\code{calcSens2}, and \code{r} over \code{calcSens3}, via \code{rxExpandSens3_()}.
+\code{NULL} (the default) skips the third-order generation.}
 
 \item{collapseModel}{boolean indicating if rxode2 will remove all
 LHS variables when calculating sensitivities.}
@@ -123,6 +157,18 @@ LHS variables when calculating sensitivities.}
 
 \item{indLin}{Calculate inductive linearization matrices and
 compile with inductive linearization support.}
+
+\item{eventSens}{controls how dosing/event-parameter (alag, F, rate,
+dur, amt) sensitivities are computed when sensitivities are
+generated: \code{"jump"} injects the analytic event ("jump")
+sensitivities into the sensitivity states at each dosing event,
+\code{"fd"} keeps the legacy finite-difference behavior (the
+backward-compatible opt-out), and \code{"both"} computes both for
+cross-checking.  \code{NULL} (the default) uses
+\code{getOption("rxode2.eventSens", "jump")} for any model with
+sensitivities.  When not \code{"fd"} and
+\code{calcSens} is supplied, \code{calcJac} is forced to \code{TRUE} so the
+Jacobian is available for the jump injection.}
 
 \item{verbose}{When \code{TRUE} be verbose with the linear
 compartmental model}
@@ -215,66 +261,13 @@ suggest the package emphasis on pharmacometrics modeling, including
 pharmacokinetics (PK), pharmacodynamics (PD), disease progression,
 drug-disease modeling, etc.
 
-The ODE-based model specification may be coded inside four places:
-\itemize{
-\item Inside a \code{rxode2({})} block statements:
-}
+\subsection{Creating rxode2 models}{
+
+The recommended way to write an \code{rxode2} model is a model function with
+an \code{ini({})} block (parameter values) and a \code{model({})} block
+(equations):
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{library(rxode2)
-mod <- rxode2(\{
-  # simple assignment
-  C2 <- centr/V2
-
-  # time-derivative assignment
-  d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
-\})
-}\if{html}{\out{</div>}}
-\itemize{
-\item Inside a \code{rxode2("")} string statement:
-}
-
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{mod <- rxode2("
-  # simple assignment
-  C2 <- centr/V2
-
-  # time-derivative assignment
-  d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
-")
-}\if{html}{\out{</div>}}
-\itemize{
-\item In a file name to be loaded by rxode2:
-}
-
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{writeLines("
-  # simple assignment
-  C2 <- centr/V2
-
-  # time-derivative assignment
-  d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
-", "modelFile.rxode2")
-mod <- rxode2(filename='modelFile.rxode2')
-unlink("modelFile.rxode2")
-}\if{html}{\out{</div>}}
-\itemize{
-\item In a model function which can be parsed by \code{rxode2}:
-}
-
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{mod <- function() \{
-  model(\{
-    # simple assignment
-    C2 <- centr/V2
-
-    # time-derivative assignment
-    d/dt(centr) <- F*KA*depot - CL*C2 - Q*C2 + Q*C3;
-  \})
-\}
-
-mod <- rxode2(mod) # or simply mod() if the model is at the end of the function
-
-# These model functions often have residual components and initial
-# (`ini(\{\})`) conditions attached as well. For example the
-# theophylline model can be written as:
-
 one.compartment <- function() \{
   ini(\{
     tka <- 0.45 # Log Ka
@@ -296,19 +289,17 @@ one.compartment <- function() \{
   \})
 \}
 
-# after parsing the model
-mod <- one.compartment()
+# parse the model into a rxode2 ui object
+mod <- one.compartment() # or rxode2(one.compartment)
 }\if{html}{\out{</div>}}
 
-For the block statement, character string or text file an internal
-\code{rxode2} compilation manager translates the ODE system into C, compiles
-it and loads it into the R session. The call to \code{rxode2} produces an
-object of class \code{rxode2} which consists of a list-like structure
-(environment) with various member functions.
+The parameter values in \code{ini({})} are used when solving, so the model
+can be solved directly with \code{rxSolve(mod, events)}. Initial conditions
+of the states can be set in the model block with \code{state(0) <- value}.
 
-For the last type of model (a model function), a call to \code{rxode2}
-creates a parsed \code{rxode2} ui that can be translated to the \code{rxode2}
-compilation model.
+Calling the function creates a parsed \code{rxode2} user interface object
+(\code{rxUi}) which is translated into an \code{rxode2} compiled model when
+solved:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{mod$simulationModel
 
@@ -317,8 +308,22 @@ mod$simulationIniModel
 }\if{html}{\out{</div>}}
 
 This is the same type of function required for \code{nlmixr2} estimation and
-can be extended and modified by model piping. For this reason will be
-focused on in the documentation.
+can be extended and modified by model piping. For this reason it is the
+form used throughout the documentation.
+
+The model equations can also be given directly to \code{rxode2()}, without an
+\code{ini({})} block:
+\itemize{
+\item a \code{rxode2({})} block of statements;
+\item a \code{rxode2("")} character string;
+\item a file, \code{rxode2(filename="modelFile.rxode2")}.
+}
+
+These low-level forms create an \code{rxode2} compiled model object; the
+parameters are then supplied when solving with \verb{params=}. See
+\url{https://nlmixr2.github.io/rxode2/articles/rxode2-classic-models.html}
+for these forms and when to use them.
+}
 
 This basic model specification consists of one or more statements
 optionally terminated by semi-colons \verb{;} and optional comments (comments
@@ -512,7 +517,7 @@ table:\tabular{lll}{
    expm1(x) \tab exp(x)-1 \tab  \cr
    lgamma1p(x) \tab log(gamma(x+1)) \tab  \cr
    sign(x) \tab Compute the signum function where sign(x) is 1, 0 -1 \tab  \cr
-   fsign(x, y) \tab abs(x)*sign(y) \tab  \cr
+   fsign(x, y) \tab abs(x) carrying the sign of y, where y equal to 0 counts as positive \tab  \cr
    fprec(x, digits) \tab x rounded to digits (after the decimal point, used by signif() \tab  \cr
    fround(x, digits) \tab Round, used by R’s round() \tab  \cr
    ftrunc(x) \tab Truncated towards zero \tab  \cr
@@ -524,9 +529,10 @@ table:\tabular{lll}{
    lfactorial(x) \tab log(factorial(x)) \tab  \cr
    log10(x) \tab log base 10 \tab  \cr
    log2(x) \tab log base 2 \tab  \cr
-   pnorm(x) \tab Normal CDF of x \tab normcdf, phi \cr
-   qnorm(x) \tab Normal pdf of x \tab norminv \cr
-   probit(x, low=0, hi=1) \tab Probit (normal pdf) of x transforming into a range \tab  \cr
+   dnorm(x, mean=0, sd=1) \tab Normal density (pdf) of x \tab  \cr
+   pnorm(q, mean=0, sd=1) \tab Normal CDF of q \tab normcdf, phi \cr
+   qnorm(p, mean=0, sd=1) \tab Normal quantile function (inverse CDF) of p \tab norminv \cr
+   probit(x, low=0, hi=1) \tab Probit (normal quantile function) of x transforming into a range \tab  \cr
    probitInv(q, low=0, hi=1) \tab Inverse probit of x transforming into a range \tab  \cr
    acos(x) \tab Inverse cosine \tab  \cr
    asin(x) \tab Inverse sine \tab  \cr
@@ -545,6 +551,18 @@ table:\tabular{lll}{
    gammap(a, z) \tab Normalized lower incomplete gamma from boost \tab  \cr
    gammapInv(a, p) \tab Inverse of Normalized lower incomplete gamma from boost \tab  \cr
    gammapInva(x, p) \tab Inverse of Normalized lower incomplete gamma from boost \tab  \cr
+   gammapDer(a, z) \tab Derivative of gammap(a, z) with respect to z; the gamma density with rate one \tab  \cr
+   gammapDera(a, z) \tab Derivative of gammap(a, z) with respect to the shape a. No elementary closed form; a central difference with one Richardson extrapolation \tab  \cr
+   phiU(q) \tab Normal CDF of q bounded away from 0 and 1 by 1e-15, so an inverse CDF of it cannot return an infinity. phi() saturates to exactly 0 or 1 around |q| = 8.3 \tab  \cr
+   ibeta(a, b, x) \tab Regularized incomplete beta function I_x(a, b), ie pbeta(x, a, b) \tab  \cr
+   ibetaDer(a, b, x) \tab Derivative of ibeta with respect to x, ie dbeta(x, a, b) \tab  \cr
+   ibetaInv(a, b, p) \tab Inverse of ibeta, ie qbeta(p, a, b) \tab  \cr
+   ibetaDera(a, b, x) \tab Derivative of ibeta with respect to the shape a. No elementary closed form; a central difference with one Richardson extrapolation \tab  \cr
+   ibetaDerb(a, b, x) \tab Derivative of ibeta with respect to the shape b. No elementary closed form; a central difference with one Richardson extrapolation \tab  \cr
+   studentTDen(x, nu) \tab Student t density with nu degrees of freedom, ie dt(x, nu) \tab  \cr
+   studentTCdf(x, nu) \tab Student t CDF, ie pt(x, nu) \tab  \cr
+   studentTCdfDnu(x, nu) \tab Derivative of studentTCdf with respect to nu. No elementary closed form; a central difference with one Richardson extrapolation \tab  \cr
+   studentTInv(p, nu) \tab Student t quantile, ie qt(p, nu); exactly the inverse of studentTCdf \tab  \cr
    rxnorm(x) \tab Generate one deviate of from a normal distribution for each observation scale \tab  \cr
    rxnormV(x) \tab Generate one deviate from low discrepancy normal for each observation \tab  \cr
    rxcauchy \tab Generate one deviate from the cauchy distribution for each observation \tab  \cr
@@ -555,7 +573,7 @@ table:\tabular{lll}{
    rxbeta \tab Generate one deviate from the beta distribution for each observation \tab  \cr
    rxgeom \tab Generate one deviate from the geometric distribution for each observation \tab  \cr
    rxpois \tab Generate one deviate from the poission distribution for each observation \tab  \cr
-   rxt \tab Generate one deviate from the t distribtuion for each observation \tab  \cr
+   rxt \tab Generate one deviate from the t distribution for each observation \tab  \cr
    tad() or tad(x) \tab Time after dose (tad()) or time after dose for a compartment tad(cmt); no dose=NA \tab  \cr
    tad0() or tad0(x) \tab Time after dose (tad0()) or time after dose for a compartment tad0(cmt); no dose=0 \tab  \cr
    tafd() or tafd(x) \tab Time after first dose (tafd()) or time after first dose for a compartment tafd(cmt); no dose=NA \tab  \cr
@@ -572,9 +590,13 @@ table:\tabular{lll}{
    lag(parameter, number=1) \tab Get the lag of an input parameter; You can specify a number of lagged observations \tab  \cr
    lead(parameter, number=2) \tab Get the lead of an input parameter; You can specify a number of lead observation \tab  \cr
    diff(par, number=1) \tab Get the difference between the current parameter and the last parameter; Can change the parameter number \tab  \cr
+   lag0(parameter, number=1) \tab Like lag() but returns 0 instead of NA when there is no prior value (the first record) \tab  \cr
+   lead0(parameter, number=1) \tab Like lead() but returns 0 instead of NA when there is no following value (the last record) \tab  \cr
+   diff0(par, number=1) \tab Like diff() but returns the value itself (previous value treated as 0) when there is no prior value \tab  \cr
    first(par) \tab Get the first value of an input parameter \tab  \cr
    last(par) \tab Get the last value of an input parameter \tab  \cr
-   transit() \tab The transit compartment psuedo function \tab  \cr
+   transit() \tab The transit compartment pseudo function \tab  \cr
+   delay(state, T) \tab Value of an ODE state delayed by T time units (delay differential equations); requires a dense solver \tab  \cr
    is.na() \tab Determine if a value is NA \tab  \cr
    is.nan() \tab Determine if a value is NaN \tab  \cr
    is.infinite() \tab Check to see if the value is infinite \tab  \cr
@@ -588,14 +610,118 @@ table:\tabular{lll}{
    ribeta \tab Generate one deviate from the beta distribution for each individual \tab  \cr
    rigeom \tab Generate one deviate from the geometric distribution for each individual \tab  \cr
    ropois \tab Generate one deviate from the poission distribution for each individual \tab  \cr
-   rit \tab Generate one deviate from the t distribtuion for each individual \tab  \cr
+   rit \tab Generate one deviate from the t distribution for each individual \tab  \cr
    simeps \tab Simulate EPS from possibly truncated sigma matrix. Will take sigma matrix from the current study. Simulated at the very last moment. \tab  \cr
-   simeta \tab Simulate ETA from possibly truncated omega matrix. Will take the omega matrix from the current study. Simulated at the initilization of the ODE system or the intialization of lhs \tab  \cr
+   simeta \tab Simulate ETA from possibly truncated omega matrix. Will take the omega matrix from the current study. Simulated at the initialization of the ODE system or the intialization of lhs \tab  \cr
 }
 
 
 Note that \verb{lag(cmt) =} is equivalent to \verb{alag(cmt) =} and not the same
 as \verb{= lag(wt)}
+\subsection{Inverse CDFs}{
+
+A group of these deserves a word, because they exist for one purpose:
+giving a random effect a distribution other than normal. The technique
+(Bauer, NONMEM 7.5.1) keeps the latent random effect standard normal and
+changes the CDF,
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{z   ~ N(0, 1)
+u   = phiU(z)
+eta = Q(u; args)
+}\if{html}{\out{</div>}}
+
+where \code{Q} is the inverse CDF of the family you want. \code{phiU()} is the
+normal CDF bounded away from 0 and 1, since \code{phi()} saturates to exactly
+0 or 1 around \verb{|q| = 8.3} and an inverse CDF of that would return an
+infinity.
+
+Most families need nothing beyond ordinary arithmetic for \code{Q} – a
+Weibull random effect is \code{scale*(-log1p(-phiU(z)))^(1/shape)}, a
+lognormal one is just \code{exp(meanlog + sdlog*z)}. The three that are not
+elementary are served by \code{gammapInv()} (gamma, chi-square, inverse
+gamma), \code{ibetaInv()} (beta) and \code{studentTInv()} (Student t).
+
+Every one of these is differentiable through rxode2’s symbolic
+machinery, which is what lets such a random effect be \emph{estimated} and
+not merely simulated. The derivative with respect to the probability
+argument – the one an inner (eta) problem needs – is exact and
+elementary, one over the density at the quantile. The derivatives with
+respect to the shape parameters have no elementary closed form, so
+\code{gammapDera()}, \code{ibetaDera()}, \code{ibetaDerb()} and \code{studentTCdfDnu()}
+supply them as central differences with one Richardson extrapolation.
+They exist so the derivative table is \emph{complete}: a missing rule does
+not error, it silently substitutes a one sided finite difference, which
+is precisely wrong in the tails where an inverse CDF is steepest.
+
+You rarely write any of this by hand. Declaring the distribution in an
+\code{ini({})} block writes it for you:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{ini(\{
+  lclm  <- log(5)
+  lclrv <- log(0.09)
+  dist(eta.cl) ~ dgamma(shape=1/exp(lclrv), rate=1/(exp(lclrv)*exp(lclm)))
+\})
+}\if{html}{\out{</div>}}
+
+The declaration fixes the random effect’s marginal, and the latent scale
+it is built on is standard normal, so no variance is written for it – a
+\code{dist()} implies \code{~ 1}. A block is written out only when there is a
+correlation between two declared random effects, since that has nowhere
+else to go:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{ini(\{
+  lclm  <- log(5);  lclrv <- log(0.09)
+  lvm   <- log(50); lvrv  <- log(0.09)
+  eta.cl + eta.v ~ c(1,
+                     0.5, 1)
+  dist(eta.cl) ~ dgamma(shape=1/exp(lclrv), rate=1/(exp(lclrv)*exp(lclm)))
+  dist(eta.v)  ~ dgamma(shape=1/exp(lvrv),  rate=1/(exp(lvrv)*exp(lvm)))
+\})
+}\if{html}{\out{</div>}}
+}
+
+\subsection{That correlation is on the LATENT scale}{
+
+The \code{0.5} above is \strong{not} the correlation you will measure between
+\code{eta.cl} and \code{eta.v}. Two declared random effects are joined by a
+Gaussian copula: each is built as \code{Q(Phi(z))} from its own quantile
+function, and the number you write is the correlation of the \emph{latent}
+normals \code{z}, not of the random effects themselves.
+
+Those two agree only when both marginals are normal. For anything else
+the correlation you observe is smaller in magnitude, by an amount that
+depends on the two families \strong{and on their parameters} – a heavier tail
+loses more of it. Simulating 200,000 pairs from a latent correlation of
+\code{0.50}:\tabular{lr}{
+   marginals \tab observed \cr
+   \code{dnorm} with \code{dnorm} \tab 0.500 \cr
+   \verb{dgamma(shape 2)} with \verb{dgamma(shape 2)} \tab 0.474 \cr
+   \verb{dgamma(shape 2)} with \verb{dlnorm(sdlog 0.7)} \tab 0.454 \cr
+   \verb{dlnorm(sdlog 0.7)} with \verb{dlnorm(sdlog 0.7)} \tab 0.441 \cr
+   \verb{dgamma(shape 2)} with \verb{dgamma(shape 0.5)} \tab 0.437 \cr
+}
+
+
+Read those as illustrations, not as constants for the families: change a
+shape or an \code{sdlog} and the number moves. The one row that holds
+generally is the first – normal with normal is the only case where the
+latent correlation and the observed one coincide.
+
+So writing \code{0.5} and then measuring \code{0.44} on the fitted random effects
+is the construction working, not a bug. A fit reports the same latent
+quantity it was given – in \verb{$etaDistCor}, and as a \code{cor()} row in
+\verb{$parFixed} – so the value you read back is comparable with the value
+you wrote.
+
+If you need a target correlation \emph{between the random effects}, simulate
+from the declaration and adjust: there is no closed form for the mapping
+except in the all-normal case, because it depends on both quantile
+functions.
+
+See \code{lotri::lotriEtaDists()} for the families that can be declared this
+way, and \code{rxEtaDistExpand()} for the model such a declaration becomes.
+}
+
 }
 
 \subsection{Reserved keywords}{
@@ -739,6 +865,29 @@ The default in \code{nlmixr2}/\code{rxode2} if not otherwise specified is
 statistics will add their variances (not the standard deviations).
 However, the \strong{combined1} can describe the data possibly even better
 than \strong{combined2} so both are possible options in \code{rxode2}/\code{nlmixr2}.
+}
+
+\subsection{Autocorrelated residuals (\code{ar()})}{
+
+Adding \code{ar(cor)} to a normal residual makes successive residuals of the
+same endpoint follow a continuous-time AR(1) process:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{cp ~ add(add.sd) + ar(ar1.cor)
+}\if{html}{\out{</div>}}
+
+Here \code{ar1.cor} is the lag-one correlation and must be in \verb{[0, 1)}. The
+correlation between two residuals separated by a time gap \code{dt} is
+\code{cor^dt}, so irregular sampling is handled directly and the marginal
+(stationary) residual variance is unchanged; the first observation of
+each subject/endpoint uses the marginal distribution. \code{ar()} combines
+with \code{add()}/\code{prop()} normal residuals and uses the same \verb{| cmt}
+endpoint syntax as the other residual functions.
+
+The \code{ar()} specification is identical in \code{rxode2} and \code{nlmixr2}: the
+same model line simulates the autocorrelated residual in \code{rxode2} and
+estimates the correlation in \code{nlmixr2} (the \code{nlm}, \code{focei}/\code{foce} and
+\code{saem} families support it; \code{fo}, \code{foi}, \code{nlme} and \code{nls} do not). See
+Karlsson et al. (1995) for the continuous-time AR(1) residual model.
 }
 
 \subsection{Distributions of known likelihoods}{
@@ -971,6 +1120,8 @@ In general all the that are supported are in the following table
    additive+proportional+cauchy \tab combined2 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + prop(prop.sd) + dcauchy() + combined2() \tab addProp=2 \tab response variable \cr
    additive+power+cauchy \tab combined1 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() + combined1() \tab addProp=1 \tab response variable \cr
    additive+power+cauchy \tab combined2 \tab yeoJohnson(probit()) \tab var ~ yeoJohnson(lambda) + probitNorm(probit.sd) + pow(pow.sd, exponent) + dcauchy() +combined2() \tab addProp=2 \tab response variable \cr
+   autocorrelated (constant) \tab  \tab None \tab var ~ add(add.sd) + ar(cor) \tab  \tab response variable \cr
+   autocorrelated (additive+proportional) \tab  \tab None \tab var ~ add(add.sd) + prop(prop.sd) + ar(cor) \tab  \tab response variable \cr
    poission \tab  \tab none \tab cmt ~ dpois(lamba) \tab  \tab compartment specification \cr
    binomial \tab  \tab none \tab cmt ~ dbinom(n, p) \tab  \tab compartment specification \cr
    beta \tab  \tab none \tab cmt ~ dbeta(alpha, beta) \tab  \tab compartment specification \cr
@@ -989,11 +1140,399 @@ In general all the that are supported are in the following table
 }
 
 }
+
+\subsection{Prior distributions in the \code{ini({})} block}{
+
+When an estimation method supports priors, the prior on a parameter is
+given in the \code{ini({})} block with:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{prior(name) ~ dist(...)
+}\if{html}{\out{</div>}}
+
+Because the statement names the parameter it applies to, prior lines are
+order independent; they can be put anywhere in the \code{ini({})} block.
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{one.compartment <- function() \{
+  ini(\{
+    tka <- 0.45
+    tcl <- log(c(0, 2.7, 100))
+    tv  <- 3.45
+    add.sd <- c(0, 0.7)
+
+    eta.cl + eta.v ~ c(0.3,
+                       0.01, 0.1)
+    eta.ka ~ 0.6
+
+    prior(tka)           ~ dnorm(0, 10)
+    prior(tcl)           ~ dnorm(1, 10)
+    prior(add.sd)        ~ dcauchy(0, 5)
+    prior(eta.ka)        ~ dgamma(2, 1)
+    prior(eta.cl, eta.v) ~ lkjCorr(2)
+  \})
+  model(\{
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v  <- exp(tv + eta.v)
+    d/dt(depot)  <- -ka * depot
+    d/dt(center) <-  ka * depot - cl / v * center
+    cp <- center / v
+    cp ~ add(add.sd)
+  \})
+\}
+}\if{html}{\out{</div>}}
+
+A prior can be put on:
+\itemize{
+\item a population parameter, ie \code{prior(tka)}
+\item a single between subject variability term, ie \code{prior(eta.ka)}
+\item a whole covariance block, using one of the matrix-valued
+distributions, ie \code{prior(eta.cl, eta.v) ~ lkjCorr(2)}. The names given
+have to be exactly one block of the matrix.
 }
-\section{Creating rxode2 models}{
-NA
+\subsection{The normal prior shorthand}{
+
+Normal priors are by far the most common, so they also have a shorthand
+that reuses the matrix syntax. Putting a \emph{population parameter} on the
+left of a \code{~} gives it a normal prior with a \strong{zero mean} and the given
+variance:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{ini(\{
+  tka <- 1
+  tcl <- 3
+  tv  <- 4
+
+  tka ~ 4          # tka ~ N(0, sd = 2)
+
+  tcl + tv ~ c(1,  # (tcl, tv) ~ MVN(0, Sigma)
+               0.01, 1)
+\})
+}\if{html}{\out{</div>}}
+
+The number on the right is a variance, so \code{tka ~ 4} has a standard
+deviation of 2. The value given with \verb{<-} stays the initial estimate; it
+is \emph{not} the prior mean.
+
+This is unambiguous because a name cannot be both a population parameter
+and an eta – that combination used to be a “duplicated parameter” error.
+A name that is not a population parameter still specifies an eta exactly
+as before.
+
+Every matrix spelling works here, including the per-row line form, which
+builds up the block just as it does for etas:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{tcl ~ 1
+tv  ~ c(0.01, 1)
+}\if{html}{\out{</div>}}
+
+and the \code{sd()}, \code{var()}, \code{cor()}, \code{cov()} and \code{chol()} transformations:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{tcl + tv ~ sd(2,
+              0.5, 3)   # variances of 4 and 9
+}\if{html}{\out{</div>}}
+
+The matrix means exactly what it means for an eta block: the
+off-diagonal is a \strong{covariance}, not a correlation. A prior block and
+an eta block written the same way give the same matrix, so \code{cor()} is
+how you give a correlation here just as it is there.
+
+An uncorrelated block is simply independent normal priors, since that is
+what a multivariate normal with a diagonal covariance is. A zero
+variance is a point mass rather than a prior, so it is an error.
 }
 
+\subsection{Priors on the omega values}{
+
+The two NONMEM prior flavours want different things from an omega.
+
+An \code{NWPRI} model gives the omega block degrees of freedom. The scale
+matrix of the Wishart family is optional, because the block it is put on
+already \emph{is} that matrix, so only the degrees of freedom are needed –
+this is the \verb{$OMEGAP}/\verb{$OMEGAPD} pair:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{ini(\{
+  eta.cl + eta.v ~ c(0.3,
+                     0.01, 0.1)
+  prior(eta.cl, eta.v) ~ invWishart(4)
+\})
+}\if{html}{\out{</div>}}
+
+It works on a 1x1 block as well, since an inverse Wishart of dimension
+one is an inverse gamma. An improper \code{nu <= p - 1} is an error.
+
+When every block shares the same degrees of freedom, a one-sided \code{~}
+sets them all at once instead of naming each block:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{ini(\{
+  eta.cl + eta.v ~ c(0.3,
+                     0.01, 0.1)
+  eta.ka ~ 0.5
+  ~invWishart(4)      # every omega block gets 4
+\})
+}\if{html}{\out{</div>}}
+
+Each block is still checked individually, and naming a block as well is
+a duplicate rather than an override.
+
+A \code{TNPRI} model instead puts a normal prior on the omega \emph{elements},
+jointly with the thetas. Prepending \code{om.} to a between subject
+variability names its omega element, so the normal prior shorthand can
+be used on it:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{ini(\{
+  eta.cl ~ 0.3
+  eta.v ~ 0.1
+  om.eta.cl ~ 0.01     # normal prior on the omega element of eta.cl
+  om.eta.v ~ 0.04
+\})
+}\if{html}{\out{</div>}}
+
+The omega itself is untouched; only the prior is added. Correlated omega
+priors work the same way, including the per-row line form. An \code{om.} name
+has to match a real between subject variability – it never quietly
+creates one.
+
+Naming the eta directly means the same thing, so \code{prior(om.eta.cl)} and
+\code{prior(eta.cl)} are interchangeable. The \code{om.} spelling exists so the
+shorthand has a name to put on the left of a \code{~}, since \code{eta.cl ~ ...}
+already means the omega value itself.
+}
+
+\subsection{Prior distribution names}{
+
+There are three spellings of every distribution, and all of them are
+accepted:
+\enumerate{
+\item the \strong{R} name, when R parameterizes the distribution the same way
+‘Stan’ does – \code{dnorm()}, \code{dlnorm()}, \code{dgamma()}, \code{dbeta()},
+\code{dcauchy()}, \code{dunif()}
+\item the \strong{camelCase} name, which is the ‘Stan’ name written the way the
+rest of the package is written – \code{invWishart()}, \code{lkjCorr()},
+\code{studentT()}
+\item the \strong{‘Stan’} name itself – \code{inv_wishart()}, \code{lkj_corr()},
+\code{student_t()}
+}
+
+The canonical one, which is what gets stored on the \code{iniDf} and printed
+back, is the R name where there is a faithful one and the camelCase name
+otherwise. The arguments may be given positionally or by name, so these
+are all the same prior:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{prior(tka) ~ dnorm(0, 10)
+prior(tka) ~ normal(0, 10)
+prior(tka) ~ dnorm(sd=10, mean=0)
+}\if{html}{\out{</div>}}
+
+\code{dt()} is deliberately \strong{not} accepted as a spelling of \code{studentT()}:
+R’s \code{dt()} is the standardized (or noncentral) t, while
+\code{studentT(nu, mu, sigma)} (the ‘Stan’ \code{student_t}) is a location-scale
+t, so treating them as the same would silently change the prior. Use
+\code{studentT()} with its own parameterization.
+
+The full list of supported distributions, including the ‘Stan’ name for
+each, is returned by \code{lotri::lotriPriorDists()}.
+}
+
+\subsection{Bounds and truncated priors}{
+
+The bounds are not repeated in the prior; they come from the parameter
+itself. A parameter that is already bounded below by zero therefore gets
+a half distribution:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{add.sd <- c(0, 0.7)
+prior(add.sd) ~ dcauchy(0, 5)   # half-Cauchy, since add.sd has lower=0
+}\if{html}{\out{</div>}}
+
+The prior is checked against those bounds, so putting a distribution
+with positive support on a parameter that allows negative values is an
+error.
+}
+
+\subsection{Where the prior is stored}{
+
+Priors are kept in the \code{prior} column of the model’s \verb{$iniDf} and are
+printed back as part of the \code{ini({})} block, so they survive printing
+and piping.
+
+A prior you specify is never silently dropped. An estimation method that
+cannot use priors is expected to reject such a model rather than quietly
+ignore the prior, and rxode2 supplies the assertions for that:
+\itemize{
+\item \code{assertRxUiNoPriors()} – for a method that cannot use priors at all; a
+model that specifies one is an error
+\item \code{assertRxUiNormalPriors()} – for a method that supports priors but
+only normal ones. That covers \code{dnorm()}/\code{normal()}, \code{stdNormal()}, and
+the \code{multiNormal()} family, which is what the shorthand above produces
+for correlated parameters. Anything else, including a covariance
+matrix prior such as \code{lkjCorr()} or \code{invWishart()}, is an error
+\item \code{assertRxUiNoOmegaDf()} – for a method that cannot use prior degrees
+of freedom on an omega block, ie the \code{NWPRI} form above
+\item \code{assertRxUiNoOmegaNormalPriors()} – for a method that can put a prior
+on an omega but only a Wishart one, ie it supports \code{NWPRI} but not
+\code{TNPRI}
+}
+
+A method that \emph{implements} priors asks instead of asserts. The
+predicates return \code{TRUE}/\code{FALSE} rather than throwing:
+\itemize{
+\item \code{testRxUiPriors()} – does the model specify any prior at all
+\item \code{testRxUiNormalPriors()} – is every prior a normal one
+\item \code{testRxUiOmegaDf()} – does an omega carry degrees of freedom (\code{NWPRI})
+\item \code{testRxUiOmegaNormalPriors()} – does an omega carry a normal prior
+(\code{TNPRI})
+}
+
+The last two are mutually exclusive: an omega prior is either degrees of
+freedom or a normal prior, never both, and giving both is an error at
+specification time. So a method can branch on which one it got.
+
+\code{rxUiPriors()} returns the priors themselves – \code{name}, \code{prior},
+\code{neta1}/\code{neta2} (\code{NA} for a population parameter) and the parameter’s
+\code{lower}/\code{upper}, which is what a truncated prior needs for its bounds.
+
+So if a method silently ignored your prior, that is a bug in the method,
+not expected behaviour.
+}
+
+}
+
+\subsection{Simulating from the priors}{
+
+\code{rxSolve()} uses the priors for its uncertainty simulation, which is
+what NONMEM does with \verb{$PRIOR NWPRI} and \verb{$PRIOR TNPRI}. Nothing extra
+has to be turned on: a model that carries priors uses them whenever
+variability is being simulated, that is when \code{nStud} is greater than one
+(or whatever \code{simVariability} forces).
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{one.cmt <- function() \{
+  ini(\{
+    tka <- 0.45
+    tcl <- 1
+    tv <- 3.45
+    eta.cl + eta.v ~ c(0.3,
+                       0.01, 0.1)
+    eta.ka ~ 0.6
+    add.sd <- 0.7
+    tka ~ 0.01                            # normal prior on tka
+    prior(eta.cl, eta.v) ~ invWishart(20) # degrees of freedom, per block
+    prior(eta.ka) ~ invWishart(4)
+  \})
+  model(\{
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v <- exp(tv + eta.v)
+    linCmt() ~ add(add.sd)
+  \})
+\}
+
+s <- rxSolve(one.cmt, ev, nSub = 10, nStud = 100)
+s$thetaMat   # the per study population parameter draws
+s$omegaList  # the per study omega, one draw per study
+}\if{html}{\out{</div>}}
+
+Each omega block is drawn with \strong{its own} degrees of freedom, which the
+single \code{dfSub} argument cannot express – above, the 2x2 block is drawn
+with 20 and the 1x1 with 4. A block with no prior is left at its point
+estimate. \code{dfWishart()} helps pick a degrees of freedom that matches a
+target relative standard error.
+\subsection{The prior mean is the estimate}{
+
+A draw is added to the value the model already gives, so a normal prior
+on a population parameter has to be centered on its estimate, and one on
+an omega element on that omega value. \code{tka ~ 0.01} is exactly that – the
+number is the variance and the mean comes from \code{tka <- 0.45}. Writing a
+prior centered somewhere else is an error rather than a simulation that
+quietly differs from what the model says:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{tka <- 0.45
+prior(tka) ~ dnorm(0, 0.1)
+#> Error: cannot simulate from the prior on 'tka' (dnorm(0, 0.1)): the
+#>   prior mean (0) is not the initial estimate (0.45)
+}\if{html}{\out{</div>}}
+}
+
+\subsection{A joint prior over the thetas and the omegas}{
+
+A \code{TNPRI} variance matrix covers the population parameters and the omega
+values together, with covariances between them. Prefix an omega element
+with \code{om.} to name it, and put both in one block:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{tcl + om.eta.cl ~ c(0.02,
+                    0.004, 0.005)
+}\if{html}{\out{</div>}}
+
+Drawn that way the omega is not guaranteed positive definite. A study
+whose draw is not gets the whole joint vector redrawn, up to
+\code{priorPdRetry} times (10 by default). If none of them is, the nearest
+positive definite matrix of the kept draws is used and \code{rxSolve()} warns
+– that projection lands on the boundary of the positive definite cone,
+so those studies are not draws from the stated prior. A model that
+reaches the fallback often wants a larger \code{priorPdRetry} or a tighter
+prior.
+}
+
+\subsection{Turning it off, and precedence}{
+
+\code{usePrior = FALSE} ignores the priors and falls back to a supplied
+\code{thetaMat}/\code{dfSub}; \code{usePrior = TRUE} requires them and says why if it
+cannot honor them. A \code{thetaMat}/\code{dfSub} carried in the model’s \code{meta}
+block loses to the priors, with a warning. One given at the call site
+wins over them instead, also with a warning – an explicit argument is
+never silently discarded.
+
+Prior simulation covers nested/occasion models (\verb{| id}, \verb{| occ}). Each
+prior’s degrees of freedom go on the nesting level that holds its block,
+and a level with no prior stays at its estimate. One draw is shared
+across the occasions of a study, since the level is drawn once.
+
+A nesting level is drawn as a whole, so a prior has to cover its level.
+A prior on part of a level – one of two independent blocks at \verb{| id},
+say – is an error, because drawing the level would redraw the other
+block too and correlate blocks the model declared independent, and there
+is nowhere to put a second degrees of freedom. Put the prior on the
+whole level instead.
+
+Under a chunked solve (\verb{file =}/\verb{chunkSize =}) a prior on the population
+parameters is simulated, since that half of a prior is a \code{thetaMat},
+which the one draw every chunk shares covers. A prior on an omega block
+is not, and is a clear error rather than a solve that quietly drops it.
+}
+
+\subsection{A thetaMat that already carries the omegas}{
+
+The same joint draw works without an \code{ini({})} prior, for a \code{thetaMat}
+that came from a covariance step. \code{nonmem2rx} gives one directly, and so
+does a nlmixr2 fit:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{mod <- nonmem2rx("run3.lst")
+colnames(mod$thetaMat)
+#> "t.CL" "GFRCL" ... "IIVCL" "omega1.2" "omega1.3" "IIVV1" ... "eps1" "sigma1.2"
+
+rxSolve(mod, data.sim, nStud = 100, omegaSeparation = "tnpri")
+}\if{html}{\out{</div>}}
+
+\code{omegaSeparation = "tnpri"} says those entries are the omega itself and
+should be drawn from the \code{thetaMat} jointly with the thetas, instead of
+having their correlations redrawn by the \code{lkj}/\code{separation} strategies –
+which discard the off-diagonal entries the covariance step measured, and
+cannot carry a covariance between a theta and an omega entry at all.
+\code{sigmaSeparation = "tnpri"} does the same for the residual entries.
+
+Columns are matched to entries by name, in whichever spelling produced
+them:\tabular{lll}{
+    \tab diagonal \tab off-diagonal \cr
+   nlmixr2 fit \verb{$cov} \tab \code{om.eta.cl} \tab \code{cov.eta.cl.eta.v} \cr
+   \code{nonmem2rx} \tab \code{eta.cl} \tab \code{omega1.2}, \code{omega.2.1} \cr
+}
+
+
+This is opt-in rather than automatic: an eta-named column already means
+that eta’s variance under the existing separation strategy, so it cannot
+change meaning on its own. \code{omega} has to be a matrix, since the drawn
+entries are added to it.
+}
+
+}
+}
 \section{Note on strings in rxode2}{
 Strings are converted to double values inside of \code{rxode2}, hence you can
 refer to them as an integer corresponding to the string value or the
@@ -1129,10 +1668,24 @@ Plevyak, J.
 }
 \seealso{
 \code{\link[=eventTable]{eventTable()}}, \code{\link[=et]{et()}}, \code{\link[=add.sampling]{add.sampling()}}, \code{\link[=add.dosing]{add.dosing()}}
+
+Other Model definition:
+\code{\link[=rxClean]{rxClean()}},
+\code{\link[=rxCompile]{rxCompile()}},
+\code{\link[=rxCreateCache]{rxCreateCache()}},
+\code{\link[=rxDelete]{rxDelete()}},
+\code{\link[=rxLastCompile]{rxLastCompile()}},
+\code{\link[=rxNorm]{rxNorm()}},
+\code{\link{rxReservedKeywords}},
+\code{\link[=rxSupportedFuns]{rxSupportedFuns()}},
+\code{\link{rxSyntaxFunctions}},
+\code{\link[=rxUnloadAll]{rxUnloadAll()}},
+\code{\link[=summary.rxode2]{summary.rxode2()}}
 }
 \author{
 Melissa Hallow, Wenping Wang and Matthew Fidler
 }
+\concept{Model definition}
 \concept{Nonlinear regression}
 \concept{ODE models}
 \concept{Ordinary differential equations}

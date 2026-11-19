@@ -1,10 +1,13 @@
 #' Push a future dose or observation event from within an rxode2 model
 #'
 #' @description
-#' `evid_()` is a model-only function that schedules a future dosing or
-#' observation event during ODE solving.  It is evaluated at each output
-#' time point and inserts the requested event into the individual's event
-#' timeline for future processing.
+#' `evid_()` is a model-only function that schedules a current or future
+#' dosing or observation event during ODE solving.  The model body is run
+#' once per distinct record time, at the first record of that time, and the
+#' event is inserted immediately after it -- so an event pushed at the
+#' current time is applied before the solver advances, exactly like the same
+#' event written in the data.  The final record of the timeline does not
+#' push (it starts no integration interval).
 #'
 #' This function has no meaning outside an rxode2 model block and will
 #' throw an error if called directly from R.
@@ -79,7 +82,10 @@
 #' The argument order and names mirror the standard NONMEM dataset
 #' columns: `TIME`, `EVID`, `AMT`, `CMT`, `RATE`, `II`, `ADDL`, `SS`.
 #'
-#' @seealso [rxSolve()] for the `maxExtra` control argument.
+#' @seealso [rxSolve()] for the `maxExtra` control argument.  Other
+#'   more convenient ways to interact with adaptive observations and
+#'   events include [bolus()] [infuse()], [infuseDur()],
+#'   [reset()].
 #'
 #' @examples
 #' \donttest{
@@ -105,8 +111,27 @@
 #' }
 #'
 #' @export
-evid_ <- function(time, evid, amt, cmt=1, rate=0, ii=0, addl=0, ss=0.0) {
+#' @family In-model dosing
+evid_ <- function(time, evid, amt, cmt = 1, rate = 0, ii = 0, addl = 0, ss = 0.0) {
   stop("'evid_()' can only be used inside an rxode2 model block", call. = FALSE)
+}
+
+## Normalize a compartment argument from a matched adaptive-dosing call.
+## Accepts the unevaluated `match.call()` element for `cmt` and returns the
+## compartment as a bare token for the rxode2 grammar:
+##  - missing/NULL          -> default compartment "1"
+##  - a string ("depot")    -> the bare name `depot` (quotes stripped)
+##  - a name/number/expr    -> its deparsed text
+## The string case matters because `deparse1("depot")` keeps the quotes,
+## which the grammar then mis-parses (e.g. bolus(50, "depot, 0, 0, 0)).
+.rxUdfUiCmt <- function(cmt) {
+  if (is.null(cmt)) {
+    return("1")
+  }
+  if (is.character(cmt)) {
+    return(cmt)
+  }
+  deparse1(cmt)
 }
 
 #' @export
@@ -115,35 +140,575 @@ evid_ <- function(time, evid, amt, cmt=1, rate=0, ii=0, addl=0, ss=0.0) {
 rxUdfUi.evid_ <- function(fun) {
   .dummy <- function(time, evid, amt, cmt, rate, ii, addl, ss) {}
   .mc <- match.call(.dummy, fun)
-  .time    <- deparse1(.mc$time)
+  .time <- deparse1(.mc$time)
   .evid <- deparse1(.mc$evid)
-  .amt   <- deparse1(.mc$amt)
+  .amt <- deparse1(.mc$amt)
 
-  .cmt  <- deparse1(.mc$cmt)
-  if (.cmt == "NULL") {
-    .cmt <- "1"
-  }
+  .cmt <- .rxUdfUiCmt(.mc$cmt)
 
-  .rate   <- deparse1(.mc$rate)
+  .rate <- deparse1(.mc$rate)
   if (.rate == "NULL") {
     .rate <- "0"
   }
 
-  .ii   <- deparse1(.mc$ii)
+  .ii <- deparse1(.mc$ii)
   if (.ii == "NULL") {
     .ii <- "0"
   }
 
-  .addl   <- deparse1(.mc$addl)
+  .addl <- deparse1(.mc$addl)
   if (.addl == "NULL") {
     .addl <- "0"
   }
 
-  .ss   <- deparse1(.mc$ss)
+  .ss <- deparse1(.mc$ss)
   if (.ss == "NULL") {
     .ss <- "0"
   }
 
-  list(replace = paste0("evid_(", .time, ",", .evid, ",", .amt, ",", .cmt,
-                        ",", .rate, ",", .ii, ",", .addl, ",", .ss, ")"))
+  list(
+    replace = paste0("evid_(", .time, ",", .evid, ",", .amt, ",", .cmt, ",", .rate, ",", .ii, ",", .addl, ",", .ss, ")")
+  )
+}
+#' Administer a bolus dose inside a rxode2 model
+#'
+#' @inheritParams evid_
+#'
+#' @return This function is only meaningful inside an rxode2 model; it
+#'   returns `NULL` invisibly if called from R directly (after signaling
+#'   an error).
+#'
+#' @details
+#' ## Behavior inside a model
+#'
+#' `bolus()` is evaluated at every output time point (when the solver is
+#' exactly at a scheduled event time).  The pushed event is inserted into
+#' the individual's event timeline and the solver visits it now or at the
+#' specified future time.
+#'
+#' The number of events that may be pushed per individual is limited by
+#' the `maxExtra` argument of [rxSolve()].  When `maxExtra = 0`
+#' (the default) there is no limit.  Exceeding the limit causes an
+#' error.
+#'
+#' Past-time pushes (where `time < t`) are silently ignored and counted;
+#' a warning is issued after solving.
+#'
+#' @export
+#' @author Matthew L. Fidler
+#' @family In-model dosing
+#' @examples
+#' \donttest{
+#' # extra 50 unit bolus into the depot at t = 12
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     mtime(at) <- 12
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'     if (t >= at && t < at + 0.5) bolus(50, depot)
+#'   })
+#' }
+#' s <- rxSolve(f, et(amt = 100) |> et(0:24))
+#' s[s$time >= 11 & s$time <= 14, ]
+#' }
+bolus <- function(amt, cmt = 1, ii = 0, addl = 0, ss = 0) {
+  stop("'bolus()' can only be used inside an rxode2 model block", call. = FALSE)
+}
+
+#' @export
+#' @keywords internal
+#' @rdname rxUdfUi
+rxUdfUi.bolus <- function(fun) {
+  .dummy <- function(amt, cmt, ii, addl, ss) {}
+  .mc <- match.call(.dummy, fun)
+  .amt <- deparse1(.mc$amt)
+
+  .cmt <- .rxUdfUiCmt(.mc$cmt)
+
+  .ii <- deparse1(.mc$ii)
+  if (.ii == "NULL") {
+    .ii <- "0"
+  }
+
+  .addl <- deparse1(.mc$addl)
+  if (.addl == "NULL") {
+    .addl <- "0"
+  }
+
+  .ss <- deparse1(.mc$ss)
+  if (.ss == "NULL") {
+    .ss <- "0"
+  }
+
+  list(replace = paste0("bolus(", .amt, ",", .cmt, ",", .ii, ",", .addl, ",", .ss, ")"))
+}
+#' Administer a infusion (with rate being fixed) inside a rxode2 model
+#'
+#' @inheritParams evid_
+#'
+#' @return This function is only meaningful inside an rxode2 model; it
+#'   returns `NULL` invisibly if called from R directly (after signaling
+#'   an error).
+#'
+#' @details
+#' ## Behavior inside a model
+#'
+#' `infuse()` is evaluated at every output time point (when the solver is
+#' exactly at a scheduled event time).  The pushed event is inserted into
+#' the individual's event timeline and the solver visits it now or at the
+#' specified future time.
+#'
+#' The number of events that may be pushed per individual is limited by
+#' the `maxExtra` argument of [rxSolve()].  When `maxExtra = 0`
+#' (the default) there is no limit.  Exceeding the limit causes an
+#' error.
+#'
+#' Past-time pushes (where `time < t`) are silently ignored and counted;
+#' a warning is issued after solving.
+#'
+#' @export
+#' @author Matthew L. Fidler
+#' @family In-model dosing
+#' @examples
+#' \donttest{
+#' # 50 unit infusion at rate 10 into central at t = 12
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     mtime(at) <- 12
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'     if (t >= at && t < at + 0.5) infuse(50, 10, central)
+#'   })
+#' }
+#' s <- rxSolve(f, et(amt = 100) |> et(0:24))
+#' s[s$time >= 11 & s$time <= 14, ]
+#' }
+infuse <- function(amt, rate, cmt = 1, ii = 0, addl = 0, ss = 0) {
+  stop("'infuse()' can only be used inside an rxode2 model block", call. = FALSE)
+}
+
+#' @export
+#' @keywords internal
+#' @rdname rxUdfUi
+rxUdfUi.infuse <- function(fun) {
+  .dummy <- function(amt, rate, cmt, ii, addl, ss) {}
+  .mc <- match.call(.dummy, fun)
+  .amt <- deparse1(.mc$amt)
+  .rate <- deparse1(.mc$rate)
+  .cmt <- .rxUdfUiCmt(.mc$cmt)
+  .ii <- deparse1(.mc$ii)
+  if (.ii == "NULL") {
+    .ii <- "0"
+  }
+  .addl <- deparse1(.mc$addl)
+  if (.addl == "NULL") {
+    .addl <- "0"
+  }
+  .ss <- deparse1(.mc$ss)
+  if (.ss == "NULL") {
+    .ss <- "0"
+  }
+  list(replace = paste0("infuse(", .amt, ",", .rate, ",", .cmt, ",", .ii, ",", .addl, ",", .ss, ")"))
+}
+
+#' Administer a infusion (with duration being fixed) inside a rxode2 model
+#'
+#' @inheritParams evid_
+#'
+#' @param dur Numeric infusion duration.
+#'
+#' @return This function is only meaningful inside an rxode2 model; it
+#'   returns `NULL` invisibly if called from R directly (after signaling
+#'   an error).
+#'
+#' @details
+#' ## Behavior inside a model
+#'
+#' `infuseDur()` is evaluated at every output time point (when the solver is
+#' exactly at a scheduled event time).  The pushed event is inserted into
+#' the individual's event timeline and the solver visits it now or at the
+#' specified future time.
+#'
+#' The number of events that may be pushed per individual is limited by
+#' the `maxExtra` argument of [rxSolve()].  When `maxExtra = 0`
+#' (the default) there is no limit.  Exceeding the limit causes an
+#' error.
+#'
+#' Past-time pushes (where `time < t`) are silently ignored and counted;
+#' a warning is issued after solving.
+#'
+#' @export
+#' @author Matthew L. Fidler
+#' @family In-model dosing
+#' @examples
+#' \donttest{
+#' # 50 unit infusion over 5 time units into central at t = 12
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     mtime(at) <- 12
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'     if (t >= at && t < at + 0.5) infuseDur(50, 5, central)
+#'   })
+#' }
+#' s <- rxSolve(f, et(amt = 100) |> et(0:24))
+#' s[s$time >= 11 & s$time <= 14, ]
+#' }
+infuseDur <- function(amt, dur, cmt = 1, ii = 0, addl = 0, ss = 0) {
+  stop("'infuseDur()' can only be used inside an rxode2 model block", call. = FALSE)
+}
+
+#' @export
+#' @keywords internal
+#' @rdname rxUdfUi
+rxUdfUi.infuseDur <- function(fun) {
+  .dummy <- function(amt, dur, cmt, ii, addl, ss) {}
+  .mc <- match.call(.dummy, fun)
+  .amt <- deparse1(.mc$amt)
+  .dur <- deparse1(.mc$dur)
+  .cmt <- .rxUdfUiCmt(.mc$cmt)
+  .ii <- deparse1(.mc$ii)
+  if (.ii == "NULL") {
+    .ii <- "0"
+  }
+  .addl <- deparse1(.mc$addl)
+  if (.addl == "NULL") {
+    .addl <- "0"
+  }
+  .ss <- deparse1(.mc$ss)
+  if (.ss == "NULL") {
+    .ss <- "0"
+  }
+  list(replace = paste0("infuseDur(", .amt, ",", .dur, ",", .cmt, ",", .ii, ",", .addl, ",", .ss, ")"))
+}
+
+#' Reset the rxode2 system in the model
+#'
+#' @return This function is only meaningful inside an rxode2 model; it
+#'   returns `NULL` invisibly if called from R directly (after signaling
+#'   an error).
+#'
+#' @details
+#' ## Behavior inside a model
+#'
+#' `reset()` is evaluated at every output time point (when the solver is
+#' exactly at a scheduled event time).  The pushed event is inserted into
+#' the individual's event timeline and the solver visits it now or at the
+#' specified future time.
+#'
+#' The number of events that may be pushed per individual is limited by
+#' the `maxExtra` argument of [rxSolve()].  When `maxExtra = 0`
+#' (the default) there is no limit.  Exceeding the limit causes an
+#' error.
+#'
+#' Past-time pushes (where `time < t`) are silently ignored and counted;
+#' a warning is issued after solving.
+#'
+#' @family In-model dosing
+#' @examples
+#' \donttest{
+#' # reset all compartments at t = 12
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     mtime(at) <- 12
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'     if (t >= at && t < at + 0.5) reset()
+#'   })
+#' }
+#' s <- rxSolve(f, et(amt = 100) |> et(0:24))
+#' s[s$time >= 11 & s$time <= 14, ]
+#' }
+reset <- function() {
+  stop("'reset()' can only be used inside an rxode2 model block", call. = FALSE)
+}
+
+#' Replace dose the rxode2 system in the model
+#'
+#' @inheritParams evid_
+#'
+#' @return This function is only meaningful inside an rxode2 model; it
+#'   returns `NULL` invisibly if called from R directly (after signaling
+#'   an error).
+#'
+#' @details
+#' ## Behavior inside a model
+#'
+#' `replace()` is evaluated at every output time point (when the solver is
+#' exactly at a scheduled event time).  The pushed event is inserted into
+#' the individual's event timeline and the solver visits it now or at the
+#' specified future time.
+#'
+#' The number of events that may be pushed per individual is limited by
+#' the `maxExtra` argument of [rxSolve()].  When `maxExtra = 0`
+#' (the default) there is no limit.  Exceeding the limit causes an
+#' error.
+#'
+#' Past-time pushes (where `time < t`) are silently ignored and counted;
+#' a warning is issued after solving.
+#'
+#' @family In-model dosing
+#' @examples
+#' \donttest{
+#' # set the central amount to 25 at t = 12
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     mtime(at) <- 12
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'     if (t >= at && t < at + 0.5) replace(25, central)
+#'   })
+#' }
+#' s <- rxSolve(f, et(amt = 100) |> et(0:24))
+#' s[s$time >= 11 & s$time <= 14, ]
+#' }
+replace <- function(amt, cmt = 1) {
+  stop("'replace()' can only be used inside an rxode2 model block", call. = FALSE)
+}
+
+
+#' @export
+#' @keywords internal
+#' @rdname rxUdfUi
+rxUdfUi.replace <- function(fun) {
+  .dummy <- function(amt, cmt = 1) {}
+  .mc <- match.call(.dummy, fun)
+  .amt <- deparse1(.mc$amt)
+  .cmt <- .rxUdfUiCmt(.mc$cmt)
+  list(replace = paste0("replace(", .amt, ",", .cmt, ")"))
+}
+
+
+#' Multiply dose the rxode2 system in the model
+#'
+#' @inheritParams evid_
+#'
+#' @return This function is only meaningful inside an rxode2 model; it
+#'   returns `NULL` invisibly if called from R directly (after signaling
+#'   an error).
+#'
+#' @details
+#' ## Behavior inside a model
+#'
+#' `multiply()` is evaluated at every output time point (when the solver is
+#' exactly at a scheduled event time).  The pushed event is inserted into
+#' the individual's event timeline and the solver visits it now or at the
+#' specified future time.
+#'
+#' The number of events that may be pushed per individual is limited by
+#' the `maxExtra` argument of [rxSolve()].  When `maxExtra = 0`
+#' (the default) there is no limit.  Exceeding the limit causes an
+#' error.
+#'
+#' Past-time pushes (where `time < t`) are silently ignored and counted;
+#' a warning is issued after solving.
+#'
+#' @family In-model dosing
+#' @examples
+#' \donttest{
+#' # halve the central amount at t = 12
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     mtime(at) <- 12
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'     if (t >= at && t < at + 0.5) multiply(0.5, central)
+#'   })
+#' }
+#' s <- rxSolve(f, et(amt = 100) |> et(0:24))
+#' s[s$time >= 11 & s$time <= 14, ]
+#' }
+multiply <- function(amt, cmt = 1) {
+  stop("'multiply()' can only be used inside an rxode2 model block", call. = FALSE)
+}
+
+
+#' @export
+#' @keywords internal
+#' @rdname rxUdfUi
+rxUdfUi.multiply <- function(fun) {
+  .dummy <- function(amt, cmt = 1) {}
+  .mc <- match.call(.dummy, fun)
+  .amt <- deparse1(.mc$amt)
+  .cmt <- .rxUdfUiCmt(.mc$cmt)
+  list(replace = paste0("multiply(", .amt, ",", .cmt, ")"))
+}
+
+#' Administer a phantom/transit dose inside a rxode2 model
+#'
+#' @inheritParams evid_
+#'
+#' @return This function is only meaningful inside an rxode2 model; it
+#'   returns `NULL` invisibly if called from R directly (after signaling
+#'   an error).
+#'
+#' @details
+#' ## Behavior inside a model
+#'
+#' `phantom()` is evaluated at every output time point (when the solver is
+#' exactly at a scheduled event time).  The pushed event is inserted into
+#' the individual's event timeline and the solver visits it now or at the
+#' specified future time.
+#'
+#' The number of events that may be pushed per individual is limited by
+#' the `maxExtra` argument of [rxSolve()].  When `maxExtra = 0`
+#' (the default) there is no limit.  Exceeding the limit causes an
+#' error.
+#'
+#' Past-time pushes (where `time < t`) are silently ignored and counted;
+#' a warning is issued after solving.
+#'
+#' @export
+#' @author Matthew L. Fidler
+#' @family In-model dosing
+#' @examples
+#' \donttest{
+#' # phantom dose at t = 12 resets tad() without adding drug
+#' f <- function() {
+#'   ini({
+#'     ka <- 0.5; cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     mtime(at) <- 12
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'     td <- tad(depot)
+#'     if (t >= at && t < at + 0.5) phantom(100, depot)
+#'   })
+#' }
+#' s <- rxSolve(f, et(amt = 100) |> et(0:24))
+#' s[s$time >= 11 & s$time <= 14, ]
+#' }
+phantom <- function(amt, cmt = 1, ii = 0, addl = 0, ss = 0) {
+  stop("'phantom()' can only be used inside an rxode2 model block", call. = FALSE)
+}
+
+#' @export
+#' @keywords internal
+#' @rdname rxUdfUi
+rxUdfUi.phantom <- function(fun) {
+  .dummy <- function(amt, cmt, ii, addl, ss) {}
+  .mc <- match.call(.dummy, fun)
+  .amt <- deparse1(.mc$amt)
+
+  .cmt <- .rxUdfUiCmt(.mc$cmt)
+
+  .ii <- deparse1(.mc$ii)
+  if (.ii == "NULL") {
+    .ii <- "0"
+  }
+
+  .addl <- deparse1(.mc$addl)
+  if (.addl == "NULL") {
+    .addl <- "0"
+  }
+
+  .ss <- deparse1(.mc$ss)
+  if (.ss == "NULL") {
+    .ss <- "0"
+  }
+
+  list(replace = paste0("phantom(", .amt, ",", .cmt, ",", .ii, ",", .addl, ",", .ss, ")"))
+}
+
+#' Add observations to a model
+#'
+#'
+#' @param ... Numeric values to be added as observations after the
+#'   current time `t`.  They would be added as events with `evid = 0`
+#'   and `amt = 0` at the specified future time points.  The time
+#'   points are relative to the current model time `t` (i.e.,
+#'   `obs(12)` adds an observation at `t + 12`).  If this is a ui
+#'   model, you can also specify observations with obs(seq(0, 24,
+#'   by=0.5)) to add observations every 0.5 time units from t to t+24
+#'   since it will resolve to the obs() inside of the final rxode2
+#'   model.
+#'
+#' @return This function is only meaningful inside an rxode2 model; it
+#'   returns `NULL` invisibly if called from R directly (after signaling
+#'   an error).
+#'
+#' @details
+#' ## Behavior inside a model
+#'
+#' `obs()` is evaluated at every output time point (when the solver is
+#' exactly at a scheduled event time).  The pushed event is inserted into
+#' the individual's event timeline and the solver visits it now or at the
+#' specified future time.
+#'
+#' The number of events that may be pushed per individual is limited by
+#' the `maxExtra` argument of [rxSolve()].  When `maxExtra = 0`
+#' (the default) there is no limit.  Exceeding the limit causes an
+#' error.
+#'
+#' Past-time pushes (where `time < t`) are silently ignored and counted;
+#' a warning is issued after solving.
+#'
+#' @export
+#' @author Matthew L. Fidler
+#' @family In-model dosing
+#' @examples
+#' \donttest{
+#' f <- function() {
+#'   ini({
+#'     cl <- 1; v <- 10
+#'   })
+#'   model({
+#'     d/dt(central) <- -cl / v * central
+#'     cp <- central / v
+#'     # add observations at t + 0.5, t + 1.5 and t + 3
+#'     if (t < 1) obs(0.5, 1.5, 3)
+#'   })
+#' }
+#' rxSolve(f, et(amt = 100) |> et(c(0, 24)))
+#' }
+obs <- function(...) {
+  stop("'obs()' can only be used inside an rxode2 model block", call. = FALSE)
+}
+
+#' @export
+#' @keywords internal
+#' @rdname rxUdfUi
+rxUdfUi.obs <- function(fun) {
+  .mc1 <- fun
+  .mc1[[1]] <- quote(`list`)
+  .mc1 <- try(eval(.mc1), silent = TRUE)
+  if (inherits(.mc1, "try-error")) {
+    list(replace = deparse1(fun))
+  } else {
+    .mc1 <- try(unlist(.mc1, recursive = TRUE, use.names = FALSE), silent = TRUE)
+    if (inherits(.mc1, "try-error")) {
+      list(replace = deparse1(fun))
+    } else if (is.numeric(.mc1) || is.integer(.mc1)) {
+      .obs <- as.character(.mc1)
+      list(replace = paste0("obs(", paste(.obs, collapse = ", "), ")"))
+    } else {
+      list(replace = deparse1(fun))
+    }
+  }
 }

@@ -13,6 +13,12 @@ C++, and Fortran code.
 ## Build and Development Commands
 
 ### Install/Build
+
+rxode2 Imports and LinkingTo rxode2lincmt (the Stan-based linCmt kernels), so
+rxode2lincmt must be installed in a library rxode2's build and `load_all` see.
+After reinstalling or `load_all()`-ing rxode2lincmt in a live session, rxode2
+re-links through a `packageEvent` hook; if in doubt restart R.
+
 ```r
 # Install development version (from within R)
 devtools::install()
@@ -55,6 +61,35 @@ invisible(lapply(list.files("src", "\\.s?o$", full.names = TRUE), unlink));devto
 # Or: R CMD check .
 ```
 
+### CI (GitHub Actions)
+
+`.github/workflows/ci.yaml` runs in two tiers, chosen by its `gate` job;
+`result` is the single check to require.
+
+- **fast** (every push to a PR targeting main, push to main, a `/ci` PR
+  comment): the air format check, the rxProtect check
+  (`.github/scripts/check-protect.sh`), lint of the changed files, the CRAN-mirror
+  check (`_check.yaml`: one tarball, `R CMD check --as-cran` on
+  linux/windows/macOS release with `NOT_CRAN=false` and 2 OpenMP threads, so
+  `rxTest({})` blocks skip as on CRAN), and the core NOT_CRAN tests listed in
+  `tests/ci-core.txt`.
+- **full** (nightly when main changed, a `/cifull` PR comment, manual run):
+  fast plus R-devel/oldrel checks, every test file on all three OSes,
+  coverage and a pkgdown build.
+
+Comments count only from owners/members/collaborators. Stacked PRs,
+documentation-only PRs and draft PRs (until marked ready, or commented `/ci`)
+run nothing. Retargeting a stacked PR to main starts the fast tier via
+`ci-retarget.yaml`; other PR edits start no run. `/ci` reruns the PR's own run
+for its head commit rather than starting a second one. A test file that covers a
+major feature belongs in `tests/ci-core.txt`. Shards are balanced from
+`tests/ci-timings.csv`; refresh it from a full run's `junit-*` artifacts with
+`.github/scripts/ci-test-timings.R` (`.github/scripts/ci-shards.R` does the
+split). The shared setup (R, dependencies, ccache) is
+`.github/actions/setup-rxode2`. A failing run on main (push or nightly) opens
+or comments on a `ci-main-failure-<tier>` issue listing the commits since the
+last green run; the next green run closes it.
+
 ### Get generated C code and C code errors from model
 
 When trying to get the underlying generated code from a model that
@@ -67,20 +102,24 @@ summary(rxC(rxode2model))
 With a model that did not compile successfully, you can get the code by:
 
 ```r
-cat(suppressMessages(rxode2::rxLastCompile())$c)
+cat(rxode2::rxLastCompile(character(0))$c)
 ```
 
 To get the compile error you can use:
 
 ```r
-cat(suppressMessages(rxode2::rxLastCompile())$stderr)
+cat(rxode2::rxLastCompile(character(0))$stderr)
 ```
 
-If you need stout too you can get that with
+If you need stdout too you can get that with
 
 ```r
-cat(suppressMessages(rxode2::rxLastCompile())$stderr)
+cat(rxode2::rxLastCompile(character(0))$stdout)
 ```
+
+`rxLastCompile()` messages the sections named by its `what=` argument (all of
+them by default), so `character(0)` takes the list without echoing anything;
+`rxLastCompile("stderr")` echoes just the compiler error.
 
 ### Regenerate Grammar, Documentation and Build Artifacts
 
@@ -113,8 +152,8 @@ devtools::document()
    library (`inline` package) and dynamically loaded.
 
 5. **Solving** (`src/par_solve.cpp`): `rxSolve()` drives the numerical ODE solving using the compiled model. Supports multiple backends:
-   - LSODA (`src/lsoda.c`, `src/dlsoda.f`) — stiff/non-stiff adaptive
-   - DOP853 (`src/dop853.c`) — non-stiff Runge-Kutta
+   - LSODA (`src/lsoda.c`, `src/dlsoda.f`) -- stiff/non-stiff adaptive
+   - DOP853 (`src/dop853.c`) -- non-stiff Runge-Kutta
    - Parallel solving via OpenMP across subjects
 
 ### Key Subsystems
@@ -123,6 +162,32 @@ devtools::document()
 - `rxUi` objects are R environments containing the fully parsed model
 - `rxUiGet` is an S3 dispatch system: `ui$property` calls `rxUiGet.property(x)`
 - Model piping (`R/piping*.R`) copies and modifies `rxUi` objects via `.copyUi()`
+
+> [!IMPORTANT]
+> **`$predDf` and `$iniDf` are a stable, exported interface — do not change
+> their schema without explicit user permission.** Their columns and structure
+> are relied on for model export/serialization and by reverse dependencies
+> (nlmixr2est, babelmixr2, nonmem2rx, …), including fits/UIs that were saved by
+> earlier versions. Adding, removing, renaming, or repurposing a column is a
+> breaking change: never do it as an incidental part of another change — ask
+> first. Prefer representing new information with the *existing* schema (e.g. a
+> literal residual value becomes an auto-generated FIX row in `$iniDf`, keyed to
+> its endpoint via the existing `err`/`condition` columns — see
+> `.rxErrLiteralToFixParam` in `R/err.R` — rather than a new `$predDf` column).
+>
+> **Reverse-dependency compatibility is fixed here, in rxode2.** When an rxode2
+> change breaks a reverse dependency, the released reverse dependency cannot be
+> patched retroactively, so the fix belongs in rxode2 — not in the reverse
+> dependency.
+>
+> **Never add an unrequested check, assertion, or validation on a path that a
+> reverse dependency executes** (package load, `.onLoad` helpers,
+> `_rxode2_rxode2Ptr()`, `rxSolve`, `rxUi` accessors). CRAN runs every strong
+> reverse dependency against a submission, so one such check that fires fails all
+> of them at once and gets the submission rejected. The same goes for
+> "correcting" any already-released name, label, slot, column, or return value:
+> tidying it is never worth the break. Assert in rxode2's own tests instead, and
+> if a real incompatibility needs a guard, ask first.
 
 **Event Table** (`src/et.cpp`, `src/etTran.cpp`, `R/et.R`):
 
@@ -136,10 +201,33 @@ devtools::document()
   specific evids documented
   https://nlmixr2.github.io/rxode2/articles/rxode2-events-classic.html
 
-**Linear Compartment Models** (`src/linCmt.cpp`, `R/linCmt.R`):
+**Linear Compartment Models** (rxode2lincmt, `src/rxode2lincmtLink.cpp`, `R/linCmt.R`):
 - Analytical solutions for 1-3 compartment PK models
 - Gradients computed via Stan math auto-differentiation (for FOCEi in nlmixr2)
 - Can be mixed with ODEs in the same model
+- The kernels (`linCmt.cpp`, `solComp`, `macros2micros`, `rxDerived`) live in the
+  separate package rxode2lincmt so rxode2 does not compile Stan.  rxode2 keeps
+  parsing/codegen (`parseLinCmt.c`), the per-individual state in
+  `rxode2parseStruct.h`, and `linCmtSensType.h` / `linCmtDiffConstant.h`, which are
+  duplicated verbatim in rxode2lincmt and must stay identical.
+
+**Sensitivity Analysis** (`R/rxJacobian.R`, `R/adjoint.R`, `src/expandGrid.cpp`, `src/adjoint.cpp`):
+- Forward sensitivities: `.rxJacobian()` builds the analytic Jacobian
+  (`symengine::D`), `.rxSens()` splices `d/dt(rx__sens_<state>_BY_<param>__)`
+  variational-equation lines into the model (solved as ordinary extra
+  compartments). This is symbolic, not autodiff.
+- Adjoint (backward) sensitivities mirror the same `rx__sens_*` output but via a
+  backward pass. `.rxAdjoint()` symbolically generates the costate
+  (`-J^T lambda`) and quadrature (`-lambda^T df/dp`) equations reusing the
+  `rx__df_*` derivatives. `.rxAdjointSolve()` = full per-timepoint `dy(t)/dp`;
+  `.rxAdjointGrad()` = single-sweep `dG/dtheta` objective gradient (incl. a FOCEi
+  `-2LL` `errModel=`), where adjoint beats forward sensitivity.
+- `.rxAdjointGrad` is split into a symbolic **build** (`.rxAdjointGradBuild`,
+  runs symengine once) and a numeric **eval** (`.rxAdjointGradEval` / the C++
+  `.rxAdjointGradEvalC` via the `rxode2AdjointSweep` sweep) so an optimizer
+  builds once and evaluates the gradient many times. Build the gradient object
+  BEFORE any `rxSolve` (a `load_all`-only symengine dispatch quirk affects the
+  one-time symbolic build, never the numeric eval).
 
 **Output Data Frame** (`src/rxode2_df.cpp`, `src/rxData.cpp`):
 - The solved result is returned as a modified data frame with special classes
@@ -159,7 +247,7 @@ devtools::document()
 | `src/codegen.c` | C code generation from parsed AST |
 | `src/par_solve.cpp` | Main parallel ODE solver (OpenMP) |
 | `src/rxData.cpp` | rx_solve data structure management |
-| `src/linCmt.cpp` | Analytical PK compartment solutions |
+| `src/rxode2lincmtLink.cpp` | Tables shared with rxode2lincmt; linCmtA/linCmtB forwarders |
 | `src/et.cpp` | Event table construction |
 | `R/rxode2.R` | `rxode2()` function entry point |
 | `R/rxsolve.R` | `rxSolve()` function |
@@ -176,6 +264,39 @@ devtools::document()
 - **S3 methods**: follow `generic.class` R convention (e.g., `rxSolve.rxUi`, `modelExtract.function`)
 - Avoid `snake_case` for new names; underscores only appear in S3 methods for snake_case generics from other packages (e.g., `drop_units.rxSolve`)
 - Use American English spelling for consistency and do not use unicode characters
+- **Never write `rxode2:::foo` (or any `pkg:::`) in a script under `bench/`, in a
+  test, or in package code.** CodeFactor flags every `:::` as a Major
+  Maintainability issue and fails the PR check.  To reach a non-exported
+  function, bind it once near the top with
+  `.foo <- utils::getFromNamespace(".foo", "rxode2")` and call `.foo()` -- the
+  convention `bench/symengine-translate.R`, `bench/lincmt_hybrid_production.R`
+  and `bench/lincmt_strategy_gate.R` already follow.  Inside `tests/testthat/`
+  no qualifier is needed at all: tests run in the package namespace, so call
+  the internal by its bare name.
+
+### Working with symengine objects (`.rxToSE`/`rxFromSE`/`symengine::D`)
+
+The symengine env (eg `rxUiGet.foceiEtaS`/`rxUiGet.nlmEnv`, `rxS()`) and its
+`Basic` objects overload/register R functions, so once you touch symengine in
+these contexts base calls start failing with `user function 'X' requires N
+arguments`. When manipulating symengine objects programmatically:
+
+- **`get()` is masked.** Capture Basics from `assign()`'s return value instead:
+  `.b <- eval(parse(text = 'assign("x", with(.s, D(rx_pred_, y)), envir=.s)'))`
+  returns the assigned Basic (this is how the FEta apply avoids `get`).
+- **Do symbolic ops inside the env**: `with(.s, D(...))` (or the `assign(...,
+  envir=.s)` string idiom), NOT `symengine::D(...)` directly -- the qualified
+  `pkg::fun` form gets intercepted too.
+- **`rxFromSE()` of a Basic containing `lag0()`/`llik*()` poisons the *next*
+  `[[`/`get`/`$`-read** (but not `rxFromSE` itself). Convert the "clean" Basics
+  to text first and the poisoning one LAST; after it, use only vectorized base
+  ops.
+- **`[[` on a list of Basics always dispatches to symengine's `[[`** (fails).
+  Never build a list of Basics -- `rxFromSE()` each inline.
+- **`assign()` and `$<-` (writes) are safe**; `paste0`/`gsub`/`lapply` (C-level
+  element access) are safe.
+- **Temp symbol names** must avoid a trailing `_` (treated like the internal
+  `THETA_1_`) and symengine-registered substrings (eg `Dmean`).
 
 ### C/C++ Conventions
 
@@ -184,9 +305,317 @@ devtools::document()
 - C files use `#define STRICT_R_HEADERS` and `#define USE_FC_LEN_T`
 - C++ files use `#define R_NO_REMAP` to avoid R API name pollution
 - OpenMP support is conditional via `rxomp.h`
+- **Never write raw `PROTECT()`/`UNPROTECT()` (or `Rf_protect`/`Rf_unprotect`)
+  in C or C++.** CI fails on it (`.github/scripts/check-protect.sh`, run it
+  locally before pushing); this includes one-line fixes to existing code.
+  - C++: declare `rxProtect rx_protect;` (`src/rxProtect.h`) and wrap each
+    allocation in `rx_protect.protect(x)`; it unprotects when it leaves scope,
+    so write no `UNPROTECT` and no unprotect before `return`.  Use
+    `rx_protect.unprotect(n)` only to release temporaries inside a loop.
+  - C: begin the function with `rxProtectGuard;`, use `rxP()`/`rxUP()` in place
+    of `PROTECT`/`UNPROTECT`, and `rxUPAll()` before returning, since
+    `rxP()`/`rxUP()` count the protected expressions in the function.
+  - Exempt: generated code (`RcppExports.cpp`, model C emitted as strings by
+    `codegen.h`).  A line that genuinely must stay raw ends with the comment
+    `// check-protect: allow (<reason>)`.
+  - EXCEPTION -- objects that must outlive a `longjmp`: `rxProtectGuard`'s
+    cleanup does NOT fire on `Rf_error`, so anything claimed by one function and
+    released by another with an error possible in between (the parse translation
+    table and `_goodFuns`, claimed in `_rxode2parse_assignTranslation()` /
+    `setupTrans()` and released in `_rxode2parse_unprotect()`) must not live on
+    the protect stack at all.  R unwinds that stack on the error while the
+    owner's count stays set, and the next release then pops the *caller's*
+    protections -- seen as `R_Reprotect: only N protected items, can't reprotect
+    index M` out of `vapply()`.  Use `R_PreserveObject`/`R_ReleaseObject` (via
+    `_rxode2parse_preserve()`) there, never `rxP()`/`rxUP()`.
+
+#### Exposing a C/C++ function to downstream packages (e.g. nlmixr2est)
+
+CRAN has asked this package to share C entry points via a **function-pointer
+table**, NOT `R_RegisterCCallable` and NOT Rcpp's
+`// [[Rcpp::export]]`/`[[Rcpp::interfaces(r,cpp)]]` (both cause ABI coupling).
+The table is the positional external-pointer list built by
+`_rxode2_rxode2Ptr()` in `src/init.c` and installed into a downstream package's
+globals by `iniRxodePtrs()`/`iniRxodePtrs0()` in `inst/include/rxode2ptr.h` when
+that package loads. To add a new function `foo` (copy any existing entry, e.g.
+`rxode2AdjointSweep` at index 66, as a template):
+
+1. **`src/<file>.cpp`**: define `extern "C" <ret> foo(<plain C types>)` (no Rcpp;
+   pass R matrices as column-major `double*` + sizes). If R itself must call it,
+   add a manual `extern "C" SEXP _rxode2_foo(SEXP...)` `.Call` wrapper and
+   register it in the `callMethods[]` table in `src/init.c`.
+2. **`src/init.c` `_rxode2_rxode2Ptr()`**: bump `#define nVec`; create
+   `R_MakeExternalPtrFn((DL_FUNC)&foo, ...)`; `SET_VECTOR_ELT(ret, N, ...)` and
+   the parallel `SET_STRING_ELT(retN, N, Rf_mkChar("foo"))` at the new index `N`.
+3. **`inst/include/rxode2ptr.h`**: add `typedef <ret> (*foo_t)(...)` +
+   `extern foo_t foo;`; the `foo = (foo_t) R_ExternalPtrAddrFn(VECTOR_ELT(p, N));`
+   line in `iniRxodePtrs0` (index `N` must match `init.c`); and
+   `foo_t foo = NULL;` in the NULL-init macro at the bottom.
+4. **`inst/include/rxode2.h`**: a plain declaration guarded
+   `#ifndef __RXODE2PTR_H__` (so it does not collide with the downstream pointer
+   variable -- same as `par_solve`/`getRxSolve_`).
+
+Appending at a new index is backward compatible (older consumers read the lower
+indices and ignore the new one). Changing any `inst/include/*.h` header requires
+a full clean rebuild (`rm -f src/*.o && R CMD INSTALL .`).
+
+> [!IMPORTANT]
+> **The pointer table is APPEND-ONLY, and `_rxode2_rxode2Ptr()` never validates
+> anything.** The positional table exists precisely so a new rxode2 can be
+> submitted while every already-released reverse dependency keeps working. Two
+> rules, both absolute:
+>
+> 1. **Never rename, reorder, remove, or repurpose an existing slot -- including
+>    its `SET_STRING_ELT(retN, ...)` LABEL.** The label is not documentation you
+>    may tidy: a released downstream package may have snapshotted the name vector
+>    at build time and compare it at load. Slots 8 and 9 are deliberately
+>    mislabeled and frozen for exactly this reason; correcting them in 5.1.6 made
+>    every reverse-dependency check fail at CRAN. If a label is wrong, leave it
+>    wrong and add a comment. Only ever append at the end.
+> 2. **Never add a check to `_rxode2_rxode2Ptr()` or to a downstream package's
+>    load path.** Every reverse dependency calls it at load, so a check that fails
+>    takes them all down at once, and a released reverse dependency cannot be
+>    patched retroactively. Assert invariants in rxode2's own test suite instead
+>    (`tests/testthat/test-event-sensitivities-api.R`), never at load time.
+>
+> The same reasoning applies to the **semantics** of an already-released entry
+> point: changing what `getIndCmt()` returns for a given input is a breaking
+> change to code you cannot patch. Add a new entry point instead of changing an
+> existing one, and do not do either as an incidental "fix" -- ask first.
+
+#### rxode2lincmt tables (separate from `_rxode2_rxode2Ptr`)
+
+`src/rxode2lincmtLink.cpp` holds rxode2's side of two tables, both defined in
+rxode2lincmt's `inst/include/` headers and registered from `.linkAll()`:
+
+- the **lincmt table** (`rxode2lincmtPtrs.h`): `linCmtA`, `linCmtB`,
+  `ensureLinCmtA/B`, `linCmtBindFree`, `linCmtScaleInitPar/N`, `linCmtZeroJac`,
+  `linCmtFreeInd`, called through `_p_*` pointers that start at harmless stubs;
+- the **host table** (`rxode2lincmtHost.h`): `offsetof()` of every solver-struct
+  field linCmt reads (the `RXLC_HOST_FIELDS` X-macro) plus `getTime`, rxode2's
+  thread-slot function and `getRxSolve_`.  rxode2lincmt never includes
+  rxode2's struct headers.
+
+> [!IMPORTANT]
+> - Never put linCmt entries in `_rxode2_rxode2Ptr`.
+> - Both tables and the X-macro field list are APPEND-ONLY and never validated
+>   at load (not in `.linkAll`, `_rxode2_iniRxode2lincmtPtrs`, or the host setter).
+> - A field linCmt newly reads is a new `RXLC_HOST_FIELDS` row plus a bump of
+>   `rxode2lincmt (>=)`; never rename or retype a field the list names
+>   (`RXLC_HOST_STATIC_CHECKS` fails rxode2's compile if you do).
+> - Memory rxode2lincmt allocates is freed only through `_p_linCmtFreeInd` /
+>   `_p_linCmtBindFree`; thread slots come only from `rxode2LinCmtThread`
+>   (C++, so `rx_get_thread()` sees OpenMP -- rxode2's `.c` files are compiled
+>   without it).
+> - Compiled models keep binding `linCmtA`/`linCmtB` by name; the forwarders read
+>   the table pointer on every call.
+> - Invariants are asserted in `tests/testthat/test-lincmt-link.R`.
+
+#### `src/init.c` is the MANUAL `.Call` registration table (hardcoded arities)
+
+`src/init.c` hand-maintains the `R_registerRoutines` `callMethods[]` table and owns
+`R_init_rxode2` (Rcpp's generated `R_init_rxode2` in `RcppExports.cpp` is NOT used).
+Every `.Call` entry has an explicit forward prototype plus a HARDCODED argument
+count, e.g. `{"_rxode2_foo", (DL_FUNC) &_rxode2_foo, 5}`. So when you add a
+`[[Rcpp::export]]` function OR change one's argument count you MUST do BOTH:
+`Rcpp::compileAttributes(".")` (regenerates `src/RcppExports.cpp` + `R/RcppExports.R`)
+AND hand-edit `src/init.c` (add/update the prototype and the `callMethods[]` arg
+count). Skipping the init.c edit does NOT fail at compile time -- it surfaces at
+runtime as `Incorrect number of arguments (N), expecting M for '_rxode2_foo'`
+because the loaded registration table still carries the old arity. (Same pattern in
+nlmixr2est's `src/init.c`.)
 
 ### Generated Files (do not edit manually)
 
-- `src/tran.g.d_parser.h` — generated from `inst/tran.g` via dparser
-- `R/rxrandomui.R` — generated by `.generateRandomUiFuns()` in `R/build.R`
-- `inst/include/rxode2parse_control.h` — generated by `genDefine()` in `R/build.R`
+- `src/tran.g.d_parser.h` -- generated from `inst/tran.g` via dparser
+- `R/rxrandomui.R` -- generated by `.generateRandomUiFuns()` in `R/build.R`
+- `inst/include/rxode2parse_control.h` -- generated by `genDefine()` in `R/build.R`
+- `R/parseFuns.R` -- the list of parser-recognized functions
+  (`.parseEnv$.parseFuns`), generated by `.rxodeBuildCode()` in `R/build.R` from
+  `.rxSupportedFuns()` (`R/symengine.R`). To ADD a syntax function it must be
+  registered in the symengine tables in `R/symengine.R` (`.rxSEeq`/`.rxSEsingle`
+  /`.rxSEdouble`/`.rxOnly`), NOT hand-added to `R/parseFuns.R`.
+- `R/rxSyntaxFunctions.R` -- generated by `.rxodeBuildCode()` from
+  `inst/syntax-functions.csv` (the documentation source for syntax functions).
+- Regenerate both with `.rxodeBuildCode()` (or `devtools::document()`).
+
+## Documentation and Comment Style
+
+- Keep comments and documentation terse. Condense multi-line explanations to
+  one-liners, and drop worked examples and numeric anecdotes (e.g. "matches to
+  ~1e-6", "up to order 8"). State the fact, not the story behind it.
+- **Every new exported, user-facing roxygen topic gets exactly one `@family`**
+  (Rcpp exports: `//' @family` in `src/*.cpp`, then `Rcpp::compileAttributes()`).
+  The family both adds the "Other <family>:" See also links and files the topic
+  into the pkgdown reference index, whose sections select with
+  `has_concept("<family>")` in `_pkgdown.yml`. Reuse an existing family name
+  (`grep -rh "@family" R src | sort | uniq -c`); add a new family only together
+  with a matching `has_concept()` section. Developer-only exports (used by nlmixr2 and
+  extension packages) get `@family Developer API` and no examples.
+  `pkgdown::check_pkgdown()` fails on a topic in neither.
+- Every new article (`vignettes/*.Rmd`, `vignettes/articles/*.Rmd`) must be added
+  both to the `articles:` index and to a navbar menu in `_pkgdown.yml`. Keep
+  top-level navbar labels to one short word; long labels push the search box
+  off-screen.
+- Article titles: sentence case, task-oriented, no "rxode2" prefix unless it
+  disambiguates (comparisons are "Comparing rxode2 with X"), at most ~45
+  characters, set only in the YAML `title:` (and `VignetteIndexEntry`). The
+  navbar item text must equal the article title.
+- Every article ends with a `Next steps` section (2-3 links along the reading
+  path), written in the `.Rmd` wrapper, never in a shared `.Rmdh`/rmdhunk.
+- Examples, articles and rmdhunks use the function form
+  (`function() { ini({}); model({}) }`). Low-level `rxode2({})`/`rxode2("")`
+  models and classic event tables are documented only in
+  `vignettes/articles/rxode2-classic-models.Rmd` (and where a page is about
+  them, e.g. C functions from a package). Examples that compile a model go in
+  `\donttest{}`.
+- Shorten multi-paragraph roxygen descriptions to a single compact paragraph,
+  but keep every `@param`, `@return`, `@author`, `@export`, and `@keywords` tag.
+- Organize `NEWS.md` per version (`# rxode2 X.Y.Z`): user-facing changes first
+  under a `## New features` heading, then a `## Bug fixes` heading.  When
+  `## Bug fixes` has several entries, group them by subsystem/type in
+  `### <category>` subsections (e.g. `### Estimation / symengine translation`,
+  `### Solving`, `### linCmt() models`); a single fix can be a bullet directly
+  under `## Bug fixes`.  Add each entry to the existing subsection when one fits
+  rather than creating a near-duplicate.  Entries are past-tense bullets, a
+  sentence or two, and may state the fix and its user-visible effect -- but no
+  nested walk-throughs or multi-paragraph root-cause/validation prose.
+- Do not claim the adjoint method is cheaper/faster than (or "beats") forward
+  sensitivity; those cost comparisons do not hold here. Describe what the code
+  does, not how it compares.
+- ASCII only. No Unicode anywhere in the repo (CRAN requirement): use `--` for
+  em-dashes, `->` for arrows, straight quotes, `...` for ellipses, etc.
+
+## Known Issues / Investigation Notes
+
+### `lag()`/`diff()` and lag()-based AR(1) estimation -- status
+
+FIXED (committed):
+- Solve/codegen path for `lag(x,1)`/`diff(x,1)` (lhs via `_PL[_LHS_<ordinal>_]`,
+  covariates via the true parameter index) -- `src/codegen.h`. Tests in
+  `tests/testthat/test-lhs-lag.R`.
+- `rxNorm` normalization: `assertCorrectDiffArgs` (`src/parseFunsDiff.h`) gated the
+  lag-number extraction on `strlen(v2) > 2`, which dropped the no-space form `,1`
+  (length 2) -> `lagNo=0` -> the sbt (normalized-text) emission was skipped and
+  `rxNorm("b=lag(a,1)")` gave `b=;`. Gate is now `> 1`. `rxNorm`/`rxS` round-trip
+  `lag()`/`diff()`.
+- symengine load: `.rxToSELagOrLead` (`R/symengine.R`) wraps the lagged var in
+  `symengine::S("var")` so the assignment `eval(with(envir,...))` does not inline
+  an lhs definition into the `lag()` call.
+
+The base AR(1) estimation model (`.rxArEstLlikLines` in `R/err-foceiBase.R`) now
+builds through `rxNorm`/`rxS`.
+
+FIXED since: (1) dotted names inside a llik() argument broke the symengine
+derivative -> AR(1) intermediates now use dot-free names (rx_arE_<var> etc.);
+(2) lag()-referenced variables were inlined/dead-code-eliminated by symengine ->
+`.rxCollectLaggedVars` + `.rxToSEAssignOperators` now emit them as lhs and bind
+them as symbols; (3) nlmixr2est model assemblies (`rxUiGet.nlmRxModel`,
+`.rxFinalizePred`) now emit the lag()-referenced definitions ahead of rx_pred_.
+The nlm AR(1) estimation model BUILDS and RUNS with correct symbolic gradients
+(the sensitivity model has the AR covariance derivative via llikNormDsd and the
+cor^dt derivative).
+
+FIXED (first-record NaN): added `lag0()`/`diff0()`/`lead0()` (return 0 not NA on
+the first record); AR(1) estimation uses lag0 + a NaN-safe `1-is.na(lag(...))`
+first-record indicator, so phi=0 (marginal) on the first obs with no `0*NaN`. The
+nlm AR(1) objective is finite and CORRECT (varies with params; truth is optimal)
+and the symbolic gradients (sensitivity model) are all finite and non-zero,
+including the AR covariance derivative (llikNormDsd) and the cor^dt derivative.
+
+REMAINING (range transform for the AR correlation): the nlm fit does not converge
+(params stay at init) because OUTSIDE [0,1) the objective is degenerate (cor>=1 ->
+sqrt(1-phi^2) NaN -> spuriously low), so the UNBOUNDED nlm line search stalls when
+it steps cor past 1. FIX (the author's earlier request): reparameterize the AR
+correlation on an unbounded scale during estimation, cor = expit(theta) (theta =
+logit(cor)), with the ini transformed and the report back-transformed -- a
+parameter-transform feature spanning the ini/theta/report handling. AR(1)
+SIMULATION, the lag/diff/lag0 fixes, opt-out asserts, and the symbolic-gradient
+AR estimation model are complete.
+
+### `evid=4` (reset+dose) expanded through `addl` resets only once -- NOT A BUG
+
+`et(amt=100, time=2, evid=4, ii=12, addl=2)` resets the compartment on the
+FIRST dose only; the two `addl`-repeated doses are plain doses, not further
+resets. Writing the same regimen as three explicit `evid=4` records instead
+resets every time and gives different output (see GitHub issue #1351 for the
+reproducer and numbers). **The `addl` form is correct and matches NONMEM** --
+do not "fix" it to reset on every repetition.
+
+Evidence:
+- NONMEM does the same for the analogous `ss` + `addl` case ("NONMEM does not
+  keep the steady state flag with additional doses, it simply keeps dosing
+  without the steady state flag") --
+  https://blog.nlmixr2.org/blog/2024-04-04-steady-state/
+- `tests/testthat/nmtest-evid4.rds` (`test-nmtest.R` test `"evid4"`) is data
+  derived from real NONMEM output: its `addl`-equivalent rows after the
+  initial `evid=4` are plain `evid=1`, never another `evid=4`.
+- Architecturally this falls out of `_rxAddlOccurrence()` (see the next
+  section): a repeat of an `evid=4` record is a plain dose, because the reset
+  is emitted once, before the series.
+- Regression tests: `test-etTrans.R` `"evid=4 expanded through addl only
+  resets on the first dose (matches NONMEM, issue #1351)"` and
+  `test-evid-push-addl.R` `"a pushed evid=4 dose repeated with addl resets
+  only once"`.
+
+### There is ONE event translator -- keep it that way
+
+`inst/include/rxode2EventTranslate.h` is the single implementation of "what
+internal records does this event produce". BOTH engines call it:
+
+- the event table, `src/etTran.cpp` (`etTrans()`), whose per-row loop derives
+  `cmt100/cmt99`, `rateI` and `flg` and then calls `_rxTranslateDoseInto()`
+  once per occurrence of the `addl` series; and
+- the runtime push, `_rxPushDose()` (`src/par_solve.cpp`), behind `evid_()`,
+  `bolus()`, `infuse()`, `infuseDur()`, `replace()`, `multiply()`,
+  `phantom()` and `reset()`.
+
+`_rxDeriveFlg()`, `_rxAddlApplies()`, `_rxAddlCount()`, `_rxAddlOccurrence()`
+and `_rxAddlZeroLastIi()` in that header are the shared rules for the
+steady-state flag and for what each occurrence of an `addl` series carries.
+**Do not re-implement any of this on one side.** Every historical
+event-table-vs-dosing-time bug (#1349, #1350, #1351) came from the two
+engines having separate copies.
+
+What legitimately stays in `etTran.cpp` is everything that is not "what
+records does this event produce": reading the columns, validating against the
+model variables (`cmtSupportsInfusion`/`cmtSupportsOff`, DVID), the
+first-record `evid` 3/4 guards, `idxInput`/covariate bookkeeping, and the
+post-passes (splitBolus, the reset time shift, sorting, modeled rate/dur
+re-pairing). A hand-encoded classic internal evid (>= 100) is emitted
+verbatim rather than translated.
+
+`cmt_evid` in `inst/tran.g` accepts a leading `-` so `evid_()` can name the
+compartment to turn off, the way a negative `CMT` column does. Changing that
+grammar means regenerating `src/tran.g.d_parser.h` with `devtools::document()`
+-- and re-checking that parse time is still linear in model length, since a
+newly ambiguous rule makes dparser superlinear.
+
+Two verification gates, both cheap, both required after ANY change here:
+
+- `tests/testthat/test-etTrans-golden.R` -- ~14300 cases whose exact
+  `etTrans()` output (records, the class-attribute info list, warning and
+  error text) is snapshotted under `tests/testthat/etTrans-golden/`.
+  Comparison is `expect_identical`. If it fails, that is a bug in the new
+  code unless a human decides the old output was wrong; only then regenerate
+  with `RXODE2_ETTRANS_GOLDEN=write` (confirm first that the failing case ids
+  are exactly the ones decided on) and say so in `NEWS.md`.
+  `RXODE2_ETTRANS_GOLDEN=full` also checks the base-order sort backend.
+- `tests/testthat/test-etTrans-translator.R` -- drives both engines over the
+  same events through the `rxTranslateOneEvent_()` `.Call` hook and requires
+  them to agree record for record. There are no known divergences; the
+  list may only shrink.
+
+## CRAN tests: never assert on timing
+
+- Never put a wall-clock timing expectation in a test that can run on CRAN:
+  no `expect_lt()`/`expect_true()` on `Sys.time()` differences,
+  `system.time()`, `proc.time()`, `bench`/`microbenchmark` results, or any
+  other elapsed-time threshold. CRAN check machines are shared and heavily
+  loaded, so elapsed time there is random and a timing assertion fails at
+  random. Example: nlmixr2plot `test-model-diagram.R` asserted a
+  `modelGraph()` call took < 30 s; on CRAN it took 48.4 s and failed.
+- Test the result, not the speed. If a speed regression guard is really
+  needed, put it only in a test that starts with `skip_on_cran()` (or the
+  package's own CRAN skip helper), and never in examples or vignettes.
+- Tests that take more than a few seconds should also skip on CRAN.

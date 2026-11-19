@@ -1,0 +1,746 @@
+// -*- mode: c++; c-basic-offset: 2; tab-width: 2; indent-tabs-mode: t; -*-
+#ifndef R_NO_REMAP
+#define R_NO_REMAP
+#endif
+#define USE_FC_LEN_T
+#define STRICT_R_HEADERS
+#include <R.h>
+#include <Rinternals.h>
+#include <algorithm>
+#include <cmath>
+#include <vector>
+#include "../inst/include/rxode2prior.h"
+#include "rxProtect.h"
+
+#ifndef M_SQRT1_2
+#define M_SQRT1_2 0.70710678118654752440
+#endif
+#ifndef M_SQRT2
+#define M_SQRT2 1.41421356237309504880
+#endif
+
+// ---------------------------------------------------------------------------
+// Pure math: no R/Rcpp symbol below this line touches the R API, so
+// rxPriorLogDensityEval() is safe to call from any OpenMP thread
+// (nlmixr2/nlmixr2est#929 -- "called in an OpenMP thread safe environment").
+// ---------------------------------------------------------------------------
+
+// log(1 - Phi(x)) for x >= 0, via erfc() directly (never via 1 - erf()) so
+// it stays accurate deep into the tail instead of rounding to log(0).
+static inline double logUpperTailNorm(double x) {
+  return std::log(0.5 * std::erfc(x * M_SQRT1_2));
+}
+// log(Phi(x)), any sign of x, via the same tail-accurate erfc() path.
+static inline double logLowerTailNorm(double x) {
+  return logUpperTailNorm(-x);
+}
+
+// log(F(upper) - F(lower)) for N(mean, sd), stable even when the window
+// sits deep in one tail: plain pnorm(upper)-pnorm(lower) can round both
+// calls to the same double there (subtracting to exactly 0, so log() of it
+// is -Inf and the *density* -- which subtracts that -Inf back off --
+// becomes +Inf). Picking whichever tail keeps both log-probabilities away
+// from log(1) and subtracting in log space (log1p(-exp(lb-la))) avoids
+// that; a window straddling the mean has no cancellation risk either way.
+static double logNormCdfDiff(double lower, double upper, double mean, double sd) {
+  if (!std::isfinite(lower) && !std::isfinite(upper)) return 0.0;
+  if (!std::isfinite(lower)) return logLowerTailNorm((upper - mean) / sd);
+  if (!std::isfinite(upper)) return logUpperTailNorm((lower - mean) / sd);
+  double zl = (lower - mean) / sd, zu = (upper - mean) / sd;
+  if (zu <= 0) {
+    double la = logLowerTailNorm(zu), lb = logLowerTailNorm(zl);
+    return la + std::log1p(-std::exp(lb - la));
+  } else if (zl >= 0) {
+    double la = logUpperTailNorm(zl), lb = logUpperTailNorm(zu);
+    return la + std::log1p(-std::exp(lb - la));
+  }
+  double Fu = 0.5 * std::erfc(-zu * M_SQRT1_2);
+  double Fl = 0.5 * std::erfc(-zl * M_SQRT1_2);
+  return std::log(Fu - Fl);
+}
+
+// log(1 - F(z)) for a standard Cauchy, z > 0: 1 - F(z) = atan(1/z)/pi (the
+// atan(z)+atan(1/z)=pi/2 identity), which -- unlike 0.5 - atan(z)/pi --
+// never cancels near 0.5, so it stays accurate for any z.
+static inline double logUpperTailCauchy(double z) {
+  return std::log(std::atan(1.0 / z) / M_PI);
+}
+static inline double logLowerTailCauchy(double z) {
+  return logUpperTailCauchy(-z);
+}
+
+// log(F(upper) - F(lower)) for Cauchy(location, scale); same tail-selection
+// structure as logNormCdfDiff(), even though Cauchy's polynomial tail makes
+// the cancellation this guards against far less likely in practice.
+static double logCauchyCdfDiff(double lower, double upper, double location, double scale) {
+  if (!std::isfinite(lower) && !std::isfinite(upper)) return 0.0;
+  if (!std::isfinite(lower)) return logLowerTailCauchy((upper - location) / scale);
+  if (!std::isfinite(upper)) return logUpperTailCauchy((lower - location) / scale);
+  double zl = (lower - location) / scale, zu = (upper - location) / scale;
+  if (zu <= 0) {
+    double la = logLowerTailCauchy(zu), lb = logLowerTailCauchy(zl);
+    return la + std::log1p(-std::exp(lb - la));
+  } else if (zl >= 0) {
+    double la = logUpperTailCauchy(zl), lb = logUpperTailCauchy(zu);
+    return la + std::log1p(-std::exp(lb - la));
+  }
+  double Fu = 0.5 + std::atan(zu) / M_PI;
+  double Fl = 0.5 + std::atan(zl) / M_PI;
+  return std::log(Fu - Fl);
+}
+
+// Cholesky factor L (row-major, lower triangular) of a symmetric n x n
+// matrix A (row-major), A = L L^T. false when A is not positive definite.
+static bool cholesky(const double *A, int n, std::vector<double> &L) {
+  L.assign((size_t)n * n, 0.0);
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j <= i; ++j) {
+      double s = A[i * n + j];
+      for (int k = 0; k < j; ++k) s -= L[i * n + k] * L[j * n + k];
+      if (i == j) {
+        if (s <= 0.0) return false;
+        L[i * n + i] = std::sqrt(s);
+      } else {
+        L[i * n + j] = s / L[j * n + j];
+      }
+    }
+  }
+  return true;
+}
+
+static inline double cholLogDet(const std::vector<double> &L, int n) {
+  double s = 0.0;
+  for (int i = 0; i < n; ++i) s += std::log(L[i * n + i]);
+  return 2.0 * s;
+}
+
+// Solve A x = b given A's Cholesky factor (forward + back substitution).
+static void cholSolve(const std::vector<double> &L, int n, const double *b,
+                      std::vector<double> &x) {
+  std::vector<double> y(n);
+  for (int i = 0; i < n; ++i) {
+    double s = b[i];
+    for (int k = 0; k < i; ++k) s -= L[i * n + k] * y[k];
+    y[i] = s / L[i * n + i];
+  }
+  x.assign(n, 0.0);
+  for (int i = n - 1; i >= 0; --i) {
+    double s = y[i];
+    for (int k = i + 1; k < n; ++k) s -= L[k * n + i] * x[k]; // (L^T)[i,k] = L[k,i]
+    x[i] = s / L[i * n + i];
+  }
+}
+
+// Dense A^{-1} from its Cholesky factor (needed for the invWishart gradient).
+static void cholInverse(const std::vector<double> &L, int n, std::vector<double> &Ainv) {
+  Ainv.assign((size_t)n * n, 0.0);
+  std::vector<double> e(n, 0.0), col;
+  for (int j = 0; j < n; ++j) {
+    std::fill(e.begin(), e.end(), 0.0);
+    e[j] = 1.0;
+    cholSolve(L, n, e.data(), col);
+    for (int i = 0; i < n; ++i) Ainv[i * n + j] = col[i];
+  }
+}
+
+// log-gamma, for a positive argument only, via the standard g=7/n=9 Lanczos
+// approximation. std::lgamma() (POSIX libm) writes the sign of Gamma(x) to
+// the global `signgam` on every call -- unused here, but a genuine data
+// race under concurrent calls from multiple OpenMP threads regardless, so
+// it cannot be used inside rxPriorLogDensityEval(). x is always positive
+// here (nu/2 - (p-1)/2 > 0, guaranteed by the nu > p-1 check
+// R/priorDensity.R makes when the spec is built), so the reflection
+// formula for non-positive arguments is not needed.
+static double lgammaPositive(double x) {
+  static const double g = 7.0;
+  static const double c[9] = {
+    0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+    771.32342877765313, -176.61502916214059, 12.507343278686905,
+    -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7
+  };
+  double xx = x - 1.0;
+  double t = xx + g + 0.5;
+  double a = c[0];
+  for (int i = 1; i < 9; ++i) a += c[i] / (xx + i);
+  return 0.5 * std::log(2.0 * M_PI) + (xx + 0.5) * std::log(t) - t + std::log(a);
+}
+
+// log of the multivariate gamma function, log Gamma_p(a).
+static double logMvGamma(double a, int p) {
+  double s = (double)p * (p - 1) / 4.0 * std::log(M_PI);
+  for (int i = 1; i <= p; ++i) s += lgammaPositive(a + (1 - i) / 2.0);
+  return s;
+}
+
+// Gather term k's current value from the caller's theta/omega arrays.
+static inline double termValue(const rx_prior_term_t &term, int k,
+                               const double *theta, const double *omega, int omegaDim) {
+  if (term.thetaIdx[k] > 0) return theta[term.thetaIdx[k] - 1];
+  int e1 = term.etaIdx[k] - 1;
+  if (term.etaIdx2 != NULL && term.etaIdx2[k] > 0) {
+    int e2 = term.etaIdx2[k] - 1;
+    return omega[(size_t)e1 * omegaDim + e2];
+  }
+  return omega[(size_t)e1 * omegaDim + e1];
+}
+
+// Scatter a scalar gradient contribution for term member k.  An
+// off-diagonal (covariance) member writes ONLY the ONE cell termValue()
+// actually read -- matching the entrywise convention documented in
+// R/priorDensity.R exactly: gradOmega[i,j] and gradOmega[j,i] are treated
+// as independent (this term contributes to the (e1,e2) direction only,
+// nothing to (e2,e1)), and a caller that moves the symmetric pair TOGETHER
+// sums both cells itself -- see that summed total against a central
+// difference in tests/testthat/test-prior-density.R before changing this:
+// writing the scalar into BOTH cells here was tried and measured exactly
+// 2x the correct total (it double-counts once entrywise, once again when a
+// downstream Gsym=0.5*(G+G^T) symmetrization or explicit sum recombines
+// the pair). evalInvWishartTerm's own gradient (below) is NOT the same
+// situation -- its entries come out symmetric from genuine matrix algebra
+// (both (i,j) and (j,i) are independently, correctly nonzero), not from a
+// deliberate double-write of a single scalar.
+static inline void addGrad(const rx_prior_term_t &term, int k, double g,
+                           double *gradTheta, double *gradOmega, int omegaDim) {
+  if (term.thetaIdx[k] > 0) {
+    gradTheta[term.thetaIdx[k] - 1] += g;
+    return;
+  }
+  int e1 = term.etaIdx[k] - 1;
+  if (term.etaIdx2 != NULL && term.etaIdx2[k] > 0) {
+    int e2 = term.etaIdx2[k] - 1;
+    gradOmega[(size_t)e1 * omegaDim + e2] += g;
+    return;
+  }
+  gradOmega[(size_t)e1 * omegaDim + e1] += g;
+}
+
+// type 0/1: a single (possibly truncated) normal/Cauchy penalty.
+static double evalNormalCauchyTerm(const rx_prior_term_t &term, const double *theta,
+                                   const double *omega, int omegaDim,
+                                   double *gradTheta, double *gradOmega) {
+  double x = termValue(term, 0, theta, omega, omegaDim);
+  double mean = term.mu[0], sd = term.scale[0];
+  double z = (x - mean) / sd;
+  double v, g;
+  if (term.type == 0) {
+    v = -std::log(sd) - 0.5 * std::log(2.0 * M_PI) - 0.5 * z * z;
+    g = -(x - mean) / (sd * sd);
+    if (std::isfinite(term.lower) || std::isfinite(term.upper)) {
+      v -= logNormCdfDiff(term.lower, term.upper, mean, sd);
+    }
+  } else {
+    v = -std::log(M_PI) - std::log(sd) - std::log1p(z * z);
+    g = -2.0 * (x - mean) / (sd * sd * (1.0 + z * z));
+    if (std::isfinite(term.lower) || std::isfinite(term.upper)) {
+      v -= logCauchyCdfDiff(term.lower, term.upper, mean, sd);
+    }
+  }
+  addGrad(term, 0, g, gradTheta, gradOmega, omegaDim);
+  return v;
+}
+
+// a * log(x), taking 0 * log(0) as 0 (eg gamma(1, rate) at x = 0).
+static inline double xlogy(double a, double x) {
+  return (a == 0.0) ? 0.0 : a * std::log(x);
+}
+
+// a / x, taking 0 / 0 as 0 (the matching derivative of xlogy()).
+static inline double xdivy(double a, double x) {
+  return (a == 0.0) ? 0.0 : a / x;
+}
+
+// log(erfc(u)) for any u, via the asymptotic series once erfc() underflows.
+static double logErfc(double u) {
+  if (u < 26.0) return std::log(std::erfc(u));
+  double u2 = u * u, iu2 = 1.0 / (2.0 * u2);
+  double series = 1.0 - iu2 * (1.0 - 3.0 * iu2 * (1.0 - 5.0 * iu2 * (1.0 - 7.0 * iu2)));
+  return -u2 - std::log(u) - 0.5 * std::log(M_PI) + std::log(series);
+}
+
+// d/du log(erfc(u)) = -2/sqrt(pi) exp(-u^2) / erfc(u).
+static inline double dLogErfc(double u) {
+  return -2.0 / std::sqrt(M_PI) * std::exp(-u * u - logErfc(u));
+}
+
+// One univariate family, as the parameter-dependent part of its log
+// density (the constant part is term.scale[0], added by the caller) plus
+// its derivative in *g.  -INFINITY (with *g left at 0) outside the
+// family's own support.  The hyperparameters p[] are in Stan's order for
+// that family, as R/prior-density-families.R writes them; every family
+// they share a shape with is reparameterized into one of these there (eg
+// chi_square(nu) becomes gamma(nu/2, 1/2)).
+
+// lognormal(mu, sigma)
+static double uniLognormal(double x, const double *p, double *g) {
+  if (x <= 0) return -INFINITY;
+  double lx = std::log(x), d = lx - p[0], s2 = p[1] * p[1];
+  *g = -1.0 / x - d / (s2 * x);
+  return -lx - 0.5 * d * d / s2;
+}
+
+// gamma(shape, rate)
+static double uniGamma(double x, const double *p, double *g) {
+  if (x < 0) return -INFINITY;
+  *g = xdivy(p[0] - 1.0, x) - p[1];
+  return xlogy(p[0] - 1.0, x) - p[1] * x;
+}
+
+// inv_gamma(alpha, beta)
+static double uniInvGamma(double x, const double *p, double *g) {
+  if (x <= 0) return -INFINITY;
+  *g = -(p[0] + 1.0) / x + p[1] / (x * x);
+  return -(p[0] + 1.0) * std::log(x) - p[1] / x;
+}
+
+// weibull(shape, scale)
+static double uniWeibull(double x, const double *p, double *g) {
+  if (x < 0) return -INFINITY;
+  double r = x / p[1];
+  *g = xdivy(p[0] - 1.0, x) - p[0] / p[1] * std::pow(r, p[0] - 1.0);
+  return xlogy(p[0] - 1.0, x) - std::pow(r, p[0]);
+}
+
+// frechet(alpha, sigma)
+static double uniFrechet(double x, const double *p, double *g) {
+  if (x <= 0) return -INFINITY;
+  double e = std::pow(x / p[1], -p[0]);
+  *g = (-(1.0 + p[0]) + p[0] * e) / x;
+  return -(1.0 + p[0]) * std::log(x) - e;
+}
+
+// pareto(y_min, alpha)
+static double uniPareto(double x, const double *p, double *g) {
+  if (x < p[0]) return -INFINITY;
+  *g = -(p[1] + 1.0) / x;
+  return -(p[1] + 1.0) * std::log(x);
+}
+
+// pareto_type_2(mu, lambda, alpha)
+static double uniParetoType2(double x, const double *p, double *g) {
+  if (x < p[0]) return -INFINITY;
+  *g = -(p[2] + 1.0) / (p[1] + x - p[0]);
+  return -(p[2] + 1.0) * std::log1p((x - p[0]) / p[1]);
+}
+
+// beta(shape1, shape2)
+static double uniBeta(double x, const double *p, double *g) {
+  if (x < 0 || x > 1) return -INFINITY;
+  *g = xdivy(p[0] - 1.0, x) - xdivy(p[1] - 1.0, 1.0 - x);
+  return xlogy(p[0] - 1.0, x) + ((p[1] == 1.0) ? 0.0 : (p[1] - 1.0) * std::log1p(-x));
+}
+
+// uniform(min, max) -- flat, so the whole density is the constant part.
+static double uniUniform(double x, const double *p, double *g) {
+  (void)g;
+  if (x < p[0] || x > p[1]) return -INFINITY;
+  return 0.0;
+}
+
+// student_t(nu, mu, sigma) -- Stan's location-scale t, NOT R's dt()
+static double uniStudentT(double x, const double *p, double *g) {
+  double d = x - p[1], nus2 = p[0] * p[2] * p[2];
+  *g = -(p[0] + 1.0) * d / (nus2 + d * d);
+  return -0.5 * (p[0] + 1.0) * std::log1p(d * d / nus2);
+}
+
+// double_exponential(mu, sigma)
+static double uniDoubleExponential(double x, const double *p, double *g) {
+  double d = x - p[0];
+  *g = (d > 0) ? -1.0 / p[1] : ((d < 0) ? 1.0 / p[1] : 0.0);
+  return -std::fabs(d) / p[1];
+}
+
+// logistic(mu, sigma)
+static double uniLogistic(double x, const double *p, double *g) {
+  double z = (x - p[0]) / p[1], az = std::fabs(z);
+  *g = -std::tanh(0.5 * z) / p[1];
+  return -az - 2.0 * std::log1p(std::exp(-az));
+}
+
+// gumbel(mu, beta)
+static double uniGumbel(double x, const double *p, double *g) {
+  double z = (x - p[0]) / p[1], ez = std::exp(-z);
+  *g = (ez - 1.0) / p[1];
+  return -z - ez;
+}
+
+// skew_double_exponential(mu, sigma, tau)
+static double uniSkewDoubleExponential(double x, const double *p, double *g) {
+  double d = x - p[0];
+  if (d < 0) {
+    *g = 2.0 * (1.0 - p[2]) / p[1];
+    return 2.0 * (1.0 - p[2]) * d / p[1];
+  }
+  *g = (d > 0) ? -2.0 * p[2] / p[1] : 0.0;
+  return -2.0 * p[2] * d / p[1];
+}
+
+// exp_mod_normal(mu, sigma, lambda)
+static double uniExpModNormal(double x, const double *p, double *g) {
+  double s2 = p[1] * p[1];
+  double u = (p[0] + p[2] * s2 - x) / (p[1] * M_SQRT2);
+  *g = -p[2] - dLogErfc(u) / (p[1] * M_SQRT2);
+  return p[2] * (p[0] + 0.5 * p[2] * s2 - x) + logErfc(u);
+}
+
+// skew_normal(xi, omega, alpha)
+static double uniSkewNormal(double x, const double *p, double *g) {
+  double z = (x - p[0]) / p[1];
+  double u = -p[2] * z * M_SQRT1_2;
+  *g = -z / p[1] - dLogErfc(u) * p[2] * M_SQRT1_2 / p[1];
+  return -0.5 * z * z + logErfc(u);
+}
+
+// von_mises(mu, kappa)
+static double uniVonMises(double x, const double *p, double *g) {
+  *g = -p[1] * std::sin(x - p[0]);
+  return p[1] * std::cos(x - p[0]);
+}
+
+typedef double (*rx_prior_uni_fn)(double x, const double *p, double *g);
+
+// Indexed by term.type - RX_PRIOR_UNI_FIRST, so the order here IS the type
+// numbering documented in inst/include/rxode2prior.h -- append only, and
+// never reorder (a released spec carries the type code, not the name).
+static const rx_prior_uni_fn rxPriorUniFns[] = {
+  uniLognormal,            // 5
+  uniGamma,                // 6
+  uniInvGamma,             // 7
+  uniWeibull,              // 8
+  uniFrechet,              // 9
+  uniPareto,               // 10
+  uniParetoType2,          // 11
+  uniBeta,                 // 12
+  uniUniform,              // 13
+  uniStudentT,             // 14
+  uniDoubleExponential,    // 15
+  uniLogistic,             // 16
+  uniGumbel,               // 17
+  uniSkewDoubleExponential,// 18
+  uniExpModNormal,         // 19
+  uniSkewNormal,           // 20
+  uniVonMises              // 21
+};
+
+#define RX_PRIOR_UNI_FIRST 5
+#define RX_PRIOR_UNI_LAST (RX_PRIOR_UNI_FIRST + (int)(sizeof(rxPriorUniFns) / sizeof(rxPriorUniFns[0])) - 1)
+
+// types 5-21: a lotri univariate family. mu[] holds its hyperparameters and
+// scale[0] its log normalizing constant, truncation included (both built by
+// R/prior-density-families.R).
+static double evalUnivariateTerm(const rx_prior_term_t &term, const double *theta,
+                                 const double *omega, int omegaDim,
+                                 double *gradTheta, double *gradOmega) {
+  double x = termValue(term, 0, theta, omega, omegaDim);
+  double g = 0.0;
+  double v = rxPriorUniFns[term.type - RX_PRIOR_UNI_FIRST](x, term.mu, &g);
+  if (v == -INFINITY) return -INFINITY; // outside the support: no gradient
+  addGrad(term, 0, g, gradTheta, gradOmega, omegaDim);
+  return term.scale[0] + v;
+}
+
+// type 2: a joint multivariate-normal block (theta and/or omega diagonal
+// members). Returns -INFINITY (no gradient contribution) if Sigma is not
+// positive definite.
+static double evalMultiNormalTerm(const rx_prior_term_t &term, const double *theta,
+                                  const double *omega, int omegaDim,
+                                  double *gradTheta, double *gradOmega) {
+  int n = term.n;
+  std::vector<double> L;
+  if (!cholesky(term.scale, n, L)) return -INFINITY;
+  std::vector<double> d(n);
+  for (int k = 0; k < n; ++k) d[k] = termValue(term, k, theta, omega, omegaDim) - term.mu[k];
+  std::vector<double> s;
+  cholSolve(L, n, d.data(), s); // Sigma^{-1} d
+  double quad = 0.0;
+  for (int k = 0; k < n; ++k) quad += d[k] * s[k];
+  for (int k = 0; k < n; ++k) addGrad(term, k, -s[k], gradTheta, gradOmega, omegaDim);
+  return -0.5 * n * std::log(2.0 * M_PI) - 0.5 * cholLogDet(L, n) - 0.5 * quad;
+}
+
+// Gather a p x p omega submatrix (row-major) from the caller's array, for
+// the block whose (1-based, global) eta indices are blockEtaIdx[0..p-1].
+static void gatherOmegaBlock(const int *blockEtaIdx, int p, const double *omega,
+                             int omegaDim, std::vector<double> &Om) {
+  Om.assign((size_t)p * p, 0.0);
+  for (int i = 0; i < p; ++i) {
+    int ei = blockEtaIdx[i] - 1;
+    for (int j = 0; j < p; ++j) {
+      int ej = blockEtaIdx[j] - 1;
+      Om[i * p + j] = omega[(size_t)ei * omegaDim + ej];
+    }
+  }
+}
+
+// C = A %*% B, all p x p, row-major.
+static void matMul(const double *A, const double *B, int p, std::vector<double> &C) {
+  C.assign((size_t)p * p, 0.0);
+  for (int i = 0; i < p; ++i)
+    for (int j = 0; j < p; ++j) {
+      double sum = 0.0;
+      for (int k = 0; k < p; ++k) sum += A[i * p + k] * B[k * p + j];
+      C[i * p + j] = sum;
+    }
+}
+
+// A^T %*% B, all p x p, row-major.
+// Scatter a p x p gradient matrix (row-major) into the caller's full-size
+// gradOmega, for the block whose (1-based, global) eta indices are
+// blockEtaIdx[0..p-1].
+static void scatterOmegaGrad(const int *blockEtaIdx, const std::vector<double> &g,
+                             int p, int omegaDim, double *gradOmega) {
+  for (int i = 0; i < p; ++i) {
+    int ei = blockEtaIdx[i] - 1;
+    for (int j = 0; j < p; ++j) {
+      int ej = blockEtaIdx[j] - 1;
+      gradOmega[(size_t)ei * omegaDim + ej] += g[i * p + j];
+    }
+  }
+}
+
+// Textbook inverse-Wishart(nu, Psi) log density (the "general" method).
+static double invWishartGeneralValueGrad(const rx_prior_term_t &term, int p,
+                                         const std::vector<double> &Oi, double logdetOm,
+                                         double logdetPsi, double tr,
+                                         const std::vector<double> &OiPsiOi,
+                                         std::vector<double> &grad) {
+  double logNC = (term.nu * p / 2.0) * std::log(2.0) + logMvGamma(term.nu / 2.0, p);
+  grad.assign((size_t)p * p, 0.0);
+  for (int i = 0; i < p * p; ++i) {
+    grad[i] = -((term.nu + p + 1) / 2.0) * Oi[i] + 0.5 * OiPsiOi[i];
+  }
+  return (term.nu / 2.0) * logdetPsi - ((term.nu + p + 1) / 2.0) * logdetOm -
+    0.5 * tr - logNC;
+}
+
+// NONMEM $PRIOR NWPRI, modal (non-BAYES) convention: NONMEM7 Technical
+// Guide eq. 1.157/1.159/1.170. term.nu is NONMEM's own "rho" (the
+// invWishart(rho) argument); d_W = rho+n+1 collapses (d_W-n-1) to rho,
+// giving the closed forms below (see the term-type comment in
+// rxode2prior.h for the derivation notes).
+static double invWishartNwpriValueGrad(const rx_prior_term_t &term, int p,
+                                       const std::vector<double> &Oi, double logdetOm,
+                                       double logdetPsi, double tr,
+                                       const std::vector<double> &OiPsiOi,
+                                       std::vector<double> &grad) {
+  double rho = term.nu;
+  double d_W = rho + p + 1.0;
+  grad.assign((size_t)p * p, 0.0);
+  for (int i = 0; i < p * p; ++i) {
+    grad[i] = 0.5 * rho * (OiPsiOi[i] - Oi[i]);
+  }
+  return -0.5 * (rho * tr + rho * logdetOm - d_W * logdetPsi - d_W * p * std::log(rho));
+}
+
+// type 3/4: an inverse-Wishart degrees-of-freedom penalty on an omega
+// block -- either the textbook density (3, "general") or NONMEM's own
+// $PRIOR NWPRI parameterization (4, "nwpri"); see the rx_prior_term_t
+// comment in rxode2prior.h for why these are genuinely different
+// densities, not the same formula with nu/Psi substituted differently.
+// Returns -INFINITY (no gradient contribution) if the live omega block or
+// the (fixed) scale matrix Psi is not positive definite.
+static double evalInvWishartTerm(const rx_prior_term_t &term, const double *omega,
+                                 int omegaDim, double *gradOmega) {
+  int p = term.n;
+  std::vector<double> Om;
+  gatherOmegaBlock(term.etaIdx, p, omega, omegaDim, Om);
+  std::vector<double> Lom, Lpsi;
+  if (!cholesky(Om.data(), p, Lom) || !cholesky(term.scale, p, Lpsi)) return -INFINITY;
+  double logdetOm = cholLogDet(Lom, p), logdetPsi = cholLogDet(Lpsi, p);
+  std::vector<double> Oi;
+  cholInverse(Lom, p, Oi); // Omega^{-1}
+  double tr = 0.0; // tr(Psi * Omega^{-1})
+  for (int i = 0; i < p; ++i)
+    for (int j = 0; j < p; ++j) tr += term.scale[i * p + j] * Oi[j * p + i];
+  std::vector<double> OiPsi, OiPsiOi;
+  matMul(Oi.data(), term.scale, p, OiPsi);
+  matMul(OiPsi.data(), Oi.data(), p, OiPsiOi);
+
+  std::vector<double> grad;
+  double val = (term.type == 3) ?
+    invWishartGeneralValueGrad(term, p, Oi, logdetOm, logdetPsi, tr, OiPsiOi, grad) :
+    invWishartNwpriValueGrad(term, p, Oi, logdetOm, logdetPsi, tr, OiPsiOi, grad);
+  scatterOmegaGrad(term.etaIdx, grad, p, omegaDim, gradOmega);
+  return val;
+}
+
+extern "C" double rxPriorLogDensityEval(const rx_prior_spec_t *spec,
+                                        const double *theta, int thetaLen,
+                                        const double *omega, int omegaDim,
+                                        double *gradTheta, double *gradOmega) {
+  double val = 0.0;
+  (void)thetaLen;
+  for (int t = 0; t < spec->nTerms; ++t) {
+    const rx_prior_term_t &term = spec->terms[t];
+    if (term.type == 0 || term.type == 1) {
+      val += evalNormalCauchyTerm(term, theta, omega, omegaDim, gradTheta, gradOmega);
+    } else if (term.type == 2) {
+      val += evalMultiNormalTerm(term, theta, omega, omegaDim, gradTheta, gradOmega);
+    } else if (term.type == 3 || term.type == 4) {
+      val += evalInvWishartTerm(term, omega, omegaDim, gradOmega);
+    } else if (term.type >= RX_PRIOR_UNI_FIRST && term.type <= RX_PRIOR_UNI_LAST) {
+      val += evalUnivariateTerm(term, theta, omega, omegaDim, gradTheta, gradOmega);
+    }
+  }
+  return val;
+}
+
+// See the declaration comment in rxode2prior.h for the derivation.
+extern "C" bool rxPriorOmegaToCholOmegaInvGrad(const double *omegaBlock, int p,
+                                               const double *gradOmegaBlock,
+                                               double *gradCholOmegaInv) {
+  std::vector<double> Lom;
+  if (!cholesky(omegaBlock, p, Lom)) return false;
+  std::vector<double> Ainv; // Omega^{-1}
+  cholInverse(Lom, p, Ainv);
+  std::vector<double> Lu; // lower-triangular chol(Omega^{-1}); U = Lu^T is upper
+  if (!cholesky(Ainv.data(), p, Lu)) return false;
+
+  // Omega(U) is symmetric by construction (it's inv(U^T U)), so only the
+  // symmetric part of an entrywise gradOmegaBlock (rxPriorLogDensityEval's
+  // own convention -- see its doc comment) has any effect on a directional
+  // derivative along the U manifold; the antisymmetric part contracts to
+  // zero against a symmetric dOmega and must be dropped here, not left for
+  // the caller to have already symmetrized.
+  std::vector<double> Gsym((size_t)p * p);
+  for (int i = 0; i < p; ++i)
+    for (int j = 0; j < p; ++j) {
+      Gsym[i * p + j] = 0.5 * (gradOmegaBlock[i * p + j] + gradOmegaBlock[j * p + i]);
+    }
+
+  // Abar = -Omega * Gsym * Omega  (VJP of Omega = A^{-1}, A = Omega^{-1})
+  std::vector<double> OmegaG, Abar;
+  matMul(omegaBlock, Gsym.data(), p, OmegaG);
+  matMul(OmegaG.data(), omegaBlock, p, Abar);
+  for (size_t idx = 0; idx < Abar.size(); ++idx) Abar[idx] = -Abar[idx];
+
+  // U = Lu^T; Ubar_full = 2 * U * Abar (VJP of A = U^T U); only the upper
+  // triangle (row <= col) addresses a free parameter of U.
+  std::vector<double> U((size_t)p * p);
+  for (int i = 0; i < p; ++i)
+    for (int j = 0; j < p; ++j) U[i * p + j] = Lu[j * p + i];
+  std::vector<double> UAbar;
+  matMul(U.data(), Abar.data(), p, UAbar);
+  for (int i = 0; i < p; ++i)
+    for (int j = 0; j < p; ++j) {
+      gradCholOmegaInv[i * p + j] = (i <= j) ? 2.0 * UAbar[i * p + j] : 0.0;
+    }
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// R-facing glue below this line: builds a spec from the flat R
+// representation R/priorDensity.R assembles (one-time, at fit setup, on the
+// main R thread -- never inside the OpenMP-parallel evaluation the pure
+// functions above are for) and wraps rxPriorLogDensityEval() for direct
+// use from R (rxPriorLogDensity()'s R-level convenience shim).
+// ---------------------------------------------------------------------------
+
+// specList: type, n (integer, one per term), thetaIdx, etaIdx (integer,
+// concatenated across terms, length sum(n)), mu, scale (numeric,
+// concatenated; scale is n*n per term, row-major, back to back), lower,
+// upper, nu (numeric, one per term), etaIdx2 (integer, concatenated,
+// length sum(n) -- 0 unless member k is an off-diagonal covariance cell),
+// muLen (integer, one per term: mu's length -- n, or a univariate family's
+// hyperparameter count).
+extern "C" SEXP _rxode2_rxPriorBuildSpec(SEXP specList) {
+  SEXP typeS = VECTOR_ELT(specList, 0), nS = VECTOR_ELT(specList, 1),
+    thetaIdxS = VECTOR_ELT(specList, 2), etaIdxS = VECTOR_ELT(specList, 3),
+    muS = VECTOR_ELT(specList, 4), scaleS = VECTOR_ELT(specList, 5),
+    lowerS = VECTOR_ELT(specList, 6), upperS = VECTOR_ELT(specList, 7),
+    nuS = VECTOR_ELT(specList, 8), etaIdx2S = VECTOR_ELT(specList, 9),
+    muLenS = VECTOR_ELT(specList, 10);
+  int nTerms = LENGTH(typeS);
+  // The spec lives in R vectors held by the external pointer, so R frees it
+  // with the pointer; no finalizer in this DLL, which may be unloaded first.
+  rxProtect rx_protect;
+  SEXP mem = rx_protect.protect(Rf_allocVector(VECSXP, 2 + 5 * nTerms));
+  SET_VECTOR_ELT(mem, 0, Rf_allocVector(RAWSXP, sizeof(rx_prior_spec_t)));
+  SET_VECTOR_ELT(mem, 1, Rf_allocVector(RAWSXP, sizeof(rx_prior_term_t) * nTerms));
+  rx_prior_spec_t *spec = (rx_prior_spec_t *)RAW(VECTOR_ELT(mem, 0));
+  spec->nTerms = nTerms;
+  spec->terms = (rx_prior_term_t *)RAW(VECTOR_ELT(mem, 1));
+  int memberOff = 0, scaleOff = 0, muOff = 0;
+  for (int t = 0; t < nTerms; ++t) {
+    rx_prior_term_t &term = spec->terms[t];
+    term.type = INTEGER(typeS)[t];
+    term.n = INTEGER(nS)[t];
+    SET_VECTOR_ELT(mem, 2 + 5 * t, Rf_allocVector(INTSXP, term.n));
+    SET_VECTOR_ELT(mem, 3 + 5 * t, Rf_allocVector(INTSXP, term.n));
+    SET_VECTOR_ELT(mem, 4 + 5 * t, Rf_allocVector(INTSXP, term.n));
+    term.thetaIdx = INTEGER(VECTOR_ELT(mem, 2 + 5 * t));
+    term.etaIdx = INTEGER(VECTOR_ELT(mem, 3 + 5 * t));
+    term.etaIdx2 = INTEGER(VECTOR_ELT(mem, 4 + 5 * t));
+    int muLen = INTEGER(muLenS)[t];
+    SET_VECTOR_ELT(mem, 5 + 5 * t, Rf_allocVector(REALSXP, muLen));
+    term.mu = REAL(VECTOR_ELT(mem, 5 + 5 * t));
+    for (int k = 0; k < term.n; ++k) {
+      term.thetaIdx[k] = INTEGER(thetaIdxS)[memberOff + k];
+      term.etaIdx[k] = INTEGER(etaIdxS)[memberOff + k];
+      term.etaIdx2[k] = INTEGER(etaIdx2S)[memberOff + k];
+    }
+    for (int k = 0; k < muLen; ++k) term.mu[k] = REAL(muS)[muOff + k];
+    int nScale = term.n * term.n;
+    SET_VECTOR_ELT(mem, 6 + 5 * t, Rf_allocVector(REALSXP, nScale));
+    term.scale = REAL(VECTOR_ELT(mem, 6 + 5 * t));
+    for (int k = 0; k < nScale; ++k) term.scale[k] = REAL(scaleS)[scaleOff + k];
+    term.lower = REAL(lowerS)[t];
+    term.upper = REAL(upperS)[t];
+    term.nu = REAL(nuS)[t];
+    memberOff += term.n;
+    muOff += muLen;
+    scaleOff += nScale;
+  }
+  return R_MakeExternalPtr(spec, R_NilValue, mem);
+}
+
+// specSEXP: external pointer from _rxode2_rxPriorBuildSpec(). thetaS: full
+// theta vector (length thetaLen). omegaS: full omega matrix (omegaDim x
+// omegaDim). Returns list(value, gradTheta, gradOmega).
+extern "C" SEXP _rxode2_rxPriorLogDensity(SEXP specSEXP, SEXP thetaS, SEXP omegaS) {
+  rx_prior_spec_t *spec = (rx_prior_spec_t *)R_ExternalPtrAddr(specSEXP);
+  int thetaLen = LENGTH(thetaS);
+  int omegaDim = (int)std::sqrt((double)LENGTH(omegaS));
+  rxProtect rx_protect;
+  SEXP gradThetaS = rx_protect.protect(Rf_allocVector(REALSXP, thetaLen));
+  SEXP gradOmegaS = rx_protect.protect(Rf_allocVector(REALSXP, (R_xlen_t)omegaDim * omegaDim));
+  double *gradTheta = REAL(gradThetaS), *gradOmega = REAL(gradOmegaS);
+  for (int i = 0; i < thetaLen; ++i) gradTheta[i] = 0.0;
+  for (int i = 0; i < omegaDim * omegaDim; ++i) gradOmega[i] = 0.0;
+  double value = rxPriorLogDensityEval(spec, REAL(thetaS), thetaLen,
+                                       REAL(omegaS), omegaDim, gradTheta, gradOmega);
+  SEXP valueS = rx_protect.protect(Rf_allocVector(REALSXP, 1));
+  REAL(valueS)[0] = value;
+  SEXP ret = rx_protect.protect(Rf_allocVector(VECSXP, 3));
+  SET_VECTOR_ELT(ret, 0, valueS);
+  SET_VECTOR_ELT(ret, 1, gradThetaS);
+  SET_VECTOR_ELT(ret, 2, gradOmegaS);
+  return ret;
+}
+
+// omegaBlockS/gradOmegaBlockS: the block's own p x p matrices (any name
+// order dropped -- plain numeric matrices). omegaBlockS is always
+// symmetric, so R's column-major storage reads identically to the
+// row-major layout the pure function expects; gradOmegaBlockS need not
+// be -- reading it "row-major" out of R's column-major storage yields its
+// transpose, but rxPriorOmegaToCholOmegaInvGrad() symmetrizes its
+// gradOmegaBlock internally before use, and symmetrization is
+// transpose-invariant, so no explicit fix-up is needed here either.
+// Returns the p x p gradCholOmegaInv matrix, or NULL if omegaBlockS is
+// not positive definite. gradCholOmegaInv is NOT symmetric (only its
+// upper triangle is meaningful), so -- unlike the inputs -- the row-major
+// result has to be explicitly transposed into R's column-major matrix
+// storage, not just reinterpreted.
+extern "C" SEXP _rxode2_rxPriorOmegaToCholOmegaInvGrad(SEXP omegaBlockS, SEXP gradOmegaBlockS) {
+  int p = (int)std::sqrt((double)LENGTH(omegaBlockS));
+  std::vector<double> rowMajor((size_t)p * p);
+  bool ok = rxPriorOmegaToCholOmegaInvGrad(REAL(omegaBlockS), p, REAL(gradOmegaBlockS),
+                                           rowMajor.data());
+  if (!ok) return R_NilValue;
+  rxProtect rx_protect;
+  SEXP retS = rx_protect.protect(Rf_allocMatrix(REALSXP, p, p));
+  double *ret = REAL(retS);
+  for (int i = 0; i < p; ++i)
+    for (int j = 0; j < p; ++j) ret[i + j * p] = rowMajor[i * p + j]; // row-major -> column-major
+  return retS;
+}

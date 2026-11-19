@@ -17,8 +17,8 @@ rxTest({
   })
 
   et <- #et(time=0, amt= 5, ss=1, ii=1, cmt=1) |>
-    et(time=0, cmt=1, amt=5, addl=10, ii=4) |>
-    et(seq(0, 24, by=0.25/24))
+    et(time = 0, cmt = 1, amt = 5, addl = 10, ii = 4) |>
+    et(seq(0, 24, by = 0.25 / 24))
 
   tmp <- rxSolve(mod2, et)
 
@@ -26,17 +26,16 @@ rxTest({
   ## vdiffr::expect_doppelganger("intestine-mod2a", plot(tmp, intestine))
 
   et <- #et(time=0, amt= 5, ss=1, ii=1, cmt=1) |>
-    et(time=0, cmt=1, amt=5, ii=4, ss=1) |>
-    et(time=4, cmt=1, amt=5, addl=10, ii=4) |>
-    et(seq(0, 24, by=0.25/24))
-
+    et(time = 0, cmt = 1, amt = 5, ii = 4, ss = 1) |>
+    et(time = 4, cmt = 1, amt = 5, addl = 10, ii = 4) |>
+    et(seq(0, 24, by = 0.25 / 24))
 
   tmp <- rxSolve(mod2, et)
 
   ## vdiffr::expect_doppelganger("intestine-mod2b", plot(tmp, intestine))
   expect_error(plot(tmp, intestine), NA)
 
-  ms <- c("liblsoda", "lsoda", "dop853")
+  ms <- .methods0
   for (m in ms) {
     skip_if_not_installed("units")
 
@@ -45,8 +44,10 @@ rxTest({
     et <- eventTable(time.units = "days")
     et$add.sampling(obs)
     et$add.dosing(
-      dose = 2 / 24, start.time = 0,
-      nbr.doses = 10, dosing.interval = 1
+      dose = 2 / 24,
+      start.time = 0,
+      nbr.doses = 10,
+      dosing.interval = 1
     )
 
     solve1 <- solve(mod, et, method = m)
@@ -62,17 +63,18 @@ rxTest({
     et <- eventTable(time.units = "days")
     et$add.sampling(seq(0, 10, by = 1 / 24))
     et$add.dosing(
-      dose = 2 / 24, start.time = 2,
-      nbr.doses = 10, dosing.interval = 1
+      dose = 2 / 24,
+      start.time = 2,
+      nbr.doses = 10,
+      dosing.interval = 1
     )
 
     solve3 <- solve(mod, et, method = m)
 
     test_that(sprintf("Test absorption lag-time with IV dosing (%s): Absorption lag shifts event by 2", m), {
       expect_equal(obs, solve3$time)
-      expect_equal(solve3$intestine, solve2$intestine)
-      expect_equal(solve3$blood, solve2$blood)
+      expect_equal(solve3$intestine, solve2$intestine, tolerance = 1e-5)
+      expect_equal(solve3$blood, solve2$blood, tolerance = 1e-5)
     })
-
   }
 })

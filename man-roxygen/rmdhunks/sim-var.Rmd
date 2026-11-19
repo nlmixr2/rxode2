@@ -311,7 +311,8 @@ xpose](https://github.com/UUPharmacometrics/xpose/blob/master/inst/extdata/run00
 
 First we setup the model; Since we are taking this from nonmem and
 would like to use the more free-form style from the classic `rxode2`
-model we start from the classic model:
+model we start from the classic model (see
+[Low-level models and other input styles](https://nlmixr2.github.io/rxode2/articles/rxode2-classic-models.html)):
 
 ```{r}
 rx1 <- rxode2({

@@ -4,7 +4,7 @@
 \alias{rxOptExpr}
 \title{Optimize rxode2 for computer evaluation}
 \usage{
-rxOptExpr(x, msg = "model")
+rxOptExpr(x, msg = "model", chunkLines = 40L, parallel = 0L)
 }
 \arguments{
 \item{x}{rxode2 model that can be accessed by rxNorm}
@@ -15,6 +15,31 @@ example "model" will produce the following message while
 optimizing the model:
 
 finding duplicate expressions in model...}
+
+\item{chunkLines}{Integer; when positive (the default is 40), a model
+longer than this many lines is optimized in contiguous
+cost-balanced chunks of roughly this many lines instead of in a
+single pass; \code{0} always optimizes the whole model at once.
+Chunking amortizes the strongly superlinear cost of normalizing a
+large machine-generated model, which is what dominates the
+optimization of a sensitivity- or Jacobian-augmented model.
+Subexpressions are then shared only within a chunk, so the result
+is an equivalent model -- the same states, parameters, solution
+and errors -- carrying more temporaries.  A chunk is a fragment,
+so if any chunk fails to optimize the whole model is optimized
+instead.}
+
+\item{parallel}{Integer; number of \code{mirai} daemons used to optimize
+the chunks in parallel, used only when the model is chunked.  It
+carries the same semantics as \code{rxControl(cores=)}: \code{0} (the
+default) means the rxode2 thread setting \code{rxCores()}
+(\code{setRxThreads()}, \code{OMP_THREAD_LIMIT}); \code{1} runs the chunks
+serially.  It is capped by the number of chunks and by
+\code{rxCores()}, so it will not oversubscribe.  An existing \code{mirai}
+daemon pool is used as-is and left running; otherwise a pool is
+started for the call and shut down when it returns, and only when
+the model splits into at least 4 chunks, where the parallel win
+covers the startup.}
 }
 \value{
 Optimized rxode2 model text.  The order and type lhs and
@@ -26,6 +51,40 @@ modified.
 This optimizes rxode2 code for computer evaluation by only
 calculating redundant expressions once.
 }
+\examples{
+\donttest{
+pk <- function() {
+  model({
+    d/dt(depot) <- -exp(lka) * depot
+    d/dt(central) <- exp(lka) * depot - exp(lcl) / exp(lv) * central
+    cp <- central / exp(lv)
+  })
+}
+# exp(lka) and exp(lv) are computed once
+writeLines(rxOptExpr(pk))
+}
+}
+\seealso{
+Other Solver options and performance:
+\code{\link[=forderForceBase]{forderForceBase()}},
+\code{\link[=getRxThreads]{getRxThreads()}},
+\code{\link[=odeMethodToInt]{odeMethodToInt()}},
+\code{\link[=rxIndLinState]{rxIndLinState()}},
+\code{\link[=rxIndLinStrategy]{rxIndLinStrategy()}},
+\code{\link[=rxIsAutoSwitch]{rxIsAutoSwitch()}},
+\code{\link[=rxIsDense]{rxIsDense()}},
+\code{\link[=rxIsImplicit]{rxIsImplicit()}},
+\code{\link[=rxIsNonStiff]{rxIsNonStiff()}},
+\code{\link[=rxIsStiff]{rxIsStiff()}},
+\code{\link[=rxMemSummary]{rxMemSummary()}},
+\code{\link[=rxMemoryEstimate]{rxMemoryEstimate()}},
+\code{\link[=rxProgress]{rxProgress()}},
+\code{\link[=rxSetProd]{rxSetProd()}},
+\code{\link[=rxSetProgressBar]{rxSetProgressBar()}},
+\code{\link[=rxSetSum]{rxSetSum()}},
+\code{\link[=rxSumProdModel]{rxSumProdModel()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Solver options and performance}

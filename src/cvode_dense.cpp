@@ -1,0 +1,343 @@
+#ifdef IN_PAR_SOLVE
+
+#include <vector>
+#include "cvode_solver.h"
+
+// cvode_rhs_trampoline is defined (static) in cvode.cpp, included before this
+// file in the same translation unit, so it is visible here.
+
+// One delay() segment [xp, xout] on CVODE: steps to the stop time xout with
+// the step capped at the smallest delay, recording every step into the delay
+// history as a degree-7 record sampled with CVodeGetDky.  Re-initializes at
+// (xp, yp) unless *init.  Leaves yp = state at xout; returns 1, or -1 on
+// failure or past op->mxstep steps.
+static int rxCvodeDelaySegment(void *ctx_ptr, rx_solving_options *op,
+                               rx_solving_options_ind *ind, int *neq,
+                               double xp, double xout, double *yp, bool *init) {
+  cvode_ctx_t *ctx = (cvode_ctx_t *)ctx_ptr;
+  int neqOde = rxEffNeq(ind, op) - op->numLin - op->numLinSens;
+  if (ctx == NULL || neqOde <= 0) return (ctx == NULL) ? -1 : 1;
+  if (!ind->delayWarmed) {
+    // one RHS evaluation so delay() learns the step-size cap
+    std::vector<double> _ddt((size_t)rxEffNeq(ind, op));
+    dydt(neq, xp, yp, _ddt.data());
+    ind->delayWarmed = 1;
+  }
+  if (!*init) {
+    cvode_ctx_dense_reinit(ctx, yp, xp);
+    *init = true;
+  }
+  double hmax = op->hmax2 > 0.0 ? op->hmax2 : 0.0;
+  if (R_FINITE(ind->delayMinT)) {
+    double cap = rxDelayStepCap(ind);
+    if (hmax <= 0.0 || cap < hmax) hmax = cap;
+  }
+  if (cvode_ctx_set_max_step(ctx, hmax) < 0 ||
+      cvode_ctx_set_stop_time(ctx, xout) < 0) return -1;
+  std::vector<double> q((size_t)8 * neqOde);
+  const double *qp[8];
+  bool retried = false;
+  int nstep = 0;
+  while (cvode_ctx_dense_current_time(ctx) < xout) {
+    if (op->mxstep > 0 && ++nstep > op->mxstep) return -1;
+    if (cvode_ctx_dense_do_step(ctx, yp, xout) < 0) {
+      // a step from a delay breakpoint (a kink in the solution, e.g. an
+      // observation at a dose time + tau) fails on the history from before
+      // it: restart there once
+      if (retried || ind->err || cvode_ctx_restart(ctx) < 0 ||
+          cvode_ctx_set_stop_time(ctx, xout) < 0) return -1;
+      retried = true;
+      continue;
+    }
+    if (ind->err) return -1;
+    retried = false;
+    double tn, hu;
+    if (cvode_ctx_last_step(ctx, &tn, &hu) < 0) return -1;
+    for (int k = 0; k < 8; k++) {
+      double *qk = &q[(size_t)k * neqOde];
+      if (cvode_ctx_dense_calc_state(ctx, k == 7 ? tn : tn - hu + hu * k / 7.0, qk) < 0)
+        return -1;
+      qp[k] = qk;
+    }
+    rxDelayHistPushNodes(ind, op, tn - hu, hu, qp);
+  }
+  return 1;
+}
+
+// Runs [xp, xout] as a delay() segment, failing the subject on error.
+static int rxCvodeDelayInterval(void *ctx, rx_solving_options *op,
+                                rx_solving_options_ind *ind, int *neq,
+                                double xp, double xout, double *yp, bool *init) {
+  if (rxCvodeDelaySegment(ctx, op, ind, neq, xp, xout, yp, init) < 0 || ind->err) {
+    if (ind->rc[0] == 0) ind->rc[0] = -2019;
+    rxSolverFail(ind);
+    *init = false;
+    return -1;
+  }
+  return 1;
+}
+
+extern "C" void ind_cvode_dense_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,
+                                   t_update_inis u_inis) {
+  clock_t t0_clock = clock();
+  int i;
+  int istate = 1;
+
+  neq[1] = solveid; // subject id, not an rx->ordId position
+  rx_solving_options_ind *ind = &(rx->subjects[neq[1]]);
+  int eff = rxEffNeq(ind, op);
+  neq[0] = eff;
+
+  double xout;
+  int localBadSolve = 0;
+
+  if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
+
+  double xp = getAllTimes(ind, 0);
+  ind->solvedIdx = 0;
+
+  // delay() history, as in ind_dop0_dense(): every interval is then solved as
+  // a recorded segment that stops at its end.
+  ind->delayHistOn = op->hasDelay;
+  ind->delayHistN  = 0;
+  ind->delayT0     = xp;
+  ind->delayMinT   = R_PosInf;
+  ind->delayMaxT   = 0.0;
+  ind->delayWarmed = 0;
+
+  int neqOde = op->neq - op->numLin - op->numLinSens;
+  double *yp;
+
+  double  rtol      = (ind->rtol2 != NULL) ? ind->rtol2[0]
+                    : (op->rtol2  != NULL) ? op->rtol2[0]
+                    : op->RTOL;
+  double *atol_data = (ind->atol2 != NULL) ? ind->atol2
+                    : (op->atol2  != NULL) ? op->atol2
+                    : &(op->ATOL);
+
+  cvode_ctx_t *cvode_ctx = NULL;
+  int cvodeLinSolver = op->cvodeLinSolver > 0 ? op->cvodeLinSolver :
+    getCvodeLinearSolver();
+
+  bool dense_initialized = false;
+
+  // Far target for CV_ONE_STEP: past the last observation so CVODE can take
+  // natural adaptive steps that span multiple observation intervals.
+  double tout_dir = (ind->n_all_times > 0)
+    ? getAllTimes(ind, ind->n_all_times - 1) + 1.0
+    : 1e10;
+
+  if (neqOde > 0 && ind->n_all_times > 0) {
+    std::vector<double> atol_buf;
+    double *atol_ptr = atol_data;
+    if (atol_data == &(op->ATOL)) {
+      atol_buf.assign(neqOde, op->ATOL);
+      atol_ptr = atol_buf.data();
+    }
+    _growSolveIfNeeded(ind, op, 0, 1);
+    yp = getSolve(0);
+    cvode_ctx = cvode_ctx_create(neqOde, yp, atol_ptr, rtol,
+                                 xp, op->HMIN,
+                                 op->hmax2 > 0.0 ? op->hmax2 : 0.0,
+                                 op->mxstep, cvode_rhs_trampoline,
+                                 (void *)neq, cvodeLinSolver);
+    if (!cvode_ctx) {
+      ind->rc[0] = -2019;
+      rxSolverFail(ind);
+      ind->solveTime += ((double)(clock() - t0_clock)) / CLOCKS_PER_SEC;
+      return;
+    }
+  }
+
+  for (i = 0; i < ind->n_all_times; i++) {
+    ind->idx  = i;
+    ind->linSS = 0;
+    if (ind->mainSorted == 0) {
+      double *_rtime = ind->timeThread;
+      for (int _j = i; _j < ind->n_all_times; _j++) {
+        int _raw  = ind->ix[_j];
+        int _evid = getEvid(ind, _raw);
+        if (_evid >= 10 && _evid <= 99) {
+          _rtime[_raw] = ind->mtime[_evid - 10];
+        } else if (!isObs(_evid)) {
+          int _wh, _cmt, _wh100, _whI, _wh0;
+          getWh(_evid, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
+          if (_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) {
+            _rtime[_raw] = getAllTimes(ind, _raw);
+          }
+        }
+      }
+      reSortMainTimeline(ind, i);
+      ind->mainSorted = 1;
+    }
+    _growSolveIfNeeded(ind, op, i, 1);
+    yp   = getSolve(i);
+    xout = ind->timeThread[ind->ix[i]];
+
+    if (getEvid(ind, ind->ix[i]) != 3 && !isSameTime(xout, xp)) {
+      if (ind->err) {
+        ind->rc[0] = -1000;
+        badSolveExit(i);
+        localBadSolve = 1;
+      } else {
+        if (!localBadSolve) {
+          while (!localBadSolve &&
+                 handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                                 xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis,
+                                 cvode_ctx ? (void *)cvode_ctx : NULL)) {
+            if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
+              preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
+              if (neqOde > 0 && cvode_ctx) {
+                if (ind->delayHistOn) {
+                  istate = rxCvodeDelayInterval(cvode_ctx, op, ind, neq, xp,
+                                                ind->extraDoseNewXout, yp,
+                                                &dense_initialized);
+                } else {
+                  istate = cvode_ctx_integrate(cvode_ctx, yp, xp, ind->extraDoseNewXout);
+                }
+                dense_initialized = false;
+              }
+              copyLinCmt(neq, ind, op, yp);
+              postSolve(neq, &istate, ind->rc, &i, yp, NULL, 0, false, ind, op, rx);
+              if (*(ind->rc) < 0) localBadSolve = 1;
+              xp = ind->extraDoseNewXout;
+            }
+            if (!localBadSolve) {
+              int idx  = ind->idx;
+              int ixds = ind->ixds;
+              int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+              ind->idx  = -1 - trueIdx;
+              handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
+                          ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                          neq[1], ind);
+              istate    = 1;
+              dense_initialized = false;
+              ind->ixds = ixds;
+              ind->idx  = idx;
+              ind->idxExtra++;
+              xp = ind->extraDoseNewXout;
+            }
+          }
+        }
+
+        if (!localBadSolve && !isSameTime(xout, xp)) {
+          preSolve(op, ind, xp, xout, yp);
+          if (neqOde > 0 && cvode_ctx) {
+            if (ind->delayHistOn) {
+              // an observation continues the solve; any other event re-starts it
+              istate = rxCvodeDelayInterval(cvode_ctx, op, ind, neq, xp, xout, yp,
+                                            &dense_initialized);
+              if (!isPassObs(getEvid(ind, ind->ix[i]))) dense_initialized = false;
+            } else if (op->useDense && isPassObs(getEvid(ind, ind->ix[i]))) {
+              if (!dense_initialized) {
+                cvode_ctx_dense_reinit(cvode_ctx, yp, xp);
+                dense_initialized = true;
+              }
+              while (cvode_ctx_dense_current_time(cvode_ctx) < xout) {
+                if (cvode_ctx_dense_do_step(cvode_ctx, yp, tout_dir) < 0) {
+                  if (ind->rc[0] == 0) ind->rc[0] = -2019;
+                  rxSolverFail(ind);
+                  break;
+                }
+                if (ind->err) {
+                  if (ind->rc[0] == 0) ind->rc[0] = -2019;
+                  break;
+                }
+              }
+              if (!ind->err) {
+                if (cvode_ctx_dense_calc_state(cvode_ctx, xout, yp) < 0) {
+                  if (ind->rc[0] == 0) ind->rc[0] = -2019;
+                  rxSolverFail(ind);
+                }
+              }
+              istate = ind->err ? -1 : 1;
+            } else {
+              istate = cvode_ctx_integrate(cvode_ctx, yp, xp, xout);
+              dense_initialized = false;
+            }
+          }
+          copyLinCmt(neq, ind, op, yp);
+          postSolve(neq, &istate, ind->rc, &i, yp, NULL, 0, false, ind, op, rx);
+          if (*(ind->rc) < 0) localBadSolve = 1;
+        }
+        xp = xout;
+      }
+    }
+
+    if (!localBadSolve) {
+      ind->idx = i;
+      if (getEvid(ind, ind->ix[i]) == 3) {
+        handleEvid3(ind, op, rx, neq, &xp, &xout, yp, &istate, u_inis);
+        dense_initialized = false;
+      } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
+        handleSSDelay(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                      xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis,
+                      cvode_ctx ? (void *)cvode_ctx : NULL);
+        if (ind->wh0 == EVID0_OFF) {
+          ind->solve[ind->cmt] = op->inits[ind->cmt];
+        }
+        if (rx->istateReset) istate = 1;
+        xp = xout;
+        dense_initialized = false;
+      }
+      int _mtime_requeued = 0;
+      if (rx->nMtime > 0) {
+        if (recomputeMtimeIfNeeded(rx, ind, yp, i, xout)) {
+          ind->mainSorted  = 0;
+          _mtime_requeued = 1;
+        }
+      }
+      if (rx->needSort & needSortAlag) {
+        if (refreshLagTimesIfNeeded(rx, ind, yp, i + 1, xout)) {
+          ind->mainSorted = 0;
+        }
+      }
+      updateSolve(ind, op, neq, xout, i, ind->n_all_times);
+      if (_mtime_requeued) i--;
+    }
+    rxNewindAfterRecord(ind, i);
+    ind->solvedIdx = i;
+  }
+
+  if (cvode_ctx) cvode_ctx_destroy(cvode_ctx);
+  ind->solveTime += ((double)(clock() - t0_clock)) / CLOCKS_PER_SEC;
+}
+
+extern "C" void ind_cvode_dense(rx_solve *rx, int solveid, t_update_inis u_inis) {
+  rx_solving_options *op = rx->op;
+  int neq[2];
+  neq[0] = op->neq;
+  neq[1] = 0;
+  ind_cvode_dense_0(rx, op, solveid, neq, u_inis);
+}
+
+extern "C" void par_cvode_dense(rx_solve *rx) {
+  rx_solving_options *op = rx->op;
+#ifdef _OPENMP
+  int cores = op->cores;
+#else
+  int cores = 1;
+#endif
+  uint32_t nsub   = rx->nsub;
+  uint32_t nsim   = rx->nsim;
+  int      nsolve = (int)(nsim * nsub);
+
+  uint32_t seed0 = getRxSeed1(cores);
+#ifdef _OPENMP
+#pragma omp parallel for num_threads(cores)
+#endif
+  for (int solveid = 0; solveid < nsolve; solveid++) {
+    int neq[2];
+    neq[0] = op->neq;
+    neq[1] = 0;
+    // rx->ordId walks positions (sortIds); the drivers take subject ids.
+    int _id = rx->ordId[solveid] - 1;
+    setSeedEng1(seed0 + _id);
+    ind_cvode_dense_0(rx, op, _id, neq, update_inis);
+  }
+  // close the per-subject seed block: the loop consumed nsolve seeds, not
+  // cores, and the next solve must not re-use any of them
+  setRxSeedFinal(seed0 + (uint32_t)nsolve);
+}
+
+#endif // IN_PAR_SOLVE

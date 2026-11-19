@@ -2,7 +2,7 @@
 % Please edit documentation in R/rudf.R
 \name{.udfEnvSet}
 \alias{.udfEnvSet}
-\title{Setup the UDF environment (for querying user defined funtions)}
+\title{Setup the UDF environment (for querying user defined functions)}
 \usage{
 .udfEnvSet(env)
 }
@@ -13,7 +13,9 @@
 environment
 }
 \description{
-Setup the UDF environment (for querying user defined funtions)
+Outside of an rxode2 call the most recent environment becomes the primary
+one; inside an rxode2 call (see \code{.udfEnvLocal()}) the call's environment is
+kept and \code{env} is only added to the search list.
 }
 \author{
 Matthew L. Fidler

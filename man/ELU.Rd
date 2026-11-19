@@ -24,33 +24,35 @@ Exponential Linear Unit (ELU) Activation Function
 
 ELU(c(-1, 0, 1, 2), 2)
 
+\donttest{
 # Can also be used in rxode2:
 x <- rxode2({
-   r=SELU(time)
+   r=ELU(time, 2)
 })
 
 e <- et(c(-1, 0, 1, 2))
 
 rxSolve(x, e)
+}
 
 }
 \seealso{
-Other Activation Functions: 
-\code{\link{GELU}()},
-\code{\link{PReLU}()},
-\code{\link{ReLU}()},
-\code{\link{SELU}()},
-\code{\link{Swish}()},
-\code{\link{dELU}()},
-\code{\link{dGELU}()},
-\code{\link{dPReLU}()},
-\code{\link{dReLU}()},
-\code{\link{dSELU}()},
-\code{\link{dSwish}()},
-\code{\link{dlReLU}()},
-\code{\link{dsoftplus}()},
-\code{\link{lReLU}()},
-\code{\link{softplus}()}
+Other Activation Functions:
+\code{\link[=GELU]{GELU()}},
+\code{\link[=PReLU]{PReLU()}},
+\code{\link[=ReLU]{ReLU()}},
+\code{\link[=SELU]{SELU()}},
+\code{\link[=Swish]{Swish()}},
+\code{\link[=dELU]{dELU()}},
+\code{\link[=dGELU]{dGELU()}},
+\code{\link[=dPReLU]{dPReLU()}},
+\code{\link[=dReLU]{dReLU()}},
+\code{\link[=dSELU]{dSELU()}},
+\code{\link[=dSwish]{dSwish()}},
+\code{\link[=dlReLU]{dlReLU()}},
+\code{\link[=dsoftplus]{dsoftplus()}},
+\code{\link[=lReLU]{lReLU()}},
+\code{\link[=softplus]{softplus()}}
 }
 \author{
 Matthew Fidler

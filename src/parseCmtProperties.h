@@ -82,6 +82,76 @@ static inline int handleCmtPropertyRate(nodeInfo ni, char *name, char *v) {
   return 0;
 }
 
+static inline int handleCmtPropertyPast(nodeInfo ni, char *name, char *v, D_ParseNode *pn) {
+  if (nodeHas(past)) {
+    sb.o=0;sbDt.o=0; sbt.o=0;
+    if ((tb.dprop[tb.id] & propPast) == 0) {
+      tb.dprop[tb.id] += propPast;
+    }
+    // second argument (delay duration tau); captured as source text so the
+    // normalized model round-trips past(state,tau)=expr and R can match it to
+    // the corresponding delay(state,tau).
+    D_ParseNode *xpnTau = d_get_child(pn, 4);
+    char *tau = (char*)rc_dup_str(xpnTau->start_loc.s, xpnTau->end);
+    sAppend(&sb, "_past[__DDT%d__] = ", tb.id);
+    sAppend(&sbDt, "_past[__DDT%d__] = ", tb.id);
+    sAppend(&sbt, "past(%s,%s)=", v, tau);
+    tb.curPropN=tb.id;
+    if (foundPast == 0) needSort+=16; // & 16 when past
+    foundPast=1;
+    aType(PAST);
+    return 1;
+  }
+  return 0;
+}
+
+static inline int handleCmtPropertyIndLin(nodeInfo ni, char *name, char *v) {
+  if (nodeHas(indLin_prop)){
+    sb.o=0;sbDt.o=0; sbt.o=0;
+    tb.hasIndLinProp = 1;
+    // Sized from `v`, not a fixed buffer: `v` is a compartment name, and
+    // rxSensMatExp() names a second-order sensitivity compartment
+    // `rx__sens_<state>_BY_<p>_BY_<q>__`, which passes 150 bytes with ordinary
+    // parameter names.  snprintf() into a fixed buffer truncated silently, so
+    // two distinct compartments could share one C symbol -- one forcing
+    // overwriting the other in a model that still compiled.
+    //
+    // A copy rather than a pointer into `_gbuf`: `new_or_ith()` below writes
+    // `_gbuf` on its interpolation-clash path, which would realloc it out from
+    // under the name that is about to be registered.
+    size_t lhsN = strlen(v) + 11;
+    char *lhsVar = R_alloc(lhsN, sizeof(char));
+    snprintf(lhsVar, lhsN, "rx_indLin_%s", v);
+    if (new_or_ith(lhsVar)) {
+      addSymbolStr(lhsVar);
+      new_or_ith(lhsVar);
+    }
+    tb.lh[tb.ix] = isLHS;
+    if (tb.lho[tb.ix] == 0) {
+      tb.lho[tb.ix] = tb.lhi++;
+    }
+    // doDot2(), not a plain sAppend(): the compartment name can carry a `.`
+    // (`rx__sens_central_BY_eta.cl__`, from a sensitivity wrt a dotted
+    // parameter), and everything else that names this variable -- its
+    // declaration, its `_PL[]` read, and codegen's `_matf[] +=` line -- writes
+    // it through doDot() as `_DoT_`.  Emitting the raw name here left the
+    // assignment referring to an undeclared identifier, which C then read as a
+    // struct member access.
+    doDot2(&sb, &sbDt, lhsVar);
+    sAppendN(&sb, " = ", 3);
+    sAppendN(&sbDt, " = ", 3);
+    sAppend(&sbt, "indLin(%s)=", v);
+    aType(TASSIGN);
+    // The forcing's right-hand side is parsed next; record the symbols it
+    // reads so wIndLin can report the state-dependent forcings.  Cleared in
+    // finalizeLine() / by ENDLINE.
+    tb.curIndLin = tb.id + 1;
+    tb.curStmt = pushIndLinStmt(tb.id, 1);
+    return 1;
+  }
+  return 0;
+}
+
 static inline int handleCmtPropertyCmtOrder(nodeInfo ni, char *name, char *v) {
   if (nodeHas(cmt_statement)) {
     sb.o=0; sbDt.o=0; sbt.o=0;
@@ -93,15 +163,16 @@ static inline int handleCmtPropertyCmtOrder(nodeInfo ni, char *name, char *v) {
   return 0;
 }
 
-static inline int handleCmtProperty(nodeInfo ni, char *name, int i, D_ParseNode *xpn) {
+static inline int handleCmtProperty(nodeInfo ni, char *name, int i, D_ParseNode *pn, D_ParseNode *xpn) {
   int isCmt = 0;
   if ((nodeHas(fbio) || nodeHas(alag) ||
-       nodeHas(dur) || nodeHas(rate) ||
+       nodeHas(dur) || nodeHas(rate) || nodeHas(past) ||
+       nodeHas(indLin_prop) ||
        (isCmt = nodeHas(cmt_statement))) &&
       i==2) {
     char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
     int hasLhs=isCmtLhsStatement(ni, name, v);
-    int from = isCmt ? fromCMT : fromCMTprop;
+    int from = (isCmt || nodeHas(indLin_prop)) ? fromCMT : fromCMTprop;
     if (new_de(v, from)){
       add_de(ni, name, v, hasLhs, from);
       aProp(tb.de.n);
@@ -114,7 +185,9 @@ static inline int handleCmtProperty(nodeInfo ni, char *name, int i, D_ParseNode 
     int tmp = handleCmtPropertyFbio(ni, name, v) ||
       handleCmtPropertyAlag(ni, name, v) ||
       handleCmtPropertyDur(ni, name, v) ||
-      handleCmtPropertyRate(ni, name, v);
+      handleCmtPropertyRate(ni, name, v) ||
+      handleCmtPropertyPast(ni, name, v, pn) ||
+      handleCmtPropertyIndLin(ni, name, v);
     (void) tmp;
     return 1;
   }
@@ -182,6 +255,11 @@ static inline int handleRemainingAssignmentsCalcPropMtime(nodeInfo ni, char *nam
 
 static inline int handleRemainingAssignmentsCalcPropComplexAssign(nodeInfo ni, char *name, D_ParseNode *pn, char *v) {
   if (nodeHas(assignment)  || (!rx_syntax_allow_ini && nodeHas(ini))) {
+    // The right-hand side is parsed next; remember what it assigns so an
+    // indLin() forcing can be traced through it (see recordIndLinRef()).
+    // Cleared by ENDLINE.
+    tb.curLhs = tb.ix;
+    tb.curStmt = (tb.ix >= 0) ? pushIndLinStmt(tb.ix, 0) : -1;
     if (tb.ix+1 == NV && tb.NEnd != NV){
       // New assignment
       tb.ixL = tb.ix;

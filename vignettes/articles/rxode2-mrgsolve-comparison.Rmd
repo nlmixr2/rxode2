@@ -1,5 +1,5 @@
 ---
-title: "rxode2 and mrgsolve: A Feature Comparison"
+title: "Comparing rxode2 with mrgsolve"
 ---
 
 ```{r, include = FALSE}
@@ -25,18 +25,194 @@ Both packages are moving targets; details may change as each evolves.
 Before comparing differences it helps to establish how much the two
 tools have in common:
 
-- NONMEM-compatible data sets (EVID, AMT, CMT, TIME, ID, …)
+- NONMEM-compatible data sets (EVID, AMT, CMT, TIME, ID, ...)
 - ODE solving with adaptive step-size solvers (LSODA-family)
 - Analytical PK compartment models (though parameterization differs)
 - Between-subject variability (omega) and residual variability (sigma)
 - Event tables with complex dosing regimens
+- Adaptive / dynamic dosing from inside the model (mrgsolve via
+  `evtools`; rxode2 in versions after 5.0.2)
 - `simeta()` / `simeps()` for within-model ETA/EPS resampling
 - Custom C/C++ functions registered at the R or package level
 - Custom header files included in the compiled model
 - Algebraic (ODE-free) prediction models
 - NONMEM dataset translation tooling
 - Population simulation across many subjects
-- Parallel execution (OpenMP or otherwise)
+- Parallel execution (rxode2 built-in; mrgsolve via the
+  `mrgsim.parallel` extension)
+- Out-of-memory / disk-backed simulation of larger-than-RAM populations
+  (rxode2 built-in; mrgsolve via the `mrgsim.ds` extension)
+
+### Adaptive dosing inside the model
+
+Both tools now support model-driven adaptive dosing, but the user-facing
+API is different.
+
+mrgsolve implements this through the `evtools` plugin
+(<https://mrgsolve.org/dynamic-dosing/evtools.html>,
+<https://mrgsolve.org/blog/posts/evtools.html>,
+<https://mrgsolve.org/blog/posts/2024-new-1-4-0-evtools.html>).  The
+workflow is C++-oriented: enable `$PLUGIN evtools`, write event logic in
+`$EVENT`, and call helpers such as `evt::bolus(self, amt, cmt)`,
+`evt::infuse(self, amt, cmt, rate)`, `evt::replace(self, amt, cmt)`, or
+`evt::reset(self)`.  For more complex workflows, mrgsolve also provides
+mutable event objects plus an `evt::regimen` class that can change dose
+amount, rate, interval, and duration as the simulation progresses.
+
+rxode2 now provides the same general capability directly in the rxode2
+model language.  This is newer than rxode2 5.0.2.  Instead of a
+separate plugin and a C++ event block, adaptive actions are written
+inside `model({})` using native statements such as `evid_()`,
+`bolus()`, `infuse()`, `infuseDur()`, `reset()`, `replace()`,
+`multiply()`, `phantom()`, and `obs()`.
+
+| Topic | rxode2 | mrgsolve |
+|------|------|------|
+| Activation | built into the model syntax | opt in with `$PLUGIN evtools` |
+| Where logic lives | `model({})` | `$EVENT` (preferred) or other model blocks |
+| Event API style | domain-specific rxode2 statements | C++ helpers in `evt::` namespace |
+| Adaptive observation rows | `obs()` or `evid_(..., 0, ...)` | handled through event objects / event API rather than a dedicated `obs()` helper |
+| Regimen mutation | explicit push statements when conditions are met | event objects and `evt::regimen` support mutable ongoing regimens |
+
+In practice, rxode2's interface is usually shorter and closer to the
+pharmacometric intent, while mrgsolve's evtools framework is lower-level
+and more programmable from the C++ side.  Both approaches can express
+titration, rescue doses, dose holds, delayed starts, interval changes,
+replacement/reset operations, and other dynamic regimen updates.
+
+## Large-scale simulation: parallelism and out-of-memory solving
+
+Simulating very large populations raises two separate problems: making
+the solve fast enough (parallelism) and keeping the result small enough
+to fit in memory (out-of-memory storage).  rxode2 addresses both inside
+`rxSolve()` itself.  For mrgsolve the same two problems are solved by
+two dedicated community extension packages -- `mrgsim.parallel`
+(<https://github.com/kylebaron/mrgsim.parallel>) for parallel execution
+and `mrgsim.ds` (<https://github.com/p-emex/mrgsim.ds>) for disk-backed
+"out-of-memory" datasets.
+
+### Parallel solving
+
+rxode2 parallelizes at two levels.
+
+At the *thread* level, rxode2's LSODA and DOP853 backends are
+implemented in thread-safe C, so a single `rxSolve()` call spreads the
+per-subject ODE solves across OpenMP threads automatically.  No data
+splitting, forking, or extra package is involved -- it is controlled by
+the `cores` argument (defaulting to the value of `getRxThreads()`).
+
+```{r}
+# Subjects are solved in parallel across OpenMP threads in one call
+rxSolve(mod, ev, cores = 4)
+```
+
+At the *process* level, rxode2 (since 5.1.1) can dispatch chunks of
+subjects to `mirai` daemons, which enables distributed and HPC/cluster
+execution.  This is the same mechanism used by the out-of-memory path
+below (the `parallel` argument gives the number of daemons).
+
+mrgsolve's own C++ LSODA runs single-threaded within a process, so it
+cannot spread subjects across threads the way rxode2's OpenMP solver
+does.  The `mrgsim.parallel` package fills this gap by splitting the
+data set with `chunk_by_id()` / `chunk_by_row()` and simulating the
+chunks in parallel through the `future` or `parallel` (forking /
+`mclapply`) ecosystems, then recombining the pieces into a single
+in-memory data frame (`future_mrgsim_d()`, `mc_mrgsim_d()`,
+`future_mrgsim_ei()`, ...).
+
+| Topic | rxode2 | mrgsolve (`mrgsim.parallel`) |
+|------|------|------|
+| Within-subject-loop threading | OpenMP in the C solver (`cores=`) | not available (single-threaded C++ solver) |
+| Cross-process parallelism | `mirai` daemons (`parallel=`) | `future` / `parallel` (fork, multisession) |
+| Data splitting | automatic (per subject) | manual (`chunk_by_id()`, `chunk_by_row()`) |
+| Extra package needed | no (built into `rxSolve()`) | yes (`mrgsim.parallel`) |
+| Result assembly | in memory, or streamed to disk (see below) | recombined in memory |
+
+Because rxode2's threading and its `mirai` chunking compose, a large run
+can use OpenMP *within* each chunk while `mirai` distributes the chunks
+across processes or nodes.
+
+### Out-of-memory (larger-than-RAM) solving
+
+A population simulation can easily produce a result that does not fit in
+RAM.  rxode2 handles this directly: pass a `file` prefix to `rxSolve()`
+and it splits the subjects into chunks, solves each chunk, writes the
+chunk to a Parquet file (falling back to `.rds` when the `arrow` package
+is not installed), and returns a lightweight `rxSolveOom` object that
+reads chunks lazily on demand rather than holding the whole result in
+memory.
+
+```{r}
+res <- rxSolve(mod, params, ev,
+               file      = tempfile("rx"), # enables the out-of-memory path
+               chunkSize = 5000,           # subjects per chunk (optional)
+               parallel  = 4)              # mirai daemons (optional)
+```
+
+If `chunkSize` is omitted, rxode2 auto-computes it from the currently
+available RAM using `rxMemoryEstimate()`, so the chunks are sized to
+fit.  The returned object behaves like an ordinary solved object -- it
+prints the `$params` and `$inits`, supports `$column` extraction,
+`head()`, `nrow()`, `ncol()` / `dim()`, and the usual `as.data.frame()`
+/ `as_tibble()` / `as.data.table()` coercions -- but none of these read
+more of the data than they need to.
+
+For genuinely out-of-memory results, the chunks can be queried lazily so
+that filtering and aggregation are pushed down to the on-disk Parquet
+files and the full result is never materialized:
+
+```{r}
+library(dplyr)
+
+res |>
+  as.arrow() |>            # a lazy arrow Dataset over the chunks
+  filter(time > 24) |>
+  group_by(id) |>
+  summarise(cmax = max(cp)) |>
+  collect()                        # only the small summary comes into RAM
+```
+
+A DuckDB query layer is used under the hood for `head()`, single-column
+extraction, and schema access when DuckDB is installed.  The
+storage/query engine can be pinned with the `rxode2.oom.backend` option
+(`"auto"`, `"duckdb"`, `"arrow"`, or `"rds"`); a requested engine that
+is not installed degrades gracefully (`duckdb` -> `arrow` -> `rds`), and
+the option is forwarded to the parallel `mirai` workers.
+
+The *input* side can be kept out of memory too.  `rxEventTableFile()`
+references an event table that lives on disk (Parquet, CSV, `fst`, or
+`rds`); each chunk reads only its own subjects' rows, so even the event
+data set never has to be loaded in full.
+
+```{r}
+big_ev <- rxEventTableFile("events.parquet", id = "id")
+rxSolve(mod, params, big_ev, file = tempfile("rx"))
+```
+
+mrgsolve's `mrgsim.ds` package takes a very similar approach on the
+output side: `mrgsim_ds()` stores results as Apache Arrow / Parquet
+datasets in `tempdir()`, returns a lightweight pointer object, and lets
+you apply `dplyr` verbs over an Arrow (or DuckDB) backend before
+`collect()`-ing.  It also adds a parallel-safe model loader
+(`modlib_ds()`), combination (`reduce_ds()`), and persistent
+save/read (`save_ds()` / `read_ds()`).
+
+The two designs are close in spirit; the main differences are:
+
+| Topic | rxode2 | mrgsolve (`mrgsim.ds`) |
+|------|------|------|
+| Packaging | built into `rxSolve(file=)` | separate `mrgsim.ds` package + `mrgsim_ds()` |
+| On-disk format | Parquet (Arrow), `.rds` fallback with no Arrow | Parquet (Arrow) |
+| Lazy query engines | DuckDB and Arrow/`dplyr` pushdown | Arrow/`dplyr` and DuckDB |
+| Automatic chunk sizing | yes, from free RAM (`rxMemoryEstimate()`) | user manages replicate/chunking |
+| Backend selection | `rxode2.oom.backend` option, graceful degrade | Arrow-based |
+| Persisted alongside data | per-subject `$params` and `$inits` | simulation output |
+| Out-of-memory *input* | yes (`rxEventTableFile()`) | -- |
+| Composes with parallelism | yes (`parallel=` `mirai` daemons + OpenMP) | via `mrgsim.parallel` |
+
+`rxSolveChunked()` is a thin convenience wrapper around the same
+machinery, but the `rxSolve(..., file=)` form above is the recommended
+interface.
 
 ## Features rxode2 has that mrgsolve does not
 
@@ -48,61 +224,149 @@ nlmixr2's FOCEi algorithm for parameter estimation without finite
 differences.  mrgsolve does not currently support symbolic
 differentiation.
 
-### 1–3 compartment analytical solutions with exact gradients
+The sensitivity machinery has grown well beyond first order.  rxode2
+now generates exact, finite-difference-free forward sensitivities up to
+third order (`d^3 state / ds1 ds2 ds3`), which supply the analytic
+FOCEi/FOCE covariance Hessian terms that previously required numeric
+differencing.
+
+It also generates *jump* (event) sensitivities: the derivative of the
+solution with respect to dosing parameters such as bioavailability (`F`),
+lag time (`alag`), infusion rate, duration, and dose amount, capturing
+the discontinuities these introduce at dose times (based on the
+`EventSensitivities` approach).  These are available for ODE, matrix
+exponential, and `linCmt()` models -- up to third order for the ODE and
+matrix-exponential cases -- and are selected through the
+`eventSens` build option.  mrgsolve has no equivalent.
+
+### Matrix exponential and inductive linearization with analytic gradients
+
+rxode2 provides matrix-exponential and inductive-linearization solving
+paths for linear (and locally linearized) systems, specified with a
+NONMEM-like interface and translated automatically from ODE syntax.
+Both paths carry analytic gradients computed by symbolic
+differentiation, so they can be used inside gradient-based estimation
+rather than only for forward simulation.  mrgsolve does not offer these
+solving modes.
+
+### 1-3 compartment analytical solutions with exact gradients
 
 `linCmt()` in rxode2 supports one-, two-, and three-compartment
 analytical solutions.  Gradients are computed via Stan math
 auto-differentiation, enabling exact gradient-based estimation in
-nlmixr2.  mrgsolve's `$PKMODEL` block supports one and two
-compartments only, and does not provide analytical gradients.
+nlmixr2.  mrgsolve's `$PKMODEL` block gained closed-form
+three-compartment models in mrgsolve 2.0.0 (`advan = 2, 4, 12` for
+1-, 2-, and 3-compartment models with a depot, `advan = 1, 3, 11` for
+the IV-only equivalents; also available as the `pk3`/`pk3iv` modlib
+models), so both tools now cover one to three compartments
+analytically.  mrgsolve still does not provide analytical gradients
+for these closed-form models.
 
 ```{r}
 mod <- function() {
   ini({
-    TCl <- 4;
+    TCl <- 4
     eta.Cl ~ 0.09
-    V   <- 10
-    Q   <- 2;
+    V <- 10
+    Q <- 2
     V2 <- 50
-    V3  <- 200;
+    V3 <- 200
     Q2 <- 0.5
   })
   model({
     CL <- TCl * exp(eta.Cl)
-    cp <- linCmt(CL, V, Q, V2, V3, Q2)           # 3-cmt solved automatically from parameter names
+    cp <- linCmt(CL, V, Q, V2, V3, Q2) # 3-cmt solved automatically from parameter names
   })
 }
 ```
 
-Mrgsolve equivalent would require explicit ODE equations for the
-three-compartment case.
+Mrgsolve's equivalent (since mrgsolve 2.0.0) is
+`$PKMODEL advan = 12` (or the `pk3` modlib model), not explicit ODE
+equations; the difference from the rxode2 approach above is that
+rxode2 infers the parameterization from named `ini()`/`model()`
+parameters, while mrgsolve's closed-form solutions do not carry
+analytical gradients.
 
 ### Multiple ODE solvers
 
-rxode2 ships three solver backends that can be selected per run:
+rxode2 ships several solver backends that can be selected per run:
 
 | Solver | Type | Use case |
 |--------|------|----------|
 | LSODA (C, thread-safe) | adaptive stiff/non-stiff | default |
 | Fortran LSODA | adaptive stiff/non-stiff | reference |
 | DOP853 | explicit Runge-Kutta | non-stiff, fast |
+| ros4 | Rosenbrock (implicit) | stiff |
+| `"dop853+ros4"` | AutoSwitch composite | mixed stiff/non-stiff (see below) |
 
 mrgsolve uses a single C++ LSODA backend.
 
 ```{r}
-rxSolve(mod, ev, method = "dop853")   # explicit RK8 solver
-rxSolve(mod, ev, method = "lsoda")    # default
+rxSolve(mod, ev, method = "dop853") # explicit RK8 solver
+rxSolve(mod, ev, method = "lsoda") # default
 ```
+
+rxode2 additionally offers **AutoSwitch composite** methods, written as
+`"primary+secondary"` (for example `method = "dop853+ros4"`).  These
+probe each integration segment with a fast non-stiff primary (`dop853`)
+and reactively fall back to a stiff secondary (a Rosenbrock/implicit
+method such as `ros4`, for which an analytical Jacobian is generated
+automatically) only where stiffness is detected.  A problem that is
+non-stiff in one region and stiff in another is thus solved efficiently
+in a single pass, in both the standard and dense-output paths.
+
+```{r}
+rxSolve(mod, ev, method = "dop853+ros4") # non-stiff probe, stiff fallback
+```
+
+### Delay differential equations
+
+rxode2 supports delay differential equations (DDEs) through the
+`delay(state, T)` model function, which evaluates an ODE state at the
+past time `t - T` (the same semantics as Monolix's `delay()`).  Delayed
+values are interpolated from the solver's dense output (the 8th-order
+Dormand-Prince interpolant), so they are obtained to the full accuracy
+of the integration, and dense history is recorded only for the states
+that are actually looked back on.  Delay models default to the dense
+AutoSwitch composite `"dop853+ros4"`, and forward sensitivities are
+generated for `delay()` models so they can be estimated with
+gradient-based methods in nlmixr2.  mrgsolve does not solve delay
+differential equations.
+
+```{r}
+mod_dde <- function() {
+  model({
+    d/dt(depot)  <- -ka * depot
+    d/dt(central) <- ka * depot - ke * delay(central, tau) # delayed feedback
+  })
+}
+```
+
+### Automatic ODE-to-`linCmt()` conversion
+
+When a model's ODE system is a 1-3 compartment linear PK system,
+rxode2 can detect this and transparently solve it with the fast
+analytical `linCmt()` path instead of the numerical ODE solver.  This
+happens at solve time when requested (`rxSolve(..., useLinCmt = TRUE)`
+or `options(rxode2.useLinCmt = TRUE)`), with the detected PK parameters passed explicitly to
+`linCmt()` so the parameterization is inferred even when parameters are
+declared only in `ini()`.  If a converted model cannot be compiled the
+original ODE model is used instead, so the conversion never breaks an
+otherwise-valid solve.  The reverse direction, `linToOde()`, expands a
+`linCmt()` model back to explicit ODEs.  mrgsolve keeps analytical
+(`$PKMODEL`) and ODE (`$ODE`) models as distinct, user-selected forms.
 
 ### NONMEM model import
 
 `nonmem2rx` converts NONMEM control streams directly into rxode2 model
 objects, including parameter estimates, omega/sigma matrices, and
-covariate relationships.  mrgsolve has a community package
+covariate relationships and is on CRAN.  `mrgsolve` has a community package
 `nonmem2mrgsolve` (<https://github.com/Andy00000000000/nonmem2mrgsolve>)
-that performs a similar translation, but it is not on CRAN and is not
-maintained by the mrgsolve core team.  `nonmem2rx` is on CRAN and is
-maintained as part of the nlmixr2 ecosystem.
+that performs a similar translation, that is not on CRAN.
+
+Additionally, the [`amp.sim` package](https://github.com/LeidenAdvancedPKPD/amp.sim)
+(available on CRAN) can translate NONMEM models to several R simulation
+frameworks, including both `rxode2` (using `nonmem2rx`) and `mrgsolve`.
 
 ```{r}
 library(nonmem2rx)
@@ -120,37 +384,48 @@ a simulation-only tool.
 
 ### Thread-safe C LSODA enabling OpenMP parallelism
 
-rxode2's LSODA is implemented in thread-safe C, allowing genuine
-parallel ODE solving across subjects via OpenMP.  mrgsolve parallelism
-relies on forked processes or future-based backends.
+rxode2's LSODA (and DOP853) are implemented in thread-safe C, allowing
+genuine parallel ODE solving across subjects via OpenMP within a single
+`rxSolve()` call, whereas mrgsolve's single-threaded C++ solver relies
+on forked processes or future-based backends (via `mrgsim.parallel`).
+See [Parallel solving](#parallel-solving) above for the full comparison,
+including rxode2's `mirai`-based cluster/HPC path.
 
 ### Model piping
 
 rxode2 model objects support R's native pipe operator (`|>`) to
 incrementally build or modify models without rewriting the full
 specification.  `model()` and `ini()` pipes copy the model,
-apply the change, and return a new object — leaving the original
+apply the change, and return a new object -- leaving the original
 untouched.
 
 ```{r}
 library(rxode2)
 
-base <- rxode2({
-  d/dt(depot) <- -KA * depot
-  d/dt(centr) <- KA * depot - CL / V * centr
-})
+base <- function() {
+  model({
+    d / dt(depot) <- -KA * depot
+    d / dt(centr) <- KA * depot - CL / V * centr
+  })
+}
 
 # Add population parameters and a covariate in one pipeline
 full <- base |>
-  model({
-    KA <- exp(tka + eta.ka)
-    CL <- exp(tcl + eta.cl + cov.wt * WT)
-    V  <- exp(tv)
-  }, append = FALSE, cov = "WT") |>
+  model(
+    {
+      KA <- exp(tka + eta.ka)
+      CL <- exp(tcl + eta.cl + cov.wt * WT)
+      V <- exp(tv)
+    },
+    append = FALSE,
+    cov = "WT"
+  ) |>
   ini({
-    tka <- log(0.5);  eta.ka ~ 0.09
-    tcl <- log(4);    eta.cl ~ 0.09
-    tv  <- log(20)
+    tka <- log(0.5)
+    eta.ka ~ 0.09
+    tcl <- log(4)
+    eta.cl ~ 0.09
+    tv <- log(20)
   })
 ```
 
@@ -178,7 +453,7 @@ there is no equivalent incremental piping API.
 
 rxode2 allows R function defined in the calling environment (session,
 script, or package) to be automatically available for use inside an
-rxode2 model.  No special block or registration step is needed —
+rxode2 model.  No special block or registration step is needed --
 rxode2 finds the function by name in the parent environment and calls
 it at solve time.
 
@@ -188,9 +463,12 @@ library(rxode2)
 # Plain R function defined anywhere in the session
 Hill <- function(C, Emax, EC50) Emax * C / (EC50 + C)
 
-mod <- rxode2({
-  effect <- Hill(cp, Emax, EC50)   # calls the R function above
-})
+mod <- function() {
+  model({
+    effect <- Hill(cp, Emax, EC50) # calls the R function above
+  })
+}
+mod <- mod()
 ```
 
 For performance, `rxFun()` can translate such R functions to C
@@ -229,16 +507,18 @@ also be used as functions and then Rcpp can call them.
 
 mrgsolve's `$EVENT` block (v1.5.2+) executes just before `$TABLE`,
 allowing programmatic dose creation inside the model file with the
-result visible in output on the same record.  rxode2 handles
-modeled events through the event table API outside the model
-definition.
+result visible in output on the same record.  rxode2 now also supports
+modeled adaptive dosing, but it does not use a separate `$EVENT` block;
+instead, event-push statements are written directly in `model({})`.
+So the difference is the presence of a dedicated block and a C++
+event-object API, not the existence of adaptive dosing itself.
 
 
 
 ### `nm-vars` plugin for verbatim NONMEM-style ODE syntax
 
 mrgsolve's `nm-vars` plugin lets you write `A(1)`, `DADT(1)`, `F1`,
-`R1` etc. inside ODE and PK blocks — effectively copy-pasting NONMEM
+`R1` etc. inside ODE and PK blocks -- effectively copy-pasting NONMEM
 `$DES`/`$PK` code with minimal changes.  This is a syntax convenience
 within a *new* mrgsolve model file, not a full NONMEM import.  rxode2
 uses its own ODE notation (`d/dt(cmt)`) and `nonmem2rx` handles the
@@ -248,9 +528,9 @@ translation programmatically.
 
 mrgsolve's `$PLUGIN` block can link model C++ code against:
 
-- `Rcpp` — full Rcpp header access inside the model
-- `BH` — Boost headers
-- `RcppArmadillo` — Armadillo linear algebra
+- `Rcpp` -- full Rcpp header access inside the model
+- `BH` -- Boost headers
+- `RcppArmadillo` -- Armadillo linear algebra
 
 rxode2's extension system (via `rxFun()`, `.extraC()`, or package
 registration) provides custom C/C++ function injection but does not
@@ -298,9 +578,11 @@ triggers recompilation automatically.
 # Include a local header file; model recompiles if the file changes
 .extraC("mymodels/special_functions.h")
 
-mod <- rxode2({
-  cp <- mySpecialPK(dose, CL, V)
-})
+mod <- function() {
+  model({
+    cp <- mySpecialPK(dose, CL, V)
+  })
+}
 ```
 
 Full package-level registration (including analytic derivatives for
@@ -310,7 +592,7 @@ nlmixr2) is described in the vignette
 ### Custom R code / model expansion
 
 rxode2's `rxUdfUi` S3 dispatch system allows R functions to rewrite
-model code at parse time — inserting lines, modifying initial
+model code at parse time -- inserting lines, modifying initial
 estimates, or expanding a single function call into multi-line model
 code.  Built-in examples include `linCmt()`, `linMod()`, and
 distribution functions like `rxpois()`.  This is described in
@@ -318,7 +600,9 @@ distribution functions like `rxpois()`.  This is described in
 
 ```{r}
 # Register a model-expansion function
-rxUdfUi.myFun <- function(fun) { eval(fun) }
+rxUdfUi.myFun <- function(fun) {
+  eval(fun)
+}
 rxode2::.s3register("rxode2::rxUdfUi", "myFun")
 ```
 
@@ -330,12 +614,17 @@ rxode2 you simply omit `d/dt()` statements:
 ```{r eval=TRUE}
 library(rxode2)
 
-mod_pred <- rxode2({
-  ipre <- 10 * exp(-ke * t)
-})
+mod_pred <- function() {
+  ini({
+    ke <- 0.5
+  })
+  model({
+    ipre <- 10 * exp(-ke * t)
+  })
+}
 
-et  <- et(seq(0, 24, length.out = 20))
-rxSolve(mod_pred, et, params = c(ke = 0.5))
+et <- et(seq(0, 24, length.out = 20))
+rxSolve(mod_pred, et)
 ```
 
 This is equivalent to NONMEM's `$PRED` block or mrgsolve's `$PRED`
@@ -355,17 +644,86 @@ translation unit, but includes an additional grammar parsing step.
 mrgsolve generates C++ which allows richer language features.
 Benchmarks on equivalent models show similar wall-clock times.
 
+## Converting between rxode2 and mrgsolve
+
+The [`rxode2mrgsolvebridge`](https://cran.r-project.org/package=rxode2mrgsolvebridge)
+package (available on CRAN) provides bidirectional conversion between
+rxode2 and mrgsolve model code.  It works through an intermediate
+representation so that the same translation logic handles both
+directions.
+
+### rxode2 to mrgsolve
+
+```{r}
+library(rxode2mrgsolvebridge)
+
+rx_code <- "
+  KA = THETA_KA
+  KE = THETA_KE
+  d/dt(A)  = -KA * A
+  d/dt(Cp) = KA * A - KE * Cp
+"
+
+convert_rxode2_to_mrgsolve(
+  rx_model       = rx_code,
+  theta_file     = "params.R",
+  output_basename = "model",
+  out_dir        = tempdir()
+)
+```
+
+This writes a self-contained mrgsolve model file to `out_dir`.
+
+### mrgsolve to rxode2
+
+```{r}
+convert_mrgsolve_to_rxode2(
+  mrgsolve_file  = "model.cpp",
+  output_basename = "model",
+  out_dir        = tempdir()
+)
+```
+
+This produces an rxode2 model code file and a matching theta parameter
+file in `out_dir`.
+
+### Lower-level utilities
+
+The package also exposes lower-level helpers for parsing and rendering
+when you need finer control:
+
+| Function | Purpose |
+|----------|---------|
+| `parse_rxode2_model()` | Parse rxode2 code into intermediate representation |
+| `parse_mrgsolve_model()` / `parse_mrgsolve_file()` | Parse mrgsolve code or file into intermediate representation |
+| `ir_to_mrgsolve()` | Render intermediate representation as mrgsolve code |
+| `ir_to_rxode2()` | Render intermediate representation as rxode2 code |
+| `export_mrgsolve_model()` | Write mrgsolve model to file |
+| `export_rxode2_files()` | Write rxode2 model and theta files |
+
+Note that the conversion covers model equations and parameter
+declarations; simulation-level features with no equivalent in the
+target engine (e.g., rxode2 symbolic Jacobians, mrgsolve `$GLOBAL`
+state) are either dropped or require manual adjustment after
+conversion.
+
 ## Summary table
 
 | Feature | rxode2 | mrgsolve |
 |---------|--------|----------|
 | ODE solving | LSODA (C, thread-safe), Fortran LSODA, DOP853 | C++ LSODA |
-| Parallel solving (OpenMP) | yes (thread-safe solver) | process-based |
-| 1–3 cmt analytical solution | `linCmt()` with gradients | `$PKMODEL` 1–2 cmt, no gradients |
-| Symbolic Jacobian / sensitivities | yes | no |
+| AutoSwitch composite solvers (`"dop853+ros4"`) | yes | no |
+| Delay differential equations (`delay()`) | yes (dense output, with sensitivities) | no |
+| Parallel solving | OpenMP threads (`cores=`) + `mirai` (`parallel=`) | process-based via `mrgsim.parallel` |
+| Out-of-memory / disk-backed solve | built in (`rxSolve(file=)`, Parquet/DuckDB) | via `mrgsim.ds` |
+| 1-3 cmt analytical solution | `linCmt()` with gradients | `$PKMODEL` 1-3 cmt (advan 1/2/3/4/11/12, since 2.0.0), no gradients |
+| Automatic ODE -> `linCmt()` conversion | yes (`useLinCmt=TRUE`) | no |
+| Symbolic Jacobian / sensitivities | yes (up to 3rd order) | no |
+| Event / jump sensitivities (F, alag, rate, dur, amt) | yes | no |
+| Matrix exponential / inductive linearization with gradients | yes | no |
 | Parameter estimation | via nlmixr2 | simulation only |
 | Model piping (`\|>`) | yes (`model()`, `ini()` pipes) | no |
-| NONMEM model import | `nonmem2rx` (CRAN, nlmixr2 ecosystem) | `nonmem2mrgsolve` (GitHub only, community) |
+| NONMEM model import | `nonmem2rx` (CRAN), `amp.sim` (CRAN) | `nonmem2mrgsolve` (GitHub), `amp.sim` (CRAN) |
 | `simeta()` / `simeps()` | yes | yes |
 | Custom C functions | `rxFun()`, `.extraC()`, package registration | `$GLOBAL`, `$PLUGIN` |
 | R functions usable inside model | yes (any function in calling env) | yes (`$ENV` block, `mrgx` plugin) |
@@ -389,3 +747,15 @@ Benchmarks on equivalent models show similar wall-clock times.
 - [rxode2 user manual](https://nlmixr2.github.io/rxode2-manual/)
 - [nonmem2rx package](https://nlmixr2.github.io/nonmem2rx/)
 - [nonmem2mrgsolve](https://github.com/Andy00000000000/nonmem2mrgsolve)
+- [amp.sim package](https://github.com/LeidenAdvancedPKPD/amp.sim)
+- [mrgsim.parallel (parallel mrgsolve)](https://github.com/kylebaron/mrgsim.parallel)
+- [mrgsim.ds (out-of-memory mrgsolve)](https://github.com/p-emex/mrgsim.ds)
+- [EventSensitivities (event/jump sensitivities)](https://github.com/dkaschek/EventSensitivities)
+- [rxode2mrgsolvebridge package (CRAN)](https://cran.r-project.org/package=rxode2mrgsolvebridge)
+- [rxode2mrgsolvebridge source (GitLab)](https://gitlab.com/fiha1/rxode2-mrgsolve-bridge)
+
+## Next steps
+
+- [Introduction to rxode2](rxode2-intro.html)
+- [How do I...?](rxode2-cookbook.html)
+- [Low-level models and other input styles](rxode2-classic-models.html)

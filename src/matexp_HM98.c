@@ -103,55 +103,70 @@ static double matnorm_1(const double *x, const int n)
 
 #define NTHETA 5
 
-static int matexp_scale_factor(const double *x, const int n)
+/* Al-Mohy & Higham (2009), Table 2.1: theta[i] is the largest ||A||_1 for which
+   Pade degree degs[i] is accurate to double precision.  The degree and the
+   scaling MUST be chosen together -- each threshold belongs to one degree.
+
+   This previously returned only the scaling and left the degree to the caller's
+   fixed `p` (rxSolve(indLinMatExpOrder=), default 6), so a matrix with
+   ||A||_1 anywhere up to theta[4] = 5.37 was evaluated at degree 6 with no
+   scaling at all, when the table says that norm needs degree 13.  The result
+   was silently wrong rather than an error: on a linear two-compartment model
+   it delivered 1.8e-6 where every other kernel delivered 5.8e-11, and under an
+   exponential Rosenbrock step it could make the error estimate unsatisfiable,
+   so the controller shrank the step without limit -- one van der Pol subject at
+   mu = 95.7866 ran for over 390 s against 0.03 s for the other kernels.
+
+   Picking both from the norm is what `matrixExpTaylor` already does, and it is
+   why `indLinMatExpOrder` no longer applies to this kernel. */
+/* Returns the number of SQUARINGS, not the factor 2^s.  The factor cannot be
+   returned as an int: it overflows for any norm above about 5.4 * 2^30, and
+   clamping it instead -- as a first version of this did -- silently caps the
+   scaling while leaving the norm untouched, so degree-13 Pade runs on a matrix
+   it cannot represent.  With a 1x1 rate constant of 1e20 that returned
+   5.1e-08 for a quantity whose true value underflows to zero. */
+static int matexp_deg_scale(const double *x, const int n, int *deg)
 {
-    const double theta[] = {1.5e-2, 2.5e-1, 9.5e-1, 2.1e0, 5.4e0};
+    const double theta[NTHETA] = {1.495585217958292e-2, 2.539398330063230e-1,
+                                  9.504178996162932e-1, 2.097847961257068e0,
+                                  5.371920351148152e0};
+    const int degs[NTHETA] = {3, 5, 7, 9, 13};
     const double x_1 = matnorm_1(x, n);
 
-    for (int i=0; i < NTHETA; i++) {
-	if (x_1 <= theta[i])
-	    return 0;
+    if (!R_FINITE(x_1)) {   /* nothing sensible to scale by; stay at the top
+                               degree and let the caller see the result */
+        *deg = degs[NTHETA-1];
+        return 0;
     }
-
-    int i = (int) ceil(log2(x_1/theta[4]));
-    return 1 << i;
+    for (int i = 0; i < NTHETA; i++) {
+        if (x_1 <= theta[i]) {
+            *deg = degs[i];
+            return 0;
+        }
+    }
+    *deg = degs[NTHETA-1];
+    double s = ceil(log2(x_1/theta[NTHETA-1]));
+    if (!(s > 0.0)) return 0;
+    /* A finite double has |x| < 2^1024, so this cannot exceed ~1024; the bound
+       is a guard against a NaN slipping past the check above, not a clamp on
+       any reachable input. */
+    if (s > 1100.0) s = 1100.0;
+    return (int) s;
 }
 
-// ___ MM: FIXME  we have a  matpow() already in  ./matpow.c
-//     --- Merge the two, keep the better one
-
-// Matrix power by squaring: P = A^b (A is garbage on exit)
-static void matpow_by_squaring(double *A, int n, int b, double *P)
-{
-    if (b == 1) {
-	matcopy(n, A, P);
-	return;
-    }
-    mateye(n, P);  // P := I
-    if (b == 0)
-	return;
-
-    // General case: b >= 2
-    double *TMP = (double *) R_alloc(n*n, sizeof(double));
-
-    while (b) {
-	if (b&1) { // P := P A
-	    matprod(n, P, A, TMP);
-	    matcopy(n, TMP, P);
-	}
-
-	b >>= 1;
-	// A := A^2 :
-	matprod(n, A, A, TMP);
-	matcopy(n, TMP, A);
-    }
-}
-
+/* A general matrix power by squaring used to live here, taking the exponent as
+   an int.  matexp_MH09() was its only caller and now squares directly, because
+   the exponent it needs is 2^s and does not fit an int; a file-local function
+   with no callers is a -Wunused-function warning, so it is gone rather than
+   left to rot.  ./matpow.c still has a matpow() if one is wanted again. */
 
 // --------------------------------------------------------
 // Matrix Exponentiation via Pade' Approximations
 // --------------------------------------------------------
 
+/* The p = 13 row of the Pade coefficients.  matexp_pade() now builds the row
+   for whichever degree it was given, so nothing reads this; it is kept rather
+   than deleted because it has external linkage. */
 const double matexp_pade_coefs[14] =
 {
   1.0,
@@ -180,9 +195,9 @@ const double matexp_pade_coefs[14] =
 
 // Workhorse for matexp_pade
 void matexp_pade_fillmats(const int m, const int n, const int i,
-			  double *N, double *D, double *B, double *C)
+			  double *N, double *D, double *B, double *C,
+			  const double tmp)
 {
-  const double tmp = matexp_pade_coefs[i];
   const int sgn = SGNEXP(-1, i);
 
     /* Performs the following actions:
@@ -208,18 +223,20 @@ void matexp_pade_fillmats(const int m, const int n, const int i,
  * @param A
  * @param N
  */
-static void matexp_pade(int n, const int p, double *A, double *N)
+// `wsp` is 3*n*n doubles and `iwsp` n ints of caller-supplied scratch.
+static void matexp_pade(int n, const int p, double *A, double *N,
+                        double *wsp, int *iwsp)
 {
     int i, info = 0, n2 = n*n;
     // FIXME: check n2 (or n, such that n2 did not overflow !)
 
     // Power of A
-    double *B = (double*) R_alloc(n2, sizeof(double));
+    double *B = wsp;
 
     // Temporary storage for matrix multiplication;  matcopy(n, A, C);
-    double *C = Memcpy((double*)R_alloc(n2, sizeof(double)), A, n2);
+    double *C = Memcpy(wsp + n2, A, n2);
 
-    double *D = (double*) R_alloc(n2, sizeof(double));
+    double *D = wsp + 2*n2;
 
     for (i=0; i<n*n; i++) {
 	N[i] = 0.0;
@@ -235,20 +252,33 @@ static void matexp_pade(int n, const int p, double *A, double *N)
     }
 
 
+    /* Pade coefficients for THIS degree, built by the recurrence
+         c_0 = 1,  c_j = c_{j-1} * (p - j + 1) / (j * (2p - j + 1)),
+       which is  c_j = (2p-j)! p! / [(2p)! (p-j)! j!]  written to avoid the
+       factorials.  They depend on the degree: the file's matexp_pade_coefs[]
+       table is the p = 13 row, and truncating it to fewer terms is not the
+       degree-p numerator.  Doing that cost four orders of accuracy -- about
+       4e-12 against 1e-16 for the other backends on a two-compartment model at
+       every degree below 13 -- which is invisible unless compared against an
+       exact solution, since the answer is still convergent, merely not to the
+       accuracy the theta table promises. */
+    double cf = 1.0;
+
     // Fill N and D
     for (i=1; i<=p; i++)
     {
+	cf *= (double)(p - i + 1) / ((double) i * (double)(2*p - i + 1));
+
 	// C = A*B
 	if (i > 1)
 	    matprod(n, A, B, C);
 
 	// Update matrices
-	matexp_pade_fillmats(n, n, i, N, D, B, C);
+	matexp_pade_fillmats(n, n, i, N, D, B, C, cf);
     }
 
     // R <- inverse(D) %*% N
-    int *ipiv = (int *) R_alloc(n, sizeof(int));
-    /* assert(ipiv != NULL); */
+    int *ipiv = iwsp;
 
     F77_CALL(dgesv)(&n, &n, D, &n, ipiv, N, &n, &info);
 
@@ -263,23 +293,65 @@ static void matexp_pade(int n, const int p, double *A, double *N)
  * @param p Order of the Pade' approximation. 0 < p <= 13.
  * @param ret On exit, ret = expm(x).
  */
+/* Scratch is owned here rather than taken from R's transient vmax stack.
+   This is reached from expm.cpp inside indLin()'s omp parallel region, and
+   R_alloc uses a single unlocked global that is not released until the
+   enclosing .Call returns -- so the old code both raced between threads and
+   grew vmax monotonically across a solve.  Compartmental models are small
+   enough to stay on the stack; anything larger falls back to malloc, which
+   is thread-safe. */
+#define MATEXP_STACK_N 12
+
 void matexp_MH09(double *x, int n, const int p, double *ret)
 {
-  int m = matexp_scale_factor(x, n);
-
-  if (m == 0) {
-      matexp_pade(n, p, x, ret);
+  int nn = n*n;
+  double wspStack[3*MATEXP_STACK_N*MATEXP_STACK_N];
+  int iwspStack[MATEXP_STACK_N];
+  double *wsp = wspStack;
+  int *iwsp = iwspStack;
+  double *wspHeap = NULL;
+  int *iwspHeap = NULL;
+  if (n > MATEXP_STACK_N) {
+    wspHeap = (double *) malloc(3*(size_t)nn*sizeof(double));
+    iwspHeap = (int *) malloc((size_t)n*sizeof(int));
+    if (wspHeap == NULL || iwspHeap == NULL) {
+      /* Never longjmp from here: a worker thread cannot unwind past the
+         parallel region.  Report zeros and let the caller notice. */
+      free(wspHeap);
+      free(iwspHeap);
+      for (int i = 0; i < nn; i++) ret[i] = 0.0;
       return;
+    }
+    wsp = wspHeap;
+    iwsp = iwspHeap;
   }
 
-  int nn = n*n, one = 1;
-  double tmp = 1. / ((double) m);
+  /* `p` is deliberately unused: the degree is not free to choose, it is fixed
+     by the norm together with the scaling.  See matexp_deg_scale(). */
+  (void) p;
+  int deg = 13;
+  int s = matexp_deg_scale(x, n, &deg);
 
-  F77_CALL(dscal)(&nn, &tmp, x, &one);
+  if (s == 0) {
+      matexp_pade(n, deg, x, ret, wsp, iwsp);
+  } else {
+    /* Scale by 2^-s with ldexp rather than dividing by 2^s: the factor itself
+       is not always representable (s can exceed 1023 for a large norm) while
+       the scaled elements always are, and ldexp only adjusts the exponent so
+       it introduces no rounding of its own. */
+    for (int i = 0; i < nn; i++) x[i] = ldexp(x[i], -s);
 
-  matexp_pade(n, p, x, ret);
+    matexp_pade(n, deg, x, ret, wsp, iwsp);
 
-  matcopy(n, ret, x);
+    /* Square s times.  matpow_by_squaring() cannot be used for this: it takes
+       the POWER as an int, and the power here is 2^s. */
+    for (int k = 0; k < s; k++) {
+      /* matexp_pade() has returned, so its scratch is free to reuse. */
+      matprod(n, ret, ret, wsp);
+      matcopy(n, wsp, ret);
+    }
+  }
 
-  matpow_by_squaring(x, n, m, ret);
+  free(wspHeap);
+  free(iwspHeap);
 }

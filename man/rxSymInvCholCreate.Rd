@@ -8,7 +8,8 @@ rxSymInvCholCreate(
   mat,
   diag.xform = c("sqrt", "log", "identity"),
   create.env = TRUE,
-  envir = parent.frame()
+  envir = parent.frame(),
+  same = NULL
 )
 }
 \arguments{
@@ -19,6 +20,12 @@ rxSymInvCholCreate(
 \item{create.env}{-- Create an environment to calculate the inverses. (By default TRUE)}
 
 \item{envir}{-- Environment to evaluate function, bu default it is the parent frame.}
+
+\item{same}{Optional integer vector over the etas of \code{mat}, as
+returned by \code{lotri::lotriSameMap()}: \code{0} for an ordinary or master
+eta, otherwise the index of the eta it mirrors.  Blocks that repeat
+an earlier one (NONMEM's \verb{$OMEGA BLOCK(n) SAME}) then share that
+block's parameters instead of being estimated separately.}
 }
 \value{
 A rxSymInv object OR a rxSymInv environment

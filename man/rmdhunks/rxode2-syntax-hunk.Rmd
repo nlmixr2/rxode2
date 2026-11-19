@@ -189,6 +189,112 @@ table:
 Note that `lag(cmt) =` is equivalent to `alag(cmt) =` and not the same
 as `= lag(wt)`
 
+### Inverse CDFs
+
+A group of these deserves a word, because they exist for one purpose:
+giving a random effect a distribution other than normal.  The technique
+(Bauer, NONMEM 7.5.1) keeps the latent random effect standard normal and
+changes the CDF,
+
+```
+z   ~ N(0, 1)
+u   = phiU(z)
+eta = Q(u; args)
+```
+
+where `Q` is the inverse CDF of the family you want.  `phiU()` is the
+normal CDF bounded away from 0 and 1, since `phi()` saturates to exactly
+0 or 1 around `|q| = 8.3` and an inverse CDF of that would return an
+infinity.
+
+Most families need nothing beyond ordinary arithmetic for `Q` -- a
+Weibull random effect is
+`scale*(-log1p(-phiU(z)))^(1/shape)`, a lognormal one is just
+`exp(meanlog + sdlog*z)`.  The three that are not elementary are served
+by `gammapInv()` (gamma, chi-square, inverse gamma), `ibetaInv()` (beta)
+and `studentTInv()` (Student t).
+
+Every one of these is differentiable through rxode2's symbolic
+machinery, which is what lets such a random effect be *estimated* and not
+merely simulated.  The derivative with respect to the probability
+argument -- the one an inner (eta) problem needs -- is exact and
+elementary, one over the density at the quantile.  The derivatives with
+respect to the shape parameters have no elementary closed form, so
+`gammapDera()`, `ibetaDera()`, `ibetaDerb()` and `studentTCdfDnu()`
+supply them as central differences with one Richardson extrapolation.
+They exist so the derivative table is *complete*: a missing rule does not
+error, it silently substitutes a one sided finite difference, which is
+precisely wrong in the tails where an inverse CDF is steepest.
+
+You rarely write any of this by hand.  Declaring the distribution in an
+`ini({})` block writes it for you:
+
+```
+ini({
+  lclm  <- log(5)
+  lclrv <- log(0.09)
+  dist(eta.cl) ~ dgamma(shape=1/exp(lclrv), rate=1/(exp(lclrv)*exp(lclm)))
+})
+```
+
+The declaration fixes the random effect's marginal, and the latent scale
+it is built on is standard normal, so no variance is written for it -- a
+`dist()` implies `~ 1`.  A block is written out only when there is a
+correlation between two declared random effects, since that has nowhere
+else to go:
+
+```
+ini({
+  lclm  <- log(5);  lclrv <- log(0.09)
+  lvm   <- log(50); lvrv  <- log(0.09)
+  eta.cl + eta.v ~ c(1,
+                     0.5, 1)
+  dist(eta.cl) ~ dgamma(shape=1/exp(lclrv), rate=1/(exp(lclrv)*exp(lclm)))
+  dist(eta.v)  ~ dgamma(shape=1/exp(lvrv),  rate=1/(exp(lvrv)*exp(lvm)))
+})
+```
+
+### That correlation is on the LATENT scale
+
+The `0.5` above is **not** the correlation you will measure between
+`eta.cl` and `eta.v`.  Two declared random effects are joined by a
+Gaussian copula: each is built as `Q(Phi(z))` from its own quantile
+function, and the number you write is the correlation of the *latent*
+normals `z`, not of the random effects themselves.
+
+Those two agree only when both marginals are normal.  For anything else
+the correlation you observe is smaller in magnitude, by an amount that
+depends on the two families **and on their parameters** -- a heavier tail
+loses more of it.  Simulating 200,000 pairs from a latent correlation of
+`0.50`:
+
+| marginals                                          | observed |
+|----------------------------------------------------|---------:|
+| `dnorm` with `dnorm`                               |    0.500 |
+| `dgamma(shape 2)` with `dgamma(shape 2)`           |    0.474 |
+| `dgamma(shape 2)` with `dlnorm(sdlog 0.7)`         |    0.454 |
+| `dlnorm(sdlog 0.7)` with `dlnorm(sdlog 0.7)`       |    0.441 |
+| `dgamma(shape 2)` with `dgamma(shape 0.5)`         |    0.437 |
+
+Read those as illustrations, not as constants for the families: change a
+shape or an `sdlog` and the number moves.  The one row that holds
+generally is the first -- normal with normal is the only case where the
+latent correlation and the observed one coincide.
+
+So writing `0.5` and then measuring `0.44` on the fitted random effects
+is the construction working, not a bug.  A fit reports the same latent
+quantity it was given -- in `$etaDistCor`, and as a `cor()` row in
+`$parFixed` -- so the value you read back is comparable with the value
+you wrote.
+
+If you need a target correlation *between the random effects*, simulate
+from the declaration and adjust: there is no closed form for the mapping
+except in the all-normal case, because it depends on both quantile
+functions.
+
+See `lotri::lotriEtaDists()` for the families that can be declared this
+way, and `rxEtaDistExpand()` for the model such a declaration becomes.
+
 ## Reserved keywords
 
 There are a few reserved keywords in a rxode2 model. They are in the
@@ -306,6 +412,29 @@ statistics will add their variances (not the standard deviations).
 However, the **combined1** can describe the data possibly even better
 than **combined2** so both are possible options in `rxode2`/`nlmixr2`.
 
+### Autocorrelated residuals (`ar()`)
+
+Adding `ar(cor)` to a normal residual makes successive residuals of the
+same endpoint follow a continuous-time AR(1) process:
+
+``` r
+cp ~ add(add.sd) + ar(ar1.cor)
+```
+
+Here `ar1.cor` is the lag-one correlation and must be in `[0, 1)`. The
+correlation between two residuals separated by a time gap `dt` is
+`cor^dt`, so irregular sampling is handled directly and the marginal
+(stationary) residual variance is unchanged; the first observation of
+each subject/endpoint uses the marginal distribution. `ar()` combines
+with `add()`/`prop()` normal residuals and uses the same `| cmt`
+endpoint syntax as the other residual functions.
+
+The `ar()` specification is identical in `rxode2` and `nlmixr2`: the same
+model line simulates the autocorrelated residual in `rxode2` and
+estimates the correlation in `nlmixr2` (the `nlm`, `focei`/`foce` and
+`saem` families support it; `fo`, `foi`, `nlme` and `nls` do not). See
+Karlsson et al. (1995) for the continuous-time AR(1) residual model.
+
 ### Distributions of known likelihoods
 
 For residuals that are not related to normal, t-distribution or cauchy,
@@ -373,6 +502,389 @@ In general all the that are supported are in the following table
 ```{r rxResidualError, echo=FALSE, screenshot.force=FALSE}
 .rxDocTable(rxResidualError, "rxode2/nlmixr2 esidual error specification")
 ```
+
+## Prior distributions in the `ini({})` block
+
+When an estimation method supports priors, the prior on a parameter is
+given in the `ini({})` block with:
+
+``` r
+prior(name) ~ dist(...)
+```
+
+Because the statement names the parameter it applies to, prior lines are
+order independent; they can be put anywhere in the `ini({})` block.
+
+``` r
+one.compartment <- function() {
+  ini({
+    tka <- 0.45
+    tcl <- log(c(0, 2.7, 100))
+    tv  <- 3.45
+    add.sd <- c(0, 0.7)
+
+    eta.cl + eta.v ~ c(0.3,
+                       0.01, 0.1)
+    eta.ka ~ 0.6
+
+    prior(tka)           ~ dnorm(0, 10)
+    prior(tcl)           ~ dnorm(1, 10)
+    prior(add.sd)        ~ dcauchy(0, 5)
+    prior(eta.ka)        ~ dgamma(2, 1)
+    prior(eta.cl, eta.v) ~ lkjCorr(2)
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v  <- exp(tv + eta.v)
+    d/dt(depot)  <- -ka * depot
+    d/dt(center) <-  ka * depot - cl / v * center
+    cp <- center / v
+    cp ~ add(add.sd)
+  })
+}
+```
+
+A prior can be put on:
+
+- a population parameter, ie `prior(tka)`
+- a single between subject variability term, ie `prior(eta.ka)`
+- a whole covariance block, using one of the matrix-valued distributions,
+  ie `prior(eta.cl, eta.v) ~ lkjCorr(2)`.  The names given have to be
+  exactly one block of the matrix.
+
+### The normal prior shorthand
+
+Normal priors are by far the most common, so they also have a shorthand
+that reuses the matrix syntax.  Putting a *population parameter* on the left
+of a `~` gives it a normal prior with a **zero mean** and the given
+variance:
+
+``` r
+ini({
+  tka <- 1
+  tcl <- 3
+  tv  <- 4
+
+  tka ~ 4          # tka ~ N(0, sd = 2)
+
+  tcl + tv ~ c(1,  # (tcl, tv) ~ MVN(0, Sigma)
+               0.01, 1)
+})
+```
+
+The number on the right is a variance, so `tka ~ 4` has a standard
+deviation of 2.  The value given with `<-` stays the initial estimate; it is
+*not* the prior mean.
+
+This is unambiguous because a name cannot be both a population parameter and
+an eta -- that combination used to be a "duplicated parameter" error.  A name
+that is not a population parameter still specifies an eta exactly as before.
+
+Every matrix spelling works here, including the per-row line form, which
+builds up the block just as it does for etas:
+
+``` r
+tcl ~ 1
+tv  ~ c(0.01, 1)
+```
+
+and the `sd()`, `var()`, `cor()`, `cov()` and `chol()` transformations:
+
+``` r
+tcl + tv ~ sd(2,
+              0.5, 3)   # variances of 4 and 9
+```
+
+The matrix means exactly what it means for an eta block: the off-diagonal is
+a **covariance**, not a correlation.  A prior block and an eta block written
+the same way give the same matrix, so `cor()` is how you give a correlation
+here just as it is there.
+
+An uncorrelated block is simply independent normal priors, since that is
+what a multivariate normal with a diagonal covariance is.  A zero variance
+is a point mass rather than a prior, so it is an error.
+
+### Priors on the omega values
+
+The two NONMEM prior flavours want different things from an omega.
+
+An `NWPRI` model gives the omega block degrees of freedom.  The scale matrix
+of the Wishart family is optional, because the block it is put on already
+*is* that matrix, so only the degrees of freedom are needed -- this is the
+`$OMEGAP`/`$OMEGAPD` pair:
+
+``` r
+ini({
+  eta.cl + eta.v ~ c(0.3,
+                     0.01, 0.1)
+  prior(eta.cl, eta.v) ~ invWishart(4)
+})
+```
+
+It works on a 1x1 block as well, since an inverse Wishart of dimension one
+is an inverse gamma.  An improper `nu <= p - 1` is an error.
+
+When every block shares the same degrees of freedom, a one-sided `~` sets
+them all at once instead of naming each block:
+
+``` r
+ini({
+  eta.cl + eta.v ~ c(0.3,
+                     0.01, 0.1)
+  eta.ka ~ 0.5
+  ~invWishart(4)      # every omega block gets 4
+})
+```
+
+Each block is still checked individually, and naming a block as well is a
+duplicate rather than an override.
+
+A `TNPRI` model instead puts a normal prior on the omega *elements*, jointly
+with the thetas.  Prepending `om.` to a between subject variability names its
+omega element, so the normal prior shorthand can be used on it:
+
+``` r
+ini({
+  eta.cl ~ 0.3
+  eta.v ~ 0.1
+  om.eta.cl ~ 0.01     # normal prior on the omega element of eta.cl
+  om.eta.v ~ 0.04
+})
+```
+
+The omega itself is untouched; only the prior is added.  Correlated omega
+priors work the same way, including the per-row line form.  An `om.` name has
+to match a real between subject variability -- it never quietly creates one.
+
+Naming the eta directly means the same thing, so `prior(om.eta.cl)` and
+`prior(eta.cl)` are interchangeable.  The `om.` spelling exists so the
+shorthand has a name to put on the left of a `~`, since `eta.cl ~ ...`
+already means the omega value itself.
+
+### Prior distribution names
+
+There are three spellings of every distribution, and all of them are
+accepted:
+
+1. the **R** name, when R parameterizes the distribution the same way 'Stan'
+   does -- `dnorm()`, `dlnorm()`, `dgamma()`, `dbeta()`, `dcauchy()`,
+   `dunif()`
+2. the **camelCase** name, which is the 'Stan' name written the way the rest
+   of the package is written -- `invWishart()`, `lkjCorr()`, `studentT()`
+3. the **'Stan'** name itself -- `inv_wishart()`, `lkj_corr()`, `student_t()`
+
+The canonical one, which is what gets stored on the `iniDf` and printed
+back, is the R name where there is a faithful one and the camelCase name
+otherwise.  The arguments may be given positionally or by name, so these are
+all the same prior:
+
+``` r
+prior(tka) ~ dnorm(0, 10)
+prior(tka) ~ normal(0, 10)
+prior(tka) ~ dnorm(sd=10, mean=0)
+```
+
+`dt()` is deliberately **not** accepted as a spelling of `studentT()`:
+R's `dt()` is the standardized (or noncentral) t, while
+`studentT(nu, mu, sigma)` (the 'Stan' `student_t`) is a location-scale t, so
+treating them as the same would silently change the prior.  Use `studentT()`
+with its own parameterization.
+
+The full list of supported distributions, including the 'Stan' name for each,
+is returned by `lotri::lotriPriorDists()`.
+
+### Bounds and truncated priors
+
+The bounds are not repeated in the prior; they come from the parameter
+itself.  A parameter that is already bounded below by zero therefore gets a
+half distribution:
+
+``` r
+add.sd <- c(0, 0.7)
+prior(add.sd) ~ dcauchy(0, 5)   # half-Cauchy, since add.sd has lower=0
+```
+
+The prior is checked against those bounds, so putting a distribution with
+positive support on a parameter that allows negative values is an error.
+
+### Where the prior is stored
+
+Priors are kept in the `prior` column of the model's `$iniDf` and are printed
+back as part of the `ini({})` block, so they survive printing and piping.
+
+A prior you specify is never silently dropped.  An estimation method that
+cannot use priors is expected to reject such a model rather than quietly
+ignore the prior, and rxode2 supplies the assertions for that:
+
+- `assertRxUiNoPriors()` -- for a method that cannot use priors at all; a
+  model that specifies one is an error
+- `assertRxUiNormalPriors()` -- for a method that supports priors but only
+  normal ones.  That covers `dnorm()`/`normal()`, `stdNormal()`, and the
+  `multiNormal()` family, which is what the shorthand above produces for
+  correlated parameters.  Anything else, including a covariance matrix prior
+  such as `lkjCorr()` or `invWishart()`, is an error
+- `assertRxUiNoOmegaDf()` -- for a method that cannot use prior degrees of
+  freedom on an omega block, ie the `NWPRI` form above
+- `assertRxUiNoOmegaNormalPriors()` -- for a method that can put a prior on
+  an omega but only a Wishart one, ie it supports `NWPRI` but not `TNPRI`
+
+A method that *implements* priors asks instead of asserts.  The predicates
+return `TRUE`/`FALSE` rather than throwing:
+
+- `testRxUiPriors()` -- does the model specify any prior at all
+- `testRxUiNormalPriors()` -- is every prior a normal one
+- `testRxUiOmegaDf()` -- does an omega carry degrees of freedom (`NWPRI`)
+- `testRxUiOmegaNormalPriors()` -- does an omega carry a normal prior
+  (`TNPRI`)
+
+The last two are mutually exclusive: an omega prior is either degrees of
+freedom or a normal prior, never both, and giving both is an error at
+specification time.  So a method can branch on which one it got.
+
+`rxUiPriors()` returns the priors themselves -- `name`, `prior`,
+`neta1`/`neta2` (`NA` for a population parameter) and the parameter's
+`lower`/`upper`, which is what a truncated prior needs for its bounds.
+
+So if a method silently ignored your prior, that is a bug in the method, not
+expected behaviour.
+
+## Simulating from the priors
+
+`rxSolve()` uses the priors for its uncertainty simulation, which is what
+NONMEM does with `$PRIOR NWPRI` and `$PRIOR TNPRI`.  Nothing extra has to
+be turned on: a model that carries priors uses them whenever variability
+is being simulated, that is when `nStud` is greater than one (or whatever
+`simVariability` forces).
+
+```
+one.cmt <- function() {
+  ini({
+    tka <- 0.45
+    tcl <- 1
+    tv <- 3.45
+    eta.cl + eta.v ~ c(0.3,
+                       0.01, 0.1)
+    eta.ka ~ 0.6
+    add.sd <- 0.7
+    tka ~ 0.01                            # normal prior on tka
+    prior(eta.cl, eta.v) ~ invWishart(20) # degrees of freedom, per block
+    prior(eta.ka) ~ invWishart(4)
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v <- exp(tv + eta.v)
+    linCmt() ~ add(add.sd)
+  })
+}
+
+s <- rxSolve(one.cmt, ev, nSub = 10, nStud = 100)
+s$thetaMat   # the per study population parameter draws
+s$omegaList  # the per study omega, one draw per study
+```
+
+Each omega block is drawn with **its own** degrees of freedom, which the
+single `dfSub` argument cannot express -- above, the 2x2 block is drawn
+with 20 and the 1x1 with 4.  A block with no prior is left at its point
+estimate.  `dfWishart()` helps pick a degrees of freedom that matches a
+target relative standard error.
+
+### The prior mean is the estimate
+
+A draw is added to the value the model already gives, so a normal prior on
+a population parameter has to be centered on its estimate, and one on an
+omega element on that omega value.  `tka ~ 0.01` is exactly that -- the
+number is the variance and the mean comes from `tka <- 0.45`.  Writing a
+prior centered somewhere else is an error rather than a simulation that
+quietly differs from what the model says:
+
+```
+tka <- 0.45
+prior(tka) ~ dnorm(0, 0.1)
+#> Error: cannot simulate from the prior on 'tka' (dnorm(0, 0.1)): the
+#>   prior mean (0) is not the initial estimate (0.45)
+```
+
+### A joint prior over the thetas and the omegas
+
+A `TNPRI` variance matrix covers the population parameters and the omega
+values together, with covariances between them.  Prefix an omega element
+with `om.` to name it, and put both in one block:
+
+```
+tcl + om.eta.cl ~ c(0.02,
+                    0.004, 0.005)
+```
+
+Drawn that way the omega is not guaranteed positive definite.  A study
+whose draw is not gets the whole joint vector redrawn, up to
+`priorPdRetry` times (10 by default).  If none of them is, the nearest
+positive definite matrix of the kept draws is used and `rxSolve()` warns
+-- that projection lands on the boundary of the positive definite cone,
+so those studies are not draws from the stated prior.  A model that
+reaches the fallback often wants a larger `priorPdRetry` or a tighter
+prior.
+
+### Turning it off, and precedence
+
+`usePrior = FALSE` ignores the priors and falls back to a supplied
+`thetaMat`/`dfSub`; `usePrior = TRUE` requires them and says why if it
+cannot honor them.  A `thetaMat`/`dfSub` carried in the model's `meta`
+block loses to the priors, with a warning.  One given at the call site
+wins over them instead, also with a warning -- an explicit argument is
+never silently discarded.
+
+Prior simulation covers nested/occasion models (`| id`, `| occ`).  Each
+prior's degrees of freedom go on the nesting level that holds its block,
+and a level with no prior stays at its estimate.  One draw is shared
+across the occasions of a study, since the level is drawn once.
+
+A nesting level is drawn as a whole, so a prior has to cover its level.
+A prior on part of a level -- one of two independent blocks at `| id`,
+say -- is an error, because drawing the level would redraw the other
+block too and correlate blocks the model declared independent, and there
+is nowhere to put a second degrees of freedom.  Put the prior on the
+whole level instead.
+
+Under a chunked solve (`file =`/`chunkSize =`) a prior on the population
+parameters is simulated, since that half of a prior is a `thetaMat`,
+which the one draw every chunk shares covers.  A prior on an omega block
+is not, and is a clear error rather than a solve that quietly drops it.
+
+### A thetaMat that already carries the omegas
+
+The same joint draw works without an `ini({})` prior, for a `thetaMat`
+that came from a covariance step.  `nonmem2rx` gives one directly, and so
+does a nlmixr2 fit:
+
+```
+mod <- nonmem2rx("run3.lst")
+colnames(mod$thetaMat)
+#> "t.CL" "GFRCL" ... "IIVCL" "omega1.2" "omega1.3" "IIVV1" ... "eps1" "sigma1.2"
+
+rxSolve(mod, data.sim, nStud = 100, omegaSeparation = "tnpri")
+```
+
+`omegaSeparation = "tnpri"` says those entries are the omega itself and
+should be drawn from the `thetaMat` jointly with the thetas, instead of
+having their correlations redrawn by the `lkj`/`separation` strategies --
+which discard the off-diagonal entries the covariance step measured, and
+cannot carry a covariance between a theta and an omega entry at all.
+`sigmaSeparation = "tnpri"` does the same for the residual entries.
+
+Columns are matched to entries by name, in whichever spelling produced
+them:
+
+| | diagonal | off-diagonal |
+|---|---|---|
+| nlmixr2 fit `$cov` | `om.eta.cl` | `cov.eta.cl.eta.v` |
+| `nonmem2rx` | `eta.cl` | `omega1.2`, `omega.2.1` |
+
+This is opt-in rather than automatic: an eta-named column already means
+that eta's variance under the existing separation strategy, so it cannot
+change meaning on its own.  `omega` has to be a matrix, since the drawn
+entries are added to it.
 
 # Note on strings in rxode2
 

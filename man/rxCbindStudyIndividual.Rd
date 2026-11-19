@@ -21,7 +21,7 @@ Bind the study parameters and individual parameters
 }
 \examples{
 
-# Function for coverting coefficient of covariance into a variance
+# Function for converting coefficient of covariance into a variance
 lognCv <- function(x){log((x/100)^2+1)}
 
 set.seed(32)
@@ -52,6 +52,20 @@ tmat <-rxRmvn(nStud, theta[dimnames(thetaMat)[[1]]], thetaMat)
 rxCbindStudyIndividual(tmat, ev1)
 
 }
+\seealso{
+Other Solving:
+\code{\link[=as.arrow]{as.arrow()}},
+\code{\link[=rxForcedPars]{rxForcedPars()}},
+\code{\link[=rxInjectedPars]{rxInjectedPars()}},
+\code{\link[=rxParLoader]{rxParLoader()}},
+\code{\link[=rxRegisterUiAssembled]{rxRegisterUiAssembled()}},
+\code{\link[=rxRegisterUiPrep]{rxRegisterUiPrep()}},
+\code{\link[=rxSetActiveParLoader]{rxSetActiveParLoader()}},
+\code{\link[=rxSetIni0]{rxSetIni0()}},
+\code{\link[=rxSolve]{rxSolve()}},
+\code{\link[=rxSolveChunked]{rxSolveChunked()}}
+}
 \author{
 Matthew Fidler
 }
+\concept{Solving}

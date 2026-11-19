@@ -22,6 +22,9 @@ extern "C" SEXP _rxCholInv(SEXP dms, SEXP theta, SEXP tn);
 //' @return inverse or pseudo inverse of matrix.
 //'
 //' @export
+//' @family Utilities
+//' @examples
+//' rxInv(matrix(c(2, 1, 1, 2), 2))
 // [[Rcpp::export]]
 NumericVector rxInv(SEXP matrix){
   mat smatrix= as<mat>(matrix);
@@ -80,7 +83,7 @@ arma::mat rxToCholOmega(arma::mat cholMat){
 //' * `cholOmegaInv` gives the
 //'     Cholesky decomposition of the Omega Inverse matrix.
 //' * `omegaInv` gives the Omega Inverse matrix.
-//' * `d(omegaInv)` gives the `d(Omega^-1)` withe respect to the
+//' * `d(omegaInv)` gives the `d(Omega^-1)` with respect to the
 //'     theta parameter specified in `thetaNumber`.
 //' * `d(D)` gives the `d(diagonal(Omega^-1))` with respect to
 //'     the theta parameter specified in the `thetaNumber`
@@ -98,6 +101,13 @@ arma::mat rxToCholOmega(arma::mat cholMat){
 //' @author Matthew L. Fidler
 //'
 //' @export
+//' @family Utilities
+//' @examples
+//' omega <- lotri::lotri(a + b ~ c(1, 0.5, 1))
+//' x <- rxSymInvCholCreate(omega, create.env = FALSE)
+//' rxSymInvChol(x, x$ini, "omegaInv")
+//' # derivative of Omega^-1 with respect to the first theta
+//' rxSymInvChol(x, x$ini, "d(omegaInv)", 1L)
 // [[Rcpp::export]]
 RObject rxSymInvChol(RObject invObjOrMatrix, Nullable<NumericVector> theta = R_NilValue, std::string type = "cholOmegaInv", int thetaNumber = 0){
   if (invObjOrMatrix.isObject()){

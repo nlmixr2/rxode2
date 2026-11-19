@@ -13,9 +13,22 @@
 #'   term by dividing each by the number of states in the term and then
 #'   adding a matrix term for each state.
 #'
+#' @details
+#'
+#' This no longer affects the conversion.  The `matExp()` rate matrix has to be
+#' constant in the states, and dividing any one state out of a multi-state
+#' product always leaves a coefficient that still reads a state, so such a term
+#' goes to the `indLin()` forcing whichever state is preferred.  The setting is
+#' kept so existing code keeps working.
+#'
 #' @return Nothing
 #' @author Matthew L. Fidler
 #' @export
+#' @family Solver options and performance
+#' @examples
+#' .old <- utils::getFromNamespace(".rxIndLinStrategy", "rxode2")
+#' rxIndLinStrategy("split")
+#' rxIndLinStrategy(.old) # restore
 rxIndLinStrategy <- function(strategy = c("curState", "split")) {
   assignInMyNamespace(".rxIndLinStrategy", match.arg(strategy))
 }
@@ -24,19 +37,32 @@ rxIndLinStrategy <- function(strategy = c("curState", "split")) {
 #' Set the preferred factoring by state
 #'
 #' @param preferred A list of each state's preferred factorization
+#'
+#' @details
+#'
+#' Like [rxIndLinStrategy()], this no longer affects the conversion: a
+#' multi-state product cannot yield a state-free rate constant whichever state
+#' is factored out, so it becomes an `indLin()` forcing instead.  The setting is
+#' kept so existing code keeps working.
+#'
 #' @return Nothing
 #' @author Matthew Fidler
 #' @export
+#' @family Solver options and performance
+#' @examples
+#' .old <- utils::getFromNamespace(".rxIndLinState", "rxode2")
+#' # factor terms of the central equation by central, then depot
+#' rxIndLinState(list(central = c("central", "depot")))
+#' rxIndLinState(.old) # restore
 rxIndLinState <- function(preferred = NULL) {
   if (is.null(preferred)) {
     return(assignInMyNamespace(".rxIndLinState", preferred))
   }
   checkmate::assertList(preferred, names = "unique")
   lapply(seq_along(preferred), function(x) {
-    if (!checkmate::checkCharacter(preferred[[x]],
-      names = "unnamed"
-    )) {
-      stop(sprintf(gettext("'rxIndLinState' list element '%s' must be a unnamed character vector"), names(preferred)[x]),
+    if (!checkmate::checkCharacter(preferred[[x]], names = "unnamed")) {
+      stop(
+        sprintf(gettext("'rxIndLinState' list element '%s' must be a unnamed character vector"), names(preferred)[x]),
         call. = FALSE
       )
     }
@@ -45,8 +71,19 @@ rxIndLinState <- function(preferred = NULL) {
 }
 
 .rxIndLinLine <- function(line, states, state0) {
-  .tmp <- symengine::expand(line) ## Expand line
-  .tmp <- rxFromSE(.tmp) ## Convert SE->rxode2; Changes things like X^1 -> X
+  .tmp <- tryCatch(
+    symengine::expand(line), ## Expand line; simplifies X^1->X etc
+    error = function(e) {
+      ## Re-parsing is the usual fallback for complex exprs, but symengine
+      ## cannot parse a dotted identifier (`eta.Cl`) and that is an ordinary
+      ## rxode2 name.  Expansion is a simplification, not a requirement, so
+      ## give up on it rather than on the conversion.
+      tryCatch(symengine::S(as.character(line)), error = function(e2) line)
+    }
+  )
+  ## rxFromSE() needs a Basic; if the fallback above handed back the original
+  ## object it is already one, but a plain string must pass through untouched.
+  .tmp <- if (is.character(.tmp)) .tmp else rxFromSE(.tmp)
 
   .ret <- eval(parse(text = paste0("rxSplitPlusQ(quote(", .tmp, "))")))
   .lst <- list()
@@ -66,7 +103,18 @@ rxIndLinState <- function(preferred = NULL) {
   ## This collapses a character vector with "*" between it
   ## If we have *1/x this becomes simply /x
   .multCollapse <- function(x) {
-    as.character(symengine::S(paste(x, collapse = "*")))
+    .txt <- paste(x, collapse = "*")
+    # These are model-side names.  S() reads one that matches a symengine
+    # constant (`e`, `I`, `Catalan`, ...) as the constant and would silently
+    # fold the variable away (#1359); it also cannot parse a dotted identifier
+    # (`eta.Cl`), which is an ordinary rxode2 name.  This call is only tidying
+    # the result cosmetically, so fall back to the plain product rather than
+    # losing a variable or failing the whole conversion: `-1*x` instead of `-x`
+    # is uglier but identical.
+    if (any(x %in% names(.rxSEreserved))) {
+      return(.txt)
+    }
+    tryCatch(as.character(symengine::S(.txt)), error = function(e) .txt)
   }
   sapply(.ret, function(x) {
     .mult <- eval(parse(text = paste0("rxSplitPlusQ(quote(", x, "),mult=TRUE)")))
@@ -86,15 +134,25 @@ rxIndLinState <- function(preferred = NULL) {
       .pars <- rxModelVars(paste0("rx_expr=", x))$params
       return(.pars[.pars %in% states])
     }))
+    ## The A matrix of a matExp() model has to be constant in the states --
+    ## that is the premise of the matrix exponential, and it is what
+    ## rxode2parseHandleEvid.h's jump code already assumes.  So a term only
+    ## belongs in A when dividing out one state leaves a coefficient that
+    ## reads no state at all; anything else is the nonlinear residual and
+    ## goes to the forcing, where the solver's Picard iteration can chase it
+    ## (rxode2#1186).
+    .addForcing <- function(.mult) {
+      .fullIndLin <<- TRUE
+      .addIt(.multCollapse(.mult), "_rxF")
+    }
     .addState <- function(.state, .mult) {
       .num <- which(.mult == .state)
       if (length(.num) == 0) {
-        .fullIndLin <<- TRUE
-        .rest <- c(.mult, paste0("1/", .state))
-        .expr <- .multCollapse(.rest)
-        .addIt(.expr, .state)
+        ## The state is in there but not as a bare factor (vmax/(km+central)),
+        ## so no division by it produces a linear coefficient.  This used to
+        ## multiply in `1/state`, which also made A singular at state == 0.
+        .addForcing(.mult)
       } else {
-        if (length(.num) > 1) .fullIndLin <<- TRUE
         .num <- .num[1]
         .rest <- .mult[-.num]
         if (length(.rest) == 0) {
@@ -102,51 +160,35 @@ rxIndLinState <- function(preferred = NULL) {
         } else if (length(.rest) == 1 && .rest[1] == "-1") {
           .addIt("-1", .state)
         } else {
-          if (!.fullIndLin) {
-            ## Check to see if this is inductive or
-            ## depends on other states.
-            .otherStates <- unlist(lapply(.rest, function(x) {
-              .pars <- rxModelVars(paste0("rx_expr=", x))$params
-              return(.pars[.pars %in% states])
-            }))
-            if (length(.otherStates) > 0) .fullIndLin <<- TRUE
+          ## Whatever is left after dividing out the state still has to be
+          ## state free to be a legal rate constant.
+          .otherStates <- unlist(lapply(.rest, function(x) {
+            .pars <- rxModelVars(paste0("rx_expr=", x))$params
+            return(.pars[.pars %in% states])
+          }))
+          if (length(.otherStates) > 0) {
+            .addForcing(.mult)
+          } else {
+            .addIt(.multCollapse(.rest), .state)
           }
-          .expr <- .multCollapse(.rest)
-          .addIt(.expr, .state)
         }
       }
     }
-    if (length(.curStates) == 1) {
+    if (any(grepl("(^|[^A-Za-z0-9._])linCmt[AB]?[(]", .mult))) {
+      ## A linCmt() call reads the solved compartments, which are states of the
+      ## system even though they carry no d/dt().  A coefficient built from one
+      ## is therefore not constant over the matrix-exponential step, so the term
+      ## is the nonlinear residual and belongs in the forcing, where the solver
+      ## re-evaluates it as it iterates (rxode2#1215).
+      .addForcing(.mult)
+    } else if (length(.curStates) == 1) {
       .addState(.curStates, .mult)
     } else if (length(.curStates) > 1) {
-      if (.rxIndLinStrategy == "split") {
-        ## Use strategy #3, split between all the compartments
-        .extra <- paste0("1/", length(.curStates))
-        for (.s in .curStates) {
-          .addState(.s, c(.mult, .extra))
-        }
-      } else {
-        .pref <- .rxIndLinState[[state0]]
-        .addPref <- FALSE
-        if (!is.null(.pref)) {
-          .pref <- intersect(.pref, .curStates)
-          if (length(.pref) > 0) {
-            .addState(.pref[1], .mult)
-            .addPref <- TRUE
-          }
-        }
-        if (!.addPref) {
-          if (any(.curStates == state0)) {
-            ## If there is d/dt(state1) = ... (state1*state2*state3) ...
-            ## or some other complex expression prefer expressing
-            .addState(state0, .mult)
-          } else {
-            ## Otherwise just use the first state identified.
-            ## Strategy #1 just add the first
-            .addState(.curStates[1], .mult)
-          }
-        }
-      }
+      ## A product of two states (or a state with itself) can never leave a
+      ## state-free coefficient whichever one is divided out, so it goes to
+      ## the forcing whole.  Routing here rather than inside .addState() also
+      ## stops the "split" strategy emitting the same forcing term n times.
+      .addForcing(.mult)
     } else {
       ## This is some "constant" or time-base experssion that
       ## does not depend on state.  Hence it is the extra constant
@@ -164,7 +206,7 @@ rxIndLinState <- function(preferred = NULL) {
   return(c(.ret, paste0(.fullIndLin)))
 }
 
-.indLinInfo <- list()
+.rxState$indLinInfo <- list()
 
 #' This creates the inductive linearization pieces to integrate into
 #' a rxode2 model.
@@ -193,9 +235,7 @@ rxIndLinState <- function(preferred = NULL) {
   .states <- rxState(.env)
   rxProgress(length(.states))
   .minfo("create inductive linearization matrices")
-  on.exit({
-    rxProgressAbort()
-  })
+  on.exit(.rxProgressExit())
   .ret <- eval(parse(text = rxIndLin_(.states)))
   .w <- setNames(which(.ret[, "indLin"] == "TRUE") - 1, NULL)
   .fullIndLin <- length(.w) > 0
@@ -218,8 +258,41 @@ rxIndLinState <- function(preferred = NULL) {
     )
     .code <- c(.code, paste("_rxF=", as.vector(.ret1)))
   }
-  assignInMyNamespace(".indLinInfo", .ret)
+  .rxState$indLinInfo <- .ret
   rxProgressStop()
   .malert("indLin is in development and results subject to change")
   return(paste(.code, collapse = "\n"))
+}
+
+#' Matrix-exponential cache statistics for inductive linearization
+#'
+#' Reports whether the per-thread content-addressed exponential cache used by
+#' `matExp()`/`indLin()` solving actually served anything.  The same numbers ride
+#' out of an [rxSolve()] as `$counts$dadt` (computed) and `$counts$jac` (reused),
+#' but a fit drives the solver directly and never builds that data frame, so this
+#' is the only way to observe the cache from inside one.
+#'
+#' The counters are cumulative until read with `reset = TRUE`, so a measurement
+#' is a reset before the work and a read after; a read that skips the reset
+#' blends the work with whatever warmed the counters earlier, which for a fit is
+#' its own setup solve.  A nonzero `noSlot` condemns the run whatever `reused`
+#' says: those exponentials could not have hit.
+#'
+#' @param reset logical; when `TRUE` zero the counters after reading, so a
+#'   measurement is one call before the work and one after
+#'
+#' @return named numeric vector: `computed` (exponentials actually
+#'   exponentiated), `reused` (exponentials served from a cache slot), `noSlot`
+#'   (the subset of `computed` that ran on a thread with no cache slot of its
+#'   own, so it could not have hit -- nonzero means the pool was never sized or
+#'   is smaller than the thread team), and `slots` (the current pool size)
+#'
+#' @author Matthew L. Fidler
+#' @keywords internal
+#' @export
+#' @examples
+#' rxIndLinExpStats()
+rxIndLinExpStats <- function(reset = FALSE) {
+  checkmate::assertLogical(reset, len = 1, any.missing = FALSE)
+  .Call(`_rxode2_rxIndLinExpStats`, reset)
 }

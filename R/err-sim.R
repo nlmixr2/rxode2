@@ -23,22 +23,22 @@ rxGetDistributionSimulationLines <- function(line) {
 }
 
 .simulationFun <- list(
-  "t"="rt",
-  "pois"="rpois",
-  "binom"="rbinom",
-  "beta"="rbeta",
-  "chisq"="rchisq",
-  "dexp"="rexp",
-  "f"="rf",
-  "geom"="rgeom",
-  "hyper"="rhyper",
-  "unif"="runif",
-  "weibull"="rweibull",
-  "cauchy"="rcauchy",
-  "dgamma"="rgamma",
-  "ordinal"="rordinal",
-  "nbinom"="rnbinom",
-  "nbinomMu"="rnbinomMu"
+  "t" = "rt",
+  "pois" = "rpois",
+  "binom" = "rbinom",
+  "beta" = "rbeta",
+  "chisq" = "rchisq",
+  "dexp" = "rexp",
+  "f" = "rf",
+  "geom" = "rgeom",
+  "hyper" = "rhyper",
+  "unif" = "runif",
+  "weibull" = "rweibull",
+  "cauchy" = "rcauchy",
+  "dgamma" = "rgamma",
+  "ordinal" = "rordinal",
+  "nbinom" = "rnbinom",
+  "nbinomMu" = "rnbinomMu"
 )
 
 .getQuotedDistributionAndSimulationArgs <- function(line) {
@@ -51,22 +51,139 @@ rxGetDistributionSimulationLines <- function(line) {
   .nargs <- max(.errDist[[.dist]])
   .cnd <- pred1$cond
   .argName <- .namedArgumentsToPredDf[[.dist]]
-  .args <- vapply(seq(1:.nargs), function(.i) {
-    .curDist <- .argName[.i]
-    if (!is.na(pred1[[.curDist]])) {
-      return(pred1[[.curDist]])
-    } else {
-      .curDist <- paste0(.dist, ifelse(.i == 1, "", .i))
-      .w <- which(env$iniDf$err == .curDist & env$iniDf$condition == .cnd)
-      if (length(.w) == 1) {
-        return(env$iniDf$name[.w])
+  .args <- vapply(
+    seq(1:.nargs),
+    function(.i) {
+      .curDist <- .argName[.i]
+      if (!is.na(pred1[[.curDist]])) {
+        return(pred1[[.curDist]])
       } else {
-        return("")
+        .curDist <- paste0(.dist, ifelse(.i == 1, "", .i))
+        .w <- which(env$iniDf$err == .curDist & env$iniDf$condition == .cnd)
+        if (length(.w) == 1) {
+          return(env$iniDf$name[.w])
+        } else {
+          return("")
+        }
       }
-    }
-  }, character(1))
+    },
+    character(1)
+  )
 
   as.call(lapply(c(.simulationFun[[.dist]], .args[.args != ""]), str2lang))
+}
+
+#' Get the ar() correlation as a quoted expression for an endpoint
+#'
+#' @param env parsed model environment
+#' @param pred1 single predDf row
+#' @return quoted correlation (parameter name, or the modeled correlation
+#'   variable), or NULL when the endpoint has no ar() term
+#' @author Matthew Fidler
+#' @noRd
+.rxGetArCorLang <- function(env, pred1) {
+  # ar() correlations backed by a parameter live in the $iniDf with err == "ar"
+  # (a literal ar(0.5) is parsed into an auto-generated FIX parameter, an
+  # estimated ar(rho) keeps its name); there is no dedicated $predDf column
+  .w <- which(env$iniDf$err == "ar" & env$iniDf$condition == pred1$cond)
+  if (length(.w) == 1L) {
+    return(str2lang(env$iniDf$name[.w]))
+  }
+  # otherwise the correlation is a modeled (calculated) variable, e.g.
+  # `corv <- expit(tcor); cp ~ add(add.sd) + ar(corv)` -- recover it directly
+  # from the endpoint's original error expression
+  .rxFindArArg(env, pred1$cond)
+}
+
+#' Find the `ar()` argument in an endpoint's error expression
+#'
+#' Scans the model's stored expressions (`env$lstExpr`) for the `~` error line
+#' whose left-hand side matches the endpoint `cond` and returns the (quoted)
+#' argument of its `ar()` term, if any.  Used to resolve modeled `ar()`
+#' correlations, which are not stored in `$iniDf`/`$predDf`.
+#'
+#' @param env parsed model environment (must carry `lstExpr`)
+#' @param cond endpoint condition (the error expression's left-hand side)
+#' @return the quoted `ar()` argument, or NULL when not found
+#' @author Matthew L. Fidler
+#' @noRd
+.rxFindArArg <- function(env, cond) {
+  .lst <- tryCatch(get("lstExpr", envir = env), error = function(e) NULL)
+  if (is.null(.lst)) {
+    return(NULL)
+  }
+  .findAr <- function(e) {
+    if (is.call(e)) {
+      if (identical(e[[1]], quote(ar)) && length(e) == 2L) {
+        return(e[[2]])
+      }
+      for (.i in seq_along(e)) {
+        .r <- .findAr(e[[.i]])
+        if (!is.null(.r)) return(.r)
+      }
+    }
+    NULL
+  }
+  for (.e in .lst) {
+    if (is.call(.e) && identical(.e[[1]], quote(`~`)) && length(.e) == 3L) {
+      .lhs <- .e[[2]]
+      # unwrap ll(x)/linCmt() the same way .errHandleLlOrLinCmt() sets the
+      # endpoint condition, so ll(cp) ~ ... + ar(corv) still matches cond
+      if (is.call(.lhs)) {
+        if (identical(.lhs[[1]], quote(`ll`)) && length(.lhs) == 2L) {
+          .lhs <- .lhs[[2]]
+        } else if (identical(.lhs[[1]], quote(`linCmt`))) {
+          .lhs <- quote(`rxLinCmt`)
+        }
+      }
+      # `lhs ~ err | cond` puts the condition on the rhs; when it is present it
+      # is the endpoint name, otherwise the lhs is
+      .rhs <- .e[[3]]
+      if (is.call(.rhs) && identical(.rhs[[1]], quote(`|`)) && length(.rhs) == 3L) {
+        .lhs <- .rhs[[3]]
+      }
+      if (identical(deparse1(.lhs), as.character(cond))) {
+        .arg <- .findAr(.e[[3]])
+        if (!is.null(.arg)) return(.arg)
+      }
+    }
+  }
+  NULL
+}
+
+#' Build the continuous-time AR(1) simulation lines for an endpoint
+#'
+#' Implements a stationary continuous-time AR(1) (Ornstein-Uhlenbeck)
+#' process on the residual: the innovation is the endpoint's usual unit
+#' draw, scaled so the marginal variance stays rx_r_ for any correlation.
+#' The lag-1 correlation decays as cor^(time difference).  State is carried
+#' across observation records with the same lag()/lag0() form the estimation
+#' likelihood uses: rx.arT.<var> carries the previous time, lag0() reads the
+#' previous residual for the self-referential recurrence, and
+#' `1 - is.na(lag(...))` is the NaN-safe first-record indicator (0 on the first
+#' record so phi=0 -> the marginal draw, 1 after).
+#'
+#' @param cor quoted correlation (name or number)
+#' @param var endpoint variable suffix (e.g. "cp")
+#' @param innovation quoted unit residual draw (rxerr.<var> or an r*() call)
+#' @return list of quoted model lines; the final residual is left in
+#'   rx.arRes.<var> and the sim line back-transforms rx_pred_ + that residual
+#' @author Matthew Fidler
+#' @noRd
+.rxArSimLines <- function(cor, var, innovation) {
+  .res <- str2lang(paste0("rx.arRes.", var))
+  .t <- str2lang(paste0("rx.arT.", var))
+  .dt <- str2lang(paste0("rx.arDt.", var))
+  .nf <- str2lang(paste0("rx.arNf.", var))
+  .phi <- str2lang(paste0("rx.arPhi.", var))
+  list(
+    bquote(.(.t) <- time),
+    bquote(.(.dt) <- time - lag0(.(.t), 1)),
+    bquote(.(.nf) <- 1 - is.na(lag(.(.t), 1))),
+    bquote(.(.phi) <- .(.nf) * .(cor)^.(.dt)),
+    bquote(.(.res) <- .(.phi) * lag0(.(.res), 1) + sqrt(rx_r_ * (1 - .(.phi)^2)) * .(innovation)),
+    bquote(sim <- rxTBSi(rx_pred_ + .(.res), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
+  )
 }
 
 #' @rdname rxGetDistributionSimulationLines
@@ -76,10 +193,18 @@ rxGetDistributionSimulationLines.norm <- function(line) {
   pred1 <- line[[2]]
   .errNum <- line[[3]]
   .err <- str2lang(paste0("rxerr.", pred1$var))
-  .ret <- vector("list", 2)
-  .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
-  .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_+sqrt(rx_r_) * .(.err), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
-  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, .errNum, rxPredLlik=FALSE), .ret)
+  .arCor <- .rxGetArCorLang(env, pred1)
+  if (is.null(.arCor)) {
+    .ret <- vector("list", 2)
+    .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
+    .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_ + sqrt(rx_r_) * .(.err), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
+  } else {
+    .ret <- c(
+      list(bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))),
+      .rxArSimLines(.arCor, pred1$var, .err)
+    )
+  }
+  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, .errNum, rxPredLlik = FALSE), .ret)
 }
 
 #' @rdname rxGetDistributionSimulationLines
@@ -92,10 +217,19 @@ rxGetDistributionSimulationLines.t <- function(line) {
   env <- line[[1]]
   pred1 <- line[[2]]
   .errNum <- line[[3]]
-  .ret <- vector("list", 2)
-  .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
-  .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_+sqrt(rx_r_) * .(.getQuotedDistributionAndSimulationArgs(line)), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
-  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, .errNum, rxPredLlik=FALSE), .ret)
+  .draw <- .getQuotedDistributionAndSimulationArgs(line)
+  .arCor <- .rxGetArCorLang(env, pred1)
+  if (is.null(.arCor)) {
+    .ret <- vector("list", 2)
+    .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
+    .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_ + sqrt(rx_r_) * .(.draw), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
+  } else {
+    .ret <- c(
+      list(bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))),
+      .rxArSimLines(.arCor, pred1$var, .draw)
+    )
+  }
+  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, .errNum, rxPredLlik = FALSE), .ret)
 }
 
 #' @rdname rxGetDistributionSimulationLines
@@ -104,10 +238,19 @@ rxGetDistributionSimulationLines.cauchy <- function(line) {
   env <- line[[1]]
   pred1 <- line[[2]]
   .errNum <- line[[3]]
-  .ret <- vector("list", 2)
-  .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
-  .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_+sqrt(rx_r_) * .(.getQuotedDistributionAndSimulationArgs(line)), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
-  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, .errNum, rxPredLlik=FALSE), .ret)
+  .draw <- .getQuotedDistributionAndSimulationArgs(line)
+  .arCor <- .rxGetArCorLang(env, pred1)
+  if (is.null(.arCor)) {
+    .ret <- vector("list", 2)
+    .ret[[1]] <- bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))
+    .ret[[2]] <- bquote(sim <- rxTBSi(rx_pred_ + sqrt(rx_r_) * .(.draw), rx_lambda_, rx_yj_, rx_low_, rx_hi_))
+  } else {
+    .ret <- c(
+      list(bquote(ipredSim <- rxTBSi(rx_pred_, rx_lambda_, rx_yj_, rx_low_, rx_hi_))),
+      .rxArSimLines(.arCor, pred1$var, .draw)
+    )
+  }
+  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, .errNum, rxPredLlik = FALSE), .ret)
 }
 
 #' @rdname rxGetDistributionSimulationLines
@@ -117,15 +260,18 @@ rxGetDistributionSimulationLines.ordinal <- function(line) {
   .pred1 <- line[[2]]
   .errNum <- line[[3]]
   .c <- .env$lstExpr[[.pred1$line[1]]][[3]]
-  .ce <- try(eval(.c), silent=TRUE)
-  if (inherits(.ce, "try-error")) {
-  } else if (inherits(.ce, "numeric") &&
-               !is.null(names(.ce))) {
+  .ce <- try(eval(.c), silent = TRUE)
+  if (inherits(.ce, "try-error")) {} else if (
+    inherits(.ce, "numeric") &&
+      !is.null(names(.ce))
+  ) {
     .n <- names(.ce)
     .ln <- length(.n)
     if (.n[.ln] != "") {
-      stop("last element in ordinal simulation of c(p1=0, p2=0.5, ...) must be a number, not a named number",
-           call.=FALSE)
+      stop(
+        "last element in ordinal simulation of c(p1=0, p2=0.5, ...) must be a number, not a named number",
+        call. = FALSE
+      )
     }
     .n <- .n[.n != ""]
     if (length(.n) != .ln - 1) {
@@ -133,12 +279,23 @@ rxGetDistributionSimulationLines.ordinal <- function(line) {
     }
     .ret <- vector("list", 3)
     .ret[[1]] <- quote(ipredSim <- NA)
-    .ret[[2]] <- str2lang(paste0("rx_sim_~rxord(", paste(.n, collapse=", "), ")"))
+    .ret[[2]] <- str2lang(paste0("rx_sim_~rxord(", paste(.n, collapse = ", "), ")"))
     .ce <- setNames(.ce, NULL)
 
-    .ret[[3]] <- str2lang(paste0("sim<-", paste(vapply(seq_along(.ce), function(i) {
-      paste("(rx_sim_ == ", i, ")*", .ce[i])
-   }, character(1), USE.NAMES=FALSE), collapse="+")))
+    .ret[[3]] <- str2lang(paste0(
+      "sim<-",
+      paste(
+        vapply(
+          seq_along(.ce),
+          function(i) {
+            paste("(rx_sim_ == ", i, ")*", .ce[i])
+          },
+          character(1),
+          USE.NAMES = FALSE
+        ),
+        collapse = "+"
+      )
+    ))
     return(.ret)
   }
   .c[[1]] <- quote(`rxord`)
@@ -156,7 +313,7 @@ rxGetDistributionSimulationLines.default <- function(line) {
   .errNum <- line[[3]]
   .ret <- vector("list", 1)
   .ret[[1]] <- bquote(sim <- .(.getQuotedDistributionAndSimulationArgs(line)))
-  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, .errNum, rxPredLlik=FALSE), .ret)
+  c(.handleSingleErrTypeNormOrTFoceiBase(env, pred1, .errNum, rxPredLlik = FALSE), .ret)
 }
 
 #' @rdname rxGetDistributionSimulationLines
@@ -195,33 +352,38 @@ attr(rxUiGet.dvidLine, "rstudio") <- quote(dvid(1, 2, 3)) # for rstudio completi
 rxUiGet.paramsLine <- function(x, ...) {
   .x <- x[[1]]
   .iniDf <- .x$iniDf
-  .params <- c(.iniDf[is.na(.iniDf$neta1) | .iniDf$neta1 == .iniDf$neta2, "name"],
-               .x$covariates)
-  eval(parse(text=paste0("quote(params(", paste(.params, collapse=", "), "))")))
+  .params <- c(.iniDf[is.na(.iniDf$neta1) | .iniDf$neta1 == .iniDf$neta2, "name"], .x$covariates)
+  eval(parse(text = paste0("quote(params(", paste(.params, collapse = ", "), "))")))
 }
 attr(rxUiGet.paramsLine, "desc") <- "params() line for model"
 attr(rxUiGet.paramsLine, "rstudio") <- quote(params(ID, CL, V, KA)) # for rstudio completion
 
 #' @export
 #' @rdname rxUiGet
-rxUiGet.interpLines <- function(x, ...){
+rxUiGet.interpLines <- function(x, ...) {
   .ui <- x[[1]]
   .interp <- rxModelVars(.ui)$interp
-  if (!is.factor(.interp) ||
-        length(.interp) == 0) {
+  if (
+    !is.factor(.interp) ||
+      length(.interp) == 0
+  ) {
     return(NULL)
   }
   .lvl <- levels(.interp)
-  if (length(.lvl) != 5L ||
-        !identical(.lvl, c("default", "linear", "locf", "nocb", "midpoint"))) {
+  if (
+    length(.lvl) != 5L ||
+      !identical(.lvl, c("default", "linear", "locf", "nocb", "midpoint"))
+  ) {
     return(NULL)
   }
   if (any(is.na(.interp))) {
     return(NULL)
   }
-  .try <- try(all(.interp == "default"), silent=TRUE)
-  if (inherits(.try, "try-error") ||
-        !checkmate::testLogical(.try, any.missing=FALSE, len=1)) {
+  .try <- try(all(.interp == "default"), silent = TRUE)
+  if (
+    inherits(.try, "try-error") ||
+      !checkmate::testLogical(.try, any.missing = FALSE, len = 1)
+  ) {
     return(NULL)
   }
   if (.try) {
@@ -229,21 +391,21 @@ rxUiGet.interpLines <- function(x, ...){
     return(NULL)
   }
   .ret <- list()
-  .w <- which(.interp=="linear")
+  .w <- which(.interp == "linear")
   if (length(.w) > 0) {
-    .ret <- list(str2lang(paste("linear(",paste(names(.interp)[.w], collapse=", "), ")")))
+    .ret <- list(str2lang(paste("linear(", paste(names(.interp)[.w], collapse = ", "), ")")))
   }
-  .w <- which(.interp=="locf")
+  .w <- which(.interp == "locf")
   if (length(.w) > 0) {
-    .ret <- c(.ret, list(str2lang(paste("locf(",paste(names(.interp)[.w], collapse=", "), ")"))))
+    .ret <- c(.ret, list(str2lang(paste("locf(", paste(names(.interp)[.w], collapse = ", "), ")"))))
   }
-  .w <- which(.interp=="nocb")
+  .w <- which(.interp == "nocb")
   if (length(.w) > 0) {
-    .ret <- c(.ret, list(str2lang(paste("nocb(",paste(names(.interp)[.w], collapse=", "), ")"))))
+    .ret <- c(.ret, list(str2lang(paste("nocb(", paste(names(.interp)[.w], collapse = ", "), ")"))))
   }
-  .w <- which(.interp=="midpoint")
+  .w <- which(.interp == "midpoint")
   if (length(.w) > 0) {
-    .ret <- c(.ret, list(str2lang(paste("midpoint(",paste(names(.interp)[.w], collapse=", "), ")"))))
+    .ret <- c(.ret, list(str2lang(paste("midpoint(", paste(names(.interp)[.w], collapse = ", "), ")"))))
   }
   if (length(.ret) == 0) {
     return(NULL) #nocov
@@ -254,6 +416,7 @@ attr(rxUiGet.interpLines, "desc") <- "interpolation declaration line(s) for mode
 attr(rxUiGet.interpLines, "rstudio") <- quote(linear(CP)) # for rstudio completion
 
 #' @rdname rxUiGet
+#' @export
 rxUiGet.splitDose <- function(x, ...) {
   .ui <- x[[1]]
   .splitBolus <- rxModelVars(.ui)$splitBolus
@@ -261,20 +424,124 @@ rxUiGet.splitDose <- function(x, ...) {
     return(NULL)
   }
   .state <- rxModelVars(.ui)$state
-  if (length(.state) == 0L ||
-        any(.splitBolus < 1L | .splitBolus > length(.state))) {
+  if (
+    length(.state) == 0L ||
+      any(.splitBolus < 1L | .splitBolus > length(.state))
+  ) {
     return(NULL)
   }
-  list(as.call(c(list(quote(`splitBolus`)),
-                 lapply(.state[.splitBolus], as.name))))
+  list(as.call(c(list(quote(`splitBolus`)), lapply(.state[.splitBolus], as.name))))
 }
 attr(rxUiGet.splitDose, "desc") <- "split dose declaration line(s) for model"
 attr(rxUiGet.splitDose, "rstudio") <- quote(splitBolus(depot, central))
 
+#' All dose-splitting directive lines of a model
+#'
+#' @param ui rxode2 ui model
+#' @return list of the `splitBolus()`, `splitInfusion()`,
+#'   `splitInfusionBolus()` and `splitBolusInfusion()` lines (at most one
+#'   is present)
+#' @noRd
+#' @author Matthew L. Fidler
+.rxUiSplitDirectiveLines <- function(ui) {
+  .x <- list(ui)
+  c(
+    rxUiGet.splitDoseLines(.x),
+    rxUiGet.splitInfusionLines(.x),
+    rxUiGet.splitInfusionBolusLines(.x),
+    rxUiGet.splitBolusInfusionLines(.x)
+  )
+}
+
 #' @rdname rxUiGet
+#' @export
 rxUiGet.splitDoseLines <- rxUiGet.splitDose
 attr(rxUiGet.splitDoseLines, "desc") <- attr(rxUiGet.splitDose, "desc")
 attr(rxUiGet.splitDoseLines, "rstudio") <- attr(rxUiGet.splitDose, "rstudio")
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.splitInfusion <- function(x, ...) {
+  .ui <- x[[1]]
+  .splitInfusion <- rxModelVars(.ui)$splitInfusion
+  if (length(.splitInfusion) < 2L) {
+    return(NULL)
+  }
+  .state <- rxModelVars(.ui)$state
+  if (
+    length(.state) == 0L ||
+      any(.splitInfusion < 1L | .splitInfusion > length(.state))
+  ) {
+    return(NULL)
+  }
+  list(as.call(c(list(quote(`splitInfusion`)), lapply(.state[.splitInfusion], as.name))))
+}
+attr(rxUiGet.splitInfusion, "desc") <- "split infusion declaration line(s) for model"
+attr(rxUiGet.splitInfusion, "rstudio") <- quote(splitInfusion(central, central, peripheral))
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.splitInfusionLines <- rxUiGet.splitInfusion
+attr(rxUiGet.splitInfusionLines, "desc") <- attr(rxUiGet.splitInfusion, "desc")
+attr(rxUiGet.splitInfusionLines, "rstudio") <- attr(rxUiGet.splitInfusion, "rstudio")
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.splitInfusionBolus <- function(x, ...) {
+  .ui <- x[[1]]
+  .split <- rxModelVars(.ui)$splitInfusionBolus
+  if (length(.split) < 2L) {
+    return(NULL)
+  }
+  .state <- rxModelVars(.ui)$state
+  if (
+    length(.state) == 0L ||
+      any(.split < 1L | .split > length(.state))
+  ) {
+    return(NULL)
+  }
+  list(as.call(c(list(quote(`splitInfusionBolus`)), lapply(.state[.split], as.name))))
+}
+attr(
+  rxUiGet.splitInfusionBolus,
+  "desc"
+) <- "splitInfusionBolus dose declaration line(s) for model (infusion doses split into infusion and bolus)"
+attr(rxUiGet.splitInfusionBolus, "rstudio") <- quote(splitInfusionBolus(depot, central, depot2))
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.splitInfusionBolusLines <- rxUiGet.splitInfusionBolus
+attr(rxUiGet.splitInfusionBolusLines, "desc") <- attr(rxUiGet.splitInfusionBolus, "desc")
+attr(rxUiGet.splitInfusionBolusLines, "rstudio") <- attr(rxUiGet.splitInfusionBolus, "rstudio")
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.splitBolusInfusion <- function(x, ...) {
+  .ui <- x[[1]]
+  .split <- rxModelVars(.ui)$splitBolusInfusion
+  if (length(.split) < 2L) {
+    return(NULL)
+  }
+  .state <- rxModelVars(.ui)$state
+  if (
+    length(.state) == 0L ||
+      any(.split < 1L | .split > length(.state))
+  ) {
+    return(NULL)
+  }
+  list(as.call(c(list(quote(`splitBolusInfusion`)), lapply(.state[.split], as.name))))
+}
+attr(
+  rxUiGet.splitBolusInfusion,
+  "desc"
+) <- "splitBolusInfusion dose declaration line(s) for model (bolus doses split into bolus and infusion)"
+attr(rxUiGet.splitBolusInfusion, "rstudio") <- quote(splitBolusInfusion(depot, depot2, central))
+
+#' @rdname rxUiGet
+#' @export
+rxUiGet.splitBolusInfusionLines <- rxUiGet.splitBolusInfusion
+attr(rxUiGet.splitBolusInfusionLines, "desc") <- attr(rxUiGet.splitBolusInfusion, "desc")
+attr(rxUiGet.splitBolusInfusionLines, "rstudio") <- attr(rxUiGet.splitBolusInfusion, "rstudio")
 
 #' @export
 #' @rdname rxUiGet
@@ -282,26 +549,30 @@ rxUiGet.simulationSigma <- function(x, ...) {
   .x <- x[[1]]
   .exact <- x[[2]]
   .predDf <- get("predDf", .x)
-  .sigmaNames <- vapply(seq_along(.predDf$var), function(i) {
-    if (.predDf$distribution[i] %in% c("dnorm",  "norm")) {
-      paste0("rxerr.", .predDf$var[i])
-    } else {
-      ""
-    }
-  }, character(1))
+  .sigmaNames <- vapply(
+    seq_along(.predDf$var),
+    function(i) {
+      if (.predDf$distribution[i] %in% c("dnorm", "norm")) {
+        paste0("rxerr.", .predDf$var[i])
+      } else {
+        ""
+      }
+    },
+    character(1)
+  )
   .sigmaNames <- .sigmaNames[.sigmaNames != ""]
   .sigma <- diag(length(.sigmaNames))
   dimnames(.sigma) <- list(.sigmaNames, .sigmaNames)
   .sigma
 }
 attr(rxUiGet.simulationSigma, "desc") <- "simulation sigma"
-attr(rxUiGet.simulationSigma, "rstudio") <- lotri::lotri(a+b ~ c(1, .1, 1))
+attr(rxUiGet.simulationSigma, "rstudio") <- lotri::lotri(a + b ~ c(1, .1, 1))
 
 .simulationModelAssignTOS <- function(ui, ret) {
-  assign("theta", ui$theta, envir=ret)
-  assign("omega", ui$omega, envir=ret)
-  assign("simulationSigma", ui$simulationSigma, envir=ret)
-  assign("uiFun", as.function(ui), envir=ret)
+  assign("theta", ui$theta, envir = ret)
+  assign("omega", ui$omega, envir = ret)
+  assign("simulationSigma", ui$simulationSigma, envir = ret)
+  assign("uiFun", as.function(ui), envir = ret)
   class(ret) <- c("rxode2tos", "rxode2")
   ret
 }
@@ -310,8 +581,26 @@ attr(rxUiGet.simulationSigma, "rstudio") <- lotri::lotri(a+b ~ c(1, .1, 1))
 #' @rdname rxUiGet
 rxUiGet.simulationModel <- function(x, ...) {
   .x <- x[[1]]
-  .exact <- x[[2]]
-  .simulationModelAssignTOS(.x, eval(getBaseSimModel(.x)))
+  ## meta is a reference-type environment shared across all rxUiDecompress
+  ## calls for the same model, so it is the right place for per-model caches.
+  ## All cached values are invalidated automatically when the model is modified
+  ## via piping/.copyUi(), because those operations create a new meta env.
+  .meta <- .x$meta
+  .cached <- .meta$.simModelBase
+  if (!is.null(.cached)) {
+    return(.cached)
+  }
+  ## Cold path: build the compiled simulation model and cache the full TOS.
+  ## theta/omega/simulationSigma/uiFun are derived from the rxUi which is
+  ## immutable until the next piping step, so they are safe to cache.
+  .cached <- eval(getBaseSimModel(.x))
+  assign("theta", .x$theta, envir = .cached)
+  assign("omega", .x$omega, envir = .cached)
+  assign("simulationSigma", .x$simulationSigma, envir = .cached)
+  assign("uiFun", as.function(.x), envir = .cached)
+  class(.cached) <- c("rxode2tos", "rxode2")
+  .meta$.simModelBase <- .cached
+  .cached
 }
 attr(rxUiGet.simulationModel, "desc") <- "simulation model from UI"
 attr(rxUiGet.simulationModel, "rstudio") <- quote(rxode2()) # for rstudio completion
@@ -350,9 +639,14 @@ rxUiGet.simulationIniModel <- function(x, ...) {
 attr(rxUiGet.simulationIniModel, "desc") <- "simulation model with the ini values prepended (from UI)"
 attr(rxUiGet.simulationIniModel, "rstudio") <- quote(rxode2()) # for rstudio completion
 
-.rxModelNoErrorLines <- function(uiModel, prefixLines=NULL, paramsLine=NULL,
-                                 modelVars=FALSE, cmtLines=TRUE,
-                                 lstExpr=NULL) {
+.rxModelNoErrorLines <- function(
+  uiModel,
+  prefixLines = NULL,
+  paramsLine = NULL,
+  modelVars = FALSE,
+  cmtLines = TRUE,
+  lstExpr = NULL
+) {
   if (is.null(lstExpr)) {
     .expr <- uiModel$lstExpr
   } else {
@@ -367,8 +661,7 @@ attr(rxUiGet.simulationIniModel, "rstudio") <- quote(rxode2()) # for rstudio com
 
   .k <- 2
 
-  if (is.null(paramsLine)) {
-  } else if (is.na(paramsLine)) {
+  if (is.null(paramsLine)) {} else if (is.na(paramsLine)) {
     .lenLines <- .lenLines - 1
   }
   .ret <- vector("list", .lenLines + .k)
@@ -390,7 +683,7 @@ attr(rxUiGet.simulationIniModel, "rstudio") <- quote(rxode2()) # for rstudio com
     .ret[[.k]] <- .expr[[.i]]
     .k <- .k + 1
   }
-  for(.i in seq_along(.cmtLines)) {
+  for (.i in seq_along(.cmtLines)) {
     .ret[[.k]] <- .cmtLines[[.i]]
     .k <- .k + 1
   }
@@ -410,7 +703,7 @@ attr(rxUiGet.simulationIniModel, "rstudio") <- quote(rxode2()) # for rstudio com
 #'   predDf is null simply the lstExpr
 #' @noRd
 #' @author Matthew L. Fidler
-.rxFilterOutPropsAndAdjustPredDf <- function(ui, lstExpr, predDf=NULL) {
+.rxFilterOutPropsAndAdjustPredDf <- function(ui, lstExpr, predDf = NULL) {
   if (is.null(lstExpr)) {
     .expr <- ui$lstExpr
   } else {
@@ -418,34 +711,47 @@ attr(rxUiGet.simulationIniModel, "rstudio") <- quote(rxode2()) # for rstudio com
   }
   ## remove directive lines from .expr; these are re-added in a
   ## normalized position for simulation models.
-  .f <- vapply(seq_along(.expr), function(i) {
-    .e <- .expr[[i]]
-    if (is.call(.e)) {
-      identical(.e[[1]], quote(`linear`)) ||
-        identical(.e[[1]], quote(`locf`)) ||
-        identical(.e[[1]], quote(`nocb`)) ||
-        identical(.e[[1]], quote(`midpoint`)) ||
-        identical(.e[[1]], quote(`splitBolus`))
-    } else {
-      FALSE
-    }
-  }, logical(1))
-  .df <- data.frame(filter =.f, origLine=seq_along(.f))
+  .f <- vapply(
+    seq_along(.expr),
+    function(i) {
+      .e <- .expr[[i]]
+      if (is.call(.e)) {
+        identical(.e[[1]], quote(`linear`)) ||
+          identical(.e[[1]], quote(`locf`)) ||
+          identical(.e[[1]], quote(`nocb`)) ||
+          identical(.e[[1]], quote(`midpoint`)) ||
+          identical(.e[[1]], quote(`splitBolus`)) ||
+          identical(.e[[1]], quote(`splitInfusion`)) ||
+          identical(.e[[1]], quote(`splitInfusionBolus`)) ||
+          identical(.e[[1]], quote(`splitBolusInfusion`))
+      } else {
+        FALSE
+      }
+    },
+    logical(1)
+  )
+  .df <- data.frame(filter = .f, origLine = seq_along(.f))
   .predDf <- predDf
   if (any(.df$filter)) {
     .expr <- lapply(seq_along(.expr)[!.df$filter], function(i) {
       .expr[[i]]
     })
-    .df <- .df[!.df$filter, , drop=FALSE]
+    .df <- .df[!.df$filter, , drop = FALSE]
     .df$newLine <- seq_along(.df$filter)
     if (!is.null(.predDf)) {
-      .predDf$line <- vapply(.predDf$line, function(i) {
-        .df$newLine[.df$origLine == i]
-      }, integer(1))
+      .predDf$line <- vapply(
+        .predDf$line,
+        function(i) {
+          .df$newLine[.df$origLine == i]
+        },
+        integer(1)
+      )
     }
   }
-  if (is.null(.predDf)) return(.expr)
-  list(predDf=.predDf, lstExpr=.expr)
+  if (is.null(.predDf)) {
+    return(.expr)
+  }
+  list(predDf = .predDf, lstExpr = .expr)
 }
 
 #' Combine Error Lines and create rxode2 expression
@@ -463,7 +769,9 @@ attr(rxUiGet.simulationIniModel, "rstudio") <- quote(rxode2()) # for rstudio com
 #'   `uiModel$lstExpr`.
 #' @param useIf Use an `if (CMT == X)` for endpoints
 #' @param interpLines Interpolation lines, if not present
-#' @param splitDoseLines Split dose lines, if not present
+#' @param splitDoseLines Dose-splitting directive lines (`splitBolus()`,
+#'   `splitInfusion()`, `splitInfusionBolus()` or `splitBolusInfusion()`);
+#'   if not present, use the directive from the current model
 #' @param levelLines Levels lines for assigned strings.  If not
 #'   present, use the interpolation lines from the current model.
 #' @return quoted expression that can be evaluated to compiled rxode2
@@ -507,10 +815,10 @@ attr(rxUiGet.simulationIniModel, "rstudio") <- quote(rxode2()) # for rstudio com
 #' # You can get the simulation model easily by
 #' rxCombineErrorLines(f)
 #'
-#' # You can then get the compiled model by simply evaluting the model:
+#' # You can then get the compiled model by simply evaluating the model:
 #' r <- eval(rxCombineErrorLines(f))
 #'
-#' # This also works with multile endpoint models:
+#' # This also works with multiple endpoint models:
 #' pk.turnover.emax <- function() {
 #'   ini({
 #'     tktr <- log(1)
@@ -574,22 +882,34 @@ attr(rxUiGet.simulationIniModel, "rstudio") <- quote(rxode2()) # for rstudio com
 #' f$simulationModel
 #'
 #' }
-rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, paramsLine=NULL,
-                                modelVars=FALSE, cmtLines=TRUE, dvidLine=TRUE,
-                                lstExpr=NULL,
-                                useIf=TRUE,
-                                interpLines=NULL, splitDoseLines=NULL,
-                                levelLines=NULL) {
-  if(!inherits(uiModel, "rxUi")) {
-    stop("uiModel must be a evaluated UI model by rxode2(modelFunction) or modelFunction()",
-         call.=FALSE)
+rxCombineErrorLines <- function(
+  uiModel,
+  errLines = NULL,
+  prefixLines = NULL,
+  paramsLine = NULL,
+  modelVars = FALSE,
+  cmtLines = TRUE,
+  dvidLine = TRUE,
+  lstExpr = NULL,
+  useIf = TRUE,
+  interpLines = NULL,
+  splitDoseLines = NULL,
+  levelLines = NULL
+) {
+  if (!inherits(uiModel, "rxUi")) {
+    stop("uiModel must be a evaluated UI model by rxode2(modelFunction) or modelFunction()", call. = FALSE)
   }
   uiModel <- rxUiDecompress(uiModel)
   .predDf <- uiModel$predDf
   if (is.null(.predDf)) {
-    return(.rxModelNoErrorLines(uiModel, prefixLines=prefixLines, paramsLine=paramsLine,
-                                modelVars=modelVars, cmtLines=cmtLines,
-                                lstExpr=lstExpr))
+    return(.rxModelNoErrorLines(
+      uiModel,
+      prefixLines = prefixLines,
+      paramsLine = paramsLine,
+      modelVars = modelVars,
+      cmtLines = cmtLines,
+      lstExpr = lstExpr
+    ))
   }
   if (is.null(errLines)) {
     errLines <- rxGetDistributionSimulationLines(uiModel)
@@ -599,25 +919,32 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
     .lenLines <- length(.predDf$line)
     .if <- useIf
   } else {
-    .lenLines <- sum(vapply(seq_along(errLines), function(i) {
-      length(errLines[[i]])
-    }, integer(1)))
+    .lenLines <- sum(vapply(
+      seq_along(errLines),
+      function(i) {
+        length(errLines[[i]])
+      },
+      integer(1)
+    ))
   }
   .cmtLines <- NULL
   if (cmtLines) {
     .cmtLines <- uiModel$cmtLines
   }
   .predDf <- uiModel$predDf
-  .tmp <- .rxFilterOutPropsAndAdjustPredDf(uiModel, predDf=.predDf, lstExpr=lstExpr)
+  .tmp <- .rxFilterOutPropsAndAdjustPredDf(uiModel, predDf = .predDf, lstExpr = lstExpr)
   .predDf <- .tmp$predDf
   .expr <- .tmp$lstExpr
+  # endpoints sharing a model variable get a generated alias; define it just
+  # before the error lines that use it.  A shared linCmt() needs its single
+  # allowed linCmt() call emitted once, outside the CMT branches.
+  .aliasLines <- .rxEndpointAliasLines(uiModel)
+  .aliasLinCmtLine <- .rxEndpointLinCmtLine(uiModel)
 
-  .lenLines <- .lenLines + length(.expr) -
-    length(.predDf$line) + length(.cmtLines) + length(prefixLines)
+  .lenLines <- .lenLines + length(.expr) - length(.predDf$line) + length(.cmtLines) + length(prefixLines)
   .k <- 2 + dvidLine * 1
 
-  if (is.null(paramsLine)) {
-  } else if (is.na(paramsLine)) {
+  if (is.null(paramsLine)) {} else if (is.na(paramsLine)) {
     .lenLines <- .lenLines - 1
     .k <- 1 + dvidLine * 1
   }
@@ -644,7 +971,7 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
     .k <- .k + length(.interpLines)
   }
   if (is.null(splitDoseLines)) {
-    .splitDoseLines <- rxUiGet.splitDoseLines(list(uiModel))
+    .splitDoseLines <- .rxUiSplitDirectiveLines(uiModel)
     .lenLines <- .lenLines - length(.splitDoseLines)
     .k <- .k + length(.splitDoseLines)
   } else if (is.na(splitDoseLines)) {
@@ -690,11 +1017,21 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
   for (.i in seq_along(.expr)) {
     if (.i %in% .predDf$line) {
       .curErr <- errLines[[.curErrLine]]
+      if (length(.aliasLines) > 0L) {
+        .aw <- match(.predDf$var[.curErrLine], names(.aliasLines))
+        if (!is.na(.aw)) .curErr <- c(list(.aliasLines[[.aw]]), .curErr)
+      }
+      if (!is.null(.aliasLinCmtLine)) {
+        .ret[[.k]] <- .aliasLinCmtLine
+        .k <- .k + 1
+        .aliasLinCmtLine <- NULL
+      }
       if (.if) {
-        .ret[[.k]] <- as.call(list(quote(`if`),
-                                   as.call(list(quote(`==`), quote(`CMT`),
-                                                as.numeric(.predDf$cmt[.curErrLine]))),
-                                   as.call(c(list(quote(`{`)), .curErr))))
+        .ret[[.k]] <- as.call(list(
+          quote(`if`),
+          as.call(list(quote(`==`), quote(`CMT`), as.numeric(.predDf$cmt[.curErrLine]))),
+          as.call(c(list(quote(`{`)), .curErr))
+        ))
         .k <- .k + 1
       } else {
         for (.j in seq_along(.curErr)) {
@@ -707,7 +1044,6 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
       .ret[[.k]] <- .expr[[.i]]
       .k <- .k + 1
     }
-
   }
   for (.i in seq_along(.cmtLines)) {
     .ret[[.k]] <- .cmtLines[[.i]]
@@ -716,9 +1052,14 @@ rxCombineErrorLines <- function(uiModel, errLines=NULL, prefixLines=NULL, params
   if (dvidLine) {
     .ret[[.k]] <- uiModel$dvidLine
   }
-  .drop <- which(vapply(seq_along(.ret), function(.i) {
-    identical(.ret[[.i]], quote(`_drop`))
-  }, logical(1), USE.NAMES=FALSE))
+  .drop <- which(vapply(
+    seq_along(.ret),
+    function(.i) {
+      identical(.ret[[.i]], quote(`_drop`))
+    },
+    logical(1),
+    USE.NAMES = FALSE
+  ))
   if (length(.drop) > 0) {
     .ret <- .ret[-.drop]
   }

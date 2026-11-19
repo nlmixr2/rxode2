@@ -18,32 +18,65 @@
 #' @author Matthew L.Fidler
 #' @family Query model information
 #' @export
+#' @examples
+#' \donttest{
+#' pk <- function() {
+#'   model({
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - cl / v * central
+#'     cp <- central / v
+#'   })
+#' }
+#' rxParams(pk)
+#' # pipe the parameter values into a solve
+#' pk |>
+#'   rxParams(params = c(ka = 1.2, cl = 3.5, v = 25)) |>
+#'   et(amt = 100) |>
+#'   et(0:24) |>
+#'   rxSolve()
+#' }
 rxParams <- function(obj, ...) {
   UseMethod("rxParams")
 }
 
 #' @rdname rxParams
 #' @export
-rxParams.rxode2 <- function(obj, constants = TRUE, ...,
-                           params = NULL, inits = NULL, iCov = NULL,
-                           keep = NULL,
-                           thetaMat = NULL,
-                           omega = NULL, dfSub = NULL,
-                           sigma = NULL, dfObs = NULL,
-                           nSub = NULL, nStud = NULL) {
+rxParams.rxode2 <- function(
+  obj,
+  constants = TRUE,
+  ...,
+  params = NULL,
+  inits = NULL,
+  iCov = NULL,
+  keep = NULL,
+  thetaMat = NULL,
+  omega = NULL,
+  dfSub = NULL,
+  sigma = NULL,
+  dfObs = NULL,
+  nSub = NULL,
+  nStud = NULL
+) {
   if (!is.null(iCov)) {
     stop("'iCov' in a pipline is no longer supported", call. = FALSE)
   }
   .ret <- list(
-    params = params, inits = inits, keep = keep,
+    params = params,
+    inits = inits,
+    keep = keep,
     thetaMat = thetaMat,
-    omega = omega, dfSub = dfSub,
-    sigma = sigma, dfObs = dfObs,
-    nSub = nSub, nStud = nStud
+    omega = omega,
+    dfSub = dfSub,
+    sigma = sigma,
+    dfObs = dfObs,
+    nSub = nSub,
+    nStud = nStud
   )
-  if (all(sapply(seq_along(.ret), function(x) {
-    is.null(.ret[[x]])
-  }))) {
+  if (
+    all(sapply(seq_along(.ret), function(x) {
+      is.null(.ret[[x]])
+    }))
+  ) {
     if (length(list(...)) > 0) {
       .clearPipe()
       .asFunctionEnv$rx <- NULL
@@ -55,10 +88,13 @@ rxParams.rxode2 <- function(obj, constants = TRUE, ...,
     if (length(.lst) > 0) {
       .clearPipe()
       .asFunctionEnv$rx <- NULL
-      stop(sprintf(
-        gettext("unknown arguments in 'rxParams': %s\ntry piping to 'rxSolve'"),
-        paste(names(.lst), collapse = ", ")
-      ), call. = FALSE)
+      stop(
+        sprintf(
+          gettext("unknown arguments in 'rxParams': %s\ntry piping to 'rxSolve'"),
+          paste(names(.lst), collapse = ", ")
+        ),
+        call. = FALSE
+      )
     }
     ## Most likely
     ## rxode2() |> rxParams() |>
@@ -81,26 +117,50 @@ rxParams.rxode2 <- function(obj, constants = TRUE, ...,
 
 #' @rdname rxParams
 #' @export
-rxParams.rxSolve <- function(obj, constants = TRUE, ...,
-                             params = NULL, inits = NULL, iCov = NULL,
-                             keep = NULL,
-                             thetaMat = NULL,
-                             omega = NULL, dfSub = NULL,
-                             sigma = NULL, dfObs = NULL,
-                             nSub = NULL, nStud = NULL) {
+rxParams.function <- rxParams.rxode2
+
+#' @rdname rxParams
+#' @export
+rxParams.rxUi <- rxParams.rxode2
+
+#' @rdname rxParams
+#' @export
+rxParams.rxSolve <- function(
+  obj,
+  constants = TRUE,
+  ...,
+  params = NULL,
+  inits = NULL,
+  iCov = NULL,
+  keep = NULL,
+  thetaMat = NULL,
+  omega = NULL,
+  dfSub = NULL,
+  sigma = NULL,
+  dfObs = NULL,
+  nSub = NULL,
+  nStud = NULL
+) {
   if (!is.null(iCov)) {
     stop("'iCov' in a pipline is no longer supported", call. = FALSE)
   }
   .ret <- list(
-    params = params, inits = inits, keep = keep,
+    params = params,
+    inits = inits,
+    keep = keep,
     thetaMat = thetaMat,
-    omega = omega, dfSub = dfSub,
-    sigma = sigma, dfObs = dfObs,
-    nSub = nSub, nStud = nStud
+    omega = omega,
+    dfSub = dfSub,
+    sigma = sigma,
+    dfObs = dfObs,
+    nSub = nSub,
+    nStud = nStud
   )
-  if (all(sapply(seq_along(.ret), function(x) {
-    is.null(.ret[[x]])
-  }))) {
+  if (
+    all(sapply(seq_along(.ret), function(x) {
+      is.null(.ret[[x]])
+    }))
+  ) {
     if (length(list(...)) > 0) {
       .clearPipe()
       .asFunctionEnv$rx <- NULL
@@ -112,11 +172,12 @@ rxParams.rxSolve <- function(obj, constants = TRUE, ...,
     if (length(.lst) > 0) {
       .clearPipe()
       .asFunctionEnv$rx <- NULL
-      stop(sprintf(
-        gettext("unknown arguments in 'rxParams': %s\ntry piping to 'rxSolve'"),
-        paste(names(.lst), collapse = ", ")
-      ),
-      call. = FALSE
+      stop(
+        sprintf(
+          gettext("unknown arguments in 'rxParams': %s\ntry piping to 'rxSolve'"),
+          paste(names(.lst), collapse = ", ")
+        ),
+        call. = FALSE
       )
     }
     ## Most likely
@@ -149,13 +210,21 @@ rxParams.rxSolve <- function(obj, constants = TRUE, ...,
 
 #' @rdname rxParams
 #' @export
-rxParams.rxEt <- function(obj, ...,
-                          params = NULL, inits = NULL, iCov = NULL,
-                          keep = NULL,
-                          thetaMat = NULL,
-                          omega = NULL, dfSub = NULL,
-                          sigma = NULL, dfObs = NULL,
-                          nSub = NULL, nStud = NULL) {
+rxParams.rxEt <- function(
+  obj,
+  ...,
+  params = NULL,
+  inits = NULL,
+  iCov = NULL,
+  keep = NULL,
+  thetaMat = NULL,
+  omega = NULL,
+  dfSub = NULL,
+  sigma = NULL,
+  dfObs = NULL,
+  nSub = NULL,
+  nStud = NULL
+) {
   if (!is.null(iCov)) {
     stop("'iCov' in a pipline is no longer supported", call. = FALSE)
   }
@@ -165,15 +234,25 @@ rxParams.rxEt <- function(obj, ...,
   if (length(.lst) > 0) {
     .clearPipe()
     .asFunctionEnv$rx <- NULL
-    stop(sprintf(gettext("unknown arguments in 'rxParams': %s\ntry piping to 'rxSolve'"), paste(names(.lst), collapse = ", ")),
+    stop(
+      sprintf(
+        gettext("unknown arguments in 'rxParams': %s\ntry piping to 'rxSolve'"),
+        paste(names(.lst), collapse = ", ")
+      ),
       call. = FALSE
     )
   }
   .ret <- list(
-    params = params, inits = inits, keep = keep,
-    thetaMat = thetaMat, omega = omega, dfSub = dfSub,
-    sigma = sigma, dfObs = dfObs,
-    nSub = nSub, nStud = nStud
+    params = params,
+    inits = inits,
+    keep = keep,
+    thetaMat = thetaMat,
+    omega = omega,
+    dfSub = dfSub,
+    sigma = sigma,
+    dfObs = dfObs,
+    nSub = nSub,
+    nStud = nStud
   )
   class(.ret) <- "rxParams"
   return(.ret)
@@ -194,9 +273,17 @@ rxParams.default <- function(obj, ..., constants = TRUE) {
   } else {
     .lst <- list(...)
     .nm <- c(
-      "cov", "params", "inits", "keep",
-      "thetaMat", "omega", "dfSub",
-      "sigma", "dfObs", "nSub", "nStud"
+      "cov",
+      "params",
+      "inits",
+      "keep",
+      "thetaMat",
+      "omega",
+      "dfSub",
+      "sigma",
+      "dfObs",
+      "nSub",
+      "nStud"
     )
     .ret <- lapply(.nm, function(x) {
       return(.lst[[x]])

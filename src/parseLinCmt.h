@@ -15,7 +15,7 @@
 #define _(String) (String)
 #include "../inst/include/rxode2parse.h"
 #include "tran.h"
-#include "../inst/include/rxode2parseSbuf.h"
+#include "rxSbufFormat.h"
 
 typedef struct linCmtStruct {
   int ka;

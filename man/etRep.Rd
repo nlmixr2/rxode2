@@ -37,10 +37,10 @@ if used.}
 \item{wait}{Waiting time between each repeated event table.  By
 default there is no waiting, or wait=0}
 
-\item{id}{A integer vector of IDs to add or remove from the event
+\item{id}{A integer vector of ids to add or remove from the event
 table.  If the event table is identical for each ID, then you
-may expand it to include all the IDs in this vector.  All the
-negative IDs in this vector will be removed.}
+may expand it to include all the ids in this vector.  All the
+negative ids in this vector will be removed.}
 
 \item{samples}{How to handle samples when repeating an event
 table.  The options are:
@@ -178,7 +178,25 @@ Pharmacometrics and Systems Pharmacology, 5(1), 3-10. ISSN 2163-8306
 \code{\link{add.dosing}}, \code{\link{et}},
 \code{\link{etRep}}, \code{\link{etRbind}},
 \code{\link{rxode2}}
+
+Other Event tables:
+\code{\link[=add.dosing]{add.dosing()}},
+\code{\link[=add.sampling]{add.sampling()}},
+\code{\link[=as.et]{as.et()}},
+\code{\link[=et]{et()}},
+\code{\link[=etExpand]{etExpand()}},
+\code{\link[=etRbind]{etRbind()}},
+\code{\link[=etSeq]{etSeq()}},
+\code{\link[=eventTable]{eventTable()}},
+\code{\link[=is.rxEt]{is.rxEt()}},
+\code{\link[=rxEventTableFile]{rxEventTableFile()}},
+\code{\link[=splitBolus]{splitBolus()}},
+\code{\link{splitBolusInfusion-directive}},
+\code{\link[=splitInfusion]{splitInfusion()}},
+\code{\link{splitInfusionBolus-directive}},
+\code{\link[=toTrialDuration]{toTrialDuration()}}
 }
 \author{
 Matthew L Fidler, Wenping Wang
 }
+\concept{Event tables}

@@ -14,12 +14,16 @@
 #include <errno.h>
 #define _(String) (String)
 #include "../inst/include/rxode2parse.h"
-#include "../inst/include/rxode2parseSbuf.h"
+#include "rxSbufFormat.h"
 #include "tran.h"
 #include "../inst/include/rxode2parseVer.h"
+#include "rxProtect.h"
+#include "parseParamMerge.h"
+#include "pkTime.h"
 
 static inline SEXP calcSLinCmt(void) {
-  SEXP sLinCmt = PROTECT(Rf_allocVector(INTSXP,15));
+  rxProtectGuard;
+  SEXP sLinCmt = rxP(Rf_allocVector(INTSXP,18));
   INTEGER(sLinCmt)[0] = tb.ncmt;
   INTEGER(sLinCmt)[1] = tb.hasKa;
   INTEGER(sLinCmt)[2] = tb.linB;
@@ -32,10 +36,20 @@ static inline SEXP calcSLinCmt(void) {
   INTEGER(sLinCmt)[10]= tb.thread;
   INTEGER(sLinCmt)[11]= tb.nLlik;
   INTEGER(sLinCmt)[12] = tb.ndiff;
-  INTEGER(sLinCmt)[13] = tb.hasMix;
+  // An expanded mix() has no mix() call left; its rx_mixsel_<k>_ selectors
+  // carry the component count so the model still reads as a mixture (mixest
+  // supplied per individual, mixnum reporting the count).
+  INTEGER(sLinCmt)[13] = tb.hasMix ? tb.hasMix : tb.mixSel;
   INTEGER(sLinCmt)[14] = tb.evid_;
+  INTEGER(sLinCmt)[15] = tb.hasDelay;
+  INTEGER(sLinCmt)[16] = tb.linCmtBraw;
+  {
+    // PK-type statements read `time` as the record time (rxode2#1429)
+    int *pkLine = (int*)R_alloc(sbPm.n > 0 ? sbPm.n : 1, sizeof(int));
+    INTEGER(sLinCmt)[17] = pkTimeClassify(pkLine) > 0;
+  }
 
-  SEXP sLinCmtN = PROTECT(Rf_allocVector(STRSXP, 15));
+  SEXP sLinCmtN = rxP(Rf_allocVector(STRSXP, 18));
   SET_STRING_ELT(sLinCmtN, 0, Rf_mkChar("ncmt"));
   SET_STRING_ELT(sLinCmtN, 1, Rf_mkChar("ka"));
   SET_STRING_ELT(sLinCmtN, 2, Rf_mkChar("linB"));
@@ -51,14 +65,18 @@ static inline SEXP calcSLinCmt(void) {
   SET_STRING_ELT(sLinCmtN, 12, Rf_mkChar("ndiff"));
   SET_STRING_ELT(sLinCmtN, 13, Rf_mkChar("mix"));
   SET_STRING_ELT(sLinCmtN, 14, Rf_mkChar("evid_"));
+  SET_STRING_ELT(sLinCmtN, 15, Rf_mkChar("hasDelay"));
+  SET_STRING_ELT(sLinCmtN, 16, Rf_mkChar("linCmtBraw"));
+  SET_STRING_ELT(sLinCmtN, 17, Rf_mkChar("pkTime"));
   Rf_setAttrib(sLinCmt,   R_NamesSymbol, sLinCmtN);
-  UNPROTECT(2);
+  rxUPAll();
   return(sLinCmt);
 }
 
 static inline SEXP calcVersionInfo(void) {
-  SEXP version  = PROTECT(Rf_allocVector(STRSXP, 3));
-  SEXP versionn = PROTECT(Rf_allocVector(STRSXP, 3));
+  rxProtectGuard;
+  SEXP version  = rxP(Rf_allocVector(STRSXP, 3));
+  SEXP versionn = rxP(Rf_allocVector(STRSXP, 3));
 
   SET_STRING_ELT(versionn,0,Rf_mkChar("version"));
   SET_STRING_ELT(versionn,1,Rf_mkChar("repo"));
@@ -68,7 +86,7 @@ static inline SEXP calcVersionInfo(void) {
   SET_STRING_ELT(version,1,Rf_mkChar(__VER_repo__));
   SET_STRING_ELT(version,2,Rf_mkChar(__VER_md5__));
   Rf_setAttrib(version,   R_NamesSymbol, versionn);
-  UNPROTECT(2);
+  rxUPAll();
   return version;
 }
 
@@ -183,9 +201,9 @@ static inline void assertNoLinCmtDepotCentral(void) {
 }
 
 static inline SEXP calcIniVals(void) {
-  int pro=0;
-  SEXP inin  = PROTECT(Rf_allocVector(STRSXP, tb.isPi + tb.ini_i)); pro++;
-  SEXP ini   = PROTECT(Rf_allocVector(REALSXP, tb.isPi + tb.ini_i)); pro++;
+  rxProtectGuard;
+  SEXP inin  = rxP(Rf_allocVector(STRSXP, tb.isPi + tb.ini_i));
+  SEXP ini   = rxP(Rf_allocVector(REALSXP, tb.isPi + tb.ini_i));
   char *buf;
   for (int i=tb.isPi + tb.ini_i;i--;) REAL(ini)[i] = NA_REAL;
   int ini_i=0;
@@ -206,8 +224,8 @@ static inline SEXP calcIniVals(void) {
     SET_STRING_ELT(inin,ini_i,Rf_mkChar("pi"));
     REAL(ini)[ini_i++] = M_PI;
   } else if (redo){
-    inin  = PROTECT(Rf_allocVector(STRSXP, tb.ini_i));pro++;
-    ini   = PROTECT(Rf_allocVector(REALSXP, tb.ini_i));pro++;
+    inin  = rxP(Rf_allocVector(STRSXP, tb.ini_i));
+    ini   = rxP(Rf_allocVector(REALSXP, tb.ini_i));
     for (int i = tb.ini_i; i--;) REAL(ini)[i] = NA_REAL;
     ini_i=0;
     for (int i = 0; i < NV; i++){
@@ -226,18 +244,24 @@ static inline SEXP calcIniVals(void) {
   tb.ini_i = ini_i;
 
   Rf_setAttrib(ini,   R_NamesSymbol, inin);
-  UNPROTECT(pro);
+  rxUPAll();
   return ini;
 }
 
 SEXP orderForderS1(SEXP ordIn);
 
 static inline int sortStateVectorsErrHandle(int prop, int i) {
-  if (prop == 0 || tb.dummyLhs == 1) {
+  if ((prop & ~(propDoseRef | propDelay)) == 0 || tb.dummyLhs == 1) {
     return 1;
   }
   char *buf = NULL;
   buf = tb.ss.line[tb.di[i]];
+  // Every property that reaches here appends "'<name>', " below, and the
+  // trailing "', " is then trimmed with sbt.o -= 2.  A property with no branch
+  // appends nothing, so that trim would move sbt.o *before* the start of the
+  // buffer and write there -- corrupting the heap rather than reporting the
+  // error.  Remember where this message starts so the trim can be anchored.
+  int sbtStart = sbt.o;
   if ((prop & prop0) != 0) {
     sAppend(&sbt, "'%s(0)', ", buf);
   }
@@ -289,6 +313,17 @@ static inline int sortStateVectorsErrHandle(int prop, int i) {
   if ((prop & propDose0) != 0) {
     sAppend(&sbt, "'dose0(%s)', ", buf);
   }
+  // past(state, tau) <- expr supplies the pre-history that delay(state, tau)
+  // interpolates, so it too requires the state to have a d/dt().
+  if ((prop & propPast) != 0) {
+    sAppend(&sbt, "'past(%s)', ", buf);
+  }
+  if (sbt.o == sbtStart) {
+    // No branch above matched, so there is no trailing "', " to trim and
+    // nothing to report; a property known only to the guard above is not an
+    // error the user can act on.  Trimming here would underflow the buffer.
+    return 1;
+  }
   // Take off trailing "',
   sbt.o -= 2;
   sbt.s[sbt.o] = 0;
@@ -307,6 +342,17 @@ static inline SEXP sortStateVectors(SEXP ordS) {
   for (int i = 0; i < tb.de.n; i++) {
     int cur = tb.didx[i];
     int prop = tb.dprop[i];
+    // delay(state, T) interpolates the dense history of a differential
+    // state, so its first argument must be a real ODE state (idu==1, i.e.
+    // it has a d/dt() equation).  A non-state (parameter/covariate) passed
+    // to delay() is registered here as an extra compartment with the
+    // propDelay bit but no derivative; reject it instead of silently
+    // swallowing it as an algebraic observable.
+    if ((prop & propDelay) != 0 && tb.idu[i] == 0) {
+      char *bufd = tb.ss.line[tb.di[i]];
+      sAppend(&sbt, "the first argument to 'delay()' must be an ODE state with a 'd/dt()' defined, but 'delay(%s, ...)' has no 'd/dt(%s)'\n", bufd, bufd);
+      continue;
+    }
     if (cur == 0) {
       // This has a property without an ODE or cmt() statement; should error here.
       if (sortStateVectorsErrHandle(prop, i)) continue;
@@ -314,9 +360,22 @@ static inline SEXP sortStateVectors(SEXP ordS) {
       // This is a compartment only defined by CMT() and is used for
       // dvid ordering, no properties should be defined.
       ord[i] = -cur;
+      // Extra states (idu == 0) are algebraic observables that also appear
+      // in a cmt() statement; they are not real ODE/dosing compartments and
+      // etTran() numbers them after the real states (state ++ extraState).
+      // Push them to the end of this ordering too so the generated
+      // __DDT__/_DEPOT_/_CENTRAL_ slot indices stay aligned with the runtime
+      // compartment numbering.  Otherwise an observable whose cmt() is seen
+      // before the real compartments are numbered sorts ahead of them and
+      // shifts every tad()/tlast(<state>) lookup.  This happens whenever the
+      // cmt() precedes the d/dt() block, and always in linCmt() models, where
+      // the linear compartments (depot, central, ...) are added last in
+      // calcLinCmt().
+      if (tb.idu[i] == 0) ord[i] += tb.de.n;
       if (sortStateVectorsErrHandle(prop, i)) continue;
     } else {
       ord[i] = cur;
+      if (tb.idu[i] == 0) ord[i] += tb.de.n;
     }
   }
   if (sbt.o != 0) {
@@ -357,6 +416,171 @@ static inline void populateStateVectors(SEXP state, SEXP sens, SEXP normState, i
   }
 }
 
+// Replay the recorded assignments and indLin() forcings in source order to work
+// out which forcings depend on a compartment.  dep[i] tracks whether symbol i
+// currently holds something derived from a state, so a forcing that reaches a
+// state only through an assigned variable (cp = central/20; indLin(central) <-
+// -vmax*cp/(km+cp)) is seen, while one whose variable was reassigned to
+// something state free before it is read is not.  A statement inside an
+// if/while/ifelse may not run, so it adds to what is already known instead of
+// replacing it -- the conservative direction, since a missed state would be
+// solved without the inductive iteration it needs.  fdep[] is the same for each
+// compartment's forcing.
+// A compartment is state dependent by definition; 2 marks the state itself so
+// indLinStmtTarget() can refuse to overwrite it.
+static inline void indLinSeedStateDep(int *dep) {
+  for (int i = 0; i < NV; ++i) {
+    dep[i] = 0;
+    for (int d = 0; d < tb.de.n; ++d) {
+      if (!strcmp(tb.ss.line[i], tb.de.line[d])) {
+        dep[i] = 2;
+        break;
+      }
+    }
+  }
+}
+
+// Does statement `s` read anything that currently holds a state?
+static inline int indLinStmtReadsDep(int s, int *dep) {
+  int r1 = tb.stmtR0[s] + tb.stmtRn[s];
+  for (int r = tb.stmtR0[s]; r < r1; ++r) {
+    if (dep[tb.stmtRef[r]]) return 1;
+  }
+  return 0;
+}
+
+// The slot statement `s` writes, or -1 when it writes nothing trackable.  A
+// state is never assigned, and must stay flagged if the parser ever routes one
+// through here.
+static inline int indLinStmtTarget(int s, int *dep) {
+  int t = tb.stmtT[s];
+  if (tb.stmtK[s] == 0) {
+    if (t < 0 || t >= NV || dep[t] == 2) return -1;
+  } else if (t < 0 || t >= tb.de.n) {
+    return -1;
+  }
+  return t;
+}
+
+// `fany` (optional) records which compartments have an indLin() forcing at all,
+// state dependent or not.
+static inline void indLinReplay(int *dep, int *fdep, int *fany) {
+  indLinSeedStateDep(dep);
+  for (int d = 0; d < tb.de.n; ++d) {
+    fdep[d] = 0;
+    if (fany != NULL) fany[d] = 0;
+  }
+  for (int s = 0; s < tb.stmtN; ++s) {
+    int t = indLinStmtTarget(s, dep);
+    if (t < 0) continue;
+    int v = indLinStmtReadsDep(s, dep);
+    int *cur = (tb.stmtK[s] == 0) ? dep : fdep;
+    cur[t] = tb.stmtC[s] ? (cur[t] || v) : v;
+    if (tb.stmtK[s] == 1 && fany != NULL) fany[t] = 1;
+  }
+}
+
+// Walk back from symbol `j` through whatever gave it its state dependence
+// until a compartment is reached, so the error message can name something the
+// user actually wrote.  Bounded by the statement count, so a self-referential
+// chain cannot spin.
+static inline int indLinDepSource(int j, int *dep) {
+  int cur = j;
+  for (int guard = 0; guard <= tb.stmtN; ++guard) {
+    if (dep[cur] == 2) return cur;
+    int found = -1;
+    for (int s = tb.stmtN; s--;) {
+      if (tb.stmtK[s] != 0 || tb.stmtT[s] != cur) continue;
+      int r1 = tb.stmtR0[s] + tb.stmtRn[s];
+      for (int r = tb.stmtR0[s]; r < r1; ++r) {
+        if (dep[tb.stmtRef[r]]) { found = tb.stmtRef[r]; break; }
+      }
+      if (found >= 0) break;
+    }
+    if (found < 0) return cur;
+    cur = found;
+  }
+  return cur;
+}
+
+// A matExp() rate constant that reads a compartment is not a rate constant: the
+// matrix exponential is only valid when the rate matrix is constant over the
+// step, which is also what the event-sensitivity jump code assumes
+// (rxode2parseHandleEvid.h).  Report the first one, naming the constant and the
+// compartment it reaches, and point at indLin() -- which is where a
+// state-dependent term belongs and where the solver can iterate it.
+//
+// Sensitivity models are held to the same rule.  rxSensMatExp() takes its rate
+// matrix from the same term-wise split the plain conversion uses, so every rate
+// constant it emits -- primal, homogeneous, non-depleting cross term, at every
+// order -- is state free, and the nonlinear part rides in the indLin() forcing
+// (rxode2#1187).
+static inline void assertNoStateDependentMicro(void) {
+  if (!tb.isMexp || tb.de.n <= 0 || NV <= 0) return;
+  int *dep  = (int*)R_alloc(NV, sizeof(int));
+  int *fdep = (int*)R_alloc(tb.de.n, sizeof(int));
+  indLinReplay(dep, fdep, NULL);
+  char cmt1[100], cmt2[100];
+  for (int j = 0; j < NV; ++j) {
+    if (dep[j] != 1) continue;
+    if (!parse_micro_constant(tb.ss.line[j], cmt1, cmt2)) continue;
+    int have1 = 0, have2 = 0;
+    for (int d = 0; d < tb.de.n; ++d) {
+      if (!strcmp(tb.de.line[d], cmt1)) have1 = 1;
+      if (!strcmp(tb.de.line[d], cmt2)) have2 = 1;
+    }
+    if (!have1 || !have2) continue;
+    const char *src = tb.ss.line[indLinDepSource(j, dep)];
+    updateSyntaxCol();
+    sPrint(&_bufw,
+           _("matrix exponential rate constant '%s' depends on the compartment '%s'; rate constants must be constant in the states -- put the state-dependent part in 'indLin(%s) <- ...' instead"),
+           tb.ss.line[j], src, cmt1);
+    trans_syntax_error_report_fn0(_bufw.s);
+    break;
+  }
+}
+
+// modelVars$indLin$wIndLin: the 0-indexed positions in modelVars$state whose
+// indLin() forcing depends on a state (named with those states for reading).  A
+// forcing built only from parameters/covariates (eg indLin(Gc) <- Gprod) stays
+// unflagged and keeps the cheap non-iterating path.
+static inline SEXP calcWIndLin(SEXP state) {
+  rxProtectGuard;
+  int ns = Rf_length(state);
+  int *dep  = (int*)R_alloc(NV > 0 ? NV : 1, sizeof(int));
+  int *fdep = (int*)R_alloc(tb.de.n > 0 ? tb.de.n : 1, sizeof(int));
+  int *fany = (int*)R_alloc(tb.de.n > 0 ? tb.de.n : 1, sizeof(int));
+  indLinReplay(dep, fdep, fany);
+  int *isDep = (int*)R_alloc(ns > 0 ? ns : 1, sizeof(int));
+  int n = 0;
+  for (int k = 0; k < ns; ++k) {
+    isDep[k] = 0;
+    for (int d = 0; d < tb.de.n; ++d) {
+      if (!strcmp(tb.de.line[d], CHAR(STRING_ELT(state, k)))) {
+        // A linCmt() concentration moves continuously within a step, so a
+        // forcing in a model that has one cannot be treated as constant over
+        // the interval the way a locf covariate can -- take the iterating path
+        // so the driver re-evaluates and refines it (rxode2#1215).
+        isDep[k] = fdep[d] || (tb.linCmt && fany[d]);
+        break;
+      }
+    }
+    if (isDep[k]) n++;
+  }
+  SEXP w  = rxP(Rf_allocVector(INTSXP, n));
+  SEXP wn = rxP(Rf_allocVector(STRSXP, n));
+  int *wi = INTEGER(w);
+  for (int k = 0, j = 0; k < ns; ++k) {
+    if (!isDep[k]) continue;
+    wi[j] = k;
+    SET_STRING_ELT(wn, j, STRING_ELT(state, k));
+    j++;
+  }
+  Rf_setAttrib(w, R_NamesSymbol, wn);
+  rxUPAll();
+  return w;
+}
+
 static inline void populateDfdy(SEXP dfdy) {
   char *df, *dy;
   for (int i=0; i<tb.ndfdy; i++) {                     /* name state vars */
@@ -376,6 +600,8 @@ static inline void populateDfdy(SEXP dfdy) {
         sPrint(&_bufw,"_ETA_%d_",j);
         if (!strcmp(dy,_bufw.s)){
           sPrint(&_bufw,"ETA[%d]",j);
+          foundIt=1;
+          break;
         }
       }
     }
@@ -406,9 +632,9 @@ static inline int assertStateCannotHaveDiff(int islhs, int i, char *buf) {
   return 0;
 }
 
-static inline int setLhsAndDualLhsParam(int islhs, SEXP lhs, SEXP params, char *buf,
-                                        int *li, int *pi, SEXP lhsStr, int *lhsOrd,
-                                        int *i) {
+static inline int setLhsAndDualLhsParam(int islhs, SEXP lhs, SEXP params, int *interp,
+                                        char *buf, int *li, int *pi, SEXP lhsStr,
+                                        int *lhsOrd, int *i) {
   if (islhs == isLHS || islhs == isLHSstr ||
       islhs == isLhsStateExtra || islhs == isLHSparam) {
     SET_STRING_ELT(lhs, li[0], Rf_mkChar(buf));
@@ -419,6 +645,11 @@ static inline int setLhsAndDualLhsParam(int islhs, SEXP lhs, SEXP params, char *
       if (!strcmp("CMT", buf)) {
         tb.hasCmt = 1;
       }
+      // a dual lhs/parameter takes a slot in the parameter vector like any
+      // other parameter, so its interpolation has to be set here too; the
+      // vector is allocated uninitialized, so skipping it left the factor
+      // holding garbage.
+      interp[pi[0]] = tb.interp[i[0]] + 1;
       SET_STRING_ELT(params, pi[0], Rf_mkChar(buf));
       pi[0] = pi[0]+1;
     }
@@ -480,7 +711,7 @@ static inline void populateParamsLhsSlhs(SEXP params, SEXP lhs, SEXP slhs, int *
     if (assertStateCannotHaveDiff(islhs, i, buf)) continue;
     assertLhsAndDualLhsDiffNotLegal(islhs, i, buf);
     /* is a state var */
-    if (!setLhsAndDualLhsParam(islhs, lhs, params, buf, &li, &pi, lhsStr, lhsOrd, &i)) {
+    if (!setLhsAndDualLhsParam(islhs, lhs, params, interp, buf, &li, &pi, lhsStr, lhsOrd, &i)) {
       paramSubThetaEtaToBufw(buf);
       interp[pi] = tb.interp[i] + 1; // Makes into a legible factor
       SET_STRING_ELT(params, pi++, Rf_mkChar(_bufw.s));

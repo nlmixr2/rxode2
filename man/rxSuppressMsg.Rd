@@ -34,6 +34,20 @@ suppressMessages(try(rxode2("d/dt(matt)=/3"), silent = TRUE))
 # If you  want to suppress messages from rxode2 in other packages, you can use
 # this function
 }
+\seealso{
+Other Utilities:
+\code{\link[=rxDerived]{rxDerived()}},
+\code{\link[=rxGetDefaultSerialize]{rxGetDefaultSerialize()}},
+\code{\link[=rxHtml]{rxHtml()}},
+\code{\link[=rxInv]{rxInv()}},
+\code{\link[=rxIsCurrent]{rxIsCurrent()}},
+\code{\link[=rxLock]{rxLock()}},
+\code{\link[=rxNumLoaded]{rxNumLoaded()}},
+\code{\link[=rxOmegaVarCovDeriv]{rxOmegaVarCovDeriv()}},
+\code{\link[=rxSymInvChol]{rxSymInvChol()}},
+\code{\link[=rxTempDir]{rxTempDir()}}
+}
 \author{
 Matthew Fidler
 }
+\concept{Utilities}

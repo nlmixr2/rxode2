@@ -1,6 +1,5 @@
 rxTest({
   test_that("test omegaCubeConvert", {
-
     matLst <- cvPost(10, lotri::lotri(a+b~c(1, 0.25, 1)), 3)
     expect_true(inherits(matLst, "list"))
 

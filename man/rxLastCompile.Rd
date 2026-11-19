@@ -4,7 +4,12 @@
 \alias{rxLastCompile}
 \title{Get the last compiled model information as alist}
 \usage{
-rxLastCompile()
+rxLastCompile(what = c("msg", "stderr", "stdout", "c"))
+}
+\arguments{
+\item{what}{Which elements to message to the console; by default all of
+them.  Use \code{what="stderr"} for the compiler error alone, or
+\code{what=character(0)} to message nothing and only take the returned list.}
 }
 \value{
 A list contains the following elements:
@@ -22,11 +27,28 @@ also message the contents to the console.
 Get the last compiled model information as alist
 }
 \examples{
+\donttest{
 rxode2({
   a <- b
 })
 rxLastCompile()
 }
+}
+\seealso{
+Other Model definition:
+\code{\link[=rxClean]{rxClean()}},
+\code{\link[=rxCompile]{rxCompile()}},
+\code{\link[=rxCreateCache]{rxCreateCache()}},
+\code{\link[=rxDelete]{rxDelete()}},
+\code{\link[=rxNorm]{rxNorm()}},
+\code{\link{rxReservedKeywords}},
+\code{\link[=rxSupportedFuns]{rxSupportedFuns()}},
+\code{\link{rxSyntaxFunctions}},
+\code{\link[=rxUnloadAll]{rxUnloadAll()}},
+\code{\link[=rxode2]{rxode2()}},
+\code{\link[=summary.rxode2]{summary.rxode2()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Model definition}

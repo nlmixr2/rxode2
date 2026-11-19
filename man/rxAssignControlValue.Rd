@@ -19,6 +19,50 @@ Nothing; called for the side effects
 \description{
 Assign Control Variable
 }
+\seealso{
+Other Developer API:
+\code{\link[=.cbindOme]{.cbindOme()}},
+\code{\link[=.collectWarnings]{.collectWarnings()}},
+\code{\link[=.copyUi]{.copyUi()}},
+\code{\link[=.handleSingleErrTypeNormOrTFoceiBase]{.handleSingleErrTypeNormOrTFoceiBase()}},
+\code{\link[=.matchesLangTemplate]{.matchesLangTemplate()}},
+\code{\link[=.modelHandleModelLines]{.modelHandleModelLines()}},
+\code{\link[=.quoteCallInfoLines]{.quoteCallInfoLines()}},
+\code{\link[=.rxLinCmtGen]{.rxLinCmtGen()}},
+\code{\link[=.rxSensStrippable]{.rxSensStrippable()}},
+\code{\link[=.rxWithOptions]{.rxWithOptions()}},
+\code{\link[=.rxWithWd]{.rxWithWd()}},
+\code{\link[=.rxode2ptrs]{.rxode2ptrs()}},
+\code{\link[=.toClassicEvid]{.toClassicEvid()}},
+\code{\link[=.vecDf]{.vecDf()}},
+\code{\link[=as.data.table.rxEt]{as.data.table.rxEt()}},
+\code{\link[=as_tibble.rxEt]{as_tibble.rxEt()}},
+\code{\link[=invWR1d]{invWR1d()}},
+\code{\link[=print.rxModelVars]{print.rxModelVars()}},
+\code{\link[=rLKJ1]{rLKJ1()}},
+\code{\link[=rxAllowUnload]{rxAllowUnload()}},
+\code{\link[=rxAssignPtr]{rxAssignPtr()}},
+\code{\link[=rxChain]{rxChain()}},
+\code{\link[=rxEtDispatchSolve]{rxEtDispatchSolve()}},
+\code{\link[=rxEvid]{rxEvid()}},
+\code{\link[=rxGetLin]{rxGetLin()}},
+\code{\link[=rxGetrxode2]{rxGetrxode2()}},
+\code{\link[=rxParseSuppressMsg]{rxParseSuppressMsg()}},
+\code{\link[=rxPreferredDistributionName]{rxPreferredDistributionName()}},
+\code{\link[=rxRateDur]{rxRateDur()}},
+\code{\link[=rxSyncOptions]{rxSyncOptions()}},
+\code{\link[=rxTrans]{rxTrans()}},
+\code{\link[=rxUiDeparse]{rxUiDeparse()}},
+\code{\link[=rxUiDevelop]{rxUiDevelop()}},
+\code{\link[=rxUiGet.cmtLines]{rxUiGet.cmtLines()}},
+\code{\link[=rxode2parse]{rxode2parse()}},
+\code{\link[=rxode2parseAssignTranslation]{rxode2parseAssignTranslation()}},
+\code{\link[=rxode2parseD]{rxode2parseD()}},
+\code{\link[=rxode2parseGetPackagesToLoad]{rxode2parseGetPackagesToLoad()}},
+\code{\link[=rxode2parseGetPointerAssignment]{rxode2parseGetPointerAssignment()}},
+\code{\link[=rxode2parseGetTranslation]{rxode2parseGetTranslation()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Developer API}

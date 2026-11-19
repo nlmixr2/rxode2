@@ -9,7 +9,7 @@ rxAppendModel(..., common = TRUE)
 \arguments{
 \item{...}{models to append together}
 
-\item{common}{boolean that determines if you need a common value to bind}
+\item{common}{boolean; when \code{TRUE} warn if the models have no variables in common}
 }
 \value{
 New model with both models appended together
@@ -63,6 +63,35 @@ rxAppendModel(ocmt |>
 }
 
 }
+\seealso{
+Other Model UI and piping:
+\code{\link[=as.ini]{as.ini()}},
+\code{\link[=as.model]{as.model()}},
+\code{\link[=as.rxUi]{as.rxUi()}},
+\code{\link[=coef.rxUi]{coef.rxUi()}},
+\code{\link[=indLin]{indLin()}},
+\code{\link[=ini.rxUi]{ini.rxUi()}},
+\code{\link[=ini<-]{ini<-()}},
+\code{\link[=linCmtMicro]{linCmtMicro()}},
+\code{\link[=linToOde]{linToOde()}},
+\code{\link[=model.function]{model.function()}},
+\code{\link[=model<-]{model<-()}},
+\code{\link[=modelExtract]{modelExtract()}},
+\code{\link[=odeToLin]{odeToLin()}},
+\code{\link[=rxFixPop]{rxFixPop()}},
+\code{\link[=rxFixRes]{rxFixRes()}},
+\code{\link[=rxGetControl]{rxGetControl()}},
+\code{\link[=rxRemoveControl]{rxRemoveControl()}},
+\code{\link[=rxRename]{rxRename()}},
+\code{\link[=rxSetControl]{rxSetControl()}},
+\code{\link[=rxSetCovariateNamesForPiping]{rxSetCovariateNamesForPiping()}},
+\code{\link[=rxSetPipingAuto]{rxSetPipingAuto()}},
+\code{\link[=rxUiDecompress]{rxUiDecompress()}},
+\code{\link[=rxode2<-]{rxode2<-()}},
+\code{\link[=update.rxUi]{update.rxUi()}},
+\code{\link[=zeroRe]{zeroRe()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Model UI and piping}

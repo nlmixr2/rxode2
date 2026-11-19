@@ -21,11 +21,9 @@ static void loadCheckmate() {
 extern "C" bool qtest(SEXP in, const char *test) {
   loadCheckmate();
   Rcpp::Function _qtest = as<Function>(checkmateNs["qtest"]);
-  SEXP testSXP = PROTECT(Rf_allocVector(STRSXP, 1));
+  Rcpp::Shield<SEXP> testSXP(Rf_allocVector(STRSXP, 1));
   SET_STRING_ELT(testSXP, 0, Rf_mkChar(test));
-  bool ret = as<bool>(_qtest(in, testSXP));
-  UNPROTECT(1);
-  return ret;
+  return as<bool>(_qtest(in, testSXP));
 }
 
 // Modified by Matt

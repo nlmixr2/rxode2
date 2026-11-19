@@ -1,6 +1,7 @@
 #define USE_FC_LEN_T
 #define STRICT_R_HEADER
 #include <Rcpp.h>
+#include "rxProtect.h"
 using namespace Rcpp;
 
 Function getRxFn(std::string name);
@@ -76,10 +77,10 @@ BEGIN_RCPP
 END_RCPP
 }
 
-extern "C" double _rxode2_evalUdf(const char *fun, int n, const double *args) {
-  SEXP ret = PROTECT(_rxode2_evalUdfS(fun, n, args));
+extern "C" double _rxode2_evalUdf(const char *fun, int n, const double *args) { rxProtect rx_protect; 
+  SEXP ret = rx_protect.protect(_rxode2_evalUdfS(fun, n, args));
   double r = REAL(ret)[0];
-  UNPROTECT(1);
+  // UNPROTECT
   return r;
 }
 

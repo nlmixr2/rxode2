@@ -1,3 +1,38 @@
+.rxSymInvEnv <- new.env(parent = emptyenv())
+.rxSymInvEnv$blockZeroFree <- NULL
+
+#' Register how a non-block Omega zero is parameterized
+#'
+#' An off-diagonal zero that does not split Omega into contiguous blocks is
+#' not a zero of `chol(Omega^-1)`, so it can be a free parameter (#1365).
+#' `rxSymInvCholCreate()` only does that when a registered callback says so;
+#' with no callback it errors as it always has.  This is a compatibility hook
+#' for nlmixr2est, not a user setting: the released nlmixr2est infers its own
+#' omega parameter positions from the zero pattern of the matrix it passes in,
+#' and accepting that matrix rather than its filled replacement makes
+#' `est="vae"` stop with a position-count mismatch.
+#'
+#' @param callback function of no arguments returning a single logical, or
+#'   `NULL` to unregister.
+#'
+#' @return The previously registered callback, invisibly.
+#'
+#' @keywords internal
+#' @export
+.rxSymInvBlockZeroFreeCallback <- function(callback = NULL) {
+  .old <- .rxSymInvEnv$blockZeroFree
+  .rxSymInvEnv$blockZeroFree <- callback
+  invisible(.old)
+}
+
+.rxSymInvBlockZeroFree <- function() {
+  .cb <- .rxSymInvEnv$blockZeroFree
+  if (is.null(.cb)) {
+    return(FALSE)
+  }
+  isTRUE(.cb())
+}
+
 #' Creates a logical matrix for block matrixes.
 #'
 #' @param mat Matrix
@@ -9,7 +44,7 @@
 #' @keywords internal
 #' @export
 rxBlockZeros <- function(mat, i) {
-  return(!((row(mat) > i & col(mat) > i) | (row(mat) <= i & col(mat) <= i)))
+  !((row(mat) > i & col(mat) > i) | (row(mat) <= i & col(mat) <= i))
 }
 rxIsBlock <- function(mat, i) {
   if (missing(i)) {
@@ -21,13 +56,12 @@ rxIsBlock <- function(mat, i) {
       }
     }
   } else {
-    return(all(mat[rxBlockZeros(mat, i)] == 0))
+    all(mat[rxBlockZeros(mat, i)] == 0)
   }
 }
 
 ## Version #2
-rxSymInvC2 <- function(mat1, diag.xform = c("sqrt", "log", "identity"),
-                       allow.cache = TRUE) {
+rxSymInvC2 <- function(mat1, diag.xform = c("sqrt", "log", "identity"), allow.cache = TRUE) {
   rxReq("symengine")
   if (!all(as.vector(mat1) == 1)) {
     stop("this has to be a matrix of all 1s or 0s", call. = FALSE)
@@ -45,10 +79,10 @@ rxSymInvC2 <- function(mat1, diag.xform = c("sqrt", "log", "identity"),
   cache.file2 <- file.path(system.file("inv", package = "rxode2"), cache.file)
   if (allow.cache && file.exists(cache.file)) {
     load(cache.file)
-    return(ret)
+    ret
   } else if (allow.cache && file.exists(cache.file2)) {
     load(cache.file2)
-    return(ret)
+    ret
   } else {
     diag.xform <- match.arg(diag.xform)
     message("diagonal form: ", diag.xform)
@@ -57,9 +91,9 @@ rxSymInvC2 <- function(mat1, diag.xform = c("sqrt", "log", "identity"),
     num <- sapply(num, function(x) {
       if (x == 1) {
         i <<- i + 1
-        return(i)
+        i
       } else {
-        return(0)
+        0
       }
     })
     mat1[upper.tri(mat1, TRUE)] <- num - 1
@@ -69,9 +103,10 @@ rxSymInvC2 <- function(mat1, diag.xform = c("sqrt", "log", "identity"),
     mat1[mat1 == "t-1"] <- "0"
     mat1 <- matrix(mat1, d)
 
-    diags <- -2 - as.numeric(sapply(diag(mat1), function(x) {
-      substring(x, 2)
-    }))
+    diags <- -2 -
+      as.numeric(sapply(diag(mat1), function(x) {
+        substring(x, 2)
+      }))
     mat2 <- mat1
     if (diag.xform == "sqrt") {
       ## The diagonal elements are assumed to be estimated as sqrt
@@ -143,68 +178,107 @@ rxSymInvC2 <- function(mat1, diag.xform = c("sqrt", "log", "identity"),
     j <- 0
 
     .m1 <- symengine::Matrix(sdiag)
-    diag <- paste(lapply(diags, function(x) {
-      .m <- symengine::D(.m1, symengine::S(paste0("t", -(x + 2))))
-      .n <- dim(.m)[1]
-      .str <- paste(sapply(seq(1, .n), function(d) {
-        sprintf("      REAL(ret)[%s] = %s;", d - 1, seC(.m[d, 1]))
-      }), collapse = "\n")
-      sprintf(
-        "    %sif (theta_n == %s){\n%s\n    }", ifelse(-(x + 2) == 0, "", "else "), x - 1,
-        .str
-      )
-    }), collapse = "\n")
-    ## FIXME: this derivative expression is always the same. There
-    ## should be a simpler way to express this...
+    diag <- paste(
+      lapply(diags, function(x) {
+        .m <- symengine::D(.m1, symengine::S(paste0("t", -(x + 2))))
+        .n <- dim(.m)[1]
+        .str <- paste(
+          sapply(seq(1, .n), function(d) {
+            sprintf("      REAL(ret)[%s] = %s;", d - 1, seC(.m[d, 1]))
+          }),
+          collapse = "\n"
+        )
+        sprintf(
+          "    %sif (theta_n == %s){\n%s\n    }",
+          ifelse(-(x + 2) == 0, "", "else "),
+          x - 1,
+          .str
+        )
+      }),
+      collapse = "\n"
+    )
+    ## Note: this derivative expression is always the same; there
+    ## should be a simpler way to express it.
     i <- 0
     omega0 <- sprintf(
       "    if (theta_n == 0){\n%s\n    }",
-      paste(sapply(as.vector(omat), function(x) {
-        ret <- sprintf("      REAL(ret)[%s] = %s;", i, seC(x))
-        i <<- i + 1
-        return(ret)
-      }), collapse = "\n")
+      paste(
+        sapply(as.vector(omat), function(x) {
+          ret <- sprintf("      REAL(ret)[%s] = %s;", i, seC(x))
+          i <<- i + 1
+          ret
+        }),
+        collapse = "\n"
+      )
     )
     i <- 0
     omega1 <- sprintf(
       "    else if (theta_n == -1){\n%s\n    }",
-      paste(sapply(as.vector(se.inv), function(x) {
-        cnt()
-        ret <- sprintf("      REAL(ret)[%s] = %s;", i, seC(x))
-        i <<- i + 1
-        return(ret)
-      }), collapse = "\n")
-    )
-    omega1p <- paste(unlist(lapply(vars, function(x) {
-      i <<- 0
-      j <<- j + 1
-      sprintf(
-        "    else if (theta_n == %s){\n%s\n    }", j,
-        paste(sapply(
-          as.vector(symengine::D(se.inv, symengine::S(x))),
-          function(x) {
-            ret <- sprintf("      REAL(ret)[%s] = %s;", i, seC(x))
-            i <<- i + 1
-            return(ret)
-          }
-        ), collapse = "\n")
-      )
-    })), collapse = "\n")
-    ##
-
-    mat2 <- sprintf(
-
-      "if (theta_n== NA_INTEGER){\n    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,%s));\n%s\n    UNPROTECT(1);\n    return(ret);  \n}\n",
-      length(mat2), paste(paste(gsub(rex::rex("t", capture(any_numbers), "="), "    INTEGER(ret)[\\1]=", mat2), ";", sep = ""),
+      paste(
+        sapply(as.vector(se.inv), function(x) {
+          cnt()
+          ret <- sprintf("      REAL(ret)[%s] = %s;", i, seC(x))
+          i <<- i + 1
+          ret
+        }),
         collapse = "\n"
       )
     )
-    matExpr <- sprintf("  if (theta_n >= -1){\n    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, %s, %s));for (int i = 0; i < %s; i++){REAL(ret)[i]=0;}\n", d, d, d * d)
-    vecExpr <- sprintf("    UNPROTECT(1);\n    return(ret);\n  } else {\n    SEXP ret = PROTECT(Rf_allocVector(REALSXP, %s));for(int i = 0; i < %s; i++){REAL(ret)[i]=0;}\n%s\n    UNPROTECT(1);\n    return(ret);\n  }", d, d, diag)
+    omega1p <- paste(
+      unlist(lapply(vars, function(x) {
+        i <<- 0
+        j <<- j + 1
+        sprintf(
+          "    else if (theta_n == %s){\n%s\n    }",
+          j,
+          paste(
+            sapply(
+              as.vector(symengine::D(se.inv, symengine::S(x))),
+              function(x) {
+                ret <- sprintf("      REAL(ret)[%s] = %s;", i, seC(x))
+                i <<- i + 1
+                ret
+              }
+            ),
+            collapse = "\n"
+          )
+        )
+      })),
+      collapse = "\n"
+    )
+    ##
+
+    mat2 <- sprintf(
+      "if (theta_n== NA_INTEGER){\n    SEXP ret=  PROTECT(Rf_allocVector(INTSXP,%s));\n%s\n    UNPROTECT(1);\n    return(ret);  \n}\n", # nolint: line_length_linter.
+      length(mat2),
+      paste(
+        paste(gsub(rex::rex("t", capture(any_numbers), "="), "    INTEGER(ret)[\\1]=", mat2), ";", sep = ""),
+        collapse = "\n"
+      )
+    )
+    matExpr <- sprintf(
+      "  if (theta_n >= -1){\n    SEXP ret = PROTECT(Rf_allocMatrix(REALSXP, %s, %s));for (int i = 0; i < %s; i++){REAL(ret)[i]=0;}\n", # nolint: line_length_linter.
+      d,
+      d,
+      d * d
+    )
+    vecExpr <- sprintf(
+      "    UNPROTECT(1);\n    return(ret);\n  } else {\n    SEXP ret = PROTECT(Rf_allocVector(REALSXP, %s));for(int i = 0; i < %s; i++){REAL(ret)[i]=0;}\n%s\n    UNPROTECT(1);\n    return(ret);\n  }", # nolint: line_length_linter.
+      d,
+      d,
+      diag
+    )
     src <- sprintf(
-      "  int theta_n = INTEGER(tn)[0];\n  %s\nif (theta_n == -2){\n    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));\n    INTEGER(ret)[0] = %s;\n    UNPROTECT(1);\n    return ret;\n  }\n  else if (theta_n < %s || theta_n > %s){\n    Rf_error(\"d(Omega^-1) derivative outside bounds\");\n  }\n  else if (Rf_length(theta) != %s){\n    Rf_error(\"requires vector with %s arguments\");\n  }\n%s\n%s\n%s",
-      mat2, length(vars), min(diags) - 1, length(vars), length(vars), length(vars),
-      paste0(matExpr, omega0), omega1, paste0(omega1p, "\n", vecExpr)
+      "  int theta_n = INTEGER(tn)[0];\n  %s\nif (theta_n == -2){\n    SEXP ret = PROTECT(Rf_allocVector(INTSXP, 1));\n    INTEGER(ret)[0] = %s;\n    UNPROTECT(1);\n    return ret;\n  }\n  else if (theta_n < %s || theta_n > %s){\n    Rf_error(\"d(Omega^-1) derivative outside bounds\");\n  }\n  else if (Rf_length(theta) != %s){\n    Rf_error(\"requires vector with %s arguments\");\n  }\n%s\n%s\n%s", # nolint: line_length_linter.
+      mat2,
+      length(vars),
+      min(diags) - 1,
+      length(vars),
+      length(vars),
+      length(vars),
+      paste0(matExpr, omega0),
+      omega1,
+      paste0(omega1p, "\n", vecExpr)
     )
     src <- strsplit(src, "\n")[[1]]
     reg <- rex::rex(any_spaces, "REAL(ret)[", any_numbers, "]", any_spaces, "=", any_spaces, "0", any_spaces, ";")
@@ -216,16 +290,19 @@ rxSymInvC2 <- function(mat1, diag.xform = c("sqrt", "log", "identity"),
       src <- paste(src, collapse = "\n")
     }
     message("done")
-    fmat <- matrix(sapply(as.vector(fmat), function(x) {
-      force(x)
-      return(rxFromSE(x))
-    }), d)
+    fmat <- matrix(
+      sapply(as.vector(fmat), function(x) {
+        force(x)
+        rxFromSE(x)
+      }),
+      d
+    )
     ret <- paste0("#define warning Rf_warning\n#define Rx_pow_di R_pow_di\n#define Rx_pow R_pow\n", src)
     ret <- list(ret, fmat)
     if (allow.cache) {
       save(ret, file = cache.file)
     }
-    return(ret)
+    ret
   }
 }
 
@@ -241,18 +318,21 @@ rxSymInvCholN <- function() {
 }
 
 rxSymInvCreate2C <- function(src) {
-  return(inline::cfunction(signature(theta = "numeric", tn = "integer"), src, includes = "\n#include <Rmath.h>\n"))
+  inline::cfunction(signature(theta = "numeric", tn = "integer"), src, includes = "\n#include <Rmath.h>\n")
 }
 
 
 ## rxSymInvCreateC_.slow <- NULL
-rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity")) {
+rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity"), same = NULL) {
   diag.xform <- match.arg(diag.xform)
   mat2 <- mat
   mat2 <- rxInv(mat2)
-  mat2 <- try({
-    chol(mat2)
-  }, silent = TRUE)
+  mat2 <- try(
+    {
+      chol(mat2)
+    },
+    silent = TRUE
+  )
   if (inherits(mat2, "try-error")) {
     stop("initial 'omega' matrix inverse is non-positive definite", call. = FALSE)
   }
@@ -277,6 +357,7 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity")) {
   }
   dmat <- dim(mat1)[1] - 1
   block <- list()
+  .blockRows <- list()
   last <- 1
   if (dmat != 0) {
     for (i in 1:dmat) {
@@ -285,6 +366,7 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity")) {
         cur <- matrix(as.double(mat[s, s]), length(s))
         last <- i + 1
         block[[length(block) + 1]] <- cur
+        .blockRows[[length(.blockRows) + 1]] <- s
       }
     }
   }
@@ -292,8 +374,26 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity")) {
     s <- seq(last, dmat + 1)
     cur <- matrix(as.double(mat[s, s]), length(s))
     block[[length(block) + 1]] <- cur
+    .blockRows[[length(.blockRows) + 1]] <- s
   }
   if (length(block) == 0) {
+    ## An off-diagonal zero in a non-decomposable block is not a zero of
+    ## chol(Omega^-1), so every lower-triangle cell is a parameter (#1365).
+    ##
+    ## OFF unless nlmixr2est registers the callback.  The released nlmixr2est
+    ## derives its own parameter positions from the zero pattern of the omega
+    ## it hands us (`.foceiSymInvCholCreate()` walks a ladder of candidate
+    ## matrices and keeps the first this function accepts).  With the fill on
+    ## we accept the ladder's FIRST rung, so nlmixr2est keeps the unfilled
+    ## matrix while we return one more theta than it has non-zero cells, and
+    ## est="vae" then aborts with
+    ##   vaeInnerSetup_: omega position list (5) != omegan (6)
+    ## With the fill off we error as before, nlmixr2est falls to its filled
+    ## rung, and the counts agree again.  See
+    ## `.rxSymInvBlockZeroFreeCallback()`.
+    if (.rxSymInvBlockZeroFree()) {
+      mat1[row(mat1) != col(mat1)] <- 1
+    }
     if (diag.xform == "sqrt" && dim(mat1)[1] <= .Call(`_rxCholInv`, 0L, NULL, NULL)) {
       fmat <- mat1
       num <- as.vector(mat1[upper.tri(mat1, TRUE)])
@@ -301,9 +401,9 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity")) {
       num <- sapply(num, function(x) {
         if (x == 1) {
           i <<- i + 1
-          return(i)
+          i
         } else {
-          return(0)
+          0
         }
       })
       fmat[upper.tri(fmat, TRUE)] <- num - 1
@@ -324,7 +424,7 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity")) {
         stop("zero matrix", call. = FALSE)
       }
       ## signature(theta="numeric", tn="integer")
-      ## FIXME move these functions to Cpp?
+      ## Possible optimization: move these functions to C++.
       fn <- eval(bquote(function(theta, tn) {
         if (is.null(tn)) {
           .ret <- matrix(rep(TRUE, .(d * d)), nrow = .(d))
@@ -340,7 +440,7 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity")) {
         }
         new.theta <- rep(0.0, .((d + 1) * d / 2))
         new.theta[.(w)] <- theta
-        return(.Call(`_rxCholInv`, .(as.integer(d)), as.double(new.theta), as.integer(tn)))
+        .Call(`_rxCholInv`, .(as.integer(d)), as.double(new.theta), as.integer(tn))
       }))
       ret <- list(
         fmat = fmat,
@@ -349,7 +449,7 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity")) {
         cache = TRUE
       )
       class(ret) <- "rxSymInvChol"
-      return(ret)
+      ret
     } else {
       ret <- rxSymInvC2(
         mat1 = mat1,
@@ -362,33 +462,71 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity")) {
         fn = rxSymInvCreate2C(ret[[1]])
       )
       class(ret) <- "rxSymInvChol"
-      return(ret)
+      ret
     }
   } else {
-    mat <- Matrix::.bdiag(block)
+    mat <- lotri::lotriMat(block)
     matI <- lapply(block, rxSymInvCreateC_, diag.xform = diag.xform)
-    ini <- unlist(lapply(matI, function(x) {
+    ## Which blocks repeat an earlier one?  `same` is the per-eta map from
+    ## `lotri::lotriSameMap()`: 0 for an ordinary or master eta, otherwise
+    ## the eta index of the master it mirrors.  A repeated block is NOT a
+    ## parameter of its own -- it is the block it repeats -- so it gets no
+    ## thetas of its own and reuses its master's slice instead.  For a
+    ## block diagonal Omega whose blocks are identical, inv(Omega) and
+    ## chol(inv(Omega)) are block diagonal with identical factors, so
+    ## d(inv(Omega))/d(theta_k) is just the block diagonal sum of the
+    ## master's and every copy's contribution -- which is exactly the
+    ## derivative of the shared parameter, with no further work.
+    .masterOf <- integer(length(block))
+    if (!is.null(same) && any(same != 0L)) {
+      for (.b in seq_along(block)) {
+        .r <- .blockRows[[.b]]
+        if (any(.r > length(same))) {
+          next
+        }
+        .s <- same[.r]
+        if (any(.s == 0L)) {
+          next
+        }
+        .w <- which(vapply(
+          .blockRows,
+          function(z) identical(as.integer(z), as.integer(.s)),
+          logical(1),
+          USE.NAMES = FALSE
+        ))
+        if (length(.w) == 1L && .w < .b && dim(block[[.w]])[1] == length(.r)) {
+          .masterOf[.b] <- .w
+        }
+      }
+    }
+    .free <- which(.masterOf == 0L)
+    ini <- unlist(lapply(matI[.free], function(x) {
       x$ini
     }))
-    ntheta <- sum(sapply(matI, function(x) {
-      return(x$fn(NULL, -2L))
+    ntheta <- sum(sapply(matI[.free], function(x) {
+      x$fn(NULL, -2L)
     }))
     i <- 1
-    theta.part <- lapply(matI, function(x) {
-      len <- x$fn(NULL, -2L)
-      ret <- as.integer(seq(i, by = 1, length.out = len))
-      i <<- max(ret) + 1
-      return(ret)
-    })
-    ## FIXME move these to C/C++
-    ## Drop the dependency on Matrix (since this is partially run in R)
+    theta.part <- vector("list", length(block))
+    for (.b in seq_along(block)) {
+      if (.masterOf[.b] > 0L) {
+        theta.part[[.b]] <- theta.part[[.masterOf[.b]]]
+      } else {
+        len <- matI[[.b]]$fn(NULL, -2L)
+        theta.part[[.b]] <- as.integer(seq(i, by = 1, length.out = len))
+        i <- max(theta.part[[.b]]) + 1
+      }
+    }
+    ## the "which thetas are diagonal elements" vector is positional over
+    ## the theta vector, so it counts the free blocks only
+    theta.partFree <- theta.part[.free]
     fn <- eval(bquote(function(theta, tn) {
       force(matI)
       theta.part <- .(theta.part)
       if (is.null(tn)) {
         if (is.null(theta)) {
           return(unlist(lapply(
-            theta.part,
+            .(theta.partFree),
             function(x) {
               .j <- .k <- 1
               .ret <- logical(length(x))
@@ -402,7 +540,7 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity")) {
                   .j <- .j + 1
                 }
               }
-              return(.ret)
+              .ret
             }
           )))
         }
@@ -420,45 +558,43 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity")) {
           new.theta <- theta[w]
           ctn <- as.integer(tn)
           if (is.na(ctn)) {
-            return(mt$fn(as.double(new.theta), ctn))
+            mt$fn(as.double(new.theta), ctn)
           } else if (ctn == -1L || ctn == 0L) {
-            return(mt$fn(as.double(new.theta), ctn))
+            mt$fn(as.double(new.theta), ctn)
           } else {
             ## the ctn should refer to the theta relative to
             ## the current submatrix; However this function
             ## has the theta number relative to the whole
             ## matrix.
             if (ctn > 0L) {
-              if (ctn > max(w) | ctn < min(w)) {
+              if (ctn > max(w) || ctn < min(w)) {
                 mat <- mt$fn(as.double(new.theta), 0L)
                 d <- dim(mat)[1]
-                return(matrix(rep(0, d * d), d))
+                matrix(rep(0, d * d), d)
               } else {
                 ctn <- as.integer(ctn - min(w) + 1)
-                return(mt$fn(as.double(new.theta), ctn))
+                mt$fn(as.double(new.theta), ctn)
               }
             } else {
               ctn <- as.integer(-ctn - 2)
-              if (ctn > max(w) | ctn < min(w)) {
+              if (ctn > max(w) || ctn < min(w)) {
                 vec <- mt$fn(as.double(new.theta), -3L)
                 d <- length(vec)
-                return(rep(0, d))
+                rep(0, d)
               } else {
                 ctn <- as.integer(-(ctn - min(w) + 1) - 2L)
-                return(mt$fn(as.double(new.theta), ctn))
+                mt$fn(as.double(new.theta), ctn)
               }
             }
           }
         }
       )
       if (is.na(tn)) {
-        return(unlist(lst))
+        unlist(lst)
       } else if (tn >= -1) {
-        ## FIXME: lotriMat should take unnamed
-        ## return(lotri::lotriMat(lst))
-        return(as.matrix(Matrix::bdiag(lst)))
+        lotri::lotriMat(lst)
       } else {
-        return(unlist(lst))
+        unlist(lst)
       }
     }))
 
@@ -468,7 +604,7 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity")) {
       fn = fn
     )
     class(ret) <- "rxSymInvChol"
-    return(ret)
+    ret
   }
 }
 
@@ -477,36 +613,44 @@ rxSymInvCreateC_ <- function(mat, diag.xform = c("sqrt", "log", "identity")) {
 #' @param mat Initial Omega matrix
 #' @param diag.xform transformation to diagonal elements of OMEGA. or `chol(Omega^-1)`
 #' @param create.env -- Create an environment to calculate the inverses. (By default TRUE)
+#' @param same Optional integer vector over the etas of `mat`, as
+#'   returned by `lotri::lotriSameMap()`: `0` for an ordinary or master
+#'   eta, otherwise the index of the eta it mirrors.  Blocks that repeat
+#'   an earlier one (NONMEM's `$OMEGA BLOCK(n) SAME`) then share that
+#'   block's parameters instead of being estimated separately.
 #' @param envir -- Environment to evaluate function, bu default it is the parent frame.
 #' @return A rxSymInv object OR a rxSymInv environment
 #' @author Matthew L. Fidler
 #' @keywords internal
 #' @export
-rxSymInvCholCreate <- function(mat,
-                               diag.xform = c("sqrt", "log", "identity"),
-                               create.env = TRUE, envir = parent.frame()) {
+rxSymInvCholCreate <- function(
+  mat,
+  diag.xform = c("sqrt", "log", "identity"),
+  create.env = TRUE,
+  envir = parent.frame(),
+  same = NULL
+) {
   args <- as.list(match.call(expand.dots = TRUE))[-1]
   args <- args[names(args) != "create.env"]
   if (create.env) {
     rxi <- do.call(rxSymInvCreateC_, args, envir = envir)
     ret <- rxSymInvChol(rxi)
     ret$theta <- rxi$ini
-    return(ret)
+    ret
   } else {
-    return(do.call(rxSymInvCreateC_, args, envir = envir))
+    do.call(rxSymInvCreateC_, args, envir = envir)
   }
 }
 
 #' @export
 `$.rxSymInvCholEnv` <- function(obj, arg, exact = TRUE) {
-  return(.Call(`_rxode2_rxSymInvCholEnvCalculate`, obj, arg, NULL))
+  .Call(`_rxode2_rxSymInvCholEnvCalculate`, obj, arg, NULL)
 }
 
 #' @export
 "$<-.rxSymInvCholEnv" <- function(obj, arg, value) {
-  return(.Call(`_rxode2_rxSymInvCholEnvCalculate`, obj, arg, value))
+  .Call(`_rxode2_rxSymInvCholEnvCalculate`, obj, arg, value)
 }
-
 
 ## For the inner problem, only Omega^-1 is needed for the
 ## optimization.  To finalize the likelihood for the individual, you

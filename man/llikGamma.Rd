@@ -39,7 +39,7 @@ llikGamma(1, 1, 10)
 et  <- et(seq(0.001, 1, length.out=10))
 et$shape <- 1
 et$rate <- 10
- 
+
 model <- function() {
   model({
     fx <- llikGamma(time, shape, rate)
@@ -51,6 +51,24 @@ model <- function() {
 rxSolve(model, et)
 }
 }
+\seealso{
+Other Log-likelihood functions:
+\code{\link[=llikBeta]{llikBeta()}},
+\code{\link[=llikBinom]{llikBinom()}},
+\code{\link[=llikCauchy]{llikCauchy()}},
+\code{\link[=llikChisq]{llikChisq()}},
+\code{\link[=llikExp]{llikExp()}},
+\code{\link[=llikF]{llikF()}},
+\code{\link[=llikGeom]{llikGeom()}},
+\code{\link[=llikNbinom]{llikNbinom()}},
+\code{\link[=llikNbinomMu]{llikNbinomMu()}},
+\code{\link[=llikNorm]{llikNorm()}},
+\code{\link[=llikPois]{llikPois()}},
+\code{\link[=llikT]{llikT()}},
+\code{\link[=llikUnif]{llikUnif()}},
+\code{\link[=llikWeibull]{llikWeibull()}}
+}
 \author{
 Matthew L. Fidler
 }
+\concept{Log-likelihood functions}
