@@ -2,6 +2,11 @@
 
 ## New features
 
+- The model language has `clamp(x, lo, hi)`, the same as
+  `min(max(x, lo), hi)` (and differentiated the same way); a call with
+  other than three arguments, or with literal bounds `lo > hi`, is a parse
+  error (#1750).
+
 - `rxSymInvCholCreate()` builds block-diagonal omegas with
   `lotri::lotriMat()` instead of `Matrix::bdiag()`, removing the
   first-use `Matrix` namespace load (#1675); `Matrix` is no longer

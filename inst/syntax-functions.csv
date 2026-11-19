@@ -92,6 +92,7 @@ prod(...),product of terms;  This uses PreciseSums so the product will not have 
 sum(...),sum of terms;  This uses PreciseSums so the product will not have as much floating point errors (though it will take longer),
 max(...),maximum of a group of numbers,
 min(...),Min of a group of numbers,
+"clamp(x, lo, hi)","Bound x into [lo, hi]: lo when x <= lo, hi when x >= hi, otherwise x; the same as min(max(x, lo), hi), and differentiable in the same way",
 "lag(parameter, number=1)",Get the lag of an input parameter; You can specify a number of lagged observations,
 "lead(parameter, number=2)",Get the lead of an input parameter; You can specify a number of lead observation,
 "diff(par, number=1)",Get the difference between the current parameter and the last parameter; Can change the parameter number,

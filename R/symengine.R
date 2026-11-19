@@ -197,6 +197,7 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "linCmtB" = 15,
   "max" = NA,
   "min" = NA,
+  "clamp" = NA,
   "logit" = NA,
   "expit" = NA,
   "probit" = NA,
@@ -2815,6 +2816,19 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
         .ret <- .rxToSEMax(unlist(.ret0), min = FALSE)
       } else if (.fun == "min") {
         .ret <- .rxToSEMax(unlist(.ret0), min = TRUE)
+      } else if (.fun == "clamp") {
+        ## clamp(x, lo, hi) is min(max(x, lo), hi)
+        if (length(.ret0) != 3L) {
+          stop(
+            sprintf(
+              gettext("'clamp' takes 3 arguments 'clamp(x, lo, hi)' (has %s)"),
+              length(.ret0)
+            ),
+            call. = FALSE
+          )
+        }
+        .ret0 <- unlist(.ret0)
+        .ret <- .rxToSEMax(c(.rxToSEMax(.ret0[1:2], min = FALSE), .ret0[3]), min = TRUE)
       } else if (.fun == "sum") {
         .ret <- paste0("(", paste(paste0("(", unlist(.ret0), ")"), collapse = "+"), ")")
       } else if (.fun == "prod") {
@@ -4254,7 +4268,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
         } else {
           .txt
         }
-      } else if (any(paste(.ret0[[1]]) == c("max", "min"))) {
+      } else if (any(paste(.ret0[[1]]) == c("max", "min", "clamp"))) {
         .x1 <- as.character(.ret0[[1]])
         .ret <- paste0(.x1, "(")
         .ret0 <- .ret0[-1]
