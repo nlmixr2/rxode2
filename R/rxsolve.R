@@ -1122,10 +1122,10 @@
 #'   starting state meet `ssAtol`/`ssRtol`, so a slowly accumulating state
 #'   (a long half-life against the dosing interval, a slow peripheral
 #'   compartment or saturable elimination) converges in far fewer cycles and
-#'   closer to the true steady state.  When the accelerated iteration stalls, diverges or reaches
-#'   `maxSS` (eg. dosing above the elimination capacity, with no steady state)
-#'   it restarts plain iteration from where acceleration began, so the result
-#'   is that of `"iterate"`.  A fixed dose count (`minSS = maxSS`) and a
+#'   closer to the true steady state.  When the accelerated iteration stalls,
+#'   diverges or reaches `maxSS` (eg. dosing above the elimination capacity,
+#'   with no steady state) it restarts plain iteration from where acceleration
+#'   began, so the result is that of `"iterate"`.  A fixed dose count (`minSS = maxSS`) and a
 #'   `delay()` model always iterate.  See `bench/ss_anderson_1762.R` in the
 #'   package sources for the benchmark behind the default.
 #'
