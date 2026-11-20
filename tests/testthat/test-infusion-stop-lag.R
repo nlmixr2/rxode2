@@ -29,12 +29,13 @@
   )
 }
 
-.infLagSolve <- function(mod, ev, ka, k, interp) {
+.infLagSolve <- function(mod, ev, ka, k, interp, ...) {
   rxSolve(
     mod,
     c(ka = ka, k = k, bio = 0.8, lg = 0.3),
     ev,
     covsInterpolation = interp,
+    ...,
     atol = 1e-10,
     rtol = 1e-10,
     returnType = "data.frame"
@@ -109,10 +110,11 @@ rxTest({
   })
 
   test_that("a modeled rate or duration reads its start's record after a lagged dose reorders the records", {
-    # rate() follows rxode2's rule: read once, at the start's record, and
-    # fixed for the infusion.  NONMEM re-reads R1 on each interval from the
-    # record that ends it (rxode2 issue 1586); a change to that rule changes
-    # these modeled-rate expectations.
+    # WT changes during the infusion, so the expected values depend on the
+    # modeled rate/duration rule: rateAtDoseTime/durAtDoseTime = TRUE read it
+    # once at the start's record; by default it is re-read at each data record
+    # (rxode2 issue 1586).  Either way the lagged reorder must match the same
+    # model with the bolus given at its lagged time.
     # the bolus into center at t = 0 lags to t = 3, past the depot infusion
     # that starts at t = 1 (WT 70)
     modDur <- rxode2({
@@ -127,6 +129,16 @@ rxTest({
       alag(center) <- 3
       rate(depot) <- 40 * WT / 70
     })
+    modDurNoLag <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - k * center
+      dur(depot) <- 2 * WT / 70
+    })
+    modRateNoLag <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - k * center
+      rate(depot) <- 40 * WT / 70
+    })
     modPlain <- rxode2({
       d/dt(depot) <- -ka * depot
       d/dt(center) <- ka * depot - k * center
@@ -134,19 +146,26 @@ rxTest({
     obsT <- .infLagReorderObs
     explicit <- .infLagReorderEv(3, 40)
     cases <- list(
-      list(name = "dur", mod = modDur, rate = -2),
-      list(name = "rate", mod = modRate, rate = -1)
+      list(name = "dur", mod = modDur, noLag = modDurNoLag, rate = -2),
+      list(name = "rate", mod = modRate, noLag = modRateNoLag, rate = -1)
     )
     for (cc in cases) {
       ev <- .infLagReorderEv(0, cc$rate)
+      # the same model with the center bolus given at its lagged time
+      evNoLag <- .infLagReorderEv(3, cc$rate)
       for (interp in .interps) {
         lab <- paste(cc$name, interp)
-        s0 <- .infLagSolve(cc$mod, ev, 0, 0, interp)
+        s0 <- .infLagSolve(cc$mod, ev, 0, 0, interp, rateAtDoseTime = TRUE, durAtDoseTime = TRUE)
         expect_equal(s0$time, obsT, label = lab)
         expect_equal(s0$depot, c(0, 60, 80, 80, 80), tolerance = 1e-8, label = lab)
         expect_equal(s0$center, c(0, 0, 100, 100, 100), tolerance = 1e-8, label = lab)
-        s <- .infLagSolve(cc$mod, ev, 1.2, 0.2, interp)
+        s <- .infLagSolve(cc$mod, ev, 1.2, 0.2, interp, rateAtDoseTime = TRUE, durAtDoseTime = TRUE)
         e <- .infLagSolve(modPlain, explicit, 1.2, 0.2, interp)
+        expect_equal(s$depot, e$depot, tolerance = 1e-7, label = lab)
+        expect_equal(s$center, e$center, tolerance = 1e-7, label = lab)
+        # re-read at each data record (the default)
+        s <- .infLagSolve(cc$mod, ev, 1.2, 0.2, interp)
+        e <- .infLagSolve(cc$noLag, evNoLag, 1.2, 0.2, interp)
         expect_equal(s$depot, e$depot, tolerance = 1e-7, label = lab)
         expect_equal(s$center, e$center, tolerance = 1e-7, label = lab)
       }
@@ -371,10 +390,9 @@ rxTest({
   })
 
   test_that("f() of a modeled rate or duration reads its start's record, not the covariates at its time", {
-    # rate() follows rxode2's rule: read once, at the start's record, and
-    # fixed for the infusion.  NONMEM re-reads R1 on each interval from the
-    # record that ends it (rxode2 issue 1586); a change to that rule changes
-    # these modeled-rate expectations.
+    # By default a modeled rate or duration is re-read at each data record
+    # (rateAtDoseTime, durAtDoseTime; rxode2 issue 1586); WT is constant from
+    # the dose on, so it is the value read at the start's record.
     # WT is 100 before the dose at 1.8 and 70 from its record on
     wtf <- function(t) ifelse(t < 1.8, 100, 70)
     modRate <- rxode2({
@@ -424,10 +442,9 @@ rxTest({
   })
 
   test_that("several subjects whose records a lagged dose reorders read their own records with 4 cores", {
-    # rate() follows rxode2's rule: read once, at the start's record, and
-    # fixed for the infusion.  NONMEM re-reads R1 on each interval from the
-    # record that ends it (rxode2 issue 1586); a change to that rule changes
-    # these modeled-rate expectations.
+    # By default a modeled rate or duration is re-read at each data record
+    # (rateAtDoseTime, durAtDoseTime; rxode2 issue 1586); WT is constant from
+    # the dose on, so it is the value read at the start's record.
     mods <- list(
       rate = rxode2({
         d/dt(depot) <- -ka * depot
