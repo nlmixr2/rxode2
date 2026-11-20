@@ -25,6 +25,8 @@ extern int _rxPushDose(rx_solving_options_ind *_ind, double _curTime,
                        double _time, int _evid, double _amt, int _cmt,
                        double _rate, double _ii, int _addl, int _ss,
                        int _isDur);
+extern double _rxTte(int cSub, double t, int what, double k);
+SEXP _rxode2_rxTteSetup(SEXP);
 
 SEXP _vecDF(SEXP cv, SEXP n_);
 SEXP _rxode2_dropUnitsRxSolve(SEXP);
@@ -334,6 +336,7 @@ void rxOptionsIni(void);
 
 void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx);
 double _rxPkTime(double t, unsigned int id, rx_solve *rx);
+double _rxDoseTime(double t, unsigned int id, rx_solve *rx);
 double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx);
 /* rxRegisterParLoader / rxRemoveParLoader + t_rxParLoader come from rxode2.h;
    they are exported to downstream packages via the function-pointer table
@@ -1193,6 +1196,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxSimThetaOmega", (DL_FUNC) _rxode2_rxSimThetaOmega, 28},
     {"_rxSetSeed", (DL_FUNC) _rxode2_rxSetSeed, 1},
     {"_rxode2_rxordSelect", (DL_FUNC) _rxode2_rxordSelect, 2},
+    {"_rxode2_rxTteSetup", (DL_FUNC) _rxode2_rxTteSetup, 1},
     {"_rxode2_rxErf", (DL_FUNC) &_rxode2_rxErf, 1},
     {"_rxode2_rxMemoryComponents_", (DL_FUNC) &_rxode2_rxMemoryComponents_, 25},
     {"_rxode2_rxRamBytes_", (DL_FUNC) &_rxode2_rxRamBytes_, 0},
@@ -1271,6 +1275,7 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "par_solve", (DL_FUNC) &par_solve);
   R_RegisterCCallable("rxode2", "_update_par_ptr", (DL_FUNC) &_update_par_ptr);
   R_RegisterCCallable("rxode2", "_rxPkTime", (DL_FUNC) &_rxPkTime);
+  R_RegisterCCallable("rxode2", "_rxDoseTime", (DL_FUNC) &_rxDoseTime);
   R_RegisterCCallable("rxode2", "rxCallDydtForce", (DL_FUNC) &rxCallDydtForce);
   R_RegisterCCallable("rxode2", "_getParCov", (DL_FUNC) &_getParCov);
   R_RegisterCCallable("rxode2","rxRmModelLib", (DL_FUNC) &rxRmModelLib);
@@ -1316,6 +1321,7 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "studentTInv", (DL_FUNC) &studentTInv);
   R_RegisterCCallable("rxode2", "_setThreadInd", (DL_FUNC) &_setThreadInd);
   R_RegisterCCallable("rxode2", "_rxPushDose",   (DL_FUNC) &_rxPushDose);
+  R_RegisterCCallable("rxode2", "_rxTte",        (DL_FUNC) &_rxTte);
 
   R_RegisterCCallable("rxode2", "ribeta", (DL_FUNC) &ribeta);
   R_RegisterCCallable("rxode2", "ribinom", (DL_FUNC) &ribinom);

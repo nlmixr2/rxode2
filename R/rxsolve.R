@@ -1023,9 +1023,12 @@
 #'   calls `$PK` at its records.  `d/dt()` and state-dependent statements keep
 #'   the continuous time (like `$DES`).  `addl` repeats, infusion ends,
 #'   lagged doses and doses added while solving do not end an interval;
-#'   `mtime()` times do.  Covariate interpolation is still set by
+#'   `mtime()` times do.  `f()`, `rate()` and `dur()` of an `addl` repeat
+#'   read the time of the first data record at or after it (NONMEM's `F1`,
+#'   `R1` and `D1`).  Covariate interpolation is still set by
 #'   `covsInterpolation`.  It also sets the default `tieOrder` to `"data"`
-#'   and turns on `addlKeepsCov` unless it is given.  By default `FALSE`.
+#'   and turns on `addlKeepsCov` unless it is given.  By default `FALSE`,
+#'   when they read the actual time of the `addl` dose.
 #'
 #' @param tieOrder How records of a subject that share a time are processed:
 #'   `"evid"` processes resets first, then doses, then observations, so the
@@ -3233,6 +3236,10 @@ rxSolve.rxUi <- function(
     eta = eta
   )
   .lst <- do.call("c", .lst)
+  if (.rxTteHas(object)) {
+    .lst <- .rxTtePrepareSolve(object, .lst)
+    on.exit(.Call(`_rxode2_rxTteSetup`, NULL), add = TRUE)
+  }
   .pred <- FALSE
   .mv <- rxModelVars(object)
   .hasIpred <- FALSE
@@ -3240,7 +3247,8 @@ rxSolve.rxUi <- function(
     .hasIpred <- TRUE
   }
   .hasSim <- FALSE
-  if (any(.mv$lhs == "sim")) {
+  # a simulated tte() endpoint is random even without omega/sigma
+  if (any(.mv$lhs == "sim") || .rxTteHas(object)) {
     .hasSim <- TRUE
   }
   if (is.null(.lst$omega) && is.null(.lst$sigma)) {
@@ -3898,7 +3906,10 @@ rxSolve.default <- function(
     # cannot apply an event the model decides on at one of those observations
     # (rxode2#1214).  Refuse rather than silently return one of the two wrong
     # answers.
-    if (isTRUE(rxModelVars(object)$flags[["evid_"]] == 1L)) {
+    # tte() models set the evid_() flag but solve in the per-record loop,
+    # whose dense steps record the delay() history
+    .tte <- any(startsWith(rxModelVars(object)$state, "rx.tteH."))
+    if (!.tte && isTRUE(rxModelVars(object)$flags[["evid_"]] == 1L)) {
       stop(
         "a model cannot combine delay() with evid_() event pushing ",
         "(bolus(), infuse(), replace(), multiply(), reset(), phantom(), obs()):
@@ -3965,7 +3976,7 @@ rxSolve.default <- function(
       # (an explicit dense = TRUE keeps liblsoda)
       .ctl$method <- 0L
       .ctl$stiff2 <- 13L
-      .ctl$dense <- TRUE
+      .ctl$dense <- !.tte
       .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
     } else if (
       (.ctl$method == 0L && (.stiff2 == 0L || .stiff2 == 13L)) ||
@@ -3973,7 +3984,7 @@ rxSolve.default <- function(
     ) {
       # dop853 (optionally + ros4 secondary), or pure liblsoda (dense), dop5,
       # bs, ros4 or cvode
-      if (!isTRUE(.ctl$dense)) {
+      if (!.tte && !isTRUE(.ctl$dense)) {
         .ctl$dense <- TRUE
         .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
       }
