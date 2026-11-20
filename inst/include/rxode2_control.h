@@ -148,4 +148,5 @@
 #define Rxc_tieOrder 143
 #define Rxc_rateAtDoseTime 144
 #define Rxc_durAtDoseTime 145
+#define Rxc_resetCancelsPending 146
 #endif // __rxode2_control_H__

@@ -389,6 +389,49 @@ static inline int handleFunctionLogit(transFunctions *tf) {
   return 0;
 }
 
+// a numeric literal argument (whitespace allowed around it); 0 otherwise
+static inline int clampLiteral(const char *s, double *val) {
+  char *end;
+  while (isspace((unsigned char)*s)) s++;
+  if (*s == '\0') return 0;
+  *val = strtod(s, &end);
+  if (end == s) return 0;
+  while (isspace((unsigned char)*end)) end++;
+  return *end == '\0';
+}
+
+// clamp(x, lo, hi) -> _clamp(); exactly 3 arguments, and lo <= hi when both
+// bounds are literal
+static inline int handleFunctionClamp(transFunctions *tf) {
+  if (strcmp("clamp", tf->v)) return 0;
+  int ii = functionNodeNargs(tf->pn);
+  if (ii != 3) {
+    updateSyntaxCol();
+    sPrint(&_gbuf, _("'clamp' takes 3 arguments 'clamp(x, lo, hi)', supplied %d"), ii);
+    trans_syntax_error_report_fn(_gbuf.s);
+  } else {
+    D_ParseNode *rest = d_get_child(tf->pn, 3);
+    // each remaining argument's text starts with its separating comma
+    D_ParseNode *loPn = d_get_child(rest, 0);
+    D_ParseNode *hiPn = d_get_child(rest, 1);
+    char *lo = (char*)rc_dup_str(loPn->start_loc.s, loPn->end);
+    char *hi = (char*)rc_dup_str(hiPn->start_loc.s, hiPn->end);
+    double loV, hiV;
+    if (clampLiteral(lo + 1, &loV) && clampLiteral(hi + 1, &hiV) && loV > hiV) {
+      updateSyntaxCol();
+      sPrint(&_gbuf, _("'clamp(x, lo, hi)' requires lo <= hi (lo=%g, hi=%g)"),
+             loV, hiV);
+      trans_syntax_error_report_fn(_gbuf.s);
+    }
+  }
+  sAppendN(&sb, "_clamp(", 7);
+  sAppendN(&sbDt, "_clamp(", 7);
+  sAppendN(&sbt, "clamp(", 6);
+  tf->i[0] = 1;// Parse next arguments
+  tf->depth[0]=1;
+  return 1;
+}
+
 static inline int handleFunctionSum(transFunctions *tf) {
   if (!strcmp("prod",tf->v)   || !strcmp("sum", tf->v) || !strcmp("sign",  tf->v) ||
       !strcmp("max", tf->v)   || !strcmp("min", tf->v) ||
@@ -495,6 +538,7 @@ static inline int handleFunctionsExceptLinCmt(transFunctions *tf) {
     handleFunctionDelay(tf) ||
     handleFunctionTad(tf) ||
     handleFunctionSum(tf) ||
+    handleFunctionClamp(tf) ||
     handleFunctionTte(tf) ||
     handleFunctionLogit(tf) ||
     handleFunctionDiff(tf) ||

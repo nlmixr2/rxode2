@@ -189,6 +189,12 @@ table:
 Note that `lag(cmt) =` is equivalent to `alag(cmt) =` and not the same
 as `= lag(wt)`
 
+`clamp(x, lo, hi)` bounds a value into an interval, for example a
+fraction kept inside `(0, 1)` with `fr <- clamp(f0, 0.01, 0.99)`. It is
+`min(max(x, lo), hi)`, so its derivative is 1 inside the interval and 0
+outside. It takes exactly three arguments, and literal bounds must have
+`lo <= hi`.
+
 ### Inverse CDFs
 
 A group of these deserves a word, because they exist for one purpose:
