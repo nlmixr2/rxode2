@@ -1,6 +1,7 @@
 rxTest({
   # an iterated steady state that stops at maxSS without converging warns
-  # once per solve (rxode2#1749)
+  # once per solve (rxode2#1749); ssMethod = "iterate" so these doses do not
+  # converge within maxSS
   .mmMod <- rxode2({
     d / dt(depot) <- -ka * depot
     d / dt(cent) <- ka * depot - Vmax * cent / (Km + cent)
@@ -10,11 +11,34 @@ rxTest({
 
   test_that("a slowly accumulating bolus steady state warns at maxSS", {
     .ev <- et(amt = 1000, ii = 8, ss = 1) |> et(seq(0, 8, length.out = 5))
-    expect_warning(.s <- rxSolve(.mmMod, .mmPar, .ev, maxSS = 50), .ssWarn)
+    expect_warning(.s <- rxSolve(.mmMod, .mmPar, .ev, maxSS = 50, ssMethod = "iterate"), .ssWarn)
     # the warning does not change the solve
-    .s2 <- suppressWarnings(rxSolve(.mmMod, .mmPar, .ev, maxSS = 50))
+    .s2 <- suppressWarnings(rxSolve(.mmMod, .mmPar, .ev, maxSS = 50, ssMethod = "iterate"))
     expect_equal(.s$cent, .s2$cent)
     expect_true(all(.s$cent < 10000))
+  })
+
+  test_that("the accelerated steady state converges within the same maxSS and does not warn", {
+    .ev <- et(amt = 1000, ii = 8, ss = 1) |> et(seq(0, 8, length.out = 5))
+    expect_no_warning(.s <- rxSolve(.mmMod, .mmPar, .ev, maxSS = 50))
+    .ref <- rxSolve(
+      .mmMod,
+      .mmPar,
+      .ev,
+      method = "dop853",
+      ssMethod = "iterate",
+      maxSS = 1e7,
+      ssAtol = 1e-10,
+      ssRtol = 1e-10
+    )
+    expect_equal(.s$cent, .ref$cent, tolerance = 1e-5)
+    # above the elimination capacity it falls back to plain iteration and warns
+    .ev <- et(amt = 1200, ii = 8, ss = 1) |> et(seq(0, 8, length.out = 5))
+    expect_warning(.s <- rxSolve(.mmMod, .mmPar, .ev, maxSS = 50), .ssWarn)
+    expect_equal(
+      .s$cent,
+      suppressWarnings(rxSolve(.mmMod, .mmPar, .ev, maxSS = 50, ssMethod = "iterate"))$cent
+    )
   })
 
   test_that("a converged steady state does not warn", {
@@ -32,7 +56,7 @@ rxTest({
       et(seq(0, 8, length.out = 5))
     .w <- character(0)
     .s <- withCallingHandlers(
-      rxSolve(.mmMod, .mmPar, .ev, maxSS = 50, cores = 2),
+      rxSolve(.mmMod, .mmPar, .ev, maxSS = 50, cores = 2, ssMethod = "iterate"),
       warning = function(w) {
         .w <<- c(.w, conditionMessage(w))
         invokeRestart("muffleWarning")
@@ -43,7 +67,8 @@ rxTest({
       .mmMod,
       .mmPar,
       et(amt = 1000, ii = 8, ss = 1) |> et(seq(0, 8, length.out = 5)),
-      maxSS = 50
+      maxSS = 50,
+      ssMethod = "iterate"
     ))
     expect_equal(.s$cent[.s$id == 20], .s1$cent)
   })
@@ -54,7 +79,8 @@ rxTest({
         .mmMod,
         .mmPar,
         et(amt = 1000, ii = 8, ss = 1, rate = 500, cmt = "cent") |> et(1:8),
-        maxSS = 50
+        maxSS = 50,
+        ssMethod = "iterate"
       ),
       .ssWarn
     )
@@ -64,7 +90,8 @@ rxTest({
         .mmMod,
         .mmPar,
         et(amt = 1000, ii = 8, ss = 1, dur = 12, cmt = "cent") |> et(1:8),
-        maxSS = 50
+        maxSS = 50,
+        ssMethod = "iterate"
       ),
       .ssWarn
     )
@@ -86,14 +113,14 @@ rxTest({
     })
     .ev <- et(amt = 1000, ii = 8, ss = 1) |> et(seq(0, 8, length.out = 5))
     expect_warning(
-      rxSolve(.lagMod, .mmPar, .ev, minSS = 1, maxSS = 2),
+      rxSolve(.lagMod, .mmPar, .ev, minSS = 1, maxSS = 2, ssMethod = "iterate"),
       .ssWarn
     )
   })
 
   test_that("the warning does not carry over to the next solve", {
     .ev <- et(amt = 1000, ii = 8, ss = 1) |> et(seq(0, 8, length.out = 5))
-    suppressWarnings(rxSolve(.mmMod, .mmPar, .ev, maxSS = 50))
+    suppressWarnings(rxSolve(.mmMod, .mmPar, .ev, maxSS = 50, ssMethod = "iterate"))
     .ev2 <- et(amt = 100, ii = 8, ss = 1) |> et(seq(0, 8, length.out = 5))
     expect_no_warning(rxSolve(.mmMod, .mmPar, .ev2))
   })

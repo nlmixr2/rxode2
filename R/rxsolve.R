@@ -1112,19 +1112,22 @@
 #'   default (`NULL`) this is `TRUE` with `nonmem = TRUE`, as NONMEM fixes
 #'   `D1` at the dose, and `FALSE` otherwise.
 #'
-#' @param ssMethod How an iterated steady state is found: `"iterate"` (the
-#'   default) repeats the dosing cycle until its trough converges;
-#'   `"anderson"` finds the fixed point of the one-cycle map with Anderson
-#'   acceleration (Anderson 1965, \doi{10.1145/321296.321305}; in the
-#'   form of Walker and Ni 2011, \doi{10.1137/10078356X}), which needs far fewer cycles when the state accumulates
-#'   slowly (eg. saturable elimination).  It applies to steady-state boluses
-#'   and infusions once `minSS` doses are given, and stops only when both the cycle
-#'   residual and the change of the cycle's starting state meet
-#'   `ssAtol`/`ssRtol`.  When the accelerated iteration stalls, diverges
-#'   or reaches `maxSS` (eg. dosing above the elimination capacity, with no
-#'   steady state) it restarts plain iteration from where acceleration began,
-#'   so the result is that of `"iterate"`.  A fixed dose count
-#'   (`minSS = maxSS`) and a `delay()` model always iterate.
+#' @param ssMethod How an iterated steady state is found: `"anderson"` (the
+#'   default) finds the fixed point of the one-cycle map with Anderson
+#'   acceleration (Anderson 1965, \doi{10.1145/321296.321305}; in the form of
+#'   Walker and Ni 2011, \doi{10.1137/10078356X}); `"iterate"` repeats the
+#'   dosing cycle until its trough converges, as rxode2 did before.
+#'   It applies to steady-state boluses and infusions once `minSS` doses are
+#'   given and stops only when both the cycle residual and the change of the
+#'   cycle's starting state meet `ssAtol`/`ssRtol`, so a slowly accumulating
+#'   state (a long half-life against the dosing interval, a slow peripheral
+#'   compartment or saturable elimination) converges in far fewer cycles and
+#'   closer to the true steady state.  When the accelerated iteration stalls,
+#'   diverges or reaches `maxSS` (eg. dosing above the elimination capacity,
+#'   with no steady state) it restarts plain iteration from where acceleration
+#'   began, so the result is that of `"iterate"`.  A fixed dose count (`minSS = maxSS`) and a
+#'   `delay()` model always iterate.  See `bench/ss_anderson_1762.R` in the
+#'   package sources for the benchmark behind the default.
 #'
 #' @param linCmtGillK The total number of possible steps to determine the
 #'     optimal forward/central difference step size per parameter (by
@@ -1744,7 +1747,7 @@ rxSolve <- function(
   rateAtDoseTime = FALSE,
   durAtDoseTime = NULL,
   resetCancelsPending = TRUE,
-  ssMethod = c("iterate", "anderson"),
+  ssMethod = c("anderson", "iterate"),
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,

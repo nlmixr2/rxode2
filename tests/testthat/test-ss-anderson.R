@@ -25,12 +25,13 @@ rxTest({
       rtol = 1e-10,
       ssAtol = 1e-12,
       ssRtol = 1e-12,
-      maxSS = 1e6
+      maxSS = 1e6,
+      ssMethod = "iterate"
     )$cp
     .aa <- rxSolve(.mm, .ev, method = "dop853", ssMethod = "anderson", maxSS = 50)$cp
     expect_equal(.aa, .ref, tolerance = 1e-6)
     # plain iteration is nowhere near after the same number of cycles
-    .plain <- rxSolve(.mm, .ev, method = "dop853", maxSS = 50)$cp
+    .plain <- suppressWarnings(rxSolve(.mm, .ev, method = "dop853", ssMethod = "iterate", maxSS = 50))$cp
     expect_gt(abs(.plain[1] - .ref[1]), 1)
     # liblsoda gives the same steady state
     .lsoda <- rxSolve(.mm, .ev, ssMethod = "anderson", maxSS = 50)$cp
@@ -41,8 +42,15 @@ rxTest({
     for (.amt in c(245, 300, 1000)) {
       .ev <- et(amt = .amt, ii = 24, ss = 1) |> et(0)
       for (.rtol in c(1e-6, 1e-3)) {
-        .aa <- rxSolve(.mm, .ev, method = "dop853", ssMethod = "anderson", maxSS = 500, ssRtol = .rtol)$cp
-        .plain <- rxSolve(.mm, .ev, method = "dop853", maxSS = 500, ssRtol = .rtol)$cp
+        # both warn that maxSS was reached
+        expect_warning(
+          .aa <- rxSolve(.mm, .ev, method = "dop853", ssMethod = "anderson", maxSS = 500, ssRtol = .rtol)$cp,
+          "maxSS"
+        )
+        expect_warning(
+          .plain <- rxSolve(.mm, .ev, method = "dop853", ssMethod = "iterate", maxSS = 500, ssRtol = .rtol)$cp,
+          "maxSS"
+        )
         expect_equal(.aa, .plain)
       }
     }
@@ -52,7 +60,7 @@ rxTest({
     .ev <- et(amt = 220, ii = 24, ss = 1) |> et(seq(0, 24, by = 4))
     expect_identical(
       rxSolve(.mm, .ev, ssMethod = "anderson", minSS = 20, maxSS = 20)$cp,
-      rxSolve(.mm, .ev, minSS = 20, maxSS = 20)$cp
+      rxSolve(.mm, .ev, ssMethod = "iterate", minSS = 20, maxSS = 20)$cp
     )
     .lin <- function() {
       ini({
@@ -70,7 +78,7 @@ rxTest({
     .ev <- et(amt = 100, ii = 12, ss = 1) |> et(seq(0, 12, by = 2))
     expect_identical(
       rxSolve(.lin, .ev, ssMethod = "anderson")$cp,
-      rxSolve(.lin, .ev)$cp
+      rxSolve(.lin, .ev, ssMethod = "iterate")$cp
     )
   })
 
@@ -90,7 +98,7 @@ rxTest({
     .ev <- et(amt = 100, ii = 12, ss = 1) |> et(seq(0, 12, by = 2))
     expect_equal(
       rxSolve(.ode, .ev, ssMethod = "anderson")$cp,
-      rxSolve(.ode, .ev, ssAtol = 1e-12, ssRtol = 1e-12, maxSS = 1e5)$cp,
+      rxSolve(.ode, .ev, ssMethod = "iterate", ssAtol = 1e-12, ssRtol = 1e-12, maxSS = 1e5)$cp,
       tolerance = 1e-6
     )
   })
@@ -107,7 +115,7 @@ rxTest({
     .ev <- et(amt = 100, ii = 24, ss = 1) |> et(seq(0, 24, by = 4))
     expect_identical(
       rxSolve(.fast, .ev, ssMethod = "anderson")$centr,
-      rxSolve(.fast, .ev)$centr
+      rxSolve(.fast, .ev, ssMethod = "iterate")$centr
     )
   })
 
@@ -142,7 +150,7 @@ rxTest({
       ))
     }
     .aa <- .solve(.p, ssMethod = "anderson")
-    .ref <- .solve(.p, maxSS = 1e6)
+    .ref <- .solve(.p, ssMethod = "iterate", maxSS = 1e6)
     expect_equal(.aa$centr, .ref$centr, tolerance = 1e-7)
     expect_equal(.aa$rx__sens_centr_BY_vm__, .ref$rx__sens_centr_BY_vm__, tolerance = 1e-6)
     .h <- 1e-4
@@ -167,7 +175,12 @@ rxTest({
     .ev <- et(amt = 100, ii = 12, ss = 1) |> et(c(1, 6, 12))
     expect_identical(
       rxSolve(.dde, .ev, method = "dop853", ssMethod = "anderson")$r,
-      rxSolve(.dde, .ev, method = "dop853")$r
+      rxSolve(.dde, .ev, method = "dop853", ssMethod = "iterate")$r
+    )
+    .ev <- et(amt = 100, ii = 12, ss = 1, dur = 2) |> et(c(1, 6, 12))
+    expect_identical(
+      rxSolve(.dde, .ev, method = "dop853", ssMethod = "anderson")$r,
+      rxSolve(.dde, .ev, method = "dop853", ssMethod = "iterate")$r
     )
   })
 
@@ -194,11 +207,12 @@ rxTest({
         rtol = 1e-10,
         ssAtol = 1e-12,
         ssRtol = 1e-12,
-        maxSS = 1e6
+        maxSS = 1e6,
+        ssMethod = "iterate"
       )$cp
       .aa <- rxSolve(.mmIv, .ev, method = "dop853", ssMethod = "anderson", maxSS = 60)$cp
       expect_equal(.aa, .ref, tolerance = 1e-6)
-      .plain <- rxSolve(.mmIv, .ev, method = "dop853", maxSS = 60)$cp
+      .plain <- suppressWarnings(rxSolve(.mmIv, .ev, method = "dop853", ssMethod = "iterate", maxSS = 60))$cp
       expect_gt(abs(.plain[1] - .ref[1]), 1)
     }
   })
@@ -207,8 +221,22 @@ rxTest({
     for (.dur in c(2, 30)) {
       .ev <- et(amt = 300, ii = 24, ss = 1, dur = .dur) |> et(0)
       for (.rtol in c(1e-6, 1e-3)) {
-        .aa <- rxSolve(.mmIv, .ev, method = "dop853", ssMethod = "anderson", maxSS = 300, ssRtol = .rtol)$cp
-        .plain <- rxSolve(.mmIv, .ev, method = "dop853", maxSS = 300, ssRtol = .rtol)$cp
+        .aa <- suppressWarnings(rxSolve(
+          .mmIv,
+          .ev,
+          method = "dop853",
+          ssMethod = "anderson",
+          maxSS = 300,
+          ssRtol = .rtol
+        ))$cp
+        .plain <- suppressWarnings(rxSolve(
+          .mmIv,
+          .ev,
+          method = "dop853",
+          ssMethod = "iterate",
+          maxSS = 300,
+          ssRtol = .rtol
+        ))$cp
         expect_equal(.aa, .plain)
       }
     }
@@ -216,7 +244,7 @@ rxTest({
 
   test_that("ssMethod is checked", {
     expect_error(rxControl(ssMethod = "newton"))
-    expect_equal(rxControl(ssMethod = "anderson")$ssMethod, 1L)
-    expect_equal(rxControl()$ssMethod, 0L)
+    expect_equal(rxControl(ssMethod = "iterate")$ssMethod, 0L)
+    expect_equal(rxControl()$ssMethod, 1L)
   })
 })

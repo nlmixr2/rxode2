@@ -3403,7 +3403,9 @@ class rxSsInfAnderson {
 public:
   rxSsInfAnderson(rx_solving_options *op, rx_solving_options_ind *ind, int neq,
                   double *yp, int minSS, int maxSS) : n(neq) {
-    if (ssMethod_global == 1 && minSS < maxSS) {
+    // never for a delay() model, whose recorded history must come from
+    // consecutive cycles
+    if (ssMethod_global == 1 && minSS < maxSS && !op->hasDelay) {
       aa.init(neq, op->ssAtol, op->ssRtol);
       if (aa.on) xin.assign(yp, yp + neq);
     }
