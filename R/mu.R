@@ -456,12 +456,12 @@
   TRUE
 }
 
-#' Is a mu2/mu3 term exactly `theta * covariate`, with a covariate coefficient?
+#' Is a mu2/mu3/mu4 term exactly `theta * covariate`, with a data-only covariate?
 #'
-#' mu2: the term reads only covariates and constants.  mu3: it reads model
-#' variables, which are replaced by their definitions (`.muRefMu3Resolve()`);
-#' what is left may read only the theta, covariates and constants.  Either way
-#' the term must equal `theta * der` (`.muRefTermIsThetaTimesDer()`).
+#' Every variable the term and its derivative read, other than `theta`, must be
+#' a data covariate or a model variable that depends only on data covariates
+#' and constants (`.muRefDataOnlyVars()`), and the term must equal
+#' `theta * der` (`.muRefTermIsThetaTimesDer()`).
 #'
 #' @param y term
 #' @param der derivative of the term by `theta`
@@ -471,79 +471,87 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .muRefCovTermOk <- function(y, der, theta, env) {
-  if (all(setdiff(all.vars(y), theta) %in% env$info$dataCov)) {
-    return(.muRefTermIsThetaTimesDer(y, der, theta))
-  }
-  .r <- .muRefMu3Resolve(y, der, env)
-  if (is.null(.r)) {
+  .v <- setdiff(unique(c(all.vars(y), all.vars(der))), theta)
+  .v <- setdiff(.v, env$info$dataCov)
+  if (length(.v) > 0L && !all(.v %in% .muRefDataOnlyVars(env))) {
     return(FALSE)
   }
-  all(setdiff(unique(c(all.vars(.r$term), all.vars(.r$der))), theta) %in% env$info$dataCov) &&
-    .muRefTermIsThetaTimesDer(.r$term, .r$der, theta)
+  .muRefTermIsThetaTimesDer(y, der, theta)
 }
 
-.muRefMu3Cache <- new.env(parent = emptyenv())
-
-#' Replace the model variables in a mu3 term and its derivative
+#' Model variables that depend only on data covariates and constants
 #'
-#' Loads the model lines before the current one with the term and derivative
-#' into symengine, so every model variable is replaced by its definition.
-#' Memoised like `.muRefThetaDerivative()`: only base arithmetic/elementary
-#' functions, so a redefined user function cannot give a stale answer.
+#' Walks the model lines before the current one, including `if`/`else`
+#' blocks (whose condition variables count as dependencies of every
+#' assignment inside them).  A variable is data-only while every assignment
+#' so far reads only data covariates, constants and data-only variables.
 #'
-#' @param y term
-#' @param der derivative of the term
-#' @param env mu-reference environment (`.expr`, `.curLine`)
-#' @return `list(term=, der=)` as language, or `NULL` when symengine cannot
-#'   load them
+#' @param env mu-reference environment (`.expr`, `.curLine`, `info$dataCov`)
+#' @return character vector of data-only model variables
 #' @noRd
 #' @author Matthew L. Fidler
-.muRefMu3Resolve <- function(y, der, env) {
+.muRefDataOnlyVars <- function(env) {
   .i <- env$.curLine
   if (is.null(.i)) {
-    return(NULL)
+    return(character(0))
   }
-  .lines <- env$.expr[seq_len(.i - 1L)]
-  .pre <- vapply(.lines, deparse1, character(1), USE.NAMES = FALSE)
-  .cache <- .muRefDerivCacheable(y) &&
-    .muRefDerivCacheable(der) &&
-    all(vapply(
-      .lines,
-      function(x) {
-        (identical(x[[1]], quote(`=`)) || identical(x[[1]], quote(`~`))) &&
-          .muRefDerivCacheable(x[[3]])
-      },
-      logical(1)
-    ))
-  .key <- paste(c(.pre, paste0("rxdummyLhs=", deparse1(y)), paste0("rxdummyDer=", deparse1(der))), collapse = "\n")
-  .r <- if (.cache) .muRefMu3Cache[[.key]] else NULL
-  if (is.null(.r)) {
-    .r <- try(
-      {
-        .s <- rxS(.key)
-        # get() is masked once symengine is loaded; capture via assign()
-        .t <- eval(parse(text = 'assign("rxdummyMu3", with(.s, rxdummyLhs), envir = .s)'))
-        .t <- rxFromSE(.t)
-        .d <- eval(parse(text = 'assign("rxdummyMu3", with(.s, rxdummyDer), envir = .s)'))
-        .d <- rxFromSE(.d)
-        list(term = str2lang(.t), der = str2lang(.d))
-      },
-      silent = TRUE
-    )
-    if (inherits(.r, "try-error")) {
-      .r <- NA
+  .key <- as.character(.i)
+  if (is.null(env$.dataOnlyVars)) {
+    env$.dataOnlyVars <- list()
+  }
+  .ret <- env$.dataOnlyVars[[.key]]
+  if (!is.null(.ret)) {
+    return(.ret)
+  }
+  .st <- new.env(parent = emptyenv())
+  .st$dataCov <- env$info$dataCov
+  .st$ok <- character(0)
+  .st$bad <- character(0)
+  .muRefDataOnlyWalk(as.list(env$.expr)[seq_len(.i - 1L)], character(0), .st)
+  env$.dataOnlyVars[[.key]] <- .st$ok
+  .st$ok
+}
+
+#' Walk model lines for `.muRefDataOnlyVars()`
+#'
+#' @param lines list of model statements
+#' @param condVars variables read by the enclosing `if` conditions
+#' @param st state environment (`dataCov`, `ok`, `bad`)
+#' @return nothing; updates `st`
+#' @noRd
+#' @author Matthew L. Fidler
+.muRefDataOnlyWalk <- function(lines, condVars, st) {
+  for (.x in lines) {
+    if (!is.call(.x)) {
+      next
     }
-    if (.cache) {
-      if (length(ls(.muRefMu3Cache, all.names = TRUE)) > 10000L) {
-        rm(list = ls(.muRefMu3Cache, all.names = TRUE), envir = .muRefMu3Cache)
+    .f <- .x[[1]]
+    if (identical(.f, quote(`{`))) {
+      .muRefDataOnlyWalk(as.list(.x)[-1], condVars, st)
+    } else if (identical(.f, quote(`if`))) {
+      .cv <- unique(c(condVars, all.vars(.x[[2]])))
+      .muRefDataOnlyWalk(as.list(.x)[-(1:2)], .cv, st)
+    } else if (
+      identical(.f, quote(`=`)) ||
+        identical(.f, quote(`<-`)) ||
+        identical(.f, quote(`~`))
+    ) {
+      .lhs <- .x[[2]]
+      if (!is.name(.lhs)) {
+        # d/dt(), x(0), alag(x), ...: states and properties are never data-only
+        next
       }
-      assign(.key, .r, envir = .muRefMu3Cache)
+      .n <- as.character(.lhs)
+      .v <- unique(c(condVars, all.vars(.x[[3]])))
+      if (!(.n %in% st$bad) && all(.v %in% st$dataCov | .v %in% st$ok)) {
+        st$ok <- unique(c(st$ok, .n))
+      } else {
+        st$bad <- unique(c(st$bad, .n))
+        st$ok <- setdiff(st$ok, .n)
+      }
     }
   }
-  if (!is.list(.r)) {
-    return(NULL)
-  }
-  .r
+  invisible()
 }
 
 #' Fill the derivative cache for a whole model in one symengine environment
@@ -1729,6 +1737,7 @@
       ".curEval",
       ".curLine",
       ".curLineClean",
+      ".dataOnlyVars",
       ".expr",
       ".found",
       "body",

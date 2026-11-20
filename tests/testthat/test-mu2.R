@@ -121,4 +121,52 @@ rxTest({
     expect_length(.mu2("(cl.wt + 1)*log(WT/70)"), 0L)
     expect_length(.mu2("(cl.wt + 1)*lwt", "lwt <- log(WT/70)"), 0L)
   })
+
+  test_that("an if/else on covariates keeps mu3/mu4 covariate terms (#1770)", {
+    .mu <- function(pre, cl, v) {
+      .f <- eval(parse(
+        text = sprintf(
+          "function() {
+          ini({ tka <- 0.45; tcl <- -1; tv <- 3.45; b <- 0; bv <- 0; add.sd <- 0.3; eta.cl ~ 0.1; eta.v ~ 0.1 })
+          model({
+            wt70 <- WT / 70
+            %s
+            ka <- exp(tka)
+            cl <- exp(tcl + %s + eta.cl)
+            v <- exp(tv + %s + eta.v)
+            linCmt() ~ add(add.sd) })
+        }",
+          pre,
+          cl,
+          v
+        )
+      ))
+      .df <- .f()$mu2RefCovariateReplaceDataFrame
+      setNames(.df$covariate, .df$covariateParameter)
+    }
+    # mu3 unrelated to the branch, mu3 set in the branch
+    expect_equal(
+      .mu("if (wt70 > 1) { big <- 1 } else { big <- 0 }", "log(wt70)*b", "big*bv"),
+      c(b = "log(wt70)", bv = "big")
+    )
+    # mu4: a string set in a branch on covariates
+    expect_equal(
+      .mu(
+        "if (wt70 > 1) { wt70s <- \"larger\" } else { wt70s <- \"smaller\" }",
+        "log(wt70)*b",
+        "(wt70s == \"larger\")*bv"
+      ),
+      c(b = "log(wt70)", bv = "(wt70s == \"larger\")")
+    )
+    # a branch on a theta still taints what it sets, but not the other terms
+    expect_equal(
+      .mu("if (tka > 1) { big <- 1 } else { big <- 0 }", "log(wt70)*b", "big*bv"),
+      c(b = "log(wt70)")
+    )
+    # a variable assigned with a covariate value and later from a theta
+    expect_equal(
+      .mu("big <- WT; if (wt70 > 1) { big <- tka }", "log(wt70)*b", "big*bv"),
+      c(b = "log(wt70)")
+    )
+  })
 })
