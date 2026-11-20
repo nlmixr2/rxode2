@@ -7,6 +7,19 @@
   first-use `Matrix` namespace load (#1675); `Matrix` is no longer
   suggested.
 
+- A modeled infusion rate (`rate(cmt)`, `RATE = -1`) or duration (`dur(cmt)`,
+  `RATE = -2`) is now re-read at each data record until the dose is
+  delivered, so a covariate or `time` change during the infusion changes it.
+  A new rate moves the end of the infusion; a new duration ends it at its
+  start plus that duration, or stops it when that time has passed.  By
+  default the value read at a record holds until the next record; with
+  `nonmem = TRUE` a rate follows NONMEM's `R1`, read with the record that ends
+  each interval, and a duration stays fixed like `D1`.  It used to stay at the
+  value read at the dose; `rxSolve(rateAtDoseTime = TRUE, durAtDoseTime =
+  TRUE)` restores that.  For a model with `rate()` or `dur()`, `etTrans()`
+  now also marks the records that are not data records (`addl` repeats and
+  the records a dose expands to), so they do not end an interval (#1586).
+
 - The record walk `rxSolve()` lays out its output rows with (which records
   are rows, the reset time shift, the `addDosing` dose columns) is exported
   to downstream packages through the function-pointer table as
