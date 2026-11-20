@@ -3418,6 +3418,16 @@ public:
   void restoreFailed(rx_solving_options_ind *ind, int neq) {
     if (aa.on && aa.mixed) std::copy(aa.last(), aa.last() + neq, ind->solveLast2);
   }
+  // a cycle from an accelerated (not plain) input failed: that is not a
+  // failure of the steady state, so keep the last true trough, as a
+  // steady-state bolus does; returns true to stop iterating
+  bool rescue(rx_solving_options_ind *ind, double *yp) {
+    if (!(aa.on && aa.mixed && ind->rc[0] == -2019)) return false;
+    std::copy(aa.last(), aa.last() + n, yp);
+    std::copy(aa.last(), aa.last() + n, ind->solveLast2);
+    ind->rc[0] = 2019;
+    return true;
+  }
   // a small residual alone is not enough: the input must have settled too
   void checkSettled(rx_solving_options *op, int *canBreak) {
     if (aa.on && *canBreak && !aa.settled(xin.data(), op->ssAtol, op->ssRtol)) {
@@ -3512,6 +3522,7 @@ static inline int solveSSinfIterate(int *neq,
     handle_evid(getEvid(ind, ind->idose[*infEixds]), neq[0],
                 BadDose, InfusionRate, dose, yp,
                 *xout+*dur, neq[1], ind);
+    if (aa.rescue(ind, yp)) break;
     if (j + 1 < minSS){
       if (ind->rc[0]== -2019){
         badSolveExit(*i);
@@ -3544,6 +3555,7 @@ static inline int solveSSinfIterate(int *neq,
     ind->ssTime = ssStart;
     solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
                   *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    if (aa.rescue(ind, yp)) break;
     if (j + 1 < minSS){
       if (ind->rc[0]== -2019){
         badSolveExit(*i);
@@ -3732,6 +3744,7 @@ extern "C" void solveSSinfLargeDur(int *neq,
     handle_evid(getEvid(ind, ind->idose[*infEixds]), neq[0],
                 BadDose, InfusionRate, dose, yp,
                 *xout + *dur, neq[1], ind);
+    if (aa.rescue(ind, yp)) break;
     if (j + 1 < minSS && ind->rc[0]== -2019){
       badSolveExit(*i);
       ranOut = 0;
@@ -3759,6 +3772,7 @@ extern "C" void solveSSinfLargeDur(int *neq,
     ind->ssTime = timeStart;
     solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
                   *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    if (aa.rescue(ind, yp)) break;
     if (j + 1 < minSS && ind->rc[0]== -2019){
       badSolveExit(*i);
       ranOut = 0;
