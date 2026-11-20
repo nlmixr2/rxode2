@@ -37,4 +37,42 @@ rxTest({
       expect_equal(.s$eff, .ref$eff, tolerance = .tol[[.method]], label = .method)
     }
   })
+
+  test_that("ros4 and iem use an ODE-sized Jacobian stride with linCmt()", {
+    # two coupled ODE states with an explicit Jacobian exercise the off-diagonal
+    # entries, which land at the wrong place if the row stride counts linCmt()
+    .lj2Model <- rxode2({
+      cp <- linCmt(cl, v, ka)
+      d/dt(eff) <- 0.4 * cp - 0.3 * eff + 0.05 * e2
+      d/dt(e2) <- 0.2 * eff - 0.5 * e2
+      df(eff)/dy(eff) <- -0.3
+      df(eff)/dy(e2) <- 0.05
+      df(e2)/dy(eff) <- 0.2
+      df(e2)/dy(e2) <- -0.5
+    })
+    .ev <- et(amt = 100, cmt = "depot") |> et(seq(0.25, 24, by = 0.25))
+    .ref <- rxSolve(
+      .lj2Model,
+      .ev,
+      params = .ljPar,
+      method = "liblsoda",
+      atol = 1e-12,
+      rtol = 1e-12,
+      returnType = "data.frame"
+    )
+    .tol <- c(ros4 = 1e-5, iem = 5e-4)
+    for (.method in names(.tol)) {
+      .s <- rxSolve(
+        .lj2Model,
+        .ev,
+        params = .ljPar,
+        method = .method,
+        atol = 1e-8,
+        rtol = 1e-8,
+        returnType = "data.frame"
+      )
+      expect_equal(.s$eff, .ref$eff, tolerance = .tol[[.method]], label = .method)
+      expect_equal(.s$e2, .ref$e2, tolerance = .tol[[.method]], label = .method)
+    }
+  })
 })
