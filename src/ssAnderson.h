@@ -71,9 +71,11 @@ public:
   }
 
   // the input x of this cycle is settled: it moved by less than the
-  // steady-state tolerance from the previous cycle's input
+  // steady-state tolerance from the previous cycle's input.  Before the first
+  // accelerated step the inputs are plain iterates, which the residual test
+  // alone judges, as with ssMethod = "iterate"
   bool settled(const double *x, const double *ssAtol, const double *ssRtol) {
-    if (!haveX) return false;
+    if (!haveX) return true;
     for (int k = nAll; k--;) {
       if (ssRtol[k]*fabs(x[k]) + ssAtol[k] <= fabs(x[k] - xPrev[k])) return false;
     }
@@ -160,7 +162,9 @@ public:
     // a column that is (nearly) dependent on the earlier ones is dropped
     std::vector<double> Q((size_t)nHist*na), R((size_t)nHist*nHist, 0.0);
     std::vector<int> col;
-    for (int c = 0; c < nHist; c++) {
+    // newest column first, so a dependent column dropped is an older one
+    for (int t = 0; t < nHist; t++) {
+      int c = (head - 1 - t + 2*m) % m;
       const double *df = &dF[(size_t)c*na];
       double *q = &Q[(size_t)col.size()*na];
       double n0 = 0.0;

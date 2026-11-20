@@ -95,6 +95,22 @@ rxTest({
     )
   })
 
+  test_that("a steady state already converged by minSS doses is that of plain iteration", {
+    .fast <- function() {
+      ini({
+        k <- 2
+      })
+      model({
+        d/dt(centr) <- -k * centr
+      })
+    }
+    .ev <- et(amt = 100, ii = 24, ss = 1) |> et(seq(0, 24, by = 4))
+    expect_identical(
+      rxSolve(.fast, .ev, ssMethod = "anderson")$centr,
+      rxSolve(.fast, .ev)$centr
+    )
+  })
+
   test_that("the accelerated steady state is thread invariant", {
     .ev <- et(amt = 220, ii = 24, ss = 1, id = 1:8) |> et(seq(0, 24, by = 4))
     .p <- data.frame(id = 1:8, vm = seq(9.5, 11, length.out = 8))
