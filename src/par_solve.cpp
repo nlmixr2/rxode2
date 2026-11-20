@@ -3147,11 +3147,11 @@ static inline void handleSSbolusIterate(int *neq,
       std::copy(aa.last(), aa.last() + neq[0], ind->solveLast);
     }
     bool done = ssBolusDone(nDose, minSS, maxSS, neq, yp, i, op, ind, canBreak);
-    if (aa.on && done && !failed && *canBreak && nDose < maxSS &&
+    if (aa.on && done && !failed && *canBreak &&
         !aa.settled(xin.data(), op->ssAtol, op->ssRtol)) {
       // a small residual alone is not enough: the input must have settled too
-      done = false;
       *canBreak = 0;
+      done = nDose >= maxSS;
     }
     if (done && !failed && !*canBreak && aa.giveUp()) {
       // maxSS doses without converging: give plain iteration's result
