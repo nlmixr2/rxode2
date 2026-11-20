@@ -187,7 +187,7 @@ typedef struct {
   long int     nfcn, nstep, naccpt, nrejct;
   double       hout, xold, xout;
   double       hcut;   /* the step proposed before the last one was cut to end
-                          at xend (0 if it was not cut) */
+                          at xend (0 if it was not cut, or the cut step was rejected) */
   int          nrds, *indir;
   double       *yy1, *k1, *k2, *k3, *k4, *k5, *k6, *k7, *k8, *k9, *k10;
   double       *rcont1, *rcont2, *rcont3, *rcont4;

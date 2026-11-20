@@ -906,6 +906,7 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
           /* step rejected */
           hnew = h / min_d (facc1, fac11/safe);
           reject = 1;
+          ctx->hcut = 0.0; /* the step it was cut from was too large */
           if (ctx->naccpt >= 1)
             ctx->nrejct=ctx->nrejct + 1;
           last = 0;
