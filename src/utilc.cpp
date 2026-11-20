@@ -1225,6 +1225,9 @@ extern "C" double etaJohnDraper(double, double);
 extern "C" double etaYeoJohnson(double, double);
 extern "C" double absPowLog(double, double, double);
 extern "C" double etaHeavyTail(double, double);
+extern "C" double etaLogit(double, double, double);
+extern "C" double etaSinhAsinh(double, double, double);
+extern "C" double etaTukeyGH(double, double, double);
 
 static inline SEXP rxAsRealArg(SEXP x, const char *nm, rxProtect &pro) {
   int t = TYPEOF(x);
@@ -1297,3 +1300,6 @@ RX_VEC2(_rxode2_etaJohnDraper, etaJohnDraper)
 RX_VEC2(_rxode2_etaYeoJohnson, etaYeoJohnson)
 RX_VEC3(_rxode2_absPowLog, absPowLog)
 RX_VEC2(_rxode2_etaHeavyTail, etaHeavyTail)
+RX_VEC3(_rxode2_etaLogit, etaLogit)
+RX_VEC3(_rxode2_etaSinhAsinh, etaSinhAsinh)
+RX_VEC3(_rxode2_etaTukeyGH, etaTukeyGH)

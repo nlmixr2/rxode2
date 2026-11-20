@@ -20,9 +20,10 @@
   steady state exists; `ssMethod = "iterate"` restores the previous
   behavior (#1762).
 - Random effect shape transforms `etaBoxCox(eta, lambda)`,
-  `etaJohnDraper(eta, lambda)`, `etaYeoJohnson(eta, lambda)` and
-  `etaHeavyTail(eta, theta)` (Petersson et al. 2009) for skewed and
-  heavy-tailed random effects, with exact derivatives in both arguments that
+  `etaJohnDraper(eta, lambda)`, `etaYeoJohnson(eta, lambda)`,
+  `etaHeavyTail(eta, theta)`, `etaLogit(eta, theta1, theta2)`,
+  `etaSinhAsinh(eta, eps, delta)` and `etaTukeyGH(eta, g, h)` (Petersson et
+  al. 2009) for skewed, heavy-tailed and bounded random effects, with exact derivatives in both arguments that
   stay finite through the identity shape (via the new `exprelD()` and
   `absPowLog()`).  In a
   model, named arguments expand into the native call; the R functions run the

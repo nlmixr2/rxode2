@@ -177,6 +177,9 @@ SEXP _rxode2_etaJohnDraper(SEXP, SEXP);
 SEXP _rxode2_etaYeoJohnson(SEXP, SEXP);
 SEXP _rxode2_absPowLog(SEXP, SEXP, SEXP);
 SEXP _rxode2_etaHeavyTail(SEXP, SEXP);
+SEXP _rxode2_etaLogit(SEXP, SEXP, SEXP);
+SEXP _rxode2_etaSinhAsinh(SEXP, SEXP, SEXP);
+SEXP _rxode2_etaTukeyGH(SEXP, SEXP, SEXP);
 
 double phiU(double);
 double gammapDera(double, double);
@@ -196,6 +199,9 @@ double etaJohnDraper(double, double);
 double etaYeoJohnson(double, double);
 double absPowLog(double, double, double);
 double etaHeavyTail(double, double);
+double etaLogit(double, double, double);
+double etaSinhAsinh(double, double, double);
+double etaTukeyGH(double, double, double);
 
 double expit(double, double, double);
 double logit(double, double, double);
@@ -1206,6 +1212,9 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_etaYeoJohnson", (DL_FUNC) _rxode2_etaYeoJohnson, 2},
     {"_rxode2_absPowLog", (DL_FUNC) _rxode2_absPowLog, 3},
     {"_rxode2_etaHeavyTail", (DL_FUNC) _rxode2_etaHeavyTail, 2},
+    {"_rxode2_etaLogit", (DL_FUNC) _rxode2_etaLogit, 3},
+    {"_rxode2_etaSinhAsinh", (DL_FUNC) _rxode2_etaSinhAsinh, 3},
+    {"_rxode2_etaTukeyGH", (DL_FUNC) _rxode2_etaTukeyGH, 3},
     {"_linCmtParse", (DL_FUNC) _linCmtParse, 3},
     {"_rxode2_linCmtGen", (DL_FUNC) _rxode2_linCmtGen, 4},
     {"_rxode2_rpp_", (DL_FUNC) _rxode2_rpp_, 7},
@@ -1348,6 +1357,9 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "etaYeoJohnson", (DL_FUNC) &etaYeoJohnson);
   R_RegisterCCallable("rxode2", "absPowLog", (DL_FUNC) &absPowLog);
   R_RegisterCCallable("rxode2", "etaHeavyTail", (DL_FUNC) &etaHeavyTail);
+  R_RegisterCCallable("rxode2", "etaLogit", (DL_FUNC) &etaLogit);
+  R_RegisterCCallable("rxode2", "etaSinhAsinh", (DL_FUNC) &etaSinhAsinh);
+  R_RegisterCCallable("rxode2", "etaTukeyGH", (DL_FUNC) &etaTukeyGH);
   R_RegisterCCallable("rxode2", "_setThreadInd", (DL_FUNC) &_setThreadInd);
   R_RegisterCCallable("rxode2", "_rxPushDose",   (DL_FUNC) &_rxPushDose);
   R_RegisterCCallable("rxode2", "_rxTte",        (DL_FUNC) &_rxTte);

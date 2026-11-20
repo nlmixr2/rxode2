@@ -1987,6 +1987,16 @@ studentTInv <- function(p, nu) {
 #' (Petersson's heavy-tailed transform), the identity at `theta = 0`, with
 #' heavier tails for `theta > 0` and a symmetric bimodal shape for `theta` in
 #' `(-1, 0)`.
+#' `etaLogit()` is Petersson's logit transform
+#' `(expit(logit(theta1) + eta) - theta1)*theta2` (`theta1` in `(0, 1)` sets the
+#' skewness, `theta2 > 0` the width; it is near the identity for `theta1 = 0.5`,
+#' `theta2 = 4`).  `etaSinhAsinh()` is the sinh-arcsinh transform of Jones and
+#' Pewsey, centered so `eta = 0` stays at 0,
+#' `sinh(delta*asinh(eta) - eps) + sinh(eps)`; `eps` sets the skewness and
+#' `delta > 0` the tails (heavier above 1), the identity at `eps = 0`,
+#' `delta = 1`.  `etaTukeyGH()` is Tukey's g-and-h transform
+#' `(exp(g*eta) - 1)/g*exp(h*eta^2/2)`; `g` sets the skewness and `h >= 0` the
+#' tails, the identity at `g = 0`, `h = 0`.
 #' `exprelD(z, n)` is the n-th derivative of `(exp(z) - 1)/z`; it keeps every
 #' derivative exact through a shape of 0.  `absPowLog(x, p, k)` is
 #' `abs(x)^p*log(abs(x))^k` with its limit at `x = 0`, the derivative helper of
@@ -2001,10 +2011,19 @@ studentTInv <- function(p, nu) {
 #' @param x value of `x`
 #' @param p power
 #' @param k power of the log
+#' @param theta1 logit skewness parameter, in `(0, 1)`
+#' @param theta2 logit width parameter, positive
+#' @param eps sinh-arcsinh skewness parameter
+#' @param delta sinh-arcsinh tail parameter, positive
+#' @param g Tukey g (skewness) parameter
+#' @param h Tukey h (tail) parameter, non-negative
 #' @return numeric vector, recycled to the longest argument
 #' @references Petersson KJ, Hanze E, Savic RM, Karlsson MO. Semiparametric
 #'   distributions with estimated shape parameters. Pharm Res. 2009;
 #'   26(9):2174-85.
+#'
+#'   Jones MC, Pewsey A. Sinh-arcsinh distributions. Biometrika. 2009;
+#'   96(4):761-80.
 #' @author Matthew L. Fidler
 #' @examples
 #' etaBoxCox(c(-1, 0, 1), 0.5)
@@ -2012,6 +2031,9 @@ studentTInv <- function(p, nu) {
 #' etaJohnDraper(c(-1, 0, 1), 1) ## identity
 #' etaYeoJohnson(c(-1, 0, 1), 1) ## identity
 #' etaHeavyTail(c(-1, 0, 1), 0.5)
+#' etaLogit(c(-1, 0, 1), 0.5, 4)
+#' etaSinhAsinh(c(-1, 0, 1), 0, 1) ## identity
+#' etaTukeyGH(c(-1, 0, 1), 0, 0) ## identity
 #' exprelD(0, 0:3)
 #' @export
 #' @family Special functions
@@ -2041,6 +2063,24 @@ etaYeoJohnson <- function(eta, lambda) {
 #' @export
 etaHeavyTail <- function(eta, theta) {
   .Call(`_rxode2_etaHeavyTail`, eta, theta, PACKAGE = "rxode2")
+}
+
+#' @rdname etaBoxCox
+#' @export
+etaLogit <- function(eta, theta1, theta2) {
+  .Call(`_rxode2_etaLogit`, eta, theta1, theta2, PACKAGE = "rxode2")
+}
+
+#' @rdname etaBoxCox
+#' @export
+etaSinhAsinh <- function(eta, eps = 0, delta = 1) {
+  .Call(`_rxode2_etaSinhAsinh`, eta, eps, delta, PACKAGE = "rxode2")
+}
+
+#' @rdname etaBoxCox
+#' @export
+etaTukeyGH <- function(eta, g = 0, h = 0) {
+  .Call(`_rxode2_etaTukeyGH`, eta, g, h, PACKAGE = "rxode2")
 }
 
 #' @rdname etaBoxCox

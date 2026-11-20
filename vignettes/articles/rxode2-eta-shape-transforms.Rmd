@@ -35,6 +35,9 @@ be tested with a likelihood ratio test).
 | `etaJohnDraper(eta, lambda)` | `sign(eta)*((abs(eta) + 1)^lambda - 1)/lambda` | `lambda = 1` | tails |
 | `etaYeoJohnson(eta, lambda)` | `((eta + 1)^lambda - 1)/lambda` for `eta >= 0`, `-((1 - eta)^(2 - lambda) - 1)/(2 - lambda)` below | `lambda = 1` | skewness |
 | `etaHeavyTail(eta, theta)` | `eta*abs(eta)^theta` | `theta = 0` | tails (bimodal for `theta < 0`) |
+| `etaLogit(eta, theta1, theta2)` | `(expit(logit(theta1) + eta) - theta1)*theta2` | near it at `theta1 = 0.5`, `theta2 = 4` | skewness, width (bounded) |
+| `etaSinhAsinh(eta, eps, delta)` | `sinh(delta*asinh(eta) - eps) + sinh(eps)` | `eps = 0`, `delta = 1` | skewness and tails |
+| `etaTukeyGH(eta, g, h)` | `(exp(g*eta) - 1)/g*exp(h*eta^2/2)` | `g = 0`, `h = 0` | skewness and tails |
 
 ## The transforms in R
 
@@ -85,6 +88,40 @@ legend("topleft", c("normal", "theta = 0.6", "theta = -0.4"),
 )
 par(oldPar)
 ```
+
+The two- and three-parameter transforms combine skewness with tails or bounds:
+
+```{r eta-shapes3, fig.width = 7, fig.height = 3.5}
+oldPar <- par(mfrow = c(1, 3))
+plot(density(eta), main = "etaLogit()", xlim = c(-2.5, 2.5), ylim = c(0, 1.7))
+lines(density(etaLogit(eta, 0.5, 4)), col = "red")
+lines(density(etaLogit(eta, 0.2, 3)), col = "blue")
+legend("topleft", c("normal", "0.5, 4", "0.2, 3"),
+  col = c("black", "red", "blue"), lty = 1, bty = "n", cex = 0.8
+)
+plot(density(eta), main = "etaSinhAsinh()", xlim = c(-2.5, 2.5), ylim = c(0, 1.7))
+lines(density(etaSinhAsinh(eta, 0.5, 1)), col = "red")
+lines(density(etaSinhAsinh(eta, 0, 1.5)), col = "blue")
+legend("topleft", c("normal", "eps = 0.5", "delta = 1.5"),
+  col = c("black", "red", "blue"), lty = 1, bty = "n", cex = 0.8
+)
+plot(density(eta), main = "etaTukeyGH()", xlim = c(-2.5, 2.5), ylim = c(0, 1.7))
+lines(density(etaTukeyGH(eta, 1, 0)), col = "red")
+lines(density(etaTukeyGH(eta, 0, 0.8)), col = "blue")
+legend("topleft", c("normal", "g = 1", "h = 0.8"),
+  col = c("black", "red", "blue"), lty = 1, bty = "n", cex = 0.8
+)
+par(oldPar)
+```
+
+The logit transform bounds the random effect to
+`(-theta1*theta2, (1 - theta1)*theta2)`, `theta1` setting the skewness and
+`theta2` the width.  Sinh-arcsinh is centered here so that `eta = 0` stays at
+0; `eps` skews and `delta > 1` gives heavier tails (`delta < 1` lighter).  Tukey's `g` skews like
+Box-Cox and `h >= 0` adds tail weight.  The R functions for these have
+defaults giving the identity (`eps = 0`, `delta = 1`, `g = 0`, `h = 0`), and
+in a model a missing argument takes that default, so
+`etaSinhAsinh(eta.cl, delta = d)` expands to `etaSinhAsinh(eta.cl, 0, d)`.
 
 Box-Cox skews: `lambda > 0` gives a long right tail, `lambda < 0` a long
 left one.  Yeo-Johnson also skews, the other way round about its identity
@@ -168,6 +205,9 @@ The derivatives of `etaJohnDraper()` and `etaYeoJohnson()` with respect to
 
 Petersson KJ, Hanze E, Savic RM, Karlsson MO.  Semiparametric distributions
 with estimated shape parameters.  Pharm Res.  2009;26(9):2174-85.
+
+Jones MC, Pewsey A.  Sinh-arcsinh distributions.  Biometrika.
+2009;96(4):761-80.
 
 ## Next steps
 

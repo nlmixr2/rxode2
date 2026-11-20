@@ -6,6 +6,9 @@
 \alias{exprelD}
 \alias{etaYeoJohnson}
 \alias{etaHeavyTail}
+\alias{etaLogit}
+\alias{etaSinhAsinh}
+\alias{etaTukeyGH}
 \alias{absPowLog}
 \title{Shape transforms for random effects}
 \usage{
@@ -19,6 +22,12 @@ etaYeoJohnson(eta, lambda)
 
 etaHeavyTail(eta, theta)
 
+etaLogit(eta, theta1, theta2)
+
+etaSinhAsinh(eta, eps = 0, delta = 1)
+
+etaTukeyGH(eta, g = 0, h = 0)
+
 absPowLog(x, p, k)
 }
 \arguments{
@@ -31,6 +40,18 @@ absPowLog(x, p, k)
 \item{n}{derivative order (non-negative integer)}
 
 \item{theta}{heavy-tail shape parameter}
+
+\item{theta1}{logit skewness parameter, in \verb{(0, 1)}}
+
+\item{theta2}{logit width parameter, positive}
+
+\item{eps}{sinh-arcsinh skewness parameter}
+
+\item{delta}{sinh-arcsinh tail parameter, positive}
+
+\item{g}{Tukey g (skewness) parameter}
+
+\item{h}{Tukey h (tail) parameter, non-negative}
 
 \item{x}{value of \code{x}}
 
@@ -57,6 +78,16 @@ identity, so the shape can be tested with a likelihood ratio test.
 (Petersson's heavy-tailed transform), the identity at \code{theta = 0}, with
 heavier tails for \code{theta > 0} and a symmetric bimodal shape for \code{theta} in
 \verb{(-1, 0)}.
+\code{etaLogit()} is Petersson's logit transform
+\code{(expit(logit(theta1) + eta) - theta1)*theta2} (\code{theta1} in \verb{(0, 1)} sets the
+skewness, \code{theta2 > 0} the width; it is near the identity for \code{theta1 = 0.5},
+\code{theta2 = 4}).  \code{etaSinhAsinh()} is the sinh-arcsinh transform of Jones and
+Pewsey, centered so \code{eta = 0} stays at 0,
+\code{sinh(delta*asinh(eta) - eps) + sinh(eps)}; \code{eps} sets the skewness and
+\code{delta > 0} the tails (heavier above 1), the identity at \code{eps = 0},
+\code{delta = 1}.  \code{etaTukeyGH()} is Tukey's g-and-h transform
+\code{(exp(g*eta) - 1)/g*exp(h*eta^2/2)}; \code{g} sets the skewness and \code{h >= 0} the
+tails, the identity at \code{g = 0}, \code{h = 0}.
 \code{exprelD(z, n)} is the n-th derivative of \code{(exp(z) - 1)/z}; it keeps every
 derivative exact through a shape of 0.  \code{absPowLog(x, p, k)} is
 \code{abs(x)^p*log(abs(x))^k} with its limit at \code{x = 0}, the derivative helper of
@@ -69,12 +100,18 @@ etaBoxCox(c(-1, 0, 1), 0) ## identity
 etaJohnDraper(c(-1, 0, 1), 1) ## identity
 etaYeoJohnson(c(-1, 0, 1), 1) ## identity
 etaHeavyTail(c(-1, 0, 1), 0.5)
+etaLogit(c(-1, 0, 1), 0.5, 4)
+etaSinhAsinh(c(-1, 0, 1), 0, 1) ## identity
+etaTukeyGH(c(-1, 0, 1), 0, 0) ## identity
 exprelD(0, 0:3)
 }
 \references{
 Petersson KJ, Hanze E, Savic RM, Karlsson MO. Semiparametric
 distributions with estimated shape parameters. Pharm Res. 2009;
 26(9):2174-85.
+
+Jones MC, Pewsey A. Sinh-arcsinh distributions. Biometrika. 2009;
+96(4):761-80.
 }
 \seealso{
 Other Special functions:

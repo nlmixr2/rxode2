@@ -95,6 +95,9 @@ rxode2_fn2 etaJohnDraper;
 rxode2_fn2 etaYeoJohnson;
 rxode2_fn3 absPowLog;
 rxode2_fn2 etaHeavyTail;
+rxode2_fn3 etaLogit;
+rxode2_fn3 etaSinhAsinh;
+rxode2_fn3 etaTukeyGH;
 
 rxode2_fn2 rxnorm;
 rxode2i_rxbinom rxbinom;
@@ -739,6 +742,9 @@ void _assignFuns0(void) {
   etaYeoJohnson = (rxode2_fn2) R_GetCCallable("rxode2","etaYeoJohnson");
   absPowLog = (rxode2_fn3) R_GetCCallable("rxode2","absPowLog");
   etaHeavyTail = (rxode2_fn2) R_GetCCallable("rxode2","etaHeavyTail");
+  etaLogit = (rxode2_fn3) R_GetCCallable("rxode2","etaLogit");
+  etaSinhAsinh = (rxode2_fn3) R_GetCCallable("rxode2","etaSinhAsinh");
+  etaTukeyGH = (rxode2_fn3) R_GetCCallable("rxode2","etaTukeyGH");
   logit = (rxode2_fn3) R_GetCCallable("rxode2", "logit");
   probit = (rxode2_fn3) R_GetCCallable("rxode2", "probit");
   expit = (rxode2_fn3) R_GetCCallable("rxode2", "expit");

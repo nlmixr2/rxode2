@@ -81,3 +81,25 @@ extern "C" double etaHeavyTail(double eta, double theta) {
   if (eta == 0.0) return 0.0;
   return eta * std::pow(std::fabs(eta), theta);
 }
+
+// Logit transform (Petersson et al. 2009, Eq. 1):
+// (expit(logit(theta1) + eta) - theta1)*theta2, written as
+// theta2*theta1*(1-theta1)*expm1(eta)/(1 + theta1*expm1(eta)) so there is no
+// cancellation near eta = 0.  theta1 in (0, 1), theta2 > 0.
+extern "C" double etaLogit(double eta, double theta1, double theta2) {
+  double e = std::expm1(eta);
+  return theta2 * theta1 * (1.0 - theta1) * e / (1.0 + theta1 * e);
+}
+
+// Sinh-arcsinh transform (Jones and Pewsey 2009), centered so eta = 0 stays
+// at 0: sinh(delta*asinh(eta) - eps) + sinh(eps); the identity at eps = 0,
+// delta = 1
+extern "C" double etaSinhAsinh(double eta, double eps, double delta) {
+  return std::sinh(delta * std::asinh(eta) - eps) + std::sinh(eps);
+}
+
+// Tukey g-and-h transform: (exp(g*eta) - 1)/g*exp(h*eta^2/2); the identity at
+// g = 0, h = 0
+extern "C" double etaTukeyGH(double eta, double g, double h) {
+  return etaBoxCox(eta, g) * std::exp(0.5 * h * eta * eta);
+}

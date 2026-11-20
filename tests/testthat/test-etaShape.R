@@ -86,6 +86,63 @@ rxTest({
     expect_equal(absPowLog(-2, 1.5, 2), 2^1.5 * log(2)^2)
   })
 
+  test_that("etaLogit(), etaSinhAsinh() and etaTukeyGH() match their formulas", {
+    .eta <- c(-3, -1, -1e-6, 0, 1e-6, 0.7, 2.5)
+    .lg <- function(x, t1, t2) (plogis(qlogis(t1) + x) - t1) * t2
+    for (.t1 in c(0.1, 0.5, 0.8)) {
+      expect_equal(etaLogit(.eta, .t1, 3), .lg(.eta, .t1, 3), tolerance = 1e-10)
+    }
+    ## no cancellation near eta = 0
+    expect_equal(etaLogit(1e-12, 0.5, 4), 1e-12, tolerance = 1e-10)
+    expect_equal(etaSinhAsinh(.eta), .eta, tolerance = 1e-14)
+    expect_equal(etaSinhAsinh(0, 0.7, 1.3), 0)
+    expect_equal(
+      etaSinhAsinh(.eta, 0.4, 0.7),
+      sinh(0.7 * asinh(.eta) - 0.4) + sinh(0.4),
+      tolerance = 1e-14
+    )
+    expect_equal(etaTukeyGH(.eta), .eta)
+    expect_equal(etaTukeyGH(.eta, 0.3, 0.1), expm1(0.3 * .eta) / 0.3 * exp(0.1 * .eta^2 / 2))
+    expect_equal(etaTukeyGH(.eta, 0, 0.1), .eta * exp(0.1 * .eta^2 / 2))
+  })
+
+  test_that("three-argument transforms differentiate exactly in every argument", {
+    .chk3 <- function(fun, at, tol = 1e-7) {
+      .nm <- names(at)
+      .m <- paste0("y=", fun, "(", paste(.nm, collapse = ","), ")")
+      for (.v in .nm) {
+        .d <- .seD(.m, .v)
+        .f <- function(x) {
+          .a <- at
+          .a[[.v]] <- x
+          do.call(fun, unname(.a))
+        }
+        expect_equal(eval(str2lang(.d), at, .cEnv), .cd(.f, at[[.v]]),
+          tolerance = tol, info = paste(fun, .v, paste(at, collapse = ","))
+        )
+        for (.w in .nm) {
+          .d2 <- .seD(paste0("y=", .d), .w)
+          .f2 <- function(x) {
+            .a <- at
+            .a[[.w]] <- x
+            eval(str2lang(.d), .a, .cEnv)
+          }
+          expect_equal(eval(str2lang(.d2), at, .cEnv), .cd(.f2, at[[.w]], 1e-5),
+            tolerance = 1e-6, info = paste(fun, .v, .w, paste(at, collapse = ","))
+          )
+        }
+      }
+    }
+    for (.eta in c(-1.7, -0.2, 0, 0.4, 2.1)) {
+      .chk3("etaLogit", list(eta = .eta, t1 = 0.3, t2 = 2.5))
+      .chk3("etaLogit", list(eta = .eta, t1 = 0.5, t2 = 4))
+      .chk3("etaSinhAsinh", list(eta = .eta, eps = 0, delta = 1))
+      .chk3("etaSinhAsinh", list(eta = .eta, eps = -0.4, delta = 0.7))
+      .chk3("etaTukeyGH", list(eta = .eta, g = 0, h = 0))
+      .chk3("etaTukeyGH", list(eta = .eta, g = -0.6, h = 0.2))
+    }
+  })
+
   test_that("every derivative rule is known to symengine", {
     for (.e in c(
       "Derivative(etaBoxCox(eta, lambda), eta)",
@@ -98,6 +155,15 @@ rxTest({
       "Derivative(etaHeavyTail(eta, theta), theta)",
       "Derivative(absPowLog(x, p, 1), x)",
       "Derivative(absPowLog(x, p, 1), p)",
+      "Derivative(etaLogit(eta, a, b), eta)",
+      "Derivative(etaLogit(eta, a, b), a)",
+      "Derivative(etaLogit(eta, a, b), b)",
+      "Derivative(etaSinhAsinh(eta, a, b), eta)",
+      "Derivative(etaSinhAsinh(eta, a, b), a)",
+      "Derivative(etaSinhAsinh(eta, a, b), b)",
+      "Derivative(etaTukeyGH(eta, a, b), eta)",
+      "Derivative(etaTukeyGH(eta, a, b), a)",
+      "Derivative(etaTukeyGH(eta, a, b), b)",
       "Derivative(exprelD(z, 1), z)"
     )) {
       expect_true(nzchar(do.call(rxFromSE, list(.e, unknownDerivatives = "error"))), info = .e)
@@ -168,14 +234,24 @@ rxTest({
         eta.cl ~ 0.1
         eta.v ~ 0.1
         eta.ka ~ 0.1
+        lt1 <- 0.4
+        lt2 <- 3
+        sd <- 0.8
+        tg <- 0.2
         eta.q ~ 0.1
+        eta.f ~ 0.1
+        eta.k2 ~ 0.1
+        eta.k3 ~ 0.1
       })
       model({
         cl <- exp(tcl + etaBoxCox(lambda = lcl, eta = eta.cl))
         v <- 10 * exp(etaJohnDraper(eta.v, lambda = lv))
         ka <- exp(etaYeoJohnson(lambda = lka, eta.ka))
         q <- exp(etaHeavyTail(theta = tq, eta = eta.q))
-        d / dt(c) <- -cl / v * c + 0 * ka * q
+        f1 <- expit(etaLogit(theta2 = lt2, theta1 = lt1, eta = eta.f))
+        k2 <- exp(etaSinhAsinh(eta.k2, delta = sd))
+        k3 <- exp(etaTukeyGH(eta.k3, g = tg))
+        d / dt(c) <- -cl / v * c + 0 * ka * q * f1 * k2 * k3
       })
     }
     .u <- expect_no_warning(.f())
@@ -185,16 +261,28 @@ rxTest({
     ## the shaped etas are non-mu referenced, without a parsing warning
     expect_true(any(grepl("etaYeoJohnson(eta.ka, lka)", .txt, fixed = TRUE)))
     expect_true(any(grepl("etaHeavyTail(eta.q, tq)", .txt, fixed = TRUE)))
-    expect_setequal(.u$nonMuEtas, c("eta.cl", "eta.v", "eta.ka", "eta.q"))
+    expect_true(any(grepl("etaLogit(eta.f, lt1, lt2)", .txt, fixed = TRUE)))
+    expect_true(any(grepl("etaSinhAsinh(eta.k2, 0, sd)", .txt, fixed = TRUE)))
+    expect_true(any(grepl("etaTukeyGH(eta.k3, tg, 0)", .txt, fixed = TRUE)))
+    expect_setequal(
+      .u$nonMuEtas,
+      c("eta.cl", "eta.v", "eta.ka", "eta.q", "eta.f", "eta.k2", "eta.k3")
+    )
 
     .s <- rxSolve(
       .u,
       et(amt = 100) |> et(0:2),
-      params = data.frame(eta.cl = 0.4, eta.v = -0.5, eta.ka = -0.3, eta.q = 0.6)
+      params = data.frame(
+        eta.cl = 0.4, eta.v = -0.5, eta.ka = -0.3, eta.q = 0.6,
+        eta.f = 0.2, eta.k2 = -0.7, eta.k3 = 0.5
+      )
     )
     expect_equal(.s$cl[1], 4 * exp(etaBoxCox(0.4, 0.3)))
     expect_equal(.s$v[1], 10 * exp(etaJohnDraper(-0.5, 0.8)))
     expect_equal(.s$ka[1], exp(etaYeoJohnson(-0.3, 0.6)))
     expect_equal(.s$q[1], exp(etaHeavyTail(0.6, 0.3)))
+    expect_equal(.s$f1[1], plogis(etaLogit(0.2, 0.4, 3)))
+    expect_equal(.s$k2[1], exp(etaSinhAsinh(-0.7, 0, 0.8)))
+    expect_equal(.s$k3[1], exp(etaTukeyGH(0.5, 0.2, 0)))
   })
 })

@@ -567,6 +567,9 @@ table:\tabular{lll}{
    etaJohnDraper(eta, lambda) \tab John-Draper (modulus) shape transform of a random effect, sign(eta)*((abs(eta)+1)^lambda-1)/lambda; eta at lambda=1 \tab  \cr
    etaYeoJohnson(eta, lambda) \tab Yeo-Johnson shape transform of a random effect; ((eta+1)^lambda-1)/lambda for eta >= 0, -((1-eta)^(2-lambda)-1)/(2-lambda) below; eta at lambda=1 \tab  \cr
    etaHeavyTail(eta, theta) \tab Heavy-tailed shape transform of a random effect, eta*abs(eta)^theta; eta at theta=0 \tab  \cr
+   etaLogit(eta, theta1, theta2) \tab Logit shape transform of a random effect, (expit(logit(theta1)+eta)-theta1)*theta2; theta1 in (0, 1), theta2 > 0 \tab  \cr
+   etaSinhAsinh(eta, eps, delta) \tab Sinh-arcsinh shape transform of a random effect, sinh(delta*asinh(eta)-eps)+sinh(eps); eta at eps=0, delta=1 \tab  \cr
+   etaTukeyGH(eta, g, h) \tab Tukey g-and-h shape transform of a random effect, (exp(g\emph{eta)-1)/g}exp(h*eta^2/2); eta at g=0, h=0 \tab  \cr
    absPowLog(x, p, k) \tab abs(x)^p*log(abs(x))^k with its limit at x=0; the derivative helper for etaHeavyTail() \tab  \cr
    exprelD(z, n) \tab n-th derivative of (exp(z)-1)/z, finite at z=0; the derivative helper for the eta shape transforms \tab  \cr
    rxnorm(x) \tab Generate one deviate of from a normal distribution for each observation scale \tab  \cr

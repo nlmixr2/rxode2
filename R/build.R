@@ -152,7 +152,10 @@ d/dt(blood)     = a*intestine - b*blood
       "etaBoxCox" = c("eta", "lambda"),
       "etaJohnDraper" = c("eta", "lambda"),
       "etaYeoJohnson" = c("eta", "lambda"),
-      "etaHeavyTail" = c("eta", "theta")
+      "etaHeavyTail" = c("eta", "theta"),
+      "etaLogit" = c("eta", "theta1", "theta2"),
+      "etaSinhAsinh" = c("eta" = NA, "eps" = 0, "delta" = 1),
+      "etaTukeyGH" = c("eta" = NA, "g" = 0, "h" = 0)
     )
   )
   paste0(
