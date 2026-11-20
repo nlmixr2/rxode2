@@ -23,6 +23,13 @@
 #define RXSS_ANDERSON_RESTART 10.0
 // restarts before falling back to plain iteration
 #define RXSS_ANDERSON_MAXRESTART 3
+// divergence ceiling: an AA step longer than this many plain steps
+// (a carryover ratio above 1 - 1/RXSS_ANDERSON_MAXRATIO, or none below 1 as
+// with dosing above the elimination capacity) is rejected as a restart, and
+// AA falls back once its iterate moves farther than this many first
+// residuals.  It is lowered to 0.1/ssRtol: a state that only grows passes
+// the relative test once it has moved 1/ssRtol of its (constant) residual.
+#define RXSS_ANDERSON_MAXRATIO 1e4
 
 class rxSsAnderson {
 public:
@@ -42,6 +49,12 @@ public:
     }
     na = (int)idx.size();
     if (na == 0) return;
+    maxRatio = RXSS_ANDERSON_MAXRATIO;
+    for (int j = 0; j < na; j++) {
+      if (ssRtol[idx[j]] > 0.0 && 0.1/ssRtol[idx[j]] < maxRatio) {
+        maxRatio = 0.1/ssRtol[idx[j]];
+      }
+    }
     m = RXSS_ANDERSON_DEPTH;
     dF.assign((size_t)m*na, 0.0);
     dG.assign((size_t)m*na, 0.0);
@@ -74,6 +87,14 @@ public:
   // restarts after a fall back
   const double *start() const { return x0.data(); }
 
+  // give up (eg. the dose budget is spent without converging); returns true
+  // when AA was running, so the caller restarts plain iteration at start()
+  bool giveUp() {
+    if (!on || !haveX) return false;
+    fallBack();
+    return true;
+  }
+
   // x is this cycle's input and g = P(x) its output (in yp); overwrite yp
   // with the next input.  Returns false once AA has fallen back to plain
   // iteration (fellBack; yp is then left as g).
@@ -98,6 +119,17 @@ public:
       r += f[j]*w[j]*f[j]*w[j];
     }
     r = sqrt(r);
+    if (!havePrev) {
+      r0 = r;
+    } else {
+      // total travel ceiling
+      double t = 0.0;
+      for (int j = 0; j < na; j++) {
+        double d = (x[idx[j]] - x0[idx[j]])*w[j];
+        t += d*d;
+      }
+      if (!(sqrt(t) <= maxRatio*r0)) return fallBack();
+    }
     if (havePrev) {
       double *df = &dF[(size_t)head*na];
       double *dg = &dG[(size_t)head*na];
@@ -171,10 +203,20 @@ public:
       const double *dg = &dG[(size_t)col[p]*na];
       for (int j = 0; j < na; j++) xn[j] -= gam[p]*dg[j];
     }
+    double sx = 0.0;
+    for (int j = 0; j < na; j++) {
+      double d = (xn[j] - g[j])*w[j];
+      sx += d*d;
+    }
+    if (!(sqrt(sx) <= maxRatio*r)) {
+      // past the divergence ceiling: take the plain step instead
+      if (++restarts > RXSS_ANDERSON_MAXRESTART) return fallBack();
+      nHist = 0; head = 0;
+      return true;
+    }
     // keep a non-negative state non-negative by shortening the step
     double theta = 1.0;
     for (int j = 0; j < na; j++) {
-      if (!std::isfinite(xn[j])) return true;
       if (g[j] >= 0.0 && xn[j] < 0.0) {
         double t = 0.9*g[j]/(g[j] - xn[j]);
         if (t < theta) theta = t;
@@ -201,7 +243,7 @@ private:
   std::vector<double> fPrev, gPrev, gLast, xPrev, x0, w;
   int nHist = 0, head = 0;
   bool havePrev = false, haveX = false;
-  double best = INFINITY;
+  double best = INFINITY, r0 = 0.0, maxRatio = RXSS_ANDERSON_MAXRATIO;
   int stall = 0, restarts = 0;
 };
 

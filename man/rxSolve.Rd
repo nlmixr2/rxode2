@@ -1542,10 +1542,11 @@ acceleration, which needs far fewer cycles when the state accumulates
 slowly (eg. saturable elimination).  It applies to steady-state boluses
 once \code{minSS} doses are given, and stops only when both the cycle
 residual and the change of the cycle's starting state meet
-\code{ssAtol}/\code{ssRtol}.  When the accelerated iteration stalls or diverges
-(eg. dosing above the elimination capacity, with no steady state) it
-falls back to plain iteration.  A fixed dose count (\code{minSS = maxSS})
-always iterates.}
+\code{ssAtol}/\code{ssRtol}.  When the accelerated iteration stalls, diverges
+or reaches \code{maxSS} (eg. dosing above the elimination capacity, with no
+steady state) it restarts plain iteration from where acceleration began,
+so the result is that of \code{"iterate"}.  A fixed dose count
+(\code{minSS = maxSS}) always iterates.}
 
 \item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that
 is acceptable before issuing a warning/error about the gradient estimates.}

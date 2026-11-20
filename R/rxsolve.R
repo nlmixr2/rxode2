@@ -1119,10 +1119,11 @@
 #'   slowly (eg. saturable elimination).  It applies to steady-state boluses
 #'   once `minSS` doses are given, and stops only when both the cycle
 #'   residual and the change of the cycle's starting state meet
-#'   `ssAtol`/`ssRtol`.  When the accelerated iteration stalls or diverges
-#'   (eg. dosing above the elimination capacity, with no steady state) it
-#'   falls back to plain iteration.  A fixed dose count (`minSS = maxSS`)
-#'   always iterates.
+#'   `ssAtol`/`ssRtol`.  When the accelerated iteration stalls, diverges
+#'   or reaches `maxSS` (eg. dosing above the elimination capacity, with no
+#'   steady state) it restarts plain iteration from where acceleration began,
+#'   so the result is that of `"iterate"`.  A fixed dose count
+#'   (`minSS = maxSS`) always iterates.
 #'
 #' @param linCmtGillK The total number of possible steps to determine the
 #'     optimal forward/central difference step size per parameter (by

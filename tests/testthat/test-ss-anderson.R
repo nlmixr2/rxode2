@@ -38,11 +38,13 @@ rxTest({
   })
 
   test_that("dosing above the elimination capacity (no steady state) falls back to plain iteration", {
-    .ev <- et(amt = 300, ii = 24, ss = 1) |> et(0)
-    for (.n in c(100L, 1000L)) {
-      .aa <- rxSolve(.mm, .ev, method = "dop853", ssMethod = "anderson", maxSS = .n)$cp
-      .plain <- rxSolve(.mm, .ev, method = "dop853", maxSS = .n)$cp
-      expect_equal(.aa, .plain)
+    for (.amt in c(245, 300, 1000)) {
+      .ev <- et(amt = .amt, ii = 24, ss = 1) |> et(0)
+      for (.rtol in c(1e-6, 1e-3)) {
+        .aa <- rxSolve(.mm, .ev, method = "dop853", ssMethod = "anderson", maxSS = 500, ssRtol = .rtol)$cp
+        .plain <- rxSolve(.mm, .ev, method = "dop853", maxSS = 500, ssRtol = .rtol)$cp
+        expect_equal(.aa, .plain)
+      }
     }
   })
 

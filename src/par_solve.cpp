@@ -3152,6 +3152,13 @@ static inline void handleSSbolusIterate(int *neq,
       done = false;
       *canBreak = 0;
     }
+    if (done && !failed && !*canBreak && aa.giveUp()) {
+      // maxSS doses without converging: give plain iteration's result
+      std::copy(aa.start(), aa.start() + neq[0], yp);
+      std::copy(yp, yp + neq[0], ind->solveLast);
+      nDose = nDoseAA - 1;
+      done = false;
+    }
     if (done) {
       break;
     }
