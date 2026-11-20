@@ -185,6 +185,10 @@
   identically across sessions.  `md5` and the `splitInfusion*` elements move
   down one index, and `rxModelVars` saved by earlier versions are still read
   correctly (#1729).
+- A model with an initial condition (`x(0) <- ...`) and a `linCmt()` written
+  inline in another state's `d/dt()` now compiles; it failed with
+  `'__DDtStateVar_0__' undeclared`.  This is the shape of the SAEM model
+  nlmixr2 builds for a `linCmt()`-driven effect compartment (#1755).
 
 ### Solving
 
