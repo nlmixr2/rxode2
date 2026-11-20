@@ -1037,20 +1037,53 @@
 .rxD$etaLogit <- list(
   function(eta, t1, t2) {
     paste0(
-      "(", t2, ")*(", t1, ")*(1-(", t1, "))*exp(", eta, ")/(1+(", t1,
-      ")*etaBoxCox(", eta, ",1))^2"
+      "(",
+      t2,
+      ")*(",
+      t1,
+      ")*(1-(",
+      t1,
+      "))*exp(",
+      eta,
+      ")/(1+(",
+      t1,
+      ")*etaBoxCox(",
+      eta,
+      ",1))^2"
     )
   },
   function(eta, t1, t2) {
     paste0(
-      "(", t2, ")*etaBoxCox(", eta, ",1)*((1-2*(", t1, "))-(", t1,
-      ")^2*etaBoxCox(", eta, ",1))/(1+(", t1, ")*etaBoxCox(", eta, ",1))^2"
+      "(",
+      t2,
+      ")*etaBoxCox(",
+      eta,
+      ",1)*((1-2*(",
+      t1,
+      "))-(",
+      t1,
+      ")^2*etaBoxCox(",
+      eta,
+      ",1))/(1+(",
+      t1,
+      ")*etaBoxCox(",
+      eta,
+      ",1))^2"
     )
   },
   function(eta, t1, t2) {
     paste0(
-      "(", t1, ")*(1-(", t1, "))*etaBoxCox(", eta, ",1)/(1+(", t1,
-      ")*etaBoxCox(", eta, ",1))"
+      "(",
+      t1,
+      ")*(1-(",
+      t1,
+      "))*etaBoxCox(",
+      eta,
+      ",1)/(1+(",
+      t1,
+      ")*etaBoxCox(",
+      eta,
+      ",1))"
     )
   }
 )
@@ -1058,8 +1091,17 @@
 .rxD$etaSinhAsinh <- list(
   function(eta, eps, delta) {
     paste0(
-      "cosh((", delta, ")*asinh(", eta, ")-(", eps, "))*(", delta,
-      ")/sqrt(1+(", eta, ")^2)"
+      "cosh((",
+      delta,
+      ")*asinh(",
+      eta,
+      ")-(",
+      eps,
+      "))*(",
+      delta,
+      ")/sqrt(1+(",
+      eta,
+      ")^2)"
     )
   },
   function(eta, eps, delta) {
@@ -1073,19 +1115,52 @@
 .rxD$etaTukeyGH <- list(
   function(eta, g, h) {
     paste0(
-      "(exp((", g, ")*(", eta, "))+etaBoxCox(", eta, ",", g, ")*(", h,
-      ")*(", eta, "))*exp((", h, ")*(", eta, ")^2/2)"
+      "(exp((",
+      g,
+      ")*(",
+      eta,
+      "))+etaBoxCox(",
+      eta,
+      ",",
+      g,
+      ")*(",
+      h,
+      ")*(",
+      eta,
+      "))*exp((",
+      h,
+      ")*(",
+      eta,
+      ")^2/2)"
     )
   },
   function(eta, g, h) {
     paste0(
-      "(", eta, ")^2*exprelD((", g, ")*(", eta, "),1)*exp((", h, ")*(",
-      eta, ")^2/2)"
+      "(",
+      eta,
+      ")^2*exprelD((",
+      g,
+      ")*(",
+      eta,
+      "),1)*exp((",
+      h,
+      ")*(",
+      eta,
+      ")^2/2)"
     )
   },
   function(eta, g, h) {
     paste0(
-      "etaBoxCox(", eta, ",", g, ")*(", eta, ")^2/2*exp((", h, ")*(", eta,
+      "etaBoxCox(",
+      eta,
+      ",",
+      g,
+      ")*(",
+      eta,
+      ")^2/2*exp((",
+      h,
+      ")*(",
+      eta,
       ")^2/2)"
     )
   }

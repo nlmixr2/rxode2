@@ -117,8 +117,11 @@ rxTest({
           .a[[.v]] <- x
           do.call(fun, unname(.a))
         }
-        expect_equal(eval(str2lang(.d), at, .cEnv), .cd(.f, at[[.v]]),
-          tolerance = tol, info = paste(fun, .v, paste(at, collapse = ","))
+        expect_equal(
+          eval(str2lang(.d), at, .cEnv),
+          .cd(.f, at[[.v]]),
+          tolerance = tol,
+          info = paste(fun, .v, paste(at, collapse = ","))
         )
         for (.w in .nm) {
           .d2 <- .seD(paste0("y=", .d), .w)
@@ -127,8 +130,11 @@ rxTest({
             .a[[.w]] <- x
             eval(str2lang(.d), .a, .cEnv)
           }
-          expect_equal(eval(str2lang(.d2), at, .cEnv), .cd(.f2, at[[.w]], 1e-5),
-            tolerance = 1e-6, info = paste(fun, .v, .w, paste(at, collapse = ","))
+          expect_equal(
+            eval(str2lang(.d2), at, .cEnv),
+            .cd(.f2, at[[.w]], 1e-5),
+            tolerance = 1e-6,
+            info = paste(fun, .v, .w, paste(at, collapse = ","))
           )
         }
       }
@@ -273,8 +279,13 @@ rxTest({
       .u,
       et(amt = 100) |> et(0:2),
       params = data.frame(
-        eta.cl = 0.4, eta.v = -0.5, eta.ka = -0.3, eta.q = 0.6,
-        eta.f = 0.2, eta.k2 = -0.7, eta.k3 = 0.5
+        eta.cl = 0.4,
+        eta.v = -0.5,
+        eta.ka = -0.3,
+        eta.q = 0.6,
+        eta.f = 0.2,
+        eta.k2 = -0.7,
+        eta.k3 = 0.5
       )
     )
     expect_equal(.s$cl[1], 4 * exp(etaBoxCox(0.4, 0.3)))
