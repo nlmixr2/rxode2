@@ -145,7 +145,9 @@
 #define Rxc_linCmtSensPhi 141
 #define Rxc_nonmem 142
 #define Rxc_tieOrder 143
-#define Rxc_resetCancelsPending 144
+#define Rxc_rateAtDoseTime 144
+#define Rxc_durAtDoseTime 145
+#define Rxc_resetCancelsPending 146
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2

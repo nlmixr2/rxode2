@@ -1025,10 +1025,13 @@
 #'   lagged doses and doses added while solving do not end an interval;
 #'   `mtime()` times do.  `f()`, `rate()` and `dur()` of an `addl` repeat
 #'   read the time of the first data record at or after it (NONMEM's `F1`,
-#'   `R1` and `D1`).  Covariate interpolation is still set by
+#'   `R1` and `D1`).  A modeled rate (`rate()`, `RATE = -1`) is re-read on
+#'   each interval from the record that ends it, like NONMEM's `R1` (see
+#'   `rateAtDoseTime`).  Covariate interpolation is still set by
 #'   `covsInterpolation`.  It also sets the default `tieOrder` to `"data"`
-#'   and turns on `addlKeepsCov` unless it is given.  By default `FALSE`,
-#'   when they read the actual time of the `addl` dose.
+#'   and turns on `addlKeepsCov` and `durAtDoseTime` unless they are given.
+#'   By default `FALSE`, when `f()`, `rate()` and `dur()` of an `addl` repeat
+#'   read the actual time of the `addl` dose.
 #'
 #' @param tieOrder How records of a subject that share a time are processed:
 #'   `"evid"` processes resets first, then doses, then observations, so the
@@ -1048,6 +1051,24 @@
 #'   a reset added while solving cancels lagged doses but not `addl`
 #'   repeats, and an event table already translated by [etTrans()] keeps the
 #'   `addl` repeats it was translated with.
+#'
+#' @param rateAtDoseTime Boolean that when `TRUE` keeps a modeled rate
+#'   (`rate()`, `RATE = -1`) at the value read at its dose.  When `FALSE` (the
+#'   default) the rate is re-read at each data record until the dose is
+#'   delivered: the rate read at a record holds until the next one, or with
+#'   `nonmem = TRUE` the rate read with a record applies to the interval it
+#'   ends.  A re-read rate changes the rate and moves the end of the infusion
+#'   so the dose amount is kept.  Steady-state doses, doses added while
+#'   solving, event sensitivities and the adjoint always keep the rate of the
+#'   dose.
+#'
+#' @param durAtDoseTime Boolean that when `TRUE` keeps a modeled duration
+#'   (`dur()`, `RATE = -2`) at the value read at its dose.  When `FALSE` it is
+#'   re-read at each data record like a modeled rate (see `rateAtDoseTime`):
+#'   the infusion then ends at its start plus the new duration, delivering
+#'   what is left evenly, or stops delivering when that end has passed.  By
+#'   default (`NULL`) this is `TRUE` with `nonmem = TRUE`, as NONMEM fixes
+#'   `D1` at the dose, and `FALSE` otherwise.
 #'
 #' @param linCmtGillK The total number of possible steps to determine the
 #'     optimal forward/central difference step size per parameter (by
@@ -1664,6 +1685,8 @@ rxSolve <- function(
   linCmtSensPhi = TRUE,
   nonmem = FALSE,
   tieOrder = NULL,
+  rateAtDoseTime = FALSE,
+  durAtDoseTime = NULL,
   resetCancelsPending = TRUE,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
@@ -1978,6 +2001,12 @@ rxSolve <- function(
       tieOrder <- if (nonmem) "data" else "evid"
     }
     checkmate::assertChoice(tieOrder, c("evid", "data"))
+    checkmate::assertLogical(rateAtDoseTime, any.missing = FALSE, len = 1)
+    if (is.null(durAtDoseTime)) {
+      # NONMEM fixes D1 at the dose
+      durAtDoseTime <- nonmem
+    }
+    checkmate::assertLogical(durAtDoseTime, any.missing = FALSE, len = 1)
     checkmate::assertLogical(resetCancelsPending, any.missing = FALSE, len = 1)
     if (nonmem && missing(addlKeepsCov)) {
       # NONMEM keeps a dose record's covariates with the dose
@@ -2477,6 +2506,8 @@ rxSolve <- function(
       linCmtSensPhi = .linCmtSensPhi,
       nonmem = nonmem,
       tieOrder = tieOrder,
+      rateAtDoseTime = rateAtDoseTime,
+      durAtDoseTime = durAtDoseTime,
       resetCancelsPending = resetCancelsPending
     )
     class(.ret) <- "rxControl"
@@ -3920,7 +3951,7 @@ rxSolve.default <- function(
     # answers.
     # tte() models set the evid_() flag but solve in the per-record loop,
     # whose dense steps record the delay() history
-    .tte <- any(startsWith(rxModelVars(object)$state, "rx.tteH."))
+    .tte <- any(startsWith(rxModelVars(object)$state, "rx_tteH_"))
     if (!.tte && isTRUE(rxModelVars(object)$flags[["evid_"]] == 1L)) {
       stop(
         "a model cannot combine delay() with evid_() event pushing ",
