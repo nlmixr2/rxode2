@@ -1,0 +1,150 @@
+---
+title: "Skewed and heavy-tailed random effects"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(rxode2)
+```
+
+## Overview
+
+A random effect `eta` is normal, so `cl <- tcl*exp(eta.cl)` gives a
+log-normal clearance.  When the population is skewed or heavy tailed, a
+shape transform with an estimated shape parameter can replace `eta`
+(Petersson et al. 2009):
+
+```r
+cl <- tcl*exp(etaBoxCox(eta.cl, lambda))
+```
+
+Every transform here keeps `eta = 0` at 0 (so `tcl` is still the typical
+value), keeps the rank order of `eta` (so correlations between random effects
+are roughly kept), and has a shape value giving the identity (so the shape can
+be tested with a likelihood ratio test).
+
+| Function | Transform | Identity at | Changes |
+|----|----|----|----|
+| `etaBoxCox(eta, lambda)` | `(exp(eta)^lambda - 1)/lambda` | `lambda = 0` | skewness |
+| `etaJohnDraper(eta, lambda)` | `sign(eta)*((abs(eta) + 1)^lambda - 1)/lambda` | `lambda = 1` | tails |
+
+## The transforms in R
+
+Each transform is a C function in the model language, and the R function of
+the same name runs that C code, so you can see what a transform does before
+putting it in a model:
+
+```{r}
+etaBoxCox(c(-1, 0, 1), 0.5)
+etaBoxCox(c(-1, 0, 1), 0) # the identity
+etaJohnDraper(c(-1, 0, 1), 1) # the identity
+```
+
+Applied to normal draws they show the shapes they produce:
+
+```{r eta-shapes, fig.width = 7, fig.height = 3.5}
+set.seed(42)
+eta <- rnorm(1e5, sd = 0.5)
+oldPar <- par(mfrow = c(1, 2))
+plot(density(eta), main = "etaBoxCox()", xlim = c(-2.5, 2.5), ylim = c(0, 1.7))
+lines(density(etaBoxCox(eta, 1.5)), col = "red")
+lines(density(etaBoxCox(eta, -1.5)), col = "blue")
+legend("topleft", c("normal", "lambda = 1.5", "lambda = -1.5"),
+  col = c("black", "red", "blue"), lty = 1, bty = "n", cex = 0.8
+)
+plot(density(eta), main = "etaJohnDraper()", xlim = c(-2.5, 2.5), ylim = c(0, 1.7))
+lines(density(etaJohnDraper(eta, 2)), col = "red")
+lines(density(etaJohnDraper(eta, 0.3)), col = "blue")
+legend("topleft", c("normal", "lambda = 2", "lambda = 0.3"),
+  col = c("black", "red", "blue"), lty = 1, bty = "n", cex = 0.8
+)
+par(oldPar)
+```
+
+Box-Cox skews: `lambda > 0` gives a long right tail, `lambda < 0` a long
+left one.  John-Draper is symmetric: `lambda > 1` widens the tails and
+`lambda < 1` shortens them.  A useful starting range is `lambda` in about
+`(-3, 3)`.
+
+## Using them in a model
+
+In a model the transforms take R-style arguments.  A user-defined function
+(`rxUdfUi()`) for each one matches the arguments by name, the way R does, and
+expands the call into the positional native model function, so the solve runs
+C code only:
+
+```{r}
+mod <- function() {
+  ini({
+    tcl <- log(4)
+    lcl <- 0.8
+    tv <- log(10)
+    lv <- 1.5
+    eta.cl ~ 0.2
+    eta.v ~ 0.1
+  })
+  model({
+    cl <- exp(tcl + etaBoxCox(lambda = lcl, eta = eta.cl))
+    v <- exp(tv + etaJohnDraper(eta.v, lambda = lv))
+    d / dt(central) <- -cl / v * central
+    cp <- central / v
+  })
+}
+ui <- mod()
+ui$lstExpr[1:2]
+```
+
+The shape (`lcl`, `lv`) is an ordinary theta.  A shaped eta is not
+mu-referenced, since it no longer enters as `theta + eta`:
+
+```{r}
+ui$nonMuEtas
+```
+
+Simulating shows the skewed clearance next to the log-normal one:
+
+```{r cl-sim, fig.width = 7, fig.height = 3.5}
+ev <- et(amt = 100) |> et(seq(0, 24, by = 4))
+s <- rxSolve(ui, ev, nSub = 2000, returnType = "data.frame")
+s0 <- rxSolve(ui |> ini(lcl = 0), ev, nSub = 2000, returnType = "data.frame")
+cl <- s$cl[s$time == 0]
+cl0 <- s0$cl[s0$time == 0]
+plot(density(cl0), main = "Clearance", xlab = "cl", ylim = c(0, 0.35))
+lines(density(cl), col = "red")
+legend("topright", c("lcl = 0 (log-normal)", "lcl = 0.8"),
+  col = c("black", "red"), lty = 1, bty = "n"
+)
+```
+
+## Exact derivatives
+
+Estimation needs derivatives with respect to both `eta` and the shape.  These
+are exact symbolic rules, written so that they stay finite and accurate at the
+identity, where the textbook formula is `0/0`.  They are built on
+`exprelD(z, n)`, the `n`-th derivative of `(exp(z) - 1)/z`:
+
+```{r}
+rxFromSE("Derivative(etaBoxCox(eta, lambda), lambda)")
+etaBoxCox(0.5, c(-1e-8, 0, 1e-8))
+exprelD(0, 0:3)
+```
+
+The derivative of `etaJohnDraper()` with respect to `eta` is written without
+`sign()`, so it is 1 at `eta = 0` rather than 0.
+
+## Reference
+
+Petersson KJ, Hanze E, Savic RM, Karlsson MO.  Semiparametric distributions
+with estimated shape parameters.  Pharm Res.  2009;26(9):2174-85.
+
+## Next steps
+
+- [Simulating populations](rxode2-sim-var.html)
+- [ETA and EPS resampling](rxode2-eta-eps-resampling.html)
+- [User-defined functions](Integrating-User-Defined-Functions-into-rxode2.html)

@@ -19,6 +19,13 @@
   closer to the true steady state.  It falls back to plain iteration when no
   steady state exists; `ssMethod = "iterate"` restores the previous
   behavior (#1762).
+- Random effect shape transforms `etaBoxCox(eta, lambda)` and
+  `etaJohnDraper(eta, lambda)` (Petersson et al. 2009) for skewed and
+  heavy-tailed random effects, with exact derivatives in both arguments that
+  stay finite through the identity shape (via the new `exprelD()`).  In a
+  model, named arguments expand into the native call; the R functions run the
+  same C code.  See the new article "Skewed and heavy-tailed random effects"
+  (#1751).
 
 - `rxSymInvCholCreate()` builds block-diagonal omegas with
   `lotri::lotriMat()` instead of `Matrix::bdiag()`, removing the
