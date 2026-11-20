@@ -3136,7 +3136,7 @@ static inline void handleSSbolusIterate(int *neq,
   rxSsAnderson aa;
   std::vector<double> xin;
   int nDoseAA = 0;
-  if (ssMethod_global == 1 && minSS < maxSS && !ind->delaySS) {
+  if (ssMethod_global == 1 && minSS < maxSS && !op->hasDelay) {
     aa.init(neq[0], op->ssAtol, op->ssRtol);
     if (aa.on) xin.assign(ind->solveLast, ind->solveLast + neq[0]);
   }
