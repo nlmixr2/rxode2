@@ -136,6 +136,25 @@ rxTest({
     expect_equal(.aa$rx__sens_centr_BY_vm__, .fd, tolerance = 1e-4)
   })
 
+  test_that("a delay() steady state is not accelerated", {
+    .dde <- function() {
+      ini({
+        tau <- 4
+      })
+      model({
+        d/dt(depot) <- -1.2 * depot
+        d/dt(central) <- 1.2 * depot - 0.1 * central
+        cd <- delay(central, tau) / 30
+        d/dt(r) <- 10 * (1 - 0.8 * cd / (cd + 1)) - 0.1 * r
+      })
+    }
+    .ev <- et(amt = 100, ii = 12, ss = 1) |> et(c(1, 6, 12))
+    expect_identical(
+      rxSolve(.dde, .ev, method = "dop853", ssMethod = "anderson")$r,
+      rxSolve(.dde, .ev, method = "dop853")$r
+    )
+  })
+
   test_that("ssMethod is checked", {
     expect_error(rxControl(ssMethod = "newton"))
     expect_equal(rxControl(ssMethod = "anderson")$ssMethod, 1L)

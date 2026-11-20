@@ -1546,7 +1546,7 @@ residual and the change of the cycle's starting state meet
 or reaches \code{maxSS} (eg. dosing above the elimination capacity, with no
 steady state) it restarts plain iteration from where acceleration began,
 so the result is that of \code{"iterate"}.  A fixed dose count
-(\code{minSS = maxSS}) always iterates.}
+(\code{minSS = maxSS}) and a \code{delay()} model always iterate.}
 
 \item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that
 is acceptable before issuing a warning/error about the gradient estimates.}

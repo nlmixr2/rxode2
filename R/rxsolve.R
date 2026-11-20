@@ -1123,7 +1123,7 @@
 #'   or reaches `maxSS` (eg. dosing above the elimination capacity, with no
 #'   steady state) it restarts plain iteration from where acceleration began,
 #'   so the result is that of `"iterate"`.  A fixed dose count
-#'   (`minSS = maxSS`) always iterates.
+#'   (`minSS = maxSS`) and a `delay()` model always iterate.
 #'
 #' @param linCmtGillK The total number of possible steps to determine the
 #'     optimal forward/central difference step size per parameter (by

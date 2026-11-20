@@ -3131,11 +3131,12 @@ static inline void handleSSbolusIterate(int *neq,
   *xp2 = *xout2;
   int evid=0;
   // rxControl(ssMethod="anderson"): accelerate the trough map; a fixed dose
-  // count (minSS == maxSS) is never accelerated (#1762)
+  // count (minSS == maxSS) is never accelerated, nor a delay() model, whose
+  // recorded history must come from consecutive cycles (#1762)
   rxSsAnderson aa;
   std::vector<double> xin;
   int nDoseAA = 0;
-  if (ssMethod_global == 1 && minSS < maxSS) {
+  if (ssMethod_global == 1 && minSS < maxSS && !ind->delaySS) {
     aa.init(neq[0], op->ssAtol, op->ssRtol);
     if (aa.on) xin.assign(ind->solveLast, ind->solveLast + neq[0]);
   }

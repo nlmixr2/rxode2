@@ -6621,6 +6621,9 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
   rxSolveDat.isEnvironment = false;
   rxSolveDat.hasCmt        = false;
   rxSolveDat.addDosing = as<Nullable<LogicalVector>>(rxControl[Rxc_addDosing]);
+  // rxControl(ssMethod=) is a solve-time global, not part of the saved state
+  ssMethod_global = (Rf_length(rxControl) > Rxc_ssMethod) ?
+    asInt(rxControl[Rxc_ssMethod], "ssMethod") : 0;
   rxSolveDatLoadState(&rxSolveDat, solveState);
   if (Rf_isNull(solveState)) {
     getRxSolve_()->matrix = 2;
