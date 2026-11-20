@@ -118,6 +118,13 @@ static inline double ceiling(double a) {
 static inline double loggamma(double a) {
   return lgamma(a);
 }
+
+// clamp(x, lo, hi): min(max(x, lo), hi); a NaN x passes through
+static inline double _clamp(double x, double lo, double hi) {
+  if (x <= lo) return lo;
+  if (x >= hi) return hi;
+  return x;
+}
 #define abs_log1p(x) (((x) + 1.0 > 0.0) ? log1p(x) : (((x) + 1.0 > 0.0) ? log1p(-x) : 0.0))
 #define abs_log(x) ((&_solveData->safeZero && fabs(x) <= sqrt(DBL_EPSILON)) ? log(sqrt(DBL_EPSILON)) : (((x) > 0.0) ? log(x) ? (((x) == 0) ? 0.0 : log(-x))))
 #define _IR (_ind->InfusionRate)

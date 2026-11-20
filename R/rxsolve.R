@@ -13,6 +13,46 @@
 #' @return nothing, called for its error
 #' @noRd
 #' @author Matthew L. Fidler
+# the `output` sink of a matExp() model: a state only `k_<cmt>_output` rates
+# create, which nothing reads and which has no rate or indLin() forcing of its
+# own
+.rxIndLinSinkState <- function(mv) {
+  if (length(mv$indLin) == 0L || !("output" %in% mv$state)) {
+    return(character(0))
+  }
+  # `output` as a name of its own, not inside `k_<cmt>_output`
+  if (
+    grepl(
+      "(^|[^A-Za-z0-9_.])output([^A-Za-z0-9_.]|$)",
+      mv$model["normModel"]
+    )
+  ) {
+    return(character(0))
+  }
+  # a rate out of `output`
+  if (any(grepl("^k[._]output[._]", c(mv$lhs, mv$slhs, mv$params)))) {
+    return(character(0))
+  }
+  "output"
+}
+
+# per-state ssAtol for an indLin solve: the `output` sink only accumulates
+# eliminated drug, so it never reaches a steady state and is left out of the
+# ssAtol/ssRtol test (#1749).  Other states keep the solver's positional rule
+# (a state past the end of `ssAtol` uses its first element); a converted model
+# declares its source states first, so `output` follows them.
+.rxIndLinSsAtol <- function(ssAtol, state, sink) {
+  .sink <- state %in% sink
+  if (!any(.sink)) {
+    return(ssAtol)
+  }
+  .ret <- rep(ssAtol[1], length(state))
+  .n <- min(length(state), length(ssAtol))
+  .ret[seq_len(.n)] <- ssAtol[seq_len(.n)]
+  .ret[.sink] <- .Machine$double.xmax
+  .ret
+}
+
 .rxAssertPositiveTol <- function(x, ..., .var.name = checkmate::vname(x)) {
   checkmate::assertNumeric(x, lower = 0, finite = TRUE, any.missing = FALSE, ..., .var.name = .var.name)
   if (any(x <= 0)) {
@@ -321,7 +361,9 @@
 #'     least 5 and up to `max(maxSS, 10000)` convergence steps.
 #'
 #' @param maxSS Maximum number of doses given before a steady-state dose (at
-#'     least `minSS`)
+#'     least `minSS`).  When `minSS < maxSS` and `ssAtol`/`ssRtol` are still
+#'     unmet after `maxSS` doses, the last iterate is used and `rxSolve()`
+#'     warns once.
 #'
 #' @param strictSS Boolean indicating if a strict steady-state is
 #'     required. If a strict steady-state is (`TRUE`) required
@@ -1041,8 +1083,17 @@
 #'   a row expands to, like the reset of an `evid=4` dose or `addl` repeats,
 #'   follow that row).  Doses added while solving follow the records at the
 #'   same time.  An event table already translated by [etTrans()] keeps the
-#'   order it was translated with.  By default (`NULL`) this is `"data"` when
-#'   `nonmem = TRUE` and `"evid"` otherwise.
+#'   order it was translated with.  By default (`NULL`) this is `"data"`
+#'   when `nonmem = TRUE` and `"evid"` otherwise.
+#'
+#' @param resetCancelsPending When `TRUE` (default), a reset (`evid` 3 or
+#'   4) cancels the doses of the records processed before it that have not
+#'   yet entered: the remaining `addl` repeats and lagged (`alag()`) doses,
+#'   as NONMEM does.  When `FALSE` they are given after the reset.  A dose
+#'   added while solving is cancelled only when it is lagged past the reset,
+#'   a reset added while solving cancels lagged doses but not `addl`
+#'   repeats, and an event table already translated by [etTrans()] keeps the
+#'   `addl` repeats it was translated with.
 #'
 #' @param rateAtDoseTime Boolean that when `TRUE` keeps a modeled rate
 #'   (`rate()`, `RATE = -1`) at the value read at its dose.  When `FALSE` (the
@@ -1679,6 +1730,7 @@ rxSolve <- function(
   tieOrder = NULL,
   rateAtDoseTime = FALSE,
   durAtDoseTime = NULL,
+  resetCancelsPending = TRUE,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -1998,6 +2050,7 @@ rxSolve <- function(
       durAtDoseTime <- nonmem
     }
     checkmate::assertLogical(durAtDoseTime, any.missing = FALSE, len = 1)
+    checkmate::assertLogical(resetCancelsPending, any.missing = FALSE, len = 1)
     if (nonmem && missing(addlKeepsCov)) {
       # NONMEM keeps a dose record's covariates with the dose
       addlKeepsCov <- TRUE
@@ -2497,7 +2550,8 @@ rxSolve <- function(
       nonmem = nonmem,
       tieOrder = tieOrder,
       rateAtDoseTime = rateAtDoseTime,
-      durAtDoseTime = durAtDoseTime
+      durAtDoseTime = durAtDoseTime,
+      resetCancelsPending = resetCancelsPending
     )
     class(.ret) <- "rxControl"
     return(.ret)
@@ -3741,6 +3795,13 @@ rxSolve.default <- function(
         }
       }
       object <- .converted
+    }
+  }
+  if (.ctl$method == 3L && !inherits(object, c("function", "rxUi"))) {
+    .mvSink <- rxModelVars(object)
+    .sink <- .rxIndLinSinkState(.mvSink)
+    if (length(.sink) > 0L) {
+      .ctl$ssAtol <- .rxIndLinSsAtol(.ctl$ssAtol, .mvSink$state, .sink)
     }
   }
   # Adjoint-sensitivity auto-switch (base method -> adjoint variant).  A model
@@ -7911,4 +7972,14 @@ rxUiDeparse.rxControl <- function(object, var) {
 #' @noRd
 .rxLinCmtSensDebug <- function() {
   rxLinCmtSensDebug_()
+}
+
+#' Set the smallest system dop853 forms its stages for two elements a pass
+#'
+#' Returns the previous value.  Internal: the test that compares the paired
+#' stage updates with the plain loop forces the plain one with it.
+#' @param n smallest number of states taken two elements a pass
+#' @noRd
+.rxDop853PairsMin <- function(n) {
+  .Call(`_rxode2_dop853PairsMin`, as.integer(n))
 }

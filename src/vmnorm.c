@@ -19,8 +19,12 @@ double vmnorm0(int n, double *v, double *w)
 	double          vm;
 
 	vm = 0.;
-	for (i = 1; i <= n; i++)
-		vm = fmax(vm, fabs(v[i]) * w[i]);
+	for (i = 1; i <= n; i++) {
+		double x = fabs(v[i]) * w[i];
+		/* the larger of vm and x, as fmax(vm, x) gives it (a NaN x leaves
+		   vm), without a libm call per element */
+		if (x > vm) vm = x;
+	}
 	return vm;
 
 }
