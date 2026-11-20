@@ -35,6 +35,19 @@
 
 ## Bug fixes
 
+- mu-referencing only records a `covariate*theta` term when its coefficient
+  depends on covariates and constants alone: directly (mu2), or through model
+  variables that resolve to covariates (mu3, checked with symengine).  A term
+  that reaches a theta, eta or state through a model variable, such as the
+  allometric `0.75*log(V1/exp(tV1))` (recorded with covariate `-0.75`), was
+  rewritten by nlmixr2's SAEM / mu-referenced methods to `covariate*theta`,
+  silently dropping the `V1` dependence (nlmixr2/nlmixr2est#1437).  A term
+  that is not exactly `theta*covariate`, such as `(cl.wt + 1)*log(WT/70)`, is
+  no longer recorded either, while `cl.wt*log(WT/70)` and `cl.wt*lwt` (with
+  `lwt <- log(WT/70)`) still are.  A constant coefficient such as
+  `cl.wt*log(70)` is still a valid mu2 term, so the downstream guard that drops
+  constant covariates (nlmixr2/nlmixr2est#1433) is not needed.
+
 - The R functions `gammapInva()` and `gammaqInva()` returned the results of
   `gammapInv()` and `gammaqInv()` (their `.Call` entries were registered to
   the wrong C functions).  They now return the shape `a`, as the same
@@ -172,6 +185,10 @@
   identically across sessions.  `md5` and the `splitInfusion*` elements move
   down one index, and `rxModelVars` saved by earlier versions are still read
   correctly (#1729).
+- A model with an initial condition (`x(0) <- ...`) and a `linCmt()` written
+  inline in another state's `d/dt()` now compiles; it failed with
+  `'__DDtStateVar_0__' undeclared`.  This is the shape of the SAEM model
+  nlmixr2 builds for a `linCmt()`-driven effect compartment (#1755).
 
 ### Solving
 
@@ -253,6 +270,10 @@
   dose nor at an `mtime()` record, and such a window can still be missed.
   Plain observation records are still stepped past and interpolated;
   results at doses move within the tolerances.
+- With `rxSolve(..., nonmem = TRUE)`, `f()`, `rate()` and `dur()` of an
+  `addl` repeat now read `time` as the first data record at or after the
+  repeat, as NONMEM evaluates `F1`, `R1` and `D1`; by default they still
+  read the actual time of the `addl` dose (#1583).
 
 ### Steady state
 - A steady-state fixed-duration infusion shorter than `ii` into a compartment
@@ -374,6 +395,17 @@
   `if (t >= a && t < b)`, that starts at or just after a plain observation
   record can now be stepped over, as `liblsoda` and `lsoda` can step over
   one; give its start an `mtime()` or an event record.
+
+- Time-to-event endpoints can be simulated with `ev ~ tte(haz, ...)`, using
+  the options of Monolix's `{type=event}` definitions (`eventType`,
+  `maxEventNumber`, `rightCensoringTime`, `intervalLength`) plus `dropout`.
+  The cumulative hazard is a hidden model state, event times are found with
+  a root finder, and the simulation returns Monolix/NONMEM-style rows.
+  `tteTime(ev)` and `tteCount(ev)` give the last event time and the event
+  count inside the model.  Every ODE solving `method` except the adjoint
+  sensitivity methods can simulate them, the hazard may use `delay()`,
+  and steady-state doses hold the cumulative hazard fixed (a `delay()` of
+  the cumulative hazard is refused with them).
 
 - `minSS` and `maxSS` now accept any count from 1, and `maxSS` may equal
   `minSS`, so `minSS = maxSS = n` gives exactly the state after `n` doses

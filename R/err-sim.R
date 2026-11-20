@@ -934,7 +934,7 @@ rxCombineErrorLines <- function(
   .predDf <- uiModel$predDf
   .tmp <- .rxFilterOutPropsAndAdjustPredDf(uiModel, predDf = .predDf, lstExpr = lstExpr)
   .predDf <- .tmp$predDf
-  .expr <- .tmp$lstExpr
+  .expr <- .rxTteRewriteLines(.tmp$lstExpr, .predDf)
   # endpoints sharing a model variable get a generated alias; define it just
   # before the error lines that use it.  A shared linCmt() needs its single
   # allowed linCmt() call emitted once, outside the CMT branches.
@@ -1044,6 +1044,13 @@ rxCombineErrorLines <- function(
       .ret[[.k]] <- .expr[[.i]]
       .k <- .k + 1
     }
+  }
+  # tte() cumulative-hazard states are the last states, ahead of the endpoint
+  # cmt() lines (the same order as the ui's base model)
+  .tteLines <- .rxTteStateLines(uiModel)
+  for (.i in seq_along(.tteLines)) {
+    .ret[[.k]] <- .tteLines[[.i]]
+    .k <- .k + 1
   }
   for (.i in seq_along(.cmtLines)) {
     .ret[[.k]] <- .cmtLines[[.i]]

@@ -423,6 +423,8 @@ typedef double (*linCmtB_p) (rx_solve *rx, int id,
 typedef void (*_update_par_ptr_p)(double t, unsigned int id, rx_solve *rx, int idx);
 // record time PK-type statements read under nocb (rxode2#1429)
 typedef double (*_rxPkTime_p)(double t, unsigned int id, rx_solve *rx);
+// time f()/rate()/dur() read with nonmem = TRUE (rxode2#1583)
+typedef double (*_rxDoseTime_p)(double t, unsigned int id, rx_solve *rx);
 
 /* dydt forcing hook: generated model calls this at the end of its RHS (dydt) so a
    plugin can add forcing to state derivatives (e.g. b_j for NN-weight variational
@@ -457,6 +459,8 @@ typedef void (*_setThreadInd_t) (int);
 typedef int  (*_rxPushDose_t)(rx_solving_options_ind *, double,
                                double, int, double, int,
                                double, double, int, int, int);
+// time-to-event helper: what 0 = sim, 1 = H0, 2 = tteTime, 3 = tteCount
+typedef double (*_rxTte_t)(int, double, int, double);
 typedef void (*rxode2_assignFuns2_t)(rx_solve, rx_solving_options, t_F, t_LAG, t_RATE, t_DUR,t_calc_mtime, t_ME, t_IndF, t_getTime, t_locateTimeIndex, t_handle_evidL,t_getDur);
 
 #endif // __rxode2_model_shared_H__
