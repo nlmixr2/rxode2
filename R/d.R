@@ -958,8 +958,15 @@
   },
   function(eta, lambda) {
     paste0(
-      "sign(", eta, ")*log1p(abs(", eta, "))^2*exprelD((", lambda,
-      ")*log1p(abs(", eta, ")),1)"
+      "sign(",
+      eta,
+      ")*log1p(abs(",
+      eta,
+      "))^2*exprelD((",
+      lambda,
+      ")*log1p(abs(",
+      eta,
+      ")),1)"
     )
   }
 )

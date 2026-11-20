@@ -8,7 +8,8 @@ rxTest({
   .cd <- function(f, x, h = 1e-6) (f(x + h) - f(x - h)) / (2 * h)
   ## R stand-ins for the C helpers rxFromSE() output uses
   .cEnv <- list2env(list(
-    Rx_pow_di = function(a, b) a^b, Rx_pow = function(a, b) a^b,
+    Rx_pow_di = function(a, b) a^b,
+    Rx_pow = function(a, b) a^b,
     dabs = function(x) sign(x)
   ))
 

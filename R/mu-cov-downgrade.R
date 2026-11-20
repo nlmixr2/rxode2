@@ -148,7 +148,8 @@
     ## An eta given to a shape transform (eg `etaBoxCox(eta.cl, lambda)`) is
     ## non-mu by design too.
     .expected <- c(
-      .rxEtaDistVars(ui$iniDf), .extra[grepl("^rx[zd][.]", .extra)],
+      .rxEtaDistVars(ui$iniDf),
+      .extra[grepl("^rx[zd][.]", .extra)],
       .rxEtaShapeEtas(ui$lstExpr, .extra)
     )
     .warn <- setdiff(.extra, .expected)

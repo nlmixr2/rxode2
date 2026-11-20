@@ -16,11 +16,12 @@
   .ret <- character(0)
   .walk <- function(x) {
     if (is.call(x)) {
-      if (is.name(x[[1]]) && any(as.character(x[[1]]) == .rxEtaShapeFuns) &&
-            length(x) >= 2L && is.name(x[[2]])) {
+      if (is.name(x[[1]]) && any(as.character(x[[1]]) == .rxEtaShapeFuns) && length(x) >= 2L && is.name(x[[2]])) {
         .ret <<- c(.ret, as.character(x[[2]]))
       }
-      for (.i in seq_along(x)[-1]) .walk(x[[.i]])
+      for (.i in seq_along(x)[-1]) {
+        .walk(x[[.i]])
+      }
     }
     invisible()
   }
