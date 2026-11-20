@@ -105,6 +105,8 @@ SEXP qassertS(SEXP in, const char *test, const char *what);
 // nPastEvid is kept out of rx_solving_options to avoid breaking the
 // assignFuns2 ABI (which passes rx_solving_options by value).
 int nPastEvid_global = 0;
+// set when an iterated steady state stops at maxSS without converging (#1749)
+int ssNotConv_global = 0;
 
 RObject rxSolveFreeObj=R_NilValue;
 LogicalVector rxSolveFree();
@@ -5914,6 +5916,9 @@ List rxSolve_df(const RObject &obj,
   if (nPastEvid_global > 0) {
     warning(_("evid_() was called %d time(s) with time <= current solve time; those calls were ignored"), nPastEvid_global);
   }
+  if (ssNotConv_global) {
+    warning(_("steady state did not converge within 'maxSS' doses (increase with `rxSolve(..., maxSS=#)`)"));
+  }
   if (!rxIsNull(rxControl[Rxc_drop])) {
     dat = rxDrop(asCv(rxControl[Rxc_drop], "drop"), dat, asBool(rxControl[Rxc_warnDrop], "warnDrop"));
   }
@@ -6284,6 +6289,7 @@ static inline SEXP rxSolve_finalize(const RObject &obj,
   // to this solve's subjects.  SAEM calls par_solve() directly, so the reasons its
   // subjects pushed in between survive until its flush.
   rxSolveWarnReset();
+  ssNotConv_global = 0;
   par_solve(rx);
 #ifdef rxSolveT
   RSprintf("  Time1: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
