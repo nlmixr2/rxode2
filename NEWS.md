@@ -43,6 +43,11 @@
   A solve set up from C (as nlmixr2est's estimation methods do) installs
   its GPU setup there, once; when the model cannot run as device code it
   integrates with the host counterpart.
+- `rxMemoryEstimate()` (and so `rxSolve()`'s out-of-memory check) now counts
+  the GPU methods' per-slot host workspaces and the per-thread `evid_()`
+  push pools, and reports the GPU device buffers separately.  An OpenCL
+  solve whose buffers do not fit on the device stops with a message to
+  lower `rxControl(gpuBatch=)`.
 - New host method `"ros54p"` (Rodas5P, Steinebach's L-stable Rosenbrock 5(4)
   with the analytical Jacobian) and its AutoSwitch composites `"t54+ros54p"`
   and `"vern76+ros54p"`.  It evaluates the time derivative only for a model

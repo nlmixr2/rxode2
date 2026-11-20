@@ -616,6 +616,22 @@ rxMemoryEstimate <- function(
     }
     .sample <- .ci$sample
   }
+  # A GPU method allocates per slot on top of the rest
+  # (rxMemoryGpuComponents_()), and its solve runs with op->cores set to the
+  # batch, which every per-thread component scales with
+  .gpuMem <- NULL
+  if (!is.null(control) && !is.null(model)) {
+    .gpuMem <- tryCatch(
+      {
+        .gpuObj <- if (inherits(model, "rxUi")) model$simulationModel else model
+        .rxGpuSolveMem(.gpuObj, control, max(1, nrow(.summary) * max(1, nsim)))
+      },
+      error = function(e) NULL
+    )
+    if (!is.null(.gpuMem)) {
+      cores <- max(as.integer(cores), attr(.gpuMem, "batch"), attr(.gpuMem, "threads"))
+    }
+  }
   indOwnAlloc <- as.integer(isTRUE(as.logical(indOwnAlloc)))
   if (cores <= 0L) {
     cores <- 1L
@@ -723,6 +739,10 @@ rxMemoryEstimate <- function(
     nallTotal = .nallTotal
   )
   .sizes <- c(.sizes, outputData = .outputData)
+  if (!is.null(.gpuMem)) {
+    # device buffers are not host RAM: reported, never in the total
+    .sizes <- c(.sizes, .gpuMem[setdiff(names(.gpuMem), "gpuDevice")])
+  }
   .wrapped <- lapply(.sizes, function(bytes) {
     structure(bytes, class = "rxRawBytes")
   })
@@ -742,6 +762,10 @@ rxMemoryEstimate <- function(
     )
   )
   class(.ret) <- "rxMemoryEstimate"
+  # device memory, not host RAM: an attribute, so the list keeps its shape
+  if (!is.null(.gpuMem)) {
+    attr(.ret, "gpuDeviceBytes") <- .gpuMem[["gpuDevice"]]
+  }
   attr(.ret, "summary") <- .summary
   .ret
 }
@@ -828,6 +852,12 @@ print.rxMemoryEstimate <- function(x, ...) {
     gEtaPre = "gEtaPre (pre-generated eta draws)",
     delayHist = "delayHist (per-individual delay() history, bound)",
     linCmtRateHist = "linCmtRateHist (per-individual linCmt rates, bound)",
+    extraDosing = "extraDosing (per-thread evid_() push pools)",
+    invCdfMemo = "invCdfMemo (per-thread inverse-CDF memo)",
+    gpuHostWork = "gpuHostWork (GPU round requests, per slot)",
+    gpuHostState = "gpuHostState (GPU host integrator state, per slot)",
+    gpuSlotWork = "gpuSlotWork (GPU per-thread workspaces)",
+    gpuStage = "gpuStage (GPU host staging buffers)",
     outputData = "outputData (estimated returned data)"
   )
 
@@ -856,6 +886,10 @@ print.rxMemoryEstimate <- function(x, ...) {
     cat("\n")
   } else {
     cat("\n")
+  }
+  .dev <- attr(x, "gpuDeviceBytes")
+  if (!is.null(.dev)) {
+    cat(sprintf("  GPU device buffers: %s (device memory, not in the total)\n", .fmtSize(.dev)))
   }
   invisible(x)
 }
