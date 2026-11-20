@@ -17,7 +17,8 @@ etTrans(
   addlDropSs = TRUE,
   ssAtDoseTime = TRUE,
   iCov = NULL,
-  tieOrder = c("evid", "data")
+  tieOrder = c("evid", "data"),
+  resetCancelsPending = TRUE
 )
 
 etTrans(
@@ -33,7 +34,8 @@ etTrans(
   addlDropSs = TRUE,
   ssAtDoseTime = TRUE,
   iCov = NULL,
-  tieOrder = c("evid", "data")
+  tieOrder = c("evid", "data"),
+  resetCancelsPending = TRUE
 )
 }
 \arguments{
@@ -79,6 +81,11 @@ covariate per ID and should match the event table}
 observations; \code{"data"} keeps the order of the rows in \code{inData}, the
 way NONMEM processes its records.  Records a row expands to (the reset
 of an \code{evid=4} dose, \code{addl} repeats, infusion ends) follow that row.}
+
+\item{resetCancelsPending}{When \code{TRUE} (default), the \code{addl} repeats of a
+record that a later reset (\code{evid} 3 or 4) is processed after are
+dropped from that reset's time on, as NONMEM cancels prior doses at a
+reset.}
 }
 \value{
 Object for solving in rxode2

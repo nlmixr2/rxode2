@@ -98,6 +98,7 @@ static const seFnInfo seFnTab[] = {
   {"Subs",      SE_K_SUBS, 0, NULL, NULL, NULL, NULL},
   {"max",       SE_K_MAXMIN, 0, NULL, NULL, NULL, NULL},
   {"min",       SE_K_MAXMIN, 0, NULL, NULL, NULL, NULL},
+  {"clamp",     SE_K_MAXMIN, 0, NULL, NULL, NULL, NULL},
   {"tlast",     SE_K_DOSE, SE_F_DUAL, NULL, NULL, NULL, NULL},
   {"tfirst",    SE_K_DOSE, SE_F_DUAL, NULL, NULL, NULL, NULL},
   {"dose",      SE_K_DOSE, SE_F_DUAL, NULL, NULL, NULL, NULL},
