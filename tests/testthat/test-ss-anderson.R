@@ -171,6 +171,49 @@ rxTest({
     )
   })
 
+  .mmIv <- function() {
+    ini({
+      vm <- 10
+      km <- 5
+      v <- 50
+    })
+    model({
+      d/dt(centr) <- -vm * (centr / v) / (km + centr / v)
+      cp <- centr / v
+    })
+  }
+
+  test_that("accumulating Michaelis-Menten steady-state infusions (shorter and longer than ii) match a long plain iteration", {
+    for (.dur in c(2, 30)) {
+      .ev <- et(amt = 220, ii = 24, ss = 1, dur = .dur) |> et(seq(0, 24, by = 4))
+      .ref <- rxSolve(
+        .mmIv,
+        .ev,
+        method = "dop853",
+        atol = 1e-10,
+        rtol = 1e-10,
+        ssAtol = 1e-12,
+        ssRtol = 1e-12,
+        maxSS = 1e6
+      )$cp
+      .aa <- rxSolve(.mmIv, .ev, method = "dop853", ssMethod = "anderson", maxSS = 60)$cp
+      expect_equal(.aa, .ref, tolerance = 1e-6)
+      .plain <- rxSolve(.mmIv, .ev, method = "dop853", maxSS = 60)$cp
+      expect_gt(abs(.plain[1] - .ref[1]), 1)
+    }
+  })
+
+  test_that("steady-state infusions above the elimination capacity fall back to plain iteration", {
+    for (.dur in c(2, 30)) {
+      .ev <- et(amt = 300, ii = 24, ss = 1, dur = .dur) |> et(0)
+      for (.rtol in c(1e-6, 1e-3)) {
+        .aa <- rxSolve(.mmIv, .ev, method = "dop853", ssMethod = "anderson", maxSS = 300, ssRtol = .rtol)$cp
+        .plain <- rxSolve(.mmIv, .ev, method = "dop853", maxSS = 300, ssRtol = .rtol)$cp
+        expect_equal(.aa, .plain)
+      }
+    }
+  })
+
   test_that("ssMethod is checked", {
     expect_error(rxControl(ssMethod = "newton"))
     expect_equal(rxControl(ssMethod = "anderson")$ssMethod, 1L)

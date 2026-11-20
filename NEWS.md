@@ -11,8 +11,8 @@
   doses -- as NONMEM does, in both tie orders.  `rxSolve(resetCancelsPending =
   FALSE)` (and `etTrans(resetCancelsPending = FALSE)`) gives them after the
   reset as before (#1720).
-- `rxControl(ssMethod = "anderson")` finds an iterated steady-state bolus as
-  the fixed point of the one-cycle map with Anderson acceleration, so a
+- `rxControl(ssMethod = "anderson")` finds an iterated steady-state bolus or
+  infusion as the fixed point of the one-cycle map with Anderson acceleration, so a
   slowly accumulating nonlinear model (eg. Michaelis-Menten elimination near
   capacity) reaches its steady state in tens of cycles instead of thousands.
   It falls back to plain iteration when no steady state exists; the default

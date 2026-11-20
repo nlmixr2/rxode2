@@ -1541,7 +1541,7 @@ default) repeats the dosing cycle until its trough converges;
 acceleration (Anderson 1965, \doi{10.1145/321296.321305}; in the
 form of Walker and Ni 2011, \doi{10.1137/10078356X}), which needs far fewer cycles when the state accumulates
 slowly (eg. saturable elimination).  It applies to steady-state boluses
-once \code{minSS} doses are given, and stops only when both the cycle
+and infusions once \code{minSS} doses are given, and stops only when both the cycle
 residual and the change of the cycle's starting state meet
 \code{ssAtol}/\code{ssRtol}.  When the accelerated iteration stalls, diverges
 or reaches \code{maxSS} (eg. dosing above the elimination capacity, with no
