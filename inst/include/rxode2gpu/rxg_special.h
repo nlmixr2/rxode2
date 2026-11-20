@@ -889,10 +889,15 @@ RXG_FN double _rxg_gammaInvRefine(double a, double p, double q, double x) {
   x = exp(y);
   return (x < RXG_MIN) ? RXG_MIN : x;
 }
+// 1 when p or q is NaN or outside [0, 1]
+RXG_FN int _rxg_probOut(double p, double q) {
+  if (ISNAN(p) || ISNAN(q)) return 1;
+  return (p < 0 || p > 1 || q < 0 || q > 1);
+}
 // x with P(a,x) = p (q = 1 - p, given separately to keep the upper tail)
 // (argument checks follow the host)
 RXG_FN double _rxg_gammaInv(double a, double p, double q) {
-  if (ISNAN(p) || ISNAN(q) || a <= 0 || p < 0 || p > 1 || q < 0 || q > 1) return R_NaN;
+  if (a <= 0 || _rxg_probOut(p, q)) return R_NaN;
   if (p == 0) return 0.0;
   if (q == 0) return R_PosInf;
   if (ISNAN(a) || !R_FINITE(a)) return R_NaN;

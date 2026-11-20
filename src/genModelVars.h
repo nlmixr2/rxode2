@@ -21,6 +21,14 @@
 #include "parseParamMerge.h"
 #include "pkTime.h"
 
+// 1 when the model's d/dt() can run as device (OpenCL) code: every
+// function it calls is registered gpuSafe and it has none of these
+static inline int calcGpuSafe(void) {
+  if (!tb.gpu || tb.simflg != 0 || nmtime != 0) return 0;
+  if (tb.evid_ != 0 || tb.linCmt != 0 || tb.hasDelay != 0) return 0;
+  return (tb.isMexp == 0 && tb.matn == 0 && tb.matnf == 0);
+}
+
 static inline SEXP calcSLinCmt(void) {
   rxProtectGuard;
   SEXP sLinCmt = rxP(Rf_allocVector(INTSXP,21));
@@ -52,12 +60,7 @@ static inline SEXP calcSLinCmt(void) {
   INTEGER(sLinCmt)[18] = pkTimeDoseT();
   // linCmt() carry states, the last states of the model (calcLinCmt())
   INTEGER(sLinCmt)[19] = tb.linCmtCarryN;
-  // 1 when the model's d/dt() can run as device (OpenCL) code: every
-  // function it calls is registered gpuSafe and it has none of these
-  INTEGER(sLinCmt)[20] = (tb.gpu && tb.simflg == 0 && nmtime == 0 &&
-                          tb.evid_ == 0 && tb.linCmt == 0 &&
-                          tb.hasDelay == 0 && tb.isMexp == 0 &&
-                          tb.matn == 0 && tb.matnf == 0) ? 1 : 0;
+  INTEGER(sLinCmt)[20] = calcGpuSafe();
 
   SEXP sLinCmtN = rxP(Rf_allocVector(STRSXP, 21));
   SET_STRING_ELT(sLinCmtN, 0, Rf_mkChar("ncmt"));
