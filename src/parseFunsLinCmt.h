@@ -43,8 +43,11 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
     // already routes the statement elsewhere: a df()/dy() entry (TJAC) belongs
     // to calc_jac/calc_lhs, and retyping it emitted `__PDStateVar__[...]` into
     // dydt, where that argument does not exist -- the model did not compile
-    // (rxode2#1215).
-    if (sbPm.lType[sbPm.n] != TJAC) {
+    // (rxode2#1215).  Likewise a d/dt() whose right-hand side calls linCmt()
+    // stays TDDT: TDDT is already kept out of those functions, while TLIN put
+    // the derivative into the initial-condition function, which declares no
+    // __DDtStateVar_<n>__ (`x(0)=...` plus `d/dt(y)=...linCmt()...`).
+    if (sbPm.lType[sbPm.n] != TJAC && sbPm.lType[sbPm.n] != TDDT) {
       aType(TLIN);
     }
     if (tf->isLinB) {
