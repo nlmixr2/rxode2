@@ -193,6 +193,7 @@
 <li>R’s <code>CFLAGS</code> is now read once per session instead of running <code>R CMD config CFLAGS</code> before every model compile; it is re-read when a Makevars file changes (<a href="https://github.com/nlmixr2/rxode2/issues/1675" class="external-link">#1675</a>, <a href="https://github.com/nlmixr2/rxode2/issues/1711" class="external-link">#1711</a>).</li>
 <li>
 <code><a href="../reference/rxModelVars.html">rxModelVars()</a></code> no longer has a <code>timeId</code> element, the session time of a model’s first translation that nothing read; the same model now serializes identically across sessions. <code>md5</code> and the <code>splitInfusion*</code> elements move down one index, and <code>rxModelVars</code> saved by earlier versions are still read correctly (<a href="https://github.com/nlmixr2/rxode2/issues/1729" class="external-link">#1729</a>).</li>
+<li>A model with an initial condition (<code>x(0) &lt;- ...</code>) and a <code>linCmt()</code> written inline in another state’s <code>d/dt()</code> now compiles; it failed with <code>'__DDtStateVar_0__' undeclared</code>. This is the shape of the SAEM model nlmixr2 builds for a <code>linCmt()</code>-driven effect compartment (<a href="https://github.com/nlmixr2/rxode2/issues/1755" class="external-link">#1755</a>).</li>
 </ul></div>
 <div class="section level4">
 <h4 id="solving-development-version">Solving<a class="anchor" aria-label="anchor" href="#solving-development-version"></a></h4>
