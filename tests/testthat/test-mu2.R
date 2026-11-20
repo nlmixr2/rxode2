@@ -168,5 +168,20 @@ rxTest({
       .mu("big <- WT; if (wt70 > 1) { big <- tka }", "log(wt70)*b", "big*bv"),
       c(b = "log(wt70)")
     )
+    # not a product: the `+ 1` would be dropped for "larger"
+    expect_equal(
+      .mu(
+        "if (wt70 > 1) { wt70s <- \"larger\" } else { wt70s <- \"smaller\" }",
+        "log(wt70)*b",
+        "(wt70s == \"larger\")*(bv + 1)"
+      ),
+      c(b = "log(wt70)")
+    )
+    # no variables, but not data either: random draws and linCmt()
+    expect_equal(.mu("r <- rxnorm()", "log(wt70)*b", "r*bv"), c(b = "log(wt70)"))
+    expect_equal(
+      .mu("if (rxunif() > 0.5) { big <- 1 } else { big <- 0 }", "log(wt70)*b", "big*bv"),
+      c(b = "log(wt70)")
+    )
   })
 })

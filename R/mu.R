@@ -424,18 +424,25 @@
 #' @param term term (language)
 #' @param der derivative of the term by `theta` (language)
 #' @param theta theta name
+#' @param str named list of the string values a variable is assigned; such a
+#'   variable is probed with those strings instead of numbers
 #' @return `TRUE` when the values agree; `FALSE` otherwise (including when
 #'   the term cannot be evaluated)
 #' @noRd
 #' @author Matthew L. Fidler
-.muRefTermIsThetaTimesDer <- function(term, der, theta) {
+.muRefTermIsThetaTimesDer <- function(term, der, theta, str = list()) {
   .v <- setdiff(unique(c(all.vars(term), all.vars(der))), theta)
   .th <- c(0.37, 1.61, -0.83)
   for (.k in seq_along(.th)) {
     .env <- new.env(parent = .muRefEvalEnv)
     assign(theta, .th[.k], envir = .env)
     for (.j in seq_along(.v)) {
-      assign(.v[.j], 0.5 + 0.731 * .k + 0.193 * .j, envir = .env)
+      .s <- str[[.v[.j]]]
+      if (length(.s) > 0L) {
+        assign(.v[.j], .s[(.k + .j - 2L) %% length(.s) + 1L], envir = .env)
+      } else {
+        assign(.v[.j], 0.5 + 0.731 * .k + 0.193 * .j, envir = .env)
+      }
     }
     .ok <- tryCatch(
       {
@@ -473,27 +480,54 @@
 .muRefCovTermOk <- function(y, der, theta, env) {
   .v <- setdiff(unique(c(all.vars(y), all.vars(der))), theta)
   .v <- setdiff(.v, env$info$dataCov)
-  if (length(.v) > 0L && !all(.v %in% .muRefDataOnlyVars(env))) {
+  .d <- .muRefDataOnlyVars(env)
+  if (length(.v) > 0L && !all(.v %in% .d$ok)) {
     return(FALSE)
   }
-  .muRefTermIsThetaTimesDer(y, der, theta)
+  .muRefTermIsThetaTimesDer(y, der, theta, .d$str)
+}
+
+#' Does an expression call only deterministic elementary functions?
+#'
+#' @param x expression
+#' @return logical; `FALSE` for `linCmt()`, random draws, user functions, ...
+#' @noRd
+#' @author Matthew L. Fidler
+.muRefDataOnlyCalls <- function(x) {
+  if (!is.call(x)) {
+    return(TRUE)
+  }
+  if (
+    !is.name(x[[1]]) ||
+      !(as.character(x[[1]]) %in% c(.muRefDerivCacheFuns, ls(.muRefEvalEnv)))
+  ) {
+    return(FALSE)
+  }
+  for (.i in seq_along(x)[-1]) {
+    if (!.muRefDataOnlyCalls(x[[.i]])) {
+      return(FALSE)
+    }
+  }
+  TRUE
 }
 
 #' Model variables that depend only on data covariates and constants
 #'
 #' Walks the model lines before the current one, including `if`/`else`
-#' blocks (whose condition variables count as dependencies of every
-#' assignment inside them).  A variable is data-only while every assignment
-#' so far reads only data covariates, constants and data-only variables.
+#' blocks (whose conditions count as dependencies of every assignment inside
+#' them).  A variable is data-only while every assignment so far reads only
+#' data covariates, constants and data-only variables through deterministic
+#' elementary functions (`.muRefDataOnlyCalls()`).
 #'
 #' @param env mu-reference environment (`.expr`, `.curLine`, `info$dataCov`)
-#' @return character vector of data-only model variables
+#' @return `list(ok=, str=)`: the data-only model variables, and the string
+#'   values assigned to each string-valued one
 #' @noRd
 #' @author Matthew L. Fidler
 .muRefDataOnlyVars <- function(env) {
   .i <- env$.curLine
   if (is.null(.i)) {
-    return(character(0))
+    return(list(ok = character(0), str = list()))
   }
   .key <- as.character(.i)
   if (is.null(env$.dataOnlyVars)) {
@@ -507,30 +541,38 @@
   .st$dataCov <- env$info$dataCov
   .st$ok <- character(0)
   .st$bad <- character(0)
-  .muRefDataOnlyWalk(as.list(env$.expr)[seq_len(.i - 1L)], character(0), .st)
-  env$.dataOnlyVars[[.key]] <- .st$ok
-  .st$ok
+  .st$str <- list()
+  .muRefDataOnlyWalk(as.list(env$.expr)[seq_len(.i - 1L)], TRUE, character(0), .st)
+  .ret <- list(ok = .st$ok, str = .st$str)
+  env$.dataOnlyVars[[.key]] <- .ret
+  .ret
 }
 
 #' Walk model lines for `.muRefDataOnlyVars()`
 #'
 #' @param lines list of model statements
+#' @param condOk `FALSE` when an enclosing `if` condition calls a function
+#'   that is not deterministic and elementary
 #' @param condVars variables read by the enclosing `if` conditions
-#' @param st state environment (`dataCov`, `ok`, `bad`)
+#' @param st state environment (`dataCov`, `ok`, `bad`, `str`)
 #' @return nothing; updates `st`
 #' @noRd
 #' @author Matthew L. Fidler
-.muRefDataOnlyWalk <- function(lines, condVars, st) {
+.muRefDataOnlyWalk <- function(lines, condOk, condVars, st) {
   for (.x in lines) {
     if (!is.call(.x)) {
       next
     }
     .f <- .x[[1]]
     if (identical(.f, quote(`{`))) {
-      .muRefDataOnlyWalk(as.list(.x)[-1], condVars, st)
+      .muRefDataOnlyWalk(as.list(.x)[-1], condOk, condVars, st)
     } else if (identical(.f, quote(`if`))) {
-      .cv <- unique(c(condVars, all.vars(.x[[2]])))
-      .muRefDataOnlyWalk(as.list(.x)[-(1:2)], .cv, st)
+      .muRefDataOnlyWalk(
+        as.list(.x)[-(1:2)],
+        condOk && .muRefDataOnlyCalls(.x[[2]]),
+        unique(c(condVars, all.vars(.x[[2]]))),
+        st
+      )
     } else if (
       identical(.f, quote(`=`)) ||
         identical(.f, quote(`<-`)) ||
@@ -542,9 +584,18 @@
         next
       }
       .n <- as.character(.lhs)
-      .v <- unique(c(condVars, all.vars(.x[[3]])))
-      if (!(.n %in% st$bad) && all(.v %in% st$dataCov | .v %in% st$ok)) {
+      .rhs <- .x[[3]]
+      .v <- unique(c(condVars, all.vars(.rhs)))
+      if (
+        condOk &&
+          !(.n %in% st$bad) &&
+          .muRefDataOnlyCalls(.rhs) &&
+          all(.v %in% st$dataCov | .v %in% st$ok)
+      ) {
         st$ok <- unique(c(st$ok, .n))
+        if (is.character(.rhs)) {
+          st$str[[.n]] <- unique(c(st$str[[.n]], .rhs))
+        }
       } else {
         st$bad <- unique(c(st$bad, .n))
         st$ok <- setdiff(st$ok, .n)
