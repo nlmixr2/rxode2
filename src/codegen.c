@@ -286,6 +286,9 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
       } else {
         sAppendN(&sbOut,"#define _CMT CMT\n", 17);
       }
+      // the same remap for tte() data lookups of other records' CMT
+      sAppend(&sbOut,"#define _RXTTE_CMTB %d\n#define _RXTTE_CMTS %d\n",
+              baseSize, tb.sensi);
       // Now define lhs lags
       prnt_vars(print_lhsLags, 1, "", "", 13);
       // And covariate/parameter lags

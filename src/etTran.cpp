@@ -3686,12 +3686,14 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   int maxItemsPerId = 0;
   int curItems = 0;
   // Output rows that are not data records, for a model whose PK-type
-  // statements read `time` (rxode2#1429), and the addl repeat doses among
+  // statements read `time` (rxode2#1429) or that re-reads modeled rates and
+  // durations at data records (rxode2#1586), and the addl repeat doses among
   // them, for a model whose f()/alag()/rate()/dur() may (rxode2#1583)
   std::vector<int> pkSkipRows;
   std::vector<int> addlRepRows;
   std::vector<int> addlParentOff; // rows back to the dose each repeat repeats
   IntegerVector mvFlags = mv[RxMv_flags];
+  int mvNeedSort = Rf_length(mv[RxMv_needSort]) > 0 ? as<int>(mv[RxMv_needSort]) : 0;
   bool needAddlRep = mvFlags.size() > RxMvFlag_doseTime &&
     mvFlags[RxMvFlag_doseTime] != 0;
   std::vector<int> addlOutRow, addlParentOf;
@@ -3701,8 +3703,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     addlParentOf.assign(evid.size(), -1);
     for (const auto& pr : addlParents) addlParentOf[pr.first] = pr.second;
   }
-  bool needPkSkip = (needAddlRep || (mvFlags.size() > RxMvFlag_pkTime &&
-                                     mvFlags[RxMvFlag_pkTime] != 0)) &&
+  bool needPkSkip = (needAddlRep ||
+                     (mvFlags.size() > RxMvFlag_pkTime && mvFlags[RxMvFlag_pkTime] != 0) ||
+                     (mvNeedSort & (needSortRate | needSortDur)) != 0) &&
     recImplied.size() == idxInput.size();
   for (i =idxOutput.size(); i--;){
     if (idxOutput[i] != -1) {

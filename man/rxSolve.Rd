@@ -164,6 +164,8 @@ rxSolve(
   linCmtSensPhi = TRUE,
   nonmem = FALSE,
   tieOrder = NULL,
+  rateAtDoseTime = FALSE,
+  durAtDoseTime = NULL,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -1485,10 +1487,13 @@ lagged doses and doses added while solving do not end an interval;
 \code{mtime()} times do.  \code{f()}, \code{rate()} and \code{dur()} of an \code{addl} repeat
 read the time of the first data record at or after it (NONMEM's \code{F1},
 \code{R1} and \code{D1}), and \code{alag()} the time of the dose record it repeats
-(\code{ALAG1}).  Covariate interpolation is still set by
+(\code{ALAG1}).  A modeled rate (\code{rate()}, \code{RATE = -1}) is re-read on
+each interval from the record that ends it, like NONMEM's \code{R1} (see
+\code{rateAtDoseTime}).  Covariate interpolation is still set by
 \code{covsInterpolation}.  It also sets the default \code{tieOrder} to \code{"data"}
-and turns on \code{addlKeepsCov} unless it is given.  By default \code{FALSE},
-when they read the actual time of the \code{addl} dose.}
+and turns on \code{addlKeepsCov} and \code{durAtDoseTime} unless they are given.
+By default \code{FALSE}, when \code{f()}, \code{rate()} and \code{dur()} of an \code{addl} repeat
+read the actual time of the \code{addl} dose.}
 
 \item{tieOrder}{How records of a subject that share a time are processed:
 \code{"evid"} processes resets first, then doses, then observations, so the
@@ -1499,6 +1504,24 @@ follow that row).  Doses added while solving follow the records at the
 same time.  An event table already translated by \code{\link[=etTrans]{etTrans()}} keeps the
 order it was translated with.  By default (\code{NULL}) this is \code{"data"} when
 \code{nonmem = TRUE} and \code{"evid"} otherwise.}
+
+\item{rateAtDoseTime}{Boolean that when \code{TRUE} keeps a modeled rate
+(\code{rate()}, \code{RATE = -1}) at the value read at its dose.  When \code{FALSE} (the
+default) the rate is re-read at each data record until the dose is
+delivered: the rate read at a record holds until the next one, or with
+\code{nonmem = TRUE} the rate read with a record applies to the interval it
+ends.  A re-read rate changes the rate and moves the end of the infusion
+so the dose amount is kept.  Steady-state doses, doses added while
+solving, event sensitivities and the adjoint always keep the rate of the
+dose.}
+
+\item{durAtDoseTime}{Boolean that when \code{TRUE} keeps a modeled duration
+(\code{dur()}, \code{RATE = -2}) at the value read at its dose.  When \code{FALSE} it is
+re-read at each data record like a modeled rate (see \code{rateAtDoseTime}):
+the infusion then ends at its start plus the new duration, delivering
+what is left evenly, or stops delivering when that end has passed.  By
+default (\code{NULL}) this is \code{TRUE} with \code{nonmem = TRUE}, as NONMEM fixes
+\code{D1} at the dose, and \code{FALSE} otherwise.}
 
 \item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that
 is acceptable before issuing a warning/error about the gradient estimates.}
