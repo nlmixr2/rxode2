@@ -6,6 +6,11 @@
   `min(max(x, lo), hi)` (and differentiated the same way); a call with
   other than three arguments, or with literal bounds `lo > hi`, is a parse
   error (#1750).
+- A reset (`evid` 3 or 4) now cancels the doses of the records before it that
+  have not yet entered -- the remaining `addl` repeats and lagged (`alag()`)
+  doses -- as NONMEM does, in both tie orders.  `rxSolve(resetCancelsPending =
+  FALSE)` (and `etTrans(resetCancelsPending = FALSE)`) gives them after the
+  reset as before (#1720).
 
 - `rxSymInvCholCreate()` builds block-diagonal omegas with
   `lotri::lotriMat()` instead of `Matrix::bdiag()`, removing the
@@ -358,6 +363,16 @@
   (#1589).
 
 ## New features
+
+- `dop853` forms its stage vectors two elements at a time from four states
+  on, which the compiler vectorizes at R's default `-O2`.  Results are
+  unchanged, bit for bit; a 20-state transit chain solves about 8% faster and
+  a FOCEi fit with sensitivities (12 states) about 3% faster, while a model
+  with three states is unchanged.
+- `liblsoda` takes the weighted max-norm of its error and correction
+  vectors without a call to libm's `fmax()` for every state.  Results are
+  unchanged, bit for bit; a FOCEi fit of a 2-compartment oral model runs
+  about 12% faster, and a 5000-subject simulation about 7%.
 
 - Every right-hand-side, Jacobian and `lhs` evaluation of a model no longer
   copies the subject's whole solving state (about 1.7 kB) for the
