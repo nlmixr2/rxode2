@@ -815,6 +815,8 @@ static inline int pushUniqueDosingEvent(double time, double amt, int evid,
 // Forward declarations: defined in rxode2parseGetTime.h (included after this header)
 static inline void updateRate(int idx, rx_solving_options_ind *ind, double *yp);
 static inline void updateDur(int idx, rx_solving_options_ind *ind, double *yp);
+static inline int updateModeledRates(rx_solve *rx, rx_solving_options_ind *ind,
+                                           int i, double *yp, double *InfusionRate);
 static inline void handleInfusionGetStartOfInfusionIndex(int *startIdx, int *endIdx,
                                                          double *amt, int *idx,
                                                          rx_solve *rx, rx_solving_options *op,
@@ -2899,6 +2901,17 @@ static inline int handleEvid1(int *i, rx_solve *rx, int *neq, double *yp, double
   int he = handle_evid(getEvid(ind, ind->ix[ind->idx]), neq[0] + op->extraCmt,
                        ind->BadDose, ind->InfusionRate, ind->dose, yp,
                        effectiveXout, neq[1], ind);
+  if (!ind->doSS &&
+      updateModeledRates(rx, ind, *i, yp, ind->InfusionRate)) {
+    ind->mainSorted = 0;
+    if (!he) {
+      // the forcing changed at an observation: report it like a plain dose so
+      // the solver restarts (and handleSS() skips it)
+      ind->wh0 = EVID0_REGULAR;
+      ind->whI = EVIDF_NORMAL;
+      he = 1;
+    }
+  }
   return he;
 }
 
