@@ -63,3 +63,4 @@ ui-simulation
 ss-anderson
 # GPU solving (device integrators, CPU build on CI)
 gpu-solve
+mem-alloc-tags

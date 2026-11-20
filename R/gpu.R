@@ -765,6 +765,113 @@ rxGpuInfo <- function() {
   )
 }
 
+#' Run layout of a device integrator (dims of src/gpu_opencl.h)
+#'
+#' @param lib `.rxGpuHostLib()` of the model
+#' @param opt `.rxGpuOptions()`
+#' @param nsub slots (the most requests in a round)
+#' @return integer vector, `RXG_D_*` order
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuDims <- function(lib, opt, nsub) {
+  .lay <- lib$layout
+  as.integer(c(
+    nsub,
+    max(1L, lib$neq),
+    max(1L, lib$npar),
+    max(1L, lib$nlhs),
+    lib$hasDelay,
+    .lay["hrec"],
+    opt$oi[7],
+    .lay[c("hhdr", "rd", "ri", "ad", "ai", "od", "oi")]
+  ))
+}
+
+#' Memory a GPU solve allocates (src/rxMemoryComponents.cpp)
+#'
+#' Sizes the solve from the model's layout without building the kernel or
+#' touching the device.
+#'
+#' @param object rxode2 model
+#' @param ctl rxControl() with a GPU method
+#' @param nsolve subjects times simulations
+#' @param backend "opencl" or "cpu"; `NULL` resolves `ctl$gpuBackend`
+#' @return `rxMemoryGpuComponents_()` bytes with attributes `batch` and
+#'   `threads`, or `NULL` when `ctl` names no GPU method
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuSolveMem <- function(object, ctl, nsolve, backend = NULL) {
+  .meth <- .rxGpuSolveMethods[[as.character(ctl$method)]]
+  if (is.null(.meth)) {
+    return(NULL)
+  }
+  .threads <- as.integer(ctl$cores)
+  if (length(.threads) != 1L || is.na(.threads) || .threads < 1L) {
+    .threads <- getRxThreads()
+  }
+  .threads <- as.integer(max(1L, min(.threads, getRxThreads())))
+  .batch <- as.integer(max(1L, min(ctl$gpuBatch, nsolve)))
+  if (is.null(backend)) {
+    backend <- ctl$gpuBackend
+    if (backend == "auto") {
+      backend <- match.arg(getOption("rxode2.gpuBackend", "auto"), c("auto", "opencl", "cpu"))
+    }
+    if (backend == "auto") {
+      backend <- if (isTRUE(rxGpuInfo()$available)) "opencl" else "cpu"
+    }
+  }
+  .obj <- .rxGpuMethodModel(object, .meth)
+  .lib <- .rxGpuHostLib(
+    .obj,
+    safeLog = as.integer(ctl$safeLog),
+    safeZero = as.integer(ctl$safeZero),
+    safePow = as.integer(ctl$safePow),
+    useStdPow = as.integer(ctl$useStdPow)
+  )
+  .dims <- .rxGpuDims(.lib, .rxGpuOptions(.lib, .meth), .batch)
+  .ret <- rxMemoryGpuComponents_(
+    .dims,
+    as.integer(identical(ctl$gpuPrecision, "float")),
+    as.integer(backend == "opencl"),
+    .threads
+  )
+  ## the CPU backend's per-slot integrator state, also kept by .rxGpuRun()
+  if (backend == "cpu") {
+    .ret[["gpuHostState"]] <- 2 * .ret[["gpuHostState"]]
+  }
+  attr(.ret, "batch") <- .batch
+  attr(.ret, "threads") <- .threads
+  .ret
+}
+
+#' Stop when a GPU solve's buffers do not fit on the device
+#'
+#' @param bytes device bytes (`gpuDevice` of `.rxGpuSolveMem()`)
+#' @param device,precision as `.rxGpuDevice()`
+#' @return `NULL`, invisibly
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuCheckDeviceMem <- function(bytes, device, precision, batch) {
+  .d <- tryCatch(.rxGpuDevice(device, precision), error = function(e) NULL)
+  if (is.null(.d)) {
+    return(invisible(NULL))
+  }
+  .mem <- .Call(`_rxode2_rxGpuClDeviceMem`, .d$dev)
+  if (!is.na(.mem[1]) && bytes > 0.9 * .mem[1]) {
+    stop(
+      sprintf(
+        "the GPU solve needs %.2f GB of device memory but device %d has %.2f GB; lower rxControl(gpuBatch=) (now %d)",
+        bytes / 1e9,
+        .d$index,
+        .mem[1] / 1e9,
+        as.integer(batch)
+      ),
+      call. = FALSE
+    )
+  }
+  invisible(NULL)
+}
+
 #' Set up batched rounds of a device integrator
 #'
 #' @param obj rxode2 model
@@ -801,16 +908,7 @@ rxGpuInfo <- function() {
   .opt <- do.call(.rxGpuOptions, c(list(.lib, method), .args[setdiff(names(.args), .defN)]))
   .lay <- .lib$layout
   .hcap <- .opt$oi[7]
-  .dims <- as.integer(c(
-    nsub,
-    max(1L, .lib$neq),
-    max(1L, .lib$npar),
-    max(1L, .lib$nlhs),
-    .lib$hasDelay,
-    .lay["hrec"],
-    .hcap,
-    .lay[c("hhdr", "rd", "ri", "ad", "ai", "od", "oi")]
-  ))
+  .dims <- .rxGpuDims(.lib, .opt, nsub)
   .ret <- list(lib = .lib, method = method, backend = backend, nsub = as.integer(nsub), dims = .dims, opt = .opt)
   if (backend == "cpu") {
     .st <- new.env(parent = emptyenv())
@@ -1150,6 +1248,10 @@ rxGpuInfo <- function() {
   .hmax <- ctl$hmax
   if (is.null(.hmax) || all(is.na(.hmax))) {
     .hmax <- 0
+  }
+  if (.backend == "opencl") {
+    .mem <- .rxGpuSolveMem(object, ctl, nsolve, backend = "opencl")
+    .rxGpuCheckDeviceMem(.mem[["gpuDevice"]], .dev, ctl$gpuPrecision, .batch)
   }
   .run <- .rxGpuRun(
     object,

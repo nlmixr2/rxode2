@@ -14,6 +14,7 @@
 #include <Rinternals.h>
 #include "rxProtect.h"
 #include "gpu_opencl.h"
+#include "../inst/include/rxMemAlloc.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -53,6 +54,8 @@ typedef cl_int (RXCL_API *clEnqueueNDRangeKernel_t)(void *, void *, cl_uint,
 typedef cl_int (RXCL_API *clGetKernelInfo_t)(void *, cl_uint, size_t, void *,
                                              size_t *);
 typedef cl_int (RXCL_API *clFinish_t)(void *);
+typedef cl_int (RXCL_API *clGetDeviceInfo_t)(void *, cl_uint, size_t, void *,
+                                             size_t *);
 
 static struct {
   int loaded;
@@ -64,6 +67,7 @@ static struct {
   clEnqueueNDRangeKernel_t run;
   clGetKernelInfo_t kernelInfo;
   clFinish_t finish;
+  clGetDeviceInfo_t deviceInfo; // optional (the device memory check)
 } rxcl = {0};
 
 #ifdef _WIN32
@@ -113,6 +117,7 @@ int rxGpuClLoad(void) {
   rxcl.run = (clEnqueueNDRangeKernel_t)rxclSym(lib, "clEnqueueNDRangeKernel");
   rxcl.kernelInfo = (clGetKernelInfo_t)rxclSym(lib, "clGetKernelInfo");
   rxcl.finish = (clFinish_t)rxclSym(lib, "clFinish");
+  rxcl.deviceInfo = (clGetDeviceInfo_t)rxclSym(lib, "clGetDeviceInfo");
   if (rxcl.createBuffer && rxcl.releaseMem && rxcl.write && rxcl.read &&
       rxcl.setArg && rxcl.run && rxcl.kernelInfo && rxcl.finish) {
     rxcl.loaded = 1;
@@ -152,6 +157,31 @@ static void rxGpuClWidths(const rxGpuCl *g, size_t *w) {
 
 static size_t rxGpuClElt(const rxGpuCl *g, int b) {
   return rxGpuClIsInt(b) ? sizeof(int) : (g->single ? sizeof(float) : sizeof(double));
+}
+
+// Bytes rxGpuClNew() allocates for layout dims: out[0] on the device
+// (gpuDevice), out[1] on the host (gpuStage: the float staging buffer and the
+// zeroed block that starts the subject states, live together at setup)
+void rxGpuClBytes(const int *dims, int single, double *out) {
+  rxGpuCl g;
+  memset(&g, 0, sizeof(g));
+  memcpy(g.dims, dims, sizeof(int)*RXG_D_N);
+  g.single = single;
+  size_t w[RXG_B_N], most = 0, nsub = (size_t)dims[RXG_D_NSUB];
+  rxGpuClWidths(&g, w);
+  double dev = 0.0;
+  for (int b = 0; b < RXG_B_N; b++) {
+    size_t n = (b == RXG_B_OD || b == RXG_B_OI) ? w[b] : w[b]*nsub;
+    if (n == 0) n = 1;
+    if (n > most && b < RXG_B_AD) most = n;
+    dev += (double)n*rxGpuClElt(&g, b);
+  }
+  if (most < w[RXG_B_OD]) most = w[RXG_B_OD];
+  size_t nz = w[RXG_B_AI]*nsub;
+  if (w[RXG_B_AD]*nsub > nz) nz = w[RXG_B_AD]*nsub;
+  if (w[RXG_B_HS]*nsub > nz) nz = w[RXG_B_HS]*nsub;
+  out[0] = dev;
+  out[1] = ((double)most + (double)(nz > 0 ? nz : 1))*sizeof(double);
 }
 
 void rxGpuClFree(rxGpuCl *g) {
@@ -213,8 +243,8 @@ static int rxGpuClBuffers(rxGpuCl *g, const size_t *w, size_t nsub, size_t *most
     if (n == 0) n = 1;
     if (n > *most && b < RXG_B_AD) *most = n;
     cl_int e = 0;
-    g->buf[b] = rxcl.createBuffer(g->ctx, RXCL_MEM_READ_WRITE,
-                                  n*rxGpuClElt(g, b), NULL, &e);
+    g->buf[b] = rxMemTag(gpuDevice, rxcl.createBuffer(g->ctx, RXCL_MEM_READ_WRITE,
+                                                      n*rxGpuClElt(g, b), NULL, &e));
     if (e != RXCL_SUCCESS || g->buf[b] == NULL) {
       g->buf[b] = NULL;
       return 4;
@@ -229,7 +259,7 @@ static int rxGpuClZero(rxGpuCl *g, const size_t *w, size_t nsub) {
   size_t nz = w[RXG_B_AI]*nsub;
   if (w[RXG_B_AD]*nsub > nz) nz = w[RXG_B_AD]*nsub;
   if (w[RXG_B_HS]*nsub > nz) nz = w[RXG_B_HS]*nsub;
-  void *zero = calloc(nz > 0 ? nz : 1, sizeof(double));
+  void *zero = rxMemCalloc(gpuStage, nz > 0 ? nz : 1, sizeof(double));
   if (zero == NULL) return 3;
   int zb[3] = {RXG_B_AD, RXG_B_AI, RXG_B_HS};
   int ret = 0;
@@ -253,7 +283,7 @@ static int rxGpuClFill(rxGpuCl *g, const double *od, const int *oi) {
   if (e != 0) return e;
   // float staging covers the largest request or option buffer
   if (most < w[RXG_B_OD]) most = w[RXG_B_OD];
-  g->stage = malloc(most*sizeof(double));
+  g->stage = rxMemMalloc(gpuStage, most*sizeof(double));
   if (g->stage == NULL) return 3;
   if (rxGpuClWrite(g, RXG_B_OD, od, w[RXG_B_OD]) != RXCL_SUCCESS ||
       rxGpuClWrite(g, RXG_B_OI, oi, w[RXG_B_OI]) != RXCL_SUCCESS) {
@@ -275,7 +305,7 @@ rxGpuCl *rxGpuClNew(void *ctx, void *queue, void *kernel, const int *dims,
     *err = 2;
     return NULL;
   }
-  rxGpuCl *g = (rxGpuCl *)calloc(1, sizeof(rxGpuCl));
+  rxGpuCl *g = (rxGpuCl *)rxMemCalloc(fixed, 1, sizeof(rxGpuCl));
   if (g == NULL) {
     *err = 3;
     return NULL;
@@ -356,6 +386,28 @@ static void *rxGpuClHandle(SEXP x, const char *what) {
   return R_ExternalPtrAddr(x);
 }
 
+// Global memory and largest single allocation (bytes) of an OpenCL device
+// (the OpenCL package's device object); NA when they cannot be read
+SEXP _rxode2_rxGpuClDeviceMem(SEXP dev) {
+  rxProtectGuard;
+  SEXP ret = rxP(Rf_allocVector(REALSXP, 2));
+  REAL(ret)[0] = REAL(ret)[1] = NA_REAL;
+  if (rxGpuClLoad() && rxcl.deviceInfo != NULL && TYPEOF(dev) == EXTPTRSXP &&
+      R_ExternalPtrAddr(dev) != NULL) {
+    uint64_t v = 0;
+    // CL_DEVICE_GLOBAL_MEM_SIZE, CL_DEVICE_MAX_MEM_ALLOC_SIZE
+    if (rxcl.deviceInfo(R_ExternalPtrAddr(dev), 0x101F, sizeof(v), &v, NULL) == RXCL_SUCCESS) {
+      REAL(ret)[0] = (double)v;
+    }
+    v = 0;
+    if (rxcl.deviceInfo(R_ExternalPtrAddr(dev), 0x1010, sizeof(v), &v, NULL) == RXCL_SUCCESS) {
+      REAL(ret)[1] = (double)v;
+    }
+  }
+  rxUPAll();
+  return ret;
+}
+
 SEXP _rxode2_rxGpuClAvailable(void) {
   return Rf_ScalarLogical(rxGpuClLoad());
 }
@@ -385,6 +437,7 @@ SEXP _rxode2_rxGpuClNew(SEXP ctx, SEXP queue, SEXP kernel, SEXP dims,
     case 1: (Rf_error)("cannot find the OpenCL library");
     case 2: (Rf_error)("the OpenCL kernel is not an rxode2 round kernel");
     case 3: (Rf_error)("out of memory");
+    case 4: (Rf_error)("cannot allocate the OpenCL buffers on the device; lower rxControl(gpuBatch=)");
     default: (Rf_error)("cannot set up the OpenCL buffers (step %d)", err);
     }
   }
@@ -415,7 +468,7 @@ static int rxGpuClSizesOk(const int *d, int nn, SEXP y, SEXP rd, SEXP ri,
 // every request names a distinct subject of the run
 static void rxGpuClCheckSubjects(const int *d, int nn, SEXP ri) {
   int ns = d[RXG_D_NSUB];
-  char *seen = (char *)R_alloc((size_t)(ns > 0 ? ns : 1), sizeof(char));
+  char *seen = (char *)rxMemRalloc(gpuStage, (size_t)(ns > 0 ? ns : 1), sizeof(char));
   memset(seen, 0, (size_t)(ns > 0 ? ns : 1));
   const int *r = INTEGER(ri);
   for (int i = 0; i < nn; i++) {
