@@ -1112,6 +1112,18 @@
 #'   default (`NULL`) this is `TRUE` with `nonmem = TRUE`, as NONMEM fixes
 #'   `D1` at the dose, and `FALSE` otherwise.
 #'
+#' @param ssMethod How an iterated steady state is found: `"iterate"` (the
+#'   default) repeats the dosing cycle until its trough converges;
+#'   `"anderson"` finds the fixed point of the one-cycle map with Anderson
+#'   acceleration, which needs far fewer cycles when the state accumulates
+#'   slowly (eg. saturable elimination).  It applies to steady-state boluses
+#'   once `minSS` doses are given, and stops only when both the cycle
+#'   residual and the change of the cycle's starting state meet
+#'   `ssAtol`/`ssRtol`.  When the accelerated iteration stalls or diverges
+#'   (eg. dosing above the elimination capacity, with no steady state) it
+#'   falls back to plain iteration.  A fixed dose count (`minSS = maxSS`)
+#'   always iterates.
+#'
 #' @param linCmtGillK The total number of possible steps to determine the
 #'     optimal forward/central difference step size per parameter (by
 #'     the Gill 1983 method).  If 0, no optimal step size is
@@ -1730,6 +1742,7 @@ rxSolve <- function(
   rateAtDoseTime = FALSE,
   durAtDoseTime = NULL,
   resetCancelsPending = TRUE,
+  ssMethod = c("iterate", "anderson"),
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -2050,6 +2063,11 @@ rxSolve <- function(
     }
     checkmate::assertLogical(durAtDoseTime, any.missing = FALSE, len = 1)
     checkmate::assertLogical(resetCancelsPending, any.missing = FALSE, len = 1)
+    if (checkmate::testIntegerish(ssMethod, len = 1, lower = 0, upper = 1, any.missing = FALSE)) {
+      .ssMethod <- as.integer(ssMethod)
+    } else {
+      .ssMethod <- match(match.arg(ssMethod), c("iterate", "anderson")) - 1L
+    }
     if (nonmem && missing(addlKeepsCov)) {
       # NONMEM keeps a dose record's covariates with the dose
       addlKeepsCov <- TRUE
@@ -2550,7 +2568,8 @@ rxSolve <- function(
       tieOrder = tieOrder,
       rateAtDoseTime = rateAtDoseTime,
       durAtDoseTime = durAtDoseTime,
-      resetCancelsPending = resetCancelsPending
+      resetCancelsPending = resetCancelsPending,
+      ssMethod = .ssMethod
     )
     class(.ret) <- "rxControl"
     return(.ret)

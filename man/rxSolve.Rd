@@ -167,6 +167,7 @@ rxSolve(
   rateAtDoseTime = FALSE,
   durAtDoseTime = NULL,
   resetCancelsPending = TRUE,
+  ssMethod = c("iterate", "anderson"),
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -1533,6 +1534,18 @@ added while solving is cancelled only when it is lagged past the reset,
 a reset added while solving cancels lagged doses but not \code{addl}
 repeats, and an event table already translated by \code{\link[=etTrans]{etTrans()}} keeps the
 \code{addl} repeats it was translated with.}
+
+\item{ssMethod}{How an iterated steady state is found: \code{"iterate"} (the
+default) repeats the dosing cycle until its trough converges;
+\code{"anderson"} finds the fixed point of the one-cycle map with Anderson
+acceleration, which needs far fewer cycles when the state accumulates
+slowly (eg. saturable elimination).  It applies to steady-state boluses
+once \code{minSS} doses are given, and stops only when both the cycle
+residual and the change of the cycle's starting state meet
+\code{ssAtol}/\code{ssRtol}.  When the accelerated iteration stalls or diverges
+(eg. dosing above the elimination capacity, with no steady state) it
+falls back to plain iteration.  A fixed dose count (\code{minSS = maxSS})
+always iterates.}
 
 \item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that
 is acceptable before issuing a warning/error about the gradient estimates.}

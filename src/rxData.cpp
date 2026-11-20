@@ -137,6 +137,9 @@ int tieOrderData_global = 0;
 // 1 when a reset cancels the lagged doses of the records before it (the
 // model has an alag())
 extern "C" int resetCancelsPending_global = 1;
+// rxControl(ssMethod=): 0 plain iteration, 1 Anderson acceleration; a
+// control list built before that slot existed iterates (#1762)
+int ssMethod_global = 0;
 
 RObject et_(List input, List et__);
 
@@ -6908,6 +6911,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     resetCancelsPending_global = (int)rxControlResetCancelsPending(rxControl) &&
       rxSolveDat->mv.size() > RxMv_alag &&
       Rf_length(rxSolveDat->mv[RxMv_alag]) > 0;
+    ssMethod_global = (Rf_length(rxControl) > Rxc_ssMethod) ?
+      asInt(rxControl[Rxc_ssMethod], "ssMethod") : 0;
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");

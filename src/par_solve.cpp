@@ -45,6 +45,7 @@ extern "C" {
 #include "par_solve.h"
 #include "tte.h"
 #include "cvode_solver.h"
+#include "ssAnderson.h"
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
 #define badSolveExit(i) for (int j = rxEffNeq(ind, op)*(ind->n_all_times); j--;){ \
     ind->solve[j] = NA_REAL;                                           \
@@ -2943,6 +2944,9 @@ static inline void solveWith1Pt(int *neq,
 }
 
 
+// rxControl(ssMethod=): 0 plain iteration, 1 Anderson acceleration (#1762)
+extern int ssMethod_global;
+
 // One solve of a steady-state cycle, which runs on a 0..ii clock: tad() counts
 // from the cycle's dose at clock 0, and the dose times are restored after (#1585)
 static inline void solveSSCycle(int *neq,
@@ -3126,9 +3130,46 @@ static inline void handleSSbolusIterate(int *neq,
                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
   *xp2 = *xout2;
   int evid=0;
+  // rxControl(ssMethod="anderson"): accelerate the trough map; a fixed dose
+  // count (minSS == maxSS) is never accelerated (#1762)
+  rxSsAnderson aa;
+  std::vector<double> xin;
+  int nDoseAA = 0;
+  if (ssMethod_global == 1 && minSS < maxSS) {
+    aa.init(neq[0], op->ssAtol, op->ssRtol);
+    if (aa.on) xin.assign(ind->solveLast, ind->solveLast + neq[0]);
+  }
   for (int nDose = 1; ; nDose++) {
-    if (ssBolusDone(nDose, minSS, maxSS, neq, yp, i, op, ind, canBreak)) {
+    bool failed = ind->rc[0] == -2019;
+    if (failed && aa.on && aa.mixed) {
+      // a cycle from an accelerated input failed: keep the last true cycle
+      std::copy(aa.last(), aa.last() + neq[0], ind->solveLast);
+    }
+    bool done = ssBolusDone(nDose, minSS, maxSS, neq, yp, i, op, ind, canBreak);
+    if (aa.on && done && !failed && *canBreak && nDose < maxSS &&
+        !aa.settled(xin.data(), op->ssAtol, op->ssRtol)) {
+      // a small residual alone is not enough: the input must have settled too
+      done = false;
+      *canBreak = 0;
+    }
+    if (done) {
       break;
+    }
+    if (aa.on) {
+      // yp = P(xin) becomes the next input, which ssBolusDone() compares
+      // against; the first output is the first trough, so it starts the
+      // history, and acceleration starts once minSS doses are given
+      if (nDose > 1 && nDose >= minSS) {
+        if (nDoseAA == 0) nDoseAA = nDose;
+        if (!aa.step(yp, xin.data(), op->ssAtol, op->ssRtol) && aa.fellBack) {
+          // no fixed point reached: iterate plainly from where acceleration
+          // started, as if it had never run
+          std::copy(aa.start(), aa.start() + neq[0], yp);
+          nDose = nDoseAA - 1;
+        }
+        std::copy(yp, yp + neq[0], ind->solveLast);
+      }
+      std::copy(yp, yp + neq[0], xin.begin());
     }
     ind->idx=*i;
     *xp2 = 0.0;
