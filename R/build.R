@@ -149,8 +149,10 @@ d/dt(blood)     = a*intestine - b*blood
     list("logit" = c("x" = NA, "low" = 0, "high" = 1), "expit" = c("x" = NA, "low" = 0, "high" = 1)),
     ## eta shape transforms: named arguments become the positional call
     list(
-      "etaBoxCox" = c("eta", "lambda"), "etaJohnDraper" = c("eta", "lambda"),
-      "etaYeoJohnson" = c("eta", "lambda"), "etaHeavyTail" = c("eta", "theta")
+      "etaBoxCox" = c("eta", "lambda"),
+      "etaJohnDraper" = c("eta", "lambda"),
+      "etaYeoJohnson" = c("eta", "lambda"),
+      "etaHeavyTail" = c("eta", "theta")
     )
   )
   paste0(
