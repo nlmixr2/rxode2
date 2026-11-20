@@ -1,6 +1,12 @@
 // Anderson acceleration of the steady-state one-cycle map u -> P(u)
 // (rxControl(ssMethod = "anderson"), nlmixr2/rxode2#1762).
 //
+// Anderson DG (1965). Iterative procedures for nonlinear integral equations.
+// J ACM 12(4):547-560. doi:10.1145/321296.321305
+// Walker HF, Ni P (2011). Anderson acceleration for fixed-point iterations.
+// SIAM J Numer Anal 49(4):1715-1735. doi:10.1137/10078356X (the depth-m
+// least-squares form solved by QR used here)
+//
 // The map acts on the whole state vector, forward-sensitivity states
 // included, so the joint fixed point also gives the sensitivities of the
 // steady state.  States whose ssAtol or ssRtol is not finite (tte()
@@ -110,28 +116,83 @@ public:
     mixed = false;
     std::vector<double> f(na), g(na);
     double r = 0.0;
+    if (!residual(yp, x, ssAtol, ssRtol, f, g, r)) return fallBack();
+    if (!havePrev) {
+      r0 = r;
+    } else if (!(travel(x) <= maxRatio*r0)) {
+      // total travel ceiling
+      return fallBack();
+    }
+    pushHistory(f, g);
+    int pr = progress(r);
+    if (pr < 0) return fallBack();
+    // diverging: drop the history and take a plain step
+    if (pr > 0) return restart();
+    if (nHist == 0) return true;
+    std::vector<double> xn;
+    if (!extrapolate(f, g, xn)) return true;
+    // past the divergence ceiling: take the plain step instead
+    if (!(wdist(xn, g) <= maxRatio*r)) return restart();
+    applyStep(yp, g, xn);
+    return true;
+  }
+
+private:
+  bool fallBack() {
+    on = false;
+    mixed = false;
+    fellBack = true;
+    return false;
+  }
+
+  // drop the history and take a plain step; too many restarts fall back
+  bool restart() {
+    if (++restarts > RXSS_ANDERSON_MAXRESTART) return fallBack();
+    nHist = 0; head = 0;
+    return true;
+  }
+
+  // the residual f = g - x of the accelerated states and its weighted norm
+  // r; false when it is not finite
+  bool residual(const double *yp, const double *x,
+                const double *ssAtol, const double *ssRtol,
+                std::vector<double> &f, std::vector<double> &g, double &r) {
+    r = 0.0;
     for (int j = 0; j < na; j++) {
       int k = idx[j];
       g[j] = yp[k];
       f[j] = yp[k] - x[k];
-      if (!std::isfinite(g[j]) || !std::isfinite(f[j])) return fallBack();
+      if (!std::isfinite(g[j]) || !std::isfinite(f[j])) return false;
       // weights are fixed at the first step, so a state that only grows
       // (no steady state) cannot shrink its own residual
       if (!havePrev) w[j] = 1.0/(ssRtol[k]*fabs(g[j]) + ssAtol[k]);
       r += f[j]*w[j]*f[j]*w[j];
     }
     r = sqrt(r);
-    if (!havePrev) {
-      r0 = r;
-    } else {
-      // total travel ceiling
-      double t = 0.0;
-      for (int j = 0; j < na; j++) {
-        double d = (x[idx[j]] - x0[idx[j]])*w[j];
-        t += d*d;
-      }
-      if (!(sqrt(t) <= maxRatio*r0)) return fallBack();
+    return true;
+  }
+
+  // weighted distance of x from the first accelerated input
+  double travel(const double *x) const {
+    double t = 0.0;
+    for (int j = 0; j < na; j++) {
+      double d = (x[idx[j]] - x0[idx[j]])*w[j];
+      t += d*d;
     }
+    return sqrt(t);
+  }
+
+  // weighted distance between two accelerated-state vectors
+  double wdist(const std::vector<double> &a, const std::vector<double> &b) const {
+    double t = 0.0;
+    for (int j = 0; j < na; j++) {
+      double d = (a[j] - b[j])*w[j];
+      t += d*d;
+    }
+    return sqrt(t);
+  }
+
+  void pushHistory(const std::vector<double> &f, const std::vector<double> &g) {
     if (havePrev) {
       double *df = &dF[(size_t)head*na];
       double *dg = &dG[(size_t)head*na];
@@ -145,24 +206,24 @@ public:
     std::copy(f.begin(), f.end(), fPrev.begin());
     std::copy(g.begin(), g.end(), gPrev.begin());
     havePrev = true;
+  }
+
+  // -1 to fall back (stalled), 1 to restart (diverging), 0 to accelerate
+  int progress(double r) {
     if (r < RXSS_ANDERSON_PROGRESS*best) {
       best = r;
       stall = 0;
     } else if (++stall > RXSS_ANDERSON_STALL) {
-      return fallBack();
+      return -1;
     }
-    if (r > RXSS_ANDERSON_RESTART*best) {
-      // diverging: drop the history and take a plain step
-      if (++restarts > RXSS_ANDERSON_MAXRESTART) return fallBack();
-      nHist = 0; head = 0;
-      return true;
-    }
-    if (nHist == 0) return true;
-    // weighted least squares min ||W(f - dF gamma)|| by modified Gram-Schmidt;
-    // a column that is (nearly) dependent on the earlier ones is dropped
-    std::vector<double> Q((size_t)nHist*na), R((size_t)nHist*nHist, 0.0);
-    std::vector<int> col;
-    // newest column first, so a dependent column dropped is an older one
+    return (r > RXSS_ANDERSON_RESTART*best) ? 1 : 0;
+  }
+
+  // modified Gram-Schmidt of the weighted residual differences, newest
+  // column first so a (nearly) dependent column dropped is an older one;
+  // col lists the storage index of each kept column
+  void orthogonalize(std::vector<double> &Q, std::vector<double> &R,
+                     std::vector<int> &col) const {
     for (int t = 0; t < nHist; t++) {
       int c = (head - 1 - t + 2*m) % m;
       const double *df = &dF[(size_t)c*na];
@@ -189,8 +250,17 @@ public:
       R[(size_t)nc*nHist + nc] = nn;
       col.push_back(c);
     }
+  }
+
+  // weighted least squares min ||W(f - dF gamma)||, then xn = g - dG gamma;
+  // false when no column is left (take the plain step)
+  bool extrapolate(const std::vector<double> &f, const std::vector<double> &g,
+                   std::vector<double> &xn) const {
+    std::vector<double> Q((size_t)nHist*na), R((size_t)nHist*nHist, 0.0);
+    std::vector<int> col;
+    orthogonalize(Q, R, col);
     int nc = (int)col.size();
-    if (nc == 0) return true;
+    if (nc == 0) return false;
     std::vector<double> gam(nc, 0.0);
     for (int p = 0; p < nc; p++) {
       const double *qp = &Q[(size_t)p*na];
@@ -202,23 +272,18 @@ public:
       for (int s = p + 1; s < nc; s++) gam[p] -= R[(size_t)p*nHist + s]*gam[s];
       gam[p] /= R[(size_t)p*nHist + p];
     }
-    std::vector<double> xn(g);
+    xn = g;
     for (int p = 0; p < nc; p++) {
       const double *dg = &dG[(size_t)col[p]*na];
       for (int j = 0; j < na; j++) xn[j] -= gam[p]*dg[j];
     }
-    double sx = 0.0;
-    for (int j = 0; j < na; j++) {
-      double d = (xn[j] - g[j])*w[j];
-      sx += d*d;
-    }
-    if (!(sqrt(sx) <= maxRatio*r)) {
-      // past the divergence ceiling: take the plain step instead
-      if (++restarts > RXSS_ANDERSON_MAXRESTART) return fallBack();
-      nHist = 0; head = 0;
-      return true;
-    }
-    // keep a non-negative state non-negative by shortening the step
+    return true;
+  }
+
+  // write the accelerated input, shortening the step so a non-negative
+  // state stays non-negative
+  void applyStep(double *yp, const std::vector<double> &g,
+                 const std::vector<double> &xn) {
     double theta = 1.0;
     for (int j = 0; j < na; j++) {
       if (g[j] >= 0.0 && xn[j] < 0.0) {
@@ -230,16 +295,8 @@ public:
       yp[idx[j]] = g[j] + theta*(xn[j] - g[j]);
     }
     mixed = true;
-    return true;
   }
 
-private:
-  bool fallBack() {
-    on = false;
-    mixed = false;
-    fellBack = true;
-    return false;
-  }
   std::vector<int> idx;
   int na = 0, nAll = 0, m = RXSS_ANDERSON_DEPTH;
   // ring buffers of the residual and output differences (column-major)

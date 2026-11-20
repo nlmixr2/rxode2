@@ -3096,6 +3096,73 @@ static inline int ssBolusDone(int nDose, int minSS, int maxSS, int *neq,
   return *canBreak || nDose >= maxSS;
 }
 
+// rxControl(ssMethod="anderson") for the steady-state bolus loop: the
+// accelerated map is trough -> trough; a fixed dose count (minSS == maxSS) is
+// never accelerated, nor a delay() model, whose recorded history must come
+// from consecutive cycles (#1762)
+class rxSsBolusAnderson {
+public:
+  rxSsBolusAnderson(rx_solving_options *op, rx_solving_options_ind *ind,
+                    int neq, int minSS, int maxSS) : n(neq) {
+    if (ssMethod_global == 1 && minSS < maxSS && !op->hasDelay) {
+      aa.init(neq, op->ssAtol, op->ssRtol);
+      if (aa.on) xin.assign(ind->solveLast, ind->solveLast + neq);
+    }
+  }
+
+  // ssBolusDone() plus the accelerated convergence test; returns 1 to stop.
+  // nDose restarts from where acceleration began when it gives up
+  bool done(int &nDose, int minSS, int maxSS, int *neq, double *yp, int *i,
+            rx_solving_options *op, rx_solving_options_ind *ind,
+            int *canBreak) {
+    bool failed = ind->rc[0] == -2019;
+    if (failed && aa.on && aa.mixed) {
+      // a cycle from an accelerated input failed: keep the last true cycle
+      std::copy(aa.last(), aa.last() + n, ind->solveLast);
+    }
+    bool ret = ssBolusDone(nDose, minSS, maxSS, neq, yp, i, op, ind, canBreak);
+    if (failed || !aa.on) return ret;
+    if (ret && *canBreak && !aa.settled(xin.data(), op->ssAtol, op->ssRtol)) {
+      // a small residual alone is not enough: the input must have settled too
+      *canBreak = 0;
+      ret = nDose >= maxSS;
+    }
+    if (ret && !*canBreak && aa.giveUp()) {
+      // maxSS doses without converging: give plain iteration's result
+      std::copy(aa.start(), aa.start() + n, yp);
+      std::copy(yp, yp + n, ind->solveLast);
+      nDose = nDoseAA - 1;
+      ret = false;
+    }
+    return ret;
+  }
+
+  // yp = P(xin) becomes the next input, which ssBolusDone() compares
+  // against; the first output is the first trough, so it starts the history,
+  // and acceleration starts once minSS doses are given
+  void cycleEnd(rx_solving_options *op, rx_solving_options_ind *ind,
+                double *yp, int &nDose, int minSS) {
+    if (!aa.on) return;
+    if (nDose > 1 && nDose >= minSS) {
+      if (nDoseAA == 0) nDoseAA = nDose;
+      if (!aa.step(yp, xin.data(), op->ssAtol, op->ssRtol) && aa.fellBack) {
+        // no fixed point reached: iterate plainly from where acceleration
+        // started, as if it had never run
+        std::copy(aa.start(), aa.start() + n, yp);
+        nDose = nDoseAA - 1;
+      }
+      std::copy(yp, yp + n, ind->solveLast);
+    }
+    std::copy(yp, yp + n, xin.begin());
+  }
+
+private:
+  rxSsAnderson aa;
+  int n;
+  std::vector<double> xin;
+  int nDoseAA = 0;
+};
+
 // iterate steady-state boluses until converged between minSS and maxSS doses
 static inline void handleSSbolusIterate(int *neq,
                                         int *BadDose,
@@ -3130,55 +3197,13 @@ static inline void handleSSbolusIterate(int *neq,
                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
   *xp2 = *xout2;
   int evid=0;
-  // rxControl(ssMethod="anderson"): accelerate the trough map; a fixed dose
-  // count (minSS == maxSS) is never accelerated, nor a delay() model, whose
-  // recorded history must come from consecutive cycles (#1762)
-  rxSsAnderson aa;
-  std::vector<double> xin;
-  int nDoseAA = 0;
-  if (ssMethod_global == 1 && minSS < maxSS && !op->hasDelay) {
-    aa.init(neq[0], op->ssAtol, op->ssRtol);
-    if (aa.on) xin.assign(ind->solveLast, ind->solveLast + neq[0]);
-  }
+  // rxControl(ssMethod="anderson") accelerates the trough map (#1762)
+  rxSsBolusAnderson aa(op, ind, neq[0], minSS, maxSS);
   for (int nDose = 1; ; nDose++) {
-    bool failed = ind->rc[0] == -2019;
-    if (failed && aa.on && aa.mixed) {
-      // a cycle from an accelerated input failed: keep the last true cycle
-      std::copy(aa.last(), aa.last() + neq[0], ind->solveLast);
-    }
-    bool done = ssBolusDone(nDose, minSS, maxSS, neq, yp, i, op, ind, canBreak);
-    if (aa.on && done && !failed && *canBreak &&
-        !aa.settled(xin.data(), op->ssAtol, op->ssRtol)) {
-      // a small residual alone is not enough: the input must have settled too
-      *canBreak = 0;
-      done = nDose >= maxSS;
-    }
-    if (done && !failed && !*canBreak && aa.giveUp()) {
-      // maxSS doses without converging: give plain iteration's result
-      std::copy(aa.start(), aa.start() + neq[0], yp);
-      std::copy(yp, yp + neq[0], ind->solveLast);
-      nDose = nDoseAA - 1;
-      done = false;
-    }
-    if (done) {
+    if (aa.done(nDose, minSS, maxSS, neq, yp, i, op, ind, canBreak)) {
       break;
     }
-    if (aa.on) {
-      // yp = P(xin) becomes the next input, which ssBolusDone() compares
-      // against; the first output is the first trough, so it starts the
-      // history, and acceleration starts once minSS doses are given
-      if (nDose > 1 && nDose >= minSS) {
-        if (nDoseAA == 0) nDoseAA = nDose;
-        if (!aa.step(yp, xin.data(), op->ssAtol, op->ssRtol) && aa.fellBack) {
-          // no fixed point reached: iterate plainly from where acceleration
-          // started, as if it had never run
-          std::copy(aa.start(), aa.start() + neq[0], yp);
-          nDose = nDoseAA - 1;
-        }
-        std::copy(yp, yp + neq[0], ind->solveLast);
-      }
-      std::copy(yp, yp + neq[0], xin.begin());
-    }
+    aa.cycleEnd(op, ind, yp, nDose, minSS);
     ind->idx=*i;
     *xp2 = 0.0;
     *xout2 = *curIi;

@@ -1538,7 +1538,8 @@ repeats, and an event table already translated by \code{\link[=etTrans]{etTrans(
 \item{ssMethod}{How an iterated steady state is found: \code{"iterate"} (the
 default) repeats the dosing cycle until its trough converges;
 \code{"anderson"} finds the fixed point of the one-cycle map with Anderson
-acceleration, which needs far fewer cycles when the state accumulates
+acceleration (Anderson 1965, \doi{10.1145/321296.321305}; in the
+form of Walker and Ni 2011, \doi{10.1137/10078356X}), which needs far fewer cycles when the state accumulates
 slowly (eg. saturable elimination).  It applies to steady-state boluses
 once \code{minSS} doses are given, and stops only when both the cycle
 residual and the change of the cycle's starting state meet
