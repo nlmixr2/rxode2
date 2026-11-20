@@ -41,6 +41,19 @@
 
 ## Bug fixes
 
+- mu-referencing only records a `covariate*theta` term when its coefficient
+  depends on covariates and constants alone: directly (mu2), or through model
+  variables that resolve to covariates (mu3, checked with symengine).  A term
+  that reaches a theta, eta or state through a model variable, such as the
+  allometric `0.75*log(V1/exp(tV1))` (recorded with covariate `-0.75`), was
+  rewritten by nlmixr2's SAEM / mu-referenced methods to `covariate*theta`,
+  silently dropping the `V1` dependence (nlmixr2/nlmixr2est#1437).  A term
+  that is not exactly `theta*covariate`, such as `(cl.wt + 1)*log(WT/70)`, is
+  no longer recorded either, while `cl.wt*log(WT/70)` and `cl.wt*lwt` (with
+  `lwt <- log(WT/70)`) still are.  A constant coefficient such as
+  `cl.wt*log(70)` is still a valid mu2 term, so the downstream guard that drops
+  constant covariates (nlmixr2/nlmixr2est#1433) is not needed.
+
 - The R functions `gammapInva()` and `gammaqInva()` returned the results of
   `gammapInv()` and `gammaqInv()` (their `.Call` entries were registered to
   the wrong C functions).  They now return the shape `a`, as the same
@@ -178,6 +191,10 @@
   identically across sessions.  `md5` and the `splitInfusion*` elements move
   down one index, and `rxModelVars` saved by earlier versions are still read
   correctly (#1729).
+- A model with an initial condition (`x(0) <- ...`) and a `linCmt()` written
+  inline in another state's `d/dt()` now compiles; it failed with
+  `'__DDtStateVar_0__' undeclared`.  This is the shape of the SAEM model
+  nlmixr2 builds for a `linCmt()`-driven effect compartment (#1755).
 
 ### Solving
 
