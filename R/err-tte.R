@@ -118,7 +118,9 @@
   }
   if (!is.null(.args$origin)) {
     .v <- .args$origin
-    if (is.name(.v)) .v <- c(T = TRUE, F = FALSE)[as.character(.v)]
+    if (is.name(.v)) {
+      .v <- c(T = TRUE, F = FALSE)[as.character(.v)]
+    }
     if (!is.logical(.v) || length(.v) != 1L || is.na(.v)) {
       .ret$err <- c(.ret$err, "'tte()' option 'origin' must be TRUE or FALSE")
     } else {
