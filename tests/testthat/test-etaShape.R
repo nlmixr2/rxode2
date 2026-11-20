@@ -187,7 +187,11 @@ rxTest({
     expect_true(any(grepl("etaHeavyTail(eta.q, tq)", .txt, fixed = TRUE)))
     expect_setequal(.u$nonMuEtas, c("eta.cl", "eta.v", "eta.ka", "eta.q"))
 
-    .s <- rxSolve(.u, et(amt = 100) |> et(0:2), params = data.frame(eta.cl = 0.4, eta.v = -0.5, eta.ka = -0.3, eta.q = 0.6))
+    .s <- rxSolve(
+      .u,
+      et(amt = 100) |> et(0:2),
+      params = data.frame(eta.cl = 0.4, eta.v = -0.5, eta.ka = -0.3, eta.q = 0.6)
+    )
     expect_equal(.s$cl[1], 4 * exp(etaBoxCox(0.4, 0.3)))
     expect_equal(.s$v[1], 10 * exp(etaJohnDraper(-0.5, 0.8)))
     expect_equal(.s$ka[1], exp(etaYeoJohnson(-0.3, 0.6)))

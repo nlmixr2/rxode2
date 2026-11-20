@@ -979,8 +979,15 @@
   },
   function(eta, lambda) {
     paste0(
-      "log1p(abs(", eta, "))^2*exprelD((1+fsign(1,", eta, ")*((", lambda,
-      ")-1))*log1p(abs(", eta, ")),1)"
+      "log1p(abs(",
+      eta,
+      "))^2*exprelD((1+fsign(1,",
+      eta,
+      ")*((",
+      lambda,
+      ")-1))*log1p(abs(",
+      eta,
+      ")),1)"
     )
   }
 )
@@ -988,8 +995,25 @@
 .rxD$absPowLog <- list(
   function(x, p, k) {
     paste0(
-      "sign(", x, ")*((", p, ")*absPowLog(", x, ",(", p, ")-1,", k, ")+(", k,
-      ")*absPowLog(", x, ",(", p, ")-1,(", k, ")-1))"
+      "sign(",
+      x,
+      ")*((",
+      p,
+      ")*absPowLog(",
+      x,
+      ",(",
+      p,
+      ")-1,",
+      k,
+      ")+(",
+      k,
+      ")*absPowLog(",
+      x,
+      ",(",
+      p,
+      ")-1,(",
+      k,
+      ")-1))"
     )
   },
   function(x, p, k) {
