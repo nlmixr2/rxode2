@@ -354,6 +354,11 @@
 
 ## New features
 
+- `dop853` forms its stage vectors two elements at a time from four states
+  on, which the compiler vectorizes at R's default `-O2`.  Results are
+  unchanged, bit for bit; a 20-state transit chain solves about 8% faster and
+  a FOCEi fit with sensitivities (12 states) about 3% faster, while a model
+  with three states is unchanged.
 - `liblsoda` takes the weighted max-norm of its error and correction
   vectors without a call to libm's `fmax()` for every state.  Results are
   unchanged, bit for bit; a FOCEi fit of a 2-compartment oral model runs
