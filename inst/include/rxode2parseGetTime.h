@@ -173,6 +173,217 @@ static inline void updateRate(int idx, rx_solving_options_ind *ind, double *yp) 
   }
 }
 
+// whether raw record `raw` is a data record, one that ends an interval and
+// re-reads modeled rates; skips the records _rxPkTime() skips
+static inline int rereadDataRecord(rx_solving_options_ind *ind, int raw) {
+  if (raw < 0 || raw >= ind->n_all_times_orig) return 0;
+  if (ind->pkSkip != NULL && ind->pkSkip[raw]) return 0;
+  int evid = getEvid(ind, raw);
+  return !(isDose(evid) && (isEvidModeledRateStop(evid) || isEvidModeledDurationStop(evid) ||
+                            !isSameTime(ind->timeThread[raw], ind->all_times[raw])));
+}
+
+// sorted position of the first data record after position i (the record that
+// ends the next interval); -1 when there is none
+static inline int rereadNextRecord(rx_solving_options_ind *ind, int i) {
+  for (int j = i + 1; j < ind->n_all_times; ++j) {
+    if (rereadDataRecord(ind, ind->ix[j])) return j;
+  }
+  return -1;
+}
+
+// whether the modeled rate started by record `on`
+// (compartment cmt) is handled at or before sorted position i with no reset
+// (evid = 3) or turn-off of cmt since
+static inline int modeledRateStarted(rx_solving_options_ind *ind, int i, int on, int cmt) {
+  double tOn = ind->timeThread[on];
+  for (int p = i; p >= 0; --p) {
+    int r = ind->ix[p];
+    if (r == on) return 1;
+    if (r < 0) continue;
+    double tp = ind->timeThread[r];
+    if (tp < tOn && !isSameTime(tp, tOn)) return 0;
+    int evid = getEvid(ind, r);
+    if (evid == 3) return 0;
+    if (evid >= 100) {
+      int wh, cmt2, wh100, whI, wh0;
+      getWh(evid, &wh, &cmt2, &wh100, &whI, &wh0);
+      if (wh0 == EVID0_OFF && cmt2 == cmt) return 0;
+    }
+  }
+  return 0;
+}
+
+#define MODELED_RATE 1
+#define MODELED_DUR 2
+
+// MODELED_RATE when raw record `on` starts a modeled rate infusion paired with
+// its stop at on + 1, MODELED_DUR for a modeled duration, 0 otherwise; sets
+// *cmt
+static inline int modeledInfusionKind(rx_solving_options_ind *ind, int on, int *cmt) {
+  if (on < 0 || on + 1 >= ind->n_all_times_orig) return 0;
+  int wh, wh100, whI, wh0;
+  getWh(getEvid(ind, on), &wh, cmt, &wh100, &whI, &wh0);
+  if (wh0 != EVID0_REGULAR) return 0;
+  int stop = getEvid(ind, on + 1);
+  if (whI == EVIDF_MODEL_RATE_ON) return isEvidModeledRateStop(stop) ? MODELED_RATE : 0;
+  if (whI == EVIDF_MODEL_DUR_ON) return isEvidModeledDurationStop(stop) ? MODELED_DUR : 0;
+  return 0;
+}
+
+// whether the stop of the modeled infusion started by raw record `on` is
+// ignored, as a reset (ss = 1, evid = 4) that cancelled the infusion leaves it
+static inline int modeledStopIgnored(rx_solving_options_ind *ind, int on) {
+  int e = getDoseNumberFromIndexAny(ind, on + 1);
+  if (e < 0) return 0;
+  for (int k = 0; k < ind->ignoredDosesN[0]; ++k) {
+    if (ind->ignoredDoses[k] == e) return 1;
+  }
+  return 0;
+}
+
+// the rate of the modeled infusion into cmt started by raw record `on` when it
+// is running at sorted position i (time tNow): started at or before it, ends
+// after it.  0 when not running.
+static inline double modeledRunningRate(rx_solving_options_ind *ind, int i, int on,
+                                        double tNow, int ncmt, int cmt) {
+  if (cmt < 0 || cmt >= ncmt || !ind->on[cmt]) return 0.0;
+  double tOn = ind->timeThread[on];
+  if (tOn > tNow && !isSameTime(tOn, tNow)) return 0.0;
+  double tOff = ind->all_times[on + 1];
+  if (tOff < tNow || isSameTime(tOff, tNow)) return 0.0;
+  double rate = -ind->dose[on + 1];
+  if (!(rate > 0)) return 0.0;
+  if (modeledStopIgnored(ind, on)) return 0.0;
+  if (!modeledRateStarted(ind, i, on, cmt)) return 0.0;
+  return rate;
+}
+
+// re-reads the rate of the infusion started by raw
+// record `on` from the data record at sorted position j and moves its end so
+// the remaining amount is kept.  Returns 1 when moved, 0 when unchanged, -1 on
+// a non-positive rate.
+static inline int modeledRereadRate(rx_solving_options_ind *ind, int j, int on, int cmt,
+                                   double rOld, double tNow, double *yp,
+                                   double *InfusionRate) {
+  int oldIdx = ind->idx;
+  ind->idx = j;
+  double rNew = getRate(ind, ind->id, cmt, ind->dose[on],
+                        ind->timeThread[ind->ix[j]], yp);
+  ind->idx = oldIdx;
+  if (!(rNew > 0)) {
+    if (!(ind->err & rxErrRate0)) ind->err += rxErrRate0;
+    return -1;
+  }
+  if (rNew == rOld) return 0;
+  double tOff = ind->all_times[on + 1];
+  InfusionRate[cmt] += rNew - rOld;
+  ind->dose[on + 1] = -rNew;
+  ind->all_times[on + 1] = tNow + rOld*(tOff - tNow)/rNew;
+  return 1;
+}
+
+// re-reads the duration of the infusion started by raw record `on` from the
+// data record at sorted position j: it now ends at its start plus the new
+// duration, delivering what is left evenly, or stops now, delivering no more,
+// when that end is not after tNow.  Returns like modeledRereadRate().
+static inline int modeledRereadDur(rx_solving_options_ind *ind, int j, int on, int cmt,
+                                   double rOld, double tNow, double *yp,
+                                   double *InfusionRate) {
+  int oldIdx = ind->idx;
+  ind->idx = j;
+  double dNew = getDur(ind, ind->id, cmt, ind->dose[on],
+                       ind->timeThread[ind->ix[j]], yp);
+  ind->idx = oldIdx;
+  if (ISNA(dNew)) return -1;
+  if (dNew < 0) {
+    if (!(ind->err & rxErrDurNeg0)) ind->err += rxErrDurNeg0;
+    return -1;
+  }
+  double tOff = ind->all_times[on + 1];
+  double tEnd = ind->timeThread[on] + dNew;
+  if (isSameTime(tEnd, tOff)) return 0;
+  if (tEnd < tNow || isSameTime(tEnd, tNow)) {
+    // the stop at tOff now removes nothing
+    InfusionRate[cmt] -= rOld;
+    ind->dose[on + 1] = 0.0;
+    return 1;
+  }
+  double rNew = rOld*(tOff - tNow)/(tEnd - tNow);
+  InfusionRate[cmt] += rNew - rOld;
+  ind->dose[on + 1] = -rNew;
+  ind->all_times[on + 1] = tEnd;
+  return 1;
+}
+
+// re-reads the modeled infusion of the given kind from the data record at
+// sorted position j (-1 when there is none)
+static inline int modeledReread(rx_solving_options_ind *ind, int kind, int j, int on,
+                                int cmt, double rOld, double tNow, double *yp,
+                                double *InfusionRate) {
+  if (j < 0) return -1;
+  if (kind == MODELED_RATE) {
+    return modeledRereadRate(ind, j, on, cmt, rOld, tNow, yp, InfusionRate);
+  }
+  return modeledRereadDur(ind, j, on, cmt, rOld, tNow, yp, InfusionRate);
+}
+
+// whether modeled infusions of the given kind are re-read
+static inline int modeledRereadKind(rx_solve *rx, int kind) {
+  if (kind == MODELED_RATE) return !rx->rateAtDoseTime && (rx->needSort & needSortRate);
+  if (kind == MODELED_DUR) return !rx->durAtDoseTime && (rx->needSort & needSortDur);
+  return 0;
+}
+
+// the solving options when modeled rates are re-read after the record at
+// sorted position i; NULL when neither modeled rates nor durations are
+// (rxControl(rateAtDoseTime =, durAtDoseTime =), or a model without them)
+static inline rx_solving_options *modeledRereadOp(rx_solve *rx, rx_solving_options_ind *ind,
+                                                 int i) {
+  if (!modeledRereadKind(rx, MODELED_RATE) && !modeledRereadKind(rx, MODELED_DUR)) return NULL;
+  if (ind->idose == NULL || ind->timeThread == NULL) return NULL;
+  rx_solving_options *op = (ind->op ? ind->op : &op_global);
+  if (_rxEsActive || op->adjoint) return NULL;
+  int raw = ind->ix[i];
+  if (raw < 0 || raw >= ind->n_all_times_orig) return NULL;
+  return op;
+}
+
+// rxode2#1586: a modeled rate or duration is re-read at each data record
+// until its amount is delivered; a new rate moves the end, a new duration
+// moves the end to start + duration.  Called after the record at sorted
+// position i is handled.  By default the value read at data record i holds on
+// [t[i], t[i+1]) (LOCF); with rxControl(nonmem = TRUE) the value read with
+// data record j holds on (t[j-1], t[j]], like NONMEM's R1, and any other
+// record (an addl repeat, a lagged dose) re-reads the infusion it starts from
+// the next data record.  Returns 1 when an infusion changed
+// (the timeline needs a re-sort).  Event sensitivities and the adjoint keep
+// the rate of the dose, which their d(rate)/dp forcing assumes.
+static inline int updateModeledRates(rx_solve *rx, rx_solving_options_ind *ind,
+                                           int i, double *yp, double *InfusionRate) {
+  rx_solving_options *op = modeledRereadOp(rx, ind, i);
+  if (op == NULL) return 0;
+  int raw = ind->ix[i];
+  double tNow = ind->timeThread[raw];
+  int dataRec = rereadDataRecord(ind, raw);
+  if (!dataRec && !rx->nonmem) return 0;
+  int ncmt = op->neq + op->extraCmt;
+  int j = -2, ret = 0;
+  for (int d = 0; d < ind->ndoses; ++d) {
+    int on = ind->idose[d], cmt = -1;
+    if (!dataRec && on != raw) continue;
+    int kind = modeledInfusionKind(ind, on, &cmt);
+    if (!modeledRereadKind(rx, kind)) continue;
+    double rOld = modeledRunningRate(ind, i, on, tNow, ncmt, cmt);
+    if (rOld == 0.0) continue;
+    if (j == -2) j = rx->nonmem ? rereadNextRecord(ind, i) : i;
+    int moved = modeledReread(ind, kind, j, on, cmt, rOld, tNow, yp, InfusionRate);
+    if (moved < 0) return ret;
+    ret |= moved;
+  }
+  return ret;
+}
+
 static inline void handleTurnOffModeledDuration(int idx, rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind) {
   if (idx > 0){
     if (!isEvidModeledDurationStart(getEvidM1(ind, idx))) {
