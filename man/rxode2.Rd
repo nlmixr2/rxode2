@@ -563,6 +563,9 @@ table:\tabular{lll}{
    studentTCdf(x, nu) \tab Student t CDF, ie pt(x, nu) \tab  \cr
    studentTCdfDnu(x, nu) \tab Derivative of studentTCdf with respect to nu. No elementary closed form; a central difference with one Richardson extrapolation \tab  \cr
    studentTInv(p, nu) \tab Student t quantile, ie qt(p, nu); exactly the inverse of studentTCdf \tab  \cr
+   etaBoxCox(eta, lambda) \tab Box-Cox shape transform of a random effect, (exp(eta)^lambda-1)/lambda; eta at lambda=0, smooth through it \tab  \cr
+   etaJohnDraper(eta, lambda) \tab John-Draper (modulus) shape transform of a random effect, sign(eta)*((abs(eta)+1)^lambda-1)/lambda; eta at lambda=1 \tab  \cr
+   exprelD(z, n) \tab n-th derivative of (exp(z)-1)/z, finite at z=0; the derivative helper for the eta shape transforms \tab  \cr
    rxnorm(x) \tab Generate one deviate of from a normal distribution for each observation scale \tab  \cr
    rxnormV(x) \tab Generate one deviate from low discrepancy normal for each observation \tab  \cr
    rxcauchy \tab Generate one deviate from the cauchy distribution for each observation \tab  \cr

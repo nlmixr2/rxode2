@@ -88,6 +88,11 @@ rxode2_fn2 studentTCdf;
 rxode2_fn2 studentTCdfDnu;
 rxode2_fn2 studentTInv;
 
+/* eta shape transforms */
+rxode2_fn2 exprelD;
+rxode2_fn2 etaBoxCox;
+rxode2_fn2 etaJohnDraper;
+
 rxode2_fn2 rxnorm;
 rxode2i_rxbinom rxbinom;
 rxode2i_rxbinom rxnbinom;
@@ -725,6 +730,9 @@ void _assignFuns0(void) {
   studentTCdf = (rxode2_fn2) R_GetCCallable("rxode2","studentTCdf");
   studentTCdfDnu = (rxode2_fn2) R_GetCCallable("rxode2","studentTCdfDnu");
   studentTInv = (rxode2_fn2) R_GetCCallable("rxode2","studentTInv");
+  exprelD = (rxode2_fn2) R_GetCCallable("rxode2","exprelD");
+  etaBoxCox = (rxode2_fn2) R_GetCCallable("rxode2","etaBoxCox");
+  etaJohnDraper = (rxode2_fn2) R_GetCCallable("rxode2","etaJohnDraper");
   logit = (rxode2_fn3) R_GetCCallable("rxode2", "logit");
   probit = (rxode2_fn3) R_GetCCallable("rxode2", "probit");
   expit = (rxode2_fn3) R_GetCCallable("rxode2", "expit");

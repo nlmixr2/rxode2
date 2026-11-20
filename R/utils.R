@@ -1969,3 +1969,50 @@ studentTCdfDnu <- function(x, nu) {
 studentTInv <- function(p, nu) {
   .Call(`_rxode2_studentTInv`, p, nu, PACKAGE = "rxode2")
 }
+
+#' Shape transforms for random effects
+#'
+#' Transforms of a random effect `eta` with an estimated shape parameter, used
+#' as `cl <- tcl*exp(etaBoxCox(eta.cl, lambda))` (Petersson et al. 2009).  Each
+#' keeps `eta = 0` at 0 and the rank order of `eta`, and has a shape giving the
+#' identity, so the shape can be tested with a likelihood ratio test.
+#' `etaBoxCox()` is `(exp(eta)^lambda - 1)/lambda`, which is `eta` at
+#' `lambda = 0` and skews the distribution (roughly `lambda` in `(-3, 3)`).
+#' `etaJohnDraper()` is the modulus transform
+#' `sign(eta)*((abs(eta) + 1)^lambda - 1)/lambda`, the identity at
+#' `lambda = 1`, which changes the tails symmetrically.  `exprelD(z, n)` is the
+#' n-th derivative of `(exp(z) - 1)/z`; it keeps every derivative exact through
+#' a shape of 0.  In a model, named arguments are matched and expanded into the
+#' positional call, eg `etaBoxCox(lambda = lcl, eta = eta.cl)`.
+#'
+#' @param eta random effect
+#' @param lambda shape parameter
+#' @param z value of `z`
+#' @param n derivative order (non-negative integer)
+#' @return numeric vector, recycled to the longest argument
+#' @references Petersson KJ, Hanze E, Savic RM, Karlsson MO. Semiparametric
+#'   distributions with estimated shape parameters. Pharm Res. 2009;
+#'   26(9):2174-85.
+#' @author Matthew L. Fidler
+#' @examples
+#' etaBoxCox(c(-1, 0, 1), 0.5)
+#' etaBoxCox(c(-1, 0, 1), 0) ## identity
+#' etaJohnDraper(c(-1, 0, 1), 1) ## identity
+#' exprelD(0, 0:3)
+#' @export
+#' @family Special functions
+etaBoxCox <- function(eta, lambda) {
+  .Call(`_rxode2_etaBoxCox`, eta, lambda, PACKAGE = "rxode2")
+}
+
+#' @rdname etaBoxCox
+#' @export
+etaJohnDraper <- function(eta, lambda) {
+  .Call(`_rxode2_etaJohnDraper`, eta, lambda, PACKAGE = "rxode2")
+}
+
+#' @rdname etaBoxCox
+#' @export
+exprelD <- function(z, n) {
+  .Call(`_rxode2_exprelD`, z, n, PACKAGE = "rxode2")
+}

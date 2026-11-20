@@ -930,6 +930,40 @@
   }
 )
 
+## Eta shape transforms (src/etaShape.cpp).  exprelD(z, n) is the n-th
+## derivative of (exp(z)-1)/z, so every derivative stays finite through a
+## shape of 0.  John-Draper's eta derivative is written without sign() so it
+## is 1, not 0, at eta = 0.
+.rxD$exprelD <- list(
+  function(z, n) {
+    paste0("exprelD(", z, ",(", n, ")+1)")
+  },
+  function(z, n) {
+    "0"
+  }
+)
+
+.rxD$etaBoxCox <- list(
+  function(eta, lambda) {
+    paste0("exp((", lambda, ")*(", eta, "))")
+  },
+  function(eta, lambda) {
+    paste0("(", eta, ")^2*exprelD((", lambda, ")*(", eta, "),1)")
+  }
+)
+
+.rxD$etaJohnDraper <- list(
+  function(eta, lambda) {
+    paste0("exp(((", lambda, ")-1)*log1p(abs(", eta, ")))")
+  },
+  function(eta, lambda) {
+    paste0(
+      "sign(", eta, ")*log1p(abs(", eta, "))^2*exprelD((", lambda,
+      ")*log1p(abs(", eta, ")),1)"
+    )
+  }
+)
+
 .rxD$ReLU <- list(
   function(x) {
     paste0("dReLU(", x, ")")

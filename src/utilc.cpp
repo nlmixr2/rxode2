@@ -1219,6 +1219,9 @@ extern "C" double studentTDen(double, double);
 extern "C" double studentTCdf(double, double);
 extern "C" double studentTCdfDnu(double, double);
 extern "C" double studentTInv(double, double);
+extern "C" double exprelD(double, double);
+extern "C" double etaBoxCox(double, double);
+extern "C" double etaJohnDraper(double, double);
 
 static inline SEXP rxAsRealArg(SEXP x, const char *nm, rxProtect &pro) {
   int t = TYPEOF(x);
@@ -1285,3 +1288,6 @@ RX_VEC2(_rxode2_studentTDen, studentTDen)
 RX_VEC2(_rxode2_studentTCdf, studentTCdf)
 RX_VEC2(_rxode2_studentTCdfDnu, studentTCdfDnu)
 RX_VEC2(_rxode2_studentTInv, studentTInv)
+RX_VEC2(_rxode2_exprelD, exprelD)
+RX_VEC2(_rxode2_etaBoxCox, etaBoxCox)
+RX_VEC2(_rxode2_etaJohnDraper, etaJohnDraper)

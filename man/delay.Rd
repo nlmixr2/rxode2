@@ -65,6 +65,7 @@ s2 <- rxSolve(hutch, et(seq(0, 40, by = 0.5)))
 Other Special functions:
 \code{\link[=boxCox]{boxCox()}},
 \code{\link[=erf]{erf()}},
+\code{\link[=etaBoxCox]{etaBoxCox()}},
 \code{\link[=gammap]{gammap()}},
 \code{\link[=gammapDer]{gammapDer()}},
 \code{\link[=gammapInv]{gammapInv()}},
