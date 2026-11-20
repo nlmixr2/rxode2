@@ -166,6 +166,7 @@ rxSolve(
   tieOrder = NULL,
   rateAtDoseTime = FALSE,
   durAtDoseTime = NULL,
+  resetCancelsPending = TRUE,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -1194,7 +1195,9 @@ state.  A constant infusion (\code{ii = 0}), which has no doses, takes at
 least 5 and up to \code{max(maxSS, 10000)} convergence steps.}
 
 \item{maxSS}{Maximum number of doses given before a steady-state dose (at
-least \code{minSS})}
+least \code{minSS}).  When \code{minSS < maxSS} and \code{ssAtol}/\code{ssRtol} are still
+unmet after \code{maxSS} doses, the last iterate is used and \code{rxSolve()}
+warns once.}
 
 \item{infSSstep}{Step size for determining if a constant infusion
 has reached steady state.  By default this is large value,
@@ -1501,8 +1504,8 @@ them in the order of the rows in the data, the way NONMEM does (records
 a row expands to, like the reset of an \code{evid=4} dose or \code{addl} repeats,
 follow that row).  Doses added while solving follow the records at the
 same time.  An event table already translated by \code{\link[=etTrans]{etTrans()}} keeps the
-order it was translated with.  By default (\code{NULL}) this is \code{"data"} when
-\code{nonmem = TRUE} and \code{"evid"} otherwise.}
+order it was translated with.  By default (\code{NULL}) this is \code{"data"}
+when \code{nonmem = TRUE} and \code{"evid"} otherwise.}
 
 \item{rateAtDoseTime}{Boolean that when \code{TRUE} keeps a modeled rate
 (\code{rate()}, \code{RATE = -1}) at the value read at its dose.  When \code{FALSE} (the
@@ -1521,6 +1524,15 @@ the infusion then ends at its start plus the new duration, delivering
 what is left evenly, or stops delivering when that end has passed.  By
 default (\code{NULL}) this is \code{TRUE} with \code{nonmem = TRUE}, as NONMEM fixes
 \code{D1} at the dose, and \code{FALSE} otherwise.}
+
+\item{resetCancelsPending}{When \code{TRUE} (default), a reset (\code{evid} 3 or
+4) cancels the doses of the records processed before it that have not
+yet entered: the remaining \code{addl} repeats and lagged (\code{alag()}) doses,
+as NONMEM does.  When \code{FALSE} they are given after the reset.  A dose
+added while solving is cancelled only when it is lagged past the reset,
+a reset added while solving cancels lagged doses but not \code{addl}
+repeats, and an event table already translated by \code{\link[=etTrans]{etTrans()}} keeps the
+\code{addl} repeats it was translated with.}
 
 \item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that
 is acceptable before issuing a warning/error about the gradient estimates.}

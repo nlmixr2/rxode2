@@ -25,8 +25,10 @@ List etTrans(List inData, const RObject &mv, bool addCmt,
              bool addlDropSs,
              bool ssAtDoseTime,
              Nullable<List> iCovIn,
-             std::string tieOrder = "evid");
+             std::string tieOrder = "evid",
+             bool resetCancelsPending = true);
 std::string rxControlTieOrder(const List &control);
+bool rxControlResetCancelsPending(const List &control);
 SEXP nestingInfo_(SEXP omega, List data);
 
 List rxExpandNesting(const RObject& obj, List& nestingInfo,
@@ -831,7 +833,8 @@ SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS) {
                                control[Rxc_addlDropSs],
                                control[Rxc_ssAtDoseTime],
                                control[Rxc_iCov],
-                               rxControlTieOrder(control)));
+                               rxControlTieOrder(control),
+                               rxControlResetCancelsPending(control)));
       rxModelsAssign(".nestEvents", events);
       RObject cls = Rf_getAttrib(events, R_ClassSymbol);
       // a shallow copy: etTrans() hands back the caller's own translated table
@@ -1015,7 +1018,8 @@ SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS) {
                                control[Rxc_addlDropSs],
                                control[Rxc_ssAtDoseTime],
                                control[Rxc_iCov],
-                               rxControlTieOrder(control)));
+                               rxControlTieOrder(control),
+                               rxControlResetCancelsPending(control)));
       rxModelsAssign(".nestEvents", events);
     } else if (!Rf_inherits(events, "rxEtTrans")){
       // No class is "rxEtTrans" (a translated table is "rxEtTran"), so this
@@ -1029,7 +1033,8 @@ SEXP expandPars_(SEXP objectS, SEXP paramsS, SEXP eventsS, SEXP controlS) {
                                control[Rxc_addlDropSs],
                                control[Rxc_ssAtDoseTime],
                                control[Rxc_iCov],
-                               rxControlTieOrder(control)));
+                               rxControlTieOrder(control),
+                               rxControlResetCancelsPending(control)));
       rxModelsAssign(".nestEvents", events);
     }
     int nobs =  Rf_length(VECTOR_ELT(events, 0));
