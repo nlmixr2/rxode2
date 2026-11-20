@@ -524,11 +524,12 @@ struct rx_solving_options_ind_s {
   // pair this subject's infusions wrongly (nlmixr2/rxode2#1348).  Covers the
   // first n_all_times_orig records; pushed doses are never recorded here.
   int    *infPair;
-  // 1 for a record that is not a data record (an addl repeat or a record a
-  // dose expands to), recorded by etTrans() only for a model whose PK-type
-  // statements read `time`; NULL otherwise.  _rxPkTime() skips these with
-  // rxControl(nonmem = TRUE) (rxode2#1429).  Covers the first n_all_times_orig
-  // records.
+  // Nonzero for a record that is not a data record (an addl repeat or a record
+  // a dose expands to), recorded by etTrans() only for a model whose PK-type
+  // statements read `time`, or whose f()/alag()/rate()/dur() may; NULL
+  // otherwise.  _rxPkTime() skips these with rxControl(nonmem = TRUE)
+  // (rxode2#1429).  2 marks the dose of an addl repeat, for _rxDoseTime()
+  // (rxode2#1583).  Covers the first n_all_times_orig records.
   int    *pkSkip;
   // delay() pre-history: this subject's evaluated initial state (after the
   // x(0) <- expr assignments, before any dose), captured by iniSubject() for a
