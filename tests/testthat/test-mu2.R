@@ -190,6 +190,11 @@ rxTest({
       .mu("if (wt70 > 1) { big <- 1 } else { big <- 0 }", "log(wt70)*b", "(big == 1)*(bv + 1)"),
       c(b = "log(wt70)")
     )
+    # a variable that is a string on one branch and a number on the other
+    expect_equal(
+      .mu("if (wt70 > 1) { s <- \"a\" } else { s <- 1 }", "log(wt70)*b", "(s == \"a\")*bv"),
+      c(b = "log(wt70)")
+    )
     # no variables, but not data either: random draws and linCmt()
     expect_equal(.mu("r <- rxnorm()", "log(wt70)*b", "r*bv"), c(b = "log(wt70)"))
     expect_equal(

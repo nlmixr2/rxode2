@@ -580,6 +580,7 @@
   .st$ok <- character(0)
   .st$bad <- character(0)
   .st$str <- list()
+  .st$num <- character(0)
   .muRefDataOnlyWalk(as.list(env$.expr)[seq_len(.i - 1L)], TRUE, character(0), .st)
   .ret <- list(ok = .st$ok, str = .st$str)
   env$.dataOnlyVars[[.key]] <- .ret
@@ -592,7 +593,7 @@
 #' @param condOk `FALSE` when an enclosing `if` condition calls a function
 #'   that is not deterministic and elementary
 #' @param condVars variables read by the enclosing `if` conditions
-#' @param st state environment (`dataCov`, `ok`, `bad`, `str`)
+#' @param st state environment (`dataCov`, `ok`, `bad`, `str`, `num`)
 #' @return nothing; updates `st`
 #' @noRd
 #' @author Matthew L. Fidler
@@ -624,8 +625,14 @@
       .n <- as.character(.lhs)
       .rhs <- .x[[3]]
       .v <- unique(c(condVars, all.vars(.rhs)))
+      # a variable assigned both strings and numbers cannot be probed
+      .mixed <- if (is.character(.rhs)) .n %in% st$num else !is.null(st$str[[.n]])
+      if (!is.character(.rhs)) {
+        st$num <- unique(c(st$num, .n))
+      }
       if (
         condOk &&
+          !.mixed &&
           !(.n %in% st$bad) &&
           .muRefDataOnlyCalls(.rhs) &&
           all(.v %in% st$dataCov | .v %in% st$ok)
