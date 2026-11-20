@@ -484,7 +484,45 @@
   if (length(.v) > 0L && !all(.v %in% .d$ok)) {
     return(FALSE)
   }
-  .muRefTermIsThetaTimesDer(y, der, theta, .d$str)
+  .muRefThetaIsFactor(y, theta) &&
+    .muRefTermIsThetaTimesDer(y, der, theta, .d$str)
+}
+
+#' Is `theta` a bare multiplicative factor of a term, appearing nowhere else?
+#'
+#' `cl.wt*log(WT/70)` and `WT*cl.wt/70` are; `(cl.wt + 1)*lwt` and
+#' `(s == "a")*(bv + 1)` are not, whatever values the probes in
+#' `.muRefTermIsThetaTimesDer()` happen to use.
+#'
+#' @param term term (language)
+#' @param theta theta name
+#' @return logical
+#' @noRd
+#' @author Matthew L. Fidler
+.muRefThetaIsFactor <- function(term, theta) {
+  .count <- function(x) {
+    if (is.name(x)) {
+      return(as.integer(identical(as.character(x), theta)))
+    }
+    if (!is.call(x) || !(theta %in% all.vars(x))) {
+      return(0L)
+    }
+    .h <- x[[1]]
+    if (identical(.h, quote(`(`))) {
+      return(.count(x[[2]]))
+    }
+    if (identical(.h, quote(`*`)) && length(x) == 3L) {
+      return(.count(x[[2]]) + .count(x[[3]]))
+    }
+    if (identical(.h, quote(`/`)) && !(theta %in% all.vars(x[[3]]))) {
+      return(.count(x[[2]]))
+    }
+    if (identical(.h, quote(`-`)) && length(x) == 2L) {
+      return(.count(x[[2]]))
+    }
+    NA_integer_
+  }
+  identical(.count(term), 1L)
 }
 
 #' Does an expression call only deterministic elementary functions?

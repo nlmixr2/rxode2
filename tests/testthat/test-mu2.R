@@ -177,6 +177,19 @@ rxTest({
       ),
       c(b = "log(wt70)")
     )
+    # not a product, whichever values the indicator takes
+    expect_equal(
+      .mu(
+        "if (wt70 > 3) { s <- \"a\" } else if (wt70 > 2) { s <- \"b\" } else if (wt70 > 1) { s <- \"c\" } else { s <- \"d\" }",
+        "log(wt70)*b",
+        "(s == \"d\")*(bv + 1)"
+      ),
+      c(b = "log(wt70)")
+    )
+    expect_equal(
+      .mu("if (wt70 > 1) { big <- 1 } else { big <- 0 }", "log(wt70)*b", "(big == 1)*(bv + 1)"),
+      c(b = "log(wt70)")
+    )
     # no variables, but not data either: random draws and linCmt()
     expect_equal(.mu("r <- rxnorm()", "log(wt70)*b", "r*bv"), c(b = "log(wt70)"))
     expect_equal(
