@@ -359,6 +359,10 @@
   unchanged, bit for bit; a 20-state transit chain solves about 8% faster and
   a FOCEi fit with sensitivities (12 states) about 3% faster, while a model
   with three states is unchanged.
+- `liblsoda` takes the weighted max-norm of its error and correction
+  vectors without a call to libm's `fmax()` for every state.  Results are
+  unchanged, bit for bit; a FOCEi fit of a 2-compartment oral model runs
+  about 12% faster, and a 5000-subject simulation about 7%.
 
 - Every right-hand-side, Jacobian and `lhs` evaluation of a model no longer
   copies the subject's whole solving state (about 1.7 kB) for the
