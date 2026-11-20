@@ -1,0 +1,204 @@
+---
+title: "Simulating time-to-event endpoints"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(rxode2)
+```
+
+## Hazard-based endpoints
+
+A time-to-event (TTE) endpoint is described by its hazard `h(t)`, the
+instantaneous event rate given that no event has happened yet.  The
+survival since the last event is `S(t) = exp(-(H(t) - H(t_last)))`,
+where `H` is the cumulative hazard.  In rxode2 the endpoint is written
+with `tte()`, following the options of Monolix's `{type=event}`
+definition:
+
+```{r}
+seizure <- function() {
+  ini({
+    tcl <- log(1)
+    tv <- log(10)
+    eta.cl ~ 0.1
+    add.sd <- 0.1
+    lambda <- 0.01
+    beta <- 0.1
+  })
+  model({
+    cl <- exp(tcl + eta.cl)
+    v <- exp(tv)
+    d/dt(central) <- -cl / v * central
+    cp <- central / v
+    haz <- lambda * exp(beta * cp)
+    cp ~ add(add.sd)
+    ev ~ tte(haz, maxEventNumber = 1)
+  })
+}
+```
+
+The cumulative hazard is added as a hidden state (`rx.tteH.ev`), and
+each event time solves `H(t) - H(t_last) = -log(u)` with a root finder,
+so the event times are exact rather than limited to the sampling grid.
+
+## Simulated rows
+
+The endpoint's records in the event table define each subject's
+observation window.  The simulation replaces them with the rows a
+Monolix or NONMEM time-to-event data set has: `sim = 0` at the start of
+the window, `sim = 1` at each event and `sim = 0` at right censoring.
+
+```{r}
+e <- et(amt = 100, cmt = "central") |>
+  et(seq(0, 48, by = 4), cmt = "cp") |>
+  et(c(0, 48), cmt = "ev") |>
+  et(id = 1:200)
+
+s <- withr::with_seed(42, rxSolve(seizure(), e))
+tte <- as.data.frame(s)
+tte <- tte[tte$CMT == 4, c("id", "time", "sim")]
+head(tte)
+```
+
+A steady-state dose (`ss = 1`) brings the model states to steady state
+but holds the cumulative hazard fixed, so no hazard accumulates over the
+doses before it.
+
+The events give a Kaplan-Meier estimate directly:
+
+```{r}
+last <- tte[!duplicated(tte$id, fromLast = TRUE), ]
+if (requireNamespace("survival", quietly = TRUE)) {
+  fit <- survival::survfit(survival::Surv(time, sim) ~ 1, data = last)
+  plot(fit, xlab = "Time (h)", ylab = "Probability of no event")
+}
+```
+
+## Options
+
+| Option               | Default                         | Meaning                                         |
+|----------------------|---------------------------------|-------------------------------------------------|
+| `eventType`          | `"exact"`                       | `"exact"` or `"intervalCensored"` event times   |
+| `maxEventNumber`     | `Inf`                           | maximum number of events (`1` for one-off)      |
+| `rightCensoringTime` | last record of the endpoint     | end of the observation window                   |
+| `intervalLength`     | tenth of the observation window | interval length for `"intervalCensored"`        |
+| `dropout`            | `FALSE`                         | the event ends all observations (needs `maxEventNumber = 1`) |
+
+With `eventType = "intervalCensored"` the rows are the ends of each
+interval, with `sim = 1` when the interval holds an event:
+
+```{r}
+ic <- seizure() |>
+  model(ev ~ tte(haz, eventType = "intervalCensored", intervalLength = 12,
+                 maxEventNumber = 1))
+s <- withr::with_seed(42, rxSolve(ic, e))
+s <- as.data.frame(s)
+head(s[s$CMT == 4, c("id", "time", "sim")])
+```
+
+`dropout = TRUE` makes the event end the subject's observations of every
+endpoint, as in a joint PK/dropout simulation:
+
+```{r}
+dr <- seizure() |>
+  model(ev ~ tte(haz, maxEventNumber = 1, dropout = TRUE))
+s <- withr::with_seed(42, as.data.frame(rxSolve(dr, e)))
+tapply(s$time[s$CMT == 3], s$id[s$CMT == 3], max)[1:10]
+```
+
+## Repeated events
+
+Without `maxEventNumber` the events repeat, each using the cumulative
+hazard since the previous event.  `tteTime(ev)` (the time of the last
+event, or the window start) and `tteCount(ev)` (the events so far) can
+be used in the model, for example in a Weibull renewal hazard:
+
+```{r}
+renewal <- function() {
+  ini({
+    te <- 5
+    sh <- 2
+  })
+  model({
+    haz <- sh / te * ((time - tteTime(ev)) / te)^(sh - 1)
+    ev ~ tte(haz)
+  })
+}
+s <- withr::with_seed(1, as.data.frame(rxSolve(renewal(), et(c(0, 50)) |> et(id = 1:100))))
+table(tapply(s$sim, s$id, sum))
+```
+
+`tteTime()` and `tteCount()` are part of the model syntax, listed with
+the other functions in `rxSupportedFuns()`.
+
+## Choosing a solver
+
+Every ODE solving `method` except the adjoint sensitivity methods
+(`rk4s`, `liblsodaadj`, ...) simulates `tte()` endpoints.  The root finder
+only asks the solver to re-solve part of an interval from its saved
+start, so the event times are found to the accuracy of whichever solver
+does the work, and the random thresholds do not depend on the method:
+
+```{r}
+f <- function() {
+  ini({
+    te <- 10
+    sh <- 1.5
+  })
+  model({
+    haz <- sh / te * (time / te)^(sh - 1)
+    ev ~ tte(haz, maxEventNumber = 1)
+  })
+}
+e <- et(c(0, 100)) |> et(id = 1:5)
+sapply(c("liblsoda", "dop853", "rk4", "lsode", "cvode"), function(m) {
+  s <- withr::with_seed(2, as.data.frame(rxSolve(f(), e, method = m)))
+  s$time[s$sim == 1]
+})
+```
+
+`liblsoda` (the default) keeps its integrator history between records.
+The other methods run in a shared record loop that restarts the solver
+at each record, which costs little for the one-step methods
+(Runge-Kutta, Rosenbrock) and more for the multistep ones.  The Fortran
+`lsoda`, `lsode` and `bdf` methods solve one subject at a time.
+`dense = TRUE` falls back to standard output.
+
+A hazard may use `delay()`.  The record loop then solves each interval
+with a dense solver (`dop853+ros4`, `dop853` or `ros4`), whose steps
+record the history `delay()` reads, and an event rewinds that history
+with the state.  Any state may be delayed, including the cumulative
+hazard itself (`delay(rx.tteH.ev, tau)`), but a delayed cumulative hazard
+cannot be combined with steady-state doses, since the hazard has no
+steady state:
+
+```{r}
+dde <- function() {
+  ini({
+    k <- 0.3
+    lambda <- 0.005
+    beta <- 0.02
+    tau <- 2
+  })
+  model({
+    d/dt(central) <- -k * delay(central, tau)
+    haz <- lambda * exp(beta * central)
+    ev ~ tte(haz, maxEventNumber = 1)
+  })
+}
+ed <- et(amt = 100, cmt = "central") |> et(c(0, 48), cmt = "ev") |> et(id = 1:5)
+s <- withr::with_seed(3, as.data.frame(rxSolve(dde(), ed)))
+s[, c("id", "time", "sim", "central")]
+```
+
+## Next steps
+
+- [Simulating populations](rxode2-sim-var.html)
+- [Exposure-response simulation](rxode2-exposure-response.html)
