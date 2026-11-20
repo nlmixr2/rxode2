@@ -199,7 +199,7 @@ the cumulative hazard. In rxode2 the endpoint is written with
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>The cumulative hazard is added as a hidden state
-(<code>rx.tteH.ev</code>), and each event time solves
+(<code>rx_tteH_ev</code>), and each event time solves
 <code>H(t) - H(t_last) = -log(u)</code> with a root finder, so the event
 times are exact rather than limited to the sampling grid.</p>
 </div>
@@ -283,6 +283,11 @@ times</td>
 <td><code>FALSE</code></td>
 <td>the event ends all observations (needs
 <code>maxEventNumber = 1</code>)</td>
+</tr>
+<tr class="even">
+<td><code>origin</code></td>
+<td><code>FALSE</code></td>
+<td>observe from the subject’s start, with no start row</td>
 </tr>
 </tbody>
 </table>
@@ -384,7 +389,7 @@ each interval with a dense solver (<code>dop853+ros4</code>,
 <code>dop853</code> or <code>ros4</code>), whose steps record the
 history <code><a href="../reference/delay.html">delay()</a></code> reads, and an event rewinds that history
 with the state. Any state may be delayed, including the cumulative
-hazard itself (<code>delay(rx.tteH.ev, tau)</code>), but a delayed
+hazard itself (<code>delay(rx_tteH_ev, tau)</code>), but a delayed
 cumulative hazard cannot be combined with steady-state doses, since the
 hazard has no steady state:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
@@ -416,6 +421,47 @@ hazard has no steady state:</p>
 <span><span class="co">#&gt; 8   4 48.000000   0 -2.010272e-05</span></span>
 <span><span class="co">#&gt; 9   5  0.000000   0  1.000000e+02</span></span>
 <span><span class="co">#&gt; 10  5 48.000000   0 -2.010272e-05</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="estimating">Estimating<a class="anchor" aria-label="anchor" href="#estimating"></a>
+</h2>
+<p>The rows <code><a href="../reference/rxSolve.html">rxSolve()</a></code> returns are also the data a
+<code>tte()</code> endpoint is estimated from (with
+<code>nlmixr2()</code>): <code>DV = 1</code> at each event (or the end
+of an interval holding one) and <code>DV = 0</code> otherwise. Each
+record scores the events and survival since the endpoint’s previous
+record from the change <code>dH</code> of the cumulative hazard:</p>
+<table class="table">
+<thead><tr class="header">
+<th>Record</th>
+<th>Log-likelihood</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>exact event</td>
+<td><code>log(h(t)) - dH</code></td>
+</tr>
+<tr class="even">
+<td>interval holding an event</td>
+<td><code>log(1 - exp(-dH))</code></td>
+</tr>
+<tr class="odd">
+<td>no event</td>
+<td><code>-dH</code></td>
+</tr>
+</tbody>
+</table>
+<p>The first record of each subject is the start of observation and
+scores nothing, so a later start (late entry) is handled. With
+<code>tte(origin = TRUE)</code> the cumulative hazard counts from the
+subject’s start instead and every record scores; the simulation then has
+no start row. <code>tteTime()</code> and <code>tteCount()</code> come
+from the endpoint’s <code>DV = 1</code> records, and the hazard at an
+event record is the one just before the event. The likelihood methods
+(<code>focei</code>, <code>laplace</code>, <code>agq</code>,
+<code>saem</code>, <code>nlm</code>, <code>bobyqa</code>, …) estimate
+<code>tte()</code> endpoints; <code>fo</code>, <code>foi</code>,
+<code>nls</code> and <code>nlme</code> refuse them.</p>
 </div>
 <div class="section level2">
 <h2 id="next-steps">Next steps<a class="anchor" aria-label="anchor" href="#next-steps"></a>

@@ -757,7 +757,7 @@ probabilities remain the same:</p>
 <code class="sourceCode R"><span><span class="va">ev</span> <span class="op">~</span> <span class="fu">tte</span><span class="op">(</span><span class="va">haz</span>, eventType <span class="op">=</span> <span class="st">"exact"</span>, maxEventNumber <span class="op">=</span> <span class="cn">Inf</span>,</span>
 <span>         rightCensoringTime <span class="op">=</span> <span class="fl">120</span>, intervalLength <span class="op">=</span> <span class="fl">10</span>, dropout <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 <p>The cumulative hazard is added to the model as a hidden state
-(<code>rx.tteH.ev</code>), and event times solve
+(<code>rx_tteH_ev</code>), and event times solve
 <code>H(t) - H(t_last) = -log(u)</code> with a root finder. Only the
 hazard is required; the options are:</p>
 <table class="table">
@@ -801,6 +801,11 @@ times</td>
 <td>the event ends all observations (needs
 <code>maxEventNumber = 1</code>)</td>
 </tr>
+<tr class="even">
+<td><code>origin</code></td>
+<td><code>FALSE</code></td>
+<td>observe from the subject’s start, with no start row</td>
+</tr>
 </tbody>
 </table>
 <p>Simulated rows follow the Monolix/NONMEM layout: <code>sim = 0</code>
@@ -815,8 +820,17 @@ and count-dependent hazards can be written. Every ODE solving
 intervals with the chosen method; a hazard using <code><a href="../reference/delay.html">delay()</a></code> is
 solved with the dense <code><a href="../reference/delay.html">delay()</a></code> solvers. A steady-state dose
 holds the cumulative hazard fixed, so a <code><a href="../reference/delay.html">delay()</a></code> of the
-cumulative hazard (<code>rx.tteH.ev</code>) cannot be combined with
+cumulative hazard (<code>rx_tteH_ev</code>) cannot be combined with
 steady-state doses.</p>
+<p>In estimation each record of the endpoint scores the events and
+survival since the endpoint’s previous record: <code>log(h) - dH</code>
+for an event, <code>log(1 - exp(-dH))</code> for an interval holding one
+and <code>-dH</code> otherwise, with <code>dH</code> the change of the
+cumulative hazard. The first record of a subject is the start of
+observation and scores nothing (<code>origin = TRUE</code> counts from
+the subject’s start instead), and
+<code>tteTime()</code>/<code>tteCount()</code> come from the endpoint’s
+<code>DV = 1</code> records.</p>
 </div>
 <div class="section level4">
 <h4 id="general-table-of-supported-residual-distributions">General table of supported residual distributions<a class="anchor" aria-label="anchor" href="#general-table-of-supported-residual-distributions"></a>

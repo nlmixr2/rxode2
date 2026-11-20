@@ -835,8 +835,8 @@ probabilities remain the same:</p><table class="table table"><tr><td>Category</t
 <p></p><div class="sourceCode r"><pre><code><span><span class="va">ev</span> <span class="op">~</span> <span class="fu">tte</span><span class="op">(</span><span class="va">haz</span>, eventType <span class="op">=</span> <span class="st">"exact"</span>, maxEventNumber <span class="op">=</span> <span class="cn">Inf</span>,</span>
 <span>         rightCensoringTime <span class="op">=</span> <span class="fl">120</span>, intervalLength <span class="op">=</span> <span class="fl">10</span>, dropout <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre><p></p></div>
 <p>The cumulative hazard is added to the model as a hidden state
-(<code>rx.tteH.ev</code>), and event times solve <code>H(t) - H(t_last) = -log(u)</code> with
-a root finder. Only the hazard is required; the options are:</p><table class="table table"><tr><td>Option</td><td>Default</td><td>Meaning</td></tr><tr><td><code>eventType</code></td><td><code>"exact"</code></td><td><code>"exact"</code> or <code>"intervalCensored"</code> event times</td></tr><tr><td><code>maxEventNumber</code></td><td><code>Inf</code></td><td>maximum number of events (<code>1</code> for one-off)</td></tr><tr><td><code>rightCensoringTime</code></td><td>last record of the endpoint</td><td>end of the observation window</td></tr><tr><td><code>intervalLength</code></td><td>tenth of the observation window</td><td>interval length for <code>"intervalCensored"</code></td></tr><tr><td><code>dropout</code></td><td><code>FALSE</code></td><td>the event ends all observations (needs <code>maxEventNumber = 1</code>)</td></tr></table><p>Simulated rows follow the Monolix/NONMEM layout: <code>sim = 0</code> at the start
+(<code>rx_tteH_ev</code>), and event times solve <code>H(t) - H(t_last) = -log(u)</code> with
+a root finder. Only the hazard is required; the options are:</p><table class="table table"><tr><td>Option</td><td>Default</td><td>Meaning</td></tr><tr><td><code>eventType</code></td><td><code>"exact"</code></td><td><code>"exact"</code> or <code>"intervalCensored"</code> event times</td></tr><tr><td><code>maxEventNumber</code></td><td><code>Inf</code></td><td>maximum number of events (<code>1</code> for one-off)</td></tr><tr><td><code>rightCensoringTime</code></td><td>last record of the endpoint</td><td>end of the observation window</td></tr><tr><td><code>intervalLength</code></td><td>tenth of the observation window</td><td>interval length for <code>"intervalCensored"</code></td></tr><tr><td><code>dropout</code></td><td><code>FALSE</code></td><td>the event ends all observations (needs <code>maxEventNumber = 1</code>)</td></tr><tr><td><code>origin</code></td><td><code>FALSE</code></td><td>observe from the subject’s start, with no start row</td></tr></table><p>Simulated rows follow the Monolix/NONMEM layout: <code>sim = 0</code> at the start
 of the window, <code>sim = 1</code> at each event (or at the end of each interval
 holding an event) and <code>sim = 0</code> at right censoring. In model lines,
 <code>tteTime(ev)</code> is the time of the last event of <code>ev</code> (the window start
@@ -846,8 +846,15 @@ renewal and count-dependent hazards can be written. Every ODE solving
 endpoints, since the root finding only re-solves intervals with the
 chosen method; a hazard using <code><a href="delay.html">delay()</a></code> is solved with the dense
 <code><a href="delay.html">delay()</a></code> solvers. A steady-state dose holds the cumulative hazard
-fixed, so a <code><a href="delay.html">delay()</a></code> of the cumulative hazard (<code>rx.tteH.ev</code>) cannot be
+fixed, so a <code><a href="delay.html">delay()</a></code> of the cumulative hazard (<code>rx_tteH_ev</code>) cannot be
 combined with steady-state doses.</p>
+<p>In estimation each record of the endpoint scores the events and survival
+since the endpoint’s previous record: <code>log(h) - dH</code> for an event,
+<code>log(1 - exp(-dH))</code> for an interval holding one and <code>-dH</code> otherwise,
+with <code>dH</code> the change of the cumulative hazard. The first record of a
+subject is the start of observation and scores nothing (<code>origin = TRUE</code>
+counts from the subject’s start instead), and <code>tteTime()</code>/<code>tteCount()</code>
+come from the endpoint’s <code>DV = 1</code> records.</p>
 </div>
 
 <div class="section">
