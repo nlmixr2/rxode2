@@ -2,6 +2,10 @@
 
 ## New features
 
+- The model language has `clamp(x, lo, hi)`, the same as
+  `min(max(x, lo), hi)` (and differentiated the same way); a call with
+  other than three arguments, or with literal bounds `lo > hi`, is a parse
+  error (#1750).
 - A reset (`evid` 3 or 4) now cancels the doses of the records before it that
   have not yet entered -- the remaining `addl` repeats and lagged (`alag()`)
   doses -- as NONMEM does, in both tie orders.  `rxSolve(resetCancelsPending =
