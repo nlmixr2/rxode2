@@ -20,7 +20,7 @@
   .add <- function(var, dir) {
     .old <- Sys.getenv(var)
     if (!grepl(dir, .old, fixed = TRUE)) {
-      Sys.setenv(structure(if (nzchar(.old)) paste(dir, .old, sep = ":") else dir, names = var))
+      do.call(Sys.setenv, stats::setNames(list(if (nzchar(.old)) paste(dir, .old, sep = ":") else dir), var))
     }
   }
   .add("CPATH", file.path(.cuda, "include"))
