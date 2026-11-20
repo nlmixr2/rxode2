@@ -1073,9 +1073,15 @@ RXG_FN double _rxg_ibetaDerEnd(double s, double o) {
   if (s > 1) return 0.0;
   return (s == 1) ? 1.0/beta(s, o) : R_PosInf;
 }
+// arguments (none NaN) outside ibetaDer()'s domain
+RXG_FN int _rxg_ibetaDerOut(double a, double b, double x) {
+  if (!R_FINITE(a) || !R_FINITE(b)) return 1;
+  if (a <= 0 || b <= 0) return 1;
+  return (x < 0 || x > 1);
+}
 RXG_FN double ibetaDer(double a, double b, double x) {
   if (ISNAN(a) || ISNAN(b) || ISNAN(x)) return a + b + x;
-  if (!R_FINITE(a) || !R_FINITE(b) || a <= 0 || b <= 0 || x < 0 || x > 1) return R_NaN;
+  if (_rxg_ibetaDerOut(a, b, x)) return R_NaN;
   if (x == 0) return _rxg_ibetaDerEnd(a, b);
   if (x == 1) return _rxg_ibetaDerEnd(b, a);
   return exp((a - 1)*log(x) + (b - 1)*log1p(-x) - _rxg_lbeta(a, b));
@@ -1132,7 +1138,7 @@ RXG_FN double _rxg_ibetaInvRefine(double a, double b, double p, double x) {
 // host: shapes <= 0, then the p = 0 and p = 1 boundaries, the a = 1 and b = 1
 // closed forms, then infinite shapes give NaN); 1 when *out holds the answer
 RXG_FN int _rxg_ibetaInvEdge(double a, double b, double p, double *out) {
-  if (a <= 0 || b <= 0 || ISNAN(p) || p < 0 || p > 1) {
+  if (a <= 0 || b <= 0 || _rxg_probOut(p, 1 - p)) {
     *out = R_NaN;
   } else if (p == 0 || p == 1) {
     *out = p;
