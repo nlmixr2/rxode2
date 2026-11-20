@@ -167,7 +167,7 @@ rxSolve(
   rateAtDoseTime = FALSE,
   durAtDoseTime = NULL,
   resetCancelsPending = TRUE,
-  ssMethod = c("iterate", "anderson"),
+  ssMethod = c("anderson", "iterate"),
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -1535,19 +1535,22 @@ a reset added while solving cancels lagged doses but not \code{addl}
 repeats, and an event table already translated by \code{\link[=etTrans]{etTrans()}} keeps the
 \code{addl} repeats it was translated with.}
 
-\item{ssMethod}{How an iterated steady state is found: \code{"iterate"} (the
-default) repeats the dosing cycle until its trough converges;
-\code{"anderson"} finds the fixed point of the one-cycle map with Anderson
-acceleration (Anderson 1965, \doi{10.1145/321296.321305}; in the
-form of Walker and Ni 2011, \doi{10.1137/10078356X}), which needs far fewer cycles when the state accumulates
-slowly (eg. saturable elimination).  It applies to steady-state boluses
-once \code{minSS} doses are given, and stops only when both the cycle
-residual and the change of the cycle's starting state meet
-\code{ssAtol}/\code{ssRtol}.  When the accelerated iteration stalls, diverges
-or reaches \code{maxSS} (eg. dosing above the elimination capacity, with no
-steady state) it restarts plain iteration from where acceleration began,
-so the result is that of \code{"iterate"}.  A fixed dose count
-(\code{minSS = maxSS}) and a \code{delay()} model always iterate.}
+\item{ssMethod}{How an iterated steady state is found: \code{"anderson"} (the
+default) finds the fixed point of the one-cycle map with Anderson
+acceleration (Anderson 1965, \doi{10.1145/321296.321305}; in the form of
+Walker and Ni 2011, \doi{10.1137/10078356X}); \code{"iterate"} repeats the
+dosing cycle until its trough converges, as rxode2 did before.
+It applies to steady-state boluses once \code{minSS} doses are given and
+stops only when both the cycle residual and the change of the cycle's
+starting state meet \code{ssAtol}/\code{ssRtol}, so a slowly accumulating state
+(a long half-life against the dosing interval, a slow peripheral
+compartment or saturable elimination) converges in far fewer cycles and
+closer to the true steady state.  When the accelerated iteration stalls, diverges or reaches
+\code{maxSS} (eg. dosing above the elimination capacity, with no steady state)
+it restarts plain iteration from where acceleration began, so the result
+is that of \code{"iterate"}.  A fixed dose count (\code{minSS = maxSS}) and a
+\code{delay()} model always iterate.  See \code{bench/ss_anderson_1762.R} in the
+package sources for the benchmark behind the default.}
 
 \item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that
 is acceptable before issuing a warning/error about the gradient estimates.}

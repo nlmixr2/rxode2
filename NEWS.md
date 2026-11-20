@@ -11,12 +11,14 @@
   doses -- as NONMEM does, in both tie orders.  `rxSolve(resetCancelsPending =
   FALSE)` (and `etTrans(resetCancelsPending = FALSE)`) gives them after the
   reset as before (#1720).
-- `rxControl(ssMethod = "anderson")` finds an iterated steady-state bolus as
-  the fixed point of the one-cycle map with Anderson acceleration, so a
-  slowly accumulating nonlinear model (eg. Michaelis-Menten elimination near
-  capacity) reaches its steady state in tens of cycles instead of thousands.
-  It falls back to plain iteration when no steady state exists; the default
-  `"iterate"` is unchanged (#1762).
+- An iterated steady-state bolus is now found as the fixed point of the
+  one-cycle map with Anderson acceleration (`rxControl(ssMethod =
+  "anderson")`, the new default), so a slowly accumulating state (long
+  half-life, slow peripheral compartment, Michaelis-Menten elimination near
+  capacity) converges in tens of cycles instead of hundreds or thousands and
+  closer to the true steady state.  It falls back to plain iteration when no
+  steady state exists; `ssMethod = "iterate"` restores the previous
+  behavior (#1762).
 
 - `rxSymInvCholCreate()` builds block-diagonal omegas with
   `lotri::lotriMat()` instead of `Matrix::bdiag()`, removing the
