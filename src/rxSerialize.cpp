@@ -88,6 +88,14 @@ static void sWriteIntBlob(std::vector<uint8_t> *f, const int *data, uint64_t n,
   sWriteBlob(f, data, n, sizeof(int), what);
 }
 
+// Writes a subject's per-record int array: n_all_times_orig ints, or none
+// when NULL
+static void sWriteRecordIntBlob(std::vector<uint8_t> *f, const int *data,
+                                const rx_solving_options_ind *ind, const char *what) {
+  sWriteIntBlob(f, data, (uint64_t)(data != NULL && ind->n_all_times_orig > 0 ?
+                                    ind->n_all_times_orig : 0), what);
+}
+
 // ---------------------------------------------------------------------------
 // vLines serialization
 // ---------------------------------------------------------------------------
@@ -474,20 +482,10 @@ SEXP rxSaveState_() {
     // linH: 7 doubles per subject (if linB)
     sWriteDoubleBlob(f, ind->linH, (uint64_t)(rx->linB ? 7 : 0), "linH");
 
-    // infPair: n_all_times_orig ints, or none when NULL
-    sWriteIntBlob(f, ind->infPair,
-                  (uint64_t)(ind->infPair != NULL && ind->n_all_times_orig > 0 ?
-                             ind->n_all_times_orig : 0), "infPair");
-
-    // pkSkip: n_all_times_orig ints, or none when NULL
-    sWriteIntBlob(f, ind->pkSkip,
-                  (uint64_t)(ind->pkSkip != NULL && ind->n_all_times_orig > 0 ?
-                             ind->n_all_times_orig : 0), "pkSkip");
-
-    // doseRow: n_all_times_orig ints, or none when NULL
-    sWriteIntBlob(f, ind->doseRow,
-                  (uint64_t)(ind->doseRow != NULL && ind->n_all_times_orig > 0 ?
-                             ind->n_all_times_orig : 0), "doseRow");
+    // infPair, pkSkip, doseRow: n_all_times_orig ints each, or none when NULL
+    sWriteRecordIntBlob(f, ind->infPair, ind, "infPair");
+    sWriteRecordIntBlob(f, ind->pkSkip, ind, "pkSkip");
+    sWriteRecordIntBlob(f, ind->doseRow, ind, "doseRow");
   }
 
   // -- Section 9: op->indLin convergence set (format 3+) --------------------
