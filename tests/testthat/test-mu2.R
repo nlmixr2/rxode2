@@ -55,7 +55,7 @@ rxTest({
     # 0.75*log(V1/exp(tV1)) has d/dtV1 = -0.75 (no theta), but V1 depends on
     # tV1 and eta.V1.  Recording it as a mu2 term made nlmixr2 rewrite it to
     # `nlmixrMuDerCov*tV1`, silently dropping the V1 dependence of CL
-    # (nlmixr2/nlmixr2est#1437; guarded downstream by nlmixr2/nlmixr2est#1433).
+    # (nlmixr2/nlmixr2est#1437).
     f <- function() {
       ini({
         tV1 <- log(40); tCL <- log(5); tV2 <- log(40); tQ <- log(3)
@@ -101,9 +101,11 @@ rxTest({
     # covariates and constants
     expect_equal(.mu2("cl.wt*log(WT/70)"), "log(0.0142857142857143 * WT)")
     expect_equal(.mu2("cl.wt*log(WT/70)*SEX"), "SEX * log(0.0142857142857143 * WT)")
+    # a constant coefficient is a valid mu2 term (nlmixr2/nlmixr2est#1433 would
+    # wrongly drop it, so that guard is not needed with this rule)
     expect_equal(.mu2("cl.wt*log(70)"), "4.24849524204936")
     # mu3 (nlmixr2est evaluates these through symengine): model variables that
-    # resolve to covariates and constants; see nlmixr2/nlmixr2est#1437 and #1433
+    # resolve to covariates and constants; see nlmixr2/nlmixr2est#1437
     expect_equal(.mu2("cl.wt*lwt", "lwt <- log(WT/70)"), "lwt")
     expect_equal(.mu2("cl.wt*lwt2", "lwt <- log(WT/70); lwt2 <- lwt*SEX"), "lwt2")
     expect_equal(.mu2("cl.wt*lc", "lc <- 3"), "lc")
