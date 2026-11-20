@@ -272,6 +272,8 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  linCmtSensPhi <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  nonmem <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  tieOrder <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  rateAtDoseTime <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  durAtDoseTime <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  linCmtGillFtol <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>  linCmtGillK <span class="op">=</span> <span class="fl">20L</span>,</span>
 <span>  linCmtGillStep <span class="op">=</span> <span class="fl">4</span>,</span>
@@ -1769,10 +1771,13 @@ the continuous time (like <code>$DES</code>).  <code>addl</code> repeats, infusi
 lagged doses and doses added while solving do not end an interval;
 <code>mtime()</code> times do.  <code>f()</code>, <code>rate()</code> and <code>dur()</code> of an <code>addl</code> repeat
 read the time of the first data record at or after it (NONMEM's <code>F1</code>,
-<code>R1</code> and <code>D1</code>).  Covariate interpolation is still set by
+<code>R1</code> and <code>D1</code>).  A modeled rate (<code>rate()</code>, <code>RATE = -1</code>) is re-read on
+each interval from the record that ends it, like NONMEM's <code>R1</code> (see
+<code>rateAtDoseTime</code>).  Covariate interpolation is still set by
 <code>covsInterpolation</code>.  It also sets the default <code>tieOrder</code> to <code>"data"</code>
-and turns on <code>addlKeepsCov</code> unless it is given.  By default <code>FALSE</code>,
-when they read the actual time of the <code>addl</code> dose.</p></dd>
+and turns on <code>addlKeepsCov</code> and <code>durAtDoseTime</code> unless they are given.
+By default <code>FALSE</code>, when <code>f()</code>, <code>rate()</code> and <code>dur()</code> of an <code>addl</code> repeat
+read the actual time of the <code>addl</code> dose.</p></dd>
 
 
 <dt id="arg-tieorder">tieOrder<a class="anchor" aria-label="anchor" href="#arg-tieorder"></a></dt>
@@ -1785,6 +1790,28 @@ follow that row).  Doses added while solving follow the records at the
 same time.  An event table already translated by <code><a href="etTrans.html">etTrans()</a></code> keeps the
 order it was translated with.  By default (<code>NULL</code>) this is <code>"data"</code> when
 <code>nonmem = TRUE</code> and <code>"evid"</code> otherwise.</p></dd>
+
+
+<dt id="arg-rateatdosetime">rateAtDoseTime<a class="anchor" aria-label="anchor" href="#arg-rateatdosetime"></a></dt>
+<dd><p>Boolean that when <code>TRUE</code> keeps a modeled rate
+(<code>rate()</code>, <code>RATE = -1</code>) at the value read at its dose.  When <code>FALSE</code> (the
+default) the rate is re-read at each data record until the dose is
+delivered: the rate read at a record holds until the next one, or with
+<code>nonmem = TRUE</code> the rate read with a record applies to the interval it
+ends.  A re-read rate changes the rate and moves the end of the infusion
+so the dose amount is kept.  Steady-state doses, doses added while
+solving, event sensitivities and the adjoint always keep the rate of the
+dose.</p></dd>
+
+
+<dt id="arg-duratdosetime">durAtDoseTime<a class="anchor" aria-label="anchor" href="#arg-duratdosetime"></a></dt>
+<dd><p>Boolean that when <code>TRUE</code> keeps a modeled duration
+(<code>dur()</code>, <code>RATE = -2</code>) at the value read at its dose.  When <code>FALSE</code> it is
+re-read at each data record like a modeled rate (see <code>rateAtDoseTime</code>):
+the infusion then ends at its start plus the new duration, delivering
+what is left evenly, or stops delivering when that end has passed.  By
+default (<code>NULL</code>) this is <code>TRUE</code> with <code>nonmem = TRUE</code>, as NONMEM fixes
+<code>D1</code> at the dose, and <code>FALSE</code> otherwise.</p></dd>
 
 
 <dt id="arg-lincmtgillftol">linCmtGillFtol<a class="anchor" aria-label="anchor" href="#arg-lincmtgillftol"></a></dt>
