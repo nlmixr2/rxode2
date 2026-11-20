@@ -235,6 +235,11 @@ cmtSupportsOff_ <- function(cmt, mv) {
 #'   way NONMEM processes its records.  Records a row expands to (the reset
 #'   of an `evid=4` dose, `addl` repeats, infusion ends) follow that row.
 #'
+#' @param resetCancelsPending When `TRUE` (default), the `addl` repeats of a
+#'   record that a later reset (`evid` 3 or 4) is processed after are
+#'   dropped from that reset's time on, as NONMEM cancels prior doses at a
+#'   reset.
+#'
 #' @inheritParams rxSolve
 #'
 #' @return Object for solving in rxode2
@@ -242,8 +247,8 @@ cmtSupportsOff_ <- function(cmt, mv) {
 #' @keywords internal
 #'
 #' @export
-etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar = FALSE, keepDosingOnly = FALSE, combineDvid = NULL, keep = character(0), addlKeepsCov = FALSE, addlDropSs = TRUE, ssAtDoseTime = TRUE, iCov = NULL, tieOrder = "evid") {
-    .Call(`_rxode2_etTrans`, inData, obj, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid, keep, addlKeepsCov, addlDropSs, ssAtDoseTime, iCov, tieOrder)
+etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar = FALSE, keepDosingOnly = FALSE, combineDvid = NULL, keep = character(0), addlKeepsCov = FALSE, addlDropSs = TRUE, ssAtDoseTime = TRUE, iCov = NULL, tieOrder = "evid", resetCancelsPending = TRUE) {
+    .Call(`_rxode2_etTrans`, inData, obj, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid, keep, addlKeepsCov, addlDropSs, ssAtDoseTime, iCov, tieOrder, resetCancelsPending)
 }
 
 rxEtTransAsDataFrame_ <- function(inData1) {

@@ -116,15 +116,25 @@ List etTrans(List inData, const RObject &obj, bool addCmt,
              bool addlDropSs,
              bool ssAtDoseTime,
              Nullable<List> iCovIn = R_NilValue,
-             std::string tieOrder = "evid");
+             std::string tieOrder = "evid",
+             bool resetCancelsPending = true);
 // rxControl(tieOrder=); a control list built before that slot existed gets
 // the historical evid order
 std::string rxControlTieOrder(const List &control) {
   if (Rf_length(control) <= Rxc_tieOrder) return "evid";
   return as<std::string>(control[Rxc_tieOrder]);
 }
+// rxControl(resetCancelsPending=); an older control list gets NONMEM's
+// behavior, the default
+bool rxControlResetCancelsPending(const List &control) {
+  if (Rf_length(control) <= Rxc_resetCancelsPending) return true;
+  return asBool(control[Rxc_resetCancelsPending], "resetCancelsPending");
+}
 // 1 when tied records keep their translated order while solving
 int tieOrderData_global = 0;
+// 1 when a reset cancels the lagged doses of the records before it (the
+// model has an alag())
+extern "C" int resetCancelsPending_global = 1;
 
 RObject et_(List input, List et__);
 
@@ -3703,7 +3713,8 @@ static inline void rxSolve_ev1Update(const RObject &obj,
                                                               rxControl[Rxc_addlDropSs],
                                                               rxControl[Rxc_ssAtDoseTime],
                                                               R_NilValue,
-                                                              rxControlTieOrder(rxControl));
+                                                              rxControlTieOrder(rxControl),
+                     rxControlResetCancelsPending(rxControl));
                                          }
       rxSolveDat->labelID=true;
       CharacterVector tmpC = ev1a.attr("class");
@@ -3780,7 +3791,8 @@ static inline void rxSolve_ev1Update(const RObject &obj,
                        rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
                        rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
                        R_NilValue,
-                       rxControlTieOrder(rxControl));
+                       rxControlTieOrder(rxControl),
+                     rxControlResetCancelsPending(rxControl));
       }
     }
   }
@@ -3798,7 +3810,8 @@ static inline void rxSolve_ev1Update(const RObject &obj,
                            rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
                            rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
                            R_NilValue,
-                           rxControlTieOrder(rxControl));
+                           rxControlTieOrder(rxControl),
+                     rxControlResetCancelsPending(rxControl));
     }
     CharacterVector tmpCk = ev1k.attr("class");
     List tmpLk = tmpCk.attr(".rxode2.lst");
@@ -3875,7 +3888,8 @@ static inline void rxSolve_ev1Update(const RObject &obj,
                      rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
                      rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
                      rxControl[Rxc_iCov],
-                     rxControlTieOrder(rxControl));
+                     rxControlTieOrder(rxControl),
+                     rxControlResetCancelsPending(rxControl));
     } else if (Rf_isNull(rxControl[Rxc_iCov])) {
       // Same arguments as ev1k; reuse it rather than translating twice
       ev1 = ev1k;
@@ -3885,7 +3899,8 @@ static inline void rxSolve_ev1Update(const RObject &obj,
                      rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
                      rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
                      rxControl[Rxc_iCov],
-                     rxControlTieOrder(rxControl));
+                     rxControlTieOrder(rxControl),
+                     rxControlResetCancelsPending(rxControl));
     }
     rxSolveDat->labelID=true;
     CharacterVector tmpC = ev1.attr("class");
@@ -6882,6 +6897,11 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rx->durAtDoseTime = (Rf_length(rxControl) > Rxc_durAtDoseTime) ?
       (int)asBool(rxControl[Rxc_durAtDoseTime], "durAtDoseTime") : rx->nonmem;
     tieOrderData_global = (rxControlTieOrder(rxControl) == "data");
+    // only a lagged dose can still be ahead of a reset, so a model with no
+    // alag() skips the scan
+    resetCancelsPending_global = (int)rxControlResetCancelsPending(rxControl) &&
+      rxSolveDat->mv.size() > RxMv_alag &&
+      Rf_length(rxSolveDat->mv[RxMv_alag]) > 0;
     rx->sumType = asInt(rxControl[Rxc_sumType], "sumType");
     rx->prodType = asInt(rxControl[Rxc_prodType], "prodType");
     rx->maxwhile = asInt(rxControl[Rxc_maxwhile], "maxwhile");

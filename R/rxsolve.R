@@ -1040,8 +1040,17 @@
 #'   a row expands to, like the reset of an `evid=4` dose or `addl` repeats,
 #'   follow that row).  Doses added while solving follow the records at the
 #'   same time.  An event table already translated by [etTrans()] keeps the
-#'   order it was translated with.  By default (`NULL`) this is `"data"` when
-#'   `nonmem = TRUE` and `"evid"` otherwise.
+#'   order it was translated with.  By default (`NULL`) this is `"data"`
+#'   when `nonmem = TRUE` and `"evid"` otherwise.
+#'
+#' @param resetCancelsPending When `TRUE` (default), a reset (`evid` 3 or
+#'   4) cancels the doses of the records processed before it that have not
+#'   yet entered: the remaining `addl` repeats and lagged (`alag()`) doses,
+#'   as NONMEM does.  When `FALSE` they are given after the reset.  A dose
+#'   added while solving is cancelled only when it is lagged past the reset,
+#'   a reset added while solving cancels lagged doses but not `addl`
+#'   repeats, and an event table already translated by [etTrans()] keeps the
+#'   `addl` repeats it was translated with.
 #'
 #' @param rateAtDoseTime Boolean that when `TRUE` keeps a modeled rate
 #'   (`rate()`, `RATE = -1`) at the value read at its dose.  When `FALSE` (the
@@ -1678,6 +1687,7 @@ rxSolve <- function(
   tieOrder = NULL,
   rateAtDoseTime = FALSE,
   durAtDoseTime = NULL,
+  resetCancelsPending = TRUE,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -1997,6 +2007,7 @@ rxSolve <- function(
       durAtDoseTime <- nonmem
     }
     checkmate::assertLogical(durAtDoseTime, any.missing = FALSE, len = 1)
+    checkmate::assertLogical(resetCancelsPending, any.missing = FALSE, len = 1)
     if (nonmem && missing(addlKeepsCov)) {
       # NONMEM keeps a dose record's covariates with the dose
       addlKeepsCov <- TRUE
@@ -2496,7 +2507,8 @@ rxSolve <- function(
       nonmem = nonmem,
       tieOrder = tieOrder,
       rateAtDoseTime = rateAtDoseTime,
-      durAtDoseTime = durAtDoseTime
+      durAtDoseTime = durAtDoseTime,
+      resetCancelsPending = resetCancelsPending
     )
     class(.ret) <- "rxControl"
     return(.ret)

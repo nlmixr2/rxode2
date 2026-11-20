@@ -2,6 +2,12 @@
 
 ## New features
 
+- A reset (`evid` 3 or 4) now cancels the doses of the records before it that
+  have not yet entered -- the remaining `addl` repeats and lagged (`alag()`)
+  doses -- as NONMEM does, in both tie orders.  `rxSolve(resetCancelsPending =
+  FALSE)` (and `etTrans(resetCancelsPending = FALSE)`) gives them after the
+  reset as before (#1720).
+
 - `rxSymInvCholCreate()` builds block-diagonal omegas with
   `lotri::lotriMat()` instead of `Matrix::bdiag()`, removing the
   first-use `Matrix` namespace load (#1675); `Matrix` is no longer
