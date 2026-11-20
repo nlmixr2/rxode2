@@ -274,6 +274,7 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  tieOrder <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  rateAtDoseTime <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  durAtDoseTime <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  resetCancelsPending <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  linCmtGillFtol <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>  linCmtGillK <span class="op">=</span> <span class="fl">20L</span>,</span>
 <span>  linCmtGillStep <span class="op">=</span> <span class="fl">4</span>,</span>
@@ -1396,7 +1397,9 @@ least 5 and up to <code>max(maxSS, 10000)</code> convergence steps.</p></dd>
 
 <dt id="arg-maxss">maxSS<a class="anchor" aria-label="anchor" href="#arg-maxss"></a></dt>
 <dd><p>Maximum number of doses given before a steady-state dose (at
-least <code>minSS</code>)</p></dd>
+least <code>minSS</code>).  When <code>minSS &lt; maxSS</code> and <code>ssAtol</code>/<code>ssRtol</code> are still
+unmet after <code>maxSS</code> doses, the last iterate is used and <code>rxSolve()</code>
+warns once.</p></dd>
 
 
 <dt id="arg-infssstep">infSSstep<a class="anchor" aria-label="anchor" href="#arg-infssstep"></a></dt>
@@ -1788,8 +1791,8 @@ them in the order of the rows in the data, the way NONMEM does (records
 a row expands to, like the reset of an <code>evid=4</code> dose or <code>addl</code> repeats,
 follow that row).  Doses added while solving follow the records at the
 same time.  An event table already translated by <code><a href="etTrans.html">etTrans()</a></code> keeps the
-order it was translated with.  By default (<code>NULL</code>) this is <code>"data"</code> when
-<code>nonmem = TRUE</code> and <code>"evid"</code> otherwise.</p></dd>
+order it was translated with.  By default (<code>NULL</code>) this is <code>"data"</code>
+when <code>nonmem = TRUE</code> and <code>"evid"</code> otherwise.</p></dd>
 
 
 <dt id="arg-rateatdosetime">rateAtDoseTime<a class="anchor" aria-label="anchor" href="#arg-rateatdosetime"></a></dt>
@@ -1812,6 +1815,17 @@ the infusion then ends at its start plus the new duration, delivering
 what is left evenly, or stops delivering when that end has passed.  By
 default (<code>NULL</code>) this is <code>TRUE</code> with <code>nonmem = TRUE</code>, as NONMEM fixes
 <code>D1</code> at the dose, and <code>FALSE</code> otherwise.</p></dd>
+
+
+<dt id="arg-resetcancelspending">resetCancelsPending<a class="anchor" aria-label="anchor" href="#arg-resetcancelspending"></a></dt>
+<dd><p>When <code>TRUE</code> (default), a reset (<code>evid</code> 3 or
+4) cancels the doses of the records processed before it that have not
+yet entered: the remaining <code>addl</code> repeats and lagged (<code>alag()</code>) doses,
+as NONMEM does.  When <code>FALSE</code> they are given after the reset.  A dose
+added while solving is cancelled only when it is lagged past the reset,
+a reset added while solving cancels lagged doses but not <code>addl</code>
+repeats, and an event table already translated by <code><a href="etTrans.html">etTrans()</a></code> keeps the
+<code>addl</code> repeats it was translated with.</p></dd>
 
 
 <dt id="arg-lincmtgillftol">linCmtGillFtol<a class="anchor" aria-label="anchor" href="#arg-lincmtgillftol"></a></dt>

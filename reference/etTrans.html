@@ -140,7 +140,8 @@
 <span>  addlDropSs <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  ssAtDoseTime <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  iCov <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  tieOrder <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"evid"</span>, <span class="st">"data"</span><span class="op">)</span></span>
+<span>  tieOrder <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"evid"</span>, <span class="st">"data"</span><span class="op">)</span>,</span>
+<span>  resetCancelsPending <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">etTrans</span><span class="op">(</span></span>
@@ -156,7 +157,8 @@
 <span>  addlDropSs <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  ssAtDoseTime <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  iCov <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  tieOrder <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"evid"</span>, <span class="st">"data"</span><span class="op">)</span></span>
+<span>  tieOrder <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"evid"</span>, <span class="st">"data"</span><span class="op">)</span>,</span>
+<span>  resetCancelsPending <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -231,6 +233,13 @@ covariate per ID and should match the event table</p></dd>
 observations; <code>"data"</code> keeps the order of the rows in <code>inData</code>, the
 way NONMEM processes its records.  Records a row expands to (the reset
 of an <code>evid=4</code> dose, <code>addl</code> repeats, infusion ends) follow that row.</p></dd>
+
+
+<dt id="arg-resetcancelspending">resetCancelsPending<a class="anchor" aria-label="anchor" href="#arg-resetcancelspending"></a></dt>
+<dd><p>When <code>TRUE</code> (default), the <code>addl</code> repeats of a
+record that a later reset (<code>evid</code> 3 or 4) is processed after are
+dropped from that reset's time on, as NONMEM cancels prior doses at a
+reset.</p></dd>
 
 </dl></div>
     <div class="section level2">
