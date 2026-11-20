@@ -526,10 +526,11 @@ struct rx_solving_options_ind_s {
   int    *infPair;
   // Nonzero for a record that is not a data record (an addl repeat or a record
   // a dose expands to), recorded by etTrans() only for a model whose PK-type
-  // statements read `time`, or whose f()/alag()/rate()/dur() may; NULL
-  // otherwise.  _rxPkTime() skips these with rxControl(nonmem = TRUE)
-  // (rxode2#1429).  2 marks the dose of an addl repeat, for _rxDoseTime()
-  // (rxode2#1583).  Covers the first n_all_times_orig records.
+  // statements read `time`, whose f()/alag()/rate()/dur() may, or that has
+  // modeled rates or durations; NULL otherwise.  _rxPkTime() skips these with
+  // rxControl(nonmem = TRUE) (rxode2#1429).  2 marks the dose of an addl
+  // repeat, for _rxDoseTime() (rxode2#1583).  Covers the first
+  // n_all_times_orig records.
   int    *pkSkip;
   // delay() pre-history: this subject's evaluated initial state (after the
   // x(0) <- expr assignments, before any dose), captured by iniSubject() for a
@@ -672,6 +673,11 @@ typedef struct rx_solve_s {
   int addlKeepsCov;
   // hidden knots (evid 8) at lagged doses' record times, counted in nobs
   int nknot;
+  // rxControl(rateAtDoseTime=TRUE): a modeled rate keeps the value read at its
+  // dose; otherwise it is re-read at each data record (rxode2#1586)
+  int rateAtDoseTime;
+  // rxControl(durAtDoseTime=TRUE): the same for a modeled duration
+  int durAtDoseTime;
 } rx_solve;
 
 typedef void (*rxode2_assignFuns2_t)(rx_solve, rx_solving_options, t_F, t_LAG, t_RATE, t_DUR,t_calc_mtime, t_ME, t_IndF, t_getTime, t_locateTimeIndex, t_handle_evidL,t_getDur);

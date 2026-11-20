@@ -17,6 +17,7 @@
 #define RXTTE_EVENT 5     // event row / interval end holding an event (DV=1)
 #define RXTTE_USED 6      // event slot used by an interval-censored event
 #define RXTTE_DATA 7      // the endpoint's own record, kept for its covariates (evid 9, once solved)
+#define RXTTE_ORIGIN 8    // window start of an origin=TRUE endpoint (evid 9, once solved)
 
 static inline int rxTteRole(double dv, int *k) {
   if (dv <= -RXTTE_MARK && dv > -2.0 * RXTTE_MARK) {
