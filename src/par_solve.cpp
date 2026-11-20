@@ -1926,6 +1926,17 @@ static inline int recomputeMtimeIfNeeded(rx_solve *rx,
 // sortInd runs with curShift=0, so timeThread[raw] = all_times[raw] + lag.
 // At runtime after a reset curShift != 0; we must zero it temporarily so
 // getLag gives the same sort-key convention as sortInd.
+// The refreshed lagged time of dose record `raw`: a fixed-duration infusion's
+// stop keeps its start's lagged time plus the duration (getInfusionDurTime())
+static inline double refreshedLagTime(rx_solve *rx, rx_solving_options *op,
+                                      rx_solving_options_ind *ind, int raw, int cmt,
+                                      double rawTime, double *yp) {
+  int infBidx = (ind->whI == EVIDF_INF_DUR) ? getInfusionStartDose(raw, rx, op, ind) : -1;
+  if (infBidx == -1) return getLag(ind, ind->id, cmt, rawTime, yp);
+  int start = ind->idose[infBidx];
+  return ind->timeThread[start] + rawTime - getAllTimes(ind, start);
+}
+
 static inline int refreshLagTimesIfNeeded(rx_solve *rx,
                                           rx_solving_options_ind *ind,
                                           double *yp, int nextI,
@@ -1963,16 +1974,7 @@ static inline int refreshLagTimesIfNeeded(rx_solve *rx,
     // lag = f(state at dosing time). Updating before or after the raw time would use
     // a different state (e.g. pushing a pending dose forward on every observation).
     if (!isSameTime(rawTime, xout)) continue;
-    // a fixed-duration infusion's stop keeps its start's lagged time plus the
-    // duration (getInfusionDurTime())
-    int infBidx = (whI == EVIDF_INF_DUR) ? getInfusionStartDose(raw, rx, op, ind) : -1;
-    double newTime;
-    if (infBidx != -1) {
-      int start = ind->idose[infBidx];
-      newTime = time[start] + rawTime - getAllTimes(ind, start);
-    } else {
-      newTime = getLag(ind, ind->id, cmt, rawTime, yp);
-    }
+    double newTime = refreshedLagTime(rx, op, ind, raw, cmt, rawTime, yp);
     if (!ISNA(newTime) && newTime != time[raw]) {
       time[raw] = newTime;
       changed = 1;

@@ -1313,6 +1313,17 @@ static IntegerVector etTransInfPairAttr(const std::vector<std::pair<int,int>>& p
   return wrap(ret);
 }
 
+// The dose row of the k-th record a steady-state dose row i expands to: none
+// (-1) for the dose itself, row i for its companions
+static inline int etTransCompanionDoseRow(int k, int i) {
+  return k == 0 ? -1 : i;
+}
+
+// The dose row of a promoted infusion stop: its input row when it has one
+static inline int etTransPromotedDoseRow(int idxIn, int cur) {
+  return idxIn >= 0 ? idxIn : cur;
+}
+
 // (record, dose) 1-based output-row pairs: each record a dose row expands to
 // (a steady-state companion, an infusion's stop) and the record standing in
 // for that input row, which carries its covariates
@@ -3077,7 +3088,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           if (rep == 0) {
             idxInput.push_back(k == 0 ? (int)i : -1);
             recImplied.push_back(k == 0 ? 0 : 1);
-            doseRow.push_back(k == 0 ? -1 : (int)i);
+            doseRow.push_back(etTransCompanionDoseRow(k, (int)i));
           } else {
             idxInput.push_back(addlKeepsCov ? (int)i : -1);
             // 2: the dose of an addl repeat (rxode2#1583)
@@ -3274,7 +3285,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           pushRow(_rxEncodeEventCmtInf(evid[j], curCmt, stopFlag));
           recImplied2.back() = 1;
           // the promoted stop is a record its dose row expands to
-          if (idxInput[j] >= 0) doseRow2.back() = idxInput[j];
+          doseRow2.back() = etTransPromotedDoseRow(idxInput[j], doseRow2.back());
           hasModeledRateDur = true;
         } else {
           pushRow(_rxEncodeEventCmt(evid[j], curCmt));
