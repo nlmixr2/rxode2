@@ -1548,9 +1548,10 @@ compartment or saturable elimination) converges in far fewer cycles and
 closer to the true steady state.  When the accelerated iteration stalls,
 diverges or reaches \code{maxSS} (eg. dosing above the elimination capacity,
 with no steady state) it restarts plain iteration from where acceleration
-began, so the result is that of \code{"iterate"}.  A fixed dose count (\code{minSS = maxSS}) and a
-\code{delay()} model always iterate.  See \code{bench/ss_anderson_1762.R} in the
-package sources for the benchmark behind the default.}
+began, so the result is that of \code{"iterate"}.  A fixed dose count
+(\code{minSS = maxSS}) and a \code{delay()} model always iterate.  See
+\code{bench/ss_anderson_1762.R} in the package sources for the benchmark
+behind the default.}
 
 \item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that
 is acceptable before issuing a warning/error about the gradient estimates.}
