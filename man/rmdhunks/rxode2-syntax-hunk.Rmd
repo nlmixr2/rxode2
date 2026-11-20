@@ -504,7 +504,7 @@ ev ~ tte(haz, eventType = "exact", maxEventNumber = Inf,
 ```
 
 The cumulative hazard is added to the model as a hidden state
-(`rx.tteH.ev`), and event times solve `H(t) - H(t_last) = -log(u)`
+(`rx_tteH_ev`), and event times solve `H(t) - H(t_last) = -log(u)`
 with a root finder. Only the hazard is required; the options are:
 
 | Option               | Default                         | Meaning                                         |
@@ -514,6 +514,7 @@ with a root finder. Only the hazard is required; the options are:
 | `rightCensoringTime` | last record of the endpoint     | end of the observation window                   |
 | `intervalLength`     | tenth of the observation window | interval length for `"intervalCensored"`        |
 | `dropout`            | `FALSE`                         | the event ends all observations (needs `maxEventNumber = 1`) |
+| `origin`             | `FALSE`                         | observe from the subject's start, with no start row |
 
 Simulated rows follow the Monolix/NONMEM layout: `sim = 0` at the start
 of the window, `sim = 1` at each event (or at the end of each interval
@@ -525,8 +526,16 @@ solving `method` except the adjoint sensitivity methods simulates
 `tte()` endpoints, since the root finding only re-solves intervals with
 the chosen method; a hazard using `delay()` is solved with the dense
 `delay()` solvers.  A steady-state dose holds the cumulative hazard
-fixed, so a `delay()` of the cumulative hazard (`rx.tteH.ev`) cannot be
+fixed, so a `delay()` of the cumulative hazard (`rx_tteH_ev`) cannot be
 combined with steady-state doses.
+
+In estimation each record of the endpoint scores the events and survival
+since the endpoint's previous record: `log(h) - dH` for an event,
+`log(1 - exp(-dH))` for an interval holding one and `-dH` otherwise, with
+`dH` the change of the cumulative hazard.  The first record of a subject
+is the start of observation and scores nothing (`origin = TRUE` counts
+from the subject's start instead), and `tteTime()`/`tteCount()` come from
+the endpoint's `DV = 1` records.
 
 ### General table of supported residual distributions
 

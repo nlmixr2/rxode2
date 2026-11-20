@@ -34,7 +34,7 @@ rxTest({
         rtol = 1e-12
       ))
       .h <- .g$H[match(720 + .ev$time, .g$time)] - .g$H[.g$time == 720]
-      expect_equal(.ev$rx.tteH.ev, .h, tolerance = 1e-4, info = .m)
+      expect_equal(.ev$rx_tteH_ev, .h, tolerance = 1e-4, info = .m)
       expect_equal(.ev$central, .g$central[match(720 + .ev$time, .g$time)], tolerance = 1e-4, info = .m)
     }
   })
@@ -59,7 +59,7 @@ rxTest({
         atol = 1e-12,
         rtol = 1e-12
       ))
-      expect_equal(.ev$rx.tteH.ev, .g$H[match(.ev$time, .g$time)], tolerance = 1e-4, info = .m)
+      expect_equal(.ev$rx_tteH_ev, .g$H[match(.ev$time, .g$time)], tolerance = 1e-4, info = .m)
       expect_equal(.ev$central, .g$central[match(.ev$time, .g$time)], tolerance = 1e-4, info = .m)
     }
   })
