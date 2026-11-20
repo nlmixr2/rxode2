@@ -473,6 +473,16 @@ static void rxSolveErrPush(int id, int err) {
 
 rx_solving_options op_global;
 extern int nPastEvid_global;
+extern int ssNotConv_global;
+// flag an iterated steady state that used maxSS doses without converging;
+// minSS = maxSS asks for that many doses, and a failed solve (rc +/-2019) is
+// reported on its own, so neither is flagged
+static inline void ssNotConverged(int minSS, int maxSS, int rc) {
+  if (minSS < maxSS && rc != 2019 && rc != -2019) {
+#pragma omp atomic write
+    ssNotConv_global = 1;
+  }
+}
 extern int tieOrderData_global;
 #include "rxGlobals.h"
 extern rx_globals _globals;
@@ -3191,6 +3201,8 @@ extern "C" void handleSSbolus(int *neq,
   handleSSbolusIterate(neq, BadDose, InfusionRate, dose, yp, xout, id, i, nx,
                        istate, op, ind, u_inis, ctx, xout2, xp2, curIi,
                        canBreak, adjustEvidBolusLag, minSS, maxSS);
+  // canBreak is only unset when maxSS doses were given without converging
+  if (!*canBreak) ssNotConverged(op->minSS, op->maxSS, ind->rc[0]);
   ind->ssTime = NA_REAL;
 }
 
@@ -3310,30 +3322,31 @@ static inline int solveSSinfLinear(int *neq,
   return yp[ind->cmt] > 0;
 }
 
-// iterate steady-state infusions until converged between minSS and maxSS doses
-static inline void solveSSinfIterate(int *neq,
-                                     int *BadDose,
-                                     double *InfusionRate,
-                                     double *dose,
-                                     double *yp,
-                                     double *xout, int id,
-                                     int *i, int nx,
-                                     int *istate,
-                                     rx_solving_options *op,
-                                     rx_solving_options_ind *ind,
-                                     t_update_inis u_inis,
-                                     void *ctx,
-                                     double *xout2,
-                                     double *xp2,
-                                     int *infBixds,
-                                     int *bi,
-                                     int *infEixds,
-                                     int *ei,
-                                     double *curIi,
-                                     double *dur,
-                                     double *dur2,
-                                     int *canBreak,
-                                     double ssStart, int minSS, int maxSS) {
+// iterate steady-state infusions until converged between minSS and maxSS
+// doses; returns 1 when maxSS doses were given without converging
+static inline int solveSSinfIterate(int *neq,
+                                    int *BadDose,
+                                    double *InfusionRate,
+                                    double *dose,
+                                    double *yp,
+                                    double *xout, int id,
+                                    int *i, int nx,
+                                    int *istate,
+                                    rx_solving_options *op,
+                                    rx_solving_options_ind *ind,
+                                    t_update_inis u_inis,
+                                    void *ctx,
+                                    double *xout2,
+                                    double *xp2,
+                                    int *infBixds,
+                                    int *bi,
+                                    int *infEixds,
+                                    int *ei,
+                                    double *curIi,
+                                    double *dur,
+                                    double *dur2,
+                                    int *canBreak,
+                                    double ssStart, int minSS, int maxSS) {
   for (int k = neq[0]; k--;) {
     ind->solveLast[k] = ind->solveLast2[k] = yp[k];
   }
@@ -3365,7 +3378,7 @@ static inline void solveSSinfIterate(int *neq,
     if (j + 1 < minSS){
       if (ind->rc[0]== -2019){
         badSolveExit(*i);
-        break;
+        return 0;
       }
       for (int k = neq[0]; k--;) {
         ind->solveLast[k] = yp[k];
@@ -3397,7 +3410,7 @@ static inline void solveSSinfIterate(int *neq,
     if (j + 1 < minSS){
       if (ind->rc[0]== -2019){
         badSolveExit(*i);
-        break;
+        return 0;
       }
       for (int k = neq[0]; k--;){
         ind->solveLast2[k] = yp[k];
@@ -3413,7 +3426,7 @@ static inline void solveSSinfIterate(int *neq,
           }
           ind->rc[0] = 2019;
         }
-        break;
+        return 0;
       }
       for (int k = neq[0]; k--;){
         if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast2[k])){
@@ -3422,11 +3435,12 @@ static inline void solveSSinfIterate(int *neq,
         ind->solveLast2[k] = yp[k];
       }
       if (*canBreak){
-        break;
+        return 0;
       }
     }
     *xp2 = *xout2;
   }
+  return 1;
 }
 
 extern "C" void solveSSinf(int *neq,
@@ -3483,9 +3497,12 @@ extern "C" void solveSSinf(int *neq,
     std::copy(y0.begin(), y0.end(), yp);
     *xp2 = xp20; *xout2 = xout20;
   }
-  solveSSinfIterate(neq, BadDose, InfusionRate, dose, yp, xout, id, i, nx, istate,
-                    op, ind, u_inis, ctx, xout2, xp2, infBixds, bi, infEixds,
-                    ei, curIi, dur, dur2, canBreak, ssStart, minSS, maxSS);
+  if (solveSSinfIterate(neq, BadDose, InfusionRate, dose, yp, xout, id, i, nx,
+                        istate, op, ind, u_inis, ctx, xout2, xp2, infBixds, bi,
+                        infEixds, ei, curIi, dur, dur2, canBreak, ssStart,
+                        minSS, maxSS)) {
+    ssNotConverged(op->minSS, op->maxSS, ind->rc[0]);
+  }
   ind->ssTime = NA_REAL;
 }
 
@@ -3547,7 +3564,7 @@ extern "C" void solveSSinfLargeDur(int *neq,
   for (int k = neq[0]; k--;) {
     ind->solveLast[k] = ind->solveLast2[k] = yp[k];
   }
-  int nDup = 0;
+  int nDup = 0, ranOut = 1;
   for (int j = 0; j < maxSS; j++) {
     // Turn on Infusion, solve (0-dur) on the 0..ii cycle clock (#1585)
     *canBreak =1;
@@ -3574,6 +3591,7 @@ extern "C" void solveSSinfLargeDur(int *neq,
                 *xout + *dur, neq[1], ind);
     if (j + 1 < minSS && ind->rc[0]== -2019){
       badSolveExit(*i);
+      ranOut = 0;
       break;
     } else {
       if (ind->rc[0]== -2019){
@@ -3600,6 +3618,7 @@ extern "C" void solveSSinfLargeDur(int *neq,
                   *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
     if (j + 1 < minSS && ind->rc[0]== -2019){
       badSolveExit(*i);
+      ranOut = 0;
       break;
     } else {
       if (ind->rc[0]== -2019){
@@ -3611,6 +3630,7 @@ extern "C" void solveSSinfLargeDur(int *neq,
           }
           ind->rc[0] = 2019;
         }
+        ranOut = 0;
         break;
       }
       for (int k = neq[0]; k--;){
@@ -3624,11 +3644,15 @@ extern "C" void solveSSinfLargeDur(int *neq,
       }
       // 7 converged periods, or every one when minSS is smaller
       if (j + 1 >= minSS && (nDup >= 7 || nDup == j + 1)) {
+        ranOut = 0;
         break;
       }
     }
     *xp2 = *xout2;
   }
+  // the first period is compared at another point of the cycle, so a short
+  // maxSS can run out with converged periods; flag only an unconverged last one
+  if (ranOut && !*canBreak) ssNotConverged(op->minSS, op->maxSS, ind->rc[0]);
   ind->ssTime = NA_REAL;
 }
 
@@ -3699,7 +3723,7 @@ extern "C" void handleSSinf8(int *neq,
   // These are convergence steps, not doses, so a small dose count cannot
   // stop them early
   int minSS = max2(op->minSS, 5);
-  int maxSS = max2(op->maxSS, 10000);
+  int maxSS = max2(op->maxSS, 10000), ranOut = 1;
   for (int j = 0; j < maxSS; j++) {
     if (j == 0) *xout2 = *xp2+1.; // the first level drawn one hour after infusion
     else *xout2 = *xp2+infStep;
@@ -3728,6 +3752,7 @@ extern "C" void handleSSinf8(int *neq,
       }
       if (*canBreak){
         ind->InfusionRate[ind->cmt] = 0.0;
+        ranOut = 0;
         break;
       } else {
         // Assumes that this is at least one half life.
@@ -3738,6 +3763,8 @@ extern "C" void handleSSinf8(int *neq,
     *xp2=*xout;
     *istate=1;
   }
+  // the step count actually run, which the user's minSS/maxSS do not fix
+  if (ranOut) ssNotConverged(minSS, maxSS, ind->rc[0]);
   ind->ssTime = NA_REAL;
 }
 

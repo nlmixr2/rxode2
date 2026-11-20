@@ -587,6 +587,7 @@ table:\tabular{lll}{
    sum(…) \tab sum of terms; This uses PreciseSums so the product will not have as much floating point errors (though it will take longer) \tab  \cr
    max(…) \tab maximum of a group of numbers \tab  \cr
    min(…) \tab Min of a group of numbers \tab  \cr
+   clamp(x, lo, hi) \tab Bound x into [lo, hi]: lo when x <= lo, hi when x >= hi, otherwise x; the same as min(max(x, lo), hi), and differentiable in the same way \tab  \cr
    lag(parameter, number=1) \tab Get the lag of an input parameter; You can specify a number of lagged observations \tab  \cr
    lead(parameter, number=2) \tab Get the lead of an input parameter; You can specify a number of lead observation \tab  \cr
    diff(par, number=1) \tab Get the difference between the current parameter and the last parameter; Can change the parameter number \tab  \cr
@@ -620,6 +621,12 @@ table:\tabular{lll}{
 
 Note that \verb{lag(cmt) =} is equivalent to \verb{alag(cmt) =} and not the same
 as \verb{= lag(wt)}
+
+\code{clamp(x, lo, hi)} bounds a value into an interval, for example a
+fraction kept inside \verb{(0, 1)} with \code{fr <- clamp(f0, 0.01, 0.99)}. It is
+\code{min(max(x, lo), hi)}, so its derivative is 1 inside the interval and 0
+outside. It takes exactly three arguments, and literal bounds must have
+\code{lo <= hi}.
 \subsection{Inverse CDFs}{
 
 A group of these deserves a word, because they exist for one purpose:
