@@ -174,6 +174,9 @@ SEXP _rxode2_studentTInv(SEXP, SEXP);
 SEXP _rxode2_exprelD(SEXP, SEXP);
 SEXP _rxode2_etaBoxCox(SEXP, SEXP);
 SEXP _rxode2_etaJohnDraper(SEXP, SEXP);
+SEXP _rxode2_etaYeoJohnson(SEXP, SEXP);
+SEXP _rxode2_absPowLog(SEXP, SEXP, SEXP);
+SEXP _rxode2_etaHeavyTail(SEXP, SEXP);
 
 double phiU(double);
 double gammapDera(double, double);
@@ -190,6 +193,9 @@ double studentTInv(double, double);
 double exprelD(double, double);
 double etaBoxCox(double, double);
 double etaJohnDraper(double, double);
+double etaYeoJohnson(double, double);
+double absPowLog(double, double, double);
+double etaHeavyTail(double, double);
 
 double expit(double, double, double);
 double logit(double, double, double);
@@ -1197,6 +1203,9 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_exprelD", (DL_FUNC) _rxode2_exprelD, 2},
     {"_rxode2_etaBoxCox", (DL_FUNC) _rxode2_etaBoxCox, 2},
     {"_rxode2_etaJohnDraper", (DL_FUNC) _rxode2_etaJohnDraper, 2},
+    {"_rxode2_etaYeoJohnson", (DL_FUNC) _rxode2_etaYeoJohnson, 2},
+    {"_rxode2_absPowLog", (DL_FUNC) _rxode2_absPowLog, 3},
+    {"_rxode2_etaHeavyTail", (DL_FUNC) _rxode2_etaHeavyTail, 2},
     {"_linCmtParse", (DL_FUNC) _linCmtParse, 3},
     {"_rxode2_linCmtGen", (DL_FUNC) _rxode2_linCmtGen, 4},
     {"_rxode2_rpp_", (DL_FUNC) _rxode2_rpp_, 7},
@@ -1336,6 +1345,9 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "exprelD", (DL_FUNC) &exprelD);
   R_RegisterCCallable("rxode2", "etaBoxCox", (DL_FUNC) &etaBoxCox);
   R_RegisterCCallable("rxode2", "etaJohnDraper", (DL_FUNC) &etaJohnDraper);
+  R_RegisterCCallable("rxode2", "etaYeoJohnson", (DL_FUNC) &etaYeoJohnson);
+  R_RegisterCCallable("rxode2", "absPowLog", (DL_FUNC) &absPowLog);
+  R_RegisterCCallable("rxode2", "etaHeavyTail", (DL_FUNC) &etaHeavyTail);
   R_RegisterCCallable("rxode2", "_setThreadInd", (DL_FUNC) &_setThreadInd);
   R_RegisterCCallable("rxode2", "_rxPushDose",   (DL_FUNC) &_rxPushDose);
   R_RegisterCCallable("rxode2", "_rxTte",        (DL_FUNC) &_rxTte);

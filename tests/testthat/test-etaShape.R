@@ -10,7 +10,8 @@ rxTest({
   .cEnv <- list2env(list(
     Rx_pow_di = function(a, b) a^b,
     Rx_pow = function(a, b) a^b,
-    dabs = function(x) sign(x)
+    dabs = function(x) sign(x),
+    fsign = function(x, y) ifelse(y >= 0, abs(x), -abs(x))
   ))
 
   test_that("exprelD() matches its integral definition", {
@@ -53,12 +54,50 @@ rxTest({
     }
   })
 
+  test_that("etaYeoJohnson() is the identity at lambda = 1 and exact at 0 and 2", {
+    .eta <- c(-3, -1, -1e-4, 0, 1e-4, 0.7, 2.5)
+    .ref <- function(x, l) {
+      .p <- pmax(x, 0)
+      .n <- pmax(-x, 0)
+      ifelse(
+        x >= 0,
+        if (l == 0) log1p(.p) else ((.p + 1)^l - 1) / l,
+        if (l == 2) -log1p(.n) else -((1 + .n)^(2 - l) - 1) / (2 - l)
+      )
+    }
+    expect_equal(etaYeoJohnson(.eta, 1), .eta, tolerance = 1e-15)
+    for (.l in c(-1, 0, 0.5, 1.5, 2, 3)) {
+      expect_equal(etaYeoJohnson(.eta, .l), .ref(.eta, .l), tolerance = 1e-12, info = .l)
+    }
+    .x <- seq(-4, 4, length.out = 101)
+    expect_true(all(diff(etaYeoJohnson(.x, 0.4)) > 0))
+  })
+
+  test_that("etaHeavyTail() is eta*abs(eta)^theta, and absPowLog() has its limit at 0", {
+    .eta <- c(-3, -1, -1e-4, 0, 1e-4, 0.7, 2.5)
+    expect_equal(etaHeavyTail(.eta, 0), .eta)
+    for (.t in c(-0.5, 0.3, 1.2)) {
+      expect_equal(etaHeavyTail(.eta, .t), ifelse(.eta == 0, 0, .eta * abs(.eta)^.t), tolerance = 1e-14)
+    }
+    expect_equal(etaHeavyTail(0, -0.5), 0)
+    expect_equal(absPowLog(0, 0.5, 2), 0)
+    expect_equal(absPowLog(0, 0, 0), 1)
+    expect_equal(absPowLog(0, 0, 1), -Inf)
+    expect_equal(absPowLog(-2, 1.5, 2), 2^1.5 * log(2)^2)
+  })
+
   test_that("every derivative rule is known to symengine", {
     for (.e in c(
       "Derivative(etaBoxCox(eta, lambda), eta)",
       "Derivative(etaBoxCox(eta, lambda), lambda)",
       "Derivative(etaJohnDraper(eta, lambda), eta)",
       "Derivative(etaJohnDraper(eta, lambda), lambda)",
+      "Derivative(etaYeoJohnson(eta, lambda), eta)",
+      "Derivative(etaYeoJohnson(eta, lambda), lambda)",
+      "Derivative(etaHeavyTail(eta, theta), eta)",
+      "Derivative(etaHeavyTail(eta, theta), theta)",
+      "Derivative(absPowLog(x, p, 1), x)",
+      "Derivative(absPowLog(x, p, 1), p)",
       "Derivative(exprelD(z, 1), z)"
     )) {
       expect_true(nzchar(do.call(rxFromSE, list(.e, unknownDerivatives = "error"))), info = .e)
@@ -96,8 +135,23 @@ rxTest({
       for (.l in c(-1.3, 0, 1e-10, 0.6, 1, 2.2)) {
         .chk("etaBoxCox", .eta, .l)
         .chk("etaJohnDraper", .eta, .l)
+        .chk("etaYeoJohnson", .eta, .l)
       }
     }
+    ## heavy-tailed: the eta derivative is singular at eta = 0 unless theta = 0
+    for (.eta in c(-1.7, -0.2, 0.4, 2.1)) {
+      for (.t in c(-0.6, 0, 1e-10, 0.5, 1.4)) {
+        .chk("etaHeavyTail", .eta, .t)
+      }
+    }
+    .de <- .seD("y=etaHeavyTail(eta, lambda)", "eta")
+    expect_equal(eval(str2lang(.de), list(eta = 0, lambda = 0), .cEnv), 1)
+    expect_equal(eval(str2lang(.de), list(eta = 0, lambda = 0.5), .cEnv), 0)
+    .dl <- .seD("y=etaHeavyTail(eta, lambda)", "lambda")
+    expect_equal(eval(str2lang(.dl), list(eta = 0, lambda = 0.5), .cEnv), 0)
+    ## Yeo-Johnson's eta derivative is 1 at eta = 0 for any lambda
+    .de <- .seD("y=etaYeoJohnson(eta, lambda)", "eta")
+    expect_equal(eval(str2lang(.de), list(eta = 0, lambda = 2.4), .cEnv), 1)
     ## the eta derivative of John-Draper is not flat at eta = 0
     .de <- .seD("y=etaJohnDraper(eta, lambda)", "eta")
     expect_equal(eval(str2lang(.de), list(eta = 0, lambda = 0.3), .cEnv), 1)
@@ -109,13 +163,19 @@ rxTest({
         tcl <- log(4)
         lcl <- 0.3
         lv <- 0.8
+        lka <- 0.6
+        tq <- 0.3
         eta.cl ~ 0.1
         eta.v ~ 0.1
+        eta.ka ~ 0.1
+        eta.q ~ 0.1
       })
       model({
         cl <- exp(tcl + etaBoxCox(lambda = lcl, eta = eta.cl))
         v <- 10 * exp(etaJohnDraper(eta.v, lambda = lv))
-        d / dt(c) <- -cl / v * c
+        ka <- exp(etaYeoJohnson(lambda = lka, eta.ka))
+        q <- exp(etaHeavyTail(theta = tq, eta = eta.q))
+        d / dt(c) <- -cl / v * c + 0 * ka * q
       })
     }
     .u <- expect_no_warning(.f())
@@ -123,10 +183,14 @@ rxTest({
     expect_true(any(grepl("etaBoxCox(eta.cl, lcl)", .txt, fixed = TRUE)))
     expect_true(any(grepl("etaJohnDraper(eta.v, lv)", .txt, fixed = TRUE)))
     ## the shaped etas are non-mu referenced, without a parsing warning
-    expect_setequal(.u$nonMuEtas, c("eta.cl", "eta.v"))
+    expect_true(any(grepl("etaYeoJohnson(eta.ka, lka)", .txt, fixed = TRUE)))
+    expect_true(any(grepl("etaHeavyTail(eta.q, tq)", .txt, fixed = TRUE)))
+    expect_setequal(.u$nonMuEtas, c("eta.cl", "eta.v", "eta.ka", "eta.q"))
 
-    .s <- rxSolve(.u, et(amt = 100) |> et(0:2), params = data.frame(eta.cl = 0.4, eta.v = -0.5))
+    .s <- rxSolve(.u, et(amt = 100) |> et(0:2), params = data.frame(eta.cl = 0.4, eta.v = -0.5, eta.ka = -0.3, eta.q = 0.6))
     expect_equal(.s$cl[1], 4 * exp(etaBoxCox(0.4, 0.3)))
     expect_equal(.s$v[1], 10 * exp(etaJohnDraper(-0.5, 0.8)))
+    expect_equal(.s$ka[1], exp(etaYeoJohnson(-0.3, 0.6)))
+    expect_equal(.s$q[1], exp(etaHeavyTail(0.6, 0.3)))
   })
 })

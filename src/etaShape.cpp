@@ -52,3 +52,32 @@ extern "C" double etaJohnDraper(double eta, double lambda) {
   double r = etaBoxCox(a, lambda);
   return eta < 0 ? -r : r;
 }
+
+// Yeo-Johnson transform of eta: ((eta+1)^lambda - 1)/lambda for eta >= 0 and
+// -((1-eta)^(2-lambda) - 1)/(2-lambda) below; the identity at lambda = 1
+extern "C" double etaYeoJohnson(double eta, double lambda) {
+  if (eta >= 0) return etaBoxCox(std::log1p(eta), lambda);
+  return -etaBoxCox(std::log1p(-eta), 2.0 - lambda);
+}
+
+// |x|^p * log(|x|)^k, taking its limit at x = 0
+extern "C" double absPowLog(double x, double p, double k) {
+  if (ISNAN(x) || ISNAN(p) || ISNAN(k)) return NA_REAL;
+  double ax = std::fabs(x);
+  if (ax == 0.0) {
+    if (p > 0) return 0.0;
+    if (p == 0 && k == 0) return 1.0;
+    // |log|^k grows without bound; log(0) is negative
+    return (std::fmod(k, 2.0) != 0.0) ? R_NegInf : R_PosInf;
+  }
+  double r = std::pow(ax, p);
+  if (k != 0) r *= std::pow(std::log(ax), k);
+  return r;
+}
+
+// Heavy-tailed transform (Petersson et al. 2009, Eq. 3): eta*|eta|^theta,
+// the identity at theta = 0, monotone for theta > -1
+extern "C" double etaHeavyTail(double eta, double theta) {
+  if (eta == 0.0) return 0.0;
+  return eta * std::pow(std::fabs(eta), theta);
+}

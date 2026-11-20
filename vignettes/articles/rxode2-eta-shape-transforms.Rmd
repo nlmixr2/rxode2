@@ -33,6 +33,8 @@ be tested with a likelihood ratio test).
 |----|----|----|----|
 | `etaBoxCox(eta, lambda)` | `(exp(eta)^lambda - 1)/lambda` | `lambda = 0` | skewness |
 | `etaJohnDraper(eta, lambda)` | `sign(eta)*((abs(eta) + 1)^lambda - 1)/lambda` | `lambda = 1` | tails |
+| `etaYeoJohnson(eta, lambda)` | `((eta + 1)^lambda - 1)/lambda` for `eta >= 0`, `-((1 - eta)^(2 - lambda) - 1)/(2 - lambda)` below | `lambda = 1` | skewness |
+| `etaHeavyTail(eta, theta)` | `eta*abs(eta)^theta` | `theta = 0` | tails (bimodal for `theta < 0`) |
 
 ## The transforms in R
 
@@ -67,10 +69,31 @@ legend("topleft", c("normal", "lambda = 2", "lambda = 0.3"),
 par(oldPar)
 ```
 
+```{r eta-shapes2, fig.width = 7, fig.height = 3.5}
+oldPar <- par(mfrow = c(1, 2))
+plot(density(eta), main = "etaYeoJohnson()", xlim = c(-2.5, 2.5), ylim = c(0, 1.7))
+lines(density(etaYeoJohnson(eta, 1.6)), col = "red")
+lines(density(etaYeoJohnson(eta, 0.4)), col = "blue")
+legend("topleft", c("normal", "lambda = 1.6", "lambda = 0.4"),
+  col = c("black", "red", "blue"), lty = 1, bty = "n", cex = 0.8
+)
+plot(density(eta), main = "etaHeavyTail()", xlim = c(-2.5, 2.5), ylim = c(0, 1.7))
+lines(density(etaHeavyTail(eta, 0.6)), col = "red")
+lines(density(etaHeavyTail(eta, -0.4)), col = "blue")
+legend("topleft", c("normal", "theta = 0.6", "theta = -0.4"),
+  col = c("black", "red", "blue"), lty = 1, bty = "n", cex = 0.8
+)
+par(oldPar)
+```
+
 Box-Cox skews: `lambda > 0` gives a long right tail, `lambda < 0` a long
-left one.  John-Draper is symmetric: `lambda > 1` widens the tails and
-`lambda < 1` shortens them.  A useful starting range is `lambda` in about
-`(-3, 3)`.
+left one.  Yeo-Johnson also skews, the other way round about its identity
+(`lambda > 1` a long right tail).  John-Draper and heavy-tailed are symmetric:
+`lambda > 1` (John-Draper) or `theta > 0` (heavy-tailed) widens the tails.
+`lambda < 1` shortens John-Draper's tails, while `theta < 0` makes the
+heavy-tailed transform bimodal; bound `theta` below by 0 to allow only heavier
+tails.  A useful starting range is `lambda` in about `(-3, 3)`; `theta` must
+stay above -1 for the transform to keep rank order.
 
 ## Using them in a model
 
@@ -135,8 +158,11 @@ etaBoxCox(0.5, c(-1e-8, 0, 1e-8))
 exprelD(0, 0:3)
 ```
 
-The derivative of `etaJohnDraper()` with respect to `eta` is written without
-`sign()`, so it is 1 at `eta = 0` rather than 0.
+The derivatives of `etaJohnDraper()` and `etaYeoJohnson()` with respect to
+`eta` are written without `sign()`, so they are 1 at `eta = 0` rather than 0.
+`etaHeavyTail()`'s derivatives use `absPowLog(x, p, k)`, which is
+`abs(x)^p*log(abs(x))^k` with its limit at `x = 0`; its slope at `eta = 0` is
+0 for `theta > 0`, so a random effect near 0 moves the parameter little.
 
 ## Reference
 

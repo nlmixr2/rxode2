@@ -4,6 +4,9 @@
 \alias{etaBoxCox}
 \alias{etaJohnDraper}
 \alias{exprelD}
+\alias{etaYeoJohnson}
+\alias{etaHeavyTail}
+\alias{absPowLog}
 \title{Shape transforms for random effects}
 \usage{
 etaBoxCox(eta, lambda)
@@ -11,6 +14,12 @@ etaBoxCox(eta, lambda)
 etaJohnDraper(eta, lambda)
 
 exprelD(z, n)
+
+etaYeoJohnson(eta, lambda)
+
+etaHeavyTail(eta, theta)
+
+absPowLog(x, p, k)
 }
 \arguments{
 \item{eta}{random effect}
@@ -20,6 +29,14 @@ exprelD(z, n)
 \item{z}{value of \code{z}}
 
 \item{n}{derivative order (non-negative integer)}
+
+\item{theta}{heavy-tail shape parameter}
+
+\item{x}{value of \code{x}}
+
+\item{p}{power}
+
+\item{k}{power of the log}
 }
 \value{
 numeric vector, recycled to the longest argument
@@ -33,15 +50,25 @@ identity, so the shape can be tested with a likelihood ratio test.
 \code{lambda = 0} and skews the distribution (roughly \code{lambda} in \verb{(-3, 3)}).
 \code{etaJohnDraper()} is the modulus transform
 \code{sign(eta)*((abs(eta) + 1)^lambda - 1)/lambda}, the identity at
-\code{lambda = 1}, which changes the tails symmetrically.  \code{exprelD(z, n)} is the
-n-th derivative of \code{(exp(z) - 1)/z}; it keeps every derivative exact through
-a shape of 0.  In a model, named arguments are matched and expanded into the
+\code{lambda = 1}, which changes the tails symmetrically.  \code{etaYeoJohnson()} is
+\code{((eta + 1)^lambda - 1)/lambda} for \code{eta >= 0} and
+\code{-((1 - eta)^(2 - lambda) - 1)/(2 - lambda)} below, the identity at
+\code{lambda = 1}, which skews.  \code{etaHeavyTail()} is \code{eta*abs(eta)^theta}
+(Petersson's heavy-tailed transform), the identity at \code{theta = 0}, with
+heavier tails for \code{theta > 0} and a symmetric bimodal shape for \code{theta} in
+\verb{(-1, 0)}.
+\code{exprelD(z, n)} is the n-th derivative of \code{(exp(z) - 1)/z}; it keeps every
+derivative exact through a shape of 0.  \code{absPowLog(x, p, k)} is
+\code{abs(x)^p*log(abs(x))^k} with its limit at \code{x = 0}, the derivative helper of
+\code{etaHeavyTail()}.  In a model, named arguments are matched and expanded into the
 positional call, eg \code{etaBoxCox(lambda = lcl, eta = eta.cl)}.
 }
 \examples{
 etaBoxCox(c(-1, 0, 1), 0.5)
 etaBoxCox(c(-1, 0, 1), 0) ## identity
 etaJohnDraper(c(-1, 0, 1), 1) ## identity
+etaYeoJohnson(c(-1, 0, 1), 1) ## identity
+etaHeavyTail(c(-1, 0, 1), 0.5)
 exprelD(0, 0:3)
 }
 \references{

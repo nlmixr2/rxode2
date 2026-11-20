@@ -565,6 +565,9 @@ table:\tabular{lll}{
    studentTInv(p, nu) \tab Student t quantile, ie qt(p, nu); exactly the inverse of studentTCdf \tab  \cr
    etaBoxCox(eta, lambda) \tab Box-Cox shape transform of a random effect, (exp(eta)^lambda-1)/lambda; eta at lambda=0, smooth through it \tab  \cr
    etaJohnDraper(eta, lambda) \tab John-Draper (modulus) shape transform of a random effect, sign(eta)*((abs(eta)+1)^lambda-1)/lambda; eta at lambda=1 \tab  \cr
+   etaYeoJohnson(eta, lambda) \tab Yeo-Johnson shape transform of a random effect; ((eta+1)^lambda-1)/lambda for eta >= 0, -((1-eta)^(2-lambda)-1)/(2-lambda) below; eta at lambda=1 \tab  \cr
+   etaHeavyTail(eta, theta) \tab Heavy-tailed shape transform of a random effect, eta*abs(eta)^theta; eta at theta=0 \tab  \cr
+   absPowLog(x, p, k) \tab abs(x)^p*log(abs(x))^k with its limit at x=0; the derivative helper for etaHeavyTail() \tab  \cr
    exprelD(z, n) \tab n-th derivative of (exp(z)-1)/z, finite at z=0; the derivative helper for the eta shape transforms \tab  \cr
    rxnorm(x) \tab Generate one deviate of from a normal distribution for each observation scale \tab  \cr
    rxnormV(x) \tab Generate one deviate from low discrepancy normal for each observation \tab  \cr

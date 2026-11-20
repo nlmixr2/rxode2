@@ -1,6 +1,6 @@
 ## Model functions that apply a shape transform to a random effect; the
 ## first argument is the eta.  Extended as transforms are added.
-.rxEtaShapeFuns <- c("etaBoxCox", "etaJohnDraper")
+.rxEtaShapeFuns <- c("etaBoxCox", "etaJohnDraper", "etaYeoJohnson", "etaHeavyTail")
 
 #' Random effects passed straight to an eta shape transform
 #'

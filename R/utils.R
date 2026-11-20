@@ -1980,15 +1980,27 @@ studentTInv <- function(p, nu) {
 #' `lambda = 0` and skews the distribution (roughly `lambda` in `(-3, 3)`).
 #' `etaJohnDraper()` is the modulus transform
 #' `sign(eta)*((abs(eta) + 1)^lambda - 1)/lambda`, the identity at
-#' `lambda = 1`, which changes the tails symmetrically.  `exprelD(z, n)` is the
-#' n-th derivative of `(exp(z) - 1)/z`; it keeps every derivative exact through
-#' a shape of 0.  In a model, named arguments are matched and expanded into the
+#' `lambda = 1`, which changes the tails symmetrically.  `etaYeoJohnson()` is
+#' `((eta + 1)^lambda - 1)/lambda` for `eta >= 0` and
+#' `-((1 - eta)^(2 - lambda) - 1)/(2 - lambda)` below, the identity at
+#' `lambda = 1`, which skews.  `etaHeavyTail()` is `eta*abs(eta)^theta`
+#' (Petersson's heavy-tailed transform), the identity at `theta = 0`, with
+#' heavier tails for `theta > 0` and a symmetric bimodal shape for `theta` in
+#' `(-1, 0)`.
+#' `exprelD(z, n)` is the n-th derivative of `(exp(z) - 1)/z`; it keeps every
+#' derivative exact through a shape of 0.  `absPowLog(x, p, k)` is
+#' `abs(x)^p*log(abs(x))^k` with its limit at `x = 0`, the derivative helper of
+#' `etaHeavyTail()`.  In a model, named arguments are matched and expanded into the
 #' positional call, eg `etaBoxCox(lambda = lcl, eta = eta.cl)`.
 #'
 #' @param eta random effect
 #' @param lambda shape parameter
 #' @param z value of `z`
 #' @param n derivative order (non-negative integer)
+#' @param theta heavy-tail shape parameter
+#' @param x value of `x`
+#' @param p power
+#' @param k power of the log
 #' @return numeric vector, recycled to the longest argument
 #' @references Petersson KJ, Hanze E, Savic RM, Karlsson MO. Semiparametric
 #'   distributions with estimated shape parameters. Pharm Res. 2009;
@@ -1998,6 +2010,8 @@ studentTInv <- function(p, nu) {
 #' etaBoxCox(c(-1, 0, 1), 0.5)
 #' etaBoxCox(c(-1, 0, 1), 0) ## identity
 #' etaJohnDraper(c(-1, 0, 1), 1) ## identity
+#' etaYeoJohnson(c(-1, 0, 1), 1) ## identity
+#' etaHeavyTail(c(-1, 0, 1), 0.5)
 #' exprelD(0, 0:3)
 #' @export
 #' @family Special functions
@@ -2015,4 +2029,22 @@ etaJohnDraper <- function(eta, lambda) {
 #' @export
 exprelD <- function(z, n) {
   .Call(`_rxode2_exprelD`, z, n, PACKAGE = "rxode2")
+}
+
+#' @rdname etaBoxCox
+#' @export
+etaYeoJohnson <- function(eta, lambda) {
+  .Call(`_rxode2_etaYeoJohnson`, eta, lambda, PACKAGE = "rxode2")
+}
+
+#' @rdname etaBoxCox
+#' @export
+etaHeavyTail <- function(eta, theta) {
+  .Call(`_rxode2_etaHeavyTail`, eta, theta, PACKAGE = "rxode2")
+}
+
+#' @rdname etaBoxCox
+#' @export
+absPowLog <- function(x, p, k) {
+  .Call(`_rxode2_absPowLog`, x, p, k, PACKAGE = "rxode2")
 }

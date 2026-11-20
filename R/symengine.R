@@ -197,6 +197,9 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "exprelD" = 2,
   "etaBoxCox" = 2,
   "etaJohnDraper" = 2,
+  "etaYeoJohnson" = 2,
+  "absPowLog" = 3,
+  "etaHeavyTail" = 2,
   "linCmtA" = 14,
   "linCmtB" = 15,
   "max" = NA,
@@ -5841,7 +5844,10 @@ rxSupportedFuns <- function() {
   ## eta shape transforms (src/etaShape.cpp)
   "exprelD" = 2,
   "etaBoxCox" = 2,
-  "etaJohnDraper" = 2
+  "etaJohnDraper" = 2,
+  "etaYeoJohnson" = 2,
+  "absPowLog" = 3,
+  "etaHeavyTail" = 2
 )
 
 .rxOnly <- c(

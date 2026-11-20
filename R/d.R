@@ -971,6 +971,44 @@
   }
 )
 
+## Yeo-Johnson: fsign(1, eta) is +1 at eta = 0, and both branches have slope
+## 1 there
+.rxD$etaYeoJohnson <- list(
+  function(eta, lambda) {
+    paste0("exp(fsign(1,", eta, ")*((", lambda, ")-1)*log1p(abs(", eta, ")))")
+  },
+  function(eta, lambda) {
+    paste0(
+      "log1p(abs(", eta, "))^2*exprelD((1+fsign(1,", eta, ")*((", lambda,
+      ")-1))*log1p(abs(", eta, ")),1)"
+    )
+  }
+)
+
+.rxD$absPowLog <- list(
+  function(x, p, k) {
+    paste0(
+      "sign(", x, ")*((", p, ")*absPowLog(", x, ",(", p, ")-1,", k, ")+(", k,
+      ")*absPowLog(", x, ",(", p, ")-1,(", k, ")-1))"
+    )
+  },
+  function(x, p, k) {
+    paste0("absPowLog(", x, ",", p, ",(", k, ")+1)")
+  },
+  function(x, p, k) {
+    "0"
+  }
+)
+
+.rxD$etaHeavyTail <- list(
+  function(eta, theta) {
+    paste0("(1+(", theta, "))*absPowLog(", eta, ",", theta, ",0)")
+  },
+  function(eta, theta) {
+    paste0("(", eta, ")*absPowLog(", eta, ",", theta, ",1)")
+  }
+)
+
 .rxD$ReLU <- list(
   function(x) {
     paste0("dReLU(", x, ")")
