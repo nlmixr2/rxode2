@@ -181,4 +181,5 @@ geometric,,none,cmt ~ dgeom(a),,compartment specification
 negative binomial form #1,,none,"cmt ~ dnbinom(n, p)",,compartment specification
 negative binomial form #2,,none,"cmt ~ dnbinomMu(size, mu)",,compartment specification
 ordinal probability,,none,"cmt ~ c(p0=0, p1=1, p2=2, 3)",,compartment specification
+time-to-event,,none,"cmt ~ tte(hazard, eventType=, maxEventNumber=, rightCensoringTime=, intervalLength=, dropout=)",,compartment specification
 log-likelihood,,none,ll(cmt) ~ log likelihood expression,,likelihood + compartment expression
