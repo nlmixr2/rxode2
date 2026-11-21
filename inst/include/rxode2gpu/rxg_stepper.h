@@ -9,8 +9,9 @@
 //   RXG_RKT54   rkt54, Tsitouras 5(4) FSAL (tableau of src/ode_rkt54.cpp)
 //   RXG_VERN76  vern76, Verner's efficient 7(6) (tableau of src/ode_impl.cpp)
 //   RXG_ROS54P  ros54p, Steinebach's 8-stage L-stable Rosenbrock 5(4)
-//               (Rodas5P, BIT 63:27, 2023); analytic Jacobian when the model
-//               has df()/dy() lines, otherwise forward differences
+//               (Rodas5P, BIT 63:27, 2023) with the model's analytic
+//               Jacobian (df()/dy() lines; without them it is unavailable,
+//               as for every Rosenbrock method in rxode2)
 //
 // Define RXG_METHOD to one of these to build only that method (a kernel).
 // (the method codes RXG_RKT54 ... are defined in rxg_model.h)
@@ -95,7 +96,8 @@ typedef struct rxg_auto {
 
 // Mixed error weight for state i
 RXG_FN double _rxg_sc(const rxg_opt *o, int i, double a, double b) {
-  return o->atol[i] + o->rtol[i]*fmax(fabs(a), fabs(b));
+  double fa = fabs(a), fb = fabs(b);
+  return o->atol[i] + o->rtol[i]*(fa > fb ? fa : fb);
 }
 
 // Root mean square of e[i]/sc(y0[i], y1[i]); a non-finite candidate or
@@ -152,20 +154,46 @@ RXG_FN double _rxg_hinit(double t, double dir, double hmax, int order,
 // Explicit Runge-Kutta pairs
 //////////////////////////////////////////////////////////////////////////////
 
+// Loops over states are unrolled for small systems so the vectors stay in
+// registers (every index a constant)
+#if RXG_NEQ <= 12
+#if defined(__OPENCL_VERSION__) || defined(__clang__)
+#define RXG_UNROLL _Pragma("unroll")
+#elif defined(__GNUC__)
+#define RXG_UNROLL _Pragma("GCC unroll 16")
+#else
+#define RXG_UNROLL
+#endif
+#else
+#define RXG_UNROLL
+#endif
+
+// The explicit steps inline with their literal tableaux so the stage loops
+// have constant trip counts (and unroll)
+#if defined(__GNUC__) || defined(__clang__) || defined(__OPENCL_VERSION__)
+#define RXG_FN_INLINE static inline __attribute__((always_inline))
+#else
+#define RXG_FN_INLINE RXG_FN
+#endif
+
 // One step of an explicit pair with ns stages, A packed by rows (row i has i
 // entries), b the solution weights, bt = b - bhat.  With fsal the stage after
 // the last is f(t + h, y1) (weight 0 in b), and k[0] holds f(t, y) on entry.
 // The states of stages sa and sb (sb == ns: the solution) go to ya and yb
 // for the stiffness probe.
-RXG_FN void _rxg_erkStep(int ns, int fsal, const double *A, const double *cc,
+RXG_FN_INLINE void _rxg_erkStep(int ns, int fsal, const double *A, const double *cc,
                          const double *b, const double *bt, double t,
                          double h, double *y, double *y1, double *e,
                          double *k, int sa, int sb, double *ya, double *yb,
                          const rxg_ctx *c, int *cnt) {
   int ia = 0;
+  // (inlined with a literal tableau: unrolled, the coefficients fold)
+  RXG_UNROLL
   for (int s = 1; s < ns; s++) {
+    RXG_UNROLL
     for (int i = 0; i < RXG_NEQ; i++) {
       double a = 0.0;
+      RXG_UNROLL
       for (int j = 0; j < s; j++) a += A[ia + j]*k[j*RXG_NEQ1 + i];
       y1[i] = y[i] + h*a;
       if (s == sa) ya[i] = y1[i];
@@ -174,8 +202,10 @@ RXG_FN void _rxg_erkStep(int ns, int fsal, const double *A, const double *cc,
     ia += s;
     _rxg_f(t + cc[s]*h, y1, k + s*RXG_NEQ1, c, cnt);
   }
+  RXG_UNROLL
   for (int i = 0; i < RXG_NEQ; i++) {
     double a = 0.0;
+    RXG_UNROLL
     for (int j = 0; j < ns; j++) a += b[j]*k[j*RXG_NEQ1 + i];
     y1[i] = y[i] + h*a;
     if (sb == ns) yb[i] = y1[i];
@@ -185,8 +215,10 @@ RXG_FN void _rxg_erkStep(int ns, int fsal, const double *A, const double *cc,
     _rxg_f(t + h, y1, k + ns*RXG_NEQ1, c, cnt);
     nt++;
   }
+  RXG_UNROLL
   for (int i = 0; i < RXG_NEQ; i++) {
     double a = 0.0;
+    RXG_UNROLL
     for (int j = 0; j < nt; j++) a += bt[j]*k[j*RXG_NEQ1 + i];
     e[i] = h*a;
   }
@@ -194,7 +226,7 @@ RXG_FN void _rxg_erkStep(int ns, int fsal, const double *A, const double *cc,
 
 // stiffness probe: stage 6 and the FSAL stage, both at t + h; stability
 // size 3.5068
-RXG_FN void _rxg_rkt54Step(double t, double h, double *y, double *y1,
+RXG_FN_INLINE void _rxg_rkt54Step(double t, double h, double *y, double *y1,
                            double *e, double *k, double *ya, double *yb,
                            const rxg_ctx *c, int *cnt) {
   const double A[15] = {
@@ -237,7 +269,7 @@ RXG_FN void _rxg_rkt54Step(double t, double h, double *y, double *y1,
 }
 
 // stiffness probe: stages 9 and 10, both at t + h; stability size 4.64
-RXG_FN void _rxg_vern76Step(double t, double h, double *y, double *y1,
+RXG_FN_INLINE void _rxg_vern76Step(double t, double h, double *y, double *y1,
                             double *e, double *k, double *ya, double *yb,
                             const rxg_ctx *c, int *cnt) {
   const double A[45] = {
@@ -295,29 +327,34 @@ RXG_FN void _rxg_vern76Step(double t, double h, double *y, double *y1,
 // ros54p
 //////////////////////////////////////////////////////////////////////////////
 
-// J[i*RXG_NEQ1 + j] = df_i/dy_j at (t, y); f0 = f(t, y)
-RXG_FN void _rxg_jacobian(double t, double *y, const double *f0, double *J,
-                          double *ytmp, double *ftmp, const rxg_ctx *c,
+#if RXG_SOLVE_ROS && RXG_HAS_JAC
+// J[i*RXG_NEQ1 + j] = df_i/dy_j at (t, y), from the model's df()/dy() lines
+RXG_FN void _rxg_jacobian(double t, double *y, double *J, const rxg_ctx *c,
                           int *cnt) {
   cnt[RXG_CNT_JAC]++;
-#if RXG_HAS_JAC
-  (void)f0; (void)ytmp; (void)ftmp;
   for (int i = 0; i < RXG_NEQ1*RXG_NEQ1; i++) J[i] = 0.0;
   rxg_jac(t, y, J, RXG_NEQ1, c);
+}
+#endif
+
+// Does f depend on t over this interval?  Only through the model reading
+// time (RXG_TIME, from the code generator) or covariates interpolated
+// linearly between different values.
+RXG_FN int _rxg_nonAutonomous(const rxg_ctx *c) {
+#if RXG_TIME
+  (void)c;
+  return 1;
 #else
-  for (int i = 0; i < RXG_NEQ; i++) ytmp[i] = y[i];
-  for (int j = 0; j < RXG_NEQ; j++) {
-    double d = sqrt(RXG_EPS)*fmax(fabs(y[j]), 1e-5);
-    ytmp[j] = y[j] + d;
-    d = ytmp[j] - y[j];
-    _rxg_f(t, ytmp, ftmp, c, cnt);
-    for (int i = 0; i < RXG_NEQ; i++) J[i*RXG_NEQ1 + j] = (ftmp[i] - f0[i])/d;
-    ytmp[j] = y[j];
+  if (c->covType != 1) return 0;
+  for (int i = 0; i < RXG_NPAR; i++) {
+    if (c->p0[i] != c->p1[i]) return 1;
   }
+  return 0;
 #endif
 }
 
-// df/dt at (t, y) by forward differences (covariates and time-varying terms)
+// df/dt at (t, y) by forward differences (models reading time and
+// interpolated covariates only; zero otherwise)
 RXG_FN void _rxg_dfdt(double t, double dir, double *y, const double *f0,
                       double *dT, double *ftmp, const rxg_ctx *c, int *cnt) {
   double d = dir*sqrt(RXG_EPS)*fmax(fabs(t), 1.0);
@@ -327,122 +364,218 @@ RXG_FN void _rxg_dfdt(double t, double dir, double *y, const double *f0,
   for (int i = 0; i < RXG_NEQ; i++) dT[i] = (ftmp[i] - f0[i])/d;
 }
 
-// LU of W = I/(h*gamma) - J with partial pivoting; returns 0 when singular
+// LU of W = I/(h*gamma) - J with partial pivoting; returns 0 when singular.
+// Rows are swapped by selects rather than indexed by the pivot, and the
+// diagonal holds the reciprocal of U's diagonal.
 RXG_FN int _rxg_luW(const double *J, double hg, double *W, int *piv) {
+  double ihg = 1.0/hg;
+  RXG_UNROLL
   for (int i = 0; i < RXG_NEQ; i++) {
+    RXG_UNROLL
     for (int j = 0; j < RXG_NEQ; j++) W[i*RXG_NEQ1 + j] = -J[i*RXG_NEQ1 + j];
-    W[i*RXG_NEQ1 + i] += 1.0/hg;
+    W[i*RXG_NEQ1 + i] += ihg;
   }
+  int ok = 1;
+  RXG_UNROLL
   for (int k = 0; k < RXG_NEQ; k++) {
     int p = k;
     double m = fabs(W[k*RXG_NEQ1 + k]);
+    RXG_UNROLL
     for (int i = k + 1; i < RXG_NEQ; i++) {
       double v = fabs(W[i*RXG_NEQ1 + k]);
-      if (v > m) { m = v; p = i; }
+      int b = v > m;
+      m = b ? v : m;
+      p = b ? i : p;
     }
     piv[k] = p;
-    if (!(m > 0.0) || !isfinite(m)) return 0;
-    if (p != k) {
+    ok = ok && (m > 0.0) && isfinite(m);
+    RXG_UNROLL
+    for (int i = k + 1; i < RXG_NEQ; i++) {
+      int sw = (p == i);
+      RXG_UNROLL
       for (int j = 0; j < RXG_NEQ; j++) {
-        double tmp = W[k*RXG_NEQ1 + j];
-        W[k*RXG_NEQ1 + j] = W[p*RXG_NEQ1 + j];
-        W[p*RXG_NEQ1 + j] = tmp;
+        double a = W[k*RXG_NEQ1 + j], b = W[i*RXG_NEQ1 + j];
+        W[k*RXG_NEQ1 + j] = sw ? b : a;
+        W[i*RXG_NEQ1 + j] = sw ? a : b;
       }
     }
-    double inv = 1.0/W[k*RXG_NEQ1 + k];
+    double inv = ok ? 1.0/W[k*RXG_NEQ1 + k] : 0.0;
+    ok = ok && isfinite(inv);
+    W[k*RXG_NEQ1 + k] = inv;
+    RXG_UNROLL
     for (int i = k + 1; i < RXG_NEQ; i++) {
       double l = W[i*RXG_NEQ1 + k]*inv;
       W[i*RXG_NEQ1 + k] = l;
+      RXG_UNROLL
       for (int j = k + 1; j < RXG_NEQ; j++) W[i*RXG_NEQ1 + j] -= l*W[k*RXG_NEQ1 + j];
     }
   }
-  return 1;
+  return ok;
 }
 
 // Solve W x = b in place with the factors from _rxg_luW()
 // (_rxg_luW() swaps whole rows, so every swap applies to b before the
 // forward substitution, as LAPACK's getrs)
 RXG_FN void _rxg_luSolve(const double *W, const int *piv, double *x) {
+  RXG_UNROLL
   for (int k = 0; k < RXG_NEQ; k++) {
     int p = piv[k];
-    if (p != k) { double tmp = x[k]; x[k] = x[p]; x[p] = tmp; }
+    RXG_UNROLL
+    for (int i = k + 1; i < RXG_NEQ; i++) {
+      int sw = (p == i);
+      double a = x[k], b = x[i];
+      x[k] = sw ? b : a;
+      x[i] = sw ? a : b;
+    }
   }
+  RXG_UNROLL
   for (int k = 0; k < RXG_NEQ; k++) {
+    RXG_UNROLL
     for (int i = k + 1; i < RXG_NEQ; i++) x[i] -= W[i*RXG_NEQ1 + k]*x[k];
   }
+  RXG_UNROLL
   for (int k = RXG_NEQ - 1; k >= 0; k--) {
     double s = x[k];
+    RXG_UNROLL
     for (int j = k + 1; j < RXG_NEQ; j++) s -= W[k*RXG_NEQ1 + j]*x[j];
-    x[k] = s/W[k*RXG_NEQ1 + k];
+    x[k] = s*W[k*RXG_NEQ1 + k];
   }
 }
 
+// Small systems solve with the explicit inverse of W (from its LU): each
+// stage is then a matrix-vector product with no dependent chain
+#ifndef RXG_WINV
+#define RXG_WINV (RXG_NEQ <= 4)
+#endif
+
+#if RXG_WINV
+// Wi = W^-1 from the factors of _rxg_luW() (columns solved from unit
+// vectors), row major; returns 0 when an entry overflows (the stages then
+// solve with the factors)
+RXG_FN int _rxg_luInv(const double *W, const int *piv, double *Wi) {
+  int ok = 1;
+  RXG_UNROLL
+  for (int j = 0; j < RXG_NEQ; j++) {
+    double x[RXG_NEQ1];
+    RXG_UNROLL
+    for (int i = 0; i < RXG_NEQ; i++) x[i] = (i == j) ? 1.0 : 0.0;
+    _rxg_luSolve(W, piv, x);
+    RXG_UNROLL
+    for (int i = 0; i < RXG_NEQ; i++) {
+      Wi[i*RXG_NEQ1 + j] = x[i];
+      ok = ok && isfinite(x[i]);
+    }
+  }
+  return ok;
+}
+
+// x = Wi x
+RXG_FN void _rxg_invSolve(const double *Wi, double *x) {
+  double b[RXG_NEQ1];
+  RXG_UNROLL
+  for (int i = 0; i < RXG_NEQ; i++) b[i] = x[i];
+  RXG_UNROLL
+  for (int i = 0; i < RXG_NEQ; i++) {
+    double s = 0.0;
+    RXG_UNROLL
+    for (int j = 0; j < RXG_NEQ; j++) s += Wi[i*RXG_NEQ1 + j]*b[j];
+    x[i] = s;
+  }
+}
+#define _rxg_wSolve(x)                              \
+  do {                                              \
+    if (useInv) _rxg_invSolve(Wi, x);               \
+    else _rxg_luSolve(W, piv, x);                   \
+  } while (0)
+#else
+#define _rxg_wSolve(x) _rxg_luSolve(W, piv, x)
+#endif
+
+// x[i] = <expression of i> over the states
+#define RXG_VEC(i, expr)                        \
+  RXG_UNROLL                                    \
+  for (int i = 0; i < RXG_NEQ; i++) expr
+
 // ros54p stage k_s solves (I/(h gamma) - J) k_s = f(t + c_s h, u_s) +
 // sum_j C_sj/h k_j + h d_s df/dt with u_s = y + sum_j A_sj k_j; the solution
-// is u_8 + k_8 and the error estimate k_8.  f0, J, dT are at (t, y).
+// is u_8 + k_8 and the error estimate k_8.  f0, J, dT are at (t, y); dT is
+// zero for an autonomous interval.  Straight-line stages (rows 7 and 8 of A
+// are row 6 plus ones: u_7 = u_6 + k_6, u_8 = u_7 + k_7).
 RXG_FN int _rxg_ros54pStep(double t, double h, double *y, double *y1,
                             double *e, double *k, const double *f0,
                             const double *J, const double *dT, double *W,
                             int *piv, const rxg_ctx *c, int *cnt) {
-  const double gam = 0.21193756319429014;
-  const double A[28] = {
-    3.0,
-    2.849394379747939, 0.45842242204463923,
-    -6.954028509809101, 2.489845061869568, -10.358996098473584,
-    2.8029986275628964, 0.5072464736228206, -0.3988312541770524, -0.04721187230404641,
-    -7.502846399306121, 2.561846144803919, -11.627539656261098, -0.18268767659942256,
-    0.030198172008377946,
-    -7.502846399306121, 2.561846144803919, -11.627539656261098, -0.18268767659942256,
-    0.030198172008377946, 1.0,
-    -7.502846399306121, 2.561846144803919, -11.627539656261098, -0.18268767659942256,
-    0.030198172008377946, 1.0, 1.0
-  };
-  const double C[28] = {
-    -14.155112264123755,
-    -17.97296035885952, -2.859693295451294,
-    147.12150275711716, -1.41221402718213, 71.68940251302358,
-    165.43517024871676, -0.4592823456491126, 42.90938336958603, -5.961986721573306,
-    24.854864614690072, -3.0009227002832186, 47.4931110020768, 5.5814197821558125,
-    -0.6610691825249471,
-    30.91273214028599, -3.1208243349937974, 77.79954646070892, 34.28646028294783,
-    -19.097331116725623, -28.087943162872662,
-    37.80277123390563, -3.2571969029072276, 112.26918849496327, 66.9347231244047,
-    -40.06618937091002, -54.66780262877968, -9.48861652309627
-  };
-  const double cc[8] = {
-    0.0, 0.6358126895828704, 0.4095798393397535, 0.9769306725060716,
-    0.4288403609558664, 1.0, 1.0, 1.0
-  };
-  const double d[8] = {
-    0.21193756319429014, -0.42387512638858027, -0.3384627126235924,
-    1.8046452872882734, 2.325825639765069, 0.0, 0.0, 0.0
-  };
   cnt[RXG_CNT_LU]++;
-  if (!_rxg_luW(J, h*gam, W, piv)) return 0;
-  for (int i = 0; i < RXG_NEQ; i++) k[i] = f0[i] + h*d[0]*dT[i];
-  _rxg_luSolve(W, piv, k);
-  int ia = 0;
-  for (int s = 1; s < 8; s++) {
-    double *ks = k + s*RXG_NEQ1;
-    for (int i = 0; i < RXG_NEQ; i++) {
-      double a = 0.0;
-      for (int j = 0; j < s; j++) a += A[ia + j]*k[j*RXG_NEQ1 + i];
-      y1[i] = y[i] + a;
-    }
-    _rxg_f(t + cc[s]*h, y1, ks, c, cnt);
-    for (int i = 0; i < RXG_NEQ; i++) {
-      double a = 0.0;
-      for (int j = 0; j < s; j++) a += C[ia + j]*k[j*RXG_NEQ1 + i];
-      ks[i] += a/h + h*d[s]*dT[i];
-    }
-    ia += s;
-    _rxg_luSolve(W, piv, ks);
-  }
-  // y1 holds u_8
-  for (int i = 0; i < RXG_NEQ; i++) {
-    e[i] = k[7*RXG_NEQ1 + i];
-    y1[i] += e[i];
-  }
+  if (!_rxg_luW(J, h*0.21193756319429014, W, piv)) return 0;
+#if RXG_WINV
+  double Wi[RXG_NEQ1*RXG_NEQ1];
+  int useInv = _rxg_luInv(W, piv, Wi);
+#endif
+  double ih = 1.0/h;
+  double *k1 = k, *k2 = k + RXG_NEQ1, *k3 = k + 2*RXG_NEQ1,
+    *k4 = k + 3*RXG_NEQ1, *k5 = k + 4*RXG_NEQ1, *k6 = k + 5*RXG_NEQ1,
+    *k7 = k + 6*RXG_NEQ1, *k8 = k + 7*RXG_NEQ1;
+  double hd1 = h*0.21193756319429014, hd2 = h*-0.42387512638858027,
+    hd3 = h*-0.3384627126235924, hd4 = h*1.8046452872882734,
+    hd5 = h*2.325825639765069;
+  // stage 1
+  RXG_VEC(i, k1[i] = f0[i] + hd1*dT[i]);
+  _rxg_wSolve(k1);
+  // stage 2
+  RXG_VEC(i, y1[i] = y[i] + 3.0*k1[i]);
+  _rxg_f(t + 0.6358126895828704*h, y1, k2, c, cnt);
+  RXG_VEC(i, k2[i] += ih*(-14.155112264123755*k1[i]) + hd2*dT[i]);
+  _rxg_wSolve(k2);
+  // stage 3
+  RXG_VEC(i, y1[i] = y[i] + 2.849394379747939*k1[i] + 0.45842242204463923*k2[i]);
+  _rxg_f(t + 0.4095798393397535*h, y1, k3, c, cnt);
+  RXG_VEC(i, k3[i] += ih*(-17.97296035885952*k1[i] - 2.859693295451294*k2[i]) +
+          hd3*dT[i]);
+  _rxg_wSolve(k3);
+  // stage 4
+  RXG_VEC(i, y1[i] = y[i] - 6.954028509809101*k1[i] + 2.489845061869568*k2[i] -
+          10.358996098473584*k3[i]);
+  _rxg_f(t + 0.9769306725060716*h, y1, k4, c, cnt);
+  RXG_VEC(i, k4[i] += ih*(147.12150275711716*k1[i] - 1.41221402718213*k2[i] +
+                          71.68940251302358*k3[i]) + hd4*dT[i]);
+  _rxg_wSolve(k4);
+  // stage 5
+  RXG_VEC(i, y1[i] = y[i] + 2.8029986275628964*k1[i] + 0.5072464736228206*k2[i] -
+          0.3988312541770524*k3[i] - 0.04721187230404641*k4[i]);
+  _rxg_f(t + 0.4288403609558664*h, y1, k5, c, cnt);
+  RXG_VEC(i, k5[i] += ih*(165.43517024871676*k1[i] - 0.4592823456491126*k2[i] +
+                          42.90938336958603*k3[i] - 5.961986721573306*k4[i]) +
+          hd5*dT[i]);
+  _rxg_wSolve(k5);
+  // stage 6
+  double t1 = t + h;
+  RXG_VEC(i, y1[i] = y[i] - 7.502846399306121*k1[i] + 2.561846144803919*k2[i] -
+          11.627539656261098*k3[i] - 0.18268767659942256*k4[i] +
+          0.030198172008377946*k5[i]);
+  _rxg_f(t1, y1, k6, c, cnt);
+  RXG_VEC(i, k6[i] += ih*(24.854864614690072*k1[i] - 3.0009227002832186*k2[i] +
+                          47.4931110020768*k3[i] + 5.5814197821558125*k4[i] -
+                          0.6610691825249471*k5[i]));
+  _rxg_wSolve(k6);
+  // stage 7
+  RXG_VEC(i, y1[i] += k6[i]);
+  _rxg_f(t1, y1, k7, c, cnt);
+  RXG_VEC(i, k7[i] += ih*(30.91273214028599*k1[i] - 3.1208243349937974*k2[i] +
+                          77.79954646070892*k3[i] + 34.28646028294783*k4[i] -
+                          19.097331116725623*k5[i] - 28.087943162872662*k6[i]));
+  _rxg_wSolve(k7);
+  // stage 8
+  RXG_VEC(i, y1[i] += k7[i]);
+  _rxg_f(t1, y1, k8, c, cnt);
+  RXG_VEC(i, k8[i] += ih*(37.80277123390563*k1[i] - 3.2571969029072276*k2[i] +
+                          112.26918849496327*k3[i] + 66.9347231244047*k4[i] -
+                          40.06618937091002*k5[i] - 54.66780262877968*k6[i] -
+                          9.48861652309627*k7[i]));
+  _rxg_wSolve(k8);
+  RXG_VEC(i, {
+    e[i] = k8[i];
+    y1[i] += k8[i];
+  });
   return 1;
 }
 
@@ -470,7 +603,7 @@ RXG_FN int _rxg_probeStage(int method, int b) {
 
 // Step controller state
 typedef struct rxg_ctl {
-  double errOld; // last accepted error (PI memory)
+  double logErrOld; // log of the last accepted error (PI memory)
   int rejected;  // the previous attempt was rejected
 } rxg_ctl;
 
@@ -480,11 +613,12 @@ RXG_FN double _rxg_newH(double h, double err, int q, rxg_ctl *ctl) {
   double k = (double)(q + 1);
   double fac;
   if (err <= 1.0) {
-    double en = fmax(err, 1e-10);
-    fac = 0.9*pow(en, -0.7/k)*pow(ctl->errOld, 0.4/k);
+    double le = log(fmax(err, 1e-10));
+    // 0.9 err^(-0.7/k) errOld^(0.4/k)
+    fac = 0.9*exp((-0.7*le + 0.4*ctl->logErrOld)/k);
     fac = fmin(fmax(fac, 0.2), 10.0);
     if (ctl->rejected) fac = fmin(fac, 1.0);
-    ctl->errOld = fmax(err, 1e-4);
+    ctl->logErrOld = fmax(le, -9.210340371976184); // log(1e-4)
     ctl->rejected = 0;
   } else {
     fac = isfinite(err) ? fmax(0.2, 0.9*pow(err, -1.0/k)) : 0.1;
@@ -529,7 +663,8 @@ typedef struct rxg_work {
   double J[RXG_NEQ1*RXG_NEQ1], W[RXG_NEQ1*RXG_NEQ1], dT[RXG_NEQ1];
   int piv[RXG_NEQ1];
 #endif
-  int jacOk; // J and dT are at the current (t, y)
+  int jacOk;   // J and dT are at the current (t, y)
+  int nonAuto; // f depends on t: dT is needed (zero otherwise)
 } rxg_work;
 
 // One attempted step of size hs from (t, y) into w->y1 and the error into
@@ -538,10 +673,12 @@ typedef struct rxg_work {
 RXG_FN int _rxg_tryStep(int method, double t, double hs, double dir,
                         double *y, rxg_work *w, const rxg_ctx *c, int *cnt) {
   if (method == RXG_ROS54P) {
-#if RXG_SOLVE_ROS
+#if RXG_SOLVE_ROS && RXG_HAS_JAC
     if (!w->jacOk) {
-      _rxg_jacobian(t, y, w->f0, w->J, w->y1, w->e, c, cnt);
-      _rxg_dfdt(t, dir, y, w->f0, w->dT, w->e, c, cnt);
+      _rxg_jacobian(t, y, w->J, c, cnt);
+      if (w->nonAuto) {
+        _rxg_dfdt(t, dir, y, w->f0, w->dT, w->e, c, cnt);
+      }
       w->jacOk = 1;
     }
     return _rxg_ros54pStep(t, hs, y, w->y1, w->e, w->k, w->f0, w->J, w->dT,
@@ -778,15 +915,25 @@ RXG_FN int rxg_integrate(int method, double t0, double t1, double *y,
 #if RXG_NEQ == 0
   return RXG_SUCCESS;
 #endif
+#if !RXG_HAS_JAC
+  // Rosenbrock methods need the model's analytic Jacobian
+  if (method == RXG_ROS54P) return RXG_ERR_METHOD;
+#endif
   if (t1 == t0) return RXG_SUCCESS;
   rxg_work w;
   w.jacOk = 0;
+  w.nonAuto = _rxg_nonAutonomous(c);
+#if RXG_SOLVE_ROS
+  if (!w.nonAuto) {
+    for (int i = 0; i < RXG_NEQ1; i++) w.dT[i] = 0.0;
+  }
+#endif
   int probe = (st != 0) && (_rxg_stabSize(method) > 0.0);
   double dir = (t1 > t0) ? 1.0 : -1.0;
   double hmax = (o->hmax > 0.0) ? fmin(o->hmax, fabs(t1 - t0)) : fabs(t1 - t0);
   int q = _rxg_errOrder(method);
   rxg_ctl ctl;
-  ctl.errOld = 1e-4;
+  ctl.logErrOld = -9.210340371976184; // log(1e-4)
   ctl.rejected = 0;
   double t = t0;
   _rxg_f(t, y, w.f0, c, cnt);

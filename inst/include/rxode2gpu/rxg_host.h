@@ -4,7 +4,10 @@
 // after the model's .cl file).
 #include <string.h>
 #include <stdlib.h>
-#include "rxode2gpu/rxg_stepper.h"
+#include "rxode2gpu/rxg_round.h"
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 static void rxg_host_ctx(rxg_ctx *c, double *p0, double *p1, double *pl,
                          double *ir, int *on, double *tt, int *flags) {
@@ -36,11 +39,39 @@ static void rxg_host_ctx(rxg_ctx *c, double *p0, double *p1, double *pl,
 #define RXG_HOST_NOHIST(c, t, y) (void)0
 #endif
 
+// Model sizes and the round layout (rxg_round.h).  RXG_HREC here uses the
+// largest history degree, so it bounds every method's record size.
 void rxg_host_dims(int *d) {
   d[0] = RXG_NEQ;
   d[1] = RXG_NLHS;
   d[2] = RXG_NPAR;
   d[3] = RXG_HAS_JAC;
+  d[4] = RXG_HAS_DELAY;
+  d[5] = RXG_HREC;
+  d[6] = RXG_HHDR;
+  d[7] = RXG_RD;
+  d[8] = RXG_RI;
+  d[9] = RXG_AD;
+  d[10] = RXG_AI;
+  d[11] = RXG_OD;
+  d[12] = RXG_OI;
+  d[13] = RXG_NCNT;
+}
+
+// One round on the host (the CPU backend of rxg_kernel()); requests run in
+// parallel on nthreads OpenMP threads
+void rxg_host_round(int *n, int *nthreads, double *y, double *rd, int *ri,
+                    double *p0, double *p1, double *pl, double *ir, int *on,
+                    double *ad, int *ai, double *hs, double *hrec, double *od,
+                    int *oi) {
+  int nn = *n;
+#ifdef _OPENMP
+  int nt = (*nthreads > 0) ? *nthreads : 1;
+#pragma omp parallel for num_threads(nt) schedule(dynamic)
+#endif
+  for (int i = 0; i < nn; i++) {
+    rxg_round1(i, y, rd, ri, p0, p1, pl, ir, on, ad, ai, hs, hrec, od, oi);
+  }
 }
 
 void rxg_host_dydt(double *t, double *y, double *dy, double *p0, double *p1,
