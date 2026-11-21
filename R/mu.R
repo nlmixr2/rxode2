@@ -405,7 +405,70 @@
   .ret
 }
 
-.muRefEvalEnv <- new.env(parent = baseenv())
+# Only deterministic math is evaluated: a call to anything else (`linCmt()`,
+# a random draw, an R user function such as `sample()`) fails the probe.
+.muRefEvalEnv <- new.env(parent = emptyenv())
+for (.f in c(
+  "*",
+  "/",
+  "+",
+  "-",
+  "^",
+  "(",
+  ">",
+  "<",
+  ">=",
+  "<=",
+  "==",
+  "!=",
+  "&",
+  "&&",
+  "|",
+  "||",
+  "!",
+  "ifelse",
+  "exp",
+  "log",
+  "sqrt",
+  "log10",
+  "log2",
+  "log1p",
+  "expm1",
+  "abs",
+  "sign",
+  "floor",
+  "ceiling",
+  "trunc",
+  "round",
+  "signif",
+  "sin",
+  "cos",
+  "tan",
+  "asin",
+  "acos",
+  "atan",
+  "sinh",
+  "cosh",
+  "tanh",
+  "asinh",
+  "acosh",
+  "atanh",
+  "gamma",
+  "lgamma",
+  "digamma",
+  "trigamma",
+  "beta",
+  "lbeta",
+  "factorial",
+  "lfactorial",
+  "choose",
+  "lchoose",
+  "min",
+  "max"
+)) {
+  assign(.f, get(.f, envir = baseenv()), envir = .muRefEvalEnv)
+}
+rm(.f)
 .muRefEvalEnv$pow <- function(x, y) x^y
 .muRefEvalEnv$R_pow <- .muRefEvalEnv$pow
 .muRefEvalEnv$R_pow_di <- .muRefEvalEnv$pow
@@ -482,7 +545,10 @@
   if (is.null(.r)) {
     return(FALSE)
   }
-  all(setdiff(unique(c(all.vars(.r$term), all.vars(.r$der))), theta) %in% env$info$dataCov) &&
+  # a model variable that reads the theta itself (`m <- WT*bv`; `m*bv`) leaves
+  # the theta in the resolved coefficient
+  !(theta %in% all.vars(.r$der)) &&
+    all(setdiff(unique(c(all.vars(.r$term), all.vars(.r$der))), theta) %in% env$info$dataCov) &&
     .muRefTermIsThetaTimesDer(.r$term, .r$der, theta)
 }
 

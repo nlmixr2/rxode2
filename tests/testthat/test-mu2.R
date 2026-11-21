@@ -190,6 +190,17 @@ rxTest({
       .mu("if (wt70 > 1) { big <- 1 } else { big <- 0 }", "log(wt70)*b", "(big == 1)*(bv + 1)"),
       c(b = "log(wt70)")
     )
+    # a model variable that reads the theta itself
+    expect_equal(.mu("m <- WT*bv", "log(wt70)*b", "m*bv"), c(b = "log(wt70)"))
+    # ifelse() and a string comparison on a data covariate are data
+    expect_equal(
+      .mu("big <- ifelse(wt70 > 1, 1, 0)", "log(wt70)*b", "big*bv"),
+      c(b = "log(wt70)", bv = "big")
+    )
+    expect_equal(
+      .mu("if (SEX == \"F\") { big <- 1 } else { big <- 0 }", "log(wt70)*b", "big*bv"),
+      c(b = "log(wt70)", bv = "big")
+    )
     # no variables, but not data either: random draws and linCmt()
     expect_equal(.mu("r <- rxnorm()", "log(wt70)*b", "r*bv"), c(b = "log(wt70)"))
     expect_equal(
