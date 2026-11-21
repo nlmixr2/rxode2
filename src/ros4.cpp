@@ -50,7 +50,7 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   dense_stepper_type dense_stepper(stepper);
   bool stepper_initialized = false;
 
-  auto sys = make_rxode2_system_ros4(ind, c_dydt, calc_jac, neq);
+  auto sys = make_rxode2_system_ros4(ind, c_dydt, calc_jac, neq, neqOde);
   
   double *yp;
   
@@ -279,7 +279,7 @@ extern "C" void ros4_solveWith1Pt(int *neq, double *yp, double *xp, double xout,
   typedef boost::numeric::odeint::rosenbrock4_controller<stepper_base_type> error_stepper_type;
   error_stepper_type stepper(ind->atol2[0], ind->rtol2[0], stepper_base_type());
   
-  auto sys = make_rxode2_system_ros4(ind, dydt, calc_jac, neq);
+  auto sys = make_rxode2_system_ros4(ind, dydt, calc_jac, neq, neqOde);
   
   
   if (neqOde > 0) {
@@ -328,7 +328,7 @@ int rxRos4DenseSegment(rx_solve *rx, rx_solving_options *op, rx_solving_options_
   typedef boost::numeric::odeint::rosenbrock4_dense_output<error_stepper_type> dense_stepper_type;
   error_stepper_type stepper(ind->atol2[0], ind->rtol2[0], maxdt, stepper_base_type());
   dense_stepper_type dense_stepper(stepper);
-  auto sys = make_rxode2_system_ros4(ind, c_dydt, calc_jac, neq);
+  auto sys = make_rxode2_system_ros4(ind, c_dydt, calc_jac, neq, neqOde);
 
   double dt = (ind->autoHcur > 0.0) ? ind->autoHcur : (op->HMIN > 0.0 ? op->HMIN : 1e-4);
   sys.first.xout_ = xout;
