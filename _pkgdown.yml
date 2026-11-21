@@ -159,6 +159,7 @@ articles:
   - articles/rxode2-parameter-uncertainty
   - articles/rxode2-confint
   - articles/rxode2-eta-eps-resampling
+  - articles/rxode2-eta-shape-transforms
   - articles/rxode2-phase-residual-error
   - articles/rxode2-time-to-event
   - rxode2-data-frame
@@ -284,6 +285,8 @@ navbar:
       href: articles/rxode2-confint.html
     - text: "ETA and EPS resampling"
       href: articles/rxode2-eta-eps-resampling.html
+    - text: "Skewed and heavy-tailed random effects"
+      href: articles/rxode2-eta-shape-transforms.html
     - text: "Phase 1 vs phase 3 residual error"
       href: articles/rxode2-phase-residual-error.html
     - text: "Simulating time-to-event endpoints"
