@@ -94,6 +94,24 @@ linCmtCarrySentinelMax <- function() {
   rxode2lincmt::.linCmtCarrySentinelMax()
 }
 
+# The importFrom is what makes loading rxode2 check rxode2lincmt's version
+# against DESCRIPTION: R checks the Imports versions only of the packages the
+# NAMESPACE imports, and an rxode2lincmt that compiles in 8 carry columns
+# would return NA for pairs 8 and up.
+#' Carry pairs a linCmt() model can carry at once
+#'
+#' The `linCmt()` sensitivity carry keeps one column per carried (linCmt
+#' parameter, eta) pair in each subject; nlmixr2est keeps a model's carry
+#' within this many columns.
+#' @return integer, the column count in use (rxode2's
+#'   `RX_LINCMT_CARRY_MAXPAIRS`)
+#' @importFrom rxode2lincmt .linCmtCarryMaxPairs
+#' @keywords internal
+#' @export
+linCmtCarryMaxPairs <- function() {
+  rxode2lincmt::.linCmtCarryMaxPairs()
+}
+
 #' Read (and optionally reset) the linCmt() carry-advance fast-path counters
 #'
 #' @param reset logical; when TRUE zero the counters after reading

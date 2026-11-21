@@ -20,6 +20,9 @@ double rxode2LinCmtBFwd(struct rx_solve_s *rx, int id, double _t, int linCmt, in
                         double v1, double p2, double p3, double p4, double p5,
                         double ka);
 int rxode2LinCmtThread(int mx);
+// rxode2lincmt's slot 9, linCmtCarryReset(): zeroes the carry columns a
+// subject has written; a full clear of ind->linCmtCarryT without it
+extern rxLcIndFree_t _p_linCmtCarryReset;
 
 #if defined(__cplusplus)
 }

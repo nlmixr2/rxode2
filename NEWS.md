@@ -176,6 +176,17 @@
   midpoint (#1654).
 
 ### Sensitivities
+- The `linCmt()` sensitivity carry has 32 columns per subject instead of 8
+  (`linCmtCarryMaxPairs()`), so an IOV model whose occasion etas each need
+  one can be carried.  Each subject's struct grows by 768 bytes.  No field
+  that nlmixr2est or babelmixr2 reads comes after the carry, so their
+  binaries built against an older rxode2 keep working.  A state saved by
+  `rxSaveState()` from an older build is refused by `rxLoadState()`, as
+  for any change of the struct size.  rxode2 now needs rxode2lincmt
+  0.1.1.9000, which reads the column count from rxode2 at load, and loading
+  rxode2 checks it.  Each subject's carry is cleared only for the columns it
+  used, so a `linCmt()` model without the carry clears nothing, and the
+  per-thread copy of a subject skips the carry array.
 - Forward sensitivities now include the `f()` of a fixed-duration infusion,
   read at its start and removed at its stop, steady-state (`ss = 1`/`ss = 2`)
   infusions shorter than `ii` included.  They were missing, so a parameter
