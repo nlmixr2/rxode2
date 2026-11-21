@@ -74,6 +74,7 @@ Other Special functions:
 \code{\link[=boxCox]{boxCox()}},
 \code{\link[=delay]{delay()}},
 \code{\link[=erf]{erf()}},
+\code{\link[=etaBoxCox]{etaBoxCox()}},
 \code{\link[=gammap]{gammap()}},
 \code{\link[=gammapDer]{gammapDer()}},
 \code{\link[=gammapInv]{gammapInv()}},
