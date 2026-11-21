@@ -315,6 +315,10 @@
   `addl` repeat now read `time` as the first data record at or after the
   repeat, as NONMEM evaluates `F1`, `R1` and `D1`; by default they still
   read the actual time of the `addl` dose (#1583).
+- With `rxSolve(..., nonmem = TRUE)`, `alag()` of an `addl` repeat now reads
+  `time` as the time of the dose record it repeats, as NONMEM evaluates
+  `ALAG1`; by default it still reads the actual time of the `addl` dose
+  (#1583).
 
 ### Steady state
 - A steady state solved with `method = "indLin"` (or with a `rxToIndLin()`

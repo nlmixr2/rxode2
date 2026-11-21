@@ -1,7 +1,8 @@
 rxTest({
   # With rxSolve(..., nonmem = TRUE), f(), rate() and dur() of an addl repeat
   # read `time` as the first data record at or after the repeat, like
-  # NONMEM's F1/R1/D1 (rxode2#1583).
+  # NONMEM's F1/R1/D1, and alag() reads the time of the dose record it
+  # repeats, like ALAG1 (rxode2#1583).
   .pk <- function(fexpr) {
     eval(bquote(rxode2({
       cl <- 0.5
@@ -138,5 +139,91 @@ rxTest({
       cp <- linCmt()
     })
     expect_equal(.solve(.m, .d2, col = "cp"), .nmDur, tolerance = 1e-6)
+  })
+
+  .lagPk <- function(lexpr) {
+    eval(bquote(rxode2({
+      cl <- 0.5
+      v <- 10
+      ka <- 1
+      alag(depot) <- .(lexpr)
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+      pred <- central / v
+    })))
+  }
+  .lagTime <- .lagPk(quote(0.25 + 0.05 * t))
+
+  test_that("alag() of an addl repeat reads its dose record's time (NONMEM ALAG1)", {
+    # NONMEM 7.5.1, ferx-core anchor addl_lagt
+    expect_equal(.solve(.lagTime, .d), c(7.140220, 13.108163, 11.061344, 17.339247), tolerance = 1e-6)
+    # the same as the lag at the dose record's time 0 for every repeat
+    expect_equal(.solve(.lagTime, .d), .solve(.lagPk(0.25), .d), tolerance = 1e-8)
+  })
+
+  test_that("without nonmem = TRUE alag() reads the repeat's own time", {
+    expect_equal(.solve(.lagTime, .d, nonmem = FALSE), c(7.14022, 11.89806, 11.27521, 17.28720), tolerance = 1e-6)
+  })
+
+  test_that("each addl series reads the time of its own dose record", {
+    # a second series starting at 5: its repeat at 17 is lagged 0.25 + 0.05*5
+    .d5 <- rbind(
+      .d,
+      data.frame(ID = 1, TIME = 5, DV = 0, MDV = 1, EVID = 1, AMT = 50, CMT = 1, ADDL = 1, II = 12)
+    )
+    .d5 <- .d5[order(.d5$TIME), ]
+    .lagCov <- .lagPk(quote(lagc))
+    .d5c <- .d5
+    .d5c$lagc <- 0.25
+    .d5c$lagc[.d5c$TIME == 5] <- 0.5
+    # a covariate that is 0.5 only on the second series' dose record
+    .got <- .solve(.lagTime, .d5)
+    .solveCov <- rxSolve(
+      .lagCov,
+      .d5c,
+      nonmem = TRUE,
+      addlKeepsCov = TRUE,
+      covsInterpolation = "locf",
+      addDosing = FALSE,
+      atol = 1e-12,
+      rtol = 1e-12,
+      returnType = "data.frame"
+    )$pred
+    expect_equal(.got, .solveCov, tolerance = 1e-8)
+  })
+
+  test_that("f() and alag() of the same repeat read their own times", {
+    .m <- rxode2({
+      cl <- 0.5
+      v <- 10
+      ka <- 1
+      f(depot) <- ifelse(t >= 13, 0.5, 1)
+      alag(depot) <- 0.25 + 0.05 * t
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+      pred <- central / v
+    })
+    .ref <- rxode2({
+      cl <- 0.5
+      v <- 10
+      ka <- 1
+      f(depot) <- ifelse(t >= 13, 0.5, 1)
+      alag(depot) <- 0.25
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+      pred <- central / v
+    })
+    expect_equal(.solve(.m, .d), .solve(.ref, .d), tolerance = 1e-8)
+  })
+
+  test_that("linCmt() alag() reads the same time", {
+    .m <- rxode2({
+      cl <- 0.5
+      v <- 10
+      ka <- 1
+      alag(depot) <- 0.25 + 0.05 * t
+      pred <- linCmt()
+    })
+    expect_equal(.solve(.m, .d), c(7.140220, 13.108163, 11.061344, 17.339247), tolerance = 1e-6)
   })
 })
