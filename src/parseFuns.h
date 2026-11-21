@@ -738,13 +738,17 @@ extern SEXP _rxode2parse_funNameGpuSafe;
 // The model stays GPU safe only while every function it calls is registered
 // gpuSafe in a translation table (rxode2parseGetTranslation() or the builtin
 // table).  Unregistered calls (dosing, random draws, user functions) are not.
+// the device max()/min() take at most 8 arguments, sign() at most 4
+static inline int rxgTooManyArgs(const char *v, int n) {
+  if (!strcmp(v, "max") || !strcmp(v, "min")) return n > 8;
+  if (!strcmp(v, "sign")) return n > 4;
+  return 0;
+}
+
 static inline void rxgNoteFunction(transFunctions *tf) {
   if (tb.gpu == 0) return;
   const char *v = tf->v;
-  int n = functionNodeNargs(tf->pn);
-  // the device max()/min()/sign() take a fixed number of arguments
-  if (((!strcmp(v, "max") || !strcmp(v, "min")) && n > 8) ||
-      (!strcmp(v, "sign") && n > 4)) {
+  if (rxgTooManyArgs(v, functionNodeNargs(tf->pn))) {
     tb.gpu = 0;
     return;
   }

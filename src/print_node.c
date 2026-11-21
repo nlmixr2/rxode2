@@ -64,18 +64,26 @@ static inline void wprintValue(char *value, int isId) {
   }
 }
 
+// Identifiers whose C reads solver state (exact case, then any case)
+static const char *_rxgStateIds[] = {"CMT", "rx__PTR__", "rx__isObs__",
+  "newind", "NEWIND", "rxFlag", NULL};
+static const char *_rxgStateIdsI[] = {"amt", "tlast", "mixnum", "mixest",
+  "mixunif", NULL};
+
+static inline int rxgIsStateIdentifier(char *value) {
+  for (int k = 0; _rxgStateIds[k] != NULL; k++) {
+    if (!strcmp(_rxgStateIds[k], value)) return 1;
+  }
+  for (int k = 0; _rxgStateIdsI[k] != NULL; k++) {
+    if (!rxstrcmpi(_rxgStateIdsI[k], value)) return 1;
+  }
+  return mixSelNum(value, NULL) != 0;
+}
+
 // Identifiers whose C reads solver state make the model not GPU safe
 static inline void rxgNoteIdentifier(char *value) {
   if (tb.gpu == 0) return;
-  if (!strcmp("CMT", value) || !rxstrcmpi("amt", value) ||
-      !rxstrcmpi("tlast", value) || !strcmp("rx__PTR__", value) ||
-      !strcmp("rx__isObs__", value) || !rxstrcmpi("mixnum", value) ||
-      !rxstrcmpi("mixest", value) || !rxstrcmpi("mixunif", value) ||
-      mixSelNum(value, NULL) != 0 ||
-      !strcmp("newind", value) || !strcmp("NEWIND", value) ||
-      !strcmp("rxFlag", value)) {
-    tb.gpu = 0;
-  }
+  if (rxgIsStateIdentifier(value)) tb.gpu = 0;
 }
 
 void wprint_node(int depth, char *name, char *value, void *client_data) {
