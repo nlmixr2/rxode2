@@ -157,7 +157,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.png" class="logo" alt=""><h1>Nesting levels (IOV and beyond)</h1>
             
-            <h4 data-toc-skip class="date">2026-11-20</h4>
+            <h4 data-toc-skip class="date">2026-11-21</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/nlmixr2/rxode2/blob/main/vignettes/rxode2-nesting.Rmd" class="external-link"><code>vignettes/rxode2-nesting.Rmd</code></a></small>
       <div class="d-none name"><code>rxode2-nesting.Rmd</code></div>
@@ -311,24 +311,11 @@ nesting.</p>
 <span>  <span class="op">}</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">mod</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 model syntax error:</span></span></span>
-<span><span class="co"><span style="font-weight: bold;">#&gt; ================================================================================</span></span></span>
-<span><span class="co">#&gt; <span style="font-weight: bold;">:ERR:</span> compartment 'eff' needs differential equations defined:</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; :001: eff(0) = 1</span></span>
-<span><span class="co">#&gt; :002: C2 = centr/V2 * (1 + prop.sd)</span></span>
-<span><span class="co">#&gt; :003: C3 = peri/V3</span></span>
-<span><span class="co">#&gt; :004: CL = TCl * exp(eta.Cl + eye.Cl + iov.Cl + inv.Cl)</span></span>
-<span><span class="co">#&gt; :005: KA = TKA * exp(eta.Ka + eye.Ka + iov.Cl + inv.Ka)</span></span>
-<span><span class="co">#&gt; :006: d/dt(depot) = -KA * depot</span></span>
-<span><span class="co">#&gt; :007: rxdummyLhs=Q * C3</span></span>
-<span><span class="co">#&gt; :008: rxdummyDer=C3</span></span>
-<span><span class="co">#&gt; <span style="font-weight: bold;">================================================================================</span></span></span></code></pre>
 </div>
 <div class="section level3">
 <h3 id="uncertainty-in-model-parameters">Uncertainty in Model parameters<a class="anchor" aria-label="anchor" href="#uncertainty-in-model-parameters"></a>
 </h3>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1014</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">theta</span> <span class="op">&lt;-</span> <span class="va">mod</span><span class="op">$</span><span class="va">theta</span></span>
@@ -373,7 +360,7 @@ occ, <code>nu=200</code> or the model came from 200 occasions - inv,
 <code>nu=10</code> or the model came from 10 investigators</p>
 <p>To specify this in <code>lotri</code> you can use
 <code>| var(nu=X)</code>, or:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">omega</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/lotri/reference/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="fu"><a href="https://nlmixr2.github.io/lotri/reference/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">eta.Cl</span> <span class="op">~</span> <span class="fl">0.1</span>,</span>
 <span>                     <span class="va">eta.Ka</span> <span class="op">~</span> <span class="fl">0.1</span><span class="op">)</span> <span class="op">|</span> <span class="fu">id</span><span class="op">(</span>nu<span class="op">=</span><span class="fl">100</span><span class="op">)</span>,</span>
 <span>               <span class="fu"><a href="https://nlmixr2.github.io/lotri/reference/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">eye.Cl</span> <span class="op">~</span> <span class="fl">0.05</span>,</span>
@@ -410,14 +397,14 @@ occ, <code>nu=200</code> or the model came from 200 occasions - inv,
 </h3>
 <p>The last piece of variability to specify is the unexplained
 variability</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sigma</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://nlmixr2.github.io/lotri/reference/lotri.html" class="external-link">lotri</a></span><span class="op">(</span><span class="va">prop.sd</span> <span class="op">~</span> <span class="fl">.25</span>,</span>
 <span>               <span class="va">add.sd</span><span class="op">~</span> <span class="fl">0.125</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="solving-the-problem">Solving the problem<a class="anchor" aria-label="anchor" href="#solving-the-problem"></a>
 </h3>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">s</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">ev</span>,</span>
 <span>             thetaMat<span class="op">=</span><span class="va">tMat</span>, omega<span class="op">=</span><span class="va">omega</span>,</span>
 <span>             sigma<span class="op">=</span><span class="va">sigma</span>, sigmaDf<span class="op">=</span><span class="fl">400</span>,</span>
@@ -429,7 +416,7 @@ variability</p>
 <span><span class="co">#&gt; [solve error: the ODE solver failed (an exception, or a step it could not take)]: 2 warning(s) for subject(s): 6 (sim 43), 1 (sim 156)</span></span></code></pre>
 <pre><code><span><span class="co">#&gt; Warning: some ID(s) could not solve the ODEs correctly; These values are</span></span>
 <span><span class="co">#&gt; replaced with 'NA'</span></span></code></pre>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">s</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">-- Solved rxode2 object --</span></span></span>
 <span><span class="co">#&gt; <span style="font-weight: bold;">-- Parameters (</span><span style="color: #0000BB; font-weight: bold;">$params</span><span style="font-weight: bold;">): --</span></span></span>
@@ -488,7 +475,7 @@ following:</p>
 <p>If you look at the simulated parameters you can see
 <code>inv.Cl(inv==1)</code> and <code>inv.Cl(inv==2)</code> are in the
 <code>s$params</code>; They are the same for each study:</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">s</span><span class="op">$</span><span class="va">params</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt;   sim.id id inv.Cl(inv==1) inv.Cl(inv==2) inv.Ka(inv==1) inv.Ka(inv==2)</span></span>
 <span><span class="co">#&gt; 1      1  1     -0.1254652     0.07014459     -0.1529692     0.04335434</span></span>
@@ -518,7 +505,7 @@ following:</p>
 <span><span class="co">#&gt; 4 10.20557 296.8681 0.650145 0.6719848 200.3501 -0.11380876 -0.36471000</span></span>
 <span><span class="co">#&gt; 5 10.20557 296.8681 0.650145 0.6719848 200.3501 -0.29184818 -0.24201355</span></span>
 <span><span class="co">#&gt; 6 10.20557 296.8681 0.650145 0.6719848 200.3501  0.02707820 -0.25173810</span></span></code></pre>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">s</span><span class="op">$</span><span class="va">params</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">sim.id</span> <span class="op">==</span> <span class="fl">2</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt;   sim.id id inv.Cl(inv==1) inv.Cl(inv==2) inv.Ka(inv==1) inv.Ka(inv==2)</span></span>
 <span><span class="co">#&gt; 1      2  1    -0.05438592      0.1504495      0.1738687     0.03488022</span></span>
