@@ -1113,6 +1113,24 @@
 #'   default (`NULL`) this is `TRUE` with `nonmem = TRUE`, as NONMEM fixes
 #'   `D1` at the dose, and `FALSE` otherwise.
 #'
+#' @param ssMethod How an iterated steady state is found: `"anderson"` (the
+#'   default) finds the fixed point of the one-cycle map with Anderson
+#'   acceleration (Anderson 1965, \doi{10.1145/321296.321305}; in the form of
+#'   Walker and Ni 2011, \doi{10.1137/10078356X}); `"iterate"` repeats the
+#'   dosing cycle until its trough converges, as rxode2 did before.
+#'   It applies to steady-state boluses and infusions once `minSS` doses are
+#'   given and stops only when both the cycle residual and the change of the
+#'   cycle's starting state meet `ssAtol`/`ssRtol`, so a slowly accumulating
+#'   state (a long half-life against the dosing interval, a slow peripheral
+#'   compartment or saturable elimination) converges in far fewer cycles and
+#'   closer to the true steady state.  When the accelerated iteration stalls,
+#'   diverges or reaches `maxSS` (eg. dosing above the elimination capacity,
+#'   with no steady state) it restarts plain iteration from where acceleration
+#'   began, so the result is that of `"iterate"`.  A fixed dose count
+#'   (`minSS = maxSS`) and a `delay()` model always iterate.  See
+#'   `bench/ss_anderson_1762.R` in the package sources for the benchmark
+#'   behind the default.
+#'
 #' @param linCmtGillK The total number of possible steps to determine the
 #'     optimal forward/central difference step size per parameter (by
 #'     the Gill 1983 method).  If 0, no optimal step size is
@@ -1731,6 +1749,7 @@ rxSolve <- function(
   rateAtDoseTime = FALSE,
   durAtDoseTime = NULL,
   resetCancelsPending = TRUE,
+  ssMethod = c("anderson", "iterate"),
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -2051,6 +2070,11 @@ rxSolve <- function(
     }
     checkmate::assertLogical(durAtDoseTime, any.missing = FALSE, len = 1)
     checkmate::assertLogical(resetCancelsPending, any.missing = FALSE, len = 1)
+    if (checkmate::testIntegerish(ssMethod, len = 1, lower = 0, upper = 1, any.missing = FALSE)) {
+      .ssMethod <- as.integer(ssMethod)
+    } else {
+      .ssMethod <- match(match.arg(ssMethod), c("iterate", "anderson")) - 1L
+    }
     if (nonmem && missing(addlKeepsCov)) {
       # NONMEM keeps a dose record's covariates with the dose
       addlKeepsCov <- TRUE
@@ -2551,7 +2575,8 @@ rxSolve <- function(
       tieOrder = tieOrder,
       rateAtDoseTime = rateAtDoseTime,
       durAtDoseTime = durAtDoseTime,
-      resetCancelsPending = resetCancelsPending
+      resetCancelsPending = resetCancelsPending,
+      ssMethod = .ssMethod
     )
     class(.ret) <- "rxControl"
     return(.ret)

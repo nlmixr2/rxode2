@@ -148,6 +148,7 @@
 #define Rxc_rateAtDoseTime 144
 #define Rxc_durAtDoseTime 145
 #define Rxc_resetCancelsPending 146
+#define Rxc_ssMethod 147
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2

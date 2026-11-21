@@ -11,6 +11,14 @@
   doses -- as NONMEM does, in both tie orders.  `rxSolve(resetCancelsPending =
   FALSE)` (and `etTrans(resetCancelsPending = FALSE)`) gives them after the
   reset as before (#1720).
+- An iterated steady-state bolus or infusion is now found as the fixed point
+  of the one-cycle map with Anderson acceleration (`rxControl(ssMethod =
+  "anderson")`, the new default), so a slowly accumulating state (long
+  half-life, slow peripheral compartment, Michaelis-Menten elimination near
+  capacity) converges in tens of cycles instead of hundreds or thousands and
+  closer to the true steady state.  It falls back to plain iteration when no
+  steady state exists; `ssMethod = "iterate"` restores the previous
+  behavior (#1762).
 
 - `rxSymInvCholCreate()` builds block-diagonal omegas with
   `lotri::lotriMat()` instead of `Matrix::bdiag()`, removing the
@@ -58,18 +66,18 @@
 
 ## Bug fixes
 
-- mu-referencing only records a `covariate*theta` term when its coefficient
-  depends on covariates and constants alone: directly (mu2), or through model
-  variables that resolve to covariates (mu3, checked with symengine).  A term
-  that reaches a theta, eta or state through a model variable, such as the
-  allometric `0.75*log(V1/exp(tV1))` (recorded with covariate `-0.75`), was
+- mu-referencing only records a `covariate*theta` term that is exactly
+  `theta*covariate`.  The allometric `0.75*log(V1/exp(tV1))`, whose
+  derivative `-0.75` drops `V1`, was recorded with covariate `-0.75` and
   rewritten by nlmixr2's SAEM / mu-referenced methods to `covariate*theta`,
-  silently dropping the `V1` dependence (nlmixr2/nlmixr2est#1437).  A term
-  that is not exactly `theta*covariate`, such as `(cl.wt + 1)*log(WT/70)`, is
-  no longer recorded either, while `cl.wt*log(WT/70)` and `cl.wt*lwt` (with
-  `lwt <- log(WT/70)`) still are.  A constant coefficient such as
-  `cl.wt*log(70)` is still a valid mu2 term, so the downstream guard that drops
-  constant covariates (nlmixr2/nlmixr2est#1433) is not needed.
+  silently dropping the `V1` dependence (nlmixr2/nlmixr2est#1437); it and
+  `(cl.wt + 1)*log(WT/70)` are no longer recorded, while `cl.wt*log(WT/70)`,
+  `cl.wt*lwt` (with `lwt <- log(WT/70)`) and a constant coefficient such as
+  `cl.wt*log(70)` still are, so the downstream guard that drops constant
+  covariates (nlmixr2/nlmixr2est#1433) is not needed.  Whether a mu3/mu4
+  covariate (a model variable, including one set in an `if`/`else`) resolves
+  to the data is left to nlmixr2's evaluation in the data, so an `if`/`else`
+  in the model no longer drops these terms (#1770).
 
 - The R functions `gammapInva()` and `gammaqInva()` returned the results of
   `gammapInv()` and `gammaqInv()` (their `.Call` entries were registered to
