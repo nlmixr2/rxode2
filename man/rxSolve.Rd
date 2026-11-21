@@ -37,25 +37,27 @@ rxSolve(
   method = c("liblsoda", "lsoda", "dop853", "indLin", "f78", "rk4", "ck54", "ab", "abm",
     "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode",
     "trapz", "ssp3", "f32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98",
-    "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43",
-    "euler", "midpoint", "heun", "ssp22", "rk3", "ssp53", "s4", "r4", "ls44", "ls54",
-    "ssp54", "s5", "rk5", "c5", "l5", "lk5a", "lk5b", "b6", "s7", "s8_10", "cv8",
-    "s8_12", "s10", 
-     "z10", "o10", "h10", "dp54", "v65e", "v76e", "dp87", "v98e",
-    "ssp33", "bs32", "ssp43", "f45", "t54", "s54", "pp54", "pp54b", "bs54", "ss54",
-    "dp65", "c65", "tp64", "v65r", "v65", "dverk65", "tf65", "tp75", "tmy7", "tmy7s",
-    "v76r", "ss76", "v78", "dverk78", "dp85", "tp86", "v87e", "v87r", "ev87", "k87",
-    "f89", "v89", "t98a", "v98r", "s98", "f108", "c108", "b109", "s1110a", "f1210",
-    "o129", "f1412", "lsode", "bdf", "rk4s", "eulers", "midpoints", "heuns", "dop5s",
-    "dop853s", "ck54s", "bs32s", "vern65s", 
-     "vern76s", "dop87s", "f78s", "ros4s",
-    "radauiia5s", "backwardEulers", "gauss6s", "sdirk43s", "iiic6s", "ros43s", "ros6s",
-    "geng5s", "rk3s", "rk43s", "cvodesadj", "liblsodaadj", "abs", "dop54s", "dp54s",
-    "vern98s", "f45s", "t54s", "pp54s", "pp54bs", "bs54s", "ss54s", "dp65s", "c65s",
-    "tp64s", "v65rs", "dverk65s", "tf65s", "tp75s", "tmy7sadj", "tmy7adj", "v76rs",
-    "ss76s", "v78s", "dverk78s", "dp85s", "tp86s", "v87es", "v87rs", "ev87s", "k87s",
-    "v89s", "t98as", "v98rs", "s98s", "c108s", "b109s", 
-     "s1110as", "o129s"),
+    "ros43", "ros6", "ros54p", "gpuT54", "gpuVern76", "gpuRos54p",
+    "gpuT54+gpuRos54p", "gpuVern76+gpuRos54p", "backwardEuler", "gauss6", "iiic6",
+    "radauiia5", "geng5", "sdirk43", "euler", "midpoint", "heun", "ssp22", "rk3",
+    "ssp53", "s4", "r4", "ls44", "ls54", "ssp54", 
+     "s5", "rk5", "c5", "l5", "lk5a",
+    "lk5b", "b6", "s7", "s8_10", "cv8", "s8_12", "s10", "z10", "o10", "h10", "dp54",
+    "v65e", "v76e", "dp87", "v98e", "ssp33", "bs32", "ssp43", "f45", "t54", "s54",
+    "pp54", "pp54b", "bs54", "ss54", "dp65", "c65", "tp64", "v65r", "v65", "dverk65",
+    "tf65", "tp75", "tmy7", "tmy7s", "v76r", "ss76", "v78", "dverk78", "dp85", "tp86",
+    "v87e", "v87r", "ev87", "k87", "f89", "v89", "t98a", "v98r", "s98", "f108", "c108",
+    "b109", "s1110a", "f1210", "o129", "f1412", "lsode", "bdf", 
+     "rk4s", "eulers",
+    "midpoints", "heuns", "dop5s", "dop853s", "ck54s", "bs32s", "vern65s", "vern76s",
+    "dop87s", "f78s", "ros4s", "radauiia5s", "backwardEulers", "gauss6s", "sdirk43s",
+    "iiic6s", "ros43s", "ros6s", "geng5s", "rk3s", "rk43s", "cvodesadj", "liblsodaadj",
+    "abs", "dop54s", "dp54s", "vern98s", "f45s", "t54s", "pp54s", "pp54bs", "bs54s",
+    "ss54s", "dp65s", "c65s", "tp64s", "v65rs", "dverk65s", "tf65s", "tp75s", "tmy7sadj",
+    "tmy7adj", "v76rs", "ss76s", "v78s", "dverk78s", "dp85s", "tp86s", 
+     "v87es",
+    "v87rs", "ev87s", "k87s", "v89s", "t98as", "v98rs", "s98s", "c108s", "b109s",
+    "s1110as", "o129s"),
   sigdig = NULL,
   atol = 1e-08,
   rtol = 1e-06,
@@ -168,6 +170,10 @@ rxSolve(
   durAtDoseTime = NULL,
   resetCancelsPending = TRUE,
   ssMethod = c("anderson", "iterate"),
+  gpuBackend = c("auto", "opencl", "cpu"),
+  gpuDevice = NULL,
+  gpuPrecision = c("double", "float"),
+  gpuBatch = 16384L,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -394,6 +400,20 @@ Requires an analytical Jacobian (auto-computed from the model when not provided)
 falls back to \code{liblsoda} if Jacobian generation fails.
 \item \code{"ros6"} \strong{(implicit)} -- Kaps-Wanner 6th-order A-stable Rosenbrock method (ROW6A) from libode.
 Fixed step size (set with \code{hmin}). Requires Jacobian; falls back to \code{liblsoda} if unavailable.
+\item \code{"ros54p"} \strong{(implicit)} -- Steinebach's 8-stage L-stable Rosenbrock 5(4) method (Rodas5P).
+Adaptive step size via its embedded 4th-order solution.  Requires an analytical
+Jacobian (auto-computed from the model when not provided); falls back to
+\code{liblsoda} if Jacobian generation fails.  \code{"t54+ros54p"} and \code{"vern76+ros54p"}
+are its AutoSwitch composites.
+\item \code{"gpuT54"}, \code{"gpuVern76"}, \code{"gpuRos54p"}, \code{"gpuT54+gpuRos54p"},
+\code{"gpuVern76+gpuRos54p"} -- the same integrators (Tsitouras 5(4) as
+\code{"t54"}, Verner 7(6) as \code{"vern76"}, Rodas5P as \code{"ros54p"} with the
+analytical Jacobian, and their AutoSwitch composites) as device code: each
+round integrates every waiting subject at once, one subject per OpenCL
+work-item, or on \code{cores} threads with the CPU build (\code{gpuBackend}).
+Events stay on the host.  The model's \code{d/dt()} must be able to run as
+device code; otherwise \code{gpuBackend = "auto"} solves with the host method
+named above.  Supports \code{delay()}.
 \item \code{"backwardEuler"} \strong{(implicit)} -- Backward Euler (BDF-1), 1st-order L-stable fully implicit method from libode.
 Fixed step size (set with \code{hmin}). Requires Jacobian; falls back to \code{liblsoda} if unavailable.
 \item \code{"gauss6"} \strong{(implicit)} -- Gauss-Legendre 6th-order A-stable fully-implicit method (3 stages) from libode.
@@ -792,7 +812,7 @@ between closely spaced doses) are always handled correctly.
 
 For the adaptive methods `"f78"`, `"ck54"`, `"dop5"`, `"bs"`, `"f32"`,
 `"rk43"`, `"dop54"`, `"vern65"`, `"vern76"`, `"dop87"`, `"vern98"`,
-`"ros43"`, `"sdirk43"`, and all libode adaptive methods (`"bs32"`,
+`"ros43"`, `"ros54p"`, `"sdirk43"`, the GPU methods, and all libode adaptive methods (`"bs32"`,
 `"ssp43"`, `"f45"`, `"t54"`, `"s54"`, `"pp54"`, `"pp54b"`,
 `"bs54"`, `"ss54"`, `"dp65"`, `"c65"`, `"tp64"`, `"v65r"`,
 `"v65"`, `"dverk65"`, `"tf65"`, `"tp75"`, `"tmy7"`, `"tmy7s"`,
@@ -1552,6 +1572,23 @@ began, so the result is that of \code{"iterate"}.  A fixed dose count
 (\code{minSS = maxSS}) and a \code{delay()} model always iterate.  See
 \code{bench/ss_anderson_1762.R} in the package sources for the benchmark
 behind the default.}
+
+\item{gpuBackend}{Where the GPU methods (\code{"gpuT54"}, \code{"gpuVern76"},
+\code{"gpuRos54p"}, \code{"gpuT54+gpuRos54p"}, \code{"gpuVern76+gpuRos54p"})
+integrate: \code{"opencl"} on an OpenCL device through the suggested
+\code{OpenCL} package, \code{"cpu"} with the same integrators built as host C on
+\code{cores} threads (at most \code{\link[=getRxThreads]{getRxThreads()}}), or \code{"auto"} (the default) for OpenCL when a device with
+the requested precision is available and the CPU otherwise
+(\code{options(rxode2.gpuBackend=)} pins what \code{"auto"} picks).  See
+\code{\link[=rxGpuInfo]{rxGpuInfo()}}.}
+
+\item{gpuDevice}{OpenCL device (its \code{index} in \code{rxGpuInfo()$devices});
+\code{NULL} (the default) prefers a GPU with the requested precision.}
+
+\item{gpuPrecision}{\code{"double"} (the default) or \code{"float"} (OpenCL only).}
+
+\item{gpuBatch}{The most subjects the GPU methods integrate in one round
+(default 16384).  Each needs its own scratch while it waits.}
 
 \item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that
 is acceptable before issuing a warning/error about the gradient estimates.}

@@ -1029,7 +1029,12 @@ extern SEXP _goodFuns;
 
 // Does the normalized model read time (t or time)?  Conservative: any
 // identifier t or time counts.
-static int rxgUsesTime(const char *s) {
+// 1 when the normalized model reads time: t/time, or a function whose value
+// moves with time between records (tad(), tafd(), transit(), delay(),
+// past(), linCmt()); rxModelVars()$flags["timeDep"]
+int rxgUsesTime(const char *s) {
+  static const char *fns[] = {"tad", "tad0", "tafd", "tafd0", "transit",
+                              "delay", "past", NULL};
   const char *p = s;
   while (*p) {
     if (isalpha((unsigned char)*p) || *p == '_' || *p == '.') {
@@ -1038,8 +1043,12 @@ static int rxgUsesTime(const char *s) {
       size_t n = (size_t)(p - b);
       if ((n == 1 && b[0] == 't') ||
           (n == 4 && (b[0] == 't' || b[0] == 'T') && (b[1] == 'i' || b[1] == 'I') &&
-           (b[2] == 'm' || b[2] == 'M') && (b[3] == 'e' || b[3] == 'E'))) {
+           (b[2] == 'm' || b[2] == 'M') && (b[3] == 'e' || b[3] == 'E')) ||
+          (n >= 6 && strncmp(b, "linCmt", 6) == 0)) {
         return 1;
+      }
+      for (int k = 0; fns[k] != NULL; k++) {
+        if (strlen(fns[k]) == n && strncmp(b, fns[k], n) == 0) return 1;
       }
     } else if (isdigit((unsigned char)*p)) {
       while (*p && (isalnum((unsigned char)*p) || *p == '.')) p++;
