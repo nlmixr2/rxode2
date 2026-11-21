@@ -555,6 +555,16 @@ struct rx_solving_options_ind_s {
   double *infDurOn;
   int     infDurOnCap; /* allocated doubles in infDurOn */
   int     infDurOnN;   /* entries in use */
+  // 1 + the sorted position of the record whose covariates a time-based
+  // covariate update reads, whatever time it is at (0 = match by time):
+  // getAmtAtRecord() reads f() at a record's data time with its covariates.
+  int     recCovPos;
+  // For a record a dose row expands to (a steady-state companion, an
+  // infusion's stop), the offset to the record standing in for that dose row
+  // (negative), recorded by etTrans(); 0 for every other record, NULL when
+  // there are none.  The record-based covariate reads of such a record read
+  // its dose row.  Covers the first n_all_times_orig records.
+  int    *doseRow;
 };
 
 typedef struct rx_solve_s {

@@ -2143,6 +2143,8 @@ extern "C" void gFree(){
   _globals.ginfPair=NULL;
   if (_globals.gpkSkip != NULL) free(_globals.gpkSkip);
   _globals.gpkSkip=NULL;
+  if (_globals.gdoseRow != NULL) free(_globals.gdoseRow);
+  _globals.gdoseRow=NULL;
   if (_globals.gall_times != NULL) free(_globals.gall_times);
   _globals.gall_times=NULL;
   _globals.gall_times_n = 0;
@@ -4430,6 +4432,26 @@ static inline double rxHmaxMean(double mean, double ss, double n, double hmaxSd)
   return mean + hmaxSd*sqrt(ss/(n-1));
 }
 
+// Loads _globals.gdoseRow from the event table's rxDoseRow attribute: the
+// records a dose row expands to and that row's own record, as 1-based
+// (record, dose) row pairs, stored as the offset from the record to it
+static inline void rxSolve_loadDoseRow(SEXP ev1, int nr) {
+  if (_globals.gdoseRow != NULL) free(_globals.gdoseRow);
+  _globals.gdoseRow = NULL;
+  SEXP doseRowS = Rf_getAttrib(ev1, Rf_install("rxDoseRow"));
+  if (TYPEOF(doseRowS) != INTSXP || Rf_length(doseRowS) < 2) return;
+  _globals.gdoseRow = (int*)calloc(nr, sizeof(int));
+  if (_globals.gdoseRow == NULL){
+    rxSolveFree();
+    stop(_("can not allocate enough memory to load record types"));
+  }
+  int *ip = INTEGER(doseRowS);
+  for (int k = 0; k + 1 < Rf_length(doseRowS); k += 2) {
+    int r0 = ip[k] - 1, p0 = ip[k+1] - 1;
+    if (r0 >= 0 && r0 < nr && p0 >= 0 && p0 < r0) _globals.gdoseRow[r0] = p0 - r0;
+  }
+}
+
 // This loops through the data to put each individual into the
 // approiate data structure.
 // At the same time calculate hmax per individual as well
@@ -4555,6 +4577,8 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
         }
       }
     }
+    // the records a dose row expands to and that row's own record
+    rxSolve_loadDoseRow(ev1, evid.size());
     int ntot = 1;
 
     IntegerVector id(evid.size(), 1);
@@ -4814,6 +4838,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           ind->ii               = &_globals.gii[startRow];
           ind->infPair          = _globals.ginfPair ? &_globals.ginfPair[startRow] : NULL;
           ind->pkSkip           = _globals.gpkSkip ? &_globals.gpkSkip[startRow] : NULL;
+          ind->doseRow          = _globals.gdoseRow ? &_globals.gdoseRow[startRow] : NULL;
           ind->cov_ptr          = groupCov;
           ind->n_all_times      = groupNAll;
           ind->n_all_times_orig = groupNAll;
@@ -4965,6 +4990,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           ind->ii             = &_globals.gii[i];
           ind->infPair        = _globals.ginfPair ? &_globals.ginfPair[i] : NULL;
           ind->pkSkip         = _globals.gpkSkip ? &_globals.gpkSkip[i] : NULL;
+          ind->doseRow        = _globals.gdoseRow ? &_globals.gdoseRow[i] : NULL;
           lasti = i;
 
           hmax1m=0.0;
@@ -5796,6 +5822,7 @@ static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxCont
             ind->ii   = &(indS.ii[0]);
             ind->infPair = indS.infPair;
             ind->pkSkip = indS.pkSkip;
+            ind->doseRow = indS.doseRow;
             ind->evid =&(indS.evid[0]);
             ind->dv    = &(indS.dv[0]);
             ind->limit = &(indS.limit[0]);

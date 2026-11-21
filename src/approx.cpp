@@ -168,6 +168,60 @@ static inline bool rxAtDataRec(double v, double ti, const double *y, const doubl
   return isSameTime(v, ti) && !rxNoValueRec(y, dv, ix, i, nOrig);
 }
 
+// The data record whose covariates a record-based read of sorted record `pos`
+// reads, or -1 for a pushed record: a record a dose row expands to (a
+// steady-state companion, an infusion's stop; ind->doseRow) reads that dose
+// row's record, any other its own
+static inline int rxRecCovRow(rx_solving_options_ind *ind, int pos) {
+  if (pos < 0 || pos >= ind->n_all_times) return -1;
+  int raw = ind->ix[pos];
+  if (raw < 0 || raw >= ind->n_all_times_orig) return -1;
+  if (ind->doseRow != NULL && ind->doseRow[raw] != 0) return raw + ind->doseRow[raw];
+  return raw;
+}
+
+// The value of data record `raw`, a missing one filled from its neighbours in
+// record (data) order
+static inline double rxRecValue(int raw, double *y, int is_locf,
+                                rx_solving_options_ind *ind, rx_solving_options *op) {
+  return getValue(raw, y, is_locf, NULL, ind->n_all_times_orig,
+                  ind->n_all_times_orig, op, 0);
+}
+
+// When sorted record `pos` is a record a dose row expands to, set *out to that
+// row's value, reset ind's cache and return true; otherwise return false
+static inline bool rxDoseRowCov(rx_solving_options_ind *ind, rx_solving_options_ind *indSample,
+                                int pos, double *y, int is_locf, rx_solving_options *op,
+                                double *out) {
+  int linked = rxRecCovRow(indSample, pos);
+  if (linked < 0 || linked == indSample->ix[pos]) return false;
+  *out = rxRecValue(linked, y, is_locf, indSample, op);
+  ind->cacheME = 0;
+  return true;
+}
+
+// The value sorted record `pos` reads: its dose row's for a record a dose row
+// expands to (rxDoseRowCov()), otherwise its own
+static inline double rxRecCovValue(rx_solving_options_ind *ind, rx_solving_options_ind *indSample,
+                                   int pos, double *y, int is_locf, rx_solving_options *op) {
+  double v;
+  if (rxDoseRowCov(ind, indSample, pos, y, is_locf, op, &v)) return v;
+  return getValue(pos, y, is_locf, indSample, op, 0);
+}
+
+// The subject whose covariate k subject ind samples, drawn on first use
+static inline rx_solving_options_ind *rxCovSampleInd(rx_solving_options_ind *ind,
+                                                     rx_solve *rx, int k) {
+  if (ind->cov_sample[k] == 0) {
+    // Set inLhs to 1 to make sure uniform is going to be used
+    int inLhs = ind->inLhs;
+    ind->inLhs = 1;
+    ind->cov_sample[k] = floor(rxunif(ind, 0.0, (double)rx->nsub * rx->nsim))+1;
+    ind->inLhs = inLhs;
+  }
+  return &(rx->subjects[ind->cov_sample[k]-1]);
+}
+
 // Linear interpolation between records i and j, moved past NA values
 template <typename TimeFn>
 static inline double rxApproxLinear(double v, int i, int j, double *y, int n, int nOrig,
@@ -534,14 +588,7 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           if (is_locf == -1) is_locf = op->is_locf;
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
             // Get or sample id from overall ids
-            if (ind->cov_sample[k] == 0) {
-              // Set inLhs to 1 to make sure uniform is going to be used
-              int inLhs = ind->inLhs;
-              ind->inLhs = 1;
-              ind->cov_sample[k] = floor(rxunif(ind, 0, (double)rx->nsub * rx->nsim))+1;
-              ind->inLhs = inLhs;
-            }
-            indSample = &(rx->subjects[ind->cov_sample[k]-1]);
+            indSample = rxCovSampleInd(ind, rx, k);
             // the sampled subject at the data time of this subject's record idx
             ind->par_ptr[op->par_cov[k]-1] =
               rxApproxCovData(getAllTimes(ind, ind->ix[idx]), k, is_locf, op, indSample);
@@ -567,8 +614,9 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
             ind->cacheME=0;
             continue;
           }
-          ind->par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, is_locf,
-                                                    indSample, op, 0);
+          // a record a dose row expands to reads that row
+          ind->par_ptr[op->par_cov[k]-1] = rxRecCovValue(ind, indSample, idxSample, y,
+                                                         is_locf, op);
           if (idx == 0){
             ind->cacheME=0;
           } else if (!isSameTimeOp(getValue(idxSample, y, is_locf,
@@ -591,14 +639,7 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           if (is_locf == -1) is_locf = op->is_locf;
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
             // Get or sample id from overall ids
-            if (ind->cov_sample[k] == 0) {
-              // Set inLhs to 1 to make sure uniform is going to be used
-              int inLhs = ind->inLhs;
-              ind->inLhs = 1;
-              ind->cov_sample[k] = floor(rxunif(ind, 0.0, (double)rx->nsub * rx->nsim))+1;
-              ind->inLhs = inLhs;
-            }
-            indSample = &(rx->subjects[ind->cov_sample[k]-1]);
+            indSample = rxCovSampleInd(ind, rx, k);
             // Use the same methodology as approxfun.  Don't need to reset ME
             // because solver doesn't use the times in-between.
             int side = rxStepCovSide(t, is_locf, idx, ind, op);
@@ -614,6 +655,15 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           //double *all_times = indSample->all_times;
           // cov_ptr is laid out by the data records (n_all_times_orig)
           double *y = indSample->cov_ptr + indSample->n_all_times_orig*k;
+          if (ind->recCovPos > 0 && rxRecCovRow(ind, ind->recCovPos - 1) >= 0) {
+            // a given record's covariates, whatever time t is
+            // (getAmtAtRecord()), a missing one from its neighbours in record
+            // order; a record a dose row expands to reads that row
+            par_ptr[op->par_cov[k]-1] =
+              rxRecValue(rxRecCovRow(ind, ind->recCovPos - 1), y, is_locf, indSample, op);
+            ind->cacheME=0;
+            continue;
+          }
           // integrating toward the record, a step covariate at an end of the
           // interval takes the value it has inside it
           int side = rxStepCovSide(t, is_locf, idxSample, ind, op);
@@ -655,12 +705,13 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           if (!pushed && idxSample == 0 &&
               isSameTimeOp(t, rxRecMatchTime(indSample, idxSample))) {
             // y is in record order; a lagged dose can move record 0 off sorted slot 0
-            par_ptr[op->par_cov[k]-1] = getValue(0, y, is_locf, indSample, op, 0);
+            par_ptr[op->par_cov[k]-1] = rxRecCovValue(ind, indSample, 0, y, is_locf, op);
             ind->cacheME=0;
           } else if (!pushed && idxSample > 0 && idxSample < indSample->n_all_times &&
                      isSameTimeOp(t, rxRecMatchTime(indSample, idxSample))) {
-            par_ptr[op->par_cov[k]-1] = getValue(idxSample, y, is_locf,
-                                                 indSample, op, 0);
+            // a record a dose row expands to reads that row
+            par_ptr[op->par_cov[k]-1] = rxRecCovValue(ind, indSample, idxSample, y,
+                                                      is_locf, op);
             if (!isSameTimeOp(getValue(idxSample, y, is_locf,
                                        indSample, op, 0),
                               getValue(idxSample-1, y, is_locf,
