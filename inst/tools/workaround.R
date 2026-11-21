@@ -523,6 +523,14 @@ l3 <- l3[seq(w4, length(l3))]
 dfP <- l[seq(w1 + 1, w2 - 1)]
 
 dfP <- dfP[regexpr("^ *$", dfP) == -1]
+## flags: "// builtin gpuSafe: f g ..." lines list the builtins with a device
+## version; a trailing "// gpuSafe" or "// threadSafe=0" tags a registration
+.builtinRe <- "^ *// *builtin gpuSafe: *"
+gpuSafeBuiltin <- unlist(strsplit(sub(.builtinRe, "", grep(.builtinRe, dfP, value = TRUE)), " +"))
+gpuSafeBuiltin <- gpuSafeBuiltin[gpuSafeBuiltin != ""]
+dfP <- dfP[regexpr("^ *//", dfP) == -1]
+.tags <- ifelse(grepl("//", dfP, fixed = TRUE), sub("^[^/]*//", "", dfP), "")
+dfP <- sub(" *//.*$", "", dfP)
 df <- setNames(
   do.call(
     "rbind",
@@ -540,8 +548,9 @@ df <- setNames(
 
 df$rxFun <- df$fun
 df$argMax <- df$argMin <- NA_integer_
-df$threadSafe <- 1L
-df <- df[, c("rxFun", "fun", "type", "package", "packageFun", "argMin", "argMax", "threadSafe")]
+df$threadSafe <- as.integer(!grepl("threadSafe *= *0", .tags))
+df$gpuSafe <- as.integer(grepl("\\bgpuSafe\\b", .tags))
+df <- df[, c("rxFun", "fun", "type", "package", "packageFun", "argMin", "argMax", "threadSafe", "gpuSafe")]
 df$rxFun <- gsub("_llik", "llik", df$rxFun)
 
 def <- def[!(def %in% df$rxFun)]
@@ -568,6 +577,9 @@ df$argMax <- df$argMin
 
 dfStr <- deparse(df)
 dfStr[1] <- paste(".parseEnv$.rxode2parseDf <- ", dfStr[1])
+gpuStr <- deparse(gpuSafeBuiltin)
+gpuStr[1] <- paste(".parseEnv$.rxGpuSafeBuiltin <- ", gpuStr[1])
+dfStr <- c(dfStr, gpuStr)
 
 .writeIfChanged("R/dfIni.R", dfStr)
 

@@ -29,6 +29,17 @@
   model, named arguments expand into the native call; the R functions run the
   same C code.  See the new article "Skewed and heavy-tailed random effects"
   (#1751).
+- Groundwork for solving on GPUs (OpenCL): each function in the
+  translation tables now registers whether it is `gpuSafe` (like
+  `threadSafe`), the parser records whether a whole model is GPU safe in
+  `rxModelVars()$flags["gpuSafe"]`, and a GPU-safe model is also written as
+  OpenCL C derivative/Jacobian code.  The device code covers the math
+  builtins, the neural network activations, `probit()`, the
+  transform-both-sides functions, the incomplete gamma/beta families and the
+  Student t functions, including the transform-both-sides values
+  (`rx_lambda_` etc.); random draws, `linCmt()`, Bessel functions and
+  `llik*()` are not GPU safe.  `rxode2parseGetTranslation()` keeps its
+  columns.
 
 - `rxSymInvCholCreate()` builds block-diagonal omegas with
   `lotri::lotriMat()` instead of `Matrix::bdiag()`, removing the

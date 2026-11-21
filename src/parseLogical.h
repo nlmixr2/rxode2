@@ -303,6 +303,7 @@ static inline int handleStringEqualLhs(nodeInfo ni, char *name, int i, D_ParseNo
     case 2:
       tb.strCmpCurStr = v;
       if (isStringCmpId(tb.strCmpCurCov)) {
+        tb.gpu = 0; // reads the subject's ID from the host solver
         aAppendN("_cmp2(", 6);
         sAppend(&sb, "(&_solveData->subjects[_cSub])->idReal, \"ID\", %d, %s)",
                 tb.strCmpCurType, v);
@@ -362,6 +363,7 @@ static inline int handleLogicalIfOrWhile(nodeInfo ni, char *name, int i, D_Parse
       sAppendN(&sbDt, "_itwhile=0;\nwhile (", 19);
       sAppendN(&sbt,"while (", 7);
       tb.nwhile++;
+      tb.gpu = 0; // the loop guard reads solver state
     } else {
       sAppendN(&sb, "if (", 4);
       sAppendN(&sbDt, "if (", 4);

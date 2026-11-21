@@ -33,6 +33,8 @@ SEXP _rxode2parse_functionPackageFunction;
 SEXP _rxode2parse_functionArgMin;
 SEXP _rxode2parse_functionArgMax;
 SEXP _rxode2parse_functionThreadSafe;
+SEXP _rxode2parse_functionGpuSafe = NULL;
+SEXP _rxode2parse_funNameGpuSafe = NULL;
 
 SEXP _rxode2parse_funName;
 SEXP _rxode2parse_funNameInt;
@@ -102,7 +104,7 @@ static char *_es_dup(SEXP s) {
 
    R_PreserveObject is not undone by an unwind, so the objects and the count
    stay in step across an error and releasing them stays correct either way.
-   The list is fixed and short (8 + 2 translation entries, plus _goodFuns). */
+   The list is fixed and short (9 + 3 translation entries, plus _goodFuns). */
 #define RXP_MAX_PRESERVED 32
 static SEXP _rxode2parse_pres[RXP_MAX_PRESERVED];
 int _rxode2parse_protected = 0;
@@ -120,11 +122,38 @@ SEXP _rxode2parse_preserve(SEXP x) {
    and _rxode2parse_preserve() allocates, so protect each frame until its columns
    are claimed; the protection is released before returning, never crossing the
    parse. */
+// The optional gpuSafe column, found by name and returned as an integer
+// vector; NULL (no function is gpu safe) when it is missing or not numeric
+static SEXP rxgGpuSafeColumn(SEXP df) {
+  SEXP nm = Rf_getAttrib(df, R_NamesSymbol);
+  if (TYPEOF(nm) != STRSXP) return NULL;
+  for (int i = Rf_length(nm); i--;) {
+    if (strcmp(CHAR(STRING_ELT(nm, i)), "gpuSafe")) continue;
+    SEXP col = VECTOR_ELT(df, i);
+    switch (TYPEOF(col)) {
+    case INTSXP:
+      return _rxode2parse_preserve(col);
+    case LGLSXP:
+    case REALSXP: {
+      // R_PreserveObject() allocates, so hold the copy until it is preserved
+      rxProtectGuard;
+      SEXP ret = _rxode2parse_preserve(rxP(Rf_coerceVector(col, INTSXP)));
+      rxUPAll();
+      return ret;
+    }
+    default:
+      return NULL;
+    }
+  }
+  return NULL;
+}
+
 void _rxode2parse_assignTranslationBuiltin(void) {
   rxProtectGuard;
   SEXP df = rxP(getRxode2ParseDfBuiltin());
   _rxode2parse_funName = _rxode2parse_preserve(VECTOR_ELT(df, 0));
   _rxode2parse_funNameInt = _rxode2parse_preserve(VECTOR_ELT(df, 1));
+  _rxode2parse_funNameGpuSafe = rxgGpuSafeColumn(df);
   rxUP(1);
 }
 
@@ -140,6 +169,8 @@ void _rxode2parse_assignTranslation(SEXP df) {
   _rxode2parse_functionArgMin = _rxode2parse_preserve(VECTOR_ELT(df, 5));
   _rxode2parse_functionArgMax = _rxode2parse_preserve(VECTOR_ELT(df, 6));
   _rxode2parse_functionThreadSafe = _rxode2parse_preserve(VECTOR_ELT(df, 7));
+  // gpuSafe is optional: without it no registered function is gpu safe
+  _rxode2parse_functionGpuSafe = rxgGpuSafeColumn(df);
   _rxode2parse_assignTranslationBuiltin();
   rxUP(1);
 }
@@ -163,6 +194,15 @@ void _rxode2parse_unprotect(void) {
 // Lines that read `time` as the record time (see pkTime.h); NULL when
 // the function being generated never does.
 static int *_pkLine = NULL;
+
+// GPU (OpenCL C) device code: while _rxgDev is set, codegen(ode_dydt/ode_jac)
+// emits rxg_dydt()/rxg_jac(), which read only their arguments (see
+// inst/include/rxode2gpu/rxg_model.h).  _rxgHdr keeps the __DDT/_LHS_
+// defines.  Whether a model can run as device code is decided while parsing
+// (rxModelVars()$flags["gpuSafe"]); the lines skipped here only occur in
+// models that are not.
+static int _rxgDev = 0;
+static sbuf _rxgHdr;
 
 static inline void appendModelLine(int i, const char *line) {
   if (_pkLine != NULL && _pkLine[i]) {
@@ -260,7 +300,11 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
   } else {
     int i, j;
     char *buf;
-    if (show_ode == ode_dydt){
+    if (show_ode == ode_dydt && _rxgDev) {
+      sAppend(&sbOut, "RXG_FN void rxg_dydt(double __t, double *__zzStateVar__, double *__DDtStateVar__, const rxg_ctx *_rxg)\n{\n  int _itwhile = 0;\n  (void)_itwhile;\n  int _cSub = 0;\n  (void)_cSub;\n  double t = __t + _rxg->curShift;\n  (void)t;\n");
+    } else if (show_ode == ode_jac && _rxgDev) {
+      sAppend(&sbOut, "RXG_FN void rxg_jac(double __t, double *__zzStateVar__, double *__PDStateVar__, int __NROWPD__, const rxg_ctx *_rxg)\n{\n  int _itwhile = 0;\n  (void)_itwhile;\n  int _cSub = 0;\n  (void)_cSub;\n  double t = __t + _rxg->curShift;\n  (void)t;\n  (void)__PDStateVar__;\n  (void)__NROWPD__;\n");
+    } else if (show_ode == ode_dydt){
       const char *extra = "";
       if (strncmp("rx_", libname, 3) != 0) extra = libname;
       writeHeader(pMd5, extra);
@@ -560,8 +604,16 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
         }
       }
 
+      if (_rxgDev) {
+        // the transform-both-sides values: the model may assign them, so
+        // per-call copies seeded from the context
+        sAppend(&sbOut, "  double _rxgLambda = _rxg->lambda, _rxgYj = _rxg->yj, _rxgHi = _rxg->logitHi, _rxgLow = _rxg->logitLow;\n");
+        sAppend(&sbOut, "  (void)_rxgLambda; (void)_rxgYj; (void)_rxgHi; (void)_rxgLow;\n");
+      }
       prnt_vars(print_lastLhsValue, 0,"","\n", 12);
-      if (show_ode == ode_ini){
+      if (_rxgDev) {
+        sAppend(&sbOut, "  double _rxgPP[RXG_NPAR1];\n  const double *_PP = rxg_par(_rxg, __t, _rxgPP);\n  (void)_PP;\n");
+      } else if (show_ode == ode_ini){
         sAppendN(&sbOut, "  _update_par_ptr(0.0, _cSub, _solveData, _idx);\n", 49);
       } else if (show_ode == ode_lag || show_ode == ode_rate || show_ode == ode_dur ||
                  show_ode == ode_mtime || show_ode == ode_past || ode_is_es_dcode(show_ode)){
@@ -579,7 +631,9 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
           show_ode == ode_mexp || show_ode == ode_indLinVec) {
         int *pkLine = (int*)R_alloc(sbPm.n > 0 ? sbPm.n : 1, sizeof(int));
         if (pkTimeClassify(pkLine) > 0) _pkLine = pkLine;
-        if (_pkLine != NULL) {
+        if (_pkLine != NULL && _rxgDev) {
+          sAppend(&sbOut, "  double _tPK = (_rxg->nonmem ? _rxg->tpk : t);\n  (void)_tPK;\n");
+        } else if (_pkLine != NULL) {
           sAppend(&sbOut, "  double _tPK = _rxPkTime(t, _cSub, _solveData);\n  (void)_tPK;\n");
         }
       }
@@ -622,6 +676,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
         if (ode_is_es_dcode(show_ode)) break;
         switch(sbPm.lType[i]){
         case TLIN:
+          if (_rxgDev) break;
           // Same routing as TASSIGN -- a linCmt()-bearing assignment is still an
           // assignment -- except that linCmt() cannot be evaluated from the
           // F/alag/rate/dur/past functions.  `tb.isMexp` is what lets a matExp()
@@ -637,6 +692,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
           }
           break;
         case TMTIME:
+          if (_rxgDev) break;
           if (show_ode != ode_mexp && show_ode != ode_indLinVec){
             // For ode_mtime (calc_mtime): use the primal equation (sbPm) to evaluate
             // the mtime expression using the provided __zzStateVar__ state vector.
@@ -647,6 +703,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
           }
           break;
         case TEVID:
+          if (_rxgDev) break;
           /* evid_() calls emit code in dydt and lhs, guarded by _wasAtEventTime */
           if (show_ode == ode_dydt || show_ode == ode_lhs) {
             sAppend(&sbOut, "  if (_wasAtEventTime) { %s }\n", sbPm.line[i]);
@@ -709,7 +766,8 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
           }
           break;
         case PPRN:
-          // Rprintf
+          // Rprintf; device code has no console
+          if (_rxgDev) break;
           if ((fullPrint && show_ode != ode_mexp && show_ode != ode_indLinVec) || (!fullPrint && show_ode == 1)) {
             sAppend(&sbOut, "  %s", show_ode == ode_dydt ? sbPm.line[i] : sbPmDt.line[i]);
           }
@@ -842,7 +900,9 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
         break;
       }
     }
-    if (show_ode == ode_dydt){
+    if (_rxgDev && (show_ode == ode_dydt || show_ode == ode_jac)) {
+      sAppendN(&sbOut,  "}\n\n", 3);
+    } else if (show_ode == ode_dydt){
       sAppendN(&sbOut,  "  if (_rxDydtForceCb != NULL) _rxDydtForceCb(_neq, __t, __zzStateVar__, __DDtStateVar__);\n", 90);
       sAppendN(&sbOut,  "  (&_solveData->subjects[_cSub])->dadt_counter[0]++;\n}\n\n", 56);
     } else if (show_ode == ode_jac){
@@ -966,6 +1026,43 @@ void writeSb(sbuf *sbb, FILE *fp){
 
 extern SEXP _goodFuns;
 
+// Writes <c_file>l (eg model.cl): OpenCL C for rxg_dydt()/rxg_jac() for a
+// model whose flags["gpuSafe"] is 1.
+static void writeRxgDevice(const char *cfile, const char *prefix,
+                           const char *libname, const char *pMd5,
+                           const char *libname2, int nState, int nLhs,
+                           int nPar, int gpuSafe) {
+  if (!gpuSafe) return;
+  sbuf path; sNull(&path); sIni(&path);
+  sAppend(&path, "%sl", cfile);
+  FILE *fp = fopen(path.s, "wb");
+  sFree(&path);
+  if (fp == NULL) return;
+  sbuf body; sNull(&body); sIni(&body);
+  _rxgDev = 1;
+  sbOut.s[0] = '\0'; sbOut.o = 0;
+  codegen(ode_dydt, prefix, libname, pMd5, libname2);
+  sAppend(&body, "%s", sbOut.s);
+  sbOut.s[0] = '\0'; sbOut.o = 0;
+  codegen(ode_jac, prefix, libname, pMd5, libname2);
+  sAppend(&body, "%s", sbOut.s);
+  _rxgDev = 0;
+  sbOut.s[0] = '\0'; sbOut.o = 0;
+  sAppend(&sbOut, "// rxode2 device (OpenCL C) model code\n");
+  sAppend(&sbOut, "#define RXG_NEQ %d\n#define RXG_NLHS %d\n#define RXG_NPAR %d\n",
+          nState, nLhs, nPar);
+  sAppend(&sbOut, "#define RXG_NEQ1 %d\n#define RXG_NLHS1 %d\n#define RXG_NPAR1 %d\n",
+          nState > 0 ? nState : 1, nLhs > 0 ? nLhs : 1, nPar > 0 ? nPar : 1);
+  sAppend(&sbOut, "#define RXG_HAS_JAC %d\n", (found_jac == 1 && good_jac == 1) ? 1 : 0);
+  sAppend(&sbOut, "%s", _rxgHdr.s);
+  sAppend(&sbOut, "%s", "#include \"rxode2gpu/rxg_model.h\"\n");
+  sAppend(&sbOut, "%s", body.s);
+  writeSb(&sbOut, fp);
+  fclose(fp);
+  sFree(&body);
+  sbOut.s[0] = '\0'; sbOut.o = 0;
+}
+
 SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
                           SEXP pMd5, SEXP mvLast,
                           SEXP goodFuns, SEXP esDLagCode, SEXP esDFCode,
@@ -973,6 +1070,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
                           SEXP esD2LagCode, SEXP esD2RateCode, SEXP esD2DurCode,
                           SEXP esD3FCode, SEXP esDFQCode, SEXP esDLagJacCode,
                           SEXP esDLagQCode, SEXP esDDurQCode) {
+  _rxgDev = 0; // host code, even after an error left the device mode set
   // Event ("jump") sensitivities: the dLag/dF/dRate/dDur body lines are passed as
   // arguments (not a module global) so the setter and the codegen always run in
   // the same package instance -- the global channel was unreliable under
@@ -1080,6 +1178,8 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   //SET_STRING_ELT(tran, 0, Rf_mkChar());
   sFree(&sbOut);
   sIniTo(&sbOut, (int)((sbPm.sN)*5.3));
+  sFree(&_rxgHdr);
+  sIni(&_rxgHdr);
 
   SEXP stateOrd = rxP(VECTOR_ELT(mvLast, RxMv_stateOrd));
   int nOrd = Rf_length(stateOrd);
@@ -1151,6 +1251,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
         }
       }
     }
+    sAppend(&_rxgHdr, "%s", sbOut.s);
     writeSb(&sbOut, fpIO);
     sbOut.o = 0;
   }
@@ -1164,9 +1265,12 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
       sAppend(&sbOut, "#define _LHS_%d_ %d // %s\n", lhsOrdInt[i], i,
               CHAR(STRING_ELT(lhsOrdNames, i)));
     }
+    sAppend(&_rxgHdr, "%s", sbOut.s);
     writeSb(&sbOut, fpIO);
     sbOut.o = 0;
   }
+  int nPar = Rf_length(VECTOR_ELT(mvLast, RxMv_params));
+  int gpuSafe = INTEGER(VECTOR_ELT(mvLast, RxMv_flags))[RxMvFlag_gpuSafe];
   rxUPAll();
   // show_ode = 1 dydt
   // show_ode = 2 Jacobian
@@ -1202,6 +1306,9 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   gCode(4); // Registration
   writeFooter(); // undef
   fclose(fpIO);
+  writeRxgDevice(CHAR(STRING_ELT(c_file,0)), CHAR(STRING_ELT(prefix,0)),
+                 CHAR(STRING_ELT(libname, 0)), CHAR(STRING_ELT(pMd5,0)),
+                 CHAR(STRING_ELT(libname, 1)), nOrd, nLhs, nPar, gpuSafe);
   parseFree(0);
   reset();
   _es_freeCode(); // event-sensitivity code is single-use per model
