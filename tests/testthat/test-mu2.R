@@ -109,13 +109,10 @@ rxTest({
     expect_equal(.mu2("cl.wt*lwt", "lwt <- log(WT/70)"), "lwt")
     expect_equal(.mu2("cl.wt*lwt2", "lwt <- log(WT/70); lwt2 <- lwt*SEX"), "lwt2")
     expect_equal(.mu2("cl.wt*lc", "lc <- 3"), "lc")
-    # mu3 terms whose model variable reaches a theta or eta
-    expect_length(.mu2("cl.wt*v"), 0L)
-    expect_length(.mu2("cl.wt*lwv", "lwv <- log(WT/70)*v"), 0L)
-    expect_length(.mu2("cl.wt*sv", "d/dt(depot) <- -depot; sv <- depot"), 0L)
-    expect_length(.mu2("cl.wt*lv", "lv <- log(WT) + eta.v"), 0L)
-    expect_length(.mu2("cl.wt*lwv2", "vv <- exp(tv + eta.v); lwv2 <- log(WT/70)*vv"), 0L)
-    expect_length(.mu2("cl.wt*lif", "if (tv > 1) { lif <- WT } else { lif <- 70 }"), 0L)
+    # a mu3 model variable is not resolved here: whether it reaches a theta,
+    # eta or state is found when nlmixr2 evaluates it in the data
+    expect_equal(.mu2("cl.wt*v"), "v")
+    expect_equal(.mu2("cl.wt*lif", "if (tv > 1) { lif <- WT } else { lif <- 70 }"), "lif")
     # theta-free derivative but not a product: rewriting to
     # nlmixrMuDerCov*cl.wt would drop the `+ log(WT/70)` remainder
     expect_length(.mu2("(cl.wt + 1)*log(WT/70)"), 0L)
@@ -158,17 +155,7 @@ rxTest({
       ),
       c(b = "log(wt70)", bv = "(wt70s == \"larger\")")
     )
-    # a branch on a theta still taints what it sets, but not the other terms
-    expect_equal(
-      .mu("if (tka > 1) { big <- 1 } else { big <- 0 }", "log(wt70)*b", "big*bv"),
-      c(b = "log(wt70)")
-    )
-    # a variable assigned with a covariate value and later from a theta
-    expect_equal(
-      .mu("big <- WT; if (wt70 > 1) { big <- tka }", "log(wt70)*b", "big*bv"),
-      c(b = "log(wt70)")
-    )
-    # ifelse() and a string comparison on a data covariate are data
+    # ifelse() and a string comparison on a data covariate
     expect_equal(
       .mu("big <- ifelse(wt70 > 1, 1, 0)", "log(wt70)*b", "big*bv"),
       c(b = "log(wt70)", bv = "big")
@@ -177,11 +164,86 @@ rxTest({
       .mu("if (SEX == \"F\") { big <- 1 } else { big <- 0 }", "log(wt70)*b", "big*bv"),
       c(b = "log(wt70)", bv = "big")
     )
-    # no variables, but not data either: random draws and linCmt()
-    expect_equal(.mu("r <- rxnorm()", "log(wt70)*b", "r*bv"), c(b = "log(wt70)"))
-    expect_equal(
-      .mu("if (rxunif() > 0.5) { big <- 1 } else { big <- 0 }", "log(wt70)*b", "big*bv"),
-      c(b = "log(wt70)")
-    )
+  })
+
+  # A recorded covariate as nlmixr2 evaluates it in the data: resolved through
+  # the pruned model in symengine, with strings as their levels.
+  .muCovResolve <- function(ui, cov) {
+    .sa <- rxModelVars(ui)$strAssign
+    .lev <- function(x) {
+      if (!is.call(x)) {
+        return(x)
+      }
+      if (
+        (identical(x[[1]], quote(`==`)) || identical(x[[1]], quote(`!=`))) &&
+          is.name(x[[2]]) &&
+          is.character(x[[3]]) &&
+          !is.null(.sa[[as.character(x[[2]])]])
+      ) {
+        x[[3]] <- as.numeric(which(.sa[[as.character(x[[2]])]] == x[[3]]))
+        return(x)
+      }
+      as.call(c(x[[1]], lapply(x[-1], .lev)))
+    }
+    .se <- eval(str2lang(paste0("rxToSE(", deparse1(.lev(str2lang(cov))), ", NULL)")))
+    .s <- rxS(rxPrune(ui))
+    # get() is masked once symengine is loaded; capture via assign()
+    .b <- eval(parse(text = paste0('assign("rxdummyMu", with(.s, ', .se, "), envir = .s)")))
+    rxFromSE(.b)
+  }
+
+  .muResolveMod <- function(pre, v) {
+    .f <- eval(parse(
+      text = sprintf(
+        "function() {
+        ini({ tka <- 0.45; tcl <- -1; tv <- 3.45; b <- 0; bv <- 0; add.sd <- 0.3; eta.cl ~ 0.1; eta.v ~ 0.1 })
+        model({
+          wt70 <- WT / 70
+          %s
+          ka <- exp(tka)
+          cl <- exp(tcl + log(wt70)*b + eta.cl)
+          v <- exp(tv + %s + eta.v)
+          d/dt(central) <- -cl / v * central
+          cp <- central / v
+          cp ~ add(add.sd) })
+      }",
+        pre,
+        v
+      )
+    ))
+    .f()
+  }
+
+  test_that("recorded mu3/mu4 covariates resolve to the data through rxS(rxPrune()) (#1770)", {
+    .d <- data.frame(WT = c(50, 100))
+    .eval <- function(ui) {
+      .df <- ui$mu2RefCovariateReplaceDataFrame
+      setNames(
+        lapply(.df$covariate, function(cov) {
+          .e <- .muCovResolve(ui, cov)
+          expect_true(all(all.vars(str2lang(.e)) == "WT"), info = .e)
+          as.numeric(with(.d, eval(str2lang(.e))))
+        }),
+        .df$covariateParameter
+      )
+    }
+    # mu3 unrelated to the branch and mu4 set in it (the issue's model)
+    .v <- .eval(.muResolveMod(
+      "if (wt70 > 1) { wt70s <- \"larger\" } else { wt70s <- \"smaller\" }",
+      "(wt70s == \"larger\")*bv"
+    ))
+    expect_equal(.v, list(b = log(.d$WT / 70), bv = c(0, 1)))
+    # mu3 set in the branch
+    .v <- .eval(.muResolveMod("if (wt70 > 1) { big <- 1 } else { big <- 0 }", "big*bv"))
+    expect_equal(.v, list(b = log(.d$WT / 70), bv = c(0, 1)))
+  })
+
+  test_that("a mu3 covariate that reaches a theta or eta resolves to it, so nlmixr2 rejects it in the data", {
+    .ui <- .muResolveMod("if (tv > 1) { big <- WT } else { big <- 70 }", "big*bv")
+    .df <- .ui$mu2RefCovariateReplaceDataFrame
+    expect_equal(.df$covariate, c("log(wt70)", "big"))
+    expect_true("tv" %in% all.vars(str2lang(.muCovResolve(.ui, "big"))))
+    .ui <- .muResolveMod("lv <- log(WT) + eta.cl", "lv*bv")
+    expect_true("eta.cl" %in% all.vars(str2lang(.muCovResolve(.ui, "lv"))))
   })
 })

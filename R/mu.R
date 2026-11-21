@@ -456,176 +456,6 @@
   TRUE
 }
 
-#' Is a mu2/mu3 term exactly `theta * covariate`, with a covariate coefficient?
-#'
-#' mu2: the term reads only covariates and constants.  mu3: it reads model
-#' variables, which are replaced by their definitions (`.muRefMu3Resolve()`);
-#' what is left may read only the theta, covariates and constants.  Either way
-#' the term must equal `theta * der` (`.muRefTermIsThetaTimesDer()`).
-#'
-#' @param y term
-#' @param der derivative of the term by `theta`
-#' @param theta theta name
-#' @param env mu-reference environment
-#' @return logical
-#' @noRd
-#' @author Matthew L. Fidler
-.muRefCovTermOk <- function(y, der, theta, env) {
-  if (all(setdiff(all.vars(y), theta) %in% env$info$dataCov)) {
-    return(.muRefTermIsThetaTimesDer(y, der, theta))
-  }
-  .r <- .muRefMu3Resolve(y, der, env)
-  if (is.null(.r)) {
-    return(FALSE)
-  }
-  all(setdiff(unique(c(all.vars(.r$term), all.vars(.r$der))), theta) %in% env$info$dataCov) &&
-    .muRefTermIsThetaTimesDer(.r$term, .r$der, theta)
-}
-
-#' Can a mu3 resolution that loads this line be memoised?
-#'
-#' Assignments of base arithmetic/elementary expressions or string literals,
-#' and `if`/`else` blocks of those (see `.muRefDerivCacheable()`).
-#'
-#' @param x statement
-#' @return logical
-#' @noRd
-#' @author Matthew L. Fidler
-.muRefMu3LineCacheable <- function(x) {
-  if (!is.call(x)) {
-    return(FALSE)
-  }
-  if (identical(x[[1]], quote(`{`))) {
-    return(all(vapply(as.list(x)[-1], .muRefMu3LineCacheable, logical(1))))
-  }
-  if (identical(x[[1]], quote(`if`))) {
-    return(
-      .muRefDerivCacheable(x[[2]]) &&
-        all(vapply(as.list(x)[-(1:2)], .muRefMu3LineCacheable, logical(1)))
-    )
-  }
-  (identical(x[[1]], quote(`=`)) ||
-    identical(x[[1]], quote(`<-`)) ||
-    identical(x[[1]], quote(`~`))) &&
-    is.name(x[[2]]) &&
-    (is.character(x[[3]]) || .muRefDerivCacheable(x[[3]]))
-}
-
-#' Model variables a statement assigns
-#'
-#' @param x statement
-#' @return character vector: the lhs name, the state of `d/dt(x)`/`x(0)`, or
-#'   every name assigned in an `if`/`else`
-#' @noRd
-#' @author Matthew L. Fidler
-.muRefAssigned <- function(x) {
-  if (!is.call(x)) {
-    return(character(0))
-  }
-  if (identical(x[[1]], quote(`{`)) || identical(x[[1]], quote(`if`))) {
-    return(unique(unlist(lapply(as.list(x)[-1], .muRefAssigned))))
-  }
-  if (
-    identical(x[[1]], quote(`=`)) ||
-      identical(x[[1]], quote(`<-`)) ||
-      identical(x[[1]], quote(`~`))
-  ) {
-    return(setdiff(all.vars(x[[2]]), "dt"))
-  }
-  character(0)
-}
-
-#' The model lines a mu3 term depends on
-#'
-#' Backward slice: keeps a line (a whole `if`/`else` block) when it assigns a
-#' needed variable, and then needs every variable it reads, so a line the term
-#' does not depend on cannot stop symengine from loading it.
-#'
-#' @param lines model statements before the current line
-#' @param need variables the term and its derivative read
-#' @return the kept statements, in model order
-#' @noRd
-#' @author Matthew L. Fidler
-.muRefMu3Slice <- function(lines, need) {
-  .keep <- logical(length(lines))
-  for (.j in rev(seq_along(lines))) {
-    if (any(.muRefAssigned(lines[[.j]]) %in% need)) {
-      .keep[.j] <- TRUE
-      need <- unique(c(need, all.vars(lines[[.j]])))
-    }
-  }
-  lines[.keep]
-}
-
-.muRefMu3Cache <- new.env(parent = emptyenv())
-
-#' Replace the model variables in a mu3 term and its derivative
-#'
-#' Loads the model lines before the current one that the term and derivative
-#' depend on (`.muRefMu3Slice()`) into symengine with them, so every model
-#' variable is replaced by its definition.  `rxPrune()` first turns `if`/`else`
-#' into arithmetic and string values into their integer levels, which
-#' symengine cannot load otherwise.
-#' Memoised like `.muRefThetaDerivative()`: only base arithmetic/elementary
-#' functions, so a redefined user function cannot give a stale answer.
-#'
-#' @param y term
-#' @param der derivative of the term
-#' @param env mu-reference environment (`.expr`, `.curLine`)
-#' @return `list(term=, der=)` as language, or `NULL` when symengine cannot
-#'   load them
-#' @noRd
-#' @author Matthew L. Fidler
-.muRefMu3Resolve <- function(y, der, env) {
-  .i <- env$.curLine
-  if (is.null(.i)) {
-    return(NULL)
-  }
-  .lines <- .muRefMu3Slice(as.list(env$.expr)[seq_len(.i - 1L)], c(all.vars(y), all.vars(der)))
-  .pre <- vapply(.lines, deparse1, character(1), USE.NAMES = FALSE)
-  .cache <- .muRefDerivCacheable(y) &&
-    .muRefDerivCacheable(der) &&
-    all(vapply(.lines, .muRefMu3LineCacheable, logical(1)))
-  # rxPrune() (an R tree walk) only when symengine could not load the lines
-  .prune <- !all(vapply(
-    .lines,
-    function(x) {
-      (identical(x[[1]], quote(`=`)) || identical(x[[1]], quote(`~`))) &&
-        !is.character(x[[3]])
-    },
-    logical(1)
-  ))
-  .key <- paste(c(.pre, paste0("rxdummyLhs=", deparse1(y)), paste0("rxdummyDer=", deparse1(der))), collapse = "\n")
-  .r <- if (.cache) .muRefMu3Cache[[.key]] else NULL
-  if (is.null(.r)) {
-    .r <- try(
-      {
-        .s <- rxS(if (.prune) rxPrune(.key) else .key)
-        # get() is masked once symengine is loaded; capture via assign()
-        .t <- eval(parse(text = 'assign("rxdummyMu3", with(.s, rxdummyLhs), envir = .s)'))
-        .t <- rxFromSE(.t)
-        .d <- eval(parse(text = 'assign("rxdummyMu3", with(.s, rxdummyDer), envir = .s)'))
-        .d <- rxFromSE(.d)
-        list(term = str2lang(.t), der = str2lang(.d))
-      },
-      silent = TRUE
-    )
-    if (inherits(.r, "try-error")) {
-      .r <- NA
-    }
-    if (.cache) {
-      if (length(ls(.muRefMu3Cache, all.names = TRUE)) > 10000L) {
-        rm(list = ls(.muRefMu3Cache, all.names = TRUE), envir = .muRefMu3Cache)
-      }
-      assign(.key, .r, envir = .muRefMu3Cache)
-    }
-  }
-  if (!is.list(.r)) {
-    return(NULL)
-  }
-  .r
-}
-
 #' Fill the derivative cache for a whole model in one symengine environment
 #'
 #' Collects every product term with a single theta and derives them all from
@@ -785,11 +615,10 @@
             if (inherits(.thetaD, "try-error")) {
               .thetaD <- NULL
             }
-            if (is.null(.thetaD) && !.muRefCovTermOk(y, .extra, .thetas, env)) {
-              # only exact theta*covariate terms whose covariate depends on
-              # covariates and constants: not `cl.wt*V1` or
-              # `0.75*log(V1/exp(tV1))` (V1 reaches tV1/eta.V1), nor
-              # `(cl.wt + 1)*log(WT/70)` (not a product).
+            if (is.null(.thetaD) && !.muRefTermIsThetaTimesDer(y, .extra, .thetas)) {
+              # only exact theta*covariate terms: not `0.75*log(V1/exp(tV1))`
+              # (its derivative drops V1) nor `(cl.wt + 1)*log(WT/70)`.  A
+              # mu3/mu4 covariate is checked against the data by nlmixr2.
               return(NULL)
             }
             if (is.null(.thetaD)) {
@@ -1349,7 +1178,6 @@
     y <- x
     for (.i in seq_along(y)) {
       x <- y[[.i]]
-      env$.curLine <- .i
       if (
         identical(x[[1]], quote(`=`)) ||
           identical(x[[1]], quote(`~`))
@@ -1498,8 +1326,6 @@
     level = .level,
     cov = setdiff(.params, c(.theta, .eta, .level, names(rxInits(.mv))))
   )
-  # covariates that are never assigned in the model (mu2/mu3 coefficients)
-  .info$dataCov <- setdiff(.info$cov, c(.lhs, .mv$slhs, .state))
   .env$param <- list()
   .env$singleTheta <- NULL
   .env$body <- list()
@@ -1807,7 +1633,6 @@
   .rm <- intersect(
     c(
       ".curEval",
-      ".curLine",
       ".curLineClean",
       ".expr",
       ".found",
