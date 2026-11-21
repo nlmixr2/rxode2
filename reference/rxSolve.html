@@ -275,6 +275,7 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  rateAtDoseTime <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  durAtDoseTime <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  resetCancelsPending <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  ssMethod <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"anderson"</span>, <span class="st">"iterate"</span><span class="op">)</span>,</span>
 <span>  linCmtGillFtol <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>  linCmtGillK <span class="op">=</span> <span class="fl">20L</span>,</span>
 <span>  linCmtGillStep <span class="op">=</span> <span class="fl">4</span>,</span>
@@ -1826,6 +1827,28 @@ added while solving is cancelled only when it is lagged past the reset,
 a reset added while solving cancels lagged doses but not <code>addl</code>
 repeats, and an event table already translated by <code><a href="etTrans.html">etTrans()</a></code> keeps the
 <code>addl</code> repeats it was translated with.</p></dd>
+
+
+<dt id="arg-ssmethod">ssMethod<a class="anchor" aria-label="anchor" href="#arg-ssmethod"></a></dt>
+<dd><p>How an iterated steady state is found: <code>"anderson"</code> (the
+default) finds the fixed point of the one-cycle map with Anderson
+acceleration (Anderson 1965, <a href="https://doi.org/10.1145/321296.321305" class="external-link">doi:10.1145/321296.321305</a>
+; in the form of
+Walker and Ni 2011, <a href="https://doi.org/10.1137/10078356X" class="external-link">doi:10.1137/10078356X</a>
+); <code>"iterate"</code> repeats the
+dosing cycle until its trough converges, as rxode2 did before.
+It applies to steady-state boluses and infusions once <code>minSS</code> doses are
+given and stops only when both the cycle residual and the change of the
+cycle's starting state meet <code>ssAtol</code>/<code>ssRtol</code>, so a slowly accumulating
+state (a long half-life against the dosing interval, a slow peripheral
+compartment or saturable elimination) converges in far fewer cycles and
+closer to the true steady state.  When the accelerated iteration stalls,
+diverges or reaches <code>maxSS</code> (eg. dosing above the elimination capacity,
+with no steady state) it restarts plain iteration from where acceleration
+began, so the result is that of <code>"iterate"</code>.  A fixed dose count
+(<code>minSS = maxSS</code>) and a <code><a href="delay.html">delay()</a></code> model always iterate.  See
+<code>bench/ss_anderson_1762.R</code> in the package sources for the benchmark
+behind the default.</p></dd>
 
 
 <dt id="arg-lincmtgillftol">linCmtGillFtol<a class="anchor" aria-label="anchor" href="#arg-lincmtgillftol"></a></dt>
