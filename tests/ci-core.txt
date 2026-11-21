@@ -58,3 +58,5 @@ dde
 # simulation and random numbers
 random
 ui-simulation
+# accelerated steady state
+ss-anderson
