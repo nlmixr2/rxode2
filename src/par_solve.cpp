@@ -45,6 +45,7 @@ extern "C" {
 #include "par_solve.h"
 #include "tte.h"
 #include "cvode_solver.h"
+#include "ssAnderson.h"
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
 #define badSolveExit(i) for (int j = rxEffNeq(ind, op)*(ind->n_all_times); j--;){ \
     ind->solve[j] = NA_REAL;                                           \
@@ -2943,6 +2944,9 @@ static inline void solveWith1Pt(int *neq,
 }
 
 
+// rxControl(ssMethod=): 0 plain iteration, 1 Anderson acceleration (#1762)
+extern int ssMethod_global;
+
 // One solve of a steady-state cycle, which runs on a 0..ii clock: tad() counts
 // from the cycle's dose at clock 0, and the dose times are restored after (#1585)
 static inline void solveSSCycle(int *neq,
@@ -3092,6 +3096,73 @@ static inline int ssBolusDone(int nDose, int minSS, int maxSS, int *neq,
   return *canBreak || nDose >= maxSS;
 }
 
+// rxControl(ssMethod="anderson") for the steady-state bolus loop: the
+// accelerated map is trough -> trough; a fixed dose count (minSS == maxSS) is
+// never accelerated, nor a delay() model, whose recorded history must come
+// from consecutive cycles (#1762)
+class rxSsBolusAnderson {
+public:
+  rxSsBolusAnderson(rx_solving_options *op, rx_solving_options_ind *ind,
+                    int neq, int minSS, int maxSS) : n(neq) {
+    if (ssMethod_global == 1 && minSS < maxSS && !op->hasDelay) {
+      aa.init(neq, op->ssAtol, op->ssRtol);
+      if (aa.on) xin.assign(ind->solveLast, ind->solveLast + neq);
+    }
+  }
+
+  // ssBolusDone() plus the accelerated convergence test; returns 1 to stop.
+  // nDose restarts from where acceleration began when it gives up
+  bool done(int &nDose, int minSS, int maxSS, int *neq, double *yp, int *i,
+            rx_solving_options *op, rx_solving_options_ind *ind,
+            int *canBreak) {
+    bool failed = ind->rc[0] == -2019;
+    if (failed && aa.on && aa.mixed) {
+      // a cycle from an accelerated input failed: keep the last true cycle
+      std::copy(aa.last(), aa.last() + n, ind->solveLast);
+    }
+    bool ret = ssBolusDone(nDose, minSS, maxSS, neq, yp, i, op, ind, canBreak);
+    if (failed || !aa.on) return ret;
+    if (ret && *canBreak && !aa.settled(xin.data(), op->ssAtol, op->ssRtol)) {
+      // a small residual alone is not enough: the input must have settled too
+      *canBreak = 0;
+      ret = nDose >= maxSS;
+    }
+    if (ret && !*canBreak && aa.giveUp()) {
+      // maxSS doses without converging: give plain iteration's result
+      std::copy(aa.start(), aa.start() + n, yp);
+      std::copy(yp, yp + n, ind->solveLast);
+      nDose = nDoseAA - 1;
+      ret = false;
+    }
+    return ret;
+  }
+
+  // yp = P(xin) becomes the next input, which ssBolusDone() compares
+  // against; the first output is the first trough, so it starts the history,
+  // and acceleration starts once minSS doses are given
+  void cycleEnd(rx_solving_options *op, rx_solving_options_ind *ind,
+                double *yp, int &nDose, int minSS) {
+    if (!aa.on) return;
+    if (nDose > 1 && nDose >= minSS) {
+      if (nDoseAA == 0) nDoseAA = nDose;
+      if (!aa.step(yp, xin.data(), op->ssAtol, op->ssRtol) && aa.fellBack) {
+        // no fixed point reached: iterate plainly from where acceleration
+        // started, as if it had never run
+        std::copy(aa.start(), aa.start() + n, yp);
+        nDose = nDoseAA - 1;
+      }
+      std::copy(yp, yp + n, ind->solveLast);
+    }
+    std::copy(yp, yp + n, xin.begin());
+  }
+
+private:
+  rxSsAnderson aa;
+  int n;
+  std::vector<double> xin;
+  int nDoseAA = 0;
+};
+
 // iterate steady-state boluses until converged between minSS and maxSS doses
 static inline void handleSSbolusIterate(int *neq,
                                         int *BadDose,
@@ -3126,10 +3197,13 @@ static inline void handleSSbolusIterate(int *neq,
                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
   *xp2 = *xout2;
   int evid=0;
+  // rxControl(ssMethod="anderson") accelerates the trough map (#1762)
+  rxSsBolusAnderson aa(op, ind, neq[0], minSS, maxSS);
   for (int nDose = 1; ; nDose++) {
-    if (ssBolusDone(nDose, minSS, maxSS, neq, yp, i, op, ind, canBreak)) {
+    if (aa.done(nDose, minSS, maxSS, neq, yp, i, op, ind, canBreak)) {
       break;
     }
+    aa.cycleEnd(op, ind, yp, nDose, minSS);
     ind->idx=*i;
     *xp2 = 0.0;
     *xout2 = *curIi;
@@ -3322,6 +3396,78 @@ static inline int solveSSinfLinear(int *neq,
   return yp[ind->cmt] > 0;
 }
 
+// rxControl(ssMethod="anderson") for the steady-state infusion loops, which
+// test both the end of the infusion (solveLast) and the trough (solveLast2);
+// the accelerated map is trough -> trough (#1762)
+class rxSsInfAnderson {
+public:
+  rxSsInfAnderson(rx_solving_options *op, rx_solving_options_ind *ind, int neq,
+                  double *yp, int minSS, int maxSS) : n(neq) {
+    // never for a delay() model, whose recorded history must come from
+    // consecutive cycles
+    if (ssMethod_global == 1 && minSS < maxSS && !op->hasDelay) {
+      aa.init(neq, op->ssAtol, op->ssRtol);
+      if (aa.on) xin.assign(yp, yp + neq);
+    }
+  }
+  // the end-of-infusion state the cycle's test compares against
+  void cycleStart(rx_solving_options_ind *ind, int nDup = 0) {
+    if (!aa.on) return;
+    midPrev.assign(ind->solveLast, ind->solveLast + n);
+    nDupPrev = nDup;
+  }
+  // a trough from an accelerated input failed: keep the last true trough
+  void restoreFailed(rx_solving_options_ind *ind, int neq) {
+    if (aa.on && aa.mixed) std::copy(aa.last(), aa.last() + neq, ind->solveLast2);
+  }
+  // a cycle from an accelerated (not plain) input failed: that is not a
+  // failure of the steady state, so keep the last true trough, as a
+  // steady-state bolus does; returns true to stop iterating
+  bool rescue(rx_solving_options_ind *ind, double *yp) {
+    if (!(aa.on && aa.mixed && ind->rc[0] == -2019)) return false;
+    std::copy(aa.last(), aa.last() + n, yp);
+    std::copy(aa.last(), aa.last() + n, ind->solveLast2);
+    ind->rc[0] = 2019;
+    return true;
+  }
+  // a small residual alone is not enough: the input must have settled too
+  void checkSettled(rx_solving_options *op, int *canBreak) {
+    if (aa.on && *canBreak && !aa.settled(xin.data(), op->ssAtol, op->ssRtol)) {
+      *canBreak = 0;
+    }
+  }
+  // take the accelerated step once minSS doses are given; j (and *nDup)
+  // restart from where acceleration began when it falls back or when maxSS
+  // doses are spent without converging, so the result is plain iteration's
+  void cycleEnd(rx_solving_options *op, rx_solving_options_ind *ind,
+                double *yp, int &j, int minSS, int maxSS, int *nDup = NULL) {
+    if (!aa.on) return;
+    if (j + 1 >= minSS) {
+      if (jAA < 0) {
+        jAA = j;
+        midAA = midPrev;
+        nDupAA = nDupPrev;
+      }
+      if ((j + 1 >= maxSS && aa.giveUp()) ||
+          (!aa.step(yp, xin.data(), op->ssAtol, op->ssRtol) && aa.fellBack)) {
+        // no fixed point reached: iterate plainly from where acceleration
+        // started, as if it had never run
+        std::copy(aa.start(), aa.start() + n, yp);
+        std::copy(midAA.begin(), midAA.end(), ind->solveLast);
+        if (nDup != NULL) *nDup = nDupAA;
+        j = jAA - 1;
+      }
+      std::copy(yp, yp + n, ind->solveLast2);
+    }
+    std::copy(yp, yp + n, xin.begin());
+  }
+private:
+  rxSsAnderson aa;
+  int n;
+  std::vector<double> xin, midPrev, midAA;
+  int jAA = -1, nDupPrev = 0, nDupAA = 0;
+};
+
 // iterate steady-state infusions until converged between minSS and maxSS
 // doses; returns 1 when maxSS doses were given without converging
 static inline int solveSSinfIterate(int *neq,
@@ -3350,7 +3496,10 @@ static inline int solveSSinfIterate(int *neq,
   for (int k = neq[0]; k--;) {
     ind->solveLast[k] = ind->solveLast2[k] = yp[k];
   }
+  // rxControl(ssMethod="anderson") accelerates the trough map (#1762)
+  rxSsInfAnderson aa(op, ind, neq[0], yp, minSS, maxSS);
   for (int j = 0; j < maxSS; j++) {
+    aa.cycleStart(ind);
     // Turn on Infusion, solve (0-dur) on the 0..ii cycle clock (#1585)
     *canBreak=1;
     *xp2 = 0.0;
@@ -3375,6 +3524,7 @@ static inline int solveSSinfIterate(int *neq,
     handle_evid(getEvid(ind, ind->idose[*infEixds]), neq[0],
                 BadDose, InfusionRate, dose, yp,
                 *xout+*dur, neq[1], ind);
+    if (aa.rescue(ind, yp)) break;
     if (j + 1 < minSS){
       if (ind->rc[0]== -2019){
         badSolveExit(*i);
@@ -3407,6 +3557,7 @@ static inline int solveSSinfIterate(int *neq,
     ind->ssTime = ssStart;
     solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
                   *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    if (aa.rescue(ind, yp)) break;
     if (j + 1 < minSS){
       if (ind->rc[0]== -2019){
         badSolveExit(*i);
@@ -3421,6 +3572,7 @@ static inline int solveSSinfIterate(int *neq,
         if (op->strictSS){
           badSolveExit(*i);
         } else {
+          aa.restoreFailed(ind, neq[0]);
           for (int k = neq[0]; k--;){
             yp[k] = ind->solveLast2[k];
           }
@@ -3434,10 +3586,12 @@ static inline int solveSSinfIterate(int *neq,
         }
         ind->solveLast2[k] = yp[k];
       }
+      aa.checkSettled(op, canBreak);
       if (*canBreak){
         return 0;
       }
     }
+    aa.cycleEnd(op, ind, yp, j, minSS, maxSS);
     *xp2 = *xout2;
   }
   return 1;
@@ -3565,7 +3719,10 @@ extern "C" void solveSSinfLargeDur(int *neq,
     ind->solveLast[k] = ind->solveLast2[k] = yp[k];
   }
   int nDup = 0, ranOut = 1;
+  // rxControl(ssMethod="anderson") accelerates the trough map (#1762)
+  rxSsInfAnderson aa(op, ind, neq[0], yp, minSS, maxSS);
   for (int j = 0; j < maxSS; j++) {
+    aa.cycleStart(ind, nDup);
     // Turn on Infusion, solve (0-dur) on the 0..ii cycle clock (#1585)
     *canBreak =1;
     *xp2      = 0.0;
@@ -3589,6 +3746,7 @@ extern "C" void solveSSinfLargeDur(int *neq,
     handle_evid(getEvid(ind, ind->idose[*infEixds]), neq[0],
                 BadDose, InfusionRate, dose, yp,
                 *xout + *dur, neq[1], ind);
+    if (aa.rescue(ind, yp)) break;
     if (j + 1 < minSS && ind->rc[0]== -2019){
       badSolveExit(*i);
       ranOut = 0;
@@ -3616,6 +3774,7 @@ extern "C" void solveSSinfLargeDur(int *neq,
     ind->ssTime = timeStart;
     solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
                   *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    if (aa.rescue(ind, yp)) break;
     if (j + 1 < minSS && ind->rc[0]== -2019){
       badSolveExit(*i);
       ranOut = 0;
@@ -3625,6 +3784,7 @@ extern "C" void solveSSinfLargeDur(int *neq,
         if (op->strictSS){
           badSolveExit(*i);
         } else {
+          aa.restoreFailed(ind, neq[0]);
           for (int k = neq[0]; k--;){
             yp[k] = ind->solveLast2[k];
           }
@@ -3639,6 +3799,7 @@ extern "C" void solveSSinfLargeDur(int *neq,
         }
         ind->solveLast2[k] = yp[k];
       }
+      aa.checkSettled(op, canBreak);
       if (*canBreak){
         nDup++;
       }
@@ -3648,6 +3809,7 @@ extern "C" void solveSSinfLargeDur(int *neq,
         break;
       }
     }
+    aa.cycleEnd(op, ind, yp, j, minSS, maxSS, &nDup);
     *xp2 = *xout2;
   }
   // the first period is compared at another point of the cycle, so a short
