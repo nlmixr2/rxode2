@@ -145,7 +145,13 @@
     ## `rxz.` is the cdf route's latent; `rxd.` the direct route's own eta,
     ## which is non-mu for exactly the same reason -- there is no theta to add
     ## it to, the family carries the location.  Both are the feature working.
-    .expected <- c(.rxEtaDistVars(ui$iniDf), .extra[grepl("^rx[zd][.]", .extra)])
+    ## An eta given to a shape transform (eg `etaBoxCox(eta.cl, lambda)`) is
+    ## non-mu by design too.
+    .expected <- c(
+      .rxEtaDistVars(ui$iniDf),
+      .extra[grepl("^rx[zd][.]", .extra)],
+      .rxEtaShapeEtas(ui$lstExpr, .extra)
+    )
     .warn <- setdiff(.extra, .expected)
     if (length(.warn) > 0) {
       warning(
