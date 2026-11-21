@@ -92,6 +92,7 @@
     <li><a class="dropdown-item" href="../articles/rxode2-parameter-uncertainty.html">Parameter uncertainty</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-confint.html">Summarizing simulations with confint()</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-eta-eps-resampling.html">ETA and EPS resampling</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-eta-shape-transforms.html">Skewed and heavy-tailed random effects</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-phase-residual-error.html">Phase 1 vs phase 3 residual error</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-time-to-event.html">Simulating time-to-event endpoints</a></li>
     <li><hr class="dropdown-divider"></li>
@@ -268,9 +269,9 @@ Lets see how this very simple function performs:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">mb</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Unit: milliseconds</span></span>
-<span><span class="co">#&gt;      expr       min       lq     mean   median       uq      max neval</span></span>
-<span><span class="co">#&gt;  withoutC 15.295023 15.90737 24.13189 16.39201 17.13109 689.1309   100</span></span>
-<span><span class="co">#&gt;     withC  9.932846 10.05289 16.17741 10.19775 10.50283 525.0077   100</span></span></code></pre></div>
+<span><span class="co">#&gt;      expr       min        lq     mean   median       uq      max neval</span></span>
+<span><span class="co">#&gt;  withoutC 12.605317 14.707939 23.09598 16.28507 18.08361 646.3010   100</span></span>
+<span><span class="co">#&gt;     withC  8.055576  9.681628 16.65014 11.31369 13.15239 510.0656   100</span></span></code></pre></div>
 <p>The C version is almost twice as fast as the R version. You may have
 noticed the conversion also created C versions of the first derivative.
 This is done automatically and gives not just C versions of function,
@@ -389,7 +390,7 @@ function:</p>
 <span><span class="co">#&gt;         eff &lt;- hill(temax, time, tec50)</span></span>
 <span><span class="co">#&gt;     })</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x5a2f51f05aa8&gt;</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;environment: 0x5e08e61b0ec0&gt;</span></span></code></pre></div>
 <p>When possible, the function is translated to C along with its
 derivatives, just like <code><a href="../reference/rxFun.html">rxFun()</a></code>, but only for this
 model:</p>
@@ -959,7 +960,7 @@ ability to use:</p>
 <span><span class="co">#&gt;             iniDf = .iniDf)</span></span>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;bytecode: 0x5a2f40a79430&gt;</span></span>
+<span><span class="co">#&gt; &lt;bytecode: 0x5e08d4b54238&gt;</span></span>
 <span><span class="co">#&gt; &lt;environment: namespace:rxode2&gt;</span></span>
 <span></span>
 <span><span class="co"># You can also print the s3 method that is used for this method</span></span>
@@ -969,7 +970,7 @@ ability to use:</p>
 <span><span class="co">#&gt; {</span></span>
 <span><span class="co">#&gt;     eval(fun)</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;bytecode: 0x5a2f3f8350d0&gt;</span></span>
+<span><span class="co">#&gt; &lt;bytecode: 0x5e08d3a018a8&gt;</span></span>
 <span><span class="co">#&gt; &lt;environment: namespace:rxode2&gt;</span></span>
 <span><span class="co">#&gt; attr(,"nargs")</span></span>
 <span><span class="co">#&gt; [1] 2</span></span></code></pre></div>

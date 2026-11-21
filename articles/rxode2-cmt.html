@@ -92,6 +92,7 @@
     <li><a class="dropdown-item" href="../articles/rxode2-parameter-uncertainty.html">Parameter uncertainty</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-confint.html">Summarizing simulations with confint()</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-eta-eps-resampling.html">ETA and EPS resampling</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-eta-shape-transforms.html">Skewed and heavy-tailed random effects</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-phase-residual-error.html">Phase 1 vs phase 3 residual error</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-time-to-event.html">Simulating time-to-event endpoints</a></li>
     <li><hr class="dropdown-divider"></li>
@@ -378,8 +379,8 @@ use the <code><a href="https://rdrr.io/r/base/summary.html" class="external-link
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pbpk</span> <span class="op">&lt;-</span> <span class="va">pbpk</span><span class="op">$</span><span class="va">simulationModel</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">pbpk</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.1.8.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_65eb3062ad19d90377cdab3f7ea35667</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
-<span><span class="co">#&gt; DLL: /tmp/RtmpYaefLS/rxode2/rx_65eb3062ad19d90377cdab3f7ea35667__.rxd/rx_65eb3062ad19d90377cdab3f7ea35667_.so</span></span>
+<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.1.8.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_8edb00328e704d560134142985ee8808</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<span><span class="co">#&gt; DLL: /tmp/RtmpS1Mtte/rxode2/rx_8edb00328e704d560134142985ee8808__.rxd/rx_8edb00328e704d560134142985ee8808_.so</span></span>
 <span><span class="co">#&gt; NULL</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Calculated Variables:</span></span>
@@ -728,7 +729,7 @@ after all the differential equations are defined.</p>
 <code>rxode2</code> model:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ode.1c.ka</span><span class="op">$</span><span class="va">simulationModel</span></span></code></pre></div>
-<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.1.8.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_340c64dd22560721f9a12af0ff028370</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
+<pre><code><span><span class="co">#&gt; <span style="font-weight: bold;">rxode2 </span>5.1.8.9000 model named <span style="color: #BBBB00; font-weight: bold;">rx_a5d0f029c034f1c834d4f70cf98ed3a1</span> model (<span style="color: #00BB00; font-weight: bold;">ready</span>). </span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$state</span>: depot, center</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$stateExtra</span>: eff</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00;">x</span><span style="color: #0000BB; font-weight: bold;">$params</span>: V, KA, CL</span></span>

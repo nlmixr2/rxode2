@@ -66,6 +66,7 @@
     <li><a class="dropdown-item" href="../articles/rxode2-parameter-uncertainty.html">Parameter uncertainty</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-confint.html">Summarizing simulations with confint()</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-eta-eps-resampling.html">ETA and EPS resampling</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-eta-shape-transforms.html">Skewed and heavy-tailed random effects</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-phase-residual-error.html">Phase 1 vs phase 3 residual error</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-time-to-event.html">Simulating time-to-event endpoints</a></li>
     <li><hr class="dropdown-divider"></li>
@@ -185,62 +186,65 @@
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [88] "phiU"                 "gammapDera"           "ibeta"               </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [91] "ibetaDer"             "ibetaInv"             "ibetaDera"           </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [94] "ibetaDerb"            "studentTDen"          "studentTCdf"         </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [97] "studentTCdfDnu"       "studentTInv"          "linCmtA"             </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [100] "linCmtB"              "max"                  "min"                 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [103] "clamp"                "logit"                "expit"               </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [106] "probit"               "probitInv"            "tlast"               </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [109] "tlast0"               "tfirst"               "tfirst0"             </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [112] "lag"                  "lead"                 "lag0"                </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [115] "lead0"                "dose"                 "podo"                </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [118] "dose0"                "podo0"                "dabs"                </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [121] "dabs2"                "abs1"                 "dabs1"               </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [124] "erfinv"               "dosenum"              "first"               </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [127] "last"                 "diff"                 "diff0"               </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [130] "tteTime"              "tteCount"             "rxTteSim"            </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [133] "rxTteH0"              "is.nan"               "is.na"               </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [136] "is.finite"            "is.infinite"          "llikPois"            </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [139] "llikPoisDlambda"      "llikBinom"            "llikBinomDprob"      </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [142] "llikNbinom"           "llikNbinomDprob"      "llikNbinomMu"        </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [145] "llikNbinomMuDmu"      "llikBeta"             "llikBetaDshape1"     </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [148] "llikBetaDshape2"      "llikT"                "llikTDdf"            </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [151] "llikTDmean"           "llikTDsd"             "llikChisq"           </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [154] "llikChisqDdf"         "llikExp"              "llikExpDrate"        </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [157] "llikF"                "llikFDdf1"            "llikFDdf2"           </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [160] "llikGeom"             "llikGeomDprob"        "llikUnif"            </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [163] "llikUnifDalpha"       "llikUnifDbeta"        "llikWeibull"         </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [166] "llikWeibullDshape"    "llikWeibullDscale"    "llikGamma"           </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [169] "llikGammaDshape"      "llikGammaDrate"       "llikCauchy"          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [172] "llikCauchyDlocation"  "llikCauchyDscale"     "llikNorm"            </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [175] "llikNormDmean"        "llikNormDsd"          "llikXPois"           </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [178] "llikXPoisDlambda"     "llikXBinom"           "llikXBinomDprob"     </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [181] "llikXNbinomMu"        "llikXNbinomMuDmu"     "llikXNbinom"         </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [184] "llikXNbinomDprob"     "llikXBeta"            "llikXBetaDshape1"    </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [187] "llikXBetaDshape2"     "llikXT"               "llikXTDdf"           </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [190] "llikXTDmean"          "llikXTDsd"            "llikXChisq"          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [193] "llikXChisqDdf"        "llikXExp"             "llikXExpDrate"       </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [196] "llikXF"               "llikXFDdf1"           "llikXFDdf2"          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [199] "llikXGeom"            "llikXGeomDprob"       "llikXUnif"           </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [202] "llikXUnifDalpha"      "llikXUnifDbeta"       "llikXWeibull"        </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [205] "llikXWeibullDshape"   "llikXWeibullDscale"   "llikXGamma"          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [208] "llikXGammaDshape"     "llikXGammaDrate"      "llikXCauchy"         </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [211] "llikXCauchyDlocation" "llikXCauchyDscale"    "llikXNorm"           </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [214] "llikXNormDmean"       "llikXNormDsd"         "ReLU"                </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [217] "dReLU"                "dnorm"                "GELU"                </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [220] "dGELU"                "d2GELU"               "d3GELU"              </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [223] "d4GELU"               "ELU"                  "dELU"                </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [226] "d2ELU"                "d2aELU"               "dELUa"               </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [229] "d2ELUa"               "softplus"             "dsoftplus"           </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [232] "d2softplus"           "d3softplus"           "d4softplus"          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [235] "SELU"                 "dSELU"                "lReLU"               </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [238] "dlReLU"               "PReLU"                "dPReLU"              </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [241] "dPReLUa"              "dPReLUa1"             "Swish"               </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [244] "dSwish"               "linCmt"               "rnorm"               </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [247] "rxnorm"               "rxbinom"              "rbinom"              </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [250] "rxcauchy"             "rcauchy"              "rchisq"              </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [253] "rxchisq"              "rexp"                 "rxexp"               </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [256] "rbeta"                "rxbeta"               "rgeom"               </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [259] "rxgeom"               "rxpois"               "rpois"               </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [262] "rxt"                  "rt"                  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [97] "studentTCdfDnu"       "studentTInv"          "exprelD"             </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [100] "etaBoxCox"            "etaJohnDraper"        "etaYeoJohnson"       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [103] "absPowLog"            "etaHeavyTail"         "etaLogit"            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [106] "etaSinhAsinh"         "etaTukeyGH"           "linCmtA"             </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [109] "linCmtB"              "max"                  "min"                 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [112] "clamp"                "logit"                "expit"               </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [115] "probit"               "probitInv"            "tlast"               </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [118] "tlast0"               "tfirst"               "tfirst0"             </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [121] "lag"                  "lead"                 "lag0"                </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [124] "lead0"                "dose"                 "podo"                </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [127] "dose0"                "podo0"                "dabs"                </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [130] "dabs2"                "abs1"                 "dabs1"               </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [133] "erfinv"               "dosenum"              "first"               </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [136] "last"                 "diff"                 "diff0"               </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [139] "tteTime"              "tteCount"             "rxTteSim"            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [142] "rxTteH0"              "is.nan"               "is.na"               </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [145] "is.finite"            "is.infinite"          "llikPois"            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [148] "llikPoisDlambda"      "llikBinom"            "llikBinomDprob"      </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [151] "llikNbinom"           "llikNbinomDprob"      "llikNbinomMu"        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [154] "llikNbinomMuDmu"      "llikBeta"             "llikBetaDshape1"     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [157] "llikBetaDshape2"      "llikT"                "llikTDdf"            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [160] "llikTDmean"           "llikTDsd"             "llikChisq"           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [163] "llikChisqDdf"         "llikExp"              "llikExpDrate"        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [166] "llikF"                "llikFDdf1"            "llikFDdf2"           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [169] "llikGeom"             "llikGeomDprob"        "llikUnif"            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [172] "llikUnifDalpha"       "llikUnifDbeta"        "llikWeibull"         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [175] "llikWeibullDshape"    "llikWeibullDscale"    "llikGamma"           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [178] "llikGammaDshape"      "llikGammaDrate"       "llikCauchy"          </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [181] "llikCauchyDlocation"  "llikCauchyDscale"     "llikNorm"            </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [184] "llikNormDmean"        "llikNormDsd"          "llikXPois"           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [187] "llikXPoisDlambda"     "llikXBinom"           "llikXBinomDprob"     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [190] "llikXNbinomMu"        "llikXNbinomMuDmu"     "llikXNbinom"         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [193] "llikXNbinomDprob"     "llikXBeta"            "llikXBetaDshape1"    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [196] "llikXBetaDshape2"     "llikXT"               "llikXTDdf"           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [199] "llikXTDmean"          "llikXTDsd"            "llikXChisq"          </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [202] "llikXChisqDdf"        "llikXExp"             "llikXExpDrate"       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [205] "llikXF"               "llikXFDdf1"           "llikXFDdf2"          </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [208] "llikXGeom"            "llikXGeomDprob"       "llikXUnif"           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [211] "llikXUnifDalpha"      "llikXUnifDbeta"       "llikXWeibull"        </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [214] "llikXWeibullDshape"   "llikXWeibullDscale"   "llikXGamma"          </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [217] "llikXGammaDshape"     "llikXGammaDrate"      "llikXCauchy"         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [220] "llikXCauchyDlocation" "llikXCauchyDscale"    "llikXNorm"           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [223] "llikXNormDmean"       "llikXNormDsd"         "ReLU"                </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [226] "dReLU"                "dnorm"                "GELU"                </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [229] "dGELU"                "d2GELU"               "d3GELU"              </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [232] "d4GELU"               "ELU"                  "dELU"                </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [235] "d2ELU"                "d2aELU"               "dELUa"               </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [238] "d2ELUa"               "softplus"             "dsoftplus"           </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [241] "d2softplus"           "d3softplus"           "d4softplus"          </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [244] "SELU"                 "dSELU"                "lReLU"               </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [247] "dlReLU"               "PReLU"                "dPReLU"              </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [250] "dPReLUa"              "dPReLUa1"             "Swish"               </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [253] "dSwish"               "linCmt"               "rnorm"               </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [256] "rxnorm"               "rxbinom"              "rbinom"              </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [259] "rxcauchy"             "rcauchy"              "rchisq"              </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [262] "rxchisq"              "rexp"                 "rxexp"               </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [265] "rbeta"                "rxbeta"               "rgeom"               </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [268] "rxgeom"               "rxpois"               "rpois"               </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [271] "rxt"                  "rt"                  </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

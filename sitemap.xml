@@ -21,6 +21,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-dosing-overview.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-et-refactor.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-eta-eps-resampling.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-eta-shape-transforms.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-event-bus.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-event-table-combine.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/articles/rxode2-event-table.html</loc></url>
@@ -195,6 +196,7 @@
 <url><loc>https://nlmixr2.github.io/rxode2/reference/etRep.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/etSeq.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/etTrans.html</loc></url>
+<url><loc>https://nlmixr2.github.io/rxode2/reference/etaBoxCox.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/eventTable.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/evid_.html</loc></url>
 <url><loc>https://nlmixr2.github.io/rxode2/reference/findLhs.html</loc></url>

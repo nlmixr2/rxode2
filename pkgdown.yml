@@ -20,6 +20,7 @@ articles:
   articles/rxode2-dosing-overview: rxode2-dosing-overview.html
   articles/rxode2-et-refactor: rxode2-et-refactor.html
   articles/rxode2-eta-eps-resampling: rxode2-eta-eps-resampling.html
+  articles/rxode2-eta-shape-transforms: rxode2-eta-shape-transforms.html
   articles/rxode2-event-bus: rxode2-event-bus.html
   articles/rxode2-event-table-combine: rxode2-event-table-combine.html
   rxode2-event-table: rxode2-event-table.html
@@ -59,7 +60,7 @@ articles:
   articles/rxode2-ui-object: rxode2-ui-object.html
   articles/rxode2-vpc: rxode2-vpc.html
   rxode2-wt: rxode2-wt.html
-last_built: 2026-11-21T01:47Z
+last_built: 2026-11-21T02:57Z
 urls:
   reference: https://nlmixr2.github.io/rxode2/reference
   article: https://nlmixr2.github.io/rxode2/articles
