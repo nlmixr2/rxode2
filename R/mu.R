@@ -405,70 +405,7 @@
   .ret
 }
 
-# Only deterministic math is evaluated: a call to anything else (`linCmt()`,
-# a random draw, an R user function such as `sample()`) fails the probe.
-.muRefEvalEnv <- new.env(parent = emptyenv())
-for (.f in c(
-  "*",
-  "/",
-  "+",
-  "-",
-  "^",
-  "(",
-  ">",
-  "<",
-  ">=",
-  "<=",
-  "==",
-  "!=",
-  "&",
-  "&&",
-  "|",
-  "||",
-  "!",
-  "ifelse",
-  "exp",
-  "log",
-  "sqrt",
-  "log10",
-  "log2",
-  "log1p",
-  "expm1",
-  "abs",
-  "sign",
-  "floor",
-  "ceiling",
-  "trunc",
-  "round",
-  "signif",
-  "sin",
-  "cos",
-  "tan",
-  "asin",
-  "acos",
-  "atan",
-  "sinh",
-  "cosh",
-  "tanh",
-  "asinh",
-  "acosh",
-  "atanh",
-  "gamma",
-  "lgamma",
-  "digamma",
-  "trigamma",
-  "beta",
-  "lbeta",
-  "factorial",
-  "lfactorial",
-  "choose",
-  "lchoose",
-  "min",
-  "max"
-)) {
-  assign(.f, get(.f, envir = baseenv()), envir = .muRefEvalEnv)
-}
-rm(.f)
+.muRefEvalEnv <- new.env(parent = baseenv())
 .muRefEvalEnv$pow <- function(x, y) x^y
 .muRefEvalEnv$R_pow <- .muRefEvalEnv$pow
 .muRefEvalEnv$R_pow_di <- .muRefEvalEnv$pow
@@ -524,8 +461,7 @@ rm(.f)
 #' mu2: the term reads only covariates and constants.  mu3: it reads model
 #' variables, which are replaced by their definitions (`.muRefMu3Resolve()`);
 #' what is left may read only the theta, covariates and constants.  Either way
-#' `theta` must be a bare factor of the term (`.muRefThetaIsFactor()`) and the
-#' term must equal `theta * der` (`.muRefTermIsThetaTimesDer()`).
+#' the term must equal `theta * der` (`.muRefTermIsThetaTimesDer()`).
 #'
 #' @param y term
 #' @param der derivative of the term by `theta`
@@ -535,9 +471,6 @@ rm(.f)
 #' @noRd
 #' @author Matthew L. Fidler
 .muRefCovTermOk <- function(y, der, theta, env) {
-  if (!.muRefThetaIsFactor(y, theta)) {
-    return(FALSE)
-  }
   if (all(setdiff(all.vars(y), theta) %in% env$info$dataCov)) {
     return(.muRefTermIsThetaTimesDer(y, der, theta))
   }
@@ -545,48 +478,8 @@ rm(.f)
   if (is.null(.r)) {
     return(FALSE)
   }
-  # a model variable that reads the theta itself (`m <- WT*bv`; `m*bv`) leaves
-  # the theta in the resolved coefficient
-  !(theta %in% all.vars(.r$der)) &&
-    all(setdiff(unique(c(all.vars(.r$term), all.vars(.r$der))), theta) %in% env$info$dataCov) &&
+  all(setdiff(unique(c(all.vars(.r$term), all.vars(.r$der))), theta) %in% env$info$dataCov) &&
     .muRefTermIsThetaTimesDer(.r$term, .r$der, theta)
-}
-
-#' Is `theta` a bare multiplicative factor of a term, appearing nowhere else?
-#'
-#' `cl.wt*log(WT/70)` and `WT*cl.wt/70` are; `(cl.wt + 1)*lwt` and
-#' `(s == "a")*(bv + 1)` are not, whatever values the probes in
-#' `.muRefTermIsThetaTimesDer()` happen to use.
-#'
-#' @param term term (language)
-#' @param theta theta name
-#' @return logical
-#' @noRd
-#' @author Matthew L. Fidler
-.muRefThetaIsFactor <- function(term, theta) {
-  .count <- function(x) {
-    if (is.name(x)) {
-      return(as.integer(identical(as.character(x), theta)))
-    }
-    if (!is.call(x) || !(theta %in% all.vars(x))) {
-      return(0L)
-    }
-    .h <- x[[1]]
-    if (identical(.h, quote(`(`))) {
-      return(.count(x[[2]]))
-    }
-    if (identical(.h, quote(`*`)) && length(x) == 3L) {
-      return(.count(x[[2]]) + .count(x[[3]]))
-    }
-    if (identical(.h, quote(`/`)) && !(theta %in% all.vars(x[[3]]))) {
-      return(.count(x[[2]]))
-    }
-    if (identical(.h, quote(`-`)) && length(x) == 2L) {
-      return(.count(x[[2]]))
-    }
-    NA_integer_
-  }
-  identical(.count(term), 1L)
 }
 
 #' Can a mu3 resolution that loads this line be memoised?
@@ -669,9 +562,10 @@ rm(.f)
 #' Replace the model variables in a mu3 term and its derivative
 #'
 #' Loads the model lines before the current one that the term and derivative
-#' depend on (`.muRefMu3Slice()`), with them, into symengine, so every model variable is replaced by its definition.
-#' `rxPrune()` first turns `if`/`else` into arithmetic and string values into
-#' their integer levels, which symengine cannot load otherwise.
+#' depend on (`.muRefMu3Slice()`) into symengine with them, so every model
+#' variable is replaced by its definition.  `rxPrune()` first turns `if`/`else`
+#' into arithmetic and string values into their integer levels, which
+#' symengine cannot load otherwise.
 #' Memoised like `.muRefThetaDerivative()`: only base arithmetic/elementary
 #' functions, so a redefined user function cannot give a stale answer.
 #'

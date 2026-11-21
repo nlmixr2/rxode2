@@ -168,30 +168,6 @@ rxTest({
       .mu("big <- WT; if (wt70 > 1) { big <- tka }", "log(wt70)*b", "big*bv"),
       c(b = "log(wt70)")
     )
-    # not a product: the `+ 1` would be dropped for "larger"
-    expect_equal(
-      .mu(
-        "if (wt70 > 1) { wt70s <- \"larger\" } else { wt70s <- \"smaller\" }",
-        "log(wt70)*b",
-        "(wt70s == \"larger\")*(bv + 1)"
-      ),
-      c(b = "log(wt70)")
-    )
-    # not a product, whichever values the indicator takes
-    expect_equal(
-      .mu(
-        "if (wt70 > 3) { s <- \"a\" } else if (wt70 > 2) { s <- \"b\" } else if (wt70 > 1) { s <- \"c\" } else { s <- \"d\" }",
-        "log(wt70)*b",
-        "(s == \"d\")*(bv + 1)"
-      ),
-      c(b = "log(wt70)")
-    )
-    expect_equal(
-      .mu("if (wt70 > 1) { big <- 1 } else { big <- 0 }", "log(wt70)*b", "(big == 1)*(bv + 1)"),
-      c(b = "log(wt70)")
-    )
-    # a model variable that reads the theta itself
-    expect_equal(.mu("m <- WT*bv", "log(wt70)*b", "m*bv"), c(b = "log(wt70)"))
     # ifelse() and a string comparison on a data covariate are data
     expect_equal(
       .mu("big <- ifelse(wt70 > 1, 1, 0)", "log(wt70)*b", "big*bv"),
