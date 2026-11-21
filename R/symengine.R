@@ -193,6 +193,16 @@ regIfOrElse <- rex::rex(or(regIf, regElse))
   "studentTCdf" = 2,
   "studentTCdfDnu" = 2,
   "studentTInv" = 2,
+  ## eta shape transforms (src/etaShape.cpp)
+  "exprelD" = 2,
+  "etaBoxCox" = 2,
+  "etaJohnDraper" = 2,
+  "etaYeoJohnson" = 2,
+  "absPowLog" = 3,
+  "etaHeavyTail" = 2,
+  "etaLogit" = 3,
+  "etaSinhAsinh" = 3,
+  "etaTukeyGH" = 3,
   "linCmtA" = 14,
   "linCmtB" = 15,
   "max" = NA,
@@ -5833,7 +5843,17 @@ rxSupportedFuns <- function() {
   "studentTDen" = 2,
   "studentTCdf" = 2,
   "studentTCdfDnu" = 2,
-  "studentTInv" = 2
+  "studentTInv" = 2,
+  ## eta shape transforms (src/etaShape.cpp)
+  "exprelD" = 2,
+  "etaBoxCox" = 2,
+  "etaJohnDraper" = 2,
+  "etaYeoJohnson" = 2,
+  "absPowLog" = 3,
+  "etaHeavyTail" = 2,
+  "etaLogit" = 3,
+  "etaSinhAsinh" = 3,
+  "etaTukeyGH" = 3
 )
 
 .rxOnly <- c(

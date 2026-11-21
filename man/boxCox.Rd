@@ -41,6 +41,7 @@ yeoJohnsonInv(4.32, 0.5)
 Other Special functions:
 \code{\link[=delay]{delay()}},
 \code{\link[=erf]{erf()}},
+\code{\link[=etaBoxCox]{etaBoxCox()}},
 \code{\link[=gammap]{gammap()}},
 \code{\link[=gammapDer]{gammapDer()}},
 \code{\link[=gammapInv]{gammapInv()}},
