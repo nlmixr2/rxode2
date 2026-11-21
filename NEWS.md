@@ -60,10 +60,11 @@
 
 - mu-referencing only records a `covariate*theta` term when its coefficient
   depends on covariates and constants alone: directly (mu2), or through model
-  variables that depend only on covariates (mu3), including variables set in
-  an `if`/`else` on covariates such as a string compared in
-  `(wt70s == "larger")*bv` (mu4).  An `if`/`else` in the model no longer
-  drops these terms (#1770).  A term
+  variables that resolve to covariates (mu3, checked with symengine on the
+  model lines the term depends on, with `if`/`else` and strings pruned by
+  `rxPrune()`), including a string set in an `if`/`else` on covariates and
+  compared in `(wt70s == "larger")*bv` (mu4).  An `if`/`else` or another
+  unrelated line no longer drops these terms (#1770).  A term
   that reaches a theta, eta or state through a model variable, such as the
   allometric `0.75*log(V1/exp(tV1))` (recorded with covariate `-0.75`), was
   rewritten by nlmixr2's SAEM / mu-referenced methods to `covariate*theta`,
