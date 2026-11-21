@@ -760,4 +760,86 @@ rxTest({
     fit <- stats::optim(log(c(2, 5, 15)), obj, gr, method = "BFGS", control = list(reltol = 1e-8))
     expect_equal(unname(exp(fit$par)), unname(truePar), tolerance = 0.05)
   })
+
+  # The builders take the dose rows and the dense forward grid from the event
+  # table, so a data.frame in either column case must give the rxEt's result.
+  # Fbio enters only through the doses, so a dropped dose zeroes its column.
+  test_that("adjoint builders read lower- and upper-case data.frame event tables", {
+    uText <- paste0(mText, "\nf(depot)=Fbio\ncp=center/v")
+    uCS <- c("ka", "cl", "Fbio")
+    uP <- c(ka = 1.1, cl = 3, v = 20, Fbio = 0.8)
+    uEv <- rxode2::et(amt = 100, cmt = "depot") |> rxode2::et(amt = 50, time = 6, cmt = "depot")
+    uLow <- as.data.frame(uEv)
+    uUp <- uLow
+    names(uUp) <- toupper(names(uUp))
+    uUp$MDV <- 1L
+    uOut <- c(2, 5, 9, 12)
+    uObs <- c(2, 3, 2.5, 1.5)
+    tabs <- list(uEv, uLow, uUp)
+    gB <- lapply(tabs, function(e) rxode2::.rxAdjointGradBuild(uText, uCS, "cp", e))
+    sB <- lapply(tabs, function(e) rxode2::.rxAdjointSolveBuild(uText, uCS, e))
+    g <- lapply(gB, function(b) rxode2::.rxAdjointGradEvalC(b, uP, uOut, uObs))
+    s <- lapply(sB, function(b) rxode2::.rxAdjointSolveEvalC(b, uP, uOut))
+    r <- lapply(tabs, function(e) rxode2::.rxAdjointSolve(uText, uP, e, c("ka", "cl"), uOut))
+    for (i in 2:3) {
+      expect_equal(g[[i]], g[[1]], tolerance = 1e-12)
+      expect_equal(s[[i]], s[[1]], tolerance = 1e-12)
+      expect_equal(r[[i]], r[[1]], tolerance = 1e-12)
+    }
+    tmod <- rxode2::rxode2(uText)
+    uFev <- uEv |> rxode2::et(uOut)
+    solveAt <- function(p) {
+      as.data.frame(rxode2::rxSolve(tmod, params = p, uFev, returnType = "data.frame", addDosing = FALSE))
+    }
+    for (.pp in uCS) {
+      h <- abs(uP[[.pp]]) * 1e-6
+      p1 <- uP
+      p2 <- uP
+      p1[.pp] <- p1[.pp] + h
+      p2[.pp] <- p2[.pp] - h
+      d1 <- solveAt(p1)
+      d2 <- solveAt(p2)
+      fd <- (d1$center - d2$center) / (2 * h)
+      expect_lt(max(relOrAbsErr(s[[3]][[paste0("rx__sens_center_BY_", .pp, "__")]], fd)), 1e-2)
+      gFd <- (sum(0.5 * (d1$cp - uObs)^2) - sum(0.5 * (d2$cp - uObs)^2)) / (2 * h)
+      expect_equal(g[[3]][[.pp]], gFd, tolerance = 1e-2)
+    }
+  })
+
+  test_that("adjoint builders send a numeric or missing dose cmt to its state in the f()/alag() duals", {
+    # a NONMEM table with CMT = 1, one with no CMT column, and an rxEt with
+    # cmt = 1 all dose the first state, depot, like the named table
+    nText <- paste0(mText, "\nf(depot)=Fbio\nalag(depot)=tlag\ncp=center/v")
+    nCS <- c("ka", "cl", "Fbio", "tlag")
+    nP <- c(ka = 1.1, cl = 3, v = 20, Fbio = 0.8, tlag = 0.3)
+    nNamed <- rxode2::et(amt = 100, cmt = "depot") |> rxode2::et(amt = 50, time = 6, cmt = "depot")
+    nNum <- data.frame(ID = 1L, TIME = c(0, 6), AMT = c(100, 50), EVID = 1L, CMT = 1L, MDV = 1L)
+    nNoCmt <- nNum[, setdiff(names(nNum), "CMT")]
+    nEtNum <- rxode2::et(amt = 100, cmt = 1) |> rxode2::et(amt = 50, time = 6, cmt = 1)
+    nOut <- c(2, 5, 9, 12)
+    nObs <- c(2, 3, 2.5, 1.5)
+    tabs <- list(nNamed, nNum, nNoCmt, nEtNum)
+    g <- lapply(tabs, function(e) rxode2::.rxAdjointGradEvalC(rxode2::.rxAdjointGradBuild(nText, nCS, "cp", e), nP, nOut, nObs))
+    s <- lapply(tabs, function(e) rxode2::.rxAdjointSolveEvalC(rxode2::.rxAdjointSolveBuild(nText, nCS, e), nP, nOut))
+    for (i in 2:4) {
+      expect_equal(g[[i]], g[[1]], tolerance = 1e-12, label = paste("gradient", i))
+      expect_equal(s[[i]], s[[1]], tolerance = 1e-12, label = paste("trajectory", i))
+    }
+  })
+
+  test_that(".rxAdjointGradPop() reads id, time and dv in any case", {
+    # upper-case ID/TIME/DV are the subject, time and observation columns, not
+    # covariates, and give the lower-case gradient
+    pText <- paste0(mText, "\ncp=center/v")
+    pCS <- c("ka", "cl")
+    pP <- c(ka = 1.1, cl = 3, v = 20)
+    pEv <- rxode2::et(amt = 100, cmt = "depot")
+    low <- data.frame(id = rep(1:2, each = 3), time = rep(c(1, 4, 8), 2), dv = c(2, 3, 2, 2.5, 3.2, 1.8))
+    up <- low
+    names(up) <- toupper(names(up))
+    gLow <- rxode2::.rxAdjointGradPop(pText, pP, pEv, pCS, "cp", low)
+    gUp <- rxode2::.rxAdjointGradPop(pText, pP, pEv, pCS, "cp", up)
+    expect_true(all(gLow != 0))
+    expect_equal(gUp, gLow, tolerance = 1e-12)
+  })
 })
