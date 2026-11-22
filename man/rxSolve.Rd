@@ -1490,7 +1490,8 @@ the continuous time (like \verb{$DES}).  \code{addl} repeats, infusion ends,
 lagged doses and doses added while solving do not end an interval;
 \code{mtime()} times do.  \code{f()}, \code{rate()} and \code{dur()} of an \code{addl} repeat
 read the time of the first data record at or after it (NONMEM's \code{F1},
-\code{R1} and \code{D1}).  A modeled rate (\code{rate()}, \code{RATE = -1}) is re-read on
+\code{R1} and \code{D1}), and \code{alag()} the time of the dose record it repeats
+(\code{ALAG1}).  A modeled rate (\code{rate()}, \code{RATE = -1}) is re-read on
 each interval from the record that ends it, like NONMEM's \code{R1} (see
 \code{rateAtDoseTime}).  Covariate interpolation is still set by
 \code{covsInterpolation}.  It also sets the default \code{tieOrder} to \code{"data"}
