@@ -351,7 +351,7 @@ equivalent results to standard solving:</p>
 <span><span class="va">f_dense</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">ev</span>, method <span class="op">=</span> <span class="st">"dop853"</span>, dense <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">f_std</span><span class="op">$</span><span class="va">cp</span> <span class="op">-</span> <span class="va">f_dense</span><span class="op">$</span><span class="va">cp</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 3.774758e-15</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 1.332268e-15</span></span></code></pre></div>
 <p>The maximum difference is at the level of solver tolerance,
 confirming correctness.</p>
 <hr>
