@@ -55,6 +55,7 @@ SEXP _rxode2_rxGpuClRound(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP,
                           SEXP, SEXP);
 SEXP _rxode2_rxGpuClFree(SEXP);
 SEXP _rxode2_rxGpuSolveSet(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP _rxode2_rxGpuSolveStats(SEXP);
 SEXP _rxode2_rxDydtForceN(void);
 
 SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname, SEXP pMd5, SEXP lastMv, SEXP goodFuns, SEXP esDLagCode, SEXP esDFCode, SEXP esDRateCode, SEXP esDDurCode, SEXP esD2FCode, SEXP esD2LagCode, SEXP esD2RateCode, SEXP esD2DurCode, SEXP esD3FCode, SEXP esDFQCode, SEXP esDLagJacCode, SEXP esDLagQCode, SEXP esDDurQCode);
@@ -1258,6 +1259,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxGpuClRound", (DL_FUNC) &_rxode2_rxGpuClRound, 10},
     {"_rxode2_rxGpuClFree", (DL_FUNC) &_rxode2_rxGpuClFree, 1},
     {"_rxode2_rxGpuSolveSet", (DL_FUNC) &_rxode2_rxGpuSolveSet, 7},
+    {"_rxode2_rxGpuSolveStats", (DL_FUNC) &_rxode2_rxGpuSolveStats, 1},
     {"_rxode2_rxDydtForceN", (DL_FUNC) &_rxode2_rxDydtForceN, 0},
     {NULL, NULL, 0}
   };

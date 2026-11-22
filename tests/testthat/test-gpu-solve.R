@@ -437,6 +437,27 @@ rxTest({
     }
   })
 
+  test_that("a re-solve without a new setup rounds every subject at once, as SAEM's iterations do", {
+    .b <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - cl / v * center
+      cp <- center / v
+    })
+    .p <- data.frame(id = 1:40, ka = seq(0.5, 2.5, length.out = 40), cl = 3, v = 30)
+    .ev <- et(amt = 300) |> et(seq(0, 24, by = 4)) |> et(id = 1:40)
+    invisible(.rxGpuSolveStats())
+    suppressMessages(rxSolve(.b, .p, .ev, method = "gpuT54", gpuBackend = "cpu", cores = 2L))
+    .first <- .rxGpuSolveStats()
+    expect_equal(.first[["solves"]], 1)
+    expect_equal(.first[["requests"]] / .first[["rounds"]], 40)
+    ## par_solve() again on the same setup (nlmixr2est's SAEM, every iteration)
+    utils::capture.output(invisible(.Call("_rxTestParSolveAfterPush", PACKAGE = "rxode2")), type = "message")
+    .again <- .rxGpuSolveStats()
+    expect_equal(.again[["solves"]], 1)
+    expect_equal(.again[["rounds"]], .first[["rounds"]])
+    expect_equal(.again[["requests"]] / .again[["rounds"]], 40)
+  })
+
   test_that("a cmt() without d/dt() is not a device state (nlmixr2's endpoint compartment, #1757)", {
     .m <- rxode2({
       d/dt(depot) <- -ka * depot

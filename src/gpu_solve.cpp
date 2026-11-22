@@ -1,4 +1,5 @@
 #ifdef IN_PAR_SOLVE
+#include <chrono>
 // Batched solving with the device integrators (methods gpuT54, gpuVern76,
 // gpuRos54p and the device AutoSwitch composites, codes 110-114).
 //
@@ -53,6 +54,7 @@ typedef struct rxGpuSolveCfg_t {
   std::string key;         // the model it is for (model_vars name)
   int gen;                 // bumped by every install: workspaces re-allocate
   int threads;             // OpenMP team of the host work
+  int slots;               // thread slots the solve setup sized its pools for
   rxGpuHostRound_t round;  // host build of the round
   rxGpuCl *cl;             // OpenCL run (NULL: CPU backend)
   int dims[RXG_D_N];       // layout (dims[RXG_D_NSUB] = slots)
@@ -60,7 +62,7 @@ typedef struct rxGpuSolveCfg_t {
   std::vector<int> oi;
 } rxGpuSolveCfg_t;
 
-static rxGpuSolveCfg_t rxGpuSolveCfg = {0, 0, std::string(), 0, 1, NULL, NULL, {0}, {}, {}};
+static rxGpuSolveCfg_t rxGpuSolveCfg = {0, 0, std::string(), 0, 1, 0, NULL, NULL, {0}, {}, {}};
 
 // error texts of the device return codes (postSolve() indexes -istate-1)
 static const char *rxGpuErr[] = {
@@ -170,6 +172,7 @@ static rxGpuWork *rxGpuOneWorkFor(rx_solving_options *op, rxGpuWork &local,
 
 // Solve setup (single threaded): a workspace for each of n thread slots
 extern "C" void rxGpuSolveWorkers(int n) {
+  rxGpuSolveCfg.slots = n;
   if (n > 0 && (size_t)n > rxGpuOneWork.size()) rxMemResize(gpuSlotWork, rxGpuOneWork, (size_t)n);
   if (n > 0 && (size_t)n > rxGpuSsWork.size()) rxMemResize(gpuSlotWork, rxGpuSsWork, (size_t)n);
 }
@@ -184,6 +187,7 @@ extern "C" void rxGpuSolveFreeAll(void) {
   std::string().swap(rxGpuSolveCfg.key);
   rxGpuSolveCfg.on = 0;
   rxGpuSolveCfg.armed = 0;
+  rxGpuSolveCfg.slots = 0;
   rxGpuSolveCfg.round = NULL;
   rxGpuSolveCfg.cl = NULL;
 }
@@ -627,6 +631,24 @@ extern "C" void ind_gpu(rx_solve *rx, int solveid, t_dydt c_dydt,
   }
 }
 
+// Batched-solve counters for the benchmarks (.rxGpuSolveStats()): solves,
+// rounds, requests, and seconds advancing subjects on the host and in rounds
+static struct {
+  double solves, rounds, requests, advance, round;
+} rxGpuStats = {0, 0, 0, 0, 0};
+
+extern "C" SEXP _rxode2_rxGpuSolveStats(SEXP reset) {
+  SEXP ret = Rf_allocVector(REALSXP, 5);
+  double *r = REAL(ret);
+  r[0] = rxGpuStats.solves;
+  r[1] = rxGpuStats.rounds;
+  r[2] = rxGpuStats.requests;
+  r[3] = rxGpuStats.advance;
+  r[4] = rxGpuStats.round;
+  if (Rf_asLogical(reset) == 1) rxGpuStats = {0, 0, 0, 0, 0};
+  return ret;
+}
+
 // All subjects in batched rounds
 // The rounds; returns 0, or 1 when an OpenCL round failed, which par_gpu()
 // raises once the rounds have returned.  Its buffers are the reused
@@ -642,9 +664,14 @@ extern "C" void par_gpu(rx_solve *rx) {
   }
 }
 
-// the slots of a solve: op->cores, within the buffers and the solve count
+// the slots of a solve: those the setup sized the per-thread pools for (or
+// op->cores), within the buffers and the solve count.  op->cores drops to the
+// host team after each solve, and a caller re-solving without a new setup
+// (nlmixr2est's SAEM, every iteration) would otherwise round only that many
+// subjects at a time
 static int rxGpuSlotCount(rx_solve *rx, int nsolve) {
-  int nslot = rx->op->cores;
+  rx_solving_options *op = rx->op;
+  int nslot = rxGpuSolveCfg.slots > op->cores ? rxGpuSolveCfg.slots : op->cores;
   if (rxGpuSolveCfg.cl != NULL && rxGpuSolveCfg.cl->dims[RXG_D_NSUB] < nslot) {
     nslot = rxGpuSolveCfg.cl->dims[RXG_D_NSUB];
   }
@@ -747,7 +774,9 @@ static int par_gpu0(rx_solve *rx) {
   }
   int nact = nslot;
   int fail = 0;
+  rxGpuStats.solves++;
   while (nact > 0 && !fail) {
+    auto _t0 = std::chrono::steady_clock::now();
     // advance every subject (applying its last result) until it waits
 #ifdef _OPENMP
 #pragma omp parallel for num_threads(threads) schedule(dynamic)
@@ -759,9 +788,14 @@ static int par_gpu0(rx_solve *rx) {
       setRxThreadId(-1);
     }
     int n = rxGpuGather(w, nslot, &nact);
+    auto _t1 = std::chrono::steady_clock::now();
+    rxGpuStats.advance += std::chrono::duration<double>(_t1 - _t0).count();
     if (n == 0) continue;
+    rxGpuStats.rounds++;
+    rxGpuStats.requests += n;
     fail = rxGpuRunRound(w, n, threads);
     if (fail) break;
+    rxGpuStats.round += std::chrono::duration<double>(std::chrono::steady_clock::now() - _t1).count();
     for (int r = 0; r < n; r++) {
       int k = w.map[r];
       rxGpuResult(&sub[k], w.q2, r);

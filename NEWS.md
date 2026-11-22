@@ -92,7 +92,9 @@
   tolerances, so `tolFactor` and `atolRtolFactor_()` apply per subject.
   A solve set up from C (as nlmixr2est's estimation methods do) installs
   its GPU setup there, once; when the model cannot run as device code it
-  integrates with the host counterpart.
+  integrates with the host counterpart.  Repeated solves on that setup
+  (nlmixr2est's SAEM iterations) round every subject at once, and each
+  double-precision OpenCL round waits on the device once.
 - `rxMemoryEstimate()` (and so `rxSolve()`'s out-of-memory check) now counts
   the GPU methods' per-slot host workspaces and the per-thread `evid_()`
   push pools, and reports the GPU device buffers separately.  An OpenCL

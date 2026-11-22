@@ -56,6 +56,7 @@ typedef cl_int (RXCL_API *clGetKernelInfo_t)(void *, cl_uint, size_t, void *,
 typedef cl_int (RXCL_API *clFinish_t)(void *);
 typedef cl_int (RXCL_API *clGetDeviceInfo_t)(void *, cl_uint, size_t, void *,
                                              size_t *);
+typedef cl_int (RXCL_API *clReleaseEvent_t)(void *);
 
 static struct {
   int loaded;
@@ -68,6 +69,7 @@ static struct {
   clGetKernelInfo_t kernelInfo;
   clFinish_t finish;
   clGetDeviceInfo_t deviceInfo; // optional (the device memory check)
+  clReleaseEvent_t releaseEvent; // optional (the one-wait rounds)
 } rxcl = {0};
 
 #ifdef _WIN32
@@ -118,6 +120,7 @@ int rxGpuClLoad(void) {
   rxcl.kernelInfo = (clGetKernelInfo_t)rxclSym(lib, "clGetKernelInfo");
   rxcl.finish = (clFinish_t)rxclSym(lib, "clFinish");
   rxcl.deviceInfo = (clGetDeviceInfo_t)rxclSym(lib, "clGetDeviceInfo");
+  rxcl.releaseEvent = (clReleaseEvent_t)rxclSym(lib, "clReleaseEvent");
   if (rxcl.createBuffer && rxcl.releaseMem && rxcl.write && rxcl.read &&
       rxcl.setArg && rxcl.run && rxcl.kernelInfo && rxcl.finish) {
     rxcl.loaded = 1;
@@ -323,6 +326,54 @@ rxGpuCl *rxGpuClNew(void *ctx, void *queue, void *kernel, const int *dims,
   return g;
 }
 
+// Double precision round with one wait: the writes, the launch and the reads
+// are queued without blocking and ordered by events (the OpenCL package's
+// queue may run out of order), then the host waits once.  The inputs stay
+// untouched until then (the caller's round buffers).
+static int rxGpuClRoundAsync(rxGpuCl *g, int n, size_t *w, const void **in,
+                             double *y, double *rd, int *ri) {
+  size_t nn = (size_t)n;
+  void *ev[RXG_B_ON + 1], *evk = NULL, *evr[3];
+  cl_uint nev = 0, nr = 0;
+  cl_int e = RXCL_SUCCESS;
+  for (int b = 0; b <= RXG_B_ON && e == RXCL_SUCCESS; b++) {
+    if (w[b] == 0) continue;
+    e = rxcl.write(g->queue, g->buf[b], 0, 0, w[b]*nn*rxGpuClElt(g, b), in[b], 0,
+                   NULL, &ev[nev]);
+    if (e == RXCL_SUCCESS) nev++;
+  }
+  if (e == RXCL_SUCCESS) {
+    for (int b = 0; b < RXG_B_N && e == RXCL_SUCCESS; b++) {
+      e = rxcl.setArg(g->kernel, (cl_uint)(b == 0 ? 0 : b + 1), sizeof(void *),
+                      &(g->buf[b]));
+    }
+  }
+  cl_int ni = (cl_int)n;
+  if (e == RXCL_SUCCESS) e = rxcl.setArg(g->kernel, 1, sizeof(cl_int), &ni);
+  size_t global = nn;
+  if (e == RXCL_SUCCESS) {
+    e = rxcl.run(g->queue, g->kernel, 1, NULL, &global, NULL, nev,
+                 nev ? ev : NULL, &evk);
+  }
+  void *out[3] = {y, rd, ri};
+  int ob[3] = {RXG_B_Y, RXG_B_RD, RXG_B_RI};
+  for (int i = 0; i < 3 && e == RXCL_SUCCESS; i++) {
+    int b = ob[i];
+    if (w[b] == 0) continue;
+    e = rxcl.read(g->queue, g->buf[b], 0, 0, w[b]*nn*rxGpuClElt(g, b), out[i], 1,
+                  &evk, &evr[nr]);
+    if (e == RXCL_SUCCESS) nr++;
+  }
+  // wait for everything queued, even after an error: the host buffers must
+  // not be reused while a transfer still reads or writes them
+  cl_int ef = rxcl.finish(g->queue);
+  if (e == RXCL_SUCCESS) e = ef;
+  for (cl_uint i = 0; i < nev; i++) rxcl.releaseEvent(ev[i]);
+  if (evk != NULL) rxcl.releaseEvent(evk);
+  for (cl_uint i = 0; i < nr; i++) rxcl.releaseEvent(evr[i]);
+  return e;
+}
+
 // One round: n requests in the layout of rxg_round.h.  y, rd and ri are
 // updated in place.  Returns 0, or the OpenCL error code.
 int rxGpuClRound(rxGpuCl *g, int n, double *y, double *rd, int *ri,
@@ -333,6 +384,10 @@ int rxGpuClRound(rxGpuCl *g, int n, double *y, double *rd, int *ri,
   size_t w[RXG_B_N], nn = (size_t)n;
   rxGpuClWidths(g, w);
   const void *in[RXG_B_ON + 1] = {y, rd, ri, p0, p1, pl, ir, on};
+  // single precision stages every buffer through g->stage, one at a time
+  if (!g->single && rxcl.releaseEvent != NULL) {
+    return rxGpuClRoundAsync(g, n, w, in, y, rd, ri);
+  }
   cl_int e = RXCL_SUCCESS;
   for (int b = 0; b <= RXG_B_ON && e == RXCL_SUCCESS; b++) {
     e = rxGpuClWrite(g, b, in[b], w[b]*nn);

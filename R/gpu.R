@@ -1308,6 +1308,20 @@ rxGpuInfo <- function() {
   invisible(NULL)
 }
 
+#' Counters of the batched GPU solves (for the benchmarks)
+#'
+#' @param reset zero them after reading
+#' @return named numeric: solves, rounds, requests (subject intervals),
+#'   advance (host seconds between rounds) and round (seconds in rounds)
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuSolveStats <- function(reset = TRUE) {
+  stats::setNames(
+    .Call(`_rxode2_rxGpuSolveStats`, reset),
+    c("solves", "rounds", "requests", "advance", "round")
+  )
+}
+
 #' Install the GPU setup for a solve set up from C
 #'
 #' rxSolve_() calls this once, at setup, for a GPU method whose model has no

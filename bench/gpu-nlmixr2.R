@@ -10,6 +10,7 @@
 #   est    comma-separated estimation methods (default saem,focei)
 library(rxode2)
 library(nlmixr2)
+.rxGpuSolveStats <- utils::getFromNamespace(".rxGpuSolveStats", "rxode2")
 
 .args <- commandArgs(TRUE)
 .sizes <- as.integer(strsplit(if (length(.args) >= 1) .args[1] else "500", ",")[[1]])
@@ -107,9 +108,13 @@ for (.n in .sizes) {
           )
         )
       }
+      invisible(.rxGpuSolveStats())
       .t <- system.time(.fit <- suppressMessages(suppressWarnings(nlmixr2(.model, .dat, .est, control = .ctl))))[[
         "elapsed"
       ]]
+      ## the batched GPU solves: rounds, subject intervals per round, and the
+      ## seconds spent advancing subjects on the host and in the rounds
+      .g <- .rxGpuSolveStats()
       .out <- rbind(
         .out,
         data.frame(
@@ -118,12 +123,28 @@ for (.n in .sizes) {
           method = .c[1],
           backend = .c[2],
           seconds = round(.t, 1),
+          rounds = .g[["rounds"]],
+          perRound = round(.g[["requests"]] / max(1, .g[["rounds"]])),
+          hostS = round(.g[["advance"]], 1),
+          roundS = round(.g[["round"]], 1),
           objf = round(.fit$objf, 2),
           tcl = signif(exp(.fit$theta[["tcl"]]), 4),
           tv = signif(exp(.fit$theta[["tv"]]), 4)
         )
       )
-      cat(.n, .est, .c, round(.t, 1), "\n")
+      cat(
+        .n,
+        .est,
+        .c,
+        round(.t, 1),
+        "s; rounds",
+        .g[["rounds"]],
+        "host",
+        round(.g[["advance"]], 1),
+        "s, rounds",
+        round(.g[["round"]], 1),
+        "s\n"
+      )
     }
   }
 }
