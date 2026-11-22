@@ -266,6 +266,10 @@
   that is empty or whose first column is empty gives the parameter-size
   error.  With a `sigma` to simulate, these used to crash R with a floating
   point exception or fail with an unrelated internal error (#1551).
+- `ros4` and `iem` no longer crash R (`free(): invalid next size`) on a
+  model that combines `linCmt()` with an ODE state.  Their Jacobian was
+  sized for every state, including the `linCmt()` ones, while the stepper
+  holds only the ODE states.
 - A dose moved by `alag()` now takes the time-varying covariates imputed at
   its actual dosing time, as `addl` repeats do with `addlKeepsCov = FALSE`
   (the default); the covariates stay on the data records' own times.  It used
@@ -315,6 +319,10 @@
   `addl` repeat now read `time` as the first data record at or after the
   repeat, as NONMEM evaluates `F1`, `R1` and `D1`; by default they still
   read the actual time of the `addl` dose (#1583).
+- With `rxSolve(..., nonmem = TRUE)`, `alag()` of an `addl` repeat now reads
+  `time` as the time of the dose record it repeats, as NONMEM evaluates
+  `ALAG1`; by default it still reads the actual time of the `addl` dose
+  (#1583).
 
 ### Steady state
 - A steady state solved with `method = "indLin"` (or with a `rxToIndLin()`
@@ -444,6 +452,17 @@
   is moved there by the delta method), so every drawn matrix is positive
   definite and none is redrawn (#1486).
 
+- `cvode` now re-initialises only where the state or the right-hand side may
+  change (a dose, a reset, an infusion edge, an `mtime()` or evid 2 record, a
+  covariate change), instead of at every record.  Across a plain observation
+  record it carries on with its step, order and history, stopping exactly at
+  the next record it may not cross and interpolating the observations in
+  between, so a solve with many observation records takes far fewer
+  right-hand-side evaluations.  A time window in the model, such as
+  `if (t >= a && t < b)`, that starts at or just after a plain observation
+  record can now be stepped over, as `liblsoda` and `lsoda` can step over
+  one; give its start an `mtime()` or an event record.
+
 - Time-to-event endpoints can be simulated with `ev ~ tte(haz, ...)`, using
   the options of Monolix's `{type=event}` definitions (`eventType`,
   `maxEventNumber`, `rightCensoringTime`, `intervalLength`) plus `dropout`.
@@ -460,6 +479,16 @@
   cumulative hazard, the first record being the start of observation
   unless `tte(origin = TRUE)`.  `tteTime()`/`tteCount()` of an estimation
   solve come from the endpoint's `DV = 1` records.
+
+- `dop853`, `dop5` and `ros4` now start the segment after a plain
+  observation record with the step size they proposed at the end of the
+  previous one, instead of choosing a first step again.  `dop5` also keeps
+  it across a dose, an infusion start or stop and the other records that
+  change the state or the dosing, capped by 1/100 of the time scale of the
+  state just after the event; `dop853` and `ros4` restart there.  An
+  `mtime()` or evid 2 record restarts all three.  A solve with many
+  observation records, or `dop5` with many infusion edges, takes fewer
+  right-hand-side evaluations, with the same error control.
 
 - `minSS` and `maxSS` now accept any count from 1, and `maxSS` may equal
   `minSS`, so `minSS = maxSS = n` gives exactly the state after `n` doses

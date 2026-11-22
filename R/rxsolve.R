@@ -1067,7 +1067,8 @@
 #'   lagged doses and doses added while solving do not end an interval;
 #'   `mtime()` times do.  `f()`, `rate()` and `dur()` of an `addl` repeat
 #'   read the time of the first data record at or after it (NONMEM's `F1`,
-#'   `R1` and `D1`).  A modeled rate (`rate()`, `RATE = -1`) is re-read on
+#'   `R1` and `D1`), and `alag()` the time of the dose record it repeats
+#'   (`ALAG1`).  A modeled rate (`rate()`, `RATE = -1`) is re-read on
 #'   each interval from the record that ends it, like NONMEM's `R1` (see
 #'   `rateAtDoseTime`).  Covariate interpolation is still set by
 #'   `covsInterpolation`.  It also sets the default `tieOrder` to `"data"`

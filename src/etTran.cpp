@@ -1938,6 +1938,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   std::vector<char> recImplied;
   recImplied.reserve(resSize);
   std::vector<std::pair<int,int>> infPairs; // see etTransNoteInfPairs()
+  // (addl repeat dose, the dose record it repeats) (rxode2#1583)
+  std::vector<std::pair<int,int>> addlParents;
   std::vector<int> infClassic;               // see etTransNoteInfClassic()
   std::vector<int> cmtF; // Final compartment
   cmtF.reserve(resSize);
@@ -2992,6 +2994,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
       }
       int nOcc = _rxAddlCount(cii, caddl);
+      int addlParent = (int)evid.size();
       for (int rep = 0; rep < nOcc; ++rep) {
         if (rep > 0) ctime += cii;
         if (rep > 0 && !addlCap.empty() &&
@@ -3036,6 +3039,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             idxInput.push_back(addlKeepsCov ? (int)i : -1);
             // 2: the dose of an addl repeat (rxode2#1583)
             recImplied.push_back(k == 0 ? 2 : 1);
+            if (k == 0) addlParents.emplace_back((int)evid.size() - 1, addlParent);
           }
           ndose++;
         }
@@ -3238,6 +3242,17 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       }
     }
     infPairs.swap(infPairs2);
+    // a split repeat's m-th copy repeats the dose's m-th copy
+    std::vector<std::pair<int,int>> addlParents2;
+    for (const auto& pr : addlParents) {
+      int nP = newCount[pr.second];
+      if (nP == 0) continue;
+      for (int m = 0; m < newCount[pr.first]; ++m) {
+        addlParents2.emplace_back(newFirst[pr.first] + m,
+                                  newFirst[pr.second] + (m < nP ? m : nP - 1));
+      }
+    }
+    addlParents.swap(addlParents2);
     std::vector<int> infClassic2;
     for (int c : infClassic) {
       for (int m = 0; m < newCount[c]; ++m) infClassic2.push_back(newFirst[c] + m);
@@ -3794,10 +3809,18 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   // them, for a model whose f()/alag()/rate()/dur() may (rxode2#1583)
   std::vector<int> pkSkipRows;
   std::vector<int> addlRepRows;
+  std::vector<int> addlParentOff; // rows back to the dose each repeat repeats
   IntegerVector mvFlags = mv[RxMv_flags];
   int mvNeedSort = Rf_length(mv[RxMv_needSort]) > 0 ? as<int>(mv[RxMv_needSort]) : 0;
   bool needAddlRep = mvFlags.size() > RxMvFlag_doseTime &&
     mvFlags[RxMvFlag_doseTime] != 0;
+  std::vector<int> addlOutRow, addlParentOf;
+  if (needAddlRep) {
+    std::vector<int> outPre;
+    etTransInfOutRows(idxOutput, evid.size(), addlOutRow, outPre);
+    addlParentOf.assign(evid.size(), -1);
+    for (const auto& pr : addlParents) addlParentOf[pr.first] = pr.second;
+  }
   bool needPkSkip = (needAddlRep ||
                      (mvFlags.size() > RxMvFlag_pkTime && mvFlags[RxMvFlag_pkTime] != 0) ||
                      (mvNeedSort & (needSortRate | needSortDur)) != 0) &&
@@ -3807,7 +3830,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       jj--;
       if (needPkSkip && recImplied[idxOutput[i]]) {
         pkSkipRows.push_back(jj + 1);
-        if (needAddlRep && recImplied[idxOutput[i]] == 2) addlRepRows.push_back(jj + 1);
+        if (needAddlRep && recImplied[idxOutput[i]] == 2) {
+          addlRepRows.push_back(jj + 1);
+          int par = addlParentOf[idxOutput[i]];
+          int parRow = par >= 0 ? addlOutRow[par] : -1;
+          addlParentOff.push_back(parRow >= 0 && parRow < jj ? jj - parRow : 0);
+        }
       }
       outId[jj] = id[idxOutput[i]];
       if (lastId != id[idxOutput[i]]) {
@@ -4225,6 +4253,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   if (addlRepRows.size() > 0) {
     std::reverse(addlRepRows.begin(), addlRepRows.end());
     Rf_setAttrib(lstF, Rf_install("rxAddlRep"), wrap(addlRepRows));
+    std::reverse(addlParentOff.begin(), addlParentOff.end());
+    Rf_setAttrib(lstF, Rf_install("rxAddlParent"), wrap(addlParentOff));
   }
   Rf_setAttrib(lstF, R_NamesSymbol, nmeF);
   Rf_setAttrib(lstF, R_ClassSymbol, cls);

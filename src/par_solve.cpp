@@ -7292,17 +7292,21 @@ static int rxDelayRecordSegment(rx_solve *rx, rx_solving_options *op,
                                 t_dydt c_dydt, double xp, double xout,
                                 double *yp, int eff);
 
+// h0 is dop853's first step (0 lets dop853 choose it); *hNext gets the step
+// it would take next, or 0 when the stiff secondary solved any of the interval.
 static int rxSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
                                rx_solving_options_ind *ind, int *neq, t_dydt c_dydt,
                                double xp, double xout, double *yp,
-                               int *istate, int itol, int eff, int *iRec) {
+                               int *istate, int itol, int eff, int *iRec,
+                               double h0, double *hNext) {
   (void) rx;
-  // Non-composite: plain dop853 (unchanged behavior).
+  *hNext = 0.0;
+  // Non-composite: plain dop853.
   if (op->stiff2 <= 0) {
-    return dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
-                  solout, 0, NULL, DBL_EPSILON, 0, 0, 0, 0,
-                  ind->HMAX, op->H0, op->mxstep, 1, -1,
-                  0, NULL, 0, NULL, ind->id, NULL);
+    return dop853Next(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
+                      solout, 0, NULL, DBL_EPSILON, 0, 0, 0, 0,
+                      ind->HMAX, h0, op->mxstep, 1, -1,
+                      0, NULL, 0, NULL, ind->id, NULL, hNext);
   }
   if (op->stiff != 0) return rxSegmentAutoSwitchGeneric(op, ind, neq, xp, xout, yp,
                                                         istate, eff, iRec);
@@ -7322,13 +7326,14 @@ static int rxSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
     memcpy(ypSave, yp, (size_t)eff * sizeof(double));
     dop853_stiff_t st;
     rxStiffLoad(&st, op, ind);
-    idid = dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
-                  solout, 0, NULL, DBL_EPSILON, 0, 0, 0, 0,
-                  ind->HMAX, op->H0, op->mxstep, 1, RX_AUTOSWITCH_NSTIFF,
-                  0, NULL, 0, NULL, ind->id, &st);
+    idid = dop853Next(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
+                      solout, 0, NULL, DBL_EPSILON, 0, 0, 0, 0,
+                      ind->HMAX, h0, op->mxstep, 1, RX_AUTOSWITCH_NSTIFF,
+                      0, NULL, 0, NULL, ind->id, &st, hNext);
     rxStiffSave(&st, ind);
     bool failed = (idid <= 0 || ind->err);
     if (failed) {
+      *hNext = 0.0;
       // Stiffness: hand the stiff secondary (op->stiff2) the rest of the
       // interval, starting from the probe's last fully accepted step, via the
       // shared per-method interval solver (its preSolve() is idempotent).  Only
@@ -7364,11 +7369,14 @@ static int rxSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
 }
 
 // One interval of the generic record loop: records the delay() history when
-// needed, a single non-dop853 method, or dop853 and its AutoSwitch composites
+// needed, a single non-dop853 method, or dop853 and its AutoSwitch composites.
+// h0/hNext as in rxSegmentAutoSwitch (*hNext is 0 outside dop853).
 static int rxSegmentSolve(rx_solve *rx, rx_solving_options *op,
                           rx_solving_options_ind *ind, int *neq, t_dydt c_dydt,
                           double xp, double xout, double *yp,
-                          int *istate, int itol, int eff, int *iRec, void *ctx) {
+                          int *istate, int itol, int eff, int *iRec, void *ctx,
+                          double h0, double *hNext) {
+  *hNext = 0.0;
   if (ind->delayHistOn) {
     return rxDelayRecordSegment(rx, op, ind, neq, c_dydt, xp, xout, yp, eff);
   }
@@ -7376,7 +7384,7 @@ static int rxSegmentSolve(rx_solve *rx, rx_solving_options *op,
     return rxSegmentSingle(op, ind, neq, xp, xout, yp, istate, eff, iRec, ctx);
   }
   return rxSegmentAutoSwitch(rx, op, ind, neq, c_dydt, xp, xout, yp, istate, itol,
-                             eff, iRec);
+                             eff, iRec, h0, hNext);
 }
 
 extern "C" int getCvodeLinearSolver();
@@ -7494,10 +7502,17 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
     int st = 1;
     preSolve(op, ind, t0, t1, y);
     neq[0] = eff - op->numLin - op->numLinSens;
-    rxSegmentSolve(rx, op, ind, neq, c_dydt, t0, t1, y, &st, itol, eff, &i, ctx);
+    double _hNext;
+    rxSegmentSolve(rx, op, ind, neq, c_dydt, t0, t1, y, &st, itol, eff, &i, ctx,
+                   op->H0, &_hNext);
     neq[0] = eff;
     copyLinCmt(neq, ind, op, y);
   };
+  rxStepKeeper keep; // how each segment starts
+  // dop853 restarts after a dose: hinit() already starts near the capped
+  // kept step, and growing from the cap costs it more steps than hinit()
+  keep.acrossDoses = false;
+  double hNext = 0.0;
   for(i=0; i<ind->n_all_times; i++) {
     ind->idx=i;
     ind->linSS=0;
@@ -7539,7 +7554,11 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             neq[0] = eff - op->numLin - op->numLinSens;
             idid = rxSegmentSolve(rx, op, ind, neq, c_dydt, xp,
-                                  ind->extraDoseNewXout, yp, &istate, itol, eff, &i, ctx);
+                                  ind->extraDoseNewXout, yp, &istate, itol, eff, &i, ctx,
+                                  keep.first(op->H0, op, ind, neq, neq[0], c_dydt, xp, yp),
+                                  &hNext);
+            keep.solved(hNext);
+            if (_tte.n != 0) keep.reset();
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -7555,6 +7574,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
             handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
                         ind->BadDose, InfusionRate, ind->dose, yp, xout, neq[1], ind);
             idid = 1;
+            keep.stateChanged();
             ind->idx = idx;
             ind->ixds = ixds;
             ind->idxExtra++;
@@ -7566,7 +7586,11 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
           preSolve(op, ind, xp, xout, yp);
           neq[0] = eff - op->numLin - op->numLinSens;
           idid = rxSegmentSolve(rx, op, ind, neq, c_dydt, xp, xout, yp,
-                                &istate, itol, eff, &i, ctx);
+                                &istate, itol, eff, &i, ctx,
+                                keep.first(op->H0, op, ind, neq, neq[0], c_dydt, xp, yp),
+                                &hNext);
+          keep.solved(hNext);
+          if (_tte.n != 0) keep.reset();
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
@@ -7590,6 +7614,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         }
         xp = xout;
       }
+      keep.record(getEvid(ind, ind->ix[i]));
       int _mtime_requeued = 0;
       if (rx->nMtime > 0) {
         if (recomputeMtimeIfNeeded(rx, ind, yp, i, xout)) {
