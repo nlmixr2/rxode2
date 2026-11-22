@@ -556,6 +556,16 @@ struct rx_solving_options_ind_s {
   double *infDurOn;
   int     infDurOnCap; /* allocated doubles in infDurOn */
   int     infDurOnN;   /* entries in use */
+  // 1 + the sorted position of the record whose covariates a time-based
+  // covariate update reads, whatever time it is at (0 = match by time):
+  // getAmtAtRecord() reads f() at a record's data time with its covariates.
+  int     recCovPos;
+  // For a record a dose row expands to (a steady-state companion, an
+  // infusion's stop), the offset to the record standing in for that dose row
+  // (negative), recorded by etTrans(); 0 for every other record, NULL when
+  // there are none.  The record-based covariate reads of such a record read
+  // its dose row.  Covers the first n_all_times_orig records.
+  int    *doseRow;
 };
 
 typedef struct rx_solve_s {
@@ -679,6 +689,10 @@ typedef struct rx_solve_s {
   int rateAtDoseTime;
   // rxControl(durAtDoseTime=TRUE): the same for a modeled duration
   int durAtDoseTime;
+  // rxControl(doseAtRecord=TRUE): a dose's f(), alag(), rate() and dur(), and
+  // the covariates of the records it expands to, are read at its own data
+  // record, as NONMEM reads them; otherwise each record reads its own
+  int doseAtRecord;
 } rx_solve;
 
 typedef void (*rxode2_assignFuns2_t)(rx_solve, rx_solving_options, t_F, t_LAG, t_RATE, t_DUR,t_calc_mtime, t_ME, t_IndF, t_getTime, t_locateTimeIndex, t_handle_evidL,t_getDur);

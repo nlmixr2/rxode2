@@ -48,6 +48,18 @@
   now also marks the records that are not data records (`addl` repeats and
   the records a dose expands to), so they do not end an interval (#1586).
 
+- `rxSolve(doseAtRecord = TRUE)`, on by default with `nonmem = TRUE`, reads a
+  dose's `f()`, `alag()`, `rate()` and `dur()` at the dose's own data record,
+  as NONMEM reads `F`, `ALAG`, `R` and `D` from the one record a dose has.
+  An infusion's stop then removes the rate its start added and ends at the
+  start's lagged time plus the duration, and the records a dose expands to
+  (an infusion's stop, a steady-state dose's companions) read the dose
+  record's covariates, also when `alag()` moves the records.  By default
+  rxode2 keeps reading each of these records at its own time and with its
+  own covariates, so a covariate or `t` that changes during an infusion can
+  change when its stop falls and what rate it removes.  `etTrans()` records
+  the records a dose expands to in a new `rxDoseRow` attribute.
+
 - The record walk `rxSolve()` lays out its output rows with (which records
   are rows, the reset time shift, the `addDosing` dose columns) is exported
   to downstream packages through the function-pointer table as
