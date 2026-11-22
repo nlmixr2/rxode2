@@ -1072,7 +1072,8 @@
 #'   each interval from the record that ends it, like NONMEM's `R1` (see
 #'   `rateAtDoseTime`).  Covariate interpolation is still set by
 #'   `covsInterpolation`.  It also sets the default `tieOrder` to `"data"`
-#'   and turns on `addlKeepsCov` and `durAtDoseTime` unless they are given.
+#'   and turns on `addlKeepsCov`, `durAtDoseTime` and `doseAtRecord` unless
+#'   they are given.
 #'   By default `FALSE`, when `f()`, `rate()` and `dur()` of an `addl` repeat
 #'   read the actual time of the `addl` dose.
 #'
@@ -1112,6 +1113,18 @@
 #'   what is left evenly, or stops delivering when that end has passed.  By
 #'   default (`NULL`) this is `TRUE` with `nonmem = TRUE`, as NONMEM fixes
 #'   `D1` at the dose, and `FALSE` otherwise.
+#'
+#' @param doseAtRecord Boolean that when `TRUE` reads a dose's `f()`,
+#'   `alag()`, `rate()` and `dur()` at the dose's own data record, the way
+#'   NONMEM reads `F`, `ALAG`, `R` and `D` from the one record a dose has: an
+#'   infusion's stop removes the rate its start added and ends at the start's
+#'   lagged time plus the duration, and the records a dose expands to (an
+#'   infusion's stop, a steady-state dose's companions) read the dose
+#'   record's covariates, also when `alag()` moves the records.  When `FALSE`
+#'   rxode2 reads each of these records at its own time, so a covariate or
+#'   `t` that changes during an infusion changes what its stop reads.  By
+#'   default (`NULL`) this is `TRUE` with `nonmem = TRUE` and `FALSE`
+#'   otherwise.
 #'
 #' @param ssMethod How an iterated steady state is found: `"anderson"` (the
 #'   default) finds the fixed point of the one-cycle map with Anderson
@@ -1748,6 +1761,7 @@ rxSolve <- function(
   tieOrder = NULL,
   rateAtDoseTime = FALSE,
   durAtDoseTime = NULL,
+  doseAtRecord = NULL,
   resetCancelsPending = TRUE,
   ssMethod = c("anderson", "iterate"),
   linCmtGillFtol = 0,
@@ -2069,6 +2083,11 @@ rxSolve <- function(
       durAtDoseTime <- nonmem
     }
     checkmate::assertLogical(durAtDoseTime, any.missing = FALSE, len = 1)
+    if (is.null(doseAtRecord)) {
+      # NONMEM reads a dose's F, ALAG, R and D from its one record
+      doseAtRecord <- nonmem
+    }
+    checkmate::assertLogical(doseAtRecord, any.missing = FALSE, len = 1)
     checkmate::assertLogical(resetCancelsPending, any.missing = FALSE, len = 1)
     if (checkmate::testIntegerish(ssMethod, len = 1, lower = 0, upper = 1, any.missing = FALSE)) {
       .ssMethod <- as.integer(ssMethod)
@@ -2576,7 +2595,8 @@ rxSolve <- function(
       rateAtDoseTime = rateAtDoseTime,
       durAtDoseTime = durAtDoseTime,
       resetCancelsPending = resetCancelsPending,
-      ssMethod = .ssMethod
+      ssMethod = .ssMethod,
+      doseAtRecord = doseAtRecord
     )
     class(.ret) <- "rxControl"
     return(.ret)

@@ -1926,12 +1926,14 @@ static inline int recomputeMtimeIfNeeded(rx_solve *rx,
 // sortInd runs with curShift=0, so timeThread[raw] = all_times[raw] + lag.
 // At runtime after a reset curShift != 0; we must zero it temporarily so
 // getLag gives the same sort-key convention as sortInd.
-// The refreshed lagged time of dose record `raw`: a fixed-duration infusion's
-// stop keeps its start's lagged time plus the duration (getInfusionDurTime())
+// The refreshed lagged time of dose record `raw`: with doseAtRecord a
+// fixed-duration infusion's stop keeps its start's lagged time plus the
+// duration (getInfusionDurTime())
 static inline double refreshedLagTime(rx_solve *rx, rx_solving_options *op,
                                       rx_solving_options_ind *ind, int raw, int cmt,
                                       double rawTime, double *yp) {
-  int infBidx = (ind->whI == EVIDF_INF_DUR) ? getInfusionStartDose(raw, rx, op, ind) : -1;
+  int infBidx = (rx->doseAtRecord && ind->whI == EVIDF_INF_DUR) ?
+    getInfusionStartDose(raw, rx, op, ind) : -1;
   if (infBidx == -1) return getLag(ind, ind->id, cmt, rawTime, yp);
   int start = ind->idose[infBidx];
   return ind->timeThread[start] + rawTime - getAllTimes(ind, start);
@@ -4084,11 +4086,13 @@ static void handleSSDelay(int *neq,
 }
 
 // F*amt of a fixed-duration infusion's start (dose infB) and stop (dose
-// infE), both with the start's F: the stop removes the rate its start added
+// infE): with doseAtRecord both with the start's F, so the stop removes the
+// rate its start added; otherwise each with the F at its own time
 static inline void ssInfDurRates(rx_solving_options_ind *ind, int infB, int infE,
                                  double *yp, double *rateOn, double *rateOff) {
   *rateOn = getAmtAtRecord(ind, ind->idose[infB], getDose(ind, ind->idose[infB]), yp);
-  *rateOff = getAmtAtRecord(ind, ind->idose[infB], getDose(ind, ind->idose[infE]), yp);
+  *rateOff = getAmtAtRecord(ind, ind->idose[doseAtRecord(ind) ? infB : infE],
+                            getDose(ind, ind->idose[infE]), yp);
 }
 
 // The rates of a steady-state infusion from dose infB to infE; returns the F

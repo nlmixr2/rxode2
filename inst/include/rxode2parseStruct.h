@@ -689,6 +689,10 @@ typedef struct rx_solve_s {
   int rateAtDoseTime;
   // rxControl(durAtDoseTime=TRUE): the same for a modeled duration
   int durAtDoseTime;
+  // rxControl(doseAtRecord=TRUE): a dose's f(), alag(), rate() and dur(), and
+  // the covariates of the records it expands to, are read at its own data
+  // record, as NONMEM reads them; otherwise each record reads its own
+  int doseAtRecord;
 } rx_solve;
 
 typedef void (*rxode2_assignFuns2_t)(rx_solve, rx_solving_options, t_F, t_LAG, t_RATE, t_DUR,t_calc_mtime, t_ME, t_IndF, t_getTime, t_locateTimeIndex, t_handle_evidL,t_getDur);

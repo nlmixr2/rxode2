@@ -101,32 +101,57 @@ static inline int getSortedPosition(rx_solving_options_ind *ind, int raw) {
   return raw;
 }
 
-// f() of the dose at record `raw` times `dose`, read as NONMEM reads it: at
-// the record's data time, with the record's covariates, wherever a lag puts
-// the record in the solve.  A missing covariate is filled from the record's
-// neighbours in record order, and a record a dose row expands to reads that
-// row (ind->doseRow).
+// rxControl(doseAtRecord=TRUE): a dose's f(), alag(), rate() and dur(), and
+// the covariates of the records it expands to, are read at its own data
+// record, as NONMEM reads them.  Otherwise (rxode2's rule) each record reads
+// its own time and covariates.
+static inline int doseAtRecord(rx_solving_options_ind *ind) {
+  rx_solve *rx = (ind->rx ? ind->rx : &rx_global);
+  return rx->doseAtRecord;
+}
+
+// The ind->idx a read at dose record `raw` uses: its sorted position with
+// doseAtRecord, otherwise `raw` itself
+static inline int getDoseRecordIdx(rx_solving_options_ind *ind, int raw) {
+  return doseAtRecord(ind) ? getSortedPosition(ind, raw) : raw;
+}
+
+// f() of the dose at record `raw` times `dose`, at the record's data time.
+// With doseAtRecord it reads the record's covariates, as NONMEM does,
+// wherever a lag puts the record in the solve: a missing covariate is filled
+// from the record's neighbours in record order, and a record a dose row
+// expands to reads that row (ind->doseRow).  Otherwise the covariates are
+// read by time.
 static inline double getAmtAtRecord(rx_solving_options_ind *ind, int raw,
                                     double dose, double *yp) {
   int oldRec = ind->recCovPos;
-  if (raw >= 0) ind->recCovPos = getSortedPosition(ind, raw) + 1;
+  if (raw >= 0 && doseAtRecord(ind)) ind->recCovPos = getSortedPosition(ind, raw) + 1;
   double ret = getAmt(ind, ind->id, ind->cmt, dose, getAllTimes(ind, raw), yp);
   ind->recCovPos = oldRec;
   return ret;
 }
 
+// The lagged start of a modeled infusion whose start is at data time t, with
+// ind->idx at its record: alag() read there with doseAtRecord, otherwise at
+// oldIdx; restores ind->idx to oldIdx
+static inline double getLaggedStartAtRecord(rx_solving_options_ind *ind, int oldIdx,
+                                            double t, double *yp) {
+  if (!doseAtRecord(ind)) ind->idx = oldIdx;
+  double laggedStart = getLag(ind, ind->id, ind->cmt, t, yp);
+  ind->idx = oldIdx;
+  return ISNA(laggedStart) ? t : laggedStart;
+}
+
 static inline void updateDur(int idx, rx_solving_options_ind *ind, double *yp){
   double t = getAllTimes(ind, idx);
   double dur, amt;
-  // The duration and f cannot depend on state values; f(), dur() and alag()
-  // are read at the start's record
+  // The duration and f cannot depend on state values; f() and dur() are read
+  // at the start's record, and alag() too with doseAtRecord
   int oldIdx = ind->idx;
-  ind->idx = getSortedPosition(ind, idx);
+  ind->idx = getDoseRecordIdx(ind, idx);
   amt  = getAmtAtRecord(ind, idx, getDose(ind, idx), yp);
   dur  = getDur(ind, ind->id, ind->cmt, amt, t, yp);
-  double laggedStart = getLag(ind, ind->id, ind->cmt, t, yp);
-  if (ISNA(laggedStart)) laggedStart = t;
-  ind->idx = oldIdx;
+  double laggedStart = getLaggedStartAtRecord(ind, oldIdx, t, yp);
   if (dur > 0) {
     setDoseP1(ind, idx, -amt/dur);
     setAllTimesP1(ind, idx, laggedStart + dur);
@@ -163,17 +188,16 @@ static inline void updateDur(int idx, rx_solving_options_ind *ind, double *yp){
 
 static inline void updateRate(int idx, rx_solving_options_ind *ind, double *yp) {
   double t = getAllTimes(ind, idx);
-  // f(), rate() and alag() are read at the start's record
+  // f() and rate() are read at the start's record, and alag() too with
+  // doseAtRecord
   int oldIdx = ind->idx;
-  ind->idx = getSortedPosition(ind, idx);
+  ind->idx = getDoseRecordIdx(ind, idx);
   double dur, rate, amt;
   amt  = getAmtAtRecord(ind, idx, getDose(ind,idx), yp);
   rate  = getRate(ind, ind->id, ind->cmt, amt, t, yp);
-  double laggedStart = getLag(ind, ind->id, ind->cmt, t, yp);
-  if (ISNA(laggedStart)) laggedStart = t;
-  // restore before the checks below so every return path leaves ind->idx alone
-  // (mirrors updateDur() above)
-  ind->idx=oldIdx;
+  // restores ind->idx before the checks below so every return path leaves it
+  // alone (mirrors updateDur() above)
+  double laggedStart = getLaggedStartAtRecord(ind, oldIdx, t, yp);
   if (rate > 0){
     dur = amt/rate; // mg/hr
     setDoseP1(ind, idx, -rate);
@@ -571,11 +595,12 @@ static inline void handleInfusionGetStartOfInfusionIndex(int *startIdx, int *end
 }
 
 // The lagged start time of the infusion that starts at dose number infBidx,
-// alag() read at its record
+// alag() read at its record with doseAtRecord, otherwise with the covariates
+// of the record being timed
 static inline double getInfusionStartLag(int infBidx, rx_solve *rx, rx_solving_options *op,
                                          rx_solving_options_ind *ind) {
   int oIdx = ind->idx;
-  ind->idx = getSortedPosition(ind, ind->idose[infBidx]);
+  if (rx->doseAtRecord) ind->idx = getSortedPosition(ind, ind->idose[infBidx]);
   // To the correct lag time, we need to make sure the steady state flags are not set...
   int wh0 = ind->wh0;
   int wh, cmt, wh100, whI;
@@ -602,12 +627,13 @@ static inline int getInfusionStartDose(int idx, rx_solve *rx, rx_solving_options
   return (infBidx < 0 || infBidx >= ind->ndoses) ? -1 : infBidx;
 }
 
-// The lagged time of a fixed-duration infusion's record: a stop is its
-// start's lagged time plus the duration, alag() read at the start's record.
-// A start, or a stop whose start is not found, reads alag() at its own record.
+// The lagged time of a fixed-duration infusion's record: with doseAtRecord a
+// stop is its start's lagged time plus the duration, alag() read at the
+// start's record.  Otherwise, and for a start or a stop whose start is not
+// found, alag() is read at the record's own.
 static inline double getInfusionDurTime(int idx, rx_solve *rx, rx_solving_options *op,
                                         rx_solving_options_ind *ind) {
-  int infBidx = getInfusionStartDose(idx, rx, op, ind);
+  int infBidx = rx->doseAtRecord ? getInfusionStartDose(idx, rx, op, ind) : -1;
   if (infBidx != -1) {
     return getInfusionStartLag(infBidx, rx, op, ind) +
       getAllTimes(ind, idx) - getAllTimes(ind, ind->idose[infBidx]);
@@ -617,12 +643,13 @@ static inline double getInfusionDurTime(int idx, rx_solve *rx, rx_solving_option
 }
 
 // F*amt of the fixed-duration infusion record at ind->idx, whose F scales the
-// rate: the start's f() read at the start's record (getAmtAtRecord()), for
-// the stop as for the start, so the stop removes the rate the start added.
-// An extra dose, or a stop with no start found, keeps the time-based read.
+// rate: with doseAtRecord the start's f() read at the start's record
+// (getAmtAtRecord()), for the stop as for the start, so the stop removes the
+// rate the start added.  Otherwise, and for an extra dose or a stop with no
+// start found, f() is read at the record's own time.
 static inline double getInfusionDurAmt(rx_solving_options_ind *ind, int id, int cmt,
                                        double amt, double xout, double *yp) {
-  if (ind->idx >= 0) {
+  if (ind->idx >= 0 && doseAtRecord(ind)) {
     int raw = ind->ix[ind->idx];
     if (amt > 0 && raw < ind->n_all_times_orig) {
       return getAmtAtRecord(ind, raw, amt, yp);
@@ -658,11 +685,11 @@ static inline double handleInfusionItem(int idx, rx_solve *rx, rx_solving_option
     handleInfusionGetStartOfInfusionIndex(&infBidx, &infEidx, &amt, &idx, rx, op, ind);
     if (infBidx == -1) return 0.0;
     rx_solve *rxp = (ind->rx ? ind->rx : &rx_global);
-    // the stop is the start's lagged time plus F*duration, with alag() and f()
-    // both read at the start's record
+    // the stop is the start's lagged time plus F*duration, with f() read at
+    // the start's record, and alag() too with doseAtRecord
     double tB = getInfusionStartLag(infBidx, rx, op, ind);
     int oIdx = ind->idx;
-    ind->idx = getSortedPosition(ind, ind->idose[infBidx]);
+    ind->idx = getDoseRecordIdx(ind, ind->idose[infBidx]);
     double f = getAmtAtRecord(ind, ind->idose[infBidx], 1.0, rxp->ypNA);
     ind->idx = oIdx;
     if (ISNA(f)){

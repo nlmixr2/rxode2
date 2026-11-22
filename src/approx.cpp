@@ -169,14 +169,17 @@ static inline bool rxAtDataRec(double v, double ti, const double *y, const doubl
 }
 
 // The data record whose covariates a record-based read of sorted record `pos`
-// reads, or -1 for a pushed record: a record a dose row expands to (a
-// steady-state companion, an infusion's stop; ind->doseRow) reads that dose
-// row's record, any other its own
+// reads, or -1 for a pushed record: with rxControl(doseAtRecord=TRUE) a
+// record a dose row expands to (a steady-state companion, an infusion's
+// stop; ind->doseRow) reads that dose row's record, any other its own
 static inline int rxRecCovRow(rx_solving_options_ind *ind, int pos) {
   if (pos < 0 || pos >= ind->n_all_times) return -1;
   int raw = ind->ix[pos];
   if (raw < 0 || raw >= ind->n_all_times_orig) return -1;
-  if (ind->doseRow != NULL && ind->doseRow[raw] != 0) return raw + ind->doseRow[raw];
+  rx_solve *rx = (ind->rx ? ind->rx : &rx_global);
+  if (rx->doseAtRecord && ind->doseRow != NULL && ind->doseRow[raw] != 0) {
+    return raw + ind->doseRow[raw];
+  }
   return raw;
 }
 

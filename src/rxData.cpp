@@ -6941,6 +6941,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       (int)asBool(rxControl[Rxc_rateAtDoseTime], "rateAtDoseTime") : 0;
     rx->durAtDoseTime = (Rf_length(rxControl) > Rxc_durAtDoseTime) ?
       (int)asBool(rxControl[Rxc_durAtDoseTime], "durAtDoseTime") : rx->nonmem;
+    rx->doseAtRecord = (Rf_length(rxControl) > Rxc_doseAtRecord) ?
+      (int)asBool(rxControl[Rxc_doseAtRecord], "doseAtRecord") : rx->nonmem;
     tieOrderData_global = (rxControlTieOrder(rxControl) == "data");
     // only a lagged dose can still be ahead of a reset, so a model with no
     // alag() skips the scan

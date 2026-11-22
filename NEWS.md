@@ -48,6 +48,18 @@
   now also marks the records that are not data records (`addl` repeats and
   the records a dose expands to), so they do not end an interval (#1586).
 
+- `rxSolve(doseAtRecord = TRUE)`, on by default with `nonmem = TRUE`, reads a
+  dose's `f()`, `alag()`, `rate()` and `dur()` at the dose's own data record,
+  as NONMEM reads `F`, `ALAG`, `R` and `D` from the one record a dose has.
+  An infusion's stop then removes the rate its start added and ends at the
+  start's lagged time plus the duration, and the records a dose expands to
+  (an infusion's stop, a steady-state dose's companions) read the dose
+  record's covariates, also when `alag()` moves the records.  By default
+  rxode2 keeps reading each of these records at its own time and with its
+  own covariates, so a covariate or `t` that changes during an infusion can
+  change when its stop falls and what rate it removes.  `etTrans()` records
+  the records a dose expands to in a new `rxDoseRow` attribute.
+
 - The record walk `rxSolve()` lays out its output rows with (which records
   are rows, the reset time shift, the `addDosing` dose columns) is exported
   to downstream packages through the function-pointer table as
@@ -142,28 +154,6 @@
   into it now cancels the infusion's stop record too, so the state no longer
   goes negative and the stop no longer turns the compartment back on.  Its
   event sensitivities are reset with it (#1562).
-- An infusion's `f()`, `alag()`, `rate()` and `dur()` are now read at its
-  start's record: `f()` at the record's time with the record's covariates,
-  also when `alag()` moves the infusion and in steady state.  For `f()`,
-  `alag()` and `dur()` this is how NONMEM reads them.  A modeled `rate()` or
-  `dur()` is first read at the start's record, also when a lag moves the
-  records, and is then re-read during the infusion or held fixed as
-  `rateAtDoseTime` and `durAtDoseTime` set (#1586).
-  - A fixed-duration infusion's stop read `f()` again at its own time, so
-    when a covariate or `t` in `f()` changed during the infusion the stop
-    did not remove the rate the start added.
-  - A fixed-rate or fixed-duration infusion's stop read `alag()` at the
-    stop's record, so with `alag()` on a covariate the infusion ran longer
-    or shorter than it should.
-  - A lagged infusion with a modeled `rate()` or `dur()` read `f()` from
-    the records around its data time, and once a lagged dose moved past an
-    infusion's start, its modeled `rate()` or `dur()` read another record's
-    covariates.
-  - The records a dose expands to (a steady-state dose's companions, an
-    infusion's stop) read the covariates of that dose's record, as NONMEM
-    reads the one record it has, and an infusion's missing covariate is
-    filled from the records next to it in the data, wherever a lag moves it
-    in the solve.
 - A simulation that stops with an error no longer leaves its draws for the
   next solve.  The residuals, simulated thetas and per-study draws it had
   made stayed behind, and the next solve without residuals of its own used

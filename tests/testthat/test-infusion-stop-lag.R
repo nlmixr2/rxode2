@@ -1,4 +1,5 @@
-# An infusion's modifiers are read at its start's record, as NONMEM reads
+# With rxSolve(doseAtRecord = TRUE), on by default with nonmem = TRUE, an
+# infusion's modifiers are read at its start's record, as NONMEM reads
 # them: f() at the record's data time with the record's covariates, and
 # alag(), rate() and dur() with the record's covariates.  The stop of a
 # fixed-rate infusion is the start's lagged time plus F*amt/rate, a
@@ -35,6 +36,7 @@
     c(ka = ka, k = k, bio = 0.8, lg = 0.3),
     ev,
     covsInterpolation = interp,
+    doseAtRecord = TRUE,
     ...,
     atol = 1e-10,
     rtol = 1e-10,
@@ -334,6 +336,7 @@ rxTest({
             c(ka = 0, k = 0, bio = 0.8, lg = 0.3),
             ev,
             covsInterpolation = interp,
+            doseAtRecord = TRUE,
             returnType = "data.frame"
           )
           expect_equal(s0$depot[s0$time == 8], amt, tolerance = 1e-8, label = lab)
@@ -342,6 +345,7 @@ rxTest({
             .p,
             ev,
             covsInterpolation = interp,
+            doseAtRecord = TRUE,
             atol = 1e-10,
             rtol = 1e-10,
             returnType = "data.frame"
@@ -351,6 +355,7 @@ rxTest({
             .p[c("ka", "k")],
             explicit,
             covsInterpolation = interp,
+            doseAtRecord = TRUE,
             atol = 1e-10,
             rtol = 1e-10,
             returnType = "data.frame"
@@ -382,7 +387,7 @@ rxTest({
       )
       for (interp in .interps) {
         lab <- paste(length(obsT), interp)
-        s <- rxSolve(mod, c(ka = 0), ev, covsInterpolation = interp, returnType = "data.frame")
+        s <- rxSolve(mod, c(ka = 0), ev, covsInterpolation = interp, doseAtRecord = TRUE, returnType = "data.frame")
         expect_equal(s$depot[s$time == 2.05], 97.5, tolerance = 1e-8, label = lab)
         expect_equal(s$depot[s$time == 3], 100, tolerance = 1e-8, label = lab)
       }
@@ -425,12 +430,22 @@ rxTest({
       explicit$rate[explicit$evid == 1] <- cc$rate
       for (interp in .interps) {
         lab <- paste(cc$name, interp)
-        s <- rxSolve(cc$mod, .p, ev, covsInterpolation = interp, atol = 1e-10, rtol = 1e-10, returnType = "data.frame")
+        s <- rxSolve(
+          cc$mod,
+          .p,
+          ev,
+          covsInterpolation = interp,
+          doseAtRecord = TRUE,
+          atol = 1e-10,
+          rtol = 1e-10,
+          returnType = "data.frame"
+        )
         e <- rxSolve(
           modPlain,
           .p[c("ka", "k")],
           explicit,
           covsInterpolation = interp,
+          doseAtRecord = TRUE,
           atol = 1e-10,
           rtol = 1e-10,
           returnType = "data.frame"
@@ -480,6 +495,7 @@ rxTest({
           .p,
           ev,
           covsInterpolation = interp,
+          doseAtRecord = TRUE,
           atol = 1e-10,
           rtol = 1e-10,
           cores = 4,
@@ -490,6 +506,7 @@ rxTest({
           .p[c("ka", "k")],
           explicit,
           covsInterpolation = interp,
+          doseAtRecord = TRUE,
           atol = 1e-10,
           rtol = 1e-10,
           cores = 1,
@@ -517,6 +534,7 @@ rxTest({
             .p,
             ev,
             covsInterpolation = interp,
+            doseAtRecord = TRUE,
             atol = 1e-10,
             rtol = 1e-10,
             maxSS = 10000,
@@ -528,6 +546,7 @@ rxTest({
             .p,
             explicit,
             covsInterpolation = interp,
+            doseAtRecord = TRUE,
             atol = 1e-10,
             rtol = 1e-10,
             returnType = "data.frame"
@@ -538,5 +557,32 @@ rxTest({
         }
       }
     }
+  })
+
+  test_that("doseAtRecord is on by default only with nonmem = TRUE", {
+    expect_false(rxControl()$doseAtRecord)
+    expect_true(rxControl(nonmem = TRUE)$doseAtRecord)
+    expect_false(rxControl(nonmem = TRUE, doseAtRecord = FALSE)$doseAtRecord)
+    expect_true(rxControl(doseAtRecord = TRUE)$doseAtRecord)
+    expect_error(rxControl(doseAtRecord = NA))
+  })
+
+  test_that("without doseAtRecord a fixed-rate infusion's stop reads alag() at its own record", {
+    # WT is 70 at the start (t = 1) and 100 at the stop's data time (t = 3)
+    mod <- rxode2({
+      d/dt(depot) <- -ka * depot
+      alag(depot) <- lg * WT / 70
+    })
+    ev <- .infKindEv(1, "rate", .infLagWt, c(2, 3, 3.3, 3.5, 4))
+    solve <- function(...) {
+      rxSolve(mod, c(ka = 0, lg = 0.3), ev, returnType = "data.frame", ...)
+    }
+    # the start lags to 1.3; the stop to 3.3 at the start's record, or to
+    # 3 + 0.3 * 100 / 70 at its own, so the infusion runs longer
+    on <- solve(doseAtRecord = TRUE)
+    off <- solve()
+    expect_equal(on$depot, c(28, 68, 80, 80, 80), tolerance = 1e-8)
+    expect_equal(off$depot, 40 * (pmin(off$time, 3 + 0.3 * 100 / 70) - 1.3), tolerance = 1e-8)
+    expect_equal(solve(nonmem = TRUE)$depot, on$depot, tolerance = 1e-8)
   })
 })
