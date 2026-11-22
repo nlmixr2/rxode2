@@ -529,8 +529,9 @@ struct rx_solving_options_ind_s {
   // statements read `time`, whose f()/alag()/rate()/dur() may, or that has
   // modeled rates or durations; NULL otherwise.  _rxPkTime() skips these with
   // rxControl(nonmem = TRUE) (rxode2#1429).  2 marks the dose of an addl
-  // repeat, for _rxDoseTime() (rxode2#1583).  Covers the first
-  // n_all_times_orig records.
+  // repeat, for _rxDoseTime(), and 2 + n one whose dose record is n records
+  // back, for _rxLagTime() (rxode2#1583).  Covers the first n_all_times_orig
+  // records.
   int    *pkSkip;
   // delay() pre-history: this subject's evaluated initial state (after the
   // x(0) <- expr assignments, before any dose), captured by iniSubject() for a

@@ -132,8 +132,11 @@ struct rxode2_system_jac_second {
   int neqOde;
   int nRowPd;
 
-  rxode2_system_jac_second(rx_solving_options_ind *ind_in, t_calc_jac calc_jac_in, int *neq_in) : 
-    ind(ind_in), calc_jac(calc_jac_in), neq(neq_in), neqOde(neq_in[0]) {
+  // neqOde_in is the number of ODE states, the size of the stepper's state and
+  // Jacobian; neq_in[0] also counts linCmt() states, which those leave out
+  rxode2_system_jac_second(rx_solving_options_ind *ind_in, t_calc_jac calc_jac_in, int *neq_in,
+                           int neqOde_in) :
+    ind(ind_in), calc_jac(calc_jac_in), neq(neq_in), neqOde(neqOde_in) {
     nRowPd = neqOde; 
   }
 
@@ -158,8 +161,10 @@ struct rxode2_system_ros4_second {
   int *neq;
   int neqOde;
   
-  rxode2_system_ros4_second(rx_solving_options_ind *ind_in, t_calc_jac calc_jac_in, int *neq_in) :
-    ind(ind_in), calc_jac(calc_jac_in), neq(neq_in), neqOde(neq_in[0]) {
+  // neqOde_in as for rxode2_system_jac_second
+  rxode2_system_ros4_second(rx_solving_options_ind *ind_in, t_calc_jac calc_jac_in, int *neq_in,
+                            int neqOde_in) :
+    ind(ind_in), calc_jac(calc_jac_in), neq(neq_in), neqOde(neqOde_in) {
   }
 
   template<class StateType, class MatrixType, class DfdtType>
@@ -185,21 +190,57 @@ struct rxode2_system_ros4_second {
 };
 
 inline std::pair<rxode2_system, rxode2_system_ros4_second>
-make_rxode2_system_ros4(rx_solving_options_ind* ind, t_dydt calc_dydt, t_calc_jac calc_jac, int* neq) {
+make_rxode2_system_ros4(rx_solving_options_ind* ind, t_dydt calc_dydt, t_calc_jac calc_jac, int* neq,
+                        int neqOde) {
     return std::make_pair(
         rxode2_system(calc_dydt, neq, ind),
-        rxode2_system_ros4_second(ind, calc_jac, neq)
+        rxode2_system_ros4_second(ind, calc_jac, neq, neqOde)
     );
 }
 
 // For implicit_euler, the Jacobian is called with 3 args: (state, matrix, time)
 // rxode2_system_jac_second already has this signature.
 inline std::pair<rxode2_system, rxode2_system_jac_second>
-make_rxode2_system_iem(rx_solving_options_ind* ind, t_dydt calc_dydt, t_calc_jac calc_jac, int* neq) {
+make_rxode2_system_iem(rx_solving_options_ind* ind, t_dydt calc_dydt, t_calc_jac calc_jac, int* neq,
+                       int neqOde) {
     return std::make_pair(
         rxode2_system(calc_dydt, neq, ind),
-        rxode2_system_jac_second(ind, calc_jac, neq)
+        rxode2_system_jac_second(ind, calc_jac, neq, neqOde)
     );
+}
+
+// odeint's integrate_adaptive() for a controlled stepper, with the step size
+// passed by reference: on return dt is the step to take next, the larger of
+// the one the controller proposes after the last step and the one it
+// proposed before that step was cut to end at t1 (unless the cut step was
+// rejected).  The stepper is taken by
+// value, as integrate_adaptive() takes it, so each call starts it afresh.
+template <class Stepper, class System, class State, class Observer>
+inline size_t rxIntegrateAdaptive(Stepper stepper, System sys, State &x,
+                                  double t, double t1, double &dt, Observer obs) {
+  using boost::numeric::odeint::detail::less_with_sign;
+  boost::numeric::odeint::failed_step_checker failChecker;
+  size_t count = 0;
+  double dtCut = 0.0;
+  while (less_with_sign(t, t1, dt)) {
+    obs(x, t);
+    if (less_with_sign(t1, t + dt, dt)) {
+      dtCut = dt;
+      dt = t1 - t;
+    }
+    boost::numeric::odeint::controlled_step_result res;
+    do {
+      res = stepper.try_step(sys, x, t, dt);
+      // a rejected step: the step it was cut from was too large
+      if (res == boost::numeric::odeint::fail) dtCut = 0.0;
+      failChecker();
+    } while (res == boost::numeric::odeint::fail);
+    failChecker.reset();
+    ++count;
+  }
+  obs(x, t);
+  if (std::fabs(dtCut) > std::fabs(dt)) dt = dtCut;
+  return count;
 }
 
 struct error_checker {
