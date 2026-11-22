@@ -50,6 +50,10 @@ runs:
         http-user-agent: ${{ inputs.http-user-agent }}
         use-public-rspm: true
 
+    # rxode2lincmt >= 0.1.1.9000 (the runtime carry cap) is only on
+    # nlmixr2/rxode2lincmt#6; go back to nlmixr2/rxode2lincmt once it is on
+    # rxode2lincmt main.  (No comments inside extra-packages: pak reads
+    # every line there as a package.)
     - uses: r-lib/actions/setup-r-dependencies@v2
       with:
         cache-version: ${{ inputs.cache-version }}
@@ -57,9 +61,6 @@ runs:
           nlmixr2/dparser-R
           nlmixr2/lotri
           nlmixr2/rxode2ll
-          # rxode2lincmt >= 0.1.1.9000 (the runtime carry cap) is only on
-          # nlmixr2/rxode2lincmt#6; go back to nlmixr2/rxode2lincmt once it
-          # is on rxode2lincmt main
           nlmixr2/rxode2lincmt@fix/carry-cap-runtime
           nlmixr2/PreciseSums
           ${{ inputs.extra-packages }}
