@@ -37,6 +37,8 @@ extern "C" void ind_dop5_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   auto dense_stepper = boost::numeric::odeint::make_dense_output(
       ind->atol2[0], ind->rtol2[0], error_stepper_type());
   bool stepper_initialized = false;
+  rxStepKeeper keep; // how each segment starts
+  keep.scalarTol = true;
       
   int neqOde = op->neq - op->numLin - op->numLinSens;
   rxode2_system sys(c_dydt, neq, ind);
@@ -81,12 +83,14 @@ extern "C" void ind_dop5_0(rx_solve *rx, rx_solving_options *op, int solveid, in
 
               if (neqOde > 0) {
                   zero_copy_state state(yp, neqOde);
-                  double dt = op->HMIN > 0.0 ? op->HMIN : 1e-4;
+                  double dt = keep.first(op->HMIN > 0.0 ? op->HMIN : 1e-4, op, ind, neq, neqOde,
+                                         c_dydt, xp, yp);
                   if (ind->extraDoseNewXout < xp) dt = -dt;
                   try {
-                      boost::numeric::odeint::integrate_adaptive(
+                      rxIntegrateAdaptive(
                           stepper, sys, state, xp, ind->extraDoseNewXout, dt, error_checker(ind, ind->rc, op->mxstep));
                       stepper_initialized = false;
+                      keep.solved(fabs(dt));
                   } catch(const std::exception& e) {
                       if (ind->rc[0] == 0) ind->rc[0] = -2019;
                   }
@@ -111,6 +115,7 @@ extern "C" void ind_dop5_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               ind->idxExtra++;
               // the dose changed the state; restart the dense stepper from it
               stepper_initialized = false;
+              keep.stateChanged();
               xp = ind->extraDoseNewXout;
             }
         }
@@ -119,10 +124,12 @@ extern "C" void ind_dop5_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           
           if (neqOde > 0) {
               zero_copy_state state(yp, neqOde);
-              double dt = op->HMIN > 0.0 ? op->HMIN : 1e-4;
+              double dt = keep.first(op->HMIN > 0.0 ? op->HMIN : 1e-4, op, ind, neq, neqOde,
+                                     c_dydt, xp, yp);
               if (xout < xp) dt = -dt;
               try {
                   if (op->useDense && isPassObs(getEvid(ind, ind->ix[i]))) {
+                    keep.reset();
                       if (!stepper_initialized) {
                           dense_stepper.initialize(state, xp, dt);
                           stepper_initialized = true;
@@ -140,9 +147,10 @@ extern "C" void ind_dop5_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                       }
                       if (!ind->err) dense_stepper.calc_state(xout, state);
                   } else {
-                      boost::numeric::odeint::integrate_adaptive(
+                      rxIntegrateAdaptive(
                           stepper, sys, state, xp, xout, dt, error_checker(ind, ind->rc, op->mxstep));
                       stepper_initialized = false;
+                      keep.solved(fabs(dt));
                   }
               } catch(const std::exception& e) {
                   if (ind->rc[0] == 0) ind->rc[0] = -2019;
@@ -172,6 +180,7 @@ extern "C" void ind_dop5_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         xp = xout;
         stepper_initialized = false;
       }
+      keep.record(getEvid(ind, ind->ix[i]));
       int _mtime_requeued = 0;
       if (rx->nMtime > 0) {
         if (recomputeMtimeIfNeeded(rx, ind, yp, i, xout)) {
