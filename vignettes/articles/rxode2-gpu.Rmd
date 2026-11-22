@@ -173,38 +173,58 @@ BENCHMARK_NLMIXR2
 
 ## Timings
 
-Whole `rxSolve()` calls (setup, event handling and the output data frame
-included) from `bench/gpu-solve-julia.R`, against Julia's DiffEqGPU
-`EnsembleGPUKernel` kernel and `EnsembleThreads`.  Ensembles: Lorenz on
-`t` in `[0, 1]` and Robertson on `[0, 1000]`, one parameter set per subject,
-`atol = rtol = 1e-8`; an AMD Ryzen 7 PRO 5850U (16 threads) with OpenCL on
-pocl.  Times in ms, medians of 3.
+All timings are from one node: an NVIDIA L40 (OpenCL, double precision)
+and an Intel Xeon Gold 6526Y with 8 threads for the host methods, the CPU
+build and Julia's `EnsembleThreads`.  Julia's GPU column is DiffEqGPU's
+`EnsembleGPUKernel` on CUDA.  Ensembles: Lorenz on `t` in `[0, 1]` and
+Robertson on `[0, 1000]`, one parameter set per subject,
+`atol = rtol = 1e-8`.  Times in ms.
 
-| problem | GPU / host method | subjects | rxode2 GPU (OpenCL) | Julia GPU kernel (OpenCL) | rxode2 host | Julia threads |
+### Kernels
+
+One round integrating every subject over one interval
+(`bench/gpu-runtime-julia.R`, medians of 5):
+
+| problem | rxode2 / Julia method | subjects | rxode2 OpenCL | Julia CUDA | rxode2 CPU build | Julia threads |
 |---|---|---:|---:|---:|---:|---:|
-| lorenz | `gpuT54` / `t54` | 1e4 | 127 | 130 | 150 | 45 |
-| lorenz | `gpuRos54p` / `ros54p` | 1e4 | 174 | 257 | 506 | 583 |
-| robertson | `gpuRos54p` / `ros54p` | 1e4 | 134 | 157 | 269 | 408 |
-| lorenz | `gpuT54` / `t54` | 1e5 | 751 | 410 | 1362 | 459 |
-| lorenz | `gpuRos54p` / `ros54p` | 1e5 | 1208 | 791 | 4451 | 6659 |
-| robertson | `gpuRos54p` / `ros54p` | 1e5 | 900 | 538 | 2508 | 4489 |
+| lorenz | `gpuT54` / `GPUTsit5` | 1e3 | 3 | 1.2 | 2 | 3.6 |
+| lorenz | `gpuRos54p` / `GPURodas5P` | 1e3 | 8 | 4.2 | 5 | 40 |
+| lorenz | `gpuT54` / `GPUTsit5` | 1e5 | 18 | 46 | 207 | 393 |
+| lorenz | `gpuVern76` / `GPUVern7` | 1e5 | 14 | 40 | 124 | 266 |
+| lorenz | `gpuRos54p` / `GPURodas5P` | 1e5 | 30 | 69 | 527 | 3810 |
+| robertson | `gpuRos54p` / `GPURodas5P` | 1e5 | 21 | 56 | 322 | 2424 |
 
-- The GPU methods are 1.5 to 4 times faster than their host counterparts.
-- Up to 1e4 subjects a whole `rxSolve()` with `gpuRos54p` is faster than
-  DiffEqGPU's bare kernel.  At 1e5 Julia is faster end to end: about 0.36 s
-  of rxode2's time there is `rxSolve()`'s own per-subject setup and output,
-  which every method pays.  The kernels alone (`bench/gpu-runtime-julia.R`)
-  are faster than DiffEqGPU's at every size.
-- The host `ros54p` is 1.5 to 1.8 times faster than Julia's threaded
-  `Rodas5P()`.
-- The end states agree with Julia's to 3e-9 (Lorenz) and 8e-8 (Robertson).
+- At 1e5 subjects the rxode2 kernels are 2.3 to 2.9 times faster than
+  DiffEqGPU's CUDA kernels and 9 to 18 times faster than the CPU build.
+- At 1e3 subjects a launch costs more than the integration, and the CPU
+  build is as fast as the device.
+- The end states agree with Julia's CUDA ones to 7e-10 and its threaded
+  ones to 3e-9.
 
-A GPU with double precision moves the OpenCL column further; these runs
-use a CPU OpenCL driver.
+### Whole solves
+
+Whole `rxSolve()` calls, with setup, event handling and the output data
+frame included (`bench/gpu-solve-julia.R`, medians of 3):
+
+| problem | GPU / host method | subjects | rxode2 OpenCL | Julia CUDA | rxode2 host | Julia threads |
+|---|---|---:|---:|---:|---:|---:|
+| lorenz | `gpuT54` / `t54` | 1e4 | 38 | 5 | 145 | 29 |
+| lorenz | `gpuRos54p` / `ros54p` | 1e4 | 47 | 7 | 645 | 341 |
+| robertson | `gpuRos54p` / `ros54p` | 1e4 | 42 | 5 | 170 | 213 |
+| lorenz | `gpuT54` / `t54` | 1e5 | 197 | 41 | 2736 | 405 |
+| lorenz | `gpuRos54p` / `ros54p` | 1e5 | 235 | 73 | 5546 | 3799 |
+| robertson | `gpuRos54p` / `ros54p` | 1e5 | 207 | 53 | 3336 | 2399 |
+
+- The GPU methods are 14 to 24 times faster than their host counterparts
+  at 1e5 subjects, and `gpuRos54p` is 12 to 16 times faster than Julia's
+  threaded `Rodas5P()`.
+- Julia's whole CUDA solve is 3 to 5 times faster: most of rxode2's time
+  is `rxSolve()`'s own per-subject setup and output, which every method
+  pays, not the kernel.
 
 ### Population PK with dosing
 
-`bench/gpu-poppk.R` simulates 10000 subjects with doses, covariates and
+`bench/gpu-poppk.R` simulates 50000 subjects with doses, covariates and
 dense sampling, so each subject needs one round per record (171 for `pk2`,
 114 for `tmdd`):
 
@@ -212,31 +232,30 @@ dense sampling, so each subject needs one round per record (171 for `pk2`,
   time-varying creatinine clearance (non-stiff);
 - `tmdd`: target-mediated drug disposition with fast binding (stiff).
 
-Same machine, `atol = 1e-8`, `rtol = 1e-6`, times in ms.  "CPU build" is
+`atol = 1e-8`, `rtol = 1e-6`, times in ms.  "CPU build" is
 `gpuBackend = "cpu"`.
 
 | method | `pk2` | `tmdd` |
 |---|---:|---:|
-| `liblsoda` | 2015 | 3546 |
-| `t54` | 2759 | -- |
-| `ros54p` | 3837 | 4778 |
-| `"t54+ros54p"` | 2833 | 5966 |
-| `"vern76+ros54p"` | 3218 | 6332 |
-| `gpuT54`, CPU build | 2266 | -- |
-| `gpuRos54p`, CPU build | 2486 | 4409 |
-| `"gpuT54+gpuRos54p"`, CPU build | 2272 | 5340 |
-| `"gpuVern76+gpuRos54p"`, CPU build | 2313 | 5603 |
-| `gpuRos54p`, OpenCL | 4745 | 10026 |
-| `"gpuT54+gpuRos54p"`, OpenCL | 4146 | 12702 |
+| `liblsoda` | 11506 | 23910 |
+| `ros54p` | 19738 | 39092 |
+| `"t54+ros54p"` | 15418 | 53742 |
+| `gpuT54`, CPU build | 12197 | -- |
+| `gpuRos54p`, CPU build | 12843 | 15022 |
+| `"gpuT54+gpuRos54p"`, CPU build | 12536 | 18006 |
+| `gpuT54`, OpenCL | 11951 | -- |
+| `gpuRos54p`, OpenCL | 12195 | 10249 |
+| `"gpuT54+gpuRos54p"`, OpenCL | 11669 | 13931 |
 
-- Explicit methods are not practical for `tmdd` (`t54` took 10.8 s and
-  `gpuT54` 7.5 s at 1000 subjects); the AutoSwitch composites detect the
-  stiffness and switch to `ros54p`, as `liblsoda` switches to BDF.
-- The host and device composites use the same stiffness test, so they
-  switch on the same subjects.
-- With a record per round, the per-round launch and transfer cost of a CPU
-  OpenCL driver outweighs the integration; on such a machine use the CPU
-  build.
+- On the stiff `tmdd`, `gpuRos54p` on the L40 is 2.3 times faster than
+  `liblsoda` and 3.8 times faster than the host `ros54p`.
+- On the non-stiff `pk2` every method takes about the same time: with a
+  round per record the host event handling, not the integration, sets the
+  time.
+- Explicit methods are not practical for `tmdd` (`t54` took 24 s and
+  `gpuT54` on the L40 22 s at 1000 subjects); the AutoSwitch composites
+  detect the stiffness and switch to `ros54p`, as `liblsoda` switches to
+  BDF.
 
 ## How it works
 
