@@ -49,6 +49,11 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   typedef boost::numeric::odeint::rosenbrock4_dense_output<error_stepper_type> dense_stepper_type;
   dense_stepper_type dense_stepper(stepper);
   bool stepper_initialized = false;
+  rxStepKeeper keep; // how each segment starts
+  keep.scalarTol = true;
+  // ros4 restarts after a dose: on a stiff transient its L-stable step accepts
+  // a kept step far longer than the relaxation it skips (Robertson)
+  keep.acrossDoses = false;
 
   auto sys = make_rxode2_system_ros4(ind, c_dydt, calc_jac, neq);
   
@@ -94,16 +99,18 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               if (neqOde > 0) {
                   state_type state(neqOde);
                   double dt = (ind->autoHcur > 0.0) ? ind->autoHcur
-                  : (op->HMIN > 0.0) ? op->HMIN : 1e-4;
+                    : keep.first((op->HMIN > 0.0) ? op->HMIN : 1e-4, op, ind, neq, neqOde,
+                                 c_dydt, xp, yp);
                   if (ind->extraDoseNewXout < xp) dt = -dt;
                   sys.first.xout_ = ind->extraDoseNewXout;
                   sys.first.sign_ = (dt > 0) ? 1 : -1;
                   try {
                       std::copy(yp, yp + neqOde, state.begin());
-                      boost::numeric::odeint::integrate_adaptive(
+                      rxIntegrateAdaptive(
 
                           stepper, sys, state, xp, ind->extraDoseNewXout, dt, error_checker(ind, ind->rc, op->mxstep));
                       stepper_initialized = false;
+                      keep.solved(fabs(dt));
                       if (!ind->err) std::copy(state.begin(), state.end(), yp);
                   } catch(const std::exception& e) {
                       if (ind->rc[0] == 0) ind->rc[0] = -2019;
@@ -130,6 +137,7 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               ind->idxExtra++;
               // the dose changed the state; restart the dense stepper from it
               stepper_initialized = false;
+              keep.stateChanged();
               xp = ind->extraDoseNewXout;
             }
         }
@@ -139,12 +147,14 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
           if (neqOde > 0) {
               state_type state(neqOde);
               double dt = (ind->autoHcur > 0.0) ? ind->autoHcur
-                  : (op->HMIN > 0.0) ? op->HMIN : 1e-4;
+                : keep.first((op->HMIN > 0.0) ? op->HMIN : 1e-4, op, ind, neq, neqOde,
+                             c_dydt, xp, yp);
               if (xout < xp) dt = -dt;
               sys.first.xout_ = xout;
               sys.first.sign_ = (dt > 0) ? 1 : -1;
               try {
                   if (op->useDense && isPassObs(getEvid(ind, ind->ix[i]))) {
+                    keep.reset();
                       if (!stepper_initialized) {
                           std::copy(yp, yp + neqOde, state.begin());
                           dense_stepper.initialize(state, xp, dt);
@@ -170,10 +180,11 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
 
                   } else {
                       std::copy(yp, yp + neqOde, state.begin());
-                      boost::numeric::odeint::integrate_adaptive(
+                      rxIntegrateAdaptive(
 
                           stepper, sys, state, xp, xout, dt, error_checker(ind, ind->rc, op->mxstep));
                       stepper_initialized = false;
+                      keep.solved(fabs(dt));
                       if (!ind->err) std::copy(state.begin(), state.end(), yp);
                   }
               } catch(const std::exception& e) {
@@ -205,6 +216,7 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         xp = xout;
         stepper_initialized = false;
       }
+      keep.record(getEvid(ind, ind->ix[i]));
       int _mtime_requeued = 0;
       if (rx->nMtime > 0) {
         if (recomputeMtimeIfNeeded(rx, ind, yp, i, xout)) {
