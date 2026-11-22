@@ -948,8 +948,9 @@ RXG_FN double _rxg_gammaInvaSolve(double x, double p, double q, double lo,
     r0 = r;
     r = (lo*fhi - hi*flo)/(fhi - flo);
     double fr = _rxg_gammaInvaF(r, x, p, q);
-    if (fr == 0 || fabs(hi - lo) < 4*RXG_EPS*fmax(1.0, fabs(r)) ||
-        (i > 0 && fabs(r - r0) < 4*RXG_EPS*fmax(1.0, fabs(r)))) break;
+    double tol = 4*RXG_EPS*fmax(1.0, fabs(r));
+    if (fr == 0 || fabs(hi - lo) < tol) break;
+    if (i > 0 && fabs(r - r0) < tol) break;
     if (fr > 0) {
       lo = r;
       flo = fr;
@@ -1040,7 +1041,8 @@ RXG_FN double _rxg_ibetaLog(double a, double b, double x) {
 // outside it, as on the host
 RXG_FN int _rxg_ibetaOut(double a, double b, double x) {
   if (!R_FINITE(a) || !R_FINITE(b)) return 1;
-  if (a < 0 || b < 0 || (a == 0 && b == 0)) return 1;
+  if (a < 0 || b < 0) return 1;
+  if (a == 0 && b == 0) return 1;
   return (x < 0 || x > 1);
 }
 // argument checks and edge values of ibeta(); 1 when *out holds the answer
