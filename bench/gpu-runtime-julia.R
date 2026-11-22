@@ -41,7 +41,9 @@ if (length(.args) < 3) {
 .jl <- utils::read.csv(.csv)
 
 .info <- rxGpuInfo()
-.dev <- which(.info$devices$fp64 & !grepl("rusticl", .info$devices$platform))[1]
+## a GPU first: an Intel or pocl CPU OpenCL device may also be listed first
+.ok <- .info$devices$fp64 & !grepl("rusticl", .info$devices$platform)
+.dev <- c(which(.ok & .info$devices$type == "gpu"), which(.ok))[1]
 if (is.na(.dev)) {
   stop("no OpenCL device with double precision")
 }

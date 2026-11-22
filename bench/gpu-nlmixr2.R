@@ -49,7 +49,10 @@ setRxThreads(.cores)
 .dev <- NA_integer_
 if (requireNamespace("OpenCL", quietly = TRUE) && rxGpuInfo()$available) {
   .d <- rxGpuInfo()$devices
-  .dev <- which(.d$fp64 & !grepl("rusticl", .d$platform))[1]
+  ## a GPU first: an Intel or pocl CPU OpenCL device may also be listed first
+  .ok <- .d$fp64 & !grepl("rusticl", .d$platform)
+  .dev <- c(which(.ok & .d$type == "gpu"), which(.ok))[1]
+  cat("OpenCL device:", .d$device[.dev], "\n")
 }
 
 ## ODE method and gpuBackend; liblsoda and the AutoSwitch composites switch
