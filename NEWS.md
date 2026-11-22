@@ -266,6 +266,10 @@
   that is empty or whose first column is empty gives the parameter-size
   error.  With a `sigma` to simulate, these used to crash R with a floating
   point exception or fail with an unrelated internal error (#1551).
+- `ros4` and `iem` no longer crash R (`free(): invalid next size`) on a
+  model that combines `linCmt()` with an ODE state.  Their Jacobian was
+  sized for every state, including the `linCmt()` ones, while the stepper
+  holds only the ODE states.
 - A dose moved by `alag()` now takes the time-varying covariates imputed at
   its actual dosing time, as `addl` repeats do with `addlKeepsCov = FALSE`
   (the default); the covariates stay on the data records' own times.  It used
