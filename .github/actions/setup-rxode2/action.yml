@@ -57,7 +57,10 @@ runs:
           nlmixr2/dparser-R
           nlmixr2/lotri
           nlmixr2/rxode2ll
-          nlmixr2/rxode2lincmt
+          # rxode2lincmt >= 0.1.1.9000 (the runtime carry cap) is only on
+          # nlmixr2/rxode2lincmt#6; go back to nlmixr2/rxode2lincmt once it
+          # is on rxode2lincmt main
+          nlmixr2/rxode2lincmt@fix/carry-cap-runtime
           nlmixr2/PreciseSums
           ${{ inputs.extra-packages }}
         needs: ${{ inputs.needs }}
