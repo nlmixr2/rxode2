@@ -275,6 +275,7 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  tieOrder <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  rateAtDoseTime <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  durAtDoseTime <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  doseAtRecord <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  resetCancelsPending <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  ssMethod <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"anderson"</span>, <span class="st">"iterate"</span><span class="op">)</span>,</span>
 <span>  linCmtGillFtol <span class="op">=</span> <span class="fl">0</span>,</span>
@@ -1781,7 +1782,8 @@ read the time of the first data record at or after it (NONMEM's <code>F1</code>,
 each interval from the record that ends it, like NONMEM's <code>R1</code> (see
 <code>rateAtDoseTime</code>).  Covariate interpolation is still set by
 <code>covsInterpolation</code>.  It also sets the default <code>tieOrder</code> to <code>"data"</code>
-and turns on <code>addlKeepsCov</code> and <code>durAtDoseTime</code> unless they are given.
+and turns on <code>addlKeepsCov</code>, <code>durAtDoseTime</code> and <code>doseAtRecord</code> unless
+they are given.
 By default <code>FALSE</code>, when <code>f()</code>, <code>rate()</code> and <code>dur()</code> of an <code>addl</code> repeat
 read the actual time of the <code>addl</code> dose.</p></dd>
 
@@ -1818,6 +1820,20 @@ the infusion then ends at its start plus the new duration, delivering
 what is left evenly, or stops delivering when that end has passed.  By
 default (<code>NULL</code>) this is <code>TRUE</code> with <code>nonmem = TRUE</code>, as NONMEM fixes
 <code>D1</code> at the dose, and <code>FALSE</code> otherwise.</p></dd>
+
+
+<dt id="arg-doseatrecord">doseAtRecord<a class="anchor" aria-label="anchor" href="#arg-doseatrecord"></a></dt>
+<dd><p>Boolean that when <code>TRUE</code> reads a dose's <code>f()</code>,
+<code>alag()</code>, <code>rate()</code> and <code>dur()</code> at the dose's own data record, the way
+NONMEM reads <code>F</code>, <code>ALAG</code>, <code>R</code> and <code>D</code> from the one record a dose has: an
+infusion's stop removes the rate its start added and ends at the start's
+lagged time plus the duration, and the records a dose expands to (an
+infusion's stop, a steady-state dose's companions) read the dose
+record's covariates, also when <code>alag()</code> moves the records.  When <code>FALSE</code>
+rxode2 reads each of these records at its own time, so a covariate or
+<code>t</code> that changes during an infusion changes what its stop reads.  By
+default (<code>NULL</code>) this is <code>TRUE</code> with <code>nonmem = TRUE</code> and <code>FALSE</code>
+otherwise.</p></dd>
 
 
 <dt id="arg-resetcancelspending">resetCancelsPending<a class="anchor" aria-label="anchor" href="#arg-resetcancelspending"></a></dt>
