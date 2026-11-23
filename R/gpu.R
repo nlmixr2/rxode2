@@ -685,7 +685,15 @@ rxGpuInfo <- function() {
       method = .m,
       extra = "#include \"rxode2gpu/rxg_round.h\""
     )
-    .ker <- OpenCL::oclSimpleKernel(ctx, "rxg_kernel", .src, if (precision == "float") "single" else "double")
+    ## some drivers (NVIDIA) return an empty build log, which OpenCL still warns
+    .ker <- withCallingHandlers(
+      OpenCL::oclSimpleKernel(ctx, "rxg_kernel", .src, if (precision == "float") "single" else "double"),
+      warning = function(w) {
+        if (grepl("^\\s*OpenCL kernel compilation log:\\s*$", conditionMessage(w))) {
+          invokeRestart("muffleWarning")
+        }
+      }
+    )
     attr(.ker, "rxKey") <- .key
     assign(.key, .ker, envir = .rxGpuClEnv)
   }
