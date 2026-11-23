@@ -194,13 +194,17 @@ static inline double rxRecValue(int raw, double *y, int is_locf,
 // What a record-based read of sorted record `pos` reads: its data record's
 // value (that of the dose row, for a record a dose row expands to), a missing
 // one filled from the neighbours in record (data) order wherever a lag sorts
-// the records.  A pushed record has no data neighbours and keeps the sorted
-// fill.
+// the records.  With addlKeepsCov a lagged dose carries its covariates to its
+// arrival (#1584), so a record's own missing value keeps the sorted fill, as
+// does a pushed record, which has no data neighbours.
 static inline double rxRecRead(int pos, double *y, int is_locf,
-                               rx_solving_options_ind *ind, rx_solving_options *op) {
+                               rx_solving_options_ind *ind, rx_solving_options *op,
+                               int keepsCov) {
   int rec = rxRecCovRow(ind, pos);
-  return rec >= 0 ? rxRecValue(rec, y, is_locf, ind, op) :
-    getValue(pos, y, is_locf, ind, op, 0);
+  if (rec < 0 || (keepsCov && rec == ind->ix[pos])) {
+    return getValue(pos, y, is_locf, ind, op, 0);
+  }
+  return rxRecValue(rec, y, is_locf, ind, op);
 }
 
 // The subject whose covariate k subject ind samples, drawn on first use
@@ -623,12 +627,12 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
             ind->cacheME=0;
             continue;
           }
-          double v = rxRecRead(idxSample, y, is_locf, indSample, op);
+          double v = rxRecRead(idxSample, y, is_locf, indSample, op, rx->addlKeepsCov);
           ind->par_ptr[op->par_cov[k]-1] = v;
           // idxSample is the dose record's position for a repeat's alag(),
           // which can be 0 when idx is not
           if (idx == 0 || idxSample == 0 ||
-              !isSameTimeOp(v, rxRecRead(idxSample - 1, y, is_locf, indSample, op))) {
+              !isSameTimeOp(v, rxRecRead(idxSample - 1, y, is_locf, indSample, op, rx->addlKeepsCov))) {
             ind->cacheME=0;
           }
         }
@@ -711,13 +715,13 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           if (!pushed && idxSample == 0 &&
               isSameTimeOp(t, rxRecMatchTime(indSample, idxSample))) {
             // y is in record order; a lagged dose can move record 0 off sorted slot 0
-            par_ptr[op->par_cov[k]-1] = rxRecRead(0, y, is_locf, indSample, op);
+            par_ptr[op->par_cov[k]-1] = rxRecRead(0, y, is_locf, indSample, op, rx->addlKeepsCov);
             ind->cacheME=0;
           } else if (!pushed && idxSample > 0 && idxSample < indSample->n_all_times &&
                      isSameTimeOp(t, rxRecMatchTime(indSample, idxSample))) {
-            double v = rxRecRead(idxSample, y, is_locf, indSample, op);
+            double v = rxRecRead(idxSample, y, is_locf, indSample, op, rx->addlKeepsCov);
             par_ptr[op->par_cov[k]-1] = v;
-            if (!isSameTimeOp(v, rxRecRead(idxSample - 1, y, is_locf, indSample, op))) {
+            if (!isSameTimeOp(v, rxRecRead(idxSample - 1, y, is_locf, indSample, op, rx->addlKeepsCov))) {
               ind->cacheME=0;
             }
           } else {
