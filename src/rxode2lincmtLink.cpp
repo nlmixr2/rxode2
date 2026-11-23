@@ -67,9 +67,23 @@ rxLcZeroJac_t _p_linCmtZeroJac = &rxLcStubZeroJac;
 rxLcIndFree_t _p_linCmtFreeInd = &rxLcStubFreeInd;
 rxLcIndFree_t _p_linCmtCarryReset = &rxLcStubCarryReset;
 
+// 1 once rxode2lincmt holds the linCmt() carry (its slot 10)
+static int rxLcCarryOwned = 0;
+
 SEXP _rxode2_iniRxode2lincmtPtrs(SEXP p) {
   iniRxode2lincmtPtrs0(p);
   iniRxode2lincmtCarryReset(p, &_p_linCmtCarryReset);
+  rxLcCarryOwned = 0;
+#ifdef RXLC_HAS_CARRY_OWN
+  // iniSubject() resets every subject's carry through slot 9, so the carry
+  // can live in rxode2lincmt's per-subject storage, sized to the model,
+  // instead of ind->linCmtCarryT
+  rxLcCarryOwn_t own = iniRxode2lincmtCarryOwn(p);
+  if (own != NULL && _p_linCmtCarryReset != &rxLcStubCarryReset) {
+    own(1);
+    rxLcCarryOwned = 1;
+  }
+#endif
   return R_NilValue;
 }
 
@@ -130,7 +144,7 @@ SEXP _rxode2_rxode2lincmtHost(void) {
 // Test hook: which lincmt slots are bound to something other than their stub
 SEXP _rxode2_rxode2lincmtLinked(void) {
   rxProtect rx_protect;
-  SEXP ret = rx_protect.protect(Rf_allocVector(LGLSXP, 10));
+  SEXP ret = rx_protect.protect(Rf_allocVector(LGLSXP, 11));
   int *p = LOGICAL(ret);
   p[0] = _p_linCmtA != &rxLcStubA;
   p[1] = _p_linCmtB != &rxLcStubB;
@@ -142,6 +156,7 @@ SEXP _rxode2_rxode2lincmtLinked(void) {
   p[7] = _p_linCmtZeroJac != &rxLcStubZeroJac;
   p[8] = _p_linCmtFreeInd != &rxLcStubFreeInd;
   p[9] = _p_linCmtCarryReset != &rxLcStubCarryReset;
+  p[10] = rxLcCarryOwned;
   return ret;
 }
 

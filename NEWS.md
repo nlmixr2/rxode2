@@ -187,6 +187,12 @@
   rxode2 checks it.  Each subject's carry is cleared only for the columns it
   used, so a `linCmt()` model without the carry clears nothing, and the
   per-thread copy of a subject skips the carry array.
+- With an rxode2lincmt that has pointer slot 10 (`linCmtCarryOwn()`), rxode2
+  hands it the `linCmt()` carry at link.  The carry then lives in
+  rxode2lincmt's per-subject storage, as many columns as the model writes
+  (32 at first, doubled as needed), and `linCmtCarryMaxPairs()` is 1048576.
+  A model is no longer held to 32 carry columns, and nlmixr2est no longer
+  falls back to ODEs or an approximate gradient past them.
 - Forward sensitivities now include the `f()` of a fixed-duration infusion,
   read at its start and removed at its stop, steady-state (`ss = 1`/`ss = 2`)
   infusions shorter than `ii` included.  They were missing, so a parameter

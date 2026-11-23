@@ -17,33 +17,38 @@ rxTest({
       expect_true(all(is.na(s$cp)))
     })
   }
-  test_that("the carry has 32 pair columns", {
-    expect_identical(linCmtCarryMaxPairs(), 32L)
+  # rxode2lincmt holds the carry, sized to the columns a model writes (32 at
+  # first, doubled as needed); pair 99 is past the first allocation
+  hiPair <- 99L
+  test_that("rxode2lincmt holds the carry, with as many columns as the model writes", {
+    expect_true(.Call(`_rxode2_rxode2lincmtLinked`)[11])
+    expect_identical(linCmtCarryMaxPairs(), 1048576L)
   })
-  test_that("a pair index past the cap returns NA", {
+  test_that("a pair index past the bound returns NA", {
     s <- rxSolve(mk(3L, 1L, -7L, 4L * linCmtCarryMaxPairs()), ev, returnType = "data.frame")
     expect_true(all(is.na(s$cp)))
   })
-  test_that("the last pair column accumulates", {
-    s <- rxSolve(mk(3L, 1L, -7L, 4L * (linCmtCarryMaxPairs() - 1L) + 3L), ev, returnType = "data.frame")
+  test_that("a pair column past the first 32 accumulates", {
+    s <- rxSolve(mk(3L, 1L, -7L, 4L * hiPair + 3L), ev, returnType = "data.frame")
     expect_equal(s$cp, c(1.0, 1.5))
   })
   test_that("a subject's carry starts at zero in every solve", {
     # only the columns written are cleared between solves, so a second solve
     # of an accumulating model, and a model that only reads a column another
     # model wrote, must both see zeros
-    s1 <- rxSolve(mk(3L, 1L, -7L, 4L * (linCmtCarryMaxPairs() - 1L) + 3L), ev, returnType = "data.frame")
-    s2 <- rxSolve(mk(3L, 1L, -7L, 4L * (linCmtCarryMaxPairs() - 1L) + 3L), ev, returnType = "data.frame")
+    s1 <- rxSolve(mk(3L, 1L, -7L, 4L * hiPair + 3L), ev, returnType = "data.frame")
+    s2 <- rxSolve(mk(3L, 1L, -7L, 4L * hiPair + 3L), ev, returnType = "data.frame")
     expect_equal(s1$cp, c(1.0, 1.5))
     expect_identical(s2$cp, s1$cp)
-    s3 <- rxSolve(mk(3L, 1L, -6L, 4L * (linCmtCarryMaxPairs() - 1L) + 3L), ev, returnType = "data.frame")
+    s3 <- rxSolve(mk(3L, 1L, -6L, 4L * hiPair + 3L), ev, returnType = "data.frame")
     expect_identical(s3$cp, c(0, 0))
   })
-  test_that("the -5 advance carries the last pair column as it does the first", {
-    # 1-cmt IV (m = 1, which2 = pair): the same -7 add to pair 0 and to the
-    # last pair, advanced by the same -5, must read back the same; the
-    # advance multiplies only the columns a -7 add has written
-    hi <- linCmtCarryMaxPairs() - 1L
+  test_that("the -5 advance carries a high pair column as it does the first", {
+    # 1-cmt IV (m = 1, which2 = pair): the same -7 add to pair 0 and to a
+    # pair past the first 32 columns, advanced by the same -5, must read
+    # back the same; the advance multiplies only the columns a -7 add has
+    # written
+    hi <- hiPair
     base <- "rx__PTR__, t, 1, 1, 0, %d, %d, 1, 1, 10, 0.5, 0, 0, 0, 0"
     m <- suppressWarnings(rxode2(paste0(
       "cp=linCmtB(", sprintf(base, -1L, -1L), ")\n",
