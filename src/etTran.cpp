@@ -295,6 +295,13 @@ void getLinInfo(List mv, int &numLinSens,
   depotLin = std::floor((linCmtFlg - numLinSens*100- numLin*10));
 }
 
+// The linCmt() carry states (flag linCmtCarry) end the state list after the
+// linCmt() sensitivities; compartment numbering counts them with those.
+static inline int getLinCarryN(List mv) {
+  IntegerVector flags = mv[RxMv_flags];
+  return flags.size() > RxMvFlag_linCmtCarry ? flags[RxMvFlag_linCmtCarry] : 0;
+}
+
 //' Get the Linear Compartment Information based on the model variables
 //'
 //' @param obj The model variables object
@@ -429,12 +436,14 @@ IntegerVector getCmtNum_(IntegerVector cmt, List mv, bool sens=true) {
   int numLinSens, numLin, depotLin;
   getLinInfo(mv, numLinSens,
              numLin, depotLin);
+  int nCarry = getLinCarryN(mv);
+  numLinSens += nCarry;
   IntegerVector ret(cmt.size());
   CharacterVector state = mv[RxMv_state];
   CharacterVector sensCV = mv[RxMv_sens];
   for (int i = cmt.size(); i--;){
     ret[i] = getCmtNum(cmt[i], numLin, numLinSens, depotLin,
-                       state.size(), sensCV.size(), sens);
+                       state.size(), sensCV.size() + nCarry, sens);
   }
   return ret;
 }
@@ -882,12 +891,14 @@ LogicalVector cmtSupportsInfusion_(IntegerVector cmt, List mv) {
   int numLinSens, numLin, depotLin;
   getLinInfo(mv, numLinSens,
              numLin, depotLin);
+  int nCarry = getLinCarryN(mv);
+  numLinSens += nCarry;
   LogicalVector ret(cmt.size());
   CharacterVector state = mv[RxMv_state];
   CharacterVector sens = mv[RxMv_sens];
   for (int i = cmt.size(); i--;){
     ret[i] = cmtSupportsInfusion(cmt[i], numLin, numLinSens, depotLin,
-                                 state.size(), sens.size());
+                                 state.size(), sens.size() + nCarry);
   }
   return ret;
 }
@@ -953,12 +964,14 @@ LogicalVector cmtSupportsOff_(IntegerVector cmt, List mv) {
   int numLinSens, numLin, depotLin;
   getLinInfo(mv, numLinSens,
              numLin, depotLin);
+  int nCarry = getLinCarryN(mv);
+  numLinSens += nCarry;
   LogicalVector ret(cmt.size());
   CharacterVector state = mv[RxMv_state];
   CharacterVector sens = mv[RxMv_sens];
   for (int i = cmt.size(); i--;){
     ret[i] = cmtSupportsOff(cmt[i], numLin, numLinSens, depotLin,
-                            state.size(), sens.size());
+                            state.size(), sens.size() + nCarry);
   }
   return ret;
 }
@@ -1434,7 +1447,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   getLinInfo(mv, numLinSens,
              numLin, depotLin);
   int numCmt = Rf_length(mv[RxMv_state]);
-  int numSens = Rf_length(mv[RxMv_sens]);
+  // compartment numbering counts the carry states with the sensitivities
+  int nCarry = getLinCarryN(mv);
+  numLinSens += nCarry;
+  int numSens = Rf_length(mv[RxMv_sens]) + nCarry;
   int cmt1 = getCmtNum(1, numLin, numLinSens, depotLin, numCmt,
                        numSens, false);
   bool hasIcov = false;

@@ -280,6 +280,14 @@ extern void calcLinCmt(void) {
         break;
       }
     }
+    // The linCmt() carry (rxode2lincmt's linCmtB which1 = -5/-6/-7) is kept
+    // in ind->solve as the last states, after the sensitivities: state
+    // rx__carry_<k>__ is carry entry k = row + m*pair.
+    for (int k = 0; k < tb.linCmtCarryN; ++k) {
+      char carryName[32];
+      snprintf(carryName, sizeof(carryName), "rx__carry_%d__", k);
+      addLinCmt(ni, carryName, &linCmtErr, 0);
+    }
     // Take off trailing "',
     if (linCmtErr) {
       if ((linCmtErr & 1) != 0) {

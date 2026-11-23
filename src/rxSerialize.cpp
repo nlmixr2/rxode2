@@ -21,7 +21,9 @@ extern "C" void rxOptionsIniEnsure(int mx, int cores);
 extern rx_globals _globals;
 
 static const char rxSerializeMagic[8] = {'R','X','O','D','E','2','S','Z'};
-static const uint32_t rxSerializeFormatVer = 10u;
+static const uint32_t rxSerializeFormatVer = 11u;
+// Format 11 appended op->numLinCarry (the linCmt() carry states) after
+// indOwnAlloc.
 // Format 10 appended each subject's ind->doseRow (a record's offset to the
 // dose row it expands from) after pkSkip; empty when NULL.
 // Format 9 appended each subject's ind->pkSkip (the records that are not data
@@ -186,6 +188,7 @@ SEXP rxSaveState_() {
   W_I32(depotLin); W_I32(linOffset); W_I32(linCmtLagMask);
   W_I32(linCmtOriginMask); W_I32(ssSolved);
   W_I32(indOwnAlloc);
+  W_I32(numLinCarry);
 
 #undef W_I32
 #undef W_U32
@@ -799,6 +802,11 @@ SEXP rxRestoreState_(SEXP rawSexp) {
   }
   R_I32(ssSolved);
   R_I32(indOwnAlloc);
+  if (fmt >= 11u) {
+    R_I32(numLinCarry);
+  } else {
+    op->numLinCarry = 0;
+  }
 
 #undef R_I32
 #undef R_DBL

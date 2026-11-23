@@ -6533,6 +6533,7 @@ static inline void iniRx(rx_solve* rx) {
   op->hmxi = 0.0;
   op->numLinSens = 0;
   op->numLin = 0;
+  op->numLinCarry = 0;
   op->depotLin = 0;
   op->linOffset = 0;
   op->linCmtLagMask = 0;
@@ -7356,7 +7357,11 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->numLinSens = numLinSens;
     op->numLin = numLin;
     op->depotLin = depotLin;
-    op->linOffset = op->neq - numLin - numLinSens;
+    // the carry states, last in the model; a flag absent from model
+    // variables parsed by an older version means none
+    op->numLinCarry = (Rf_length(rxSolveDat->mv[RxMv_flags]) > RxMvFlag_linCmtCarry) ?
+      INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_linCmtCarry] : 0;
+    op->linOffset = op->neq - numLin - numLinSens - op->numLinCarry;
     op->linCmtLagMask = rxLinCmtLagMask(rxSolveDat->mv, op->linOffset, numLin);
     op->linCmtOriginMask = rxLinCmtOriginMask(rxSolveDat->mv, op->linOffset, numLin);
     rxLoadAlagCmt(rxSolveDat->mv, op->neq, asBool(rxControl[Rxc_ssAtDoseTime], "ssAtDoseTime"));

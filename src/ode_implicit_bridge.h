@@ -129,7 +129,7 @@ static inline void implicit_do_steps(rx_solving_options_ind *ind, rx_solving_opt
     if (dt > std::fabs(tint)) dt = std::fabs(tint);
     if (tint < 0.0) dt = -dt;
 
-    int neqOde = neq[0] - op->numLin - op->numLinSens;
+    int neqOde = neq[0] - op->numLin - op->numLinSens - op->numLinCarry;
 
     RxImplicit<OdeSolver> solver(c_dydt, c_jac, neq, neqOde, ind, yp, (long unsigned)op->mxstep);
     solver.set_quiet(true);
@@ -170,7 +170,7 @@ static void ind_implicit_0(rx_solve *rx, rx_solving_options *op, int solveid, in
     double xp = getAllTimes(ind, 0);
     ind->solvedIdx = 0;
 
-    int neqOde = op->neq - op->numLin - op->numLinSens;
+    int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
     double *yp;
 
     for (i = 0; i < ind->n_all_times; i++) {

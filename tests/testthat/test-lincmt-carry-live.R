@@ -33,6 +33,12 @@ rxTest({
   clAt <- function(wt) tclVal * (wt / 70)^0.75 * exp(etaVal)
 
   test_that("which1=-5/-6/-7 carry matches FD-on-eta", {
+    # the hook drives the carry of the most recent solve, whose model must
+    # have carry states (ind->solve): one pair, 1-cmt IV
+    carryMod <- suppressWarnings(rxode2(
+      "cr = linCmtB(rx__PTR__, t, 1, 1, 0, -6, 0, 1, tcl, tv, 0, 0, 0, 0, 0)"
+    ))
+    rxSolve(carryMod, c(tcl = tclVal, tv = tvVal), ev, returnType = "data.frame")
     sens <- rep(NA_real_, nrow(grid))
     rawAlast <- 0
     for (i in seq_len(nrow(grid))) {
