@@ -834,7 +834,7 @@ rxTest({
     ## the solve runs with op->cores set to the batch: per-thread pools scale with it
     expect_gt(as.numeric(.gpu$extraDosing), as.numeric(.host$extraDosing))
     ## the bytes follow the layout the solve allocates with
-    .dims <- c(512L, 2L, 3L, 1L, 0L, 0L, 0L, 1L, 4L, 6L, 10L, 2L, 3L, 4L)
+    .dims <- c(512L, 2L, 3L, 1L, 0L, 0L, 0L, 1L, 4L, 6L, 10L, 2L, 3L, 4L, 0L)
     .a <- rxMemoryGpuComponents_(.dims, 0L, 1L, 2L)
     .dims2 <- .dims
     .dims2[1] <- 1024L
@@ -844,5 +844,14 @@ rxTest({
     expect_equal(.a[["gpuHostState"]], 0)
     expect_gt(rxMemoryGpuComponents_(.dims, 0L, 0L, 2L)[["gpuHostState"]], 0)
     expect_lt(rxMemoryGpuComponents_(.dims, 1L, 1L, 2L)[["gpuDevice"]], .a[["gpuDevice"]])
+    ## timelines (RXG_D_NROW > 0): their rows on the host and the device
+    expect_equal(.a[["gpuTimeline"]], 0)
+    .dims3 <- .dims
+    .dims3[15] <- 8192L
+    .c <- rxMemoryGpuComponents_(.dims3, 0L, 1L, 2L)
+    ## a row: (2 neq + rd + 2 npar + nlhs) doubles and (ri + neq) ints; and
+    ## the slots' offsets
+    expect_equal(.c[["gpuTimeline"]], 8192 * ((2 * 2 + 4 + 2 * 3 + 1) * 8 + (6 + 2) * 4) + 513 * 4)
+    expect_gt(.c[["gpuDevice"]], .a[["gpuDevice"]])
   })
 })

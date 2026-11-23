@@ -857,6 +857,7 @@ print.rxMemoryEstimate <- function(x, ...) {
     gpuHostWork = "gpuHostWork (GPU round requests, per slot)",
     gpuHostState = "gpuHostState (GPU host integrator state, per slot)",
     gpuSlotWork = "gpuSlotWork (GPU per-thread workspaces)",
+    gpuTimeline = "gpuTimeline (GPU timeline rows, per launch)",
     gpuStage = "gpuStage (GPU host staging buffers)",
     outputData = "outputData (estimated returned data)"
   )

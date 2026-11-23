@@ -789,10 +789,11 @@ rxGpuInfo <- function() {
 #' @param lib `.rxGpuHostLib()` of the model
 #' @param opt `.rxGpuOptions()`
 #' @param nsub slots (the most requests in a round)
+#' @param nrow request rows of a timeline launch; 0 without timelines
 #' @return integer vector, `RXG_D_*` order
 #' @noRd
 #' @author Matthew L. Fidler
-.rxGpuDims <- function(lib, opt, nsub) {
+.rxGpuDims <- function(lib, opt, nsub, nrow = 0L) {
   .lay <- lib$layout
   as.integer(c(
     nsub,
@@ -802,8 +803,91 @@ rxGpuInfo <- function() {
     lib$hasDelay,
     .lay["hrec"],
     opt$oi[7],
-    .lay[c("hhdr", "rd", "ri", "ad", "ai", "od", "oi")]
+    .lay[c("hhdr", "rd", "ri", "ad", "ai", "od", "oi")],
+    if (nrow > 0) max(nsub, nrow) else 0L
   ))
+}
+
+#' Can a model's subjects be solved as whole timelines (one launch a solve)?
+#'
+#' A subject's timeline is recorded on the host before any integration, so
+#' its events must not depend on the states: no modeled bioavailability, lag,
+#' rate or duration, no `evid_()` and no `delay()`.  The recorded requests
+#' also carry the lhs values of the previous record, which the device code
+#' loads first; they must never be read, so the model has no `if`/`while`, no
+#' `lag()`-type function, and assigns every lhs before reading it.  `mtime()`
+#' and the records themselves are checked per solve in C.
+#'
+#' @param obj rxode2 model (as solved, see `.rxGpuMethodModel()`)
+#' @return logical
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuTimelineModelOk <- function(obj) {
+  .mv <- rxModelVars(obj)
+  ## stateProp bits (src/tran.h): propF 2, propAlag 4, propRate 8, propDur 16
+  if (any(bitwAnd(as.integer(.mv$stateProp), 30L) != 0L)) {
+    return(FALSE)
+  }
+  .fl <- .mv$flags
+  if (isTRUE(.fl[["evid_"]] != 0L) || isTRUE(.fl[["hasDelay"]] != 0L)) {
+    return(FALSE)
+  }
+  .lines <- strsplit(rxNorm(.mv), "\n", fixed = TRUE)[[1]]
+  if (
+    any(grepl("\\b(if|while)\\s*\\(", .lines)) ||
+      any(grepl("\\b(lag|lead|diff|first|last|lag0|lead0|diff0)\\s*\\(", .lines))
+  ) {
+    return(FALSE)
+  }
+  .lhs <- .mv$lhs
+  .set <- character(0)
+  for (.l in .lines) {
+    .m <- regmatches(.l, regexec("^([^=~]+?)\\s*(=|~|<-)\\s*(.*)$", .l))[[1]]
+    if (length(.m) != 4L) {
+      next
+    }
+    .rhs <- regmatches(.m[4], gregexpr("[A-Za-z_.][A-Za-z0-9_.]*", .m[4]))[[1]]
+    if (any(.rhs %in% setdiff(.lhs, .set))) {
+      return(FALSE)
+    }
+    .set <- c(.set, trimws(.m[2]))
+  }
+  TRUE
+}
+
+#' Does a GPU solve integrate whole timelines?
+#'
+#' `options(rxode2.gpuTimeline=)`: `NA` (default) on OpenCL only, where a
+#' launch costs most; `TRUE` on either backend; `FALSE` never.
+#'
+#' @param obj rxode2 model (as solved)
+#' @param backend "opencl" or "cpu"
+#' @return logical
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuTimelineOn <- function(obj, backend) {
+  .o <- getOption("rxode2.gpuTimeline", NA)
+  if (isFALSE(.o) || (is.na(.o) && backend != "opencl")) {
+    return(FALSE)
+  }
+  .rxGpuTimelineModelOk(obj)
+}
+
+#' Request rows of a timeline launch
+#'
+#' Up to 64 rows a slot, kept under 256 MB of request rows.  A solve whose
+#' subjects average more records than a slot has rows solves in rounds.
+#'
+#' @param lib `.rxGpuHostLib()` of the model
+#' @param nsub slots
+#' @return integer
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuTimelineRows <- function(lib, nsub) {
+  .lay <- lib$layout
+  .neq <- max(1L, lib$neq)
+  .row <- (2 * .neq + .lay[["rd"]] + 2 * max(1L, lib$npar) + max(1L, lib$nlhs)) * 8 + (.lay[["ri"]] + .neq) * 4
+  as.integer(max(nsub, min(64 * nsub, floor(256 * 2^20 / .row))))
 }
 
 #' Memory a GPU solve allocates (src/rxMemoryComponents.cpp)
@@ -841,7 +925,8 @@ rxGpuInfo <- function() {
     safePow = as.integer(ctl$safePow),
     useStdPow = as.integer(ctl$useStdPow)
   )
-  .dims <- .rxGpuDims(.lib, .rxGpuOptions(.lib, .meth), .batch)
+  .nrow <- if (.rxGpuTimelineOn(.obj, backend)) .rxGpuTimelineRows(.lib, .batch) else 0L
+  .dims <- .rxGpuDims(.lib, .rxGpuOptions(.lib, .meth), .batch, .nrow)
   .ret <- rxMemoryGpuComponents_(
     .dims,
     as.integer(identical(ctl$gpuPrecision, "float")),
@@ -931,6 +1016,9 @@ rxGpuInfo <- function() {
 #' @param precision "double" or "float" (OpenCL only)
 #' @param device OpenCL device (see `.rxGpuDevice()`)
 #' @param cores OpenMP threads of the CPU backend
+#' @param reuse reuse the buffers of the last run of the same kernel and layout
+#' @param timeline size the request buffers for timeline launches
+#'   (`.rxGpuTimelineRows()`)
 #' @param ... options for `.rxGpuOptions()`, or `.rxGpuDefines()`
 #' @return run object for `.rxGpuRound()`
 #' @noRd
@@ -944,6 +1032,7 @@ rxGpuInfo <- function() {
   device = NULL,
   cores = 1L,
   reuse = FALSE,
+  timeline = FALSE,
   ...
 ) {
   backend <- match.arg(backend)
@@ -957,8 +1046,16 @@ rxGpuInfo <- function() {
   .opt <- do.call(.rxGpuOptions, c(list(.lib, method), .args[setdiff(names(.args), .defN)]))
   .lay <- .lib$layout
   .hcap <- .opt$oi[7]
-  .dims <- .rxGpuDims(.lib, .opt, nsub)
-  .ret <- list(lib = .lib, method = method, backend = backend, nsub = as.integer(nsub), dims = .dims, opt = .opt)
+  .dims <- .rxGpuDims(.lib, .opt, nsub, if (timeline) .rxGpuTimelineRows(.lib, nsub) else 0L)
+  .ret <- list(
+    lib = .lib,
+    method = method,
+    backend = backend,
+    nsub = as.integer(nsub),
+    dims = .dims,
+    opt = .opt,
+    timeline = timeline
+  )
   if (backend == "cpu") {
     .st <- new.env(parent = emptyenv())
     .st$ad <- double(nsub * .lay["ad"])
@@ -1276,6 +1373,7 @@ rxGpuInfo <- function() {
   if (is.null(.hmax) || all(is.na(.hmax))) {
     .hmax <- 0
   }
+  .tl <- .rxGpuTimelineOn(.rxGpuMethodModel(object, .meth), .backend)
   if (.backend == "opencl") {
     .mem <- .rxGpuSolveMem(object, ctl, nsolve, backend = "opencl")
     .rxGpuCheckDeviceMem(.mem[["gpuDevice"]], .dev, ctl$gpuPrecision, .batch)
@@ -1289,6 +1387,7 @@ rxGpuInfo <- function() {
     device = .dev,
     cores = .threads,
     reuse = TRUE,
+    timeline = .tl,
     safeLog = as.integer(ctl$safeLog),
     safeZero = as.integer(ctl$safeZero),
     safePow = as.integer(ctl$safePow),
@@ -1307,6 +1406,7 @@ rxGpuInfo <- function() {
     maxAtolRtolFactor = ctl$maxAtolRtolFactor
   )
   .round <- getNativeSymbolInfo("rxg_host_round", .run$lib$dll)$address
+  .timeline <- if (.tl) getNativeSymbolInfo("rxg_host_timeline", .run$lib$dll)$address else NULL
   .Call(
     `_rxode2_rxGpuSolveSet`,
     .round,
@@ -1315,7 +1415,8 @@ rxGpuInfo <- function() {
     .run$opt$od,
     .run$opt$oi,
     .threads,
-    key
+    key,
+    .timeline
   )
   ## the run (and its OpenCL buffers) lives until the solve is cleared
   .rxGpuSolveEnv$run <- .run
@@ -1330,7 +1431,7 @@ rxGpuInfo <- function() {
 #' @noRd
 #' @author Matthew L. Fidler
 .rxGpuSolveClear <- function() {
-  .Call(`_rxode2_rxGpuSolveSet`, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
+  .Call(`_rxode2_rxGpuSolveSet`, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
   .rxGpuSolveEnv$run <- NULL
   invisible(NULL)
 }

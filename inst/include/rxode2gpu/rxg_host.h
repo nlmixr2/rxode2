@@ -74,6 +74,22 @@ void rxg_host_round(int *n, int *nthreads, double *y, double *rd, int *ri,
   }
 }
 
+// n subjects' timelines on the host (rxg_timeline1()), in parallel on
+// nthreads OpenMP threads
+void rxg_host_timeline(int *n, int *nthreads, int *off, double *y, double *rd,
+                       int *ri, double *p0, double *p1, double *pl, double *ir,
+                       int *on, double *ad, int *ai, double *hs, double *hrec,
+                       double *od, int *oi) {
+  int nn = *n;
+#ifdef _OPENMP
+  int nt = (*nthreads > 0) ? *nthreads : 1;
+#pragma omp parallel for num_threads(nt) schedule(dynamic)
+#endif
+  for (int i = 0; i < nn; i++) {
+    rxg_timeline1(i, off, y, rd, ri, p0, p1, pl, ir, on, ad, ai, hs, hrec, od, oi);
+  }
+}
+
 void rxg_host_dydt(double *t, double *y, double *dy, double *p0, double *p1,
                    double *pl, double *ir, int *on, double *tt, int *flags) {
   rxg_ctx c;

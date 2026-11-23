@@ -30,6 +30,13 @@ typedef void (*rxGpuHostRound_t)(int *n, int *nthreads, double *y, double *rd,
                                  double *ir, int *on, double *ad, int *ai,
                                  double *hs, double *hrec, double *od, int *oi);
 
+// rxg_host_timeline() of the model's host library: n subjects' timelines
+typedef void (*rxGpuHostTimeline_t)(int *n, int *nthreads, int *off, double *y,
+                                    double *rd, int *ri, double *p0, double *p1,
+                                    double *pl, double *ir, int *on, double *ad,
+                                    int *ai, double *hs, double *hrec, double *od,
+                                    int *oi);
+
 // The request layout of rxode2gpu/rxg_round.h
 #define RXGS_RD_T0 0
 #define RXGS_RD_T1 1
@@ -56,13 +63,14 @@ typedef struct rxGpuSolveCfg_t {
   int threads;             // OpenMP team of the host work
   int slots;               // thread slots the solve setup sized its pools for
   rxGpuHostRound_t round;  // host build of the round
+  rxGpuHostTimeline_t timeline; // host build of the timelines (NULL: rounds only)
   rxGpuCl *cl;             // OpenCL run (NULL: CPU backend)
   int dims[RXG_D_N];       // layout (dims[RXG_D_NSUB] = slots)
   std::vector<double> od;
   std::vector<int> oi;
 } rxGpuSolveCfg_t;
 
-static rxGpuSolveCfg_t rxGpuSolveCfg = {0, 0, std::string(), 0, 1, 0, NULL, NULL, {0}, {}, {}};
+static rxGpuSolveCfg_t rxGpuSolveCfg = {0, 0, std::string(), 0, 1, 0, NULL, NULL, NULL, {0}, {}, {}};
 
 // error texts of the device return codes (postSolve() indexes -istate-1)
 static const char *rxGpuErr[] = {
@@ -101,6 +109,18 @@ struct rxGpuReq {
     rxMemAssign(gpuHostWork, ir, (size_t)n*d[RXG_D_NEQ1], 0.0);
     rxMemAssign(gpuHostWork, on, (size_t)n*d[RXG_D_NEQ1], 1);
   }
+  // the timeline rows of a launch (counted as gpuTimeline)
+  void allocTimeline(int n) {
+    const int *d = rxGpuSolveCfg.dims;
+    rxMemAssign(gpuTimeline, y, (size_t)n*d[RXG_D_NEQ1], 0.0);
+    rxMemAssign(gpuTimeline, rd, (size_t)n*d[RXG_D_RD], 0.0);
+    rxMemAssign(gpuTimeline, ri, (size_t)n*d[RXG_D_RI], 0);
+    rxMemAssign(gpuTimeline, p0, (size_t)n*d[RXG_D_NPAR1], 0.0);
+    rxMemAssign(gpuTimeline, p1, (size_t)n*d[RXG_D_NPAR1], 0.0);
+    rxMemAssign(gpuTimeline, pl, (size_t)n*d[RXG_D_NLHS1], 0.0);
+    rxMemAssign(gpuTimeline, ir, (size_t)n*d[RXG_D_NEQ1], 0.0);
+    rxMemAssign(gpuTimeline, on, (size_t)n*d[RXG_D_NEQ1], 1);
+  }
 };
 
 typedef struct rxGpuSub {
@@ -124,12 +144,16 @@ struct rxGpuWork {
   int gen = -1;
   int n = 0;
   rxGpuReq q, q2;       // one request per slot, and the round's packed rows
+  rxGpuReq qt;          // timeline rows (RXG_D_NROW of them)
   rxGpuHostState st;    // AutoSwitch and delay() state per slot (host round)
   std::vector<rxGpuSub> sub;
-  std::vector<int> active, map;
+  std::vector<int> active, map, off;
+  int nt = 0;
   void ensure(int rows, bool host, bool batch) {
     if (rows < 1) rows = 1;
-    if (gen == rxGpuSolveCfg.gen && rows <= n && (!host || !st.ad.empty())) return;
+    int trow = batch ? rxGpuSolveCfg.dims[RXG_D_NROW] : 0;
+    if (gen == rxGpuSolveCfg.gen && rows <= n && trow <= nt &&
+        (!host || !st.ad.empty())) return;
     q.alloc(rows);
     if (batch) {
       q2.alloc(rows);
@@ -137,13 +161,21 @@ struct rxGpuWork {
       rxMemAssign(gpuHostWork, active, (size_t)rows, 0);
       rxMemAssign(gpuHostWork, map, (size_t)rows, 0);
     }
+    if (trow > 0) {
+      qt.allocTimeline(trow);
+      rxMemAssign(gpuTimeline, off, (size_t)rows + 1, 0);
+    }
     if (host) st.alloc(rows);
     gen = rxGpuSolveCfg.gen;
     n = rows;
+    nt = trow;
   }
   void release() {
     q = rxGpuReq();
     q2 = rxGpuReq();
+    qt = rxGpuReq();
+    std::vector<int>().swap(off);
+    nt = 0;
     st = rxGpuHostState();
     std::vector<rxGpuSub>().swap(sub);
     std::vector<int>().swap(active);
@@ -189,6 +221,7 @@ extern "C" void rxGpuSolveFreeAll(void) {
   rxGpuSolveCfg.armed = 0;
   rxGpuSolveCfg.slots = 0;
   rxGpuSolveCfg.round = NULL;
+  rxGpuSolveCfg.timeline = NULL;
   rxGpuSolveCfg.cl = NULL;
 }
 
@@ -196,7 +229,8 @@ extern "C" void rxGpuSolveFreeAll(void) {
 // rxMemoryGpuComponents_(): out[0] the round's request buffers and subject
 // table (gpuHostWork), out[1] the host build's integrator state per slot
 // (gpuHostState; CPU backend only), out[2] the per-thread one-subject
-// workspaces of ind_solve() and steady state (gpuSlotWork)
+// workspaces of ind_solve() and steady state (gpuSlotWork), out[3] the
+// timeline rows and offsets (gpuTimeline; 0 without timelines)
 extern "C" void rxGpuHostBytes(const int *d, int opencl, int threads, double *out) {
   const double rows = (double)d[RXG_D_NSUB];
   // y and ir (doubles) and on (ints) are state wide
@@ -213,6 +247,8 @@ extern "C" void rxGpuHostBytes(const int *d, int opencl, int threads, double *ou
   // holding one row of requests and integrator state
   out[2] = 2.0*(rows > threads ? rows : (double)threads)*sizeof(rxGpuWork) +
     2.0*threads*(2.0*req + st);
+  out[3] = d[RXG_D_NROW] > 0 ?
+    (double)d[RXG_D_NROW]*req + (rows + 1.0)*sizeof(int) : 0.0;
 }
 
 // Fill request row r: subject state sub integrates yp from xp to xout
@@ -652,6 +688,174 @@ extern "C" SEXP _rxode2_rxGpuSolveStats(SEXP reset) {
   return ret;
 }
 
+// Copy request row sr of src into row dr of dst
+static void rxGpuCopyRow(rxGpuReq &dst, int dr, const rxGpuReq &src, int sr) {
+  const int *d = rxGpuSolveCfg.dims;
+  size_t a = (size_t)dr, b = (size_t)sr;
+  memcpy(&dst.y[a*d[RXG_D_NEQ1]], &src.y[b*d[RXG_D_NEQ1]], sizeof(double)*d[RXG_D_NEQ1]);
+  memcpy(&dst.rd[a*d[RXG_D_RD]], &src.rd[b*d[RXG_D_RD]], sizeof(double)*d[RXG_D_RD]);
+  memcpy(&dst.ri[a*d[RXG_D_RI]], &src.ri[b*d[RXG_D_RI]], sizeof(int)*d[RXG_D_RI]);
+  memcpy(&dst.p0[a*d[RXG_D_NPAR1]], &src.p0[b*d[RXG_D_NPAR1]], sizeof(double)*d[RXG_D_NPAR1]);
+  memcpy(&dst.p1[a*d[RXG_D_NPAR1]], &src.p1[b*d[RXG_D_NPAR1]], sizeof(double)*d[RXG_D_NPAR1]);
+  memcpy(&dst.pl[a*d[RXG_D_NLHS1]], &src.pl[b*d[RXG_D_NLHS1]], sizeof(double)*d[RXG_D_NLHS1]);
+  memcpy(&dst.ir[a*d[RXG_D_NEQ1]], &src.ir[b*d[RXG_D_NEQ1]], sizeof(double)*d[RXG_D_NEQ1]);
+  memcpy(&dst.on[a*d[RXG_D_NEQ1]], &src.on[b*d[RXG_D_NEQ1]], sizeof(int)*d[RXG_D_NEQ1]);
+}
+
+// Can subject ind be solved as a timeline: do its events never depend on its
+// states?  Observations, boluses and infusions with a fixed rate or duration
+// (and their ends) only: no steady state, reset, replace, multiply, turning a
+// compartment off, phantom doses or mtime().  The model was checked in R
+// (.rxGpuTimelineModelOk()).
+static int rxGpuTlSubjectOk(rx_solving_options_ind *ind) {
+  for (int j = 0; j < ind->n_all_times; j++) {
+    int evid = getEvid(ind, j);
+    if (evid == 3) return 0;
+    if (isObs(evid)) continue;
+    if (evid >= 10 && evid <= 99) return 0;
+    int wh, cmt, wh100, whI, wh0;
+    getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
+    if (wh0 != EVID0_REGULAR && wh0 != EVID0_RATEADJ) return 0;
+    if (whI != EVIDF_NORMAL && whI != EVIDF_INF_RATE && whI != EVIDF_INF_DUR) return 0;
+  }
+  return 1;
+}
+
+// Every subject of the solve as a timeline, and a launch holding a full batch
+// of nslot subjects: their records average at most the rows a slot has (with
+// fewer subjects a launch would fill the device less than a round does)
+static int rxGpuTlSolveOk(rx_solve *rx, int nsolve, int nslot, int nrow) {
+  if (rxGpuSolveCfg.timeline == NULL || nrow < 1 || rx->nMtime > 0 ||
+      (rx->needSort & needSortAlag) != 0) {
+    return 0;
+  }
+  double tot = 0.0;
+  for (int k = 0; k < nsolve; k++) {
+    rx_solving_options_ind *ind = &(rx->subjects[rx->ordId[k] - 1]);
+    if (ind->n_all_times > nrow || !rxGpuTlSubjectOk(ind)) return 0;
+    tot += ind->n_all_times;
+  }
+  return tot <= (double)nsolve*((double)nrow/(double)nslot);
+}
+
+// All subjects as timelines: a launch integrates each subject of a chunk over
+// its whole timeline (rxg_timeline1()).  A chunk's subjects are first run
+// through their events without integrating (the states come back zero), which
+// records each request as a row: its first row starts from the subject's
+// initial states and every later row's y is what the events added since the
+// previous request.  After the launch the subjects run again, taking the rows'
+// results in order.  Returns 0, or 1 when an OpenCL launch failed.
+static int rxGpuTimelines(rx_solve *rx, rx_solving_options *op, rxGpuWork &w,
+                          int nslot, int nsolve, int threads, uint32_t seed0) {
+  const int *d = rxGpuSolveCfg.dims;
+  const int nrow = d[RXG_D_NROW];
+  std::vector<rxGpuSub> &sub = w.sub;
+  std::vector<int> &off = w.off, &used = w.map;
+  rxGpuReq &scratch = w.q, &tl = w.qt;
+  rxGpuHostState &hst = w.st;
+  int next = 0;
+  while (next < nsolve) {
+    // the chunk: subjects while their records (a bound on their requests)
+    // fit the rows
+    auto _t0 = std::chrono::steady_clock::now();
+    int m = 0, rows = 0;
+    while (next < nsolve && m < nslot) {
+      int id = rx->ordId[next] - 1;
+      int b = rx->subjects[id].n_all_times;
+      if (m > 0 && rows + b > nrow) break;
+      sub[m].id = id;
+      off[m] = rows;
+      rows += b;
+      m++;
+      next++;
+    }
+    off[m] = rows;
+    // record
+#ifdef _OPENMP
+#pragma omp parallel for num_threads(threads) schedule(dynamic)
+#endif
+    for (int k = 0; k < m; k++) {
+      setRxThreadId(k);
+      rxGpuSub *s = &sub[k];
+      s->st = RXGS_INIT;
+      setSeedEng1(seed0 + s->id);
+      int row = off[k];
+      used[k] = 0;
+      while (rxGpuAdvance(rx, op, s, scratch, k, k)) {
+        int restart = s->istate == 1;
+        // the integration's result: zero states, so the next request's y is
+        // what the events add
+        int ne = s->neq[0] < d[RXG_D_NEQ1] ? s->neq[0] : d[RXG_D_NEQ1];
+        for (int j = 0; j < ne; j++) s->yp[j] = 0.0;
+        s->istate = 2;
+        if (row >= off[k + 1]) {
+          used[k] = -1; // more requests than records: the replay solves it alone
+          continue;
+        }
+        rxGpuCopyRow(tl, row, scratch, k);
+        tl.rd[(size_t)row*d[RXG_D_RD] + RXGS_RD_H] = restart ? 0.0 : -1.0;
+        row++;
+      }
+      if (used[k] == 0) used[k] = row - off[k];
+      for (int r = row; r < off[k + 1]; r++) tl.ri[(size_t)r*d[RXG_D_RI] + RXGS_RI_SUB] = -1;
+      setRxThreadId(-1);
+    }
+    auto _t1 = std::chrono::steady_clock::now();
+    rxGpuStats.advance += std::chrono::duration<double>(_t1 - _t0).count();
+    // one launch for the chunk
+    rxGpuStats.rounds++;
+    for (int k = 0; k < m; k++) if (used[k] > 0) rxGpuStats.requests += used[k];
+    if (rxGpuSolveCfg.cl != NULL) {
+      if (rxGpuClTimeline(rxGpuSolveCfg.cl, m, rows, off.data(), tl.y.data(),
+                          tl.rd.data(), tl.ri.data(), tl.p0.data(), tl.p1.data(),
+                          tl.pl.data(), tl.ir.data(), tl.on.data()) != 0) {
+        return 1;
+      }
+    } else {
+      rxGpuSolveCfg.timeline(&m, &threads, off.data(), tl.y.data(), tl.rd.data(),
+                             tl.ri.data(), tl.p0.data(), tl.p1.data(), tl.pl.data(),
+                             tl.ir.data(), tl.on.data(), hst.ad.data(), hst.ai.data(),
+                             hst.hs.data(), hst.hrec.data(), rxGpuSolveCfg.od.data(),
+                             rxGpuSolveCfg.oi.data());
+    }
+    auto _t2 = std::chrono::steady_clock::now();
+    rxGpuStats.round += std::chrono::duration<double>(_t2 - _t1).count();
+    // replay: the same requests, answered by the rows
+#ifdef _OPENMP
+#pragma omp parallel for num_threads(threads) schedule(dynamic)
+#endif
+    for (int k = 0; k < m; k++) {
+      setRxThreadId(k);
+      rxGpuSub *s = &sub[k];
+      int ok = used[k] >= 0;
+      if (ok) {
+        s->st = RXGS_INIT;
+        setSeedEng1(seed0 + s->id);
+        int row = off[k];
+        const size_t rd = (size_t)d[RXG_D_RD];
+        while (rxGpuAdvance(rx, op, s, scratch, k, k)) {
+          if (row >= off[k] + used[k] ||
+              scratch.rd[(size_t)k*rd + RXGS_RD_T0] != tl.rd[(size_t)row*rd + RXGS_RD_T0] ||
+              scratch.rd[(size_t)k*rd + RXGS_RD_T1] != tl.rd[(size_t)row*rd + RXGS_RD_T1]) {
+            ok = 0;
+            break;
+          }
+          rxGpuResult(s, tl, row);
+          row++;
+        }
+      }
+      if (!ok) {
+        // its requests differ from the recording: solve it alone on the host
+        setSeedEng1(seed0 + s->id);
+        ind_gpu(rx, s->id, NULL, NULL);
+      }
+      setRxThreadId(-1);
+    }
+    rxGpuStats.advance += std::chrono::duration<double>(std::chrono::steady_clock::now() - _t2).count();
+  }
+  return 0;
+}
+
 // All subjects in batched rounds
 // The rounds; returns 0, or 1 when an OpenCL round failed, which par_gpu()
 // raises once the rounds have returned.  Its buffers are the reused
@@ -778,6 +982,12 @@ static int par_gpu0(rx_solve *rx) {
   int nact = nslot;
   int fail = 0;
   rxGpuStats.solves++;
+  if (rxGpuTlSolveOk(rx, nsolve, nslot, d[RXG_D_NROW])) {
+    fail = rxGpuTimelines(rx, op, w, nslot, nsolve, threads, seed0);
+    setRxSeedFinal(seed0 + (uint32_t)nsolve);
+    if (threads < op->cores) op->cores = threads;
+    return fail;
+  }
   while (nact > 0 && !fail) {
     auto _t0 = std::chrono::steady_clock::now();
     // advance every subject (applying its last result) until it waits
@@ -814,6 +1024,8 @@ static int par_gpu0(rx_solve *rx) {
 
 // R: install (or clear, with round NULL) the GPU solve of the next rxSolve()
 //   round   external pointer to rxg_host_round() of the model's host library
+//   timeline external pointer to its rxg_host_timeline(), or NULL: rounds only
+//           (dims[RXG_D_NROW] sizes the timeline rows)
 //   cl      OpenCL run of .rxGpuRun() or NULL (CPU backend)
 //   dims    the layout (RXG_D_*; dims[RXG_D_NSUB] slots)
 //   od, oi  integrator options
@@ -842,7 +1054,8 @@ extern "C" void rxGpuSolveOneThread(void) {
 }
 
 extern "C" SEXP _rxode2_rxGpuSolveSet(SEXP round, SEXP cl, SEXP dims, SEXP od,
-                                      SEXP oi, SEXP threads, SEXP key) {
+                                      SEXP oi, SEXP threads, SEXP key,
+                                      SEXP timeline) {
   if (Rf_isNull(round)) {
     rxGpuSolveFreeAll();
     rxGpuSolveCfg.round = NULL;
@@ -854,6 +1067,11 @@ extern "C" SEXP _rxode2_rxGpuSolveSet(SEXP round, SEXP cl, SEXP dims, SEXP od,
   }
   if (Rf_length(dims) != RXG_D_N) (Rf_errorcall)(R_NilValue, _("invalid GPU layout"));
   if (TYPEOF(key) != STRSXP || Rf_length(key) != 1) (Rf_errorcall)(R_NilValue, _("invalid model key"));
+  if (!Rf_isNull(timeline) &&
+      (TYPEOF(timeline) != EXTPTRSXP || R_ExternalPtrAddrFn(timeline) == NULL ||
+       INTEGER(dims)[RXG_D_NROW] < INTEGER(dims)[RXG_D_NSUB])) {
+    (Rf_errorcall)(R_NilValue, _("invalid host timeline"));
+  }
   // nothing is installed until every argument checks out
   rxGpuSolveCfg.on = 0;
   rxGpuSolveCfg.armed = 0;
@@ -866,6 +1084,8 @@ extern "C" SEXP _rxode2_rxGpuSolveSet(SEXP round, SEXP cl, SEXP dims, SEXP od,
     g = (rxGpuCl *)R_ExternalPtrAddr(cl);
   }
   rxGpuSolveCfg.round = (rxGpuHostRound_t)R_ExternalPtrAddrFn(round);
+  rxGpuSolveCfg.timeline = Rf_isNull(timeline) ? NULL :
+    (rxGpuHostTimeline_t)R_ExternalPtrAddrFn(timeline);
   rxGpuSolveCfg.cl = g;
   memcpy(rxGpuSolveCfg.dims, INTEGER(dims), sizeof(int)*RXG_D_N);
   rxMemAssign(fixed, rxGpuSolveCfg.od, REAL(od), REAL(od) + Rf_length(od));

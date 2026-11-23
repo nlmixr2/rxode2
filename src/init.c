@@ -54,7 +54,7 @@ SEXP _rxode2_rxGpuClNew(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxGpuClRound(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP,
                           SEXP, SEXP);
 SEXP _rxode2_rxGpuClFree(SEXP);
-SEXP _rxode2_rxGpuSolveSet(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP _rxode2_rxGpuSolveSet(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxGpuSolveStats(SEXP);
 SEXP _rxode2_rxDydtForceN(void);
 
@@ -1258,7 +1258,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxGpuClNew", (DL_FUNC) &_rxode2_rxGpuClNew, 8},
     {"_rxode2_rxGpuClRound", (DL_FUNC) &_rxode2_rxGpuClRound, 10},
     {"_rxode2_rxGpuClFree", (DL_FUNC) &_rxode2_rxGpuClFree, 1},
-    {"_rxode2_rxGpuSolveSet", (DL_FUNC) &_rxode2_rxGpuSolveSet, 7},
+    {"_rxode2_rxGpuSolveSet", (DL_FUNC) &_rxode2_rxGpuSolveSet, 8},
     {"_rxode2_rxGpuSolveStats", (DL_FUNC) &_rxode2_rxGpuSolveStats, 1},
     {"_rxode2_rxDydtForceN", (DL_FUNC) &_rxode2_rxDydtForceN, 0},
     {NULL, NULL, 0}

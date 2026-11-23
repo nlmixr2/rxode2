@@ -286,19 +286,21 @@ NumericVector rxMemoryComponents_(
 //' @param opencl 1 for the OpenCL backend, 0 for the CPU backend.
 //' @param threads The OpenMP threads of the host work.
 //' @return Named numeric vector of bytes: \code{gpuHostWork},
-//'   \code{gpuHostState}, \code{gpuSlotWork} and \code{gpuStage} on the host,
+//'   \code{gpuHostState}, \code{gpuSlotWork}, \code{gpuTimeline} and
+//'   \code{gpuStage} on the host,
 //'   \code{gpuDevice} on the device (not host RAM).
 //' @noRd
 // [[Rcpp::export]]
 NumericVector rxMemoryGpuComponents_(IntegerVector dims, int single, int opencl, int threads) {
   if (dims.size() != RXG_D_N) Rcpp::stop("dims must have %d values", (int)RXG_D_N);
-  double host[3] = {0.0, 0.0, 0.0}, cl[2] = {0.0, 0.0};
+  double host[4] = {0.0, 0.0, 0.0, 0.0}, cl[2] = {0.0, 0.0};
   rxGpuHostBytes(dims.begin(), opencl, threads < 1 ? 1 : threads, host);
   if (opencl) rxGpuClBytes(dims.begin(), single, cl);
   return NumericVector::create(
     Named("gpuHostWork")  = host[0],
     Named("gpuHostState") = host[1],
     Named("gpuSlotWork")  = host[2],
+    Named("gpuTimeline")  = host[3],
     Named("gpuStage")     = cl[1],
     Named("gpuDevice")    = cl[0]);
 }

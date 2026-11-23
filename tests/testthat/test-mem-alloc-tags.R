@@ -88,7 +88,7 @@
     0L,
     0L
   )
-  .gpu <- rxMemoryGpuComponents_(rep(1L, 14L), 0L, 1L, 1L)
+  .gpu <- rxMemoryGpuComponents_(rep(1L, 15L), 0L, 1L, 1L)
   setdiff(c(names(.cpu), names(.gpu), "fixed"), c("sizeofInd", "rxLlikSaveSize"))
 }
 

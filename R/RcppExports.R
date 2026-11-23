@@ -1192,7 +1192,8 @@ rxMemoryComponents_ <- function(neq, stateSize, nlhs, npars, neta, neps, ncov, n
 #' @param opencl 1 for the OpenCL backend, 0 for the CPU backend.
 #' @param threads The OpenMP threads of the host work.
 #' @return Named numeric vector of bytes: \code{gpuHostWork},
-#'   \code{gpuHostState}, \code{gpuSlotWork} and \code{gpuStage} on the host,
+#'   \code{gpuHostState}, \code{gpuSlotWork}, \code{gpuTimeline} and
+#'   \code{gpuStage} on the host,
 #'   \code{gpuDevice} on the device (not host RAM).
 #' @noRd
 rxMemoryGpuComponents_ <- function(dims, single, opencl, threads) {
@@ -1393,4 +1394,3 @@ binomProbs_ <- function(x, probs, naRm, nIn, cont) {
 meanProbs_ <- function(x, probs, naRm, useT, pred, nIn) {
     .Call(`_rxode2_meanProbs_`, x, probs, naRm, useT, pred, nIn)
 }
-

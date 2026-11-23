@@ -3,7 +3,9 @@
 # methods.  Every fit uses the same data, model and starting estimates; only
 # rxControl(method=, gpuBackend=) changes.  Covariance and tables are off, so
 # the time is the estimation (and the SAEM -2LL by quadrature); the first
-# OpenCL fit of each estimation method also builds its kernel.
+# OpenCL fit of each estimation method also builds its kernel.  OpenCL fits
+# integrate each subject's whole timeline in a launch per solve; "opencl
+# rounds" fits launch once per event interval instead.
 #
 # Usage: Rscript bench/gpu-nlmixr2.R [sizes] [est]
 #   sizes  comma-separated numbers of subjects (default 500)
@@ -69,6 +71,10 @@ if (requireNamespace("OpenCL", quietly = TRUE) && rxGpuInfo()$available) {
 )
 if (!is.na(.dev)) {
   .cases <- c(.cases, list(c("gpuT54", "opencl"), c("gpuRos54p", "opencl"), c("gpuT54+gpuRos54p", "opencl")))
+  ## OpenCL with a round per event interval instead of a launch per solve
+  ## (options(rxode2.gpuTimeline = FALSE)); SAEM only, the estimation that
+  ## solves in batches
+  .cases <- c(.cases, list(c("gpuT54", "opencl rounds"), c("gpuT54+gpuRos54p", "opencl rounds")))
 }
 
 .out <- NULL
@@ -83,6 +89,10 @@ for (.n in .sizes) {
   .dat$dv[.dat$evid != 0] <- 0
   for (.est in .ests) {
     for (.c in .cases) {
+      .rounds <- .c[2] == "opencl rounds"
+      if (.rounds && .est != "saem") next
+      options(rxode2.gpuTimeline = if (.rounds) FALSE else NA)
+      .be <- sub(" rounds$", "", .c[2])
       .ctl <- if (.est == "saem") {
         saemControl(
           print = 0,
@@ -90,7 +100,7 @@ for (.n in .sizes) {
           covMethod = "",
           rxControl = rxControl(
             method = .c[1],
-            gpuBackend = .c[2],
+            gpuBackend = .be,
             gpuDevice = if (is.na(.dev)) NULL else .dev,
             cores = .cores
           )
@@ -102,7 +112,7 @@ for (.n in .sizes) {
           covMethod = "",
           rxControl = rxControl(
             method = .c[1],
-            gpuBackend = .c[2],
+            gpuBackend = .be,
             gpuDevice = if (is.na(.dev)) NULL else .dev,
             cores = .cores
           )
@@ -112,8 +122,9 @@ for (.n in .sizes) {
       .t <- system.time(.fit <- suppressMessages(suppressWarnings(nlmixr2(.model, .dat, .est, control = .ctl))))[[
         "elapsed"
       ]]
-      ## the batched GPU solves: rounds, subject intervals per round, and the
-      ## seconds spent advancing subjects on the host and in the rounds
+      ## the batched GPU solves: rounds (or timeline launches), subject
+      ## intervals per launch, and the seconds spent advancing subjects on the
+      ## host and in the launches
       .g <- .rxGpuSolveStats()
       .out <- rbind(
         .out,

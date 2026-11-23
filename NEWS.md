@@ -95,6 +95,14 @@
   integrates with the host counterpart.  Repeated solves on that setup
   (nlmixr2est's SAEM iterations) round every subject at once, and each
   double-precision OpenCL round waits on the device once.
+- On OpenCL the GPU methods integrate each subject's whole timeline in one
+  launch per solve instead of a round per event interval, when the
+  subjects' events do not depend on their states (observations, boluses and
+  infusions with a fixed rate or duration; no steady state, resets, modeled
+  bioavailability, lag, rate or duration, `mtime()`, `evid_()` or
+  `delay()`) and the model never reads an lhs before assigning it.  The
+  results are the same as the rounds'.  `options(rxode2.gpuTimeline = TRUE)`
+  also uses timelines on the CPU backend, and `FALSE` never.
 - `rxMemoryEstimate()` (and so `rxSolve()`'s out-of-memory check) now counts
   the GPU methods' per-slot host workspaces and the per-thread `evid_()`
   push pools, and reports the GPU device buffers separately.  An OpenCL

@@ -291,6 +291,15 @@ dense sampling, so each subject needs one round per record (171 for `pk2`,
 3. The subjects take their new states, handle their next events, and the
    loop repeats until all are done.
 
+On OpenCL a launch costs more than on CPU threads, so when no subject's
+events depend on its states (observations, boluses and infusions with a
+fixed rate or duration) a solve takes one launch instead of a round per
+event interval.  Each subject's events run first without integrating, which
+records every interval it needs and what its doses add; one launch then
+integrates each subject's whole timeline, and the subjects run their events
+again with the results.  The results are the same as the rounds'.
+`options(rxode2.gpuTimeline = FALSE)` turns this off.
+
 The kernel is generated from the model: its `d/dt()` (and, for
 `gpuRos54p`, the analytic Jacobian) as OpenCL C, the integrator, and the
 special functions the model calls.  It is compiled once per model, method
