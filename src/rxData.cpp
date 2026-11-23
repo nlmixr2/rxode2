@@ -4588,7 +4588,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     // the records a dose row expands to and that row's own record
     rxSolve_loadRowLink(ev1, evid.size(), "rxDoseRow", &_globals.gdoseRow);
     // addl repeats without their covariates and the dose record each repeats
-    rxSolve_loadRowLink(ev1, evid.size(), "rxAddlParent", &_globals.gaddlParent);
+    rxSolve_loadRowLink(ev1, evid.size(), "rxAddlCovDose", &_globals.gaddlParent);
     int ntot = 1;
 
     IntegerVector id(evid.size(), 1);
