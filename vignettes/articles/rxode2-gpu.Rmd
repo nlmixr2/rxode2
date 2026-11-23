@@ -169,7 +169,27 @@ fitHost <- nlmixr2(
 )
 ```
 
-BENCHMARK_NLMIXR2
+With 500 subjects (`bench/gpu-nlmixr2.R`, the node described under
+Timings, 8 threads, seconds):
+
+| method | backend | SAEM | FOCEi |
+|---|---|---:|---:|
+| `liblsoda` | host | 339 | 8.2 |
+| `t54` | host | 678 | 5.7 |
+| `"t54+ros54p"` | host | 678 | 9.4 |
+| `gpuT54` | CPU build | 196 | 7.2 |
+| `"gpuT54+gpuRos54p"` | CPU build | 192 | 2.7 |
+| `gpuT54` | OpenCL | 300 | 5.6 |
+| `"gpuT54+gpuRos54p"` | OpenCL | 308 | 6.5 |
+
+- SAEM solves every subject's three chains together, so the GPU methods
+  integrate about 1500 subjects per round; their CPU build fits 1.7 times
+  faster than `liblsoda`, with the same objective function.
+- A round of 1500 subjects is too small to fill the L40 and takes longer
+  there (1.7 ms) than on 8 CPU threads (0.9 ms), so OpenCL is slower than
+  the CPU build for this fit.
+- FOCEi solves one subject at a time while it optimizes the etas, so a GPU
+  method runs its host counterpart there.
 
 ## Timings
 

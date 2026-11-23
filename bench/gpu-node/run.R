@@ -11,6 +11,7 @@
 #           library is prefix/Rlib, or RXODE2_GPU_LIB
 #   out     results directory (default gpu-bench-<date-time>)
 #   which   comma-separated subset of solve,runtime,poppk,nlmixr2 (default all)
+#   est     nlmixr2 estimation methods, eg focei (default saem,focei)
 .args <- commandArgs(TRUE)
 .prefix <- path.expand(if (length(.args) >= 1) .args[1] else "~/rxode2-gpu-bench")
 .out <- if (length(.args) >= 2) .args[2] else format(Sys.time(), "gpu-bench-%Y%m%d-%H%M")
@@ -96,6 +97,6 @@ if ("poppk" %in% .which) {
   .run("poppk", "bench/gpu-poppk.R", c("1000,10000,50000", "3"))
 }
 if ("nlmixr2" %in% .which) {
-  .run("nlmixr2", "bench/gpu-nlmixr2.R", "500")
+  .run("nlmixr2", "bench/gpu-nlmixr2.R", c("500", if (length(.args) >= 4) .args[4] else "saem,focei"))
 }
 message("results in ", normalizePath(.out))
