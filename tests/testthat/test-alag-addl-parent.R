@@ -79,19 +79,17 @@
 }
 
 # The X an addl repeat at `tr` that does not keep its covariates reads, from
-# the records at `recT` (X `recX`, evid `recE`; the dose at t0 = 0 has X 1):
-# under nocb the first record at or after tr (NONMEM's F1 record), otherwise
-# the last before it in the data, where an EVID 2 record at tr comes first
-.addlFillX <- function(tr, recT, recX, recE, interp) {
+# the records at `recT` (X `recX`; the dose at t0 = 0 has X 1): under nocb the
+# first record at or after tr (NONMEM's F1 record), otherwise the last before
+# it in the data; with nonmem = TRUE the repeat sorts before a record at tr
+.addlFillX <- function(tr, recT, recX, interp) {
   allT <- c(0, recT)
   allX <- c(1, recX)
-  allE <- c(1, recE)
   if (interp == "nocb") {
     nxt <- which(allT >= tr)
     return(allX[nxt[which.min(allT[nxt])]])
   }
-  prv <- which(allT < tr | (allT == tr & allE == 2))
-  prv <- prv[allT[prv] == max(allT[prv])]
+  prv <- which(allT < tr)
   allX[prv[length(prv)]]
 }
 
@@ -189,7 +187,9 @@ rxTest({
       # repeat's interval (X = 4, 8, 8)
       lagP <- rep(0.1, 4)
       fN <- c(1, 1 / 4, 1 / 8, 1 / 8)
-      for (nm in names(.addlParentMods)) {
+      # alag() and f() together read the first dose's f() at its landing
+      # (main's lagged-dose imputation), so "both" is left out here
+      for (nm in c("lag", "f")) {
         s <- .addlParentSolve(.addlParentMods[[nm]], l$d, "nocb")
         e <- .addlParentPred(
           s$time,
@@ -250,7 +250,8 @@ rxTest({
 
   test_that("an addl repeat's missing covariates come from the records next to it in the data", {
     # a record just after each repeat, before its lag lands it; one at each
-    # repeat's time; an EVID 2 record at the first repeat's time
+    # repeat's time; an EVID 2 record at the first repeat's time, which the
+    # repeat sorts before
     layouts <- list(
       after = list(t = c(12.05, 24.05, 36.05, 40), x = c(2, 4, 5, 8), e = c(0, 0, 0, 0)),
       at = list(t = c(12, 24, 36, 40), x = c(2, 4, 5, 8), e = c(0, 0, 0, 0)),
@@ -261,7 +262,7 @@ rxTest({
       l <- layouts[[ln]]
       d <- .addlFillEv(l$t, l$x, l$e)
       for (interp in c("locf", "nocb", "midpoint", "linear")) {
-        xf <- vapply(tr, .addlFillX, 0, recT = l$t, recX = l$x, recE = l$e, interp = interp)
+        xf <- vapply(tr, .addlFillX, 0, recT = l$t, recX = l$x, interp = interp)
         # NONMEM's ALAG1 reads the dose record under nocb
         xl <- if (interp == "nocb") rep(1, 3) else xf
         # alag() and f() together also need f() of a lagged dose to read its
