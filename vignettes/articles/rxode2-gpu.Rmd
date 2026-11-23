@@ -297,7 +297,8 @@ fixed rate or duration) a solve takes one launch instead of a round per
 event interval.  Each subject's events run first without integrating, which
 records every interval it needs and what its doses add; one launch then
 integrates each subject's whole timeline, and the subjects run their events
-again with the results.  The results are the same as the rounds'.
+again with the results.  The results are the same as the rounds' (to
+rounding when several doses into one compartment share a time).
 `options(rxode2.gpuTimeline = FALSE)` turns this off.
 
 The kernel is generated from the model: its `d/dt()` (and, for

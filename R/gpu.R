@@ -858,16 +858,19 @@ rxGpuInfo <- function() {
 #' Does a GPU solve integrate whole timelines?
 #'
 #' `options(rxode2.gpuTimeline=)`: `NA` (default) on OpenCL only, where a
-#' launch costs most; `TRUE` on either backend; `FALSE` never.
+#' launch costs most; `TRUE` on either backend; `FALSE` never.  Single
+#' precision solves in rounds: the replay matches each request's times to the
+#' recorded ones, which a float device returns rounded.
 #'
 #' @param obj rxode2 model (as solved)
 #' @param backend "opencl" or "cpu"
+#' @param precision "double" or "float"
 #' @return logical
 #' @noRd
 #' @author Matthew L. Fidler
-.rxGpuTimelineOn <- function(obj, backend) {
+.rxGpuTimelineOn <- function(obj, backend, precision = "double") {
   .o <- getOption("rxode2.gpuTimeline", NA)
-  if (isFALSE(.o) || (is.na(.o) && backend != "opencl")) {
+  if (isFALSE(.o) || (is.na(.o) && backend != "opencl") || (backend == "opencl" && identical(precision, "float"))) {
     return(FALSE)
   }
   .rxGpuTimelineModelOk(obj)
@@ -899,11 +902,12 @@ rxGpuInfo <- function() {
 #' @param ctl rxControl() with a GPU method
 #' @param nsolve subjects times simulations
 #' @param backend "opencl" or "cpu"; `NULL` resolves `ctl$gpuBackend`
+#' @param timeline size the timeline rows; `NULL` decides as the install does
 #' @return `rxMemoryGpuComponents_()` bytes with attributes `batch` and
 #'   `threads`, or `NULL` when `ctl` names no GPU method
 #' @noRd
 #' @author Matthew L. Fidler
-.rxGpuSolveMem <- function(object, ctl, nsolve, backend = NULL) {
+.rxGpuSolveMem <- function(object, ctl, nsolve, backend = NULL, timeline = NULL) {
   .meth <- .rxGpuSolveMethods[[as.character(ctl$method)]]
   if (is.null(.meth)) {
     return(NULL)
@@ -925,7 +929,10 @@ rxGpuInfo <- function() {
     safePow = as.integer(ctl$safePow),
     useStdPow = as.integer(ctl$useStdPow)
   )
-  .nrow <- if (.rxGpuTimelineOn(.obj, backend)) .rxGpuTimelineRows(.lib, .batch) else 0L
+  if (is.null(timeline)) {
+    timeline <- .rxGpuTimelineOn(.obj, backend, ctl$gpuPrecision)
+  }
+  .nrow <- if (timeline) .rxGpuTimelineRows(.lib, .batch) else 0L
   .dims <- .rxGpuDims(.lib, .rxGpuOptions(.lib, .meth), .batch, .nrow)
   .ret <- rxMemoryGpuComponents_(
     .dims,
@@ -982,16 +989,21 @@ rxGpuInfo <- function() {
 #'
 #' @param bytes device bytes (`gpuDevice` of `.rxGpuSolveMem()`)
 #' @param device,precision as `.rxGpuDevice()`
-#' @return `NULL`, invisibly
+#' @param batch slots (for the message)
+#' @param stop stop when they do not fit; `FALSE` returns `FALSE` instead
+#' @return `TRUE` (invisibly) when they fit
 #' @noRd
 #' @author Matthew L. Fidler
-.rxGpuCheckDeviceMem <- function(bytes, device, precision, batch) {
+.rxGpuCheckDeviceMem <- function(bytes, device, precision, batch, stop = TRUE) {
   .d <- tryCatch(.rxGpuDevice(device, precision), error = function(e) NULL)
   if (is.null(.d)) {
-    return(invisible(NULL))
+    return(invisible(TRUE))
   }
   .mem <- .Call(`_rxode2_rxGpuClDeviceMem`, .d$dev)
   if (!is.na(.mem[1]) && bytes > 0.9 * .mem[1]) {
+    if (!stop) {
+      return(FALSE)
+    }
     stop(
       sprintf(
         "the GPU solve needs %.2f GB of device memory but device %d has %.2f GB; lower rxControl(gpuBatch=) (now %d)",
@@ -1003,7 +1015,7 @@ rxGpuInfo <- function() {
       call. = FALSE
     )
   }
-  invisible(NULL)
+  invisible(TRUE)
 }
 
 #' Set up batched rounds of a device integrator
@@ -1373,9 +1385,15 @@ rxGpuInfo <- function() {
   if (is.null(.hmax) || all(is.na(.hmax))) {
     .hmax <- 0
   }
-  .tl <- .rxGpuTimelineOn(.rxGpuMethodModel(object, .meth), .backend)
+  .tl <- .rxGpuTimelineOn(.rxGpuMethodModel(object, .meth), .backend, ctl$gpuPrecision)
   if (.backend == "opencl") {
-    .mem <- .rxGpuSolveMem(object, ctl, nsolve, backend = "opencl")
+    .mem <- .rxGpuSolveMem(object, ctl, nsolve, backend = "opencl", timeline = .tl)
+    ## the timeline rows are optional: a solve that fits only without them
+    ## runs in rounds
+    if (.tl && !.rxGpuCheckDeviceMem(.mem[["gpuDevice"]], .dev, ctl$gpuPrecision, .batch, stop = FALSE)) {
+      .tl <- FALSE
+      .mem <- .rxGpuSolveMem(object, ctl, nsolve, backend = "opencl", timeline = FALSE)
+    }
     .rxGpuCheckDeviceMem(.mem[["gpuDevice"]], .dev, ctl$gpuPrecision, .batch)
   }
   .run <- .rxGpuRun(

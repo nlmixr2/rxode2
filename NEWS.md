@@ -101,8 +101,9 @@
   infusions with a fixed rate or duration; no steady state, resets, modeled
   bioavailability, lag, rate or duration, `mtime()`, `evid_()` or
   `delay()`) and the model never reads an lhs before assigning it.  The
-  results are the same as the rounds'.  `options(rxode2.gpuTimeline = TRUE)`
-  also uses timelines on the CPU backend, and `FALSE` never.
+  results are the same as the rounds' (to rounding when several doses into
+  one compartment share a time).  `options(rxode2.gpuTimeline = TRUE)` also
+  uses timelines on the CPU backend, and `FALSE` never.
 - `rxMemoryEstimate()` (and so `rxSolve()`'s out-of-memory check) now counts
   the GPU methods' per-slot host workspaces and the per-thread `evid_()`
   push pools, and reports the GPU device buffers separately.  An OpenCL

@@ -230,7 +230,8 @@ RXG_FN void rxg_round1(int i, RXG_GLOBAL double *y, RXG_GLOBAL double *rd,
 // request of rxg_round1() (row k's subject state is ri[RXG_RI_SUB], i here).
 // The host recorded them with the subject's events and no integration, so the
 // y of a row after the first is the jump its events add (a dose) to the state
-// the previous row ended with, and an rd[RXG_RD_H] < 0 continues with the
+// the previous row ended with (several doses at one time arrive summed), and
+// an rd[RXG_RD_H] < 0 continues with the
 // step size the previous row ended with.  A row with ri[RXG_RI_SUB] < 0 ends
 // the timeline early (rows reserved but not used), as does a failed row.
 RXG_FN void rxg_timeline1(int i, RXG_GLOBAL const int *off,

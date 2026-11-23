@@ -244,9 +244,10 @@ extern "C" void rxGpuHostBytes(const int *d, int opencl, int threads, double *ou
   out[0] = rows*(2.0*req + sizeof(rxGpuSub) + 2.0*sizeof(int));
   out[1] = opencl ? 0.0 : rows*st;
   // rxGpuSolveWorkers(): two pools with a workspace per slot, each thread's
-  // holding one row of requests and integrator state
+  // holding one row of requests and integrator state; and a timeline's
+  // fallback (a subject solved alone) holds one more per thread while it runs
   out[2] = 2.0*(rows > threads ? rows : (double)threads)*sizeof(rxGpuWork) +
-    2.0*threads*(2.0*req + st);
+    (d[RXG_D_NROW] > 0 ? 3.0 : 2.0)*threads*(2.0*req + st);
   out[3] = d[RXG_D_NROW] > 0 ?
     (double)d[RXG_D_NROW]*req + (rows + 1.0)*sizeof(int) : 0.0;
 }
@@ -643,6 +644,20 @@ static void rxGpuResult(rxGpuSub *s, rxGpuReq &q, int r) {
   s->istate = (st == 2) ? 2 : st;
 }
 
+// One subject solved alone on the host with workspace w (one row)
+static void rxGpuSolveAlone(rx_solve *rx, int solveid, rxGpuWork *w) {
+  rx_solving_options *op = rx->op;
+  rxGpuReq &q = w->q;
+  rxGpuHostState &st = w->st;
+  rxGpuSub s;
+  s.id = solveid;
+  s.st = RXGS_INIT;
+  while (rxGpuAdvance(rx, op, &s, q, 0, 0)) {
+    rxGpuHostOne(q, st, q.y.data(), op->neq, NULL);
+    rxGpuResult(&s, q, 0);
+  }
+}
+
 // One subject solved alone on the host (ind_solve(), eg nlmixr2's
 // per-subject solves)
 extern "C" void ind_gpu(rx_solve *rx, int solveid, t_dydt c_dydt,
@@ -656,16 +671,7 @@ extern "C" void ind_gpu(rx_solve *rx, int solveid, t_dydt c_dydt,
     return;
   }
   rxGpuWork local;
-  rxGpuWork *w = rxGpuOneWorkFor(op, local, rxGpuOneWork);
-  rxGpuReq &q = w->q;
-  rxGpuHostState &st = w->st;
-  rxGpuSub s;
-  s.id = solveid;
-  s.st = RXGS_INIT;
-  while (rxGpuAdvance(rx, op, &s, q, 0, 0)) {
-    rxGpuHostOne(q, st, q.y.data(), op->neq, NULL);
-    rxGpuResult(&s, q, 0);
-  }
+  rxGpuSolveAlone(rx, solveid, rxGpuOneWorkFor(op, local, rxGpuOneWork));
 }
 
 // Batched-solve counters for the benchmarks (.rxGpuSolveStats()): solves,
@@ -845,9 +851,13 @@ static int rxGpuTimelines(rx_solve *rx, rx_solving_options *op, rxGpuWork &w,
         }
       }
       if (!ok) {
-        // its requests differ from the recording: solve it alone on the host
+        // its requests differ from the recording: solve it alone on the host,
+        // in a workspace of its own (the shared ones are per thread, and slot
+        // k may share one with another slot)
         setSeedEng1(seed0 + s->id);
-        ind_gpu(rx, s->id, NULL, NULL);
+        rxGpuWork local;
+        local.ensure(1, true, false);
+        rxGpuSolveAlone(rx, s->id, &local);
       }
       setRxThreadId(-1);
     }

@@ -636,6 +636,28 @@ rxTest({
     expect_equal(.again[["rounds"]], 1)
   })
 
+  test_that("single-precision OpenCL solves in rounds", {
+    skip_if(!("opencl" %in% .backends()), "no OpenCL device with double precision")
+    expect_false(.rxGpuTimelineOn(.tlModel(), "opencl", "float"))
+    expect_true(.rxGpuTimelineOn(.tlModel(), "opencl", "double"))
+  })
+
+  test_that("the timeline memory estimate counts nSub's subjects", {
+    .m <- .tlModel()
+    .ctl <- rxControl(method = "gpuT54", gpuBackend = "cpu", gpuBatch = 100L, cores = 2L)
+    .old <- options(rxode2.gpuTimeline = TRUE)
+    on.exit(options(.old))
+    .a <- rxMemoryEstimate(.tlData(100), model = .m, control = .ctl)
+    .one <- .tlData(1)
+    .b <- rxMemoryEstimate(
+      .one,
+      model = .m,
+      control = rxControl(method = "gpuT54", gpuBackend = "cpu", gpuBatch = 100L, cores = 2L, nSub = 100L)
+    )
+    expect_equal(as.numeric(.b$gpuTimeline), as.numeric(.a$gpuTimeline))
+    expect_equal(as.numeric(.b$gpuHostWork), as.numeric(.a$gpuHostWork))
+  })
+
   test_that("the memory estimate counts the timeline rows", {
     .m <- .tlModel()
     .ev <- .tlData(200)
