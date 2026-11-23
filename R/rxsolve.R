@@ -3589,12 +3589,25 @@ rxSolveCacheEnv$.order <- character()
 #' @author Matthew L. Fidler
 .rxJacStateModel <- function(object) {
   .mvCur <- rxModelVars(object)
+  .origText <- rxNorm(.mvCur)
+  # calcJac drops the d/dt() of rx__sens_* states (calcSens regenerates them),
+  # but a solve integrates them: differentiate them under plain names
+  .sens <- .mvCur$sens
+  .tmp <- paste0("rxJacSensState", seq_along(.sens))
+  .ord <- order(-nchar(.sens))
+  .jacText <- .origText
+  for (.i in .ord) {
+    .jacText <- gsub(.sens[.i], .tmp[.i], .jacText, fixed = TRUE)
+  }
   .mv <- suppressMessages({
-    rxModelVars(rxode2::rxode2(object, calcJac = TRUE))
+    rxModelVars(rxode2::rxode2(.jacText, calcJac = TRUE))
   })
   .states <- .mvCur$state
   .normCode <- strsplit(rxNorm(.mv), "\n")[[1]]
-  .origCode <- strsplit(rxNorm(.mvCur), "\n")[[1]]
+  for (.i in rev(seq_along(.sens))) {
+    .normCode <- gsub(paste0("\\b", .tmp[.i], "\\b"), .sens[.i], .normCode, perl = TRUE)
+  }
+  .origCode <- strsplit(.origText, "\n")[[1]]
   # the Jacobian may read the PK record time (rx_time_pk~t)
   .fc <- c(.origCode, setdiff(grep("^rx_time_pk~", .normCode, value = TRUE), .origCode))
 

@@ -87,4 +87,31 @@ rxTest({
     rxSolve(.m, c(ka = 1, cl = 3, v = 30), et(amt = 300) |> et(1:4), method = "liblsoda")
     expect_equal(.n, 0L)
   })
+
+  test_that("the Jacobian model has a row for every state, rx__sens_* states included", {
+    ## nlmixr2est's FOCEi inner model integrates its eta sensitivities as
+    ## rx__sens_* states; calcJac skips those, which left their rows zero
+    .m <- rxode2({
+      d/dt(a) <- -k * a * a
+      d/dt(rx__sens_a_BY_ETA_1___) <- -2 * k * a * rx__sens_a_BY_ETA_1___
+      d/dt(b) <- -b * a
+    })
+    .j <- .rxJacStateModel(.m)
+    .df <- grep("^df\\(", strsplit(.j$code, "\n")[[1]], value = TRUE)
+    .st <- rxModelVars(.m)$state
+    for (.r in .st) {
+      for (.c in .st) {
+        expect_true(any(startsWith(.df, paste0("df(", .r, ")/dy(", .c, ")="))), label = paste(.r, .c))
+      }
+    }
+    expect_true("df(rx__sens_a_BY_ETA_1___)/dy(a)=-2*k*rx__sens_a_BY_ETA_1___;" %in% .df)
+    expect_true("df(b)/dy(b)=-a;" %in% .df)
+  })
+
+  test_that("calcJac on a model with an rx__sens_* state keeps the states after it", {
+    .m <- rxode2("d/dt(a) = -k*a*a; d/dt(rx__sens_a_BY_ETA_1___) = -2*k*a*rx__sens_a_BY_ETA_1___; d/dt(b) = -b*a",
+      calcJac = TRUE
+    )
+    expect_equal(rxState(.m), c("a", "b"))
+  })
 })

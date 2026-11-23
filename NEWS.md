@@ -305,6 +305,12 @@
   does; a dose without a `cmt` used to fail in the build (#1504).
 - Event-sensitivity setup skips symbolic expansion when no dosing derivative
   needs it, reducing setup time for large sensitivity models (#1632).
+- The analytic Jacobian an implicit method uses now has rows for
+  `rx__sens_*` states, such as the eta sensitivities of nlmixr2's FOCEi
+  inner model; they were left zero, which made `ros54p`/`gpuRos54p` FOCEi
+  fits take tiny steps (about 40 times slower than `liblsoda`).
+  `rxode2(calcJac = TRUE)` also no longer drops the states that follow an
+  `rx__sens_*` state.
 
 ### Expression optimization
 - `rxOptExpr()` avoids CSE temporary-name collisions and warns on repeated
