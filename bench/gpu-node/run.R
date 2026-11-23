@@ -87,16 +87,26 @@ sink()
   message("   exit ", .st, " after ", round(.t), " s")
   .st
 }
+.status <- integer(0)
 if ("solve" %in% .which) {
-  .run("solve", "bench/gpu-solve-julia.R", c(.julia, "1000,10000,100000"))
+  .status["solve"] <- .run("solve", "bench/gpu-solve-julia.R", c(.julia, "1000,10000,100000"))
 }
 if ("runtime" %in% .which) {
-  .run("runtime", "bench/gpu-runtime-julia.R", c(.julia, "1000,10000,100000"))
+  .status["runtime"] <- .run("runtime", "bench/gpu-runtime-julia.R", c(.julia, "1000,10000,100000"))
 }
 if ("poppk" %in% .which) {
-  .run("poppk", "bench/gpu-poppk.R", c("1000,10000,50000", "3"))
+  .status["poppk"] <- .run("poppk", "bench/gpu-poppk.R", c("1000,10000,50000", "3"))
 }
 if ("nlmixr2" %in% .which) {
-  .run("nlmixr2", "bench/gpu-nlmixr2.R", c("500", if (length(.args) >= 4) .args[4] else "saem,focei"))
+  .status["nlmixr2"] <- .run(
+    "nlmixr2",
+    "bench/gpu-nlmixr2.R",
+    c("500", if (length(.args) >= 4) .args[4] else "saem,focei")
+  )
 }
 message("results in ", normalizePath(.out))
+## a failed benchmark fails the job
+if (any(.status != 0L)) {
+  message("failed: ", paste(names(.status)[.status != 0L], collapse = ", "))
+  quit(status = 1L)
+}

@@ -114,4 +114,15 @@ rxTest({
     )
     expect_equal(rxState(.m), c("a", "b"))
   })
+
+  test_that("the Jacobian model's temporary sensitivity names avoid the model's own", {
+    .m <- rxode2({
+      d/dt(a) <- rxJacSensState1
+      d/dt(rx__sens_a_BY_ETA_1___) <- -rx__sens_a_BY_ETA_1___
+    })
+    .j <- .rxJacStateModel(.m)
+    .df <- grep("^df\\(", strsplit(.j$code, "\n")[[1]], value = TRUE)
+    expect_true("df(a)/dy(rx__sens_a_BY_ETA_1___)=0;" %in% .df)
+    expect_true("df(rx__sens_a_BY_ETA_1___)/dy(rx__sens_a_BY_ETA_1___)=-1;" %in% .df)
+  })
 })

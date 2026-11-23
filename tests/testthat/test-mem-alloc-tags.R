@@ -41,7 +41,7 @@
 .rxMemAllocRaw <- paste0(
   "\\b(malloc|calloc|realloc|R_alloc|R_Calloc|R_Realloc|Calloc|Realloc)\\s*\\(",
   "|\\bnew\\s+[A-Za-z_][A-Za-z0-9_:<>]*\\s*\\[",
-  "|createBuffer\\s*\\(",
+  "|[Cc]reateBuffer\\s*\\(",
   "|[.](resize|assign)\\s*\\("
 )
 .rxMemAllocTag <- "rxMem(Malloc|Calloc|Realloc|Ralloc|New|Assign|Resize|Tag)\\(\\s*([A-Za-z_][A-Za-z0-9_]*)"

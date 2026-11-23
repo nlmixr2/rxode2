@@ -199,7 +199,8 @@ extern "C" void rxGpuSolveFreeAll(void) {
 // workspaces of ind_solve() and steady state (gpuSlotWork)
 extern "C" void rxGpuHostBytes(const int *d, int opencl, int threads, double *out) {
   const double rows = (double)d[RXG_D_NSUB];
-  const double req = (3.0*d[RXG_D_NEQ1] + d[RXG_D_RD] + 2.0*d[RXG_D_NPAR1] +
+  // y and ir (doubles) and on (ints) are state wide
+  const double req = (2.0*d[RXG_D_NEQ1] + d[RXG_D_RD] + 2.0*d[RXG_D_NPAR1] +
                       d[RXG_D_NLHS1])*sizeof(double) +
     ((double)d[RXG_D_RI] + d[RXG_D_NEQ1])*sizeof(int);
   const double st = ((double)d[RXG_D_AD] + d[RXG_D_HHDR])*sizeof(double) +
@@ -638,6 +639,8 @@ static struct {
 } rxGpuStats = {0, 0, 0, 0, 0};
 
 extern "C" SEXP _rxode2_rxGpuSolveStats(SEXP reset) {
+  // coerce before allocating: the result is not protected
+  int doReset = Rf_asLogical(reset) == 1;
   SEXP ret = Rf_allocVector(REALSXP, 5);
   double *r = REAL(ret);
   r[0] = rxGpuStats.solves;
@@ -645,7 +648,7 @@ extern "C" SEXP _rxode2_rxGpuSolveStats(SEXP reset) {
   r[2] = rxGpuStats.requests;
   r[3] = rxGpuStats.advance;
   r[4] = rxGpuStats.round;
-  if (Rf_asLogical(reset) == 1) rxGpuStats = {0, 0, 0, 0, 0};
+  if (doReset) rxGpuStats = {0, 0, 0, 0, 0};
   return ret;
 }
 

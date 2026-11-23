@@ -57,6 +57,10 @@ typedef cl_int (RXCL_API *clFinish_t)(void *);
 typedef cl_int (RXCL_API *clGetDeviceInfo_t)(void *, cl_uint, size_t, void *,
                                              size_t *);
 typedef cl_int (RXCL_API *clReleaseEvent_t)(void *);
+typedef cl_int (RXCL_API *clWaitForEvents_t)(cl_uint, void *const *);
+typedef cl_int (RXCL_API *clGetEventInfo_t)(void *, cl_uint, size_t, void *,
+                                            size_t *);
+#define RXCL_EVENT_COMMAND_EXECUTION_STATUS 0x11D3
 
 static struct {
   int loaded;
@@ -69,7 +73,10 @@ static struct {
   clGetKernelInfo_t kernelInfo;
   clFinish_t finish;
   clGetDeviceInfo_t deviceInfo; // optional (the device memory check)
-  clReleaseEvent_t releaseEvent; // optional (the one-wait rounds)
+  // optional (the one-wait rounds)
+  clReleaseEvent_t releaseEvent;
+  clWaitForEvents_t waitEvents;
+  clGetEventInfo_t eventInfo;
 } rxcl = {0};
 
 #ifdef _WIN32
@@ -121,6 +128,8 @@ int rxGpuClLoad(void) {
   rxcl.finish = (clFinish_t)rxclSym(lib, "clFinish");
   rxcl.deviceInfo = (clGetDeviceInfo_t)rxclSym(lib, "clGetDeviceInfo");
   rxcl.releaseEvent = (clReleaseEvent_t)rxclSym(lib, "clReleaseEvent");
+  rxcl.waitEvents = (clWaitForEvents_t)rxclSym(lib, "clWaitForEvents");
+  rxcl.eventInfo = (clGetEventInfo_t)rxclSym(lib, "clGetEventInfo");
   if (rxcl.createBuffer && rxcl.releaseMem && rxcl.write && rxcl.read &&
       rxcl.setArg && rxcl.run && rxcl.kernelInfo && rxcl.finish) {
     rxcl.loaded = 1;
@@ -366,11 +375,26 @@ static int rxGpuClRoundAsync(rxGpuCl *g, int n, size_t *w, const void **in,
   }
   // wait for everything queued, even after an error: the host buffers must
   // not be reused while a transfer still reads or writes them
+  void *all[RXG_B_ON + 5];
+  cl_uint na = 0;
+  for (cl_uint i = 0; i < nev; i++) all[na++] = ev[i];
+  if (evk != NULL) all[na++] = evk;
+  for (cl_uint i = 0; i < nr; i++) all[na++] = evr[i];
   cl_int ef = rxcl.finish(g->queue);
+  if (ef != RXCL_SUCCESS && na > 0) {
+    // the queue-wide wait failed: wait on the commands themselves
+    rxcl.waitEvents(na, all);
+  }
   if (e == RXCL_SUCCESS) e = ef;
-  for (cl_uint i = 0; i < nev; i++) rxcl.releaseEvent(ev[i]);
-  if (evk != NULL) rxcl.releaseEvent(evk);
-  for (cl_uint i = 0; i < nr; i++) rxcl.releaseEvent(evr[i]);
+  // a command can fail after it was queued while the queue still finishes
+  for (cl_uint i = 0; i < na; i++) {
+    cl_int st = RXCL_SUCCESS;
+    if (rxcl.eventInfo(all[i], RXCL_EVENT_COMMAND_EXECUTION_STATUS, sizeof(cl_int),
+                       &st, NULL) == RXCL_SUCCESS && st < 0 && e == RXCL_SUCCESS) {
+      e = st;
+    }
+  }
+  for (cl_uint i = 0; i < na; i++) rxcl.releaseEvent(all[i]);
   return e;
 }
 
@@ -385,7 +409,8 @@ int rxGpuClRound(rxGpuCl *g, int n, double *y, double *rd, int *ri,
   rxGpuClWidths(g, w);
   const void *in[RXG_B_ON + 1] = {y, rd, ri, p0, p1, pl, ir, on};
   // single precision stages every buffer through g->stage, one at a time
-  if (!g->single && rxcl.releaseEvent != NULL) {
+  if (!g->single && rxcl.releaseEvent != NULL && rxcl.waitEvents != NULL &&
+      rxcl.eventInfo != NULL) {
     return rxGpuClRoundAsync(g, n, w, in, y, rd, ri);
   }
   cl_int e = RXCL_SUCCESS;

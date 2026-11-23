@@ -820,13 +820,7 @@ rxGpuInfo <- function() {
   .threads <- as.integer(max(1L, min(.threads, getRxThreads())))
   .batch <- as.integer(max(1L, min(ctl$gpuBatch, nsolve)))
   if (is.null(backend)) {
-    backend <- ctl$gpuBackend
-    if (backend == "auto") {
-      backend <- match.arg(getOption("rxode2.gpuBackend", "auto"), c("auto", "opencl", "cpu"))
-    }
-    if (backend == "auto") {
-      backend <- if (isTRUE(rxGpuInfo()$available)) "opencl" else "cpu"
-    }
+    backend <- .rxGpuPickBackend(ctl, strict = FALSE)
   }
   .obj <- .rxGpuMethodModel(object, .meth)
   .lib <- .rxGpuHostLib(
@@ -850,6 +844,42 @@ rxGpuInfo <- function() {
   attr(.ret, "batch") <- .batch
   attr(.ret, "threads") <- .threads
   .ret
+}
+
+#' The backend a GPU solve runs on
+#'
+#' `"auto"` (or `options(rxode2.gpuBackend=)`) is OpenCL when a device with the
+#' requested precision exists, and the CPU build otherwise.
+#'
+#' @param ctl rxControl list
+#' @param strict stop when `"opencl"` was asked for and no device fits
+#' @return `"opencl"` or `"cpu"`
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuPickBackend <- function(ctl, strict = TRUE) {
+  .backend <- ctl$gpuBackend
+  if (.backend == "auto") {
+    ## options(rxode2.gpuBackend = "cpu") pins what "auto" picks
+    .backend <- match.arg(getOption("rxode2.gpuBackend", "auto"), c("auto", "opencl", "cpu"))
+  }
+  if (.backend == "cpu") {
+    return("cpu")
+  }
+  .avail <- rxGpuInfo()
+  .fp <- .avail$devices$fp64
+  if (!is.null(ctl$gpuDevice)) {
+    .fp <- .fp[.avail$devices$index == ctl$gpuDevice]
+  }
+  .ok <- isTRUE(.avail$available) &&
+    length(.fp) > 0L &&
+    (ctl$gpuPrecision == "float" || any(.fp))
+  if (.ok) {
+    return("opencl")
+  }
+  if (strict && .backend == "opencl") {
+    stop("no OpenCL device with ", ctl$gpuPrecision, " precision is available (see rxGpuInfo())", call. = FALSE)
+  }
+  "cpu"
 }
 
 #' Stop when a GPU solve's buffers do not fit on the device
@@ -1229,30 +1259,8 @@ rxGpuInfo <- function() {
   ## rxode2's thread count
   .threads <- as.integer(max(1L, min(.threads, getRxThreads())))
   .batch <- as.integer(max(1L, min(ctl$gpuBatch, nsolve)))
-  .backend <- ctl$gpuBackend
-  if (.backend == "auto") {
-    ## options(rxode2.gpuBackend = "cpu") pins what "auto" picks
-    .backend <- match.arg(getOption("rxode2.gpuBackend", "auto"), c("auto", "opencl", "cpu"))
-  }
   .dev <- ctl$gpuDevice
-  if (.backend != "cpu") {
-    .avail <- rxGpuInfo()
-    .fp <- .avail$devices$fp64
-    if (!is.null(.dev)) {
-      .fp <- .fp[.avail$devices$index == .dev]
-    }
-    .ok <- .avail$available &&
-      length(.fp) > 0L &&
-      (ctl$gpuPrecision == "float" || any(.fp))
-    if (!.ok) {
-      if (.backend == "opencl") {
-        stop("no OpenCL device with ", ctl$gpuPrecision, " precision is available (see rxGpuInfo())", call. = FALSE)
-      }
-      .backend <- "cpu"
-    } else {
-      .backend <- "opencl"
-    }
-  }
+  .backend <- .rxGpuPickBackend(ctl, strict = TRUE)
   .hmax <- ctl$hmax
   if (is.null(.hmax) || all(is.na(.hmax))) {
     .hmax <- 0

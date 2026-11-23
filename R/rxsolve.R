@@ -3593,7 +3593,12 @@ rxSolveCacheEnv$.order <- character()
   # calcJac drops the d/dt() of rx__sens_* states (calcSens regenerates them),
   # but a solve integrates them: differentiate them under plain names
   .sens <- .mvCur$sens
-  .tmp <- paste0("rxJacSensState", seq_along(.sens))
+  # temporary names that occur nowhere in the model
+  .base <- "rxJacSensState"
+  while (length(.sens) > 0L && grepl(.base, .origText, fixed = TRUE)) {
+    .base <- paste0(.base, "X")
+  }
+  .tmp <- paste0(.base, seq_along(.sens))
   .ord <- order(-nchar(.sens))
   .jacText <- .origText
   for (.i in .ord) {
