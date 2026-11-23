@@ -6,7 +6,8 @@
   time-varying covariate is now kept in each model's solve buffer
   (`ind->solve`), like the sensitivities: the model has one carry state per
   (compartment, carried pair) it uses, added after the `linCmt()`
-  sensitivities and left out of the ODE integration.  The carry is no longer
+  sensitivities, left out of the ODE integration and not shown as output
+  columns.  The carry is no longer
   capped at 8 pairs, so an IOV model whose occasion etas each need one can
   be carried, and a model without the carry stores nothing for it
   (`linCmtCarryMaxPairs()` reports no cap).  rxode2 now needs rxode2lincmt

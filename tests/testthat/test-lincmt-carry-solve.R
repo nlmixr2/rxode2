@@ -47,6 +47,10 @@ rxTest({
     m0 <- suppressWarnings(rxode2(paste0("cp=linCmtB(", sprintf(base, -1L, -1L), ")")))
     s0 <- rxSolve(m0, et(amt = 100) |> et(c(1, 2, 3.5)), returnType = "data.frame")
     expect_equal(s$cp, s0$cp)
+    # the carry states are not output columns
+    expect_false(any(startsWith(names(s), "rx__carry_")))
+    mv <- rxModelVars(mkCarry(40L))
+    expect_true(all(mv$state.ignore[startsWith(mv$state, "rx__carry_")] == 1L))
   })
 
   test_that("a second solve starts the carry from zero", {
