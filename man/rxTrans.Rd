@@ -31,6 +31,7 @@ rxTrans(
   modName = NULL,
   modVars = FALSE,
   eventSensKey = .rxState$eventSensCacheKey,
+  fullOptKey = .rxFullOptKey(),
   ...
 )
 }
@@ -78,6 +79,9 @@ legacy \code{"fd"} path keeps existing caches valid.  It is a formal
 argument (rather than read from the global in the body) because
 \code{rxTrans.character} is memoised and \code{memoise} keys on
 default-valued formals, so the cache distinguishes the modes.}
+
+\item{fullOptKey}{\code{rxode2.fullOpt} level key folded into the parsed md5
+("" at "none"); a formal for the same memoise reason as \code{eventSensKey}.}
 }
 \value{
 a named vector of translated model properties

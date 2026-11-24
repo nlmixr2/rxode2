@@ -13,6 +13,12 @@
   (`linCmtCarryMaxPairs()` reports no cap).  rxode2 now needs rxode2lincmt
   0.1.1.9000.  A state saved by `rxSaveState()` from an older build is
   refused by `rxLoadState()`, as for any change of the solver structs.
+- Each generated C function now evaluates only the model statements its
+  outputs depend on: the ODE right-hand side skips calculated variables
+  nothing integrates, the calculated-variable function skips the
+  sensitivity right-hand sides it never reads, and `f()`/`alag()`/`rate()`/
+  `dur()` evaluate only their own inputs.  Results are unchanged;
+  `options(rxode2.fullOpt = "none")` restores the previous code generation.
 - The model language has `clamp(x, lo, hi)`, the same as
   `min(max(x, lo), hi)` (and differentiated the same way); a call with
   other than three arguments, or with literal bounds `lo > hi`, is a parse

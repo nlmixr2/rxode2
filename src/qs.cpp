@@ -25,6 +25,11 @@ extern "C" SEXP getRxode2ParseDfBuiltin(void) {
   return getTran();
 }
 
+extern "C" SEXP getRxode2FullOpt(void) {
+  Rcpp::Function getInfo = Rcpp::as<Rcpp::Function>(getRxFn(".rxFullOptInfo"));
+  return getInfo();
+}
+
 extern "C" SEXP getRxode2ParseGetPointerAssignment(void) {
   Rcpp::Function getPtr = Rcpp::as<Rcpp::Function>(getRxFn("rxode2parseGetPointerAssignment"));
   return getPtr();
