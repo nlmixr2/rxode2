@@ -712,4 +712,41 @@ rxTest({
     expect_error(..rxOptLhs(quote(foo(bar, baz))), "foo(bar, baz)", fixed = TRUE)
     expect_output(try(..rxOptLhs(quote(foo(bar, baz))), silent = TRUE), NA)
   })
+  test_that("random draws and user functions are never shared (#1783)", {
+    .m <- paste(
+      "a <- rxnorm() + rxnorm()",
+      "c <- rnorm() + rnorm() + rxnorm(k) + rxnorm(k)",
+      "f <- (k + runif(1)) * 2 + (k + runif(1)) * 3",
+      "e <- exp(k) + exp(k)",
+      "d/dt(x) <- -k*x",
+      sep = "\n"
+    )
+    myf1783 <- function(x) x * 2
+    assign("myf1783", myf1783, envir = globalenv())
+    on.exit(rm("myf1783", envir = globalenv()), add = TRUE)
+    .u <- "b <- myf1783(k) + myf1783(k) + exp(k)*exp(k)\nd/dt(x) <- -k*x"
+    for (.c in c(TRUE, FALSE)) {
+      withr::with_options(list(rxode2.optExprC = .c), {
+        .o <- suppressMessages(rxOptExpr(.m, chunkLines = 0L))
+        expect_false(grepl("~(rxnorm|rnorm|runif)\\(", .o))
+        expect_false(grepl("~k\\+runif", .o))
+        expect_true(grepl("a=rxnorm()+rxnorm()", .o, fixed = TRUE))
+        expect_true(grepl("~exp(k)", .o, fixed = TRUE))
+        .o <- suppressMessages(rxOptExpr(.u, chunkLines = 0L))
+        expect_true(grepl("b=myf1783(k)+myf1783(k)+", .o, fixed = TRUE))
+        expect_true(grepl("~exp(k)", .o, fixed = TRUE))
+      })
+    }
+    .o <- suppressMessages(rxOptExpr("a <- rxnorm() + rxnorm()\nd/dt(x) <- -k*x"))
+    set.seed(1)
+    .s0 <- rxSolve(
+      rxode2("a <- rxnorm() + rxnorm()\nd/dt(x) <- -k*x"),
+      et(0:2000),
+      c(k = 0.1),
+      returnType = "data.frame"
+    )
+    set.seed(1)
+    .s1 <- rxSolve(rxode2(.o), et(0:2000), c(k = 0.1), returnType = "data.frame")
+    expect_equal(.s0$a, .s1$a)
+  })
 })
