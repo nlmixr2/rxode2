@@ -2433,24 +2433,32 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
       # -2 parses as `-`(2)
       .v <- tryCatch(eval(.v, baseenv()), error = function(e) NA)
     }
-    if (length(.v) != 1L) return(NA_real_)
+    if (length(.v) != 1L) {
+      return(NA_real_)
+    }
     suppressWarnings(as.numeric(.v))
   }
   .nc <- .num(5)
   .oral0 <- .num(6)
   .w1 <- .num(7)
   .w2 <- .num(8)
-  if (anyNA(c(.nc, .oral0, .w1, .w2)) || .w2 != -2) return(NULL)
+  if (anyNA(c(.nc, .oral0, .w1, .w2)) || .w2 != -2) {
+    return(NULL)
+  }
   .m <- .nc + .oral0
   .n <- 2 * .nc + .oral0
-  if (.w1 < .m) return(NULL)
+  if (.w1 < .m) {
+    return(NULL)
+  }
   .j <- .w1 - .m
   .slots <- c(c("p1", "v1", "p2", "p3", "p4", "p5")[seq_len(2 * .nc)], if (.oral0 == 1) "ka")
   if (.j < .nc * .n) {
     .row <- .rxLinCmtBrowName(.oral0 + .j %/% .n, .oral0)
     return(paste0("rx__sens_", .row, "_BY_", .slots[.j %% .n + 1]))
   }
-  if (.oral0 == 1 && .j == .nc * .n) return("rx__sens_depot_BY_ka")
+  if (.oral0 == 1 && .j == .nc * .n) {
+    return("rx__sens_depot_BY_ka")
+  }
   NULL
 }
 
@@ -2464,14 +2472,18 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
   args <- unlist(args)
   .nc <- as.numeric(args[4])
   .oral0 <- as.numeric(args[5])
-  if (is.na(.nc) || is.na(.oral0)) return(txt)
+  if (is.na(.nc) || is.na(.oral0)) {
+    return(txt)
+  }
   .amt <- c(if (.oral0 == 1) "depot", "central", "peripheral1", "peripheral2")[seq_len(.nc + .oral0)]
   .slots <- c(c("p1", "v1", "p2", "p3", "p4", "p5")[seq_len(2 * .nc)], if (.oral0 == 1) "ka")
   .names <- .amt
   for (.r in .amt[.amt != "depot"]) {
     .names <- c(.names, paste0("rx__sens_", .r, "_BY_", .slots))
   }
-  if (.oral0 == 1) .names <- c(.names, "rx__sens_depot_BY_ka")
+  if (.oral0 == 1) {
+    .names <- c(.names, "rx__sens_depot_BY_ka")
+  }
   .read <- function(.k) {
     .a <- args
     .a[6] <- paste(.k)
