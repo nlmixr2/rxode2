@@ -81,8 +81,9 @@ static inline int rxgIsStateIdentifier(char *value) {
 }
 
 // Identifiers whose C reads solver state make the model not GPU safe
-static inline void rxgNoteIdentifier(char *value) {
+static inline void rxgNoteIdentifier(const char *name, char *value) {
   if (tb.gpu == 0) return;
+  if (strcmp(name, "identifier") && strcmp(name, "identifier_r")) return;
   if (rxgIsStateIdentifier(value)) tb.gpu = 0;
 }
 
@@ -90,7 +91,7 @@ void wprint_node(int depth, char *name, char *value, void *client_data) {
   (void)depth; (void)client_data;
   nodeInfo ni;
   niReset(&ni);
-  if (nodeHas(identifier) || nodeHas(identifier_r)) rxgNoteIdentifier(value);
+  rxgNoteIdentifier(name, value);
   if (wprintSpecialValue(value)) return;
   if (nodeHas(identifier)) {
     if (wprintSpecialFun(value)) return;

@@ -205,6 +205,101 @@ static int *_pkLine = NULL;
 static int _rxgDev = 0;
 static sbuf _rxgHdr;
 
+// Device code: opens rxg_dydt()/rxg_jac(); 1 when it did
+static int rxgDevOpen(int show_ode) {
+  if (!_rxgDev) return 0;
+  if (show_ode == ode_dydt) {
+    sAppend(&sbOut, "RXG_FN void rxg_dydt(double __t, double *__zzStateVar__, double *__DDtStateVar__, const rxg_ctx *_rxg)\n{\n  int _itwhile = 0;\n  (void)_itwhile;\n  int _cSub = 0;\n  (void)_cSub;\n  double t = __t + _rxg->curShift;\n  (void)t;\n");
+    return 1;
+  }
+  if (show_ode == ode_jac) {
+    sAppend(&sbOut, "RXG_FN void rxg_jac(double __t, double *__zzStateVar__, double *__PDStateVar__, int __NROWPD__, const rxg_ctx *_rxg)\n{\n  int _itwhile = 0;\n  (void)_itwhile;\n  int _cSub = 0;\n  (void)_cSub;\n  double t = __t + _rxg->curShift;\n  (void)t;\n  (void)__PDStateVar__;\n  (void)__NROWPD__;\n");
+    return 1;
+  }
+  return 0;
+}
+
+// Device code: closes rxg_dydt()/rxg_jac(); 1 when it did
+static int rxgDevClose(int show_ode) {
+  if (!_rxgDev) return 0;
+  if (show_ode != ode_dydt && show_ode != ode_jac) return 0;
+  sAppendN(&sbOut,  "}\n\n", 3);
+  return 1;
+}
+
+// Device code: the transform-both-sides values; the model may assign them,
+// so per-call copies seeded from the context
+static void rxgDevTbs(void) {
+  if (!_rxgDev) return;
+  sAppend(&sbOut, "  double _rxgLambda = _rxg->lambda, _rxgYj = _rxg->yj, _rxgHi = _rxg->logitHi, _rxgLow = _rxg->logitLow;\n");
+  sAppend(&sbOut, "  (void)_rxgLambda; (void)_rxgYj; (void)_rxgHi; (void)_rxgLow;\n");
+}
+
+// Device code skips lines that read host solver state or print
+static int rxgDevSkipLine(int lType) {
+  if (!_rxgDev) return 0;
+  switch (lType) {
+  case TLIN:
+  case TMTIME:
+  case TEVID:
+  case PPRN:
+    return 1;
+  default:
+    return 0;
+  }
+}
+
+// The parameter update at the top of each generated function
+static void writeUpdateParPtr(int show_ode) {
+  if (_rxgDev) {
+    sAppend(&sbOut, "  double _rxgPP[RXG_NPAR1];\n  const double *_PP = rxg_par(_rxg, __t, _rxgPP);\n  (void)_PP;\n");
+    return;
+  }
+  if (ode_is_es_dcode(show_ode)) show_ode = ode_lag;
+  switch (show_ode) {
+  case ode_ini:
+    sAppendN(&sbOut, "  _update_par_ptr(0.0, _cSub, _solveData, _idx);\n", 49);
+    break;
+  case ode_lag:
+  case ode_rate:
+  case ode_dur:
+  case ode_mtime:
+  case ode_past:
+    // functional lag, rate, duration, mtime, past-history, event-sensitivity dLag/dF
+    sAppendN(&sbOut, "  _update_par_ptr(NA_REAL, _cSub, _solveData, _idx);\n", 53);
+    break;
+  case ode_indLinVec:
+  case ode_mexp:
+    sAppendN(&sbOut, "  _update_par_ptr(_t, _cSub, _solveData, _idx);\n", 48);
+    break;
+  default:
+    sAppendN(&sbOut, "  _update_par_ptr(__t, _cSub, _solveData, _idx);\n", 49);
+  }
+}
+
+// _tPK: the time PK-type statements read (pkTime.h); only the functions
+// the integrator calls between records read the record time
+static void writePkTime(int show_ode) {
+  _pkLine = NULL;
+  switch (show_ode) {
+  case ode_dydt:
+  case ode_jac:
+  case ode_mexp:
+  case ode_indLinVec:
+    break;
+  default:
+    return;
+  }
+  int *pkLine = (int*)R_alloc(sbPm.n > 0 ? sbPm.n : 1, sizeof(int));
+  if (pkTimeClassify(pkLine) <= 0) return;
+  _pkLine = pkLine;
+  if (_rxgDev) {
+    sAppend(&sbOut, "  double _tPK = (_rxg->nonmem ? _rxg->tpk : t);\n  (void)_tPK;\n");
+  } else {
+    sAppend(&sbOut, "  double _tPK = _rxPkTime(t, _cSub, _solveData);\n  (void)_tPK;\n");
+  }
+}
+
 static inline void appendModelLine(int i, const char *line) {
   if (_pkLine != NULL && _pkLine[i]) {
     sAppendN(&sbOut, "  ", 2);
@@ -301,10 +396,8 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
   } else {
     int i, j;
     char *buf;
-    if (show_ode == ode_dydt && _rxgDev) {
-      sAppend(&sbOut, "RXG_FN void rxg_dydt(double __t, double *__zzStateVar__, double *__DDtStateVar__, const rxg_ctx *_rxg)\n{\n  int _itwhile = 0;\n  (void)_itwhile;\n  int _cSub = 0;\n  (void)_cSub;\n  double t = __t + _rxg->curShift;\n  (void)t;\n");
-    } else if (show_ode == ode_jac && _rxgDev) {
-      sAppend(&sbOut, "RXG_FN void rxg_jac(double __t, double *__zzStateVar__, double *__PDStateVar__, int __NROWPD__, const rxg_ctx *_rxg)\n{\n  int _itwhile = 0;\n  (void)_itwhile;\n  int _cSub = 0;\n  (void)_cSub;\n  double t = __t + _rxg->curShift;\n  (void)t;\n  (void)__PDStateVar__;\n  (void)__NROWPD__;\n");
+    if (rxgDevOpen(show_ode)) {
+      // device code: rxg_dydt()/rxg_jac() have no host header
     } else if (show_ode == ode_dydt){
       const char *extra = "";
       if (strncmp("rx_", libname, 3) != 0) extra = libname;
@@ -607,39 +700,10 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
         }
       }
 
-      if (_rxgDev) {
-        // the transform-both-sides values: the model may assign them, so
-        // per-call copies seeded from the context
-        sAppend(&sbOut, "  double _rxgLambda = _rxg->lambda, _rxgYj = _rxg->yj, _rxgHi = _rxg->logitHi, _rxgLow = _rxg->logitLow;\n");
-        sAppend(&sbOut, "  (void)_rxgLambda; (void)_rxgYj; (void)_rxgHi; (void)_rxgLow;\n");
-      }
+      rxgDevTbs();
       prnt_vars(print_lastLhsValue, 0,"","\n", 12);
-      if (_rxgDev) {
-        sAppend(&sbOut, "  double _rxgPP[RXG_NPAR1];\n  const double *_PP = rxg_par(_rxg, __t, _rxgPP);\n  (void)_PP;\n");
-      } else if (show_ode == ode_ini){
-        sAppendN(&sbOut, "  _update_par_ptr(0.0, _cSub, _solveData, _idx);\n", 49);
-      } else if (show_ode == ode_lag || show_ode == ode_rate || show_ode == ode_dur ||
-                 show_ode == ode_mtime || show_ode == ode_past || ode_is_es_dcode(show_ode)){
-        // functional lag, rate, duration, mtime, past-history, event-sensitivity dLag/dF
-        sAppendN(&sbOut, "  _update_par_ptr(NA_REAL, _cSub, _solveData, _idx);\n", 53);
-      } else if (show_ode == ode_indLinVec || show_ode == ode_mexp){
-        sAppendN(&sbOut, "  _update_par_ptr(_t, _cSub, _solveData, _idx);\n", 48);
-      } else {
-        sAppendN(&sbOut, "  _update_par_ptr(__t, _cSub, _solveData, _idx);\n", 49);
-      }
-      // _tPK: the time PK-type statements read (pkTime.h); only the functions
-      // the integrator calls between records read the record time
-      _pkLine = NULL;
-      if (show_ode == ode_dydt || show_ode == ode_jac ||
-          show_ode == ode_mexp || show_ode == ode_indLinVec) {
-        int *pkLine = (int*)R_alloc(sbPm.n > 0 ? sbPm.n : 1, sizeof(int));
-        if (pkTimeClassify(pkLine) > 0) _pkLine = pkLine;
-        if (_pkLine != NULL && _rxgDev) {
-          sAppend(&sbOut, "  double _tPK = (_rxg->nonmem ? _rxg->tpk : t);\n  (void)_tPK;\n");
-        } else if (_pkLine != NULL) {
-          sAppend(&sbOut, "  double _tPK = _rxPkTime(t, _cSub, _solveData);\n  (void)_tPK;\n");
-        }
-      }
+      writeUpdateParPtr(show_ode);
+      writePkTime(show_ode);
       prnt_vars(print_populateParameters, 1, "", "\n",show_ode);                   /* pass system pars */
       if (show_ode != ode_past){
         // past() history is a function of t and parameters only (no states); its
@@ -680,9 +744,9 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
         if (ode_is_es_dcode(show_ode)) break;
         // a statement this function's outputs do not depend on (codegenSlice.h)
         if (_cslKeep != NULL && !_cslKeep[i]) continue;
+        if (rxgDevSkipLine(sbPm.lType[i])) continue;
         switch(sbPm.lType[i]){
         case TLIN:
-          if (_rxgDev) break;
           // Same routing as TASSIGN -- a linCmt()-bearing assignment is still an
           // assignment -- except that linCmt() cannot be evaluated from the
           // F/alag/rate/dur/past functions.  `tb.isMexp` is what lets a matExp()
@@ -698,7 +762,6 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
           }
           break;
         case TMTIME:
-          if (_rxgDev) break;
           if (show_ode != ode_mexp && show_ode != ode_indLinVec){
             // For ode_mtime (calc_mtime): use the primal equation (sbPm) to evaluate
             // the mtime expression using the provided __zzStateVar__ state vector.
@@ -709,7 +772,6 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
           }
           break;
         case TEVID:
-          if (_rxgDev) break;
           /* evid_() calls emit code in dydt and lhs, guarded by _wasAtEventTime */
           if (show_ode == ode_dydt || show_ode == ode_lhs) {
             sAppend(&sbOut, "  if (_wasAtEventTime) { %s }\n", sbPm.line[i]);
@@ -772,8 +834,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
           }
           break;
         case PPRN:
-          // Rprintf; device code has no console
-          if (_rxgDev) break;
+          // Rprintf
           if ((fullPrint && show_ode != ode_mexp && show_ode != ode_indLinVec) || (!fullPrint && show_ode == 1)) {
             sAppend(&sbOut, "  %s", show_ode == ode_dydt ? sbPm.line[i] : sbPmDt.line[i]);
           }
@@ -907,8 +968,8 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
         break;
       }
     }
-    if (_rxgDev && (show_ode == ode_dydt || show_ode == ode_jac)) {
-      sAppendN(&sbOut,  "}\n\n", 3);
+    if (rxgDevClose(show_ode)) {
+      // device code: rxg_dydt()/rxg_jac() are closed
     } else if (show_ode == ode_dydt){
       sAppendN(&sbOut,  "  if (_rxDydtForceCb != NULL) _rxDydtForceCb(_neq, __t, __zzStateVar__, __DDtStateVar__);\n", 90);
       sAppendN(&sbOut,  "  (&_solveData->subjects[_cSub])->dadt_counter[0]++;\n}\n\n", 56);
