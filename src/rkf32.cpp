@@ -47,7 +47,7 @@ extern "C" void ind_rkf32_0(rx_solve *rx, rx_solving_options *op, int solveid, i
   double xp = getAllTimes(ind, 0);
   ind->solvedIdx = 0;
 
-  int neqOde = op->neq - op->numLin - op->numLinSens;
+  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
   RxRkf32 *solver = NULL;
   if (neqOde > 0) {
     solver = new RxRkf32(c_dydt, neq, neqOde, ind, getSolve(0), (long unsigned)op->mxstep);
@@ -207,7 +207,7 @@ extern "C" void rkf32_solveWith1Pt(int *neq, double *yp, double *xp, double xout
                                      int *istate, rx_solving_options *op,
                                      rx_solving_options_ind *ind) {
   int eff = rxEffNeq(ind, op);
-  int neqOde = eff - op->numLin - op->numLinSens;
+  int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
 
     if (neqOde > 0) {
     RxRkf32 solver(dydt, neq, neqOde, ind, yp, (long unsigned)op->mxstep);

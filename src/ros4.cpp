@@ -37,7 +37,7 @@ extern "C" void ind_ros4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   double xp = getAllTimes(ind, 0);
   ind->solvedIdx = 0;
 
-  int neqOde = op->neq - op->numLin - op->numLinSens;
+  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
 
   typedef boost::numeric::ublas::vector<double> state_type;
   typedef boost::numeric::ublas::matrix<double> matrix_type;
@@ -281,7 +281,7 @@ extern "C" void par_ros4(rx_solve *rx){
 
 extern "C" void ros4_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind) {
   int eff = rxEffNeq(ind, op);
-  int neqOde = eff - op->numLin - op->numLinSens;
+  int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
 
   
 
@@ -329,7 +329,7 @@ int rxRos4DenseSegment(rx_solve *rx, rx_solving_options *op, rx_solving_options_
                        int obs_first, int obs_last, int solveid) {
   (void) rx;
   int eff = rxEffNeq(ind, op);
-  int neqOde = eff - op->numLin - op->numLinSens;
+  int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
   if (neqOde <= 0) { return 1; }
   double maxdt = rxDelayCapHmax(ind);
   if (maxdt < 0.0) maxdt = 0.0;

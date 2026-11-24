@@ -44,7 +44,7 @@ extern "C" void ind_vern98_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   double xp = getAllTimes(ind, 0);
   ind->solvedIdx = 0;
 
-  int neqOde = op->neq - op->numLin - op->numLinSens;
+  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
   RxVern98 *solver = NULL;
   if (neqOde > 0) {
     solver = new RxVern98(c_dydt, neq, neqOde, ind, getSolve(0), (long unsigned)op->mxstep);
@@ -191,7 +191,7 @@ extern "C" void vern98_solveWith1Pt(int *neq, double *yp, double *xp, double xou
                                       int *istate, rx_solving_options *op,
                                       rx_solving_options_ind *ind) {
   int eff = rxEffNeq(ind, op);
-  int neqOde = eff - op->numLin - op->numLinSens;
+  int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
     if (neqOde > 0) {
     RxVern98 solver(dydt, neq, neqOde, ind, yp, (long unsigned)op->mxstep);
     solver.set_quiet(true);
