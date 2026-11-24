@@ -223,6 +223,43 @@ rxTest({
     }
   })
 
+  test_that("addlCovAtTime: an addl repeat reads a record at its own time, or only the records before it", {
+    # a record at 12 (X = 6), the time of the first repeat; the repeat has no
+    # value of its own and is sorted before that record
+    d <- .addlParentEv(0, c(8, 12, 14, 20, 40), 1, c(2, 6, 4, 5, 8))
+    dt <- c(0, 12, 24, 36)
+    # TRUE: the value in effect at 12 (X = 6); FALSE: the record at 8 (X = 2)
+    xs <- list(`TRUE` = c(1, 6, 5, 5), `FALSE` = c(1, 2, 5, 5))
+    for (at in c(TRUE, FALSE)) {
+      x <- xs[[as.character(at)]]
+      for (interp in c("locf", "linear")) {
+        for (nm in c("lag", "f")) {
+          s <- rxSolve(
+            .addlParentMods[[nm]],
+            d,
+            addlKeepsCov = FALSE,
+            addlCovAtTime = at,
+            covsInterpolation = interp,
+            atol = 1e-12,
+            rtol = 1e-12,
+            returnType = "data.frame"
+          )
+          e <- .addlParentPred(
+            s$time,
+            dt,
+            if (nm == "lag") rep(1, 4) else 1 / x,
+            if (nm == "f") rep(0, 4) else 0.1 * x
+          )
+          expect_equal(s$pred, e, tolerance = 1e-7, label = paste(at, interp, nm))
+        }
+      }
+    }
+    expect_true(rxControl()$addlCovAtTime)
+    expect_false(rxControl(nonmem = TRUE)$addlCovAtTime)
+    expect_true(rxControl(nonmem = TRUE, addlCovAtTime = TRUE)$addlCovAtTime)
+    expect_error(rxControl(addlCovAtTime = NA))
+  })
+
   test_that("the event sensitivities of an addl repeat's alag() read the record its alag() reads", {
     mod <- "
       ka <- 1
