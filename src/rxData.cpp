@@ -3804,6 +3804,39 @@ static inline void rxEv1UpdateRxEt(const RObject &obj, const List &rxControl,
   }
 }
 
+// Each hom group's first translated row and row count (-1/0 when it has none)
+static inline void rxEv1HomGroupRows(const IntegerVector &idKeep, int nHomGroups,
+                                     std::vector<int> &rowStart,
+                                     std::vector<int> &rowLen) {
+  for (int _i = 0; _i < idKeep.size(); ++_i) {
+    int rid = idKeep[_i];
+    if (rid < 1 || rid > nHomGroups) continue;
+    int gi = rid - 1;
+    if (rowStart[gi] == -1) rowStart[gi] = _i;
+    rowLen[gi]++;
+  }
+}
+
+// One keep vector with each group's rows repeated once per real id
+static inline NumericVector rxEv1ExpandKeepOne(const NumericVector &cur, int expandedRows,
+                                               const List &homGroups0,
+                                               const std::vector<int> &rowStart,
+                                               const std::vector<int> &rowLen) {
+  NumericVector out(expandedRows, NA_REAL);
+  int at = 0;
+  for (int gi = 0; gi < homGroups0.size(); ++gi) {
+    if (rowStart[gi] == -1 || rowLen[gi] == 0) continue;
+    int reps = Rf_length(homGroups0[gi]);
+    for (int rep = 0; rep < reps; ++rep) {
+      std::copy(cur.begin() + rowStart[gi],
+                cur.begin() + rowStart[gi] + rowLen[gi],
+                out.begin() + at);
+      at += rowLen[gi];
+    }
+  }
+  return out;
+}
+
 // Homogeneous/grouped event tables share representative translated rows across
 // multiple real IDs; keep vectors must be expanded to match per-subject output order.
 static inline void rxEv1ExpandKeepHomGroups(const RObject &ev1) {
@@ -3816,14 +3849,7 @@ static inline void rxEv1ExpandKeepHomGroups(const RObject &ev1) {
   int nHomGroups = homGroups0.size();
   std::vector<int> rowStart(nHomGroups, -1);
   std::vector<int> rowLen(nHomGroups, 0);
-  for (int _i = 0; _i < nRowsKeep; ++_i) {
-    int rid = idKeep[_i];
-    if (rid >= 1 && rid <= nHomGroups) {
-      int gi = rid - 1;
-      if (rowStart[gi] == -1) rowStart[gi] = _i;
-      rowLen[gi]++;
-    }
-  }
+  rxEv1HomGroupRows(idKeep, nHomGroups, rowStart, rowLen);
   int expandedRows = 0;
   for (int gi = 0; gi < nHomGroups; ++gi) {
     if (rowStart[gi] == -1 || rowLen[gi] == 0) continue;
@@ -3833,19 +3859,7 @@ static inline void rxEv1ExpandKeepHomGroups(const RObject &ev1) {
   for (int _k = 0; _k < keepFcov.size(); ++_k) {
     NumericVector cur = as<NumericVector>(keepFcov[_k]);
     if (cur.size() != nRowsKeep) continue;
-    NumericVector out(expandedRows, NA_REAL);
-    int at = 0;
-    for (int gi = 0; gi < nHomGroups; ++gi) {
-      if (rowStart[gi] == -1 || rowLen[gi] == 0) continue;
-      int reps = Rf_length(homGroups0[gi]);
-      for (int rep = 0; rep < reps; ++rep) {
-        std::copy(cur.begin() + rowStart[gi],
-                  cur.begin() + rowStart[gi] + rowLen[gi],
-                  out.begin() + at);
-        at += rowLen[gi];
-      }
-    }
-    keepFcov[_k] = out;
+    keepFcov[_k] = rxEv1ExpandKeepOne(cur, expandedRows, homGroups0, rowStart, rowLen);
   }
 }
 
