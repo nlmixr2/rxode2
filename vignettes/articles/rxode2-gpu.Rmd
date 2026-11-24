@@ -174,17 +174,20 @@ Timings, 8 threads, seconds):
 
 | method | backend | SAEM | FOCEi |
 |---|---|---:|---:|
-| `liblsoda` | host | 339 | 8.2 |
-| `t54` | host | 678 | 5.7 |
-| `"t54+ros54p"` | host | 678 | 9.4 |
-| `gpuT54` | CPU build | 196 | 7.2 |
-| `"gpuT54+gpuRos54p"` | CPU build | 192 | 2.7 |
-| `gpuT54` | OpenCL | 300 | 5.6 |
-| `"gpuT54+gpuRos54p"` | OpenCL | 308 | 6.5 |
+| `liblsoda` | host | 183 | 10.8 |
+| `t54` | host | 175 | 2.9 |
+| `ros54p` | host | 276 | 9.6 |
+| `"t54+ros54p"` | host | 185 | 2.9 |
+| `gpuT54` | CPU build | 191 | 4.6 |
+| `gpuRos54p` | CPU build | 201 | 4.5 |
+| `"gpuT54+gpuRos54p"` | CPU build | 186 | 4.6 |
+| `gpuT54` | OpenCL | 294 | 3.9 |
+| `"gpuT54+gpuRos54p"` | OpenCL | 294 | 16.6 |
 
 - SAEM solves every subject's three chains together, so the GPU methods
-  integrate about 1500 subjects per round; their CPU build fits 1.7 times
-  faster than `liblsoda`, with the same objective function.
+  integrate about 1500 subjects per round.  Their CPU build fits in about
+  the time of the host methods; `gpuRos54p` takes 201 s against 276 s for
+  `ros54p`.
 - A round of 1500 subjects is too small to fill the L40 and takes longer
   there (1.7 ms) than on 8 CPU threads (0.9 ms), so OpenCL is slower than
   the CPU build for this fit.
