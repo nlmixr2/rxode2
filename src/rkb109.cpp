@@ -38,7 +38,7 @@ extern "C" void ind_rkb109_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
   double xp = getAllTimes(ind, 0);
   ind->solvedIdx = 0;
-  int neqOde = op->neq - op->numLin - op->numLinSens;
+  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
   RxRkb109 *solver = NULL;
   if (neqOde > 0) {
     solver = new RxRkb109(c_dydt, neq, neqOde, ind, getSolve(0), (long unsigned)op->mxstep);
@@ -187,7 +187,7 @@ extern "C" void rkb109_solveWith1Pt(int *neq, double *yp, double *xp, double xou
                                      int *istate, rx_solving_options *op,
                                      rx_solving_options_ind *ind) {
   int eff = rxEffNeq(ind, op);
-  int neqOde = eff - op->numLin - op->numLinSens;
+  int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
     if (neqOde > 0) {
     RxRkb109 solver(dydt, neq, neqOde, ind, yp, (long unsigned)op->mxstep);
     solver.set_quiet(true);

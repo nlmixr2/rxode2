@@ -94,6 +94,19 @@ linCmtCarrySentinelMax <- function() {
   rxode2lincmt::.linCmtCarrySentinelMax()
 }
 
+#' Carry pairs a linCmt() model can carry at once
+#'
+#' The `linCmt()` sensitivity carry is kept in each model's solve buffer
+#' (`ind->solve`), sized to the pairs the model uses, so there is no cap:
+#' this is `.Machine$integer.max`, or 8 with an rxode2lincmt that only knows
+#' the fixed array.  nlmixr2est keeps a model's carry within it.
+#' @return integer
+#' @keywords internal
+#' @export
+linCmtCarryMaxPairs <- function() {
+  rxode2lincmt::.linCmtCarryMaxPairs()
+}
+
 #' Read (and optionally reset) the linCmt() carry-advance fast-path counters
 #'
 #' @param reset logical; when TRUE zero the counters after reading
