@@ -892,7 +892,8 @@ RXG_FN double _rxg_gammaInvRefine(double a, double p, double q, double x) {
 // 1 when p or q is NaN or outside [0, 1]
 RXG_FN int _rxg_probOut(double p, double q) {
   if (ISNAN(p) || ISNAN(q)) return 1;
-  return (p < 0 || p > 1 || q < 0 || q > 1);
+  if (p < 0 || p > 1) return 1;
+  return (q < 0 || q > 1);
 }
 // x with P(a,x) = p (q = 1 - p, given separately to keep the upper tail)
 // (argument checks follow the host)
