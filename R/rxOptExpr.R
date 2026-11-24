@@ -870,7 +870,11 @@
   ))
 }
 
-.rxOptExprChunk <- function(i, chunks, msg) {
+.rxOptExprChunk <- function(i, chunks, msg, impure = .rxImpureEnv$names) {
+  # a mirai daemon has its own rxImpureFun() registry; use the caller's
+  .oldImpure <- .rxImpureEnv$names
+  .rxImpureEnv$names <- impure
+  on.exit(.rxImpureEnv$names <- .oldImpure, add = TRUE)
   .txt <- paste(chunks[[i]], collapse = "\n")
   .o <- suppressMessages(rxOptExpr(.txt, msg, chunkLines = 0L))
   # whole identifiers only; `.` is part of a name, as in .rxOptPrefixUsed()
@@ -1006,11 +1010,16 @@
         # environment, so a chunk is optimized by the same code path serially and in parallel.
         .tasks <- mirai::mirai_map(
           seq_len(.nChunks),
-          function(.i, .chunks, .msg, .optOne) {
+          function(.i, .chunks, .msg, .optOne, .impure) {
             library(rxode2)
-            .optOne(.i, .chunks, .msg)
+            .optOne(.i, .chunks, .msg, .impure)
           },
-          .args = list(.chunks = .chunks, .msg = msg, .optOne = .rxOptExprChunk)
+          .args = list(
+            .chunks = .chunks,
+            .msg = msg,
+            .optOne = .rxOptExprChunk,
+            .impure = .rxImpureEnv$names
+          )
         )
         # A chunk that failed in a daemon comes back as an error object rather than
         # throwing, so it reaches the check below as a value like any other.
@@ -1131,7 +1140,7 @@
 #' @noRd
 .rxOptImpureCalls <- function(norm) {
   .calls <- unique(regmatches(norm, gregexpr("[A-Za-z_.][A-Za-z0-9_.]*(?=\\()", norm, perl = TRUE))[[1]])
-  .calls[.calls %in% c(.rxOptImpureBuiltin, .rxImpureEnv$names)]
+  .calls[.calls %in% c(.rxOptImpureBuiltin, .rxImpureFunNames())]
 }
 
 # regular expression matching a call to any of `fns` (identifiers)

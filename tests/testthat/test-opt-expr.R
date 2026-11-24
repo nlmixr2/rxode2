@@ -743,6 +743,15 @@ rxTest({
       })
     }
     expect_false("myf1783" %in% rxImpureFun())
+    # a chunk is optimized with the caller's registry (a mirai daemon has its own)
+    .ch <- list(strsplit(.u, "\n", fixed = TRUE)[[1]])
+    expect_true(grepl("myf1783(k)+myf1783(k)", .rxOptExprChunk(1L, .ch, "m", impure = "myf1783"), fixed = TRUE))
+    expect_false("myf1783" %in% rxImpureFun())
+    expect_false(grepl("myf1783(k)+myf1783(k)", .rxOptExprChunk(1L, .ch, "m"), fixed = TRUE))
+    # a registered rxFun() name is also matched by its C spelling
+    rxImpureFun("fun1783")
+    on.exit(rxRmImpureFun("fun1783"), add = TRUE)
+    expect_true("fun1783" %in% .rxImpureFunNames())
     .o <- suppressMessages(rxOptExpr("a <- rxnorm() + rxnorm()\nd/dt(x) <- -k*x"))
     set.seed(1)
     .s0 <- rxSolve(
