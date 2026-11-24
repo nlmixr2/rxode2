@@ -712,7 +712,7 @@ rxTest({
     expect_error(..rxOptLhs(quote(foo(bar, baz))), "foo(bar, baz)", fixed = TRUE)
     expect_output(try(..rxOptLhs(quote(foo(bar, baz))), silent = TRUE), NA)
   })
-  test_that("random draws and user functions are never shared (#1783)", {
+  test_that("random draws and registered impure functions are never shared (#1783)", {
     .m <- paste(
       "a <- rxnorm() + rxnorm()",
       "c <- rnorm() + rnorm() + rxnorm(k) + rxnorm(k)",
@@ -732,11 +732,17 @@ rxTest({
         expect_false(grepl("~k\\+runif", .o))
         expect_true(grepl("a=rxnorm()+rxnorm()", .o, fixed = TRUE))
         expect_true(grepl("~exp(k)", .o, fixed = TRUE))
+        # user functions are pure unless registered
         .o <- suppressMessages(rxOptExpr(.u, chunkLines = 0L))
+        expect_true(grepl("~myf1783(k)", .o, fixed = TRUE))
+        rxImpureFun("myf1783")
+        .o <- suppressMessages(rxOptExpr(.u, chunkLines = 0L))
+        rxRmImpureFun("myf1783")
         expect_true(grepl("b=myf1783(k)+myf1783(k)+", .o, fixed = TRUE))
         expect_true(grepl("~exp(k)", .o, fixed = TRUE))
       })
     }
+    expect_false("myf1783" %in% rxImpureFun())
     .o <- suppressMessages(rxOptExpr("a <- rxnorm() + rxnorm()\nd/dt(x) <- -k*x"))
     set.seed(1)
     .s0 <- rxSolve(

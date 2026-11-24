@@ -78,6 +78,8 @@ rxTest({
 
   test_that("calls with side effects are kept wherever they were emitted", {
     myf <- function(x) x * 2
+    rxImpureFun("myf")
+    on.exit(rxRmImpureFun("myf"), add = TRUE)
     # an R user function solves single-threaded, with a warning saying so
     .r <- suppressWarnings(.fullOptBoth(
       "
@@ -100,6 +102,29 @@ rxTest({
     expect_true(any(grepl("rxnorm1\\(.*rxunif1\\(.*rxgamma1\\(.*rxlnorm1\\(.*rxweibull1\\(.*rxnormV1\\(", .dydt)))
     expect_true(any(grepl("_udf\\(", .dydt)))
     expect_false(any(grepl("^\\s*y\\s*=", .dydt)))
+  })
+
+  test_that("user functions are pure unless registered with rxImpureFun()", {
+    myf <- function(x) x * 2
+    .mod <- "
+      c <- myf(tcl)
+      d/dt(x) <- -tcl*x
+      y <- x + c
+    "
+    .ev <- et(amt = 100) |> et(0:5)
+    .r <- suppressWarnings(.fullOptBoth(.mod, .ev, params = c(tcl = 0.2)))
+    .fullOptSame(.r)
+    expect_false(any(grepl("_udf\\(", .fullOptBody(.r$slice$m, "dydt"))))
+    rxImpureFun("myf")
+    on.exit(rxRmImpureFun("myf"), add = TRUE)
+    .r2 <- suppressWarnings(.fullOptBoth(.mod, .ev, params = c(tcl = 0.2)))
+    .fullOptSame(.r2)
+    expect_true(any(grepl("_udf\\(", .fullOptBody(.r2$slice$m, "dydt"))))
+    # the registration is part of the model key, so a new DLL is built
+    expect_false(identical(
+      .r$slice$mv$md5[["parsed_md5"]],
+      .r2$slice$mv$md5[["parsed_md5"]]
+    ))
   })
 
   test_that("assignments to fields of the individual are kept", {

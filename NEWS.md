@@ -2,6 +2,12 @@
 
 ## New features
 
+- `rxImpureFun()`/`rxRmImpureFun()` register user R functions, `rxFun()` C
+  functions or package C functions that draw random numbers, keep state or
+  have side effects.  `rxOptExpr()` never shares their calls and
+  `rxode2.fullOpt` keeps them in every generated function; unregistered
+  functions are treated as pure (#1783).
+
 - Each generated C function now evaluates only the model statements its
   outputs depend on: the ODE right-hand side skips calculated variables
   nothing integrates, the calculated-variable function skips the
@@ -231,9 +237,9 @@
   `d/dt(x) = -!a`, is now a syntax error, as it already was in any other
   assignment; write `-(-k)` or `-(!a)` instead (#1674).
 - `rxOptExpr()` no longer merges repeated random draws (`rxnorm()`,
-  `rnorm()`, `runif()`, ...), `simeta()`/`simeps()`, user R functions or
-  other packages' C functions into one evaluation, so `rxnorm() + rxnorm()`
-  stays the sum of two draws (#1783).
+  `rnorm()`, `runif()`, ...), `simeta()`/`simeps()` or functions registered
+  with `rxImpureFun()` into one evaluation, so `rxnorm() + rxnorm()` stays
+  the sum of two draws (#1783).
 
 ### Compilation
 - A cached model library that exists but will not load (still being linked by

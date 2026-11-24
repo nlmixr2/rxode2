@@ -126,7 +126,8 @@ static inline void cslVecPush(cslVec *x, int val) {
   x->v[x->n++] = val;
 }
 
-// Impure call names (from .rxFullOptInfo()); a line calling one is kept
+// Impure call names (from .rxFullOptInfo()); a line calling one is kept.  An R
+// user function is matched by the name quoted in its _udf("name", ...) call
 static cslHash _cslImpure;
 
 static inline int cslIsImpureCall(const char *s, int len) {
@@ -171,7 +172,18 @@ static inline int cslScanId(const char *s, int k, int defStart, cslVec *rd,
   int m = j;
   while (s[m] == ' ' || s[m] == '\t') m++;
   if (s[m] == '(') {
-    if (cslIsImpureCall(s + k, len)) *impure = 1;
+    if (cslIsImpureCall(s + k, len)) {
+      *impure = 1;
+    } else if (len == 4 && !strncmp(s + k, "_udf", 4)) {
+      // an R user function, _udf("name", ...): impure when name is registered
+      int p = m + 1;
+      while (s[p] == ' ' || s[p] == '\t') p++;
+      if (s[p] == '"') {
+        int q = ++p;
+        while (s[q] != '\0' && s[q] != '"') q++;
+        if (s[q] == '"' && cslIsImpureCall(s + p, q - p)) *impure = 1;
+      }
+    }
     return j;
   }
   if (!cslIsMember(s, k) && k != defStart) {

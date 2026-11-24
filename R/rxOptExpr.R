@@ -1114,9 +1114,9 @@
 .rxOptHistRe <- "(^|[^A-Za-z0-9_.])(lag|lead|diff)0?\\(|(^|[^A-Za-z0-9_.])(first|last)\\("
 
 # Calls that are never shared, since each evaluation can differ: random draws,
-# simeta()/simeps(), mixtures, and functions rxode2 cannot see into (user R
-# functions and C functions registered by other packages).  Spelled as in the
-# normalized model; R/rxFullOpt.R `.rxFullOptImpureBuiltin` is the C spelling.
+# simeta()/simeps(), mixtures, and functions registered with rxImpureFun().
+# Spelled as in the normalized model; R/rxFullOpt.R `.rxFullOptImpureBuiltin`
+# is the C spelling.
 .rxOptImpureBuiltin <- unique(c(
   sub("_$", "", sub("^_", "", .rxFullOptImpureBuiltin)),
   "rxord",
@@ -1125,26 +1125,13 @@
 
 #' Impure function names called in a normalized model
 #'
-#' @param x the model given to rxOptExpr()
-#' @param norm its normalized text
+#' @param norm normalized model text
 #' @return character vector of the impure names `norm` calls
 #' @author Matthew L. Fidler
 #' @noRd
-.rxOptImpureCalls <- function(x, norm) {
-  .calls <- regmatches(norm, gregexpr("[A-Za-z_.][A-Za-z0-9_.]*(?=\\()", norm, perl = TRUE))[[1]]
-  .calls <- unique(.calls)
-  if (length(.calls) == 0L) {
-    return(character(0))
-  }
-  .udf <- tryCatch(names(rxModelVars(x)$udf), error = function(e) character(0))
-  .df <- rxode2parseGetTranslation()
-  .ext <- character(0)
-  if (is.data.frame(.df) && nrow(.df) > 0L) {
-    .w <- !(.df$package %in% c("rxode2", "rxode2ll"))
-    .ext <- c(.df$fun[.w], .df$rxFun[.w])
-  }
-  .impure <- c(.rxOptImpureBuiltin, .udf, names(.udfEnv$rxSEeqUsr), .ext)
-  .calls[.calls %in% .impure]
+.rxOptImpureCalls <- function(norm) {
+  .calls <- unique(regmatches(norm, gregexpr("[A-Za-z_.][A-Za-z0-9_.]*(?=\\()", norm, perl = TRUE))[[1]])
+  .calls[.calls %in% c(.rxOptImpureBuiltin, .rxImpureEnv$names)]
 }
 
 # regular expression matching a call to any of `fns` (identifiers)
@@ -1236,7 +1223,7 @@ rxOptExpr <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
   ## The C pass first; it returns NA when it will not reproduce the R walker
   ## exactly, and the R implementation below then runs.  Chunking calls this
   ## same whole-model path once per chunk, so chunks go through C too.
-  .impure <- .rxOptImpureCalls(x, .norm)
+  .impure <- .rxOptImpureCalls(.norm)
   .cse <- .rxOptExprC(.norm, .impure)
   if (!is.na(.cse)) {
     return(.cse)
