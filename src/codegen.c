@@ -159,6 +159,7 @@ void _rxode2parse_unprotect(void) {
 
 #include "codegen2.h"
 #include "pkTime.h"
+#include "codegenSlice.h"
 
 // Lines that read `time` as the record time (see pkTime.h); NULL when
 // the function being generated never does.
@@ -616,10 +617,13 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
          show_ode != ode_rate && show_ode != ode_dur &&
          show_ode != ode_past &&
          !ode_is_es_dcode(show_ode))){
+      cslForFunction(show_ode);
       for (i = 0; i < sbPm.n; i++){
         // Event-sensitivity dLag/dF emit no model statements here (preamble
         // only); their body comes from the end switch below.
         if (ode_is_es_dcode(show_ode)) break;
+        // a statement this function's outputs do not depend on (codegenSlice.h)
+        if (_cslKeep != NULL && !_cslKeep[i]) continue;
         switch(sbPm.lType[i]){
         case TLIN:
           // Same routing as TASSIGN -- a linCmt()-bearing assignment is still an
@@ -739,6 +743,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
           RSprintf("Prop: %d\n", sbPm.lProp[i]);
         }
       }
+      _cslKeep = NULL;
       // End statements
       switch (show_ode){
       case ode_dur:
@@ -993,6 +998,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   _es_dLagQCode = _es_dup(esDLagQCode);
   _es_dDurQCode = _es_dup(esDDurQCode);
   _goodFuns = _rxode2parse_preserve(goodFuns);
+  cslReset();
   if (!sbPm.o || !sbNrm.o){
     _rxode2parse_unprotect();
     err_trans("nothing in output queue to write");
@@ -1168,6 +1174,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
     sbOut.o = 0;
   }
   rxUPAll();
+  cslSetup();
   // show_ode = 1 dydt
   // show_ode = 2 Jacobian
   // show_ode = 3 Ini statement
@@ -1205,5 +1212,6 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   parseFree(0);
   reset();
   _es_freeCode(); // event-sensitivity code is single-use per model
+  cslReset();
   return R_NilValue;
 }

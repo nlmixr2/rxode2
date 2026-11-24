@@ -134,6 +134,10 @@ NA_LOGICAL <- NA # nolint
 #' pharmacokinetics (PK), pharmacodynamics (PD), disease progression,
 #' drug-disease modeling, etc.
 #'
+#' Each generated C function (the ODE right-hand side, the calculated
+#' variables, `f()`/`alag()`/`rate()`/`dur()`, ...) evaluates only the model
+#' statements its own outputs depend on; `options(rxode2.fullOpt = "none")`
+#' evaluates every statement in every function instead.
 #'
 #' @includeRmd man/rmdhunks/rxode2-create-models.Rmd
 #'
@@ -1773,6 +1777,7 @@ rxTrans.default <- function(
   modName = NULL, # Model name for DLL
   modVars = FALSE, # Return modVars
   eventSensKey = .rxState$eventSensCacheKey, # nolint
+  fullOptKey = .rxFullOptKey(), # nolint
   ...
 ) {
   ## `eventSensKey` MUST be a formal (defaulting to the session global) rather
@@ -1831,6 +1836,10 @@ rxTrans.default <- function(
   ## existing fd caches.
   if (nzchar(eventSensKey)) {
     .parsedMd5 <- digest::digest(c(.parsedMd5, paste0("eventSens=", eventSensKey)), serialize = TRUE, algo = "md5")
+  }
+  ## the code generated per function depends on rxode2.fullOpt; "" at "none"
+  if (nzchar(fullOptKey)) {
+    .parsedMd5 <- digest::digest(c(.parsedMd5, paste0("fullOpt=", fullOptKey)), serialize = TRUE, algo = "md5")
   }
   md5 <- c(file_md5 = md5, parsed_md5 = .parsedMd5)
   .rxTimeId(md5["parsed_md5"])
