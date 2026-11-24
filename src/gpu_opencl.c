@@ -61,6 +61,14 @@ typedef cl_int (RXCL_API *clWaitForEvents_t)(cl_uint, void *const *);
 typedef cl_int (RXCL_API *clGetEventInfo_t)(void *, cl_uint, size_t, void *,
                                             size_t *);
 #define RXCL_EVENT_COMMAND_EXECUTION_STATUS 0x11D3
+typedef cl_int (RXCL_API *clGetCommandQueueInfo_t)(void *, cl_uint, size_t,
+                                                   void *, size_t *);
+typedef cl_int (RXCL_API *clGetKernelWorkGroupInfo_t)(void *, void *, cl_uint,
+                                                      size_t, void *, size_t *);
+#define RXCL_QUEUE_DEVICE 0x1091
+#define RXCL_DEVICE_MAX_COMPUTE_UNITS 0x1002
+#define RXCL_KERNEL_WORK_GROUP_SIZE 0x11B0
+#define RXCL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE 0x11B3
 
 static struct {
   int loaded;
@@ -77,6 +85,9 @@ static struct {
   clReleaseEvent_t releaseEvent;
   clWaitForEvents_t waitEvents;
   clGetEventInfo_t eventInfo;
+  // optional (the work-group size)
+  clGetCommandQueueInfo_t queueInfo;
+  clGetKernelWorkGroupInfo_t kernelWgInfo;
 } rxcl = {0};
 
 #ifdef _WIN32
@@ -130,6 +141,8 @@ int rxGpuClLoad(void) {
   rxcl.releaseEvent = (clReleaseEvent_t)rxclSym(lib, "clReleaseEvent");
   rxcl.waitEvents = (clWaitForEvents_t)rxclSym(lib, "clWaitForEvents");
   rxcl.eventInfo = (clGetEventInfo_t)rxclSym(lib, "clGetEventInfo");
+  rxcl.queueInfo = (clGetCommandQueueInfo_t)rxclSym(lib, "clGetCommandQueueInfo");
+  rxcl.kernelWgInfo = (clGetKernelWorkGroupInfo_t)rxclSym(lib, "clGetKernelWorkGroupInfo");
   if (rxcl.createBuffer && rxcl.releaseMem && rxcl.write && rxcl.read &&
       rxcl.setArg && rxcl.run && rxcl.kernelInfo && rxcl.finish) {
     rxcl.loaded = 1;
@@ -324,6 +337,62 @@ static int rxGpuClFill(rxGpuCl *g, const double *od, const int *oi) {
   return rxGpuClZero(g, w, nsub);
 }
 
+// The device's compute units and the kernel's work-group limits; zero when
+// the driver does not report them (the driver then picks the work-group size)
+static void rxGpuClWorkGroup(rxGpuCl *g) {
+  g->cu = g->wgMax = g->wgMult = 0;
+  if (rxcl.queueInfo == NULL || rxcl.kernelWgInfo == NULL || rxcl.deviceInfo == NULL) return;
+  void *dev = NULL;
+  cl_uint cu = 0;
+  size_t wgMax = 0, wgMult = 0;
+  if (rxcl.queueInfo(g->queue, RXCL_QUEUE_DEVICE, sizeof(dev), &dev, NULL) != RXCL_SUCCESS ||
+      dev == NULL ||
+      rxcl.deviceInfo(dev, RXCL_DEVICE_MAX_COMPUTE_UNITS, sizeof(cu), &cu, NULL) != RXCL_SUCCESS ||
+      rxcl.kernelWgInfo(g->kernel, dev, RXCL_KERNEL_WORK_GROUP_SIZE, sizeof(wgMax),
+                        &wgMax, NULL) != RXCL_SUCCESS) {
+    return;
+  }
+  if (rxcl.kernelWgInfo(g->kernel, dev, RXCL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE,
+                        sizeof(wgMult), &wgMult, NULL) != RXCL_SUCCESS) {
+    wgMult = 0;
+  }
+  if (cu == 0 || wgMax == 0) return;
+  g->cu = (size_t)cu;
+  g->wgMax = wgMax;
+  g->wgMult = wgMult > 0 ? wgMult : 1;
+}
+
+// Work-group size for n work items (0: the driver's choice).  From the
+// device, enough groups to give every compute unit work: a few work items
+// leave most compute units idle when the driver packs them into one or two
+// large groups.
+static size_t rxGpuClLocal(const rxGpuCl *g, size_t n) {
+  int lws = g->dims[RXG_D_LWS];
+  if (lws == 0 || g->wgMax == 0) return 0;
+  size_t L;
+  if (lws > 0) {
+    L = (size_t)lws;
+  } else {
+    size_t m = g->wgMult, per = (n + g->cu - 1)/g->cu;
+    L = ((per + m - 1)/m)*m;
+    if (L < m) L = m;
+    size_t cap = 128;
+    if (cap < m) cap = m;
+    if (L > cap) L = cap;
+  }
+  if (L > g->wgMax) L = g->wgMax;
+  return L;
+}
+
+// Launch nwork work items, padded to a multiple of the work-group size (the
+// kernel skips items past n)
+static cl_int rxGpuClLaunch(rxGpuCl *g, int nwork, cl_uint nev, void **ev, void **evk) {
+  size_t global = (size_t)nwork, L = rxGpuClLocal(g, global);
+  if (L > 0) global = ((global + L - 1)/L)*L;
+  return rxcl.run(g->queue, g->kernel, 1, NULL, &global, L > 0 ? &L : NULL, nev,
+                  nev ? ev : NULL, evk);
+}
+
 // Buffers for up to dims[RXG_D_NSUB] requests on a built rxg_kernel; od/oi
 // are written once.  NULL with *err set on failure.
 rxGpuCl *rxGpuClNew(void *ctx, void *queue, void *kernel, const int *dims,
@@ -347,6 +416,7 @@ rxGpuCl *rxGpuClNew(void *ctx, void *queue, void *kernel, const int *dims,
   g->kernel = kernel;
   g->single = single;
   memcpy(g->dims, dims, sizeof(int)*RXG_D_N);
+  rxGpuClWorkGroup(g);
   *err = rxGpuClFill(g, od, oi);
   if (*err != 0) {
     rxGpuClFree(g);
@@ -393,11 +463,7 @@ static int rxGpuClRunAsync(rxGpuCl *g, int nwork, int nrow, int tl,
     if (e == RXCL_SUCCESS) nev++;
   }
   if (e == RXCL_SUCCESS) e = rxGpuClArgs(g, nwork, tl);
-  size_t global = (size_t)nwork;
-  if (e == RXCL_SUCCESS) {
-    e = rxcl.run(g->queue, g->kernel, 1, NULL, &global, NULL, nev,
-                 nev ? ev : NULL, &evk);
-  }
+  if (e == RXCL_SUCCESS) e = rxGpuClLaunch(g, nwork, nev, ev, &evk);
   void *out[3] = {y, rd, ri};
   int ob[3] = {RXG_B_Y, RXG_B_RD, RXG_B_RI};
   for (int i = 0; i < 3 && e == RXCL_SUCCESS; i++) {
@@ -451,8 +517,7 @@ static int rxGpuClRun(rxGpuCl *g, int nwork, int nrow, int tl, const int *off,
   if (tl && e == RXCL_SUCCESS) e = rxGpuClWrite(g, RXG_B_OFF, off, (size_t)nwork + 1);
   if (e == RXCL_SUCCESS) e = rxGpuClArgs(g, nwork, tl);
   if (e != RXCL_SUCCESS) return e;
-  size_t global = (size_t)nwork;
-  e = rxcl.run(g->queue, g->kernel, 1, NULL, &global, NULL, 0, NULL, NULL);
+  e = rxGpuClLaunch(g, nwork, 0, NULL, NULL);
   // the OpenCL package's queue may run out of order
   if (e == RXCL_SUCCESS) e = rxcl.finish(g->queue);
   if (e != RXCL_SUCCESS) return e;

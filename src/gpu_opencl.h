@@ -20,6 +20,7 @@ enum {
   RXG_D_OD,
   RXG_D_OI,
   RXG_D_NROW,  // request rows of a timeline launch (>= RXG_D_NSUB); 0: no timelines
+  RXG_D_LWS,   // work-group size: < 0 from the device, 0 the driver's, else this
   RXG_D_N
 };
 
@@ -29,6 +30,7 @@ typedef struct rxGpuCl {
   void *stage;                // float conversion (single precision)
   int single;
   int dims[RXG_D_N];
+  size_t cu, wgMax, wgMult;   // compute units, kernel work-group limit, multiple
 } rxGpuCl;
 
 #ifdef __cplusplus

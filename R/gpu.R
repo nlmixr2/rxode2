@@ -804,8 +804,27 @@ rxGpuInfo <- function() {
     .lay["hrec"],
     opt$oi[7],
     .lay[c("hhdr", "rd", "ri", "ad", "ai", "od", "oi")],
-    if (nrow > 0) max(nsub, nrow) else 0L
+    if (nrow > 0) max(nsub, nrow) else 0L,
+    .rxGpuLocalSize()
   ))
+}
+
+#' OpenCL work-group size
+#'
+#' `options(rxode2.gpuLocalSize=)`: `NA` (default) sizes the work groups from
+#' the device so every compute unit gets work, `0` leaves the size to the
+#' OpenCL driver, a positive number uses that size (at most the kernel's
+#' limit).
+#'
+#' @return integer, `-1` for the device's size
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuLocalSize <- function() {
+  .o <- getOption("rxode2.gpuLocalSize", NA)
+  if (length(.o) != 1L || is.na(.o)) {
+    return(-1L)
+  }
+  as.integer(max(0, .o))
 }
 
 #' Can a model's subjects be solved as whole timelines (one launch a solve)?
@@ -857,10 +876,10 @@ rxGpuInfo <- function() {
 
 #' Does a GPU solve integrate whole timelines?
 #'
-#' `options(rxode2.gpuTimeline=)`: `NA` (default) on OpenCL only, where a
-#' launch costs most; `TRUE` on either backend; `FALSE` never.  Single
-#' precision solves in rounds: the replay matches each request's times to the
-#' recorded ones, which a float device returns rounded.
+#' `options(rxode2.gpuTimeline=TRUE)` turns timelines on, on either backend;
+#' by default (`FALSE` or `NA`) solves use rounds.  Single precision OpenCL
+#' solves in rounds: the replay matches each request's times to the recorded
+#' ones, which a float device returns rounded.
 #'
 #' @param obj rxode2 model (as solved)
 #' @param backend "opencl" or "cpu"
@@ -869,8 +888,7 @@ rxGpuInfo <- function() {
 #' @noRd
 #' @author Matthew L. Fidler
 .rxGpuTimelineOn <- function(obj, backend, precision = "double") {
-  .o <- getOption("rxode2.gpuTimeline", NA)
-  if (isFALSE(.o) || (is.na(.o) && backend != "opencl") || (backend == "opencl" && identical(precision, "float"))) {
+  if (!isTRUE(getOption("rxode2.gpuTimeline", FALSE)) || (backend == "opencl" && identical(precision, "float"))) {
     return(FALSE)
   }
   .rxGpuTimelineModelOk(obj)

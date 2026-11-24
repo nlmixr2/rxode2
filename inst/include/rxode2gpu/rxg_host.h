@@ -27,6 +27,7 @@ static void rxg_host_ctx(rxg_ctx *c, double *p0, double *p1, double *pl,
   c->covType = flags[0];
   c->nonmem = flags[1];
   c->hist = 0;
+  c->preOk = 0;
 }
 
 #if RXG_HAS_DELAY

@@ -834,7 +834,7 @@ rxTest({
     ## the solve runs with op->cores set to the batch: per-thread pools scale with it
     expect_gt(as.numeric(.gpu$extraDosing), as.numeric(.host$extraDosing))
     ## the bytes follow the layout the solve allocates with
-    .dims <- c(512L, 2L, 3L, 1L, 0L, 0L, 0L, 1L, 4L, 6L, 10L, 2L, 3L, 4L, 0L)
+    .dims <- c(512L, 2L, 3L, 1L, 0L, 0L, 0L, 1L, 4L, 6L, 10L, 2L, 3L, 4L, 0L, -1L)
     .a <- rxMemoryGpuComponents_(.dims, 0L, 1L, 2L)
     .dims2 <- .dims
     .dims2[1] <- 1024L

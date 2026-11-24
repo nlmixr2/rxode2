@@ -638,8 +638,17 @@ rxTest({
 
   test_that("single-precision OpenCL solves in rounds", {
     skip_if(!("opencl" %in% .backends()), "no OpenCL device with double precision")
+    .old <- options(rxode2.gpuTimeline = TRUE)
+    on.exit(options(.old))
     expect_false(.rxGpuTimelineOn(.tlModel(), "opencl", "float"))
     expect_true(.rxGpuTimelineOn(.tlModel(), "opencl", "double"))
+  })
+
+  test_that("timelines are opt-in", {
+    .old <- options(rxode2.gpuTimeline = NULL)
+    on.exit(options(.old))
+    expect_false(.rxGpuTimelineOn(.tlModel(), "opencl", "double"))
+    expect_false(.rxGpuTimelineOn(.tlModel(), "cpu", "double"))
   })
 
   test_that("the timeline memory estimate counts nSub's subjects", {

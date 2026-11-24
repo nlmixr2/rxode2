@@ -246,6 +246,29 @@ rxTest({
     expect_equal(.dy[3], 0)
   })
 
+  test_that("statements of parameters alone are computed once per interval", {
+    skip_on_cran()
+    .mh <- rxode2({
+      ka <- exp(tka + eta.ka)
+      k2 <- ka * 2
+      kt <- k0 * t
+      cl <- tcl * WT
+      if (WT > 70) {
+        cl <- cl * 1.1
+      }
+      v <- exp(tv + eta.v)
+      c2 <- center / v
+      w <- c2 + ka
+      d/dt(depot) <- -ka * depot + kt * 0
+      d/dt(center) <- ka * depot - cl / v * center + w * 0 + k2 * 0
+    })
+    .s <- strsplit(.rxGpuModelSource(.mh)$source, "\n", fixed = TRUE)[[1]]
+    expect_true("#define RXG_NPRE 3" %in% .s)
+    .pre <- sub("^.*preOk\\) ([A-Za-z0-9_]+) = .*$", "\\1", grep("_rxg->preOk)", .s, value = TRUE, fixed = TRUE))
+    ## not time, a state, a variable assigned twice or one read from those
+    expect_equal(.pre, c("ka", "k2", "v"))
+  })
+
   test_that("covariates interpolate within the interval", {
     skip_on_cran()
     .lib <- .rxGpuHostLib(.m)

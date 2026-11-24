@@ -146,6 +146,23 @@ RXG_FN void _rxg_roundCtx(rxg_ctx *c, int i, RXG_GLOBAL const double *rd,
   c->covType = ri[RXG_RI_COV];
   c->nonmem = ri[RXG_RI_NONMEM];
   c->hist = 0;
+  c->preOk = 0;
+  // parameters equal at both ends are constant over the interval
+  if (c->covType == 1) {
+    int same = 1;
+    for (int j = 0; j < RXG_NPAR; j++) {
+      if (c->p0[j] != c->p1[j]) same = 0;
+    }
+    if (same) c->covType = 0;
+  }
+#if RXG_NPRE > 0
+  if (c->covType == 0) {
+    double y0[RXG_NEQ1];
+    for (int j = 0; j < RXG_NEQ1; j++) y0[j] = 0.0;
+    rxg_pre(c->t0, y0, y0, c, c->pre);
+    c->preOk = 1;
+  }
+#endif
 }
 
 RXG_FN void _rxg_roundOpt(rxg_opt *o, RXG_GLOBAL const double *od,
