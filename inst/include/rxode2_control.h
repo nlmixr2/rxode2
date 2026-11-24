@@ -150,4 +150,6 @@
 #define Rxc_durAtDoseTime 145
 #define Rxc_resetCancelsPending 146
 #define Rxc_ssMethod 147
+#define Rxc_doseAtRecord 148
+#define Rxc_addlCovAtTime 149
 #endif // __rxode2_control_H__

@@ -149,6 +149,8 @@
 #define Rxc_durAtDoseTime 145
 #define Rxc_resetCancelsPending 146
 #define Rxc_ssMethod 147
+#define Rxc_doseAtRecord 148
+#define Rxc_addlCovAtTime 149
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2

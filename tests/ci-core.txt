@@ -8,6 +8,7 @@ basic
 parsing
 rxs
 codegen-md5
+fullopt-slice
 # solving
 solver-basic
 par-solve
