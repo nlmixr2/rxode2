@@ -48,13 +48,12 @@
   .multi <- unique(lhs[!is.na(lhs) & duplicated(lhs)])
   .first <- match(.assigned, lhs)
   .tok <- regmatches(read, gregexpr(.rxOptSsaIdRe, read, perl = TRUE))
-  .readBefore <- vapply(
-    seq_along(.assigned),
-    function(.i) {
-      any(vapply(.tok[seq_len(.first[.i])], function(.t) any(.t == .assigned[.i]), logical(1)))
-    },
-    logical(1)
-  )
+  .tokLine <- rep.int(seq_along(.tok), lengths(.tok))
+  .tok <- unlist(.tok, use.names = FALSE)
+  .w <- .tok %in% .assigned
+  ## first line reading each assigned variable (a line reads before it assigns)
+  .firstRead <- tapply(.tokLine[.w], factor(.tok[.w], levels = .assigned), min)
+  .readBefore <- !is.na(.firstRead) & .firstRead <= .first
   unique(c(.multi, .assigned[.readBefore]))
 }
 
@@ -123,7 +122,14 @@
   .isLhs <- !is.na(.lhs) & .lhs %in% .cand
   .stack <- list()
   .out <- .lines
-  for (.i in seq_along(.lines)) {
+  ## only lines that read or assign a versioned variable, or open/close a block
+  .candRe <- paste0(
+    "(?<![A-Za-z0-9_.])(",
+    paste(gsub(".", "\\.", .cand, fixed = TRUE), collapse = "|"),
+    ")(?![A-Za-z0-9_.])"
+  )
+  .todo <- which(.isLhs | .opens > 0L | .closes > 0L | grepl(.candRe, .sp$read, perl = TRUE))
+  for (.i in .todo) {
     for (.k in seq_len(.closes[.i])) {
       if (length(.stack) > 0L) {
         .set <- .stack[[length(.stack)]]
