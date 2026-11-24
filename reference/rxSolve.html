@@ -276,6 +276,7 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  rateAtDoseTime <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  durAtDoseTime <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  doseAtRecord <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  addlCovAtTime <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  resetCancelsPending <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  ssMethod <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"anderson"</span>, <span class="st">"iterate"</span><span class="op">)</span>,</span>
 <span>  linCmtGillFtol <span class="op">=</span> <span class="fl">0</span>,</span>
@@ -1782,7 +1783,8 @@ read the time of the first data record at or after it (NONMEM's <code>F1</code>,
 each interval from the record that ends it, like NONMEM's <code>R1</code> (see
 <code>rateAtDoseTime</code>).  Covariate interpolation is still set by
 <code>covsInterpolation</code>.  It also sets the default <code>tieOrder</code> to <code>"data"</code>
-and turns on <code>addlKeepsCov</code>, <code>durAtDoseTime</code> and <code>doseAtRecord</code> unless
+and turns on <code>addlKeepsCov</code>, <code>durAtDoseTime</code> and <code>doseAtRecord</code> and
+turns off <code>addlCovAtTime</code> unless
 they are given.
 By default <code>FALSE</code>, when <code>f()</code>, <code>rate()</code> and <code>dur()</code> of an <code>addl</code> repeat
 read the actual time of the <code>addl</code> dose.</p></dd>
@@ -1834,6 +1836,18 @@ rxode2 reads each of these records at its own time, so a covariate or
 <code>t</code> that changes during an infusion changes what its stop reads.  By
 default (<code>NULL</code>) this is <code>TRUE</code> with <code>nonmem = TRUE</code> and <code>FALSE</code>
 otherwise.</p></dd>
+
+
+<dt id="arg-addlcovattime">addlCovAtTime<a class="anchor" aria-label="anchor" href="#arg-addlcovattime"></a></dt>
+<dd><p>Boolean that sets what an <code>addl</code> repeat that does
+not keep its covariates (<code>addlKeepsCov = FALSE</code>) reads for <code>alag()</code> and
+<code>f()</code> when a data record falls at exactly its time and the covariate is
+filled from earlier records (<code>locf</code>, or <code>midpoint</code>/<code>linear</code> with
+<code>naInterpolation = "locf"</code>).  When <code>TRUE</code> that record counts, so the
+repeat reads the covariate value in effect at its time, as
+<code>addlKeepsCov = FALSE</code> imputes it.  When <code>FALSE</code> only the records before
+the repeat count, as NONMEM does.  By default (<code>NULL</code>) this is <code>TRUE</code>,
+or <code>FALSE</code> with <code>nonmem = TRUE</code>.</p></dd>
 
 
 <dt id="arg-resetcancelspending">resetCancelsPending<a class="anchor" aria-label="anchor" href="#arg-resetcancelspending"></a></dt>
