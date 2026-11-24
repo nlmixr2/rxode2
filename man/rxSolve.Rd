@@ -166,6 +166,8 @@ rxSolve(
   tieOrder = NULL,
   rateAtDoseTime = FALSE,
   durAtDoseTime = NULL,
+  doseAtRecord = NULL,
+  addlCovAtTime = NULL,
   resetCancelsPending = TRUE,
   ssMethod = c("anderson", "iterate"),
   linCmtGillFtol = 0,
@@ -1495,7 +1497,9 @@ read the time of the first data record at or after it (NONMEM's \code{F1},
 each interval from the record that ends it, like NONMEM's \code{R1} (see
 \code{rateAtDoseTime}).  Covariate interpolation is still set by
 \code{covsInterpolation}.  It also sets the default \code{tieOrder} to \code{"data"}
-and turns on \code{addlKeepsCov} and \code{durAtDoseTime} unless they are given.
+and turns on \code{addlKeepsCov}, \code{durAtDoseTime} and \code{doseAtRecord} and
+turns off \code{addlCovAtTime} unless
+they are given.
 By default \code{FALSE}, when \code{f()}, \code{rate()} and \code{dur()} of an \code{addl} repeat
 read the actual time of the \code{addl} dose.}
 
@@ -1526,6 +1530,28 @@ the infusion then ends at its start plus the new duration, delivering
 what is left evenly, or stops delivering when that end has passed.  By
 default (\code{NULL}) this is \code{TRUE} with \code{nonmem = TRUE}, as NONMEM fixes
 \code{D1} at the dose, and \code{FALSE} otherwise.}
+
+\item{doseAtRecord}{Boolean that when \code{TRUE} reads a dose's \code{f()},
+\code{alag()}, \code{rate()} and \code{dur()} at the dose's own data record, the way
+NONMEM reads \code{F}, \code{ALAG}, \code{R} and \code{D} from the one record a dose has: an
+infusion's stop removes the rate its start added and ends at the start's
+lagged time plus the duration, and the records a dose expands to (an
+infusion's stop, a steady-state dose's companions) read the dose
+record's covariates, also when \code{alag()} moves the records.  When \code{FALSE}
+rxode2 reads each of these records at its own time, so a covariate or
+\code{t} that changes during an infusion changes what its stop reads.  By
+default (\code{NULL}) this is \code{TRUE} with \code{nonmem = TRUE} and \code{FALSE}
+otherwise.}
+
+\item{addlCovAtTime}{Boolean that sets what an \code{addl} repeat that does
+not keep its covariates (\code{addlKeepsCov = FALSE}) reads for \code{alag()} and
+\code{f()} when a data record falls at exactly its time and the covariate is
+filled from earlier records (\code{locf}, or \code{midpoint}/\code{linear} with
+\code{naInterpolation = "locf"}).  When \code{TRUE} that record counts, so the
+repeat reads the covariate value in effect at its time, as
+\code{addlKeepsCov = FALSE} imputes it.  When \code{FALSE} only the records before
+the repeat count, as NONMEM does.  By default (\code{NULL}) this is \code{TRUE},
+or \code{FALSE} with \code{nonmem = TRUE}.}
 
 \item{resetCancelsPending}{When \code{TRUE} (default), a reset (\code{evid} 3 or
 4) cancels the doses of the records processed before it that have not

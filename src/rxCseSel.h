@@ -64,15 +64,12 @@ static inline int csIsThetaEta(const char *s) {
   return p[0] == ']' && p[1] == '\0';
 }
 
-/* does the text call lag()/lead()/diff()/first()/last() (or a 0 variant)?
-   Such a call reads a stored value, so hoisting it could move a self-recursive
-   `x = f(lag(x, 1))` reference above the assignment of x, which the parser
-   rejects; it is never a candidate (R/rxOptExpr.R `.rxOptHistRe`). */
-static inline int csHasHistCall(const char *s) {
-  static const char *fns[] = {"lag0(", "lead0(", "diff0(", "lag(", "lead(",
-                              "diff(", "first(", "last(", NULL};
+/* does the text call one of the NULL-terminated names `fns` (each spelled
+   with its trailing `(`) at an identifier boundary? */
+static inline int csHasCallIn(const char *s, const char *const *fns) {
   const char *p;
   int i;
+  if (fns == NULL) return 0;
   for (p = s; *p != '\0'; p++) {
     if (p > s) {
       char b = p[-1];
@@ -84,6 +81,16 @@ static inline int csHasHistCall(const char *s) {
     }
   }
   return 0;
+}
+
+/* does the text call lag()/lead()/diff()/first()/last() (or a 0 variant)?
+   Such a call reads a stored value, so hoisting it could move a self-recursive
+   `x = f(lag(x, 1))` reference above the assignment of x, which the parser
+   rejects; it is never a candidate (R/rxOptExpr.R `.rxOptHistRe`). */
+static inline int csHasHistCall(const char *s) {
+  static const char *const fns[] = {"lag0(", "lead0(", "diff0(", "lag(", "lead(",
+                                    "diff(", "first(", "last(", NULL};
+  return csHasCallIn(s, fns);
 }
 
 typedef struct csCand {

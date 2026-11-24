@@ -1926,6 +1926,19 @@ static inline int recomputeMtimeIfNeeded(rx_solve *rx,
 // sortInd runs with curShift=0, so timeThread[raw] = all_times[raw] + lag.
 // At runtime after a reset curShift != 0; we must zero it temporarily so
 // getLag gives the same sort-key convention as sortInd.
+// The refreshed lagged time of dose record `raw`: with doseAtRecord a
+// fixed-duration infusion's stop keeps its start's lagged time plus the
+// duration (getInfusionDurTime())
+static inline double refreshedLagTime(rx_solve *rx, rx_solving_options *op,
+                                      rx_solving_options_ind *ind, int raw, int cmt,
+                                      double rawTime, double *yp) {
+  int infBidx = (rx->doseAtRecord && ind->whI == EVIDF_INF_DUR) ?
+    getInfusionStartDose(raw, rx, op, ind) : -1;
+  if (infBidx == -1) return getLag(ind, ind->id, cmt, rawTime, yp);
+  int start = ind->idose[infBidx];
+  return ind->timeThread[start] + rawTime - getAllTimes(ind, start);
+}
+
 static inline int refreshLagTimesIfNeeded(rx_solve *rx,
                                           rx_solving_options_ind *ind,
                                           double *yp, int nextI,
@@ -1963,7 +1976,7 @@ static inline int refreshLagTimesIfNeeded(rx_solve *rx,
     // lag = f(state at dosing time). Updating before or after the raw time would use
     // a different state (e.g. pushing a pending dose forward on every observation).
     if (!isSameTime(rawTime, xout)) continue;
-    double newTime = getLag(ind, ind->id, cmt, rawTime, yp);
+    double newTime = refreshedLagTime(rx, op, ind, raw, cmt, rawTime, yp);
     if (!ISNA(newTime) && newTime != time[raw]) {
       time[raw] = newTime;
       changed = 1;
@@ -1990,8 +2003,13 @@ extern "C" void sortInd(rx_solving_options_ind *ind) {
   double *time = ind->timeThread;
   ind->ixds = 0;
   ind->curShift = 0;
+  // the record order is set before any record's time: a record whose
+  // covariate is missing takes it from its neighbours through ix when
+  // alag() and the other modifiers read it
   for (int i = 0; i < ind->n_all_times; i++) {
     ind->ix[i] = i;
+  }
+  for (int i = 0; i < ind->n_all_times; i++) {
     ind->idx = i;
     if (!isObs(getEvid(ind, i))) {
       time[i] = getTime__(ind->ix[i], ind, 1);
@@ -4072,6 +4090,29 @@ static void handleSSDelay(int *neq,
   }
 }
 
+// F*amt of a fixed-duration infusion's start (dose infB) and stop (dose
+// infE): with doseAtRecord both with the start's F, so the stop removes the
+// rate its start added; otherwise each with the F at its own time
+static inline void ssInfDurRates(rx_solving_options_ind *ind, int infB, int infE,
+                                 double *yp, double *rateOn, double *rateOff) {
+  *rateOn = getAmtAtRecord(ind, ind->idose[infB], getDose(ind, ind->idose[infB]), yp);
+  *rateOff = getAmtAtRecord(ind, ind->idose[doseAtRecord(ind) ? infB : infE],
+                            getDose(ind, ind->idose[infE]), yp);
+}
+
+// The rates of a steady-state infusion from dose infB to infE; returns the F
+// that scales its duration (1 for a fixed duration)
+static inline double ssInfRates(rx_solving_options_ind *ind, int infB, int infE,
+                                double *yp, double *rateOn, double *rateOff) {
+  if (ind->whI == EVIDF_INF_RATE) {
+    *rateOn = getDose(ind, ind->idose[infB]);
+    *rateOff = getDose(ind, ind->idose[infE]);
+    return getAmtAtRecord(ind, ind->idose[infB], 1.0, yp);
+  }
+  ssInfDurRates(ind, infB, infE, yp, rateOn, rateOff);
+  return 1.0;
+}
+
 void handleSS(int *neq,
               int *BadDose,
               double *InfusionRate,
@@ -4201,16 +4242,7 @@ void handleSS(int *neq,
           return;
         } else {
           ignoreDoses[nIgnoredDoses++] = infEixds;
-          double f = 1.0;
-          if (ind->whI == EVIDF_INF_RATE) {
-            f = getAmt(ind, ind->id, ind->cmt, 1.0, getAllTimes(ind, ind->idose[infBixds2]), yp);
-            rateOn = getDose(ind, ind->idose[infBixds2]);
-            rateOff = getDose(ind, ind->idose[infEixds]);
-          } else {
-            f = 1.0;
-            rateOn = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infBixds2]), getAllTimes(ind, ind->idose[infBixds2]), yp);
-            rateOff = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infEixds]), getAllTimes(ind, ind->idose[infEixds]), yp);
-          }
+          double f = ssInfRates(ind, infBixds2, infEixds, yp, &rateOn, &rateOff);
           // REprintf("get dur isSsLag: %d\n", isSsLag);
           dur = getAllTimes(ind, ind->idose[infEixds]);// -
           // REprintf("\ttime infEixds: %f %d\n", dur, infEixds);
@@ -4238,16 +4270,7 @@ void handleSS(int *neq,
           return;
         } else {
           ignoreDoses[nIgnoredDoses++] = infEixds;
-          double f = 1.0;
-          if (ind->whI == EVIDF_INF_RATE) {
-            f = getAmt(ind, ind->id, ind->cmt, 1.0, getAllTimes(ind, ind->idose[infBixds2]), yp);
-            rateOn = getDose(ind, ind->idose[infBixds2]);
-            rateOff = getDose(ind, ind->idose[infEixds]);
-          } else {
-            f = 1.0;
-            rateOn = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infBixds2]), getAllTimes(ind, ind->idose[infBixds2]), yp);
-            rateOff = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infEixds]), getAllTimes(ind, ind->idose[infEixds]), yp);
-          }
+          double f = ssInfRates(ind, infBixds2, infEixds, yp, &rateOn, &rateOff);
           // REprintf("get dur2\n");
           dur = getAllTimes(ind, ind->idose[infEixds]);// -
           // REprintf("\ttime infEixds: %f\n", dur);
@@ -4413,8 +4436,7 @@ void handleSS(int *neq,
         // shouldn't ever get here modeled duration would have to be
         // infinite for this to occur... but I don't think that is
         // supported yet
-        rateOn = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infBixds2]), getAllTimes(ind, ind->idose[infBixds2]), yp);
-        rateOff = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infEixds]), getAllTimes(ind, ind->idose[infEixds]), yp);
+        ssInfDurRates(ind, infBixds2, infEixds, yp, &rateOn, &rateOff);
       }
     } else if (ind->whI == EVIDF_INF_RATE ||
                ind->whI == EVIDF_INF_DUR ||

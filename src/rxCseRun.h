@@ -98,6 +98,7 @@ typedef struct csRun {
   const char **out;               /* one rewritten statement each */
   const char ***usedBy;           /* the temporaries each statement referenced */
   int *nUsedBy;
+  const char *const *impure;      /* calls never shared, each `name(`; R_alloc'd */
 } csRun;
 
 static void csRunInit(csRun *r, R_xlen_t n, const char **in, int nthr) {
@@ -200,7 +201,8 @@ static int csCountPhase(csRun *r) {
 }
 
 /* count > 1, then drop bare numbers, bare THETA[n]/ETA[n], anything leading
-   with `-` and anything calling lag()/lead()/diff()/first()/last(), then order by nchar with first encounter breaking ties
+   with `-`, anything calling lag()/lead()/diff()/first()/last() and anything
+   calling an impure function (RNG, simeta(), user functions), then order by nchar with first encounter breaking ties
    (R/rxOptExpr.R:1000-1013) */
 static int csSelectPhase(csRun *r) {
   int j;
@@ -210,7 +212,7 @@ static int csSelectPhase(csRun *r) {
     csEntry *e = &r->all.e[j];
     if (e->key == NULL || e->count <= 1) continue;
     if (csIsNum(e->key) || csIsThetaEta(e->key) || e->key[0] == '-') continue;
-    if (csHasHistCall(e->key)) continue;
+    if (csHasHistCall(e->key) || csHasCallIn(e->key, r->impure)) continue;
     r->cand[r->ncand].key = e->key;
     r->cand[r->ncand].firstSeen = e->firstSeen;
     r->cand[r->ncand].len = strlen(e->key);
