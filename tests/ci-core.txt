@@ -40,6 +40,8 @@ ui-piping
 ui-err
 ui-solve
 piping-ini
+addTransit
+addSecondAbsorption
 ini
 rxUiDeparse
 # linear compartment models

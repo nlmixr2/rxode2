@@ -2,6 +2,19 @@
 
 ## New features
 
+- The model-building piping functions moved here from 'nlmixr2lib':
+  absorption (`addDepot()`, `addTransit()`, `addWeibullAbs()`,
+  `addZeroOrderAbs()`, `addSecondAbsorption()`, `convertTransitMtt()` and
+  their `remove*()`/`convert*()` partners), distribution and elimination
+  (`addPeriph()`, `removePeriph()`, `convertMM()`, `addCmtProp()` and
+  friends), pharmacodynamics (`addDirectLin()`, `addEffectCmtLin()`,
+  `addIndirect()`, `addBaseline*()`, `convertEmax()`, `convertKinR0()`,
+  `fakeCc()`, ...) and parameter helpers (`addEta()`, `addResErr()`,
+  `pkTrans()`, `defaultCombine()`, ...).  This includes the second transit
+  chain in `addSecondAbsorption(delay = "transit")` and the new
+  `convertTransitMtt()`.  `addEta()` reads the `rxode2.etaCombineType` and
+  `rxode2.priorEta` options, falling back to the `nlmixr2lib.*` ones.
+
 - Each generated C function now evaluates only the model statements its
   outputs depend on: the ODE right-hand side skips calculated variables
   nothing integrates, the calculated-variable function skips the
