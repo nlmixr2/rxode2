@@ -1856,7 +1856,17 @@ rxStateOde <- function(obj) {
   if (length(.mv$indLin) > 0L) {
     .state <- setdiff(.state, "output")
   }
-  setdiff(.state, .rxLinCmt(obj))
+  setdiff(.state, c(.rxLinCmt(obj), .rxLinCarry(.state)))
+}
+
+#' linCmt() carry states (`rx__carry_<k>__`) among state names
+#'
+#' They follow the linCmt() sensitivities and have no ODE behind them.
+#' @param state state names
+#' @return the carry state names
+#' @noRd
+.rxLinCarry <- function(state) {
+  grep("^rx__carry_[0-9]+__$", state, value = TRUE)
 }
 
 #' Inverse CDFs for declared non-normal random effects

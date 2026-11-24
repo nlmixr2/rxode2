@@ -267,7 +267,7 @@
 #' @return character vector of ODE state names (possibly empty).
 #' @noRd
 .rxEventSensOdeStates <- function(mv) {
-  setdiff(mv$normal.state, .rxLinCmt(mv))
+  setdiff(mv$normal.state, c(.rxLinCmt(mv), .rxLinCarry(mv$normal.state)))
 }
 
 #' Does the jump map match the compartment layout the runtime assumes?
