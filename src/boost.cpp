@@ -50,6 +50,7 @@
 #include <vector>
 #include <cstdint>
 #include <cstring>
+#include <limits>
 
 ////////////////////////////////////////////////////////////////////////////
 // Memo for the ROOT-FINDING inverse special functions.
@@ -244,11 +245,28 @@ extern "C" double gamma_q_inva(double x, double q) {
 // would hand one thread another's answer.  Bit-exact on a hit -- it returns the
 // value this same call computed -- so it cannot change any result.
 extern "C" double gamma_p_inv(double a, double p) {
-  double v;
-  if (rxInvMemoGet(RX_INV_GAMMA_P_INV, a, p, 0.0, &v)) return v;
-  v = boost::math::gamma_p_inv<double, double>(a, p);
-  rxInvMemoPut(RX_INV_GAMMA_P_INV, a, p, 0.0, v);
-  return v;
+  // Alternating gamma decoders and sensitivities commonly reuse a few inputs
+  // within a solve. Check recent values before hashing into the shared memo.
+  struct Recent {
+    double shape = 0.0;
+    double probability = std::numeric_limits<double>::quiet_NaN();
+    double value = 0.0;
+  };
+  static thread_local Recent recent[4];
+  static thread_local unsigned int next = 0;
+  for (const auto &entry : recent) {
+    if (entry.shape == a && entry.probability == p) return entry.value;
+  }
+
+  double value;
+  if (!rxInvMemoGet(RX_INV_GAMMA_P_INV, a, p, 0.0, &value)) {
+    value = boost::math::gamma_p_inv<double, double>(a, p);
+    rxInvMemoPut(RX_INV_GAMMA_P_INV, a, p, 0.0, value);
+  }
+  if (a > 0.0 && p > 0.0 && p < 1.0) {
+    recent[next++ & 3u] = Recent{a, p, value};
+  }
+  return value;
 }
 
 extern "C" double gamma_p_inva(double x, double p) {
