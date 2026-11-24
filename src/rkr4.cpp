@@ -46,7 +46,7 @@ extern "C" void ind_rkr4_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   double xp = getAllTimes(ind, 0);
   ind->solvedIdx = 0;
 
-  int neqOde = op->neq - op->numLin - op->numLinSens;
+  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
   RxRkr4 *solver = NULL;
   if (neqOde > 0) {
     solver = new RxRkr4(c_dydt, neq, neqOde, ind, getSolve(0));
@@ -204,7 +204,7 @@ extern "C" void rkr4_solveWith1Pt(int *neq, double *yp, double *xp, double xout,
                                     int *istate, rx_solving_options *op,
                                     rx_solving_options_ind *ind) {
   int eff = rxEffNeq(ind, op);
-  int neqOde = eff - op->numLin - op->numLinSens;
+  int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
 
     if (neqOde > 0) {
     RxRkr4 solver(dydt, neq, neqOde, ind, yp);

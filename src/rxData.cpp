@@ -3692,6 +3692,311 @@ static inline SEXP rxSolve_update(const RObject &object,
 // This is useful when there is an event table without any
 // observations in it.  This is the way that deSolve/mrgsolve handles
 // events.
+// The sampling times rxSolve() adds to an event table without observations,
+// from rxControl's from/to/by/length.out (to defaults to the last TIME + 24)
+static inline NumericVector rxEv1SampleTimes(const List &rxControl,
+                                             List evTrans,
+                                             rx_solve *rx) {
+  int lenOut = 200;
+  double by = NA_REAL;
+  double to;
+  double from = 0.0;
+  NumericVector tmp;
+  IntegerVector tmpI;
+  if (rxIsNumInt(rxControl[Rxc_from])){
+    tmp = asNv(rxControl[Rxc_from], "from");
+    if (tmp.size() != 1){
+      rxSolveFree();
+      stop(_("'from' must be of length 1"));
+    }
+    from = tmp[0];
+  }
+  if (rxIsNumInt(rxControl[Rxc_to])){
+    tmp = asNv(rxControl[Rxc_to], "to");
+    if (tmp.size() != 1){
+      rxSolveFree();
+      stop(_("'to' must be of length 1"));
+    }
+    to = tmp[0];
+  } else {
+    to = (max(as<NumericVector>(evTrans["TIME"]))+24);
+  }
+  if (rxIsNumInt(rxControl[Rxc_by])){
+    tmp = asNv(rxControl[Rxc_by], "by");
+    if (tmp.size() != 1){
+      rxSolveFree();
+      stop(_("'by' must be of length 1"));
+    }
+    by = tmp[0];
+  }
+  if (rxIsNumInt(rxControl[Rxc_length_out])){
+    tmpI = asIv(rxControl[Rxc_length_out], "length.out");
+    if (tmpI.size() != 1){
+      rxSolveFree();
+      stop(_("'length.out' must be of length 1"));
+    }
+    lenOut = tmpI[0];
+    if (!ISNA(by)){
+      // Matches seq(0,1,by=0.1,length.out=3)
+      rxSolveFree();
+      stop(_("cannot use both 'by' and 'length.out' for rxode2 simulations"));
+    }
+    by = (to-from)/(lenOut-1);
+  } else if (ISNA(by)) {
+    lenOut=200;
+    by = (to-from)/(lenOut-1);
+  } else {
+    lenOut= (int)((to-from)/by+1.0);
+  }
+  NumericVector newObs(lenOut);
+  // ((to - from)/(length.out - 1))
+  for (int i = lenOut; i--;){
+    newObs[i]=by*i+from;
+  }
+  rx->nobs2 = lenOut;
+  return newObs;
+}
+
+// An rxEt event table without observations gets rxSolve()'s sampling times
+static inline void rxEv1UpdateRxEt(const RObject &obj, const List &rxControl,
+                                   RObject &ev1, rxSolve_t* rxSolveDat,
+                                   rx_solve *rx, Function &etTransR) {
+  CharacterVector cls = ev1.attr("class");
+  List etE = cls.attr(".rxode2.lst");
+  int nobs = asInt(etE["nobs"], "nobs");
+  if (nobs != 0) return;
+  // KEEP/DROP?
+  if (rxSolveDat->hasICov) {
+    Rf_warningcall(R_NilValue, "'iCov' ignored when there are no samples/observations in the input dataset");
+  }
+  List ev1a;
+  {
+    // no 'iCov' here: quiet its string-comparison warnings
+    rxEtTransStrCmpQuietGuard strCmpQuiet(rxSolveDat->hasICov);
+    ev1a = etTransR(ev1, obj, rxSolveDat->hasCmt,
+                    false, false, true, R_NilValue,
+                    rxControl[Rxc_keepF],
+                    rxControl[Rxc_addlKeepsCov],
+                    rxControl[Rxc_addlDropSs],
+                    rxControl[Rxc_ssAtDoseTime],
+                    R_NilValue,
+                    rxControlTieOrder(rxControl),
+                    rxControlResetCancelsPending(rxControl));
+  }
+  rxSolveDat->labelID=true;
+  CharacterVector tmpC = ev1a.attr("class");
+  List tmpL = tmpC.attr(".rxode2.lst");
+  rxSolveDat->idLevels = asCv(tmpL[RxTrans_idLvl], "idLvl");
+  List keep = tmpL[0];
+  keepFcov=keep;
+  keepFcovType = tmpL[1];
+  rx->nKeepF = keepFcov.size();
+  NumericVector newObs = rxEv1SampleTimes(rxControl, ev1a, rx);
+  Function etFun = getRxFn("et");
+  ev1 = etFun(ev1, wrap(newObs));
+  {
+    rxEtTransStrCmpQuietGuard strCmpQuiet(rxSolveDat->hasICov);
+    ev1 = etTransR(ev1, obj, rxSolveDat->hasCmt,
+                   false, false, false, R_NilValue,
+                   rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                   rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                   R_NilValue,
+                   rxControlTieOrder(rxControl),
+                   rxControlResetCancelsPending(rxControl));
+  }
+}
+
+// Each hom group's first translated row and row count (-1/0 when it has none)
+static inline void rxEv1HomGroupRows(const IntegerVector &idKeep, int nHomGroups,
+                                     std::vector<int> &rowStart,
+                                     std::vector<int> &rowLen) {
+  for (int _i = 0; _i < idKeep.size(); ++_i) {
+    int rid = idKeep[_i];
+    if (rid < 1 || rid > nHomGroups) continue;
+    int gi = rid - 1;
+    if (rowStart[gi] == -1) rowStart[gi] = _i;
+    rowLen[gi]++;
+  }
+}
+
+// One keep vector with each group's rows repeated once per real id
+static inline NumericVector rxEv1ExpandKeepOne(const NumericVector &cur, int expandedRows,
+                                               const List &homGroups0,
+                                               const std::vector<int> &rowStart,
+                                               const std::vector<int> &rowLen) {
+  NumericVector out(expandedRows, NA_REAL);
+  int at = 0;
+  for (int gi = 0; gi < homGroups0.size(); ++gi) {
+    if (rowStart[gi] == -1 || rowLen[gi] == 0) continue;
+    int reps = Rf_length(homGroups0[gi]);
+    for (int rep = 0; rep < reps; ++rep) {
+      std::copy(cur.begin() + rowStart[gi],
+                cur.begin() + rowStart[gi] + rowLen[gi],
+                out.begin() + at);
+      at += rowLen[gi];
+    }
+  }
+  return out;
+}
+
+// Homogeneous/grouped event tables share representative translated rows across
+// multiple real IDs; keep vectors must be expanded to match per-subject output order.
+static inline void rxEv1ExpandKeepHomGroups(const RObject &ev1) {
+  SEXP homGroupsS0 = Rf_getAttrib(ev1, Rf_install("rxHomGroups"));
+  if (Rf_isNull(homGroupsS0) || keepFcov.size() == 0) return;
+  DataFrame evDf = as<DataFrame>(ev1);
+  IntegerVector idKeep = as<IntegerVector>(evDf[0]);
+  int nRowsKeep = idKeep.size();
+  List homGroups0 = as<List>(homGroupsS0);
+  int nHomGroups = homGroups0.size();
+  std::vector<int> rowStart(nHomGroups, -1);
+  std::vector<int> rowLen(nHomGroups, 0);
+  rxEv1HomGroupRows(idKeep, nHomGroups, rowStart, rowLen);
+  int expandedRows = 0;
+  for (int gi = 0; gi < nHomGroups; ++gi) {
+    if (rowStart[gi] == -1 || rowLen[gi] == 0) continue;
+    expandedRows += rowLen[gi] * Rf_length(homGroups0[gi]);
+  }
+  if (expandedRows <= 0 || expandedRows == nRowsKeep) return;
+  for (int _k = 0; _k < keepFcov.size(); ++_k) {
+    NumericVector cur = as<NumericVector>(keepFcov[_k]);
+    if (cur.size() != nRowsKeep) continue;
+    keepFcov[_k] = rxEv1ExpandKeepOne(cur, expandedRows, homGroups0, rowStart, rowLen);
+  }
+}
+
+// Column positions of the translated table, cens/limit when it has them
+static inline void rxEv1SetColumns(List &tmpL) {
+  rxcEvid = 2;
+  rxcTime = 1;
+  rxcAmt = 3;
+  rxcId = 0;
+  rxcDv = 5;
+  rxcIi = 4;
+  int censAdd = as<int>(tmpL["censAdd"]);
+  int limitAdd = as<int>(tmpL["limitAdd"]);
+  if (censAdd == 1 && limitAdd == 1) {
+    rxcCens = 6;
+    rxcLimit = 7;
+  } else if (censAdd == 1){
+    rxcCens = 6;
+    rxcLimit = -1;
+  } else if (limitAdd == 1){
+    rxcCens = -1;
+    rxcLimit = 6;
+  } else {
+    rxcCens = -1;
+    rxcLimit = -1;
+  }
+}
+
+// The keep covariates of a translated table
+static inline void rxEv1SetKeep(List &tmpL) {
+  List keep0 = tmpL[RxTrans_keepL];
+  List keep = keep0[0];
+  _rxModels[".fkeep"] = keep0;
+  keepFcov=keep;
+  keepFcovType = keep0[1];
+}
+
+// No class is "rxEtTrans" (a translated table is "rxEtTran"), so every data
+// frame, translated or not, goes through etTransR(): it re-translates a
+// table made for another model and returns one made for this model as it
+// is.  Skipping translated tables here would solve one made for another
+// model with that model's layout.
+static inline void rxEv1UpdateDf(const RObject &obj, const List &rxControl,
+                                 RObject &ev1, rxSolve_t* rxSolveDat,
+                                 rx_solve *rx, Function &etTransR) {
+  List ev1k;
+  {
+    rxEtTransStrCmpQuietGuard strCmpQuiet(rxSolveDat->hasICov);
+    ev1k = etTransR(ev1, obj, rxSolveDat->hasCmt,
+                    false, false, true, R_NilValue,
+                    rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                    rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                    R_NilValue,
+                    rxControlTieOrder(rxControl),
+                    rxControlResetCancelsPending(rxControl));
+  }
+  CharacterVector tmpCk = ev1k.attr("class");
+  List tmpLk = tmpCk.attr(".rxode2.lst");
+  if (asInt(tmpLk[RxTrans_nobs], "nobs") == 0) {
+    rxSolveDat->labelID=true;
+    rxSolveDat->idLevels = asCv(tmpLk[RxTrans_idLvl], "idLvl");
+    rxEv1SetKeep(tmpLk);
+    rx->nKeepF = keepFcov.size();
+    NumericVector newObs = rxEv1SampleTimes(rxControl, ev1k, rx);
+    Function asEtFun = getRxFn("as.et");
+    Function etFun = getRxFn("et");
+    RObject evEt = asEtFun(ev1);
+    evEt = etFun(evEt, wrap(newObs));
+    ev1 = etTransR(evEt, obj, rxSolveDat->hasCmt,
+                   false, false, false, R_NilValue,
+                   rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                   rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                   rxControl[Rxc_iCov],
+                   rxControlTieOrder(rxControl),
+                   rxControlResetCancelsPending(rxControl));
+  } else if (Rf_isNull(rxControl[Rxc_iCov])) {
+    // Same arguments as ev1k; reuse it rather than translating twice
+    ev1 = ev1k;
+  } else {
+    ev1 = etTransR(ev1, obj, rxSolveDat->hasCmt,
+                   false, false, true, R_NilValue,
+                   rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                   rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                   rxControl[Rxc_iCov],
+                   rxControlTieOrder(rxControl),
+                   rxControlResetCancelsPending(rxControl));
+  }
+  rxSolveDat->labelID=true;
+  CharacterVector tmpC = ev1.attr("class");
+  List tmpL = tmpC.attr(".rxode2.lst");
+  rxSolveDat->idLevels = asCv(tmpL[RxTrans_idLvl], "idLvl");
+  rxEv1SetKeep(tmpL);
+  rxEv1ExpandKeepHomGroups(ev1);
+  rx->nKeepF = keepFcov.size();
+  rxEv1SetColumns(tmpL);
+}
+
+// One factor's levels: its name, then each level
+static inline void rxEv1AddFactor(rx_solve *rx, const char *name, SEXP lvl) {
+  int len = Rf_length(lvl);
+  addLine(&(rx->factorNames), "%s", name);
+  for (int i = 0; i < len; i++) {
+    addLine(&(rx->factors), "%s", CHAR(STRING_ELT(lvl, i)));
+  }
+  rx->factorNs[rx->hasFactors++] = len;
+}
+
+// SETUP factors for ID=="" and CMT="" etc
+static inline void rxEv1SetFactors(rx_solve *rx, const RObject &ev1,
+                                   rxSolve_t* rxSolveDat) {
+  CharacterVector cls = ev1.attr("class");
+  List tmpL = cls.attr(".rxode2.lst");
+  rx->nobs2 = asInt(tmpL[RxTrans_nobs], "nobs");
+  rxSolveDat->convertInt = (asInt(tmpL[RxTrans_idInfo], "idInfo")==1);
+  CharacterVector clsEt = Rf_getAttrib(ev1, R_ClassSymbol);
+  List e = clsEt.attr(".rxode2.lst");
+  lineIni(&(rx->factors));
+  lineIni(&(rx->factorNames));
+  // ID factors are always present in etTrans; explicit in errors/call ID==""
+  rxEv1AddFactor(rx, "ID", e[RxTrans_idLvl]);
+  // CMT may or may not be present, but the compartment info is present
+  rxEv1AddFactor(rx, "CMT", e[RxTrans_cmtInfo]);
+  List lvlInfo = e[RxTrans_levelInfo];
+  SEXP lvlInfoN = lvlInfo.attr("names");
+  for (int i = Rf_length(lvlInfoN);i--;){
+    SEXP cur = lvlInfo[i];
+    if (Rf_isNull(cur)) continue;
+    rxEv1AddFactor(rx, CHAR(STRING_ELT(lvlInfoN, i)), cur);
+    if (rx->hasFactors >= 500){
+      rxSolveFree();
+      stop(_("rxode2 only supports 500 factors"));
+    }
+  }
+}
+
 static inline void rxSolve_ev1Update(const RObject &obj,
                                      const List &rxControl,
                                      const Nullable<CharacterVector> &specParams,
@@ -3699,344 +4004,19 @@ static inline void rxSolve_ev1Update(const RObject &obj,
                                      const RObject &params,
                                      RObject &ev1,
                                      const RObject &inits,
-                                                                        rxSolve_t* rxSolveDat){
-                                     rx_solve* rx = getRxSolve_();
-                                     Function etTransR = getRxFn("etTrans");
-                                     if (rxIs(ev1, "rxEt")) {
-                                       CharacterVector cls = ev1.attr("class");
-                                       List etE = cls.attr(".rxode2.lst");
-                                       int nobs = asInt(etE["nobs"], "nobs");
-                                       if (nobs == 0){
-                                         // KEEP/DROP?
-                                         if (rxSolveDat->hasICov) {
-                                           Rf_warningcall(R_NilValue, "'iCov' ignored when there are no samples/observations in the input dataset");
-                                         }
-                                         List ev1a;
-                                         {
-                                           // no 'iCov' here: quiet its string-comparison warnings
-                                           rxEtTransStrCmpQuietGuard strCmpQuiet(rxSolveDat->hasICov);
-                                           ev1a = etTransR(ev1, obj, rxSolveDat->hasCmt,
-                                                              false, false, true, R_NilValue,
-                                                              rxControl[Rxc_keepF],
-                                                              rxControl[Rxc_addlKeepsCov],
-                                                              rxControl[Rxc_addlDropSs],
-                                                              rxControl[Rxc_ssAtDoseTime],
-                                                              R_NilValue,
-                                                              rxControlTieOrder(rxControl),
-                     rxControlResetCancelsPending(rxControl));
-                                         }
-      rxSolveDat->labelID=true;
-      CharacterVector tmpC = ev1a.attr("class");
-      List tmpL = tmpC.attr(".rxode2.lst");
-      rxSolveDat->idLevels = asCv(tmpL[RxTrans_idLvl], "idLvl");
-      List keep0 = tmpL[RxTrans_keepL];
-      List keep = tmpL[0];
-      keepFcov=keep;
-      keepFcovType = tmpL[1];
-      rx->nKeepF = keepFcov.size();
-      int lenOut = 200;
-      double by = NA_REAL;
-      double to;
-      double from = 0.0;
-      NumericVector tmp;
-      IntegerVector tmpI;
-      if (rxIsNumInt(rxControl[Rxc_from])){
-        tmp = asNv(rxControl[Rxc_from], "from");
-        if (tmp.size() != 1){
-          rxSolveFree();
-          stop(_("'from' must be of length 1"));
-        }
-        from = tmp[0];
-      }
-      if (rxIsNumInt(rxControl[Rxc_to])){
-        tmp = asNv(rxControl[Rxc_to], "to");
-        if (tmp.size() != 1){
-          rxSolveFree();
-          stop(_("'to' must be of length 1"));
-        }
-        to = tmp[0];
-      } else {
-        to = (max(as<NumericVector>(ev1a["TIME"]))+24);
-      }
-      if (rxIsNumInt(rxControl[Rxc_by])){
-        tmp = asNv(rxControl[Rxc_by], "by");
-        if (tmp.size() != 1){
-          rxSolveFree();
-          stop(_("'by' must be of length 1"));
-        }
-        by = tmp[0];
-      }
-      if (rxIsNumInt(rxControl[Rxc_length_out])){
-        tmpI = asIv(rxControl[Rxc_length_out], "length.out");
-        if (tmpI.size() != 1){
-          rxSolveFree();
-          stop(_("'length.out' must be of length 1"));
-        }
-        lenOut = tmpI[0];
-        if (!ISNA(by)){
-          // Matches seq(0,1,by=0.1,length.out=3)
-          rxSolveFree();
-          stop(_("cannot use both 'by' and 'length.out' for rxode2 simulations"));
-        }
-        by = (to-from)/(lenOut-1);
-      } else if (ISNA(by)) {
-        lenOut=200;
-        by = (to-from)/(lenOut-1);
-      } else {
-        lenOut= (int)((to-from)/by+1.0);
-      }
-      NumericVector newObs(lenOut);
-      // ((to - from)/(length.out - 1))
-      for (int i = lenOut; i--;){
-        newObs[i]=by*i+from;
-      }
-      rx->nobs2 = lenOut;
-      Function etFun = getRxFn("et");
-      ev1 = etFun(ev1, wrap(newObs));
-      {
-        rxEtTransStrCmpQuietGuard strCmpQuiet(rxSolveDat->hasICov);
-        ev1 = etTransR(ev1, obj, rxSolveDat->hasCmt,
-                       false, false, false, R_NilValue,
-                       rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
-                       rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
-                       R_NilValue,
-                       rxControlTieOrder(rxControl),
-                     rxControlResetCancelsPending(rxControl));
-      }
-    }
+                                     rxSolve_t* rxSolveDat){
+  rx_solve* rx = getRxSolve_();
+  Function etTransR = getRxFn("etTrans");
+  if (rxIs(ev1, "rxEt")) {
+    rxEv1UpdateRxEt(obj, rxControl, ev1, rxSolveDat, rx, etTransR);
   }
-  // No class is "rxEtTrans" (a translated table is "rxEtTran"), so every data
-  // frame, translated or not, goes through etTransR(): it re-translates a
-  // table made for another model and returns one made for this model as it
-  // is.  Skipping translated tables here would solve one made for another
-  // model with that model's layout.
   if (rxIs(ev1, "data.frame") && !rxIs(ev1, "rxEtTrans")) {
-    List ev1k;
-    {
-      rxEtTransStrCmpQuietGuard strCmpQuiet(rxSolveDat->hasICov);
-      ev1k = etTransR(ev1, obj, rxSolveDat->hasCmt,
-                      false, false, true, R_NilValue,
-                           rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
-                           rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
-                           R_NilValue,
-                           rxControlTieOrder(rxControl),
-                     rxControlResetCancelsPending(rxControl));
-    }
-    CharacterVector tmpCk = ev1k.attr("class");
-    List tmpLk = tmpCk.attr(".rxode2.lst");
-    if (asInt(tmpLk[RxTrans_nobs], "nobs") == 0) {
-      int lenOut = 200;
-      double by = NA_REAL;
-      double to;
-      double from = 0.0;
-      NumericVector tmp;
-      IntegerVector tmpI;
-      rxSolveDat->labelID=true;
-      rxSolveDat->idLevels = asCv(tmpLk[RxTrans_idLvl], "idLvl");
-      List keep0 = tmpLk[RxTrans_keepL];
-      List keep = keep0[0];
-      _rxModels[".fkeep"] = keep0;
-      keepFcov=keep;
-      keepFcovType = keep0[1];
-      rx->nKeepF = keepFcov.size();
-      if (rxIsNumInt(rxControl[Rxc_from])){
-        tmp = asNv(rxControl[Rxc_from], "from");
-        if (tmp.size() != 1){
-          rxSolveFree();
-          stop(_("'from' must be of length 1"));
-        }
-        from = tmp[0];
-      }
-      if (rxIsNumInt(rxControl[Rxc_to])){
-        tmp = asNv(rxControl[Rxc_to], "to");
-        if (tmp.size() != 1){
-          rxSolveFree();
-          stop(_("'to' must be of length 1"));
-        }
-        to = tmp[0];
-      } else {
-        to = (max(as<NumericVector>(ev1k["TIME"]))+24);
-      }
-      if (rxIsNumInt(rxControl[Rxc_by])){
-        tmp = asNv(rxControl[Rxc_by], "by");
-        if (tmp.size() != 1){
-          rxSolveFree();
-          stop(_("'by' must be of length 1"));
-        }
-        by = tmp[0];
-      }
-      if (rxIsNumInt(rxControl[Rxc_length_out])){
-        tmpI = asIv(rxControl[Rxc_length_out], "length.out");
-        if (tmpI.size() != 1){
-          rxSolveFree();
-          stop(_("'length.out' must be of length 1"));
-        }
-        lenOut = tmpI[0];
-        if (!ISNA(by)){
-          rxSolveFree();
-          stop(_("cannot use both 'by' and 'length.out' for rxode2 simulations"));
-        }
-        by = (to-from)/(lenOut-1);
-      } else if (ISNA(by)) {
-        lenOut=200;
-        by = (to-from)/(lenOut-1);
-      } else {
-        lenOut= (int)((to-from)/by+1.0);
-      }
-      NumericVector newObs(lenOut);
-      for (int i = lenOut; i--;){
-        newObs[i]=by*i+from;
-      }
-      rx->nobs2 = lenOut;
-      Function asEtFun = getRxFn("as.et");
-      Function etFun = getRxFn("et");
-      RObject evEt = asEtFun(ev1);
-      evEt = etFun(evEt, wrap(newObs));
-      ev1 = etTransR(evEt, obj, rxSolveDat->hasCmt,
-                     false, false, false, R_NilValue,
-                     rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
-                     rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
-                     rxControl[Rxc_iCov],
-                     rxControlTieOrder(rxControl),
-                     rxControlResetCancelsPending(rxControl));
-    } else if (Rf_isNull(rxControl[Rxc_iCov])) {
-      // Same arguments as ev1k; reuse it rather than translating twice
-      ev1 = ev1k;
-    } else {
-      ev1 = etTransR(ev1, obj, rxSolveDat->hasCmt,
-                     false, false, true, R_NilValue,
-                     rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
-                     rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
-                     rxControl[Rxc_iCov],
-                     rxControlTieOrder(rxControl),
-                     rxControlResetCancelsPending(rxControl));
-    }
-    rxSolveDat->labelID=true;
-    CharacterVector tmpC = ev1.attr("class");
-    List tmpL = tmpC.attr(".rxode2.lst");
-    rxSolveDat->idLevels = asCv(tmpL[RxTrans_idLvl], "idLvl");
-    List keep0 = tmpL[RxTrans_keepL];
-    List keep = keep0[0];
-    _rxModels[".fkeep"] = keep0;
-    keepFcov=keep;
-    keepFcovType = keep0[1];
-    // Homogeneous/grouped event tables share representative translated rows across
-    // multiple real IDs; keep vectors must be expanded to match per-subject output order.
-    SEXP homGroupsS0 = Rf_getAttrib(ev1, Rf_install("rxHomGroups"));
-    if (!Rf_isNull(homGroupsS0) && keepFcov.size() > 0) {
-      DataFrame evDf = as<DataFrame>(ev1);
-      IntegerVector idKeep = as<IntegerVector>(evDf[0]);
-      int nRowsKeep = idKeep.size();
-      List homGroups0 = as<List>(homGroupsS0);
-      int nHomGroups = homGroups0.size();
-      std::vector<int> rowStart(nHomGroups, -1);
-      std::vector<int> rowLen(nHomGroups, 0);
-      for (int _i = 0; _i < nRowsKeep; ++_i) {
-        int rid = idKeep[_i];
-        if (rid >= 1 && rid <= nHomGroups) {
-          int gi = rid - 1;
-          if (rowStart[gi] == -1) rowStart[gi] = _i;
-          rowLen[gi]++;
-        }
-      }
-      int expandedRows = 0;
-      for (int gi = 0; gi < nHomGroups; ++gi) {
-        if (rowStart[gi] == -1 || rowLen[gi] == 0) continue;
-        expandedRows += rowLen[gi] * Rf_length(homGroups0[gi]);
-      }
-      if (expandedRows > 0 && expandedRows != nRowsKeep) {
-        for (int _k = 0; _k < keepFcov.size(); ++_k) {
-          NumericVector cur = as<NumericVector>(keepFcov[_k]);
-          if (cur.size() != nRowsKeep) continue;
-          NumericVector out(expandedRows, NA_REAL);
-          int at = 0;
-          for (int gi = 0; gi < nHomGroups; ++gi) {
-            if (rowStart[gi] == -1 || rowLen[gi] == 0) continue;
-            int reps = Rf_length(homGroups0[gi]);
-            for (int rep = 0; rep < reps; ++rep) {
-              std::copy(cur.begin() + rowStart[gi],
-                        cur.begin() + rowStart[gi] + rowLen[gi],
-                        out.begin() + at);
-              at += rowLen[gi];
-            }
-          }
-          keepFcov[_k] = out;
-        }
-      }
-    }
-    rx->nKeepF = keepFcov.size();
-    rxcEvid = 2;
-    rxcTime = 1;
-    rxcAmt  = 3;
-    rxcId   = 0;
-    rxcDv   = 5;
-    rxcIi   = 4;
-    int censAdd = as<int>(tmpL["censAdd"]);
-    int limitAdd = as<int>(tmpL["limitAdd"]);
-    if (censAdd == 1 && limitAdd == 1) {
-      rxcCens = 6;
-      rxcLimit = 7;
-    } else if (censAdd == 1){
-      rxcCens = 6;
-      rxcLimit = -1;
-    } else if (limitAdd == 1){
-      rxcCens  = -1;
-      rxcLimit = 6;
-    } else {
-      rxcCens  = -1;
-      rxcLimit = -1;
-    }
+    rxEv1UpdateDf(obj, rxControl, ev1, rxSolveDat, rx, etTransR);
   }
   rx->hasFactors=0;
   if (rxIs(ev1, "rxEtTran")) {
-    CharacterVector cls = ev1.attr("class");
-    List tmpL = cls.attr(".rxode2.lst");
-    rx->nobs2 = asInt(tmpL[RxTrans_nobs], "nobs");
-    rxSolveDat->convertInt = (asInt(tmpL[RxTrans_idInfo], "idInfo")==1);
-    CharacterVector clsEt = Rf_getAttrib(ev1, R_ClassSymbol);
-    List e   = clsEt.attr(".rxode2.lst");
-    // SETUP factors for ID=="" and CMT="" etc
-    lineIni(&(rx->factors));
-    lineIni(&(rx->factorNames));
-    SEXP idLvl = e[RxTrans_idLvl];
-    // Extract ID levels so you can be more explicit in errors/call ID==""
-    int len = Rf_length(idLvl);
-    // ID factors are always present in etTrans
-    addLine(&(rx->factorNames), "%s", "ID");
-    for (int i = 0; i < len; i++) {
-      addLine(&(rx->factors), "%s", CHAR(STRING_ELT(idLvl, i)));
-    }
-    rx->factorNs[rx->hasFactors++] = len;
-    // CMT may or may not be present, but the compartment info is present
-    SEXP cmtLvl = e[RxTrans_cmtInfo];
-    len = Rf_length(cmtLvl);
-    addLine(&(rx->factorNames), "%s", "CMT");
-    for (int i = 0; i < len; i++) {
-      addLine(&(rx->factors), "%s",
-              CHAR(STRING_ELT(cmtLvl, i)));
-    }
-    rx->factorNs[rx->hasFactors++] = len;
-    List lvlInfo = e[RxTrans_levelInfo];
-    SEXP lvlInfoN = lvlInfo.attr("names");
-    for (int i = Rf_length(lvlInfoN);i--;){
-      SEXP cur = lvlInfo[i];
-      if (!Rf_isNull(cur)){
-        len = Rf_length(cur);
-        addLine(&(rx->factorNames), "%s",
-                CHAR(STRING_ELT(lvlInfoN, i)));
-        for (int j = 0; j < len; ++j) {
-          addLine(&(rx->factors), "%s",
-                  CHAR(STRING_ELT(cur, j)));
-        }
-        rx->factorNs[rx->hasFactors++] = len;
-        if (rx->hasFactors >= 500){
-          rxSolveFree();
-          stop(_("rxode2 only supports 500 factors"));
-        }
-      }
-    }
+    rxEv1SetFactors(rx, ev1, rxSolveDat);
   }
-  // Rcpp::print(ev1);
   _rxModels[".lastEv1"] = ev1;
 }
 
@@ -6541,6 +6521,7 @@ static inline void iniRx(rx_solve* rx) {
   op->hmxi = 0.0;
   op->numLinSens = 0;
   op->numLin = 0;
+  op->numLinCarry = 0;
   op->depotLin = 0;
   op->linOffset = 0;
   op->linCmtLagMask = 0;
@@ -7157,9 +7138,14 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       // bare-primal solve).
       CharacterVector _adjSt = rxSolveDat->mv[RxMv_state];
       CharacterVector _adjLhs = rxSolveDat->mv[RxMv_lhs];
-      int _nBase = 0;
+      // the linCmt() carry states are neither base nor sensitivity states
+      int _nBase = 0, _nCarry = 0;
       for (int _i = 0; _i < _adjSt.size(); ++_i) {
-        if (strncmp(CHAR(_adjSt[_i]), "rx__sens_", 9) != 0) _nBase++;
+        if (strncmp(CHAR(_adjSt[_i]), "rx__carry_", 10) == 0) {
+          _nCarry++;
+        } else if (strncmp(CHAR(_adjSt[_i]), "rx__sens_", 9) != 0) {
+          _nBase++;
+        }
       }
       int _fxOff = -1, _fpOff = -1, _dfOff = -1, _jpOff = -1, _jyOff = -1, _fxdOff = -1, _tauOff = -1, _dtauOff = -1, _dlagOff = -1, _drateOff = -1;
       for (int _i = 0; _i < _adjLhs.size(); ++_i) {
@@ -7175,7 +7161,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
         if (_dlagOff < 0 && strcmp(_s, "rx__adjDlag_0_0__") == 0) _dlagOff = _i; // modeled-alag transversality
         if (_drateOff < 0 && strcmp(_s, "rx__adjDrate_0_0__") == 0) _drateOff = _i; // modeled-rate infusion dual
       }
-      int _nSens = (int)_adjSt.size() - _nBase;
+      int _nSens = (int)_adjSt.size() - _nBase - _nCarry;
       if (_fxOff < 0 || _fpOff < 0 || _nBase <= 0) {
         // A malformed expansion (has rx__sens_* output slots but is missing
         // the F_X/F_p Jacobian lhs) is a hard error: solving would silently
@@ -7366,7 +7352,11 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->numLinSens = numLinSens;
     op->numLin = numLin;
     op->depotLin = depotLin;
-    op->linOffset = op->neq - numLin - numLinSens;
+    // the carry states, last in the model; a flag absent from model
+    // variables parsed by an older version means none
+    op->numLinCarry = (Rf_length(rxSolveDat->mv[RxMv_flags]) > RxMvFlag_linCmtCarry) ?
+      INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_linCmtCarry] : 0;
+    op->linOffset = op->neq - numLin - numLinSens - op->numLinCarry;
     op->linCmtLagMask = rxLinCmtLagMask(rxSolveDat->mv, op->linOffset, numLin);
     op->linCmtOriginMask = rxLinCmtOriginMask(rxSolveDat->mv, op->linOffset, numLin);
     rxLoadAlagCmt(rxSolveDat->mv, op->neq, asBool(rxControl[Rxc_ssAtDoseTime], "ssAtDoseTime"));

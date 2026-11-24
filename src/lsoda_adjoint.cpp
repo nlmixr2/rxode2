@@ -370,7 +370,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   // period from y0 with a dop853 tableau and reuse the shared rk4sSsIc series.
   rk4sSsIc lsIc; bool lsMono = false; rk4s_rec lsSsRec;
   if (!ssContLL && op->adjoint && fxOff >= 0 && nBase > 0 && !lsAdjSegs.empty() && _lsSsKind == 1) {
-    int neqOde = op->neq - op->numLin - op->numLinSens;
+    int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
     int neq2[2]; neq2[0] = eff; neq2[1] = cSub;
     rksTableau Tss = rksGetTableau(200);            // dop853 explicit tableau
     std::vector<double> y0(lsAdjSegs[0].y0.begin(), lsAdjSegs[0].y0.end()), ssScr;

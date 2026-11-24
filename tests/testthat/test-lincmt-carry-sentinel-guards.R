@@ -1,6 +1,6 @@
 rxTest({
-  # The carry sentinels (which1 = -4..-7) index ind->linCmtCarryT, a 4-row
-  # buffer, by row = which2 %% (ncmt + oral0).  A hand-written linCmtB() call
+  # The carry sentinels (which1 = -4..-7) index the carry, at most 4 rows,
+  # by row = which2 %% (ncmt + oral0).  A hand-written linCmtB() call
   # can pass any ncmt/oral0, so an impossible shape must come back NA instead
   # of reading or writing past the buffer.
   mk <- function(ncmt, oral0, which1, which2) {
@@ -17,9 +17,10 @@ rxTest({
       expect_true(all(is.na(s$cp)))
     })
   }
-  test_that("a pair index past the cap returns NA", {
-    s <- rxSolve(mk(3L, 1L, -7L, 4L * 8L), ev, returnType = "data.frame")
-    expect_true(all(is.na(s$cp)))
+  test_that("a pair past the old 8-pair cap accumulates", {
+    # the carry is sized to the pairs the model uses (ind->solve states)
+    s <- rxSolve(mk(3L, 1L, -7L, 4L * 40L + 3L), ev, returnType = "data.frame")
+    expect_equal(s$cp, c(1.0, 1.5))
   })
   test_that("which1=-4 uses the interval since the previous row in the output pass", {
     # 1-cmt IV: d(A_i)/d(A_{i-1}) = exp(-(cl/v) * dt); ind->tprior is stale

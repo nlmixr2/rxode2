@@ -187,6 +187,11 @@ typedef struct {
      kernel evaluation per origin per step, so a model that cannot use it
      pays nothing.  Superset of linCmtLagMask. */
   int    linCmtOriginMask;
+  /* linCmt() carry states (rxode2lincmt's linCmtB which1 = -5/-6/-7): the
+     last numLinCarry states, after the linCmt() sensitivities, so
+     linOffset and every integrator's ODE count leave them out like the
+     rest of the linCmt() block.  Appended for downstream binaries. */
+  int    numLinCarry;
 } rx_solving_options;
 
 
@@ -566,6 +571,10 @@ struct rx_solving_options_ind_s {
   // there are none.  The record-based covariate reads of such a record read
   // its dose row.  Covers the first n_all_times_orig records.
   int    *doseRow;
+  // Solve row of the linCmt() carry in use (the record last advanced by
+  // linCmtB which1 = -5), -1 before any; reset in iniSubject().  The carry
+  // itself is in ind->solve (op->numLinCarry).
+  int     linCmtCarryRow;
   // For an addl repeat that does not keep its covariates (addlKeepsCov =
   // FALSE), the offset from the repeat to the record of the dose it repeats
   // (negative), recorded by etTrans(); 0 for every other record, NULL when

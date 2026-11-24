@@ -37,7 +37,7 @@ extern "C" void ind_bs_0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   dense_stepper_type dense_stepper(ind->atol2[0], ind->rtol2[0]);
   bool stepper_initialized = false;
 
-  int neqOde = op->neq - op->numLin - op->numLinSens;
+  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
   rxode2_system sys(c_dydt, neq, ind);
   sys.cap_t_ = true;
   double *yp;
@@ -238,7 +238,7 @@ extern "C" void par_bs(rx_solve *rx){
 
 extern "C" void bs_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind) {
   int eff = rxEffNeq(ind, op);
-  int neqOde = eff - op->numLin - op->numLinSens;
+  int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
   
   typedef boost::numeric::odeint::bulirsch_stoer<zero_copy_state> error_stepper_type;
   error_stepper_type stepper(ind->atol2[0], ind->rtol2[0]);
@@ -277,7 +277,7 @@ int rxBsDenseSegment(rx_solve *rx, rx_solving_options *op, rx_solving_options_in
                      int obs_first, int obs_last, int solveid) {
   (void) rx;
   int eff = rxEffNeq(ind, op);
-  int neqOde = eff - op->numLin - op->numLinSens;
+  int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
   if (neqOde <= 0) { return 1; }
   double maxdt = rxDelayCapHmax(ind);
   if (maxdt < 0.0) maxdt = 0.0;

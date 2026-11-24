@@ -8568,7 +8568,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   double xp = getAllTimes(ind, 0);
   ind->solvedIdx = 0;
 
-  int neqOde = op->neq - op->numLin - op->numLinSens;
+  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
   // DDE history: record dense steps for this subject when the model uses delay().
   // A single warm-up RHS evaluation lets _rxDelay learn the minimum delay so the
   // step size can be capped (keeping delay() lookups inside recorded history).
