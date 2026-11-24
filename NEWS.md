@@ -110,6 +110,11 @@
 - OpenCL launches size their work groups from the device so every compute
   unit gets work; `options(rxode2.gpuLocalSize = 0)` leaves the size to the
   driver.
+- `rxOptExpr(expensive = TRUE)` (or `options(rxode2.optExprExpensive =
+  TRUE)`, which estimation methods calling `rxOptExpr()` follow) also gives a
+  single call to an expensive function such as `exp()` inside a larger
+  expression its own temporary, so the GPU methods compute the ones that
+  depend only on parameters once per interval.
 - `rxMemoryEstimate()` (and so `rxSolve()`'s out-of-memory check) now counts
   the GPU methods' per-slot host workspaces and the per-thread `evid_()`
   push pools, and reports the GPU device buffers separately.  An OpenCL

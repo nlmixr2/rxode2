@@ -71,7 +71,7 @@ static const char *const *csReadImpure(SEXP impure) {
   return ret;
 }
 
-extern "C" SEXP _rxode2_rxCse(SEXP linesVec, SEXP impure) {
+extern "C" SEXP _rxode2_rxCse(SEXP linesVec, SEXP impure, SEXP expensiveS) {
   R_xlen_t n;
   const char **in;
   csRun r;
@@ -86,6 +86,7 @@ extern "C" SEXP _rxode2_rxCse(SEXP linesVec, SEXP impure) {
 
   csRunInit(&r, n, in, csPickThreads(n));
   r.impure = csReadImpure(impure);
+  r.expensive = Rf_asLogical(expensiveS) == 1;
   outText = csRunAll(&r);
   csRunFree(&r);
 

@@ -358,6 +358,11 @@
       if (length(.x3) != 1) {
         stop("error optimizing expression, try 'optExpression=FALSE'")
       }
+      if (length(.rxOptEnv$.rep) == 0L) {
+        ## the counting pass: a whole right-hand side (see expensive=)
+        .t <- .rxOptEnv$.top[[.x3]]
+        .rxOptEnv$.top[[.x3]] <- if (is.null(.t)) 1L else .t + 1L
+      }
       .ret <- paste0(
         ..rxOptLhs(x[[2]]),
         ifelse(identical(x[[1]], quote(`<-`)), "=", as.character(x[[1]])),
@@ -870,13 +875,13 @@
   ))
 }
 
-.rxOptExprChunk <- function(i, chunks, msg, impure = .rxImpureEnv$names) {
+.rxOptExprChunk <- function(i, chunks, msg, impure = .rxImpureEnv$names, expensive = FALSE) {
   # a mirai daemon has its own rxImpureFun() registry; use the caller's
   .oldImpure <- .rxImpureEnv$names
   .rxImpureEnv$names <- impure
   on.exit(.rxImpureEnv$names <- .oldImpure, add = TRUE)
   .txt <- paste(chunks[[i]], collapse = "\n")
-  .o <- suppressMessages(rxOptExpr(.txt, msg, chunkLines = 0L))
+  .o <- suppressMessages(rxOptExpr(.txt, msg, chunkLines = 0L, expensive = expensive))
   # whole identifiers only; `.` is part of a name, as in .rxOptPrefixUsed()
   .b <- function(re) paste0("(?<![A-Za-z0-9_.])", re, "(?![A-Za-z0-9_.])")
   .re <- .b("rx_expr_(cse_)*[0-9]+")
@@ -895,7 +900,7 @@
 # produce -- it carries more temporaries -- but it is an equivalent model, with the same
 # states and parameters and the same solution, and a malformed model still raises the same
 # error.  What is optimized changes; what the model *means* does not.
-.rxOptExprChunked <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
+.rxOptExprChunked <- function(x, msg = "model", chunkLines = 40L, parallel = 0L, expensive = FALSE) {
   # Never rxNorm() the whole model here.  Normalizing (i.e. parsing) is itself strongly
   # superlinear in model size, and is what actually dominates optimizing a large model: on a
   # 275-line augmented model the whole-model call is ~113s, of which the common subexpression
@@ -938,7 +943,7 @@
     nchar(.txt) < getOption("rxode2.optExprChunkChars", 524288L) ||
       length(.ln) <= chunkLines
   ) {
-    return(rxOptExpr(.txt, msg = msg, chunkLines = 0L))
+    return(rxOptExpr(.txt, msg = msg, chunkLines = 0L, expensive = expensive))
   }
   # Chunking introduces names of its own into the model's namespace: rx_expr_c<i>_ for the
   # temporaries a chunk contributes, and rx__disg_ while a compartment-scoped line or a
@@ -946,7 +951,7 @@
   # have it silently captured --
   # renaming or restoring would rewrite the model's own variable -- so do not chunk it.
   if (grepl("rx_expr_c[0-9]", .txt) || grepl("rx__disg_", .txt, fixed = TRUE)) {
-    return(rxOptExpr(.txt, msg = msg, chunkLines = 0L))
+    return(rxOptExpr(.txt, msg = msg, chunkLines = 0L, expensive = expensive))
   }
 
   # Disguise compartment-scoped left-hand sides so that every chunk parses standalone.
@@ -1010,15 +1015,16 @@
         # environment, so a chunk is optimized by the same code path serially and in parallel.
         .tasks <- mirai::mirai_map(
           seq_len(.nChunks),
-          function(.i, .chunks, .msg, .optOne, .impure) {
+          function(.i, .chunks, .msg, .optOne, .impure, .expensive) {
             library(rxode2)
-            .optOne(.i, .chunks, .msg, .impure)
+            .optOne(.i, .chunks, .msg, .impure, .expensive)
           },
           .args = list(
             .chunks = .chunks,
             .msg = msg,
             .optOne = .rxOptExprChunk,
-            .impure = .rxImpureEnv$names
+            .impure = .rxImpureEnv$names,
+            .expensive = expensive
           )
         )
         # A chunk that failed in a daemon comes back as an error object rather than
@@ -1026,7 +1032,7 @@
         lapply(seq_len(.nChunks), function(.i) .tasks[[.i]][])
       } else {
         lapply(seq_len(.nChunks), function(.i) {
-          tryCatch(.rxOptExprChunk(.i, .chunks, msg), error = function(e) e)
+          tryCatch(.rxOptExprChunk(.i, .chunks, msg, expensive = expensive), error = function(e) e)
         })
       }
       vapply(
@@ -1078,7 +1084,7 @@
     if (.failed) {
       .malert(sprintf("chunked optimization fell back to the whole %s: %s", msg, conditionMessage(.optRes)))
     }
-    return(rxOptExpr(.txt, msg = msg, chunkLines = 0L))
+    return(rxOptExpr(.txt, msg = msg, chunkLines = 0L, expensive = expensive))
   }
   .out <- .rxRestoreCmt(.rxRestoreDelay(paste(.opt, collapse = "\n"), .delay$map))
   .rxRealignPastTau(.out, .txt)
@@ -1098,10 +1104,11 @@
 #'
 #' @param norm normalized model text, as `rxNorm()` returns it
 #' @param impure names of called functions that are never shared
+#' @param expensive give a single expensive call its own temporary
 #' @return optimized model text, or `NA_character_` to decline
 #' @author Matthew L. Fidler
 #' @noRd
-.rxOptExprC <- function(norm, impure = character(0)) {
+.rxOptExprC <- function(norm, impure = character(0), expensive = FALSE) {
   if (!isTRUE(getOption("rxode2.optExprC", TRUE))) {
     return(NA_character_)
   }
@@ -1113,7 +1120,7 @@
   if (length(.l) == 0L) {
     return(NA_character_)
   }
-  .Call(`_rxode2_rxCse`, .l, as.character(impure))
+  .Call(`_rxode2_rxCse`, .l, as.character(impure), isTRUE(expensive))
 }
 
 # History calls (lag()/lead()/diff()/first()/last() and their 0 variants) are
@@ -1149,6 +1156,76 @@
     "(^|[^A-Za-z0-9_.])(",
     paste(gsub(".", "\\.", fns, fixed = TRUE), collapse = "|"),
     ")\\("
+  )
+}
+
+# Calls worth computing on their own line (rxOptExpr(expensive = TRUE))
+.rxOptExpensiveFuns <- c(
+  "exp",
+  "log",
+  "log10",
+  "log2",
+  "log1p",
+  "expm1",
+  "sqrt",
+  "gamma",
+  "lgamma",
+  "lgamma1p",
+  "digamma",
+  "trigamma",
+  "beta",
+  "lbeta",
+  "sin",
+  "cos",
+  "tan",
+  "asin",
+  "acos",
+  "atan",
+  "atan2",
+  "sinh",
+  "cosh",
+  "tanh",
+  "pnorm",
+  "qnorm",
+  "dnorm",
+  "erf",
+  "erfc",
+  "expit",
+  "logit",
+  "probit",
+  "probitInv",
+  "pow",
+  "R_pow"
+)
+
+#' Is each key one call `f(...)` of a function in `.rxOptExpensiveFuns`?
+#'
+#' Mirrors csIsExpensiveCall() in src/rxCseSel.h: the function's opening
+#' parenthesis closes at the last character, and no `delay()` is inside.
+#'
+#' @param keys subexpression texts
+#' @return logical
+#' @noRd
+#' @author Matthew L. Fidler
+.rxOptIsExpensiveCall <- function(keys) {
+  vapply(
+    keys,
+    function(.k) {
+      .m <- regexpr("^[A-Za-z_.][A-Za-z0-9_.]*[(]", .k)
+      if (.m == -1L) {
+        return(FALSE)
+      }
+      .fn <- substr(.k, 1L, attr(.m, "match.length") - 1L)
+      if (!(.fn %in% .rxOptExpensiveFuns) || grepl("delay(", .k, fixed = TRUE)) {
+        return(FALSE)
+      }
+      .ch <- strsplit(substring(.k, nchar(.fn) + 1L), "", fixed = TRUE)[[1]]
+      .d <- cumsum((.ch == "(") - (.ch == ")"))
+      .z <- which(.d == 0L)
+      length(.z) > 0L && .z[1] == length(.ch)
+    },
+    logical(1),
+    USE.NAMES = FALSE
   )
 }
 
@@ -1191,6 +1268,15 @@
 #'     the model splits into at least 4 chunks, where the parallel win
 #'     covers the startup.
 #'
+#' @param expensive Logical; when `TRUE`, a call to an expensive function
+#'     (such as `exp()`, `log()`, `sqrt()` or `pnorm()`) inside a larger
+#'     expression gets its own temporary even when it appears only once; a
+#'     call that is a whole right-hand side stays where it is.  The GPU
+#'     methods compute the temporaries that depend only on parameters once
+#'     per interval.  Defaults to
+#'     `getOption("rxode2.optExprExpensive", FALSE)`, so estimation methods
+#'     that call `rxOptExpr()` follow the option.
+#'
 #' @return Optimized rxode2 model text.  The order and type lhs and
 #'     state variables is maintained while the evaluation is sped up.
 #'     While parameters names are maintained, their order may be
@@ -1211,18 +1297,26 @@
 #' # exp(lka) and exp(lv) are computed once
 #' writeLines(rxOptExpr(pk))
 #' }
-rxOptExpr <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
+rxOptExpr <- function(
+  x,
+  msg = "model",
+  chunkLines = 40L,
+  parallel = 0L,
+  expensive = getOption("rxode2.optExprExpensive", FALSE)
+) {
   .depth <- if (is.integer(.rxOptEnv$.depth)) .rxOptEnv$.depth else 0L
+  .expensive <- isTRUE(expensive)
   .rxOptEnv$.depth <- .depth + 1L
   on.exit(.rxOptEnv$.depth <- .depth)
   .chunkLines <- as.integer(chunkLines)
   if (!is.na(.chunkLines) && .chunkLines > 0L) {
-    return(.rxOptExprChunked(x, msg = msg, chunkLines = .chunkLines, parallel = parallel))
+    return(.rxOptExprChunked(x, msg = msg, chunkLines = .chunkLines, parallel = parallel, expensive = .expensive))
   }
   .oldOpts <- options()
   options(digits = 22)
   on.exit(options(.oldOpts), add = TRUE)
   .rxOptEnv$.list <- list()
+  .rxOptEnv$.top <- list()
   .rxOptEnv$.rep <- list()
   .rxOptEnv$.added <- NULL
   .rxOptEnv$.exclude <- ""
@@ -1238,13 +1332,27 @@ rxOptExpr <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
   ## exactly, and the R implementation below then runs.  Chunking calls this
   ## same whole-model path once per chunk, so chunks go through C too.
   .impure <- .rxOptImpureCalls(.norm)
-  .cse <- .rxOptExprC(.norm, .impure)
+  .cse <- .rxOptExprC(.norm, .impure, .expensive)
   if (!is.na(.cse)) {
     return(.rxOptSsaUndo(.cse, .ssa))
   }
   .p <- eval(parse(text = paste0("quote({", .norm, "})")))
   .lines <- ..rxOpt(.p, progress = TRUE)
-  .rxOptEnv$.list <- .rxOptEnv$.list[which(unlist(.rxOptEnv$.list) > 1L)]
+  .cnt <- unlist(.rxOptEnv$.list)
+  .keep <- .cnt > 1L
+  if (.expensive && length(.cnt) > 0L) {
+    .top <- vapply(
+      names(.rxOptEnv$.list),
+      function(.n) {
+        .t <- .rxOptEnv$.top[[.n]]
+        if (is.null(.t)) 0L else .t
+      },
+      integer(1),
+      USE.NAMES = FALSE
+    )
+    .keep <- .keep | (.cnt > .top & .rxOptIsExpensiveCall(names(.rxOptEnv$.list)))
+  }
+  .rxOptEnv$.list <- .rxOptEnv$.list[which(.keep)]
   .exprs <- names(.rxOptEnv$.list)[order(nchar(names(.rxOptEnv$.list)))]
   .exprs <- .exprs[regexpr(rex::rex(start, regNum, end), .exprs, perl = TRUE) == -1]
   .thetaEtaR <- rex::rex(start, or("THETA[", "ETA["), any_numbers, "]", end)

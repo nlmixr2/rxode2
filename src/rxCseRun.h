@@ -99,6 +99,7 @@ typedef struct csRun {
   const char ***usedBy;           /* the temporaries each statement referenced */
   int *nUsedBy;
   const char *const *impure;      /* calls never shared, each `name(`; R_alloc'd */
+  int expensive;                  /* also single expensive calls not a whole rhs */
 } csRun;
 
 static void csRunInit(csRun *r, R_xlen_t n, const char **in, int nthr) {
@@ -200,7 +201,8 @@ static int csCountPhase(csRun *r) {
   return csReportDeclines(r) && csMergeCounts(r);
 }
 
-/* count > 1, then drop bare numbers, bare THETA[n]/ETA[n], anything leading
+/* count > 1 (or, with r->expensive, a call csIsExpensiveCall() names that is
+   not only ever a whole right-hand side), then drop bare numbers, bare THETA[n]/ETA[n], anything leading
    with `-`, anything calling lag()/lead()/diff()/first()/last() and anything
    calling an impure function (RNG, simeta(), rxImpureFun() names), then order by nchar with first encounter breaking ties
    (R/rxOptExpr.R:1000-1013) */
@@ -210,7 +212,9 @@ static int csSelectPhase(csRun *r) {
   if (r->cand == NULL) return 0;
   for (j = 0; j < r->all.n; j++) {
     csEntry *e = &r->all.e[j];
-    if (e->key == NULL || e->count <= 1) continue;
+    if (e->key == NULL) continue;
+    if (e->count <= 1 &&
+        !(r->expensive && e->count > e->top && csIsExpensiveCall(e->key))) continue;
     if (csIsNum(e->key) || csIsThetaEta(e->key) || e->key[0] == '-') continue;
     if (csHasHistCall(e->key) || csHasCallIn(e->key, r->impure)) continue;
     r->cand[r->ncand].key = e->key;
