@@ -131,6 +131,7 @@ typedef struct rxGpuSub {
   int bad;
   int init;      // the next request starts the integrator state
   int req;       // posted a request (y from xp to t1)
+  int row;       // row of the last round holding its result; -1 none
   double xp, xout, t1, h;
   double *yp;
   int neq[2];
@@ -675,22 +676,24 @@ extern "C" void ind_gpu(rx_solve *rx, int solveid, t_dydt c_dydt,
 }
 
 // Batched-solve counters for the benchmarks (.rxGpuSolveStats()): solves,
-// rounds, requests, and seconds advancing subjects on the host and in rounds
+// rounds, requests, and seconds advancing subjects on the host and in rounds;
+// gather (seconds collecting the requests into a round) is part of advance
 static struct {
-  double solves, rounds, requests, advance, round;
-} rxGpuStats = {0, 0, 0, 0, 0};
+  double solves, rounds, requests, advance, round, gather;
+} rxGpuStats = {0, 0, 0, 0, 0, 0};
 
 extern "C" SEXP _rxode2_rxGpuSolveStats(SEXP reset) {
   // coerce before allocating: the result is not protected
   int doReset = Rf_asLogical(reset) == 1;
-  SEXP ret = Rf_allocVector(REALSXP, 5);
+  SEXP ret = Rf_allocVector(REALSXP, 6);
   double *r = REAL(ret);
   r[0] = rxGpuStats.solves;
   r[1] = rxGpuStats.rounds;
   r[2] = rxGpuStats.requests;
   r[3] = rxGpuStats.advance;
   r[4] = rxGpuStats.round;
-  if (doReset) rxGpuStats = {0, 0, 0, 0, 0};
+  r[5] = rxGpuStats.gather;
+  if (doReset) rxGpuStats = {0, 0, 0, 0, 0, 0};
   return ret;
 }
 
@@ -898,11 +901,17 @@ static int rxGpuSlotCount(rx_solve *rx, int nsolve) {
   return nslot;
 }
 
-// advance the subject on slot k until it waits on a request, the slot taking
-// the next subject (from *next) each time one finishes
+// apply the slot's result from the last round (rows res), then advance the
+// subject on slot k until it waits on a request, the slot taking the next
+// subject (from *next) each time one finishes
 static void rxGpuRunSlot(rx_solve *rx, rx_solving_options *op, int k,
-                         rxGpuWork &w, uint32_t seed0, int *next, int nsolve) {
+                         rxGpuWork &w, rxGpuReq *res, uint32_t seed0, int *next,
+                         int nsolve) {
   rxGpuSub *s = &w.sub[k];
+  if (s->row >= 0) {
+    rxGpuResult(s, *res, s->row);
+    s->row = -1;
+  }
   for (;;) {
     if (s->st == RXGS_INIT) setSeedEng1(seed0 + s->id);
     if (rxGpuAdvance(rx, op, s, w.q, k, k)) {
@@ -938,26 +947,38 @@ static void rxGpuCopyRow(rxGpuReq &dst, int dr, const rxGpuReq &src, int sr) {
   memcpy(&dst.on[a*d[RXG_D_NEQ1]], &src.on[b*d[RXG_D_NEQ1]], sizeof(int)*d[RXG_D_NEQ1]);
 }
 
-// gather the slots' requests into the round's rows (w.map: row -> slot);
-// *nact gets the active slots.  Returns the request count.
-static int rxGpuGather(rxGpuWork &w, int nslot, int *nact) {
+// gather the slots' requests into one round: *res gets the slots' own rows
+// when every slot posted a request (no copies), else the packed rows, and
+// each requesting slot's sub[k].row its row; *nact gets the active slots.
+// Returns the request count.
+static int rxGpuGather(rxGpuWork &w, int nslot, int *nact, rxGpuReq **res) {
   int n = 0;
   *nact = 0;
   for (int k = 0; k < nslot; k++) {
     if (!w.active[k]) continue;
     (*nact)++;
-    if (!w.sub[k].req) continue;
-    w.map[n] = k;
-    rxGpuCopyRow(w.q2, n, w.q, k);
-    n++;
+    if (w.sub[k].req) n++;
   }
+  if (n == nslot) {
+    *res = &w.q;
+    for (int k = 0; k < nslot; k++) w.sub[k].row = k;
+  } else {
+    *res = &w.q2;
+    n = 0;
+    for (int k = 0; k < nslot; k++) {
+      if (!w.active[k] || !w.sub[k].req) continue;
+      rxGpuCopyRow(w.q2, n, w.q, k);
+      w.sub[k].row = n;
+      n++;
+    }
+  }
+  for (int k = 0; k < nslot; k++) w.sub[k].req = 0;
   return n;
 }
 
-// integrate the round's n requests (OpenCL or the host build); 0, or 1 when
-// an OpenCL round failed
-static int rxGpuRunRound(rxGpuWork &w, int n, int threads) {
-  rxGpuReq &q = w.q2;
+// integrate the round's n requests in rows q (OpenCL or the host build); 0,
+// or 1 when an OpenCL round failed
+static int rxGpuRunRound(rxGpuWork &w, rxGpuReq &q, int n, int threads) {
   if (rxGpuSolveCfg.cl != NULL) {
     return rxGpuClRound(rxGpuSolveCfg.cl, n, q.y.data(), q.rd.data(),
                         q.ri.data(), q.p0.data(), q.p1.data(), q.pl.data(),
@@ -987,44 +1008,47 @@ static int par_gpu0(rx_solve *rx) {
     sub[k].id = rx->ordId[next++] - 1;
     sub[k].st = RXGS_INIT;
     sub[k].req = 0;
+    sub[k].row = -1;
     w.active[k] = 1;
   }
   int nact = nslot;
   int fail = 0;
   rxGpuStats.solves++;
-  if (rxGpuTlSolveOk(rx, nsolve, nslot, d[RXG_D_NROW])) {
+  if (rxGpuTlSolveOk(rx, nsolve, nslot, rxGpuSolveCfg.dims[RXG_D_NROW])) {
     fail = rxGpuTimelines(rx, op, w, nslot, nsolve, threads, seed0);
     setRxSeedFinal(seed0 + (uint32_t)nsolve);
     if (threads < op->cores) op->cores = threads;
     return fail;
   }
+  // the last round's rows: the slots' own rows when every slot posted a
+  // request (no copies), else the packed rows
+  rxGpuReq *res = &w.q;
   while (nact > 0 && !fail) {
     auto _t0 = std::chrono::steady_clock::now();
     // advance every subject (applying its last result) until it waits
 #ifdef _OPENMP
-#pragma omp parallel for num_threads(threads) schedule(dynamic)
+#pragma omp parallel for num_threads(threads) schedule(dynamic, 8)
 #endif
     for (int k = 0; k < nslot; k++) {
       if (!w.active[k]) continue;
       setRxThreadId(k);
-      rxGpuRunSlot(rx, op, k, w, seed0, &next, nsolve);
+      rxGpuRunSlot(rx, op, k, w, res, seed0, &next, nsolve);
       setRxThreadId(-1);
     }
-    int n = rxGpuGather(w, nslot, &nact);
+    auto _tg = std::chrono::steady_clock::now();
+    int n = rxGpuGather(w, nslot, &nact, &res);
     auto _t1 = std::chrono::steady_clock::now();
     rxGpuStats.advance += std::chrono::duration<double>(_t1 - _t0).count();
+    rxGpuStats.gather += std::chrono::duration<double>(_t1 - _tg).count();
     if (n == 0) continue;
     rxGpuStats.rounds++;
     rxGpuStats.requests += n;
-    fail = rxGpuRunRound(w, n, threads);
+    fail = rxGpuRunRound(w, *res, n, threads);
     if (fail) break;
     rxGpuStats.round += std::chrono::duration<double>(std::chrono::steady_clock::now() - _t1).count();
-    for (int r = 0; r < n; r++) {
-      int k = w.map[r];
-      rxGpuResult(&sub[k], w.q2, r);
-      sub[k].req = 0;
-    }
   }
+  // a failed round leaves results unapplied: the slots start fresh next solve
+  for (int k = 0; k < nslot; k++) sub[k].row = -1;
   setRxSeedFinal(seed0 + (uint32_t)nsolve);
   // the rest of the solve (output) runs on the real team, never wider than
   // the pools op->cores sized

@@ -1485,7 +1485,7 @@ rxGpuInfo <- function() {
 .rxGpuSolveStats <- function(reset = TRUE) {
   stats::setNames(
     .Call(`_rxode2_rxGpuSolveStats`, reset),
-    c("solves", "rounds", "requests", "advance", "round")
+    c("solves", "rounds", "requests", "advance", "round", "gather")
   )
 }
 
