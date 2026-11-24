@@ -161,10 +161,10 @@ rxTest({
     cmt = "depot",
     wt = c(0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0)
   )
-  .etaCarryCheck <- function(m, interp, pairs) {
+  .etaCarryCheck <- function(m, interp, pairs, data = .etaCarryData) {
     .solve <- function(e) {
       p <- c(tcl = log(2), tv = log(20), tka = log(0.8), eta.cl = e[1], eta.f = e[2])
-      as.data.frame(rxSolve(m, p, .etaCarryData, covsInterpolation = interp, addDosing = FALSE))
+      as.data.frame(rxSolve(m, p, data, covsInterpolation = interp, addDosing = FALSE))
     }
     e0 <- c(0.1, -0.2)
     h <- 1e-5
@@ -203,5 +203,48 @@ rxTest({
     for (interp in c("locf", "nocb")) {
       .etaCarryCheck(m, interp, pairs)
     }
+  })
+
+  # replace (EVID 5) and multiply (EVID 6) records: the compartment is set to
+  # F*amt (eta derivatives amt times F's) or scaled by the factor
+  .etaCarryEvents <- function(evid, amt, cmt) {
+    data.frame(
+      id = 1,
+      time = c(0, 1, 2, 4, 6, 8, 10, 10, 12, 14, 16, 20, 24),
+      amt = c(100, 0, 0, 0, 0, 0, amt, 0, 0, 0, 100, 0, 0),
+      evid = c(1, 0, 0, 0, 0, 0, evid, 0, 0, 0, 1, 0, 0),
+      cmt = c(rep("depot", 6), cmt, rep("depot", 6)),
+      wt = c(0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0)
+    )
+  }
+
+  test_that("eta-space carry: exact through a replace record, with a modeled F", {
+    m <- .etaCarryModel(TRUE)
+    pairs <- list(
+      c("e1", "cp", "1"),
+      c("e2", "cp", "2"),
+      c("e11", "e1", "1"),
+      c("e12", "e1", "2"),
+      c("e22", "e2", "2")
+    )
+    for (interp in c("locf", "nocb")) {
+      .etaCarryCheck(m, interp, pairs, data = .etaCarryEvents(5, 50, "depot"))
+    }
+  })
+
+  test_that("eta-space carry: exact through a multiply record", {
+    m <- .etaCarryModel(FALSE)
+    pairs <- list(c("e1", "cp", "1"), c("e11", "e1", "1"))
+    .etaCarryCheck(m, "locf", pairs, data = .etaCarryEvents(6, 0.5, "central"))
+  })
+
+  test_that("eta-space carry: a multiply into a compartment with a modeled F reads NA from it on", {
+    m <- .etaCarryModel(TRUE)
+    p <- c(tcl = log(2), tv = log(20), tka = log(0.8), eta.cl = 0.1, eta.f = -0.1)
+    d <- .etaCarryEvents(6, 0.5, "depot")
+    r <- as.data.frame(rxSolve(m, p, d, covsInterpolation = "locf", addDosing = FALSE))
+    expect_false(anyNA(r$e1[r$time < 10]))
+    expect_true(all(is.na(r$e1[r$time >= 10])))
+    expect_true(all(is.na(r$e11[r$time >= 10])))
   })
 })
