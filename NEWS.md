@@ -61,6 +61,15 @@
   now also marks the records that are not data records (`addl` repeats and
   the records a dose expands to), so they do not end an interval (#1586).
 
+- `rxSolve(addlCovAtTime =)` sets which records an `addl` repeat that does
+  not keep its covariates reads when a data record falls at exactly its time
+  and the covariate is filled from earlier records (`locf`, or `midpoint` and
+  `linear` with `naInterpolation = "locf"`).  By default (`TRUE`) that record
+  counts, so the repeat reads the value in effect at its time, as
+  `addlKeepsCov = FALSE` imputes it.  With `FALSE`, the default with
+  `nonmem = TRUE`, only the records before the repeat count, as NONMEM reads
+  them.
+
 - `rxSolve(doseAtRecord = TRUE)`, on by default with `nonmem = TRUE`, reads a
   dose's `f()`, `alag()`, `rate()` and `dur()` at the dose's own data record,
   as NONMEM reads `F`, `ALAG`, `R` and `D` from the one record a dose has.
@@ -167,6 +176,22 @@
   into it now cancels the infusion's stop record too, so the state no longer
   goes negative and the stop no longer turns the compartment back on.  Its
   event sensitivities are reset with it (#1562).
+- A record's missing covariate, read for `alag()`, `f()`, `rate()` or
+  `dur()`, is filled from the records next to it in the data, wherever a lag
+  moves the records in the solve: under `locf` from the nearest earlier
+  record with a value (or the nearest later one when none is earlier), under
+  `nocb` from the nearest later one (or earlier), and under `midpoint` and
+  `linear` in the direction `naInterpolation` gives.  With covariates on the
+  observation rows only, an `alag()` on a covariate used to stop the solve
+  with "'alag(depot)' and maybe more items produce NA".
+- An `addl` repeat that does not keep its covariates (`addlKeepsCov = FALSE`)
+  reads the same record for its `alag()` and its `f()` under `locf`, and with
+  a data record at its own time reads that record's value (see
+  `addlCovAtTime`); its `alag()` read the record its lag happened to sort it
+  after, while its `f()` read the record before it.  Under `nocb` its
+  `alag()` reads the dose record it repeats, also when another record shares
+  the repeat's time, where it used to read the next record (#1582), and the
+  event sensitivities of that `alag()` read the same record.
 - A simulation that stops with an error no longer leaves its draws for the
   next solve.  The residuals, simulated thetas and per-study draws it had
   made stayed behind, and the next solve without residuals of its own used
@@ -221,6 +246,9 @@
 ### Expression optimization
 - `rxOptExpr()` avoids CSE temporary-name collisions and warns on repeated
   optimization; each model should be optimized only once (#1632).
+- `rxOptExpr()` no longer reuses a common subexpression temporary after one
+  of its variables is reassigned, which gave the later use the stale value
+  (#1782).
 - Parsing a function call whose argument is a long signed sum, such as
   `exp(1 + a - b + ...)`, is no longer exponential in the sum's length; it
   dominated `rxNorm()`/`rxOptExpr()` and FOCEi setup on models with long

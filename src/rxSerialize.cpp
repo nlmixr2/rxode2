@@ -21,7 +21,9 @@ extern "C" void rxOptionsIniEnsure(int mx, int cores);
 extern rx_globals _globals;
 
 static const char rxSerializeMagic[8] = {'R','X','O','D','E','2','S','Z'};
-static const uint32_t rxSerializeFormatVer = 10u;
+static const uint32_t rxSerializeFormatVer = 11u;
+// Format 11 appended each subject's ind->addlParent (an addl repeat's offset
+// to the dose record it repeats) after doseRow; empty when NULL.
 // Format 10 appended each subject's ind->doseRow (a record's offset to the
 // dose row it expands from) after pkSkip; empty when NULL.
 // Format 9 appended each subject's ind->pkSkip (the records that are not data
@@ -482,10 +484,12 @@ SEXP rxSaveState_() {
     // linH: 7 doubles per subject (if linB)
     sWriteDoubleBlob(f, ind->linH, (uint64_t)(rx->linB ? 7 : 0), "linH");
 
-    // infPair, pkSkip, doseRow: n_all_times_orig ints each, or none when NULL
+    // infPair, pkSkip, doseRow, addlParent: n_all_times_orig ints each, or
+    // none when NULL
     sWriteRecordIntBlob(f, ind->infPair, ind, "infPair");
     sWriteRecordIntBlob(f, ind->pkSkip, ind, "pkSkip");
     sWriteRecordIntBlob(f, ind->doseRow, ind, "doseRow");
+    sWriteRecordIntBlob(f, ind->addlParent, ind, "addlParent");
   }
 
   // -- Section 9: op->indLin convergence set (format 3+) --------------------
@@ -1158,6 +1162,9 @@ SEXP rxRestoreState_(SEXP rawSexp) {
   // doseRow blobs, gathered the same way into _globals.gdoseRow
   std::vector<int> doseRowAll;
   std::vector<int64_t> doseRowOff(nsub, -1);
+  // addlParent blobs, gathered the same way into _globals.gaddlParent
+  std::vector<int> addlParentAll;
+  std::vector<int64_t> addlParentOff(nsub, -1);
 
   for (uint32_t si = 0; si < nsub; si++) {
     rx_solving_options_ind *ind = &inds[si];
@@ -1272,6 +1279,7 @@ SEXP rxRestoreState_(SEXP rawSexp) {
     if (fmt >= 8u) sReadRecordIntBlob(f, ind, si, infPairAll, infPairOff, "infPair");
     if (fmt >= 9u) sReadRecordIntBlob(f, ind, si, pkSkipAll, pkSkipOff, "pkSkip");
     if (fmt >= 10u) sReadRecordIntBlob(f, ind, si, doseRowAll, doseRowOff, "doseRow");
+    if (fmt >= 11u) sReadRecordIntBlob(f, ind, si, addlParentAll, addlParentOff, "addlParent");
 
     // timeThread: not restored (recomputed from ix by solver)
     // Allocate a private timeThread buffer for this subject
@@ -1306,6 +1314,8 @@ SEXP rxRestoreState_(SEXP rawSexp) {
                      &rx_solving_options_ind::pkSkip, "pkSkip");
   sInstallRecordInts(&_globals.gdoseRow, doseRowAll, doseRowOff, inds, nsub,
                      &rx_solving_options_ind::doseRow, "doseRow");
+  sInstallRecordInts(&_globals.gaddlParent, addlParentAll, addlParentOff, inds, nsub,
+                     &rx_solving_options_ind::addlParent, "addlParent");
 
   // -- Section 10: op->indLin convergence set --------------------------------
   {
