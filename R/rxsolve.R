@@ -949,6 +949,16 @@
 #'   dose (`TRUE`, as NONMEM does).  By default `FALSE`, or `TRUE` with
 #'   `nonmem = TRUE`.
 #'
+#' @param addlCovAtTime Boolean that sets what an `addl` repeat that does
+#'   not keep its covariates (`addlKeepsCov = FALSE`) reads for `alag()` and
+#'   `f()` when a data record falls at exactly its time and the covariate is
+#'   filled from earlier records (`locf`, or `midpoint`/`linear` with
+#'   `naInterpolation = "locf"`).  When `TRUE` that record counts, so the
+#'   repeat reads the covariate value in effect at its time, as
+#'   `addlKeepsCov = FALSE` imputes it.  When `FALSE` only the records before
+#'   the repeat count, as NONMEM does.  By default (`NULL`) this is `TRUE`,
+#'   or `FALSE` with `nonmem = TRUE`.
+#'
 #' @param addlDropSs When there are steady state doses with an `addl`
 #'   specification the steady state flag is dropped with repeated
 #'   doses (when `TRUE`) or retained (when `FALSE`)
@@ -1072,7 +1082,8 @@
 #'   each interval from the record that ends it, like NONMEM's `R1` (see
 #'   `rateAtDoseTime`).  Covariate interpolation is still set by
 #'   `covsInterpolation`.  It also sets the default `tieOrder` to `"data"`
-#'   and turns on `addlKeepsCov`, `durAtDoseTime` and `doseAtRecord` unless
+#'   and turns on `addlKeepsCov`, `durAtDoseTime` and `doseAtRecord`, and
+#'   turns off `addlCovAtTime`, unless
 #'   they are given.
 #'   By default `FALSE`, when `f()`, `rate()` and `dur()` of an `addl` repeat
 #'   read the actual time of the `addl` dose.
@@ -1762,6 +1773,7 @@ rxSolve <- function(
   rateAtDoseTime = FALSE,
   durAtDoseTime = NULL,
   doseAtRecord = NULL,
+  addlCovAtTime = NULL,
   resetCancelsPending = TRUE,
   ssMethod = c("anderson", "iterate"),
   linCmtGillFtol = 0,
@@ -2088,6 +2100,11 @@ rxSolve <- function(
       doseAtRecord <- nonmem
     }
     checkmate::assertLogical(doseAtRecord, any.missing = FALSE, len = 1)
+    if (is.null(addlCovAtTime)) {
+      # NONMEM reads only the records before an addl repeat
+      addlCovAtTime <- !nonmem
+    }
+    checkmate::assertLogical(addlCovAtTime, any.missing = FALSE, len = 1)
     checkmate::assertLogical(resetCancelsPending, any.missing = FALSE, len = 1)
     if (checkmate::testIntegerish(ssMethod, len = 1, lower = 0, upper = 1, any.missing = FALSE)) {
       .ssMethod <- as.integer(ssMethod)
@@ -2596,7 +2613,8 @@ rxSolve <- function(
       durAtDoseTime = durAtDoseTime,
       resetCancelsPending = resetCancelsPending,
       ssMethod = .ssMethod,
-      doseAtRecord = doseAtRecord
+      doseAtRecord = doseAtRecord,
+      addlCovAtTime = addlCovAtTime
     )
     class(.ret) <- "rxControl"
     return(.ret)
