@@ -1088,10 +1088,11 @@
 #' implementation, so declining is always safe.
 #'
 #' @param norm normalized model text, as `rxNorm()` returns it
+#' @param impure names of called functions that are never shared
 #' @return optimized model text, or `NA_character_` to decline
 #' @author Matthew L. Fidler
 #' @noRd
-.rxOptExprC <- function(norm) {
+.rxOptExprC <- function(norm, impure = character(0)) {
   if (!isTRUE(getOption("rxode2.optExprC", TRUE))) {
     return(NA_character_)
   }
@@ -1103,7 +1104,7 @@
   if (length(.l) == 0L) {
     return(NA_character_)
   }
-  .Call(`_rxode2_rxCse`, .l)
+  .Call(`_rxode2_rxCse`, .l, as.character(impure))
 }
 
 # History calls (lag()/lead()/diff()/first()/last() and their 0 variants) are
@@ -1111,6 +1112,49 @@
 # reference above the assignment of x, which the parser rejects.  Mirrored by
 # csHasHistCall() in src/rxCseSel.h.
 .rxOptHistRe <- "(^|[^A-Za-z0-9_.])(lag|lead|diff)0?\\(|(^|[^A-Za-z0-9_.])(first|last)\\("
+
+# Calls that are never shared, since each evaluation can differ: random draws,
+# simeta()/simeps(), mixtures, and functions rxode2 cannot see into (user R
+# functions and C functions registered by other packages).  Spelled as in the
+# normalized model; R/rxFullOpt.R `.rxFullOptImpureBuiltin` is the C spelling.
+.rxOptImpureBuiltin <- unique(c(
+  sub("_$", "", sub("^_", "", .rxFullOptImpureBuiltin)),
+  "rxord",
+  "rxTteSim"
+))
+
+#' Impure function names called in a normalized model
+#'
+#' @param x the model given to rxOptExpr()
+#' @param norm its normalized text
+#' @return character vector of the impure names `norm` calls
+#' @author Matthew L. Fidler
+#' @noRd
+.rxOptImpureCalls <- function(x, norm) {
+  .calls <- regmatches(norm, gregexpr("[A-Za-z_.][A-Za-z0-9_.]*(?=\\()", norm, perl = TRUE))[[1]]
+  .calls <- unique(.calls)
+  if (length(.calls) == 0L) {
+    return(character(0))
+  }
+  .udf <- tryCatch(names(rxModelVars(x)$udf), error = function(e) character(0))
+  .df <- rxode2parseGetTranslation()
+  .ext <- character(0)
+  if (is.data.frame(.df) && nrow(.df) > 0L) {
+    .w <- !(.df$package %in% c("rxode2", "rxode2ll"))
+    .ext <- c(.df$fun[.w], .df$rxFun[.w])
+  }
+  .impure <- c(.rxOptImpureBuiltin, .udf, names(.udfEnv$rxSEeqUsr), .ext)
+  .calls[.calls %in% .impure]
+}
+
+# regular expression matching a call to any of `fns` (identifiers)
+.rxOptCallRe <- function(fns) {
+  paste0(
+    "(^|[^A-Za-z0-9_.])(",
+    paste(gsub(".", "\\.", fns, fixed = TRUE), collapse = "|"),
+    ")\\("
+  )
+}
 
 #' Optimize rxode2 for computer evaluation
 #'
@@ -1189,12 +1233,18 @@ rxOptExpr <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
   .malert(sprintf("finding duplicate expressions in %s...", msg))
   .norm <- rxNorm(x)
   .rxOptWarnRepeat(.norm)
+  ## Version reassigned variables so no temporary outlives one of its inputs (#1782)
+  .ssa <- .rxOptSsa(.norm)
+  if (!is.null(.ssa)) {
+    .norm <- .ssa$txt
+  }
   ## The C pass first; it returns NA when it will not reproduce the R walker
   ## exactly, and the R implementation below then runs.  Chunking calls this
   ## same whole-model path once per chunk, so chunks go through C too.
-  .cse <- .rxOptExprC(.norm)
+  .impure <- .rxOptImpureCalls(x, .norm)
+  .cse <- .rxOptExprC(.norm, .impure)
   if (!is.na(.cse)) {
-    return(.cse)
+    return(.rxOptSsaUndo(.cse, .ssa))
   }
   .p <- eval(parse(text = paste0("quote({", .norm, "})")))
   .lines <- ..rxOpt(.p, progress = TRUE)
@@ -1204,6 +1254,9 @@ rxOptExpr <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
   .thetaEtaR <- rex::rex(start, or("THETA[", "ETA["), any_numbers, "]", end)
   .exprs <- .exprs[regexpr(.thetaEtaR, .exprs, perl = TRUE) == -1]
   .exprs <- .exprs[!grepl(.rxOptHistRe, .exprs, perl = TRUE)]
+  if (length(.impure) > 0L) {
+    .exprs <- .exprs[!grepl(.rxOptCallRe(.impure), .exprs, perl = TRUE)]
+  }
   if (length(.exprs) > 0) {
     ## Take out unary [-] that way
     ## expr1=-ka       #nolint
@@ -1222,8 +1275,8 @@ rxOptExpr <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
     .rxOptEnv$.exclude <- ""
     .malert(sprintf("optimizing duplicate expressions in %s...", msg))
     .opt <- ..rxOpt(.p, progress = TRUE)
-    return(paste(.opt, collapse = "\n"))
+    return(.rxOptSsaUndo(paste(.opt, collapse = "\n"), .ssa))
   } else {
-    return(paste(.lines, collapse = "\n"))
+    return(.rxOptSsaUndo(paste(.lines, collapse = "\n"), .ssa))
   }
 }

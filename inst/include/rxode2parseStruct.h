@@ -575,6 +575,17 @@ struct rx_solving_options_ind_s {
   // linCmtB which1 = -5), -1 before any; reset in iniSubject().  The carry
   // itself is in ind->solve (op->numLinCarry).
   int     linCmtCarryRow;
+  // For an addl repeat that does not keep its covariates (addlKeepsCov =
+  // FALSE), the offset from the repeat to the record of the dose it repeats
+  // (negative), recorded by etTrans(); 0 for every other record, NULL when
+  // there are none.  getLag() evaluates a repeat's alag() with that record's
+  // nocb covariates, as NONMEM does for ALAG1.  Covers the first
+  // n_all_times_orig records.
+  int    *addlParent;
+  // While getLag() evaluates an addl repeat's alag(): 1 + the sorted position
+  // of the dose record it repeats, whose covariates a nocb covariate is read
+  // at; 0 otherwise.
+  int    lagParent;
 };
 
 typedef struct rx_solve_s {
@@ -702,6 +713,10 @@ typedef struct rx_solve_s {
   // the covariates of the records it expands to, are read at its own data
   // record, as NONMEM reads them; otherwise each record reads its own
   int doseAtRecord;
+  // rxControl(addlCovAtTime=TRUE): an addl repeat that does not keep its
+  // covariates reads a record at its own time (the value in effect then);
+  // otherwise only the records before it, as NONMEM does
+  int addlCovAtTime;
 } rx_solve;
 
 typedef void (*rxode2_assignFuns2_t)(rx_solve, rx_solving_options, t_F, t_LAG, t_RATE, t_DUR,t_calc_mtime, t_ME, t_IndF, t_getTime, t_locateTimeIndex, t_handle_evidL,t_getDur);
