@@ -174,23 +174,26 @@ Timings, 8 threads, seconds):
 
 | method | backend | SAEM | FOCEi |
 |---|---|---:|---:|
-| `liblsoda` | host | 183 | 10.8 |
-| `t54` | host | 175 | 2.9 |
-| `ros54p` | host | 276 | 9.6 |
+| `liblsoda` | host | 183 | 10.7 |
+| `t54` | host | 177 | 2.9 |
+| `ros54p` | host | 279 | 9.8 |
 | `"t54+ros54p"` | host | 185 | 2.9 |
-| `gpuT54` | CPU build | 191 | 4.6 |
-| `gpuRos54p` | CPU build | 201 | 4.5 |
-| `"gpuT54+gpuRos54p"` | CPU build | 186 | 4.6 |
-| `gpuT54` | OpenCL | 294 | 3.9 |
-| `"gpuT54+gpuRos54p"` | OpenCL | 294 | 16.6 |
+| `gpuT54` | CPU build | 168 | 4.6 |
+| `gpuRos54p` | CPU build | 182 | 4.4 |
+| `"gpuT54+gpuRos54p"` | CPU build | 165 | 4.4 |
+| `gpuT54` | OpenCL | 135 | 4.2 |
+| `gpuRos54p` | OpenCL | 143 | 9.5 |
+| `"gpuT54+gpuRos54p"` | OpenCL | 136 | 18.5 |
 
 - SAEM solves every subject's three chains together, so the GPU methods
-  integrate about 1500 subjects per round.  Their CPU build fits in about
-  the time of the host methods; `gpuRos54p` takes 201 s against 276 s for
-  `ros54p`.
-- A round of 1500 subjects is too small to fill the L40 and takes longer
-  there (1.7 ms) than on 8 CPU threads (0.9 ms), so OpenCL is slower than
-  the CPU build for this fit.
+  integrate about 1500 subjects per round.  On the L40 the SAEM fit takes
+  135 s against 177 s for the fastest host method; `gpuRos54p` takes 143 s
+  against 279 s for `ros54p`.
+- The device's share of that is 57 s for 125,451 rounds (0.45 ms each);
+  the host event handling between rounds takes 41 s and nlmixr2's own SAEM
+  work the rest.
+- With the driver's work groups (`options(rxode2.gpuLocalSize = 0)`) the
+  rounds take 156 s and the fit 233 s.
 - FOCEi solves one subject at a time while it optimizes the etas, so a GPU
   method runs its host counterpart there.
 
@@ -299,8 +302,8 @@ interval it needs and what its doses add; one launch then integrates each
 subject's whole timeline, and the subjects run their events again with the
 results.  The results are the same as the rounds' (to rounding when several
 doses into one compartment share a time).  On the L40 a SAEM fit took
-the same time either way: a launch of whole timelines takes as long as the
-rounds it replaces, and recording and replaying the events costs host time.
+the same time either way (136 s): the device time drops from 57 s to 44 s,
+and recording and replaying the events adds as much host time.
 
 Statements that depend only on parameters (such as `ka <- exp(tka +
 eta.ka)`) are computed once per interval rather than at every derivative
