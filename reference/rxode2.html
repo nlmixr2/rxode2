@@ -418,6 +418,10 @@ abbreviation <em>Rx</em> for a medical prescription, and thus to
 suggest the package emphasis on pharmacometrics modeling, including
 pharmacokinetics (PK), pharmacodynamics (PD), disease progression,
 drug-disease modeling, etc.</p>
+<p>Each generated C function (the ODE right-hand side, the calculated
+variables, <code>f()</code>/<code>alag()</code>/<code>rate()</code>/<code>dur()</code>, ...) evaluates only the model
+statements its own outputs depend on; <code>options(rxode2.fullOpt = "none")</code>
+evaluates every statement in every function instead.</p>
 <div class="section">
 <h3 id="creating-rxode-models">Creating rxode2 models<a class="anchor" aria-label="anchor" href="#creating-rxode-models"></a></h3>
 

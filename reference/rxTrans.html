@@ -155,6 +155,7 @@
 <span>  modName <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  modVars <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  eventSensKey <span class="op">=</span> <span class="va">.rxState</span><span class="op">$</span><span class="va">eventSensCacheKey</span>,</span>
+<span>  fullOptKey <span class="op">=</span> <span class="fu">.rxFullOptKey</span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -214,6 +215,11 @@ legacy <code>"fd"</code> path keeps existing caches valid.  It is a formal
 argument (rather than read from the global in the body) because
 <code>rxTrans.character</code> is memoised and <code>memoise</code> keys on
 default-valued formals, so the cache distinguishes the modes.</p></dd>
+
+
+<dt id="arg-fulloptkey">fullOptKey<a class="anchor" aria-label="anchor" href="#arg-fulloptkey"></a></dt>
+<dd><p><code>rxode2.fullOpt</code> level key folded into the parsed md5
+("" at "none"); a formal for the same memoise reason as <code>eventSensKey</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
