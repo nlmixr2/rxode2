@@ -23,7 +23,7 @@
 
 static inline SEXP calcSLinCmt(void) {
   rxProtectGuard;
-  SEXP sLinCmt = rxP(Rf_allocVector(INTSXP,19));
+  SEXP sLinCmt = rxP(Rf_allocVector(INTSXP,20));
   INTEGER(sLinCmt)[0] = tb.ncmt;
   INTEGER(sLinCmt)[1] = tb.hasKa;
   INTEGER(sLinCmt)[2] = tb.linB;
@@ -50,8 +50,10 @@ static inline SEXP calcSLinCmt(void) {
   }
   // f()/alag()/rate()/dur() may read `time` (rxode2#1583)
   INTEGER(sLinCmt)[18] = pkTimeDoseT();
+  // linCmt() carry states, the last states of the model (calcLinCmt())
+  INTEGER(sLinCmt)[19] = tb.linCmtCarryN;
 
-  SEXP sLinCmtN = rxP(Rf_allocVector(STRSXP, 19));
+  SEXP sLinCmtN = rxP(Rf_allocVector(STRSXP, 20));
   SET_STRING_ELT(sLinCmtN, 0, Rf_mkChar("ncmt"));
   SET_STRING_ELT(sLinCmtN, 1, Rf_mkChar("ka"));
   SET_STRING_ELT(sLinCmtN, 2, Rf_mkChar("linB"));
@@ -71,6 +73,7 @@ static inline SEXP calcSLinCmt(void) {
   SET_STRING_ELT(sLinCmtN, 16, Rf_mkChar("linCmtBraw"));
   SET_STRING_ELT(sLinCmtN, 17, Rf_mkChar("pkTime"));
   SET_STRING_ELT(sLinCmtN, 18, Rf_mkChar("doseTime"));
+  SET_STRING_ELT(sLinCmtN, 19, Rf_mkChar("linCmtCarry"));
   Rf_setAttrib(sLinCmt,   R_NamesSymbol, sLinCmtN);
   rxUPAll();
   return(sLinCmt);
@@ -163,7 +166,8 @@ static inline void calcNextra(void) {
             strcmp(b2, "rx__sens_peripheral2_BY_p3") == 0 ||
             strcmp(b2, "rx__sens_peripheral2_BY_p4") == 0 ||
             strcmp(b2, "rx__sens_peripheral2_BY_ka") == 0 ||
-            strcmp(b2, "rx__sens_depot_BY_ka") == 0) {
+            strcmp(b2, "rx__sens_depot_BY_ka") == 0 ||
+            strncmp(b2, "rx__carry_", 10) == 0) {
           continue;
         }
         // If there is only a linear compartment model AND this is a cmt() item, then

@@ -46,7 +46,7 @@ extern "C" void ind_rkh10_0(rx_solve *rx, rx_solving_options *op, int solveid, i
   double xp = getAllTimes(ind, 0);
   ind->solvedIdx = 0;
 
-  int neqOde = op->neq - op->numLin - op->numLinSens;
+  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
   RxRkh10 *solver = NULL;
   if (neqOde > 0) {
     solver = new RxRkh10(c_dydt, neq, neqOde, ind, getSolve(0));
@@ -204,7 +204,7 @@ extern "C" void rkh10_solveWith1Pt(int *neq, double *yp, double *xp, double xout
                                     int *istate, rx_solving_options *op,
                                     rx_solving_options_ind *ind) {
   int eff = rxEffNeq(ind, op);
-  int neqOde = eff - op->numLin - op->numLinSens;
+  int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
 
     if (neqOde > 0) {
     RxRkh10 solver(dydt, neq, neqOde, ind, yp);

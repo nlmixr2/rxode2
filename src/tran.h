@@ -111,6 +111,7 @@ lhs symbols?
   int linB;
   int ndiff; // flag of the linCmtB derivatives requested
   int linCmtBraw; // model reads raw linCmtB amount-Jacobian rows (which1 >= 0)
+  int linCmtCarryN; // linCmt() carry states: m * the carry pairs the model uses
   // curPropN
   int curPropN;
   int depotN;

@@ -8,13 +8,23 @@
   `rxode2.fullOpt` keeps them in every generated function; unregistered
   functions are treated as pure (#1783).
 
+- The `linCmt()` sensitivity carry that nlmixr2est uses for a
+  time-varying covariate is now kept in each model's solve buffer
+  (`ind->solve`), like the sensitivities: the model has one carry state per
+  (compartment, carried pair) it uses, added after the `linCmt()`
+  sensitivities, left out of the ODE integration and not shown as output
+  columns.  The carry is no longer
+  capped at 8 pairs, so an IOV model whose occasion etas each need one can
+  be carried, and a model without the carry stores nothing for it
+  (`linCmtCarryMaxPairs()` reports no cap).  rxode2 now needs rxode2lincmt
+  0.1.1.9000.  A state saved by `rxSaveState()` from an older build is
+  refused by `rxLoadState()`, as for any change of the solver structs.
 - Each generated C function now evaluates only the model statements its
   outputs depend on: the ODE right-hand side skips calculated variables
   nothing integrates, the calculated-variable function skips the
   sensitivity right-hand sides it never reads, and `f()`/`alag()`/`rate()`/
   `dur()` evaluate only their own inputs.  Results are unchanged;
   `options(rxode2.fullOpt = "none")` restores the previous code generation.
-
 - The model language has `clamp(x, lo, hi)`, the same as
   `min(max(x, lo), hi)` (and differentiated the same way); a call with
   other than three arguments, or with literal bounds `lo > hi`, is a parse

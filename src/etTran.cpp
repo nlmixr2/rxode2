@@ -295,6 +295,13 @@ void getLinInfo(List mv, int &numLinSens,
   depotLin = std::floor((linCmtFlg - numLinSens*100- numLin*10));
 }
 
+// The linCmt() carry states (flag linCmtCarry) end the state list after the
+// linCmt() sensitivities; compartment numbering counts them with those.
+static inline int getLinCarryN(List mv) {
+  IntegerVector flags = mv[RxMv_flags];
+  return flags.size() > RxMvFlag_linCmtCarry ? flags[RxMvFlag_linCmtCarry] : 0;
+}
+
 //' Get the Linear Compartment Information based on the model variables
 //'
 //' @param obj The model variables object
@@ -429,13 +436,188 @@ IntegerVector getCmtNum_(IntegerVector cmt, List mv, bool sens=true) {
   int numLinSens, numLin, depotLin;
   getLinInfo(mv, numLinSens,
              numLin, depotLin);
+  int nCarry = getLinCarryN(mv);
+  numLinSens += nCarry;
   IntegerVector ret(cmt.size());
   CharacterVector state = mv[RxMv_state];
   CharacterVector sensCV = mv[RxMv_sens];
   for (int i = cmt.size(); i--;){
     ret[i] = getCmtNum(cmt[i], numLin, numLinSens, depotLin,
-                       state.size(), sensCV.size(), sens);
+                       state.size(), sensCV.size() + nCarry, sens);
   }
+  return ret;
+}
+
+// Strip a leading "-" (a compartment turned off); true when there was one
+static inline bool toCmtSplitNeg(std::string &cmt) {
+  if (cmt.substr(0, 1) == "-") {
+    cmt = cmt.substr(1, std::string::npos);
+    return true;
+  }
+  return false;
+}
+
+// 1-based index of the last state named `name`, 0 when there is none
+static inline int toCmtFindState(CharacterVector& state, const std::string &name) {
+  for (int j = state.size(); j--;) {
+    if (as<std::string>(state[j]) == name) return j + 1;
+  }
+  return 0;
+}
+
+static inline void toCmtStopNeg(const char *fmt, const std::string &cmt,
+                                const IntegerVector& inId, const CharacterVector& idLvl,
+                                int i) {
+  stop(fmt, cmt.c_str(), CHAR(idLvl[((inId.size() == 0) ? 1 : inId[i])-1]), i+1);
+}
+
+static inline void toCmtAppendExtra(List &extraCmt, const std::string &cmt) {
+  List tmpList(extraCmt.size()+1);
+  for (int i = extraCmt.size(); i--;) tmpList[i] = extraCmt[i];
+  tmpList[extraCmt.size()] = cmt;
+  extraCmt = tmpList;
+}
+
+// state names followed by the extra (non-ODE) compartments
+static inline CharacterVector toCmtNames(CharacterVector& state, List &extraCmt) {
+  CharacterVector newCmt(state.size()+extraCmt.size());
+  for (int j = state.size(); j--;) newCmt[j]=state[j];
+  for (int j = extraCmt.size(); j--;)
+    newCmt[j+state.size()] = as<std::string>(extraCmt[j]);
+  return newCmt;
+}
+
+static inline IntegerVector toCmtFactor(RObject inCmt, CharacterVector& state,
+                                        const IntegerVector& inId,
+                                        const CharacterVector& idLvl) {
+  List extraCmt;
+  CharacterVector lvl = Rf_getAttrib(as<SEXP>(inCmt), R_LevelsSymbol);
+  IntegerVector lvlI(lvl.size());
+  int k = 0;
+  for (int i = 0; i < lvlI.size(); i++){
+    std::string curLvl = as<std::string>(lvl[i]);
+    bool isNeg = toCmtSplitNeg(curLvl);
+    int j = toCmtFindState(state, curLvl);
+    if (j > 0) {
+      lvlI[i] = isNeg ? -j : j;
+    } else if (curLvl == "(default)" || curLvl == "(obs)"){
+      lvlI[i] = 1;
+    } else {
+      k++;
+      if (isNeg){
+        toCmtStopNeg(_("negative compartments on non-ode 'cmt' (%s) does not make sense (id: %s, row: %d)"),
+                     curLvl, inId, idLvl, i);
+      }
+      toCmtAppendExtra(extraCmt, curLvl);
+      lvlI[i] = state.size() + k;
+    }
+  }
+  IntegerVector cmtIn = IntegerVector(inCmt);
+  IntegerVector ret(cmtIn.size());
+  for (int j=ret.size(); j--;){
+    if (IntegerVector::is_na(cmtIn[j])){
+      ret[j] = NA_INTEGER;
+    } else {
+      ret[j] = lvlI[cmtIn[j]-1];
+    }
+  }
+  ret.attr("cmtNames") = toCmtNames(state, extraCmt);
+  return ret;
+}
+
+static inline void toCmtWarnDvid(std::vector<int> &warnDvid) {
+  if (warnDvid.size() <= 1) return;
+  std::string warn = "Undefined 'dvid' integer values in data: ";
+  SORT(warnDvid.begin(), warnDvid.end());
+  for (int i = 0; i < (int)(warnDvid.size()-1); i++){
+    warn = warn + std::to_string(warnDvid[i]) + ", ";
+  }
+  warn = warn + std::to_string(warnDvid[warnDvid.size()-1]);
+  Rf_warningcall(R_NilValue, "%s", warn.c_str());
+}
+
+// DVID to cmt; values that do not match become -9999
+static inline IntegerVector toCmtDvid(RObject inCmt, CharacterVector& state,
+                                      IntegerVector& curDvid) {
+  Environment rx = rxode2env();
+  IntegerVector in = convertDvid_(inCmt, curDvid.length());
+  IntegerVector out(in.size());
+  IntegerVector conv = curDvid;
+  std::vector<int> warnDvid;
+  std::vector<int> warnConvertDvid;
+  std::string warnC = "'dvid' were not numbered 1, 2, etc\nThey were converted from->to:";
+  IntegerVector cmtIn = IntegerVector(inCmt);
+  for (int i = in.size(); i--;){
+    if (in[i] != cmtIn[i] &&
+        std::find(warnConvertDvid.begin(), warnConvertDvid.end(), in[i]) == warnConvertDvid.end()){
+      warnConvertDvid.push_back(in[i]);
+      warnC = warnC + " " + std::to_string(cmtIn[i]) + "->" + std::to_string(in[i]);
+    }
+    if (in[i] > 0 && in[i] <= conv.size()){
+      int curConv = conv[in[i]-1];
+      out[i] = (curConv > 0) ? curConv : curConv + state.size() + 1;
+    } else {
+      if (std::find(warnDvid.begin(), warnDvid.end(), in[i]) == warnDvid.end()){
+        warnDvid.push_back(in[i]);
+      }
+      out[i] = -9999;
+    }
+  }
+  toCmtWarnDvid(warnDvid);
+  if (warnConvertDvid.size() > 0){
+    Rf_warningcall(R_NilValue, "%s", warnC.c_str());
+  }
+  return out;
+}
+
+// 1-based index among the extra compartments named so far, 0 when none
+static inline int toCmtFindExtra(List &extraCmt, int k, const std::string &name) {
+  for (int j = k; j--;) {
+    CharacterVector cur = extraCmt[j];
+    if (as<std::string>(cur) == name) return j + 1;
+  }
+  return 0;
+}
+
+// One character compartment to its number, naming a new extra compartment
+// when it is neither a state nor an extra compartment seen before
+static inline int toCmtCharOne(std::string strCmt, CharacterVector& state,
+                               List &extraCmt, int &k, int cmt1, bool isNa,
+                               const IntegerVector& inId, const CharacterVector& idLvl,
+                               int i) {
+  bool isNeg = toCmtSplitNeg(strCmt);
+  if (strCmt == "(default)" || strCmt == "(obs)" || isNa){
+    return cmt1;
+  }
+  int j = toCmtFindState(state, strCmt);
+  if (j > 0) return isNeg ? -j : j;
+  j = toCmtFindExtra(extraCmt, k, strCmt);
+  if (isNeg) {
+    toCmtStopNeg(_("negative compartments on non-ode 'cmt' (%s) does not make sense (id: %s row: %d)"),
+                 strCmt, inId, idLvl, i);
+  }
+  if (j > 0) return state.size() + j;
+  toCmtAppendExtra(extraCmt, strCmt);
+  k++;
+  return state.size() + k;
+}
+
+static inline IntegerVector toCmtChar(RObject inCmt, CharacterVector& state,
+                                      const IntegerVector& inId,
+                                      const CharacterVector& idLvl, int cmt1) {
+  List extraCmt;
+  RObject cmtInfo = R_NilValue;
+  CharacterVector iCmt = as<CharacterVector>(inCmt);
+  std::vector<int> newCmt;
+  newCmt.reserve(iCmt.size());
+  int k = 0;
+  for (int i = 0; i < iCmt.size(); i++){
+    newCmt.push_back(toCmtCharOne(as<std::string>(iCmt[i]), state, extraCmt, k, cmt1,
+                                  CharacterVector::is_na(iCmt[i]), inId, idLvl, i));
+  }
+  if (iCmt.size() > 0) cmtInfo = as<RObject>(toCmtNames(state, extraCmt));
+  IntegerVector ret = wrap(newCmt);
+  ret.attr("cmtNames") = cmtInfo;
   return ret;
 }
 
@@ -445,196 +627,18 @@ IntegerVector toCmt(RObject inCmt, CharacterVector& state,
                     const IntegerVector& inId, const CharacterVector& idLvl,
                     int &numLin, int &numLinSens, int &depotLin, int &numCmt,
                     int &numSens, int &cmt1){
-  RObject cmtInfo = R_NilValue;
-  List extraCmt;
   if (rxIsNumIntLgl(inCmt)) {
-    if (rxIsFactor(inCmt)) {
-      CharacterVector lvl = Rf_getAttrib(as<SEXP>(inCmt), R_LevelsSymbol);
-      IntegerVector lvlI(lvl.size());
-      int i, j, k=0;
-      std::string curLvl, curState,negSub;
-      bool foundState = false;
-      bool isNeg = false;
-      for (i = 0; i < lvlI.size(); i++){
-        curLvl = as<std::string>(lvl[i]);
-        negSub = curLvl.substr(0,1);
-        if (negSub == "-"){
-          isNeg = true;
-          curLvl = curLvl.substr(1, std::string::npos);
-        } else {
-          isNeg = false;
-        }
-        foundState=false;
-        for (j = state.size(); j--;){
-          curState = as<std::string>(state[j]);
-          if (curState == curLvl){
-            if (isNeg){
-              lvlI[i] = -j-1;
-            } else {
-              lvlI[i] = j+1;
-            }
-            foundState = true;
-            break;
-          }
-        }
-        if (!foundState){
-          if (curLvl == "(default)" || curLvl == "(obs)"){
-            lvlI[i] = 1;
-          } else {
-            k++;
-            if (isNeg){
-              stop(_("negative compartments on non-ode 'cmt' (%s) does not make sense (id: %s, row: %d)"),
-                   curLvl.c_str(), CHAR(idLvl[((inId.size() == 0) ? 1 : inId[i])-1]), i+1);
-            } else {
-              List tmpList(extraCmt.size()+1);
-              for (int i = extraCmt.size(); i--;) tmpList[i] = extraCmt[i];
-              tmpList[extraCmt.size()]= curLvl;
-              extraCmt = tmpList;
-              lvlI[i] = state.size() + k;
-            }
-          }
-        }
-      }
-      IntegerVector cmtIn = IntegerVector(inCmt);
-      IntegerVector ret(cmtIn.size());
-      for (j=ret.size(); j--;){
-        if (IntegerVector::is_na(cmtIn[j])){
-          ret[j] = NA_INTEGER;
-        } else {
-          ret[j] = lvlI[cmtIn[j]-1];
-        }
-      }
-      CharacterVector newCmt(state.size()+extraCmt.size());
-      for (int j = state.size(); j--;) newCmt[j]=state[j];
-      for (int j = extraCmt.size(); j--;)
-        newCmt[j+state.size()] = as<std::string>(extraCmt[j]);
-      ret.attr("cmtNames") = newCmt;
-      return ret;
-    } else {
-      if (isDvid) {
-        // This converts DVID to cmt; Things that don't match become -9999
-        Environment rx = rxode2env();
-        IntegerVector in = convertDvid_(inCmt, curDvid.length());
-        IntegerVector out(in.size());
-        IntegerVector conv = curDvid;
-        std::vector<int> warnDvid;
-        std::vector<int> warnConvertDvid;
-        std::string warnC = "'dvid' were not numbered 1, 2, etc\nThey were converted from->to:";
-        IntegerVector cmtIn = IntegerVector(inCmt);
-        int curConv;
-        for (int i = in.size(); i--;){
-          if (in[i] != cmtIn[i]){
-            if (std::find(warnConvertDvid.begin(), warnConvertDvid.end(), in[i]) == warnConvertDvid.end()){
-              warnConvertDvid.push_back(in[i]);
-              warnC = warnC + " " + std::to_string(cmtIn[i]) + "->" + std::to_string(in[i]);
-            }
-          }
-          if (in[i] > 0 && in[i] <= conv.size()){
-            curConv= conv[in[i]-1];
-            if (curConv > 0){
-              out[i] = curConv;
-            } else {
-              out[i] = curConv +state.size()+1;
-            }
-          } else {
-            if (std::find(warnDvid.begin(), warnDvid.end(), in[i]) == warnDvid.end()){
-              warnDvid.push_back(in[i]);
-            }
-            out[i] = -9999;
-          }
-        }
-        if (warnDvid.size() > 1){
-          std::string warn = "Undefined 'dvid' integer values in data: ";
-          SORT(warnDvid.begin(), warnDvid.end());
-          for (int i = 0; i < (int)(warnDvid.size()-1); i++){
-            warn = warn + std::to_string(warnDvid[i]) + ", ";
-          }
-          warn = warn + std::to_string(warnDvid[warnDvid.size()-1]);
-          Rf_warningcall(R_NilValue, "%s", warn.c_str());
-        }
-        if (warnConvertDvid.size() > 0){
-          Rf_warningcall(R_NilValue, "%s", warnC.c_str());
-        }
-        return out;
-      } else {
-        IntegerVector in = asIv(inCmt, "inCmt");
-        IntegerVector out(in.size());
-        for (int i = in.size(); i--;){
-          out[i] = getCmtNum(in[i], numLin, numLinSens, depotLin, numCmt,
-                             numSens, false);
-        }
-        return as<IntegerVector>(out);
-      }
+    if (rxIsFactor(inCmt)) return toCmtFactor(inCmt, state, inId, idLvl);
+    if (isDvid) return toCmtDvid(inCmt, state, curDvid);
+    IntegerVector in = asIv(inCmt, "inCmt");
+    IntegerVector out(in.size());
+    for (int i = in.size(); i--;){
+      out[i] = getCmtNum(in[i], numLin, numLinSens, depotLin, numCmt,
+                         numSens, false);
     }
+    return out;
   } else if (rxIsChar(inCmt)) {
-    CharacterVector iCmt = as<CharacterVector>(inCmt);
-    std::vector<int> newCmt;
-    newCmt.reserve(iCmt.size());
-    std::string strCmt, negSub;
-    bool foundState=false;
-    bool isNeg = false;
-    int i, j, k = 0;
-    for (i = 0; i < iCmt.size(); i++){
-      strCmt = as<std::string>(iCmt[i]);
-      negSub = strCmt.substr(0,1);
-      if (negSub == "-"){
-        isNeg = true;
-        strCmt = strCmt.substr(1, std::string::npos);
-      } else {
-        isNeg = false;
-      }
-      foundState=false;
-      if (strCmt == "(default)" || strCmt == "(obs)" || CharacterVector::is_na(iCmt[i])){
-        foundState=true;
-        newCmt.push_back(cmt1);
-      } else {
-        for (j = state.size(); j--;){
-          if (as<std::string>(state[j]) == strCmt){
-            foundState = true;
-            if (isNeg){
-              newCmt.push_back(-j-1);
-            } else {
-              newCmt.push_back(j+1);
-            }
-            break;
-          }
-        }
-        if (!foundState){
-          for (j = k; j--;){
-            CharacterVector cur = extraCmt[j];
-            if (as<std::string>(cur) == strCmt){
-              foundState = true;
-              if (isNeg){
-                stop(_("negative compartments on non-ode 'cmt' (%s) does not make sense (id: %s row: %d)"), strCmt.c_str(),
-                     CHAR(idLvl[((inId.size() == 0) ? 1 : inId[i])-1]), i+1);
-              } else {
-                newCmt.push_back(state.size()+j+1);
-              }
-              break;
-            }
-          }
-          if (!foundState){
-            if (isNeg){
-              stop(_("negative compartments on non-ode 'cmt' (%s) does not make sense (id: %s row: %d)"), strCmt.c_str(),
-                   CHAR(idLvl[((inId.size() == 0) ? 1 : inId[i])-1]), i+1);
-            } else {
-              List tmpList(extraCmt.size()+1);
-              for (int i = extraCmt.size(); i--;) tmpList[i] = extraCmt[i];
-              extraCmt = tmpList;
-              newCmt.push_back(state.size()+k+1);
-              extraCmt[k++] = strCmt;
-            }
-          }
-        }
-      }
-      CharacterVector newCmt(state.size()+extraCmt.size());
-      for (int j = state.size(); j--;) newCmt[j]=state[j];
-      for (int j = extraCmt.size(); j--;) newCmt[j+state.size()] = as<std::string>(extraCmt[j]);
-      cmtInfo = as<RObject>(newCmt);
-    }
-    IntegerVector ret = wrap(newCmt);
-    ret.attr("cmtNames") = cmtInfo;
-    return ret;
+    return toCmtChar(inCmt, state, inId, idLvl, cmt1);
   }
   stop(_("should not reach here"));
   return IntegerVector::create(0);
@@ -882,12 +886,14 @@ LogicalVector cmtSupportsInfusion_(IntegerVector cmt, List mv) {
   int numLinSens, numLin, depotLin;
   getLinInfo(mv, numLinSens,
              numLin, depotLin);
+  int nCarry = getLinCarryN(mv);
+  numLinSens += nCarry;
   LogicalVector ret(cmt.size());
   CharacterVector state = mv[RxMv_state];
   CharacterVector sens = mv[RxMv_sens];
   for (int i = cmt.size(); i--;){
     ret[i] = cmtSupportsInfusion(cmt[i], numLin, numLinSens, depotLin,
-                                 state.size(), sens.size());
+                                 state.size(), sens.size() + nCarry);
   }
   return ret;
 }
@@ -953,12 +959,14 @@ LogicalVector cmtSupportsOff_(IntegerVector cmt, List mv) {
   int numLinSens, numLin, depotLin;
   getLinInfo(mv, numLinSens,
              numLin, depotLin);
+  int nCarry = getLinCarryN(mv);
+  numLinSens += nCarry;
   LogicalVector ret(cmt.size());
   CharacterVector state = mv[RxMv_state];
   CharacterVector sens = mv[RxMv_sens];
   for (int i = cmt.size(); i--;){
     ret[i] = cmtSupportsOff(cmt[i], numLin, numLinSens, depotLin,
-                            state.size(), sens.size());
+                            state.size(), sens.size() + nCarry);
   }
   return ret;
 }
@@ -1436,7 +1444,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   getLinInfo(mv, numLinSens,
              numLin, depotLin);
   int numCmt = Rf_length(mv[RxMv_state]);
-  int numSens = Rf_length(mv[RxMv_sens]);
+  // compartment numbering counts the carry states with the sensitivities
+  int nCarry = getLinCarryN(mv);
+  numLinSens += nCarry;
+  int numSens = Rf_length(mv[RxMv_sens]) + nCarry;
   int cmt1 = getCmtNum(1, numLin, numLinSens, depotLin, numCmt,
                        numSens, false);
   bool hasIcov = false;
@@ -1905,10 +1916,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     state[i+state0.size()] = stateE[i];
   }
   // Now adjust the compartment numbers if needed.
-  int baseSize = state0.size() - stateS.size();
+  // the carry states sit with the sensitivities, before the extra cmt()s
+  int baseSize = state0.size() - stateS.size() - nCarry;
   for (int i = curDvid.size(); i--;){
     if (curDvid[i] > baseSize) {
-      curDvid[i] = stateS.size()+curDvid[i];
+      curDvid[i] = stateS.size()+nCarry+curDvid[i];
     }
   }
   if (timeCol== -1) {

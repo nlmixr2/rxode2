@@ -19,7 +19,7 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
                                     rx_solving_options_ind *ind, void *ctx_ptr) {
   if (!ctx_ptr) { *istate = -1; rxSolverFail(ind); return; }
   cvode_ctx_t *ctx = (cvode_ctx_t *)ctx_ptr;
-  int neqOde = neq[0] - op->numLin - op->numLinSens;
+  int neqOde = neq[0] - op->numLin - op->numLinSens - op->numLinCarry;
   if (neqOde <= 0) { *xp_ptr = xout; *istate = 1; return; }
   *istate = cvode_ctx_integrate(ctx, yp, *xp_ptr, xout);
   if (*istate >= 0) {
@@ -94,7 +94,7 @@ extern "C" void ind_cvode_0(rx_solve *rx, rx_solving_options *op, int solveid, i
   double xp = getAllTimes(ind, 0);
   ind->solvedIdx = 0;
 
-  int neqOde = op->neq - op->numLin - op->numLinSens;
+  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
   double *yp;
 
   double  rtol      = (ind->rtol2 != NULL) ? ind->rtol2[0]

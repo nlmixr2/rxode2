@@ -27,7 +27,7 @@ extern "C" void ind_ck54_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   auto stepper = boost::numeric::odeint::make_controlled(
       ind->atol2[0], ind->rtol2[0], error_stepper_type());
       
-  int neqOde = op->neq - op->numLin - op->numLinSens;
+  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
   rxode2_system sys(c_dydt, neq, ind);
   double *yp;
   
@@ -196,7 +196,7 @@ extern "C" void par_ck54(rx_solve *rx){
 
 extern "C" void ck54_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind) {
   int eff = rxEffNeq(ind, op);
-  int neqOde = eff - op->numLin - op->numLinSens;
+  int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
   
   typedef boost::numeric::odeint::runge_kutta_cash_karp54<zero_copy_state> error_stepper_type;
   auto stepper = boost::numeric::odeint::make_controlled(

@@ -25,7 +25,7 @@ struct sb3a_system {
     sb3a_system(rx_solving_options_ind *ind, t_dydt c_dydt, int* neq)
         : ind_(ind), c_dydt_(c_dydt), neq_(neq), neqOde_(0), N_(0), t_(0.0), current_q_(nullptr), current_p_(nullptr) {
         int eff = rxEffNeq(ind, ind->op);
-        neqOde_ = eff - ind->op->numLin - ind->op->numLinSens;
+        neqOde_ = eff - ind->op->numLin - ind->op->numLinSens - ind->op->numLinCarry;
         N_ = (neqOde_ + 1) / 2;
         y_temp_.resize(2 * N_, 0.0);
         dy_temp_.resize(2 * N_, 0.0);
@@ -142,7 +142,7 @@ extern "C" void ind_sb3a_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   double xp = getAllTimes(ind, 0);
   ind->solvedIdx = 0;
 
-  int neqOde = op->neq - op->numLin - op->numLinSens;
+  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
   sb3a_system sys(ind, c_dydt, neq);
 
   double *yp;
@@ -319,7 +319,7 @@ extern "C" void par_sb3a(rx_solve *rx){
 extern "C" void sb3a_solveWith1Pt(int *neq, double *yp, double *xp, double xout,
  int *istate, rx_solving_options *op, rx_solving_options_ind *ind) {
   int eff = rxEffNeq(ind, op);
-  int neqOde = eff - op->numLin - op->numLinSens;
+  int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
 
   if (neqOde > 0) {
       int N = (neqOde + 1) / 2;

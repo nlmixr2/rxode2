@@ -15,7 +15,7 @@ static int rxCvodeDelaySegment(void *ctx_ptr, rx_solving_options *op,
                                rx_solving_options_ind *ind, int *neq,
                                double xp, double xout, double *yp, bool *init) {
   cvode_ctx_t *ctx = (cvode_ctx_t *)ctx_ptr;
-  int neqOde = rxEffNeq(ind, op) - op->numLin - op->numLinSens;
+  int neqOde = rxEffNeq(ind, op) - op->numLin - op->numLinSens - op->numLinCarry;
   if (ctx == NULL || neqOde <= 0) return (ctx == NULL) ? -1 : 1;
   if (!ind->delayWarmed) {
     // one RHS evaluation so delay() learns the step-size cap
@@ -105,7 +105,7 @@ extern "C" void ind_cvode_dense_0(rx_solve *rx, rx_solving_options *op, int solv
   ind->delayMaxT   = 0.0;
   ind->delayWarmed = 0;
 
-  int neqOde = op->neq - op->numLin - op->numLinSens;
+  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
   double *yp;
 
   double  rtol      = (ind->rtol2 != NULL) ? ind->rtol2[0]

@@ -310,13 +310,13 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
       memset(ind->linCmtSave, 0,
              (size_t)(op->numLin + op->numLinSens) * sizeof(double));
     }
-    // Reset ind->linCmtCarryT -- the cumulative d(Alast_i)/d(eta) carry state
-    // for the linCmt()-time-varying-covariate fix (see rxode2parseStruct.h
-    // and linCmtB()'s which1=-5/-6/-7 in linCmt.cpp). Alast starts at 0 for
-    // a fresh subject, so its sensitivity does too; the full fixed-size
-    // buffer (4 rows x RX_LINCMT_CARRY_MAXPAIRS pair columns) is memset
-    // (not gated on m or the pair count actually in use).
+    // Restart the cumulative d(Alast_i)/d(eta) carry (linCmtB()'s
+    // which1=-5/-6/-7 in rxode2lincmt): Alast starts at 0 for a fresh
+    // subject, so its sensitivity does too.  The carry states in ind->solve
+    // (op->numLinCarry) start from no row; the fixed ind->linCmtCarryT is
+    // what an older rxode2lincmt uses.
     if ((op->numLin + op->numLinSens) > 0) {
+      ind->linCmtCarryRow = -1;
       memset(ind->linCmtCarryT, 0, sizeof(ind->linCmtCarryT));
       ind->linCmtCarryTlast = NAN;
       ind->linCmtCarryVarying = 0;
