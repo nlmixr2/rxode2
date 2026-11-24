@@ -160,6 +160,18 @@ static inline int cslIsMember(const char *s, int k) {
   return (k > 0 && s[k-1] == '.') || (k > 1 && s[k-1] == '>' && s[k-2] == '-');
 }
 
+// Is the call at s[k] (len characters, `(` at s[m]) an R user function
+// _udf("name", ...) whose name is registered as impure?
+static inline int cslIsImpureUdf(const char *s, int k, int len, int m) {
+  if (len != 4 || strncmp(s + k, "_udf", 4)) return 0;
+  int p = m + 1;
+  while (s[p] == ' ' || s[p] == '\t') p++;
+  if (s[p] != '"') return 0;
+  int q = ++p;
+  while (s[q] != '\0' && s[q] != '"') q++;
+  return s[q] == '"' && cslIsImpureCall(s + p, q - p);
+}
+
 // The identifier at s[k]: a call is checked against the impure names, any
 // other non-member read except the one assigned at defStart is recorded.
 // Returns the index just past it.
@@ -172,18 +184,7 @@ static inline int cslScanId(const char *s, int k, int defStart, cslVec *rd,
   int m = j;
   while (s[m] == ' ' || s[m] == '\t') m++;
   if (s[m] == '(') {
-    if (cslIsImpureCall(s + k, len)) {
-      *impure = 1;
-    } else if (len == 4 && !strncmp(s + k, "_udf", 4)) {
-      // an R user function, _udf("name", ...): impure when name is registered
-      int p = m + 1;
-      while (s[p] == ' ' || s[p] == '\t') p++;
-      if (s[p] == '"') {
-        int q = ++p;
-        while (s[q] != '\0' && s[q] != '"') q++;
-        if (s[q] == '"' && cslIsImpureCall(s + p, q - p)) *impure = 1;
-      }
-    }
+    if (cslIsImpureCall(s + k, len) || cslIsImpureUdf(s, k, len, m)) *impure = 1;
     return j;
   }
   if (!cslIsMember(s, k) && k != defStart) {
