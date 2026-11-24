@@ -50,10 +50,6 @@ runs:
         http-user-agent: ${{ inputs.http-user-agent }}
         use-public-rspm: true
 
-    # rxode2lincmt 0.1.1.9000 (the carry in ind->solve) is only on its
-    # fix/carry-in-solve branch; go back to nlmixr2/rxode2lincmt once it is
-    # on rxode2lincmt main.  (No comments inside extra-packages: pak reads
-    # every line there as a package.)
     - uses: r-lib/actions/setup-r-dependencies@v2
       with:
         cache-version: ${{ inputs.cache-version }}
@@ -61,7 +57,7 @@ runs:
           nlmixr2/dparser-R
           nlmixr2/lotri
           nlmixr2/rxode2ll
-          nlmixr2/rxode2lincmt@fix/carry-in-solve
+          nlmixr2/rxode2lincmt
           nlmixr2/PreciseSums
           ${{ inputs.extra-packages }}
         needs: ${{ inputs.needs }}
