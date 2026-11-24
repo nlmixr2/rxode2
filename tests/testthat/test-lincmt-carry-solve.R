@@ -62,6 +62,37 @@ rxTest({
     expect_identical(s2$rH, s1$rH)
   })
 
+  test_that("an evid 3/4 reset restarts the carry from zero", {
+    prev <- linCmtCarrySetFast(FALSE)
+    on.exit(linCmtCarrySetFast(prev), add = TRUE)
+    m <- mkCarry(3L)
+    want <- rxSolve(m, et(amt = 100) |> et(c(1, 2, 3.5)), returnType = "data.frame")
+    for (.evid in 3:4) {
+      d <- data.frame(
+        id = 1,
+        time = c(0, 1, 3, 5, 6, 7, 8.5),
+        evid = c(1, 0, 0, .evid, 0, 0, 0),
+        amt = c(100, 0, 0, if (.evid == 4) 100 else 0, 0, 0, 0),
+        cmt = 1
+      )
+      if (.evid == 3) {
+        d <- rbind(d[1:4, ], data.frame(id = 1, time = 5, evid = 1, amt = 100, cmt = 1), d[5:7, ])
+      }
+      s <- rxSolve(m, d, returnType = "data.frame")
+      .post <- s[s$time > 5, ]
+      expect_equal(.post$cp, want$cp, tolerance = 1e-12, label = .evid)
+      # the reset and dose rows at 5 each add 0.5 to a carry restarted at 0
+      .r <- 1
+      .want <- numeric(3)
+      for (.k in 1:3) {
+        .r <- exp(-0.1 * c(1, 1, 1.5)[.k]) * .r + 0.5
+        .want[.k] <- .r
+      }
+      expect_equal(.post$r0, .want, tolerance = 1e-12, label = .evid)
+      expect_equal(.post$rH, .want, tolerance = 1e-12, label = .evid)
+    }
+  })
+
   test_that("several subjects each carry their own", {
     e <- et(amt = 100, id = 1:3) |> et(c(1, 2, 3.5))
     s <- rxSolve(mkCarry(5L), e, returnType = "data.frame")

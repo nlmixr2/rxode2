@@ -7148,10 +7148,14 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       // bare-primal solve).
       CharacterVector _adjSt = rxSolveDat->mv[RxMv_state];
       CharacterVector _adjLhs = rxSolveDat->mv[RxMv_lhs];
-      int _nBase = 0;
+      // the linCmt() carry states are neither base nor sensitivity states
+      int _nBase = 0, _nCarry = 0;
       for (int _i = 0; _i < _adjSt.size(); ++_i) {
-        if (strncmp(CHAR(_adjSt[_i]), "rx__sens_", 9) != 0 &&
-            strncmp(CHAR(_adjSt[_i]), "rx__carry_", 10) != 0) _nBase++;
+        if (strncmp(CHAR(_adjSt[_i]), "rx__carry_", 10) == 0) {
+          _nCarry++;
+        } else if (strncmp(CHAR(_adjSt[_i]), "rx__sens_", 9) != 0) {
+          _nBase++;
+        }
       }
       int _fxOff = -1, _fpOff = -1, _dfOff = -1, _jpOff = -1, _jyOff = -1, _fxdOff = -1, _tauOff = -1, _dtauOff = -1, _dlagOff = -1, _drateOff = -1;
       for (int _i = 0; _i < _adjLhs.size(); ++_i) {
@@ -7167,7 +7171,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
         if (_dlagOff < 0 && strcmp(_s, "rx__adjDlag_0_0__") == 0) _dlagOff = _i; // modeled-alag transversality
         if (_drateOff < 0 && strcmp(_s, "rx__adjDrate_0_0__") == 0) _drateOff = _i; // modeled-rate infusion dual
       }
-      int _nSens = (int)_adjSt.size() - _nBase;
+      int _nSens = (int)_adjSt.size() - _nBase - _nCarry;
       if (_fxOff < 0 || _fpOff < 0 || _nBase <= 0) {
         // A malformed expansion (has rx__sens_* output slots but is missing
         // the F_X/F_p Jacobian lhs) is a hard error: solving would silently
