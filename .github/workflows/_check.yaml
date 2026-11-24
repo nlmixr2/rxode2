@@ -90,6 +90,8 @@ jobs:
 
       - name: R CMD check --as-cran
         shell: Rscript {0}
+        env:
+          CHECK_ERROR_ON: ${{ matrix.config.error-on || inputs.error-on }}
         run: |
           .tb <- Sys.glob("tarball/rxode2_*.tar.gz")
           .t0 <- proc.time()[["elapsed"]]
@@ -103,7 +105,7 @@ jobs:
           cat(sprintf("check took %.1f min\n", .min))
           cat(sprintf("CHECK_MINUTES=%.1f\n", .min), file = Sys.getenv("GITHUB_ENV"), append = TRUE)
           .lvl <- c(never = 0, error = 1, warning = 2, note = 3)
-          .lev <- "${{ matrix.config.error-on || inputs.error-on }}"
+          .lev <- Sys.getenv("CHECK_ERROR_ON")
           .on <- .lvl[[.lev]]
           .bad <- (.on >= 1 && length(.res$errors) > 0) ||
             (.on >= 2 && length(.res$warnings) > 0) ||
