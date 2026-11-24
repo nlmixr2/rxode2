@@ -24,12 +24,47 @@
 
 ## Key folded into the parsed md5 so models compiled at different levels do not
 ## share a DLL; "" at "none" leaves the md5 unchanged
-.rxFullOptKey <- function() {
-  .lvl <- .rxFullOptLevel()
-  if (.lvl == 0L) {
+.rxFullOptKey <- function(level = .rxFullOptLevel()) {
+  if (level == 0L) {
     return("")
   }
-  .rxFullOptLevels[.lvl + 1L]
+  .rxFullOptLevels[level + 1L]
+}
+
+## base: parsed md5 without the level folded in, keyed by parsed md5 (with and
+## without the level); level: the level codegen uses instead of the option,
+## when not NULL
+.rxFullOptState <- new.env(parent = emptyenv())
+.rxFullOptState$base <- new.env(parent = emptyenv())
+
+.rxFullOptFold <- function(md5, key) {
+  if (!nzchar(key)) {
+    return(md5)
+  }
+  digest::digest(c(md5, paste0("fullOpt=", key)), serialize = TRUE, algo = "md5")
+}
+
+## Fold the level key into parsed md5 `md5`, remembering the unfolded md5
+.rxFullOptMd5 <- function(md5, key) {
+  .md5 <- as.character(md5)
+  .ret <- .rxFullOptFold(.md5, key)
+  assign(.md5, .md5, envir = .rxFullOptState$base)
+  assign(as.character(.ret), .md5, envir = .rxFullOptState$base)
+  .ret
+}
+
+## Level whose key gives parsed md5 `md5`; NULL when unknown
+.rxFullOptLevelOf <- function(md5) {
+  .base <- .rxFullOptState$base[[md5]]
+  if (is.null(.base)) {
+    return(NULL)
+  }
+  for (.lvl in seq_along(.rxFullOptLevels) - 1L) {
+    if (identical(as.character(.rxFullOptFold(.base, .rxFullOptKey(.lvl))), md5)) {
+      return(.lvl)
+    }
+  }
+  NULL
 }
 
 ## Calls (as spelled in the generated C) with side effects, or that read state
@@ -104,6 +139,12 @@
   "runif1",
   "rweibull",
   "rweibull1",
+  "rxnorm1",
+  "rxnormV1",
+  "rxgamma1",
+  "rxunif1",
+  "rxlnorm1",
+  "rxweibull1",
   "rinorm1",
   "rinormV1",
   "riunif1",
@@ -125,7 +166,11 @@
   }
   .usr <- names(.udfEnv$rxSEeqUsr)
   list(
-    level = .rxFullOptLevel(),
+    level = if (is.null(.rxFullOptState$level)) {
+      .rxFullOptLevel()
+    } else {
+      .rxFullOptState$level
+    },
     impure = unique(c(.rxFullOptImpureBuiltin, .ext, .usr))
   )
 }

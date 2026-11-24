@@ -64,16 +64,16 @@ rxTest({
     )
     .fullOptSame(.r)
     .dydt <- .fullOptBody(.r$slice$m, "dydt")
-    expect_false(any(grepl("^\\s*(cp|cp2|w|tmp) =", .dydt)))
-    expect_true(any(grepl("^\\s*kk =k\\*2;", .dydt)))
+    expect_false(any(grepl("^\\s*(cp|cp2|w|tmp)\\s*=", .dydt)))
+    expect_true(any(grepl("^\\s*kk\\s*=\\s*k\\*2;", .dydt)))
     .lhs <- .fullOptBody(.r$slice$m, "calc_lhs")
     # d/dt(center) is read by cp2, d/dt(depot) by nothing
-    expect_true(any(grepl("__DDtStateVar_1__ =", .lhs)))
-    expect_false(any(grepl("__DDtStateVar_0__ =", .lhs)))
+    expect_true(any(grepl("__DDtStateVar_1__\\s*=", .lhs)))
+    expect_false(any(grepl("__DDtStateVar_0__\\s*=", .lhs)))
     .f <- .fullOptBody(.r$slice$m, "F")
-    expect_false(any(grepl("^\\s*(ka|cl|v|k|kk|tmp|cp|w) =", .f)))
+    expect_false(any(grepl("^\\s*(ka|cl|v|k|kk|tmp|cp|w)\\s*=", .f)))
     # level "none" still evaluates everything everywhere
-    expect_true(any(grepl("^\\s*w =", .fullOptBody(.r$none$m, "dydt"))))
+    expect_true(any(grepl("^\\s*w\\s*=", .fullOptBody(.r$none$m, "dydt"))))
   })
 
   test_that("calls with side effects are kept wherever they were emitted", {
@@ -82,6 +82,7 @@ rxTest({
     .r <- suppressWarnings(.fullOptBoth(
       "
       a <- rxnorm()
+      a1 <- rxnorm(1) + rxunif(1) + rxgamma(2) + rxlnorm(1) + rxweibull(2) + rxnormV(1)
       b <- rnorm(1, 2)
       c <- myf(tcl)
       q ~ tcl + 3
@@ -96,8 +97,9 @@ rxTest({
     .fullOptSame(.r)
     .dydt <- .fullOptBody(.r$slice$m, "dydt")
     expect_true(any(grepl("rxnorm\\(", .dydt)))
+    expect_true(any(grepl("rxnorm1\\(.*rxunif1\\(.*rxgamma1\\(.*rxlnorm1\\(.*rxweibull1\\(.*rxnormV1\\(", .dydt)))
     expect_true(any(grepl("_udf\\(", .dydt)))
-    expect_false(any(grepl("^\\s*y =", .dydt)))
+    expect_false(any(grepl("^\\s*y\\s*=", .dydt)))
   })
 
   test_that("assignments to fields of the individual are kept", {
@@ -119,8 +121,26 @@ rxTest({
     for (.f in c("dydt", "calc_lhs")) {
       .b <- .fullOptBody(.r$slice$m, .f)
       for (.v in c("rx_yj_", "rx_lambda_", "rx_hi_", "rx_low_")) {
-        expect_true(any(grepl(paste0("^\\s*", .v, " ="), .b)))
+        expect_true(any(grepl(paste0("^\\s*", .v, "\\s*="), .b)))
       }
+    }
+  })
+
+  test_that("a recompile generates at the level its md5 was made at", {
+    .mod <- "
+      d/dt(x) <- -exp(tk)*x
+      cp <- x * 3
+    "
+    .dydtHasCp <- function(m) any(grepl("^\\s*cp\\s*=", .fullOptBody(m, "dydt")))
+    for (.lvl in c("none", "slice")) {
+      .other <- setdiff(c("none", "slice"), .lvl)
+      .m <- withr::with_options(list(rxode2.fullOpt = .lvl), rxode2(.mod))
+      rxDelete(.m)
+      withr::with_options(
+        list(rxode2.fullOpt = .other),
+        rxSolve(.m, .ev, params = c(tk = 0.1))
+      )
+      expect_identical(.dydtHasCp(.m), .lvl == "none")
     }
   })
 
@@ -142,8 +162,8 @@ rxTest({
       params = c(tcl = 0.2, tv = 1, tka = 0.1, lagd = 0.5, durc = 2)
     )
     .fullOptSame(.r)
-    expect_false(any(grepl("^\\s*(cl|v|ka|cp) =", .fullOptBody(.r$slice$m, "Lag"))))
-    expect_true(any(grepl("^\\s*mt1 =", .fullOptBody(.r$slice$m, "mtime"))))
+    expect_false(any(grepl("^\\s*(cl|v|ka|cp)\\s*=", .fullOptBody(.r$slice$m, "Lag"))))
+    expect_true(any(grepl("^\\s*mt1\\s*=", .fullOptBody(.r$slice$m, "mtime"))))
   })
 
   test_that("linCmt() mixed with an ODE", {
@@ -170,7 +190,7 @@ rxTest({
     .r <- .fullOptBoth(.sens, .ev, params = c(tka = 0.1, tcl = 0.2, tv = 1))
     .fullOptSame(.r)
     # calc_lhs evaluates no sensitivity right-hand side
-    expect_false(any(grepl("__DDtStateVar_[0-9]+__ =", .fullOptBody(.r$slice$m, "calc_lhs"))))
+    expect_false(any(grepl("__DDtStateVar_[0-9]+__\\s*=", .fullOptBody(.r$slice$m, "calc_lhs"))))
     .r <- .fullOptBoth(
       "
       ka <- exp(tka); cl <- exp(tcl); v <- exp(tv)
@@ -188,6 +208,6 @@ rxTest({
     .fullOptSame(.r)
     .jac <- .fullOptBody(.r$slice$m, "calc_jac")
     expect_true(any(grepl("__PDStateVar__\\[", .jac)))
-    expect_false(any(grepl("^\\s*cp =", .jac)))
+    expect_false(any(grepl("^\\s*cp\\s*=", .jac)))
   })
 })

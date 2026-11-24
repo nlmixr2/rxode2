@@ -99,32 +99,39 @@ suppressMessages(library(rxode2))
   et(id = seq_len(.nsub))
 
 .models <- .fullOptModels()
+.solve <- function(m, cur) {
+  rxSolve(m, .ev, params = cur$params, returnType = "matrix")
+}
 .out <- NULL
 for (.n in names(.models)) {
   .cur <- .models[[.n]]
+  .m <- list()
+  .cnt <- list()
   .sol <- list()
   for (.lvl in .levels) {
     options(rxode2.fullOpt = .lvl)
-    .m <- rxode2(.cur$model)
-    .cnt <- .fullOptCount(rxC(.m))
-    .s <- rxSolve(.m, .ev, params = .cur$params, returnType = "matrix")
-    .t <- vapply(
-      seq_len(.reps),
-      function(i) {
-        system.time(rxSolve(.m, .ev, params = .cur$params, returnType = "matrix"))[["elapsed"]]
-      },
-      0
-    )
-    .sol[[.lvl]] <- .s
+    .m[[.lvl]] <- rxode2(.cur$model)
+    .cnt[[.lvl]] <- .fullOptCount(rxC(.m[[.lvl]]))
+    .sol[[.lvl]] <- .solve(.m[[.lvl]], .cur)
+  }
+  ## levels alternate within each rep so load drift hits both alike
+  .t <- matrix(NA_real_, .reps, length(.levels), dimnames = list(NULL, .levels))
+  for (.i in seq_len(.reps)) {
+    for (.lvl in .levels) {
+      .t[.i, .lvl] <- system.time(.solve(.m[[.lvl]], .cur))[["elapsed"]]
+    }
+  }
+  for (.lvl in .levels) {
     .out <- rbind(
       .out,
       data.frame(
         model = .n,
         level = .lvl,
-        seconds = median(.t),
-        dydt = .cnt["dydt"],
-        calc_lhs = .cnt["calc_lhs"],
-        calc_jac = .cnt["calc_jac"],
+        median = median(.t[, .lvl]),
+        min = min(.t[, .lvl]),
+        dydt = .cnt[[.lvl]]["dydt"],
+        calc_lhs = .cnt[[.lvl]]["calc_lhs"],
+        calc_jac = .cnt[[.lvl]]["calc_jac"],
         row.names = NULL
       )
     )
