@@ -218,6 +218,9 @@
 - `rxOptExpr()` no longer reuses a common subexpression temporary after one
   of its variables is reassigned, which gave the later use the stale value
   (#1782).
+- `rxOptExpr()` no longer changes the meaning of `%%` next to `*`, `/` or a
+  unary sign: `2*t%%24` was rewritten as `(2*t)%%24` whenever the model had
+  a shared subexpression.
 - Parsing a function call whose argument is a long signed sum, such as
   `exp(1 + a - b + ...)`, is no longer exponential in the sum's length; it
   dominated `rxNorm()`/`rxOptExpr()` and FOCEi setup on models with long
