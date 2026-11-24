@@ -230,6 +230,10 @@
   A doubled sign or a signed negation there, `d/dt(x) = - -k` or
   `d/dt(x) = -!a`, is now a syntax error, as it already was in any other
   assignment; write `-(-k)` or `-(!a)` instead (#1674).
+- `rxOptExpr()` no longer merges repeated random draws (`rxnorm()`,
+  `rnorm()`, `runif()`, ...), `simeta()`/`simeps()`, user R functions or
+  other packages' C functions into one evaluation, so `rxnorm() + rxnorm()`
+  stays the sum of two draws (#1783).
 
 ### Compilation
 - A cached model library that exists but will not load (still being linked by
