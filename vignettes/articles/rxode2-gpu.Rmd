@@ -174,26 +174,29 @@ Timings, 8 threads, seconds):
 
 | method | backend | SAEM | FOCEi |
 |---|---|---:|---:|
-| `liblsoda` | host | 183 | 10.7 |
-| `t54` | host | 177 | 2.9 |
-| `ros54p` | host | 279 | 9.8 |
+| `liblsoda` | host | 183 | 10.5 |
+| `t54` | host | 179 | 2.8 |
+| `ros54p` | host | 284 | 9.7 |
 | `"t54+ros54p"` | host | 185 | 2.9 |
-| `gpuT54` | CPU build | 168 | 4.6 |
-| `gpuRos54p` | CPU build | 182 | 4.4 |
-| `"gpuT54+gpuRos54p"` | CPU build | 165 | 4.4 |
-| `gpuT54` | OpenCL | 135 | 4.2 |
-| `gpuRos54p` | OpenCL | 143 | 9.5 |
-| `"gpuT54+gpuRos54p"` | OpenCL | 136 | 18.5 |
+| `gpuT54` | CPU build | 144 | 4.6 |
+| `gpuRos54p` | CPU build | 158 | 4.4 |
+| `"gpuT54+gpuRos54p"` | CPU build | 140 | 4.5 |
+| `gpuT54` | OpenCL | 112 | 4.1 |
+| `gpuRos54p` | OpenCL | 120 | 7.8 |
+| `"gpuT54+gpuRos54p"` | OpenCL | 111 | 12.7 |
 
 - SAEM solves every subject's three chains together, so the GPU methods
   integrate about 1500 subjects per round.  On the L40 the SAEM fit takes
-  135 s against 177 s for the fastest host method; `gpuRos54p` takes 143 s
-  against 279 s for `ros54p`.
-- The device's share of that is 57 s for 125,451 rounds (0.45 ms each);
-  the host event handling between rounds takes 41 s and nlmixr2's own SAEM
+  112 s against 179 s for the fastest host method; `gpuRos54p` takes 120 s
+  against 284 s for `ros54p`.
+- The device's share of that is 58 s for 125,451 rounds (0.46 ms each);
+  the host event handling between rounds takes 20 s and nlmixr2's own SAEM
   work the rest.
+- With `options(rxode2.optExprExpensive = TRUE)` the device time drops to
+  49 s and the `gpuT54` fit takes 103 s; the CPU build is slower with it
+  (169 s), so it is off by default.
 - With the driver's work groups (`options(rxode2.gpuLocalSize = 0)`) the
-  rounds take 156 s and the fit 233 s.
+  rounds take 157 s and the fit 210 s.
 - FOCEi solves one subject at a time while it optimizes the etas, so a GPU
   method runs its host counterpart there.
 
@@ -302,12 +305,13 @@ interval it needs and what its doses add; one launch then integrates each
 subject's whole timeline, and the subjects run their events again with the
 results.  The results are the same as the rounds' (to rounding when several
 doses into one compartment share a time).  On the L40 a SAEM fit took
-the same time either way (136 s): the device time drops from 57 s to 44 s,
-and recording and replaying the events adds as much host time.
+135 s this way against 112 s with rounds: the device time drops from 58 s
+to 44 s, but recording and replaying the events adds 37 s of host time.
 
 Statements that depend only on parameters (such as `ka <- exp(tka +
 eta.ka)`) are computed once per interval rather than at every derivative
-evaluation, and OpenCL work groups are sized so a round of a few thousand
+evaluation (with `options(rxode2.optExprExpensive = TRUE)` this extends to
+an `exp()` or `log()` of parameters inside a larger expression), and OpenCL work groups are sized so a round of a few thousand
 subjects spreads over every compute unit (`options(rxode2.gpuLocalSize =
 0)` leaves the size to the driver).
 
