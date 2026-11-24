@@ -528,6 +528,7 @@ void reset(void) {
   tb.ncmt	= 0;
   tb.ndiff  = 0;
   tb.linCmtBraw = 0;
+  tb.linCmtCarryN = 0;
   tb.linB	= 0;
   tb.curPropN	= 0;
   tb.depotN	= -1;

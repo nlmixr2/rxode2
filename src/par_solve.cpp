@@ -2722,7 +2722,7 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
     case 106:
       if (!isSameTime(xout, *xp)) {
         preSolve(op, ind, *xp, xout, yp);
-        neq[0] = eff - op->numLin - op->numLinSens;
+        neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
         {
           int _lrw = 22 + op->neq * max(16, op->neq + 9);
           int _liw = 20 + op->neq;
@@ -2746,7 +2746,7 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
     case 107:
       if (!isSameTime(xout, *xp)) {
         preSolve(op, ind, *xp, xout, yp);
-        neq[0] = eff - op->numLin - op->numLinSens;
+        neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
         {
           int _lrw = 22 + 9 * op->neq + 2 * op->neq * op->neq;
           int _liw = 20 + op->neq;
@@ -2770,7 +2770,7 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
     case 1:
       if (!isSameTime(xout, *xp)) {
         preSolve(op, ind, *xp, xout, yp);
-        neq[0] = eff - op->numLin - op->numLinSens;
+        neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
         {
           int _lrw = 22 + op->neq * max(16, op->neq + 9);
           int _liw = 20 + op->neq;
@@ -2795,7 +2795,7 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
     case 0:
       if (!isSameTimeDop(xout, *xp)) {
         preSolve(op, ind, *xp, xout, yp);
-        neq[0] = eff - op->numLin - op->numLinSens;
+        neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
         double _h0use = (ind->autoHcur > 0.0) ? ind->autoHcur : op->H0;
         dop853_stiff_t _st;
         if (autoSwitchPrimary) rxStiffLoad(&_st, op, ind);
@@ -2943,7 +2943,7 @@ static inline void solveWith1Pt(int *neq,
   // Per-individual effective neq under neqOverride; allocations are still
   // sized for op->neq, only stepping uses the smaller stride.
   int eff = rxEffNeq(ind, op);
-  int neqOde = eff - op->numLin - op->numLinSens;
+  int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
   if (neqOde == 0 && eff > 0) {
     if (!isSameTime(xout, xp)) {
       preSolve(op, ind, xp, xout, yp);
@@ -3007,7 +3007,7 @@ static inline void solveSSCycle(int *neq,
 //' - Only linCmt() is defined (no mixed ODE/solved)
 //' - The dose is to the depot or central compartment
 static inline int canHandleSSLinear(rx_solving_options *op, rx_solving_options_ind *ind, int idx) {
-  if (op->ssSolved == 1 && op->neq == op->numLinSens + op->numLin) {
+  if (op->ssSolved == 1 && op->neq == op->numLinSens + op->numLin + op->numLinCarry) {
     int evid = getEvid(ind, idx);
     int wh, cmt, wh100, whI, wh0;
     getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
@@ -5696,7 +5696,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   double xout;
   int *rc;
   double *yp;
-  int neqOde = *neq - op->numLin - op->numLinSens;
+  int neqOde = *neq - op->numLin - op->numLinSens - op->numLinCarry;
   int localBadSolve = 0;
 
   // -- LSODA context: use per-thread pool when available (avoids per-subject
@@ -6395,7 +6395,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
                                xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
-            neq[0] = eff - op->numLin - op->numLinSens;
+            neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
             rwork[0] = ind->extraDoseNewXout;
             F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &ind->extraDoseNewXout, &itol, &(op->RTOL), &(op->ATOL), &itask,
                              &istate, &iopt, rwork, &lrw, iwork, &liw, jdum, &jt);
@@ -6420,7 +6420,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         }
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
-          neq[0] = eff - op->numLin - op->numLinSens;
+          neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
           rwork[0] = lsStop.at(ind, i, xp, xout);
           F77_CALL(dlsoda)(dydt_lsoda, neq, yp,
                            &xp, &xout, &itol,
@@ -6625,7 +6625,7 @@ static void ind_lsode0(rx_solve *rx, rx_solving_options *op, int solveid,
                                xp, ind->id, &i, ind->n_all_times, &istate, op, ind, update_inis, ctx)) {
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
-            neq[0] = eff - op->numLin - op->numLinSens;
+            neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
             rwork[0] = ind->extraDoseNewXout;
             F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, &xp, &ind->extraDoseNewXout,
                              &itol, &(op->RTOL), &(op->ATOL), &itask, &istate, &iopt,
@@ -6650,7 +6650,7 @@ static void ind_lsode0(rx_solve *rx, rx_solving_options *op, int solveid,
         }
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
-          neq[0] = eff - op->numLin - op->numLinSens;
+          neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
           rwork[0] = lsStop.at(ind, i, xp, xout);
           F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, &xp, &xout,
                            &itol, &(op->RTOL), &(op->ATOL), &itask, &istate, &iopt,
@@ -7444,7 +7444,7 @@ static void *rxGenericCtxInit(rx_solving_options *op, rx_solving_options_ind *in
     p.iworkp[8] = op->MXORDS;
     return NULL;
   }
-  int neqOde = op->neq - op->numLin - op->numLinSens;
+  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
   if (rxBaseMethod(op) != 21 || neqOde <= 0) return NULL;
   double rtol = (ind->rtol2 != NULL) ? ind->rtol2[0]
     : (op->rtol2 != NULL) ? op->rtol2[0] : op->RTOL;
@@ -7512,7 +7512,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   ind->delayWarmed = 0;
   ctx = rxGenericCtxInit(op, ind, neq, xp);
   if (ctx == NULL && rxBaseMethod(op) == 21 && op->stiff2 <= 0 &&
-      op->neq > op->numLin + op->numLinSens) {
+      op->neq > op->numLin + op->numLinSens + op->numLinCarry) {
     ind->rc[0] = -2019;
     rxSolverFail(ind);
     return;
@@ -7523,7 +7523,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
     if (isSameTimeDop(t0, t1)) return;
     int st = 1;
     preSolve(op, ind, t0, t1, y);
-    neq[0] = eff - op->numLin - op->numLinSens;
+    neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
     double _hNext;
     rxSegmentSolve(rx, op, ind, neq, c_dydt, t0, t1, y, &st, itol, eff, &i, ctx,
                    op->H0, &_hNext);
@@ -7574,7 +7574,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
                                xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
           if (!localBadSolve && !isSameTimeDop(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
-            neq[0] = eff - op->numLin - op->numLinSens;
+            neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
             idid = rxSegmentSolve(rx, op, ind, neq, c_dydt, xp,
                                   ind->extraDoseNewXout, yp, &istate, itol, eff, &i, ctx,
                                   keep.first(op->H0, op, ind, neq, neq[0], c_dydt, xp, yp),
@@ -7606,7 +7606,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         }
         if (!localBadSolve && !isSameTimeDop(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
-          neq[0] = eff - op->numLin - op->numLinSens;
+          neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
           idid = rxSegmentSolve(rx, op, ind, neq, c_dydt, xp, xout, yp,
                                 &istate, itol, eff, &i, ctx,
                                 keep.first(op->H0, op, ind, neq, neq[0], c_dydt, xp, yp),
@@ -8228,7 +8228,7 @@ static void rxDelaySSSolve(int *neq, double *yp, double xp, double xout,
   if (isSameTimeDop(xout, xp)) return;
   ind->delayTOff = ind->delaySSClock - xp;
   preSolve(op, ind, xp, xout, yp);
-  neq[0] = eff - op->numLin - op->numLinSens;
+  neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
   if (!ind->delayWarmed) {
     // one RHS evaluation so delay() learns the step-size cap
     std::vector<double> _ddt((size_t)eff);
@@ -8419,7 +8419,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
         dc.segment_end = i - 1;
         if (dc.obs_next <= dc.segment_end) {
           preSolve(op, ind, xp, xout, yp);
-          neq[0] = eff - op->numLin - op->numLinSens;
+          neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
           idid = denseSegmentSolve(rx, op, ind, neq, c_dydt, xp, xout, yp,
                                    &dc, itol, eff);
           neq[0] = eff;
@@ -8445,7 +8445,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
             dc.obs_next    = last_key_i + 1;
             dc.segment_end = need_seg ? i : i - 1;
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
-            neq[0] = eff - op->numLin - op->numLinSens;
+            neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
             idid = denseSegmentSolve(rx, op, ind, neq, c_dydt, xp,
                                      ind->extraDoseNewXout, yp, &dc, itol, eff);
             neq[0] = eff;
@@ -8477,7 +8477,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
           dc.segment_end = need_seg ? i : i - 1;
 
           preSolve(op, ind, xp, xout, yp);
-          neq[0] = eff - op->numLin - op->numLinSens;
+          neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
           // Before the first delay step, evaluate the RHS once so delay()
           // learns the minimum delay used to cap the step size.
           if (ind->delayHistOn && !ind->delayWarmed) {
@@ -9274,7 +9274,7 @@ static void ind_solve0(rx_solve *rx, unsigned int cid,
     // so the linCmt fast path is not the right dispatch.
     rx_solving_options_ind *_ind = &(rx->subjects[cid]);
     int _eff = rxEffNeq(_ind, op);
-    if (_eff == op->neq && op->neq == op->numLinSens + op->numLin) {
+    if (_eff == op->neq && op->neq == op->numLinSens + op->numLin + op->numLinCarry) {
       // This only is linear compartment solving
       ind_linCmt(rx, cid, c_dydt, u_inis);
       return;
@@ -9714,7 +9714,7 @@ extern "C" void par_solve(rx_solve *rx) {
     if (rx->linB == 1) {
       // Setup H
     }
-    if (op->neq == op->numLinSens + op->numLin) {
+    if (op->neq == op->numLinSens + op->numLin + op->numLinCarry) {
       // This only is linear compartment solving
       par_linCmt(rx);
     } else {

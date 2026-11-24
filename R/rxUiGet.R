@@ -576,7 +576,8 @@ rxUiGet.modelDesc <- function(x, ...) {
     .rxUiLinCompartmentNames <- c("depot", "central", "peripheral1", "peripheral2")
     .state <- .mvL$state[
       !((.mvL$state %in% .rxUiLinCompartmentNames) |
-        startsWith(.mvL$state, "rx__sens_"))
+        startsWith(.mvL$state, "rx__sens_") |
+        startsWith(.mvL$state, "rx__carry_"))
     ]
     return(sprintf(
       "rxode2-based solved PK %s-compartment model%s%s",

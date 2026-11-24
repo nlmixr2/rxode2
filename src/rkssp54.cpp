@@ -46,7 +46,7 @@ extern "C" void ind_rkssp54_0(rx_solve *rx, rx_solving_options *op, int solveid,
   double xp = getAllTimes(ind, 0);
   ind->solvedIdx = 0;
 
-  int neqOde = op->neq - op->numLin - op->numLinSens;
+  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
   RxRkssp54 *solver = NULL;
   if (neqOde > 0) {
     solver = new RxRkssp54(c_dydt, neq, neqOde, ind, getSolve(0));
@@ -204,7 +204,7 @@ extern "C" void rkssp54_solveWith1Pt(int *neq, double *yp, double *xp, double xo
                                     int *istate, rx_solving_options *op,
                                     rx_solving_options_ind *ind) {
   int eff = rxEffNeq(ind, op);
-  int neqOde = eff - op->numLin - op->numLinSens;
+  int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
 
     if (neqOde > 0) {
     RxRkssp54 solver(dydt, neq, neqOde, ind, yp);

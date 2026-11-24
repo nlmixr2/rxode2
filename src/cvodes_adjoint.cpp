@@ -331,7 +331,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   int localBadSolve = 0;
   int cSub = neq[1];
   int nBase = op->adjNbase, np = op->adjNp, sensOff = op->adjSensOff;
-  int neqOde = op->neq - op->numLin - op->numLinSens;
+  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
   int eff = rxEffNeq(ind, op);
   double atol = op->ATOL > 0 ? op->ATOL : 1e-8, rtol = op->RTOL > 0 ? op->RTOL : 1e-6;
 
