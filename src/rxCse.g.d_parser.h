@@ -35,10 +35,10 @@ D_Reduction d_reduction_25_rxode2cse = {1, 12, NULL, NULL, 0, 0, 0, 0, 0, 0, NUL
 D_Reduction d_reduction_31_rxode2cse = {3, 13, NULL, NULL, 0, 0, 0, 0, 0, 0, NULL};
 D_Reduction d_reduction_33_rxode2cse = {1, 13, NULL, NULL, 0, 0, 0, 0, 0, 0, NULL};
 D_Reduction d_reduction_34_rxode2cse = {3, 14, NULL, NULL, 0, 0, 0, 0, 0, 0, NULL};
-D_Reduction d_reduction_37_rxode2cse = {1, 14, NULL, NULL, 0, 0, 0, 0, 0, 0, NULL};
-D_Reduction d_reduction_38_rxode2cse = {2, 15, NULL, NULL, 0, 0, 0, 0, 0, 0, NULL};
-D_Reduction d_reduction_41_rxode2cse = {1, 15, NULL, NULL, 0, 0, 0, 0, 0, 0, NULL};
-D_Reduction d_reduction_42_rxode2cse = {3, 16, NULL, NULL, 0, 0, 0, 0, 0, 0, NULL};
+D_Reduction d_reduction_36_rxode2cse = {1, 14, NULL, NULL, 0, 0, 0, 0, 0, 0, NULL};
+D_Reduction d_reduction_37_rxode2cse = {2, 15, NULL, NULL, 0, 0, 0, 0, 0, 0, NULL};
+D_Reduction d_reduction_40_rxode2cse = {1, 15, NULL, NULL, 0, 0, 0, 0, 0, 0, NULL};
+D_Reduction d_reduction_41_rxode2cse = {3, 16, NULL, NULL, 0, 0, 0, 0, 0, 0, NULL};
 D_Reduction d_reduction_44_rxode2cse = {1, 16, NULL, NULL, 0, 0, 0, 0, 0, 0, NULL};
 D_Reduction d_reduction_45_rxode2cse = {1, 17, NULL, NULL, 0, 0, 0, 0, 0, 0, NULL};
 D_Reduction d_reduction_49_rxode2cse = {3, 17, NULL, NULL, 0, 0, 0, 0, 0, 0, NULL};
@@ -133,7 +133,7 @@ unsigned char d_scanner_0_0_2_rxode2cse[SCANNER_BLOCK_SIZE] = {
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 };
 
-D_Shift * d_shift_0_1_rxode2cse[] = {&d_shift_27_rxode2cse,NULL};
+D_Shift * d_shift_0_1_rxode2cse[] = {&d_shift_26_rxode2cse,NULL};
 
 D_Shift * d_shift_0_2_rxode2cse[] = {&d_shift_5_rxode2cse,NULL};
 
@@ -461,20 +461,11 @@ d_accepts_diff_17_0_rxode2cse
 unsigned char d_scanner_17_0_0_rxode2cse[SCANNER_BLOCK_SIZE] = {
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, 0, 0, 0, 4, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 };
 
-unsigned char d_scanner_17_1_0_rxode2cse[SCANNER_BLOCK_SIZE] = {
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-};
-
-D_Shift * d_shift_17_2_rxode2cse[] = {&d_shift_22_rxode2cse,NULL};
-
-D_Shift * d_shift_17_4_rxode2cse[] = {&d_shift_24_rxode2cse,NULL};
+D_Shift * d_shift_17_1_rxode2cse[] = {&d_shift_22_rxode2cse,NULL};
 
 D_Shift * d_accepts_diff_20_0_rxode2cse[] = {0};
 D_Shift ** d_accepts_diff_20_rxode2cse[] = {
@@ -484,13 +475,13 @@ d_accepts_diff_20_0_rxode2cse
 unsigned char d_scanner_20_0_0_rxode2cse[SCANNER_BLOCK_SIZE] = {
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 };
 
 unsigned char d_scanner_20_0_1_rxode2cse[SCANNER_BLOCK_SIZE] = {
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 };
@@ -498,13 +489,22 @@ unsigned char d_scanner_20_0_1_rxode2cse[SCANNER_BLOCK_SIZE] = {
 unsigned char d_scanner_20_1_0_rxode2cse[SCANNER_BLOCK_SIZE] = {
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 };
 
-D_Shift * d_shift_20_2_rxode2cse[] = {&d_shift_29_rxode2cse,NULL};
+unsigned char d_scanner_20_2_0_rxode2cse[SCANNER_BLOCK_SIZE] = {
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+};
 
 D_Shift * d_shift_20_3_rxode2cse[] = {&d_shift_28_rxode2cse,NULL};
+
+D_Shift * d_shift_20_4_rxode2cse[] = {&d_shift_29_rxode2cse,NULL};
+
+D_Shift * d_shift_20_5_rxode2cse[] = {&d_shift_27_rxode2cse,NULL};
 
 D_Shift * d_accepts_diff_23_0_rxode2cse[] = {0};
 D_Shift ** d_accepts_diff_23_rxode2cse[] = {
@@ -981,24 +981,16 @@ SB_trans_uint8 d_transition_16_rxode2cse[3] = {
  , d_accepts_diff_0_0_0_rxode2cse, d_accepts_diff_0_0_0_rxode2cse}}
 };
 
-SB_uint8 d_scanner_17_rxode2cse[5] = {
+SB_uint8 d_scanner_17_rxode2cse[3] = {
 {NULL, {d_scanner_17_0_0_rxode2cse, d_scanner_0_0_2_rxode2cse
  , d_scanner_0_0_2_rxode2cse, d_scanner_0_0_2_rxode2cse}},
-{NULL, {d_scanner_17_1_0_rxode2cse, d_scanner_0_0_2_rxode2cse
- , d_scanner_0_0_2_rxode2cse, d_scanner_0_0_2_rxode2cse}},
-{d_shift_17_2_rxode2cse, {d_scanner_0_0_2_rxode2cse, d_scanner_0_0_2_rxode2cse
+{d_shift_17_1_rxode2cse, {d_scanner_0_0_2_rxode2cse, d_scanner_0_0_2_rxode2cse
  , d_scanner_0_0_2_rxode2cse, d_scanner_0_0_2_rxode2cse}},
 {d_shift_10_1_rxode2cse, {d_scanner_0_0_2_rxode2cse, d_scanner_0_0_2_rxode2cse
- , d_scanner_0_0_2_rxode2cse, d_scanner_0_0_2_rxode2cse}},
-{d_shift_17_4_rxode2cse, {d_scanner_0_0_2_rxode2cse, d_scanner_0_0_2_rxode2cse
  , d_scanner_0_0_2_rxode2cse, d_scanner_0_0_2_rxode2cse}}
 };
 
-SB_trans_uint8 d_transition_17_rxode2cse[5] = {
-{{d_accepts_diff_0_0_0_rxode2cse, d_accepts_diff_0_0_0_rxode2cse
- , d_accepts_diff_0_0_0_rxode2cse, d_accepts_diff_0_0_0_rxode2cse}},
-{{d_accepts_diff_0_0_0_rxode2cse, d_accepts_diff_0_0_0_rxode2cse
- , d_accepts_diff_0_0_0_rxode2cse, d_accepts_diff_0_0_0_rxode2cse}},
+SB_trans_uint8 d_transition_17_rxode2cse[3] = {
 {{d_accepts_diff_0_0_0_rxode2cse, d_accepts_diff_0_0_0_rxode2cse
  , d_accepts_diff_0_0_0_rxode2cse, d_accepts_diff_0_0_0_rxode2cse}},
 {{d_accepts_diff_0_0_0_rxode2cse, d_accepts_diff_0_0_0_rxode2cse
@@ -1007,18 +999,26 @@ SB_trans_uint8 d_transition_17_rxode2cse[5] = {
  , d_accepts_diff_0_0_0_rxode2cse, d_accepts_diff_0_0_0_rxode2cse}}
 };
 
-SB_uint8 d_scanner_20_rxode2cse[4] = {
+SB_uint8 d_scanner_20_rxode2cse[6] = {
 {NULL, {d_scanner_20_0_0_rxode2cse, d_scanner_20_0_1_rxode2cse
  , d_scanner_0_0_2_rxode2cse, d_scanner_0_0_2_rxode2cse}},
 {NULL, {d_scanner_20_1_0_rxode2cse, d_scanner_0_0_2_rxode2cse
  , d_scanner_0_0_2_rxode2cse, d_scanner_0_0_2_rxode2cse}},
-{d_shift_20_2_rxode2cse, {d_scanner_0_0_2_rxode2cse, d_scanner_0_0_2_rxode2cse
+{NULL, {d_scanner_20_2_0_rxode2cse, d_scanner_0_0_2_rxode2cse
  , d_scanner_0_0_2_rxode2cse, d_scanner_0_0_2_rxode2cse}},
 {d_shift_20_3_rxode2cse, {d_scanner_0_0_2_rxode2cse, d_scanner_0_0_2_rxode2cse
+ , d_scanner_0_0_2_rxode2cse, d_scanner_0_0_2_rxode2cse}},
+{d_shift_20_4_rxode2cse, {d_scanner_0_0_2_rxode2cse, d_scanner_0_0_2_rxode2cse
+ , d_scanner_0_0_2_rxode2cse, d_scanner_0_0_2_rxode2cse}},
+{d_shift_20_5_rxode2cse, {d_scanner_0_0_2_rxode2cse, d_scanner_0_0_2_rxode2cse
  , d_scanner_0_0_2_rxode2cse, d_scanner_0_0_2_rxode2cse}}
 };
 
-SB_trans_uint8 d_transition_20_rxode2cse[4] = {
+SB_trans_uint8 d_transition_20_rxode2cse[6] = {
+{{d_accepts_diff_0_0_0_rxode2cse, d_accepts_diff_0_0_0_rxode2cse
+ , d_accepts_diff_0_0_0_rxode2cse, d_accepts_diff_0_0_0_rxode2cse}},
+{{d_accepts_diff_0_0_0_rxode2cse, d_accepts_diff_0_0_0_rxode2cse
+ , d_accepts_diff_0_0_0_rxode2cse, d_accepts_diff_0_0_0_rxode2cse}},
 {{d_accepts_diff_0_0_0_rxode2cse, d_accepts_diff_0_0_0_rxode2cse
  , d_accepts_diff_0_0_0_rxode2cse, d_accepts_diff_0_0_0_rxode2cse}},
 {{d_accepts_diff_0_0_0_rxode2cse, d_accepts_diff_0_0_0_rxode2cse
@@ -1244,15 +1244,15 @@ SB_trans_uint8 d_transition_87_rxode2cse[2] = {
 };
 
 unsigned char d_goto_valid_0_rxode2cse[] = {
-0x66,0xef,0xef,0x7,0x1,0x80,0x41,0x0,0x1c};
+0x66,0xef,0xef,0x7,0x1,0x80,0x21,0x0,0x1c};
 unsigned char d_goto_valid_1_rxode2cse[] = {
-0x60,0xef,0xef,0x7,0x1,0x80,0x41,0x0,0x1c};
+0x60,0xef,0xef,0x7,0x1,0x80,0x21,0x0,0x1c};
 unsigned char d_goto_valid_2_rxode2cse[] = {
-0x0,0x80,0xef,0x7,0x1,0x80,0x41,0x0,0x1c};
+0x0,0x80,0xef,0x7,0x1,0x80,0x21,0x0,0x1c};
 unsigned char d_goto_valid_3_rxode2cse[] = {
-0x0,0x80,0xef,0x7,0x1,0x80,0x41,0x0,0x1c};
+0x0,0x80,0xef,0x7,0x1,0x80,0x21,0x0,0x1c};
 unsigned char d_goto_valid_4_rxode2cse[] = {
-0x0,0x80,0xef,0x7,0x1,0x80,0x41,0x0,0x1c};
+0x0,0x80,0xef,0x7,0x1,0x80,0x21,0x0,0x1c};
 D_Reduction * d_reductions_5_rxode2cse[] = {&d_reduction_59_rxode2cse};
 D_Reduction * d_reductions_6_rxode2cse[] = {&d_reduction_60_rxode2cse};
 D_Reduction * d_reductions_7_rxode2cse[] = {&d_reduction_61_rxode2cse};
@@ -1277,12 +1277,12 @@ unsigned char d_goto_valid_16_rxode2cse[] = {
 0x0,0x0,0x0,0x0,0x0,0x80,0x1,0x0,0x0};
 D_Reduction * d_reductions_16_rxode2cse[] = {&d_reduction_24_rxode2cse};
 unsigned char d_goto_valid_17_rxode2cse[] = {
-0x0,0x0,0x0,0x80,0x0,0x0,0xa,0x0,0x0};
+0x0,0x0,0x0,0x80,0x0,0x0,0x2,0x0,0x0};
 D_Reduction * d_reductions_17_rxode2cse[] = {&d_reduction_33_rxode2cse};
-D_Reduction * d_reductions_18_rxode2cse[] = {&d_reduction_37_rxode2cse};
-D_Reduction * d_reductions_19_rxode2cse[] = {&d_reduction_41_rxode2cse};
+D_Reduction * d_reductions_18_rxode2cse[] = {&d_reduction_36_rxode2cse};
+D_Reduction * d_reductions_19_rxode2cse[] = {&d_reduction_40_rxode2cse};
 unsigned char d_goto_valid_20_rxode2cse[] = {
-0x0,0x0,0x0,0x0,0x0,0x0,0x80,0x1,0x0};
+0x0,0x0,0x0,0x0,0x0,0x0,0xc0,0x1,0x0};
 D_Reduction * d_reductions_20_rxode2cse[] = {&d_reduction_44_rxode2cse};
 D_Reduction * d_reductions_21_rxode2cse[] = {&d_reduction_45_rxode2cse};
 D_Reduction * d_reductions_22_rxode2cse[] = {&d_reduction_45_rxode2cse};
@@ -1300,30 +1300,30 @@ unsigned char d_goto_valid_29_rxode2cse[] = {
 unsigned char d_goto_valid_30_rxode2cse[] = {
 0x0,0x0,0x0,0x0,0x2,0x0,0x0,0x0,0x0};
 unsigned char d_goto_valid_31_rxode2cse[] = {
-0x0,0xef,0xef,0x7,0x1,0x80,0x41,0x0,0x1c};
-D_Reduction * d_reductions_32_rxode2cse[] = {&d_reduction_38_rxode2cse};
+0x0,0xef,0xef,0x7,0x1,0x80,0x21,0x0,0x1c};
+D_Reduction * d_reductions_32_rxode2cse[] = {&d_reduction_37_rxode2cse};
 unsigned char d_goto_valid_33_rxode2cse[] = {
 0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x8,0x0};
 D_Reduction * d_reductions_33_rxode2cse[] = {&d_reduction_55_rxode2cse,&d_reduction_56_rxode2cse};
-D_Reduction * d_reductions_34_rxode2cse[] = {&d_reduction_38_rxode2cse};
-D_Reduction * d_reductions_35_rxode2cse[] = {&d_reduction_38_rxode2cse};
+D_Reduction * d_reductions_34_rxode2cse[] = {&d_reduction_37_rxode2cse};
+D_Reduction * d_reductions_35_rxode2cse[] = {&d_reduction_37_rxode2cse};
 D_Reduction * d_reductions_36_rxode2cse[] = {&d_reduction_4_rxode2cse};
 D_Reduction * d_reductions_37_rxode2cse[] = {&d_reduction_4_rxode2cse};
 D_Reduction * d_reductions_38_rxode2cse[] = {&d_reduction_4_rxode2cse};
 unsigned char d_goto_valid_39_rxode2cse[] = {
 0x40,0x0,0x0,0x1,0x1,0x0,0x0,0x0,0x4};
 unsigned char d_goto_valid_40_rxode2cse[] = {
-0x0,0xef,0xef,0x7,0x1,0x80,0x41,0x0,0x1c};
+0x0,0xef,0xef,0x7,0x1,0x80,0x21,0x0,0x1c};
 D_Reduction * d_reductions_41_rxode2cse[] = {&d_reduction_7_rxode2cse};
 D_Reduction * d_reductions_42_rxode2cse[] = {&d_reduction_3_rxode2cse};
 unsigned char d_goto_valid_43_rxode2cse[] = {
-0x0,0xec,0xef,0x7,0x1,0x80,0x41,0x0,0x1c};
+0x0,0xec,0xef,0x7,0x1,0x80,0x21,0x0,0x1c};
 unsigned char d_goto_valid_44_rxode2cse[] = {
-0x0,0xec,0xef,0x7,0x1,0x80,0x41,0x0,0x1c};
+0x0,0xec,0xef,0x7,0x1,0x80,0x21,0x0,0x1c};
 unsigned char d_goto_valid_45_rxode2cse[] = {
-0x0,0xe8,0xef,0x7,0x1,0x80,0x41,0x0,0x1c};
+0x0,0xe8,0xef,0x7,0x1,0x80,0x21,0x0,0x1c};
 unsigned char d_goto_valid_46_rxode2cse[] = {
-0x0,0xe8,0xef,0x7,0x1,0x80,0x41,0x0,0x1c};
+0x0,0xe8,0xef,0x7,0x1,0x80,0x21,0x0,0x1c};
 D_Reduction * d_reductions_47_rxode2cse[] = {&d_reduction_25_rxode2cse};
 D_Reduction * d_reductions_48_rxode2cse[] = {&d_reduction_25_rxode2cse};
 D_Reduction * d_reductions_49_rxode2cse[] = {&d_reduction_25_rxode2cse};
@@ -1331,27 +1331,27 @@ D_Reduction * d_reductions_50_rxode2cse[] = {&d_reduction_25_rxode2cse};
 D_Reduction * d_reductions_51_rxode2cse[] = {&d_reduction_25_rxode2cse};
 D_Reduction * d_reductions_52_rxode2cse[] = {&d_reduction_25_rxode2cse};
 unsigned char d_goto_valid_53_rxode2cse[] = {
-0x0,0xe0,0xef,0x7,0x1,0x80,0x41,0x0,0x1c};
+0x0,0xe0,0xef,0x7,0x1,0x80,0x21,0x0,0x1c};
 unsigned char d_goto_valid_54_rxode2cse[] = {
-0x0,0xc0,0xef,0x7,0x1,0x80,0x41,0x0,0x1c};
+0x0,0xc0,0xef,0x7,0x1,0x80,0x21,0x0,0x1c};
 unsigned char d_goto_valid_55_rxode2cse[] = {
-0x0,0xc0,0xef,0x7,0x1,0x80,0x41,0x0,0x1c};
+0x0,0xc0,0xef,0x7,0x1,0x80,0x21,0x0,0x1c};
 unsigned char d_goto_valid_56_rxode2cse[] = {
-0x0,0x80,0xef,0x7,0x1,0x80,0x41,0x0,0x1c};
+0x0,0x80,0xef,0x7,0x1,0x80,0x21,0x0,0x1c};
 unsigned char d_goto_valid_57_rxode2cse[] = {
-0x0,0x80,0xef,0x7,0x1,0x80,0x41,0x0,0x1c};
+0x0,0x80,0xef,0x7,0x1,0x80,0x21,0x0,0x1c};
 unsigned char d_goto_valid_58_rxode2cse[] = {
-0x0,0x80,0xef,0x7,0x1,0x80,0x41,0x0,0x1c};
+0x0,0x80,0xef,0x7,0x1,0x80,0x21,0x0,0x1c};
 unsigned char d_goto_valid_59_rxode2cse[] = {
-0x0,0x80,0xef,0x7,0x1,0x80,0x41,0x0,0x1c};
+0x0,0x80,0xef,0x7,0x1,0x80,0x21,0x0,0x1c};
 unsigned char d_goto_valid_60_rxode2cse[] = {
-0x0,0x80,0xef,0x7,0x1,0x80,0x41,0x0,0x1c};
+0x0,0x80,0xef,0x7,0x1,0x80,0x21,0x0,0x1c};
 unsigned char d_goto_valid_61_rxode2cse[] = {
-0x0,0xef,0xff,0x7,0x3,0x80,0x41,0x0,0x1c};
+0x0,0xef,0xff,0x7,0x3,0x80,0x21,0x0,0x1c};
 unsigned char d_goto_valid_62_rxode2cse[] = {
-0x80,0xef,0xef,0x7,0x1,0x80,0x41,0x0,0x1c};
+0x80,0xef,0xef,0x7,0x1,0x80,0x21,0x0,0x1c};
 unsigned char d_goto_valid_63_rxode2cse[] = {
-0x0,0xef,0xef,0x7,0x1,0x80,0x41,0x0,0x1c};
+0x0,0xef,0xef,0x7,0x1,0x80,0x21,0x0,0x1c};
 D_Reduction * d_reductions_64_rxode2cse[] = {&d_reduction_12_rxode2cse};
 D_Reduction * d_reductions_65_rxode2cse[] = {&d_reduction_49_rxode2cse};
 unsigned char d_goto_valid_66_rxode2cse[] = {
@@ -1380,16 +1380,16 @@ unsigned char d_goto_valid_74_rxode2cse[] = {
 0x0,0x0,0x0,0x0,0x0,0x80,0x1,0x0,0x0};
 D_Reduction * d_reductions_74_rxode2cse[] = {&d_reduction_23_rxode2cse};
 unsigned char d_goto_valid_75_rxode2cse[] = {
-0x0,0x0,0x0,0x80,0x0,0x0,0xa,0x0,0x0};
+0x0,0x0,0x0,0x80,0x0,0x0,0x2,0x0,0x0};
 D_Reduction * d_reductions_75_rxode2cse[] = {&d_reduction_31_rxode2cse};
 unsigned char d_goto_valid_76_rxode2cse[] = {
-0x0,0x0,0x0,0x80,0x0,0x0,0xa,0x0,0x0};
+0x0,0x0,0x0,0x80,0x0,0x0,0x2,0x0,0x0};
 D_Reduction * d_reductions_76_rxode2cse[] = {&d_reduction_31_rxode2cse};
 D_Reduction * d_reductions_77_rxode2cse[] = {&d_reduction_34_rxode2cse};
 D_Reduction * d_reductions_78_rxode2cse[] = {&d_reduction_34_rxode2cse};
-D_Reduction * d_reductions_79_rxode2cse[] = {&d_reduction_34_rxode2cse};
-D_Reduction * d_reductions_80_rxode2cse[] = {&d_reduction_42_rxode2cse};
-D_Reduction * d_reductions_81_rxode2cse[] = {&d_reduction_42_rxode2cse};
+D_Reduction * d_reductions_79_rxode2cse[] = {&d_reduction_41_rxode2cse};
+D_Reduction * d_reductions_80_rxode2cse[] = {&d_reduction_41_rxode2cse};
+D_Reduction * d_reductions_81_rxode2cse[] = {&d_reduction_41_rxode2cse};
 D_Reduction * d_reductions_82_rxode2cse[] = {&d_reduction_52_rxode2cse};
 D_Reduction * d_reductions_83_rxode2cse[] = {&d_reduction_54_rxode2cse};
 unsigned char d_goto_valid_84_rxode2cse[] = {
@@ -1402,102 +1402,88 @@ unsigned char d_goto_valid_87_rxode2cse[] = {
 D_Reduction * d_reductions_88_rxode2cse[] = {&d_reduction_2_rxode2cse};
 D_Reduction * d_reductions_89_rxode2cse[] = {&d_reduction_51_rxode2cse};
 unsigned char d_goto_valid_90_rxode2cse[] = {
-0x0,0xef,0xef,0x7,0x1,0x80,0x41,0x0,0x1c};
+0x0,0xef,0xef,0x7,0x1,0x80,0x21,0x0,0x1c};
 D_Reduction * d_reductions_91_rxode2cse[] = {&d_reduction_11_rxode2cse};
 unsigned char d_goto_valid_92_rxode2cse[] = {
-0x0,0xef,0xef,0x7,0x1,0x80,0x41,0x0,0x1c};
+0x0,0xef,0xef,0x7,0x1,0x80,0x21,0x0,0x1c};
 D_Reduction * d_reductions_93_rxode2cse[] = {&d_reduction_50_rxode2cse};
 D_Reduction * d_reductions_94_rxode2cse[] = {&d_reduction_53_rxode2cse};
 D_Reduction * d_reductions_95_rxode2cse[] = {&d_reduction_14_rxode2cse};
-unsigned short d_gotos_rxode2cse[1392] = {
+unsigned short d_gotos_rxode2cse[1182] = {
 9,10,41,43,11,12,62,13,14,15,16,54,17,18,19,20,
 21,22,23,66,24,25,26,27,28,29,37,38,39,42,40,2,
 44,45,46,47,55,56,57,64,48,49,50,51,52,53,3,4,
-60,61,40,63,65,5,46,47,58,89,59,46,47,55,56,63,
-94,6,7,8,30,12,54,31,14,15,16,0,17,18,19,20,
-21,22,23,42,24,25,26,27,28,29,64,0,0,0,68,2,
-30,12,57,48,49,50,51,52,53,90,57,0,91,0,3,4,
-69,0,0,69,58,5,59,92,67,0,93,67,58,0,59,0,
-0,6,7,8,33,20,21,22,23,0,24,25,26,34,28,29,
-54,0,0,0,0,32,0,0,0,0,6,0,0,6,0,0,
-0,0,0,0,3,4,0,0,0,0,0,5,0,48,49,50,
-51,52,53,0,0,0,0,6,7,8,35,20,21,22,23,0,
-24,25,26,34,28,29,0,0,0,0,0,32,0,0,0,0,
-0,0,0,0,0,0,0,0,0,0,3,4,0,0,0,0,
-0,5,0,0,0,0,0,0,0,0,0,0,0,6,7,8,
-36,20,21,22,23,0,24,25,26,34,28,29,0,0,0,0,
-0,32,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-3,4,0,0,0,0,0,5,0,0,0,0,0,0,0,0,
-0,0,0,6,7,8,31,14,15,16,0,17,18,19,20,21,
-22,23,0,24,25,26,34,28,29,0,0,0,0,0,32,0,
-0,0,0,0,0,0,0,0,0,0,0,0,0,3,4,0,
-0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,
-6,7,8,70,14,15,16,0,17,18,19,20,21,22,23,0,
-24,25,26,34,28,29,0,0,0,0,0,32,0,0,0,0,
-0,0,0,0,0,0,0,0,0,0,3,4,0,0,0,0,
-0,5,0,0,0,0,0,0,0,0,0,0,0,6,7,8,
-71,16,0,17,18,19,20,21,22,23,0,24,25,26,34,28,
-29,0,0,0,0,0,32,0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,3,4,0,0,0,0,0,5,0,0,0,
-0,0,0,0,0,0,0,0,6,7,8,72,16,0,17,18,
-19,20,21,22,23,0,24,25,26,34,28,29,0,0,0,0,
-0,32,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-3,4,0,0,0,0,0,5,0,0,0,0,0,0,0,0,
-0,0,0,6,7,8,73,0,17,18,19,20,21,22,23,0,
-24,25,26,34,28,29,0,0,0,0,0,32,0,0,0,0,
-0,0,0,0,0,0,0,0,0,0,3,4,0,0,0,0,
-0,5,0,0,0,0,0,0,0,0,0,0,0,6,7,8,
-74,0,17,18,19,20,21,22,23,0,24,25,26,34,28,29,
-0,0,0,0,0,32,0,0,0,0,0,0,0,0,0,0,
-0,0,0,0,3,4,0,0,0,0,0,5,0,0,0,0,
-0,0,0,0,0,0,0,6,7,8,75,18,19,20,21,22,
-23,0,24,25,26,34,28,29,0,0,0,0,0,32,0,0,
-0,0,0,0,0,0,0,0,0,0,0,0,3,4,0,0,
-0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,6,
-7,8,76,19,20,21,22,23,0,24,25,26,34,28,29,0,
-0,0,0,0,32,0,0,0,0,0,0,0,0,0,0,0,
-0,0,0,3,4,0,0,0,0,0,5,0,0,0,0,0,
-0,0,0,0,0,0,6,7,8,77,19,20,21,22,23,0,
-24,25,26,34,28,29,0,0,0,0,0,32,0,0,0,0,
-0,0,0,0,0,0,0,0,0,0,3,4,0,0,0,0,
-0,5,0,0,0,0,0,0,0,0,0,0,0,6,7,8,
-78,20,21,22,23,0,24,25,26,34,28,29,0,0,0,0,
-0,32,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-3,4,0,0,0,0,0,5,0,0,0,0,0,0,0,0,
-0,0,0,6,7,8,79,20,21,22,23,0,24,25,26,34,
+59,60,61,40,5,65,63,94,58,89,46,47,46,47,55,56,
+0,6,7,8,30,12,0,31,14,15,16,63,17,18,19,20,
+21,22,23,42,24,25,26,27,28,29,33,20,21,22,23,2,
+24,25,26,34,28,29,64,57,0,0,57,32,68,90,3,4,
+91,30,12,92,5,0,93,0,0,58,3,4,58,0,69,0,
+5,6,7,8,69,0,67,0,0,0,0,0,67,6,7,8,
+35,20,21,22,23,0,24,25,26,34,28,29,36,20,21,22,
+23,32,24,25,26,34,28,29,6,54,0,0,0,32,6,0,
+3,4,0,0,0,0,5,0,0,0,0,0,3,4,0,0,
+0,0,5,6,7,8,48,49,50,51,52,53,0,0,54,6,
+7,8,31,14,15,16,0,17,18,19,20,21,22,23,0,24,
+25,26,34,28,29,0,0,0,0,0,32,48,49,50,51,52,
+53,0,0,0,0,0,0,0,0,3,4,0,0,0,0,5,
+0,0,0,0,0,0,0,0,0,0,0,0,6,7,8,70,
+14,15,16,0,17,18,19,20,21,22,23,0,24,25,26,34,
 28,29,0,0,0,0,0,32,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,3,4,0,0,0,0,0,5,0,0,
-0,0,0,0,0,0,0,0,0,6,7,8,80,20,21,22,
+0,0,0,0,0,0,3,4,0,0,0,0,5,0,0,0,
+0,0,0,0,0,0,0,0,0,6,7,8,71,16,0,17,
+18,19,20,21,22,23,0,24,25,26,34,28,29,0,0,0,
+0,0,32,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,3,4,0,0,0,0,5,0,0,0,0,0,0,0,0,
+0,0,0,0,6,7,8,72,16,0,17,18,19,20,21,22,
 23,0,24,25,26,34,28,29,0,0,0,0,0,32,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,3,4,0,0,
-0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,6,
-7,8,81,20,21,22,23,0,24,25,26,34,28,29,0,0,
-0,0,0,32,0,0,0,0,0,0,0,0,0,0,0,0,
-0,0,3,4,0,0,0,0,0,5,0,0,0,0,0,0,
-0,0,0,0,0,6,7,8,82,20,21,22,23,0,24,25,
-26,34,28,29,0,0,0,0,0,32,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,3,4,0,0,0,0,0,5,
-0,0,0,0,0,0,0,0,0,0,0,6,7,8,84,14,
-15,16,0,17,18,19,20,21,22,23,85,24,25,26,34,28,
-29,0,0,0,0,0,32,83,0,0,0,0,0,0,0,0,
-0,0,0,0,0,3,4,0,0,0,0,0,5,0,0,0,
-0,0,0,0,0,0,0,0,6,7,8,86,87,14,15,16,
-0,17,18,19,20,21,22,23,0,24,25,26,34,28,29,0,
-0,0,0,0,32,0,0,0,0,0,0,0,0,0,0,0,
-0,0,0,3,4,0,0,0,0,0,5,0,0,0,0,0,
-0,0,0,0,0,0,6,7,8,88,14,15,16,0,17,18,
+0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,6,
+7,8,73,0,17,18,19,20,21,22,23,0,24,25,26,34,
+28,29,0,0,0,0,0,32,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,3,4,0,0,0,0,5,0,0,0,
+0,0,0,0,0,0,0,0,0,6,7,8,74,0,17,18,
 19,20,21,22,23,0,24,25,26,34,28,29,0,0,0,0,
 0,32,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-3,4,0,0,0,0,0,5,0,0,0,0,0,0,0,0,
-0,0,0,6,7,8,95,14,15,16,0,17,18,19,20,21,
-22,23,0,24,25,26,34,28,29,0,0,0,0,0,32,0,
-0,0,0,0,0,0,0,0,0,0,0,0,0,3,4,0,
+3,4,0,0,0,0,5,0,0,0,0,0,0,0,0,0,
+0,0,0,6,7,8,75,18,19,20,21,22,23,0,24,25,
+26,34,28,29,0,0,0,0,0,32,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,3,4,0,0,0,0,5,0,
+0,0,0,0,0,0,0,0,0,0,0,6,7,8,76,19,
+20,21,22,23,0,24,25,26,34,28,29,0,0,0,0,0,
+32,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,
+4,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,
+0,0,6,7,8,77,19,20,21,22,23,0,24,25,26,34,
+28,29,78,20,21,22,23,32,24,25,26,34,28,29,0,0,
+0,0,0,32,0,0,3,4,0,0,0,0,5,0,0,0,
+0,0,3,4,0,0,0,0,5,6,7,8,0,0,0,0,
+0,0,0,0,0,6,7,8,79,20,21,22,23,0,24,25,
+26,34,28,29,80,20,21,22,23,32,24,25,26,34,28,29,
+0,0,0,0,0,32,0,0,3,4,0,0,0,0,5,0,
+0,0,0,0,3,4,0,0,0,0,5,6,7,8,0,0,
+0,0,0,0,0,0,0,6,7,8,81,20,21,22,23,0,
+24,25,26,34,28,29,82,20,21,22,23,32,24,25,26,34,
+28,29,0,0,0,0,0,32,0,0,3,4,0,0,0,0,
+5,0,0,0,0,0,3,4,0,0,0,0,5,6,7,8,
+0,0,0,0,0,0,0,0,0,6,7,8,84,14,15,16,
+0,17,18,19,20,21,22,23,85,24,25,26,34,28,29,0,
+0,0,0,0,32,83,0,0,0,0,0,0,0,0,0,0,
+0,0,0,3,4,0,0,0,0,5,0,0,0,0,0,0,
+0,0,0,0,0,0,6,7,8,86,87,14,15,16,0,17,
+18,19,20,21,22,23,0,24,25,26,34,28,29,0,0,0,
+0,0,32,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,3,4,0,0,0,0,5,0,0,0,0,0,0,0,0,
+0,0,0,0,6,7,8,88,14,15,16,0,17,18,19,20,
+21,22,23,0,24,25,26,34,28,29,0,0,0,0,0,32,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,4,
 0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,
-6,7,8,96,14,15,16,0,17,18,19,20,21,22,23,0,
-24,25,26,34,28,29,0,0,0,0,0,32,0,0,0,0,
-0,0,0,0,0,0,0,0,0,0,3,4,0,0,0,0,
-0,5,0,0,0,0,0,0,0,0,0,0,0,6,7,8
-};
+0,6,7,8,95,14,15,16,0,17,18,19,20,21,22,23,
+0,24,25,26,34,28,29,0,0,0,0,0,32,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,3,4,0,0,0,
+0,5,0,0,0,0,0,0,0,0,0,0,0,0,6,7,
+8,96,14,15,16,0,17,18,19,20,21,22,23,0,24,25,
+26,34,28,29,0,0,0,0,0,32,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,3,4,0,0,0,0,5,0,
+0,0,0,0,0,0,0,0,0,0,0,6,7,8};
 
 D_ErrorRecoveryHint d_error_recovery_hints_0_rxode2cse[] = {
 {0, 6, ")"},
@@ -1525,9 +1511,9 @@ D_ErrorRecoveryHint d_error_recovery_hints_93_rxode2cse[] = {{4, 18, "]"}};
 D_State d_states_rxode2cse[] = {
 {d_goto_valid_0_rxode2cse, 1, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_0_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
 {d_goto_valid_1_rxode2cse, -63, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_0_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
-{d_goto_valid_2_rxode2cse, -117, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
-{d_goto_valid_3_rxode2cse, -171, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
-{d_goto_valid_4_rxode2cse, -225, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
+{d_goto_valid_2_rxode2cse, -75, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
+{d_goto_valid_3_rxode2cse, -129, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
+{d_goto_valid_4_rxode2cse, -141, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
 {NULL, -2147483647, {1, d_reductions_5_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
 {NULL, -2147483647, {1, d_reductions_6_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
 {NULL, -2147483647, {1, d_reductions_7_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
@@ -1543,18 +1529,18 @@ D_State d_states_rxode2cse[] = {
 {d_goto_valid_17_rxode2cse, -7, {1, d_reductions_17_rxode2cse}, {0, NULL}, {0, NULL}, 1, NULL, (void*)d_scanner_17_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_17_rxode2cse, d_accepts_diff_17_rxode2cse, -1},
 {NULL, -2147483647, {1, d_reductions_18_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
 {NULL, -2147483647, {1, d_reductions_19_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
-{d_goto_valid_20_rxode2cse, 7, {1, d_reductions_20_rxode2cse}, {0, NULL}, {0, NULL}, 1, NULL, (void*)d_scanner_20_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_20_rxode2cse, d_accepts_diff_20_rxode2cse, -1},
+{d_goto_valid_20_rxode2cse, 6, {1, d_reductions_20_rxode2cse}, {0, NULL}, {0, NULL}, 1, NULL, (void*)d_scanner_20_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_20_rxode2cse, d_accepts_diff_20_rxode2cse, -1},
 {NULL, -2147483647, {1, d_reductions_21_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
 {NULL, -2147483647, {1, d_reductions_22_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
 {d_goto_valid_23_rxode2cse, 26, {0, NULL}, {0, NULL}, {1, d_error_recovery_hints_23_rxode2cse}, 1, NULL, (void*)d_scanner_23_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_23_rxode2cse, d_accepts_diff_23_rxode2cse, -1},
 {NULL, -2147483647, {1, d_reductions_24_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
 {NULL, -2147483647, {1, d_reductions_25_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
-{d_goto_valid_26_rxode2cse, -31, {3, d_reductions_26_rxode2cse}, {0, NULL}, {2, d_error_recovery_hints_26_rxode2cse}, 1, NULL, (void*)d_scanner_26_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_26_rxode2cse, d_accepts_diff_26_rxode2cse, -1},
+{d_goto_valid_26_rxode2cse, -43, {3, d_reductions_26_rxode2cse}, {0, NULL}, {2, d_error_recovery_hints_26_rxode2cse}, 1, NULL, (void*)d_scanner_26_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_26_rxode2cse, d_accepts_diff_26_rxode2cse, -1},
 {NULL, -2147483647, {1, d_reductions_27_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
 {NULL, -2147483647, {1, d_reductions_28_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
-{d_goto_valid_29_rxode2cse, -19, {0, NULL}, {0, NULL}, {1, d_error_recovery_hints_29_rxode2cse}, 1, NULL, (void*)d_scanner_29_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_29_rxode2cse, d_accepts_diff_29_rxode2cse, -1},
+{d_goto_valid_29_rxode2cse, -20, {0, NULL}, {0, NULL}, {1, d_error_recovery_hints_29_rxode2cse}, 1, NULL, (void*)d_scanner_29_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_29_rxode2cse, d_accepts_diff_29_rxode2cse, -1},
 {d_goto_valid_30_rxode2cse, 14, {0, NULL}, {0, NULL}, {1, d_error_recovery_hints_30_rxode2cse}, 1, NULL, (void*)d_scanner_30_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_30_rxode2cse, d_accepts_diff_30_rxode2cse, -1},
-{d_goto_valid_31_rxode2cse, -286, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
+{d_goto_valid_31_rxode2cse, -202, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
 {NULL, -2147483647, {1, d_reductions_32_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
 {d_goto_valid_33_rxode2cse, 20, {2, d_reductions_33_rxode2cse}, {0, NULL}, {1, d_error_recovery_hints_33_rxode2cse}, 1, NULL, (void*)d_scanner_33_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_33_rxode2cse, d_accepts_diff_33_rxode2cse, -1},
 {NULL, -2147483647, {1, d_reductions_34_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
@@ -1562,43 +1548,43 @@ D_State d_states_rxode2cse[] = {
 {NULL, -2147483647, {1, d_reductions_36_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
 {NULL, -2147483647, {1, d_reductions_37_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
 {NULL, -2147483647, {1, d_reductions_38_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
-{d_goto_valid_39_rxode2cse, -88, {0, NULL}, {0, NULL}, {1, d_error_recovery_hints_39_rxode2cse}, 1, NULL, (void*)d_scanner_39_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_39_rxode2cse, d_accepts_diff_39_rxode2cse, -1},
-{d_goto_valid_40_rxode2cse, -347, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
+{d_goto_valid_39_rxode2cse, -102, {0, NULL}, {0, NULL}, {1, d_error_recovery_hints_39_rxode2cse}, 1, NULL, (void*)d_scanner_39_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_39_rxode2cse, d_accepts_diff_39_rxode2cse, -1},
+{d_goto_valid_40_rxode2cse, -263, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
 {NULL, -2147483647, {1, d_reductions_41_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
 {NULL, -2147483647, {1, d_reductions_42_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
-{d_goto_valid_43_rxode2cse, -406, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
-{d_goto_valid_44_rxode2cse, -465, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
-{d_goto_valid_45_rxode2cse, -523, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
-{d_goto_valid_46_rxode2cse, -581, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
+{d_goto_valid_43_rxode2cse, -322, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
+{d_goto_valid_44_rxode2cse, -381, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
+{d_goto_valid_45_rxode2cse, -439, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
+{d_goto_valid_46_rxode2cse, -497, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
 {NULL, -2147483647, {1, d_reductions_47_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
 {NULL, -2147483647, {1, d_reductions_48_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
 {NULL, -2147483647, {1, d_reductions_49_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
 {NULL, -2147483647, {1, d_reductions_50_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
 {NULL, -2147483647, {1, d_reductions_51_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
 {NULL, -2147483647, {1, d_reductions_52_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
-{d_goto_valid_53_rxode2cse, -637, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
-{d_goto_valid_54_rxode2cse, -692, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
-{d_goto_valid_55_rxode2cse, -747, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
-{d_goto_valid_56_rxode2cse, -801, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
-{d_goto_valid_57_rxode2cse, -855, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
-{d_goto_valid_58_rxode2cse, -909, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
-{d_goto_valid_59_rxode2cse, -963, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
-{d_goto_valid_60_rxode2cse, -1017, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
-{d_goto_valid_61_rxode2cse, -1078, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_61_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_61_rxode2cse, d_accepts_diff_61_rxode2cse, -1},
-{d_goto_valid_62_rxode2cse, -1140, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_0_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
-{d_goto_valid_63_rxode2cse, -1201, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
+{d_goto_valid_53_rxode2cse, -553, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
+{d_goto_valid_54_rxode2cse, -608, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
+{d_goto_valid_55_rxode2cse, -663, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
+{d_goto_valid_56_rxode2cse, -675, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
+{d_goto_valid_57_rxode2cse, -729, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
+{d_goto_valid_58_rxode2cse, -741, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
+{d_goto_valid_59_rxode2cse, -795, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
+{d_goto_valid_60_rxode2cse, -807, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
+{d_goto_valid_61_rxode2cse, -868, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_61_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_61_rxode2cse, d_accepts_diff_61_rxode2cse, -1},
+{d_goto_valid_62_rxode2cse, -930, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_0_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
+{d_goto_valid_63_rxode2cse, -991, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
 {NULL, -2147483647, {1, d_reductions_64_rxode2cse}, {0, NULL}, {1, d_error_recovery_hints_64_rxode2cse}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
 {NULL, -2147483647, {1, d_reductions_65_rxode2cse}, {0, NULL}, {1, d_error_recovery_hints_65_rxode2cse}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
-{d_goto_valid_66_rxode2cse, -91, {0, NULL}, {0, NULL}, {1, d_error_recovery_hints_39_rxode2cse}, 1, NULL, (void*)d_scanner_39_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_39_rxode2cse, d_accepts_diff_39_rxode2cse, -1},
+{d_goto_valid_66_rxode2cse, -108, {0, NULL}, {0, NULL}, {1, d_error_recovery_hints_39_rxode2cse}, 1, NULL, (void*)d_scanner_39_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_39_rxode2cse, d_accepts_diff_39_rxode2cse, -1},
 {NULL, -2147483647, {1, d_reductions_67_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
-{d_goto_valid_68_rxode2cse, -19, {1, d_reductions_68_rxode2cse}, {0, NULL}, {1, d_error_recovery_hints_68_rxode2cse}, 1, NULL, (void*)d_scanner_23_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_23_rxode2cse, d_accepts_diff_23_rxode2cse, -1},
+{d_goto_valid_68_rxode2cse, -22, {1, d_reductions_68_rxode2cse}, {0, NULL}, {1, d_error_recovery_hints_68_rxode2cse}, 1, NULL, (void*)d_scanner_23_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_23_rxode2cse, d_accepts_diff_23_rxode2cse, -1},
 {d_goto_valid_69_rxode2cse, -53, {1, d_reductions_69_rxode2cse}, {1, d_right_epsilon_hints_69_rxode2cse}, {0, NULL}, 1, NULL, (void*)d_scanner_12_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_12_rxode2cse, d_accepts_diff_12_rxode2cse, -1},
-{d_goto_valid_70_rxode2cse, -15, {1, d_reductions_70_rxode2cse}, {0, NULL}, {0, NULL}, 1, NULL, (void*)d_scanner_14_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_14_rxode2cse, d_accepts_diff_14_rxode2cse, -1},
-{d_goto_valid_71_rxode2cse, -20, {1, d_reductions_71_rxode2cse}, {0, NULL}, {0, NULL}, 1, NULL, (void*)d_scanner_14_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_14_rxode2cse, d_accepts_diff_14_rxode2cse, -1},
-{d_goto_valid_72_rxode2cse, -58, {1, d_reductions_72_rxode2cse}, {0, NULL}, {0, NULL}, 1, NULL, (void*)d_scanner_15_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_15_rxode2cse, d_accepts_diff_15_rxode2cse, -1},
-{d_goto_valid_73_rxode2cse, -132, {1, d_reductions_73_rxode2cse}, {0, NULL}, {0, NULL}, 1, NULL, (void*)d_scanner_15_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_15_rxode2cse, d_accepts_diff_15_rxode2cse, -1},
-{d_goto_valid_74_rxode2cse, -14, {1, d_reductions_74_rxode2cse}, {0, NULL}, {0, NULL}, 1, NULL, (void*)d_scanner_16_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_16_rxode2cse, d_accepts_diff_16_rxode2cse, -1},
-{d_goto_valid_75_rxode2cse, -67, {1, d_reductions_75_rxode2cse}, {0, NULL}, {0, NULL}, 1, NULL, (void*)d_scanner_17_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_17_rxode2cse, d_accepts_diff_17_rxode2cse, -1},
+{d_goto_valid_70_rxode2cse, -19, {1, d_reductions_70_rxode2cse}, {0, NULL}, {0, NULL}, 1, NULL, (void*)d_scanner_14_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_14_rxode2cse, d_accepts_diff_14_rxode2cse, -1},
+{d_goto_valid_71_rxode2cse, -21, {1, d_reductions_71_rxode2cse}, {0, NULL}, {0, NULL}, 1, NULL, (void*)d_scanner_14_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_14_rxode2cse, d_accepts_diff_14_rxode2cse, -1},
+{d_goto_valid_72_rxode2cse, -157, {1, d_reductions_72_rxode2cse}, {0, NULL}, {0, NULL}, 1, NULL, (void*)d_scanner_15_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_15_rxode2cse, d_accepts_diff_15_rxode2cse, -1},
+{d_goto_valid_73_rxode2cse, -194, {1, d_reductions_73_rxode2cse}, {0, NULL}, {0, NULL}, 1, NULL, (void*)d_scanner_15_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_15_rxode2cse, d_accepts_diff_15_rxode2cse, -1},
+{d_goto_valid_74_rxode2cse, -15, {1, d_reductions_74_rxode2cse}, {0, NULL}, {0, NULL}, 1, NULL, (void*)d_scanner_16_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_16_rxode2cse, d_accepts_diff_16_rxode2cse, -1},
+{d_goto_valid_75_rxode2cse, -72, {1, d_reductions_75_rxode2cse}, {0, NULL}, {0, NULL}, 1, NULL, (void*)d_scanner_17_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_17_rxode2cse, d_accepts_diff_17_rxode2cse, -1},
 {d_goto_valid_76_rxode2cse, -75, {1, d_reductions_76_rxode2cse}, {0, NULL}, {0, NULL}, 1, NULL, (void*)d_scanner_17_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_17_rxode2cse, d_accepts_diff_17_rxode2cse, -1},
 {NULL, -2147483647, {1, d_reductions_77_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
 {NULL, -2147483647, {1, d_reductions_78_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
@@ -1607,15 +1593,15 @@ D_State d_states_rxode2cse[] = {
 {NULL, -2147483647, {1, d_reductions_81_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
 {NULL, -2147483647, {1, d_reductions_82_rxode2cse}, {0, NULL}, {1, d_error_recovery_hints_82_rxode2cse}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
 {NULL, -2147483647, {1, d_reductions_83_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
-{d_goto_valid_84_rxode2cse, -72, {0, NULL}, {0, NULL}, {1, d_error_recovery_hints_82_rxode2cse}, 1, NULL, (void*)d_scanner_84_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_84_rxode2cse, d_accepts_diff_84_rxode2cse, -1},
-{d_goto_valid_85_rxode2cse, -86, {0, NULL}, {0, NULL}, {1, d_error_recovery_hints_64_rxode2cse}, 1, NULL, (void*)d_scanner_84_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_84_rxode2cse, d_accepts_diff_84_rxode2cse, -1},
+{d_goto_valid_84_rxode2cse, -76, {0, NULL}, {0, NULL}, {1, d_error_recovery_hints_82_rxode2cse}, 1, NULL, (void*)d_scanner_84_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_84_rxode2cse, d_accepts_diff_84_rxode2cse, -1},
+{d_goto_valid_85_rxode2cse, -82, {0, NULL}, {0, NULL}, {1, d_error_recovery_hints_64_rxode2cse}, 1, NULL, (void*)d_scanner_84_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_84_rxode2cse, d_accepts_diff_84_rxode2cse, -1},
 {NULL, -2147483647, {1, d_reductions_86_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
-{d_goto_valid_87_rxode2cse, -4, {0, NULL}, {0, NULL}, {1, d_error_recovery_hints_87_rxode2cse}, 1, NULL, (void*)d_scanner_87_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_87_rxode2cse, d_accepts_diff_87_rxode2cse, -1},
+{d_goto_valid_87_rxode2cse, 5, {0, NULL}, {0, NULL}, {1, d_error_recovery_hints_87_rxode2cse}, 1, NULL, (void*)d_scanner_87_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_87_rxode2cse, d_accepts_diff_87_rxode2cse, -1},
 {NULL, -2147483647, {1, d_reductions_88_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
 {NULL, -2147483647, {1, d_reductions_89_rxode2cse}, {0, NULL}, {1, d_error_recovery_hints_89_rxode2cse}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
-{d_goto_valid_90_rxode2cse, -1262, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
+{d_goto_valid_90_rxode2cse, -1052, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
 {NULL, -2147483647, {1, d_reductions_91_rxode2cse}, {0, NULL}, {1, d_error_recovery_hints_91_rxode2cse}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
-{d_goto_valid_92_rxode2cse, -1323, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
+{d_goto_valid_92_rxode2cse, -1113, {0, NULL}, {0, NULL}, {2, d_error_recovery_hints_2_rxode2cse}, 1, NULL, (void*)d_scanner_0_rxode2cse, sizeof(unsigned char) , 0, D_SCAN_ALL, (void*)d_transition_0_rxode2cse, d_accepts_diff_0_rxode2cse, -1},
 {NULL, -2147483647, {1, d_reductions_93_rxode2cse}, {0, NULL}, {1, d_error_recovery_hints_93_rxode2cse}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
 {NULL, -2147483647, {1, d_reductions_94_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1},
 {NULL, -2147483647, {1, d_reductions_95_rxode2cse}, {0, NULL}, {0, NULL}, 0, NULL, NULL, sizeof(unsigned char) , 0, D_SCAN_ALL, NULL, NULL, -1}
@@ -1673,12 +1659,12 @@ D_Symbol d_symbols_rxode2cse[] = {
 {D_SYMBOL_STRING, "-", 1, -1},
 {D_SYMBOL_STRING, "*", 1, -1},
 {D_SYMBOL_STRING, "/", 1, -1},
-{D_SYMBOL_STRING, "%%", 2, -1},
 {D_SYMBOL_STRING, "-", 1, -1},
 {D_SYMBOL_STRING, "+", 1, -1},
 {D_SYMBOL_STRING, "!", 1, -1},
 {D_SYMBOL_STRING, "**", 2, -1},
 {D_SYMBOL_STRING, "^", 1, -1},
+{D_SYMBOL_STRING, "%%", 2, -1},
 {D_SYMBOL_STRING, "(", 1, -1},
 {D_SYMBOL_STRING, ")", 1, -1},
 {D_SYMBOL_STRING, "[", 1, -1},

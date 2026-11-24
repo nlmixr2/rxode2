@@ -316,3 +316,17 @@ test_that('chunk renaming treats dotted names as whole identifiers', {
   expect_match(out, 'rx_expr_cse_0.foo', fixed = TRUE)
   expect_false(grepl('(^|[^A-Za-z0-9_.])rx_expr_cse_0([^A-Za-z0-9_.]|$)', out))
 })
+
+test_that("`%%` binds tighter than `*` and unary minus, as in the model grammar", {
+  for (.e in c("2*t%%24", "t%%24*2", "-t%%24", "t%%(24*2)", "(2*t)%%24", "t%%-5")) {
+    .m <- paste0("a=", .e, "+exp(k)\nb=exp(k)+1")
+    .c <- .rxOptExprC(rxNorm(.m))
+    expect_false(is.na(.c), info = .e)
+    .o <- rxode2(paste0(.c, "\nd/dt(x)=0"))
+    .r <- rxode2(paste0(.m, "\nd/dt(x)=0"))
+    .ev <- et(seq(1, 50, by = 7))
+    .p <- c(k = 0.2)
+    expect_equal(rxSolve(.o, .ev, .p)$a, rxSolve(.r, .ev, .p)$a, info = .e)
+  }
+  expect_match(.rxOptExprC(rxNorm("a=2*t%%24+exp(k)\nb=exp(k)+1")), "a=2*t%%24+rx_expr_0", fixed = TRUE)
+})

@@ -88,7 +88,6 @@ add_expression
 mul_expression
   : mul_expression '*' unary_expression
   | mul_expression '/' unary_expression
-  | mul_expression '%%' unary_expression
   | unary_expression
   ;
 
@@ -99,10 +98,13 @@ unary_expression
   | power_expression
   ;
 
-// right associative through unary_expression, so a^-b parses
+// right associative through unary_expression, so a^-b parses.  `%%` sits here,
+// above `*` and unary minus, as mod_expression does in tran.g: `2*t%%24` is
+// `2*(t%%24)` and `-t%%24` is `-(t%%24)`
 power_expression
   : primary_expression '**' unary_expression
   | primary_expression '^' unary_expression
+  | primary_expression '%%' unary_expression
   | primary_expression
   ;
 
