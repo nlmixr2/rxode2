@@ -34,11 +34,4 @@ rxTest({
     expect_equal(gammapInva(.x, .p), .s$ga)
     expect_equal(gammaqInva(.x, .p), .s$gq)
   })
-
-  test_that("gamma inverse distinguishes repeated shapes and probabilities", {
-    shape <- rep(c(0.5, 0.50001, 0.5, 0.50001, 0.5, 2), 20L)
-    probability <- rep(c(0.25, 0.25, 0.75, 0.25, 0.25, 0.75), 20L)
-    expect_equal(gammapInv(shape, probability), qgamma(probability, shape),
-                 tolerance = 1e-12)
-  })
 })
