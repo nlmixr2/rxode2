@@ -25,24 +25,25 @@
 ## Key folded into the parsed md5 so models compiled at different levels (or
 ## with different rxImpureFun() registrations) do not share a DLL; "" at "none"
 ## leaves the md5 unchanged
-.rxFullOptKey <- function(level = .rxFullOptLevel()) {
+.rxFullOptKey <- function(level = .rxFullOptLevel(), impure = .rxImpureEnv$names) {
   if (level == 0L) {
     return("")
   }
   .key <- .rxFullOptLevels[level + 1L]
   ## functions registered with rxImpureFun() change what is sliced
-  .imp <- .rxImpureEnv$names
-  if (length(.imp) > 0L) {
-    .key <- paste0(.key, ";impure=", paste(sort(.imp), collapse = ","))
+  if (length(impure) > 0L) {
+    .key <- paste0(.key, ";impure=", paste(sort(impure), collapse = ","))
   }
   .key
 }
 
 ## base: parsed md5 without the level folded in, keyed by parsed md5 (with and
-## without the level); level: the level codegen uses instead of the option,
-## when not NULL
+## without the level); key: the key folded into each parsed md5; level and
+## impure: the level and rxImpureFun() names codegen uses instead of the
+## current ones, when not NULL
 .rxFullOptState <- new.env(parent = emptyenv())
 .rxFullOptState$base <- new.env(parent = emptyenv())
+.rxFullOptState$key <- new.env(parent = emptyenv())
 
 .rxFullOptFold <- function(md5, key) {
   if (!nzchar(key)) {
@@ -57,21 +58,27 @@
   .ret <- .rxFullOptFold(.md5, key)
   assign(.md5, .md5, envir = .rxFullOptState$base)
   assign(as.character(.ret), .md5, envir = .rxFullOptState$base)
+  assign(as.character(.ret), key, envir = .rxFullOptState$key)
   .ret
 }
 
-## Level whose key gives parsed md5 `md5`; NULL when unknown
-.rxFullOptLevelOf <- function(md5) {
-  .base <- .rxFullOptState$base[[md5]]
-  if (is.null(.base)) {
+## Level and rxImpureFun() names whose key gave parsed md5 `md5`, as
+## list(level=, impure=); NULL when unknown
+.rxFullOptOf <- function(md5) {
+  .key <- .rxFullOptState$key[[md5]]
+  if (is.null(.key)) {
     return(NULL)
   }
-  for (.lvl in seq_along(.rxFullOptLevels) - 1L) {
-    if (identical(as.character(.rxFullOptFold(.base, .rxFullOptKey(.lvl))), md5)) {
-      return(.lvl)
-    }
+  if (!nzchar(.key)) {
+    return(list(level = 0L, impure = character(0)))
   }
-  NULL
+  .parts <- strsplit(.key, ";impure=", fixed = TRUE)[[1]]
+  .lvl <- match(.parts[1], .rxFullOptLevels) - 1L
+  if (is.na(.lvl)) {
+    return(NULL)
+  }
+  .imp <- if (length(.parts) > 1L) strsplit(.parts[2], ",", fixed = TRUE)[[1]] else character(0)
+  list(level = .lvl, impure = .imp)
 }
 
 ## Calls (as spelled in the generated C) with side effects, or that read state
@@ -176,6 +183,10 @@
     } else {
       .rxFullOptState$level
     },
-    impure = unique(c(.rxFullOptImpureBuiltin, .rng, .rxImpureFunNames()))
+    impure = unique(c(
+      .rxFullOptImpureBuiltin,
+      .rng,
+      .rxImpureFunNames(.rxFullOptState$impure)
+    ))
   )
 }

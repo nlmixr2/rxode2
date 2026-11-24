@@ -42,10 +42,10 @@ rxRmImpureFun <- function(name) {
   invisible(.rxImpureEnv$names)
 }
 
-## The registered names together with the C spelling of any registered
+## The registered names (or `names`) together with the C spelling of any registered
 ## translation (rxFun()/package C function) they name
-.rxImpureFunNames <- function() {
-  .n <- .rxImpureEnv$names
+.rxImpureFunNames <- function(names = NULL) {
+  .n <- if (is.null(names)) .rxImpureEnv$names else names
   if (length(.n) == 0L) {
     return(character(0))
   }

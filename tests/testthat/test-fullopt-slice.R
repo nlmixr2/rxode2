@@ -125,6 +125,17 @@ rxTest({
       .r$slice$mv$md5[["parsed_md5"]],
       .r2$slice$mv$md5[["parsed_md5"]]
     ))
+    # a recompile uses the registration the md5 was made with, not the current one
+    .md5 <- .r2$slice$mv$md5[["parsed_md5"]]
+    rxRmImpureFun("myf")
+    expect_identical(.rxFullOptOf(.md5), list(level = 1L, impure = "myf"))
+    .m <- .r2$slice$m
+    rxDelete(.m)
+    withr::with_options(list(rxode2.fullOpt = "slice"), {
+      suppressWarnings(rxSolve(.m, .ev, params = c(tcl = 0.2)))
+    })
+    expect_true(any(grepl("_udf\\(", .fullOptBody(.m, "dydt"))))
+    expect_identical(.rxFullOptOf(.r$none$mv$md5[["parsed_md5"]]), list(level = 0L, impure = character(0)))
   })
 
   test_that("assignments to fields of the individual are kept", {
