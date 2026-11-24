@@ -1228,7 +1228,9 @@ rxGpuInfo <- function() {
     if (length(.w) == 0L) {
       return(1L)
     }
-    length(unique(x[[.w[1]]]))
+    ## `[[` of a large et() table is empty; `$` reads its ids
+    .id <- if (inherits(x, "rxEt")) x$id else x[[.w[1]]]
+    max(1L, length(unique(.id)))
   }
   .n <- .ids(events)
   if (inherits(params, "data.frame") || is.matrix(params)) {

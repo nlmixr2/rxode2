@@ -454,4 +454,9 @@ rxTest({
     .g <- suppressMessages(rxSolve(.b, .p, .ev, method = "gpuVern76", gpuBackend = "cpu"))
     expect_equal(.g$cp, .h$cp, tolerance = 1e-12)
   })
+  test_that("a large et() table's subjects size the GPU slots", {
+    .ev <- et(amt = 1) |> et(1:3) |> et(id = 1:1500)
+    expect_equal(.rxGpuSolveCount(NULL, .ev, rxControl()), 1500L)
+    expect_equal(.rxGpuSolveCount(NULL, as.data.frame(.ev), rxControl()), 1500L)
+  })
 })
