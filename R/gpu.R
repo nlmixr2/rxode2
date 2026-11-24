@@ -824,7 +824,7 @@ rxGpuInfo <- function() {
   if (length(.o) != 1L || is.na(.o)) {
     return(-1L)
   }
-  as.integer(max(0, .o))
+  as.integer(min(max(0, .o), .Machine$integer.max))
 }
 
 #' Can a model's subjects be solved as whole timelines (one launch a solve)?
@@ -1102,8 +1102,11 @@ rxGpuInfo <- function() {
   ## and options (every subject's first request restarts its state)
   ## one cached run per kernel and layout: other options replace (and
   ## release) it
-  .runKey <- if (reuse) paste0("run_", digest::digest(list(attr(.ker, "rxKey"), .dims))) else NULL
-  .optKey <- digest::digest(.opt)
+  ## the work-group size (the last of .dims) is an option: a new one
+  ## replaces the run rather than keeping a second set of buffers
+  .nd <- length(.dims)
+  .runKey <- if (reuse) paste0("run_", digest::digest(list(attr(.ker, "rxKey"), .dims[-.nd]))) else NULL
+  .optKey <- digest::digest(list(.opt, .dims[.nd]))
   if (!is.null(.runKey)) {
     .old <- .rxGpuClEnv[[.runKey]]
     if (!is.null(.old) && !identical(.old$ptr, methods::new("externalptr"))) {
@@ -1550,9 +1553,10 @@ rxGpuInfo <- function() {
   if (inherits(params, "data.frame") || is.matrix(params)) {
     .n <- max(.n, NROW(params))
   }
-  .n <- .n * max(1L, as.integer(ctl$nSub)) * max(1L, as.integer(ctl$nStud))
+  ## doubles: the product can pass the integer range before the cap
+  .n <- as.numeric(.n) * max(1, as.numeric(ctl$nSub)) * max(1, as.numeric(ctl$nStud))
   if (!is.null(ctl$nsim)) {
-    .n <- .n * max(1L, as.integer(ctl$nsim))
+    .n <- .n * max(1, as.numeric(ctl$nsim))
   }
   as.integer(min(.n, .Machine$integer.max))
 }

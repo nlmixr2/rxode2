@@ -67,6 +67,7 @@ typedef cl_int (RXCL_API *clGetKernelWorkGroupInfo_t)(void *, void *, cl_uint,
                                                       size_t, void *, size_t *);
 #define RXCL_QUEUE_DEVICE 0x1091
 #define RXCL_DEVICE_MAX_COMPUTE_UNITS 0x1002
+#define RXCL_DEVICE_MAX_WORK_ITEM_SIZES 0x1005
 #define RXCL_KERNEL_WORK_GROUP_SIZE 0x11B0
 #define RXCL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE 0x11B3
 
@@ -356,6 +357,12 @@ static void rxGpuClWorkGroup(rxGpuCl *g) {
                         sizeof(wgMult), &wgMult, NULL) != RXCL_SUCCESS) {
     wgMult = 0;
   }
+  // the first dimension's limit also bounds a one-dimensional work group
+  size_t items[3] = {0, 0, 0};
+  if (rxcl.deviceInfo(dev, RXCL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(items), items,
+                      NULL) == RXCL_SUCCESS && items[0] > 0 && items[0] < wgMax) {
+    wgMax = items[0];
+  }
   if (cu == 0 || wgMax == 0) return;
   g->cu = (size_t)cu;
   g->wgMax = wgMax;
@@ -373,8 +380,10 @@ static size_t rxGpuClLocal(const rxGpuCl *g, size_t n) {
   if (lws > 0) {
     L = (size_t)lws;
   } else {
-    size_t m = g->wgMult, per = (n + g->cu - 1)/g->cu;
-    L = ((per + m - 1)/m)*m;
+    // the largest multiple of the preferred size that still gives every
+    // compute unit a group
+    size_t m = g->wgMult, per = n/g->cu;
+    L = (per/m)*m;
     if (L < m) L = m;
     size_t cap = 128;
     if (cap < m) cap = m;
@@ -388,6 +397,8 @@ static size_t rxGpuClLocal(const rxGpuCl *g, size_t n) {
 // kernel skips items past n)
 static cl_int rxGpuClLaunch(rxGpuCl *g, int nwork, cl_uint nev, void **ev, void **evk) {
   size_t global = (size_t)nwork, L = rxGpuClLocal(g, global);
+  // the kernel's index is an int: padding must not pass INT_MAX
+  if (L > 0 && global > (size_t)2147483647 - L) L = 0;
   if (L > 0) global = ((global + L - 1)/L)*L;
   return rxcl.run(g->queue, g->kernel, 1, NULL, &global, L > 0 ? &L : NULL, nev,
                   nev ? ev : NULL, evk);

@@ -581,7 +581,7 @@ rxTest({
       "  for (int j = 0; j < RXG_NPAR; j++) { c.p0[j] = c.p1[j] = p[i*RXG_NPAR + j]; }",
       "  for (int j = 0; j < RXG_NLHS1; j++) { c.pl[j] = 0.0; }",
       "  c.t0 = c.t1 = 0.0; c.curShift = 0.0; c.tpk = 0.0; c.covType = 0; c.nonmem = 0;",
-      "  c.lambda = 1.0; c.yj = 2.0; c.logitHi = 1.0; c.logitLow = 0.0;",
+      "  c.lambda = 1.0; c.yj = 2.0; c.logitHi = 1.0; c.logitLow = 0.0; c.preOk = 0;",
       "  rxg_dydt((double)(i % 2)*3.0, yy, dy, &c);",
       "  for (int j = 0; j < RXG_NEQ; j++) out[i*RXG_NEQ + j] = dy[j];",
       "}"
@@ -625,7 +625,7 @@ rxTest({
       "  for (int i = 0; i < RXG_NPAR1; i++) { c.p0[i] = c.p1[i] = 1.0; }",
       "  for (int i = 0; i < RXG_NLHS1; i++) { c.pl[i] = 0.0; }",
       "  c.t0 = 0.0; c.t1 = 1.0; c.curShift = 0.0; c.tpk = 0.0; c.covType = 0; c.nonmem = 0;",
-      "  c.lambda = 1.0; c.yj = 2.0; c.logitHi = 1.0; c.logitLow = 0.0;",
+      "  c.lambda = 1.0; c.yj = 2.0; c.logitHi = 1.0; c.logitLow = 0.0; c.preOk = 0;",
       "  rxg_dydt(0.5, y, dy, &c);",
       "  out[get_global_id(0)] = dy[0];",
       "}"

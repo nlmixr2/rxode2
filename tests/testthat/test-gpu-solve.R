@@ -500,6 +500,7 @@ rxTest({
     .ev <- et(amt = 1) |> et(1:3) |> et(id = 1:1500)
     expect_equal(.rxGpuSolveCount(NULL, .ev, rxControl()), 1500L)
     expect_equal(.rxGpuSolveCount(NULL, as.data.frame(.ev), rxControl()), 1500L)
+    expect_equal(.rxGpuSolveCount(NULL, .ev, rxControl(nStud = 2000000L)), .Machine$integer.max)
   })
 
   ## one-compartment-plus-depot PK with saturable elimination, a bolus series,
