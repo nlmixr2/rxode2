@@ -157,9 +157,11 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
             if (callEvType[c] == 3) {          // reset restores the initial conditions
               rk4sAddIni(dx0P, endCostate.data(), mu.data(), nBase, np);
               for (int b = 0; b < nBase; ++b) endCostate[b] = 0.0;
+            } else if (callEvType[c] == 5 && callEvCmt[c] >= 0) {
+              endCostate[callEvCmt[c]] = 0.0;
+            } else if (callEvType[c] == 6 && callEvCmt[c] >= 0) {
+              endCostate[callEvCmt[c]] *= callEvFac[c];
             }
-            else if (callEvType[c] == 5 && callEvCmt[c] >= 0) { endCostate[callEvCmt[c]] = 0.0; }
-            else if (callEvType[c] == 6 && callEvCmt[c] >= 0) { endCostate[callEvCmt[c]] *= callEvFac[c]; }
           }
         }
         rk4sAddIni(dx0P, endCostate.data(), mu.data(), nBase, np);   // window start t0

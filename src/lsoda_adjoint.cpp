@@ -332,9 +332,11 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       if (Sg.evType == 3) {                 // reset restores the initial conditions
         rk4sAddIni(dx0P, wSeed.data(), mu.data(), nBase, np);
         for (int b = 0; b < nBase; ++b) wSeed[b] = 0.0;
+      } else if (Sg.evType == 5 && Sg.evCmt >= 0) {
+        wSeed[Sg.evCmt] = 0.0;
+      } else if (Sg.evType == 6 && Sg.evCmt >= 0) {
+        wSeed[Sg.evCmt] *= Sg.evFactor;
       }
-      else if (Sg.evType == 5 && Sg.evCmt >= 0) { wSeed[Sg.evCmt] = 0.0; }
-      else if (Sg.evType == 6 && Sg.evCmt >= 0) { wSeed[Sg.evCmt] *= Sg.evFactor; }
       time = Sg.t0;
     }
   };
