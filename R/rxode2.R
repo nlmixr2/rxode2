@@ -134,6 +134,10 @@ NA_LOGICAL <- NA # nolint
 #' pharmacokinetics (PK), pharmacodynamics (PD), disease progression,
 #' drug-disease modeling, etc.
 #'
+#' Each generated C function (the ODE right-hand side, the calculated
+#' variables, `f()`/`alag()`/`rate()`/`dur()`, ...) evaluates only the model
+#' statements its own outputs depend on; `options(rxode2.fullOpt = "none")`
+#' evaluates every statement in every function instead.
 #'
 #' @includeRmd man/rmdhunks/rxode2-create-models.Rmd
 #'
@@ -1690,6 +1694,9 @@ rxMd5 <- function(
 #'     embed the md5 into DLL, and then provide for functions like
 #'     [rxModelVars()].
 #'
+#' @param fullOptKey `rxode2.fullOpt` level key folded into the parsed md5
+#'     ("" at "none"); a formal for the same memoise reason as `eventSensKey`.
+#'
 #' @param eventSensKey event ("jump") sensitivity mode key folded into
 #'     the parsed md5 cache key so the same model text translated in
 #'     different modes (e.g. `"fd"` vs `"jump"`) compiles to distinct
@@ -1773,6 +1780,7 @@ rxTrans.default <- function(
   modName = NULL, # Model name for DLL
   modVars = FALSE, # Return modVars
   eventSensKey = .rxState$eventSensCacheKey, # nolint
+  fullOptKey = .rxFullOptKey(), # nolint
   ...
 ) {
   ## `eventSensKey` MUST be a formal (defaulting to the session global) rather
@@ -1832,6 +1840,8 @@ rxTrans.default <- function(
   if (nzchar(eventSensKey)) {
     .parsedMd5 <- digest::digest(c(.parsedMd5, paste0("eventSens=", eventSensKey)), serialize = TRUE, algo = "md5")
   }
+  ## the code generated per function depends on rxode2.fullOpt; "" at "none"
+  .parsedMd5 <- .rxFullOptMd5(.parsedMd5, fullOptKey)
   md5 <- c(file_md5 = md5, parsed_md5 = .parsedMd5)
   .rxTimeId(md5["parsed_md5"])
   .ret$md5 <- md5
@@ -2552,6 +2562,9 @@ rxCompile.rxModelVars <- function(
         .model <- .rxModelVarsLast$model
         .model["indLin"] <- .rxState$meCode
         .rxModelVarsLast$model <- .model
+        ## generate at the level the stored md5 was made at, not the option's
+        .rxFullOptState$level <- .rxFullOptLevelOf(as.character(.trans["parsed_md5"]))
+        on.exit(.rxFullOptState$level <- NULL, add = TRUE)
         if (!is.null(package) && !.newMod) {
           .libname <- c(package, gsub(.Platform$dynlib.ext, "", basename(.cDllFile)))
           .Call(

@@ -261,6 +261,11 @@ suggest the package emphasis on pharmacometrics modeling, including
 pharmacokinetics (PK), pharmacodynamics (PD), disease progression,
 drug-disease modeling, etc.
 
+Each generated C function (the ODE right-hand side, the calculated
+variables, \code{f()}/\code{alag()}/\code{rate()}/\code{dur()}, ...) evaluates only the model
+statements its own outputs depend on; \code{options(rxode2.fullOpt = "none")}
+evaluates every statement in every function instead.
+
 \subsection{Creating rxode2 models}{
 
 The recommended way to write an \code{rxode2} model is a model function with
