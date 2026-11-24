@@ -1233,13 +1233,18 @@ rxOptExpr <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
   .malert(sprintf("finding duplicate expressions in %s...", msg))
   .norm <- rxNorm(x)
   .rxOptWarnRepeat(.norm)
+  ## Version reassigned variables so no temporary outlives one of its inputs (#1782)
+  .ssa <- .rxOptSsa(.norm)
+  if (!is.null(.ssa)) {
+    .norm <- .ssa$txt
+  }
   ## The C pass first; it returns NA when it will not reproduce the R walker
   ## exactly, and the R implementation below then runs.  Chunking calls this
   ## same whole-model path once per chunk, so chunks go through C too.
   .impure <- .rxOptImpureCalls(x, .norm)
   .cse <- .rxOptExprC(.norm, .impure)
   if (!is.na(.cse)) {
-    return(.cse)
+    return(.rxOptSsaUndo(.cse, .ssa))
   }
   .p <- eval(parse(text = paste0("quote({", .norm, "})")))
   .lines <- ..rxOpt(.p, progress = TRUE)
@@ -1270,8 +1275,8 @@ rxOptExpr <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
     .rxOptEnv$.exclude <- ""
     .malert(sprintf("optimizing duplicate expressions in %s...", msg))
     .opt <- ..rxOpt(.p, progress = TRUE)
-    return(paste(.opt, collapse = "\n"))
+    return(.rxOptSsaUndo(paste(.opt, collapse = "\n"), .ssa))
   } else {
-    return(paste(.lines, collapse = "\n"))
+    return(.rxOptSsaUndo(paste(.lines, collapse = "\n"), .ssa))
   }
 }
