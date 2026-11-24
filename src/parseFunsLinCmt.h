@@ -211,6 +211,31 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
           REprintf("Unknown linCmtB which1=-2: %d\n", sw);
           return 0;
         }
+      } else if (which1 == -20 || which1 == -21) {
+        // Second-order read (amount / concentration Hessian): asks the solve
+        // to keep the per-record Hessians (rxode2lincmt#17) and differentiate
+        // both parameter slots it names (which2 = [row*49 +] k*7 + l, full
+        // order p1, v1, p2, p3, p4, p5, ka at 2*ncmt).
+        addLinCmtBdiff(diffHess);
+        int kl = which1 == -20 ? which2 % 49 : which2;
+        int slot[2] = {kl / 7, kl % 7};
+        for (int si = 0; si < 2; si++) {
+          if (tb.hasKa && slot[si] == 2*tb.ncmt) {
+            addLinCmtBdiff(diffKa);
+          } else if (slot[si] == 0) {
+            addLinCmtBdiff(diffP1);
+          } else if (slot[si] == 1) {
+            addLinCmtBdiff(diffV1);
+          } else if (slot[si] == 2) {
+            addLinCmtBdiff(diffP2);
+          } else if (slot[si] == 3) {
+            addLinCmtBdiff(diffP3);
+          } else if (slot[si] == 4) {
+            addLinCmtBdiff(diffP4);
+          } else if (slot[si] == 5) {
+            addLinCmtBdiff(diffP5);
+          }
+        }
       } else if (which1 >= 0 && which2 >= 0) {
         // Direct amount-Jacobian read J(which1=row, which2=theta column)
         // (the linCmt() sensitivity-carry codegen, nlmixr2est phase 3b.3):

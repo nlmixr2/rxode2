@@ -8,7 +8,20 @@
   sensitivity right-hand sides it never reads, and `f()`/`alag()`/`rate()`/
   `dur()` evaluate only their own inputs.  Results are unchanged;
   `options(rxode2.fullOpt = "none")` restores the previous code generation.
-
+- Second derivatives of a `linCmt()` model are now exact: differentiating a
+  first-order `linCmt()` sensitivity again gives the second-order
+  `linCmtB()` reads of 'rxode2lincmt' (`which1 = -20` amounts, `-21`
+  concentration), and the model asks the solve to keep them
+  (rxode2lincmt#17).  Before, the curvature of the linear system was
+  dropped: such a derivative was `0`, which made the exact inner Hessian of
+  an `ll()` + `linCmt()` model in 'nlmixr2est' refuse a diagonal term and
+  silently lose the linear system's part of an off-diagonal one.
+- A first derivative of a `linCmt()` model translated back into its
+  symengine environment (`rxToSE(x, envir = )`), or carried through a
+  chained `rxFromSE()` derivative, keeps the linear system: the solved
+  states (`central`, `rx__sens_central_BY_p1`, ...) are read from it rather
+  than treated as constants, and a raw sensitivity-column read is written
+  back as its state name.
 - The model language has `clamp(x, lo, hi)`, the same as
   `min(max(x, lo), hi)` (and differentiated the same way); a call with
   other than three arguments, or with literal bounds `lo > hi`, is a parse
