@@ -6442,6 +6442,7 @@ static inline void iniRx(rx_solve* rx) {
   rx->useStdPow = 0;
   rx->ss2cancelAllPending = false;
   rx->addlKeepsCov = 0;
+  rx->addlCovAtTime = 1;
   rx->sumType = 1; // pairwise
   rx->prodType = 1; // long double
   rx->hasFactors = 0;
@@ -6950,6 +6951,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       (int)asBool(rxControl[Rxc_durAtDoseTime], "durAtDoseTime") : rx->nonmem;
     rx->doseAtRecord = (Rf_length(rxControl) > Rxc_doseAtRecord) ?
       (int)asBool(rxControl[Rxc_doseAtRecord], "doseAtRecord") : rx->nonmem;
+    rx->addlCovAtTime = (Rf_length(rxControl) > Rxc_addlCovAtTime) ?
+      (int)asBool(rxControl[Rxc_addlCovAtTime], "addlCovAtTime") : !rx->nonmem;
     tieOrderData_global = (rxControlTieOrder(rxControl) == "data");
     // only a lagged dose can still be ahead of a reset, so a model with no
     // alag() skips the scan

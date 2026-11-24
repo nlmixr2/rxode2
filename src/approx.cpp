@@ -184,11 +184,31 @@ static inline int rxRecCovRow(rx_solving_options_ind *ind, int pos) {
 }
 
 // The value of data record `raw`, a missing one filled from its neighbours in
-// record (data) order
+// record (data) order.
+//
+// An addl repeat that does not keep its covariates (ind->addlParent) has no
+// value of its own.  It is sorted before the data records at its time, so a
+// fill from earlier records would skip them.  With
+// rxControl(addlCovAtTime=TRUE) the repeat reads the last of those records
+// with a value instead: under locf the value at a time is the one set by the
+// last record at or before it, and addlKeepsCov = FALSE imputes a repeat's
+// covariates at its actual dosing time, so a record at that time is already
+// in effect.  Otherwise only the records before the repeat count, as NONMEM
+// reads them.  A fill from later records reaches those records anyway.
 static inline double rxRecValue(int raw, double *y, int is_locf,
                                 rx_solving_options_ind *ind, rx_solving_options *op) {
-  return getValue(raw, y, is_locf, NULL, ind->n_all_times_orig,
-                  ind->n_all_times_orig, op, 0);
+  rx_solve *rx = (ind->rx ? ind->rx : &rx_global);
+  int nOrig = ind->n_all_times_orig;
+  if (rx->addlCovAtTime && ind->addlParent != NULL && raw >= 0 && raw < nOrig &&
+      ind->addlParent[raw] != 0 && ISNA(y[raw]) &&
+      (is_locf == 1 || ((is_locf == 0 || is_locf == 3) && op->instant_backward))) {
+    double t0 = getAllTimes(ind, raw), ret = NA_REAL;
+    for (int j = raw + 1; j < nOrig && isSameTime(getAllTimes(ind, j), t0); ++j) {
+      if (!ISNA(y[j])) ret = y[j];
+    }
+    if (!ISNA(ret)) return ret;
+  }
+  return getValue(raw, y, is_locf, NULL, nOrig, nOrig, op, 0);
 }
 
 // What a record-based read of sorted record `pos` reads: its data record's

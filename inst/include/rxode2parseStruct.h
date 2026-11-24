@@ -704,6 +704,10 @@ typedef struct rx_solve_s {
   // the covariates of the records it expands to, are read at its own data
   // record, as NONMEM reads them; otherwise each record reads its own
   int doseAtRecord;
+  // rxControl(addlCovAtTime=TRUE): an addl repeat that does not keep its
+  // covariates reads a record at its own time (the value in effect then);
+  // otherwise only the records before it, as NONMEM does
+  int addlCovAtTime;
 } rx_solve;
 
 typedef void (*rxode2_assignFuns2_t)(rx_solve, rx_solving_options, t_F, t_LAG, t_RATE, t_DUR,t_calc_mtime, t_ME, t_IndF, t_getTime, t_locateTimeIndex, t_handle_evidL,t_getDur);
