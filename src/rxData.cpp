@@ -7150,7 +7150,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       CharacterVector _adjLhs = rxSolveDat->mv[RxMv_lhs];
       int _nBase = 0;
       for (int _i = 0; _i < _adjSt.size(); ++_i) {
-        if (strncmp(CHAR(_adjSt[_i]), "rx__sens_", 9) != 0) _nBase++;
+        if (strncmp(CHAR(_adjSt[_i]), "rx__sens_", 9) != 0 &&
+            strncmp(CHAR(_adjSt[_i]), "rx__carry_", 10) != 0) _nBase++;
       }
       int _fxOff = -1, _fpOff = -1, _dfOff = -1, _jpOff = -1, _jyOff = -1, _fxdOff = -1, _tauOff = -1, _dtauOff = -1, _dlagOff = -1, _drateOff = -1;
       for (int _i = 0; _i < _adjLhs.size(); ++_i) {

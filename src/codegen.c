@@ -275,20 +275,22 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
       int mx = maxSumProdN;
       if (SumProdLD > mx) mx = SumProdLD;
       sAppend(&sbOut,"#define __MAX_PROD__ %d\n", mx);
-      int baseSize = tb.statei-tb.nExtra+extraCmt - tb.sensi;
-      if (tb.sensi > 0){
+      // the linCmt() carry states are numbered with the sensitivities
+      int sensOff = tb.sensi + tb.linCmtCarryN;
+      int baseSize = tb.statei-tb.nExtra+extraCmt - sensOff;
+      if (sensOff > 0){
         // This converts CMT to user CMT in model
         // Hence CMT = 4 could translate in data to 44 with sensi=10
         // Then cmt=44 translates back to cmt-10 or 4.
         // This makes the sensitivity equations insensitive to CMT changes that occur in FOCEi
         sAppend(&sbOut,"#define _CMT ((fabs(CMT)<=%d) ? CMT : ((CMT<0) ? CMT+%d: CMT-%d))\n",
-                baseSize, tb.sensi, tb.sensi);
+                baseSize, sensOff, sensOff);
       } else {
         sAppendN(&sbOut,"#define _CMT CMT\n", 17);
       }
       // the same remap for tte() data lookups of other records' CMT
       sAppend(&sbOut,"#define _RXTTE_CMTB %d\n#define _RXTTE_CMTS %d\n",
-              baseSize, tb.sensi);
+              baseSize, sensOff);
       // Now define lhs lags
       prnt_vars(print_lhsLags, 1, "", "", 13);
       // And covariate/parameter lags

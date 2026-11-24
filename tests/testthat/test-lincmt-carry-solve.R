@@ -89,4 +89,76 @@ rxTest({
       )
     }
   })
+
+  test_that("the carry is the same when the model has ODEs or a functional initial condition", {
+    prev <- linCmtCarrySetFast(FALSE)
+    on.exit(linCmtCarrySetFast(prev), add = TRUE)
+    e <- et(amt = 100) |> et(c(1, 2, 3.5))
+    want <- rxSolve(mkCarry(3L), e, returnType = "data.frame")$r0
+    lines <- paste0(
+      "cp=linCmtB(",
+      sprintf(base, -1L, -1L),
+      ")\n",
+      "ad=linCmtB(",
+      sprintf(base, -5L, 0L),
+      ")\n",
+      "a0=linCmtB(",
+      sprintf(base, -7L, 0L),
+      ")\n",
+      "r0=linCmtB(",
+      sprintf(base, -6L, 0L),
+      ")"
+    )
+    mOde <- suppressWarnings(rxode2(paste0("d/dt(eff) = -0.1*eff\n", lines)))
+    for (.m in c("liblsoda", "lsoda", "dop853")) {
+      expect_equal(rxSolve(mOde, e, method = .m, returnType = "data.frame")$r0, want, tolerance = 1e-12, label = .m)
+    }
+    mIni <- suppressWarnings(rxode2(paste0("d/dt(eff) = 0\neff(0) = e0\n", lines)))
+    expect_equal(rxSolve(mIni, c(e0 = 1), e, returnType = "data.frame")$r0, want, tolerance = 1e-12)
+    # the carry states are not ODE states
+    expect_identical(rxStateOde(mOde), "eff")
+    expect_identical(.rxEventSensOdeStates(rxModelVars(mOde)), "eff")
+  })
+
+  test_that("extra cmt() compartments and dvid() count the carry states", {
+    lines <- paste0(
+      "cp=linCmtB(",
+      sprintf(base, -1L, -1L),
+      ")\n",
+      "ad=linCmtB(",
+      sprintf(base, -5L, 0L),
+      ")\n",
+      "r0=linCmtB(",
+      sprintf(base, -6L, 0L),
+      ")\n",
+      "x = CMT"
+    )
+    # an ODE model with an extra cmt() and the carry parses
+    expect_error(
+      rxModelVars(paste0("d/dt(eff) = -ke * eff\ncmt(obs)\n", lines)),
+      NA
+    )
+    mC <- suppressWarnings(rxode2(paste0("cmt(obs)\n", lines)))
+    m0 <- suppressWarnings(rxode2(paste0(
+      "cmt(obs)\ncp=linCmtB(", sprintf(base, -1L, -1L), ")\nx = CMT"
+    )))
+    d <- data.frame(
+      id = 1,
+      time = c(0, 1, 2),
+      amt = c(100, 0, 0),
+      evid = c(1, 0, 0),
+      cmt = c(1, 1, 2),
+      dv = c(NA, 1, 1)
+    )
+    # the model sees the same CMT as without the carry: 1 central, 2 obs
+    expect_equal(rxSolve(mC, d, returnType = "data.frame")$x, c(1, 2))
+    expect_equal(rxSolve(m0, d, returnType = "data.frame")$x, c(1, 2))
+    d$cmt <- c("central", "central", "obs")
+    expect_equal(rxSolve(mC, d, returnType = "data.frame")$x, c(1, 2))
+    # dvid() numbering lands on the same compartments
+    mD <- suppressWarnings(rxode2(paste0("cmt(obs)\n", lines, "\ndvid(1, 2)")))
+    d$cmt <- NULL
+    d$dvid <- c(NA, 1, 2)
+    expect_equal(rxSolve(mD, d, returnType = "data.frame")$x, c(1, 2))
+  })
 })

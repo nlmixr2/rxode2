@@ -166,7 +166,8 @@ static inline void calcNextra(void) {
             strcmp(b2, "rx__sens_peripheral2_BY_p3") == 0 ||
             strcmp(b2, "rx__sens_peripheral2_BY_p4") == 0 ||
             strcmp(b2, "rx__sens_peripheral2_BY_ka") == 0 ||
-            strcmp(b2, "rx__sens_depot_BY_ka") == 0) {
+            strcmp(b2, "rx__sens_depot_BY_ka") == 0 ||
+            strncmp(b2, "rx__carry_", 10) == 0) {
           continue;
         }
         // If there is only a linear compartment model AND this is a cmt() item, then

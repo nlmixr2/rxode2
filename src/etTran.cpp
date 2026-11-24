@@ -1919,10 +1919,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     state[i+state0.size()] = stateE[i];
   }
   // Now adjust the compartment numbers if needed.
-  int baseSize = state0.size() - stateS.size();
+  // the carry states sit with the sensitivities, before the extra cmt()s
+  int baseSize = state0.size() - stateS.size() - nCarry;
   for (int i = curDvid.size(); i--;){
     if (curDvid[i] > baseSize) {
-      curDvid[i] = stateS.size()+curDvid[i];
+      curDvid[i] = stateS.size()+nCarry+curDvid[i];
     }
   }
   if (timeCol== -1) {
