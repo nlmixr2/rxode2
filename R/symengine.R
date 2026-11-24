@@ -2429,7 +2429,8 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
 .rxLinCmtBrawName <- function(x) {
   .num <- function(i) {
     .v <- x[[i]]
-    if (is.call(.v)) .v <- tryCatch(eval(.v, baseenv()), error = function(e) NA) # -2 parses as `-`(2)
+    # -2 parses as `-`(2)
+    if (is.call(.v)) .v <- tryCatch(eval(.v, baseenv()), error = function(e) NA)
     if (length(.v) != 1L) return(NA_real_)
     suppressWarnings(as.numeric(.v))
   }
