@@ -8,10 +8,12 @@
 # first use, so after the rename back it is only used while its variables keep the
 # value it was computed from.  Leaving a `{}` block gives every variable assigned in it
 # a fresh name (its value depends on the branch taken), and a `while` loop does the
-# same on entry, since its body reads the values of the previous iteration.
+# same on entry, since its body reads the values of the previous iteration.  Lines are
+# scanned with string literals blanked (.rxCodeOnly()), so text in a string is never
+# renamed or read as a brace.
 
 .rxOptSsaIdRe <- "(?<![A-Za-z0-9_.])[A-Za-z_.][A-Za-z0-9_.]*(?![A-Za-z0-9_.])"
-.rxOptSsaLhsRe <- "^[ \t]*([A-Za-z_.][A-Za-z0-9_.]*)[ \t]*(=(?!=)|~)"
+.rxOptSsaLhsRe <- "^[ \t]*([A-Za-z_.][A-Za-z0-9_.]*)[ \t]*(=(?!=)|~|<-)"
 
 #' Plain left-hand side variable of each normalized line
 #'
@@ -23,24 +25,32 @@
   vapply(.m, function(.x) if (length(.x) == 0L) NA_character_ else .x[2L], character(1))
 }
 
-#' Right-hand side (the part that is read) of each normalized line
+#' Split each normalized line into its left-hand side and the part that is read
 #'
 #' @param lines normalized model lines
-#' @param lhs output of .rxOptSsaLhs()
-#' @return list of the leading (left-hand side) text and the read text
+#' @param code the same lines with string literals blanked (.rxCodeOnly())
+#' @param lhs output of .rxOptSsaLhs() on `code`
+#' @return list of the leading (left-hand side) text `head`, the read text
+#'   `read`, and the read text with string literals blanked `code`
 #' @noRd
-.rxOptSsaSplit <- function(lines, lhs) {
-  .len <- ifelse(is.na(lhs), 0L, attr(regexpr(.rxOptSsaLhsRe, lines, perl = TRUE), "match.length"))
-  list(head = substr(lines, 1L, .len), read = substr(lines, .len + 1L, nchar(lines)))
+.rxOptSsaSplit <- function(lines, code, lhs) {
+  .len <- ifelse(is.na(lhs), 0L, attr(regexpr(.rxOptSsaLhsRe, code, perl = TRUE), "match.length"))
+  list(
+    head = substr(lines, 1L, .len),
+    read = substr(lines, .len + 1L, nchar(lines)),
+    code = substr(code, .len + 1L, nchar(code))
+  )
 }
 
-#' Variables that need versioning: assigned more than once, or read before assigned
+#' Variables that need versioning: assigned more than once, assigned inside a
+#' block, or read before assigned
 #'
 #' @param lhs output of .rxOptSsaLhs()
-#' @param read read text of each line
+#' @param read read text of each line, string literals blanked
+#' @param inBlock is each line inside a `{}` block
 #' @return character vector of variable names
 #' @noRd
-.rxOptSsaCandidates <- function(lhs, read) {
+.rxOptSsaCandidates <- function(lhs, read, inBlock) {
   .assigned <- unique(lhs[!is.na(lhs)])
   if (length(.assigned) == 0L) {
     return(character(0))
@@ -54,7 +64,7 @@
   ## first line reading each assigned variable (a line reads before it assigns)
   .firstRead <- tapply(.tokLine[.w], factor(.tok[.w], levels = .assigned), min)
   .readBefore <- !is.na(.firstRead) & .firstRead <= .first
-  unique(c(.multi, .assigned[.readBefore]))
+  unique(c(.multi, lhs[!is.na(lhs) & inBlock], .assigned[.readBefore]))
 }
 
 #' Line of the `}` that closes the block opened on line `i`
@@ -89,9 +99,13 @@
     return(NULL)
   }
   .lines <- strsplit(norm, "\n", fixed = TRUE)[[1]]
-  .lhs <- .rxOptSsaLhs(.lines)
-  .sp <- .rxOptSsaSplit(.lines, .lhs)
-  .cand <- .rxOptSsaCandidates(.lhs, .sp$read)
+  .code <- vapply(.lines, .rxCodeOnly, character(1), USE.NAMES = FALSE)
+  .lhs <- .rxOptSsaLhs(.code)
+  .sp <- .rxOptSsaSplit(.lines, .code, .lhs)
+  .opens <- lengths(regmatches(.sp$code, gregexpr("{", .sp$code, fixed = TRUE)))
+  .closes <- lengths(regmatches(.sp$code, gregexpr("}", .sp$code, fixed = TRUE)))
+  .inBlock <- cumsum(.opens) - cumsum(.closes) - .opens > 0L
+  .cand <- .rxOptSsaCandidates(.lhs, .sp$code, .inBlock)
   if (length(.cand) == 0L) {
     return(NULL)
   }
@@ -107,9 +121,10 @@
       .cur[.v] <<- paste0(.prefix, .ver[.v], "__", .v)
     }
   }
-  .ren <- function(txt) {
-    .m <- gregexpr(.rxOptSsaIdRe, txt, perl = TRUE)
-    .t <- regmatches(txt, .m)[[1]]
+  ## tokens are found in `code` (strings blanked, same columns) and replaced in `txt`
+  .ren <- function(txt, code) {
+    .m <- gregexpr(.rxOptSsaIdRe, code, perl = TRUE)
+    .t <- regmatches(code, .m)[[1]]
     .w <- .t %in% .cand
     if (any(.w)) {
       .t[.w] <- unname(.cur[.t[.w]])
@@ -117,8 +132,6 @@
     }
     txt
   }
-  .opens <- lengths(regmatches(.sp$read, gregexpr("{", .sp$read, fixed = TRUE)))
-  .closes <- lengths(regmatches(.sp$read, gregexpr("}", .sp$read, fixed = TRUE)))
   .isLhs <- !is.na(.lhs) & .lhs %in% .cand
   .stack <- list()
   .out <- .lines
@@ -128,7 +141,7 @@
     paste(gsub(".", "\\.", .cand, fixed = TRUE), collapse = "|"),
     ")(?![A-Za-z0-9_.])"
   )
-  .todo <- which(.isLhs | .opens > 0L | .closes > 0L | grepl(.candRe, .sp$read, perl = TRUE))
+  .todo <- which(.isLhs | .opens > 0L | .closes > 0L | grepl(.candRe, .sp$code, perl = TRUE))
   for (.i in .todo) {
     for (.k in seq_len(.closes[.i])) {
       if (length(.stack) > 0L) {
@@ -140,11 +153,11 @@
         }
       }
     }
-    if (grepl("^[ \t}]*while[ \t]*\\(", .sp$read[.i]) && .opens[.i] > 0L) {
+    if (grepl("^[ \t}]*while[ \t]*\\(", .sp$code[.i]) && .opens[.i] > 0L) {
       .end <- .rxOptSsaBlockEnd(.opens, .closes, .i)
       .bump(unique(.lhs[.i:.end][.isLhs[.i:.end]]))
     }
-    .read <- .ren(.sp$read[.i])
+    .read <- .ren(.sp$read[.i], .sp$code[.i])
     .head <- .sp$head[.i]
     if (.isLhs[.i]) {
       .bump(.lhs[.i])

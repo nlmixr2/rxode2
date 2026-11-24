@@ -28,6 +28,17 @@ rxTest({
     expect_false(grepl("rx_expr_", .o, fixed = TRUE))
   })
 
+  test_that("a reassigned string variable does not share a stale comparison", {
+    .m <- "d/dt(x) <- -k*x\ns <- \"a\"\na <- (s == \"a\") * x\ns <- \"b\"\nb <- (s == \"a\") * x\nc <- (s == \"a\") * x\n"
+    .o <- suppressMessages(rxOptExpr(.m, chunkLines = 0L))
+    .ev <- et(amt = 100) |> et(0:3)
+    .s0 <- rxSolve(rxode2(.m), .ev, c(k = 0.1), returnType = "data.frame")
+    .s1 <- rxSolve(rxode2(.o), .ev, c(k = 0.1), returnType = "data.frame")
+    expect_equal(.s1$a, .s0$a)
+    expect_equal(.s1$b, .s0$b)
+    expect_equal(.s1$c, .s0$c)
+  })
+
   test_that("the default (chunked) call is fixed too", {
     .o <- suppressMessages(rxOptExpr(.reassign))
     expect_true("a=3-p" %in% strsplit(.o, "\n", fixed = TRUE)[[1]])
@@ -49,8 +60,30 @@ rxTest({
     ## a while loop reads the previous iteration, so it starts a fresh name
     .s <- .rxOptSsa("p=x;\na=3-p;\nwhile (i<3){\nc=3-p;\np=2*p;\n}\nb=3-p;")
     .l <- strsplit(.s$txt, "\n", fixed = TRUE)[[1]]
-    expect_identical(.l[4], "c=3-rx__ssa2__p;")
+    expect_identical(.l[4], "rx__ssa2__c=3-rx__ssa2__p;")
     expect_identical(.l[7], "b=3-rx__ssa4__p;")
+    ## a variable assigned once, but inside a block, is versioned on leaving it
+    .s <- .rxOptSsa("if (x>1){\np=2;\na=3-p;\n}\nb=3-p;")
+    .l <- strsplit(.s$txt, "\n", fixed = TRUE)[[1]]
+    expect_identical(.l[3], "rx__ssa1__a=3-rx__ssa1__p;")
+    expect_identical(.l[5], "b=3-rx__ssa2__p;")
+    ## string assignments (`<-`) are versioned; string literals are left alone,
+    ## and a brace inside one does not close the block
+    .s <- .rxOptSsa("s <-\"a\";\na=(s==\"s\")*x;\ns <-\"b\";\nb=(s==\"s\")*x;")
+    expect_identical(
+      strsplit(.s$txt, "\n", fixed = TRUE)[[1]],
+      c(
+        "rx__ssa1__s <-\"a\";",
+        "a=(rx__ssa1__s==\"s\")*x;",
+        "rx__ssa2__s <-\"b\";",
+        "b=(rx__ssa2__s==\"s\")*x;"
+      )
+    )
+    .s <- .rxOptSsa("p=x;\nif (x>1){\nprintf(\"}\\n\");\np=p*2;\na=3-p;\n}\nb=3-p;")
+    .l <- strsplit(.s$txt, "\n", fixed = TRUE)[[1]]
+    expect_identical(.l[3], "printf(\"}\\n\");")
+    expect_identical(.l[5], "rx__ssa1__a=3-rx__ssa2__p;")
+    expect_identical(.l[7], "b=3-rx__ssa3__p;")
     ## a model already using the prefix gets another one
     .s <- .rxOptSsa("rx__ssa1=1;\np=x;\np=p*2;")
     expect_identical(.s$prefix, "rx__ssax")
