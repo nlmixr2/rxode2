@@ -24,8 +24,7 @@ rxTest({
       rxToSE(.rt, envir = s)
       ga <- get("rxGa", envir = s)
       for (b in a:length(etas)) {
-        lines <- c(lines, sprintf("h%d%d <- %s", a, b,
-                                  .toRx(symengine::D(ga, symengine::Symbol(etas[b])))))
+        lines <- c(lines, sprintf("h%d%d <- %s", a, b, .toRx(symengine::D(ga, symengine::Symbol(etas[b])))))
       }
     }
     paste(lines, collapse = "\n")
@@ -35,8 +34,7 @@ rxTest({
     m <- rxode2(txt)
     expect_true(bitwAnd(rxModelVars(m)$flags[["ndiff"]], 128L) != 0L)
     .solve <- function(eta) {
-      as.data.frame(rxSolve(m, c(theta, setNames(eta, etas)), ev,
-                            returnType = "data.frame"))
+      as.data.frame(rxSolve(m, c(theta, setNames(eta, etas)), ev, returnType = "data.frame"))
     }
     r0 <- .solve(eta0)
     for (a in seq_along(etas)) {
@@ -66,13 +64,18 @@ rxTest({
   })
 
   test_that("second-order linCmt() sensitivities: 2-cmt oral, steady state", {
-    pk <- c("cl <- exp(tcl + eta.cl)", "v <- exp(tv + eta.v)",
-            "q <- exp(tq)", "v2 <- exp(tv2)", "ka <- exp(tka + eta.ka)")
+    pk <- c(
+      "cl <- exp(tcl + eta.cl)",
+      "v <- exp(tv + eta.v)",
+      "q <- exp(tq)",
+      "v2 <- exp(tv2)",
+      "ka <- exp(tka + eta.ka)"
+    )
     etas <- c("eta.cl", "eta.v", "eta.ka")
     txt <- .hessModel(pk, "cp <- linCmt(cl, v, q, v2, ka)", etas)
     ev <- et(et(amt = 100, cmt = "depot", ii = 12, addl = 2, ss = 1), obs)
-    .hessCheck(txt, c(tcl = log(2), tv = log(20), tq = log(4), tv2 = log(40), tka = log(0.8)),
-               etas, ev, c(0.1, -0.2, 0.15))
+    theta <- c(tcl = log(2), tv = log(20), tq = log(4), tv2 = log(40), tka = log(0.8))
+    .hessCheck(txt, theta, etas, ev, c(0.1, -0.2, 0.15))
   })
 
   test_that("the chained rxFromSE() derivative keeps linCmt() curvature", {
@@ -82,8 +85,7 @@ rxTest({
     s <- rxS(base, promoteLinSens = TRUE)
     cp <- get("cp", envir = s)
     for (pr in list(c("ETA_1_", "ETA_1_"), c("ETA_1_", "ETA_2_"), c("ETA_2_", "ETA_2_"))) {
-      .chr <- as.character(symengine::D(symengine::D(cp, symengine::S(pr[1])),
-                                        symengine::S(pr[2])))
+      .chr <- as.character(symengine::D(symengine::D(cp, symengine::S(pr[1])), symengine::S(pr[2])))
       out <- rxFromSE(.chr)
       expect_true(grepl(",-20,", out, fixed = TRUE))
       # no raw sensitivity-column read survives: they come back as states
@@ -95,13 +97,11 @@ rxTest({
     # F scales the dose amount, which carries no dependence on the PK
     # parameters, so their curvature is exact with f() in the model (the
     # derivative in F's own random effect is the eta-space carry's jump)
-    pk <- c("cl <- exp(tcl + eta.cl)", "v <- exp(tv + eta.v)",
-            "ka <- exp(tka)", "fd <- 0.8")
+    pk <- c("cl <- exp(tcl + eta.cl)", "v <- exp(tv + eta.v)", "ka <- exp(tka)", "fd <- 0.8")
     txt <- .hessModel(pk, "cp <- linCmt(cl, v, ka)", c("eta.cl", "eta.v"))
     txt <- paste0(txt, "\nf(depot) <- fd")
     ev <- et(et(amt = 100, cmt = "depot", ii = 12, addl = 1), obs)
-    .hessCheck(txt, c(tcl = log(2), tv = log(20), tka = log(0.8)),
-               c("eta.cl", "eta.v"), ev, c(0.1, -0.2))
+    .hessCheck(txt, c(tcl = log(2), tv = log(20), tka = log(0.8)), c("eta.cl", "eta.v"), ev, c(0.1, -0.2))
   })
 
   test_that("Hessian reads are NA once the parameters change between records", {
@@ -110,11 +110,16 @@ rxTest({
     pk <- c("cl <- exp(tcl + eta.cl) * (1 + 0.5 * wt)", "v <- exp(tv + eta.v)")
     txt <- .hessModel(pk, "cp <- linCmt(cl, v)", c("eta.cl", "eta.v"))
     m <- rxode2(txt)
-    d <- data.frame(id = 1, time = c(0, 1, 2, 6, 8, 10), amt = c(100, 0, 0, 0, 0, 0),
-                    evid = c(1, 0, 0, 0, 0, 0), cmt = "central",
-                    wt = c(0, 0, 0, 1, 1, 1))
-    r <- as.data.frame(rxSolve(m, c(tcl = log(2), tv = log(20), eta.cl = 0, eta.v = 0),
-                               d, covsInterpolation = "locf"))
+    d <- data.frame(
+      id = 1,
+      time = c(0, 1, 2, 6, 8, 10),
+      amt = c(100, 0, 0, 0, 0, 0),
+      evid = c(1, 0, 0, 0, 0, 0),
+      cmt = "central",
+      wt = c(0, 0, 0, 1, 1, 1)
+    )
+    p <- c(tcl = log(2), tv = log(20), eta.cl = 0, eta.v = 0)
+    r <- as.data.frame(rxSolve(m, p, d, covsInterpolation = "locf"))
     expect_false(anyNA(r$h11[r$time < 6]))
     expect_true(all(is.na(r$h11[r$time > 6])))
   })
@@ -129,30 +134,37 @@ rxTest({
     }
     E <- 16
     lines <- c(
-      "cl <- exp(tcl + eta.cl) * (1 + 0.5 * wt)", "v <- exp(tv)", "ka <- exp(tka)",
+      "cl <- exp(tcl + eta.cl) * (1 + 0.5 * wt)",
+      "v <- exp(tv)",
+      "ka <- exp(tka)",
       "fd <- 0.8 * exp(eta.f)",
       paste0("cp <- ", L(-1, -1)),
-      paste0("z1 ~ ", L(-30, 0 * E + 0, "cl")),             # dcl/deta.cl
-      paste0("z2 ~ ", L(-31, (0 * E + 0) * E + 0, "cl")),   # d2cl/deta.cl2
-      if (withF) paste0("z3 ~ ", L(-37, 0 * E + 1, "fd")),  # dF(depot)/deta.f
+      paste0("z1 ~ ", L(-30, 0 * E + 0, "cl")), # dcl/deta.cl
+      paste0("z2 ~ ", L(-31, (0 * E + 0) * E + 0, "cl")), # d2cl/deta.cl2
+      if (withF) paste0("z3 ~ ", L(-37, 0 * E + 1, "fd")), # dF(depot)/deta.f
       if (withF) paste0("z4 ~ ", L(-38, (0 * E + 1) * E + 1, "fd")),
       paste0("z5 ~ ", L(-32, 0)),
-      paste0("e1 <- ", L(-33, 0)), paste0("e2 <- ", L(-33, 1)),
-      paste0("e11 <- ", L(-34, 0 * E + 0)), paste0("e12 <- ", L(-34, 0 * E + 1)),
+      paste0("e1 <- ", L(-33, 0)),
+      paste0("e2 <- ", L(-33, 1)),
+      paste0("e11 <- ", L(-34, 0 * E + 0)),
+      paste0("e12 <- ", L(-34, 0 * E + 1)),
       paste0("e22 <- ", L(-34, 1 * E + 1)),
       if (withF) "f(depot) <- fd"
     )
     rxode2(paste(lines, collapse = "\n"))
   }
-  .etaCarryData <- data.frame(id = 1, time = c(0, 1, 2, 4, 6, 8, 10, 14, 16, 20, 24),
-                              amt = c(100, 0, 0, 0, 0, 0, 0, 0, 100, 0, 0),
-                              evid = c(1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0), cmt = "depot",
-                              wt = c(0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0))
+  .etaCarryData <- data.frame(
+    id = 1,
+    time = c(0, 1, 2, 4, 6, 8, 10, 14, 16, 20, 24),
+    amt = c(100, 0, 0, 0, 0, 0, 0, 0, 100, 0, 0),
+    evid = c(1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0),
+    cmt = "depot",
+    wt = c(0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0)
+  )
   .etaCarryCheck <- function(m, interp, pairs) {
     .solve <- function(e) {
-      as.data.frame(rxSolve(m, c(tcl = log(2), tv = log(20), tka = log(0.8),
-                                 eta.cl = e[1], eta.f = e[2]),
-                            .etaCarryData, covsInterpolation = interp, addDosing = FALSE))
+      p <- c(tcl = log(2), tv = log(20), tka = log(0.8), eta.cl = e[1], eta.f = e[2])
+      as.data.frame(rxSolve(m, p, .etaCarryData, covsInterpolation = interp, addDosing = FALSE))
     }
     e0 <- c(0.1, -0.2)
     h <- 1e-5
@@ -181,10 +193,15 @@ rxTest({
 
   test_that("eta-space carry: exact through a modeled bioavailability (the jump)", {
     m <- .etaCarryModel(TRUE)
+    pairs <- list(
+      c("e1", "cp", "1"),
+      c("e2", "cp", "2"),
+      c("e11", "e1", "1"),
+      c("e12", "e1", "2"),
+      c("e22", "e2", "2")
+    )
     for (interp in c("locf", "nocb")) {
-      .etaCarryCheck(m, interp, list(c("e1", "cp", "1"), c("e2", "cp", "2"),
-                                     c("e11", "e1", "1"), c("e12", "e1", "2"),
-                                     c("e22", "e2", "2")))
+      .etaCarryCheck(m, interp, pairs)
     }
   })
 })

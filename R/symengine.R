@@ -2442,8 +2442,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
   .n <- 2 * .nc + .oral0
   if (.w1 < .m) return(NULL)
   .j <- .w1 - .m
-  .slots <- c(c("p1", "v1", "p2", "p3", "p4", "p5")[seq_len(2 * .nc)],
-              if (.oral0 == 1) "ka")
+  .slots <- c(c("p1", "v1", "p2", "p3", "p4", "p5")[seq_len(2 * .nc)], if (.oral0 == 1) "ka")
   if (.j < .nc * .n) {
     .row <- .rxLinCmtBrowName(.oral0 + .j %/% .n, .oral0)
     return(paste0("rx__sens_", .row, "_BY_", .slots[.j %% .n + 1]))
@@ -2464,10 +2463,11 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
   .oral0 <- as.numeric(args[5])
   if (is.na(.nc) || is.na(.oral0)) return(txt)
   .amt <- c(if (.oral0 == 1) "depot", "central", "peripheral1", "peripheral2")[seq_len(.nc + .oral0)]
-  .slots <- c(c("p1", "v1", "p2", "p3", "p4", "p5")[seq_len(2 * .nc)],
-              if (.oral0 == 1) "ka")
+  .slots <- c(c("p1", "v1", "p2", "p3", "p4", "p5")[seq_len(2 * .nc)], if (.oral0 == 1) "ka")
   .names <- .amt
-  for (.r in .amt[.amt != "depot"]) .names <- c(.names, paste0("rx__sens_", .r, "_BY_", .slots))
+  for (.r in .amt[.amt != "depot"]) {
+    .names <- c(.names, paste0("rx__sens_", .r, "_BY_", .slots))
+  }
   if (.oral0 == 1) .names <- c(.names, "rx__sens_depot_BY_ka")
   .read <- function(.k) {
     .a <- args
@@ -2476,8 +2476,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
     paste0("linCmtB(", paste(.a, collapse = ","), ")")
   }
   for (.i in order(-nchar(.names))) {
-    txt <- gsub(paste0("(?<![A-Za-z0-9_.])", .names[.i], "(?![A-Za-z0-9_.])"),
-                .read(.i - 1), txt, perl = TRUE)
+    txt <- gsub(paste0("(?<![A-Za-z0-9_.])", .names[.i], "(?![A-Za-z0-9_.])"), .read(.i - 1), txt, perl = TRUE)
   }
   txt
 }
@@ -2485,8 +2484,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
 # Keep / restore the linCmt() context with the symengine environment it
 # belongs to (`..linCmtCtx`; hidden from ls()).
 .rxSEkeepLinCmt <- function(envir) {
-  if (!is.null(.rxToSElinCmt$linCmt) &&
-        exists("t", envir = .rxToSElinCmt, inherits = FALSE)) {
+  if (!is.null(.rxToSElinCmt$linCmt) && exists("t", envir = .rxToSElinCmt, inherits = FALSE)) {
     assign("..linCmtCtx", as.list(.rxToSElinCmt), envir = envir)
   }
   invisible()
@@ -3853,8 +3851,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
       } else {
         return(paste0(.fun, "(", .a, ")"))
       }
-    } else if (identical(x[[1]], quote(`linCmtB`)) && length(x) == 16L &&
-                 !is.null(.rxLinCmtBrawName(x))) {
+    } else if (identical(x[[1]], quote(`linCmtB`)) && length(x) == 16L && !is.null(.rxLinCmtBrawName(x))) {
       ## A raw sensitivity-column read (which1 past the amounts, which2 = -2)
       ## is the state rxToSE() mapped `rx__sens_<row>_BY_<slot>` to: hand the
       ## state back, which is what the model reads at run time.
