@@ -477,15 +477,30 @@ rxTest({
   # scenario (id) and -- because there are more methods than ids -- every id is
   # still visited at least once (dosing-scenario coverage is preserved while
   # method coverage becomes one-per-test).
-  lapply(seq_along(meths), function(.mi) {
-    meth <- meths[.mi]
-    i <- id[((.mi - 1L) %% length(id)) + 1L]
-    for (modifyData in modDat) {
-      for (addlDropSs in c(TRUE, FALSE)) {
-        solveEqual(i, meth = meth, modifyData = modifyData, addlDropSs = addlDropSs)
+  ## RXODE2_NMTEST_METHODS="m1,m2" runs only those methods, each on every id
+  ## (the full check of a new method)
+  .full <- Sys.getenv("RXODE2_NMTEST_METHODS")
+  if (nzchar(.full)) {
+    for (meth in strsplit(.full, ",", fixed = TRUE)[[1]]) {
+      for (i in id) {
+        for (modifyData in modDat) {
+          for (addlDropSs in c(TRUE, FALSE)) {
+            solveEqual(i, meth = meth, modifyData = modifyData, addlDropSs = addlDropSs)
+          }
+        }
       }
     }
-  })
+  } else {
+    lapply(seq_along(meths), function(.mi) {
+      meth <- meths[.mi]
+      i <- id[((.mi - 1L) %% length(id)) + 1L]
+      for (modifyData in modDat) {
+        for (addlDropSs in c(TRUE, FALSE)) {
+          solveEqual(i, meth = meth, modifyData = modifyData, addlDropSs = addlDropSs)
+        }
+      }
+    })
+  }
 
   ## invisible(lapply(unique(d$id), function(i){message(i);solveEqual(i);Sys.sleep(1)}))
 
