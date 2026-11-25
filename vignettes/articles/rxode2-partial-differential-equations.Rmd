@@ -1,0 +1,209 @@
+---
+title: "Partial differential equations"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    self_contained: no
+---
+
+```{r setup, echo=FALSE}
+options(cli.unicode = FALSE, crayon.enabled = FALSE)
+options(knitr.table.format = "html")
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE,
+  out.width = "100%"
+)
+options(width = 80, cli.width = 80)
+Sys.setenv(RSTUDIO_CONSOLE_WIDTH = 80)
+```
+
+## Partial differential equations by the method of lines
+
+Some pharmacometric processes change over a spatial or structural dimension as
+well as over time: diffusion through skin or tissue, age-structured cell
+populations, or drug release from particles of different sizes.  These are
+partial differential equations (PDEs).
+
+rxode2 solves one-dimensional PDEs by the **method of lines**: the dimension is
+split into `n` cells, and the PDE becomes one ODE per cell.  You write the PDE
+once on a grid and rxode2 writes the ODEs, so solving, sensitivities and
+nlmixr2 estimation see an ordinary ODE model.
+
+```{r}
+library(rxode2)
+```
+
+## Declaring a grid and a gridded state
+
+`grid(x, from = 0, to = 1, n = 50)` splits `[0, 1]` into 50 cells of width
+`h = 1/50` with centers `x = h/2, 3h/2, ...`.  `d/dt(C[x])` then declares a
+state on that grid, which becomes the states `C_1, ..., C_50`.  Inside the
+equation:
+
+- `C[x]` (or `C`) is the value in the current cell and `x` is its center;
+- `d2x(C)` is the second derivative (diffusion);
+- `dx(C)` is the first derivative (advection), upwind for flow towards
+  increasing `x`; `dx(C, "forward")` is upwind for flow the other way and
+  `dx(C, "central")` is a central difference.
+
+`C[x](0) = expr` sets the initial value of every cell, and `expr` may use `x`.
+
+## Diffusion with fixed boundary values
+
+Diffusion on `[0, 1]` with both ends held at zero and a sine-shaped start has
+the exact solution `exp(-D*pi^2*t)*sin(pi*x)`:
+
+```{r}
+diffusion <- function() {
+  ini({
+    tD <- log(0.1)
+  })
+  model({
+    D <- exp(tD)
+    grid(x, from = 0, to = 1, n = 40)
+    d/dt(C[x]) <- D * d2x(C)
+    C[x](0) <- sin(pi * x)
+    value(C, x = 0) <- 0
+    value(C, x = 1) <- 0
+    mid <- C[x = 0.5]
+  })
+}
+s <- rxSolve(diffusion, et(seq(0, 5, by = 0.25)))
+exact <- exp(-0.1 * pi^2 * s$time)
+max(abs(s$mid - exact))
+```
+
+`C[x = 0.5]` is the value at a point, interpolated between cell centers.  The
+error shrinks about four-fold each time `n` doubles.
+
+## Boundary conditions
+
+Each edge of the grid takes at most one condition:
+
+- `value(C, x = 0) <- g` holds the value at the edge at `g` (Dirichlet);
+- `flux(C, x = 0) <- q` adds an inward flux `q` through the edge (Neumann),
+  in amount per unit length per time;
+- an edge without a condition has no flux.
+
+The boundary is named by its position, which must be the `from` or `to` of the
+grid.  Both `g` and `q` may be any expression of the model, including
+parameters and time-varying quantities.
+
+## Example: absorption through a membrane
+
+A drug crosses a membrane from a donor surface held at a constant
+concentration into a sink on the far side.  The amount in the membrane rises to
+a steady state:
+
+```{r}
+membrane <- function() {
+  ini({
+    tD <- log(0.05)
+  })
+  model({
+    D <- exp(tD)
+    grid(x, from = 0, to = 1, n = 30)
+    d/dt(C[x]) <- D * d2x(C)
+    value(C, x = 0) <- 1
+    value(C, x = 1) <- 0
+    inMembrane <- integrate(C, x)
+    surface <- C[x = 0.5]
+  })
+}
+s <- rxSolve(membrane, et(seq(0, 20, by = 0.5)))
+plot(s, inMembrane, surface)
+```
+
+`integrate(C, x)` is the total amount on the grid; its first argument may also
+be an expression such as `integrate(x * C[x], x)`.
+
+## Mass balance and dosing
+
+With no-flux edges and no loss, the total amount is conserved.  Doses go to
+individual cells by their state names.  A cell holds a concentration, so a dose
+into a cell of width `h` adds `amt * h` to the total; to add an amount of `1`
+to the first of 20 cells on `[0, 1]`, dose `20`:
+
+```{r}
+closed <- function() {
+  ini({
+    tD <- log(0.05)
+  })
+  model({
+    D <- exp(tD)
+    grid(x, from = 0, to = 1, n = 20)
+    d/dt(C[x]) <- D * d2x(C)
+    total <- integrate(C, x)
+    far <- C[x = 1]
+  })
+}
+ev <- et(amt = 20, cmt = "C_1") |> et(seq(0, 20, by = 1))
+s <- rxSolve(closed, ev)
+range(s$total)
+```
+
+## Refining the grid
+
+The grid is a single model line, so piping a new `grid()` changes the
+resolution without touching the equations:
+
+```{r}
+fine <- diffusion |> model(grid(x, from = 0, to = 1, n = 80))
+length(fine$state)
+```
+
+## Gridded intermediate variables
+
+`r[x] <- expr` defines a variable in every cell (`r_1, ..., r_n`), which other
+gridded equations and `integrate()` can use:
+
+```{r}
+reaction <- function() {
+  ini({
+    tD <- log(0.05)
+    tk <- log(0.5)
+  })
+  model({
+    D <- exp(tD)
+    k <- exp(tk)
+    grid(x, from = 0, to = 1, n = 20)
+    rate[x] <- k * C[x] / (1 + C[x])
+    d/dt(C[x]) <- D * d2x(C) - rate[x]
+    C[x](0) <- 1
+    eliminated <- integrate(rate, x)
+  })
+}
+s <- rxSolve(reaction, et(seq(0, 10, by = 0.5)))
+plot(s, eliminated)
+```
+
+## Inspecting the expanded model
+
+`rxPde()` shows the ODEs that rxode2 writes for model text:
+
+```{r}
+cat(rxPde("
+  grid(x, from = 0, to = 1, n = 3)
+  d/dt(C[x]) = D * d2x(C) - k * C[x]
+  flux(C, x = 0) = kin
+"))
+```
+
+## Notes
+
+- Only one-dimensional grids are supported; a model may have several grids and
+  several states per grid.
+- `n` must be a number in the model; `from` and `to` may be parameters
+  (point values `C[x = v]` need numeric `from` and `to`).
+- The expanded state names (`C_1`, ...) must not already be used in the model.
+- PDEs on fine grids are stiff, so keep the default `"liblsoda"` or use
+  `"lsoda"` rather than a non-stiff method.
+
+## Next steps
+
+- [Delay differential equations](rxode2-delay-differential-equations.html)
+- [Choosing an ODE solver](ode-solvers.html)
+- [Modifying models](Modifying-Models.html)

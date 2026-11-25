@@ -152,6 +152,7 @@ articles:
   - rxode2-transit-compartments
   - articles/rxode2-sticky
   - articles/rxode2-delay-differential-equations
+  - articles/rxode2-partial-differential-equations
   - articles/Integrating-User-Defined-Functions-into-rxode2
 - title: Dosing and events
   desc: Describe doses and observations with datasets, event tables or in-model dosing.
@@ -259,6 +260,8 @@ navbar:
       href: articles/rxode2-sticky.html
     - text: "Delay differential equations"
       href: articles/rxode2-delay-differential-equations.html
+    - text: "Partial differential equations"
+      href: articles/rxode2-partial-differential-equations.html
     - text: "User-defined functions"
       href: articles/Integrating-User-Defined-Functions-into-rxode2.html
   - text: "Dosing"
