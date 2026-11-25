@@ -468,6 +468,7 @@
       is.call(.cur) && identical(.cur[[1]], quote(`~`)) && length(.cur) == 3L && length(.cur[[2]]) == 1L
     ) {
       .isLotri <- TRUE
+      .call <- ""
       # Check to see if this is an error call
       if (is.call(.cur[[3]])) {
         .rhs <- .cur[[3]]
