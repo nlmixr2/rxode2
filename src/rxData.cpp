@@ -2010,19 +2010,42 @@ static inline void rxSsHoldAtol(double *ssAtol, int neq) {
   }
 }
 
+// Whether s names a model parameter, or a parameter pair p1_BY_p2
+static inline bool rxSsHoldIsPar(const std::string &s,
+                                 const CharacterVector &params) {
+  for (int k = 0; k < params.size(); ++k) {
+    std::string p = (std::string)params[k];
+    if (s == p) return true;
+    std::string pre = p + "_BY_";
+    if (s.compare(0, pre.size(), pre) == 0 &&
+        rxSsHoldIsPar(s.substr(pre.size()), params)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // The compartment a state belongs to: its own name, or for a sensitivity
-// rx__sens_<cmt>_BY_<par>__ the longest state name it starts with (cmt may
-// itself contain _BY_)
+// rx__sens_<cmt>_BY_<par>__ the state cmt whose remaining <par> is a model
+// parameter (either may contain _BY_); the longest such cmt
 static inline std::string rxSsHoldCmt(const std::string &cur,
-                                      const CharacterVector &state, int nState) {
-  if (cur.compare(0, 9, "rx__sens_") != 0) return cur;
+                                      const CharacterVector &state, int nState,
+                                      const CharacterVector &params) {
+  if (cur.compare(0, 9, "rx__sens_") != 0 || cur.size() < 11 ||
+      cur.compare(cur.size() - 2, 2, "__") != 0) {
+    return cur;
+  }
   std::string best = cur;
   size_t bestN = 0;
   for (int k = 0; k < nState; ++k) {
     std::string s = (std::string)state[k];
-    if (s.compare(0, 9, "rx__sens_") == 0) continue;
+    if (s.compare(0, 9, "rx__sens_") == 0 || s.size() <= bestN) continue;
     std::string pre = "rx__sens_" + s + "_BY_";
-    if (s.size() > bestN && cur.compare(0, pre.size(), pre) == 0) {
+    if (cur.size() <= pre.size() + 2 || cur.compare(0, pre.size(), pre) != 0) {
+      continue;
+    }
+    std::string par = cur.substr(pre.size(), cur.size() - pre.size() - 2);
+    if (rxSsHoldIsPar(par, params)) {
       best = s;
       bestN = s.size();
     }
@@ -2042,6 +2065,7 @@ static std::string rxSsHoldSetup(const List &rxControl, const List &mv,
   CharacterVector ssCmt = rxControl[Rxc_ssCmt];
   CharacterVector state = mv[RxMv_state];
   int nState = min2((int)state.size(), op->neq);
+  CharacterVector params = mv[RxMv_params];
   int linB = op->linOffset, linE = op->linOffset + op->numLin + op->numLinSens;
   bool neg = ssCmt.size() > 0 && ((std::string)ssCmt[0]).compare(0, 1, "-") == 0;
   std::vector<std::string> named;
@@ -2062,7 +2086,7 @@ static std::string rxSsHoldSetup(const List &rxControl, const List &mv,
   bool any = false;
   for (int k = 0; k < nState; ++k) {
     std::string cur = (std::string)state[k];
-    std::string cmt = rxSsHoldCmt(cur, state, nState);
+    std::string cmt = rxSsHoldCmt(cur, state, nState, params);
     bool isNamed = std::find(named.begin(), named.end(), cmt) != named.end();
     if (k >= linB && k < linE) {
       // the linCmt() block is always advanced, so it has to be named
