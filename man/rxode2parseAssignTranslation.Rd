@@ -9,7 +9,11 @@ rxode2parseAssignTranslation(df)
 \arguments{
 \item{df}{data frame containing the character column names rxFun,
 fun, type, package, packageFun and the integer column names
-argMin and argMax}
+argMin, argMax and threadSafe.  An optional integer gpuSafe column
+marks functions with a device (OpenCL) version.  Without it the
+functions are not gpu safe, except a row identical (rxFun, fun,
+package and packageFun) to one already registered, which keeps its
+value}
 }
 \value{
 Nothing called for side effects

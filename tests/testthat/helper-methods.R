@@ -116,7 +116,15 @@
   "f1412",
   "lsode",
   "bdf",
-  "t54+sdirk43"
+  "t54+sdirk43",
+  "ros54p",
+  "t54+ros54p",
+  "vern76+ros54p",
+  "gpuT54",
+  "gpuVern76",
+  "gpuRos54p",
+  "gpuT54+gpuRos54p",
+  "gpuVern76+gpuRos54p"
 )
 # AutoSwitch composite methods: dop853 primary paired with each stiff
 # secondary that needs a Jacobian.  1st-order secondaries (iem,
@@ -141,7 +149,24 @@
 # coverage as everything else.  It was excluded while that driver hand-rolled
 # its forward loop -- which is why it never drained the pending-dose queue --
 # and now runs the same loop as the other 99 solvers.
-.methods0 <- c("lsode", "bdf", "liblsoda", "dop853", "t54+sdirk43", "cvode", "indLin")
+.methods0 <- c(
+  "lsode",
+  "bdf",
+  "liblsoda",
+  "dop853",
+  "t54+sdirk43",
+  "cvode",
+  "indLin",
+  # Rodas5P on the host and the device integrators (their CPU build on CI)
+  "ros54p",
+  "t54+ros54p",
+  "vern76+ros54p",
+  "gpuT54",
+  "gpuVern76",
+  "gpuRos54p",
+  "gpuT54+gpuRos54p",
+  "gpuVern76+gpuRos54p"
+)
 .methods1 <- c("ddop853", "ddop5", "dbs", "dros4", "ddop853+dros4", "dcvode")
 # All dense composite methods (ros4 is the only dense-output stiff secondary).
 .methods1 <- c("ddop853+dros4")
