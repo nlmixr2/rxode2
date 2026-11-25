@@ -23,6 +23,8 @@ rxTest({
       list("{b <- ('a' == a)}", list(a = c("b", "a"))),
       list("{b <- (a != 'a')}", list(a = "a")),
       list("{b <- (a == 'z')}", list(a = c("b", "a"))),
+      list("{b <- (a == NA_character_)}", list(a = c("b", NA))),
+      list("{if (c1) {a <- (a <- 1) + 2}}", list()),
       list("{b <- 'x\\\"y\\n'; c <- 1e5 + 1e-20 + 0.1 + TRUE}", list()),
       list("{b <- THETA[1] + eta[2]; c <- !(a > 1) & a <= 2 || a >= 3 && a < 4}", list()),
       list("{if (a > 1) {b <- 1} else if (a > 2) {b <- 2; c <- 1} else {c <- 3}; d <- -b + +c}", list())
@@ -43,5 +45,7 @@ rxTest({
     }),
       capture = TRUE
     ))
+    # non-ASCII text: R marks its encoding, so the R walker handles it
+    expect_null(.pruneC(str2lang("{a <- '\\u00e9'}")))
   })
 })

@@ -94,6 +94,13 @@ bool rxPruneIsAtomic(SEXP x) {
   }
 }
 
+bool rxPruneIsAscii(const char *x) {
+  for (; *x; ++x) {
+    if ((unsigned char)*x > 127) return false;
+  }
+  return true;
+}
+
 // .rxPruneStrAssign(): the 1-based level of `val` in strAssign[[lhs]], or 0
 int rxPruneStrLevel(rxPruneState &st, SEXP lhs, SEXP val) {
   if (TYPEOF(lhs) != SYMSXP || TYPEOF(val) != STRSXP || Rf_length(val) != 1 ||
@@ -103,15 +110,26 @@ int rxPruneStrLevel(rxPruneState &st, SEXP lhs, SEXP val) {
   const char *name = CHAR(PRINTNAME(lhs));
   int n = Rf_length(st.strNames);
   for (int i = 0; i < n; ++i) {
-    if (strcmp(CHAR(STRING_ELT(st.strNames, i)), name) == 0) {
+    SEXP nm = STRING_ELT(st.strNames, i);
+    if (nm != NA_STRING && strcmp(CHAR(nm), name) == 0) {
       SEXP lev = VECTOR_ELT(st.strAssign, i);
       if (TYPEOF(lev) != STRSXP) return 0;
-      const char *v = Rf_translateCharUTF8(STRING_ELT(val, 0));
+      SEXP v = STRING_ELT(val, 0);
       int found = 0, nFound = 0;
       for (int j = 0; j < Rf_length(lev); ++j) {
         SEXP lj = STRING_ELT(lev, j);
-        if (lj != NA_STRING && STRING_ELT(val, 0) != NA_STRING &&
-            strcmp(Rf_translateCharUTF8(lj), v) == 0) {
+        // identical(): NA only matches NA
+        bool same;
+        if (lj == NA_STRING || v == NA_STRING) {
+          same = lj == v;
+        } else {
+          // non-ASCII needs translation (which may error); leave it to R
+          if (!rxPruneIsAscii(CHAR(lj)) || !rxPruneIsAscii(CHAR(v))) {
+            throw rxPruneUnsupported();
+          }
+          same = strcmp(CHAR(lj), CHAR(v)) == 0;
+        }
+        if (same) {
           found = j + 1;
           nFound++;
         }
@@ -218,9 +236,11 @@ std::string rxPruneAssign(rxPruneState &st, SEXP x, const char *op) {
   if (!st.ifs.empty()) {
     std::string f2 = rxPruneWalk(st, lhs);
     std::string ifs = rxPruneIfProduct(st);
+    // R checks `.def1` before pruning the rhs
+    bool defined = st.def1.count(f2) > 0;
     std::string r = lev ? rxPruneNum(lev) : rxPruneWalk(st, rhs);
     std::string ret;
-    if (st.def1.count(f2)) {
+    if (defined) {
       ret = f2 + op + ifs + "*(" + r + ")+(1-(" + ifs + "))*(" + f2 + ")";
     } else {
       ret = f2 + op + ifs + "*(" + r + ")";
@@ -247,6 +267,9 @@ std::string rxPruneCaptureCall(rxPruneState &st, SEXP x) {
   c.condition = st.ifs.empty() ? std::string("1") : rxPruneIfProduct(st);
   c.capVar = "rxCaptureId" + std::to_string(st.captures.size() + 1);
   c.original = rxPruneDeparse(st, x);
+  for (unsigned char ch : c.original) {
+    if (ch > 127) throw rxPruneUnsupported();
+  }
   st.lhsLog.push_back(c.capVar);
   st.captures.push_back(c);
   return c.capVar + " <- " + c.condition;
@@ -406,8 +429,13 @@ rxPruneSyms rxPruneGetSyms() {
 bool rxPruneRun(rxPruneState &st, SEXP expr, std::string &out) {
   try {
     out = rxPruneWalk(st, expr);
-  } catch (rxPruneUnsupported &) {
+  } catch (...) {
+    // rxPruneUnsupported, or std::bad_alloc
     return false;
+  }
+  // R marks the encoding of non-ASCII text; leave that to the R walker
+  for (unsigned char c : out) {
+    if (c > 127) return false;
   }
   return true;
 }
@@ -431,6 +459,7 @@ extern "C" SEXP _rxode2_rxPruneC(SEXP expr, SEXP strAssign, SEXP capture) {
       Rf_isNull(st.strNames)) {
     return R_NilValue;
   }
+  if (TYPEOF(expr) != LANGSXP) return R_NilValue;
   st.capture = Rf_asLogical(capture) == 1;
   st.els = nullptr;
   std::string out;
