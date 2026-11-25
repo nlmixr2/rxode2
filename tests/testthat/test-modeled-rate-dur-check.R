@@ -70,8 +70,11 @@ rxTest({
       et(.obs)
     expect_warning(etTrans(.ev, .mDur), "'depot' \\(dur\\(\\), 2 doses\\)")
     .ev <- data.frame(
-      id = c(1, 1, 2, 2), time = c(0, 1, 0, 1), amt = c(100, 0, 100, 0),
-      evid = c(1, 0, 1, 0), cmt = c("depot", "cen", "depot", "cen")
+      id = c(1, 1, 2, 2),
+      time = c(0, 1, 0, 1),
+      amt = c(100, 0, 100, 0),
+      evid = c(1, 0, 1, 0),
+      cmt = c("depot", "cen", "depot", "cen")
     )
     .w <- testthat::capture_warnings(etTrans(.ev, .mDur))
     expect_length(.w, 1L)

@@ -169,6 +169,7 @@ rxSolve(
   doseAtRecord = NULL,
   addlCovAtTime = NULL,
   resetCancelsPending = TRUE,
+  checkModeledRateDur = TRUE,
   ssMethod = c("anderson", "iterate"),
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
@@ -1497,8 +1498,8 @@ read the time of the first data record at or after it (NONMEM's \code{F1},
 each interval from the record that ends it, like NONMEM's \code{R1} (see
 \code{rateAtDoseTime}).  Covariate interpolation is still set by
 \code{covsInterpolation}.  It also sets the default \code{tieOrder} to \code{"data"}
-and turns on \code{addlKeepsCov}, \code{durAtDoseTime} and \code{doseAtRecord} and
-turns off \code{addlCovAtTime} unless
+and turns on \code{addlKeepsCov}, \code{durAtDoseTime} and \code{doseAtRecord}, and
+turns off \code{addlCovAtTime}, unless
 they are given.
 By default \code{FALSE}, when \code{f()}, \code{rate()} and \code{dur()} of an \code{addl} repeat
 read the actual time of the \code{addl} dose.}
@@ -1561,6 +1562,12 @@ added while solving is cancelled only when it is lagged past the reset,
 a reset added while solving cancels lagged doses but not \code{addl}
 repeats, and an event table already translated by \code{\link[=etTrans]{etTrans()}} keeps the
 \code{addl} repeats it was translated with.}
+
+\item{checkModeledRateDur}{When \code{TRUE} (default), translating the data
+warns when a dose into a compartment with a modeled \code{rate()}/\code{dur()} does
+not request it (data \code{rate} is not \code{-1}/\code{-2}, so the model value is
+ignored), and when a dose requests a modeled rate (\code{-1}) or duration
+(\code{-2}) the model does not define.  \code{FALSE} turns the check off.}
 
 \item{ssMethod}{How an iterated steady state is found: \code{"anderson"} (the
 default) finds the fixed point of the one-cycle map with Anderson
