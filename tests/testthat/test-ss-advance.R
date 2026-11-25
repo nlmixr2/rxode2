@@ -43,25 +43,15 @@ rxTest({
     expect_equal(.s$auc[.s$time == 48] - .auc24, 50 + .c0 * (1 - exp(-2.4)), tolerance = 1e-4)
   })
 
-  test_that("ss=2 adds nothing to a state its advance leaves unchanged", {
-    .mod <- function() {
-      ini({
-        ka <- 1
-        cl <- 1
-        v <- 10
-      })
-      model({
-        d / dt(depot) <- -ka * depot
-        d / dt(central) <- ka * depot - cl / v * central
-        d / dt(z) <- 0
-        z(0) <- 5
-      })
-    }
-    .ev <- et(amt = 100, ii = 24, ss = 1) |>
-      et(time = 24, amt = 50, ii = 24, ss = 2) |>
-      et(c(0, 24, 48))
-    .s <- rxSolve(.mod, .ev)
-    expect_equal(.s$z, rep(5, 3))
+  test_that("ss=2 of a regimen already at steady state still superposes", {
+    .ev1 <- et(amt = 100, ii = 24, addl = 4, ss = 1) |> et(c(48, 60))
+    .ev2 <- et(amt = 100, ii = 24, addl = 4, ss = 1) |>
+      et(time = 48, amt = 100, ii = 24, ss = 2) |>
+      et(c(48, 60))
+    .s1 <- rxSolve(.ssAucMod, .ev1)
+    .s2 <- rxSolve(.ssAucMod, .ev2)
+    expect_equal(.s2$central, 2 * .s1$central, tolerance = 1e-4)
+    expect_equal(.s2$auc[1], .s1$auc[1], tolerance = 1e-4)
   })
 
   test_that("without rxSsAdvance the AUC includes the steady-state history", {

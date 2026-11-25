@@ -270,7 +270,9 @@
 
 - The model variable `rxSsAdvance` is `1` while the solver advances a
   steady-state dose and `0` otherwise, so `d/dt(auc) <- (1 - rxSsAdvance)*cp`
-  keeps the steady-state history out of an accumulating compartment (#1797).
+  keeps the steady-state history out of an accumulating compartment; an
+  `ss = 2` dose keeps such a compartment's value rather than adding it to
+  itself (#1797).
 
 ## Bug fixes
 
@@ -626,9 +628,6 @@
   with `dense = TRUE` (#1790).
 
 ### Steady state
-- An `ss = 2` dose no longer adds a state's pre-dose value to itself when the
-  steady-state advance leaves that state unchanged (a `d/dt(x) <- 0` state, or
-  one held with `rxSsAdvance`); before, such a state doubled (#1797).
 - A steady state solved with `method = "indLin"` (or with a `rxToIndLin()`
   model) never met `ssAtol`/`ssRtol`, because the `output` sink the conversion
   adds keeps accumulating, so it always ran all `maxSS` doses.  The sink is now left

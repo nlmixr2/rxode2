@@ -481,24 +481,28 @@ rx_solving_options op_global;
 extern int nPastEvid_global;
 extern int ssNotConv_global;
 // ss=2 superposition: add the state before the dose to the added regimen's
-// steady state.  The advance starts from that state, so one it left unchanged
-// that does not move without dosing input (held by rxSsAdvance, or with no
-// dynamics) has nothing to add.
+// steady state.  The advance starts from that state, so a state the model
+// holds with rxSsAdvance (left unchanged, and moving only when rxSsAdvance is
+// 0) has nothing to add.
 extern t_dydt dydt;
 static inline void ssAddSaved(double *yp, const double *solveSave, int *neq,
                               double t, rx_solving_options_ind *ind) {
-  std::vector<double> ydot;
+  std::vector<double> on, off;
   for (int j = neq[0]; j--;) {
     if (yp[j] == solveSave[j]) {
-      if (ydot.empty()) {
+      if (on.empty()) {
         std::vector<double> y(solveSave, solveSave + neq[0]);
-        std::vector<double> rate(ind->InfusionRate, ind->InfusionRate + neq[0]);
-        std::fill_n(ind->InfusionRate, neq[0], 0.0);
-        ydot.assign(neq[0], 0.0);
-        dydt(neq, t, y.data(), ydot.data());
-        std::copy(rate.begin(), rate.end(), ind->InfusionRate);
+        int ssAdvance = ind->ssAdvance;
+        on.assign(neq[0], 0.0);
+        off.assign(neq[0], 0.0);
+        ind->ssAdvance = 1;
+        dydt(neq, t, y.data(), on.data());
+        std::copy(solveSave, solveSave + neq[0], y.begin());
+        ind->ssAdvance = 0;
+        dydt(neq, t, y.data(), off.data());
+        ind->ssAdvance = ssAdvance;
       }
-      if (ydot[j] == 0.0) continue;
+      if (on[j] == 0.0 && off[j] != 0.0) continue;
     }
     yp[j] += solveSave[j];
   }
