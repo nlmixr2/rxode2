@@ -762,17 +762,31 @@ rxPde <- function(model) {
   )
 }
 
+## Grid name of a model line `grid(name, ...)` (arguments in any order), or
+## NULL for any other line.
+.rxPdeGridName <- function(line) {
+  if (!is.call(line) || !identical(line[[1]], as.name("grid"))) {
+    return(NULL)
+  }
+  .mc <- try(match.call(function(name, from, to, n) NULL, line), silent = TRUE)
+  if (inherits(.mc, "try-error") || !is.name(.mc$name)) {
+    return(NULL)
+  }
+  as.character(.mc$name)
+}
+
 ## TRUE for a model line `grid(name, ...)`.
 .rxPdeIsGridLine <- function(line) {
-  is.call(line) && identical(line[[1]], as.name("grid")) && length(line) >= 2L && is.name(line[[2]])
+  !is.null(.rxPdeGridName(line))
 }
 
 ## Line of the model's `grid()` with the same name as the piped one, or -1L to
 ## append a new grid.
 .rxPdeGridModelLine <- function(line, rxui) {
+  .name <- .rxPdeGridName(line)
   .w <- which(vapply(
     rxui$lstExpr,
-    function(e) .rxPdeIsGridLine(e) && identical(e[[2]], line[[2]]),
+    function(e) identical(.rxPdeGridName(e), .name),
     logical(1)
   ))
   if (length(.w) == 0L) {
