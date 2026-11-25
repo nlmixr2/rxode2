@@ -21,11 +21,14 @@
 #include "parseParamMerge.h"
 #include "pkTime.h"
 
+extern int foundPast;
+
 // 1 when the model's d/dt() can run as device (OpenCL) code: every
 // function it calls is registered gpuSafe and it has none of these
+// (delay() reads the device history; a past() pre-history does not run there)
 static inline int calcGpuSafe(void) {
   if (!tb.gpu || tb.simflg != 0 || nmtime != 0) return 0;
-  if (tb.evid_ != 0 || tb.linCmt != 0 || tb.hasDelay != 0) return 0;
+  if (tb.evid_ != 0 || tb.linCmt != 0 || foundPast != 0) return 0;
   return (tb.isMexp == 0 && tb.matn == 0 && tb.matnf == 0);
 }
 

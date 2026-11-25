@@ -47,11 +47,13 @@
 #define RXG_EPS DBL_EPSILON
 #endif
 #define RXG_FN static inline
+#define RXG_GLOBAL __global
 #else
 #include <math.h>
 #include <float.h>
 #define RXG_EPS DBL_EPSILON
 #define RXG_FN static inline
+#define RXG_GLOBAL
 #endif
 
 #ifndef M_1_SQRT_2PI
