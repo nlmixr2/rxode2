@@ -2060,17 +2060,25 @@ static inline double simOneCond(const double *z, const double *cur, int k,
     a = -b;
     b = -t;
   }
-  double pa = Rf_pnorm5(a, 0.0, 1.0, 1, 0);
-  double pb = Rf_pnorm5(b, 0.0, 1.0, 1, 0);
+  // on the log scale, so a far-tail interval does not underflow
+  double lpa = Rf_pnorm5(a, 0.0, 1.0, 1, 1);
+  double lpb = Rf_pnorm5(b, 0.0, 1.0, 1, 1);
   double x;
-  if (pb > pa) {
-    x = Rf_qnorm5(pa + (pb - pa) * simUnif(), 0.0, 1.0, 1, 0);
+  if (lpb > lpa) {
+    double u;
+    do {
+      u = simUnif();
+    } while (u <= 0.0 || u >= 1.0);
+    // log(pa + u * (pb - pa))
+    double lp = lpb + log(u + (1.0 - u) * exp(lpa - lpb));
+    x = Rf_qnorm5(lp, 0.0, 1.0, 1, 1);
   } else {
-    // the interval is too far in the tail to resolve: take its near end
+    // the interval is too narrow to resolve: take its near end
     x = R_FINITE(b) ? b : a;
   }
   if (x < a) x = a;
   if (x > b) x = b;
+  if (!R_FINITE(x)) return z[k];
   return mu + sd * (flip ? -x : x);
 }
 
