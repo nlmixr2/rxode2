@@ -1,0 +1,310 @@
+#' Add a second absorption path for double-absorption models
+#'
+#' Adds a parallel absorption path (`depot2`) to a model that already
+#' has first-order absorption through `depot`, for Monolix-style
+#' double-absorption models: one dose record is split at translation
+#' time into two parallel inputs with a logit-parameterized `F1`
+#' apportionment.  The second path can itself be zero-order
+#' (`type = "zero"`, a modeled `dur(depot2)` input), first-order
+#' (`type = "first"`, `ka2`), or a transit chain (`delay = "transit"`),
+#' with an optional lag.
+#'
+#' Only one second absorption path is supported per model; applying
+#' this twice raises an error.
+#'
+#' @inheritParams addDepot
+#' @param type second-path input type: `"zero"` for a zero-order
+#'   (modeled-duration) input or `"first"` for a first-order (`ka2`)
+#'   input
+#' @param delay second-path delay: `"none"`, `"lag"` (an `alag` on the
+#'   second path), or `"transit"` (a transit chain feeding the second
+#'   path)
+#' @param n number of transit compartments when `delay = "transit"`
+#' @param depot2 name of the second depot compartment
+#' @param ka2 name of the second first-order absorption rate
+#' @param tk0 name of the zero-order duration on the second path
+#' @param f1 initial fraction of the dose entering the first path, in
+#'   (0,1)
+#' @return a model with two parallel absorption paths
+#' @family Absorption building blocks
+#' @export
+#' @author Matthew L. Fidler
+#' @examples
+#' pk1cmtDes <- function() {
+#'   ini({
+#'     lka <- 0.45; label("Absorption rate (Ka)")
+#'     lcl <- 1; label("Clearance (CL)")
+#'     lvc <- 3.45; label("Central volume of distribution (V)")
+#'     propSd <- 0.5; label("Proportional residual error (fraction)")
+#'   })
+#'   model({
+#'     ka <- exp(lka)
+#'     cl <- exp(lcl)
+#'     vc <- exp(lvc)
+#'     kel <- cl / vc
+#'     d/dt(depot) <- -ka * depot
+#'     d/dt(central) <- ka * depot - kel * central
+#'     Cc <- central / vc
+#'     Cc ~ prop(propSd)
+#'   })
+#' }
+#'
+#'
+#' # simultaneous zero-order + first-order (Monolix double absorption)
+#' pk1cmtDes |>
+#'   addSecondAbsorption(type = "first", delay = "lag", f1 = 0.7)
+#'
+addSecondAbsorption <- function(
+  ui,
+  type = c("first", "zero"),
+  delay = c("none", "lag", "transit"),
+  n = NULL,
+  central = "central",
+  depot = "depot",
+  depot2 = "depot2",
+  ka = "ka",
+  ka2 = "ka2",
+  tk0 = "tk0",
+  f1 = 0.7
+) {
+  .useModelAsUi()
+  type <- match.arg(type)
+  delay <- match.arg(delay)
+  .ui <- assertRxUi(ui)
+  .cmt <- as.character(substitute(depot2))
+  depot2 <- try(force(depot2), silent = TRUE)
+  if (inherits(depot2, "try-error")) {
+    depot2 <- .cmt
+  }
+  assertCompartmentName(depot2)
+  .ka2 <- as.character(substitute(ka2))
+  ka2 <- try(force(ka2), silent = TRUE)
+  if (inherits(ka2, "try-error")) {
+    ka2 <- .ka2
+  }
+  assertVariableName(ka2)
+  .cp <- .ui$props$cmtProp
+  if (!is.null(.cp) && any(.cp$Compartment == depot2)) {
+    stop("a second absorption path ('", depot2, "') is already present", call. = FALSE)
+  }
+  # a split directive means a second path is already present even when
+  # it addresses differently-named compartments
+  .hasSplit <- any(vapply(
+    .ui$lstExpr,
+    function(l) {
+      .d <- deparse1(l)
+      grepl("splitInfusionBolus(", .d, fixed = TRUE) ||
+        grepl("splitBolusInfusion(", .d, fixed = TRUE) ||
+        grepl("splitBolus(", .d, fixed = TRUE) ||
+        grepl("splitInfusion(", .d, fixed = TRUE)
+    },
+    logical(1),
+    USE.NAMES = FALSE
+  ))
+  if (.hasSplit) {
+    stop("a second absorption path is already present (model has a split directive)", call. = FALSE)
+  }
+  .zoFirst <- !testCompartmentExists(.ui, depot)
+  if (delay == "transit") {
+    checkmate::assertIntegerish(n, lower = 1L, len = 1L, any.missing = FALSE)
+  }
+  # the second depot always starts as a first-order path; a zero-order
+  # second path is a modeled duration on depot2 itself (the depot keeps
+  # its compartment so splitInfusionBolus() can address it).  When the
+  # first path is zero-order (addZeroOrderAbs removed the depot) the
+  # dose records live on central and the split fans out from there.
+  # NOTE (rxode2#1381): split-generated 201 records are currently
+  # dropped when the model has a residual-error endpoint, so until
+  # that is fixed a zero-order second path is dosed with explicit
+  # rate=-2 records on depot2; the f(depot2) line still apportions the
+  # amount.  ka2 stays estimated as depot2's disposition rate (an IV
+  # infusion into depot2 draining to central at ka2, exactly
+  # Monolix's zero-order absorption into a depot feeding central).
+  .ui <- addDepot(.ui, central = central, depot = depot2, ka = ka2)
+  .src <- if (.zoFirst) central else depot
+  if (type == "zero") {
+    .ui <- addLogEstimates(
+      .ui,
+      stats::setNames(
+        "Zero-order absorption duration on the second path (Tk0)",
+        tk0
+      )
+    )
+    .modelLines <- .ui$lstExpr
+    .w <- .whichDdt(.modelLines, depot2)
+    .tmp <- .extractModelLinesAtW(.modelLines, .w)
+    .ui <- rxUiDecompress(.ui)
+    if (exists("description", envir = .ui$meta)) {
+      rm("description", envir = .ui$meta)
+    }
+    model(.ui) <- c(
+      .tmp$pre,
+      .tmp$w,
+      str2lang(paste0("dur(", depot2, ") <- ", tk0)),
+      .tmp$post
+    )
+    .ui <- rxUiCompress(.ui)
+    # addDepot()'s central line already feeds depot2 through ka2, so
+    # no rewiring is needed: the modeled duration makes the solver
+    # deliver depot2's translated amount at rate amt/tk0, draining to
+    # central at ka2 (see NOTE above for the rxode2#1381 dosing caveat)
+    .ui <- rxUiCompress(.ui)
+  }
+  if (delay == "lag") {
+    .ui <- addLag(.ui, depot2)
+  } else if (delay == "transit") {
+    # the second chain gets a letter-tagged prefix and rate (transitB1..N,
+    # ktrB) so it can never collide with the first path's numbered chain
+    # (transit1..N, ktr) -- a numeric prefix would clash once a chain
+    # reaches 10+ compartments
+    .ui <- addTransit(.ui, n, central = central, depot = depot2, transit = "transitB", ktr = "ktrB", ka = ka2)
+  }
+  # logit F1 split with the estimated fraction on the first path
+  # (Monolix F1 convention); for a zero-order first path there is no
+  # depot compartment, so the split is between central (which keeps
+  # the modeled-duration input) and depot2
+  .f1a <- if (.zoFirst) central else depot
+  .ui <- addBioavailability(.ui, .f1a, depot2, scale = "logit", f = f1)
+  # one dose record on the dosing compartment feeds both paths at
+  # translation time; splitInfusionBolus() keeps bolus copies to both
+  # targets and promotes the first target when it declares dur()/rate()
+  .modelLines <- .ui$lstExpr
+  .w <- .whichDdt(.modelLines, .src)
+  .tmp <- .extractModelLinesAtW(.modelLines, .w)
+  .ui <- rxUiDecompress(.ui)
+  if (exists("description", envir = .ui$meta)) {
+    rm("description", envir = .ui$meta)
+  }
+  model(.ui) <- c(
+    .tmp$pre,
+    list(str2lang(paste0("splitInfusionBolus(", .src, ", ", .src, ", ", depot2, ")"))),
+    .tmp$w,
+    .tmp$post
+  )
+  rxUiCompress(.ui)
+}
+
+#' Convert double absorption to sequential delays
+#'
+#' Reparameterizes a double-absorption model so the second path's delay
+#' is expressed relative to the first path's zero-order duration
+#' (`Tlag2 = Tk01`), matching Monolix's "sequential" double-absorption
+#' models.  Only valid when the first path absorbs zero-order; raises
+#' an error otherwise.
+#'
+#' @inheritParams addDepot
+#' @param depot2 name of the second depot compartment
+#' @return a model with the second delay tied to the first duration
+#' @family Absorption building blocks
+#' @export
+#' @author Matthew L. Fidler
+convertAbsSequential <- function(ui, central = "central", depot = "depot", depot2 = "depot2") {
+  .useModelAsUi()
+  .ui <- assertRxUi(ui)
+  central <- assertCompartmentExists(.ui, central)
+  # sequential ordering is only defined for a zero-order first path,
+  # which addZeroOrderAbs() expresses as a modeled duration on central
+  # (the depot compartment itself is gone -- a first-order depot still
+  # present means this precondition fails even when central happens
+  # to carry some other duration, e.g. an IV infusion)
+  .cp <- .ui$props$cmtProp
+  .durCmt <- if (!is.null(.cp)) .cp$Compartment[.cp$Property == "dur"] else character(0)
+  if (testCompartmentExists(.ui, depot) || !central %in% .durCmt) {
+    stop(
+      "sequential double absorption requires a zero-order first path ('",
+      central,
+      "' has no modeled duration)",
+      call. = FALSE
+    )
+  }
+  .modelLines <- .ui$lstExpr
+  # find the second path's lag and tie it to the first path's duration:
+  # lag(depot2) <- lagDepot2 becomes lag(depot2) <- tk0, dropping lagDepot2
+  .lagLine <- sprintf("lag(%s) <- ", depot2)
+  .w <- which(vapply(
+    .modelLines,
+    function(l) grepl(.lagLine, deparse1(l), fixed = TRUE),
+    logical(1),
+    USE.NAMES = FALSE
+  ))
+  if (length(.w) == 0L) {
+    stop("the second absorption path ('", depot2, "') has no lag time to tie", call. = FALSE)
+  }
+  # the first path's duration variable comes from its own dur() line
+  # (on central, since addZeroOrderAbs() removed the depot)
+  .durLine <- sprintf("dur(%s) <- ", central)
+  .wd <- which(vapply(
+    .modelLines,
+    function(l) grepl(.durLine, deparse1(l), fixed = TRUE),
+    logical(1),
+    USE.NAMES = FALSE
+  ))
+  .durVar <- as.character(.modelLines[[.wd[1L]]][[3L]])
+  .modelLines[[.w[1L]]] <- str2lang(paste0("lag(", depot2, ") <- ", .durVar))
+  .ui <- rxUiDecompress(.ui)
+  if (exists("description", envir = .ui$meta)) {
+    rm("description", envir = .ui$meta)
+  }
+  model(.ui) <- .modelLines
+  .ui <- rxUiCompress(.ui)
+  # the orphaned second-path lag parameter is no longer used; its name
+  # follows addLag()'s defaultCombine() convention (lagDepot2)
+  .lagVar <- as.character(defaultCombine("lag", depot2))
+  if (testVariableExists(.ui, .lagVar)) {
+    .ui <- rxUiCompress(removeLinesAndInis(.ui, .lagVar))
+  }
+  .ui
+}
+
+#' Force the second absorption delay longer than the first
+#'
+#' Reparameterizes a double-absorption model so the second path's lag
+#' is estimated as a positive increment over the first path's lag
+#' (`Tlag2 = Tlag1 + diffTlag2`), matching Monolix's "force delay2
+#' longer than delay1" models.  Both paths must have lag times and the
+#' model must not already be sequential.
+#'
+#' @inheritParams addDepot
+#' @param depot2 name of the second depot compartment
+#' @return a model with the second lag tied above the first
+#' @family Absorption building blocks
+#' @export
+#' @author Matthew L. Fidler
+convertAbsForceLongerDelay <- function(ui, central = "central", depot = "depot", depot2 = "depot2") {
+  .useModelAsUi()
+  .ui <- assertRxUi(ui)
+  central <- assertCompartmentExists(.ui, central)
+  .modelLines <- .ui$lstExpr
+  .lag1 <- sprintf("lag(%s) <- ", depot)
+  .lag2 <- sprintf("lag(%s) <- ", depot2)
+  .hasLag <- function(pat) {
+    any(vapply(.modelLines, function(l) grepl(pat, deparse1(l), fixed = TRUE), logical(1), USE.NAMES = FALSE))
+  }
+  if (!.hasLag(.lag1) || !.hasLag(.lag2)) {
+    stop("forcing a longer second delay requires lag times on both absorption paths", call. = FALSE)
+  }
+  .w2 <- which(vapply(.modelLines, function(l) grepl(.lag2, deparse1(l), fixed = TRUE), logical(1), USE.NAMES = FALSE))
+  .rhs2 <- .modelLines[[.w2[1L]]][[3L]]
+  .lagVar2 <- if (is.name(.rhs2)) as.character(.rhs2) else NULL
+  # lag(depot2) <- <first-lag-var> + diffTlag2, estimating the
+  # increment; the first path's lag variable is read from its own
+  # lag() line (it need not follow the defaultCombine() convention)
+  .w1 <- which(vapply(.modelLines, function(l) grepl(.lag1, deparse1(l), fixed = TRUE), logical(1), USE.NAMES = FALSE))
+  .rhs1 <- .modelLines[[.w1[1L]]][[3L]]
+  if (!is.name(.rhs1)) {
+    stop("the first absorption path's lag time is not a plain variable", call. = FALSE)
+  }
+  .lagVar1 <- as.character(.rhs1)
+  .modelLines[[.w2[1L]]] <- str2lang(paste0("lag(", depot2, ") <- ", .lagVar1, " + diffTlag2"))
+  .ui <- rxUiDecompress(.ui)
+  if (exists("description", envir = .ui$meta)) {
+    rm("description", envir = .ui$meta)
+  }
+  model(.ui) <- .modelLines
+  .ui <- rxUiCompress(.ui)
+  .ui <- .iniAddTheta(.ui, "diffTlag2", label = "Second lag increment over the first (diffTlag2)")
+  if (!is.null(.lagVar2) && testVariableExists(.ui, .lagVar2)) {
+    .ui <- rxUiCompress(removeLinesAndInis(.ui, .lagVar2))
+  }
+  .ui
+}

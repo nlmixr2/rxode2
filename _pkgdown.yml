@@ -35,6 +35,22 @@ reference:
   contents:
   - has_concept("Model UI and piping")
   - has_concept("Initial conditions")
+- title: Absorption building blocks
+  desc: Add, remove or change absorption (depot, transit, zero-order, Weibull, two-path).
+  contents:
+  - has_concept("Absorption building blocks")
+- title: Distribution and elimination building blocks
+  desc: Add or remove peripheral compartments, Michaelis-Menten elimination and compartment properties.
+  contents:
+  - has_concept("Distribution and elimination building blocks")
+- title: Pharmacodynamic building blocks
+  desc: Attach direct, effect-compartment and indirect-response models, baselines and drug-effect forms.
+  contents:
+  - has_concept("Pharmacodynamic building blocks")
+- title: Parameter and naming building blocks
+  desc: Add between-subject variability and residual error, transform PK parameters and name new parameters.
+  contents:
+  - has_concept("Parameter and naming building blocks")
 - title: Variability and uncertainty
   desc: Simulate between-subject variability and parameter uncertainty.
   contents:
