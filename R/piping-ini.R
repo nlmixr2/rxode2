@@ -447,11 +447,100 @@
   .matchesLangTemplate(expr, str2lang(". ~ ."))
 }
 
-#' Say so when a piped `| condition` does not match the eta's own level
+#' The etas in a repeated (`same()`) block or in the block it repeats
 #'
-#' `ini()` piping changes an estimate, not the structure of the model, so the
-#' level a random effect already sits at is kept.  Without this the piped
-#' condition would just be discarded with nothing said.
+#' @param iniDf ini data frame
+#' @return integer eta numbers
+#' @author Matthew L Fidler
+#' @noRd
+.iniSameEtas <- function(iniDf) {
+  .sameMap <- .lotriSameMap(iniDf)
+  .copies <- which(.sameMap != 0L)
+  if (length(.copies) == 0L) {
+    return(integer(0))
+  }
+  # every element of a copy points at the first eta of the block it repeats,
+  # so a run of copies gives the block's size
+  .run <- cumsum(c(TRUE, diff(.copies) != 1L | diff(.sameMap[.copies]) != 0L))
+  c(
+    .copies,
+    unlist(lapply(split(.copies, .run), function(.r) {
+      .sameMap[.r[1]] + seq_along(.r) - 1L
+    }))
+  )
+}
+
+#' Stop when an eta cannot move to another level on its own
+#'
+#' @param iniDf ini data frame
+#' @param w row of the eta that moves
+#' @param netas eta numbers moving together
+#' @param sameEtas eta numbers in a `same()` relationship
+#' @param block `TRUE` when covariances outside the moving etas are dropped
+#' @return Nothing, errors when the eta cannot move
+#' @author Matthew L Fidler
+#' @noRd
+.iniAssertEtaCanMove <- function(iniDf, w, netas, sameEtas, block) {
+  .eta <- iniDf$name[w]
+  .n <- iniDf$neta1[w]
+  if (.n %in% sameEtas) {
+    stop(
+      "cannot change the condition of '",
+      .eta,
+      "' since it is part of a repeated (same()) block",
+      call. = FALSE
+    )
+  }
+  if (block) {
+    return(invisible())
+  }
+  .eta1 <- iniDf$neta1
+  .eta2 <- iniDf$neta2
+  .off <- which(!is.na(.eta1) & .eta1 != .eta2 & (.eta1 == .n | .eta2 == .n))
+  .other <- setdiff(c(.eta1[.off], .eta2[.off]), netas)
+  if (length(.other) > 0L) {
+    stop(
+      "cannot change the condition of '",
+      .eta,
+      "' while it is correlated with '",
+      paste(iniDf$name[!is.na(.eta1) & .eta1 == .eta2 & .eta1 %in% .other], collapse = "', '"),
+      "'; remove the covariance first",
+      call. = FALSE
+    )
+  }
+  invisible()
+}
+
+#' Number the etas level by level (id first), as an ini() block does
+#'
+#' @param iniDf ini data frame
+#' @return renumbered ini data frame, thetas first
+#' @author Matthew L Fidler
+#' @noRd
+.iniRenumberEtaByLevel <- function(iniDf) {
+  .d <- which(!is.na(iniDf$neta1) & iniDf$neta1 == iniDf$neta2)
+  .d <- .d[order(iniDf$neta1[.d])]
+  .base <- .lotriBaseCondition(iniDf$condition[.d])
+  .new <- integer(max(iniDf$neta1[.d]))
+  .new[iniDf$neta1[.d][order(match(.base, unique(c("id", .base))))]] <- seq_along(.d)
+  .w <- which(!is.na(iniDf$neta1))
+  iniDf$neta1[.w] <- .new[iniDf$neta1[.w]]
+  iniDf$neta2[.w] <- .new[iniDf$neta2[.w]]
+  iniDf <- rbind(
+    iniDf[is.na(iniDf$neta1), , drop = FALSE],
+    iniDf[.w[order(iniDf$neta1[.w], iniDf$neta2[.w])], , drop = FALSE]
+  )
+  rownames(iniDf) <- NULL
+  iniDf
+}
+
+#' Move random effects to the level a piped `| condition` names
+#'
+#' `ini(eta ~ value | COND)` on an existing eta changes its condition to
+#' `COND`, so an eta added by `model()` (at `id`) can become an
+#' inter-occasion eta, and back.  An eta still correlated with an eta that
+#' is not moving with it, or one in a repeated (`same()`) block, cannot
+#' move on its own, so that is an error rather than a silent no-op.
 #'
 #' @param etas character vector of the random effects on the piped line
 #'
@@ -459,37 +548,39 @@
 #'
 #' @param rxui the destination `rxUi`
 #'
-#' @return Nothing, called for the message
+#' @param block `TRUE` when `etas` is a whole piped block, whose covariances
+#'   with other etas are dropped anyway, so they do not stop the move
+#'
+#' @return Nothing, called for side effects
 #'
 #' @author Matthew L Fidler
 #' @noRd
-.iniInformDifferentEtaCondition <- function(etas, condition, rxui) {
-  if (length(condition) != 1L || is.na(condition)) {
-    return(invisible())
-  }
-  if (!isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
-    return(invisible())
-  }
+.iniChangeEtaCondition <- function(etas, condition, rxui, block = FALSE) {
   .ini <- rxui$iniDf
-  if (is.null(.ini)) {
+  if (length(condition) != 1L || is.na(condition) || is.null(.ini)) {
     return(invisible())
   }
-  for (.eta in etas) {
-    .w <- which(.ini$name == .eta & !is.na(.ini$neta1) & .ini$neta1 == .ini$neta2)
-    if (length(.w) != 1L) {
-      next
-    }
-    .cur <- .lotriBaseCondition(.ini$condition[.w])
-    if (!is.na(.cur) && !identical(.cur, condition)) {
-      .minfo(paste0(
-        "keeping {.code ",
-        .eta,
-        "} at level {.code ",
-        .cur,
-        "}; piping an estimate does not move it to {.code ",
-        condition,
-        "}"
-      ))
+  .diag <- which(!is.na(.ini$neta1) & .ini$neta1 == .ini$neta2 & .ini$name %in% etas)
+  .move <- .diag[.lotriBaseCondition(.ini$condition[.diag]) != condition]
+  if (length(.move) == 0L) {
+    return(invisible())
+  }
+  .netas <- .ini$neta1[.diag]
+  .sameEtas <- .iniSameEtas(.ini)
+  for (.w in .move) {
+    .iniAssertEtaCanMove(.ini, .w, .netas, .sameEtas, block)
+  }
+  .moving <- .ini$neta1[.move]
+  .rows <- which(
+    (.ini$neta1 %in% .moving & .ini$neta2 %in% .netas) |
+      (.ini$neta2 %in% .moving & .ini$neta1 %in% .netas)
+  )
+  .ini$condition[.rows] <- condition
+  .movedNames <- .ini$name[.move]
+  assign("iniDf", .iniRenumberEtaByLevel(.ini), envir = rxui)
+  if (isTRUE(getOption("rxode2.verbose.pipe", TRUE))) {
+    for (.eta in .movedNames) {
+      .minfo(paste0("change {.code ", .eta, "} to vary by {.code ", condition, "}"))
     }
   }
   invisible()
@@ -991,16 +1082,21 @@
     .iniHandleFixOrUnfixEqual(expr = expr, rxui = rxui, envir = envir)
   } else if (.isLotriAssignment(expr)) {
     .lotriVal <- eval(as.call(list(quote(`lotri`), as.call(list(quote(`{`), expr)))), envir = envir)
+    .cond <- NA_character_
     if (!is.matrix(.lotriVal)) {
       # a `~ v | condition` random effect comes back as a list of blocks keyed
       # by condition; a single piped line always has exactly one block
-      .iniInformDifferentEtaCondition(all.vars(expr[[2]]), names(.lotriVal)[1], rxui)
+      .cond <- names(.lotriVal)[1]
       .lotriVal <- .lotriVal[[1]]
     }
     .rhs <- expr[[2]]
     if (length(.rhs) > 1) {
       if (identical(.rhs[[1]], quote(`+`))) {
+        # move the existing etas first so the block's covariances are written
+        # at their new level; the block's own covariances replace the rest
+        .iniChangeEtaCondition(dimnames(.lotriVal)[[1]], .cond, rxui, block = TRUE)
         .iniHandleLotriMatrix(.lotriVal, rxui)
+        .iniChangeEtaCondition(dimnames(.lotriVal)[[1]], .cond, rxui)
         return(invisible())
       }
     }
@@ -1015,6 +1111,7 @@
       expr[[3]] <- as.call(list(quote(`unfix`), expr[[3]]))
     }
     .iniHandleFixOrUnfixEqual(expr = expr, rxui = rxui, envir = envir, maxLen = 1L)
+    .iniChangeEtaCondition(as.character(expr[[2]]), .cond, rxui)
   } else if (.isTildeExpr(expr)) {
     .iniHandleSwitchType(expr = expr, rxui = rxui, envir = envir)
   } else if (.isIniDropExpression(expr)) {

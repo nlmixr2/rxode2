@@ -482,6 +482,10 @@
         }
         if (.call %in% names(.errDist)) {
           .isLotri <- FALSE
+        } else if (identical(.cur[[3]][[1]], quote(`|`)) && identical(.cur[[3]][[3]], quote(id))) {
+          # the round-trip drops the default `| id`, which ini() needs to move
+          # an eta back to the subject level
+          .isLotri <- FALSE
         } else if (.call == "unfix") {
           # the lotri round-trip below has no way to represent `unfix()`, so it
           # comes back as a plain estimate and would silently leave the eta fixed
