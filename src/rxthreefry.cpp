@@ -2015,6 +2015,50 @@ static inline double simUnif() {
   return d(_engSim[thread]);
 }
 
+// x limited to the finite ones of lo and hi
+static inline double simClamp(double x, double lo, double hi) {
+  if (R_FINITE(lo) && x < lo) x = lo;
+  if (R_FINITE(hi) && x > hi) x = hi;
+  return x;
+}
+
+// A standard normal draw truncated to (a, b), on the log scale so a far-tail
+// interval does not underflow.
+static inline double simTruncStd(double a, double b) {
+  double lpa = Rf_pnorm5(a, 0.0, 1.0, 1, 1);
+  double lpb = Rf_pnorm5(b, 0.0, 1.0, 1, 1);
+  // the interval is too narrow to resolve: take its near end
+  if (lpb <= lpa) return R_FINITE(b) ? b : a;
+  double u;
+  do {
+    u = simUnif();
+  } while (u <= 0.0 || u >= 1.0);
+  // log(pa + u * (pb - pa))
+  double lp = lpb + log(u + (1.0 - u) * exp(lpa - lpb));
+  return Rf_qnorm5(lp, 0.0, 1.0, 1, 1);
+}
+
+// A N(mu, sd^2) draw truncated to (lo, hi); `fallback` when it cannot be drawn.
+static inline double simTruncNorm(double mu, double sd, double lo, double hi,
+                                  double fallback) {
+  if (sd == 0.0 || !R_FINITE(sd)) return simClamp(mu, lo, hi);
+  // standardized bounds; an interval in the upper tail is mirrored into the
+  // lower one, where the normal CDF does not round to 1
+  double a = R_FINITE(lo) ? (lo - mu) / sd : R_NegInf;
+  double b = R_FINITE(hi) ? (hi - mu) / sd : R_PosInf;
+  bool flip = a > 0.0;
+  if (flip) {
+    double t = a;
+    a = -b;
+    b = -t;
+  }
+  double x = simTruncStd(a, b);
+  if (x < a) x = a;
+  if (x > b) x = b;
+  if (!R_FINITE(x)) return fallback;
+  return simClamp(mu + sd * (flip ? -x : x), lo, hi);
+}
+
 // Re-simulate only element `k` (0-based) of `cur` from the draw `z` of
 // N(0, sigma) (type 0 eps, 1 eta): conditional on the other elements when
 // sigma correlates k with them, so the covariance is honored; otherwise z[k].
@@ -2056,44 +2100,7 @@ static inline double simOneCond(const double *z, const double *cur, int k,
   for (int i = 0; i < n - 1; i++) mu += wr[i] * (cur[o[i]] / d[i]);
   double sd = sigma(k, k) - arma::dot(rhs, wr);
   sd = sd > 0.0 ? sqrt(sd) : 0.0;
-  if (sd == 0.0 || !R_FINITE(sd)) {
-    if (R_FINITE(lower[k]) && mu < lower[k]) mu = lower[k];
-    if (R_FINITE(upper[k]) && mu > upper[k]) mu = upper[k];
-    return mu;
-  }
-  // standardized bounds; an interval in the upper tail is mirrored into the
-  // lower one, where the normal CDF does not round to 1
-  double a = R_FINITE(lower[k]) ? (lower[k] - mu) / sd : R_NegInf;
-  double b = R_FINITE(upper[k]) ? (upper[k] - mu) / sd : R_PosInf;
-  bool flip = a > 0.0;
-  if (flip) {
-    double t = a;
-    a = -b;
-    b = -t;
-  }
-  // on the log scale, so a far-tail interval does not underflow
-  double lpa = Rf_pnorm5(a, 0.0, 1.0, 1, 1);
-  double lpb = Rf_pnorm5(b, 0.0, 1.0, 1, 1);
-  double x;
-  if (lpb > lpa) {
-    double u;
-    do {
-      u = simUnif();
-    } while (u <= 0.0 || u >= 1.0);
-    // log(pa + u * (pb - pa))
-    double lp = lpb + log(u + (1.0 - u) * exp(lpa - lpb));
-    x = Rf_qnorm5(lp, 0.0, 1.0, 1, 1);
-  } else {
-    // the interval is too narrow to resolve: take its near end
-    x = R_FINITE(b) ? b : a;
-  }
-  if (x < a) x = a;
-  if (x > b) x = b;
-  if (!R_FINITE(x)) return z[k];
-  double ret = mu + sd * (flip ? -x : x);
-  if (R_FINITE(lower[k]) && ret < lower[k]) ret = lower[k];
-  if (R_FINITE(upper[k]) && ret > upper[k]) ret = upper[k];
-  return ret;
+  return simTruncNorm(mu, sd, lower[k], upper[k], z[k]);
 }
 
 // Where simeta(n)/simeps(n) index n lands once omega/sigma items are dropped
