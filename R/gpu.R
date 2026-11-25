@@ -1017,6 +1017,28 @@ rxGpuInfo <- function() {
   identical(a$params, b$params) && identical(a$state, b$state) && identical(a$lhs, b$lhs)
 }
 
+#' Does a delay() model's event table ask for steady state?
+#'
+#' Steady state is an ss column, or a classic evid whose last two digits are
+#' a steady-state flag (9, 10, 19, 20, 40).
+#'
+#' @param object rxode2 model
+#' @param events rxSolve() events
+#' @return `TRUE` when the model calls delay() and the events have steady state
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuDelaySs <- function(object, events) {
+  if (!isTRUE(rxModelVars(object)$flags[["hasDelay"]] == 1L) || !(is.data.frame(events) || is.rxEt(events))) {
+    return(FALSE)
+  }
+  .e <- as.data.frame(events)
+  .w <- which(tolower(names(.e)) == "ss")
+  .v <- which(tolower(names(.e)) == "evid")
+  .cl <- if (length(.v) > 0L) suppressWarnings(as.numeric(.e[[.v[1]]])) else numeric(0)
+  (length(.w) > 0L && any(.e[[.w[1]]] %in% 1:2)) ||
+    any(!is.na(.cl) & .cl >= 100 & (.cl %% 100) %in% c(9, 10, 19, 20, 40))
+}
+
 #' Why a GPU method cannot solve this problem (beyond device code)
 #'
 #' @param object rxode2 model
@@ -1034,19 +1056,8 @@ rxGpuInfo <- function() {
   }
   ## steady state integrates each dosing interval on its own, which would
   ## restart the delay() history
-  if (isTRUE(rxModelVars(object)$flags[["hasDelay"]] == 1L) && (is.data.frame(events) || is.rxEt(events))) {
-    .e <- as.data.frame(events)
-    .w <- which(tolower(names(.e)) == "ss")
-    ## steady state is an ss column, or a classic evid whose last two digits
-    ## are a steady-state flag (9, 10, 19, 20, 40)
-    .v <- which(tolower(names(.e)) == "evid")
-    .cl <- if (length(.v) > 0L) suppressWarnings(as.numeric(.e[[.v[1]]])) else numeric(0)
-    if (
-      (length(.w) > 0L && any(.e[[.w[1]]] %in% 1:2)) ||
-        any(!is.na(.cl) & .cl >= 100 & (.cl %% 100) %in% c(9, 10, 19, 20, 40))
-    ) {
-      return("steady state in delay() models")
-    }
+  if (.rxGpuDelaySs(object, events)) {
+    return("steady state in delay() models")
   }
   ## the host build of the device code comes from the model with its
   ## Jacobian, which has to keep the parameter, state and lhs order

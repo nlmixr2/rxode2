@@ -364,6 +364,47 @@ RXG_FN void _rxg_dfdt(double t, double dir, double *y, const double *f0,
   for (int i = 0; i < RXG_NEQ; i++) dT[i] = (ftmp[i] - f0[i])/d;
 }
 
+// the row of the largest |W[i, k]| for i >= k (the first on ties); *m gets
+// that magnitude
+RXG_FN int _rxg_luPivot(const double *W, int k, double *m) {
+  int p = k;
+  double mx = fabs(W[k*RXG_NEQ1 + k]);
+  RXG_UNROLL
+  for (int i = k + 1; i < RXG_NEQ; i++) {
+    double v = fabs(W[i*RXG_NEQ1 + k]);
+    int b = v > mx;
+    mx = b ? v : mx;
+    p = b ? i : p;
+  }
+  *m = mx;
+  return p;
+}
+
+// swap rows k and p (> k, or no swap) of W by selects
+RXG_FN void _rxg_luSwap(double *W, int k, int p) {
+  RXG_UNROLL
+  for (int i = k + 1; i < RXG_NEQ; i++) {
+    int sw = (p == i);
+    RXG_UNROLL
+    for (int j = 0; j < RXG_NEQ; j++) {
+      double a = W[k*RXG_NEQ1 + j], b = W[i*RXG_NEQ1 + j];
+      W[k*RXG_NEQ1 + j] = sw ? b : a;
+      W[i*RXG_NEQ1 + j] = sw ? a : b;
+    }
+  }
+}
+
+// eliminate column k below the pivot, whose reciprocal is inv
+RXG_FN void _rxg_luElim(double *W, int k, double inv) {
+  RXG_UNROLL
+  for (int i = k + 1; i < RXG_NEQ; i++) {
+    double l = W[i*RXG_NEQ1 + k]*inv;
+    W[i*RXG_NEQ1 + k] = l;
+    RXG_UNROLL
+    for (int j = k + 1; j < RXG_NEQ; j++) W[i*RXG_NEQ1 + j] -= l*W[k*RXG_NEQ1 + j];
+  }
+}
+
 // LU of W = I/(h*gamma) - J with partial pivoting; returns 0 when singular.
 // Rows are swapped by selects rather than indexed by the pivot, and the
 // diagonal holds the reciprocal of U's diagonal.
@@ -378,37 +419,15 @@ RXG_FN int _rxg_luW(const double *J, double hg, double *W, int *piv) {
   int ok = 1;
   RXG_UNROLL
   for (int k = 0; k < RXG_NEQ; k++) {
-    int p = k;
-    double m = fabs(W[k*RXG_NEQ1 + k]);
-    RXG_UNROLL
-    for (int i = k + 1; i < RXG_NEQ; i++) {
-      double v = fabs(W[i*RXG_NEQ1 + k]);
-      int b = v > m;
-      m = b ? v : m;
-      p = b ? i : p;
-    }
+    double m;
+    int p = _rxg_luPivot(W, k, &m);
     piv[k] = p;
     ok = ok && (m > 0.0) && isfinite(m);
-    RXG_UNROLL
-    for (int i = k + 1; i < RXG_NEQ; i++) {
-      int sw = (p == i);
-      RXG_UNROLL
-      for (int j = 0; j < RXG_NEQ; j++) {
-        double a = W[k*RXG_NEQ1 + j], b = W[i*RXG_NEQ1 + j];
-        W[k*RXG_NEQ1 + j] = sw ? b : a;
-        W[i*RXG_NEQ1 + j] = sw ? a : b;
-      }
-    }
+    _rxg_luSwap(W, k, p);
     double inv = ok ? 1.0/W[k*RXG_NEQ1 + k] : 0.0;
     ok = ok && isfinite(inv);
     W[k*RXG_NEQ1 + k] = inv;
-    RXG_UNROLL
-    for (int i = k + 1; i < RXG_NEQ; i++) {
-      double l = W[i*RXG_NEQ1 + k]*inv;
-      W[i*RXG_NEQ1 + k] = l;
-      RXG_UNROLL
-      for (int j = k + 1; j < RXG_NEQ; j++) W[i*RXG_NEQ1 + j] -= l*W[k*RXG_NEQ1 + j];
-    }
+    _rxg_luElim(W, k, inv);
   }
   return ok;
 }
@@ -906,10 +925,11 @@ RXG_FN int _rxg_histPush(int method, double t, double hs, const double *y,
 // Size the next step from *ha (clamped to hmax, the hmin floor and the
 // shortest delay): *hh lands on t1 or a delay breakpoint when that is near
 // (*last), *tEnd is where it ends.  Returns RXG_ERR_HMIN when the step
-// underflows, else RXG_SUCCESS.
+// underflows, RXG_ERR_MXSTEP when *nstep (counted here) reaches o->mxstep,
+// else RXG_SUCCESS.
 RXG_FN int _rxg_stepPlan(double t, double t1, double dir, double hmax,
                          double *ha, double *hh, double *tEnd, int *last,
-                         const rxg_ctx *c, const rxg_opt *o) {
+                         int *nstep, const rxg_ctx *c, const rxg_opt *o) {
   double rem = fabs(t1 - t);
   double a = fmin(*ha, hmax);
   // hmin is a floor: fail only when a step that small is rejected
@@ -922,6 +942,7 @@ RXG_FN int _rxg_stepPlan(double t, double t1, double dir, double hmax,
 #endif
   *ha = a;
   if (a < 16.0*RXG_EPS*fmax(fabs(t), RXG_MIN) && a < rem) return RXG_ERR_HMIN;
+  if ((*nstep)++ >= o->mxstep) return RXG_ERR_MXSTEP;
   *last = (a >= rem);
   *hh = *last ? rem : a;
   *tEnd = *last ? t1 : t + dir*(*hh);
@@ -994,6 +1015,49 @@ RXG_FN int _rxg_takeStep(int method, double *t, double tEnd, double hs,
   return 1;
 }
 
+RXG_FN int _rxg_badMethod(int method) {
+  if (method != RXG_RKT54 && method != RXG_VERN76 && method != RXG_ROS54P) {
+    return 1;
+  }
+#if RXG_NEQ > 0 && !RXG_HAS_JAC
+  // Rosenbrock methods need the model's analytic Jacobian (a model without
+  // states has nothing to solve)
+  return method == RXG_ROS54P;
+#else
+  return 0;
+#endif
+}
+
+// the largest step: hmax when set, never more than the interval
+RXG_FN double _rxg_hmax(const rxg_opt *o, double t0, double t1) {
+  double span = fabs(t1 - t0);
+  return (o->hmax > 0.0) ? fmin(o->hmax, span) : span;
+}
+
+// the starting step: the warm start ha when usable, else _rxg_hinit()'s
+RXG_FN double _rxg_hstart(double ha, double t, double dir, double hmax,
+                          int order, double *y, rxg_work *w,
+                          const rxg_ctx *c, const rxg_opt *o, int *cnt) {
+  if (ha > 0.0 && isfinite(ha)) return ha;
+  return _rxg_hinit(t, dir, hmax, order, y, w->f0, w->y1, w->e, c, o, cnt);
+}
+
+// is stiffness probed: st given and the method has a stability boundary
+RXG_FN int _rxg_probes(const rxg_stiff *st, int method) {
+  return (st != 0) && (_rxg_stabSize(method) > 0.0);
+}
+
+// a fresh rxg_integrate() workspace for the context c
+RXG_FN void _rxg_workInit(rxg_work *w, const rxg_ctx *c) {
+  w->jacOk = 0;
+  w->nonAuto = _rxg_nonAutonomous(c);
+#if RXG_SOLVE_ROS
+  if (!w->nonAuto) {
+    for (int i = 0; i < RXG_NEQ1; i++) w->dT[i] = 0.0;
+  }
+#endif
+}
+
 // Integrate y from t0 to t1 (either direction) with an adaptive method.
 // *h is the starting step size (<= 0: chosen here) and returns the size to
 // try next, for a warm start on the next interval.  cnt[] (RXG_NCNT) is
@@ -1004,28 +1068,16 @@ RXG_FN int _rxg_takeStep(int method, double *t, double tEnd, double hs,
 RXG_FN int rxg_integrate(int method, double t0, double t1, double *y,
                          double *h, const rxg_ctx *c, const rxg_opt *o,
                          rxg_stiff *st, int *cnt) {
-  if (method != RXG_RKT54 && method != RXG_VERN76 && method != RXG_ROS54P) {
-    return RXG_ERR_METHOD;
-  }
+  if (_rxg_badMethod(method)) return RXG_ERR_METHOD;
 #if RXG_NEQ == 0
   return RXG_SUCCESS;
 #endif
-#if !RXG_HAS_JAC
-  // Rosenbrock methods need the model's analytic Jacobian
-  if (method == RXG_ROS54P) return RXG_ERR_METHOD;
-#endif
   if (t1 == t0) return RXG_SUCCESS;
   rxg_work w;
-  w.jacOk = 0;
-  w.nonAuto = _rxg_nonAutonomous(c);
-#if RXG_SOLVE_ROS
-  if (!w.nonAuto) {
-    for (int i = 0; i < RXG_NEQ1; i++) w.dT[i] = 0.0;
-  }
-#endif
-  int probe = (st != 0) && (_rxg_stabSize(method) > 0.0);
+  _rxg_workInit(&w, c);
+  int probe = _rxg_probes(st, method);
   double dir = (t1 > t0) ? 1.0 : -1.0;
-  double hmax = (o->hmax > 0.0) ? fmin(o->hmax, fabs(t1 - t0)) : fabs(t1 - t0);
+  double hmax = _rxg_hmax(o, t0, t1);
   int q = _rxg_errOrder(method);
   rxg_ctl ctl;
   ctl.logErrOld = -9.210340371976184; // log(1e-4)
@@ -1033,21 +1085,14 @@ RXG_FN int rxg_integrate(int method, double t0, double t1, double *y,
   double t = t0;
   _rxg_f(t, y, w.f0, c, cnt);
   int fsal = 1; // w.f0 = f(t, y)
-  double ha = fabs(*h);
-  if (!(ha > 0.0) || !isfinite(ha)) {
-    ha = _rxg_hinit(t, dir, hmax, q + 1, y, w.f0, w.y1, w.e, c, o, cnt);
-  }
+  double ha = _rxg_hstart(fabs(*h), t, dir, hmax, q + 1, y, &w, c, o, cnt);
   int nstep = 0;
   int ret = RXG_SUCCESS;
   while (dir*(t1 - t) > 0.0) {
     double hh = 0.0, tEnd = t, hn = 0.0;
     int last = 0;
-    ret = _rxg_stepPlan(t, t1, dir, hmax, &ha, &hh, &tEnd, &last, c, o);
+    ret = _rxg_stepPlan(t, t1, dir, hmax, &ha, &hh, &tEnd, &last, &nstep, c, o);
     if (ret != RXG_SUCCESS) break;
-    if (nstep++ >= o->mxstep) {
-      ret = RXG_ERR_MXSTEP;
-      break;
-    }
     if (!fsal) _rxg_f(t, y, w.f0, c, cnt);
     fsal = 1;
     int ok = _rxg_tryStep(method, t, dir*hh, dir, y, &w, c, cnt);

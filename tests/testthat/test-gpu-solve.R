@@ -328,16 +328,16 @@ rxTest({
 
   test_that("timeDep flags models whose d/dt() reads time", {
     .f <- function(m) rxModelVars(m)$flags[["timeDep"]]
-    expect_equal(.f(rxode2({d/dt(x) <- -k * x})), 0L)
-    expect_equal(.f(rxode2({tv <- 3; d/dt(x) <- -x / tv})), 0L)
-    expect_equal(.f(rxode2({d/dt(x) <- t})), 1L)
-    expect_equal(.f(rxode2({d/dt(x) <- -k * x + time})), 1L)
-    expect_equal(.f(rxode2({d/dt(x) <- -k * x + tad()})), 1L)
-    expect_equal(.f(rxode2({d/dt(x) <- -k * x + delay(x, 1)})), 1L)
+    expect_equal(.f(rxode2("d/dt(x) <- -k * x")), 0L)
+    expect_equal(.f(rxode2("tv <- 3; d/dt(x) <- -x / tv")), 0L)
+    expect_equal(.f(rxode2("d/dt(x) <- t")), 1L)
+    expect_equal(.f(rxode2("d/dt(x) <- -k * x + time")), 1L)
+    expect_equal(.f(rxode2("d/dt(x) <- -k * x + tad()")), 1L)
+    expect_equal(.f(rxode2("d/dt(x) <- -k * x + delay(x, 1)")), 1L)
   })
 
   test_that("ros54p takes df/dt for time and changing covariates only", {
-    .tm <- rxode2({d/dt(x) <- t})
+    .tm <- rxode2("d/dt(x) <- t")
     for (.meth in c("ros54p", "gpuRos54p")) {
       .r <- suppressMessages(rxSolve(
         .tm,
@@ -350,7 +350,7 @@ rxTest({
       ))
       expect_equal(tail(.r$x, 1), 50, tolerance = 1e-8, label = .meth)
     }
-    .cm <- rxode2({d/dt(x) <- c1})
+    .cm <- rxode2("d/dt(x) <- c1")
     .d <- data.frame(id = 1, time = c(0, 10), c1 = c(0, 10), evid = 0)
     for (.meth in c("ros54p", "gpuRos54p")) {
       .r <- suppressMessages(rxSolve(
@@ -365,7 +365,7 @@ rxTest({
       ))
       expect_equal(tail(.r$x, 1), 50, tolerance = 1e-8, label = .meth)
     }
-    .am <- rxode2({d/dt(x) <- -k * x})
+    .am <- rxode2("d/dt(x) <- -k * x")
     .r <- rxSolve(
       .am,
       et(seq(0, 10)),
@@ -379,7 +379,7 @@ rxTest({
   })
 
   test_that("a registered dydt forcing hook makes ros54p take df/dt and the GPU methods fall back", {
-    .m <- rxode2({d/dt(x) <- 0})
+    .m <- rxode2("d/dt(x) <- 0")
     .ev <- et(amt = 0) |> et(0, 2, by = 1)
     .Call(`_rxode2_rxRegisterTestDydtForce`)
     on.exit(.Call(`_rxode2_rxRemoveTestDydtForce`), add = TRUE)
@@ -393,7 +393,7 @@ rxTest({
   test_that("a GPU method set up without its GPU setup runs as the host counterpart", {
     ## nlmixr2est's FOCEi sets solves up from C, so R installs nothing for them;
     ## an earlier GPU solve of another model must not be used either
-    .a <- rxode2({d/dt(y) <- -k * y})
+    .a <- rxode2("d/dt(y) <- -k * y")
     .b <- rxode2({
       d/dt(depot) <- -ka * depot
       d/dt(center) <- ka * depot - cl / v * center

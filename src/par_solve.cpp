@@ -7292,6 +7292,23 @@ static void rxAutoSwitchCount(rx_solving_options *op, rx_solving_options_ind *in
 // device integrators do) and report where they stopped; another primary
 // switches only when it actually fails.  That is the same contract the
 // steady-state leg (solveWith1Pt) has.
+// 1 when the segment solved, else -4
+static inline int rxSegmentStatus(int istate, rx_solving_options_ind *ind) {
+  return (istate > 0 && !ind->err) ? 1 : -4;
+}
+
+// did the primary's probe fail (or report stiffness)?
+static inline bool rxProbeFailed(int istate, int idid, rx_solving_options_ind *ind) {
+  return istate <= 0 || idid <= 0 || ind->rc[0] == -2019 || ind->err != 0;
+}
+
+// a t54/vern76 probe's stiff report (idid -4) stops at its last accepted
+// step strictly inside (xp, xout), where the secondary continues
+static inline bool rxProbeContinues(int idid, double xp, double xout, double xpLoc) {
+  if (idid != -4) return false;
+  return (xout > xp) ? (xpLoc > xp && xpLoc < xout) : (xpLoc < xp && xpLoc > xout);
+}
+
 // Composite segment for a primary that is not dop853: probe with the primary,
 // and hand the interval to the stiff secondary from where a stiff report
 // stopped, or from the start after a failure.
@@ -7306,7 +7323,7 @@ static int rxSegmentAutoSwitchGeneric(rx_solving_options *op,
     _rxSolveOneInterval(op->stiff2, false, neq, yp, &xpLoc, xout, istate,
                         &idid, op, ind, iRec, NULL, eff);
     rxAutoSwitchCount(op, ind, false, false);
-    return (*istate > 0 && !ind->err) ? 1 : -4;
+    return rxSegmentStatus(*istate, ind);
   }
   double _ypStack[64];
   double *_ypDyn = NULL;
@@ -7321,12 +7338,10 @@ static int rxSegmentAutoSwitchGeneric(rx_solving_options *op,
   *istate = 1;
   _rxSolveOneInterval(op->stiff, true, neq, yp, &xpLoc, xout, istate,
                       &idid, op, ind, iRec, NULL, eff);
-  bool failed = (*istate <= 0 || idid <= 0 || ind->rc[0] == -2019 || ind->err != 0);
+  bool failed = rxProbeFailed(*istate, idid, ind);
   if (failed) {
-    // a t54/vern76 probe's stiff report (idid -4) stops at its last accepted
-    // step, where the secondary continues; any other failure rewinds
-    bool cont = (idid == -4) && ((xout > xp) ? (xpLoc > xp && xpLoc < xout)
-                                             : (xpLoc < xp && xpLoc > xout));
+    // a stiff report continues where it stopped; any other failure rewinds
+    bool cont = rxProbeContinues(idid, xp, xout, xpLoc);
     ind->rc[0] = 0;
     ind->err = 0;
     *istate = 1;
@@ -7340,7 +7355,7 @@ static int rxSegmentAutoSwitchGeneric(rx_solving_options *op,
   }
   if (_ypDyn) free(_ypDyn);
   rxAutoSwitchCount(op, ind, true, failed);
-  return (*istate > 0 && !ind->err) ? 1 : -4;
+  return rxSegmentStatus(*istate, ind);
 }
 
 // One interval of a single method other than dop853 (the record loop that

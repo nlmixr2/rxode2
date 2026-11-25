@@ -322,188 +322,248 @@ enum {
 };
 
 
+// what an rxGpuAdvance() state step did
+enum {
+  RXGA_DONE = 0, // the subject finished
+  RXGA_POSTED,   // it posted a request
+  RXGA_NEXT      // it moved to another state
+};
+
+// post the request to integrate s from t0 to t1 in q row r, then wait in
+// state next
+static int rxGpuPost(rxGpuSub *s, int next, double t0, double t1, rxGpuReq &q,
+                     int r, int slot, rx_solve *rx, rx_solving_options *op,
+                     rx_solving_options_ind *ind) {
+  rxGpuFillReq(q, r, slot, s->init, (s->istate == 1) ? 0.0 : s->h, rx, op, ind,
+               s->yp, t0, t1);
+  s->init = 0;
+  s->t1 = t1;
+  s->st = next;
+  return RXGA_POSTED;
+}
+
+static int rxGpuStInit(rx_solve *rx, rx_solving_options *op, rxGpuSub *s,
+                       rx_solving_options_ind *ind) {
+  int *neq = s->neq;
+  neq[0] = op->neq;
+  neq[1] = s->id;
+  neq[0] = rxEffNeq(ind, op);
+  s->bad = 0;
+  s->istate = 1;
+  s->init = RXGS_INIT_ALL;
+  s->h = 0.0;
+  s->i = 0;
+  if (!iniSubject(neq[1], 0, ind, op, rx, update_inis)) {
+    s->st = RXGS_DONE;
+    return RXGA_DONE;
+  }
+  s->xp = getAllTimes(ind, 0);
+  ind->solvedIdx = 0;
+  s->st = RXGS_TOP;
+  return RXGA_NEXT;
+}
+
+// re-sort the rest of the timeline from record i after modeled times moved
+static void rxGpuResort(rx_solving_options_ind *ind, int i) {
+  double *_rtime = ind->timeThread;
+  for (int _j = i; _j < ind->n_all_times; _j++) {
+    int _raw = ind->ix[_j];
+    int _evid = getEvid(ind, _raw);
+    if (_evid >= 10 && _evid <= 99) {
+      _rtime[_raw] = ind->mtime[_evid - 10];
+    } else if (!isObs(_evid)) {
+      int _wh, _cmt, _wh100, _whI, _wh0;
+      getWh(_evid, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
+      if (_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) {
+        _rtime[_raw] = getAllTimes(ind, _raw);
+      }
+    }
+  }
+  reSortMainTimeline(ind, i);
+  ind->mainSorted = 1;
+}
+
+static int rxGpuStTop(rx_solving_options *op, rxGpuSub *s,
+                      rx_solving_options_ind *ind) {
+  if (s->i >= ind->n_all_times) {
+    s->st = RXGS_DONE;
+    return RXGA_DONE;
+  }
+  int i = s->i;
+  ind->idx = i;
+  ind->linSS = 0;
+  if (ind->mainSorted == 0) rxGpuResort(ind, i);
+  _growSolveIfNeeded(ind, op, i, 1);
+  s->yp = getSolve(i);
+  s->xout = ind->timeThread[ind->ix[i]];
+  if (getEvid(ind, ind->ix[i]) == 3 || isSameTime(s->xout, s->xp)) {
+    s->st = RXGS_POST;
+  } else if (ind->err) {
+    ind->rc[0] = -1000;
+    badSolveExit(s->i);
+    s->bad = 1;
+    s->st = RXGS_POST;
+  } else {
+    s->st = RXGS_EXTRA;
+  }
+  return RXGA_NEXT;
+}
+
+static int rxGpuStExtra(rx_solve *rx, rx_solving_options *op, rxGpuSub *s,
+                        rx_solving_options_ind *ind, int neqOde, rxGpuReq &q,
+                        int r, int slot) {
+  if (s->bad ||
+      !handleExtraDose(s->neq, ind->BadDose, ind->InfusionRate, ind->dose,
+                       s->yp, s->xout, s->xp, ind->id, &(s->i),
+                       ind->n_all_times, &(s->istate), op, ind,
+                       update_inis, NULL)) {
+    s->st = RXGS_MAIN;
+    return RXGA_NEXT;
+  }
+  if (isSameTime(ind->extraDoseNewXout, s->xp)) {
+    s->st = RXGS_EXTRA_EV;
+    return RXGA_NEXT;
+  }
+  double xo = ind->extraDoseNewXout;
+  preSolve(op, ind, s->xp, xo, s->yp);
+  s->st = RXGS_EXTRA_RES;
+  if (neqOde > 0) return rxGpuPost(s, RXGS_EXTRA_RES, s->xp, xo, q, r, slot, rx, op, ind);
+  return RXGA_NEXT;
+}
+
+// the integration s posted finished: rxode2's post-solve checks
+static void rxGpuStResult(rx_solve *rx, rx_solving_options *op, rxGpuSub *s,
+                          rx_solving_options_ind *ind) {
+  copyLinCmt(s->neq, ind, op, s->yp);
+  postSolve(s->neq, &(s->istate), ind->rc, &(s->i), s->yp, rxGpuErr, 5, true,
+            ind, op, rx);
+  if (*(ind->rc) < 0) s->bad = 1;
+}
+
+static void rxGpuStExtraEv(rxGpuSub *s, rx_solving_options_ind *ind) {
+  if (!s->bad) {
+    int idx = ind->idx;
+    int ixds = ind->ixds;
+    int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
+    ind->idx = -1 - trueIdx;
+    handle_evid(ind->extraDoseEvid[trueIdx], s->neq[0], ind->BadDose,
+                ind->InfusionRate, ind->dose, s->yp, s->xout, s->neq[1], ind);
+    s->istate = 1;
+    ind->ixds = ixds;
+    ind->idx = idx;
+    ind->idxExtra++;
+    s->xp = ind->extraDoseNewXout;
+  }
+  s->st = RXGS_EXTRA;
+}
+
+static int rxGpuStMain(rx_solve *rx, rx_solving_options *op, rxGpuSub *s,
+                       rx_solving_options_ind *ind, int neqOde, rxGpuReq &q,
+                       int r, int slot) {
+  if (s->bad || isSameTime(s->xout, s->xp)) {
+    s->xp = s->xout;
+    s->st = RXGS_POST;
+    return RXGA_NEXT;
+  }
+  preSolve(op, ind, s->xp, s->xout, s->yp);
+  s->st = RXGS_MAIN_RES;
+  if (neqOde > 0) return rxGpuPost(s, RXGS_MAIN_RES, s->xp, s->xout, q, r, slot, rx, op, ind);
+  return RXGA_NEXT;
+}
+
+// the dose or reset events of record s->i
+static void rxGpuPostEvents(rx_solve *rx, rx_solving_options *op, rxGpuSub *s,
+                            rx_solving_options_ind *ind) {
+  int *neq = s->neq;
+  if (getEvid(ind, ind->ix[s->i]) == 3) {
+    handleEvid3(ind, op, rx, neq, &(s->xp), &(s->xout), s->yp,
+                &(s->istate), update_inis);
+  } else if (handleEvid1(&(s->i), rx, neq, s->yp, &(s->xout))) {
+    handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, s->yp,
+             s->xout, s->xp, ind->id, &(s->i), ind->n_all_times,
+             &(s->istate), op, ind, update_inis, NULL);
+    if (ind->wh0 == EVID0_OFF) {
+      ind->solve[ind->cmt] = op->inits[ind->cmt];
+    }
+    if (rx->istateReset) s->istate = 1;
+    s->xp = s->xout;
+  }
+}
+
+// modeled times and lags that moved with record s->i; returns 1 when the
+// record is requeued (its mtime changed)
+static int rxGpuPostRetime(rx_solve *rx, rxGpuSub *s,
+                           rx_solving_options_ind *ind) {
+  int requeued = 0;
+  if (rx->nMtime > 0 && recomputeMtimeIfNeeded(rx, ind, s->yp, s->i, s->xout)) {
+    ind->mainSorted = 0;
+    requeued = 1;
+  }
+  if ((rx->needSort & needSortAlag) &&
+      refreshLagTimesIfNeeded(rx, ind, s->yp, s->i + 1, s->xout)) {
+    ind->mainSorted = 0;
+  }
+  return requeued;
+}
+
+static void rxGpuStPost(rx_solve *rx, rx_solving_options *op, rxGpuSub *s,
+                        rx_solving_options_ind *ind) {
+  if (!s->bad) {
+    ind->idx = s->i;
+    rxGpuPostEvents(rx, op, s, ind);
+    int requeued = rxGpuPostRetime(rx, s, ind);
+    updateSolve(ind, op, s->neq, s->xout, s->i, ind->n_all_times);
+    if (requeued) s->i--;
+  }
+  rxNewindAfterRecord(ind, s->i);
+  ind->solvedIdx = s->i;
+  s->i++;
+  s->st = RXGS_TOP;
+}
+
+// one state of subject s; an RXGA_* code
+static int rxGpuStep(rx_solve *rx, rx_solving_options *op, rxGpuSub *s,
+                     rx_solving_options_ind *ind, int neqOde, rxGpuReq &q,
+                     int r, int slot) {
+  switch (s->st) {
+  case RXGS_INIT:
+    return rxGpuStInit(rx, op, s, ind);
+  case RXGS_TOP:
+    return rxGpuStTop(op, s, ind);
+  case RXGS_EXTRA:
+    return rxGpuStExtra(rx, op, s, ind, neqOde, q, r, slot);
+  case RXGS_EXTRA_RES:
+    rxGpuStResult(rx, op, s, ind);
+    s->xp = ind->extraDoseNewXout;
+    s->st = RXGS_EXTRA_EV;
+    return RXGA_NEXT;
+  case RXGS_EXTRA_EV:
+    rxGpuStExtraEv(s, ind);
+    return RXGA_NEXT;
+  case RXGS_MAIN:
+    return rxGpuStMain(rx, op, s, ind, neqOde, q, r, slot);
+  case RXGS_MAIN_RES:
+    rxGpuStResult(rx, op, s, ind);
+    s->xp = s->xout;
+    s->st = RXGS_POST;
+    return RXGA_NEXT;
+  case RXGS_POST:
+    rxGpuStPost(rx, op, s, ind);
+    return RXGA_NEXT;
+  default:
+    return RXGA_DONE;
+  }
+}
+
 // Advance subject s until it posts a request (returns 1) or finishes
 // (returns 0).  Runs on the subject's slot; q row r receives the request.
 static int rxGpuAdvance(rx_solve *rx, rx_solving_options *op, rxGpuSub *s,
                         rxGpuReq &q, int r, int slot) {
   rx_solving_options_ind *ind = &(rx->subjects[s->id]);
-  int *neq = s->neq;
   int neqOde = op->neq - op->numLin - op->numLinSens;
   for (;;) {
-    switch (s->st) {
-    case RXGS_INIT:
-      neq[0] = op->neq;
-      neq[1] = s->id;
-      neq[0] = rxEffNeq(ind, op);
-      s->bad = 0;
-      s->istate = 1;
-      s->init = RXGS_INIT_ALL;
-      s->h = 0.0;
-      s->i = 0;
-      if (!iniSubject(neq[1], 0, ind, op, rx, update_inis)) {
-        s->st = RXGS_DONE;
-        return 0;
-      }
-      s->xp = getAllTimes(ind, 0);
-      ind->solvedIdx = 0;
-      s->st = RXGS_TOP;
-      break;
-    case RXGS_TOP: {
-      if (s->i >= ind->n_all_times) {
-        s->st = RXGS_DONE;
-        return 0;
-      }
-      int i = s->i;
-      ind->idx = i;
-      ind->linSS = 0;
-      if (ind->mainSorted == 0) {
-        double *_rtime = ind->timeThread;
-        for (int _j = i; _j < ind->n_all_times; _j++) {
-          int _raw = ind->ix[_j];
-          int _evid = getEvid(ind, _raw);
-          if (_evid >= 10 && _evid <= 99) {
-            _rtime[_raw] = ind->mtime[_evid - 10];
-          } else if (!isObs(_evid)) {
-            int _wh, _cmt, _wh100, _whI, _wh0;
-            getWh(_evid, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
-            if (_whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) {
-              _rtime[_raw] = getAllTimes(ind, _raw);
-            }
-          }
-        }
-        reSortMainTimeline(ind, i);
-        ind->mainSorted = 1;
-      }
-      _growSolveIfNeeded(ind, op, i, 1);
-      s->yp = getSolve(i);
-      s->xout = ind->timeThread[ind->ix[i]];
-      if (getEvid(ind, ind->ix[i]) != 3 && !isSameTime(s->xout, s->xp)) {
-        if (ind->err) {
-          ind->rc[0] = -1000;
-          badSolveExit(s->i);
-          s->bad = 1;
-          s->st = RXGS_POST;
-        } else {
-          s->st = RXGS_EXTRA;
-        }
-      } else {
-        s->st = RXGS_POST;
-      }
-      break;
-    }
-    case RXGS_EXTRA:
-      if (!s->bad &&
-          handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose,
-                          s->yp, s->xout, s->xp, ind->id, &(s->i),
-                          ind->n_all_times, &(s->istate), op, ind,
-                          update_inis, NULL)) {
-        if (!isSameTime(ind->extraDoseNewXout, s->xp)) {
-          double xo = ind->extraDoseNewXout;
-          preSolve(op, ind, s->xp, xo, s->yp);
-          s->st = RXGS_EXTRA_RES;
-          if (neqOde > 0) {
-            rxGpuFillReq(q, r, slot, s->init, (s->istate == 1) ? 0.0 : s->h,
-                         rx, op, ind, s->yp, s->xp, xo);
-            s->init = 0;
-            s->t1 = xo;
-            return 1;
-          }
-        } else {
-          s->st = RXGS_EXTRA_EV;
-        }
-      } else {
-        s->st = RXGS_MAIN;
-      }
-      break;
-    case RXGS_EXTRA_RES: {
-      copyLinCmt(neq, ind, op, s->yp);
-      postSolve(neq, &(s->istate), ind->rc, &(s->i), s->yp, rxGpuErr, 5, true,
-                ind, op, rx);
-      if (*(ind->rc) < 0) s->bad = 1;
-      s->xp = ind->extraDoseNewXout;
-      s->st = RXGS_EXTRA_EV;
-      break;
-    }
-    case RXGS_EXTRA_EV:
-      if (!s->bad) {
-        int idx = ind->idx;
-        int ixds = ind->ixds;
-        int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
-        ind->idx = -1 - trueIdx;
-        handle_evid(ind->extraDoseEvid[trueIdx], neq[0], ind->BadDose,
-                    ind->InfusionRate, ind->dose, s->yp, s->xout, neq[1], ind);
-        s->istate = 1;
-        ind->ixds = ixds;
-        ind->idx = idx;
-        ind->idxExtra++;
-        s->xp = ind->extraDoseNewXout;
-      }
-      s->st = RXGS_EXTRA;
-      break;
-    case RXGS_MAIN:
-      if (!s->bad && !isSameTime(s->xout, s->xp)) {
-        preSolve(op, ind, s->xp, s->xout, s->yp);
-        s->st = RXGS_MAIN_RES;
-        if (neqOde > 0) {
-          rxGpuFillReq(q, r, slot, s->init, (s->istate == 1) ? 0.0 : s->h,
-                       rx, op, ind, s->yp, s->xp, s->xout);
-          s->init = 0;
-          s->t1 = s->xout;
-          return 1;
-        }
-      } else {
-        s->xp = s->xout;
-        s->st = RXGS_POST;
-      }
-      break;
-    case RXGS_MAIN_RES:
-      copyLinCmt(neq, ind, op, s->yp);
-      postSolve(neq, &(s->istate), ind->rc, &(s->i), s->yp, rxGpuErr, 5, true,
-                ind, op, rx);
-      if (*(ind->rc) < 0) s->bad = 1;
-      s->xp = s->xout;
-      s->st = RXGS_POST;
-      break;
-    case RXGS_POST: {
-      if (!s->bad) {
-        ind->idx = s->i;
-        if (getEvid(ind, ind->ix[s->i]) == 3) {
-          handleEvid3(ind, op, rx, neq, &(s->xp), &(s->xout), s->yp,
-                      &(s->istate), update_inis);
-        } else if (handleEvid1(&(s->i), rx, neq, s->yp, &(s->xout))) {
-          handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, s->yp,
-                   s->xout, s->xp, ind->id, &(s->i), ind->n_all_times,
-                   &(s->istate), op, ind, update_inis, NULL);
-          if (ind->wh0 == EVID0_OFF) {
-            ind->solve[ind->cmt] = op->inits[ind->cmt];
-          }
-          if (rx->istateReset) s->istate = 1;
-          s->xp = s->xout;
-        }
-        int _mtime_requeued = 0;
-        if (rx->nMtime > 0) {
-          if (recomputeMtimeIfNeeded(rx, ind, s->yp, s->i, s->xout)) {
-            ind->mainSorted = 0;
-            _mtime_requeued = 1;
-          }
-        }
-        if (rx->needSort & needSortAlag) {
-          if (refreshLagTimesIfNeeded(rx, ind, s->yp, s->i + 1, s->xout)) {
-            ind->mainSorted = 0;
-          }
-        }
-        updateSolve(ind, op, neq, s->xout, s->i, ind->n_all_times);
-        if (_mtime_requeued) s->i--;
-      }
-      rxNewindAfterRecord(ind, s->i);
-      ind->solvedIdx = s->i;
-      s->i++;
-      s->st = RXGS_TOP;
-      break;
-    }
-    default:
-      return 0;
-    }
+    int st = rxGpuStep(rx, op, s, ind, neqOde, q, r, slot);
+    if (st != RXGA_NEXT) return st == RXGA_POSTED;
   }
 }
 
@@ -559,34 +619,109 @@ extern "C" void par_gpu(rx_solve *rx) {
   }
 }
 
-static int par_gpu0(rx_solve *rx) {
-  rx_solving_options *op = rx->op;
-  int nslot = op->cores;
+// the slots of a solve: op->cores, within the buffers and the solve count
+static int rxGpuSlotCount(rx_solve *rx, int nsolve) {
+  int nslot = rx->op->cores;
   if (rxGpuSolveCfg.cl != NULL && rxGpuSolveCfg.cl->dims[RXG_D_NSUB] < nslot) {
     nslot = rxGpuSolveCfg.cl->dims[RXG_D_NSUB];
   }
   if (rxGpuSolveCfg.dims[RXG_D_NSUB] < nslot) nslot = rxGpuSolveCfg.dims[RXG_D_NSUB];
   if (nslot < 1) nslot = 1;
+  if (nslot > nsolve) nslot = nsolve;
+  return nslot;
+}
+
+// advance the subject on slot k until it waits on a request, the slot taking
+// the next subject (from *next) each time one finishes
+static void rxGpuRunSlot(rx_solve *rx, rx_solving_options *op, int k,
+                         rxGpuWork &w, uint32_t seed0, int *next, int nsolve) {
+  rxGpuSub *s = &w.sub[k];
+  for (;;) {
+    if (s->st == RXGS_INIT) setSeedEng1(seed0 + s->id);
+    if (rxGpuAdvance(rx, op, s, w.q, k, k)) {
+      s->req = 1;
+      return;
+    }
+    // finished: the slot takes the next subject
+    s->req = 0;
+    int nx;
+#ifdef _OPENMP
+#pragma omp atomic capture
+#endif
+    nx = (*next)++;
+    if (nx >= nsolve) {
+      w.active[k] = 0;
+      return;
+    }
+    s->id = rx->ordId[nx] - 1;
+    s->st = RXGS_INIT;
+  }
+}
+
+static void rxGpuCopyRow(rxGpuReq &dst, int dr, const rxGpuReq &src, int sr) {
+  const int *d = rxGpuSolveCfg.dims;
+  size_t a = (size_t)dr, b = (size_t)sr;
+  memcpy(&dst.y[a*d[RXG_D_NEQ1]], &src.y[b*d[RXG_D_NEQ1]], sizeof(double)*d[RXG_D_NEQ1]);
+  memcpy(&dst.rd[a*d[RXG_D_RD]], &src.rd[b*d[RXG_D_RD]], sizeof(double)*d[RXG_D_RD]);
+  memcpy(&dst.ri[a*d[RXG_D_RI]], &src.ri[b*d[RXG_D_RI]], sizeof(int)*d[RXG_D_RI]);
+  memcpy(&dst.p0[a*d[RXG_D_NPAR1]], &src.p0[b*d[RXG_D_NPAR1]], sizeof(double)*d[RXG_D_NPAR1]);
+  memcpy(&dst.p1[a*d[RXG_D_NPAR1]], &src.p1[b*d[RXG_D_NPAR1]], sizeof(double)*d[RXG_D_NPAR1]);
+  memcpy(&dst.pl[a*d[RXG_D_NLHS1]], &src.pl[b*d[RXG_D_NLHS1]], sizeof(double)*d[RXG_D_NLHS1]);
+  memcpy(&dst.ir[a*d[RXG_D_NEQ1]], &src.ir[b*d[RXG_D_NEQ1]], sizeof(double)*d[RXG_D_NEQ1]);
+  memcpy(&dst.on[a*d[RXG_D_NEQ1]], &src.on[b*d[RXG_D_NEQ1]], sizeof(int)*d[RXG_D_NEQ1]);
+}
+
+// gather the slots' requests into the round's rows (w.map: row -> slot);
+// *nact gets the active slots.  Returns the request count.
+static int rxGpuGather(rxGpuWork &w, int nslot, int *nact) {
+  int n = 0;
+  *nact = 0;
+  for (int k = 0; k < nslot; k++) {
+    if (!w.active[k]) continue;
+    (*nact)++;
+    if (!w.sub[k].req) continue;
+    w.map[n] = k;
+    rxGpuCopyRow(w.q2, n, w.q, k);
+    n++;
+  }
+  return n;
+}
+
+// integrate the round's n requests (OpenCL or the host build); 0, or 1 when
+// an OpenCL round failed
+static int rxGpuRunRound(rxGpuWork &w, int n, int threads) {
+  rxGpuReq &q = w.q2;
+  if (rxGpuSolveCfg.cl != NULL) {
+    return rxGpuClRound(rxGpuSolveCfg.cl, n, q.y.data(), q.rd.data(),
+                        q.ri.data(), q.p0.data(), q.p1.data(), q.pl.data(),
+                        q.ir.data(), q.on.data()) != 0;
+  }
+  rxGpuHostState &hst = w.st;
+  rxGpuSolveCfg.round(&n, &threads, q.y.data(), q.rd.data(), q.ri.data(),
+                      q.p0.data(), q.p1.data(), q.pl.data(), q.ir.data(),
+                      q.on.data(), hst.ad.data(), hst.ai.data(), hst.hs.data(),
+                      hst.hrec.data(), rxGpuSolveCfg.od.data(),
+                      rxGpuSolveCfg.oi.data());
+  return 0;
+}
+
+static int par_gpu0(rx_solve *rx) {
+  rx_solving_options *op = rx->op;
   uint32_t nsub = rx->nsub, nsim = rx->nsim;
   int nsolve = (int)(nsim * nsub);
-  if (nslot > nsolve) nslot = nsolve;
+  int nslot = rxGpuSlotCount(rx, nsolve);
   int threads = rxGpuSolveCfg.threads > 0 ? rxGpuSolveCfg.threads : 1;
   uint32_t seed0 = getRxSeed1(op->cores);
   rxGpuWork &w = rxGpuParWork;
   w.ensure(nslot, rxGpuSolveCfg.cl == NULL, true);
   std::vector<rxGpuSub> &sub = w.sub;
-  rxGpuReq &slotReq = w.q, &roundReq = w.q2;
-  rxGpuHostState &hst = w.st;
-  std::vector<int> &active = w.active, &map = w.map;
-  for (int k = 0; k < nslot; k++) active[k] = 0;
   int next = 0;
   for (int k = 0; k < nslot; k++) {
     sub[k].id = rx->ordId[next++] - 1;
     sub[k].st = RXGS_INIT;
     sub[k].req = 0;
-    active[k] = 1;
+    w.active[k] = 1;
   }
-  const int *d = rxGpuSolveCfg.dims;
   int nact = nslot;
   int fail = 0;
   while (nact > 0 && !fail) {
@@ -595,69 +730,18 @@ static int par_gpu0(rx_solve *rx) {
 #pragma omp parallel for num_threads(threads) schedule(dynamic)
 #endif
     for (int k = 0; k < nslot; k++) {
-      if (!active[k]) continue;
+      if (!w.active[k]) continue;
       setRxThreadId(k);
-      rxGpuSub *s = &sub[k];
-      for (;;) {
-        if (s->st == RXGS_INIT) setSeedEng1(seed0 + s->id);
-        if (rxGpuAdvance(rx, op, s, slotReq, k, k)) {
-          s->req = 1;
-          break;
-        }
-        // finished: the slot takes the next subject
-        s->req = 0;
-        int nx;
-#ifdef _OPENMP
-#pragma omp atomic capture
-#endif
-        nx = next++;
-        if (nx >= nsolve) {
-          active[k] = 0;
-          break;
-        }
-        s->id = rx->ordId[nx] - 1;
-        s->st = RXGS_INIT;
-      }
+      rxGpuRunSlot(rx, op, k, w, seed0, &next, nsolve);
       setRxThreadId(-1);
     }
-    // gather the requests into one round
-    int n = 0;
-    nact = 0;
-    for (int k = 0; k < nslot; k++) {
-      if (!active[k]) continue;
-      nact++;
-      if (!sub[k].req) continue;
-      map[n] = k;
-      memcpy(&roundReq.y[(size_t)n*d[RXG_D_NEQ1]], &slotReq.y[(size_t)k*d[RXG_D_NEQ1]], sizeof(double)*d[RXG_D_NEQ1]);
-      memcpy(&roundReq.rd[(size_t)n*d[RXG_D_RD]], &slotReq.rd[(size_t)k*d[RXG_D_RD]], sizeof(double)*d[RXG_D_RD]);
-      memcpy(&roundReq.ri[(size_t)n*d[RXG_D_RI]], &slotReq.ri[(size_t)k*d[RXG_D_RI]], sizeof(int)*d[RXG_D_RI]);
-      memcpy(&roundReq.p0[(size_t)n*d[RXG_D_NPAR1]], &slotReq.p0[(size_t)k*d[RXG_D_NPAR1]], sizeof(double)*d[RXG_D_NPAR1]);
-      memcpy(&roundReq.p1[(size_t)n*d[RXG_D_NPAR1]], &slotReq.p1[(size_t)k*d[RXG_D_NPAR1]], sizeof(double)*d[RXG_D_NPAR1]);
-      memcpy(&roundReq.pl[(size_t)n*d[RXG_D_NLHS1]], &slotReq.pl[(size_t)k*d[RXG_D_NLHS1]], sizeof(double)*d[RXG_D_NLHS1]);
-      memcpy(&roundReq.ir[(size_t)n*d[RXG_D_NEQ1]], &slotReq.ir[(size_t)k*d[RXG_D_NEQ1]], sizeof(double)*d[RXG_D_NEQ1]);
-      memcpy(&roundReq.on[(size_t)n*d[RXG_D_NEQ1]], &slotReq.on[(size_t)k*d[RXG_D_NEQ1]], sizeof(int)*d[RXG_D_NEQ1]);
-      n++;
-    }
+    int n = rxGpuGather(w, nslot, &nact);
     if (n == 0) continue;
-    if (rxGpuSolveCfg.cl != NULL) {
-      if (rxGpuClRound(rxGpuSolveCfg.cl, n, roundReq.y.data(), roundReq.rd.data(),
-                       roundReq.ri.data(), roundReq.p0.data(), roundReq.p1.data(),
-                       roundReq.pl.data(), roundReq.ir.data(),
-                       roundReq.on.data()) != 0) {
-        fail = 1;
-        break;
-      }
-    } else {
-      rxGpuSolveCfg.round(&n, &threads, roundReq.y.data(), roundReq.rd.data(),
-                          roundReq.ri.data(), roundReq.p0.data(), roundReq.p1.data(),
-                          roundReq.pl.data(), roundReq.ir.data(), roundReq.on.data(),
-                          hst.ad.data(), hst.ai.data(), hst.hs.data(),
-                          hst.hrec.data(), rxGpuSolveCfg.od.data(),
-                          rxGpuSolveCfg.oi.data());
-    }
+    fail = rxGpuRunRound(w, n, threads);
+    if (fail) break;
     for (int r = 0; r < n; r++) {
-      int k = map[r];
-      rxGpuResult(&sub[k], roundReq, r);
+      int k = w.map[r];
+      rxGpuResult(&sub[k], w.q2, r);
       sub[k].req = 0;
     }
   }
