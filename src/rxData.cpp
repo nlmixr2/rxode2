@@ -6716,6 +6716,18 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
       _liw = 20 + _bneq;
     }
     ensureRworkPool((int)op->cores, _lrw, _liw);
+    if (op->stiff >= 110 && op->stiff <= 114) {
+      // a restored GPU solve runs on the setup R installed for this model just
+      // before, with the restored per-thread pools as its slots
+      CharacterVector _trans = mvRaw[RxMv_trans];
+      std::string _key = as<std::string>(_trans[RxMvTrans_model_vars]) + ":" +
+        std::to_string(op->stiff);
+      if (!rxGpuSolveClaim(_key.c_str())) {
+        (Rf_errorcall)(R_NilValue, _("the GPU solve of the restored state is not set up"));
+      }
+      if (op->cores <= 1) rxGpuSolveOneThread();
+      rxGpuSolveWorkers(op->cores);
+    }
   }
 
   return rxSolve_finalize(obj, rxControl, specParams, extraArgs,

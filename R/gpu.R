@@ -897,22 +897,50 @@ rxGpuInfo <- function() {
 #'
 #' @param bytes device bytes (`gpuDevice` of `.rxGpuSolveMem()`)
 #' @param device,precision as `.rxGpuDevice()`
+#' @param batch slots (for the message)
+#' @param maxBuffer largest single device buffer
 #' @return `NULL`, invisibly
 #' @noRd
 #' @author Matthew L. Fidler
-.rxGpuCheckDeviceMem <- function(bytes, device, precision, batch) {
+.rxGpuCheckDeviceMem <- function(bytes, device, precision, batch, maxBuffer = 0) {
   .d <- tryCatch(.rxGpuDevice(device, precision), error = function(e) NULL)
   if (is.null(.d)) {
     return(invisible(NULL))
   }
   .mem <- .Call(`_rxode2_rxGpuClDeviceMem`, .d$dev)
-  if (!is.na(.mem[1]) && bytes > 0.9 * .mem[1]) {
+  .rxGpuCheckDeviceMem0(bytes, .mem, .d$index, batch, maxBuffer)
+}
+
+#' Stop when a GPU solve's buffers exceed a device's memory
+#'
+#' @param bytes device bytes
+#' @param mem `CL_DEVICE_GLOBAL_MEM_SIZE` and `CL_DEVICE_MAX_MEM_ALLOC_SIZE`
+#' @param index device index (for the message)
+#' @param batch slots (for the message)
+#' @param maxBuffer largest single device buffer
+#' @return `NULL`, invisibly
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuCheckDeviceMem0 <- function(bytes, mem, index, batch, maxBuffer = 0) {
+  if (!is.na(mem[2]) && isTRUE(maxBuffer > mem[2])) {
+    stop(
+      sprintf(
+        "a GPU solve buffer needs %.2f GB but device %d allocates at most %.2f GB at once; lower rxControl(gpuBatch=) (now %d)",
+        maxBuffer / 1e9,
+        index,
+        mem[2] / 1e9,
+        as.integer(batch)
+      ),
+      call. = FALSE
+    )
+  }
+  if (!is.na(mem[1]) && bytes > 0.9 * mem[1]) {
     stop(
       sprintf(
         "the GPU solve needs %.2f GB of device memory but device %d has %.2f GB; lower rxControl(gpuBatch=) (now %d)",
         bytes / 1e9,
-        .d$index,
-        .mem[1] / 1e9,
+        index,
+        mem[1] / 1e9,
         as.integer(batch)
       ),
       call. = FALSE
@@ -1278,7 +1306,13 @@ rxGpuInfo <- function() {
   }
   if (.backend == "opencl") {
     .mem <- .rxGpuSolveMem(object, ctl, nsolve, backend = "opencl")
-    .rxGpuCheckDeviceMem(.mem[["gpuDevice"]], .dev, ctl$gpuPrecision, .batch)
+    .rxGpuCheckDeviceMem(
+      .mem[["gpuDevice"]],
+      .dev,
+      ctl$gpuPrecision,
+      .batch,
+      maxBuffer = attr(.mem, "gpuDeviceMaxBuffer")
+    )
   }
   .run <- .rxGpuRun(
     object,

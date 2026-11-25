@@ -479,6 +479,27 @@ rxTest({
     }
   })
 
+  test_that("a GPU solve replays from its serialized state", {
+    .b <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - cl / v * center
+      cp <- center / v
+    })
+    .p <- data.frame(id = 1:3, ka = c(1, 1.5, 2), cl = 3, v = 30)
+    .ev <- et(amt = 300) |> et(seq(0, 24, by = 4)) |> et(id = 1:3)
+    .f <- tempfile(fileext = ".rxbin")
+    on.exit(unlink(.f), add = TRUE)
+    .g <- suppressMessages(rxSolve(.b, .p, .ev, method = "gpuT54", gpuBackend = "cpu"))
+    suppressMessages(rxSolve(.b, .p, .ev, method = "gpuT54", gpuBackend = "cpu", serializeFile = .f))
+    ## a wider setup of another solve in between must not size the replay's slots
+    .ev2 <- et(amt = 300) |> et(seq(0, 24, by = 4)) |> et(id = 1:40)
+    suppressMessages(rxSolve(.b, c(ka = 1, cl = 3, v = 30), .ev2, method = "gpuT54", gpuBackend = "cpu", cores = 1L))
+    .r <- suppressMessages(rxSolve(.b, .f))
+    ## a replay differs from the direct solve within the tolerances, as for
+    ## the host methods
+    expect_equal(.r$cp, .g$cp, tolerance = 1e-5)
+  })
+
   test_that("a GPU setup armed for one method is not claimed by another", {
     .b <- rxode2({
       d/dt(depot) <- -ka * depot

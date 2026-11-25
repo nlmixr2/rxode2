@@ -98,8 +98,11 @@
 - `rxMemoryEstimate()` (and so `rxSolve()`'s out-of-memory check) now counts
   the GPU methods' per-slot host workspaces and the per-thread `evid_()`
   push pools, and reports the GPU device buffers separately.  An OpenCL
-  solve whose buffers do not fit on the device stops with a message to
-  lower `rxControl(gpuBatch=)`.
+  solve whose buffers do not fit on the device, or whose largest buffer
+  exceeds the device's single-allocation limit, stops with a message to
+  lower `rxControl(gpuBatch=)`.  Out-of-memory chunking counts the per-slot
+  and per-thread buffers as fixed, and a GPU solve replays from its
+  `serializeFile=` state on that state's own thread slots.
 - New host method `"ros54p"` (Rodas5P, Steinebach's L-stable Rosenbrock 5(4)
   with the analytical Jacobian) and its AutoSwitch composites `"t54+ros54p"`
   and `"vern76+ros54p"`.  It evaluates the time derivative only for a model

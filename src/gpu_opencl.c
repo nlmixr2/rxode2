@@ -173,7 +173,8 @@ static size_t rxGpuClElt(const rxGpuCl *g, int b) {
 
 // Bytes rxGpuClNew() allocates for layout dims: out[0] on the device
 // (gpuDevice), out[1] on the host (gpuStage: the float staging buffer and the
-// zeroed block that starts the subject states, live together at setup)
+// zeroed block that starts the subject states, live together at setup),
+// out[2] the largest single device buffer
 void rxGpuClBytes(const int *dims, int single, double *out) {
   rxGpuCl g;
   memset(&g, 0, sizeof(g));
@@ -181,12 +182,14 @@ void rxGpuClBytes(const int *dims, int single, double *out) {
   g.single = single;
   size_t w[RXG_B_N], most = 0, nsub = (size_t)dims[RXG_D_NSUB];
   rxGpuClWidths(&g, w);
-  double dev = 0.0;
+  double dev = 0.0, big = 0.0;
   for (int b = 0; b < RXG_B_N; b++) {
     size_t n = (b == RXG_B_OD || b == RXG_B_OI) ? w[b] : w[b]*nsub;
     if (n == 0) n = 1;
     if (n > most && b < RXG_B_AD) most = n;
-    dev += (double)n*rxGpuClElt(&g, b);
+    double nb = (double)n*rxGpuClElt(&g, b);
+    if (nb > big) big = nb;
+    dev += nb;
   }
   if (most < w[RXG_B_OD]) most = w[RXG_B_OD];
   size_t nz = w[RXG_B_AI]*nsub;
@@ -194,6 +197,7 @@ void rxGpuClBytes(const int *dims, int single, double *out) {
   if (w[RXG_B_HS]*nsub > nz) nz = w[RXG_B_HS]*nsub;
   out[0] = dev;
   out[1] = ((double)most + (double)(nz > 0 ? nz : 1))*sizeof(double);
+  out[2] = big;
 }
 
 void rxGpuClFree(rxGpuCl *g) {

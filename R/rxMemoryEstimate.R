@@ -779,7 +779,17 @@ rxMemoryEstimate <- function(
   # time still needs the whole per-thread exponential cache and solver scratch.
   # Dividing them by the subject count would understate the chunk, and would
   # keep understating it however small the chunks got.  Take them off the top.
-  .fixedNames <- c("indLinExpCache", "indLinWork")
+  # A GPU method's per-slot buffers stop growing at gpuBatch slots, so they
+  # are fixed too.
+  .fixedNames <- c(
+    "indLinExpCache",
+    "indLinWork",
+    "extraDosing",
+    "gpuHostWork",
+    "gpuHostState",
+    "gpuSlotWork",
+    "gpuStage"
+  )
   .fixed <- sum(vapply(.est[intersect(names(.est), .fixedNames)], as.numeric, numeric(1)))
   .memPerSub <- (as.numeric(.est$total) - .fixed) / max(1L, .est$effectiveSubs)
   .avail <- .est$freeRamBytes * safetyFactor - .fixed
