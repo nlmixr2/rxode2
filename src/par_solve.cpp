@@ -2977,6 +2977,7 @@ static inline void solveWith1PtComposite(int *neq, double *yp, double xout, doub
   if (_failed) {
     bool _stiffStop = (idid == -4);
     ind->rc[0] = 0; ind->err = 0; *istate = 1; idid = 1;
+    rxSolveDiagClear(ind->id); // the secondary takes over: not a failure
     // yp/xp are the probe's last fully accepted step when the primary is dop853
     // and it got anywhere; otherwise rewind to the interval start.
     // A t54/vern76 probe's stiff report (idid -4) also stops at its last
@@ -7392,6 +7393,7 @@ static int rxSegmentAutoSwitchGeneric(rx_solving_options *op,
     bool cont = rxProbeContinues(idid, xp, xout, xpLoc);
     ind->rc[0] = 0;
     ind->err = 0;
+    rxSolveDiagClear(ind->id); // the secondary takes over: not a failure
     *istate = 1;
     idid = 1;
     if (!cont) {
@@ -7475,6 +7477,7 @@ static int rxSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
       // rewind when the probe accepted nothing.
       ind->rc[0] = 0;
       ind->err = 0;
+      rxSolveDiagClear(ind->id); // the secondary takes over: not a failure
       *istate = 1;
       double xpLoc = st.xLast;
       bool continueFrom = (xout > xp) ? (xpLoc > xp && xpLoc < xout)
@@ -8304,6 +8307,7 @@ static int denseSegmentSolve(rx_solve *rx, rx_solving_options *op,
       // but not obs_next, so a re-solved segment kept the probe's fills.
       ind->rc[0] = 0;
       ind->err = 0;
+      rxSolveDiagClear(ind->id); // ros4 takes over: not a failure
       double xpLoc = st.xLast;
       bool continueFrom = (xout > xp) ? (xpLoc > xp && xpLoc < xout)
                                       : (xpLoc < xp && xpLoc > xout);

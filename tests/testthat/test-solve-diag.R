@@ -41,6 +41,25 @@ rxTest({
     }
   })
 
+  test_that("an auto-switch probe the stiff secondary recovers prints nothing", {
+    # x settles fast to 0.5; an explicit trial stage below 0.4999 makes y's
+    # derivative NaN, which fails f45 alone but not f45+ros4
+    .m <- function() {
+      model({
+        x(0) <- 1
+        y(0) <- 1
+        d/dt(x) <- -1000 * (x - 0.5)
+        d/dt(y) <- sqrt(x - 0.4999)
+      })
+    }
+    .ev <- et(seq(0, 1, by = 0.1))
+    .r <- .diagSolve(.m, .ev, method = "f45")
+    expect_true(any(grepl("non-finite for: y", .r$o, fixed = TRUE)))
+    .r <- .diagSolve(.m, .ev, method = "f45+ros4")
+    expect_identical(.r$o, character(0))
+    expect_false(anyNA(.r$s$y))
+  })
+
   test_that("states spanning many orders of magnitude give the atol hint", {
     .m <- function() {
       model({
