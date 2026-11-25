@@ -66,7 +66,7 @@ static inline void wprintValue(char *value, int isId) {
 
 // Identifiers whose C reads solver state (exact case, then any case)
 static const char *_rxgStateIds[] = {"CMT", "rx__PTR__", "rx__isObs__",
-  "newind", "NEWIND", "rxFlag", NULL};
+  "newind", "NEWIND", "rxFlag", "rxSsAdvance", NULL};
 static const char *_rxgStateIdsI[] = {"amt", "tlast", "mixnum", "mixest",
   "mixunif", NULL};
 

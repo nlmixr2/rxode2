@@ -314,6 +314,10 @@ Note that `rxFlag` will always output `11` or `calc_lhs` since that is
 where the final variables are calculated, though you can tweak or test
 certain parts of `rxode2` by using this flag.
 
+`rxSsAdvance` is `1` while the solver advances a steady-state dose and `0`
+otherwise, so `d/dt(auc) <- (1 - rxSsAdvance)*cp` keeps the steady-state
+history out of an accumulating compartment.
+
 ## Residual functions when using rxode2 functions
 
 In addition to `~` hiding output for certain types of output, it also is

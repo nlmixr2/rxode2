@@ -232,6 +232,34 @@ p1 / p2
 
 This technique can also be used for steady-state disease processes.
 
+## Accumulating compartments at steady state
+
+An accumulating compartment such as an AUC never reaches a steady state, so
+the steady-state advance would add the whole dosing history to it.  The model
+variable `rxSsAdvance` is `1` during the advance and `0` otherwise; holding
+the compartment with it gives the AUC from the steady-state dose onwards:
+
+```{r}
+mAuc <- function() {
+  ini({
+    ka <- 1
+    cl <- 1
+    v  <- 10
+  })
+  model({
+    d/dt(depot)   <- -ka*depot
+    d/dt(central) <- ka*depot - cl/v*central
+    d/dt(auc)     <- (1 - rxSsAdvance)*central/v
+  })
+}
+
+ev <- et(amt=100, ii=24, ss=1) |>
+  et(seq(0, 24, by=1))
+
+# the AUC over one steady-state interval is dose/cl = 100
+rxSolve(mAuc, ev) |> plot(auc)
+```
+
 # Reset Events
 
 `evid=3` (or `evid=reset`) resets all compartments to their initial

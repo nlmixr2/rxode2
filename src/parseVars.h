@@ -90,6 +90,7 @@ static inline int isReservedVariable(const char *s) {
     !strcmp("M_LN_SQRT_2PI", s) ||
     !strcmp("M_LN_SQRT_PId2", s) ||
     !strcmp("rxFlag", s) ||
+    !strcmp("rxSsAdvance", s) ||
     // newind/t
     !strcmp("newind", s) ||
     !strcmp("NEWIND", s) ||

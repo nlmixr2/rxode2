@@ -480,6 +480,15 @@ static void rxSolveErrPush(int id, int err) {
 rx_solving_options op_global;
 extern int nPastEvid_global;
 extern int ssNotConv_global;
+// ss=2 superposition: add the state before the dose to the added regimen's
+// steady state.  The advance starts from that state, so one it left unchanged
+// (held by rxSsAdvance, or with no dynamics) has nothing to add.
+static inline void ssAddSaved(double *yp, const double *solveSave, int neq) {
+  for (int j = neq; j--;) {
+    if (yp[j] != solveSave[j]) yp[j] += solveSave[j];
+  }
+}
+
 // flag an iterated steady state that used maxSS doses without converging;
 // minSS = maxSS asks for that many doses, and a failed solve (rc +/-2019) is
 // reported on its own, so neither is flagged
@@ -4217,18 +4226,18 @@ static inline double ssInfRates(rx_solving_options_ind *ind, int infB, int infE,
   return 1.0;
 }
 
-void handleSS(int *neq,
-              int *BadDose,
-              double *InfusionRate,
-              double *dose,
-              double *yp,
-              double xout, double xp, int id,
-              int *i, int nx,
-              int *istate,
-              rx_solving_options *op,
-              rx_solving_options_ind *ind,
-              t_update_inis u_inis,
-              void *ctx) {
+static void handleSSCore(int *neq,
+                         int *BadDose,
+                         double *InfusionRate,
+                         double *dose,
+                         double *yp,
+                         double xout, double xp, int id,
+                         int *i, int nx,
+                         int *istate,
+                         rx_solving_options *op,
+                         rx_solving_options_ind *ind,
+                         t_update_inis u_inis,
+                         void *ctx) {
   rx_solve *rx = &rx_global;
   _adjSSinfKind = 0; _adjSS2 = 0; _adjSSbolusIi = 0.0;   // reset adjoint ss handoffs
   _adjSSinfModeled = 0; _adjSSinfAmt = 0.0; _adjSSinfAmtRaw = 0.0;
@@ -4653,7 +4662,7 @@ void handleSS(int *neq,
           if (isModeled) _adjSSinfModeled = -1;   // modeled full-interval ss2: not yet supported
         }
         // Add at the end
-        for (j = neq[0];j--;) yp[j]+=ind->solveSave[j];
+        ssAddSaved(yp, ind->solveSave, neq[0]);
       }
       // Adjoint handoff: continuous / full-interval infusion reaches a CONSTANT
       // steady state (f(Y_ss)+R.e = 0), so dY_ss/dp = -J^{-1} df/dp (a linear
@@ -5094,7 +5103,7 @@ void handleSS(int *neq,
       // saved pre-ss2 state) for the adjoint superposition term.
       if (op->adjoint) { _adjSS2 = 1; _adjSS2peak.assign(yp, yp + neq[0]); }
       // Add at the end
-      for (j = neq[0];j--;) yp[j]+=ind->solveSave[j];
+      ssAddSaved(yp, ind->solveSave, neq[0]);
     }
     if (!doSSinf && !isSsLag && !skipDosingEvent){
       // REprintf("handleEvid %d %d %d\n", doSSinf, isSsLag, skipDosingEvent);
@@ -5139,6 +5148,25 @@ void handleSS(int *neq,
     ind->ixds=oldIxds; ind->idx=oldIdx;
   }
   updateExtraDoseGlobals(ind);
+}
+
+// rxSsAdvance is 1 in the model while the steady state is solved
+void handleSS(int *neq,
+              int *BadDose,
+              double *InfusionRate,
+              double *dose,
+              double *yp,
+              double xout, double xp, int id,
+              int *i, int nx,
+              int *istate,
+              rx_solving_options *op,
+              rx_solving_options_ind *ind,
+              t_update_inis u_inis,
+              void *ctx) {
+  ind->ssAdvance = 1;
+  handleSSCore(neq, BadDose, InfusionRate, dose, yp, xout, xp, id, i, nx,
+               istate, op, ind, u_inis, ctx);
+  ind->ssAdvance = 0;
 }
 
 // tte() cumulative hazards only grow, so they take no part in a steady-state
