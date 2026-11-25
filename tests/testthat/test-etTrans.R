@@ -3594,6 +3594,8 @@ rxTest({
     expect_error(et(amt = 100, ii = 12, ss = -0.5), "'ss' cannot be negative")
     expect_error(et(amt = 100, ii = 12, addl = -1), "'addl' cannot be negative")
     expect_error(et(amt = 100, ii = 12, ss = -1), "'ss' cannot be negative")
+    expect_error(suppressWarnings(etTrans(.ev(addl = -2147483649), .mod)), "'addl' cannot be negative")
     expect_error(et(amt = 100, ii = 12, addl = 2, ss = 1), NA)
+    expect_error(et(amt = 100, ii = 12, addl = " 2"), NA)
   })
 })

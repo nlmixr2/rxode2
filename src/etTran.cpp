@@ -72,13 +72,13 @@ static inline bool etRateDurIsDose(double x) {
   return x > 0.0 || x == -1.0 || x == -2.0;
 }
 
-// as<IntegerVector>() truncates a value in (-1, 0) to 0; keep it negative so
-// the row loop rejects it like any other negative 'addl'/'ss'.
+// as<IntegerVector>() maps a value in (-1, 0) to 0 and one below INT_MIN to
+// NA; keep it negative so the row loop rejects it like any negative 'addl'/'ss'.
 static inline void etKeepNegative(IntegerVector &out, SEXP in) {
   if (TYPEOF(in) != REALSXP) return;
   double *x = REAL(in);
   for (R_xlen_t j = 0; j < out.size(); ++j) {
-    if (out[j] == 0 && x[j] < 0.0) out[j] = -1;
+    if (x[j] < 0.0 && (out[j] == 0 || out[j] == NA_INTEGER)) out[j] = -1;
   }
 }
 

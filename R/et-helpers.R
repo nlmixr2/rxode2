@@ -661,6 +661,8 @@
 #' @noRd
 #' @author Matthew L. Fidler
 .etAssertAddlSs <- function(addl, ss) {
+  addl <- suppressWarnings(as.numeric(addl))
+  ss <- suppressWarnings(as.numeric(ss))
   if (any(addl < 0L, na.rm = TRUE)) {
     stop("'addl' cannot be negative", call. = FALSE)
   }
