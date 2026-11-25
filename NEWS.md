@@ -16,6 +16,12 @@
   the second-order and eta-space carry reads); a `linCmtB()` call that
   changes the kernel's state is never shared, and no read is shared across one, so a FOCEi gradient model of a `linCmt()`
   fit makes far fewer `linCmtB()` calls per record.
+- Models can now write one-dimensional partial differential equations by the
+  method of lines: `grid(x, from, to, n)` declares a grid, `d/dt(C[x])`
+  declares a gridded state expanded into ODE states `C_1, ..., C_n`, with the
+  difference operators `d2x()`/`dx()`, the boundary conditions `value()` and
+  `flux()`, `integrate()` and point values `C[x = value]` (see `?rxPde`,
+  #1759).
 - The model-building piping functions moved here from 'nlmixr2lib':
   absorption (`addDepot()`, `addTransit()`, `addWeibullAbs()`,
   `addZeroOrderAbs()`, `addSecondAbsorption()`, `convertTransitMtt()` and

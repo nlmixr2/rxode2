@@ -39,6 +39,7 @@ Other Model definition:
 \code{\link[=rxCreateCache]{rxCreateCache()}},
 \code{\link[=rxLastCompile]{rxLastCompile()}},
 \code{\link[=rxNorm]{rxNorm()}},
+\code{\link[=rxPde]{rxPde()}},
 \code{\link{rxReservedKeywords}},
 \code{\link[=rxSupportedFuns]{rxSupportedFuns()}},
 \code{\link{rxSyntaxFunctions}},

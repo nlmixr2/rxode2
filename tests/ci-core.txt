@@ -58,6 +58,7 @@ df-refused
 symengine-translate-fixture
 # delay differential equations
 dde
+pde
 # simulation and random numbers
 random
 ui-simulation
