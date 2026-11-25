@@ -4,6 +4,7 @@
 #include "rxProtect.h"
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 /**
  * Generates a random string of 4 alphanumeric characters.
@@ -1094,6 +1095,50 @@ void writeSb(sbuf *sbb, FILE *fp){
 
 extern SEXP _goodFuns;
 
+static inline int rxgIsIdChar(char c) {
+  return isalnum((unsigned char)c) || c == '_' || c == '.';
+}
+
+// is the identifier b[0..n) t, or time in any case?
+static inline int rxgIsTimeId(const char *b, size_t n) {
+  if (n == 1) return b[0] == 't';
+  if (n != 4) return 0;
+  return tolower((unsigned char)b[0]) == 't' && tolower((unsigned char)b[1]) == 'i' &&
+    tolower((unsigned char)b[2]) == 'm' && tolower((unsigned char)b[3]) == 'e';
+}
+
+// is the identifier b[0..n) one whose value moves with time: t/time,
+// linCmt*() or one of the NULL-terminated names fns?
+static inline int rxgIsTimeDepId(const char *b, size_t n, const char *const *fns) {
+  if (rxgIsTimeId(b, n)) return 1;
+  if (n >= 6 && strncmp(b, "linCmt", 6) == 0) return 1;
+  for (int k = 0; fns[k] != NULL; k++) {
+    if (strlen(fns[k]) == n && strncmp(b, fns[k], n) == 0) return 1;
+  }
+  return 0;
+}
+
+// 1 when the normalized model reads time: t/time, or a function whose value
+// moves with time between records (tad(), tafd(), transit(), delay(),
+// past(), linCmt()); rxModelVars()$flags["timeDep"]
+int rxgUsesTime(const char *s) {
+  static const char *const fns[] = {"tad", "tad0", "tafd", "tafd0", "transit",
+                                    "delay", "past", NULL};
+  const char *p = s;
+  while (*p) {
+    if (isalpha((unsigned char)*p) || *p == '_' || *p == '.') {
+      const char *b = p;
+      while (*p && rxgIsIdChar(*p)) p++;
+      if (rxgIsTimeDepId(b, (size_t)(p - b), fns)) return 1;
+    } else if (isdigit((unsigned char)*p)) {
+      while (*p && (isalnum((unsigned char)*p) || *p == '.')) p++;
+    } else {
+      p++;
+    }
+  }
+  return 0;
+}
+
 // Writes <c_file>l (eg model.cl): OpenCL C for rxg_dydt()/rxg_jac() for a
 // model whose flags["gpuSafe"] is 1.
 static void writeRxgDevice(const char *cfile, const char *prefix,
@@ -1122,6 +1167,27 @@ static void writeRxgDevice(const char *cfile, const char *prefix,
   sAppend(&sbOut, "#define RXG_NEQ1 %d\n#define RXG_NLHS1 %d\n#define RXG_NPAR1 %d\n",
           nState > 0 ? nState : 1, nLhs > 0 ? nLhs : 1, nPar > 0 ? nPar : 1);
   sAppend(&sbOut, "#define RXG_HAS_JAC %d\n", (found_jac == 1 && good_jac == 1) ? 1 : 0);
+  sAppend(&sbOut, "#define RXG_HAS_DELAY %d\n", tb.hasDelay ? 1 : 0);
+  // delay() reads the history at t - T: time dependent too
+  sAppend(&sbOut, "#define RXG_TIME %d\n", (tb.hasDelay || rxgUsesTime(sbNrm.s)) ? 1 : 0);
+  if (tb.hasDelay) {
+    // the delay() history keeps only the states delay() reads: column of a
+    // state (RXG_DCOL) and state of a column (RXG_DSTATE)
+    int nd = 0;
+    sbuf dc, ds;
+    sNull(&dc); sIni(&dc);
+    sNull(&ds); sIni(&ds);
+    for (int k = 0; k < tb.de.n; k++) {
+      if ((tb.dprop[k] & propDelay) == 0) continue;
+      sAppend(&dc, "(i) == __DDT%d__ ? %d : ", k, nd);
+      sAppend(&ds, "(j) == %d ? __DDT%d__ : ", nd, k);
+      nd++;
+    }
+    sAppend(&sbOut, "#define RXG_NDLY %d\n#define RXG_DCOL(i) (%s-1)\n#define RXG_DSTATE(j) (%s0)\n",
+            nd, dc.s, ds.s);
+    sFree(&dc);
+    sFree(&ds);
+  }
   sAppend(&sbOut, "%s", _rxgHdr.s);
   sAppend(&sbOut, "%s", "#include \"rxode2gpu/rxg_model.h\"\n");
   sAppend(&sbOut, "%s", body.s);

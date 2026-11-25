@@ -28,6 +28,7 @@ forderForceBase(FALSE) # Use `data.table` for rxode2 sorts
 Other Solver options and performance:
 \code{\link[=getRxThreads]{getRxThreads()}},
 \code{\link[=odeMethodToInt]{odeMethodToInt()}},
+\code{\link[=rxGpuInfo]{rxGpuInfo()}},
 \code{\link[=rxIndLinState]{rxIndLinState()}},
 \code{\link[=rxIndLinStrategy]{rxIndLinStrategy()}},
 \code{\link[=rxIsAutoSwitch]{rxIsAutoSwitch()}},

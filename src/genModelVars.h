@@ -21,17 +21,21 @@
 #include "parseParamMerge.h"
 #include "pkTime.h"
 
+extern int foundPast;
+int rxgUsesTime(const char *s);
+
 // 1 when the model's d/dt() can run as device (OpenCL) code: every
 // function it calls is registered gpuSafe and it has none of these
+// (delay() reads the device history; a past() pre-history does not run there)
 static inline int calcGpuSafe(void) {
   if (!tb.gpu || tb.simflg != 0 || nmtime != 0) return 0;
-  if (tb.evid_ != 0 || tb.linCmt != 0 || tb.hasDelay != 0) return 0;
+  if (tb.evid_ != 0 || tb.linCmt != 0 || foundPast != 0) return 0;
   return (tb.isMexp == 0 && tb.matn == 0 && tb.matnf == 0);
 }
 
 static inline SEXP calcSLinCmt(void) {
   rxProtectGuard;
-  SEXP sLinCmt = rxP(Rf_allocVector(INTSXP,21));
+  SEXP sLinCmt = rxP(Rf_allocVector(INTSXP,22));
   INTEGER(sLinCmt)[0] = tb.ncmt;
   INTEGER(sLinCmt)[1] = tb.hasKa;
   INTEGER(sLinCmt)[2] = tb.linB;
@@ -61,8 +65,10 @@ static inline SEXP calcSLinCmt(void) {
   // linCmt() carry states, the last states of the model (calcLinCmt())
   INTEGER(sLinCmt)[19] = tb.linCmtCarryN;
   INTEGER(sLinCmt)[20] = calcGpuSafe();
+  // 1 when d/dt() can change with time at fixed states and parameters
+  INTEGER(sLinCmt)[21] = (tb.hasDelay || tb.linCmt || rxgUsesTime(sbNrm.s)) ? 1 : 0;
 
-  SEXP sLinCmtN = rxP(Rf_allocVector(STRSXP, 21));
+  SEXP sLinCmtN = rxP(Rf_allocVector(STRSXP, 22));
   SET_STRING_ELT(sLinCmtN, 0, Rf_mkChar("ncmt"));
   SET_STRING_ELT(sLinCmtN, 1, Rf_mkChar("ka"));
   SET_STRING_ELT(sLinCmtN, 2, Rf_mkChar("linB"));
@@ -84,6 +90,7 @@ static inline SEXP calcSLinCmt(void) {
   SET_STRING_ELT(sLinCmtN, 18, Rf_mkChar("doseTime"));
   SET_STRING_ELT(sLinCmtN, 19, Rf_mkChar("linCmtCarry"));
   SET_STRING_ELT(sLinCmtN, 20, Rf_mkChar("gpuSafe"));
+  SET_STRING_ELT(sLinCmtN, 21, Rf_mkChar("timeDep"));
   Rf_setAttrib(sLinCmt,   R_NamesSymbol, sLinCmtN);
   rxUPAll();
   return(sLinCmt);

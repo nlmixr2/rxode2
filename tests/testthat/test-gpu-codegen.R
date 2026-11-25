@@ -169,6 +169,22 @@ rxTest({
     })),
       0L
     )
+
+    ## delay() reads the device history; past() and rxDelayD() do not run there
+    expect_equal(
+      .gpuSafe(rxode2({
+      d/dt(a) <- -k * delay(a, tau)
+    })),
+      1L
+    )
+    expect_equal(.gpuSafe(rxode2("y(0) <- 1\nd/dt(y) <- -delay(y, 1)\npast(y, 1) <- exp(0.5*t)\n")), 0L)
+    expect_equal(
+      .gpuSafe(rxode2({
+      d/dt(a) <- -k * delay(a, 1)
+      z <- rxDelayD(a, 1)
+    })),
+      0L
+    )
   })
 
   .m <- rxode2({
