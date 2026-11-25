@@ -6,6 +6,8 @@
 // pattern (both from OLD sol_), NaN detection, mxstep guard.
 
 #include "ode/ode_vern_76.h"
+#include "ode_stiff_probe.h"
+#include <vector>
 
 class RxVern76 : public ode::OdeVern76 {
     t_dydt                  dydt_;
@@ -15,6 +17,10 @@ class RxVern76 : public ode::OdeVern76 {
     long unsigned           max_steps_;
 
 public:
+    // on as an AutoSwitch composite's primary (stability size 4.64)
+    RxStiffProbe probe_;
+    std::vector<double> y9_; // stage 9's state, for the probe
+
     RxVern76(t_dydt dydt, int *full_neq, int neqOde,
              rx_solving_options_ind *ind, double *yp,
              long unsigned max_steps)
@@ -101,6 +107,7 @@ protected:
                                          + a98 * k_[7][i]);
         t_stage_ = t_ + c9 * dt;
         ode_fun_(soltemp_, k_[8]);
+        if (probe_.ind != nullptr) y9_.assign(soltemp_, soltemp_ + neq_);
 
         // Stage 10 (a102=0, a108=a109=0)
         for (unsigned long i = 0; i < neq_; i++)
@@ -122,6 +129,13 @@ protected:
                            + b5 * k_[4][i] + b6 * k_[5][i]
                            + b7 * k_[6][i] + b8 * k_[7][i]
                            + b9 * k_[8][i]);
+    }
+
+    // stiffness probe on stages 9 and 10, both at t + dt
+    void adapt(double abstol, double reltol) override {
+        ode::OdeVern76::adapt(abstol, reltol);
+        if (probe_.ind != nullptr && !is_rejected())
+            probe_.check(dt_, k_[8], k_[9], y9_.data(), soltemp_, neq_);
     }
 
     void after_step(double /*t*/) override {
