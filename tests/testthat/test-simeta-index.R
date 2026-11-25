@@ -6,6 +6,8 @@ rxTest({
     expect_error(suppressMessages(rxode2("a = 1;\nsimeta(0);")))
     expect_error(suppressMessages(rxode2("a = 1;\nsimeps(0);")))
     expect_output(try(rxode2("a = 1;\nsimeta(0);"), silent = TRUE), "positive integer")
+    # an index that would overflow an int
+    expect_error(suppressMessages(rxode2("a = 1;\nsimeta(4294967297);")))
     # the bare form keeps the original call
     .c <- rxC(rxode2("a = 1;\nsimeta();\nsimeps();"))
     .c <- paste(readLines(.c), collapse = "\n")
@@ -76,6 +78,51 @@ rxTest({
       suppressMessages(rxSolve(mod, et(1, id = 1:2), omega = .omega3)),
       "simeta\\(4\\)"
     )
+  })
+
+  test_that("simeta(n) keeps the omega order when zero variances are dropped (#1793)", {
+    .om <- lotri(eta.a ~ 0, eta.b ~ 1, eta.c ~ 1)
+    .e1 <- et(1, id = 1:5)
+    .f0 <- suppressMessages(rxSolve(.mkEta("x <- 1"), .e1, omega = .om, seed = 42))
+    .f2 <- suppressMessages(rxSolve(.mkEta("simeta(2)"), .e1, omega = .om, seed = 42))
+    expect_equal(.f2$a1, .f0$a1)
+    expect_true(all(.f2$b1 != .f0$b1))
+    expect_equal(.f2$c1, .f0$c1)
+    .f3 <- suppressMessages(rxSolve(.mkEta("simeta(3)"), .e1, omega = .om, seed = 42))
+    expect_equal(.f3$b1, .f0$b1)
+    expect_true(all(.f3$c1 != .f0$c1))
+    # the zero-variance eta stays at zero
+    .f1 <- suppressMessages(rxSolve(.mkEta("simeta(1)"), .e1, omega = .om, seed = 42))
+    expect_equal(.f1$a1, rep(0, 5))
+    expect_equal(.f1$b1, .f0$b1)
+    expect_equal(.f1$c1, .f0$c1)
+  })
+
+  test_that("the range check ignores quoted text (#1793)", {
+    mod <- function() {
+      model({
+        simeta()
+        if (eta.a > 1e10) printf("simeta(99)")
+        a1 <- eta.a
+      })
+    }
+    expect_error(
+      suppressWarnings(suppressMessages(rxSolve(mod, et(1, id = 1:2), omega = lotri(eta.a ~ 1), seed = 1))),
+      NA
+    )
+  })
+
+  test_that("a correlated simeta(n) draw stays within omega bounds (#1793)", {
+    mod <- function() {
+      model({
+        simeta(2)
+        a1 <- eta.a
+        b1 <- eta.b
+      })
+    }
+    .om <- lotri(eta.a + eta.b ~ c(1, 0.9, 1))
+    .f <- suppressMessages(rxSolve(mod, et(1, id = 1:200), omega = .om, omegaLower = -1, omegaUpper = 1, seed = 3))
+    expect_true(all(.f$b1 >= -1 & .f$b1 <= 1))
   })
 
   test_that("simeps(n) re-simulates only EPS n (#1793)", {

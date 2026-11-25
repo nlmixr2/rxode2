@@ -1987,34 +1987,64 @@ extern "C" void simeta(void) {
   }
 }
 
-// Re-simulate only element `k` (0-based) of `cur`, given a fresh draw `z`
-// from N(0, sigma): conditional on the other elements when sigma correlates k
-// with them, so the covariance is honored; otherwise z[k] as drawn.
-static inline double simOneCond(const double *z, const double *cur, int k,
-                                const arma::mat& sigma) {
+// Re-simulate only element `k` (0-based) of `cur` from the draw `z` of
+// N(0, sigma) (type 0 eps, 1 eta): conditional on the other elements when
+// sigma correlates k with them, so the covariance is honored; otherwise z[k].
+// A conditional value outside a finite bound is redrawn; after 100 tries the
+// in-bounds z[k] is used.
+static inline double simOneCond(double *z, const double *cur, int k, int type,
+                                int csim, rx_solve* rx) {
+  arma::mat sigma = getArmaMat(type, csim, rx);
   int n = sigma.n_rows;
+  if (n == 1) return z[k];
   arma::uvec o(n - 1);
   for (int j = 0, i = 0; j < n; j++) if (j != k) o[i++] = j;
   arma::rowvec c = sigma.row(k);
   arma::rowvec co = c.cols(o);
-  if (n == 1 || arma::all(co == 0.0)) return z[k];
+  if (arma::all(co == 0.0)) return z[k];
   arma::mat soo = sigma.submat(o, o);
   arma::vec w;
   if (!arma::solve(w, soo, co.t(), arma::solve_opts::no_approx)) {
     w = arma::pinv(soo) * co.t();
   }
-  double ret = z[k];
-  for (int i = 0; i < n - 1; i++) {
-    ret += w[i] * (cur[o[i]] - z[o[i]]);
+  double lo = getLowerVec(type, rx)[k];
+  double hi = getUpperVec(type, rx)[k];
+  for (int tries = 0; ; tries++) {
+    double ret = z[k];
+    for (int i = 0; i < n - 1; i++) {
+      ret += w[i] * (cur[o[i]] - z[o[i]]);
+    }
+    if ((!R_FINITE(lo) || ret >= lo) && (!R_FINITE(hi) || ret <= hi)) return ret;
+    if (tries >= 100) return z[k];
+    simvar(z, type, csim, rx);
   }
-  return ret;
+}
+
+// Where simeta(n)/simeps(n) index n lands once zero-variance rows are dropped
+// from omega/sigma: entry n-1 is the 1-based simulated column, 0 for a dropped
+// one.  Empty when nothing was dropped.  Set on the main thread before a solve.
+static std::vector<int> _simIdx[2];
+extern "C" void rxSetSimIdx(int type, const int *idx, int n) {
+  _simIdx[type].assign(idx, idx + n);
+}
+
+// The 0-based simulated column for index n of type (0 eps, 1 eta), or -1.
+static inline int simIdx(int type, int n, int nsim) {
+  if (n < 1) return -1;
+  const std::vector<int>& m = _simIdx[type];
+  if (!m.empty()) {
+    if (n > (int)m.size()) return -1;
+    n = m[n - 1];
+  }
+  return (n >= 1 && n <= nsim) ? n - 1 : -1;
 }
 
 // simeps(n): re-simulate only EPS n (1-based); the others keep their values.
 extern "C" void simepsI(int n) {
   rx_solve* rx = &rx_global;
   rx_solving_options_ind* ind = rxThreadInd();
-  if (ind->inLhs == 1 && n >= 1 && n <= rx->neps) {
+  int k = simIdx(0, n, rx->neps);
+  if (ind->inLhs == 1 && k >= 0) {
     arma::mat out(1, rx->neps);
     int csim = std::floor(((double)ind->id)/((double)rx->nsub));
     simvar(&out[0], 0, csim, rx);
@@ -2022,8 +2052,7 @@ extern "C" void simepsI(int n) {
     double *par_ptr = ind->par_ptr;
     arma::vec cur(rx->neps);
     for (int j = 0; j < rx->neps; j++) cur[j] = par_ptr[svar[j]];
-    arma::mat sigma = getArmaMat(0, csim, rx);
-    par_ptr[svar[n - 1]] = simOneCond(&out[0], &cur[0], n - 1, sigma);
+    par_ptr[svar[k]] = simOneCond(&out[0], &cur[0], k, 0, csim, rx);
   }
 }
 
@@ -2031,7 +2060,8 @@ extern "C" void simepsI(int n) {
 extern "C" void simetaI(int n) {
   rx_solve* rx = &rx_global;
   rx_solving_options_ind* ind = rxThreadInd();
-  if (ind != NULL && ind->isIni == 1 && n >= 1 && n <= rx->neta) {
+  int k = simIdx(1, n, rx->neta);
+  if (ind != NULL && ind->isIni == 1 && k >= 0) {
     double *par_ptr = ind->par_ptr;
     int csim = (int)std::floor((double)(ind->id)/((double)rx->nsub));
     arma::mat out(1, rx->neta);
@@ -2044,8 +2074,7 @@ extern "C" void simetaI(int n) {
     }
     arma::vec cur(rx->neta);
     for (int j = 0; j < rx->neta; j++) cur[j] = par_ptr[rx->ovar[j]];
-    arma::mat omega = getArmaMat(1, csim, rx);
-    par_ptr[rx->ovar[n - 1]] = simOneCond(&out[0], &cur[0], n - 1, omega);
+    par_ptr[rx->ovar[k]] = simOneCond(&out[0], &cur[0], k, 1, csim, rx);
   }
 }
 

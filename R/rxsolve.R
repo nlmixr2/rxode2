@@ -1833,7 +1833,7 @@ rxSolve <- function(
     } else {
       .bad <- .nxtra
     }
-    .bad <- .bad[!(.bad %in% c(".setupOnly", "keepF", ".zeros"))]
+    .bad <- .bad[!(.bad %in% c(".setupOnly", "keepF", ".zeros", ".simIdx"))]
     if (length(.bad) > 0) {
       if ("transitAbs" %in% .bad) {
         stop("'transitAbs' is no longer supported, use 'evid=7' instead", call. = FALSE)
@@ -2423,9 +2423,16 @@ rxSolve <- function(
     maxwhile <- as.integer(maxwhile)
     maxExtra <- as.integer(maxExtra)
     .zeros <- .xtra$.zeros
+    # simeta(n)/simeps(n) index -> simulated column (0 = zero variance)
+    .simIdx <- .xtra$.simIdx
+    if (is.null(.simIdx)) {
+      .simIdx <- list(NULL, NULL)
+    }
     if (inherits(.omega, "matrix")) {
       .w <- which(diag(.omega) == 0.0)
       if (length(.w) > 0) {
+        .simIdx[[1]] <- integer(ncol(.omega))
+        .simIdx[[1]][-.w] <- seq_len(ncol(.omega) - length(.w))
         # name boundaries if they are not named
         .dimnames <- dimnames(.omega)[[2]]
         if (length(omegaLower) == length(.dimnames) && is.null(names(omegaLower))) {
@@ -2445,6 +2452,8 @@ rxSolve <- function(
     if (inherits(.sigma, "matrix")) {
       .w <- which(diag(.sigma) == 0.0)
       if (length(.w) > 0) {
+        .simIdx[[2]] <- integer(ncol(.sigma))
+        .simIdx[[2]][-.w] <- seq_len(ncol(.sigma) - length(.w))
         # name boundaries if they are not named
         .dimnames <- dimnames(.sigma)[[2]]
         if (length(sigmaLower) == length(.dimnames) && is.null(names(sigmaLower))) {
@@ -2614,7 +2623,8 @@ rxSolve <- function(
       resetCancelsPending = resetCancelsPending,
       ssMethod = .ssMethod,
       doseAtRecord = doseAtRecord,
-      addlCovAtTime = addlCovAtTime
+      addlCovAtTime = addlCovAtTime,
+      .simIdx = .simIdx
     )
     class(.ret) <- "rxControl"
     return(.ret)

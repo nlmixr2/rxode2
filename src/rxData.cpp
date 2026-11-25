@@ -6234,33 +6234,58 @@ static inline void rxSolveSaveRxSolve(rxSolve_t* rxSolveDat){
 }
 
 RObject _curPar;
-// Largest n in the model's `fun(n)` statements (0 when there are none).
+// Largest n in the model's `fun(n)` statements (0 when there are none),
+// skipping quoted strings.
 static inline int rxSimMaxIndex(const char *mod, const char *fun) {
   int ret = 0;
   size_t len = strlen(fun);
-  for (const char *p = strstr(mod, fun); p != NULL; p = strstr(p + 1, fun)) {
-    if ((p != mod && (isalnum((unsigned char)p[-1]) || p[-1] == '_' || p[-1] == '.')) ||
-        p[len] != '(' || !isdigit((unsigned char)p[len + 1])) continue;
+  char quote = 0;
+  for (const char *p = mod; *p; p++) {
+    if (quote) {
+      if (*p == '\\' && p[1]) p++;
+      else if (*p == quote) quote = 0;
+      continue;
+    }
+    if (*p == '"' || *p == '\'') {
+      quote = *p;
+      continue;
+    }
+    if (strncmp(p, fun, len) || p[len] != '(' ||
+        !isdigit((unsigned char)p[len + 1]) ||
+        (p != mod && (isalnum((unsigned char)p[-1]) || p[-1] == '_' || p[-1] == '.'))) continue;
     int n = atoi(p + len + 1);
     if (n > ret) ret = n;
   }
   return ret;
 }
 
-// simeta(n)/simeps(n) index past the supplied omega/sigma (#1793).
-static inline void rxSolveCheckSimIndex(rxSolve_t* rxSolveDat, rx_solve* rx) {
+extern "C" void rxSetSimIdx(int type, const int *idx, int n);
+
+// Hand the solver where each simeta(n)/simeps(n) index lands, and reject an
+// index past the supplied omega/sigma (#1793).
+static inline void rxSolveCheckSimIndex(rxSolve_t* rxSolveDat, rx_solve* rx,
+                                        const List &rxControl) {
+  int size[2] = {rx->neps, rx->neta};
+  for (int type = 0; type < 2; type++) {
+    rxSetSimIdx(type, NULL, 0);
+    if (Rf_length(rxControl) <= Rxc__simIdx) continue;
+    SEXP idx = VECTOR_ELT(VECTOR_ELT(rxControl, Rxc__simIdx), 1 - type);
+    if (Rf_isNull(idx)) continue;
+    rxSetSimIdx(type, INTEGER(idx), Rf_length(idx));
+    size[type] = Rf_length(idx);
+  }
   if (rx->simflg == 0) return;
   CharacterVector mod = rxSolveDat->mv[RxMv_model];
   const char *m = CHAR(STRING_ELT(mod, 0));
   int n = rxSimMaxIndex(m, "simeta");
-  if (n > 0 && rx->neta > 0 && n > rx->neta) {
+  if (n > 0 && size[1] > 0 && n > size[1]) {
     rxSolveFree();
-    stop(_("'simeta(%d)' is out of range: 'omega' has %d eta(s)"), n, rx->neta);
+    stop(_("'simeta(%d)' is out of range: 'omega' has %d eta(s)"), n, size[1]);
   }
   n = rxSimMaxIndex(m, "simeps");
-  if (n > 0 && rx->neps > 0 && n > rx->neps) {
+  if (n > 0 && size[0] > 0 && n > size[0]) {
     rxSolveFree();
-    stop(_("'simeps(%d)' is out of range: 'sigma' has %d eps(s)"), n, rx->neps);
+    stop(_("'simeps(%d)' is out of range: 'sigma' has %d eps(s)"), n, size[0]);
   }
 }
 
@@ -6341,7 +6366,7 @@ static inline SEXP rxSolve_finalize(const RObject &obj,
   // has not flushed (babelmixr2's PopED) loses its lines rather than passing them
   // to this solve's subjects.  SAEM calls par_solve() directly, so the reasons its
   // subjects pushed in between survive until its flush.
-  rxSolveCheckSimIndex(rxSolveDat, rx);
+  rxSolveCheckSimIndex(rxSolveDat, rx, rxControl);
   rxSolveWarnReset();
   ssNotConv_global = 0;
   par_solve(rx);

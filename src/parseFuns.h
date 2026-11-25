@@ -88,9 +88,9 @@ static inline int handleSimFunctions(nodeInfo ni, char *name, int *i, int nch,
       sAppend(&sbDt, "%s();\n  _SYNC_%s_;", v, v);
       sAppend(&sbt, "%s();", v);
     } else {
-      if (!strcmp(nStr, "0")) {
+      if (!strcmp(nStr, "0") || strlen(nStr) > 9) {
         updateSyntaxCol();
-        trans_syntax_error_report_fn(_("the index of 'simeta(n)'/'simeps(n)' must be a positive integer"));
+        trans_syntax_error_report_fn(_("the index of 'simeta(n)'/'simeps(n)' must be a positive integer below 1e9"));
       }
       sAppend(&sb, "%sI(%s);\n  _SYNC_%s_;", v, nStr, v);
       sAppend(&sbDt, "%sI(%s);\n  _SYNC_%s_;", v, nStr, v);
