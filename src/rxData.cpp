@@ -81,7 +81,7 @@ extern "C" void rxOptionsIni();
 extern "C" void rxOptionsIniEnsure(int mx, int cores);
 extern "C" void rxClearFuns();
 extern "C" void rxFreeLast();
-extern "C" int rxIndsGlobalN();
+extern "C" rx_solving_options_ind *rxIndsGlobal(int *n);
 extern "C" void rxode2_assign_fn_pointers(SEXP);
 extern "C" int getThrottle();
 // Raises an index error an accessor recorded from inside a parallel region,
@@ -109,9 +109,23 @@ int nPastEvid_global = 0;
 // set when an iterated steady state stops at maxSS without converging (#1749)
 int ssNotConv_global = 0;
 
-// The model rxSolve_() locked; rxSolveFree() releases it
+// The model rxSolve_() locked; released once, by rxSolve_finalize() or
+// rxSolveFree()
 RObject rxSolveFreeObj=R_NilValue;
 LogicalVector rxSolveFree();
+RObject rxUnlock(RObject obj);
+RObject rxLock(RObject obj);
+static void rxSolveUnlockObj() {
+  if (!rxIsNull(rxSolveFreeObj)) {
+    rxUnlock(rxSolveFreeObj);
+    rxSolveFreeObj = R_NilValue;
+  }
+}
+static void rxSolveLockObj(RObject obj) {
+  rxSolveUnlockObj();
+  rxLock(obj);
+  rxSolveFreeObj = obj;
+}
 List etTrans(List inData, const RObject &obj, bool addCmt,
              bool dropUnits, bool allTimeVar,
              bool keepDosingOnly, Nullable<LogicalVector> combineDvid,
@@ -153,7 +167,6 @@ extern "C" SEXP _rxode2_cvPost_(SEXP nuS, SEXP omega, SEXP n, SEXP omegaIsChol, 
 RObject rxUnlock(RObject obj);
 RObject rxLock(RObject obj);
 
-RObject setupOnlyObj = R_NilValue;
 
 int rxcEvid  = -1;
 int rxcTime  = -1;
@@ -3289,18 +3302,14 @@ LogicalVector rxSolveFree(){
   resetFkeep();
   // Release what a solve acquires before `alloc` is set, so a solve that
   // fails during setup does not leave the model locked or leak buffers
-  if (!rxIsNull(rxSolveFreeObj)) {
-    rxUnlock(rxSolveFreeObj);
-    rxSolveFreeObj=R_NilValue;
-  }
+  rxSolveUnlockObj();
   rx_solve* rx = getRxSolve_();
   // Free per-individual owned arrays over the whole subject array, since
   // nsub/nsim may not describe it after a partial setup
-  if (rx->subjects != NULL) {
-    int _n = rxIndsGlobalN();
-    for (int _i = 0; _i < _n; _i++) {
-      rxFreeInd(&rx->subjects[_i]);
-    }
+  int _nInd = 0;
+  rx_solving_options_ind *_inds = rxIndsGlobal(&_nInd);
+  for (int _i = 0; _i < _nInd; _i++) {
+    rxFreeInd(&_inds[_i]);
   }
   if (rx->splitBolus != NULL) free(rx->splitBolus);
   rx->splitBolus = NULL;
@@ -6349,7 +6358,8 @@ static inline SEXP rxSolve_finalize(const RObject &obj,
   RSprintf("  Time2: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
 #endif// rxSolveT
-  rxUnlock(obj);
+  if (rxIsNull(rxSolveFreeObj)) rxUnlock(obj);
+  else rxSolveUnlockObj();
   if (rx->matrix == 0 && rxDropB){
     rx->matrix=2;
     warning(_("dropped key column, returning data.frame instead of special solved data.frame"));
@@ -6919,8 +6929,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
                           extraArgs, params, events, inits,
                           rxSolveDat);
   } else {
-    rxLock(object);
-    rxSolveFreeObj = object;
+    rxSolveLockObj(object);
 #ifdef rxSolveT
     RSprintf("Time1: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
@@ -7111,11 +7120,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
         }
         // the host ros54p reads calc_jac(): the model with its Jacobian, as
         // for any implicit solve set up from C
-        RObject _locked = object;
         if ((method == 108 || op->stiff2 == 108) && rxJacSwapModel(object, rxSolveDat)) {
-          rxUnlock(_locked);
-          rxLock(object);
-          rxSolveFreeObj = object;
+          rxSolveLockObj(object);
           if (!rxDynLoad(object)) {
             rxSolveFree();
             stop(_("cannot load rxode2 dlls for this model"));
@@ -7131,11 +7137,13 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       if (op->stiff2 == 1 || op->stiff2 == 2 ||
           op->stiff2 == 21 ||
           op->stiff2 == 106 || op->stiff2 == 107) {
+        rxSolveFree();
         (Rf_error)("stiff2=%d is not allowed for AutoSwitch; use a single-step "
                    "stiff method (e.g. ros4=13, grk4a=31)", op->stiff2);
       }
       if (method == 1 || method == 2 || method == 21 ||
           method == 106 || method == 107) {
+        rxSolveFree();
         (Rf_error)("AutoSwitch (stiff2>0) requires a single-step primary method; "
                    "stiff=%d is not compatible", method);
       }
@@ -7184,6 +7192,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     // loop, whose dense steps record the history
     if (op->hasDelay && INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_evid_] &&
         rxTteN() == 0) {
+      rxSolveFree();
       (Rf_error)("a model cannot combine delay() with evid_() event pushing: "
                  "delay() requires dense output, which cannot apply an event "
                  "pushed at an observation");
@@ -7249,6 +7258,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
                          method == 235 || method == 236 || method == 237 ||
                          method == 238);
         if (_nSens > 0 || _nBase <= 0 || _stiffAdj) {
+          rxSolveFree();
           (Rf_error)("method='rk4s' requires the adjoint expansion in the "
                      "expanded ODE (build with calcSens / rxode2::.rxAdjointExpand); "
                      "the rx__adjFX_*/rx__adjFP_* Jacobian lhs were not found");
@@ -7664,6 +7674,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       rxSolveDat->nSize = (uint32_t)nSizeLong;
     }
     if (rx->input_mixnum && rx->nsim > 1) {
+      rxSolveFree();
       stop(_("with mixnum or mixunif specified, cannot simulate %u simulations"),
            rx->nsim);
     }
@@ -7878,7 +7889,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
 
     if (setupOnly){
-      setupOnlyObj = obj;
       return as<SEXP>(LogicalVector::create(true));
     }
 #ifdef rxSolveT
@@ -7890,10 +7900,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     rxProtect rx_protect;
     SEXP ret = rx_protect.protect(rxSolve_finalize(object, rxControl, specParams, extraArgs,
                                                    params, events, inits, rxSolveDat));
-    if (!rxIsNull(setupOnlyObj)) {
-      rxUnlock(setupOnlyObj);
-      setupOnlyObj = R_NilValue;
-    }
 #ifdef rxSolveT
     RSprintf("Time15: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
