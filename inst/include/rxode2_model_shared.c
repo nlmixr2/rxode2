@@ -655,6 +655,25 @@ void _assignFuns0(void) {
   _rxTte        = (_rxTte_t)        R_GetCCallable("rxode2","_rxTte");
   _rxDydtForceCb= (_rxDydtForce_t)  R_GetCCallable("rxode2","rxCallDydtForce");
   // dynamic start
+  // Flags, read by inst/tools/workaround.R to build the translation tables
+  // (defaults threadSafe=1, gpuSafe=0): a trailing '// gpuSafe' marks a
+  // function with a device (OpenCL) version in inst/include/rxode2gpu, and
+  // '// threadSafe=0' one that is not thread safe.  Builtin functions (C math
+  // and rxode2.h, not registered here) with a device version:
+  // builtin gpuSafe: round beta digamma trigamma logspace_add logspace_sub
+  // builtin gpuSafe: fmax2 fmin2 fsign fprec fround ftrunc erfinv dabs dabs2
+  // builtin gpuSafe: abs1 dabs1 phiU probit probitInv rxTBS rxTBSi rxTBSd
+  // builtin gpuSafe: rxTBSd2 rxTBSdL rxTBSdL2 rxTBSdLx gammap gammaq gammapDer
+  // builtin gpuSafe: gammapInv gammapInva gammaqInv gammaqInva lowergamma
+  // builtin gpuSafe: uppergamma gammapDera ibeta ibetaDer ibetaInv ibetaDera
+  // builtin gpuSafe: ibetaDerb studentTDen studentTCdf studentTCdfDnu
+  // builtin gpuSafe: studentTInv lgamma abs acos acosh asin asinh atan atan2
+  // builtin gpuSafe: atanh cos cosh erf erfc exp gamma log sin sinh sqrt tan
+  // builtin gpuSafe: tanh floor ceil ceiling trunc sign max min logit expit
+  // builtin gpuSafe: gammafn lgammafn loggamma log1p expm1 factorial lfactorial
+  // builtin gpuSafe: lgamma1p log10 log2 phi normcdf fabs pow R_pow R_pow_di
+  // builtin gpuSafe: Rx_pow_di Rx_pow is.nan is.na is.finite is.infinite ! ==
+  // builtin gpuSafe: != >= <= < > && || & |
   linCmtA=(linCmtA_p)R_GetCCallable("rxode2", "linCmtA");
   linCmtB=(linCmtB_p)R_GetCCallable("rxode2", "linCmtB");
   rxnorm = (rxode2i_fn2)R_GetCCallable("rxode2", "rxnorm");
@@ -688,56 +707,56 @@ void _assignFuns0(void) {
   rit_ = (rxode2i2_fn)R_GetCCallable("rxode2","rit_");
   riunif = (rxode2i2_fn2)R_GetCCallable("rxode2","riunif");
   riweibull = (rxode2i2_fn2)R_GetCCallable("rxode2","riweibull");
-  ReLU = (rxode2_fn)R_GetCCallable("rxode2","ReLU");
-  dReLU = (rxode2_fn)R_GetCCallable("rxode2","dReLU");
-  GELU = (rxode2_fn)R_GetCCallable("rxode2","GELU");
-  dGELU = (rxode2_fn)R_GetCCallable("rxode2","dGELU");
-  d2GELU = (rxode2_fn)R_GetCCallable("rxode2","d2GELU");
-  d3GELU = (rxode2_fn)R_GetCCallable("rxode2","d3GELU");
-  d4GELU = (rxode2_fn)R_GetCCallable("rxode2","d4GELU");
-  softplus = (rxode2_fn)R_GetCCallable("rxode2","softplus");
-  dsoftplus = (rxode2_fn)R_GetCCallable("rxode2","dsoftplus");
-  d2softplus = (rxode2_fn)R_GetCCallable("rxode2","d2softplus");
-  d3softplus = (rxode2_fn)R_GetCCallable("rxode2","d3softplus");
-  d4softplus = (rxode2_fn)R_GetCCallable("rxode2","d4softplus");
-  SELU = (rxode2_fn)R_GetCCallable("rxode2","SELU");
-  dSELU = (rxode2_fn)R_GetCCallable("rxode2","dSELU");
-  lReLU = (rxode2_fn)R_GetCCallable("rxode2","lReLU");
-  dlReLU = (rxode2_fn)R_GetCCallable("rxode2","dlReLU");
-  Swish = (rxode2_fn)R_GetCCallable("rxode2","Swish");
-  dSwish = (rxode2_fn)R_GetCCallable("rxode2","dSwish");
-  PReLU = (rxode2_fn2)R_GetCCallable("rxode2","PReLU");
-  dPReLU = (rxode2_fn2)R_GetCCallable("rxode2","dPReLU");
-  dPReLUa = (rxode2_fn2)R_GetCCallable("rxode2","dPReLUa");
-  dPReLUa1 = (rxode2_fn2)R_GetCCallable("rxode2","dPReLUa1");
-  ELU = (rxode2_fn2)R_GetCCallable("rxode2","ELU");
-  dELU = (rxode2_fn2)R_GetCCallable("rxode2","dELU");
-  d2ELU = (rxode2_fn2)R_GetCCallable("rxode2","d2ELU");
-  d2aELU = (rxode2_fn2)R_GetCCallable("rxode2","d2aELU");
-  dELUa = (rxode2_fn2)R_GetCCallable("rxode2","dELUa");
-  d2ELUa = (rxode2_fn2)R_GetCCallable("rxode2","d2ELUa");
-  phi = (rxode2_fn)R_GetCCallable("rxode2","phi");
+  ReLU = (rxode2_fn)R_GetCCallable("rxode2","ReLU"); // gpuSafe
+  dReLU = (rxode2_fn)R_GetCCallable("rxode2","dReLU"); // gpuSafe
+  GELU = (rxode2_fn)R_GetCCallable("rxode2","GELU"); // gpuSafe
+  dGELU = (rxode2_fn)R_GetCCallable("rxode2","dGELU"); // gpuSafe
+  d2GELU = (rxode2_fn)R_GetCCallable("rxode2","d2GELU"); // gpuSafe
+  d3GELU = (rxode2_fn)R_GetCCallable("rxode2","d3GELU"); // gpuSafe
+  d4GELU = (rxode2_fn)R_GetCCallable("rxode2","d4GELU"); // gpuSafe
+  softplus = (rxode2_fn)R_GetCCallable("rxode2","softplus"); // gpuSafe
+  dsoftplus = (rxode2_fn)R_GetCCallable("rxode2","dsoftplus"); // gpuSafe
+  d2softplus = (rxode2_fn)R_GetCCallable("rxode2","d2softplus"); // gpuSafe
+  d3softplus = (rxode2_fn)R_GetCCallable("rxode2","d3softplus"); // gpuSafe
+  d4softplus = (rxode2_fn)R_GetCCallable("rxode2","d4softplus"); // gpuSafe
+  SELU = (rxode2_fn)R_GetCCallable("rxode2","SELU"); // gpuSafe
+  dSELU = (rxode2_fn)R_GetCCallable("rxode2","dSELU"); // gpuSafe
+  lReLU = (rxode2_fn)R_GetCCallable("rxode2","lReLU"); // gpuSafe
+  dlReLU = (rxode2_fn)R_GetCCallable("rxode2","dlReLU"); // gpuSafe
+  Swish = (rxode2_fn)R_GetCCallable("rxode2","Swish"); // gpuSafe
+  dSwish = (rxode2_fn)R_GetCCallable("rxode2","dSwish"); // gpuSafe
+  PReLU = (rxode2_fn2)R_GetCCallable("rxode2","PReLU"); // gpuSafe
+  dPReLU = (rxode2_fn2)R_GetCCallable("rxode2","dPReLU"); // gpuSafe
+  dPReLUa = (rxode2_fn2)R_GetCCallable("rxode2","dPReLUa"); // gpuSafe
+  dPReLUa1 = (rxode2_fn2)R_GetCCallable("rxode2","dPReLUa1"); // gpuSafe
+  ELU = (rxode2_fn2)R_GetCCallable("rxode2","ELU"); // gpuSafe
+  dELU = (rxode2_fn2)R_GetCCallable("rxode2","dELU"); // gpuSafe
+  d2ELU = (rxode2_fn2)R_GetCCallable("rxode2","d2ELU"); // gpuSafe
+  d2aELU = (rxode2_fn2)R_GetCCallable("rxode2","d2aELU"); // gpuSafe
+  dELUa = (rxode2_fn2)R_GetCCallable("rxode2","dELUa"); // gpuSafe
+  d2ELUa = (rxode2_fn2)R_GetCCallable("rxode2","d2ELUa"); // gpuSafe
+  phi = (rxode2_fn)R_GetCCallable("rxode2","phi"); // gpuSafe
 
-  gammap = (rxode2_fn2) R_GetCCallable("rxode2","gammap");
-  gammaq = (rxode2_fn2) R_GetCCallable("rxode2","gammaq");
-  gammapInv = (rxode2_fn2) R_GetCCallable("rxode2","gammapInv");
-  gammapInva = (rxode2_fn2) R_GetCCallable("rxode2","gammapInva");
-  gammaqInv = (rxode2_fn2) R_GetCCallable("rxode2","gammaqInv");
-  gammaqInva = (rxode2_fn2) R_GetCCallable("rxode2","gammaqInva");
-  uppergamma = (rxode2_fn2) R_GetCCallable("rxode2","uppergamma");
-  lowergamma = (rxode2_fn2) R_GetCCallable("rxode2","lowergamma");
-  gammapDer  = (rxode2_fn2) R_GetCCallable("rxode2","gammapDer");
-  phiU = (rxode2_fn) R_GetCCallable("rxode2","phiU");
-  gammapDera = (rxode2_fn2) R_GetCCallable("rxode2","gammapDera");
-  ibeta = (rxode2_fn3) R_GetCCallable("rxode2","ibeta");
-  ibetaDer = (rxode2_fn3) R_GetCCallable("rxode2","ibetaDer");
-  ibetaInv = (rxode2_fn3) R_GetCCallable("rxode2","ibetaInv");
-  ibetaDera = (rxode2_fn3) R_GetCCallable("rxode2","ibetaDera");
-  ibetaDerb = (rxode2_fn3) R_GetCCallable("rxode2","ibetaDerb");
-  studentTDen = (rxode2_fn2) R_GetCCallable("rxode2","studentTDen");
-  studentTCdf = (rxode2_fn2) R_GetCCallable("rxode2","studentTCdf");
-  studentTCdfDnu = (rxode2_fn2) R_GetCCallable("rxode2","studentTCdfDnu");
-  studentTInv = (rxode2_fn2) R_GetCCallable("rxode2","studentTInv");
+  gammap = (rxode2_fn2) R_GetCCallable("rxode2","gammap"); // gpuSafe
+  gammaq = (rxode2_fn2) R_GetCCallable("rxode2","gammaq"); // gpuSafe
+  gammapInv = (rxode2_fn2) R_GetCCallable("rxode2","gammapInv"); // gpuSafe
+  gammapInva = (rxode2_fn2) R_GetCCallable("rxode2","gammapInva"); // gpuSafe
+  gammaqInv = (rxode2_fn2) R_GetCCallable("rxode2","gammaqInv"); // gpuSafe
+  gammaqInva = (rxode2_fn2) R_GetCCallable("rxode2","gammaqInva"); // gpuSafe
+  uppergamma = (rxode2_fn2) R_GetCCallable("rxode2","uppergamma"); // gpuSafe
+  lowergamma = (rxode2_fn2) R_GetCCallable("rxode2","lowergamma"); // gpuSafe
+  gammapDer  = (rxode2_fn2) R_GetCCallable("rxode2","gammapDer"); // gpuSafe
+  phiU = (rxode2_fn) R_GetCCallable("rxode2","phiU"); // gpuSafe
+  gammapDera = (rxode2_fn2) R_GetCCallable("rxode2","gammapDera"); // gpuSafe
+  ibeta = (rxode2_fn3) R_GetCCallable("rxode2","ibeta"); // gpuSafe
+  ibetaDer = (rxode2_fn3) R_GetCCallable("rxode2","ibetaDer"); // gpuSafe
+  ibetaInv = (rxode2_fn3) R_GetCCallable("rxode2","ibetaInv"); // gpuSafe
+  ibetaDera = (rxode2_fn3) R_GetCCallable("rxode2","ibetaDera"); // gpuSafe
+  ibetaDerb = (rxode2_fn3) R_GetCCallable("rxode2","ibetaDerb"); // gpuSafe
+  studentTDen = (rxode2_fn2) R_GetCCallable("rxode2","studentTDen"); // gpuSafe
+  studentTCdf = (rxode2_fn2) R_GetCCallable("rxode2","studentTCdf"); // gpuSafe
+  studentTCdfDnu = (rxode2_fn2) R_GetCCallable("rxode2","studentTCdfDnu"); // gpuSafe
+  studentTInv = (rxode2_fn2) R_GetCCallable("rxode2","studentTInv"); // gpuSafe
   exprelD = (rxode2_fn2) R_GetCCallable("rxode2","exprelD");
   etaBoxCox = (rxode2_fn2) R_GetCCallable("rxode2","etaBoxCox");
   etaJohnDraper = (rxode2_fn2) R_GetCCallable("rxode2","etaJohnDraper");
@@ -747,10 +766,10 @@ void _assignFuns0(void) {
   etaLogit = (rxode2_fn3) R_GetCCallable("rxode2","etaLogit");
   etaSinhAsinh = (rxode2_fn3) R_GetCCallable("rxode2","etaSinhAsinh");
   etaTukeyGH = (rxode2_fn3) R_GetCCallable("rxode2","etaTukeyGH");
-  logit = (rxode2_fn3) R_GetCCallable("rxode2", "logit");
-  probit = (rxode2_fn3) R_GetCCallable("rxode2", "probit");
-  expit = (rxode2_fn3) R_GetCCallable("rxode2", "expit");
-  probitInv = (rxode2_fn3) R_GetCCallable("rxode2", "probitInv");
+  logit = (rxode2_fn3) R_GetCCallable("rxode2", "logit"); // gpuSafe
+  probit = (rxode2_fn3) R_GetCCallable("rxode2", "probit"); // gpuSafe
+  expit = (rxode2_fn3) R_GetCCallable("rxode2", "expit"); // gpuSafe
+  probitInv = (rxode2_fn3) R_GetCCallable("rxode2", "probitInv"); // gpuSafe
   simeta =(_simfun) R_GetCCallable("rxode2", "simeta");
   simeps =(_simfun) R_GetCCallable("rxode2", "simeps");
 
