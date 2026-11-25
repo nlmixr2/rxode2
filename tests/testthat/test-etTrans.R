@@ -3597,5 +3597,9 @@ rxTest({
     expect_error(suppressWarnings(etTrans(.ev(addl = -2147483649), .mod)), "'addl' cannot be negative")
     expect_error(et(amt = 100, ii = 12, addl = 2, ss = 1), NA)
     expect_error(et(amt = 100, ii = 12, addl = " 2"), NA)
+    # constant infusion without 'amt'
+    expect_error(et(time = 0, rate = 5, ss = 1, addl = -1), "'addl' cannot be negative")
+    expect_error(et(time = 0, rate = 5, ss = -1), "'ss' cannot be negative")
+    expect_error(et(time = 0, rate = 5, ss = 1), NA)
   })
 })
