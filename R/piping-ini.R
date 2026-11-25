@@ -357,7 +357,8 @@
     .w <- which(.iniDf$name == .n)
     if (length(.w) == 1) {
       .oNum <- .iniDf$neta1[.w]
-      .w2 <- which(.iniDf$neta1 == .oNum & .iniDf$neta2 != .oNum)
+      # a covariance names the eta as either its row or its column
+      .w2 <- which((.iniDf$neta1 == .oNum | .iniDf$neta2 == .oNum) & .iniDf$neta1 != .iniDf$neta2)
       .df1 <- .iniDf[.w, ]
       .df1$neta1 <- .i + .shift
       .df1$neta2 <- .i + .shift

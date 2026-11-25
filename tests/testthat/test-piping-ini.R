@@ -1549,6 +1549,49 @@ rxTest({
     expect_equal(.moved$iniDf$condition[.moved$iniDf$name == "eta.ka"], "occ")
   })
 
+  test_that("piping part of a correlated block drops its covariances with the rest", {
+    .f <- function() {
+      ini({
+        t1 <- 1
+        t2 <- 1
+        t3 <- 1
+        add.sd <- 0.1
+        eta.a + eta.b + eta.c ~ c(0.1, 0.01, 0.2, 0.02, 0.03, 0.3)
+      })
+      model({
+        a <- exp(t1 + eta.a)
+        b <- exp(t2 + eta.b)
+        c <- exp(t3 + eta.c)
+        cp <- a + b + c
+        cp ~ add(add.sd)
+      })
+    }
+    .ui <- rxode2(.f)
+    for (.cond in list(NULL, "occ")) {
+      .line <- if (is.null(.cond)) {
+        quote(eta.a + eta.b ~ c(0.2, 0.05, 0.2))
+      } else {
+        quote(eta.a + eta.b ~ c(0.2, 0.05, 0.2) | occ)
+      }
+      expect_message(
+        .r <- eval(bquote(ini(.ui, .(.line)))),
+        "correlations may have been dropped"
+      )
+      .i <- .r$iniDf
+      .e <- .i[!is.na(.i$neta1), ]
+      expect_false(anyNA(.e$neta2))
+      expect_setequal(.e$name, c("eta.a", "eta.b", "eta.c", "(eta.a,eta.b)"))
+      .om <- .r$omega
+      if (is.null(.cond)) {
+        expect_equal(unname(.om["eta.a", "eta.b"]), 0.05)
+        expect_equal(unname(.om["eta.a", "eta.c"]), 0)
+      } else {
+        expect_equal(unname(.om$occ["eta.a", "eta.b"]), 0.05)
+        expect_equal(dimnames(.om$id)[[1]], "eta.c")
+      }
+    }
+  })
+
   test_that("piping a ui's ini() keeps the covariance of two shared etas", {
     # the shared etas are not next to each other in the source block, so the
     # covariance that survives is the one across the eta the destination does

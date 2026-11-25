@@ -268,6 +268,11 @@
   other piped eta lines (`| id`, `unfix()`, an error model) is no longer
   overwritten when those lines are combined into a block.
 
+- Piping part of a correlated block (`ini(eta.a + eta.b ~ c(...))` when
+  `eta.c` was correlated with them) no longer leaves broken covariance rows
+  that made `$omega` fail; the covariances with the rest are dropped with a
+  message.
+
 ### Delay differential equations
 - `delay()` models now solve with `method = "dop5"` and `method = "bs"`.
   Both are dense solvers, but they recorded no `delay()` history, so
