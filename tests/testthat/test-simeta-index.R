@@ -98,6 +98,55 @@ rxTest({
     expect_equal(.f1$c1, .f0$c1)
   })
 
+  test_that("simeta() retries draw fresh ETAs in an ODE model (#1793)", {
+    .mk <- function(line) {
+      eval(str2lang(sprintf(
+        "function() { model({ wt <- 70 * exp(eta.wt); i <- 0; while ((wt < 60) || (wt > 80)) { i <- i + 1; if (i > 100) break; %s; wt <- 70 * exp(eta.wt) }; d/dt(depot) <- -depot }) }",
+        line
+      )))
+    }
+    .om <- lotri(eta.wt ~ 0.5^2, eta.cl ~ 1)
+    for (.l in c("simeta()", "simeta(1)")) {
+      .f <- suppressMessages(rxSolve(.mk(.l), et(0:1, id = 1:50), omega = .om, seed = 3, addDosing = FALSE))
+      expect_true(all(.f$wt >= 60 & .f$wt <= 80))
+    }
+  })
+
+  test_that("simeta(n) keeps the omega order when an eta is supplied (#1793)", {
+    mod <- function() {
+      ini({
+        eta.a ~ 1
+        eta.b ~ 2
+        eta.c ~ 3
+      })
+      model({
+        simeta(2)
+        a1 <- eta.a
+        b1 <- eta.b
+        c1 <- eta.c
+      })
+    }
+    mod0 <- function() {
+      ini({
+        eta.a ~ 1
+        eta.b ~ 2
+        eta.c ~ 3
+      })
+      model({
+        a1 <- eta.a
+        b1 <- eta.b
+        c1 <- eta.c
+      })
+    }
+    .p <- data.frame(id = 1:5, eta.a = 0.5)
+    .e1 <- et(1, id = 1:5)
+    .f0 <- suppressWarnings(suppressMessages(rxSolve(mod0, .e1, params = .p, seed = 42)))
+    .f2 <- suppressWarnings(suppressMessages(rxSolve(mod, .e1, params = .p, seed = 42)))
+    expect_equal(.f2$a1, rep(0.5, 5))
+    expect_true(all(.f2$b1 != .f0$b1))
+    expect_equal(.f2$c1, .f0$c1)
+  })
+
   test_that("the range check ignores quoted text (#1793)", {
     mod <- function() {
       model({
@@ -121,8 +170,15 @@ rxTest({
       })
     }
     .om <- lotri(eta.a + eta.b ~ c(1, 0.9, 1))
-    .f <- suppressMessages(rxSolve(mod, et(1, id = 1:200), omega = .om, omegaLower = -1, omegaUpper = 1, seed = 3))
+    .f <- suppressMessages(rxSolve(mod, et(1, id = 1:2000), omega = .om, omegaLower = -1, omegaUpper = 1, seed = 3))
     expect_true(all(.f$b1 >= -1 & .f$b1 <= 1))
+    # eta.b | eta.a is N(0.9 eta.a, 0.19) truncated to [-1, 1]
+    .mu <- 0.9 * .f$a1
+    .sd <- sqrt(1 - 0.9^2)
+    .pa <- pnorm(-1, .mu, .sd)
+    .pb <- pnorm(1, .mu, .sd)
+    .eb <- .mu + .sd * (dnorm((-1 - .mu) / .sd) - dnorm((1 - .mu) / .sd)) / (.pb - .pa)
+    expect_lt(abs(mean(.f$b1 - .eb)), 0.02)
   })
 
   test_that("simeps(n) re-simulates only EPS n (#1793)", {

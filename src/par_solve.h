@@ -20,6 +20,8 @@ extern "C" {
 #include "rxode2lincmtLink.h"
 
 void par_rkf78(rx_solve *rx);
+// Marks the start of a u_inis() initialization pass (rxthreefry.cpp)
+extern "C" void rxEtaPreIniStart(void);
 extern "C" void ind_rkf78(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 void par_trapz(rx_solve *rx);
 extern "C" void ind_trapz(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
@@ -259,6 +261,7 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
 				(inLhs == 1 && op->neq == 0 && (rx->nIndSim > 0 || (rx->simflg & 1) != 0 ))) {
       if (u_inis != NULL) {
         ind->isIni = 1;
+        rxEtaPreIniStart();
         // Also can update individual random variables (if needed)
         // Use rxEffNeq() for the memcpy length: under a per-individual
         // neqOverride (predNeq < op->neq), the per-event buffer stride is

@@ -4,8 +4,9 @@
 
 - `simeta(n)` and `simeps(n)` re-simulate only the `n`-th ETA/EPS inside a
   model, keeping the others; a correlated element is drawn conditional on
-  the others.  `simeta()`/`simeps()` without an index are unchanged, and an
-  index past the omega/sigma size is an error (#1793).
+  the others.  The index counts the omega/sigma as given, before items with
+  zero variance or supplied in `params` are dropped.  An index past it is an
+  error (#1793).
 - The `linCmt()` sensitivity carry that nlmixr2est uses for a
   time-varying covariate is now kept in each model's solve buffer
   (`ind->solve`), like the sensitivities: the model has one carry state per
@@ -223,6 +224,12 @@
   covariance used to be replaced by the priors.  A prior entry the
   `thetaMat` does not draw is named in a warning, and `usePrior = TRUE`
   still uses the priors (#1502).
+
+### Simulation
+- A `simeta()` called again while a subject is initialized (a rejection
+  loop) now draws new ETAs in a model with ODEs; it used to read the same
+  pre-generated row every time, so the loop could not leave it.  The first
+  `simeta()` of each initialization still reads that row (#1793).
 
 ### Documentation
 - The pipeline article no longer saves its simulation into the installed

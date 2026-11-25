@@ -152,5 +152,5 @@
 #define Rxc_ssMethod 147
 #define Rxc_doseAtRecord 148
 #define Rxc_addlCovAtTime 149
-#define Rxc__simIdx 150
+#define Rxc__simNames 150
 #endif // __rxode2_control_H__

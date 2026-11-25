@@ -19,6 +19,7 @@ using namespace arma;
 #include "../inst/include/rxode2random_fillVec.h"
 
 #include <boost/random/normal_distribution.hpp>
+#include <boost/random/uniform_real_distribution.hpp>
 #include <boost/random/negative_binomial_distribution.hpp>
 #include <boost/random/binomial_distribution.hpp>
 #include <boost/random/cauchy_distribution.hpp>
@@ -1913,6 +1914,22 @@ void simvar(double *out, int type, int csim, rx_solve* rx) {
 //   nOmega == 1: single omega matrix -> generate all nsolve rows in one call
 //   nOmega  > 1: per-simulation omega -> generate nsub rows per simulation
 // ---------------------------------------------------------------------------
+// Each initialization pass (iniSubject() running u_inis) is a new serial on
+// its thread; only the first simeta() of a pass reads the subject's
+// pre-generated row, so a retry inside the same pass draws a fresh one.
+static thread_local unsigned int _etaPreIni = 0;
+static thread_local unsigned int _etaPreSeen = 0;
+extern "C" void rxEtaPreIniStart(void) { _etaPreIni++; }
+
+// The pre-generated row for this subject, or NULL when this pass already read
+// it (or there is no buffer).
+static inline double *etaPreRow(rx_solve *rx, rx_solving_options_ind *ind) {
+  double *pre = rxGetEtaPre();
+  if (!pre || _etaPreSeen == _etaPreIni) return NULL;
+  _etaPreSeen = _etaPreIni;
+  return pre + (ptrdiff_t)(ind->id) * rx->neta;
+}
+
 extern "C" void rxPreGenEta(rx_solve *rx, int ncores) {
   if (rx->neta <= 0 || rxIsZeroOmega()) return;
 
@@ -1968,10 +1985,9 @@ extern "C" void simeta(void) {
   rx_solving_options_ind* ind = rxThreadInd();
   if (ind != NULL && ind->isIni == 1) { // only initialize at beginning
     double *par_ptr = ind->par_ptr;
-    double *pre = rxGetEtaPre();
-    if (pre) {
+    double *row = etaPreRow(rx, ind);
+    if (row) {
       // Fast path: read pre-generated row for this subject/sim
-      double *row = pre + (ptrdiff_t)(ind->id) * rx->neta;
       for (int j = 0; j < rx->neta; j++) {
         par_ptr[rx->ovar[j]] = row[j];
       }
@@ -1987,13 +2003,26 @@ extern "C" void simeta(void) {
   }
 }
 
+// A uniform (0, 1) deviate from this thread's reserved simeta()/simeps()
+// engine (see simvar()).
+static inline double simUnif() {
+  boost::random::uniform_real_distribution<double> d(0.0, 1.0);
+  int thread = rx_get_thread(op_global.cores);
+  if (thread < 0 || thread >= (int)_engSim.size()) {
+    static thread_local sitmo::threefry engFallback;
+    return d(engFallback);
+  }
+  return d(_engSim[thread]);
+}
+
 // Re-simulate only element `k` (0-based) of `cur` from the draw `z` of
 // N(0, sigma) (type 0 eps, 1 eta): conditional on the other elements when
 // sigma correlates k with them, so the covariance is honored; otherwise z[k].
-// A conditional value outside a finite bound is redrawn; after 100 tries the
-// in-bounds z[k] is used.
-static inline double simOneCond(double *z, const double *cur, int k, int type,
-                                int csim, rx_solve* rx) {
+// Unbounded, the conditional residual comes from z; with a finite bound, z is
+// truncated jointly, so the value is drawn from the truncated conditional
+// normal instead.
+static inline double simOneCond(const double *z, const double *cur, int k,
+                                int type, int csim, rx_solve* rx) {
   arma::mat sigma = getArmaMat(type, csim, rx);
   int n = sigma.n_rows;
   if (n == 1) return z[k];
@@ -2007,22 +2036,29 @@ static inline double simOneCond(double *z, const double *cur, int k, int type,
   if (!arma::solve(w, soo, co.t(), arma::solve_opts::no_approx)) {
     w = arma::pinv(soo) * co.t();
   }
-  double lo = getLowerVec(type, rx)[k];
-  double hi = getUpperVec(type, rx)[k];
-  for (int tries = 0; ; tries++) {
+  arma::vec lower = getLowerVec(type, rx);
+  arma::vec upper = getUpperVec(type, rx);
+  if (!anyFinite(lower) && !anyFinite(upper)) {
     double ret = z[k];
     for (int i = 0; i < n - 1; i++) {
       ret += w[i] * (cur[o[i]] - z[o[i]]);
     }
-    if ((!R_FINITE(lo) || ret >= lo) && (!R_FINITE(hi) || ret <= hi)) return ret;
-    if (tries >= 100) return z[k];
-    simvar(z, type, csim, rx);
+    return ret;
   }
+  double mu = 0.0;
+  for (int i = 0; i < n - 1; i++) mu += w[i] * cur[o[i]];
+  double sd = sigma(k, k) - arma::as_scalar(co * w);
+  sd = sd > 0.0 ? sqrt(sd) : 0.0;
+  if (sd == 0.0) return mu;
+  double pa = R_FINITE(lower[k]) ? Rf_pnorm5(lower[k], mu, sd, 1, 0) : 0.0;
+  double pb = R_FINITE(upper[k]) ? Rf_pnorm5(upper[k], mu, sd, 1, 0) : 1.0;
+  if (!(pb > pa)) return z[k];
+  return Rf_qnorm5(pa + (pb - pa) * simUnif(), mu, sd, 1, 0);
 }
 
-// Where simeta(n)/simeps(n) index n lands once zero-variance rows are dropped
-// from omega/sigma: entry n-1 is the 1-based simulated column, 0 for a dropped
-// one.  Empty when nothing was dropped.  Set on the main thread before a solve.
+// Where simeta(n)/simeps(n) index n lands once omega/sigma items are dropped
+// before simulation: entry n-1 is the 1-based simulated column, 0 for a dropped
+// one.  Empty when unknown.  Set on the main thread before a solve.
 static std::vector<int> _simIdx[2];
 extern "C" void rxSetSimIdx(int type, const int *idx, int n) {
   _simIdx[type].assign(idx, idx + n);
@@ -2065,9 +2101,8 @@ extern "C" void simetaI(int n) {
     double *par_ptr = ind->par_ptr;
     int csim = (int)std::floor((double)(ind->id)/((double)rx->nsub));
     arma::mat out(1, rx->neta);
-    double *pre = rxGetEtaPre();
-    if (pre) {
-      double *row = pre + (ptrdiff_t)(ind->id) * rx->neta;
+    double *row = etaPreRow(rx, ind);
+    if (row) {
       std::copy(row, row + rx->neta, &out[0]);
     } else {
       simvar(&out[0], 1, csim, rx);

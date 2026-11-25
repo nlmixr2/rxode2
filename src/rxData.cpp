@@ -6261,18 +6261,33 @@ static inline int rxSimMaxIndex(const char *mod, const char *fun) {
 
 extern "C" void rxSetSimIdx(int type, const int *idx, int n);
 
-// Hand the solver where each simeta(n)/simeps(n) index lands, and reject an
-// index past the supplied omega/sigma (#1793).
+// Hand the solver where each simeta(n)/simeps(n) index lands: index n names
+// the n-th item of the omega/sigma as given, which may have lost items (zero
+// variance, supplied in `params`, not in the model) before simulation.  Then
+// reject an index past it (#1793).
 static inline void rxSolveCheckSimIndex(rxSolve_t* rxSolveDat, rx_solve* rx,
                                         const List &rxControl) {
   int size[2] = {rx->neps, rx->neta};
   for (int type = 0; type < 2; type++) {
     rxSetSimIdx(type, NULL, 0);
-    if (Rf_length(rxControl) <= Rxc__simIdx) continue;
-    SEXP idx = VECTOR_ELT(VECTOR_ELT(rxControl, Rxc__simIdx), 1 - type);
-    if (Rf_isNull(idx)) continue;
-    rxSetSimIdx(type, INTEGER(idx), Rf_length(idx));
-    size[type] = Rf_length(idx);
+    if (Rf_length(rxControl) <= Rxc__simNames) continue;
+    SEXP sn = rxControl[Rxc__simNames];
+    if (TYPEOF(sn) != VECSXP || Rf_length(sn) < 2) continue;
+    SEXP nms = VECTOR_ELT(sn, 1 - type);
+    if (TYPEOF(nms) != STRSXP) continue;
+    CharacterVector sim = (type == 0) ? rxSolveDat->sigmaN : rxSolveDat->omegaN;
+    int n = Rf_length(nms);
+    std::vector<int> idx(n, 0);
+    for (int i = 0; i < n; i++) {
+      for (int j = 0; j < sim.size(); j++) {
+        if (!strcmp(CHAR(STRING_ELT(nms, i)), CHAR(sim[j]))) {
+          idx[i] = j + 1;
+          break;
+        }
+      }
+    }
+    rxSetSimIdx(type, idx.data(), n);
+    size[type] = n;
   }
   if (rx->simflg == 0) return;
   CharacterVector mod = rxSolveDat->mv[RxMv_model];
