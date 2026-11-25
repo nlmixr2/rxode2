@@ -38,7 +38,7 @@ rxTest({
 
     # one pass of each (rxOptExpr() itself repeats passes to a fixed point)
     withr::with_options(list(rxode2.optExprC = FALSE), {
-      .r <- suppressMessages(rxode2:::.rxOptExprOnce(.txt, "model"))
+      .r <- suppressMessages(.rxOptExprOnce(.txt, "model"))
     })
     expect_identical(.c, .r)
   })

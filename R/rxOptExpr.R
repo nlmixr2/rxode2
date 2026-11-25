@@ -1372,8 +1372,8 @@ rxOptExpr <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
     .rxOptEnv$.exclude <- ""
     .malert(sprintf("optimizing duplicate expressions in %s...", msg))
     .opt <- ..rxOpt(.p, progress = TRUE)
-    return(.rxOptSsaUndo(.rxOptLinCmtRestore(paste(.opt, collapse = "\n")), .ssa))
+    .rxOptSsaUndo(.rxOptLinCmtRestore(paste(.opt, collapse = "\n")), .ssa)
   } else {
-    return(.rxOptSsaUndo(.rxOptLinCmtRestore(paste(.lines, collapse = "\n")), .ssa))
+    .rxOptSsaUndo(.rxOptLinCmtRestore(paste(.lines, collapse = "\n")), .ssa)
   }
 }
