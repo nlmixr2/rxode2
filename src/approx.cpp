@@ -6,6 +6,9 @@
 #include "rxomp.h"
 #include <stdio.h>
 #include <stdarg.h>
+#include <algorithm>
+#include <vector>
+#include <new>
 #include "../inst/include/rxode2.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
 #include "../inst/include/rxode2parseGetTime.h"
@@ -420,23 +423,31 @@ static inline double rxApproxCovDataSide(double t, int k, int is_locf, int side,
 // Smooth covariate interpolation: is_locf 4 = natural cubic spline, 5 = pchip
 // (monotone piecewise cubic Hermite).  The knots of covariate k of a subject
 // are its data records with a value, on their data times (a tie keeps the last
-// record's value); they are built once per solve by rxSplineCovSetup() and laid
-// out like the covariates: from (cov_ptr - _rxSplBase) + n_all_times_orig*k.
-// _rxSplD holds the second derivatives (spline) or the slopes (pchip).
-static double *_rxSplBase = NULL;
-static double *_rxSplT = NULL, *_rxSplY = NULL, *_rxSplD = NULL;
-static int *_rxSplN = NULL;
+// record's value); they are built once per solve by rxSplineCovSetup().  Each
+// distinct cov_ptr (simulated copies and homogeneous groups share theirs) has
+// a block laid out like its covariates, from _rxSplKey's offset +
+// n_all_times_orig*k; _rxSplD holds the second derivatives (spline) or the
+// slopes (pchip) and _rxSplN the knot count at the block start.  Read-only
+// while solving.
+struct RxSplKey {
+  const double *cov;
+  int64_t off;
+  bool operator<(const RxSplKey &o) const { return std::less<const double*>()(cov, o.cov); }
+};
+static std::vector<RxSplKey> _rxSplKey;
+static std::vector<double> _rxSplT, _rxSplY, _rxSplD;
+static std::vector<int> _rxSplN;
 
 static inline bool rxIsSplineInterp(int is_locf) {
   return is_locf == 4 || is_locf == 5;
 }
 
 extern "C" void rxSplineCovFree(void) {
-  if (_rxSplT != NULL) free(_rxSplT);
-  if (_rxSplN != NULL) free(_rxSplN);
-  _rxSplT = _rxSplY = _rxSplD = NULL;
-  _rxSplN = NULL;
-  _rxSplBase = NULL;
+  std::vector<RxSplKey>().swap(_rxSplKey);
+  std::vector<double>().swap(_rxSplT);
+  std::vector<double>().swap(_rxSplY);
+  std::vector<double>().swap(_rxSplD);
+  std::vector<int>().swap(_rxSplN);
 }
 
 // Natural cubic spline second derivatives (tridiagonal solve)
@@ -502,80 +513,97 @@ static inline int rxSplineCovInterp(rx_solving_options *op, int k) {
   return is_locf == -1 ? op->is_locf : is_locf;
 }
 
-// Build the knots of every spline/pchip covariate of every data subject
-// (simulated copies and homogeneous groups share their covariates)
-extern "C" void rxSplineCovSetup(rx_solve *rx, double *gcov) {
+static inline void rxSplineCovBuild(rx_solving_options *op, rx_solving_options_ind *ind,
+                                    int64_t off, std::vector<double> &w) {
+  int n = ind->n_all_times_orig;
+  double *at = ind->all_times;
+  int *evid = ind->evid;
+  for (int k = 0; k < op->ncov; ++k) {
+    int is_locf = rxSplineCovInterp(op, k);
+    if (!op->par_cov[k] || !rxIsSplineInterp(is_locf)) continue;
+    int64_t b = off + (int64_t)n*k;
+    double *y = ind->cov_ptr + (int64_t)n*k;
+    double *T = &_rxSplT[b], *Y = &_rxSplY[b], *D = &_rxSplD[b];
+    int m = 0;
+    for (int i = 0; i < n; ++i) {
+      if (ISNAN(y[i])) continue;
+      // a modeled rate/duration stop's time is set while solving; use its start's
+      double ti = (i > 0 && (isEvidModeledRateStop(evid[i]) ||
+                             isEvidModeledDurationStop(evid[i]))) ? at[i-1] : at[i];
+      if (m > 0 && isSameTime(ti, T[m-1])) {
+        Y[m-1] = y[i];
+      } else if (m == 0 || ti > T[m-1]) {
+        T[m] = ti;
+        Y[m] = y[i];
+        m++;
+      }
+    }
+    _rxSplN[b] = m;
+    if (is_locf == 4) {
+      rxSplineNatural(T, Y, D, m, w);
+    } else {
+      rxSplinePchip(T, Y, D, m);
+    }
+  }
+}
+
+// Build the knots of every spline/pchip covariate of subjects 0..nSub-1;
+// returns 0 when out of memory
+extern "C" int rxSplineCovSetup(rx_solve *rx, int nSub) {
   rxSplineCovFree();
   rx_solving_options *op = rx->op;
-  if (!op->do_par_cov || gcov == NULL) return;
+  if (!op->do_par_cov || rx->subjects == NULL) return 1;
   bool any = false;
   for (int k = 0; k < op->ncov; ++k) {
     if (op->par_cov[k] && rxIsSplineInterp(rxSplineCovInterp(op, k))) any = true;
   }
-  if (!any) return;
-  int64_t len = 0;
-  for (int s = 0; s < rx->nsub; ++s) {
-    rx_solving_options_ind *ind = &(rx->subjects[s]);
-    int64_t end = (int64_t)(ind->cov_ptr - gcov) + (int64_t)ind->n_all_times_orig*op->ncov;
-    if (end > len) len = end;
-  }
-  if (len <= 0) return;
-  _rxSplT = (double*)malloc(3*len*sizeof(double));
-  _rxSplN = (int*)calloc(len, sizeof(int));
-  if (_rxSplT == NULL || _rxSplN == NULL) {
-    rxSplineCovFree();
-    (Rf_errorcall)(R_NilValue, _("cannot allocate memory for the covariate splines"));
-  }
-  _rxSplY = _rxSplT + len;
-  _rxSplD = _rxSplY + len;
-  _rxSplBase = gcov;
-  std::vector<double> w;
-  for (int s = 0; s < rx->nsub; ++s) {
-    rx_solving_options_ind *ind = &(rx->subjects[s]);
-    int n = ind->n_all_times_orig;
-    double *at = ind->all_times;
-    int *evid = ind->evid;
-    for (int k = 0; k < op->ncov; ++k) {
-      int is_locf = rxSplineCovInterp(op, k);
-      if (!op->par_cov[k] || !rxIsSplineInterp(is_locf)) continue;
-      int64_t b = (int64_t)(ind->cov_ptr - gcov) + (int64_t)n*k;
-      double *y = ind->cov_ptr + (int64_t)n*k;
-      double *T = _rxSplT + b, *Y = _rxSplY + b, *D = _rxSplD + b;
-      int m = 0;
-      for (int i = 0; i < n; ++i) {
-        if (ISNA(y[i]) || ISNAN(y[i])) continue;
-        // a modeled rate/duration stop's time is set while solving; use its start's
-        double ti = (i > 0 && (isEvidModeledRateStop(evid[i]) ||
-                               isEvidModeledDurationStop(evid[i]))) ? at[i-1] : at[i];
-        if (m > 0 && isSameTime(ti, T[m-1])) {
-          Y[m-1] = y[i];
-        } else if (m == 0 || ti > T[m-1]) {
-          T[m] = ti;
-          Y[m] = y[i];
-          m++;
-        }
-      }
-      _rxSplN[b] = m;
-      if (is_locf == 4) {
-        rxSplineNatural(T, Y, D, m, w);
-      } else {
-        rxSplinePchip(T, Y, D, m);
-      }
+  if (!any) return 1;
+  try {
+    std::vector<std::pair<RxSplKey, int> > subs;
+    for (int s = 0; s < nSub; ++s) {
+      rx_solving_options_ind *ind = &(rx->subjects[s]);
+      if (ind->cov_ptr == NULL) continue;
+      subs.push_back(std::make_pair(RxSplKey{ind->cov_ptr, 0}, s));
     }
+    std::sort(subs.begin(), subs.end(),
+              [](const std::pair<RxSplKey, int> &a, const std::pair<RxSplKey, int> &b) {
+                return a.first < b.first;
+              });
+    int64_t len = 0;
+    for (size_t i = 0; i < subs.size(); ++i) {
+      if (!_rxSplKey.empty() && _rxSplKey.back().cov == subs[i].first.cov) continue;
+      rx_solving_options_ind *ind = &(rx->subjects[subs[i].second]);
+      _rxSplKey.push_back(RxSplKey{ind->cov_ptr, len});
+      len += (int64_t)ind->n_all_times_orig*op->ncov;
+    }
+    _rxSplT.assign(len, 0.0);
+    _rxSplY.assign(len, 0.0);
+    _rxSplD.assign(len, 0.0);
+    _rxSplN.assign(len, 0);
+    std::vector<double> w;
+    size_t kk = 0;
+    for (size_t i = 0; i < subs.size(); ++i) {
+      if (i > 0 && subs[i].first.cov == subs[i-1].first.cov) continue;
+      rxSplineCovBuild(op, &(rx->subjects[subs[i].second]), _rxSplKey[kk++].off, w);
+    }
+  } catch (std::bad_alloc &) {
+    rxSplineCovFree();
+    return 0;
   }
+  return 1;
 }
 
 // Spline/pchip covariate k of a subject at time t; the boundary value is held
 // outside the knots
 static inline double rxSplineCov(double t, int k, int is_locf, rx_solving_options *op,
                                  rx_solving_options_ind *ind) {
-  if (_rxSplN == NULL || _rxSplBase == NULL) {
-    return rxApproxCovData(t, k, 0, op, ind);
-  }
-  int64_t b = (int64_t)(ind->cov_ptr - _rxSplBase) + (int64_t)ind->n_all_times_orig*k;
+  RxSplKey key{ind->cov_ptr, 0};
+  auto it = std::lower_bound(_rxSplKey.begin(), _rxSplKey.end(), key);
+  if (it == _rxSplKey.end() || it->cov != ind->cov_ptr) return NA_REAL; // nocov
+  int64_t b = it->off + (int64_t)ind->n_all_times_orig*k;
   int m = _rxSplN[b];
   if (m == 0) return NA_REAL;
-  double *T = _rxSplT + b, *Y = _rxSplY + b, *D = _rxSplD + b;
+  const double *T = &_rxSplT[b], *Y = &_rxSplY[b], *D = &_rxSplD[b];
   if (m == 1 || t <= T[0]) return Y[0];
   if (t >= T[m-1]) return Y[m-1];
   int i = 0, j = m - 1;

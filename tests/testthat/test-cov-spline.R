@@ -151,4 +151,21 @@ rxTest({
       expect_equal(.si$x, .f[[.id]](.si$time), tolerance = 1e-12)
     }
   })
+  test_that("a solve replayed from the saved C state keeps the spline", {
+    .m <- rxode2({
+      d / dt(a) <- cv
+    })
+    .ev <- data.frame(id = 1, time = .splTk, cv = sin(.splTk), evid = 0, dv = 0)
+    .ref <- rxSolve(.m, .ev, covsInterpolation = "spline")
+    .lin <- rxSolve(.m, .ev, covsInterpolation = "linear")
+    expect_false(isTRUE(all.equal(.ref$a, .lin$a)))
+    .f <- tempfile(fileext = ".rxbin")
+    on.exit(unlink(.f))
+    rxSolve(.m, .ev, covsInterpolation = "spline", serializeFile = .f)
+    .b <- .rxReadStateBundle(.f)
+    .rxRestoreStateBundle(.b)
+    .ctl <- rxControl(covsInterpolation = "spline")
+    .rep <- rxSolveFromRaw_(.m, .b$cState, .b$solveState, .ctl, NULL, NULL, NULL, NULL, NULL)
+    expect_equal(.rep$a, .ref$a)
+  })
 })

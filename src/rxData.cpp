@@ -113,7 +113,7 @@ int ssNotConv_global = 0;
 
 RObject rxSolveFreeObj=R_NilValue;
 LogicalVector rxSolveFree();
-extern "C" void rxSplineCovSetup(rx_solve *rx, double *gcov);
+extern "C" int rxSplineCovSetup(rx_solve *rx, int nSub);
 extern "C" void rxSplineCovFree(void);
 List etTrans(List inData, const RObject &obj, bool addCmt,
              bool dropUnits, bool allTimeVar,
@@ -5158,7 +5158,10 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
       }
     }
   }
-  rxSplineCovSetup(rx, _globals.gcov);
+  if (!rxSplineCovSetup(rx, rx->nsub)) {
+    rxSolveFree();
+    stop(_("cannot allocate memory for the covariate splines"));
+  }
 }
 
 // Setup the parameter order and covariate from the dataset and input parameters
@@ -6816,6 +6819,11 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
   // Re-assign ODE function pointers cleared by rxSolveFreeC inside rxRestoreState_.
   // rxUpdateFuns sets rx->subjects = inds_global (same pointer restored above).
   rxAssignPtr(SEXP(obj));
+  // the spline/pchip covariate knots are not serialized
+  if (!rxSplineCovSetup(getRxSolve_(), getRxSolve_()->nsub)) {
+    rxSolveFree();
+    stop(_("cannot allocate memory for the covariate splines"));
+  }
 
   // Build a minimal rxSolveDat for the finalize path.
   // DO NOT memset -- rxSolve_t contains Rcpp objects (List, RObject, etc.)
