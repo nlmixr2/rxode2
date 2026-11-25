@@ -937,8 +937,8 @@ extern "C" void rxDrawTapeResumeLhs(rx_solving_options_ind *ind) {
   _eng[rx_get_thread(op_global.cores)] = tp->eng[0];
 }
 
-// Records draw `pos` of tape slot `slot`; a slot's draws stay contiguous, so
-// only the slot recorded last is extended.
+// Records draw `pos` of tape slot `slot`.  A slot's draws stay contiguous: one
+// that is not the last recorded moves to the end before it grows.
 static inline void rxDrawTapePut(rxDrawTapeS *tp, int slot, int pos, double v) {
   if (slot >= (int)tp->off.size()) {
     tp->off.resize(slot + 1, -1);
@@ -948,11 +948,17 @@ static inline void rxDrawTapePut(rxDrawTapeS *tp, int slot, int pos, double v) {
     tp->off[slot] = (int)tp->vals.size();
     tp->cnt[slot] = 0;
   }
-  if (pos == tp->cnt[slot] &&
-      tp->off[slot] + tp->cnt[slot] == (int)tp->vals.size()) {
-    tp->vals.push_back(v);
-    tp->cnt[slot]++;
+  if (pos != tp->cnt[slot]) return;
+  if (tp->off[slot] + tp->cnt[slot] != (int)tp->vals.size()) {
+    int o = tp->off[slot];
+    tp->off[slot] = (int)tp->vals.size();
+    for (int j = 0; j < tp->cnt[slot]; j++) {
+      double w = tp->vals[o + j];
+      tp->vals.push_back(w);
+    }
   }
+  tp->vals.push_back(v);
+  tp->cnt[slot]++;
 }
 
 // A solve-pass draw from the subject's own stream for this slot's context.
@@ -1471,6 +1477,7 @@ double rxbeta(rx_solving_options_ind* ind, double shape1, double shape2) {
 }
 
 extern "C" double rxbeta(double shape1, double shape2) {
+  if (ISNA(shape1) || ISNA(shape2)) return NA_REAL;
   rx_solving_options_ind* ind = rxThreadInd();
   return rxTapeDraw(ind, [&]() -> double { return rxbeta(ind, shape1, shape2); });
 }

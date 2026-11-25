@@ -489,6 +489,12 @@ extern int tieOrderData_global;
 extern rx_globals _globals;
 
 rx_solving_options_ind *inds_global = NULL;
+static int inds_globalN = 0; // entries in inds_global
+// Draw tapes (C++ state) left on the subjects, before inds_global goes.
+static void rxFreeIndsDrawTapes(void) {
+  if (inds_global == NULL) return;
+  for (int _i = 0; _i < inds_globalN; _i++) rxDrawTapeFree(&inds_global[_i]);
+}
 
 rx_solving_options_ind *inds_thread = NULL;
 // The individual each thread is currently solving.  `inds_thread` holds a COPY
@@ -724,12 +730,14 @@ t_set_solve set_solve = NULL;
 extern "C" { size_t rxIndSize = sizeof(rx_solving_options_ind); }
 
 extern "C" void rxOptionsIniEnsure(int mx, int cores) {
+  rxFreeIndsDrawTapes();
   R_Free(inds_global);
   R_Free(inds_thread);
   // Set from the same expression the allocation immediately below uses, so
   // the published stride cannot drift from the real one.
   rxIndSize = sizeof(rx_solving_options_ind);
   inds_global = R_Calloc(mx, rx_solving_options_ind);
+  inds_globalN = mx;
   inds_thread = R_Calloc(max2(1, cores), rx_solving_options_ind);
   R_Free(inds_threadCur);
   inds_threadCurN = max2(1, cores);
@@ -6354,7 +6362,9 @@ extern "C" void rxOptionsFree(){
 extern "C" void freeExtraDosingC();
 extern "C" void rxFreeLast(){
   freeExtraDosingC();
+  rxFreeIndsDrawTapes();
   R_Free(inds_global);
+  inds_globalN = 0;
   R_Free(inds_thread);
   R_Free(inds_threadCur);
   inds_threadCurN = 0;
