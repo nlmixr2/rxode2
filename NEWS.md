@@ -357,6 +357,10 @@
 
 ### Solving
 
+- A solve that failed during setup (for example a missing parameter) left
+  the model locked, so `rxUnload()` refused to unload it, and could leak
+  per-subject and split-bolus buffers; `rxSolveFree()` now releases them
+  (#1761).
 - An implicit method (`ros4`, `iem`, `ros43`, ...) in a solve set up from C,
   as `nlmixr2` estimation does, now uses the model's analytic Jacobian, as
   `rxSolve()` does; before, it read an empty Jacobian, so stiff fits ran

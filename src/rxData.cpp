@@ -81,6 +81,7 @@ extern "C" void rxOptionsIni();
 extern "C" void rxOptionsIniEnsure(int mx, int cores);
 extern "C" void rxClearFuns();
 extern "C" void rxFreeLast();
+extern "C" int rxIndsGlobalN();
 extern "C" void rxode2_assign_fn_pointers(SEXP);
 extern "C" int getThrottle();
 // Raises an index error an accessor recorded from inside a parallel region,
@@ -108,6 +109,7 @@ int nPastEvid_global = 0;
 // set when an iterated steady state stops at maxSS without converging (#1749)
 int ssNotConv_global = 0;
 
+// The model rxSolve_() locked; rxSolveFree() releases it
 RObject rxSolveFreeObj=R_NilValue;
 LogicalVector rxSolveFree();
 List etTrans(List inData, const RObject &obj, bool addCmt,
@@ -3285,20 +3287,28 @@ LogicalVector rxSolveFree(){
   }
   _rxode2_udfReset();
   resetFkeep();
-  if (!_globals.alloc) return true;
+  // Release what a solve acquires before `alloc` is set, so a solve that
+  // fails during setup does not leave the model locked or leak buffers
+  if (!rxIsNull(rxSolveFreeObj)) {
+    rxUnlock(rxSolveFreeObj);
+    rxSolveFreeObj=R_NilValue;
+  }
   rx_solve* rx = getRxSolve_();
-  // Free per-individual owned arrays (inds_global still valid here)
+  // Free per-individual owned arrays over the whole subject array, since
+  // nsub/nsim may not describe it after a partial setup
   if (rx->subjects != NULL) {
-    for (uint32_t _i = 0; _i < rx->nsub*rx->nsim; _i++) {
+    int _n = rxIndsGlobalN();
+    for (int _i = 0; _i < _n; _i++) {
       rxFreeInd(&rx->subjects[_i]);
     }
   }
-  // Free the solve id order
-  if (rx->par_sample != NULL) free(rx->par_sample);
-  rx->par_sample=NULL;
   if (rx->splitBolus != NULL) free(rx->splitBolus);
   rx->splitBolus = NULL;
   rx->splitBolusN = 0;
+  if (!_globals.alloc) return true;
+  // Free the solve id order
+  if (rx->par_sample != NULL) free(rx->par_sample);
+  rx->par_sample=NULL;
   // linCmtScale points into an R vector (via REAL()), never malloc'd -- just null it
   rx->linCmtScale = NULL;
   if (_globals.ordId != NULL) free(_globals.ordId);
@@ -3321,10 +3331,6 @@ LogicalVector rxSolveFree(){
   if (rx->hasFactors == 1){
     lineFree(&(rx->factors));
     lineFree(&(rx->factorNames));
-  }
-  if (!rxIsNull(rxSolveFreeObj)) {
-    rxUnlock(rxSolveFreeObj);
-    rxSolveFreeObj=R_NilValue;
   }
   if (_globals.gindLin != NULL) R_Free(_globals.gindLin);
 
@@ -6757,7 +6763,6 @@ static bool rxJacSwapModel(RObject &object, rxSolve_t *rxSolveDat) {
   if (Rf_isNull(_jo)) return false;
   object = _jo;
   rxSolveDat->mv = rxModelVars(object);
-  rxSolveFreeObj = object;
   return true;
 }
 
@@ -6873,7 +6878,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       object = obj;
     }
     rxSolveDat->mv = rxModelVars(object);
-    rxSolveFreeObj = object;
   }
   if (rxSolveDat->mv.size() == 0) {
     // sometimes the model variables have not been assigned, but this
@@ -6889,7 +6893,6 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     Function rxode2 = getRxFn("rxode2");
     object = rxode2(object);
     rxSolveDat->mv = rxModelVars(object);
-    rxSolveFreeObj = object;
   }
   if (!rxSolveDat->isRxSolve && !rxSolveDat->isEnvironment &&
       (rxImplicitMethod(asInt(rxControl[Rxc_method], "method")) ||
@@ -6917,6 +6920,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
                           rxSolveDat);
   } else {
     rxLock(object);
+    rxSolveFreeObj = object;
 #ifdef rxSolveT
     RSprintf("Time1: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
@@ -7111,6 +7115,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
         if ((method == 108 || op->stiff2 == 108) && rxJacSwapModel(object, rxSolveDat)) {
           rxUnlock(_locked);
           rxLock(object);
+          rxSolveFreeObj = object;
           if (!rxDynLoad(object)) {
             rxSolveFree();
             stop(_("cannot load rxode2 dlls for this model"));

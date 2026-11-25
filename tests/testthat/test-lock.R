@@ -29,5 +29,23 @@ rxTest({
     test_that("Unlocked after other solve", {
       expect_true(rxModels_()[[rxDll(ode)]] == 0L)
     })
+
+    test_that("a solve that fails during setup releases its lock (#1761)", {
+      m <- rxode2({
+        d / dt(depot) <- -ka * depot
+        d / dt(central) <- ka * depot - cl / v * central
+      })
+      ev <- et(amt = 100) |> et(0:4)
+      .lk <- function() rxModels_()[[rxDll(m)]]
+      rxSolve(m, c(ka = 1, cl = 4, v = 25), ev)
+      expect_equal(.lk(), 0L)
+      for (i in 1:3) {
+        expect_error(rxSolve(m, c(ka = 1, cl = 4), ev))
+      }
+      expect_equal(.lk(), 0L)
+      rxSolve(m, c(ka = 1, cl = 4, v = 25), ev)
+      expect_equal(.lk(), 0L)
+      expect_true(rxUnload(m))
+    })
   }
 })
