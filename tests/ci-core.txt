@@ -59,5 +59,6 @@ dde
 # simulation and random numbers
 random
 ui-simulation
+simeta-index
 # accelerated steady state
 ss-anderson
