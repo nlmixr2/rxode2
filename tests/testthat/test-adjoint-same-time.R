@@ -262,6 +262,14 @@ rxTest({
           et(time = 5, amt = 100, ii = 12, ss = 2, cmt = "depot") |>
           et(.o)
       ),
+      ss2Cont5 = list(
+        txt = .base,
+        p = .p0,
+        ev = et(amt = 100, cmt = "depot") |>
+          et(time = 5, amt = 0, rate = 20, ss = 1, cmt = "depot") |>
+          et(time = 5, amt = 50, ii = 12, ss = 2, cmt = "center") |>
+          et(.o)
+      ),
       ss2Multiply0 = list(
         txt = .base,
         p = .p0,

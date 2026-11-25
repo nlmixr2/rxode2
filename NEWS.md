@@ -1293,9 +1293,9 @@
   adjoint sensitivities: a replace, multiply or reset at the time of an
   `ss = 2` dose (`rk4s` family, off by up to 120); several `ss = 1` doses at
   the first time, where the last sets the steady state (`rk4s` family, and
-  `liblsodaadj` with `f()`, off by up to 66; in the `rk4s` family an ss bolus
-  after a continuous ss infusion lost its steady-state term, off by up to
-  355); and, in `liblsodaadj`, a plain
+  `liblsodaadj` with `f()`, off by up to 66; in the `rk4s` family an `ss = 1` or
+  `ss = 2` bolus after a continuous ss infusion at the same time read its
+  interval as 0, off by up to 355); and, in `liblsodaadj`, a plain
   dose at the time of an `ss = 1` dose, which was included in the
   steady-state period (off by up to 43).
 

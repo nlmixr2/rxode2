@@ -9178,14 +9178,16 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               }
               // ss=1 reset bolus: mark for one-period monodromy capture (the
               // trough yp* is read after handleSS below).  ii read now, before
-              // handleEvid1 advances ind->ixds past this dose.
+              // handleEvid1 advances ind->ixds past this dose.  Read from the
+              // record itself (ind->ixds lags after a continuous ss infusion).
               if (_wh0 == EVID0_SS) {
                 _ssPendCmt = _cmtD; _ssPendAmt = getDose(ind, ind->ix[i]);
-                _ssPendIi = getIiNumber(ind, ind->ixds);
+                _ssPendIi = ind->ix[i] >= 0 ? getIi(ind, ind->ix[i]) : getIiNumber(ind, ind->ixds);
               } else if (_wh0 == EVID0_SS2 || _wh0 == EVID0_SS20) {
                 // ss=2 superposition bolus: capture the new regimen's cmt/amt/ii;
                 // Y_ss_new (the period-boundary trough) is read after handleSS.
-                _ss2Ii = getIiNumber(ind, ind->ixds); _ss2PendIi = 1;
+                _ss2Ii = ind->ix[i] >= 0 ? getIi(ind, ind->ix[i]) : getIiNumber(ind, ind->ixds);
+                _ss2PendIi = 1;
                 _ss2Cmt = _cmtD; _ss2Amt = getDose(ind, ind->ix[i]);
               }
             } else if (_whI == EVIDF_REPLACE) {             // replace -> lambda[c] := 0
@@ -9248,9 +9250,6 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         if (_adjSSinfModeled < 0) {
           rxSolverFail(ind); if (ind->rc[0] == 0) ind->rc[0] = -2020; localBadSolve = 1;
         }
-        // the converged bolus's own interval (ind->ixds can point at another
-        // same-time dose's slot, eg after a continuous ss infusion)
-        if (_ssPendCmt >= 0 && _adjSSbolusIi > 0.0) _ssPendIi = _adjSSbolusIi;
         // ss=2 superposition (interior, bolus OR fixed-rate infusion).  Caught
         // FIRST: an ss2 infusion also fires the _adjSSinfKind handoff, but it is
         // an interior superposition, not a window-start infusion ss.  Y_ss_new
