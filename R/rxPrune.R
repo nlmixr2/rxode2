@@ -94,6 +94,7 @@
     } else if (identical(x[[1]], quote(`(`))) {
       return(paste0("(", .rxPrune(x[[2]], envir = envir, strAssign = strAssign), ")"))
     } else if (identical(x[[1]], quote(`{`))) {
+      x <- .rxPdeExpandBlock(x)
       .x2 <- x[-1]
       return(paste0(lapply(.x2, .rxPrune, envir = envir, strAssign = strAssign), collapse = "\n"))
     } else if (

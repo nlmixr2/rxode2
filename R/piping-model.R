@@ -770,6 +770,8 @@ attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored
           .ret <- .getModelLineFromExpression(.getModelLineEquivalentLhsExpression(line), rxui, .isErr, .isDrop)
           .ret <- c(.ret, .getAdditionalDropLines(line, rxui, .isErr, .isDrop))
         }
+      } else if (.rxPdeIsGridLine(line)) {
+        .ret <- .rxPdeGridModelLine(line, rxui)
       } else {
         .ret <- .getModelLineFromExpression(.getLhs(line), rxui, .isErr, .isDrop, cond = .cond)
       }

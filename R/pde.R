@@ -761,3 +761,33 @@ rxPde <- function(model) {
     character(1)
   )
 }
+
+## TRUE for a model line `grid(name, ...)`.
+.rxPdeIsGridLine <- function(line) {
+  is.call(line) && identical(line[[1]], as.name("grid")) && length(line) >= 2L && is.name(line[[2]])
+}
+
+## Line of the model's `grid()` with the same name as the piped one, or -1L to
+## append a new grid.
+.rxPdeGridModelLine <- function(line, rxui) {
+  .w <- which(vapply(
+    rxui$lstExpr,
+    function(e) .rxPdeIsGridLine(e) && identical(e[[2]], line[[2]]),
+    logical(1)
+  ))
+  if (length(.w) == 0L) {
+    return(-1L)
+  }
+  .w[1]
+}
+
+## Expand the grids of a `{` block of model lines (before code that re-prints
+## calls positionally, like .rxPrune()); other blocks are returned unchanged.
+.rxPdeExpandBlock <- function(x) {
+  .lines <- as.list(x)[-1]
+  if (!any(vapply(.lines, .rxPdeIsGridLine, logical(1)))) {
+    return(x)
+  }
+  .txt <- .rxPdeExpand(paste(vapply(.lines, deparse1, character(1)), collapse = "\n"))
+  str2lang(paste0("{\n", .txt, "\n}"))
+}
