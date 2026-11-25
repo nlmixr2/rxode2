@@ -152,4 +152,8 @@
 #define Rxc_ssMethod 147
 #define Rxc_doseAtRecord 148
 #define Rxc_addlCovAtTime 149
+#define Rxc_gpuBackend 150
+#define Rxc_gpuDevice 151
+#define Rxc_gpuPrecision 152
+#define Rxc_gpuBatch 153
 #endif // __rxode2_control_H__

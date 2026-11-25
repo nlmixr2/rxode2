@@ -81,6 +81,23 @@
   uses the model's analytic Jacobian (generated symbolically when the model
   has no `df()/dy()` lines, as for the other Rosenbrock methods) and skips
   the time derivative for models that do not read time.
+- `rxSolve()` methods `"gpuT54"`, `"gpuVern76"`, `"gpuRos54p"`,
+  `"gpuT54+gpuRos54p"` and `"gpuVern76+gpuRos54p"` solve with the device
+  integrators in batched rounds: events (doses, steady state, lag times,
+  covariates) stay on the host and each round integrates every waiting
+  subject on an OpenCL device or with the same code on CPU threads.
+  `rxControl()` gains `gpuBackend`, `gpuDevice`, `gpuPrecision` and
+  `gpuBatch`.  A model that cannot run as device code solves with the host
+  counterpart of the method.  Each subject integrates with its own
+  tolerances, so `tolFactor` and `atolRtolFactor_()` apply per subject.
+  A solve set up from C (as nlmixr2est's estimation methods do) installs
+  its GPU setup there, once; when the model cannot run as device code it
+  integrates with the host counterpart.
+- New host method `"ros54p"` (Rodas5P, Steinebach's L-stable Rosenbrock 5(4)
+  with the analytical Jacobian) and its AutoSwitch composites `"t54+ros54p"`
+  and `"vern76+ros54p"`.  It evaluates the time derivative only for a model
+  that reads time (`rxModelVars()$flags["timeDep"]`) or a covariate that
+  changes over the interval.
 
 - `rxSymInvCholCreate()` builds block-diagonal omegas with
   `lotri::lotriMat()` instead of `Matrix::bdiag()`, removing the
@@ -337,6 +354,12 @@
   were sized for (`rxSolve(cores=)` above `OMP_NUM_THREADS`, for example) no
   longer leaks three of their arrays: `freeExtraDosing()` never freed
   `nAllocIgnoredDoses` or the outer `extraDoseTime`/`extraDoseDose` arrays.
+- AutoSwitch composites with a `t54` or `vern76` primary (`"t54+ros54p"`,
+  `"vern76+ros43"`, ...) now run the same stiffness estimate as a `dop853`
+  primary and the GPU composites on every accepted step, and hand the rest of
+  the interval to the stiff secondary from where it reports stiffness.  Before,
+  they switched only when the primary failed, so on a stiff model such as TMDD
+  they kept stepping with the explicit primary.
 - The analytic Jacobian of a model that names a state before its `d/dt()`
   (for example an initial condition such as `target(0) <- r0` above the
   equations) is now stored at the state's index.  It was stored by the order
@@ -357,6 +380,10 @@
   record still report the record's value, and `linear` and `midpoint`
   interpolation and the adjoint methods (`rk4s`, `dop853s`, ...) are
   unchanged.
+- The libode-based methods (`"t54"`, `"vern76"`, `"dop54"`, the implicit
+  methods and the rest of that family) now integrate with the subject's
+  tolerances, so a per-subject `tolFactor` loosens them as it does for the
+  other methods; before, they used the shared `atol`/`rtol`.
 - `rxSolve()` now stops with an error when an `rxControl()` object is passed
   as `params` or `events`, as it already did for `inits`, and a parameter list
   that is empty or whose first column is empty gives the parameter-size

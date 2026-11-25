@@ -1107,15 +1107,29 @@ static inline int rxgIsTimeId(const char *b, size_t n) {
     tolower((unsigned char)b[2]) == 'm' && tolower((unsigned char)b[3]) == 'e';
 }
 
-// Does the normalized model read time (t or time)?  Conservative: any
-// identifier t or time counts.
-static int rxgUsesTime(const char *s) {
+// is the identifier b[0..n) one whose value moves with time: t/time,
+// linCmt*() or one of the NULL-terminated names fns?
+static inline int rxgIsTimeDepId(const char *b, size_t n, const char *const *fns) {
+  if (rxgIsTimeId(b, n)) return 1;
+  if (n >= 6 && strncmp(b, "linCmt", 6) == 0) return 1;
+  for (int k = 0; fns[k] != NULL; k++) {
+    if (strlen(fns[k]) == n && strncmp(b, fns[k], n) == 0) return 1;
+  }
+  return 0;
+}
+
+// 1 when the normalized model reads time: t/time, or a function whose value
+// moves with time between records (tad(), tafd(), transit(), delay(),
+// past(), linCmt()); rxModelVars()$flags["timeDep"]
+int rxgUsesTime(const char *s) {
+  static const char *const fns[] = {"tad", "tad0", "tafd", "tafd0", "transit",
+                                    "delay", "past", NULL};
   const char *p = s;
   while (*p) {
     if (isalpha((unsigned char)*p) || *p == '_' || *p == '.') {
       const char *b = p;
       while (*p && rxgIsIdChar(*p)) p++;
-      if (rxgIsTimeId(b, (size_t)(p - b))) return 1;
+      if (rxgIsTimeDepId(b, (size_t)(p - b), fns)) return 1;
     } else if (isdigit((unsigned char)*p)) {
       while (*p && (isalnum((unsigned char)*p) || *p == '.')) p++;
     } else {

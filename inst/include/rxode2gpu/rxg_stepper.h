@@ -65,7 +65,7 @@ typedef struct rxg_opt {
   int mxstep;            // most steps (accepted and rejected) per interval
   // AutoSwitch composites, as rxControl(autoSwitch*=)
   double nonstifftol;    // stiffness ratio called stiff
-  double stifftol;       // the same once the subject has switched
+  double stifftol;       // the same once the subject has been persistently stiff
   int maxStiff;          // stiff intervals before staying on the secondary
   int maxNonstiff;       // intervals on the secondary before probing again
   int switchMax;         // least intervals between switches
@@ -661,14 +661,18 @@ RXG_FN int _rxg_stiffCheck(rxg_stiff *st, int method, double h,
   }
   // a step that moved nothing carries no stiffness signal
   double hl = (den > 0.0) ? fabs(h)*sqrt(num/den) : 0.0;
+  // dop853's rules (dop853.c, src/ode_stiff_probe.h): a report and six
+  // clean verdicts each clear both counts
   if (hl > st->tol*_rxg_stabSize(method)) {
     st->nonsti = 0;
     if (++st->iasti >= 15) {
       st->iasti = 0;
+      st->nonsti = 0;
       return 1;
     }
-  } else if (++st->nonsti == 6) {
+  } else if (++st->nonsti >= 6) {
     st->iasti = 0;
+    st->nonsti = 0;
   }
   return 0;
 }
@@ -1182,7 +1186,9 @@ RXG_FN int rxg_integrateAuto(int primary, double t0, double t1, double *y,
 #if RXG_HAS_DELAY
   int n0 = c->hist->n;
 #endif
-  a->st.tol = a->switched ? o->stifftol : o->nonstifftol;
+  // autoSwitchStifftol once the subject has been persistently stiff (the
+  // back-off is set), as the host composites do
+  a->st.tol = (a->backoff > 0) ? o->stifftol : o->nonstifftol;
   int r = rxg_integrate(primary, t0, t1, y, &(a->h0), c, o, &(a->st), cnt);
   int failed = (r != RXG_SUCCESS);
   if (failed) {

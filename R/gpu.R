@@ -213,6 +213,13 @@
     .j <- .rxGpuJacModel(obj)
     if (!is.null(.j)) obj <- .j
   }
+  ## the model, its defines and the headers name the library: look it up
+  ## without rebuilding the source
+  .fast <- paste0("fast_", digest::digest(c(rxModelVars(obj)$md5, .rxGpuDefines(...), .rxGpuHdrMd5())))
+  .ret <- .rxGpuHostEnv[[.fast]]
+  if (!is.null(.ret)) {
+    return(.ret)
+  }
   .s <- .rxGpuModelSource(obj)
   .src <- c(
     .rxGpuDefines(...),
@@ -228,6 +235,7 @@
   .md5 <- digest::digest(c(.src, .s$source, .hdr))
   .ret <- .rxGpuHostEnv[[.md5]]
   if (!is.null(.ret)) {
+    assign(.fast, .ret, envir = .rxGpuHostEnv)
     return(.ret)
   }
   .dir <- file.path(rxTempDir(), "rxg")
@@ -275,6 +283,7 @@
     layout = stats::setNames(.dim[6:14], c("hrec", "hhdr", "rd", "ri", "ad", "ai", "od", "oi", "ncnt"))
   )
   assign(.md5, .ret, envir = .rxGpuHostEnv)
+  assign(.fast, .ret, envir = .rxGpuHostEnv)
   .ret
 }
 
@@ -352,6 +361,26 @@
 ## Device integrators (inst/include/rxode2gpu/rxg_stepper.h), named in
 ## rxode2's style; "+" joins an AutoSwitch composite
 .rxGpuMethods <- c(rkt54 = 1L, vern76 = 2L, ros54p = 3L, "rkt54+ros54p" = 4L, "vern76+ros54p" = 5L)
+
+## rxSolve() method codes of the device integrators and their stepper names
+.rxGpuSolveMethods <- c(
+  "110" = "rkt54",
+  "111" = "vern76",
+  "112" = "ros54p",
+  "113" = "rkt54+ros54p",
+  "114" = "vern76+ros54p"
+)
+## Host counterpart of each GPU method: name = list(method, stiff2)
+.rxGpuHostMethod <- list(
+  "110" = list(t54 = 68L, 0L),
+  "111" = list(vern76 = 28L, 0L),
+  "112" = list(ros54p = 108L, 0L),
+  "113" = list("t54+ros54p" = 68L, 108L),
+  "114" = list("vern76+ros54p" = 28L, 108L)
+)
+## AutoSwitch composites that are single rxSolve() methods (they switch on
+## the device, not through rxControl(stiff2=))
+.rxGpuSolveComposites <- c("gpuT54+gpuRos54p", "gpuVern76+gpuRos54p")
 
 #' Solve over a time grid with a device integrator built as host C
 #'
@@ -615,25 +644,50 @@ rxGpuInfo <- function() {
   method <- match.arg(method, names(.rxGpuMethods))
   .m <- .rxGpuMethods[method]
   obj <- .rxGpuMethodModel(obj, method)
-  .src <- .rxGpuProgramSource(
-    obj,
-    ...,
-    float = precision == "float",
-    method = .m,
-    extra = "#include \"rxode2gpu/rxg_round.h\""
+  ## the model, the defines and the headers name the program
+  .key <- paste0(
+    "ker_",
+    attr(ctx, "rxIndex"),
+    "_",
+    precision,
+    "_",
+    digest::digest(c(rxModelVars(obj)$md5, method, .rxGpuDefines(...), .rxGpuHdrMd5()))
   )
-  .key <- paste0("ker_", attr(ctx, "rxIndex"), "_", precision, "_", digest::digest(.src))
   .ker <- .rxGpuClEnv[[.key]]
   if (is.null(.ker)) {
+    .src <- .rxGpuProgramSource(
+      obj,
+      ...,
+      float = precision == "float",
+      method = .m,
+      extra = "#include \"rxode2gpu/rxg_round.h\""
+    )
     .ker <- OpenCL::oclSimpleKernel(ctx, "rxg_kernel", .src, if (precision == "float") "single" else "double")
+    attr(.ker, "rxKey") <- .key
     assign(.key, .ker, envir = .rxGpuClEnv)
   }
   .ker
 }
 
+#' md5 of the device headers (once a session)
+#'
+#' @return character
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuHdrMd5 <- function() {
+  .h <- .rxGpuClEnv$hdrMd5
+  if (is.null(.h)) {
+    .f <- sort(list.files(file.path(.rxGpuIncludeDir(), "rxode2gpu"), full.names = TRUE))
+    .h <- digest::digest(unname(tools::md5sum(.f)))
+    assign("hdrMd5", .h, envir = .rxGpuClEnv)
+  }
+  .h
+}
+
 #' Shared integrator options of a round
 #'
 #' @inheritParams .rxGpuHostSolve
+#' @param maxAtolRtolFactor cap on a request's loosened tolerances
 #' @return list with the doubles `od` and integers `oi` (rxg_round.h)
 #' @noRd
 #' @author Matthew L. Fidler
@@ -651,18 +705,30 @@ rxGpuInfo <- function() {
   autoSwitchMaxNonstiff = 3L,
   autoSwitchSwitchMax = 5L,
   autoSwitchStiffFirst = FALSE,
-  histCap = 5000L
+  histCap = 5000L,
+  maxAtolRtolFactor = Inf
 ) {
   .n <- max(1L, lib$neq)
   .m <- .rxGpuMethods[match.arg(method, names(.rxGpuMethods))]
+  ## as rxSolve() fills its tolerances: the given values, then the first
+  .tol <- function(x) {
+    .v <- rep(x[1], .n)
+    .k <- min(.n, length(x))
+    .v[seq_len(.k)] <- x[seq_len(.k)]
+    .v
+  }
+  if (is.null(maxAtolRtolFactor)) {
+    maxAtolRtolFactor <- Inf
+  }
   list(
     od = as.double(c(
-      rep_len(atol, .n),
-      rep_len(rtol, .n),
+      .tol(atol),
+      .tol(rtol),
       hmin,
       hmax,
       autoSwitchNonstifftol,
-      autoSwitchStifftol
+      autoSwitchStifftol,
+      maxAtolRtolFactor
     )),
     oi = as.integer(c(
       .m,
@@ -698,6 +764,7 @@ rxGpuInfo <- function() {
   precision = c("double", "float"),
   device = NULL,
   cores = 1L,
+  reuse = FALSE,
   ...
 ) {
   backend <- match.arg(backend)
@@ -721,7 +788,7 @@ rxGpuInfo <- function() {
     .hcap,
     .lay[c("hhdr", "rd", "ri", "ad", "ai", "od", "oi")]
   ))
-  .ret <- list(lib = .lib, method = method, backend = backend, nsub = as.integer(nsub), dims = .dims)
+  .ret <- list(lib = .lib, method = method, backend = backend, nsub = as.integer(nsub), dims = .dims, opt = .opt)
   if (backend == "cpu") {
     .st <- new.env(parent = emptyenv())
     .st$ad <- double(nsub * .lay["ad"])
@@ -729,12 +796,28 @@ rxGpuInfo <- function() {
     .st$hs <- double(nsub * .lay["hhdr"])
     .st$hrec <- double(if (.lib$hasDelay) nsub * .hcap * .lay["hrec"] else 1)
     .ret$state <- .st
-    .ret$opt <- .opt
     .ret$cores <- as.integer(cores)
     return(.ret)
   }
   .ctx <- .rxGpuContext(device, precision)
   .ker <- do.call(.rxGpuKernel, c(list(obj, method, .ctx, precision), .args[.defN]))
+  ## a solve reuses the buffers of the last run of the same kernel, layout
+  ## and options (every subject's first request restarts its state)
+  ## one cached run per kernel and layout: other options replace (and
+  ## release) it
+  .runKey <- if (reuse) paste0("run_", digest::digest(list(attr(.ker, "rxKey"), .dims))) else NULL
+  .optKey <- digest::digest(.opt)
+  if (!is.null(.runKey)) {
+    .old <- .rxGpuClEnv[[.runKey]]
+    if (!is.null(.old) && !identical(.old$ptr, methods::new("externalptr"))) {
+      if (identical(.old$opt, .optKey)) {
+        .ret$ptr <- .old$ptr
+        .ret$fin <- .old$fin
+        return(.ret)
+      }
+      .rxGpuRunRelease(.old$fin)
+    }
+  }
   .ptr <- .Call(
     `_rxode2_rxGpuClNew`,
     .ctx,
@@ -753,6 +836,9 @@ rxGpuInfo <- function() {
   reg.finalizer(.fin, .rxGpuRunRelease, onexit = TRUE)
   .ret$ptr <- .ptr
   .ret$fin <- .fin
+  if (!is.null(.runKey)) {
+    assign(.runKey, list(ptr = .ptr, fin = .fin, opt = .optKey), envir = .rxGpuClEnv)
+  }
   .ret
 }
 
@@ -782,6 +868,7 @@ rxGpuInfo <- function() {
 #' @param init reset the subject's AutoSwitch state and restart its delay()
 #'   history at `t0` (first interval of a subject)
 #' @inheritParams .rxGpuHostEval
+#' @param tolFactor each subject's tolerance factor
 #' @return list of flat request vectors
 #' @noRd
 #' @author Matthew L. Fidler
@@ -802,7 +889,8 @@ rxGpuInfo <- function() {
   tpk = t0,
   tbs = c(1, 2, 1, 0),
   covType = 0L,
-  nonmem = FALSE
+  nonmem = FALSE,
+  tolFactor = 1
 ) {
   checkmate::assertIntegerish(sub, lower = 1, upper = run$nsub, any.missing = FALSE, min.len = 1, unique = TRUE)
   .lib <- run$lib
@@ -815,7 +903,15 @@ rxGpuInfo <- function() {
     as.vector(t(.m))
   }
   .lay <- run$lib$layout
-  .rd <- cbind(t0, t1, h, curShift, tpk, matrix(tbs, .n, 4, byrow = TRUE))
+  .rd <- cbind(
+    t0,
+    t1,
+    h,
+    curShift,
+    tpk,
+    matrix(tbs, .n, 4, byrow = TRUE),
+    rep_len(if (is.null(tolFactor)) 1 else as.double(tolFactor), .n)
+  )
   .init <- ifelse(init, 3L, 0L)
   .ri <- cbind(as.integer(sub) - 1L, covType, as.integer(nonmem), .init, matrix(0L, .n, .lay["ri"] - 4L))
   list(
@@ -885,4 +981,275 @@ rxGpuInfo <- function() {
     istate = .ri[, 5L],
     cnt = .cnt
   )
+}
+
+## rxSolve() with a GPU method (codes 110-114).  R sets the solve up once:
+## the model's host library (and the OpenCL run), installed for C by
+## _rxode2_rxGpuSolveSet(); src/gpu_solve.cpp runs every round.
+
+#' Model a GPU rxSolve() method solves
+#'
+#' @param object rxode2 model
+#' @param method rxSolve() method code (110-114)
+#' @return the model, with its analytic Jacobian for the ros54p methods
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuSolveModel <- function(object, method) {
+  if (!.rxGpuSafe(object)) {
+    stop(
+      "the GPU methods need a model whose d/dt() can run as device code; ",
+      "this one cannot (see rxGpuInfo()); use a host method such as \"t54\", \"vern76\" or \"ros54p\"",
+      call. = FALSE
+    )
+  }
+  .rxGpuMethodModel(object, .rxGpuSolveMethods[[as.character(method)]])
+}
+
+.rxGpuSolveEnv <- new.env(parent = emptyenv())
+
+#' Do two models share their parameter, state and lhs order?
+#'
+#' @param a,b `rxModelVars()` of each
+#' @return logical
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuSameLayout <- function(a, b) {
+  identical(a$params, b$params) && identical(a$state, b$state) && identical(a$lhs, b$lhs)
+}
+
+#' Does a delay() model's event table ask for steady state?
+#'
+#' Steady state is an ss column, or a classic evid whose last two digits are
+#' a steady-state flag (9, 10, 19, 20, 40).
+#'
+#' @param object rxode2 model
+#' @param events rxSolve() events
+#' @return `TRUE` when the model calls delay() and the events have steady state
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuDelaySs <- function(object, events) {
+  if (!isTRUE(rxModelVars(object)$flags[["hasDelay"]] == 1L) || !(is.data.frame(events) || is.rxEt(events))) {
+    return(FALSE)
+  }
+  .e <- as.data.frame(events)
+  .w <- which(tolower(names(.e)) == "ss")
+  .v <- which(tolower(names(.e)) == "evid")
+  .cl <- if (length(.v) > 0L) suppressWarnings(as.numeric(.e[[.v[1]]])) else numeric(0)
+  (length(.w) > 0L && any(.e[[.w[1]]] %in% 1:2)) ||
+    any(!is.na(.cl) & .cl >= 100 & (.cl %% 100) %in% c(9, 10, 19, 20, 40))
+}
+
+#' Why a GPU method cannot solve this problem (beyond device code)
+#'
+#' @param object rxode2 model
+#' @param ctl rxControl()
+#' @param events rxSolve() events
+#' @return `NULL`, or the reason
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuSolveUnsupported <- function(object, ctl, events = NULL) {
+  ## the output step reads delay() from the host history, which a GPU solve
+  ## does not keep
+  .lines <- strsplit(rxNorm(object), "\n", fixed = TRUE)[[1]]
+  if (any(grepl("delay(", .lines[!grepl("^d/dt\\(", .lines)], fixed = TRUE))) {
+    return("delay() outside d/dt()")
+  }
+  ## steady state integrates each dosing interval on its own, which would
+  ## restart the delay() history
+  if (.rxGpuDelaySs(object, events)) {
+    return("steady state in delay() models")
+  }
+  ## the host build of the device code comes from the model with its
+  ## Jacobian, which has to keep the parameter, state and lhs order
+  if (.rxGpuSafe(object)) {
+    .j <- .rxGpuJacModel(object)
+    if (!is.null(.j) && !.rxGpuSameLayout(rxModelVars(object), rxModelVars(.j))) {
+      return("a model whose Jacobian reorders its variables")
+    }
+  }
+  ## the device code does not call registered dydt forcing hooks
+  if (.Call(`_rxode2_rxDydtForceN`) > 0L) {
+    return("registered dydt forcing (rxRegisterDydtForce())")
+  }
+  ## a resampled covariate may change inside an interval
+  if (!is.null(ctl$resample) && !isFALSE(ctl$resample)) {
+    return("resampled covariates")
+  }
+  NULL
+}
+
+#' Install the GPU solve of the next rxSolve()
+#'
+#' @param object rxode2 model (with its Jacobian when needed)
+#' @param ctl rxControl()
+#' @param nsolve subjects times simulations, an upper bound
+#' @return `ctl` with `cores` set to the batch (the slots of
+#'   src/gpu_solve.cpp)
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuSolveInstall <- function(object, ctl, nsolve, key = rxModelVars(object)$trans[["model_vars"]]) {
+  ## the solve setup claims it for this model and method only
+  key <- paste0(key, ":", as.integer(ctl$method))
+  .meth <- .rxGpuSolveMethods[[as.character(ctl$method)]]
+  .threads <- as.integer(ctl$cores)
+  if (length(.threads) != 1L || is.na(.threads) || .threads < 1L) {
+    .threads <- getRxThreads()
+  }
+  ## each round opens short parallel regions; a team on every logical CPU
+  ## (hyperthreads included) spins at their barriers, so it is capped at
+  ## rxode2's thread count
+  .threads <- as.integer(max(1L, min(.threads, getRxThreads())))
+  .batch <- as.integer(max(1L, min(ctl$gpuBatch, nsolve)))
+  .backend <- ctl$gpuBackend
+  if (.backend == "auto") {
+    ## options(rxode2.gpuBackend = "cpu") pins what "auto" picks
+    .backend <- match.arg(getOption("rxode2.gpuBackend", "auto"), c("auto", "opencl", "cpu"))
+  }
+  .dev <- ctl$gpuDevice
+  if (.backend != "cpu") {
+    .avail <- rxGpuInfo()
+    .fp <- .avail$devices$fp64
+    if (!is.null(.dev)) {
+      .fp <- .fp[.avail$devices$index == .dev]
+    }
+    .ok <- .avail$available &&
+      length(.fp) > 0L &&
+      (ctl$gpuPrecision == "float" || any(.fp))
+    if (!.ok) {
+      if (.backend == "opencl") {
+        stop("no OpenCL device with ", ctl$gpuPrecision, " precision is available (see rxGpuInfo())", call. = FALSE)
+      }
+      .backend <- "cpu"
+    } else {
+      .backend <- "opencl"
+    }
+  }
+  .hmax <- ctl$hmax
+  if (is.null(.hmax) || all(is.na(.hmax))) {
+    .hmax <- 0
+  }
+  .run <- .rxGpuRun(
+    object,
+    .meth,
+    .batch,
+    backend = .backend,
+    precision = ctl$gpuPrecision,
+    device = .dev,
+    cores = .threads,
+    reuse = TRUE,
+    safeLog = as.integer(ctl$safeLog),
+    safeZero = as.integer(ctl$safeZero),
+    safePow = as.integer(ctl$safePow),
+    useStdPow = as.integer(ctl$useStdPow),
+    atol = ctl$atol,
+    rtol = ctl$rtol,
+    hmin = if (is.null(ctl$hmin)) 0 else ctl$hmin,
+    hmax = .hmax,
+    mxstep = as.integer(ctl$maxsteps),
+    autoSwitchNonstifftol = ctl$autoSwitchNonstifftol,
+    autoSwitchStifftol = ctl$autoSwitchStifftol,
+    autoSwitchMaxStiff = ctl$autoSwitchMaxStiff,
+    autoSwitchMaxNonstiff = ctl$autoSwitchMaxNonstiff,
+    autoSwitchSwitchMax = ctl$autoSwitchSwitchMax,
+    autoSwitchStiffFirst = isTRUE(as.logical(ctl$autoSwitchStiffFirst)),
+    maxAtolRtolFactor = ctl$maxAtolRtolFactor
+  )
+  .round <- getNativeSymbolInfo("rxg_host_round", .run$lib$dll)$address
+  .Call(
+    `_rxode2_rxGpuSolveSet`,
+    .round,
+    .run$ptr,
+    .run$dims,
+    .run$opt$od,
+    .run$opt$oi,
+    .threads,
+    key
+  )
+  ## the run (and its OpenCL buffers) lives until the solve is cleared
+  .rxGpuSolveEnv$run <- .run
+  ## the per-thread pools serve both the slots and the output step's threads
+  ctl$cores <- max(.batch, .threads)
+  ctl
+}
+
+#' Clear the installed GPU solve
+#'
+#' @return `NULL`, invisibly
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuSolveClear <- function() {
+  .Call(`_rxode2_rxGpuSolveSet`, NULL, NULL, NULL, NULL, NULL, NULL, NULL)
+  .rxGpuSolveEnv$run <- NULL
+  invisible(NULL)
+}
+
+#' Install the GPU setup for a solve set up from C
+#'
+#' rxSolve_() calls this once, at setup, for a GPU method whose model has no
+#' GPU setup installed by rxSolve() (nlmixr2est sets its solves up from C).
+#' The device code may come from the model with its Jacobian, which must keep
+#' the solved model's parameter, state and lhs order.
+#'
+#' @param object the model being solved
+#' @param ctl rxControl()
+#' @param params,events the solve's inputs
+#' @return `TRUE` when installed; `FALSE` (the host counterpart solves) when
+#'   the model cannot run as device code or anything fails
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuSolveInstallC <- function(object, ctl, params, events) {
+  tryCatch(
+    {
+      if (is.null(events) && rxIs(params, "event.data.frame")) {
+        events <- params
+      }
+      if (!.rxGpuSafe(object) || !is.null(.rxGpuSolveUnsupported(object, ctl, events))) {
+        return(FALSE)
+      }
+      .g <- suppressMessages(.rxGpuSolveModel(object, ctl$method))
+      .mv <- rxModelVars(object)
+      if (!.rxGpuSameLayout(.mv, rxModelVars(.g))) {
+        return(FALSE)
+      }
+      suppressMessages(.rxGpuSolveInstall(
+        .g,
+        ctl,
+        .rxGpuSolveCount(params, events, ctl),
+        key = .mv$trans[["model_vars"]]
+      ))
+      TRUE
+    },
+    error = function(e) FALSE
+  )
+}
+
+#' An upper bound of the subject solves of an rxSolve() call
+#'
+#' @param params,events rxSolve() inputs
+#' @param ctl rxControl()
+#' @return integer
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuSolveCount <- function(params, events, ctl) {
+  .ids <- function(x) {
+    if (!inherits(x, "data.frame")) {
+      return(1L)
+    }
+    .w <- which(tolower(names(x)) == "id")
+    if (length(.w) == 0L) {
+      return(1L)
+    }
+    ## `[[` of a large et() table is empty; `$` reads its ids
+    .id <- if (inherits(x, "rxEt")) x$id else x[[.w[1]]]
+    max(1L, length(unique(.id)))
+  }
+  .n <- .ids(events)
+  if (inherits(params, "data.frame") || is.matrix(params)) {
+    .n <- max(.n, NROW(params))
+  }
+  .n <- .n * max(1L, as.integer(ctl$nSub)) * max(1L, as.integer(ctl$nStud))
+  if (!is.null(ctl$nsim)) {
+    .n <- .n * max(1L, as.integer(ctl$nsim))
+  }
+  as.integer(min(.n, .Machine$integer.max))
 }

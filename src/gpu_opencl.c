@@ -156,7 +156,11 @@ static size_t rxGpuClElt(const rxGpuCl *g, int b) {
 
 void rxGpuClFree(rxGpuCl *g) {
   if (g == NULL) return;
+  // a run made before rxode2 was reloaded reaches a DLL whose entry points
+  // are not resolved yet
+  int ok = rxGpuClLoad();
   for (int b = 0; b < RXG_B_N; b++) {
+    if (!ok) break;
     if (g->buf[b] != NULL) rxcl.releaseMem(g->buf[b]);
     g->buf[b] = NULL;
   }

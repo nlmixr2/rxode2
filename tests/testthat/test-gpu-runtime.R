@@ -315,8 +315,8 @@ rxTest({
         attr(.ctx, "queue"),
         .k,
         .run$dims,
-        double(10),
-        integer(7),
+        .run$opt$od,
+        .run$opt$oi,
         FALSE,
         NULL
       ),
