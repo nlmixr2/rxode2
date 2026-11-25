@@ -62,3 +62,5 @@ ui-simulation
 simeta-index
 # accelerated steady state
 ss-anderson
+# GPU solving (device integrators, CPU build on CI)
+gpu-solve

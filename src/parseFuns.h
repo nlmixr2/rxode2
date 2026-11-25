@@ -547,7 +547,7 @@ static inline int handleFunctionTte(transFunctions *tf) {
 #include "parseFunsNa.h"
 #include "parseFunsLinCmt.h"
 
-static inline int handleFunctionsExceptLinCmt(transFunctions *tf) {
+static inline int handleFunctionsDoseTime(transFunctions *tf) {
   return handleFunctionDosenum(tf) ||
     handleFunctionDelay(tf) ||
     handleFunctionTad(tf) ||
@@ -557,17 +557,29 @@ static inline int handleFunctionsExceptLinCmt(transFunctions *tf) {
     handleFunctionLogit(tf) ||
     handleFunctionDiff(tf) ||
     handleFunctionPnorm(tf) ||
-    handleFunctionTransit(tf) ||
-    handleFunctionRxnorm(tf) ||
+    handleFunctionTransit(tf);
+}
+
+static inline int handleFunctionsRandom(transFunctions *tf) {
+  return handleFunctionRxnorm(tf) ||
     handleFunctionRchisq(tf) ||
     handleFunctionRgeom(tf) ||
     handleFunctionRbinom(tf) ||
     handleFunctionRnbinom(tf) ||
-    handleFunctionRnbinomMu(tf) ||
-    handleFunctionIsNan(tf) ||
+    handleFunctionRnbinomMu(tf);
+}
+
+static inline int handleFunctionsNa(transFunctions *tf) {
+  return handleFunctionIsNan(tf) ||
     handleFunctionIsNa(tf) ||
     handleFunctionIsFinite(tf) ||
     handleFunctionIsInfinite(tf);
+}
+
+static inline int handleFunctionsExceptLinCmt(transFunctions *tf) {
+  return handleFunctionsDoseTime(tf) ||
+    handleFunctionsRandom(tf) ||
+    handleFunctionsNa(tf);
 }
 
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
@@ -746,6 +758,48 @@ static inline int handleBadFunctions(transFunctions *tf) {
   return 0;
 }
 
+extern SEXP _rxode2parse_functionGpuSafe;
+extern SEXP _rxode2parse_funNameGpuSafe;
+
+// The model stays GPU safe only while every function it calls is registered
+// gpuSafe in a translation table (rxode2parseGetTranslation() or the builtin
+// table).  Unregistered calls (dosing, random draws, user functions) are not.
+// the device max()/min() take at most 8 arguments, sign() at most 4
+static inline int rxgTooManyArgs(const char *v, int n) {
+  if (!strcmp(v, "max") || !strcmp(v, "min")) return n > 8;
+  if (!strcmp(v, "sign")) return n > 4;
+  return 0;
+}
+
+static inline void rxgNoteFunction(transFunctions *tf) {
+  if (tb.gpu == 0) return;
+  const char *v = tf->v;
+  // delay() reads the subject's history on the device (rxg_delay()); its
+  // sensitivity forms rxDelayD*() do not run there
+  if (!strcmp(v, "delay")) return;
+  if (rxgTooManyArgs(v, functionNodeNargs(tf->pn))) {
+    tb.gpu = 0;
+    return;
+  }
+  if (_rxode2parse_functionGpuSafe != NULL) {
+    for (int kk = Rf_length(_rxode2parse_rxFunctionName); kk--;) {
+      if (!strcmp(CHAR(STRING_ELT(_rxode2parse_rxFunctionName, kk)), v)) {
+        if (INTEGER(_rxode2parse_functionGpuSafe)[kk] != 1) tb.gpu = 0;
+        return;
+      }
+    }
+  }
+  if (_rxode2parse_funNameGpuSafe != NULL) {
+    for (int kk = Rf_length(_rxode2parse_funName); kk--;) {
+      if (!strcmp(CHAR(STRING_ELT(_rxode2parse_funName, kk)), v)) {
+        if (INTEGER(_rxode2parse_funNameGpuSafe)[kk] != 1) tb.gpu = 0;
+        return;
+      }
+    }
+  }
+  tb.gpu = 0;
+}
+
 static inline int handleFunctions(nodeInfo ni, char *name, int *i, int *depth, int nch, D_ParseNode *xpn, D_ParseNode *pn) {
   if (tb.fn == 1) {
     transFunctions *tf = &_tf;
@@ -758,6 +812,7 @@ static inline int handleFunctions(nodeInfo ni, char *name, int *i, int *depth, i
     tf->xpn = xpn;
     tf->pn = pn;
     tf->v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
+    rxgNoteFunction(tf);
     if (assertNoEmptyFirstArg(pn, tf->v)) {
       // skip the call so its handler does not also act on the empty argument
       tf->i[0] = tf->nch;

@@ -48,6 +48,13 @@ SEXP _rxTick(void);
 SEXP _rxProgressStop(SEXP);
 SEXP _rxProgressAbort(SEXP);
 SEXP _rxode2_codeLoaded(void);
+SEXP _rxode2_rxGpuClAvailable(void);
+SEXP _rxode2_rxGpuClNew(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP _rxode2_rxGpuClRound(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP,
+                          SEXP, SEXP);
+SEXP _rxode2_rxGpuClFree(SEXP);
+SEXP _rxode2_rxGpuSolveSet(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP _rxode2_rxDydtForceN(void);
 
 SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname, SEXP pMd5, SEXP lastMv, SEXP goodFuns, SEXP esDLagCode, SEXP esDFCode, SEXP esDRateCode, SEXP esDDurCode, SEXP esD2FCode, SEXP esD2LagCode, SEXP esD2RateCode, SEXP esD2DurCode, SEXP esD3FCode, SEXP esDFQCode, SEXP esDLagJacCode, SEXP esDLagQCode, SEXP esDDurQCode);
 SEXP _rxode2_setEventSensDims(SEXP active, SEXP nState, SEXP nParam, SEXP nParam2);
@@ -1244,6 +1251,12 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_setCvodeLinearSolver", (DL_FUNC) &_rxode2_setCvodeLinearSolver, 1},
     {"_rxode2_rxApiErrTest_", (DL_FUNC) &_rxode2_rxApiErrTest_, 1},
     {"_rxode2_sortIdsWanted_", (DL_FUNC) &_rxode2_sortIdsWanted_, 3},
+    {"_rxode2_rxGpuClAvailable", (DL_FUNC) &_rxode2_rxGpuClAvailable, 0},
+    {"_rxode2_rxGpuClNew", (DL_FUNC) &_rxode2_rxGpuClNew, 8},
+    {"_rxode2_rxGpuClRound", (DL_FUNC) &_rxode2_rxGpuClRound, 10},
+    {"_rxode2_rxGpuClFree", (DL_FUNC) &_rxode2_rxGpuClFree, 1},
+    {"_rxode2_rxGpuSolveSet", (DL_FUNC) &_rxode2_rxGpuSolveSet, 7},
+    {"_rxode2_rxDydtForceN", (DL_FUNC) &_rxode2_rxDydtForceN, 0},
     {NULL, NULL, 0}
   };
   // C callable to assign environments.
@@ -1428,8 +1441,10 @@ void parseFree(int last);
 void rxOptionsFree(void);
 void gFree(void);
 void rxFreeLast(void);
+void rxGpuSolveFreeAll(void);
 void R_unload_rxode2(DllInfo *info){
   gFree();
+  rxGpuSolveFreeAll();
   rxOptionsFree();
   rxOptionsIni();
   parseFree(1);

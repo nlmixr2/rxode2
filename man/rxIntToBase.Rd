@@ -28,6 +28,7 @@ Other User functions:
 \code{\link[=mix]{mix()}},
 \code{\link[=rxD]{rxD()}},
 \code{\link[=rxFun]{rxFun()}},
+\code{\link[=rxImpureFun]{rxImpureFun()}},
 \code{\link[=rxIntToLetter]{rxIntToLetter()}},
 \code{\link[=rxUdfUiControl]{rxUdfUiControl()}},
 \code{\link[=rxUdfUiData]{rxUdfUiData()}},

@@ -1859,6 +1859,14 @@ extern "C" void setZeroMatrix(int which) {
 }
 
 double maxAtolRtolFactor = 0.1;
+// the model's d/dt() reads time (flags["timeDep"]; 1 for models built
+// before the flag): ros54p evaluates df/dt only then or with a covariate
+// changing over the interval
+extern "C" int rxModelTimeDep = 1;
+extern "C" int rxGpuSolveClaim(const char *key);
+extern "C" int rxGpuSolveSlots(void);
+extern "C" void rxGpuSolveOneThread(void);
+extern "C" void rxGpuSolveWorkers(int n);
 
 // Upper bound for a subject's accumulated tolerance MULTIPLIER.
 // `maxAtolRtolFactor` bounds the resulting tolerance, not the multiplier, and
@@ -5300,6 +5308,16 @@ extern "C" void rxRegisterDydtForce(t_rxDydtForce cb) {
   if (_rxNDydtForce < RX_MAX_DYDT_FORCE) _rxDydtForce[_rxNDydtForce++] = cb;
 }
 
+// registered forcing hooks (they make d/dt() time dependent, and the GPU
+// methods' device code does not call them)
+extern "C" int rxDydtForceN(void) {
+  return _rxNDydtForce;
+}
+
+extern "C" SEXP _rxode2_rxDydtForceN(void) {
+  return Rf_ScalarInteger(_rxNDydtForce);
+}
+
 extern "C" void rxRemoveDydtForce(t_rxDydtForce cb) {
   for (int i = 0; i < _rxNDydtForce; ++i) {
     if (_rxDydtForce[i] == cb) {
@@ -6793,10 +6811,24 @@ List rxLinCmtSensDebug_() {
   return List::create(_["sensType"]=rx->sensType, _["sensH"]=rx->sensH);
 }
 
-// The methods that read calc_jac() (rxIsImplicit() in R): ros4, iem and
-// ros43/ros6/backwardEuler/gauss6/iiic6/radauiia5/geng5/sdirk43
+// The methods that read calc_jac() (rxIsImplicit() in R): ros4, iem,
+// ros43/ros6/backwardEuler/gauss6/iiic6/radauiia5/geng5/sdirk43 and ros54p
 static inline bool rxImplicitMethod(int m) {
-  return m == 13 || m == 14 || (m >= 31 && m <= 38);
+  return m == 13 || m == 14 || (m >= 31 && m <= 38) || m == 108;
+}
+
+// Swap in the model with its analytic Jacobian (see rxSolve_()); true when
+// swapped
+static bool rxJacSwapModel(RObject &object, rxSolve_t *rxSolveDat) {
+  CharacterVector _tr = rxSolveDat->mv[RxMv_trans];
+  if (as<std::string>(_tr[RxMvTrans_jac]) == "fulluser") return false;
+  Function _jm = getRxFn(".rxJacSolveModelC");
+  RObject _jo = _jm(object);
+  if (Rf_isNull(_jo)) return false;
+  object = _jo;
+  rxSolveDat->mv = rxModelVars(object);
+  rxSolveFreeObj = object;
+  return true;
 }
 
 // [[Rcpp::export]]
@@ -6936,16 +6968,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     // lines calc_jac() is an empty stub.  rxSolve() swaps in the model with its
     // Jacobian before calling here; a solve set up from C (nlmixr2est) gets the
     // same model now, once, when it keeps the parameter, state and lhs order.
-    CharacterVector _tr = rxSolveDat->mv[RxMv_trans];
-    if (as<std::string>(_tr[RxMvTrans_jac]) != "fulluser") {
-      Function _jm = getRxFn(".rxJacSolveModelC");
-      RObject _jo = _jm(object);
-      if (!Rf_isNull(_jo)) {
-        object = _jo;
-        rxSolveDat->mv = rxModelVars(object);
-        rxSolveFreeObj = object;
-      }
-    }
+    // (A GPU method's setup is keyed by the model as given; its host fallback
+    // swaps below.)
+    rxJacSwapModel(object, rxSolveDat);
   }
   if (rxSolveDat->isRxSolve || rxSolveDat->isEnvironment){
     rx_solve* rx = getRxSolve_();
@@ -7083,6 +7108,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
     op->useDense = (int)asBool(rxControl[Rxc_dense], "dense");
     op->hasDelay = INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_hasDelay];
+    rxModelTimeDep = (Rf_length(rxSolveDat->mv[RxMv_flags]) > RxMvFlag_timeDep) ?
+      INTEGER(rxSolveDat->mv[RxMv_flags])[RxMvFlag_timeDep] : 1;
     // Build the delay-history column map: record dense history only for the ODE
     // states that delay() actually looks back on (propDelay bit in stateProp).
     // delayState[col] = ODE state index for history column `col`; delayCol[state]
@@ -7125,6 +7152,44 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
     op->cvodeLinSolver        = asInt(rxControl[Rxc_cvodeLinSolver], "cvodeLinSolver");
     op->stiff2                = asInt(rxControl[Rxc_stiff2], "stiff2");
+    if (method >= 110 && method <= 114) {
+      // a GPU method without a GPU setup for this model (installed by R just
+      // before) integrates with its host counterpart: t54 (68), vern76 (28),
+      // ros54p (108) and their AutoSwitch composites
+      CharacterVector _trans = rxSolveDat->mv[RxMv_trans];
+      // the key names the model and the method the setup was built for
+      std::string _key = as<std::string>(_trans[RxMvTrans_model_vars]) + ":" + std::to_string(method);
+      int _gpuOk = rxGpuSolveClaim(_key.c_str());
+      if (!_gpuOk) {
+        // set up from C (nlmixr2est): install it now, once (R at setup only)
+        Function _inst = getRxFn(".rxGpuSolveInstallC");
+        if (as<bool>(_inst(obj, rxControl, params, events))) {
+          _gpuOk = rxGpuSolveClaim(_key.c_str());
+        }
+      }
+      if (!_gpuOk) {
+        switch (method) {
+        case 110: method = 68; break;
+        case 111: method = 28; break;
+        case 112: method = 108; break;
+        case 113: method = 68; op->stiff2 = 108; break;
+        default: method = 28; op->stiff2 = 108; break;
+        }
+        // the host ros54p reads calc_jac(): the model with its Jacobian, as
+        // for any implicit solve set up from C
+        RObject _locked = object;
+        if ((method == 108 || op->stiff2 == 108) && rxJacSwapModel(object, rxSolveDat)) {
+          rxUnlock(_locked);
+          rxLock(object);
+          if (!rxDynLoad(object)) {
+            rxSolveFree();
+            stop(_("cannot load rxode2 dlls for this model"));
+          }
+          _rxModels[".lastMv"] = rxSolveDat->mv;
+          rxAssignPtr(rxSolveDat->mv);
+        }
+      }
+    }
     if (op->stiff2 > 0) {
       /* LSODA (1,2), CVODE (21), DLSODE (106,107) have internal switching and
          cannot be cleanly retried within an interval. */
@@ -7352,6 +7417,14 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     if (op->cores != 1 && op->naTimeInput == rxode2naTimeInputError) {
       warning(_("since throwing warning with NA time, change to single threaded"));
       op->cores = 1;
+    }
+    if (op->stiff >= 110 && op->stiff <= 114) {
+      // single threaded (NA times, ...) stays so for the subjects' host work
+      if (op->cores <= 1) rxGpuSolveOneThread();
+      // each subject in flight owns a per-thread slot (src/gpu_solve.cpp)
+      if (rxGpuSolveSlots() > op->cores) op->cores = rxGpuSolveSlots();
+      // a reusable workspace per thread slot for ind_solve() and steady state
+      rxGpuSolveWorkers(op->cores);
     }
     seedEng((int)(op->cores));
     _p_ensureLinCmtA((int)op->cores);
