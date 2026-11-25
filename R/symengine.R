@@ -3884,7 +3884,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
       ## A raw sensitivity-column read (which1 past the amounts, which2 = -2)
       ## is the state rxToSE() mapped `rx__sens_<row>_BY_<slot>` to: hand the
       ## state back, which is what the model reads at run time.
-      return(.raw)
+      .raw
     } else if (identical(x[[1]], quote(`delay`))) {
       return(paste0("delay(", .rxFromSE(x[[2]]), ", ", .rxFromSE(x[[3]]), ")"))
     } else if (identical(x[[1]], quote(`rxDelayD`))) {
