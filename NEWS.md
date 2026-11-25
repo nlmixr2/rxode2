@@ -523,7 +523,8 @@
   carries on when a step fails its error or convergence test, instead of
   failing the solve.  A stiff model carried across a dose-free stretch, such
   as a 5-days-on / 2-days-off schedule, failed with "could not solve the
-  system" once observations no longer re-initialised CVODE (#1790).
+  system" once observations no longer re-initialised CVODE.  The same holds
+  with `dense = TRUE` (#1790).
 
 ### Steady state
 - A steady state solved with `method = "indLin"` (or with a `rxToIndLin()`

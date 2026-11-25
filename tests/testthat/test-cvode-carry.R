@@ -240,5 +240,8 @@ rxTest({
     # no observation records in the off days
     .cv1 <- rxSolve(.mod, et(.dose, 57 * 24), method = "cvode", atol = 1e-10, rtol = 1e-10)
     expect_equal(.cv1$circ, .ref$circ[.ref$time == 57 * 24], tolerance = 1e-5)
+    # the dense driver carries across observations too
+    .cvd <- rxSolve(.mod, et(.dose, .obs), method = "cvode", dense = TRUE, atol = 1e-10, rtol = 1e-10)
+    expect_equal(.cvd$circ, .ref$circ, tolerance = 1e-5)
   })
 })
