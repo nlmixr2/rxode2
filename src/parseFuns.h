@@ -532,7 +532,7 @@ static inline int handleFunctionTte(transFunctions *tf) {
 #include "parseFunsNa.h"
 #include "parseFunsLinCmt.h"
 
-static inline int handleFunctionsExceptLinCmt(transFunctions *tf) {
+static inline int handleFunctionsNonRandom(transFunctions *tf) {
   return handleFunctionDosenum(tf) ||
     handleFunctionDelay(tf) ||
     handleFunctionTad(tf) ||
@@ -542,7 +542,11 @@ static inline int handleFunctionsExceptLinCmt(transFunctions *tf) {
     handleFunctionLogit(tf) ||
     handleFunctionDiff(tf) ||
     handleFunctionPnorm(tf) ||
-    handleFunctionTransit(tf) ||
+    handleFunctionTransit(tf);
+}
+
+static inline int handleFunctionsExceptLinCmt(transFunctions *tf) {
+  return handleFunctionsNonRandom(tf) ||
     handleFunctionRxnorm(tf) ||
     handleFunctionRchisq(tf) ||
     handleFunctionRgeom(tf) ||
