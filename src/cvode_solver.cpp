@@ -233,10 +233,15 @@ int cvode_ctx_last_step(cvode_ctx_t *ctx, double *tn, double *h) {
 
 extern "C"
 int cvode_ctx_restart(cvode_ctx_t *ctx) {
-  sunrealtype tn;
+  sunrealtype tn, hu;
   if (CVodeGetCurrentTime(ctx->mem, &tn) < 0) return -1;
-  if (CVodeGetDky(ctx->mem, tn, 0, ctx->dky) < 0) return -1;
-  N_VScale(1.0, ctx->dky, ctx->y);
+  if (CVodeGetLastStep(ctx->mem, &hu) < 0) return -1;
+  // with no step accepted since the last (re)initialisation the step size may
+  // still be zero, so CVodeGetDky would give NaN; ctx->y then still holds y(tn)
+  if (hu != 0.0) {
+    if (CVodeGetDky(ctx->mem, tn, 0, ctx->dky) < 0) return -1;
+    N_VScale(1.0, ctx->dky, ctx->y);
+  }
   if (CVodeReInit(ctx->mem, tn, ctx->y) < 0) return -1;
   ctx->tret = (double)tn;
   return 1;
