@@ -202,7 +202,7 @@ static int csCountPhase(csRun *r) {
 
 /* count > 1, then drop bare numbers, bare THETA[n]/ETA[n], anything leading
    with `-`, anything calling lag()/lead()/diff()/first()/last() and anything
-   calling an impure function (RNG, simeta(), user functions), then order by nchar with first encounter breaking ties
+   calling an impure function (RNG, simeta(), rxImpureFun() names), then order by nchar with first encounter breaking ties
    (R/rxOptExpr.R:1000-1013) */
 static int csSelectPhase(csRun *r) {
   int j;

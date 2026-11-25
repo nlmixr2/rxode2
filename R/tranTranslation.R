@@ -12,7 +12,11 @@ rxode2parseFuns <- function() {
 #'
 #' @param df data frame containing the character column names rxFun,
 #'   fun, type, package, packageFun and the integer column names
-#'   argMin and argMax
+#'   argMin, argMax and threadSafe.  An optional integer gpuSafe column
+#'   marks functions with a device (OpenCL) version.  Without it the
+#'   functions are not gpu safe, except a row identical (rxFun, fun,
+#'   package and packageFun) to one already registered, which keeps its
+#'   value
 #' @return Nothing called for side effects
 #' @author Matthew L. Fidler
 #' @family Developer API
@@ -31,7 +35,20 @@ rxode2parseAssignTranslation <- function(df) {
   for (.i in .int) {
     .df[[.i]] <- as.integer(.df[[.i]])
   }
-  assign(".rxode2parseDf", .df, envir = .parseEnv)
+  ## exact: $ on a data frame would partially match eg a gpuSafeNote column
+  .gpu <- df[["gpuSafe", exact = TRUE]]
+  if (is.null(.gpu)) {
+    ## a new or changed C function is not gpu safe; rows passed back
+    ## unchanged (eg rbind() onto rxode2parseGetTranslation()) keep theirs
+    .cur <- .parseEnv$.rxode2parseDf
+    .key <- function(d) paste(d$rxFun, d$fun, d$package, d$packageFun, sep = "\r")
+    .gpu <- if (is.null(.cur$gpuSafe)) 0L else .cur$gpuSafe[match(.key(.df), .key(.cur))]
+  }
+  .gpu <- rep_len(as.integer(.gpu), nrow(.df))
+  .gpu[is.na(.gpu)] <- 0L
+  .full <- .df
+  .full$gpuSafe <- .gpu
+  assign(".rxode2parseDf", .full, envir = .parseEnv)
   invisible(.df)
 }
 
@@ -44,11 +61,29 @@ rxode2parseAssignTranslation <- function(df) {
 #' @examples
 #' rxode2parseGetTranslation()
 rxode2parseGetTranslation <- function() {
+  ## the released columns: reverse dependencies rbind() rows onto this
+  .df <- .parseEnv$.rxode2parseDf
+  .df[, setdiff(names(.df), "gpuSafe"), drop = FALSE]
+}
+
+#' The translation table with the gpuSafe column (read by the parser)
+#'
+#' @return data frame
+#' @noRd
+#' @author Matthew L. Fidler
+.rxode2parseGetTranslationFull <- function() {
   .parseEnv$.rxode2parseDf
 }
 
 rxode2parseGetTranslationBuiltin <- function() {
-  data.frame(n = names(.parseEnv$.parseNum), i = as.integer(setNames(.parseEnv$.parseNum, NULL)))
+  .n <- names(.parseEnv$.parseNum)
+  data.frame(
+    n = .n,
+    i = as.integer(setNames(.parseEnv$.parseNum, NULL)),
+    ## .rxGpuSafeBuiltin is generated (R/dfIni.R) from the builtin gpuSafe
+    ## lines of inst/include/rxode2_model_shared.c
+    gpuSafe = as.integer(.n %in% .parseEnv$.rxGpuSafeBuiltin)
+  )
 }
 
 

@@ -484,6 +484,7 @@ void reset(void) {
   tb.splitBolusInfusionN = 0;
   tb.dvid	= R_Calloc(MXDER, int);
   tb.thread     = 1; // Thread safe flag
+  tb.gpu        = 1; // GPU safe flag
   tb.dvidn      = 0;
   tb.ix		= 0;
   tb.id         = 0;
