@@ -31,6 +31,10 @@
   zero-order second path combined with `delay = "transit"`, or with a
   zero-order first path, now errors: neither can be expressed with one
   modeled duration per compartment.
+- A failed ODE solve now names the states involved: it reports the states
+  that are non-finite in the last accepted state or after the failed step,
+  and suggests rescaling or a per-state `atol` when the states span 8 or
+  more orders of magnitude.  A successful solve records nothing (#1805).
 - `rxImpureFun()`/`rxRmImpureFun()` register user R functions, `rxFun()` C
   functions or package C functions that draw random numbers, keep state or
   have side effects.  `rxOptExpr()` never shares their calls and
