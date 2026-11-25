@@ -963,6 +963,13 @@
 #'   specification the steady state flag is dropped with repeated
 #'   doses (when `TRUE`) or retained (when `FALSE`)
 #'
+#' @param addlDropPastObs When `TRUE` (default) and only observations are
+#'   returned (`addDosing` is `FALSE` or `NULL`), an `addl` series stops
+#'   after its first repeat past the subject's last observation, as later
+#'   repeats cannot change the output.  Doses into an `alag()` compartment,
+#'   subjects whose time moves back and models with model times keep every
+#'   repeat, as does an event table already translated by [etTrans()].
+#'
 #' @param ssAtDoseTime Boolean that when `TRUE` back calculates the
 #'   steady concentration at the actual time of dose, otherwise when
 #'   `FALSE` the doses are shifted
@@ -1798,6 +1805,7 @@ rxSolve <- function(
   doseAtRecord = NULL,
   addlCovAtTime = NULL,
   resetCancelsPending = TRUE,
+  addlDropPastObs = TRUE,
   ssMethod = c("anderson", "iterate"),
   gpuBackend = c("auto", "opencl", "cpu"),
   gpuDevice = NULL,
@@ -2133,6 +2141,7 @@ rxSolve <- function(
     }
     checkmate::assertLogical(addlCovAtTime, any.missing = FALSE, len = 1)
     checkmate::assertLogical(resetCancelsPending, any.missing = FALSE, len = 1)
+    checkmate::assertLogical(addlDropPastObs, any.missing = FALSE, len = 1)
     if (checkmate::testIntegerish(ssMethod, len = 1, lower = 0, upper = 1, any.missing = FALSE)) {
       .ssMethod <- as.integer(ssMethod)
     } else {
@@ -2652,7 +2661,8 @@ rxSolve <- function(
       gpuDevice = gpuDevice,
       gpuPrecision = gpuPrecision,
       gpuBatch = as.integer(gpuBatch),
-      .simNames = .simNames
+      .simNames = .simNames,
+      addlDropPastObs = addlDropPastObs
     )
     class(.ret) <- "rxControl"
     return(.ret)

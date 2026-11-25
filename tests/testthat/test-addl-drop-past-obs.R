@@ -255,3 +255,69 @@ rxTest({
     expect_equal(nrow(.b), nrow(.a))
   })
 })
+
+rxTest({
+  .pk <- function() {
+    ini({
+      ka <- 1
+      cl <- 1
+      v <- 10
+    })
+    model({
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+      cp <- central / v
+    })
+  }
+  .m <- rxode2(.pk)
+
+  test_that("rxSolve() drops addl repeats past the last observation", {
+    expect_true(rxControl()$addlDropPastObs)
+    expect_error(rxControl(addlDropPastObs = NA))
+    .ev <- et(amt = 100, ii = 24, addl = 20) |> et(0:48)
+    .s1 <- as.data.frame(rxSolve(.m, .ev))
+    .s2 <- as.data.frame(rxSolve(.m, .ev, addlDropPastObs = FALSE))
+    expect_equal(.s1, .s2)
+    .d <- as.data.frame(.ev)
+    expect_equal(
+      as.data.frame(rxSolve(.m, .d)),
+      as.data.frame(rxSolve(.m, .d, addlDropPastObs = FALSE))
+    )
+    # a long maintenance regimen with a short observation window solves
+    .ev <- et(amt = 100, ii = 24, addl = 10000) |> et(0:48)
+    .s <- rxSolve(.m, .ev)
+    expect_equal(nrow(.s), 49L)
+    expect_equal(as.data.frame(.s), .s1)
+  })
+
+  test_that("rxSolve() keeps every repeat when the output shows doses", {
+    .ev <- et(amt = 100, ii = 24, addl = 20) |> et(0:48)
+    .s1 <- as.data.frame(rxSolve(.m, .ev, addDosing = TRUE))
+    .s2 <- as.data.frame(rxSolve(.m, .ev, addDosing = TRUE, addlDropPastObs = FALSE))
+    expect_equal(.s1, .s2)
+    expect_equal(sum(.s1$evid == 1), 21L)
+    .s1 <- as.data.frame(rxSolve(.m, .ev, addDosing = NA))
+    expect_equal(nrow(.s1), nrow(as.data.frame(rxSolve(.m, .ev, addDosing = NA, addlDropPastObs = FALSE))))
+    .s1 <- as.data.frame(rxSolve(.m, .ev, addDosing = NULL))
+    expect_equal(.s1, as.data.frame(rxSolve(.m, .ev, addDosing = NULL, addlDropPastObs = FALSE)))
+  })
+
+  test_that("rxSolve() without observations samples across every repeat", {
+    .ev <- et(amt = 100, ii = 24, addl = 4)
+    .s1 <- as.data.frame(rxSolve(.m, .ev))
+    .s2 <- as.data.frame(rxSolve(.m, .ev, addlDropPastObs = FALSE))
+    expect_equal(.s1, .s2)
+    .d <- data.frame(
+      id = 1L,
+      time = c(0, 1, 2),
+      evid = c(1L, 2L, 2L),
+      amt = c(100, NA, NA),
+      ii = c(24, 0, 0),
+      addl = c(4L, 0L, 0L),
+      cmt = 1L
+    )
+    .s1 <- as.data.frame(rxSolve(.m, .d))
+    .s2 <- as.data.frame(rxSolve(.m, .d, addlDropPastObs = FALSE))
+    expect_equal(.s1, .s2)
+  })
+})

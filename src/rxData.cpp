@@ -136,6 +136,15 @@ bool rxControlResetCancelsPending(const List &control) {
   if (Rf_length(control) <= Rxc_resetCancelsPending) return true;
   return asBool(control[Rxc_resetCancelsPending], "resetCancelsPending");
 }
+// rxControl(addlDropPastObs=), on only when the output has no dose rows
+// (addDosing FALSE or NULL); an older control list keeps every repeat
+bool rxControlAddlDropPastObs(const List &control) {
+  if (Rf_length(control) <= Rxc_addlDropPastObs) return false;
+  if (!asBool(control[Rxc_addlDropPastObs], "addlDropPastObs")) return false;
+  SEXP ad = control[Rxc_addDosing];
+  if (Rf_isNull(ad)) return true;
+  return Rf_length(ad) == 1 && LOGICAL(ad)[0] == FALSE;
+}
 // 1 when tied records keep their translated order while solving
 int tieOrderData_global = 0;
 // 1 when a reset cancels the lagged doses of the records before it (the
@@ -3872,7 +3881,8 @@ static inline void rxEv1UpdateRxEt(const RObject &obj, const List &rxControl,
                    rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
                    R_NilValue,
                    rxControlTieOrder(rxControl),
-                   rxControlResetCancelsPending(rxControl));
+                   rxControlResetCancelsPending(rxControl),
+                   rxControlAddlDropPastObs(rxControl));
   }
 }
 
@@ -3978,6 +3988,7 @@ static inline void rxEv1UpdateDf(const RObject &obj, const List &rxControl,
                                  RObject &ev1, rxSolve_t* rxSolveDat,
                                  rx_solve *rx, Function &etTransR) {
   List ev1k;
+  bool dropPastObs = rxControlAddlDropPastObs(rxControl);
   {
     rxEtTransStrCmpQuietGuard strCmpQuiet(rxSolveDat->hasICov);
     ev1k = etTransR(ev1, obj, rxSolveDat->hasCmt,
@@ -3986,10 +3997,24 @@ static inline void rxEv1UpdateDf(const RObject &obj, const List &rxControl,
                     rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
                     R_NilValue,
                     rxControlTieOrder(rxControl),
-                    rxControlResetCancelsPending(rxControl));
+                    rxControlResetCancelsPending(rxControl),
+                    dropPastObs);
   }
   CharacterVector tmpCk = ev1k.attr("class");
   List tmpLk = tmpCk.attr(".rxode2.lst");
+  if (dropPastObs && asInt(tmpLk[RxTrans_nobs], "nobs") == 0) {
+    // the sampling times span every dose: translate again with each repeat
+    rxEtTransStrCmpQuietGuard strCmpQuiet(rxSolveDat->hasICov);
+    ev1k = etTransR(ev1, obj, rxSolveDat->hasCmt,
+                    false, false, true, R_NilValue,
+                    rxControl[Rxc_keepF], rxControl[Rxc_addlKeepsCov],
+                    rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
+                    R_NilValue,
+                    rxControlTieOrder(rxControl),
+                    rxControlResetCancelsPending(rxControl));
+    tmpCk = ev1k.attr("class");
+    tmpLk = tmpCk.attr(".rxode2.lst");
+  }
   if (asInt(tmpLk[RxTrans_nobs], "nobs") == 0) {
     rxSolveDat->labelID=true;
     rxSolveDat->idLevels = asCv(tmpLk[RxTrans_idLvl], "idLvl");
@@ -4006,7 +4031,8 @@ static inline void rxEv1UpdateDf(const RObject &obj, const List &rxControl,
                    rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
                    rxControl[Rxc_iCov],
                    rxControlTieOrder(rxControl),
-                   rxControlResetCancelsPending(rxControl));
+                   rxControlResetCancelsPending(rxControl),
+                   dropPastObs);
   } else if (Rf_isNull(rxControl[Rxc_iCov])) {
     // Same arguments as ev1k; reuse it rather than translating twice
     ev1 = ev1k;
@@ -4017,7 +4043,8 @@ static inline void rxEv1UpdateDf(const RObject &obj, const List &rxControl,
                    rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
                    rxControl[Rxc_iCov],
                    rxControlTieOrder(rxControl),
-                   rxControlResetCancelsPending(rxControl));
+                   rxControlResetCancelsPending(rxControl),
+                   dropPastObs);
   }
   rxSolveDat->labelID=true;
   CharacterVector tmpC = ev1.attr("class");

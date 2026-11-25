@@ -67,3 +67,5 @@ ss-anderson
 # GPU solving (device integrators, CPU build on CI)
 gpu-solve
 mem-alloc-tags
+# addl repeats past the last record
+addl-drop-past-obs
