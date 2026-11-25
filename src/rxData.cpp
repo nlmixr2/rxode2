@@ -6381,7 +6381,6 @@ static inline SEXP rxSolve_finalize(const RObject &obj,
   // has not flushed (babelmixr2's PopED) loses its lines rather than passing them
   // to this solve's subjects.  SAEM calls par_solve() directly, so the reasons its
   // subjects pushed in between survive until its flush.
-  rxSolveCheckSimIndex(rxSolveDat, rx, rxControl);
   rxSolveWarnReset();
   ssNotConv_global = 0;
   par_solve(rx);
@@ -7870,6 +7869,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       }
     }
 
+    // also for a setup-only solve, whose par_solve() a caller runs later
+    rxSolveCheckSimIndex(rxSolveDat, getRxSolve_(), rxControl);
     if (setupOnly){
       setupOnlyObj = obj;
       return as<SEXP>(LogicalVector::create(true));
