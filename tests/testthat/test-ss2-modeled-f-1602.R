@@ -40,7 +40,8 @@ rxTest({
       for (.lag in c("", "alag(depot) <- 0\n", "alag(depot) <- 0.7\n")) {
         .m <- .mod(.kind, .lag)
         for (.meth in c("liblsoda", "dop853")) {
-          .r <- expect_no_warning(rxSolve(.m, .ev, .p, method = .meth))
+          # the first dose is a bolus into the modeled depot on purpose
+          .r <- expect_no_warning(rxSolve(.m, .ev, .p, method = .meth, checkModeledRateDur = FALSE))
           .w <- rxSolve(.m, .want, .p, method = .meth)
           expect_equal(.r$center, .w$center, tolerance = 1e-6)
         }
@@ -89,7 +90,7 @@ rxTest({
       .want <- et(amt = 100, time = .off, cmt = "depot") |>
         et(time = 3, amt = 50, rate = .rate, ii = 12, addl = 300, cmt = "depot") |>
         et(.o + .off)
-      .r <- expect_no_warning(rxSolve(.m, .ev, .lp))
+      .r <- expect_no_warning(rxSolve(.m, .ev, .lp, checkModeledRateDur = FALSE))
       expect_equal(.r$cp, rxSolve(.m, .want, .lp)$cp, tolerance = 1e-6)
     }
   })
