@@ -4245,18 +4245,26 @@ static inline double ssInfRates(rx_solving_options_ind *ind, int infB, int infE,
   return 1.0;
 }
 
-static void handleSSCore(int *neq,
-                         int *BadDose,
-                         double *InfusionRate,
-                         double *dose,
-                         double *yp,
-                         double xout, double xp, int id,
-                         int *i, int nx,
-                         int *istate,
-                         rx_solving_options *op,
-                         rx_solving_options_ind *ind,
-                         t_update_inis u_inis,
-                         void *ctx) {
+// rxSsAdvance is 1 in the model while the steady state is solved
+struct ssAdvanceScope {
+  rx_solving_options_ind *ind;
+  explicit ssAdvanceScope(rx_solving_options_ind *i) : ind(i) { ind->ssAdvance = 1; }
+  ~ssAdvanceScope() { ind->ssAdvance = 0; }
+};
+
+void handleSS(int *neq,
+              int *BadDose,
+              double *InfusionRate,
+              double *dose,
+              double *yp,
+              double xout, double xp, int id,
+              int *i, int nx,
+              int *istate,
+              rx_solving_options *op,
+              rx_solving_options_ind *ind,
+              t_update_inis u_inis,
+              void *ctx) {
+  ssAdvanceScope ssAdvanceOn(ind);
   rx_solve *rx = &rx_global;
   _adjSSinfKind = 0; _adjSS2 = 0; _adjSSbolusIi = 0.0;   // reset adjoint ss handoffs
   _adjSSinfModeled = 0; _adjSSinfAmt = 0.0; _adjSSinfAmtRaw = 0.0;
@@ -5167,25 +5175,6 @@ static void handleSSCore(int *neq,
     ind->ixds=oldIxds; ind->idx=oldIdx;
   }
   updateExtraDoseGlobals(ind);
-}
-
-// rxSsAdvance is 1 in the model while the steady state is solved
-void handleSS(int *neq,
-              int *BadDose,
-              double *InfusionRate,
-              double *dose,
-              double *yp,
-              double xout, double xp, int id,
-              int *i, int nx,
-              int *istate,
-              rx_solving_options *op,
-              rx_solving_options_ind *ind,
-              t_update_inis u_inis,
-              void *ctx) {
-  ind->ssAdvance = 1;
-  handleSSCore(neq, BadDose, InfusionRate, dose, yp, xout, xp, id, i, nx,
-               istate, op, ind, u_inis, ctx);
-  ind->ssAdvance = 0;
 }
 
 // tte() cumulative hazards only grow, so they take no part in a steady-state
