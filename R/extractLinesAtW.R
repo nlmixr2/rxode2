@@ -10,7 +10,7 @@
   checkmate::assertInteger(w, lower = 1, len = 1)
   .w <- w
   # .pre will be list() if .w is at 1
-  .pre <- lapply(seq(1, .w)[-.w], function(i) {
+  .pre <- lapply(seq_len(.w - 1L), function(i) {
     modelLines[[i]]
   })
   # .post will be list() if .w is at the end of the line
