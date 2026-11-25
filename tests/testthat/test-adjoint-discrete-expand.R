@@ -340,8 +340,15 @@ rxTest({
     for (.nm in names(.evs)) {
       .ev <- .evs[[.nm]]
       .fd <- .adjFd(.txt, .ev, .p, "liblsoda", tol = 1e-13)
-      .a <- rxSolveAdjointRk4(.txt, .ev, params = .p, calcSens = names(.p), method = "cvodesadj",
-        atol = 1e-10, rtol = 1e-10)
+      .a <- rxSolveAdjointRk4(
+        .txt,
+        .ev,
+        params = .p,
+        calcSens = names(.p),
+        method = "cvodesadj",
+        atol = 1e-10,
+        rtol = 1e-10
+      )
       expect_equal(.a$rx__sens_center_BY_c0__, .c0[[.nm]], tolerance = 1e-8, label = .nm)
       # the finite difference across the reset holds about 1e-5
       for (.cn in setdiff(names(.fd), "rx__sens_center_BY_c0__")) {
