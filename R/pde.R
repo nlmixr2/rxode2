@@ -164,16 +164,13 @@ rxPde <- function(model) {
 ## Which boundary ("left"/"right") a value denotes, for grid g.
 .rxPdeSide <- function(g, b, what) {
   .b <- .rxPdeConst(b)
-  if (is.numeric(.b) && g$num) {
-    if (isTRUE(all.equal(.b, g$from))) {
-      return("left")
-    }
-    if (isTRUE(all.equal(.b, g$to))) {
-      return("right")
-    }
-  } else if (identical(.b, g$from)) {
+  .same <- function(bound) {
+    if (is.numeric(.b) && is.numeric(bound)) isTRUE(all.equal(.b, bound)) else identical(.b, bound)
+  }
+  if (.same(g$from)) {
     return("left")
-  } else if (identical(.b, g$to)) {
+  }
+  if (.same(g$to)) {
     return("right")
   }
   stop(what, ": the boundary must be ", g$name, " = from or ", g$name, " = to of its grid", call. = FALSE)
@@ -614,12 +611,44 @@ rxPde <- function(model) {
   invisible(env)
 }
 
-## Expanded names must not clash with names the model already uses.
+## Names a statement assigns (x <- ..., d/dt(x) = ...), including inside
+## if/else blocks.
+.rxPdeAssigned <- function(e) {
+  if (!is.call(e)) {
+    return(character(0))
+  }
+  .st <- .rxPdeStatement(e)
+  if (!is.null(.st)) {
+    .l <- .st$lhs
+    if (is.name(.l)) {
+      return(as.character(.l))
+    }
+    if (
+      is.call(.l) &&
+        identical(.l[[1]], as.name("/")) &&
+        length(.l) == 3L &&
+        is.call(.l[[3]]) &&
+        length(.l[[3]]) == 2L &&
+        is.name(.l[[3]][[2]])
+    ) {
+      return(as.character(.l[[3]][[2]]))
+    }
+    return(character(0))
+  }
+  unlist(lapply(as.list(e)[-1], .rxPdeAssigned))
+}
+
+## Expanded names must not clash with names the model assigns or with other
+## gridded variables; other references (f(C_1), C_1(0), ...) are allowed.
 .rxPdeCheckClash <- function(exprs, env) {
   .new <- unlist(lapply(names(env$vars), function(v) {
     .rxPdeSym(v, seq_len(env$grids[[env$vars[[v]]]]$n))
   }))
-  .clash <- intersect(.new, unique(unlist(lapply(exprs, all.names))))
+  .clash <- c(
+    intersect(.new, unique(unlist(lapply(exprs, .rxPdeAssigned)))),
+    intersect(.new, names(env$vars)),
+    .new[duplicated(.new)]
+  )
   if (length(.clash) > 0L) {
     .rxPdeStop(
       "the expanded grid variable(s) ",

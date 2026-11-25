@@ -45,6 +45,14 @@ rxTest({
     expect_error(rxPde("grid(x, 0, 1, 2)\ngrid(y, 0, 1, 3)\nr[x] <- 1\nr[y] <- 2"), "grids")
     expect_error(rxPde("grid(x, 0, 1, 2)\nr[x] <- 1\nd/dt(r[x]) = 0"), "more than once")
     expect_error(rxPde("grid(x, 0, 1, 2)\nd/dt(C[x]) = 0\nvalue(C, x = 0) = C[x = 1]"), "fixed boundary")
+    expect_error(rxPde("grid(x, 0, 1, 2)\nd/dt(C[x]) = 0\nd/dt(C_1[x]) = 0"), "clash")
+    expect_error(rxPde("grid(x, 0, 1, 2)\nd/dt(C[x]) = 0\nif (a) {C_2 = 1}"), "clash")
+    ## per-cell properties may name the expanded states
+    .m <- rxPde("grid(x, 0, 1, 2)\nd/dt(C[x]) = 0\nalag(C_1) = 2\nC_2(0) = 1")
+    expect_true(grepl("alag(C_1) = 2", .m, fixed = TRUE))
+    ## mixed numeric and symbolic bounds
+    .m <- rxPde("grid(x, 0.1 + 0.2, L, 2)\nd/dt(C[x]) = d2x(C)\nvalue(C, x = 0.3) = 1")
+    expect_true(grepl("(1)", .m, fixed = TRUE))
     ## a flux() may read a value() given after it
     .m <- rxPde("grid(x, 0, 1, 2)\nd/dt(C[x]) = 0\nflux(C, x = 0) = C[x = 1]\nvalue(C, x = 1) = cin")
     expect_true(grepl("d/dt(C_1) = (0) + ((cin))/0.5", .m, fixed = TRUE))
