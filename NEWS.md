@@ -9,9 +9,8 @@
   `linCmtB()` reads a model writes more than once (the value, the stored
   Jacobian, amounts and gradient, the second-order and eta-space carry
   reads); `linCmtB()` as a whole stays impure, and a read is never shared
-  across one of its sentinel calls.  A FOCEi gradient model of a 2-cmt oral
-  `ll()` fit went from 396 `linCmtB()` calls per record to 17, and the fit
-  from 15.4 to 4.3 seconds.
+  across one of its sentinel calls, so a FOCEi gradient model of a `linCmt()`
+  fit makes far fewer `linCmtB()` calls per record.
 
 - `rxImpureFun()`/`rxRmImpureFun()` register user R functions, `rxFun()` C
   functions or package C functions that draw random numbers, keep state or

@@ -53,6 +53,18 @@ rxTest({
     expect_equal(.n(suppressMessages(rxOptExpr(txt2, "x"))), 2L)
   })
 
+  test_that("a linCmtB() call whose selectors cannot be read is taken as impure", {
+    .odd <- "linCmtB(rx__PTR__,t,1,1,0,(w),0,1,cl,v,0,0,0,0,0)"
+    # it starts a new epoch, so the reads around it get different aliases
+    .o <- .rxOptLinCmtPure(paste0("a=", .L(-33, 0), "\nz~", .odd, "\nb=", .L(-33, 0)))
+    expect_match(.o, "a=linCmtBr0__(", fixed = TRUE)
+    expect_match(.o, "b=linCmtBr1__(", fixed = TRUE)
+    expect_match(.o, paste0("z~", .odd), fixed = TRUE)
+    # a pure read on the same line does not get it renamed
+    .o <- .rxOptLinCmtPure(paste0("a=", .L(-33, 0), "+", .odd))
+    expect_false(grepl("linCmtBr", .o, fixed = TRUE))
+  })
+
   test_that("rxOptExpr() passes until nested repeats are shared too", {
     L <- .L(-1, -1, "exp(ETA[1]+THETA[2]),exp(THETA[3])")
     txt <- paste0(

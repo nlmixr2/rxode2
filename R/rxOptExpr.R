@@ -1150,9 +1150,8 @@
 # Jacobian, amounts and concentration gradient (its linCmtBread(): which1 >= 0
 # with which2 >= 0 or -2, and which1 = -2 with which2 >= 0), the second-order
 # reads (-20/-21) and the eta-space carry's reads (-33 .. -36).
-# A FOCEi gradient model writes the same read hundreds of times per record
-# (396 calls, 17 distinct, for a 2-cmt oral ll() model), and each call pays
-# the kernel's entry.  So the CSE may share a pure read, under an alias that
+# A FOCEi gradient model writes the same read many times per record, and each
+# call pays the kernel's entry.  So the CSE may share a pure read, under an alias that
 # is not impure, `linCmtBr<epoch>__(`, where the epoch counts the statements
 # with an impure linCmtB() call so far: two reads with a sentinel between them
 # are never merged, and a temporary is defined at its first use, after the
@@ -1177,8 +1176,14 @@
   .l <- strsplit(norm, "\n", fixed = TRUE)[[1]]
   .epoch <- 0L
   for (.i in seq_along(.l)) {
+    if (!grepl("linCmtB(", .l[.i], fixed = TRUE)) {
+      next
+    }
+    .nCalls <- lengths(gregexpr("linCmtB(", .l[.i], fixed = TRUE))
     .m <- gregexpr("linCmtB[(]([^,()]*,){7}", .l[.i], perl = TRUE)[[1]]
-    if (.m[1] < 0) {
+    if (.m[1] < 0 || length(.m) != .nCalls) {
+      # a call whose selector arguments cannot be read is taken as impure
+      .epoch <- .epoch + 1L
       next
     }
     .calls <- regmatches(.l[.i], list(.m))[[1]]
