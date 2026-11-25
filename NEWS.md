@@ -2,6 +2,17 @@
 
 ## New features
 
+- `rxOptExpr()` repeats its common-subexpression search until nothing more is
+  shared.  One pass only shares the innermost repeats, so an expression that
+  repeats once its own repeated parts are temporaries (`f(exp(a + b))`
+  written several times) was left as written.  It also shares the pure
+  `linCmtB()` reads a model writes more than once (the value, the stored
+  Jacobian, amounts and gradient, the second-order and eta-space carry
+  reads); `linCmtB()` as a whole stays impure, and a read is never shared
+  across one of its sentinel calls.  A FOCEi gradient model of a 2-cmt oral
+  `ll()` fit went from 396 `linCmtB()` calls per record to 17, and the fit
+  from 15.4 to 4.3 seconds.
+
 - `rxImpureFun()`/`rxRmImpureFun()` register user R functions, `rxFun()` C
   functions or package C functions that draw random numbers, keep state or
   have side effects.  `rxOptExpr()` never shares their calls and

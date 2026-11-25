@@ -36,8 +36,9 @@ rxTest({
     .c <- .rxOptExprC(.norm)
     expect_false(is.na(.c)) # this model must not decline
 
+    # one pass of each (rxOptExpr() itself repeats passes to a fixed point)
     withr::with_options(list(rxode2.optExprC = FALSE), {
-      .r <- suppressMessages(rxOptExpr(.txt, "model"))
+      .r <- suppressMessages(rxode2:::.rxOptExprOnce(.txt, "model"))
     })
     expect_identical(.c, .r)
   })
