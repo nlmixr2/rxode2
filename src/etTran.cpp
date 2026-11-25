@@ -1373,7 +1373,7 @@ List rxModelVars_(const RObject &obj); // model variables section
 // Dose records whose modeled rate()/dur() request does not match the model
 // (rxSolve(checkModeledRateDur=)), counted per compartment (state index).
 struct etTransModeledCheck {
-  std::map<int, int> notRequested; // the cmt has rate()/dur(); the dose is not -1/-2
+  std::map<int, int> notRequested; // a bolus into a cmt with rate()/dur()
   std::map<int, int> rateMissing;  // rate=-1 without rate(cmt)
   std::map<int, int> durMissing;   // rate=-2 without dur(cmt)
 };
@@ -1388,7 +1388,7 @@ static inline void etTransModeledCheckAdd(etTransModeledCheck& chk,
     if (!hasRate) chk.rateMissing[cmt]++;
   } else if (rateI == 8) {
     if (!hasDur) chk.durMissing[cmt]++;
-  } else if ((hasRate || hasDur) && cmt != splitSrc) {
+  } else if (rateI == 0 && (hasRate || hasDur) && cmt != splitSrc) {
     chk.notRequested[cmt]++;
   }
 }
@@ -1416,9 +1416,9 @@ static inline void etTransModeledCheckWarn(const etTransModeledCheck& chk,
                                            const IntegerVector& stateProp) {
   const char *off = _("use 'checkModeledRateDur=FALSE' to silence this");
   if (!chk.notRequested.empty()) {
-    std::string w = std::string(_("doses into compartments with a modeled 'rate()'/'dur()' do not request it, so the model value is ignored: ")) +
+    std::string w = std::string(_("bolus doses into compartments with a modeled 'rate()'/'dur()' ignore the model value: ")) +
       etTransModeledCheckList(chk.notRequested, stateProp, true) + "; " +
-      _("set 'rate=-1' for a modeled rate or 'rate=-2' for a modeled duration, or ") + off;
+      _("give them 'rate=-1' for the modeled rate or 'rate=-2' for the modeled duration, or ") + off;
     Rf_warningcall(R_NilValue, "%s", w.c_str());
   }
   if (!chk.rateMissing.empty()) {
@@ -1479,9 +1479,9 @@ static inline void etTransModeledCheckWarn(const etTransModeledCheck& chk,
 //'   dropped from that reset's time on, as NONMEM cancels prior doses at a
 //'   reset.
 //'
-//' @param checkModeledRateDur When `TRUE` (default), warn when a dose into a
-//'   compartment with a modeled `rate()`/`dur()` does not request it (data
-//'   `rate` is not `-1`/`-2`), or requests a modeled rate/duration the model
+//' @param checkModeledRateDur When `TRUE` (default), warn when a bolus dose
+//'   goes into a compartment with a modeled `rate()`/`dur()` (data `rate` is
+//'   not `-1`/`-2`), or a dose requests a modeled rate/duration the model
 //'   does not define.
 //'
 //' @inheritParams rxSolve

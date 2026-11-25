@@ -1108,8 +1108,8 @@
 #'   `addl` repeats it was translated with.
 #'
 #' @param checkModeledRateDur When `TRUE` (default), translating the data
-#'   warns when a dose into a compartment with a modeled `rate()`/`dur()` does
-#'   not request it (data `rate` is not `-1`/`-2`, so the model value is
+#'   warns when a bolus dose goes into a compartment with a modeled
+#'   `rate()`/`dur()` (data `rate` is not `-1`/`-2`, so the model value is
 #'   ignored), and when a dose requests a modeled rate (`-1`) or duration
 #'   (`-2`) the model does not define.  `FALSE` turns the check off.
 #'

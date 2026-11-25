@@ -135,9 +135,15 @@
   })
   ## harvested cases carry their own model variables
   .mv <- if (!is.null(case$mv)) case$mv else models[[case$model]]
+  ## the modeled rate()/dur() warning (#1794) postdates the snapshots and
+  ## is tested in test-modeled-rate-dur-check.R
+  .args <- case$args
+  if (is.null(.args$checkModeledRateDur)) {
+    .args$checkModeledRateDur <- FALSE
+  }
   .w <- character(0)
   .res <- withCallingHandlers(
-    tryCatch(do.call(etTrans, c(list(case$data, .mv), case$args)), error = function(e) {
+    tryCatch(do.call(etTrans, c(list(case$data, .mv), .args)), error = function(e) {
       structure(conditionMessage(e), class = "etTransGoldenError")
     }),
     warning = function(w) {

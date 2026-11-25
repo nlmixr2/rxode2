@@ -24,10 +24,17 @@ rxTest({
   test_that("a modeled dur() with a bolus dose warns", {
     .ev <- et(amt = 100, cmt = "depot") |> et(.obs)
     expect_warning(etTrans(.ev, .mDur), "'depot' \\(dur\\(\\), 1 dose\\)")
-    expect_warning(rxSolve(.mDur, .p, .ev), "modeled 'rate\\(\\)'/'dur\\(\\)'")
-    # a fixed infusion does not request it either
-    .ev <- et(amt = 100, cmt = "depot", rate = 10, addl = 1, ii = 12) |> et(.obs)
+    expect_warning(rxSolve(.mDur, .p, .ev), "bolus doses into compartments with a modeled")
+    # a dur=0 dose is a bolus too
+    .ev <- et(amt = 100, cmt = "depot", dur = 0) |> et(.obs)
     expect_warning(etTrans(.ev, .mDur), "'depot' \\(dur\\(\\), 1 dose\\)")
+  })
+
+  test_that("a fixed rate or duration chooses the infusion and is silent", {
+    .ev <- et(amt = 100, cmt = "depot", rate = 10, addl = 1, ii = 12) |> et(.obs)
+    expect_no_warning(etTrans(.ev, .mDur))
+    .ev <- et(amt = 100, cmt = "cen", dur = 3) |> et(.obs)
+    expect_no_warning(etTrans(.ev, .mRate))
   })
 
   test_that("doses requesting the modeled dur() or rate() are silent", {
@@ -93,11 +100,11 @@ rxTest({
   test_that("an rxSolve() warns once", {
     .ev <- et(amt = 100, cmt = "depot") |> et(.obs)
     .w <- testthat::capture_warnings(rxSolve(.mDur, .p, .ev))
-    expect_length(grep("modeled 'rate\\(\\)'/'dur\\(\\)'", .w), 1L)
+    expect_length(grep("bolus doses into compartments with a modeled", .w), 1L)
     # sampling times added to a dose-only table are not checked twice
     .ev <- et(amt = 100, cmt = "depot")
     .w <- testthat::capture_warnings(rxSolve(.mDur, .p, .ev))
-    expect_length(grep("modeled 'rate\\(\\)'/'dur\\(\\)'", .w), 1L)
+    expect_length(grep("bolus doses into compartments with a modeled", .w), 1L)
   })
 
   test_that("linCmt() compartments use their own modeled rate()/dur()", {

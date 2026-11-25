@@ -1564,8 +1564,8 @@ repeats, and an event table already translated by \code{\link[=etTrans]{etTrans(
 \code{addl} repeats it was translated with.}
 
 \item{checkModeledRateDur}{When \code{TRUE} (default), translating the data
-warns when a dose into a compartment with a modeled \code{rate()}/\code{dur()} does
-not request it (data \code{rate} is not \code{-1}/\code{-2}, so the model value is
+warns when a bolus dose goes into a compartment with a modeled
+\code{rate()}/\code{dur()} (data \code{rate} is not \code{-1}/\code{-2}, so the model value is
 ignored), and when a dose requests a modeled rate (\code{-1}) or duration
 (\code{-2}) the model does not define.  \code{FALSE} turns the check off.}
 

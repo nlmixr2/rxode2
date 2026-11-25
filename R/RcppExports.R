@@ -240,9 +240,9 @@ cmtSupportsOff_ <- function(cmt, mv) {
 #'   dropped from that reset's time on, as NONMEM cancels prior doses at a
 #'   reset.
 #'
-#' @param checkModeledRateDur When `TRUE` (default), warn when a dose into a
-#'   compartment with a modeled `rate()`/`dur()` does not request it (data
-#'   `rate` is not `-1`/`-2`), or requests a modeled rate/duration the model
+#' @param checkModeledRateDur When `TRUE` (default), warn when a bolus dose
+#'   goes into a compartment with a modeled `rate()`/`dur()` (data `rate` is
+#'   not `-1`/`-2`), or a dose requests a modeled rate/duration the model
 #'   does not define.
 #'
 #' @inheritParams rxSolve
