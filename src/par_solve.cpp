@@ -1897,7 +1897,9 @@ static inline int recomputeMtimeIfNeeded(rx_solve *rx,
   // can selectively apply only the slot(s) whose trigger time has arrived.
   double newMtime[90];
   for (int k = 0; k < nm; k++) newMtime[k] = ind->mtime[k];
+  rxDrawKeySet(ind, -1, RX_DRAW_MTIME);
   if (ind->fns && ind->fns->mtime) ind->fns->mtime(ind->id, newMtime, yp);
+  rxDrawKeyClear(ind);
   int changed = 0;
   for (int k = 0; k < nm; k++) {
     if (ind->mtime0[k] == R_NegInf) continue;          // already fired
@@ -4538,7 +4540,9 @@ void handleSS(int *neq,
     // Reset LHS to NA
     ind->inLhs = 0;
     for (j = op->nlhs; j--;) ind->lhs[j] = NA_REAL;
+    rxDrawKeySet(ind, ind->ix[*i], RX_DRAW_INIS);
     u_inis(neq[1], yp); // Update initial conditions @ current time
+    rxDrawKeyClear(ind);
     if (rx->istateReset) *istate = 1;
     int k;
     double xp2, xout2;
@@ -5174,7 +5178,10 @@ updateSolve(rx_solving_options_ind *ind, rx_solving_options *op, int *neq,
     _rxEvidSortStart = i + 1;
     ind->_atEventTime = 1;
   }
+  // draws made here are the ones the output pass shows for this record
+  rxDrawKeySet(ind, ind->ix[i], RX_DRAW_LHS);
   calc_lhs(neq[1], xout, getSolve(i), ind->lhs);
+  rxDrawKeyClear(ind);
   if (_fire) _rxEvidSortStart = -1;
   // Carry this record's state forward into the next slot.  Done AFTER calc_lhs
   // (which only reads getSolve(i) and writes ind->lhs) so that a slot the push
@@ -8160,7 +8167,9 @@ static void dopDenseSolout(long int nr, double xold, double x, double *y,
         for (int j = 0; j < n; j++)
           slot[j] = contd8(ctx, j, t_obs);   // 0-based component index
       }
+      rxDrawKeySet(ind, raw, RX_DRAW_LHS);
       calc_lhs(solveid, t_obs, slot, ind->lhs);
+      rxDrawKeyClear(ind);
     }
     dc->obs_next++;
   }
@@ -8457,7 +8466,9 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
         _growSolveIfNeeded(ind, op, i, 1);
         int src = (last_key_i >= 0) ? last_key_i : 0;
         std::copy(getSolve(src), getSolve(src) + eff, getSolve(i));
+        rxDrawKeySet(ind, ind->ix[i], RX_DRAW_LHS);
         calc_lhs(solveid, xout, getSolve(i), ind->lhs);
+        rxDrawKeyClear(ind);
         // also prime the next slot so getSolve(i+1) stays consistent
         std::copy(getSolve(i), getSolve(i) + eff, getSolve(i+1));
       }

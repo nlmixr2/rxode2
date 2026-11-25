@@ -1154,6 +1154,7 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
       // Shadow outer `ind` so that getSolve() macro works correctly.
       rx_solving_options_ind *ind = &(rx->subjects[solveid]);
       iniSubject(solveid, 1, ind, op, rx, update_inis);
+      rxDrawTapeResumeLhs(ind);
       int ntimes_p    = ind->n_all_times;
       double *par_ptr_p = ind->par_ptr;
       rxDfWalkState w_p;
@@ -1166,7 +1167,11 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
         double curT = o_p[RXDF_OUT_LHS_TIME];
         if (wr_p == RXDF_KNOT) {
           // a lagged dose's knot is not output, but lag() of an lhs reads it
-          if (nlhs) calc_lhs(solveid, curT, getSolve(i), ind->lhs);
+          if (nlhs) {
+            rxDrawKeySet(ind, ind->ix[i], RX_DRAW_LHS);
+            calc_lhs(solveid, curT, getSolve(i), ind->lhs);
+            rxDrawKeyClear(ind);
+          }
           // a record, as the solve counts it for newind
           ind->_newind = 2;
           continue;
@@ -1180,7 +1185,10 @@ SEXP rxode2_df(int doDose0, int doTBS, std::vector<int>& lvlI, bool isIdentity) 
           }
         }
         if (nlhs) {
+          // replays the draws the solve made for this record (rxode2#1812)
+          rxDrawKeySet(ind, ind->ix[i], RX_DRAW_LHS);
           calc_lhs(solveid, curT, getSolve(i), ind->lhs);
+          rxDrawKeyClear(ind);
         }
         jj_p = 0;
         if (wr_p == RXDF_ROW) {

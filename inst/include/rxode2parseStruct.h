@@ -586,6 +586,14 @@ struct rx_solving_options_ind_s {
   // of the dose record it repeats, whose covariates a nocb covariate is read
   // at; 0 otherwise.
   int    lagParent;
+  // In-model random draws (rxnorm() ...) made while solving, kept so the
+  // output pass reuses them (rxode2#1812).  drawTape is opaque (C++ state in
+  // src/rxthreefry.cpp), freed in rxFreeInd(); drawKey names the record and
+  // context being evaluated (0 = none, see src/rxDrawTape.h) and drawPos the
+  // next draw within it.
+  void   *drawTape;
+  int    drawKey;
+  int    drawPos;
 };
 
 typedef struct rx_solve_s {

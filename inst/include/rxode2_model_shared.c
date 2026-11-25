@@ -304,7 +304,7 @@ static double _mix(int _cSub, unsigned int n,  ...) {
 
 double _rxord(int _cSub, unsigned int n,  ...) {
   rx_solving_options_ind* ind = &(_solveData->subjects[_cSub]);
-  if (!ind->inLhs) {
+  if (!ind->inLhs && ind->drawKey == 0) {
     return 1.0;
   }
   va_list valist;

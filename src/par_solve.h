@@ -18,6 +18,7 @@ extern "C" {
 #include "../inst/include/rxode2.h"
 #include "rxThreadData.h"
 #include "rxode2lincmtLink.h"
+#include "rxDrawTape.h"
 
 void par_rkf78(rx_solve *rx);
 extern "C" void ind_rkf78(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
@@ -204,6 +205,10 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
     // interleave with original observations are not silently dropped.
     if (inLhs == 0) ind->n_all_times = ind->n_all_times_orig;
 		ind->id=solveid;
+    // In-model draws are kept from the solve pass to the output pass; a solve
+    // (or an output pass with no solve before it) starts a fresh tape.
+    if (inLhs == 0 || op->neq == 0) rxDrawTapeReset(ind);
+    else rxDrawKeyClear(ind);
     // A solve's failure marks are its own: nothing else clears them between two
     // solves of one subject (nlmixr2est solves a subject again on the same ind)
     if (inLhs == 0 && ind->rc != NULL) {
@@ -265,7 +270,9 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
         // predNeq, so writing op->neq doubles into slot 0 would clobber the
         // start of slot 1 (which sits at offset predNeq, not op->neq).
         if (inLhs == 0) memcpy(ind->solve, op->inits, rxEffNeq(ind, op)*sizeof(double));
+        rxDrawKeySet(ind, -1, RX_DRAW_INIS);
         u_inis(solveid, ind->solve); // Update initial conditions @ current time
+        rxDrawKeyClear(ind);
         ind->isIni = 0;
       } else if (rx->nMtime && inLhs == 0 && op->neq > 0) {
         // No u_inis but state-dep mtime needs initial values in ind->solve
@@ -329,6 +336,8 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
         // ODE solve pass (inLhs==0) or LHS-only model (neq==0): initialise mtime.
         // Compute mtime with actual initial state -> mtime_init[k].
         double *_initState = (inLhs == 0 && op->neq > 0) ? ind->solve : op->inits;
+        // every evaluation of mtime() reuses the subject's same draws
+        rxDrawKeySet(ind, -1, RX_DRAW_MTIME);
         if (ind->fns && ind->fns->mtime) ind->fns->mtime(solveid, ind->mtime, _initState);
 
         // Compute mtime with zero state -> base (state-independent) time mtime_base[k].
@@ -346,6 +355,7 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
         } else {
           if (ind->fns && ind->fns->mtime) ind->fns->mtime(solveid, _baseMtime, _initState);
         }
+        rxDrawKeyClear(ind);
         std::fill_n(ind->mtime0, rx->nMtime, R_NegInf);
         for (int k = 0; k < rx->nMtime; k++) {
           if (_baseMtime[k] <= ind->mtime[k]) {
@@ -446,7 +456,9 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
     cancelInfusionsThatHaveStarted(ind, neq[1], *xout);
     cancelPendingDoses(ind, neq[1]);
     memcpy(yp, op->inits, neq[0]*sizeof(double));
+    rxDrawKeySet(ind, ind->ix[ind->idx], RX_DRAW_INIS);
     u_inis(neq[1], yp); // Update initial conditions @ current time
+    rxDrawKeyClear(ind);
     if (rx->istateReset) *idid = 1;
     *xout -= rx->maxShift;
     *xp = *xout;

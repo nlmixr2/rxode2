@@ -177,6 +177,12 @@
 
 ## Bug fixes
 
+- In-model random draws (`rxunif()`, `rxnorm()`, `rxpois()`, ...) no longer
+  evaluate to 0 while solving: a draw feeding a pushed event (`replace()`,
+  `bolus()`, `evid_()`, ...), an `mtime()` or an initial condition is now a
+  real draw, reproducible from the seed, and the output shows the same draw
+  the dynamics used (#1812).  Draws inside `d/dt()` are still 0.
+
 - mu-referencing only records a `covariate*theta` term that is exactly
   `theta*covariate`.  The allometric `0.75*log(V1/exp(tV1))`, whose
   derivative `-0.75` drops `V1`, was recorded with covariate `-0.75` and
