@@ -964,9 +964,9 @@
 #'   doses (when `TRUE`) or retained (when `FALSE`)
 #'
 #' @param addlDropPastObs When `TRUE` (default) and only observations are
-#'   returned (`addDosing` is `FALSE` or `NULL`), an `addl` series stops
-#'   after its first repeat past the subject's last observation, as later
-#'   repeats cannot change the output.  It is off with `resample`, and doses
+#'   returned (`addDosing` is `FALSE` or `NULL`), an `addl` series of a
+#'   subject with observations stops after its first repeat past the
+#'   subject's last record, as later repeats cannot change the output.  It is off with `resample`, and doses
 #'   into an `alag()` compartment, subjects whose time moves back, models
 #'   with model times, `evid_()` pushes, `lead()`, `last()` or a negative
 #'   `lag()`, and an event table already translated by [etTrans()] keep every

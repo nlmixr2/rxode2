@@ -1584,9 +1584,9 @@ repeats, and an event table already translated by \code{\link[=etTrans]{etTrans(
 \code{addl} repeats it was translated with.}
 
 \item{addlDropPastObs}{When \code{TRUE} (default) and only observations are
-returned (\code{addDosing} is \code{FALSE} or \code{NULL}), an \code{addl} series stops
-after its first repeat past the subject's last observation, as later
-repeats cannot change the output.  It is off with \code{resample}, and doses
+returned (\code{addDosing} is \code{FALSE} or \code{NULL}), an \code{addl} series of a
+subject with observations stops after its first repeat past the
+subject's last record, as later repeats cannot change the output.  It is off with \code{resample}, and doses
 into an \code{alag()} compartment, subjects whose time moves back, models
 with model times, \code{evid_()} pushes, \code{lead()}, \code{last()} or a negative
 \code{lag()}, and an event table already translated by \code{\link[=etTrans]{etTrans()}} keep every

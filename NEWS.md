@@ -268,7 +268,7 @@
   parsed model instead of the recursive R walker, with identical output; the
   R walker stays as a fallback (`bench/rxPrune.R`, #1772).
 - `rxSolve()` no longer expands the `addl` repeats of a dose past a
-  subject's last observation when only observations are returned
+  subject's last record when only observations are returned
   (`addDosing` `FALSE` or `NULL`); a long `addl` series with a short
   observation window now solves quickly instead of failing with "excess
   work".  Results are unchanged; `addlDropPastObs = FALSE` (also an
