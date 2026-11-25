@@ -916,7 +916,7 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
       h = hnew;
       if (!R_FINITE(h)) {
         /* k1 is the derivative at the accepted (x, y): name its non-finite states */
-        if (ctx->subject_id >= 0) rxSolveDiagDydt(ctx->subject_id, n, x, y, k1);
+        rxSolveDiagDydt(ctx->subject_id, n, x, y, k1);
         if (st == NULL) rxSolveWarnPushStat(ctx->subject_id, 1, &x, "exit of dop853 at x = %%v, step size is not finite");
         ctx->xout = x;
         ctx->hout = h;

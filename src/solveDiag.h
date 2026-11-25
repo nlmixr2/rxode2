@@ -15,7 +15,8 @@ extern "C" {
    rxSolve() setup, on the main thread).
    Clear: drop one subject's record (start of a subject's solve).
    Dydt: record a right-hand-side evaluation that returned a non-finite
-   derivative: the time, the `n` states `y` and derivatives `f`.  Only the
+   derivative: the time, the `n` states `y` and derivatives `f` (a negative
+   `id` records nothing).  Only the
    first one since the subject's solve started is kept.
    Capture: record, when known (NULL otherwise), the subject's last accepted
    state `yAcc` (at `tAcc`) and the state after the failed step `yFail`.

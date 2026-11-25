@@ -73,7 +73,7 @@ extern "C" void rxSolveDiagClear(int id) {
 
 extern "C" void rxSolveDiagDydt(int id, int n, double t, const double *y,
                                 const double *f) {
-  if (n <= 0 || y == NULL || f == NULL) return;
+  if (id < 0 || n <= 0 || y == NULL || f == NULL) return;
   std::vector<int> bad;
   std::vector<double> vals;
   for (int i = 0; i < n; i++) {
