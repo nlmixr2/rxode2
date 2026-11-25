@@ -43,8 +43,8 @@ extern "C" void ind_rks1110a_0(rx_solve *rx, rx_solving_options *op, int solveid
   if (neqOde > 0) {
     solver = new RxRks1110a(c_dydt, neq, neqOde, ind, getSolve(0), (long unsigned)op->mxstep);
       solver->set_quiet(true);
-      if (op->atol2 != NULL) solver->set_abstol(op->ATOL);
-      if (op->rtol2 != NULL) solver->set_reltol(op->RTOL);
+      if (op->atol2 != NULL) solver->set_abstol(ind->atol2 != NULL ? ind->atol2[0] : op->ATOL);
+      if (op->rtol2 != NULL) solver->set_reltol(ind->rtol2 != NULL ? ind->rtol2[0] : op->RTOL);
   }
   double *yp;
   for (i = 0; i < ind->n_all_times; i++) {
@@ -191,8 +191,8 @@ extern "C" void rks1110a_solveWith1Pt(int *neq, double *yp, double *xp, double x
     if (neqOde > 0) {
     RxRks1110a solver(dydt, neq, neqOde, ind, yp, (long unsigned)op->mxstep);
     solver.set_quiet(true);
-    if (op->atol2 != NULL) solver.set_abstol(op->ATOL);
-    if (op->rtol2 != NULL) solver.set_reltol(op->RTOL);
+    if (op->atol2 != NULL) solver.set_abstol(ind->atol2 != NULL ? ind->atol2[0] : op->ATOL);
+    if (op->rtol2 != NULL) solver.set_reltol(ind->rtol2 != NULL ? ind->rtol2[0] : op->RTOL);
     rks1110a_do_steps(&solver, ind, op, dydt, neq, yp, *xp, xout);
 
     if (ind->rc[0] < 0) { *istate = -1; return; }

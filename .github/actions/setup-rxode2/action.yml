@@ -50,6 +50,8 @@ runs:
         http-user-agent: ${{ inputs.http-user-agent }}
         use-public-rspm: true
 
+    # OpenCL (Suggests) has no Windows binary on CRAN and its source build
+    # needs an OpenCL SDK, so it is skipped there; its tests skip without it.
     - uses: r-lib/actions/setup-r-dependencies@v2
       with:
         cache-version: ${{ inputs.cache-version }}
@@ -59,6 +61,7 @@ runs:
           nlmixr2/rxode2ll
           nlmixr2/rxode2lincmt
           nlmixr2/PreciseSums
+          ${{ runner.os == 'Windows' && 'OpenCL=?ignore' || '' }}
           ${{ inputs.extra-packages }}
         needs: ${{ inputs.needs }}
 

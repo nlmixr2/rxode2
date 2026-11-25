@@ -2563,8 +2563,16 @@ rxCompile.rxModelVars <- function(
         .model["indLin"] <- .rxState$meCode
         .rxModelVarsLast$model <- .model
         ## generate at the level the stored md5 was made at, not the option's
-        .rxFullOptState$level <- .rxFullOptLevelOf(as.character(.trans["parsed_md5"]))
-        on.exit(.rxFullOptState$level <- NULL, add = TRUE)
+        .fullOptOf <- .rxFullOptOf(as.character(.trans["parsed_md5"]))
+        .rxFullOptState$level <- .fullOptOf$level
+        .rxFullOptState$impure <- .fullOptOf$impure
+        on.exit(
+          {
+            .rxFullOptState$level <- NULL
+            .rxFullOptState$impure <- NULL
+          },
+          add = TRUE
+        )
         if (!is.null(package) && !.newMod) {
           .libname <- c(package, gsub(.Platform$dynlib.ext, "", basename(.cDllFile)))
           .Call(
