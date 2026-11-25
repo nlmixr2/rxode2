@@ -830,6 +830,7 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
     .y <- .rxEtaDistCorToY(.omega[.idx, .idx, drop = FALSE])
     .pre <- c(.pre, .rxEtaDistCopulaLines(.nms), .rxEtaDistDecoderLines(.nms, .d, .assigned))
     .newTheta <- rbind(.newTheta, .rxEtaDistCorTheta(.nms, .y))
+    .newTheta <- rbind(.newTheta, .rxEtaDistUndeclaredScale(.nms, .d, .assigned, .omega))
     .iniDf <- .rxEtaDistFixLatents(.iniDf, .nms)
     .drop <- c(.drop, .rxEtaDistCovRowsToDrop(.iniDf, .idx))
   }
@@ -1288,12 +1289,35 @@ rxEtaDistExpand <- function(ui, param = c("cdf", "direct")) {
         paste0(.nm, " <- ", .rxEtaDistQuantile(d$etaDist[.w], .u, .nm, latent = .lat, anchors = .anc))
       )
     } else {
-      ## an undeclared member of a declared block: its variance is one
-      ## by the same rule, so it IS the correlated latent normal
-      .pre <- c(.pre, paste0(.nm, " <- rxN.", .nm))
+      ## an undeclared member of a declared block: the copula needs it on the
+      ## unit latent scale, but its own variance is a model parameter, not 1 --
+      ## carry it as a log standard deviation (rxLsd.<eta>, see
+      ## .rxEtaDistUndeclaredScale()) rather than drop it
+      .pre <- c(.pre, paste0(.nm, " <- exp(rxLsd.", .nm, ") * rxN.", .nm))
     }
   }
   .pre
+}
+
+#' Log-standard-deviation thetas for the undeclared members of a declared block
+#'
+#' Fixing a block's latents at unit variance is right for a declared member --
+#' its family carries the scale -- but an ordinary normal eta correlated with
+#' one keeps a variance of its own.  Without this its variance was dropped and
+#' fixed at 1 whatever ini() said, which also biased everything it touches.
+#'
+#' @param nms names in the block
+#' @param d declaration data.frame
+#' @param assigned names the model block already assigns
+#' @param omega the model's omega matrix
+#' @return data.frame of name/est (`rxLsd.<eta>`, half the log variance)
+#' @noRd
+.rxEtaDistUndeclaredScale <- function(nms, d, assigned, omega) {
+  .u <- nms[!(nms %in% d$name) & !(nms %in% assigned)]
+  if (length(.u) == 0L) {
+    return(data.frame(name = character(0), est = numeric(0), stringsAsFactors = FALSE))
+  }
+  data.frame(name = paste0("rxLsd.", .u), est = 0.5 * log(diag(omega)[.u]), stringsAsFactors = FALSE)
 }
 
 #' Rename a block's random effects to the latents: unit variance and fixed
