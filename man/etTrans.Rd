@@ -93,7 +93,8 @@ reset.}
 observations stops after its first repeat past the subject's last
 observation, as later repeats cannot change an observation.  Doses into
 an \code{alag()} compartment, subjects whose time moves back and models with
-model times (\code{mtime()}) keep every repeat.  Default \code{FALSE}.}
+model times (\code{mtime()}), \code{evid_()} pushes, \code{lead()}, \code{last()} or a
+negative \code{lag()} keep every repeat.  Default \code{FALSE}.}
 }
 \value{
 Object for solving in rxode2

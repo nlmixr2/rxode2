@@ -244,7 +244,8 @@ cmtSupportsOff_ <- function(cmt, mv) {
 #'   observations stops after its first repeat past the subject's last
 #'   observation, as later repeats cannot change an observation.  Doses into
 #'   an `alag()` compartment, subjects whose time moves back and models with
-#'   model times (`mtime()`) keep every repeat.  Default `FALSE`.
+#'   model times (`mtime()`), `evid_()` pushes, `lead()`, `last()` or a
+#'   negative `lag()` keep every repeat.  Default `FALSE`.
 #'
 #' @inheritParams rxSolve
 #'

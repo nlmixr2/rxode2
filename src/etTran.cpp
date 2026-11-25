@@ -10,6 +10,7 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <climits>
+#include <regex>
 #include <set>
 #include <utility>
 #include "../inst/include/rxode2parse.h"
@@ -1337,14 +1338,30 @@ static inline int etTransCompanionDoseRow(int k, int i) {
   return k == 0 ? -1 : i;
 }
 
-// A row that is a dose whatever its other columns hold
+// A row that is a dose whatever its other columns hold; evidMode 0 reads
+// 'amt' alone, 1 an 'evid' column and 2 an 'mdv' column standing in for it
 static inline bool etTransRowSurelyDose(int i, const IntegerVector &inEvid,
-                                        bool useEvid, const NumericVector &inAmt,
+                                        int evidMode, const NumericVector &inAmt,
                                         bool hasAmt) {
-  if (!useEvid) return hasAmt && !ISNAN(inAmt[i]) && inAmt[i] != 0.0;
+  bool hasDoseAmt = hasAmt && !ISNAN(inAmt[i]) && inAmt[i] != 0.0;
+  if (evidMode == 0) return hasDoseAmt;
   int e = inEvid[i];
   if (IntegerVector::is_na(e)) return false;
+  if (evidMode == 2) return e == 1 && hasDoseAmt;
   return e == 1 || (e >= 4 && e <= 7) || e >= 100;
+}
+
+// addlDropPastObs needs a model that reads no later record: no evid_()
+// pushes (a pushed observation can fall past the data) and no lead(),
+// last() or negative lag()
+static inline bool etTransAddlDropModelOk(const List &mv) {
+  IntegerVector flags = as<IntegerVector>(mv[RxMv_flags]);
+  if (flags[RxMvFlag_evid_] != 0) return false;
+  CharacterVector model = as<CharacterVector>(mv[RxMv_model]);
+  if (model.size() == 0) return false;
+  std::string norm = as<std::string>(model[0]);
+  static const std::regex laterRecord("(^|[^A-Za-z0-9_.])((lead0?|last)\\(|lag0?\\([^,()]*,\\s*-)");
+  return !std::regex_search(norm, laterRecord);
 }
 
 // addlDropPastObs: each subject's latest input row that is not surely a dose
@@ -1353,7 +1370,7 @@ static inline bool etTransRowSurelyDose(int i, const IntegerVector &inEvid,
 // moves back (a time reset) gets none.
 static inline std::unordered_map<int, double>
 etTransLastOutTime(const NumericVector &inTime, const IntegerVector &inId,
-                   bool hasId, const IntegerVector &inEvid, bool useEvid,
+                   bool hasId, const IntegerVector &inEvid, int evidMode,
                    const NumericVector &inAmt, bool hasAmt) {
   std::unordered_map<int, double> ret;
   std::unordered_set<int> movesBack;
@@ -1366,7 +1383,7 @@ etTransLastOutTime(const NumericVector &inTime, const IntegerVector &inId,
     if (lid == cid0 && t < lt) movesBack.insert(cid0);
     lid = cid0;
     lt = t;
-    if (etTransRowSurelyDose(i, inEvid, useEvid, inAmt, hasAmt)) continue;
+    if (etTransRowSurelyDose(i, inEvid, evidMode, inAmt, hasAmt)) continue;
     auto it = ret.find(cid0);
     if (it == ret.end()) ret[cid0] = t;
     else if (t > it->second) it->second = t;
@@ -1491,7 +1508,8 @@ List rxModelVars_(const RObject &obj); // model variables section
 //'   observations stops after its first repeat past the subject's last
 //'   observation, as later repeats cannot change an observation.  Doses into
 //'   an `alag()` compartment, subjects whose time moves back and models with
-//'   model times (`mtime()`) keep every repeat.  Default `FALSE`.
+//'   model times (`mtime()`), `evid_()` pushes, `lead()`, `last()` or a
+//'   negative `lag()` keep every repeat.  Default `FALSE`.
 //'
 //' @inheritParams rxSolve
 //'
@@ -2436,13 +2454,14 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     }
   }
   // addlDropPastObs: an addl series stops after its first repeat past the
-  // subject's last observation; that repeat stays as the next record a
-  // lead() sees.  Model times may fall anywhere, so they turn it off.
+  // subject's last observation.  Model times may fall anywhere, so they
+  // turn it off.
   std::unordered_map<int, double> addlLastOut;
-  if (addlDropPastObs && addlCol != -1 && nMtime == 0) {
+  if (addlDropPastObs && addlCol != -1 && nMtime == 0 &&
+      etTransAddlDropModelOk(mv)) {
+    int evidMode = !hasEvid ? 0 : (evidIsMDV ? 2 : 1);
     addlLastOut = etTransLastOutTime(inTime, inId, idCol != -1, inEvid,
-                                     hasEvid && !evidIsMDV, inAmt,
-                                     amtCol != -1);
+                                     evidMode, inAmt, amtCol != -1);
   }
   // This section of the code:
   // - Loops over the input dataset

@@ -138,6 +138,56 @@ rxTest({
     expect_lt(.n[2], .n[1])
   })
 
+  test_that("an mdv 0 observation with an amount counts as an observation", {
+    .d <- data.frame(
+      id = 1L,
+      time = c(0, 1, 25),
+      mdv = c(1L, 0L, 0L),
+      amt = c(100, 0, 5),
+      ii = c(10, 0, 0),
+      addl = c(2L, 0L, 0L),
+      cmt = 1L,
+      dv = c(NA, 1, 1)
+    )
+    .a <- etTrans(.d, .m, keepDosingOnly = TRUE)
+    .b <- etTrans(.d, .m, keepDosingOnly = TRUE, addlDropPastObs = TRUE)
+    expect_equal(nrow(.b), nrow(.a))
+  })
+
+  test_that("models reading later records or pushing events keep every repeat", {
+    .ev <- et(amt = 100, ii = 24, addl = 20) |> et(0:48)
+    .keepsAll <- function(m) {
+      .a <- etTrans(.ev, m, keepDosingOnly = TRUE)
+      .b <- etTrans(.ev, m, keepDosingOnly = TRUE, addlDropPastObs = TRUE)
+      expect_equal(nrow(.b), nrow(.a))
+    }
+    .keepsAll(rxode2({
+      d/dt(depot) <- -depot
+      x <- lead(time, 2)
+    }))
+    .keepsAll(rxode2({
+      d/dt(depot) <- -depot
+      x <- last(time)
+    }))
+    .keepsAll(rxode2({
+      d/dt(depot) <- -depot
+      x <- lead0(time)
+    }))
+    .keepsAll(rxode2({
+      d/dt(depot) <- -depot
+      if (t < 1) evid_(t + 0.1, 1, 10, 1, 0, 0, 0, 0)
+    }))
+    # lag() and a function whose name ends in "last" still truncate
+    .m2 <- rxode2({
+      d/dt(depot) <- -depot
+      x <- lag(time)
+      notlast <- 1
+    })
+    .a <- etTrans(.ev, .m2, keepDosingOnly = TRUE)
+    .b <- etTrans(.ev, .m2, keepDosingOnly = TRUE, addlDropPastObs = TRUE)
+    expect_lt(nrow(.b), nrow(.a))
+  })
+
   test_that("models with model times keep every repeat", {
     .mt <- function() {
       ini({
