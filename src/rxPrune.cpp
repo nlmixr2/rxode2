@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 #include <unordered_set>
+#include <unordered_map>
 #include "rxProtect.h"
 
 namespace {
@@ -23,18 +24,24 @@ namespace {
 // Thrown for anything the port does not handle; rxPrune() then uses R.
 struct rxPruneUnsupported {};
 
-struct rxPruneSyms {
-  SEXP sIf, sParen, sBrace, sEq, sNe, sGe, sLe, sGt, sLt, sAnd2, sOr2, sAnd,
-    sOr, sAssign, sArrow, sTilde, sMod, sMul, sPow, sAdd, sSub, sDiv, sIfelse,
-    sBracket, sDeparse1, sQuote;
-};
-
 struct rxPruneCapture {
   std::string original, condition, capVar;
 };
 
+struct rxPruneState;
+
+// rewrites the call `x` of length `n` whose function is `op`
+typedef std::string (*rxPruneHandler)(rxPruneState &st, SEXP x, int n,
+                                      const char *op);
+
+struct rxPruneOp {
+  rxPruneHandler fn;
+  int minN; // shorter calls error in R, so they go to the R walker
+};
+
 struct rxPruneState {
-  rxPruneSyms s;
+  std::unordered_map<SEXP, rxPruneOp> ops;
+  SEXP sDeparse1, sQuote;
   SEXP strAssign;
   SEXP strNames;
   bool capture;
@@ -54,8 +61,8 @@ const char *rxPruneAdaptiveFns[] = {"evid_", "bolus", "infuse", "infuseDur",
 // deparse1(x), evaluated by R so quoting/escaping is identical
 std::string rxPruneDeparse(rxPruneState &st, SEXP x) {
   rxProtect rx_protect;
-  SEXP q = rx_protect.protect(Rf_lang2(st.s.sQuote, x));
-  SEXP call = rx_protect.protect(Rf_lang2(st.s.sDeparse1, q));
+  SEXP q = rx_protect.protect(Rf_lang2(st.sQuote, x));
+  SEXP call = rx_protect.protect(Rf_lang2(st.sDeparse1, q));
   int err = 0;
   SEXP ret = R_tryEvalSilent(call, R_BaseEnv, &err);
   if (err || TYPEOF(ret) != STRSXP || Rf_length(ret) != 1) {
@@ -101,6 +108,29 @@ bool rxPruneIsAscii(const char *x) {
   return true;
 }
 
+// identical() of two CHARSXPs: NA only matches NA
+bool rxPruneSameStr(SEXP a, SEXP b) {
+  if (a == NA_STRING || b == NA_STRING) return a == b;
+  // non-ASCII needs translation (which may error); leave it to R
+  if (!rxPruneIsAscii(CHAR(a)) || !rxPruneIsAscii(CHAR(b))) {
+    throw rxPruneUnsupported();
+  }
+  return strcmp(CHAR(a), CHAR(b)) == 0;
+}
+
+// 1-based position of `v` in `lev` when it occurs exactly once, else 0
+int rxPruneUniqueMatch(SEXP lev, SEXP v) {
+  if (TYPEOF(lev) != STRSXP) return 0;
+  int found = 0, nFound = 0;
+  for (int j = 0; j < Rf_length(lev); ++j) {
+    if (rxPruneSameStr(STRING_ELT(lev, j), v)) {
+      found = j + 1;
+      nFound++;
+    }
+  }
+  return nFound == 1 ? found : 0;
+}
+
 // .rxPruneStrAssign(): the 1-based level of `val` in strAssign[[lhs]], or 0
 int rxPruneStrLevel(rxPruneState &st, SEXP lhs, SEXP val) {
   if (TYPEOF(lhs) != SYMSXP || TYPEOF(val) != STRSXP || Rf_length(val) != 1 ||
@@ -112,64 +142,32 @@ int rxPruneStrLevel(rxPruneState &st, SEXP lhs, SEXP val) {
   for (int i = 0; i < n; ++i) {
     SEXP nm = STRING_ELT(st.strNames, i);
     if (nm != NA_STRING && strcmp(CHAR(nm), name) == 0) {
-      SEXP lev = VECTOR_ELT(st.strAssign, i);
-      if (TYPEOF(lev) != STRSXP) return 0;
-      SEXP v = STRING_ELT(val, 0);
-      int found = 0, nFound = 0;
-      for (int j = 0; j < Rf_length(lev); ++j) {
-        SEXP lj = STRING_ELT(lev, j);
-        // identical(): NA only matches NA
-        bool same;
-        if (lj == NA_STRING || v == NA_STRING) {
-          same = lj == v;
-        } else {
-          // non-ASCII needs translation (which may error); leave it to R
-          if (!rxPruneIsAscii(CHAR(lj)) || !rxPruneIsAscii(CHAR(v))) {
-            throw rxPruneUnsupported();
-          }
-          same = strcmp(CHAR(lj), CHAR(v)) == 0;
-        }
-        if (same) {
-          found = j + 1;
-          nFound++;
-        }
-      }
-      return nFound == 1 ? found : 0;
+      return rxPruneUniqueMatch(VECTOR_ELT(st.strAssign, i),
+                                STRING_ELT(val, 0));
     }
   }
   return 0;
 }
 
-// .rxModOperand()
+// advances `i` past digits in `x`, returning how many it skipped
+size_t rxPruneSkipDigits(const std::string &x, size_t &i) {
+  size_t start = i;
+  while (i < x.size() && isdigit((unsigned char)x[i])) ++i;
+  return i - start;
+}
+
+// .rxModOperand()'s ^([0-9]+[.]?[0-9]*|[.][0-9]+)([eE][-+]?[0-9]+)?$
 bool rxPruneIsNumber(const std::string &x) {
   size_t i = 0, n = x.size();
-  size_t d1 = 0;
-  while (i < n && isdigit((unsigned char)x[i])) {
-    ++i;
-    ++d1;
-  }
-  if (d1 > 0) {
-    if (i < n && x[i] == '.') ++i;
-    while (i < n && isdigit((unsigned char)x[i])) ++i;
-  } else {
-    if (i >= n || x[i] != '.') return false;
-    ++i;
-    size_t d2 = 0;
-    while (i < n && isdigit((unsigned char)x[i])) {
-      ++i;
-      ++d2;
-    }
-    if (d2 == 0) return false;
-  }
+  bool lead = rxPruneSkipDigits(x, i) > 0;
+  bool dot = i < n && x[i] == '.';
+  if (dot) ++i;
+  bool frac = rxPruneSkipDigits(x, i) > 0;
+  if (!lead && !(dot && frac)) return false;
   if (i < n && (x[i] == 'e' || x[i] == 'E')) {
     ++i;
     if (i < n && (x[i] == '-' || x[i] == '+')) ++i;
-    size_t d3 = 0;
-    while (i < n && isdigit((unsigned char)x[i])) {
-      ++i;
-      ++d3;
-    }
-    if (d3 == 0) return false;
+    if (rxPruneSkipDigits(x, i) == 0) return false;
   }
   return i == n;
 }
@@ -206,7 +204,7 @@ SEXP rxPruneArg(SEXP x, int i) {
 
 std::string rxPruneWalk(rxPruneState &st, SEXP x);
 
-std::string rxPruneIf(rxPruneState &st, SEXP x, int n) {
+std::string rxPruneIf(rxPruneState &st, SEXP x, int n, const char *) {
   st.ifs.push_back(rxPruneWalk(st, rxPruneArg(x, 1)));
   std::string ret;
   if (n == 4) {
@@ -229,7 +227,7 @@ std::string rxPruneIf(rxPruneState &st, SEXP x, int n) {
   return ret;
 }
 
-std::string rxPruneAssign(rxPruneState &st, SEXP x, const char *op) {
+std::string rxPruneAssign(rxPruneState &st, SEXP x, int, const char *op) {
   SEXP lhs = rxPruneArg(x, 1), rhs = rxPruneArg(x, 2);
   int lev = rxPruneStrLevel(st, lhs, rhs);
   if (TYPEOF(lhs) == SYMSXP) st.lhsLog.push_back(CHAR(PRINTNAME(lhs)));
@@ -275,8 +273,7 @@ std::string rxPruneCaptureCall(rxPruneState &st, SEXP x) {
   return c.capVar + " <- " + c.condition;
 }
 
-std::string rxPruneBracket(SEXP x, int n) {
-  if (n < 3) throw rxPruneUnsupported();
+std::string rxPruneBracket(rxPruneState &, SEXP x, int, const char *) {
   SEXP type = rxPruneArg(x, 1), idx = rxPruneArg(x, 2);
   if (TYPEOF(type) != SYMSXP) throw rxPruneUnsupported();
   std::string t = CHAR(PRINTNAME(type));
@@ -308,8 +305,55 @@ std::string rxPruneGeneric(rxPruneState &st, SEXP x) {
   return ret + ")";
 }
 
+std::string rxPruneParen(rxPruneState &st, SEXP x, int, const char *) {
+  return "(" + rxPruneWalk(st, rxPruneArg(x, 1)) + ")";
+}
+
+std::string rxPruneBrace(rxPruneState &st, SEXP x, int, const char *) {
+  std::string ret;
+  bool first = true;
+  for (SEXP a = CDR(x); a != R_NilValue; a = CDR(a)) {
+    if (!first) ret += "\n";
+    ret += rxPruneWalk(st, CAR(a));
+    first = false;
+  }
+  return ret;
+}
+
+// `==`/`!=`: a string compared with a string variable becomes its level
+std::string rxPruneEqNe(rxPruneState &st, SEXP x, int, const char *op) {
+  SEXP a = rxPruneArg(x, 1), b = rxPruneArg(x, 2);
+  int levA = rxPruneStrLevel(st, b, a);
+  int levB = rxPruneStrLevel(st, a, b);
+  std::string ra = levA ? rxPruneNum(levA) : rxPruneWalk(st, a);
+  std::string rb = levB ? rxPruneNum(levB) : rxPruneWalk(st, b);
+  return ra + op + rb;
+}
+
+std::string rxPruneInfix(rxPruneState &st, SEXP x, int, const char *op) {
+  std::string ra = rxPruneWalk(st, rxPruneArg(x, 1));
+  return ra + op + rxPruneWalk(st, rxPruneArg(x, 2));
+}
+
+std::string rxPruneMod(rxPruneState &st, SEXP x, int, const char *) {
+  std::string ra = rxPruneModOperand(rxPruneWalk(st, rxPruneArg(x, 1)));
+  return ra + "%%" + rxPruneModOperand(rxPruneWalk(st, rxPruneArg(x, 2)));
+}
+
+// `+`, `-`, `*`, `/`, `^`: binary, or unary when not of length 3
+std::string rxPruneArith(rxPruneState &st, SEXP x, int n, const char *op) {
+  if (n == 3) return rxPruneInfix(st, x, n, op);
+  return op + rxPruneWalk(st, rxPruneArg(x, 1));
+}
+
+std::string rxPruneIfelse(rxPruneState &st, SEXP x, int, const char *) {
+  std::string f2 = rxPruneWalk(st, rxPruneArg(x, 1));
+  std::string f3 = rxPruneWalk(st, rxPruneArg(x, 2));
+  std::string f4 = rxPruneWalk(st, rxPruneArg(x, 3));
+  return "((" + f2 + ")*(" + f3 + ")+(1-(" + f2 + "))*(" + f4 + "))";
+}
+
 std::string rxPruneCall(rxPruneState &st, SEXP x) {
-  const rxPruneSyms &s = st.s;
   SEXP h = CAR(x);
   int n = Rf_length(x);
   if (TYPEOF(h) != SYMSXP) {
@@ -317,63 +361,11 @@ std::string rxPruneCall(rxPruneState &st, SEXP x) {
     if (st.capture) throw rxPruneUnsupported();
     return rxPruneGeneric(st, x);
   }
-  const char *op = CHAR(PRINTNAME(h));
-  if (h == s.sIf) return rxPruneIf(st, x, n);
-  if (h == s.sParen) {
-    if (n < 2) throw rxPruneUnsupported();
-    return "(" + rxPruneWalk(st, rxPruneArg(x, 1)) + ")";
+  auto it = st.ops.find(h);
+  if (it != st.ops.end()) {
+    if (n < it->second.minN) throw rxPruneUnsupported();
+    return it->second.fn(st, x, n, CHAR(PRINTNAME(h)));
   }
-  if (h == s.sBrace) {
-    std::string ret;
-    bool first = true;
-    for (SEXP a = CDR(x); a != R_NilValue; a = CDR(a)) {
-      if (!first) ret += "\n";
-      ret += rxPruneWalk(st, CAR(a));
-      first = false;
-    }
-    return ret;
-  }
-  if (h == s.sEq || h == s.sNe) {
-    if (n < 3) throw rxPruneUnsupported();
-    SEXP a = rxPruneArg(x, 1), b = rxPruneArg(x, 2);
-    int levA = rxPruneStrLevel(st, b, a);
-    int levB = rxPruneStrLevel(st, a, b);
-    std::string ra = levA ? rxPruneNum(levA) : rxPruneWalk(st, a);
-    std::string rb = levB ? rxPruneNum(levB) : rxPruneWalk(st, b);
-    return ra + op + rb;
-  }
-  if (h == s.sGe || h == s.sLe || h == s.sGt || h == s.sLt || h == s.sAnd2 ||
-      h == s.sOr2 || h == s.sAnd || h == s.sOr) {
-    if (n < 3) throw rxPruneUnsupported();
-    std::string ra = rxPruneWalk(st, rxPruneArg(x, 1));
-    return ra + op + rxPruneWalk(st, rxPruneArg(x, 2));
-  }
-  if (h == s.sAssign || h == s.sArrow || h == s.sTilde) {
-    if (n < 3) throw rxPruneUnsupported();
-    return rxPruneAssign(st, x, op);
-  }
-  if (h == s.sMod) {
-    if (n < 3) throw rxPruneUnsupported();
-    std::string ra = rxPruneModOperand(rxPruneWalk(st, rxPruneArg(x, 1)));
-    return ra + "%%" + rxPruneModOperand(rxPruneWalk(st, rxPruneArg(x, 2)));
-  }
-  if (h == s.sMul || h == s.sPow || h == s.sAdd || h == s.sSub ||
-      h == s.sDiv) {
-    if (n == 3) {
-      std::string ra = rxPruneWalk(st, rxPruneArg(x, 1));
-      return ra + op + rxPruneWalk(st, rxPruneArg(x, 2));
-    }
-    if (n < 2) throw rxPruneUnsupported();
-    return op + rxPruneWalk(st, rxPruneArg(x, 1));
-  }
-  if (h == s.sIfelse) {
-    if (n < 4) throw rxPruneUnsupported();
-    std::string f2 = rxPruneWalk(st, rxPruneArg(x, 1));
-    std::string f3 = rxPruneWalk(st, rxPruneArg(x, 2));
-    std::string f4 = rxPruneWalk(st, rxPruneArg(x, 3));
-    return "((" + f2 + ")*(" + f3 + ")+(1-(" + f2 + "))*(" + f4 + "))";
-  }
-  if (h == s.sBracket) return rxPruneBracket(x, n);
   if (st.capture && rxPruneIsAdaptive(h)) return rxPruneCaptureCall(st, x);
   return rxPruneGeneric(st, x);
 }
@@ -394,35 +386,36 @@ std::string rxPruneWalk(rxPruneState &st, SEXP x) {
   }
 }
 
-rxPruneSyms rxPruneGetSyms() {
-  rxPruneSyms s;
-  s.sIf = Rf_install("if");
-  s.sParen = Rf_install("(");
-  s.sBrace = Rf_install("{");
-  s.sEq = Rf_install("==");
-  s.sNe = Rf_install("!=");
-  s.sGe = Rf_install(">=");
-  s.sLe = Rf_install("<=");
-  s.sGt = Rf_install(">");
-  s.sLt = Rf_install("<");
-  s.sAnd2 = Rf_install("&&");
-  s.sOr2 = Rf_install("||");
-  s.sAnd = Rf_install("&");
-  s.sOr = Rf_install("|");
-  s.sAssign = Rf_install("=");
-  s.sArrow = Rf_install("<-");
-  s.sTilde = Rf_install("~");
-  s.sMod = Rf_install("%%");
-  s.sMul = Rf_install("*");
-  s.sPow = Rf_install("^");
-  s.sAdd = Rf_install("+");
-  s.sSub = Rf_install("-");
-  s.sDiv = Rf_install("/");
-  s.sIfelse = Rf_install("ifelse");
-  s.sBracket = Rf_install("[");
-  s.sDeparse1 = Rf_install("deparse1");
-  s.sQuote = Rf_install("quote");
-  return s;
+void rxPruneAddOps(rxPruneState &st, const char *const *names, int nNames,
+                   rxPruneHandler fn, int minN) {
+  for (int i = 0; i < nNames; ++i) {
+    st.ops[Rf_install(names[i])] = rxPruneOp{fn, minN};
+  }
+}
+
+void rxPruneInitOps(rxPruneState &st) {
+  const char *const cmp[] = {">=", "<=", ">", "<", "&&", "||", "&", "|"};
+  const char *const eq[] = {"==", "!="};
+  const char *const assign[] = {"=", "<-", "~"};
+  const char *const arith[] = {"*", "^", "+", "-", "/"};
+  const char *const sIf[] = {"if"};
+  const char *const paren[] = {"("};
+  const char *const brace[] = {"{"};
+  const char *const mod[] = {"%%"};
+  const char *const ifelse[] = {"ifelse"};
+  const char *const bracket[] = {"["};
+  rxPruneAddOps(st, cmp, 8, rxPruneInfix, 3);
+  rxPruneAddOps(st, eq, 2, rxPruneEqNe, 3);
+  rxPruneAddOps(st, assign, 3, rxPruneAssign, 3);
+  rxPruneAddOps(st, arith, 5, rxPruneArith, 2);
+  rxPruneAddOps(st, sIf, 1, rxPruneIf, 0);
+  rxPruneAddOps(st, paren, 1, rxPruneParen, 2);
+  rxPruneAddOps(st, brace, 1, rxPruneBrace, 0);
+  rxPruneAddOps(st, mod, 1, rxPruneMod, 3);
+  rxPruneAddOps(st, ifelse, 1, rxPruneIfelse, 4);
+  rxPruneAddOps(st, bracket, 1, rxPruneBracket, 3);
+  st.sDeparse1 = Rf_install("deparse1");
+  st.sQuote = Rf_install("quote");
 }
 
 // Runs the walk; false when the expression needs the R walker.
@@ -449,7 +442,7 @@ bool rxPruneRun(rxPruneState &st, SEXP expr, std::string &out) {
 extern "C" SEXP _rxode2_rxPruneC(SEXP expr, SEXP strAssign, SEXP capture) {
   rxProtect rx_protect;
   rxPruneState st;
-  st.s = rxPruneGetSyms();
+  rxPruneInitOps(st);
   st.strAssign = strAssign;
   st.strNames = TYPEOF(strAssign) == VECSXP
                     ? Rf_getAttrib(strAssign, R_NamesSymbol)
