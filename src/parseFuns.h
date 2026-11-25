@@ -760,6 +760,9 @@ static inline int rxgTooManyArgs(const char *v, int n) {
 static inline void rxgNoteFunction(transFunctions *tf) {
   if (tb.gpu == 0) return;
   const char *v = tf->v;
+  // delay() reads the subject's history on the device (rxg_delay()); its
+  // sensitivity forms rxDelayD*() do not run there
+  if (!strcmp(v, "delay")) return;
   if (rxgTooManyArgs(v, functionNodeNargs(tf->pn))) {
     tb.gpu = 0;
     return;

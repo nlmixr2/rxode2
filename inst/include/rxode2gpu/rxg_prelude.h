@@ -47,15 +47,72 @@
 #define RXG_EPS DBL_EPSILON
 #endif
 #define RXG_FN static inline
+#define RXG_GLOBAL __global
 #else
 #include <math.h>
 #include <float.h>
 #define RXG_EPS DBL_EPSILON
 #define RXG_FN static inline
+#define RXG_GLOBAL
 #endif
 
+// R's math constants (Rmath.h), which symbolic derivatives can use
 #ifndef M_1_SQRT_2PI
 #define M_1_SQRT_2PI 0.398942280401432677939946059934
+#endif
+#ifndef M_SQRT_PI
+#define M_SQRT_PI 1.772453850905516027298167483341
+#endif
+#ifndef M_2PI
+#define M_2PI 6.283185307179586476925286766559
+#endif
+#ifndef M_LN_SQRT_PI
+#define M_LN_SQRT_PI 0.572364942924700087071713675677
+#endif
+#ifndef M_LN_SQRT_2PI
+#define M_LN_SQRT_2PI 0.918938533204672741780329736406
+#endif
+#ifndef M_SQRT_2
+#define M_SQRT_2 1.414213562373095048801688724210
+#endif
+#ifndef M_SQRT_3
+#define M_SQRT_3 1.732050807568877293527446341506
+#endif
+#ifndef M_SQRT_32
+#define M_SQRT_32 5.656854249492380195206754896838
+#endif
+#ifndef M_LOG10_2
+#define M_LOG10_2 0.301029995663981195213738894724
+#endif
+#ifndef M_2_SQRTPI
+#define M_2_SQRTPI 1.128379167095512573896158903122
+#endif
+#ifndef M_PI_2
+#define M_PI_2 1.570796326794896619231321691640
+#endif
+#ifndef M_PI_4
+#define M_PI_4 0.785398163397448309615660845820
+#endif
+#ifndef M_2_PI
+#define M_2_PI 0.636619772367581343075535053490
+#endif
+#ifndef M_1_PI
+#define M_1_PI 0.318309886183790671537767526745
+#endif
+#ifndef M_E
+#define M_E 2.718281828459045235360287471353
+#endif
+#ifndef M_SQRT2
+#define M_SQRT2 1.414213562373095048801688724210
+#endif
+#ifndef M_LOG2E
+#define M_LOG2E 1.442695040888963407359924681002
+#endif
+#ifndef M_LOG10E
+#define M_LOG10E 0.434294481903251827651128918917
+#endif
+#ifndef M_LN10
+#define M_LN10 2.302585092994045684017991454684
 #endif
 #ifndef NA_REAL
 #define NA_REAL NAN
