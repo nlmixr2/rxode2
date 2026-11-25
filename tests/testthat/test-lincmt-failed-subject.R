@@ -21,7 +21,7 @@ rxTest({
       for (.cores in c(1L, 2L)) {
         .lab <- paste("bad", .bad, "cores", .cores)
         .w <- capture_warnings(
-          capture.output(.s <- rxSolve(.m, .b, params = c(cl = 1, v = 10), cores = .cores))
+          capture.output(.s <- rxSolve(.m, .b, params = c(cl = 1, v = 10), cores = .cores, checkModeledRateDur = FALSE))
         )
         expect_identical(.w, .msg, label = .lab)
         .s <- as.data.frame(.s)
@@ -51,7 +51,7 @@ rxTest({
     .msg <- "some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'"
     for (.cores in c(1L, 2L)) {
       .w <- capture_warnings(
-        capture.output(.s <- rxSolve(.m, .d, params = c(cl = 1, v = 10), cores = .cores))
+        capture.output(.s <- rxSolve(.m, .d, params = c(cl = 1, v = 10), cores = .cores, checkModeledRateDur = FALSE))
       )
       expect_identical(.w, .msg, label = paste("cores", .cores))
       .s <- as.data.frame(.s)
