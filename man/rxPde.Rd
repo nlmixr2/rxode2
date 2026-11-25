@@ -51,7 +51,8 @@ centers and the boundary values.
 }
 
 Doses go to individual cells by their state names (for example
-\code{cmt = "C_1"}).
+\code{cmt = "C_1"}); a cell holds a concentration, so a dose \code{amt} adds
+\code{amt * h} to \code{integrate()}.
 }
 \examples{
 cat(rxPde("

@@ -41,7 +41,8 @@
 #'   centers and the boundary values.
 #'
 #' Doses go to individual cells by their state names (for example
-#' `cmt = "C_1"`).
+#' `cmt = "C_1"`); a cell holds a concentration, so a dose `amt` adds
+#' `amt * h` to `integrate()`.
 #'
 #' @param model model text
 #' @return the model text with every grid expanded into ODE states; text
