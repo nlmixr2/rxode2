@@ -41,6 +41,7 @@ Other Solver options and performance:
 \code{\link[=forderForceBase]{forderForceBase()}},
 \code{\link[=getRxThreads]{getRxThreads()}},
 \code{\link[=odeMethodToInt]{odeMethodToInt()}},
+\code{\link[=rxGpuInfo]{rxGpuInfo()}},
 \code{\link[=rxIndLinState]{rxIndLinState()}},
 \code{\link[=rxIsAutoSwitch]{rxIsAutoSwitch()}},
 \code{\link[=rxIsDense]{rxIsDense()}},

@@ -52,8 +52,8 @@ extern "C" void ind_rkf32_0(rx_solve *rx, rx_solving_options *op, int solveid, i
   if (neqOde > 0) {
     solver = new RxRkf32(c_dydt, neq, neqOde, ind, getSolve(0), (long unsigned)op->mxstep);
       solver->set_quiet(true);
-      if (op->atol2 != NULL) solver->set_abstol(op->ATOL);
-      if (op->rtol2 != NULL) solver->set_reltol(op->RTOL);
+      if (op->atol2 != NULL) solver->set_abstol(ind->atol2 != NULL ? ind->atol2[0] : op->ATOL);
+      if (op->rtol2 != NULL) solver->set_reltol(ind->rtol2 != NULL ? ind->rtol2[0] : op->RTOL);
   }
   double *yp;
 
@@ -212,8 +212,8 @@ extern "C" void rkf32_solveWith1Pt(int *neq, double *yp, double *xp, double xout
     if (neqOde > 0) {
     RxRkf32 solver(dydt, neq, neqOde, ind, yp, (long unsigned)op->mxstep);
     solver.set_quiet(true);
-    if (op->atol2 != NULL) solver.set_abstol(op->ATOL);
-    if (op->rtol2 != NULL) solver.set_reltol(op->RTOL);
+    if (op->atol2 != NULL) solver.set_abstol(ind->atol2 != NULL ? ind->atol2[0] : op->ATOL);
+    if (op->rtol2 != NULL) solver.set_reltol(ind->rtol2 != NULL ? ind->rtol2[0] : op->RTOL);
     rkf32_do_steps(&solver, ind, op, dydt, neq, yp, *xp, xout);
 
     if (ind->rc[0] < 0) {

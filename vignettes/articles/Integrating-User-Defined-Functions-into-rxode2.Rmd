@@ -308,6 +308,20 @@ table:
 rxRmFun("fun")
 ```
 
+## Functions with side effects or random draws
+
+R and C user functions are assumed to be pure, so `rxOptExpr()` may
+evaluate repeated calls with the same arguments once, and the generated
+C may leave out a call whose result is unused.  Register a function that
+draws random numbers, keeps state or has side effects with
+`rxImpureFun()` so every call is kept:
+
+```{r rxImpureFun}
+rxImpureFun("fun")
+rxImpureFun()
+rxRmImpureFun("fun")
+```
+
 ## Functions to insert `rxode2` code into the current model
 
 This replaces `rxode2` code in the current model with some expansion.

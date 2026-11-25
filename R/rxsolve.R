@@ -178,7 +178,7 @@
 #'
 #'     For the adaptive methods `"f78"`, `"ck54"`, `"dop5"`, `"bs"`, `"f32"`,
 #'     `"rk43"`, `"dop54"`, `"vern65"`, `"vern76"`, `"dop87"`, `"vern98"`,
-#'     `"ros43"`, `"sdirk43"`, and all libode adaptive methods (`"bs32"`,
+#'     `"ros43"`, `"ros54p"`, `"sdirk43"`, the GPU methods, and all libode adaptive methods (`"bs32"`,
 #'     `"ssp43"`, `"f45"`, `"t54"`, `"s54"`, `"pp54"`, `"pp54b"`,
 #'     `"bs54"`, `"ss54"`, `"dp65"`, `"c65"`, `"tp64"`, `"v65r"`,
 #'     `"v65"`, `"dverk65"`, `"tf65"`, `"tp75"`, `"tmy7"`, `"tmy7s"`,
@@ -1161,6 +1161,23 @@
 #'   `bench/ss_anderson_1762.R` in the package sources for the benchmark
 #'   behind the default.
 #'
+#' @param gpuBackend Where the GPU methods (`"gpuT54"`, `"gpuVern76"`,
+#'   `"gpuRos54p"`, `"gpuT54+gpuRos54p"`, `"gpuVern76+gpuRos54p"`)
+#'   integrate: `"opencl"` on an OpenCL device through the suggested
+#'   `OpenCL` package, `"cpu"` with the same integrators built as host C on
+#'   `cores` threads (at most [getRxThreads()]), or `"auto"` (the default) for OpenCL when a device with
+#'   the requested precision is available and the CPU otherwise
+#'   (`options(rxode2.gpuBackend=)` pins what `"auto"` picks).  See
+#'   [rxGpuInfo()].
+#'
+#' @param gpuDevice OpenCL device (its `index` in `rxGpuInfo()$devices`);
+#'   `NULL` (the default) prefers a GPU with the requested precision.
+#'
+#' @param gpuPrecision `"double"` (the default) or `"float"` (OpenCL only).
+#'
+#' @param gpuBatch The most subjects the GPU methods integrate in one round
+#'   (default 16384).  Each needs its own scratch while it waits.
+#'
 #' @param linCmtGillK The total number of possible steps to determine the
 #'     optimal forward/central difference step size per parameter (by
 #'     the Gill 1983 method).  If 0, no optimal step size is
@@ -1511,6 +1528,12 @@ rxSolve <- function(
     "vern98",
     "ros43",
     "ros6",
+    "ros54p",
+    "gpuT54",
+    "gpuVern76",
+    "gpuRos54p",
+    "gpuT54+gpuRos54p",
+    "gpuVern76+gpuRos54p",
     "backwardEuler",
     "gauss6",
     "iiic6",
@@ -1783,6 +1806,10 @@ rxSolve <- function(
   resetCancelsPending = TRUE,
   checkModeledRateDur = TRUE,
   ssMethod = c("anderson", "iterate"),
+  gpuBackend = c("auto", "opencl", "cpu"),
+  gpuDevice = NULL,
+  gpuPrecision = c("double", "float"),
+  gpuBatch = 16384L,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -2119,6 +2146,10 @@ rxSolve <- function(
     } else {
       .ssMethod <- match(match.arg(ssMethod), c("iterate", "anderson")) - 1L
     }
+    gpuBackend <- match.arg(gpuBackend)
+    gpuPrecision <- match.arg(gpuPrecision)
+    checkmate::assertIntegerish(gpuDevice, lower = 1, len = 1, any.missing = FALSE, null.ok = TRUE)
+    checkmate::assertIntegerish(gpuBatch, lower = 1, len = 1, any.missing = FALSE)
     if (nonmem && missing(addlKeepsCov)) {
       # NONMEM keeps a dose record's covariates with the dose
       addlKeepsCov <- TRUE
@@ -2623,6 +2654,10 @@ rxSolve <- function(
       ssMethod = .ssMethod,
       doseAtRecord = doseAtRecord,
       addlCovAtTime = addlCovAtTime,
+      gpuBackend = gpuBackend,
+      gpuDevice = gpuDevice,
+      gpuPrecision = gpuPrecision,
+      gpuBatch = as.integer(gpuBatch),
       checkModeledRateDur = checkModeledRateDur
     )
     class(.ret) <- "rxControl"
@@ -4062,6 +4097,56 @@ rxSolve.default <- function(
   # solver so delay() can interpolate past states.  When delays are present,
   # default to the dense AutoSwitch composite "dop853+ros4" and turn on dense
   # output; a non-dense method requested explicitly is an error.
+  # GPU methods: the device code of the model (with its Jacobian for the
+  # ros54p methods), set up once here; src/gpu_solve.cpp runs the rounds
+  if (isTRUE(.ctl$method %in% 110:114)) {
+    # an event data frame given as params is swapped into events later
+    .gpuEv <- if (is.null(events) && rxIs(params, "event.data.frame")) params else events
+    .gpuWhy <- .rxGpuSolveUnsupported(object, .ctl, .gpuEv)
+    if (!is.null(.gpuWhy)) {
+      if (.ctl$gpuBackend != "auto") {
+        stop("the GPU methods do not support ", .gpuWhy, call. = FALSE)
+      }
+      # the default solver of the model
+      .minfo(paste0("the GPU methods do not support ", .gpuWhy, "; solving with the default method"))
+      .hd <- isTRUE(rxModelVars(object)$flags[["hasDelay"]] == 1L)
+      .ctl$method <- if (.hd) 0L else 2L
+      .ctl$stiff2 <- if (.hd) 13L else 0L
+    } else if (!.rxGpuSafe(object) && .ctl$gpuBackend == "auto") {
+      # a model that cannot run as device code solves with the host
+      # counterpart of the method
+      .host <- .rxGpuHostMethod[[as.character(.ctl$method)]]
+      .minfo(paste0("the model cannot run as device code; solving with the host method \"", names(.host)[1], "\""))
+      .ctl$method <- .host[[1]]
+      .ctl$stiff2 <- .host[[2]]
+    }
+  }
+  if (isTRUE(.ctl$method %in% 110:114)) {
+    .gpuModel <- .rxGpuSolveModel(object, .ctl$method)
+    if (rxModelVars(.gpuModel)$md5["parsed_md5"] != rxModelVars(object)$md5["parsed_md5"]) {
+      object <- .gpuModel
+      force(params)
+      force(inits)
+      force(indOwnAlloc)
+      force(theta)
+      force(eta)
+      force(envir)
+      return(rxSolve.default(
+        object,
+        params = params,
+        events = .eventsUnmirrored,
+        inits = inits,
+        ...,
+        indOwnAlloc = indOwnAlloc,
+        theta = theta,
+        eta = eta,
+        envir = envir
+      ))
+    }
+    # serves this solve's setup (and its ind_solve() re-solves); a solve set up
+    # without it, from C or for another model, uses the host counterpart
+    .ctl <- .rxGpuSolveInstall(object, .ctl, .rxGpuSolveCount(params, events, .ctl))
+  }
   .hasDelay <- isTRUE(rxModelVars(object)$flags[["hasDelay"]] == 1L)
   if (.hasDelay) {
     # delay() and evid_() pull the solver in opposite directions and cannot both
@@ -4129,7 +4214,9 @@ rxSolve.default <- function(
     # paths, and by liblsoda when dense = TRUE asks for it.
     # Other solvers cannot record dense history and are rejected.
     .stiff2 <- if (is.null(.ctl$stiff2)) 0L else as.integer(.ctl$stiff2)
-    if (.ctl$method >= 200L) {
+    if (.ctl$method %in% 110:114) {
+      # the device integrators keep each subject's delay() history themselves
+    } else if (.ctl$method >= 200L) {
       # discrete-adjoint rk4s methods record their own cubic-Hermite dense
       # history per accepted step and carry the backward anticipating term
       # (delayed Jacobian) in every backward fill -- explicit, stiff (ros4s,
@@ -6057,6 +6144,22 @@ rxEtDispatchSolve.rxode2et <- function(x, ...) {
 #' * `"ros6"` **(implicit)** -- Kaps-Wanner 6th-order A-stable Rosenbrock method (ROW6A) from libode.
 #'   Fixed step size (set with `hmin`). Requires Jacobian; falls back to `liblsoda` if unavailable.
 #'
+#' * `"ros54p"` **(implicit)** -- Steinebach's 8-stage L-stable Rosenbrock 5(4) method (Rodas5P).
+#'   Adaptive step size via its embedded 4th-order solution.  Requires an analytical
+#'   Jacobian (auto-computed from the model when not provided); falls back to
+#'   `liblsoda` if Jacobian generation fails.  `"t54+ros54p"` and `"vern76+ros54p"`
+#'   are its AutoSwitch composites.
+#'
+#' * `"gpuT54"`, `"gpuVern76"`, `"gpuRos54p"`, `"gpuT54+gpuRos54p"`,
+#'   `"gpuVern76+gpuRos54p"` -- the same integrators (Tsitouras 5(4) as
+#'   `"t54"`, Verner 7(6) as `"vern76"`, Rodas5P as `"ros54p"` with the
+#'   analytical Jacobian, and their AutoSwitch composites) as device code: each
+#'   round integrates every waiting subject at once, one subject per OpenCL
+#'   work-item, or on `cores` threads with the CPU build (`gpuBackend`).
+#'   Events stay on the host.  The model's `d/dt()` must be able to run as
+#'   device code; otherwise `gpuBackend = "auto"` solves with the host method
+#'   named above.  Supports `delay()`.
+#'
 #' * `"backwardEuler"` **(implicit)** -- Backward Euler (BDF-1), 1st-order L-stable fully implicit method from libode.
 #'   Fixed step size (set with `hmin`). Requires Jacobian; falls back to `liblsoda` if unavailable.
 #'
@@ -6511,6 +6614,12 @@ odeMethodToInt <- function(
     "vern98",
     "ros43",
     "ros6",
+    "ros54p",
+    "gpuT54",
+    "gpuVern76",
+    "gpuRos54p",
+    "gpuT54+gpuRos54p",
+    "gpuVern76+gpuRos54p",
     "backwardEuler",
     "gauss6",
     "iiic6",
@@ -6688,6 +6797,12 @@ odeMethodToInt <- function(
     "vern98" = 30L,
     "ros43" = 31L,
     "ros6" = 32L,
+    "ros54p" = 108L,
+    "gpuT54" = 110L,
+    "gpuVern76" = 111L,
+    "gpuRos54p" = 112L,
+    "gpuT54+gpuRos54p" = 113L,
+    "gpuVern76+gpuRos54p" = 114L,
     "backwardEuler" = 33L,
     "gauss6" = 34L,
     "iiic6" = 35L,
@@ -6839,7 +6954,12 @@ odeMethodToInt <- function(
     method <- .methodIdx
   } else if (checkmate::testIntegerish(method)) {
     method <- as.integer(method)
-  } else if (is.character(method) && length(method) == 1L && grepl("+", method, fixed = TRUE)) {
+  } else if (
+    is.character(method) &&
+      length(method) == 1L &&
+      grepl("+", method, fixed = TRUE) &&
+      !(method %in% .rxGpuSolveComposites)
+  ) {
     method <- .parseAutoSwitchMethod(method)
   } else {
     if (is.character(method) && length(method) > 1L) {
@@ -6885,7 +7005,7 @@ odeMethodToInt <- function(
 #' @export
 #' @family Solver options and performance
 rxIsImplicit <- function(method) {
-  .implicitCodes <- c(13L, 14L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L)
+  .implicitCodes <- c(13L, 14L, 31L, 32L, 33L, 34L, 35L, 36L, 37L, 38L, 108L)
   .methodIdx <- c(
     "lsoda" = 1L,
     "dop853" = 0L,
@@ -6918,6 +7038,12 @@ rxIsImplicit <- function(method) {
     "vern98" = 30L,
     "ros43" = 31L,
     "ros6" = 32L,
+    "ros54p" = 108L,
+    "gpuT54" = 110L,
+    "gpuVern76" = 111L,
+    "gpuRos54p" = 112L,
+    "gpuT54+gpuRos54p" = 113L,
+    "gpuVern76+gpuRos54p" = 114L,
     "backwardEuler" = 33L,
     "gauss6" = 34L,
     "iiic6" = 35L,
@@ -7108,6 +7234,8 @@ rxIsStiff <- function(method) {
     13L,
     14L,
     21L,
+    108L,
+    112L,
     31L,
     32L,
     33L,
@@ -7160,6 +7288,12 @@ rxIsStiff <- function(method) {
     "vern98" = 30L,
     "ros43" = 31L,
     "ros6" = 32L,
+    "ros54p" = 108L,
+    "gpuT54" = 110L,
+    "gpuVern76" = 111L,
+    "gpuRos54p" = 112L,
+    "gpuT54+gpuRos54p" = 113L,
+    "gpuVern76+gpuRos54p" = 114L,
     "backwardEuler" = 33L,
     "gauss6" = 34L,
     "iiic6" = 35L,
@@ -7345,11 +7479,13 @@ rxIsStiff <- function(method) {
 #' @export
 #' @family Solver options and performance
 rxIsNonStiff <- function(method) {
-  .switcherCodes <- c(1L, 2L, 3L)
+  .switcherCodes <- c(1L, 2L, 3L, 113L, 114L)
   .stiffCodes <- c(
     13L,
     14L,
     21L,
+    108L,
+    112L,
     31L,
     32L,
     33L,
@@ -7402,6 +7538,12 @@ rxIsNonStiff <- function(method) {
     "vern98" = 30L,
     "ros43" = 31L,
     "ros6" = 32L,
+    "ros54p" = 108L,
+    "gpuT54" = 110L,
+    "gpuVern76" = 111L,
+    "gpuRos54p" = 112L,
+    "gpuT54+gpuRos54p" = 113L,
+    "gpuVern76+gpuRos54p" = 114L,
     "backwardEuler" = 33L,
     "gauss6" = 34L,
     "iiic6" = 35L,
@@ -7631,6 +7773,12 @@ rxIsDense <- function(method) {
     "vern98" = 30L,
     "ros43" = 31L,
     "ros6" = 32L,
+    "ros54p" = 108L,
+    "gpuT54" = 110L,
+    "gpuVern76" = 111L,
+    "gpuRos54p" = 112L,
+    "gpuT54+gpuRos54p" = 113L,
+    "gpuVern76+gpuRos54p" = 114L,
     "backwardEuler" = 33L,
     "gauss6" = 34L,
     "iiic6" = 35L,
@@ -7880,7 +8028,8 @@ rxIsDense <- function(method) {
 #' @family Solver options and performance
 rxIsAutoSwitch <- function(method) {
   if (is.character(method)) {
-    return(grepl("+", method, fixed = TRUE))
+    ## the GPU composites are single methods (they switch on the device)
+    return(grepl("+", method, fixed = TRUE) & !(method %in% .rxGpuSolveComposites))
   }
   rep(FALSE, length(method))
 }
@@ -7980,6 +8129,12 @@ rxUiDeparse.rxControl <- function(object, var) {
           "vern98" = 30L,
           "ros43" = 31L,
           "ros6" = 32L,
+          "ros54p" = 108L,
+          "gpuT54" = 110L,
+          "gpuVern76" = 111L,
+          "gpuRos54p" = 112L,
+          "gpuT54+gpuRos54p" = 113L,
+          "gpuVern76+gpuRos54p" = 114L,
           "backwardEuler" = 33L,
           "gauss6" = 34L,
           "iiic6" = 35L,

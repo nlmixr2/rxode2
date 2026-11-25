@@ -61,3 +61,5 @@ random
 ui-simulation
 # accelerated steady state
 ss-anderson
+# GPU solving (device integrators, CPU build on CI)
+gpu-solve
