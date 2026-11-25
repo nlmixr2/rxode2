@@ -140,6 +140,35 @@ rxTest({
     expect_lt(.n[2], .n[1])
   })
 
+  test_that("classic infusion records and reset-only subjects keep every repeat", {
+    .d <- data.frame(
+      id = 1L,
+      time = c(0, 30, 35),
+      evid = c(10201L, 10201L, 0L),
+      amt = c(10, -10, NA),
+      ii = c(10, 10, 0),
+      addl = c(2L, 2L, 0L),
+      dv = c(NA, NA, 1)
+    )
+    .a <- etTrans(.d, .m, keepDosingOnly = TRUE)
+    .b <- etTrans(.d, .m, keepDosingOnly = TRUE, addlDropPastObs = TRUE)
+    expect_equal(nrow(.b), nrow(.a))
+    .d <- data.frame(
+      id = 1L,
+      time = c(0, 1),
+      evid = c(3L, 1L),
+      amt = c(NA, 100),
+      ii = c(0, 24),
+      addl = c(0L, 4L),
+      cmt = 1L,
+      dv = NA_real_
+    )
+    .a <- etTrans(.d, .m, keepDosingOnly = TRUE)
+    .b <- etTrans(.d, .m, keepDosingOnly = TRUE, addlDropPastObs = TRUE)
+    expect_equal(nrow(.b), nrow(.a))
+    expect_error(etTrans(.d, .m, addlDropPastObs = NA))
+  })
+
   test_that("an mdv data set truncates and solves the same", {
     .d <- data.frame(
       id = 1L,

@@ -1365,8 +1365,8 @@ static inline bool etTransAddlDropModelOk(const List &mv) {
 }
 
 // addlDropPastObs: each subject's latest input row, after which addl repeats
-// cannot change any other record.  Only subjects with a row that is not
-// surely a dose (an observation, evid 2, a reset or anything unsure) get one,
+// cannot change any other record.  Only subjects with a row that is neither
+// surely a dose nor a reset (an observation, evid 2 or anything unsure) get one,
 // and not a subject whose time moves back (a time reset).
 static inline std::unordered_map<int, double>
 etTransLastOutTime(const NumericVector &inTime, const IntegerVector &inId,
@@ -1383,7 +1383,9 @@ etTransLastOutTime(const NumericVector &inTime, const IntegerVector &inId,
     if (lid == cid0 && t < lt) movesBack.insert(cid0);
     lid = cid0;
     lt = t;
-    if (!etTransRowSurelyDose(i, inEvid, evidMode, inAmt, hasAmt)) {
+    // a reset is not an observation
+    bool isReset = evidMode == 1 && inEvid[i] == 3;
+    if (!isReset && !etTransRowSurelyDose(i, inEvid, evidMode, inAmt, hasAmt)) {
       hasOut.insert(cid0);
     }
     auto it = ret.find(cid0);
@@ -1401,7 +1403,8 @@ etTransLastOutTime(const NumericVector &inTime, const IntegerVector &inId,
 }
 
 // The time after which an addl series stops (Inf: it does not).  A dose into
-// an alag() compartment never stops, as its lag could move a repeat earlier.
+// an alag() compartment never stops, as its lag could move a repeat earlier,
+// nor a classic infusion record, whose start and stop rows repeat apart.
 static inline double etTransAddlStop(const std::unordered_map<int, double> &lastOut,
                                      int nOcc, int cid, bool classicEvid,
                                      int cevid, int cmt,
@@ -1414,6 +1417,7 @@ static inline double etTransAddlStop(const std::unordered_map<int, double> &last
   if (classicEvid) {
     int wh, wCmt, wh100, whI, wh0;
     getWh(cevid, &wh, &wCmt, &wh100, &whI, &wh0);
+    if (whI != 0) return R_PosInf;
     dcmt = wCmt + 1;
   }
   for (int jj = 0; jj < curAlag.size(); ++jj) {

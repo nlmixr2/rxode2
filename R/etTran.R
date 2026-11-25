@@ -298,6 +298,7 @@ etTrans <- function(
   addlDropPastObs = FALSE
 ) {
   tieOrder <- match.arg(tieOrder)
+  checkmate::assertLogical(addlDropPastObs, any.missing = FALSE, len = 1)
   if (is.rxEt(inData)) {
     .env <- .rxEtEnv(inData)
     .chunks <- Filter(Negate(is.null), .env$chunks)
