@@ -6234,6 +6234,36 @@ static inline void rxSolveSaveRxSolve(rxSolve_t* rxSolveDat){
 }
 
 RObject _curPar;
+// Largest n in the model's `fun(n)` statements (0 when there are none).
+static inline int rxSimMaxIndex(const char *mod, const char *fun) {
+  int ret = 0;
+  size_t len = strlen(fun);
+  for (const char *p = strstr(mod, fun); p != NULL; p = strstr(p + 1, fun)) {
+    if ((p != mod && (isalnum((unsigned char)p[-1]) || p[-1] == '_' || p[-1] == '.')) ||
+        p[len] != '(' || !isdigit((unsigned char)p[len + 1])) continue;
+    int n = atoi(p + len + 1);
+    if (n > ret) ret = n;
+  }
+  return ret;
+}
+
+// simeta(n)/simeps(n) index past the supplied omega/sigma (#1793).
+static inline void rxSolveCheckSimIndex(rxSolve_t* rxSolveDat, rx_solve* rx) {
+  if (rx->simflg == 0) return;
+  CharacterVector mod = rxSolveDat->mv[RxMv_model];
+  const char *m = CHAR(STRING_ELT(mod, 0));
+  int n = rxSimMaxIndex(m, "simeta");
+  if (n > 0 && rx->neta > 0 && n > rx->neta) {
+    rxSolveFree();
+    stop(_("'simeta(%d)' is out of range: 'omega' has %d eta(s)"), n, rx->neta);
+  }
+  n = rxSimMaxIndex(m, "simeps");
+  if (n > 0 && rx->neps > 0 && n > rx->neps) {
+    rxSolveFree();
+    stop(_("'simeps(%d)' is out of range: 'sigma' has %d eps(s)"), n, rx->neps);
+  }
+}
+
 static inline void rxSolve_assignGpars(rxSolve_t* rxSolveDat){
   unsigned int i;
   rx_solve* rx = getRxSolve_();
@@ -6311,6 +6341,7 @@ static inline SEXP rxSolve_finalize(const RObject &obj,
   // has not flushed (babelmixr2's PopED) loses its lines rather than passing them
   // to this solve's subjects.  SAEM calls par_solve() directly, so the reasons its
   // subjects pushed in between survive until its flush.
+  rxSolveCheckSimIndex(rxSolveDat, rx);
   rxSolveWarnReset();
   ssNotConv_global = 0;
   par_solve(rx);

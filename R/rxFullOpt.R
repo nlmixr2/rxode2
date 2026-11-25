@@ -77,6 +77,8 @@
   "linCmtB",
   "simeps",
   "simeta",
+  "simepsI",
+  "simetaI",
   "_getIndSim",
   "_rxord",
   "_mix",

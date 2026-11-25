@@ -1,6 +1,8 @@
 _getRxSolve_t _getRxSolve_;
 _simfun simeps;
 _simfun simeta;
+_simfunI simepsI;
+_simfunI simetaI;
 
 _udf_type _evalUdf = NULL;
 rx_solve *_solveData = NULL;
@@ -753,6 +755,8 @@ void _assignFuns0(void) {
   probitInv = (rxode2_fn3) R_GetCCallable("rxode2", "probitInv");
   simeta =(_simfun) R_GetCCallable("rxode2", "simeta");
   simeps =(_simfun) R_GetCCallable("rxode2", "simeps");
+  simetaI =(_simfunI) R_GetCCallable("rxode2", "simetaI");
+  simepsI =(_simfunI) R_GetCCallable("rxode2", "simepsI");
 
   _llikNorm=(rxode2_llikNormFun) R_GetCCallable("rxode2ll","rxLlikNorm");
   _llikNormDmean=(rxode2_llikNormFun) R_GetCCallable("rxode2ll","rxLlikNormDmean");

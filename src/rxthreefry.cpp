@@ -1987,6 +1987,68 @@ extern "C" void simeta(void) {
   }
 }
 
+// Re-simulate only element `k` (0-based) of `cur`, given a fresh draw `z`
+// from N(0, sigma): conditional on the other elements when sigma correlates k
+// with them, so the covariance is honored; otherwise z[k] as drawn.
+static inline double simOneCond(const double *z, const double *cur, int k,
+                                const arma::mat& sigma) {
+  int n = sigma.n_rows;
+  arma::uvec o(n - 1);
+  for (int j = 0, i = 0; j < n; j++) if (j != k) o[i++] = j;
+  arma::rowvec c = sigma.row(k);
+  arma::rowvec co = c.cols(o);
+  if (n == 1 || arma::all(co == 0.0)) return z[k];
+  arma::mat soo = sigma.submat(o, o);
+  arma::vec w;
+  if (!arma::solve(w, soo, co.t(), arma::solve_opts::no_approx)) {
+    w = arma::pinv(soo) * co.t();
+  }
+  double ret = z[k];
+  for (int i = 0; i < n - 1; i++) {
+    ret += w[i] * (cur[o[i]] - z[o[i]]);
+  }
+  return ret;
+}
+
+// simeps(n): re-simulate only EPS n (1-based); the others keep their values.
+extern "C" void simepsI(int n) {
+  rx_solve* rx = &rx_global;
+  rx_solving_options_ind* ind = rxThreadInd();
+  if (ind->inLhs == 1 && n >= 1 && n <= rx->neps) {
+    arma::mat out(1, rx->neps);
+    int csim = std::floor(((double)ind->id)/((double)rx->nsub));
+    simvar(&out[0], 0, csim, rx);
+    int *svar = rx->svar;
+    double *par_ptr = ind->par_ptr;
+    arma::vec cur(rx->neps);
+    for (int j = 0; j < rx->neps; j++) cur[j] = par_ptr[svar[j]];
+    arma::mat sigma = getArmaMat(0, csim, rx);
+    par_ptr[svar[n - 1]] = simOneCond(&out[0], &cur[0], n - 1, sigma);
+  }
+}
+
+// simeta(n): re-simulate only ETA n (1-based); the others keep their values.
+extern "C" void simetaI(int n) {
+  rx_solve* rx = &rx_global;
+  rx_solving_options_ind* ind = rxThreadInd();
+  if (ind != NULL && ind->isIni == 1 && n >= 1 && n <= rx->neta) {
+    double *par_ptr = ind->par_ptr;
+    int csim = (int)std::floor((double)(ind->id)/((double)rx->nsub));
+    arma::mat out(1, rx->neta);
+    double *pre = rxGetEtaPre();
+    if (pre) {
+      double *row = pre + (ptrdiff_t)(ind->id) * rx->neta;
+      std::copy(row, row + rx->neta, &out[0]);
+    } else {
+      simvar(&out[0], 1, csim, rx);
+    }
+    arma::vec cur(rx->neta);
+    for (int j = 0; j < rx->neta; j++) cur[j] = par_ptr[rx->ovar[j]];
+    arma::mat omega = getArmaMat(1, csim, rx);
+    par_ptr[rx->ovar[n - 1]] = simOneCond(&out[0], &cur[0], n - 1, omega);
+  }
+}
+
 // Fills A with multivariate normal (df=Inf) or t draws
 static void rxRmvGen0(NumericMatrix& A, arma::rowvec& mu, arma::mat& sigma,
                       arma::vec& lower, arma::vec& upper, int ncores, bool isChol,
