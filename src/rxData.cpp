@@ -2010,14 +2010,13 @@ static inline void rxSsHoldAtol(double *ssAtol, int neq) {
   }
 }
 
-// The compartment a state belongs to: its own name, or for a sensitivity
-// rx__sens_<cmt>_BY_<par>__ the compartment it is the sensitivity of
-static inline std::string rxSsHoldCmt(const std::string &state) {
-  if (state.compare(0, 9, "rx__sens_") == 0) {
-    size_t by = state.find("_BY_", 9);
-    if (by != std::string::npos) return state.substr(9, by - 9);
-  }
-  return state;
+// Whether a state is compartment cmt or one of its sensitivities
+// rx__sens_<cmt>_BY_<par>__
+static inline bool rxSsHoldIsCmt(const std::string &state,
+                                 const std::string &cmt) {
+  if (state == cmt) return true;
+  std::string pre = "rx__sens_" + cmt + "_BY_";
+  return state.compare(0, pre.size(), pre) == 0;
 }
 
 // Build _rxSsHold from rxControl(ssCmt=) and the model's states; returns an
@@ -2051,11 +2050,27 @@ static std::string rxSsHoldSetup(const List &rxControl, const List &mv,
   std::vector<int> hold(op->neq, 0);
   bool any = false;
   for (int k = 0; k < nState; ++k) {
-    if (k >= linB && k < linE) continue;
-    std::string cmt = rxSsHoldCmt((std::string)state[k]);
-    // the positive form leaves out only the model's own compartments
-    if (!neg && cmt.compare(0, 4, "rx__") == 0) continue;
-    bool isNamed = std::find(named.begin(), named.end(), cmt) != named.end();
+    std::string cur = (std::string)state[k];
+    bool isNamed = false;
+    for (const std::string &cmt : named) {
+      if (rxSsHoldIsCmt(cur, cmt)) {
+        isNamed = true;
+        break;
+      }
+    }
+    if (k >= linB && k < linE) {
+      // the linCmt() block is always advanced, so it has to be named
+      if (!neg && !isNamed && cur.compare(0, 4, "rx__") != 0) {
+        return "'ssCmt' has to name the linCmt() compartment '" + cur + "'";
+      }
+      continue;
+    }
+    // the positive form leaves out only the model's own compartments and
+    // their sensitivities
+    if (!neg && !isNamed && cur.compare(0, 4, "rx__") == 0 &&
+        cur.compare(0, 9, "rx__sens_") != 0) {
+      continue;
+    }
     hold[k] = neg ? isNamed : !isNamed;
     any = any || hold[k];
   }
@@ -3415,11 +3430,11 @@ void resetFkeep();
 //' @export
 // [[Rcpp::export]]
 LogicalVector rxSolveFree(){
-  _rxSsHold.clear();
   if (omp_get_thread_num() != 0) {
     // Only the main thread should be freeing the solver.
     return LogicalVector::create(false);
   }
+  _rxSsHold.clear();
   _rxode2_udfReset();
   resetFkeep();
   if (!_globals.alloc) return true;

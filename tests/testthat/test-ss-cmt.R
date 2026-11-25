@@ -73,9 +73,34 @@ rxTest({
     expect_equal(.s$auc[.s$time == 0], 0)
     expect_equal(.s$auc[.s$time == 24], 100, tolerance = 1e-4)
     expect_error(rxSolve(.mod, .ev, ssCmt = "-central"), "linCmt")
+    # the positive form has to name every linCmt() compartment
+    expect_error(rxSolve(.mod, .ev, ssCmt = "depot"), "linCmt")
     # naming the advanced linCmt() compartments leaves out the AUC
     .s2 <- rxSolve(.mod, .ev, ssCmt = c("depot", "central"))
     expect_equal(.s2$auc, .s$auc)
+  })
+
+  test_that("ssCmt matches a compartment whose name contains _BY_", {
+    .mod <- rxode2({
+      d / dt(depot) <- -ka * depot
+      d / dt(central) <- ka * depot - cl / v * central
+      d / dt(auc_BY_x) <- central / v
+    }, calcSens = "ka")
+    .ev <- et(amt = 100, ii = 24, ss = 1) |> et(c(0, 24))
+    .s <- rxSolve(.mod, .ev, c(ka = 1, cl = 1, v = 10), ssCmt = "-auc_BY_x")
+    expect_equal(.s$auc_BY_x[1], 0)
+    expect_equal(.s$rx__sens_auc_BY_x_BY_ka__[1], 0)
+  })
+
+  test_that("ss=2 of a regimen already at steady state still superposes", {
+    .ev1 <- et(amt = 100, ii = 24, addl = 4, ss = 1) |> et(c(48, 60))
+    .ev2 <- et(amt = 100, ii = 24, addl = 4, ss = 1) |>
+      et(time = 48, amt = 100, ii = 24, ss = 2) |>
+      et(c(48, 60))
+    .s1 <- rxSolve(.ssCmtMod, .ev1, ssCmt = "-auc")
+    .s2 <- rxSolve(.ssCmtMod, .ev2, ssCmt = "-auc")
+    expect_equal(.s2$central, 2 * .s1$central, tolerance = 1e-4)
+    expect_equal(.s2$depot, 2 * .s1$depot, tolerance = 1e-4)
   })
 
   test_that("ssCmt is checked", {
