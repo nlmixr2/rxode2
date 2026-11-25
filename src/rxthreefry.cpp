@@ -2031,11 +2031,18 @@ static inline double simOneCond(const double *z, const double *cur, int k,
   arma::rowvec c = sigma.row(k);
   arma::rowvec co = c.cols(o);
   if (arma::all(co == 0.0)) return z[k];
+  // regression weights, solved on the correlation scale so widely different
+  // variances do not make the system look singular
   arma::mat soo = sigma.submat(o, o);
+  arma::vec d = arma::sqrt(soo.diag());
+  d.elem(arma::find(d <= 0.0)).ones();
+  arma::mat r = soo / (d * d.t());
+  arma::vec rhs = co.t() / d;
   arma::vec w;
-  if (!arma::solve(w, soo, co.t(), arma::solve_opts::no_approx)) {
-    w = arma::pinv(soo) * co.t();
+  if (!arma::solve(w, r, rhs, arma::solve_opts::no_approx)) {
+    w = arma::pinv(r) * rhs;
   }
+  w = w / d;
   arma::vec lower = getLowerVec(type, rx);
   arma::vec upper = getUpperVec(type, rx);
   if (!anyFinite(lower) && !anyFinite(upper)) {
@@ -2079,7 +2086,10 @@ static inline double simOneCond(const double *z, const double *cur, int k,
   if (x < a) x = a;
   if (x > b) x = b;
   if (!R_FINITE(x)) return z[k];
-  return mu + sd * (flip ? -x : x);
+  double ret = mu + sd * (flip ? -x : x);
+  if (R_FINITE(lower[k]) && ret < lower[k]) ret = lower[k];
+  if (R_FINITE(upper[k]) && ret > upper[k]) ret = upper[k];
+  return ret;
 }
 
 // Where simeta(n)/simeps(n) index n lands once omega/sigma items are dropped
