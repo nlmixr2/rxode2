@@ -18,7 +18,8 @@ etTrans(
   ssAtDoseTime = TRUE,
   iCov = NULL,
   tieOrder = c("evid", "data"),
-  resetCancelsPending = TRUE
+  resetCancelsPending = TRUE,
+  addlDropPastObs = FALSE
 )
 
 etTrans(
@@ -35,7 +36,8 @@ etTrans(
   ssAtDoseTime = TRUE,
   iCov = NULL,
   tieOrder = c("evid", "data"),
-  resetCancelsPending = TRUE
+  resetCancelsPending = TRUE,
+  addlDropPastObs = FALSE
 )
 }
 \arguments{
@@ -86,6 +88,12 @@ of an \code{evid=4} dose, \code{addl} repeats, infusion ends) follow that row.}
 record that a later reset (\code{evid} 3 or 4) is processed after are
 dropped from that reset's time on, as NONMEM cancels prior doses at a
 reset.}
+
+\item{addlDropPastObs}{When \code{TRUE}, an \code{addl} series of a subject with
+observations stops after its first repeat past the subject's last
+observation, as later repeats cannot change an observation.  Doses into
+an \code{alag()} compartment, subjects whose time moves back and models with
+model times (\code{mtime()}) keep every repeat.  Default \code{FALSE}.}
 }
 \value{
 Object for solving in rxode2

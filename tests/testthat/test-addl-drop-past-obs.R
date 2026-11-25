@@ -1,0 +1,161 @@
+rxTest({
+  .pk <- function() {
+    ini({
+      ka <- 1
+      cl <- 1
+      v <- 10
+    })
+    model({
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - cl / v * central
+      cp <- central / v
+    })
+  }
+  .m <- rxode2(.pk)
+
+  # translate with and without truncation, then require the same solve
+  .same <- function(m, ev, ...) {
+    .a <- etTrans(ev, m, keepDosingOnly = TRUE, ...)
+    .b <- etTrans(ev, m, keepDosingOnly = TRUE, addlDropPastObs = TRUE, ...)
+    .sa <- as.data.frame(rxSolve(m, .a))
+    .sb <- as.data.frame(rxSolve(m, .b))
+    expect_equal(.sb, .sa)
+    c(nrow(.a), nrow(.b))
+  }
+
+  test_that("addl repeats past the last observation are not expanded", {
+    .ev <- et(amt = 100, ii = 24, addl = 10000) |> et(0:48)
+    .a <- etTrans(.ev, .m, keepDosingOnly = TRUE)
+    .b <- etTrans(.ev, .m, keepDosingOnly = TRUE, addlDropPastObs = TRUE)
+    expect_equal(nrow(.a), 10050L)
+    expect_equal(nrow(.b), 53L)
+    # the first repeat past the last observation stays
+    expect_equal(max(.b$TIME), 72)
+    # the default does not truncate
+    expect_equal(nrow(etTrans(.ev, .m, keepDosingOnly = TRUE)), 10050L)
+  })
+
+  test_that("bolus addl solves the same with truncation", {
+    .ev <- et(amt = 100, ii = 24, addl = 20) |> et(0:48)
+    .n <- .same(.m, .ev)
+    expect_lt(.n[2], .n[1])
+  })
+
+  test_that("an infusion straddling the last observation solves the same", {
+    .ev <- et(amt = 100, ii = 24, addl = 20, dur = 30, cmt = "central") |>
+      et(seq(0, 50, by = 2.5))
+    .n <- .same(.m, .ev)
+    expect_lt(.n[2], .n[1])
+    .ev <- et(amt = 100, ii = 24, addl = 20, rate = 5, cmt = "central") |>
+      et(seq(0, 50, by = 2.5))
+    .n <- .same(.m, .ev)
+    expect_lt(.n[2], .n[1])
+  })
+
+  test_that("steady-state doses with addl solve the same", {
+    .ev <- et(amt = 100, ii = 24, addl = 20, ss = 1) |> et(0:48)
+    .n <- .same(.m, .ev)
+    expect_lt(.n[2], .n[1])
+    .n <- .same(.m, .ev, addlDropSs = FALSE)
+    expect_lt(.n[2], .n[1])
+  })
+
+  test_that("reset events solve the same", {
+    .d <- data.frame(
+      id = 1L,
+      time = c(0, 10, 30, 30, 40, 50),
+      evid = c(1L, 0L, 3L, 0L, 0L, 0L),
+      amt = c(100, NA, NA, NA, NA, NA),
+      ii = c(12, 0, 0, 0, 0, 0),
+      addl = c(20L, 0L, 0L, 0L, 0L, 0L),
+      cmt = 1L,
+      dv = c(NA, 1, NA, 1, 1, 1)
+    )
+    .n <- .same(.m, .d)
+    .d$evid[3] <- 4L
+    .d$amt[3] <- 50
+    .d$ii[3] <- 12
+    .d$addl[3] <- 20L
+    .n <- .same(.m, .d)
+    expect_lt(.n[2], .n[1])
+  })
+
+  test_that("lagged doses keep every repeat", {
+    .lag <- function() {
+      ini({
+        ka <- 1
+        cl <- 1
+        v <- 10
+      })
+      model({
+        d/dt(depot) <- -ka * depot
+        alag(depot) <- 2
+        d/dt(central) <- ka * depot - cl / v * central
+        cp <- central / v
+      })
+    }
+    .ml <- rxode2(.lag)
+    .ev <- et(amt = 100, ii = 24, addl = 20) |> et(0:48)
+    .n <- .same(.ml, .ev)
+    expect_equal(.n[2], .n[1])
+    # an unlagged compartment of the same model still truncates
+    .ev <- et(amt = 100, ii = 24, addl = 20, cmt = "central") |> et(0:48)
+    .n <- .same(.ml, .ev)
+    expect_lt(.n[2], .n[1])
+  })
+
+  test_that("dose-only subjects and subjects whose time moves back are unchanged", {
+    .d <- data.frame(
+      id = c(1L, 1L, 1L, 2L, 3L, 3L, 3L, 3L),
+      time = c(0, 10, 20, 0, 0, 10, 0, 10),
+      evid = c(1L, 0L, 0L, 1L, 1L, 0L, 3L, 0L),
+      amt = c(100, NA, NA, 100, 100, NA, NA, NA),
+      ii = c(12, 0, 0, 12, 12, 0, 0, 0),
+      addl = c(20L, 0L, 0L, 20L, 20L, 0L, 0L, 0L),
+      cmt = 1L,
+      dv = c(NA, 1, 1, NA, NA, 1, NA, 1)
+    )
+    .a <- etTrans(.d, .m, keepDosingOnly = TRUE)
+    .b <- etTrans(.d, .m, keepDosingOnly = TRUE, addlDropPastObs = TRUE)
+    .cnt <- function(x, id) sum(as.integer(x$ID) == id)
+    expect_lt(.cnt(.b, 1L), .cnt(.a, 1L))
+    expect_equal(.cnt(.b, 2L), .cnt(.a, 2L))
+    expect_equal(.cnt(.b, 3L), .cnt(.a, 3L))
+  })
+
+  test_that("an mdv data set truncates and solves the same", {
+    .d <- data.frame(
+      id = 1L,
+      time = c(0, 0:48),
+      mdv = c(1L, rep(0L, 49)),
+      amt = c(100, rep(0, 49)),
+      ii = c(24, rep(0, 49)),
+      addl = c(20L, rep(0L, 49)),
+      cmt = 1L,
+      dv = c(NA, rep(1, 49))
+    )
+    .n <- .same(.m, .d)
+    expect_lt(.n[2], .n[1])
+  })
+
+  test_that("models with model times keep every repeat", {
+    .mt <- function() {
+      ini({
+        ka <- 1
+        cl <- 1
+        v <- 10
+      })
+      model({
+        mtime(t1) <- 100
+        d/dt(depot) <- -ka * depot
+        d/dt(central) <- ka * depot - cl / v * central
+        cp <- central / v
+      })
+    }
+    .mm <- rxode2(.mt)
+    .ev <- et(amt = 100, ii = 24, addl = 20) |> et(0:48)
+    .a <- etTrans(.ev, .mm, keepDosingOnly = TRUE)
+    .b <- etTrans(.ev, .mm, keepDosingOnly = TRUE, addlDropPastObs = TRUE)
+    expect_equal(nrow(.b), nrow(.a))
+  })
+})

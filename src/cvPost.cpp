@@ -26,7 +26,8 @@ List etTrans(List inData, const RObject &mv, bool addCmt,
              bool ssAtDoseTime,
              Nullable<List> iCovIn,
              std::string tieOrder = "evid",
-             bool resetCancelsPending = true);
+             bool resetCancelsPending = true,
+             bool addlDropPastObs = false);
 std::string rxControlTieOrder(const List &control);
 bool rxControlResetCancelsPending(const List &control);
 SEXP nestingInfo_(SEXP omega, List data);

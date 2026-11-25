@@ -294,7 +294,8 @@ etTrans <- function(
   ssAtDoseTime = TRUE,
   iCov = NULL,
   tieOrder = c("evid", "data"),
-  resetCancelsPending = TRUE
+  resetCancelsPending = TRUE,
+  addlDropPastObs = FALSE
 ) {
   tieOrder <- match.arg(tieOrder)
   if (is.rxEt(inData)) {
@@ -326,6 +327,7 @@ etTrans <- function(
     ssAtDoseTime,
     iCov,
     tieOrder,
-    resetCancelsPending
+    resetCancelsPending,
+    addlDropPastObs
   )
 }

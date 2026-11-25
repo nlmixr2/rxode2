@@ -240,6 +240,12 @@ cmtSupportsOff_ <- function(cmt, mv) {
 #'   dropped from that reset's time on, as NONMEM cancels prior doses at a
 #'   reset.
 #'
+#' @param addlDropPastObs When `TRUE`, an `addl` series of a subject with
+#'   observations stops after its first repeat past the subject's last
+#'   observation, as later repeats cannot change an observation.  Doses into
+#'   an `alag()` compartment, subjects whose time moves back and models with
+#'   model times (`mtime()`) keep every repeat.  Default `FALSE`.
+#'
 #' @inheritParams rxSolve
 #'
 #' @return Object for solving in rxode2
@@ -247,8 +253,8 @@ cmtSupportsOff_ <- function(cmt, mv) {
 #' @keywords internal
 #'
 #' @export
-etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar = FALSE, keepDosingOnly = FALSE, combineDvid = NULL, keep = character(0), addlKeepsCov = FALSE, addlDropSs = TRUE, ssAtDoseTime = TRUE, iCov = NULL, tieOrder = "evid", resetCancelsPending = TRUE) {
-    .Call(`_rxode2_etTrans`, inData, obj, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid, keep, addlKeepsCov, addlDropSs, ssAtDoseTime, iCov, tieOrder, resetCancelsPending)
+etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar = FALSE, keepDosingOnly = FALSE, combineDvid = NULL, keep = character(0), addlKeepsCov = FALSE, addlDropSs = TRUE, ssAtDoseTime = TRUE, iCov = NULL, tieOrder = "evid", resetCancelsPending = TRUE, addlDropPastObs = FALSE) {
+    .Call(`_rxode2_etTrans`, inData, obj, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid, keep, addlKeepsCov, addlDropSs, ssAtDoseTime, iCov, tieOrder, resetCancelsPending, addlDropPastObs)
 }
 
 rxEtTransAsDataFrame_ <- function(inData1) {
