@@ -2010,13 +2010,24 @@ static inline void rxSsHoldAtol(double *ssAtol, int neq) {
   }
 }
 
-// Whether a state is compartment cmt or one of its sensitivities
-// rx__sens_<cmt>_BY_<par>__
-static inline bool rxSsHoldIsCmt(const std::string &state,
-                                 const std::string &cmt) {
-  if (state == cmt) return true;
-  std::string pre = "rx__sens_" + cmt + "_BY_";
-  return state.compare(0, pre.size(), pre) == 0;
+// The compartment a state belongs to: its own name, or for a sensitivity
+// rx__sens_<cmt>_BY_<par>__ the longest state name it starts with (cmt may
+// itself contain _BY_)
+static inline std::string rxSsHoldCmt(const std::string &cur,
+                                      const CharacterVector &state, int nState) {
+  if (cur.compare(0, 9, "rx__sens_") != 0) return cur;
+  std::string best = cur;
+  size_t bestN = 0;
+  for (int k = 0; k < nState; ++k) {
+    std::string s = (std::string)state[k];
+    if (s.compare(0, 9, "rx__sens_") == 0) continue;
+    std::string pre = "rx__sens_" + s + "_BY_";
+    if (s.size() > bestN && cur.compare(0, pre.size(), pre) == 0) {
+      best = s;
+      bestN = s.size();
+    }
+  }
+  return best;
 }
 
 // Build _rxSsHold from rxControl(ssCmt=) and the model's states; returns an
@@ -2051,13 +2062,8 @@ static std::string rxSsHoldSetup(const List &rxControl, const List &mv,
   bool any = false;
   for (int k = 0; k < nState; ++k) {
     std::string cur = (std::string)state[k];
-    bool isNamed = false;
-    for (const std::string &cmt : named) {
-      if (rxSsHoldIsCmt(cur, cmt)) {
-        isNamed = true;
-        break;
-      }
-    }
+    std::string cmt = rxSsHoldCmt(cur, state, nState);
+    bool isNamed = std::find(named.begin(), named.end(), cmt) != named.end();
     if (k >= linB && k < linE) {
       // the linCmt() block is always advanced, so it has to be named
       if (!neg && !isNamed && cur.compare(0, 4, "rx__") != 0) {

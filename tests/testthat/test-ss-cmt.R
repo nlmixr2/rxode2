@@ -81,15 +81,26 @@ rxTest({
   })
 
   test_that("ssCmt matches a compartment whose name contains _BY_", {
-    .mod <- rxode2({
-      d / dt(depot) <- -ka * depot
-      d / dt(central) <- ka * depot - cl / v * central
-      d / dt(auc_BY_x) <- central / v
-    }, calcSens = "ka")
+    .mod <- rxode2(
+      {
+        d / dt(depot) <- -ka * depot
+        d / dt(central) <- ka * depot - cl / v * central
+        d / dt(auc) <- central / v
+        d / dt(auc_BY_x) <- central / v
+      },
+      calcSens = "ka"
+    )
     .ev <- et(amt = 100, ii = 24, ss = 1) |> et(c(0, 24))
-    .s <- rxSolve(.mod, .ev, c(ka = 1, cl = 1, v = 10), ssCmt = "-auc_BY_x")
+    .p <- c(ka = 1, cl = 1, v = 10)
+    .s <- rxSolve(.mod, .ev, .p, ssCmt = "-auc_BY_x", minSS = 10, maxSS = 10)
     expect_equal(.s$auc_BY_x[1], 0)
     expect_equal(.s$rx__sens_auc_BY_x_BY_ka__[1], 0)
+    expect_gt(.s$auc[1], 100)
+    # leaving out auc keeps auc_BY_x and its sensitivity
+    .s <- rxSolve(.mod, .ev, .p, ssCmt = "-auc", minSS = 10, maxSS = 10)
+    expect_equal(.s$auc[1], 0)
+    expect_equal(.s$rx__sens_auc_BY_ka__[1], 0)
+    expect_gt(.s$auc_BY_x[1], 100)
   })
 
   test_that("ss=2 of a regimen already at steady state still superposes", {
