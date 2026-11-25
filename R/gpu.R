@@ -571,7 +571,18 @@ rxGpuInfo <- function() {
   if (!requireNamespace("OpenCL", quietly = TRUE)) {
     return(.none)
   }
-  .pls <- tryCatch(OpenCL::oclPlatforms(), error = function(e) list())
+  ## no installed ICD is no device (the CPU build solves), not a warning
+  .pls <- tryCatch(
+    withCallingHandlers(
+      OpenCL::oclPlatforms(),
+      warning = function(w) {
+        if (grepl("No OpenCL platforms found", conditionMessage(w), fixed = TRUE)) {
+          invokeRestart("muffleWarning")
+        }
+      }
+    ),
+    error = function(e) list()
+  )
   .devs <- list()
   for (.pl in .pls) {
     .pn <- tryCatch(OpenCL::oclInfo(.pl)$name, error = function(e) "")
