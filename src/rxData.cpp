@@ -2072,6 +2072,9 @@ static std::string rxSsHoldSetup(const List &rxControl, const List &mv,
   for (int j = 0; j < ssCmt.size(); ++j) {
     std::string cur = (std::string)ssCmt[j];
     if (neg) cur = cur.substr(1);
+    if (cur.compare(0, 9, "rx__sens_") == 0) {
+      return "'ssCmt' names compartments, not sensitivities like '" + cur + "'";
+    }
     int k = 0;
     while (k < nState && (std::string)state[k] != cur) k++;
     if (k == nState) {

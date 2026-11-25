@@ -58,6 +58,10 @@ rxTest({
     )
     expect_equal(.s$auc[1], 0)
     expect_equal(.s$rx__sens_auc_BY_ka__[1], 0)
+    expect_error(
+      rxSolve(.mod, .ev, c(ka = 1, cl = 1, v = 10), ssCmt = "rx__sens_auc_BY_ka__"),
+      "sensitivities"
+    )
   })
 
   test_that("ssCmt works with a linCmt() model and refuses its compartments", {
