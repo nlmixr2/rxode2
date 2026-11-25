@@ -6,8 +6,17 @@ rxTest({
     .Call("_rxode2_rxPeerSolveTest", rxModelVars(peer)$trans, as.integer(neq), PACKAGE = "rxode2")
   }
   .implicit <- c(
-    "ros4", "iem", "ros43", "ros6", "ros54p", "backwardEuler", "gauss6",
-    "iiic6", "radauiia5", "geng5", "sdirk43"
+    "ros4",
+    "iem",
+    "ros43",
+    "ros6",
+    "ros54p",
+    "backwardEuler",
+    "gauss6",
+    "iiic6",
+    "radauiia5",
+    "geng5",
+    "sdirk43"
   )
 
   test_that("a narrower peer solved in the pool uses its own Jacobian", {
