@@ -9248,6 +9248,9 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         if (_adjSSinfModeled < 0) {
           rxSolverFail(ind); if (ind->rc[0] == 0) ind->rc[0] = -2020; localBadSolve = 1;
         }
+        // the converged bolus's own interval (ind->ixds can point at another
+        // same-time dose's slot, eg after a continuous ss infusion)
+        if (_ssPendCmt >= 0 && _adjSSbolusIi > 0.0) _ssPendIi = _adjSSbolusIi;
         // ss=2 superposition (interior, bolus OR fixed-rate infusion).  Caught
         // FIRST: an ss2 infusion also fires the _adjSSinfKind handoff, but it is
         // an interior superposition, not a window-start infusion ss.  Y_ss_new
