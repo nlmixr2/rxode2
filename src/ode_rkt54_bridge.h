@@ -2,6 +2,7 @@
 #define ODE_RKT54_BRIDGE_H_
 
 #include "ode/ode_rkt54.h"
+#include "ode_stiff_probe.h"
 
 class RxRkt54 : public ode::OdeRkt54 {
     t_dydt                  dydt_;
@@ -11,6 +12,9 @@ class RxRkt54 : public ode::OdeRkt54 {
     long unsigned           max_steps_;
 
 public:
+    // on as an AutoSwitch composite's primary (stability size 3.5068)
+    RxStiffProbe probe_;
+
     RxRkt54(t_dydt dydt, int *full_neq, int neqOde,
             rx_solving_options_ind *ind, double *yp,
             long unsigned max_steps)
@@ -77,6 +81,13 @@ protected:
         // Embedded (lower-order) solution -> solemb_
         for (unsigned long i = 0; i < neq_; i++)
             solemb_[i] = sol_[i] + dt * ((d1 - b1) * k_[0][i] + (d2 - b2) * k_[1][i] + (d3 - b3) * k_[2][i] + (d4 - b4) * k_[3][i] + (d5 - b5) * k_[4][i] + (d6 - b6) * k_[5][i] + (d7 - b7) * k_[6][i]);
+    }
+
+    // stiffness probe on stage 6 and the FSAL stage, both at t + dt
+    void adapt(double abstol, double reltol) override {
+        ode::OdeRkt54::adapt(abstol, reltol);
+        if (probe_.ind != nullptr && !is_rejected())
+            probe_.check(dt_, k_[5], k_[6], soltemp_, sol_, neq_);
     }
 
     void after_step(double) override {

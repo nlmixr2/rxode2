@@ -15,6 +15,7 @@
 #include <R.h>
 #include <Rinternals.h>
 
+#include <cfloat>
 #include "ode/ode_util.h"
 #include "ode/ode_io.h"
 #include "ode/ode_base.h"
@@ -34,6 +35,7 @@
 #include "ode/ode_rosenbrock.h"
 #include "ode/ode_grk4a.h"
 #include "ode/ode_row6a.h"
+#include "ode/ode_rodas5p.h"
 #include "ode/ode_irk.h"
 #include "ode/ode_newton.h"
 #include "ode/ode_newton_bridge.h"
@@ -1396,6 +1398,116 @@ void OdeROW6A::step_ (double dt) {
 
     for (i=0; i<neq_; i++)
         sol_[i] = sol_[i] + (m1*k_[0][i] + m2*k_[1][i] + m3*k_[2][i] + m4*k_[3][i] + m5*k_[4][i] + m6*k_[5][i]);
+}
+
+// -- OdeRODAS5P ----------------------------------------------------------------
+// Rodas5P (Steinebach 2023) in libode's Rosenbrock form: with
+// Jac = I - gam*dt*J, stage s solves Jac k_s = gam*dt*f(t + c_s dt, u_s) +
+// gam*sum_j C_sj k_j + gam*dt^2*d_s*df/dt, u_s = y + sum_j A_sj k_j.  The
+// solution is u_8 + k_8 and the embedded (4th order) one u_8.  The Jacobian
+// is the model's (analytic); df/dt, nonzero only for a model reading time
+// or interpolating a changing covariate (set_nonautonomous()), takes one
+// evaluation at t + delta.
+
+OdeRODAS5P::OdeRODAS5P (unsigned long neq) :
+    OdeEmbedded (neq, true, 4),
+    OdeRosenbrock (neq, 8) {
+
+    method_ = "RODAS5P";
+    gam = 0.21193756319429014;
+    const double A[28] = {
+        3.0,
+        2.849394379747939, 0.45842242204463923,
+        -6.954028509809101, 2.489845061869568, -10.358996098473584,
+        2.8029986275628964, 0.5072464736228206, -0.3988312541770524, -0.04721187230404641,
+        -7.502846399306121, 2.561846144803919, -11.627539656261098, -0.18268767659942256,
+        0.030198172008377946,
+        -7.502846399306121, 2.561846144803919, -11.627539656261098, -0.18268767659942256,
+        0.030198172008377946, 1.0,
+        -7.502846399306121, 2.561846144803919, -11.627539656261098, -0.18268767659942256,
+        0.030198172008377946, 1.0, 1.0
+    };
+    const double C[28] = {
+        -14.155112264123755,
+        -17.97296035885952, -2.859693295451294,
+        147.12150275711716, -1.41221402718213, 71.68940251302358,
+        165.43517024871676, -0.4592823456491126, 42.90938336958603, -5.961986721573306,
+        24.854864614690072, -3.0009227002832186, 47.4931110020768, 5.5814197821558125,
+        -0.6610691825249471,
+        30.91273214028599, -3.1208243349937974, 77.79954646070892, 34.28646028294783,
+        -19.097331116725623, -28.087943162872662,
+        37.80277123390563, -3.2571969029072276, 112.26918849496327, 66.9347231244047,
+        -40.06618937091002, -54.66780262877968, -9.48861652309627
+    };
+    const double c[8] = {
+        0.0, 0.6358126895828704, 0.4095798393397535, 0.9769306725060716,
+        0.4288403609558664, 1.0, 1.0, 1.0
+    };
+    for (int i = 0; i < 28; i++) { A_[i] = A[i]; C_[i] = C[i]; }
+    for (int i = 0; i < 8; i++) c_[i] = c[i];
+    dT_ = new double[neq]();
+    nonAuto_ = true;
+}
+
+OdeRODAS5P::~OdeRODAS5P () {
+    delete [] dT_;
+}
+
+void OdeRODAS5P::step_ (double dt) {
+    unsigned long i;
+    double t0 = t_;
+
+    set_jac_eval_time(t0);
+    ode_jac_(sol_, Jac_);
+    clear_jac_eval_time();
+    prep_jac(Jac_, neq_, dt, p_);
+
+    set_ode_eval_time(t0);
+    ode_fun_(sol_, k_[0]);
+    clear_ode_eval_time();
+    // df/dt by a forward difference in time (zero for an autonomous model)
+    if (nonAuto_) {
+        volatile double t1 = t0 + std::sqrt(DBL_EPSILON)*ode_max2(std::fabs(t0), 1.0);
+        double dtd = t1 - t0;
+        set_ode_eval_time(t1);
+        ode_fun_(sol_, soltemp_);
+        clear_ode_eval_time();
+        for (i=0; i<neq_; i++) dT_[i] = (soltemp_[i] - k_[0][i])/dtd;
+    } else {
+        for (i=0; i<neq_; i++) dT_[i] = 0.0;
+    }
+    const double d[5] = {
+        0.21193756319429014, -0.42387512638858027, -0.3384627126235924,
+        1.8046452872882734, 2.325825639765069
+    };
+    for (i=0; i<neq_; i++) rhs_[i] = gam*dt*(k_[0][i] + dt*d[0]*dT_[i]);
+    ode_solve_LU(Jac_, p_, rhs_, neq_, k_[0]);
+
+    int ia = 0;
+    for (int s = 1; s < 8; s++) {
+        for (i=0; i<neq_; i++) {
+            double a = 0.0;
+            for (int j = 0; j < s; j++) a += A_[ia + j]*k_[j][i];
+            soltemp_[i] = sol_[i] + a;
+        }
+        set_ode_eval_time(t0 + c_[s]*dt);
+        ode_fun_(soltemp_, k_[s]);
+        clear_ode_eval_time();
+        for (i=0; i<neq_; i++) {
+            double a = 0.0;
+            for (int j = 0; j < s; j++) a += C_[ia + j]*k_[j][i];
+            rhs_[i] = gam*(dt*k_[s][i] + a);
+            if (s < 5) rhs_[i] += gam*dt*dt*d[s]*dT_[i];
+        }
+        ode_solve_LU(Jac_, p_, rhs_, neq_, k_[s]);
+        ia += s;
+    }
+
+    // soltemp_ holds u_8
+    for (i=0; i<neq_; i++) {
+        solemb_[i] = soltemp_[i];
+        sol_[i]    = soltemp_[i] + k_[7][i];
+    }
 }
 
 // -- OdeBackwardEuler ----------------------------------------------------------

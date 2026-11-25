@@ -479,6 +479,36 @@ When a user writes `rxode2({ dA1/dt <- -mm(Cp, Vmax, Km) })`:
    `mm_dC(...)`, `mm_dVmax(...)`, and `mm_dKm(...)` -- also resolved
    directly as C.
 
+## Functions with side effects or random draws
+
+rxode2 assumes a registered function is pure: the same arguments give
+the same value, and the call changes nothing else.  `rxOptExpr()` then
+evaluates repeated calls such as `mm(Cp, Vmax, Km) + mm(Cp, Vmax, Km)`
+once, and the generated C leaves a call out of any model function that
+does not use its result.  `mm()` is pure, so nothing more is needed.
+
+A function that draws random numbers, keeps state between calls or has
+another side effect must be registered as impure with `rxImpureFun()`,
+so every call in the model is kept.  Register it in `.onAttach()` and
+remove it in `.onUnload()`:
+
+```r
+.onAttach <- function(libname, pkgname) {
+  ## ... translation table and rxD() as above ...
+  rxode2::rxImpureFun("mmNoise")
+}
+
+.onUnload <- function(libpath) {
+  ## ... as above ...
+  try(rxode2::rxRmImpureFun("mmNoise"), silent = TRUE)
+}
+```
+
+`rxImpureFun()` with no arguments lists the registered names.  The same
+registration works for R user functions and `rxFun()` C functions.
+rxode2's own random draws (`rxnorm()`, `rnorm()`, ...), `simeta()` and
+`simeps()` are always treated as impure.
+
 ## Named and variable-length arguments via `rxUdfUi`
 
 The C interface requires arguments in a fixed positional order
@@ -629,12 +659,13 @@ rxode2::rxFromSE("Derivative(mm_dKm(C, Vmax, Km), Km)")
 | 7 | `R/zzz.R` | Call `rxode2parseAssignTranslation(rbind(old, newRows))` in `.onAttach` |
 | 8 | `R/zzz.R` | Call `rxD("fun", list(...))` for derivative registration |
 | 9 | `R/zzz.R` | Filter out rows where `package == "mm"` + call `rxRmFun` for all names in `.onUnload` |
+| 10 | `R/zzz.R` | Only for functions with random draws, state or side effects: `rxImpureFun()` in `.onAttach`, `rxRmImpureFun()` in `.onUnload` |
 
 ## Further reading
 
 - [Integrating User Defined Functions into rxode2](Integrating-User-Defined-Functions-into-rxode2.html) -- the inline / R-function approach
 - [Writing R Extensions 5.4](https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Registering-native-routines) -- `R_RegisterCCallable`, `R_GetCCallable`
-- `?rxode2parseAssignTranslation`, `?rxode2parseGetTranslation`, `?rxD`
+- `?rxode2parseAssignTranslation`, `?rxode2parseGetTranslation`, `?rxD`, `?rxImpureFun`
 
 ## Next steps
 
