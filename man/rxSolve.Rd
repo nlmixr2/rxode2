@@ -170,6 +170,7 @@ rxSolve(
   durAtDoseTime = NULL,
   doseAtRecord = NULL,
   addlCovAtTime = NULL,
+  ssCmt = NULL,
   resetCancelsPending = TRUE,
   ssMethod = c("anderson", "iterate"),
   gpuBackend = c("auto", "opencl", "cpu"),
@@ -1517,8 +1518,8 @@ read the time of the first data record at or after it (NONMEM's \code{F1},
 each interval from the record that ends it, like NONMEM's \code{R1} (see
 \code{rateAtDoseTime}).  Covariate interpolation is still set by
 \code{covsInterpolation}.  It also sets the default \code{tieOrder} to \code{"data"}
-and turns on \code{addlKeepsCov}, \code{durAtDoseTime} and \code{doseAtRecord} and
-turns off \code{addlCovAtTime} unless
+and turns on \code{addlKeepsCov}, \code{durAtDoseTime} and \code{doseAtRecord}, and
+turns off \code{addlCovAtTime}, unless
 they are given.
 By default \code{FALSE}, when \code{f()}, \code{rate()} and \code{dur()} of an \code{addl} repeat
 read the actual time of the \code{addl} dose.}
@@ -1572,6 +1573,15 @@ repeat reads the covariate value in effect at its time, as
 \code{addlKeepsCov = FALSE} imputes it.  When \code{FALSE} only the records before
 the repeat count, as NONMEM does.  By default (\code{NULL}) this is \code{TRUE},
 or \code{FALSE} with \code{nonmem = TRUE}.}
+
+\item{ssCmt}{Character vector naming the compartments the steady-state
+advance solves; names starting with \code{-} instead name the compartments
+it leaves out (eg \code{ssCmt = "-auc"} for an accumulating AUC).  A
+compartment left out (with its sensitivities) is not tested for
+convergence and keeps the value it had just before the steady-state
+dose.  The other compartments still see it change during the advance;
+to hold it there too, use the model variable \code{rxSsAdvance}.  By
+default (\code{NULL}) every compartment is advanced.}
 
 \item{resetCancelsPending}{When \code{TRUE} (default), a reset (\code{evid} 3 or
 4) cancels the doses of the records processed before it that have not

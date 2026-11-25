@@ -4261,6 +4261,34 @@ static inline double ssInfRates(rx_solving_options_ind *ind, int infB, int infE,
   return 1.0;
 }
 
+extern "C" const int *rxSsHoldMask(void);
+
+// The states rxSolve(ssCmt=) leaves out keep their value from before the
+// steady-state dose
+struct ssAdvanceScope {
+  rx_solving_options_ind *ind;
+  double *yp;
+  int neq;
+  int *istate;
+  const int *hold;
+  std::vector<double> held;
+  ssAdvanceScope(rx_solving_options_ind *i, double *y, int n, int *ist) :
+    ind(i), yp(y), neq(n), istate(ist), hold(rxSsHoldMask()) {
+    if (hold != NULL) held.assign(yp, yp + neq);
+  }
+  ~ssAdvanceScope() {
+    if (hold == NULL) return;
+    bool changed = false;
+    for (int k = 0; k < neq; ++k) {
+      if (hold[k] && yp[k] != held[k]) {
+        yp[k] = held[k];
+        changed = true;
+      }
+    }
+    if (changed) *istate = 1;
+  }
+};
+
 void handleSS(int *neq,
               int *BadDose,
               double *InfusionRate,
@@ -4273,6 +4301,7 @@ void handleSS(int *neq,
               rx_solving_options_ind *ind,
               t_update_inis u_inis,
               void *ctx) {
+  ssAdvanceScope ssAdvanceOn(ind, yp, neq[0], istate);
   rx_solve *rx = &rx_global;
   _adjSSinfKind = 0; _adjSS2 = 0; _adjSSbolusIi = 0.0;   // reset adjoint ss handoffs
   _adjSSinfModeled = 0; _adjSSinfAmt = 0.0; _adjSSinfAmtRaw = 0.0;
