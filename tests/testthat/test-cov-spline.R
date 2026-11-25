@@ -165,8 +165,12 @@ rxTest({
     .b <- .rxReadStateBundle(.f)
     .rxRestoreStateBundle(.b)
     .ctl <- rxControl(covsInterpolation = "spline")
-    .rep <- rxSolveFromRaw_(.m, .b$cState, .b$solveState, .ctl, NULL, NULL, NULL, NULL, NULL)
-    expect_equal(.rep$a, .ref$a)
+    # repeated replays read the restored covariate settings, not stale memory
+    for (.i in 1:3) {
+      .rxRestoreStateBundle(.b)
+      .rep <- rxSolveFromRaw_(.m, .b$cState, .b$solveState, .ctl, NULL, NULL, NULL, NULL, NULL)
+      expect_equal(.rep$a, .ref$a)
+    }
   })
   test_that("CMT is never smoothed by a global spline/pchip", {
     .m <- rxode2({
