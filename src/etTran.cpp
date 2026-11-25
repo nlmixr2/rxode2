@@ -1364,16 +1364,16 @@ static inline bool etTransAddlDropModelOk(const List &mv) {
   return !std::regex_search(norm, laterRecord);
 }
 
-// addlDropPastObs: each subject's latest input row that is not surely a dose
-// (an observation, evid 2, a reset or anything unsure), as the time after
-// which addl repeats cannot change an observation.  A subject whose time
-// moves back (a time reset) gets none.
+// addlDropPastObs: each subject's latest input row, after which addl repeats
+// cannot change any other record.  Only subjects with a row that is not
+// surely a dose (an observation, evid 2, a reset or anything unsure) get one,
+// and not a subject whose time moves back (a time reset).
 static inline std::unordered_map<int, double>
 etTransLastOutTime(const NumericVector &inTime, const IntegerVector &inId,
                    bool hasId, const IntegerVector &inEvid, int evidMode,
                    const NumericVector &inAmt, bool hasAmt) {
   std::unordered_map<int, double> ret;
-  std::unordered_set<int> movesBack;
+  std::unordered_set<int> movesBack, hasOut;
   int lid = NA_INTEGER;
   double lt = NA_REAL;
   for (int i = 0; i < inTime.size(); ++i) {
@@ -1383,12 +1383,20 @@ etTransLastOutTime(const NumericVector &inTime, const IntegerVector &inId,
     if (lid == cid0 && t < lt) movesBack.insert(cid0);
     lid = cid0;
     lt = t;
-    if (etTransRowSurelyDose(i, inEvid, evidMode, inAmt, hasAmt)) continue;
+    if (!etTransRowSurelyDose(i, inEvid, evidMode, inAmt, hasAmt)) {
+      hasOut.insert(cid0);
+    }
     auto it = ret.find(cid0);
     if (it == ret.end()) ret[cid0] = t;
     else if (t > it->second) it->second = t;
   }
-  for (int c : movesBack) ret.erase(c);
+  for (auto it = ret.begin(); it != ret.end(); ) {
+    if (movesBack.count(it->first) || !hasOut.count(it->first)) {
+      it = ret.erase(it);
+    } else {
+      ++it;
+    }
+  }
   return ret;
 }
 
@@ -1504,9 +1512,9 @@ List rxModelVars_(const RObject &obj); // model variables section
 //'   dropped from that reset's time on, as NONMEM cancels prior doses at a
 //'   reset.
 //'
-//' @param addlDropPastObs When `TRUE`, an `addl` series of a subject with
-//'   observations stops after its first repeat past the subject's last
-//'   observation, as later repeats cannot change an observation.  Doses into
+//' @param addlDropPastObs When `TRUE`, the `addl` repeats of a subject with
+//'   observations stop after the first one past the subject's last record,
+//'   as later ones cannot change any record before it.  Doses into
 //'   an `alag()` compartment, subjects whose time moves back and models with
 //'   model times (`mtime()`), `evid_()` pushes, `lead()`, `last()` or a
 //'   negative `lag()` keep every repeat.  Default `FALSE`.
@@ -2454,8 +2462,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     }
   }
   // addlDropPastObs: an addl series stops after its first repeat past the
-  // subject's last observation.  Model times may fall anywhere, so they
-  // turn it off.
+  // subject's last input row, so the records up to it are solved as with the
+  // full series (the solver also looks one record ahead).  Model times may
+  // fall anywhere, so they turn it off.
   std::unordered_map<int, double> addlLastOut;
   if (addlDropPastObs && addlCol != -1 && nMtime == 0 &&
       etTransAddlDropModelOk(mv)) {

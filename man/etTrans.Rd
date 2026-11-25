@@ -89,9 +89,9 @@ record that a later reset (\code{evid} 3 or 4) is processed after are
 dropped from that reset's time on, as NONMEM cancels prior doses at a
 reset.}
 
-\item{addlDropPastObs}{When \code{TRUE}, an \code{addl} series of a subject with
-observations stops after its first repeat past the subject's last
-observation, as later repeats cannot change an observation.  Doses into
+\item{addlDropPastObs}{When \code{TRUE}, the \code{addl} repeats of a subject with
+observations stop after the first one past the subject's last record,
+as later ones cannot change any record before it.  Doses into
 an \code{alag()} compartment, subjects whose time moves back and models with
 model times (\code{mtime()}), \code{evid_()} pushes, \code{lead()}, \code{last()} or a
 negative \code{lag()} keep every repeat.  Default \code{FALSE}.}

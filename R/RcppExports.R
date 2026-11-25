@@ -240,9 +240,9 @@ cmtSupportsOff_ <- function(cmt, mv) {
 #'   dropped from that reset's time on, as NONMEM cancels prior doses at a
 #'   reset.
 #'
-#' @param addlDropPastObs When `TRUE`, an `addl` series of a subject with
-#'   observations stops after its first repeat past the subject's last
-#'   observation, as later repeats cannot change an observation.  Doses into
+#' @param addlDropPastObs When `TRUE`, the `addl` repeats of a subject with
+#'   observations stop after the first one past the subject's last record,
+#'   as later ones cannot change any record before it.  Doses into
 #'   an `alag()` compartment, subjects whose time moves back and models with
 #'   model times (`mtime()`), `evid_()` pushes, `lead()`, `last()` or a
 #'   negative `lag()` keep every repeat.  Default `FALSE`.

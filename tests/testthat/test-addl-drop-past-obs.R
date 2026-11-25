@@ -29,7 +29,7 @@ rxTest({
     .b <- etTrans(.ev, .m, keepDosingOnly = TRUE, addlDropPastObs = TRUE)
     expect_equal(nrow(.a), 10050L)
     expect_equal(nrow(.b), 53L)
-    # the first repeat past the last observation stays
+    # the first repeat past the last record stays
     expect_equal(max(.b$TIME), 72)
     # the default does not truncate
     expect_equal(nrow(etTrans(.ev, .m, keepDosingOnly = TRUE)), 10050L)
@@ -121,6 +121,23 @@ rxTest({
     expect_lt(.cnt(.b, 1L), .cnt(.a, 1L))
     expect_equal(.cnt(.b, 2L), .cnt(.a, 2L))
     expect_equal(.cnt(.b, 3L), .cnt(.a, 3L))
+  })
+
+  test_that("a trailing dose row keeps the repeats before it", {
+    .d <- data.frame(
+      id = 1L,
+      time = c(0, 1, 40),
+      evid = c(1L, 0L, 1L),
+      amt = c(100, NA, 100),
+      ii = c(10, 0, 0),
+      addl = c(10L, 0L, 0L),
+      cmt = 1L,
+      dv = c(NA, 1, NA)
+    )
+    .b <- etTrans(.d, .m, keepDosingOnly = TRUE, addlDropPastObs = TRUE)
+    expect_equal(sort(.b$TIME[.b$EVID == 101]), c(0, 10, 20, 30, 40, 40, 50))
+    .n <- .same(.m, .d)
+    expect_lt(.n[2], .n[1])
   })
 
   test_that("an mdv data set truncates and solves the same", {
