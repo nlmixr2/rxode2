@@ -937,6 +937,47 @@ extern "C" void rxDrawTapeResumeLhs(rx_solving_options_ind *ind) {
   _eng[rx_get_thread(op_global.cores)] = tp->eng[0];
 }
 
+// Records draw `pos` of tape slot `slot`; a slot's draws stay contiguous, so
+// only the slot recorded last is extended.
+static inline void rxDrawTapePut(rxDrawTapeS *tp, int slot, int pos, double v) {
+  if (slot >= (int)tp->off.size()) {
+    tp->off.resize(slot + 1, -1);
+    tp->cnt.resize(slot + 1, 0);
+  }
+  if (tp->off[slot] < 0) {
+    tp->off[slot] = (int)tp->vals.size();
+    tp->cnt[slot] = 0;
+  }
+  if (pos == tp->cnt[slot] &&
+      tp->off[slot] + tp->cnt[slot] == (int)tp->vals.size()) {
+    tp->vals.push_back(v);
+    tp->cnt[slot]++;
+  }
+}
+
+// A solve-pass draw from the subject's own stream for this slot's context.
+template <typename F>
+static inline double rxDrawTapeSolveDraw(rx_solving_options_ind *ind,
+                                         rxDrawTapeS *tp, int slot, F draw) {
+  if (!tp->seeded) {
+    uint32_t k = getRxLastSeed() + (uint32_t)ind->id;
+    seedEngAt(tp->eng[0], k, RX_LHS_STREAM_OFFSET);
+    seedEngAt(tp->eng[1], k, RX_LHS_STREAM_OFFSET + (1ULL << 62));
+    tp->seeded = true;
+  }
+  int e = (slot % 3 == RX_DRAW_LHS) ? 0 : 1;
+  if (e == 0) tp->lhsUsed = true;
+  int t = rx_get_thread(op_global.cores);
+  sitmo::threefry save = _eng[t];
+  _eng[t] = tp->eng[e];
+  ind->inLhs = 1;
+  double v = draw();
+  ind->inLhs = 0;
+  tp->eng[e] = _eng[t];
+  _eng[t] = save;
+  return v;
+}
+
 // Draws through draw(): replayed from the subject's tape under a key, else
 // made in the output pass only (0 otherwise, as d/dt() sees them).
 template <typename F>
@@ -953,41 +994,8 @@ static inline double rxTapeDraw(rx_solving_options_ind *ind, F draw) {
   if (slot < (int)tp->off.size() && tp->off[slot] >= 0 && pos < tp->cnt[slot]) {
     return tp->vals[tp->off[slot] + pos];
   }
-  double v;
-  if (ind->inLhs) {
-    v = draw();
-  } else {
-    if (!tp->seeded) {
-      uint32_t k = getRxLastSeed() + (uint32_t)ind->id;
-      seedEngAt(tp->eng[0], k, RX_LHS_STREAM_OFFSET);
-      seedEngAt(tp->eng[1], k, RX_LHS_STREAM_OFFSET + (1ULL << 62));
-      tp->seeded = true;
-    }
-    int e = (slot % 3 == RX_DRAW_LHS) ? 0 : 1;
-    if (e == 0) tp->lhsUsed = true;
-    int t = rx_get_thread(op_global.cores);
-    sitmo::threefry save = _eng[t];
-    _eng[t] = tp->eng[e];
-    ind->inLhs = 1;
-    v = draw();
-    ind->inLhs = 0;
-    tp->eng[e] = _eng[t];
-    _eng[t] = save;
-  }
-  if (slot >= (int)tp->off.size()) {
-    tp->off.resize(slot + 1, -1);
-    tp->cnt.resize(slot + 1, 0);
-  }
-  if (tp->off[slot] < 0) {
-    tp->off[slot] = (int)tp->vals.size();
-    tp->cnt[slot] = 0;
-  }
-  // a slot's draws stay contiguous: extend only the slot recorded last
-  if (pos == tp->cnt[slot] &&
-      tp->off[slot] + tp->cnt[slot] == (int)tp->vals.size()) {
-    tp->vals.push_back(v);
-    tp->cnt[slot]++;
-  }
+  double v = ind->inLhs ? draw() : rxDrawTapeSolveDraw(ind, tp, slot, draw);
+  rxDrawTapePut(tp, slot, pos, v);
   return v;
 }
 
