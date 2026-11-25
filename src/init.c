@@ -34,7 +34,7 @@ SEXP _rxode2_rxSolveSEXP(SEXP, SEXP, SEXP, SEXP, SEXP,
                          SEXP, SEXP, SEXP);
 SEXP _rxode2_etTrans(SEXP, SEXP, SEXP, SEXP, SEXP,
                      SEXP, SEXP, SEXP, SEXP, SEXP,
-                     SEXP, SEXP, SEXP, SEXP);
+                     SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxUpdateTrans_(SEXP, SEXP, SEXP);
 double powerDi(double x, double lambda, int yj);
 double powerD(double x, double lambda, int yj);
@@ -1123,7 +1123,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_setProgSupported", (DL_FUNC) &_rxode2_setProgSupported, 1},
     {"_rxode2_getProgSupported", (DL_FUNC) &_rxode2_getProgSupported, 0},
     {"_rxode2_rxUpdateTrans_", (DL_FUNC) &_rxode2_rxUpdateTrans_, 3},
-    {"_rxode2_etTrans", (DL_FUNC) &_rxode2_etTrans, 14},
+    {"_rxode2_etTrans", (DL_FUNC) &_rxode2_etTrans, 15},
     {"_rxode2_rxSolveSEXP", (DL_FUNC) &_rxode2_rxSolveSEXP, 8},
     {"_rxode2_dropUnitsRxSolve", (DL_FUNC) &_rxode2_dropUnitsRxSolve, 1},
     {"_rxode2_rxAdjointSweep", (DL_FUNC) &_rxode2_rxAdjointSweep, 9},

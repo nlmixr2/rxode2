@@ -152,4 +152,5 @@
 #define Rxc_ssMethod 147
 #define Rxc_doseAtRecord 148
 #define Rxc_addlCovAtTime 149
+#define Rxc_checkModeledRateDur 150
 #endif // __rxode2_control_H__

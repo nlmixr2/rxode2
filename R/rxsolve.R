@@ -1107,6 +1107,12 @@
 #'   repeats, and an event table already translated by [etTrans()] keeps the
 #'   `addl` repeats it was translated with.
 #'
+#' @param checkModeledRateDur When `TRUE` (default), translating the data
+#'   warns when a dose into a compartment with a modeled `rate()`/`dur()` does
+#'   not request it (data `rate` is not `-1`/`-2`, so the model value is
+#'   ignored), and when a dose requests a modeled rate (`-1`) or duration
+#'   (`-2`) the model does not define.  `FALSE` turns the check off.
+#'
 #' @param rateAtDoseTime Boolean that when `TRUE` keeps a modeled rate
 #'   (`rate()`, `RATE = -1`) at the value read at its dose.  When `FALSE` (the
 #'   default) the rate is re-read at each data record until the dose is
@@ -1775,6 +1781,7 @@ rxSolve <- function(
   doseAtRecord = NULL,
   addlCovAtTime = NULL,
   resetCancelsPending = TRUE,
+  checkModeledRateDur = TRUE,
   ssMethod = c("anderson", "iterate"),
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
@@ -2106,6 +2113,7 @@ rxSolve <- function(
     }
     checkmate::assertLogical(addlCovAtTime, any.missing = FALSE, len = 1)
     checkmate::assertLogical(resetCancelsPending, any.missing = FALSE, len = 1)
+    checkmate::assertLogical(checkModeledRateDur, any.missing = FALSE, len = 1)
     if (checkmate::testIntegerish(ssMethod, len = 1, lower = 0, upper = 1, any.missing = FALSE)) {
       .ssMethod <- as.integer(ssMethod)
     } else {
@@ -2614,7 +2622,8 @@ rxSolve <- function(
       resetCancelsPending = resetCancelsPending,
       ssMethod = .ssMethod,
       doseAtRecord = doseAtRecord,
-      addlCovAtTime = addlCovAtTime
+      addlCovAtTime = addlCovAtTime,
+      checkModeledRateDur = checkModeledRateDur
     )
     class(.ret) <- "rxControl"
     return(.ret)
