@@ -370,9 +370,10 @@ rxUiGet.interpLines <- function(x, ...) {
     return(NULL)
   }
   .lvl <- levels(.interp)
+  .lvlAll <- c("default", "linear", "locf", "nocb", "midpoint", "spline", "pchip")
   if (
-    length(.lvl) != 5L ||
-      !identical(.lvl, c("default", "linear", "locf", "nocb", "midpoint"))
+    !(length(.lvl) %in% c(5L, 7L)) ||
+      !identical(.lvl, .lvlAll[seq_along(.lvl)])
   ) {
     return(NULL)
   }
@@ -391,21 +392,11 @@ rxUiGet.interpLines <- function(x, ...) {
     return(NULL)
   }
   .ret <- list()
-  .w <- which(.interp == "linear")
-  if (length(.w) > 0) {
-    .ret <- list(str2lang(paste("linear(", paste(names(.interp)[.w], collapse = ", "), ")")))
-  }
-  .w <- which(.interp == "locf")
-  if (length(.w) > 0) {
-    .ret <- c(.ret, list(str2lang(paste("locf(", paste(names(.interp)[.w], collapse = ", "), ")"))))
-  }
-  .w <- which(.interp == "nocb")
-  if (length(.w) > 0) {
-    .ret <- c(.ret, list(str2lang(paste("nocb(", paste(names(.interp)[.w], collapse = ", "), ")"))))
-  }
-  .w <- which(.interp == "midpoint")
-  if (length(.w) > 0) {
-    .ret <- c(.ret, list(str2lang(paste("midpoint(", paste(names(.interp)[.w], collapse = ", "), ")"))))
+  for (.m in .lvlAll[-1]) {
+    .w <- which(.interp == .m)
+    if (length(.w) > 0) {
+      .ret <- c(.ret, list(str2lang(paste0(.m, "(", paste(names(.interp)[.w], collapse = ", "), ")"))))
+    }
   }
   if (length(.ret) == 0) {
     return(NULL) #nocov
@@ -720,6 +711,8 @@ attr(rxUiGet.simulationIniModel, "rstudio") <- quote(rxode2()) # for rstudio com
           identical(.e[[1]], quote(`locf`)) ||
           identical(.e[[1]], quote(`nocb`)) ||
           identical(.e[[1]], quote(`midpoint`)) ||
+          identical(.e[[1]], quote(`spline`)) ||
+          identical(.e[[1]], quote(`pchip`)) ||
           identical(.e[[1]], quote(`splitBolus`)) ||
           identical(.e[[1]], quote(`splitInfusion`)) ||
           identical(.e[[1]], quote(`splitInfusionBolus`)) ||

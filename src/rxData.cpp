@@ -873,7 +873,8 @@ List rxModelVars_blank() {
 
   IntegerVector interp = IntegerVector::create();
   interp.attr("names") = CharacterVector::create();
-  interp.attr("levels") = CharacterVector::create("default", "linear", "locf", "nocb", "midpoint");
+  interp.attr("levels") = CharacterVector::create("default", "linear", "locf", "nocb", "midpoint",
+                                                  "spline", "pchip");
   interp.attr("class") = "factor";
   ret[21] = interp;
   retN[21] = "interp";

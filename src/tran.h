@@ -47,6 +47,8 @@ lhs symbols?
   // 2 = constant/locf  via constant() or locf()
   // 3 = nocb via nocb()
   // 4 = midpoint via midpoint()
+  // 5 = natural cubic spline via spline()
+  // 6 = monotone cubic Hermite via pchip()
   int interpC;// = 0; // current interpolation method
   int *ini;        /* initial variable assignment =2 if there are two assignments */
   int *mtime;

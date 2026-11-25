@@ -394,8 +394,9 @@ by \code{param(par1, par2,...)}
 for specific covariates. These include \code{locf(cov1,     cov2, ...)} for
 last observation carried forward, \code{nocb(cov1,     cov2, ...)} for next
 observation carried backward, \code{linear(cov1,     cov2, ...)} for linear
-interpolation and \code{midpoint(cov1, cov2,     ...)} for midpoint
-interpolation.
+interpolation, \code{midpoint(cov1, cov2,     ...)} for midpoint
+interpolation, \code{spline(cov1, cov2, ...)} for a natural cubic spline
+and \code{pchip(cov1, cov2, ...)} for a monotone cubic Hermite interpolant.
 }
 
 An example model is shown below:

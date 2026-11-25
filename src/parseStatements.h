@@ -4,7 +4,7 @@ static inline int handleStartInterpStatement(nodeInfo ni, char *name, int *i,
   if (nodeHas(interp_statement)) {
     if (*i == 0) {
       char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
-      // ('locf' | 'linear' | 'nocb' | 'midpoint')
+      // ('locf' | 'linear' | 'nocb' | 'midpoint' | 'spline' | 'pchip')
       if (!strcmp(v, "locf")) {
         tb.interpC = 2;
       } else if (!strcmp(v, "linear")) {
@@ -13,6 +13,10 @@ static inline int handleStartInterpStatement(nodeInfo ni, char *name, int *i,
         tb.interpC = 3;
       } else if (!strcmp(v, "midpoint")) {
         tb.interpC = 4;
+      } else if (!strcmp(v, "spline")) {
+        tb.interpC = 5;
+      } else if (!strcmp(v, "pchip")) {
+        tb.interpC = 6;
       }
       return 1;
     }
