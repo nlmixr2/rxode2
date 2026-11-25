@@ -1337,6 +1337,16 @@ static inline int etTransCompanionDoseRow(int k, int i) {
   return k == 0 ? -1 : i;
 }
 
+// A row that is a dose whatever its other columns hold
+static inline bool etTransRowSurelyDose(int i, const IntegerVector &inEvid,
+                                        bool useEvid, const NumericVector &inAmt,
+                                        bool hasAmt) {
+  if (!useEvid) return hasAmt && !ISNAN(inAmt[i]) && inAmt[i] != 0.0;
+  int e = inEvid[i];
+  if (IntegerVector::is_na(e)) return false;
+  return e == 1 || (e >= 4 && e <= 7) || e >= 100;
+}
+
 // addlDropPastObs: each subject's latest input row that is not surely a dose
 // (an observation, evid 2, a reset or anything unsure), as the time after
 // which addl repeats cannot change an observation.  A subject whose time
@@ -1356,15 +1366,7 @@ etTransLastOutTime(const NumericVector &inTime, const IntegerVector &inId,
     if (lid == cid0 && t < lt) movesBack.insert(cid0);
     lid = cid0;
     lt = t;
-    bool isDose;
-    if (useEvid) {
-      int e = inEvid[i];
-      isDose = !IntegerVector::is_na(e) &&
-        (e == 1 || (e >= 4 && e <= 7) || e >= 100);
-    } else {
-      isDose = hasAmt && !ISNAN(inAmt[i]) && inAmt[i] != 0.0;
-    }
-    if (isDose) continue;
+    if (etTransRowSurelyDose(i, inEvid, useEvid, inAmt, hasAmt)) continue;
     auto it = ret.find(cid0);
     if (it == ret.end()) ret[cid0] = t;
     else if (t > it->second) it->second = t;
