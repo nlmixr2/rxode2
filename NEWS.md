@@ -34,9 +34,10 @@
 - A failed ODE solve now names the states involved: it reports the states
   that are non-finite in the last accepted state or after the failed step,
   and suggests rescaling or a per-state `atol` when the states span 8 or
-  more orders of magnitude.  The explicit Runge-Kutta, implicit and
-  `dop853` solvers also name the states whose derivative was non-finite,
-  with their values.  A successful solve records nothing (#1805).
+  more orders of magnitude.  The methods that check each right-hand-side
+  evaluation (eg `f45`, `dop54`, `euler`) and `dop853` also name the states
+  whose derivative was non-finite, with their values.  A successful solve
+  records nothing (#1805).
 - `rxImpureFun()`/`rxRmImpureFun()` register user R functions, `rxFun()` C
   functions or package C functions that draw random numbers, keep state or
   have side effects.  `rxOptExpr()` never shares their calls and
