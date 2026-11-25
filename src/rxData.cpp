@@ -137,10 +137,16 @@ bool rxControlResetCancelsPending(const List &control) {
   return asBool(control[Rxc_resetCancelsPending], "resetCancelsPending");
 }
 // rxControl(addlDropPastObs=), on only when the output has no dose rows
-// (addDosing FALSE or NULL); an older control list keeps every repeat
+// (addDosing FALSE or NULL) and no covariate is resampled from another
+// subject's records; an older control list keeps every repeat
 bool rxControlAddlDropPastObs(const List &control) {
   if (Rf_length(control) <= Rxc_addlDropPastObs) return false;
   if (!asBool(control[Rxc_addlDropPastObs], "addlDropPastObs")) return false;
+  SEXP rs = control[Rxc_resample];
+  if (!Rf_isNull(rs) &&
+      !(TYPEOF(rs) == LGLSXP && Rf_length(rs) == 1 && LOGICAL(rs)[0] == FALSE)) {
+    return false;
+  }
   SEXP ad = control[Rxc_addDosing];
   if (Rf_isNull(ad)) return true;
   return Rf_length(ad) == 1 && LOGICAL(ad)[0] == FALSE;

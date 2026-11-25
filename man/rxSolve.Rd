@@ -1586,9 +1586,11 @@ repeats, and an event table already translated by \code{\link[=etTrans]{etTrans(
 \item{addlDropPastObs}{When \code{TRUE} (default) and only observations are
 returned (\code{addDosing} is \code{FALSE} or \code{NULL}), an \code{addl} series stops
 after its first repeat past the subject's last observation, as later
-repeats cannot change the output.  Doses into an \code{alag()} compartment,
-subjects whose time moves back and models with model times keep every
-repeat, as does an event table already translated by \code{\link[=etTrans]{etTrans()}}.}
+repeats cannot change the output.  It is off with \code{resample}, and doses
+into an \code{alag()} compartment, subjects whose time moves back, models
+with model times, \code{evid_()} pushes, \code{lead()}, \code{last()} or a negative
+\code{lag()}, and an event table already translated by \code{\link[=etTrans]{etTrans()}} keep every
+repeat.}
 
 \item{ssMethod}{How an iterated steady state is found: \code{"anderson"} (the
 default) finds the fixed point of the one-cycle map with Anderson

@@ -302,6 +302,49 @@ rxTest({
     expect_equal(.s1, as.data.frame(rxSolve(.m, .ev, addDosing = NULL, addlDropPastObs = FALSE)))
   })
 
+  test_that("rxSolve() keeps every repeat when covariates are resampled", {
+    .cov <- function() {
+      ini({
+        ka <- 1
+        cl <- 1
+        v <- 10
+      })
+      model({
+        d/dt(depot) <- -ka * depot
+        d/dt(central) <- ka * depot - cl * wt / 70 / v * central
+        cp <- central / v
+      })
+    }
+    .mc <- rxode2(.cov)
+    .d <- rbind(
+      data.frame(
+        id = 1L,
+        time = c(0, 5, 30),
+        evid = c(1L, 0L, 1L),
+        amt = c(100, NA, 100),
+        ii = c(10, 0, 0),
+        addl = c(5L, 0L, 0L),
+        cmt = 1L,
+        dv = c(NA, 1, NA),
+        wt = c(70, 70, 90)
+      ),
+      data.frame(
+        id = 2L,
+        time = c(0, 16, 50),
+        evid = c(1L, 0L, 0L),
+        amt = c(100, NA, NA),
+        ii = c(0, 0, 0),
+        addl = c(0L, 0L, 0L),
+        cmt = 1L,
+        dv = c(NA, 1, 1),
+        wt = c(60, 60, 60)
+      )
+    )
+    .s1 <- as.data.frame(rxSolve(.mc, .d, resample = TRUE, seed = 42))
+    .s2 <- as.data.frame(rxSolve(.mc, .d, resample = TRUE, seed = 42, addlDropPastObs = FALSE))
+    expect_equal(.s1, .s2)
+  })
+
   test_that("rxSolve() without observations samples across every repeat", {
     .ev <- et(amt = 100, ii = 24, addl = 4)
     .s1 <- as.data.frame(rxSolve(.m, .ev))
