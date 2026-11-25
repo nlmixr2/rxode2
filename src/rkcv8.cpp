@@ -46,7 +46,7 @@ extern "C" void ind_rkcv8_0(rx_solve *rx, rx_solving_options *op, int solveid, i
   double xp = getAllTimes(ind, 0);
   ind->solvedIdx = 0;
 
-  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
+  int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
   RxRkcv8 *solver = NULL;
   if (neqOde > 0) {
     solver = new RxRkcv8(c_dydt, neq, neqOde, ind, getSolve(0));
