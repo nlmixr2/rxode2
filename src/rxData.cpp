@@ -2147,6 +2147,7 @@ extern "C" void gFree(){
   _globals.govar=NULL;
   if (_globals.gevid != NULL) free(_globals.gevid);
   _globals.gevid=NULL;
+  _globals.gevid_dfN = 0;
   if (_globals.ginfPair != NULL) free(_globals.ginfPair);
   _globals.ginfPair=NULL;
   if (_globals.gpkSkip != NULL) free(_globals.gpkSkip);
@@ -4509,6 +4510,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
       rxSolveFree();
       stop(_("can not allocate enough memory to load 'evid'"));
     }
+    _globals.gevid_dfN = (int64_t)dfN;
     std::copy(evid.begin(),evid.end(), &_globals.gevid[0]);
     _globals.gidose = _globals.gevid + evid.size();
     _globals.gcens = _globals.gidose + evid.size();
