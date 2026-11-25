@@ -9,12 +9,23 @@
   `rxSolve(checkModeledRateDur = FALSE)` (and
   `etTrans(checkModeledRateDur = FALSE)`) turns the check off (#1794).
 
+- The model-building piping functions moved here from 'nlmixr2lib':
+  absorption (`addDepot()`, `addTransit()`, `addWeibullAbs()`,
+  `addZeroOrderAbs()`, `addSecondAbsorption()`, `convertTransitMtt()` and
+  their `remove*()`/`convert*()` partners), distribution and elimination
+  (`addPeriph()`, `removePeriph()`, `convertMM()`, `addCmtProp()` and
+  friends), pharmacodynamics (`addDirectLin()`, `addEffectCmtLin()`,
+  `addIndirect()`, `addBaseline*()`, `convertEmax()`, `convertKinR0()`,
+  `fakeCc()`, ...) and parameter helpers (`addEta()`, `addResErr()`,
+  `pkTrans()`, `defaultCombine()`, ...).  This includes the second transit
+  chain in `addSecondAbsorption(delay = "transit")` and the new
+  `convertTransitMtt()`.  `addEta()` reads the `rxode2.etaCombineType` and
+  `rxode2.priorEta` options, falling back to the `nlmixr2lib.*` ones.
 - `rxImpureFun()`/`rxRmImpureFun()` register user R functions, `rxFun()` C
   functions or package C functions that draw random numbers, keep state or
   have side effects.  `rxOptExpr()` never shares their calls and
   `rxode2.fullOpt` keeps them in every generated function; unregistered
   functions are treated as pure (#1783).
-
 - The `linCmt()` sensitivity carry that nlmixr2est uses for a
   time-varying covariate is now kept in each model's solve buffer
   (`ind->solve`), like the sensitivities: the model has one carry state per
