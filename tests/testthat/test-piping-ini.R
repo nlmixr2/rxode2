@@ -1386,6 +1386,74 @@ rxTest({
     expect_equal(unique(.i$condition[!is.na(.i$neta1)]), "id")
   })
 
+  test_that("piping a block keeps the etas numbered level by level (#1773)", {
+    .f <- function() {
+      ini({
+        t1 <- 1
+        t2 <- 1
+        t3 <- 1
+        t4 <- 1
+        add.sd <- 0.1
+        eta.c ~ 0.3
+        eta.a + eta.b ~ c(0.1, 0.01, 0.2) | occ
+        eta.d ~ 0.4 | occ
+      })
+      model({
+        a <- exp(t1 + eta.a)
+        b <- exp(t2 + eta.b)
+        c <- exp(t3 + eta.c)
+        d <- exp(t4 + eta.d)
+        cp <- a + b + c + d
+        cp ~ add(add.sd)
+      })
+    }
+    .ui <- rxode2(.f)
+    .byLevel <- function(ui) {
+      .i <- ui$iniDf
+      expect_true(all(.i$neta1 >= .i$neta2, na.rm = TRUE))
+      .i <- .i[!is.na(.i$neta1) & .i$neta1 == .i$neta2, ]
+      .i <- .i[order(.i$neta1), ]
+      expect_equal(.i$neta1, seq_along(.i$neta1))
+      .i$name[.i$condition == "id"]
+    }
+    .back <- suppressMessages(.ui |> ini(eta.a + eta.b ~ c(0.2, 0.05, 0.2) | id))
+    expect_equal(.byLevel(.back), c("eta.c", "eta.a", "eta.b"))
+    expect_equal(unname(.back$omega$id["eta.a", "eta.b"]), 0.05)
+    expect_equal(dimnames(.back$omega$occ)[[1]], "eta.d")
+    .moved <- suppressMessages(.ui |> ini(eta.c ~ 0.1 | occ))
+    expect_equal(.byLevel(.moved), character(0))
+    .same <- suppressMessages(.ui |> ini(eta.a + eta.b ~ c(0.2, 0.05, 0.2)))
+    expect_equal(.byLevel(.same), "eta.c")
+  })
+
+  test_that("a kept `| id` line ends the row-form block before it (#1773)", {
+    .f <- function() {
+      ini({
+        t1 <- 1
+        t2 <- 1
+        add.sd <- 0.1
+        eta.a ~ 0.1
+        eta.b ~ 0.2 | occ
+      })
+      model({
+        a <- exp(t1 + eta.a)
+        b <- exp(t2 + eta.b)
+        cp <- a + b
+        cp ~ add(add.sd)
+      })
+    }
+    # a covariance with the line above can not reach past the `| id` line to
+    # eta.a, so it is an error rather than a covariance with the wrong eta
+    expect_error(suppressMessages(
+      rxode2(.f) |>
+        ini({
+      eta.a ~ 0.5
+      eta.b ~ 0.6 | id
+      t2 ~ c(0.01, 0.7)
+    })
+    ))
+  })
+
   test_that("an eta added by model() becomes IOV through ini() (#1773)", {
     .f <- function() {
       ini({

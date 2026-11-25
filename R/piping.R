@@ -495,6 +495,11 @@
           .isLotri <- FALSE
         }
       }
+      if (!.isLotri && !(.call %in% names(.errDist))) {
+        # an eta line kept as written ends the block before it, so a later
+        # row-form covariance does not attach to the etas across it
+        .f()
+      }
       if (.isLotri) {
         if (is.na(.env$last)) {
           .env$last <- .i

@@ -519,16 +519,25 @@
 #' @noRd
 .iniRenumberEtaByLevel <- function(iniDf) {
   .d <- which(!is.na(iniDf$neta1) & iniDf$neta1 == iniDf$neta2)
+  if (length(.d) == 0L) {
+    return(iniDf)
+  }
   .d <- .d[order(iniDf$neta1[.d])]
   .base <- .lotriBaseCondition(iniDf$condition[.d])
   .new <- integer(max(iniDf$neta1[.d]))
   .new[iniDf$neta1[.d][order(match(.base, unique(c("id", .base))))]] <- seq_along(.d)
+  if (identical(.new[iniDf$neta1[.d]], seq_along(.d))) {
+    return(iniDf)
+  }
   .w <- which(!is.na(iniDf$neta1))
-  iniDf$neta1[.w] <- .new[iniDf$neta1[.w]]
-  iniDf$neta2[.w] <- .new[iniDf$neta2[.w]]
+  .n1 <- .new[iniDf$neta1[.w]]
+  .n2 <- .new[iniDf$neta2[.w]]
+  # a covariance row keeps its eta numbers lower triangular
+  iniDf$neta1[.w] <- pmax(.n1, .n2)
+  iniDf$neta2[.w] <- pmin(.n1, .n2)
   iniDf <- rbind(
     iniDf[is.na(iniDf$neta1), , drop = FALSE],
-    iniDf[.w[order(iniDf$neta1[.w], iniDf$neta2[.w])], , drop = FALSE]
+    iniDf[.w[order(iniDf$neta1[.w], iniDf$neta1[.w] != iniDf$neta2[.w], iniDf$neta2[.w])], , drop = FALSE]
   )
   rownames(iniDf) <- NULL
   iniDf
@@ -1097,6 +1106,8 @@
         .iniChangeEtaCondition(dimnames(.lotriVal)[[1]], .cond, rxui, block = TRUE)
         .iniHandleLotriMatrix(.lotriVal, rxui)
         .iniChangeEtaCondition(dimnames(.lotriVal)[[1]], .cond, rxui)
+        # the piped block is appended after every other eta, whatever its level
+        assign("iniDf", .iniRenumberEtaByLevel(rxui$iniDf), envir = rxui)
         return(invisible())
       }
     }
