@@ -6252,32 +6252,77 @@ static inline void rxSolveSaveRxSolve(rxSolve_t* rxSolveDat){
 }
 
 RObject _curPar;
+// Whether `p` (inside `mod`) starts a `fun(<digit>` call, not the tail of a
+// longer name.
+static inline bool rxSimIsCall(const char *mod, const char *p, const char *fun,
+                               size_t len) {
+  if (strncmp(p, fun, len) || p[len] != '(') return false;
+  if (!isdigit((unsigned char)p[len + 1])) return false;
+  if (p == mod) return true;
+  unsigned char prev = (unsigned char)p[-1];
+  return !(isalnum(prev) || prev == '_' || prev == '.');
+}
+
+// Past the quoted string that starts at `p`: the closing quote, or the end.
+static inline const char *rxSimSkipQuote(const char *p) {
+  char quote = *p;
+  for (p++; *p && *p != quote; p++) {
+    if (*p == '\\' && p[1]) p++;
+  }
+  return *p ? p : p - 1;
+}
+
 // Largest n in the model's `fun(n)` statements (0 when there are none),
 // skipping quoted strings.
 static inline int rxSimMaxIndex(const char *mod, const char *fun) {
   int ret = 0;
   size_t len = strlen(fun);
-  char quote = 0;
   for (const char *p = mod; *p; p++) {
-    if (quote) {
-      if (*p == '\\' && p[1]) p++;
-      else if (*p == quote) quote = 0;
-      continue;
-    }
     if (*p == '"' || *p == '\'') {
-      quote = *p;
-      continue;
+      p = rxSimSkipQuote(p);
+    } else if (rxSimIsCall(mod, p, fun, len)) {
+      ret = std::max(ret, atoi(p + len + 1));
     }
-    if (strncmp(p, fun, len) || p[len] != '(' ||
-        !isdigit((unsigned char)p[len + 1]) ||
-        (p != mod && (isalnum((unsigned char)p[-1]) || p[-1] == '_' || p[-1] == '.'))) continue;
-    int n = atoi(p + len + 1);
-    if (n > ret) ret = n;
   }
   return ret;
 }
 
 extern "C" void rxSetSimIdx(int type, const int *idx, int n);
+
+// The recorded omega (type 1) or sigma (type 0) names, or R_NilValue.
+static inline SEXP rxSimNamesFor(const List &rxControl, int type) {
+  if (Rf_length(rxControl) <= Rxc__simNames) return R_NilValue;
+  SEXP sn = rxControl[Rxc__simNames];
+  if (TYPEOF(sn) != VECSXP || Rf_length(sn) < 2) return R_NilValue;
+  SEXP nms = VECTOR_ELT(sn, 1 - type);
+  return TYPEOF(nms) == STRSXP ? nms : R_NilValue;
+}
+
+// 1-based position of each of `nms` in `sim`, 0 when absent.
+static inline std::vector<int> rxSimMatch(SEXP nms, const CharacterVector &sim) {
+  int n = Rf_length(nms);
+  std::vector<int> idx(n, 0);
+  for (int i = 0; i < n; i++) {
+    const char *cur = CHAR(STRING_ELT(nms, i));
+    for (int j = 0; j < sim.size(); j++) {
+      if (!strcmp(cur, CHAR(sim[j]))) {
+        idx[i] = j + 1;
+        break;
+      }
+    }
+  }
+  return idx;
+}
+
+// Error when the model's largest `fun(n)` is past `size` items.
+static inline void rxSimCheckRange(const char *m, const char *fun, int size,
+                                   const char *what, const char *unit) {
+  int n = rxSimMaxIndex(m, fun);
+  if (n > 0 && size > 0 && n > size) {
+    rxSolveFree();
+    stop(_("'%s(%d)' is out of range: '%s' has %d %s(s)"), fun, n, what, size, unit);
+  }
+}
 
 // Hand the solver where each simeta(n)/simeps(n) index lands: index n names
 // the n-th item of the omega/sigma as given, which may have lost items (zero
@@ -6288,38 +6333,18 @@ static inline void rxSolveCheckSimIndex(rxSolve_t* rxSolveDat, rx_solve* rx,
   int size[2] = {rx->neps, rx->neta};
   for (int type = 0; type < 2; type++) {
     rxSetSimIdx(type, NULL, 0);
-    if (Rf_length(rxControl) <= Rxc__simNames) continue;
-    SEXP sn = rxControl[Rxc__simNames];
-    if (TYPEOF(sn) != VECSXP || Rf_length(sn) < 2) continue;
-    SEXP nms = VECTOR_ELT(sn, 1 - type);
-    if (TYPEOF(nms) != STRSXP) continue;
+    SEXP nms = rxSimNamesFor(rxControl, type);
+    if (Rf_isNull(nms)) continue;
     CharacterVector sim = (type == 0) ? rxSolveDat->sigmaN : rxSolveDat->omegaN;
-    int n = Rf_length(nms);
-    std::vector<int> idx(n, 0);
-    for (int i = 0; i < n; i++) {
-      for (int j = 0; j < sim.size(); j++) {
-        if (!strcmp(CHAR(STRING_ELT(nms, i)), CHAR(sim[j]))) {
-          idx[i] = j + 1;
-          break;
-        }
-      }
-    }
-    rxSetSimIdx(type, idx.data(), n);
-    size[type] = n;
+    std::vector<int> idx = rxSimMatch(nms, sim);
+    rxSetSimIdx(type, idx.data(), (int)idx.size());
+    size[type] = (int)idx.size();
   }
   if (rx->simflg == 0) return;
   CharacterVector mod = rxSolveDat->mv[RxMv_model];
   const char *m = CHAR(STRING_ELT(mod, 0));
-  int n = rxSimMaxIndex(m, "simeta");
-  if (n > 0 && size[1] > 0 && n > size[1]) {
-    rxSolveFree();
-    stop(_("'simeta(%d)' is out of range: 'omega' has %d eta(s)"), n, size[1]);
-  }
-  n = rxSimMaxIndex(m, "simeps");
-  if (n > 0 && size[0] > 0 && n > size[0]) {
-    rxSolveFree();
-    stop(_("'simeps(%d)' is out of range: 'sigma' has %d eps(s)"), n, size[0]);
-  }
+  rxSimCheckRange(m, "simeta", size[1], "omega", "eta");
+  rxSimCheckRange(m, "simeps", size[0], "sigma", "eps");
 }
 
 static inline void rxSolve_assignGpars(rxSolve_t* rxSolveDat){
