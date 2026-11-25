@@ -652,6 +652,24 @@
   }
   as.numeric(val)
 }
+
+#' Assert valid `addl` and `ss` values for an event table dose
+#'
+#' @param addl the `addl` values (`NA` allowed)
+#' @param ss the `ss` values (`NA` allowed)
+#' @return nothing, called for its error
+#' @noRd
+#' @author Matthew L. Fidler
+.etAssertAddlSs <- function(addl, ss) {
+  if (any(addl < 0L, na.rm = TRUE)) {
+    stop("'addl' cannot be negative", call. = FALSE)
+  }
+  if (any(ss < 0L, na.rm = TRUE)) {
+    stop("'ss' cannot be negative", call. = FALSE)
+  }
+  invisible()
+}
+
 #' Handle the dose value, including unit conversion if needed
 #'
 #' @param expr the expression for the dose value
@@ -808,6 +826,7 @@
     .iiVal <- .etHandleDoseValue(iiExpr, iiMissing, envRef, envir, "time")
     .addlVal <- if (!addlMissing) as.integer(eval(addlExpr, envir = envir)) else 0L
     .ssVal <- if (!ssMissing) as.integer(eval(ssExpr, envir = envir)) else 0L
+    .etAssertAddlSs(.addlVal, .ssVal)
 
     if (!rateMissing) {
       if (rateSym == "model") {
@@ -978,6 +997,7 @@
     .timeVal <- if (!is.null(time)) time else 0.0
     .iiVal <- if (!iiMissing) as.numeric(eval(iiExpr, envir = envir)) else 0.0
     .ssVal <- if (!ssMissing) as.integer(eval(ssExpr, envir = envir)) else 0L
+    .etAssertAddlSs(0L, .ssVal)
     if (!rateMissing) {
       .rateVal <- switch(rateSym, model = -1.0, dur = -2.0, as.numeric(eval(rateExpr, envir = envir)))
     } else {

@@ -161,6 +161,9 @@
   `method = "liblsoda"` alone still switches to `"dop853+ros4"` (#1599).
 
 ### Event tables
+- A negative `addl` or `ss` in event data or in `et()` is now an error (naming
+  the id and row for data); before it was silently treated as no additional
+  doses or as a non-steady-state dose (#1792).
 - With `addlKeepsCov = TRUE`, a dose's `f()` now reads the covariates of its
   own record, as its `alag()` does, also when `alag()` moves the dose past a
   covariate change.  With an `alag()` on a covariate or a state, `f()` read

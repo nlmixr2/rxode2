@@ -2467,6 +2467,14 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
        (mdvNaNoDose ? 2 : inEvid[i]));
     if (obsAmtDose) obsAmtDoseRows.push_back(i + 1);
 
+    if (addlCol != -1 && !IntegerVector::is_na(inAddl[i]) && inAddl[i] < 0) {
+      stop(_("'addl' cannot be negative (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
+    }
+    // A positive 'ss' other than 1 or 2 (e.g. the 99 placeholder in
+    // nlmixr2data) stays an ordinary dose; only a negative one is rejected.
+    if (ssCol != -1 && !IntegerVector::is_na(inSs[i]) && inSs[i] < 0) {
+      stop(_("'ss' cannot be negative (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
+    }
     // SS flag
     flg=1;
     if (ssCol == -1) flg=1;
