@@ -45,6 +45,22 @@ rxTest({
     }),
       capture = TRUE
     ))
+    # strAssign not shaped like rxModelVars()$strAssign
+    expect_null(.pruneC(
+      quote({
+      a <- "x"
+    }),
+      list(a = c(u = "x"))
+    ))
+    expect_null(.pruneC(
+      quote({
+      a <- "x"
+    }),
+      list(`d/dt(a)` = "x")
+    ))
+    expect_null(.pruneC(quote({
+      a <- THETA[]
+    })))
     # non-ASCII text: R marks its encoding, so the R walker handles it
     expect_null(.pruneC(str2lang("{a <- '\\u00e9'}")))
   })

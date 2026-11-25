@@ -120,7 +120,6 @@ bool rxPruneSameStr(SEXP a, SEXP b) {
 
 // 1-based position of `v` in `lev` when it occurs exactly once, else 0
 int rxPruneUniqueMatch(SEXP lev, SEXP v) {
-  if (TYPEOF(lev) != STRSXP) return 0;
   int found = 0, nFound = 0;
   for (int j = 0; j < Rf_length(lev); ++j) {
     if (rxPruneSameStr(STRING_ELT(lev, j), v)) {
@@ -140,8 +139,7 @@ int rxPruneStrLevel(rxPruneState &st, SEXP lhs, SEXP val) {
   const char *name = CHAR(PRINTNAME(lhs));
   int n = Rf_length(st.strNames);
   for (int i = 0; i < n; ++i) {
-    SEXP nm = STRING_ELT(st.strNames, i);
-    if (nm != NA_STRING && strcmp(CHAR(nm), name) == 0) {
+    if (strcmp(CHAR(STRING_ELT(st.strNames, i)), name) == 0) {
       return rxPruneUniqueMatch(VECTOR_ELT(st.strAssign, i),
                                 STRING_ELT(val, 0));
     }
@@ -275,7 +273,10 @@ std::string rxPruneCaptureCall(rxPruneState &st, SEXP x) {
 
 std::string rxPruneBracket(rxPruneState &, SEXP x, int, const char *) {
   SEXP type = rxPruneArg(x, 1), idx = rxPruneArg(x, 2);
-  if (TYPEOF(type) != SYMSXP) throw rxPruneUnsupported();
+  // as.character() of a missing argument errors in R
+  if (TYPEOF(type) != SYMSXP || type == R_MissingArg || idx == R_MissingArg) {
+    throw rxPruneUnsupported();
+  }
   std::string t = CHAR(PRINTNAME(type));
   for (char &ch : t) {
     if ((unsigned char)ch > 127) throw rxPruneUnsupported();
@@ -418,6 +419,31 @@ void rxPruneInitOps(rxPruneState &st) {
   st.sQuote = Rf_install("quote");
 }
 
+// TRUE when `strAssign` is what rxModelVars() gives: unnamed character
+// levels keyed by variable names.  Otherwise R's deparse1()/identical()
+// matching could differ from the symbol/string matching here.
+bool rxPruneStrAssignOk(SEXP strAssign, SEXP strNames) {
+  if (Rf_isNull(strAssign)) return true;
+  if (TYPEOF(strAssign) != VECSXP) return false;
+  int n = Rf_length(strAssign);
+  if (n == 0) return true;
+  if (TYPEOF(strNames) != STRSXP) return false;
+  const char *const reserved[] = {"TRUE", "FALSE", "NA", "NULL", "Inf", "NaN"};
+  for (int i = 0; i < n; ++i) {
+    SEXP lev = VECTOR_ELT(strAssign, i);
+    SEXP nm = STRING_ELT(strNames, i);
+    if (TYPEOF(lev) != STRSXP || nm == NA_STRING ||
+        !Rf_isNull(Rf_getAttrib(lev, R_NamesSymbol)) ||
+        !rxPruneIsIdent(CHAR(nm))) {
+      return false;
+    }
+    for (const char *r : reserved) {
+      if (strcmp(r, CHAR(nm)) == 0) return false;
+    }
+  }
+  return true;
+}
+
 // Runs the walk; false when the expression needs the R walker.
 bool rxPruneRun(rxPruneState &st, SEXP expr, std::string &out) {
   try {
@@ -447,12 +473,9 @@ extern "C" SEXP _rxode2_rxPruneC(SEXP expr, SEXP strAssign, SEXP capture) {
   st.strNames = TYPEOF(strAssign) == VECSXP
                     ? Rf_getAttrib(strAssign, R_NamesSymbol)
                     : R_NilValue;
-  if (TYPEOF(strAssign) != VECSXP && !Rf_isNull(strAssign)) return R_NilValue;
-  if (TYPEOF(strAssign) == VECSXP && Rf_length(strAssign) > 0 &&
-      Rf_isNull(st.strNames)) {
+  if (TYPEOF(expr) != LANGSXP || !rxPruneStrAssignOk(strAssign, st.strNames)) {
     return R_NilValue;
   }
-  if (TYPEOF(expr) != LANGSXP) return R_NilValue;
   st.capture = Rf_asLogical(capture) == 1;
   st.els = nullptr;
   std::string out;
