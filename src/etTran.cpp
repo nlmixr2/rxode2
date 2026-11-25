@@ -1381,15 +1381,15 @@ struct etTransModeledCheck {
 static inline void etTransModeledCheckAdd(etTransModeledCheck& chk,
                                           const IntegerVector& stateProp,
                                           int cmt, int rateI, int splitSrc) {
-  if (cmt < 1 || cmt > stateProp.size()) return;
+  // a split directive's source routes its own copies, so it is not checked
+  if (cmt < 1 || cmt > stateProp.size() || cmt == splitSrc) return;
   int prop = stateProp[cmt - 1];
   bool hasRate = (prop & 8) != 0, hasDur = (prop & 16) != 0;
   if (rateI == 9) {
     if (!hasRate) chk.rateMissing[cmt]++;
   } else if (rateI == 8) {
     if (!hasDur) chk.durMissing[cmt]++;
-  } else if (rateI == 0 && (hasRate || hasDur) && cmt != splitSrc) {
-    // a split directive's source routes its own copies, so it is not checked
+  } else if (rateI == 0 && (hasRate || hasDur)) {
     chk.notRequested[cmt]++;
   }
 }

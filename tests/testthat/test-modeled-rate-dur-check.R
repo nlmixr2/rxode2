@@ -68,6 +68,18 @@ rxTest({
     expect_warning(etTrans(.ev, .mNone), "no 'rate\\(\\)' for: 'cen'")
   })
 
+  test_that("a split directive's source is not checked", {
+    .mSplit <- rxode2({
+      d / dt(depot) <- -ka * depot
+      d / dt(cen) <- ka * depot - cl / v * cen
+      rate(cen) <- 5
+      splitInfusion(depot, cen)
+      cp <- cen / v
+    })
+    .ev <- et(amt = 100, cmt = "depot", rate = -1) |> et(.obs)
+    expect_no_warning(etTrans(.ev, .mSplit))
+  })
+
   test_that("the warning becomes a catchable error with warn=2", {
     .ev <- et(amt = 100, cmt = "depot") |> et(.obs)
     withr::with_options(list(warn = 2), {
