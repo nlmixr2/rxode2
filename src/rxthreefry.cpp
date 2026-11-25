@@ -2031,32 +2031,36 @@ static inline double simOneCond(const double *z, const double *cur, int k,
   arma::rowvec c = sigma.row(k);
   arma::rowvec co = c.cols(o);
   if (arma::all(co == 0.0)) return z[k];
-  // regression weights, solved on the correlation scale so widely different
-  // variances do not make the system look singular
+  // regression weights, solved and kept on the correlation scale (wr), with
+  // the conditioning values scaled by their sd, so widely different variances
+  // neither look singular nor overflow
   arma::mat soo = sigma.submat(o, o);
   arma::vec d = arma::sqrt(soo.diag());
   d.elem(arma::find(d <= 0.0)).ones();
   arma::mat r = soo / (d * d.t());
   arma::vec rhs = co.t() / d;
-  arma::vec w;
-  if (!arma::solve(w, r, rhs, arma::solve_opts::no_approx)) {
-    w = arma::pinv(r) * rhs;
+  arma::vec wr;
+  if (!arma::solve(wr, r, rhs, arma::solve_opts::no_approx)) {
+    wr = arma::pinv(r) * rhs;
   }
-  w = w / d;
   arma::vec lower = getLowerVec(type, rx);
   arma::vec upper = getUpperVec(type, rx);
   if (!anyFinite(lower) && !anyFinite(upper)) {
     double ret = z[k];
     for (int i = 0; i < n - 1; i++) {
-      ret += w[i] * (cur[o[i]] - z[o[i]]);
+      ret += wr[i] * ((cur[o[i]] - z[o[i]]) / d[i]);
     }
     return ret;
   }
   double mu = 0.0;
-  for (int i = 0; i < n - 1; i++) mu += w[i] * cur[o[i]];
-  double sd = sigma(k, k) - arma::as_scalar(co * w);
+  for (int i = 0; i < n - 1; i++) mu += wr[i] * (cur[o[i]] / d[i]);
+  double sd = sigma(k, k) - arma::dot(rhs, wr);
   sd = sd > 0.0 ? sqrt(sd) : 0.0;
-  if (sd == 0.0) return mu;
+  if (sd == 0.0 || !R_FINITE(sd)) {
+    if (R_FINITE(lower[k]) && mu < lower[k]) mu = lower[k];
+    if (R_FINITE(upper[k]) && mu > upper[k]) mu = upper[k];
+    return mu;
+  }
   // standardized bounds; an interval in the upper tail is mirrored into the
   // lower one, where the normal CDF does not round to 1
   double a = R_FINITE(lower[k]) ? (lower[k] - mu) / sd : R_NegInf;
