@@ -4,7 +4,7 @@
 ##   Rscript bench/rxPrune.R load_all  # loads the working tree
 ##
 ## Models come from tests/testthat/helper-rxPrune-models.R (the same set the
-## equality test uses).  `walk` times only the if/else rewrite of the
+## equality test uses); needs 'microbenchmark'.  `walk` times only the if/else rewrite of the
 ## already-parsed model; `total` adds rxModelVars()/rxNorm() and the R parse
 ## that both walkers share.
 
@@ -22,14 +22,11 @@ if (length(.args) && .args[1] == "load_all") {
 }
 source("tests/testthat/helper-rxPrune-models.R")
 
-.time <- function(f, reps) {
-  f()
-  .t <- system.time(
-    for (i in seq_len(reps)) {
-      f()
-    }
-  )[["elapsed"]]
-  .t / reps * 1000
+# median milliseconds, the R and C calls interleaved
+.time <- function(fr, fc, times) {
+  .mb <- microbenchmark::microbenchmark(r = fr(), c = fc(), times = times)
+  .med <- tapply(.mb$time, .mb$expr, stats::median) / 1e6
+  c(r = .med[["r"]], c = .med[["c"]])
 }
 
 .models <- .rxPruneModelSet()
@@ -39,21 +36,20 @@ source("tests/testthat/helper-rxPrune-models.R")
     .m <- .models[[.n]]
     .p <- .rxPruneParse(.m)
     stopifnot(identical(.pruneC(.p), .rxPruneWalkR(.p$expr, .p$strAssign)))
-    .reps <- max(3L, as.integer(2000 / nchar(.m)))
-    .walkR <- .time(function() .rxPruneWalkR(.p$expr, .p$strAssign), .reps)
-    .walkC <- .time(function() .pruneC(.p), .reps)
-    .totR <- .time(function() .rxPruneR(.m), .reps)
-    .totC <- .time(function() rxPrune(.m), .reps)
+    .times <- max(10L, min(200L, as.integer(20000 / nchar(.m))))
+    .walk <- .time(function() .rxPruneWalkR(.p$expr, .p$strAssign), function() .pruneC(.p), .times)
+    .tot <- .time(function() .rxPruneR(.m), function() rxPrune(.m), .times)
     data.frame(
       model = .n,
       lines = length(strsplit(.m, "\n")[[1]]),
-      walkR_ms = .walkR,
-      walkC_ms = .walkC,
-      walk_speedup = .walkR / .walkC,
-      totalR_ms = .totR,
-      totalC_ms = .totC,
-      total_speedup = .totR / .totC
+      walkR_ms = .walk[["r"]],
+      walkC_ms = .walk[["c"]],
+      walk_speedup = .walk[["r"]] / .walk[["c"]],
+      totalR_ms = .tot[["r"]],
+      totalC_ms = .tot[["c"]],
+      total_speedup = .tot[["r"]] / .tot[["c"]]
     )
   })
 )
+options(width = 200)
 print(format(.res, digits = 3), row.names = FALSE)
