@@ -51,6 +51,18 @@ rxTest({
       expect_error(rxSolve(m, c(ka = 1, cl = 4), ev))
       rxSolveFree()
       expect_equal(.lk(), 1L)
+      # serializing a solve and replaying it keep the outer lock
+      .f <- tempfile(fileext = ".rxbin")
+      on.exit(unlink(.f), add = TRUE)
+      rxSolve(m, c(ka = 1, cl = 4, v = 25), ev, serializeFile = .f)
+      rxSolveFree()
+      expect_equal(.lk(), 1L)
+      rxSolve(m, .f)
+      rxSolveFree()
+      expect_equal(.lk(), 1L)
+      rxSolve(m, c(ka = 1, cl = 4, v = 25), ev, serializeFile = TRUE)
+      rxSolveFree()
+      expect_equal(.lk(), 1L)
       rxUnlock(m)
       # repeated .setupOnly solves hold one lock
       rxSolve(m, c(ka = 1, cl = 4, v = 25), ev, .setupOnly = TRUE)

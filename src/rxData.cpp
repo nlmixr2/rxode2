@@ -6358,8 +6358,8 @@ static inline SEXP rxSolve_finalize(const RObject &obj,
   RSprintf("  Time2: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
 #endif// rxSolveT
-  if (rxIsNull(rxSolveFreeObj)) rxUnlock(obj);
-  else rxSolveUnlockObj();
+  // release the lock rxSolve_() took (rxSolveFromRaw_() takes none)
+  rxSolveUnlockObj();
   if (rx->matrix == 0 && rxDropB){
     rx->matrix=2;
     warning(_("dropped key column, returning data.frame instead of special solved data.frame"));
