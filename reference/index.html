@@ -742,6 +742,301 @@
         </dt>
         <dd>Set random effects and residual error to zero</dd>
       </dl></div><div class="section level2">
+      <h2 id="absorption-building-blocks">Absorption building blocks<a class="anchor" aria-label="anchor" href="#absorption-building-blocks"></a></h2>
+
+      <div class="section-desc"><p>Add, remove or change absorption (depot, transit, zero-order, Weibull, two-path).</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="addDepot.html">addDepot()</a></code>
+
+        </dt>
+        <dd>To convert from infusion/intravenous administration to first-order oral absorption</dd>
+
+        <dt>
+
+          <code><a href="addSecondAbsorption.html">addSecondAbsorption()</a></code>
+
+        </dt>
+        <dd>Add a second absorption path for double-absorption models</dd>
+
+        <dt>
+
+          <code><a href="addTransit.html">addTransit()</a></code>
+
+        </dt>
+        <dd>To add transit compartments to the model</dd>
+
+        <dt>
+
+          <code><a href="addWeibullAbs.html">addWeibullAbs()</a></code>
+
+        </dt>
+        <dd>Converts first order absorption model to Weibull absorption model</dd>
+
+        <dt>
+
+          <code><a href="addZeroOrderAbs.html">addZeroOrderAbs()</a></code>
+
+        </dt>
+        <dd>Convert a model to zero-order absorption (Monolix <code>Tk0</code>)</dd>
+
+        <dt>
+
+          <code><a href="convertAbsForceLongerDelay.html">convertAbsForceLongerDelay()</a></code>
+
+        </dt>
+        <dd>Force the second absorption delay longer than the first</dd>
+
+        <dt>
+
+          <code><a href="convertAbsSequential.html">convertAbsSequential()</a></code>
+
+        </dt>
+        <dd>Convert double absorption to sequential delays</dd>
+
+        <dt>
+
+          <code><a href="convertTransitMtt.html">convertTransitMtt()</a></code>
+
+        </dt>
+        <dd>Reparameterize a transit chain by its mean transit time</dd>
+
+        <dt>
+
+          <code><a href="removeDepot.html">removeDepot()</a></code>
+
+        </dt>
+        <dd>To convert from first order oral absorption to IV/Intravenous</dd>
+
+        <dt>
+
+          <code><a href="removeTransit.html">removeTransit()</a></code>
+
+        </dt>
+        <dd>To remove transit compartments from the model</dd>
+
+        <dt>
+
+          <code><a href="removeZeroOrderAbs.html">removeZeroOrderAbs()</a></code>
+
+        </dt>
+        <dd>Remove zero-order absorption from a model</dd>
+      </dl></div><div class="section level2">
+      <h2 id="distribution-and-elimination-building-blocks">Distribution and elimination building blocks<a class="anchor" aria-label="anchor" href="#distribution-and-elimination-building-blocks"></a></h2>
+
+      <div class="section-desc"><p>Add or remove peripheral compartments, Michaelis-Menten elimination and compartment properties.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="addCmtProp.html">addCmtProp()</a></code> <code><a href="addCmtProp.html">addBioavailability()</a></code> <code><a href="addCmtProp.html">addLag()</a></code> <code><a href="addCmtProp.html">addDur()</a></code> <code><a href="addCmtProp.html">addRate()</a></code> <code><a href="addCmtProp.html">addIni()</a></code>
+
+        </dt>
+        <dd>Add a property to a compartment</dd>
+
+        <dt>
+
+          <code><a href="addPeriph.html">addPeriph()</a></code>
+
+        </dt>
+        <dd>Add a peripheral compartment to a model</dd>
+
+        <dt>
+
+          <code><a href="convertMM.html">convertMM()</a></code>
+
+        </dt>
+        <dd>Convert models from linear elimination to Michaelis-Menten elimination</dd>
+
+        <dt>
+
+          <code><a href="removePeriph.html">removePeriph()</a></code>
+
+        </dt>
+        <dd>Remove a peripheral compartment from a model</dd>
+      </dl></div><div class="section level2">
+      <h2 id="pharmacodynamic-building-blocks">Pharmacodynamic building blocks<a class="anchor" aria-label="anchor" href="#pharmacodynamic-building-blocks"></a></h2>
+
+      <div class="section-desc"><p>Attach direct, effect-compartment and indirect-response models, baselines and drug-effect forms.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="addBaseline1exp.html">addBaseline1exp()</a></code>
+
+        </dt>
+        <dd>Add baseline that decays exponential with time</dd>
+
+        <dt>
+
+          <code><a href="addBaselineConst.html">addBaselineConst()</a></code>
+
+        </dt>
+        <dd>Add an estimated baseline constant</dd>
+
+        <dt>
+
+          <code><a href="addBaselineExp.html">addBaselineExp()</a></code>
+
+        </dt>
+        <dd>Add baseline that decays exponential with time</dd>
+
+        <dt>
+
+          <code><a href="addBaselineLin.html">addBaselineLin()</a></code>
+
+        </dt>
+        <dd>Add an estimated baseline linear constant</dd>
+
+        <dt>
+
+          <code><a href="addDirectLin.html">addDirectLin()</a></code>
+
+        </dt>
+        <dd>Add direct linear effect with baseline=0</dd>
+
+        <dt>
+
+          <code><a href="addEffectCmtLin.html">addEffectCmtLin()</a></code>
+
+        </dt>
+        <dd>Add effect compartment</dd>
+
+        <dt>
+
+          <code><a href="addIndirect.html">addIndirect()</a></code>
+
+        </dt>
+        <dd>Add an indirect response model to a PK model</dd>
+
+        <dt>
+
+          <code><a href="addIndirectLin.html">addIndirectLin()</a></code>
+
+        </dt>
+        <dd>Add linear indirect response model</dd>
+
+        <dt>
+
+          <code><a href="convertEmax.html">convertEmax()</a></code>
+
+        </dt>
+        <dd>Convert linear effect to Emax effect</dd>
+
+        <dt>
+
+          <code><a href="convertEmaxHill.html">convertEmaxHill()</a></code>
+
+        </dt>
+        <dd>Convert linear effect to Emax-Hill effect</dd>
+
+        <dt>
+
+          <code><a href="convertKinR0.html">convertKinR0()</a></code>
+
+        </dt>
+        <dd>Convert a kin/kout indirect response model to R0 and kout</dd>
+
+        <dt>
+
+          <code><a href="convertLogLin.html">convertLogLin()</a></code>
+
+        </dt>
+        <dd>Converts a linear effect to a log-linear effect</dd>
+
+        <dt>
+
+          <code><a href="convertQuad.html">convertQuad()</a></code>
+
+        </dt>
+        <dd>Convert linear elimination to quadratic elimination</dd>
+
+        <dt>
+
+          <code><a href="fakeCc.html">fakeCc()</a></code>
+
+        </dt>
+        <dd>Fake blank Cc for creating PD only models</dd>
+      </dl></div><div class="section level2">
+      <h2 id="parameter-and-naming-building-blocks">Parameter and naming building blocks<a class="anchor" aria-label="anchor" href="#parameter-and-naming-building-blocks"></a></h2>
+
+      <div class="section-desc"><p>Add between-subject variability and residual error, transform PK parameters and name new parameters.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="addEta.html">addEta()</a></code>
+
+        </dt>
+        <dd>Add random effects to a model</dd>
+
+        <dt>
+
+          <code><a href="addLogEstimates.html">addLogEstimates()</a></code>
+
+        </dt>
+        <dd>Add log estimates to a model</dd>
+
+        <dt>
+
+          <code><a href="addResErr.html">addResErr()</a></code>
+
+        </dt>
+        <dd>Add residual error to a model</dd>
+
+        <dt>
+
+          <code><a href="combinePaste2.html">combinePaste2()</a></code>
+
+        </dt>
+        <dd>Combine two strings using a naming convention</dd>
+
+        <dt>
+
+          <code><a href="defaultCombine.html">defaultCombine()</a></code> <code><a href="defaultCombine.html">snakeCombine()</a></code> <code><a href="defaultCombine.html">camelCombine()</a></code> <code><a href="defaultCombine.html">dotCombine()</a></code> <code><a href="defaultCombine.html">blankCombine()</a></code>
+
+        </dt>
+        <dd>Default combine strings</dd>
+
+        <dt>
+
+          <code><a href="pkTrans.html">pkTrans()</a></code>
+
+        </dt>
+        <dd>Change the transformation type for PK models</dd>
+
+        <dt>
+
+          <code><a href="removeLinesAndInis.html">removeLinesAndInis()</a></code>
+
+        </dt>
+        <dd>Removes lines and inis from a model</dd>
+
+        <dt>
+
+          <code><a href="setCombineType.html">setCombineType()</a></code>
+
+        </dt>
+        <dd>Change the default combine type for the package</dd>
+      </dl></div><div class="section level2">
       <h2 id="variability-and-uncertainty">Variability and uncertainty<a class="anchor" aria-label="anchor" href="#variability-and-uncertainty"></a></h2>
 
       <div class="section-desc"><p>Simulate between-subject variability and parameter uncertainty.</p></div>
