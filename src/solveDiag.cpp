@@ -99,7 +99,7 @@ extern "C" void rxSolveDiagDydt(int id, int n, double t, const double *y,
 
 extern "C" void rxSolveDiagCapture(int id, int n, int named, double tAcc,
                                    const double *yAcc, const double *yFail) {
-  if (n <= 0 || (yAcc == NULL && yFail == NULL)) return;
+  if (n <= 0) return;
   std::vector<double> acc;
   if (yAcc != NULL) acc.assign(yAcc, yAcc + n);
   std::vector<int> failBad;
