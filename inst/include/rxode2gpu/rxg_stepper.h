@@ -899,6 +899,97 @@ RXG_FN int _rxg_histPush(int method, double t, double hs, const double *y,
 }
 #endif
 
+// Size the next step from *ha (clamped to hmax, the hmin floor and the
+// shortest delay): *hh lands on t1 or a delay breakpoint when that is near
+// (*last), *tEnd is where it ends.  Returns RXG_ERR_HMIN when the step
+// underflows, else RXG_SUCCESS.
+RXG_FN int _rxg_stepPlan(double t, double t1, double dir, double hmax,
+                         double *ha, double *hh, double *tEnd, int *last,
+                         const rxg_ctx *c, const rxg_opt *o) {
+  double rem = fabs(t1 - t);
+  double a = fmin(*ha, hmax);
+  // hmin is a floor: fail only when a step that small is rejected
+  if (o->hmin > 0.0) a = fmax(a, fmin(o->hmin, rem));
+#if RXG_HAS_DELAY
+  // never step past the shortest delay, so delay() reads recorded steps
+  a = fmin(a, c->hist->minT);
+#else
+  (void)c;
+#endif
+  *ha = a;
+  if (a < 16.0*RXG_EPS*fmax(fabs(t), RXG_MIN) && a < rem) return RXG_ERR_HMIN;
+  *last = (a >= rem);
+  *hh = *last ? rem : a;
+  *tEnd = *last ? t1 : t + dir*(*hh);
+#if RXG_HAS_DELAY
+  if (dir > 0.0) {
+    // land on the next breakpoint rather than step across it
+    double bp = _rxg_bpNext(c->hist, t);
+    if (bp <= *hh) {
+      *hh = bp;
+      *tEnd = t + bp;
+      *last = 1;
+    }
+  }
+#endif
+  return RXG_SUCCESS;
+}
+
+// Judge a tried step of size hh (ok: its stages were finite): 1 accepts it
+// with *hn the next size, 0 retries it with *ha, -1 stops with RXG_ERR_HMIN
+// (rejected at hmin)
+RXG_FN int _rxg_judgeStep(int ok, double hh, const double *y, rxg_work *w,
+                          const rxg_ctx *c, const rxg_opt *o, int q,
+                          rxg_ctl *ctl, double *ha, double *hn, int *cnt) {
+#if RXG_HAS_DELAY
+  if (c->hist->minT < hh*(1.0 - 4.0*RXG_EPS)) {
+    // a stage met a shorter delay than the step: it may have read past the
+    // history, so retry within that delay
+    cnt[RXG_CNT_REJ]++;
+    *ha = c->hist->minT;
+    return 0;
+  }
+#else
+  (void)c;
+#endif
+  double err = ok ? _rxg_errNorm(o, w->e, y, w->y1) : INFINITY;
+  *hn = _rxg_newH(hh, err, q, ctl);
+  if (err > 1.0) {
+    cnt[RXG_CNT_REJ]++;
+    if (o->hmin > 0.0 && hh <= o->hmin) return -1;
+    *ha = *hn;
+    return 0;
+  }
+  cnt[RXG_CNT_ACC]++;
+  return 1;
+}
+
+// Take an accepted step of size hs from *t: record it in the delay() history
+// (returns 0 when that is full), then move *t to tEnd and y to the step's end
+RXG_FN int _rxg_takeStep(int method, double *t, double tEnd, double hs,
+                         double *y, rxg_work *w, const rxg_ctx *c, int *fsal,
+                         int *cnt) {
+#if RXG_HAS_DELAY
+  if (!_rxg_histPush(method, *t, hs, y, w, c, cnt)) return 0;
+#else
+  (void)hs;
+  (void)c;
+  (void)cnt;
+#endif
+  *t = tEnd;
+  _rxg_accept(method, y, w, fsal);
+#if RXG_HAS_DELAY
+#if RXG_HDEG >= 7
+  if (method == RXG_VERN76) {
+    // stage 11 of the interpolant is the next step's f(t, y)
+    for (int i = 0; i < RXG_NEQ; i++) w->f0[i] = w->k[10*RXG_NEQ1 + i];
+    *fsal = 1;
+  }
+#endif
+#endif
+  return 1;
+}
+
 // Integrate y from t0 to t1 (either direction) with an adaptive method.
 // *h is the starting step size (<= 0: chosen here) and returns the size to
 // try next, for a warm start on the next interval.  cnt[] (RXG_NCNT) is
@@ -945,79 +1036,29 @@ RXG_FN int rxg_integrate(int method, double t0, double t1, double *y,
   int nstep = 0;
   int ret = RXG_SUCCESS;
   while (dir*(t1 - t) > 0.0) {
-    double rem = fabs(t1 - t);
-    ha = fmin(ha, hmax);
-    // hmin is a floor: fail only when a step that small is rejected
-    if (o->hmin > 0.0) ha = fmax(ha, fmin(o->hmin, rem));
-#if RXG_HAS_DELAY
-    // never step past the shortest delay, so delay() reads recorded steps
-    ha = fmin(ha, c->hist->minT);
-#endif
-    if (ha < 16.0*RXG_EPS*fmax(fabs(t), RXG_MIN) && ha < rem) {
-      ret = RXG_ERR_HMIN;
-      break;
-    }
+    double hh = 0.0, tEnd = t, hn = 0.0;
+    int last = 0;
+    ret = _rxg_stepPlan(t, t1, dir, hmax, &ha, &hh, &tEnd, &last, c, o);
+    if (ret != RXG_SUCCESS) break;
     if (nstep++ >= o->mxstep) {
       ret = RXG_ERR_MXSTEP;
       break;
     }
-    int last = (ha >= rem);
-    double hh = last ? rem : ha;
-    double tEnd = last ? t1 : t + dir*hh;
-#if RXG_HAS_DELAY
-    if (dir > 0.0) {
-      // land on the next breakpoint rather than step across it
-      double bp = _rxg_bpNext(c->hist, t);
-      if (bp <= hh) {
-        hh = bp;
-        tEnd = t + bp;
-        last = 1;
-      }
-    }
-#endif
     if (!fsal) _rxg_f(t, y, w.f0, c, cnt);
     fsal = 1;
     int ok = _rxg_tryStep(method, t, dir*hh, dir, y, &w, c, cnt);
     cnt[RXG_CNT_STEP]++;
-#if RXG_HAS_DELAY
-    if (c->hist->minT < hh*(1.0 - 4.0*RXG_EPS)) {
-      // a stage met a shorter delay than the step: it may have read past the
-      // history, so retry within that delay
-      cnt[RXG_CNT_REJ]++;
-      ha = c->hist->minT;
-      continue;
+    int judged = _rxg_judgeStep(ok, hh, y, &w, c, o, q, &ctl, &ha, &hn, cnt);
+    if (judged < 0) {
+      ret = RXG_ERR_HMIN;
+      break;
     }
-#endif
-    double err = ok ? _rxg_errNorm(o, w.e, y, w.y1) : INFINITY;
-    double hn = _rxg_newH(hh, err, q, &ctl);
-    if (err > 1.0) {
-      cnt[RXG_CNT_REJ]++;
-      if (o->hmin > 0.0 && hh <= o->hmin) {
-        ret = RXG_ERR_HMIN;
-        break;
-      }
-      ha = hn;
-      continue;
-    }
-    cnt[RXG_CNT_ACC]++;
+    if (judged == 0) continue;
     int stiff = probe && _rxg_stiffCheck(st, method, dir*hh, w.k, w.ya, w.yb);
-#if RXG_HAS_DELAY
-    if (!_rxg_histPush(method, t, dir*hh, y, &w, c, cnt)) {
+    if (!_rxg_takeStep(method, &t, tEnd, dir*hh, y, &w, c, &fsal, cnt)) {
       ret = RXG_ERR_HIST;
       break;
     }
-#endif
-    t = tEnd;
-    _rxg_accept(method, y, &w, &fsal);
-#if RXG_HAS_DELAY
-#if RXG_HDEG >= 7
-    if (method == RXG_VERN76) {
-      // stage 11 of the interpolant is the next step's f(t, y)
-      for (int i = 0; i < RXG_NEQ; i++) w.f0[i] = w.k[10*RXG_NEQ1 + i];
-      fsal = 1;
-    }
-#endif
-#endif
     // a step cut short to land on t1 says little about the next size
     ha = last ? fmax(hn, ha) : hn;
     // reported on any accepted step, the last of an interval included, as
