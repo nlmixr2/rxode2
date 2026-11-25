@@ -7611,6 +7611,23 @@ struct rk4s_dde {
 // A window opened at the subject's first record reads its dR/dF blocks with
 // newind = 1, stored after the newind = 2 ones; forcingBlk[n]/offBlk[n] give the
 // step's block offset (0 or nBase*np).
+static void rk4sReadInfusBlocks(rx_solving_options *op, rx_solving_options_ind *ind,
+    int cSub, double t, double *A, const std::vector<rk4s_infus> &infus, int len,
+    bool haveDf, std::vector<double> &dRateV, std::vector<double> &dFV) {
+  int nBlk = 1;
+  for (size_t w = 0; w < infus.size(); ++w) if (infus[w].ni == 1) nBlk = 2;
+  dRateV.resize(nBlk * len);
+  if (haveDf) dFV.resize(nBlk * len);
+  int ni0 = ind->_newind;
+  for (int k = 0; k < nBlk; ++k) {
+    ind->_newind = 2 - k;
+    calc_lhs(cSub, t, A, ind->lhs);
+    std::copy(ind->lhs + op->adjDrateOff, ind->lhs + op->adjDrateOff + len, dRateV.begin() + k * len);
+    if (haveDf) std::copy(ind->lhs + op->adjDfOff, ind->lhs + op->adjDfOff + len, dFV.begin() + k * len);
+  }
+  ind->_newind = ni0;
+}
+
 static const double *rk4sBuildInfusMaps(rx_solving_options *op, rx_solving_options_ind *ind,
     int cSub, rk4s_rec &rec, const std::vector<rk4s_infus> &infus, int nBase, int np,
     size_t nStep, std::vector<double> &Ascratch, std::vector<double> &dRateV,
@@ -7622,18 +7639,9 @@ static const double *rk4sBuildInfusMaps(rx_solving_options *op, rx_solving_optio
   if (dFpOut != NULL) *dFpOut = NULL;
   if (op->adjDrateOff < 0 || infus.empty()) return NULL;
   bool haveDf = (op->adjDfOff >= 0);
-  int len = nBase * np, nBlk = 1;
-  for (size_t w = 0; w < infus.size(); ++w) if (infus[w].ni == 1) nBlk = 2;
-  dRateV.resize(nBlk * len);
-  if (haveDf) dFV.resize(nBlk * len);
-  int ni0 = ind->_newind;
-  for (int k = 0; k < nBlk; ++k) {
-    ind->_newind = 2 - k;
-    calc_lhs(cSub, rec.t0.empty() ? 0.0 : rec.t0[0], Ascratch.data(), ind->lhs);
-    std::copy(ind->lhs + op->adjDrateOff, ind->lhs + op->adjDrateOff + len, dRateV.begin() + k * len);
-    if (haveDf) std::copy(ind->lhs + op->adjDfOff, ind->lhs + op->adjDfOff + len, dFV.begin() + k * len);
-  }
-  ind->_newind = ni0;
+  int len = nBase * np;
+  rk4sReadInfusBlocks(op, ind, cSub, rec.t0.empty() ? 0.0 : rec.t0[0], Ascratch.data(),
+                      infus, len, haveDf, dRateV, dFV);
   forcingCmt.assign(nStep, -1); forcingMult.assign(nStep, 0.0);
   offCmt.assign(nStep, -1); offFac.assign(nStep, 0.0);
   forcingBlk.assign(nStep, 0); offBlk.assign(nStep, 0);
@@ -7650,12 +7658,12 @@ static const double *rk4sBuildInfusMaps(rx_solving_options *op, rx_solving_optio
     double _dur = (F.R != 0.0) ? (F.amt / F.R) : 0.0;
     size_t off = (F.offStep == (size_t)-1) ? nStep : F.offStep;
     for (size_t _n = F.onStep; _n < off && _n < nStep; ++_n) {
-      forcingCmt[_n] = F.cmt; forcingMult[_n] = F.durMult; forcingBlk[_n] = (F.ni == 1) ? len : 0;
+      forcingCmt[_n] = F.cmt; forcingMult[_n] = F.durMult; forcingBlk[_n] = (F.ni == 1) * len;
       if (haveDf && isDur && _dur != 0.0) dfForcingMult[_n] = F.amtRaw / _dur;   // dur dF forcing
     }
     if (F.offStep != (size_t)-1 && F.offStep < nStep && F.R != 0.0) {
       offCmt[F.offStep] = F.cmt; offFac[F.offStep] = -(F.amt / F.R) * F.durMult;
-      offBlk[F.offStep] = (F.ni == 1) ? len : 0;
+      offBlk[F.offStep] = (F.ni == 1) * len;
       if (haveDf && !isDur) dfOffFac[F.offStep] = F.amtRaw;                       // rate dF boundary
     }
   }
