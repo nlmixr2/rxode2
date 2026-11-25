@@ -29,8 +29,9 @@
 #'   `x` and `dx(C, "central")` is a central difference.  For a grid named `a`
 #'   these are `d2a()` and `da()`.
 #' - `value(C, x = 0) = g` is a fixed-value (Dirichlet) boundary condition at
-#'   the boundary `x = 0` (which must be `from` or `to`), used by the
-#'   difference operators at that edge.
+#'   the boundary `x = 0` (which must be `from` or `to`), used by `d2x()`,
+#'   central `dx()` and point values at that edge; an upwind `dx()` uses it
+#'   only at its inflow edge.  `g` cannot use gridded values.
 #' - `flux(C, x = 0) = q` adds an inward flux `q` (amount per unit length per
 #'   time) through the boundary; the difference operators then use a zero
 #'   gradient there.  A boundary without a condition has zero gradient
@@ -529,6 +530,26 @@ rxPde <- function(model) {
   invisible(env)
 }
 
+## Record a gridded state (d/dt(C[x])) or gridded lhs (r[x] <- ...).
+.rxPdeAddVar <- function(env, ix, state) {
+  .v <- ix[["var"]]
+  .g <- env$vars[[.v]]
+  if (state && !is.null(.g)) {
+    .rxPdeStop("'", .v, "' is defined more than once as a gridded state or variable")
+  }
+  if (!state && .v %in% env$states) {
+    .rxPdeStop("'", .v, "' is a gridded state and cannot also be assigned as ", .v, "[", ix[["grid"]], "]")
+  }
+  if (!is.null(.g) && .g != ix[["grid"]]) {
+    .rxPdeStop("'", .v, "' is assigned on grids '", .g, "' and '", ix[["grid"]], "'")
+  }
+  if (state) {
+    env$states <- c(env$states, .v)
+  }
+  env$vars[[.v]] <- ix[["grid"]]
+  invisible(env)
+}
+
 ## Kind of one statement (pass 1); records gridded variables and boundary
 ## conditions in `env`.
 .rxPdeClassify <- function(e, env) {
@@ -538,16 +559,12 @@ rxPde <- function(model) {
   }
   .ix <- .rxPdeDdtLhs(.st$lhs, env$grids)
   if (!is.null(.ix)) {
-    if (.ix[["var"]] %in% env$states) {
-      .rxPdeStop("d/dt(", .ix[["var"]], "[", .ix[["grid"]], "]) is defined twice")
-    }
-    env$states <- c(env$states, .ix[["var"]])
-    env$vars[[.ix[["var"]]]] <- .ix[["grid"]]
+    .rxPdeAddVar(env, .ix, TRUE)
     return("ddt")
   }
   .ix <- .rxPdeIndexed(.st$lhs, env$grids)
   if (!is.null(.ix)) {
-    env$vars[[.ix[["var"]]]] <- .ix[["grid"]]
+    .rxPdeAddVar(env, .ix, FALSE)
     return("lhs")
   }
   .bc <- .rxPdeBcLhs(.st$lhs)
@@ -576,12 +593,24 @@ rxPde <- function(model) {
   if (!is.null(.cur[[.side]])) {
     .rxPdeStop(.what, ": a boundary has only one condition")
   }
-  .rhs <- bc$rhs
-  if (.rxPdeUses(.rhs, env)) {
-    .rhs <- .rxPdeExpr(.rhs, env, NULL)
+  if (bc$type == "value" && .rxPdeUses(bc$rhs, env)) {
+    .rxPdeStop(.what, ": a fixed boundary value cannot use gridded values")
   }
-  .cur[[.side]] <- list(type = bc$type, expr = .rxPdeDeparse(.rhs))
+  .cur[[.side]] <- list(type = bc$type, rhs = bc$rhs, expr = .rxPdeDeparse(bc$rhs))
   env$bc[[bc$var]] <- .cur
+  invisible(env)
+}
+
+## Expand gridded values in flux() conditions, once every value() is known.
+.rxPdeExpandFlux <- function(env) {
+  for (.v in names(env$bc)) {
+    for (.side in names(env$bc[[.v]])) {
+      .b <- env$bc[[.v]][[.side]]
+      if (.b$type == "flux" && .rxPdeUses(.b$rhs, env)) {
+        env$bc[[.v]][[.side]]$expr <- .rxPdeDeparse(.rxPdeExpr(.b$rhs, env, NULL))
+      }
+    }
+  }
   invisible(env)
 }
 
@@ -649,6 +678,7 @@ rxPde <- function(model) {
   for (.bc in .env$bcs) {
     .rxPdeAddBc(.bc, .env)
   }
+  .rxPdeExpandFlux(.env)
   .rxPdeCheckClash(.exprs, .env)
   .out <- lapply(seq_along(.exprs), function(k) {
     switch(

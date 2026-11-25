@@ -41,6 +41,13 @@ rxTest({
     expect_error(rxPde("grid(x, 0, 1, 2)\nd/dt(C[x]) = 0\nflux(B, x = 0) = 1"), "gridded state")
     expect_error(rxPde("grid(x, 0, 1, 2)\nd/dt(C[x]) = 0\nC_1 = 3"), "clash")
     expect_error(rxPde("grid(x, 0, 1, 2)\nd/dt(C[x]) = 0\ncp = d2x(C)"), "only defined")
+    expect_error(rxPde("grid(x, 0, 1, 2)\nd/dt(C[x]) = 0\nC[x] <- 1"), "gridded state")
+    expect_error(rxPde("grid(x, 0, 1, 2)\ngrid(y, 0, 1, 3)\nr[x] <- 1\nr[y] <- 2"), "grids")
+    expect_error(rxPde("grid(x, 0, 1, 2)\nr[x] <- 1\nd/dt(r[x]) = 0"), "more than once")
+    expect_error(rxPde("grid(x, 0, 1, 2)\nd/dt(C[x]) = 0\nvalue(C, x = 0) = C[x = 1]"), "fixed boundary")
+    ## a flux() may read a value() given after it
+    .m <- rxPde("grid(x, 0, 1, 2)\nd/dt(C[x]) = 0\nflux(C, x = 0) = C[x = 1]\nvalue(C, x = 1) = cin")
+    expect_true(grepl("d/dt(C_1) = (0) + ((cin))/0.5", .m, fixed = TRUE))
   })
 
   ## u_t = D u_xx on [0, 1], u(0) = u(1) = 0, u(x, 0) = sin(pi x):

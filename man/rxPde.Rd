@@ -38,8 +38,9 @@ increasing \code{x}; \code{dx(C, "forward")} is upwind for flow towards decreasi
 \code{x} and \code{dx(C, "central")} is a central difference.  For a grid named \code{a}
 these are \code{d2a()} and \code{da()}.
 \item \code{value(C, x = 0) = g} is a fixed-value (Dirichlet) boundary condition at
-the boundary \code{x = 0} (which must be \code{from} or \code{to}), used by the
-difference operators at that edge.
+the boundary \code{x = 0} (which must be \code{from} or \code{to}), used by \code{d2x()},
+central \code{dx()} and point values at that edge; an upwind \code{dx()} uses it
+only at its inflow edge.  \code{g} cannot use gridded values.
 \item \code{flux(C, x = 0) = q} adds an inward flux \code{q} (amount per unit length per
 time) through the boundary; the difference operators then use a zero
 gradient there.  A boundary without a condition has zero gradient
