@@ -264,7 +264,9 @@
   `COND` names (with a message), so an eta added by `model()` can become an
   inter-occasion eta and back with `| id`.  The condition was dropped and the
   eta kept its old level; an eta still correlated with another, or in a
-  `same()` block, is now an error (#1773).
+  `same()` block, is now an error (#1773).  A line kept as written between
+  other piped eta lines (`| id`, `unfix()`, an error model) is no longer
+  overwritten when those lines are combined into a block.
 
 ### Delay differential equations
 - `delay()` models now solve with `method = "dop5"` and `method = "bs"`.

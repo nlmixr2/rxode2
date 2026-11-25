@@ -1354,6 +1354,38 @@ rxTest({
     expect_equal(.keep$iniDf$condition[.keep$iniDf$name == "eta.occ"], "occ")
   })
 
+  test_that("a piped `| id` line between other eta lines is kept (#1773)", {
+    .f <- function() {
+      ini({
+        t1 <- 1
+        t2 <- 1
+        t3 <- 1
+        add.sd <- 0.1
+        eta.a ~ 0.1
+        eta.b ~ 0.2 | occ
+        eta.c ~ 0.3
+      })
+      model({
+        a <- exp(t1 + eta.a)
+        b <- exp(t2 + eta.b)
+        c <- exp(t3 + eta.c)
+        cp <- a + b + c
+        cp ~ add(add.sd)
+      })
+    }
+    .r <- suppressMessages(
+      rxode2(.f) |>
+        ini({
+      eta.a ~ 0.5
+      eta.b ~ 0.6 | id
+      eta.c ~ 0.7
+    })
+    )
+    .i <- .r$iniDf
+    expect_equal(.i$est[match(c("eta.a", "eta.b", "eta.c"), .i$name)], c(0.5, 0.6, 0.7))
+    expect_equal(unique(.i$condition[!is.na(.i$neta1)]), "id")
+  })
+
   test_that("an eta added by model() becomes IOV through ini() (#1773)", {
     .f <- function() {
       ini({
