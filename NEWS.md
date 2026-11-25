@@ -71,6 +71,16 @@
   `autoSwitch*` rules.  GPU-safe models may now use `delay()`: each subject
   keeps a dense-output history and steps land on the breakpoints of the
   constant pre-history.
+- OpenCL runtime for the device integrators: each round integrates every
+  waiting subject over its own interval, one subject per work-item, and keeps
+  each subject's AutoSwitch state and `delay()` history on the device between
+  rounds.  rxode2 calls OpenCL through the context and kernel of the
+  suggested `OpenCL` package and neither links OpenCL nor needs its headers;
+  the same round also runs as host C on OpenMP threads.  `rxGpuInfo()` lists
+  the OpenCL devices and whether each supports double precision.  `ros54p`
+  uses the model's analytic Jacobian (generated symbolically when the model
+  has no `df()/dy()` lines, as for the other Rosenbrock methods) and skips
+  the time derivative for models that do not read time.
 
 - `rxSymInvCholCreate()` builds block-diagonal omegas with
   `lotri::lotriMat()` instead of `Matrix::bdiag()`, removing the

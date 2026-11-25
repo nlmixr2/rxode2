@@ -64,6 +64,7 @@ setRxThreads(.old) # restore
 Other Solver options and performance:
 \code{\link[=forderForceBase]{forderForceBase()}},
 \code{\link[=odeMethodToInt]{odeMethodToInt()}},
+\code{\link[=rxGpuInfo]{rxGpuInfo()}},
 \code{\link[=rxIndLinState]{rxIndLinState()}},
 \code{\link[=rxIndLinStrategy]{rxIndLinStrategy()}},
 \code{\link[=rxIsAutoSwitch]{rxIsAutoSwitch()}},
