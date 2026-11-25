@@ -63,6 +63,18 @@ rxTest({
     expect_warning(etTrans(.ev, .mNone), "no 'rate\\(\\)' for: 'cen'")
   })
 
+  test_that("phantom doses are checked too", {
+    .ev <- et(amt = 100, cmt = "cen", rate = -1, evid = 7) |> et(.obs)
+    expect_warning(etTrans(.ev, .mNone), "no 'rate\\(\\)' for: 'cen'")
+  })
+
+  test_that("the warning becomes a catchable error with warn=2", {
+    .ev <- et(amt = 100, cmt = "depot") |> et(.obs)
+    withr::with_options(list(warn = 2), {
+      expect_error(etTrans(.ev, .mDur), "modeled 'rate\\(\\)'/'dur\\(\\)'")
+    })
+  })
+
   test_that("a model without rate()/dur() and ordinary data is silent", {
     .ev <- et(amt = 100, cmt = "depot") |>
       et(amt = 100, cmt = "cen", rate = 10, time = 12) |>

@@ -1389,6 +1389,7 @@ static inline void etTransModeledCheckAdd(etTransModeledCheck& chk,
   } else if (rateI == 8) {
     if (!hasDur) chk.durMissing[cmt]++;
   } else if (rateI == 0 && (hasRate || hasDur) && cmt != splitSrc) {
+    // a split directive's source routes its own copies, so it is not checked
     chk.notRequested[cmt]++;
   }
 }
@@ -1412,6 +1413,13 @@ static inline std::string etTransModeledCheckList(const std::map<int, int>& m,
   return ret;
 }
 
+// R's warning() rather than Rf_warningcall(): with options(warn=2) the error
+// then unwinds as a C++ exception, so etTrans()'s allocations are freed
+static inline void etTransModeledCheckWarn1(const std::string& w) {
+  Function warningR = Environment::base_namespace()["warning"];
+  warningR(w, Named("call.") = false);
+}
+
 static inline void etTransModeledCheckWarn(const etTransModeledCheck& chk,
                                            const IntegerVector& stateProp) {
   const char *off = _("use 'checkModeledRateDur=FALSE' to silence this");
@@ -1419,17 +1427,17 @@ static inline void etTransModeledCheckWarn(const etTransModeledCheck& chk,
     std::string w = std::string(_("bolus doses into compartments with a modeled 'rate()'/'dur()' ignore the model value: ")) +
       etTransModeledCheckList(chk.notRequested, stateProp, true) + "; " +
       _("give them 'rate=-1' for the modeled rate or 'rate=-2' for the modeled duration, or ") + off;
-    Rf_warningcall(R_NilValue, "%s", w.c_str());
+    etTransModeledCheckWarn1(w);
   }
   if (!chk.rateMissing.empty()) {
     std::string w = std::string(_("doses request a modeled rate ('rate=-1') but the model has no 'rate()' for: ")) +
       etTransModeledCheckList(chk.rateMissing, stateProp, false) + "; " + off;
-    Rf_warningcall(R_NilValue, "%s", w.c_str());
+    etTransModeledCheckWarn1(w);
   }
   if (!chk.durMissing.empty()) {
     std::string w = std::string(_("doses request a modeled duration ('rate=-2') but the model has no 'dur()' for: ")) +
       etTransModeledCheckList(chk.durMissing, stateProp, false) + "; " + off;
-    Rf_warningcall(R_NilValue, "%s", w.c_str());
+    etTransModeledCheckWarn1(w);
   }
 }
 
@@ -2765,7 +2773,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       cevid = 2;
     }
     if (checkModeledRateDur && flg != 30 && flg != 40 &&
-        (evidCol == -1 ? cevid > 99 : (cevid == 1 || cevid == 4))) {
+        (evidCol == -1 ? cevid > 99 : (cevid == 1 || cevid == 4 || cevid == 7))) {
       etTransModeledCheckAdd(modeledChk, statePropSplit, cmt, rateI,
                              knotSplit.size() >= 2 ? knotSplit[0] : 0);
     }
