@@ -483,29 +483,30 @@ extern int ssNotConv_global;
 // ss=2 superposition: add the state before the dose to the added regimen's
 // steady state.  The advance starts from that state, so a state the model
 // holds with rxSsAdvance (left unchanged, and moving only when rxSsAdvance is
-// 0) has nothing to add.
+// 0) has nothing to add.  Returns the amount to add to each state.
 extern t_dydt dydt;
-static inline void ssAddSaved(double *yp, const double *solveSave, int *neq,
-                              double t, rx_solving_options_ind *ind) {
+static inline std::vector<double> ssSavedToAdd(const double *yp, const double *solveSave,
+                                               int *neq, double t,
+                                               rx_solving_options_ind *ind) {
+  std::vector<double> add(solveSave, solveSave + neq[0]);
   std::vector<double> on, off;
   for (int j = neq[0]; j--;) {
-    if (yp[j] == solveSave[j]) {
-      if (on.empty()) {
-        std::vector<double> y(solveSave, solveSave + neq[0]);
-        int ssAdvance = ind->ssAdvance;
-        on.assign(neq[0], 0.0);
-        off.assign(neq[0], 0.0);
-        ind->ssAdvance = 1;
-        dydt(neq, t, y.data(), on.data());
-        std::copy(solveSave, solveSave + neq[0], y.begin());
-        ind->ssAdvance = 0;
-        dydt(neq, t, y.data(), off.data());
-        ind->ssAdvance = ssAdvance;
-      }
-      if (on[j] == 0.0 && off[j] != 0.0) continue;
+    if (yp[j] != solveSave[j]) continue;
+    if (on.empty()) {
+      std::vector<double> y(solveSave, solveSave + neq[0]);
+      int ssAdvance = ind->ssAdvance;
+      on.assign(neq[0], 0.0);
+      off.assign(neq[0], 0.0);
+      ind->ssAdvance = 1;
+      dydt(neq, t, y.data(), on.data());
+      std::copy(solveSave, solveSave + neq[0], y.begin());
+      ind->ssAdvance = 0;
+      dydt(neq, t, y.data(), off.data());
+      ind->ssAdvance = ssAdvance;
     }
-    yp[j] += solveSave[j];
+    if (on[j] == 0.0 && off[j] != 0.0) add[j] = 0.0;
   }
+  return add;
 }
 
 // flag an iterated steady state that used maxSS doses without converging;
@@ -4689,7 +4690,8 @@ void handleSS(int *neq,
           if (isModeled) _adjSSinfModeled = -1;   // modeled full-interval ss2: not yet supported
         }
         // Add at the end
-        ssAddSaved(yp, ind->solveSave, neq, xout, ind);
+        std::vector<double> ssAdd = ssSavedToAdd(yp, ind->solveSave, neq, xout, ind);
+        for (j = neq[0];j--;) yp[j]+=ssAdd[j];
       }
       // Adjoint handoff: continuous / full-interval infusion reaches a CONSTANT
       // steady state (f(Y_ss)+R.e = 0), so dY_ss/dp = -J^{-1} df/dp (a linear
@@ -5130,7 +5132,8 @@ void handleSS(int *neq,
       // saved pre-ss2 state) for the adjoint superposition term.
       if (op->adjoint) { _adjSS2 = 1; _adjSS2peak.assign(yp, yp + neq[0]); }
       // Add at the end
-      ssAddSaved(yp, ind->solveSave, neq, xout, ind);
+      std::vector<double> ssAdd = ssSavedToAdd(yp, ind->solveSave, neq, xout, ind);
+      for (j = neq[0];j--;) yp[j]+=ssAdd[j];
     }
     if (!doSSinf && !isSsLag && !skipDosingEvent){
       // REprintf("handleEvid %d %d %d\n", doSSinf, isSsLag, skipDosingEvent);
