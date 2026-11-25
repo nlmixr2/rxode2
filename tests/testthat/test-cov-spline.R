@@ -243,4 +243,17 @@ rxTest({
     })
     expect_equal(.ui$interpLines, list(quote(spline(cv))))
   })
+  test_that("a user function named spline or pchip still works", {
+    spline <- function(x) 2 * x
+    pchip <- function(x) 3 * x
+    suppressMessages(rxFun(spline))
+    suppressMessages(rxFun(pchip))
+    on.exit({
+      rxRmFun("spline")
+      rxRmFun("pchip")
+    })
+    .m <- rxode2("y = spline(x) + pchip(x)")
+    expect_equal(rxNorm(.m), "y=spline(x)+pchip(x);\n")
+    expect_equal(rxSolve(.m, et(0), params = c(x = 3))$y, 15)
+  })
 })

@@ -291,7 +291,7 @@ ifelse : 'ifelse' '(' logical_or_expression ',' logical_or_expression ',' logica
 
 function : function_name '(' (logical_or_expression)? (',' logical_or_expression)* ')' ;
 
-function_name: identifier | 'lag';
+function_name: identifier | 'lag' | 'spline' | 'pchip';
 
 ini_const : '-'? constant;
 trans_const: identifier_r | '-'? constant;
