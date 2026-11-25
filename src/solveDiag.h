@@ -17,8 +17,8 @@ extern "C" {
    Dydt: record a right-hand-side evaluation that returned a non-finite
    derivative: the time, the `n` states `y` and derivatives `f`.  Only the
    first one since the subject's solve started is kept.
-   Capture: record the subject's last accepted state `yAcc` (at `tAcc`) and,
-   when known, the state after the failed step `yFail` (NULL otherwise).
+   Capture: record, when known (NULL otherwise), the subject's last accepted
+   state `yAcc` (at `tAcc`) and the state after the failed step `yFail`.
    `named` is 0 when the state layout is not the model's (an nlmixr2est
    neqOverride), so states are labeled by position.  Only the first capture is
    kept.

@@ -1262,10 +1262,11 @@ static inline bool trimStatesFinite(double *yp, rx_solving_options_ind *ind,
   return true;
 }
 
-// Record a failing subject's last accepted state (row ind->solvedIdx, at most
-// the failing row `i`) and the state after the failed step, if known, for the
-// diagnostics pushed with its reasons (rxode2#1805).  Only the ODE states are
-// kept; under an nlmixr2est neqOverride they are labeled by position.
+// Record a failing subject's last accepted state (row ind->solvedIdx, when it
+// is before the failing row `i`, which the solver may have integrated in place)
+// and the state after the failed step, if known, for the diagnostics pushed
+// with its reasons (rxode2#1805).  Only the ODE states are kept; under an
+// nlmixr2est neqOverride they are labeled by position.
 static inline void rxSolveDiagCaptureInd(rx_solving_options_ind *ind,
                                          rx_solving_options *op, int i,
                                          const double *yFail) {
@@ -1275,14 +1276,15 @@ static inline void rxSolveDiagCaptureInd(rx_solving_options_ind *ind,
   int n = named ? op->neq - op->numLin - op->numLinSens - op->numLinCarry : eff;
   if (n <= 0) return;
   int k = ind->solvedIdx;
-  if (k > i) k = i;
-  if (k >= ind->n_all_times) k = ind->n_all_times - 1;
-  if (k < 0) k = 0;
+  const double *yAcc = NULL;
   double tAcc = NA_REAL;
-  if (ind->timeThread != NULL && ind->ix != NULL) {
-    tAcc = ind->timeThread[ind->ix[k]];
+  if (k >= 0 && k < i && k < ind->n_all_times) {
+    yAcc = ind->solve + eff * k;
+    if (ind->timeThread != NULL && ind->ix != NULL) {
+      tAcc = ind->timeThread[ind->ix[k]];
+    }
   }
-  rxSolveDiagCapture(ind->id, n, named, tAcc, ind->solve + eff * k, yFail);
+  rxSolveDiagCapture(ind->id, n, named, tAcc, yAcc, yFail);
 }
 
 // The bool is unused: a failed subject's reasons are pushed after the solve,
