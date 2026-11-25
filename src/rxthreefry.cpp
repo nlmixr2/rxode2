@@ -2050,10 +2050,28 @@ static inline double simOneCond(const double *z, const double *cur, int k,
   double sd = sigma(k, k) - arma::as_scalar(co * w);
   sd = sd > 0.0 ? sqrt(sd) : 0.0;
   if (sd == 0.0) return mu;
-  double pa = R_FINITE(lower[k]) ? Rf_pnorm5(lower[k], mu, sd, 1, 0) : 0.0;
-  double pb = R_FINITE(upper[k]) ? Rf_pnorm5(upper[k], mu, sd, 1, 0) : 1.0;
-  if (!(pb > pa)) return z[k];
-  return Rf_qnorm5(pa + (pb - pa) * simUnif(), mu, sd, 1, 0);
+  // standardized bounds; an interval in the upper tail is mirrored into the
+  // lower one, where the normal CDF does not round to 1
+  double a = R_FINITE(lower[k]) ? (lower[k] - mu) / sd : R_NegInf;
+  double b = R_FINITE(upper[k]) ? (upper[k] - mu) / sd : R_PosInf;
+  bool flip = a > 0.0;
+  if (flip) {
+    double t = a;
+    a = -b;
+    b = -t;
+  }
+  double pa = Rf_pnorm5(a, 0.0, 1.0, 1, 0);
+  double pb = Rf_pnorm5(b, 0.0, 1.0, 1, 0);
+  double x;
+  if (pb > pa) {
+    x = Rf_qnorm5(pa + (pb - pa) * simUnif(), 0.0, 1.0, 1, 0);
+  } else {
+    // the interval is too far in the tail to resolve: take its near end
+    x = R_FINITE(b) ? b : a;
+  }
+  if (x < a) x = a;
+  if (x > b) x = b;
+  return mu + sd * (flip ? -x : x);
 }
 
 // Where simeta(n)/simeps(n) index n lands once omega/sigma items are dropped

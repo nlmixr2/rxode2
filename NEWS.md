@@ -5,8 +5,8 @@
 - `simeta(n)` and `simeps(n)` re-simulate only the `n`-th ETA/EPS inside a
   model, keeping the others; a correlated element is drawn conditional on
   the others.  The index counts the omega/sigma as given, before items with
-  zero variance or supplied in `params` are dropped.  An index past it is an
-  error (#1793).
+  zero variance or supplied in `params` are dropped; an index past the given
+  omega/sigma is an error (#1793).
 - The `linCmt()` sensitivity carry that nlmixr2est uses for a
   time-varying covariate is now kept in each model's solve buffer
   (`ind->solve`), like the sensitivities: the model has one carry state per
