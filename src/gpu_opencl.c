@@ -193,6 +193,71 @@ static cl_int rxGpuClRead(rxGpuCl *g, int b, void *x, size_t n) {
   return e;
 }
 
+// does the kernel take the arguments rxGpuClRound() sets?
+static int rxGpuClKernelOk(void *kernel) {
+  cl_uint nargs = 0;
+  return rxcl.kernelInfo(kernel, RXCL_KERNEL_NUM_ARGS, sizeof(nargs), &nargs,
+                         NULL) == RXCL_SUCCESS && nargs == RXG_B_N + 1;
+}
+
+// create g's device buffers of widths w for nsub requests; *most gets the
+// largest request buffer (in elements).  Returns 0, or 4 on failure.
+static int rxGpuClBuffers(rxGpuCl *g, const size_t *w, size_t nsub, size_t *most) {
+  *most = 0;
+  for (int b = 0; b < RXG_B_N; b++) {
+    size_t n = (b == RXG_B_OD || b == RXG_B_OI) ? w[b] : w[b]*nsub;
+    if (n == 0) n = 1;
+    if (n > *most && b < RXG_B_AD) *most = n;
+    cl_int e = 0;
+    g->buf[b] = rxcl.createBuffer(g->ctx, RXCL_MEM_READ_WRITE,
+                                  n*rxGpuClElt(g, b), NULL, &e);
+    if (e != RXCL_SUCCESS || g->buf[b] == NULL) {
+      g->buf[b] = NULL;
+      return 4;
+    }
+  }
+  return 0;
+}
+
+// the subject states start zeroed: ai[RXG_AI_SEEN] = 0 starts a subject
+// fresh on its first round.  Returns 0, 3 (no memory) or 6 (a failed write).
+static int rxGpuClZero(rxGpuCl *g, const size_t *w, size_t nsub) {
+  size_t nz = w[RXG_B_AI]*nsub;
+  if (w[RXG_B_AD]*nsub > nz) nz = w[RXG_B_AD]*nsub;
+  if (w[RXG_B_HS]*nsub > nz) nz = w[RXG_B_HS]*nsub;
+  void *zero = calloc(nz > 0 ? nz : 1, sizeof(double));
+  if (zero == NULL) return 3;
+  int zb[3] = {RXG_B_AD, RXG_B_AI, RXG_B_HS};
+  int ret = 0;
+  for (int i = 0; i < 3 && ret == 0; i++) {
+    int b = zb[i];
+    if (rxcl.write(g->queue, g->buf[b], 1, 0,
+                   w[b]*nsub*rxGpuClElt(g, b), zero, 0, NULL, NULL) != RXCL_SUCCESS) {
+      ret = 6;
+    }
+  }
+  free(zero);
+  return ret;
+}
+
+// buffers, staging and the one-time writes of a new g; returns 0 or the
+// rxGpuClNew() error code
+static int rxGpuClFill(rxGpuCl *g, const double *od, const int *oi) {
+  size_t w[RXG_B_N], most = 0, nsub = (size_t)g->dims[RXG_D_NSUB];
+  rxGpuClWidths(g, w);
+  int e = rxGpuClBuffers(g, w, nsub, &most);
+  if (e != 0) return e;
+  // float staging covers the largest request or option buffer
+  if (most < w[RXG_B_OD]) most = w[RXG_B_OD];
+  g->stage = malloc(most*sizeof(double));
+  if (g->stage == NULL) return 3;
+  if (rxGpuClWrite(g, RXG_B_OD, od, w[RXG_B_OD]) != RXCL_SUCCESS ||
+      rxGpuClWrite(g, RXG_B_OI, oi, w[RXG_B_OI]) != RXCL_SUCCESS) {
+    return 5;
+  }
+  return rxGpuClZero(g, w, nsub);
+}
+
 // Buffers for up to dims[RXG_D_NSUB] requests on a built rxg_kernel; od/oi
 // are written once.  NULL with *err set on failure.
 rxGpuCl *rxGpuClNew(void *ctx, void *queue, void *kernel, const int *dims,
@@ -202,9 +267,7 @@ rxGpuCl *rxGpuClNew(void *ctx, void *queue, void *kernel, const int *dims,
     *err = 1;
     return NULL;
   }
-  cl_uint nargs = 0;
-  if (rxcl.kernelInfo(kernel, RXCL_KERNEL_NUM_ARGS, sizeof(nargs), &nargs,
-                      NULL) != RXCL_SUCCESS || nargs != RXG_B_N + 1) {
+  if (!rxGpuClKernelOk(kernel)) {
     *err = 2;
     return NULL;
   }
@@ -218,59 +281,11 @@ rxGpuCl *rxGpuClNew(void *ctx, void *queue, void *kernel, const int *dims,
   g->kernel = kernel;
   g->single = single;
   memcpy(g->dims, dims, sizeof(int)*RXG_D_N);
-  size_t w[RXG_B_N], most = 0, nsub = (size_t)dims[RXG_D_NSUB];
-  rxGpuClWidths(g, w);
-  for (int b = 0; b < RXG_B_N; b++) {
-    size_t n = (b == RXG_B_OD || b == RXG_B_OI) ? w[b] : w[b]*nsub;
-    if (n == 0) n = 1;
-    if (n > most && b < RXG_B_AD) most = n;
-    cl_int e = 0;
-    g->buf[b] = rxcl.createBuffer(g->ctx, RXCL_MEM_READ_WRITE,
-                                  n*rxGpuClElt(g, b), NULL, &e);
-    if (e != RXCL_SUCCESS || g->buf[b] == NULL) {
-      g->buf[b] = NULL;
-      rxGpuClFree(g);
-      *err = 4;
-      return NULL;
-    }
-  }
-  // float staging covers the largest request or option buffer
-  if (most < w[RXG_B_OD]) most = w[RXG_B_OD];
-  g->stage = malloc(most*sizeof(double));
-  if (g->stage == NULL) {
+  *err = rxGpuClFill(g, od, oi);
+  if (*err != 0) {
     rxGpuClFree(g);
-    *err = 3;
     return NULL;
   }
-  if (rxGpuClWrite(g, RXG_B_OD, od, w[RXG_B_OD]) != RXCL_SUCCESS ||
-      rxGpuClWrite(g, RXG_B_OI, oi, w[RXG_B_OI]) != RXCL_SUCCESS) {
-    rxGpuClFree(g);
-    *err = 5;
-    return NULL;
-  }
-  // the subject states start zeroed: ai[RXG_AI_SEEN] = 0 starts a subject
-  // fresh on its first round
-  size_t nz = w[RXG_B_AI]*nsub;
-  if (w[RXG_B_AD]*nsub > nz) nz = w[RXG_B_AD]*nsub;
-  if (w[RXG_B_HS]*nsub > nz) nz = w[RXG_B_HS]*nsub;
-  void *zero = calloc(nz > 0 ? nz : 1, sizeof(double));
-  if (zero == NULL) {
-    rxGpuClFree(g);
-    *err = 3;
-    return NULL;
-  }
-  int zb[3] = {RXG_B_AD, RXG_B_AI, RXG_B_HS};
-  for (int i = 0; i < 3; i++) {
-    int b = zb[i];
-    if (rxcl.write(g->queue, g->buf[b], 1, 0,
-                   w[b]*nsub*rxGpuClElt(g, b), zero, 0, NULL, NULL) != RXCL_SUCCESS) {
-      free(zero);
-      rxGpuClFree(g);
-      *err = 6;
-      return NULL;
-    }
-  }
-  free(zero);
   return g;
 }
 
@@ -374,37 +389,50 @@ SEXP _rxode2_rxGpuClNew(SEXP ctx, SEXP queue, SEXP kernel, SEXP dims,
   return ret;
 }
 
+// is x shorter than nn requests of w values?
+static int rxGpuClShort(SEXP x, int nn, int w) {
+  return Rf_xlength(x) < (R_xlen_t)nn*w;
+}
+
+// do the round's arrays hold nn requests of the run's layout?
+static int rxGpuClSizesOk(const int *d, int nn, SEXP y, SEXP rd, SEXP ri,
+                          SEXP p0, SEXP p1, SEXP pl, SEXP ir, SEXP on) {
+  if (nn < 0 || nn > d[RXG_D_NSUB]) return 0;
+  return !(rxGpuClShort(y, nn, d[RXG_D_NEQ1]) ||
+           rxGpuClShort(rd, nn, d[RXG_D_RD]) ||
+           rxGpuClShort(ri, nn, d[RXG_D_RI]) ||
+           rxGpuClShort(p0, nn, d[RXG_D_NPAR1]) ||
+           rxGpuClShort(p1, nn, d[RXG_D_NPAR1]) ||
+           rxGpuClShort(pl, nn, d[RXG_D_NLHS1]) ||
+           rxGpuClShort(ir, nn, d[RXG_D_NEQ1]) ||
+           rxGpuClShort(on, nn, d[RXG_D_NEQ1]));
+}
+
+// every request names a distinct subject of the run
+static void rxGpuClCheckSubjects(const int *d, int nn, SEXP ri) {
+  int ns = d[RXG_D_NSUB];
+  char *seen = (char *)R_alloc((size_t)(ns > 0 ? ns : 1), sizeof(char));
+  memset(seen, 0, (size_t)(ns > 0 ? ns : 1));
+  const int *r = INTEGER(ri);
+  for (int i = 0; i < nn; i++) {
+    int sb = r[(R_xlen_t)i*d[RXG_D_RI]];
+    if (sb < 0 || sb >= ns || seen[sb]) {
+      (Rf_error)("request %d names an invalid or repeated subject", i + 1);
+    }
+    seen[sb] = 1;
+  }
+}
+
 SEXP _rxode2_rxGpuClRound(SEXP run, SEXP n, SEXP y, SEXP rd, SEXP ri,
                           SEXP p0, SEXP p1, SEXP pl, SEXP ir, SEXP on) {
   rxProtectGuard;
   rxGpuCl *g = rxGpuClGet(run);
   int nn = Rf_asInteger(n);
   const int *d = g->dims;
-  if (nn < 0 || nn > d[RXG_D_NSUB] ||
-      Rf_xlength(y) < (R_xlen_t)nn*d[RXG_D_NEQ1] ||
-      Rf_xlength(rd) < (R_xlen_t)nn*d[RXG_D_RD] ||
-      Rf_xlength(ri) < (R_xlen_t)nn*d[RXG_D_RI] ||
-      Rf_xlength(p0) < (R_xlen_t)nn*d[RXG_D_NPAR1] ||
-      Rf_xlength(p1) < (R_xlen_t)nn*d[RXG_D_NPAR1] ||
-      Rf_xlength(pl) < (R_xlen_t)nn*d[RXG_D_NLHS1] ||
-      Rf_xlength(ir) < (R_xlen_t)nn*d[RXG_D_NEQ1] ||
-      Rf_xlength(on) < (R_xlen_t)nn*d[RXG_D_NEQ1]) {
+  if (!rxGpuClSizesOk(d, nn, y, rd, ri, p0, p1, pl, ir, on)) {
     (Rf_error)("the round's requests do not match the run");
   }
-  // every request names a distinct subject of the run
-  {
-    int ns = d[RXG_D_NSUB];
-    char *seen = (char *)R_alloc((size_t)(ns > 0 ? ns : 1), sizeof(char));
-    memset(seen, 0, (size_t)(ns > 0 ? ns : 1));
-    const int *r = INTEGER(ri);
-    for (int i = 0; i < nn; i++) {
-      int sb = r[(R_xlen_t)i*d[RXG_D_RI]];
-      if (sb < 0 || sb >= ns || seen[sb]) {
-        (Rf_error)("request %d names an invalid or repeated subject", i + 1);
-      }
-      seen[sb] = 1;
-    }
-  }
+  rxGpuClCheckSubjects(d, nn, ri);
   SEXP yo = rxP(Rf_duplicate(y));
   SEXP rdo = rxP(Rf_duplicate(rd));
   SEXP rio = rxP(Rf_duplicate(ri));
