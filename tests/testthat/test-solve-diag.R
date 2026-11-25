@@ -33,6 +33,14 @@ rxTest({
     }
   })
 
+  test_that("the bridges and dop853 name the state with a non-finite derivative", {
+    .line <- "[solve error: last derivative evaluation (t = 0) was non-finite for: x (state values: x = -1)]: 1 warning(s) for subject(s): 1"
+    for (.meth in c("f45", "dop54", "euler", "rk43", "dop853")) {
+      .r <- .diagSolve(.nanModel, .grid, params = c(x0 = -1), method = .meth)
+      expect_true(.line %in% .r$o, label = .meth)
+    }
+  })
+
   test_that("states spanning many orders of magnitude give the atol hint", {
     .m <- function() {
       model({

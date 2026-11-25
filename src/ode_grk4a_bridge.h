@@ -35,6 +35,7 @@ protected:
         dydt_(full_neq_, t_cur_, solin, fout);
         for (unsigned long i = 0; i < neq_; i++) {
             if (!std::isfinite(fout[i])) {
+                rxSolveDiagDydt(ind_->id, (int)neq_, t_cur_, solin, fout);
                 rxSolverFail(ind_);
                 for (unsigned long j = 0; j < neq_; j++) fout[j] = 0.0;
                 return;
