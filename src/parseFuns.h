@@ -533,7 +533,7 @@ static inline int handleFunctionTte(transFunctions *tf) {
 #include "parseFunsNa.h"
 #include "parseFunsLinCmt.h"
 
-static inline int handleFunctionsExceptLinCmt(transFunctions *tf) {
+static inline int handleFunctionsDoseTime(transFunctions *tf) {
   return handleFunctionDosenum(tf) ||
     handleFunctionDelay(tf) ||
     handleFunctionTad(tf) ||
@@ -543,17 +543,29 @@ static inline int handleFunctionsExceptLinCmt(transFunctions *tf) {
     handleFunctionLogit(tf) ||
     handleFunctionDiff(tf) ||
     handleFunctionPnorm(tf) ||
-    handleFunctionTransit(tf) ||
-    handleFunctionRxnorm(tf) ||
+    handleFunctionTransit(tf);
+}
+
+static inline int handleFunctionsRandom(transFunctions *tf) {
+  return handleFunctionRxnorm(tf) ||
     handleFunctionRchisq(tf) ||
     handleFunctionRgeom(tf) ||
     handleFunctionRbinom(tf) ||
     handleFunctionRnbinom(tf) ||
-    handleFunctionRnbinomMu(tf) ||
-    handleFunctionIsNan(tf) ||
+    handleFunctionRnbinomMu(tf);
+}
+
+static inline int handleFunctionsNa(transFunctions *tf) {
+  return handleFunctionIsNan(tf) ||
     handleFunctionIsNa(tf) ||
     handleFunctionIsFinite(tf) ||
     handleFunctionIsInfinite(tf);
+}
+
+static inline int handleFunctionsExceptLinCmt(transFunctions *tf) {
+  return handleFunctionsDoseTime(tf) ||
+    handleFunctionsRandom(tf) ||
+    handleFunctionsNa(tf);
 }
 
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )

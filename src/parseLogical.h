@@ -17,17 +17,15 @@ static inline int isDefiningParameterRecursively(const char *value) {
     !strcmp(value, tb.ss.line[tb.ix]);
 }
 
-static inline int isOperatorOrPrintingIdentifier(nodeInfo ni, const char *name){
-  return nodeHas(identifier) ||
-    nodeHas(identifier_r) ||
-    nodeHas(constant) ||
-    nodeHas(theta0) ||
-    !strcmp("+", name) ||
+static inline int isArithmeticOp(const char *name) {
+  return !strcmp("+", name) ||
     !strcmp("-", name) ||
     !strcmp("*", name) ||
-    !strcmp("/", name) ||
+    !strcmp("/", name);
+}
 
-    !strcmp("&&", name) ||
+static inline int isLogicalOp(const char *name) {
+  return !strcmp("&&", name) ||
     !strcmp("||", name) ||
     !strcmp("!=", name) ||
     !strcmp("==", name) ||
@@ -38,27 +36,47 @@ static inline int isOperatorOrPrintingIdentifier(nodeInfo ni, const char *name){
     !strcmp(">", name);
 }
 
-static inline int isSkipChild(nodeInfo ni, const char *name, int i) {
+static inline int isOperatorOrPrintingIdentifier(nodeInfo ni, const char *name){
+  return nodeHas(identifier) ||
+    nodeHas(identifier_r) ||
+    nodeHas(constant) ||
+    nodeHas(theta0) ||
+    isArithmeticOp(name) ||
+    isLogicalOp(name);
+}
+
+// d/dt(), f(), alag(), rate(), dur() and indLin(): skip the name and brackets
+static inline int isSkipChildDer(nodeInfo ni, const char *name, int i) {
   return ((i == 3 || i == 4 || i < 2) &&
           (nodeHas(derivative) ||nodeHas(fbio) || nodeHas(alag) ||
            nodeHas(rate) || nodeHas(dur) || nodeHas(indLin_prop))) ||
-    // past(state, tau) <- expr : visit child 2 (state) and child 7 (expr);
-    // skip 'past' '(' , tau ) and the assignment operator
-    (nodeHas(past) && (i < 2 || i == 3 || i == 4 || i == 5 || i == 6)) ||
-    ((i == 3 || i < 2) && nodeHas(der_rhs)) ||
-    (nodeHas(dfdy)     && i< 2)  ||
-    (nodeHas(dfdy_rhs) && i< 2) ||
-    (nodeHas(dfdy)     && i == 3) ||
-    (nodeHas(dfdy_rhs) && i == 3) ||
-    (nodeHas(dfdy)     && i == 5) ||
-    (nodeHas(dfdy_rhs) && i == 5) ||
-    (nodeHas(dfdy)     && i == 6) ||
-    (nodeHas(ini0)     && i == 1) ||
+    ((i == 3 || i < 2) && nodeHas(der_rhs));
+}
+
+// past(state, tau) <- expr : visit child 2 (state) and child 7 (expr);
+// skip 'past' '(' , tau ) and the assignment operator
+static inline int isSkipChildPast(nodeInfo ni, const char *name, int i) {
+  return nodeHas(past) && (i < 2 || i == 3 || i == 4 || i == 5 || i == 6);
+}
+
+static inline int isSkipChildDfdy(nodeInfo ni, const char *name, int i) {
+  return (nodeHas(dfdy) && (i < 2 || i == 3 || i == 5 || i == 6)) ||
+    (nodeHas(dfdy_rhs) && (i < 2 || i == 3 || i == 5));
+}
+
+static inline int isSkipChildStatement(nodeInfo ni, const char *name, int i) {
+  return (nodeHas(ini0) && i == 1) ||
     (nodeHas(dvid_statementI) && i != 0) ||
     ((nodeHas(theta) || nodeHas(eta)) && i != 2) ||
-    (nodeHas(mtime) && (i == 0 || i == 1 || i == 3)) ||
-    (nodeHas(cmt_statement) && (i == 0 || i == 1 || i == 3)) ||
+    ((i == 0 || i == 1 || i == 3) && (nodeHas(mtime) || nodeHas(cmt_statement))) ||
     (i != 2 && (nodeHas(mat0) || nodeHas(matF)));
+}
+
+static inline int isSkipChild(nodeInfo ni, const char *name, int i) {
+  return isSkipChildDer(ni, name, i) ||
+    isSkipChildPast(ni, name, i) ||
+    isSkipChildDfdy(ni, name, i) ||
+    isSkipChildStatement(ni, name, i);
 }
 
 static inline int handleIfElse(nodeInfo ni, char *name, int i) {
