@@ -22,7 +22,11 @@ rxTest({
       } else {
         ## a model the reference cannot optimize must still fail, and with the
         ## same message -- an approximation here would be worse than an error
-        expect_error(suppressMessages(.rxOptExprOnce(.p$input, "model", chunkLines = 0L)), fixed = TRUE, regexp = .p$error)
+        expect_error(
+          suppressMessages(.rxOptExprOnce(.p$input, "model", chunkLines = 0L)),
+          fixed = TRUE,
+          regexp = .p$error
+        )
       }
     }
   })

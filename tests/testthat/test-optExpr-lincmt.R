@@ -9,8 +9,18 @@ rxTest({
   test_that("rxOptExpr() shares a pure linCmtB() read written several times", {
     txt <- paste0(
       "cl <- exp(tcl + eta.cl)\nv <- exp(tv)\n",
-      "a = ", .L(-1, -1), " * 2\nb = ", .L(-1, -1), " + 3\n",
-      "c = log(", .L(-1, -1), ")\nd = ", .L(-2, 0), " + ", .L(-2, 0), "\n"
+      "a = ",
+      .L(-1, -1),
+      " * 2\nb = ",
+      .L(-1, -1),
+      " + 3\n",
+      "c = log(",
+      .L(-1, -1),
+      ")\nd = ",
+      .L(-2, 0),
+      " + ",
+      .L(-2, 0),
+      "\n"
     )
     o <- suppressMessages(rxOptExpr(txt, "x"))
     expect_equal(.n(o), 2L)
@@ -26,9 +36,15 @@ rxTest({
 
   test_that("a read with a linCmtB() sentinel between two copies is not merged", {
     txt <- paste0(
-      "a = ", .L(-33, 0), " * 2\n",
-      "z ~ ", .L(-32, 0), "\n",
-      "b = ", .L(-33, 0), " + 3\n"
+      "a = ",
+      .L(-33, 0),
+      " * 2\n",
+      "z ~ ",
+      .L(-32, 0),
+      "\n",
+      "b = ",
+      .L(-33, 0),
+      " + 3\n"
     )
     o <- suppressMessages(rxOptExpr(txt, "x"))
     expect_equal(.n(o), 3L)
@@ -40,7 +56,13 @@ rxTest({
   test_that("rxOptExpr() passes until nested repeats are shared too", {
     L <- .L(-1, -1, "exp(ETA[1]+THETA[2]),exp(THETA[3])")
     txt <- paste0(
-      "a = ", L, " * 2\nb = ", L, " + 3\nc = log(", L, ")\n",
+      "a = ",
+      L,
+      " * 2\nb = ",
+      L,
+      " + 3\nc = log(",
+      L,
+      ")\n",
       "d = exp(ETA[1]+THETA[2])*(1+exp(ETA[1]+THETA[2]))^2\n",
       "e = (1+exp(ETA[1]+THETA[2]))^2 + 4\n"
     )

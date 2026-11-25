@@ -852,8 +852,7 @@
 #' @return Nothing, called for the warning
 #' @noRd
 .rxOptWarnRepeat <- function(txt) {
-  if (identical(.rxOptEnv$.depth, 1L) && !isTRUE(.rxOptEnv$.iterating) &&
-        .rxOptHasTemps(txt)) {
+  if (identical(.rxOptEnv$.depth, 1L) && !isTRUE(.rxOptEnv$.iterating) && .rxOptHasTemps(txt)) {
     warning(
       "'rxOptExpr()' input already has common subexpression temporaries ",
       "(rx_expr_*); the model was optimized more than once, so new ",
@@ -1159,11 +1158,12 @@
 # are never merged, and a temporary is defined at its first use, after the
 # sentinels before it.  .rxOptLinCmtRestore() names them back.
 .rxOptLinCmtPureRead <- function(w1, w2) {
-  !is.na(w1) & !is.na(w2) &
+  !is.na(w1) &
+    !is.na(w2) &
     ((w1 == -1 & w2 == -1) |
-       (w1 >= 0 & (w2 >= 0 | w2 == -2)) |
-       (w1 == -2 & w2 >= 0) |
-       w1 %in% c(-20, -21, -33, -34, -35, -36))
+      (w1 >= 0 & (w2 >= 0 | w2 == -2)) |
+      (w1 == -2 & w2 >= 0) |
+      w1 %in% c(-20, -21, -33, -34, -35, -36))
 }
 
 #' Mark the pure linCmtB() reads of a normalized model shareable
@@ -1288,12 +1288,15 @@ rxOptExpr <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
   .rxOptEnv$.iterating <- TRUE
   on.exit(.rxOptEnv$.iterating <- FALSE, add = TRUE)
   for (.i in seq_len(.rxOptMaxPasses - 1L)) {
-    if (!is.character(.cur) || length(.cur) != 1L) break
-    .nxt <- suppressMessages(.rxOptExprOnce(.cur, msg = msg, chunkLines = chunkLines,
-                                            parallel = parallel))
+    if (!is.character(.cur) || length(.cur) != 1L) {
+      break
+    }
+    .nxt <- suppressMessages(.rxOptExprOnce(.cur, msg = msg, chunkLines = chunkLines, parallel = parallel))
     # keep a pass only when it shared something more; otherwise the text of
     # the last productive pass stands as written
-    if (!is.character(.nxt) || .rxOptNTemps(.nxt) <= .rxOptNTemps(.cur)) break
+    if (!is.character(.nxt) || .rxOptNTemps(.nxt) <= .rxOptNTemps(.cur)) {
+      break
+    }
     .cur <- .nxt
   }
   .cur
