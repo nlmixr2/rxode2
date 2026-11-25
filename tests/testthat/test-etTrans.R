@@ -3587,6 +3587,11 @@ rxTest({
       expect_error(etTrans(.ev(ss = .ss), .mod), NA)
     }
     expect_error(etTrans(.ev(addl = NA_integer_), .mod), NA)
+    # a fraction in (-1, 0) is not truncated to 0 before the check
+    expect_error(etTrans(.ev(addl = -0.5), .mod), "'addl' cannot be negative")
+    expect_error(etTrans(.ev(ss = -0.5), .mod), "'ss' cannot be negative")
+    expect_error(et(amt = 100, ii = 12, addl = -0.5), "'addl' cannot be negative")
+    expect_error(et(amt = 100, ii = 12, ss = -0.5), "'ss' cannot be negative")
     expect_error(et(amt = 100, ii = 12, addl = -1), "'addl' cannot be negative")
     expect_error(et(amt = 100, ii = 12, ss = -1), "'ss' cannot be negative")
     expect_error(et(amt = 100, ii = 12, addl = 2, ss = 1), NA)

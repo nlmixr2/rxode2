@@ -824,9 +824,11 @@
       .timeVal <- 0
     }
     .iiVal <- .etHandleDoseValue(iiExpr, iiMissing, envRef, envir, "time")
-    .addlVal <- if (!addlMissing) as.integer(eval(addlExpr, envir = envir)) else 0L
-    .ssVal <- if (!ssMissing) as.integer(eval(ssExpr, envir = envir)) else 0L
+    .addlVal <- if (!addlMissing) eval(addlExpr, envir = envir) else 0L
+    .ssVal <- if (!ssMissing) eval(ssExpr, envir = envir) else 0L
     .etAssertAddlSs(.addlVal, .ssVal)
+    .addlVal <- as.integer(.addlVal)
+    .ssVal <- as.integer(.ssVal)
 
     if (!rateMissing) {
       if (rateSym == "model") {
@@ -996,8 +998,9 @@
   if (is.null(amt) && (!rateMissing || !ssMissing)) {
     .timeVal <- if (!is.null(time)) time else 0.0
     .iiVal <- if (!iiMissing) as.numeric(eval(iiExpr, envir = envir)) else 0.0
-    .ssVal <- if (!ssMissing) as.integer(eval(ssExpr, envir = envir)) else 0L
+    .ssVal <- if (!ssMissing) eval(ssExpr, envir = envir) else 0L
     .etAssertAddlSs(0L, .ssVal)
+    .ssVal <- as.integer(.ssVal)
     if (!rateMissing) {
       .rateVal <- switch(rateSym, model = -1.0, dur = -2.0, as.numeric(eval(rateExpr, envir = envir)))
     } else {
