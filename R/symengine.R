@@ -2427,39 +2427,50 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
 # amount's row over p1..p[2*ncmt] and ka, then the depot ka entry) -- or NULL
 # for anything else.  `x` is the call (rxode2 or symengine argument form).
 .rxLinCmtBrawName <- function(x) {
-  .num <- function(i) {
-    .v <- x[[i]]
-    if (is.call(.v)) {
-      # -2 parses as `-`(2)
-      .v <- tryCatch(eval(.v, baseenv()), error = function(e) NA)
-    }
-    if (length(.v) != 1L) {
-      return(NA_real_)
-    }
-    suppressWarnings(as.numeric(.v))
-  }
-  .nc <- .num(5)
-  .oral0 <- .num(6)
-  .w1 <- .num(7)
-  .w2 <- .num(8)
-  if (anyNA(c(.nc, .oral0, .w1, .w2)) || .w2 != -2) {
+  .nc <- .rxLinCmtBargNum(x, 5)
+  .oral0 <- .rxLinCmtBargNum(x, 6)
+  .w1 <- .rxLinCmtBargNum(x, 7)
+  .w2 <- .rxLinCmtBargNum(x, 8)
+  if (anyNA(c(.nc, .oral0, .w1, .w2)) || .w2 != -2 || .w1 < .nc + .oral0) {
     return(NULL)
   }
-  .m <- .nc + .oral0
   .n <- 2 * .nc + .oral0
-  if (.w1 < .m) {
-    return(NULL)
-  }
-  .j <- .w1 - .m
-  .slots <- c(c("p1", "v1", "p2", "p3", "p4", "p5")[seq_len(2 * .nc)], if (.oral0 == 1) "ka")
+  .j <- .w1 - .nc - .oral0
   if (.j < .nc * .n) {
     .row <- .rxLinCmtBrowName(.oral0 + .j %/% .n, .oral0)
-    return(paste0("rx__sens_", .row, "_BY_", .slots[.j %% .n + 1]))
+    return(paste0("rx__sens_", .row, "_BY_", .rxLinCmtBslots(.nc, .oral0)[.j %% .n + 1]))
   }
   if (.oral0 == 1 && .j == .nc * .n) {
     return("rx__sens_depot_BY_ka")
   }
   NULL
+}
+
+# argument `i` of a linCmtB() call as a number (NA when it is not one); -2
+# parses as `-`(2)
+.rxLinCmtBargNum <- function(x, i) {
+  .v <- x[[i]]
+  if (is.call(.v)) {
+    .v <- tryCatch(eval(.v, baseenv()), error = function(e) NA)
+  }
+  if (length(.v) != 1L) {
+    return(NA_real_)
+  }
+  suppressWarnings(as.numeric(.v))
+}
+
+# the sensitivity slots of a linCmt() system: p1..p[2*ncmt], then ka when oral
+.rxLinCmtBslots <- function(nc, oral0) {
+  c(c("p1", "v1", "p2", "p3", "p4", "p5")[seq_len(2 * nc)], if (oral0 == 1) "ka")
+}
+
+# The state name a raw linCmtB() sensitivity read stands for, or NULL when
+# `x` is not one (see .rxLinCmtBrawName())
+.rxLinCmtBrawRead <- function(x) {
+  if (!identical(x[[1]], quote(`linCmtB`)) || length(x) != 16L) {
+    return(NULL)
+  }
+  .rxLinCmtBrawName(x)
 }
 
 # Rewrite the solved linCmt() states in `txt` (`depot`, `central`,
@@ -2468,7 +2479,10 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
 # syntax): amounts are which1 = index, sensitivity columns which1 = their
 # position in the carried layout (amounts, each non-depot amount's row over
 # p1..p[2*ncmt] and ka, then the depot ka entry), which2 = -2.
-.rxLinCmtBstatesToReads <- function(txt, args) {
+.rxLinCmtBstatesToReads <- function(txt, args, fun = "linCmtB") {
+  if (!identical(fun, "linCmtB")) {
+    return(txt)
+  }
   args <- unlist(args)
   .nc <- as.numeric(args[4])
   .oral0 <- as.numeric(args[5])
@@ -2476,7 +2490,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
     return(txt)
   }
   .amt <- c(if (.oral0 == 1) "depot", "central", "peripheral1", "peripheral2")[seq_len(.nc + .oral0)]
-  .slots <- c(c("p1", "v1", "p2", "p3", "p4", "p5")[seq_len(2 * .nc)], if (.oral0 == 1) "ka")
+  .slots <- .rxLinCmtBslots(.nc, .oral0)
   .names <- .amt
   for (.r in .amt[.amt != "depot"]) {
     .names <- c(.names, paste0("rx__sens_", .r, "_BY_", .slots))
@@ -3866,11 +3880,11 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
       } else {
         return(paste0(.fun, "(", .a, ")"))
       }
-    } else if (identical(x[[1]], quote(`linCmtB`)) && length(x) == 16L && !is.null(.rxLinCmtBrawName(x))) {
+    } else if (!is.null(.raw <- .rxLinCmtBrawRead(x))) {
       ## A raw sensitivity-column read (which1 past the amounts, which2 = -2)
       ## is the state rxToSE() mapped `rx__sens_<row>_BY_<slot>` to: hand the
       ## state back, which is what the model reads at run time.
-      return(.rxLinCmtBrawName(x))
+      return(.raw)
     } else if (identical(x[[1]], quote(`delay`))) {
       return(paste0("delay(", .rxFromSE(x[[2]]), ", ", .rxFromSE(x[[3]]), ")"))
     } else if (identical(x[[1]], quote(`rxDelayD`))) {
@@ -4288,9 +4302,7 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
             ## arguments), so the next derivative resolves through `.rxD` to the
             ## second-order reads (rxode2lincmt#17) instead of treating them as
             ## constants.
-            if (identical(.fun0, "linCmtB")) {
-              .txt <- .rxLinCmtBstatesToReads(.txt, .args0)
-            }
+            .txt <- .rxLinCmtBstatesToReads(.txt, .args0, .fun0)
             .se <- try(rxToSE(.txt), silent = TRUE)
             if (inherits(.se, "try-error")) {
               return(NULL)
