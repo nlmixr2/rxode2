@@ -348,6 +348,7 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
         // If base > init (e.g. negative initial offset shifts event earlier), keep init
         // so the event fires at the correct earlier time (old behaviour preserved).
         double _baseMtime[90];
+        rxDrawKeySet(ind, -1, RX_DRAW_MTIME); // replay from the first draw
         if (op->neq > 0) {
           double *_zeroState = new double[op->neq]();  // zero-initialised
           if (ind->fns && ind->fns->mtime) ind->fns->mtime(solveid, _baseMtime, _zeroState);

@@ -68,6 +68,22 @@ rxTest({
     expect_true(length(unique(.tm)) > 1)
   })
 
+  test_that("every evaluation of mtime() sees the same draw", {
+    # the zero-state evaluation of mtime() once drew again, placing the event
+    # at the earlier of two draws (mean 4 instead of 5)
+    f <- function() {
+      model({
+        mtime(tm) <- 2 + 6 * rxunif(0, 1)
+        d/dt(x) <- 0
+      })
+    }
+    set.seed(7)
+    s <- as.data.frame(rxSolve(f, et(c(0, 10), id = 1:400)))
+    .tm <- s$time[!(s$time %in% c(0, 10))]
+    expect_length(.tm, 400L)
+    expect_true(abs(mean(.tm) - 5) < 0.4)
+  })
+
   test_that("solve-pass draws are reproducible and independent of cores", {
     f <- function() {
       model({
