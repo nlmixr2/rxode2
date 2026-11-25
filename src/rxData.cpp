@@ -4749,6 +4749,12 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
             op->cmtCov = ncov;
           }
           _globals.gpar_covInterp[ncov] = interp0[j] - 2;
+          // CMT selects the endpoint of each record, so it is never smoothed
+          if (op->cmtCov == ncov &&
+              (_globals.gpar_covInterp[ncov] >= 4 ||
+               (_globals.gpar_covInterp[ncov] == -1 && op->is_locf >= 4))) {
+            _globals.gpar_covInterp[ncov] = 1;
+          }
           if ((isLinearOrMidpointInterp &&
                _globals.gpar_covInterp[ncov] == -1) ||
               _globals.gpar_covInterp[ncov] == 0 ||
@@ -6819,11 +6825,6 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
   // Re-assign ODE function pointers cleared by rxSolveFreeC inside rxRestoreState_.
   // rxUpdateFuns sets rx->subjects = inds_global (same pointer restored above).
   rxAssignPtr(SEXP(obj));
-  // the spline/pchip covariate knots are not serialized
-  if (!rxSplineCovSetup(getRxSolve_(), getRxSolve_()->nsub)) {
-    rxSolveFree();
-    stop(_("cannot allocate memory for the covariate splines"));
-  }
 
   // Build a minimal rxSolveDat for the finalize path.
   // DO NOT memset -- rxSolve_t contains Rcpp objects (List, RObject, etc.)

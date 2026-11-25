@@ -168,4 +168,22 @@ rxTest({
     .rep <- rxSolveFromRaw_(.m, .b$cState, .b$solveState, .ctl, NULL, NULL, NULL, NULL, NULL)
     expect_equal(.rep$a, .ref$a)
   })
+  test_that("CMT is never smoothed by a global spline/pchip", {
+    .m <- rxode2({
+      d / dt(a) <- 0
+      d / dt(b) <- 0
+      y <- CMT
+    })
+    .ev <- data.frame(
+      id = 1,
+      time = rep(c(1, 2, 3), each = 2),
+      cmt = rep(c("a", "b"), 3),
+      evid = 0,
+      dv = 0
+    )
+    for (.meth in c("spline", "pchip")) {
+      .s <- rxSolve(.m, .ev, covsInterpolation = .meth)
+      expect_equal(.s$y, rep(c(1, 2), 3))
+    }
+  })
 })
