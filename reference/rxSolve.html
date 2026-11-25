@@ -146,25 +146,27 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"liblsoda"</span>, <span class="st">"lsoda"</span>, <span class="st">"dop853"</span>, <span class="st">"indLin"</span>, <span class="st">"f78"</span>, <span class="st">"rk4"</span>, <span class="st">"ck54"</span>, <span class="st">"ab"</span>, <span class="st">"abm"</span>,</span>
 <span>    <span class="st">"dop5"</span>, <span class="st">"bs"</span>, <span class="st">"ros4"</span>, <span class="st">"iem"</span>, <span class="st">"sem"</span>, <span class="st">"sb3a"</span>, <span class="st">"sb3am4"</span>, <span class="st">"vv"</span>, <span class="st">"mm"</span>, <span class="st">"em"</span>, <span class="st">"cvode"</span>,</span>
 <span>    <span class="st">"trapz"</span>, <span class="st">"ssp3"</span>, <span class="st">"f32"</span>, <span class="st">"rk43"</span>, <span class="st">"dop54"</span>, <span class="st">"vern65"</span>, <span class="st">"vern76"</span>, <span class="st">"dop87"</span>, <span class="st">"vern98"</span>,</span>
-<span>    <span class="st">"ros43"</span>, <span class="st">"ros6"</span>, <span class="st">"backwardEuler"</span>, <span class="st">"gauss6"</span>, <span class="st">"iiic6"</span>, <span class="st">"radauiia5"</span>, <span class="st">"geng5"</span>, <span class="st">"sdirk43"</span>,</span>
-<span>    <span class="st">"euler"</span>, <span class="st">"midpoint"</span>, <span class="st">"heun"</span>, <span class="st">"ssp22"</span>, <span class="st">"rk3"</span>, <span class="st">"ssp53"</span>, <span class="st">"s4"</span>, <span class="st">"r4"</span>, <span class="st">"ls44"</span>, <span class="st">"ls54"</span>,</span>
-<span>    <span class="st">"ssp54"</span>, <span class="st">"s5"</span>, <span class="st">"rk5"</span>, <span class="st">"c5"</span>, <span class="st">"l5"</span>, <span class="st">"lk5a"</span>, <span class="st">"lk5b"</span>, <span class="st">"b6"</span>, <span class="st">"s7"</span>, <span class="st">"s8_10"</span>, <span class="st">"cv8"</span>,</span>
-<span>    <span class="st">"s8_12"</span>, <span class="st">"s10"</span>, </span>
-<span>     <span class="st">"z10"</span>, <span class="st">"o10"</span>, <span class="st">"h10"</span>, <span class="st">"dp54"</span>, <span class="st">"v65e"</span>, <span class="st">"v76e"</span>, <span class="st">"dp87"</span>, <span class="st">"v98e"</span>,</span>
-<span>    <span class="st">"ssp33"</span>, <span class="st">"bs32"</span>, <span class="st">"ssp43"</span>, <span class="st">"f45"</span>, <span class="st">"t54"</span>, <span class="st">"s54"</span>, <span class="st">"pp54"</span>, <span class="st">"pp54b"</span>, <span class="st">"bs54"</span>, <span class="st">"ss54"</span>,</span>
-<span>    <span class="st">"dp65"</span>, <span class="st">"c65"</span>, <span class="st">"tp64"</span>, <span class="st">"v65r"</span>, <span class="st">"v65"</span>, <span class="st">"dverk65"</span>, <span class="st">"tf65"</span>, <span class="st">"tp75"</span>, <span class="st">"tmy7"</span>, <span class="st">"tmy7s"</span>,</span>
-<span>    <span class="st">"v76r"</span>, <span class="st">"ss76"</span>, <span class="st">"v78"</span>, <span class="st">"dverk78"</span>, <span class="st">"dp85"</span>, <span class="st">"tp86"</span>, <span class="st">"v87e"</span>, <span class="st">"v87r"</span>, <span class="st">"ev87"</span>, <span class="st">"k87"</span>,</span>
-<span>    <span class="st">"f89"</span>, <span class="st">"v89"</span>, <span class="st">"t98a"</span>, <span class="st">"v98r"</span>, <span class="st">"s98"</span>, <span class="st">"f108"</span>, <span class="st">"c108"</span>, <span class="st">"b109"</span>, <span class="st">"s1110a"</span>, <span class="st">"f1210"</span>,</span>
-<span>    <span class="st">"o129"</span>, <span class="st">"f1412"</span>, <span class="st">"lsode"</span>, <span class="st">"bdf"</span>, <span class="st">"rk4s"</span>, <span class="st">"eulers"</span>, <span class="st">"midpoints"</span>, <span class="st">"heuns"</span>, <span class="st">"dop5s"</span>,</span>
-<span>    <span class="st">"dop853s"</span>, <span class="st">"ck54s"</span>, <span class="st">"bs32s"</span>, <span class="st">"vern65s"</span>, </span>
-<span>     <span class="st">"vern76s"</span>, <span class="st">"dop87s"</span>, <span class="st">"f78s"</span>, <span class="st">"ros4s"</span>,</span>
-<span>    <span class="st">"radauiia5s"</span>, <span class="st">"backwardEulers"</span>, <span class="st">"gauss6s"</span>, <span class="st">"sdirk43s"</span>, <span class="st">"iiic6s"</span>, <span class="st">"ros43s"</span>, <span class="st">"ros6s"</span>,</span>
-<span>    <span class="st">"geng5s"</span>, <span class="st">"rk3s"</span>, <span class="st">"rk43s"</span>, <span class="st">"cvodesadj"</span>, <span class="st">"liblsodaadj"</span>, <span class="st">"abs"</span>, <span class="st">"dop54s"</span>, <span class="st">"dp54s"</span>,</span>
-<span>    <span class="st">"vern98s"</span>, <span class="st">"f45s"</span>, <span class="st">"t54s"</span>, <span class="st">"pp54s"</span>, <span class="st">"pp54bs"</span>, <span class="st">"bs54s"</span>, <span class="st">"ss54s"</span>, <span class="st">"dp65s"</span>, <span class="st">"c65s"</span>,</span>
-<span>    <span class="st">"tp64s"</span>, <span class="st">"v65rs"</span>, <span class="st">"dverk65s"</span>, <span class="st">"tf65s"</span>, <span class="st">"tp75s"</span>, <span class="st">"tmy7sadj"</span>, <span class="st">"tmy7adj"</span>, <span class="st">"v76rs"</span>,</span>
-<span>    <span class="st">"ss76s"</span>, <span class="st">"v78s"</span>, <span class="st">"dverk78s"</span>, <span class="st">"dp85s"</span>, <span class="st">"tp86s"</span>, <span class="st">"v87es"</span>, <span class="st">"v87rs"</span>, <span class="st">"ev87s"</span>, <span class="st">"k87s"</span>,</span>
-<span>    <span class="st">"v89s"</span>, <span class="st">"t98as"</span>, <span class="st">"v98rs"</span>, <span class="st">"s98s"</span>, <span class="st">"c108s"</span>, <span class="st">"b109s"</span>, </span>
-<span>     <span class="st">"s1110as"</span>, <span class="st">"o129s"</span><span class="op">)</span>,</span>
+<span>    <span class="st">"ros43"</span>, <span class="st">"ros6"</span>, <span class="st">"ros54p"</span>, <span class="st">"gpuT54"</span>, <span class="st">"gpuVern76"</span>, <span class="st">"gpuRos54p"</span>,</span>
+<span>    <span class="st">"gpuT54+gpuRos54p"</span>, <span class="st">"gpuVern76+gpuRos54p"</span>, <span class="st">"backwardEuler"</span>, <span class="st">"gauss6"</span>, <span class="st">"iiic6"</span>,</span>
+<span>    <span class="st">"radauiia5"</span>, <span class="st">"geng5"</span>, <span class="st">"sdirk43"</span>, <span class="st">"euler"</span>, <span class="st">"midpoint"</span>, <span class="st">"heun"</span>, <span class="st">"ssp22"</span>, <span class="st">"rk3"</span>,</span>
+<span>    <span class="st">"ssp53"</span>, <span class="st">"s4"</span>, <span class="st">"r4"</span>, <span class="st">"ls44"</span>, <span class="st">"ls54"</span>, <span class="st">"ssp54"</span>, </span>
+<span>     <span class="st">"s5"</span>, <span class="st">"rk5"</span>, <span class="st">"c5"</span>, <span class="st">"l5"</span>, <span class="st">"lk5a"</span>,</span>
+<span>    <span class="st">"lk5b"</span>, <span class="st">"b6"</span>, <span class="st">"s7"</span>, <span class="st">"s8_10"</span>, <span class="st">"cv8"</span>, <span class="st">"s8_12"</span>, <span class="st">"s10"</span>, <span class="st">"z10"</span>, <span class="st">"o10"</span>, <span class="st">"h10"</span>, <span class="st">"dp54"</span>,</span>
+<span>    <span class="st">"v65e"</span>, <span class="st">"v76e"</span>, <span class="st">"dp87"</span>, <span class="st">"v98e"</span>, <span class="st">"ssp33"</span>, <span class="st">"bs32"</span>, <span class="st">"ssp43"</span>, <span class="st">"f45"</span>, <span class="st">"t54"</span>, <span class="st">"s54"</span>,</span>
+<span>    <span class="st">"pp54"</span>, <span class="st">"pp54b"</span>, <span class="st">"bs54"</span>, <span class="st">"ss54"</span>, <span class="st">"dp65"</span>, <span class="st">"c65"</span>, <span class="st">"tp64"</span>, <span class="st">"v65r"</span>, <span class="st">"v65"</span>, <span class="st">"dverk65"</span>,</span>
+<span>    <span class="st">"tf65"</span>, <span class="st">"tp75"</span>, <span class="st">"tmy7"</span>, <span class="st">"tmy7s"</span>, <span class="st">"v76r"</span>, <span class="st">"ss76"</span>, <span class="st">"v78"</span>, <span class="st">"dverk78"</span>, <span class="st">"dp85"</span>, <span class="st">"tp86"</span>,</span>
+<span>    <span class="st">"v87e"</span>, <span class="st">"v87r"</span>, <span class="st">"ev87"</span>, <span class="st">"k87"</span>, <span class="st">"f89"</span>, <span class="st">"v89"</span>, <span class="st">"t98a"</span>, <span class="st">"v98r"</span>, <span class="st">"s98"</span>, <span class="st">"f108"</span>, <span class="st">"c108"</span>,</span>
+<span>    <span class="st">"b109"</span>, <span class="st">"s1110a"</span>, <span class="st">"f1210"</span>, <span class="st">"o129"</span>, <span class="st">"f1412"</span>, <span class="st">"lsode"</span>, <span class="st">"bdf"</span>, </span>
+<span>     <span class="st">"rk4s"</span>, <span class="st">"eulers"</span>,</span>
+<span>    <span class="st">"midpoints"</span>, <span class="st">"heuns"</span>, <span class="st">"dop5s"</span>, <span class="st">"dop853s"</span>, <span class="st">"ck54s"</span>, <span class="st">"bs32s"</span>, <span class="st">"vern65s"</span>, <span class="st">"vern76s"</span>,</span>
+<span>    <span class="st">"dop87s"</span>, <span class="st">"f78s"</span>, <span class="st">"ros4s"</span>, <span class="st">"radauiia5s"</span>, <span class="st">"backwardEulers"</span>, <span class="st">"gauss6s"</span>, <span class="st">"sdirk43s"</span>,</span>
+<span>    <span class="st">"iiic6s"</span>, <span class="st">"ros43s"</span>, <span class="st">"ros6s"</span>, <span class="st">"geng5s"</span>, <span class="st">"rk3s"</span>, <span class="st">"rk43s"</span>, <span class="st">"cvodesadj"</span>, <span class="st">"liblsodaadj"</span>,</span>
+<span>    <span class="st">"abs"</span>, <span class="st">"dop54s"</span>, <span class="st">"dp54s"</span>, <span class="st">"vern98s"</span>, <span class="st">"f45s"</span>, <span class="st">"t54s"</span>, <span class="st">"pp54s"</span>, <span class="st">"pp54bs"</span>, <span class="st">"bs54s"</span>,</span>
+<span>    <span class="st">"ss54s"</span>, <span class="st">"dp65s"</span>, <span class="st">"c65s"</span>, <span class="st">"tp64s"</span>, <span class="st">"v65rs"</span>, <span class="st">"dverk65s"</span>, <span class="st">"tf65s"</span>, <span class="st">"tp75s"</span>, <span class="st">"tmy7sadj"</span>,</span>
+<span>    <span class="st">"tmy7adj"</span>, <span class="st">"v76rs"</span>, <span class="st">"ss76s"</span>, <span class="st">"v78s"</span>, <span class="st">"dverk78s"</span>, <span class="st">"dp85s"</span>, <span class="st">"tp86s"</span>, </span>
+<span>     <span class="st">"v87es"</span>,</span>
+<span>    <span class="st">"v87rs"</span>, <span class="st">"ev87s"</span>, <span class="st">"k87s"</span>, <span class="st">"v89s"</span>, <span class="st">"t98as"</span>, <span class="st">"v98rs"</span>, <span class="st">"s98s"</span>, <span class="st">"c108s"</span>, <span class="st">"b109s"</span>,</span>
+<span>    <span class="st">"s1110as"</span>, <span class="st">"o129s"</span><span class="op">)</span>,</span>
 <span>  sigdig <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  atol <span class="op">=</span> <span class="fl">1e-08</span>,</span>
 <span>  rtol <span class="op">=</span> <span class="fl">1e-06</span>,</span>
@@ -279,6 +281,10 @@ some-times optional <code>params</code> and <code>inits</code>.</p>
 <span>  addlCovAtTime <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  resetCancelsPending <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  ssMethod <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"anderson"</span>, <span class="st">"iterate"</span><span class="op">)</span>,</span>
+<span>  gpuBackend <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"opencl"</span>, <span class="st">"cpu"</span><span class="op">)</span>,</span>
+<span>  gpuDevice <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  gpuPrecision <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"double"</span>, <span class="st">"float"</span><span class="op">)</span>,</span>
+<span>  gpuBatch <span class="op">=</span> <span class="fl">16384L</span>,</span>
 <span>  linCmtGillFtol <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>  linCmtGillK <span class="op">=</span> <span class="fl">20L</span>,</span>
 <span>  linCmtGillStep <span class="op">=</span> <span class="fl">4</span>,</span>
@@ -541,6 +547,20 @@ Requires an analytical Jacobian (auto-computed from the model when not provided)
 falls back to <code>liblsoda</code> if Jacobian generation fails.</p></li>
 <li><p><code>"ros6"</code> <strong>(implicit)</strong> – Kaps-Wanner 6th-order A-stable Rosenbrock method (ROW6A) from libode.
 Fixed step size (set with <code>hmin</code>). Requires Jacobian; falls back to <code>liblsoda</code> if unavailable.</p></li>
+<li><p><code>"ros54p"</code> <strong>(implicit)</strong> – Steinebach's 8-stage L-stable Rosenbrock 5(4) method (Rodas5P).
+Adaptive step size via its embedded 4th-order solution.  Requires an analytical
+Jacobian (auto-computed from the model when not provided); falls back to
+<code>liblsoda</code> if Jacobian generation fails.  <code>"t54+ros54p"</code> and <code>"vern76+ros54p"</code>
+are its AutoSwitch composites.</p></li>
+<li><p><code>"gpuT54"</code>, <code>"gpuVern76"</code>, <code>"gpuRos54p"</code>, <code>"gpuT54+gpuRos54p"</code>,
+<code>"gpuVern76+gpuRos54p"</code> – the same integrators (Tsitouras 5(4) as
+<code>"t54"</code>, Verner 7(6) as <code>"vern76"</code>, Rodas5P as <code>"ros54p"</code> with the
+analytical Jacobian, and their AutoSwitch composites) as device code: each
+round integrates every waiting subject at once, one subject per OpenCL
+work-item, or on <code>cores</code> threads with the CPU build (<code>gpuBackend</code>).
+Events stay on the host.  The model's <code>d/dt()</code> must be able to run as
+device code; otherwise <code>gpuBackend = "auto"</code> solves with the host method
+named above.  Supports <code><a href="delay.html">delay()</a></code>.</p></li>
 <li><p><code>"backwardEuler"</code> <strong>(implicit)</strong> – Backward Euler (BDF-1), 1st-order L-stable fully implicit method from libode.
 Fixed step size (set with <code>hmin</code>). Requires Jacobian; falls back to <code>liblsoda</code> if unavailable.</p></li>
 <li><p><code>"gauss6"</code> <strong>(implicit)</strong> – Gauss-Legendre 6th-order A-stable fully-implicit method (3 stages) from libode.
@@ -926,7 +946,7 @@ value is 0.</p>
 <span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a></span>
 <span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a>For the adaptive methods <span class="st">`</span><span class="at">"f78"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"ck54"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"dop5"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"bs"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"f32"</span><span class="st">`</span>,</span>
 <span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a><span class="st">`</span><span class="at">"rk43"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"dop54"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"vern65"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"vern76"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"dop87"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"vern98"</span><span class="st">`</span>,</span>
-<span id="cb1-22"><a href="#cb1-22" tabindex="-1"></a><span class="st">`</span><span class="at">"ros43"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"sdirk43"</span><span class="st">`</span>, and all libode adaptive <span class="fu">methods</span> (<span class="st">`</span><span class="at">"bs32"</span><span class="st">`</span>,</span>
+<span id="cb1-22"><a href="#cb1-22" tabindex="-1"></a><span class="st">`</span><span class="at">"ros43"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"ros54p"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"sdirk43"</span><span class="st">`</span>, the GPU methods, and all libode adaptive <span class="fu">methods</span> (<span class="st">`</span><span class="at">"bs32"</span><span class="st">`</span>,</span>
 <span id="cb1-23"><a href="#cb1-23" tabindex="-1"></a><span class="st">`</span><span class="at">"ssp43"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"f45"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"t54"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"s54"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"pp54"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"pp54b"</span><span class="st">`</span>,</span>
 <span id="cb1-24"><a href="#cb1-24" tabindex="-1"></a><span class="st">`</span><span class="at">"bs54"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"ss54"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"dp65"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"c65"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"tp64"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"v65r"</span><span class="st">`</span>,</span>
 <span id="cb1-25"><a href="#cb1-25" tabindex="-1"></a><span class="st">`</span><span class="at">"v65"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"dverk65"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"tf65"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"tp75"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"tmy7"</span><span class="st">`</span>, <span class="st">`</span><span class="at">"tmy7s"</span><span class="st">`</span>,</span>
@@ -1881,6 +1901,31 @@ began, so the result is that of <code>"iterate"</code>.  A fixed dose count
 (<code>minSS = maxSS</code>) and a <code><a href="delay.html">delay()</a></code> model always iterate.  See
 <code>bench/ss_anderson_1762.R</code> in the package sources for the benchmark
 behind the default.</p></dd>
+
+
+<dt id="arg-gpubackend">gpuBackend<a class="anchor" aria-label="anchor" href="#arg-gpubackend"></a></dt>
+<dd><p>Where the GPU methods (<code>"gpuT54"</code>, <code>"gpuVern76"</code>,
+<code>"gpuRos54p"</code>, <code>"gpuT54+gpuRos54p"</code>, <code>"gpuVern76+gpuRos54p"</code>)
+integrate: <code>"opencl"</code> on an OpenCL device through the suggested
+<code>OpenCL</code> package, <code>"cpu"</code> with the same integrators built as host C on
+<code>cores</code> threads (at most <code><a href="getRxThreads.html">getRxThreads()</a></code>), or <code>"auto"</code> (the default) for OpenCL when a device with
+the requested precision is available and the CPU otherwise
+(<code>options(rxode2.gpuBackend=)</code> pins what <code>"auto"</code> picks).  See
+<code><a href="rxGpuInfo.html">rxGpuInfo()</a></code>.</p></dd>
+
+
+<dt id="arg-gpudevice">gpuDevice<a class="anchor" aria-label="anchor" href="#arg-gpudevice"></a></dt>
+<dd><p>OpenCL device (its <code>index</code> in <code>rxGpuInfo()$devices</code>);
+<code>NULL</code> (the default) prefers a GPU with the requested precision.</p></dd>
+
+
+<dt id="arg-gpuprecision">gpuPrecision<a class="anchor" aria-label="anchor" href="#arg-gpuprecision"></a></dt>
+<dd><p><code>"double"</code> (the default) or <code>"float"</code> (OpenCL only).</p></dd>
+
+
+<dt id="arg-gpubatch">gpuBatch<a class="anchor" aria-label="anchor" href="#arg-gpubatch"></a></dt>
+<dd><p>The most subjects the GPU methods integrate in one round
+(default 16384).  Each needs its own scratch while it waits.</p></dd>
 
 
 <dt id="arg-lincmtgillftol">linCmtGillFtol<a class="anchor" aria-label="anchor" href="#arg-lincmtgillftol"></a></dt>

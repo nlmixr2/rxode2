@@ -135,25 +135,27 @@ vector.</p>
 <span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"liblsoda"</span>, <span class="st">"lsoda"</span>, <span class="st">"dop853"</span>, <span class="st">"indLin"</span>, <span class="st">"f78"</span>, <span class="st">"rk4"</span>, <span class="st">"ck54"</span>, <span class="st">"ab"</span>, <span class="st">"abm"</span>,</span>
 <span>    <span class="st">"dop5"</span>, <span class="st">"bs"</span>, <span class="st">"ros4"</span>, <span class="st">"iem"</span>, <span class="st">"sem"</span>, <span class="st">"sb3a"</span>, <span class="st">"sb3am4"</span>, <span class="st">"vv"</span>, <span class="st">"mm"</span>, <span class="st">"em"</span>, <span class="st">"cvode"</span>,</span>
 <span>    <span class="st">"trapz"</span>, <span class="st">"ssp3"</span>, <span class="st">"f32"</span>, <span class="st">"rk43"</span>, <span class="st">"dop54"</span>, <span class="st">"vern65"</span>, <span class="st">"vern76"</span>, <span class="st">"dop87"</span>, <span class="st">"vern98"</span>,</span>
-<span>    <span class="st">"ros43"</span>, <span class="st">"ros6"</span>, <span class="st">"backwardEuler"</span>, <span class="st">"gauss6"</span>, <span class="st">"iiic6"</span>, <span class="st">"radauiia5"</span>, <span class="st">"geng5"</span>, <span class="st">"sdirk43"</span>,</span>
-<span>    <span class="st">"euler"</span>, <span class="st">"midpoint"</span>, <span class="st">"heun"</span>, <span class="st">"ssp22"</span>, <span class="st">"rk3"</span>, <span class="st">"ssp53"</span>, <span class="st">"s4"</span>, <span class="st">"r4"</span>, <span class="st">"ls44"</span>, <span class="st">"ls54"</span>,</span>
-<span>    <span class="st">"ssp54"</span>, <span class="st">"s5"</span>, <span class="st">"rk5"</span>, <span class="st">"c5"</span>, <span class="st">"l5"</span>, <span class="st">"lk5a"</span>, <span class="st">"lk5b"</span>, <span class="st">"b6"</span>, <span class="st">"s7"</span>, <span class="st">"s8_10"</span>, <span class="st">"cv8"</span>,</span>
-<span>    <span class="st">"s8_12"</span>, <span class="st">"s10"</span>, </span>
-<span>     <span class="st">"z10"</span>, <span class="st">"o10"</span>, <span class="st">"h10"</span>, <span class="st">"dp54"</span>, <span class="st">"v65e"</span>, <span class="st">"v76e"</span>, <span class="st">"dp87"</span>, <span class="st">"v98e"</span>,</span>
-<span>    <span class="st">"ssp33"</span>, <span class="st">"bs32"</span>, <span class="st">"ssp43"</span>, <span class="st">"f45"</span>, <span class="st">"t54"</span>, <span class="st">"s54"</span>, <span class="st">"pp54"</span>, <span class="st">"pp54b"</span>, <span class="st">"bs54"</span>, <span class="st">"ss54"</span>,</span>
-<span>    <span class="st">"dp65"</span>, <span class="st">"c65"</span>, <span class="st">"tp64"</span>, <span class="st">"v65r"</span>, <span class="st">"v65"</span>, <span class="st">"dverk65"</span>, <span class="st">"tf65"</span>, <span class="st">"tp75"</span>, <span class="st">"tmy7"</span>, <span class="st">"tmy7s"</span>,</span>
-<span>    <span class="st">"v76r"</span>, <span class="st">"ss76"</span>, <span class="st">"v78"</span>, <span class="st">"dverk78"</span>, <span class="st">"dp85"</span>, <span class="st">"tp86"</span>, <span class="st">"v87e"</span>, <span class="st">"v87r"</span>, <span class="st">"ev87"</span>, <span class="st">"k87"</span>,</span>
-<span>    <span class="st">"f89"</span>, <span class="st">"v89"</span>, <span class="st">"t98a"</span>, <span class="st">"v98r"</span>, <span class="st">"s98"</span>, <span class="st">"f108"</span>, <span class="st">"c108"</span>, <span class="st">"b109"</span>, <span class="st">"s1110a"</span>, <span class="st">"f1210"</span>,</span>
-<span>    <span class="st">"o129"</span>, <span class="st">"f1412"</span>, <span class="st">"lsode"</span>, <span class="st">"bdf"</span>, <span class="st">"rk4s"</span>, <span class="st">"eulers"</span>, <span class="st">"midpoints"</span>, <span class="st">"heuns"</span>, <span class="st">"dop5s"</span>,</span>
-<span>    <span class="st">"dop853s"</span>, <span class="st">"ck54s"</span>, <span class="st">"bs32s"</span>, <span class="st">"vern65s"</span>, </span>
-<span>     <span class="st">"vern76s"</span>, <span class="st">"dop87s"</span>, <span class="st">"f78s"</span>, <span class="st">"ros4s"</span>,</span>
-<span>    <span class="st">"radauiia5s"</span>, <span class="st">"backwardEulers"</span>, <span class="st">"gauss6s"</span>, <span class="st">"sdirk43s"</span>, <span class="st">"iiic6s"</span>, <span class="st">"ros43s"</span>, <span class="st">"ros6s"</span>,</span>
-<span>    <span class="st">"geng5s"</span>, <span class="st">"rk3s"</span>, <span class="st">"rk43s"</span>, <span class="st">"cvodesadj"</span>, <span class="st">"liblsodaadj"</span>, <span class="st">"abs"</span>, <span class="st">"dop54s"</span>, <span class="st">"dp54s"</span>,</span>
-<span>    <span class="st">"vern98s"</span>, <span class="st">"f45s"</span>, <span class="st">"t54s"</span>, <span class="st">"pp54s"</span>, <span class="st">"pp54bs"</span>, <span class="st">"bs54s"</span>, <span class="st">"ss54s"</span>, <span class="st">"dp65s"</span>, <span class="st">"c65s"</span>,</span>
-<span>    <span class="st">"tp64s"</span>, <span class="st">"v65rs"</span>, <span class="st">"dverk65s"</span>, <span class="st">"tf65s"</span>, <span class="st">"tp75s"</span>, <span class="st">"tmy7sadj"</span>, <span class="st">"tmy7adj"</span>, <span class="st">"v76rs"</span>,</span>
-<span>    <span class="st">"ss76s"</span>, <span class="st">"v78s"</span>, <span class="st">"dverk78s"</span>, <span class="st">"dp85s"</span>, <span class="st">"tp86s"</span>, <span class="st">"v87es"</span>, <span class="st">"v87rs"</span>, <span class="st">"ev87s"</span>, <span class="st">"k87s"</span>,</span>
-<span>    <span class="st">"v89s"</span>, <span class="st">"t98as"</span>, <span class="st">"v98rs"</span>, <span class="st">"s98s"</span>, <span class="st">"c108s"</span>, <span class="st">"b109s"</span>, </span>
-<span>     <span class="st">"s1110as"</span>, <span class="st">"o129s"</span><span class="op">)</span></span>
+<span>    <span class="st">"ros43"</span>, <span class="st">"ros6"</span>, <span class="st">"ros54p"</span>, <span class="st">"gpuT54"</span>, <span class="st">"gpuVern76"</span>, <span class="st">"gpuRos54p"</span>,</span>
+<span>    <span class="st">"gpuT54+gpuRos54p"</span>, <span class="st">"gpuVern76+gpuRos54p"</span>, <span class="st">"backwardEuler"</span>, <span class="st">"gauss6"</span>, <span class="st">"iiic6"</span>,</span>
+<span>    <span class="st">"radauiia5"</span>, <span class="st">"geng5"</span>, <span class="st">"sdirk43"</span>, <span class="st">"euler"</span>, <span class="st">"midpoint"</span>, <span class="st">"heun"</span>, <span class="st">"ssp22"</span>, <span class="st">"rk3"</span>,</span>
+<span>    <span class="st">"ssp53"</span>, <span class="st">"s4"</span>, <span class="st">"r4"</span>, <span class="st">"ls44"</span>, <span class="st">"ls54"</span>, <span class="st">"ssp54"</span>, </span>
+<span>     <span class="st">"s5"</span>, <span class="st">"rk5"</span>, <span class="st">"c5"</span>, <span class="st">"l5"</span>, <span class="st">"lk5a"</span>,</span>
+<span>    <span class="st">"lk5b"</span>, <span class="st">"b6"</span>, <span class="st">"s7"</span>, <span class="st">"s8_10"</span>, <span class="st">"cv8"</span>, <span class="st">"s8_12"</span>, <span class="st">"s10"</span>, <span class="st">"z10"</span>, <span class="st">"o10"</span>, <span class="st">"h10"</span>, <span class="st">"dp54"</span>,</span>
+<span>    <span class="st">"v65e"</span>, <span class="st">"v76e"</span>, <span class="st">"dp87"</span>, <span class="st">"v98e"</span>, <span class="st">"ssp33"</span>, <span class="st">"bs32"</span>, <span class="st">"ssp43"</span>, <span class="st">"f45"</span>, <span class="st">"t54"</span>, <span class="st">"s54"</span>,</span>
+<span>    <span class="st">"pp54"</span>, <span class="st">"pp54b"</span>, <span class="st">"bs54"</span>, <span class="st">"ss54"</span>, <span class="st">"dp65"</span>, <span class="st">"c65"</span>, <span class="st">"tp64"</span>, <span class="st">"v65r"</span>, <span class="st">"v65"</span>, <span class="st">"dverk65"</span>,</span>
+<span>    <span class="st">"tf65"</span>, <span class="st">"tp75"</span>, <span class="st">"tmy7"</span>, <span class="st">"tmy7s"</span>, <span class="st">"v76r"</span>, <span class="st">"ss76"</span>, <span class="st">"v78"</span>, <span class="st">"dverk78"</span>, <span class="st">"dp85"</span>, <span class="st">"tp86"</span>,</span>
+<span>    <span class="st">"v87e"</span>, <span class="st">"v87r"</span>, <span class="st">"ev87"</span>, <span class="st">"k87"</span>, <span class="st">"f89"</span>, <span class="st">"v89"</span>, <span class="st">"t98a"</span>, <span class="st">"v98r"</span>, <span class="st">"s98"</span>, <span class="st">"f108"</span>, <span class="st">"c108"</span>,</span>
+<span>    <span class="st">"b109"</span>, <span class="st">"s1110a"</span>, <span class="st">"f1210"</span>, <span class="st">"o129"</span>, <span class="st">"f1412"</span>, <span class="st">"lsode"</span>, <span class="st">"bdf"</span>, </span>
+<span>     <span class="st">"rk4s"</span>, <span class="st">"eulers"</span>,</span>
+<span>    <span class="st">"midpoints"</span>, <span class="st">"heuns"</span>, <span class="st">"dop5s"</span>, <span class="st">"dop853s"</span>, <span class="st">"ck54s"</span>, <span class="st">"bs32s"</span>, <span class="st">"vern65s"</span>, <span class="st">"vern76s"</span>,</span>
+<span>    <span class="st">"dop87s"</span>, <span class="st">"f78s"</span>, <span class="st">"ros4s"</span>, <span class="st">"radauiia5s"</span>, <span class="st">"backwardEulers"</span>, <span class="st">"gauss6s"</span>, <span class="st">"sdirk43s"</span>,</span>
+<span>    <span class="st">"iiic6s"</span>, <span class="st">"ros43s"</span>, <span class="st">"ros6s"</span>, <span class="st">"geng5s"</span>, <span class="st">"rk3s"</span>, <span class="st">"rk43s"</span>, <span class="st">"cvodesadj"</span>, <span class="st">"liblsodaadj"</span>,</span>
+<span>    <span class="st">"abs"</span>, <span class="st">"dop54s"</span>, <span class="st">"dp54s"</span>, <span class="st">"vern98s"</span>, <span class="st">"f45s"</span>, <span class="st">"t54s"</span>, <span class="st">"pp54s"</span>, <span class="st">"pp54bs"</span>, <span class="st">"bs54s"</span>,</span>
+<span>    <span class="st">"ss54s"</span>, <span class="st">"dp65s"</span>, <span class="st">"c65s"</span>, <span class="st">"tp64s"</span>, <span class="st">"v65rs"</span>, <span class="st">"dverk65s"</span>, <span class="st">"tf65s"</span>, <span class="st">"tp75s"</span>, <span class="st">"tmy7sadj"</span>,</span>
+<span>    <span class="st">"tmy7adj"</span>, <span class="st">"v76rs"</span>, <span class="st">"ss76s"</span>, <span class="st">"v78s"</span>, <span class="st">"dverk78s"</span>, <span class="st">"dp85s"</span>, <span class="st">"tp86s"</span>, </span>
+<span>     <span class="st">"v87es"</span>,</span>
+<span>    <span class="st">"v87rs"</span>, <span class="st">"ev87s"</span>, <span class="st">"k87s"</span>, <span class="st">"v89s"</span>, <span class="st">"t98as"</span>, <span class="st">"v98rs"</span>, <span class="st">"s98s"</span>, <span class="st">"c108s"</span>, <span class="st">"b109s"</span>,</span>
+<span>    <span class="st">"s1110as"</span>, <span class="st">"o129s"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -190,6 +192,20 @@ Requires an analytical Jacobian (auto-computed from the model when not provided)
 falls back to <code>liblsoda</code> if Jacobian generation fails.</p></li>
 <li><p><code>"ros6"</code> <strong>(implicit)</strong> – Kaps-Wanner 6th-order A-stable Rosenbrock method (ROW6A) from libode.
 Fixed step size (set with <code>hmin</code>). Requires Jacobian; falls back to <code>liblsoda</code> if unavailable.</p></li>
+<li><p><code>"ros54p"</code> <strong>(implicit)</strong> – Steinebach's 8-stage L-stable Rosenbrock 5(4) method (Rodas5P).
+Adaptive step size via its embedded 4th-order solution.  Requires an analytical
+Jacobian (auto-computed from the model when not provided); falls back to
+<code>liblsoda</code> if Jacobian generation fails.  <code>"t54+ros54p"</code> and <code>"vern76+ros54p"</code>
+are its AutoSwitch composites.</p></li>
+<li><p><code>"gpuT54"</code>, <code>"gpuVern76"</code>, <code>"gpuRos54p"</code>, <code>"gpuT54+gpuRos54p"</code>,
+<code>"gpuVern76+gpuRos54p"</code> – the same integrators (Tsitouras 5(4) as
+<code>"t54"</code>, Verner 7(6) as <code>"vern76"</code>, Rodas5P as <code>"ros54p"</code> with the
+analytical Jacobian, and their AutoSwitch composites) as device code: each
+round integrates every waiting subject at once, one subject per OpenCL
+work-item, or on <code>cores</code> threads with the CPU build (<code>gpuBackend</code>).
+Events stay on the host.  The model's <code>d/dt()</code> must be able to run as
+device code; otherwise <code>gpuBackend = "auto"</code> solves with the host method
+named above.  Supports <code><a href="delay.html">delay()</a></code>.</p></li>
 <li><p><code>"backwardEuler"</code> <strong>(implicit)</strong> – Backward Euler (BDF-1), 1st-order L-stable fully implicit method from libode.
 Fixed step size (set with <code>hmin</code>). Requires Jacobian; falls back to <code>liblsoda</code> if unavailable.</p></li>
 <li><p><code>"gauss6"</code> <strong>(implicit)</strong> – Gauss-Legendre 6th-order A-stable fully-implicit method (3 stages) from libode.
@@ -508,6 +524,7 @@ see the details)</p>
     <div class="dont-index"><p>Other Solver options and performance:
 <code><a href="forderForceBase.html">forderForceBase()</a></code>,
 <code><a href="getRxThreads.html">getRxThreads()</a></code>,
+<code><a href="rxGpuInfo.html">rxGpuInfo()</a></code>,
 <code><a href="rxIndLinState.html">rxIndLinState()</a></code>,
 <code><a href="rxIndLinStrategy.html">rxIndLinStrategy()</a></code>,
 <code><a href="rxIsAutoSwitch.html">rxIsAutoSwitch()</a></code>,
