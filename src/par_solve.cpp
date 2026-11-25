@@ -482,10 +482,22 @@ extern int nPastEvid_global;
 extern int ssNotConv_global;
 // ss=2 superposition: add the state before the dose to the added regimen's
 // steady state.  The advance starts from that state, so one it left unchanged
-// (held by rxSsAdvance, or with no dynamics) has nothing to add.
-static inline void ssAddSaved(double *yp, const double *solveSave, int neq) {
-  for (int j = neq; j--;) {
-    if (yp[j] != solveSave[j]) yp[j] += solveSave[j];
+// with no rate of change there (held by rxSsAdvance, or with no dynamics) has
+// nothing to add.
+extern t_dydt dydt;
+static inline void ssAddSaved(double *yp, const double *solveSave, int *neq,
+                              double t) {
+  std::vector<double> ydot;
+  for (int j = neq[0]; j--;) {
+    if (yp[j] == solveSave[j]) {
+      if (ydot.empty()) {
+        std::vector<double> y(solveSave, solveSave + neq[0]);
+        ydot.assign(neq[0], 0.0);
+        dydt(neq, t, y.data(), ydot.data());
+      }
+      if (ydot[j] == 0.0) continue;
+    }
+    yp[j] += solveSave[j];
   }
 }
 
@@ -4662,7 +4674,7 @@ static void handleSSCore(int *neq,
           if (isModeled) _adjSSinfModeled = -1;   // modeled full-interval ss2: not yet supported
         }
         // Add at the end
-        ssAddSaved(yp, ind->solveSave, neq[0]);
+        ssAddSaved(yp, ind->solveSave, neq, xout);
       }
       // Adjoint handoff: continuous / full-interval infusion reaches a CONSTANT
       // steady state (f(Y_ss)+R.e = 0), so dY_ss/dp = -J^{-1} df/dp (a linear
@@ -5103,7 +5115,7 @@ static void handleSSCore(int *neq,
       // saved pre-ss2 state) for the adjoint superposition term.
       if (op->adjoint) { _adjSS2 = 1; _adjSS2peak.assign(yp, yp + neq[0]); }
       // Add at the end
-      ssAddSaved(yp, ind->solveSave, neq[0]);
+      ssAddSaved(yp, ind->solveSave, neq, xout);
     }
     if (!doSSinf && !isSsLag && !skipDosingEvent){
       // REprintf("handleEvid %d %d %d\n", doSSinf, isSsLag, skipDosingEvent);
