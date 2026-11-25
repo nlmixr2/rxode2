@@ -71,7 +71,7 @@ rxSolve(
   order = 5L,
   ...,
   cores,
-  covsInterpolation = c("locf", "linear", "nocb", "midpoint"),
+  covsInterpolation = c("locf", "linear", "nocb", "midpoint", "spline", "pchip"),
   naInterpolation = c("locf", "nocb"),
   keepInterpolation = c("na", "locf", "nocb"),
   addCov = TRUE,
@@ -895,6 +895,14 @@ that NONMEM uses.
 \item \code{"midpoint"} -- the mean of the two neighboring records over the whole
 interval between them, as \code{stats::approxfun(method = "constant", f = 0.5)}
 gives.
+\item \code{"spline"} -- a natural cubic spline through the subject's covariate
+values, so the covariate and its first two derivatives are continuous
+in time.  \code{"pchip"} -- a monotone piecewise cubic Hermite interpolant
+(as Matlab's \code{pchip()}), which does not overshoot the data.  Both use
+the records with a value at their data times (the last record's value
+at a tied time), hold the first/last value outside them, and are linear
+with two values.  Like \code{"linear"}, a \code{linCmt()} model refuses them for a
+covariate that varies within a subject and feeds its parameters.
 
 For time-varying covariates where a missing value is present, the
 interpolation method will use either "locf" or "nocb" throughout
@@ -1517,8 +1525,8 @@ read the time of the first data record at or after it (NONMEM's \code{F1},
 each interval from the record that ends it, like NONMEM's \code{R1} (see
 \code{rateAtDoseTime}).  Covariate interpolation is still set by
 \code{covsInterpolation}.  It also sets the default \code{tieOrder} to \code{"data"}
-and turns on \code{addlKeepsCov}, \code{durAtDoseTime} and \code{doseAtRecord} and
-turns off \code{addlCovAtTime} unless
+and turns on \code{addlKeepsCov}, \code{durAtDoseTime} and \code{doseAtRecord}, and
+turns off \code{addlCovAtTime}, unless
 they are given.
 By default \code{FALSE}, when \code{f()}, \code{rate()} and \code{dur()} of an \code{addl} repeat
 read the actual time of the \code{addl} dose.}

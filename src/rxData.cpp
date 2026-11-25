@@ -113,6 +113,8 @@ int ssNotConv_global = 0;
 
 RObject rxSolveFreeObj=R_NilValue;
 LogicalVector rxSolveFree();
+extern "C" void rxSplineCovSetup(rx_solve *rx, double *gcov);
+extern "C" void rxSplineCovFree(void);
 List etTrans(List inData, const RObject &obj, bool addCmt,
              bool dropUnits, bool allTimeVar,
              bool keepDosingOnly, Nullable<LogicalVector> combineDvid,
@@ -2219,6 +2221,7 @@ extern "C" void gFree(){
   if (_globals.gall_times != NULL) free(_globals.gall_times);
   _globals.gall_times=NULL;
   _globals.gall_times_n = 0;
+  rxSplineCovFree();
   if (_globals.gcov != NULL) free(_globals.gcov);
   _globals.gcov=NULL;
   if (_rxGetErrs != NULL) free(_rxGetErrs);
@@ -4728,7 +4731,8 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     curcovi=0;
     IntegerVector interp0 = as<IntegerVector>(rxSolveDat->mv[RxMv_interp]);
     //
-    bool isLinearOrMidpointInterp = op->is_locf == 0 || op->is_locf == 3;
+    // linear, midpoint, spline and pchip interpolate between values
+    bool isLinearOrMidpointInterp = op->is_locf == 0 || op->is_locf >= 3;
     op->cmtCov = -1;   // covariate index of the CMT covariate; -1 = none (single endpoint)
     for (i = dfN; i--;){
       for (j = rx->npars; j--;){
@@ -4748,7 +4752,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
           if ((isLinearOrMidpointInterp &&
                _globals.gpar_covInterp[ncov] == -1) ||
               _globals.gpar_covInterp[ncov] == 0 ||
-              _globals.gpar_covInterp[ncov] == 3) {
+              _globals.gpar_covInterp[ncov] >= 3) {
             // linear or midpoint extrapolation, make sure it isn't a
             // character/integer
             // factorName.line[0] == "ID"
@@ -4783,7 +4787,9 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
       for (int ic = 0; ic < ncov; ic++) {
         if (ic == op->cmtCov) continue;
         int curInterp = _globals.gpar_covInterp[ic];
-        if (!(curInterp == 0 || (curInterp == -1 && op->is_locf == 0))) continue;
+        if (curInterp == -1) curInterp = op->is_locf;
+        // linear, spline and pchip vary within an interval
+        if (!(curInterp == 0 || curInterp == 4 || curInterp == 5)) continue;
         NumericVector curCov = as<NumericVector>(dataf[covPos[ic]]);
         int lastId = NA_INTEGER;
         double firstVal = NA_REAL;
@@ -4818,7 +4824,8 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
               if (!feedsLin) break;
             }
             rxSolveFree();
-            stop(_("'linear' interpolation of time-varying covariate '%s' on a linCmt() parameter is not supported; use covsInterpolation = \"locf\", \"nocb\" or \"midpoint\" (or declare that interpolation for '%s' in the model), or write the model as ODEs"),
+            stop(_("'%s' interpolation of time-varying covariate '%s' on a linCmt() parameter is not supported; use covsInterpolation = \"locf\", \"nocb\" or \"midpoint\" (or declare that interpolation for '%s' in the model), or write the model as ODEs"),
+                 curInterp == 0 ? "linear" : (curInterp == 4 ? "spline" : "pchip"),
                  covName.c_str(), covName.c_str());
           }
         }
@@ -5151,6 +5158,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
       }
     }
   }
+  rxSplineCovSetup(rx, _globals.gcov);
 }
 
 // Setup the parameter order and covariate from the dataset and input parameters
@@ -7718,6 +7726,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     } else if (op->is_locf == 1){ // locf
     } else if (op->is_locf == 2){ //nocb
     } else if (op->is_locf == 3){ // midpoint
+    } else if (op->is_locf == 4){ // spline
+    } else if (op->is_locf == 5){ // pchip
     } else {
       rxSolveFree();
       stop(_("unknown covariate interpolation specified"));

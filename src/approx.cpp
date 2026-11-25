@@ -417,6 +417,192 @@ static inline double rxApproxCovDataSide(double t, int k, int is_locf, int side,
 
 /* End approx from R */
 
+// Smooth covariate interpolation: is_locf 4 = natural cubic spline, 5 = pchip
+// (monotone piecewise cubic Hermite).  The knots of covariate k of a subject
+// are its data records with a value, on their data times (a tie keeps the last
+// record's value); they are built once per solve by rxSplineCovSetup() and laid
+// out like the covariates: from (cov_ptr - _rxSplBase) + n_all_times_orig*k.
+// _rxSplD holds the second derivatives (spline) or the slopes (pchip).
+static double *_rxSplBase = NULL;
+static double *_rxSplT = NULL, *_rxSplY = NULL, *_rxSplD = NULL;
+static int *_rxSplN = NULL;
+
+static inline bool rxIsSplineInterp(int is_locf) {
+  return is_locf == 4 || is_locf == 5;
+}
+
+extern "C" void rxSplineCovFree(void) {
+  if (_rxSplT != NULL) free(_rxSplT);
+  if (_rxSplN != NULL) free(_rxSplN);
+  _rxSplT = _rxSplY = _rxSplD = NULL;
+  _rxSplN = NULL;
+  _rxSplBase = NULL;
+}
+
+// Natural cubic spline second derivatives (tridiagonal solve)
+static void rxSplineNatural(const double *x, const double *y, double *m, int n,
+                            std::vector<double> &w) {
+  for (int i = 0; i < n; ++i) m[i] = 0.0;
+  if (n < 3) return;
+  w.assign(n, 0.0);
+  for (int i = 1; i < n - 1; ++i) {
+    double h0 = x[i] - x[i-1], h1 = x[i+1] - x[i];
+    double r = 6.0*((y[i+1] - y[i])/h1 - (y[i] - y[i-1])/h0);
+    double diag = 2.0*(h0 + h1);
+    if (i > 1) {
+      diag -= h0*w[i-1];
+      r -= h0*m[i-1];
+    }
+    w[i] = h1/diag;
+    m[i] = r/diag;
+  }
+  for (int i = n - 3; i >= 1; --i) m[i] -= w[i]*m[i+1];
+}
+
+static inline double rxSign(double a) {
+  return (a > 0) - (a < 0);
+}
+
+// pchip end slope (non-centered three point formula, shape preserving)
+static inline double rxPchipEnd(double h0, double h1, double d0, double d1) {
+  double d = ((2.0*h0 + h1)*d0 - h0*d1)/(h0 + h1);
+  if (rxSign(d) != rxSign(d0)) return 0.0;
+  if (rxSign(d0) != rxSign(d1) && fabs(d) > fabs(3.0*d0)) return 3.0*d0;
+  return d;
+}
+
+// pchip slopes (Fritsch-Butland weighted harmonic mean, as Matlab's pchip)
+static void rxSplinePchip(const double *x, const double *y, double *d, int n) {
+  if (n < 2) {
+    if (n == 1) d[0] = 0.0;
+    return;
+  }
+  if (n == 2) {
+    d[0] = d[1] = (y[1] - y[0])/(x[1] - x[0]);
+    return;
+  }
+  for (int i = 1; i < n - 1; ++i) {
+    double h0 = x[i] - x[i-1], h1 = x[i+1] - x[i];
+    double s0 = (y[i] - y[i-1])/h0, s1 = (y[i+1] - y[i])/h1;
+    if (s0*s1 <= 0.0) {
+      d[i] = 0.0;
+    } else {
+      double w1 = 2.0*h1 + h0, w2 = h1 + 2.0*h0;
+      d[i] = (w1 + w2)/(w1/s0 + w2/s1);
+    }
+  }
+  double h0 = x[1] - x[0], h1 = x[2] - x[1];
+  d[0] = rxPchipEnd(h0, h1, (y[1] - y[0])/h0, (y[2] - y[1])/h1);
+  h0 = x[n-1] - x[n-2]; h1 = x[n-2] - x[n-3];
+  d[n-1] = rxPchipEnd(h0, h1, (y[n-1] - y[n-2])/h0, (y[n-2] - y[n-3])/h1);
+}
+
+static inline int rxSplineCovInterp(rx_solving_options *op, int k) {
+  int is_locf = op->par_cov_interp[k];
+  return is_locf == -1 ? op->is_locf : is_locf;
+}
+
+// Build the knots of every spline/pchip covariate of every data subject
+// (simulated copies and homogeneous groups share their covariates)
+extern "C" void rxSplineCovSetup(rx_solve *rx, double *gcov) {
+  rxSplineCovFree();
+  rx_solving_options *op = rx->op;
+  if (!op->do_par_cov || gcov == NULL) return;
+  bool any = false;
+  for (int k = 0; k < op->ncov; ++k) {
+    if (op->par_cov[k] && rxIsSplineInterp(rxSplineCovInterp(op, k))) any = true;
+  }
+  if (!any) return;
+  int64_t len = 0;
+  for (int s = 0; s < rx->nsub; ++s) {
+    rx_solving_options_ind *ind = &(rx->subjects[s]);
+    int64_t end = (int64_t)(ind->cov_ptr - gcov) + (int64_t)ind->n_all_times_orig*op->ncov;
+    if (end > len) len = end;
+  }
+  if (len <= 0) return;
+  _rxSplT = (double*)malloc(3*len*sizeof(double));
+  _rxSplN = (int*)calloc(len, sizeof(int));
+  if (_rxSplT == NULL || _rxSplN == NULL) {
+    rxSplineCovFree();
+    (Rf_errorcall)(R_NilValue, _("cannot allocate memory for the covariate splines"));
+  }
+  _rxSplY = _rxSplT + len;
+  _rxSplD = _rxSplY + len;
+  _rxSplBase = gcov;
+  std::vector<double> w;
+  for (int s = 0; s < rx->nsub; ++s) {
+    rx_solving_options_ind *ind = &(rx->subjects[s]);
+    int n = ind->n_all_times_orig;
+    double *at = ind->all_times;
+    int *evid = ind->evid;
+    for (int k = 0; k < op->ncov; ++k) {
+      int is_locf = rxSplineCovInterp(op, k);
+      if (!op->par_cov[k] || !rxIsSplineInterp(is_locf)) continue;
+      int64_t b = (int64_t)(ind->cov_ptr - gcov) + (int64_t)n*k;
+      double *y = ind->cov_ptr + (int64_t)n*k;
+      double *T = _rxSplT + b, *Y = _rxSplY + b, *D = _rxSplD + b;
+      int m = 0;
+      for (int i = 0; i < n; ++i) {
+        if (ISNA(y[i]) || ISNAN(y[i])) continue;
+        // a modeled rate/duration stop's time is set while solving; use its start's
+        double ti = (i > 0 && (isEvidModeledRateStop(evid[i]) ||
+                               isEvidModeledDurationStop(evid[i]))) ? at[i-1] : at[i];
+        if (m > 0 && isSameTime(ti, T[m-1])) {
+          Y[m-1] = y[i];
+        } else if (m == 0 || ti > T[m-1]) {
+          T[m] = ti;
+          Y[m] = y[i];
+          m++;
+        }
+      }
+      _rxSplN[b] = m;
+      if (is_locf == 4) {
+        rxSplineNatural(T, Y, D, m, w);
+      } else {
+        rxSplinePchip(T, Y, D, m);
+      }
+    }
+  }
+}
+
+// Spline/pchip covariate k of a subject at time t; the boundary value is held
+// outside the knots
+static inline double rxSplineCov(double t, int k, int is_locf, rx_solving_options *op,
+                                 rx_solving_options_ind *ind) {
+  if (_rxSplN == NULL || _rxSplBase == NULL) {
+    return rxApproxCovData(t, k, 0, op, ind);
+  }
+  int64_t b = (int64_t)(ind->cov_ptr - _rxSplBase) + (int64_t)ind->n_all_times_orig*k;
+  int m = _rxSplN[b];
+  if (m == 0) return NA_REAL;
+  double *T = _rxSplT + b, *Y = _rxSplY + b, *D = _rxSplD + b;
+  if (m == 1 || t <= T[0]) return Y[0];
+  if (t >= T[m-1]) return Y[m-1];
+  int i = 0, j = m - 1;
+  while (i < j - 1) {
+    int ij = (i + j)/2;
+    if (t < T[ij]) j = ij; else i = ij;
+  }
+  double h = T[j] - T[i];
+  if (is_locf == 4) {
+    double a = (T[j] - t)/h, c = (t - T[i])/h;
+    return a*Y[i] + c*Y[j] + ((a*a*a - a)*D[i] + (c*c*c - c)*D[j])*h*h/6.0;
+  }
+  double s = (t - T[i])/h, s1 = 1.0 - s;
+  return (1.0 + 2.0*s)*s1*s1*Y[i] + s*s1*s1*h*D[i] +
+    s*s*(3.0 - 2.0*s)*Y[j] + s*s*(s - 1.0)*h*D[j];
+}
+
+// Set spline/pchip covariate k of subject ind at time t (read from indSample)
+static inline void rxSetSplineCov(double t, int k, int is_locf, rx_solving_options *op,
+                                  rx_solving_options_ind *ind,
+                                  rx_solving_options_ind *indSample) {
+  double *p = &(ind->par_ptr[op->par_cov[k]-1]);
+  double v = rxSplineCov(t, k, is_locf, op, indSample);
+  if (!isSameTimeOp(v, *p)) ind->cacheME = 0;
+  *p = v;
+}
+
 // getParCov first(parNo, idx=0) last(parNo, idx=ind->n_all_times-1)
 extern "C" double _getParCov(unsigned int id, rx_solve *rx, int parNo, int idx0){
   rx_solving_options_ind *ind;
@@ -616,6 +802,13 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
         if (op->par_cov[k]) {
           int is_locf = op->par_cov_interp[k];
           if (is_locf == -1) is_locf = op->is_locf;
+          if (rxIsSplineInterp(is_locf)) {
+            // smooth in time: read at the data time of record idx
+            rxSetSplineCov(getAllTimes(ind, ind->ix[idx]), k, is_locf, op, ind,
+                           (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) ?
+                           rxCovSampleInd(ind, rx, k) : ind);
+            continue;
+          }
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
             // Get or sample id from overall ids
             indSample = rxCovSampleInd(ind, rx, k);
@@ -667,6 +860,17 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
         if (op->par_cov[k]) {
           int is_locf = op->par_cov_interp[k];
           if (is_locf == -1) is_locf = op->is_locf;
+          if (rxIsSplineInterp(is_locf)) {
+            // smooth in time; a given record's covariates are read at its data time
+            double tS = t;
+            if (ind->recCovPos > 0 && rxRecCovRow(ind, ind->recCovPos - 1) >= 0) {
+              tS = getAllTimes(ind, rxRecCovRow(ind, ind->recCovPos - 1));
+            }
+            rxSetSplineCov(tS, k, is_locf, op, ind,
+                           (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) ?
+                           rxCovSampleInd(ind, rx, k) : ind);
+            continue;
+          }
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
             // Get or sample id from overall ids
             indSample = rxCovSampleInd(ind, rx, k);

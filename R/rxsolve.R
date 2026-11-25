@@ -491,6 +491,15 @@
 #'   interval between them, as `stats::approxfun(method = "constant", f = 0.5)`
 #'   gives.
 #'
+#' * `"spline"` -- a natural cubic spline through the subject's covariate
+#'   values, so the covariate and its first two derivatives are continuous
+#'   in time.  `"pchip"` -- a monotone piecewise cubic Hermite interpolant
+#'   (as Matlab's `pchip()`), which does not overshoot the data.  Both use
+#'   the records with a value at their data times (the last record's value
+#'   at a tied time), hold the first/last value outside them, and are linear
+#'   with two values.  Like `"linear"`, a `linCmt()` model refuses them for a
+#'   covariate that varies within a subject and feeds its parameters.
+#'
 #'   For time-varying covariates where a missing value is present, the
 #'   interpolation method will use either "locf" or "nocb" throughout
 #'   if they are the type of covariate interpolation that is selected.
@@ -1686,7 +1695,7 @@ rxSolve <- function(
   order = 5L,
   ...,
   cores,
-  covsInterpolation = c("locf", "linear", "nocb", "midpoint"),
+  covsInterpolation = c("locf", "linear", "nocb", "midpoint", "spline", "pchip"),
   naInterpolation = c("locf", "nocb"),
   keepInterpolation = c("na", "locf", "nocb"),
   addCov = TRUE,
@@ -1991,10 +2000,17 @@ rxSolve <- function(
       )
       returnType <- .matrixIdx[match.arg(returnType)]
     }
-    if (checkmate::testIntegerish(covsInterpolation, len = 1, lower = 0, upper = 3, any.missing = FALSE)) {
+    if (checkmate::testIntegerish(covsInterpolation, len = 1, lower = 0, upper = 5, any.missing = FALSE)) {
       covsInterpolation <- as.integer(covsInterpolation)
     } else {
-      covsInterpolation <- c("linear" = 0L, "locf" = 1L, "nocb" = 2L, "midpoint" = 3L)[match.arg(covsInterpolation)]
+      covsInterpolation <- c(
+        "linear" = 0L,
+        "locf" = 1L,
+        "nocb" = 2L,
+        "midpoint" = 3L,
+        "spline" = 4L,
+        "pchip" = 5L
+      )[match.arg(covsInterpolation)]
     }
     if (checkmate::testIntegerish(naInterpolation, len = 1, lower = 0, upper = 1, any.missing = FALSE)) {
       naInterpolation <- as.integer(naInterpolation)
@@ -8183,7 +8199,7 @@ rxUiDeparse.rxControl <- function(object, var) {
     names(.ret)[.w],
     function(x) {
       if (x == "covsInterpolation") {
-        .covsInterpolation <- c("linear" = 0L, "locf" = 1L, "nocb" = 2L, "midpoint" = 3L)
+        .covsInterpolation <- c("linear" = 0L, "locf" = 1L, "nocb" = 2L, "midpoint" = 3L, "spline" = 4L, "pchip" = 5L)
         paste0(x, " =", deparse1(names(.covsInterpolation)[which(object[[x]] == .covsInterpolation)]))
       } else if (x == "method") {
         .methodIdx <- c(
