@@ -165,4 +165,60 @@ rxTest({
     }
     expect_equal(.solve("cvode"), .solve("lsoda"), tolerance = 1e-6)
   })
+
+  test_that("cvode restarts a stiff model after failed steps (#1790)", {
+    # Abbiati 2021 avadomide neutrophil model: egress feedback exponent 20
+    .mod <- function() {
+      ini({
+        ka <- 5.5
+        tlag <- 0.406
+        kel <- 0.0708
+        k12 <- 0.0265
+        k21 <- 0.0195
+        vc <- 48.7
+      })
+      model({
+        circ0 <- 4.5
+        kelim <- log(2) / 30
+        kd <- 0.001
+        reserv0 <- 2.5 * circ0
+        kout <- kelim * circ0 / reserv0
+        ktr4 <- (kd + kout) * reserv0 / circ0
+        ktr3 <- kd + ktr4
+        ktr2 <- kd + ktr3
+        ktr1 <- kd + ktr2
+        km <- 0.1 * circ0
+        vmax <- ktr3 * (km + circ0)
+        d/dt(depot) <- -ka * depot
+        d/dt(central) <- ka * depot - (kel + k12) * central + k21 * peripheral1
+        d/dt(peripheral1) <- k12 * central - k21 * peripheral1
+        alag(depot) <- tlag
+        Cc <- 1000 * central / vc
+        eff <- 1 - 0.9 * Cc^2 / (15^2 + Cc^2)
+        flux <- vmax * eff * transit2 / (km + transit2)
+        d/dt(prol) <- ktr1 * (circ0 / transit2)^0.01 * prol - ktr1 * prol
+        d/dt(transit1) <- ktr1 * prol - (ktr2 + kd) * transit1
+        d/dt(transit2) <- ktr2 * transit1 - flux - kd * transit2
+        d/dt(transit3) <- flux - (ktr4 + kd) * transit3
+        d/dt(reservoir) <- ktr4 * transit3 - (kd + kout * (circ0 / circ)^20) * reservoir
+        d/dt(circ) <- kout * (circ0 / circ)^20 * reservoir - kelim * circ
+        prol(0) <- circ0
+        transit1(0) <- circ0
+        transit2(0) <- circ0
+        transit3(0) <- circ0
+        reservoir(0) <- reserv0
+        circ(0) <- circ0
+      })
+    }
+    .d <- seq(0, 55)
+    .d <- .d[(.d %% 7) < 5]
+    .dose <- et(amt = 4, time = 24 * (1 + .d), cmt = "depot")
+    .obs <- seq(0, 57 * 24, by = 2)
+    .ref <- rxSolve(.mod, et(.dose, .obs), atol = 1e-10, rtol = 1e-10)
+    .cv <- rxSolve(.mod, et(.dose, .obs), method = "cvode", atol = 1e-10, rtol = 1e-10)
+    expect_equal(.cv$circ, .ref$circ, tolerance = 1e-5)
+    # no observation records in the off days
+    .cv1 <- rxSolve(.mod, et(.dose, 57 * 24), method = "cvode", atol = 1e-10, rtol = 1e-10)
+    expect_equal(.cv1$circ, .ref$circ[.ref$time == 57 * 24], tolerance = 1e-5)
+  })
 })

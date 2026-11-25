@@ -131,6 +131,27 @@ void cvode_ctx_destroy(cvode_ctx_t *ctx) {
   free(ctx);
 }
 
+// Restarts allowed in one integration after a failed error or convergence
+// test, each only from past the point the previous one started from.
+#define CVODE_MAX_RESTARTS 10
+
+// CVode(CV_NORMAL) to tout.  A long carried BDF run in a stiff stretch can fail
+// its error test repeatedly at high order (step size collapsing) where a fresh
+// order-1 start goes on, so on CV_ERR_FAILURE or CV_CONV_FAILURE re-initialise
+// from the last accepted state y(tn), which CVode left in ctx->y, and continue.
+// The stop time is kept across the re-initialisation.
+static int cvode_ctx_run(cvode_ctx_t *ctx, double tout, sunrealtype *tret) {
+  int ret = CVode(ctx->mem, (sunrealtype)tout, ctx->y, tret, CV_NORMAL);
+  sunrealtype tlast = -INFINITY;
+  for (int nr = 0; nr < CVODE_MAX_RESTARTS &&
+         (ret == CV_ERR_FAILURE || ret == CV_CONV_FAILURE) && *tret > tlast; nr++) {
+    tlast = *tret;
+    if (CVodeReInit(ctx->mem, *tret, ctx->y) < 0) break;
+    ret = CVode(ctx->mem, (sunrealtype)tout, ctx->y, tret, CV_NORMAL);
+  }
+  return ret;
+}
+
 extern "C"
 int cvode_ctx_integrate(cvode_ctx_t *ctx, double *yp, double t0, double tout) {
   N_VSetArrayPointer(yp, ctx->y);
@@ -138,7 +159,7 @@ int cvode_ctx_integrate(cvode_ctx_t *ctx, double *yp, double t0, double tout) {
   // a stop time left by cvode_ctx_integrate_stop() must not cut this one short
   CVodeClearStopTime(ctx->mem);
   sunrealtype tret;
-  int ret = CVode(ctx->mem, (sunrealtype)tout, ctx->y, &tret, CV_NORMAL);
+  int ret = cvode_ctx_run(ctx, tout, &tret);
   ctx->tret = (double)tret;
   return (ret >= 0) ? 1 : -1;
 }
@@ -151,7 +172,7 @@ int cvode_ctx_integrate_stop(cvode_ctx_t *ctx, double *yp, double t0, double tou
   if (tstop < tout) tstop = tout;
   if (CVodeSetStopTime(ctx->mem, (sunrealtype)tstop) < 0) return -1;
   sunrealtype tret;
-  int ret = CVode(ctx->mem, (sunrealtype)tout, ctx->y, &tret, CV_NORMAL);
+  int ret = cvode_ctx_run(ctx, tout, &tret);
   ctx->tret = (double)tret;
   // yp holds y(tout) only if CVODE returned at tout, or at a stop time within
   // roundoff of it (an infusion end computed as start + amt/rate)
