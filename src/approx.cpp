@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <vector>
 #include <new>
+#include <utility>
 #include "../inst/include/rxode2.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
 #include "../inst/include/rxode2parseGetTime.h"
@@ -452,10 +453,11 @@ extern "C" void rxSplineCovFree(void) {
 
 // Natural cubic spline second derivatives (tridiagonal solve)
 static void rxSplineNatural(const double *x, const double *y, double *m, int n,
-                            std::vector<double> &w) {
+                            std::vector<double> *wv) {
   for (int i = 0; i < n; ++i) m[i] = 0.0;
   if (n < 3) return;
-  w.assign(n, 0.0);
+  wv->assign(n, 0.0);
+  double *w = wv->data();
   for (int i = 1; i < n - 1; ++i) {
     double h0 = x[i] - x[i-1], h1 = x[i+1] - x[i];
     double r = 6.0*((y[i+1] - y[i])/h1 - (y[i] - y[i-1])/h0);
@@ -504,7 +506,8 @@ static void rxSplinePchip(const double *x, const double *y, double *d, int n) {
   }
   double h0 = x[1] - x[0], h1 = x[2] - x[1];
   d[0] = rxPchipEnd(h0, h1, (y[1] - y[0])/h0, (y[2] - y[1])/h1);
-  h0 = x[n-1] - x[n-2]; h1 = x[n-2] - x[n-3];
+  h0 = x[n-1] - x[n-2];
+  h1 = x[n-2] - x[n-3];
   d[n-1] = rxPchipEnd(h0, h1, (y[n-1] - y[n-2])/h0, (y[n-2] - y[n-3])/h1);
 }
 
@@ -514,15 +517,15 @@ static inline int rxSplineCovInterp(rx_solving_options *op, int k) {
 }
 
 static inline void rxSplineCovBuild(rx_solving_options *op, rx_solving_options_ind *ind,
-                                    int64_t off, std::vector<double> &w) {
+                                    int64_t off, std::vector<double> *w) {
   int n = ind->n_all_times_orig;
   double *at = ind->all_times;
   int *evid = ind->evid;
   for (int k = 0; k < op->ncov; ++k) {
     int is_locf = rxSplineCovInterp(op, k);
     if (!op->par_cov[k] || !rxIsSplineInterp(is_locf)) continue;
-    int64_t b = off + (int64_t)n*k;
-    double *y = ind->cov_ptr + (int64_t)n*k;
+    int64_t b = off + static_cast<int64_t>(n)*k;
+    double *y = ind->cov_ptr + static_cast<int64_t>(n)*k;
     double *T = &_rxSplT[b], *Y = &_rxSplY[b], *D = &_rxSplD[b];
     int m = 0;
     for (int i = 0; i < n; ++i) {
@@ -574,7 +577,7 @@ extern "C" int rxSplineCovSetup(rx_solve *rx, int nSub) {
       if (!_rxSplKey.empty() && _rxSplKey.back().cov == subs[i].first.cov) continue;
       rx_solving_options_ind *ind = &(rx->subjects[subs[i].second]);
       _rxSplKey.push_back(RxSplKey{ind->cov_ptr, len});
-      len += (int64_t)ind->n_all_times_orig*op->ncov;
+      len += static_cast<int64_t>(ind->n_all_times_orig)*op->ncov;
     }
     _rxSplT.assign(len, 0.0);
     _rxSplY.assign(len, 0.0);
@@ -584,7 +587,7 @@ extern "C" int rxSplineCovSetup(rx_solve *rx, int nSub) {
     size_t kk = 0;
     for (size_t i = 0; i < subs.size(); ++i) {
       if (i > 0 && subs[i].first.cov == subs[i-1].first.cov) continue;
-      rxSplineCovBuild(op, &(rx->subjects[subs[i].second]), _rxSplKey[kk++].off, w);
+      rxSplineCovBuild(op, &(rx->subjects[subs[i].second]), _rxSplKey[kk++].off, &w);
     }
   } catch (std::bad_alloc &) {
     rxSplineCovFree();
@@ -599,8 +602,8 @@ static inline double rxSplineCov(double t, int k, int is_locf, rx_solving_option
                                  rx_solving_options_ind *ind) {
   RxSplKey key{ind->cov_ptr, 0};
   auto it = std::lower_bound(_rxSplKey.begin(), _rxSplKey.end(), key);
-  if (it == _rxSplKey.end() || it->cov != ind->cov_ptr) return NA_REAL; // nocov
-  int64_t b = it->off + (int64_t)ind->n_all_times_orig*k;
+  if (it == _rxSplKey.end() || it->cov != ind->cov_ptr) return NA_REAL;  // nocov
+  int64_t b = it->off + static_cast<int64_t>(ind->n_all_times_orig)*k;
   int m = _rxSplN[b];
   if (m == 0) return NA_REAL;
   const double *T = &_rxSplT[b], *Y = &_rxSplY[b], *D = &_rxSplD[b];
@@ -609,7 +612,11 @@ static inline double rxSplineCov(double t, int k, int is_locf, rx_solving_option
   int i = 0, j = m - 1;
   while (i < j - 1) {
     int ij = (i + j)/2;
-    if (t < T[ij]) j = ij; else i = ij;
+    if (t < T[ij]) {
+      j = ij;
+    } else {
+      i = ij;
+    }
   }
   double h = T[j] - T[i];
   if (is_locf == 4) {
