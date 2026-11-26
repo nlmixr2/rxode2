@@ -7,6 +7,7 @@
  * or nothing, is in rxCseRun.h.
  */
 #include "rxCseRun.h"
+#include "rxProtect.h"
 
 /* Hand the finished text to R under R_UnwindProtect: Rf_mkChar() allocates and
    can longjmp, and `outText` is malloc'd, so the cleanup is what frees it on
@@ -44,7 +45,33 @@ extern "C" SEXP _rxode2_rxCsePickThreads(SEXP n) {
   return Rf_ScalarInteger(csPickThreads((R_xlen_t) Rf_asInteger(n)));
 }
 
-extern "C" SEXP _rxode2_rxCse(SEXP linesVec) {
+/* the impure call names as NULL-terminated `name(` C strings (R_alloc'd);
+   NULL when there are none */
+static const char *const *csReadImpure(SEXP impure) {
+  R_xlen_t n, i, k = 0;
+  const char **ret;
+  if (TYPEOF(impure) != STRSXP) return NULL;
+  n = Rf_xlength(impure);
+  if (n == 0) return NULL;
+  ret = (const char**) R_alloc((size_t) n + 1, sizeof(char*));
+  for (i = 0; i < n; i++) {
+    SEXP el = STRING_ELT(impure, i);
+    if (el == NA_STRING) continue;
+    {
+      const char *nm = CHAR(el);
+      size_t len = strlen(nm);
+      char *buf = R_alloc(len + 2, sizeof(char));
+      memcpy(buf, nm, len);
+      buf[len] = '(';
+      buf[len + 1] = '\0';
+      ret[k++] = buf;
+    }
+  }
+  ret[k] = NULL;
+  return ret;
+}
+
+extern "C" SEXP _rxode2_rxCse(SEXP linesVec, SEXP impure) {
   R_xlen_t n;
   const char **in;
   csRun r;
@@ -58,6 +85,7 @@ extern "C" SEXP _rxode2_rxCse(SEXP linesVec) {
   if (in == NULL) return Rf_ScalarString(NA_STRING);
 
   csRunInit(&r, n, in, csPickThreads(n));
+  r.impure = csReadImpure(impure);
   outText = csRunAll(&r);
   csRunFree(&r);
 
@@ -66,7 +94,8 @@ extern "C" SEXP _rxode2_rxCse(SEXP linesVec) {
   if (outText == NULL) return Rf_ScalarString(NA_STRING);
   {
     csFinish fin; fin.text = outText;
-    SEXP cont = PROTECT(R_MakeUnwindCont());
+    rxProtect rx_protect;
+    SEXP cont = rx_protect.protect(R_MakeUnwindCont());
     ret = R_UnwindProtect(csFinishFun, &fin, csFinishClean, &fin, cont);
     /* csFinishClean() NULLs the pointer, so this frees it if the cleanup did
        not already run and is a no-op if it did.  Correct either way: whether
@@ -74,7 +103,6 @@ extern "C" SEXP _rxode2_rxCse(SEXP linesVec) {
        take on faith. */
     free(fin.text);
     fin.text = NULL;
-    UNPROTECT(1);
   }
   return ret;
 }

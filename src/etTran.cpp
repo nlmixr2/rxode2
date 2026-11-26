@@ -6,7 +6,12 @@
 #include <Rcpp.h>
 #include <algorithm>
 #include <tuple>
+#include <unordered_map>
 #include <unordered_set>
+#include <unordered_map>
+#include <climits>
+#include <set>
+#include <utility>
 #include "../inst/include/rxode2parse.h"
 #include "../inst/include/rxode2EventTranslate.h"
 #include "timsort.h"
@@ -34,8 +39,35 @@ extern int fastFactorDataHasNa;
 
 SEXP convertId_(SEXP x);
 
+// The first ten of `rows`, then "... (N more)", for a message naming rows
+static std::string etRowList(const std::vector<int> &rows) {
+  std::string ret;
+  size_t n = rows.size() < 10 ? rows.size() : 10;
+  for (size_t k = 0; k < n; ++k) {
+    if (k > 0) ret += ", ";
+    ret += std::to_string(rows[k]);
+  }
+  if (rows.size() > 10) {
+    ret += ", ... (" + std::to_string(rows.size() - 10) + " more)";
+  }
+  return ret;
+}
+
 // A rate or duration that is dose information, as the no-EVID-column path reads
 // it: positive, or modeled (-1, -2).  A NaN, 0 or other negative value is none.
+// An integer rxModelVars element looked up by name; 0 when absent or not integer
+static inline IntegerVector mvIntByName(List &mv, const char *name) {
+  SEXP nm = Rf_getAttrib(mv, R_NamesSymbol);
+  for (R_xlen_t i = 0; i < Rf_xlength(nm); ++i) {
+    if (!strcmp(CHAR(STRING_ELT(nm, i)), name)) {
+      SEXP cur = VECTOR_ELT(mv, i);
+      if (TYPEOF(cur) == INTSXP) return clone(as<IntegerVector>(cur));
+      break;
+    }
+  }
+  return IntegerVector::create(0);
+}
+
 static inline bool etRateDurIsDose(double x) {
   return x > 0.0 || x == -1.0 || x == -2.0;
 }
@@ -137,15 +169,12 @@ IntegerVector convertDvid_(SEXP inCmt, int maxDvid=0){
   return id;
 }
 
+// Index of the model parameter `par` in the string-comparison table, or -1;
+// exact, since the model can compare case-distinct parameters (lvl, Lvl)
 static inline int getStrCmpParamIndex(CharacterVector strCmpNames,
-                                      std::string cov) {
-  std::string covLower = cov;
-  std::string covUpper = cov;
-  std::transform(covLower.begin(), covLower.end(), covLower.begin(), ::tolower);
-  std::transform(covUpper.begin(), covUpper.end(), covUpper.begin(), ::toupper);
+                                      std::string par) {
   for (int i = 0; i < strCmpNames.size(); ++i) {
-    std::string cur = as<std::string>(strCmpNames[i]);
-    if (cur == cov || cur == covLower || cur == covUpper) {
+    if (as<std::string>(strCmpNames[i]) == par) {
       return i;
     }
   }
@@ -175,6 +204,73 @@ static inline SEXP refactorStrCmpCovariate(SEXP cur, CharacterVector modelLevels
   return factor2(curChr, _["levels"] = fullLevels);
 }
 
+// Set by rxSolve around its etTrans passes without the 'iCov' it solves with
+bool rxEtTransStrCmpQuiet = false;
+// Parameters rxSolve's 'params' gives as character or factor columns; etTrans
+// does not warn that no data column was matched to them
+std::vector<std::string> rxEtTransStrCmpParams;
+
+// Warn for each model literal compared to `name` that no data value has
+// (the comparison then never matches); `cur` is the re-leveled factor.
+static inline void warnStrCmpMissingLevels(SEXP cur, CharacterVector modelLevels,
+                                           std::string name) {
+  if (rxEtTransStrCmpQuiet) return;
+  int nLvl = modelLevels.size();
+  std::vector<bool> seen(nLvl, false);
+  int *codes = INTEGER(cur);
+  R_xlen_t n = Rf_xlength(cur);
+  for (R_xlen_t k = 0; k < n; ++k) {
+    int c = codes[k];
+    if (c != NA_INTEGER && c >= 1 && c <= nLvl) seen[c - 1] = true;
+  }
+  for (int k = 0; k < nLvl; ++k) {
+    if (!seen[k]) {
+      Rf_warningcall(R_NilValue,
+                     _("'%s' is compared to \"%s\", which is not in the data, so it never matches"),
+                     name.c_str(), CHAR(STRING_ELT(modelLevels, k)));
+    }
+  }
+}
+
+// Warn for each string-compared model parameter that no character or factor
+// data column was re-leveled for; the comparison then uses positional codes.
+static inline void warnStrCmpNotReleveled(CharacterVector strCmpNames,
+                                          std::vector<bool> &releveled,
+                                          CharacterVector pars) {
+  if (rxEtTransStrCmpQuiet) return;
+  for (int k = 0; k < strCmpNames.size(); ++k) {
+    if (releveled[k]) continue;
+    std::string nm = as<std::string>(strCmpNames[k]);
+    if (std::find(rxEtTransStrCmpParams.begin(), rxEtTransStrCmpParams.end(), nm) !=
+        rxEtTransStrCmpParams.end()) continue;
+    for (int j = 0; j < pars.size(); ++j) {
+      if (nm == as<std::string>(pars[j])) {
+        Rf_warningcall(R_NilValue,
+                       _("'%s' is compared to strings, but no character or factor data column was matched to it; the comparison uses its value as a level code"),
+                       nm.c_str());
+        break;
+      }
+    }
+  }
+}
+
+// A character or factor 'params' column read by the model parameter `par`,
+// converted as etTrans() converts a data column: re-leveled to the model's
+// string literals when `par` is compared to strings, otherwise a factor
+SEXP rxStrCmpParamCol(SEXP cur, List mv, std::string par) {
+  List strCmpParams = mv[RxMv_strCmpParams];
+  CharacterVector strCmpParamNames = strCmpParams.names();
+  int strCmpIdx = getStrCmpParamIndex(strCmpParamNames, par);
+  if (strCmpIdx != -1) {
+    CharacterVector modelLevels = Rf_getAttrib(strCmpParams[strCmpIdx], R_LevelsSymbol);
+    RObject ret = refactorStrCmpCovariate(cur, modelLevels);
+    warnStrCmpMissingLevels(ret, modelLevels, par);
+    return ret;
+  }
+  if (TYPEOF(cur) == STRSXP) return convertId_(cur);
+  return cur;
+}
+
 /*
  * Get the linear compartment information from the model variables
  *
@@ -197,6 +293,13 @@ void getLinInfo(List mv, int &numLinSens,
   numLinSens = std::floor(linCmtFlg/100);
   numLin = std::floor((linCmtFlg - numLinSens*100)/10);
   depotLin = std::floor((linCmtFlg - numLinSens*100- numLin*10));
+}
+
+// The linCmt() carry states (flag linCmtCarry) end the state list after the
+// linCmt() sensitivities; compartment numbering counts them with those.
+static inline int getLinCarryN(List mv) {
+  IntegerVector flags = mv[RxMv_flags];
+  return flags.size() > RxMvFlag_linCmtCarry ? flags[RxMvFlag_linCmtCarry] : 0;
 }
 
 //' Get the Linear Compartment Information based on the model variables
@@ -333,13 +436,188 @@ IntegerVector getCmtNum_(IntegerVector cmt, List mv, bool sens=true) {
   int numLinSens, numLin, depotLin;
   getLinInfo(mv, numLinSens,
              numLin, depotLin);
+  int nCarry = getLinCarryN(mv);
+  numLinSens += nCarry;
   IntegerVector ret(cmt.size());
   CharacterVector state = mv[RxMv_state];
   CharacterVector sensCV = mv[RxMv_sens];
   for (int i = cmt.size(); i--;){
     ret[i] = getCmtNum(cmt[i], numLin, numLinSens, depotLin,
-                       state.size(), sensCV.size(), sens);
+                       state.size(), sensCV.size() + nCarry, sens);
   }
+  return ret;
+}
+
+// Strip a leading "-" (a compartment turned off); true when there was one
+static inline bool toCmtSplitNeg(std::string &cmt) {
+  if (cmt.substr(0, 1) == "-") {
+    cmt = cmt.substr(1, std::string::npos);
+    return true;
+  }
+  return false;
+}
+
+// 1-based index of the last state named `name`, 0 when there is none
+static inline int toCmtFindState(CharacterVector& state, const std::string &name) {
+  for (int j = state.size(); j--;) {
+    if (as<std::string>(state[j]) == name) return j + 1;
+  }
+  return 0;
+}
+
+static inline void toCmtStopNeg(const char *fmt, const std::string &cmt,
+                                const IntegerVector& inId, const CharacterVector& idLvl,
+                                int i) {
+  stop(fmt, cmt.c_str(), CHAR(idLvl[((inId.size() == 0) ? 1 : inId[i])-1]), i+1);
+}
+
+static inline void toCmtAppendExtra(List &extraCmt, const std::string &cmt) {
+  List tmpList(extraCmt.size()+1);
+  for (int i = extraCmt.size(); i--;) tmpList[i] = extraCmt[i];
+  tmpList[extraCmt.size()] = cmt;
+  extraCmt = tmpList;
+}
+
+// state names followed by the extra (non-ODE) compartments
+static inline CharacterVector toCmtNames(CharacterVector& state, List &extraCmt) {
+  CharacterVector newCmt(state.size()+extraCmt.size());
+  for (int j = state.size(); j--;) newCmt[j]=state[j];
+  for (int j = extraCmt.size(); j--;)
+    newCmt[j+state.size()] = as<std::string>(extraCmt[j]);
+  return newCmt;
+}
+
+static inline IntegerVector toCmtFactor(RObject inCmt, CharacterVector& state,
+                                        const IntegerVector& inId,
+                                        const CharacterVector& idLvl) {
+  List extraCmt;
+  CharacterVector lvl = Rf_getAttrib(as<SEXP>(inCmt), R_LevelsSymbol);
+  IntegerVector lvlI(lvl.size());
+  int k = 0;
+  for (int i = 0; i < lvlI.size(); i++){
+    std::string curLvl = as<std::string>(lvl[i]);
+    bool isNeg = toCmtSplitNeg(curLvl);
+    int j = toCmtFindState(state, curLvl);
+    if (j > 0) {
+      lvlI[i] = isNeg ? -j : j;
+    } else if (curLvl == "(default)" || curLvl == "(obs)"){
+      lvlI[i] = 1;
+    } else {
+      k++;
+      if (isNeg){
+        toCmtStopNeg(_("negative compartments on non-ode 'cmt' (%s) does not make sense (id: %s, row: %d)"),
+                     curLvl, inId, idLvl, i);
+      }
+      toCmtAppendExtra(extraCmt, curLvl);
+      lvlI[i] = state.size() + k;
+    }
+  }
+  IntegerVector cmtIn = IntegerVector(inCmt);
+  IntegerVector ret(cmtIn.size());
+  for (int j=ret.size(); j--;){
+    if (IntegerVector::is_na(cmtIn[j])){
+      ret[j] = NA_INTEGER;
+    } else {
+      ret[j] = lvlI[cmtIn[j]-1];
+    }
+  }
+  ret.attr("cmtNames") = toCmtNames(state, extraCmt);
+  return ret;
+}
+
+static inline void toCmtWarnDvid(std::vector<int> &warnDvid) {
+  if (warnDvid.size() <= 1) return;
+  std::string warn = "Undefined 'dvid' integer values in data: ";
+  SORT(warnDvid.begin(), warnDvid.end());
+  for (int i = 0; i < (int)(warnDvid.size()-1); i++){
+    warn = warn + std::to_string(warnDvid[i]) + ", ";
+  }
+  warn = warn + std::to_string(warnDvid[warnDvid.size()-1]);
+  Rf_warningcall(R_NilValue, "%s", warn.c_str());
+}
+
+// DVID to cmt; values that do not match become -9999
+static inline IntegerVector toCmtDvid(RObject inCmt, CharacterVector& state,
+                                      IntegerVector& curDvid) {
+  Environment rx = rxode2env();
+  IntegerVector in = convertDvid_(inCmt, curDvid.length());
+  IntegerVector out(in.size());
+  IntegerVector conv = curDvid;
+  std::vector<int> warnDvid;
+  std::vector<int> warnConvertDvid;
+  std::string warnC = "'dvid' were not numbered 1, 2, etc\nThey were converted from->to:";
+  IntegerVector cmtIn = IntegerVector(inCmt);
+  for (int i = in.size(); i--;){
+    if (in[i] != cmtIn[i] &&
+        std::find(warnConvertDvid.begin(), warnConvertDvid.end(), in[i]) == warnConvertDvid.end()){
+      warnConvertDvid.push_back(in[i]);
+      warnC = warnC + " " + std::to_string(cmtIn[i]) + "->" + std::to_string(in[i]);
+    }
+    if (in[i] > 0 && in[i] <= conv.size()){
+      int curConv = conv[in[i]-1];
+      out[i] = (curConv > 0) ? curConv : curConv + state.size() + 1;
+    } else {
+      if (std::find(warnDvid.begin(), warnDvid.end(), in[i]) == warnDvid.end()){
+        warnDvid.push_back(in[i]);
+      }
+      out[i] = -9999;
+    }
+  }
+  toCmtWarnDvid(warnDvid);
+  if (warnConvertDvid.size() > 0){
+    Rf_warningcall(R_NilValue, "%s", warnC.c_str());
+  }
+  return out;
+}
+
+// 1-based index among the extra compartments named so far, 0 when none
+static inline int toCmtFindExtra(List &extraCmt, int k, const std::string &name) {
+  for (int j = k; j--;) {
+    CharacterVector cur = extraCmt[j];
+    if (as<std::string>(cur) == name) return j + 1;
+  }
+  return 0;
+}
+
+// One character compartment to its number, naming a new extra compartment
+// when it is neither a state nor an extra compartment seen before
+static inline int toCmtCharOne(std::string strCmt, CharacterVector& state,
+                               List &extraCmt, int &k, int cmt1, bool isNa,
+                               const IntegerVector& inId, const CharacterVector& idLvl,
+                               int i) {
+  bool isNeg = toCmtSplitNeg(strCmt);
+  if (strCmt == "(default)" || strCmt == "(obs)" || isNa){
+    return cmt1;
+  }
+  int j = toCmtFindState(state, strCmt);
+  if (j > 0) return isNeg ? -j : j;
+  j = toCmtFindExtra(extraCmt, k, strCmt);
+  if (isNeg) {
+    toCmtStopNeg(_("negative compartments on non-ode 'cmt' (%s) does not make sense (id: %s row: %d)"),
+                 strCmt, inId, idLvl, i);
+  }
+  if (j > 0) return state.size() + j;
+  toCmtAppendExtra(extraCmt, strCmt);
+  k++;
+  return state.size() + k;
+}
+
+static inline IntegerVector toCmtChar(RObject inCmt, CharacterVector& state,
+                                      const IntegerVector& inId,
+                                      const CharacterVector& idLvl, int cmt1) {
+  List extraCmt;
+  RObject cmtInfo = R_NilValue;
+  CharacterVector iCmt = as<CharacterVector>(inCmt);
+  std::vector<int> newCmt;
+  newCmt.reserve(iCmt.size());
+  int k = 0;
+  for (int i = 0; i < iCmt.size(); i++){
+    newCmt.push_back(toCmtCharOne(as<std::string>(iCmt[i]), state, extraCmt, k, cmt1,
+                                  CharacterVector::is_na(iCmt[i]), inId, idLvl, i));
+  }
+  if (iCmt.size() > 0) cmtInfo = as<RObject>(toCmtNames(state, extraCmt));
+  IntegerVector ret = wrap(newCmt);
+  ret.attr("cmtNames") = cmtInfo;
   return ret;
 }
 
@@ -349,196 +627,18 @@ IntegerVector toCmt(RObject inCmt, CharacterVector& state,
                     const IntegerVector& inId, const CharacterVector& idLvl,
                     int &numLin, int &numLinSens, int &depotLin, int &numCmt,
                     int &numSens, int &cmt1){
-  RObject cmtInfo = R_NilValue;
-  List extraCmt;
   if (rxIsNumIntLgl(inCmt)) {
-    if (rxIsFactor(inCmt)) {
-      CharacterVector lvl = Rf_getAttrib(as<SEXP>(inCmt), R_LevelsSymbol);
-      IntegerVector lvlI(lvl.size());
-      int i, j, k=0;
-      std::string curLvl, curState,negSub;
-      bool foundState = false;
-      bool isNeg = false;
-      for (i = 0; i < lvlI.size(); i++){
-        curLvl = as<std::string>(lvl[i]);
-        negSub = curLvl.substr(0,1);
-        if (negSub == "-"){
-          isNeg = true;
-          curLvl = curLvl.substr(1, std::string::npos);
-        } else {
-          isNeg = false;
-        }
-        foundState=false;
-        for (j = state.size(); j--;){
-          curState = as<std::string>(state[j]);
-          if (curState == curLvl){
-            if (isNeg){
-              lvlI[i] = -j-1;
-            } else {
-              lvlI[i] = j+1;
-            }
-            foundState = true;
-            break;
-          }
-        }
-        if (!foundState){
-          if (curLvl == "(default)" || curLvl == "(obs)"){
-            lvlI[i] = 1;
-          } else {
-            k++;
-            if (isNeg){
-              stop(_("negative compartments on non-ode 'cmt' (%s) does not make sense (id: %s, row: %d)"),
-                   curLvl.c_str(), CHAR(idLvl[((inId.size() == 0) ? 1 : inId[i])-1]), i+1);
-            } else {
-              List tmpList(extraCmt.size()+1);
-              for (int i = extraCmt.size(); i--;) tmpList[i] = extraCmt[i];
-              tmpList[extraCmt.size()]= curLvl;
-              extraCmt = tmpList;
-              lvlI[i] = state.size() + k;
-            }
-          }
-        }
-      }
-      IntegerVector cmtIn = IntegerVector(inCmt);
-      IntegerVector ret(cmtIn.size());
-      for (j=ret.size(); j--;){
-        if (IntegerVector::is_na(cmtIn[j])){
-          ret[j] = NA_INTEGER;
-        } else {
-          ret[j] = lvlI[cmtIn[j]-1];
-        }
-      }
-      CharacterVector newCmt(state.size()+extraCmt.size());
-      for (int j = state.size(); j--;) newCmt[j]=state[j];
-      for (int j = extraCmt.size(); j--;)
-        newCmt[j+state.size()] = as<std::string>(extraCmt[j]);
-      ret.attr("cmtNames") = newCmt;
-      return ret;
-    } else {
-      if (isDvid) {
-        // This converts DVID to cmt; Things that don't match become -9999
-        Environment rx = rxode2env();
-        IntegerVector in = convertDvid_(inCmt, curDvid.length());
-        IntegerVector out(in.size());
-        IntegerVector conv = curDvid;
-        std::vector<int> warnDvid;
-        std::vector<int> warnConvertDvid;
-        std::string warnC = "'dvid' were not numbered 1, 2, etc\nThey were converted from->to:";
-        IntegerVector cmtIn = IntegerVector(inCmt);
-        int curConv;
-        for (int i = in.size(); i--;){
-          if (in[i] != cmtIn[i]){
-            if (std::find(warnConvertDvid.begin(), warnConvertDvid.end(), in[i]) == warnConvertDvid.end()){
-              warnConvertDvid.push_back(in[i]);
-              warnC = warnC + " " + std::to_string(cmtIn[i]) + "->" + std::to_string(in[i]);
-            }
-          }
-          if (in[i] > 0 && in[i] <= conv.size()){
-            curConv= conv[in[i]-1];
-            if (curConv > 0){
-              out[i] = curConv;
-            } else {
-              out[i] = curConv +state.size()+1;
-            }
-          } else {
-            if (std::find(warnDvid.begin(), warnDvid.end(), in[i]) == warnDvid.end()){
-              warnDvid.push_back(in[i]);
-            }
-            out[i] = -9999;
-          }
-        }
-        if (warnDvid.size() > 1){
-          std::string warn = "Undefined 'dvid' integer values in data: ";
-          SORT(warnDvid.begin(), warnDvid.end());
-          for (int i = 0; i < (int)(warnDvid.size()-1); i++){
-            warn = warn + std::to_string(warnDvid[i]) + ", ";
-          }
-          warn = warn + std::to_string(warnDvid[warnDvid.size()-1]);
-          Rf_warningcall(R_NilValue, "%s", warn.c_str());
-        }
-        if (warnConvertDvid.size() > 0){
-          Rf_warningcall(R_NilValue, "%s", warnC.c_str());
-        }
-        return out;
-      } else {
-        IntegerVector in = asIv(inCmt, "inCmt");
-        IntegerVector out(in.size());
-        for (int i = in.size(); i--;){
-          out[i] = getCmtNum(in[i], numLin, numLinSens, depotLin, numCmt,
-                             numSens, false);
-        }
-        return as<IntegerVector>(out);
-      }
+    if (rxIsFactor(inCmt)) return toCmtFactor(inCmt, state, inId, idLvl);
+    if (isDvid) return toCmtDvid(inCmt, state, curDvid);
+    IntegerVector in = asIv(inCmt, "inCmt");
+    IntegerVector out(in.size());
+    for (int i = in.size(); i--;){
+      out[i] = getCmtNum(in[i], numLin, numLinSens, depotLin, numCmt,
+                         numSens, false);
     }
+    return out;
   } else if (rxIsChar(inCmt)) {
-    CharacterVector iCmt = as<CharacterVector>(inCmt);
-    std::vector<int> newCmt;
-    newCmt.reserve(iCmt.size());
-    std::string strCmt, negSub;
-    bool foundState=false;
-    bool isNeg = false;
-    int i, j, k = 0;
-    for (i = 0; i < iCmt.size(); i++){
-      strCmt = as<std::string>(iCmt[i]);
-      negSub = strCmt.substr(0,1);
-      if (negSub == "-"){
-        isNeg = true;
-        strCmt = strCmt.substr(1, std::string::npos);
-      } else {
-        isNeg = false;
-      }
-      foundState=false;
-      if (strCmt == "(default)" || strCmt == "(obs)" || CharacterVector::is_na(iCmt[i])){
-        foundState=true;
-        newCmt.push_back(cmt1);
-      } else {
-        for (j = state.size(); j--;){
-          if (as<std::string>(state[j]) == strCmt){
-            foundState = true;
-            if (isNeg){
-              newCmt.push_back(-j-1);
-            } else {
-              newCmt.push_back(j+1);
-            }
-            break;
-          }
-        }
-        if (!foundState){
-          for (j = k; j--;){
-            CharacterVector cur = extraCmt[j];
-            if (as<std::string>(cur) == strCmt){
-              foundState = true;
-              if (isNeg){
-                stop(_("negative compartments on non-ode 'cmt' (%s) does not make sense (id: %s row: %d)"), strCmt.c_str(),
-                     CHAR(idLvl[((inId.size() == 0) ? 1 : inId[i])-1]), i+1);
-              } else {
-                newCmt.push_back(state.size()+j+1);
-              }
-              break;
-            }
-          }
-          if (!foundState){
-            if (isNeg){
-              stop(_("negative compartments on non-ode 'cmt' (%s) does not make sense (id: %s row: %d)"), strCmt.c_str(),
-                   CHAR(idLvl[((inId.size() == 0) ? 1 : inId[i])-1]), i+1);
-            } else {
-              List tmpList(extraCmt.size()+1);
-              for (int i = extraCmt.size(); i--;) tmpList[i] = extraCmt[i];
-              extraCmt = tmpList;
-              newCmt.push_back(state.size()+k+1);
-              extraCmt[k++] = strCmt;
-            }
-          }
-        }
-      }
-      CharacterVector newCmt(state.size()+extraCmt.size());
-      for (int j = state.size(); j--;) newCmt[j]=state[j];
-      for (int j = extraCmt.size(); j--;) newCmt[j+state.size()] = as<std::string>(extraCmt[j]);
-      cmtInfo = as<RObject>(newCmt);
-    }
-    IntegerVector ret = wrap(newCmt);
-    ret.attr("cmtNames") = cmtInfo;
-    return ret;
+    return toCmtChar(inCmt, state, inId, idLvl, cmt1);
   }
   stop(_("should not reach here"));
   return IntegerVector::create(0);
@@ -786,12 +886,14 @@ LogicalVector cmtSupportsInfusion_(IntegerVector cmt, List mv) {
   int numLinSens, numLin, depotLin;
   getLinInfo(mv, numLinSens,
              numLin, depotLin);
+  int nCarry = getLinCarryN(mv);
+  numLinSens += nCarry;
   LogicalVector ret(cmt.size());
   CharacterVector state = mv[RxMv_state];
   CharacterVector sens = mv[RxMv_sens];
   for (int i = cmt.size(); i--;){
     ret[i] = cmtSupportsInfusion(cmt[i], numLin, numLinSens, depotLin,
-                                 state.size(), sens.size());
+                                 state.size(), sens.size() + nCarry);
   }
   return ret;
 }
@@ -857,12 +959,14 @@ LogicalVector cmtSupportsOff_(IntegerVector cmt, List mv) {
   int numLinSens, numLin, depotLin;
   getLinInfo(mv, numLinSens,
              numLin, depotLin);
+  int nCarry = getLinCarryN(mv);
+  numLinSens += nCarry;
   LogicalVector ret(cmt.size());
   CharacterVector state = mv[RxMv_state];
   CharacterVector sens = mv[RxMv_sens];
   for (int i = cmt.size(); i--;){
     ret[i] = cmtSupportsOff(cmt[i], numLin, numLinSens, depotLin,
-                            state.size(), sens.size());
+                            state.size(), sens.size() + nCarry);
   }
   return ret;
 }
@@ -1217,6 +1321,52 @@ static IntegerVector etTransInfPairAttr(const std::vector<std::pair<int,int>>& p
   return wrap(ret);
 }
 
+// The dose row of the k-th record a steady-state dose row i expands to: none
+// (-1) for the dose itself, row i for its companions
+static inline int etTransCompanionDoseRow(int k, int i) {
+  return k == 0 ? -1 : i;
+}
+
+// The dose row of a promoted infusion stop: its input row when it has one
+static inline int etTransPromotedDoseRow(int idxIn, int cur) {
+  return idxIn >= 0 ? idxIn : cur;
+}
+
+// (record, linked) 1-based output-row pairs from `link`, the input row each
+// record is linked to (-1 for none), to the record standing in for that input
+// row, which carries its covariates: the records a dose row expands to
+// (rxDoseRow) and the addl repeats that do not keep their covariates
+// (rxAddlCovDose)
+static IntegerVector etTransRowLinkAttr(const std::vector<int>& link,
+                                        const std::vector<int>& idxInput,
+                                        const std::vector<char>& recImplied,
+                                        const std::vector<int>& idxOutput) {
+  if (link.size() != idxInput.size()) return IntegerVector(0);
+  if (std::find_if(link.begin(), link.end(),
+                   [](int v) { return v >= 0; }) == link.end()) {
+    return IntegerVector(0);
+  }
+  std::vector<int> outRow, outPre;
+  etTransInfOutRows(idxOutput, idxInput.size(), outRow, outPre);
+  bool hasImplied = recImplied.size() == idxInput.size();
+  std::unordered_map<int, int> inputRow;
+  for (int r = 0; r < (int)outPre.size(); ++r) {
+    int q = outPre[r];
+    if (idxInput[q] < 0 || (hasImplied && recImplied[q])) continue;
+    inputRow.emplace(idxInput[q], r);
+  }
+  std::vector<int> ret;
+  for (int r = 0; r < (int)outPre.size(); ++r) {
+    int p = link[outPre[r]];
+    if (p < 0) continue;
+    auto it = inputRow.find(p);
+    if (it == inputRow.end() || it->second >= r) continue;
+    ret.push_back(r + 1);
+    ret.push_back(it->second + 1);
+  }
+  return wrap(ret);
+}
+
 List rxModelVars_(const RObject &obj); // model variables section
 //' Event translation for rxode2
 //'
@@ -1253,6 +1403,17 @@ List rxModelVars_(const RObject &obj); // model variables section
 //'   steady concentration at the actual time of dose, otherwise when
 //'   `FALSE` the doses are shifted
 //'
+//' @param tieOrder How records that share a subject and time are ordered:
+//'   `"evid"` (the default) puts resets first, then doses, then
+//'   observations; `"data"` keeps the order of the rows in `inData`, the
+//'   way NONMEM processes its records.  Records a row expands to (the reset
+//'   of an `evid=4` dose, `addl` repeats, infusion ends) follow that row.
+//'
+//' @param resetCancelsPending When `TRUE` (default), the `addl` repeats of a
+//'   record that a later reset (`evid` 3 or 4) is processed after are
+//'   dropped from that reset's time on, as NONMEM cancels prior doses at a
+//'   reset.
+//'
 //' @inheritParams rxSolve
 //'
 //' @return Object for solving in rxode2
@@ -1268,7 +1429,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
              bool addlKeepsCov=false,
              bool addlDropSs = true,
              bool ssAtDoseTime=true,
-             Nullable<List> iCov = R_NilValue) {
+             Nullable<List> iCov = R_NilValue,
+             std::string tieOrder = "evid",
+             bool resetCancelsPending = true) {
 #ifdef rxSolveT
   clock_t _lastT0 = clock();
 #endif
@@ -1281,7 +1444,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   getLinInfo(mv, numLinSens,
              numLin, depotLin);
   int numCmt = Rf_length(mv[RxMv_state]);
-  int numSens = Rf_length(mv[RxMv_sens]);
+  // compartment numbering counts the carry states with the sensitivities
+  int nCarry = getLinCarryN(mv);
+  numLinSens += nCarry;
+  int numSens = Rf_length(mv[RxMv_sens]) + nCarry;
   int cmt1 = getCmtNum(1, numLin, numLinSens, depotLin, numCmt,
                        numSens, false);
   bool hasIcov = false;
@@ -1303,21 +1469,16 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   IntegerVector curAlag = clone(as<IntegerVector>(mv[RxMv_alag]));
   IntegerVector splitBolus = clone(as<IntegerVector>(mv[RxMv_splitBolus]));
   int splitBolusN = splitBolus.size();
-  /* splitInfusion()/splitInfusionBolus()/splitBolusInfusion() mv entries
-   * are newer than some cached rxModelVars objects; guard the reads by
-   * size and type */
-  IntegerVector splitInfusion = IntegerVector::create(0);
-  if (mv.size() > RxMv_splitInfusion && TYPEOF(mv[RxMv_splitInfusion]) == INTSXP) {
-    splitInfusion = clone(as<IntegerVector>(mv[RxMv_splitInfusion]));
-  }
-  IntegerVector splitInfBol = IntegerVector::create(0);
-  if (mv.size() > RxMv_splitInfusionBolus && TYPEOF(mv[RxMv_splitInfusionBolus]) == INTSXP) {
-    splitInfBol = clone(as<IntegerVector>(mv[RxMv_splitInfusionBolus]));
-  }
-  IntegerVector splitBolInf = IntegerVector::create(0);
-  if (mv.size() > RxMv_splitBolusInfusion && TYPEOF(mv[RxMv_splitBolusInfusion]) == INTSXP) {
-    splitBolInf = clone(as<IntegerVector>(mv[RxMv_splitBolusInfusion]));
-  }
+  /* splitInfusion()/splitInfusionBolus()/splitBolusInfusion() are read by
+   * name: an rxModelVars saved by an older rxode2 may lack them or hold them
+   * at other indexes (5.1.8 had timeId at 31) */
+  IntegerVector splitInfusion = mvIntByName(mv, "splitInfusion");
+  IntegerVector splitInfBol = mvIntByName(mv, "splitInfusionBolus");
+  IntegerVector splitBolInf = mvIntByName(mv, "splitBolusInfusion");
+  // the split directive's source then targets, for the lagged-dose knots
+  IntegerVector knotSplit = splitBolusN >= 2 ? splitBolus :
+    splitInfusion.size() >= 2 ? splitInfusion :
+    splitInfBol.size() >= 2 ? splitInfBol : splitBolInf;
   IntegerVector statePropSplit = IntegerVector::create();
   if (TYPEOF(mv[RxMv_stateProp]) == INTSXP) {
     statePropSplit = clone(as<IntegerVector>(mv[RxMv_stateProp]));
@@ -1651,6 +1812,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   List inDataF(covCol.size());
   List inDataLvlN(covCol.size()+strAssign.size());
   List inDataLvl(covCol.size()+strAssign.size());
+  std::vector<bool> strCmpReleveled(strCmpParamNames.size(), false);
   for (i = covCol.size(); i--;) {
     int covColi = covCol[i];
     if (covColi >= 0) {
@@ -1671,12 +1833,17 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       } else {
         cur = iCov_[-covColi-1];
       }
+      // Look up by the model parameter this column matched; the data name
+      // is lowercased and misses mixed-case model names (#1656).
       int strCmpIdx = getStrCmpParamIndex(strCmpParamNames,
-                                          as<std::string>(inDataLvlN[i]));
+                                          as<std::string>(pars[covParPos[i]]));
       if (strCmpIdx != -1 && (TYPEOF(cur) == STRSXP || Rf_inherits(cur, "factor"))) {
         CharacterVector modelLevels = Rf_getAttrib(strCmpParams[strCmpIdx], R_LevelsSymbol);
         cur = refactorStrCmpCovariate(cur, modelLevels);
         inDataF[i] = cur;
+        strCmpReleveled[strCmpIdx] = true;
+        warnStrCmpMissingLevels(cur, modelLevels,
+                                as<std::string>(strCmpParamNames[strCmpIdx]));
       }
       if (TYPEOF(cur) == INTSXP){
         RObject lvls = cur.attr("levels");
@@ -1700,6 +1867,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     }
     covUnits[i] = nvTmp2;
   }
+  warnStrCmpNotReleveled(strCmpParamNames, strCmpReleveled, pars);
   for (i = 0; i < strAssign.size(); ++i) {
     inDataLvlN[i+covCol.size()] = strAssignN[i];
     inDataLvl[i+covCol.size()] = strAssign[i];
@@ -1711,6 +1879,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   // EVID = 2; Non-observation, possibly covariate
   // EVID = 3; Reset ODE states to zero; Non-observation event
   // EVID = 4; Reset and then dose event;  Illegal
+  // EVID = 8; Hidden covariate knot at a lagged dose's record time (not output)
   // EVID = 9; Non-observation event to ini system at time zero; This is to set the INIs at the correct place.
   // EVID = 10-99; mtime events (from ODE system)
   // When EVID > 100
@@ -1747,10 +1916,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     state[i+state0.size()] = stateE[i];
   }
   // Now adjust the compartment numbers if needed.
-  int baseSize = state0.size() - stateS.size();
+  // the carry states sit with the sensitivities, before the extra cmt()s
+  int baseSize = state0.size() - stateS.size() - nCarry;
   for (int i = curDvid.size(); i--;){
     if (curDvid[i] > baseSize) {
-      curDvid[i] = stateS.size()+curDvid[i];
+      curDvid[i] = stateS.size()+nCarry+curDvid[i];
     }
   }
   if (timeCol== -1) {
@@ -1762,9 +1932,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   } else {
     List newInData = clone(inData);
     Function convDate = rx[".convertExtra"];
-    newInData =  convDate(newInData);
+    newInData =  convDate(newInData, tieOrder);
     return etTrans(newInData, mv, addCmt, dropUnits, allTimeVar, keepDosingOnly,
-                   combineDvid, CharacterVector(0), false, true, true, iCov);
+                   combineDvid, CharacterVector(0), false, true, true, iCov,
+                   tieOrder, resetCancelsPending);
   }
   size_t resSize = inTime.size()+256;
   std::vector<int> id;
@@ -1785,6 +1956,27 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   std::vector<int> zeroId;
   zeroId.reserve(resSize);
   std::unordered_set<int> zeroIdSet;
+  // (id, time) of every lagged-dose knot emitted, so a re-translated table's
+  // own knots and its dose records never emit the same knot twice
+  std::set<std::pair<int, double> > knotSet;
+  // does input row r carry time-varying covariate data (a covariate knot)?
+  // A translated table's implied records (addl repeats, steady-state
+  // companions, infusion stops) carry none.
+  auto rowHasCovData = [&](int r) -> bool {
+    for (size_t c = 0; c < covCol.size(); ++c) {
+      int cc = covCol[c];
+      if (cc < 0 || as<std::string>(lName[cc]) == "cmt") continue;
+      SEXP col = inData[cc];
+      switch (TYPEOF(col)) {
+      case REALSXP: if (!ISNA(REAL(col)[r])) return true; break;
+      case INTSXP: if (INTEGER(col)[r] != NA_INTEGER) return true; break;
+      case LGLSXP: if (LOGICAL(col)[r] != NA_LOGICAL) return true; break;
+      case STRSXP: if (STRING_ELT(col, r) != NA_STRING) return true; break;
+      default: return true;
+      }
+    }
+    return false;
+  };
   std::vector<int> doseId;
   doseId.reserve(resSize);
   std::unordered_set<int> doseIdSet;
@@ -1800,11 +1992,21 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   limit.reserve(resSize);
   std::vector<int> idxInput;
   idxInput.reserve(resSize);
+  // for an addl repeat without its covariates, the input row of the dose it
+  // repeats; -1 for every other record
+  std::vector<int> addlCovDose;
+  addlCovDose.reserve(resSize);
   // 1 for a record that is not a data record (an addl repeat or a record a
   // dose expands to); only read for PK-type time with nonmem=TRUE (rxode2#1429)
   std::vector<char> recImplied;
   recImplied.reserve(resSize);
+  // for a record a dose row expands to (a steady-state companion, an
+  // infusion's stop), that input row; -1 for every other record
+  std::vector<int> doseRow;
+  doseRow.reserve(resSize);
   std::vector<std::pair<int,int>> infPairs; // see etTransNoteInfPairs()
+  // (addl repeat dose, the dose record it repeats) (rxode2#1583)
+  std::vector<std::pair<int,int>> addlParents;
   std::vector<int> infClassic;               // see etTransNoteInfClassic()
   std::vector<int> cmtF; // Final compartment
   cmtF.reserve(resSize);
@@ -2026,6 +2228,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
 
   int ccens=0;
   bool warnCensNA=false;
+  // 1-based rows read differently from their face value, for the warnings
+  // after the loop
+  std::vector<int> obsAmtDoseRows, mdvNaNoDoseRows;
   bool censNone=true;
   bool swapDvLimit=false;
   // cens = NA_INTEGER with LIMIT is M2
@@ -2042,6 +2247,112 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   bool hasReset = false;
   double maxShift = 0;
   bool warnNaTime=false;
+  // resetCancelsPending: NONMEM cancels prior doses at a reset (rxode2#1720),
+  // so the addl repeats of a row stop at the first reset of its subject
+  // processed after it -- a later row at a later time, or at the same time
+  // when ties keep the data order (the evid order resets first).  The data
+  // order keeps a repeat at the reset's own time: it is processed before the
+  // reset, which wipes it.  A reset that moves time back cancels the repeats
+  // after the row before it.
+  std::vector<double> addlCap;
+  std::vector<char> addlCapStrict;
+  if (resetCancelsPending && hasEvid && !evidIsMDV && addlCol != -1) {
+    int nIn = inTime.size();
+    bool capDataOrder = (tieOrder == "data");
+    addlCap.assign(nIn, R_PosInf);
+    addlCapStrict.assign(nIn, 0);
+    std::vector<int> nextReset(nIn, -1);
+    std::vector<double> prevTime(nIn, NA_REAL);
+    std::unordered_map<int, int> upcoming;
+    std::unordered_map<int, double> lastT;
+    // each subject's resets as (time, row), and whether one moves time back
+    std::unordered_map<int, std::vector<std::pair<double, int> > > resets;
+    std::unordered_set<int> movesBack;
+    // resets ahead of every other record are dropped (evid 3) or given as
+    // plain doses (evid 4) below, so they cancel nothing
+    bool leading = true;
+    std::vector<char> dropped(nIn, 0);
+    for (int i = 0; i < nIn; ++i) {
+      if (leading && (inEvid[i] == 3 || inEvid[i] == 4)) dropped[i] = 1;
+      if (inEvid[i] != 3) leading = false;
+    }
+    // the previous row's time when it is the same subject's, as the
+    // time-reset test below compares adjacent rows
+    int capLastId = NA_INTEGER;
+    for (int i = 0; i < nIn; ++i) {
+      int cid0 = idCol == -1 ? 1 : inId[i];
+      auto it = lastT.find(cid0);
+      if (it != lastT.end() && capLastId == cid0) prevTime[i] = it->second;
+      if (ISNAN(inTime[i])) continue;
+      capLastId = cid0;
+      lastT[cid0] = inTime[i];
+      if ((inEvid[i] == 3 || inEvid[i] == 4) && !dropped[i]) {
+        resets[cid0].push_back(std::make_pair(inTime[i], i));
+        if (!ISNAN(prevTime[i]) && inTime[i] < prevTime[i]) movesBack.insert(cid0);
+      }
+    }
+    for (auto &r : resets) std::sort(r.second.begin(), r.second.end());
+    // as below, a reset only moves time back when the data are otherwise
+    // sorted; unsorted data are sorted by time instead
+    {
+      int lid = NA_INTEGER;
+      double lt = NA_REAL;
+      for (int i = 0; i < nIn && !movesBack.empty(); ++i) {
+        if (ISNAN(inTime[i])) continue;
+        int cid0 = idCol == -1 ? 1 : inId[i];
+        if (lid == cid0 && lt > inTime[i] && inEvid[i] != 3 && inEvid[i] != 4) {
+          movesBack.clear();
+        }
+        lid = cid0;
+        lt = inTime[i];
+      }
+    }
+    for (int i = nIn; i--;) {
+      int cid0 = idCol == -1 ? 1 : inId[i];
+      auto it = upcoming.find(cid0);
+      if (it != upcoming.end()) nextReset[i] = it->second;
+      if ((inEvid[i] == 3 || inEvid[i] == 4) && !dropped[i]) upcoming[cid0] = i;
+    }
+    for (int i = 0; i < nIn; ++i) {
+      if (IntegerVector::is_na(inAddl[i]) || inAddl[i] <= 0 || ISNAN(inTime[i])) continue;
+      int cid0 = idCol == -1 ? 1 : inId[i];
+      auto rs = resets.find(cid0);
+      if (rs == resets.end()) continue;
+      double ti = inTime[i];
+      if (movesBack.find(cid0) == movesBack.end()) {
+        // the records are processed by time, so the first reset after the
+        // row is the earliest later one, or a tied one listed after it in
+        // the data order; the input order of the rows does not matter
+        const std::vector<std::pair<double, int> > &v = rs->second;
+        auto lo = capDataOrder ?
+          std::lower_bound(v.begin(), v.end(), std::make_pair(ti, i + 1)) :
+          std::upper_bound(v.begin(), v.end(), std::make_pair(ti, INT_MAX));
+        if (lo != v.end()) {
+          addlCap[i] = lo->first;
+          // a repeat at the reset's time is emitted with its row, so the data
+          // order processes it before the reset only when the row comes first
+          addlCapStrict[i] = capDataOrder && i < lo->second;
+        }
+        continue;
+      }
+      // a reset that moves time back starts a new time frame: follow the
+      // input order
+      for (int j = nextReset[i]; j != -1; j = nextReset[j]) {
+        double tj = inTime[j];
+        if (ISNAN(tj)) continue;
+        if (!ISNAN(prevTime[j]) && tj < prevTime[j]) {
+          addlCap[i] = prevTime[j];
+          addlCapStrict[i] = 1;
+          break;
+        }
+        if (tj > ti || (tj == ti && capDataOrder)) {
+          addlCap[i] = tj;
+          addlCapStrict[i] = capDataOrder;
+          break;
+        }
+      }
+    }
+  }
   // This section of the code:
   // - Loops over the input dataset
   // - Changes nonmem-style evid to classic rxode events
@@ -2115,7 +2426,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         limit.push_back(NA_REAL);
 
         idxInput.push_back(-1);
+        addlCovDose.push_back(-1);
         recImplied.push_back(0);
+        doseRow.push_back(-1);
       }
       nid++;
     }
@@ -2123,6 +2436,36 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     // Amt
     if (amtCol == -1) camt = 0.0;
     else camt = inAmt[i];
+    // An observation with no DV but a dose amount is read as that dose; its
+    // MDV, if any, describes the observation it is not.  Decided here, as
+    // the rate and duration below are read as a dose's only on a dose record;
+    // evidRow is the record's EVID as read, 1 for such a record.  A NaN DV
+    // or AMT counts as missing; a negative CMT turns a compartment off.
+    bool obsAmtDose = hasEvid && inEvid[i] == 0 && dvCol != -1 && ISNAN(inDv[i]) &&
+      !ISNAN(camt) && camt != 0.0 && !(mdvCol != -1 && inMdv[i] == 1) &&
+      !(cmtCol != -1 && !IntegerVector::is_na(inCmt[i]) && inCmt[i] < 0);
+    // A missing MDV standing in for the EVID is a dose, unless it has a zero
+    // amount and no rate or duration: then there is nothing to dose and it
+    // is EVID 2.  It is read as EVID 1 (so its rate or duration is read) when
+    // it has a nonzero amount or is a steady-state constant infusion; other
+    // doses keep the missing-EVID reading below.  A negative CMT is left alone.
+    bool mdvNaDose = false, mdvNaNoDose = false;
+    if (evidIsMDV && IntegerVector::is_na(inEvid[i]) &&
+        !(cmtCol != -1 && !IntegerVector::is_na(inCmt[i]) && inCmt[i] < 0)) {
+      bool rateDose = rateCol != -1 && etRateDurIsDose(inRate[i]);
+      if (amtCol != -1 && camt == 0.0 && !rateDose &&
+          !(durCol != -1 && etRateDurIsDose(inDur[i]))) {
+        mdvNaNoDose = true;
+        mdvNaNoDoseRows.push_back(i + 1);
+      } else if ((amtCol != -1 && !ISNAN(camt) && camt != 0.0) ||
+                 (camt == 0.0 && rateDose && ssCol != -1 && inSs[i] == 1 && cii == 0)) {
+        mdvNaDose = true;
+      }
+    }
+    int evidRow = evidCol == -1 ? NA_INTEGER :
+      ((obsAmtDose || mdvNaDose) ? 1 :
+       (mdvNaNoDose ? 2 : inEvid[i]));
+    if (obsAmtDose) obsAmtDoseRows.push_back(i + 1);
 
     // SS flag
     flg=1;
@@ -2214,7 +2557,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         //durModeled = true;
       } else if (rate > 0){
         // Rate is fixed
-        if (evidCol == -1 || inEvid[i] == 1 || inEvid[i] == 4) {
+        if (evidCol == -1 || evidRow == 1 || evidRow == 4) {
           if (cmtSupportsInfusion(cmt, numLin, numLinSens,
                                   depotLin, numCmt, numSens)) {
             rateI = 1;
@@ -2257,7 +2600,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         if (flg == 40){
           stop(_("specifying duration with a steady state constant infusion makes no sense (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
         }
-        if (evidCol == -1 || inEvid[i] == 1 || inEvid[i] == 4) {
+        if (evidCol == -1 || evidRow == 1 || evidRow == 4) {
           if (cmtSupportsInfusion(cmt, numLin, numLinSens,
                                   depotLin, numCmt, numSens)) {
             rateI = 2;
@@ -2265,7 +2608,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             stop(_("specifying a fixed duration with a non-infusion compartment (id: %s row: %d)"), CHAR(idLvl[cid-1]), i+1);
           }
           rate = camt/inDur[i];
-        } else if (inEvid[i] > 4) {
+        } else if (evidRow > 4) {
           rateI=0;
           rate = 0.0;
         }
@@ -2298,9 +2641,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         allBolus=false;
       }
     } else {
-      cevid = inEvid[i];
+      cevid = evidRow;
     }
-    if (evidIsMDV && cevid == 1 && camt == 0) {
+    if (evidIsMDV && cevid == 1 && camt == 0 && !mdvNaDose) {
       cevid=2;
     }
     if (IntegerVector::is_na(cevid)) {
@@ -2319,6 +2662,25 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
         cevid=0;
       }
+    }
+    if (cevid == 8) {
+      // a knot from an earlier translation; addlKeepsCov needs none
+      if (!addlKeepsCov && knotSet.insert(std::make_pair(cid, ctime)).second) {
+        id.push_back(cid);
+        evid.push_back(8);
+        cmtF.push_back(0);
+        time.push_back(ctime);
+        amt.push_back(NA_REAL);
+        ii.push_back(0.0);
+        dv.push_back(NA_REAL);
+        limit.push_back(NA_REAL);
+        cens.push_back(0);
+        idxInput.push_back((int)i);
+        addlCovDose.push_back(-1);
+        recImplied.push_back(0);
+        doseRow.push_back(-1);
+      }
+      continue;
     }
     if (cevid == 4 && nobs ==0 && ndose == 0) {
       // No reset here
@@ -2443,13 +2805,15 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
 
         idxInput.push_back(i);
+        addlCovDose.push_back(-1);
         recImplied.push_back(0);
+        doseRow.push_back(-1);
         cevid = -1;
       }
       break;
     case 7:
     case 1:
-      if (mdvCol != -1 && (inMdv[i] == 0 || IntegerVector::is_na(inMdv[i]))){
+      if (!obsAmtDose && mdvCol != -1 && (inMdv[i] == 0 || IntegerVector::is_na(inMdv[i]))){
         stop(_("'mdv' cannot be 0 when 'evid'=%d id: %s row: %d"), cevid, CHAR(idLvl[cid-1]), i+1);
       }
       if (amtCol == -1) {
@@ -2500,7 +2864,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         cens.push_back(0);
 
         idxInput.push_back(i);
+        addlCovDose.push_back(-1);
         recImplied.push_back(0);
+        doseRow.push_back(-1);
         ndose++;
         // + cmt needs to turn on cmts.
         // This gives a zero dose to cmt
@@ -2517,7 +2883,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           cens.push_back(0);
 
           idxInput.push_back(i);
+          addlCovDose.push_back(-1);
           recImplied.push_back(0);
+          doseRow.push_back(-1);
           ndose++;
         }
         cevid = -1;
@@ -2549,7 +2917,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       cens.push_back(0);
 
       idxInput.push_back(i);
+      addlCovDose.push_back(-1);
       recImplied.push_back(0);
+      doseRow.push_back(-1);
       ndose++;
       cevid = -1;
       break;
@@ -2592,7 +2962,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       cens.push_back(0);
 
       idxInput.push_back(-1);
+      addlCovDose.push_back(-1);
       recImplied.push_back(1);
+      doseRow.push_back(-1);
       ndose++;
       // Now use the transformed compartment
       cevid = cmt100*100000+rateI*10000+cmt99*100+flg;
@@ -2681,9 +3053,35 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       // to, comes from the shared translator in
       // inst/include/rxode2EventTranslate.h, which the runtime evid_() push
       // path uses as well, so the two cannot disagree.
+      // a data dose alag() moves off its record's time (not a compartment
+      // turn-off).  A classic evid row needs one only when it carries
+      // covariate data: a translated table's implied records carry none.
+      bool lagCmt = false;
+      if (classicEvid) {
+        int wh, wCmt, wh100, whI, wh0;
+        getWh(cevid, &wh, &wCmt, &wh100, &whI, &wh0);
+        if (wh0 != EVID0_OFF && rowHasCovData((int)i)) {
+          for (int jj = 0; jj < curAlag.size() && !lagCmt; ++jj) {
+            lagCmt = (wCmt + 1 == curAlag[jj]);
+          }
+        }
+      } else if (flg != 30) {
+        for (int jj = 0; jj < curAlag.size() && !lagCmt; ++jj) {
+          lagCmt = (cmt == curAlag[jj]);
+          // a split dose lands in its targets, which may carry the alag()
+          for (int kk = 1; kk < knotSplit.size() && !lagCmt; ++kk) {
+            lagCmt = (cmt == knotSplit[0] && knotSplit[kk] == curAlag[jj]);
+          }
+        }
+      }
       int nOcc = _rxAddlCount(cii, caddl);
+      int addlParent = (int)evid.size();
       for (int rep = 0; rep < nOcc; ++rep) {
         if (rep > 0) ctime += cii;
+        if (rep > 0 && !addlCap.empty() &&
+            (ctime > addlCap[i] || (ctime == addlCap[i] && !addlCapStrict[i]))) {
+          break;
+        }
         double occIi = 0.0;
         int occFlg = _rxAddlOccurrence(rep, flg, cii, caddl, addlDropSs, &occIi);
         rx_translated_event ev;
@@ -2717,10 +3115,17 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           // only does when addlKeepsCov asks for it
           if (rep == 0) {
             idxInput.push_back(k == 0 ? (int)i : -1);
+            addlCovDose.push_back(-1);
             recImplied.push_back(k == 0 ? 0 : 1);
+            doseRow.push_back(etTransCompanionDoseRow(k, (int)i));
           } else {
             idxInput.push_back(addlKeepsCov ? (int)i : -1);
-            recImplied.push_back(1);
+            // the dose it repeats, when it does not keep that dose's covariates
+            addlCovDose.push_back(addlKeepsCov ? -1 : (int)i);
+            // 2: the dose of an addl repeat (rxode2#1583)
+            recImplied.push_back(k == 0 ? 2 : 1);
+            doseRow.push_back(-1);
+            if (k == 0) addlParents.emplace_back((int)evid.size() - 1, addlParent);
           }
           ndose++;
         }
@@ -2732,6 +3137,24 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
         if (_rxAddlZeroLastIi(rep, flg, cii, caddl) && !ii.empty()) {
           ii[ii.size() - 1] = 0.0;
+        }
+        if (rep == 0 && !addlKeepsCov && lagCmt &&
+            knotSet.insert(std::make_pair(cid, ctime)).second) {
+          // alag() moves the dose, but its record's time stays a covariate
+          // knot (#1584); a hidden record there makes every solve stop at it
+          id.push_back(cid);
+          evid.push_back(8);
+          cmtF.push_back(0);
+          time.push_back(ctime);
+          amt.push_back(NA_REAL);
+          ii.push_back(0.0);
+          dv.push_back(NA_REAL);
+          limit.push_back(NA_REAL);
+          cens.push_back(0);
+          idxInput.push_back((int)i);
+          addlCovDose.push_back(-1);
+          recImplied.push_back(0);
+          doseRow.push_back(-1);
         }
         if (rep == 0 && ctime == 0){
           if (zeroIdSet.find(cid) == zeroIdSet.end()){
@@ -2798,7 +3221,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     std::vector<double> limit2;
     std::vector<int> cens2;
     std::vector<int> idxInput2;
+    std::vector<int> addlCovDose2;
     std::vector<char> recImplied2;
+    std::vector<int> doseRow2;
     id2.reserve(id.size());
     evid2.reserve(evid.size());
     cmtF2.reserve(cmtF.size());
@@ -2809,7 +3234,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     limit2.reserve(limit.size());
     cens2.reserve(cens.size());
     idxInput2.reserve(idxInput.size());
+    addlCovDose2.reserve(addlCovDose.size());
     recImplied2.reserve(recImplied.size());
+    doseRow2.reserve(doseRow.size());
     // where each record's copies land, to carry infPairs across
     std::vector<int> newFirst(evid.size(), 0), newCount(evid.size(), 0);
     ndose = 0;
@@ -2835,7 +3262,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         } else {
           ndose += splitN - 1;
         }
-      } else if (isObs(evid[j])) nobs++;
+      } else if (isObs(evid[j]) && evid[j] != 8) nobs++;
       newFirst[j] = (int)id2.size();
       if (!splitThis) {
         id2.push_back(id[j]);
@@ -2848,7 +3275,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         limit2.push_back(limit[j]);
         cens2.push_back(cens[j]);
         idxInput2.push_back(idxInput[j]);
+        addlCovDose2.push_back(addlCovDose[j]);
         recImplied2.push_back(recImplied[j]);
+        doseRow2.push_back(doseRow[j]);
         mxCmt = max2(mxCmt, cmtF[j]);
         newCount[j] = 1;
         continue;
@@ -2879,7 +3308,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           limit2.push_back(limit[j]);
           cens2.push_back(cens[j]);
           idxInput2.push_back(idxInput[j]);
+          addlCovDose2.push_back(addlCovDose[j]);
           recImplied2.push_back(recImplied[j]);
+          doseRow2.push_back(doseRow[j]);
           mxCmt = max2(mxCmt, curCmt);
         };
         int promotion = canPromote ? promote[k] : 0;
@@ -2890,6 +3321,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           pushRow(_rxEncodeEventCmtInf(evid[j], curCmt, promotion));
           pushRow(_rxEncodeEventCmtInf(evid[j], curCmt, stopFlag));
           recImplied2.back() = 1;
+          // the promoted stop is a record its dose row expands to
+          doseRow2.back() = etTransPromotedDoseRow(idxInput[j], doseRow2.back());
           hasModeledRateDur = true;
         } else {
           pushRow(_rxEncodeEventCmt(evid[j], curCmt));
@@ -2907,6 +3340,17 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       }
     }
     infPairs.swap(infPairs2);
+    // a split repeat's m-th copy repeats the dose's m-th copy
+    std::vector<std::pair<int,int>> addlParents2;
+    for (const auto& pr : addlParents) {
+      int nP = newCount[pr.second];
+      if (nP == 0) continue;
+      for (int m = 0; m < newCount[pr.first]; ++m) {
+        addlParents2.emplace_back(newFirst[pr.first] + m,
+                                  newFirst[pr.second] + (m < nP ? m : nP - 1));
+      }
+    }
+    addlParents.swap(addlParents2);
     std::vector<int> infClassic2;
     for (int c : infClassic) {
       for (int m = 0; m < newCount[c]; ++m) infClassic2.push_back(newFirst[c] + m);
@@ -2922,7 +3366,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     limit.swap(limit2);
     cens.swap(cens2);
     idxInput.swap(idxInput2);
+    addlCovDose.swap(addlCovDose2);
     recImplied.swap(recImplied2);
+    doseRow.swap(doseRow2);
   }
   if (hasReset && isSorted) {
     // Here EVID=3 resets time
@@ -2998,7 +3444,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             cens.push_back(0);
 
             idxInput.push_back(-1);
+            addlCovDose.push_back(-1);
             recImplied.push_back(0);
+            doseRow.push_back(-1);
           }
         }
       }
@@ -3007,6 +3455,19 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   }
   if (warnCensNA) Rf_warningcall(R_NilValue, "%s", _("censoring missing 'DV' values do not make sense"));
   if (warnNaTime) Rf_warningcall(R_NilValue, "%s", _("missing 'TIME' values do not make sense (ignored)"));
+  if (!obsAmtDoseRows.empty()) {
+    // with no evid column the mdv column stands in for it
+    std::string msg = std::string(evidIsMDV ?
+                                  _("'mdv' 0 with a missing 'dv' and a nonzero 'amt' is read as a dose") :
+                                  _("'evid' 0 with a missing 'dv' and a nonzero 'amt' is read as a dose")) +
+      "\nrows: " + etRowList(obsAmtDoseRows);
+    Rf_warningcall(R_NilValue, "%s", msg.c_str());
+  }
+  if (!mdvNaNoDoseRows.empty()) {
+    std::string msg = std::string(_("a missing 'mdv' with a zero 'amt' is read as 'evid' 2, not a dose")) +
+      "\nrows: " + etRowList(mdvNaNoDoseRows);
+    Rf_warningcall(R_NilValue, "%s", msg.c_str());
+  }
 #ifdef rxSolveT
   REprintf("  Time7: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
@@ -3015,8 +3476,13 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   NumericVector nvTime = wrap(time);
   IntegerVector ivEvid = clone(wrap(evid));
 
+  // tieOrder="data": a constant key, so the stable sort keeps the order the
+  // records were emitted in, which is the row order of inData
+  bool dataTieOrder = (tieOrder == "data");
   if (!keepDosingOnly && doseId.size() > 0) {
-#define sortID if (ivEvid[j]==3){               \
+#define sortID if (dataTieOrder) {              \
+      ivEvid[j] = 0;                            \
+    } else if (ivEvid[j]==3){                   \
       ivEvid[j] = NA_INTEGER+1;                 \
     } else if (amt[j] == 0){                    \
       ivEvid[j] = NA_INTEGER+2;                 \
@@ -3085,6 +3551,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   if (idxOutput.size()-rmAmt <= 0) stop(_("empty data"));
   IntegerVector infPairAttr = etTransInfPairAttr(infPairs, infClassic, idxOutput,
                                                  id, evid, amt);
+  IntegerVector doseRowAttr = etTransRowLinkAttr(doseRow, idxInput, recImplied,
+                                                 idxOutput);
+  IntegerVector addlCovDoseAttr = etTransRowLinkAttr(addlCovDose, idxInput,
+                                                    recImplied, idxOutput);
   if (!keepDosingOnly) {
     nid = obsId.size();
   } else {
@@ -3440,15 +3910,39 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   int maxItemsPerId = 0;
   int curItems = 0;
   // Output rows that are not data records, for a model whose PK-type
-  // statements read `time` (rxode2#1429)
+  // statements read `time` (rxode2#1429) or that re-reads modeled rates and
+  // durations at data records (rxode2#1586), and the addl repeat doses among
+  // them, for a model whose f()/alag()/rate()/dur() may (rxode2#1583)
   std::vector<int> pkSkipRows;
+  std::vector<int> addlRepRows;
+  std::vector<int> addlParentOff; // rows back to the dose each repeat repeats
   IntegerVector mvFlags = mv[RxMv_flags];
-  bool needPkSkip = mvFlags.size() > RxMvFlag_pkTime &&
-    mvFlags[RxMvFlag_pkTime] != 0 && recImplied.size() == idxInput.size();
+  int mvNeedSort = Rf_length(mv[RxMv_needSort]) > 0 ? as<int>(mv[RxMv_needSort]) : 0;
+  bool needAddlRep = mvFlags.size() > RxMvFlag_doseTime &&
+    mvFlags[RxMvFlag_doseTime] != 0;
+  std::vector<int> addlOutRow, addlParentOf;
+  if (needAddlRep) {
+    std::vector<int> outPre;
+    etTransInfOutRows(idxOutput, evid.size(), addlOutRow, outPre);
+    addlParentOf.assign(evid.size(), -1);
+    for (const auto& pr : addlParents) addlParentOf[pr.first] = pr.second;
+  }
+  bool needPkSkip = (needAddlRep ||
+                     (mvFlags.size() > RxMvFlag_pkTime && mvFlags[RxMvFlag_pkTime] != 0) ||
+                     (mvNeedSort & (needSortRate | needSortDur)) != 0) &&
+    recImplied.size() == idxInput.size();
   for (i =idxOutput.size(); i--;){
     if (idxOutput[i] != -1) {
       jj--;
-      if (needPkSkip && recImplied[idxOutput[i]]) pkSkipRows.push_back(jj + 1);
+      if (needPkSkip && recImplied[idxOutput[i]]) {
+        pkSkipRows.push_back(jj + 1);
+        if (needAddlRep && recImplied[idxOutput[i]] == 2) {
+          addlRepRows.push_back(jj + 1);
+          int par = addlParentOf[idxOutput[i]];
+          int parRow = par >= 0 ? addlOutRow[par] : -1;
+          addlParentOff.push_back(parRow >= 0 && parRow < jj ? jj - parRow : 0);
+        }
+      }
       outId[jj] = id[idxOutput[i]];
       if (lastId != id[idxOutput[i]]) {
         maxItemsPerId = max2(curItems, maxItemsPerId);
@@ -3861,6 +4355,18 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   if (pkSkipRows.size() > 0) {
     std::reverse(pkSkipRows.begin(), pkSkipRows.end());
     Rf_setAttrib(lstF, Rf_install("rxPkSkip"), wrap(pkSkipRows));
+  }
+  if (addlRepRows.size() > 0) {
+    std::reverse(addlRepRows.begin(), addlRepRows.end());
+    Rf_setAttrib(lstF, Rf_install("rxAddlRep"), wrap(addlRepRows));
+    std::reverse(addlParentOff.begin(), addlParentOff.end());
+    Rf_setAttrib(lstF, Rf_install("rxAddlParent"), wrap(addlParentOff));
+  }
+  if (doseRowAttr.size() > 0) {
+    Rf_setAttrib(lstF, Rf_install("rxDoseRow"), doseRowAttr);
+  }
+  if (addlCovDoseAttr.size() > 0) {
+    Rf_setAttrib(lstF, Rf_install("rxAddlCovDose"), addlCovDoseAttr);
   }
   Rf_setAttrib(lstF, R_NamesSymbol, nmeF);
   Rf_setAttrib(lstF, R_ClassSymbol, cls);

@@ -930,6 +930,242 @@
   }
 )
 
+## Eta shape transforms (src/etaShape.cpp).  exprelD(z, n) is the n-th
+## derivative of (exp(z)-1)/z, so every derivative stays finite through a
+## shape of 0.  John-Draper's eta derivative is written without sign() so it
+## is 1, not 0, at eta = 0.
+.rxD$exprelD <- list(
+  function(z, n) {
+    paste0("exprelD(", z, ",(", n, ")+1)")
+  },
+  function(z, n) {
+    "0"
+  }
+)
+
+.rxD$etaBoxCox <- list(
+  function(eta, lambda) {
+    paste0("exp((", lambda, ")*(", eta, "))")
+  },
+  function(eta, lambda) {
+    paste0("(", eta, ")^2*exprelD((", lambda, ")*(", eta, "),1)")
+  }
+)
+
+.rxD$etaJohnDraper <- list(
+  function(eta, lambda) {
+    paste0("exp(((", lambda, ")-1)*log1p(abs(", eta, ")))")
+  },
+  function(eta, lambda) {
+    paste0(
+      "sign(",
+      eta,
+      ")*log1p(abs(",
+      eta,
+      "))^2*exprelD((",
+      lambda,
+      ")*log1p(abs(",
+      eta,
+      ")),1)"
+    )
+  }
+)
+
+## Yeo-Johnson: fsign(1, eta) is +1 at eta = 0, and both branches have slope
+## 1 there
+.rxD$etaYeoJohnson <- list(
+  function(eta, lambda) {
+    paste0("exp(fsign(1,", eta, ")*((", lambda, ")-1)*log1p(abs(", eta, ")))")
+  },
+  function(eta, lambda) {
+    paste0(
+      "log1p(abs(",
+      eta,
+      "))^2*exprelD((1+fsign(1,",
+      eta,
+      ")*((",
+      lambda,
+      ")-1))*log1p(abs(",
+      eta,
+      ")),1)"
+    )
+  }
+)
+
+.rxD$absPowLog <- list(
+  function(x, p, k) {
+    paste0(
+      "sign(",
+      x,
+      ")*((",
+      p,
+      ")*absPowLog(",
+      x,
+      ",(",
+      p,
+      ")-1,",
+      k,
+      ")+(",
+      k,
+      ")*absPowLog(",
+      x,
+      ",(",
+      p,
+      ")-1,(",
+      k,
+      ")-1))"
+    )
+  },
+  function(x, p, k) {
+    paste0("absPowLog(", x, ",", p, ",(", k, ")+1)")
+  },
+  function(x, p, k) {
+    "0"
+  }
+)
+
+.rxD$etaHeavyTail <- list(
+  function(eta, theta) {
+    paste0("(1+(", theta, "))*absPowLog(", eta, ",", theta, ",0)")
+  },
+  function(eta, theta) {
+    paste0("(", eta, ")*absPowLog(", eta, ",", theta, ",1)")
+  }
+)
+
+## Logit: E = etaBoxCox(eta, 1) is expm1(eta) without cancellation
+.rxD$etaLogit <- list(
+  function(eta, t1, t2) {
+    paste0(
+      "(",
+      t2,
+      ")*(",
+      t1,
+      ")*(1-(",
+      t1,
+      "))*exp(",
+      eta,
+      ")/(1+(",
+      t1,
+      ")*etaBoxCox(",
+      eta,
+      ",1))^2"
+    )
+  },
+  function(eta, t1, t2) {
+    paste0(
+      "(",
+      t2,
+      ")*etaBoxCox(",
+      eta,
+      ",1)*((1-2*(",
+      t1,
+      "))-(",
+      t1,
+      ")^2*etaBoxCox(",
+      eta,
+      ",1))/(1+(",
+      t1,
+      ")*etaBoxCox(",
+      eta,
+      ",1))^2"
+    )
+  },
+  function(eta, t1, t2) {
+    paste0(
+      "(",
+      t1,
+      ")*(1-(",
+      t1,
+      "))*etaBoxCox(",
+      eta,
+      ",1)/(1+(",
+      t1,
+      ")*etaBoxCox(",
+      eta,
+      ",1))"
+    )
+  }
+)
+
+.rxD$etaSinhAsinh <- list(
+  function(eta, eps, delta) {
+    paste0(
+      "cosh((",
+      delta,
+      ")*asinh(",
+      eta,
+      ")-(",
+      eps,
+      "))*(",
+      delta,
+      ")/sqrt(1+(",
+      eta,
+      ")^2)"
+    )
+  },
+  function(eta, eps, delta) {
+    paste0("cosh(", eps, ")-cosh((", delta, ")*asinh(", eta, ")-(", eps, "))")
+  },
+  function(eta, eps, delta) {
+    paste0("cosh((", delta, ")*asinh(", eta, ")-(", eps, "))*asinh(", eta, ")")
+  }
+)
+
+.rxD$etaTukeyGH <- list(
+  function(eta, g, h) {
+    paste0(
+      "(exp((",
+      g,
+      ")*(",
+      eta,
+      "))+etaBoxCox(",
+      eta,
+      ",",
+      g,
+      ")*(",
+      h,
+      ")*(",
+      eta,
+      "))*exp((",
+      h,
+      ")*(",
+      eta,
+      ")^2/2)"
+    )
+  },
+  function(eta, g, h) {
+    paste0(
+      "(",
+      eta,
+      ")^2*exprelD((",
+      g,
+      ")*(",
+      eta,
+      "),1)*exp((",
+      h,
+      ")*(",
+      eta,
+      ")^2/2)"
+    )
+  },
+  function(eta, g, h) {
+    paste0(
+      "etaBoxCox(",
+      eta,
+      ",",
+      g,
+      ")*(",
+      eta,
+      ")^2/2*exp((",
+      h,
+      ")*(",
+      eta,
+      ")^2/2)"
+    )
+  }
+)
+
 .rxD$ReLU <- list(
   function(x) {
     paste0("dReLU(", x, ")")
@@ -1367,10 +1603,23 @@
   .name <- character(0)
   .which <- integer(0)
   .tmpl <- character(0)
-  for (.nm in ls(.rxD)) {
+  .kind <- integer(0)
+  .dNames <- ls(.rxD)
+  .dLen <- integer(length(.dNames))
+  for (.i in seq_along(.dNames)) {
+    .nm <- .dNames[.i]
     .lst <- get(.nm, envir = .rxD)
+    .dLen[.i] <- length(.lst)
     for (.k in seq_along(.lst)) {
       .f <- .lst[[.k]]
+      if (is.null(.f)) {
+        ## a NULL entry: .rxFromSE() takes the finite difference (.errD)
+        .name <- c(.name, .nm)
+        .which <- c(.which, .k)
+        .tmpl <- c(.tmpl, "")
+        .kind <- c(.kind, 2L)
+        next
+      }
       if (!is.function(.f)) {
         next
       }
@@ -1383,8 +1632,8 @@
         next
       }
       .conv <- .t1
-      for (.i in seq_len(.na)) {
-        .conv <- gsub(.a[.i], .b[.i], .conv, fixed = TRUE)
+      for (.j in seq_len(.na)) {
+        .conv <- gsub(.a[.j], .b[.j], .conv, fixed = TRUE)
       }
       if (!identical(.conv, .t2)) {
         next
@@ -1392,9 +1641,37 @@
       .name <- c(.name, .nm)
       .which <- c(.which, .k)
       .tmpl <- c(.tmpl, .t1)
+      .kind <- c(.kind, 1L)
     }
   }
-  .cached <- list(name = .name, which = as.integer(.which), template = .tmpl)
+  ## .SEeq, the functions .rxFromSE() emits through its generic call branch
+  .eq <- c(.rxSEeq, .rxSEeqUsr())
+  ## the functions eval(parse(text = .), envir = baseenv()) can call, which is
+  ## what decides whether .rxFromSE() constant-folds name(<numbers>)
+  .base <- ls(baseenv(), all.names = TRUE)
+  .base <- .base[grepl("^[A-Za-z._][A-Za-z0-9._]*$", .base)]
+  .base <- .base[vapply(
+    .base,
+    function(.n) {
+      is.function(get(.n, envir = baseenv()))
+    },
+    logical(1),
+    USE.NAMES = FALSE
+  )]
+  .cached <- list(
+    name = .name,
+    which = as.integer(.which),
+    template = .tmpl,
+    kind = .kind,
+    rxdName = .dNames,
+    rxdLen = .dLen,
+    eqName = names(.eq),
+    eqN = suppressWarnings(as.integer(.eq)),
+    baseFns = .base,
+    ## functions whose translation cannot depend on the caller's environment
+    ## (.rxSEcallerFree): R user functions are looked up there instead
+    known = unique(c(names(.eq), .dNames, .Call(`_rxode2_seFromSEfnTable`)$name))
+  )
   .rxSEstate$dTemplates <- .cached
   .cached
 }

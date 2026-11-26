@@ -193,6 +193,11 @@ static inline int handleFunctionTad(transFunctions *tf) {
       tf->i[0] = tf->nch;
       return 1;
     }
+    updateSyntaxCol();
+    sPrint(&_gbuf, _("'%s' takes 0 or 1 arguments"), tf->v);
+    trans_syntax_error_report_fn(_gbuf.s);
+    tf->i[0] = tf->nch;
+    return 1;
   }
   return 0;
 }

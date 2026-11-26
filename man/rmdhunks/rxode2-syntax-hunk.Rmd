@@ -189,6 +189,12 @@ table:
 Note that `lag(cmt) =` is equivalent to `alag(cmt) =` and not the same
 as `= lag(wt)`
 
+`clamp(x, lo, hi)` bounds a value into an interval, for example a
+fraction kept inside `(0, 1)` with `fr <- clamp(f0, 0.01, 0.99)`. It is
+`min(max(x, lo), hi)`, so its derivative is 1 inside the interval and 0
+outside. It takes exactly three arguments, and literal bounds must have
+`lo <= hi`.
+
 ### Inverse CDFs
 
 A group of these deserves a word, because they exist for one purpose:
@@ -493,6 +499,49 @@ probabilities remain the same:
 | 1        | p1          |
 | 2        | p2          |
 | 3        | 1-p0-p1-p2  |
+
+### Time-to-event endpoints
+
+A time-to-event endpoint is specified by its hazard:
+
+``` r
+ev ~ tte(haz, eventType = "exact", maxEventNumber = Inf,
+         rightCensoringTime = 120, intervalLength = 10, dropout = FALSE)
+```
+
+The cumulative hazard is added to the model as a hidden state
+(`rx_tteH_ev`), and event times solve `H(t) - H(t_last) = -log(u)`
+with a root finder. Only the hazard is required; the options are:
+
+| Option               | Default                         | Meaning                                         |
+|----------------------|---------------------------------|-------------------------------------------------|
+| `eventType`          | `"exact"`                       | `"exact"` or `"intervalCensored"` event times   |
+| `maxEventNumber`     | `Inf`                           | maximum number of events (`1` for one-off)      |
+| `rightCensoringTime` | last record of the endpoint     | end of the observation window                   |
+| `intervalLength`     | tenth of the observation window | interval length for `"intervalCensored"`        |
+| `dropout`            | `FALSE`                         | the event ends all observations (needs `maxEventNumber = 1`) |
+| `origin`             | `FALSE`                         | observe from the subject's start, with no start row |
+
+Simulated rows follow the Monolix/NONMEM layout: `sim = 0` at the start
+of the window, `sim = 1` at each event (or at the end of each interval
+holding an event) and `sim = 0` at right censoring. In model lines,
+`tteTime(ev)` is the time of the last event of `ev` (the window start
+before the first) and `tteCount(ev)` is the number of events so far,
+so renewal and count-dependent hazards can be written. Every ODE
+solving `method` except the adjoint sensitivity methods simulates
+`tte()` endpoints, since the root finding only re-solves intervals with
+the chosen method; a hazard using `delay()` is solved with the dense
+`delay()` solvers.  A steady-state dose holds the cumulative hazard
+fixed, so a `delay()` of the cumulative hazard (`rx_tteH_ev`) cannot be
+combined with steady-state doses.
+
+In estimation each record of the endpoint scores the events and survival
+since the endpoint's previous record: `log(h) - dH` for an event,
+`log(1 - exp(-dH))` for an interval holding one and `-dH` otherwise, with
+`dH` the change of the cumulative hazard.  The first record of a subject
+is the start of observation and scores nothing (`origin = TRUE` counts
+from the subject's start instead), and `tteTime()`/`tteCount()` come from
+the endpoint's `DV = 1` records.
 
 ### General table of supported residual distributions
 

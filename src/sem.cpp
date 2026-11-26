@@ -25,7 +25,7 @@ struct symplectic_system {
     symplectic_system(rx_solving_options_ind *ind, t_dydt c_dydt, int* neq)
         : ind_(ind), c_dydt_(c_dydt), neq_(neq), neqOde_(0), N_(0), t_(0.0), current_q_(nullptr), current_p_(nullptr) {
         int eff = rxEffNeq(ind, ind->op);
-        neqOde_ = eff - ind->op->numLin - ind->op->numLinSens;
+        neqOde_ = eff - ind->op->numLin - ind->op->numLinSens - ind->op->numLinCarry;
         N_ = (neqOde_ + 1) / 2;
         y_temp_.resize(2 * N_, 0.0);
         dy_temp_.resize(2 * N_, 0.0);
@@ -147,7 +147,7 @@ extern "C" void ind_sem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
   double xp = getAllTimes(ind, 0);
   ind->solvedIdx = 0;
 
-  int neqOde = op->neq - op->numLin - op->numLinSens;
+  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
   symplectic_system sys(ind, c_dydt, neq);
 
   double *yp;
@@ -183,8 +183,9 @@ extern "C" void ind_sem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
         badSolveExit(i);
         localBadSolve = 1;
       } else {
-        if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                            xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
+        while (!localBadSolve &&
+               handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                               xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
             if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
               preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
 
@@ -220,30 +221,6 @@ extern "C" void ind_sem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
               ind->ixds = ixds;
               ind->idx = idx;
               ind->idxExtra++;
-              if (!isSameTime(xout, ind->extraDoseNewXout)) {
-                preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-
-                  if (neqOde > 0) {
-                      int N = (neqOde + 1) / 2;
-                      zero_copy_state q(N);
-                      zero_copy_state p(N);
-                      std::copy(yp, yp + N, q.begin());
-                      std::copy(yp + N, yp + neqOde, p.begin());
-                      if (2 * N > neqOde) {
-                          p[N - 1] = 0.0;
-                      }
-                      auto state = std::make_pair(q, p);
-                      sem_do_steps(ind, op, sys, state, ind->extraDoseNewXout, xout);
-                      std::copy(state.first.begin(), state.first.end(), yp);
-                      std::copy(state.second.begin(), state.second.begin() + (neqOde - N), yp + N);
-                  }
-
-                copyLinCmt(neq, ind, op, yp);
-                const char* err_msg = "sem failed";
-                postSolve(neq, &istate, ind->rc, &idx, yp, &err_msg, 15, false, ind, op, rx);
-                if (*(ind->rc) < 0) localBadSolve = 1;
-                ind->extraDoseNewXout = xout;
-              }
               xp = ind->extraDoseNewXout;
             }
         }
@@ -273,7 +250,6 @@ extern "C" void ind_sem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
         xp = xout;
       }
     }
-    ind->_newind = 2;
     if (!localBadSolve){
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
@@ -302,6 +278,7 @@ extern "C" void ind_sem_0(rx_solve *rx, rx_solving_options *op, int solveid, int
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       if (_mtime_requeued) i--;
     }
+    rxNewindAfterRecord(ind, i);
     ind->solvedIdx = i;
   }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
@@ -347,7 +324,7 @@ extern "C" void par_sem(rx_solve *rx){
 extern "C" void sem_solveWith1Pt(int *neq, double *yp, double *xp, double xout,
  int *istate, rx_solving_options *op, rx_solving_options_ind *ind) {
   int eff = rxEffNeq(ind, op);
-  int neqOde = eff - op->numLin - op->numLinSens;
+  int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
 
   if (neqOde > 0) {
       int N = (neqOde + 1) / 2;

@@ -37,25 +37,27 @@ rxSolve(
   method = c("liblsoda", "lsoda", "dop853", "indLin", "f78", "rk4", "ck54", "ab", "abm",
     "dop5", "bs", "ros4", "iem", "sem", "sb3a", "sb3am4", "vv", "mm", "em", "cvode",
     "trapz", "ssp3", "f32", "rk43", "dop54", "vern65", "vern76", "dop87", "vern98",
-    "ros43", "ros6", "backwardEuler", "gauss6", "iiic6", "radauiia5", "geng5", "sdirk43",
-    "euler", "midpoint", "heun", "ssp22", "rk3", "ssp53", "s4", "r4", "ls44", "ls54",
-    "ssp54", "s5", "rk5", "c5", "l5", "lk5a", "lk5b", "b6", "s7", "s8_10", "cv8",
-    "s8_12", "s10", 
-     "z10", "o10", "h10", "dp54", "v65e", "v76e", "dp87", "v98e",
-    "ssp33", "bs32", "ssp43", "f45", "t54", "s54", "pp54", "pp54b", "bs54", "ss54",
-    "dp65", "c65", "tp64", "v65r", "v65", "dverk65", "tf65", "tp75", "tmy7", "tmy7s",
-    "v76r", "ss76", "v78", "dverk78", "dp85", "tp86", "v87e", "v87r", "ev87", "k87",
-    "f89", "v89", "t98a", "v98r", "s98", "f108", "c108", "b109", "s1110a", "f1210",
-    "o129", "f1412", "lsode", "bdf", "rk4s", "eulers", "midpoints", "heuns", "dop5s",
-    "dop853s", "ck54s", "bs32s", "vern65s", 
-     "vern76s", "dop87s", "f78s", "ros4s",
-    "radauiia5s", "backwardEulers", "gauss6s", "sdirk43s", "iiic6s", "ros43s", "ros6s",
-    "geng5s", "rk3s", "rk43s", "cvodesadj", "liblsodaadj", "abs", "dop54s", "dp54s",
-    "vern98s", "f45s", "t54s", "pp54s", "pp54bs", "bs54s", "ss54s", "dp65s", "c65s",
-    "tp64s", "v65rs", "dverk65s", "tf65s", "tp75s", "tmy7sadj", "tmy7adj", "v76rs",
-    "ss76s", "v78s", "dverk78s", "dp85s", "tp86s", "v87es", "v87rs", "ev87s", "k87s",
-    "v89s", "t98as", "v98rs", "s98s", "c108s", "b109s", 
-     "s1110as", "o129s"),
+    "ros43", "ros6", "ros54p", "gpuT54", "gpuVern76", "gpuRos54p",
+    "gpuT54+gpuRos54p", "gpuVern76+gpuRos54p", "backwardEuler", "gauss6", "iiic6",
+    "radauiia5", "geng5", "sdirk43", "euler", "midpoint", "heun", "ssp22", "rk3",
+    "ssp53", "s4", "r4", "ls44", "ls54", "ssp54", 
+     "s5", "rk5", "c5", "l5", "lk5a",
+    "lk5b", "b6", "s7", "s8_10", "cv8", "s8_12", "s10", "z10", "o10", "h10", "dp54",
+    "v65e", "v76e", "dp87", "v98e", "ssp33", "bs32", "ssp43", "f45", "t54", "s54",
+    "pp54", "pp54b", "bs54", "ss54", "dp65", "c65", "tp64", "v65r", "v65", "dverk65",
+    "tf65", "tp75", "tmy7", "tmy7s", "v76r", "ss76", "v78", "dverk78", "dp85", "tp86",
+    "v87e", "v87r", "ev87", "k87", "f89", "v89", "t98a", "v98r", "s98", "f108", "c108",
+    "b109", "s1110a", "f1210", "o129", "f1412", "lsode", "bdf", 
+     "rk4s", "eulers",
+    "midpoints", "heuns", "dop5s", "dop853s", "ck54s", "bs32s", "vern65s", "vern76s",
+    "dop87s", "f78s", "ros4s", "radauiia5s", "backwardEulers", "gauss6s", "sdirk43s",
+    "iiic6s", "ros43s", "ros6s", "geng5s", "rk3s", "rk43s", "cvodesadj", "liblsodaadj",
+    "abs", "dop54s", "dp54s", "vern98s", "f45s", "t54s", "pp54s", "pp54bs", "bs54s",
+    "ss54s", "dp65s", "c65s", "tp64s", "v65rs", "dverk65s", "tf65s", "tp75s", "tmy7sadj",
+    "tmy7adj", "v76rs", "ss76s", "v78s", "dverk78s", "dp85s", "tp86s", 
+     "v87es",
+    "v87rs", "ev87s", "k87s", "v89s", "t98as", "v98rs", "s98s", "c108s", "b109s",
+    "s1110as", "o129s"),
   sigdig = NULL,
   atol = 1e-08,
   rtol = 1e-06,
@@ -79,7 +81,7 @@ rxSolve(
   sigmaUpper = Inf,
   nCoresRV = 1L,
   sigmaIsChol = FALSE,
-  sigmaSeparation = c("auto", "lkj", "separation", "tnpri"),
+  sigmaSeparation = c("auto", "lkj", "separation", "tnpri", "invchol"),
   sigmaXform = c("identity", "variance", "log", "nlmixrSqrt", "nlmixrLog",
     "nlmixrIdentity"),
   nDisplayProgress = 10000L,
@@ -95,7 +97,7 @@ rxSolve(
   omega = NULL,
   omegaDf = NULL,
   omegaIsChol = FALSE,
-  omegaSeparation = c("auto", "lkj", "separation", "tnpri"),
+  omegaSeparation = c("auto", "lkj", "separation", "tnpri", "invchol"),
   omegaXform = c("variance", "identity", "log", "nlmixrSqrt", "nlmixrLog",
     "nlmixrIdentity"),
   omegaLower = -Inf,
@@ -163,6 +165,17 @@ rxSolve(
   linCmtSensH = 1e-04,
   linCmtSensPhi = TRUE,
   nonmem = FALSE,
+  tieOrder = NULL,
+  rateAtDoseTime = FALSE,
+  durAtDoseTime = NULL,
+  doseAtRecord = NULL,
+  addlCovAtTime = NULL,
+  resetCancelsPending = TRUE,
+  ssMethod = c("anderson", "iterate"),
+  gpuBackend = c("auto", "opencl", "cpu"),
+  gpuDevice = NULL,
+  gpuPrecision = c("double", "float"),
+  gpuBatch = 16384L,
   linCmtGillFtol = 0,
   linCmtGillK = 20L,
   linCmtGillStep = 4,
@@ -389,6 +402,20 @@ Requires an analytical Jacobian (auto-computed from the model when not provided)
 falls back to \code{liblsoda} if Jacobian generation fails.
 \item \code{"ros6"} \strong{(implicit)} -- Kaps-Wanner 6th-order A-stable Rosenbrock method (ROW6A) from libode.
 Fixed step size (set with \code{hmin}). Requires Jacobian; falls back to \code{liblsoda} if unavailable.
+\item \code{"ros54p"} \strong{(implicit)} -- Steinebach's 8-stage L-stable Rosenbrock 5(4) method (Rodas5P).
+Adaptive step size via its embedded 4th-order solution.  Requires an analytical
+Jacobian (auto-computed from the model when not provided); falls back to
+\code{liblsoda} if Jacobian generation fails.  \code{"t54+ros54p"} and \code{"vern76+ros54p"}
+are its AutoSwitch composites.
+\item \code{"gpuT54"}, \code{"gpuVern76"}, \code{"gpuRos54p"}, \code{"gpuT54+gpuRos54p"},
+\code{"gpuVern76+gpuRos54p"} -- the same integrators (Tsitouras 5(4) as
+\code{"t54"}, Verner 7(6) as \code{"vern76"}, Rodas5P as \code{"ros54p"} with the
+analytical Jacobian, and their AutoSwitch composites) as device code: each
+round integrates every waiting subject at once, one subject per OpenCL
+work-item, or on \code{cores} threads with the CPU build (\code{gpuBackend}).
+Events stay on the host.  The model's \code{d/dt()} must be able to run as
+device code; otherwise \code{gpuBackend = "auto"} solves with the host method
+named above.  Supports \code{delay()}.
 \item \code{"backwardEuler"} \strong{(implicit)} -- Backward Euler (BDF-1), 1st-order L-stable fully implicit method from libode.
 Fixed step size (set with \code{hmin}). Requires Jacobian; falls back to \code{liblsoda} if unavailable.
 \item \code{"gauss6"} \strong{(implicit)} -- Gauss-Legendre 6th-order A-stable fully-implicit method (3 stages) from libode.
@@ -787,7 +814,7 @@ between closely spaced doses) are always handled correctly.
 
 For the adaptive methods `"f78"`, `"ck54"`, `"dop5"`, `"bs"`, `"f32"`,
 `"rk43"`, `"dop54"`, `"vern65"`, `"vern76"`, `"dop87"`, `"vern98"`,
-`"ros43"`, `"sdirk43"`, and all libode adaptive methods (`"bs32"`,
+`"ros43"`, `"ros54p"`, `"sdirk43"`, the GPU methods, and all libode adaptive methods (`"bs32"`,
 `"ssp43"`, `"f45"`, `"t54"`, `"s54"`, `"pp54"`, `"pp54b"`,
 `"bs54"`, `"ss54"`, `"dp65"`, `"c65"`, `"tp64"`, `"v65r"`,
 `"v65"`, `"dverk65"`, `"tf65"`, `"tp75"`, `"tmy7"`, `"tmy7s"`,
@@ -811,7 +838,7 @@ your sampling and events.  The value 0 is equivalent to infinite
 maximum absolute step size.
 
 Note that for dense output methods (\code{"dop853"}, \code{"dop5"}, \code{"bs"},
-\code{"ros4"}), \code{hmax} defaults to \code{NULL} to allow the solvers to
+\code{"ros4"}, \code{"cvode"}, \code{"liblsoda"}), \code{hmax} defaults to \code{NULL} to allow the solvers to
 determine the step size when \code{dense=TRUE}
 
 For \code{method="indLin"}, \code{hmax} caps how long an interval is treated
@@ -858,12 +885,16 @@ interpolated.  Currently this can be:
 \itemize{
 \item \code{"linear"} interpolation, which interpolates the covariate
 by solving the line between the observed covariates and extrapolating the new
-covariate value.
+covariate value.  A \code{linCmt()} model refuses it for a covariate
+that varies within a subject and feeds the \code{linCmt()} parameters,
+since its closed form cannot follow the ramp; use another method or
+write the model as ODEs.
 \item \code{"locf"} -- Last observation carried forward (the default).
 \item \code{"nocb"} -- Next Observation Carried Backward.  This is the same method
 that NONMEM uses.
-\item \code{"midpoint"} Last observation carried forward to midpoint; Next observation
-carried backward to midpoint.
+\item \code{"midpoint"} -- the mean of the two neighboring records over the whole
+interval between them, as \code{stats::approxfun(method = "constant", f = 0.5)}
+gives.
 
 For time-varying covariates where a missing value is present, the
 interpolation method will use either "locf" or "nocb" throughout
@@ -949,6 +980,8 @@ than equal to 10.
 \item \code{"tnpri"} draws the sigma entries jointly from the \code{thetaMat}, the
 same way \code{omegaSeparation="tnpri"} does for the omega; \code{dfObs} is
 not used.
+\item \code{"invchol"} draws them on the inverse Cholesky scale, the same way
+\code{omegaSeparation="invchol"} does for the omega.
 }}
 
 \item{sigmaXform}{When taking \code{sigma} values from the \code{thetaMat}
@@ -1083,6 +1116,14 @@ the omega entries, which the strategies above redraw or discard.
 off diagonal.  A drawn matrix that is not positive definite is
 redrawn, see \code{priorPdRetry}.  \code{dfSub} is not used: an entry the
 \code{thetaMat} gives no variance stays at its estimate.
+\item \code{"invchol"} draws the same entries jointly with the thetas, but on the
+scale of the inverse Cholesky decomposition of the omega (with a log
+diagonal), so every drawn omega is positive definite and none is
+redrawn.  The \code{thetaMat} covariance of the entries is moved to that
+scale by the delta method at the \code{omega} estimate, which has to be
+positive definite.  Only the blocks of \code{omega} holding a drawn entry
+change, and an entry of such a block that the \code{thetaMat} gives no
+variance can move with the others.
 }}
 
 \item{omegaXform}{When taking \code{omega} values from the \code{thetaMat}
@@ -1156,7 +1197,10 @@ created by reference (ie \code{setDt()}), which should be fast.
 \item{seed}{an object specifying if and how the random number
 generator should be initialized; when given, it takes precedence
 over an active \code{\link[=rxSetSeed]{rxSetSeed()}} stream for this solve, and the
-caller's \code{.Random.seed} is restored afterwards}
+caller's \code{.Random.seed} is restored afterwards.  \code{\link[=rxControl]{rxControl()}} only
+stores it; the seed is applied when the control is used by a solve.
+Re-solving a result by assignment (eg \code{s$params <- p}) reapplies its
+seed, while \code{update()} uses only a \code{seed} it is given}
 
 \item{nsim}{represents the number of simulations.  For rxode2, if
 you supply single subject event tables (created with
@@ -1168,12 +1212,15 @@ this many doses are given and \code{ssAtol}/\code{ssRtol} are met.  It is raised
 to the fewest doses the regimen needs (2 with a lag time, more with
 overlapping infusions or a lag longer than \code{ii}).  \code{minSS = maxSS = n}
 gives exactly the state after \code{n} prior doses (Monolix
-\code{nbdoses = n}), for \code{linCmt()} models too; otherwise \code{linCmt()} steady
-states are exact.  A constant infusion (\code{ii = 0}), which has no doses,
-takes at least 5 and up to \code{max(maxSS, 10000)} convergence steps.}
+\code{nbdoses = n}).  \code{linCmt()} models follow both, stopping at \code{minSS}
+doses when converged there and otherwise using their exact steady
+state.  A constant infusion (\code{ii = 0}), which has no doses, takes at
+least 5 and up to \code{max(maxSS, 10000)} convergence steps.}
 
 \item{maxSS}{Maximum number of doses given before a steady-state dose (at
-least \code{minSS})}
+least \code{minSS}).  When \code{minSS < maxSS} and \code{ssAtol}/\code{ssRtol} are still
+unmet after \code{maxSS} doses, the last iterate is used and \code{rxSolve()}
+warns once.}
 
 \item{infSSstep}{Step size for determining if a constant infusion
 has reached steady state.  By default this is large value,
@@ -1194,8 +1241,11 @@ either \code{atol}, \code{rtol} or \code{maxSS} have not
 been achieved.}
 
 \item{istateReset}{When \code{TRUE}, reset the \code{ISTATE} variable to 1 for
-lsoda and liblsoda with doses, like \code{deSolve}; When \code{FALSE}, do
-not reset the \code{ISTATE} variable with doses.}
+lsoda and liblsoda with doses, like \code{deSolve}, and restart the lsoda
+family (\code{liblsoda}, \code{lsoda}, \code{lsode}, \code{bdf}) at an \code{mtime()} record;
+When \code{FALSE}, do not reset the \code{ISTATE} variable with doses or at
+\code{mtime()} records, so a time window that starts at an \code{mtime()}
+record can be stepped over.}
 
 \item{subsetNonmem}{subset to NONMEM compatible EVIDs only.  By
 default \code{TRUE}.}
@@ -1366,9 +1416,12 @@ solve, but continues solving passing through the \code{NA} time
 solved ODE (otherwise stopping can crash R)
 }}
 
-\item{addlKeepsCov}{This determines if the additional dosing items
-repeats the dose only (\code{FALSE}) or keeps the covariates at the
-record of the dose (\code{TRUE})}
+\item{addlKeepsCov}{This determines if a dose given at a time other
+than its record's (an additional dosing item or a dose moved by
+\code{alag()}) takes the time-varying covariates imputed at its actual
+dosing time (\code{FALSE}) or keeps the covariates at the record of the
+dose (\code{TRUE}, as NONMEM does).  By default \code{FALSE}, or \code{TRUE} with
+\code{nonmem = TRUE}.}
 
 \item{addlDropSs}{When there are steady state doses with an \code{addl}
 specification the steady state flag is dropped with repeated
@@ -1457,8 +1510,112 @@ the data record that ends the interval being integrated, the way NONMEM
 calls \verb{$PK} at its records.  \code{d/dt()} and state-dependent statements keep
 the continuous time (like \verb{$DES}).  \code{addl} repeats, infusion ends,
 lagged doses and doses added while solving do not end an interval;
-\code{mtime()} times do.  Covariate interpolation is still set by
-\code{covsInterpolation}.  By default \code{FALSE}.}
+\code{mtime()} times do.  \code{f()}, \code{rate()} and \code{dur()} of an \code{addl} repeat
+read the time of the first data record at or after it (NONMEM's \code{F1},
+\code{R1} and \code{D1}), and \code{alag()} the time of the dose record it repeats
+(\code{ALAG1}).  A modeled rate (\code{rate()}, \code{RATE = -1}) is re-read on
+each interval from the record that ends it, like NONMEM's \code{R1} (see
+\code{rateAtDoseTime}).  Covariate interpolation is still set by
+\code{covsInterpolation}.  It also sets the default \code{tieOrder} to \code{"data"}
+and turns on \code{addlKeepsCov}, \code{durAtDoseTime} and \code{doseAtRecord} and
+turns off \code{addlCovAtTime} unless
+they are given.
+By default \code{FALSE}, when \code{f()}, \code{rate()} and \code{dur()} of an \code{addl} repeat
+read the actual time of the \code{addl} dose.}
+
+\item{tieOrder}{How records of a subject that share a time are processed:
+\code{"evid"} processes resets first, then doses, then observations, so the
+result does not depend on the row order of the data; \code{"data"} processes
+them in the order of the rows in the data, the way NONMEM does (records
+a row expands to, like the reset of an \code{evid=4} dose or \code{addl} repeats,
+follow that row).  Doses added while solving follow the records at the
+same time.  An event table already translated by \code{\link[=etTrans]{etTrans()}} keeps the
+order it was translated with.  By default (\code{NULL}) this is \code{"data"}
+when \code{nonmem = TRUE} and \code{"evid"} otherwise.}
+
+\item{rateAtDoseTime}{Boolean that when \code{TRUE} keeps a modeled rate
+(\code{rate()}, \code{RATE = -1}) at the value read at its dose.  When \code{FALSE} (the
+default) the rate is re-read at each data record until the dose is
+delivered: the rate read at a record holds until the next one, or with
+\code{nonmem = TRUE} the rate read with a record applies to the interval it
+ends.  A re-read rate changes the rate and moves the end of the infusion
+so the dose amount is kept.  Steady-state doses, doses added while
+solving, event sensitivities and the adjoint always keep the rate of the
+dose.}
+
+\item{durAtDoseTime}{Boolean that when \code{TRUE} keeps a modeled duration
+(\code{dur()}, \code{RATE = -2}) at the value read at its dose.  When \code{FALSE} it is
+re-read at each data record like a modeled rate (see \code{rateAtDoseTime}):
+the infusion then ends at its start plus the new duration, delivering
+what is left evenly, or stops delivering when that end has passed.  By
+default (\code{NULL}) this is \code{TRUE} with \code{nonmem = TRUE}, as NONMEM fixes
+\code{D1} at the dose, and \code{FALSE} otherwise.}
+
+\item{doseAtRecord}{Boolean that when \code{TRUE} reads a dose's \code{f()},
+\code{alag()}, \code{rate()} and \code{dur()} at the dose's own data record, the way
+NONMEM reads \code{F}, \code{ALAG}, \code{R} and \code{D} from the one record a dose has: an
+infusion's stop removes the rate its start added and ends at the start's
+lagged time plus the duration, and the records a dose expands to (an
+infusion's stop, a steady-state dose's companions) read the dose
+record's covariates, also when \code{alag()} moves the records.  When \code{FALSE}
+rxode2 reads each of these records at its own time, so a covariate or
+\code{t} that changes during an infusion changes what its stop reads.  By
+default (\code{NULL}) this is \code{TRUE} with \code{nonmem = TRUE} and \code{FALSE}
+otherwise.}
+
+\item{addlCovAtTime}{Boolean that sets what an \code{addl} repeat that does
+not keep its covariates (\code{addlKeepsCov = FALSE}) reads for \code{alag()} and
+\code{f()} when a data record falls at exactly its time and the covariate is
+filled from earlier records (\code{locf}, or \code{midpoint}/\code{linear} with
+\code{naInterpolation = "locf"}).  When \code{TRUE} that record counts, so the
+repeat reads the covariate value in effect at its time, as
+\code{addlKeepsCov = FALSE} imputes it.  When \code{FALSE} only the records before
+the repeat count, as NONMEM does.  By default (\code{NULL}) this is \code{TRUE},
+or \code{FALSE} with \code{nonmem = TRUE}.}
+
+\item{resetCancelsPending}{When \code{TRUE} (default), a reset (\code{evid} 3 or
+4) cancels the doses of the records processed before it that have not
+yet entered: the remaining \code{addl} repeats and lagged (\code{alag()}) doses,
+as NONMEM does.  When \code{FALSE} they are given after the reset.  A dose
+added while solving is cancelled only when it is lagged past the reset,
+a reset added while solving cancels lagged doses but not \code{addl}
+repeats, and an event table already translated by \code{\link[=etTrans]{etTrans()}} keeps the
+\code{addl} repeats it was translated with.}
+
+\item{ssMethod}{How an iterated steady state is found: \code{"anderson"} (the
+default) finds the fixed point of the one-cycle map with Anderson
+acceleration (Anderson 1965, \doi{10.1145/321296.321305}; in the form of
+Walker and Ni 2011, \doi{10.1137/10078356X}); \code{"iterate"} repeats the
+dosing cycle until its trough converges, as rxode2 did before.
+It applies to steady-state boluses and infusions once \code{minSS} doses are
+given and stops only when both the cycle residual and the change of the
+cycle's starting state meet \code{ssAtol}/\code{ssRtol}, so a slowly accumulating
+state (a long half-life against the dosing interval, a slow peripheral
+compartment or saturable elimination) converges in far fewer cycles and
+closer to the true steady state.  When the accelerated iteration stalls,
+diverges or reaches \code{maxSS} (eg. dosing above the elimination capacity,
+with no steady state) it restarts plain iteration from where acceleration
+began, so the result is that of \code{"iterate"}.  A fixed dose count
+(\code{minSS = maxSS}) and a \code{delay()} model always iterate.  See
+\code{bench/ss_anderson_1762.R} in the package sources for the benchmark
+behind the default.}
+
+\item{gpuBackend}{Where the GPU methods (\code{"gpuT54"}, \code{"gpuVern76"},
+\code{"gpuRos54p"}, \code{"gpuT54+gpuRos54p"}, \code{"gpuVern76+gpuRos54p"})
+integrate: \code{"opencl"} on an OpenCL device through the suggested
+\code{OpenCL} package, \code{"cpu"} with the same integrators built as host C on
+\code{cores} threads (at most \code{\link[=getRxThreads]{getRxThreads()}}), or \code{"auto"} (the default) for OpenCL when a device with
+the requested precision is available and the CPU otherwise
+(\code{options(rxode2.gpuBackend=)} pins what \code{"auto"} picks).  See
+\code{\link[=rxGpuInfo]{rxGpuInfo()}}.}
+
+\item{gpuDevice}{OpenCL device (its \code{index} in \code{rxGpuInfo()$devices});
+\code{NULL} (the default) prefers a GPU with the requested precision.}
+
+\item{gpuPrecision}{\code{"double"} (the default) or \code{"float"} (OpenCL only).}
+
+\item{gpuBatch}{The most subjects the GPU methods integrate in one round
+(default 16384).  Each needs its own scratch while it waits.}
 
 \item{linCmtGillFtol}{The gillFtol is the gradient error tolerance that
 is acceptable before issuing a warning/error about the gradient estimates.}
@@ -1587,8 +1744,9 @@ controls.}
 \item{dense}{Logical; when \code{TRUE} and the method supports dense output,
 enables continuous interpolation so the solver can take large internal
 steps and reconstruct the solution cheaply at each observation time.
-Dense-capable single methods are \code{"dop853"}, \code{"dop5"}, \code{"bs"}, and
-\code{"ros4"}.  \code{"dop853+ros4"} is the only dense AutoSwitch composite: the
+Dense-capable single methods are \code{"dop853"}, \code{"dop5"}, \code{"bs"}, \code{"ros4"},
+\code{"cvode"} and \code{"liblsoda"} (which interpolates between its own steps
+either way; \code{dense = TRUE} lifts the \code{hmax} default).  \code{"dop853+ros4"} is the only dense AutoSwitch composite: the
 secondary must be dense too (\code{"ros4"} is the only stiff method that is),
 and handing a dense segment from the primary to the secondary mid-segment
 is implemented for a \code{"dop853"} primary.  Other composites solve densely

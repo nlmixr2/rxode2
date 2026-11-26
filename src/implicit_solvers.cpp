@@ -3,6 +3,7 @@
 #undef max
 #include "ode_implicit_bridge.h"
 #include "ode/ode_row6a.h"
+#include "ode/ode_rodas5p.h"
 #include "ode/ode_backward_euler.h"
 #include "ode/ode_gauss_6.h"
 #include "ode/ode_lobatto_iiic_6.h"
@@ -48,8 +49,23 @@ extern "C" void ind_ros6(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis
 }
 extern "C" void par_ros6(rx_solve *rx) { par_implicit_tmpl<ode::OdeROW6A>(rx, "ros6 failed"); }
 extern "C" void ros6_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind) {
-  int neqOde = rxEffNeq(ind, op) - op->numLin - op->numLinSens;
+  int neqOde = rxEffNeq(ind, op) - op->numLin - op->numLinSens - op->numLinCarry;
   if (neqOde > 0) { implicit_do_steps<ode::OdeROW6A>(ind, op, dydt, calc_jac, neq, yp, *xp, xout); if (ind->rc[0] < 0) { *istate = -1; return; } }
+  *xp = xout; *istate = 1;
+}
+
+// -- ros54p -- OdeRODAS5P (108) ------------------------------------------------
+extern "C" void ind_ros54p_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq, t_dydt c_dydt, t_update_inis u_inis) {
+  ind_implicit_0<ode::OdeRODAS5P>(rx, op, solveid, neq, c_dydt, u_inis, "ros54p failed");
+}
+extern "C" void ind_ros54p(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis) {
+  rx_solving_options *op = rx->op; int neq[2] = { op->neq, 0 };
+  ind_ros54p_0(rx, op, solveid, neq, c_dydt, u_inis);
+}
+extern "C" void par_ros54p(rx_solve *rx) { par_implicit_tmpl<ode::OdeRODAS5P>(rx, "ros54p failed"); }
+extern "C" void ros54p_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind) {
+  int neqOde = rxEffNeq(ind, op) - op->numLin - op->numLinSens;
+  if (neqOde > 0) { implicit_do_steps<ode::OdeRODAS5P>(ind, op, dydt, calc_jac, neq, yp, *xp, xout); if (ind->rc[0] < 0) { *istate = -1; return; } }
   *xp = xout; *istate = 1;
 }
 
@@ -63,7 +79,7 @@ extern "C" void ind_backwardEuler(rx_solve *rx, int solveid, t_dydt c_dydt, t_up
 }
 extern "C" void par_backwardEuler(rx_solve *rx) { par_implicit_tmpl<ode::OdeBackwardEuler>(rx, "backwardEuler failed"); }
 extern "C" void backwardEuler_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind) {
-  int neqOde = rxEffNeq(ind, op) - op->numLin - op->numLinSens;
+  int neqOde = rxEffNeq(ind, op) - op->numLin - op->numLinSens - op->numLinCarry;
   if (neqOde > 0) { implicit_do_steps<ode::OdeBackwardEuler>(ind, op, dydt, calc_jac, neq, yp, *xp, xout); if (ind->rc[0] < 0) { *istate = -1; return; } }
   *xp = xout; *istate = 1;
 }
@@ -78,7 +94,7 @@ extern "C" void ind_gauss6(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_in
 }
 extern "C" void par_gauss6(rx_solve *rx) { par_implicit_tmpl<ode::OdeGauss6>(rx, "gauss6 failed"); }
 extern "C" void gauss6_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind) {
-  int neqOde = rxEffNeq(ind, op) - op->numLin - op->numLinSens;
+  int neqOde = rxEffNeq(ind, op) - op->numLin - op->numLinSens - op->numLinCarry;
   if (neqOde > 0) { implicit_do_steps<ode::OdeGauss6>(ind, op, dydt, calc_jac, neq, yp, *xp, xout); if (ind->rc[0] < 0) { *istate = -1; return; } }
   *xp = xout; *istate = 1;
 }
@@ -93,7 +109,7 @@ extern "C" void ind_iiic6(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_ini
 }
 extern "C" void par_iiic6(rx_solve *rx) { par_implicit_tmpl<ode::OdeLobattoIIIC6>(rx, "iiic6 failed"); }
 extern "C" void iiic6_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind) {
-  int neqOde = rxEffNeq(ind, op) - op->numLin - op->numLinSens;
+  int neqOde = rxEffNeq(ind, op) - op->numLin - op->numLinSens - op->numLinCarry;
   if (neqOde > 0) { implicit_do_steps<ode::OdeLobattoIIIC6>(ind, op, dydt, calc_jac, neq, yp, *xp, xout); if (ind->rc[0] < 0) { *istate = -1; return; } }
   *xp = xout; *istate = 1;
 }
@@ -108,7 +124,7 @@ extern "C" void ind_radauiia5(rx_solve *rx, int solveid, t_dydt c_dydt, t_update
 }
 extern "C" void par_radauiia5(rx_solve *rx) { par_implicit_tmpl<ode::OdeRadauIIA5>(rx, "radauiia5 failed"); }
 extern "C" void radauiia5_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind) {
-  int neqOde = rxEffNeq(ind, op) - op->numLin - op->numLinSens;
+  int neqOde = rxEffNeq(ind, op) - op->numLin - op->numLinSens - op->numLinCarry;
   if (neqOde > 0) { implicit_do_steps<ode::OdeRadauIIA5>(ind, op, dydt, calc_jac, neq, yp, *xp, xout); if (ind->rc[0] < 0) { *istate = -1; return; } }
   *xp = xout; *istate = 1;
 }
@@ -123,7 +139,7 @@ extern "C" void ind_geng5(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_ini
 }
 extern "C" void par_geng5(rx_solve *rx) { par_implicit_tmpl<ode::OdeGeng5>(rx, "geng5 failed"); }
 extern "C" void geng5_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind) {
-  int neqOde = rxEffNeq(ind, op) - op->numLin - op->numLinSens;
+  int neqOde = rxEffNeq(ind, op) - op->numLin - op->numLinSens - op->numLinCarry;
   if (neqOde > 0) { implicit_do_steps<ode::OdeGeng5>(ind, op, dydt, calc_jac, neq, yp, *xp, xout); if (ind->rc[0] < 0) { *istate = -1; return; } }
   *xp = xout; *istate = 1;
 }
@@ -138,7 +154,7 @@ extern "C" void ind_sdirk43(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_i
 }
 extern "C" void par_sdirk43(rx_solve *rx) { par_implicit_tmpl<ode::OdeSDIRK43>(rx, "sdirk43 failed"); }
 extern "C" void sdirk43_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind) {
-  int neqOde = rxEffNeq(ind, op) - op->numLin - op->numLinSens;
+  int neqOde = rxEffNeq(ind, op) - op->numLin - op->numLinSens - op->numLinCarry;
   if (neqOde > 0) { implicit_do_steps<ode::OdeSDIRK43>(ind, op, dydt, calc_jac, neq, yp, *xp, xout); if (ind->rc[0] < 0) { *istate = -1; return; } }
   *xp = xout; *istate = 1;
 }

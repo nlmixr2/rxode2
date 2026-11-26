@@ -123,13 +123,20 @@ rxSolveAdjoint <- function(
   atol = 1e-10,
   rtol = 1e-10
 ) {
+  .rxAdjRefuseEvents(events, c(3L, 4L), .rxAdjResetMsg)
+  .rxAdjRefuseEvents(
+    events, c(5L, 6L),
+    "the reference continuous adjoint (.rxAdjointSolve) does not apply replace/multiply events (evid = 5/6); use rxSolveAdjoint()"
+  )
   object <- .rxAdjointObject(object)
+  calcSens <- .rxSensVarNames(calcSens, .rxParams(object, TRUE))
   .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
-  .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
+  .model <- rxode2::rxS(rxode2::rxGetModel(object), FALSE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
   if (length(.st) == 0L) {
     stop("adjoint sensitivities require a model with ODE states", call. = FALSE)
   }
+  params <- .rxAdjParams(params, .rxAdjDefaults(object))
   if (is.null(adjStates)) {
     adjStates <- .st
   }
@@ -174,6 +181,7 @@ rxSolveAdjoint <- function(
   }
 
   .out <- matrix(NA_real_, length(outTimes), length(.cols), dimnames = list(NULL, .cols))
+  .dx0 <- .rxAdjIniDx0(.rxAdjIniDerivs(.model, .st, calcSens), .st, calcSens, params)
   for (.ii in seq_along(outTimes)) {
     .ti <- outTimes[.ii]
     .idx <- which(.denseT <= .ti + 1e-12)
@@ -194,6 +202,11 @@ rxSolveAdjoint <- function(
       addDosing = FALSE
     ))
     .out[.ii, ] <- unlist(.sol[nrow(.sol), .cols])
+    ## initial-condition term lambda_k(t0)^T dX0/dtheta
+    for (k in adjStates) {
+      .lamT0 <- unlist(.sol[nrow(.sol), paste0("rx__adjLambda_", k, "_", .st, "__")])
+      .out[.ii, .nm(k, calcSens)] <- .out[.ii, .nm(k, calcSens)] + as.vector(.lamT0 %*% .dx0)
+    }
   }
   cbind(time = outTimes, as.data.frame(.out))
 }
@@ -210,9 +223,11 @@ rxSolveAdjoint <- function(
 #' @export
 #' @keywords internal
 .rxAdjointSolveBuild <- function(object, calcSens, events, adjStates = NULL) {
+  .rxAdjRefuseEvents(events, c(3L, 4L), .rxAdjResetMsg)
   object <- .rxAdjointObject(object)
+  calcSens <- .rxSensVarNames(calcSens, .rxParams(object, TRUE))
   .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
-  .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
+  .model <- rxode2::rxS(rxode2::rxGetModel(object), FALSE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
   if (length(.st) == 0L) {
     stop("adjoint solve requires a model with ODE states", call. = FALSE)
@@ -357,6 +372,8 @@ rxSolveAdjoint <- function(
     dFexpr = .dFexpr,
     dLagStr = .dLagStr,
     lagStr = .lagStr,
+    ini = .rxAdjDefaults(object),
+    dx0Str = .rxAdjIniDerivs(.model, .st, calcSens),
     events = events
   )
 }
@@ -378,6 +395,7 @@ rxSolveAdjoint <- function(
 #' @export
 #' @keywords internal
 .rxAdjointSolveEvalC <- function(build, params, outTimes, denseBy = 0.01, atol = 1e-10, rtol = 1e-10) {
+  params <- .rxAdjParams(params, build$ini)
   .st <- build$st
   calcSens <- build$calcSens
   adjStates <- build$adjStates
@@ -497,6 +515,9 @@ rxSolveAdjoint <- function(
     .dTau2 <- -(.z$amt / .z$R^2) * .z$dRdp
     .duals[[length(.duals) + 1L]] <- list(k = .k - 1L, w = .w, c = .dTau2)
   }
+  ## initial-condition term at t0
+  .dx0 <- .rxAdjIniDx0(build$dx0Str, .st, calcSens, params)
+  .duals <- c(.duals, .rxAdjIniDuals(.dx0, .cj, .ns))
   .dual <- if (length(.duals)) {
     list(
       as.integer(vapply(.duals, function(d) d$k, integer(1))),
@@ -555,7 +576,8 @@ rxSolveAdjoint <- function(
 #' @param errModel `NULL` for least squares, or a list with character entries
 #'   `add` and/or `prop` naming the additive / proportional residual-error
 #'   parameters, selecting the FOCEi -2LL objective `v = add^2 + (prop*f)^2`.
-#' @return named numeric vector `dG/dtheta` over `calcSens`.
+#' @return named numeric vector `dG/dtheta` over `calcSens` (`THETA[n]`/`ETA[n]`
+#'   spelled `THETA_n_`/`ETA_n_`).
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
@@ -590,7 +612,8 @@ rxSolveAdjoint <- function(
 #'   per-subject covariates (first value per subject) merged into `params`.
 #' @param useC use the C++ sweep ([.rxAdjointGradEvalC()]); otherwise the R
 #'   reference ([.rxAdjointGradEval()]).
-#' @return named numeric vector `dOFV/dtheta` over `calcSens`.
+#' @return named numeric vector `dOFV/dtheta` over `calcSens` (`THETA[n]`/`ETA[n]`
+#'   spelled `THETA_n_`/`ETA_n_`).
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
@@ -611,7 +634,7 @@ rxSolveAdjoint <- function(
   .evalFn <- if (useC) .rxAdjointGradEvalC else .rxAdjointGradEval
   .covCols <- setdiff(names(data), c("id", "time", "dv"))
   .ids <- unique(data$id)
-  .g <- stats::setNames(numeric(length(calcSens)), calcSens)
+  .g <- stats::setNames(numeric(length(calcSens)), .rxSensNameSE(calcSens))
   for (.id in .ids) {
     .d <- data[data$id == .id, , drop = FALSE]
     .p <- params
@@ -637,9 +660,19 @@ rxSolveAdjoint <- function(
 #' @export
 #' @keywords internal
 .rxAdjointGradBuild <- function(object, calcSens, pred, events, errModel = NULL) {
+  .rxAdjRefuseEvents(events, c(3L, 4L), .rxAdjResetMsg)
   object <- .rxAdjointObject(object)
+  pred <- .rxSensNameSE(pred)
+  if (!is.null(errModel)) {
+    errModel <- lapply(errModel, .rxSensNameSE)
+  }
+  ## a residual-error parameter enters through pred/errModel, not the ODE model
+  .mv <- rxode2::rxModelVars(object)
+  .errPars <- all.vars(parse(text = .rxSensNameSE(c(pred, as.character(unlist(errModel))))))
+  .errPars <- setdiff(.errPars, c(.mv$state, .mv$lhs, .mv$slhs))
+  calcSens <- .rxSensVarNames(calcSens, c(.rxParams(object, TRUE), .errPars))
   .mText <- rxode2::rxNorm(rxode2::rxModelVars(object))
-  .model <- rxode2::rxS(rxode2::rxGetModel(object), TRUE, promoteLinSens = FALSE)
+  .model <- rxode2::rxS(rxode2::rxGetModel(object), FALSE, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
   if (length(.st) == 0L) {
     stop("adjoint gradient requires a model with ODE states", call. = FALSE)
@@ -865,13 +898,108 @@ rxSolveAdjoint <- function(
     dLagStr = .dLagStr,
     lagStr = .lagStr,
     needF = .needF,
+    ini = .rxAdjDefaults(object),
+    dx0Str = .rxAdjIniDerivs(.model, .st, calcSens),
     events = events
   )
+}
+
+# value of the residual-error parameter `name` (THETA_n_ spelling) in params,
+# which may spell it THETA[n]
+.rxAdjErrPar <- function(params, name) {
+  params[[match(name, .rxSensNameSE(names(params)))]]
+}
+
+## The symbolic adjoint is derived without constant folding, so its expressions
+## can read a model default such as `k <- 0.5`; these are the defaults of the
+## model's parameters, filled in under the supplied values.
+.rxAdjDefaults <- function(object) {
+  .mv <- rxode2::rxModelVars(object)
+  .mv$ini[names(.mv$ini) %in% .mv$params]
+}
+
+.rxAdjParams <- function(params, defaults) {
+  c(params, defaults[setdiff(names(defaults), names(params))])
+}
+
+## d(initial condition)/dtheta for each state whose initial condition depends
+## on a calcSens parameter: named list (by state) of derivative strings.
+.rxAdjIniDerivs <- function(model, st, calcSens) {
+  .ret <- list()
+  for (.s in st) {
+    .iSE <- get0(paste0("rx_", .s, "_ini_0__"), envir = model, inherits = FALSE)
+    if (!inherits(.iSE, "Basic")) {
+      next
+    }
+    .d <- character(length(calcSens))
+    for (.p in seq_along(calcSens)) {
+      .x <- symengine::D(.iSE, .rxSEres(calcSens[.p]))
+      .d[.p] <- rxode2::rxFromSE(.x)
+    }
+    if (any(.d != "0")) {
+      .ret[[.s]] <- stats::setNames(.d, calcSens)
+    }
+  }
+  .ret
+}
+
+## Grid for rxode2AdjointSweep with one extra copy of a grid point for each
+## observation there, above the original.  An observation reads the
+## post-event state, but the sweep joins its covector after that index's jumps
+## and duals; on its own copy (a zero-width step above) it joins before them.
+## `ix` indexes the original grid, `obsK` is each observation's 0-based copy
+## index and `map` the 0-based new index of each original point.
+.rxAdjObsGrid <- function(nt, oidx) {
+  .cnt <- tabulate(oidx, nbins = nt)
+  .ix <- rep(seq_len(nt), times = 1L + .cnt)
+  .first <- match(seq_len(nt), .ix)
+  .used <- integer(nt)
+  .obsK <- integer(length(oidx))
+  for (.o in seq_along(oidx)) {
+    .j <- oidx[.o]
+    .used[.j] <- .used[.j] + 1L
+    .obsK[.o] <- .first[.j] + .used[.j] - 1L
+  }
+  list(ix = .ix, obsK = .obsK, map = .first - 1L)
+}
+
+## Stop for events a continuous-adjoint path cannot transpose
+.rxAdjRefuseEvents <- function(events, evids, msg) {
+  .ev <- as.data.frame(events)
+  if (!is.null(.ev$evid) && any(.ev$evid %in% evids, na.rm = TRUE)) {
+    stop(msg, call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+.rxAdjResetMsg <- "the continuous adjoint does not support a reset (evid = 3/4); use rxSolveAdjointRk4()"
+
+## numeric dX0/dtheta (states x calcSens) from .rxAdjIniDerivs()
+.rxAdjIniDx0 <- function(dx0Str, st, calcSens, params) {
+  .m <- matrix(0, length(st), length(calcSens))
+  for (.s in names(dx0Str)) {
+    .m[match(.s, st), ] <- vapply(dx0Str[[.s]], .rxAdjEvalNum, numeric(1), params = params)
+  }
+  .m
+}
+
+## The initial-condition term lambda(t0-)^T dX0/dtheta as dose duals at grid
+## index 0, which the sweeps apply with lambda(t0+); a replace/multiply at t0
+## (the cj list) maps lambda(t0+) to lambda(t0-) = alpha * lambda(t0+).
+.rxAdjIniDuals <- function(dx0, cj, ns) {
+  .ret <- list()
+  for (.i in which(rowSums(abs(dx0)) > 0)) {
+    .w <- numeric(ns)
+    .w[.i] <- prod(cj[[3]][cj[[1]] == 0L & cj[[2]] == .i - 1L])
+    .ret[[length(.ret) + 1L]] <- list(k = 0L, w = .w, c = dx0[.i, ])
+  }
+  .ret
 }
 
 ## numeric evaluation of an rxFromSE expression string at parameter values
 .rxAdjEvalNum <- function(txt, params) {
   .env <- list2env(as.list(params), parent = baseenv())
+  .rxSensBindIdx(params, .env)
   assign("Rx_pow_di", function(x, i) x^i, envir = .env)
   assign("Rx_pow", function(x, y) x^y, envir = .env)
   assign("expit", function(x, a = 0, b = 1) a + (b - a) / (1 + exp(-x)), envir = .env)
@@ -900,6 +1028,7 @@ rxSolveAdjoint <- function(
 #' @export
 #' @keywords internal
 .rxAdjointGradEval <- function(build, params, obsTimes, obs, weight = 1, denseBy = 0.01, atol = 1e-10, rtol = 1e-10) {
+  params <- .rxAdjParams(params, build$ini)
   .st <- build$st
   calcSens <- build$calcSens
   errModel <- build$errModel
@@ -977,8 +1106,8 @@ rxSolveAdjoint <- function(
   if (is.null(errModel)) {
     .dLdf <- rep_len(weight, length(obsTimes)) * .resid # d(1/2 w r^2)/df
   } else {
-    .addV <- if (!is.null(errModel$add)) params[[errModel$add]] else 0
-    .propV <- if (!is.null(errModel$prop)) params[[errModel$prop]] else 0
+    .addV <- if (!is.null(errModel$add)) .rxAdjErrPar(params, errModel$add) else 0
+    .propV <- if (!is.null(errModel$prop)) .rxAdjErrPar(params, errModel$prop) else 0
     .var <- .addV^2 + (.propV * .fobs)^2 # residual variance
     .dLdvar <- 1 / .var - .resid^2 / .var^2 # dG/dv, G = r^2/v + log v
     .dvardf <- 2 * .propV^2 * .fobs # dv/df (proportional)
@@ -1010,8 +1139,8 @@ rxSolveAdjoint <- function(
   }
 
   ## single backward sweep, descending piecewise between breakpoints
-  ## (observations and dose times): capture dose duals at lambda(tau+), then
-  ## apply the observation lambda jump, then integrate down.
+  ## (observations and dose times): join the observation covectors, capture
+  ## the dose duals at lambda(tau+), apply the event jumps, then integrate down.
   .breaks <- sort(unique(c(obsTimes, .doses$tau, .evR$time, .infT, 0)), decreasing = TRUE)
   .breaks <- .breaks[.breaks <= max(obsTimes) + 1e-12]
   .state <- numeric(0)
@@ -1024,6 +1153,14 @@ rxSolveAdjoint <- function(
   .gDose <- stats::setNames(numeric(length(calcSens)), calcSens)
   for (.bi in seq_along(.breaks)) {
     .tau <- .breaks[.bi]
+    ## an observation reads the post-event state: its covector joins lambda(tau+)
+    ## before this time's duals and jumps
+    for (.o in which(abs(obsTimes - .tau) < 1e-9)) {
+      .ci <- .cvec[[.o]]
+      for (i in .st) {
+        .state[.lam(i)] <- .state[.lam(i)] + .ci[[i]]
+      }
+    }
     ## bolus dose duals (skip infusions: rate != 0 handled separately)
     .dHere <- which(abs(.doses$tau - .tau) < 1e-9 & .doses$rate == 0)
     for (.j in .dHere) {
@@ -1066,12 +1203,6 @@ rxSolveAdjoint <- function(
         .state[.lam(.cc)] <- .evR$amt[.er] * .state[.lam(.cc)]
       }
     }
-    for (.o in which(abs(obsTimes - .tau) < 1e-9)) {
-      .ci <- .cvec[[.o]]
-      for (i in .st) {
-        .state[.lam(i)] <- .state[.lam(i)] + .ci[[i]]
-      }
-    }
     if (.bi < length(.breaks)) {
       .tLo <- .breaks[.bi + 1]
       .idx <- which(.denseT >= .tLo - 1e-12 & .denseT <= .tau + 1e-12)
@@ -1112,6 +1243,9 @@ rxSolveAdjoint <- function(
     }
   }
   .gTraj <- vapply(calcSens, function(p) .state[[paste0("rx__adjMu_", p, "__")]], numeric(1))
+  ## initial-condition term: lambda(t0-)^T dX0/dtheta
+  .lamT0 <- .state[.lam(.st)]
+  .gTraj <- .gTraj + as.vector(.lamT0 %*% .rxAdjIniDx0(build$dx0Str, .st, calcSens, params))
   .gExpl <- vapply(
     calcSens,
     function(p) {
@@ -1144,6 +1278,7 @@ rxSolveAdjoint <- function(
 #' @export
 #' @keywords internal
 .rxAdjointGradEvalC <- function(build, params, obsTimes, obs, weight = 1, denseBy = 0.01, atol = 1e-10, rtol = 1e-10) {
+  params <- .rxAdjParams(params, build$ini)
   ## all duals (F, modeled lag, replace/multiply, modeled rate/dur infusion) run
   ## through the C++ sweep.
   .st <- build$st
@@ -1231,8 +1366,8 @@ rxSolveAdjoint <- function(
   if (is.null(errModel)) {
     .dLdf <- rep_len(weight, length(obsTimes)) * .resid
   } else {
-    .addV <- if (!is.null(errModel$add)) params[[errModel$add]] else 0
-    .propV <- if (!is.null(errModel$prop)) params[[errModel$prop]] else 0
+    .addV <- if (!is.null(errModel$add)) .rxAdjErrPar(params, errModel$add) else 0
+    .propV <- if (!is.null(errModel$prop)) .rxAdjErrPar(params, errModel$prop) else 0
     .var <- .addV^2 + (.propV * .fobs)^2
     .dLdvar <- 1 / .var - .resid^2 / .var^2
     .dLdf <- 2 * .resid / .var + .dLdvar * (2 * .propV^2 * .fobs)
@@ -1291,6 +1426,9 @@ rxSolveAdjoint <- function(
     .dTau2 <- -(.z$amt / .z$R^2) * .z$dRdp
     .duals[[length(.duals) + 1L]] <- list(k = .k - 1L, w = .w, c = .dTau2)
   }
+  ## initial-condition term at t0
+  .dx0 <- .rxAdjIniDx0(build$dx0Str, .st, calcSens, params)
+  .duals <- c(.duals, .rxAdjIniDuals(.dx0, .cj, .ns))
   .dual <- if (length(.duals)) {
     list(
       as.integer(vapply(.duals, function(d) d$k, integer(1))),
@@ -1300,13 +1438,16 @@ rxSolveAdjoint <- function(
   } else {
     list(integer(0), numeric(0), numeric(0))
   }
+  .g <- .rxAdjObsGrid(.nt, .oidx)
+  .cj[[1]] <- .g$map[.cj[[1]] + 1L]
+  .dual[[1]] <- .g$map[.dual[[1]] + 1L]
   .gTraj <- .Call(
     `_rxode2_rxAdjointSweep`,
-    .denseT,
-    .J,
-    .dP,
+    .denseT[.g$ix],
+    .J[.g$ix, , drop = FALSE],
+    .dP[.g$ix, , drop = FALSE],
     .cover,
-    as.integer(.oidx - 1L),
+    as.integer(.g$obsK),
     as.integer(.ns),
     as.integer(.np),
     .cj,

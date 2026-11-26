@@ -8,7 +8,7 @@
  * src/rxCse.cpp only reads the argument and hands the text back to R -- the
  * same division as seBatch.h and src/seFromSE.cpp.
  *
- * The output must match the R implementation BYTE FOR BYTE: downstream codegen
+ * Without existing temporaries, output matches the R implementation byte for byte: downstream codegen
  * consumes this text and nlmixr2est's saem rewrites the rx_expr_ prefix by
  * name.  Anything this file is not certain it reproduces makes the whole call
  * decline so the R walker runs -- all or nothing, because a partial result
@@ -16,6 +16,8 @@
  */
 #ifndef __RX_CSE_RUN_H__
 #define __RX_CSE_RUN_H__
+
+#include "rxNameChar.h"
 
 #include "seParse.h"
 #include "rxCse.g.d_parser.h"
@@ -30,6 +32,7 @@
 #include "rxCseStmt.h"
 #include "rxomp.h"
 #include <time.h>
+#include <string>
 
 /* 1 when the loaded dparser can run dparse() concurrently; src/tran.c */
 extern "C" int rxDparserParallel;
@@ -95,6 +98,7 @@ typedef struct csRun {
   const char **out;               /* one rewritten statement each */
   const char ***usedBy;           /* the temporaries each statement referenced */
   int *nUsedBy;
+  const char *const *impure;      /* calls never shared, each `name(`; R_alloc'd */
 } csRun;
 
 static void csRunInit(csRun *r, R_xlen_t n, const char **in, int nthr) {
@@ -197,7 +201,8 @@ static int csCountPhase(csRun *r) {
 }
 
 /* count > 1, then drop bare numbers, bare THETA[n]/ETA[n], anything leading
-   with `-` and anything calling lag()/lead()/diff()/first()/last(), then order by nchar with first encounter breaking ties
+   with `-`, anything calling lag()/lead()/diff()/first()/last() and anything
+   calling an impure function (RNG, simeta(), rxImpureFun() names), then order by nchar with first encounter breaking ties
    (R/rxOptExpr.R:1000-1013) */
 static int csSelectPhase(csRun *r) {
   int j;
@@ -207,7 +212,7 @@ static int csSelectPhase(csRun *r) {
     csEntry *e = &r->all.e[j];
     if (e->key == NULL || e->count <= 1) continue;
     if (csIsNum(e->key) || csIsThetaEta(e->key) || e->key[0] == '-') continue;
-    if (csHasHistCall(e->key)) continue;
+    if (csHasHistCall(e->key) || csHasCallIn(e->key, r->impure)) continue;
     r->cand[r->ncand].key = e->key;
     r->cand[r->ncand].firstSeen = e->firstSeen;
     r->cand[r->ncand].len = strlen(e->key);
@@ -225,20 +230,45 @@ static int csSelectPhase(csRun *r) {
   return 1;
 }
 
+
+/* 1 when s holds an identifier `prefix<digits>`; matches rxOptExpr()'s
+   .rxOptPrefixUsed() */
+static int csHasTemp(const char *s, const char *prefix) {
+  size_t pl = strlen(prefix);
+  for (const char *p = strstr(s, prefix); p != NULL; p = strstr(p + 1, prefix)) {
+    if (p != s && rxNameChar(p[-1])) continue;
+    const char *q = p + pl;
+    if (*q < '0' || *q > '9') continue;
+    while (*q >= '0' && *q <= '9') q++;
+    if (!rxNameChar(*q)) return 1;
+  }
+  return 0;
+}
+
 /* name them rx_expr_0..n and rewrite each in terms of the shorter ones
    (src/rxOptRep.cpp) */
 static int csReducePhase(csRun *r) {
   int j, k;
+  std::string prefix = "rx_expr_";
+  // Reserve a temporary namespace not already used by the input.
+  for (;;) {
+    bool used = false;
+    for (R_xlen_t i = 0; i < r->n; ++i) {
+      if (csHasTemp(r->in[i], prefix.c_str())) { used = true; break; }
+    }
+    if (!used) break;
+    prefix += "cse_";
+  }
   if (!csMapInit(&r->rep, 1024)) return 0;
   r->repNames = (const char**) calloc((size_t) r->ncand, sizeof(char*));
   if (r->repNames == NULL) return 0;
   for (j = 0; j < r->ncand; j++) {
     size_t cap = r->cand[j].len + 64;
     r->cand[j].reduced = (char*) malloc(cap);
-    r->cand[j].name = (char*) malloc(32);
+    r->cand[j].name = (char*) malloc(prefix.size() + 32);
     if (r->cand[j].reduced == NULL || r->cand[j].name == NULL) return 0;
     memcpy(r->cand[j].reduced, r->cand[j].key, r->cand[j].len + 1);
-    snprintf(r->cand[j].name, 32, "rx_expr_%d", j);
+    snprintf(r->cand[j].name, prefix.size() + 32, "%s%d", prefix.c_str(), j);
     for (k = 0; k < j; k++) {
       if (csReplace1(&r->cand[j].reduced, &cap,
                      r->cand[k].reduced, r->cand[k].name) < 0) {

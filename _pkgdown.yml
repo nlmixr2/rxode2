@@ -35,6 +35,22 @@ reference:
   contents:
   - has_concept("Model UI and piping")
   - has_concept("Initial conditions")
+- title: Absorption building blocks
+  desc: Add, remove or change absorption (depot, transit, zero-order, Weibull, two-path).
+  contents:
+  - has_concept("Absorption building blocks")
+- title: Distribution and elimination building blocks
+  desc: Add or remove peripheral compartments, Michaelis-Menten elimination and compartment properties.
+  contents:
+  - has_concept("Distribution and elimination building blocks")
+- title: Pharmacodynamic building blocks
+  desc: Attach direct, effect-compartment and indirect-response models, baselines and drug-effect forms.
+  contents:
+  - has_concept("Pharmacodynamic building blocks")
+- title: Parameter and naming building blocks
+  desc: Add between-subject variability and residual error, transform PK parameters and name new parameters.
+  contents:
+  - has_concept("Parameter and naming building blocks")
 - title: Variability and uncertainty
   desc: Simulate between-subject variability and parameter uncertainty.
   contents:
@@ -159,7 +175,9 @@ articles:
   - articles/rxode2-parameter-uncertainty
   - articles/rxode2-confint
   - articles/rxode2-eta-eps-resampling
+  - articles/rxode2-eta-shape-transforms
   - articles/rxode2-phase-residual-error
+  - articles/rxode2-time-to-event
   - rxode2-data-frame
   - rxode2-plot
 - title: Worked examples
@@ -283,8 +301,12 @@ navbar:
       href: articles/rxode2-confint.html
     - text: "ETA and EPS resampling"
       href: articles/rxode2-eta-eps-resampling.html
+    - text: "Skewed and heavy-tailed random effects"
+      href: articles/rxode2-eta-shape-transforms.html
     - text: "Phase 1 vs phase 3 residual error"
       href: articles/rxode2-phase-residual-error.html
+    - text: "Simulating time-to-event endpoints"
+      href: articles/rxode2-time-to-event.html
     - text: "---------"
     - text: "Output"
     - text: "Working with solved data frames"

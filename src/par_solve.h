@@ -17,6 +17,7 @@ extern "C" {
 
 #include "../inst/include/rxode2.h"
 #include "rxThreadData.h"
+#include "rxode2lincmtLink.h"
 
 void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx);
 
@@ -134,6 +135,38 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
     ind->linCmtOriginSS = 0;
   }
 
+  // newind during the solve: 1 for the subject's first record (its dose
+  // functions and evid_() pushes included), 2 after it, as the output table
+  // has it.  The hidden evid 9 start record, which the table skips, is not
+  // that first record: it sees 2 and the record after it sees 1.
+  static inline int rxNewindFirst(rx_solving_options_ind *ind) {
+    return (ind->n_all_times > 0 && getEvid(ind, ind->ix[0]) == 9) ? 2 : 1;
+  }
+  // The same, for the order an mtime() requeue of slot 0 re-sorts into at the
+  // top of the next iteration (reSortMainTimeline(); mtime records take their
+  // new ind->mtime time there): does the evid 9 start record come first?
+  static inline int rxNewindFirstResort(rx_solving_options_ind *ind) {
+    int e9 = -1;
+    for (int j = 0; j < ind->n_all_times; ++j) {
+      if (getEvid(ind, ind->ix[j]) == 9) { e9 = ind->ix[j]; break; }
+    }
+    if (e9 < 0) return 1;
+    double t9 = ind->timeThread[e9];
+    for (int j = 0; j < ind->n_all_times; ++j) {
+      int raw = ind->ix[j], ev = getEvid(ind, raw);
+      if (raw == e9) continue;
+      double tj = (ev >= 10 && ev <= 99) ? ind->mtime[ev - 10] : ind->timeThread[raw];
+      if (tj < t9 || (tj == t9 && (ev == 3 || ev > 9))) return 1;
+    }
+    return 2;
+  }
+  // newind for the record after slot i; an mtime() requeue of slot 0 (i == -1)
+  // runs slot 0 again.
+  static inline void rxNewindAfterRecord(rx_solving_options_ind *ind, int i) {
+    if (i < 0) ind->_newind = rxNewindFirstResort(ind);
+    else ind->_newind = (i == 0 && getEvid(ind, ind->ix[0]) == 9) ? 1 : 2;
+  }
+
 	static inline int iniSubject(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
 															 t_update_inis u_inis) {
 		ind->_rxFlag=1;
@@ -215,6 +248,7 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
 			ind->tfirstS[j] = NA_REAL;
 			ind->curDoseS[j] = NA_REAL;
 		}
+		ind->infDurOnN = 0;
 		ind->inLhs = inLhs;
 		for (int j = op->nlhs; j--;) {
       if (op->lhs_str[j] == 1) {
@@ -278,13 +312,13 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
       memset(ind->linCmtSave, 0,
              (size_t)(op->numLin + op->numLinSens) * sizeof(double));
     }
-    // Reset ind->linCmtCarryT -- the cumulative d(Alast_i)/d(eta) carry state
-    // for the linCmt()-time-varying-covariate fix (see rxode2parseStruct.h
-    // and linCmtB()'s which1=-5/-6/-7 in linCmt.cpp). Alast starts at 0 for
-    // a fresh subject, so its sensitivity does too; the full fixed-size
-    // buffer (4 rows x RX_LINCMT_CARRY_MAXPAIRS pair columns) is memset
-    // (not gated on m or the pair count actually in use).
+    // Restart the cumulative d(Alast_i)/d(eta) carry (linCmtB()'s
+    // which1=-5/-6/-7 in rxode2lincmt): Alast starts at 0 for a fresh
+    // subject, so its sensitivity does too.  The carry states in ind->solve
+    // (op->numLinCarry) start from no row; the fixed ind->linCmtCarryT is
+    // what an older rxode2lincmt uses.
     if ((op->numLin + op->numLinSens) > 0) {
+      ind->linCmtCarryRow = -1;
       memset(ind->linCmtCarryT, 0, sizeof(ind->linCmtCarryT));
       ind->linCmtCarryTlast = NAN;
       ind->linCmtCarryVarying = 0;
@@ -343,6 +377,7 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
       // sortInd and may have re-sorted for state-dep lag; preserve that order so
       // getSolve(i) positions in rxode2_df agree with the solve loop.
       sortInd(ind);
+      if (inLhs == 0) ind->_newind = rxNewindFirst(ind);
       // Note: op->badSolve is NOT checked here -- it is a shared global flag.
       // In parallel mode another thread's failed solve would prevent THIS
       // individual from initializing.  Bad-solve state is handled per-individual
@@ -353,10 +388,58 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
     if (ncmt) ind->pendingDosesN[0] = 0;
 		return 1;
 	}
+  extern int resetCancelsPending_global;
+  // rxSolve(resetCancelsPending=TRUE): NONMEM cancels prior doses at a reset
+  // (rxode2#1720).  A dose whose record comes before the reset at ix position
+  // `pos` (an earlier record time, or the same time and translated first) but
+  // that is processed after it -- a lagged dose -- is ignored, with its
+  // infusion's stop; etTrans() already dropped the addl repeats.  A reset
+  // pushed while solving is translated last, hence the record-time test.
+  // Is record `r` a dose whose record comes before the reset record `reset`?
+  static inline int isPriorDoseRecord(rx_solving_options_ind *ind, int r,
+                                      int reset, double tReset) {
+    if (r < 0 || !isDose(getEvid(ind, r))) return 0;
+    double tRec = getAllTimes(ind, r);
+    return tRec < tReset || (tRec == tReset && r < reset);
+  }
+  // Ignore dose record `r` at the reset at ix position `pos`, with its
+  // infusion's stop.
+  static inline void ignoreDoseAtReset(rx_solving_options_ind *ind, rx_solve *rx,
+                                       rx_solving_options *op, int r, int pos,
+                                       int neq) {
+    int l = getDoseNumberFromIndexAny(ind, r);
+    if (l < 0) return;
+    int wh, cmt, wh100, whI, wh0;
+    getWh(getEvid(ind, r), &wh, &cmt, &wh100, &whI, &wh0);
+    if (isInfusionStartRecord(wh0, whI) && cmt >= 0 && cmt < neq) {
+      int e = getInfusionStopDoseNumber(ind, rx, op, r, cmt, whI);
+      if (e >= 0) ignoreStopAfter(ind, pos, e);
+    }
+    pushIgnoredDose(l, ind);
+  }
+  static inline void cancelPendingPriorDoses(rx_solving_options_ind *ind,
+                                             rx_solve *rx, rx_solving_options *op,
+                                             int pos, int neq) {
+    if (!resetCancelsPending_global || pos < 0 || pos >= ind->n_all_times) return;
+    int reset = ind->ix[pos];
+    double tReset = getAllTimes(ind, reset);
+    for (int k = pos + 1; k < ind->n_all_times; ++k) {
+      int r = ind->ix[k];
+      // a prior dose past the next reset is cancelled by that reset
+      if (r >= 0 && getEvid(ind, r) == 3) break;
+      if (isPriorDoseRecord(ind, r, reset, tReset)) {
+        ignoreDoseAtReset(ind, rx, op, r, pos, neq);
+      }
+    }
+  }
   static inline void handleEvid3(rx_solving_options_ind *ind, rx_solving_options *op,
                                  rx_solve *rx, int *neq, double *xp, double *xout,
                                  double *yp, int *idid, t_update_inis u_inis) {
     ind->curShift -= rx->maxShift;
+    cancelRunningInfusionStops(ind, rx, op, ind->idx, neq[0], -1);
+    cancelPendingPriorDoses(ind, rx, op, ind->idx, neq[0]);
+    // the modeled steady-state off these mark was cancelled with the rest
+    if (_rxEsActive) { _esSSDurOffCmt = -1; _esSSRateOffCmt = -1; }
     for (unsigned int j = neq[0]; j--;) {
       ind->InfusionRate[j] = 0;
       ind->on[j] = 1;
@@ -391,6 +474,91 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
 #if defined(__cplusplus)
 }
 
+// Whether a solver keeps its step across record evid: only a plain
+// observation (0) or the time-0 placeholder (9).  An mtime() record (10-99)
+// or an evid 2 record can mark a model-time or right-hand-side discontinuity,
+// so the step restarts there as it does at a dose.
+static inline bool rxKeepsStep(int evid) { return evid == 0 || evid == 9; }
+
+// The kept step, within [hmin, hmax] (a bound <= 0 is no bound).
+static inline double rxKeptStep(double h, double hmin, double hmax) {
+  if (hmax > 0.0 && h > hmax) h = hmax;
+  if (hmin > 0.0 && h < hmin) h = hmin;
+  return h;
+}
+
+// The time scale of the state y with derivative f: ||y|| / ||f||, both RMS
+// norms weighted by 1 / (atol + rtol |y|), or 0 when either norm is
+// negligible.  scalarTol uses the first compartment's atol and rtol for
+// every state, as dop5 and ros4 control their error; otherwise each state's
+// own, as dop853 does.
+static inline double rxStepScale(int n, const double *y, const double *f,
+                                 rx_solving_options *op, rx_solving_options_ind *ind,
+                                 bool scalarTol) {
+  const double *atol = (ind->atol2 != NULL) ? ind->atol2 : op->atol2;
+  const double *rtol = (ind->rtol2 != NULL) ? ind->rtol2 : op->rtol2;
+  double d0 = 0.0, d1 = 0.0;
+  for (int i = 0; i < n; i++) {
+    int k = scalarTol ? 0 : i;
+    double sk = ((atol != NULL) ? atol[k] : op->ATOL) +
+      ((rtol != NULL) ? rtol[k] : op->RTOL) * fabs(y[i]);
+    d0 += (y[i] / sk) * (y[i] / sk);
+    d1 += (f[i] / sk) * (f[i] / sk);
+  }
+  if (n <= 0 || !(d0 > 1e-20 * n) || !(d1 > 1e-20 * n)) return 0.0;
+  return sqrt(d0 / d1);
+}
+
+// How a one-step solver starts each segment.  solved() keeps the step its
+// controller proposed at the end of a segment.  Across a plain observation
+// record the next segment starts with that step; across a dose, an infusion
+// edge or any other record or extra dose that changes the state or the
+// dosing, with that step capped by 1/100 of the time scale of the state just
+// after (rxStepScale(), where dop853's hinit() starts), so a large jump
+// starts small; after an mtime() or evid 2 record, or with no step kept, the
+// way the solver starts a solve.  A solver that sets acrossDoses false
+// starts afresh after every record that is not a plain observation.
+struct rxStepKeeper {
+  double h = 0.0;
+  int mode = 0; // 0 afresh, 1 the kept step, 2 the kept step capped
+  bool acrossDoses = true;
+  bool scalarTol = false; // see rxStepScale()
+  std::vector<double> f;
+  void solved(double hNext) {
+    h = hNext;
+    mode = (hNext > 0.0) ? 1 : 0;
+  }
+  void reset() { mode = 0; }
+  void stateChanged() { if (mode != 0) mode = acrossDoses ? 2 : 0; }
+  // after processing a record with this evid
+  void record(int evid) {
+    if (rxKeepsStep(evid)) return;
+    if (evid == 2 || (evid >= 10 && evid <= 99)) {
+      mode = 0;
+    } else {
+      stateChanged();
+    }
+  }
+  // the first step of the segment from (t, y), or hDefault to start afresh;
+  // nOde states, the right-hand side dydt called with neq as the solver calls it
+  double first(double hDefault, rx_solving_options *op, rx_solving_options_ind *ind,
+               int *neq, int nOde, t_dydt dydt, double t, double *y) {
+    if (mode == 0 || h <= 0.0) return hDefault;
+    double hk = h;
+    if (mode == 2) {
+      f.assign((size_t)(neq[0] > nOde ? neq[0] : nOde), 0.0);
+      dydt(neq, t, y, f.data());
+      double tau = 0.01 * rxStepScale(nOde, y, f.data(), op, ind, scalarTol);
+      if (!(tau > 0.0)) return hDefault;
+      if (tau < hk) hk = tau;
+    }
+    return rxKeptStep(hk, op->HMIN, ind->HMAX);
+  }
+};
+
+// Returns 1 when the next extra dose lies in [xp, xout]; callers loop until it
+// returns 0, since an extra dose left for the next interval falls before xp and
+// is skipped.
 static inline int handleExtraDose(int *neq,
                                   int *BadDose,
                                   double *InfusionRate,
@@ -506,6 +674,10 @@ static inline void preSolve(rx_solving_options *op, rx_solving_options_ind *ind,
     ind->linCmtAlast = yp + op->linOffset;
     ind->tprior = xp + ind->curShift; // Set the time to the time to solve to.
     ind->tout   = xout + ind->curShift;
+    // steady-state cycles re-solve the same row over 0..ii from a new state;
+    // linCmtB()'s last-row memo is keyed on the row and time, not the state,
+    // so drop it (#1585)
+    if (ind->doSS) _p_linCmtBindFree(ind);
   }
   // NOTE: ind->_atEventTime is deliberately NOT set here.  evid_() is fired
   // once per record from updateSolve() (see par_solve.cpp) so that every

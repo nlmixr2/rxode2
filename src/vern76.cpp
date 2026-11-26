@@ -3,11 +3,11 @@
 #undef max
 #include "ode_vern76_bridge.h"
 
-static inline void vern76_do_steps(RxVern76 *solver, rx_solving_options_ind *ind, rx_solving_options *op,
+static inline int vern76_do_steps(RxVern76 *solver, rx_solving_options_ind *ind, rx_solving_options *op,
                                      t_dydt c_dydt, int *neq, double *yp,
                                      double xp, double xout) {
   double tint = xout - xp;
-  if (tint == 0.0) return;
+  if (tint == 0.0) return 0;
   double dt = op->HMIN > 0.0 ? op->HMIN : 0.01;
   if (dt <= 0.0) dt = 0.01;
   if (dt > std::fabs(tint)) dt = std::fabs(tint);
@@ -18,10 +18,14 @@ static inline void vern76_do_steps(RxVern76 *solver, rx_solving_options_ind *ind
   solver->set_t(xp);
 try {
     solver->solve_adaptive(std::fabs(tint), std::fabs(dt), true);
+  } catch (const RxStiffStop &) {
+    // an AutoSwitch probe's stiff report: yp is the last accepted step
+    return 1;
   } catch (...) {
     if (ind->rc[0] == 0) ind->rc[0] = -2019;
     rxSolverFail(ind);
   }
+  return 0;
 }
 
 extern "C" void ind_vern76_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,
@@ -44,13 +48,13 @@ extern "C" void ind_vern76_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   double xp = getAllTimes(ind, 0);
   ind->solvedIdx = 0;
 
-  int neqOde = op->neq - op->numLin - op->numLinSens;
+  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
   RxVern76 *solver = NULL;
   if (neqOde > 0) {
     solver = new RxVern76(c_dydt, neq, neqOde, ind, getSolve(0), (long unsigned)op->mxstep);
       solver->set_quiet(true);
-      if (op->atol2 != NULL) solver->set_abstol(op->ATOL);
-      if (op->rtol2 != NULL) solver->set_reltol(op->RTOL);
+      if (op->atol2 != NULL) solver->set_abstol(ind->atol2 != NULL ? ind->atol2[0] : op->ATOL);
+      if (op->rtol2 != NULL) solver->set_reltol(ind->rtol2 != NULL ? ind->rtol2[0] : op->RTOL);
   }
   double *yp;
 
@@ -85,8 +89,9 @@ extern "C" void ind_vern76_0(rx_solve *rx, rx_solving_options *op, int solveid, 
         badSolveExit(i);
         localBadSolve = 1;
       } else {
-        if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                            xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
+        while (!localBadSolve &&
+               handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                               xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             if (neqOde > 0)
@@ -108,16 +113,6 @@ extern "C" void ind_vern76_0(rx_solve *rx, rx_solving_options *op, int solveid, 
             ind->ixds = ixds;
             ind->idx = idx;
             ind->idxExtra++;
-            if (!isSameTime(xout, ind->extraDoseNewXout)) {
-              preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-              if (neqOde > 0)
-                vern76_do_steps(solver, ind, op, c_dydt, neq, yp, ind->extraDoseNewXout, xout);
-              copyLinCmt(neq, ind, op, yp);
-              const char* err_msg = "vern76 failed";
-              postSolve(neq, &istate, ind->rc, &idx, yp, &err_msg, 9, false, ind, op, rx);
-              if (*(ind->rc) < 0) localBadSolve = 1;
-              ind->extraDoseNewXout = xout;
-            }
             xp = ind->extraDoseNewXout;
           }
         }
@@ -133,7 +128,6 @@ extern "C" void ind_vern76_0(rx_solve *rx, rx_solving_options *op, int solveid, 
         xp = xout;
       }
     }
-    ind->_newind = 2;
     if (!localBadSolve) {
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
@@ -158,6 +152,7 @@ extern "C" void ind_vern76_0(rx_solve *rx, rx_solving_options *op, int solveid, 
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       if (_mtime_requeued) i--;
     }
+    rxNewindAfterRecord(ind, i);
     ind->solvedIdx = i;
   }
   if (solver != NULL) delete solver;
@@ -200,13 +195,38 @@ extern "C" void vern76_solveWith1Pt(int *neq, double *yp, double *xp, double xou
                                       int *istate, rx_solving_options *op,
                                       rx_solving_options_ind *ind) {
   int eff = rxEffNeq(ind, op);
+  int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
+    if (neqOde > 0) {
+    RxVern76 solver(dydt, neq, neqOde, ind, yp, (long unsigned)op->mxstep);
+    solver.set_quiet(true);
+    if (op->atol2 != NULL) solver.set_abstol(ind->atol2 != NULL ? ind->atol2[0] : op->ATOL);
+    if (op->rtol2 != NULL) solver.set_reltol(ind->rtol2 != NULL ? ind->rtol2[0] : op->RTOL);
+    vern76_do_steps(&solver, ind, op, dydt, neq, yp, *xp, xout);
+
+    if (ind->rc[0] < 0) { *istate = -1; return; }
+  }
+  *xp = xout;
+  *istate = 1;
+}
+
+// As an AutoSwitch composite's primary: with the stiffness probe, which on a
+// stiff report stops at the last accepted step (*xp) with *istate = -4
+extern "C" void vern76_solveWith1PtProbe(int *neq, double *yp, double *xp, double xout,
+                                      int *istate, rx_solving_options *op,
+                                      rx_solving_options_ind *ind) {
+  int eff = rxEffNeq(ind, op);
   int neqOde = eff - op->numLin - op->numLinSens;
     if (neqOde > 0) {
     RxVern76 solver(dydt, neq, neqOde, ind, yp, (long unsigned)op->mxstep);
     solver.set_quiet(true);
-    if (op->atol2 != NULL) solver.set_abstol(op->ATOL);
-    if (op->rtol2 != NULL) solver.set_reltol(op->RTOL);
-    vern76_do_steps(&solver, ind, op, dydt, neq, yp, *xp, xout);
+    if (op->atol2 != NULL) solver.set_abstol(ind->atol2 != NULL ? ind->atol2[0] : op->ATOL);
+    if (op->rtol2 != NULL) solver.set_reltol(ind->rtol2 != NULL ? ind->rtol2[0] : op->RTOL);
+    solver.probe_.start(op, ind, 4.64);
+    if (vern76_do_steps(&solver, ind, op, dydt, neq, yp, *xp, xout)) {
+      *xp = solver.get_t();
+      *istate = -4;
+      return;
+    }
 
     if (ind->rc[0] < 0) { *istate = -1; return; }
   }

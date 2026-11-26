@@ -11,8 +11,8 @@ SEXP generateModelVars(void) {
   calcNextra();
 
   rxProtectGuard;
-  SEXP lst   = rxP(Rf_allocVector(VECSXP, 36));
-  SEXP names = rxP(Rf_allocVector(STRSXP, 36));
+  SEXP lst   = rxP(Rf_allocVector(VECSXP, 35));
+  SEXP names = rxP(Rf_allocVector(STRSXP, 35));
 
   SEXP sNeedSort = rxP(Rf_allocVector(INTSXP,1));
   int *iNeedSort  = INTEGER(sNeedSort);
@@ -410,23 +410,19 @@ SEXP generateModelVars(void) {
   SET_STRING_ELT(names, 30, Rf_mkChar("strCmpParams"));
   SET_VECTOR_ELT(lst,   30, strCmpParams);
 
-  /* timeId (31) and md5 (32) are filled in on the R side (rxode2.R/tran.R);
-     the named NULL placeholders keep those indexes stable so the new
-     elements can be appended without shifting RxMv_timeId/RxMv_md5. */
-  SET_STRING_ELT(names, 31, Rf_mkChar("timeId"));
+  /* md5 (31) is filled in on the R side (rxode2.R/tran.R); the named NULL
+     placeholder keeps its index stable. */
+  SET_STRING_ELT(names, 31, Rf_mkChar("md5"));
   SET_VECTOR_ELT(lst,   31, R_NilValue);
 
-  SET_STRING_ELT(names, 32, Rf_mkChar("md5"));
-  SET_VECTOR_ELT(lst,   32, R_NilValue);
+  SET_STRING_ELT(names, 32, Rf_mkChar("splitInfusion"));
+  SET_VECTOR_ELT(lst,   32, splitInfusionSexp);
 
-  SET_STRING_ELT(names, 33, Rf_mkChar("splitInfusion"));
-  SET_VECTOR_ELT(lst,   33, splitInfusionSexp);
+  SET_STRING_ELT(names, 33, Rf_mkChar("splitInfusionBolus"));
+  SET_VECTOR_ELT(lst,   33, splitInfusionBolusSexp);
 
-  SET_STRING_ELT(names, 34, Rf_mkChar("splitInfusionBolus"));
-  SET_VECTOR_ELT(lst,   34, splitInfusionBolusSexp);
-
-  SET_STRING_ELT(names, 35, Rf_mkChar("splitBolusInfusion"));
-  SET_VECTOR_ELT(lst,   35, splitBolusInfusionSexp);
+  SET_STRING_ELT(names, 34, Rf_mkChar("splitBolusInfusion"));
+  SET_VECTOR_ELT(lst,   34, splitBolusInfusionSexp);
 
 
   Rf_setAttrib(tran,  R_NamesSymbol, trann);

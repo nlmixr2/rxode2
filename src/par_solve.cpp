@@ -43,6 +43,9 @@ extern "C" {
 #include "rxode2_df.h"
 }
 #include "par_solve.h"
+#include "tte.h"
+#include "cvode_solver.h"
+#include "ssAnderson.h"
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
 #define badSolveExit(i) for (int j = rxEffNeq(ind, op)*(ind->n_all_times); j--;){ \
     ind->solve[j] = NA_REAL;                                           \
@@ -471,6 +474,17 @@ static void rxSolveErrPush(int id, int err) {
 
 rx_solving_options op_global;
 extern int nPastEvid_global;
+extern int ssNotConv_global;
+// flag an iterated steady state that used maxSS doses without converging;
+// minSS = maxSS asks for that many doses, and a failed solve (rc +/-2019) is
+// reported on its own, so neither is flagged
+static inline void ssNotConverged(int minSS, int maxSS, int rc) {
+  if (minSS < maxSS && rc != 2019 && rc != -2019) {
+#pragma omp atomic write
+    ssNotConv_global = 1;
+  }
+}
+extern int tieOrderData_global;
 #include "rxGlobals.h"
 extern rx_globals _globals;
 
@@ -484,6 +498,12 @@ rx_solving_options_ind **inds_threadCur = NULL;
 // Its length, so a read or write cannot run off the end if `op->cores` is
 // raised after the allocation.
 int inds_threadCurN = 0;
+// The subject each thread is evaluating the model for, named by
+// _setThreadInd() and _setIndPointersByThread().  The random-number helpers the
+// model calls (rxnorm(), rinorm(), simeta(), ...) take no subject argument and
+// read it through here, in place.  Its length is inds_threadSubjN.
+rx_solving_options_ind **inds_threadSubj = NULL;
+int inds_threadSubjN = 0;
 
 
 void par_flush_console() {
@@ -714,6 +734,9 @@ extern "C" void rxOptionsIniEnsure(int mx, int cores) {
   R_Free(inds_threadCur);
   inds_threadCurN = max2(1, cores);
   inds_threadCur = R_Calloc(inds_threadCurN, rx_solving_options_ind*);
+  R_Free(inds_threadSubj);
+  inds_threadSubjN = max2(1, cores);
+  inds_threadSubj = R_Calloc(inds_threadSubjN, rx_solving_options_ind*);
   rx_solve *rx=(&rx_global);
   rx->subjects = inds_global;
   rx->ordId = NULL;
@@ -1214,6 +1237,26 @@ static inline void copyLinCmt(int *neq,
   }
 }
 
+// Applies stateTrimU/stateTrimL; false when a state is still not finite after
+// the trims (liblsoda and indLin carry a non-finite right-hand side on into the
+// state without failing the step).
+static inline bool trimStatesFinite(double *yp, rx_solving_options_ind *ind,
+                                    rx_solving_options *op, rx_solve *rx) {
+  int n = rxEffNeq(ind, op);
+  if (R_FINITE(rx->stateTrimU)) {
+    double top = fabs(rx->stateTrimU);
+    for (int j = n; j--;) yp[j] = min(top, yp[j]);
+  }
+  if (R_FINITE(rx->stateTrimL)) {
+    double bottom = rx->stateTrimL;
+    for (int j = n; j--;) yp[j] = max(bottom, yp[j]);
+  }
+  for (int k = n; k--;) {
+    if (!R_FINITE(yp[k])) return false;
+  }
+  return true;
+}
+
 // The bool is unused: a failed subject's reasons are pushed after the solve,
 // by par_solve() and ind_solve().
 static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, const char** err_msg, int nerr, bool,
@@ -1222,7 +1265,10 @@ static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, c
     if (err_msg != NULL) {
       int cid = -*idid-1;
       if (cid >= 0 && cid < nerr){
-        rxSolveWarnPush(ind->id, "IDID=%d, %s", *idid, err_msg[cid]);
+        // a NULL text: the solver reported this failure itself
+        if (err_msg[cid] != NULL) {
+          rxSolveWarnPush(ind->id, "IDID=%d, %s", *idid, err_msg[cid]);
+        }
       }
       else {
         rxSolveWarnPush(ind->id, "IDID=%d, unhandled exception", *idid);
@@ -1238,19 +1284,10 @@ static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, c
     *rc = -2019;
     // Bad Solve => NA
     badSolveExit(*i);
-  } else {
-    if (R_FINITE(rx->stateTrimU)){
-      double top=fabs(rx->stateTrimU);
-      for (int j = rxEffNeq(ind, op); j--;) {
-        yp[j]= min(top,yp[j]);
-      }
-    }
-    if (R_FINITE(rx->stateTrimL)){
-      double bottom=rx->stateTrimL;
-      for (int j = rxEffNeq(ind, op); j--;) {
-        yp[j]= max(bottom,yp[j]);
-      }
-    }
+  } else if (!trimStatesFinite(yp, ind, op, rx)) {
+    rxSolverFail(ind);
+    *rc = -2019;
+    badSolveExit(*i);
   }
   ind->slvr_counter[0]++;
 }
@@ -1525,6 +1562,17 @@ extern "C" double getTime(int idx, rx_solving_options_ind *ind) {
 static inline void reSortMainTimeline(rx_solving_options_ind *ind, int startI) {
   double *time = ind->timeThread;
   int    *evid = ind->evid;
+  if (tieOrderData_global) {
+    // rxControl(tieOrder="data"): ties keep etTrans()'s order (the data's
+    // row order); records pushed while solving come after them
+    SORT(ind->ix + startI, ind->ix + ind->n_all_times,
+         [time](int a, int b) -> bool {
+           double ta = time[a], tb = time[b];
+           if (ta != tb) return ta < tb;
+           return a < b;
+         });
+    return;
+  }
   SORT(ind->ix + startI, ind->ix + ind->n_all_times,
        [time, evid](int a, int b) -> bool {
          double ta = time[a], tb = time[b];
@@ -1878,6 +1926,19 @@ static inline int recomputeMtimeIfNeeded(rx_solve *rx,
 // sortInd runs with curShift=0, so timeThread[raw] = all_times[raw] + lag.
 // At runtime after a reset curShift != 0; we must zero it temporarily so
 // getLag gives the same sort-key convention as sortInd.
+// The refreshed lagged time of dose record `raw`: with doseAtRecord a
+// fixed-duration infusion's stop keeps its start's lagged time plus the
+// duration (getInfusionDurTime())
+static inline double refreshedLagTime(rx_solve *rx, rx_solving_options *op,
+                                      rx_solving_options_ind *ind, int raw, int cmt,
+                                      double rawTime, double *yp) {
+  int infBidx = (rx->doseAtRecord && ind->whI == EVIDF_INF_DUR) ?
+    getInfusionStartDose(raw, rx, op, ind) : -1;
+  if (infBidx == -1) return getLag(ind, ind->id, cmt, rawTime, yp);
+  int start = ind->idose[infBidx];
+  return ind->timeThread[start] + rawTime - getAllTimes(ind, start);
+}
+
 static inline int refreshLagTimesIfNeeded(rx_solve *rx,
                                           rx_solving_options_ind *ind,
                                           double *yp, int nextI,
@@ -1915,7 +1976,7 @@ static inline int refreshLagTimesIfNeeded(rx_solve *rx,
     // lag = f(state at dosing time). Updating before or after the raw time would use
     // a different state (e.g. pushing a pending dose forward on every observation).
     if (!isSameTime(rawTime, xout)) continue;
-    double newTime = getLag(ind, ind->id, cmt, rawTime, yp);
+    double newTime = refreshedLagTime(rx, op, ind, raw, cmt, rawTime, yp);
     if (!ISNA(newTime) && newTime != time[raw]) {
       time[raw] = newTime;
       changed = 1;
@@ -1942,8 +2003,13 @@ extern "C" void sortInd(rx_solving_options_ind *ind) {
   double *time = ind->timeThread;
   ind->ixds = 0;
   ind->curShift = 0;
+  // the record order is set before any record's time: a record whose
+  // covariate is missing takes it from its neighbours through ix when
+  // alag() and the other modifiers read it
   for (int i = 0; i < ind->n_all_times; i++) {
     ind->ix[i] = i;
+  }
+  for (int i = 0; i < ind->n_all_times; i++) {
     ind->idx = i;
     if (!isObs(getEvid(ind, i))) {
       time[i] = getTime__(ind->ix[i], ind, 1);
@@ -2019,6 +2085,7 @@ extern "C" void rk43_solveWith1Pt(int *neq, double *yp, double *xp, double xout,
 extern "C" void dop54_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void vern65_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void vern76_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void vern76_solveWith1PtProbe(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void dop87_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void vern98_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void grk4a_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
@@ -2061,6 +2128,7 @@ extern "C" void rkbs32_solveWith1Pt(int *neq, double *yp, double *xp, double xou
 extern "C" void rkssp43_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void rkf45_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void rkt54_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void rkt54_solveWith1PtProbe(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void rks54_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void rkpp54_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
 extern "C" void rkpp54b_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
@@ -2214,6 +2282,12 @@ extern "C" void ind_rkz10(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_ini
 extern "C" void ind_rko10(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 extern "C" void ind_rkh10(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
 extern "C" void par_ros6(rx_solve *rx);
+extern "C" void gpu_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void ind_gpu(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void par_gpu(rx_solve *rx);
+extern "C" void ros54p_solveWith1Pt(int *neq, double *yp, double *xp, double xout, int *istate, rx_solving_options *op, rx_solving_options_ind *ind);
+extern "C" void ind_ros54p(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
+extern "C" void par_ros54p(rx_solve *rx);
 extern "C" void par_backwardEuler(rx_solve *rx);
 extern "C" void par_gauss6(rx_solve *rx);
 extern "C" void par_iiic6(rx_solve *rx);
@@ -2338,6 +2412,8 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
     case 2:
       if (!isSameTime(xout, *xp)) {
         preSolve(op, ind, *xp, xout, yp);
+        // the record loop may have left itask 4 and a tcrit behind xout
+        ((lsoda_context_t*)ctx)->opt->itask = 1;
         lsoda((lsoda_context_t*)ctx, yp, xp, xout);
         copyLinCmt(neq, ind, op, yp);
       }
@@ -2418,7 +2494,19 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); vern65_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 28:
-      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); vern76_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) {
+        preSolve(op, ind, *xp, xout, yp);
+        // as a composite's primary, with the stiffness probe dop853 and the
+        // device integrators use: a stiff report stops at the last accepted
+        // step (*xp) with *idid = -4, for the secondary to continue from
+        if (autoSwitchPrimary) {
+          vern76_solveWith1PtProbe(neq, yp, xp, xout, istate, op, ind);
+          if (*istate == -4) *idid = -4;
+        } else {
+          vern76_solveWith1Pt(neq, yp, xp, xout, istate, op, ind);
+        }
+        copyLinCmt(neq, ind, op, yp);
+      }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 29:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); dop87_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
@@ -2431,6 +2519,12 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 32:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); ros6_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
+    case 110: case 111: case 112: case 113: case 114: // device integrators (gpu_solve.cpp)
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); gpu_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
+    case 108:
+      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); ros54p_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 33:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); backwardEuler_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
@@ -2538,7 +2632,19 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkf45_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 68:
-      if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rkt54_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
+      if (!isSameTime(xout, *xp)) {
+        preSolve(op, ind, *xp, xout, yp);
+        // as a composite's primary, with the stiffness probe dop853 and the
+        // device integrators use: a stiff report stops at the last accepted
+        // step (*xp) with *idid = -4, for the secondary to continue from
+        if (autoSwitchPrimary) {
+          rkt54_solveWith1PtProbe(neq, yp, xp, xout, istate, op, ind);
+          if (*istate == -4) *idid = -4;
+        } else {
+          rkt54_solveWith1Pt(neq, yp, xp, xout, istate, op, ind);
+        }
+        copyLinCmt(neq, ind, op, yp);
+      }
       if (*istate <= 0) { ind->rc[0] = -2019; break; } else if (ind->err) { ind->rc[0] = -2019; break; } break;
     case 69:
       if (!isSameTime(xout, *xp)) { preSolve(op, ind, *xp, xout, yp); rks54_solveWith1Pt(neq, yp, xp, xout, istate, op, ind); copyLinCmt(neq, ind, op, yp); }
@@ -2654,7 +2760,7 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
     case 106:
       if (!isSameTime(xout, *xp)) {
         preSolve(op, ind, *xp, xout, yp);
-        neq[0] = eff - op->numLin - op->numLinSens;
+        neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
         {
           int _lrw = 22 + op->neq * max(16, op->neq + 9);
           int _liw = 20 + op->neq;
@@ -2678,7 +2784,7 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
     case 107:
       if (!isSameTime(xout, *xp)) {
         preSolve(op, ind, *xp, xout, yp);
-        neq[0] = eff - op->numLin - op->numLinSens;
+        neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
         {
           int _lrw = 22 + 9 * op->neq + 2 * op->neq * op->neq;
           int _liw = 20 + op->neq;
@@ -2702,7 +2808,7 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
     case 1:
       if (!isSameTime(xout, *xp)) {
         preSolve(op, ind, *xp, xout, yp);
-        neq[0] = eff - op->numLin - op->numLinSens;
+        neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
         {
           int _lrw = 22 + op->neq * max(16, op->neq + 9);
           int _liw = 20 + op->neq;
@@ -2727,7 +2833,7 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
     case 0:
       if (!isSameTimeDop(xout, *xp)) {
         preSolve(op, ind, *xp, xout, yp);
-        neq[0] = eff - op->numLin - op->numLinSens;
+        neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
         double _h0use = (ind->autoHcur > 0.0) ? ind->autoHcur : op->H0;
         dop853_stiff_t _st;
         if (autoSwitchPrimary) rxStiffLoad(&_st, op, ind);
@@ -2808,8 +2914,9 @@ static void rxAutoSwitchCount(rx_solving_options *op, rx_solving_options_ind *in
 //
 // On a switch the secondary continues from wherever the probe got to rather
 // than redoing the interval, so a switch costs one integration
-// (nlmixr2/rxode2#1307).  Only a dop853 primary reports that point, so any
-// other primary restarts from the saved state.
+// (nlmixr2/rxode2#1307).  dop853, t54 and vern76 report that point (the last
+// two through their stiffness probe, src/ode_stiff_probe.h); after any other
+// failure the secondary restarts from the saved state.
 static inline void solveWith1PtComposite(int *neq, double *yp, double xout, double xp,
                                          int *i, int *istate,
                                          rx_solving_options *op,
@@ -2838,10 +2945,13 @@ static inline void solveWith1PtComposite(int *neq, double *yp, double xout, doub
                       op, ind, i, ctx, eff);
   bool _failed = (idid <= 0 || ind->rc[0] == -2019 || ind->err != 0);
   if (_failed) {
+    bool _stiffStop = (idid == -4);
     ind->rc[0] = 0; ind->err = 0; *istate = 1; idid = 1;
     // yp/xp are the probe's last fully accepted step when the primary is dop853
     // and it got anywhere; otherwise rewind to the interval start.
-    bool _continueFrom = (op->stiff == 0) &&
+    // A t54/vern76 probe's stiff report (idid -4) also stops at its last
+    // accepted step; any other failure rewinds.
+    bool _continueFrom = (op->stiff == 0 || _stiffStop) &&
       ((xout > _xpOrig) ? (xp > _xpOrig && xp < xout)
                         : (xp < _xpOrig && xp > xout));
     if (!_continueFrom) {
@@ -2857,7 +2967,7 @@ static inline void solveWith1PtComposite(int *neq, double *yp, double xout, doub
 
 static void rxDelaySSSolve(int *neq, double *yp, double xp, double xout,
                            rx_solving_options *op, rx_solving_options_ind *ind,
-                           int eff);
+                           int eff, void *ctx);
 
 static inline void solveWith1Pt(int *neq,
                                 int *BadDose,
@@ -2875,7 +2985,7 @@ static inline void solveWith1Pt(int *neq,
   // Per-individual effective neq under neqOverride; allocations are still
   // sized for op->neq, only stepping uses the smaller stride.
   int eff = rxEffNeq(ind, op);
-  int neqOde = eff - op->numLin - op->numLinSens;
+  int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
   if (neqOde == 0 && eff > 0) {
     if (!isSameTime(xout, xp)) {
       preSolve(op, ind, xp, xout, yp);
@@ -2883,7 +2993,7 @@ static inline void solveWith1Pt(int *neq,
     }
   } else if (ind->delaySS && xout > xp) {
     // steady state of a delay() model: record the history (rxode2#1447)
-    rxDelaySSSolve(neq, yp, xp, xout, op, ind, eff);
+    rxDelaySSSolve(neq, yp, xp, xout, op, ind, eff, ctx);
   } else if (op->stiff2 > 0) {
     solveWith1PtComposite(neq, yp, xout, xp, i, istate, op, ind, ctx, eff);
   } else {
@@ -2893,6 +3003,35 @@ static inline void solveWith1Pt(int *neq,
   }
 }
 
+
+// rxControl(ssMethod=): 0 plain iteration, 1 Anderson acceleration (#1762)
+extern int ssMethod_global;
+
+// One solve of a steady-state cycle, which runs on a 0..ii clock: tad() counts
+// from the cycle's dose at clock 0, and the dose times are restored after (#1585)
+static inline void solveSSCycle(int *neq,
+                                int *BadDose,
+                                double *InfusionRate,
+                                double *dose,
+                                double *yp,
+                                double xout, double xp, int id,
+                                int *i, int nx,
+                                int *istate,
+                                rx_solving_options *op,
+                                rx_solving_options_ind *ind,
+                                t_update_inis u_inis,
+                                void *ctx) {
+  int cmt = ind->cmt;
+  bool hasCmt = cmt >= 0 && cmt < op->neq + op->extraCmt;
+  double tlast = ind->tlast;
+  double tlastS = hasCmt ? ind->tlastS[cmt] : 0.0;
+  ind->tlast = ind->curShift;
+  if (hasCmt) ind->tlastS[cmt] = ind->curShift;
+  solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+               xout, xp, id, i, nx, istate, op, ind, u_inis, ctx);
+  ind->tlast = tlast;
+  if (hasCmt) ind->tlastS[cmt] = tlastS;
+}
 
 //' This function is used to check if the steady state can be handled
 //' by the pre-solved linear solutions
@@ -2910,7 +3049,7 @@ static inline void solveWith1Pt(int *neq,
 //' - Only linCmt() is defined (no mixed ODE/solved)
 //' - The dose is to the depot or central compartment
 static inline int canHandleSSLinear(rx_solving_options *op, rx_solving_options_ind *ind, int idx) {
-  if (op->ssSolved == 1 && op->neq == op->numLinSens + op->numLin) {
+  if (op->ssSolved == 1 && op->neq == op->numLinSens + op->numLin + op->numLinCarry) {
     int evid = getEvid(ind, idx);
     int wh, cmt, wh100, whI, wh0;
     getWh(evid, &wh, &cmt, &wh100, &whI, &wh0);
@@ -3017,6 +3156,134 @@ static inline int ssBolusDone(int nDose, int minSS, int maxSS, int *neq,
   return *canBreak || nDose >= maxSS;
 }
 
+// rxControl(ssMethod="anderson") for the steady-state bolus loop: the
+// accelerated map is trough -> trough; a fixed dose count (minSS == maxSS) is
+// never accelerated, nor a delay() model, whose recorded history must come
+// from consecutive cycles (#1762)
+class rxSsBolusAnderson {
+public:
+  rxSsBolusAnderson(rx_solving_options *op, rx_solving_options_ind *ind,
+                    int neq, int minSS, int maxSS) : n(neq) {
+    if (ssMethod_global == 1 && minSS < maxSS && !op->hasDelay) {
+      aa.init(neq, op->ssAtol, op->ssRtol);
+      if (aa.on) xin.assign(ind->solveLast, ind->solveLast + neq);
+    }
+  }
+
+  // ssBolusDone() plus the accelerated convergence test; returns 1 to stop.
+  // nDose restarts from where acceleration began when it gives up
+  bool done(int &nDose, int minSS, int maxSS, int *neq, double *yp, int *i,
+            rx_solving_options *op, rx_solving_options_ind *ind,
+            int *canBreak) {
+    bool failed = ind->rc[0] == -2019;
+    if (failed && aa.on && aa.mixed) {
+      // a cycle from an accelerated input failed: keep the last true cycle
+      std::copy(aa.last(), aa.last() + n, ind->solveLast);
+    }
+    bool ret = ssBolusDone(nDose, minSS, maxSS, neq, yp, i, op, ind, canBreak);
+    if (failed || !aa.on) return ret;
+    if (ret && *canBreak && !aa.settled(xin.data(), op->ssAtol, op->ssRtol)) {
+      // a small residual alone is not enough: the input must have settled too
+      *canBreak = 0;
+      ret = nDose >= maxSS;
+    }
+    if (ret && !*canBreak && aa.giveUp()) {
+      // maxSS doses without converging: give plain iteration's result
+      std::copy(aa.start(), aa.start() + n, yp);
+      std::copy(yp, yp + n, ind->solveLast);
+      nDose = nDoseAA - 1;
+      ret = false;
+    }
+    return ret;
+  }
+
+  // yp = P(xin) becomes the next input, which ssBolusDone() compares
+  // against; the first output is the first trough, so it starts the history,
+  // and acceleration starts once minSS doses are given
+  void cycleEnd(rx_solving_options *op, rx_solving_options_ind *ind,
+                double *yp, int &nDose, int minSS) {
+    if (!aa.on) return;
+    if (nDose > 1 && nDose >= minSS) {
+      if (nDoseAA == 0) nDoseAA = nDose;
+      if (!aa.step(yp, xin.data(), op->ssAtol, op->ssRtol) && aa.fellBack) {
+        // no fixed point reached: iterate plainly from where acceleration
+        // started, as if it had never run
+        std::copy(aa.start(), aa.start() + n, yp);
+        nDose = nDoseAA - 1;
+      }
+      std::copy(yp, yp + n, ind->solveLast);
+    }
+    std::copy(yp, yp + n, xin.begin());
+  }
+
+private:
+  rxSsAnderson aa;
+  int n;
+  std::vector<double> xin;
+  int nDoseAA = 0;
+};
+
+// iterate steady-state boluses until converged between minSS and maxSS doses
+static inline void handleSSbolusIterate(int *neq,
+                                        int *BadDose,
+                                        double *InfusionRate,
+                                        double *dose,
+                                        double *yp,
+                                        double *xout, int id,
+                                        int *i, int nx,
+                                        int *istate,
+                                        rx_solving_options *op,
+                                        rx_solving_options_ind *ind,
+                                        t_update_inis u_inis,
+                                        void *ctx,
+                                        double *xout2,
+                                        double *xp2,
+                                        double *curIi,
+                                        int *canBreak,
+                                        int adjustEvidBolusLag,
+                                        int minSS, int maxSS) {
+  // advance to trough; like NONMEM every cycle runs on a clock from 0 to ii,
+  // so a model reading t has a fixed point (#1585)
+  ind->idx=*i;
+  *xp2 = 0.0;
+  *xout2 = *curIi;
+  for (int k = rxEffNeq(ind, op); k--;) {
+    ind->solveLast[k] = yp[k];
+  }
+  // restart: the cycle clock is not the solver's last time
+  *istate=1;
+  // yp is last solve or y0
+  solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+  *xp2 = *xout2;
+  int evid=0;
+  // rxControl(ssMethod="anderson") accelerates the trough map (#1762)
+  rxSsBolusAnderson aa(op, ind, neq[0], minSS, maxSS);
+  for (int nDose = 1; ; nDose++) {
+    if (aa.done(nDose, minSS, maxSS, neq, yp, i, op, ind, canBreak)) {
+      break;
+    }
+    aa.cycleEnd(op, ind, yp, nDose, minSS);
+    ind->idx=*i;
+    *xp2 = 0.0;
+    *xout2 = *curIi;
+    // Use "real" xout for handle_evid functions.
+    evid = getEvid(ind, ind->ix[*i])-adjustEvidBolusLag;
+    handle_evid(evid, neq[0],
+                BadDose, InfusionRate, dose, yp,
+                *xout, neq[1], ind);
+    // restart so lsoda integrates from the dosed yp, not its internal state
+    *istate=1;
+    // yp is last solve or y0
+    solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    ind->ixds--; // This dose stays in place
+    // REprintf("ixds-- #2\n");
+    *istate=1;
+    *xp2 = *xout2;
+  }
+}
+
 extern "C" void handleSSbolus(int *neq,
                               int *BadDose,
                               double *InfusionRate,
@@ -3041,46 +3308,35 @@ extern "C" void handleSSbolus(int *neq,
   int isSsLag = ind->wh0 == EVID0_SS20 || ind->wh0 == EVID0_SS0;
   int minSS = max2(op->minSS - isSsLag, 1);
   int maxSS = max2(op->maxSS - isSsLag, minSS);
-  // a fixed dose count (minSS == maxSS) iterates linCmt() too (#1500)
-  if (minSS < maxSS &&
-      handleSSbolusLinear(neq, BadDose, InfusionRate, dose, yp, xout, id, i,
-                          nx, istate, op, ind, u_inis, ctx, xout2, xp2,
-                          curIi, adjustEvidBolusLag)) {
-    ind->ssTime = NA_REAL;
-    return;
-  }
-  // advance to trough
-  ind->idx=*i;
-  *xout2 = *xp2 + *curIi;
-  for (int k = rxEffNeq(ind, op); k--;) {
-    ind->solveLast[k] = yp[k];
-  }
-  // yp is last solve or y0
-  solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-               *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-  *xp2 = *xout2;
-  int evid=0;
-  for (int nDose = 1; ; nDose++) {
-    if (ssBolusDone(nDose, minSS, maxSS, neq, yp, i, op, ind, canBreak)) {
-      break;
+  // linCmt() iterates a fixed dose count (minSS == maxSS) and stops at minSS
+  // doses when converged there, as the ODE solve does; otherwise its steady
+  // state is exact (#1500)
+  if (minSS < maxSS && canHandleSSLinear(op, ind, ind->ix[*i])) {
+    std::vector<double> y0(yp, yp + neq[0]);
+    double xp20 = *xp2, xout20 = *xout2;
+    handleSSbolusIterate(neq, BadDose, InfusionRate, dose, yp, xout, id, i, nx,
+                         istate, op, ind, u_inis, ctx, xout2, xp2, curIi,
+                         canBreak, adjustEvidBolusLag, minSS, minSS);
+    if (*canBreak) {
+      ind->ssTime = NA_REAL;
+      return;
     }
-    ind->idx=*i;
-    *xout2 = *xp2 + *curIi;
-    // Use "real" xout for handle_evid functions.
-    evid = getEvid(ind, ind->ix[*i])-adjustEvidBolusLag;
-    handle_evid(evid, neq[0],
-                BadDose, InfusionRate, dose, yp,
-                *xout, neq[1], ind);
-    // restart so lsoda integrates from the dosed yp, not its internal state
-    *istate=1;
-    // yp is last solve or y0
-    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-    ind->ixds--; // This dose stays in place
-    // REprintf("ixds-- #2\n");
-    *istate=1;
-    *xp2 = *xout2;
+    std::copy(y0.begin(), y0.end(), yp);
+    *xp2 = xp20; *xout2 = xout20; *istate = 1;
+    if (handleSSbolusLinear(neq, BadDose, InfusionRate, dose, yp, xout, id, i,
+                            nx, istate, op, ind, u_inis, ctx, xout2, xp2,
+                            curIi, adjustEvidBolusLag)) {
+      ind->ssTime = NA_REAL;
+      return;
+    }
+    std::copy(y0.begin(), y0.end(), yp);
+    *xp2 = xp20; *xout2 = xout20; *istate = 1;
   }
+  handleSSbolusIterate(neq, BadDose, InfusionRate, dose, yp, xout, id, i, nx,
+                       istate, op, ind, u_inis, ctx, xout2, xp2, curIi,
+                       canBreak, adjustEvidBolusLag, minSS, maxSS);
+  // canBreak is only unset when maxSS doses were given without converging
+  if (!*canBreak) ssNotConverged(op->minSS, op->maxSS, ind->rc[0]);
   ind->ssTime = NA_REAL;
 }
 
@@ -3140,82 +3396,174 @@ static thread_local int    _adjSS2 = 0;
 // in the dY_ss_new/dp = -J^{-1} df/dp linear solve (kind 2).
 static thread_local std::vector<double> _adjSS2peak;
 
-extern "C" void solveSSinf(int *neq,
-                           int *BadDose,
-                           double *InfusionRate,
-                           double *dose,
-                           double *yp,
-                           double *xout, double xp, int id,
-                           int *i, int nx,
-                           int *istate,
-                           rx_solving_options *op,
-                           rx_solving_options_ind *ind,
-                           t_update_inis u_inis,
-                           void *ctx,
-                           rx_solve *rx,
-                           double *xout2,
-                           double *xp2,
-                           int *infBixds,
-                           int *bi,
-                           int *infEixds,
-                           int *ei,
-                           double *curIi,
-                           double *dur,
-                           double *dur2,
-                           int *canBreak,
-                           int nAfter) {
-  double ssStart = *xp2;
-  double ssStop = *xp2 + *dur;
-  // minSS/maxSS count every dose before the steady-state one, including the
-  // nAfter that handleSS() gives after this loop
-  int minSS = max2(op->minSS - nAfter, 1);
-  int maxSS = max2(op->maxSS - nAfter, minSS);
-  // a fixed dose count (minSS == maxSS) iterates linCmt() too (#1500)
-  if (minSS < maxSS && canHandleSSLinear(op, ind, ind->idose[*infBixds])) {
-    // only a linear solved, use calculated steady state instead of
-    // solved steady state.
-    //
-    // First set the steady state options for linCmtA or linCmtB
-    ind->linSS = 2;
-    ind->linSSvar = *dur; // tinf or dur
-    ind->linSStau = *curIi;
-    ind->ssTime = ssStart;
+// steady-state infusion from the linear solution; returns 1 when it applies
+static inline int solveSSinfLinear(int *neq,
+                                   int *BadDose,
+                                   double *InfusionRate,
+                                   double *dose,
+                                   double *yp,
+                                   double *xout, int id,
+                                   int *i, int nx,
+                                   int *istate,
+                                   rx_solving_options *op,
+                                   rx_solving_options_ind *ind,
+                                   t_update_inis u_inis,
+                                   void *ctx,
+                                   double *xout2,
+                                   double *xp2,
+                                   int *infBixds,
+                                   int *bi,
+                                   int *infEixds,
+                                   int *ei,
+                                   double *curIi,
+                                   double *dur,
+                                   double *dur2,
+                                   int *canBreak,
+                                   double ssStart) {
+  if (!canHandleSSLinear(op, ind, ind->idose[*infBixds])) return 0;
+  // only a linear solved, use calculated steady state instead of
+  // solved steady state.
+  //
+  // First set the steady state options for linCmtA or linCmtB
+  ind->linSS = 2;
+  ind->linSSvar = *dur; // tinf or dur
+  ind->linSStau = *curIi;
+  ind->ssTime = ssStart;
 
-    // Next, turn on the infusion in the appropriate compartment
-    *canBreak=1;
-    *xout2 = *xp2+*dur;
-    ind->idx=*bi;
-    ind->ixds = *infBixds;
-    handle_evid(getEvid(ind, ind->idose[*infBixds]), neq[0],
-                BadDose, InfusionRate, dose, yp,
-                *xout, neq[1], ind);
-    // yp is last solve or y0
-    *istate=1;
-    // yp is last solve or y0
-    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
-    *xp2 = *xout2;
-    // Turn off Infusion; no need to solve anything afterward
-    *xout2 = *xp2 + *dur2;
-    ind->ixds = *infEixds;
-    ind->idx=*ei;
-    handle_evid(getEvid(ind, ind->idose[*infEixds]), neq[0],
-                BadDose, InfusionRate, dose, yp,
-                *xout+*dur, neq[1], ind);
-    ind->linSS = 0; // switch back to normal solve
-    if (yp[ind->cmt] > 0) {
-      // solved successfully, return
-      ind->ssTime = NA_REAL;
-      return;
+  // Next, turn on the infusion in the appropriate compartment
+  *canBreak=1;
+  *xout2 = *xp2+*dur;
+  ind->idx=*bi;
+  ind->ixds = *infBixds;
+  handle_evid(getEvid(ind, ind->idose[*infBixds]), neq[0],
+              BadDose, InfusionRate, dose, yp,
+              *xout, neq[1], ind);
+  // yp is last solve or y0
+  *istate=1;
+  // yp is last solve or y0
+  solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
+               *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+  *xp2 = *xout2;
+  // Turn off Infusion; no need to solve anything afterward
+  *xout2 = *xp2 + *dur2;
+  ind->ixds = *infEixds;
+  ind->idx=*ei;
+  handle_evid(getEvid(ind, ind->idose[*infEixds]), neq[0],
+              BadDose, InfusionRate, dose, yp,
+              *xout+*dur, neq[1], ind);
+  ind->linSS = 0; // switch back to normal solve
+  // solved successfully when positive
+  return yp[ind->cmt] > 0;
+}
+
+// rxControl(ssMethod="anderson") for the steady-state infusion loops, which
+// test both the end of the infusion (solveLast) and the trough (solveLast2);
+// the accelerated map is trough -> trough (#1762)
+class rxSsInfAnderson {
+public:
+  rxSsInfAnderson(rx_solving_options *op, rx_solving_options_ind *ind, int neq,
+                  double *yp, int minSS, int maxSS) : n(neq) {
+    // never for a delay() model, whose recorded history must come from
+    // consecutive cycles
+    if (ssMethod_global == 1 && minSS < maxSS && !op->hasDelay) {
+      aa.init(neq, op->ssAtol, op->ssRtol);
+      if (aa.on) xin.assign(yp, yp + neq);
     }
   }
+  // the end-of-infusion state the cycle's test compares against
+  void cycleStart(rx_solving_options_ind *ind, int nDup = 0) {
+    if (!aa.on) return;
+    midPrev.assign(ind->solveLast, ind->solveLast + n);
+    nDupPrev = nDup;
+  }
+  // a trough from an accelerated input failed: keep the last true trough
+  void restoreFailed(rx_solving_options_ind *ind, int neq) {
+    if (aa.on && aa.mixed) std::copy(aa.last(), aa.last() + neq, ind->solveLast2);
+  }
+  // a cycle from an accelerated (not plain) input failed: that is not a
+  // failure of the steady state, so keep the last true trough, as a
+  // steady-state bolus does; returns true to stop iterating
+  bool rescue(rx_solving_options_ind *ind, double *yp) {
+    if (!(aa.on && aa.mixed && ind->rc[0] == -2019)) return false;
+    std::copy(aa.last(), aa.last() + n, yp);
+    std::copy(aa.last(), aa.last() + n, ind->solveLast2);
+    ind->rc[0] = 2019;
+    return true;
+  }
+  // a small residual alone is not enough: the input must have settled too
+  void checkSettled(rx_solving_options *op, int *canBreak) {
+    if (aa.on && *canBreak && !aa.settled(xin.data(), op->ssAtol, op->ssRtol)) {
+      *canBreak = 0;
+    }
+  }
+  // take the accelerated step once minSS doses are given; j (and *nDup)
+  // restart from where acceleration began when it falls back or when maxSS
+  // doses are spent without converging, so the result is plain iteration's
+  void cycleEnd(rx_solving_options *op, rx_solving_options_ind *ind,
+                double *yp, int &j, int minSS, int maxSS, int *nDup = NULL) {
+    if (!aa.on) return;
+    if (j + 1 >= minSS) {
+      if (jAA < 0) {
+        jAA = j;
+        midAA = midPrev;
+        nDupAA = nDupPrev;
+      }
+      if ((j + 1 >= maxSS && aa.giveUp()) ||
+          (!aa.step(yp, xin.data(), op->ssAtol, op->ssRtol) && aa.fellBack)) {
+        // no fixed point reached: iterate plainly from where acceleration
+        // started, as if it had never run
+        std::copy(aa.start(), aa.start() + n, yp);
+        std::copy(midAA.begin(), midAA.end(), ind->solveLast);
+        if (nDup != NULL) *nDup = nDupAA;
+        j = jAA - 1;
+      }
+      std::copy(yp, yp + n, ind->solveLast2);
+    }
+    std::copy(yp, yp + n, xin.begin());
+  }
+private:
+  rxSsAnderson aa;
+  int n;
+  std::vector<double> xin, midPrev, midAA;
+  int jAA = -1, nDupPrev = 0, nDupAA = 0;
+};
+
+// iterate steady-state infusions until converged between minSS and maxSS
+// doses; returns 1 when maxSS doses were given without converging
+static inline int solveSSinfIterate(int *neq,
+                                    int *BadDose,
+                                    double *InfusionRate,
+                                    double *dose,
+                                    double *yp,
+                                    double *xout, int id,
+                                    int *i, int nx,
+                                    int *istate,
+                                    rx_solving_options *op,
+                                    rx_solving_options_ind *ind,
+                                    t_update_inis u_inis,
+                                    void *ctx,
+                                    double *xout2,
+                                    double *xp2,
+                                    int *infBixds,
+                                    int *bi,
+                                    int *infEixds,
+                                    int *ei,
+                                    double *curIi,
+                                    double *dur,
+                                    double *dur2,
+                                    int *canBreak,
+                                    double ssStart, int minSS, int maxSS) {
   for (int k = neq[0]; k--;) {
     ind->solveLast[k] = ind->solveLast2[k] = yp[k];
   }
+  // rxControl(ssMethod="anderson") accelerates the trough map (#1762)
+  rxSsInfAnderson aa(op, ind, neq[0], yp, minSS, maxSS);
   for (int j = 0; j < maxSS; j++) {
-    // Turn on Infusion, solve (0-dur)
+    aa.cycleStart(ind);
+    // Turn on Infusion, solve (0-dur) on the 0..ii cycle clock (#1585)
     *canBreak=1;
-    *xout2 = *xp2+*dur;
+    *xp2 = 0.0;
+    *xout2 = *dur;
     ind->idx=*bi;
     ind->ixds = *infBixds;
     ind->ssTime = ssStart;
@@ -3226,8 +3574,8 @@ extern "C" void solveSSinf(int *neq,
     // yp is last solve or y0
     *istate=1;
     // yp is last solve or y0
-    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
     *xp2 = *xout2;
     // Turn off Infusion, solve (*dur-ii)
     *xout2 = *xp2 + *dur2;
@@ -3236,10 +3584,11 @@ extern "C" void solveSSinf(int *neq,
     handle_evid(getEvid(ind, ind->idose[*infEixds]), neq[0],
                 BadDose, InfusionRate, dose, yp,
                 *xout+*dur, neq[1], ind);
+    if (aa.rescue(ind, yp)) break;
     if (j + 1 < minSS){
       if (ind->rc[0]== -2019){
         badSolveExit(*i);
-        break;
+        return 0;
       }
       for (int k = neq[0]; k--;) {
         ind->solveLast[k] = yp[k];
@@ -3265,13 +3614,14 @@ extern "C" void solveSSinf(int *neq,
     }
     // yp is last solve or y0
     *istate=1;
-    ind->ssTime = ssStop;
-    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    ind->ssTime = ssStart;
+    solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    if (aa.rescue(ind, yp)) break;
     if (j + 1 < minSS){
       if (ind->rc[0]== -2019){
         badSolveExit(*i);
-        break;
+        return 0;
       }
       for (int k = neq[0]; k--;){
         ind->solveLast2[k] = yp[k];
@@ -3282,12 +3632,13 @@ extern "C" void solveSSinf(int *neq,
         if (op->strictSS){
           badSolveExit(*i);
         } else {
+          aa.restoreFailed(ind, neq[0]);
           for (int k = neq[0]; k--;){
             yp[k] = ind->solveLast2[k];
           }
           ind->rc[0] = 2019;
         }
-        break;
+        return 0;
       }
       for (int k = neq[0]; k--;){
         if (op->ssRtol[k]*fabs(yp[k]) + op->ssAtol[k] <= fabs(yp[k]-ind->solveLast2[k])){
@@ -3295,11 +3646,76 @@ extern "C" void solveSSinf(int *neq,
         }
         ind->solveLast2[k] = yp[k];
       }
+      aa.checkSettled(op, canBreak);
       if (*canBreak){
-        break;
+        return 0;
       }
     }
+    aa.cycleEnd(op, ind, yp, j, minSS, maxSS);
     *xp2 = *xout2;
+  }
+  return 1;
+}
+
+extern "C" void solveSSinf(int *neq,
+                           int *BadDose,
+                           double *InfusionRate,
+                           double *dose,
+                           double *yp,
+                           double *xout, double xp, int id,
+                           int *i, int nx,
+                           int *istate,
+                           rx_solving_options *op,
+                           rx_solving_options_ind *ind,
+                           t_update_inis u_inis,
+                           void *ctx,
+                           rx_solve *rx,
+                           double *xout2,
+                           double *xp2,
+                           int *infBixds,
+                           int *bi,
+                           int *infEixds,
+                           int *ei,
+                           double *curIi,
+                           double *dur,
+                           double *dur2,
+                           int *canBreak,
+                           int nAfter) {
+  // every phase of the cycle uses the covariates of the ss dose record
+  double ssStart = *xp2;
+  // minSS/maxSS count every dose before the steady-state one, including the
+  // nAfter that handleSS() gives after this loop
+  int minSS = max2(op->minSS - nAfter, 1);
+  int maxSS = max2(op->maxSS - nAfter, minSS);
+  // linCmt() iterates a fixed dose count (minSS == maxSS) and stops at minSS
+  // doses when converged there, as the ODE solve does; otherwise its steady
+  // state is exact (#1500)
+  if (minSS < maxSS && canHandleSSLinear(op, ind, ind->idose[*infBixds])) {
+    std::vector<double> y0(yp, yp + neq[0]);
+    double xp20 = *xp2, xout20 = *xout2;
+    solveSSinfIterate(neq, BadDose, InfusionRate, dose, yp, xout, id, i, nx, istate,
+                      op, ind, u_inis, ctx, xout2, xp2, infBixds, bi, infEixds,
+                      ei, curIi, dur, dur2, canBreak, ssStart, minSS, minSS);
+    if (*canBreak) {
+      ind->ssTime = NA_REAL;
+      return;
+    }
+    std::copy(y0.begin(), y0.end(), yp);
+    *xp2 = xp20; *xout2 = xout20;
+    if (solveSSinfLinear(neq, BadDose, InfusionRate, dose, yp, xout, id, i, nx, istate,
+                         op, ind, u_inis, ctx, xout2, xp2, infBixds, bi, infEixds,
+                         ei, curIi, dur, dur2, canBreak, ssStart)) {
+      ind->ssTime = NA_REAL;
+      return;
+    }
+    std::copy(y0.begin(), y0.end(), yp);
+    *xp2 = xp20; *xout2 = xout20;
+  }
+  if (solveSSinfIterate(neq, BadDose, InfusionRate, dose, yp, xout, id, i, nx,
+                        istate, op, ind, u_inis, ctx, xout2, xp2, infBixds, bi,
+                        infEixds, ei, curIi, dur, dur2, canBreak, ssStart,
+                        minSS, maxSS)) {
+    ssNotConverged(op->minSS, op->maxSS, ind->rc[0]);
   }
   ind->ssTime = NA_REAL;
 }
@@ -3335,12 +3751,15 @@ extern "C" void solveSSinfLargeDur(int *neq,
   *addTime = *curIi - *offTime;
   ind->ixds = *infBixds;
   ind->idx = *bi;
+  // every phase of the cycle uses the covariates of the ss dose record
   double timeStart = *xp2;
   ind->ssTime = timeStart;
   for (int j = 0; j < *numDoseInf; j++) {
     ind->ixds = *infBixds;
     ind->idx = *bi;
-    *xout2 = *xp2 + *curIi;
+    // each period on the 0..ii cycle clock (#1585)
+    *xp2 = 0.0;
+    *xout2 = *curIi;
     // Use "real" xout for handle_evid functions.
     handle_evid(getEvid(ind, ind->ix[*bi]), neq[0],
                 BadDose, InfusionRate, dose, yp,
@@ -3348,8 +3767,8 @@ extern "C" void solveSSinfLargeDur(int *neq,
     // restart so lsoda integrates each interval from the dosed yp
     *istate=1;
     // yp is last solve or y0
-    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
   }
   // minSS/maxSS count every dose before the steady-state one: the
   // numDoseInf started above, one per period and the nAfter that handleSS()
@@ -3359,13 +3778,15 @@ extern "C" void solveSSinfLargeDur(int *neq,
   for (int k = neq[0]; k--;) {
     ind->solveLast[k] = ind->solveLast2[k] = yp[k];
   }
-  int nDup = 0;
-  double time2 = *xp2;
-  double time3 = *xp2 + *addTime;
+  int nDup = 0, ranOut = 1;
+  // rxControl(ssMethod="anderson") accelerates the trough map (#1762)
+  rxSsInfAnderson aa(op, ind, neq[0], yp, minSS, maxSS);
   for (int j = 0; j < maxSS; j++) {
-    // Turn on Infusion, solve (0-dur)
+    aa.cycleStart(ind, nDup);
+    // Turn on Infusion, solve (0-dur) on the 0..ii cycle clock (#1585)
     *canBreak =1;
-    *xout2    = *xp2 + *offTime;
+    *xp2      = 0.0;
+    *xout2    = *offTime;
     ind->idx  = *bi;
     ind->ixds = *infBixds;
     handle_evid(getEvid(ind, ind->idose[*infBixds]), neq[0],
@@ -3374,9 +3795,9 @@ extern "C" void solveSSinfLargeDur(int *neq,
     // yp is last solve or y0
     *istate=1;
     // yp is last solve or y0
-    ind->ssTime = time2;
-    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    ind->ssTime = timeStart;
+    solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
     *xp2 = *xout2;
     // Turn off Infusion, solve (dur-ii)
     *xout2 = *xp2 + *addTime;
@@ -3385,8 +3806,10 @@ extern "C" void solveSSinfLargeDur(int *neq,
     handle_evid(getEvid(ind, ind->idose[*infEixds]), neq[0],
                 BadDose, InfusionRate, dose, yp,
                 *xout + *dur, neq[1], ind);
+    if (aa.rescue(ind, yp)) break;
     if (j + 1 < minSS && ind->rc[0]== -2019){
       badSolveExit(*i);
+      ranOut = 0;
       break;
     } else {
       if (ind->rc[0]== -2019){
@@ -3408,22 +3831,26 @@ extern "C" void solveSSinfLargeDur(int *neq,
     }
     // yp is last solve or y0
     *istate=1;
-    ind->ssTime = time3;
-    solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                 *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    ind->ssTime = timeStart;
+    solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                  *xout2, *xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+    if (aa.rescue(ind, yp)) break;
     if (j + 1 < minSS && ind->rc[0]== -2019){
       badSolveExit(*i);
+      ranOut = 0;
       break;
     } else {
       if (ind->rc[0]== -2019){
         if (op->strictSS){
           badSolveExit(*i);
         } else {
+          aa.restoreFailed(ind, neq[0]);
           for (int k = neq[0]; k--;){
             yp[k] = ind->solveLast2[k];
           }
           ind->rc[0] = 2019;
         }
+        ranOut = 0;
         break;
       }
       for (int k = neq[0]; k--;){
@@ -3432,16 +3859,22 @@ extern "C" void solveSSinfLargeDur(int *neq,
         }
         ind->solveLast2[k] = yp[k];
       }
+      aa.checkSettled(op, canBreak);
       if (*canBreak){
         nDup++;
       }
       // 7 converged periods, or every one when minSS is smaller
       if (j + 1 >= minSS && (nDup >= 7 || nDup == j + 1)) {
+        ranOut = 0;
         break;
       }
     }
+    aa.cycleEnd(op, ind, yp, j, minSS, maxSS, &nDup);
     *xp2 = *xout2;
   }
+  // the first period is compared at another point of the cycle, so a short
+  // maxSS can run out with converged periods; flag only an unconverged last one
+  if (ranOut && !*canBreak) ssNotConverged(op->minSS, op->maxSS, ind->rc[0]);
   ind->ssTime = NA_REAL;
 }
 
@@ -3480,6 +3913,8 @@ extern "C" void handleSSinf8(int *neq,
     ind->InfusionRate[ind->cmt] = *rateOn;
     ind->on[ind->cmt] = 1;
     *xp2 = 0.0;
+    // the caller leaves xout2 unset; a span equal to xp2 skips the solve
+    *xout2 = *xp2 + 1.0;
 
     // next solve
     solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
@@ -3510,7 +3945,7 @@ extern "C" void handleSSinf8(int *neq,
   // These are convergence steps, not doses, so a small dose count cannot
   // stop them early
   int minSS = max2(op->minSS, 5);
-  int maxSS = max2(op->maxSS, 10000);
+  int maxSS = max2(op->maxSS, 10000), ranOut = 1;
   for (int j = 0; j < maxSS; j++) {
     if (j == 0) *xout2 = *xp2+1.; // the first level drawn one hour after infusion
     else *xout2 = *xp2+infStep;
@@ -3539,6 +3974,7 @@ extern "C" void handleSSinf8(int *neq,
       }
       if (*canBreak){
         ind->InfusionRate[ind->cmt] = 0.0;
+        ranOut = 0;
         break;
       } else {
         // Assumes that this is at least one half life.
@@ -3549,6 +3985,8 @@ extern "C" void handleSSinf8(int *neq,
     *xp2=*xout;
     *istate=1;
   }
+  // the step count actually run, which the user's minSS/maxSS do not fix
+  if (ranOut) ssNotConverged(minSS, maxSS, ind->rc[0]);
   ind->ssTime = NA_REAL;
 }
 
@@ -3573,6 +4011,18 @@ void handleSS(int *neq,
               rx_solving_options_ind *ind,
               t_update_inis u_inis,
               void *ctx);
+void handleSSTte(int *neq,
+                 int *BadDose,
+                 double *InfusionRate,
+                 double *dose,
+                 double *yp,
+                 double xout, double xp, int id,
+                 int *i, int nx,
+                 int *istate,
+                 rx_solving_options *op,
+                 rx_solving_options_ind *ind,
+                 t_update_inis u_inis,
+                 void *ctx);
 
 // The previous delay() history, set aside while the steady state records its own.
 struct rxDelayHistSaved {
@@ -3649,8 +4099,8 @@ static void handleSSDelay(int *neq,
                           t_update_inis u_inis,
                           void *ctx) {
   if (!ind->delayHistOn || !rxDelayIsSSDose(ind)) {
-    handleSS(neq, BadDose, InfusionRate, dose, yp, xout, xp, id, i, nx,
-             istate, op, ind, u_inis, ctx);
+    handleSSTte(neq, BadDose, InfusionRate, dose, yp, xout, xp, id, i, nx,
+                istate, op, ind, u_inis, ctx);
     return;
   }
   rxDelayHistSaved old = {ind->delayHist, ind->delayHistN, ind->delayHistCap,
@@ -3668,8 +4118,8 @@ static void handleSSDelay(int *neq,
     getIiNumber(ind, ind->ixds - 1);
   ind->delaySSii = curIi;
   ind->delaySS = 1;
-  handleSS(neq, BadDose, InfusionRate, dose, yp, xout, xp, id, i, nx,
-           istate, op, ind, u_inis, ctx);
+  handleSSTte(neq, BadDose, InfusionRate, dose, yp, xout, xp, id, i, nx,
+              istate, op, ind, u_inis, ctx);
   ind->delaySS = 0;
   ind->delayTOff = 0.0;
   ind->delaySSii = 0.0;
@@ -3680,6 +4130,29 @@ static void handleSSDelay(int *neq,
     if (ind->rc[0] == 0) ind->rc[0] = -2019;
     badSolveExit(*i);
   }
+}
+
+// F*amt of a fixed-duration infusion's start (dose infB) and stop (dose
+// infE): with doseAtRecord both with the start's F, so the stop removes the
+// rate its start added; otherwise each with the F at its own time
+static inline void ssInfDurRates(rx_solving_options_ind *ind, int infB, int infE,
+                                 double *yp, double *rateOn, double *rateOff) {
+  *rateOn = getAmtAtRecord(ind, ind->idose[infB], getDose(ind, ind->idose[infB]), yp);
+  *rateOff = getAmtAtRecord(ind, ind->idose[doseAtRecord(ind) ? infB : infE],
+                            getDose(ind, ind->idose[infE]), yp);
+}
+
+// The rates of a steady-state infusion from dose infB to infE; returns the F
+// that scales its duration (1 for a fixed duration)
+static inline double ssInfRates(rx_solving_options_ind *ind, int infB, int infE,
+                                double *yp, double *rateOn, double *rateOff) {
+  if (ind->whI == EVIDF_INF_RATE) {
+    *rateOn = getDose(ind, ind->idose[infB]);
+    *rateOff = getDose(ind, ind->idose[infE]);
+    return getAmtAtRecord(ind, ind->idose[infB], 1.0, yp);
+  }
+  ssInfDurRates(ind, infB, infE, yp, rateOn, rateOff);
+  return 1.0;
 }
 
 void handleSS(int *neq,
@@ -3708,10 +4181,14 @@ void handleSS(int *neq,
   bool isModeled = ind->whI == EVIDF_MODEL_DUR_ON ||
     ind->whI == EVIDF_MODEL_RATE_ON;
   int adjustEvidBolusLag = 0;
+  // the modeled duration's stop record follows its start in idose (with an ss
+  // lag the start follows the ss record); read it by dose index, not record
+  // index (#1602)
+  int offIxds = isSsLag ? ind->ixds + 1 : ind->ixds;
   if (isModeled &&
       ind->whI == EVIDF_MODEL_DUR_ON &&
-      ((isSsLag && getDoseP1(ind, ind->ixds) == 0.0) ||
-       (!isSsLag && getDose(ind, ind->ixds) == 0.0))
+      offIxds < ind->ndoses &&
+      getDoseNumber(ind, offIxds) == 0.0
       ) {
     // This is a modeled duration dose with duration = 0.
     // Handle like a bolus dose.
@@ -3807,16 +4284,7 @@ void handleSS(int *neq,
           return;
         } else {
           ignoreDoses[nIgnoredDoses++] = infEixds;
-          double f = 1.0;
-          if (ind->whI == EVIDF_INF_RATE) {
-            f = getAmt(ind, ind->id, ind->cmt, 1.0, getAllTimes(ind, ind->idose[infBixds2]), yp);
-            rateOn = getDose(ind, ind->idose[infBixds2]);
-            rateOff = getDose(ind, ind->idose[infEixds]);
-          } else {
-            f = 1.0;
-            rateOn = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infBixds2]), getAllTimes(ind, ind->idose[infBixds2]), yp);
-            rateOff = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infEixds]), getAllTimes(ind, ind->idose[infEixds]), yp);
-          }
+          double f = ssInfRates(ind, infBixds2, infEixds, yp, &rateOn, &rateOff);
           // REprintf("get dur isSsLag: %d\n", isSsLag);
           dur = getAllTimes(ind, ind->idose[infEixds]);// -
           // REprintf("\ttime infEixds: %f %d\n", dur, infEixds);
@@ -3844,16 +4312,7 @@ void handleSS(int *neq,
           return;
         } else {
           ignoreDoses[nIgnoredDoses++] = infEixds;
-          double f = 1.0;
-          if (ind->whI == EVIDF_INF_RATE) {
-            f = getAmt(ind, ind->id, ind->cmt, 1.0, getAllTimes(ind, ind->idose[infBixds2]), yp);
-            rateOn = getDose(ind, ind->idose[infBixds2]);
-            rateOff = getDose(ind, ind->idose[infEixds]);
-          } else {
-            f = 1.0;
-            rateOn = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infBixds2]), getAllTimes(ind, ind->idose[infBixds2]), yp);
-            rateOff = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infEixds]), getAllTimes(ind, ind->idose[infEixds]), yp);
-          }
+          double f = ssInfRates(ind, infBixds2, infEixds, yp, &rateOn, &rateOff);
           // REprintf("get dur2\n");
           dur = getAllTimes(ind, ind->idose[infEixds]);// -
           // REprintf("\ttime infEixds: %f\n", dur);
@@ -4019,8 +4478,7 @@ void handleSS(int *neq,
         // shouldn't ever get here modeled duration would have to be
         // infinite for this to occur... but I don't think that is
         // supported yet
-        rateOn = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infBixds2]), getAllTimes(ind, ind->idose[infBixds2]), yp);
-        rateOff = getAmt(ind, ind->id, ind->cmt, getDose(ind, ind->idose[infEixds]), getAllTimes(ind, ind->idose[infEixds]), yp);
+        ssInfDurRates(ind, infBixds2, infEixds, yp, &rateOn, &rateOff);
       }
     } else if (ind->whI == EVIDF_INF_RATE ||
                ind->whI == EVIDF_INF_DUR ||
@@ -4061,6 +4519,11 @@ void handleSS(int *neq,
       curLagExtra = curLagExtra - overIi*curIi;
     }
     // First Reset
+    cancelRunningInfusionStops(ind, rx, op, *i, neq[0], -1);
+    if (!rx->ss2cancelAllPending && doSS2) {
+      // the pending stops of running steady-state infusions are kept too
+      for (j = neq[0]; j--;) cancelRunningExtraInfusionStops(ind, j, startTimeD);
+    }
     for (j = neq[0]; j--;) {
       ind->InfusionRate[j] = 0;
       // ind->on[j] = 1; // nonmem doesn't reset on according to doc
@@ -4103,7 +4566,12 @@ void handleSS(int *neq,
                    &canBreak);
       if (isSameTimeOp(curIi, dur) && !isSameTimeOp(dur, 0.0)) {
         ind->InfusionRate[ind->cmt] = rateOn;
-        pushDosingEvent(startTimeD+curIi, rateOff, extraEvid, ind);
+        // the last dose stops one interval after its lagged start; a modeled
+        // dose's companion record already carries the lag (startTimeD may be
+        // the unlagged trigger when dur rounds above curIi)
+        double lagStart = isModeled ? getTime_(ind->idose[infBixds], ind) :
+          startTimeD + overIi*curIi + curLagExtra;
+        pushDosingEvent(lagStart + curIi, rateOff, extraEvid, ind);
         for (int ii = 0; ii < nIgnoredDoses; ++ii) {
           pushIgnoredDose(ignoreDoses[ii], ind);
         }
@@ -4161,18 +4629,24 @@ void handleSS(int *neq,
       // Jacobian I; publish the period so the multistep driver re-records one
       // steady-state period's flow from the post-dose peak for the monodromy IC.
       if (op->adjoint && !doSS2) _adjSSbolusIi = curIi;
+      // the segments placing the lag after steady state use the ss dose record's covariates
+      ind->ssTime = xp;
       if (isSsLag) {
-        //advance the lag time
+        //advance the lag time on the steady-state cycle clock
         ind->idx=*i;
-        xout2 = xp2 + curIi - curLagExtra;
+        xp2 = 0.0;
+        xout2 = curIi - curLagExtra;
         // Use "real" xout for handle_evid functions.
         *istate=1;
         handle_evid(getEvid(ind, ind->ix[bi])-adjustEvidBolusLag, neq[0],
                     BadDose, InfusionRate, dose, yp,
                     xout, neq[1], ind);
+        // covariates stay at the dose time, as in the cycles
+        ind->ssTime = xp;
         // yp is last solve or y0
-        solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                     xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+        solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                      xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+        ind->ssTime = NA_REAL;
         if (overIi > 0) {
           // lag > ii: the doses of the overIi earlier intervals arrive in this
           // one, as regular boluses (rateOn/regEvid are only set for infusions)
@@ -4258,12 +4732,16 @@ void handleSS(int *neq,
           pushDosingEvent(startTimeD + offTime + (overIi+cur)*curIi + curLagExtra,
                           rateOff, extraEvid, ind);
         }
+        // the segments placing the lag after steady state use the ss dose record's covariates
+        ind->ssTime = xp;
         if (curLagExtra > 0) {
+          // covariates stay at the dose time, as in the cycles
+          ind->ssTime = startTimeD;
           double solveTo=curIi - curLagExtra;
           if (solveTo > offTime) {
             // infusion where the lag time does not cause the infusion
             // to occur during the inter-dose interval
-            xp2 = startTimeD;
+            xp2 = 0.0; // the 0..ii cycle clock (#1585)
             xout2 = xp2+offTime;
             ind->idx=bi;
             ind->ixds = infBixds;
@@ -4274,8 +4752,8 @@ void handleSS(int *neq,
             // yp is last solve or y0
             *istate=1;
             // yp is last solve or y0
-            solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                         xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+            solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                          xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
             xp2 = xout2;
             // Turn off Infusion, and solve to infusion stop time
             xout2 = xp2 + solveTo - offTime;
@@ -4286,13 +4764,13 @@ void handleSS(int *neq,
                         BadDose, InfusionRate, dose, yp,
                         xout+dur, neq[1], ind);
             *istate=1;
-            solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                         xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+            solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                          xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
             pushDosingEvent(startTimeD+curLagExtra,
                             rateOn, extraEvid, ind);
           } else {
             // infusion where the lag time occurs during the inter-dose interval split
-            xp2 = startTimeD;
+            xp2 = 0.0; // the 0..ii cycle clock (#1585)
             xout2 = xp2 + solveTo;
             ind->idx=bi;
             ind->ixds = infBixds;
@@ -4304,13 +4782,14 @@ void handleSS(int *neq,
             // yp is last solve or y0
             *istate=1;
             // yp is last solve or y0
-            solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                         xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+            solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                          xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
             pushDosingEvent(startTimeD+offTime-solveTo,
                             rateOff, extraEvid, ind);
             pushDosingEvent(startTimeD+curLagExtra,
                             rateOn, extraEvid, ind);
           }
+          ind->ssTime = NA_REAL;
         } else {
           // infusion without a lag time.
           *istate=1;
@@ -4358,7 +4837,7 @@ void handleSS(int *neq,
                    &dur,
                    &dur2,
                    &canBreak,
-                   (isSsLag && curLagExtra > 0) ? 1 + overIi : 0);
+                   (curLagExtra > 0 ? 1 : 0) + overIi);
         // Adjoint handoff: a fixed-rate (whI == EVIDF_INF_RATE) infusion with a
         // single on/off window per period (dur < ii, this solveSSinf branch)
         // has dR/dp == 0, so the rk4s driver can record its steady-state period
@@ -4391,9 +4870,15 @@ void handleSS(int *neq,
           ind->solveLast[k] = yp[k];
         }
         xp2 = xout2;
+        // the segments placing the lag after steady state use the ss dose record's covariates
+        ind->ssTime = xp;
         bool doNoLag = false;
         if (isSsLag) {
-          double totTime = xp2 + dur + dur2 - curLagExtra;
+          // the lag tail starts the next 0..ii cycle (#1585) with the
+          // covariates at the dose time, as in the cycles
+          xp2 = 0.0;
+          ind->ssTime = startTimeD;
+          double totTime = dur + dur2 - curLagExtra;
           if (curLagExtra > 0) {
             if (isSameTimeOp(curLagExtra+dur, curIi)) {
               // REprintf("isSameTimeOp(curLagExtra:%f+dur:%f, curIi:%f)\n",
@@ -4403,13 +4888,13 @@ void handleSS(int *neq,
               handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
                           BadDose, InfusionRate, dose, yp,
                           xout, neq[1], ind);
-              xp2   = startTimeD;
-              xout2 = startTimeD + dur;
+              xp2   = 0.0; // the 0..ii cycle clock (#1585)
+              xout2 = dur;
               // yp is last solve or y0
               *istate=1;
               // yp is last solve or y0
-              solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                           xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+              solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                            xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
               ind->idx=ei;
               ind->ixds = infEixds;
               handle_evid(getEvid(ind, ind->idose[infEixds]), neq[0],
@@ -4435,13 +4920,13 @@ void handleSS(int *neq,
               handle_evid(getEvid(ind, ind->idose[infBixds]), neq[0],
                           BadDose, InfusionRate, dose, yp,
                           xout, neq[1], ind);
-              xp2   = startTimeD;
-              xout2 = startTimeD + solveExtra;
+              xp2   = 0.0; // the 0..ii cycle clock (#1585)
+              xout2 = solveExtra;
               // yp is last solve or y0
               *istate=1;
               // yp is last solve or y0
-              solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                           xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+              solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                            xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
 
               for (int cur = 0; cur < (overIi+1); ++cur) {
                 pushDosingEvent(startTimeD+dur-solveExtra+cur*curIi,
@@ -4467,8 +4952,8 @@ void handleSS(int *neq,
               // yp is last solve or y0
               *istate=1;
               // yp is last solve or y0
-              solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                           xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+              solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                            xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
               if (!isSameTimeOp(totTime, xout2)) {
                 // don't give the infusion off dose
                 xp2 = xout2;
@@ -4481,8 +4966,8 @@ void handleSS(int *neq,
                             xout+dur, neq[1], ind);
                 // yp is last solve or y0
                 *istate=1;
-                solveWith1Pt(neq, BadDose, InfusionRate, dose, yp,
-                             xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
+                solveSSCycle(neq, BadDose, InfusionRate, dose, yp,
+                              xout2, xp2, id, i, nx, istate, op, ind, u_inis, ctx);
               }
               for (int cur = 0; cur < (overIi+1); ++cur) {
                 pushDosingEvent(startTimeD+curLagExtra+cur*curIi,
@@ -4494,6 +4979,7 @@ void handleSS(int *neq,
           } else {
             doNoLag = true;
           }
+          ind->ssTime = NA_REAL;
         } else {
           doNoLag = true;
         }
@@ -4511,6 +4997,14 @@ void handleSS(int *neq,
           if (_rxEsActive && ind->whI == EVIDF_MODEL_RATE_ON) _esSSRateOffCmt = ind->cmt;
           pushDosingEvent(startTimeD+dur,
                           rateOff, extraEvid, ind);
+          // lag == overIi*ii: the infusion above is the earliest arriving dose;
+          // the later ones, the record's own last, start overIi*ii after it
+          for (int cur = 1; cur <= overIi; ++cur) {
+            pushDosingEvent(startTimeD+cur*curIi,
+                            rateOn, regEvid, ind);
+            pushDosingEvent(startTimeD+dur+cur*curIi,
+                            rateOff, regEvid, ind);
+          }
         }
         *istate=1;
         for (k = neq[0]; k--;){
@@ -4524,6 +5018,7 @@ void handleSS(int *neq,
         }
       }
     }
+    ind->ssTime = NA_REAL;
     if (doSS2){
       // Publish the new-regimen steady state Y_ss_new (yp before adding back the
       // saved pre-ss2 state) for the adjoint superposition term.
@@ -4574,6 +5069,38 @@ void handleSS(int *neq,
     ind->ixds=oldIxds; ind->idx=oldIdx;
   }
   updateExtraDoseGlobals(ind);
+}
+
+// tte() cumulative hazards only grow, so they take no part in a steady-state
+// solve: their ssAtol is Inf (always converged) and they keep their value
+void handleSSTte(int *neq,
+                 int *BadDose,
+                 double *InfusionRate,
+                 double *dose,
+                 double *yp,
+                 double xout, double xp, int id,
+                 int *i, int nx,
+                 int *istate,
+                 rx_solving_options *op,
+                 rx_solving_options_ind *ind,
+                 t_update_inis u_inis,
+                 void *ctx) {
+  int n = rxTteN();
+  if (n > 0 && op->hasDelay && op->delayCol != NULL && rxDelayIsSSDose(ind)) {
+    // a delayed cumulative hazard has no steady state to record (rxSolve()
+    // refuses the data-table case; this catches pushed and classic-evid doses)
+    for (int k = 1; k <= n; k++) {
+      if (op->delayCol[rxTteHIdx(k)] < 0) continue;
+      rxSolveWarnPush(ind->id, "a delay() of a tte() cumulative hazard cannot be used with steady-state doses");
+      rxSolverFail(ind);
+      return;
+    }
+  }
+  std::vector<double> h(n);
+  for (int k = 1; k <= n; k++) h[k - 1] = yp[rxTteHIdx(k)];
+  handleSS(neq, BadDose, InfusionRate, dose, yp, xout, xp, id, i, nx,
+           istate, op, ind, u_inis, ctx);
+  for (int k = 1; k <= n; k++) yp[rxTteHIdx(k)] = h[k - 1];
 }
 
 // Grow ind->solve if slot i (and optionally i+1) are beyond the current
@@ -4729,8 +5256,9 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
         badSolveExit(i);
         localBadSolve = 1;
       } else {
-        if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                            xp, ind->id, &i, ind->n_all_times, &idid, op, ind, u_inis, NULL)) {
+        while (!localBadSolve &&
+               handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                               xp, ind->id, &i, ind->n_all_times, &idid, op, ind, u_inis, NULL)) {
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             idid = indLin(solveid, op, ind, xp, yp, ind->extraDoseNewXout,
@@ -4753,17 +5281,6 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
             ind->ixds = ixds;
             ind->idx = idx;
             ind->idxExtra++;
-            if (!isSameTime(xout, ind->extraDoseNewXout)) {
-              preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-              idid = indLin(solveid, op, ind, ind->extraDoseNewXout, yp, xout,
-                            ind->InfusionRate, ind->on,
-                            (ind->fns ? ind->fns->me : NULL),
-                            (ind->fns ? ind->fns->indf : NULL));
-              copyLinCmt(neq, ind, op, yp);
-              postSolve(neq, &idid, rc, &idx, yp, NULL, 0, false, ind, op, rx);
-              if (*rc < 0) localBadSolve = 1;
-              ind->extraDoseNewXout = xout;
-            }
             xp = ind->extraDoseNewXout;
           }
         }
@@ -4778,14 +5295,13 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
         xp = xout;
       }
     }
-    ind->_newind = 2;
     if (!localBadSolve){
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &idid, u_inis);
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
-        handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                 xp, ind->id, &i, ind->n_all_times, &idid, op, ind, u_inis, NULL);
+        handleSSTte(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                    xp, ind->id, &i, ind->n_all_times, &idid, op, ind, u_inis, NULL);
         if (ind->wh0 == 30){
           yp[ind->cmt] = op->inits[ind->cmt];
         }
@@ -4809,6 +5325,7 @@ extern "C" void ind_indLin0(rx_solve *rx, rx_solving_options *op, int solveid,
       ind->slvr_counter[0]++; // doesn't need do be critical; one subject at a time.
       if (_mtime_requeued) i--;
     }
+    rxNewindAfterRecord(ind, i);
     ind->solvedIdx = i;
   }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
@@ -4920,6 +5437,286 @@ extern "C" int  lsAdjIsActive(void);
 extern "C" void lsAdjSetActive(int a);
 extern "C" void lsAdjInitStep(struct lsoda_context_t *ctx);
 extern "C" void lsAdjPushStep(struct lsoda_context_t *ctx);
+extern "C" int intdy(struct lsoda_context_t *ctx, double t, int k, double *dky);
+static void rxDelayHistPushNodes(rx_solving_options_ind *ind, rx_solving_options *op,
+                                 double xold, double h, const double *const *s);
+static inline double rxDelayStepCap(rx_solving_options_ind *ind);
+
+// Record the step lsoda just accepted into the delay() history: a degree-7
+// record from intdy() on 8 equispaced nodes of [tn - hu, tn].
+static void lsDelayPushStep(struct lsoda_context_t *ctx) {
+  int *neq = (int *)ctx->data;
+  rx_solving_options *op = rx_global.op;
+  rx_solving_options_ind *ind = &(rx_global.subjects[neq[1]]);
+  if (!ind->delayHistOn) return;
+  double tn = ctx->common->tn, hu = ctx->common->hu;
+  std::vector<double> q((size_t)8 * rxEffNeq(ind, op), 0.0);
+  size_t stride = q.size() / 8;
+  const double *qp[8];
+  for (int m = 0; m < 8; m++) {
+    double *qm = &q[m * stride];
+    intdy(ctx, m == 7 ? tn : tn - hu + hu * m / 7.0, 0, qm - 1);   // dky is 1-based
+    qp[m] = qm;
+  }
+  rxDelayHistPushNodes(ind, op, tn - hu, hu, qp);
+}
+
+// The time a delay() solve may step to without passing an event: the next
+// non-observation record from slot i on, or the next pending extra dose
+// (queued when the dose that makes it is handled), but not before xout.
+static inline double rxLsodaTcrit(rx_solving_options_ind *ind, int i, double xp,
+                                  double xout) {
+  double tc = ind->timeThread[ind->ix[ind->n_all_times - 1]];
+  for (int j = i; j < ind->n_all_times; j++) {
+    int raw = ind->ix[j];
+    if (!isPassObs(getEvid(ind, raw))) {
+      tc = ind->timeThread[raw];
+      break;
+    }
+  }
+  for (int k = ind->idxExtra; k < ind->extraDoseN[0]; k++) {
+    double te = getAllTimes(ind, -1 - ind->extraDoseTimeIdx[k]);
+    if (te > xp && te < tc) tc = te;
+  }
+  return (tc > xout) ? tc : xout;
+}
+
+// lsoda() toward tout, stepping no further than tcrit (the next event), so
+// the solver stops at it and a delay() history never runs past one.  For a
+// delay() model, if a step fails on the history from before a delay
+// breakpoint (a kink in the solution), restart there once.
+static inline void rxLsodaTo(struct lsoda_context_t *ctx, double *yp, double *t,
+                             double tout, double tcrit, rx_solving_options_ind *ind) {
+  ctx->opt->itask = 4;
+  ctx->opt->tcrit = tcrit;
+  lsoda(ctx, yp, t, tout);
+  if (!ind->delayHistOn) return;
+  if ((ctx->state == -4 || ctx->state == -5) && *t < tout) {
+    if (ctx->error) {
+      free(ctx->error);
+      ctx->error = NULL;
+    }
+    ctx->state = 1;
+    lsoda(ctx, yp, t, tout);
+  }
+}
+
+// The stop time (tcrit, with itask 4) an lsoda-family solver integrates
+// toward record i with: the first record from i on that is not a plain
+// observation (evid 0, or the time-0 placeholder 9) -- a dose, an infusion
+// edge, a reset, an mtime() or evid 2 record -- or the last record, or the
+// first pending extra dose after xp when that comes earlier, and never before
+// xout.  The solver then stops exactly at such an event instead of stepping
+// past it and interpolating back; it still steps past plain observation
+// records and interpolates them, as before.  The record scan is cached
+// until the timeline changes.
+struct rxLsodaStop {
+  int rec = -1, n = -1, pushed = -1;
+  double at(rx_solving_options_ind *ind, int i, double xp, double xout) {
+    if (rec < i || n != ind->n_all_times || pushed != ind->nPushedExtra) {
+      n = ind->n_all_times;
+      pushed = ind->nPushedExtra;
+      rec = i;
+      while (rec < n - 1) {
+        int evid = getEvid(ind, ind->ix[rec]);
+        if (evid != 0 && evid != 9) break;
+        rec++;
+      }
+    }
+    double ts = ind->timeThread[ind->ix[rec]];
+    for (int e = ind->idxExtra; e < ind->extraDoseN[0]; e++) {
+      double te = ind->extraDoseTime[ind->extraDoseTimeIdx[e]];
+      if (te > xp && te < ts) ts = te;
+    }
+    return (ts < xout) ? xout : ts;
+  }
+  void reset() { rec = -1; }
+};
+
+// A free event-slot record of tte() endpoint k at or after timeline slot i
+static int rxTteFreeSlot(rx_solving_options_ind *ind, int i, int k) {
+  for (int j = i; j < ind->n_all_times; j++) {
+    int raw = ind->ix[j], kk;
+    if (rxTteRole(ind->dv[raw], &kk) == RXTTE_FREE && kk == k) return raw;
+  }
+  return -1;
+}
+
+// The earliest tte() event in (xs, xout] with a free event slot; an endpoint
+// out of slots is marked done.  Returns the slot, or -1 (no event) with
+// *exhausted set when an endpoint ran out.
+static int _rxTteNextEvent(rx_solving_options_ind *ind, int subj, int neq, int i,
+                           double xs, const double *ys, double xout, const double *yout,
+                           const rxTteInteg &integ, double *tStar, int *k,
+                           double *yStar, int *exhausted) {
+  *exhausted = 0;
+  while (rxTteLocate(subj, neq, xs, ys, xout, yout, integ, tStar, k, yStar)) {
+    int slot = rxTteFreeSlot(ind, i, *k);
+    if (slot >= 0) return slot;
+    // the other endpoints may still have an event in this interval
+    rxSolveWarnPush(ind->id, "tte() endpoint %d ran out of event slots; later events were not simulated", *k);
+    rxTteSetDone(subj, *k);
+    *exhausted = 1;
+  }
+  return -1;
+}
+
+// An interval-censored event marks the first interval end at or after tStar
+// (returned, or tStar when there is none) as holding an event
+static double _rxTteMarkInterval(rx_solving_options_ind *ind, int i, int k, double tStar) {
+  int best = -1;
+  double bt = R_PosInf;
+  for (int j = i; j < ind->n_all_times; j++) {
+    int raw = ind->ix[j], kk;
+    int role = rxTteRole(ind->dv[raw], &kk);
+    if (kk != k || (role != RXTTE_INTERVAL && role != RXTTE_EVENT)) continue;
+    double t = ind->timeThread[raw];
+    if (t >= tStar && t < bt) {
+      bt = t;
+      best = raw;
+    }
+  }
+  if (best < 0) return tStar;
+  ind->dv[best] = rxTteDv(k, RXTTE_EVENT);
+  return bt;
+}
+
+// Records past tKeep are no longer observed (all of them on dropout, else the
+// endpoint's censoring/interval records): evid 9 keeps them in the timeline
+// but out of the output
+static void _rxTteStopObserving(rx_solving_options_ind *ind, int i, int k, double tKeep,
+                                int dropout) {
+  for (int j = i + 1; j < ind->n_all_times; j++) {
+    int raw = ind->ix[j], kk;
+    int ev = ind->evid[raw];
+    if ((ev != 0 && ev != 2) || !(ind->timeThread[raw] > tKeep)) continue;
+    int role = rxTteRole(ind->dv[raw], &kk);
+    if (dropout || (kk == k && (role == RXTTE_CENSOR || role == RXTTE_INTERVAL))) {
+      ind->evid[raw] = 9;
+    }
+  }
+}
+
+// tte() simulation: after the interval (xs, *xout] is solved, locate the
+// earliest event in it.  The event takes a free event-slot record of its
+// endpoint, which is re-timed to the event time and sorted into slot i; the
+// state is rewound to the event time so the solver continues from there.
+// Returns 0 when the integrator was not touched, 1 after a rewind, and 2 when
+// the integrator was used without a rewind (both need an integrator restart).
+static int _rxTteAfterInterval(rx_solve *rx, rx_solving_options *op,
+                               rx_solving_options_ind *ind, int neq, int i,
+                               double xs, const double *ys, double *xp,
+                               double *xout, double *yp,
+                               const rxTteInteg &integ) {
+  int subj = (int)(ind - rx->subjects);
+  double tStar = 0.0;
+  int k = 0, exhausted = 0;
+  std::vector<double> yStar(neq);
+  int slot = _rxTteNextEvent(ind, subj, neq, i, xs, ys, *xout, yp, integ, &tStar, &k,
+                             yStar.data(), &exhausted);
+  if (slot < 0) {
+    if (!exhausted) return 0;
+    if (ind->delayHistOn) {
+      // the root finding left the delay() history at the event time
+      std::copy(ys, ys + neq, yp);
+      integ(yp, xs, *xout);
+    }
+    return 2;
+  }
+  // last time of the endpoint's records that are still observed
+  double tKeep = tStar;
+  ind->all_times[slot] = tStar;
+  ind->timeThread[slot] = tStar;
+  if (rxTteIsInterval(k)) {
+    ind->dv[slot] = rxTteDv(k, RXTTE_USED);
+    ind->evid[slot] = 9;
+    tKeep = _rxTteMarkInterval(ind, i, k, tStar);
+  } else {
+    ind->dv[slot] = rxTteDv(k, RXTTE_EVENT);
+  }
+  reSortMainTimeline(ind, i);
+  std::copy(yStar.begin(), yStar.end(), yp);
+  *xp = *xout = tStar;
+  int full = rxTteRecord(subj, k, tStar, yStar[rxTteHIdx(k)]);
+  int dropout = rxTteDropout(k);
+  if (full || dropout) _rxTteStopObserving(ind, i, k, tKeep, dropout);
+  if (dropout) {
+    for (int kk = 1; kk <= rxTteN(); kk++) rxTteSetDone(subj, kk);
+  }
+  return 1;
+}
+
+// The tte() side of a per-subject record loop: start() saves the state at the
+// start of each interval, after() locates events once it is solved (returning
+// nonzero when the integrator must restart) and finish() drops unused slots.
+struct rxTteHook {
+  int n;
+  double xs;
+  std::vector<double> ys;
+  rx_solving_options_ind *ind;
+  int hist;
+  int hit; // an event ended the record before its extra dose
+  rxTteHook(rx_solve *rx, rx_solving_options_ind *ind0, int neq)
+    : n(rxTteN()), xs(0.0), ys(n > 0 ? neq : 0), ind(ind0), hist(0), hit(0) {
+    if (n > 0) rxTteSubjectInit(ind, (int)(ind - rx->subjects));
+  }
+  void start(double xp, const double *yp) {
+    hit = 0;
+    if (n == 0) return;
+    xs = xp;
+    std::copy(yp, yp + ys.size(), ys.begin());
+    hist = ind->delayHistN;
+  }
+  // a re-integration from the interval start replaces the delay() history
+  // recorded after it
+  void rewindHistory() {
+    if (ind->delayHistOn) ind->delayHistN = hist;
+  }
+  int after(rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind,
+            int i, double *xp, double *xout, double *yp,
+            const rxTteInteg &integ) {
+    if (n == 0) return 0;
+    return _rxTteAfterInterval(rx, op, ind, (int)ys.size(), i, xs, ys.data(),
+                               xp, xout, yp, integ);
+  }
+  // before an extra dose at *xp: 1 when the dose is skipped, after a bad
+  // solve or when an event ends the record there (the dose stays pending for
+  // the next one)
+  int skipDose(rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind,
+               int i, double *xp, double *xout, double *yp, const rxTteInteg &integ,
+               int bad, int *restart) {
+    if (bad) return 1;
+    double end = *xp;
+    int r = after(rx, op, ind, i, xp, &end, yp, integ);
+    if (r) *restart = 1;
+    if (r != 1) return 0;
+    *xout = *xp;
+    hit = 1;
+    return 1;
+  }
+  // after the record is solved
+  void afterRecord(rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind,
+                   int i, double *xp, double *xout, double *yp, const rxTteInteg &integ,
+                   int bad, int *restart) {
+    if (!bad && !hit && after(rx, op, ind, i, xp, xout, yp, integ)) *restart = 1;
+  }
+  void finish(rx_solving_options_ind *ind) {
+    if (n > 0) rxTteSubjectFinish(ind);
+  }
+};
+
+// Re-integration of (t0, t1] with liblsoda for the tte() root finding
+static rxTteInteg rxTteLsodaInteg(struct lsoda_context_t *ctx, rx_solving_options *op,
+                                  rx_solving_options_ind *ind, int *neq) {
+  return [=](double *y, double t0, double t1) {
+    if (isSameTime(t0, t1)) return;
+    ctx->state = 1;
+    double tt = t0;
+    preSolve(op, ind, tt, t1, y);
+    lsoda(ctx, y, &tt, t1);
+    copyLinCmt(neq, ind, op, y);
+  };
+}
 
 extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda_opt_t opt, int solveid,
                               t_dydt_liblsoda dydt_liblsoda, t_update_inis u_inis) {
@@ -4941,7 +5738,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
   double xout;
   int *rc;
   double *yp;
-  int neqOde = *neq - op->numLin - op->numLinSens;
+  int neqOde = *neq - op->numLin - op->numLinSens - op->numLinCarry;
   int localBadSolve = 0;
 
   // -- LSODA context: use per-thread pool when available (avoids per-subject
@@ -5030,11 +5827,35 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
     ctx->common->adjInit = NULL;
     ctx->common->adjPush = NULL;
   }
+  // delay() history, as in ind_dop0_dense(): each lsoda call stops at its
+  // target and every step is recorded, with the step capped at the smallest
+  // delay (learned from one RHS evaluation).
+  ind->delayHistOn = op->hasDelay;
+  ind->delayHistN  = 0;
+  ind->delayT0     = xp;
+  ind->delayMinT   = R_PosInf;
+  ind->delayMaxT   = 0.0;
+  ind->delayWarmed = 0;
+  ctx->common->stepPush = ind->delayHistOn ? lsDelayPushStep : NULL;
+  if (ind->delayHistOn && neqOde > 0) {
+    ctx->opt->itask = 4;
+    std::vector<double> _ddt((size_t)neq[0]);
+    dydt_liblsoda(xp, getSolve(0), _ddt.data(), neq);
+    ind->delayWarmed = 1;
+    if (R_FINITE(ind->delayMinT)) {
+      double _cap = rxDelayStepCap(ind);
+      if (ctx->opt->hmax <= 0.0 || _cap < ctx->opt->hmax) ctx->opt->hmax = _cap;
+    }
+  }
+  rxLsodaStop lsStop; // where the solver must stop (tcrit)
   ind->solvedIdx = 0;
+  rxTteHook _tte(rx, ind, neq[0]);
+  rxTteInteg _tteInteg = rxTteLsodaInteg(ctx, op, ind, neq);
   for(i=0; i< ind->n_all_times; i++) {
     ind->idx=i;
     ind->linSS=0;
     if (ind->mainSorted == 0) {
+      lsStop.reset();
       double *_rtime = ind->timeThread;
       for (int _j = i; _j < ind->n_all_times; _j++) {
         int _raw = ind->ix[_j];
@@ -5055,6 +5876,7 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
     _growSolveIfNeeded(ind, op, i, 1);
     yp = getSolve(i);
     xout = ind->timeThread[ind->ix[i]];
+    _tte.start(xp, yp);
     if (getEvid(ind, ind->ix[i]) != 3) {
       if (ind->err){
         *rc = -1000;
@@ -5062,17 +5884,19 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         badSolveExit(i);
         localBadSolve = 1;
       } else {
-        if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                            xp, ind->id, &i, ind->n_all_times,
-                            &(ctx->state), op, ind, u_inis, ctx)) {
+        while (!localBadSolve && !_tte.hit &&
+               handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                               xp, ind->id, &i, ind->n_all_times,
+                               &(ctx->state), op, ind, u_inis, ctx)) {
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
-            lsoda(ctx, yp, &xp, ind->extraDoseNewXout);
+            rxLsodaTo(ctx, yp, &xp, ind->extraDoseNewXout, ind->extraDoseNewXout, ind);
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &(ctx->state), rc, &i, yp, err_msg_ls, 7, false, ind, op, rx);
             if (*rc < 0) localBadSolve = 1;
           }
-          if (!localBadSolve) {
+          if (!_tte.skipDose(rx, op, ind, i, &xp, &xout, yp, _tteInteg,
+                             localBadSolve, &(ctx->state))) {
             int idx = ind->idx;
             int ixds= ind->ixds;
             int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
@@ -5083,27 +5907,24 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
             ind->idx = idx;
             ind->ixds = ixds;
             ind->idxExtra++;
-            if (!isSameTime(xout, ind->extraDoseNewXout)) {
-              preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-              lsoda(ctx,yp, &ind->extraDoseNewXout, xout);
-              copyLinCmt(neq, ind, op, yp);
-              postSolve(neq, &(ctx->state), rc, &i, yp, err_msg_ls, 7, false, ind, op, rx);
-              if (*rc < 0) localBadSolve = 1;
-            }
-            xp =  ind->extraDoseNewXout;
+            _tte.start(ind->extraDoseNewXout, yp);
+            xp = ind->extraDoseNewXout;
           }
         }
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
-          lsoda(ctx, yp, &xp, xout);
+          rxLsodaTo(ctx, yp, &xp, xout,
+                    ind->delayHistOn ? rxLsodaTcrit(ind, i, xp, xout) :
+                    lsStop.at(ind, i, xp, xout), ind);
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &(ctx->state), rc, &i, yp, err_msg_ls, 7, false, ind, op, rx);
           if (*rc < 0) localBadSolve = 1;
         }
         xp = xout;
+        _tte.afterRecord(rx, op, ind, i, &xp, &xout, yp, _tteInteg,
+                         localBadSolve, &(ctx->state));
       }
     }
-    ind->_newind = 2;
     if (!localBadSolve){
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
@@ -5115,14 +5936,21 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
         // sensitivity dY_ss/dp is added analytically in the backward sweep.
         int _lsWasActive = lsAdjIsActive();
         if (_lsWasActive) lsAdjSetActive(0);
-        handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                 xp, ind->id, &i, ind->n_all_times, &(ctx->state), op, ind, u_inis, ctx);
+        handleSSDelay(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                      xp, ind->id, &i, ind->n_all_times, &(ctx->state), op, ind, u_inis, ctx);
         if (_lsWasActive) { lsAdjSetActive(1); lsAdjSnapshotSs(); }
         if (ind->wh0 == EVID0_OFF){
           yp[ind->cmt] = op->inits[ind->cmt];
         }
         if (rx->istateReset) ctx->state = 1;
         xp = xout;
+      } else if (rx->istateReset && getEvid(ind, ind->ix[i]) >= 10 &&
+                 getEvid(ind, ind->ix[i]) <= 99) {
+        // the solver stopped at this mtime() record (rxLsodaStop) and restarts
+        // there, as at a dose: its next step then starts from the right-hand
+        // side as it is from this time, instead of from a history that ends
+        // just short of it and can step over a window the record opens
+        ctx->state = 1;
       }
       int _mtime_requeued = 0;
       if (rx->nMtime > 0) {
@@ -5141,8 +5969,10 @@ extern "C" void ind_liblsoda0(rx_solve *rx, rx_solving_options *op, struct lsoda
       if (_mtime_requeued) i--;
       /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
     }
+    rxNewindAfterRecord(ind, i);
     ind->solvedIdx = i;
   }
+  _tte.finish(ind);
   // Reset LHS to NA
   if (_usingPool) {
     // Pool: keep the context alive for the next subject; just clean up any error.
@@ -5521,6 +6351,8 @@ extern "C" void rxFreeLast(){
   R_Free(inds_thread);
   R_Free(inds_threadCur);
   inds_threadCurN = 0;
+  R_Free(inds_threadSubj);
+  inds_threadSubjN = 0;
   inds_thread = NULL;
   inds_threadCur = NULL;
   inds_global=NULL;
@@ -5538,7 +6370,8 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
 
   int istate = 1, i = 0;
   // Thread-local copies of solver flags (replaces shared globals gitol/gitask/giopt/gliw/glrw)
-  int itol = 1, itask = 1, iopt = 1;
+  // itask 4: stop at rwork[0] (tcrit), the next event
+  int itol = 1, itask = 4, iopt = 1;
 
   std::fill(rwork, rwork + lrw + 1, 0.0); // Works because it is a double
   std::fill(iwork, iwork + liw + 1, 0); // Works because it is a integer
@@ -5565,11 +6398,13 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
   int localBadSolve = 0;
 
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
+  rxLsodaStop lsStop; // where the solver must stop (tcrit)
   ind->solvedIdx = 0;
   for(i=0; i < ind->n_all_times; i++) {
     ind->idx=i;
     ind->linSS=0;
     if (ind->mainSorted == 0) {
+      lsStop.reset();
       double *_rtime = ind->timeThread;
       for (int _j = i; _j < ind->n_all_times; _j++) {
         int _raw = ind->ix[_j];
@@ -5597,11 +6432,13 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         badSolveExit(i);
         localBadSolve = 1;
       } else {
-        if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                            xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
+        while (!localBadSolve &&
+               handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                               xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
-            neq[0] = eff - op->numLin - op->numLinSens;
+            neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
+            rwork[0] = ind->extraDoseNewXout;
             F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &xp, &ind->extraDoseNewXout, &itol, &(op->RTOL), &(op->ATOL), &itask,
                              &istate, &iopt, rwork, &lrw, iwork, &liw, jdum, &jt);
             neq[0] = eff;
@@ -5620,22 +6457,13 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
             ind->ixds = ixds; // This is a fake dose, real dose stays in place
             ind->idx = idx;
             ind->idxExtra++;
-            if (!isSameTime(xout, ind->extraDoseNewXout)) {
-              preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-              neq[0] = eff - op->numLin - op->numLinSens;
-              F77_CALL(dlsoda)(dydt_lsoda, neq, yp, &ind->extraDoseNewXout, &xout, &itol, &(op->RTOL), &(op->ATOL), &itask,
-                               &istate, &iopt, rwork, &lrw, iwork, &liw, jdum, &jt);
-              neq[0] = eff;
-              copyLinCmt(neq, ind, op, yp);
-              postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
-              if (*(ind->rc) < 0) localBadSolve = 1;
-            }
-            xp =  ind->extraDoseNewXout;
+            xp = ind->extraDoseNewXout;
           }
         }
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
-          neq[0] = eff - op->numLin - op->numLinSens;
+          neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
+          rwork[0] = lsStop.at(ind, i, xp, xout);
           F77_CALL(dlsoda)(dydt_lsoda, neq, yp,
                            &xp, &xout, &itol,
                            &(op->RTOL),
@@ -5651,19 +6479,25 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
         //dadt_counter = 0;
       }
     }
-    ind->_newind = 2;
     if (!localBadSolve){
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(istate), u_inis);
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
-        handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                 xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
+        handleSSTte(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                    xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
         if (ind->wh0 == EVID0_OFF){
           yp[ind->cmt] = op->inits[ind->cmt];
         }
         if (rx->istateReset) istate = 1;
         xp = xout;
+      } else if (rx->istateReset && getEvid(ind, ind->ix[i]) >= 10 &&
+                 getEvid(ind, ind->ix[i]) <= 99) {
+        // the solver stopped at this mtime() record (rxLsodaStop) and restarts
+        // there, as at a dose: its next step then starts from the right-hand
+        // side as it is from this time, instead of from a history that ends
+        // just short of it and can step over a window the record opens
+        istate = 1;
       }
       int _mtime_requeued = 0;
       if (rx->nMtime > 0) {
@@ -5682,6 +6516,7 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       if (_mtime_requeued) i--;
     }
+    rxNewindAfterRecord(ind, i);
     ind->solvedIdx = i;
   }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
@@ -5773,7 +6608,8 @@ static void ind_lsode0(rx_solve *rx, rx_solving_options *op, int solveid,
   void *ctx = NULL;
 
   int istate = 1;
-  int itol = 1, itask = 1, iopt = 1;
+  // itask 4: stop at rwork[0] (tcrit), the next event
+  int itol = 1, itask = 4, iopt = 1;
   double rpar = 0.0; int ipar = 0;
 
   std::fill(rwork, rwork + lrw + 1, 0.0);
@@ -5794,11 +6630,13 @@ static void ind_lsode0(rx_solve *rx, rx_solving_options *op, int solveid,
   int localBadSolve = 0;
 
   if (!iniSubject(neq[1], 0, ind, op, rx, update_inis)) return;
+  rxLsodaStop lsStop; // where the solver must stop (tcrit)
   ind->solvedIdx = 0;
   for (int i = 0; i < ind->n_all_times; i++) {
     ind->idx = i;
     ind->linSS = 0;
     if (ind->mainSorted == 0) {
+      lsStop.reset();
       double *_rtime = ind->timeThread;
       for (int _j = i; _j < ind->n_all_times; _j++) {
         int _raw = ind->ix[_j];
@@ -5824,11 +6662,13 @@ static void ind_lsode0(rx_solve *rx, rx_solving_options *op, int solveid,
         badSolveExit(i);
         localBadSolve = 1;
       } else {
-        if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                            xp, ind->id, &i, ind->n_all_times, &istate, op, ind, update_inis, ctx)) {
+        while (!localBadSolve &&
+               handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                               xp, ind->id, &i, ind->n_all_times, &istate, op, ind, update_inis, ctx)) {
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
-            neq[0] = eff - op->numLin - op->numLinSens;
+            neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
+            rwork[0] = ind->extraDoseNewXout;
             F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, &xp, &ind->extraDoseNewXout,
                              &itol, &(op->RTOL), &(op->ATOL), &itask, &istate, &iopt,
                              rwork, &lrw, iwork, &liw, rxode2_dlsode_JAC, &mf, &rpar, &ipar);
@@ -5847,26 +6687,13 @@ static void ind_lsode0(rx_solve *rx, rx_solving_options *op, int solveid,
             ind->ixds = ixds;
             ind->idx  = idx;
             ind->idxExtra++;
-            if (!isSameTime(xout, ind->extraDoseNewXout)) {
-              double _xp_ls = ind->extraDoseNewXout;
-              preSolve(op, ind, _xp_ls, xout, yp);
-              neq[0] = eff - op->numLin - op->numLinSens;
-              // istate is already 1 from the dose handler above (needed for restart
-              // after a dose event).
-              F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, &ind->extraDoseNewXout, &xout,
-                               &itol, &(op->RTOL), &(op->ATOL), &itask, &istate, &iopt,
-                               rwork, &lrw, iwork, &liw, rxode2_dlsode_JAC, &mf, &rpar, &ipar);
-              neq[0] = eff;
-              copyLinCmt(neq, ind, op, yp);
-              postSolve(neq, &istate, ind->rc, &i, yp, err_msg_ls, 7, true, ind, op, rx);
-              if (*(ind->rc) < 0) localBadSolve = 1;
-            }
             xp = ind->extraDoseNewXout;
           }
         }
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
-          neq[0] = eff - op->numLin - op->numLinSens;
+          neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
+          rwork[0] = lsStop.at(ind, i, xp, xout);
           F77_CALL(dlsode)(rxode2_dlsode_F, neq, yp, &xp, &xout,
                            &itol, &(op->RTOL), &(op->ATOL), &itask, &istate, &iopt,
                            rwork, &lrw, iwork, &liw, rxode2_dlsode_JAC, &mf, &rpar, &ipar);
@@ -5878,19 +6705,25 @@ static void ind_lsode0(rx_solve *rx, rx_solving_options *op, int solveid,
         xp = xout;
       }
     }
-    ind->_newind = 2;
     if (!localBadSolve) {
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout, yp, &istate, update_inis);
       } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
-        handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                 xp, ind->id, &i, ind->n_all_times, &istate, op, ind, update_inis, ctx);
+        handleSSTte(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                    xp, ind->id, &i, ind->n_all_times, &istate, op, ind, update_inis, ctx);
         if (ind->wh0 == EVID0_OFF) ind->solve[ind->cmt] = op->inits[ind->cmt];
         if (rx->istateReset) {
           istate = 1;
         }
         xp = xout;
+      } else if (rx->istateReset && getEvid(ind, ind->ix[i]) >= 10 &&
+                 getEvid(ind, ind->ix[i]) <= 99) {
+        // the solver stopped at this mtime() record (rxLsodaStop) and restarts
+        // there, as at a dose: its next step then starts from the right-hand
+        // side as it is from this time, instead of from a history that ends
+        // just short of it and can step over a window the record opens
+        istate = 1;
       }
       int _mtime_requeued = 0;
       if (rx->nMtime > 0) {
@@ -5906,6 +6739,7 @@ static void ind_lsode0(rx_solve *rx, rx_solving_options *op, int solveid,
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       if (_mtime_requeued) i--;
     }
+    rxNewindAfterRecord(ind, i);
     ind->solvedIdx = i;
   }
   ind->solveTime += ((double)(clock() - t0)) / CLOCKS_PER_SEC;
@@ -6053,8 +6887,9 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
         badSolveExit(i);
         localBadSolve = 1;
       } else {
-        if (handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
-                            xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
+        while (!localBadSolve &&
+               handleExtraDose(neq, BadDose, InfusionRate, ind->dose, yp, xout,
+                               xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             linSolve(neq, ind, yp, &xp, ind->extraDoseNewXout);
@@ -6072,12 +6907,6 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
             ind->idx = idx;
             ind->ixds = ixds;
             ind->idxExtra++;
-          }
-          if (!localBadSolve && !isSameTime(xout, ind->extraDoseNewXout)) {
-            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-            linSolve(neq, ind, yp, &(ind->extraDoseNewXout), xout);
-            postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
-            if (*rc < 0) localBadSolve = 1;
             xp = ind->extraDoseNewXout;
           }
         }
@@ -6090,14 +6919,13 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
         }
       }
     }
-    ind->_newind = 2;
     if (!localBadSolve) {
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(idid), u_inis);
       } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
-        handleSS(neq, BadDose, InfusionRate, ind->dose, yp, xout,
-                 xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx);
+        handleSSTte(neq, BadDose, InfusionRate, ind->dose, yp, xout,
+                    xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx);
         if (ind->wh0 == EVID0_OFF){
           yp[ind->cmt] = inits[ind->cmt];
         }
@@ -6231,6 +7059,7 @@ extern "C" double ind_linCmt0H(rx_solve *rx, rx_solving_options *op, int solveid
       if (_mtime_requeued) i--;
       /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
     }
+    rxNewindAfterRecord(ind, i);
     ind->solvedIdx = i;
   }
   // a failed subject has no mean: what accumulated before the failure is partial
@@ -6313,8 +7142,9 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
         badSolveExit(i);
         localBadSolve = 1;
       } else {
-        if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                            xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
+        while (!localBadSolve &&
+               handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                               xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             linSolve(neq, ind, yp, &xp, ind->extraDoseNewXout);
@@ -6332,12 +7162,6 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
             ind->idx = idx;
             ind->ixds = ixds;
             ind->idxExtra++;
-          }
-          if (!localBadSolve && !isSameTime(xout, ind->extraDoseNewXout)) {
-            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-            linSolve(neq, ind, yp, &(ind->extraDoseNewXout), xout);
-            postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
-            if (*rc < 0) localBadSolve = 1;
             xp = ind->extraDoseNewXout;
           }
         }
@@ -6350,14 +7174,13 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
         }
       }
     }
-    ind->_newind = 2;
     if (!localBadSolve) {
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(idid), u_inis);
       } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
-        handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                 xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx);
+        handleSSTte(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                    xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx);
         if (ind->wh0 == EVID0_OFF){
           yp[ind->cmt] = op->inits[ind->cmt];
         }
@@ -6384,6 +7207,7 @@ extern "C" void ind_linCmt0(rx_solve *rx, rx_solving_options *op, int solveid, i
       if (_mtime_requeued) i--;
       /* for(j=0; j<neq[0]; j++) ret[neq[0]*i+j] = yp[j]; */
     }
+    rxNewindAfterRecord(ind, i);
     ind->solvedIdx = i;
   }
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
@@ -6463,12 +7287,31 @@ static void rxAutoSwitchCount(rx_solving_options *op, rx_solving_options_ind *in
 // already run preSolve() and set neq[0] to the ODE dimension.
 //
 // A dop853 primary is called directly so it can carry its stiffness estimator's
-// state across intervals; any other primary goes through _rxSolveOneInterval
-// and, having no such estimator, switches only when it actually fails.  That is
-// the same contract the steady-state leg (solveWith1Pt) has always had.
+// state across intervals; any other primary goes through _rxSolveOneInterval.
+// t54 and vern76 run the same estimator there (src/ode_stiff_probe.h, as the
+// device integrators do) and report where they stopped; another primary
+// switches only when it actually fails.  That is the same contract the
+// steady-state leg (solveWith1Pt) has.
+// 1 when the segment solved, else -4
+static inline int rxSegmentStatus(int istate, rx_solving_options_ind *ind) {
+  return (istate > 0 && !ind->err) ? 1 : -4;
+}
+
+// did the primary's probe fail (or report stiffness)?
+static inline bool rxProbeFailed(int istate, int idid, rx_solving_options_ind *ind) {
+  return istate <= 0 || idid <= 0 || ind->rc[0] == -2019 || ind->err != 0;
+}
+
+// a t54/vern76 probe's stiff report (idid -4) stops at its last accepted
+// step strictly inside (xp, xout), where the secondary continues
+static inline bool rxProbeContinues(int idid, double xp, double xout, double xpLoc) {
+  if (idid != -4) return false;
+  return (xout > xp) ? (xpLoc > xp && xpLoc < xout) : (xpLoc < xp && xpLoc > xout);
+}
+
 // Composite segment for a primary that is not dop853: probe with the primary,
-// and on failure hand the interval to the stiff secondary from the start (only
-// dop853 reports where it stopped, so there is nothing to continue from).
+// and hand the interval to the stiff secondary from where a stiff report
+// stopped, or from the start after a failure.
 static int rxSegmentAutoSwitchGeneric(rx_solving_options *op,
                                       rx_solving_options_ind *ind, int *neq,
                                       double xp, double xout, double *yp,
@@ -6480,7 +7323,7 @@ static int rxSegmentAutoSwitchGeneric(rx_solving_options *op,
     _rxSolveOneInterval(op->stiff2, false, neq, yp, &xpLoc, xout, istate,
                         &idid, op, ind, iRec, NULL, eff);
     rxAutoSwitchCount(op, ind, false, false);
-    return (*istate > 0 && !ind->err) ? 1 : -4;
+    return rxSegmentStatus(*istate, ind);
   }
   double _ypStack[64];
   double *_ypDyn = NULL;
@@ -6495,33 +7338,62 @@ static int rxSegmentAutoSwitchGeneric(rx_solving_options *op,
   *istate = 1;
   _rxSolveOneInterval(op->stiff, true, neq, yp, &xpLoc, xout, istate,
                       &idid, op, ind, iRec, NULL, eff);
-  bool failed = (*istate <= 0 || idid <= 0 || ind->rc[0] == -2019 || ind->err != 0);
+  bool failed = rxProbeFailed(*istate, idid, ind);
   if (failed) {
+    // a stiff report continues where it stopped; any other failure rewinds
+    bool cont = rxProbeContinues(idid, xp, xout, xpLoc);
     ind->rc[0] = 0;
     ind->err = 0;
     *istate = 1;
     idid = 1;
-    memcpy(yp, ypSave, (size_t)eff * sizeof(double));
-    xpLoc = xp;
+    if (!cont) {
+      memcpy(yp, ypSave, (size_t)eff * sizeof(double));
+      xpLoc = xp;
+    }
     _rxSolveOneInterval(op->stiff2, false, neq, yp, &xpLoc, xout, istate,
                         &idid, op, ind, iRec, NULL, eff);
   }
   if (_ypDyn) free(_ypDyn);
   rxAutoSwitchCount(op, ind, true, failed);
-  return (*istate > 0 && !ind->err) ? 1 : -4;
+  return rxSegmentStatus(*istate, ind);
 }
 
+// One interval of a single method other than dop853 (the record loop that
+// tte() models use for every method); the caller set neq[0] to the ODE size.
+static int rxSegmentSingle(rx_solving_options *op, rx_solving_options_ind *ind,
+                           int *neq, double xp, double xout, double *yp,
+                           int *istate, int eff, int *iRec, void *ctx) {
+  int idid = 1;
+  double xpLoc = xp;
+  int neqOde = neq[0];
+  neq[0] = eff;
+  *istate = 1;
+  _rxSolveOneInterval(op->stiff, false, neq, yp, &xpLoc, xout, istate,
+                      &idid, op, ind, iRec, ctx, eff);
+  neq[0] = neqOde;
+  return (*istate > 0 && idid > 0 && ind->rc[0] != -2019 && !ind->err) ? 1 : -2019;
+}
+
+static int rxDelayRecordSegment(rx_solve *rx, rx_solving_options *op,
+                                rx_solving_options_ind *ind, int *neq,
+                                t_dydt c_dydt, double xp, double xout,
+                                double *yp, int eff);
+
+// h0 is dop853's first step (0 lets dop853 choose it); *hNext gets the step
+// it would take next, or 0 when the stiff secondary solved any of the interval.
 static int rxSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
                                rx_solving_options_ind *ind, int *neq, t_dydt c_dydt,
                                double xp, double xout, double *yp,
-                               int *istate, int itol, int eff, int *iRec) {
+                               int *istate, int itol, int eff, int *iRec,
+                               double h0, double *hNext) {
   (void) rx;
-  // Non-composite: plain dop853 (unchanged behavior).
+  *hNext = 0.0;
+  // Non-composite: plain dop853.
   if (op->stiff2 <= 0) {
-    return dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
-                  solout, 0, NULL, DBL_EPSILON, 0, 0, 0, 0,
-                  ind->HMAX, op->H0, op->mxstep, 1, -1,
-                  0, NULL, 0, NULL, ind->id, NULL);
+    return dop853Next(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
+                      solout, 0, NULL, DBL_EPSILON, 0, 0, 0, 0,
+                      ind->HMAX, h0, op->mxstep, 1, -1,
+                      0, NULL, 0, NULL, ind->id, NULL, hNext);
   }
   if (op->stiff != 0) return rxSegmentAutoSwitchGeneric(op, ind, neq, xp, xout, yp,
                                                         istate, eff, iRec);
@@ -6541,13 +7413,14 @@ static int rxSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
     memcpy(ypSave, yp, (size_t)eff * sizeof(double));
     dop853_stiff_t st;
     rxStiffLoad(&st, op, ind);
-    idid = dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
-                  solout, 0, NULL, DBL_EPSILON, 0, 0, 0, 0,
-                  ind->HMAX, op->H0, op->mxstep, 1, RX_AUTOSWITCH_NSTIFF,
-                  0, NULL, 0, NULL, ind->id, &st);
+    idid = dop853Next(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
+                      solout, 0, NULL, DBL_EPSILON, 0, 0, 0, 0,
+                      ind->HMAX, h0, op->mxstep, 1, RX_AUTOSWITCH_NSTIFF,
+                      0, NULL, 0, NULL, ind->id, &st, hNext);
     rxStiffSave(&st, ind);
     bool failed = (idid <= 0 || ind->err);
     if (failed) {
+      *hNext = 0.0;
       // Stiffness: hand the stiff secondary (op->stiff2) the rest of the
       // interval, starting from the probe's last fully accepted step, via the
       // shared per-method interval solver (its preSolve() is idempotent).  Only
@@ -6582,6 +7455,74 @@ static int rxSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
   return idid;
 }
 
+// One interval of the generic record loop: records the delay() history when
+// needed, a single non-dop853 method, or dop853 and its AutoSwitch composites.
+// h0/hNext as in rxSegmentAutoSwitch (*hNext is 0 outside dop853).
+static int rxSegmentSolve(rx_solve *rx, rx_solving_options *op,
+                          rx_solving_options_ind *ind, int *neq, t_dydt c_dydt,
+                          double xp, double xout, double *yp,
+                          int *istate, int itol, int eff, int *iRec, void *ctx,
+                          double h0, double *hNext) {
+  *hNext = 0.0;
+  if (ind->delayHistOn) {
+    return rxDelayRecordSegment(rx, op, ind, neq, c_dydt, xp, xout, yp, eff);
+  }
+  if (op->stiff2 <= 0 && op->stiff != 0) {
+    return rxSegmentSingle(op, ind, neq, xp, xout, yp, istate, eff, iRec, ctx);
+  }
+  return rxSegmentAutoSwitch(rx, op, ind, neq, c_dydt, xp, xout, yp, istate, itol,
+                             eff, iRec, h0, hNext);
+}
+
+extern "C" int getCvodeLinearSolver();
+
+static int rxGenericCvodeRhs(double t, double *y, double *ydot, void *data) {
+  return dydt_liblsoda(t, y, ydot, data);
+}
+
+static inline int rxBaseMethod(rx_solving_options *op) {
+  return op->stiff >= 200 ? op->stiff - 200 : op->stiff;
+}
+
+// Methods whose Fortran solvers share one work array (single threaded)
+static inline bool rxFortranMethod(rx_solving_options *op) {
+  int base = rxBaseMethod(op);
+  return base == 1 || base == 106 || base == 107;
+}
+
+// The per-subject solver state a single method needs in the generic record
+// loop: a CVODE context (returned, freed by the caller), or the Fortran
+// LSODA/LSODE option slots of the shared work arrays.
+static void *rxGenericCtxInit(rx_solving_options *op, rx_solving_options_ind *ind,
+                              int *neq, double xp) {
+  if (op->stiff2 > 0) return NULL;
+  if (rxFortranMethod(op)) {
+    rwork_pool_t &p = __rworkPool[0];
+    std::fill(p.rworkp, p.rworkp + p.rworki, 0.0);
+    std::fill(p.iworkp, p.iworkp + p.iworki, 0);
+    p.rworkp[4] = op->H0;
+    p.rworkp[5] = (ind->HMAX > 0.0 && std::isfinite(ind->HMAX)) ? ind->HMAX : 0.0;
+    p.rworkp[6] = op->HMIN;
+    p.iworkp[5] = op->mxstep;
+    p.iworkp[6] = op->mxhnil;
+    p.iworkp[7] = op->MXORDN;
+    p.iworkp[8] = op->MXORDS;
+    return NULL;
+  }
+  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
+  if (rxBaseMethod(op) != 21 || neqOde <= 0) return NULL;
+  double rtol = (ind->rtol2 != NULL) ? ind->rtol2[0]
+    : (op->rtol2 != NULL) ? op->rtol2[0] : op->RTOL;
+  std::vector<double> atol(neqOde, op->ATOL);
+  const double *atolIn = (ind->atol2 != NULL) ? ind->atol2 : op->atol2;
+  if (atolIn != NULL) std::copy(atolIn, atolIn + neqOde, atol.begin());
+  int lin = op->cvodeLinSolver > 0 ? op->cvodeLinSolver : getCvodeLinearSolver();
+  _growSolveIfNeeded(ind, op, 0, 1);
+  return cvode_ctx_create(neqOde, getSolve(0), atol.data(), rtol, xp, op->HMIN,
+                          op->hmax2 > 0.0 ? op->hmax2 : 0.0, op->mxstep,
+                          rxGenericCvodeRhs, (void *)neq, lin);
+}
+
 extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,
                          t_dydt c_dydt,
                          t_update_inis u_inis) {
@@ -6595,11 +7536,13 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   int istate = 0;
   // this subject's own failure; op->badSolve is shared by every subject and thread
   int localBadSolve = 0;
+  // dop853 reports its step limit (-2) and step size (-3) failures itself,
+  // with the x and h it stopped at, so they have no text here
   static const char *err_msg[]=
     {
       "input is not consistent",
-      "larger nmax is needed",
-      "step size becomes too small",
+      NULL,
+      NULL,
       "problem is probably stiff (interrupted)"
     };
   rx_solving_options_ind *ind;
@@ -6625,6 +7568,38 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   rc= ind->rc;
   double xp = x[0];
   ind->solvedIdx = 0;
+  // delay() history, recorded by the dense solver of each interval
+  ind->delayHistOn = op->hasDelay;
+  ind->delayHistN  = 0;
+  ind->delayT0     = xp;
+  ind->delayMinT   = R_PosInf;
+  ind->delayMaxT   = 0.0;
+  ind->delayWarmed = 0;
+  ctx = rxGenericCtxInit(op, ind, neq, xp);
+  if (ctx == NULL && rxBaseMethod(op) == 21 && op->stiff2 <= 0 &&
+      op->neq > op->numLin + op->numLinSens + op->numLinCarry) {
+    ind->rc[0] = -2019;
+    rxSolverFail(ind);
+    return;
+  }
+  rxTteHook _tte(rx, ind, eff);
+  rxTteInteg _tteInteg = [&](double *y, double t0, double t1) {
+    _tte.rewindHistory();
+    if (isSameTimeDop(t0, t1)) return;
+    int st = 1;
+    preSolve(op, ind, t0, t1, y);
+    neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
+    double _hNext;
+    rxSegmentSolve(rx, op, ind, neq, c_dydt, t0, t1, y, &st, itol, eff, &i, ctx,
+                   op->H0, &_hNext);
+    neq[0] = eff;
+    copyLinCmt(neq, ind, op, y);
+  };
+  rxStepKeeper keep; // how each segment starts
+  // dop853 restarts after a dose: hinit() already starts near the capped
+  // kept step, and growing from the cap costs it more steps than hinit()
+  keep.acrossDoses = false;
+  double hNext = 0.0;
   for(i=0; i<ind->n_all_times; i++) {
     ind->idx=i;
     ind->linSS=0;
@@ -6648,6 +7623,7 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
     }
     yp = getSolve(i);
     xout = ind->timeThread[ind->ix[i]];
+    _tte.start(xp, yp);
     if (global_debug){
       RSprintf("i=%d xp=%f xout=%f\n", i, xp, xout);
     }
@@ -6658,20 +7634,26 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
         badSolveExit(i);
         localBadSolve = 1;
       } else {
-        if (handleExtraDose(neq, ind->BadDose, InfusionRate, ind->dose, yp, xout,
-                            xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
+        while (!localBadSolve && !_tte.hit &&
+               handleExtraDose(neq, ind->BadDose, InfusionRate, ind->dose, yp, xout,
+                               xp, ind->id, &i, nx, &istate, op, ind, u_inis, ctx)) {
           if (!localBadSolve && !isSameTimeDop(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
-            neq[0] = eff - op->numLin - op->numLinSens;
-            idid = rxSegmentAutoSwitch(rx, op, ind, neq, c_dydt, xp,
-                                        ind->extraDoseNewXout, yp, &istate, itol, eff, &i);
+            neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
+            idid = rxSegmentSolve(rx, op, ind, neq, c_dydt, xp,
+                                  ind->extraDoseNewXout, yp, &istate, itol, eff, &i, ctx,
+                                  keep.first(op->H0, op, ind, neq, neq[0], c_dydt, xp, yp),
+                                  &hNext);
+            keep.solved(hNext);
+            if (_tte.n != 0) keep.reset();
             neq[0] = eff;
             copyLinCmt(neq, ind, op, yp);
             postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
             if (*rc < 0) localBadSolve = 1;
             xp = ind->extraDoseNewXout;
           }
-          if (!localBadSolve) {
+          if (!_tte.skipDose(rx, op, ind, i, &xp, &xout, yp, _tteInteg,
+                             localBadSolve, &istate)) {
             int idx = ind->idx;
             int ixds = ind->ixds;
             int trueIdx = ind->extraDoseTimeIdx[ind->idxExtra];
@@ -6679,33 +7661,31 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
             handle_evid(ind->extraDoseEvid[trueIdx], neq[0],
                         ind->BadDose, InfusionRate, ind->dose, yp, xout, neq[1], ind);
             idid = 1;
+            keep.stateChanged();
             ind->idx = idx;
             ind->ixds = ixds;
             ind->idxExtra++;
-            if (!isSameTimeDop(xout, ind->extraDoseNewXout)) {
-              preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-              neq[0] = eff - op->numLin - op->numLinSens;
-              idid = rxSegmentAutoSwitch(rx, op, ind, neq, c_dydt,
-                                          ind->extraDoseNewXout, xout, yp, &istate, itol, eff, &i);
-              neq[0] = eff;
-              copyLinCmt(neq, ind, op, yp);
-              postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
-              if (*rc < 0) localBadSolve = 1;
-              xp = ind->extraDoseNewXout;
-            }
+            _tte.start(xp, yp);
+            xp = ind->extraDoseNewXout;
           }
         }
         if (!localBadSolve && !isSameTimeDop(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
-          neq[0] = eff - op->numLin - op->numLinSens;
-          idid = rxSegmentAutoSwitch(rx, op, ind, neq, c_dydt, xp, xout, yp,
-                                      &istate, itol, eff, &i);
+          neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
+          idid = rxSegmentSolve(rx, op, ind, neq, c_dydt, xp, xout, yp,
+                                &istate, itol, eff, &i, ctx,
+                                keep.first(op->H0, op, ind, neq, neq[0], c_dydt, xp, yp),
+                                &hNext);
+          keep.solved(hNext);
+          if (_tte.n != 0) keep.reset();
           neq[0] = eff;
           copyLinCmt(neq, ind, op, yp);
           postSolve(neq, &idid, rc, &i, yp, err_msg, 4, true, ind, op, rx);
           if (*rc < 0) localBadSolve = 1;
           xp = xout;
         }
+        _tte.afterRecord(rx, op, ind, i, &xp, &xout, yp, _tteInteg,
+                         localBadSolve, &istate);
         //dadt_counter = 0;
       }
     }
@@ -6714,13 +7694,14 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
       if (getEvid(ind, ind->ix[i]) == 3) {
         handleEvid3(ind, op, rx, neq, &xp, &xout,  yp, &(idid), u_inis);
       } else if (handleEvid1(&i, rx, neq, yp, &xout)){
-        handleSS(neq, ind->BadDose, InfusionRate, ind->dose, yp, xout,
-                 xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
+        handleSSDelay(neq, ind->BadDose, InfusionRate, ind->dose, yp, xout,
+                      xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
         if (ind->wh0 == EVID0_OFF){
           yp[ind->cmt] = inits[ind->cmt];
         }
         xp = xout;
       }
+      keep.record(getEvid(ind, ind->ix[i]));
       int _mtime_requeued = 0;
       if (rx->nMtime > 0) {
         if (recomputeMtimeIfNeeded(rx, ind, yp, i, xout)) {
@@ -6737,8 +7718,11 @@ extern "C" void ind_dop0(rx_solve *rx, rx_solving_options *op, int solveid, int 
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       if (_mtime_requeued) i--;
     }
+    rxNewindAfterRecord(ind, i);
     ind->solvedIdx = i;
   }
+  _tte.finish(ind);
+  if (ctx != NULL && rxBaseMethod(op) == 21) cvode_ctx_destroy((cvode_ctx_t *)ctx);
   ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;
 }
 
@@ -6999,6 +7983,28 @@ static inline void rxDelaySetRecTime(double *rec, int nd, double a, double h) {
   rec[8 * nd + 2] = 0.0;  // dop853 record
 }
 
+// Record one dense step as a degree-7 (dop853-form) record fitted to the
+// stepper's dense output sampled at s_k = k/7, k = 0..7 (dop5 and bs).
+struct rxDelayDop853InvTab {
+  double inv[8][8];
+  rxDelayDop853InvTab() { rxDelayDop853Inverse(inv); }
+};
+static void rxDelayHistPushNodes(rx_solving_options_ind *ind, rx_solving_options *op,
+                                 double xold, double h, const double *const *s) {
+  static const rxDelayDop853InvTab tab;
+  int nd = op->nDelayState;
+  double *rec = rxDelayHistSlot(ind, nd);
+  if (rec == NULL) return;
+  const int *ds = op->delayState;
+  double v[8];
+  for (int c = 0; c < nd; c++) {
+    for (int k = 0; k < 8; k++) v[k] = s[k][ds[c]];
+    rxDelayFitColumn(tab.inv, v, nd, c, rec);
+  }
+  rxDelaySetRecTime(rec, nd, xold + ind->delayTOff, h);  // virtual time during handleSS()
+  ind->delayHistN++;
+}
+
 // Fit the dop853 record for [a, a + h] exactly to old + steady state.  Each
 // history's record is chosen once at the midpoint (the breakpoints include
 // every record start), so a dose jump at either end is not straddled; before
@@ -7160,10 +8166,41 @@ static void dopDenseSolout(long int nr, double xold, double x, double *y,
   }
 }
 
-// Defined in ros4.cpp (included later in this translation unit).
+// Defined in ros4.cpp, dop5.cpp and bs.cpp (included later in this
+// translation unit).
 int rxRos4DenseSegment(rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind,
                        int *neq, t_dydt c_dydt, double xp, double xout, double *yp,
                        int obs_first, int obs_last, int solveid);
+int rxDop5DenseSegment(rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind,
+                       int *neq, t_dydt c_dydt, double xp, double xout, double *yp,
+                       int obs_first, int obs_last, int solveid);
+int rxBsDenseSegment(rx_solve *rx, rx_solving_options *op, rx_solving_options_ind *ind,
+                     int *neq, t_dydt c_dydt, double xp, double xout, double *yp,
+                     int obs_first, int obs_last, int solveid);
+
+// Non-composite dense segment: the method's own dense output (dop853 unless
+// dop5, bs or ros4 was requested).
+static int denseSegmentSolveSingle(rx_solve *rx, rx_solving_options *op,
+                                   rx_solving_options_ind *ind, int *neq,
+                                   t_dydt c_dydt, double xp, double xout,
+                                   double *yp, DopDenseCtx *dc, int itol) {
+  int solveid = neq[1];
+  switch (op->stiff) {
+  case 10:
+    return rxDop5DenseSegment(rx, op, ind, neq, c_dydt, xp, xout, yp,
+                              dc->obs_next, dc->segment_end, solveid);
+  case 11:
+    return rxBsDenseSegment(rx, op, ind, neq, c_dydt, xp, xout, yp,
+                            dc->obs_next, dc->segment_end, solveid);
+  case 13:
+    return rxRos4DenseSegment(rx, op, ind, neq, c_dydt, xp, xout, yp,
+                              dc->obs_next, dc->segment_end, solveid);
+  }
+  return dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
+                dopDenseSolout, 2, NULL, DBL_EPSILON, 0, 0, 0, 0,
+                rxDelayCapHmax(ind), op->H0, op->mxstep, 1, -1,
+                neq[0], NULL, 0, dc, ind->id, NULL);
+}
 
 // Solve one dense segment [xp, xout], filling the segment's observations and
 // recording delay history.  When the AutoSwitch composite is active (stiff2>0)
@@ -7176,15 +8213,12 @@ static int denseSegmentSolve(rx_solve *rx, rx_solving_options *op,
                              rx_solving_options_ind *ind, int *neq, t_dydt c_dydt,
                              double xp, double xout, double *yp,
                              DopDenseCtx *dc, int itol, int eff) {
+  if (op->stiff2 <= 0) {
+    return denseSegmentSolveSingle(rx, op, ind, neq, c_dydt, xp, xout, yp, dc,
+                                   itol);
+  }
   int neqOde  = neq[0];
   int solveid = neq[1];
-  // Non-composite: plain dop853 dense output (unchanged behavior).
-  if (op->stiff2 <= 0) {
-    return dop853(neq, c_dydt, xp, yp, xout, op->rtol2, op->atol2, itol,
-                  dopDenseSolout, 2, NULL, DBL_EPSILON, 0, 0, 0, 0,
-                  rxDelayCapHmax(ind), op->H0, op->mxstep, 1, -1,
-                  neqOde, NULL, 0, dc, ind->id, NULL);
-  }
   // Reactive switching, mirroring rxSegmentAutoSwitch (see its comment): probe
   // with dop853 (its stiffness estimator on, its state carried over from the
   // previous segment) and hand the rest of the segment to ros4 if it reports
@@ -7244,17 +8278,22 @@ static int denseSegmentSolve(rx_solve *rx, rx_solving_options *op,
   return idid;
 }
 
+static int rxCvodeDelaySegment(void *ctx_ptr, rx_solving_options *op,
+                               rx_solving_options_ind *ind, int *neq,
+                               double xp, double xout, double *yp, bool *init);
+
 // One steady-state sub-solve [xp, xout] of a delay() model (rxode2#1447): use
 // the dense solver so every step is recorded into the delay history on the
 // virtual clock ind->delaySSClock (no observations are filled).  ros4 for a pure
-// ros4 solve, otherwise dop853 (with the stiff secondary of a composite).
+// ros4 solve, CVODE (its context `ctx`) for cvode, otherwise dop853 (with the
+// stiff secondary of a composite).
 static void rxDelaySSSolve(int *neq, double *yp, double xp, double xout,
                            rx_solving_options *op, rx_solving_options_ind *ind,
-                           int eff) {
+                           int eff, void *ctx) {
   if (isSameTimeDop(xout, xp)) return;
   ind->delayTOff = ind->delaySSClock - xp;
   preSolve(op, ind, xp, xout, yp);
-  neq[0] = eff - op->numLin - op->numLinSens;
+  neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
   if (!ind->delayWarmed) {
     // one RHS evaluation so delay() learns the step-size cap
     std::vector<double> _ddt((size_t)eff);
@@ -7266,6 +8305,10 @@ static void rxDelaySSSolve(int *neq, double *yp, double xp, double xout,
   if (base == 13 && op->stiff2 <= 0) {
     idid = rxRos4DenseSegment(&rx_global, op, ind, neq, dydt, xp, xout, yp,
                               1, 0, neq[1]);
+  } else if (op->stiff == 21) {
+    bool init = false;
+    neq[0] = eff;
+    idid = rxCvodeDelaySegment(ctx, op, ind, neq, xp, xout, yp, &init);
   } else {
     DopDenseCtx dc;
     dc.ind = ind;
@@ -7283,6 +8326,31 @@ static void rxDelaySSSolve(int *neq, double *yp, double xp, double xout,
   if ((idid <= 0 || ind->err) && ind->rc[0] == 0) ind->rc[0] = -2019;
 }
 
+// One interval of a delay() model in the per-record loop (ind_dop0): the dense
+// solver records every step into the history and fills no observations.  The
+// caller set neq[0] to the ODE size.
+static int rxDelayRecordSegment(rx_solve *rx, rx_solving_options *op,
+                                rx_solving_options_ind *ind, int *neq,
+                                t_dydt c_dydt, double xp, double xout,
+                                double *yp, int eff) {
+  if (!ind->delayWarmed) {
+    // one RHS evaluation so delay() learns the step-size cap
+    std::vector<double> _ddt((size_t)eff);
+    c_dydt(neq, xp, yp, _ddt.data());
+    ind->delayWarmed = 1;
+  }
+  if (rxBaseMethod(op) == 13 && op->stiff2 <= 0) {
+    return rxRos4DenseSegment(rx, op, ind, neq, c_dydt, xp, xout, yp, 1, 0, neq[1]);
+  }
+  DopDenseCtx dc;
+  dc.ind = ind;
+  dc.op  = op;
+  dc.neq = neq;
+  dc.obs_next = 1;    // empty observation range: record history only
+  dc.segment_end = 0;
+  return denseSegmentSolve(rx, op, ind, neq, c_dydt, xp, xout, yp, &dc, 1, eff);
+}
+
 extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid,
                                int *neq, t_dydt c_dydt, t_update_inis u_inis) {
   clock_t t0 = clock();
@@ -7295,11 +8363,13 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
   int istate = 0;
   // this subject's own failure; op->badSolve is shared by every subject and thread
   int localBadSolve = 0;
+  // dop853 reports its step limit (-2) and step size (-3) failures itself,
+  // with the x and h it stopped at, so they have no text here
   static const char *err_msg[]=
     {
       "input is not consistent",
-      "larger nmax is needed",
-      "step size becomes too small",
+      NULL,
+      NULL,
       "problem is probably stiff (interrupted)"
     };
   rx_solving_options_ind *ind;
@@ -7374,9 +8444,13 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
     int this_evid = getEvid(ind, ind->ix[i]);
     bool is_obs   = isObs(this_evid);
     bool is_last  = (i == nx - 1);
-    bool need_seg = is_obs && is_last; // last obs: close the final segment
+    // the subject's first record (newind == 1) closes a segment too, so the
+    // integration after it sees newind == 2
+    bool is_first = is_obs && ind->_newind == 1;
+    // a lagged dose's knot (evid 8) closes one too, where its covariates start
+    bool need_seg = is_obs && (is_last || is_first || !isPassObs(this_evid));
 
-    if (is_obs && !is_last) {
+    if (is_obs && !need_seg) {
       // Pure observation interior to a segment.
       // Same-time obs (at xp): fill directly from the carry-forward state.
       if (isSameTimeDop(xout, xp)) {
@@ -7388,6 +8462,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
         std::copy(getSolve(i), getSolve(i) + eff, getSolve(i+1));
       }
       // else: will be filled by dopDenseSolout when the segment closes
+      rxNewindAfterRecord(ind, i);
       ind->solvedIdx = i;
       continue;
     }
@@ -7409,7 +8484,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
         dc.segment_end = i - 1;
         if (dc.obs_next <= dc.segment_end) {
           preSolve(op, ind, xp, xout, yp);
-          neq[0] = eff - op->numLin - op->numLinSens;
+          neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
           idid = denseSegmentSolve(rx, op, ind, neq, c_dydt, xp, xout, yp,
                                    &dc, itol, eff);
           neq[0] = eff;
@@ -7435,7 +8510,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
             dc.obs_next    = last_key_i + 1;
             dc.segment_end = need_seg ? i : i - 1;
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
-            neq[0] = eff - op->numLin - op->numLinSens;
+            neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
             idid = denseSegmentSolve(rx, op, ind, neq, c_dydt, xp,
                                      ind->extraDoseNewXout, yp, &dc, itol, eff);
             neq[0] = eff;
@@ -7467,7 +8542,7 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
           dc.segment_end = need_seg ? i : i - 1;
 
           preSolve(op, ind, xp, xout, yp);
-          neq[0] = eff - op->numLin - op->numLinSens;
+          neq[0] = eff - op->numLin - op->numLinSens - op->numLinCarry;
           // Before the first delay step, evaluate the RHS once so delay()
           // learns the minimum delay used to cap the step size.
           if (ind->delayHistOn && !ind->delayWarmed) {
@@ -7517,8 +8592,13 @@ extern "C" void ind_dop0_dense(rx_solve *rx, rx_solving_options *op, int solveid
       // tests against nx rather than ind->n_all_times.
       nx = ind->n_all_times;
       if (_mtime_requeued) i--;
+      // a requeued slot re-runs from the state this pass integrated into it,
+      // not from the key event before it
+      last_key_i = _mtime_requeued ? i + 1 : i;
+    } else {
+      last_key_i = i;
     }
-    last_key_i = i;
+    rxNewindAfterRecord(ind, i);
     ind->solvedIdx = i;
   }
   // Keep this subject's delay history: the output data frame recalculates lhs
@@ -7536,7 +8616,8 @@ extern "C" void ind_dop(rx_solve *rx, int solveid,
   neq[1] = 0;
   // The dense segment path is dop853 + ros4; a composite with any other
   // primary uses the non-dense record loop (rxData.cpp clears useDense for it).
-  if (op->useDense && (op->stiff2 <= 0 || op->stiff == 0))
+  // the dense path has no tte() hook
+  if (op->useDense && (op->stiff2 <= 0 || op->stiff == 0) && rxTteN() == 0)
     ind_dop0_dense(rx, op, solveid, neq, c_dydt, u_inis);
   else
     ind_dop0(rx, op, solveid, neq, c_dydt, u_inis);
@@ -7555,11 +8636,13 @@ void par_dop(rx_solve *rx){
   clock_t t0 = clock();
   int curTick = 0;
   int cur = 0;
-  // dop853 is thread-safe: dop853_ctx_t is stack-allocated per call (no static state)
+  // dop853 is thread-safe: dop853_ctx_t is stack-allocated per call (no static
+  // state); the Fortran methods the generic loop also runs are not
+  if (rxFortranMethod(op)) cores = 1;
   int abort = 0;
   uint32_t seed0 = getRxSeed1(cores);
 #ifdef _OPENMP
-#pragma omp parallel for num_threads(op->cores)
+#pragma omp parallel for num_threads(cores)
 #endif
   for (int solveid = 0; solveid < nsolve; solveid++){
     int neq[2];        // per-thread: ind_dop0 writes neq[0] and neq[1]
@@ -7573,7 +8656,7 @@ void par_dop(rx_solve *rx){
       // loop counts positions; the drivers take subject ids.
       int _id = rx->ordId[solveid] - 1;
       setSeedEng1(seed0 + _id);
-      if (op->useDense)
+      if (op->useDense && rxTteN() == 0)
         ind_dop0_dense(rx, op, _id, neq, dydt, update_inis);
       else
         ind_dop0(rx, op, _id, neq, dydt, update_inis);
@@ -8256,9 +9339,17 @@ static void ind_solve0(rx_solve *rx, unsigned int cid,
     // so the linCmt fast path is not the right dispatch.
     rx_solving_options_ind *_ind = &(rx->subjects[cid]);
     int _eff = rxEffNeq(_ind, op);
-    if (_eff == op->neq && op->neq == op->numLinSens + op->numLin) {
+    if (_eff == op->neq && op->neq == op->numLinSens + op->numLin + op->numLinCarry) {
       // This only is linear compartment solving
       ind_linCmt(rx, cid, c_dydt, u_inis);
+      return;
+    } else if (rxTteN() > 0) {
+      // tte() simulation: see par_solve()
+      if (rxBaseMethod(op) == 2) {
+        ind_liblsoda(rx, cid, dydt_lls, u_inis);
+      } else {
+        ind_dop(rx, cid, c_dydt, u_inis);
+      }
       return;
     } else if (op->stiff2 > 0 && op->stiff != 0 && op->stiff < 200) {
       // AutoSwitch composite whose primary is not dop853.  Its own driver knows
@@ -8427,6 +9518,8 @@ static void ind_solve0(rx_solve *rx, unsigned int cid,
         break;
       case 31: ind_grk4a(rx, cid, c_dydt, u_inis); break;
       case 32: ind_ros6(rx, cid, c_dydt, u_inis); break;
+      case 108: ind_ros54p(rx, cid, c_dydt, u_inis); break;
+      case 110: case 111: case 112: case 113: case 114: ind_gpu(rx, cid, c_dydt, u_inis); break;
       case 33: ind_backwardEuler(rx, cid, c_dydt, u_inis); break;
       case 34: ind_gauss6(rx, cid, c_dydt, u_inis); break;
       case 35: ind_iiic6(rx, cid, c_dydt, u_inis); break;
@@ -8688,7 +9781,7 @@ extern "C" void par_solve(rx_solve *rx) {
     if (rx->linB == 1) {
       // Setup H
     }
-    if (op->neq == op->numLinSens + op->numLin) {
+    if (op->neq == op->numLinSens + op->numLin + op->numLinCarry) {
       // This only is linear compartment solving
       par_linCmt(rx);
     } else {
@@ -8711,7 +9804,16 @@ extern "C" void par_solve(rx_solve *rx) {
       // op->stiff2.  Dispatching on -1 then skips the per-method switch (which
       // has no default) without skipping the teardown below it.
       int _dispatch = op->stiff;
-      if (op->stiff2 > 0 && op->stiff != 0 && op->stiff < 200) {
+      if (rxTteN() > 0) {
+        // tte() simulation runs in the two record loops with its hook: the
+        // liblsoda loop, and the generic loop for every other method
+        if (rxBaseMethod(op) == 2) {
+          par_liblsoda(rx);
+        } else {
+          par_dop(rx);
+        }
+        _dispatch = -1;
+      } else if (op->stiff2 > 0 && op->stiff != 0 && op->stiff < 200) {
         par_dop(rx);
         _dispatch = -1;
       }
@@ -8878,6 +9980,8 @@ extern "C" void par_solve(rx_solve *rx) {
         break;
       case 31: par_grk4a(rx); break;
       case 32: par_ros6(rx); break;
+      case 108: par_ros54p(rx); break;
+      case 110: case 111: case 112: case 113: case 114: par_gpu(rx); break;
       case 33: par_backwardEuler(rx); break;
       case 34: par_gauss6(rx); break;
       case 35: par_iiic6(rx); break;
@@ -9053,6 +10157,7 @@ extern "C" double rxLhsP(int i, rx_solve *rx, unsigned int id){
 #include "vern98.cpp"
 #include "grk4a.cpp"
 #include "implicit_solvers.cpp"
+#include "gpu_solve.cpp"
 #include "euler.cpp"
 #include "midpoint.cpp"
 #include "heun.cpp"

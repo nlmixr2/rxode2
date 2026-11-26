@@ -84,6 +84,8 @@ regThEt <- rex::rex(
   capture("1":"9", any_of("0":"9")),
   "_"
 )
+## regThEt anchored at both ends, built once for .rxFromSE()
+.regThEtAll <- rex::rex(start, regThEt, end)
 regDfDyTh <- rex::rex(
   start,
   "rx__df_",

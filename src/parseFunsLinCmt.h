@@ -43,8 +43,11 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
     // already routes the statement elsewhere: a df()/dy() entry (TJAC) belongs
     // to calc_jac/calc_lhs, and retyping it emitted `__PDStateVar__[...]` into
     // dydt, where that argument does not exist -- the model did not compile
-    // (rxode2#1215).
-    if (sbPm.lType[sbPm.n] != TJAC) {
+    // (rxode2#1215).  Likewise a d/dt() whose right-hand side calls linCmt()
+    // stays TDDT: TDDT is already kept out of those functions, while TLIN put
+    // the derivative into the initial-condition function, which declares no
+    // __DDtStateVar_<n>__ (`x(0)=...` plus `d/dt(y)=...linCmt()...`).
+    if (sbPm.lType[sbPm.n] != TJAC && sbPm.lType[sbPm.n] != TDDT) {
       aType(TLIN);
     }
     if (tf->isLinB) {
@@ -60,6 +63,16 @@ static inline int handleFunctionLinCmt(transFunctions *tf) {
       xpn2 = d_get_child(xpn1, 5);
       v2 = (char*)rc_dup_str(xpn2->start_loc.s, xpn2->end);
       int which2 = toInt(v2+1);
+
+      // The carry sentinels (-5 advance, -6 read, -7 add) address carry
+      // state which2 = row + m*pair; the model gets m * (pairs used) carry
+      // states (calcLinCmt()).
+      if ((which1 == -5 || which1 == -6 || which1 == -7) && which2 >= 0 &&
+          tb.ncmt >= 1 && tb.ncmt <= 3 && tb.hasKa >= 0 && tb.hasKa <= 1) {
+        int m = tb.ncmt + tb.hasKa;
+        int n = (which2/m + 1)*m;
+        if (n > tb.linCmtCarryN) tb.linCmtCarryN = n;
+      }
 
       if (which2 == -2 && which1 >= 0 && which1 < tb.ncmt + tb.hasKa) {
         // Amount read for compartment which1 (linCmtBread's fx case): no

@@ -405,6 +405,57 @@
   .ret
 }
 
+.muRefEvalEnv <- new.env(parent = baseenv())
+.muRefEvalEnv$pow <- function(x, y) x^y
+.muRefEvalEnv$R_pow <- .muRefEvalEnv$pow
+.muRefEvalEnv$R_pow_di <- .muRefEvalEnv$pow
+.muRefEvalEnv$Rx_pow <- .muRefEvalEnv$pow
+.muRefEvalEnv$Rx_pow_di <- .muRefEvalEnv$pow
+.muRefEvalEnv$expit <- function(x, low = 0, high = 1) expit(x, low, high)
+.muRefEvalEnv$logit <- function(x, low = 0, high = 1) logit(x, low, high)
+
+#' Is a term exactly `theta * der`?
+#'
+#' Evaluates the term and `theta * der` (what the mu2 rewrite
+#' `nlmixrMuDerCov*theta` puts in its place) at three sets of dummy theta and
+#' covariate values; the term is a mu expression only when all three agree, so
+#' `(cl.wt + 1)*log(WT/70)`, whose derivative is theta free, is rejected.
+#'
+#' @param term term (language)
+#' @param der derivative of the term by `theta` (language)
+#' @param theta theta name
+#' @return `TRUE` when the values agree; `FALSE` otherwise (including when
+#'   the term cannot be evaluated)
+#' @noRd
+#' @author Matthew L. Fidler
+.muRefTermIsThetaTimesDer <- function(term, der, theta) {
+  .v <- setdiff(unique(c(all.vars(term), all.vars(der))), theta)
+  .th <- c(0.37, 1.61, -0.83)
+  for (.k in seq_along(.th)) {
+    .env <- new.env(parent = .muRefEvalEnv)
+    assign(theta, .th[.k], envir = .env)
+    for (.j in seq_along(.v)) {
+      assign(.v[.j], 0.5 + 0.731 * .k + 0.193 * .j, envir = .env)
+    }
+    .ok <- tryCatch(
+      {
+        .a <- eval(term, .env)
+        .b <- .th[.k] * eval(der, .env)
+        length(.a) == 1L &&
+          length(.b) == 1L &&
+          is.finite(.a) &&
+          is.finite(.b) &&
+          isTRUE(all.equal(as.numeric(.a), as.numeric(.b), tolerance = 1e-8))
+      },
+      error = function(e) FALSE
+    )
+    if (!.ok) {
+      return(FALSE)
+    }
+  }
+  TRUE
+}
+
 #' Fill the derivative cache for a whole model in one symengine environment
 #'
 #' Collects every product term with a single theta and derives them all from
@@ -563,6 +614,12 @@
             .thetaD <- try(.muRefExtractTheta(.extra, env), silent = TRUE)
             if (inherits(.thetaD, "try-error")) {
               .thetaD <- NULL
+            }
+            if (is.null(.thetaD) && !.muRefTermIsThetaTimesDer(y, .extra, .thetas)) {
+              # only exact theta*covariate terms: not `0.75*log(V1/exp(tV1))`
+              # (its derivative drops V1) nor `(cl.wt + 1)*log(WT/70)`.  A
+              # mu3/mu4 covariate is checked against the data by nlmixr2.
+              return(NULL)
             }
             if (is.null(.thetaD)) {
               # mu2 expression -- unless this line is a declared distribution's

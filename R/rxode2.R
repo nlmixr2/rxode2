@@ -134,6 +134,10 @@ NA_LOGICAL <- NA # nolint
 #' pharmacokinetics (PK), pharmacodynamics (PD), disease progression,
 #' drug-disease modeling, etc.
 #'
+#' Each generated C function (the ODE right-hand side, the calculated
+#' variables, `f()`/`alag()`/`rate()`/`dur()`, ...) evaluates only the model
+#' statements its own outputs depend on; `options(rxode2.fullOpt = "none")`
+#' evaluates every statement in every function instead.
 #'
 #' @includeRmd man/rmdhunks/rxode2-create-models.Rmd
 #'
@@ -980,7 +984,19 @@ rxGetModel <- function(
       .stateInfo <- .rxGenFunState(.ret)
       .s <- .rxLoadPrune(.ret, FALSE, pkTime = TRUE)
       .s$..stateInfo <- .stateInfo
-      .rxJacobian(.s)
+      if (rxIs(calcSens, "logical") && calcSens) {
+        calcSens <- .rxParams(model, TRUE)
+      }
+      .sensPars <- .rxParams(model, TRUE)
+      calcSens <- .rxSensVarNames(calcSens, .sensPars)
+      if (!is.null(calcSens2)) {
+        calcSens2 <- .rxSensVarNames(calcSens2, .sensPars)
+      }
+      if (!is.null(calcSens3)) {
+        calcSens3 <- .rxSensVarNames(calcSens3, .sensPars)
+      }
+      ## the parameter columns of the Jacobian are exactly the ones differentiated
+      .rxJacobian(.s, unique(c(calcSens, calcSens2, calcSens3)))
       ## base ODE states, captured BEFORE .rxSens splices in the rx__sens_*
       ## variational compartments -- used to build the full-system stiff Jacobian
       ## by reusing the F_X/F_p just computed (see .rxFwdSensJacBlock).
@@ -990,11 +1006,6 @@ rxGetModel <- function(
       }
       if (is.null(calcJac)) {
         calcJac <- FALSE
-      }
-      if (rxIs(calcSens, "logical")) {
-        if (calcSens) {
-          calcSens <- .rxParams(model, TRUE)
-        }
       }
       ## .rxSens augments the sensitivity ODEs with the delayed (variational)
       ## terms for delay() models (no-op otherwise).
@@ -1683,6 +1694,9 @@ rxMd5 <- function(
 #'     embed the md5 into DLL, and then provide for functions like
 #'     [rxModelVars()].
 #'
+#' @param fullOptKey `rxode2.fullOpt` level key folded into the parsed md5
+#'     ("" at "none"); a formal for the same memoise reason as `eventSensKey`.
+#'
 #' @param eventSensKey event ("jump") sensitivity mode key folded into
 #'     the parsed md5 cache key so the same model text translated in
 #'     different modes (e.g. `"fd"` vs `"jump"`) compiles to distinct
@@ -1766,6 +1780,7 @@ rxTrans.default <- function(
   modName = NULL, # Model name for DLL
   modVars = FALSE, # Return modVars
   eventSensKey = .rxState$eventSensCacheKey, # nolint
+  fullOptKey = .rxFullOptKey(), # nolint
   ...
 ) {
   ## `eventSensKey` MUST be a formal (defaulting to the session global) rather
@@ -1825,8 +1840,10 @@ rxTrans.default <- function(
   if (nzchar(eventSensKey)) {
     .parsedMd5 <- digest::digest(c(.parsedMd5, paste0("eventSens=", eventSensKey)), serialize = TRUE, algo = "md5")
   }
+  ## the code generated per function depends on rxode2.fullOpt; "" at "none"
+  .parsedMd5 <- .rxFullOptMd5(.parsedMd5, fullOptKey)
   md5 <- c(file_md5 = md5, parsed_md5 = .parsedMd5)
-  .ret$timeId <- .rxTimeId(md5["parsed_md5"])
+  .rxTimeId(md5["parsed_md5"])
   .ret$md5 <- md5
   if (.isStr == 1L) {
     ## Now update trans.
@@ -2210,6 +2227,51 @@ rxNumLoaded <- function() {
   length(grep(rex::rex(start, "rx_", n_times(any, 32), or("_x64", "_i386", "_", "")), names(.dlls)))
 }
 
+.rxRConfigCflagsCache <- new.env(parent = emptyenv())
+#' `R CMD config CFLAGS`, cached per session
+#'
+#' The subprocess costs ~0.05 s per compile.  Its output depends only on R and
+#' the Makevars files it reads, so the cache key is those files' paths and
+#' modification times; editing or repointing a Makevars re-reads it.
+#'
+#' @return R's `CFLAGS`, or `""` when it cannot be read (not cached)
+#' @noRd
+.rxRConfigCflags <- function() {
+  .env <- Sys.getenv(c("R_MAKEVARS_USER", "R_MAKEVARS_SITE", "HOME"))
+  .files <- c(
+    .env[1:2],
+    file.path(R.home("etc"), "Makevars.site"),
+    path.expand(file.path(
+      "~",
+      ".R",
+      c("Makevars", "Makevars.win", "Makevars.win64", "Makevars.ucrt", paste0("Makevars-", R.version$platform))
+    ))
+  )
+  .files <- .files[.files != ""]
+  .key <- paste(c(.env, .files, as.character(file.mtime(.files))), collapse = "\r")
+  if (identical(.rxRConfigCflagsCache$key, .key)) {
+    return(.rxRConfigCflagsCache$value)
+  }
+  .cflags <- tryCatch(
+    gsub(
+      "\n",
+      "",
+      rawToChar(
+        sys::exec_internal(
+          file.path(R.home("bin"), "R"),
+          c("CMD", "config", "CFLAGS")
+        )$stdout
+      )
+    ),
+    error = function(e) ""
+  )
+  if (.cflags != "") {
+    .rxRConfigCflagsCache$key <- .key
+    .rxRConfigCflagsCache$value <- .cflags
+  }
+  .cflags
+}
+
 #' Make `rxode2.compile.O` actually take effect for `R CMD SHLIB`
 #'
 #' `R CMD SHLIB` builds `ALL_CFLAGS = $(PKG_CFLAGS) $(CPICFLAGS) $(SHLIB_CFLAGS)
@@ -2239,19 +2301,7 @@ rxNumLoaded <- function() {
   if (is.na(.o) || .o == "") {
     return(NULL)
   }
-  .cflags <- tryCatch(
-    gsub(
-      "\n",
-      "",
-      rawToChar(
-        sys::exec_internal(
-          file.path(R.home("bin"), "R"),
-          c("CMD", "config", "CFLAGS")
-        )$stdout
-      )
-    ),
-    error = function(e) ""
-  )
+  .cflags <- .rxRConfigCflags()
   if (.cflags == "") {
     return(NULL)
   }
@@ -2500,7 +2550,7 @@ rxCompile.rxModelVars <- function(
           .rxModelVarsCharacter(setNames(rxNorm(.mv), NULL))
         }
         .prefix2 <- .rxState$modelVarsCCache[[3]]
-        ## Register the model for unload bookkeeping (codegen no longer takes timeId)
+        ## Register the model for unload bookkeeping
         .rxTimeId(.trans["parsed_md5"])
         .newMod <- FALSE
         if (!is.null(modName)) {
@@ -2512,6 +2562,17 @@ rxCompile.rxModelVars <- function(
         .model <- .rxModelVarsLast$model
         .model["indLin"] <- .rxState$meCode
         .rxModelVarsLast$model <- .model
+        ## generate at the level the stored md5 was made at, not the option's
+        .fullOptOf <- .rxFullOptOf(as.character(.trans["parsed_md5"]))
+        .rxFullOptState$level <- .fullOptOf$level
+        .rxFullOptState$impure <- .fullOptOf$impure
+        on.exit(
+          {
+            .rxFullOptState$level <- NULL
+            .rxFullOptState$impure <- NULL
+          },
+          add = TRUE
+        )
         if (!is.null(package) && !.newMod) {
           .libname <- c(package, gsub(.Platform$dynlib.ext, "", basename(.cDllFile)))
           .Call(
@@ -2597,7 +2658,12 @@ rxCompile.rxModelVars <- function(
         cat(.ret)
         sink()
         sink(.normalizePath(file.path(.dir, "extraC.h")))
-        cat(rxode2::.extraCnow())
+        .extraCtxt <- rxode2::.extraCnow()
+        if (any(nzchar(trimws(.extraCtxt)))) {
+          # user C code may draw random numbers, so keep _setThreadInd() per call
+          cat("#define _rxNeedThreadInd 1\n")
+        }
+        cat(.extraCtxt)
         sink()
         try(dyn.unload(.cDllFile), silent = TRUE)
         try(unlink(.cDllFile))

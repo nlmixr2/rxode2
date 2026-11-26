@@ -4,11 +4,38 @@
 
 #include <ctype.h>
 #include "threadSafeConstants.h"
+#include "rxProtect.h"
 
 SEXP rxode2_getUdf2(const char *fun, const int nargs);
 
 // defined below, used by the adaptive dosing statement handlers
 static inline void rxPushDoseNoteArg(const char *fn, const char *arg, const char *v);
+
+// number of arguments of a `function` parse node: `f()` has 0, not 1
+static inline int functionNodeNargs(D_ParseNode *fPn) {
+  int ii = d_get_number_of_children(d_get_child(fPn, 3)) + 1;
+  if (ii == 1) {
+    D_ParseNode *xpn = d_get_child(fPn, 2);
+    char *v2 = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
+    if (allSpaces(v2)) return 0;
+  }
+  return ii;
+}
+
+// `f(, b)`: the grammar's first argument is optional, so an empty one
+// followed by a comma has to be refused here
+static inline int assertNoEmptyFirstArg(D_ParseNode *fPn, const char *fn) {
+  if (d_get_number_of_children(d_get_child(fPn, 3)) == 0) return 0;
+  D_ParseNode *xpn = d_get_child(fPn, 2);
+  char *v2 = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
+  if (allSpaces(v2)) {
+    updateSyntaxCol();
+    sPrint(&_gbuf, _("'%s' has an empty first argument"), fn);
+    trans_syntax_error_report_fn(_gbuf.s);
+    return 1;
+  }
+  return 0;
+}
 
 static inline int isAtFunctionArg(const char *name) {
   return !strcmp("(", name) ||
@@ -45,6 +72,7 @@ static inline int handleSimFunctions(nodeInfo ni, char *name, int *i, int nch,
     D_ParseNode *xpn = d_get_child(pn, 0);
     char *v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
     aType(TLOGIC);
+    tb.rng = 1;
     if (!strcmp("simeta", v)) {
       foundF0=1;
       if ((tb.simflg & 1) == 0) tb.simflg += 1;
@@ -79,13 +107,19 @@ static inline int handleObsStatement(nodeInfo ni, char *name, int *i, int nch,
     sb.o = 0; sbDt.o = 0; sbt.o = 0;
     tb.evid_ = 1;
     aType(TEVID);
-    int ii = d_get_number_of_children(d_get_child(fPn, 3)) + 1;
+    if (assertNoEmptyFirstArg(fPn, "obs")) return 1;
+    int ii = functionNodeNargs(fPn);
+    if (ii == 0) {
+      updateSyntaxCol();
+      trans_syntax_error_report_fn(_("'obs' needs at least one argument"));
+      return 1;
+    }
     D_ParseNode *xpn0 = d_get_child(fPn, 2);
     char *v0 = (char*)rc_dup_str(xpn0->start_loc.s, xpn0->end);
-    rxPushDoseNoteArg("obs", "value", v0);
     sAppend(&sb, "_obs(_cSub, t, %d, (double) %s", ii, v0);
     sAppend(&sbDt, "_obs(_cSub, t, %d, (double) %s", ii, v0);
     sAppend(&sbt, "obs(%s", v0);
+    rxPushDoseNoteArg("obs", "value", v0);
     D_ParseNode *rest = d_get_child(fPn, 3);
     for (int j = 0; j < ii - 1; ++j) {
       char *cur = (char*)rc_dup_str(d_get_child(rest, j)->start_loc.s,
@@ -355,12 +389,60 @@ static inline int handleFunctionLogit(transFunctions *tf) {
   return 0;
 }
 
+// a numeric literal argument (whitespace allowed around it); 0 otherwise
+static inline int clampLiteral(const char *s, double *val) {
+  char *end;
+  while (isspace((unsigned char)*s)) s++;
+  if (*s == '\0') return 0;
+  *val = strtod(s, &end);
+  if (end == s) return 0;
+  while (isspace((unsigned char)*end)) end++;
+  return *end == '\0';
+}
+
+// clamp(x, lo, hi) -> _clamp(); exactly 3 arguments, and lo <= hi when both
+// bounds are literal
+static inline int handleFunctionClamp(transFunctions *tf) {
+  if (strcmp("clamp", tf->v)) return 0;
+  int ii = functionNodeNargs(tf->pn);
+  if (ii != 3) {
+    updateSyntaxCol();
+    sPrint(&_gbuf, _("'clamp' takes 3 arguments 'clamp(x, lo, hi)', supplied %d"), ii);
+    trans_syntax_error_report_fn(_gbuf.s);
+  } else {
+    D_ParseNode *rest = d_get_child(tf->pn, 3);
+    // each remaining argument's text starts with its separating comma
+    D_ParseNode *loPn = d_get_child(rest, 0);
+    D_ParseNode *hiPn = d_get_child(rest, 1);
+    char *lo = (char*)rc_dup_str(loPn->start_loc.s, loPn->end);
+    char *hi = (char*)rc_dup_str(hiPn->start_loc.s, hiPn->end);
+    double loV, hiV;
+    if (clampLiteral(lo + 1, &loV) && clampLiteral(hi + 1, &hiV) && loV > hiV) {
+      updateSyntaxCol();
+      sPrint(&_gbuf, _("'clamp(x, lo, hi)' requires lo <= hi (lo=%g, hi=%g)"),
+             loV, hiV);
+      trans_syntax_error_report_fn(_gbuf.s);
+    }
+  }
+  sAppendN(&sb, "_clamp(", 7);
+  sAppendN(&sbDt, "_clamp(", 7);
+  sAppendN(&sbt, "clamp(", 6);
+  tf->i[0] = 1;// Parse next arguments
+  tf->depth[0]=1;
+  return 1;
+}
+
 static inline int handleFunctionSum(transFunctions *tf) {
   if (!strcmp("prod",tf->v)   || !strcmp("sum", tf->v) || !strcmp("sign",  tf->v) ||
       !strcmp("max", tf->v)   || !strcmp("min", tf->v) ||
       !strcmp("rxord", tf->v) ||
       !strcmp("mix", tf->v) || !strcmp("obs", tf->v)) {
-    int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
+    int ii = functionNodeNargs(tf->pn);
+    if (ii == 0) {
+      updateSyntaxCol();
+      sPrint(&_gbuf, _("'%s' needs at least one argument"), tf->v);
+      trans_syntax_error_report_fn(_gbuf.s);
+    }
     if (!strcmp("prod", tf->v)) {
       sAppend(&sb, "_prod(_p, _input, _solveData->prodType, %d, (double) ", ii);
       sAppend(&sbDt, "_prod(_p, _input, _solveData->prodType, %d, (double) ", ii);
@@ -376,10 +458,11 @@ static inline int handleFunctionSum(transFunctions *tf) {
     } else if (!strcmp("rxord", tf->v)) {
       sAppend(&sb, "_rxord(_cSub, %d, (double) ", ii);
       sAppend(&sbDt, "_rxord(_cSub, %d, (double) ", ii);
+      tb.rng = 1; // _rxord() draws with rxunif()
     } else if (!strcmp("mix", tf->v)) {
       sAppend(&sb, "_mix(_cSub, %d, (double) ", ii);
       sAppend(&sbDt, "_mix(_cSub, %d, (double) ", ii);
-      if (ii % 2 == 0 || ii < 3) {
+      if (ii != 0 && (ii % 2 == 0 || ii < 3)) {
         sPrint(&_gbuf,
                _("'mix' takes an odd number of arguments (and at least 3) supplied %d"),
                ii);
@@ -418,30 +501,71 @@ static inline int handleFunctionSum(transFunctions *tf) {
   return 0;
 }
 
+// Time-to-event (tte()) helpers; every one takes the endpoint's tte code and
+// dispatches through _rxTte(_cSub, t, what, cmtBase, cmtSens, code)
+// (src/tteModel.cpp), with the model's _CMT remap for data lookups
+static inline int handleFunctionTte(transFunctions *tf) {
+  int what = -1;
+  if (!strcmp("rxTteSim", tf->v)) what = 0;
+  else if (!strcmp("rxTteH0", tf->v)) what = 1;
+  else if (!strcmp("tteTime", tf->v)) what = 2;
+  else if (!strcmp("tteCount", tf->v)) what = 3;
+  if (what < 0) return 0;
+  int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
+  if (ii != 1) {
+    updateSyntaxCol();
+    sPrint(&_gbuf, _("'%s' takes 1 argument"), tf->v);
+    trans_syntax_error_report_fn(_gbuf.s);
+  }
+  sAppend(&sb, "_rxTte(_cSub, t, %d, _RXTTE_CMTB, _RXTTE_CMTS, (double) ", what);
+  sAppend(&sbDt, "_rxTte(_cSub, t, %d, _RXTTE_CMTB, _RXTTE_CMTS, (double) ", what);
+  sAppend(&sbt, "%s(", tf->v);
+  // tte simulation re-times records of each subject, so every subject needs
+  // its own event arrays (the same requirement as evid_() pushes)
+  tb.evid_ = 1;
+  tf->i[0] = 1;// Parse next arguments
+  tf->depth[0]=1;
+  return 1;
+}
+
 #include "parseFunsDiff.h"
 #include "parseFunsRandom.h"
 #include "parseFunsNa.h"
 #include "parseFunsLinCmt.h"
 
-static inline int handleFunctionsExceptLinCmt(transFunctions *tf) {
+static inline int handleFunctionsDoseTime(transFunctions *tf) {
   return handleFunctionDosenum(tf) ||
     handleFunctionDelay(tf) ||
     handleFunctionTad(tf) ||
     handleFunctionSum(tf) ||
+    handleFunctionClamp(tf) ||
+    handleFunctionTte(tf) ||
     handleFunctionLogit(tf) ||
     handleFunctionDiff(tf) ||
     handleFunctionPnorm(tf) ||
-    handleFunctionTransit(tf) ||
-    handleFunctionRxnorm(tf) ||
+    handleFunctionTransit(tf);
+}
+
+static inline int handleFunctionsRandom(transFunctions *tf) {
+  return handleFunctionRxnorm(tf) ||
     handleFunctionRchisq(tf) ||
     handleFunctionRgeom(tf) ||
     handleFunctionRbinom(tf) ||
     handleFunctionRnbinom(tf) ||
-    handleFunctionRnbinomMu(tf) ||
-    handleFunctionIsNan(tf) ||
+    handleFunctionRnbinomMu(tf);
+}
+
+static inline int handleFunctionsNa(transFunctions *tf) {
+  return handleFunctionIsNan(tf) ||
     handleFunctionIsNa(tf) ||
     handleFunctionIsFinite(tf) ||
     handleFunctionIsInfinite(tf);
+}
+
+static inline int handleFunctionsExceptLinCmt(transFunctions *tf) {
+  return handleFunctionsDoseTime(tf) ||
+    handleFunctionsRandom(tf) ||
+    handleFunctionsNa(tf);
 }
 
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
@@ -502,6 +626,13 @@ extern SEXP _rxode2parse_funNameInt;
 extern SEXP _rxode2parse_functionThreadSafe;
 
 
+extern SEXP _rxode2parse_functionPackageName;
+
+static inline int rxIsExtPkgFun(int kk) {
+  const char *pkg = R_CHAR(STRING_ELT(_rxode2parse_functionPackageName, kk));
+  return strcmp(pkg, "rxode2") && strcmp(pkg, "rxode2ll");
+}
+
 static inline int handleBadFunctions(transFunctions *tf) {
   // Split out to handle anticipated automatic conversion of R
   // functions to C
@@ -509,7 +640,7 @@ static inline int handleBadFunctions(transFunctions *tf) {
   int curThread = 0;
   for (int j = Rf_length(_goodFuns); j--;){
     if (!strcmp(CHAR(STRING_ELT(_goodFuns, j)),tf->v)){
-      int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
+      int ii = functionNodeNargs(tf->pn);
       int argMin=-1, argMax=-1;
       for (int kk = Rf_length(_rxode2parse_rxFunctionName); kk--;) {
         if (!strcmp(CHAR(STRING_ELT(_rxode2parse_rxFunctionName, kk)),tf->v)) {
@@ -517,6 +648,8 @@ static inline int handleBadFunctions(transFunctions *tf) {
           argMax = INTEGER(_rxode2parse_functionArgMax)[kk];
           curThread = INTEGER(_rxode2parse_functionThreadSafe)[kk];
           if (curThread == 0) tb.thread = notThreadSafe;
+          // another package's C function may draw random numbers
+          if (rxIsExtPkgFun(kk)) tb.rng = 1;
           if (argMin == NA_INTEGER || argMax == NA_INTEGER) {
             argMin = argMax = -1;
             break;
@@ -568,17 +701,12 @@ static inline int handleBadFunctions(transFunctions *tf) {
     }
   }
   if (foundFun == 0){
-    int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
-    if (ii == 1) {
-      D_ParseNode *xpn = d_get_child(tf->pn, 2);
-      char *v2 = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
-      int allSpace=allSpaces(v2);
-      if (allSpace) ii = 0;
-    }
-    SEXP lst = PROTECT(rxode2_getUdf2(tf->v, ii));
+    int ii = functionNodeNargs(tf->pn);
+    rxProtectGuard;
+    SEXP lst = rxP(rxode2_getUdf2(tf->v, ii));
     int udf = INTEGER(VECTOR_ELT(lst, 0))[0];
     const char *udfInfo = R_CHAR(STRING_ELT(VECTOR_ELT(lst, 1), 0));
-    UNPROTECT(1);
+    rxUPAll();
     if (udf == NA_INTEGER) {
       sPrint(&_gbuf, "%s", udfInfo);
       updateSyntaxCol();
@@ -589,6 +717,7 @@ static inline int handleBadFunctions(transFunctions *tf) {
         sAppendN(&sbDt, "_udf(\".rxUiUdfNone\",(double *) NULL, -42, (double) ", 51);
         sAppend(&sbt, "%s(", tf->v);
         tb.thread = notThreadSafe;
+        tb.rng = 1;
         tf->i[0] = 1;// Parse next arguments
         tf->depth[0]=1;
         return 1;
@@ -605,6 +734,7 @@ static inline int handleBadFunctions(transFunctions *tf) {
         sAppend(&sbDt, "_udf(\"%s\", __udf, %d, (double) ", tf->v, ii);
         sAppend(&sbt, "%s(", tf->v);
         tb.thread = notThreadSafe;
+        tb.rng = 1;
         tf->i[0] = 1;// Parse next arguments
         tf->depth[0]=1;
         return 1;
@@ -612,6 +742,48 @@ static inline int handleBadFunctions(transFunctions *tf) {
     }
   }
   return 0;
+}
+
+extern SEXP _rxode2parse_functionGpuSafe;
+extern SEXP _rxode2parse_funNameGpuSafe;
+
+// The model stays GPU safe only while every function it calls is registered
+// gpuSafe in a translation table (rxode2parseGetTranslation() or the builtin
+// table).  Unregistered calls (dosing, random draws, user functions) are not.
+// the device max()/min() take at most 8 arguments, sign() at most 4
+static inline int rxgTooManyArgs(const char *v, int n) {
+  if (!strcmp(v, "max") || !strcmp(v, "min")) return n > 8;
+  if (!strcmp(v, "sign")) return n > 4;
+  return 0;
+}
+
+static inline void rxgNoteFunction(transFunctions *tf) {
+  if (tb.gpu == 0) return;
+  const char *v = tf->v;
+  // delay() reads the subject's history on the device (rxg_delay()); its
+  // sensitivity forms rxDelayD*() do not run there
+  if (!strcmp(v, "delay")) return;
+  if (rxgTooManyArgs(v, functionNodeNargs(tf->pn))) {
+    tb.gpu = 0;
+    return;
+  }
+  if (_rxode2parse_functionGpuSafe != NULL) {
+    for (int kk = Rf_length(_rxode2parse_rxFunctionName); kk--;) {
+      if (!strcmp(CHAR(STRING_ELT(_rxode2parse_rxFunctionName, kk)), v)) {
+        if (INTEGER(_rxode2parse_functionGpuSafe)[kk] != 1) tb.gpu = 0;
+        return;
+      }
+    }
+  }
+  if (_rxode2parse_funNameGpuSafe != NULL) {
+    for (int kk = Rf_length(_rxode2parse_funName); kk--;) {
+      if (!strcmp(CHAR(STRING_ELT(_rxode2parse_funName, kk)), v)) {
+        if (INTEGER(_rxode2parse_funNameGpuSafe)[kk] != 1) tb.gpu = 0;
+        return;
+      }
+    }
+  }
+  tb.gpu = 0;
 }
 
 static inline int handleFunctions(nodeInfo ni, char *name, int *i, int *depth, int nch, D_ParseNode *xpn, D_ParseNode *pn) {
@@ -626,6 +798,12 @@ static inline int handleFunctions(nodeInfo ni, char *name, int *i, int *depth, i
     tf->xpn = xpn;
     tf->pn = pn;
     tf->v = (char*)rc_dup_str(xpn->start_loc.s, xpn->end);
+    rxgNoteFunction(tf);
+    if (assertNoEmptyFirstArg(pn, tf->v)) {
+      // skip the call so its handler does not also act on the empty argument
+      tf->i[0] = tf->nch;
+      return 1;
+    }
     if (handleFunctionsExceptLinCmt(tf)) {
       return 1;
     } else if (handleFunctionLinCmt(tf)){

@@ -261,6 +261,11 @@ suggest the package emphasis on pharmacometrics modeling, including
 pharmacokinetics (PK), pharmacodynamics (PD), disease progression,
 drug-disease modeling, etc.
 
+Each generated C function (the ODE right-hand side, the calculated
+variables, \code{f()}/\code{alag()}/\code{rate()}/\code{dur()}, ...) evaluates only the model
+statements its own outputs depend on; \code{options(rxode2.fullOpt = "none")}
+evaluates every statement in every function instead.
+
 \subsection{Creating rxode2 models}{
 
 The recommended way to write an \code{rxode2} model is a model function with
@@ -563,6 +568,15 @@ table:\tabular{lll}{
    studentTCdf(x, nu) \tab Student t CDF, ie pt(x, nu) \tab  \cr
    studentTCdfDnu(x, nu) \tab Derivative of studentTCdf with respect to nu. No elementary closed form; a central difference with one Richardson extrapolation \tab  \cr
    studentTInv(p, nu) \tab Student t quantile, ie qt(p, nu); exactly the inverse of studentTCdf \tab  \cr
+   etaBoxCox(eta, lambda) \tab Box-Cox shape transform of a random effect, (exp(eta)^lambda-1)/lambda; eta at lambda=0, smooth through it \tab  \cr
+   etaJohnDraper(eta, lambda) \tab John-Draper (modulus) shape transform of a random effect, sign(eta)*((abs(eta)+1)^lambda-1)/lambda; eta at lambda=1 \tab  \cr
+   etaYeoJohnson(eta, lambda) \tab Yeo-Johnson shape transform of a random effect; ((eta+1)^lambda-1)/lambda for eta >= 0, -((1-eta)^(2-lambda)-1)/(2-lambda) below; eta at lambda=1 \tab  \cr
+   etaHeavyTail(eta, theta) \tab Heavy-tailed shape transform of a random effect, eta*abs(eta)^theta; eta at theta=0 \tab  \cr
+   etaLogit(eta, theta1, theta2) \tab Logit shape transform of a random effect, (expit(logit(theta1)+eta)-theta1)*theta2; theta1 in (0, 1), theta2 > 0 \tab  \cr
+   etaSinhAsinh(eta, eps, delta) \tab Sinh-arcsinh shape transform of a random effect, sinh(delta*asinh(eta)-eps)+sinh(eps); eta at eps=0, delta=1 \tab  \cr
+   etaTukeyGH(eta, g, h) \tab Tukey g-and-h shape transform of a random effect, (exp(g\emph{eta)-1)/g}exp(h*eta^2/2); eta at g=0, h=0 \tab  \cr
+   absPowLog(x, p, k) \tab abs(x)^p*log(abs(x))^k with its limit at x=0; the derivative helper for etaHeavyTail() \tab  \cr
+   exprelD(z, n) \tab n-th derivative of (exp(z)-1)/z, finite at z=0; the derivative helper for the eta shape transforms \tab  \cr
    rxnorm(x) \tab Generate one deviate of from a normal distribution for each observation scale \tab  \cr
    rxnormV(x) \tab Generate one deviate from low discrepancy normal for each observation \tab  \cr
    rxcauchy \tab Generate one deviate from the cauchy distribution for each observation \tab  \cr
@@ -587,12 +601,15 @@ table:\tabular{lll}{
    sum(…) \tab sum of terms; This uses PreciseSums so the product will not have as much floating point errors (though it will take longer) \tab  \cr
    max(…) \tab maximum of a group of numbers \tab  \cr
    min(…) \tab Min of a group of numbers \tab  \cr
+   clamp(x, lo, hi) \tab Bound x into [lo, hi]: lo when x <= lo, hi when x >= hi, otherwise x; the same as min(max(x, lo), hi), and differentiable in the same way \tab  \cr
    lag(parameter, number=1) \tab Get the lag of an input parameter; You can specify a number of lagged observations \tab  \cr
    lead(parameter, number=2) \tab Get the lead of an input parameter; You can specify a number of lead observation \tab  \cr
    diff(par, number=1) \tab Get the difference between the current parameter and the last parameter; Can change the parameter number \tab  \cr
    lag0(parameter, number=1) \tab Like lag() but returns 0 instead of NA when there is no prior value (the first record) \tab  \cr
    lead0(parameter, number=1) \tab Like lead() but returns 0 instead of NA when there is no following value (the last record) \tab  \cr
    diff0(par, number=1) \tab Like diff() but returns the value itself (previous value treated as 0) when there is no prior value \tab  \cr
+   tteTime(ev) \tab Time of the last event of the tte() endpoint ev (the observation window start before the first event) \tab  \cr
+   tteCount(ev) \tab Number of events of the tte() endpoint ev so far \tab  \cr
    first(par) \tab Get the first value of an input parameter \tab  \cr
    last(par) \tab Get the last value of an input parameter \tab  \cr
    transit() \tab The transit compartment pseudo function \tab  \cr
@@ -618,6 +635,12 @@ table:\tabular{lll}{
 
 Note that \verb{lag(cmt) =} is equivalent to \verb{alag(cmt) =} and not the same
 as \verb{= lag(wt)}
+
+\code{clamp(x, lo, hi)} bounds a value into an interval, for example a
+fraction kept inside \verb{(0, 1)} with \code{fr <- clamp(f0, 0.01, 0.99)}. It is
+\code{min(max(x, lo), hi)}, so its derivative is 1 inside the interval and 0
+outside. It takes exactly three arguments, and literal bounds must have
+\code{lo <= hi}.
 \subsection{Inverse CDFs}{
 
 A group of these deserves a word, because they exist for one purpose:
@@ -947,6 +970,49 @@ probabilities remain the same:\tabular{ll}{
 
 }
 
+\subsection{Time-to-event endpoints}{
+
+A time-to-event endpoint is specified by its hazard:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{ev ~ tte(haz, eventType = "exact", maxEventNumber = Inf,
+         rightCensoringTime = 120, intervalLength = 10, dropout = FALSE)
+}\if{html}{\out{</div>}}
+
+The cumulative hazard is added to the model as a hidden state
+(\code{rx_tteH_ev}), and event times solve \code{H(t) - H(t_last) = -log(u)} with
+a root finder. Only the hazard is required; the options are:\tabular{lll}{
+   Option \tab Default \tab Meaning \cr
+   \code{eventType} \tab \code{"exact"} \tab \code{"exact"} or \code{"intervalCensored"} event times \cr
+   \code{maxEventNumber} \tab \code{Inf} \tab maximum number of events (\code{1} for one-off) \cr
+   \code{rightCensoringTime} \tab last record of the endpoint \tab end of the observation window \cr
+   \code{intervalLength} \tab tenth of the observation window \tab interval length for \code{"intervalCensored"} \cr
+   \code{dropout} \tab \code{FALSE} \tab the event ends all observations (needs \code{maxEventNumber = 1}) \cr
+   \code{origin} \tab \code{FALSE} \tab observe from the subject’s start, with no start row \cr
+}
+
+
+Simulated rows follow the Monolix/NONMEM layout: \code{sim = 0} at the start
+of the window, \code{sim = 1} at each event (or at the end of each interval
+holding an event) and \code{sim = 0} at right censoring. In model lines,
+\code{tteTime(ev)} is the time of the last event of \code{ev} (the window start
+before the first) and \code{tteCount(ev)} is the number of events so far, so
+renewal and count-dependent hazards can be written. Every ODE solving
+\code{method} except the adjoint sensitivity methods simulates \code{tte()}
+endpoints, since the root finding only re-solves intervals with the
+chosen method; a hazard using \code{delay()} is solved with the dense
+\code{delay()} solvers. A steady-state dose holds the cumulative hazard
+fixed, so a \code{delay()} of the cumulative hazard (\code{rx_tteH_ev}) cannot be
+combined with steady-state doses.
+
+In estimation each record of the endpoint scores the events and survival
+since the endpoint’s previous record: \code{log(h) - dH} for an event,
+\code{log(1 - exp(-dH))} for an interval holding one and \code{-dH} otherwise,
+with \code{dH} the change of the cumulative hazard. The first record of a
+subject is the start of observation and scores nothing (\code{origin = TRUE}
+counts from the subject’s start instead), and \code{tteTime()}/\code{tteCount()}
+come from the endpoint’s \code{DV = 1} records.
+}
+
 \subsection{General table of supported residual distributions}{
 
 In general all the that are supported are in the following table
@@ -1134,6 +1200,7 @@ In general all the that are supported are in the following table
    negative binomial form #1 \tab  \tab none \tab cmt ~ dnbinom(n, p) \tab  \tab compartment specification \cr
    negative binomial form #2 \tab  \tab none \tab cmt ~ dnbinomMu(size, mu) \tab  \tab compartment specification \cr
    ordinal probability \tab  \tab none \tab cmt ~ c(p0=0, p1=1, p2=2, 3) \tab  \tab compartment specification \cr
+   time-to-event \tab  \tab none \tab cmt ~ tte(hazard, eventType=, maxEventNumber=, rightCensoringTime=, intervalLength=, dropout=) \tab  \tab compartment specification \cr
    log-likelihood \tab  \tab none \tab ll(cmt) ~ log likelihood expression \tab  \tab likelihood + compartment expression \cr
 }
 

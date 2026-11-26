@@ -4,6 +4,7 @@
 #include "rxProtect.h"
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 /**
  * Generates a random string of 4 alphanumeric characters.
@@ -33,6 +34,8 @@ SEXP _rxode2parse_functionPackageFunction;
 SEXP _rxode2parse_functionArgMin;
 SEXP _rxode2parse_functionArgMax;
 SEXP _rxode2parse_functionThreadSafe;
+SEXP _rxode2parse_functionGpuSafe = NULL;
+SEXP _rxode2parse_funNameGpuSafe = NULL;
 
 SEXP _rxode2parse_funName;
 SEXP _rxode2parse_funNameInt;
@@ -102,7 +105,7 @@ static char *_es_dup(SEXP s) {
 
    R_PreserveObject is not undone by an unwind, so the objects and the count
    stay in step across an error and releasing them stays correct either way.
-   The list is fixed and short (8 + 2 translation entries, plus _goodFuns). */
+   The list is fixed and short (9 + 3 translation entries, plus _goodFuns). */
 #define RXP_MAX_PRESERVED 32
 static SEXP _rxode2parse_pres[RXP_MAX_PRESERVED];
 int _rxode2parse_protected = 0;
@@ -120,11 +123,38 @@ SEXP _rxode2parse_preserve(SEXP x) {
    and _rxode2parse_preserve() allocates, so protect each frame until its columns
    are claimed; the protection is released before returning, never crossing the
    parse. */
+// The optional gpuSafe column, found by name and returned as an integer
+// vector; NULL (no function is gpu safe) when it is missing or not numeric
+static SEXP rxgGpuSafeColumn(SEXP df) {
+  SEXP nm = Rf_getAttrib(df, R_NamesSymbol);
+  if (TYPEOF(nm) != STRSXP) return NULL;
+  for (int i = Rf_length(nm); i--;) {
+    if (strcmp(CHAR(STRING_ELT(nm, i)), "gpuSafe")) continue;
+    SEXP col = VECTOR_ELT(df, i);
+    switch (TYPEOF(col)) {
+    case INTSXP:
+      return _rxode2parse_preserve(col);
+    case LGLSXP:
+    case REALSXP: {
+      // R_PreserveObject() allocates, so hold the copy until it is preserved
+      rxProtectGuard;
+      SEXP ret = _rxode2parse_preserve(rxP(Rf_coerceVector(col, INTSXP)));
+      rxUPAll();
+      return ret;
+    }
+    default:
+      return NULL;
+    }
+  }
+  return NULL;
+}
+
 void _rxode2parse_assignTranslationBuiltin(void) {
   rxProtectGuard;
   SEXP df = rxP(getRxode2ParseDfBuiltin());
   _rxode2parse_funName = _rxode2parse_preserve(VECTOR_ELT(df, 0));
   _rxode2parse_funNameInt = _rxode2parse_preserve(VECTOR_ELT(df, 1));
+  _rxode2parse_funNameGpuSafe = rxgGpuSafeColumn(df);
   rxUP(1);
 }
 
@@ -140,6 +170,8 @@ void _rxode2parse_assignTranslation(SEXP df) {
   _rxode2parse_functionArgMin = _rxode2parse_preserve(VECTOR_ELT(df, 5));
   _rxode2parse_functionArgMax = _rxode2parse_preserve(VECTOR_ELT(df, 6));
   _rxode2parse_functionThreadSafe = _rxode2parse_preserve(VECTOR_ELT(df, 7));
+  // gpuSafe is optional: without it no registered function is gpu safe
+  _rxode2parse_functionGpuSafe = rxgGpuSafeColumn(df);
   _rxode2parse_assignTranslationBuiltin();
   rxUP(1);
 }
@@ -159,10 +191,115 @@ void _rxode2parse_unprotect(void) {
 
 #include "codegen2.h"
 #include "pkTime.h"
+#include "codegenSlice.h"
 
 // Lines that read `time` as the record time (see pkTime.h); NULL when
 // the function being generated never does.
 static int *_pkLine = NULL;
+
+// GPU (OpenCL C) device code: while _rxgDev is set, codegen(ode_dydt/ode_jac)
+// emits rxg_dydt()/rxg_jac(), which read only their arguments (see
+// inst/include/rxode2gpu/rxg_model.h).  _rxgHdr keeps the __DDT/_LHS_
+// defines.  Whether a model can run as device code is decided while parsing
+// (rxModelVars()$flags["gpuSafe"]); the lines skipped here only occur in
+// models that are not.
+static int _rxgDev = 0;
+static sbuf _rxgHdr;
+
+// Device code: opens rxg_dydt()/rxg_jac(); 1 when it did
+static int rxgDevOpen(int show_ode) {
+  if (!_rxgDev) return 0;
+  if (show_ode == ode_dydt) {
+    sAppend(&sbOut, "RXG_FN void rxg_dydt(double __t, double *__zzStateVar__, double *__DDtStateVar__, const rxg_ctx *_rxg)\n{\n  int _itwhile = 0;\n  (void)_itwhile;\n  int _cSub = 0;\n  (void)_cSub;\n  double t = __t + _rxg->curShift;\n  (void)t;\n");
+    return 1;
+  }
+  if (show_ode == ode_jac) {
+    sAppend(&sbOut, "RXG_FN void rxg_jac(double __t, double *__zzStateVar__, double *__PDStateVar__, int __NROWPD__, const rxg_ctx *_rxg)\n{\n  int _itwhile = 0;\n  (void)_itwhile;\n  int _cSub = 0;\n  (void)_cSub;\n  double t = __t + _rxg->curShift;\n  (void)t;\n  (void)__PDStateVar__;\n  (void)__NROWPD__;\n");
+    return 1;
+  }
+  return 0;
+}
+
+// Device code: closes rxg_dydt()/rxg_jac(); 1 when it did
+static int rxgDevClose(int show_ode) {
+  if (!_rxgDev) return 0;
+  if (show_ode != ode_dydt && show_ode != ode_jac) return 0;
+  sAppendN(&sbOut,  "}\n\n", 3);
+  return 1;
+}
+
+// Device code: the transform-both-sides values; the model may assign them,
+// so per-call copies seeded from the context
+static void rxgDevTbs(void) {
+  if (!_rxgDev) return;
+  sAppend(&sbOut, "  double _rxgLambda = _rxg->lambda, _rxgYj = _rxg->yj, _rxgHi = _rxg->logitHi, _rxgLow = _rxg->logitLow;\n");
+  sAppend(&sbOut, "  (void)_rxgLambda; (void)_rxgYj; (void)_rxgHi; (void)_rxgLow;\n");
+}
+
+// Device code skips lines that read host solver state or print
+static int rxgDevSkipLine(int lType) {
+  if (!_rxgDev) return 0;
+  switch (lType) {
+  case TLIN:
+  case TMTIME:
+  case TEVID:
+  case PPRN:
+    return 1;
+  default:
+    return 0;
+  }
+}
+
+// The parameter update at the top of each generated function
+static void writeUpdateParPtr(int show_ode) {
+  if (_rxgDev) {
+    sAppend(&sbOut, "  double _rxgPP[RXG_NPAR1];\n  const double *_PP = rxg_par(_rxg, __t, _rxgPP);\n  (void)_PP;\n");
+    return;
+  }
+  if (ode_is_es_dcode(show_ode)) show_ode = ode_lag;
+  switch (show_ode) {
+  case ode_ini:
+    sAppendN(&sbOut, "  _update_par_ptr(0.0, _cSub, _solveData, _idx);\n", 49);
+    break;
+  case ode_lag:
+  case ode_rate:
+  case ode_dur:
+  case ode_mtime:
+  case ode_past:
+    // functional lag, rate, duration, mtime, past-history, event-sensitivity dLag/dF
+    sAppendN(&sbOut, "  _update_par_ptr(NA_REAL, _cSub, _solveData, _idx);\n", 53);
+    break;
+  case ode_indLinVec:
+  case ode_mexp:
+    sAppendN(&sbOut, "  _update_par_ptr(_t, _cSub, _solveData, _idx);\n", 48);
+    break;
+  default:
+    sAppendN(&sbOut, "  _update_par_ptr(__t, _cSub, _solveData, _idx);\n", 49);
+  }
+}
+
+// _tPK: the time PK-type statements read (pkTime.h); only the functions
+// the integrator calls between records read the record time
+static void writePkTime(int show_ode) {
+  _pkLine = NULL;
+  switch (show_ode) {
+  case ode_dydt:
+  case ode_jac:
+  case ode_mexp:
+  case ode_indLinVec:
+    break;
+  default:
+    return;
+  }
+  int *pkLine = (int*)R_alloc(sbPm.n > 0 ? sbPm.n : 1, sizeof(int));
+  if (pkTimeClassify(pkLine) <= 0) return;
+  _pkLine = pkLine;
+  if (_rxgDev) {
+    sAppend(&sbOut, "  double _tPK = (_rxg->nonmem ? _rxg->tpk : t);\n  (void)_tPK;\n");
+  } else {
+    sAppend(&sbOut, "  double _tPK = _rxPkTime(t, _cSub, _solveData);\n  (void)_tPK;\n");
+  }
+}
 
 static inline void appendModelLine(int i, const char *line) {
   if (_pkLine != NULL && _pkLine[i]) {
@@ -260,7 +397,9 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
   } else {
     int i, j;
     char *buf;
-    if (show_ode == ode_dydt){
+    if (rxgDevOpen(show_ode)) {
+      // device code: rxg_dydt()/rxg_jac() have no host header
+    } else if (show_ode == ode_dydt){
       const char *extra = "";
       if (strncmp("rx_", libname, 3) != 0) extra = libname;
       writeHeader(pMd5, extra);
@@ -275,17 +414,22 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
       int mx = maxSumProdN;
       if (SumProdLD > mx) mx = SumProdLD;
       sAppend(&sbOut,"#define __MAX_PROD__ %d\n", mx);
-      int baseSize = tb.statei-tb.nExtra+extraCmt - tb.sensi;
-      if (tb.sensi > 0){
+      // the linCmt() carry states are numbered with the sensitivities
+      int sensOff = tb.sensi + tb.linCmtCarryN;
+      int baseSize = tb.statei-tb.nExtra+extraCmt - sensOff;
+      if (sensOff > 0){
         // This converts CMT to user CMT in model
         // Hence CMT = 4 could translate in data to 44 with sensi=10
         // Then cmt=44 translates back to cmt-10 or 4.
         // This makes the sensitivity equations insensitive to CMT changes that occur in FOCEi
         sAppend(&sbOut,"#define _CMT ((fabs(CMT)<=%d) ? CMT : ((CMT<0) ? CMT+%d: CMT-%d))\n",
-                baseSize, tb.sensi, tb.sensi);
+                baseSize, sensOff, sensOff);
       } else {
         sAppendN(&sbOut,"#define _CMT CMT\n", 17);
       }
+      // the same remap for tte() data lookups of other records' CMT
+      sAppend(&sbOut,"#define _RXTTE_CMTB %d\n#define _RXTTE_CMTS %d\n",
+              baseSize, sensOff);
       // Now define lhs lags
       prnt_vars(print_lhsLags, 1, "", "", 13);
       // And covariate/parameter lags
@@ -305,6 +449,9 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
         }
       }
       sAppendN(&sbOut,"#include \"extraC.h\"\n", 20);
+      // Only the random-number helpers read the slot _setThreadInd() names;
+      // user C code (extraC.h defines _rxNeedThreadInd) may call them too.
+      sAppend(&sbOut, "#if %d || defined(_rxNeedThreadInd)\n#define _rxSetThreadInd(x) _setThreadInd(x)\n#else\n#define _rxSetThreadInd(x) (void)(x)\n#endif\n", tb.rng);
       writeBody1();
       for (int i = Rf_length(_rxode2parse_functionName); i--;) {
         sAppend(&sbOut,"  %s = (%s) R_GetCCallable(\"%s\", \"%s\");\n",
@@ -336,11 +483,11 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
               "#if defined(__GNUC__) || defined(__clang__)\n"
               "__attribute__((hot))\n"
               "#endif\nvoid ");
-      sAppend(&sbOut, "%sdydt(int *_neq, double __t, double * __restrict__ __zzStateVar__, double * __restrict__ __DDtStateVar__)\n{\n  int _itwhile = 0;\n  (void)_itwhile;\n  int _cSub = _neq[1];\n  double t = __t + _solveData->subjects[_neq[1]].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=1;\n  int _wasAtEventTime = _ind->_atEventTime; _ind->_atEventTime = 0;\n  (void)_wasAtEventTime;\n", prefix);
+      sAppend(&sbOut, "%sdydt(int *_neq, double __t, double * __restrict__ __zzStateVar__, double * __restrict__ __DDtStateVar__)\n{\n  int _itwhile = 0;\n  (void)_itwhile;\n  int _cSub = _neq[1];\n  double t = __t + _solveData->subjects[_neq[1]].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n  _ind->_rxFlag=1;\n  int _wasAtEventTime = _ind->_atEventTime; _ind->_atEventTime = 0;\n  (void)_wasAtEventTime;\n", prefix);
     } else if (show_ode == ode_jac){
-      sAppend(&sbOut, "// Jacobian derived vars\nvoid %scalc_jac(int *_neq, double __t, double *__zzStateVar__, double *__PDStateVar__, unsigned int __NROWPD__) {\n  int _itwhile = 0;\n  (void)_itwhile;\n    int _cSub=_neq[1];\n  double t = __t + _solveData->subjects[_neq[1]].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=2;\n", prefix);
+      sAppend(&sbOut, "// Jacobian derived vars\nvoid %scalc_jac(int *_neq, double __t, double *__zzStateVar__, double *__PDStateVar__, unsigned int __NROWPD__) {\n  int _itwhile = 0;\n  (void)_itwhile;\n    int _cSub=_neq[1];\n  double t = __t + _solveData->subjects[_neq[1]].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n  _ind->_rxFlag=2;\n", prefix);
     } else if (show_ode == ode_ini){
-      sAppend(&sbOut,  "// Functional based initial conditions.\nvoid %sinis(int _cSub, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  \n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n _ind->_rxFlag=3;\n", prefix);
+      sAppend(&sbOut,  "// Functional based initial conditions.\nvoid %sinis(int _cSub, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  \n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n _ind->_rxFlag=3;\n", prefix);
       if (foundF0){
         sAppendN(&sbOut, "  double t=0;\n", 14);
       }
@@ -354,7 +501,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
             nnn+=1;
           }
         }
-        sAppend(&sbOut,  "// Functional based bioavailability (returns amount)\ndouble %sF(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double _f[%d];\n  (void)_f;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n    rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=4;\n",
+        sAppend(&sbOut,  "// Functional based bioavailability (returns amount)\ndouble %sF(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double _f[%d];\n  (void)_f;\n  double t = _rxDoseTime(__t + _solveData->subjects[_cSub].curShift, _cSub, _solveData);\n  (void)t;\n    rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n  _ind->_rxFlag=4;\n",
                 prefix, nnn);
         for (int jjj = nnn; jjj--;){
           sAppend(&sbOut, "  _f[%d]=1.0;\n",jjj);
@@ -373,7 +520,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
             nnn+=1;
           }
         }
-        sAppend(&sbOut,  "// Functional based absorption lag\ndouble %sLag(int _cSub,  int _cmt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double _alag[%d];\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=5;\n",
+        sAppend(&sbOut,  "// Functional based absorption lag\ndouble %sLag(int _cSub,  int _cmt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double _alag[%d];\n  double _tDose = __t + _solveData->subjects[_cSub].curShift;\n  double t = _rxLagTime(_tDose, _cSub, _solveData);\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n  _ind->_rxFlag=5;\n",
                 prefix, nnn);
         for (int jjj = nnn; jjj--;){
           sAppend(&sbOut, "  _alag[%d]=0.0;\n",jjj);
@@ -392,7 +539,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
             nnn+=1;
           }
         }
-        sAppend(&sbOut,  "// Modeled zero-order rate\ndouble %sRate(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n    int _itwhile = 0;\n  (void)_itwhile;\n  double _rate[%d];\n   double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=6;\n",
+        sAppend(&sbOut,  "// Modeled zero-order rate\ndouble %sRate(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n    int _itwhile = 0;\n  (void)_itwhile;\n  double _rate[%d];\n   double t = _rxDoseTime(__t + _solveData->subjects[_cSub].curShift, _cSub, _solveData);\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n  _ind->_rxFlag=6;\n",
                 prefix, nnn);
         for (int jjj = nnn; jjj--;){
           sAppend(&sbOut, "  _rate[%d]=0.0;\n",jjj);
@@ -411,7 +558,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
             nnn+=1;
           }
         }
-        sAppend(&sbOut,  "// Modeled zero-order duration\ndouble %sDur(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n double _dur[%d];\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n    rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=7;\n",
+        sAppend(&sbOut,  "// Modeled zero-order duration\ndouble %sDur(int _cSub,  int _cmt, double _amt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n double _dur[%d];\n  double t = _rxDoseTime(__t + _solveData->subjects[_cSub].curShift, _cSub, _solveData);\n  (void)t;\n    rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n  _ind->_rxFlag=7;\n",
                 prefix, nnn);
         for (int jjj = nnn; jjj--;){
           sAppend(&sbOut, "  _dur[%d]=0.0;\n",jjj);
@@ -432,7 +579,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
             nnn+=1;
           }
         }
-        sAppend(&sbOut,  "// Non-constant delay() pre-history\ndouble _rxPast(int _cSub, int _cmt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double _past[%d];\n  (void)_past;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=11;\n",
+        sAppend(&sbOut,  "// Non-constant delay() pre-history\ndouble _rxPast(int _cSub, int _cmt, double __t, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double _past[%d];\n  (void)_past;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n  _ind->_rxFlag=11;\n",
                 nnn);
         // default: the constant initial condition (states with no past() keep
         // the previous constant-history behavior)
@@ -445,17 +592,17 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
       }
     } else if (show_ode == ode_mtime){
       if (nmtime){
-        sAppend(&sbOut,  "// Model Times\nvoid %smtime(int _cSub, double *_mtime, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double t = 0;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=8;\n",
+        sAppend(&sbOut,  "// Model Times\nvoid %smtime(int _cSub, double *_mtime, double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double t = 0;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n  _ind->_rxFlag=8;\n",
                 prefix);
       } else {
         sAppend(&sbOut,  "// Model Times\nvoid %smtime(int _cSub, double *_mtime, double *__zzStateVar__){\n",
                 prefix);
       }
     } else if (show_ode == ode_mexp){
-      sAppend(&sbOut, "// Matrix Exponential (%d)\nvoid %sME(int _cSub, double _t, double __t, double *_mat, const double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=9;\n",
+      sAppend(&sbOut, "// Matrix Exponential (%d)\nvoid %sME(int _cSub, double _t, double __t, double *_mat, const double *__zzStateVar__){\n  int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n  _ind->_rxFlag=9;\n",
               tb.matn, prefix);
     } else if (show_ode == ode_indLinVec) {
-      sAppend(&sbOut, "// Inductive linearization Matf\nvoid %sIndF(int _cSub, double _t, double __t, double *_matf, const double *__zzStateVar__){\n int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=10;\n", prefix);
+      sAppend(&sbOut, "// Inductive linearization Matf\nvoid %sIndF(int _cSub, double _t, double __t, double *_matf, const double *__zzStateVar__){\n int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n  _ind->_rxFlag=10;\n", prefix);
     } else if (ode_is_es_dcode(show_ode)) {
       // Event ("jump") sensitivities: total derivative of the modeled
       // alag / F / rate / dur wrt each first-order sensitivity parameter,
@@ -506,14 +653,14 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
       sAppend(&sbOut,
               "// Event-sensitivity %s\nvoid %s%s(int _cSub, double __t, double *__zzStateVar__, double *%s){\n"
               "  int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n"
-              "  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=5;\n  (void)%s;\n",
+              "  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n  _ind->_rxFlag=5;\n  (void)%s;\n",
               _esDesc, prefix, _esFun, _esBuf, _esBuf);
     } else {
       sAppend(&sbOut,  "// prj-specific derived vars\n"
               "#if defined(__GNUC__) || defined(__clang__)\n"
               "__attribute__((hot))\n"
               "#endif\n"
-              "void %scalc_lhs(int _cSub, double __t, double * __restrict__ __zzStateVar__, double *_lhs) {\n    int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _setThreadInd(_cSub);\n  _ind->_rxFlag=11;\n  int _wasAtEventTime = _ind->_atEventTime; _ind->_atEventTime = 0; (void)_wasAtEventTime;\n", prefix);
+              "void %scalc_lhs(int _cSub, double __t, double * __restrict__ __zzStateVar__, double *_lhs) {\n    int _itwhile = 0;\n  (void)_itwhile;\n  double t = __t + _solveData->subjects[_cSub].curShift;\n  (void)t;\n  rx_solving_options_ind *_ind = &(_solveData->subjects[_cSub]);\n  _rxSetThreadInd(_cSub);\n  _ind->_rxFlag=11;\n  int _wasAtEventTime = _ind->_atEventTime; _ind->_atEventTime = 0; (void)_wasAtEventTime;\n", prefix);
     }
     if ((show_ode == ode_jac && found_jac == 1 && good_jac == 1) ||
         (show_ode != ode_jac && show_ode != ode_ini && show_ode != ode_fbio &&
@@ -554,29 +701,10 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
         }
       }
 
+      rxgDevTbs();
       prnt_vars(print_lastLhsValue, 0,"","\n", 12);
-      if (show_ode == ode_ini){
-        sAppendN(&sbOut, "  _update_par_ptr(0.0, _cSub, _solveData, _idx);\n", 49);
-      } else if (show_ode == ode_lag || show_ode == ode_rate || show_ode == ode_dur ||
-                 show_ode == ode_mtime || show_ode == ode_past || ode_is_es_dcode(show_ode)){
-        // functional lag, rate, duration, mtime, past-history, event-sensitivity dLag/dF
-        sAppendN(&sbOut, "  _update_par_ptr(NA_REAL, _cSub, _solveData, _idx);\n", 53);
-      } else if (show_ode == ode_indLinVec || show_ode == ode_mexp){
-        sAppendN(&sbOut, "  _update_par_ptr(_t, _cSub, _solveData, _idx);\n", 48);
-      } else {
-        sAppendN(&sbOut, "  _update_par_ptr(__t, _cSub, _solveData, _idx);\n", 49);
-      }
-      // _tPK: the time PK-type statements read (pkTime.h); only the functions
-      // the integrator calls between records read the record time
-      _pkLine = NULL;
-      if (show_ode == ode_dydt || show_ode == ode_jac ||
-          show_ode == ode_mexp || show_ode == ode_indLinVec) {
-        int *pkLine = (int*)R_alloc(sbPm.n > 0 ? sbPm.n : 1, sizeof(int));
-        if (pkTimeClassify(pkLine) > 0) _pkLine = pkLine;
-        if (_pkLine != NULL) {
-          sAppend(&sbOut, "  double _tPK = _rxPkTime(t, _cSub, _solveData);\n  (void)_tPK;\n");
-        }
-      }
+      writeUpdateParPtr(show_ode);
+      writePkTime(show_ode);
       prnt_vars(print_populateParameters, 1, "", "\n",show_ode);                   /* pass system pars */
       if (show_ode != ode_past){
         // past() history is a function of t and parameters only (no states); its
@@ -610,10 +738,14 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
          show_ode != ode_rate && show_ode != ode_dur &&
          show_ode != ode_past &&
          !ode_is_es_dcode(show_ode))){
+      cslForFunction(show_ode);
       for (i = 0; i < sbPm.n; i++){
         // Event-sensitivity dLag/dF emit no model statements here (preamble
         // only); their body comes from the end switch below.
         if (ode_is_es_dcode(show_ode)) break;
+        // a statement this function's outputs do not depend on (codegenSlice.h)
+        if (_cslKeep != NULL && !_cslKeep[i]) continue;
+        if (rxgDevSkipLine(sbPm.lType[i])) continue;
         switch(sbPm.lType[i]){
         case TLIN:
           // Same routing as TASSIGN -- a linCmt()-bearing assignment is still an
@@ -733,6 +865,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
           RSprintf("Prop: %d\n", sbPm.lProp[i]);
         }
       }
+      _cslKeep = NULL;
       // End statements
       switch (show_ode){
       case ode_dur:
@@ -745,7 +878,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
         break;
       case ode_lag:
         // Alag
-        sAppendN(&sbOut, "\n  return t + _alag[_cmt] - _solveData->subjects[_cSub].curShift;\n", 66);
+        sAppend(&sbOut, "\n  return _tDose + _alag[_cmt] - _solveData->subjects[_cSub].curShift;\n");
         break;
       case ode_fbio:
         sAppendN(&sbOut, "\n  return _f[_cmt]*_amt;\n", 25);
@@ -836,7 +969,9 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
         break;
       }
     }
-    if (show_ode == ode_dydt){
+    if (rxgDevClose(show_ode)) {
+      // device code: rxg_dydt()/rxg_jac() are closed
+    } else if (show_ode == ode_dydt){
       sAppendN(&sbOut,  "  if (_rxDydtForceCb != NULL) _rxDydtForceCb(_neq, __t, __zzStateVar__, __DDtStateVar__);\n", 90);
       sAppendN(&sbOut,  "  (&_solveData->subjects[_cSub])->dadt_counter[0]++;\n}\n\n", 56);
     } else if (show_ode == ode_jac){
@@ -960,6 +1095,108 @@ void writeSb(sbuf *sbb, FILE *fp){
 
 extern SEXP _goodFuns;
 
+static inline int rxgIsIdChar(char c) {
+  return isalnum((unsigned char)c) || c == '_' || c == '.';
+}
+
+// is the identifier b[0..n) t, or time in any case?
+static inline int rxgIsTimeId(const char *b, size_t n) {
+  if (n == 1) return b[0] == 't';
+  if (n != 4) return 0;
+  return tolower((unsigned char)b[0]) == 't' && tolower((unsigned char)b[1]) == 'i' &&
+    tolower((unsigned char)b[2]) == 'm' && tolower((unsigned char)b[3]) == 'e';
+}
+
+// is the identifier b[0..n) one whose value moves with time: t/time,
+// linCmt*() or one of the NULL-terminated names fns?
+static inline int rxgIsTimeDepId(const char *b, size_t n, const char *const *fns) {
+  if (rxgIsTimeId(b, n)) return 1;
+  if (n >= 6 && strncmp(b, "linCmt", 6) == 0) return 1;
+  for (int k = 0; fns[k] != NULL; k++) {
+    if (strlen(fns[k]) == n && strncmp(b, fns[k], n) == 0) return 1;
+  }
+  return 0;
+}
+
+// 1 when the normalized model reads time: t/time, or a function whose value
+// moves with time between records (tad(), tafd(), transit(), delay(),
+// past(), linCmt()); rxModelVars()$flags["timeDep"]
+int rxgUsesTime(const char *s) {
+  static const char *const fns[] = {"tad", "tad0", "tafd", "tafd0", "transit",
+                                    "delay", "past", NULL};
+  const char *p = s;
+  while (*p) {
+    if (isalpha((unsigned char)*p) || *p == '_' || *p == '.') {
+      const char *b = p;
+      while (*p && rxgIsIdChar(*p)) p++;
+      if (rxgIsTimeDepId(b, (size_t)(p - b), fns)) return 1;
+    } else if (isdigit((unsigned char)*p)) {
+      while (*p && (isalnum((unsigned char)*p) || *p == '.')) p++;
+    } else {
+      p++;
+    }
+  }
+  return 0;
+}
+
+// Writes <c_file>l (eg model.cl): OpenCL C for rxg_dydt()/rxg_jac() for a
+// model whose flags["gpuSafe"] is 1.
+static void writeRxgDevice(const char *cfile, const char *prefix,
+                           const char *libname, const char *pMd5,
+                           const char *libname2, int nState, int nLhs,
+                           int nPar, int gpuSafe) {
+  if (!gpuSafe) return;
+  sbuf path; sNull(&path); sIni(&path);
+  sAppend(&path, "%sl", cfile);
+  FILE *fp = fopen(path.s, "wb");
+  sFree(&path);
+  if (fp == NULL) return;
+  sbuf body; sNull(&body); sIni(&body);
+  _rxgDev = 1;
+  sbOut.s[0] = '\0'; sbOut.o = 0;
+  codegen(ode_dydt, prefix, libname, pMd5, libname2);
+  sAppend(&body, "%s", sbOut.s);
+  sbOut.s[0] = '\0'; sbOut.o = 0;
+  codegen(ode_jac, prefix, libname, pMd5, libname2);
+  sAppend(&body, "%s", sbOut.s);
+  _rxgDev = 0;
+  sbOut.s[0] = '\0'; sbOut.o = 0;
+  sAppend(&sbOut, "// rxode2 device (OpenCL C) model code\n");
+  sAppend(&sbOut, "#define RXG_NEQ %d\n#define RXG_NLHS %d\n#define RXG_NPAR %d\n",
+          nState, nLhs, nPar);
+  sAppend(&sbOut, "#define RXG_NEQ1 %d\n#define RXG_NLHS1 %d\n#define RXG_NPAR1 %d\n",
+          nState > 0 ? nState : 1, nLhs > 0 ? nLhs : 1, nPar > 0 ? nPar : 1);
+  sAppend(&sbOut, "#define RXG_HAS_JAC %d\n", (found_jac == 1 && good_jac == 1) ? 1 : 0);
+  sAppend(&sbOut, "#define RXG_HAS_DELAY %d\n", tb.hasDelay ? 1 : 0);
+  // delay() reads the history at t - T: time dependent too
+  sAppend(&sbOut, "#define RXG_TIME %d\n", (tb.hasDelay || rxgUsesTime(sbNrm.s)) ? 1 : 0);
+  if (tb.hasDelay) {
+    // the delay() history keeps only the states delay() reads: column of a
+    // state (RXG_DCOL) and state of a column (RXG_DSTATE)
+    int nd = 0;
+    sbuf dc, ds;
+    sNull(&dc); sIni(&dc);
+    sNull(&ds); sIni(&ds);
+    for (int k = 0; k < tb.de.n; k++) {
+      if ((tb.dprop[k] & propDelay) == 0) continue;
+      sAppend(&dc, "(i) == __DDT%d__ ? %d : ", k, nd);
+      sAppend(&ds, "(j) == %d ? __DDT%d__ : ", nd, k);
+      nd++;
+    }
+    sAppend(&sbOut, "#define RXG_NDLY %d\n#define RXG_DCOL(i) (%s-1)\n#define RXG_DSTATE(j) (%s0)\n",
+            nd, dc.s, ds.s);
+    sFree(&dc);
+    sFree(&ds);
+  }
+  sAppend(&sbOut, "%s", _rxgHdr.s);
+  sAppend(&sbOut, "%s", "#include \"rxode2gpu/rxg_model.h\"\n");
+  sAppend(&sbOut, "%s", body.s);
+  writeSb(&sbOut, fp);
+  fclose(fp);
+  sFree(&body);
+  sbOut.s[0] = '\0'; sbOut.o = 0;
+}
+
 SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
                           SEXP pMd5, SEXP mvLast,
                           SEXP goodFuns, SEXP esDLagCode, SEXP esDFCode,
@@ -967,6 +1204,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
                           SEXP esD2LagCode, SEXP esD2RateCode, SEXP esD2DurCode,
                           SEXP esD3FCode, SEXP esDFQCode, SEXP esDLagJacCode,
                           SEXP esDLagQCode, SEXP esDDurQCode) {
+  _rxgDev = 0; // host code, even after an error left the device mode set
   // Event ("jump") sensitivities: the dLag/dF/dRate/dDur body lines are passed as
   // arguments (not a module global) so the setter and the codegen always run in
   // the same package instance -- the global channel was unreliable under
@@ -987,6 +1225,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   _es_dLagQCode = _es_dup(esDLagQCode);
   _es_dDurQCode = _es_dup(esDDurQCode);
   _goodFuns = _rxode2parse_preserve(goodFuns);
+  cslReset();
   if (!sbPm.o || !sbNrm.o){
     _rxode2parse_unprotect();
     err_trans("nothing in output queue to write");
@@ -1008,8 +1247,8 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
     SET_STRING_ELT(VECTOR_ELT(mvLast, RxMv_md5), 0, Rf_mkChar(md5));
   }
   SET_STRING_ELT(VECTOR_ELT(mvLast, RxMv_model), 1, Rf_mkChar(me_code == NULL ? "" : me_code));
-  int pro = 0;
-  SEXP trans = PROTECT(VECTOR_ELT(mvLast, RxMv_trans)); pro++;
+  rxProtectGuard;
+  SEXP trans = rxP(VECTOR_ELT(mvLast, RxMv_trans));
   sbuf buf; sNull(&buf);
   sIni(&buf);
   if (strcmp(CHAR(STRING_ELT(trans, 0)), CHAR(STRING_ELT(libname, 0)))) {
@@ -1056,7 +1295,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
     SET_STRING_ELT(trans, 21, Rf_mkChar(buf.s)); // IndF
   }
   //sPrint(&_mv, "%s", CHAR(STRING_ELT(PROTECT(_rxode2_rxQs(mvLast)), 0))); pro++;
-  SEXP rawMV = PROTECT(_rxode2_rxQs(mvLast)); pro++;
+  SEXP rawMV = rxP(_rxode2_rxQs(mvLast));
   sPrint(&_mv,"   SEXP rw    = PROTECT(Rf_allocVector(RAWSXP, %d));pro++;\n", Rf_length(rawMV));
   unsigned char *raw = RAW(rawMV);
   sAppendN(&_mv, "    unsigned char r[]={", 23);
@@ -1074,11 +1313,13 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   //SET_STRING_ELT(tran, 0, Rf_mkChar());
   sFree(&sbOut);
   sIniTo(&sbOut, (int)((sbPm.sN)*5.3));
+  sFree(&_rxgHdr);
+  sIni(&_rxgHdr);
 
-  SEXP stateOrd = PROTECT(VECTOR_ELT(mvLast, RxMv_stateOrd)); pro++;
+  SEXP stateOrd = rxP(VECTOR_ELT(mvLast, RxMv_stateOrd));
   int nOrd = Rf_length(stateOrd);
   if (nOrd > 0) {
-    SEXP stateOrdNames = PROTECT(Rf_getAttrib(stateOrd, R_NamesSymbol)); pro++;
+    SEXP stateOrdNames = rxP(Rf_getAttrib(stateOrd, R_NamesSymbol));
     int *stateOrdInt = INTEGER(stateOrd);
     sAppend(&sbOut, "// Define translation state order for %d states\n", Rf_length(stateOrd));
     // Re-key the __DDT defines by each state's actual tb.de index, so that
@@ -1145,23 +1386,28 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
         }
       }
     }
+    sAppend(&_rxgHdr, "%s", sbOut.s);
     writeSb(&sbOut, fpIO);
     sbOut.o = 0;
   }
-  SEXP lhsOrd = PROTECT(VECTOR_ELT(mvLast, RxMv_lhsOrd)); pro++;
+  SEXP lhsOrd = rxP(VECTOR_ELT(mvLast, RxMv_lhsOrd));
   int  nLhs  =  Rf_length(lhsOrd);
   if (nLhs > 0) {
-    SEXP lhsOrdNames = PROTECT(Rf_getAttrib(lhsOrd, R_NamesSymbol)); pro++;
+    SEXP lhsOrdNames = rxP(Rf_getAttrib(lhsOrd, R_NamesSymbol));
     int *lhsOrdInt = INTEGER(lhsOrd);
     sAppend(&sbOut, "// Define %d LHS values\n", nLhs);
     for (int i = 0; i < nLhs; i++){
       sAppend(&sbOut, "#define _LHS_%d_ %d // %s\n", lhsOrdInt[i], i,
               CHAR(STRING_ELT(lhsOrdNames, i)));
     }
+    sAppend(&_rxgHdr, "%s", sbOut.s);
     writeSb(&sbOut, fpIO);
     sbOut.o = 0;
   }
-  UNPROTECT(pro);
+  int nPar = Rf_length(VECTOR_ELT(mvLast, RxMv_params));
+  int gpuSafe = INTEGER(VECTOR_ELT(mvLast, RxMv_flags))[RxMvFlag_gpuSafe];
+  rxUPAll();
+  cslSetup();
   // show_ode = 1 dydt
   // show_ode = 2 Jacobian
   // show_ode = 3 Ini statement
@@ -1196,8 +1442,12 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   gCode(4); // Registration
   writeFooter(); // undef
   fclose(fpIO);
+  writeRxgDevice(CHAR(STRING_ELT(c_file,0)), CHAR(STRING_ELT(prefix,0)),
+                 CHAR(STRING_ELT(libname, 0)), CHAR(STRING_ELT(pMd5,0)),
+                 CHAR(STRING_ELT(libname, 1)), nOrd, nLhs, nPar, gpuSafe);
   parseFree(0);
   reset();
   _es_freeCode(); // event-sensitivity code is single-use per model
+  cslReset();
   return R_NilValue;
 }

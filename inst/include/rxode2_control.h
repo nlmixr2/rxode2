@@ -145,4 +145,15 @@
 #define Rxc_priorSigmaEl 140
 #define Rxc_linCmtSensPhi 141
 #define Rxc_nonmem 142
+#define Rxc_tieOrder 143
+#define Rxc_rateAtDoseTime 144
+#define Rxc_durAtDoseTime 145
+#define Rxc_resetCancelsPending 146
+#define Rxc_ssMethod 147
+#define Rxc_doseAtRecord 148
+#define Rxc_addlCovAtTime 149
+#define Rxc_gpuBackend 150
+#define Rxc_gpuDevice 151
+#define Rxc_gpuPrecision 152
+#define Rxc_gpuBatch 153
 #endif // __rxode2_control_H__

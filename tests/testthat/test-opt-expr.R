@@ -348,9 +348,17 @@ rxTest({
     .ode <- c("d/dt(depot)=-exp(THETA[1])*depot", "d/dt(center)=exp(THETA[1])*depot-exp(THETA[2])*center")
     for (.nm in c("rx_expr_c1_0", "rx__disg_ic__depot__", "rx__disg_mod__f__depot__")) {
       .m <- paste(c(.ode, paste0(.nm, "=exp(THETA[3])"), .pad, paste0("cp=center*", .nm)), collapse = "\n")
-      .chunked <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L))
+      .warn <- if (startsWith(.nm, "rx_expr_")) "optimized more than once" else NA
+      expect_warning(
+        .chunked <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L)),
+        .warn
+      )
       # falls back to the whole-model call, so the model's own variable is untouched
-      expect_identical(.chunked, suppressMessages(rxOptExpr(.m, "model", chunkLines = 0L)))
+      expect_warning(
+        .whole <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 0L)),
+        .warn
+      )
+      expect_identical(.chunked, .whole)
       expect_true(grepl(.nm, .chunked, fixed = TRUE))
     }
   })
@@ -370,7 +378,10 @@ rxTest({
     # (a) re-optimizing an already-optimized model
     .once <- suppressMessages(rxOptExpr(paste(c(.base, .pad, "cp=center"), collapse = "\n")))
     expect_true(grepl("rx_expr_", .once))
-    .twice <- suppressMessages(rxOptExpr(.once, "model", chunkLines = 40L))
+    expect_warning(
+      .twice <- suppressMessages(rxOptExpr(.once, "model", chunkLines = 40L)),
+      "optimized more than once"
+    )
     expect_error(rxModelVars(.twice), NA)
     # no rx_expr_ left dangling as an input parameter
     expect_false(any(grepl("^rx_expr_", rxModelVars(.twice)$params)))
@@ -700,5 +711,57 @@ rxTest({
     # middle of the progress bar
     expect_error(..rxOptLhs(quote(foo(bar, baz))), "foo(bar, baz)", fixed = TRUE)
     expect_output(try(..rxOptLhs(quote(foo(bar, baz))), silent = TRUE), NA)
+  })
+  test_that("random draws and registered impure functions are never shared (#1783)", {
+    .m <- paste(
+      "a <- rxnorm() + rxnorm()",
+      "c <- rnorm() + rnorm() + rxnorm(k) + rxnorm(k)",
+      "f <- (k + runif(1)) * 2 + (k + runif(1)) * 3",
+      "e <- exp(k) + exp(k)",
+      "d/dt(x) <- -k*x",
+      sep = "\n"
+    )
+    myf1783 <- function(x) x * 2
+    assign("myf1783", myf1783, envir = globalenv())
+    on.exit(rm("myf1783", envir = globalenv()), add = TRUE)
+    .u <- "b <- myf1783(k) + myf1783(k) + exp(k)*exp(k)\nd/dt(x) <- -k*x"
+    for (.c in c(TRUE, FALSE)) {
+      withr::with_options(list(rxode2.optExprC = .c), {
+        .o <- suppressMessages(rxOptExpr(.m, chunkLines = 0L))
+        expect_false(grepl("~(rxnorm|rnorm|runif)\\(", .o))
+        expect_false(grepl("~k\\+runif", .o))
+        expect_true(grepl("a=rxnorm()+rxnorm()", .o, fixed = TRUE))
+        expect_true(grepl("~exp(k)", .o, fixed = TRUE))
+        # user functions are pure unless registered
+        .o <- suppressMessages(rxOptExpr(.u, chunkLines = 0L))
+        expect_true(grepl("~myf1783(k)", .o, fixed = TRUE))
+        rxImpureFun("myf1783")
+        .o <- suppressMessages(rxOptExpr(.u, chunkLines = 0L))
+        rxRmImpureFun("myf1783")
+        expect_true(grepl("b=myf1783(k)+myf1783(k)+", .o, fixed = TRUE))
+        expect_true(grepl("~exp(k)", .o, fixed = TRUE))
+      })
+    }
+    expect_false("myf1783" %in% rxImpureFun())
+    # a chunk is optimized with the caller's registry (a mirai daemon has its own)
+    .ch <- list(strsplit(.u, "\n", fixed = TRUE)[[1]])
+    expect_true(grepl("myf1783(k)+myf1783(k)", .rxOptExprChunk(1L, .ch, "m", impure = "myf1783"), fixed = TRUE))
+    expect_false("myf1783" %in% rxImpureFun())
+    expect_false(grepl("myf1783(k)+myf1783(k)", .rxOptExprChunk(1L, .ch, "m"), fixed = TRUE))
+    # a registered rxFun() name is also matched by its C spelling
+    rxImpureFun("fun1783")
+    on.exit(rxRmImpureFun("fun1783"), add = TRUE)
+    expect_true("fun1783" %in% .rxImpureFunNames())
+    .o <- suppressMessages(rxOptExpr("a <- rxnorm() + rxnorm()\nd/dt(x) <- -k*x"))
+    set.seed(1)
+    .s0 <- rxSolve(
+      rxode2("a <- rxnorm() + rxnorm()\nd/dt(x) <- -k*x"),
+      et(0:2000),
+      c(k = 0.1),
+      returnType = "data.frame"
+    )
+    set.seed(1)
+    .s1 <- rxSolve(rxode2(.o), et(0:2000), c(k = 0.1), returnType = "data.frame")
+    expect_equal(.s0$a, .s1$a)
   })
 })

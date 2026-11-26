@@ -5,6 +5,7 @@
 #include "cvode_solver.h"
 
 #include <stdlib.h>
+#include <math.h>
 #include <cvode/cvode.h>
 #include <cvode/cvode_ls.h>
 #include <nvector/nvector_serial.h>
@@ -134,6 +135,8 @@ extern "C"
 int cvode_ctx_integrate(cvode_ctx_t *ctx, double *yp, double t0, double tout) {
   N_VSetArrayPointer(yp, ctx->y);
   if (CVodeReInit(ctx->mem, (sunrealtype)t0, ctx->y) < 0) return -1;
+  // a stop time left by cvode_ctx_integrate_stop() must not cut this one short
+  CVodeClearStopTime(ctx->mem);
   sunrealtype tret;
   int ret = CVode(ctx->mem, (sunrealtype)tout, ctx->y, &tret, CV_NORMAL);
   ctx->tret = (double)tret;
@@ -141,9 +144,26 @@ int cvode_ctx_integrate(cvode_ctx_t *ctx, double *yp, double t0, double tout) {
 }
 
 extern "C"
+int cvode_ctx_integrate_stop(cvode_ctx_t *ctx, double *yp, double t0, double tout,
+                             double tstop, int restart) {
+  N_VSetArrayPointer(yp, ctx->y);
+  if (restart && CVodeReInit(ctx->mem, (sunrealtype)t0, ctx->y) < 0) return -1;
+  if (tstop < tout) tstop = tout;
+  if (CVodeSetStopTime(ctx->mem, (sunrealtype)tstop) < 0) return -1;
+  sunrealtype tret;
+  int ret = CVode(ctx->mem, (sunrealtype)tout, ctx->y, &tret, CV_NORMAL);
+  ctx->tret = (double)tret;
+  // yp holds y(tout) only if CVODE returned at tout, or at a stop time within
+  // roundoff of it (an infusion end computed as start + amt/rate)
+  if (ret < 0 || fabs((double)tret - tout) > 1e-12 * fmax(fabs(tout), 1.0)) return -1;
+  return 1;
+}
+
+extern "C"
 void cvode_ctx_dense_reinit(cvode_ctx_t *ctx, double *yp, double t0) {
   N_VSetArrayPointer(yp, ctx->y);
   CVodeReInit(ctx->mem, (sunrealtype)t0, ctx->y);
+  CVodeClearStopTime(ctx->mem);
   ctx->tret = t0;
 }
 
@@ -167,5 +187,36 @@ int cvode_ctx_dense_calc_state(cvode_ctx_t *ctx, double t, double *yp) {
   if (CVodeGetDky(ctx->mem, (sunrealtype)t, 0, ctx->dky) < 0) return -1;
   double *d = N_VGetArrayPointer(ctx->dky);
   for (sunindextype i = 0; i < ctx->neq; i++) yp[i] = d[i];
+  return 1;
+}
+
+extern "C"
+int cvode_ctx_set_stop_time(cvode_ctx_t *ctx, double tstop) {
+  return (CVodeSetStopTime(ctx->mem, (sunrealtype)tstop) < 0) ? -1 : 1;
+}
+
+extern "C"
+int cvode_ctx_set_max_step(cvode_ctx_t *ctx, double hmax) {
+  return (CVodeSetMaxStep(ctx->mem, (sunrealtype)(hmax > 0.0 ? hmax : 0.0)) < 0) ? -1 : 1;
+}
+
+extern "C"
+int cvode_ctx_last_step(cvode_ctx_t *ctx, double *tn, double *h) {
+  sunrealtype t, hu;
+  if (CVodeGetCurrentTime(ctx->mem, &t) < 0) return -1;
+  if (CVodeGetLastStep(ctx->mem, &hu) < 0) return -1;
+  *tn = (double)t;
+  *h  = (double)hu;
+  return 1;
+}
+
+extern "C"
+int cvode_ctx_restart(cvode_ctx_t *ctx) {
+  sunrealtype tn;
+  if (CVodeGetCurrentTime(ctx->mem, &tn) < 0) return -1;
+  if (CVodeGetDky(ctx->mem, tn, 0, ctx->dky) < 0) return -1;
+  N_VScale(1.0, ctx->dky, ctx->y);
+  if (CVodeReInit(ctx->mem, tn, ctx->y) < 0) return -1;
+  ctx->tret = (double)tn;
   return 1;
 }

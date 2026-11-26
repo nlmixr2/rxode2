@@ -187,6 +187,11 @@ typedef struct {
      kernel evaluation per origin per step, so a model that cannot use it
      pays nothing.  Superset of linCmtLagMask. */
   int    linCmtOriginMask;
+  /* linCmt() carry states (rxode2lincmt's linCmtB which1 = -5/-6/-7): the
+     last numLinCarry states, after the linCmt() sensitivities, so
+     linOffset and every integrator's ODE count leave them out like the
+     rest of the linCmt() block.  Appended for downstream binaries. */
+  int    numLinCarry;
 } rx_solving_options;
 
 
@@ -524,10 +529,13 @@ struct rx_solving_options_ind_s {
   // pair this subject's infusions wrongly (nlmixr2/rxode2#1348).  Covers the
   // first n_all_times_orig records; pushed doses are never recorded here.
   int    *infPair;
-  // 1 for a record that is not a data record (an addl repeat or a record a
-  // dose expands to), recorded by etTrans() only for a model whose PK-type
-  // statements read `time`; NULL otherwise.  _rxPkTime() skips these with
-  // rxControl(nonmem = TRUE) (rxode2#1429).  Covers the first n_all_times_orig
+  // Nonzero for a record that is not a data record (an addl repeat or a record
+  // a dose expands to), recorded by etTrans() only for a model whose PK-type
+  // statements read `time`, whose f()/alag()/rate()/dur() may, or that has
+  // modeled rates or durations; NULL otherwise.  _rxPkTime() skips these with
+  // rxControl(nonmem = TRUE) (rxode2#1429).  2 marks the dose of an addl
+  // repeat, for _rxDoseTime(), and 2 + n one whose dose record is n records
+  // back, for _rxLagTime() (rxode2#1583).  Covers the first n_all_times_orig
   // records.
   int    *pkSkip;
   // delay() pre-history: this subject's evaluated initial state (after the
@@ -546,6 +554,38 @@ struct rx_solving_options_ind_s {
   int     delaySS;      /* 1 while handleSS() records delay() history */
   double  delaySSii;    /* dosing interval of that steady state (0 = constant) */
   double  delayMaxT;    /* largest delay duration seen */
+  // Fixed-duration infusions in progress: (stop record, rate its start added,
+  // then the rate's forward sensitivities) entries, so the stop removes what
+  // its start added rather than re-evaluating a state-dependent f()
+  // (rxode2#1568).  Owned by the subject, freed in rxFreeInd().
+  double *infDurOn;
+  int     infDurOnCap; /* allocated doubles in infDurOn */
+  int     infDurOnN;   /* entries in use */
+  // 1 + the sorted position of the record whose covariates a time-based
+  // covariate update reads, whatever time it is at (0 = match by time):
+  // getAmtAtRecord() reads f() at a record's data time with its covariates.
+  int     recCovPos;
+  // For a record a dose row expands to (a steady-state companion, an
+  // infusion's stop), the offset to the record standing in for that dose row
+  // (negative), recorded by etTrans(); 0 for every other record, NULL when
+  // there are none.  The record-based covariate reads of such a record read
+  // its dose row.  Covers the first n_all_times_orig records.
+  int    *doseRow;
+  // Solve row of the linCmt() carry in use (the record last advanced by
+  // linCmtB which1 = -5), -1 before any; reset in iniSubject().  The carry
+  // itself is in ind->solve (op->numLinCarry).
+  int     linCmtCarryRow;
+  // For an addl repeat that does not keep its covariates (addlKeepsCov =
+  // FALSE), the offset from the repeat to the record of the dose it repeats
+  // (negative), recorded by etTrans(); 0 for every other record, NULL when
+  // there are none.  getLag() evaluates a repeat's alag() with that record's
+  // nocb covariates, as NONMEM does for ALAG1.  Covers the first
+  // n_all_times_orig records.
+  int    *addlParent;
+  // While getLag() evaluates an addl repeat's alag(): 1 + the sorted position
+  // of the dose record it repeats, whose covariates a nocb covariate is read
+  // at; 0 otherwise.
+  int    lagParent;
 };
 
 typedef struct rx_solve_s {
@@ -659,6 +699,24 @@ typedef struct rx_solve_s {
   // rxControl(nonmem=TRUE): PK-type statements read the record time
   // (_rxPkTime(), rxode2#1429)
   int nonmem;
+  // rxControl(addlKeepsCov=TRUE): a dose moved by alag() carries its record's
+  // covariates; otherwise they are imputed at its actual dosing time (#1584)
+  int addlKeepsCov;
+  // hidden knots (evid 8) at lagged doses' record times, counted in nobs
+  int nknot;
+  // rxControl(rateAtDoseTime=TRUE): a modeled rate keeps the value read at its
+  // dose; otherwise it is re-read at each data record (rxode2#1586)
+  int rateAtDoseTime;
+  // rxControl(durAtDoseTime=TRUE): the same for a modeled duration
+  int durAtDoseTime;
+  // rxControl(doseAtRecord=TRUE): a dose's f(), alag(), rate() and dur(), and
+  // the covariates of the records it expands to, are read at its own data
+  // record, as NONMEM reads them; otherwise each record reads its own
+  int doseAtRecord;
+  // rxControl(addlCovAtTime=TRUE): an addl repeat that does not keep its
+  // covariates reads a record at its own time (the value in effect then);
+  // otherwise only the records before it, as NONMEM does
+  int addlCovAtTime;
 } rx_solve;
 
 typedef void (*rxode2_assignFuns2_t)(rx_solve, rx_solving_options, t_F, t_LAG, t_RATE, t_DUR,t_calc_mtime, t_ME, t_IndF, t_getTime, t_locateTimeIndex, t_handle_evidL,t_getDur);

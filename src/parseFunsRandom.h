@@ -148,6 +148,7 @@ static inline int assertCorrectRxnormArgs(transFunctions *tf, int nargs) {
 static inline int handleFunctionRxnorm(transFunctions *tf) {
   if (isRxnormOrRelatedNode(tf)) {
     if (tb.thread != 0) tb.thread = 2;
+    tb.rng = 1;
     int nargs = getFunctionNargs(tf, 3);
     if (assertCorrectRxnormArgs(tf, nargs)) return 1;
     switch (nargs) {
@@ -226,6 +227,7 @@ static inline int assertCorrectRxchisqArgs(transFunctions *tf, int nargs) {
 static inline int handleFunctionRchisq(transFunctions *tf) {
   if (isRchisqOrRelatedNode(tf)) {
     if (tb.thread != 0) tb.thread = 2;
+    tb.rng = 1;
     int nargs = getFunctionNargs(tf, 3);
     if (assertCorrectRxchisqArgs(tf, nargs)) return 1;
     switch(nargs){
@@ -299,6 +301,7 @@ static inline int assertCorrectGeomArgs(transFunctions *tf, int nargs) {
 static inline int handleFunctionRgeom(transFunctions *tf) {
   if (isRgeomOrRelated(tf)) {
     if (tb.thread != 0) tb.thread = 2;
+    tb.rng = 1;
     int nargs = getFunctionNargs(tf, 3);
     if (assertCorrectGeomArgs(tf, nargs)) return 1;
     if (tf->isInd) {
@@ -322,6 +325,7 @@ static inline int handleFunctionRbinom(transFunctions *tf) {
       !strcmp("rxbinom", tf->v) ||
       (tf->isInd = !strcmp("ribinom", tf->v))) {
     if (tb.thread != 0) tb.thread = 2;
+    tb.rng = 1;
     int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
     if (ii != 2){
       updateSyntaxCol();
@@ -348,6 +352,7 @@ static inline int handleFunctionRnbinomMu(transFunctions *tf) {
       !strcmp("rxnbinomMu", tf->v) ||
       (tf->isInd = !strcmp("rinbinomMu", tf->v))) {
     if (tb.thread != 0) tb.thread = 2;
+    tb.rng = 1;
     int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
     if (ii != 2){
       updateSyntaxCol();
@@ -374,6 +379,7 @@ static inline int handleFunctionRnbinom(transFunctions *tf) {
       !strcmp("rxnbinom", tf->v) ||
       (tf->isInd = !strcmp("rinbinom", tf->v))) {
     if (tb.thread != 0) tb.thread = 2;
+    tb.rng = 1;
     int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
     if (ii != 2){
       updateSyntaxCol();

@@ -834,13 +834,58 @@
 #
 # Errors are deliberately not caught here: a chunk that cannot be optimized must reach
 # .rxOptExprChunked(), which falls back to the whole model.
-.rxOptExprChunk <- function(i, chunks, msg) {
+#' Does the model text already use a temporary named `prefix<digits>`?
+#'
+#' @param prefix Temporary prefix, eg "rx_expr_"
+#' @param txt Model text
+#' @return TRUE when an identifier `prefix<digits>` occurs in `txt`
+#' @noRd
+.rxOptHasTemps <- function(txt) {
+  .rxOptPrefixUsed("rx_expr_(c[0-9]+_)?(cse_)*", txt)
+}
+
+#' Warn when rxOptExpr() is given text it has already optimized
+#'
+#' Only the outermost rxOptExpr() call warns, so a chunked call warns once.
+#'
+#' @param txt Model text
+#' @return Nothing, called for the warning
+#' @noRd
+.rxOptWarnRepeat <- function(txt) {
+  if (identical(.rxOptEnv$.depth, 1L) && .rxOptHasTemps(txt)) {
+    warning(
+      "'rxOptExpr()' input already has common subexpression temporaries ",
+      "(rx_expr_*); the model was optimized more than once, so new ",
+      "temporaries get a distinct prefix",
+      call. = FALSE
+    )
+  }
+  invisible()
+}
+
+.rxOptPrefixUsed <- function(prefix, txt) {
+  any(grepl(
+    paste0("(^|[^A-Za-z0-9_.])", prefix, "[0-9]+($|[^A-Za-z0-9_.])"),
+    txt
+  ))
+}
+
+.rxOptExprChunk <- function(i, chunks, msg, impure = .rxImpureEnv$names) {
+  # a mirai daemon has its own rxImpureFun() registry; use the caller's
+  .oldImpure <- .rxImpureEnv$names
+  .rxImpureEnv$names <- impure
+  on.exit(.rxImpureEnv$names <- .oldImpure, add = TRUE)
   .txt <- paste(chunks[[i]], collapse = "\n")
   .o <- suppressMessages(rxOptExpr(.txt, msg, chunkLines = 0L))
-  .re <- "\\brx_expr_[0-9]+\\b"
-  .new <- setdiff(unique(regmatches(.o, gregexpr(.re, .o))[[1]]), unique(regmatches(.txt, gregexpr(.re, .txt))[[1]]))
+  # whole identifiers only; `.` is part of a name, as in .rxOptPrefixUsed()
+  .b <- function(re) paste0("(?<![A-Za-z0-9_.])", re, "(?![A-Za-z0-9_.])")
+  .re <- .b("rx_expr_(cse_)*[0-9]+")
+  .new <- setdiff(
+    unique(regmatches(.o, gregexpr(.re, .o, perl = TRUE))[[1]]),
+    unique(regmatches(.txt, gregexpr(.re, .txt, perl = TRUE))[[1]])
+  )
   for (.v in .new) {
-    .o <- gsub(paste0("\\b", .v, "\\b"), sub("^rx_expr_", sprintf("rx_expr_c%d_", i), .v), .o)
+    .o <- gsub(.b(.v), sub("^rx_expr_", sprintf("rx_expr_c%d_", i), .v), .o, perl = TRUE)
   }
   .o
 }
@@ -871,6 +916,7 @@
     x <- rxNorm(x)
   }
   .txt <- if (is.character(x)) paste(x, collapse = "\n") else rxNorm(x)
+  .rxOptWarnRepeat(.txt)
   .ln <- strsplit(.txt, "\n", fixed = TRUE)[[1]]
   # Chunk only when it will actually pay.  What chunking buys is amortizing the
   # PARSE, whose cost tracks the model's total CHARACTERS -- not its line count,
@@ -964,11 +1010,16 @@
         # environment, so a chunk is optimized by the same code path serially and in parallel.
         .tasks <- mirai::mirai_map(
           seq_len(.nChunks),
-          function(.i, .chunks, .msg, .optOne) {
+          function(.i, .chunks, .msg, .optOne, .impure) {
             library(rxode2)
-            .optOne(.i, .chunks, .msg)
+            .optOne(.i, .chunks, .msg, .impure)
           },
-          .args = list(.chunks = .chunks, .msg = msg, .optOne = .rxOptExprChunk)
+          .args = list(
+            .chunks = .chunks,
+            .msg = msg,
+            .optOne = .rxOptExprChunk,
+            .impure = .rxImpureEnv$names
+          )
         )
         # A chunk that failed in a daemon comes back as an error object rather than
         # throwing, so it reaches the check below as a value like any other.
@@ -1046,10 +1097,11 @@
 #' implementation, so declining is always safe.
 #'
 #' @param norm normalized model text, as `rxNorm()` returns it
+#' @param impure names of called functions that are never shared
 #' @return optimized model text, or `NA_character_` to decline
 #' @author Matthew L. Fidler
 #' @noRd
-.rxOptExprC <- function(norm) {
+.rxOptExprC <- function(norm, impure = character(0)) {
   if (!isTRUE(getOption("rxode2.optExprC", TRUE))) {
     return(NA_character_)
   }
@@ -1061,7 +1113,7 @@
   if (length(.l) == 0L) {
     return(NA_character_)
   }
-  .Call(`_rxode2_rxCse`, .l)
+  .Call(`_rxode2_rxCse`, .l, as.character(impure))
 }
 
 # History calls (lag()/lead()/diff()/first()/last() and their 0 variants) are
@@ -1069,6 +1121,36 @@
 # reference above the assignment of x, which the parser rejects.  Mirrored by
 # csHasHistCall() in src/rxCseSel.h.
 .rxOptHistRe <- "(^|[^A-Za-z0-9_.])(lag|lead|diff)0?\\(|(^|[^A-Za-z0-9_.])(first|last)\\("
+
+# Calls that are never shared, since each evaluation can differ: random draws,
+# simeta()/simeps(), mixtures, and functions registered with rxImpureFun().
+# Spelled as in the normalized model; R/rxFullOpt.R `.rxFullOptImpureBuiltin`
+# is the C spelling.
+.rxOptImpureBuiltin <- unique(c(
+  sub("_$", "", sub("^_", "", .rxFullOptImpureBuiltin)),
+  "rxord",
+  "rxTteSim"
+))
+
+#' Impure function names called in a normalized model
+#'
+#' @param norm normalized model text
+#' @return character vector of the impure names `norm` calls
+#' @author Matthew L. Fidler
+#' @noRd
+.rxOptImpureCalls <- function(norm) {
+  .calls <- unique(regmatches(norm, gregexpr("[A-Za-z_.][A-Za-z0-9_.]*(?=\\()", norm, perl = TRUE))[[1]])
+  .calls[.calls %in% c(.rxOptImpureBuiltin, .rxImpureFunNames())]
+}
+
+# regular expression matching a call to any of `fns` (identifiers)
+.rxOptCallRe <- function(fns) {
+  paste0(
+    "(^|[^A-Za-z0-9_.])(",
+    paste(gsub(".", "\\.", fns, fixed = TRUE), collapse = "|"),
+    ")\\("
+  )
+}
 
 #' Optimize rxode2 for computer evaluation
 #'
@@ -1130,25 +1212,35 @@
 #' writeLines(rxOptExpr(pk))
 #' }
 rxOptExpr <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
+  .depth <- if (is.integer(.rxOptEnv$.depth)) .rxOptEnv$.depth else 0L
+  .rxOptEnv$.depth <- .depth + 1L
+  on.exit(.rxOptEnv$.depth <- .depth)
   .chunkLines <- as.integer(chunkLines)
   if (!is.na(.chunkLines) && .chunkLines > 0L) {
     return(.rxOptExprChunked(x, msg = msg, chunkLines = .chunkLines, parallel = parallel))
   }
   .oldOpts <- options()
   options(digits = 22)
-  on.exit(options(.oldOpts))
+  on.exit(options(.oldOpts), add = TRUE)
   .rxOptEnv$.list <- list()
   .rxOptEnv$.rep <- list()
   .rxOptEnv$.added <- NULL
   .rxOptEnv$.exclude <- ""
   .malert(sprintf("finding duplicate expressions in %s...", msg))
   .norm <- rxNorm(x)
+  .rxOptWarnRepeat(.norm)
+  ## Version reassigned variables so no temporary outlives one of its inputs (#1782)
+  .ssa <- .rxOptSsa(.norm)
+  if (!is.null(.ssa)) {
+    .norm <- .ssa$txt
+  }
   ## The C pass first; it returns NA when it will not reproduce the R walker
   ## exactly, and the R implementation below then runs.  Chunking calls this
   ## same whole-model path once per chunk, so chunks go through C too.
-  .cse <- .rxOptExprC(.norm)
+  .impure <- .rxOptImpureCalls(.norm)
+  .cse <- .rxOptExprC(.norm, .impure)
   if (!is.na(.cse)) {
-    return(.cse)
+    return(.rxOptSsaUndo(.cse, .ssa))
   }
   .p <- eval(parse(text = paste0("quote({", .norm, "})")))
   .lines <- ..rxOpt(.p, progress = TRUE)
@@ -1158,6 +1250,9 @@ rxOptExpr <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
   .thetaEtaR <- rex::rex(start, or("THETA[", "ETA["), any_numbers, "]", end)
   .exprs <- .exprs[regexpr(.thetaEtaR, .exprs, perl = TRUE) == -1]
   .exprs <- .exprs[!grepl(.rxOptHistRe, .exprs, perl = TRUE)]
+  if (length(.impure) > 0L) {
+    .exprs <- .exprs[!grepl(.rxOptCallRe(.impure), .exprs, perl = TRUE)]
+  }
   if (length(.exprs) > 0) {
     ## Take out unary [-] that way
     ## expr1=-ka       #nolint
@@ -1167,13 +1262,17 @@ rxOptExpr <- function(x, msg = "model", chunkLines = 40L, parallel = 0L) {
     if (length(.exprs) == 0) {
       return(x)
     }
-    .rp <- rxOptRep_(.exprs)
+    .prefix <- "rx_expr_"
+    while (.rxOptPrefixUsed(.prefix, .norm)) {
+      .prefix <- paste0(.prefix, "cse_")
+    }
+    .rp <- rxOptRep_(.exprs, .prefix)
     .rxOptEnv$.rep <- as.list(.rp[[1]])
     .rxOptEnv$.exclude <- ""
     .malert(sprintf("optimizing duplicate expressions in %s...", msg))
     .opt <- ..rxOpt(.p, progress = TRUE)
-    return(paste(.opt, collapse = "\n"))
+    return(.rxOptSsaUndo(paste(.opt, collapse = "\n"), .ssa))
   } else {
-    return(paste(.lines, collapse = "\n"))
+    return(.rxOptSsaUndo(paste(.lines, collapse = "\n"), .ssa))
   }
 }

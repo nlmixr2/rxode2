@@ -34,7 +34,7 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
   # which have no d/dt() behind them: nothing to convert, and the analytic
   # solver keeps handling them.  Converting them emitted cmt()/indLin() lines
   # for a derivative that does not exist (rxode2#1215).
-  .states <- setdiff(rxState(.env), .rxLinCmt(.mv))
+  .states <- setdiff(rxState(.env), c(.rxLinCmt(.mv), .rxLinCarry(rxState(.env))))
 
   if (length(.states) == 0L) {
     stop("No state variables (compartments) found in the model.", call. = FALSE)
@@ -153,8 +153,9 @@ indLin <- function(model, doConst = FALSE, calcSens = NULL) {
     # rather than symbols -- `symengine::S("I")` is the imaginary unit, so
     # differentiating by it fails with "Input is not a SYMBOL".  rxToSE() maps
     # each to the `rx_SymPy_Res_*` name the environment actually binds it under
-    # (`.rxSEreserved`, R/symengine.R:524).
-    .stateSym <- lapply(.states, function(.s) symengine::S(rxToSE(.s)))
+    # (`.rxSEreserved`, R/symengine.R:524).  Symbol() rather than S(): S()
+    # parses the name, which fails for a dotted state name.
+    .stateSym <- lapply(.states, function(.s) symengine::Symbol(rxToSE(.s)))
     names(.stateSym) <- .states
     for (.ii in seq_along(.states)) {
       .ddtName <- paste0("rx__d_dt_", .states[.ii], "__")
@@ -505,7 +506,7 @@ rxSensMatExp <- function(model, calcSens, calcSens2 = NULL, calcSens3 = NULL, do
   # rxState returns all compartments; for sensitivity we only use non-output,
   # non-linCmt() states -- linCmt sensitivities come from Stan forward-AD, not
   # this Jacobian-based (matExp/indLin) expansion, at any order.
-  .states <- setdiff(rxState(.env), c("output", .rxLinCmt(.mv)))
+  .states <- setdiff(rxState(.env), c("output", .rxLinCmt(.mv), .rxLinCarry(rxState(.env))))
 
   if (length(.states) == 0L) {
     stop("No state variables (compartments) found in the model.", call. = FALSE)

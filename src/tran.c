@@ -484,6 +484,7 @@ void reset(void) {
   tb.splitBolusInfusionN = 0;
   tb.dvid	= R_Calloc(MXDER, int);
   tb.thread     = 1; // Thread safe flag
+  tb.gpu        = 1; // GPU safe flag
   tb.dvidn      = 0;
   tb.ix		= 0;
   tb.id         = 0;
@@ -528,6 +529,7 @@ void reset(void) {
   tb.ncmt	= 0;
   tb.ndiff  = 0;
   tb.linCmtBraw = 0;
+  tb.linCmtCarryN = 0;
   tb.linB	= 0;
   tb.curPropN	= 0;
   tb.depotN	= -1;
@@ -537,6 +539,7 @@ void reset(void) {
   tb.dummyLhs   = 0;
   tb.nInd       = 0;
   tb.simflg     = 0;
+  tb.rng        = 0;
   tb.nLlik      = 0;
   tb.nInvCdf    = 0;
   tb.hasMix     = 0;

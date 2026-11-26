@@ -111,6 +111,7 @@ lhs symbols?
   int linB;
   int ndiff; // flag of the linCmtB derivatives requested
   int linCmtBraw; // model reads raw linCmtB amount-Jacobian rows (which1 >= 0)
+  int linCmtCarryN; // linCmt() carry states: m * the carry pairs the model uses
   // curPropN
   int curPropN;
   int depotN;
@@ -119,8 +120,10 @@ lhs symbols?
   int nwhile;
   int nInd;
   int simflg;
+  int rng;                    /* model may draw random numbers (keeps _setThreadInd() per call) */
   int nInvCdf;                /* root-finding inverse CDF call sites, for the memo */
   int thread;
+  int gpu; // 1 when the model can run as device (OpenCL) code
   int lastDdt;
   int nLlik;
   int lvlStr;
@@ -561,6 +564,7 @@ static inline int allSpaces(char *v2) {
       allSpace=0;
       break;
     }
+    iii++;
   }
   return allSpace;
 }

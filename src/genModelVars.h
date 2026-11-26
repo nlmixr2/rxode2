@@ -21,9 +21,21 @@
 #include "parseParamMerge.h"
 #include "pkTime.h"
 
+extern int foundPast;
+int rxgUsesTime(const char *s);
+
+// 1 when the model's d/dt() can run as device (OpenCL) code: every
+// function it calls is registered gpuSafe and it has none of these
+// (delay() reads the device history; a past() pre-history does not run there)
+static inline int calcGpuSafe(void) {
+  if (!tb.gpu || tb.simflg != 0 || nmtime != 0) return 0;
+  if (tb.evid_ != 0 || tb.linCmt != 0 || foundPast != 0) return 0;
+  return (tb.isMexp == 0 && tb.matn == 0 && tb.matnf == 0);
+}
+
 static inline SEXP calcSLinCmt(void) {
   rxProtectGuard;
-  SEXP sLinCmt = rxP(Rf_allocVector(INTSXP,18));
+  SEXP sLinCmt = rxP(Rf_allocVector(INTSXP,22));
   INTEGER(sLinCmt)[0] = tb.ncmt;
   INTEGER(sLinCmt)[1] = tb.hasKa;
   INTEGER(sLinCmt)[2] = tb.linB;
@@ -48,8 +60,15 @@ static inline SEXP calcSLinCmt(void) {
     int *pkLine = (int*)R_alloc(sbPm.n > 0 ? sbPm.n : 1, sizeof(int));
     INTEGER(sLinCmt)[17] = pkTimeClassify(pkLine) > 0;
   }
+  // f()/alag()/rate()/dur() may read `time` (rxode2#1583)
+  INTEGER(sLinCmt)[18] = pkTimeDoseT();
+  // linCmt() carry states, the last states of the model (calcLinCmt())
+  INTEGER(sLinCmt)[19] = tb.linCmtCarryN;
+  INTEGER(sLinCmt)[20] = calcGpuSafe();
+  // 1 when d/dt() can change with time at fixed states and parameters
+  INTEGER(sLinCmt)[21] = (tb.hasDelay || tb.linCmt || rxgUsesTime(sbNrm.s)) ? 1 : 0;
 
-  SEXP sLinCmtN = rxP(Rf_allocVector(STRSXP, 18));
+  SEXP sLinCmtN = rxP(Rf_allocVector(STRSXP, 22));
   SET_STRING_ELT(sLinCmtN, 0, Rf_mkChar("ncmt"));
   SET_STRING_ELT(sLinCmtN, 1, Rf_mkChar("ka"));
   SET_STRING_ELT(sLinCmtN, 2, Rf_mkChar("linB"));
@@ -68,6 +87,10 @@ static inline SEXP calcSLinCmt(void) {
   SET_STRING_ELT(sLinCmtN, 15, Rf_mkChar("hasDelay"));
   SET_STRING_ELT(sLinCmtN, 16, Rf_mkChar("linCmtBraw"));
   SET_STRING_ELT(sLinCmtN, 17, Rf_mkChar("pkTime"));
+  SET_STRING_ELT(sLinCmtN, 18, Rf_mkChar("doseTime"));
+  SET_STRING_ELT(sLinCmtN, 19, Rf_mkChar("linCmtCarry"));
+  SET_STRING_ELT(sLinCmtN, 20, Rf_mkChar("gpuSafe"));
+  SET_STRING_ELT(sLinCmtN, 21, Rf_mkChar("timeDep"));
   Rf_setAttrib(sLinCmt,   R_NamesSymbol, sLinCmtN);
   rxUPAll();
   return(sLinCmt);
@@ -160,7 +183,8 @@ static inline void calcNextra(void) {
             strcmp(b2, "rx__sens_peripheral2_BY_p3") == 0 ||
             strcmp(b2, "rx__sens_peripheral2_BY_p4") == 0 ||
             strcmp(b2, "rx__sens_peripheral2_BY_ka") == 0 ||
-            strcmp(b2, "rx__sens_depot_BY_ka") == 0) {
+            strcmp(b2, "rx__sens_depot_BY_ka") == 0 ||
+            strncmp(b2, "rx__carry_", 10) == 0) {
           continue;
         }
         // If there is only a linear compartment model AND this is a cmt() item, then

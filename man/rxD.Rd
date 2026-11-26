@@ -39,6 +39,7 @@ Other User functions:
 \code{\link[=linMod]{linMod()}},
 \code{\link[=mix]{mix()}},
 \code{\link[=rxFun]{rxFun()}},
+\code{\link[=rxImpureFun]{rxImpureFun()}},
 \code{\link[=rxIntToBase]{rxIntToBase()}},
 \code{\link[=rxIntToLetter]{rxIntToLetter()}},
 \code{\link[=rxUdfUiControl]{rxUdfUiControl()}},

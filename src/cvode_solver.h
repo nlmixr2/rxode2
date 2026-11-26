@@ -46,6 +46,14 @@ void cvode_ctx_destroy(cvode_ctx_t *ctx);
 // Returns 1 on success, -1 on failure.
 int cvode_ctx_integrate(cvode_ctx_t *ctx, double *yp, double t0, double tout);
 
+// Integrate to tout without stepping past tstop (raised to tout if earlier).
+// restart re-initialises at (t0, yp) first; otherwise CVODE carries on from its own
+// state, whose last step may already reach past tout, and the value at tout
+// is interpolated.  yp receives the value at tout.
+// Returns 1 on success, -1 on failure.
+int cvode_ctx_integrate_stop(cvode_ctx_t *ctx, double *yp, double t0, double tout,
+                             double tstop, int restart);
+
 // Dense output interface (mirrors the odeint dense-stepper API).
 // Reinitialize at a new initial state; call after dose events.
 void cvode_ctx_dense_reinit(cvode_ctx_t *ctx, double *yp, double t0);
@@ -58,6 +66,16 @@ int cvode_ctx_dense_do_step(cvode_ctx_t *ctx, double *yp, double tout_dir);
 // t must lie within the last completed step interval.
 // Returns 1 on success, -1 on failure.
 int cvode_ctx_dense_calc_state(cvode_ctx_t *ctx, double t, double *yp);
+// Stop the next CV_ONE_STEP calls at tstop (cleared once it is reached).
+int cvode_ctx_set_stop_time(cvode_ctx_t *ctx, double tstop);
+// Maximum step size (0 = no limit).
+int cvode_ctx_set_max_step(cvode_ctx_t *ctx, double hmax);
+// Time tn reached by the last internal step and its size h, so
+// cvode_ctx_dense_calc_state is valid on [tn - h, tn].
+int cvode_ctx_last_step(cvode_ctx_t *ctx, double *tn, double *h);
+// Restart the integration at its current time and state (order 1, fresh
+// step size); the stop time must be set again.  Returns 1 or -1.
+int cvode_ctx_restart(cvode_ctx_t *ctx);
 
 #ifdef __cplusplus
 }

@@ -10,6 +10,36 @@
 #include <stdexcept>
 #include <vector>
 #include <cmath>
+#include <type_traits>
+#include "ode/ode_rodas5p.h"
+
+extern "C" int rxModelTimeDep;
+extern "C" int rxDydtForceN(void);
+extern "C" void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx);
+
+// Whether d/dt() can change with time over [xp, xout]: the model reads time,
+// a registered dydt forcing hook (which gets t) is installed, covariates are
+// resampled (they can change anywhere inside an interval), or a linearly
+// interpolated covariate changes (the parameters a quarter and three
+// quarters of the way in differ, as the GPU methods check)
+static inline bool implicit_nonautonomous(rx_solving_options_ind *ind,
+                                          rx_solving_options *op,
+                                          double xp, double xout) {
+    if (rxModelTimeDep || rxDydtForceN() > 0) return true;
+    if (op->ncov == 0) return false;
+    rx_solve *rx = getRxSolve_();
+    if (rx->sample) return true;
+    int npar = rx->npars;
+    double dt = xout - xp;
+    std::vector<double> p0(npar);
+    _update_par_ptr(xp + 0.25*dt, ind->id, rx, ind->idx);
+    for (int j = 0; j < npar; j++) p0[j] = ind->par_ptr[j];
+    _update_par_ptr(xp + 0.75*dt, ind->id, rx, ind->idx);
+    for (int j = 0; j < npar; j++) {
+        if (p0[j] != ind->par_ptr[j]) return true;
+    }
+    return false;
+}
 
 template <class OdeSolver>
 class RxImplicit : public OdeSolver {
@@ -129,14 +159,17 @@ static inline void implicit_do_steps(rx_solving_options_ind *ind, rx_solving_opt
     if (dt > std::fabs(tint)) dt = std::fabs(tint);
     if (tint < 0.0) dt = -dt;
 
-    int neqOde = neq[0] - op->numLin - op->numLinSens;
+    int neqOde = neq[0] - op->numLin - op->numLinSens - op->numLinCarry;
 
     RxImplicit<OdeSolver> solver(c_dydt, c_jac, neq, neqOde, ind, yp, (long unsigned)op->mxstep);
     solver.set_quiet(true);
     solver.set_t(xp);
     solver.prime_dt(std::fabs(dt));
-    solver.set_abstol(op->ATOL);
-    solver.set_reltol(op->RTOL);
+    solver.set_abstol(ind->atol2 != NULL ? ind->atol2[0] : op->ATOL);
+    solver.set_reltol(ind->rtol2 != NULL ? ind->rtol2[0] : op->RTOL);
+    if constexpr (std::is_same<OdeSolver, ode::OdeRODAS5P>::value) {
+        solver.set_nonautonomous(implicit_nonautonomous(ind, op, xp, xout));
+    }
     try {
         solver.solve_adaptive(std::fabs(tint), std::fabs(dt), true);
     } catch (...) {
@@ -170,7 +203,7 @@ static void ind_implicit_0(rx_solve *rx, rx_solving_options *op, int solveid, in
     double xp = getAllTimes(ind, 0);
     ind->solvedIdx = 0;
 
-    int neqOde = op->neq - op->numLin - op->numLinSens;
+    int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
     double *yp;
 
     for (i = 0; i < ind->n_all_times; i++) {
@@ -204,8 +237,9 @@ static void ind_implicit_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                 badSolveExit(i);
                 localBadSolve = 1;
             } else {
-                if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                                    xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
+                while (!localBadSolve &&
+                       handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                                       xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
                     if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
                         preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
                         if (neqOde > 0)
@@ -226,15 +260,6 @@ static void ind_implicit_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                         ind->ixds = ixds;
                         ind->idx = idx;
                         ind->idxExtra++;
-                        if (!isSameTime(xout, ind->extraDoseNewXout)) {
-                            preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-                            if (neqOde > 0)
-                                implicit_do_steps<OdeSolver>(ind, op, c_dydt, calc_jac, neq, yp, ind->extraDoseNewXout, xout);
-                            copyLinCmt(neq, ind, op, yp);
-                            postSolve(neq, &istate, ind->rc, &idx, yp, &err_msg, 9, false, ind, op, rx);
-                            if (*(ind->rc) < 0) localBadSolve = 1;
-                            ind->extraDoseNewXout = xout;
-                        }
                         xp = ind->extraDoseNewXout;
                     }
                 }
@@ -249,14 +274,13 @@ static void ind_implicit_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                 xp = xout;
             }
         }
-        ind->_newind = 2;
         if (!localBadSolve) {
             ind->idx = i;
             if (getEvid(ind, ind->ix[i]) == 3) {
                 handleEvid3(ind, op, rx, neq, &xp, &xout, yp, &(istate), u_inis);
             } else if (handleEvid1(&i, rx, neq, yp, &xout)) {
-                handleSS(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                         xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
+                handleSSTte(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                            xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx);
                 if (ind->wh0 == EVID0_OFF) ind->solve[ind->cmt] = op->inits[ind->cmt];
                 if (rx->istateReset) istate = 1;
                 xp = xout;
@@ -274,6 +298,7 @@ static void ind_implicit_0(rx_solve *rx, rx_solving_options *op, int solveid, in
             updateSolve(ind, op, neq, xout, i, ind->n_all_times);
             if (_mtime_requeued) i--;
         }
+        rxNewindAfterRecord(ind, i);
         ind->solvedIdx = i;
     }
     ind->solveTime += ((double)(clock() - t0))/CLOCKS_PER_SEC;

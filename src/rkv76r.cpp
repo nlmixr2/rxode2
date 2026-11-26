@@ -38,13 +38,13 @@ extern "C" void ind_rkv76r_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   if (!iniSubject(neq[1], 0, ind, op, rx, u_inis)) return;
   double xp = getAllTimes(ind, 0);
   ind->solvedIdx = 0;
-  int neqOde = op->neq - op->numLin - op->numLinSens;
+  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
   RxRkv76r *solver = NULL;
   if (neqOde > 0) {
     solver = new RxRkv76r(c_dydt, neq, neqOde, ind, getSolve(0), (long unsigned)op->mxstep);
       solver->set_quiet(true);
-      if (op->atol2 != NULL) solver->set_abstol(op->ATOL);
-      if (op->rtol2 != NULL) solver->set_reltol(op->RTOL);
+      if (op->atol2 != NULL) solver->set_abstol(ind->atol2 != NULL ? ind->atol2[0] : op->ATOL);
+      if (op->rtol2 != NULL) solver->set_reltol(ind->rtol2 != NULL ? ind->rtol2[0] : op->RTOL);
   }
   double *yp;
   for (i = 0; i < ind->n_all_times; i++) {
@@ -77,8 +77,9 @@ extern "C" void ind_rkv76r_0(rx_solve *rx, rx_solving_options *op, int solveid, 
         badSolveExit(i);
         localBadSolve = 1;
       } else {
-        if (handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
-                            xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
+        while (!localBadSolve &&
+               handleExtraDose(neq, ind->BadDose, ind->InfusionRate, ind->dose, yp, xout,
+                               xp, ind->id, &i, ind->n_all_times, &istate, op, ind, u_inis, ctx)) {
           if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
             preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
             if (neqOde > 0)
@@ -100,16 +101,6 @@ extern "C" void ind_rkv76r_0(rx_solve *rx, rx_solving_options *op, int solveid, 
             ind->ixds = ixds;
             ind->idx = idx;
             ind->idxExtra++;
-            if (!isSameTime(xout, ind->extraDoseNewXout)) {
-              preSolve(op, ind, ind->extraDoseNewXout, xout, yp);
-              if (neqOde > 0)
-                rkv76r_do_steps(solver, ind, op, c_dydt, neq, yp, ind->extraDoseNewXout, xout);
-              copyLinCmt(neq, ind, op, yp);
-              const char* err_msg = "rkv76r failed";
-              postSolve(neq, &istate, ind->rc, &i, yp, &err_msg, 9, false, ind, op, rx);
-              if (*(ind->rc) < 0) localBadSolve = 1;
-              ind->extraDoseNewXout = xout;
-            }
             xp = ind->extraDoseNewXout;
           }
         }
@@ -125,7 +116,6 @@ extern "C" void ind_rkv76r_0(rx_solve *rx, rx_solving_options *op, int solveid, 
         xp = xout;
       }
     }
-    ind->_newind = 2;
     if (!localBadSolve) {
       ind->idx = i;
       if (getEvid(ind, ind->ix[i]) == 3) {
@@ -154,6 +144,7 @@ extern "C" void ind_rkv76r_0(rx_solve *rx, rx_solving_options *op, int solveid, 
       updateSolve(ind, op, neq, xout, i, ind->n_all_times);
       if (_mtime_requeued) i--;
     }
+    rxNewindAfterRecord(ind, i);
     ind->solvedIdx = i;
   }
   if (solver != NULL) delete solver;
@@ -196,12 +187,12 @@ extern "C" void rkv76r_solveWith1Pt(int *neq, double *yp, double *xp, double xou
                                      int *istate, rx_solving_options *op,
                                      rx_solving_options_ind *ind) {
   int eff = rxEffNeq(ind, op);
-  int neqOde = eff - op->numLin - op->numLinSens;
+  int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
     if (neqOde > 0) {
     RxRkv76r solver(dydt, neq, neqOde, ind, yp, (long unsigned)op->mxstep);
     solver.set_quiet(true);
-    if (op->atol2 != NULL) solver.set_abstol(op->ATOL);
-    if (op->rtol2 != NULL) solver.set_reltol(op->RTOL);
+    if (op->atol2 != NULL) solver.set_abstol(ind->atol2 != NULL ? ind->atol2[0] : op->ATOL);
+    if (op->rtol2 != NULL) solver.set_reltol(ind->rtol2 != NULL ? ind->rtol2[0] : op->RTOL);
     rkv76r_do_steps(&solver, ind, op, dydt, neq, yp, *xp, xout);
 
     if (ind->rc[0] < 0) { *istate = -1; return; }
