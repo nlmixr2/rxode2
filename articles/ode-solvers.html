@@ -113,6 +113,7 @@
     <li><a class="dropdown-item" href="../articles/rxode2-stiff.html">Stiff systems and Jacobians</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-ind-lin.html">Matrix exponential solving</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-dense-output.html">Dense output for fast solving</a></li>
+    <li><a class="dropdown-item" href="../articles/rxode2-gpu.html">Solving large populations on a GPU</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-speed.html">Speeding up solving</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-mirai-parallel.html">Parallel solving with mirai</a></li>
     <li><a class="dropdown-item" href="../articles/rxode2-oom-solve.html">Out-of-memory solving</a></li>
@@ -181,14 +182,17 @@ model classes benefit from different tradeoffs:</p>
 </li>
 <li>TMDD, mechanistic PD, QSP, and transit-heavy systems often need
 stiffness-aware methods such as <code>liblsoda</code>,
-<code>ros4</code>, <code>ros43</code>, <code>sdirk43</code>, or
-<code>cvode</code>
+<code>ros4</code>, <code>ros43</code>, <code>ros54p</code>,
+<code>sdirk43</code>, or <code>cvode</code>
 </li>
 <li>fixed-step methods such as <code>rk4</code>,
 <code>backwardEuler</code>, <code>gauss6</code>, or
 <code>radauiia5</code> are useful when you want controlled stepping
 between events, method-comparison experiments, or deterministic solver
 behavior for debugging</li>
+<li>large populations (thousands of subjects or more) can run the
+<code>gpu*</code> methods, which integrate many subjects at once on a
+GPU or on CPU threads</li>
 </ul>
 <p>The <code>method</code> argument to <code><a href="../reference/rxSolve.html">rxSolve()</a></code> selects
 the solver. The four historic and therefore most commonly used methods
@@ -415,14 +419,16 @@ problems</td>
 <td>Moderate stiffness: TMDD, indirect response with fast turnover,
 enzyme models</td>
 <td>
-<code>ros4</code>, <code>ros43</code>, <code>sdirk43</code>
+<code>ros4</code>, <code>ros43</code>, <code>ros54p</code>,
+<code>sdirk43</code>
 </td>
 <td>Stiff-aware one-step methods that often behave well across dosing
 discontinuities</td>
 <td>MATLAB users can think <code>ode23s</code> / <code>ode15s</code>;
 Julia analogs are <code>Rosenbrock23()</code>, <code>Rodas4P()</code>,
-<code>Rodas5P()</code>; Phoenix NLME users usually compare against
-<code>Auto-Detect</code> (LSODA) or <code>Stiff</code> (LSODE/BDF)</td>
+and <code>Rodas5P()</code> (<code>ros54p</code>); Phoenix NLME users
+usually compare against <code>Auto-Detect</code> (LSODA) or
+<code>Stiff</code> (LSODE/BDF)</td>
 </tr>
 <tr class="even">
 <td>Clearly stiff or larger systems where linear solver choice
@@ -440,13 +446,14 @@ Phoenix NLME analog is <code>Stiff</code> (LSODE/BDF)</td>
 fallback</td>
 <td>
 <code>"t54+ros4"</code>, <code>"t54+ros43"</code>,
-<code>"vern76+ros43"</code>, <code>"vern76+sdirk43"</code>
+<code>"t54+ros54p"</code>, <code>"vern76+ros54p"</code>,
+<code>"vern76+sdirk43"</code>
 </td>
 <td>AutoSwitch: starts with the non-stiff solver; detects stiffness
 mid-solve and retries the interval with the implicit solver; switches
 back if the region becomes non-stiff again</td>
 <td>Closest to Julia
-<code>AutoTsit5(RosShamp4())</code>/<code>AutoVern7(Rodas4P())</code>;
+<code>AutoTsit5(RosShamp4())</code>/<code>AutoTsit5(Rodas5P())</code>/<code>AutoVern7(Rodas5P())</code>;
 note Julia’s <code>Rosenbrock23()</code> has no exact rxode2 match (use
 <code>ros4</code> as the lowest-order Rosenbrock-family secondary); no
 direct MATLAB or NONMEM analog</td>
@@ -467,6 +474,19 @@ easier</td>
 built-in fixed-step counterparts</td>
 </tr>
 <tr class="odd">
+<td>Large populations (thousands of subjects or more), simulation or
+estimation</td>
+<td>
+<code>gpuT54</code>, <code>gpuVern76</code>, <code>gpuRos54p</code>,
+<code>"gpuT54+gpuRos54p"</code>, <code>"gpuVern76+gpuRos54p"</code>
+</td>
+<td>Integrate every waiting subject at once on an OpenCL device (or the
+same code on CPU threads); events stay on the host</td>
+<td>Julia DiffEqGPU’s <code>EnsembleGPUKernel</code> with
+<code>GPUTsit5()</code>, <code>GPUVern7()</code>,
+<code>GPURodas5P()</code>; no MATLAB, NONMEM or Monolix analog</td>
+</tr>
+<tr class="even">
 <td>Mostly linear compartment structure with sparse nonlinear
 pieces</td>
 <td><code>indLin</code></td>
@@ -522,14 +542,18 @@ factorization that would otherwise be discarded on every
 reinitialize.</p></li>
 <li><p><code>ros4</code>, <code>ros43</code>: adaptive Rosenbrock
 methods for stiff or moderately stiff systems</p></li>
+<li><p><code>ros54p</code>: Rodas5P (Steinebach 2023), an adaptive
+5th-order Rosenbrock method with an embedded 4th-order error estimate
+and the model’s analytic Jacobian; the same method as Julia’s
+<code>Rodas5P()</code></p></li>
 <li><p><code>sdirk43</code>: adaptive singly diagonally implicit
 Runge-Kutta method</p></li>
 </ul>
 <p>These are closest in spirit to MATLAB <code>ode23s</code> /
 <code>ode15s</code> and to Julia methods such as
 <code>Rosenbrock23()</code>, <code>Rodas4P()</code>,
-<code>Rodas5P()</code>, and the Sundials <code>CVODE_*</code>
-wrappers.</p>
+<code>Rodas5P()</code> (<code>ros54p</code>), and the Sundials
+<code>CVODE_*</code> wrappers.</p>
 </div>
 <div class="section level3">
 <h3 id="autoswitch-composite-methods">AutoSwitch composite methods<a class="anchor" aria-label="anchor" href="#autoswitch-composite-methods"></a>
@@ -543,16 +567,18 @@ string:</p>
 <span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">events</span>, method <span class="op">=</span> <span class="st">"dop853+sdirk43"</span><span class="op">)</span></span></code></pre></div>
 <p>Within each ODE interval (the segment between events/observations),
 <code>rxode2</code> runs the primary (non-stiff) solver first. If that
-probe reports stiffness – because the non-stiff solver failed (its
-adaptive step size collapsed) or because DOP853’s built-in
-dominant-eigenvalue stiffness estimator fired – the interval is
-re-solved from its start with the stiff secondary. This is a
-<em>reactive</em> scheme: rather than computing a separate stiffness
-estimate at the composite level, it delegates detection to the primary’s
-own per-step estimator and to solve success/failure. Once consecutive
-stiff detections cross a threshold the solver stops probing and uses the
-stiff method directly for that subject; it returns to the primary after
-enough consecutive non-stiff intervals.</p>
+probe reports stiffness – because the dominant-eigenvalue stiffness
+estimate of a <code>dop853</code>, <code>t54</code> or
+<code>vern76</code> primary fired, or because the non-stiff solver
+failed (its adaptive step size collapsed) – the stiff secondary takes
+over: from the point the estimate fired, or from the start of the
+interval after a failure. This is a <em>reactive</em> scheme: rather
+than computing a separate stiffness estimate at the composite level, it
+delegates detection to the primary’s own per-step estimator and to solve
+success/failure. Once consecutive stiff detections cross a threshold the
+solver stops probing and uses the stiff method directly for that
+subject; it returns to the primary after enough consecutive non-stiff
+intervals.</p>
 <p>(Earlier versions of <code>rxode2</code> used a proactive estimate –
 the Gershgorin spectral radius of the Jacobian scaled by the interval
 length – but on the long inter-dose intervals typical of pharmacometric
@@ -583,7 +609,7 @@ stepping.</p></li>
 <li><p><strong>Matches Julia’s ecosystem.</strong> Pharmacometric models
 built and tested in Julia with <code>AutoTsit5(Rosenbrock23())</code> or
 <code>AutoVern7(Rodas5P())</code> can be matched closely by
-<code>"t54+ros43"</code> or <code>"vern76+ros43"</code> in
+<code>"t54+ros4"</code> or <code>"vern76+ros54p"</code> in
 <code>rxode2</code> (though the switching methods are
 different).</p></li>
 </ul>
@@ -601,10 +627,10 @@ per-method speed.</li>
 </ul>
 </div>
 <div class="section level4">
-<h4 id="choosing-a-stiff-secondary-ros4-ros43-or-sdirk43">Choosing a stiff secondary: <code>ros4</code>, <code>ros43</code>,
-or <code>sdirk43</code>?<a class="anchor" aria-label="anchor" href="#choosing-a-stiff-secondary-ros4-ros43-or-sdirk43"></a>
+<h4 id="choosing-a-stiff-secondary-ros4-ros43-ros54p-or-sdirk43">Choosing a stiff secondary: <code>ros4</code>, <code>ros43</code>,
+<code>ros54p</code>, or <code>sdirk43</code>?<a class="anchor" aria-label="anchor" href="#choosing-a-stiff-secondary-ros4-ros43-ros54p-or-sdirk43"></a>
 </h4>
-<p>rxode2 has three main adaptive stiff secondaries:</p>
+<p>rxode2 has four main adaptive stiff secondaries:</p>
 <ul>
 <li>
 <strong><code>ros4</code></strong> – Boost’s Kaps-Rentrop 4th-order
@@ -620,14 +646,22 @@ A-stable Rosenbrock-Kaps-Rentrop method with an embedded 3rd-order error
 estimate. More sophisticated than <code>ros4</code>; analogous to
 Julia’s <code>Rodas4P()</code>.</li>
 <li>
+<strong><code>ros54p</code></strong> – Rodas5P, an 8-stage 5th-order
+Rosenbrock method with an embedded 4th-order estimate; the same method
+as Julia’s <code>Rodas5P()</code>. It uses the model’s analytic Jacobian
+(generated symbolically when the model has none) and evaluates the time
+derivative only when <code>d/dt()</code> reads time or a covariate
+changes over the interval. The higher order pays off at tight
+tolerances.</li>
+<li>
 <strong><code>sdirk43</code></strong> – SDIRK 4(3), L-stable. More
 robust for severely stiff problems (e.g., stiff oscillations,
 equilibrium reactions) where A-stability alone is not enough.</li>
 </ul>
 <p>For AutoSwitch pairs, prefer <code>ros4</code> when you want low
 switching overhead, <code>ros43</code> when you want reliable
-moderate-stiffness handling, and <code>sdirk43</code> when the stiff
-regions are severe.</p>
+moderate-stiffness handling, <code>ros54p</code> for tight tolerances,
+and <code>sdirk43</code> when the stiff regions are severe.</p>
 </div>
 <div class="section level4">
 <h4 id="recommended-autoswitch-pairs">Recommended AutoSwitch pairs<a class="anchor" aria-label="anchor" href="#recommended-autoswitch-pairs"></a>
@@ -660,30 +694,42 @@ order – no exact 2nd-order Rosenbrock exists in rxode2</td>
 </td>
 </tr>
 <tr class="odd">
+<td><code>"t54+ros54p"</code></td>
+<td><code>AutoTsit5(Rodas5P())</code></td>
+<td>Tsit5 primary, Rodas5P secondary; 5th-order stiff fallback for tight
+tolerances</td>
+</tr>
+<tr class="even">
 <td><code>"t54+sdirk43"</code></td>
 <td><code>AutoTsit5(SDIRK43())</code></td>
 <td>L-stable stiff secondary; best for severely stiff problems</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>"vern65+ros4"</code></td>
 <td>–</td>
 <td>Verner 6(5) primary with lightweight stiff secondary</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>"vern65+ros43"</code></td>
 <td>–</td>
 <td>Verner 6(5) primary; good accuracy-to-speed balance</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>"vern76+ros4"</code></td>
 <td><code>AutoVern7(RosShamp4())</code></td>
 <td>Higher-order primary with lighter stiff secondary</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>"vern76+ros43"</code></td>
 <td><code>AutoVern7(Rodas4P())</code></td>
 <td>Higher-order primary; efficient on smooth, low-error-tolerance
 simulations</td>
+</tr>
+<tr class="odd">
+<td><code>"vern76+ros54p"</code></td>
+<td><code>AutoVern7(Rodas5P())</code></td>
+<td>Higher-order primary with a 5th-order Rosenbrock secondary; the pair
+DiffEqGPU uses for stiff ensembles</td>
 </tr>
 <tr class="even">
 <td><code>"vern76+sdirk43"</code></td>
@@ -725,10 +771,12 @@ tolerances</td>
 </tr>
 </tbody>
 </table>
-<p>A <code>dop853</code> primary detects stiffness itself, from the
-estimate its steps already produce, and so can switch before it is in
-trouble. Every other primary switches when it fails, which still works
-but costs the failed attempt. <code>dense=TRUE</code> is supported for
+<p>A <code>dop853</code>, <code>t54</code> or <code>vern76</code>
+primary detects stiffness itself, from the estimate its steps already
+produce (Hairer’s test, the one Julia’s AutoSwitch uses), and so can
+switch before it is in trouble; the GPU composites use the same test.
+Every other primary switches when it fails, which still works but costs
+the failed attempt. <code>dense=TRUE</code> is supported for
 <code>"dop853+ros4"</code> only: the secondary has to be dense too
 (<code>ros4</code> is the only stiff method that is), and taking over a
 dense segment part-way through is implemented for a <code>dop853</code>
@@ -936,6 +984,82 @@ see the dedicated article <a href="rxode2-delay-differential-equations.html">Del
 equations in rxode2</a>.</p>
 </div>
 <div class="section level3">
+<h3 id="gpu-ensemble-methods">GPU ensemble methods<a class="anchor" aria-label="anchor" href="#gpu-ensemble-methods"></a>
+</h3>
+<p>For thousands of subjects or more, the <code>gpu*</code> methods
+integrate every subject that is waiting at the same time in one batch:
+one OpenCL kernel launch, with one work-item per subject (the design of
+Julia’s DiffEqGPU <code>EnsembleGPUKernel</code>). Doses, steady state,
+lag times, covariates and resets stay on the host and run rxode2’s usual
+per-subject event code, so results match the host methods.</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>GPU method</th>
+<th>Host counterpart</th>
+<th>Integrator</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>"gpuT54"</code></td>
+<td><code>"t54"</code></td>
+<td>Tsitouras 5(4)</td>
+</tr>
+<tr class="even">
+<td><code>"gpuVern76"</code></td>
+<td><code>"vern76"</code></td>
+<td>Verner 7(6)</td>
+</tr>
+<tr class="odd">
+<td><code>"gpuRos54p"</code></td>
+<td><code>"ros54p"</code></td>
+<td>Rodas5P with the analytic Jacobian</td>
+</tr>
+<tr class="even">
+<td><code>"gpuT54+gpuRos54p"</code></td>
+<td><code>"t54+ros54p"</code></td>
+<td>AutoSwitch on the device</td>
+</tr>
+<tr class="odd">
+<td><code>"gpuVern76+gpuRos54p"</code></td>
+<td><code>"vern76+ros54p"</code></td>
+<td>AutoSwitch on the device</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/rxGpuInfo.html">rxGpuInfo</a></span><span class="op">(</span><span class="op">)</span>  <span class="co"># OpenCL devices and whether they support double precision</span></span>
+<span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">params</span>, <span class="va">events</span>, method <span class="op">=</span> <span class="st">"gpuRos54p"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">params</span>, <span class="va">events</span>, method <span class="op">=</span> <span class="st">"gpuT54"</span>, gpuBackend <span class="op">=</span> <span class="st">"cpu"</span><span class="op">)</span></span></code></pre></div>
+<ul>
+<li>
+<code>gpuBackend = "auto"</code> (the default) uses OpenCL when the
+suggested <code>OpenCL</code> package finds a device with the requested
+precision, and otherwise the same code compiled for the CPU and run on
+<code>cores</code> threads. <code>"opencl"</code> and <code>"cpu"</code>
+choose one explicitly.</li>
+<li>
+<code>gpuPrecision = "float"</code> runs on devices without double
+precision; loosen <code>atol</code>/<code>rtol</code> to match.</li>
+<li>
+<code>gpuDevice</code> picks the OpenCL device;
+<code>gpuBatch</code> caps how many subjects are in flight at once.</li>
+<li>The model’s <code>d/dt()</code> must be expressible as device code
+(no random numbers, <code>linCmt()</code>, user R functions or similar).
+A model that is not, or a solve with resampled covariates or
+<code><a href="../reference/delay.html">delay()</a></code> outside <code>d/dt()</code>, falls back to the host
+counterpart (or to the default method) with a message under
+<code>"auto"</code>, and errors under an explicit backend.</li>
+</ul>
+<p>The worked examples, an <code>nlmixr2</code> estimation example and
+timings against Julia are in <a href="rxode2-gpu.html">Solving large
+populations on a GPU</a>.</p>
+</div>
+<div class="section level3">
 <h3 id="fixed-step-stiff-suitable-or-implicit-methods">Fixed-step, stiff-suitable, or implicit methods<a class="anchor" aria-label="anchor" href="#fixed-step-stiff-suitable-or-implicit-methods"></a>
 </h3>
 <p>These are useful when you want implicit stepping but you also want to
@@ -1048,7 +1172,7 @@ state has to be reconstructed at requested sample times.</p>
 </h2>
 <p>All numerical solvers respond to <code>atol</code> and
 <code>rtol</code>:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod</span>, <span class="va">ev</span>,</span>
 <span>               method <span class="op">=</span> <span class="st">"liblsoda"</span>,</span>
 <span>               atol   <span class="op">=</span> <span class="fl">1e-10</span>,</span>
@@ -1336,9 +1460,9 @@ error estimate</td>
 </tr>
 <tr class="odd">
 <td><code>Rodas5P()</code></td>
-<td><code>ros43</code></td>
-<td>5th-order in Julia; closest rxode2 analog remains <code>ros43</code>
-(4th-order)</td>
+<td><code>ros54p</code></td>
+<td>Rodas5P (Steinebach 2023); same method, with the analytic
+Jacobian</td>
 </tr>
 <tr class="even">
 <td><code>RadauIIA5()</code></td>
@@ -1387,31 +1511,41 @@ Rosenbrock</td>
 fallback</td>
 </tr>
 <tr class="even">
+<td><code>AutoTsit5(Rodas5P())</code></td>
+<td><code>"t54+ros54p"</code></td>
+<td>AutoSwitch: Tsitouras 5(4) with Rodas5P stiff fallback</td>
+</tr>
+<tr class="odd">
 <td><code>AutoTsit5(SDIRK43())</code></td>
 <td><code>"t54+sdirk43"</code></td>
 <td>AutoSwitch: Tsitouras 5(4) with SDIRK 4(3) stiff fallback</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>AutoVern6(Rosenbrock23())</code></td>
 <td>
 <code>"vern65+ros4"</code> (closest; see note)</td>
 <td>AutoSwitch: Verner 6(5) with Boost Rosenbrock W-method</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>AutoVern6(Rodas4P())</code></td>
 <td><code>"vern65+ros43"</code></td>
 <td>AutoSwitch: Verner 6(5) with GRK4A stiff fallback</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>AutoVern7(Rosenbrock23())</code></td>
 <td>
 <code>"vern76+ros4"</code> (closest; see note)</td>
 <td>AutoSwitch: Verner 7(6) with Boost Rosenbrock W-method</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>AutoVern7(Rodas4P())</code></td>
 <td><code>"vern76+ros43"</code></td>
 <td>AutoSwitch: Verner 7(6) with GRK4A stiff fallback</td>
+</tr>
+<tr class="even">
+<td><code>AutoVern7(Rodas5P())</code></td>
+<td><code>"vern76+ros54p"</code></td>
+<td>AutoSwitch: Verner 7(6) with Rodas5P stiff fallback</td>
 </tr>
 <tr class="odd">
 <td><code>AutoVern7(SDIRK43())</code></td>
@@ -1433,6 +1567,25 @@ fallback</td>
 <td><code>AutoVern9(SDIRK43())</code></td>
 <td><code>"vern98+sdirk43"</code></td>
 <td>AutoSwitch: Verner 9(8) with SDIRK 4(3) stiff fallback</td>
+</tr>
+<tr class="odd">
+<td>
+<code>GPUTsit5()</code> (<code>EnsembleGPUKernel</code>)</td>
+<td><code>"gpuT54"</code></td>
+<td>DiffEqGPU per-trajectory kernel; rxode2 batches subjects between
+events</td>
+</tr>
+<tr class="even">
+<td>
+<code>GPUVern7()</code> (<code>EnsembleGPUKernel</code>)</td>
+<td><code>"gpuVern76"</code></td>
+<td>as above</td>
+</tr>
+<tr class="odd">
+<td>
+<code>GPURodas5P()</code> (<code>EnsembleGPUKernel</code>)</td>
+<td><code>"gpuRos54p"</code></td>
+<td>as above, with the analytic Jacobian</td>
 </tr>
 </tbody>
 </table>
@@ -1487,6 +1640,13 @@ itself does not do population estimation; in Julia that is done by the
 closed-source Pumas or by NoLimits.jl, the counterparts of nlmixr2.
 Turing.jl is a general Bayesian estimation routine, closer to
 nlmixr2bayes.</li>
+<li>
+<strong>GPU ensembles</strong>: DiffEqGPU’s
+<code>EnsembleGPUKernel</code> runs one trajectory per GPU thread over
+the whole time span; rxode2’s <code>gpu*</code> methods run the same
+kind of kernel between events and keep dosing, steady state and
+covariates on the host, so NONMEM-style event tables work
+unchanged.</li>
 <li>
 <strong>Interoperability</strong>: The <code>JuliaCall</code> or
 <code>JuliaConnectoR</code> packages allow calling Julia’s ODE solvers
@@ -1694,7 +1854,7 @@ compartment <code>i</code> <strong>to</strong> compartment
 making translation direct and avoiding all symbolic manipulation. This
 is the most numerically stable approach for linear compartmental
 models:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">threeComp</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>    <span class="fu">matExp</span><span class="op">(</span><span class="op">)</span></span>
@@ -1720,7 +1880,7 @@ Exponentials and Inductive Linearization</a> for a full description of
 <p>The <code>nonmem2rx</code> package (part of the nlmixr2 ecosystem)
 can import NONMEM control streams into rxode2/nlmixr2 models
 automatically.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># nonmem2rx::nonmem2rx("run001.ctl")</span></span></code></pre></div>
 </div>
 </div>
@@ -2018,6 +2178,16 @@ and scientific computing platforms across key features.</p>
 <td>Threads.@threads</td>
 </tr>
 <tr class="even">
+<td>GPU ensembles</td>
+<td>
+<code>gpu*</code> methods (OpenCL)</td>
+<td>PCT <code>gpuArray</code>
+</td>
+<td>–</td>
+<td>–</td>
+<td>DiffEqGPU.jl</td>
+</tr>
+<tr class="odd">
 <td>NONMEM datasets</td>
 <td>Native</td>
 <td>Manual</td>
@@ -2025,7 +2195,7 @@ and scientific computing platforms across key features.</p>
 <td>Via import</td>
 <td>Manual</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Population estimation</td>
 <td>nlmixr2 (Bayesian: nlmixr2bayes)</td>
 <td>–</td>
@@ -2033,7 +2203,7 @@ and scientific computing platforms across key features.</p>
 <td>Native</td>
 <td>Pumas (closed source), NoLimits.jl (Bayesian: Turing.jl)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Universal differential equations</td>
 <td>nlmixr2nn</td>
 <td>Deep Learning Toolbox (<code>dlode45</code>)</td>
@@ -2041,7 +2211,7 @@ and scientific computing platforms across key features.</p>
 <td>–</td>
 <td>DiffEqFlux.jl</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Sensitivity equations</td>
 <td>Forward (liblsoda)</td>
 <td>–</td>
@@ -2073,7 +2243,18 @@ methods</a> section above.</p>
 <ul>
 <li>
 <code>liblsoda</code>, <code>lsoda</code>, <code>cvode</code>,
-<code>ros4</code>, <code>ros43</code>, <code>sdirk43</code>
+<code>ros4</code>, <code>ros43</code>, <code>ros54p</code>,
+<code>sdirk43</code>
+</li>
+</ul>
+</div>
+<div class="section level3">
+<h3 id="gpu-ensemble-methods-1">GPU ensemble methods<a class="anchor" aria-label="anchor" href="#gpu-ensemble-methods-1"></a>
+</h3>
+<ul>
+<li>
+<code>gpuT54</code>, <code>gpuVern76</code>, <code>gpuRos54p</code>,
+<code>"gpuT54+gpuRos54p"</code>, <code>"gpuVern76+gpuRos54p"</code>
 </li>
 </ul>
 </div>
@@ -2212,8 +2393,8 @@ pharmacometric workflow is:</p>
 <li><p>if the system is smooth and clearly non-stiff, compare against
 <code>dop853</code> or <code>dop54</code></p></li>
 <li><p>if the system is stiff or nearly stiff, compare against
-<code>ros4</code>, <code>ros43</code>, <code>sdirk43</code>, or
-<code>cvode</code></p></li>
+<code>ros4</code>, <code>ros43</code>, <code>ros54p</code>,
+<code>sdirk43</code>, or <code>cvode</code></p></li>
 <li><p>if stiffness is uncertain, try an AutoSwitch pair such as
 <code>"t54+ros4"</code>, <code>"t54+ros43"</code>, or
 <code>"vern76+ros43"</code> – see the <a href="#autoswitch-composite-methods">AutoSwitch section</a> for
@@ -2223,6 +2404,9 @@ try <code>rk4</code>, <code>backwardEuler</code>, <code>gauss6</code>,
 or <code>radauiia5</code></p></li>
 <li><p>if the model is mostly linear between events, try
 <code>indLin</code></p></li>
+<li><p>if you simulate or estimate with thousands of subjects or more,
+try the matching <code>gpu*</code> method (for example
+<code>gpuRos54p</code> for <code>ros54p</code>)</p></li>
 </ol>
 <p>That strategy is usually more valuable in pharmacometric practice
 than trying to optimize across every available high-order RK family from
@@ -2245,6 +2429,14 @@ performant and feature-rich ecosystem for solving differential equations
 in Julia. <em>J Open Res Softw</em> 5(1):15.</p></li>
 <li><p>Hairer E, Norsett SP, Wanner G (1993). Solving Ordinary
 Differential Equations I: Nonstiff Problems. 2nd ed. Springer.</p></li>
+<li><p>Steinebach G (2023). Construction of Rosenbrock-Wanner method
+Rodas5P and numerical benchmarks within the Julia Differential Equations
+package. <em>BIT Numer Math</em> 63:27.</p></li>
+<li><p>Utkarsh, Churavy V, Ma Y, Besard T, Srisuma P, Gymnich T, Gerlach
+AR, Edelman A, Barbastathis G, Braatz RD, Rackauckas C (2024). Automated
+translation and accelerated solving of differential equations on
+multiple GPU platforms. <em>Comput Methods Appl Mech Eng</em>
+419:116591.</p></li>
 <li><p>Beal S, Sheiner LB, Boeckmann A, Bauer RJ (2009). NONMEM Users
 Guides. (1989–2009). Icon Development Solutions, Ellicott City,
 MD.</p></li>
@@ -2255,9 +2447,9 @@ MD.</p></li>
 </h2>
 <ul>
 <li><a href="rxode2-stiff.html">Stiff systems and Jacobians</a></li>
+<li><a href="rxode2-gpu.html">Solving large populations on a
+GPU</a></li>
 <li><a href="rxode2-speed.html">Speeding up solving</a></li>
-<li><a href="rxode2-dense-output.html">Dense output for fast
-solving</a></li>
 </ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
