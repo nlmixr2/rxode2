@@ -54,13 +54,15 @@ Other Absorption building blocks:
 \code{\link[=addDepot]{addDepot()}},
 \code{\link[=addSecondAbsorption]{addSecondAbsorption()}},
 \code{\link[=addTransit]{addTransit()}},
+\code{\link[=addTransitAnalytic]{addTransitAnalytic()}},
 \code{\link[=addWeibullAbs]{addWeibullAbs()}},
 \code{\link[=addZeroOrderAbs]{addZeroOrderAbs()}},
 \code{\link[=convertAbsForceLongerDelay]{convertAbsForceLongerDelay()}},
 \code{\link[=convertAbsSequential]{convertAbsSequential()}},
 \code{\link[=convertTransitMtt]{convertTransitMtt()}},
 \code{\link[=removeDepot]{removeDepot()}},
-\code{\link[=removeTransit]{removeTransit()}}
+\code{\link[=removeTransit]{removeTransit()}},
+\code{\link[=removeTransitAnalytic]{removeTransitAnalytic()}}
 }
 \author{
 Matthew L. Fidler

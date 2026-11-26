@@ -105,6 +105,7 @@ pk1cmtDes |>
 Other Absorption building blocks:
 \code{\link[=addDepot]{addDepot()}},
 \code{\link[=addTransit]{addTransit()}},
+\code{\link[=addTransitAnalytic]{addTransitAnalytic()}},
 \code{\link[=addWeibullAbs]{addWeibullAbs()}},
 \code{\link[=addZeroOrderAbs]{addZeroOrderAbs()}},
 \code{\link[=convertAbsForceLongerDelay]{convertAbsForceLongerDelay()}},
@@ -112,6 +113,7 @@ Other Absorption building blocks:
 \code{\link[=convertTransitMtt]{convertTransitMtt()}},
 \code{\link[=removeDepot]{removeDepot()}},
 \code{\link[=removeTransit]{removeTransit()}},
+\code{\link[=removeTransitAnalytic]{removeTransitAnalytic()}},
 \code{\link[=removeZeroOrderAbs]{removeZeroOrderAbs()}}
 }
 \author{

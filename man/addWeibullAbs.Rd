@@ -69,12 +69,14 @@ Other Absorption building blocks:
 \code{\link[=addDepot]{addDepot()}},
 \code{\link[=addSecondAbsorption]{addSecondAbsorption()}},
 \code{\link[=addTransit]{addTransit()}},
+\code{\link[=addTransitAnalytic]{addTransitAnalytic()}},
 \code{\link[=addZeroOrderAbs]{addZeroOrderAbs()}},
 \code{\link[=convertAbsForceLongerDelay]{convertAbsForceLongerDelay()}},
 \code{\link[=convertAbsSequential]{convertAbsSequential()}},
 \code{\link[=convertTransitMtt]{convertTransitMtt()}},
 \code{\link[=removeDepot]{removeDepot()}},
 \code{\link[=removeTransit]{removeTransit()}},
+\code{\link[=removeTransitAnalytic]{removeTransitAnalytic()}},
 \code{\link[=removeZeroOrderAbs]{removeZeroOrderAbs()}}
 }
 \author{

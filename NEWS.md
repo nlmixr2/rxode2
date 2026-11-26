@@ -48,6 +48,13 @@
   as a lag time: `Mtt2 = Mtt1 + diffMtt2` for two transit chains,
   `Mtt2 = Tlag1 + diffMtt2` or `Tlag2 = Mtt1 + diffTlag2` for the mixed
   cases.  Each chain is converted to its mean transit time first.
+- `addTransitAnalytic()` adds the other transit form: the delay is
+  evaluated with the `transit()` pseudo-function from an estimated
+  `Mtt` and `Ktr` (implied `Mtt * Ktr - 1` compartments), with doses
+  still recorded on `depot` (`f(depot) <- 0` keeps the bolus out of the
+  depot).  It complements `addTransit()`, which builds one ODE state
+  per compartment and estimates `ktr`; `removeTransitAnalytic()` undoes
+  it.  The two forms agree at `Mtt = N/ktr`, `Ktr = ktr`.
 - `rxImpureFun()`/`rxRmImpureFun()` register user R functions, `rxFun()` C
   functions or package C functions that draw random numbers, keep state or
   have side effects.  `rxOptExpr()` never shares their calls and
