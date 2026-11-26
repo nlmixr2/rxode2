@@ -857,7 +857,7 @@
 #' @return Nothing, called for the warning
 #' @noRd
 .rxOptWarnRepeat <- function(txt) {
-  if (identical(.rxOptEnv$.depth, 1L) && .rxOptHasTemps(txt)) {
+  if (identical(.rxOptEnv$.depth, 1L) && !isTRUE(.rxOptEnv$.iterating) && .rxOptHasTemps(txt)) {
     warning(
       "'rxOptExpr()' input already has common subexpression temporaries ",
       "(rx_expr_*); the model was optimized more than once, so new ",
@@ -1150,6 +1150,78 @@
   .calls[.calls %in% c(.rxOptImpureBuiltin, .rxImpureFunNames())]
 }
 
+# linCmtB() is listed in .rxOptImpureBuiltin, so the CSE never shares it: its
+# value call computes the record and its sentinels change the kernel's state.
+# Most of the calls a generated model makes only read the record's computed
+# state: the value itself (which1 = which2 = -1, a memo hit after the first),
+# the kernel's stored Jacobian, amounts and concentration gradient (its
+# linCmtBread(): which1 >= 0 with which2 >= 0 or -2, and which1 = -2 with
+# which2 >= 0), the second-order reads (-20/-21) and the eta-space carry's
+# reads (-33 .. -36).  A FOCEi gradient model writes the same read many times
+# per record, and each call pays the kernel's entry.  So a state read is
+# renamed `linCmtBr<epoch>__(`, a name not in .rxOptImpureBuiltin, where the
+# epoch counts the statements with a state-changing linCmtB() call so far: two
+# reads with such a call between them are never merged, and a temporary is
+# defined at its first use, after the calls before it.
+# .rxOptLinCmtUnmarkStateReads() names them back.
+#' Is a linCmtB() call with these selectors a state read?
+#' @param w1,w2 the which1/which2 arguments (NA when not a number)
+#' @return logical, one per call
+#' @noRd
+.rxOptLinCmtIsStateRead <- function(w1, w2) {
+  !is.na(w1) &
+    !is.na(w2) &
+    ((w1 == -1 & w2 == -1) |
+      (w1 >= 0 & (w2 >= 0 | w2 == -2)) |
+      (w1 == -2 & w2 >= 0) |
+      w1 %in% c(-20, -21, -33, -34, -35, -36))
+}
+
+#' Mark the linCmtB() state reads of a normalized model shareable
+#' @param norm normalized model text
+#' @return `norm` with each state read renamed `linCmtBr<epoch>__(`
+#' @noRd
+.rxOptLinCmtMarkStateReads <- function(norm) {
+  if (!grepl("linCmtB(", norm, fixed = TRUE)) {
+    return(norm)
+  }
+  .l <- strsplit(norm, "\n", fixed = TRUE)[[1]]
+  .epoch <- 0L
+  for (.i in seq_along(.l)) {
+    if (!grepl("linCmtB(", .l[.i], fixed = TRUE)) {
+      next
+    }
+    .nCalls <- lengths(gregexpr("linCmtB(", .l[.i], fixed = TRUE))
+    .m <- gregexpr("linCmtB[(]([^,()]*,){7}", .l[.i], perl = TRUE)[[1]]
+    if (.m[1] < 0 || length(.m) != .nCalls) {
+      # a call whose selectors cannot be read may change state
+      .epoch <- .epoch + 1L
+      next
+    }
+    .calls <- regmatches(.l[.i], list(.m))[[1]]
+    .a <- lapply(.calls, function(.c) {
+      suppressWarnings(as.numeric(strsplit(.c, ",", fixed = TRUE)[[1]][6:7]))
+    })
+    .w1 <- vapply(.a, `[`, numeric(1), 1L)
+    .w2 <- vapply(.a, `[`, numeric(1), 2L)
+    if (all(.rxOptLinCmtIsStateRead(.w1, .w2))) {
+      .l[.i] <- gsub("linCmtB(", sprintf("linCmtBr%d__(", .epoch), .l[.i], fixed = TRUE)
+    } else {
+      # a state-changing call: the statement stays whole and a new epoch starts
+      .epoch <- .epoch + 1L
+    }
+  }
+  paste(.l, collapse = "\n")
+}
+
+#' Undo .rxOptLinCmtMarkStateReads()
+#' @param txt optimized model text
+#' @return `txt` with every `linCmtBr<epoch>__(` named `linCmtB(` again
+#' @noRd
+.rxOptLinCmtUnmarkStateReads <- function(txt) {
+  gsub("linCmtBr[0-9]+__[(]", "linCmtB(", txt, perl = TRUE)
+}
+
 # regular expression matching a call to any of `fns` (identifiers)
 .rxOptCallRe <- function(fns) {
   paste0(
@@ -1305,6 +1377,50 @@ rxOptExpr <- function(
   expensive = getOption("rxode2.optExprExpensive", FALSE)
 ) {
   .depth <- if (is.integer(.rxOptEnv$.depth)) .rxOptEnv$.depth else 0L
+  if (.depth > 0L) {
+    # a chunk of an outer call: one pass, the outer call iterates
+    return(.rxOptExprOnce(x, msg = msg, chunkLines = chunkLines, parallel = parallel, expensive = expensive))
+  }
+  # One pass shares the innermost repeats only: an expression that repeats
+  # once its own repeated parts are temporaries (`f(exp(a+b))` written three
+  # times, a linCmtB() read whose arguments are expressions) is not a
+  # candidate until the next pass.  So pass until the text stops changing.
+  .cur <- .rxOptExprOnce(x, msg = msg, chunkLines = chunkLines, parallel = parallel, expensive = expensive)
+  # the later passes read text this call optimized itself: no repeat warning
+  .rxOptEnv$.iterating <- TRUE
+  on.exit(.rxOptEnv$.iterating <- FALSE, add = TRUE)
+  for (.i in seq_len(.rxOptMaxPasses - 1L)) {
+    if (!is.character(.cur) || length(.cur) != 1L) {
+      break
+    }
+    .nxt <- suppressMessages(.rxOptExprOnce(
+      .cur,
+      msg = msg,
+      chunkLines = chunkLines,
+      parallel = parallel,
+      expensive = expensive
+    ))
+    # keep a pass only when it shared something more; otherwise the text of
+    # the last productive pass stands as written
+    if (!is.character(.nxt) || .rxOptNTemps(.nxt) <= .rxOptNTemps(.cur)) {
+      break
+    }
+    .cur <- .nxt
+  }
+  .cur
+}
+
+# the most common-subexpression passes rxOptExpr() makes
+.rxOptMaxPasses <- 6L
+
+# how many common-subexpression temporaries a model text defines
+.rxOptNTemps <- function(txt) {
+  .m <- gregexpr("(?m)^rx_expr_[A-Za-z0-9_]*~", txt, perl = TRUE)[[1]]
+  sum(.m > 0L)
+}
+
+.rxOptExprOnce <- function(x, msg = "model", chunkLines = 40L, parallel = 0L, expensive = FALSE) {
+  .depth <- if (is.integer(.rxOptEnv$.depth)) .rxOptEnv$.depth else 0L
   .expensive <- isTRUE(expensive)
   .rxOptEnv$.depth <- .depth + 1L
   on.exit(.rxOptEnv$.depth <- .depth)
@@ -1331,10 +1447,11 @@ rxOptExpr <- function(
   ## The C pass first; it returns NA when it will not reproduce the R walker
   ## exactly, and the R implementation below then runs.  Chunking calls this
   ## same whole-model path once per chunk, so chunks go through C too.
+  .norm <- .rxOptLinCmtMarkStateReads(.norm)
   .impure <- .rxOptImpureCalls(.norm)
   .cse <- .rxOptExprC(.norm, .impure, .expensive)
   if (!is.na(.cse)) {
-    return(.rxOptSsaUndo(.cse, .ssa))
+    return(.rxOptSsaUndo(.rxOptLinCmtUnmarkStateReads(.cse), .ssa))
   }
   .p <- eval(parse(text = paste0("quote({", .norm, "})")))
   .lines <- ..rxOpt(.p, progress = TRUE)
@@ -1379,8 +1496,8 @@ rxOptExpr <- function(
     .rxOptEnv$.exclude <- ""
     .malert(sprintf("optimizing duplicate expressions in %s...", msg))
     .opt <- ..rxOpt(.p, progress = TRUE)
-    return(.rxOptSsaUndo(paste(.opt, collapse = "\n"), .ssa))
+    .rxOptSsaUndo(.rxOptLinCmtUnmarkStateReads(paste(.opt, collapse = "\n")), .ssa)
   } else {
-    return(.rxOptSsaUndo(paste(.lines, collapse = "\n"), .ssa))
+    .rxOptSsaUndo(.rxOptLinCmtUnmarkStateReads(paste(.lines, collapse = "\n")), .ssa)
   }
 }
