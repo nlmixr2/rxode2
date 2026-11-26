@@ -43,6 +43,45 @@ rxTest({
     expect_identical(.c, .r)
   })
 
+  test_that("expensive = TRUE gives single expensive calls their own temporary, in C as in R", {
+    .m <- paste(
+      c(
+        "ka = exp(tka + eta.ka)",
+        "d/dt(depot) = -exp(tka)*depot",
+        "d/dt(center) = exp(tka)*depot - exp(tcl - tv)*center*(1 + exp(temax)*center/(center + 50))",
+        "rx_pred_ = exp(-tv)*center",
+        "y = log(exp(a) + 1)*b",
+        "w = lag(x) + exp(lag(x))"
+      ),
+      collapse = "\n"
+    )
+    .c <- suppressMessages(rxOptExpr(.m, chunkLines = 0L, expensive = TRUE))
+    withr::with_options(list(rxode2.optExprC = FALSE), {
+      .r <- suppressMessages(rxOptExpr(.m, chunkLines = 0L, expensive = TRUE))
+    })
+    expect_identical(.c, .r)
+    .l <- strsplit(.c, "\n", fixed = TRUE)[[1]]
+    ## a whole right-hand side stays; calls inside larger expressions move out
+    expect_true("ka=exp(tka+eta.ka)" %in% .l)
+    expect_true(any(grepl("^rx_expr_[0-9]+~exp\\(temax\\)$", .l)))
+    expect_true(any(grepl("^rx_expr_[0-9]+~exp\\(-tv\\)$", .l)))
+    expect_true(any(grepl("^rx_expr_[0-9]+~log\\(rx_expr_[0-9]+\\+1\\)$", .l)))
+    ## history calls are never moved
+    expect_true("w=lag(x)+exp(lag(x))" %in% .l)
+    ## the option is the default, and off leaves single calls inline
+    withr::with_options(list(rxode2.optExprExpensive = TRUE), {
+      expect_identical(suppressMessages(rxOptExpr(.m, chunkLines = 0L)), .c)
+    })
+    .off <- suppressMessages(rxOptExpr(.m, chunkLines = 0L, expensive = FALSE))
+    expect_true(grepl("exp(temax)*center", .off, fixed = TRUE))
+    ## the same model either way
+    .p <- c(tka = 0.1, eta.ka = 0.2, tcl = 1, tv = 3, temax = -0.5, a = 0.3, b = 2, x = 1)
+    .ev <- et(amt = 100, cmt = "depot") |> et(seq(0, 24, by = 2))
+    .s1 <- rxSolve(rxode2(.off), .ev, .p)
+    .s2 <- rxSolve(rxode2(.c), .ev, .p)
+    expect_equal(.s1$rx_pred_, .s2$rx_pred_)
+  })
+
   test_that("many nested replacements do not silently truncate", {
     ## Reducing a candidate rewrites it in terms of the shorter ones, and each
     ## rewrite makes it LONGER -- `(a+1)` (5 chars) becomes `rx_expr_0` (9).

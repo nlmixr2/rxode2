@@ -807,4 +807,77 @@ rxTest({
     expect_lt(.cache(43L, 3L), .cache(42L, 3L)) # 3*43 = 129, over the cap
     expect_lt(.cache(128L, 1L), .cache(127L, 1L)) # pure matExp: neq+1
   })
+
+  test_that("a GPU method's per-slot memory is in the estimate (rxMemoryGpuComponents_)", {
+    .m <- rxode2({
+      d / dt(depot) <- -ka * depot
+      d / dt(center) <- ka * depot - cl / v * center
+      cp <- center / v
+    })
+    .ev <- as.data.frame(et(amt = 100, ii = 12, addl = 2) |> et(seq(0, 24, by = 4)) |> et(id = 1:2000))
+    .gpuNames <- c("gpuHostWork", "gpuHostState", "gpuSlotWork", "gpuStage")
+    .host <- rxMemoryEstimate(.ev, model = .m, control = rxControl(method = "t54", cores = 2L))
+    expect_false(any(.gpuNames %in% names(.host)))
+    expect_null(attr(.host, "gpuDeviceBytes"))
+    expect_gt(as.numeric(.host$extraDosing), 0)
+    .gpu <- rxMemoryEstimate(
+      .ev,
+      model = .m,
+      control = rxControl(method = "gpuT54", gpuBackend = "cpu", gpuBatch = 512L, cores = 2L)
+    )
+    expect_true(all(.gpuNames %in% names(.gpu)))
+    expect_gt(as.numeric(.gpu$gpuHostWork), 0)
+    expect_gt(as.numeric(.gpu$gpuHostState), 0)
+    .meta <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes", "freeRamBytes", "effectiveSubs")
+    .comps <- .gpu[!names(.gpu) %in% c(.meta, "gsolve_n0")]
+    expect_equal(as.numeric(.gpu$total), sum(vapply(.comps, as.numeric, numeric(1))))
+    ## the solve runs with op->cores set to the batch: per-thread pools scale with it
+    expect_gt(as.numeric(.gpu$extraDosing), as.numeric(.host$extraDosing))
+    ## the bytes follow the layout the solve allocates with
+    .dims <- c(512L, 2L, 3L, 1L, 0L, 0L, 0L, 1L, 4L, 6L, 10L, 2L, 3L, 4L, 0L, -1L)
+    .a <- rxMemoryGpuComponents_(.dims, 0L, 1L, 2L)
+    .dims2 <- .dims
+    .dims2[1] <- 1024L
+    .b <- rxMemoryGpuComponents_(.dims2, 0L, 1L, 2L)
+    expect_equal(.b[["gpuHostWork"]], 2 * .a[["gpuHostWork"]])
+    expect_gt(.b[["gpuDevice"]], .a[["gpuDevice"]])
+    expect_equal(.a[["gpuHostState"]], 0)
+    expect_gt(rxMemoryGpuComponents_(.dims, 0L, 0L, 2L)[["gpuHostState"]], 0)
+    expect_lt(rxMemoryGpuComponents_(.dims, 1L, 1L, 2L)[["gpuDevice"]], .a[["gpuDevice"]])
+    ## timelines (RXG_D_NROW > 0): their rows on the host and the device
+    expect_equal(.a[["gpuTimeline"]], 0)
+    .dims3 <- .dims
+    .dims3[15] <- 8192L
+    .c <- rxMemoryGpuComponents_(.dims3, 0L, 1L, 2L)
+    ## a row: (2 neq + rd + 2 npar + nlhs) doubles and (ri + neq) ints; and
+    ## the slots' offsets
+    expect_equal(.c[["gpuTimeline"]], 8192 * ((2 * 2 + 4 + 2 * 3 + 1) * 8 + (6 + 2) * 4) + 513 * 4)
+    expect_gt(.c[["gpuDevice"]], .a[["gpuDevice"]])
+    ## the largest single device buffer, checked against the device's
+    ## CL_DEVICE_MAX_MEM_ALLOC_SIZE
+    .big <- attr(.a, "gpuDeviceMaxBuffer")
+    expect_gt(.big, 0)
+    expect_lt(.big, .a[["gpuDevice"]])
+    expect_equal(attr(.b, "gpuDeviceMaxBuffer"), 2 * .big)
+    expect_error(.rxGpuCheckDeviceMem0(.a[["gpuDevice"]], c(1e12, .big - 1), 1L, 512L, .big), "at most")
+    expect_true(.rxGpuCheckDeviceMem0(.a[["gpuDevice"]], c(1e12, .big), 1L, 512L, .big))
+    expect_false(.rxGpuCheckDeviceMem0(.a[["gpuDevice"]], c(1e12, .big - 1), 1L, 512L, .big, stop = FALSE))
+    expect_error(.rxGpuCheckDeviceMem0(1e12, c(1e12, NA), 1L, 512L, .big), "device memory")
+  })
+
+  test_that("the out-of-memory chunk size counts a GPU method's slot buffers as fixed", {
+    .m <- rxode2({
+      d / dt(depot) <- -ka * depot
+      d / dt(center) <- ka * depot - cl / v * center
+      cp <- center / v
+    })
+    .ev <- as.data.frame(et(amt = 100, ii = 12, addl = 2) |> et(seq(0, 24, by = 4)) |> et(id = 1:2000))
+    .ctl <- rxControl(method = "gpuT54", gpuBackend = "cpu", gpuBatch = 512L, cores = 2L)
+    .est <- rxMemoryEstimate(.ev, model = .m, control = .ctl)
+    ## the names .rxOomChunkSize() takes off the top are the estimate's own
+    expect_true(all(c("extraDosing", "gpuHostWork", "gpuHostState", "gpuSlotWork", "gpuStage") %in% names(.est)))
+    ## with no RAM to spare beyond the slot buffers, one subject at a time
+    local_mocked_bindings(.getFreeRamBytes = function() as.numeric(.est$gpuHostWork))
+    expect_equal(.rxOomChunkSize(.m, .ev, .ctl), 1L)
+  })
 })

@@ -1,0 +1,189 @@
+# Time nlmixr2 estimation (SAEM and FOCEi) of a simulated population PK
+# model with the GPU methods (OpenCL and their CPU build) against host ODE
+# methods.  Every fit uses the same data, model and starting estimates; only
+# rxControl(method=, gpuBackend=) changes.  Covariance and tables are off, so
+# the time is the estimation (and the SAEM -2LL by quadrature); the first
+# OpenCL fit of each estimation method also builds its kernel.  OpenCL fits
+# launch once per event interval; "opencl driver" fits leave the work-group
+# size to the OpenCL driver, "opencl timeline" fits integrate each
+# subject's whole timeline in a launch per solve, and "xpe" fits (OpenCL and
+# the CPU build) give single exp()-like calls their own temporaries
+# (options(rxode2.optExprExpensive = TRUE)) so the device computes the ones of
+# parameters alone once per interval.
+#
+# Usage: Rscript bench/gpu-nlmixr2.R [sizes] [est]
+#   sizes  comma-separated numbers of subjects (default 500)
+#   est    comma-separated estimation methods (default saem,focei)
+library(rxode2)
+library(nlmixr2)
+.rxGpuSolveStats <- utils::getFromNamespace(".rxGpuSolveStats", "rxode2")
+
+.args <- commandArgs(TRUE)
+.sizes <- as.integer(strsplit(if (length(.args) >= 1) .args[1] else "500", ",")[[1]])
+.ests <- strsplit(if (length(.args) >= 2) .args[2] else "saem,focei", ",")[[1]]
+## threads: OMP_NUM_THREADS when set (eg the cores a batch job was given)
+.cores <- as.integer(Sys.getenv("OMP_NUM_THREADS", parallel::detectCores()))
+## all of them (rxode2 uses half the cores by default)
+setRxThreads(.cores)
+
+## one-compartment oral PK with an Emax effect on elimination (ODE, so every
+## method integrates it)
+.model <- function() {
+  ini({
+    tka <- log(1.2)
+    tcl <- log(3)
+    tv <- log(30)
+    temax <- log(0.5)
+    eta.ka ~ 0.2
+    eta.cl ~ 0.1
+    eta.v ~ 0.1
+    prop.sd <- 0.1
+    add.sd <- 0.05
+  })
+  model({
+    ka <- exp(tka + eta.ka)
+    cl <- exp(tcl + eta.cl)
+    v <- exp(tv + eta.v)
+    emax <- exp(temax)
+    d/dt(depot) <- -ka * depot
+    d/dt(center) <- ka * depot - cl / v * (1 + emax * center / (center + 50)) * center
+    cp <- center / v
+    cp ~ add(add.sd) + prop(prop.sd)
+  })
+}
+
+## an OpenCL device with double precision (not Mesa's rusticl)
+.dev <- NA_integer_
+if (requireNamespace("OpenCL", quietly = TRUE) && rxGpuInfo()$available) {
+  .d <- rxGpuInfo()$devices
+  ## a GPU first: an Intel or pocl CPU OpenCL device may also be listed first
+  .ok <- .d$fp64 & !grepl("rusticl", .d$platform)
+  .dev <- c(which(.ok & .d$type == "gpu"), which(.ok))[1]
+  cat("OpenCL device:", .d$device[.dev], "\n")
+}
+
+## ODE method and gpuBackend; liblsoda and the AutoSwitch composites switch
+## between non-stiff and stiff steps
+.cases <- list(
+  c("liblsoda", "auto"),
+  c("t54", "auto"),
+  c("ros54p", "auto"),
+  c("t54+ros54p", "auto"),
+  c("gpuT54", "cpu"),
+  c("gpuRos54p", "cpu"),
+  c("gpuT54+gpuRos54p", "cpu")
+)
+if (!is.na(.dev)) {
+  .cases <- c(.cases, list(c("gpuT54", "opencl"), c("gpuRos54p", "opencl"), c("gpuT54+gpuRos54p", "opencl")))
+  ## SAEM only (the estimation that solves in batches): OpenCL with the
+  ## driver's work-group size (options(rxode2.gpuLocalSize = 0)) and with
+  ## whole timelines (options(rxode2.gpuTimeline = TRUE))
+  .cases <- c(
+    .cases,
+    list(
+      c("gpuT54", "opencl driver"),
+      c("gpuT54+gpuRos54p", "opencl driver"),
+      c("gpuT54", "opencl timeline"),
+      c("gpuT54+gpuRos54p", "opencl timeline")
+    )
+  )
+}
+.cases <- c(
+  .cases,
+  list(c("gpuT54", "cpu xpe"), c("gpuT54+gpuRos54p", "cpu xpe")),
+  if (!is.na(.dev)) {
+    list(c("gpuT54", "opencl xpe"), c("gpuRos54p", "opencl xpe"), c("gpuT54+gpuRos54p", "opencl xpe"))
+  }
+)
+
+.out <- NULL
+for (.n in .sizes) {
+  set.seed(42)
+  .ev <- et(amt = 300, ii = 12, addl = 2, cmt = "depot") |>
+    et(c(0.5, 1, 2, 4, 6, 12, 24, 30, 36)) |>
+    et(id = seq_len(.n))
+  .sim <- rxSolve(.model, .ev, addDosing = TRUE, returnType = "data.frame")
+  .dat <- .sim[, c("id", "time", "evid", "amt", "cmt", "sim")]
+  names(.dat)[names(.dat) == "sim"] <- "dv"
+  .dat$dv[.dat$evid != 0] <- 0
+  for (.est in .ests) {
+    for (.c in .cases) {
+      .variant <- sub("^[a-z]+ ?", "", .c[2])
+      if (.variant %in% c("driver", "timeline", "xpe") && .est != "saem") {
+        next
+      }
+      options(
+        rxode2.gpuTimeline = .variant == "timeline",
+        rxode2.gpuLocalSize = if (.variant == "driver") 0L else NA,
+        rxode2.optExprExpensive = .variant == "xpe"
+      )
+      .be <- sub(" .*$", "", .c[2])
+      .ctl <- if (.est == "saem") {
+        saemControl(
+          print = 0,
+          calcTables = FALSE,
+          covMethod = "",
+          rxControl = rxControl(
+            method = .c[1],
+            gpuBackend = .be,
+            gpuDevice = if (is.na(.dev)) NULL else .dev,
+            cores = .cores
+          )
+        )
+      } else {
+        foceiControl(
+          print = 0,
+          calcTables = FALSE,
+          covMethod = "",
+          rxControl = rxControl(
+            method = .c[1],
+            gpuBackend = .be,
+            gpuDevice = if (is.na(.dev)) NULL else .dev,
+            cores = .cores
+          )
+        )
+      }
+      invisible(.rxGpuSolveStats())
+      .t <- system.time(.fit <- suppressMessages(suppressWarnings(nlmixr2(.model, .dat, .est, control = .ctl))))[[
+        "elapsed"
+      ]]
+      ## the batched GPU solves: rounds (or timeline launches), subject
+      ## intervals per launch, and the seconds spent advancing subjects on the
+      ## host and in the launches
+      .g <- .rxGpuSolveStats()
+      .out <- rbind(
+        .out,
+        data.frame(
+          n = .n,
+          est = .est,
+          method = .c[1],
+          backend = .c[2],
+          seconds = round(.t, 1),
+          rounds = .g[["rounds"]],
+          perRound = round(.g[["requests"]] / max(1, .g[["rounds"]])),
+          hostS = round(.g[["advance"]], 1),
+          gatherS = round(.g[["gather"]], 1),
+          roundS = round(.g[["round"]], 1),
+          objf = round(.fit$objf, 2),
+          tcl = signif(exp(.fit$theta[["tcl"]]), 4),
+          tv = signif(exp(.fit$theta[["tv"]]), 4)
+        )
+      )
+      cat(
+        .n,
+        .est,
+        .c,
+        round(.t, 1),
+        "s; rounds",
+        .g[["rounds"]],
+        "host",
+        round(.g[["advance"]], 1),
+        "s, rounds",
+        round(.g[["round"]], 1),
+        "s\n"
+      )
+    }
+  }
+}
+options(width = 200)
+print(.out, row.names = FALSE)
