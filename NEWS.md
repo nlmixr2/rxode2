@@ -38,6 +38,12 @@
   evaluation (eg `f45`, `dop54`, `euler`) and `dop853` also name the states
   whose derivative was non-finite, with their values.  A successful solve
   records nothing (#1805).
+- `convertAbsSequential()` now covers the transit-delay forms of the
+  Monolix sequential double-absorption library, not only lag times.  A
+  second path with no delay gains the sequential lag (`Tlag2 = Tk01`),
+  a lag path is tied to `Tlag1 + Tk01` when the first path has a lag,
+  and a transit chain is reparameterized to `Mtt2 = Tk01 + diffMtt2`
+  (or `Mtt2 = Tlag1 + Tk01 + diffMtt2`), estimating `diffMtt2`.
 - `rxImpureFun()`/`rxRmImpureFun()` register user R functions, `rxFun()` C
   functions or package C functions that draw random numbers, keep state or
   have side effects.  `rxOptExpr()` never shares their calls and
