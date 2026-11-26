@@ -437,6 +437,69 @@ rxTest({
     }
   })
 
+  test_that("a re-solve without a new setup rounds every subject at once, as SAEM's iterations do", {
+    .b <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - cl / v * center
+      cp <- center / v
+    })
+    .p <- data.frame(id = 1:40, ka = seq(0.5, 2.5, length.out = 40), cl = 3, v = 30)
+    .ev <- et(amt = 300) |> et(seq(0, 24, by = 4)) |> et(id = 1:40)
+    invisible(.rxGpuSolveStats())
+    suppressMessages(rxSolve(.b, .p, .ev, method = "gpuT54", gpuBackend = "cpu", cores = 2L))
+    .first <- .rxGpuSolveStats()
+    expect_equal(.first[["solves"]], 1)
+    expect_equal(.first[["requests"]] / .first[["rounds"]], 40)
+    ## par_solve() again on the same setup (nlmixr2est's SAEM, every iteration)
+    utils::capture.output(invisible(.Call("_rxTestParSolveAfterPush", PACKAGE = "rxode2")), type = "message")
+    .again <- .rxGpuSolveStats()
+    expect_equal(.again[["solves"]], 1)
+    expect_equal(.again[["rounds"]], .first[["rounds"]])
+    expect_equal(.again[["requests"]] / .again[["rounds"]], 40)
+  })
+
+  test_that("a cmt() without d/dt() is not a device state (nlmixr2's endpoint compartment, #1757)", {
+    .m <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - cl / v * center * (1 + emax * center / (center + 50))
+      cp <- center / v
+      cmt(cp)
+    })
+    expect_equal(rxModelVars(.m)$stateExtra, "cp")
+    expect_equal(.rxGpuHostLib(.m)$neq, 2L)
+    expect_match(.rxGpuModelSource(.m)$source, "#define RXG_NEQ 2\n", fixed = TRUE)
+    .p <- data.frame(id = 1:40, ka = seq(0.5, 2.5, length.out = 40), cl = 3, v = 30, emax = 0.5)
+    .ev <- et(amt = 300, ii = 12, addl = 2) |> et(c(0.5, 1, 2, 4, 6, 12, 24, 30, 36)) |> et(id = 1:40)
+    for (.be in .backends()) {
+      for (.meth in .gpuMethods) {
+        .g <- .solve(.m, .ev, .meth, .be, params = .p, cores = 2L)
+        .h <- suppressMessages(rxSolve(.m, .p, .ev, method = .hostOf[[.meth]]))
+        expect_equal(.g$cp, .h$cp, tolerance = 1e-6, label = paste(.meth, .be))
+      }
+    }
+  })
+
+  test_that("a GPU solve replays from its serialized state", {
+    .b <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - cl / v * center
+      cp <- center / v
+    })
+    .p <- data.frame(id = 1:3, ka = c(1, 1.5, 2), cl = 3, v = 30)
+    .ev <- et(amt = 300) |> et(seq(0, 24, by = 4)) |> et(id = 1:3)
+    .f <- tempfile(fileext = ".rxbin")
+    on.exit(unlink(.f), add = TRUE)
+    .g <- suppressMessages(rxSolve(.b, .p, .ev, method = "gpuT54", gpuBackend = "cpu"))
+    suppressMessages(rxSolve(.b, .p, .ev, method = "gpuT54", gpuBackend = "cpu", serializeFile = .f))
+    ## a wider setup of another solve in between must not size the replay's slots
+    .ev2 <- et(amt = 300) |> et(seq(0, 24, by = 4)) |> et(id = 1:40)
+    suppressMessages(rxSolve(.b, c(ka = 1, cl = 3, v = 30), .ev2, method = "gpuT54", gpuBackend = "cpu", cores = 1L))
+    .r <- suppressMessages(rxSolve(.b, .f))
+    ## a replay differs from the direct solve within the tolerances, as for
+    ## the host methods
+    expect_equal(.r$cp, .g$cp, tolerance = 1e-5)
+  })
+
   test_that("a GPU setup armed for one method is not claimed by another", {
     .b <- rxode2({
       d/dt(depot) <- -ka * depot

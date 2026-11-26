@@ -606,6 +606,42 @@ Two verification gates, both cheap, both required after ANY change here:
   them to agree record for record. There are no known divergences; the
   list may only shrink.
 
+## Memory: every allocation is estimated, and arenas come first
+
+`rxSolve()` refuses a solve its memory estimate (`rxMemoryEstimate()`) says will
+not fit, so the estimate must count everything rxode2 allocates.
+
+- **Allocate only through the tagged allocators** of `inst/include/rxMemAlloc.h`
+  (`rxMemMalloc`, `rxMemCalloc`, `rxMemRealloc`, `rxMemRalloc`, `rxMemNew`,
+  `rxMemAssign`, `rxMemResize`, `rxMemTag`). The first argument names the
+  component that counts the allocation: a name `rxMemoryComponents_()` or
+  `rxMemoryGpuComponents_()` (`src/rxMemoryComponents.cpp`) returns, or `fixed`
+  for memory that does not scale with subjects, events or threads.
+- **A new allocation that no component counts gets a component first**: add its
+  byte formula to `rxMemoryComponents_()` (a new named element; never change its
+  arguments, it is a released interface) or to a sibling function such as
+  `rxMemoryGpuComponents_()`, wire it into `rxMemoryEstimate()`
+  (`R/rxMemoryEstimate.R`, with a label in `print.rxMemoryEstimate`), then tag the
+  allocation with it. Compute the bytes from the same layout the allocator uses,
+  never from a separate guess.
+- `tests/testthat/test-mem-alloc-tags.R` fails on a raw allocator (`malloc`,
+  `calloc`, `realloc`, `R_alloc`, `R_Calloc`, `new T[]`, `std::vector`
+  `assign`/`resize`, `clCreateBuffer`) and on a tag that names no component.
+  Older allocations are listed per file in
+  `tests/testthat/mem-alloc-baseline.csv`, which may only shrink: tag them as you
+  touch them and lower the count (`RXODE2_MEM_ALLOC_BASELINE=write`).
+- **Use an arena whenever the size is known at solve setup.** Carve the buffer
+  from the `gsolve` (double) or `gon` (int) arena that `rxFillMemLayout()`
+  (`inst/include/rxMemoryCalc.h`) sizes, rather than allocating it on its own.
+  A new region must be added in all four places: `rxFillMemLayout()`, the carving
+  in `src/rxData.cpp`, the restore in `src/rxSerialize.cpp`, and the estimate.
+  Use a separate allocation only when the buffer grows during the solve (then
+  start it from the arena and move it to the heap on first growth, never
+  `realloc` an arena slice), outlives the solve (per-thread pools), or is
+  R-managed or device memory.
+- Never allocate inside a per-interval or per-subject hot loop (for example
+  `R_Calloc` on every integrator call): size it once at setup, per thread.
+
 ## CRAN tests: never assert on timing
 
 - Never put a wall-clock timing expectation in a test that can run on CRAN:
