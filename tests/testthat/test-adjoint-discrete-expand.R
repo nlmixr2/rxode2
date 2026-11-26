@@ -61,6 +61,18 @@ rxTest({
       ev = .ev2,
       p = c(k = 1)
     ),
+    # a constant default read by d/dt() and y(0), then reassigned a constant
+    defaultLater = list(
+      txt = "z <- 5\ny(0) <- z\nd/dt(y) <- -k*y + z\nz <- 3",
+      ev = .ev2,
+      p = c(k = 1)
+    ),
+    # an initial condition assigned twice keeps its last value
+    iniTwice = list(
+      txt = "y(0) <- k\ny(0) <- 2*k\nd/dt(y) <- -k*y",
+      ev = .ev2,
+      p = c(k = 1)
+    ),
     # covariate interpolation is carried
     interp = list(
       txt = "linear(cov1)\nd/dt(y) <- -k*y + cov1\ny(0) <- 0",
@@ -127,7 +139,6 @@ rxTest({
   .adjMvRules <- list(
     identical = c(
       "params",
-      "ini",
       "normal.state",
       "normProp",
       "needSort",
@@ -158,6 +169,9 @@ rxTest({
     # only the expansion has sensitivity slots
     sens = c("sens", "sensProp"),
     flags = "flags",
+    # a y(0) read at its position may become a literal default, and a constant
+    # in a one-armed if() leaves an unnamed NA; neither changes a solve
+    ini = "ini",
     # the expansion supplies its own Jacobian, and only for the stiff methods
     ignored = c("trans", "md5", "model", "version", "timeId", "dfdy")
   )
@@ -172,6 +186,10 @@ rxTest({
       for (.f in .adjMvRules$identical) {
         expect_identical(.e[[.f]], .o[[.f]], label = paste(.nm, .f))
       }
+      .oi <- .o$ini[names(.o$ini) != ""]
+      expect_identical(.e$ini[names(.oi)], .oi, label = paste(.nm, "ini"))
+      .extra <- setdiff(names(.e$ini)[names(.e$ini) != ""], names(.oi))
+      expect_true(all(.extra %in% .o$state), label = paste(.nm, "ini extra"))
       for (.f in .adjMvRules$prefix) {
         expect_identical(.e[[.f]][seq_along(.o[[.f]])], .o[[.f]], label = paste(.nm, .f))
       }
@@ -512,6 +530,10 @@ rxTest({
     expect_error(
       .rxAdjointExpand("tt <- 1.5*k\nmtime(t1) <- tt\nd/dt(y) <- -k*y + (t > t1)", "k"),
       "mtime[(][)] that depends on a sensitivity parameter [(]k[)]"
+    )
+    expect_error(
+      .rxAdjointExpand("y(0) <- k\npast(y, 1) <- k\nd/dt(y) <- -k*delay(y, 1)", "k"),
+      "past[(]y[)] that depends on a sensitivity parameter [(]k[)]"
     )
     # a constant mtime() is carried
     expect_type(.rxAdjointExpand("mtime(t1) <- 1.5\nd/dt(y) <- -k*y + (t > t1)", "k")$text, "character")

@@ -420,6 +420,31 @@
   invisible(TRUE)
 }
 
+## A past() history that depends on a sensitivity parameter has no adjoint term;
+## refuse it.
+.rxAdjointAssertPast <- function(model, st, calcSens) {
+  for (.s in st) {
+    for (.w in c("Rhs", "Tau")) {
+      .txt <- get0(paste0("rx__past", .w, "_", .s, "__"), envir = model, inherits = FALSE)
+      if (!is.character(.txt)) {
+        next
+      }
+      .bad <- intersect(tryCatch(all.vars(str2lang(.txt)), error = function(e) character(0)), calcSens)
+      if (length(.bad)) {
+        stop(
+          sprintf(
+            "the discrete adjoint does not support a past(%s) that depends on a sensitivity parameter (%s); use sensMethod=\"forward\"",
+            .s,
+            paste(.bad, collapse = ", ")
+          ),
+          call. = FALSE
+        )
+      }
+    }
+  }
+  invisible(TRUE)
+}
+
 ## An mtime() that moves with a sensitivity parameter needs a time-jump term the
 ## adjoint does not have; refuse it.
 .rxAdjointAssertMtime <- function(mv, calcSens) {
@@ -516,6 +541,7 @@
     if (!is.null(.dSE)) .fLines <- c(.fLines, sprintf("dur(%s)=%s", .st[k], rxode2::rxFromSE(.dSE)))
   }
   .rxAdjointAssertModifiers(.model, .st)
+  .rxAdjointAssertPast(.model, .st, calcSens)
   .rxAdjointAssertMtime(rxode2::rxModelVars(object), calcSens)
   .fxLines <- character(0)
   # Analytic Jacobian for the stiff adjoint solvers only (Rosenbrock/implicit-RK

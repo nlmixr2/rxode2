@@ -992,17 +992,13 @@
 ### Adjoint sensitivities
 
 - `rxSolveAdjointRk4()` now carries the whole model into the adjoint
-  expansion.  Before, initial conditions such as `y(0) <- 1` were dropped
-  (the solve started from 0), a numeric default such as `k <- 0.5`
-  ignored the supplied value, and the algebraic and string output columns,
-  `mtime()`, `past()`, `param()`, `dvid()`, extra `cmt()` compartments and
-  adaptive dosing were lost.  A constant reassigned in a branch
-  (`z <- 5; if (t > 1) z <- 2`, or again after it) and a string output with
-  its `levels()` keep their values; `d/dt()`, initial conditions and dosing
-  modifiers read variables as of their own position; initial conditions keep
-  the model's order; and covariate interpolation (`linear()`, `locf()`, ...)
-  and dose-splitting declarations are carried.  A dosing modifier that reads a state, or an `mtime()` that depends
-  on a sensitivity parameter, is refused.
+  expansion, each statement read at its own position: initial conditions,
+  numeric defaults, reassigned constants, algebraic and string outputs (with
+  `levels()`), `mtime()`, `past()`, `param()`, `dvid()`, extra `cmt()`
+  compartments, covariate interpolation, dose splitting and adaptive dosing.
+  Before, most were dropped (the solve started from 0 and a supplied default
+  was ignored).  A dosing modifier that reads a state, or an `mtime()` or
+  `past()` that depends on a sensitivity parameter, is refused.
 
 - The adjoint solve methods now include the initial-condition term, so a
   parameter that enters through an initial condition (directly or after a

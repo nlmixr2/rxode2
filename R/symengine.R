@@ -1617,8 +1617,17 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
       ## Basics): reading Basics back out of the model env in .rxDelaySensAugment
       ## is subject to symengine's masked get/[[.  The RHS is re-parsed there with
       ## eval(parse(text=), envir=model) for differentiation (the safe pattern).
-      assign(paste0("rx__pastRhs_", .pastState, "__"), paste(deparse(x[[3]]), collapse = " "), envir = envir)
-      assign(paste0("rx__pastTau_", .pastState, "__"), paste(deparse(x[[2]][[3]]), collapse = " "), envir = envir)
+      .pastText <- function(e) {
+        if (!is.character(envir$..doConst)) {
+          return(paste(deparse(e), collapse = " "))
+        }
+        # the adjoint expansion re-emits the line, so read the variables as of
+        # this statement's position
+        .pe <- eval(parse(text = paste0("with(envir,", .rxToSEenvRhs(e, envir), ")")))
+        rxFromSE(.pe)
+      }
+      assign(paste0("rx__pastRhs_", .pastState, "__"), .pastText(x[[3]]), envir = envir)
+      assign(paste0("rx__pastTau_", .pastState, "__"), .pastText(x[[2]][[3]]), envir = envir)
       return(invisible(NULL))
     }
   }
@@ -1709,7 +1718,9 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
         if (is.character(envir$..doConst)) {
           # a caller that re-emits the model (the adjoint expansion) needs the
           # values at the statement's position, not after later reassignments
-          .tmp <- paste0("rxAdjNow", length(.lst) + 1L, "x")
+          .n <- if (is.null(envir$..adjNowN)) 1L else envir$..adjNowN + 1L
+          assign("..adjNowN", .n, envir = envir)
+          .tmp <- paste0("rxAdjNow", .n, "x")
           assign(.tmp, eval(parse(text = .expr)), envir = envir)
           .expr <- paste0("with(envir,", .tmp, ")")
         }
@@ -1768,17 +1779,17 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
         rxFromSE(.expr)
       )
       if (regexpr("^(nlmixr|rx)_", .var) == -1) {
-        if (.isNum) {
-          .bind <- .rxSEbindConst(envir, .var)
+        .l <- envir$..lhs
+        .later <- is.character(envir$..doConst) &&
+          (.name %in% names(envir$..lhs0) || any(startsWith(as.character(.l), paste0(.name, "="))))
+        if (.isNum && .later) {
+          # a constant after the variable's first assignment (`z <- 5;
+          # if (t > 1) z <- 2; z <- 3`): for a caller that re-emits the model
+          # (the adjoint expansion) it follows the statements before it
+          assign("..lhs", c(.l, .rx), envir = envir)
+        } else if (.isNum) {
           names(.rx) <- .name
           assign("..lhs0", c(envir$..lhs0, .rx), envir = envir)
-          # a substituted constant replaces earlier assignments of the variable
-          # (`z <- 5; if (t > 1) z <- 2; z <- 3`) for a caller that re-emits the
-          # model (the adjoint expansion)
-          .l <- envir$..lhs
-          if (length(.l) && is.character(envir$..doConst) && .bind) {
-            assign("..lhs", .l[!startsWith(.l, paste0(.name, "="))], envir = envir)
-          }
         } else {
           if (any(names(envir$..lhs0) == .name)) {
             .tmp <- envir$..lhs0
