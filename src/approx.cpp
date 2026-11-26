@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <algorithm>
+#include <functional>
 #include <vector>
 #include <new>
 #include <utility>
