@@ -728,7 +728,10 @@
     why,
     sprintf("method='%s' needs a model with ODE states", .name),
     sprintf(
-      "method='%s' needs the adjoint expansion's Jacobian lhs (rx__adjFX_*, rx__adjFP_*) for the model's sensitivities%s",
+      paste0(
+        "method='%s' needs the adjoint expansion's Jacobian lhs ",
+        "(rx__adjFX_*, rx__adjFP_*) for the model's sensitivities%s"
+      ),
       .name,
       .build
     ),
