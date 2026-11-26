@@ -61,6 +61,15 @@ typedef cl_int (RXCL_API *clWaitForEvents_t)(cl_uint, void *const *);
 typedef cl_int (RXCL_API *clGetEventInfo_t)(void *, cl_uint, size_t, void *,
                                             size_t *);
 #define RXCL_EVENT_COMMAND_EXECUTION_STATUS 0x11D3
+typedef cl_int (RXCL_API *clGetCommandQueueInfo_t)(void *, cl_uint, size_t,
+                                                   void *, size_t *);
+typedef cl_int (RXCL_API *clGetKernelWorkGroupInfo_t)(void *, void *, cl_uint,
+                                                      size_t, void *, size_t *);
+#define RXCL_QUEUE_DEVICE 0x1091
+#define RXCL_DEVICE_MAX_COMPUTE_UNITS 0x1002
+#define RXCL_DEVICE_MAX_WORK_ITEM_SIZES 0x1005
+#define RXCL_KERNEL_WORK_GROUP_SIZE 0x11B0
+#define RXCL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE 0x11B3
 
 static struct {
   int loaded;
@@ -77,6 +86,9 @@ static struct {
   clReleaseEvent_t releaseEvent;
   clWaitForEvents_t waitEvents;
   clGetEventInfo_t eventInfo;
+  // optional (the work-group size)
+  clGetCommandQueueInfo_t queueInfo;
+  clGetKernelWorkGroupInfo_t kernelWgInfo;
 } rxcl = {0};
 
 #ifdef _WIN32
@@ -130,6 +142,8 @@ int rxGpuClLoad(void) {
   rxcl.releaseEvent = (clReleaseEvent_t)rxclSym(lib, "clReleaseEvent");
   rxcl.waitEvents = (clWaitForEvents_t)rxclSym(lib, "clWaitForEvents");
   rxcl.eventInfo = (clGetEventInfo_t)rxclSym(lib, "clGetEventInfo");
+  rxcl.queueInfo = (clGetCommandQueueInfo_t)rxclSym(lib, "clGetCommandQueueInfo");
+  rxcl.kernelWgInfo = (clGetKernelWorkGroupInfo_t)rxclSym(lib, "clGetKernelWorkGroupInfo");
   if (rxcl.createBuffer && rxcl.releaseMem && rxcl.write && rxcl.read &&
       rxcl.setArg && rxcl.run && rxcl.kernelInfo && rxcl.finish) {
     rxcl.loaded = 1;
@@ -141,12 +155,15 @@ int rxGpuClLoad(void) {
 // argument order after (y, n)
 enum {RXG_B_Y, RXG_B_RD, RXG_B_RI, RXG_B_P0, RXG_B_P1, RXG_B_PL, RXG_B_IR,
   RXG_B_ON, RXG_B_AD, RXG_B_AI, RXG_B_HS, RXG_B_HREC, RXG_B_OD, RXG_B_OI,
-  RXG_B_N};
+  RXG_B_OFF, RXG_B_N};
+// the kernel's mode argument (0 rounds, 1 timelines) follows the buffers
+#define RXG_ARG_TL (RXG_B_N + 1)
 typedef char rxGpuClBufCheck[(sizeof(((rxGpuCl *)0)->buf) ==
                               RXG_B_N*sizeof(void *)) ? 1 : -1];
 
 static int rxGpuClIsInt(int b) {
-  return b == RXG_B_RI || b == RXG_B_ON || b == RXG_B_AI || b == RXG_B_OI;
+  return b == RXG_B_RI || b == RXG_B_ON || b == RXG_B_AI || b == RXG_B_OI ||
+    b == RXG_B_OFF;
 }
 
 // Values per request (or per subject) in each buffer
@@ -165,6 +182,25 @@ static void rxGpuClWidths(const rxGpuCl *g, size_t *w) {
     (size_t)d[RXG_D_HREC]*(size_t)d[RXG_D_HCAP] : 1;
   w[RXG_B_OD] = (size_t)d[RXG_D_OD];
   w[RXG_B_OI] = (size_t)d[RXG_D_OI];
+  w[RXG_B_OFF] = 1;
+}
+
+// Values in buffer b: request buffers hold RXG_D_NROW rows, subject states
+// RXG_D_NSUB, the timeline offsets RXG_D_NSUB + 1, the options one copy
+static size_t rxGpuClCount(const int *d, const size_t *w, int b) {
+  size_t nsub = (size_t)d[RXG_D_NSUB];
+  size_t nrow = (size_t)(d[RXG_D_NROW] > d[RXG_D_NSUB] ? d[RXG_D_NROW] : d[RXG_D_NSUB]);
+  size_t n;
+  if (b <= RXG_B_ON) {
+    n = w[b]*nrow;
+  } else if (b == RXG_B_OD || b == RXG_B_OI) {
+    n = w[b];
+  } else if (b == RXG_B_OFF) {
+    n = nsub + 1;
+  } else {
+    n = w[b]*nsub;
+  }
+  return n == 0 ? 1 : n;
 }
 
 static size_t rxGpuClElt(const rxGpuCl *g, int b) {
@@ -184,8 +220,7 @@ void rxGpuClBytes(const int *dims, int single, double *out) {
   rxGpuClWidths(&g, w);
   double dev = 0.0, big = 0.0;
   for (int b = 0; b < RXG_B_N; b++) {
-    size_t n = (b == RXG_B_OD || b == RXG_B_OI) ? w[b] : w[b]*nsub;
-    if (n == 0) n = 1;
+    size_t n = rxGpuClCount(dims, w, b);
     if (n > most && b < RXG_B_AD) most = n;
     double nb = (double)n*rxGpuClElt(&g, b);
     if (nb > big) big = nb;
@@ -243,20 +278,19 @@ static cl_int rxGpuClRead(rxGpuCl *g, int b, void *x, size_t n) {
   return e;
 }
 
-// does the kernel take the arguments rxGpuClRound() sets?
+// does the kernel take the arguments rxGpuClArgs() sets?
 static int rxGpuClKernelOk(void *kernel) {
   cl_uint nargs = 0;
   return rxcl.kernelInfo(kernel, RXCL_KERNEL_NUM_ARGS, sizeof(nargs), &nargs,
-                         NULL) == RXCL_SUCCESS && nargs == RXG_B_N + 1;
+                         NULL) == RXCL_SUCCESS && nargs == RXG_B_N + 2;
 }
 
-// create g's device buffers of widths w for nsub requests; *most gets the
-// largest request buffer (in elements).  Returns 0, or 4 on failure.
-static int rxGpuClBuffers(rxGpuCl *g, const size_t *w, size_t nsub, size_t *most) {
+// create g's device buffers of widths w (rxGpuClCount() values each); *most
+// gets the largest request buffer (in elements).  Returns 0, or 4 on failure.
+static int rxGpuClBuffers(rxGpuCl *g, const size_t *w, size_t *most) {
   *most = 0;
   for (int b = 0; b < RXG_B_N; b++) {
-    size_t n = (b == RXG_B_OD || b == RXG_B_OI) ? w[b] : w[b]*nsub;
-    if (n == 0) n = 1;
+    size_t n = rxGpuClCount(g->dims, w, b);
     if (n > *most && b < RXG_B_AD) *most = n;
     cl_int e = 0;
     g->buf[b] = rxMemTag(gpuDevice, rxcl.createBuffer(g->ctx, RXCL_MEM_READ_WRITE,
@@ -295,7 +329,7 @@ static int rxGpuClZero(rxGpuCl *g, const size_t *w, size_t nsub) {
 static int rxGpuClFill(rxGpuCl *g, const double *od, const int *oi) {
   size_t w[RXG_B_N], most = 0, nsub = (size_t)g->dims[RXG_D_NSUB];
   rxGpuClWidths(g, w);
-  int e = rxGpuClBuffers(g, w, nsub, &most);
+  int e = rxGpuClBuffers(g, w, &most);
   if (e != 0) return e;
   // float staging covers the largest request or option buffer
   if (most < w[RXG_B_OD]) most = w[RXG_B_OD];
@@ -306,6 +340,72 @@ static int rxGpuClFill(rxGpuCl *g, const double *od, const int *oi) {
     return 5;
   }
   return rxGpuClZero(g, w, nsub);
+}
+
+// The device's compute units and the kernel's work-group limits; zero when
+// the driver does not report them (the driver then picks the work-group size)
+static void rxGpuClWorkGroup(rxGpuCl *g) {
+  g->cu = g->wgMax = g->wgMult = 0;
+  if (rxcl.queueInfo == NULL || rxcl.kernelWgInfo == NULL || rxcl.deviceInfo == NULL) return;
+  void *dev = NULL;
+  cl_uint cu = 0;
+  size_t wgMax = 0, wgMult = 0;
+  if (rxcl.queueInfo(g->queue, RXCL_QUEUE_DEVICE, sizeof(dev), &dev, NULL) != RXCL_SUCCESS ||
+      dev == NULL ||
+      rxcl.deviceInfo(dev, RXCL_DEVICE_MAX_COMPUTE_UNITS, sizeof(cu), &cu, NULL) != RXCL_SUCCESS ||
+      rxcl.kernelWgInfo(g->kernel, dev, RXCL_KERNEL_WORK_GROUP_SIZE, sizeof(wgMax),
+                        &wgMax, NULL) != RXCL_SUCCESS) {
+    return;
+  }
+  if (rxcl.kernelWgInfo(g->kernel, dev, RXCL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE,
+                        sizeof(wgMult), &wgMult, NULL) != RXCL_SUCCESS) {
+    wgMult = 0;
+  }
+  // the first dimension's limit also bounds a one-dimensional work group
+  size_t items[3] = {0, 0, 0};
+  if (rxcl.deviceInfo(dev, RXCL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(items), items,
+                      NULL) == RXCL_SUCCESS && items[0] > 0 && items[0] < wgMax) {
+    wgMax = items[0];
+  }
+  if (cu == 0 || wgMax == 0) return;
+  g->cu = (size_t)cu;
+  g->wgMax = wgMax;
+  g->wgMult = wgMult > 0 ? wgMult : 1;
+}
+
+// Work-group size for n work items (0: the driver's choice).  From the
+// device, enough groups to give every compute unit work: a few work items
+// leave most compute units idle when the driver packs them into one or two
+// large groups.
+static size_t rxGpuClLocal(const rxGpuCl *g, size_t n) {
+  int lws = g->dims[RXG_D_LWS];
+  if (lws == 0 || g->wgMax == 0) return 0;
+  size_t L;
+  if (lws > 0) {
+    L = (size_t)lws;
+  } else {
+    // the largest multiple of the preferred size that still gives every
+    // compute unit a group
+    size_t m = g->wgMult, per = n/g->cu;
+    L = (per/m)*m;
+    if (L < m) L = m;
+    size_t cap = 128;
+    if (cap < m) cap = m;
+    if (L > cap) L = cap;
+  }
+  if (L > g->wgMax) L = g->wgMax;
+  return L;
+}
+
+// Launch nwork work items, padded to a multiple of the work-group size (the
+// kernel skips items past n)
+static cl_int rxGpuClLaunch(rxGpuCl *g, int nwork, cl_uint nev, void **ev, void **evk) {
+  size_t global = (size_t)nwork, L = rxGpuClLocal(g, global);
+  // the kernel's index is an int: padding must not pass INT_MAX
+  if (L > 0 && global > (size_t)2147483647 - L) L = 0;
+  if (L > 0) global = ((global + L - 1)/L)*L;
+  return rxcl.run(g->queue, g->kernel, 1, NULL, &global, L > 0 ? &L : NULL, nev,
+                  nev ? ev : NULL, evk);
 }
 
 // Buffers for up to dims[RXG_D_NSUB] requests on a built rxg_kernel; od/oi
@@ -331,6 +431,7 @@ rxGpuCl *rxGpuClNew(void *ctx, void *queue, void *kernel, const int *dims,
   g->kernel = kernel;
   g->single = single;
   memcpy(g->dims, dims, sizeof(int)*RXG_D_N);
+  rxGpuClWorkGroup(g);
   *err = rxGpuClFill(g, od, oi);
   if (*err != 0) {
     rxGpuClFree(g);
@@ -339,21 +440,25 @@ rxGpuCl *rxGpuClNew(void *ctx, void *queue, void *kernel, const int *dims,
   return g;
 }
 
-// Sets every kernel argument for n requests: runs may share a cached kernel.
-static cl_int rxGpuClSetArgs(rxGpuCl *g, int n) {
+// Set every kernel argument (runs may share a cached kernel): the buffers,
+// the work-item count and the mode
+static cl_int rxGpuClArgs(rxGpuCl *g, int nwork, int tl) {
   cl_int e = RXCL_SUCCESS;
   for (int b = 0; b < RXG_B_N && e == RXCL_SUCCESS; b++) {
     e = rxcl.setArg(g->kernel, (cl_uint)(b == 0 ? 0 : b + 1), sizeof(void *),
                     &(g->buf[b]));
   }
-  cl_int ni = (cl_int)n;
+  cl_int ni = (cl_int)nwork, t = (cl_int)tl;
   if (e == RXCL_SUCCESS) e = rxcl.setArg(g->kernel, 1, sizeof(cl_int), &ni);
+  if (e == RXCL_SUCCESS) e = rxcl.setArg(g->kernel, RXG_ARG_TL, sizeof(cl_int), &t);
   return e;
 }
 
-// Queues the non-blocking input writes; *nev counts the events in ev.
-static cl_int rxGpuClQueueWrites(rxGpuCl *g, size_t nn, size_t *w,
-                                 const void **in, void **ev, cl_uint *nev) {
+// queue the writes of the nrow request rows (and, with tl, the nwork + 1
+// timeline offsets) without blocking; ev[*nev] receive their events
+static cl_int rxGpuClQueueWrites(rxGpuCl *g, size_t nn, const size_t *w,
+                                 const void **in, int tl, int nwork,
+                                 const int *off, void **ev, cl_uint *nev) {
   cl_int e = RXCL_SUCCESS;
   for (int b = 0; b <= RXG_B_ON && e == RXCL_SUCCESS; b++) {
     if (w[b] == 0) continue;
@@ -361,12 +466,20 @@ static cl_int rxGpuClQueueWrites(rxGpuCl *g, size_t nn, size_t *w,
                    NULL, &ev[*nev]);
     if (e == RXCL_SUCCESS) (*nev)++;
   }
+  if (tl && e == RXCL_SUCCESS) {
+    e = rxcl.write(g->queue, g->buf[RXG_B_OFF], 0, 0, ((size_t)nwork + 1)*sizeof(int),
+                   off, 0, NULL, &ev[*nev]);
+    if (e == RXCL_SUCCESS) (*nev)++;
+  }
   return e;
 }
 
-// Queues the non-blocking output reads after the launch event evk.
-static cl_int rxGpuClQueueReads(rxGpuCl *g, size_t nn, size_t *w, void **out,
-                                void **evk, void **evr, cl_uint *nr) {
+// queue the reads of y, rd and ri after the launch evk; evr[*nr] receive
+// their events
+static cl_int rxGpuClQueueReads(rxGpuCl *g, size_t nn, const size_t *w,
+                                double *y, double *rd, int *ri, void **evk,
+                                void **evr, cl_uint *nr) {
+  void *out[3] = {y, rd, ri};
   int ob[3] = {RXG_B_Y, RXG_B_RD, RXG_B_RI};
   cl_int e = RXCL_SUCCESS;
   for (int i = 0; i < 3 && e == RXCL_SUCCESS; i++) {
@@ -379,9 +492,10 @@ static cl_int rxGpuClQueueReads(rxGpuCl *g, size_t nn, size_t *w, void **out,
   return e;
 }
 
-// Waits for the na queued commands, even after an error (the host buffers
-// must not be reused while a transfer still reads or writes them), releases
-// them and returns the first error: e, the wait's, or a command's own.
+// wait for the na queued commands all[] (even after an error e: the host
+// buffers must not be reused while a transfer still reads or writes them),
+// then release them.  Returns e, else the first failure of the wait or of a
+// command.
 static cl_int rxGpuClWaitAll(rxGpuCl *g, void **all, cl_uint na, cl_int e) {
   cl_int ef = rxcl.finish(g->queue);
   if (ef != RXCL_SUCCESS && na > 0) {
@@ -401,25 +515,22 @@ static cl_int rxGpuClWaitAll(rxGpuCl *g, void **all, cl_uint na, cl_int e) {
   return e;
 }
 
-// Double precision round with one wait: the writes, the launch and the reads
+// Double precision launch with one wait: the writes, the launch and the reads
 // are queued without blocking and ordered by events (the OpenCL package's
 // queue may run out of order), then the host waits once.  The inputs stay
-// untouched until then (the caller's round buffers).
-static int rxGpuClRoundAsync(rxGpuCl *g, int n, size_t *w, const void **in,
-                             double *y, double *rd, int *ri) {
-  size_t nn = (size_t)n;
-  void *ev[RXG_B_ON + 1], *evk = NULL, *evr[3];
+// untouched until then (the caller's buffers).  nwork work items over nrow
+// request rows; tl 1 also writes the nwork + 1 timeline offsets.
+static int rxGpuClRunAsync(rxGpuCl *g, int nwork, int nrow, int tl,
+                           const int *off, size_t *w, const void **in,
+                           double *y, double *rd, int *ri) {
+  size_t nn = (size_t)nrow;
+  void *ev[RXG_B_ON + 2], *evk = NULL, *evr[3];
   cl_uint nev = 0, nr = 0;
-  cl_int e = rxGpuClQueueWrites(g, nn, w, in, ev, &nev);
-  if (e == RXCL_SUCCESS) e = rxGpuClSetArgs(g, n);
-  size_t global = nn;
-  if (e == RXCL_SUCCESS) {
-    e = rxcl.run(g->queue, g->kernel, 1, NULL, &global, NULL, nev,
-                 nev ? ev : NULL, &evk);
-  }
-  void *out[3] = {y, rd, ri};
-  if (e == RXCL_SUCCESS) e = rxGpuClQueueReads(g, nn, w, out, &evk, evr, &nr);
-  void *all[RXG_B_ON + 5];
+  cl_int e = rxGpuClQueueWrites(g, nn, w, in, tl, nwork, off, ev, &nev);
+  if (e == RXCL_SUCCESS) e = rxGpuClArgs(g, nwork, tl);
+  if (e == RXCL_SUCCESS) e = rxGpuClLaunch(g, nwork, nev, ev, &evk);
+  if (e == RXCL_SUCCESS) e = rxGpuClQueueReads(g, nn, w, y, rd, ri, &evk, evr, &nr);
+  void *all[RXG_B_ON + 6];
   cl_uint na = 0;
   for (cl_uint i = 0; i < nev; i++) all[na++] = ev[i];
   if (evk != NULL) all[na++] = evk;
@@ -427,25 +538,31 @@ static int rxGpuClRoundAsync(rxGpuCl *g, int n, size_t *w, const void **in,
   return rxGpuClWaitAll(g, all, na, e);
 }
 
-// The event entry points the one-wait round needs (optional in OpenCL 1.0
-// loaders); single precision stages every buffer through g->stage instead.
+// can launches queue their commands on events?  Single precision stages
+// every buffer through g->stage, one at a time
 static int rxGpuClCanAsync(rxGpuCl *g) {
   return !g->single && rxcl.releaseEvent != NULL && rxcl.waitEvents != NULL &&
     rxcl.eventInfo != NULL;
 }
 
-// Blocking round: each buffer is written, the kernel runs and the outputs are
-// read in turn (single precision converts through g->stage).
-static int rxGpuClRoundSync(rxGpuCl *g, size_t nn, size_t *w, const void **in,
-                            double *y, double *rd, int *ri) {
+static int rxGpuClRun(rxGpuCl *g, int nwork, int nrow, int tl, const int *off,
+                      double *y, double *rd, int *ri, const double *p0,
+                      const double *p1, const double *pl, const double *ir,
+                      const int *on) {
+  size_t w[RXG_B_N], nn = (size_t)nrow;
+  rxGpuClWidths(g, w);
+  const void *in[RXG_B_ON + 1] = {y, rd, ri, p0, p1, pl, ir, on};
+  if (rxGpuClCanAsync(g)) {
+    return rxGpuClRunAsync(g, nwork, nrow, tl, off, w, in, y, rd, ri);
+  }
   cl_int e = RXCL_SUCCESS;
   for (int b = 0; b <= RXG_B_ON && e == RXCL_SUCCESS; b++) {
     e = rxGpuClWrite(g, b, in[b], w[b]*nn);
   }
-  if (e == RXCL_SUCCESS) e = rxGpuClSetArgs(g, (int)nn);
+  if (tl && e == RXCL_SUCCESS) e = rxGpuClWrite(g, RXG_B_OFF, off, (size_t)nwork + 1);
+  if (e == RXCL_SUCCESS) e = rxGpuClArgs(g, nwork, tl);
   if (e != RXCL_SUCCESS) return e;
-  size_t global = nn;
-  e = rxcl.run(g->queue, g->kernel, 1, NULL, &global, NULL, 0, NULL, NULL);
+  e = rxGpuClLaunch(g, nwork, 0, NULL, NULL);
   // the OpenCL package's queue may run out of order
   if (e == RXCL_SUCCESS) e = rxcl.finish(g->queue);
   if (e != RXCL_SUCCESS) return e;
@@ -462,11 +579,19 @@ int rxGpuClRound(rxGpuCl *g, int n, double *y, double *rd, int *ri,
                  const double *ir, const int *on) {
   if (n <= 0) return 0;
   if (n > g->dims[RXG_D_NSUB]) return -1000;
-  size_t w[RXG_B_N];
-  rxGpuClWidths(g, w);
-  const void *in[RXG_B_ON + 1] = {y, rd, ri, p0, p1, pl, ir, on};
-  if (rxGpuClCanAsync(g)) return rxGpuClRoundAsync(g, n, w, in, y, rd, ri);
-  return rxGpuClRoundSync(g, (size_t)n, w, in, y, rd, ri);
+  return rxGpuClRun(g, n, n, 0, NULL, y, rd, ri, p0, p1, pl, ir, on);
+}
+
+// n subjects' timelines in one launch: subject i's rows are off[i] to
+// off[i + 1] - 1 of the nrow rows (rxg_timeline1()).  y, rd and ri are
+// updated in place.  Returns 0, or the OpenCL error code.
+int rxGpuClTimeline(rxGpuCl *g, int n, int nrow, const int *off, double *y,
+                    double *rd, int *ri, const double *p0, const double *p1,
+                    const double *pl, const double *ir, const int *on) {
+  if (n <= 0 || nrow <= 0) return 0;
+  int cap = g->dims[RXG_D_NROW] > g->dims[RXG_D_NSUB] ? g->dims[RXG_D_NROW] : g->dims[RXG_D_NSUB];
+  if (n > g->dims[RXG_D_NSUB] || nrow > cap) return -1000;
+  return rxGpuClRun(g, n, nrow, 1, off, y, rd, ri, p0, p1, pl, ir, on);
 }
 
 //////////////////////////////////////////////////////////////////////////////

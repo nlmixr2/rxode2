@@ -476,7 +476,7 @@ rxTest({
       "  for (int j = 0; j < RXG_NPAR; j++) { c.p0[j] = c.p1[j] = p[i*RXG_NPAR + j]; }",
       "  for (int j = 0; j < RXG_NLHS1; j++) { c.pl[j] = 0.0; }",
       "  c.t0 = 0.0; c.t1 = t1; c.curShift = 0.0; c.tpk = 0.0; c.covType = 0; c.nonmem = 0;",
-      "  c.lambda = 1.0; c.yj = 2.0; c.logitHi = 1.0; c.logitLow = 0.0;",
+      "  c.lambda = 1.0; c.yj = 2.0; c.logitHi = 1.0; c.logitLow = 0.0; c.preOk = 0;",
       "  o.hmin = 0.0; o.hmax = 0.0; o.mxstep = 100000;",
       "  o.nonstifftol = 0.9; o.stifftol = 0.9; o.maxStiff = 10; o.maxNonstiff = 3; o.switchMax = 5;",
       "  rxg_autoInit(&a, &o, 0);",

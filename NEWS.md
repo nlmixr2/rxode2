@@ -106,6 +106,26 @@
   integrates with the host counterpart.  Repeated solves on that setup
   (nlmixr2est's SAEM iterations) round every subject at once, and each
   double-precision OpenCL round waits on the device once.
+- With `options(rxode2.gpuTimeline = TRUE)` the GPU methods integrate each
+  subject's whole timeline in one launch per solve instead of a round per
+  event interval, when the subjects' events do not depend on their states
+  (observations, boluses and infusions with a fixed rate or duration; no
+  steady state, resets, modeled bioavailability, lag, rate or duration,
+  `mtime()`, `evid_()` or `delay()`) and the model never reads an lhs
+  before assigning it.  The results are the same as the rounds' (to
+  rounding when several doses into one compartment share a time).
+- The GPU methods' device code computes the statements that depend only on
+  parameters (such as `ka <- exp(tka + eta.ka)`) once per integration
+  interval instead of at every derivative evaluation, when the parameters
+  are constant over the interval.
+- OpenCL launches size their work groups from the device so every compute
+  unit gets work; `options(rxode2.gpuLocalSize = 0)` leaves the size to the
+  driver.
+- `rxOptExpr(expensive = TRUE)` (or `options(rxode2.optExprExpensive =
+  TRUE)`, which estimation methods calling `rxOptExpr()` follow) also gives a
+  single call to an expensive function such as `exp()` inside a larger
+  expression its own temporary, so the GPU methods compute the ones that
+  depend only on parameters once per interval.
 - `rxMemoryEstimate()` (and so `rxSolve()`'s out-of-memory check) now counts
   the GPU methods' per-slot host workspaces and the per-thread `evid_()`
   push pools, and reports the GPU device buffers separately.  An OpenCL

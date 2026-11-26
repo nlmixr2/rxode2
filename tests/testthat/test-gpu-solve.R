@@ -521,5 +521,190 @@ rxTest({
     .ev <- et(amt = 1) |> et(1:3) |> et(id = 1:1500)
     expect_equal(.rxGpuSolveCount(NULL, .ev, rxControl()), 1500L)
     expect_equal(.rxGpuSolveCount(NULL, as.data.frame(.ev), rxControl()), 1500L)
+    expect_equal(.rxGpuSolveCount(NULL, .ev, rxControl(nStud = 2000000L)), .Machine$integer.max)
+  })
+
+  ## one-compartment-plus-depot PK with saturable elimination, a bolus series,
+  ## an infusion and a time-varying covariate: every subject a timeline
+  .tlModel <- function() {
+    rxode2({
+      ka <- exp(tka + eka)
+      cl <- exp(tcl + ecl) * (wt / 70)^0.75
+      v <- exp(tv)
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - cl / v * (1 + 0.5 * center / (center + 50)) * center
+      cp <- center / v
+    })
+  }
+  .tlData <- function(n) {
+    .ev <- et(amt = 300, ii = 12, addl = 3, cmt = "depot") |>
+      et(amt = 200, time = 50, rate = 100, cmt = "center") |>
+      et(c(0.5, 1, 2, 4, 6, 12, 24, 30, 36, 49, 51, 52, 60, 72)) |>
+      et(id = seq_len(n))
+    .ev <- as.data.frame(.ev)
+    .ev$wt <- 70 + 10 * sin(.ev$time / 10) + .ev$id / 10
+    .ev
+  }
+  .tlParams <- function(n) {
+    data.frame(
+      id = seq_len(n),
+      tka = log(1.2),
+      tcl = log(3),
+      tv = log(30),
+      eka = 0.4 * sin(seq_len(n)),
+      ecl = 0.3 * cos(seq_len(n))
+    )
+  }
+  .tlSolve <- function(m, p, ev, method, backend, timeline, ...) {
+    .old <- options(rxode2.gpuTimeline = timeline)
+    on.exit(options(.old))
+    invisible(.rxGpuSolveStats())
+    .r <- .solve(m, ev, method, backend, params = p, returnType = "data.frame", ...)
+    list(r = .r, st = .rxGpuSolveStats())
+  }
+
+  test_that("timelines (a launch per solve) give exactly the rounds' results", {
+    .m <- .tlModel()
+    .p <- .tlParams(60)
+    .ev <- .tlData(60)
+    for (.be in .backends()) {
+      for (.meth in c("gpuT54", "gpuRos54p", "gpuT54+gpuRos54p")) {
+        .a <- .tlSolve(.m, .p, .ev, .meth, .be, FALSE, covsInterpolation = "linear")
+        .b <- .tlSolve(.m, .p, .ev, .meth, .be, TRUE, covsInterpolation = "linear")
+        .lab <- paste(.be, .meth)
+        expect_identical(.b$r, .a$r, label = .lab)
+        expect_gt(.a$st[["rounds"]], 10)
+        expect_equal(.b$st[["rounds"]], 1, label = .lab)
+        expect_equal(.b$st[["requests"]], .a$st[["requests"]], label = .lab)
+      }
+    }
+  })
+
+  test_that("timelines split a solve whose rows do not fit one launch", {
+    .m <- .tlModel()
+    ## 300 subjects of about 20 records in 20 slots: more rows than 64 a slot
+    .a <- .tlSolve(.m, .tlParams(300), .tlData(300), "gpuT54", "cpu", FALSE, gpuBatch = 20L)
+    .b <- .tlSolve(.m, .tlParams(300), .tlData(300), "gpuT54", "cpu", TRUE, gpuBatch = 20L)
+    expect_identical(.b$r, .a$r)
+    expect_gt(.b$st[["rounds"]], 3)
+    expect_lt(.b$st[["rounds"]], .a$st[["rounds"]])
+  })
+
+  test_that("subjects whose events depend on their states are solved in rounds", {
+    .m <- .tlModel()
+    .p <- .tlParams(4)
+    .evs <- list(
+      ss = et(amt = 300, ii = 12, ss = 1, cmt = "depot") |> et(seq(0, 24, by = 2)) |> et(id = 1:4),
+      reset = et(amt = 300, cmt = "depot") |>
+        et(time = 10, evid = 3) |>
+        et(amt = 300, time = 12, cmt = "depot") |>
+        et(seq(0, 24, by = 2)) |>
+        et(id = 1:4),
+      replace = et(amt = 300, cmt = "depot") |>
+        et(time = 10, amt = 5, evid = 5, cmt = "center") |>
+        et(seq(0, 24, by = 2)) |>
+        et(id = 1:4)
+    )
+    for (.nm in names(.evs)) {
+      .ev <- as.data.frame(.evs[[.nm]])
+      .ev$wt <- 70
+      .a <- .tlSolve(.m, .p, .ev, "gpuT54", "cpu", FALSE)
+      .b <- .tlSolve(.m, .p, .ev, "gpuT54", "cpu", TRUE)
+      expect_identical(.b$r, .a$r, label = .nm)
+      expect_equal(.b$st[["rounds"]], .a$st[["rounds"]], label = .nm)
+    }
+  })
+
+  test_that("models whose events or lhs values could depend on the states are not timelines", {
+    .ok <- function(code) .rxGpuTimelineModelOk(rxode2(code))
+    expect_true(.ok("ka = exp(tka); d/dt(a) = -ka*a; cp = a/v"))
+    ## an lhs read before it is assigned keeps the previous record's value
+    expect_false(.ok("d/dt(a) = -ka*a; ka = exp(tka)"))
+    expect_false(.ok("if (t > 1) {ka = 1} else {ka = 2}; d/dt(a) = -ka*a"))
+    expect_false(.ok("x = a; y = lag(x); d/dt(a) = -a"))
+    expect_false(.ok("d/dt(a) = -k*a; f(a) = 0.5"))
+    expect_false(.ok("d/dt(a) = -k*a; alag(a) = 0.5"))
+    expect_false(.ok("d/dt(a) = -k*a; rate(a) = 2"))
+    ## an ineligible model solves in rounds
+    .m <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - cl / v * center
+      alag(depot) <- 0.25
+    })
+    .p <- data.frame(id = 1:4, ka = 1, cl = 3, v = 30)
+    .ev <- et(amt = 300, cmt = "depot") |> et(seq(0, 24, by = 2)) |> et(id = 1:4)
+    .a <- .tlSolve(.m, .p, .ev, "gpuT54", "cpu", FALSE)
+    .b <- .tlSolve(.m, .p, .ev, "gpuT54", "cpu", TRUE)
+    expect_identical(.b$r, .a$r)
+    expect_equal(.b$st[["rounds"]], .a$st[["rounds"]])
+  })
+
+  test_that("a timeline re-solve without a new setup is one launch, as SAEM's iterations do", {
+    .old <- options(rxode2.gpuTimeline = TRUE)
+    on.exit(options(.old))
+    .b <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(center) <- ka * depot - cl / v * center
+      cp <- center / v
+    })
+    .p <- data.frame(id = 1:40, ka = seq(0.5, 2.5, length.out = 40), cl = 3, v = 30)
+    .ev <- et(amt = 300) |> et(seq(0, 24, by = 4)) |> et(id = 1:40)
+    invisible(.rxGpuSolveStats())
+    .r1 <- suppressMessages(rxSolve(.b, .p, .ev, method = "gpuT54", gpuBackend = "cpu", cores = 2L))
+    expect_equal(.rxGpuSolveStats()[["rounds"]], 1)
+    utils::capture.output(invisible(.Call("_rxTestParSolveAfterPush", PACKAGE = "rxode2")), type = "message")
+    .again <- .rxGpuSolveStats()
+    expect_equal(.again[["solves"]], 1)
+    expect_equal(.again[["rounds"]], 1)
+  })
+
+  test_that("single-precision OpenCL solves in rounds", {
+    skip_if(!("opencl" %in% .backends()), "no OpenCL device with double precision")
+    .old <- options(rxode2.gpuTimeline = TRUE)
+    on.exit(options(.old))
+    expect_false(.rxGpuTimelineOn(.tlModel(), "opencl", "float"))
+    expect_true(.rxGpuTimelineOn(.tlModel(), "opencl", "double"))
+  })
+
+  test_that("timelines are opt-in", {
+    .old <- options(rxode2.gpuTimeline = NULL)
+    on.exit(options(.old))
+    expect_false(.rxGpuTimelineOn(.tlModel(), "opencl", "double"))
+    expect_false(.rxGpuTimelineOn(.tlModel(), "cpu", "double"))
+  })
+
+  test_that("the timeline memory estimate counts nSub's subjects", {
+    .m <- .tlModel()
+    .ctl <- rxControl(method = "gpuT54", gpuBackend = "cpu", gpuBatch = 100L, cores = 2L)
+    .old <- options(rxode2.gpuTimeline = TRUE)
+    on.exit(options(.old))
+    .a <- rxMemoryEstimate(.tlData(100), model = .m, control = .ctl)
+    .one <- .tlData(1)
+    .b <- rxMemoryEstimate(
+      .one,
+      model = .m,
+      control = rxControl(method = "gpuT54", gpuBackend = "cpu", gpuBatch = 100L, cores = 2L, nSub = 100L)
+    )
+    expect_equal(as.numeric(.b$gpuTimeline), as.numeric(.a$gpuTimeline))
+    expect_equal(as.numeric(.b$gpuHostWork), as.numeric(.a$gpuHostWork))
+  })
+
+  test_that("the memory estimate counts the timeline rows", {
+    .m <- .tlModel()
+    .ev <- .tlData(200)
+    .ctl <- rxControl(method = "gpuT54", gpuBackend = "cpu", gpuBatch = 100L, cores = 2L)
+    .off <- local({
+      .old <- options(rxode2.gpuTimeline = FALSE)
+      on.exit(options(.old))
+      rxMemoryEstimate(.ev, model = .m, control = .ctl)
+    })
+    .on <- local({
+      .old <- options(rxode2.gpuTimeline = TRUE)
+      on.exit(options(.old))
+      rxMemoryEstimate(.ev, model = .m, control = .ctl)
+    })
+    expect_equal(as.numeric(.off$gpuTimeline), 0)
+    expect_gt(as.numeric(.on$gpuTimeline), 0)
+    expect_gt(as.numeric(.on$total), as.numeric(.off$total))
   })
 })

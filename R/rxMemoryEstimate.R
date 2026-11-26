@@ -624,7 +624,13 @@ rxMemoryEstimate <- function(
     .gpuMem <- tryCatch(
       {
         .gpuObj <- if (inherits(model, "rxUi")) model$simulationModel else model
-        .rxGpuSolveMem(.gpuObj, control, max(1, nrow(.summary) * max(1, nsim)))
+        ## the subjects solved: nSub replaces the data's, nStud replicates them
+        .gpuN <- nrow(.summary) * max(1, nsim)
+        if (!is.null(.ci) && (.ci$nSub > 1L || .ci$nStud > 1L)) {
+          .gpuN <- (if (.ci$nSub > 1L) .ci$nSub else nrow(.summary)) *
+            (if (.ci$nStud > 1L) .ci$nStud else max(1, nsim))
+        }
+        .rxGpuSolveMem(.gpuObj, control, max(1, .gpuN))
       },
       error = function(e) NULL
     )
@@ -868,6 +874,7 @@ print.rxMemoryEstimate <- function(x, ...) {
     gpuHostWork = "gpuHostWork (GPU round requests, per slot)",
     gpuHostState = "gpuHostState (GPU host integrator state, per slot)",
     gpuSlotWork = "gpuSlotWork (GPU per-thread workspaces)",
+    gpuTimeline = "gpuTimeline (GPU timeline rows, per launch)",
     gpuStage = "gpuStage (GPU host staging buffers)",
     outputData = "outputData (estimated returned data)"
   )

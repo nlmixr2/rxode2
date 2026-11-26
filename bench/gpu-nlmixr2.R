@@ -3,7 +3,13 @@
 # methods.  Every fit uses the same data, model and starting estimates; only
 # rxControl(method=, gpuBackend=) changes.  Covariance and tables are off, so
 # the time is the estimation (and the SAEM -2LL by quadrature); the first
-# OpenCL fit of each estimation method also builds its kernel.
+# OpenCL fit of each estimation method also builds its kernel.  OpenCL fits
+# launch once per event interval; "opencl driver" fits leave the work-group
+# size to the OpenCL driver, "opencl timeline" fits integrate each
+# subject's whole timeline in a launch per solve, and "xpe" fits (OpenCL and
+# the CPU build) give single exp()-like calls their own temporaries
+# (options(rxode2.optExprExpensive = TRUE)) so the device computes the ones of
+# parameters alone once per interval.
 #
 # Usage: Rscript bench/gpu-nlmixr2.R [sizes] [est]
 #   sizes  comma-separated numbers of subjects (default 500)
@@ -69,7 +75,26 @@ if (requireNamespace("OpenCL", quietly = TRUE) && rxGpuInfo()$available) {
 )
 if (!is.na(.dev)) {
   .cases <- c(.cases, list(c("gpuT54", "opencl"), c("gpuRos54p", "opencl"), c("gpuT54+gpuRos54p", "opencl")))
+  ## SAEM only (the estimation that solves in batches): OpenCL with the
+  ## driver's work-group size (options(rxode2.gpuLocalSize = 0)) and with
+  ## whole timelines (options(rxode2.gpuTimeline = TRUE))
+  .cases <- c(
+    .cases,
+    list(
+      c("gpuT54", "opencl driver"),
+      c("gpuT54+gpuRos54p", "opencl driver"),
+      c("gpuT54", "opencl timeline"),
+      c("gpuT54+gpuRos54p", "opencl timeline")
+    )
+  )
 }
+.cases <- c(
+  .cases,
+  list(c("gpuT54", "cpu xpe"), c("gpuT54+gpuRos54p", "cpu xpe")),
+  if (!is.na(.dev)) {
+    list(c("gpuT54", "opencl xpe"), c("gpuRos54p", "opencl xpe"), c("gpuT54+gpuRos54p", "opencl xpe"))
+  }
+)
 
 .out <- NULL
 for (.n in .sizes) {
@@ -83,6 +108,16 @@ for (.n in .sizes) {
   .dat$dv[.dat$evid != 0] <- 0
   for (.est in .ests) {
     for (.c in .cases) {
+      .variant <- sub("^[a-z]+ ?", "", .c[2])
+      if (.variant %in% c("driver", "timeline", "xpe") && .est != "saem") {
+        next
+      }
+      options(
+        rxode2.gpuTimeline = .variant == "timeline",
+        rxode2.gpuLocalSize = if (.variant == "driver") 0L else NA,
+        rxode2.optExprExpensive = .variant == "xpe"
+      )
+      .be <- sub(" .*$", "", .c[2])
       .ctl <- if (.est == "saem") {
         saemControl(
           print = 0,
@@ -90,7 +125,7 @@ for (.n in .sizes) {
           covMethod = "",
           rxControl = rxControl(
             method = .c[1],
-            gpuBackend = .c[2],
+            gpuBackend = .be,
             gpuDevice = if (is.na(.dev)) NULL else .dev,
             cores = .cores
           )
@@ -102,7 +137,7 @@ for (.n in .sizes) {
           covMethod = "",
           rxControl = rxControl(
             method = .c[1],
-            gpuBackend = .c[2],
+            gpuBackend = .be,
             gpuDevice = if (is.na(.dev)) NULL else .dev,
             cores = .cores
           )
@@ -112,8 +147,9 @@ for (.n in .sizes) {
       .t <- system.time(.fit <- suppressMessages(suppressWarnings(nlmixr2(.model, .dat, .est, control = .ctl))))[[
         "elapsed"
       ]]
-      ## the batched GPU solves: rounds, subject intervals per round, and the
-      ## seconds spent advancing subjects on the host and in the rounds
+      ## the batched GPU solves: rounds (or timeline launches), subject
+      ## intervals per launch, and the seconds spent advancing subjects on the
+      ## host and in the launches
       .g <- .rxGpuSolveStats()
       .out <- rbind(
         .out,
@@ -126,6 +162,7 @@ for (.n in .sizes) {
           rounds = .g[["rounds"]],
           perRound = round(.g[["requests"]] / max(1, .g[["rounds"]])),
           hostS = round(.g[["advance"]], 1),
+          gatherS = round(.g[["gather"]], 1),
           roundS = round(.g[["round"]], 1),
           objf = round(.fit$objf, 2),
           tcl = signif(exp(.fit$theta[["tcl"]]), 4),
