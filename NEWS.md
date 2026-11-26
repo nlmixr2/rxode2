@@ -177,6 +177,12 @@
 
 ## Bug fixes
 
+- The parser no longer reads a function name it had already freed.  Every
+  function call copies its name into a buffer that is reallocated as it grows,
+  and a copy held while more were made pointed into the old buffer; parsing
+  a large generated model (an nlmixr2est outer-gradient model) could crash
+  R.  Each copy is now its own allocation.
+
 - mu-referencing only records a `covariate*theta` term that is exactly
   `theta*covariate`.  The allometric `0.75*log(V1/exp(tV1))`, whose
   derivative `-0.75` drops `V1`, was recorded with covariate `-0.75` and
