@@ -144,65 +144,6 @@ addSecondAbsorption <- function(
   rxUiCompress(.ui)
 }
 
-#' Force the second absorption delay longer than the first
-#'
-#' Reparameterizes a double-absorption model so the second path's lag
-#' is estimated as a positive increment over the first path's lag
-#' (`Tlag2 = Tlag1 + diffTlag2`), matching Monolix's "force delay2
-#' longer than delay1" models.  Both paths must have lag times and the
-#' model must not already be sequential.
-#'
-#' @inheritParams addDepot
-#' @param depot2 name of the second depot compartment
-#' @return a model with the second lag tied above the first
-#' @family Absorption building blocks
-#' @export
-#' @author Matthew L. Fidler
-convertAbsForceLongerDelay <- function(ui, central = "central", depot = "depot", depot2 = "depot2") {
-  .useModelAsUi()
-  .ui <- assertRxUi(ui)
-  central <- assertCompartmentExists(.ui, central)
-  .modelLines <- .ui$lstExpr
-  .lag1 <- sprintf("lag(%s) <- ", depot)
-  .lag2 <- sprintf("lag(%s) <- ", depot2)
-  .hasLag <- function(pat) {
-    any(vapply(.modelLines, function(l) grepl(pat, deparse1(l), fixed = TRUE), logical(1), USE.NAMES = FALSE))
-  }
-  # a zero-order (Tk02) second path has no depot2: its lag is on central
-  .cmt2 <- depot2
-  if (!.hasLag(.lag2) && !testCompartmentExists(.ui, depot2)) {
-    .cmt2 <- central
-    .lag2 <- sprintf("lag(%s) <- ", central)
-  }
-  if (!.hasLag(.lag1) || !.hasLag(.lag2)) {
-    stop("forcing a longer second delay requires lag times on both absorption paths", call. = FALSE)
-  }
-  .w2 <- which(vapply(.modelLines, function(l) grepl(.lag2, deparse1(l), fixed = TRUE), logical(1), USE.NAMES = FALSE))
-  .rhs2 <- .modelLines[[.w2[1L]]][[3L]]
-  .lagVar2 <- if (is.name(.rhs2)) as.character(.rhs2) else NULL
-  # lag(depot2) <- <first-lag-var> + diffTlag2, estimating the
-  # increment; the first path's lag variable is read from its own
-  # lag() line (it need not follow the defaultCombine() convention)
-  .w1 <- which(vapply(.modelLines, function(l) grepl(.lag1, deparse1(l), fixed = TRUE), logical(1), USE.NAMES = FALSE))
-  .rhs1 <- .modelLines[[.w1[1L]]][[3L]]
-  if (!is.name(.rhs1)) {
-    stop("the first absorption path's lag time is not a plain variable", call. = FALSE)
-  }
-  .lagVar1 <- as.character(.rhs1)
-  .modelLines[[.w2[1L]]] <- str2lang(paste0("lag(", .cmt2, ") <- ", .lagVar1, " + diffTlag2"))
-  .ui <- rxUiDecompress(.ui)
-  if (exists("description", envir = .ui$meta)) {
-    rm("description", envir = .ui$meta)
-  }
-  model(.ui) <- .modelLines
-  .ui <- rxUiCompress(.ui)
-  .ui <- .iniAddTheta(.ui, "diffTlag2", label = "Second lag increment over the first (diffTlag2)")
-  if (!is.null(.lagVar2) && testVariableExists(.ui, .lagVar2)) {
-    .ui <- rxUiCompress(removeLinesAndInis(.ui, .lagVar2))
-  }
-  .ui
-}
-
 .secondAbsorptionCheckZero <- function(ui, type, delay, zoFirst, central) {
   if (type != "zero") {
     return(invisible(NULL))

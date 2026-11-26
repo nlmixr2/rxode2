@@ -44,6 +44,10 @@
   a lag path is tied to `Tlag1 + Tk01` when the first path has a lag,
   and a transit chain is reparameterized to `Mtt2 = Tk01 + diffMtt2`
   (or `Mtt2 = Tlag1 + Tk01 + diffMtt2`), estimating `diffMtt2`.
+- `convertAbsForceLongerDelay()` now ties a transit-chain delay as well
+  as a lag time: `Mtt2 = Mtt1 + diffMtt2` for two transit chains,
+  `Mtt2 = Tlag1 + diffMtt2` or `Tlag2 = Mtt1 + diffTlag2` for the mixed
+  cases.  Each chain is converted to its mean transit time first.
 - `rxImpureFun()`/`rxRmImpureFun()` register user R functions, `rxFun()` C
   functions or package C functions that draw random numbers, keep state or
   have side effects.  `rxOptExpr()` never shares their calls and

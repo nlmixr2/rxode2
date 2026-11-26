@@ -110,60 +110,24 @@ convertAbsSequential <- function(
     USE.NAMES = FALSE
   ))
   if (!.hasLag) {
-    # Monolix's sequential model with no chosen delays adds the lag
+    # the sequential model with no chosen delays adds the lag
     ui <- addLag(ui, depot2)
   }
-  .modelLines <- ui$lstExpr
-  .w <- which(vapply(
-    .modelLines,
-    function(l) grepl(.lagLine, deparse1(l), fixed = TRUE),
-    logical(1),
-    USE.NAMES = FALSE
-  ))
-  .modelLines[[.w[1L]]] <- str2lang(paste0("lag(", depot2, ") <- ", baseExpr))
-  .ui <- rxUiDecompress(ui)
-  .absorptionDropDescription(.ui)
-  model(.ui) <- .modelLines
-  .ui <- rxUiCompress(.ui)
-  # the orphaned second-path lag parameter is no longer used; its name
-  # follows addLag()'s defaultCombine() convention (lagDepot2)
+  # the second-path lag variable is orphaned; its name follows
+  # addLag()'s defaultCombine() convention (lagDepot2)
   .lagVar <- as.character(defaultCombine("lag", depot2))
-  if (testVariableExists(.ui, .lagVar)) {
-    .ui <- rxUiCompress(removeLinesAndInis(.ui, .lagVar))
-  }
-  .ui
+  .absorptionSetLagExpr(ui, depot2, baseExpr, dropVar = .lagVar)
 }
 
 .absorptionSequentialTransit <- function(ui, transit2, ktr2, mtt2, baseExpr) {
   if (!testVariableExists(ui, mtt2)) {
     ui <- convertTransitMtt(ui, transit = transit2, ktr = ktr2, mtt = mtt2)
   }
-  .modelLines <- ui$lstExpr
-  .expMtt <- str2lang(paste0(mtt2, " <- exp(l", mtt2, ")"))
-  .w <- which(vapply(
-    .modelLines,
-    function(l) .matchesLangTemplate(l, .expMtt),
-    logical(1),
-    USE.NAMES = FALSE
-  ))
-  if (length(.w) != 1L) {
-    stop("expected one '", mtt2, " <- exp(l", mtt2, ")' line", call. = FALSE)
-  }
-  .modelLines[[.w]] <- str2lang(paste0(mtt2, " <- ", baseExpr, " + diffMtt2"))
-  # the mean-transit-time theta moves to the increment, so drop it before
-  # the model block is replaced (an ini parameter with no model use errors)
-  .lmtt2 <- paste0("l", mtt2)
-  .tmp <- .getEtaTheta(ui)
-  .theta <- .dropTheta(.tmp$theta, .lmtt2)
-  .eta <- .dropEta(.tmp$eta, .lmtt2)
-  .ui <- rxUiDecompress(ui)
-  .ui$iniDf <- rbind(.theta, .eta)
-  .absorptionDropDescription(.ui)
-  model(.ui) <- .modelLines
-  .ui <- rxUiCompress(.ui)
-  .iniAddTheta(
-    .ui,
-    "diffMtt2",
+  .absorptionSetMttExpr(
+    ui,
+    mtt2,
+    paste0(baseExpr, " + diffMtt2"),
+    increment = "diffMtt2",
     label = "Second mean transit time increment beyond the first absorption (diffMtt2)"
   )
 }

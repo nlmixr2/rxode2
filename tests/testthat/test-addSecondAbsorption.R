@@ -295,6 +295,69 @@ rxTest({
     )
   })
 
+  test_that("convertAbsForceLongerDelay ties a transit second delay to the first delay", {
+    # lag first, transit second
+    res <- res0 |>
+      addLag(depot) |>
+      addSecondAbsorption(type = "first", delay = "transit", n = 2) |>
+      convertAbsForceLongerDelay()
+    expect_equal(modelExtract(res, "Mtt2"), "Mtt2 <- lagDepot + diffMtt2")
+    expect_true("diffMtt2" %in% res$iniDf$name)
+    expect_false("lMtt2" %in% res$iniDf$name)
+    expect_false("lktrB" %in% res$iniDf$name)
+    expect_equal(modelExtract(res, "ktrB"), "ktrB <- (2 + 1)/Mtt2")
+
+    # transit first, transit second
+    resTT <- res0 |>
+      addTransit(3) |>
+      addSecondAbsorption(type = "first", delay = "transit", n = 2) |>
+      convertAbsForceLongerDelay()
+    expect_equal(modelExtract(resTT, "Mtt2"), "Mtt2 <- Mtt + diffMtt2")
+    expect_equal(modelExtract(resTT, "Mtt"), "Mtt <- exp(lMtt)")
+    expect_equal(modelExtract(resTT, "ktr"), "ktr <- (3 + 1)/Mtt")
+
+    # transit first, lag second
+    resTL <- res0 |>
+      addTransit(3) |>
+      addSecondAbsorption(type = "first", delay = "lag") |>
+      convertAbsForceLongerDelay()
+    expect_equal(modelExtract(resTL, "lag(depot2)"), "lag(depot2) <- Mtt + diffTlag2")
+    expect_false("llagDepot2" %in% resTL$iniDf$name)
+    expect_true("diffTlag2" %in% resTL$iniDf$name)
+  })
+
+  test_that("convertAbsForceLongerDelay keeps the transit model at matched values", {
+    .base <- function() {
+      res0 |>
+        addTransit(3) |>
+        addSecondAbsorption(type = "first", delay = "transit", n = 2)
+    }
+    .mtt <- 5
+    .mtt2 <- 9
+    .common <- c(
+      lka2 = log(1.2),
+      lcl = log(0.1),
+      lvc = log(10),
+      logitfDepot = logit(0.7),
+      propSd = 0.5
+    )
+    e <- rxode2::et(time = 0, amt = 100, cmt = "depot") |>
+      rxode2::et(c(1, 4, 8, 24, 48))
+    .before <- .base()
+    .sBefore <- as.data.frame(rxode2::rxSolve(
+      .before,
+      e,
+      params = c(.common, lka = log(1.2), lktr = log((3 + 1) / .mtt), lktrB = log((2 + 1) / .mtt2))
+    ))
+    .after <- .before |> convertAbsForceLongerDelay()
+    .sAfter <- as.data.frame(rxode2::rxSolve(
+      .after,
+      e,
+      params = c(.common, lka = log(1.2), lMtt = log(.mtt), diffMtt2 = .mtt2 - .mtt)
+    ))
+    expect_equal(.sAfter$central, .sBefore$central, tolerance = 1e-6)
+  })
+
   test_that("double absorption solves like the simultaneous first-order seed", {
     # piping: one dose row on depot fans out to depot + depot2 with
     # F1/(1-F1); seed: two explicit dose rows with the same fractions.
