@@ -1625,7 +1625,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
   if (inherits(x[[3]], "numeric") || inherits(x[[3]], "integer")) {
     .isNum <- TRUE
     if (isEnv) {
-      if (.rxSEdoConst(envir, .var)) {
+      if (.rxSEbindConst(envir, .var)) {
         .rxSEassign(.var, x[[3]], envir)
       }
     }
@@ -1706,6 +1706,13 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
         assign("..sens0..", .lst, envir = envir)
       } else {
         .lst <- get("..ddt..", envir = envir)
+        if (is.character(envir$..doConst)) {
+          # a caller that re-emits the model (the adjoint expansion) needs the
+          # values at the statement's position, not after later reassignments
+          .tmp <- paste0("rxAdjNow", length(.lst) + 1L, "x")
+          assign(.tmp, eval(parse(text = .expr)), envir = envir)
+          .expr <- paste0("with(envir,", .tmp, ")")
+        }
         .lst[[.var]] <- .expr
         assign("..ddt..", .lst, envir = envir)
       }
@@ -1749,7 +1756,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
       }
       .isNum <- (inherits(.expr, "numeric") || inherits(.expr, "integer"))
       if (
-        (.isNum && .rxSEdoConst(envir, .var)) ||
+        (.isNum && .rxSEbindConst(envir, .var)) ||
           (!.isNum)
       ) {
         .rxSEassign(.var, .expr, envir)
@@ -1762,13 +1769,14 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
       )
       if (regexpr("^(nlmixr|rx)_", .var) == -1) {
         if (.isNum) {
+          .bind <- .rxSEbindConst(envir, .var)
           names(.rx) <- .name
           assign("..lhs0", c(envir$..lhs0, .rx), envir = envir)
           # a substituted constant replaces earlier assignments of the variable
           # (`z <- 5; if (t > 1) z <- 2; z <- 3`) for a caller that re-emits the
           # model (the adjoint expansion)
           .l <- envir$..lhs
-          if (length(.l) && is.character(envir$..doConst) && .rxSEdoConst(envir, .var)) {
+          if (length(.l) && is.character(envir$..doConst) && .bind) {
             assign("..lhs", .l[!startsWith(.l, paste0(.name, "="))], envir = envir)
           }
         } else {
@@ -4508,6 +4516,19 @@ local({
     return(!(var %in% .rxSEres(.dc)))
   }
   isTRUE(.dc)
+}
+
+## Is a numeric assignment to `var` substituted?  With a character doConst only
+## a variable's first assignment can be a default; a later constant is bound.
+.rxSEbindConst <- function(envir, var) {
+  if (.rxSEdoConst(envir, var)) {
+    return(TRUE)
+  }
+  if (!is.character(envir$..doConst)) {
+    return(FALSE)
+  }
+  .name <- rxFromSE(var)
+  .name %in% names(envir$..lhs0) || any(startsWith(as.character(envir$..lhs), paste0(.name, "=")))
 }
 
 #' Load a model into a symengine environment

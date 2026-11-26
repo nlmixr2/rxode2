@@ -368,11 +368,21 @@
   # output instead of a parameter
   .lhsNm <- sub("=.*$", "", model$..lhs)
   .outConst <- unname(.lhs0[!.isStr & names(.lhs0) %in% mv$lhs & !(names(.lhs0) %in% .lhsNm)])
+  # covariate interpolation and dose-splitting declarations
+  .decl <- sub(
+    ";[[:space:]]*$",
+    "",
+    grep(
+      "^(locf|linear|nocb|midpoint|splitBolus|splitInfusion|splitInfusionBolus|splitBolusInfusion)[(]",
+      .norm,
+      value = TRUE
+    )
+  )
   .state <- .rxGenFunState(mv)
   .param <- if (length(mv$params)) sprintf("param(%s)", paste(mv$params, collapse = ", ")) else character(0)
   .mtime <- sub(";[[:space:]]*$", "", grep("^mtime[(]", .norm, value = TRUE))
   list(
-    head = c(.param, unname(.prior[!.isStrP]), unname(.lhs0[!.isStr])),
+    head = c(.param, .decl, unname(.prior[!.isStrP]), unname(.lhs0[!.isStr])),
     ode = c(.ini, .rxPastBaseLinesFromEnv(model)),
     tail = c(
       .rxAdjointOutputLines(c(.mtime, unname(.prior[.isStrP]), unname(.lhs0[.isStr]), .outConst, model$..lhs), mv),
@@ -759,14 +769,25 @@
       .hasIni[k] <- TRUE
     }
   }
-  for (.pass in seq_len(.ns)) {
-    for (k in which(.hasIni)) {
-      .iSE <- get0(.st[k], envir = .iniEnv, inherits = FALSE)
-      for (j in setdiff(which(.hasIni), k)) {
-        .iSE <- symengine::subs(.iSE, .rxSEres(.st[j]), get0(.st[j], envir = .iniEnv, inherits = FALSE))
-      }
-      assign(.st[k], .iSE, envir = .iniEnv)
+  # in the model's order: an initial condition reads only those set before it
+  .norm0 <- strsplit(rxode2::rxNorm(rxode2::rxModelVars(object)), "\n", fixed = TRUE)[[1]]
+  .iniPos <- vapply(
+    .st,
+    function(.s) {
+      .w <- which(startsWith(.norm0, paste0(.s, "(0)=")))
+      if (length(.w)) .w[1] else Inf
+    },
+    numeric(1)
+  )
+  for (k in order(.iniPos)) {
+    if (!.hasIni[k]) {
+      next
     }
+    .iSE <- get0(.st[k], envir = .iniEnv, inherits = FALSE)
+    for (j in which(.hasIni & .iniPos < .iniPos[k])) {
+      .iSE <- symengine::subs(.iSE, .rxSEres(.st[j]), get0(.st[j], envir = .iniEnv, inherits = FALSE))
+    }
+    assign(.st[k], .iSE, envir = .iniEnv)
   }
   .dx0 <- matrix("0", .ns, .np)
   for (k in which(.hasIni)) {

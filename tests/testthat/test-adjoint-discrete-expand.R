@@ -55,6 +55,18 @@ rxTest({
       ev = .ev2,
       p = c(k = 1)
     ),
+    # d/dt() and y(0) read a variable's value at their own position
+    position = list(
+      txt = "z <- k\ny(0) <- z\nd/dt(y) <- -k*y + z\nz <- k*2\nif (t > 1) { z <- k*3 }\nw <- z",
+      ev = .ev2,
+      p = c(k = 1)
+    ),
+    # covariate interpolation is carried
+    interp = list(
+      txt = "linear(cov1)\nd/dt(y) <- -k*y + cov1\ny(0) <- 0",
+      ev = data.frame(id = 1L, time = c(0, 1, 2, 3, 4), evid = 0L, amt = 0, cov1 = c(0, 10, 20, 5, 1)),
+      p = c(k = 1)
+    ),
     # levels() fixes the factor order, and the first string value is kept
     levels = list(
       txt = "levels(s) <- c(\"b\", \"a\")\nd/dt(y) <- -k*y\ns <- \"a\"\nif (t > 1) { s <- \"b\" }\ny(0) <- 1",
@@ -324,6 +336,12 @@ rxTest({
       txt = "d/dt(y) <- ka*x - k*y\nd/dt(x) <- -ka*x\nx(0) <- 2\ny(0) <- b*x",
       ev = et(c(0, 0.5, 1, 2, 3)),
       p = c(ka = 1.2, k = 0.5, b = 3)
+    ),
+    # an initial condition reads a state whose own is set after it (still 0)
+    chainLater = list(
+      txt = "x(0) <- y + a\ny(0) <- b\nd/dt(x) <- -k*x\nd/dt(y) <- -k*y",
+      ev = et(c(0, 0.5, 1, 2, 3)),
+      p = c(k = 0.5, a = 2, b = 3)
     ),
     # one initial condition reads another state's
     chain = list(
