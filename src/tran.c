@@ -11,6 +11,7 @@
 #include "getOption.h"
 #include "parseLinCmt.h"
 #include "tran.h"
+#include "../inst/include/rxMemAlloc.h"
 #include "genModelVars.h"
 #include "print_node.h"
 #include <errno.h>
@@ -956,9 +957,9 @@ char * rc_dup_str(const char *s, const char *e) {
   syntaxErrorExtra=min(l-1, 40);
   if (_dupStrN == _dupStrCap) {
     _dupStrCap = _dupStrCap ? 2 * _dupStrCap : 64;
-    _dupStr = R_Realloc(_dupStr, _dupStrCap, char *);
+    _dupStr = rxMemTag(fixed, R_Realloc(_dupStr, _dupStrCap, char *));
   }
-  char *c = R_Calloc(l + 1, char);
+  char *c = rxMemTag(fixed, R_Calloc(l + 1, char));
   memcpy(c, s, (size_t)l);
   c[l] = '\0';
   _dupStr[_dupStrN++] = c;
