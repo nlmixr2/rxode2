@@ -7,6 +7,7 @@
 #include <RcppArmadillo.h>
 #include "../inst/include/rxode2.h"
 #include "../inst/include/rxMemoryCalc.h"
+#include "../inst/include/rxMemAlloc.h"
 #include "../inst/include/rxode2parse_control.h"
 #include "rxGlobals.h"
 #include <stdio.h>
@@ -626,7 +627,7 @@ static void sInstallRecordInts(int **glob, const std::vector<int> &all,
                                int *rx_solving_options_ind::*member, const char *what) {
   if (all.empty()) return;
   if (*glob != NULL) free(*glob);
-  *glob = (int *)malloc(all.size() * sizeof(int));
+  *glob = (int *)rxMemMalloc(gRecordLinks, all.size() * sizeof(int));
   if (!*glob) (Rf_error)("rxRestoreState: out of memory for %s", what);
   std::copy(all.begin(), all.end(), *glob);
   for (uint32_t si = 0; si < nsub; si++) {

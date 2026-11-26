@@ -49,11 +49,13 @@ SEXP _rxProgressStop(SEXP);
 SEXP _rxProgressAbort(SEXP);
 SEXP _rxode2_codeLoaded(void);
 SEXP _rxode2_rxGpuClAvailable(void);
+SEXP _rxode2_rxGpuClDeviceMem(SEXP);
 SEXP _rxode2_rxGpuClNew(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP _rxode2_rxGpuClRound(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP,
                           SEXP, SEXP);
 SEXP _rxode2_rxGpuClFree(SEXP);
 SEXP _rxode2_rxGpuSolveSet(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP _rxode2_rxGpuSolveStats(SEXP);
 SEXP _rxode2_rxDydtForceN(void);
 
 SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname, SEXP pMd5, SEXP lastMv, SEXP goodFuns, SEXP esDLagCode, SEXP esDFCode, SEXP esDRateCode, SEXP esDDurCode, SEXP esD2FCode, SEXP esD2LagCode, SEXP esD2RateCode, SEXP esD2DurCode, SEXP esD3FCode, SEXP esDFQCode, SEXP esDLagJacCode, SEXP esDLagQCode, SEXP esDDurQCode);
@@ -970,6 +972,7 @@ SEXP _rxode2_dmexpit(SEXP p);
 SEXP _rxode2_mlogit_f(SEXP x, SEXP p);
 SEXP _rxode2_mlogit_j(SEXP x);
 SEXP _rxode2_rxMemoryComponents_(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
+SEXP _rxode2_rxMemoryGpuComponents_(SEXP,SEXP,SEXP,SEXP);
 SEXP _rxode2_rxRamBytes_(void);
 SEXP _rxode2_rxSolveSetCurObj_(SEXP);
 
@@ -1239,6 +1242,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxTteSetup", (DL_FUNC) _rxode2_rxTteSetup, 1},
     {"_rxode2_rxErf", (DL_FUNC) &_rxode2_rxErf, 1},
     {"_rxode2_rxMemoryComponents_", (DL_FUNC) &_rxode2_rxMemoryComponents_, 25},
+    {"_rxode2_rxMemoryGpuComponents_", (DL_FUNC) &_rxode2_rxMemoryGpuComponents_, 4},
     {"_rxode2_rxRamBytes_", (DL_FUNC) &_rxode2_rxRamBytes_, 0},
     {"_rxode2_rxSaveState_", (DL_FUNC) _rxode2_rxSaveState_, 0},
     {"_rxode2_rxIsSerializeFile_", (DL_FUNC) _rxode2_rxIsSerializeFile_, 1},
@@ -1250,10 +1254,12 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxApiErrTest_", (DL_FUNC) &_rxode2_rxApiErrTest_, 1},
     {"_rxode2_sortIdsWanted_", (DL_FUNC) &_rxode2_sortIdsWanted_, 3},
     {"_rxode2_rxGpuClAvailable", (DL_FUNC) &_rxode2_rxGpuClAvailable, 0},
+    {"_rxode2_rxGpuClDeviceMem", (DL_FUNC) &_rxode2_rxGpuClDeviceMem, 1},
     {"_rxode2_rxGpuClNew", (DL_FUNC) &_rxode2_rxGpuClNew, 8},
     {"_rxode2_rxGpuClRound", (DL_FUNC) &_rxode2_rxGpuClRound, 10},
     {"_rxode2_rxGpuClFree", (DL_FUNC) &_rxode2_rxGpuClFree, 1},
     {"_rxode2_rxGpuSolveSet", (DL_FUNC) &_rxode2_rxGpuSolveSet, 7},
+    {"_rxode2_rxGpuSolveStats", (DL_FUNC) &_rxode2_rxGpuSolveStats, 1},
     {"_rxode2_rxDydtForceN", (DL_FUNC) &_rxode2_rxDydtForceN, 0},
     {NULL, NULL, 0}
   };

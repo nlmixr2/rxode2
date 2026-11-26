@@ -1177,6 +1177,28 @@ rxMemoryComponents_ <- function(neq, stateSize, nlhs, npars, neta, neps, ncov, n
     .Call(`_rxode2_rxMemoryComponents_`, neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, ndosesTotal, maxAllTimes, stiff, doIndLin, indOwnAlloc, sample, nDelayState)
 }
 
+#' Report the byte sizes of a GPU method's solve allocations
+#'
+#' The GPU methods (codes 110-114) allocate per slot (\code{gpuBatch}
+#' subjects in flight), not per subject, on top of what
+#' \code{rxMemoryComponents_()} reports.  Values come from the same layout
+#' the solve allocates with (\code{rxGpuHostBytes()} in
+#' \code{src/gpu_solve.cpp}, \code{rxGpuClBytes()} in
+#' \code{src/gpu_opencl.c}).
+#'
+#' @param dims  The run layout (\code{RXG_D_*}, \code{src/gpu_opencl.h});
+#'   \code{dims[1]} is the number of slots.
+#' @param single 1 for single-precision device buffers.
+#' @param opencl 1 for the OpenCL backend, 0 for the CPU backend.
+#' @param threads The OpenMP threads of the host work.
+#' @return Named numeric vector of bytes: \code{gpuHostWork},
+#'   \code{gpuHostState}, \code{gpuSlotWork} and \code{gpuStage} on the host,
+#'   \code{gpuDevice} on the device (not host RAM).
+#' @noRd
+rxMemoryGpuComponents_ <- function(dims, single, opencl, threads) {
+    .Call(`_rxode2_rxMemoryGpuComponents_`, dims, single, opencl, threads)
+}
+
 rxTestAbiSubjectCounts_ <- function() {
     .Call(`_rxode2_rxTestAbiSubjectCounts_`)
 }

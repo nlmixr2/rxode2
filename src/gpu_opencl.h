@@ -40,6 +40,8 @@ int rxGpuClRound(rxGpuCl *g, int n, double *y, double *rd, int *ri,
                  const double *p0, const double *p1, const double *pl,
                  const double *ir, const int *on);
 void rxGpuClFree(rxGpuCl *g);
+void rxGpuClBytes(const int *dims, int single, double *out);
+void rxGpuHostBytes(const int *d, int opencl, int threads, double *out);
 #ifdef __cplusplus
 }
 #endif
