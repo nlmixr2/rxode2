@@ -613,6 +613,7 @@ table:\tabular{lll}{
    first(par) \tab Get the first value of an input parameter \tab  \cr
    last(par) \tab Get the last value of an input parameter \tab  \cr
    transit() \tab The transit compartment pseudo function \tab  \cr
+   transitDose(cmt) \tab Bolus doses into cmt become phantom doses: they drive transit() but are not added to the compartment \tab  \cr
    delay(state, T) \tab Value of an ODE state delayed by T time units (delay differential equations); requires a dense solver \tab  \cr
    is.na() \tab Determine if a value is NA \tab  \cr
    is.nan() \tab Determine if a value is NaN \tab  \cr

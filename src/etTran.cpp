@@ -68,6 +68,13 @@ static inline IntegerVector mvIntByName(List &mv, const char *name) {
   return IntegerVector::create(0);
 }
 
+static inline bool etTransitDoseCmt(const IntegerVector &v, int cmt) {
+  for (R_xlen_t i = 0; i < v.size(); ++i) {
+    if (v[i] == cmt) return true;
+  }
+  return false;
+}
+
 static inline bool etRateDurIsDose(double x) {
   return x > 0.0 || x == -1.0 || x == -2.0;
 }
@@ -1475,6 +1482,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   IntegerVector splitInfusion = mvIntByName(mv, "splitInfusion");
   IntegerVector splitInfBol = mvIntByName(mv, "splitInfusionBolus");
   IntegerVector splitBolInf = mvIntByName(mv, "splitBolusInfusion");
+  // transitDose(cmt): bolus doses into cmt drive transit() only (phantom)
+  IntegerVector transitDoseCmt = mvIntByName(mv, "transitDose");
   // the split directive's source then targets, for the lagged-dose knots
   IntegerVector knotSplit = splitBolusN >= 2 ? splitBolus :
     splitInfusion.size() >= 2 ? splitInfusion :
@@ -2822,6 +2831,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       if (cevid == 7) {
         flg = 50;
         cevid=1;
+      }
+      if (flg == 1 && rateI == 0 && cmt > 0 &&
+          etTransitDoseCmt(transitDoseCmt, cmt)) {
+        // a bolus in a transitDose() compartment is a phantom dose: the
+        // record's amount drives transit(), but is not added to the state
+        flg = 50;
       }
       cevid = cmt100*100000+rateI*10000+cmt99*100+flg;
       if (rateI == 0) allInf=false;

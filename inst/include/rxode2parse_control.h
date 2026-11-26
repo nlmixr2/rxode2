@@ -190,6 +190,7 @@
 #define RxMv_splitInfusion 32
 #define RxMv_splitInfusionBolus 33
 #define RxMv_splitBolusInfusion 34
+#define RxMv_transitDose 35
 #define RxMvFlag_ncmt 0
 #define RxMvFlag_ka 1
 #define RxMvFlag_linB 2

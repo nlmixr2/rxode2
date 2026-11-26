@@ -46,11 +46,14 @@ rate \code{Ktr}; the implied number of transit compartments is
 \code{Mtt * Ktr - 1}.
 }
 \details{
-Dosing records stay on \code{depot}.  The model sets \code{f(depot) <- 0} so
-the bolus itself does not enter the depot, and the depot's ODE gains
+Dosing records stay on \code{depot}.  The model gains
 \code{transit(Mtt * Ktr - 1, Mtt)}, which adds the amount that has
-traversed the transit chain at each solve time.  \code{ka} then drains
-the depot into \code{central} as usual.
+traversed the transit chain at each solve time, plus a
+\code{transitDose(depot)} directive.  The directive makes \code{etTrans()}
+translate bolus records on \code{depot} to phantom doses: the record's
+amount drives \code{transit()} but is not added to the depot state, so
+ordinary dosing records need no \code{evid = 7}.  \code{ka} then drains the
+depot into \code{central} as usual.
 
 This is the analytic sibling of \code{\link[=addTransit]{addTransit()}}, which builds one ODE
 state per transit compartment and estimates \code{ktr}; both forms are

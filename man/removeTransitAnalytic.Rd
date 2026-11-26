@@ -20,8 +20,9 @@ object)}
 a model without the analytic transit input
 }
 \description{
-Removes the \code{transit()} input and the \code{f(depot) <- 0} line added by
-\code{\link[=addTransitAnalytic]{addTransitAnalytic()}}, and drops the \code{mtt}/\code{Ktr} parameters.  Use
+Removes the \code{transit()} input and the \code{transitDose(depot)} directive
+added by \code{\link[=addTransitAnalytic]{addTransitAnalytic()}}, and drops the
+\code{mtt}/\code{Ktr} parameters.  Use
 \code{\link[=removeTransit]{removeTransit()}} for an explicit transit chain instead.
 }
 \seealso{

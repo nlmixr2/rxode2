@@ -806,8 +806,8 @@ List rxModelVars_rxode2(const RObject &obj){
 //'
 //' @noRd
 List rxModelVars_blank() {
-  List ret(35);
-  CharacterVector retN(35);
+  List ret(36);
+  CharacterVector retN(36);
   ret[0]  = CharacterVector::create(); // params
   retN[0] = "params";
   ret[1]  = CharacterVector::create(); // lhs
@@ -928,6 +928,9 @@ List rxModelVars_blank() {
 
   ret[34] = IntegerVector::create(0); // splitBolusInfusion
   retN[34] = "splitBolusInfusion";
+
+  ret[35] = IntegerVector::create(0); // transitDose
+  retN[35] = "transitDose";
 
   ret.attr("names") = retN;
   ret.attr("class") = "rxModelVars";

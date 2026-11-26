@@ -6,7 +6,7 @@ rxTest({
     .lines <- vapply(res$lstExpr, function(l) deparse1(l), character(1), USE.NAMES = FALSE)
 
     expect_true(any(grepl("transit(Mtt * Ktr - 1, Mtt)", .lines, fixed = TRUE)))
-    expect_true("f(depot) <- 0" %in% .lines)
+    expect_true("transitDose(depot)" %in% .lines)
     expect_true("Mtt <- exp(lMtt)" %in% .lines)
     expect_true("Ktr <- exp(lKtr)" %in% .lines)
     expect_true(all(c("lMtt", "lKtr") %in% res$iniDf$name))
@@ -57,13 +57,22 @@ rxTest({
   })
 
   test_that("addTransitAnalytic guards", {
-    # a model that already has a depot bioavailability cannot also use
-    # the zero-bioavailability transit input
-    expect_error(
-      res0 |> addBioavailability(depot, scale = "log", f = 0.8) |> addTransitAnalytic(),
-      regexp = "bioavailability"
-    )
     expect_error(res0 |> addTransitAnalytic(mtt = "ka"), regexp = "already")
+    expect_error(res0 |> addTransitAnalytic() |> addTransitAnalytic(), regexp = "already")
+  })
+
+  test_that("transitDose() translates bolus doses to phantom doses", {
+    res <- res0 |> addTransitAnalytic()
+    e <- rxode2::et(time = 0, amt = 100, cmt = "depot") |> rxode2::et(c(1, 2))
+    .doseEvid <- function(ui) etTrans(e, ui)$EVID[1]
+    # classic internal evid: cmt99*100 + flg; flg 50 is the phantom dose
+    expect_equal(.doseEvid(res0), 101)
+    expect_equal(.doseEvid(res), 150)
+
+    # an infusion is not a bolus: it keeps its own translation
+    eInf <- rxode2::et(time = 0, amt = 100, cmt = "depot", rate = 10) |>
+      rxode2::et(c(1, 2))
+    expect_equal(etTrans(eInf, res)$EVID[1], etTrans(eInf, res0)$EVID[1])
   })
 
   test_that("removeTransitAnalytic restores the depot ODE", {
@@ -80,7 +89,7 @@ rxTest({
     )))
     expect_false(any(vapply(
       .restored$lstExpr,
-      function(l) identical(deparse1(l), "f(depot) <- 0"),
+      function(l) identical(deparse1(l), "transitDose(depot)"),
       logical(1),
       USE.NAMES = FALSE
     )))

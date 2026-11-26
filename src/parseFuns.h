@@ -217,6 +217,34 @@ static inline int handleSplitStatementKind(nodeInfo ni, char *name, int *i, int 
   return 1;
 }
 
+/* transitDose(cmt): bolus doses into cmt become phantom doses.  The
+ * compartment still receives the record's amount for transit() (podo),
+ * but the amount is not added to the compartment itself.  Complements
+ * addTransitAnalytic(), which writes this directive so ordinary dosing
+ * records need no EVID=7. */
+static inline int handleTransitDoseStatement(nodeInfo ni, char *name, int *i, int nch,
+                                             D_ParseNode *pn) {
+  if (nodeHas(transitDose_statement) && *i == 0) {
+    *i = nch;
+    sb.o = 0; sbDt.o = 0; sbt.o = 0;
+    D_ParseNode *c1 = d_get_child(pn, 2);
+    char *val = (char*)rc_dup_str(c1->start_loc.s, c1->end);
+    int hasLhs = isCmtLhsStatement(ni, name, val);
+    if (new_de(val, fromCMTprop)) {
+      add_de(ni, name, val, hasLhs, fromCMTprop);
+    } else {
+      new_or_ith(val);
+    }
+    tb.transitDose[tb.transitDoseN] = tb.id + 1;
+    tb.transitDoseN++;
+    sAppend(&sbt, "transitDose(%s);", val);
+    sAppend(&sbNrm, "%s\n", sbt.s);
+    addLine(&sbNrmL, "%s\n", sbt.s);
+    return 1;
+  }
+  return 0;
+}
+
 static inline int handleSplitBolusStatement(nodeInfo ni, char *name, int *i, int nch,
                                             D_ParseNode *pn) {
   if (nodeHas(splitBolus_statement) && *i == 0) {
