@@ -145,7 +145,7 @@ rxTest({
     )
     # two modeled durations cannot share central
     expect_error(
-      suppressWarnings(res0 |> addZeroOrderAbs()) |>
+      suppressWarnings(addZeroOrderAbs(res0)) |>
         addSecondAbsorption(type = "zero"),
       regexp = "two zero-order absorption routes"
     )
