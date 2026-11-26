@@ -14,10 +14,18 @@ rxTest({
     # an observation reads the post-event state; replace 4 at t0 makes y
     # independent of y0, multiply by 2 doubles its y0 dependence
     .cases <- list(
-      replace = list(ev = et(time = 0, evid = 5, amt = 4, cmt = "y"), y = function(t) 4 * exp(-0.7 * t),
-        dy0 = function(t) 0 * t, dk = function(t) -t * 4 * exp(-0.7 * t)),
-      multiply = list(ev = et(time = 0, evid = 6, amt = 2, cmt = "y"), y = function(t) 6 * exp(-0.7 * t),
-        dy0 = function(t) 2 * exp(-0.7 * t), dk = function(t) -t * 6 * exp(-0.7 * t))
+      replace = list(
+        ev = et(time = 0, evid = 5, amt = 4, cmt = "y"),
+        y = function(t) 4 * exp(-0.7 * t),
+        dy0 = function(t) 0 * t,
+        dk = function(t) -t * 4 * exp(-0.7 * t)
+      ),
+      multiply = list(
+        ev = et(time = 0, evid = 6, amt = 2, cmt = "y"),
+        y = function(t) 6 * exp(-0.7 * t),
+        dy0 = function(t) 2 * exp(-0.7 * t),
+        dk = function(t) -t * 6 * exp(-0.7 * t)
+      )
     )
     for (.nm in names(.cases)) {
       .k <- .cases[[.nm]]
@@ -49,12 +57,16 @@ rxTest({
     .txt2 <- "d/dt(y) <- -k*y"
     .tt <- c(0.5, 1, 2, 3)
     .cases <- list(
-      replace = list(ev = et(amt = 10, cmt = "y") |> et(time = 1, evid = 5, amt = 4, cmt = "y") |> et(.tt),
+      replace = list(
+        ev = et(amt = 10, cmt = "y") |> et(time = 1, evid = 5, amt = 4, cmt = "y") |> et(.tt),
         y = ifelse(.tt < 1, 10 * exp(-0.7 * .tt), 4 * exp(-0.7 * (.tt - 1))),
-        dk = ifelse(.tt < 1, -.tt * 10 * exp(-0.7 * .tt), -(.tt - 1) * 4 * exp(-0.7 * (.tt - 1)))),
-      multiply = list(ev = et(amt = 10, cmt = "y") |> et(time = 1, evid = 6, amt = 0.98, cmt = "y") |> et(.tt),
+        dk = ifelse(.tt < 1, -.tt * 10 * exp(-0.7 * .tt), -(.tt - 1) * 4 * exp(-0.7 * (.tt - 1)))
+      ),
+      multiply = list(
+        ev = et(amt = 10, cmt = "y") |> et(time = 1, evid = 6, amt = 0.98, cmt = "y") |> et(.tt),
         y = ifelse(.tt < 1, 10, 9.8) * exp(-0.7 * .tt),
-        dk = -.tt * ifelse(.tt < 1, 10, 9.8) * exp(-0.7 * .tt))
+        dk = -.tt * ifelse(.tt < 1, 10, 9.8) * exp(-0.7 * .tt)
+      )
     )
     for (.nm in names(.cases)) {
       .k <- .cases[[.nm]]
@@ -85,7 +97,11 @@ rxTest({
 
   test_that("the continuous adjoint refuses a reset", {
     .msg <- "the continuous adjoint does not support a reset (evid = 3/4); use rxSolveAdjointRk4()"
-    for (.ev in list(et(c(0, 1, 3)) |> et(time = 2, evid = 3), et(c(0, 1, 3)) |> et(time = 2, evid = 4, amt = 5, cmt = "y"))) {
+    .evs <- list(
+      et(c(0, 1, 3)) |> et(time = 2, evid = 3),
+      et(c(0, 1, 3)) |> et(time = 2, evid = 4, amt = 5, cmt = "y")
+    )
+    for (.ev in .evs) {
       expect_error(.rxAdjointSolve(.txt, .p, .ev, "k", c(1, 3)), .msg, fixed = TRUE)
       expect_error(rxSolveAdjoint(.txt, .p, .ev, "k"), .msg, fixed = TRUE)
       expect_error(.rxAdjointGradBuild(.txt, "k", "y", .ev), .msg, fixed = TRUE)
