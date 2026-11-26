@@ -200,6 +200,22 @@ static int _rxgPreMode = 0;
 #include "codegenSlice.h"
 #include "../inst/include/rxMemAlloc.h"
 
+// may a hoisted right-hand side read identifier id[0..len)?  Not time, the
+// solver's arrays and context, delay() or a state; the line's own variable
+// lhs (whose earlier value is the same in rxg_pre()) and variables not
+// assigned or already hoisted are fine
+static int rxgHoistIdOk(const char *id, int len, const char *lhs, int lhsLen,
+                        pkTimeVars *assigned, pkTimeVars *hoisted,
+                        pkTimeVars *states) {
+  if (len == 1 && id[0] == 't') return 0;
+  if (len >= 2 && id[0] == '_' && id[1] == '_') return 0;
+  if (len >= 4 && !strncmp(id, "_rxg", 4)) return 0;
+  if (len == 8 && !strncmp(id, "_rxDelay", 8)) return 0;
+  if (pkTimeHasVar(states, id, len)) return 0;
+  if (len == lhsLen && !strncmp(id, lhs, len)) return 1;
+  return !pkTimeHasVar(assigned, id, len) || pkTimeHasVar(hoisted, id, len);
+}
+
 // Does the right-hand side of line s (after its `=` at k) read only
 // parameters, literals, functions and the variables already in hoisted (or
 // the line's own variable, whose earlier value is the same in rxg_pre())?
@@ -218,18 +234,53 @@ static int rxgHoistRhs(const char *s, int k, const char *lhs, int lhsLen,
     }
     j = k;
     while (pkTimeIdChar(s[j])) j++;
-    int len = j - k;
-    const char *id = s + k;
+    if (!rxgHoistIdOk(s + k, j - k, lhs, lhsLen, assigned, hoisted, states)) return 0;
     k = j;
-    // time, the solver's arrays and context, delay()
-    if (len == 1 && id[0] == 't') return 0;
-    if (len >= 2 && id[0] == '_' && id[1] == '_') return 0;
-    if (len >= 4 && !strncmp(id, "_rxg", 4)) return 0;
-    if (len == 8 && !strncmp(id, "_rxDelay", 8)) return 0;
-    if (pkTimeHasVar(states, id, len)) return 0;
-    if (len == lhsLen && !strncmp(id, lhs, len)) continue;
-    if (pkTimeHasVar(assigned, id, len) && !pkTimeHasVar(hoisted, id, len)) return 0;
   }
+  return 1;
+}
+
+// inChain[i] (fresh, zeroed): line i belongs to an if/else or while group
+static int *rxgHoistChains(int n) {
+  pkTimeGroups g;
+  pkTimeGroupsFind(&g, n);
+  int *inChain = (int*)rxMemRalloc(fixed, n, sizeof(int));
+  for (int i = 0; i < n; ++i) inChain[i] = 0;
+  for (int k = 0; k < g.n; ++k) {
+    for (int i = g.first[k]; i <= g.last[k]; ++i) inChain[i] = 1;
+  }
+  return inChain;
+}
+
+// the variables assigned once and those assigned more than once
+static void rxgHoistAssigned(int n, pkTimeVars *once, pkTimeVars *twice) {
+  for (int i = 0; i < n; ++i) {
+    int start = 0;
+    int len = pkTimeLhs(sbPm.line[i], &start);
+    if (len <= 0) continue;
+    if (pkTimeHasVar(once, sbPm.line[i] + start, len)) {
+      pkTimeAddVar(twice, sbPm.line[i] + start, len);
+    } else {
+      pkTimeAddVar(once, sbPm.line[i] + start, len);
+    }
+  }
+}
+
+// can line i (an assignment outside if/else and while) go to rxg_pre()?
+// Adds its variable to hoisted when it can.
+static int rxgHoistLine(int i, pkTimeVars *once, pkTimeVars *twice,
+                        pkTimeVars *hoisted, pkTimeVars *states) {
+  const char *s = sbPm.line[i];
+  int start = 0;
+  int len = pkTimeLhs(s, &start);
+  if (len <= 0) return 0;
+  if (pkTimeHasVar(twice, s + start, len) ||
+      pkTimeHasVar(states, s + start, len)) return 0;
+  int k = start + len;
+  while (s[k] == ' ' || s[k] == '\t') k++;
+  if (s[k] != '=') return 0;
+  if (!rxgHoistRhs(s, k + 1, s + start, len, once, hoisted, states)) return 0;
+  pkTimeAddVar(hoisted, s + start, len);
   return 1;
 }
 
@@ -242,45 +293,17 @@ static int rxgHoistClassify(void) {
   _rxgNPre = 0;
   if (n <= 0) return 0;
   _rxgHoist = (int*)rxMemRalloc(fixed, n, sizeof(int));
-  pkTimeGroups g;
-  pkTimeGroupsFind(&g, n);
-  int *inChain = (int*)rxMemRalloc(fixed, n, sizeof(int));
-  for (int i = 0; i < n; ++i) {
-    _rxgHoist[i] = -1;
-    inChain[i] = 0;
-  }
-  for (int k = 0; k < g.n; ++k) {
-    for (int i = g.first[k]; i <= g.last[k]; ++i) inChain[i] = 1;
-  }
+  for (int i = 0; i < n; ++i) _rxgHoist[i] = -1;
+  int *inChain = rxgHoistChains(n);
   pkTimeVars states, once, twice, hoisted;
   pkTimeSeedStates(&states);
   once.v = twice.v = hoisted.v = NULL;
   once.n = twice.n = hoisted.n = 0;
   once.nAlloc = twice.nAlloc = hoisted.nAlloc = 0;
-  for (int i = 0; i < n; ++i) {
-    int start = 0;
-    int len = pkTimeLhs(sbPm.line[i], &start);
-    if (len <= 0) continue;
-    if (pkTimeHasVar(&once, sbPm.line[i] + start, len)) {
-      pkTimeAddVar(&twice, sbPm.line[i] + start, len);
-    } else {
-      pkTimeAddVar(&once, sbPm.line[i] + start, len);
-    }
-  }
+  rxgHoistAssigned(n, &once, &twice);
   for (int i = 0; i < n; ++i) {
     if (sbPm.lType[i] != TASSIGN || inChain[i]) continue;
-    const char *s = sbPm.line[i];
-    int start = 0;
-    int len = pkTimeLhs(s, &start);
-    if (len <= 0) continue;
-    if (pkTimeHasVar(&twice, s + start, len) ||
-        pkTimeHasVar(&states, s + start, len)) continue;
-    int k = start + len;
-    while (s[k] == ' ' || s[k] == '\t') k++;
-    if (s[k] != '=') continue;
-    if (!rxgHoistRhs(s, k + 1, s + start, len, &once, &hoisted, &states)) continue;
-    pkTimeAddVar(&hoisted, s + start, len);
-    _rxgHoist[i] = _rxgNPre++;
+    if (rxgHoistLine(i, &once, &twice, &hoisted, &states)) _rxgHoist[i] = _rxgNPre++;
   }
   return _rxgNPre;
 }

@@ -853,5 +853,31 @@ rxTest({
     ## the slots' offsets
     expect_equal(.c[["gpuTimeline"]], 8192 * ((2 * 2 + 4 + 2 * 3 + 1) * 8 + (6 + 2) * 4) + 513 * 4)
     expect_gt(.c[["gpuDevice"]], .a[["gpuDevice"]])
+    ## the largest single device buffer, checked against the device's
+    ## CL_DEVICE_MAX_MEM_ALLOC_SIZE
+    .big <- attr(.a, "gpuDeviceMaxBuffer")
+    expect_gt(.big, 0)
+    expect_lt(.big, .a[["gpuDevice"]])
+    expect_equal(attr(.b, "gpuDeviceMaxBuffer"), 2 * .big)
+    expect_error(.rxGpuCheckDeviceMem0(.a[["gpuDevice"]], c(1e12, .big - 1), 1L, 512L, .big), "at most")
+    expect_true(.rxGpuCheckDeviceMem0(.a[["gpuDevice"]], c(1e12, .big), 1L, 512L, .big))
+    expect_false(.rxGpuCheckDeviceMem0(.a[["gpuDevice"]], c(1e12, .big - 1), 1L, 512L, .big, stop = FALSE))
+    expect_error(.rxGpuCheckDeviceMem0(1e12, c(1e12, NA), 1L, 512L, .big), "device memory")
+  })
+
+  test_that("the out-of-memory chunk size counts a GPU method's slot buffers as fixed", {
+    .m <- rxode2({
+      d / dt(depot) <- -ka * depot
+      d / dt(center) <- ka * depot - cl / v * center
+      cp <- center / v
+    })
+    .ev <- as.data.frame(et(amt = 100, ii = 12, addl = 2) |> et(seq(0, 24, by = 4)) |> et(id = 1:2000))
+    .ctl <- rxControl(method = "gpuT54", gpuBackend = "cpu", gpuBatch = 512L, cores = 2L)
+    .est <- rxMemoryEstimate(.ev, model = .m, control = .ctl)
+    ## the names .rxOomChunkSize() takes off the top are the estimate's own
+    expect_true(all(c("extraDosing", "gpuHostWork", "gpuHostState", "gpuSlotWork", "gpuStage") %in% names(.est)))
+    ## with no RAM to spare beyond the slot buffers, one subject at a time
+    local_mocked_bindings(.getFreeRamBytes = function() as.numeric(.est$gpuHostWork))
+    expect_equal(.rxOomChunkSize(.m, .ev, .ctl), 1L)
   })
 })

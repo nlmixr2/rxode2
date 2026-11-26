@@ -125,6 +125,9 @@ NumericVector rxMemoryComponents_(
   /* Byte counts for allocations outside gsolve/gon */
   double b_gall_times  = 5.0  * nallTotal * sizeof(double);
   double b_gevid       = 3.0  * nallTotal * sizeof(int);
+  /* the per-record links etTrans() may attach (infPair, pkSkip, doseRow,
+     addlParent): nallTotal ints each, a bound since each is optional */
+  double b_gRecordLinks = 4.0 * nallTotal * sizeof(int);
   double b_gcov        = (double)ncov * nallTotal * sizeof(double);
   /* gpars is calloc'd at npars*max2(nsub, nPopPar) and inds_global at
      nPopPar, where nPopPar = nsub*nsim -- both are sized by the TOTAL
@@ -244,6 +247,7 @@ NumericVector rxMemoryComponents_(
     Named("gon")           = (double)_mem.gon_total    * sizeof(int),
     Named("gall_times")    = b_gall_times,
     Named("gevid")         = b_gevid,
+    Named("gRecordLinks")  = b_gRecordLinks,
     Named("gcov")          = b_gcov,
     Named("gpars")         = b_gpars,
     Named("gomega")        = b_gomega,
@@ -288,21 +292,25 @@ NumericVector rxMemoryComponents_(
 //' @return Named numeric vector of bytes: \code{gpuHostWork},
 //'   \code{gpuHostState}, \code{gpuSlotWork}, \code{gpuTimeline} and
 //'   \code{gpuStage} on the host,
-//'   \code{gpuDevice} on the device (not host RAM).
+//'   \code{gpuDevice} on the device (not host RAM); attribute
+//'   \code{gpuDeviceMaxBuffer} is the largest single device buffer.
 //' @noRd
 // [[Rcpp::export]]
 NumericVector rxMemoryGpuComponents_(IntegerVector dims, int single, int opencl, int threads) {
   if (dims.size() != RXG_D_N) Rcpp::stop("dims must have %d values", (int)RXG_D_N);
-  double host[4] = {0.0, 0.0, 0.0, 0.0}, cl[2] = {0.0, 0.0};
+  double host[4] = {0.0, 0.0, 0.0, 0.0}, cl[3] = {0.0, 0.0, 0.0};
   rxGpuHostBytes(dims.begin(), opencl, threads < 1 ? 1 : threads, host);
   if (opencl) rxGpuClBytes(dims.begin(), single, cl);
-  return NumericVector::create(
+  NumericVector ret = NumericVector::create(
     Named("gpuHostWork")  = host[0],
     Named("gpuHostState") = host[1],
     Named("gpuSlotWork")  = host[2],
     Named("gpuTimeline")  = host[3],
     Named("gpuStage")     = cl[1],
     Named("gpuDevice")    = cl[0]);
+  // the largest single device buffer (CL_DEVICE_MAX_MEM_ALLOC_SIZE bounds it)
+  ret.attr("gpuDeviceMaxBuffer") = cl[2];
+  return ret;
 }
 
 // Per-subject record counts read through the ABI, plus the two strides.

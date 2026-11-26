@@ -1008,17 +1008,48 @@ rxGpuInfo <- function() {
 #' @param bytes device bytes (`gpuDevice` of `.rxGpuSolveMem()`)
 #' @param device,precision as `.rxGpuDevice()`
 #' @param batch slots (for the message)
+#' @param maxBuffer largest single device buffer
 #' @param stop stop when they do not fit; `FALSE` returns `FALSE` instead
 #' @return `TRUE` (invisibly) when they fit
 #' @noRd
 #' @author Matthew L. Fidler
-.rxGpuCheckDeviceMem <- function(bytes, device, precision, batch, stop = TRUE) {
+.rxGpuCheckDeviceMem <- function(bytes, device, precision, batch, maxBuffer = 0, stop = TRUE) {
   .d <- tryCatch(.rxGpuDevice(device, precision), error = function(e) NULL)
   if (is.null(.d)) {
     return(invisible(TRUE))
   }
   .mem <- .Call(`_rxode2_rxGpuClDeviceMem`, .d$dev)
-  if (!is.na(.mem[1]) && bytes > 0.9 * .mem[1]) {
+  .rxGpuCheckDeviceMem0(bytes, .mem, .d$index, batch, maxBuffer, stop)
+}
+
+#' Stop when a GPU solve's buffers exceed a device's memory
+#'
+#' @param bytes device bytes
+#' @param mem `CL_DEVICE_GLOBAL_MEM_SIZE` and `CL_DEVICE_MAX_MEM_ALLOC_SIZE`
+#' @param index device index (for the message)
+#' @param batch slots (for the message)
+#' @param maxBuffer largest single device buffer
+#' @param stop stop when they do not fit; `FALSE` returns `FALSE` instead
+#' @return `TRUE` (invisibly) when they fit
+#' @noRd
+#' @author Matthew L. Fidler
+.rxGpuCheckDeviceMem0 <- function(bytes, mem, index, batch, maxBuffer = 0, stop = TRUE) {
+  if (!is.na(mem[2]) && isTRUE(maxBuffer > mem[2])) {
+    if (!stop) {
+      return(FALSE)
+    }
+    stop(
+      sprintf(
+        "a GPU solve buffer needs %.2f GB but device %d allocates at most %.2f GB at once; lower rxControl(gpuBatch=) (now %d)",
+        maxBuffer / 1e9,
+        index,
+        mem[2] / 1e9,
+        as.integer(batch)
+      ),
+      call. = FALSE
+    )
+  }
+  if (!is.na(mem[1]) && bytes > 0.9 * mem[1]) {
     if (!stop) {
       return(FALSE)
     }
@@ -1026,8 +1057,8 @@ rxGpuInfo <- function() {
       sprintf(
         "the GPU solve needs %.2f GB of device memory but device %d has %.2f GB; lower rxControl(gpuBatch=) (now %d)",
         bytes / 1e9,
-        .d$index,
-        .mem[1] / 1e9,
+        index,
+        mem[1] / 1e9,
         as.integer(batch)
       ),
       call. = FALSE
@@ -1411,11 +1442,27 @@ rxGpuInfo <- function() {
     .mem <- .rxGpuSolveMem(object, ctl, nsolve, backend = "opencl", timeline = .tl)
     ## the timeline rows are optional: a solve that fits only without them
     ## runs in rounds
-    if (.tl && !.rxGpuCheckDeviceMem(.mem[["gpuDevice"]], .dev, ctl$gpuPrecision, .batch, stop = FALSE)) {
+    if (
+      .tl &&
+        !.rxGpuCheckDeviceMem(
+          .mem[["gpuDevice"]],
+          .dev,
+          ctl$gpuPrecision,
+          .batch,
+          maxBuffer = attr(.mem, "gpuDeviceMaxBuffer"),
+          stop = FALSE
+        )
+    ) {
       .tl <- FALSE
       .mem <- .rxGpuSolveMem(object, ctl, nsolve, backend = "opencl", timeline = FALSE)
     }
-    .rxGpuCheckDeviceMem(.mem[["gpuDevice"]], .dev, ctl$gpuPrecision, .batch)
+    .rxGpuCheckDeviceMem(
+      .mem[["gpuDevice"]],
+      .dev,
+      ctl$gpuPrecision,
+      .batch,
+      maxBuffer = attr(.mem, "gpuDeviceMaxBuffer")
+    )
   }
   .run <- .rxGpuRun(
     object,
