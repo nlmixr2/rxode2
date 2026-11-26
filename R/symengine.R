@@ -1625,7 +1625,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
   if (inherits(x[[3]], "numeric") || inherits(x[[3]], "integer")) {
     .isNum <- TRUE
     if (isEnv) {
-      if (envir$..doConst) {
+      if (.rxSEdoConst(envir, .var)) {
         .rxSEassign(.var, x[[3]], envir)
       }
     }
@@ -1749,7 +1749,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
       }
       .isNum <- (inherits(.expr, "numeric") || inherits(.expr, "integer"))
       if (
-        (.isNum && envir$..doConst) ||
+        (.isNum && .rxSEdoConst(envir, .var)) ||
           (!.isNum)
       ) {
         .rxSEassign(.var, .expr, envir)
@@ -1767,6 +1767,11 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
         } else {
           if (any(names(envir$..lhs0) == .name)) {
             .tmp <- envir$..lhs0
+            # a constant left symbolic was not substituted; keep the line for
+            # callers that re-emit the model (the adjoint expansion)
+            if (!.rxSEdoConst(envir, .var)) {
+              assign("..lhs0Prior", c(envir$..lhs0Prior, .tmp[names(.tmp) == .name]), envir = envir)
+            }
             .tmp <- .tmp[names(.tmp) != .name]
             assign("..lhs0", .tmp, envir = envir)
           }
@@ -4488,10 +4493,21 @@ local({
   invisible(value)
 }
 
+## Is the constant assigned to `var` substituted (rxS(doConst = ))?  A character
+## doConst names the constants that stay symbolic.
+.rxSEdoConst <- function(envir, var) {
+  .dc <- envir$..doConst
+  if (is.character(.dc)) {
+    return(!(var %in% .rxSEres(.dc)))
+  }
+  isTRUE(.dc)
+}
+
 #' Load a model into a symengine environment
 #'
 #' @param x rxode2 object
-#' @param doConst Load constants into the environment as well.
+#' @param doConst Load constants into the environment as well; a character
+#'   vector loads every constant except the named ones.
 #' @param pkTime When `TRUE`, `time` in statements that do not depend on a
 #'   state is loaded as `rx_time_pk`, defined by `rx_time_pk~t` in `..lhs0`,
 #'   so it stays separate from the `time` in `d/dt()` after those statements
@@ -4547,6 +4563,7 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame(
   .env$..sens0.. <- list()
   .env$..lhs <- NULL
   .env$..lhs0 <- NULL
+  .env$..lhs0Prior <- NULL
   .env$..doConst <- doConst
   .rxD <- rxode2parseD()
   for (.f in c(ls(.symengineFs()), ls(.rxD), .rxSEfunNames)) {

@@ -343,6 +343,9 @@
 .rxAdjointCarryLines <- function(model, mv, st) {
   .lhs0 <- model$..lhs0
   .isStr <- names(.lhs0) %in% names(mv$strAssign)
+  # constants later reassigned (`z <- 5; if (t > 1) z <- 2`)
+  .prior <- model$..lhs0Prior
+  .isStrP <- names(.prior) %in% names(mv$strAssign)
   .norm <- strsplit(rxNorm(mv), "\n", fixed = TRUE)[[1]]
   .ini <- character(0)
   for (.s in st) {
@@ -355,10 +358,10 @@
   .param <- if (length(mv$params)) sprintf("param(%s)", paste(mv$params, collapse = ", ")) else character(0)
   .mtime <- sub(";[[:space:]]*$", "", grep("^mtime[(]", .norm, value = TRUE))
   list(
-    head = c(.param, unname(.lhs0[!.isStr])),
+    head = c(.param, unname(.prior[!.isStrP]), unname(.lhs0[!.isStr])),
     ode = c(.ini, .rxPastBaseLinesFromEnv(model)),
     tail = c(
-      .rxAdjointOutputLines(c(.mtime, unname(.lhs0[.isStr]), model$..lhs), mv),
+      .rxAdjointOutputLines(c(.mtime, unname(.prior[.isStrP]), unname(.lhs0[.isStr]), model$..lhs), mv),
       model$..restoreLines,
       .state[c("statef", "dvid")]
     )
@@ -386,10 +389,10 @@
   calcSens <- .rxSensVarNames(calcSens, .rxParams(object, TRUE))
   # Prune if/else branches first (rxS cannot differentiate conditional-dosing
   # lines); the dosing modifiers (f/alag/rate/dur) remain as unconditional
-  # assignments, each activated only when the data flags that dose.  Numeric
-  # assignments stay symbolic (doConst = FALSE) so a model default such as
-  # `k <- 0.5` remains a parameter the solve can override.
-  .model <- .rxLoadPrune(object, doConst = FALSE, promoteLinSens = FALSE)
+  # assignments, each activated only when the data flags that dose.  A numeric
+  # default such as `k <- 0.5` stays symbolic so the solve can override it;
+  # other constants (`z <- 5; if (t > 1) z <- 2`) are substituted.
+  .model <- .rxLoadPrune(object, doConst = rxode2::rxModelVars(object)$params, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
   .ns <- length(.st)
   .np <- length(calcSens)
@@ -666,12 +669,29 @@
   # d(initial condition)/dtheta as lhs (rx__adjDx0_k_p__), for the term
   # mu += lambda^T dX0/dtheta at the window start and at each reset (which
   # restores the initial conditions); only emitted when one is nonzero.
-  .dx0 <- matrix("0", .ns, .np)
+  # an initial condition that reads another state (`y(0) <- b * x`) reads that
+  # state's initial condition, so substitute those before differentiating
+  .iniEnv <- new.env(parent = emptyenv())
+  .hasIni <- logical(.ns)
   for (k in seq_len(.ns)) {
     .iSE <- get0(paste0("rx_", .st[k], "_ini_0__"), envir = .model, inherits = FALSE)
-    if (!inherits(.iSE, "Basic")) {
-      next
+    if (inherits(.iSE, "Basic")) {
+      assign(.st[k], .iSE, envir = .iniEnv)
+      .hasIni[k] <- TRUE
     }
+  }
+  for (.pass in seq_len(.ns)) {
+    for (k in which(.hasIni)) {
+      .iSE <- get0(.st[k], envir = .iniEnv, inherits = FALSE)
+      for (j in setdiff(which(.hasIni), k)) {
+        .iSE <- symengine::subs(.iSE, .rxSEres(.st[j]), get0(.st[j], envir = .iniEnv, inherits = FALSE))
+      }
+      assign(.st[k], .iSE, envir = .iniEnv)
+    }
+  }
+  .dx0 <- matrix("0", .ns, .np)
+  for (k in which(.hasIni)) {
+    .iSE <- get0(.st[k], envir = .iniEnv, inherits = FALSE)
     for (p in seq_len(.np)) {
       .d <- symengine::D(.iSE, .rxSEres(calcSens[p]))
       .dx0[k, p] <- rxode2::rxFromSE(.d)

@@ -996,12 +996,19 @@
   (the solve started from 0), a numeric default such as `k <- 0.5`
   ignored the supplied value, and the algebraic and string output columns,
   `mtime()`, `past()`, `param()`, `dvid()`, extra `cmt()` compartments and
-  adaptive dosing were lost.
+  adaptive dosing were lost.  A constant reassigned in a branch
+  (`z <- 5; if (t > 1) z <- 2`) and a string output with its `levels()` keep
+  their first value.
 
 - The adjoint solve methods now include the initial-condition term, so a
   parameter that enters through an initial condition (directly or after a
-  reset) gets its sensitivity instead of 0.  This does not yet cover a
-  subject with a steady-state (`ss = 1`) dose.
+  reset) gets its sensitivity instead of 0, including an initial condition
+  that reads another state's (`y(0) <- b * x`).  This does not yet cover a
+  subject with a steady-state (`ss = 1`) dose; an `ss` dose in a subject
+  whose records are all at its first time is now refused.
+
+- A phantom dose (`evid = 7`) with a modeled `f()` no longer adds a
+  bioavailability sensitivity in the `rk4s` family and liblsodaadj.
 
 - Adjoint solves of a model that pushes doses at run time (`bolus()`,
   `evid_()` and friends inside `if()`) no longer corrupt memory and crash

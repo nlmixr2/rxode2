@@ -43,6 +43,18 @@ rxTest({
       ev = .ev2,
       p = c(k = 1)
     ),
+    # a constant that a later branch reassigns keeps its first value
+    reassign = list(
+      txt = "z <- 5\nif (t > 1) { z <- 2 }\nd/dt(y) <- -k*y + z\ny(0) <- 1",
+      ev = .ev2,
+      p = c(k = 1)
+    ),
+    # levels() fixes the factor order, and the first string value is kept
+    levels = list(
+      txt = "levels(s) <- c(\"b\", \"a\")\nd/dt(y) <- -k*y\ns <- \"a\"\nif (t > 1) { s <- \"b\" }\ny(0) <- 1",
+      ev = .ev2,
+      p = c(k = 1)
+    ),
     string = list(
       txt = "d/dt(y) <- -k*y\nif (t > 1) {label <- \"a\"} else {label <- \"b\"}\nz <- y\ny(0) <- 1",
       ev = .ev2,
@@ -299,6 +311,12 @@ rxTest({
       txt = "y(0) <- y0\nd/dt(y) <- -k*y",
       ev = et(c(0, 0.5, 1, 2.5, 3)) |> et(time = 2, evid = 3),
       p = c(k = 0.7, y0 = 3)
+    ),
+    # one initial condition reads another state's
+    chain = list(
+      txt = "x(0) <- a\ny(0) <- b*x\nd/dt(x) <- -k*x\nd/dt(y) <- -k*y",
+      ev = et(c(0, 0.5, 1, 2, 3)),
+      p = c(k = 0.5, a = 2, b = 3)
     )
   )
 
@@ -438,6 +456,42 @@ rxTest({
       expect_equal(.a$rx__sens_center_BY_c0__, 3, tolerance = 1e-12, label = .m)
       expect_equal(.a$rx__sens_center_BY_k__, 0, tolerance = 1e-12, label = .m)
     }
+  })
+
+  test_that("a phantom dose adds no bioavailability sensitivity", {
+    .txt <- "d/dt(center) <- -k*center\ncenter(0) <- c0\nf(center) <- fb"
+    .p <- c(k = 0.5, c0 = 2, fb = 0.8)
+    .row <- function(time, evid, amt) data.frame(id = 1L, time = time, evid = evid, amt = amt, cmt = "center")
+    # observed only at t0, and also later
+    for (.tt in list(0, c(0, 1))) {
+      .ev <- rbind(.row(0, 7L, 10), .row(.tt, 0L, 0))
+      for (.m in .adjIniMethods) {
+        .a <- rxSolveAdjointRk4(.txt, .ev, params = .p, calcSens = names(.p), method = .m, atol = 1e-10, rtol = 1e-10)
+        expect_equal(.a$rx__sens_center_BY_fb__, rep(0, length(.tt)), tolerance = 1e-8, label = .m)
+        expect_equal(.a$rx__sens_center_BY_c0__, exp(-0.5 * .tt), tolerance = 1e-6, label = .m)
+      }
+    }
+  })
+
+  test_that("an ss dose in a subject with records only at its first time is refused", {
+    .ev <- data.frame(
+      id = 1L,
+      time = 0,
+      evid = c(1L, 0L),
+      amt = c(100, 0),
+      ii = c(12, 0),
+      ss = c(1L, 0L),
+      cmt = "center"
+    )
+    expect_error(
+      rxSolveAdjointRk4(
+        "d/dt(center) <- -k*center\ncenter(0) <- c0",
+        .ev,
+        params = c(k = 0.2, c0 = 5),
+        calcSens = c("k", "c0")
+      ),
+      "steady-state"
+    )
   })
 
   test_that("the initial-condition sensitivity matches its closed form", {
