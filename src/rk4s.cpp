@@ -72,8 +72,8 @@ static inline void rk4sIniOnlyDose(rx_solving_options *op, rx_solving_options_in
   if (c < 0 || c >= nBase) return;
   double *row = &s[c * np];
   if (whI == 0) {
-    // an ss = 2 dose is superposed, not applied to the state
-    if (dF.empty() || wh0 == EVID0_SS2 || wh0 == EVID0_SS20) return;
+    // an ss = 2 dose is superposed and a phantom dose (evid 7) is not applied
+    if (dF.empty() || wh0 == EVID0_SS2 || wh0 == EVID0_SS20 || wh0 == EVID0_PHANTOM) return;
     double amt = getDose(ind, ind->ix[i]);
     for (int p = 0; p < np; ++p) row[p] += amt * dF[c * np + p];
   } else if (whI == EVIDF_REPLACE) {
@@ -8808,7 +8808,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               // A superposition (ss==2) dose is NOT applied to the window state
               // (its effect is the added Y_ss_new), so do not record it as a
               // window F-jump.
-              if (op->adjDfOff >= 0 && _wh0 != EVID0_SS2 && _wh0 != EVID0_SS20) {
+              if (op->adjDfOff >= 0 && _wh0 != EVID0_SS2 && _wh0 != EVID0_SS20 && _wh0 != EVID0_PHANTOM) {
                 rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _cmtD;
                 _d.amt = getDose(ind, ind->ix[i]); _d.type = 0;
                 doseRec.push_back(_d);

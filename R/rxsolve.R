@@ -4067,8 +4067,12 @@ rxSolve.default <- function(
       # state, not just the window-start ss=1) are handled on the explicit and
       # composite fills (interior monodromy + reset); elsewhere they are guarded.
       .multiSs1 <- length(unique(.evDf$time[.evDf$ss == 1 & .evDf$evid != 0])) > 1L
-      .badSs <- (.multiSs1 && !(.rk4sFw || .rk4sStiff)) ||
-        any(.evDf$ss != 0 & !.supported, na.rm = TRUE)
+      # a subject with every record at one time takes no step, so the backward
+      # fill never reaches the steady state of its ss dose
+      .idv <- if (is.null(.evDf$id)) rep(1L, nrow(.evDf)) else .evDf$id
+      .oneTime <- tapply(.evDf$time, .idv, function(x) length(unique(x)) == 1L)
+      .ssOneTime <- any(.evDf$ss != 0 & .oneTime[as.character(.idv)], na.rm = TRUE)
+      .badSs <- (.multiSs1 && !(.rk4sFw || .rk4sStiff)) || .ssOneTime || any(.evDf$ss != 0 & !.supported, na.rm = TRUE)
       if (.badSs) {
         stop(
           "adjoint sensitivities do not yet support this steady-state (ss) ",
