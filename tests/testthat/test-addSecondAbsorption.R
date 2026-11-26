@@ -92,9 +92,57 @@ rxTest({
     expect_equal(modelExtract(res, "lag(central)"), "lag(central) <- lagCentral")
     expect_true("llagCentral" %in% res$iniDf$name)
     expect_equal(modelExtract(res, "dur(central)"), "dur(central) <- tk0")
+
+    # the lag shifts only the zero-order (1-F1) share
+    e <- rxode2::et(time = 0, amt = 100, cmt = "depot") |>
+      rxode2::et(c(1, 4, 8, 24, 48))
+    s <- as.data.frame(rxode2::rxSolve(
+      res,
+      e,
+      params = c(
+        lka = log(1.2),
+        lcl = log(0.1),
+        lvc = log(10),
+        ltk0 = log(4),
+        llagCentral = log(2),
+        logitfDepot = logit(0.7),
+        propSd = 0.5
+      )
+    ))
+    ka <- 1.2
+    kel <- 0.01
+    tk0 <- 4
+    tlag <- 2
+    f1 <- 0.7
+    cFirst <- function(t) 100 * f1 * ka / (ka - kel) * (exp(-kel * t) - exp(-ka * t))
+    cZero <- function(t) {
+      r <- 100 * (1 - f1) / tk0
+      tt <- pmax(t - tlag, 0)
+      ifelse(tt <= tk0, r / kel * (1 - exp(-kel * tt)), r / kel * (exp(-kel * (tt - tk0)) - exp(-kel * tt)))
+    }
+    expect_equal(
+      s$central[match(c(1, 4, 8, 24, 48), s$time)],
+      cFirst(c(1, 4, 8, 24, 48)) + cZero(c(1, 4, 8, 24, 48)),
+      tolerance = 1e-6
+    )
+  })
+
+  test_that("convertAbsForceLongerDelay ties a zero-order second path's central lag", {
+    res <- res0 |>
+      addLag(depot) |>
+      addSecondAbsorption(type = "zero", delay = "lag") |>
+      convertAbsForceLongerDelay()
+    expect_equal(modelExtract(res, "lag(central)"), "lag(central) <- lagDepot + diffTlag2")
+    expect_true("diffTlag2" %in% res$iniDf$name)
+    expect_false("llagCentral" %in% res$iniDf$name)
   })
 
   test_that("addSecondAbsorption refuses unsupported zero-order routes", {
+    # the central compartment must exist
+    expect_error(
+      res0 |> addSecondAbsorption(type = "zero", central = "nonexistent"),
+      regexp = "nonexistent"
+    )
     # two modeled durations cannot share central
     expect_error(
       suppressWarnings(res0 |> addZeroOrderAbs()) |>

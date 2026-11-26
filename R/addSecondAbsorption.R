@@ -240,6 +240,12 @@ convertAbsForceLongerDelay <- function(ui, central = "central", depot = "depot",
   .hasLag <- function(pat) {
     any(vapply(.modelLines, function(l) grepl(pat, deparse1(l), fixed = TRUE), logical(1), USE.NAMES = FALSE))
   }
+  # a zero-order (Tk02) second path has no depot2: its lag is on central
+  .cmt2 <- depot2
+  if (!.hasLag(.lag2) && !testCompartmentExists(.ui, depot2)) {
+    .cmt2 <- central
+    .lag2 <- sprintf("lag(%s) <- ", central)
+  }
   if (!.hasLag(.lag1) || !.hasLag(.lag2)) {
     stop("forcing a longer second delay requires lag times on both absorption paths", call. = FALSE)
   }
@@ -255,7 +261,7 @@ convertAbsForceLongerDelay <- function(ui, central = "central", depot = "depot",
     stop("the first absorption path's lag time is not a plain variable", call. = FALSE)
   }
   .lagVar1 <- as.character(.rhs1)
-  .modelLines[[.w2[1L]]] <- str2lang(paste0("lag(", depot2, ") <- ", .lagVar1, " + diffTlag2"))
+  .modelLines[[.w2[1L]]] <- str2lang(paste0("lag(", .cmt2, ") <- ", .lagVar1, " + diffTlag2"))
   .ui <- rxUiDecompress(.ui)
   if (exists("description", envir = .ui$meta)) {
     rm("description", envir = .ui$meta)
@@ -272,6 +278,20 @@ convertAbsForceLongerDelay <- function(ui, central = "central", depot = "depot",
 .secondAbsorptionCheckZero <- function(ui, type, delay, zoFirst, central) {
   if (type != "zero") {
     return(invisible(NULL))
+  }
+  # dur(central) has to be written into the ODE block; linCmt() models
+  # have no d/dt(central) line to attach it to
+  .hasLinCmt <- any(vapply(
+    ui$lstExpr,
+    function(l) grepl("linCmt(", deparse1(l), fixed = TRUE),
+    logical(1),
+    USE.NAMES = FALSE
+  ))
+  if (.hasLinCmt) {
+    stop(
+      "a zero-order second path needs an ODE model (the model uses linCmt())",
+      call. = FALSE
+    )
   }
   .cp <- ui$props$cmtProp
   .hasDur <- !is.null(.cp) && any(.cp$Compartment == central & .cp$Property == "dur")
@@ -297,20 +317,7 @@ convertAbsForceLongerDelay <- function(ui, central = "central", depot = "depot",
       call. = FALSE
     )
   }
-  # dur(central) has to be written into the ODE block; linCmt() models
-  # have no d/dt(central) line to attach it to
-  .hasLinCmt <- any(vapply(
-    ui$lstExpr,
-    function(l) grepl("linCmt(", deparse1(l), fixed = TRUE),
-    logical(1),
-    USE.NAMES = FALSE
-  ))
-  if (.hasLinCmt) {
-    stop(
-      "a zero-order second path needs an ODE model (the model uses linCmt())",
-      call. = FALSE
-    )
-  }
+  assertCompartmentExists(ui, central)
   if (.hasDur) {
     stop("modeled duration already present for compartment '", central, "'", call. = FALSE)
   }
@@ -327,8 +334,8 @@ convertAbsForceLongerDelay <- function(ui, central = "central", depot = "depot",
   # is only expressible when the first path keeps a depot: when the
   # first path is zero-order the duration is already on central, and
   # the second route then has to be first-order (the depot2 path).
-  .zeroDirect <- type == "zero" && !.zoFirst
   .secondAbsorptionCheckZero(ui, type, delay, .zoFirst, central)
+  .zeroDirect <- type == "zero"
   if (type == "zero") {
     ui <- addLogEstimates(
       ui,
@@ -342,9 +349,6 @@ convertAbsForceLongerDelay <- function(ui, central = "central", depot = "depot",
     ui <- .addSecondAbsorptionDur(ui, central, tk0)
   } else {
     ui <- addDepot(ui, central = central, depot = depot2, ka = ka2)
-    if (type == "zero") {
-      ui <- .addSecondAbsorptionDur(ui, depot2, tk0)
-    }
   }
   .src <- if (.zoFirst) central else depot
   .lagCmt <- if (.zeroDirect) central else depot2
