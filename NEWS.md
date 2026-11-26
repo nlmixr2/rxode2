@@ -14,6 +14,14 @@
   chain in `addSecondAbsorption(delay = "transit")` and the new
   `convertTransitMtt()`.  `addEta()` reads the `rxode2.etaCombineType` and
   `rxode2.priorEta` options, falling back to the `nlmixr2lib.*` ones.
+- `addSecondAbsorption(type = "zero")` now builds Monolix's zero-order
+  double-absorption route (`Tk02`): a modeled `dur(central)` input,
+  apportioned by the same logit `F1`, instead of an extra `depot2` with
+  a `ka2` rate.  The `splitInfusionBolus()` targets put the
+  modeled-duration compartment first so the split promotes it.  A
+  zero-order second path combined with `delay = "transit"`, or with a
+  zero-order first path, now errors: neither can be expressed with one
+  modeled duration per compartment.
 - `rxImpureFun()`/`rxRmImpureFun()` register user R functions, `rxFun()` C
   functions or package C functions that draw random numbers, keep state or
   have side effects.  `rxOptExpr()` never shares their calls and

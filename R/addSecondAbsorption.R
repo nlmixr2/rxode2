@@ -1,24 +1,30 @@
 #' Add a second absorption path for double-absorption models
 #'
-#' Adds a parallel absorption path (`depot2`) to a model that already
-#' has first-order absorption through `depot`, for Monolix-style
+#' Adds a parallel absorption path to a model that already has
+#' first-order absorption through `depot`, for Monolix-style
 #' double-absorption models: one dose record is split at translation
 #' time into two parallel inputs with a logit-parameterized `F1`
 #' apportionment.  The second path can itself be zero-order
-#' (`type = "zero"`, a modeled `dur(depot2)` input), first-order
-#' (`type = "first"`, `ka2`), or a transit chain (`delay = "transit"`),
-#' with an optional lag.
+#' (`type = "zero"`, Monolix's `Tk02` modeled duration directly on the
+#' central compartment), first-order (`type = "first"`, `ka2`, which
+#' adds `depot2`), or a first-order path behind a transit chain
+#' (`delay = "transit"`), with an optional lag.  When the first path is
+#' zero-order (`addZeroOrderAbs()`), only a first-order second path is
+#' available.
 #'
 #' Only one second absorption path is supported per model; applying
 #' this twice raises an error.
 #'
 #' @inheritParams addDepot
 #' @param type second-path input type: `"zero"` for a zero-order
-#'   (modeled-duration) input or `"first"` for a first-order (`ka2`)
-#'   input
+#'   input (Monolix's `Tk02`: a modeled duration `dur(central)` on the
+#'   central compartment) or `"first"` for a first-order (`ka2`)
+#'   input.  A zero-order second path is only available when the first
+#'   path is first-order (two modeled durations cannot share the
+#'   central compartment).
 #' @param delay second-path delay: `"none"`, `"lag"` (an `alag` on the
 #'   second path), or `"transit"` (a transit chain feeding the second
-#'   path)
+#'   path).  `"transit"` needs a first-order second path.
 #' @param n number of transit compartments when `delay = "transit"`
 #' @param depot2 name of the second depot compartment
 #' @param ka2 name of the second first-order absorption rate
@@ -50,9 +56,14 @@
 #' }
 #'
 #'
-#' # simultaneous zero-order + first-order (Monolix double absorption)
+#' # simultaneous first-order + first-order (Monolix oral1_oral1)
 #' pk1cmtDes |>
 #'   addSecondAbsorption(type = "first", delay = "lag", f1 = 0.7)
+#'
+#' # simultaneous zero-order + first-order (Monolix oral0_oral1:
+#' # Tk02 as dur(central), F1 on the first-order depot)
+#' pk1cmtDes |>
+#'   addSecondAbsorption(type = "zero", f1 = 0.5)
 #'
 addSecondAbsorption <- function(
   ui,
@@ -104,70 +115,19 @@ addSecondAbsorption <- function(
   if (.hasSplit) {
     stop("a second absorption path is already present (model has a split directive)", call. = FALSE)
   }
-  .zoFirst <- !testCompartmentExists(.ui, depot)
-  if (delay == "transit") {
-    checkmate::assertIntegerish(n, lower = 1L, len = 1L, any.missing = FALSE)
-  }
-  # the second depot always starts as a first-order path; a zero-order
-  # second path is a modeled duration on depot2 itself (the depot keeps
-  # its compartment so splitInfusionBolus() can address it).  When the
-  # first path is zero-order (addZeroOrderAbs removed the depot) the
-  # dose records live on central and the split fans out from there.
-  # NOTE (rxode2#1381): split-generated 201 records are currently
-  # dropped when the model has a residual-error endpoint, so until
-  # that is fixed a zero-order second path is dosed with explicit
-  # rate=-2 records on depot2; the f(depot2) line still apportions the
-  # amount.  ka2 stays estimated as depot2's disposition rate (an IV
-  # infusion into depot2 draining to central at ka2, exactly
-  # Monolix's zero-order absorption into a depot feeding central).
-  .ui <- addDepot(.ui, central = central, depot = depot2, ka = ka2)
-  .src <- if (.zoFirst) central else depot
-  if (type == "zero") {
-    .ui <- addLogEstimates(
-      .ui,
-      stats::setNames(
-        "Zero-order absorption duration on the second path (Tk0)",
-        tk0
-      )
-    )
-    .modelLines <- .ui$lstExpr
-    .w <- .whichDdt(.modelLines, depot2)
-    .tmp <- .extractModelLinesAtW(.modelLines, .w)
-    .ui <- rxUiDecompress(.ui)
-    if (exists("description", envir = .ui$meta)) {
-      rm("description", envir = .ui$meta)
-    }
-    model(.ui) <- c(
-      .tmp$pre,
-      .tmp$w,
-      str2lang(paste0("dur(", depot2, ") <- ", tk0)),
-      .tmp$post
-    )
-    .ui <- rxUiCompress(.ui)
-    # addDepot()'s central line already feeds depot2 through ka2, so
-    # no rewiring is needed: the modeled duration makes the solver
-    # deliver depot2's translated amount at rate amt/tk0, draining to
-    # central at ka2 (see NOTE above for the rxode2#1381 dosing caveat)
-    .ui <- rxUiCompress(.ui)
-  }
-  if (delay == "lag") {
-    .ui <- addLag(.ui, depot2)
-  } else if (delay == "transit") {
-    # the second chain gets a letter-tagged prefix and rate (transitB1..N,
-    # ktrB) so it can never collide with the first path's numbered chain
-    # (transit1..N, ktr) -- a numeric prefix would clash once a chain
-    # reaches 10+ compartments
-    .ui <- addTransit(.ui, n, central = central, depot = depot2, transit = "transitB", ktr = "ktrB", ka = ka2)
-  }
+  .path <- .secondAbsorptionPath(.ui, type, delay, n, central, depot, depot2, ka2, tk0)
+  .ui <- .path$ui
   # logit F1 split with the estimated fraction on the first path
   # (Monolix F1 convention); for a zero-order first path there is no
   # depot compartment, so the split is between central (which keeps
-  # the modeled-duration input) and depot2
-  .f1a <- if (.zoFirst) central else depot
-  .ui <- addBioavailability(.ui, .f1a, depot2, scale = "logit", f = f1)
+  # the modeled-duration input) and the second path
+  .ui <- addBioavailability(.ui, .path$src, .path$secondCmt, scale = "logit", f = f1)
   # one dose record on the dosing compartment feeds both paths at
-  # translation time; splitInfusionBolus() keeps bolus copies to both
-  # targets and promotes the first target when it declares dur()/rate()
+  # translation time; splitInfusionBolus() gives the FIRST target the
+  # modeled-duration infusion and the other target a bolus copy, so a
+  # zero-order second path puts central first (its dur() promotes it)
+  .src <- .path$src
+  .splitTargets <- .path$splitTargets
   .modelLines <- .ui$lstExpr
   .w <- .whichDdt(.modelLines, .src)
   .tmp <- .extractModelLinesAtW(.modelLines, .w)
@@ -177,7 +137,7 @@ addSecondAbsorption <- function(
   }
   model(.ui) <- c(
     .tmp$pre,
-    list(str2lang(paste0("splitInfusionBolus(", .src, ", ", .src, ", ", depot2, ")"))),
+    list(str2lang(paste0("splitInfusionBolus(", .src, ", ", .splitTargets, ")"))),
     .tmp$w,
     .tmp$post
   )
@@ -307,4 +267,117 @@ convertAbsForceLongerDelay <- function(ui, central = "central", depot = "depot",
     .ui <- rxUiCompress(removeLinesAndInis(.ui, .lagVar2))
   }
   .ui
+}
+
+.secondAbsorptionCheckZero <- function(ui, type, delay, zoFirst, central) {
+  if (type != "zero") {
+    return(invisible(NULL))
+  }
+  .cp <- ui$props$cmtProp
+  .hasDur <- !is.null(.cp) && any(.cp$Compartment == central & .cp$Property == "dur")
+  if (zoFirst && .hasDur) {
+    stop(
+      "two zero-order absorption routes are not supported: each modeled ",
+      "duration is a property of one compartment, so the second route ",
+      "would need its own compartment and rate",
+      call. = FALSE
+    )
+  }
+  if (zoFirst) {
+    stop(
+      "a zero-order second path needs a first-order first path; ",
+      "use addZeroOrderAbs() for a zero-order route",
+      call. = FALSE
+    )
+  }
+  if (delay == "transit") {
+    stop(
+      "a zero-order second path with a transit-compartment delay is not supported; ",
+      "use delay = \"lag\" (Monolix Tk02 + Tlag2) or a first-order second path",
+      call. = FALSE
+    )
+  }
+  # dur(central) has to be written into the ODE block; linCmt() models
+  # have no d/dt(central) line to attach it to
+  .hasLinCmt <- any(vapply(
+    ui$lstExpr,
+    function(l) grepl("linCmt(", deparse1(l), fixed = TRUE),
+    logical(1),
+    USE.NAMES = FALSE
+  ))
+  if (.hasLinCmt) {
+    stop(
+      "a zero-order second path needs an ODE model (the model uses linCmt())",
+      call. = FALSE
+    )
+  }
+  if (.hasDur) {
+    stop("modeled duration already present for compartment '", central, "'", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+.secondAbsorptionPath <- function(ui, type, delay, n, central, depot, depot2, ka2, tk0) {
+  .zoFirst <- !testCompartmentExists(ui, depot)
+  if (delay == "transit") {
+    checkmate::assertIntegerish(n, lower = 1L, len = 1L, any.missing = FALSE)
+  }
+  # Monolix's zero-order absorption route (Tk02) is a modeled duration
+  # on the central compartment; it does not add a depot or a rate.  It
+  # is only expressible when the first path keeps a depot: when the
+  # first path is zero-order the duration is already on central, and
+  # the second route then has to be first-order (the depot2 path).
+  .zeroDirect <- type == "zero" && !.zoFirst
+  .secondAbsorptionCheckZero(ui, type, delay, .zoFirst, central)
+  if (type == "zero") {
+    ui <- addLogEstimates(
+      ui,
+      stats::setNames(
+        "Zero-order absorption duration on the second path (Tk0)",
+        tk0
+      )
+    )
+  }
+  if (.zeroDirect) {
+    ui <- .addSecondAbsorptionDur(ui, central, tk0)
+  } else {
+    ui <- addDepot(ui, central = central, depot = depot2, ka = ka2)
+    if (type == "zero") {
+      ui <- .addSecondAbsorptionDur(ui, depot2, tk0)
+    }
+  }
+  .src <- if (.zoFirst) central else depot
+  .lagCmt <- if (.zeroDirect) central else depot2
+  if (delay == "lag") {
+    ui <- addLag(ui, .lagCmt)
+  } else if (delay == "transit") {
+    # the second chain gets a letter-tagged prefix and rate (transitB1..N,
+    # ktrB) so it can never collide with the first path's numbered chain
+    # (transit1..N, ktr) -- a numeric prefix would clash once a chain
+    # reaches 10+ compartments
+    ui <- addTransit(ui, n, central = central, depot = depot2, transit = "transitB", ktr = "ktrB", ka = ka2)
+  }
+  list(
+    ui = ui,
+    src = .src,
+    secondCmt = if (.zeroDirect) central else depot2,
+    splitTargets = if (.zeroDirect) paste0(central, ", ", depot) else paste0(.src, ", ", depot2)
+  )
+}
+
+.addSecondAbsorptionDur <- function(ui, cmt, durVar) {
+  .modelLines <- ui$lstExpr
+  .w <- .whichDdt(.modelLines, cmt)
+  .tmp <- .extractModelLinesAtW(.modelLines, .w)
+  .ui <- rxUiDecompress(ui)
+  if (exists("description", envir = .ui$meta)) {
+    rm("description", envir = .ui$meta)
+  }
+  model(.ui) <- c(
+    .tmp$pre,
+    .tmp$w,
+    str2lang(paste0("dur(", cmt, ") <- ", durVar)),
+    .tmp$post
+  )
+  rxUiCompress(.ui)
 }
