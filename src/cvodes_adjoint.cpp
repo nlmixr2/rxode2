@@ -523,7 +523,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
             } else if (_whI == EVIDF_MULT) {
               evJumps.push_back({xout, _cmt, 6,
                 getAmt(ind, ind->id, _cmt, getDoseIndex(ind, ind->idx), xout, yp), seq, -1});
-            } else if (_whI == 0 && bolusDuals) {
+            } else if (_whI == 0 && _wh0 != EVID0_PHANTOM && bolusDuals) {   // a phantom dose is not applied
               // additive bolus: record the (lagged) dose time and raw amount so the
               // backward can add the modeled-F dual mu += amt*dF/dtheta*lambda_c and
               // the alag transversality mu += -dlag_c/dtheta*(lambda^T (F(y+)-F(y-))).
