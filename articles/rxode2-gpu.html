@@ -387,19 +387,19 @@ described under Timings, 8 threads, seconds):</p>
 <td><code>liblsoda</code></td>
 <td>host</td>
 <td align="right">183</td>
-<td align="right">10.8</td>
+<td align="right">10.5</td>
 </tr>
 <tr class="even">
 <td><code>t54</code></td>
 <td>host</td>
-<td align="right">175</td>
-<td align="right">2.9</td>
+<td align="right">179</td>
+<td align="right">2.8</td>
 </tr>
 <tr class="odd">
 <td><code>ros54p</code></td>
 <td>host</td>
-<td align="right">276</td>
-<td align="right">9.6</td>
+<td align="right">284</td>
+<td align="right">9.7</td>
 </tr>
 <tr class="even">
 <td><code>"t54+ros54p"</code></td>
@@ -410,43 +410,56 @@ described under Timings, 8 threads, seconds):</p>
 <tr class="odd">
 <td><code>gpuT54</code></td>
 <td>CPU build</td>
-<td align="right">191</td>
+<td align="right">144</td>
 <td align="right">4.6</td>
 </tr>
 <tr class="even">
 <td><code>gpuRos54p</code></td>
 <td>CPU build</td>
-<td align="right">201</td>
-<td align="right">4.5</td>
+<td align="right">158</td>
+<td align="right">4.4</td>
 </tr>
 <tr class="odd">
 <td><code>"gpuT54+gpuRos54p"</code></td>
 <td>CPU build</td>
-<td align="right">186</td>
-<td align="right">4.6</td>
+<td align="right">140</td>
+<td align="right">4.5</td>
 </tr>
 <tr class="even">
 <td><code>gpuT54</code></td>
 <td>OpenCL</td>
-<td align="right">294</td>
-<td align="right">3.9</td>
+<td align="right">112</td>
+<td align="right">4.1</td>
 </tr>
 <tr class="odd">
+<td><code>gpuRos54p</code></td>
+<td>OpenCL</td>
+<td align="right">120</td>
+<td align="right">7.8</td>
+</tr>
+<tr class="even">
 <td><code>"gpuT54+gpuRos54p"</code></td>
 <td>OpenCL</td>
-<td align="right">294</td>
-<td align="right">16.6</td>
+<td align="right">111</td>
+<td align="right">12.7</td>
 </tr>
 </tbody>
 </table>
 <ul>
 <li>SAEM solves every subject’s three chains together, so the GPU
-methods integrate about 1500 subjects per round. Their CPU build fits in
-about the time of the host methods; <code>gpuRos54p</code> takes 201 s
-against 276 s for <code>ros54p</code>.</li>
-<li>A round of 1500 subjects is too small to fill the L40 and takes
-longer there (1.7 ms) than on 8 CPU threads (0.9 ms), so OpenCL is
-slower than the CPU build for this fit.</li>
+methods integrate about 1500 subjects per round. On the L40 the SAEM fit
+takes 112 s against 179 s for the fastest host method;
+<code>gpuRos54p</code> takes 120 s against 284 s for
+<code>ros54p</code>.</li>
+<li>The device’s share of that is 58 s for 125,451 rounds (0.46 ms
+each); the host event handling between rounds takes 20 s and nlmixr2’s
+own SAEM work the rest.</li>
+<li>With <code>options(rxode2.optExprExpensive = TRUE)</code> the device
+time drops to 49 s and the <code>gpuT54</code> fit takes 103 s; the CPU
+build is slower with it (169 s), so it is off by default.</li>
+<li>With the driver’s work groups
+(<code>options(rxode2.gpuLocalSize = 0)</code>) the rounds take 157 s
+and the fit 210 s.</li>
 <li>FOCEi solves one subject at a time while it optimizes the etas, so a
 GPU method runs its host counterpart there.</li>
 </ul>
@@ -771,6 +784,26 @@ once: one kernel launch, or the same code compiled for the CPU on
 <li>The subjects take their new states, handle their next events, and
 the loop repeats until all are done.</li>
 </ol>
+<p>With <code>options(rxode2.gpuTimeline = TRUE)</code>, when no
+subject’s events depend on its states (observations, boluses and
+infusions with a fixed rate or duration) a solve takes one launch
+instead of a round per event interval. Each subject’s events run first
+without integrating, which records every interval it needs and what its
+doses add; one launch then integrates each subject’s whole timeline, and
+the subjects run their events again with the results. The results are
+the same as the rounds’ (to rounding when several doses into one
+compartment share a time). On the L40 a SAEM fit took 135 s this way
+against 112 s with rounds: the device time drops from 58 s to 44 s, but
+recording and replaying the events adds 37 s of host time.</p>
+<p>Statements that depend only on parameters (such as
+<code>ka &lt;- exp(tka + eta.ka)</code>) are computed once per interval
+rather than at every derivative evaluation (with
+<code>options(rxode2.optExprExpensive = TRUE)</code> this extends to an
+<code><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp()</a></code> or <code><a href="https://rdrr.io/r/base/Log.html" class="external-link">log()</a></code> of parameters inside a larger
+expression), and OpenCL work groups are sized so a round of a few
+thousand subjects spreads over every compute unit
+(<code>options(rxode2.gpuLocalSize = 0)</code> leaves the size to the
+driver).</p>
 <p>The kernel is generated from the model: its <code>d/dt()</code> (and,
 for <code>gpuRos54p</code>, the analytic Jacobian) as OpenCL C, the
 integrator, and the special functions the model calls. It is compiled
