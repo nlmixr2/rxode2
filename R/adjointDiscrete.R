@@ -406,7 +406,10 @@
         if (rxode2::rxFromSE(.d) != "0") {
           stop(
             sprintf(
-              "the discrete adjoint does not support a %s(%s) that depends on a state (%s); use sensMethod=\"forward\"",
+              paste0(
+                "the discrete adjoint does not support a %s(%s)",
+                " that depends on a state (%s); use sensMethod=\"forward\""
+              ),
               if (.w == "lag") "alag" else .w,
               .k,
               .s
@@ -433,7 +436,10 @@
       if (length(.bad)) {
         stop(
           sprintf(
-            "the discrete adjoint does not support a past(%s) that depends on a sensitivity parameter (%s); use sensMethod=\"forward\"",
+            paste0(
+              "the discrete adjoint does not support a past(%s)",
+              " that depends on a sensitivity parameter (%s); use sensMethod=\"forward\""
+            ),
             .s,
             paste(.bad, collapse = ", ")
           ),
@@ -468,7 +474,10 @@
   if (length(.bad)) {
     stop(
       sprintf(
-        "the discrete adjoint does not support an mtime() that depends on a sensitivity parameter (%s); use sensMethod=\"forward\"",
+        paste0(
+          "the discrete adjoint does not support an mtime()",
+          " that depends on a sensitivity parameter (%s); use sensMethod=\"forward\""
+        ),
         paste(.bad, collapse = ", ")
       ),
       call. = FALSE
