@@ -209,7 +209,7 @@ rxTest({
     )
 
     # a second path with no delay gets the Monolix sequential lag
-    resNoLag <- suppressWarnings(res0 |> addZeroOrderAbs()) |>
+    resNoLag <- suppressWarnings(addZeroOrderAbs(res0)) |>
       addSecondAbsorption(type = "first", delay = "none") |>
       convertAbsSequential()
     expect_equal(modelExtract(resNoLag, "lag(depot2)"), "lag(depot2) <- tk0")
@@ -217,7 +217,7 @@ rxTest({
   })
 
   test_that("convertAbsSequential adds the first lag to the second delay", {
-    res <- suppressWarnings(res0 |> addZeroOrderAbs()) |>
+    res <- suppressWarnings(addZeroOrderAbs(res0)) |>
       addLag(central) |>
       addSecondAbsorption(type = "first", delay = "lag") |>
       convertAbsSequential()
@@ -230,7 +230,7 @@ rxTest({
 
   test_that("convertAbsSequential reparameterizes a transit second delay by Mtt2", {
     base <- function() {
-      suppressWarnings(res0 |> addZeroOrderAbs()) |>
+      suppressWarnings(addZeroOrderAbs(res0)) |>
         addSecondAbsorption(type = "first", delay = "transit", n = 3)
     }
     res <- base() |> convertAbsSequential()
@@ -248,7 +248,7 @@ rxTest({
 
   test_that("convertAbsSequential leaves the transit model unchanged at matched values", {
     base <- function() {
-      suppressWarnings(res0 |> addZeroOrderAbs()) |>
+      suppressWarnings(addZeroOrderAbs(res0)) |>
         addSecondAbsorption(type = "first", delay = "transit", n = 3)
     }
     .tk0 <- 4
