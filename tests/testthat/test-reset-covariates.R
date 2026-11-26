@@ -39,47 +39,32 @@ rxTest({
   .e0 <- c(0, 0, 0, 1, 0)
   .a0 <- c(0, 0, 0, 100, 0)
   .p0 <- c(14, 12.667723840, 11.462230521, 9.3208243882)
+  .pA <- c(.p0, 25.335447691, 22.924461062, 18.768961267, 12.581210973)
 
-  test_that("evid=3 reset re-seeds cmt(0) with the reset record's covariates (A)", {
+  # one evid=3 reset at t = 8 after the shared pre-reset design
+  .resetCovOne <- function(wt, expected) {
     d <- .resetCovData(
       c(.t0, 8, 9, 10, 12, 16),
       c(.e0, 3, 0, 0, 0, 0),
-      c(rep(70, 5), rep(140, 5)),
+      wt,
       c(.a0, rep(0, 5))
     )
-    expect_equal(
-      .resetCovSolve(d),
-      c(.p0, 25.335447691, 22.924461062, 18.768961267, 12.581210973),
-      tolerance = 1e-5
-    )
+    expect_equal(.resetCovSolve(d), expected, tolerance = 1e-5)
+  }
+
+  test_that("evid=3 reset re-seeds cmt(0) with the reset record's covariates (A)", {
+    .resetCovOne(c(rep(70, 5), rep(140, 5)), .pA)
   })
 
   test_that("evid=3 reset with flat covariates is unchanged (B)", {
-    d <- .resetCovData(
-      c(.t0, 8, 9, 10, 12, 16),
-      c(.e0, 3, 0, 0, 0, 0),
+    .resetCovOne(
       70,
-      c(.a0, rep(0, 5))
-    )
-    expect_equal(
-      .resetCovSolve(d),
-      c(.p0, 12.667723846, 11.462230531, 9.3844806337, 6.2906054867),
-      tolerance = 1e-5
+      c(.p0, 12.667723846, 11.462230531, 9.3844806337, 6.2906054867)
     )
   })
 
   test_that("evid=3 reset uses its own record, not the next one (C)", {
-    d <- .resetCovData(
-      c(.t0, 8, 9, 10, 12, 16),
-      c(.e0, 3, 0, 0, 0, 0),
-      c(rep(70, 5), 140, rep(200, 4)),
-      c(.a0, rep(0, 5))
-    )
-    expect_equal(
-      .resetCovSolve(d),
-      c(.p0, 25.335447691, 22.924461062, 18.768961267, 12.581210973),
-      tolerance = 1e-5
-    )
+    .resetCovOne(c(rep(70, 5), 140, rep(200, 4)), .pA)
   })
 
   test_that("each evid=3 reset uses its own record's covariates (E)", {
