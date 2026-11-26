@@ -1040,7 +1040,10 @@ rxGpuInfo <- function() {
     }
     stop(
       sprintf(
-        "a GPU solve buffer needs %.2f GB but device %d allocates at most %.2f GB at once; lower rxControl(gpuBatch=) (now %d)",
+        paste0(
+          "a GPU solve buffer needs %.2f GB but device %d allocates at most ",
+          "%.2f GB at once; lower rxControl(gpuBatch=) (now %d)"
+        ),
         maxBuffer / 1e9,
         index,
         mem[2] / 1e9,
