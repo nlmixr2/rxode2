@@ -8,7 +8,6 @@ src/ab_adjoint.cpp,1
 src/boost.cpp,1
 src/call_dvode.c,2
 src/codegen.c,4
-src/codegenSlice.h,16
 src/cvode.cpp,1
 src/cvode_dense.cpp,1
 src/cvode_solver.cpp,1
@@ -37,14 +36,13 @@ src/parseVars.h,12
 src/pkTime.h,7
 src/priorDensity.cpp,7
 src/rk4s.cpp,64
-src/rxCse.cpp,3
 src/rxCseIndex.h,1
 src/rxCseRun.h,13
 src/rxCseSel.h,1
-src/rxData.cpp,43
+src/rxData.cpp,40
 src/rxMemAvail.h,1
 src/rxMemoryComponents.cpp,2
-src/rxSerialize.cpp,12
+src/rxSerialize.cpp,11
 src/rxToSE.cpp,4
 src/rxode2_df.cpp,2
 src/rxthreefry.cpp,2

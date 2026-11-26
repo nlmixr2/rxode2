@@ -4430,7 +4430,7 @@ static inline void rxSolve_loadRowLink(SEXP ev1, int nr, const char *attr,
   *dst = NULL;
   SEXP linkS = Rf_getAttrib(ev1, Rf_install(attr));
   if (TYPEOF(linkS) != INTSXP || Rf_length(linkS) < 2) return;
-  *dst = (int*)calloc(nr, sizeof(int));
+  *dst = (int*)rxMemCalloc(gRecordLinks, nr, sizeof(int));
   if (*dst == NULL){
     rxSolveFree();
     stop(_("can not allocate enough memory to load record types"));
@@ -4523,7 +4523,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     SEXP infPairS = Rf_getAttrib(ev1, Rf_install("rxInfPair"));
     if (TYPEOF(infPairS) == INTSXP && Rf_length(infPairS) > 1) {
       int nr = evid.size();
-      _globals.ginfPair = (int*)calloc(nr, sizeof(int));
+      _globals.ginfPair = (int*)rxMemCalloc(gRecordLinks, nr, sizeof(int));
       if (_globals.ginfPair == NULL){
         rxSolveFree();
         stop(_("can not allocate enough memory to load infusion pairing"));
@@ -4549,7 +4549,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     SEXP pkSkipS = Rf_getAttrib(ev1, Rf_install("rxPkSkip"));
     if (TYPEOF(pkSkipS) == INTSXP && Rf_length(pkSkipS) > 0) {
       int nr = evid.size();
-      _globals.gpkSkip = (int*)calloc(nr, sizeof(int));
+      _globals.gpkSkip = (int*)rxMemCalloc(gRecordLinks, nr, sizeof(int));
       if (_globals.gpkSkip == NULL){
         rxSolveFree();
         stop(_("can not allocate enough memory to load record types"));

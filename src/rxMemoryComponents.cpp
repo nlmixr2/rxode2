@@ -125,6 +125,9 @@ NumericVector rxMemoryComponents_(
   /* Byte counts for allocations outside gsolve/gon */
   double b_gall_times  = 5.0  * nallTotal * sizeof(double);
   double b_gevid       = 3.0  * nallTotal * sizeof(int);
+  /* the per-record links etTrans() may attach (infPair, pkSkip, doseRow,
+     addlParent): nallTotal ints each, a bound since each is optional */
+  double b_gRecordLinks = 4.0 * nallTotal * sizeof(int);
   double b_gcov        = (double)ncov * nallTotal * sizeof(double);
   /* gpars is calloc'd at npars*max2(nsub, nPopPar) and inds_global at
      nPopPar, where nPopPar = nsub*nsim -- both are sized by the TOTAL
@@ -244,6 +247,7 @@ NumericVector rxMemoryComponents_(
     Named("gon")           = (double)_mem.gon_total    * sizeof(int),
     Named("gall_times")    = b_gall_times,
     Named("gevid")         = b_gevid,
+    Named("gRecordLinks")  = b_gRecordLinks,
     Named("gcov")          = b_gcov,
     Named("gpars")         = b_gpars,
     Named("gomega")        = b_gomega,

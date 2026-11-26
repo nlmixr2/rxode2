@@ -847,6 +847,7 @@ print.rxMemoryEstimate <- function(x, ...) {
     gon = "gon (int buffer)",
     gall_times = "gall_times (event time/dv/amt/ii/limit)",
     gevid = "gevid (event IDs)",
+    gRecordLinks = "gRecordLinks (per-record links, bound)",
     gcov = "gcov (covariates)",
     gpars = "gpars (parameters)",
     gomega = "gomega (omega matrix)",
