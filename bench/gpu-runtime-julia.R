@@ -21,7 +21,10 @@ library(rxode2)
 .args <- commandArgs(TRUE)
 .julia <- if (length(.args) >= 1) .args[1] else Sys.which("julia")
 .sizes <- if (length(.args) >= 2) .args[2] else "1000,10000,100000"
-.cores <- parallel::detectCores()
+## threads: OMP_NUM_THREADS when set (eg the cores a batch job was given)
+.cores <- as.integer(Sys.getenv("OMP_NUM_THREADS", parallel::detectCores()))
+## all of them (rxode2 uses half the cores by default)
+setRxThreads(.cores)
 .tol <- 1e-8
 
 ## julia first: started after R has opened OpenCL contexts it can crash
@@ -38,7 +41,9 @@ if (length(.args) < 3) {
 .jl <- utils::read.csv(.csv)
 
 .info <- rxGpuInfo()
-.dev <- which(.info$devices$fp64 & !grepl("rusticl", .info$devices$platform))[1]
+## a GPU first: an Intel or pocl CPU OpenCL device may also be listed first
+.ok <- .info$devices$fp64 & !grepl("rusticl", .info$devices$platform)
+.dev <- c(which(.ok & .info$devices$type == "gpu"), which(.ok))[1]
 if (is.na(.dev)) {
   stop("no OpenCL device with double precision")
 }
@@ -130,10 +135,12 @@ for (.i in seq_len(nrow(.rx))) {
       n = .rx$n[.i],
       rx_opencl_ms = .ms(.rx$seconds[.i]),
       jl_opencl_ms = .ms(.jg$seconds),
+      jl_cuda_ms = .ms(.j$seconds[.j$backend == "CUDA"]),
       jl_kacpu_ms = .ms(.j$seconds[.j$backend == "KA-CPU"]),
       rx_openmp_ms = .ms(.rx$seconds[.k & .rx$backend != "OpenCL-pocl"]),
       jl_threads_ms = .ms(.jt$seconds),
       reldiff_opencl = sprintf("%.1e", .rd(.u(.jg))),
+      reldiff_cuda = sprintf("%.1e", .rd(.u(.j[.j$backend == "CUDA", ]))),
       reldiff_threads = sprintf("%.1e", .rd(.u(.jt)))
     )
   )
