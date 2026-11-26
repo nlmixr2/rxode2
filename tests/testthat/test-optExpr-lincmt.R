@@ -6,7 +6,7 @@ rxTest({
     sprintf("linCmtB(rx__PTR__,t,1,1,0,%d,%d,1,%s,0,0,0,0,0)", w1, w2, args)
   }
 
-  test_that("rxOptExpr() shares a pure linCmtB() read written several times", {
+  test_that("rxOptExpr() shares a linCmtB() state read written several times", {
     txt <- paste0(
       "cl <- exp(tcl + eta.cl)\nv <- exp(tv)\n",
       "a = ",
@@ -53,15 +53,15 @@ rxTest({
     expect_equal(.n(suppressMessages(rxOptExpr(txt2, "x"))), 2L)
   })
 
-  test_that("a linCmtB() call whose selectors cannot be read is taken as impure", {
+  test_that("a linCmtB() call whose selectors cannot be read is taken as state-changing", {
     .odd <- "linCmtB(rx__PTR__,t,1,1,0,(w),0,1,cl,v,0,0,0,0,0)"
     # it starts a new epoch, so the reads around it get different aliases
-    .o <- .rxOptLinCmtPure(paste0("a=", .L(-33, 0), "\nz~", .odd, "\nb=", .L(-33, 0)))
+    .o <- .rxOptLinCmtMarkStateReads(paste0("a=", .L(-33, 0), "\nz~", .odd, "\nb=", .L(-33, 0)))
     expect_match(.o, "a=linCmtBr0__(", fixed = TRUE)
     expect_match(.o, "b=linCmtBr1__(", fixed = TRUE)
     expect_match(.o, paste0("z~", .odd), fixed = TRUE)
-    # a pure read on the same line does not get it renamed
-    .o <- .rxOptLinCmtPure(paste0("a=", .L(-33, 0), "+", .odd))
+    # a state read on the same line does not get it renamed
+    .o <- .rxOptLinCmtMarkStateReads(paste0("a=", .L(-33, 0), "+", .odd))
     expect_false(grepl("linCmtBr", .o, fixed = TRUE))
   })
 

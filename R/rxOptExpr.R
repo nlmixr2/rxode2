@@ -1150,20 +1150,25 @@
   .calls[.calls %in% c(.rxOptImpureBuiltin, .rxImpureFunNames())]
 }
 
-# linCmtB() is impure as a whole (its value call computes the record, its
-# sentinels change kernel state), but most of the calls a generated model
-# makes are pure reads of the record's computed state: the value itself
-# (which1 = which2 = -1, a memo hit after the first), the kernel's stored
-# Jacobian, amounts and concentration gradient (its linCmtBread(): which1 >= 0
-# with which2 >= 0 or -2, and which1 = -2 with which2 >= 0), the second-order
-# reads (-20/-21) and the eta-space carry's reads (-33 .. -36).
-# A FOCEi gradient model writes the same read many times per record, and each
-# call pays the kernel's entry.  So the CSE may share a pure read, under an alias that
-# is not impure, `linCmtBr<epoch>__(`, where the epoch counts the statements
-# with an impure linCmtB() call so far: two reads with a sentinel between them
-# are never merged, and a temporary is defined at its first use, after the
-# sentinels before it.  .rxOptLinCmtRestore() names them back.
-.rxOptLinCmtPureRead <- function(w1, w2) {
+# linCmtB() is listed in .rxOptImpureBuiltin, so the CSE never shares it: its
+# value call computes the record and its sentinels change the kernel's state.
+# Most of the calls a generated model makes only read the record's computed
+# state: the value itself (which1 = which2 = -1, a memo hit after the first),
+# the kernel's stored Jacobian, amounts and concentration gradient (its
+# linCmtBread(): which1 >= 0 with which2 >= 0 or -2, and which1 = -2 with
+# which2 >= 0), the second-order reads (-20/-21) and the eta-space carry's
+# reads (-33 .. -36).  A FOCEi gradient model writes the same read many times
+# per record, and each call pays the kernel's entry.  So a state read is
+# renamed `linCmtBr<epoch>__(`, a name not in .rxOptImpureBuiltin, where the
+# epoch counts the statements with a state-changing linCmtB() call so far: two
+# reads with such a call between them are never merged, and a temporary is
+# defined at its first use, after the calls before it.
+# .rxOptLinCmtUnmarkStateReads() names them back.
+#' Is a linCmtB() call with these selectors a state read?
+#' @param w1,w2 the which1/which2 arguments (NA when not a number)
+#' @return logical, one per call
+#' @noRd
+.rxOptLinCmtIsStateRead <- function(w1, w2) {
   !is.na(w1) &
     !is.na(w2) &
     ((w1 == -1 & w2 == -1) |
@@ -1172,11 +1177,11 @@
       w1 %in% c(-20, -21, -33, -34, -35, -36))
 }
 
-#' Mark the pure linCmtB() reads of a normalized model shareable
+#' Mark the linCmtB() state reads of a normalized model shareable
 #' @param norm normalized model text
-#' @return `norm` with each pure read renamed `linCmtBr<epoch>__(`
+#' @return `norm` with each state read renamed `linCmtBr<epoch>__(`
 #' @noRd
-.rxOptLinCmtPure <- function(norm) {
+.rxOptLinCmtMarkStateReads <- function(norm) {
   if (!grepl("linCmtB(", norm, fixed = TRUE)) {
     return(norm)
   }
@@ -1189,7 +1194,7 @@
     .nCalls <- lengths(gregexpr("linCmtB(", .l[.i], fixed = TRUE))
     .m <- gregexpr("linCmtB[(]([^,()]*,){7}", .l[.i], perl = TRUE)[[1]]
     if (.m[1] < 0 || length(.m) != .nCalls) {
-      # a call whose selector arguments cannot be read is taken as impure
+      # a call whose selectors cannot be read may change state
       .epoch <- .epoch + 1L
       next
     }
@@ -1199,21 +1204,21 @@
     })
     .w1 <- vapply(.a, `[`, numeric(1), 1L)
     .w2 <- vapply(.a, `[`, numeric(1), 2L)
-    if (all(.rxOptLinCmtPureRead(.w1, .w2))) {
+    if (all(.rxOptLinCmtIsStateRead(.w1, .w2))) {
       .l[.i] <- gsub("linCmtB(", sprintf("linCmtBr%d__(", .epoch), .l[.i], fixed = TRUE)
     } else {
-      # an impure call: the statement stays whole and a new epoch starts
+      # a state-changing call: the statement stays whole and a new epoch starts
       .epoch <- .epoch + 1L
     }
   }
   paste(.l, collapse = "\n")
 }
 
-#' Undo .rxOptLinCmtPure()
+#' Undo .rxOptLinCmtMarkStateReads()
 #' @param txt optimized model text
 #' @return `txt` with every `linCmtBr<epoch>__(` named `linCmtB(` again
 #' @noRd
-.rxOptLinCmtRestore <- function(txt) {
+.rxOptLinCmtUnmarkStateReads <- function(txt) {
   gsub("linCmtBr[0-9]+__[(]", "linCmtB(", txt, perl = TRUE)
 }
 
@@ -1442,11 +1447,11 @@ rxOptExpr <- function(
   ## The C pass first; it returns NA when it will not reproduce the R walker
   ## exactly, and the R implementation below then runs.  Chunking calls this
   ## same whole-model path once per chunk, so chunks go through C too.
-  .norm <- .rxOptLinCmtPure(.norm)
+  .norm <- .rxOptLinCmtMarkStateReads(.norm)
   .impure <- .rxOptImpureCalls(.norm)
   .cse <- .rxOptExprC(.norm, .impure, .expensive)
   if (!is.na(.cse)) {
-    return(.rxOptSsaUndo(.rxOptLinCmtRestore(.cse), .ssa))
+    return(.rxOptSsaUndo(.rxOptLinCmtUnmarkStateReads(.cse), .ssa))
   }
   .p <- eval(parse(text = paste0("quote({", .norm, "})")))
   .lines <- ..rxOpt(.p, progress = TRUE)
@@ -1491,8 +1496,8 @@ rxOptExpr <- function(
     .rxOptEnv$.exclude <- ""
     .malert(sprintf("optimizing duplicate expressions in %s...", msg))
     .opt <- ..rxOpt(.p, progress = TRUE)
-    .rxOptSsaUndo(.rxOptLinCmtRestore(paste(.opt, collapse = "\n")), .ssa)
+    .rxOptSsaUndo(.rxOptLinCmtUnmarkStateReads(paste(.opt, collapse = "\n")), .ssa)
   } else {
-    .rxOptSsaUndo(.rxOptLinCmtRestore(paste(.lines, collapse = "\n")), .ssa)
+    .rxOptSsaUndo(.rxOptLinCmtUnmarkStateReads(paste(.lines, collapse = "\n")), .ssa)
   }
 }

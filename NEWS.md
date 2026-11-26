@@ -5,11 +5,11 @@
 - `rxOptExpr()` repeats its common-subexpression search until nothing more is
   shared.  One pass only shares the innermost repeats, so an expression that
   repeats once its own repeated parts are temporaries (`f(exp(a + b))`
-  written several times) was left as written.  It also shares the pure
-  `linCmtB()` reads a model writes more than once (the value, the stored
-  Jacobian, amounts and gradient, the second-order and eta-space carry
-  reads); `linCmtB()` as a whole stays impure, and a read is never shared
-  across one of its sentinel calls, so a FOCEi gradient model of a `linCmt()`
+  written several times) was left as written.  It also shares the
+  `linCmtB()` calls that only read the record's state, when a model writes
+  them more than once (the value, the stored Jacobian, amounts and gradient,
+  the second-order and eta-space carry reads); a `linCmtB()` call that
+  changes the kernel's state is never shared, and no read is shared across one, so a FOCEi gradient model of a `linCmt()`
   fit makes far fewer `linCmtB()` calls per record.
 - The model-building piping functions moved here from 'nlmixr2lib':
   absorption (`addDepot()`, `addTransit()`, `addWeibullAbs()`,
