@@ -1764,6 +1764,13 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
         if (.isNum) {
           names(.rx) <- .name
           assign("..lhs0", c(envir$..lhs0, .rx), envir = envir)
+          # a substituted constant replaces earlier assignments of the variable
+          # (`z <- 5; if (t > 1) z <- 2; z <- 3`) for a caller that re-emits the
+          # model (the adjoint expansion)
+          .l <- envir$..lhs
+          if (length(.l) && is.character(envir$..doConst) && .rxSEdoConst(envir, .var)) {
+            assign("..lhs", .l[!startsWith(.l, paste0(.name, "="))], envir = envir)
+          }
         } else {
           if (any(names(envir$..lhs0) == .name)) {
             .tmp <- envir$..lhs0

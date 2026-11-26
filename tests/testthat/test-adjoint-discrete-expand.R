@@ -49,6 +49,12 @@ rxTest({
       ev = .ev2,
       p = c(k = 1)
     ),
+    # a constant assigned after the branch is the output's last value
+    constLast = list(
+      txt = "z <- 5\nif (t > 1) { z <- 2 }\nw <- z\nz <- 3\nd/dt(y) <- -k*y + z + w\ny(0) <- 1",
+      ev = .ev2,
+      p = c(k = 1)
+    ),
     # levels() fixes the factor order, and the first string value is kept
     levels = list(
       txt = "levels(s) <- c(\"b\", \"a\")\nd/dt(y) <- -k*y\ns <- \"a\"\nif (t > 1) { s <- \"b\" }\ny(0) <- 1",
@@ -312,6 +318,13 @@ rxTest({
       ev = et(c(0, 0.5, 1, 2.5, 3)) |> et(time = 2, evid = 3),
       p = c(k = 0.7, y0 = 3)
     ),
+    # a numeric initial condition read by another, in a model declaring that
+    # state second
+    chainNum = list(
+      txt = "d/dt(y) <- ka*x - k*y\nd/dt(x) <- -ka*x\nx(0) <- 2\ny(0) <- b*x",
+      ev = et(c(0, 0.5, 1, 2, 3)),
+      p = c(ka = 1.2, k = 0.5, b = 3)
+    ),
     # one initial condition reads another state's
     chain = list(
       txt = "x(0) <- a\ny(0) <- b*x\nd/dt(x) <- -k*x\nd/dt(y) <- -k*y",
@@ -471,6 +484,19 @@ rxTest({
         expect_equal(.a$rx__sens_center_BY_c0__, exp(-0.5 * .tt), tolerance = 1e-6, label = .m)
       }
     }
+  })
+
+  test_that("dosing modifiers that read a state and parameter-dependent mtime() are refused", {
+    expect_error(
+      .rxAdjointExpand("d/dt(y) <- -k*y\nf(y) <- fb*y", c("k", "fb")),
+      "f[(]y[)] that depends on a state"
+    )
+    expect_error(
+      .rxAdjointExpand("tt <- 1.5*k\nmtime(t1) <- tt\nd/dt(y) <- -k*y + (t > t1)", "k"),
+      "mtime[(][)] that depends on a sensitivity parameter [(]k[)]"
+    )
+    # a constant mtime() is carried
+    expect_type(.rxAdjointExpand("mtime(t1) <- 1.5\nd/dt(y) <- -k*y + (t > t1)", "k")$text, "character")
   })
 
   test_that("an ss dose in a subject with records only at its first time is refused", {

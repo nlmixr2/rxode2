@@ -997,8 +997,10 @@
   ignored the supplied value, and the algebraic and string output columns,
   `mtime()`, `past()`, `param()`, `dvid()`, extra `cmt()` compartments and
   adaptive dosing were lost.  A constant reassigned in a branch
-  (`z <- 5; if (t > 1) z <- 2`) and a string output with its `levels()` keep
-  their first value.
+  (`z <- 5; if (t > 1) z <- 2`, or again after it) and a string output with
+  its `levels()` keep their values, and initial conditions keep the model's
+  order.  A dosing modifier that reads a state, or an `mtime()` that depends
+  on a sensitivity parameter, is refused.
 
 - The adjoint solve methods now include the initial-condition term, so a
   parameter that enters through an initial condition (directly or after a

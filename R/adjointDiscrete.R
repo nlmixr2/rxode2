@@ -348,12 +348,26 @@
   .isStrP <- names(.prior) %in% names(mv$strAssign)
   .norm <- strsplit(rxNorm(mv), "\n", fixed = TRUE)[[1]]
   .ini <- character(0)
-  for (.s in st) {
+  # in the model's order: one initial condition may read another's state
+  .iniPos <- vapply(
+    st,
+    function(.s) {
+      .w <- which(startsWith(.norm, paste0(.s, "(0)=")))
+      if (length(.w)) .w[1] else Inf
+    },
+    numeric(1)
+  )
+  for (.s in st[order(.iniPos)]) {
     .iSE <- get0(paste0("rx_", .s, "_ini_0__"), envir = model, inherits = FALSE)
     if (!is.null(.iSE)) {
       .ini <- c(.ini, sprintf("%s(0)=%s", .s, rxFromSE(.iSE)))
     }
   }
+  # an output of the original model whose last value is a substituted constant
+  # (`if (t > 1) z <- 2; z <- 3`): assigned a second time, rxode2 keeps it an
+  # output instead of a parameter
+  .lhsNm <- sub("=.*$", "", model$..lhs)
+  .outConst <- unname(.lhs0[!.isStr & names(.lhs0) %in% mv$lhs & !(names(.lhs0) %in% .lhsNm)])
   .state <- .rxGenFunState(mv)
   .param <- if (length(mv$params)) sprintf("param(%s)", paste(mv$params, collapse = ", ")) else character(0)
   .mtime <- sub(";[[:space:]]*$", "", grep("^mtime[(]", .norm, value = TRUE))
@@ -361,11 +375,71 @@
     head = c(.param, unname(.prior[!.isStrP]), unname(.lhs0[!.isStr])),
     ode = c(.ini, .rxPastBaseLinesFromEnv(model)),
     tail = c(
-      .rxAdjointOutputLines(c(.mtime, unname(.prior[.isStrP]), unname(.lhs0[.isStr]), model$..lhs), mv),
+      .rxAdjointOutputLines(c(.mtime, unname(.prior[.isStrP]), unname(.lhs0[.isStr]), .outConst, model$..lhs), mv),
       model$..restoreLines,
       .state[c("statef", "dvid")]
     )
   )
+}
+
+## The adjoint jumps take f/alag/rate/dur as functions of the parameters only;
+## refuse one that reads a state, which would need a d/dstate term.
+.rxAdjointAssertModifiers <- function(model, st) {
+  for (.k in st) {
+    for (.w in c("f", "lag", "rate", "dur")) {
+      .se <- get0(paste0("rx_", .w, "_", .k, "_"), envir = model, inherits = FALSE)
+      if (!inherits(.se, "Basic")) {
+        next
+      }
+      for (.s in st) {
+        .d <- symengine::D(.se, .rxSEres(.s))
+        if (rxode2::rxFromSE(.d) != "0") {
+          stop(
+            sprintf(
+              "the discrete adjoint does not support a %s(%s) that depends on a state (%s); use sensMethod=\"forward\"",
+              if (.w == "lag") "alag" else .w,
+              .k,
+              .s
+            ),
+            call. = FALSE
+          )
+        }
+      }
+    }
+  }
+  invisible(TRUE)
+}
+
+## An mtime() that moves with a sensitivity parameter needs a time-jump term the
+## adjoint does not have; refuse it.
+.rxAdjointAssertMtime <- function(mv, calcSens) {
+  .norm <- strsplit(rxNorm(mv), "\n", fixed = TRUE)[[1]]
+  .mt <- grep("^mtime[(]", .norm, value = TRUE)
+  if (length(.mt) == 0L) {
+    return(invisible(TRUE))
+  }
+  .rhs <- function(l) sub(";[[:space:]]*$", "", sub("^[^=]*=", "", l))
+  .vars <- function(l) tryCatch(all.vars(str2lang(.rhs(l))), error = function(e) character(0))
+  .asg <- grep("^[A-Za-z._][A-Za-z0-9._]*[[:space:]]*=[^=]", .norm, value = TRUE)
+  .asgNm <- sub("[[:space:]]*=.*$", "", .asg)
+  .dep <- unique(unlist(lapply(.mt, .vars)))
+  .seen <- character(0)
+  while (length(setdiff(.dep, .seen))) {
+    .new <- setdiff(.dep, .seen)
+    .seen <- c(.seen, .new)
+    .dep <- unique(c(.dep, unlist(lapply(.asg[.asgNm %in% .new], .vars))))
+  }
+  .bad <- intersect(.dep, calcSens)
+  if (length(.bad)) {
+    stop(
+      sprintf(
+        "the discrete adjoint does not support an mtime() that depends on a sensitivity parameter (%s); use sensMethod=\"forward\"",
+        paste(.bad, collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+  invisible(TRUE)
 }
 
 #' Build the adjoint-expansion model text for an in-engine discrete-adjoint solve
@@ -431,6 +505,8 @@
     .dSE <- get0(paste0("rx_dur_", .st[k], "_"), envir = .model, inherits = FALSE)
     if (!is.null(.dSE)) .fLines <- c(.fLines, sprintf("dur(%s)=%s", .st[k], rxode2::rxFromSE(.dSE)))
   }
+  .rxAdjointAssertModifiers(.model, .st)
+  .rxAdjointAssertMtime(rxode2::rxModelVars(object), calcSens)
   .fxLines <- character(0)
   # Analytic Jacobian for the stiff adjoint solvers only (Rosenbrock/implicit-RK
   # and the dop853s+ros4s composite).  Emit the nonzero base block (F_X) as real
@@ -675,6 +751,9 @@
   .hasIni <- logical(.ns)
   for (k in seq_len(.ns)) {
     .iSE <- get0(paste0("rx_", .st[k], "_ini_0__"), envir = .model, inherits = FALSE)
+    if (is.numeric(.iSE)) {
+      .iSE <- symengine::S(format(.iSE, digits = 17))
+    }
     if (inherits(.iSE, "Basic")) {
       assign(.st[k], .iSE, envir = .iniEnv)
       .hasIni[k] <- TRUE
