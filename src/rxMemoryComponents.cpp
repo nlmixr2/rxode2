@@ -296,6 +296,22 @@ NumericVector rxMemoryAdjointComponents_(int neq, int nBase, int np, int cores, 
   return NumericVector::create(Named("adjointWork") = (double)(cores > 0 ? cores : 1) * per * sizeof(double));
 }
 
+//' Report the byte sizes of the spline/pchip covariate knot buffers
+//'
+//' The knot times, values and derivatives (doubles) and knot counts (ints)
+//' that \code{rxSplineCovSetup()} (\code{src/approx.cpp}) lays out like
+//' \code{gcov}, one block per distinct covariate pointer.
+//'
+//' @param ncov Number of time-varying covariates.
+//' @param nallTotal Total events of one simulation across subjects.
+//' @return Named numeric vector with \code{splineCov} bytes.
+//' @noRd
+// [[Rcpp::export]]
+NumericVector rxMemorySplineCovComponents_(int ncov, double nallTotal) {
+  return NumericVector::create(Named("splineCov") = static_cast<double>(ncov) * nallTotal *
+                               (3.0 * sizeof(double) + sizeof(int)));
+}
+
 //' Report the byte sizes of a GPU method's solve allocations
 //'
 //' The GPU methods (codes 110-114) allocate per slot (\code{gpuBatch}

@@ -14,6 +14,7 @@
 #include "../inst/include/rxode2.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
 #include "../inst/include/rxode2parseGetTime.h"
+#include "../inst/include/rxMemAlloc.h"
 #include "tte.h"
 
 #define safe_zero(a) ((a) == 0 ? DBL_EPSILON : (a))
@@ -457,7 +458,7 @@ static void rxSplineNatural(const double *x, const double *y, double *m, int n,
                             std::vector<double> *wv) {
   for (int i = 0; i < n; ++i) m[i] = 0.0;
   if (n < 3) return;
-  wv->assign(n, 0.0);
+  rxMemAssign(splineCov, *wv, n, 0.0);
   double *w = wv->data();
   for (int i = 1; i < n - 1; ++i) {
     double h0 = x[i] - x[i-1], h1 = x[i+1] - x[i];
@@ -580,10 +581,10 @@ extern "C" int rxSplineCovSetup(rx_solve *rx, int nSub) {
       _rxSplKey.push_back(RxSplKey{ind->cov_ptr, len});
       len += static_cast<int64_t>(ind->n_all_times_orig)*op->ncov;
     }
-    _rxSplT.assign(len, 0.0);
-    _rxSplY.assign(len, 0.0);
-    _rxSplD.assign(len, 0.0);
-    _rxSplN.assign(len, 0);
+    rxMemAssign(splineCov, _rxSplT, len, 0.0);
+    rxMemAssign(splineCov, _rxSplY, len, 0.0);
+    rxMemAssign(splineCov, _rxSplD, len, 0.0);
+    rxMemAssign(splineCov, _rxSplN, len, 0);
     std::vector<double> w;
     size_t kk = 0;
     for (size_t i = 0; i < subs.size(); ++i) {
