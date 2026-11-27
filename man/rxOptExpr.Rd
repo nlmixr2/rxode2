@@ -4,7 +4,13 @@
 \alias{rxOptExpr}
 \title{Optimize rxode2 for computer evaluation}
 \usage{
-rxOptExpr(x, msg = "model", chunkLines = 40L, parallel = 0L)
+rxOptExpr(
+  x,
+  msg = "model",
+  chunkLines = 40L,
+  parallel = 0L,
+  expensive = getOption("rxode2.optExprExpensive", FALSE)
+)
 }
 \arguments{
 \item{x}{rxode2 model that can be accessed by rxNorm}
@@ -40,6 +46,15 @@ daemon pool is used as-is and left running; otherwise a pool is
 started for the call and shut down when it returns, and only when
 the model splits into at least 4 chunks, where the parallel win
 covers the startup.}
+
+\item{expensive}{Logical; when \code{TRUE}, a call to an expensive function
+(such as \code{exp()}, \code{log()}, \code{sqrt()} or \code{pnorm()}) inside a larger
+expression gets its own temporary even when it appears only once; a
+call that is a whole right-hand side stays where it is.  The GPU
+methods compute the temporaries that depend only on parameters once
+per interval.  Defaults to
+\code{getOption("rxode2.optExprExpensive", FALSE)}, so estimation methods
+that call \code{rxOptExpr()} follow the option.}
 }
 \value{
 Optimized rxode2 model text.  The order and type lhs and

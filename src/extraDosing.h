@@ -1,5 +1,6 @@
 #ifndef __EXTRA_DOSING_H__
 #define __EXTRA_DOSING_H__
+#include "../inst/include/rxMemAlloc.h"
 
 static inline void freeExtraDosing() {
   int i = 0;
@@ -107,28 +108,28 @@ static inline void allocExtraDosing(int ncores) {
 
   freeExtraDosing();
 
-  int *tmpI = (int*)malloc((ncores) * sizeof(int));
+  int *tmpI = (int*)rxMemMalloc(extraDosing, (ncores) * sizeof(int));
   if (tmpI == NULL) {
     rxSolveFree();
     stop(_("ran out of memory"));
   }
   _globals.extraDoseN = tmpI;
 
-  tmpI = (int*)malloc((ncores) * sizeof(int));
+  tmpI = (int*)rxMemMalloc(extraDosing, (ncores) * sizeof(int));
   if (tmpI == NULL) {
     rxSolveFree();
     stop(_("ran out of memory"));
   }
   _globals.extraDoseAllocN = tmpI;
 
-  tmpI = (int*)malloc((ncores) * sizeof(int));
+  tmpI = (int*)rxMemMalloc(extraDosing, (ncores) * sizeof(int));
   if (tmpI == NULL) {
     rxSolveFree();
     stop(_("ran out of memory"));
   }
   _globals.nPendingDoses = tmpI;
 
-  tmpI = (int*)malloc((ncores) * sizeof(int));
+  tmpI = (int*)rxMemMalloc(extraDosing, (ncores) * sizeof(int));
   if (tmpI == NULL) {
     rxSolveFree();
     stop(_("ran out of memory"));
@@ -136,7 +137,7 @@ static inline void allocExtraDosing(int ncores) {
   _globals.nAllocPendingDoses = tmpI;
 
 
-  tmpI = (int*)malloc((ncores) * sizeof(int));
+  tmpI = (int*)rxMemMalloc(extraDosing, (ncores) * sizeof(int));
   if (tmpI == NULL) {
     rxSolveFree();
     stop(_("ran out of memory"));
@@ -144,7 +145,7 @@ static inline void allocExtraDosing(int ncores) {
   _globals.nIgnoredDoses = tmpI;
 
 
-  tmpI = (int*)malloc((ncores) * sizeof(int));
+  tmpI = (int*)rxMemMalloc(extraDosing, (ncores) * sizeof(int));
   if (tmpI == NULL) {
     rxSolveFree();
     stop(_("ran out of memory"));
@@ -152,42 +153,42 @@ static inline void allocExtraDosing(int ncores) {
   _globals.nAllocIgnoredDoses = tmpI;
 
 
-  int **tmpII = (int**)calloc((size_t)ncores + 1, sizeof(int*));
+  int **tmpII = (int**)rxMemCalloc(extraDosing, (size_t)ncores + 1, sizeof(int*));
   if (tmpII == NULL) {
     rxSolveFree();
     stop(_("ran out of memory"));
   }
   _globals.pendingDoses = tmpII;
 
-  tmpII = (int**)calloc((size_t)ncores + 1, sizeof(int*));
+  tmpII = (int**)rxMemCalloc(extraDosing, (size_t)ncores + 1, sizeof(int*));
   if (tmpII == NULL) {
     rxSolveFree();
     stop(_("ran out of memory"));
   }
   _globals.ignoredDoses = tmpII;
 
-  tmpII = (int**)calloc((size_t)ncores + 1, sizeof(int*));
+  tmpII = (int**)rxMemCalloc(extraDosing, (size_t)ncores + 1, sizeof(int*));
   if (tmpII == NULL) {
     rxSolveFree();
     stop(_("ran out of memory"));
   }
   _globals.extraDoseTimeIdx = tmpII;
 
-  tmpII = (int**)calloc((size_t)ncores + 1, sizeof(int*));
+  tmpII = (int**)rxMemCalloc(extraDosing, (size_t)ncores + 1, sizeof(int*));
   if (tmpII == NULL) {
     rxSolveFree();
     stop(_("ran out of memory"));
   }
   _globals.extraDoseEvid = tmpII;
 
-  double **tmpDD = (double**)calloc((size_t)ncores + 1, sizeof(double*));
+  double **tmpDD = (double**)rxMemCalloc(extraDosing, (size_t)ncores + 1, sizeof(double*));
   if (tmpDD == NULL) {
     rxSolveFree();
     stop(_("ran out of memory"));
   }
   _globals.extraDoseTime = tmpDD;
 
-  tmpDD = (double**)calloc((size_t)ncores + 1, sizeof(double*));
+  tmpDD = (double**)rxMemCalloc(extraDosing, (size_t)ncores + 1, sizeof(double*));
   if (tmpDD == NULL) {
     rxSolveFree();
     stop(_("ran out of memory"));
@@ -199,7 +200,7 @@ static inline void allocExtraDosing(int ncores) {
   _globals.extraDoseCores = ncores;
   double *tmpD;
   for (int i = 0; i < ncores; i++) {
-    tmpI = (int*)malloc(EVID_EXTRA_SIZE * sizeof(int));
+    tmpI = (int*)rxMemMalloc(extraDosing, EVID_EXTRA_SIZE * sizeof(int));
     if (tmpI == NULL) {
       rxSolveFree();
       stop(_("ran out of memory"));
@@ -209,7 +210,7 @@ static inline void allocExtraDosing(int ncores) {
     _globals.nPendingDoses[i] = 0;
     _globals.nAllocPendingDoses[i] = EVID_EXTRA_SIZE;
 
-    tmpI = (int*)malloc(EVID_EXTRA_SIZE * sizeof(int));
+    tmpI = (int*)rxMemMalloc(extraDosing, EVID_EXTRA_SIZE * sizeof(int));
     if (tmpI == NULL) {
       rxSolveFree();
       stop(_("ran out of memory"));
@@ -218,7 +219,7 @@ static inline void allocExtraDosing(int ncores) {
 
     _globals.nIgnoredDoses[i] = 0;
     _globals.nAllocIgnoredDoses[i] = EVID_EXTRA_SIZE;
-    tmpI = (int*)malloc(EVID_EXTRA_SIZE * sizeof(int));
+    tmpI = (int*)rxMemMalloc(extraDosing, EVID_EXTRA_SIZE * sizeof(int));
 
     if (tmpI == NULL) {
       rxSolveFree();
@@ -226,21 +227,21 @@ static inline void allocExtraDosing(int ncores) {
     }
     _globals.extraDoseTimeIdx[i] = tmpI;
 
-    tmpI = (int*)malloc(EVID_EXTRA_SIZE * sizeof(int));
+    tmpI = (int*)rxMemMalloc(extraDosing, EVID_EXTRA_SIZE * sizeof(int));
     if (tmpI == NULL) {
       rxSolveFree();
       stop(_("ran out of memory"));
     }
     _globals.extraDoseEvid[i] = tmpI;
 
-    tmpD = (double*)malloc(EVID_EXTRA_SIZE * sizeof(double));
+    tmpD = (double*)rxMemMalloc(extraDosing, EVID_EXTRA_SIZE * sizeof(double));
     if (tmpD == NULL) {
       rxSolveFree();
       stop(_("ran out of memory"));
     }
     _globals.extraDoseTime[i] = tmpD;
 
-    tmpD = (double*)malloc(EVID_EXTRA_SIZE * sizeof(double));
+    tmpD = (double*)rxMemMalloc(extraDosing, EVID_EXTRA_SIZE * sizeof(double));
     if (tmpD == NULL) {
       rxSolveFree();
       stop(_("ran out of memory"));
