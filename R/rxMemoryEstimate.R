@@ -197,6 +197,7 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 .rxMemExtractModel <- function(model) {
   .mv <- rxModelVars(model)
   .flags <- .mv[["flags"]]
+  .adj <- .rxMemAdjDims(.mv)
 
   list(
     neq = length(.mv[["state"]]),
@@ -212,8 +213,31 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
     nDelayState = .rxMemNDelayState(.mv),
     # op->indOwnAlloc defaults to this parser flag (src/rxData.cpp), so the
     # MODEL decides it unless the control says otherwise
-    indOwnAlloc = as.integer(.flags["evid_"])
+    indOwnAlloc = as.integer(.flags["evid_"]),
+    adjNbase = .adj[1],
+    adjNp = .adj[2]
   )
+}
+
+#' Base states and sensitivity parameters of an adjoint expansion
+#'
+#' Mirrors `op->adjNbase`/`op->adjNp` in `src/rxData.cpp`: the
+#' `rx__adjFX_*` lhs are the `nBase x nBase` Jacobian and the `rx__adjFP_*`
+#' lhs the `nBase x np` parameter Jacobian.
+#'
+#' @param mv `rxModelVars()` of the model.
+#' @return Integer `c(nBase, np)`; zeros for a model without an adjoint
+#'   expansion.
+#' @noRd
+#' @author Matthew L. Fidler
+.rxMemAdjDims <- function(mv) {
+  .lhs <- mv[["lhs"]]
+  .nBase <- as.integer(round(sqrt(sum(startsWith(.lhs, "rx__adjFX_")))))
+  .nFp <- sum(startsWith(.lhs, "rx__adjFP_"))
+  if (.nBase <= 0L || .nFp <= 0L) {
+    return(c(0L, 0L))
+  }
+  c(.nBase, as.integer(.nFp %/% .nBase))
 }
 #' How many ODE states delay() looks back on
 #'
@@ -616,6 +640,28 @@ rxMemoryEstimate <- function(
     }
     .sample <- .ci$sample
   }
+  # A GPU method allocates per slot on top of the rest
+  # (rxMemoryGpuComponents_()), and its solve runs with op->cores set to the
+  # batch, which every per-thread component scales with
+  .gpuMem <- NULL
+  if (!is.null(control) && !is.null(model)) {
+    .gpuMem <- tryCatch(
+      {
+        .gpuObj <- if (inherits(model, "rxUi")) model$simulationModel else model
+        ## the subjects solved: nSub replaces the data's, nStud replicates them
+        .gpuN <- nrow(.summary) * max(1, nsim)
+        if (!is.null(.ci) && (.ci$nSub > 1L || .ci$nStud > 1L)) {
+          .gpuN <- (if (.ci$nSub > 1L) .ci$nSub else nrow(.summary)) *
+            (if (.ci$nStud > 1L) .ci$nStud else max(1, nsim))
+        }
+        .rxGpuSolveMem(.gpuObj, control, max(1, .gpuN))
+      },
+      error = function(e) NULL
+    )
+    if (!is.null(.gpuMem)) {
+      cores <- max(as.integer(cores), attr(.gpuMem, "batch"), attr(.gpuMem, "threads"))
+    }
+  }
   indOwnAlloc <- as.integer(isTRUE(as.logical(indOwnAlloc)))
   if (cores <= 0L) {
     cores <- 1L
@@ -710,6 +756,19 @@ rxMemoryEstimate <- function(
 
   .meta <- c("sizeofInd", "rxLlikSaveSize")
   .sizes <- .raw[!names(.raw) %in% .meta]
+  # an adjoint expansion's backward-work arena, one slice per thread
+  if (!is.null(model) && .mi$adjNp > 0L) {
+    .sizes <- c(
+      .sizes,
+      rxMemoryAdjointComponents_(
+        as.integer(neq),
+        .mi$adjNbase,
+        .mi$adjNp,
+        as.integer(cores),
+        as.double(.solveMaxAllTimes)
+      )
+    )
+  }
   .outputData <- .rxMemEstimateOutputData(
     dat = dat,
     summary = .summary,
@@ -723,6 +782,10 @@ rxMemoryEstimate <- function(
     nallTotal = .nallTotal
   )
   .sizes <- c(.sizes, outputData = .outputData)
+  if (!is.null(.gpuMem)) {
+    # device buffers are not host RAM: reported, never in the total
+    .sizes <- c(.sizes, .gpuMem[setdiff(names(.gpuMem), "gpuDevice")])
+  }
   .wrapped <- lapply(.sizes, function(bytes) {
     structure(bytes, class = "rxRawBytes")
   })
@@ -742,6 +805,10 @@ rxMemoryEstimate <- function(
     )
   )
   class(.ret) <- "rxMemoryEstimate"
+  # device memory, not host RAM: an attribute, so the list keeps its shape
+  if (!is.null(.gpuMem)) {
+    attr(.ret, "gpuDeviceBytes") <- .gpuMem[["gpuDevice"]]
+  }
   attr(.ret, "summary") <- .summary
   .ret
 }
@@ -755,7 +822,17 @@ rxMemoryEstimate <- function(
   # time still needs the whole per-thread exponential cache and solver scratch.
   # Dividing them by the subject count would understate the chunk, and would
   # keep understating it however small the chunks got.  Take them off the top.
-  .fixedNames <- c("indLinExpCache", "indLinWork")
+  # A GPU method's per-slot buffers stop growing at gpuBatch slots, so they
+  # are fixed too.
+  .fixedNames <- c(
+    "indLinExpCache",
+    "indLinWork",
+    "extraDosing",
+    "gpuHostWork",
+    "gpuHostState",
+    "gpuSlotWork",
+    "gpuStage"
+  )
   .fixed <- sum(vapply(.est[intersect(names(.est), .fixedNames)], as.numeric, numeric(1)))
   .memPerSub <- (as.numeric(.est$total) - .fixed) / max(1L, .est$effectiveSubs)
   .avail <- .est$freeRamBytes * safetyFactor - .fixed
@@ -813,6 +890,7 @@ print.rxMemoryEstimate <- function(x, ...) {
     gon = "gon (int buffer)",
     gall_times = "gall_times (event time/dv/amt/ii/limit)",
     gevid = "gevid (event IDs)",
+    gRecordLinks = "gRecordLinks (per-record links, bound)",
     gcov = "gcov (covariates)",
     gpars = "gpars (parameters)",
     gomega = "gomega (omega matrix)",
@@ -828,6 +906,14 @@ print.rxMemoryEstimate <- function(x, ...) {
     gEtaPre = "gEtaPre (pre-generated eta draws)",
     delayHist = "delayHist (per-individual delay() history, bound)",
     linCmtRateHist = "linCmtRateHist (per-individual linCmt rates, bound)",
+    extraDosing = "extraDosing (per-thread evid_() push pools)",
+    invCdfMemo = "invCdfMemo (per-thread inverse-CDF memo)",
+    adjointWork = "adjointWork (per-thread adjoint backward-work arena)",
+    gpuHostWork = "gpuHostWork (GPU round requests, per slot)",
+    gpuHostState = "gpuHostState (GPU host integrator state, per slot)",
+    gpuSlotWork = "gpuSlotWork (GPU per-thread workspaces)",
+    gpuTimeline = "gpuTimeline (GPU timeline rows, per launch)",
+    gpuStage = "gpuStage (GPU host staging buffers)",
     outputData = "outputData (estimated returned data)"
   )
 
@@ -856,6 +942,10 @@ print.rxMemoryEstimate <- function(x, ...) {
     cat("\n")
   } else {
     cat("\n")
+  }
+  .dev <- attr(x, "gpuDeviceBytes")
+  if (!is.null(.dev)) {
+    cat(sprintf("  GPU device buffers: %s (device memory, not in the total)\n", .fmtSize(.dev)))
   }
   invisible(x)
 }

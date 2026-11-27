@@ -2,6 +2,15 @@
 
 ## New features
 
+- `rxOptExpr()` repeats its common-subexpression search until nothing more is
+  shared.  One pass only shares the innermost repeats, so an expression that
+  repeats once its own repeated parts are temporaries (`f(exp(a + b))`
+  written several times) was left as written.  It also shares the
+  `linCmtB()` calls that only read the record's state, when a model writes
+  them more than once (the value, the stored Jacobian, amounts and gradient,
+  the second-order and eta-space carry reads); a `linCmtB()` call that
+  changes the kernel's state is never shared, and no read is shared across one, so a FOCEi gradient model of a `linCmt()`
+  fit makes far fewer `linCmtB()` calls per record.
 - The model-building piping functions moved here from 'nlmixr2lib':
   absorption (`addDepot()`, `addTransit()`, `addWeibullAbs()`,
   `addZeroOrderAbs()`, `addSecondAbsorption()`, `convertTransitMtt()` and
@@ -14,6 +23,14 @@
   chain in `addSecondAbsorption(delay = "transit")` and the new
   `convertTransitMtt()`.  `addEta()` reads the `rxode2.etaCombineType` and
   `rxode2.priorEta` options, falling back to the `nlmixr2lib.*` ones.
+- `addSecondAbsorption(type = "zero")` now builds Monolix's zero-order
+  double-absorption route (`Tk02`): a modeled `dur(central)` input,
+  apportioned by the same logit `F1`, instead of an extra `depot2` with
+  a `ka2` rate.  The `splitInfusionBolus()` targets put the
+  modeled-duration compartment first so the split promotes it.  A
+  zero-order second path combined with `delay = "transit"`, or with a
+  zero-order first path, now errors: neither can be expressed with one
+  modeled duration per compartment.
 - `rxImpureFun()`/`rxRmImpureFun()` register user R functions, `rxFun()` C
   functions or package C functions that draw random numbers, keep state or
   have side effects.  `rxOptExpr()` never shares their calls and
@@ -103,7 +120,40 @@
   tolerances, so `tolFactor` and `atolRtolFactor_()` apply per subject.
   A solve set up from C (as nlmixr2est's estimation methods do) installs
   its GPU setup there, once; when the model cannot run as device code it
-  integrates with the host counterpart.
+  integrates with the host counterpart.  Repeated solves on that setup
+  (nlmixr2est's SAEM iterations) round every subject at once, and each
+  double-precision OpenCL round waits on the device once.
+- With `options(rxode2.gpuTimeline = TRUE)` the GPU methods integrate each
+  subject's whole timeline in one launch per solve instead of a round per
+  event interval, when the subjects' events do not depend on their states
+  (observations, boluses and infusions with a fixed rate or duration; no
+  steady state, resets, modeled bioavailability, lag, rate or duration,
+  `mtime()`, `evid_()` or `delay()`) and the model never reads an lhs
+  before assigning it.  The results are the same as the rounds' (to
+  rounding when several doses into one compartment share a time).
+- The GPU methods' device code computes the statements that depend only on
+  parameters (such as `ka <- exp(tka + eta.ka)`) once per integration
+  interval instead of at every derivative evaluation, when the parameters
+  are constant over the interval.
+- OpenCL launches size their work groups from the device so every compute
+  unit gets work; `options(rxode2.gpuLocalSize = 0)` leaves the size to the
+  driver.
+- `rxOptExpr(expensive = TRUE)` (or `options(rxode2.optExprExpensive =
+  TRUE)`, which estimation methods calling `rxOptExpr()` follow) also gives a
+  single call to an expensive function such as `exp()` inside a larger
+  expression its own temporary, so the GPU methods compute the ones that
+  depend only on parameters once per interval.
+- `rxMemoryEstimate()` (and so `rxSolve()`'s out-of-memory check) now counts
+  the GPU methods' per-slot host workspaces and the per-thread `evid_()`
+  push pools, and reports the GPU device buffers separately.  An OpenCL
+  solve whose buffers do not fit on the device, or whose largest buffer
+  exceeds the device's single-allocation limit, stops with a message to
+  lower `rxControl(gpuBatch=)`.  Out-of-memory chunking counts the per-slot
+  and per-thread buffers as fixed, and a GPU solve replays from its
+  `serializeFile=` state on that state's own thread slots.
+- An adjoint method's backward pass now takes its per-subject and per-ss-dose
+  work from a per-thread arena at the end of the solve buffer, sized at solve
+  setup, and `rxMemoryEstimate()` counts it (`adjointWork`).
 - New host method `"ros54p"` (Rodas5P, Steinebach's L-stable Rosenbrock 5(4)
   with the analytical Jacobian) and its AutoSwitch composites `"t54+ros54p"`
   and `"vern76+ros54p"`.  It evaluates the time derivative only for a model
@@ -176,6 +226,12 @@
   (nlmixr2/nlmixr2est#1356).
 
 ## Bug fixes
+
+- The parser no longer reads a function name it had already freed.  Every
+  function call copies its name into a buffer that is reallocated as it grows,
+  and a copy held while more were made pointed into the old buffer; parsing
+  a large generated model (an nlmixr2est outer-gradient model) could crash
+  R.  Each copy is now its own allocation.
 
 - mu-referencing only records a `covariate*theta` term that is exactly
   `theta*covariate`.  The allometric `0.75*log(V1/exp(tV1))`, whose
@@ -309,6 +365,12 @@
   does; a dose without a `cmt` used to fail in the build (#1504).
 - Event-sensitivity setup skips symbolic expansion when no dosing derivative
   needs it, reducing setup time for large sensitivity models (#1632).
+- The analytic Jacobian an implicit method uses now has rows for
+  `rx__sens_*` states, such as the eta sensitivities of nlmixr2's FOCEi
+  inner model; they were left zero, which made `ros54p`/`gpuRos54p` FOCEi
+  fits take tiny steps (about 40 times slower than `liblsoda`).
+  `rxode2(calcJac = TRUE)` also no longer drops the states that follow an
+  `rx__sens_*` state.
 
 ### Expression optimization
 - `rxOptExpr()` avoids CSE temporary-name collisions and warns on repeated
@@ -991,6 +1053,25 @@
 
 ### Adjoint sensitivities
 
+- `rxSolveAdjointRk4()` now carries the whole model into the adjoint
+  expansion, each statement read at its own position: initial conditions,
+  numeric defaults, reassigned constants, algebraic and string outputs (with
+  `levels()`), `mtime()`, `past()`, `param()`, `dvid()`, extra `cmt()`
+  compartments, covariate interpolation, dose splitting and adaptive dosing.
+  Before, most were dropped (the solve started from 0 and a supplied default
+  was ignored).  A dosing modifier that reads a state, or an `mtime()` or
+  `past()` that depends on a sensitivity parameter, is refused.
+
+- The adjoint solve methods now include the initial-condition term, so a
+  parameter that enters through an initial condition (directly or after a
+  reset) gets its sensitivity instead of 0, including an initial condition
+  that reads another state's (`y(0) <- b * x`), also in a subject with a
+  steady-state (`ss = 1`) dose; an `ss` dose in a subject whose records are
+  all at its first time is refused.
+
+- A phantom dose (`evid = 7`) with a modeled `f()` no longer adds a
+  bioavailability sensitivity in the `rk4s` family and liblsodaadj.
+
 - Adjoint solves of a model that pushes doses at run time (`bolus()`,
   `evid_()` and friends inside `if()`) no longer corrupt memory and crash
   R in the `rk4s` family of methods.
@@ -1042,6 +1123,64 @@
   exact change in the derivatives across the dose, so it is also correct
   when the derivatives are nonlinear in the dosed compartment, and is no
   longer dropped for a bolus lagged onto the first time.
+
+- With both `f()` and `alag()` modeled on a compartment, the adjoint
+  lag-time sensitivity was `1/F` times too large; it now uses the dose
+  that lands.  The same applied to the delay-equation dose jump.
+
+- `method = "cvodesadj"` now includes the bioavailability (`f()`)
+  sensitivity, also for an observation at a dose time; before, it was
+  missing entirely.  `f()` together with a modeled `rate()` or `dur()` is
+  still not right in `cvodesadj` and `liblsodaadj`.
+
+- `method = "abs"` now stops with an error when sensitivities are
+  requested through an `f()`, `alag()`, `rate()` or `dur()` that depends on
+  a sensitivity parameter, which it does not support, instead of silently
+  leaving those terms out.  Constant modifiers still solve.
+
+- With `method = "cvodesadj"`, and with `method = "liblsodaadj"` when
+  nothing was integrated between resets, an observation recorded at the
+  time of a reset (`evid = 3`) returned the pre-reset sensitivity; it now
+  reads the post-reset state, as the other adjoint methods do.
+
+- A dose that follows a reset at the same time (`evid = 4`, or `evid = 3`
+  and a dose at one time) lost its bioavailability (`f()`) adjoint
+  sensitivity in the `rk4s` family of methods and in
+  `method = "liblsodaadj"`; it is now kept (in liblsodaadj, when it is the
+  only dose at that time).  Events at the same step are
+  now transposed in reverse order in the `rk4s` family, which also fixes a
+  dose together with a replace or multiply at one time.  The bioavailability
+  that `f()` applies to a replace or multiply value is still missing from
+  the adjoint sensitivities.
+
+- A steady-state (`ss = 1`) dose after the first record no longer gives
+  wrong adjoint sensitivities: in the `rk4s` family the observations
+  before it picked up the steady-state term, and in
+  `method = "liblsodaadj"` the observations after it lacked it.  This
+  covers bolus, periodic and continuous infusion steady states.
+
+- Several `ss = 1` doses in one subject now each use their own regimen in
+  the `rk4s` family of adjoint methods; before, they all used one recorded
+  steady-state period, so a later dose with a different amount or interval
+  gave wrong sensitivities.  `method = "liblsodaadj"` carries one `ss = 1`
+  dose per subject and no longer refuses several subjects that have one
+  each at different times.
+
+- A fixed-duration (`dur =`) steady-state infusion got no steady-state
+  term at all in any adjoint method, so its sensitivities were wrong; it
+  now gets one.
+
+- The adjoint bioavailability (`f()`) sensitivity of an `ss = 1` bolus is
+  now carried through every steady-state period, at the window start and
+  later; before, only the dose at the event time counted, not the doses of
+  the earlier periods that make up the steady state.
+
+- The adjoint methods now refuse a steady-state dose solved with
+  `minSS = maxSS`.  They differentiate the converged steady state, not the
+  state after that fixed number of doses, so their sensitivities did not
+  match the solved state.  The adjoint steady-state refusals now point to
+  `rxode2(model, calcSens = ...)` for forward sensitivities instead of a
+  `sensMethod` argument that does not exist.
 
 # rxode2 5.1.8
 
