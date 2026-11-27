@@ -4,12 +4,14 @@ F_p = dF/dtheta as rxode2 lhs assignments spliced onto the base ODE, so the
 C++ backward sweep can evaluate them at any stage state via calc_lhs.  The
 lhs are emitted in a fixed order: all F_X entries row-major
 (rx__adjFX_i_j__ at index i*ns + j), then F_p (rx__adjFP_i_p__ at
-ns*ns + i*np + p)."><meta property="og:description" content="Exposes the state Jacobian F_X = dF/dy and parameter forcing
+ns*ns + i*np + p).  The rest of the model (initial conditions, dosing
+modifiers, output columns, etc.) is carried through unchanged."><meta property="og:description" content="Exposes the state Jacobian F_X = dF/dy and parameter forcing
 F_p = dF/dtheta as rxode2 lhs assignments spliced onto the base ODE, so the
 C++ backward sweep can evaluate them at any stage state via calc_lhs.  The
 lhs are emitted in a fixed order: all F_X entries row-major
 (rx__adjFX_i_j__ at index i*ns + j), then F_p (rx__adjFP_i_p__ at
-ns*ns + i*np + p)."><meta property="og:image" content="https://nlmixr2.github.io/rxode2/logo.png"><meta name="google-site-verification" content="fp9A3qPrCar1DKeVQg4Mfrf6-An5keP9OwhIxUkntbU"></head><body>
+ns*ns + i*np + p).  The rest of the model (initial conditions, dosing
+modifiers, output columns, etc.) is carried through unchanged."><meta property="og:image" content="https://nlmixr2.github.io/rxode2/logo.png"><meta name="google-site-verification" content="fp9A3qPrCar1DKeVQg4Mfrf6-An5keP9OwhIxUkntbU"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -139,7 +141,8 @@ ns*ns + i*np + p)."><meta property="og:image" content="https://nlmixr2.github.io
 C++ backward sweep can evaluate them at any stage state via <code>calc_lhs</code>.  The
 lhs are emitted in a fixed order: all <code>F_X</code> entries row-major
 (<code>rx__adjFX_i_j__</code> at index <code>i*ns + j</code>), then <code>F_p</code> (<code>rx__adjFP_i_p__</code> at
-<code>ns*ns + i*np + p</code>).</p>
+<code>ns*ns + i*np + p</code>).  The rest of the model (initial conditions, dosing
+modifiers, output columns, etc.) is carried through unchanged.</p>
     </div>
 
     <div class="section level2">
@@ -162,7 +165,8 @@ lhs are emitted in a fixed order: all <code>F_X</code> entries row-major
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>list with <code>text</code> (expanded model text), <code>st</code>, <code>ns</code>, <code>np</code>,
-<code>calcSens</code>, and lhs layout <code>fxOff</code> (=0), <code>fpOff</code> (=ns*ns), <code>nlhsAdj</code>.</p>
+<code>calcSens</code>, and lhs layout <code>fxOff</code> (=0), <code>fpOff</code> (=ns*ns), <code>nlhsAdj</code>, and
+<code>dx0Off</code> (the initial-condition derivative block, -1 if none).</p>
     </div>
     <div class="section level2">
     <h2 id="author">Author<a class="anchor" aria-label="anchor" href="#author"></a></h2>
