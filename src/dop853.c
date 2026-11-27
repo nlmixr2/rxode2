@@ -16,6 +16,7 @@
 #include "rxPrintfFormat.h"
 void RSprintf(const char *format, ...) R_PRINTF_FORMAT(1, 2);
 #include "solveWarn.h"
+#include "solveDiag.h"
 #define _(String) (String)
 
 /* All former static variables are now in dop853_ctx_t (see dop853.h).
@@ -914,6 +915,8 @@ static int dopcor (dop853_ctx_t *ctx, int *nptr, FcnEqDiff fcn, double x, double
 
       h = hnew;
       if (!R_FINITE(h)) {
+        /* k1 is the derivative at the accepted (x, y): name its non-finite states */
+        rxSolveDiagDydt(ctx->subject_id, n, x, y, k1);
         if (st == NULL) rxSolveWarnPushStat(ctx->subject_id, 1, &x, "exit of dop853 at x = %%v, step size is not finite");
         ctx->xout = x;
         ctx->hout = h;

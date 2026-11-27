@@ -1322,10 +1322,7 @@ rxTest({
     expect_false(.unfixed$iniDf$fix[.unfixed$iniDf$name == "eta.occ"])
   })
 
-  test_that("ini() piping says so when a condition does not match the eta level", {
-    # piping an estimate does not restructure the model, so the level the eta
-    # already sits at is kept -- but silently discarding the piped condition
-    # would leave no way to tell
+  test_that("ini() piping moves an eta to the level the condition names (#1773)", {
     .to <- function() {
       ini({
         tka <- 0.1
@@ -1341,13 +1338,258 @@ rxTest({
       })
     }
     .toUi <- rxode2(.to)
-    expect_message(.moved <- .toUi |> ini(eta.ka ~ 0.5 | occ), "keeping .*eta.ka.* at level")
+    expect_message(.moved <- .toUi |> ini(eta.ka ~ 0.5 | occ), "change .*eta.ka.* to vary by .*occ")
     expect_equal(.moved$iniDf$est[.moved$iniDf$name == "eta.ka"], 0.5)
-    expect_equal(.moved$iniDf$condition[.moved$iniDf$name == "eta.ka"], "id")
+    expect_equal(.moved$iniDf$condition[.moved$iniDf$name == "eta.ka"], "occ")
+    # and back to id
+    expect_message(.back <- .moved |> ini(eta.ka ~ 0.2 | id), "change .*eta.ka.* to vary by .*id")
+    expect_equal(.back$iniDf$condition[.back$iniDf$name == "eta.ka"], "id")
+    expect_equal(.back$iniDf$est[.back$iniDf$name == "eta.ka"], 0.2)
     # a matching condition says nothing
     .msgs <- testthat::capture_messages(.same <- .toUi |> ini(eta.occ ~ 0.3 | occ))
-    expect_false(any(grepl("keeping", .msgs)))
+    expect_false(any(grepl("vary by", .msgs)))
     expect_equal(.same$iniDf$est[.same$iniDf$name == "eta.occ"], 0.3)
+    # no condition keeps the level
+    .keep <- .toUi |> ini(eta.occ ~ 0.3)
+    expect_equal(.keep$iniDf$condition[.keep$iniDf$name == "eta.occ"], "occ")
+  })
+
+  test_that("a piped `| id` line between other eta lines is kept (#1773)", {
+    .f <- function() {
+      ini({
+        t1 <- 1
+        t2 <- 1
+        t3 <- 1
+        add.sd <- 0.1
+        eta.a ~ 0.1
+        eta.b ~ 0.2 | occ
+        eta.c ~ 0.3
+      })
+      model({
+        a <- exp(t1 + eta.a)
+        b <- exp(t2 + eta.b)
+        c <- exp(t3 + eta.c)
+        cp <- a + b + c
+        cp ~ add(add.sd)
+      })
+    }
+    .r <- suppressMessages(
+      rxode2(.f) |>
+        ini({
+      eta.a ~ 0.5
+      eta.b ~ 0.6 | id
+      eta.c ~ 0.7
+    })
+    )
+    .i <- .r$iniDf
+    expect_equal(.i$est[match(c("eta.a", "eta.b", "eta.c"), .i$name)], c(0.5, 0.6, 0.7))
+    expect_equal(unique(.i$condition[!is.na(.i$neta1)]), "id")
+  })
+
+  test_that("piping a block keeps the etas numbered level by level (#1773)", {
+    .f <- function() {
+      ini({
+        t1 <- 1
+        t2 <- 1
+        t3 <- 1
+        t4 <- 1
+        add.sd <- 0.1
+        eta.c ~ 0.3
+        eta.a + eta.b ~ c(0.1, 0.01, 0.2) | occ
+        eta.d ~ 0.4 | occ
+      })
+      model({
+        a <- exp(t1 + eta.a)
+        b <- exp(t2 + eta.b)
+        c <- exp(t3 + eta.c)
+        d <- exp(t4 + eta.d)
+        cp <- a + b + c + d
+        cp ~ add(add.sd)
+      })
+    }
+    .ui <- rxode2(.f)
+    .byLevel <- function(ui) {
+      .i <- ui$iniDf
+      expect_true(all(.i$neta1 >= .i$neta2, na.rm = TRUE))
+      .i <- .i[!is.na(.i$neta1) & .i$neta1 == .i$neta2, ]
+      .i <- .i[order(.i$neta1), ]
+      expect_equal(.i$neta1, seq_along(.i$neta1))
+      .i$name[.i$condition == "id"]
+    }
+    .back <- suppressMessages(.ui |> ini(eta.a + eta.b ~ c(0.2, 0.05, 0.2) | id))
+    expect_equal(.byLevel(.back), c("eta.c", "eta.a", "eta.b"))
+    expect_equal(unname(.back$omega$id["eta.a", "eta.b"]), 0.05)
+    expect_equal(dimnames(.back$omega$occ)[[1]], "eta.d")
+    .moved <- suppressMessages(.ui |> ini(eta.c ~ 0.1 | occ))
+    expect_equal(.byLevel(.moved), character(0))
+    .same <- suppressMessages(.ui |> ini(eta.a + eta.b ~ c(0.2, 0.05, 0.2)))
+    expect_equal(.byLevel(.same), "eta.c")
+  })
+
+  test_that("a kept `| id` line ends the row-form block before it (#1773)", {
+    .f <- function() {
+      ini({
+        t1 <- 1
+        t2 <- 1
+        add.sd <- 0.1
+        eta.a ~ 0.1
+        eta.b ~ 0.2 | occ
+      })
+      model({
+        a <- exp(t1 + eta.a)
+        b <- exp(t2 + eta.b)
+        cp <- a + b
+        cp ~ add(add.sd)
+      })
+    }
+    # a covariance with the line above can not reach past the `| id` line to
+    # eta.a, so it is an error rather than a covariance with the wrong eta
+    expect_error(suppressMessages(
+      rxode2(.f) |>
+        ini({
+      eta.a ~ 0.5
+      eta.b ~ 0.6 | id
+      t2 ~ c(0.01, 0.7)
+    })
+    ))
+  })
+
+  test_that("an eta added by model() becomes IOV through ini() (#1773)", {
+    .f <- function() {
+      ini({
+        tcl <- log(3)
+        eta.cl ~ 0.1
+        add.sd <- 0.1
+      })
+      model({
+        cl <- exp(tcl + eta.cl)
+        cp <- 100 / cl
+        cp ~ add(add.sd)
+      })
+    }
+    .direct <- function() {
+      ini({
+        tcl <- log(3)
+        eta.cl ~ 0.1
+        iov.cl ~ 0.02 | OCC
+        add.sd <- 0.1
+      })
+      model({
+        cl <- exp(tcl + eta.cl + iov.cl)
+        cp <- 100 / cl
+        cp ~ add(add.sd)
+      })
+    }
+    .a <- suppressMessages(.f |> model(cl <- exp(tcl + eta.cl + iov.cl)) |> ini(iov.cl ~ 0.02 | OCC))
+    .d <- rxode2(.direct)
+    expect_equal(.a$iniDf$condition[.a$iniDf$name == "iov.cl"], "OCC")
+    expect_equal(.a$iniDf$est[.a$iniDf$name == "iov.cl"], 0.02)
+    expect_equal(.a$omega, .d$omega)
+    expect_equal(.a$props$group, .d$props$group)
+    .ev <- data.frame(id = rep(1:2, each = 3), time = rep(0:2, 2), OCC = rep(c(1, 1, 2), 2))
+    set.seed(42)
+    .sa <- rxSolve(.a, .ev, addDosing = FALSE)
+    set.seed(42)
+    .sd <- rxSolve(.d, .ev, addDosing = FALSE)
+    expect_equal(.sa$cp, .sd$cp)
+  })
+
+  test_that("ini() piping refuses to move a correlated or repeated eta alone (#1773)", {
+    .to <- function() {
+      ini({
+        tka <- 0.1
+        tcl <- 0.2
+        eta.ka + eta.cl ~ c(0.1, 0.01, 0.1)
+        add.sd <- 0.2
+      })
+      model({
+        ka <- exp(tka + eta.ka)
+        cl <- exp(tcl + eta.cl)
+        d/dt(depot) <- -ka * depot - cl * depot
+        cp <- depot
+        cp ~ add(add.sd)
+      })
+    }
+    .toUi <- rxode2(.to)
+    expect_error(.toUi |> ini(eta.ka ~ 0.5 | occ), "correlated with 'eta.cl'")
+    # the whole block can move together
+    .moved <- suppressMessages(.toUi |> ini(eta.ka + eta.cl ~ c(0.2, 0.02, 0.3) | occ))
+    expect_equal(unique(.moved$iniDf$condition[!is.na(.moved$iniDf$neta1)]), "occ")
+    expect_equal(unname(.moved$omega$occ["eta.ka", "eta.cl"]), 0.02)
+  })
+
+  test_that("ini() piping refuses to move an eta in a same() block (#1773)", {
+    skipIfOldLotri()
+    .f <- function() {
+      ini({
+        tka <- 0.45
+        t1 <- 1
+        t2 <- 1
+        t3 <- 1
+        t4 <- 1
+        add.sd <- 0.7
+        iov.a1 + iov.b1 ~ c(0.1, 0, 0.2)
+        iov.a2 + iov.b2 ~ same()
+        eta.ka ~ 0.6
+      })
+      model({
+        ka <- exp(tka + eta.ka)
+        k1 <- exp(t1 + iov.a1)
+        k2 <- exp(t2 + iov.b1)
+        k3 <- exp(t3 + iov.a2)
+        k4 <- exp(t4 + iov.b2)
+        d/dt(depot) <- -(ka + k1 + k2 + k3 + k4) * depot
+        depot ~ add(add.sd)
+      })
+    }
+    .ui <- rxode2(.f)
+    expect_error(.ui |> ini(iov.b1 ~ 0.3 | occ), "same()")
+    expect_error(.ui |> ini(iov.a2 ~ 0.3 | occ), "same()")
+    .moved <- suppressMessages(.ui |> ini(eta.ka ~ 0.3 | occ))
+    expect_equal(.moved$iniDf$condition[.moved$iniDf$name == "eta.ka"], "occ")
+  })
+
+  test_that("piping part of a correlated block drops its covariances with the rest", {
+    .f <- function() {
+      ini({
+        t1 <- 1
+        t2 <- 1
+        t3 <- 1
+        add.sd <- 0.1
+        eta.a + eta.b + eta.c ~ c(0.1, 0.01, 0.2, 0.02, 0.03, 0.3)
+      })
+      model({
+        a <- exp(t1 + eta.a)
+        b <- exp(t2 + eta.b)
+        c <- exp(t3 + eta.c)
+        cp <- a + b + c
+        cp ~ add(add.sd)
+      })
+    }
+    .ui <- rxode2(.f)
+    for (.cond in list(NULL, "occ")) {
+      .line <- if (is.null(.cond)) {
+        quote(eta.a + eta.b ~ c(0.2, 0.05, 0.2))
+      } else {
+        quote(eta.a + eta.b ~ c(0.2, 0.05, 0.2) | occ)
+      }
+      expect_message(
+        .r <- eval(bquote(ini(.ui, .(.line)))),
+        "correlations may have been dropped"
+      )
+      .i <- .r$iniDf
+      .e <- .i[!is.na(.i$neta1), ]
+      expect_false(anyNA(.e$neta2))
+      expect_setequal(.e$name, c("eta.a", "eta.b", "eta.c", "(eta.a,eta.b)"))
+      .om <- .r$omega
+      if (is.null(.cond)) {
+        expect_equal(unname(.om["eta.a", "eta.b"]), 0.05)
+        expect_equal(unname(.om["eta.a", "eta.c"]), 0)
+      } else {
+        expect_equal(unname(.om$occ["eta.a", "eta.b"]), 0.05)
+        expect_equal(dimnames(.om$id)[[1]], "eta.c")
+      }
+    }
   })
 
   test_that("piping a ui's ini() keeps the covariance of two shared etas", {
@@ -1438,9 +1680,7 @@ rxTest({
     expect_equal(.iniDf$label[.iniDf$name == "eta.ka"], "ka BSV")
   })
 
-  test_that("ini() piping does not build a covariance across two levels", {
-    # the etas keep their own levels, so a covariance bridging them cannot be
-    # assembled into an omega at all
+  test_that("ini() piping a block with a condition moves every eta to it (#1773)", {
     .to <- function() {
       ini({
         tka <- 0.1
@@ -1456,12 +1696,11 @@ rxTest({
       })
     }
     .toUi <- rxode2(.to)
-    expect_message(.piped <- .toUi |> ini(eta.a + eta.b ~ c(0.1, 0.01, 0.2) | occ), "not adding a covariance")
-    expect_false("(eta.a,eta.b)" %in% .piped$iniDf$name)
-    # the omega assembles, which it cannot do with a cross level covariance
+    expect_message(.piped <- .toUi |> ini(eta.a + eta.b ~ c(0.1, 0.01, 0.2) | occ), "change .*eta.a.* to vary by")
+    expect_equal(.piped$iniDf$condition[.piped$iniDf$name == "(eta.a,eta.b)"], "occ")
     .omega <- .piped$omega
-    expect_equal(.omega$id, lotri::lotri(eta.a ~ 0.1))
-    expect_equal(.omega$occ, lotri::lotri(eta.b ~ 0.2))
+    expect_equal(names(.omega), "occ")
+    expect_equal(.omega$occ, lotri::lotri(eta.a + eta.b ~ c(0.1, 0.01, 0.2) | occ)$occ)
   })
 })
 
