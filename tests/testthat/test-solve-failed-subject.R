@@ -36,6 +36,10 @@ rxTest({
       error = conditionMessage
     )
   }
+  # the printed lines without the failed-solve diagnostics (test-solve-diag.R)
+  .noDiag <- function(o) {
+    o[!grepl("^\\[solve error: (last derivative|non-finite|states span)", o)]
+  }
   .fsReason <- function(ids) {
     paste0(
       "[solve error: Modeled rate requested in event table, but not in model; use 'rate(cmt) =']: ",
@@ -288,7 +292,11 @@ rxTest({
     .p <- data.frame(ID = 101:104, k = c(1, 1, Inf, 1))
     for (.meth in c("f45", "dop54", "cvode")) {
       .o <- .cap(suppressWarnings(rxSolve(.m, .d, params = .p, method = .meth)))
-      expect_identical(.o, paste0("[solve error: ", .solverFail, "]: 1 warning(s) for subject(s): 103"), label = .meth)
+      expect_identical(
+        .noDiag(.o),
+        paste0("[solve error: ", .solverFail, "]: 1 warning(s) for subject(s): 103"),
+        label = .meth
+      )
     }
     # a step limit every subject reaches: odeinter.h's checker (rk4, ab), and
     # cvode's negative return, which has no IDID text
@@ -392,7 +400,7 @@ rxTest({
         expect_true(grepl(.own[[.meth]], .s$o[1]), label = .meth)
         expect_identical(.s$o[length(.s$o)] == .line, .meth %in% .ownReason, label = .meth)
       } else {
-        expect_identical(.s$o, .line, label = .meth)
+        expect_identical(.noDiag(.s$o), .line, label = .meth)
       }
     }
     expect_identical(.n, length(.meths) - length(.skip))
@@ -450,7 +458,7 @@ rxTest({
         expect_identical(.ok, .ref$d[, c("time", "y")], label = .lab)
         expect_true(all(is.na(.s$d$y[.s$d$id == "103"])), label = .lab)
         expect_identical(unique(.s$w), .msg, label = .lab)
-        expect_identical(.s$o, .line, label = .lab)
+        expect_identical(.noDiag(.s$o), .line, label = .lab)
       }
     }
   })
@@ -489,7 +497,7 @@ rxTest({
     .w <- capture_warnings(.o <- .cap(.s <- as.data.frame(rxSolve(.m, .d, params = .p, method = "cvode"))))
     expect_identical(unique(.w), "some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'")
     expect_true(all(is.na(.s$y[.s$id == "103"])))
-    expect_identical(.o, paste0("[solve error: ", .solverFail, "]: 1 warning(s) for subject(s): 103"))
+    expect_identical(.noDiag(.o), paste0("[solve error: ", .solverFail, "]: 1 warning(s) for subject(s): 103"))
     .ref <- as.data.frame(rxSolve(.m, .d[.d$ID != 103, ], params = .p[.p$ID != 103, ], method = "cvode"))
     .ok <- .s[.s$id != "103", c("time", "y")]
     rownames(.ok) <- NULL

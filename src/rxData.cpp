@@ -38,6 +38,7 @@
 #include "rxode2lincmtLink.h"
 #include "rxMemAvail.h"
 #include "solveWarn.h"
+#include "solveDiag.h"
 #include "strncmp.h"
 #include "rxode2_altrep.h"
 #include "rxode2_df.h"
@@ -7495,6 +7496,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     CharacterVector state = rxSolveDat->mv[RxMv_state];
     CharacterVector lhs = rxSolveDat->mv[RxMv_lhs];
     op->neq = state.size();
+    rxSolveDiagSetup(state);
     int numLinSens, numLin, depotLin;
     getLinInfo(rxSolveDat->mv, numLinSens, numLin, depotLin);
     op->numLinSens = numLinSens;
