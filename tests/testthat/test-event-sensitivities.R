@@ -2161,12 +2161,13 @@ rxTest({
       for (.k in names(.cases)) {
         .cs <- .cases[[.k]]
         .etas <- c("eta_f", "eta_l", if (!is.null(.cs$q)) "eta_q")
-        .mod <- paste(c(
+        .lines <- c(
           sprintf("f(%s) <- exp(tf + eta_f)", .tgt),
           sprintf("alag(%s) <- exp(tl + eta_l)", .tgt),
           if (!is.null(.cs$q)) sprintf(.cs$q, .tgt),
           .ode
-        ), collapse = "\n      ")
+        )
+        .mod <- paste(.lines, collapse = "\n      ")
         e <- et(amt = 100, rate = .cs$rate, dur = .cs$dur, cmt = .tgt) |>
           et(amt = 50, time = 6.3, rate = .cs$rate, dur = .cs$dur, cmt = .tgt) |>
           et(.obs)
@@ -2184,8 +2185,7 @@ rxTest({
           for (.st in c("depot", "central")) {
             .info <- paste(.tgt, .k, .q, .st)
             fd <- (sp[[.st]] - sm[[.st]]) / (2 * h)
-            expect_equal(s2[[sprintf("rx__sens_%s_BY_%s__", .st, .q)]], fd,
-                         tolerance = 1e-6, info = .info)
+            expect_equal(s2[[sprintf("rx__sens_%s_BY_%s__", .st, .q)]], fd, tolerance = 1e-6, info = .info)
             for (.p in .etas) {
               .c1 <- sprintf("rx__sens_%s_BY_%s__", .st, .p)
               .c2 <- sprintf("rx__sens_%s_BY_%s_BY_%s__", .st, .p, .q)
