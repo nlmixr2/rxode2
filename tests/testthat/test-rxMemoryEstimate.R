@@ -891,7 +891,13 @@ rxTest({
     expect_equal(.rxMemAdjDims(rxModelVars(.b$model)), c(2L, 2L))
     expect_equal(
       as.numeric(.adj$adjointWork),
-      as.numeric(rxMemoryAdjointComponents_(2L, 2L, 2L, as.double(nrow(.ev))))
+      as.numeric(rxMemoryAdjointComponents_(
+        length(rxModelVars(.b$model)$state),
+        2L,
+        2L,
+        2L,
+        as.double(nrow(.ev))
+      ))
     )
     expect_gt(as.numeric(.adj$adjointWork), 0)
     .meta <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes", "freeRamBytes", "effectiveSubs")

@@ -722,6 +722,20 @@ rxSetupScale <- function(obj, scale = NULL, extraArgs = NULL) {
     .Call(`_rxode2_rxSetupScale`, obj, scale, extraArgs)
 }
 
+#' The adjoint backward-work arena of the last solve
+#'
+#' Test hook: for the last solve that set up the arena, the doubles per thread
+#' slice, the slices, how many requests sized at setup went to the heap because
+#' the arena could not serve them (should be 0), and how many period-tape
+#' allocations (always heap) there were.
+#'
+#' @return Named numeric vector \code{perThread}, \code{slots}, \code{spills},
+#'   \code{tapes}.
+#' @noRd
+rxAdjWorkStats_ <- function() {
+    .Call(`_rxode2_rxAdjWorkStats_`)
+}
+
 atolRtolFactor_ <- function(factor) {
     invisible(.Call(`_rxode2_atolRtolFactor_`, factor))
 }
@@ -1177,24 +1191,23 @@ rxMemoryComponents_ <- function(neq, stateSize, nlhs, npars, neta, neps, ncov, n
     .Call(`_rxode2_rxMemoryComponents_`, neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, ndosesTotal, maxAllTimes, stiff, doIndLin, indOwnAlloc, sample, nDelayState)
 }
 
-#' Report the byte sizes of an adjoint method's steady-state backward work
+#' Report the byte sizes of an adjoint method's backward-work arena
 #'
-#' Per thread, the backward pass of an adjoint expansion keeps the per-subject
-#' dual vectors (dF/dtheta, d rate/dtheta, dx0/dtheta and the steady-state
-#' sensitivity of the window start) and, for every interior \code{ss = 1}
-#' dose, its own steady-state sensitivity and state plus a step-to-event map.
-#' \code{maxAllTimes} bounds both the ss doses and the record steps of the
-#' busiest subject.  Not counted: the per-period Jacobian tapes, which scale
-#' with the integrator's adaptive step count.
+#' The arena that \code{rxSolve()} adds at the end of \code{gsolve} for an
+#' adjoint expansion: one slice per thread of \code{rxAdjWorkPerThread()}
+#' doubles (\code{inst/include/rxMemoryCalc.h}), the layout
+#' \code{src/rxData.cpp} carves.  Not counted: the per-period Jacobian tapes,
+#' sized by the recorded period's steps, which take the heap.
 #'
+#' @param neq Number of ODE states (\code{op->neq}).
 #' @param nBase Number of base (non-adjoint) states (\code{op->adjNbase}).
 #' @param np Number of sensitivity parameters (\code{op->adjNp}).
 #' @param cores Number of parallel OMP threads.
 #' @param maxAllTimes Maximum events for any single subject.
 #' @return Named numeric vector with \code{adjointWork} bytes.
 #' @noRd
-rxMemoryAdjointComponents_ <- function(nBase, np, cores, maxAllTimes) {
-    .Call(`_rxode2_rxMemoryAdjointComponents_`, nBase, np, cores, maxAllTimes)
+rxMemoryAdjointComponents_ <- function(neq, nBase, np, cores, maxAllTimes) {
+    .Call(`_rxode2_rxMemoryAdjointComponents_`, neq, nBase, np, cores, maxAllTimes)
 }
 
 #' Report the byte sizes of a GPU method's solve allocations
@@ -1415,4 +1428,3 @@ binomProbs_ <- function(x, probs, naRm, nIn, cont) {
 meanProbs_ <- function(x, probs, naRm, useT, pred, nIn) {
     .Call(`_rxode2_meanProbs_`, x, probs, naRm, useT, pred, nIn)
 }
-

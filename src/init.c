@@ -973,7 +973,8 @@ SEXP _rxode2_mlogit_f(SEXP x, SEXP p);
 SEXP _rxode2_mlogit_j(SEXP x);
 SEXP _rxode2_rxMemoryComponents_(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP);
 SEXP _rxode2_rxMemoryGpuComponents_(SEXP,SEXP,SEXP,SEXP);
-SEXP _rxode2_rxMemoryAdjointComponents_(SEXP,SEXP,SEXP,SEXP);
+SEXP _rxode2_rxMemoryAdjointComponents_(SEXP,SEXP,SEXP,SEXP,SEXP);
+SEXP _rxode2_rxAdjWorkStats_(void);
 SEXP _rxode2_rxRamBytes_(void);
 SEXP _rxode2_rxSolveSetCurObj_(SEXP);
 
@@ -1244,7 +1245,8 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxErf", (DL_FUNC) &_rxode2_rxErf, 1},
     {"_rxode2_rxMemoryComponents_", (DL_FUNC) &_rxode2_rxMemoryComponents_, 25},
     {"_rxode2_rxMemoryGpuComponents_", (DL_FUNC) &_rxode2_rxMemoryGpuComponents_, 4},
-    {"_rxode2_rxMemoryAdjointComponents_", (DL_FUNC) &_rxode2_rxMemoryAdjointComponents_, 4},
+    {"_rxode2_rxMemoryAdjointComponents_", (DL_FUNC) &_rxode2_rxMemoryAdjointComponents_, 5},
+    {"_rxode2_rxAdjWorkStats_", (DL_FUNC) &_rxode2_rxAdjWorkStats_, 0},
     {"_rxode2_rxRamBytes_", (DL_FUNC) &_rxode2_rxRamBytes_, 0},
     {"_rxode2_rxSaveState_", (DL_FUNC) _rxode2_rxSaveState_, 0},
     {"_rxode2_rxIsSerializeFile_", (DL_FUNC) _rxode2_rxIsSerializeFile_, 1},

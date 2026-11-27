@@ -682,7 +682,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     }
   }
 
-  std::vector<double> dx0V;                         // parameter-dependent initial conditions
+  rxAdjVec dx0V;                                    // parameter-dependent initial conditions
   rk4sIniDx0(op, ind, cSub, t0, eff, nBase, np, dx0V);
   const double *dx0P = dx0V.empty() ? NULL : dx0V.data();
   for (int oi = (int)obsT.size() - 1; bok && oi >= 0; --oi) {
@@ -910,6 +910,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
 
 extern "C" void ind_cvodesadj_0(rx_solve *rx, rx_solving_options *op, int solveid,
                                 int *neq, t_dydt c_dydt, t_update_inis u_inis) {
+  rxAdjArenaScope _adjArena(op->cores);   // this subject's backward work (src/rxAdjArena.h)
   clock_t tclk = clock();
   neq[1] = solveid; // subject id, not an rx->ordId position
   rx_solving_options_ind *ind = &(rx->subjects[neq[1]]);

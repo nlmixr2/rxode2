@@ -271,4 +271,34 @@ rxTest({
       expect_equal(nrow(.a), 3L, label = .m)
     }
   })
+
+  test_that("the ss backward work comes from the adjoint arena, not the heap", {
+    .evs <- list(
+      bolus = et(amt = 50, cmt = "depot") |>
+        et(amt = 100, cmt = "depot", time = 5, ss = 1, ii = 12) |>
+        et(c(1, 3, 6, 12)),
+      infusion = et(amt = 50, cmt = "depot") |>
+        et(amt = 100, cmt = "center", time = 5, rate = 20, ss = 1, ii = 12) |>
+        et(c(1, 3, 6, 12)),
+      continuous = et(amt = 50, cmt = "depot") |>
+        et(amt = 0, cmt = "center", time = 5, rate = 10, ss = 1) |>
+        et(c(1, 3, 6, 12))
+    )
+    for (.nm in names(.evs)) {
+      for (.m in c(.rk4sFamily, "liblsodaadj")) {
+        for (.cores in 1:2) {
+          rxSolveAdjointRk4(.txt, .evs[[.nm]], params = .p, calcSens = names(.p), method = .m, cores = .cores)
+          .st <- rxAdjWorkStats_()
+          .lab <- paste(.nm, .m, .cores)
+          expect_equal(unname(.st["slots"]), .cores, label = .lab)
+          expect_gt(unname(.st["perThread"]), 0, label = .lab)
+          ## everything sized at solve setup fits its thread's slice
+          expect_equal(unname(.st["spills"]), 0, label = .lab)
+        }
+      }
+    }
+    ## a solve without an adjoint expansion sets up no arena
+    rxSolve(rxode2(.txt), .evs$bolus, params = .p)
+    expect_equal(unname(rxAdjWorkStats_()[c("perThread", "slots")]), c(0, 0))
+  })
 })

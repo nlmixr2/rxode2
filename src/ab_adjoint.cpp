@@ -19,6 +19,7 @@
 
 extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neqUnused,
                              t_dydt c_dydt, t_update_inis u_inis) {
+  rxAdjArenaScope _adjArena(op->cores);   // this subject's backward work (src/rxAdjArena.h)
   (void) neqUnused;
   int cSub = solveid; // subject id, not an rx->ordId position
   rx_solving_options_ind *ind = &(rx->subjects[cSub]);
@@ -113,7 +114,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
     for (int b=0;b<nBase;++b) lamIn[b] += sb[b] + tmp[b];
   };
 
-  std::vector<double> dx0V;                         // parameter-dependent initial conditions
+  rxAdjVec dx0V;                                    // parameter-dependent initial conditions
   rk4sIniDx0(op, ind, cSub, abAdjCalls[0].t0, eff, nBase, np, dx0V);
   const double *dx0P = dx0V.empty() ? NULL : dx0V.data();
   std::vector<double> endCostate(nBase), lam;

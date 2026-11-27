@@ -14,6 +14,7 @@
 #include <string.h>
 #include <stdint.h>
 #include "rxSbufFormat.h"
+extern "C" void rxAdjWorkSet(double *base, int64_t per, int slots);
 
 using namespace Rcpp;
 
@@ -22,7 +23,9 @@ extern "C" void rxOptionsIniEnsure(int mx, int cores);
 extern rx_globals _globals;
 
 static const char rxSerializeMagic[8] = {'R','X','O','D','E','2','S','Z'};
-static const uint32_t rxSerializeFormatVer = 12u;
+static const uint32_t rxSerializeFormatVer = 13u;
+// Format 13 appended op->adjNbase and op->adjNp (the adjoint expansion, which
+// sizes the backward-work arena at the end of gsolve) after numLinCarry.
 // Format 12 appended op->numLinCarry (the linCmt() carry states) after
 // indOwnAlloc.
 // Format 11 appended each subject's ind->addlParent (an addl repeat's offset
@@ -192,6 +195,7 @@ SEXP rxSaveState_() {
   W_I32(linCmtOriginMask); W_I32(ssSolved);
   W_I32(indOwnAlloc);
   W_I32(numLinCarry);
+  W_I32(adjNbase); W_I32(adjNp);
 
 #undef W_I32
 #undef W_U32
@@ -812,6 +816,11 @@ SEXP rxRestoreState_(SEXP rawSexp) {
   } else {
     op->numLinCarry = 0;
   }
+  if (fmt >= 13u) {
+    R_I32(adjNbase); R_I32(adjNp);
+  } else {
+    op->adjNbase = 0; op->adjNp = 0;
+  }
 
 #undef R_I32
 #undef R_DBL
@@ -918,12 +927,15 @@ SEXP rxRestoreState_(SEXP rawSexp) {
     (int64_t)n4_saved, (int64_t)n6_saved,
     &_mem);
 
+  // the adjoint backward-work arena after the rest (mirrors rxData.cpp)
+  const int64_t _adjPer = rxAdjWorkPerThread(op->neq, op->adjNbase, op->adjNp, rx->maxAllTimes);
   if (_globals.gsolve != NULL) free(_globals.gsolve);
-  _globals.gsolve = (double *)calloc(_mem.gsolve_total, sizeof(double));
+  _globals.gsolve = (double *)calloc(_mem.gsolve_total + _adjPer * op->cores, sizeof(double));
   if (!_globals.gsolve) {
-    
+    rxAdjWorkSet(NULL, 0, 0);
     (Rf_error)("rxRestoreState: out of memory for gsolve");
   }
+  rxAdjWorkSet(_globals.gsolve + _mem.gsolve_total, _adjPer, op->cores);
 
   // Re-establish gsolve pointer layout (mirrors rxData.cpp exactly)
   _globals.gLin        = _globals.gsolve     + _mem.n0;

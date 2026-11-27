@@ -1616,6 +1616,62 @@ struct rxEtTransStrCmpParamsGuard {
 
 rx_globals _globals;
 
+// The adjoint backward-work arena (src/rxAdjArena.h)
+#include "rxAdjArena.h"
+thread_local rxAdjArenaState rxAdjTls;
+static unsigned _rxAdjWorkGen = 0;
+static uint64_t _rxAdjWorkSpills = 0;   // heap requests since the arena was last set
+static uint64_t _rxAdjWorkTapes = 0;    // of those, the per-period tapes (always heap)
+static int64_t _rxAdjLastPer = 0;       // the last arena set, for rxAdjWorkStats_()
+static int _rxAdjLastSlots = 0;
+extern "C" void rxAdjWorkSpill(int tape) {
+  __atomic_add_fetch(tape ? &_rxAdjWorkTapes : &_rxAdjWorkSpills, (uint64_t)1, __ATOMIC_RELAXED);
+}
+extern "C" unsigned rxAdjWorkGen(void) { return __atomic_load_n(&_rxAdjWorkGen, __ATOMIC_ACQUIRE); }
+extern "C" double *rxAdjWorkSlab(int slot, int64_t *n) {
+  *n = 0;
+  if (_globals.gAdjWork == NULL || slot < 0 || slot >= _globals.gAdjWorkSlots) return NULL;
+  *n = _globals.gAdjWorkPer;
+  return _globals.gAdjWork + (int64_t)slot * _globals.gAdjWorkPer;
+}
+extern "C" int rxAdjWorkOwns(const void *p) {
+  const double *d = (const double *)p;
+  return _globals.gAdjWork != NULL && d >= _globals.gAdjWork &&
+    d < _globals.gAdjWork + (int64_t)_globals.gAdjWorkSlots * _globals.gAdjWorkPer;
+}
+// Point the arena at `base` (the end of a fresh gsolve), or drop it
+extern "C" void rxAdjWorkSet(double *base, int64_t per, int slots) {
+  _globals.gAdjWork = (per > 0 && slots > 0) ? base : NULL;
+  _globals.gAdjWorkPer = (_globals.gAdjWork != NULL) ? per : 0;
+  _globals.gAdjWorkSlots = (_globals.gAdjWork != NULL) ? slots : 0;
+  if (base != NULL) {   // a new solve: its own counts
+    __atomic_store_n(&_rxAdjWorkSpills, (uint64_t)0, __ATOMIC_RELAXED);
+    __atomic_store_n(&_rxAdjWorkTapes, (uint64_t)0, __ATOMIC_RELAXED);
+    _rxAdjLastPer = _globals.gAdjWorkPer;
+    _rxAdjLastSlots = _globals.gAdjWorkSlots;
+  }
+  __atomic_add_fetch(&_rxAdjWorkGen, 1u, __ATOMIC_ACQ_REL);
+}
+
+//' The adjoint backward-work arena of the last solve
+//'
+//' Test hook: for the last solve that set up the arena, the doubles per thread
+//' slice, the slices, how many requests sized at setup went to the heap because
+//' the arena could not serve them (should be 0), and how many period-tape
+//' allocations (always heap) there were.
+//'
+//' @return Named numeric vector \code{perThread}, \code{slots}, \code{spills},
+//'   \code{tapes}.
+//' @noRd
+// [[Rcpp::export]]
+NumericVector rxAdjWorkStats_() {
+  return NumericVector::create(
+    Named("perThread") = (double)_rxAdjLastPer,
+    Named("slots") = (double)_rxAdjLastSlots,
+    Named("spills") = (double)__atomic_load_n(&_rxAdjWorkSpills, __ATOMIC_RELAXED),
+    Named("tapes") = (double)__atomic_load_n(&_rxAdjWorkTapes, __ATOMIC_RELAXED));
+}
+
 #include "extraDosing.h"
 
 // ---------------------------------------------------------------------------
@@ -2135,6 +2191,7 @@ extern "C" void gFree(){
   _globals.gSampleCov=NULL;
   if (_globals.gsolve != NULL) free(_globals.gsolve);
   _globals.gsolve=NULL;
+  rxAdjWorkSet(NULL, 0, 0);
   if (_globals.gon != NULL) free(_globals.gon);
   _globals.gon=NULL;
   if (_globals.gpars != NULL) free(_globals.gpars);
@@ -7728,8 +7785,12 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
     // Guard 2: platform-specific available-memory check (advisory; see rxMemAvail.h).
     // Returns UINT64_MAX on unsupported platforms, skipping the check.
+    // the adjoint backward-work arena, one slice per thread, after the rest
+    // (empty unless op->adjoint set adjNbase/adjNp above)
+    const int64_t _adjPer = rxAdjWorkPerThread(op->neq, op->adjNbase, op->adjNp, rx->maxAllTimes);
+    const int64_t _adjN = _adjPer * op->cores;
     {
-      uint64_t _needed = (uint64_t)_mem.gsolve_total * sizeof(double);
+      uint64_t _needed = (uint64_t)(_mem.gsolve_total + _adjN) * sizeof(double);
       uint64_t _avail  = rxAvailableMemoryBytes();
       if (_avail != UINT64_MAX && _needed > _avail) {
         rxSolveFree();
@@ -7740,7 +7801,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       }
     }
     if (_globals.gsolve != NULL) free(_globals.gsolve);
-    _globals.gsolve = (double*)calloc(_mem.gsolve_total, sizeof(double));
+    _globals.gsolve = (double*)calloc(_mem.gsolve_total + _adjN, sizeof(double));
 #ifdef rxSolveT
     RSprintf("Time12c (double alloc): %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
@@ -7748,8 +7809,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     if (_globals.gsolve == NULL) {
       rxSolveFree();
       stop(_("could not allocate enough memory for solving (%.1f GB requested)"),
-           (double)_mem.gsolve_total * sizeof(double) / 1e9);
+           (double)(_mem.gsolve_total + _adjN) * sizeof(double) / 1e9);
     }
+    rxAdjWorkSet(_globals.gsolve + _mem.gsolve_total, _adjPer, op->cores);
     // Pointer layout within gsolve -- field names match rx_mem_layout members.
     _globals.gLin        = _globals.gsolve     + _mem.n0;
     _globals.gLlikSave   = _globals.gLin        + _mem.nlin;

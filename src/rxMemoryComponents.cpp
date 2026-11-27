@@ -275,16 +275,15 @@ NumericVector rxMemoryComponents_(
   return out;
 }
 
-//' Report the byte sizes of an adjoint method's steady-state backward work
+//' Report the byte sizes of an adjoint method's backward-work arena
 //'
-//' Per thread, the backward pass of an adjoint expansion keeps the per-subject
-//' dual vectors (dF/dtheta, d rate/dtheta, dx0/dtheta and the steady-state
-//' sensitivity of the window start) and, for every interior \code{ss = 1}
-//' dose, its own steady-state sensitivity and state plus a step-to-event map.
-//' \code{maxAllTimes} bounds both the ss doses and the record steps of the
-//' busiest subject.  Not counted: the per-period Jacobian tapes, which scale
-//' with the integrator's adaptive step count.
+//' The arena that \code{rxSolve()} adds at the end of \code{gsolve} for an
+//' adjoint expansion: one slice per thread of \code{rxAdjWorkPerThread()}
+//' doubles (\code{inst/include/rxMemoryCalc.h}), the layout
+//' \code{src/rxData.cpp} carves.  Not counted: the per-period Jacobian tapes,
+//' sized by the recorded period's steps, which take the heap.
 //'
+//' @param neq Number of ODE states (\code{op->neq}).
 //' @param nBase Number of base (non-adjoint) states (\code{op->adjNbase}).
 //' @param np Number of sensitivity parameters (\code{op->adjNp}).
 //' @param cores Number of parallel OMP threads.
@@ -292,16 +291,9 @@ NumericVector rxMemoryComponents_(
 //' @return Named numeric vector with \code{adjointWork} bytes.
 //' @noRd
 // [[Rcpp::export]]
-NumericVector rxMemoryAdjointComponents_(int nBase, int np, int cores, double maxAllTimes) {
-  double b = 0.0;
-  if (nBase > 0 && np > 0) {
-    const double nnp = (double)nBase * np;
-    const double perSub = 6.0 * nnp * sizeof(double) +
-      maxAllTimes * (nnp + nBase) * sizeof(double) +
-      (maxAllTimes + 1.0) * sizeof(int);
-    b = (double)(cores > 0 ? cores : 1) * perSub;
-  }
-  return NumericVector::create(Named("adjointWork") = b);
+NumericVector rxMemoryAdjointComponents_(int neq, int nBase, int np, int cores, double maxAllTimes) {
+  const double per = (double)rxAdjWorkPerThread(neq, nBase, np, (int)maxAllTimes);
+  return NumericVector::create(Named("adjointWork") = (double)(cores > 0 ? cores : 1) * per * sizeof(double));
 }
 
 //' Report the byte sizes of a GPU method's solve allocations

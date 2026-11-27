@@ -5,6 +5,7 @@
 #include <vector>
 #include <cstring>
 #include "../inst/include/rxMemAlloc.h"
+#include "rxAdjArena.h"
 #include <R_ext/RS.h>      // F77_CALL, FCONE
 #include <R_ext/Lapack.h>  // dgetrf / dgetrs (robust LU for the Rosenbrock W)
 
@@ -47,12 +48,12 @@ struct rk4s_infus { size_t onStep, offStep; int cmt; double R, amt, durMult, amt
 // lambda^T dX0/dp wherever the state takes its initial condition: the window
 // start, and every reset (which restores it).
 static inline void rk4sIniDx0(rx_solving_options *op, rx_solving_options_ind *ind, int cSub,
-                              double t0, int eff, int nBase, int np, std::vector<double> &dx0) {
+                              double t0, int eff, int nBase, int np, rxAdjVec &dx0) {
   dx0.clear();
   if (op->adjDx0Off < 0) return;
   std::vector<double> a(eff, 0.0);
   calc_lhs(cSub, t0, a.data(), ind->lhs);
-  rxMemAssign(adjointWork, dx0, ind->lhs + op->adjDx0Off, ind->lhs + op->adjDx0Off + nBase * np);
+  rxAdjAssign(dx0, ind->lhs + op->adjDx0Off, ind->lhs + op->adjDx0Off + nBase * np);
 }
 
 static inline void rk4sAddIni(const double *dx0, const double *lam, double *mu, int nBase, int np) {
@@ -68,7 +69,7 @@ static inline void rk4sAddIni(const double *dx0, const double *lam, double *mu, 
 // rk4sIniOnlyFill: a bolus adds amt * dF/dp to its compartment's row, a
 // replace zeroes the row and a multiply scales it.
 static inline void rk4sIniOnlyDose(rx_solving_options *op, rx_solving_options_ind *ind, int i, int ev, double t0,
-                                   const std::vector<double> &dF, std::vector<double> &s,
+                                   const rxAdjVec &dF, rxAdjVec &s,
                                    int nBase, int np) {
   int wh, c, wh100, whI, wh0;
   getWh(ev, &wh, &c, &wh100, &whI, &wh0);
@@ -96,16 +97,16 @@ static inline void rk4sIniOnlyDose(rx_solving_options *op, rx_solving_options_in
 static inline void rk4sIniOnlyFill(rx_solving_options *op, rx_solving_options_ind *ind, int cSub,
                                    int nBase, int np, int sensOff) {
   double t0 = getAllTimes(ind, 0);
-  std::vector<double> dx0, dF;
+  rxAdjVec dx0, dF;
   rk4sIniDx0(op, ind, cSub, t0, rxEffNeq(ind, op), nBase, np, dx0);
   if (op->adjDfOff >= 0) {   // ind->lhs was just evaluated at t0 when dx0 was
     if (dx0.empty()) {
       std::vector<double> a(rxEffNeq(ind, op), 0.0);
       calc_lhs(cSub, t0, a.data(), ind->lhs);
     }
-    rxMemAssign(adjointWork, dF, ind->lhs + op->adjDfOff, ind->lhs + op->adjDfOff + nBase * np);
+    rxAdjAssign(dF, ind->lhs + op->adjDfOff, ind->lhs + op->adjDfOff + nBase * np);
   }
-  std::vector<double> s(nBase * np, 0.0);
+  rxAdjVec s(nBase * np, 0.0);
   if (!dx0.empty()) s = dx0;
   for (int i = 0; i < ind->n_all_times; ++i) {
     int ev = getEvid(ind, ind->ix[i]);
@@ -115,7 +116,7 @@ static inline void rk4sIniOnlyFill(rx_solving_options *op, rx_solving_options_in
       continue;
     }
     if (ev == 3) {
-      if (dx0.empty()) rxMemAssign(adjointWork, s, s.size(), 0.0);
+      if (dx0.empty()) rxAdjAssign(s, s.size(), 0.0);
       else s = dx0;
       continue;
     }
@@ -7709,7 +7710,7 @@ static const double *rk4sBuildInfusMaps(rx_solving_options *op, rx_solving_optio
 // continuous infusion) at the constant state y.  A window-start entry (step 0)
 // keeps only the bolus cmt/amtRaw, for the bioavailability term.
 struct rk4s_ss1Ev {
-  size_t step = 0; int kind = 0; std::vector<double> y; rk4s_rec rec;
+  size_t step = 0; int kind = 0; rxAdjVec y; rk4s_rec rec;
   int cmt = -1; double amtRaw = 0.0, ii = 0.0;                      // bolus
   bool inf = false; int infCmt = -1; double dur = 0.0, dur2 = 0.0, rate = 0.0, rate2 = 0.0;
   int mdl = 0; double mdlAmt = 0.0, mdlAmtRaw = 0.0; size_t onSteps = 0;   // modeled rate()/dur()
@@ -7721,7 +7722,7 @@ struct rk4s_ss1Ev {
 // its ON then OFF phase (onSteps = the ON->OFF step).
 static void rk4sRecordSs1Period(rx_solving_options_ind *ind, rx_solving_options *op, t_dydt dydt,
                                 int *neq, const rksTableau &T, int nAll, rk4s_ss1Ev &E) {
-  std::vector<double> y = E.y, scratch;
+  std::vector<double> y(E.y.begin(), E.y.end()), scratch;
   if (E.inf) {
     double saved = ind->InfusionRate[E.infCmt], t = 0.0;
     if (E.dur > 0.0) {
@@ -7755,16 +7756,16 @@ struct rk4sSsIc {
   std::vector<double> S2; std::vector<char> isSs2;                 // ss=2 superposition
   const std::vector<size_t> *ss2Steps = NULL, *boundarySs2 = NULL;
   // interior ss=1 events: SssK[z] = dY_ss/dp of event z (ss1Steps[z] > 0), from
-  // its own period or constant state; ss1At[step] = the last event at that step.
-  std::vector<std::vector<double> > SssK; std::vector<int> ss1At;
+  // its own period or constant state (ss1EventAt() finds an event by step).
+  std::vector<rxAdjVec, rxAdjAlloc<rxAdjVec> > SssK;
   const std::vector<size_t> *ss1Steps = NULL, *boundarySs1 = NULL;
   // bioavailability of an ss bolus: dY_ss/dp gains sum_j (M^T)^j e_cmt * amtRaw *
   // dF[cmt] over j >= fFrom (rk4s: j = 0 is the dose record at the event step).
-  int fFrom = 1, wsFCmt = -1; double wsFAmt = 0.0; std::vector<double> dFv;
+  int fFrom = 1, wsFCmt = -1; double wsFAmt = 0.0; rxAdjVec dFv;
   // modeled rate()/dur() ss infusion in an explicit period: ON-phase forcing and
   // the ON->OFF transversality (the period analogue of rk4sBuildInfusMaps).
   struct SsForce { int cmt = -1; size_t onSteps = 0; double durMult = 0.0, offFac = 0.0,
-                   dfFMult = 0.0, dfOFac = 0.0; std::vector<double> dRate, dF; };
+                   dfFMult = 0.0, dfOFac = 0.0; rxAdjVec dRate, dF; };
   SsForce wsFC; bool haveWsFC = false;                             // window-start period forcing
   bool haveCont = false; std::vector<double> FXc, contFP; std::vector<int> contPiv;  // continuous ss=1
   std::vector<double> Ybar, kbar, abar;                            // period-transpose scratch
@@ -7886,8 +7887,8 @@ struct rk4sSsIc {
   }
 
   // dispatch one period transpose to the explicit or stiff recurrence.
-  void periodT(const rk4s_rec *R, std::vector<std::vector<double> > &FXs,
-               std::vector<std::vector<double> > &FPs, size_t N,
+  template <class Tape>
+  void periodT(const rk4s_rec *R, Tape &FXs, Tape &FPs, size_t N,
                std::vector<double> &nu, std::vector<double> &muAcc, StiffPeriod *SP = NULL,
                const SsForce *FC = NULL) {
     if (SP && SP->rosen)      { rosPeriodT(*SP, nu, muAcc, FC); return; }
@@ -7914,8 +7915,8 @@ struct rk4sSsIc {
     for (int p = 0; p < np; ++p) muAcc[p] += fAmt*dFv[fCmt*np+p]*nu[fCmt];
   }
   // materialize the fixed-point sensitivity (I-M)^{-1}B row-by-row (geometric series).
-  void fillFixedPoint(const rk4s_rec *R, std::vector<std::vector<double> > &FXs,
-                      std::vector<std::vector<double> > &FPs, size_t N, std::vector<double> &S,
+  template <class Tape, class V>
+  void fillFixedPoint(const rk4s_rec *R, Tape &FXs, Tape &FPs, size_t N, V &S,
                       StiffPeriod *SP = NULL, const SsForce *FC = NULL, int fCmt = -1, double fAmt = 0.0) {
     S.assign((size_t)nBase*np, 0.0);
     for (int k = 0; k < nBase; ++k) {
@@ -7943,7 +7944,7 @@ struct rk4sSsIc {
     for (int i = 0; i < effM; ++i) Ascratch[i] = 0.0;
     for (int i = 0; i < nBase; ++i) Ascratch[i] = y[i];
     calc_lhs(cSub, t, Ascratch.data(), ind->lhs);
-    rxMemAssign(adjointWork, dFv, ind->lhs + op->adjDfOff, ind->lhs + op->adjDfOff + nBase*np);
+    rxAdjAssign(dFv, ind->lhs + op->adjDfOff, ind->lhs + op->adjDfOff + nBase*np);
   }
   // window-start ss bolus (event 0 at step 0): its bioavailability term
   void setWindowF(int cSub, rx_solving_options_ind *ind, rx_solving_options *op, double t,
@@ -7987,9 +7988,9 @@ struct rk4sSsIc {
     for (int i = 0; i < nBase; ++i) Ascratch[i] = R.a[i];
     calc_lhs(cSub, R.t0[0], Ascratch.data(), ind->lhs);
     F = SsForce(); F.cmt = E.infCmt; F.onSteps = E.onSteps;
-    if (op->adjDrateOff >= 0) rxMemAssign(adjointWork, F.dRate, ind->lhs + op->adjDrateOff, ind->lhs + op->adjDrateOff + nBase*np);
-    else rxMemAssign(adjointWork, F.dRate, (size_t)nBase*np, 0.0);
-    if (op->adjDfOff >= 0) rxMemAssign(adjointWork, F.dF, ind->lhs + op->adjDfOff, ind->lhs + op->adjDfOff + nBase*np);
+    if (op->adjDrateOff >= 0) rxAdjAssign(F.dRate, ind->lhs + op->adjDrateOff, ind->lhs + op->adjDrateOff + nBase*np);
+    else rxAdjAssign(F.dRate, (size_t)nBase*np, 0.0);
+    if (op->adjDfOff >= 0) rxAdjAssign(F.dF, ind->lhs + op->adjDfOff, ind->lhs + op->adjDfOff + nBase*np);
     forceWeights(op, E, mdl, F);
     return true;
   }
@@ -8003,11 +8004,11 @@ struct rk4sSsIc {
   }
   // continuous-infusion steady state at E.y: S = -J^{-1} df/dp (empty if J is singular)
   void interiorContS(int cSub, rx_solving_options_ind *ind, std::vector<double> &Ascratch,
-                     const rk4s_ss1Ev &E, std::vector<double> &S) {
+                     const rk4s_ss1Ev &E, rxAdjVec &S) {
     std::vector<double> J(nfx), FP(nfp); std::vector<int> piv(nBase);
     rk4s_eval_jac(cSub, 0.0, E.y.data(), nBase, np, fxOffM, fpOffM, Ascratch.data(), effM, ind, J.data(), FP.data());
     if (!luFactor(J.data(), nBase, piv.data())) return;
-    rxMemAssign(adjointWork, S, (size_t)nBase*np, 0.0);
+    rxAdjAssign(S, (size_t)nBase*np, 0.0);
     for (int k = 0; k < nBase; ++k) {
       std::vector<double> zz(nBase, 0.0); zz[k] = 1.0;
       luSolveT(J.data(), nBase, piv.data(), zz.data());
@@ -8016,19 +8017,19 @@ struct rk4sSsIc {
   }
   // bolus / periodic-infusion steady state: the fixed point of E's own recorded period
   void interiorPeriodS(int cSub, rx_solving_options_ind *ind, rx_solving_options *op,
-                       std::vector<double> &Ascratch, rk4s_ss1Ev &E, std::vector<double> &S) {
+                       std::vector<double> &Ascratch, rk4s_ss1Ev &E, rxAdjVec &S) {
     size_t N = E.rec.nStep();
     loadDF(cSub, ind, op, E.rec.t0[0], E.y.data(), Ascratch);
     int fCmt = (!E.inf && E.cmt >= 0) ? E.cmt : -1;
     SsForce F; bool haveF = makeForce(cSub, ind, op, E.rec, E, Ascratch, F, !stiff());
     if (stiff()) {
       StiffPeriod P; precomputeStiff(cSub, ind, op, &E.rec, P, Ascratch);
-      std::vector<std::vector<double> > noFX, noFP;
+      std::vector<rxAdjVec> noFX, noFP;
       fillFixedPoint(&E.rec, noFX, noFP, N, S, &P, haveF ? &F : NULL, fCmt, E.amtRaw);
       return;
     }
-    std::vector<std::vector<double> > FXs(sN), FPs(sN);
-    for (int i = 0; i < sN; ++i) { rxMemResize(adjointWork, FXs[i], N*nfx); rxMemResize(adjointWork, FPs[i], N*nfp); }
+    rxAdjTape FXs(sN), FPs(sN);                      // sized by the period's steps: heap
+    for (int i = 0; i < sN; ++i) { rxAdjResize(FXs[i], N*nfx); rxAdjResize(FPs[i], N*nfp); }
     for (size_t n = 0; n < N; ++n) { double h = E.rec.h[n], t0s = E.rec.t0[n];
       for (int i = 0; i < sN; ++i)
         rk4s_eval_jac(cSub, t0s + Tss.c[i]*h, &E.rec.a[(n*sN+i)*nBase], nBase, np, fxOffM, fpOffM, Ascratch.data(), effM, ind, &FXs[i][n*nfx], &FPs[i][n*nfp]); }
@@ -8044,19 +8045,17 @@ struct rk4sSsIc {
                      std::vector<double> &Ascratch, const std::vector<size_t> *ss1Steps_,
                      const std::vector<size_t> *boundarySs1_, std::vector<rk4s_ss1Ev> *evs, size_t nStep) {
     ss1Steps = ss1Steps_; boundarySs1 = boundarySs1_;
-    SssK.clear(); ss1At.clear();
+    SssK.clear();
     if (!ss1Steps || !evs || evs->size() != ss1Steps->size()) return;
     if (!anyInterior(ss1Steps, nStep)) return;
-    rxMemResize(adjointWork, SssK, ss1Steps->size());
-    rxMemAssign(adjointWork, ss1At, nStep + 1, -1);
-    std::vector<double> dFsave = dFv;
+    rxAdjResize(SssK, ss1Steps->size());
+    rxAdjVec dFsave = dFv;
     for (size_t z = 0; z < ss1Steps->size(); ++z) {
       size_t st = (*ss1Steps)[z]; if (st == 0 || st > nStep) continue;
       rk4s_ss1Ev &E = (*evs)[z];
-      std::vector<double> &S = SssK[z];
+      rxAdjVec &S = SssK[z];
       if (E.kind == 2) interiorContS(cSub, ind, Ascratch, E, S);
       else if (E.kind == 1 && E.rec.nStep() > 0) interiorPeriodS(cSub, ind, op, Ascratch, E, S);
-      if (!S.empty()) ss1At[st] = (int)z;
     }
     dFv = dFsave;
   }
@@ -8142,14 +8141,24 @@ struct rk4sSsIc {
     }
   }
   // interior ss=1: add lam^T dY_ss/dp, then reset lam (the event wipes the history)
-  void applySss(const std::vector<double> &S, std::vector<double> &lam, std::vector<double> &mu) {
+  void applySss(const rxAdjVec &S, std::vector<double> &lam, std::vector<double> &mu) {
     for (int p=0;p<np;++p){ double s=0; for(int q=0;q<nBase;++q) s+=lam[q]*S[(size_t)q*np+p]; mu[p]+=s; }
     for (int j=0;j<nBase;++j) lam[j]=0.0;
   }
   // interior sweep step: ss=2 pass-through add, interior ss=1 add-then-reset.
   void applyInterior(size_t step, std::vector<double> &lam, std::vector<double> &mu) {
     if (!S2.empty() && isSs2[step]) for (int p=0;p<np;++p){ double s=0; for(int q=0;q<nBase;++q) s+=lam[q]*S2[(size_t)q*np+p]; mu[p]+=s; }
-    if (!SssK.empty() && step < ss1At.size() && ss1At[step] >= 0) applySss(SssK[ss1At[step]], lam, mu);
+    int z = ss1EventAt(step);
+    if (z >= 0) applySss(SssK[z], lam, mu);
+  }
+  // the last interior ss=1 event at `step` with a steady state, or -1
+  // (ss1Steps is in step order)
+  int ss1EventAt(size_t step) const {
+    if (SssK.empty() || !ss1Steps || step == 0) return -1;
+    size_t z = (size_t)(std::upper_bound(ss1Steps->begin(), ss1Steps->end(), step) - ss1Steps->begin());
+    for (; z-- > 0 && (*ss1Steps)[z] == step;)
+      if (z < SssK.size() && !SssK[z].empty()) return (int)z;
+    return -1;
   }
   // window-start IC: monodromy geometric series (bolus/periodic) OR continuous linear solve.
   // the window starts from a steady state (ss=1), not the model initial conditions
@@ -8203,7 +8212,7 @@ static void ros_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_o
   if (haveDose) { dFdp.resize(nBase*np); calc_lhs(cSub, rec.t0.empty()?0.0:rec.t0[0], Ascratch.data(), ind->lhs); for (int i = 0; i < nBase*np; ++i) dFdp[i] = ind->lhs[dfOff+i]; }
   std::vector<double> dlagV; const double *dlagP = NULL;   // modeled-alag transversality
   if (op->adjDlagOff >= 0 && !doses.empty()) { if (!haveDose) calc_lhs(cSub, rec.t0.empty()?0.0:rec.t0[0], Ascratch.data(), ind->lhs); dlagV.resize(nBase*np); for (int i = 0; i < nBase*np; ++i) dlagV[i] = ind->lhs[op->adjDlagOff+i]; dlagP = dlagV.data(); }
-  std::vector<double> dx0V;                                // parameter-dependent initial conditions
+  rxAdjVec dx0V;                                           // parameter-dependent initial conditions
   rk4sIniDx0(op, ind, cSub, rec.t0.empty() ? 0.0 : rec.t0[0], eff, nBase, np, dx0V);
   const double *dx0P = dx0V.empty() ? NULL : dx0V.data();
 
@@ -8302,7 +8311,7 @@ static void radau_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving
   if (haveDose) { dFdp.resize(n*np); calc_lhs(cSub, rec.t0.empty()?0.0:rec.t0[0], Ascratch.data(), ind->lhs); for (int i = 0; i < n*np; ++i) dFdp[i] = ind->lhs[dfOff+i]; }
   std::vector<double> dlagV; const double *dlagP = NULL;   // modeled-alag transversality
   if (op->adjDlagOff >= 0 && !doses.empty()) { if (!haveDose) calc_lhs(cSub, rec.t0.empty()?0.0:rec.t0[0], Ascratch.data(), ind->lhs); dlagV.resize(n*np); for (int i = 0; i < n*np; ++i) dlagV[i] = ind->lhs[op->adjDlagOff+i]; dlagP = dlagV.data(); }
-  std::vector<double> dx0V;                                // parameter-dependent initial conditions
+  rxAdjVec dx0V;                                           // parameter-dependent initial conditions
   rk4sIniDx0(op, ind, cSub, rec.t0.empty() ? 0.0 : rec.t0[0], eff, n, np, dx0V);
   const double *dx0P = dx0V.empty() ? NULL : dx0V.data();
 
@@ -8386,7 +8395,7 @@ static void composite_backward_fill(rx_solve *rx, rx_solving_options *op, rx_sol
   if (haveDose) { dFdp.resize(n*np); calc_lhs(cSub, rec.t0.empty()?0.0:rec.t0[0], Ascratch.data(), ind->lhs); for (int i = 0; i < n*np; ++i) dFdp[i] = ind->lhs[dfOff+i]; }
   std::vector<double> dlagV; const double *dlagP = NULL;   // modeled-alag transversality
   if (op->adjDlagOff >= 0 && !doses.empty()) { if (!haveDose) calc_lhs(cSub, rec.t0.empty()?0.0:rec.t0[0], Ascratch.data(), ind->lhs); dlagV.resize(n*np); for (int i = 0; i < n*np; ++i) dlagV[i] = ind->lhs[op->adjDlagOff+i]; dlagP = dlagV.data(); }
-  std::vector<double> dx0V;                                // parameter-dependent initial conditions
+  rxAdjVec dx0V;                                           // parameter-dependent initial conditions
   rk4sIniDx0(op, ind, cSub, rec.t0.empty() ? 0.0 : rec.t0[0], eff, n, np, dx0V);
   const double *dx0P = dx0V.empty() ? NULL : dx0V.data();
 
@@ -8534,7 +8543,7 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
     for (int i = 0; i < nBase * np; ++i) dlagV[i] = ind->lhs[op->adjDlagOff + i];
     dlagP = dlagV.data();
   }
-  std::vector<double> dx0V;                                // parameter-dependent initial conditions
+  rxAdjVec dx0V;                                           // parameter-dependent initial conditions
   rk4sIniDx0(op, ind, cSub, rec.t0.empty() ? 0.0 : rec.t0[0], eff, nBase, np, dx0V);
   const double *dx0P = dx0V.empty() ? NULL : dx0V.data();
   // Modeled-rate infusion dual: dR/dtheta block + per-step maps.  forcingCmt[n]>=0
@@ -8768,6 +8777,7 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
 
 extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq,
                            t_dydt c_dydt, t_update_inis u_inis) {
+  rxAdjArenaScope _adjArena(op->cores);   // this subject's backward work (src/rxAdjArena.h)
   clock_t t0 = clock();
   int i;
   int istate = 1;
@@ -8844,7 +8854,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   size_t ssOnSteps = 0;
   // continuous / full-interval infusion: constant steady state, dY_ss/dp via a
   // -J^{-1} df/dp linear solve (no monodromy).  ssContY holds Y_ss.
-  bool ssCont = false; std::vector<double> ssContY;
+  bool ssCont = false; rxAdjVec ssContY;
   // ss==2 (superposition, bolus): Y_after = Y_before + Y_ss_new.  ss2Rec records
   // the new regimen's steady-state period (flow over ss2Ii from the peak Y_ss_new
   // captured by handleSS); ss2Steps marks each interior ss2 event step where the
@@ -9063,9 +9073,9 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
             ssActive = true; ssCmt = _ssPendCmt; ssAmt = _ssPendAmt; ssIi = _ssPendIi;
             ssTrough.assign(yp, yp + eff);
           } else {
-            _e.kind = 1; rxMemAssign(adjointWork, _e.y, yp, yp + eff);
+            _e.kind = 1; rxAdjAssign(_e.y, yp, yp + eff);
           }
-          ss1Steps.push_back(_e.step); ss1Evs.push_back(_e);
+          ss1Steps.push_back(_e.step); ss1Evs.push_back(std::move(_e));
           _ssPendCmt = -1;
         } else if (_adjSSinfKind == 1) {
           // fixed-rate periodic infusion steady state: yp is the pre-infusion
@@ -9080,17 +9090,17 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
             ssInfDur = _adjSSinfDur; ssInfDur2 = _adjSSinfDur2; ssInfRate = _adjSSinfRate; ssInfRate2 = _adjSSinfRate2;
             ssTrough.assign(yp, yp + eff);
           } else {
-            _e.kind = 1; rxMemAssign(adjointWork, _e.y, yp, yp + eff);
+            _e.kind = 1; rxAdjAssign(_e.y, yp, yp + eff);
           }
-          ss1Steps.push_back(_e.step); ss1Evs.push_back(_e);
+          ss1Steps.push_back(_e.step); ss1Evs.push_back(std::move(_e));
           _adjSSinfKind = 0;
         } else if (_adjSSinfKind == 2) {
           // continuous / full-interval infusion: yp is the constant steady state
           // Y_ss; the IC sensitivity is a -J^{-1} df/dp linear solve.
           rk4s_ss1Ev _e; _e.step = rec.nStep();
-          if (_e.step == 0 && !ssActive && !ssCont) { ssCont = true; rxMemAssign(adjointWork, ssContY, yp, yp + eff); }
-          else { _e.kind = 2; rxMemAssign(adjointWork, _e.y, yp, yp + eff); }
-          ss1Steps.push_back(_e.step); ss1Evs.push_back(_e);
+          if (_e.step == 0 && !ssActive && !ssCont) { ssCont = true; rxAdjAssign(ssContY, yp, yp + eff); }
+          else { _e.kind = 2; rxAdjAssign(_e.y, yp, yp + eff); }
+          ss1Steps.push_back(_e.step); ss1Evs.push_back(std::move(_e));
           _adjSSinfKind = 0;
         }
       }

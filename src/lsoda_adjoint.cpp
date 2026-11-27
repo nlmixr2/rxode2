@@ -135,6 +135,7 @@ static inline void lsAdjEval(int cSub, double t, const double *yBase, int nBase,
 extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct lsoda_opt_t opt,
                                   int solveid, t_dydt_liblsoda c_dydt_ll, t_dydt c_dydt,
                                   t_update_inis u_inis) {
+  rxAdjArenaScope _adjArena(op->cores);   // this subject's backward work (src/rxAdjArena.h)
   int cSub = solveid; // subject id, not an rx->ordId position
   rx_solving_options_ind *ind = &(rx->subjects[cSub]);
   int nBase = op->adjNbase;
@@ -316,7 +317,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   // couples rows 1 and 2, so the costate handed back is lam0[1] + h0*J(y0)^T*lam0[2]
   // (then the event jump's dPhi/dy^T).
   std::vector<double> wSeed(nBase);
-  std::vector<double> dx0V;                         // parameter-dependent initial conditions
+  rxAdjVec dx0V;                                    // parameter-dependent initial conditions
   rk4sIniDx0(op, ind, cSub, lsAdjSegs[0].t0, eff, nBase, np, dx0V);
   const double *dx0P = dx0V.empty() ? NULL : dx0V.data();
   // ss=1 steady-state IC term (built below, before any sweep runs)

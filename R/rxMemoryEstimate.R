@@ -756,11 +756,17 @@ rxMemoryEstimate <- function(
 
   .meta <- c("sizeofInd", "rxLlikSaveSize")
   .sizes <- .raw[!names(.raw) %in% .meta]
-  # an adjoint expansion's steady-state backward work, per thread
+  # an adjoint expansion's backward-work arena, one slice per thread
   if (!is.null(model) && .mi$adjNp > 0L) {
     .sizes <- c(
       .sizes,
-      rxMemoryAdjointComponents_(.mi$adjNbase, .mi$adjNp, as.integer(cores), as.double(.solveMaxAllTimes))
+      rxMemoryAdjointComponents_(
+        as.integer(neq),
+        .mi$adjNbase,
+        .mi$adjNp,
+        as.integer(cores),
+        as.double(.solveMaxAllTimes)
+      )
     )
   }
   .outputData <- .rxMemEstimateOutputData(
@@ -902,7 +908,7 @@ print.rxMemoryEstimate <- function(x, ...) {
     linCmtRateHist = "linCmtRateHist (per-individual linCmt rates, bound)",
     extraDosing = "extraDosing (per-thread evid_() push pools)",
     invCdfMemo = "invCdfMemo (per-thread inverse-CDF memo)",
-    adjointWork = "adjointWork (per-thread adjoint ss backward work)",
+    adjointWork = "adjointWork (per-thread adjoint backward-work arena)",
     gpuHostWork = "gpuHostWork (GPU round requests, per slot)",
     gpuHostState = "gpuHostState (GPU host integrator state, per slot)",
     gpuSlotWork = "gpuSlotWork (GPU per-thread workspaces)",
