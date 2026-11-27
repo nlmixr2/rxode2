@@ -42,9 +42,7 @@ convertAbsSequential <- function(
   # (the depot compartment itself is gone -- a first-order depot still
   # present means this precondition fails even when central happens
   # to carry some other duration, e.g. an IV infusion)
-  .cp <- .ui$props$cmtProp
-  .durCmt <- if (!is.null(.cp)) .cp$Compartment[.cp$Property == "dur"] else character(0)
-  if (testCompartmentExists(.ui, depot) || !central %in% .durCmt) {
+  if (testCompartmentExists(.ui, depot) || !central %in% .absorptionDurCmt(.ui)) {
     stop(
       "sequential double absorption requires a zero-order first path ('",
       central,
@@ -103,19 +101,21 @@ convertAbsSequential <- function(
 
 .absorptionSequentialLag <- function(ui, depot2, baseExpr) {
   .lagLine <- sprintf("lag(%s) <- ", depot2)
-  .hasLag <- any(vapply(
+  .w <- which(vapply(
     ui$lstExpr,
     function(l) grepl(.lagLine, deparse1(l), fixed = TRUE),
     logical(1),
     USE.NAMES = FALSE
   ))
-  if (!.hasLag) {
+  if (length(.w) == 0L) {
     # the sequential model with no chosen delays adds the lag
     ui <- addLag(ui, depot2)
+    .lagVar <- as.character(defaultCombine("lag", depot2))
+  } else {
+    # the existing second-path lag variable is orphaned, whatever its name
+    .rhs <- ui$lstExpr[[.w[1L]]][[3L]]
+    .lagVar <- if (is.name(.rhs)) as.character(.rhs) else NULL
   }
-  # the second-path lag variable is orphaned; its name follows
-  # addLag()'s defaultCombine() convention (lagDepot2)
-  .lagVar <- as.character(defaultCombine("lag", depot2))
   .absorptionSetLagExpr(ui, depot2, baseExpr, dropVar = .lagVar)
 }
 

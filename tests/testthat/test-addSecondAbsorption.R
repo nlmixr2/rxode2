@@ -475,6 +475,39 @@ rxTest({
     expect_true("diffTlag2" %in% res$iniDf$name)
   })
 
+  test_that("convertAbsForceLongerDelay refuses a model with one absorption path", {
+    # a lone zero-order path's lag(central) is not a second delay
+    expect_error(
+      suppressWarnings(addZeroOrderAbs(res0)) |> addLag(central) |> convertAbsForceLongerDelay(),
+      regexp = "both absorption paths"
+    )
+    expect_error(
+      res0 |> addLag(depot) |> addLag(central) |> convertAbsForceLongerDelay(),
+      regexp = "both absorption paths"
+    )
+  })
+
+  test_that("convertAbsSequential drops a custom-named second lag", {
+    res <- suppressWarnings(addZeroOrderAbs(res0)) |>
+      addSecondAbsorption(type = "first", delay = "lag")
+    res <- rxRename(res, tlag2 = lagDepot2, ltlag2 = llagDepot2) |>
+      convertAbsSequential()
+    expect_equal(modelExtract(res, "lag(depot2)"), "lag(depot2) <- tk0")
+    expect_false("ltlag2" %in% res$iniDf$name)
+    expect_false(any(grepl("tlag2", vapply(res$lstExpr, deparse1, character(1)))))
+  })
+
+  test_that("convertAbsForceLongerDelay keeps a lag shared by both paths", {
+    res <- res0 |>
+      addLag(depot) |>
+      addSecondAbsorption(type = "first", delay = "lag")
+    res <- rxode2::model(res, lag(depot2) <- lagDepot)
+    res <- suppressMessages(rxode2::ini(res, -llagDepot2))
+    res <- convertAbsForceLongerDelay(res)
+    expect_equal(modelExtract(res, "lag(depot2)"), "lag(depot2) <- lagDepot + diffTlag2")
+    expect_true("llagDepot" %in% res$iniDf$name)
+  })
+
   test_that("addSecondAbsorption transit on a transit first path keeps both chains", {
     # the second chain uses its own letter-tagged prefix (transitB1..N,
     # ktrB), so the first path's transit1..N chain is left untouched

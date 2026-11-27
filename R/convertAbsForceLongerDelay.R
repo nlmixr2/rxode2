@@ -40,11 +40,18 @@ convertAbsForceLongerDelay <- function(
   .ui <- assertRxUi(ui)
   central <- assertCompartmentExists(.ui, central)
   # a zero-order first path (no depot) keeps its delay on central; a
-  # zero-order second path (no depot2) does the same
-  .cmt1 <- if (testCompartmentExists(.ui, depot)) depot else central
-  .cmt2 <- if (testCompartmentExists(.ui, depot2)) depot2 else central
+  # zero-order second path (no depot2, a modeled duration on central
+  # beside a first-order depot) does the same
+  .hasDepot <- testCompartmentExists(.ui, depot)
+  .cmt1 <- if (.hasDepot) depot else central
+  .cmt2 <- NULL
+  if (testCompartmentExists(.ui, depot2)) {
+    .cmt2 <- depot2
+  } else if (.hasDepot && central %in% .absorptionDurCmt(.ui)) {
+    .cmt2 <- central
+  }
   .d1 <- .absorptionDelay(.ui, .cmt1, transit, ktr, mtt)
-  .d2 <- if (is.null(.d1)) NULL else .absorptionDelay(.d1$ui, .cmt2, transit2, ktr2, mtt2)
+  .d2 <- if (is.null(.d1) || is.null(.cmt2)) NULL else .absorptionDelay(.d1$ui, .cmt2, transit2, ktr2, mtt2)
   if (is.null(.d1) || is.null(.d2)) {
     stop(
       "forcing a longer second delay requires a lag time or transit chain on both absorption paths",
@@ -64,6 +71,12 @@ convertAbsForceLongerDelay <- function(
   }
   .ui <- .absorptionSetLagExpr(.ui, .cmt2, paste0(.d1$var, " + diffTlag2"), dropVar = .d2$var)
   .iniAddTheta(.ui, "diffTlag2", label = "Second lag increment over the first (diffTlag2)")
+}
+
+# compartments with a modeled duration
+.absorptionDurCmt <- function(ui) {
+  .cp <- ui$props$cmtProp
+  if (is.null(.cp)) character(0) else .cp$Compartment[.cp$Property == "dur"]
 }
 
 # the delay of one absorption path: a transit chain (returned in mean
@@ -107,6 +120,11 @@ convertAbsForceLongerDelay <- function(
     stop("no lag time on compartment '", cmt, "'", call. = FALSE)
   }
   .modelLines[[.w[1L]]] <- str2lang(paste0("lag(", cmt, ") <- ", expr))
+  # a delay variable the new expression still reads (a lag shared by both
+  # paths) is not orphaned
+  if (!is.null(dropVar) && dropVar %in% all.vars(.modelLines[[.w[1L]]][[3L]])) {
+    dropVar <- NULL
+  }
   .ui <- rxUiDecompress(ui)
   .absorptionDropDescription(.ui)
   model(.ui) <- .modelLines
