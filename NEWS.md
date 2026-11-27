@@ -232,6 +232,9 @@
   than return it with `NA` rows; `rxSolve()` decides with the same code
   (nlmixr2/nlmixr2est#1356).
 
+- The explicit Runge-Kutta `"s"` methods (`dop853s`, `rk4s`, ...) record every
+  stage of every step only for the discrete adjoint.  A solve with no adjoint
+  skips the recording, which gives the same results and a shorter solve time.
 - `rxPrune()` rewrites `if`/`else` and string levels with a C walker of the
   parsed model instead of the recursive R walker, with identical output; the
   R walker stays as a fallback (`bench/rxPrune.R`, #1772).
