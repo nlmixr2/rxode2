@@ -82,7 +82,7 @@ convertAbsForceLongerDelay <- function(
 # the delay of one absorption path: a transit chain (returned in mean
 # transit time form) takes precedence over a lag time
 .absorptionDelay <- function(ui, cmt, transit, ktr, mtt) {
-  if (testCompartmentExists(ui, paste0(transit, "1"))) {
+  if (testCompartmentExists(ui, paste0(transit, "1")) || testVariableExists(ui, mtt)) {
     if (!testVariableExists(ui, mtt)) {
       ui <- convertTransitMtt(ui, transit = transit, ktr = ktr, mtt = mtt)
     }

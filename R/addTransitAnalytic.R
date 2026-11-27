@@ -96,7 +96,7 @@ addTransitAnalytic <- function(
   .w <- .whichDdt(.modelLines, depot)
   .rhs <- .modelLines[[.w]][[3L]]
   .transit <- str2lang(paste0("transit(", mtt, " * ", Ktr, " - 1, ", mtt, ")"))
-  .modelLines[[.w]][[3L]] <- as.call(list(as.name("+"), .transit, .rhs))
+  .modelLines[[.w]][[3L]] <- .absorptionAddTerm(.transit, .rhs)
   .modelLines <- c(
     .modelLines[seq_len(.w)],
     list(str2lang(paste0("transitDose(", depot, ")"))),
@@ -142,6 +142,14 @@ removeTransitAnalytic <- function(ui, depot = "depot", mtt = "Mtt", Ktr = "Ktr",
   model(.ui) <- .modelLines
   .ui <- rxUiCompress(.ui)
   removeLinesAndInis(.ui, c(mtt, Ktr))
+}
+
+# transit(...) + (-ka * depot) reads better as transit(...) - ka * depot
+.absorptionAddTerm <- function(term, rhs) {
+  if (is.call(rhs) && length(rhs) == 2L && identical(rhs[[1L]], as.name("-"))) {
+    return(as.call(list(as.name("-"), term, rhs[[2L]])))
+  }
+  as.call(list(as.name("+"), term, rhs))
 }
 
 # drop transit() calls from an additive expression, keeping the signs of

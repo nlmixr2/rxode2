@@ -105,6 +105,18 @@ static inline int _rxEncodeEventCmt(int evid, int cmt) {
   return cmt100 * 100000 + whI * 10000 + cmt01 * 100 + wh0;
 }
 
+/* Re-encode a translated event to a different compartment as a phantom
+ * dose: the amount drives transit()/podo but is not added to the state.
+ * Used when split() copies a bolus into a transitDose() compartment. */
+static inline int _rxEncodeEventCmtPhantom(int evid, int cmt) {
+  int wh, oldCmt, wh100, whI, wh0;
+  getWh(evid, &wh, &oldCmt, &wh100, &whI, &wh0);
+  int cmt0 = cmt - 1;
+  int cmt100 = cmt0 / 100;
+  int cmt01 = cmt0 % 100 + 1;
+  return cmt100 * 100000 + whI * 10000 + cmt01 * 100 + EVID0_PHANTOM;
+}
+
 static inline int _rxShouldSplitTranslatedBolus(int evid, int cmt, double amt, int splitCmt) {
   int wh, eventCmt, wh100, whI, wh0;
   getWh(evid, &wh, &eventCmt, &wh100, &whI, &wh0);

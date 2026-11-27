@@ -3339,6 +3339,9 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           // the promoted stop is a record its dose row expands to
           doseRow2.back() = etTransPromotedDoseRow(idxInput[j], doseRow2.back());
           hasModeledRateDur = true;
+        } else if (etTransitDoseCmt(transitDoseCmt, curCmt)) {
+          // a split target that feeds transit() gets a phantom dose
+          pushRow(_rxEncodeEventCmtPhantom(evid[j], curCmt));
         } else {
           pushRow(_rxEncodeEventCmt(evid[j], curCmt));
         }

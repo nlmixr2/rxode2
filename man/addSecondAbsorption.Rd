@@ -15,6 +15,9 @@ addSecondAbsorption(
   ka = "ka",
   ka2 = "ka2",
   tk0 = "tk0",
+  mtt2 = "Mtt2",
+  ktr2 = "Ktr2",
+  transitType = c("ode", "analytic"),
   f1 = 0.7
 )
 }
@@ -30,7 +33,7 @@ path is first-order (two modeled durations cannot share the
 central compartment).}
 
 \item{delay}{second-path delay: \code{"none"}, \code{"lag"} (an \code{alag} on the
-second path), or \code{"transit"} (a transit chain feeding the second
+second path), or \code{"transit"} (a transit delay before the second
 path).  \code{"transit"} needs a first-order second path.}
 
 \item{n}{number of transit compartments when \code{delay = "transit"}}
@@ -47,6 +50,18 @@ path).  \code{"transit"} needs a first-order second path.}
 
 \item{tk0}{name of the zero-order duration on the second path}
 
+\item{mtt2}{mean transit time variable of the analytic second-path
+transit delay}
+
+\item{ktr2}{transit rate variable of the analytic second-path transit
+delay}
+
+\item{transitType}{how a transit delay is built: \code{"ode"} (the default)
+adds one ODE state per transit compartment (see \code{\link[=addTransit]{addTransit()}});
+\code{"analytic"} evaluates the delay with the \code{transit()} pseudo-function
+from \code{mtt2}/\code{ktr2} and marks \code{depot2} with \code{transitDose()} (see
+\code{\link[=addTransitAnalytic]{addTransitAnalytic()}}).  The two forms solve the same profile.}
+
 \item{f1}{initial fraction of the dose entering the first path, in
 (0,1)}
 }
@@ -61,10 +76,12 @@ time into two parallel inputs with a logit-parameterized \code{F1}
 apportionment.  The second path can itself be zero-order
 (\code{type = "zero"}, Monolix's \code{Tk02} modeled duration directly on the
 central compartment), first-order (\code{type = "first"}, \code{ka2}, which
-adds \code{depot2}), or a first-order path behind a transit chain
-(\code{delay = "transit"}), with an optional lag.  When the first path is
-zero-order (\code{addZeroOrderAbs()}), only a first-order second path is
-available.
+adds \code{depot2}), or a first-order path behind a transit delay
+(\code{delay = "transit"}), with an optional lag.  The transit delay is
+either an explicit compartment chain (\code{transitType = "ode"}) or the
+analytic \code{transit()} input (\code{transitType = "analytic"}).  When the
+first path is zero-order (\code{addZeroOrderAbs()}), only a first-order
+second path is available.
 }
 \details{
 Only one second absorption path is supported per model; applying
