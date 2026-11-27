@@ -5,6 +5,7 @@
 #define STRICT_R_HEADERS
 #include "rxomp.h"
 #include "rxode2lincmtLink.h"
+#include <atomic>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -806,7 +807,39 @@ extern "C" int compareFactorVal(int val,
   return 0;
 }
 
-t_dydt dydt = NULL;
+// The model the global `dydt` / `dydt_lsoda_dum` names resolve to.
+// rxUpdateFuns() installs ONE model (dydt_global), but an ind_solve() caller
+// (nlmixr2est's solve pools, odeSwapSolveInd) may integrate a subject with
+// ANOTHER model's dydt (its c_dydt) at that model's, often narrower, stride
+// (neqOverride).  The per-subject drivers integrate with c_dydt, but the
+// steady-state / single-interval solvers (solveWith1Pt -> _rxSolveOneInterval
+// and every *_solveWith1Pt) call `dydt` by name, so they integrated the
+// INSTALLED model: wrong states, and when that model has more states than the
+// stride, its dydt wrote past dop853's k-buffers (sized to the stride) and
+// aborted in dop853Next's R_Free(ctx.k10).  So `dydt` is a dispatcher: to the
+// subject's model while an ind_solve() with a different model runs on this
+// thread, to the installed one otherwise (one relaxed load when none does).
+static t_dydt dydt_global = NULL;
+static t_dydt_lsoda_dum dydt_lsoda_dum_global = NULL;
+static thread_local t_dydt rxDydtSwap = NULL;
+static thread_local t_dydt_lsoda_dum rxDydtLsodaSwap = NULL;
+static std::atomic<int> rxDydtSwapN(0);
+
+void dydt(int *neq, double t, double *A, double *DADT) {
+  if (rxDydtSwapN.load(std::memory_order_relaxed) != 0 && rxDydtSwap != NULL) {
+    rxDydtSwap(neq, t, A, DADT);
+    return;
+  }
+  dydt_global(neq, t, A, DADT);
+}
+
+void dydt_lsoda_dum(int *neq, double *t, double *A, double *DADT) {
+  if (rxDydtSwapN.load(std::memory_order_relaxed) != 0 && rxDydtLsodaSwap != NULL) {
+    rxDydtLsodaSwap(neq, t, A, DADT);
+    return;
+  }
+  dydt_lsoda_dum_global(neq, t, A, DADT);
+}
 
 t_calc_jac calc_jac = NULL;
 
@@ -1191,8 +1224,6 @@ extern "C" SEXP _rxode2_eventSensShapeRestore(SEXP buf) {
 
 t_update_inis update_inis = NULL;
 
-t_dydt_lsoda_dum dydt_lsoda_dum = NULL;
-
 t_dydt_liblsoda dydt_liblsoda = NULL;
 
 t_jdum_lsoda jdum_lsoda = NULL;
@@ -1402,7 +1433,7 @@ void rxUpdateFuns(SEXP trans){
     global_mf = 22;
   }
   calc_lhs =(t_calc_lhs) R_GetCCallable(lib, s_calc_lhs);
-  dydt =(t_dydt) R_GetCCallable(lib, s_dydt);
+  dydt_global =(t_dydt) R_GetCCallable(lib, s_dydt);
   calc_jac =(t_calc_jac) R_GetCCallable(lib, s_calc_jac);
   // Event ("jump") sensitivity helpers: names are <prefix>dLag / <prefix>dF.
   // Derived from the prefix (trans[2]) rather than carried in the trans vector,
@@ -1440,10 +1471,10 @@ void rxUpdateFuns(SEXP trans){
     dLagJacEs = (t_dLag) R_GetCCallable(lib, s_dLagJac);
     dLagQEs = (t_dLag) R_GetCCallable(lib, s_dLagQ);
     dDurQEs = (t_dDur) R_GetCCallable(lib, s_dDurQ);
-    dydtEs = dydt;
+    dydtEs = dydt_global;
   }
   update_inis =(t_update_inis) R_GetCCallable(lib, s_inis);
-  dydt_lsoda_dum =(t_dydt_lsoda_dum) R_GetCCallable(lib, s_dydt_lsoda_dum);
+  dydt_lsoda_dum_global =(t_dydt_lsoda_dum) R_GetCCallable(lib, s_dydt_lsoda_dum);
   jdum_lsoda =(t_jdum_lsoda) R_GetCCallable(lib, s_dydt_jdum_lsoda);
   set_solve = (t_set_solve)R_GetCCallable(lib, s_ode_solver_solvedata);
   get_solve = (t_get_solve)R_GetCCallable(lib, s_ode_solver_get_solvedata);
@@ -1491,10 +1522,10 @@ void rxUpdateFuns(SEXP trans){
 
 extern "C" void rxClearFuns(){
   calc_lhs		= NULL;
-  dydt			= NULL;
+  dydt_global		= NULL;
   calc_jac		= NULL;
   update_inis		= NULL;
-  dydt_lsoda_dum	= NULL;
+  dydt_lsoda_dum_global	= NULL;
   jdum_lsoda		= NULL;
   set_solve		= NULL;
   get_solve		= NULL;
@@ -9632,7 +9663,23 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
                           t_dydt_lsoda_dum dydt_lsoda, t_jdum_lsoda jdum,
                           t_dydt c_dydt, t_update_inis u_inis,
                           int jt) {
+  // Route the by-name `dydt` / `dydt_lsoda_dum` (steady state, single-interval
+  // solves) to this subject's model when it is not the installed one.
+  t_dydt prevDydt = rxDydtSwap;
+  t_dydt_lsoda_dum prevLsoda = rxDydtLsodaSwap;
+  bool swap = (c_dydt != NULL && c_dydt != dydt && c_dydt != dydt_global);
+  if (swap) {
+    rxDydtSwap = c_dydt;
+    rxDydtLsodaSwap = (dydt_lsoda != NULL && dydt_lsoda != dydt_lsoda_dum &&
+                       dydt_lsoda != dydt_lsoda_dum_global) ? dydt_lsoda : NULL;
+    rxDydtSwapN.fetch_add(1, std::memory_order_relaxed);
+  }
   ind_solve0(rx, cid, dydt_lls, dydt_lsoda, jdum, c_dydt, u_inis, jt);
+  if (swap) {
+    rxDydtSwapN.fetch_sub(1, std::memory_order_relaxed);
+    rxDydtSwap = prevDydt;
+    rxDydtLsodaSwap = prevLsoda;
+  }
   rx_solving_options_ind *ind = &(rx->subjects[cid]);
   if (ind->err != 0) rxSolveErrPush(ind->id, ind->err);
 }

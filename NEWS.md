@@ -227,6 +227,14 @@
 
 ## Bug fixes
 
+- `ind_solve()` now uses the caller's model for steady-state doses.  The
+  steady-state path (`dop853`, `lsoda` and the `rk4` solvers) called the
+  right-hand side that `rxUpdateFuns()` last installed instead of the
+  `c_dydt` passed to `ind_solve()`, so a solve pool running a different
+  (often narrower) model got a silently wrong steady state or, with a wider
+  installed model, a heap corruption abort in `dop853`.  This stopped
+  nlmixr2est FOCEI fits with steady-state data and `dop853` or `rk4`.
+
 - The parser no longer reads a function name it had already freed.  Every
   function call copies its name into a buffer that is reallocated as it grows,
   and a copy held while more were made pointed into the old buffer; parsing
