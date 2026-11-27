@@ -8,6 +8,7 @@
  */
 #include "rxCseRun.h"
 #include "rxProtect.h"
+#include "../inst/include/rxMemAlloc.h"
 
 /* Hand the finished text to R under R_UnwindProtect: Rf_mkChar() allocates and
    can longjmp, and `outText` is malloc'd, so the cleanup is what frees it on
@@ -30,7 +31,7 @@ static void csFinishClean(void *data, Rboolean jump) {
    R_alloc so an error cannot leak them (the rule from src/seBatch.h:88-104);
    NULL when any element is NA, which declines the whole call. */
 static const char **csReadLines(SEXP linesVec, R_xlen_t n) {
-  const char **in = (const char**) R_alloc((size_t) n, sizeof(char*));
+  const char **in = (const char**) rxMemRalloc(fixed, (size_t) n, sizeof(char*));
   R_xlen_t i;
   for (i = 0; i < n; i++) {
     SEXP el = STRING_ELT(linesVec, i);
@@ -53,14 +54,14 @@ static const char *const *csReadImpure(SEXP impure) {
   if (TYPEOF(impure) != STRSXP) return NULL;
   n = Rf_xlength(impure);
   if (n == 0) return NULL;
-  ret = (const char**) R_alloc((size_t) n + 1, sizeof(char*));
+  ret = (const char**) rxMemRalloc(fixed, (size_t) n + 1, sizeof(char*));
   for (i = 0; i < n; i++) {
     SEXP el = STRING_ELT(impure, i);
     if (el == NA_STRING) continue;
     {
       const char *nm = CHAR(el);
       size_t len = strlen(nm);
-      char *buf = R_alloc(len + 2, sizeof(char));
+      char *buf = rxMemRalloc(fixed, len + 2, sizeof(char));
       memcpy(buf, nm, len);
       buf[len] = '(';
       buf[len + 1] = '\0';
@@ -71,7 +72,7 @@ static const char *const *csReadImpure(SEXP impure) {
   return ret;
 }
 
-extern "C" SEXP _rxode2_rxCse(SEXP linesVec, SEXP impure) {
+extern "C" SEXP _rxode2_rxCse(SEXP linesVec, SEXP impure, SEXP expensiveS) {
   R_xlen_t n;
   const char **in;
   csRun r;
@@ -86,6 +87,7 @@ extern "C" SEXP _rxode2_rxCse(SEXP linesVec, SEXP impure) {
 
   csRunInit(&r, n, in, csPickThreads(n));
   r.impure = csReadImpure(impure);
+  r.expensive = Rf_asLogical(expensiveS) == 1;
   outText = csRunAll(&r);
   csRunFree(&r);
 

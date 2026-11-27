@@ -3,7 +3,8 @@
 # GPURodas5P) and with threads (EnsembleThreads), timed after a warm-up.
 # Writes CSV to ARGS[1]; ARGS[2] is a comma-separated list of ensemble sizes.
 # Run with `julia -t <threads>`.  Needs DiffEqGPU, OrdinaryDiffEq,
-# StaticArrays, KernelAbstractions and (optionally) OpenCL + pocl_jll.
+# StaticArrays, KernelAbstractions and (optionally) OpenCL + pocl_jll and
+# CUDA.
 using DiffEqGPU, OrdinaryDiffEq, StaticArrays, KernelAbstractions, Statistics
 
 const backends = Any[("KA-CPU", CPU())]
@@ -12,6 +13,15 @@ try
     push!(backends, ("OpenCL-pocl", OpenCLBackend()))
 catch err
     @warn "OpenCL.jl backend not available" err
+end
+# an NVIDIA GPU through CUDA.jl, when it is installed and finds one
+try
+    @eval using CUDA
+    if CUDA.functional()
+        push!(backends, ("CUDA", CUDABackend()))
+    end
+catch err
+    @warn "CUDA.jl backend not available" err
 end
 
 lorenz(u, p, t) = SVector(p[1] * (u[2] - u[1]),

@@ -1617,15 +1617,24 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
       ## Basics): reading Basics back out of the model env in .rxDelaySensAugment
       ## is subject to symengine's masked get/[[.  The RHS is re-parsed there with
       ## eval(parse(text=), envir=model) for differentiation (the safe pattern).
-      assign(paste0("rx__pastRhs_", .pastState, "__"), paste(deparse(x[[3]]), collapse = " "), envir = envir)
-      assign(paste0("rx__pastTau_", .pastState, "__"), paste(deparse(x[[2]][[3]]), collapse = " "), envir = envir)
+      .pastText <- function(e) {
+        if (!is.character(envir$..doConst)) {
+          return(paste(deparse(e), collapse = " "))
+        }
+        # the adjoint expansion re-emits the line, so read the variables as of
+        # this statement's position
+        .pe <- eval(parse(text = paste0("with(envir,", .rxToSEenvRhs(e, envir), ")")))
+        rxFromSE(.pe)
+      }
+      assign(paste0("rx__pastRhs_", .pastState, "__"), .pastText(x[[3]]), envir = envir)
+      assign(paste0("rx__pastTau_", .pastState, "__"), .pastText(x[[2]][[3]]), envir = envir)
       return(invisible(NULL))
     }
   }
   if (inherits(x[[3]], "numeric") || inherits(x[[3]], "integer")) {
     .isNum <- TRUE
     if (isEnv) {
-      if (envir$..doConst) {
+      if (.rxSEbindConst(envir, .var)) {
         .rxSEassign(.var, x[[3]], envir)
       }
     }
@@ -1706,6 +1715,15 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
         assign("..sens0..", .lst, envir = envir)
       } else {
         .lst <- get("..ddt..", envir = envir)
+        if (is.character(envir$..doConst)) {
+          # a caller that re-emits the model (the adjoint expansion) needs the
+          # values at the statement's position, not after later reassignments
+          .n <- if (is.null(envir$..adjNowN)) 1L else envir$..adjNowN + 1L
+          assign("..adjNowN", .n, envir = envir)
+          .tmp <- paste0("rxAdjNow", .n, "x")
+          assign(.tmp, eval(parse(text = .expr)), envir = envir)
+          .expr <- paste0("with(envir,", .tmp, ")")
+        }
         .lst[[.var]] <- .expr
         assign("..ddt..", .lst, envir = envir)
       }
@@ -1749,7 +1767,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
       }
       .isNum <- (inherits(.expr, "numeric") || inherits(.expr, "integer"))
       if (
-        (.isNum && envir$..doConst) ||
+        (.isNum && .rxSEbindConst(envir, .var)) ||
           (!.isNum)
       ) {
         .rxSEassign(.var, .expr, envir)
@@ -1761,12 +1779,25 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
         rxFromSE(.expr)
       )
       if (regexpr("^(nlmixr|rx)_", .var) == -1) {
-        if (.isNum) {
+        .l <- envir$..lhs
+        .later <- is.character(envir$..doConst) &&
+          (.name %in% names(envir$..lhs0) || any(startsWith(as.character(.l), paste0(.name, "="))))
+        if (.isNum && .later) {
+          # a constant after the variable's first assignment (`z <- 5;
+          # if (t > 1) z <- 2; z <- 3`): for a caller that re-emits the model
+          # (the adjoint expansion) it follows the statements before it
+          assign("..lhs", c(.l, .rx), envir = envir)
+        } else if (.isNum) {
           names(.rx) <- .name
           assign("..lhs0", c(envir$..lhs0, .rx), envir = envir)
         } else {
           if (any(names(envir$..lhs0) == .name)) {
             .tmp <- envir$..lhs0
+            # a constant left symbolic was not substituted; keep the line for
+            # callers that re-emit the model (the adjoint expansion)
+            if (!.rxSEdoConst(envir, .var)) {
+              assign("..lhs0Prior", c(envir$..lhs0Prior, .tmp[names(.tmp) == .name]), envir = envir)
+            }
             .tmp <- .tmp[names(.tmp) != .name]
             assign("..lhs0", .tmp, envir = envir)
           }
@@ -4488,10 +4519,34 @@ local({
   invisible(value)
 }
 
+## Is the constant assigned to `var` substituted (rxS(doConst = ))?  A character
+## doConst names the constants that stay symbolic.
+.rxSEdoConst <- function(envir, var) {
+  .dc <- envir$..doConst
+  if (is.character(.dc)) {
+    return(!(var %in% .rxSEres(.dc)))
+  }
+  isTRUE(.dc)
+}
+
+## Is a numeric assignment to `var` substituted?  With a character doConst only
+## a variable's first assignment can be a default; a later constant is bound.
+.rxSEbindConst <- function(envir, var) {
+  if (.rxSEdoConst(envir, var)) {
+    return(TRUE)
+  }
+  if (!is.character(envir$..doConst)) {
+    return(FALSE)
+  }
+  .name <- rxFromSE(var)
+  .name %in% names(envir$..lhs0) || any(startsWith(as.character(envir$..lhs), paste0(.name, "=")))
+}
+
 #' Load a model into a symengine environment
 #'
 #' @param x rxode2 object
-#' @param doConst Load constants into the environment as well.
+#' @param doConst Load constants into the environment as well; a character
+#'   vector loads every constant except the named ones.
 #' @param pkTime When `TRUE`, `time` in statements that do not depend on a
 #'   state is loaded as `rx_time_pk`, defined by `rx_time_pk~t` in `..lhs0`,
 #'   so it stays separate from the `time` in `d/dt()` after those statements
@@ -4547,6 +4602,7 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame(
   .env$..sens0.. <- list()
   .env$..lhs <- NULL
   .env$..lhs0 <- NULL
+  .env$..lhs0Prior <- NULL
   .env$..doConst <- doConst
   .rxD <- rxode2parseD()
   for (.f in c(ls(.symengineFs()), ls(.rxD), .rxSEfunNames)) {

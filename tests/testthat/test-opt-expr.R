@@ -162,7 +162,9 @@ rxTest({
         ),
         collapse = "\n"
       )
-      .out <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L))
+      # one pass: the chunked path is what this checks (rxOptExpr()'s later
+      # passes see the whole model and write it normalized)
+      .out <- suppressMessages(.rxOptExprOnce(.m, "model", chunkLines = 40L))
       # per-chunk rx_expr_c<i>_ names prove the chunked path ran (a fallback has none)
       expect_true(grepl("rx_expr_c[0-9]+_", .out))
       # the spacing-variant lines are restored byte-exact and the model still parses
@@ -198,7 +200,10 @@ rxTest({
         ),
         collapse = "\n"
       )
-      .chunk <- suppressMessages(rxOptExpr(.m, "model", chunkLines = 40L))
+      # one pass: the chunked path is what this checks (rxOptExpr()'s later
+      # passes see the whole model, where a delay duration may become a
+      # temporary like any expression)
+      .chunk <- suppressMessages(.rxOptExprOnce(.m, "model", chunkLines = 40L))
       # per-chunk rx_expr_c<i>_ names prove the chunked path ran (a fallback has none)
       expect_true(grepl("rx_expr_c[0-9]+_", .chunk))
       # the calls are restored byte-exact, nothing disguised is left, and it still parses
