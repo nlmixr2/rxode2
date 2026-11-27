@@ -255,9 +255,15 @@ rxTest({
       .ev <- .k$ev |> et(.infTt)
       .fd <- .adjFd(.txt, .ev, .k$p, names(.k$p))
       for (.meth in .infMeths) {
-        .a <- rxSolveAdjointRk4(.txt, .ev,
-          params = .k$p, calcSens = names(.k$p), method = .meth,
-          atol = 1e-11, rtol = 1e-11, hmin = if (.meth == "rk4s") 0.001 else 0
+        .a <- rxSolveAdjointRk4(
+          .txt,
+          .ev,
+          params = .k$p,
+          calcSens = names(.k$p),
+          method = .meth,
+          atol = 1e-11,
+          rtol = 1e-11,
+          hmin = if (.meth == "rk4s") 0.001 else 0
         )
         for (.cn in names(.fd)) {
           expect_lt(max(abs(.a[[.cn]] - .fd[[.cn]])), 1e-6, label = paste(.nm, .meth, .cn))
@@ -269,38 +275,67 @@ rxTest({
   test_that("f() with a modeled rate() or dur() infusion carries its dual in every driver", {
     # F scales the rate of a dur() infusion and the duration of a rate() one
     .infCheck(list(
-      fRate = list(txt = "f(depot) <- fd\nrate(depot) <- r", p = c(ka = 1.2, k = 0.14, fd = 0.7, r = 40),
-        ev = et(amt = 100, cmt = "depot", rate = -1)),
-      fDur = list(txt = "f(depot) <- fd\ndur(depot) <- dd", p = c(ka = 1.2, k = 0.14, fd = 0.7, dd = 2.5),
-        ev = et(amt = 100, cmt = "depot", rate = -2))
+      fRate = list(
+        txt = "f(depot) <- fd\nrate(depot) <- r",
+        p = c(ka = 1.2, k = 0.14, fd = 0.7, r = 40),
+        ev = et(amt = 100, cmt = "depot", rate = -1)
+      ),
+      fDur = list(
+        txt = "f(depot) <- fd\ndur(depot) <- dd",
+        p = c(ka = 1.2, k = 0.14, fd = 0.7, dd = 2.5),
+        ev = et(amt = 100, cmt = "depot", rate = -2)
+      )
     ))
   })
 
   test_that("alag() on an infusion shifts its whole window in every driver", {
     .infCheck(list(
-      fixRate = list(txt = "alag(depot) <- lg", p = c(ka = 1.2, k = 0.14, lg = 0.7),
-        ev = et(amt = 100, cmt = "depot", rate = 40)),
-      fixDurTwice = list(txt = "alag(depot) <- lg", p = c(ka = 1.2, k = 0.14, lg = 0.7),
-        ev = et(amt = 100, cmt = "depot", dur = 2) |> et(amt = 50, time = 4, cmt = "depot", dur = 2)),
-      rate = list(txt = "alag(depot) <- lg\nrate(depot) <- r", p = c(ka = 1.2, k = 0.14, lg = 0.7, r = 40),
-        ev = et(amt = 100, cmt = "depot", rate = -1)),
-      dur = list(txt = "alag(depot) <- lg\ndur(depot) <- dd", p = c(ka = 1.2, k = 0.14, lg = 0.7, dd = 2.5),
-        ev = et(amt = 100, cmt = "depot", rate = -2)),
-      fRateTwice = list(txt = "alag(depot) <- lg\nf(depot) <- fd\nrate(depot) <- r",
+      fixRate = list(
+        txt = "alag(depot) <- lg",
+        p = c(ka = 1.2, k = 0.14, lg = 0.7),
+        ev = et(amt = 100, cmt = "depot", rate = 40)
+      ),
+      fixDurTwice = list(
+        txt = "alag(depot) <- lg",
+        p = c(ka = 1.2, k = 0.14, lg = 0.7),
+        ev = et(amt = 100, cmt = "depot", dur = 2) |> et(amt = 50, time = 4, cmt = "depot", dur = 2)
+      ),
+      rate = list(
+        txt = "alag(depot) <- lg\nrate(depot) <- r",
+        p = c(ka = 1.2, k = 0.14, lg = 0.7, r = 40),
+        ev = et(amt = 100, cmt = "depot", rate = -1)
+      ),
+      dur = list(
+        txt = "alag(depot) <- lg\ndur(depot) <- dd",
+        p = c(ka = 1.2, k = 0.14, lg = 0.7, dd = 2.5),
+        ev = et(amt = 100, cmt = "depot", rate = -2)
+      ),
+      fRateTwice = list(
+        txt = "alag(depot) <- lg\nf(depot) <- fd\nrate(depot) <- r",
         p = c(ka = 1.2, k = 0.14, lg = 0.7, fd = 0.7, r = 40),
-        ev = et(amt = 100, cmt = "depot", rate = -1) |> et(amt = 50, time = 4, cmt = "depot", rate = -1))
+        ev = et(amt = 100, cmt = "depot", rate = -1) |> et(amt = 50, time = 4, cmt = "depot", rate = -1)
+      )
     ))
   })
 
   test_that("f() with a fixed-rate or fixed-duration infusion carries its dual in every driver", {
     # F stretches a fixed-rate window and scales a fixed-duration rate
     .infCheck(list(
-      fixRateTwice = list(txt = "f(depot) <- fd", p = c(ka = 1.2, k = 0.14, fd = 0.7),
-        ev = et(amt = 100, cmt = "depot", rate = 40) |> et(amt = 50, time = 4, cmt = "depot", rate = 40)),
-      fixDurTwice = list(txt = "f(depot) <- fd", p = c(ka = 1.2, k = 0.14, fd = 0.7),
-        ev = et(amt = 100, cmt = "depot", dur = 2.5) |> et(amt = 50, time = 4, cmt = "depot", dur = 2)),
-      fixRateLag = list(txt = "f(depot) <- fd\nalag(depot) <- lg", p = c(ka = 1.2, k = 0.14, fd = 0.7, lg = 0.7),
-        ev = et(amt = 100, cmt = "depot", rate = 40))
+      fixRateTwice = list(
+        txt = "f(depot) <- fd",
+        p = c(ka = 1.2, k = 0.14, fd = 0.7),
+        ev = et(amt = 100, cmt = "depot", rate = 40) |> et(amt = 50, time = 4, cmt = "depot", rate = 40)
+      ),
+      fixDurTwice = list(
+        txt = "f(depot) <- fd",
+        p = c(ka = 1.2, k = 0.14, fd = 0.7),
+        ev = et(amt = 100, cmt = "depot", dur = 2.5) |> et(amt = 50, time = 4, cmt = "depot", dur = 2)
+      ),
+      fixRateLag = list(
+        txt = "f(depot) <- fd\nalag(depot) <- lg",
+        p = c(ka = 1.2, k = 0.14, fd = 0.7, lg = 0.7),
+        ev = et(amt = 100, cmt = "depot", rate = 40)
+      )
     ))
   })
 

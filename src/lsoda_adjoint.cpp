@@ -65,8 +65,8 @@ struct lsAdjSeg {
                              // none) -> off-transversality mu += offFac*dR/dp[cmt]*lam[cmt].
   double offFac;             // -F*amt/R*durMult at the off boundary
   double offDfFac;           // dF off-boundary weight (raw amt for rate() or a fixed rate, else 0)
-  std::vector<double> infRate;  // InfusionRate[0..nBase) at segment start
-  std::vector<double> lagRate;  // rate change per cmt from a lagged infusion start/stop
+  rxAdjHeapVec infRate;  // InfusionRate[0..nBase) at segment start (per step; thread_local: heap)
+  rxAdjHeapVec lagRate;  // rate change per cmt from a lagged infusion start/stop
                                 // opening this segment -> mu += -dR*dlag/dp*lam[cmt].
 };
 // Thread-local recording state (serial per subject; par is P6).
@@ -94,7 +94,7 @@ extern "C" void lsAdjInitStep(struct lsoda_context_t *ctx) {
   s.stepEnd = lsAdjSteps.size();
   s.evType = -1; s.evCmt = -1; s.evFactor = 1.0; s.evAmt = 0.0; s.evAmtF = 0.0; // from the event table
   s.infCmt = -1; s.infDurMult = 0.0; s.infDfMult = 0.0; s.offCmt = -1; s.offFac = 0.0; s.offDfFac = 0.0;
-  if (lsAdjInd != NULL) s.infRate.assign(lsAdjInd->InfusionRate, lsAdjInd->InfusionRate + lsAdjNbase);
+  if (lsAdjInd != NULL) rxAdjAssign(s.infRate, lsAdjInd->InfusionRate, lsAdjInd->InfusionRate + lsAdjNbase);
   lsAdjSegs.push_back(std::move(s));
 }
 
@@ -234,7 +234,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
         if (dR == 0.0) continue;
         int _wh, _c, _wh100, _whI, _wh0; getWh(ev, &_wh, &_c, &_wh100, &_whI, &_wh0);
         if (op->adjDlagOff >= 0 && _wh0 == EVID0_REGULAR) {
-          if (Sg.lagRate.empty()) Sg.lagRate.assign(nBase, 0.0);
+          if (Sg.lagRate.empty()) rxAdjAssign(Sg.lagRate, nBase, 0.0);
           Sg.lagRate[c] = dR;
         }
         if (op->adjDfOff < 0 || (_whI != EVIDF_INF_RATE && _whI != EVIDF_INF_DUR)) continue;
