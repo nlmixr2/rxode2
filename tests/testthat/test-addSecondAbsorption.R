@@ -37,96 +37,133 @@ rxTest({
     expect_error(res0 |> addSecondAbsorption(delay = "transit", n = 0))
   })
 
-  test_that("addSecondAbsorption zero-order second path", {
+  test_that("addSecondAbsorption zero-order second path is Monolix Tk02", {
     res <- res0 |> addSecondAbsorption(type = "zero", delay = "none")
 
-    expect_equal(modelExtract(res, "dur(depot2)"), "dur(depot2) <- tk0")
+    # Monolix's zero-order route is a modeled duration directly on the
+    # central compartment with the first-order depot as the F1 path; no
+    # second depot and no extra absorption rate are introduced
+    expect_equal(modelExtract(res, "dur(central)"), "dur(central) <- tk0")
     expect_true("ltk0" %in% res$iniDf$name)
-    # ka2 stays: it is depot2's disposition rate for the infused amount
-    expect_true("lka2" %in% res$iniDf$name)
-
-    # NOTE (rxode2#1381): 201 modeled-duration records mis-deliver
-    # whenever f() lines are present -- with an endpoint the translated
-    # 201 is dropped/rewritten; even endpoint-free a direct 201 on a
-    # depot2 with an f() line under-fills ~40% (54.1/54.1/36.3 vs
-    # 90.2/93.6/62.8 analytic).  The split directive additionally
-    # duplicates direct depot2 records.  Until that is fixed, verify
-    # the zero-order second path against the analytic with f() lines
-    # AND the split line REMOVED (dosing the post-f amounts directly),
-    # which matches exactly (90.15006/93.58782/62.79153); the F1
-    # apportionment itself is covered by the first/first solve test
-    # above and the mu-ref assertions.
-    expect_equal(modelExtract(res, "dur(depot2)"), "dur(depot2) <- tk0")
-    expect_equal(modelExtract(res, "d/dt(depot2)"), "d/dt(depot2) <- -ka2 * depot2")
-    expect_equal(modelExtract(res, "d/dt(central)"), "d/dt(central) <- ka * depot - kel * central + ka2 * depot2")
-
-    resNoF <- res
-    le <- resNoF$lstExpr
-    # drop the endpoint (~, propSd, Cc), the F1 apportionment (f(),
-    # fDepot expit line) and the split line; the dosing below uses
-    # post-f amounts directly.
-    # NOTE: fDepot also matches logitfDepot, so exclude the theta line
-    # explicitly to keep it available... instead drop the theta from
-    # iniDf and let the expit line fail? No -- simplest: keep the expit
-    # line AND its theta (harmless, unused), drop only the f() uses.
-    keep <- !vapply(
-      le,
-      function(l) {
-        .d <- deparse1(l)
-        grepl("~", .d, fixed = TRUE) ||
-          grepl("propSd", .d, fixed = TRUE) ||
-          grepl("Cc <-", .d, fixed = TRUE) ||
-          grepl("f\\(", .d) ||
-          grepl("splitInfusionBolus", .d, fixed = TRUE)
-      },
-      logical(1),
-      USE.NAMES = FALSE
+    expect_false("depot2" %in% res$state)
+    expect_false("lka2" %in% res$iniDf$name)
+    expect_equal(modelExtract(res, "f(depot)"), "f(depot) <- fDepot")
+    expect_equal(modelExtract(res, "f(central)"), "f(central) <- 1 - fDepot")
+    # the modeled-duration target must come first so the split promotes it
+    expect_true(
+      "splitInfusionBolus(depot, central, depot)" %in%
+        vapply(res$lstExpr, function(l) deparse1(l), character(1), USE.NAMES = FALSE)
     )
-    resNoF <- rxUiDecompress(resNoF)
-    # drop the endpoint's theta BEFORE replacing the model block:
-    # model() validates iniDf against the new lines
-    resNoF$iniDf <- resNoF$iniDf[resNoF$iniDf$name != "propSd", ]
-    model(resNoF) <- le[keep]
-    resNoF <- rxUiCompress(resNoF)
 
-    e <- rxode2::et(time = 0, amt = 70, cmt = "depot") |>
-      rxode2::et(time = 0, amt = 30, cmt = "depot2", rate = -2) |>
-      rxode2::et(seq(0, 48, by = 0.5))
-    # NOTE: solve with explicit params matching the piped defaults
-    # (addDepot/addLogEstimates default est=0.1, so tk0=exp(0.1), NOT
-    # the log(4) used in hand-written probes -- a mismatch here cost an
-    # hour of debugging)
+    # F1 of the dose is first-order via depot, 1-F1 is zero-order over
+    # tk0 into central: compare with the closed form
+    e <- rxode2::et(time = 0, amt = 100, cmt = "depot") |>
+      rxode2::et(c(1, 4, 8, 24, 48))
     s <- as.data.frame(rxode2::rxSolve(
-      resNoF,
+      res,
       e,
       params = c(
         lka = log(1.2),
-        lka2 = 0.1,
         lcl = log(0.1),
         lvc = log(10),
-        ltk0 = 0.1,
-        logitfDepot = logit(0.7)
+        ltk0 = log(4),
+        logitfDepot = logit(0.7),
+        propSd = 0.5
       )
     ))
-    d <- s[s$time %in% c(4, 8, 48), c("time", "central")]
-
-    # path1: 70 first-order ka=1.2; path2: 30 infused at R=30/tk0 over
-    # tk0=exp(0.1) into depot2 draining at ka2=exp(0.1); kel=0.01
-    tk0 <- exp(0.1)
-    ka2 <- exp(0.1)
+    ka <- 1.2
     kel <- 0.01
-    R <- 30 / tk0
-    c1 <- function(t) 70 * 1.2 / (1.2 - kel) * (exp(-kel * t) - exp(-1.2 * t))
-    c2 <- function(t) {
-      if (t <= tk0) {
-        R * ka2 / (ka2 - kel) * ((1 - exp(-kel * t)) / kel - (1 - exp(-ka2 * t)) / ka2)
-      } else {
-        d4 <- R / ka2 * (1 - exp(-ka2 * tk0))
-        c4 <- R * ka2 / (ka2 - kel) * ((1 - exp(-kel * tk0)) / kel - (1 - exp(-ka2 * tk0)) / ka2)
-        c4 * exp(-kel * (t - tk0)) + ka2 * d4 / (ka2 - kel) * (exp(-kel * (t - tk0)) - exp(-ka2 * (t - tk0)))
-      }
+    tk0 <- 4
+    f1 <- 0.7
+    cFirst <- function(t) 100 * f1 * ka / (ka - kel) * (exp(-kel * t) - exp(-ka * t))
+    cZero <- function(t) {
+      r <- 100 * (1 - f1) / tk0
+      ifelse(t <= tk0, r / kel * (1 - exp(-kel * t)), r / kel * (exp(-kel * (t - tk0)) - exp(-kel * t)))
     }
-    expect_equal(d$central, c(c1(4) + c2(4), c1(8) + c2(8), c1(48) + c2(48)), tolerance = 1e-4)
+    expect_equal(
+      s$central[match(c(1, 4, 8, 24, 48), s$time)],
+      cFirst(c(1, 4, 8, 24, 48)) + cZero(c(1, 4, 8, 24, 48)),
+      tolerance = 1e-6
+    )
+  })
+
+  test_that("addSecondAbsorption zero-order second path lag delays central dosing", {
+    res <- res0 |> addSecondAbsorption(type = "zero", delay = "lag")
+    expect_equal(modelExtract(res, "lag(central)"), "lag(central) <- lagCentral")
+    expect_true("llagCentral" %in% res$iniDf$name)
+    expect_equal(modelExtract(res, "dur(central)"), "dur(central) <- tk0")
+
+    # the lag shifts only the zero-order (1-F1) share
+    e <- rxode2::et(time = 0, amt = 100, cmt = "depot") |>
+      rxode2::et(c(1, 4, 8, 24, 48))
+    s <- as.data.frame(rxode2::rxSolve(
+      res,
+      e,
+      params = c(
+        lka = log(1.2),
+        lcl = log(0.1),
+        lvc = log(10),
+        ltk0 = log(4),
+        llagCentral = log(2),
+        logitfDepot = logit(0.7),
+        propSd = 0.5
+      )
+    ))
+    ka <- 1.2
+    kel <- 0.01
+    tk0 <- 4
+    tlag <- 2
+    f1 <- 0.7
+    cFirst <- function(t) 100 * f1 * ka / (ka - kel) * (exp(-kel * t) - exp(-ka * t))
+    cZero <- function(t) {
+      r <- 100 * (1 - f1) / tk0
+      tt <- pmax(t - tlag, 0)
+      ifelse(tt <= tk0, r / kel * (1 - exp(-kel * tt)), r / kel * (exp(-kel * (tt - tk0)) - exp(-kel * tt)))
+    }
+    expect_equal(
+      s$central[match(c(1, 4, 8, 24, 48), s$time)],
+      cFirst(c(1, 4, 8, 24, 48)) + cZero(c(1, 4, 8, 24, 48)),
+      tolerance = 1e-6
+    )
+  })
+
+  test_that("convertAbsForceLongerDelay ties a zero-order second path's central lag", {
+    res <- res0 |>
+      addLag(depot) |>
+      addSecondAbsorption(type = "zero", delay = "lag") |>
+      convertAbsForceLongerDelay()
+    expect_equal(modelExtract(res, "lag(central)"), "lag(central) <- lagDepot + diffTlag2")
+    expect_true("diffTlag2" %in% res$iniDf$name)
+    expect_false("llagCentral" %in% res$iniDf$name)
+  })
+
+  test_that("addSecondAbsorption refuses unsupported zero-order routes", {
+    # the central compartment must exist
+    expect_error(
+      res0 |> addSecondAbsorption(type = "zero", central = "nonexistent"),
+      regexp = "nonexistent"
+    )
+    # two modeled durations cannot share central
+    expect_error(
+      suppressWarnings(addZeroOrderAbs(res0)) |>
+        addSecondAbsorption(type = "zero"),
+      regexp = "two zero-order absorption routes"
+    )
+    # a transit delay needs a first-order second path
+    expect_error(
+      res0 |> addSecondAbsorption(type = "zero", delay = "transit", n = 2),
+      regexp = "transit-compartment delay"
+    )
+    # a model without a depot has no first-order first path to pair with
+    expect_error(
+      readModelDb("PK_2cmt_no_depot") |> addSecondAbsorption(type = "zero"),
+      regexp = "first-order first path"
+    )
+    # dur(central) needs an ODE block, not linCmt()
+    expect_error(
+      readModelDb("PK_1cmt") |> addSecondAbsorption(type = "zero"),
+      regexp = "ODE model"
+    )
   })
 
   test_that("addSecondAbsorption guards", {

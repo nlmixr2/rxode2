@@ -23,12 +23,15 @@ addSecondAbsorption(
 object)}
 
 \item{type}{second-path input type: \code{"zero"} for a zero-order
-(modeled-duration) input or \code{"first"} for a first-order (\code{ka2})
-input}
+input (Monolix's \code{Tk02}: a modeled duration \code{dur(central)} on the
+central compartment) or \code{"first"} for a first-order (\code{ka2})
+input.  A zero-order second path is only available when the first
+path is first-order (two modeled durations cannot share the
+central compartment).}
 
 \item{delay}{second-path delay: \code{"none"}, \code{"lag"} (an \code{alag} on the
 second path), or \code{"transit"} (a transit chain feeding the second
-path)}
+path).  \code{"transit"} needs a first-order second path.}
 
 \item{n}{number of transit compartments when \code{delay = "transit"}}
 
@@ -51,14 +54,17 @@ path)}
 a model with two parallel absorption paths
 }
 \description{
-Adds a parallel absorption path (\code{depot2}) to a model that already
-has first-order absorption through \code{depot}, for Monolix-style
+Adds a parallel absorption path to a model that already has
+first-order absorption through \code{depot}, for Monolix-style
 double-absorption models: one dose record is split at translation
 time into two parallel inputs with a logit-parameterized \code{F1}
 apportionment.  The second path can itself be zero-order
-(\code{type = "zero"}, a modeled \code{dur(depot2)} input), first-order
-(\code{type = "first"}, \code{ka2}), or a transit chain (\code{delay = "transit"}),
-with an optional lag.
+(\code{type = "zero"}, Monolix's \code{Tk02} modeled duration directly on the
+central compartment), first-order (\code{type = "first"}, \code{ka2}, which
+adds \code{depot2}), or a first-order path behind a transit chain
+(\code{delay = "transit"}), with an optional lag.  When the first path is
+zero-order (\code{addZeroOrderAbs()}), only a first-order second path is
+available.
 }
 \details{
 Only one second absorption path is supported per model; applying
@@ -85,9 +91,14 @@ pk1cmtDes <- function() {
 }
 
 
-# simultaneous zero-order + first-order (Monolix double absorption)
+# simultaneous first-order + first-order (Monolix oral1_oral1)
 pk1cmtDes |>
   addSecondAbsorption(type = "first", delay = "lag", f1 = 0.7)
+
+# simultaneous zero-order + first-order (Monolix oral0_oral1:
+# Tk02 as dur(central), F1 on the first-order depot)
+pk1cmtDes |>
+  addSecondAbsorption(type = "zero", f1 = 0.5)
 
 }
 \seealso{
