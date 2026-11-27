@@ -36,9 +36,16 @@ rxTest({
     for (.nm in names(.mods)) {
       .m <- .mods[[.nm]]
       # approx() collapses the forward checkpoint's duplicated t0 row
-      .a <- suppressWarnings(
-        .rxAdjointSolve(.m$txt, .m$p, et(.tt), names(.m$p), .tt, denseBy = .db, atol = 1e-12, rtol = 1e-12)
-      )
+      .a <- suppressWarnings(.rxAdjointSolve(
+        .m$txt,
+        .m$p,
+        et(.tt),
+        names(.m$p),
+        .tt,
+        denseBy = .db,
+        atol = 1e-12,
+        rtol = 1e-12
+      ))
       .check(.a, .nm)
     }
   })

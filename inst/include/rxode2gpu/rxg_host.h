@@ -27,6 +27,7 @@ static void rxg_host_ctx(rxg_ctx *c, double *p0, double *p1, double *pl,
   c->covType = flags[0];
   c->nonmem = flags[1];
   c->hist = 0;
+  c->preOk = 0;
 }
 
 #if RXG_HAS_DELAY
@@ -71,6 +72,22 @@ void rxg_host_round(int *n, int *nthreads, double *y, double *rd, int *ri,
 #endif
   for (int i = 0; i < nn; i++) {
     rxg_round1(i, y, rd, ri, p0, p1, pl, ir, on, ad, ai, hs, hrec, od, oi);
+  }
+}
+
+// n subjects' timelines on the host (rxg_timeline1()), in parallel on
+// nthreads OpenMP threads
+void rxg_host_timeline(int *n, int *nthreads, int *off, double *y, double *rd,
+                       int *ri, double *p0, double *p1, double *pl, double *ir,
+                       int *on, double *ad, int *ai, double *hs, double *hrec,
+                       double *od, int *oi) {
+  int nn = *n;
+#ifdef _OPENMP
+  int nt = (*nthreads > 0) ? *nthreads : 1;
+#pragma omp parallel for num_threads(nt) schedule(dynamic)
+#endif
+  for (int i = 0; i < nn; i++) {
+    rxg_timeline1(i, off, y, rd, ri, p0, p1, pl, ir, on, ad, ai, hs, hrec, od, oi);
   }
 }
 

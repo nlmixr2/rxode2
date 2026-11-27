@@ -97,11 +97,10 @@ rxTest({
 
   test_that("the continuous adjoint refuses a reset", {
     .msg <- "the continuous adjoint does not support a reset (evid = 3/4); use rxSolveAdjointRk4()"
-    .evs <- list(
+    for (.ev in list(
       et(c(0, 1, 3)) |> et(time = 2, evid = 3),
       et(c(0, 1, 3)) |> et(time = 2, evid = 4, amt = 5, cmt = "y")
-    )
-    for (.ev in .evs) {
+    )) {
       expect_error(.rxAdjointSolve(.txt, .p, .ev, "k", c(1, 3)), .msg, fixed = TRUE)
       expect_error(rxSolveAdjoint(.txt, .p, .ev, "k"), .msg, fixed = TRUE)
       expect_error(.rxAdjointGradBuild(.txt, "k", "y", .ev), .msg, fixed = TRUE)

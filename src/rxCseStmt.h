@@ -67,8 +67,9 @@ static void csCountStmt(csCtx *c, const char *line, int idx) {
     if (c->arena.failed) {
       if (c->failWhy == NULL) c->failWhy = "lhs";
     } else {
-      (void) csA(c, d_get_child(s, 2));
+      const char *root = csA(c, d_get_child(s, 2));
       if (c->arena.failed && c->failWhy == NULL) c->failWhy = "rhs";
+      if (!c->arena.failed && root != NULL) csMapTop(c->count, root);
     }
   }
   if (c->arena.failed) { c->anyFail = 1; c->failLine = line; }

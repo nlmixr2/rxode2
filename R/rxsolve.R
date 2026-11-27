@@ -3620,12 +3620,30 @@ rxSolveCacheEnv$.order <- character()
 #' @author Matthew L. Fidler
 .rxJacStateModel <- function(object) {
   .mvCur <- rxModelVars(object)
+  .origText <- rxNorm(.mvCur)
+  # calcJac drops the d/dt() of rx__sens_* states (calcSens regenerates them),
+  # but a solve integrates them: differentiate them under plain names
+  .sens <- .mvCur$sens
+  # temporary names that occur nowhere in the model
+  .base <- "rxJacSensState"
+  while (length(.sens) > 0L && grepl(.base, .origText, fixed = TRUE)) {
+    .base <- paste0(.base, "X")
+  }
+  .tmp <- paste0(.base, seq_along(.sens))
+  .ord <- order(-nchar(.sens))
+  .jacText <- .origText
+  for (.i in .ord) {
+    .jacText <- gsub(.sens[.i], .tmp[.i], .jacText, fixed = TRUE)
+  }
   .mv <- suppressMessages({
-    rxModelVars(rxode2::rxode2(object, calcJac = TRUE))
+    rxModelVars(rxode2::rxode2(.jacText, calcJac = TRUE))
   })
   .states <- .mvCur$state
   .normCode <- strsplit(rxNorm(.mv), "\n")[[1]]
-  .origCode <- strsplit(rxNorm(.mvCur), "\n")[[1]]
+  for (.i in rev(seq_along(.sens))) {
+    .normCode <- gsub(paste0("\\b", .tmp[.i], "\\b"), .sens[.i], .normCode, perl = TRUE)
+  }
+  .origCode <- strsplit(.origText, "\n")[[1]]
   # the Jacobian may read the PK record time (rx_time_pk~t)
   .fc <- c(.origCode, setdiff(grep("^rx_time_pk~", .normCode, value = TRUE), .origCode))
 
@@ -4016,6 +4034,24 @@ rxSolve.default <- function(
     .ctl$method <- .up
     .ctl <- do.call(rxControl, c(.ctl, list(events = events, params = params)))
   }
+  # abs (Adams-Bashforth) has no adjoint duals for modeled dosing, so its
+  # sensitivities would leave out the f()/alag()/rate()/dur() terms of a
+  # modifier that depends on a sensitivity parameter.
+  if (.ctl$method == 208L && any(rxModelVars(object)$lhs == "rx__adjFX_0_0__")) {
+    .bad <- .rxAdjointDoseDuals(object)
+    if (length(.bad) > 0L) {
+      stop(
+        sprintf(
+          gettext(
+            "method='abs' cannot calculate sensitivities through %s that depend on sensitivity parameters; use %s"
+          ),
+          paste(.bad, collapse = ", "),
+          if (any(.bad %in% c("rate()", "dur()"))) "method='rk4s'" else "method='rk4s' or method='liblsodaadj'"
+        ),
+        call. = FALSE
+      )
+    }
+  }
   # The discrete-adjoint forward primal now solves steady-state (ss) dosing
   # correctly (the ss pre-solve reuses the base method's stepper), but the
   # backward sweep does not yet propagate the steady-state initial condition's
@@ -4031,6 +4067,18 @@ rxSolve.default <- function(
   ) {
     .evDf <- tryCatch(as.data.frame(events), error = function(e) NULL)
     if (!is.null(.evDf) && !is.null(.evDf$ss) && any(.evDf$ss != 0, na.rm = TRUE)) {
+      # The ss IC term is the derivative of the converged steady state, not of
+      # the state after exactly minSS = maxSS doses.
+      if (.ctl$minSS == .ctl$maxSS) {
+        stop(
+          "adjoint sensitivities differentiate the converged steady state, not ",
+          "the state after a fixed number of doses (minSS = maxSS); set maxSS ",
+          "above minSS, or for forward sensitivities build the model with ",
+          "rxode2(model, calcSens = <parameters>) and solve it with a ",
+          "non-adjoint method",
+          call. = FALSE
+        )
+      }
       # Which ss cases carry the steady-state initial-condition sensitivity
       # (dY_ss/dp) depends on the adjoint driver.  The rk4s framework (explicit
       # AND the composite/AutoSwitch fill) covers, for both ss==1 and ss==2:
@@ -4038,10 +4086,10 @@ rxSolve.default <- function(
       # duration dur>ii via a two-phase monodromy; full-interval dur==ii via a
       # -J^{-1} df/dp linear solve), continuous infusion (rate, amt 0), and
       # interior ss==1 resets / multiple ss==2 superposition events.
-      # Still guarded (fall back to sensMethod="forward"): modeled-rate/dur
-      # infusion ss (dR/dp != 0, a moving period boundary); the liblsodaadj
-      # multistep driver for anything but continuous infusion; and the abs /
-      # cvodesadj / pure Rosenbrock-implicit drivers (no ss IC term at all).
+      # Still guarded (fall back to forward sensitivities): modeled-rate/dur
+      # infusion ss (dR/dp != 0, a moving period boundary) outside the explicit
+      # non-composite fill; ss==2 and several ss==1 events in one subject on
+      # liblsodaadj; and the abs / cvodesadj drivers (no ss IC term at all).
       .r <- if (is.null(.evDf$rate)) rep(0, nrow(.evDf)) else .evDf$rate
       .iiv <- if (is.null(.evDf$ii)) rep(0, nrow(.evDf)) else .evDf$ii
       .amv <- if (is.null(.evDf$amt)) rep(0, nrow(.evDf)) else .evDf$amt
@@ -4073,12 +4121,12 @@ rxSolve.default <- function(
         .supported <- (.evDf$ss == 1 & (.r == 0 | .cont | (.r > 0 & .iiv > 0) | (.r < 0 & .iiv > 0 & .noComposite))) |
           (.evDf$ss == 2 & (.r == 0 | (.r > 0 & .iiv > 0)))
       } else if (.ctl$method == 202L) {
-        # liblsodaadj: single ss==1 (all durations)
-        # bolus and any fixed-rate infusion with an interval reach a periodic/
-        # constant steady state; the multistep driver re-records ONE ss period
-        # (recording-paused pre-solve) for the monodromy IC, or a -J^{-1} df/dp
-        # linear solve for the continuous/full-interval (kind-2) case.  ss==2 and
-        # interior/multiple ss==1 resets on liblsodaadj stay guarded (below).
+        # liblsodaadj: one ss==1 event per subject (all durations), at the window
+        # start or later.  Bolus and any fixed-rate infusion with an interval reach
+        # a periodic/constant steady state; the multistep driver re-records ONE ss
+        # period (recording-paused pre-solve) for the monodromy IC, or a -J^{-1}
+        # df/dp linear solve for the continuous/full-interval (kind-2) case.  ss==2
+        # and several ss==1 events in one subject stay guarded (below).
         .supported <- (.evDf$ss == 1 & (.r == 0 | .cont | (.r > 0 & .iiv > 0)))
       } else if (.rk4sStiff) {
         # pure stiff (Rosenbrock / implicit RK)
@@ -4094,16 +4142,23 @@ rxSolve.default <- function(
         # abs / cvodesadj: none
         .supported <- rep(FALSE, nrow(.evDf))
       }
-      # Multiple ss==1 events (an interior ss=1 reset re-establishing steady
-      # state, not just the window-start ss=1) are handled on the explicit and
-      # composite fills (interior monodromy + reset); elsewhere they are guarded.
-      .multiSs1 <- length(unique(.evDf$time[.evDf$ss == 1 & .evDf$evid != 0])) > 1L
-      .badSs <- (.multiSs1 && !(.rk4sFw || .rk4sStiff)) ||
-        any(.evDf$ss != 0 & !.supported, na.rm = TRUE)
+      # Several ss==1 events in one subject are handled by the rk4s family (each
+      # from its own regimen); liblsodaadj carries one per subject.
+      .idCol <- which(tolower(names(.evDf)) == "id")[1]
+      .ssId <- if (is.na(.idCol)) rep(1L, nrow(.evDf)) else .evDf[[.idCol]]
+      .ss1 <- which(.evDf$ss == 1 & .evDf$evid != 0)
+      .multiSs1 <- any(vapply(split(.evDf$time[.ss1], .ssId[.ss1]), function(.t) length(unique(.t)) > 1L, logical(1)))
+      # a subject with every record at one time takes no step, so the backward
+      # fill never reaches the steady state of its ss dose
+      .oneTime <- tapply(.evDf$time, .ssId, function(x) length(unique(x)) == 1L)
+      .ssOneTime <- any(.evDf$ss != 0 & .oneTime[as.character(.ssId)], na.rm = TRUE)
+      .badSs <- (.multiSs1 && !(.rk4sFw || .rk4sStiff)) || .ssOneTime || any(.evDf$ss != 0 & !.supported, na.rm = TRUE)
       if (.badSs) {
         stop(
           "adjoint sensitivities do not yet support this steady-state (ss) ",
-          "case; use sensMethod=\"forward\" for models with steady-state doses",
+          "case; for forward sensitivities build the model with ",
+          "rxode2(model, calcSens = <parameters>) and solve it with a ",
+          "non-adjoint method",
           call. = FALSE
         )
       }
