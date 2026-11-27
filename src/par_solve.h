@@ -19,6 +19,7 @@ extern "C" {
 #include "rxThreadData.h"
 #include "rxode2lincmtLink.h"
 #include "rxDrawTape.h"
+#include "solveDiag.h"
 
 void par_rkf78(rx_solve *rx);
 extern "C" void ind_rkf78(rx_solve *rx, int solveid, t_dydt c_dydt, t_update_inis u_inis);
@@ -169,6 +170,8 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
 	static inline int iniSubject(int solveid, int inLhs, rx_solving_options_ind *ind, rx_solving_options *op, rx_solve *rx,
 															 t_update_inis u_inis) {
 		ind->_rxFlag=1;
+    // a new solve of this subject: drop diagnostics left by an earlier failure
+    if (inLhs == 0) rxSolveDiagClear(solveid);
     ind->fns = &(rx->fns);
     ind->op = op;
     ind->rx = rx;
