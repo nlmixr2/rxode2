@@ -190,8 +190,123 @@ void _rxode2parse_unprotect(void) {
 }
 
 #include "codegen2.h"
+// Device lines computed once per interval (rxg_pre()): _rxgHoist[i] is the
+// slot of line i in rxg_ctx.pre, -1 when it stays in rxg_dydt()/rxg_jac();
+// _rxgPreMode emits rxg_pre() itself
+static int *_rxgHoist = NULL;
+static int _rxgNPre = 0;
+static int _rxgPreMode = 0;
 #include "pkTime.h"
 #include "codegenSlice.h"
+#include "../inst/include/rxMemAlloc.h"
+
+// may a hoisted right-hand side read identifier id[0..len)?  Not time, the
+// solver's arrays and context, delay() or a state; the line's own variable
+// lhs (whose earlier value is the same in rxg_pre()) and variables not
+// assigned or already hoisted are fine
+static int rxgHoistIdOk(const char *id, int len, const char *lhs, int lhsLen,
+                        pkTimeVars *assigned, pkTimeVars *hoisted,
+                        pkTimeVars *states) {
+  if (len == 1 && id[0] == 't') return 0;
+  if (len >= 2 && id[0] == '_' && id[1] == '_') return 0;
+  if (len >= 4 && !strncmp(id, "_rxg", 4)) return 0;
+  if (len == 8 && !strncmp(id, "_rxDelay", 8)) return 0;
+  if (pkTimeHasVar(states, id, len)) return 0;
+  if (len == lhsLen && !strncmp(id, lhs, len)) return 1;
+  return !pkTimeHasVar(assigned, id, len) || pkTimeHasVar(hoisted, id, len);
+}
+
+// Does the right-hand side of line s (after its `=` at k) read only
+// parameters, literals, functions and the variables already in hoisted (or
+// the line's own variable, whose earlier value is the same in rxg_pre())?
+static int rxgHoistRhs(const char *s, int k, const char *lhs, int lhsLen,
+                       pkTimeVars *assigned, pkTimeVars *hoisted,
+                       pkTimeVars *states) {
+  while (s[k] != '\0') {
+    int j = pkTimeSkipLiteral(s, k);
+    if (j != k) {
+      k = j;
+      continue;
+    }
+    if (!pkTimeIdStart(s[k])) {
+      k++;
+      continue;
+    }
+    j = k;
+    while (pkTimeIdChar(s[j])) j++;
+    if (!rxgHoistIdOk(s + k, j - k, lhs, lhsLen, assigned, hoisted, states)) return 0;
+    k = j;
+  }
+  return 1;
+}
+
+// inChain[i] (fresh, zeroed): line i belongs to an if/else or while group
+static int *rxgHoistChains(int n) {
+  pkTimeGroups g;
+  pkTimeGroupsFind(&g, n);
+  int *inChain = (int*)rxMemRalloc(fixed, n, sizeof(int));
+  for (int i = 0; i < n; ++i) inChain[i] = 0;
+  for (int k = 0; k < g.n; ++k) {
+    for (int i = g.first[k]; i <= g.last[k]; ++i) inChain[i] = 1;
+  }
+  return inChain;
+}
+
+// the variables assigned once and those assigned more than once
+static void rxgHoistAssigned(int n, pkTimeVars *once, pkTimeVars *twice) {
+  for (int i = 0; i < n; ++i) {
+    int start = 0;
+    int len = pkTimeLhs(sbPm.line[i], &start);
+    if (len <= 0) continue;
+    if (pkTimeHasVar(once, sbPm.line[i] + start, len)) {
+      pkTimeAddVar(twice, sbPm.line[i] + start, len);
+    } else {
+      pkTimeAddVar(once, sbPm.line[i] + start, len);
+    }
+  }
+}
+
+// can line i (an assignment outside if/else and while) go to rxg_pre()?
+// Adds its variable to hoisted when it can.
+static int rxgHoistLine(int i, pkTimeVars *once, pkTimeVars *twice,
+                        pkTimeVars *hoisted, pkTimeVars *states) {
+  const char *s = sbPm.line[i];
+  int start = 0;
+  int len = pkTimeLhs(s, &start);
+  if (len <= 0) return 0;
+  if (pkTimeHasVar(twice, s + start, len) ||
+      pkTimeHasVar(states, s + start, len)) return 0;
+  int k = start + len;
+  while (s[k] == ' ' || s[k] == '\t') k++;
+  if (s[k] != '=') return 0;
+  if (!rxgHoistRhs(s, k + 1, s + start, len, once, hoisted, states)) return 0;
+  pkTimeAddVar(hoisted, s + start, len);
+  return 1;
+}
+
+// Classify the device lines for rxg_pre(): an assignment outside if/else and
+// while, of a variable assigned only there, that reads no state or time and
+// only variables classified before it.  Fills _rxgHoist; returns the count.
+static int rxgHoistClassify(void) {
+  int n = sbPm.n;
+  _rxgHoist = NULL;
+  _rxgNPre = 0;
+  if (n <= 0) return 0;
+  _rxgHoist = (int*)rxMemRalloc(fixed, n, sizeof(int));
+  for (int i = 0; i < n; ++i) _rxgHoist[i] = -1;
+  int *inChain = rxgHoistChains(n);
+  pkTimeVars states, once, twice, hoisted;
+  pkTimeSeedStates(&states);
+  once.v = twice.v = hoisted.v = NULL;
+  once.n = twice.n = hoisted.n = 0;
+  once.nAlloc = twice.nAlloc = hoisted.nAlloc = 0;
+  rxgHoistAssigned(n, &once, &twice);
+  for (int i = 0; i < n; ++i) {
+    if (sbPm.lType[i] != TASSIGN || inChain[i]) continue;
+    if (rxgHoistLine(i, &once, &twice, &hoisted, &states)) _rxgHoist[i] = _rxgNPre++;
+  }
+  return _rxgNPre;
+}
 
 // Lines that read `time` as the record time (see pkTime.h); NULL when
 // the function being generated never does.
@@ -206,9 +321,13 @@ static int *_pkLine = NULL;
 static int _rxgDev = 0;
 static sbuf _rxgHdr;
 
-// Device code: opens rxg_dydt()/rxg_jac(); 1 when it did
+// Device code: opens rxg_pre()/rxg_dydt()/rxg_jac(); 1 when it did
 static int rxgDevOpen(int show_ode) {
   if (!_rxgDev) return 0;
+  if (show_ode == ode_dydt && _rxgPreMode) {
+    sAppend(&sbOut, "// the lines that depend only on parameters, once per interval\nRXG_FN void rxg_pre(double __t, double *__zzStateVar__, double *__DDtStateVar__, const rxg_ctx *_rxg, double *_rxgPre)\n{\n  int _itwhile = 0;\n  (void)_itwhile;\n  int _cSub = 0;\n  (void)_cSub;\n  double t = __t + _rxg->curShift;\n  (void)t;\n  (void)__DDtStateVar__;\n");
+    return 1;
+  }
   if (show_ode == ode_dydt) {
     sAppend(&sbOut, "RXG_FN void rxg_dydt(double __t, double *__zzStateVar__, double *__DDtStateVar__, const rxg_ctx *_rxg)\n{\n  int _itwhile = 0;\n  (void)_itwhile;\n  int _cSub = 0;\n  (void)_cSub;\n  double t = __t + _rxg->curShift;\n  (void)t;\n");
     return 1;
@@ -220,10 +339,18 @@ static int rxgDevOpen(int show_ode) {
   return 0;
 }
 
-// Device code: closes rxg_dydt()/rxg_jac(); 1 when it did
+// Device code: closes rxg_pre()/rxg_dydt()/rxg_jac(); 1 when it did
 static int rxgDevClose(int show_ode) {
   if (!_rxgDev) return 0;
   if (show_ode != ode_dydt && show_ode != ode_jac) return 0;
+  if (_rxgPreMode && show_ode == ode_dydt) {
+    for (int i = 0; i < sbPm.n; ++i) {
+      if (_rxgHoist == NULL || _rxgHoist[i] < 0) continue;
+      int start = 0;
+      int len = pkTimeLhs(sbPm.line[i], &start);
+      sAppend(&sbOut, "  _rxgPre[%d] = %.*s;\n", _rxgHoist[i], len, sbPm.line[i] + start);
+    }
+  }
   sAppendN(&sbOut,  "}\n\n", 3);
   return 1;
 }
@@ -398,7 +525,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
     int i, j;
     char *buf;
     if (rxgDevOpen(show_ode)) {
-      // device code: rxg_dydt()/rxg_jac() have no host header
+      // device code: rxg_pre()/rxg_dydt()/rxg_jac() have no host header
     } else if (show_ode == ode_dydt){
       const char *extra = "";
       if (strncmp("rx_", libname, 3) != 0) extra = libname;
@@ -743,6 +870,10 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
         // Event-sensitivity dLag/dF emit no model statements here (preamble
         // only); their body comes from the end switch below.
         if (ode_is_es_dcode(show_ode)) break;
+        if (_rxgDev && _rxgPreMode) {
+          if (_rxgHoist != NULL && _rxgHoist[i] >= 0) appendModelLine(i, sbPm.line[i]);
+          continue;
+        }
         // a statement this function's outputs do not depend on (codegenSlice.h)
         if (_cslKeep != NULL && !_cslKeep[i]) continue;
         if (rxgDevSkipLine(sbPm.lType[i])) continue;
@@ -785,7 +916,15 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
             // past() is a function of t and parameters only, and rxOptExpr can
             // hoist delay() into a common-subexpression assignment -- emitting it
             // into _rxPast would recurse (_rxDelay -> _rxPast -> _rxDelay ...).
-            if (!(show_ode == ode_past && strstr(_taLine, "_rxDelay") != NULL)) {
+            if (_rxgDev && _rxgHoist != NULL && _rxgHoist[i] >= 0 &&
+                !strcmp(_taLine, sbPm.line[i])) {
+              // computed once per interval by rxg_pre()
+              int start = 0;
+              int len = pkTimeLhs(_taLine, &start);
+              sAppend(&sbOut, "  if (_rxg->preOk) %.*s = _rxg->pre[%d];\n  else", len,
+                      _taLine + start, _rxgHoist[i]);
+              appendModelLine(i, _taLine);
+            } else if (!(show_ode == ode_past && strstr(_taLine, "_rxDelay") != NULL)) {
               appendModelLine(i, _taLine);
             }
           }
@@ -970,7 +1109,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
       }
     }
     if (rxgDevClose(show_ode)) {
-      // device code: rxg_dydt()/rxg_jac() are closed
+      // device code: rxg_pre()/rxg_dydt()/rxg_jac() are closed
     } else if (show_ode == ode_dydt){
       sAppendN(&sbOut,  "  if (_rxDydtForceCb != NULL) _rxDydtForceCb(_neq, __t, __zzStateVar__, __DDtStateVar__);\n", 90);
       sAppendN(&sbOut,  "  (&_solveData->subjects[_cSub])->dadt_counter[0]++;\n}\n\n", 56);
@@ -1140,7 +1279,9 @@ int rxgUsesTime(const char *s) {
 }
 
 // Writes <c_file>l (eg model.cl): OpenCL C for rxg_dydt()/rxg_jac() for a
-// model whose flags["gpuSafe"] is 1.
+// model whose flags["gpuSafe"] is 1.  nState counts the solved states only:
+// a cmt() without d/dt() (nlmixr2's endpoint compartments) comes after them
+// and is never integrated.
 static void writeRxgDevice(const char *cfile, const char *prefix,
                            const char *libname, const char *pMd5,
                            const char *libname2, int nState, int nLhs,
@@ -1153,6 +1294,14 @@ static void writeRxgDevice(const char *cfile, const char *prefix,
   if (fp == NULL) return;
   sbuf body; sNull(&body); sIni(&body);
   _rxgDev = 1;
+  rxgHoistClassify();
+  if (_rxgNPre > 0) {
+    _rxgPreMode = 1;
+    sbOut.s[0] = '\0'; sbOut.o = 0;
+    codegen(ode_dydt, prefix, libname, pMd5, libname2);
+    sAppend(&body, "%s", sbOut.s);
+    _rxgPreMode = 0;
+  }
   sbOut.s[0] = '\0'; sbOut.o = 0;
   codegen(ode_dydt, prefix, libname, pMd5, libname2);
   sAppend(&body, "%s", sbOut.s);
@@ -1160,6 +1309,7 @@ static void writeRxgDevice(const char *cfile, const char *prefix,
   codegen(ode_jac, prefix, libname, pMd5, libname2);
   sAppend(&body, "%s", sbOut.s);
   _rxgDev = 0;
+  _rxgHoist = NULL;
   sbOut.s[0] = '\0'; sbOut.o = 0;
   sAppend(&sbOut, "// rxode2 device (OpenCL C) model code\n");
   sAppend(&sbOut, "#define RXG_NEQ %d\n#define RXG_NLHS %d\n#define RXG_NPAR %d\n",
@@ -1168,6 +1318,7 @@ static void writeRxgDevice(const char *cfile, const char *prefix,
           nState > 0 ? nState : 1, nLhs > 0 ? nLhs : 1, nPar > 0 ? nPar : 1);
   sAppend(&sbOut, "#define RXG_HAS_JAC %d\n", (found_jac == 1 && good_jac == 1) ? 1 : 0);
   sAppend(&sbOut, "#define RXG_HAS_DELAY %d\n", tb.hasDelay ? 1 : 0);
+  sAppend(&sbOut, "#define RXG_NPRE %d\n", _rxgNPre);
   // delay() reads the history at t - T: time dependent too
   sAppend(&sbOut, "#define RXG_TIME %d\n", (tb.hasDelay || rxgUsesTime(sbNrm.s)) ? 1 : 0);
   if (tb.hasDelay) {
@@ -1205,6 +1356,9 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
                           SEXP esD3FCode, SEXP esDFQCode, SEXP esDLagJacCode,
                           SEXP esDLagQCode, SEXP esDDurQCode) {
   _rxgDev = 0; // host code, even after an error left the device mode set
+  _rxgPreMode = 0;
+  _rxgHoist = NULL;
+  _rxgNPre = 0;
   // Event ("jump") sensitivities: the dLag/dF/dRate/dDur body lines are passed as
   // arguments (not a module global) so the setter and the codegen always run in
   // the same package instance -- the global channel was unreliable under
@@ -1444,7 +1598,7 @@ SEXP _rxode2_codegen(SEXP c_file, SEXP prefix, SEXP libname,
   fclose(fpIO);
   writeRxgDevice(CHAR(STRING_ELT(c_file,0)), CHAR(STRING_ELT(prefix,0)),
                  CHAR(STRING_ELT(libname, 0)), CHAR(STRING_ELT(pMd5,0)),
-                 CHAR(STRING_ELT(libname, 1)), nOrd, nLhs, nPar, gpuSafe);
+                 CHAR(STRING_ELT(libname, 1)), nOrd - tb.nExtra, nLhs, nPar, gpuSafe);
   parseFree(0);
   reset();
   _es_freeCode(); // event-sensitivity code is single-use per model

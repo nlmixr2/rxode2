@@ -193,6 +193,7 @@ articles:
   - rxode2-stiff
   - articles/rxode2-ind-lin
   - articles/rxode2-dense-output
+  - articles/rxode2-gpu
   - rxode2-speed
   - articles/rxode2-mirai-parallel
   - articles/rxode2-oom-solve
@@ -332,6 +333,8 @@ navbar:
       href: articles/rxode2-ind-lin.html
     - text: "Dense output for fast solving"
       href: articles/rxode2-dense-output.html
+    - text: "Solving large populations on a GPU"
+      href: articles/rxode2-gpu.html
     - text: "Speeding up solving"
       href: articles/rxode2-speed.html
     - text: "Parallel solving with mirai"
