@@ -227,6 +227,15 @@
 
 ## Bug fixes
 
+- Second-order event ("jump") sensitivities of infusions are now exact when
+  `f()`, `alag()`, `rate()` or `dur()` depend on the sensitivity parameters,
+  for data-rate, data-duration, modeled-rate and modeled-duration infusions.
+  Before, pairs involving a parameter in `f()`, `rate()` or `dur()` were left
+  at zero or got only part of their terms.  One switch rule now covers every
+  window start and stop.  The forward analytic FOCEi gradient
+  (`fast = TRUE`) reads these sensitivities, so it was off by up to a few
+  percent for such fits.
+
 - The parser no longer reads a function name it had already freed.  Every
   function call copies its name into a buffer that is reallocated as it grows,
   and a copy held while more were made pointed into the old buffer; parsing

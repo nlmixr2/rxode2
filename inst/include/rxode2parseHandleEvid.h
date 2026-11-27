@@ -1313,170 +1313,153 @@ static inline void _esReplMult2(int id, double xout, double *yp, double *yPre,
   free(_esMap);
 }
 
-// Second-order infusion-boundary jump (Phase F/H1's remaining infusion gap):
-// a fixed-rate/duration infusion whose START or STOP time is shifted by a
-// modeled alag jumps InfusionRate[cmt] by a FIXED (p,q-independent) amount
-// `dtmp` at the lag-shifted boundary time. The validated 1st-order formula
-// (see EVIDF_INF_DUR/EVIDF_INF_RATE/EVIDF_MODEL_RATE_ON etc.) is
-// `[S^p]_cmt(tau) = -dtmp*dLag_p[cmt]` -- ONLY the DOSED compartment jumps
-// in VALUE (unlike the additive-bolus dtau row, a forcing-jump does not
-// couple to other states through the physical Jacobian at the instant of
-// the jump: S^p_k for k != cmt stays continuous, picking up only a KINK --
-// a jump in its own time-derivative, not its value -- since
-// dS^p_k/dt = sum_l J[k][l]*S^p_l depends on the now-discontinuous S^p_cmt).
+// Second-order event sensitivities at an infusion window switch.
 //
-// Applying the same "jump condition one level up" derivation used for the
-// additive-bolus dtau row (treating S^p_cmt itself as the jumping quantity)
-// gives, for the FIXED-forcing-jump case, restricted to k=cmt:
-//   [S^{p,q}]_cmt(tau) = -dtmp*d2Lag[p][q][cmt]                (product rule)
-//                        - dLag_q[cmt] * (g+_cmt(tau) - g-_cmt(tau))  (Leibniz)
-// where g_k = dS^p_k/dt (the RHS of S^p_k's own sensitivity ODE).
+// A window into compartment c has rate R over [t1, t2), t1 = t0 + alag.  With
+// raw amount A, the rxode2 semantics are
+//   data rate r (_ES_WIN_DRATE):     R = r,       t2 - t1 = F*A/r
+//   data duration d (_ES_WIN_DDUR):  R = F*A/d,   t2 - t1 = d
+//   modeled rate() (_ES_WIN_MRATE):  R = Q,       t2 - t1 = F*A/Q
+//   modeled dur() (_ES_WIN_MDUR):    R = F*A/Q,   t2 - t1 = Q
+// The state is continuous at a switch tau (tau = t1 at the start, t2 at the
+// stop) and its forcing changes by dR = +R (start) or -R (stop).  The caller
+// applies the first-order part, S^p_c += -dR*tau_p and the forcing dR_p on
+// S^p_c.  Differentiating that jump once more (moving-jump rule on the
+// augmented state (x, S^p)) gives, for every state k,
+//   S^{pq}_k += -(g+_k - g-_k)*tau_q - [k == c]*(dR_q*tau_p + dR*tau_pq)
+// with g = dS^p/dt just before and just after the switch (all of this event's
+// first-order changes applied); g+ - g- = J e_c (-dR tau_p) + dR_p e_c.  The
+// second-order forcing dR_pq is added to S^{pq}_c over the window.
 //
-// CRITICAL EXTRA PIECE (found by FD on a depot-infused/central-observed
-// model, i.e. cmt coupled to OTHER states -- every earlier isolated test
-// happened to observe the SAME compartment being infused, which hid this):
-// even though S^p_k (k != cmt) has NO value jump at 1st order, its SECOND
-// derivative wrt q at FIXED time DOES pick up a Leibniz-style value jump,
-// by the same "kink whose location moves with q" mechanism applied to
-// dS^p_k/dt's OWN jump (proportional to the cmt jump, via the k-th row of
-// the Jacobian) instead of to S^p_cmt directly:
-//   [S^{p,q}]_k(tau) += -dLag_q[cmt] * (g+_k(tau) - g-_k(tau))   for ALL k
-// (no product-rule term for k != cmt: dtmp/Delta only ever affects cmt
-// directly, so there is nothing else to differentiate for those rows).
-//
-// `preState` must be captured by the caller (`_esInfusionDydtPre()`) BEFORE
-// dtmp was applied to InfusionRate[cmt] and before the 1st-order jump was
-// applied to yp; this function reads the CURRENT (already-updated)
-// yp/InfusionRate for the "post" side, so no scratch-copy is needed here
-// (unlike the additive-bolus case, InfusionRate is not part of yp itself).
-//
-// matExp()/indLin() models: dydtEs is a no-op stub, but (same trick as the
-// additive-bolus dtau row's own matExp fix) indLin's premise is a physical
-// Jacobian CONSTANT over the interval, so g+_k - g-_k = sum_l
-// J[k][l]*(S^p_l|post - S^p_l|pre) exactly -- computed from the SAME
-// calc_jac source `_esJacColF` uses, dotted against `preState` (here the
-// pre-jump 1st-order sensitivity BLOCK, not a dydt snapshot -- see
-// `_esInfusionDydtPre()`) and the current (already post-1st-order-jump) yp.
-// Compartment layout is ALSO model-type-specific here, same reason as the
-// dtau row (rxSensMatExp: p-outer/q-inner; ordinary ODE models via
-// rxExpandSens2_: q-outer/p-inner) -- this row's own 3-term-only piece is
-// asymmetric in (p,q) (gated on dtmp/dLag_p, not symmetric like d2F), so
-// the per-model-type index matters here too, not just after adding the
-// Leibniz term (unlike d2F, which never needed this because its own values
-// are symmetric in (p,q) regardless of which slot receives them).
-//
-// SAFETY GUARD (found by FD, 2026-07-01): this derivation implicitly treats
-// `dtmp` (the InfusionRate CHANGE at this event) as p,q-INDEPENDENT, valid
-// for a fixed-rate/duration infusion (EVIDF_INF_RATE/DUR) but FALSE at the
-// MODEL_RATE_ON/OFF and MODEL_DUR_ON/OFF events, where `tmp` IS the modeled
-// rate value itself (tmp = +-F*amt/dur) and so genuinely depends on q
-// whenever F or dur is modeled with q-dependence. The missing piece is an
-// additional `-[d(tmp)/dq]*dLag_p[cmt]` cross term (confirmed wrong by FD
-// when omitted). ALSO, when p ITSELF drives F/dur, the g+/g- (dS^p_k/dt)
-// computation here runs BEFORE this same event's continuous-forcing code
-// (dRate/dDur additions to InfusionRate) has executed for THIS event, so
-// g+ is missing that just-turned-on forcing contribution -- an ordering
-// issue, not just a missing term (confirmed wrong by FD: an alag+modeled
-// -duration-only model, no F, still gave S^{tlag,tinf} off by ~8% even
-// after guarding q alone). Rather than derive the full multi-parameter
-// cross terms and fix the evaluation order, this SKIPS (leaves 0) any
-// (p,q) pair where EITHER p or q drives F or dur at this cmt (checked via
-// dF/dDurEs for p, dFQEs/dDurQEs for q) -- i.e. exactly the combination
-// where the "dtmp constant" / "forcing already applied" assumptions break
-// down -- shipping a documented incompleteness rather than a silently
-// wrong value.
-static inline void _esInfusionBoundary2ndOrder(int id, double xout, double *yp,
-                                               int cmt, int ns, int neq,
-                                               double dtmp, double *preState) {
-  if (preState == NULL) return;
+// `pre` is the `_esInfusionDydtPre()` snapshot taken before the event changed
+// anything.  `a` is A/r (data rate; 0 when the stop does not move with f()),
+// A/d (data duration) or A (modeled); `af` = F*A for the modeled kinds.  The
+// q derivatives of first order come from the p tables through the calcSens2
+// -> calcSens index map.
+#define _ES_WIN_DRATE 1
+#define _ES_WIN_DDUR 2
+#define _ES_WIN_MRATE 3
+#define _ES_WIN_MDUR 4
+static inline void _esWindow2(int id, double xout, double *yp, double *InfusionRate,
+                              int cmt, int neq, int kind, int stop, double R,
+                              double a, double af, double *pre) {
+  int ns = _rxEsNState, np = _rxEsNParam, np2 = _rxEsNParam2;
+  if (pre == NULL || !_rxEsActive || np <= 0 || np2 <= 0 || cmt < 0 || cmt >= ns ||
+      ns * (1 + np) + ns * np * np2 > neq || dLagJacEs == NULL) return;
   if (!_rxEsUseCalcJac && dydtEs == NULL) return;
   if (_rxEsUseCalcJac && calc_jac == NULL) return;
-  if (d2LagEs == NULL || dLagQEs == NULL) return;
-  int np = _rxEsNParam, np2 = _rxEsNParam2;
-  if (np2 <= 0) return;
-  if (ns * (1 + np) + ns * np * np2 > neq) return;
-  double *_d2LagB = (double*) calloc((size_t)ns * np * np2, sizeof(double));
-  double *_dLagQB = (double*) calloc((size_t)ns * np2, sizeof(double));
-  double *_dydtPost = NULL;  // ODE source for g+
-  double *_fullJac = NULL;   // matExp source for g+ - g- (constant Jacobian)
-  // Safety-guard tables: does p (calcSens-indexed) or q (calcSens2-indexed)
-  // drive F/dur at this cmt?
-  double *_fPGuard = (double*) calloc((size_t)ns * np, sizeof(double));
-  double *_durPGuard = (double*) calloc((size_t)ns * np, sizeof(double));
-  double *_fqGuard = (double*) calloc((size_t)ns * np2, sizeof(double));
-  double *_durQGuard = (double*) calloc((size_t)ns * np2, sizeof(double));
-  if (dF != NULL && _fPGuard != NULL) dF(id, xout, yp, _fPGuard);
-  if (dDurEs != NULL && _durPGuard != NULL) dDurEs(id, xout, yp, _durPGuard);
-  if (dFQEs != NULL && _fqGuard != NULL) dFQEs(id, xout, yp, _fqGuard);
-  if (dDurQEs != NULL && _durQGuard != NULL) dDurQEs(id, xout, yp, _durQGuard);
+  if ((kind == _ES_WIN_MRATE || kind == _ES_WIN_MDUR) && (R == 0.0 || af == 0.0)) return;
+  size_t n1 = (size_t)ns * np, n2 = (size_t)ns * np * np2;
+  double *buf = (double*) calloc(3 * n1 + 3 * n2 + (size_t)np * 2 + (size_t)neq + (size_t)ns * ns,
+                                 sizeof(double));
+  double *map = _esRhsQ(id, xout, yp, ns, np2);
+  if (buf == NULL || map == NULL) {
+    free(buf); free(map);
+    return;
+  }
+  double *Fp = buf, *Lp = Fp + n1, *Qp = Lp + n1;
+  double *Fpq = Qp + n1, *Lpq = Fpq + n2, *Qpq = Lpq + n2;
+  double *tau = Qpq + n2, *dr = tau + np, *post = dr + np, *jac = post + neq;
+  if (dF != NULL) dF(id, xout, yp, Fp);
+  if (dLagEs != NULL) rxEsLag(dLagEs, id, xout, yp, Lp);
+  if (d2FEs != NULL) d2FEs(id, xout, yp, Fpq);
+  if (d2LagEs != NULL) rxEsLag(d2LagEs, id, xout, yp, Lpq);
+  if (kind == _ES_WIN_MRATE) {
+    if (dRateEs != NULL) dRateEs(id, xout, yp, Qp);
+    if (d2RateEs != NULL) d2RateEs(id, xout, yp, Qpq);
+  } else if (kind == _ES_WIN_MDUR) {
+    if (dDurEs != NULL) dDurEs(id, xout, yp, Qp);
+    if (d2DurEs != NULL) d2DurEs(id, xout, yp, Qpq);
+  }
+  int nj[2]; nj[0] = neq; nj[1] = id;
   if (_rxEsUseCalcJac) {
-    _fullJac = (double*) calloc((size_t)ns * ns, sizeof(double));
-    if (_fullJac != NULL) {
-      int _esNjF[2]; _esNjF[0] = neq; _esNjF[1] = id;
-      calc_jac(_esNjF, xout, yp, _fullJac, (unsigned int) ns);
-    }
+    calc_jac(nj, xout, yp, jac, (unsigned int) ns);
   } else {
-    _dydtPost = (double*) calloc((size_t)neq, sizeof(double));
-    if (_dydtPost != NULL) {
-      int _esNj[2]; _esNj[0] = neq; _esNj[1] = id;
-      dydtEs(_esNj, xout, yp, _dydtPost);
-    }
+    dydtEs(nj, xout, yp, post);
   }
-  int _haveG = _rxEsUseCalcJac ? (_fullJac != NULL) : (_dydtPost != NULL);
-  if (_d2LagB != NULL && _dLagQB != NULL && _haveG) {
-    rxEsLag(d2LagEs, id, xout, yp, _d2LagB);
-    rxEsLag(dLagQEs, id, xout, yp, _dLagQB);
-    for (int _p = 0; _p < np; _p++) {
-      // Safety guard: skip if tmp might depend on p (see comment above).
-      if ((_fPGuard != NULL && _fPGuard[cmt * np + _p] != 0.0) ||
-          (_durPGuard != NULL && _durPGuard[cmt * np + _p] != 0.0)) {
-        continue;
+  double sgn = stop ? -1.0 : 1.0, Q = 0.0;
+  if (kind == _ES_WIN_MRATE) Q = R;
+  if (kind == _ES_WIN_MDUR) Q = af / R;
+  // first order: tau_p and the (unsigned) rate derivative r_p
+  for (int p = 0; p < np; p++) {
+    double F1 = Fp[cmt * np + p], L1 = Lp[cmt * np + p], Q1 = Qp[cmt * np + p];
+    double t = L1, r = 0.0;
+    switch (kind) {
+    case _ES_WIN_DRATE:
+      if (stop) t += a * F1;
+      break;
+    case _ES_WIN_DDUR:
+      r = a * F1;
+      break;
+    case _ES_WIN_MRATE:
+      r = Q1;
+      if (stop) t += a * F1 / Q - af * Q1 / (Q * Q);
+      break;
+    case _ES_WIN_MDUR:
+      r = a * F1 / Q - af * Q1 / (Q * Q);
+      if (stop) t += Q1;
+      break;
+    }
+    tau[p] = t;
+    dr[p] = sgn * r;
+  }
+  for (int p = 0; p < np; p++) {
+    for (int q = 0; q < np2; q++) {
+      int qp = _esQToP(map, ns, np, np2, q);
+      if (qp < 0) continue;
+      size_t i2 = (size_t)cmt * np * np2 + (size_t)p * np2 + q;
+      double F2 = Fpq[i2], L2 = Lpq[i2], Q2 = Qpq[i2];
+      double Fa = Fp[cmt * np + p], Fb = Fp[cmt * np + qp];
+      double Qa = Qp[cmt * np + p], Qb = Qp[cmt * np + qp];
+      // d2(k F/Q)/dp dq with k = A (only used by the modeled kinds)
+      double g2 = 0.0;
+      if (kind == _ES_WIN_MRATE || kind == _ES_WIN_MDUR) {
+        g2 = a * F2 / Q - a * (Fa * Qb + Fb * Qa) / (Q * Q) - af * Q2 / (Q * Q) +
+          2.0 * af * Qa * Qb / (Q * Q * Q);
       }
-      for (int _q = 0; _q < np2; _q++) {
-        // Safety guard: skip if tmp might depend on q (see comment above).
-        if ((_fqGuard != NULL && _fqGuard[cmt * np2 + _q] != 0.0) ||
-            (_durQGuard != NULL && _durQGuard[cmt * np2 + _q] != 0.0)) {
-          continue;
-        }
-        double _d2LagPQ = _d2LagB[cmt * (np * np2) + _p * np2 + _q];
-        double _dLagQq = _dLagQB[cmt * np2 + _q];
-        int _c2cmt = _rxEsUseCalcJac ?
-          (ns * (1 + np) + cmt + ns * (_p * np2 + _q)) :
-          (ns * (1 + np) + cmt + ns * (_p + _q * np));
-        yp[_c2cmt] += -dtmp * _d2LagPQ;
-        if (_dLagQq != 0.0) {
-          for (int _esK = 0; _esK < ns; _esK++) {
-            double _gdiff;
-            if (_rxEsUseCalcJac) {
-              double _acc = 0.0;
-              for (int _esL = 0; _esL < ns; _esL++) {
-                double _dS = yp[ns + _p * ns + _esL] - preState[_p * ns + _esL];
-                _acc += _fullJac[_esK * ns + _esL] * _dS;
-              }
-              _gdiff = _acc;
-            } else {
-              _gdiff = _dydtPost[ns + _p * ns + _esK] - preState[ns + _p * ns + _esK];
+      double tpq = L2, rpq = 0.0;
+      switch (kind) {
+      case _ES_WIN_DRATE:
+        if (stop) tpq += a * F2;
+        break;
+      case _ES_WIN_DDUR:
+        rpq = a * F2;
+        break;
+      case _ES_WIN_MRATE:
+        rpq = Q2;
+        if (stop) tpq += g2;
+        break;
+      case _ES_WIN_MDUR:
+        rpq = g2;
+        if (stop) tpq += Q2;
+        break;
+      }
+      double tq = tau[qp];
+      int base = _rxEsUseCalcJac ? (ns * (1 + np) + ns * (p * np2 + q)) :
+        (ns * (1 + np) + ns * (p + q * np));
+      if (tq != 0.0) {
+        for (int k = 0; k < ns; k++) {
+          double gd;
+          if (_rxEsUseCalcJac) {
+            gd = (k == cmt) ? dr[p] : 0.0;
+            for (int l = 0; l < ns; l++) {
+              gd += jac[k * ns + l] * (yp[ns + p * ns + l] - pre[p * ns + l]);
             }
-            int _c2 = _rxEsUseCalcJac ?
-              (ns * (1 + np) + _esK + ns * (_p * np2 + _q)) :
-              (ns * (1 + np) + _esK + ns * (_p + _q * np));
-            yp[_c2] += -_gdiff * _dLagQq;
+          } else {
+            gd = post[ns + p * ns + k] - pre[ns + p * ns + k];
           }
+          yp[base + k] += -gd * tq;
         }
       }
+      yp[base + cmt] += -(dr[qp] * tau[p] + sgn * R * tpq);
+      InfusionRate[base + cmt] += sgn * rpq;
     }
   }
-  if (_d2LagB != NULL) free(_d2LagB);
-  if (_dLagQB != NULL) free(_dLagQB);
-  if (_dydtPost != NULL) free(_dydtPost);
-  if (_fullJac != NULL) free(_fullJac);
-  if (_fqGuard != NULL) free(_fqGuard);
-  if (_durQGuard != NULL) free(_durQGuard);
-  if (_fPGuard != NULL) free(_fPGuard);
-  if (_durPGuard != NULL) free(_durPGuard);
+  free(buf);
+  free(map);
 }
 
-// Captures the state needed for `_esInfusionBoundary2ndOrder()`'s Leibniz
+// Captures the state needed for `_esWindow2()`'s Leibniz
 // term, BEFORE an infusion-boundary event mutates InfusionRate/yp: for ODE
 // models, dS^p_./dt via dydtEs(); for matExp models (dydtEs is a no-op
 // stub), the pre-jump 1st-order sensitivity BLOCK itself (same "constant
@@ -1655,16 +1638,7 @@ static inline int handle_evid(int evid, int neq,
             }
             free(_eA);
           }
-          // Second-order moving-boundary term (product rule + Leibniz): the
-          // actual InfusionRate[cmt] CHANGE here is -tmp (see the assignment
-          // just above), matching this case's own 1st-order sign convention.
-          // (An earlier naive attempt reusing just the product-rule piece,
-          // without the Leibniz term, was found incorrect by FD -- see the
-          // additive-bolus dtau row's own note and
-          // _esInfusionBoundary2ndOrder()'s derivation comment.)
-          _esInfusionBoundary2ndOrder(id, xout, yp, cmt, _ns, neq, -tmp, _esDydtPreB1);
         }
-        if (_esDydtPreB1 != NULL) free(_esDydtPreB1);
         // Event ("jump") sensitivities -- modeled rate continuous forcing.
         // The infusion rate is a solver-applied forcing (not a symbolic term in
         // f), so the symbolic sensitivity ODE misses d(rate)/dp.  Mirror the same
@@ -1684,43 +1658,12 @@ static inline int handle_evid(int evid, int neq,
             }
             free(_esB);
           }
-          // NOTE (2026-06-30): a naive second-order extension
-          // (InfusionRate[2nd-order-cmt] += d2Rate[p][q] over the window)
-          // was tried and found INCORRECT by FD after the infusion ends --
-          // matches to machine precision *during* [tau1,tau2] but diverges
-          // sharply afterward. Root cause: differentiating a forcing
-          // integrated over a parameter-dependent window [tau1,tau2(p)] a
-          // SECOND time picks up a genuine Leibniz-rule boundary-delta term
-          // (~dRate(tau2)*d(tau2)/dq) that the first-order construction
-          // never needed (the well-known, FD-validated 1st-order asymmetry
-          // "modeled RATE needs no explicit boundary term, unlike modeled
-          // DUR" does not survive a second differentiation -- tau2 depends
-          // on the parameter here too, via tau2=tau1+amt/rate(p)). Deferred
-          // pending a proper derivation; reverted rather than left in as a
-          // silently-wrong result valid only inside the infusion window.
         }
         // Modeled duration continuous forcing.  rate = F*amt/dur, so
         //   d(rate)/dp = (amt/dur)*dF/dp - (rate/dur)*d(dur)/dp
         //             = (amt*dF + tmp*dDur)/dur     (tmp = -rate = stored value).
         // The dF term covers a parameter-dependent bioavailability on the
         // modeled-duration infusion; dDur covers a parameter-dependent duration.
-        //
-        // Second-order piece (2026-07-01): differentiating the quotient
-        // rate=F*amt/dur a second time wrt q via the quotient rule needs
-        // d(dur)/dq and d(F)/dq -- i.e. the FIRST-order dDur/dF value at q's
-        // position in calcSens2, a DIFFERENT index space than the (cmt,p)
-        // buffers above (calcSens-indexed). Rather than build a
-        // calcSens2-position -> calcSens-position cross-index map, this
-        // reuses the SAME "evaluate directly at calcSens2 params" trick as
-        // the dtau row's "fq"/"lagQ" tables: `dFQEs`/`dDurQEs` give dF/dDur
-        // AT q's own index space directly, so no remapping is needed. Full
-        // derivation (rate=F*amt/dur, tmp=-rate):
-        //   d2(rate)/dp/dq = amt*d2F[p][q]/dur
-        //                    - amt*(dF_p*dDurQ_q + dFQ_q*dDur_p)/dur^2
-        //                    + tmp*d2Dur[p][q]/dur
-        //                    - 2*tmp*dDur_p*dDurQ_q/dur^2
-        // Compartment layout is model-type-specific, same reason/formula as
-        // the additive-bolus d2F row and the infusion moving-boundary term.
         if (_rxEsActive && _rxEsNParam > 0 && cmt < _rxEsNState && _rxEsNState * (1 + _rxEsNParam) <= neq &&
             ind->whI == EVIDF_MODEL_DUR_ON && dDurEs != NULL && durEsFn != NULL) {
           int _ns = _rxEsNState, _np = _rxEsNParam;
@@ -1736,104 +1679,18 @@ static inline int handle_evid(int evid, int neq,
                 InfusionRate[_ns + _p * _ns + cmt] +=
                   (_esAmt * _esFB[cmt * _np + _p] + tmp * _esB[cmt * _np + _p]) / _esDur;
               }
-              // Second-order continuous-forcing piece.
-              if (d2FEs != NULL && d2DurEs != NULL && dFQEs != NULL && dDurQEs != NULL &&
-                  _rxEsNParam2 > 0 &&
-                  _ns * (1 + _np) + _ns * _np * _rxEsNParam2 <= neq) {
-                int _np2 = _rxEsNParam2;
-                double *_esD2FB = (double*) calloc((size_t)_ns * _np * _np2, sizeof(double));
-                double *_esD2DurB = (double*) calloc((size_t)_ns * _np * _np2, sizeof(double));
-                double *_esFQB = (double*) calloc((size_t)_ns * _np2, sizeof(double));
-                double *_esDurQB = (double*) calloc((size_t)_ns * _np2, sizeof(double));
-                if (_esD2FB != NULL && _esD2DurB != NULL && _esFQB != NULL && _esDurQB != NULL) {
-                  d2FEs(id, xout, yp, _esD2FB);
-                  d2DurEs(id, xout, yp, _esD2DurB);
-                  dFQEs(id, xout, yp, _esFQB);
-                  dDurQEs(id, xout, yp, _esDurQB);
-                  double _esDur2 = _esDur * _esDur;
-                  for (int _p = 0; _p < _np; _p++) {
-                    double _esDFp = _esFB[cmt * _np + _p];
-                    double _esDDurp = _esB[cmt * _np + _p];
-                    for (int _q = 0; _q < _np2; _q++) {
-                      double _esD2Fpq = _esD2FB[cmt * (_np * _np2) + _p * _np2 + _q];
-                      double _esD2Durpq = _esD2DurB[cmt * (_np * _np2) + _p * _np2 + _q];
-                      double _esFQq = _esFQB[cmt * _np2 + _q];
-                      double _esDurQq = _esDurQB[cmt * _np2 + _q];
-                      double _esTerm = _esAmt * _esD2Fpq / _esDur
-                        - _esAmt * (_esDFp * _esDurQq + _esFQq * _esDDurp) / _esDur2
-                        + tmp * _esD2Durpq / _esDur
-                        - 2.0 * tmp * _esDDurp * _esDurQq / _esDur2;
-                      int _c2 = _rxEsUseCalcJac ?
-                        (_ns * (1 + _np) + cmt + _ns * (_p * _np2 + _q)) :
-                        (_ns * (1 + _np) + cmt + _ns * (_p + _q * _np));
-                      InfusionRate[_c2] += _esTerm;
-                    }
-                  }
-                }
-                if (_esD2FB != NULL) free(_esD2FB);
-                if (_esD2DurB != NULL) free(_esD2DurB);
-                if (_esFQB != NULL) free(_esFQB);
-                if (_esDurQB != NULL) free(_esDurQB);
-              }
-              // Second-order tau1-boundary cross term: tau1 = t0+alag(p)
-              // shifts with alag-driving p, and the ON-event forcing jump
-              // [xdot]_ON=-tmp=+rate depends on q whenever q drives F/dur
-              // (dRateQq, same sign convention as the validated 1st-order
-              // d(rate)/dp=(amt*dF+tmp*dDur)/dur formula). This is a
-              // DIFFERENT term from the continuous-forcing piece above: it
-              // comes from differentiating the general moving-boundary jump
-              // condition "[S](tau1)=-[xdot]*d(tau1)/dp" a SECOND time wrt
-              // q, picking up an extra -dRateQq*dLag_p product-rule term
-              // (tau1 itself has NO dur dependence, so unlike the DUR-OFF
-              // boundary tau2=tau1+dur(p) there is no Leibniz-side fix
-              // needed here when q drives dur/F alone -- dtau1/dq=dLagQ_q
-              // is unaffected by dur/F -- only this product-rule cross
-              // term, previously entirely missing). Confirmed by FD: an
-              // alag+modeled-dur-only model (no F) showed
-              // S^{tlag,tinf}_depot analytically 0 throughout the WHOLE
-              // infusion window while FD showed a decaying nonzero value
-              // seeded right at tau1 (_esInfusionBoundary2ndOrder()'s own
-              // guard skips this (p,q) pair entirely since q drives dur,
-              // which is necessary for the DUR-OFF boundary but overly
-              // conservative here since tau1 has no dur term to worry
-              // about -- rather than loosen that shared guard, this adds
-              // the missing piece directly); a full alag+dur+F model's
-              // S^{tlag,doseAmt} (F-driven q, no dur) caught a further sign
-              // bug in dRateQq's dur term that had accidentally cancelled
-              // for the dur-only case above. Validated to ~1e-10 on both.
-              if (dLagEs != NULL && dFQEs != NULL && dDurQEs != NULL &&
-                  _rxEsNParam2 > 0 &&
-                  _ns * (1 + _np) + _ns * _np * _rxEsNParam2 <= neq) {
-                int _np2 = _rxEsNParam2;
-                double *_esLagB3 = (double*) calloc((size_t)_ns * _np, sizeof(double));
-                double *_esFQB3 = (double*) calloc((size_t)_ns * _np2, sizeof(double));
-                double *_esDurQB3 = (double*) calloc((size_t)_ns * _np2, sizeof(double));
-                if (_esLagB3 != NULL && _esFQB3 != NULL && _esDurQB3 != NULL) {
-                  rxEsLag(dLagEs, id, xout, yp, _esLagB3);
-                  dFQEs(id, xout, yp, _esFQB3);
-                  dDurQEs(id, xout, yp, _esDurQB3);
-                  for (int _p = 0; _p < _np; _p++) {
-                    double _esDLagP = _esLagB3[cmt * _np + _p];
-                    if (_esDLagP == 0.0) continue;
-                    for (int _q = 0; _q < _np2; _q++) {
-                      double _esFQq3 = _esFQB3[cmt * _np2 + _q];
-                      double _esDurQq3 = _esDurQB3[cmt * _np2 + _q];
-                      double _esDRateQq3 = (_esAmt * _esFQq3 + tmp * _esDurQq3) / _esDur;
-                      int _c2cmt3 = _rxEsUseCalcJac ?
-                        (_ns * (1 + _np) + cmt + _ns * (_p * _np2 + _q)) :
-                        (_ns * (1 + _np) + cmt + _ns * (_p + _q * _np));
-                      yp[_c2cmt3] += -_esDRateQq3 * _esDLagP;
-                    }
-                  }
-                }
-                if (_esLagB3 != NULL) free(_esLagB3);
-                if (_esFQB3 != NULL) free(_esFQB3);
-                if (_esDurQB3 != NULL) free(_esDurQB3);
-              }
             }
             if (_esB != NULL) free(_esB);
             if (_esFB != NULL) free(_esFB);
           }
+        }
+        // second order at the window start (exact for f/alag/rate/dur)
+        if (_esDydtPreB1 != NULL) {
+          double _esA1 = getDoseIndex(ind, ind->idx);
+          _esWindow2(id, xout, yp, InfusionRate, cmt, neq,
+                     ind->whI == EVIDF_MODEL_RATE_ON ? _ES_WIN_MRATE : _ES_WIN_MDUR, 0,
+                     -tmp, _esA1, getAmt(ind, id, cmt, _esA1, xout, yp), _esDydtPreB1);
+          free(_esDydtPreB1);
         }
       }
       break;
@@ -1860,23 +1717,6 @@ static inline int handle_evid(int evid, int neq,
             yp[_ns + _p * _ns + cmt] += -tmp * _eA[cmt * _np + _p];
           }
           free(_eA);
-        }
-        // Second-order alag-boundary term (product rule + Leibniz); see
-        // _esInfusionBoundary2ndOrder()'s derivation comment. For
-        // MODEL_DUR_OFF on ODE models, tau2 = tau1(alag) + dur(F,dur-params)
-        // can shift with BOTH alag- and dur-driving parameters
-        // simultaneously, so the combined block below (using dtau2/dp =
-        // dLag_p+dDur_p etc.) supersedes this call entirely for that case --
-        // calling both would double-count the pure-alag-alag corner. The
-        // combined block is ODE-only (needs dydtEs), so still fall back to
-        // this generic (alag-only) helper for matExp/indLin MODEL_DUR_OFF
-        // events -- better a documented alag-only-corner result than none at
-        // all (matches prior behavior for those models; skipping here
-        // regressed test-mexp-nonmem.R's S^{tlag,tlag} check). Also still
-        // fire it for MODEL_RATE_OFF, whose own dur-analog
-        // (tau2=tau1+amt/rate(p)) moving-boundary term is still deferred.
-        if (ind->whI != EVIDF_MODEL_DUR_OFF || _rxEsUseCalcJac) {
-          _esInfusionBoundary2ndOrder(id, xout, yp, cmt, _ns, neq, tmp, _esDydtPreB2);
         }
       }
       // Event ("jump") sensitivities -- modeled rate continuous forcing OFF.
@@ -1936,161 +1776,17 @@ static inline int handle_evid(int evid, int neq,
               // duration's parameters (not F), so d(tau2)/dp = d(dur)/dp = dDur.
               yp[_ns + _p * _ns + cmt] += (-tmp) * _esDDur;
             }
-            // Second-order continuous-forcing REMOVAL: exact mirror of the
-            // MODEL_DUR_ON case's own addition (same quotient-rule formula,
-            // subtracted instead of added -- see that case's derivation
-            // comment).
-            if (d2FEs != NULL && d2DurEs != NULL && dFQEs != NULL && dDurQEs != NULL &&
-                _rxEsNParam2 > 0 &&
-                _ns * (1 + _np) + _ns * _np * _rxEsNParam2 <= neq) {
-              int _np2 = _rxEsNParam2;
-              double *_esD2FB = (double*) calloc((size_t)_ns * _np * _np2, sizeof(double));
-              double *_esD2DurB = (double*) calloc((size_t)_ns * _np * _np2, sizeof(double));
-              double *_esFQB = (double*) calloc((size_t)_ns * _np2, sizeof(double));
-              double *_esDurQB = (double*) calloc((size_t)_ns * _np2, sizeof(double));
-              if (_esD2FB != NULL && _esD2DurB != NULL && _esFQB != NULL && _esDurQB != NULL) {
-                d2FEs(id, xout, yp, _esD2FB);
-                d2DurEs(id, xout, yp, _esD2DurB);
-                dFQEs(id, xout, yp, _esFQB);
-                dDurQEs(id, xout, yp, _esDurQB);
-                double _esDur2 = _esDur * _esDur;
-                for (int _p = 0; _p < _np; _p++) {
-                  double _esDFp = _esFB[cmt * _np + _p];
-                  double _esDDurp = _esB[cmt * _np + _p];
-                  for (int _q = 0; _q < _np2; _q++) {
-                    double _esD2Fpq = _esD2FB[cmt * (_np * _np2) + _p * _np2 + _q];
-                    double _esD2Durpq = _esD2DurB[cmt * (_np * _np2) + _p * _np2 + _q];
-                    double _esFQq = _esFQB[cmt * _np2 + _q];
-                    double _esDurQq = _esDurQB[cmt * _np2 + _q];
-                    double _esTerm = _esAmt * _esD2Fpq / _esDur
-                      - _esAmt * (_esDFp * _esDurQq + _esFQq * _esDDurp) / _esDur2
-                      + tmp * _esD2Durpq / _esDur
-                      - 2.0 * tmp * _esDDurp * _esDurQq / _esDur2;
-                    int _c2 = _rxEsUseCalcJac ?
-                      (_ns * (1 + _np) + cmt + _ns * (_p * _np2 + _q)) :
-                      (_ns * (1 + _np) + cmt + _ns * (_p + _q * _np));
-                    InfusionRate[_c2] -= _esTerm;
-                  }
-                }
-              }
-              if (_esD2FB != NULL) free(_esD2FB);
-              if (_esD2DurB != NULL) free(_esD2DurB);
-              if (_esFQB != NULL) free(_esFQB);
-              if (_esDurQB != NULL) free(_esDurQB);
-            }
           }
           if (_esB != NULL) free(_esB);
           if (_esFB != NULL) free(_esFB);
-          // Second-order DUR-boundary moving-boundary term, COMBINED across
-          // both mechanisms that can shift tau2 = tau1(alag) + dur(F,dur):
-          // alag shifting tau1, and dur/F shifting dur directly. These are
-          // NOT separable into independent per-mechanism Leibniz terms --
-          // both parts of dtau2/dp = dLag_p + dDur_p (and dtau2/dq =
-          // dLagQ_q + dDurQ_q, d2tau2/dpdq = d2Lag[p][q] + d2Dur[p][q]) must
-          // be SUMMED before use in the "jump condition one level up"
-          // derivation (an earlier attempt handling alag and dur separately
-          // -- one via _esInfusionBoundary2ndOrder(), one via a dur-only
-          // Leibniz term guarded to skip alag-driving p -- either
-          // cross-contaminated g+/g- or silently dropped the genuine
-          // dLag_p-driven contribution to the product-rule term; confirmed
-          // wrong/incomplete by FD on an alag+modeled-dur-only model with no
-          // F, S^{tlag,tinf}; a SECOND bug of the same kind was later found
-          // via a full F+dur+alag model's S^{tlag,doseAmt}, tracked to
-          // dRateQq's dur-term sign below not matching the already-
-          // validated 1st-order d(rate)/dp=(amt*dF+tmp*dDur)/dur formula --
-          // it happened to cancel out for pure-dur q but flipped the answer
-          // for pure-F q). tmp (=-rate, i.e. rate=-tmp) is parameter-
-          // dependent (rate=F*amt/dur), contributing an extra d(rate)/dq
-          // term (dRateQq, matching the SAME sign convention as the
-          // validated 1st-order formula) on top of the Leibniz term:
-          //   dtau2dp = dLag_p[cmt] + dDur_p[cmt]
-          //   dtau2dq = dLagQ_q[cmt] + dDurQ_q[cmt]
-          //   dRateQq = (amt*dFQ_q + tmp*dDurQ_q)/dur     (dur/F only; rate
-          //             has no direct alag dependence)
-          //   [S^{p,q}]_cmt += dRateQq*dtau2dp - tmp*(d2Lag[p][q]+d2Dur[p][q])
-          //   [S^{p,q}]_k   += -dtau2dq * (g+_k - g-_k)      for ALL k
-          // Validated by FD to ~1e-10 on an alag+modeled-dur-only isolate
-          // (both compartments, through and after the boundary) AND on the
-          // full alag+dur+F IMAX model's S^{doseAmt,tinf}, S^{tinf,tinf},
-          // S^{doseAmt,doseAmt}, S^{tlag,tinf}, S^{tlag,doseAmt} pairs.
-          // (same "kink whose location moves with q" extension to coupled
-          // compartments as _esInfusionBoundary2ndOrder()'s own k!=cmt
-          // piece). g_k = dS^p_k/dt via dydtEs, sampled AFTER all of this
-          // event's forcing/first-order-jump updates (so S^p's own jump,
-          // e.g. from a p that drives alag, is correctly reflected in g+ --
-          // that inclusion is NOT contamination, it's exactly what the
-          // envelope-theorem derivation calls for). This block supersedes
-          // _esInfusionBoundary2ndOrder() entirely for MODEL_DUR_OFF (see
-          // the guard added at that call site) -- reduces to the pure-alag
-          // formula when dDur_p=dDurQ_q=d2Dur[p][q]=0, so there is no
-          // double-count. ODE models only for now.
-          if (!_rxEsUseCalcJac && dydtEs != NULL && _esDydtPreB2 != NULL &&
-              d2DurEs != NULL && dDurQEs != NULL && dFQEs != NULL &&
-              _rxEsNParam2 > 0 &&
-              _ns * (1 + _np) + _ns * _np * _rxEsNParam2 <= neq) {
-            int _np2 = _rxEsNParam2;
-            double *_esD2DurB2 = (double*) calloc((size_t)_ns * _np * _np2, sizeof(double));
-            double *_esDurQB2 = (double*) calloc((size_t)_ns * _np2, sizeof(double));
-            double *_esFQB2 = (double*) calloc((size_t)_ns * _np2, sizeof(double));
-            double *_esDydtPostB2 = (double*) calloc((size_t)neq, sizeof(double));
-            double *_esDurB2 = (double*) calloc((size_t)_ns * _np, sizeof(double));
-            // alag contribution to dtau2/dp, dtau2/dq, d2tau2/dpdq -- NULL
-            // (treated as all-zero) when the model has no alag() tables.
-            double *_esLagB2 = (d2LagEs != NULL && dLagQEs != NULL && dLagEs != NULL) ?
-              (double*) calloc((size_t)_ns * _np, sizeof(double)) : NULL;
-            double *_esLagQB2 = (_esLagB2 != NULL) ?
-              (double*) calloc((size_t)_ns * _np2, sizeof(double)) : NULL;
-            double *_esD2LagB2 = (_esLagB2 != NULL) ?
-              (double*) calloc((size_t)_ns * _np * _np2, sizeof(double)) : NULL;
-            if (_esLagB2 != NULL && _esLagQB2 != NULL && _esD2LagB2 != NULL) {
-              rxEsLag(dLagEs, id, xout, yp, _esLagB2);
-              rxEsLag(dLagQEs, id, xout, yp, _esLagQB2);
-              rxEsLag(d2LagEs, id, xout, yp, _esD2LagB2);
-            }
-            if (_esD2DurB2 != NULL && _esDurQB2 != NULL && _esFQB2 != NULL &&
-                _esDydtPostB2 != NULL && _esDurB2 != NULL) {
-              d2DurEs(id, xout, yp, _esD2DurB2);
-              dDurQEs(id, xout, yp, _esDurQB2);
-              dFQEs(id, xout, yp, _esFQB2);
-              dDurEs(id, xout, yp, _esDurB2);
-              int _esNjD[2]; _esNjD[0] = neq; _esNjD[1] = id;
-              dydtEs(_esNjD, xout, yp, _esDydtPostB2);
-              for (int _p = 0; _p < _np; _p++) {
-                double _esDDurP = _esDurB2[cmt * _np + _p];
-                double _esDLagP = (_esLagB2 != NULL) ? _esLagB2[cmt * _np + _p] : 0.0;
-                double _esDTau2dp = _esDLagP + _esDDurP;
-                for (int _q = 0; _q < _np2; _q++) {
-                  double _esD2DurPQ = _esD2DurB2[cmt * (_np * _np2) + _p * _np2 + _q];
-                  double _esD2LagPQ = (_esD2LagB2 != NULL) ?
-                    _esD2LagB2[cmt * (_np * _np2) + _p * _np2 + _q] : 0.0;
-                  double _esDurQq = _esDurQB2[cmt * _np2 + _q];
-                  double _esLagQq = (_esLagQB2 != NULL) ? _esLagQB2[cmt * _np2 + _q] : 0.0;
-                  double _esDTau2dq = _esLagQq + _esDurQq;
-                  double _esFQq = _esFQB2[cmt * _np2 + _q];
-                  double _esDRateQq = (_esAmt * _esFQq + tmp * _esDurQq) / _esDur;
-                  int _c2cmt = _ns * (1 + _np) + cmt + _ns * (_p + _q * _np);
-                  yp[_c2cmt] += _esDRateQq * _esDTau2dp - tmp * (_esD2LagPQ + _esD2DurPQ);
-                  if (_esDTau2dq != 0.0) {
-                    for (int _esK = 0; _esK < _ns; _esK++) {
-                      double _esGdiff = _esDydtPostB2[_ns + _p * _ns + _esK] -
-                        _esDydtPreB2[_ns + _p * _ns + _esK];
-                      int _c2 = _ns * (1 + _np) + _esK + _ns * (_p + _q * _np);
-                      yp[_c2] += -_esGdiff * _esDTau2dq;
-                    }
-                  }
-                }
-              }
-            }
-            if (_esLagB2 != NULL) free(_esLagB2);
-            if (_esLagQB2 != NULL) free(_esLagQB2);
-            if (_esD2LagB2 != NULL) free(_esD2LagB2);
-            if (_esD2DurB2 != NULL) free(_esD2DurB2);
-            if (_esDurQB2 != NULL) free(_esDurQB2);
-            if (_esFQB2 != NULL) free(_esFQB2);
-            if (_esDydtPostB2 != NULL) free(_esDydtPostB2);
-            if (_esDurB2 != NULL) free(_esDurB2);
-          }
         }
+      }
+      // second order at the window stop (exact for f/alag/rate/dur)
+      if (_esDydtPreB2 != NULL) {
+        double _esA2 = ind->curDoseS[cmt];
+        _esWindow2(id, xout, yp, InfusionRate, cmt, neq,
+                   ind->whI == EVIDF_MODEL_RATE_OFF ? _ES_WIN_MRATE : _ES_WIN_MDUR, 1,
+                   -tmp, _esA2, getAmt(ind, id, cmt, _esA2, xout, yp), _esDydtPreB2);
       }
       if (_esDydtPreB2 != NULL) free(_esDydtPreB2);
       }
@@ -2106,6 +1802,9 @@ static inline int handle_evid(int evid, int neq,
         ind->curDoseS[cmt] = ind->curDose;
       }
       {
+        // before this event changes any forcing (second-order Leibniz term)
+        double *_esDydtPreB = _esInfusionDydtPre(id, xout, yp, neq);
+        double _esRawD = tmp; // raw rate amt/dur
         // Event ("jump") sensitivities -- the rate F*amt/dur is a solver-applied
         // forcing, so the sensitivity ODE misses d(rate)/dp = (amt/dur)*dF/dp
         // over the infusion.  Mirror it on each sensitivity compartment: the
@@ -2144,9 +1843,6 @@ static inline int handle_evid(int evid, int neq,
           InfusionRate[_rxEsNState + _p * _rxEsNState + cmt] += _esDRate[_p];
         }
         if (_esDRate != NULL) free(_esDRate);
-      }
-      {
-        double *_esDydtPreB = _esInfusionDydtPre(id, xout, yp, neq);
         InfusionRate[cmt] += tmp;
         // Event ("jump") sensitivities -- infusion moving boundary from a modeled
         // lag.  alag(cmt) shifts the whole infusion window [tau1, tau2] by
@@ -2164,10 +1860,10 @@ static inline int handle_evid(int evid, int neq,
             }
             free(_eA);
           }
-          // Second-order moving-boundary term (product rule + Leibniz), see
-          // _esInfusionBoundary2ndOrder()'s own comment for the derivation.
-          _esInfusionBoundary2ndOrder(id, xout, yp, cmt, _ns, neq, tmp, _esDydtPreB);
         }
+        // second order at the switch (alag, and f() scaling the rate)
+        _esWindow2(id, xout, yp, InfusionRate, cmt, neq, _ES_WIN_DDUR, tmp < 0.0,
+                   fabs(tmp), fabs(_esRawD), 0.0, _esDydtPreB);
         if (_esDydtPreB != NULL) free(_esDydtPreB);
       }
       ind->cacheME=0;
@@ -2187,6 +1883,7 @@ static inline int handle_evid(int evid, int neq,
       // }
       {
       double *_esDydtPreB = _esInfusionDydtPre(id, xout, yp, neq);
+      double _esD0 = 0.0; // raw duration when f() moves the stop
       // A fixed-rate extra stop ending a steady-state fixed-duration infusion
       // removes the rate, and the f() sensitivity forcing, that infusion's
       // start added (rxode2#1568).
@@ -2217,14 +1914,11 @@ static inline int handle_evid(int evid, int neq,
           }
           free(_eA);
         }
-        // Second-order moving-boundary term (product rule + Leibniz), see
-        // _esInfusionBoundary2ndOrder()'s own comment for the derivation.
-        _esInfusionBoundary2ndOrder(id, xout, yp, cmt, _ns, neq, tmp, _esDydtPreB);
       }
       // Infusion stop moved by f() (rxode2#1676): f() scales the amount, so the
       // stop is t0 + lag + f*dur (handleInfusionItem(), f read at the raw start
       // t0).  The forcing drops by rate = -tmp there, so the sensitivity jumps by
-      // rate*d(tstop)/dp = rate*dur*dF/dp.  First order only.
+      // rate*d(tstop)/dp = rate*dur*dF/dp.
       if (tmp < 0.0 && ind->idx >= 0 && dF != NULL && _rxEsActive &&
           _rxEsNParam > 0 && cmt < _rxEsNState &&
           _rxEsNState * (1 + _rxEsNParam) <= neq &&
@@ -2243,6 +1937,7 @@ static inline int handle_evid(int evid, int neq,
           int _ns = _rxEsNState, _np = _rxEsNParam;
           double _esT0 = getAllTimes(ind, ind->idose[_esStart]);
           double _esDur = getAllTimes(ind, ind->idose[_esStop]) - _esT0;
+          _esD0 = _esDur;
           double *_esFB = (double*) calloc((size_t)_ns * _np, sizeof(double));
           if (_esFB != NULL) {
             dF(id, _esT0, yp, _esFB);
@@ -2309,6 +2004,9 @@ static inline int handle_evid(int evid, int neq,
         if (_esFB != NULL) free(_esFB);
         _esSSRateOffCmt = -1;
       }
+      // second order at the switch (alag, and f() moving the stop)
+      _esWindow2(id, xout, yp, InfusionRate, cmt, neq, _ES_WIN_DRATE, tmp < 0.0,
+                 fabs(tmp), _esD0, 0.0, _esDydtPreB);
       if (_esDydtPreB != NULL) free(_esDydtPreB);
       }
       ind->cacheME=0;

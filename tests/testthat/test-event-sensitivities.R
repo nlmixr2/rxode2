@@ -2136,4 +2136,66 @@ rxTest({
     chk(mtF, et(amt = 100, rate = -1, cmt = "central") |> et(c(1, 4, 8, 12, 16, 20))) # non-ss, F != 1
     chk(mt, et(amt = 100, rate = -1, cmt = "central", ss = 1, ii = 24) |> et(c(4, 8, 12, 16, 24, 30)), TRUE) # ss
   })
+
+  test_that("infusion windows with f(), alag(), rate() and dur() on the parameters: first and second order match FD", {
+    # Every infusion kind into a compartment whose f()/alag() (and rate()/dur())
+    # read the sensitivity parameters.  rxode2 semantics: data rate R = r with
+    # duration F*amt/r; data duration R = F*amt/d; rate() R = Q with duration
+    # F*amt/Q; dur() R = F*amt/Q with duration Q.  First-order columns against
+    # central differences of the states, second-order columns against central
+    # differences of the first-order columns (the forward analytic FOCEi
+    # gradient reads both).
+    .ode <- "d/dt(depot) <- -0.7 * depot\n      d/dt(central) <- 0.7 * depot - 0.26 * central"
+    .p0 <- c(tf = log(0.8), tl = log(1.1), tq = log(2.5), eta_f = 0.05, eta_l = -0.03, eta_q = 0.04)
+    .obs <- c(0.5, 1.3, 2.2, 3.1, 4.4, 5.5, 7, 8.1, 9.3, 11, 14)
+    .cases <- list(
+      drate = list(q = NULL, rate = 30, dur = 0),
+      ddur = list(q = NULL, rate = 0, dur = 2.7),
+      mrate = list(q = "rate(%s) <- 10 * exp(tq + eta_q)", rate = -1, dur = 0),
+      mdur = list(q = "dur(%s) <- exp(tq + eta_q)", rate = -2, dur = 0)
+    )
+    .sol <- function(m, e, p) {
+      as.data.frame(rxSolve(m, e, p, method = "dop853", atol = 1e-12, rtol = 1e-12))
+    }
+    for (.tgt in c("depot", "central")) {
+      for (.k in names(.cases)) {
+        .cs <- .cases[[.k]]
+        .etas <- c("eta_f", "eta_l", if (!is.null(.cs$q)) "eta_q")
+        .mod <- paste(c(
+          sprintf("f(%s) <- exp(tf + eta_f)", .tgt),
+          sprintf("alag(%s) <- exp(tl + eta_l)", .tgt),
+          if (!is.null(.cs$q)) sprintf(.cs$q, .tgt),
+          .ode
+        ), collapse = "\n      ")
+        e <- et(amt = 100, rate = .cs$rate, dur = .cs$dur, cmt = .tgt) |>
+          et(amt = 50, time = 6.3, rate = .cs$rate, dur = .cs$dur, cmt = .tgt) |>
+          et(.obs)
+        m1 <- rxode2(.mod, calcSens = .etas, eventSens = "jump")
+        m2 <- rxode2(.mod, calcSens = .etas, calcSens2 = .etas, eventSens = "jump")
+        s2 <- .sol(m2, e, .p0)
+        h <- 1e-4
+        for (.q in .etas) {
+          pp <- .p0
+          pp[.q] <- pp[.q] + h
+          pm <- .p0
+          pm[.q] <- pm[.q] - h
+          sp <- .sol(m1, e, pp)
+          sm <- .sol(m1, e, pm)
+          for (.st in c("depot", "central")) {
+            .info <- paste(.tgt, .k, .q, .st)
+            fd <- (sp[[.st]] - sm[[.st]]) / (2 * h)
+            expect_equal(s2[[sprintf("rx__sens_%s_BY_%s__", .st, .q)]], fd,
+                         tolerance = 1e-6, info = .info)
+            for (.p in .etas) {
+              .c1 <- sprintf("rx__sens_%s_BY_%s__", .st, .p)
+              .c2 <- sprintf("rx__sens_%s_BY_%s_BY_%s__", .st, .p, .q)
+              if (!(.c2 %in% names(s2))) .c2 <- sprintf("rx__sens_%s_BY_%s_BY_%s__", .st, .q, .p)
+              fd2 <- (sp[[.c1]] - sm[[.c1]]) / (2 * h)
+              expect_equal(s2[[.c2]], fd2, tolerance = 1e-6, info = paste(.info, .p))
+            }
+          }
+        }
+      }
+    }
+  })
 })
