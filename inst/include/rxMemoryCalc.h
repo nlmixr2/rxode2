@@ -119,6 +119,26 @@ static inline void rxFillMemLayout(
 }
 
 /* ---------------------------------------------------------------------------
+ * rxAdjWorkPerThread
+ *
+ * Doubles in one thread's slice of the adjoint backward-work arena, which
+ * sits at the end of gsolve when the model carries an adjoint expansion
+ * (op->adjNbase/op->adjNp > 0).  Each subject's backward pass bumps through
+ * its thread's slice (src/rxAdjArena.h).  The per-period Jacobian tapes,
+ * sized by the forward pass's step count, take the heap instead.
+ * One slot is the slice's ownership word.  Per subject: seven nBase*np dual
+ * vectors and one neq state; per ss=1 dose (bounded by maxAllTimes): three
+ * nBase*np vectors, its neq state and the RX_ADJ_VEC_HDR doubles of the
+ * vector holding its steady state.
+ * --------------------------------------------------------------------------- */
+#define RX_ADJ_VEC_HDR 3  /* a std::vector, in doubles (asserted in src/rxAdjArena.h) */
+static inline int64_t rxAdjWorkPerThread(int neq, int nBase, int np, int maxAllTimes) {
+  if (nBase <= 0 || np <= 0) return 0;
+  const int64_t nnp = (int64_t)nBase * np;
+  return 1 + 7 * nnp + neq + (int64_t)maxAllTimes * (3 * nnp + neq + RX_ADJ_VEC_HDR);
+}
+
+/* ---------------------------------------------------------------------------
  * rx_ind_alloc / rxFillIndAllocTotal
  *
  * When op->indOwnAlloc is set, rxAllocInd() (src/rxData.cpp) gives every
