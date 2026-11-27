@@ -15,6 +15,9 @@ object)}
 \item{mtt}{mean transit time variable name}
 
 \item{Ktr}{transit rate variable name}
+
+\item{model}{Deprecated alias for \code{ui}. Supplying \code{model}
+instead of \code{ui} still works but emits a deprecation warning.}
 }
 \value{
 a model without the analytic transit input

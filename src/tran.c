@@ -495,7 +495,7 @@ void reset(void) {
   tb.splitInfusionBolusN = 0;
   tb.splitBolusInfusion = R_Calloc(MXSYM, int);
   tb.splitBolusInfusionN = 0;
-  tb.transitDose = R_Calloc(MXSYM, int);
+  tb.transitDose = rxMemTag(fixed, R_Calloc(MXSYM, int));
   tb.transitDoseN = 0;
   tb.dvid	= R_Calloc(MXDER, int);
   tb.thread     = 1; // Thread safe flag

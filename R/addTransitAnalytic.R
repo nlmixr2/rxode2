@@ -118,6 +118,7 @@ addTransitAnalytic <- function(
 #' instead.
 #'
 #' @inheritParams addTransitAnalytic
+#' @inheritParams addTransit
 #' @return a model without the analytic transit input
 #' @family Absorption building blocks
 #' @export
