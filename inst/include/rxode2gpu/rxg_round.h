@@ -146,6 +146,23 @@ RXG_FN void _rxg_roundCtx(rxg_ctx *c, int i, RXG_GLOBAL const double *rd,
   c->covType = ri[RXG_RI_COV];
   c->nonmem = ri[RXG_RI_NONMEM];
   c->hist = 0;
+  c->preOk = 0;
+  // parameters equal at both ends are constant over the interval
+  if (c->covType == 1) {
+    int same = 1;
+    for (int j = 0; j < RXG_NPAR; j++) {
+      if (c->p0[j] != c->p1[j]) same = 0;
+    }
+    if (same) c->covType = 0;
+  }
+#if RXG_NPRE > 0
+  if (c->covType == 0) {
+    double y0[RXG_NEQ1];
+    for (int j = 0; j < RXG_NEQ1; j++) y0[j] = 0.0;
+    rxg_pre(c->t0, y0, y0, c, c->pre);
+    c->preOk = 1;
+  }
+#endif
 }
 
 RXG_FN void _rxg_roundOpt(rxg_opt *o, RXG_GLOBAL const double *od,
@@ -226,8 +243,44 @@ RXG_FN void rxg_round1(int i, RXG_GLOBAL double *y, RXG_GLOBAL double *rd,
 #endif
 }
 
+// A subject's whole timeline: rows off[i] to off[i+1] - 1, in order, each a
+// request of rxg_round1() (row k's subject state is ri[RXG_RI_SUB], i here).
+// The host recorded them with the subject's events and no integration, so the
+// y of a row after the first is the jump its events add (a dose) to the state
+// the previous row ended with (several doses at one time arrive summed), and
+// an rd[RXG_RD_H] < 0 continues with the
+// step size the previous row ended with.  A row with ri[RXG_RI_SUB] < 0 ends
+// the timeline early (rows reserved but not used), as does a failed row.
+RXG_FN void rxg_timeline1(int i, RXG_GLOBAL const int *off,
+                          RXG_GLOBAL double *y, RXG_GLOBAL double *rd,
+                          RXG_GLOBAL int *ri, RXG_GLOBAL const double *p0,
+                          RXG_GLOBAL const double *p1,
+                          RXG_GLOBAL const double *pl,
+                          RXG_GLOBAL const double *ir, RXG_GLOBAL const int *on,
+                          RXG_GLOBAL double *ad, RXG_GLOBAL int *ai,
+                          RXG_GLOBAL double *hs, RXG_GLOBAL double *hrec,
+                          RXG_GLOBAL const double *od,
+                          RXG_GLOBAL const int *oi) {
+  int k0 = off[i], k1 = off[i + 1];
+  for (int k = k0; k < k1; k++) {
+    RXG_GLOBAL int *rik = ri + (size_t)k*RXG_RI;
+    if (rik[RXG_RI_SUB] < 0) break;
+    if (k > k0) {
+      RXG_GLOBAL int *rip = ri + (size_t)(k - 1)*RXG_RI;
+      if (rip[RXG_RI_ISTATE] != RXG_SUCCESS) break;
+      RXG_GLOBAL double *yk = y + (size_t)k*RXG_NEQ1;
+      RXG_GLOBAL const double *yp = y + (size_t)(k - 1)*RXG_NEQ1;
+      for (int j = 0; j < RXG_NEQ1; j++) yk[j] += yp[j];
+      RXG_GLOBAL double *rdk = rd + (size_t)k*RXG_RD;
+      if (rdk[RXG_RD_H] < 0.0) rdk[RXG_RD_H] = rd[(size_t)(k - 1)*RXG_RD + RXG_RD_H];
+    }
+    rxg_round1(k, y, rd, ri, p0, p1, pl, ir, on, ad, ai, hs, hrec, od, oi);
+  }
+}
+
 #ifdef RXG_OPENCL
-// Argument order is fixed: src/gpu_opencl.c sets them by position
+// Argument order is fixed: src/gpu_opencl.c sets them by position.  tl 0: n
+// requests of one round; tl 1: n subjects' timelines (rows from off).
 __kernel void rxg_kernel(__global double *y, const int n, __global double *rd,
                          __global int *ri, __global const double *p0,
                          __global const double *p1,
@@ -235,10 +288,15 @@ __kernel void rxg_kernel(__global double *y, const int n, __global double *rd,
                          __global const double *ir, __global const int *on,
                          __global double *ad, __global int *ai,
                          __global double *hs, __global double *hrec,
-                         __global const double *od, __global const int *oi) {
+                         __global const double *od, __global const int *oi,
+                         __global const int *off, const int tl) {
   int i = (int)get_global_id(0);
   if (i >= n) return;
-  rxg_round1(i, y, rd, ri, p0, p1, pl, ir, on, ad, ai, hs, hrec, od, oi);
+  if (tl) {
+    rxg_timeline1(i, off, y, rd, ri, p0, p1, pl, ir, on, ad, ai, hs, hrec, od, oi);
+  } else {
+    rxg_round1(i, y, rd, ri, p0, p1, pl, ir, on, ad, ai, hs, hrec, od, oi);
+  }
 }
 #endif
 

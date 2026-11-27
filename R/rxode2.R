@@ -1114,7 +1114,7 @@ rxGetModel <- function(
       if (length(.sensStrip) != 0) {
         .new <- setNames(
           gsub(
-            rex::rex("d/dt(", or(.sensStrip), ")=", anything, "\n"),
+            rex::rex("d/dt(", or(.sensStrip), ")=", zero_or_more(none_of("\n")), "\n"),
             "",
             .ret$model["normModel"]
           ),
@@ -1162,7 +1162,7 @@ rxGetModel <- function(
     if (length(.sensStrip) != 0) {
       .new <- setNames(
         gsub(
-          rex::rex("d/dt(", or(.sensStrip), ")=", anything, "\n"),
+          rex::rex("d/dt(", or(.sensStrip), ")=", zero_or_more(none_of("\n")), "\n"),
           "",
           .ret$model["normModel"]
         ),

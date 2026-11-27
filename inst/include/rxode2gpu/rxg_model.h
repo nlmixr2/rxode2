@@ -22,6 +22,10 @@
 #ifndef RXG_NDLY
 #define RXG_NDLY 0
 #endif
+#ifndef RXG_NPRE
+#define RXG_NPRE 0 // lines rxg_pre() computes once per interval
+#endif
+#define RXG_NPRE1 (RXG_NPRE > 0 ? RXG_NPRE : 1)
 #define RXG_NDLY1 (RXG_NDLY > 0 ? RXG_NDLY : 1)
 // Degree of the history interpolant: 7 for vern76, 4 otherwise
 #ifndef RXG_HDEG
@@ -69,6 +73,8 @@ typedef struct rxg_ctx {
   double lambda, yj;    // transform-both-sides values (rx_lambda_, rx_yj_)
   double logitHi, logitLow; // (rx_hi_, rx_low_)
   rxg_hist *hist;       // delay() history (models with delay() only)
+  double pre[RXG_NPRE1]; // rxg_pre() values, read when preOk
+  int preOk;
 } rxg_ctx;
 
 #define _IR (_rxg->ir)

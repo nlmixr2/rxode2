@@ -727,6 +727,20 @@ rxSetupScale <- function(obj, scale = NULL, extraArgs = NULL) {
     .Call(`_rxode2_rxSetupScale`, obj, scale, extraArgs)
 }
 
+#' The adjoint backward-work arena of the last solve
+#'
+#' Test hook: for the last solve that set up the arena, the doubles per thread
+#' slice, the slices, how many requests sized at setup went to the heap because
+#' the arena could not serve them (should be 0), and how many period-tape
+#' allocations (always heap) there were.
+#'
+#' @return Named numeric vector \code{perThread}, \code{slots}, \code{spills},
+#'   \code{tapes}.
+#' @noRd
+rxAdjWorkStats_ <- function() {
+    .Call(`_rxode2_rxAdjWorkStats_`)
+}
+
 atolRtolFactor_ <- function(factor) {
     invisible(.Call(`_rxode2_atolRtolFactor_`, factor))
 }
@@ -1180,6 +1194,49 @@ rxSymInvCholEnvCalculate <- function(obj, what, theta = NULL) {
 #' @noRd
 rxMemoryComponents_ <- function(neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, ndosesTotal, maxAllTimes, stiff, doIndLin, indOwnAlloc, sample, nDelayState) {
     .Call(`_rxode2_rxMemoryComponents_`, neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, ndosesTotal, maxAllTimes, stiff, doIndLin, indOwnAlloc, sample, nDelayState)
+}
+
+#' Report the byte sizes of an adjoint method's backward-work arena
+#'
+#' The arena that \code{rxSolve()} adds at the end of \code{gsolve} for an
+#' adjoint expansion: one slice per thread of \code{rxAdjWorkPerThread()}
+#' doubles (\code{inst/include/rxMemoryCalc.h}), the layout
+#' \code{src/rxData.cpp} carves.  Not counted: the per-period Jacobian tapes,
+#' sized by the recorded period's steps, which take the heap.
+#'
+#' @param neq Number of ODE states (\code{op->neq}).
+#' @param nBase Number of base (non-adjoint) states (\code{op->adjNbase}).
+#' @param np Number of sensitivity parameters (\code{op->adjNp}).
+#' @param cores Number of parallel OMP threads.
+#' @param maxAllTimes Maximum events for any single subject.
+#' @return Named numeric vector with \code{adjointWork} bytes.
+#' @noRd
+rxMemoryAdjointComponents_ <- function(neq, nBase, np, cores, maxAllTimes) {
+    .Call(`_rxode2_rxMemoryAdjointComponents_`, neq, nBase, np, cores, maxAllTimes)
+}
+
+#' Report the byte sizes of a GPU method's solve allocations
+#'
+#' The GPU methods (codes 110-114) allocate per slot (\code{gpuBatch}
+#' subjects in flight), not per subject, on top of what
+#' \code{rxMemoryComponents_()} reports.  Values come from the same layout
+#' the solve allocates with (\code{rxGpuHostBytes()} in
+#' \code{src/gpu_solve.cpp}, \code{rxGpuClBytes()} in
+#' \code{src/gpu_opencl.c}).
+#'
+#' @param dims  The run layout (\code{RXG_D_*}, \code{src/gpu_opencl.h});
+#'   \code{dims[1]} is the number of slots.
+#' @param single 1 for single-precision device buffers.
+#' @param opencl 1 for the OpenCL backend, 0 for the CPU backend.
+#' @param threads The OpenMP threads of the host work.
+#' @return Named numeric vector of bytes: \code{gpuHostWork},
+#'   \code{gpuHostState}, \code{gpuSlotWork}, \code{gpuTimeline} and
+#'   \code{gpuStage} on the host,
+#'   \code{gpuDevice} on the device (not host RAM); attribute
+#'   \code{gpuDeviceMaxBuffer} is the largest single device buffer.
+#' @noRd
+rxMemoryGpuComponents_ <- function(dims, single, opencl, threads) {
+    .Call(`_rxode2_rxMemoryGpuComponents_`, dims, single, opencl, threads)
 }
 
 rxTestAbiSubjectCounts_ <- function() {

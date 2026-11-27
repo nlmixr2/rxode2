@@ -96,7 +96,7 @@ rxTest({
       .n[[.kind]] <- .n[[.kind]] + 1L
     }
     # a method added to rxSolve() needs these counts raised
-    expect_identical(.n, c(plain = 163L, adjoint = 10L))
+    expect_identical(.n, c(plain = 169L, adjoint = 10L))
   })
 
   test_that("each failed subject's reason names it, whichever thread solved it", {
@@ -318,6 +318,10 @@ rxTest({
       liblsodaadj = .liblsoda,
       dop853 = "^\\[exit of dop853 at x = [-0-9.e+]+, step size too small h = [-0-9.e+]+\\]: 1 warning\\(s\\) for subject\\(s\\): 103$"
     )
+    # the device integrators report their own step failure
+    .gpuOwn <- "^\\[IDID=-2, the device integrator step size fell below its minimum\\]: 1 warning\\(s\\) for subject\\(s\\): 103$"
+    .gpuMeths <- c("gpuT54", "gpuVern76", "gpuRos54p", "gpuT54+gpuRos54p", "gpuVern76+gpuRos54p")
+    .own <- c(.own, stats::setNames(rep(.gpuOwn, length(.gpuMeths)), .gpuMeths))
     .ownReason <- "lsoda"
     # vv refuses a model whose states are not coordinate-momentum pairs
     .skip <- "vv"
