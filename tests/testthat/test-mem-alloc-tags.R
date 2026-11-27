@@ -1,6 +1,7 @@
 # Every allocation in rxode2's C/C++ goes through the tagged allocators of
 # inst/include/rxMemAlloc.h, which name the rxSolve() memory-estimate component
-# that counts it (rxMemoryComponents_() / rxMemoryGpuComponents_()), so the
+# that counts it (rxMemoryComponents_() / rxMemoryGpuComponents_() /
+# rxMemoryAdjointComponents_()), so the
 # estimate cannot drift from what rxode2 allocates.  Allocations that predate
 # the tags are held in mem-alloc-baseline.csv, a per-file count that may only
 # shrink: tag an allocation and lower its file's count.  Regenerate with
@@ -21,9 +22,9 @@
   .src <- list.files(file.path(root, "src"), "[.](c|cpp|h)$", full.names = TRUE)
   .inc <- list.files(file.path(root, "inst", "include"), "[.](c|cpp|h)$", full.names = TRUE, recursive = TRUE)
   .f <- c(.src, .inc)
-  # generated, and the macros themselves
+  # generated, and the macros and the adjoint arena allocator themselves
   .f[
-    !basename(.f) %in% c("RcppExports.cpp", "tran.g.d_parser.h", "rxMemAlloc.h") &
+    !basename(.f) %in% c("RcppExports.cpp", "tran.g.d_parser.h", "rxMemAlloc.h", "rxAdjArena.h") &
       !grepl("_RcppExports[.]h$", .f)
   ]
 }
@@ -45,16 +46,27 @@
   "|[.](resize|assign)\\s*\\("
 )
 .rxMemAllocTag <- "rxMem(Malloc|Calloc|Realloc|Ralloc|New|Assign|Resize|Tag)\\(\\s*([A-Za-z_][A-Za-z0-9_]*)"
+## the adjoint arena's own tags (src/rxAdjArena.h): adjointWork, and only on an
+## arena vector, which the macros check at compile time
+.rxMemAllocAdjTag <- "\\brxAdj(Assign|Resize)\\("
+## components whose memory comes from an arena: a heap allocation may not name them
+.rxMemAllocArenaComps <- "adjointWork"
 
 .rxMemAllocScan <- function(root) {
   .f <- .rxMemAllocFiles(root)
   .rel <- substring(.f, nchar(root) + 2L)
   .res <- lapply(.f, function(file) {
     .l <- .rxMemAllocCode(file)
-    .tagged <- grepl(.rxMemAllocTag, .l, perl = TRUE)
+    .adj <- grepl(.rxMemAllocAdjTag, .l, perl = TRUE)
+    .tagged <- grepl(.rxMemAllocTag, .l, perl = TRUE) | .adj
     .raw <- grepl(.rxMemAllocRaw, .l, perl = TRUE) & !.tagged
     .m <- regmatches(.l, gregexpr(.rxMemAllocTag, .l, perl = TRUE))
-    list(raw = sum(.raw), tags = sub(.rxMemAllocTag, "\\2", unlist(.m), perl = TRUE))
+    .nAdj <- sum(lengths(regmatches(.l, gregexpr(.rxMemAllocAdjTag, .l, perl = TRUE))))
+    list(
+      raw = sum(.raw),
+      tags = sub(.rxMemAllocTag, "\\2", unlist(.m), perl = TRUE),
+      arenaTags = rep("adjointWork", .nAdj)
+    )
   })
   names(.res) <- .rel
   .res
@@ -89,7 +101,8 @@
     0L
   )
   .gpu <- rxMemoryGpuComponents_(rep(1L, 16L), 0L, 1L, 1L)
-  setdiff(c(names(.cpu), names(.gpu), "fixed"), c("sizeofInd", "rxLlikSaveSize"))
+  .adj <- rxMemoryAdjointComponents_(1L, 1L, 1L, 1L, 1)
+  setdiff(c(names(.cpu), names(.gpu), names(.adj), "fixed"), c("sizeofInd", "rxLlikSaveSize"))
 }
 
 test_that("every allocation tag names a memory-estimate component", {
@@ -130,4 +143,18 @@ test_that("no untagged allocation is added (rxMemAlloc.h)", {
   expect_identical(names(.diff)[.diff > 0], character(0))
   ## fewer: lower mem-alloc-baseline.csv (RXODE2_MEM_ALLOC_BASELINE=write)
   expect_identical(names(.diff)[.diff < 0], character(0))
+})
+
+test_that("an arena component is never named by a heap allocation (rxAdjArena.h)", {
+  .root <- .rxMemAllocRoot()
+  skip_if(is.null(.root), "needs the package source")
+  .scan <- .rxMemAllocScan(.root)
+  .bad <- unlist(lapply(names(.scan), function(f) {
+    .t <- .scan[[f]]$tags
+    .t <- .t[.t %in% .rxMemAllocArenaComps]
+    if (length(.t) == 0L) character(0) else paste0(f, ": ", .t)
+  }))
+  ## size adjointWork buffers with rxAdjAssign()/rxAdjResize() on an rxAdjVec
+  expect_identical(.bad, character(0))
+  expect_gt(sum(lengths(lapply(.scan, `[[`, "arenaTags"))), 0L)
 })
