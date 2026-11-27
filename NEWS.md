@@ -232,6 +232,10 @@
   than return it with `NA` rows; `rxSolve()` decides with the same code
   (nlmixr2/nlmixr2est#1356).
 
+- `rxPrune()` rewrites `if`/`else` and string levels with a C walker of the
+  parsed model instead of the recursive R walker, with identical output; the
+  R walker stays as a fallback (`bench/rxPrune.R`, #1772).
+
 ## Bug fixes
 
 - The parser no longer reads a function name it had already freed.  Every
