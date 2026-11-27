@@ -968,7 +968,7 @@ rxTest({
     mTxt <- paste("d/dt(center)=-vm*center/(km+center)", "f(center)=0.55", "alag(center)=tlag", sep = "\n")
     csL <- c("vm", "km", "tlag")
     pL <- c(vm = 15, km = 8, tlag = 0.7)
-    evL <- et(amt = 100, cmt = "center") %>% et(amt = 60, cmt = "center", time = 5) %>% et(c(1, 2, 4, 6, 8, 12))
+    evL <- et(amt = 100, cmt = "center") |> et(amt = 60, cmt = "center", time = 5) |> et(c(1, 2, 4, 6, 8, 12))
     exL <- rxode2::.rxAdjointExpand(mTxt, csL)
     madjL <- rxode2::rxode2(exL$text)
     mbaseL <- rxode2::rxode2(mTxt)

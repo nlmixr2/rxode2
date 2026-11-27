@@ -124,6 +124,21 @@ static inline void rk4sIniOnlyFill(rx_solving_options *op, rx_solving_options_in
   }
 }
 
+// Modeled-lag transversality of bolus di (see rk4sApplyEventJumps).
+static inline void rk4sLagJump(size_t di, const rk4s_dose &d, const std::vector<double> &lamR,
+    std::vector<double> &muR, int nBase, int np, const double *fx0, const double *dlag,
+    const double *lagDf) {
+  if (lagDf && !ISNAN(lagDf[di * nBase])) {
+    double sc = 0.0;                          // lambda^T (f- - f+)
+    for (int i = 0; i < nBase; ++i) sc += lamR[i] * lagDf[di * nBase + i];
+    for (int p = 0; p < np; ++p) muR[p] += dlag[d.cmt * np + p] * sc;
+  } else if (fx0) {
+    double sc = 0.0;                          // lambda^T F_X[:,c]
+    for (int i = 0; i < nBase; ++i) sc += lamR[i] * fx0[i * nBase + d.cmt];
+    for (int p = 0; p < np; ++p) muR[p] += -d.amtF * dlag[d.cmt * np + p] * sc;
+  }
+}
+
 // Apply the transpose event jumps at backward step n.  On entry lamR = lambda_n+
 // (post-RK-transpose, pre-jump); on exit lamR = lambda_n (= (dPhi/dy)^T lambda_n+).
 // Events recorded at the same step are transposed in reverse order (a reset
@@ -154,15 +169,7 @@ static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
     switch (d.type) {
     case 0:
       if (haveDf) for (int p = 0; p < np; ++p) muR[p] += d.amt * dFdp[d.cmt * np + p] * lamR[d.cmt];
-      if (dlag && lagDf && !ISNAN(lagDf[di * nBase])) {
-        double sc = 0.0;                          // lambda^T (f- - f+)
-        for (int i = 0; i < nBase; ++i) sc += lamR[i] * lagDf[di * nBase + i];
-        for (int p = 0; p < np; ++p) muR[p] += dlag[d.cmt * np + p] * sc;
-      } else if (dlag && fx0) {
-        double sc = 0.0;                          // lambda^T F_X[:,c]
-        for (int i = 0; i < nBase; ++i) sc += lamR[i] * fx0[i * nBase + d.cmt];
-        for (int p = 0; p < np; ++p) muR[p] += -d.amtF * dlag[d.cmt * np + p] * sc;
-      }
+      if (dlag) rk4sLagJump(di, d, lamR, muR, nBase, np, fx0, dlag, lagDf);
       break;
     case 3:
       rk4sAddIni(dx0, lamR.data(), muR.data(), nBase, np);
