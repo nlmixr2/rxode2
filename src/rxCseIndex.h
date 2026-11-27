@@ -30,6 +30,7 @@ typedef struct csEntry {
   const char *key;      /* into an arena that outlives the map */
   uint64_t firstSeen;
   int count;
+  int top;              /* times it is a whole assignment right-hand side */
 } csEntry;
 
 typedef struct csMap {
@@ -60,6 +61,7 @@ static inline void csMapFree(csMap *m) {
 }
 
 static inline int csMapAdd(csMap *m, const char *key, int by, uint64_t firstSeen);
+static inline csEntry *csMapGet(csMap *m, const char *key);
 
 /* double and reinsert; keys are borrowed pointers so this only re-hashes */
 static inline int csMapGrow(csMap *m) {
@@ -71,6 +73,7 @@ static inline int csMapGrow(csMap *m) {
         !csMapAdd(m, old.e[i].key, old.e[i].count, old.e[i].firstSeen)) {
       csMapFree(m); *m = old; return 0;
     }
+    if (old.e[i].key != NULL) csMapGet(m, old.e[i].key)->top = old.e[i].top;
   }
   csMapFree(&old);
   return 1;
@@ -93,6 +96,7 @@ static inline int csMapAdd(csMap *m, const char *key, int by, uint64_t firstSeen
   }
   m->e[p].key = key;
   m->e[p].count = by;
+  m->e[p].top = 0;
   m->e[p].firstSeen = firstSeen;
   m->used++;
   return 1;
@@ -118,8 +122,15 @@ static inline int csMapMerge(csMap *dst, const csMap *src) {
   for (i = 0; i < src->n; i++) {
     if (src->e[i].key != NULL &&
         !csMapAdd(dst, src->e[i].key, src->e[i].count, src->e[i].firstSeen)) return 0;
+    if (src->e[i].key != NULL) csMapGet(dst, src->e[i].key)->top += src->e[i].top;
   }
   return 1;
+}
+
+/* key was a whole assignment right-hand side once more (no-op when absent) */
+static inline void csMapTop(csMap *m, const char *key) {
+  csEntry *e = csMapGet(m, key);
+  if (e != NULL) e->top++;
 }
 
 #endif /* __RX_CSE_INDEX_H__ */
