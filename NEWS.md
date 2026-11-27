@@ -227,6 +227,11 @@
 
 ## Bug fixes
 
+- The discrete adjoint (`dop853s` and the other `rk4s` solvers) now includes the
+  modeled `f()` term of a replace (EVID 5) and a multiply (EVID 6) record: the
+  gradient with respect to a parameter of `f()` on that compartment was missing
+  it.
+
 - The parser no longer reads a function name it had already freed.  Every
   function call copies its name into a buffer that is reallocated as it grows,
   and a copy held while more were made pointed into the old buffer; parsing

@@ -35,7 +35,8 @@
 // reset (state -> inits), 5 = replace (cmt -> value), 6 = multiply (cmt *= amt).
 // amtF = F*amt, the amount that actually lands (type 0), which a moving dose
 // time carries; the dF dual uses the raw amt.
-struct rk4s_dose { size_t step; int cmt; double amt; int type; double amtF = 0.0; };
+// raw: raw amount of a replace (x_c := F raw) / multiply (x_c *= F raw = amt); xm: x_c before a multiply.
+struct rk4s_dose { size_t step; int cmt; double amt; int type; double amtF = 0.0, raw = 0.0, xm = 0.0; };
 
 // A modeled-rate infusion window: active over steps [onStep, offStep) delivering
 // rate R into compartment cmt (amt total).  Drives the two-term infusion dual --
@@ -162,10 +163,12 @@ static inline void rk4sApplyEventJumps(size_t n, std::vector<double> &lamR,
       rk4sAddIni(dx0, lamR.data(), muR.data(), nBase, np);
       for (int j = 0; j < nBase; ++j) lamR[j] = 0.0;
       break;
-    case 5:
+    case 5:                                   // x_c := F raw: mu += raw dF/dp lambda+[c]
+      if (haveDf) for (int p = 0; p < np; ++p) muR[p] += d.raw * dFdp[d.cmt * np + p] * lamR[d.cmt];
       lamR[d.cmt] = 0.0;
       break;
-    case 6:
+    case 6:                                   // x_c *= F raw: mu += x_c- raw dF/dp lambda+[c]
+      if (haveDf) for (int p = 0; p < np; ++p) muR[p] += d.xm * d.raw * dFdp[d.cmt * np + p] * lamR[d.cmt];
       lamR[d.cmt] *= d.amt;
       break;
     }
@@ -8985,10 +8988,12 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
               }
             } else if (_whI == EVIDF_REPLACE) {             // replace -> lambda[c] := 0
               rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _cmtD; _d.amt = 0.0; _d.type = 5;
+              _d.raw = getDoseIndex(ind, ind->idx);
               doseRec.push_back(_d);
             } else if (_whI == EVIDF_MULT) {                // multiply -> lambda[c] *= alpha
               rk4s_dose _d; _d.step = rec.nStep(); _d.cmt = _cmtD;
-              _d.amt = getAmt(ind, ind->id, _cmtD, getDoseIndex(ind, ind->idx), xout, yp);
+              _d.raw = getDoseIndex(ind, ind->idx); _d.xm = yp[_cmtD];
+              _d.amt = getAmt(ind, ind->id, _cmtD, _d.raw, xout, yp);
               _d.type = 6;
               doseRec.push_back(_d);
             } else if ((_whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON) && op->adjDrateOff >= 0) {
