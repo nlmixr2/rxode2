@@ -381,6 +381,27 @@ namespace rxode2 {
         return Rcpp::as<NumericVector >(rcpp_result_gen);
     }
 
+    inline NumericVector rxAdjWorkStats_() {
+        typedef SEXP(*Ptr_rxAdjWorkStats_)();
+        static Ptr_rxAdjWorkStats_ p_rxAdjWorkStats_ = NULL;
+        if (p_rxAdjWorkStats_ == NULL) {
+            validateSignature("NumericVector(*rxAdjWorkStats_)()");
+            p_rxAdjWorkStats_ = (Ptr_rxAdjWorkStats_)R_GetCCallable("rxode2", "_rxode2_rxAdjWorkStats_");
+        }
+        RObject rcpp_result_gen;
+        {
+            RNGScope RCPP_rngScope_gen;
+            rcpp_result_gen = p_rxAdjWorkStats_();
+        }
+        if (rcpp_result_gen.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
+            throw Rcpp::LongjumpException(rcpp_result_gen);
+        if (rcpp_result_gen.inherits("try-error"))
+            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
+        return Rcpp::as<NumericVector >(rcpp_result_gen);
+    }
+
     inline void atolRtolFactor_(double factor) {
         typedef SEXP(*Ptr_atolRtolFactor_)(SEXP);
         static Ptr_atolRtolFactor_ p_atolRtolFactor_ = NULL;
@@ -1123,6 +1144,27 @@ namespace rxode2 {
         {
             RNGScope RCPP_rngScope_gen;
             rcpp_result_gen = p_rxMemoryComponents_(Shield<SEXP>(Rcpp::wrap(neq)), Shield<SEXP>(Rcpp::wrap(stateSize)), Shield<SEXP>(Rcpp::wrap(nlhs)), Shield<SEXP>(Rcpp::wrap(npars)), Shield<SEXP>(Rcpp::wrap(neta)), Shield<SEXP>(Rcpp::wrap(neps)), Shield<SEXP>(Rcpp::wrap(ncov)), Shield<SEXP>(Rcpp::wrap(nsim)), Shield<SEXP>(Rcpp::wrap(cores)), Shield<SEXP>(Rcpp::wrap(nMtime)), Shield<SEXP>(Rcpp::wrap(extraCmt)), Shield<SEXP>(Rcpp::wrap(linB)), Shield<SEXP>(Rcpp::wrap(nLlik)), Shield<SEXP>(Rcpp::wrap(nIndSim)), Shield<SEXP>(Rcpp::wrap(numLinSens)), Shield<SEXP>(Rcpp::wrap(numLin)), Shield<SEXP>(Rcpp::wrap(nsub)), Shield<SEXP>(Rcpp::wrap(nallTotal)), Shield<SEXP>(Rcpp::wrap(ndosesTotal)), Shield<SEXP>(Rcpp::wrap(maxAllTimes)), Shield<SEXP>(Rcpp::wrap(stiff)), Shield<SEXP>(Rcpp::wrap(doIndLin)), Shield<SEXP>(Rcpp::wrap(indOwnAlloc)), Shield<SEXP>(Rcpp::wrap(sample)), Shield<SEXP>(Rcpp::wrap(nDelayState)));
+        }
+        if (rcpp_result_gen.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
+            throw Rcpp::LongjumpException(rcpp_result_gen);
+        if (rcpp_result_gen.inherits("try-error"))
+            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
+        return Rcpp::as<NumericVector >(rcpp_result_gen);
+    }
+
+    inline NumericVector rxMemoryAdjointComponents_(int neq, int nBase, int np, int cores, double maxAllTimes) {
+        typedef SEXP(*Ptr_rxMemoryAdjointComponents_)(SEXP,SEXP,SEXP,SEXP,SEXP);
+        static Ptr_rxMemoryAdjointComponents_ p_rxMemoryAdjointComponents_ = NULL;
+        if (p_rxMemoryAdjointComponents_ == NULL) {
+            validateSignature("NumericVector(*rxMemoryAdjointComponents_)(int,int,int,int,double)");
+            p_rxMemoryAdjointComponents_ = (Ptr_rxMemoryAdjointComponents_)R_GetCCallable("rxode2", "_rxode2_rxMemoryAdjointComponents_");
+        }
+        RObject rcpp_result_gen;
+        {
+            RNGScope RCPP_rngScope_gen;
+            rcpp_result_gen = p_rxMemoryAdjointComponents_(Shield<SEXP>(Rcpp::wrap(neq)), Shield<SEXP>(Rcpp::wrap(nBase)), Shield<SEXP>(Rcpp::wrap(np)), Shield<SEXP>(Rcpp::wrap(cores)), Shield<SEXP>(Rcpp::wrap(maxAllTimes)));
         }
         if (rcpp_result_gen.inherits("interrupted-error"))
             throw Rcpp::internal::InterruptedException();

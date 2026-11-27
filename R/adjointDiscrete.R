@@ -289,6 +289,203 @@
 ## adjoint-expansion model builder for the in-engine discrete-adjoint `rk4s`
 ## method
 
+## `levels(name) <- c(...)` for one string-valued output of the original model
+.rxAdjointLevelsLine <- function(name, mv) {
+  sprintf(
+    "levels(%s) <- c(%s)",
+    name,
+    paste(vapply(mv$strAssign[[name]], deparse1, character(1)), collapse = ", ")
+  )
+}
+
+## the variable a carried assignment line defines (`mtime(t1)=...` defines t1)
+.rxAdjointLhsName <- function(line) {
+  ifelse(
+    grepl("^mtime[(]", line),
+    sub("^mtime[(]([^)]*)[)].*$", "\\1", line),
+    sub("[[:space:]]*(=|<-).*$", "", line)
+  )
+}
+
+## Carried output assignments in the original model's lhs order, each string
+## output's levels() just before its first assignment.  Internal lines (capture
+## variables, lag snapshots) stay right after the line they follow.
+.rxAdjointOutputLines <- function(lines, mv) {
+  if (length(lines) == 0L) {
+    return(character(0))
+  }
+  .nm <- .rxAdjointLhsName(lines)
+  .key <- match(.nm, mv$lhs)
+  for (.i in seq_along(.key)) {
+    if (is.na(.key[.i])) .key[.i] <- if (.i == 1L) 0 else .key[.i - 1L]
+  }
+  .ord <- order(.key, seq_along(lines))
+  lines <- lines[.ord]
+  .nm <- .nm[.ord]
+  .ret <- character(0)
+  .done <- character(0)
+  for (.i in seq_along(lines)) {
+    if (.nm[.i] %in% names(mv$strAssign) && !(.nm[.i] %in% .done)) {
+      .ret <- c(.ret, .rxAdjointLevelsLine(.nm[.i], mv))
+      .done <- c(.done, .nm[.i])
+    }
+    .ret <- c(.ret, lines[.i])
+  }
+  .ret
+}
+
+## Statements of the original model (`mv`) that the expansion does not rebuild
+## from the symengine derivatives of the pruned load (`model`): `head` precedes
+## the ODEs (param() in the original order, numeric defaults), `ode` follows
+## them (initial conditions, past() histories), and `tail` follows the rx__adj*
+## lhs blocks so they keep starting at lhs index 0 (mtime(), output columns,
+## adaptive dosing, dvid(), extra compartments).
+.rxAdjointCarryLines <- function(model, mv, st) {
+  .lhs0 <- model$..lhs0
+  .isStr <- names(.lhs0) %in% names(mv$strAssign)
+  # constants later reassigned (`z <- 5; if (t > 1) z <- 2`)
+  .prior <- model$..lhs0Prior
+  .isStrP <- names(.prior) %in% names(mv$strAssign)
+  .norm <- strsplit(rxNorm(mv), "\n", fixed = TRUE)[[1]]
+  .ini <- character(0)
+  # in the model's order: one initial condition may read another's state
+  .iniPos <- vapply(
+    st,
+    function(.s) {
+      .w <- which(startsWith(.norm, paste0(.s, "(0)=")))
+      if (length(.w)) .w[1] else Inf
+    },
+    numeric(1)
+  )
+  for (.s in st[order(.iniPos)]) {
+    .iSE <- get0(paste0("rx_", .s, "_ini_0__"), envir = model, inherits = FALSE)
+    if (!is.null(.iSE)) {
+      .ini <- c(.ini, sprintf("%s(0)=%s", .s, rxFromSE(.iSE)))
+    }
+  }
+  # an output of the original model whose last value is a substituted constant
+  # (`if (t > 1) z <- 2; z <- 3`): assigned a second time, rxode2 keeps it an
+  # output instead of a parameter
+  .lhsNm <- sub("=.*$", "", model$..lhs)
+  .outConst <- unname(.lhs0[!.isStr & names(.lhs0) %in% mv$lhs & !(names(.lhs0) %in% .lhsNm)])
+  # covariate interpolation and dose-splitting declarations
+  .decl <- sub(
+    ";[[:space:]]*$",
+    "",
+    grep(
+      "^(locf|linear|nocb|midpoint|splitBolus|splitInfusion|splitInfusionBolus|splitBolusInfusion)[(]",
+      .norm,
+      value = TRUE
+    )
+  )
+  .state <- .rxGenFunState(mv)
+  .param <- if (length(mv$params)) sprintf("param(%s)", paste(mv$params, collapse = ", ")) else character(0)
+  .mtime <- sub(";[[:space:]]*$", "", grep("^mtime[(]", .norm, value = TRUE))
+  list(
+    head = c(.param, .decl, unname(.prior[!.isStrP]), unname(.lhs0[!.isStr])),
+    ode = c(.ini, .rxPastBaseLinesFromEnv(model)),
+    tail = c(
+      .rxAdjointOutputLines(c(.mtime, unname(.prior[.isStrP]), unname(.lhs0[.isStr]), .outConst, model$..lhs), mv),
+      model$..restoreLines,
+      .state[c("statef", "dvid")]
+    )
+  )
+}
+
+## The adjoint jumps take f/alag/rate/dur as functions of the parameters only;
+## refuse one that reads a state, which would need a d/dstate term.
+.rxAdjointAssertModifiers <- function(model, st) {
+  for (.k in st) {
+    for (.w in c("f", "lag", "rate", "dur")) {
+      .se <- get0(paste0("rx_", .w, "_", .k, "_"), envir = model, inherits = FALSE)
+      if (!inherits(.se, "Basic")) {
+        next
+      }
+      for (.s in st) {
+        .d <- symengine::D(.se, .rxSEres(.s))
+        if (rxode2::rxFromSE(.d) != "0") {
+          stop(
+            sprintf(
+              paste0(
+                "the discrete adjoint does not support a %s(%s)",
+                " that depends on a state (%s); use sensMethod=\"forward\""
+              ),
+              if (.w == "lag") "alag" else .w,
+              .k,
+              .s
+            ),
+            call. = FALSE
+          )
+        }
+      }
+    }
+  }
+  invisible(TRUE)
+}
+
+## A past() history that depends on a sensitivity parameter has no adjoint term;
+## refuse it.
+.rxAdjointAssertPast <- function(model, st, calcSens) {
+  for (.s in st) {
+    for (.w in c("Rhs", "Tau")) {
+      .txt <- get0(paste0("rx__past", .w, "_", .s, "__"), envir = model, inherits = FALSE)
+      if (!is.character(.txt)) {
+        next
+      }
+      .bad <- intersect(tryCatch(all.vars(str2lang(.txt)), error = function(e) character(0)), calcSens)
+      if (length(.bad)) {
+        stop(
+          sprintf(
+            paste0(
+              "the discrete adjoint does not support a past(%s)",
+              " that depends on a sensitivity parameter (%s); use sensMethod=\"forward\""
+            ),
+            .s,
+            paste(.bad, collapse = ", ")
+          ),
+          call. = FALSE
+        )
+      }
+    }
+  }
+  invisible(TRUE)
+}
+
+## An mtime() that moves with a sensitivity parameter needs a time-jump term the
+## adjoint does not have; refuse it.
+.rxAdjointAssertMtime <- function(mv, calcSens) {
+  .norm <- strsplit(rxNorm(mv), "\n", fixed = TRUE)[[1]]
+  .mt <- grep("^mtime[(]", .norm, value = TRUE)
+  if (length(.mt) == 0L) {
+    return(invisible(TRUE))
+  }
+  .rhs <- function(l) sub(";[[:space:]]*$", "", sub("^[^=]*=", "", l))
+  .vars <- function(l) tryCatch(all.vars(str2lang(.rhs(l))), error = function(e) character(0))
+  .asg <- grep("^[A-Za-z._][A-Za-z0-9._]*[[:space:]]*=[^=]", .norm, value = TRUE)
+  .asgNm <- sub("[[:space:]]*=.*$", "", .asg)
+  .dep <- unique(unlist(lapply(.mt, .vars)))
+  .seen <- character(0)
+  while (length(setdiff(.dep, .seen))) {
+    .new <- setdiff(.dep, .seen)
+    .seen <- c(.seen, .new)
+    .dep <- unique(c(.dep, unlist(lapply(.asg[.asgNm %in% .new], .vars))))
+  }
+  .bad <- intersect(.dep, calcSens)
+  if (length(.bad)) {
+    stop(
+      sprintf(
+        paste0(
+          "the discrete adjoint does not support an mtime()",
+          " that depends on a sensitivity parameter (%s); use sensMethod=\"forward\""
+        ),
+        paste(.bad, collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+  invisible(TRUE)
+}
+
 #' Build the adjoint-expansion model text for an in-engine discrete-adjoint solve
 #'
 #' Exposes the state Jacobian `F_X = dF/dy` and parameter forcing
@@ -296,11 +493,13 @@
 #' C++ backward sweep can evaluate them at any stage state via `calc_lhs`.  The
 #' lhs are emitted in a fixed order: all `F_X` entries row-major
 #' (`rx__adjFX_i_j__` at index `i*ns + j`), then `F_p` (`rx__adjFP_i_p__` at
-#' `ns*ns + i*np + p`).
+#' `ns*ns + i*np + p`).  The rest of the model (initial conditions, dosing
+#' modifiers, output columns, etc.) is carried through unchanged.
 #'
 #' @inheritParams .rxDiscreteAdjointBuild
 #' @return list with `text` (expanded model text), `st`, `ns`, `np`,
-#'   `calcSens`, and lhs layout `fxOff` (=0), `fpOff` (=ns*ns), `nlhsAdj`.
+#'   `calcSens`, and lhs layout `fxOff` (=0), `fpOff` (=ns*ns), `nlhsAdj`, and
+#'   `dx0Off` (the initial-condition derivative block, -1 if none).
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
@@ -308,14 +507,17 @@
   calcSens <- .rxSensVarNames(calcSens, .rxParams(object, TRUE))
   # Prune if/else branches first (rxS cannot differentiate conditional-dosing
   # lines); the dosing modifiers (f/alag/rate/dur) remain as unconditional
-  # assignments, each activated only when the data flags that dose.
-  .model <- .rxLoadPrune(object, doConst = TRUE, promoteLinSens = FALSE)
+  # assignments, each activated only when the data flags that dose.  A numeric
+  # default such as `k <- 0.5` stays symbolic so the solve can override it;
+  # other constants (`z <- 5; if (t > 1) z <- 2`) are substituted.
+  .model <- .rxLoadPrune(object, doConst = rxode2::rxModelVars(object)$params, promoteLinSens = FALSE)
   .st <- rxode2::rxStateOde(.model)
   .ns <- length(.st)
   .np <- length(calcSens)
   if (.ns == 0L) {
     stop("discrete adjoint requires a model with ODE states", call. = FALSE)
   }
+  .carry <- .rxAdjointCarryLines(.model, rxode2::rxModelVars(object), .st)
   invisible(rxode2::.rxJacobian(.model, c(.st, calcSens)))
   .fromSE <- function(nm) {
     .d <- get0(nm, envir = .model, inherits = FALSE)
@@ -347,6 +549,9 @@
     .dSE <- get0(paste0("rx_dur_", .st[k], "_"), envir = .model, inherits = FALSE)
     if (!is.null(.dSE)) .fLines <- c(.fLines, sprintf("dur(%s)=%s", .st[k], rxode2::rxFromSE(.dSE)))
   }
+  .rxAdjointAssertModifiers(.model, .st)
+  .rxAdjointAssertPast(.model, .st, calcSens)
+  .rxAdjointAssertMtime(rxode2::rxModelVars(object), calcSens)
   .fxLines <- character(0)
   # Analytic Jacobian for the stiff adjoint solvers only (Rosenbrock/implicit-RK
   # and the dop853s+ros4s composite).  Emit the nonzero base block (F_X) as real
@@ -582,6 +787,62 @@
       }
     }
   }
+  # d(initial condition)/dtheta as lhs (rx__adjDx0_k_p__), for the term
+  # mu += lambda^T dX0/dtheta at the window start and at each reset (which
+  # restores the initial conditions); only emitted when one is nonzero.
+  # an initial condition that reads another state (`y(0) <- b * x`) reads that
+  # state's initial condition, so substitute those before differentiating
+  .iniEnv <- new.env(parent = emptyenv())
+  .hasIni <- logical(.ns)
+  for (k in seq_len(.ns)) {
+    .iSE <- get0(paste0("rx_", .st[k], "_ini_0__"), envir = .model, inherits = FALSE)
+    if (is.numeric(.iSE)) {
+      .iSE <- symengine::S(format(.iSE, digits = 17))
+    }
+    if (inherits(.iSE, "Basic")) {
+      assign(.st[k], .iSE, envir = .iniEnv)
+      .hasIni[k] <- TRUE
+    }
+  }
+  # in the model's order: an initial condition reads only those set before it
+  .norm0 <- strsplit(rxode2::rxNorm(rxode2::rxModelVars(object)), "\n", fixed = TRUE)[[1]]
+  .iniPos <- vapply(
+    .st,
+    function(.s) {
+      .w <- which(startsWith(.norm0, paste0(.s, "(0)=")))
+      if (length(.w)) .w[1] else Inf
+    },
+    numeric(1)
+  )
+  for (k in order(.iniPos)) {
+    if (!.hasIni[k]) {
+      next
+    }
+    .iSE <- get0(.st[k], envir = .iniEnv, inherits = FALSE)
+    for (j in which(.hasIni & .iniPos < .iniPos[k])) {
+      .iSE <- symengine::subs(.iSE, .rxSEres(.st[j]), get0(.st[j], envir = .iniEnv, inherits = FALSE))
+    }
+    assign(.st[k], .iSE, envir = .iniEnv)
+  }
+  .dx0 <- matrix("0", .ns, .np)
+  for (k in which(.hasIni)) {
+    .iSE <- get0(.st[k], envir = .iniEnv, inherits = FALSE)
+    for (p in seq_len(.np)) {
+      .d <- symengine::D(.iSE, .rxSEres(calcSens[p]))
+      .dx0[k, p] <- rxode2::rxFromSE(.d)
+    }
+  }
+  .hasDx0Adj <- any(.dx0 != "0")
+  .dx0Lines <- if (.hasDx0Adj) {
+    sprintf(
+      "rx__adjDx0_%d_%d__=%s",
+      rep(seq_len(.ns) - 1L, each = .np),
+      rep(seq_len(.np) - 1L, times = .ns),
+      as.vector(t(.dx0))
+    )
+  } else {
+    character(0)
+  }
   # STIFF (Rosenbrock) only: the stage matrix W = I/(h*gamma) - J depends on theta
   # and y through J, so the exact discrete adjoint needs rx__adjJp_ = dJ/dtheta
   # and rx__adjJy_ = dJ/dy (d2f/dy2, zero for state-linear f).
@@ -613,7 +874,8 @@
     }
   }
   # lhs layout (contiguous from 0): fx, fp, df, [jp, jy if stiff],
-  # [fxd, tau, dtau if DDE]  (dtau is the (i,j,p) dose-jump block)
+  # [fxd, tau, dtau if DDE]  (dtau is the (i,j,p) dose-jump block), [dlag],
+  # [drate], [dx0]; the carried output columns follow
   .afterStiff <- if (isTRUE(stiff)) {
     .ns * .ns + 2L * .ns * .np + .ns * .ns * .np + .ns * .ns * .ns
   } else {
@@ -622,10 +884,13 @@
   # dlag block is appended last (after the DDE blocks) so it shifts no offset
   .afterDelay <- .afterStiff + (if (.hasDelayAdj) 2L * .ns * .ns + .ns * .ns * .np else 0L)
   .dlagLen <- if (.hasLagAdj) .ns * .np else 0L
+  .drateLen <- if (.hasRateAdj) .ns * .np else 0L
   list(
     text = paste(
       c(
+        .carry$head,
         .odeLines,
+        .carry$ode,
         .fLines,
         .sensLines,
         .jacLines,
@@ -638,7 +903,9 @@
         .tauLines,
         .dtauLines,
         .dlagLines,
-        .drateLines
+        .drateLines,
+        .dx0Lines,
+        .carry$tail
       ),
       collapse = "\n"
     ),
@@ -657,9 +924,31 @@
     dtauOff = if (.hasDelayAdj) .afterStiff + 2L * .ns * .ns else -1L,
     dlagOff = if (.hasLagAdj) .afterDelay else -1L,
     drateOff = if (.hasRateAdj) .afterDelay + .dlagLen else -1L,
+    dx0Off = if (.hasDx0Adj) .afterDelay + .dlagLen + .drateLen else -1L,
     hasDelay = .hasDelayAdj,
     nlhsAdj = .ns * .ns + .ns * .np,
     sensOff = .ns
+  )
+}
+
+## Dosing modifiers with a non-zero parameter derivative in an adjoint
+## expansion (the rx__adjdF / rx__adjDlag / rx__adjDrate blocks it emitted),
+## named as statements: what a sweep without dosing duals would leave out.
+.rxAdjointDoseDuals <- function(object) {
+  .l <- strsplit(rxNorm(object), "\n", fixed = TRUE)[[1]]
+  # 1-based compartments of each block's non-zero rows
+  .nz <- list()
+  for (.b in c("dF", "Dlag", "Drate")) {
+    .x <- grep(paste0("^rx__adj", .b, "_[0-9]+_[0-9]+__="), .l, value = TRUE)
+    .x <- .x[!grepl("=[[:space:]]*0(\\.0*)?[[:space:]]*;?[[:space:]]*$", .x)]
+    .nz[[.b]] <- unique(as.integer(sub(paste0("^rx__adj", .b, "_([0-9]+)_.*$"), "\\1", .x)) + 1L)
+  }
+  .prop <- .rxEventSensProp(rxModelVars(object))
+  c(
+    if (length(.nz$dF)) "f()",
+    if (length(.nz$Dlag)) "alag()",
+    if (any(.nz$Drate %in% .prop$rateCmt)) "rate()",
+    if (any(.nz$Drate %in% .prop$durCmt)) "dur()"
   )
 }
 
@@ -760,6 +1049,6 @@
 rxSolveAdjointRk4 <- function(object, events, params = NULL, calcSens, method = "rk4s", ...) {
   .b <- .rxAdjointModel(object, calcSens, stiff = .rxAdjointMethodStiff(method))
   .df <- as.data.frame(rxode2::rxSolve(.b$model, events, params = params, method = method, ...))
-  .drop <- grep("^rx__adj(FX|FP|dF|Jp|Jy)_", names(.df), value = TRUE)
+  .drop <- grep("^(rx__adj|rxCaptureId[0-9]+$)", names(.df), value = TRUE)
   .df[, setdiff(names(.df), .drop), drop = FALSE]
 }
