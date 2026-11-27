@@ -59,6 +59,11 @@ struct rx_globals {
   int *gSampleCov;
   double *gmtime;
   double *gmtime0;
+  /* adjoint backward-work arena at the end of gsolve: gAdjWorkSlots slices of
+     gAdjWorkPer doubles (rxAdjWorkPerThread(), src/rxAdjArena.h) */
+  double *gAdjWork = NULL;
+  int64_t gAdjWorkPer = 0;
+  int gAdjWorkSlots = 0;
   double *gsigma = NULL;
   int nSigma = 0;
   double *gomega = NULL;

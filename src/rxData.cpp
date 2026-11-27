@@ -1616,6 +1616,62 @@ struct rxEtTransStrCmpParamsGuard {
 
 rx_globals _globals;
 
+// The adjoint backward-work arena (src/rxAdjArena.h)
+#include "rxAdjArena.h"
+thread_local rxAdjArenaState rxAdjTls;
+static unsigned _rxAdjWorkGen = 0;
+static uint64_t _rxAdjWorkSpills = 0;   // heap requests since the arena was last set
+static uint64_t _rxAdjWorkTapes = 0;    // of those, the per-period tapes (always heap)
+static int64_t _rxAdjLastPer = 0;       // the last arena set, for rxAdjWorkStats_()
+static int _rxAdjLastSlots = 0;
+extern "C" void rxAdjWorkSpill(int tape) {
+  __atomic_add_fetch(tape ? &_rxAdjWorkTapes : &_rxAdjWorkSpills, (uint64_t)1, __ATOMIC_RELAXED);
+}
+extern "C" unsigned rxAdjWorkGen(void) { return __atomic_load_n(&_rxAdjWorkGen, __ATOMIC_ACQUIRE); }
+extern "C" double *rxAdjWorkSlab(int slot, int64_t *n) {
+  *n = 0;
+  if (_globals.gAdjWork == NULL || slot < 0 || slot >= _globals.gAdjWorkSlots) return NULL;
+  *n = _globals.gAdjWorkPer;
+  return _globals.gAdjWork + (int64_t)slot * _globals.gAdjWorkPer;
+}
+extern "C" int rxAdjWorkOwns(const void *p) {
+  const double *d = (const double *)p;
+  return _globals.gAdjWork != NULL && d >= _globals.gAdjWork &&
+    d < _globals.gAdjWork + (int64_t)_globals.gAdjWorkSlots * _globals.gAdjWorkPer;
+}
+// Point the arena at `base` (the end of a fresh gsolve), or drop it
+extern "C" void rxAdjWorkSet(double *base, int64_t per, int slots) {
+  _globals.gAdjWork = (per > 0 && slots > 0) ? base : NULL;
+  _globals.gAdjWorkPer = (_globals.gAdjWork != NULL) ? per : 0;
+  _globals.gAdjWorkSlots = (_globals.gAdjWork != NULL) ? slots : 0;
+  if (base != NULL) {   // a new solve: its own counts
+    __atomic_store_n(&_rxAdjWorkSpills, (uint64_t)0, __ATOMIC_RELAXED);
+    __atomic_store_n(&_rxAdjWorkTapes, (uint64_t)0, __ATOMIC_RELAXED);
+    _rxAdjLastPer = _globals.gAdjWorkPer;
+    _rxAdjLastSlots = _globals.gAdjWorkSlots;
+  }
+  __atomic_add_fetch(&_rxAdjWorkGen, 1u, __ATOMIC_ACQ_REL);
+}
+
+//' The adjoint backward-work arena of the last solve
+//'
+//' Test hook: for the last solve that set up the arena, the doubles per thread
+//' slice, the slices, how many requests sized at setup went to the heap because
+//' the arena could not serve them (should be 0), and how many period-tape
+//' allocations (always heap) there were.
+//'
+//' @return Named numeric vector \code{perThread}, \code{slots}, \code{spills},
+//'   \code{tapes}.
+//' @noRd
+// [[Rcpp::export]]
+NumericVector rxAdjWorkStats_() {
+  return NumericVector::create(
+    Named("perThread") = (double)_rxAdjLastPer,
+    Named("slots") = (double)_rxAdjLastSlots,
+    Named("spills") = (double)__atomic_load_n(&_rxAdjWorkSpills, __ATOMIC_RELAXED),
+    Named("tapes") = (double)__atomic_load_n(&_rxAdjWorkTapes, __ATOMIC_RELAXED));
+}
+
 #include "extraDosing.h"
 
 // ---------------------------------------------------------------------------
@@ -2135,6 +2191,7 @@ extern "C" void gFree(){
   _globals.gSampleCov=NULL;
   if (_globals.gsolve != NULL) free(_globals.gsolve);
   _globals.gsolve=NULL;
+  rxAdjWorkSet(NULL, 0, 0);
   if (_globals.gon != NULL) free(_globals.gon);
   _globals.gon=NULL;
   if (_globals.gpars != NULL) free(_globals.gpars);
@@ -4431,7 +4488,7 @@ static inline void rxSolve_loadRowLink(SEXP ev1, int nr, const char *attr,
   *dst = NULL;
   SEXP linkS = Rf_getAttrib(ev1, Rf_install(attr));
   if (TYPEOF(linkS) != INTSXP || Rf_length(linkS) < 2) return;
-  *dst = (int*)calloc(nr, sizeof(int));
+  *dst = (int*)rxMemCalloc(gRecordLinks, nr, sizeof(int));
   if (*dst == NULL){
     rxSolveFree();
     stop(_("can not allocate enough memory to load record types"));
@@ -4525,7 +4582,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     SEXP infPairS = Rf_getAttrib(ev1, Rf_install("rxInfPair"));
     if (TYPEOF(infPairS) == INTSXP && Rf_length(infPairS) > 1) {
       int nr = evid.size();
-      _globals.ginfPair = (int*)calloc(nr, sizeof(int));
+      _globals.ginfPair = (int*)rxMemCalloc(gRecordLinks, nr, sizeof(int));
       if (_globals.ginfPair == NULL){
         rxSolveFree();
         stop(_("can not allocate enough memory to load infusion pairing"));
@@ -4551,7 +4608,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
     SEXP pkSkipS = Rf_getAttrib(ev1, Rf_install("rxPkSkip"));
     if (TYPEOF(pkSkipS) == INTSXP && Rf_length(pkSkipS) > 0) {
       int nr = evid.size();
-      _globals.gpkSkip = (int*)calloc(nr, sizeof(int));
+      _globals.gpkSkip = (int*)rxMemCalloc(gRecordLinks, nr, sizeof(int));
       if (_globals.gpkSkip == NULL){
         rxSolveFree();
         stop(_("can not allocate enough memory to load record types"));
@@ -6488,6 +6545,7 @@ static inline void iniRx(rx_solve* rx) {
   op->adjDtauOff = -1;
   op->adjDlagOff = -1;
   op->adjDrateOff = -1;
+  op->adjDx0Off = -1;
   op->adjSensOff = 0;
   op->hasDelay = 0;
   op->ncov = 0;
@@ -6718,6 +6776,18 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
       _liw = 20 + _bneq;
     }
     ensureRworkPool((int)op->cores, _lrw, _liw);
+    if (op->stiff >= 110 && op->stiff <= 114) {
+      // a restored GPU solve runs on the setup R installed for this model just
+      // before, with the restored per-thread pools as its slots
+      CharacterVector _trans = mvRaw[RxMv_trans];
+      std::string _key = as<std::string>(_trans[RxMvTrans_model_vars]) + ":" +
+        std::to_string(op->stiff);
+      if (!rxGpuSolveClaim(_key.c_str())) {
+        (Rf_errorcall)(R_NilValue, _("the GPU solve of the restored state is not set up"));
+      }
+      if (op->cores <= 1) rxGpuSolveOneThread();
+      rxGpuSolveWorkers(op->cores);
+    }
   }
 
   return rxSolve_finalize(obj, rxControl, specParams, extraArgs,
@@ -7214,7 +7284,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
           _nBase++;
         }
       }
-      int _fxOff = -1, _fpOff = -1, _dfOff = -1, _jpOff = -1, _jyOff = -1, _fxdOff = -1, _tauOff = -1, _dtauOff = -1, _dlagOff = -1, _drateOff = -1;
+      int _fxOff = -1, _fpOff = -1, _dfOff = -1, _jpOff = -1, _jyOff = -1, _fxdOff = -1, _tauOff = -1, _dtauOff = -1, _dlagOff = -1, _drateOff = -1, _dx0Off = -1;
       for (int _i = 0; _i < _adjLhs.size(); ++_i) {
         const char *_s = CHAR(_adjLhs[_i]);
         if (_fxOff < 0 && strcmp(_s, "rx__adjFX_0_0__") == 0) _fxOff = _i;
@@ -7227,6 +7297,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
         if (_dtauOff < 0 && strcmp(_s, "rx__adjDtau_0_0_0__") == 0) _dtauOff = _i; // DDE dtau/dp (dose-jump)
         if (_dlagOff < 0 && strcmp(_s, "rx__adjDlag_0_0__") == 0) _dlagOff = _i; // modeled-alag transversality
         if (_drateOff < 0 && strcmp(_s, "rx__adjDrate_0_0__") == 0) _drateOff = _i; // modeled-rate infusion dual
+        if (_dx0Off < 0 && strcmp(_s, "rx__adjDx0_0_0__") == 0) _dx0Off = _i; // parameter-dependent initial conditions
       }
       int _nSens = (int)_adjSt.size() - _nBase - _nCarry;
       if (_fxOff < 0 || _fpOff < 0 || _nBase <= 0) {
@@ -7265,6 +7336,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
         op->adjDtauOff = _dtauOff;
         op->adjDlagOff = _dlagOff;
         op->adjDrateOff = _drateOff;
+        op->adjDx0Off = _dx0Off;
         op->adjSensOff = _nBase;
       }
     }
@@ -7715,8 +7787,12 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     }
     // Guard 2: platform-specific available-memory check (advisory; see rxMemAvail.h).
     // Returns UINT64_MAX on unsupported platforms, skipping the check.
+    // the adjoint backward-work arena, one slice per thread, after the rest
+    // (empty unless op->adjoint set adjNbase/adjNp above)
+    const int64_t _adjPer = rxAdjWorkPerThread(op->neq, op->adjNbase, op->adjNp, rx->maxAllTimes);
+    const int64_t _adjN = _adjPer * op->cores;
     {
-      uint64_t _needed = (uint64_t)_mem.gsolve_total * sizeof(double);
+      uint64_t _needed = (uint64_t)(_mem.gsolve_total + _adjN) * sizeof(double);
       uint64_t _avail  = rxAvailableMemoryBytes();
       if (_avail != UINT64_MAX && _needed > _avail) {
         rxSolveFree();
@@ -7727,7 +7803,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       }
     }
     if (_globals.gsolve != NULL) free(_globals.gsolve);
-    _globals.gsolve = (double*)calloc(_mem.gsolve_total, sizeof(double));
+    _globals.gsolve = (double*)calloc(_mem.gsolve_total + _adjN, sizeof(double));
 #ifdef rxSolveT
     RSprintf("Time12c (double alloc): %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
     _lastT0 = clock();
@@ -7735,8 +7811,9 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     if (_globals.gsolve == NULL) {
       rxSolveFree();
       stop(_("could not allocate enough memory for solving (%.1f GB requested)"),
-           (double)_mem.gsolve_total * sizeof(double) / 1e9);
+           (double)(_mem.gsolve_total + _adjN) * sizeof(double) / 1e9);
     }
+    rxAdjWorkSet(_globals.gsolve + _mem.gsolve_total, _adjPer, op->cores);
     // Pointer layout within gsolve -- field names match rx_mem_layout members.
     _globals.gLin        = _globals.gsolve     + _mem.n0;
     _globals.gLlikSave   = _globals.gLin        + _mem.nlin;

@@ -15,7 +15,8 @@ rxS(
 \arguments{
 \item{x}{rxode2 object}
 
-\item{doConst}{Load constants into the environment as well.}
+\item{doConst}{Load constants into the environment as well; a character
+vector loads every constant except the named ones.}
 
 \item{promoteLinSens}{Promote solved linear compartment systems to
 sensitivity-based solutions.}
