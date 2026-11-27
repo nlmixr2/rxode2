@@ -222,6 +222,10 @@
   than return it with `NA` rows; `rxSolve()` decides with the same code
   (nlmixr2/nlmixr2est#1356).
 
+- The explicit Runge-Kutta `"s"` methods (`dop853s`, `rk4s`, ...) record every
+  stage of every step only for the discrete adjoint.  A solve with no adjoint
+  skips the recording, which gives the same results and a shorter solve time.
+
 ## Bug fixes
 
 - The parser no longer reads a function name it had already freed.  Every
