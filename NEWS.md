@@ -2,6 +2,15 @@
 
 ## New features
 
+- `rxOptExpr()` repeats its common-subexpression search until nothing more is
+  shared.  One pass only shares the innermost repeats, so an expression that
+  repeats once its own repeated parts are temporaries (`f(exp(a + b))`
+  written several times) was left as written.  It also shares the
+  `linCmtB()` calls that only read the record's state, when a model writes
+  them more than once (the value, the stored Jacobian, amounts and gradient,
+  the second-order and eta-space carry reads); a `linCmtB()` call that
+  changes the kernel's state is never shared, and no read is shared across one, so a FOCEi gradient model of a `linCmt()`
+  fit makes far fewer `linCmtB()` calls per record.
 - The model-building piping functions moved here from 'nlmixr2lib':
   absorption (`addDepot()`, `addTransit()`, `addWeibullAbs()`,
   `addZeroOrderAbs()`, `addSecondAbsorption()`, `convertTransitMtt()` and
@@ -14,6 +23,14 @@
   chain in `addSecondAbsorption(delay = "transit")` and the new
   `convertTransitMtt()`.  `addEta()` reads the `rxode2.etaCombineType` and
   `rxode2.priorEta` options, falling back to the `nlmixr2lib.*` ones.
+- `addSecondAbsorption(type = "zero")` now builds Monolix's zero-order
+  double-absorption route (`Tk02`): a modeled `dur(central)` input,
+  apportioned by the same logit `F1`, instead of an extra `depot2` with
+  a `ka2` rate.  The `splitInfusionBolus()` targets put the
+  modeled-duration compartment first so the split promotes it.  A
+  zero-order second path combined with `delay = "transit"`, or with a
+  zero-order first path, now errors: neither can be expressed with one
+  modeled duration per compartment.
 - `rxImpureFun()`/`rxRmImpureFun()` register user R functions, `rxFun()` C
   functions or package C functions that draw random numbers, keep state or
   have side effects.  `rxOptExpr()` never shares their calls and
@@ -117,7 +134,37 @@
   tolerances, so `tolFactor` and `atolRtolFactor_()` apply per subject.
   A solve set up from C (as nlmixr2est's estimation methods do) installs
   its GPU setup there, once; when the model cannot run as device code it
-  integrates with the host counterpart.
+  integrates with the host counterpart.  Repeated solves on that setup
+  (nlmixr2est's SAEM iterations) round every subject at once, and each
+  double-precision OpenCL round waits on the device once.
+- With `options(rxode2.gpuTimeline = TRUE)` the GPU methods integrate each
+  subject's whole timeline in one launch per solve instead of a round per
+  event interval, when the subjects' events do not depend on their states
+  (observations, boluses and infusions with a fixed rate or duration; no
+  steady state, resets, modeled bioavailability, lag, rate or duration,
+  `mtime()`, `evid_()` or `delay()`) and the model never reads an lhs
+  before assigning it.  The results are the same as the rounds' (to
+  rounding when several doses into one compartment share a time).
+- The GPU methods' device code computes the statements that depend only on
+  parameters (such as `ka <- exp(tka + eta.ka)`) once per integration
+  interval instead of at every derivative evaluation, when the parameters
+  are constant over the interval.
+- OpenCL launches size their work groups from the device so every compute
+  unit gets work; `options(rxode2.gpuLocalSize = 0)` leaves the size to the
+  driver.
+- `rxOptExpr(expensive = TRUE)` (or `options(rxode2.optExprExpensive =
+  TRUE)`, which estimation methods calling `rxOptExpr()` follow) also gives a
+  single call to an expensive function such as `exp()` inside a larger
+  expression its own temporary, so the GPU methods compute the ones that
+  depend only on parameters once per interval.
+- `rxMemoryEstimate()` (and so `rxSolve()`'s out-of-memory check) now counts
+  the GPU methods' per-slot host workspaces and the per-thread `evid_()`
+  push pools, and reports the GPU device buffers separately.  An OpenCL
+  solve whose buffers do not fit on the device, or whose largest buffer
+  exceeds the device's single-allocation limit, stops with a message to
+  lower `rxControl(gpuBatch=)`.  Out-of-memory chunking counts the per-slot
+  and per-thread buffers as fixed, and a GPU solve replays from its
+  `serializeFile=` state on that state's own thread slots.
 - New host method `"ros54p"` (Rodas5P, Steinebach's L-stable Rosenbrock 5(4)
   with the analytical Jacobian) and its AutoSwitch composites `"t54+ros54p"`
   and `"vern76+ros54p"`.  It evaluates the time derivative only for a model
@@ -190,6 +237,12 @@
   (nlmixr2/nlmixr2est#1356).
 
 ## Bug fixes
+
+- The parser no longer reads a function name it had already freed.  Every
+  function call copies its name into a buffer that is reallocated as it grows,
+  and a copy held while more were made pointed into the old buffer; parsing
+  a large generated model (an nlmixr2est outer-gradient model) could crash
+  R.  Each copy is now its own allocation.
 
 - mu-referencing only records a `covariate*theta` term that is exactly
   `theta*covariate`.  The allometric `0.75*log(V1/exp(tV1))`, whose
@@ -323,6 +376,12 @@
   does; a dose without a `cmt` used to fail in the build (#1504).
 - Event-sensitivity setup skips symbolic expansion when no dosing derivative
   needs it, reducing setup time for large sensitivity models (#1632).
+- The analytic Jacobian an implicit method uses now has rows for
+  `rx__sens_*` states, such as the eta sensitivities of nlmixr2's FOCEi
+  inner model; they were left zero, which made `ros54p`/`gpuRos54p` FOCEi
+  fits take tiny steps (about 40 times slower than `liblsoda`).
+  `rxode2(calcJac = TRUE)` also no longer drops the states that follow an
+  `rx__sens_*` state.
 
 ### Expression optimization
 - `rxOptExpr()` avoids CSE temporary-name collisions and warns on repeated

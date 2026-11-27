@@ -1133,6 +1133,27 @@ namespace rxode2 {
         return Rcpp::as<NumericVector >(rcpp_result_gen);
     }
 
+    inline NumericVector rxMemoryGpuComponents_(IntegerVector dims, int single, int opencl, int threads) {
+        typedef SEXP(*Ptr_rxMemoryGpuComponents_)(SEXP,SEXP,SEXP,SEXP);
+        static Ptr_rxMemoryGpuComponents_ p_rxMemoryGpuComponents_ = NULL;
+        if (p_rxMemoryGpuComponents_ == NULL) {
+            validateSignature("NumericVector(*rxMemoryGpuComponents_)(IntegerVector,int,int,int)");
+            p_rxMemoryGpuComponents_ = (Ptr_rxMemoryGpuComponents_)R_GetCCallable("rxode2", "_rxode2_rxMemoryGpuComponents_");
+        }
+        RObject rcpp_result_gen;
+        {
+            RNGScope RCPP_rngScope_gen;
+            rcpp_result_gen = p_rxMemoryGpuComponents_(Shield<SEXP>(Rcpp::wrap(dims)), Shield<SEXP>(Rcpp::wrap(single)), Shield<SEXP>(Rcpp::wrap(opencl)), Shield<SEXP>(Rcpp::wrap(threads)));
+        }
+        if (rcpp_result_gen.inherits("interrupted-error"))
+            throw Rcpp::internal::InterruptedException();
+        if (Rcpp::internal::isLongjumpSentinel(rcpp_result_gen))
+            throw Rcpp::LongjumpException(rcpp_result_gen);
+        if (rcpp_result_gen.inherits("try-error"))
+            throw Rcpp::exception(Rcpp::as<std::string>(rcpp_result_gen).c_str());
+        return Rcpp::as<NumericVector >(rcpp_result_gen);
+    }
+
     inline List rxTestAbiSubjectCounts_() {
         typedef SEXP(*Ptr_rxTestAbiSubjectCounts_)();
         static Ptr_rxTestAbiSubjectCounts_ p_rxTestAbiSubjectCounts_ = NULL;
