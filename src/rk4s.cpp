@@ -196,8 +196,11 @@ struct rksTableau { int s; int adaptive; int errOrder;
                     // only J(u_i) (first derivatives) via the implicit-function thm.
                     int implicitRK;
                     // adaptive explicit: real-axis stability limit (|R(z)| <= 1 on
-                    // [-stabRe, 0]); the controller keeps h*rho(df/dy) inside it
-                    double stabRe; };
+                    // [-stabRe, 0]), and stabArg[k] = 0.85 * the stability-boundary
+                    // radius min over |arg(-z)| in [k-3, k+4] deg (k = 0..90); the
+                    // controller keeps |h lam| <= stabArg[|arg(-lam)|] for the
+                    // dominant eigenvalue lam of df/dy
+                    double stabRe; double stabArg[91]; };
 
 // -- LU for the Rosenbrock stage matrix W (n x n, n = nBase, small) via LAPACK
 //    dgetrf/dgetrs (robust, the same routines armadillo wraps).  W is stored
@@ -7118,6 +7121,58 @@ static double rksStabRe(int method, const rksTableau &T) {
   return lim;
 }
 
+// |R(z)| for complex z = (zr, zi), R(z) = 1 + z b'(I - zA)^-1 1 (explicit A).
+static double rksStabAbsR(const rksTableau &T, double zr, double zi) {
+  double gr[36], gi[36], rr = 1.0, ri = 0.0;
+  for (int i = 0; i < T.s; ++i) {
+    double ar = 1.0, ai = 0.0;
+    for (int j = 0; j < i; ++j) {
+      double a = T.A[i * T.s + j]; if (a == 0.0) continue;
+      ar += a * (zr * gr[j] - zi * gi[j]); ai += a * (zr * gi[j] + zi * gr[j]);
+    }
+    gr[i] = ar; gi[i] = ai;
+    rr += T.b[i] * (zr * ar - zi * ai); ri += T.b[i] * (zr * ai + zi * ar);
+  }
+  return sqrt(rr * rr + ri * ri);
+}
+
+// Stability boundary by direction.  The real-axis limit only covers real
+// eigenvalues: for a complex dominant pair (oscillatory PD, feedback/turnover)
+// the region is much smaller off the axis for most tableaux (dop5s: 3.31 on the
+// axis, 2.62 at 85 deg; tmy7ss: 9.3 on the axis, ~4.5 at 60 deg).  r(a) = the
+// first |z| along arg(-z) = a with |R(z)| > 1 + 1e-6 (the 1e-6 lets the
+// order-p contact with the imaginary axis, |R(iy)| = 1 + O(y^(p+1)), through:
+// growth <= 1e-6 per step, while |R| <= 1 exactly pinches to ~0 there for many
+// tableaux).  |R(conj z)| = |R(z)|, so a in [0, 90] covers the left half-plane.
+// out[k] = 0.85 * min of r over a in [k-3, k+4] deg (margin for the estimated
+// argument).  Cached per method code.
+static void rksStabArg(int method, const rksTableau &T, double *out) {
+  static thread_local std::vector<std::vector<double> > cache;
+  if (method >= 0 && method < 512) {
+    if (cache.empty()) cache.resize(512);
+    if (!cache[method].empty()) { std::memcpy(out, cache[method].data(), 91 * sizeof(double)); return; }
+  }
+  const double eta = 1e-6, dr = 0.02, rmax = 20.0;
+  double r[181];                                    // a = 0, 0.5, ..., 90 deg
+  for (int k = 0; k <= 180; ++k) {
+    double a = M_PI * k / 360.0, cr = -cos(a), ci = sin(a), lim = rmax;
+    for (double hi = dr; hi <= rmax; hi += dr) {
+      if (rksStabAbsR(T, hi * cr, hi * ci) > 1.0 + eta) {
+        double lo = hi - dr, h2 = hi;
+        for (int q = 0; q < 30; ++q) { double m = 0.5 * (lo + h2); if (rksStabAbsR(T, m * cr, m * ci) > 1.0 + eta) h2 = m; else lo = m; }
+        lim = lo; break;
+      }
+    }
+    r[k] = lim;
+  }
+  for (int k = 0; k <= 90; ++k) {
+    int lo = 2 * k - 6, hi = 2 * k + 8; if (lo < 0) lo = 0; if (hi > 180) hi = 180;
+    double mn = r[lo]; for (int q = lo + 1; q <= hi; ++q) if (r[q] < mn) mn = r[q];
+    out[k] = 0.85 * mn;
+  }
+  if (method >= 0 && method < 512) cache[method].assign(out, out + 91);
+}
+
 static rksTableau rksGetTableau(int method) {
   rksTableau T; std::memset(&T, 0, sizeof(T));
   switch (method) {
@@ -7187,7 +7242,7 @@ static rksTableau rksGetTableau(int method) {
   case 205: rksTableauF78(T); break;   // f78s -- adaptive Fehlberg 7(8)
   default:  rksTableauRk4(T); break;
   }
-  if (T.adaptive && !T.rosenbrock && !T.implicitRK) T.stabRe = rksStabRe(method, T);
+  if (T.adaptive && !T.rosenbrock && !T.implicitRK) { T.stabRe = rksStabRe(method, T); rksStabArg(method, T, T.stabArg); }
   return T;
 }
 
@@ -7346,12 +7401,22 @@ static inline double rks_try_step(t_dydt dydt, int *neq, const rksTableau &T, in
   return sqrt(err / (nAll > 0 ? nAll : 1));
 }
 
-// Power-iteration estimate of the spectral radius of df/dy on the first nE
-// states at (t, y), f0 = f(t, y): it finite-difference products J v, v kept
-// (normalized) across calls.  Returns 0 if no estimate.
+// Estimate of the dominant eigenvalue lam of df/dy on the first nE states at
+// (t, y), f0 = f(t, y): power iteration by finite-difference products J v (v
+// kept, normalized, across calls) plus a 2-d Rayleigh-Ritz step on
+// span{u, v}, u the previous iterate (J u = pr * v is known from the previous
+// product, so no extra dydt).  Plain power iteration does not converge for a
+// complex-conjugate dominant pair: v rotates in the pair's invariant plane and,
+// unless J is normal there, ||J v|| swings between the plane's singular values
+// (a damped oscillator x'' + 2 zeta w x' + w^2 x in companion form, w = 300:
+// 5 .. 17000 against |lam| = 300), so it under-estimates |lam| on every other
+// call.  The Ritz values of that plane are its eigenvalues.  Returns |lam| (0 if
+// no estimate) and *ang = |arg(-lam)| in degrees (0: negative real; > 90:
+// right half-plane).  pr, u persist with v (pr = 0: no previous iterate).
 static inline double rks_rho_est(t_dydt dydt, int *neq, int nAll, int nE, double t,
                                  const double *y, const double *f0, double *v,
-                                 double *ytmp, double *f1, int it) {
+                                 double *u, double *pr, double *ytmp, double *f1, int it,
+                                 double *ang) {
   double rho = 0.0;
   for (int q = 0; q < it; ++q) {
     double yn = 0.0;
@@ -7360,12 +7425,37 @@ static inline double rks_rho_est(t_dydt dydt, int *neq, int nAll, int nE, double
     for (int m = 0; m < nAll; ++m) ytmp[m] = y[m];
     for (int m = 0; m < nE; ++m) ytmp[m] += d * v[m];
     dydt(neq, t, ytmp, f1);
-    double r = 0.0;
-    for (int m = 0; m < nE; ++m) { f1[m] = (f1[m] - f0[m]) / d; r += f1[m] * f1[m]; }
+    double r = 0.0, h11 = 0.0;
+    for (int m = 0; m < nE; ++m) { f1[m] = (f1[m] - f0[m]) / d; r += f1[m] * f1[m]; h11 += v[m] * f1[m]; }
     r = sqrt(r);
     if (!(r > 0.0) || !R_FINITE(r)) break;
-    for (int m = 0; m < nE; ++m) v[m] = f1[m] / r;
-    rho = r;
+    // lam from the Ritz values of span{v, u}: q1 = v, q2 = (u - c v) / nu
+    double lr = h11, li = 0.0, c = 0.0, nu = 0.0;
+    if (*pr > 0.0) {
+      for (int m = 0; m < nE; ++m) c += v[m] * u[m];
+      for (int m = 0; m < nE; ++m) { double e = u[m] - c * v[m]; nu += e * e; }
+      nu = sqrt(nu);
+    }
+    if (nu > 1e-3) {
+      // J q1 = w (= f1), J q2 = (pr v - c w) / nu
+      double h21 = 0.0, h12 = 0.0, h22 = 0.0;
+      for (int m = 0; m < nE; ++m) {
+        double q2 = (u[m] - c * v[m]) / nu, jq2 = (*pr * v[m] - c * f1[m]) / nu;
+        h21 += q2 * f1[m]; h12 += v[m] * jq2; h22 += q2 * jq2;
+      }
+      double tr = h11 + h22, dt2 = h11 * h22 - h12 * h21, disc = 0.25 * tr * tr - dt2;
+      if (disc < 0.0) { lr = 0.5 * tr; li = sqrt(-disc); }
+      else { double sq = sqrt(disc), a = 0.5 * tr + sq, b = 0.5 * tr - sq; lr = fabs(a) >= fabs(b) ? a : b; }
+      rho = sqrt(lr * lr + li * li);
+      if (!(rho > 0.0) || !R_FINITE(rho)) { rho = r; lr = -r; li = 0.0; }
+    } else if (*pr > 0.0) {
+      rho = r;                  // u ~ v: converged real eigenvector, lam = v'Jv
+    } else {
+      rho = r; lr = 0.0; li = r; // no previous iterate: direction unknown
+    }
+    *ang = atan2(fabs(li), -lr) * (180.0 / M_PI);
+    for (int m = 0; m < nE; ++m) { u[m] = v[m]; v[m] = f1[m] / r; }
+    *pr = r;
   }
   return rho;
 }
@@ -7380,9 +7470,12 @@ static inline double rks_rho_est(t_dydt dydt, int *neq, int nAll, int nE, double
 // |R(h lam)| > 1.  The frozen-step map (what the adjoint transposes, and its
 // tangent) has no such feedback: those steps amplify the stiff mode of the
 // reverse sweep without bound (gradients off by 1e5 .. 1e100, solve ok).  So
-// h * rho(df/dy) is kept <= STABSAFE * T.stabRe, rho from rks_rho_est (one dydt
-// per estimate; skipped while h*rho is far below the cap).  scratch keeps a
-// prefix (magic, rho, v) across the intervals of one subject.
+// |h lam| is kept <= T.stabArg[|arg(-lam)|] (0.85 times the boundary radius in
+// that direction), lam the dominant eigenvalue of df/dy from rks_rho_est (one
+// dydt per estimate; skipped while |h lam| is far below the cap).  A
+// right-half-plane lam (growth: |R| > 1 is right there) keeps the real-axis cap
+// 0.85 * T.stabRe.  scratch keeps a prefix (magic, |lam|, arg, pr, v, u) across
+// the intervals of one subject.
 static inline void rks_do_steps_adaptive(rx_solving_options_ind *ind, rx_solving_options *op,
                                          t_dydt dydt, int *neq, const rksTableau &T,
                                          int nAll, int nRec, double *yp,
@@ -7395,23 +7488,27 @@ static inline void rks_do_steps_adaptive(rx_solving_options_ind *ind, rx_solving
   double dt = op->H0 > 0 ? op->H0 : span / 100.0; if (dt <= 0.0) dt = span / 100.0;
   dt = sign * dt;
   const double MAGIC = 0.7071067811865476e-300, STABSAFE = 0.85;
-  const double hcap = T.stabRe > 0.0 ? STABSAFE * T.stabRe : 0.0;  // bound on |h|*rho
-  const size_t P = 2 + (size_t)nAll;                                  // persistent prefix
+  const double hcap = T.stabRe > 0.0 ? STABSAFE * T.stabRe : 0.0;  // real-axis bound on |h lam|
+  const size_t P = 4 + 2 * (size_t)nAll;                              // persistent prefix
   if (scratch.size() < P + (size_t)(2 * s + 4) * nAll) scratch.resize(P + (size_t)(2 * s + 4) * nAll);
-  double *pre = scratch.data(), *v = pre + 2;
+  double *pre = scratch.data(), *v = pre + 4, *u = v + nAll;
   double *stages = pre + P, *kbuf = stages + s * nAll,
          *yhigh = kbuf + s * nAll, *ylow = yhigh + nAll, *ytmp = ylow + nAll, *f1 = ytmp + nAll;
   const int nE = nAll;
-  bool vOk = pre[0] == MAGIC && pre[1] >= 0.0 && R_FINITE(pre[1]);
+  bool vOk = pre[0] == MAGIC && pre[1] >= 0.0 && R_FINITE(pre[1]) && pre[2] >= 0.0 && pre[2] <= 180.0
+    && pre[3] >= 0.0 && R_FINITE(pre[3]);
   if (vOk) { double vn = 0.0; for (int m = 0; m < nE; ++m) vn += v[m] * v[m]; vOk = vn > 0.5 && R_FINITE(vn); }
   if (!vOk) {
     double vn = 0.0;
     for (int m = 0; m < nE; ++m) { v[m] = (m & 1 ? -1.0 : 1.0) * (1.0 + 0.37 * m); vn += v[m] * v[m]; }
     vn = sqrt(vn); for (int m = 0; m < nE; ++m) v[m] /= vn;
-    pre[0] = MAGIC; pre[1] = 0.0;
+    pre[0] = MAGIC; pre[1] = 0.0; pre[2] = 90.0; pre[3] = 0.0;
   }
-  double rho = pre[1]; int sinceEst = 0; bool haveRho = false, k0Ready = false;
-  if (hcap > 0.0 && rho > 0.0 && fabs(dt) * rho > hcap) dt = sign * hcap / rho;
+  // bound on |h lam| for the direction arg(-lam) = a degrees
+  auto capOf = [&](double a) { return a <= 90.0 ? T.stabArg[(int)a] : hcap; };
+  double rho = pre[1], hcapA = hcap > 0.0 ? capOf(pre[2]) : 0.0;
+  int sinceEst = 0; bool haveRho = false, k0Ready = false;
+  if (hcap > 0.0 && rho > 0.0 && fabs(dt) * rho > hcapA) dt = sign * hcapA / rho;
   error_checker check(ind, ind->rc, op->mxstep);
   zero_copy_state chk(yp, nAll);
   const double SAFE = 0.9, FACMIN = 0.2, FACMAX = 5.0;
@@ -7426,12 +7523,14 @@ static inline void rks_do_steps_adaptive(rx_solving_options_ind *ind, rx_solving
           for (int m = 0; m < nAll; ++m) stages[m] = yp[m];
           dydt(neq, t, stages, kbuf); k0Ready = true;
         }
-        if (!haveRho && (rho <= 0.0 || sinceEst >= 16 || fabs(dt) * rho > 0.04 * hcap)) {
-          double r = rks_rho_est(dydt, neq, nAll, nE, t, yp, kbuf, v, ytmp, f1, rho > 0.0 ? 1 : 3);
-          if (r > 0.0) { rho = r; pre[1] = rho; }
+        if (!haveRho && (rho <= 0.0 || sinceEst >= 16 || fabs(dt) * rho > 0.04 * hcapA)) {
+          double ang = 90.0;
+          double r = rks_rho_est(dydt, neq, nAll, nE, t, yp, kbuf, v, u, pre + 3, ytmp, f1,
+                                 rho > 0.0 ? 1 : 3, &ang);
+          if (r > 0.0) { rho = r; pre[1] = rho; pre[2] = ang; hcapA = capOf(ang); }
           haveRho = true; sinceEst = 0;
         }
-        if (rho > 0.0 && fabs(dt) * rho > hcap) dt = sign * hcap / rho;
+        if (rho > 0.0 && fabs(dt) * rho > hcapA) dt = sign * hcapA / rho;
       }
       if ((sign > 0 && t + dt > xout) || (sign < 0 && t + dt < xout)) dt = xout - t;
       dt = rk4s_hist_cap(ind, dt, sign);
