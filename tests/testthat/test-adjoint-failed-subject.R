@@ -19,18 +19,33 @@ rxTest({
     expect_length(.cols, 6L)
     expect_equal(nrow(.a), 6L)
     expect_true(all(is.na(as.matrix(.a[.a$id == 2, .cols]))))
-    .s1 <- rxSolveAdjointRk4(.txt, .one(1L), params = c(ka = 1.2, k = 0.2), calcSens = c("ka", "k"),
-      method = "cvodesadj", maxsteps = 100)
-    for (.cn in .cols) expect_equal(.a[.a$id == 1, .cn], .s1[[.cn]], label = .cn)
+    .s1 <- rxSolveAdjointRk4(
+      .txt,
+      .one(1L),
+      params = c(ka = 1.2, k = 0.2),
+      calcSens = c("ka", "k"),
+      method = "cvodesadj",
+      maxsteps = 100
+    )
+    for (.cn in .cols) {
+      expect_equal(.a[.a$id == 1, .cn], .s1[[.cn]], label = .cn)
+    }
   })
 
   test_that("a single failed cvodesadj subject is an error, and a stiff one within maxsteps solves", {
     .txt <- "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center"
     .ev <- et(amt = 100, cmt = "depot") |> et(c(1, 4, 8))
     expect_error(
-      suppressWarnings(rxSolveAdjointRk4(.txt, .ev, params = c(ka = 1.2, k = 0.2), calcSens = c("ka", "k"),
-        method = "cvodesadj", maxsteps = 5)),
-      "could not solve the system", fixed = TRUE
+      suppressWarnings(rxSolveAdjointRk4(
+        .txt,
+        .ev,
+        params = c(ka = 1.2, k = 0.2),
+        calcSens = c("ka", "k"),
+        method = "cvodesadj",
+        maxsteps = 5
+      )),
+      "could not solve the system",
+      fixed = TRUE
     )
     # fast absorption at the default maxsteps: every row is finite
     .a <- rxSolveAdjointRk4(.txt, .ev, params = c(ka = 3000, k = 0.2), calcSens = c("ka", "k"), method = "cvodesadj")
