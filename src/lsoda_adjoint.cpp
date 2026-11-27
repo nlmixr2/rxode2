@@ -153,6 +153,18 @@ static inline const double *lsAdjDoseDf(int cSub, rx_solving_options_ind *ind,
   return out.data();
 }
 
+// F*amt for a segment's bolus, with f() reading newind as the forward pass did.
+static inline double lsAdjDoseAmtF(rx_solving_options_ind *ind, const lsAdjSeg &Sg,
+                                   int cmt, int eff, int nBase) {
+  std::vector<double> y(eff, 0.0);
+  for (int c = 0; c < nBase; ++c) y[c] = Sg.y0[c];
+  int ni0 = ind->_newind;
+  if (Sg.evNi == 1) ind->_newind = 1;
+  double ret = getAmt(ind, ind->id, cmt, Sg.evAmt, Sg.t0, y.data());
+  ind->_newind = ni0;
+  return ret;
+}
+
 extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct lsoda_opt_t opt,
                                   int solveid, t_dydt_liblsoda c_dydt_ll, t_dydt c_dydt,
                                   t_update_inis u_inis) {
@@ -207,12 +219,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
             if (lsAdjSegs[sg].evType != 3) lsAdjSegs[sg].evType = 0;
             lsAdjSegs[sg].evCmt = _cmt; lsAdjSegs[sg].evAmt = getDose(ind, ind->ix[i]);
             lsAdjSegs[sg].evNi = 2 - (i == _first);
-            std::vector<double> _y(eff, 0.0);
-            for (int c = 0; c < nBase; ++c) _y[c] = lsAdjSegs[sg].y0[c];
-            int _ni0 = ind->_newind;
-            if (lsAdjSegs[sg].evNi == 1) ind->_newind = 1;   // f() as the forward pass read it
-            lsAdjSegs[sg].evAmtF = getAmt(ind, ind->id, _cmt, lsAdjSegs[sg].evAmt, t0, _y.data());
-            ind->_newind = _ni0;
+            lsAdjSegs[sg].evAmtF = lsAdjDoseAmtF(ind, lsAdjSegs[sg], _cmt, eff, nBase);
             break;
           }
           // a replace/multiply after a reset at the same time keeps the reset (its

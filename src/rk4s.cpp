@@ -116,6 +116,22 @@ static inline void rk4sIniOnlyDose(rx_solving_options *op, rx_solving_options_in
   }
 }
 
+// dF/dp at t0 for the dose duals: dF[0] with the integration's newind, dF[1] with
+// newind = 1 (the subject's first record; a modeled f() may read it).  ind->lhs
+// was just evaluated at t0 when dx0 was (lhsStale = dx0 empty).
+static inline void rk4sIniOnlyDf(rx_solving_options *op, rx_solving_options_ind *ind, int cSub,
+                                 double t0, int nBase, int np, bool lhsStale, rxAdjVec *dF) {
+  if (op->adjDfOff < 0) return;
+  std::vector<double> a(rxEffNeq(ind, op), 0.0);
+  if (lhsStale) calc_lhs(cSub, t0, a.data(), ind->lhs);
+  rxAdjAssign(dF[0], ind->lhs + op->adjDfOff, ind->lhs + op->adjDfOff + nBase * np);
+  int ni0 = ind->_newind;
+  ind->_newind = 1;
+  calc_lhs(cSub, t0, a.data(), ind->lhs);
+  ind->_newind = ni0;
+  rxAdjAssign(dF[1], ind->lhs + op->adjDfOff, ind->lhs + op->adjDfOff + nBase * np);
+}
+
 // A subject that took no forward step (only records at its first time) is
 // still at its initial conditions, changed only by the events at that time:
 // walking the records in order, the sensitivity starts at dX0/dp (0 when no
@@ -125,19 +141,9 @@ static inline void rk4sIniOnlyDose(rx_solving_options *op, rx_solving_options_in
 static inline void rk4sIniOnlyFill(rx_solving_options *op, rx_solving_options_ind *ind, int cSub,
                                    int nBase, int np, int sensOff) {
   double t0 = getAllTimes(ind, 0);
-  rxAdjVec dx0, dF, dF1;
+  rxAdjVec dx0, dF[2];   // dF[1]: the first record's dF/dp (newind = 1)
   rk4sIniDx0(op, ind, cSub, t0, rxEffNeq(ind, op), nBase, np, dx0);
-  if (op->adjDfOff >= 0) {   // ind->lhs was just evaluated at t0 when dx0 was
-    std::vector<double> a(rxEffNeq(ind, op), 0.0);
-    if (dx0.empty()) calc_lhs(cSub, t0, a.data(), ind->lhs);
-    rxAdjAssign(dF, ind->lhs + op->adjDfOff, ind->lhs + op->adjDfOff + nBase * np);
-    // the subject's first record reads newind = 1 (a modeled f() may use it)
-    int ni0 = ind->_newind;
-    ind->_newind = 1;
-    calc_lhs(cSub, t0, a.data(), ind->lhs);
-    ind->_newind = ni0;
-    rxAdjAssign(dF1, ind->lhs + op->adjDfOff, ind->lhs + op->adjDfOff + nBase * np);
-  }
+  rk4sIniOnlyDf(op, ind, cSub, t0, nBase, np, dx0.empty(), dF);
   int first = (rxNewindFirst(ind) == 2);   // slot 0, or 1 after the evid 9 start
   rxAdjVec s(nBase * np, 0.0);
   if (!dx0.empty()) s = dx0;
@@ -153,7 +159,7 @@ static inline void rk4sIniOnlyFill(rx_solving_options *op, rx_solving_options_in
       else s = dx0;
       continue;
     }
-    if (isDose(ev)) rk4sIniOnlyDose(op, ind, i, ev, t0, i == first ? dF1 : dF, s, nBase, np);
+    if (isDose(ev)) rk4sIniOnlyDose(op, ind, i, ev, t0, dF[i == first], s, nBase, np);
   }
 }
 
