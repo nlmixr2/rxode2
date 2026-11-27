@@ -9,6 +9,7 @@
 #include "rxomp.h"
 #include "solveDiag.h"
 #include "solveWarn.h"
+#include "../inst/include/rxMemAlloc.h"
 
 #include <atomic>
 #include <cmath>
@@ -101,7 +102,7 @@ extern "C" void rxSolveDiagCapture(int id, int n, int named, double tAcc,
                                    const double *yAcc, const double *yFail) {
   if (n <= 0) return;
   std::vector<double> acc;
-  if (yAcc != NULL) acc.assign(yAcc, yAcc + n);
+  if (yAcc != NULL) rxMemAssign(fixed, acc, yAcc, yAcc + n);
   std::vector<int> failBad;
   if (yFail != NULL) {
     for (int i = 0; i < n; i++) {
