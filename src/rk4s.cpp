@@ -8467,9 +8467,8 @@ static void composite_backward_fill(rx_solve *rx, rx_solving_options *op, rx_sol
 static thread_local t_dydt _rxAdjLagDydt = NULL;
 // base rows of the model's f at (t, z) (other states 0)
 static void rk4sModelF(rx_solving_options_ind *ind, int cSub, int eff, int nb, double t, const double *z,
-                       double *out) {
-  static thread_local std::vector<double> y, dy;
-  y.assign(eff, 0.0); dy.assign(eff, 0.0);
+                       double *out, rxAdjVec &y, rxAdjVec &dy) {
+  rxAdjAssign(y, (size_t)eff, 0.0); rxAdjAssign(dy, (size_t)eff, 0.0);
   for (int c = 0; c < nb; ++c) y[c] = z[c];
   int evSave = ind->_atEventTime, neqA[2] = {eff, cSub};
   _rxAdjLagDydt(neqA, t, y.data(), dy.data());
@@ -8479,13 +8478,13 @@ static void rk4sModelF(rx_solving_options_ind *ind, int cSub, int eff, int nb, d
 // f(x-) - f(x+) per lagged bolus (doses x nBase, NaN row when unavailable): x+ the
 // stage-0 state of its step (the step's only event), x- = x+ - F*amt e_c
 template <class Stage0>
-static std::vector<double> rk4sLagDf(rx_solving_options_ind *ind, int cSub, int eff, int nBase, int np,
-                                     const std::vector<rk4s_dose> &doses, const double *dlag, size_t nStep,
-                                     const std::vector<double> &t0, Stage0 stage0) {
-  std::vector<double> r;
+static rxAdjVec rk4sLagDf(rx_solving_options_ind *ind, int cSub, int eff, int nBase, int np,
+                          const std::vector<rk4s_dose> &doses, const double *dlag, size_t nStep,
+                          const std::vector<double> &t0, Stage0 stage0) {
+  rxAdjVec r;
   if (dlag == NULL || _rxAdjLagDydt == NULL || doses.empty()) return r;
-  r.assign(doses.size() * (size_t)nBase, R_NaN);
-  std::vector<double> zm(nBase), fp(nBase), fm(nBase);
+  rxAdjAssign(r, doses.size() * (size_t)nBase, R_NaN);
+  rxAdjVec zm(nBase), fp(nBase), fm(nBase), y, dy;
   for (size_t di = 0; di < doses.size(); ++di) {
     const rk4s_dose &d = doses[di];
     if (d.type != 0 || d.step >= nStep) continue;
@@ -8497,8 +8496,8 @@ static std::vector<double> rk4sLagDf(rx_solving_options_ind *ind, int cSub, int 
     const double *zp = stage0(d.step);
     for (int c = 0; c < nBase; ++c) zm[c] = zp[c];
     zm[d.cmt] -= d.amtF;
-    rk4sModelF(ind, cSub, eff, nBase, t0[d.step], zp, fp.data());
-    rk4sModelF(ind, cSub, eff, nBase, t0[d.step], zm.data(), fm.data());
+    rk4sModelF(ind, cSub, eff, nBase, t0[d.step], zp, fp.data(), y, dy);
+    rk4sModelF(ind, cSub, eff, nBase, t0[d.step], zm.data(), fm.data(), y, dy);
     for (int c = 0; c < nBase; ++c) r[di * nBase + c] = fm[c] - fp[c];
   }
   return r;
@@ -8583,7 +8582,7 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
     for (int i = 0; i < nBase * np; ++i) dFdp[i] = ind->lhs[dfOff + i];
   }
   // dlag/dtheta block (modeled-alag transversality dose-time jump).
-  std::vector<double> dlagV, lagDfV; const double *dlagP = NULL;
+  std::vector<double> dlagV; rxAdjVec lagDfV; const double *dlagP = NULL;
   if (op->adjDlagOff >= 0 && !doses.empty()) {
     if (!haveDose) calc_lhs(cSub, rec.t0.empty() ? 0.0 : rec.t0[0], Ascratch.data(), ind->lhs);
     dlagV.resize(nBase * np);
