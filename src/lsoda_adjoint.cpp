@@ -596,7 +596,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     std::vector<double> rhs((size_t)nBase * np), dac((size_t)nBase * np), P2(Pmat);
     std::vector<double> yPred(nBase), acor(nBase), fEval(eff, 0.0), Aw(eff, 0.0);
     std::vector<double> Sin((size_t)nBase * np, 0.0);   // incoming state sensitivity
-    if (dx0P && !ssAtStart) Sin.assign(dx0P, dx0P + (size_t)nBase * np);   // the initial conditions
+    if (dx0P && !ssAtStart) for (size_t k = 0; k < (size_t)nBase * np; ++k) Sin[k] = dx0P[k];   // the initial conditions
     auto SX = [&](int row, int c){ return (size_t)row * nBase + c; };
     auto IDX = [&](int row, int c, int p){ return ((size_t)row * nBase + c) * np + p; };
     int neqP[2]; neqP[0] = eff; neqP[1] = cSub;
