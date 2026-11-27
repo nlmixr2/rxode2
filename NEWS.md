@@ -134,6 +134,8 @@
   lower `rxControl(gpuBatch=)`.  Out-of-memory chunking counts the per-slot
   and per-thread buffers as fixed, and a GPU solve replays from its
   `serializeFile=` state on that state's own thread slots.
+- `rxMemoryEstimate()` also counts an adjoint expansion's per-thread
+  steady-state backward work (`adjointWork`).
 - New host method `"ros54p"` (Rodas5P, Steinebach's L-stable Rosenbrock 5(4)
   with the analytical Jacobian) and its AutoSwitch composites `"t54+ros54p"`
   and `"vern76+ros54p"`.  It evaluates the time derivative only for a model

@@ -1177,6 +1177,26 @@ rxMemoryComponents_ <- function(neq, stateSize, nlhs, npars, neta, neps, ncov, n
     .Call(`_rxode2_rxMemoryComponents_`, neq, stateSize, nlhs, npars, neta, neps, ncov, nsim, cores, nMtime, extraCmt, linB, nLlik, nIndSim, numLinSens, numLin, nsub, nallTotal, ndosesTotal, maxAllTimes, stiff, doIndLin, indOwnAlloc, sample, nDelayState)
 }
 
+#' Report the byte sizes of an adjoint method's steady-state backward work
+#'
+#' Per thread, the backward pass of an adjoint expansion keeps the per-subject
+#' dual vectors (dF/dtheta, d rate/dtheta, dx0/dtheta and the steady-state
+#' sensitivity of the window start) and, for every interior \code{ss = 1}
+#' dose, its own steady-state sensitivity and state plus a step-to-event map.
+#' \code{maxAllTimes} bounds both the ss doses and the record steps of the
+#' busiest subject.  Not counted: the per-period Jacobian tapes, which scale
+#' with the integrator's adaptive step count.
+#'
+#' @param nBase Number of base (non-adjoint) states (\code{op->adjNbase}).
+#' @param np Number of sensitivity parameters (\code{op->adjNp}).
+#' @param cores Number of parallel OMP threads.
+#' @param maxAllTimes Maximum events for any single subject.
+#' @return Named numeric vector with \code{adjointWork} bytes.
+#' @noRd
+rxMemoryAdjointComponents_ <- function(nBase, np, cores, maxAllTimes) {
+    .Call(`_rxode2_rxMemoryAdjointComponents_`, nBase, np, cores, maxAllTimes)
+}
+
 #' Report the byte sizes of a GPU method's solve allocations
 #'
 #' The GPU methods (codes 110-114) allocate per slot (\code{gpuBatch}
@@ -1194,7 +1214,8 @@ rxMemoryComponents_ <- function(neq, stateSize, nlhs, npars, neta, neps, ncov, n
 #' @return Named numeric vector of bytes: \code{gpuHostWork},
 #'   \code{gpuHostState}, \code{gpuSlotWork}, \code{gpuTimeline} and
 #'   \code{gpuStage} on the host,
-#'   \code{gpuDevice} on the device (not host RAM).
+#'   \code{gpuDevice} on the device (not host RAM); attribute
+#'   \code{gpuDeviceMaxBuffer} is the largest single device buffer.
 #' @noRd
 rxMemoryGpuComponents_ <- function(dims, single, opencl, threads) {
     .Call(`_rxode2_rxMemoryGpuComponents_`, dims, single, opencl, threads)
@@ -1394,3 +1415,4 @@ binomProbs_ <- function(x, probs, naRm, nIn, cont) {
 meanProbs_ <- function(x, probs, naRm, useT, pred, nIn) {
     .Call(`_rxode2_meanProbs_`, x, probs, naRm, useT, pred, nIn)
 }
+

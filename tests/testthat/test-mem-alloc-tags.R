@@ -1,6 +1,7 @@
 # Every allocation in rxode2's C/C++ goes through the tagged allocators of
 # inst/include/rxMemAlloc.h, which name the rxSolve() memory-estimate component
-# that counts it (rxMemoryComponents_() / rxMemoryGpuComponents_()), so the
+# that counts it (rxMemoryComponents_() / rxMemoryGpuComponents_() /
+# rxMemoryAdjointComponents_()), so the
 # estimate cannot drift from what rxode2 allocates.  Allocations that predate
 # the tags are held in mem-alloc-baseline.csv, a per-file count that may only
 # shrink: tag an allocation and lower its file's count.  Regenerate with
@@ -89,7 +90,8 @@
     0L
   )
   .gpu <- rxMemoryGpuComponents_(rep(1L, 16L), 0L, 1L, 1L)
-  setdiff(c(names(.cpu), names(.gpu), "fixed"), c("sizeofInd", "rxLlikSaveSize"))
+  .adj <- rxMemoryAdjointComponents_(1L, 1L, 1L, 1)
+  setdiff(c(names(.cpu), names(.gpu), names(.adj), "fixed"), c("sizeofInd", "rxLlikSaveSize"))
 }
 
 test_that("every allocation tag names a memory-estimate component", {

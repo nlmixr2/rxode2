@@ -197,6 +197,7 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
 .rxMemExtractModel <- function(model) {
   .mv <- rxModelVars(model)
   .flags <- .mv[["flags"]]
+  .adj <- .rxMemAdjDims(.mv)
 
   list(
     neq = length(.mv[["state"]]),
@@ -212,8 +213,31 @@ rxMemSummary <- function(nobs, ndoses, id = seq_along(nobs)) {
     nDelayState = .rxMemNDelayState(.mv),
     # op->indOwnAlloc defaults to this parser flag (src/rxData.cpp), so the
     # MODEL decides it unless the control says otherwise
-    indOwnAlloc = as.integer(.flags["evid_"])
+    indOwnAlloc = as.integer(.flags["evid_"]),
+    adjNbase = .adj[1],
+    adjNp = .adj[2]
   )
+}
+
+#' Base states and sensitivity parameters of an adjoint expansion
+#'
+#' Mirrors `op->adjNbase`/`op->adjNp` in `src/rxData.cpp`: the
+#' `rx__adjFX_*` lhs are the `nBase x nBase` Jacobian and the `rx__adjFP_*`
+#' lhs the `nBase x np` parameter Jacobian.
+#'
+#' @param mv `rxModelVars()` of the model.
+#' @return Integer `c(nBase, np)`; zeros for a model without an adjoint
+#'   expansion.
+#' @noRd
+#' @author Matthew L. Fidler
+.rxMemAdjDims <- function(mv) {
+  .lhs <- mv[["lhs"]]
+  .nBase <- as.integer(round(sqrt(sum(startsWith(.lhs, "rx__adjFX_")))))
+  .nFp <- sum(startsWith(.lhs, "rx__adjFP_"))
+  if (.nBase <= 0L || .nFp <= 0L) {
+    return(c(0L, 0L))
+  }
+  c(.nBase, as.integer(.nFp %/% .nBase))
 }
 #' How many ODE states delay() looks back on
 #'
@@ -732,6 +756,13 @@ rxMemoryEstimate <- function(
 
   .meta <- c("sizeofInd", "rxLlikSaveSize")
   .sizes <- .raw[!names(.raw) %in% .meta]
+  # an adjoint expansion's steady-state backward work, per thread
+  if (!is.null(model) && .mi$adjNp > 0L) {
+    .sizes <- c(
+      .sizes,
+      rxMemoryAdjointComponents_(.mi$adjNbase, .mi$adjNp, as.integer(cores), as.double(.solveMaxAllTimes))
+    )
+  }
   .outputData <- .rxMemEstimateOutputData(
     dat = dat,
     summary = .summary,
@@ -871,6 +902,7 @@ print.rxMemoryEstimate <- function(x, ...) {
     linCmtRateHist = "linCmtRateHist (per-individual linCmt rates, bound)",
     extraDosing = "extraDosing (per-thread evid_() push pools)",
     invCdfMemo = "invCdfMemo (per-thread inverse-CDF memo)",
+    adjointWork = "adjointWork (per-thread adjoint ss backward work)",
     gpuHostWork = "gpuHostWork (GPU round requests, per slot)",
     gpuHostState = "gpuHostState (GPU host integrator state, per slot)",
     gpuSlotWork = "gpuSlotWork (GPU per-thread workspaces)",

@@ -2310,6 +2310,43 @@ RcppExport SEXP _rxode2_rxMemoryComponents_(SEXP neqSEXP, SEXP stateSizeSEXP, SE
     UNPROTECT(1);
     return rcpp_result_gen;
 }
+// rxMemoryAdjointComponents_
+NumericVector rxMemoryAdjointComponents_(int nBase, int np, int cores, double maxAllTimes);
+static SEXP _rxode2_rxMemoryAdjointComponents__try(SEXP nBaseSEXP, SEXP npSEXP, SEXP coresSEXP, SEXP maxAllTimesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< int >::type nBase(nBaseSEXP);
+    Rcpp::traits::input_parameter< int >::type np(npSEXP);
+    Rcpp::traits::input_parameter< int >::type cores(coresSEXP);
+    Rcpp::traits::input_parameter< double >::type maxAllTimes(maxAllTimesSEXP);
+    rcpp_result_gen = Rcpp::wrap(rxMemoryAdjointComponents_(nBase, np, cores, maxAllTimes));
+    return rcpp_result_gen;
+END_RCPP_RETURN_ERROR
+}
+RcppExport SEXP _rxode2_rxMemoryAdjointComponents_(SEXP nBaseSEXP, SEXP npSEXP, SEXP coresSEXP, SEXP maxAllTimesSEXP) {
+    SEXP rcpp_result_gen;
+    {
+        Rcpp::RNGScope rcpp_rngScope_gen;
+        rcpp_result_gen = PROTECT(_rxode2_rxMemoryAdjointComponents__try(nBaseSEXP, npSEXP, coresSEXP, maxAllTimesSEXP));
+    }
+    Rboolean rcpp_isInterrupt_gen = Rf_inherits(rcpp_result_gen, "interrupted-error");
+    if (rcpp_isInterrupt_gen) {
+        UNPROTECT(1);
+        Rf_onintr();
+    }
+    bool rcpp_isLongjump_gen = Rcpp::internal::isLongjumpSentinel(rcpp_result_gen);
+    if (rcpp_isLongjump_gen) {
+        Rcpp::internal::resumeJump(rcpp_result_gen);
+    }
+    Rboolean rcpp_isError_gen = Rf_inherits(rcpp_result_gen, "try-error");
+    if (rcpp_isError_gen) {
+        SEXP rcpp_msgSEXP_gen = Rf_asChar(rcpp_result_gen);
+        UNPROTECT(1);
+        (Rf_error)("%s", CHAR(rcpp_msgSEXP_gen));
+    }
+    UNPROTECT(1);
+    return rcpp_result_gen;
+}
 // rxMemoryGpuComponents_
 NumericVector rxMemoryGpuComponents_(IntegerVector dims, int single, int opencl, int threads);
 static SEXP _rxode2_rxMemoryGpuComponents__try(SEXP dimsSEXP, SEXP singleSEXP, SEXP openclSEXP, SEXP threadsSEXP) {
@@ -3244,6 +3281,7 @@ static int _rxode2_RcppExport_validate(const char* sig) {
         signatures.insert("RObject(*rxSymInvChol)(RObject,Nullable<NumericVector>,std::string,int)");
         signatures.insert("RObject(*rxSymInvCholEnvCalculate)(List,std::string,Nullable<NumericVector>)");
         signatures.insert("NumericVector(*rxMemoryComponents_)(int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,int,double,double,double,int,int,int,int,int)");
+        signatures.insert("NumericVector(*rxMemoryAdjointComponents_)(int,int,int,double)");
         signatures.insert("NumericVector(*rxMemoryGpuComponents_)(IntegerVector,int,int,int)");
         signatures.insert("List(*rxTestAbiSubjectCounts_)()");
         signatures.insert("IntegerVector(*rxTestAbiStrideProbe_)(int,int)");
@@ -3314,6 +3352,7 @@ RcppExport SEXP _rxode2_RcppExport_registerCCallable() {
     R_RegisterCCallable("rxode2", "_rxode2_rxSymInvChol", (DL_FUNC)_rxode2_rxSymInvChol_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxSymInvCholEnvCalculate", (DL_FUNC)_rxode2_rxSymInvCholEnvCalculate_try);
     R_RegisterCCallable("rxode2", "_rxode2_rxMemoryComponents_", (DL_FUNC)_rxode2_rxMemoryComponents__try);
+    R_RegisterCCallable("rxode2", "_rxode2_rxMemoryAdjointComponents_", (DL_FUNC)_rxode2_rxMemoryAdjointComponents__try);
     R_RegisterCCallable("rxode2", "_rxode2_rxMemoryGpuComponents_", (DL_FUNC)_rxode2_rxMemoryGpuComponents__try);
     R_RegisterCCallable("rxode2", "_rxode2_rxTestAbiSubjectCounts_", (DL_FUNC)_rxode2_rxTestAbiSubjectCounts__try);
     R_RegisterCCallable("rxode2", "_rxode2_rxTestAbiStrideProbe_", (DL_FUNC)_rxode2_rxTestAbiStrideProbe__try);

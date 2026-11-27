@@ -880,4 +880,22 @@ rxTest({
     local_mocked_bindings(.getFreeRamBytes = function() as.numeric(.est$gpuHostWork))
     expect_equal(.rxOomChunkSize(.m, .ev, .ctl), 1L)
   })
+
+  test_that("an adjoint expansion's ss backward work is in the estimate (rxMemoryAdjointComponents_)", {
+    .txt <- "d/dt(depot) <- -ka*depot\nd/dt(center) <- ka*depot - k*center"
+    .ev <- as.data.frame(et(amt = 100, cmt = "depot", time = 5, ss = 1, ii = 12) |> et(c(1, 6, 12)))
+    .plain <- rxMemoryEstimate(.ev, model = rxode2(.txt))
+    expect_false("adjointWork" %in% names(.plain))
+    .b <- .rxAdjointModel(.txt, c("ka", "k"), stiff = .rxAdjointMethodStiff("rk4s"))
+    .adj <- rxMemoryEstimate(.ev, model = .b$model, control = rxControl(cores = 2L))
+    expect_equal(.rxMemAdjDims(rxModelVars(.b$model)), c(2L, 2L))
+    expect_equal(
+      as.numeric(.adj$adjointWork),
+      as.numeric(rxMemoryAdjointComponents_(2L, 2L, 2L, as.double(nrow(.ev))))
+    )
+    expect_gt(as.numeric(.adj$adjointWork), 0)
+    .meta <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes", "freeRamBytes", "effectiveSubs")
+    .comps <- .adj[!names(.adj) %in% c(.meta, "gsolve_n0")]
+    expect_equal(as.numeric(.adj$total), sum(vapply(.comps, as.numeric, numeric(1))))
+  })
 })
