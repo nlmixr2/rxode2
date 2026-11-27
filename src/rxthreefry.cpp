@@ -17,6 +17,7 @@ using namespace arma;
 #include "../inst/include/rxode2_as.h"
 #include "threefry.h"
 #include "../inst/include/rxode2random_fillVec.h"
+#include "../inst/include/rxMemAlloc.h"
 
 #include <boost/random/normal_distribution.hpp>
 #include <boost/random/uniform_real_distribution.hpp>
@@ -2108,7 +2109,7 @@ static inline double simOneCond(const double *z, const double *cur, int k,
 // one.  Empty when unknown.  Set on the main thread before a solve.
 static std::vector<int> _simIdx[2];
 extern "C" void rxSetSimIdx(int type, const int *idx, int n) {
-  _simIdx[type].assign(idx, idx + n);
+  rxMemAssign(fixed, _simIdx[type], idx, idx + n);
 }
 
 // The 0-based simulated column for index n of type (0 eps, 1 eta), or -1.
