@@ -14,7 +14,7 @@ rxTest({
     dir.create(.dir)
     on.exit(unlink(.dir, recursive = TRUE), add = TRUE)
     .c <- file.path(.dir, "indss.c")
-    writeLines(c(
+    .src <- c(
       "#include <rxode2.h>",
       "typedef void (*t_ind_solve)(rx_solve *, unsigned int, t_dydt_liblsoda,",
       "  t_dydt_lsoda_dum, t_jdum_lsoda, t_dydt, t_update_inis, int);",
@@ -43,12 +43,13 @@ rxTest({
       "  UNPROTECT(1);",
       "  return ret;",
       "}"
-    ), .c)
+    )
+    writeLines(.src, .c)
     .old <- setwd(.dir)
     on.exit(setwd(.old), add = TRUE)
     .r <- file.path(R.home("bin"), "R")
-    .out <- suppressWarnings(system2(.r, c("CMD", "SHLIB", "indss.c"),
-      env = paste0("PKG_CPPFLAGS=-I", shQuote(.inc)), stdout = TRUE, stderr = TRUE))
+    .env <- paste0("PKG_CPPFLAGS=-I", shQuote(.inc))
+    .out <- suppressWarnings(system2(.r, c("CMD", "SHLIB", "indss.c"), env = .env, stdout = TRUE, stderr = TRUE))
     .so <- file.path(.dir, paste0("indss", .Platform$dynlib.ext))
     skip_if(!file.exists(.so), paste(.out, collapse = "\n"))
     .dll <- dyn.load(.so)
@@ -82,8 +83,7 @@ rxTest({
         rxSolve(.wide, .p, .ev, method = .meth, .setupOnly = 1L)
         .got <- .Call(.dll$indss, rxModelVars(.m)$trans, .nOv, .jt)
         rxSolveFree()
-        expect_equal(.got[1:2], unname(.ref), tolerance = 1e-6,
-                     info = paste(.meth, .case))
+        expect_equal(.got[1:2], unname(.ref), tolerance = 1e-6, info = paste(.meth, .case))
       }
     }
   })
