@@ -52,7 +52,7 @@ rxTest({
     expect_equal(.resetCovSolve(d), expected, tolerance = 1e-5)
   }
 
-  test_that("evid=3 reset re-seeds cmt(0) with the reset record's covariates (A)", {
+  test_that("evid=3 reset re-seeds cmt(0) with its record's covariates (A)", {
     .resetCovOne(c(rep(70, 5), rep(140, 5)), .pA)
   })
 
