@@ -7136,6 +7136,19 @@ static double rksStabAbsR(const rksTableau &T, double zr, double zi) {
   return sqrt(rr * rr + ri * ri);
 }
 
+// r(a) along the ray z = rho * (cr + i ci): scan then bisect.
+static double rksStabRayRadius(const rksTableau &T, double cr, double ci) {
+  const double eta = 1e-6, dr = 0.02, rmax = 20.0;
+  for (double hi = dr; hi <= rmax; hi += dr) {
+    if (rksStabAbsR(T, hi * cr, hi * ci) > 1.0 + eta) {
+      double lo = hi - dr, h2 = hi;
+      for (int q = 0; q < 30; ++q) { double m = 0.5 * (lo + h2); if (rksStabAbsR(T, m * cr, m * ci) > 1.0 + eta) h2 = m; else lo = m; }
+      return lo;
+    }
+  }
+  return rmax;
+}
+
 // Stability boundary by direction.  The real-axis limit only covers real
 // eigenvalues: for a complex dominant pair (oscillatory PD, feedback/turnover)
 // the region is much smaller off the axis for most tableaux (dop5s: 3.31 on the
@@ -7152,18 +7165,10 @@ static void rksStabArg(int method, const rksTableau &T, double *out) {
     if (cache.empty()) cache.resize(512);
     if (!cache[method].empty()) { std::memcpy(out, cache[method].data(), 91 * sizeof(double)); return; }
   }
-  const double eta = 1e-6, dr = 0.02, rmax = 20.0;
   double r[181];                                    // a = 0, 0.5, ..., 90 deg
   for (int k = 0; k <= 180; ++k) {
-    double a = M_PI * k / 360.0, cr = -cos(a), ci = sin(a), lim = rmax;
-    for (double hi = dr; hi <= rmax; hi += dr) {
-      if (rksStabAbsR(T, hi * cr, hi * ci) > 1.0 + eta) {
-        double lo = hi - dr, h2 = hi;
-        for (int q = 0; q < 30; ++q) { double m = 0.5 * (lo + h2); if (rksStabAbsR(T, m * cr, m * ci) > 1.0 + eta) h2 = m; else lo = m; }
-        lim = lo; break;
-      }
-    }
-    r[k] = lim;
+    double a = M_PI * k / 360.0;
+    r[k] = rksStabRayRadius(T, -cos(a), sin(a));
   }
   for (int k = 0; k <= 90; ++k) {
     int lo = 2 * k - 6, hi = 2 * k + 8; if (lo < 0) lo = 0; if (hi > 180) hi = 180;
@@ -7401,6 +7406,37 @@ static inline double rks_try_step(t_dydt dydt, int *neq, const rksTableau &T, in
   return sqrt(err / (nAll > 0 ? nAll : 1));
 }
 
+// lam = lr + i li from the Ritz values of span{v, u}: q1 = v, q2 = (u - c v) / nu;
+// w = J v, h11 = v'w, r = ||w||, pr = ||J u|| (0: no previous iterate).  Returns |lam|.
+static inline double rks_ritz_lam(int nE, const double *v, const double *u,
+                                  const double *w, double pr, double h11, double r,
+                                  double *lr, double *li) {
+  double c = 0.0, nu = 0.0;
+  if (pr > 0.0) {
+    for (int m = 0; m < nE; ++m) c += v[m] * u[m];
+    for (int m = 0; m < nE; ++m) { double e = u[m] - c * v[m]; nu += e * e; }
+    nu = sqrt(nu);
+  }
+  if (!(nu > 1e-3)) {
+    *lr = pr > 0.0 ? h11 : 0.0;   // u ~ v: converged real eigenvector, lam = v'Jv
+    *li = pr > 0.0 ? 0.0 : r;     // no previous iterate: direction unknown
+    return r;
+  }
+  // J q1 = w, J q2 = (pr v - c w) / nu
+  double h21 = 0.0, h12 = 0.0, h22 = 0.0;
+  for (int m = 0; m < nE; ++m) {
+    double q2 = (u[m] - c * v[m]) / nu, jq2 = (pr * v[m] - c * w[m]) / nu;
+    h21 += q2 * w[m]; h12 += v[m] * jq2; h22 += q2 * jq2;
+  }
+  double tr = h11 + h22, dt2 = h11 * h22 - h12 * h21, disc = 0.25 * tr * tr - dt2;
+  *li = 0.0;
+  if (disc < 0.0) { *lr = 0.5 * tr; *li = sqrt(-disc); }
+  else { double sq = sqrt(disc), a = 0.5 * tr + sq, b = 0.5 * tr - sq; *lr = fabs(a) >= fabs(b) ? a : b; }
+  double rho = sqrt(*lr * *lr + *li * *li);
+  if (!(rho > 0.0) || !R_FINITE(rho)) { rho = r; *lr = -r; *li = 0.0; }
+  return rho;
+}
+
 // Estimate of the dominant eigenvalue lam of df/dy on the first nE states at
 // (t, y), f0 = f(t, y): power iteration by finite-difference products J v (v
 // kept, normalized, across calls) plus a 2-d Rayleigh-Ritz step on
@@ -7429,30 +7465,8 @@ static inline double rks_rho_est(t_dydt dydt, int *neq, int nAll, int nE, double
     for (int m = 0; m < nE; ++m) { f1[m] = (f1[m] - f0[m]) / d; r += f1[m] * f1[m]; h11 += v[m] * f1[m]; }
     r = sqrt(r);
     if (!(r > 0.0) || !R_FINITE(r)) break;
-    // lam from the Ritz values of span{v, u}: q1 = v, q2 = (u - c v) / nu
-    double lr = h11, li = 0.0, c = 0.0, nu = 0.0;
-    if (*pr > 0.0) {
-      for (int m = 0; m < nE; ++m) c += v[m] * u[m];
-      for (int m = 0; m < nE; ++m) { double e = u[m] - c * v[m]; nu += e * e; }
-      nu = sqrt(nu);
-    }
-    if (nu > 1e-3) {
-      // J q1 = w (= f1), J q2 = (pr v - c w) / nu
-      double h21 = 0.0, h12 = 0.0, h22 = 0.0;
-      for (int m = 0; m < nE; ++m) {
-        double q2 = (u[m] - c * v[m]) / nu, jq2 = (*pr * v[m] - c * f1[m]) / nu;
-        h21 += q2 * f1[m]; h12 += v[m] * jq2; h22 += q2 * jq2;
-      }
-      double tr = h11 + h22, dt2 = h11 * h22 - h12 * h21, disc = 0.25 * tr * tr - dt2;
-      if (disc < 0.0) { lr = 0.5 * tr; li = sqrt(-disc); }
-      else { double sq = sqrt(disc), a = 0.5 * tr + sq, b = 0.5 * tr - sq; lr = fabs(a) >= fabs(b) ? a : b; }
-      rho = sqrt(lr * lr + li * li);
-      if (!(rho > 0.0) || !R_FINITE(rho)) { rho = r; lr = -r; li = 0.0; }
-    } else if (*pr > 0.0) {
-      rho = r;                  // u ~ v: converged real eigenvector, lam = v'Jv
-    } else {
-      rho = r; lr = 0.0; li = r; // no previous iterate: direction unknown
-    }
+    double lr, li;
+    rho = rks_ritz_lam(nE, v, u, f1, *pr, h11, r, &lr, &li);
     *ang = atan2(fabs(li), -lr) * (180.0 / M_PI);
     for (int m = 0; m < nE; ++m) { u[m] = v[m]; v[m] = f1[m] / r; }
     *pr = r;
