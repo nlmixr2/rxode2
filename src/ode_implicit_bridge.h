@@ -95,6 +95,7 @@ protected:
         dydt_(full_neq_, eval_time, solin, fout);
         for (unsigned long i = 0; i < this->neq_; i++) {
             if (!std::isfinite(fout[i])) {
+                rxSolveDiagDydt(ind_->id, (int)this->neq_, eval_time, solin, fout);
                 rxSolverFail(ind_);
                 for (unsigned long j = 0; j < this->neq_; j++) fout[j] = 0.0;
                 return;

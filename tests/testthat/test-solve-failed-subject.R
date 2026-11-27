@@ -36,6 +36,10 @@ rxTest({
       error = conditionMessage
     )
   }
+  # the printed lines without the failed-solve diagnostics (test-solve-diag.R)
+  .noDiag <- function(o) {
+    o[!grepl("^\\[solve error: (last derivative|non-finite|states span)", o)]
+  }
   .fsReason <- function(ids) {
     paste0(
       "[solve error: Modeled rate requested in event table, but not in model; use 'rate(cmt) =']: ",
@@ -166,6 +170,37 @@ rxTest({
   .solverFail <- "the ODE solver failed (an exception, or a step it could not take)"
   .rateReason <- "[solve error: Modeled rate requested in event table, but not in model; use 'rate(cmt) =']: "
 
+  test_that("an adjoint method rxSolve() cannot run is named, with the reason", {
+    .d <- data.frame(ID = 1, TIME = c(0, 0, 1), EVID = c(1, 0, 0), AMT = c(1, 0, 0), CMT = "y")
+    .build <- "; build it with calcSens or rxode2::.rxAdjointExpand()"
+    # the stiff adjoint methods (and cvodesadj) size their factorization from
+    # the expanded system, so they cannot solve a plain model forward-only
+    .m <- rxode2("d/dt(y) <- -k * y")
+    for (.meth in c(.rxAdjointStiffMethods, "cvodesadj")) {
+      expect_identical(
+        .nfSolve(.m, .d, c(k = 1), .meth),
+        paste0("method='", .meth, "' cannot solve a model without the adjoint expansion", .build),
+        label = .meth
+      )
+    }
+    # the other adjoint methods solve it forward-only
+    expect_true(is.list(.nfSolve(.m, .d, c(k = 1), "rk4s")))
+    # sensitivity states without the expansion's Jacobian lhs
+    .ms <- rxode2("d/dt(y) <- -k * y\nd/dt(rx__sens_y_BY_k__) <- -k * rx__sens_y_BY_k__ - y")
+    expect_identical(
+      .nfSolve(.ms, .d, c(k = 1), "rk4s"),
+      paste0(
+        "method='rk4s' needs the adjoint expansion's Jacobian lhs (rx__adjFX_*, rx__adjFP_*) for the model's sensitivities",
+        .build
+      )
+    )
+    # a model with no ODE state
+    expect_identical(
+      .nfSolve(rxode2("y <- k * t"), data.frame(ID = 1, TIME = 0:2, EVID = 0), c(k = 1), "rk4s"),
+      "method='rk4s' needs a model with ODE states"
+    )
+  })
+
   test_that("every error bit has its own reason text", {
     # bit k is 2^k, as in inst/include/rxode2dataErr.h
     .texts <- c(
@@ -257,7 +292,11 @@ rxTest({
     .p <- data.frame(ID = 101:104, k = c(1, 1, Inf, 1))
     for (.meth in c("f45", "dop54", "cvode")) {
       .o <- .cap(suppressWarnings(rxSolve(.m, .d, params = .p, method = .meth)))
-      expect_identical(.o, paste0("[solve error: ", .solverFail, "]: 1 warning(s) for subject(s): 103"), label = .meth)
+      expect_identical(
+        .noDiag(.o),
+        paste0("[solve error: ", .solverFail, "]: 1 warning(s) for subject(s): 103"),
+        label = .meth
+      )
     }
     # a step limit every subject reaches: odeinter.h's checker (rk4, ab), and
     # cvode's negative return, which has no IDID text
@@ -306,7 +345,13 @@ rxTest({
     # with the solver's failure as well, since they carried the state on.
     # liblsoda fails the subject itself when intdy() cannot interpolate.
     .liblsoda <- "^\\[IDID=-3, illegal input detected \\(see printed message\\)\\.\\]: 1 warning\\(s\\) for subject\\(s\\): 103$"
+    .gpu <- "^\\[IDID=-2, the device integrator step size fell below its minimum\\]: 1 warning\\(s\\) for subject\\(s\\): 103$"
     .own <- c(
+      gpuT54 = .gpu,
+      gpuVern76 = .gpu,
+      gpuRos54p = .gpu,
+      "gpuT54+gpuRos54p" = .gpu,
+      "gpuVern76+gpuRos54p" = .gpu,
       lsoda = "^DLSODA-",
       lsode = "^DLSODE-",
       bdf = "^DLSODE-",
@@ -355,7 +400,7 @@ rxTest({
         expect_true(grepl(.own[[.meth]], .s$o[1]), label = .meth)
         expect_identical(.s$o[length(.s$o)] == .line, .meth %in% .ownReason, label = .meth)
       } else {
-        expect_identical(.s$o, .line, label = .meth)
+        expect_identical(.noDiag(.s$o), .line, label = .meth)
       }
     }
     expect_identical(.n, length(.meths) - length(.skip))
@@ -413,7 +458,7 @@ rxTest({
         expect_identical(.ok, .ref$d[, c("time", "y")], label = .lab)
         expect_true(all(is.na(.s$d$y[.s$d$id == "103"])), label = .lab)
         expect_identical(unique(.s$w), .msg, label = .lab)
-        expect_identical(.s$o, .line, label = .lab)
+        expect_identical(.noDiag(.s$o), .line, label = .lab)
       }
     }
   })
@@ -452,7 +497,7 @@ rxTest({
     .w <- capture_warnings(.o <- .cap(.s <- as.data.frame(rxSolve(.m, .d, params = .p, method = "cvode"))))
     expect_identical(unique(.w), "some ID(s) could not solve the ODEs correctly; These values are replaced with 'NA'")
     expect_true(all(is.na(.s$y[.s$id == "103"])))
-    expect_identical(.o, paste0("[solve error: ", .solverFail, "]: 1 warning(s) for subject(s): 103"))
+    expect_identical(.noDiag(.o), paste0("[solve error: ", .solverFail, "]: 1 warning(s) for subject(s): 103"))
     .ref <- as.data.frame(rxSolve(.m, .d[.d$ID != 103, ], params = .p[.p$ID != 103, ], method = "cvode"))
     .ok <- .s[.s$id != "103", c("time", "y")]
     rownames(.ok) <- NULL
