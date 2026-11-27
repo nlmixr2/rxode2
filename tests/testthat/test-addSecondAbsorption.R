@@ -341,6 +341,73 @@ rxTest({
     expect_equal(.sAna$central, .sOde$central, tolerance = 1e-4)
   })
 
+  test_that("addSecondAbsorption moves an analytic first path's fraction into transit()", {
+    .common <- c(
+      lka = log(1.2),
+      lka2 = log(0.9),
+      lcl = log(0.1),
+      lvc = log(10),
+      logitfDepot = logit(0.6),
+      propSd = 0.5
+    )
+    e <- rxode2::et(time = 0, amt = 100, cmt = "depot") |>
+      rxode2::et(c(1, 2, 4, 8, 24, 48))
+    .ode <- res0 |>
+      addTransit(3) |>
+      addSecondAbsorption(type = "first", delay = "none", f1 = 0.6)
+    .sOde <- as.data.frame(rxode2::rxSolve(
+      .ode,
+      e,
+      params = c(.common, lktr = log(0.8))
+    ))
+    .ana <- res0 |>
+      addTransitAnalytic() |>
+      addSecondAbsorption(type = "first", delay = "none", f1 = 0.6)
+    .lines <- vapply(.ana$lstExpr, function(l) deparse1(l), character(1), USE.NAMES = FALSE)
+    expect_true(any(grepl("transit(Mtt * Ktr - 1, Mtt, fDepot)", .lines, fixed = TRUE)))
+    expect_false(any(grepl("^f\\(depot\\) <-", .lines)))
+    .sAna <- as.data.frame(rxode2::rxSolve(
+      .ana,
+      e,
+      params = c(.common, lMtt = log(3 / 0.8), lKtr = log(0.8))
+    ))
+    expect_equal(.sAna$central, .sOde$central, tolerance = 1e-4)
+  })
+
+  test_that("both absorption paths can use the analytic transit", {
+    .common <- c(
+      lka = log(1.2),
+      lka2 = log(0.9),
+      lcl = log(0.1),
+      lvc = log(10),
+      logitfDepot = logit(0.6),
+      propSd = 0.5
+    )
+    e <- rxode2::et(time = 0, amt = 100, cmt = "depot") |>
+      rxode2::et(c(1, 2, 4, 8, 24, 48))
+    .ode <- res0 |>
+      addTransit(3) |>
+      addSecondAbsorption(type = "first", delay = "transit", n = 2)
+    .sOde <- as.data.frame(rxode2::rxSolve(
+      .ode,
+      e,
+      params = c(.common, lktr = log(0.8), lktrB = log(0.5))
+    ))
+    .ana <- res0 |>
+      addTransitAnalytic() |>
+      addSecondAbsorption(type = "first", delay = "transit", transitType = "analytic")
+    .lines <- vapply(.ana$lstExpr, function(l) deparse1(l), character(1), USE.NAMES = FALSE)
+    expect_true(any(grepl("transit(Mtt2 * Ktr2 - 1, Mtt2, 1 - fDepot)", .lines, fixed = TRUE)))
+    expect_equal(sum(grepl("^transitDose\\(", .lines)), 2L)
+    expect_false(any(grepl("^f\\(depot", .lines)))
+    .sAna <- as.data.frame(rxode2::rxSolve(
+      .ana,
+      e,
+      params = c(.common, lMtt = log(3 / 0.8), lKtr = log(0.8), lMtt2 = log(2 / 0.5), lKtr2 = log(0.5))
+    ))
+    expect_equal(.sAna$central, .sOde$central, tolerance = 1e-4)
+  })
+
   test_that("convertAbsSequential reparameterizes an analytic second transit by Mtt2", {
     res <- suppressWarnings(addZeroOrderAbs(res0)) |>
       addSecondAbsorption(type = "first", delay = "transit", transitType = "analytic") |>

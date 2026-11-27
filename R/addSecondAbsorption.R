@@ -137,6 +137,9 @@ addSecondAbsorption <- function(
   # depot compartment, so the split is between central (which keeps
   # the modeled-duration input) and the second path
   .ui <- addBioavailability(.ui, .path$src, .path$secondCmt, scale = "logit", f = f1)
+  # a phantom (transitDose) first path ignores f(), so its fraction moves
+  # into transit()'s bioavailability argument
+  .ui <- .secondAbsorptionFirstTransitBio(.ui, .path$src)
   if (isTRUE(.path$analytic)) {
     .ui <- .secondAbsorptionAnalyticTransit(.ui, depot2, mtt2, ktr2)
   }
@@ -276,6 +279,57 @@ addSecondAbsorption <- function(
     .tmp$post
   )
   rxUiCompress(.ui)
+}
+
+# move f(cmt)'s fraction into the transit() input of a phantom path,
+# dropping the f() line (a phantom dose ignores it, so without this the
+# transit chain receives the full dose)
+.secondAbsorptionFirstTransitBio <- function(ui, cmt) {
+  .modelLines <- ui$lstExpr
+  .directive <- paste0("transitDose(", cmt, ")")
+  .hasDirective <- any(vapply(
+    .modelLines,
+    function(l) identical(deparse1(l), .directive),
+    logical(1),
+    USE.NAMES = FALSE
+  ))
+  if (!.hasDirective) {
+    return(ui)
+  }
+  .fPat <- sprintf("f(%s) <- ", cmt)
+  .wf <- which(vapply(
+    .modelLines,
+    function(l) grepl(.fPat, deparse1(l), fixed = TRUE),
+    logical(1),
+    USE.NAMES = FALSE
+  ))
+  if (length(.wf) != 1L) {
+    return(ui)
+  }
+  .frac <- .modelLines[[.wf[1L]]][[3L]]
+  .modelLines <- .modelLines[-.wf]
+  .w <- .whichDdt(.modelLines, cmt)
+  .modelLines[[.w]][[3L]] <- .absorptionReplaceTransitBio(.modelLines[[.w]][[3L]], .frac)
+  ui <- rxUiDecompress(ui)
+  .absorptionDropDescription(ui)
+  model(ui) <- .modelLines
+  rxUiCompress(ui)
+}
+
+# set the bioavailability argument of every transit() call in an expression
+.absorptionReplaceTransitBio <- function(expr, bioExpr) {
+  if (!is.call(expr)) {
+    return(expr)
+  }
+  if (identical(as.character(expr[[1L]]), "transit")) {
+    .args <- as.list(expr)
+    .args[[4L]] <- bioExpr
+    return(as.call(.args))
+  }
+  for (.i in seq_along(expr)[-1L]) {
+    expr[[.i]] <- .absorptionReplaceTransitBio(expr[[.i]], bioExpr)
+  }
+  expr
 }
 
 # the analytic transit input of the second path: its F1 fraction comes from

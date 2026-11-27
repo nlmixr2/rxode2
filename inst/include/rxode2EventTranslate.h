@@ -117,6 +117,18 @@ static inline int _rxEncodeEventCmtPhantom(int evid, int cmt) {
   return cmt100 * 100000 + whI * 10000 + cmt01 * 100 + EVID0_PHANTOM;
 }
 
+/* Re-encode a translated event to a different compartment as a plain
+ * bolus: used when a phantom source is split and the target is not
+ * itself a phantom compartment. */
+static inline int _rxEncodeEventCmtRegular(int evid, int cmt) {
+  int wh, oldCmt, wh100, whI, wh0;
+  getWh(evid, &wh, &oldCmt, &wh100, &whI, &wh0);
+  int cmt0 = cmt - 1;
+  int cmt100 = cmt0 / 100;
+  int cmt01 = cmt0 % 100 + 1;
+  return cmt100 * 100000 + whI * 10000 + cmt01 * 100 + 1;
+}
+
 static inline int _rxShouldSplitTranslatedBolus(int evid, int cmt, double amt, int splitCmt) {
   int wh, eventCmt, wh100, whI, wh0;
   getWh(evid, &wh, &eventCmt, &wh100, &whI, &wh0);

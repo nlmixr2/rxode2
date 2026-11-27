@@ -3260,6 +3260,14 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     bool ssPromoteWarned = false;
     for (int j = 0; j < (int)evid.size(); ++j) {
       bool splitBolusRec = _rxShouldSplitTranslatedBolus(evid[j], cmtF[j], amt[j], splitSrc);
+      if (!splitBolusRec && amt[j] > 0.0 && cmtF[j] == splitSrc &&
+          etTransitDoseCmt(transitDoseCmt, splitSrc)) {
+        // a phantom (transitDose) source splits too: its own copy stays
+        // phantom and the other targets become ordinary boluses
+        int _w, _c, _w100, _wI, _w0;
+        getWh(evid[j], &_w, &_c, &_w100, &_wI, &_w0);
+        splitBolusRec = _wI == 0 && _w0 == EVID0_PHANTOM;
+      }
       bool splitInfRec = splitBolusRec ? false :
         _rxShouldSplitTranslatedInfusion(evid[j], cmtF[j], amt[j], splitSrc);
       bool splitThis = (splitKind == 0 && splitBolusRec) ||
@@ -3342,6 +3350,10 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         } else if (etTransitDoseCmt(transitDoseCmt, curCmt)) {
           // a split target that feeds transit() gets a phantom dose
           pushRow(_rxEncodeEventCmtPhantom(evid[j], curCmt));
+        } else if (wh0J == EVID0_PHANTOM) {
+          // a phantom source keeps the phantom copy on itself; the other
+          // targets are ordinary boluses
+          pushRow(_rxEncodeEventCmtRegular(evid[j], curCmt));
         } else {
           pushRow(_rxEncodeEventCmt(evid[j], curCmt));
         }
