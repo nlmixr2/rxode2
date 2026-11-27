@@ -40,6 +40,7 @@ extern "C" {
 #include "dop853.h"
 #include "common.h"
 #include "solveWarn.h"
+#include "solveDiag.h"
 #include "lsoda.h"
 #include "rxode2_df.h"
 }
@@ -48,7 +49,11 @@ extern "C" {
 #include "cvode_solver.h"
 #include "ssAnderson.h"
 #define max2( a , b )  ( (a) > (b) ? (a) : (b) )
-#define badSolveExit(i) for (int j = rxEffNeq(ind, op)*(ind->n_all_times); j--;){ \
+// A failed subject's diagnostics are captured before its states are wiped;
+// `yFail` is the state after the failed step when the caller has it, else NULL.
+#define badSolveExit(i) badSolveExitY(i, NULL)
+#define badSolveExitY(i, yFail) rxSolveDiagCaptureInd(ind, op, i, yFail); \
+  for (int j = rxEffNeq(ind, op)*(ind->n_all_times); j--;){ \
     ind->solve[j] = NA_REAL;                                           \
   }                                                                     \
   _Pragma("omp atomic write")                                           \
@@ -1288,6 +1293,31 @@ static inline bool trimStatesFinite(double *yp, rx_solving_options_ind *ind,
   return true;
 }
 
+// Record a failing subject's last accepted state (row ind->solvedIdx, when it
+// is before the failing row `i`, which the solver may have integrated in place)
+// and the state after the failed step, if known, for the diagnostics pushed
+// with its reasons (rxode2#1805).  Only the ODE states are kept; under an
+// nlmixr2est neqOverride they are labeled by position.
+static inline void rxSolveDiagCaptureInd(rx_solving_options_ind *ind,
+                                         rx_solving_options *op, int i,
+                                         const double *yFail) {
+  if (ind->solve == NULL || ind->n_all_times <= 0) return;
+  int eff = rxEffNeq(ind, op);
+  int named = eff == op->neq;
+  int n = named ? op->neq - op->numLin - op->numLinSens - op->numLinCarry : eff;
+  if (n <= 0) return;
+  int k = ind->solvedIdx;
+  const double *yAcc = NULL;
+  double tAcc = NA_REAL;
+  if (k >= 0 && k < i && k < ind->n_all_times) {
+    yAcc = ind->solve + eff * k;
+    if (ind->timeThread != NULL && ind->ix != NULL) {
+      tAcc = ind->timeThread[ind->ix[k]];
+    }
+  }
+  rxSolveDiagCapture(ind->id, n, named, tAcc, yAcc, yFail);
+}
+
 // The bool is unused: a failed subject's reasons are pushed after the solve,
 // by par_solve() and ind_solve().
 static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, const char** err_msg, int nerr, bool,
@@ -1310,15 +1340,15 @@ static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, c
       rxSolveWarnPush(ind->id, "solve error: %s", rxSolverFailText);
     }
     *rc = *idid;
-    badSolveExit(*i);
+    badSolveExitY(*i, yp);
   } else if (ind->err) {
     *rc = -2019;
     // Bad Solve => NA
-    badSolveExit(*i);
+    badSolveExitY(*i, yp);
   } else if (!trimStatesFinite(yp, ind, op, rx)) {
     rxSolverFail(ind);
     *rc = -2019;
-    badSolveExit(*i);
+    badSolveExitY(*i, yp);
   }
   ind->slvr_counter[0]++;
 }
@@ -2978,6 +3008,7 @@ static inline void solveWith1PtComposite(int *neq, double *yp, double xout, doub
   if (_failed) {
     bool _stiffStop = (idid == -4);
     ind->rc[0] = 0; ind->err = 0; *istate = 1; idid = 1;
+    rxSolveDiagClear(ind->id); // the secondary takes over: not a failure
     // yp/xp are the probe's last fully accepted step when the primary is dop853
     // and it got anywhere; otherwise rewind to the interval start.
     // A t54/vern76 probe's stiff report (idid -4) also stops at its last
@@ -7393,6 +7424,7 @@ static int rxSegmentAutoSwitchGeneric(rx_solving_options *op,
     bool cont = rxProbeContinues(idid, xp, xout, xpLoc);
     ind->rc[0] = 0;
     ind->err = 0;
+    rxSolveDiagClear(ind->id); // the secondary takes over: not a failure
     *istate = 1;
     idid = 1;
     if (!cont) {
@@ -7476,6 +7508,7 @@ static int rxSegmentAutoSwitch(rx_solve *rx, rx_solving_options *op,
       // rewind when the probe accepted nothing.
       ind->rc[0] = 0;
       ind->err = 0;
+      rxSolveDiagClear(ind->id); // the secondary takes over: not a failure
       *istate = 1;
       double xpLoc = st.xLast;
       bool continueFrom = (xout > xp) ? (xpLoc > xp && xpLoc < xout)
@@ -8305,6 +8338,7 @@ static int denseSegmentSolve(rx_solve *rx, rx_solving_options *op,
       // but not obs_next, so a re-solved segment kept the probe's fills.
       ind->rc[0] = 0;
       ind->err = 0;
+      rxSolveDiagClear(ind->id); // ros4 takes over: not a failure
       double xpLoc = st.xLast;
       bool continueFrom = (xout > xp) ? (xpLoc > xp && xpLoc < xout)
                                       : (xpLoc < xp && xpLoc > xout);
@@ -9682,6 +9716,7 @@ extern "C" void ind_solve(rx_solve *rx, unsigned int cid,
   }
   rx_solving_options_ind *ind = &(rx->subjects[cid]);
   if (ind->err != 0) rxSolveErrPush(ind->id, ind->err);
+  rxSolveDiagPush(ind->id);
 }
 
 extern "C" void setRxThreadId(int id);
@@ -10159,6 +10194,7 @@ extern "C" void par_solve(rx_solve *rx) {
   for (uint32_t _sid = 0; _sid < nsubErr; _sid++) {
     rx_solving_options_ind *_indErr = &rx->subjects[_sid];
     if (_indErr->err != 0) rxSolveErrPush(_indErr->id, _indErr->err);
+    rxSolveDiagPush(_indErr->id);
   }
   /* Standalone rxSolve users see one summary line per call instead of a
      flood. nlmixr2est does not enter through par_solve for inner iterations
