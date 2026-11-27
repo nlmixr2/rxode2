@@ -93,10 +93,12 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   // forcing inside call c, B[c] = the transversality of a moving rate change at
   // its start, both nBase x np (a*np+p) or empty, from the dR, dF and dlag blocks
   // at the call's start state.
-  struct abInfSeg { double t0; std::vector<double> y0, infRate, infDurMult, infDfMult, offFac, offDfFac, lagRate; };
+  struct abInfSeg { double t0; std::vector<double> y0; rxAdjHeapVec infRate, infDurMult, infDfMult, offFac, offDfFac, lagRate; };
   std::vector<abInfSeg> infSeg(nCalls);
   for (size_t c = 0; c < nCalls; ++c) {
-    infSeg[c].t0 = abAdjCalls[c].t0; infSeg[c].y0 = abCallY0(c); infSeg[c].infRate = abAdjCalls[c].infRate;
+    infSeg[c].t0 = abAdjCalls[c].t0; infSeg[c].y0 = abCallY0(c);
+    const std::vector<double> &_r = abAdjCalls[c].infRate;
+    if (!_r.empty()) rxAdjAssign(infSeg[c].infRate, _r.begin(), _r.end());
   }
   rxAdjInfusionWindows(op, ind, nBase, eff, infSeg);
   std::vector<std::vector<double> > infW(nCalls), infB(nCalls);
@@ -113,7 +115,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
       const double *dR = op->adjDrateOff >= 0 ? &ind->lhs[op->adjDrateOff] : NULL;
       const double *dF = op->adjDfOff >= 0 ? &ind->lhs[op->adjDfOff] : NULL;
       const double *dL = op->adjDlagOff >= 0 ? &ind->lhs[op->adjDlagOff] : NULL;
-      auto wt = [&](const std::vector<double> &v, int a) { return v.empty() ? 0.0 : v[a]; };
+      auto wt = [&](const rxAdjHeapVec &v, int a) { return v.empty() ? 0.0 : v[a]; };
       if (w) infW[c].assign((size_t)nBase * np, 0.0);
       if (b) infB[c].assign((size_t)nBase * np, 0.0);
       for (int a = 0; a < nBase; ++a) for (int p = 0; p < np; ++p) {
