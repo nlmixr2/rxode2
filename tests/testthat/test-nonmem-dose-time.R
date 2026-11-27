@@ -29,10 +29,11 @@ rxTest({
     II = c(12, 0, 0, 0, 0)
   )
 
-  .solve <- function(m, d, nonmem = TRUE, col = "pred") {
+  .solve <- function(m, d, nonmem = TRUE, col = "pred", ...) {
     rxSolve(
       m,
       d,
+      ...,
       nonmem = nonmem,
       addlKeepsCov = FALSE,
       covsInterpolation = "nocb",
@@ -128,7 +129,12 @@ rxTest({
     })
     .d3 <- .d2
     .d3$RATE[1] <- -1
-    expect_equal(.solve(.m, .d3, col = "cp"), .nmDur, tolerance = 1e-6)
+    # the D1 anchor holds only for a rate fixed at the dose (#1778)
+    expect_equal(
+      .solve(.m, .d3, col = "cp", rateAtDoseTime = TRUE),
+      .nmDur,
+      tolerance = 1e-6
+    )
   })
 
   test_that("linCmt() models read the same time", {
