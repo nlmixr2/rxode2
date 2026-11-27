@@ -241,6 +241,13 @@
 
 ## Bug fixes
 
+- The `rk4s` family of solvers now steps only the states of a narrowed solve
+  (a per-individual `neqOverride`, as nlmixr2est sets when it pools models),
+  like `liblsoda`, `lsoda` and `dop853`.  Before, the stage vectors and the
+  error norm ran over every pooled state, which cost time and averaged the
+  error over the frozen extra states, so the requested tolerance was applied
+  too loosely.  A solve with `linCmt()` states is unchanged.
+
 - The parser no longer reads a function name it had already freed.  Every
   function call copies its name into a buffer that is reallocated as it grows,
   and a copy held while more were made pointed into the old buffer; parsing
