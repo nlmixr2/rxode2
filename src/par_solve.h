@@ -435,6 +435,26 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
       }
     }
   }
+  // Turn every compartment on with no running infusion rate at a reset.
+  static inline void resetInfusionRatesAndOn(rx_solving_options_ind *ind, int neq) {
+    for (unsigned int j = neq; j--;) {
+      ind->InfusionRate[j] = 0;
+      ind->on[j] = 1;
+      ind->cacheME=0;
+    }
+  }
+  // Reset dose-tracking after time reset so tad is never negative post-reset.
+  // Any dose that fires after this EVID=3 re-establishes tlast from scratch.
+  static inline void resetDoseTracking(rx_solving_options_ind *ind,
+                                       rx_solving_options *op) {
+    int _ncmt = op->neq + op->extraCmt;
+    for (int _j = _ncmt; _j--;) {
+      ind->tlastS[_j]   = NA_REAL;
+      ind->curDoseS[_j] = NA_REAL;
+    }
+    ind->tlast   = NA_REAL;
+    ind->curDose = NA_REAL;
+  }
   static inline void handleEvid3(rx_solving_options_ind *ind, rx_solving_options *op,
                                  rx_solve *rx, int *neq, double *xp, double *xout,
                                  double *yp, int *idid, t_update_inis u_inis) {
@@ -443,11 +463,7 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
     cancelPendingPriorDoses(ind, rx, op, ind->idx, neq[0]);
     // the modeled steady-state off these mark was cancelled with the rest
     if (_rxEsActive) { _esSSDurOffCmt = -1; _esSSRateOffCmt = -1; }
-    for (unsigned int j = neq[0]; j--;) {
-      ind->InfusionRate[j] = 0;
-      ind->on[j] = 1;
-      ind->cacheME=0;
-    }
+    resetInfusionRatesAndOn(ind, neq[0]);
     cancelInfusionsThatHaveStarted(ind, neq[1], *xout);
     cancelPendingDoses(ind, neq[1]);
     memcpy(yp, op->inits, neq[0]*sizeof(double));
@@ -463,15 +479,7 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
     ind->linCmtAlast = yp ;
     linCmtOriginReset(ind);
     ind->ixds++;
-    // Reset dose-tracking after time reset so tad is never negative post-reset.
-    // Any dose that fires after this EVID=3 re-establishes tlast from scratch.
-    int _ncmt = op->neq + op->extraCmt;
-    for (int _j = _ncmt; _j--;) {
-      ind->tlastS[_j]   = NA_REAL;
-      ind->curDoseS[_j] = NA_REAL;
-    }
-    ind->tlast   = NA_REAL;
-    ind->curDose = NA_REAL;
+    resetDoseTracking(ind, op);
   }
 
 #if defined(__cplusplus)
