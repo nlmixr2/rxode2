@@ -101,6 +101,36 @@ typedef struct csCand {
   size_t len;
 } csCand;
 
+/* is s one call `f(...)` of a function worth computing on its own line
+   (rxOptExpr(expensive = TRUE))?  Mirrors .rxOptIsExpensiveCall() and
+   .rxOptExpensiveFuns in R/rxOptExpr.R */
+static inline int csIsExpensiveCall(const char *s) {
+  static const char *fns[] = {
+    "exp", "log", "log10", "log2", "log1p", "expm1", "sqrt", "gamma",
+    "lgamma", "lgamma1p", "digamma", "trigamma", "beta", "lbeta", "sin", "cos",
+    "tan", "asin", "acos", "atan", "atan2", "sinh", "cosh", "tanh", "pnorm",
+    "qnorm", "dnorm", "erf", "erfc", "expit", "logit", "probit", "probitInv",
+    "pow", "R_pow", NULL};
+  const char *p = strchr(s, '(');
+  size_t nl, i;
+  int depth = 0, found = 0;
+  if (p == NULL || p == s) return 0;
+  nl = (size_t)(p - s);
+  for (i = 0; fns[i] != NULL; i++) {
+    if (strlen(fns[i]) == nl && strncmp(fns[i], s, nl) == 0) { found = 1; break; }
+  }
+  if (!found || strstr(s, "delay(") != NULL) return 0;
+  /* the opening parenthesis closes at the last character */
+  for (; *p != '\0'; p++) {
+    if (*p == '(') depth++;
+    else if (*p == ')') {
+      depth--;
+      if (depth == 0) return p[1] == '\0';
+    }
+  }
+  return 0;
+}
+
 static inline int csCandCmp(const void *a, const void *b) {
   const csCand *x = (const csCand*) a, *y = (const csCand*) b;
   if (x->len != y->len) return x->len < y->len ? -1 : 1;

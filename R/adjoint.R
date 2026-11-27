@@ -125,8 +125,12 @@ rxSolveAdjoint <- function(
 ) {
   .rxAdjRefuseEvents(events, c(3L, 4L), .rxAdjResetMsg)
   .rxAdjRefuseEvents(
-    events, c(5L, 6L),
-    "the reference continuous adjoint (.rxAdjointSolve) does not apply replace/multiply events (evid = 5/6); use rxSolveAdjoint()"
+    events,
+    c(5L, 6L),
+    paste0(
+      "the reference continuous adjoint (.rxAdjointSolve) does not apply ",
+      "replace/multiply events (evid = 5/6); use rxSolveAdjoint()"
+    )
   )
   object <- .rxAdjointObject(object)
   calcSens <- .rxSensVarNames(calcSens, .rxParams(object, TRUE))

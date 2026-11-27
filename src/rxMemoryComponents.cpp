@@ -9,6 +9,7 @@
 #include "invCdfMemo.h"
 #include "../inst/include/rxMemoryCalc.h" /* rx_mem_layout, rxFillMemLayout()             */
 #include "rx2api.h"                       /* getSolvingOptionsInd(), getIndNallTimes()    */
+#include "gpu_opencl.h"                 /* RXG_D_*, rxGpuHostBytes(), rxGpuClBytes()   */
 
 extern "C" rx_solve *getRxSolve_(void);
 
@@ -124,6 +125,9 @@ NumericVector rxMemoryComponents_(
   /* Byte counts for allocations outside gsolve/gon */
   double b_gall_times  = 5.0  * nallTotal * sizeof(double);
   double b_gevid       = 3.0  * nallTotal * sizeof(int);
+  /* the per-record links etTrans() may attach (infPair, pkSkip, doseRow,
+     addlParent): nallTotal ints each, a bound since each is optional */
+  double b_gRecordLinks = 4.0 * nallTotal * sizeof(int);
   double b_gcov        = (double)ncov * nallTotal * sizeof(double);
   /* gpars is calloc'd at npars*max2(nsub, nPopPar) and inds_global at
      nPopPar, where nPopPar = nsub*nsim -- both are sized by the TOTAL
@@ -142,6 +146,13 @@ NumericVector rxMemoryComponents_(
      the per-thread infusion buffers themselves */
   double b_gInfRate    = (double)cores * (neq + extraCmt) * sizeof(double) +
     (double)cores * (sizeof(double*) + sizeof(int));
+  /* extraDosing (allocExtraDosing() in src/extraDosing.h): per thread, six
+     counters, six pointer-table slots and the evid_() push pools of
+     EVID_EXTRA_SIZE records (four int and two double arrays).  A pool that
+     fills grows by realloc during the solve; that growth is not counted. */
+  double b_extraDosing = (double)cores * (6.0 * sizeof(int) + 6.0 * sizeof(void*) +
+                                          EVID_EXTRA_SIZE * (4.0 * sizeof(int) + 2.0 * sizeof(double))) +
+    6.0 * sizeof(void*);
   /* gSampleCov: only when rxControl(resample=) asks for it */
   double b_gSampleCov  = sample ? (double)ncov * nsub * nsim * sizeof(int) : 0.0;
   /* geta_pre_alloc (rxPreGenEta in src/rxthreefry.cpp): every individual's eta
@@ -236,6 +247,7 @@ NumericVector rxMemoryComponents_(
     Named("gon")           = (double)_mem.gon_total    * sizeof(int),
     Named("gall_times")    = b_gall_times,
     Named("gevid")         = b_gevid,
+    Named("gRecordLinks")  = b_gRecordLinks,
     Named("gcov")          = b_gcov,
     Named("gpars")         = b_gpars,
     Named("gomega")        = b_gomega,
@@ -248,6 +260,7 @@ NumericVector rxMemoryComponents_(
     Named("indLinWork")    = b_indLinWork,
     Named("indOwnAlloc")   = b_indOwn,
     Named("gSampleCov")    = b_gSampleCov,
+    Named("extraDosing")   = b_extraDosing,
     Named("gEtaPre")       = b_gEtaPre,
     Named("delayHist")     = b_delayHist,
     Named("linCmtRateHist")= b_linRateHist,
@@ -260,6 +273,65 @@ NumericVector rxMemoryComponents_(
     Named("invCdfMemo")    = rxInvCdfMemoBytes(cores));
 
   return out;
+}
+
+//' Report the byte sizes of an adjoint method's backward-work arena
+//'
+//' The arena that \code{rxSolve()} adds at the end of \code{gsolve} for an
+//' adjoint expansion: one slice per thread of \code{rxAdjWorkPerThread()}
+//' doubles (\code{inst/include/rxMemoryCalc.h}), the layout
+//' \code{src/rxData.cpp} carves.  Not counted: the per-period Jacobian tapes,
+//' sized by the recorded period's steps, which take the heap.
+//'
+//' @param neq Number of ODE states (\code{op->neq}).
+//' @param nBase Number of base (non-adjoint) states (\code{op->adjNbase}).
+//' @param np Number of sensitivity parameters (\code{op->adjNp}).
+//' @param cores Number of parallel OMP threads.
+//' @param maxAllTimes Maximum events for any single subject.
+//' @return Named numeric vector with \code{adjointWork} bytes.
+//' @noRd
+// [[Rcpp::export]]
+NumericVector rxMemoryAdjointComponents_(int neq, int nBase, int np, int cores, double maxAllTimes) {
+  const double per = (double)rxAdjWorkPerThread(neq, nBase, np, (int)maxAllTimes);
+  return NumericVector::create(Named("adjointWork") = (double)(cores > 0 ? cores : 1) * per * sizeof(double));
+}
+
+//' Report the byte sizes of a GPU method's solve allocations
+//'
+//' The GPU methods (codes 110-114) allocate per slot (\code{gpuBatch}
+//' subjects in flight), not per subject, on top of what
+//' \code{rxMemoryComponents_()} reports.  Values come from the same layout
+//' the solve allocates with (\code{rxGpuHostBytes()} in
+//' \code{src/gpu_solve.cpp}, \code{rxGpuClBytes()} in
+//' \code{src/gpu_opencl.c}).
+//'
+//' @param dims  The run layout (\code{RXG_D_*}, \code{src/gpu_opencl.h});
+//'   \code{dims[1]} is the number of slots.
+//' @param single 1 for single-precision device buffers.
+//' @param opencl 1 for the OpenCL backend, 0 for the CPU backend.
+//' @param threads The OpenMP threads of the host work.
+//' @return Named numeric vector of bytes: \code{gpuHostWork},
+//'   \code{gpuHostState}, \code{gpuSlotWork}, \code{gpuTimeline} and
+//'   \code{gpuStage} on the host,
+//'   \code{gpuDevice} on the device (not host RAM); attribute
+//'   \code{gpuDeviceMaxBuffer} is the largest single device buffer.
+//' @noRd
+// [[Rcpp::export]]
+NumericVector rxMemoryGpuComponents_(IntegerVector dims, int single, int opencl, int threads) {
+  if (dims.size() != RXG_D_N) Rcpp::stop("dims must have %d values", (int)RXG_D_N);
+  double host[4] = {0.0, 0.0, 0.0, 0.0}, cl[3] = {0.0, 0.0, 0.0};
+  rxGpuHostBytes(dims.begin(), opencl, threads < 1 ? 1 : threads, host);
+  if (opencl) rxGpuClBytes(dims.begin(), single, cl);
+  NumericVector ret = NumericVector::create(
+    Named("gpuHostWork")  = host[0],
+    Named("gpuHostState") = host[1],
+    Named("gpuSlotWork")  = host[2],
+    Named("gpuTimeline")  = host[3],
+    Named("gpuStage")     = cl[1],
+    Named("gpuDevice")    = cl[0]);
+  // the largest single device buffer (CL_DEVICE_MAX_MEM_ALLOC_SIZE bounds it)
+  ret.attr("gpuDeviceMaxBuffer") = cl[2];
+  return ret;
 }
 
 // Per-subject record counts read through the ABI, plus the two strides.
