@@ -1,9 +1,9 @@
 # Time whole rxSolve() calls with the GPU methods (OpenCL and their CPU
 # build) and their host counterparts against DiffEqGPU's EnsembleGPUKernel
-# and OrdinaryDiffEq's EnsembleThreads on the ensembles of
-# bench/gpu-runtime-julia.jl.  Unlike bench/gpu-runtime-julia.R (one bare
-# round), these times include rxSolve()'s setup, the per-subject event
-# handling and the output data frame.
+# (pocl OpenCL and, with CUDA.jl, CUDA) and OrdinaryDiffEq's EnsembleThreads
+# on the ensembles of bench/gpu-runtime-julia.jl.  Unlike
+# bench/gpu-runtime-julia.R (one bare round), these times include rxSolve()'s
+# setup, the per-subject event handling and the output data frame.
 #
 # Usage: Rscript bench/gpu-solve-julia.R [julia] [sizes] [csv]
 #   julia  path of the julia binary (default: julia on the PATH)
@@ -15,7 +15,10 @@ library(rxode2)
 .args <- commandArgs(TRUE)
 .julia <- if (length(.args) >= 1) .args[1] else Sys.which("julia")
 .sizes <- if (length(.args) >= 2) .args[2] else "1000,10000,100000"
-.cores <- parallel::detectCores()
+## threads: OMP_NUM_THREADS when set (eg the cores a batch job was given)
+.cores <- as.integer(Sys.getenv("OMP_NUM_THREADS", parallel::detectCores()))
+## all of them (rxode2 uses half the cores by default)
+setRxThreads(.cores)
 .tol <- 1e-8
 
 ## julia first: started after R has opened OpenCL contexts it can crash
@@ -32,7 +35,10 @@ if (length(.args) < 3) {
 .jl <- utils::read.csv(.csv)
 
 .info <- rxGpuInfo()
-.dev <- which(.info$devices$fp64 & !grepl("rusticl", .info$devices$platform))[1]
+## a GPU first: an Intel or pocl CPU OpenCL device may also be listed first
+.ok <- .info$devices$fp64 & !grepl("rusticl", .info$devices$platform)
+.dev <- c(which(.ok & .info$devices$type == "gpu"), which(.ok))[1]
+cat("OpenCL device:", .info$devices$device[.dev], "\n")
 if (is.na(.dev)) {
   stop("no OpenCL device with double precision")
 }
@@ -117,6 +123,7 @@ for (.n in as.integer(strsplit(.sizes, ",")[[1]])) {
         n = .n,
         rx_gpu_opencl = .ms(.gcl$s),
         jl_gpu_opencl = .ms(.j$seconds[.j$backend == "OpenCL-pocl"]),
+        jl_gpu_cuda = .ms(.j$seconds[.j$backend == "CUDA"]),
         rx_gpu_cpu = .ms(.gcpu$s),
         jl_gpu_kacpu = .ms(.j$seconds[.j$backend == "KA-CPU"]),
         rx_host = .ms(.host$s),

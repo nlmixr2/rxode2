@@ -16,12 +16,17 @@ rxTest({
     for (.nm in names(.pairs)) {
       .p <- .pairs[[.nm]]
       if (is.na(.p$error)) {
-        .got <- suppressMessages(rxOptExpr(.p$input, "model", chunkLines = 0L))
+        # one pass, the reference (rxOptExpr() repeats passes to a fixed point)
+        .got <- suppressMessages(.rxOptExprOnce(.p$input, "model", chunkLines = 0L))
         expect_identical(.got, .p$output, info = .nm)
       } else {
         ## a model the reference cannot optimize must still fail, and with the
         ## same message -- an approximation here would be worse than an error
-        expect_error(suppressMessages(rxOptExpr(.p$input, "model", chunkLines = 0L)), fixed = TRUE, regexp = .p$error)
+        expect_error(
+          suppressMessages(.rxOptExprOnce(.p$input, "model", chunkLines = 0L)),
+          fixed = TRUE,
+          regexp = .p$error
+        )
       }
     }
   })
