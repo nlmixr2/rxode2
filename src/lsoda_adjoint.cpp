@@ -493,16 +493,15 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   bool ssAtStart = (lsSsSeg == 0);
   // The steady state's starting state: its segment's y0, else (an ss dose at the
   // last record time, after which no segment opens) the state an observation there
-  // reads.
-  std::vector<double> ssY0;
+  // reads.  Both stay put through the sweep, so this points at nBase values.
+  const double *ssY0 = NULL;
   bool ssAtLast = false;
   if (lsSsSeg >= 0) {
-    ssY0 = lsAdjSegs[lsSsSeg].y0;
+    ssY0 = lsAdjSegs[lsSsSeg].y0.data();
   } else if (_lsSsKind != 0 && _lsSsT > lsAdjSegs.back().t0 + 1e-9) {
     for (int i = 0; i < ind->n_all_times; ++i) {
       if (!isObs(getEvid(ind, ind->ix[i])) || fabs(ind->timeThread[ind->ix[i]] - _lsSsT) > 1e-8) continue;
-      const double *o = getSolve(i);
-      ssY0.assign(o, o + nBase);
+      ssY0 = getSolve(i);
       ssAtLast = true;
       break;
     }
@@ -516,10 +515,10 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   // Continuous-infusion steady state (kind 2): that segment's y0 is the constant
   // Y_ss with dY_ss/dp = -J^{-1} df/dp, so its contribution per observation is
   // -(J^{-T} lam)^T df/dp.
-  ssCont = (_lsSsKind == 2) && !ssY0.empty() && nBase > 0;
+  ssCont = (_lsSsKind == 2) && ssY0 != NULL && nBase > 0;
   if (ssCont) {
     const double *fx0, *fp0;
-    lsAdjEval(cSub, _lsSsT, ssY0.data(), nBase, eff, fxOff, fpOff, A.data(), lhs, &fx0, &fp0);
+    lsAdjEval(cSub, _lsSsT, ssY0, nBase, eff, fxOff, fpOff, A.data(), lhs, &fx0, &fp0);
     ssFXc.assign(fx0, fx0 + (size_t)nBase * nBase);
     ssFP.assign(fp0, fp0 + (size_t)nBase * np);
     ssPiv.resize(nBase);
@@ -529,11 +528,11 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   // ss==1 bolus / fixed-rate finite infusion: the missing IC is the monodromy
   // fixed point S_ss = (I-M)^{-1}B of one steady-state period.  Re-record that
   // period from y0 with a dop853 tableau and reuse the shared rk4sSsIc series.
-  if (!ssCont && !ssY0.empty() && op->adjoint && fxOff >= 0 && nBase > 0 && _lsSsKind == 1) {
+  if (!ssCont && ssY0 != NULL && op->adjoint && fxOff >= 0 && nBase > 0 && _lsSsKind == 1) {
     int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
     int neq2[2]; neq2[0] = eff; neq2[1] = cSub;
     rksTableau Tss = rksGetTableau(200);            // dop853 explicit tableau
-    std::vector<double> y0(ssY0.begin(), ssY0.end()), ssScr;
+    std::vector<double> y0(ssY0, ssY0 + nBase), ssScr;
     y0.resize(eff, 0.0);
     bool recorded = false; size_t lsSsOnSteps = 0;
     if (_lsSsBolusIi > 0.0) {                        // bolus: flow from peak over ii
@@ -568,7 +567,7 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
           if (isObs(ev) || !isDose(ev) || fabs(ind->timeThread[ind->ix[i]] - _lsSsT) > 1e-8) continue;
           int _wh, _cmt, _wh100, _whI, _wh0; getWh(ev, &_wh, &_cmt, &_wh100, &_whI, &_wh0);
           if (_whI != 0 || _wh0 != EVID0_SS || _cmt < 0 || _cmt >= nBase) continue;
-          lsIc.loadDF(cSub, ind, op, _lsSsT, ssY0.data(), Asc);
+          lsIc.loadDF(cSub, ind, op, _lsSsT, ssY0, Asc);
           if (!lsIc.dFv.empty()) { lsIc.fFrom = 0; lsIc.wsFCmt = _cmt; lsIc.wsFAmt = getDose(ind, ind->ix[i]); }
           break;
         }
