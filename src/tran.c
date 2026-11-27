@@ -11,6 +11,7 @@
 #include "getOption.h"
 #include "parseLinCmt.h"
 #include "tran.h"
+#include "../inst/include/rxMemAlloc.h"
 #include "genModelVars.h"
 #include "print_node.h"
 #include <errno.h>
@@ -70,7 +71,17 @@ const char *lastStr;
 int lastStrLoc=0;
 
 SEXP _goodFuns;
-vLines _dupStrs;
+// rc_dup_str() copies: each its own allocation, so a copy held while more are
+// made stays valid (a vLines buffer moves when it grows, which left an
+// earlier copy dangling)
+static char **_dupStr = NULL;
+static int _dupStrN = 0, _dupStrCap = 0;
+static void dupStrFree(void) {
+  for (int i = 0; i < _dupStrN; i++) R_Free(_dupStr[i]);
+  R_Free(_dupStr);
+  _dupStr = NULL;
+  _dupStrN = _dupStrCap = 0;
+}
 
 int rx_syntax_error = 0, rx_suppress_syntax_info=0;
 
@@ -347,7 +358,7 @@ void parseFree(int last) {
   lineFree(&(tb.strCmpVal));
   lineFree(&depotLines);
   lineFree(&centralLines);
-  lineFree(&_dupStrs);
+  dupStrFree();
   linCmtGenFree(&_linCmtGenStruct);
   R_Free(tb.lh);
   // tb.lho is R_Calloc'd beside tb.lh in reset(); freeing one and not the other
@@ -437,7 +448,7 @@ void reset(void) {
   lineIni(&sbDoseArgCtx);
   lineIni(&depotLines);
   lineIni(&centralLines);
-  lineIni(&_dupStrs);
+  dupStrFree();
 
   lineIni(&(tb.ss));
   lineIni(&(tb.de));
@@ -944,8 +955,15 @@ char * rc_dup_str(const char *s, const char *e) {
     l = (int)sLen;
   }
   syntaxErrorExtra=min(l-1, 40);
-  addLine(&_dupStrs, "%.*s", l, s);
-  return _dupStrs.line[_dupStrs.n-1];
+  if (_dupStrN == _dupStrCap) {
+    _dupStrCap = _dupStrCap ? 2 * _dupStrCap : 64;
+    _dupStr = rxMemTag(fixed, R_Realloc(_dupStr, _dupStrCap, char *));
+  }
+  char *c = rxMemTag(fixed, R_Calloc(l + 1, char));
+  memcpy(c, s, (size_t)l);
+  c[l] = '\0';
+  _dupStr[_dupStrN++] = c;
+  return c;
 }
 
 void transIniNull(void) {
@@ -976,7 +994,8 @@ void transIniNull(void) {
   sNull(&(_mv));
   sNull(&(_bufw));
   sNull(&(_bufw2));
-  lineNull(&(_dupStrs));
+  _dupStr = NULL;
+  _dupStrN = _dupStrCap = 0;
 }
 
 #include "parseLinCmtApplyCmts.h"

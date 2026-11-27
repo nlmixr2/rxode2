@@ -394,7 +394,8 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   // the backward sweep stops at each and applies the transpose costate jump.
   // seq: forward processing order; y: offset in evY of the primal just after
   // this event's own jump (-1: none), so same-time events see their own state;
-  // an alag bolus (type 0) follows it with its vector-field jump F(y+)-F(y-).
+  // an additive bolus (type 0, factor = raw amt) follows it with its
+  // vector-field jump F(y+)-F(y-).
   struct cvEvent { double t; int cmt; int type; double factor; int seq; int y; };
   std::vector<double> evY;
   std::vector<cvEvent> evJumps;
@@ -409,6 +410,17 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
   int _infusOnCmt = -1;
   double *yp;
   hist.newSeg();   // segment 0 begins at t0
+  // Record boluses only when F or the lag time depends on a sensitivity
+  // parameter (a non-zero dF or dlag block); otherwise they add no dual.
+  bool bolusDuals = false;
+  if (op->adjDfOff >= 0 || op->adjDlagOff >= 0) {
+    std::vector<double> _a(eff, 0.0);
+    calc_lhs(cSub, t0, _a.data(), ind->lhs);
+    for (int q = 0; q < nBase * np && !bolusDuals; ++q) {
+      if (op->adjDfOff >= 0 && ind->lhs[op->adjDfOff + q] != 0.0) bolusDuals = true;
+      if (op->adjDlagOff >= 0 && ind->lhs[op->adjDlagOff + q] != 0.0) bolusDuals = true;
+    }
+  }
 
   // ================= forward primal loop (cloned from dop5.cpp) =================
   for (i = 0; i < ind->n_all_times; i++) {
@@ -511,10 +523,10 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
             } else if (_whI == EVIDF_MULT) {
               evJumps.push_back({xout, _cmt, 6,
                 getAmt(ind, ind->id, _cmt, getDoseIndex(ind, ind->idx), xout, yp), seq, -1});
-            } else if (_whI == 0 && op->adjDlagOff >= 0) {
-              // additive bolus in a model with a modeled alag(): record the
-              // (lagged) dose time so the backward can add the transversality
-              // mu += -dlag_c/dtheta*(lambda^T (F(y+)-F(y-))).
+            } else if (_whI == 0 && _wh0 != EVID0_PHANTOM && bolusDuals) {   // a phantom dose is not applied
+              // additive bolus: record the (lagged) dose time and raw amount so the
+              // backward can add the modeled-F dual mu += amt*dF/dtheta*lambda_c and
+              // the alag transversality mu += -dlag_c/dtheta*(lambda^T (F(y+)-F(y-))).
               _yOff = (int)evY.size(); _dfOff = _yOff + nBase;
               evY.resize(evY.size() + 2 * nBase);
               cvB_rhs(&fu, xout, yp, fu.DADT.data());   // F(y-), differenced below
@@ -546,7 +558,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
                 }
         } }
       if (getEvid(ind, ind->ix[i]) == 3) {
-        // A reset wipes the state to (parameter-independent) inits, so dPhi/dy = 0
+        // A reset wipes the state to its initial conditions, so dPhi/dy = 0
         // and the backward costate zeroes here.  Record before handleEvid3 mutates
         // xout.
         resetT.push_back(xout); resetSeq.push_back(seq);
@@ -670,21 +682,20 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
     }
   }
 
+  rxAdjVec dx0V;                                    // parameter-dependent initial conditions
+  rk4sIniDx0(op, ind, cSub, t0, eff, nBase, np, dx0V);
+  const double *dx0P = dx0V.empty() ? NULL : dx0V.data();
   for (int oi = (int)obsT.size() - 1; bok && oi >= 0; --oi) {
     double ti = obsT[oi]; int solveIdx = obsIx[oi], si = obsSeq[oi];
     double *out = getSolve(solveIdx);
     // A reset processed before the observation zeroes the costate (dy_k(ti)/dp
     // depends only on the post-reset window), so the sweep only needs to reach
     // the most recent such reset; below tReset the costate is 0 and mu is frozen.
-    double tStop = t0; int stopSeq = 0, hasReset = 0;
+    double tStop = t0; int stopSeq = 0;
     for (size_t r = 0; r < resetT.size(); ++r)
       if (resetSeq[r] < si && resetSeq[r] > stopSeq) {
-        tStop = resetT[r]; stopSeq = resetSeq[r]; hasReset = 1;
+        tStop = resetT[r]; stopSeq = resetSeq[r];
       }
-    if (hasReset && isSameTime(ti, tStop)) {
-      for (int q = 0; q < nBase * np; ++q) out[sensOff + q] = 0.0;
-      continue;
-    }
     // events processed between the reset and the observation (at either end's
     // time too), in reverse processing order: the backward stops at each and
     // applies the transpose costate jump.
@@ -735,8 +746,9 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
         int c = evJumps[segEv[s]].cmt; int ty = evJumps[segEv[s]].type;
         if (ty == 5) NV_Ith_S(B, c) = 0.0;                             // replace
         else if (ty == 6) NV_Ith_S(B, c) *= evJumps[segEv[s]].factor;  // multiply
-        else if (ty == 0) {                                            // additive-alag transversality
-          // dlag at the primal just after this dose; lambda unchanged (dPhi/dy=I).
+        else if (ty == 0) {                                            // additive bolus duals
+          // dF/dtheta and dlag at the primal just after this dose; lambda
+          // unchanged (dPhi/dy=I).  factor = raw amt.
           double *yq = bu.yq.data(), *A = bu.A.data();
           const cvEvent &ev = evJumps[segEv[s]];
           if (ev.y >= 0) std::copy(evY.begin() + ev.y, evY.begin() + ev.y + nBase, yq);
@@ -744,11 +756,18 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
           for (int ii = 0; ii < eff; ++ii) A[ii] = 0.0;
           for (int ii = 0; ii < nBase; ++ii) A[ii] = yq[ii];
           calc_lhs(cSub, (double)te, A, ind->lhs);
-          const double *dlag = &ind->lhs[op->adjDlagOff];
-          const double *dF = &evY[ev.y + nBase];
-          double sc = 0.0;
-          for (int ii = 0; ii < nBase; ++ii) sc += NV_Ith_S(B, ii) * dF[ii];
-          for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += -dlag[c * np + p] * sc;
+          if (op->adjDfOff >= 0) {                                     // mu += amt*dF/dtheta*lambda_c
+            const double *dFp = &ind->lhs[op->adjDfOff];
+            double lc = NV_Ith_S(B, c);
+            for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += ev.factor * dFp[c * np + p] * lc;
+          }
+          if (op->adjDlagOff >= 0) {
+            const double *dlag = &ind->lhs[op->adjDlagOff];
+            const double *dF = &evY[ev.y + nBase];
+            double sc = 0.0;
+            for (int ii = 0; ii < nBase; ++ii) sc += NV_Ith_S(B, ii) * dF[ii];
+            for (int p = 0; p < np; ++p) NV_Ith_S(B, nBase + p) += -dlag[c * np + p] * sc;
+          }
         } else {                                                       // ty==7: infusion off-boundary
           // mu += -(amt/R) * dR/dtheta * lambda_c(t_off).  factor = -(amt/R).
           double *yq = bu.yq.data(), *A = bu.A.data();
@@ -768,7 +787,12 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
       if (!isSameTime(tStop, tCur)) {
         if (cvB_bwdTo(bmem, B, dkyB, &bu, tCur, tStop, bps) < 0) { bok = 0; break; }
       }
-      for (int p = 0; p < np; ++p) out[sensOff + k * np + p] = NV_Ith_S(B, nBase + p);
+      // tStop is t0 or a reset; either way the state there is the initial condition
+      for (int p = 0; p < np; ++p) {
+        double ini = 0.0;
+        if (dx0P) for (int q = 0; q < nBase; ++q) ini += NV_Ith_S(B, q) * dx0P[q * np + p];
+        out[sensOff + k * np + p] = NV_Ith_S(B, nBase + p) + ini;
+      }
       // Parameter-dependent delay: a jump [y_j] at t_e (bolus, replace,
       // multiply) jumps delay(y_j, tau_ij), and so f_i, at xi = t_e + tau_ij:
       //   mu += -lambda_i(xi) [f_i(xi+) - f_i(xi-)] dtau_ij/dp.
@@ -886,6 +910,7 @@ static int cvodesAdjSolveSubject(rx_solve *rx, rx_solving_options *op,
 
 extern "C" void ind_cvodesadj_0(rx_solve *rx, rx_solving_options *op, int solveid,
                                 int *neq, t_dydt c_dydt, t_update_inis u_inis) {
+  rxAdjArenaScope _adjArena(op->cores);   // this subject's backward work (src/rxAdjArena.h)
   clock_t tclk = clock();
   neq[1] = solveid; // subject id, not an rx->ordId position
   rx_solving_options_ind *ind = &(rx->subjects[neq[1]]);

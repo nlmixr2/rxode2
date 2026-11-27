@@ -99,6 +99,7 @@ typedef struct csRun {
   const char ***usedBy;           /* the temporaries each statement referenced */
   int *nUsedBy;
   const char *const *impure;      /* calls never shared, each `name(`; R_alloc'd */
+  int expensive;                  /* also single expensive calls not a whole rhs */
 } csRun;
 
 static void csRunInit(csRun *r, R_xlen_t n, const char **in, int nthr) {
@@ -200,19 +201,34 @@ static int csCountPhase(csRun *r) {
   return csReportDeclines(r) && csMergeCounts(r);
 }
 
-/* count > 1, then drop bare numbers, bare THETA[n]/ETA[n], anything leading
+/* count > 1 (or, with r->expensive, a call csIsExpensiveCall() names that is
+   not only ever a whole right-hand side), then drop bare numbers, bare THETA[n]/ETA[n], anything leading
    with `-`, anything calling lag()/lead()/diff()/first()/last() and anything
    calling an impure function (RNG, simeta(), rxImpureFun() names), then order by nchar with first encounter breaking ties
    (R/rxOptExpr.R:1000-1013) */
+static int csIsCandidate(const csRun *r, const csEntry *e) {
+  if (e->key == NULL) return 0;
+  if (e->count <= 1 &&
+      !(r->expensive && e->count > e->top && csIsExpensiveCall(e->key))) return 0;
+  if (csIsNum(e->key) || csIsThetaEta(e->key) || e->key[0] == '-') return 0;
+  return !(csHasHistCall(e->key) || csHasCallIn(e->key, r->impure));
+}
+
+static void csDebugCands(const csRun *r) {
+  int d;
+  for (d = 0; d < r->ncand && d < 30; d++)
+    REprintf("  cand %3d len=%2d stmt=%u pos=%u  [%s]\n", d,
+             (int) r->cand[d].len, (unsigned)(r->cand[d].firstSeen >> 32),
+             (unsigned)(r->cand[d].firstSeen & 0xffffffffu), r->cand[d].key);
+}
+
 static int csSelectPhase(csRun *r) {
   int j;
   r->cand = (csCand*) calloc((size_t) (r->all.used + 1), sizeof(csCand));
   if (r->cand == NULL) return 0;
   for (j = 0; j < r->all.n; j++) {
     csEntry *e = &r->all.e[j];
-    if (e->key == NULL || e->count <= 1) continue;
-    if (csIsNum(e->key) || csIsThetaEta(e->key) || e->key[0] == '-') continue;
-    if (csHasHistCall(e->key) || csHasCallIn(e->key, r->impure)) continue;
+    if (!csIsCandidate(r, e)) continue;
     r->cand[r->ncand].key = e->key;
     r->cand[r->ncand].firstSeen = e->firstSeen;
     r->cand[r->ncand].len = strlen(e->key);
@@ -220,13 +236,7 @@ static int csSelectPhase(csRun *r) {
   }
   if (r->ncand == 0) return 0;          /* nothing to do: let R take the exit */
   qsort(r->cand, (size_t) r->ncand, sizeof(csCand), csCandCmp);
-  if (csDebug()) {
-    int d;
-    for (d = 0; d < r->ncand && d < 30; d++)
-      REprintf("  cand %3d len=%2d stmt=%u pos=%u  [%s]\n", d,
-               (int) r->cand[d].len, (unsigned)(r->cand[d].firstSeen >> 32),
-               (unsigned)(r->cand[d].firstSeen & 0xffffffffu), r->cand[d].key);
-  }
+  if (csDebug()) csDebugCands(r);
   return 1;
 }
 

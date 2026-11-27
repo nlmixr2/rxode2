@@ -17,6 +17,7 @@
 // values are plain locals (__DDtStateVar_k__, __PDStateVar_*__).
 
 #include "pkTime.h"
+#include "../inst/include/rxMemAlloc.h"
 
 typedef struct cslHash {
   char **key;
@@ -59,8 +60,8 @@ static inline unsigned int cslHashStr(const char *s, int len) {
 static inline void cslHashInit(cslHash *h, int cap) {
   h->cap = cap;
   h->n = 0;
-  h->key = (char**)R_alloc(cap, sizeof(char*));
-  h->id = (int*)R_alloc(cap, sizeof(int));
+  h->key = (char**)rxMemRalloc(fixed, cap, sizeof(char*));
+  h->id = (int*)rxMemRalloc(fixed, cap, sizeof(int));
   for (int i = 0; i < cap; ++i) h->key[i] = NULL;
 }
 
@@ -96,7 +97,7 @@ static inline int cslId(cslHash *h, const char *s, int len, int add) {
     cslHashGrow(h);
     k = cslHashSlot(h, s, len);
   }
-  char *c = R_alloc(len + 1, sizeof(char));
+  char *c = rxMemRalloc(fixed, len + 1, sizeof(char));
   memcpy(c, s, len);
   c[len] = '\0';
   h->key[k] = c;
@@ -118,7 +119,7 @@ typedef struct cslVec {
 static inline void cslVecPush(cslVec *x, int val) {
   if (x->n + 1 > x->cap) {
     int cap = x->cap == 0 ? 256 : x->cap * 2;
-    int *v = (int*)R_alloc(cap, sizeof(int));
+    int *v = (int*)rxMemRalloc(fixed, cap, sizeof(int));
     for (int i = 0; i < x->n; ++i) v[i] = x->v[i];
     x->v = v;
     x->cap = cap;
@@ -268,9 +269,9 @@ static inline int cslSpanLine(cslSpanState *st, int i) {
 // Top-level if/else/while chains: an `else` opening at depth 0 joins the chain
 // that just closed.
 static inline void cslFindSpans(int n) {
-  _csl.span = (int*)R_alloc(n, sizeof(int));
-  _csl.spanFirst = (int*)R_alloc(n, sizeof(int));
-  _csl.spanLast = (int*)R_alloc(n, sizeof(int));
+  _csl.span = (int*)rxMemRalloc(fixed, n, sizeof(int));
+  _csl.spanFirst = (int*)rxMemRalloc(fixed, n, sizeof(int));
+  _csl.spanLast = (int*)rxMemRalloc(fixed, n, sizeof(int));
   _csl.nSpan = 0;
   cslSpanState st = {0, -1, -1};
   for (int i = 0; i < n; ++i) {
@@ -346,15 +347,15 @@ static inline void cslBuildLine(int i, cslVec *rd) {
 // Index the lines assigning each identifier
 static inline void cslBuildDefLines(int n) {
   int nId = _csl.h.n;
-  _csl.dlStart = (int*)R_alloc(nId + 1, sizeof(int));
+  _csl.dlStart = (int*)rxMemRalloc(fixed, nId + 1, sizeof(int));
   for (int v = 0; v <= nId; ++v) _csl.dlStart[v] = 0;
   for (int i = 0; i < n; ++i) {
     if (_csl.def[i] >= 0) _csl.dlStart[_csl.def[i] + 1]++;
   }
   for (int v = 0; v < nId; ++v) _csl.dlStart[v + 1] += _csl.dlStart[v];
   int nDl = _csl.dlStart[nId];
-  _csl.dl = (int*)R_alloc(nDl > 0 ? nDl : 1, sizeof(int));
-  int *fill = (int*)R_alloc(nId > 0 ? nId : 1, sizeof(int));
+  _csl.dl = (int*)rxMemRalloc(fixed, nDl > 0 ? nDl : 1, sizeof(int));
+  int *fill = (int*)rxMemRalloc(fixed, nId > 0 ? nId : 1, sizeof(int));
   for (int v = 0; v < nId; ++v) fill[v] = _csl.dlStart[v];
   for (int i = 0; i < n; ++i) {
     if (_csl.def[i] >= 0) _csl.dl[fill[_csl.def[i]]++] = i;
@@ -368,10 +369,10 @@ static inline void cslBuild(void) {
   if (n <= 0 || sbPmDt.n != n) return;
   _csl.n = n;
   cslHashInit(&_csl.h, 1024);
-  _csl.def = (int*)R_alloc(n, sizeof(int));
-  _csl.slice = (int*)R_alloc(n, sizeof(int));
-  _csl.out = (int*)R_alloc(n, sizeof(int));
-  _csl.rdStart = (int*)R_alloc(n + 1, sizeof(int));
+  _csl.def = (int*)rxMemRalloc(fixed, n, sizeof(int));
+  _csl.slice = (int*)rxMemRalloc(fixed, n, sizeof(int));
+  _csl.out = (int*)rxMemRalloc(fixed, n, sizeof(int));
+  _csl.rdStart = (int*)rxMemRalloc(fixed, n + 1, sizeof(int));
   cslFindSpans(n);
   cslVec rd = {NULL, 0, 0};
   for (int i = 0; i < n; ++i) cslBuildLine(i, &rd);
@@ -525,7 +526,7 @@ static inline void cslEpilogueRoots(cslWork *w, int show_ode) {
 }
 
 static inline int *cslZeros(int n) {
-  int *v = (int*)R_alloc(n > 0 ? n : 1, sizeof(int));
+  int *v = (int*)rxMemRalloc(fixed, n > 0 ? n : 1, sizeof(int));
   for (int i = 0; i < n; ++i) v[i] = 0;
   return v;
 }
@@ -563,7 +564,7 @@ static inline void cslForFunction(int show_ode) {
   int n = _csl.n;
   cslWork w;
   w.keep = cslZeros(n);
-  w.emit = (int*)R_alloc(n, sizeof(int));
+  w.emit = (int*)rxMemRalloc(fixed, n, sizeof(int));
   w.needed = cslZeros(_csl.h.n);
   w.spanDone = cslZeros(_csl.nSpan);
   w.lines = (cslVec){NULL, 0, 0};
