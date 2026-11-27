@@ -2817,4 +2817,29 @@ rxTest({
       expect_equal(.s$rx__sens_y_BY_tlag__, 7 * exp(-0.7 * c(1, 2)), tolerance = 1e-7, label = .meth)
     }
   })
+  test_that("dop853s adjoint on a stiff model stays exact (stability-capped steps)", {
+    # k12, k21 ~ 400, 200: the error test alone accepted steps with |R(h lam)| > 1
+    # (feedback on the forward's tiny stiff mode); the frozen-step map the adjoint
+    # transposes has no such feedback, so the reverse sweep blew up (1e18 .. 1e77 off)
+    .txt <- paste("d/dt(depot) = -exp(lka)*depot",
+      "d/dt(center) = exp(lka)*depot - exp(lvm)*center/(exp(lkm)+center) - exp(lk12)*center + exp(lk21)*periph",
+      "d/dt(periph) = exp(lk12)*center - exp(lk21)*periph", sep = "\n")
+    .cs <- c("lka", "lvm", "lkm", "lk12", "lk21")
+    .st <- c("depot", "center", "periph")
+    .s <- rxS(rxode2(.txt))
+    .rxJacobian(.s, c(.st, .cs))
+    .mf <- rxode2(paste(c(.txt, .rxSens(.s, .cs)), collapse = "\n"))
+    .prm <- data.frame(lka = c(0.3685, 0.1312), lvm = c(2.3241, 1.5626), lkm = c(1.5895, 1.676),
+      lk12 = c(5.5317, 6.1362), lk21 = c(5.2825, 5.3423))
+    .ev1 <- et(amt = 100, cmt = "depot") |> et(amt = 60, cmt = "depot", time = 6) |> et(c(0.5, 1, 2, 4, 6, 8, 12, 24))
+    .ev <- rbind(cbind(as.data.frame(.ev1), id = 1L), cbind(as.data.frame(.ev1), id = 2L))
+    .cols <- unlist(lapply(.cs, function(q) paste0("rx__sens_", .st, "_BY_", q, "__")))
+    .tr <- as.data.frame(rxSolve(.mf, .prm, .ev, method = "liblsoda", atol = 1e-12, rtol = 1e-12,
+      returnType = "data.frame", addDosing = FALSE))
+    for (.tol in c(1e-6, 1e-10, 1e-12)) {
+      .a <- rxSolveAdjointRk4(rxode2(.txt), .ev, params = .prm, calcSens = .cs, method = "dop853s",
+        atol = .tol, rtol = .tol, addDosing = FALSE)
+      expect_equal(as.matrix(.a[, .cols]), as.matrix(.tr[, .cols]), tolerance = 1e-7, ignore_attr = TRUE)
+    }
+  })
 })

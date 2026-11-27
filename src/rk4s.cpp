@@ -194,7 +194,10 @@ struct rksTableau { int s; int adaptive; int errOrder;
                     // s x s coefficient matrix; k_i = f(y + h sum_j A_ij k_j) solved
                     // by Newton; y_new = y + h sum_i b_i k_i.  Exact adjoint needs
                     // only J(u_i) (first derivatives) via the implicit-function thm.
-                    int implicitRK; };
+                    int implicitRK;
+                    // adaptive explicit: real-axis stability limit (|R(z)| <= 1 on
+                    // [-stabRe, 0]); the controller keeps h*rho(df/dy) inside it
+                    double stabRe; };
 
 // -- LU for the Rosenbrock stage matrix W (n x n, n = nBase, small) via LAPACK
 //    dgetrf/dgetrs (robust, the same routines armadillo wraps).  W is stored
@@ -7096,6 +7099,25 @@ static void rksTableauTmy7(rksTableau &T) {
 }
 
 
+// Real-axis stability limit of an explicit RK tableau: the first z < 0 (step
+// 0.01) with |R(z)| > 1, R(z) = 1 + z b'(I - zA)^-1 1.  Cached per method code.
+static double rksStabRe(int method, const rksTableau &T) {
+  static thread_local double cache[512] = {0};
+  if (method >= 0 && method < 512 && cache[method] > 0) return cache[method];
+  double g[36], lim = 50.0;
+  for (int q = 1; q <= 5000; ++q) {
+    double z = -0.01 * q, r = 1.0;
+    for (int i = 0; i < T.s; ++i) {
+      double a = 1.0;
+      for (int j = 0; j < i; ++j) a += z * T.A[i * T.s + j] * g[j];
+      g[i] = a; r += z * T.b[i] * a;
+    }
+    if (fabs(r) > 1.0) { lim = 0.01 * (q - 1); break; }
+  }
+  if (method >= 0 && method < 512) cache[method] = lim;
+  return lim;
+}
+
 static rksTableau rksGetTableau(int method) {
   rksTableau T; std::memset(&T, 0, sizeof(T));
   switch (method) {
@@ -7165,6 +7187,7 @@ static rksTableau rksGetTableau(int method) {
   case 205: rksTableauF78(T); break;   // f78s -- adaptive Fehlberg 7(8)
   default:  rksTableauRk4(T); break;
   }
+  if (T.adaptive && !T.rosenbrock && !T.implicitRK) T.stabRe = rksStabRe(method, T);
   return T;
 }
 
@@ -7298,11 +7321,12 @@ static inline void rk4s_do_steps(rx_solving_options_ind *ind, rx_solving_options
 static inline double rks_try_step(t_dydt dydt, int *neq, const rksTableau &T, int nAll,
                                   double t, double dt, const double *y, double *stages,
                                   double *kbuf, double *yhigh, double *ylow,
-                                  double atol, double rtol) {
+                                  double atol, double rtol, bool k0Ready = false) {
   int s = T.s;
   for (int i = 0; i < s; ++i) {
     double *ai = stages + i * nAll;
     for (int m = 0; m < nAll; ++m) ai[m] = y[m];
+    if (i == 0 && k0Ready) continue;   // kbuf[0] already holds f(t, y) (c[0] = 0)
     for (int j = 0; j < i; ++j) {
       double aij = T.A[i * s + j];
       if (aij != 0.0) { const double *kj = kbuf + j * nAll; for (int m = 0; m < nAll; ++m) ai[m] += dt * aij * kj[m]; }
@@ -7322,10 +7346,43 @@ static inline double rks_try_step(t_dydt dydt, int *neq, const rksTableau &T, in
   return sqrt(err / (nAll > 0 ? nAll : 1));
 }
 
+// Power-iteration estimate of the spectral radius of df/dy on the first nE
+// states at (t, y), f0 = f(t, y): it finite-difference products J v, v kept
+// (normalized) across calls.  Returns 0 if no estimate.
+static inline double rks_rho_est(t_dydt dydt, int *neq, int nAll, int nE, double t,
+                                 const double *y, const double *f0, double *v,
+                                 double *ytmp, double *f1, int it) {
+  double rho = 0.0;
+  for (int q = 0; q < it; ++q) {
+    double yn = 0.0;
+    for (int m = 0; m < nE; ++m) yn += y[m] * y[m];
+    double d = 1.4901161193847656e-08 * fmax(1.0, sqrt(yn));
+    for (int m = 0; m < nAll; ++m) ytmp[m] = y[m];
+    for (int m = 0; m < nE; ++m) ytmp[m] += d * v[m];
+    dydt(neq, t, ytmp, f1);
+    double r = 0.0;
+    for (int m = 0; m < nE; ++m) { f1[m] = (f1[m] - f0[m]) / d; r += f1[m] * f1[m]; }
+    r = sqrt(r);
+    if (!(r > 0.0) || !R_FINITE(r)) break;
+    for (int m = 0; m < nE; ++m) v[m] = f1[m] / r;
+    rho = r;
+  }
+  return rho;
+}
+
 // Adaptive embedded-RK driver: standard error-controlled step selection.  The
 // realized (accepted) step sequence is RECORDED (h + stages) and FROZEN -- the
 // discrete adjoint transposes that fixed sequence (step-size control is not
 // differentiated), reusing the same table-driven backward transpose.
+//
+// Stability cap: on a stiff problem the error test keeps the forward stable only
+// by feedback on its own tiny stiff component, so it accepts steps with
+// |R(h lam)| > 1.  The frozen-step map (what the adjoint transposes, and its
+// tangent) has no such feedback: those steps amplify the stiff mode of the
+// reverse sweep without bound (gradients off by 1e5 .. 1e100, solve ok).  So
+// h * rho(df/dy) is kept <= STABSAFE * T.stabRe, rho from rks_rho_est (one dydt
+// per estimate; skipped while h*rho is far below the cap).  scratch keeps a
+// prefix (magic, rho, v) across the intervals of one subject.
 static inline void rks_do_steps_adaptive(rx_solving_options_ind *ind, rx_solving_options *op,
                                          t_dydt dydt, int *neq, const rksTableau &T,
                                          int nAll, int nRec, double *yp,
@@ -7337,19 +7394,49 @@ static inline void rks_do_steps_adaptive(rx_solving_options_ind *ind, rx_solving
   double span = fabs(xout - xp); if (span == 0.0) return;
   double dt = op->H0 > 0 ? op->H0 : span / 100.0; if (dt <= 0.0) dt = span / 100.0;
   dt = sign * dt;
-  if ((int)scratch.size() < (2 * s + 2) * nAll) scratch.resize((2 * s + 2) * nAll);
-  double *stages = scratch.data(), *kbuf = stages + s * nAll,
-         *yhigh = kbuf + s * nAll, *ylow = yhigh + nAll;
+  const double MAGIC = 0.7071067811865476e-300, STABSAFE = 0.85;
+  const double hcap = T.stabRe > 0.0 ? STABSAFE * T.stabRe : 0.0;  // bound on |h|*rho
+  const size_t P = 2 + (size_t)nAll;                                  // persistent prefix
+  if (scratch.size() < P + (size_t)(2 * s + 4) * nAll) scratch.resize(P + (size_t)(2 * s + 4) * nAll);
+  double *pre = scratch.data(), *v = pre + 2;
+  double *stages = pre + P, *kbuf = stages + s * nAll,
+         *yhigh = kbuf + s * nAll, *ylow = yhigh + nAll, *ytmp = ylow + nAll, *f1 = ytmp + nAll;
+  const int nE = nAll;
+  bool vOk = pre[0] == MAGIC && pre[1] >= 0.0 && R_FINITE(pre[1]);
+  if (vOk) { double vn = 0.0; for (int m = 0; m < nE; ++m) vn += v[m] * v[m]; vOk = vn > 0.5 && R_FINITE(vn); }
+  if (!vOk) {
+    double vn = 0.0;
+    for (int m = 0; m < nE; ++m) { v[m] = (m & 1 ? -1.0 : 1.0) * (1.0 + 0.37 * m); vn += v[m] * v[m]; }
+    vn = sqrt(vn); for (int m = 0; m < nE; ++m) v[m] /= vn;
+    pre[0] = MAGIC; pre[1] = 0.0;
+  }
+  double rho = pre[1]; int sinceEst = 0; bool haveRho = false, k0Ready = false;
+  if (hcap > 0.0 && rho > 0.0 && fabs(dt) * rho > hcap) dt = sign * hcap / rho;
   error_checker check(ind, ind->rc, op->mxstep);
   zero_copy_state chk(yp, nAll);
   const double SAFE = 0.9, FACMIN = 0.2, FACMAX = 5.0;
   int expo = T.errOrder + 1, nrej = 0;
   dt = rk4s_hist_cap(ind, dt, sign);   // DDE: keep steps within delayMinT
   while ((sign > 0 && t < xout) || (sign < 0 && t > xout)) {
-    if ((sign > 0 && t + dt > xout) || (sign < 0 && t + dt < xout)) dt = xout - t;
-    dt = rk4s_hist_cap(ind, dt, sign);
     double err;
-    try { err = rks_try_step(dydt, neq, T, nAll, t, dt, yp, stages, kbuf, yhigh, ylow, atol, rtol); }
+    try {
+      if (hcap > 0.0) {
+        // f(t, yp) (stage 0 of every trial from yp), then rho at yp, then the cap
+        if (!k0Ready) {
+          for (int m = 0; m < nAll; ++m) stages[m] = yp[m];
+          dydt(neq, t, stages, kbuf); k0Ready = true;
+        }
+        if (!haveRho && (rho <= 0.0 || sinceEst >= 16 || fabs(dt) * rho > 0.04 * hcap)) {
+          double r = rks_rho_est(dydt, neq, nAll, nE, t, yp, kbuf, v, ytmp, f1, rho > 0.0 ? 1 : 3);
+          if (r > 0.0) { rho = r; pre[1] = rho; }
+          haveRho = true; sinceEst = 0;
+        }
+        if (rho > 0.0 && fabs(dt) * rho > hcap) dt = sign * hcap / rho;
+      }
+      if ((sign > 0 && t + dt > xout) || (sign < 0 && t + dt < xout)) dt = xout - t;
+      dt = rk4s_hist_cap(ind, dt, sign);
+      err = rks_try_step(dydt, neq, T, nAll, t, dt, yp, stages, kbuf, yhigh, ylow, atol, rtol, k0Ready);
+    }
     catch (const std::exception &e) { if (ind->rc[0] == 0) ind->rc[0] = -2019; rxSolverFail(ind); break; }
     double fac = (err > 0.0) ? SAFE * pow(err, -1.0 / expo) : FACMAX;
     if (fac < FACMIN) fac = FACMIN; if (fac > FACMAX) fac = FACMAX;
@@ -7359,7 +7446,8 @@ static inline void rks_do_steps_adaptive(rx_solving_options_ind *ind, rx_solving
       rk4s_hist_push(ind, op, dydt, neq, nAll, t, dt, yp, yhigh);
       for (int m = 0; m < nAll; ++m) yp[m] = yhigh[m];
       t += dt; check(chk, t); if (ind->err != 0) break;
-      dt *= fac; dt = rk4s_hist_cap(ind, dt, sign); nrej = 0;
+      dt *= fac;
+      dt = rk4s_hist_cap(ind, dt, sign); nrej = 0; haveRho = false; k0Ready = false; ++sinceEst;
     } else {
       dt *= fac;
       if (++nrej > 50) { rxSolverFail(ind); if (ind->rc[0] == 0) ind->rc[0] = -2019; break; }

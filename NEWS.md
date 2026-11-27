@@ -227,6 +227,16 @@
 
 ## Bug fixes
 
+- The adaptive explicit `rk4s` solvers (`dop853s` and the other adaptive
+  explicit "s" methods) now cap the step so that `|h| * rho` stays inside
+  the method's real-axis stability interval (`rho` from a power iteration on
+  the right-hand side).  On stiff models the error control alone accepted
+  steps outside it; the solution stayed accurate through feedback, but the
+  frozen-step map, and so its exact discrete adjoint, was unstable:
+  `rxSolveAdjointRk4(method = "dop853s")` sensitivities were off by 1e-2 at
+  `rtol = 1e-6` and by many orders of magnitude at tighter tolerances,
+  without a warning.
+
 - The parser no longer reads a function name it had already freed.  Every
   function call copies its name into a buffer that is reallocated as it grows,
   and a copy held while more were made pointed into the old buffer; parsing
