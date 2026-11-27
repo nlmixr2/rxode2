@@ -192,6 +192,10 @@ typedef struct {
      linOffset and every integrator's ODE count leave them out like the
      rest of the linCmt() block.  Appended for downstream binaries. */
   int    numLinCarry;
+  /* discrete adjoint: lhs index where the d(initial condition)/dtheta block
+     starts (k*np+p); -1 if no initial condition depends on a calcSens
+     parameter.  Appended last so every earlier field keeps its offset. */
+  int    adjDx0Off;
 } rx_solving_options;
 
 
