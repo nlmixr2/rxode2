@@ -227,6 +227,13 @@
 
 ## Bug fixes
 
+- The explicit Runge-Kutta discrete adjoint (`rk4s`, `dop853s` and the other
+  explicit `*s` methods) gives the exact gradient for a parameter-dependent
+  `alag()` when the right-hand side is nonlinear.  The lag-time term was exact
+  only for a linear right-hand side; it is now
+  `dlag/dp * lambda' (f(x-) - f(x+))` from the model's own `f`.  The Rosenbrock,
+  Radau, composite, CVODES and LSODA adjoints keep the old approximation.
+
 - The parser no longer reads a function name it had already freed.  Every
   function call copies its name into a buffer that is reallocated as it grows,
   and a copy held while more were made pointed into the old buffer; parsing
