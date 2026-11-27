@@ -337,7 +337,13 @@ rxTest({
     # with the solver's failure as well, since they carried the state on.
     # liblsoda fails the subject itself when intdy() cannot interpolate.
     .liblsoda <- "^\\[IDID=-3, illegal input detected \\(see printed message\\)\\.\\]: 1 warning\\(s\\) for subject\\(s\\): 103$"
+    .gpu <- "^\\[IDID=-2, the device integrator step size fell below its minimum\\]: 1 warning\\(s\\) for subject\\(s\\): 103$"
     .own <- c(
+      gpuT54 = .gpu,
+      gpuVern76 = .gpu,
+      gpuRos54p = .gpu,
+      "gpuT54+gpuRos54p" = .gpu,
+      "gpuVern76+gpuRos54p" = .gpu,
       lsoda = "^DLSODA-",
       lsode = "^DLSODE-",
       bdf = "^DLSODE-",
