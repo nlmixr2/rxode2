@@ -4116,14 +4116,12 @@ rxSolve.default <- function(
       .idCol <- which(tolower(names(.evDf)) == "id")[1]
       .ssId <- if (is.na(.idCol)) rep(1L, nrow(.evDf)) else .evDf[[.idCol]]
       .ss1 <- which(.evDf$ss == 1 & .evDf$evid != 0)
-      .multiSs1 <- any(vapply(split(.evDf$time[.ss1], .ssId[.ss1]),
-        function(.t) length(unique(.t)) > 1L, logical(1)))
+      .multiSs1 <- any(vapply(split(.evDf$time[.ss1], .ssId[.ss1]), function(.t) length(unique(.t)) > 1L, logical(1)))
       # a subject with every record at one time takes no step, so the backward
       # fill never reaches the steady state of its ss dose
       .oneTime <- tapply(.evDf$time, .ssId, function(x) length(unique(x)) == 1L)
       .ssOneTime <- any(.evDf$ss != 0 & .oneTime[as.character(.ssId)], na.rm = TRUE)
-      .badSs <- (.multiSs1 && !(.rk4sFw || .rk4sStiff)) || .ssOneTime ||
-        any(.evDf$ss != 0 & !.supported, na.rm = TRUE)
+      .badSs <- (.multiSs1 && !(.rk4sFw || .rk4sStiff)) || .ssOneTime || any(.evDf$ss != 0 & !.supported, na.rm = TRUE)
       if (.badSs) {
         stop(
           "adjoint sensitivities do not yet support this steady-state (ss) ",

@@ -39,6 +39,8 @@
   .m <- rxode2(txt)
   .a <- .adjFdStep(.m, ev, p, cs, 1e-4)
   .b <- .adjFdStep(.m, ev, p, cs, 5e-5)
-  for (.n in names(.a)) .a[[.n]] <- (4 * .b[[.n]] - .a[[.n]]) / 3
+  for (.n in names(.a)) {
+    .a[[.n]] <- (4 * .b[[.n]] - .a[[.n]]) / 3
+  }
   .a
 }
