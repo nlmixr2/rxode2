@@ -7518,6 +7518,9 @@ static inline void rks_do_steps_adaptive(rx_solving_options_ind *ind, rx_solving
     vn = sqrt(vn); for (int m = 0; m < nE; ++m) v[m] /= vn;
     pre[0] = MAGIC; pre[1] = 0.0; pre[2] = 90.0; pre[3] = 0.0;
   }
+  // J u = pr v holds only at the point of the last product; an event between
+  // intervals moves y, so drop the stale pair and rebuild it (3 iterations)
+  pre[3] = 0.0;
   // bound on |h lam| for the direction arg(-lam) = a degrees
   auto capOf = [&](double a) { return a <= 90.0 ? T.stabArg[(int)a] : hcap; };
   double rho = pre[1], hcapA = hcap > 0.0 ? capOf(pre[2]) : 0.0;
@@ -7540,7 +7543,7 @@ static inline void rks_do_steps_adaptive(rx_solving_options_ind *ind, rx_solving
         if (!haveRho && (rho <= 0.0 || sinceEst >= 16 || fabs(dt) * rho > 0.04 * hcapA)) {
           double ang = 90.0;
           double r = rks_rho_est(dydt, neq, nAll, nE, t, yp, kbuf, v, u, pre + 3, ytmp, f1,
-                                 rho > 0.0 ? 1 : 3, &ang);
+                                 (rho > 0.0 && pre[3] > 0.0) ? 1 : 3, &ang);
           if (r > 0.0) { rho = r; pre[1] = rho; pre[2] = ang; hcapA = capOf(ang); }
           haveRho = true; sinceEst = 0;
         }
