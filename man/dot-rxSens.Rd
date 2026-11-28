@@ -4,7 +4,7 @@
 \alias{.rxSens}
 \title{Sensitivity for model}
 \usage{
-.rxSens(model, vars, vars2, vars3)
+.rxSens(model, vars, vars2, vars3, symmetric = FALSE)
 }
 \arguments{
 \item{model}{symengine model environment}
@@ -12,6 +12,14 @@
 \item{vars}{Variables for single sensitivity}
 
 \item{vars2}{if present, 2 parameter sensitivity}
+
+\item{vars3}{if present, 3 parameter sensitivity}
+
+\item{symmetric}{for 2nd order with \code{vars2 == vars}, only build each
+unordered pair once (\code{p} before \code{q} in \code{vars}).  The second-order
+sensitivity is symmetric (\code{S_pq == S_qp}), so the dropped states are
+duplicates; the kept states keep their names and equations.  Not used for
+delay models.}
 }
 \value{
 Sensitivity
