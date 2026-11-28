@@ -2767,6 +2767,13 @@ rxCompile.rxModelVars <- function(
   if (is.null(.allModVars)) {
     stop("something went wrong in compilation")
   }
+  # a cached DLL keeps the user-function record of the session that built it,
+  # naming an environment that is gone; this session's parse has the live one
+  .udfAddr <- as.character(names(.allModVars$udf)[is.na(.allModVars$udf)])
+  .udfAddr <- .udfAddr[!startsWith(.udfAddr, "model:")]
+  if (length(.udfAddr) > 0L && length(model$udf) > 0L && !is.environment(.udfEnv$envList[[.udfAddr[1]]])) {
+    .allModVars$udf <- model$udf
+  }
   assign(.cDllFile, 0L, envir = .rxModels) ## Loaded model.
   ret <- suppressWarnings({
     list(

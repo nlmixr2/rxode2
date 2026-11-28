@@ -270,6 +270,11 @@
 
 ## Bug fixes
 
+- A model with an R user function that is loaded from the model cache in a new
+  R session solves again; it used to stop with "environment were user
+  functions were defined is no longer present", or with "user function not
+  found" when the function lives in a calling function's frame.  The cached
+  model now takes the user-function record of the current parse.
 - The explicit Runge-Kutta discrete adjoint (`rk4s`, `dop853s` and the other
   explicit `*s` methods) gives the exact gradient for a parameter-dependent
   `alag()` when the right-hand side is nonlinear.  The lag-time term was exact
