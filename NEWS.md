@@ -270,6 +270,11 @@
 
 ## Bug fixes
 
+- While a compartment is switched off (`evid = 2`, negative `cmt`), its
+  sensitivity states (`rx__sens_<state>_BY_...`, first and second order) are
+  now frozen too.  They only followed their own on/off flag, so a sensitivity
+  fed through an upstream state (e.g. `ka` through the depot) kept drifting
+  and the forward sensitivities were wrong once the compartment was on again.
 - The explicit Runge-Kutta discrete adjoint (`rk4s`, `dop853s` and the other
   explicit `*s` methods) gives the exact gradient for a parameter-dependent
   `alag()` when the right-hand side is nonlinear.  The lag-time term was exact

@@ -137,6 +137,25 @@ static inline void add_de(nodeInfo ni, char *name, char *v, int hasLhs, int from
   addLine(&(tb.de),"%s",v);
 }
 
+// The state (de index) whose sensitivity `v` is (rx__sens_<state>_BY_...,
+// first or second order), or -1.  The longest declared state name wins.
+static inline int sensBaseDe(const char *v) {
+  if (strncmp(v, "rx__sens_", 9) != 0) return -1;
+  const char *r = v + 9;
+  int best = -1;
+  size_t bestN = 0;
+  for (int j = 0; j < tb.de.n; j++) {
+    const char *s = tb.de.line[j];
+    size_t n = strlen(s);
+    if (n > bestN && strncmp(s, "rx__sens_", 9) != 0 && strncmp(r, s, n) == 0 &&
+        strncmp(r + n, "_BY_", 4) == 0) {
+      best = j;
+      bestN = n;
+    }
+  }
+  return best;
+}
+
 static inline int handleDdtAssign(nodeInfo ni, char *name, int i, D_ParseNode *pn, D_ParseNode *xpn) {
   if (nodeHas(derivative) && i==2) {
     tb.hasDdt = 1;
@@ -158,7 +177,18 @@ static inline int handleDdtAssign(nodeInfo ni, char *name, int i, D_ParseNode *p
     tb.lastDdt = tb.id;
     /* printf("de[%d]->%s[%d]\n",tb.id,v,tb.ix); */
     sb.o =0; sbDt.o =0;
-    if (tb.idu[tb.id] == 0){
+    // A sensitivity state rx__sens_<state>_BY_... is frozen while <state> is
+    // switched off (EVID 2, CMT < 0): <state> then stays at its initial value
+    // whatever the parameters, so its sensitivities have zero derivative.
+    int sensBase = sensBaseDe(v);
+    if (sensBase >= 0) {
+      sAppend(&sb, "__DDtStateVar__[__DDT%d__] = ((double)(_ON[__DDT%d__]))*((double)(_ON[__DDT%d__]))*(", tb.id, tb.id, sensBase);
+      sAppend(&sbDt, "__DDtStateVar_%d__ = ((double)(_ON[__DDT%d__]))*((double)(_ON[__DDT%d__]))*(", tb.id, tb.id, sensBase);
+      if (tb.idu[tb.id] == 0) {
+        sAppend(&sb, "_IR[__DDT%d__] ", tb.id);
+        sAppend(&sbDt, "_IR[__DDT%d__] ", tb.id);
+      }
+    } else if (tb.idu[tb.id] == 0){
       sAppend(&sb, "__DDtStateVar__[__DDT%d__] = ((double)(_ON[__DDT%d__]))*(_IR[__DDT%d__] ", tb.id, tb.id, tb.id);
       sAppend(&sbDt, "__DDtStateVar_%d__ = ((double)(_ON[__DDT%d__]))*(_IR[__DDT%d__] ", tb.id, tb.id, tb.id);
     } else {
