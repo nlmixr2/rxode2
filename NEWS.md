@@ -270,6 +270,11 @@
 
 ## Bug fixes
 
+- The discrete adjoint (`dop853s` and the other `rk4s` solvers) now includes the
+  modeled `f()` term of a replace (EVID 5) and a multiply (EVID 6) record: the
+  gradient with respect to a parameter of `f()` on that compartment was missing
+  it.
+
 - The explicit Runge-Kutta discrete adjoint (`rk4s`, `dop853s` and the other
   explicit `*s` methods) gives the exact gradient for a parameter-dependent
   `alag()` when the right-hand side is nonlinear.  The lag-time term was exact
