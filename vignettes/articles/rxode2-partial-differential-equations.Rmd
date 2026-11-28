@@ -192,6 +192,15 @@ cat(rxPde("
 "))
 ```
 
+## Sensitivities and estimation
+
+The expanded model is an ordinary ODE system, so its forward sensitivities
+are the usual variational equations, one per cell and parameter, and nlmixr2's
+FOCEi uses them for its gradients.  A model with `ini()` estimates, such as
+`diffusion` above, is passed to `nlmixr2()` like any other model.  Each eta
+adds `n` sensitivity states, so keep `n` modest during estimation and refine
+it afterwards.
+
 ## Notes
 
 - Only one-dimensional grids are supported; a model may have several grids and
