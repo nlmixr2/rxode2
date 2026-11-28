@@ -1860,7 +1860,7 @@ rxSolve <- function(
     } else {
       .bad <- .nxtra
     }
-    .bad <- .bad[!(.bad %in% c(".setupOnly", "keepF", ".zeros"))]
+    .bad <- .bad[!(.bad %in% c(".setupOnly", "keepF", ".zeros", ".simNames"))]
     if (length(.bad) > 0) {
       if ("transitAbs" %in% .bad) {
         stop("'transitAbs' is no longer supported, use 'evid=7' instead", call. = FALSE)
@@ -2454,6 +2454,8 @@ rxSolve <- function(
     maxwhile <- as.integer(maxwhile)
     maxExtra <- as.integer(maxExtra)
     .zeros <- .xtra$.zeros
+    # the omega/sigma names simeta(n)/simeps(n) index, before any are dropped
+    .simNames <- .rxSimNames(.xtra$.simNames, .omega, .sigma)
     if (inherits(.omega, "matrix")) {
       .w <- which(diag(.omega) == 0.0)
       if (length(.w) > 0) {
@@ -2649,7 +2651,8 @@ rxSolve <- function(
       gpuBackend = gpuBackend,
       gpuDevice = gpuDevice,
       gpuPrecision = gpuPrecision,
-      gpuBatch = as.integer(gpuBatch)
+      gpuBatch = as.integer(gpuBatch),
+      .simNames = .simNames
     )
     class(.ret) <- "rxControl"
     return(.ret)
@@ -3029,6 +3032,25 @@ rxSolve.function <- function(
   )
 }
 
+#' Names of the omega/sigma items `simeta(n)`/`simeps(n)` index
+#'
+#' @param simNames the names already recorded (`list(eta, eps)`) or `NULL`
+#' @param omega,sigma the matrices to take the names from when not recorded
+#' @return `list(eta, eps)` of the names in the order the index counts
+#' @noRd
+.rxSimNames <- function(simNames, omega = NULL, sigma = NULL) {
+  if (!is.list(simNames) || length(simNames) != 2L) {
+    simNames <- list(NULL, NULL)
+  }
+  if (is.null(simNames[[1]]) && inherits(omega, "matrix")) {
+    simNames[1] <- list(dimnames(omega)[[2]])
+  }
+  if (is.null(simNames[[2]]) && inherits(sigma, "matrix")) {
+    simNames[2] <- list(dimnames(sigma)[[2]])
+  }
+  simNames
+}
+
 #' Which zero variance omega/sigma items to fix at zero in `params`
 #'
 #' An omega/sigma item whose variance is zero is dropped from the matrix that is
@@ -3176,6 +3198,15 @@ rxSolve.function <- function(
       .rxControl$omega <- NULL
     }
   }
+  .rxControl$.simNames <- .rxSimNames(
+    .rxControl$.simNames,
+    .rxControl$omega,
+    if (inherits(.rxControl$sigma, "matrix")) {
+      .rxControl$sigma
+    } else {
+      object$simulationSigma
+    }
+  )
   if (inherits(.rxControl$omega, "matrix")) {
     .omega <- .rxControl$omega
     .v <- vapply(
@@ -4015,7 +4046,7 @@ rxSolve.default <- function(
             "method='abs' cannot calculate sensitivities through %s that depend on sensitivity parameters; use %s"
           ),
           paste(.bad, collapse = ", "),
-          if (any(.bad %in% c("rate()", "dur()"))) "method='rk4s'" else "method='rk4s' or method='liblsodaadj'"
+          "method='rk4s' or method='liblsodaadj'"
         ),
         call. = FALSE
       )

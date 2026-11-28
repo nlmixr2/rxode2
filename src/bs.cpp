@@ -37,7 +37,7 @@ extern "C" void ind_bs_0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   dense_stepper_type dense_stepper(ind->atol2[0], ind->rtol2[0]);
   bool stepper_initialized = false;
 
-  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
+  int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
   rxode2_system sys(c_dydt, neq, ind);
   sys.cap_t_ = true;
   double *yp;

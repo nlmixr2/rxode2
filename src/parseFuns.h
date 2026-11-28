@@ -79,9 +79,23 @@ static inline int handleSimFunctions(nodeInfo ni, char *name, int *i, int nch,
     } else {
       if ((tb.simflg & 2) == 0) tb.simflg += 2;
     }
-    sAppend(&sb, "%s();\n  _SYNC_%s_;", v, v);
-    sAppend(&sbDt, "%s();\n  _SYNC_%s_;", v, v);
-    sAppend(&sbt, "%s();", v);
+    // simeta(n)/simeps(n): the optional 1-based index re-simulates only that
+    // ETA/EPS through simetaI()/simepsI(); the bare form keeps simeta()/simeps().
+    D_ParseNode *npn = d_get_child(pn, 2);
+    char *nStr = (char*)rc_dup_str(npn->start_loc.s, npn->end);
+    if (nStr[0] == '\0') {
+      sAppend(&sb, "%s();\n  _SYNC_%s_;", v, v);
+      sAppend(&sbDt, "%s();\n  _SYNC_%s_;", v, v);
+      sAppend(&sbt, "%s();", v);
+    } else {
+      if (!strcmp(nStr, "0") || strlen(nStr) > 9) {
+        updateSyntaxCol();
+        trans_syntax_error_report_fn(_("the index of 'simeta(n)'/'simeps(n)' must be a positive integer below 1e9"));
+      }
+      sAppend(&sb, "%sI(%s);\n  _SYNC_%s_;", v, nStr, v);
+      sAppend(&sbDt, "%sI(%s);\n  _SYNC_%s_;", v, nStr, v);
+      sAppend(&sbt, "%s(%s);", v, nStr);
+    }
     addLine(&sbPm, "%s\n", sb.s);
     addLine(&sbPmDt, "%s\n", sbDt.s);
     sAppend(&sbNrm, "%s\n", sbt.s);
@@ -511,8 +525,7 @@ static inline int handleFunctionTte(transFunctions *tf) {
   else if (!strcmp("tteTime", tf->v)) what = 2;
   else if (!strcmp("tteCount", tf->v)) what = 3;
   if (what < 0) return 0;
-  int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
-  if (ii != 1) {
+  if (functionNodeNargs(tf->pn) != 1) {
     updateSyntaxCol();
     sPrint(&_gbuf, _("'%s' takes 1 argument"), tf->v);
     trans_syntax_error_report_fn(_gbuf.s);

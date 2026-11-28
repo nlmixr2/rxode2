@@ -46,7 +46,7 @@ extern "C" void ind_rkls54_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   double xp = getAllTimes(ind, 0);
   ind->solvedIdx = 0;
 
-  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
+  int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
   RxRkls54 *solver = NULL;
   if (neqOde > 0) {
     solver = new RxRkls54(c_dydt, neq, neqOde, ind, getSolve(0));

@@ -106,4 +106,5 @@ struct rx_globals {
   int geta_pre_n = 0;            // capacity of geta_pre_alloc
   bool alloc=false;
   int64_t gall_times_n = 0; // actual allocation count of gall_times (representative, not expanded)
+  int64_t gevid_dfN = 0; // gpar_cov/gpar_covInterp length in the gevid slab (event-table columns)
 };
