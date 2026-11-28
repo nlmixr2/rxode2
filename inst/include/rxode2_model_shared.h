@@ -135,7 +135,7 @@ static inline double _clamp(double x, double lo, double hi) {
 #define NEWIND ((double)_ind->_newind)
 #define newind ((double)_ind->_newind)
 #define rxFlag ((double)_ind->_rxFlag)
-#define rxSsAdvance ((double)_ind->ssAdvance)
+#define rxSsAdvance ((double)_ind->doSS)
 #define rx_lambda_ _ind->lambda
 #define rx_yj_ _ind->yj
 #define rx_hi_ _ind->logitHi

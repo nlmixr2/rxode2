@@ -54,6 +54,27 @@ rxTest({
     expect_equal(.s2$auc[1], .s1$auc[1], tolerance = 1e-4)
   })
 
+  test_that("ss=2 keeps an AUC whose integrand is 0 at the dose time", {
+    .mod <- function() {
+      ini({
+        cl <- 1
+        v <- 10
+      })
+      model({
+        d / dt(central) <- -cl / v * central
+        ce <- central / v - 0.5
+        if (ce < 0) ce <- 0
+        d / dt(auc) <- (1 - rxSsAdvance) * ce
+      })
+    }
+    .ev <- et(amt = 100) |>
+      et(time = 48, amt = 100, ii = 24, ss = 2) |>
+      et(c(47.99, 48))
+    .s <- rxSolve(.mod, .ev)
+    expect_gt(.s$auc[1], 0)
+    expect_equal(.s$auc[2], .s$auc[1], tolerance = 1e-4)
+  })
+
   test_that("without rxSsAdvance the AUC includes the steady-state history", {
     .mod <- .ssAucMod |>
       model(d / dt(auc) <- central / v)

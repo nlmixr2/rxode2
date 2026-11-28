@@ -481,31 +481,45 @@ static void rxSolveErrPush(int id, int err) {
 rx_solving_options op_global;
 extern int nPastEvid_global;
 extern int ssNotConv_global;
+// The rate of change at y with rxSsAdvance (ind->doSS) set to adv
+extern t_dydt dydt;
+static inline void ssRateAt(int *neq, double t, const double *y, int adv,
+                            rx_solving_options_ind *ind,
+                            std::vector<double> &out) {
+  std::vector<double> yc(y, y + neq[0]);
+  rxMemAssign(fixed, out, neq[0], 0.0);
+  int doSS = ind->doSS;
+  ind->doSS = adv;
+  dydt(neq, t, yc.data(), out.data());
+  ind->doSS = doSS;
+}
+
 // ss=2 superposition: add the state before the dose to the added regimen's
 // steady state.  The advance starts from that state, so a state the model
-// holds with rxSsAdvance (left unchanged, and moving only when rxSsAdvance is
-// 0) has nothing to add.  Returns the amount to add to each state.
-extern t_dydt dydt;
+// holds with rxSsAdvance has nothing to add: one the advance left unchanged,
+// that the dose does not enter, that does not move with rxSsAdvance = 1 before
+// or after the advance and does move with rxSsAdvance = 0 at one of them.
+// Returns the amount to add to each state.
 static inline std::vector<double> ssSavedToAdd(const double *yp, const double *solveSave,
                                                int *neq, double t,
                                                rx_solving_options_ind *ind) {
   std::vector<double> add(solveSave, solveSave + neq[0]);
-  std::vector<double> on, off;
+  bool any = false;
   for (int j = neq[0]; j--;) {
-    if (yp[j] != solveSave[j]) continue;
-    if (on.empty()) {
-      std::vector<double> y(solveSave, solveSave + neq[0]);
-      int ssAdvance = ind->ssAdvance;
-      rxMemAssign(fixed, on, neq[0], 0.0);
-      rxMemAssign(fixed, off, neq[0], 0.0);
-      ind->ssAdvance = 1;
-      dydt(neq, t, y.data(), on.data());
-      std::copy(solveSave, solveSave + neq[0], y.begin());
-      ind->ssAdvance = 0;
-      dydt(neq, t, y.data(), off.data());
-      ind->ssAdvance = ssAdvance;
+    if (yp[j] == solveSave[j] && j != ind->cmt) any = true;
+  }
+  if (!any) return add;
+  std::vector<double> on0, off0, on1, off1;
+  ssRateAt(neq, t, solveSave, 1, ind, on0);
+  ssRateAt(neq, t, solveSave, 0, ind, off0);
+  ssRateAt(neq, t, yp, 1, ind, on1);
+  ssRateAt(neq, t, yp, 0, ind, off1);
+  for (int j = neq[0]; j--;) {
+    if (yp[j] == solveSave[j] && j != ind->cmt &&
+        on0[j] == 0.0 && on1[j] == 0.0 &&
+        (off0[j] != 0.0 || off1[j] != 0.0)) {
+      add[j] = 0.0;
     }
-    if (on[j] == 0.0 && off[j] != 0.0) add[j] = 0.0;
   }
   return add;
 }
@@ -4247,13 +4261,6 @@ static inline double ssInfRates(rx_solving_options_ind *ind, int infB, int infE,
   return 1.0;
 }
 
-// rxSsAdvance is 1 in the model while the steady state is solved
-struct ssAdvanceScope {
-  rx_solving_options_ind *ind;
-  explicit ssAdvanceScope(rx_solving_options_ind *i) : ind(i) { ind->ssAdvance = 1; }
-  ~ssAdvanceScope() { ind->ssAdvance = 0; }
-};
-
 void handleSS(int *neq,
               int *BadDose,
               double *InfusionRate,
@@ -4266,7 +4273,6 @@ void handleSS(int *neq,
               rx_solving_options_ind *ind,
               t_update_inis u_inis,
               void *ctx) {
-  ssAdvanceScope ssAdvanceOn(ind);
   rx_solve *rx = &rx_global;
   _adjSSinfKind = 0; _adjSS2 = 0; _adjSSbolusIi = 0.0;   // reset adjoint ss handoffs
   _adjSSinfModeled = 0; _adjSSinfAmt = 0.0; _adjSSinfAmtRaw = 0.0;

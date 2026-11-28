@@ -590,9 +590,6 @@ struct rx_solving_options_ind_s {
   // of the dose record it repeats, whose covariates a nocb covariate is read
   // at; 0 otherwise.
   int    lagParent;
-  // 1 while handleSS() advances to steady state, else 0; the model reads it
-  // as `rxSsAdvance`
-  int    ssAdvance;
 };
 
 typedef struct rx_solve_s {
