@@ -270,17 +270,36 @@ rxExpandGrid <- function(x, y, type = 0L) {
   .se
 }
 
+# symmetric: keep only d2/(dp dq) with p before q (every kept line references only kept
+# states); delay models keep the full grid for their augmentation.
+.rxSensSymGrid <- function(model, grd, state, vars, vars2, symmetric) {
+  if (!isTRUE(symmetric) || !identical(vars, vars2) || length(model$..delayedStates)) {
+    return(grd)
+  }
+  .n1 <- length(state)
+  .n2 <- length(vars)
+  .i <- seq_len(nrow(grd)) - 1L
+  .keep <- (.i %/% .n1) %% .n2 <= .i %/% (.n1 * .n2)
+  grd[.keep, , drop = FALSE] # keeps each row's name in the full grid
+}
+
 ## Assumes .rxJacobian called on model c(state,vars)
 #'  Sensitivity for model
 #'
 #' @param model symengine model environment
 #' @param vars Variables for single sensitivity
 #' @param vars2 if present, 2 parameter sensitivity
+#' @param vars3 if present, 3 parameter sensitivity
+#' @param symmetric for 2nd order with `vars2 == vars`, only build each
+#'   unordered pair once (`p` before `q` in `vars`).  The second-order
+#'   sensitivity is symmetric (`S_pq == S_qp`), so the dropped states are
+#'   duplicates; the kept states keep their names and equations.  Not used for
+#'   delay models.
 #' @return Sensitivity
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
-.rxSens <- function(model, vars, vars2, vars3) {
+.rxSens <- function(model, vars, vars2, vars3, symmetric = FALSE) {
   .state <- rxStateOde(model)
   if (length(.state) > 0L) {
     if (missing(vars)) {
@@ -306,6 +325,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
       .grd <- rxode2::rxExpandSens3_(.state, vars, vars2, vars3)
     } else if (!missing(vars2)) {
       .grd <- rxode2::rxExpandSens2_(.state, vars, vars2)
+      .grd <- .rxSensSymGrid(model, .grd, .state, vars, vars2, symmetric)
     } else {
       .grd <- rxode2::rxExpandSens_(.state, vars)
     }

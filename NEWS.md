@@ -2,6 +2,12 @@
 
 ## New features
 
+- `.rxSens(symmetric = TRUE)` builds the second-order forward sensitivities
+  of one parameter set (`vars2 == vars`) once per unordered pair.  The
+  second-order sensitivity is symmetric (`S_pq == S_qp`), so the full grid
+  carries each state twice; with `q` parameters this is `q(q+1)/2` instead
+  of `q^2` states per base state.  The kept states keep their names and
+  equations.  Off by default; delay models keep the full grid.
 - `simeta(n)` and `simeps(n)` re-simulate only the `n`-th ETA/EPS inside a
   model, keeping the others; a correlated element is drawn conditional on
   the others.  The index counts the omega/sigma as given, before items with
