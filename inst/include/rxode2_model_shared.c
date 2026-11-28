@@ -19,6 +19,7 @@ rxode2_fn0i _prodType = NULL;
 rxode2_fn0i _sumType = NULL;
 
 _update_par_ptr_p _update_par_ptr=NULL;
+_update_par_ptr_rd_p _update_par_ptr_rd=NULL;
 _rxPkTime_p _rxPkTime=NULL;
 _rxDoseTime_p _rxDoseTime=NULL;
 _rxLagTime_p _rxLagTime=NULL;
@@ -648,6 +649,7 @@ void _assignFuns0(void) {
   _compareFactorVal=(rxode2_compareFactorVal_fn) R_GetCCallable("rxode2", "compareFactorVal");
   _compareFactorInt=(rxode2_compareFactorInt_fn) R_GetCCallable("rxode2", "compareFactorInt");
   _update_par_ptr = (_update_par_ptr_p) R_GetCCallable("rxode2","_update_par_ptr");
+  _update_par_ptr_rd = (_update_par_ptr_rd_p) R_GetCCallable("rxode2","_update_par_ptr_rd");
   _rxPkTime = (_rxPkTime_p) R_GetCCallable("rxode2","_rxPkTime");
   _rxDoseTime = (_rxDoseTime_p) R_GetCCallable("rxode2","_rxDoseTime");
   _rxLagTime = (_rxLagTime_p) R_GetCCallable("rxode2","_rxLagTime");

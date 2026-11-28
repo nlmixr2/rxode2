@@ -429,6 +429,9 @@ typedef double (*linCmtB_p) (rx_solve *rx, int id,
                              double ka);
 
 typedef void (*_update_par_ptr_p)(double t, unsigned int id, rx_solve *rx, int idx);
+// covariates only at the parameter positions p < nrd with rd[p] != 0
+typedef void (*_update_par_ptr_rd_p)(double t, unsigned int id, rx_solve *rx, int idx,
+                                     const unsigned char *rd, int nrd);
 // record time PK-type statements read under nocb (rxode2#1429)
 typedef double (*_rxPkTime_p)(double t, unsigned int id, rx_solve *rx);
 // time f()/rate()/dur() read with nonmem = TRUE (rxode2#1583)

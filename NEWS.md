@@ -267,6 +267,13 @@
 - `rxPrune()` rewrites `if`/`else` and string levels with a C walker of the
   parsed model instead of the recursive R walker, with identical output; the
   R walker stays as a fallback (`bench/rxPrune.R`, #1772).
+- The compiled right-hand side (`dydt()`), its Jacobian and the
+  matrix-exponential / inductive-linearization functions interpolate only the
+  time-varying covariates and data columns they read.  Before, every call
+  interpolated every covariate, including `DV` (or another data column) that
+  only the model outputs read, as in an `ll()` endpoint; the outputs, initial
+  conditions and dosing functions still update all of them.  Results are
+  unchanged.
 
 ## Bug fixes
 
