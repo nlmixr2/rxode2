@@ -41,6 +41,8 @@ extern "C" {
 
   void simeta(void);
   void simeps(void);
+  void simetaI(int n);
+  void simepsI(int n);
   double phi(double qn);
   void _setThreadInd(int cid);
 

@@ -57,18 +57,31 @@ struct lsAdjSeg {
   double evFactor;           // multiply factor (type 6)
   double evAmt;              // raw dose amount (type 0 bolus; for the modeled-F mu)
   double evAmtF;             // F*amt, the amount that lands (for the modeled-alag mu)
-  int infCmt;                // cmt of an active MODELED infusion window (-1 = none) -> the
-                             // in-window forcing mu += h*durMult*dR/dp[cmt]*w[cmt] per step.
-  double infDurMult;         // forcing weight (1 for rate(), amt for dur())
-  int offCmt;                // this segment STARTS at a modeled-infusion OFF boundary (-1
-                             // none) -> off-transversality mu += offFac*dR/dp[cmt]*lam[cmt].
-  double offFac;             // -amt/R*durMult at the off boundary
+  // Infusion duals per cmt (empty = none), summed over overlapping windows:
+  //   infDurMult  in-window forcing mu += h*durMult*dR/dp[cmt]*w[cmt] per step
+  //               (1 for rate(), F*amt for dur());
+  //   infDfMult   dF forcing weight (raw amt/dur for dur() or a fixed dur);
+  //   offFac      this segment STARTS at an infusion OFF boundary: transversality
+  //               mu += offFac*dR/dp[cmt]*lam[cmt], offFac = -F*amt/R*durMult;
+  //   offDfFac    dF off-boundary weight (raw amt for rate() or a fixed rate).
+  // (per step, in a thread_local container: the arena's heap kind)
+  rxAdjHeapVec infDurMult, infDfMult, offFac, offDfFac;
+  rxAdjHeapVec infRate;  // InfusionRate[0..nBase) at segment start
+  rxAdjHeapVec lagRate;  // rate change per cmt from a lagged infusion start/stop
+                                // opening this segment -> mu += -dR*dlag/dp*lam[cmt].
 };
+// v[c] += x on a per-cmt infusion weight, allocated on first use
+static inline void lsAdjAddW(rxAdjHeapVec &v, int nBase, int c, double x) {
+  if (v.empty()) rxAdjAssign(v, nBase, 0.0);
+  v[c] += x;
+}
+
 // Thread-local recording state (serial per subject; par is P6).
 static thread_local bool                 lsAdjActive = false;
 static thread_local int                  lsAdjNbase  = 0;
 static thread_local std::vector<lsAdjStep> lsAdjSteps;
 static thread_local std::vector<lsAdjSeg>  lsAdjSegs;
+static thread_local rx_solving_options_ind *lsAdjInd = NULL;   // for the InfusionRate snapshot
 
 extern "C" int lsAdjIsActive(void) { return lsAdjActive ? 1 : 0; }
 
@@ -87,7 +100,7 @@ extern "C" void lsAdjInitStep(struct lsoda_context_t *ctx) {
   s.stepBegin = lsAdjSteps.size();
   s.stepEnd = lsAdjSteps.size();
   s.evType = -1; s.evCmt = -1; s.evFactor = 1.0; s.evAmt = 0.0; s.evAmtF = 0.0; // from the event table
-  s.infCmt = -1; s.infDurMult = 0.0; s.offCmt = -1; s.offFac = 0.0;
+  if (lsAdjInd != NULL) rxAdjAssign(s.infRate, lsAdjInd->InfusionRate, lsAdjInd->InfusionRate + lsAdjNbase);
   lsAdjSegs.push_back(std::move(s));
 }
 
@@ -151,8 +164,10 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
   _lsSsDur = _lsSsDur2 = _lsSsRate = _lsSsRate2 = 0.0;
   lsAdjNbase = nBase;
   lsAdjActive = true;                 // ind_liblsoda0 installs the ctx hooks
+  lsAdjInd = ind;
   ind_liblsoda0(rx, op, opt, solveid, c_dydt_ll, u_inis);
   lsAdjActive = false;
+  lsAdjInd = NULL;
 
   // this subject's failure, not op->badSolve, which any subject's sets
   if (ind->rc[0] < 0 || ind->err != 0) return;
@@ -205,10 +220,62 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     }
   }
 
+  // An infusion start/stop opening a segment changes the rate into its cmt by the
+  // jump in InfusionRate across the segment boundary.  A modeled alag() moves that
+  // time; a modeled F scales a fixed-dur rate (forcing rawRate*dF over the window) or
+  // stretches a fixed-rate window (amtRaw*dF at its off boundary).
+  if (op->adjDlagOff >= 0 || op->adjDfOff >= 0) {
+    // open fixed windows: cmt, start key, first segment and raw rate
+    struct lsFxWin { int cmt, key; size_t seg; double raw; };
+    std::vector<lsFxWin> fxOpen;
+    for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg) {
+      lsAdjSeg &Sg = lsAdjSegs[sg];
+      if ((int)Sg.infRate.size() != nBase) continue;
+      for (int i = 0; i < ind->n_all_times; ++i) {
+        if (fabs(ind->timeThread[ind->ix[i]] - Sg.t0) > 1e-8) continue;
+        int ev = getEvid(ind, ind->ix[i]);
+        int c = rk4sInfusionEventCmt(ev, nBase, true);
+        if (c < 0) continue;
+        double prev = (sg > 0 && (int)lsAdjSegs[sg - 1].infRate.size() == nBase) ? lsAdjSegs[sg - 1].infRate[c] : 0.0;
+        double dR = Sg.infRate[c] - prev;
+        int _wh, _c, _wh100, _whI, _wh0; getWh(ev, &_wh, &_c, &_wh100, &_whI, &_wh0);
+        if (op->adjDlagOff >= 0 && _wh0 == EVID0_REGULAR && dR != 0.0) {
+          if (Sg.lagRate.empty()) rxAdjAssign(Sg.lagRate, nBase, 0.0);
+          Sg.lagRate[c] = dR;
+        }
+        if (op->adjDfOff < 0 || (_whI != EVIDF_INF_RATE && _whI != EVIDF_INF_DUR)) continue;
+        std::vector<double> _y(eff, 0.0);
+        for (int b = 0; b < nBase; ++b) _y[b] = Sg.y0[b];
+        double f = getAmt(ind, ind->id, c, 1.0, Sg.t0, _y.data());
+        if (f == 0.0) continue;
+        double raw = getDose(ind, ind->ix[i]);   // the record's raw rate (negative at a stop)
+        int key = rk4sInfusionStartKey(ind, ind->ix[i]);
+        if (raw > 0.0) { fxOpen.push_back({c, key, sg, raw}); continue; }
+        // the window this stop closes: its own start, else the most recent one
+        int wi = -1;
+        for (size_t w = fxOpen.size(); w-- > 0;) {
+          if (fxOpen[w].cmt != c) continue;
+          if (key >= 0 && fxOpen[w].key == key) { wi = (int)w; break; }
+          if (wi < 0) wi = (int)w;
+        }
+        if (wi < 0) continue;
+        const lsFxWin W = fxOpen[wi];
+        fxOpen.erase(fxOpen.begin() + wi);
+        if (_whI == EVIDF_INF_DUR) {
+          for (size_t s2 = W.seg; s2 < sg; ++s2) lsAdjAddW(lsAdjSegs[s2].infDfMult, nBase, c, W.raw);
+        } else {
+          lsAdjAddW(Sg.offDfFac, nBase, c, W.raw * (Sg.t0 - lsAdjSegs[W.seg].t0) / f);
+        }
+      }
+    }
+  }
+
   // Reconstruct modeled rate()/dur() infusion windows for the dR/dp dual: pair each
-  // ON event with its matching OFF and derive R = amt/(t_off-t_on).  Segments in
+  // ON event with its matching OFF and derive R = F*amt/(t_off-t_on).  Segments in
   // [t_on,t_off) get the in-window forcing; the segment at t_off gets the off-
-  // boundary transversality.  durMult = 1 for rate(), amt for dur().
+  // boundary transversality.  durMult = 1 for rate(), F*amt for dur().  A modeled F
+  // adds amtRaw/dur*dF to the dur() forcing and amtRaw*dF at the rate() off boundary
+  // (t_off = t_on + F*amt/rate).
   bool hasInfusion = false;
   for (int i = 0; i < ind->n_all_times; ++i) {
     int ev = getEvid(ind, ind->ix[i]);
@@ -219,24 +286,39 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
         _whI == EVIDF_MODEL_RATE_OFF || _whI == EVIDF_MODEL_DUR_OFF) hasInfusion = true;
     if ((_whI == EVIDF_MODEL_RATE_ON || _whI == EVIDF_MODEL_DUR_ON) && _cmt >= 0 && _cmt < nBase && op->adjDrateOff >= 0) {
       double tOn = ind->timeThread[ind->ix[i]];
-      double amt = getDose(ind, ind->ix[i]);
+      double amtRaw = getDose(ind, ind->ix[i]);
       bool isDur = (_whI == EVIDF_MODEL_DUR_ON);
-      // matching OFF event (same cmt, next off time > tOn)
+      // its OFF event: the record right after the start (as the forward solve pairs
+      // them), else the next off time > tOn into the same cmt
       double tOff = R_PosInf;
-      for (int j = 0; j < ind->n_all_times; ++j) {
+      int ixOff = ind->ix[i] + 1;
+      if (ixOff < ind->n_all_times) {
+        int _wh2, _cmt2, _wh1002, _whI2, _wh02; getWh(getEvid(ind, ixOff), &_wh2, &_cmt2, &_wh1002, &_whI2, &_wh02);
+        if ((_whI2 == EVIDF_MODEL_RATE_OFF || _whI2 == EVIDF_MODEL_DUR_OFF) && _cmt2 == _cmt) tOff = ind->timeThread[ixOff];
+      }
+      for (int j = 0; !R_FINITE(tOff) && j < ind->n_all_times; ++j) {
         int ej = getEvid(ind, ind->ix[j]); if (isObs(ej) || !isDose(ej)) continue;
         int _wh2, _cmt2, _wh1002, _whI2, _wh02; getWh(ej, &_wh2, &_cmt2, &_wh1002, &_whI2, &_wh02);
         if ((_whI2 == EVIDF_MODEL_RATE_OFF || _whI2 == EVIDF_MODEL_DUR_OFF) && _cmt2 == _cmt) {
-          double te = ind->timeThread[ind->ix[j]]; if (te > tOn + 1e-9 && te < tOff) tOff = te;
+          double te = ind->timeThread[ind->ix[j]]; if (te > tOn + 1e-9) tOff = te;
         }
       }
       if (!R_FINITE(tOff) || tOff - tOn < 1e-12) continue;
+      std::vector<double> _y(eff, 0.0);             // F evaluated at the window's start state
+      for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg)
+        if (fabs(lsAdjSegs[sg].t0 - tOn) < 1e-8) { for (int c = 0; c < nBase; ++c) _y[c] = lsAdjSegs[sg].y0[c]; break; }
+      double amt = getAmt(ind, ind->id, _cmt, amtRaw, tOn, _y.data());
       double R = amt / (tOff - tOn);
       double durMult = isDur ? amt : 1.0;
       for (size_t sg = 0; sg < lsAdjSegs.size(); ++sg) {
         double t0s = lsAdjSegs[sg].t0;
-        if (t0s >= tOn - 1e-8 && t0s < tOff - 1e-8) { lsAdjSegs[sg].infCmt = _cmt; lsAdjSegs[sg].infDurMult = durMult; }
-        else if (fabs(t0s - tOff) < 1e-8) { lsAdjSegs[sg].offCmt = _cmt; lsAdjSegs[sg].offFac = -(amt / R) * durMult; }
+        if (t0s >= tOn - 1e-8 && t0s < tOff - 1e-8) {
+          lsAdjAddW(lsAdjSegs[sg].infDurMult, nBase, _cmt, durMult);
+          if (isDur) lsAdjAddW(lsAdjSegs[sg].infDfMult, nBase, _cmt, amtRaw / (tOff - tOn));
+        } else if (fabs(t0s - tOff) < 1e-8) {
+          lsAdjAddW(lsAdjSegs[sg].offFac, nBase, _cmt, -(amt / R) * durMult);
+          if (!isDur) lsAdjAddW(lsAdjSegs[sg].offDfFac, nBase, _cmt, amtRaw);
+        }
       }
     }
   }
@@ -285,9 +367,13 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
     // modeled rate()/dur() in-window forcing: inside the infusion the RHS gains +R, so
     // F_p[cmt] gains durMult*dR/dp -> mu += h*durMult*dR/dp[cmt]*w[cmt] (lhs holds the
     // calc_lhs at this step's y, incl. the rx__adjDrate block).
-    if (op->adjDrateOff >= 0) { int ic = lsAdjSegs[st.seg].infCmt;
-      if (ic >= 0) { const double *dR = &lhs[op->adjDrateOff]; double dm = lsAdjSegs[st.seg].infDurMult;
-        for (int p = 0; p < np; ++p) mu[p] += h * dm * dR[ic * np + p] * w[ic]; } }
+    { const lsAdjSeg &Sw = lsAdjSegs[st.seg];
+      if (op->adjDrateOff >= 0 && !Sw.infDurMult.empty()) { const double *dR = &lhs[op->adjDrateOff];
+        for (int ic = 0; ic < nBase; ++ic) { double dm = Sw.infDurMult[ic]; if (dm == 0.0) continue;
+          for (int p = 0; p < np; ++p) mu[p] += h * dm * dR[ic * np + p] * w[ic]; } }
+      if (op->adjDfOff >= 0 && !Sw.infDfMult.empty()) { const double *dF = &lhs[op->adjDfOff];
+        for (int ic = 0; ic < nBase; ++ic) { double dfm = Sw.infDfMult[ic]; if (dfm == 0.0) continue;
+          for (int p = 0; p < np; ++p) mu[p] += h * dfm * dF[ic * np + p] * w[ic]; } } }
     for (int j = 1; j <= nq; ++j) for (int i1 = nq; i1 >= j; --i1) { double *dst = &adjPred[(size_t)(i1 + 1) * nBase]; const double *src = &adjPred[(size_t)i1 * nBase]; for (int c = 0; c < nBase; ++c) dst[c] += src[c]; }
     std::fill(lamFlat.begin(), lamFlat.end(), 0.0);
     for (int j = 1; j <= nq + 1; ++j) { double *lamj = &lamFlat[(size_t)j * nBase]; const double *pj = &adjPred[(size_t)j * nBase]; for (int c = 0; c < nBase; ++c) lamj[c] = pj[c]; }
@@ -351,8 +437,12 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
       // modeled rate()/dur() OFF-boundary transversality: the off time t_on+amt/R shifts
       // with R -> mu += (-amt/R*durMult)*dR/dp[cmt]*lam_cmt(t_off).  (lhs holds calc_lhs
       // at this off segment's (t0,y0); lam_cmt(t_off) = lam_y0[cmt].)
-      if (op->adjDrateOff >= 0 && Sg.offCmt >= 0) { const double *dR = &lhs[op->adjDrateOff]; int oc = Sg.offCmt;
-        for (int p = 0; p < np; ++p) mu[p] += Sg.offFac * dR[oc * np + p] * wSeed[oc]; }
+      if (op->adjDrateOff >= 0 && !Sg.offFac.empty()) { const double *dR = &lhs[op->adjDrateOff];
+        for (int oc = 0; oc < nBase; ++oc) { if (Sg.offFac[oc] == 0.0) continue;
+          for (int p = 0; p < np; ++p) mu[p] += Sg.offFac[oc] * dR[oc * np + p] * wSeed[oc]; } }
+      if (op->adjDfOff >= 0 && !Sg.offDfFac.empty()) { const double *dF = &lhs[op->adjDfOff];
+        for (int oc = 0; oc < nBase; ++oc) { if (Sg.offDfFac[oc] == 0.0) continue;
+          for (int p = 0; p < np; ++p) mu[p] += Sg.offDfFac[oc] * dF[oc * np + p] * wSeed[oc]; } }
       // event dPhi/dp explicit-parameter quadrature (every segment start): modeled
       // F -> mu += amt*dF/dp*lam_y0[c]; alag -> mu += -F*amt*dlag/dp*(lam_y0^T F_X[:,c]).
       if ((Sg.evType == 0 || Sg.evType == 3) && Sg.evCmt >= 0) {   // a dose (after a reset for evid = 4)
@@ -362,6 +452,9 @@ extern "C" void ind_liblsodaadj_0(rx_solve *rx, rx_solving_options *op, struct l
           double sc = 0; for (int i = 0; i < nBase; ++i) sc += wSeed[i] * fx0[i * nBase + c];
           for (int p = 0; p < np; ++p) mu[p] += -Sg.evAmtF * dlag[c * np + p] * sc; }
       }
+      if (op->adjDlagOff >= 0 && !Sg.lagRate.empty()) { const double *dlag = &lhs[op->adjDlagOff];
+        for (int c = 0; c < nBase; ++c) if (Sg.lagRate[c] != 0.0)
+          for (int p = 0; p < np; ++p) mu[p] += -Sg.lagRate[c] * dlag[c * np + p] * wSeed[c]; }
       if (seg == 0) break;
       // event jump dPhi/dy^T maps lam_y0 -> costate of y(tau-) handed to the previous
       // segment: bolus (I) unchanged | reset all 0 | replace[c]->0 | multiply[c]*=factor.

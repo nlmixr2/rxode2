@@ -107,7 +107,7 @@ extern "C" void ind_vv_0(rx_solve *rx, rx_solving_options *op, int solveid, int 
   double xp = getAllTimes(ind, 0);
   ind->solvedIdx = 0;
 
-  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
+  int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
   vv_system sys(ind, c_dydt, neq);
 
   double *yp;
