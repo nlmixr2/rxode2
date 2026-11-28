@@ -270,6 +270,11 @@
 
 ## Bug fixes
 
+- `liblsoda` resets its maxsteps ("too much work", IDID -1) counter at every
+  restart (`istate = 1`), as ODEPACK does.  Before, the steps of all dose
+  restarts within one solve added up against `maxsteps`, so long dosing
+  histories or `ssMethod = "iterate"` could fail while `dop853` solved them.
+  Solves that never reached `maxsteps` are bitwise unchanged.
 - The explicit Runge-Kutta discrete adjoint (`rk4s`, `dop853s` and the other
   explicit `*s` methods) gives the exact gradient for a parameter-dependent
   `alag()` when the right-hand side is nonlinear.  The lag-time term was exact
