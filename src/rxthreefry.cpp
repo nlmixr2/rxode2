@@ -36,6 +36,7 @@ using namespace arma;
 
 #include "rxnbinom.h"
 #include "rxtrunc.h"
+#include "rxDrawTape.h"
 
 extern "C" {
   extern rx_solve rx_global;
@@ -895,6 +896,117 @@ static inline rx_solving_options_ind *rxThreadInd() {
   return &inds_thread[t];
 }
 
+extern "C" uint32_t getRxLastSeed(void);
+
+// A subject's solve-pass draws (rxode2#1812), see src/rxDrawTape.h.  Slot
+// drawKey - 1 holds cnt[slot] draws starting at vals[off[slot]].
+struct rxDrawTapeS {
+  std::vector<double> vals;
+  std::vector<int> off;
+  std::vector<int> cnt;
+  // eng[0]: calc_lhs() draws, the stream the output pass draws from
+  // (setSeedEngLhs()), so a draw replayed there has the value it had before;
+  // eng[1]: initial conditions and mtime(), a disjoint region of that stream.
+  sitmo::threefry eng[2];
+  bool seeded = false;
+  bool lhsUsed = false;
+};
+
+extern "C" void rxDrawTapeReset(rx_solving_options_ind *ind) {
+  ind->drawKey = 0;
+  ind->drawPos = 0;
+  rxDrawTapeS *tp = (rxDrawTapeS*)ind->drawTape;
+  if (tp == NULL) return;
+  tp->vals.clear();
+  tp->off.clear();
+  tp->cnt.clear();
+  tp->seeded = false;
+  tp->lhsUsed = false;
+}
+
+extern "C" void rxDrawTapeFree(rx_solving_options_ind *ind) {
+  delete (rxDrawTapeS*)ind->drawTape;
+  ind->drawTape = NULL;
+  ind->drawKey = 0;
+  ind->drawPos = 0;
+}
+
+// The output pass continues the calc_lhs() stream the solve pass used, so a
+// draw it makes afresh does not repeat a recorded one.
+extern "C" void rxDrawTapeResumeLhs(rx_solving_options_ind *ind) {
+  rxDrawTapeS *tp = (rxDrawTapeS*)ind->drawTape;
+  if (tp == NULL || !tp->lhsUsed) return;
+  _eng[rx_get_thread(op_global.cores)] = tp->eng[0];
+}
+
+// Records draw `pos` of tape slot `slot`.  A slot's draws stay contiguous: one
+// that is not the last recorded moves to the end before it grows.
+static inline void rxDrawTapePut(rxDrawTapeS *tp, int slot, int pos, double v) {
+  if (slot >= (int)tp->off.size()) {
+    tp->off.resize(slot + 1, -1);
+    tp->cnt.resize(slot + 1, 0);
+  }
+  if (tp->off[slot] < 0) {
+    tp->off[slot] = (int)tp->vals.size();
+    tp->cnt[slot] = 0;
+  }
+  if (pos != tp->cnt[slot]) return;
+  if (tp->off[slot] + tp->cnt[slot] != (int)tp->vals.size()) {
+    int o = tp->off[slot];
+    tp->off[slot] = (int)tp->vals.size();
+    for (int j = 0; j < tp->cnt[slot]; j++) {
+      double w = tp->vals[o + j];
+      tp->vals.push_back(w);
+    }
+  }
+  tp->vals.push_back(v);
+  tp->cnt[slot]++;
+}
+
+// A solve-pass draw from the subject's own stream for this slot's context.
+template <typename F>
+static inline double rxDrawTapeSolveDraw(rx_solving_options_ind *ind,
+                                         rxDrawTapeS *tp, int slot, F draw) {
+  if (!tp->seeded) {
+    uint32_t k = getRxLastSeed() + (uint32_t)ind->id;
+    seedEngAt(tp->eng[0], k, RX_LHS_STREAM_OFFSET);
+    seedEngAt(tp->eng[1], k, RX_LHS_STREAM_OFFSET + (1ULL << 62));
+    tp->seeded = true;
+  }
+  int e = (slot % 3 == RX_DRAW_LHS) ? 0 : 1;
+  if (e == 0) tp->lhsUsed = true;
+  int t = rx_get_thread(op_global.cores);
+  sitmo::threefry save = _eng[t];
+  _eng[t] = tp->eng[e];
+  ind->inLhs = 1;
+  double v = draw();
+  ind->inLhs = 0;
+  tp->eng[e] = _eng[t];
+  _eng[t] = save;
+  return v;
+}
+
+// Draws through draw(): replayed from the subject's tape under a key, else
+// made in the output pass only (0 otherwise, as d/dt() sees them).
+template <typename F>
+static inline double rxTapeDraw(rx_solving_options_ind *ind, F draw) {
+  int key = ind->drawKey;
+  if (key == 0) return ind->inLhs ? draw() : 0.0;
+  rxDrawTapeS *tp = (rxDrawTapeS*)ind->drawTape;
+  if (tp == NULL) {
+    tp = new rxDrawTapeS();
+    ind->drawTape = tp;
+  }
+  int slot = key - 1;
+  int pos = ind->drawPos++;
+  if (slot < (int)tp->off.size() && tp->off[slot] >= 0 && pos < tp->cnt[slot]) {
+    return tp->vals[tp->off[slot] + pos];
+  }
+  double v = ind->inLhs ? draw() : rxDrawTapeSolveDraw(ind, tp, slot, draw);
+  rxDrawTapePut(tp, slot, pos, v);
+  return v;
+}
+
 static inline double _rxnbinom__(double size, double p) {
   boost::random::negative_binomial_distribution_r<> dist(size, p);
   return (double) dist(_eng[rx_get_thread(op_global.cores)]);
@@ -908,8 +1020,9 @@ static inline double _rxnbinom_mu_(double size, double mu) {
 extern "C" double rxnbinomMu(int size, double mu) {
   if (ISNA(size) || ISNA(mu)) return NA_REAL;
   rx_solving_options_ind* ind = rxThreadInd();
-  if (!ind->inLhs) return 0;
-  return _rxnbinom_mu_(size, mu);
+  return rxTapeDraw(ind, [&]() -> double {
+    return _rxnbinom_mu_(size, mu);
+  });
 }
 
 extern "C" double rinbinomMu(int id, int size, double mu){
@@ -952,8 +1065,9 @@ IntegerVector rxnbinomMu_(int size, double mu, int n, int ncores){
 extern "C" double rxnbinom(int size, double prob) {
   if (ISNA(size) || ISNA(prob)) return NA_REAL;
   rx_solving_options_ind* ind = rxThreadInd();
-  if (!ind->inLhs) return 0;
-  return _rxnbinom__(size, prob);
+  return rxTapeDraw(ind, [&]() -> double {
+    return _rxnbinom__(size, prob);
+  });
 }
 
 extern "C" double rinbinom(int id, int size, double prob){
@@ -997,9 +1111,10 @@ IntegerVector rxnbinom_(double size, double prob, int n, int ncores){
 extern "C" double rxbinom(int n, double prob){
   if (ISNA(n) || ISNA(prob)) return NA_REAL;
   rx_solving_options_ind* ind = rxThreadInd();
-  if (!ind->inLhs) return 0;
-  boost::random::binomial_distribution<int> d(n, prob);
-  return (double)d(_eng[rx_get_thread(op_global.cores)]);
+  return rxTapeDraw(ind, [&]() -> double {
+    boost::random::binomial_distribution<int> d(n, prob);
+    return (double)d(_eng[rx_get_thread(op_global.cores)]);
+  });
 }
 
 extern "C" double ribinom(int id, int n, double prob){
@@ -1044,9 +1159,10 @@ IntegerVector rxbinom_(int n0, double prob, int n, int ncores){
 extern "C" double rxcauchy(double location, double scale){
   rx_solving_options_ind* ind = rxThreadInd();
   if (ISNA(location) || ISNA(scale)) return NA_REAL;
-  if (!ind->inLhs) return 0;
-  boost::random::cauchy_distribution<double> d(location, scale);
-  return d(_eng[rx_get_thread(op_global.cores)]);
+  return rxTapeDraw(ind, [&]() -> double {
+    boost::random::cauchy_distribution<double> d(location, scale);
+    return d(_eng[rx_get_thread(op_global.cores)]);
+  });
 }
 
 extern "C" double ricauchy(int id, double location, double scale){
@@ -1091,10 +1207,11 @@ NumericVector rxcauchy_(double location, double scale, int n, int ncores) {
 extern "C" double rxchisq(double df){
   if (ISNA(df)) return NA_REAL;
   rx_solving_options_ind* ind = rxThreadInd();
-  if (!ind->inLhs) return 0;
-  // Non central not supported in C++11
-  boost::random::chi_squared_distribution<double> d(df);
-  return d(_eng[rx_get_thread(op_global.cores)]);
+  return rxTapeDraw(ind, [&]() -> double {
+    // Non central not supported in C++11
+    boost::random::chi_squared_distribution<double> d(df);
+    return d(_eng[rx_get_thread(op_global.cores)]);
+  });
 }
 
 extern "C" double richisq(int id, double df){
@@ -1140,9 +1257,10 @@ NumericVector rxchisq_(double df, int n, int ncores){
 extern "C" double rxexp(double rate){
   if (ISNA(rate)) return NA_REAL;
   rx_solving_options_ind* ind = rxThreadInd();
-  if (!ind->inLhs) return 0;
-  boost::random::exponential_distribution<double> d(rate);
-  return d(_eng[rx_get_thread(op_global.cores)]);
+  return rxTapeDraw(ind, [&]() -> double {
+    boost::random::exponential_distribution<double> d(rate);
+    return d(_eng[rx_get_thread(op_global.cores)]);
+  });
 }
 
 extern "C" double riexp(int id, double rate){
@@ -1187,9 +1305,10 @@ NumericVector rxexp_(double rate, int n, int ncores){
 extern "C" double rxf(double df1, double df2) {
   if (ISNA(df1) || ISNA(df2)) return NA_REAL;
   rx_solving_options_ind* ind = rxThreadInd();
-  if (!ind->inLhs) return 0;
-  boost::random::fisher_f_distribution<double> d(df1, df2);
-  return d(_eng[rx_get_thread(op_global.cores)]);
+  return rxTapeDraw(ind, [&]() -> double {
+    boost::random::fisher_f_distribution<double> d(df1, df2);
+    return d(_eng[rx_get_thread(op_global.cores)]);
+  });
 }
 
 extern "C" double rif(int id, double df1, double df2){
@@ -1240,8 +1359,9 @@ double rxgamma(rx_solving_options_ind* ind, double shape, double rate){
 }
 
 extern "C" double rxgamma(double shape, double rate){
-  // R uses rate; C++ uses scale
-  return rxgamma(rxThreadInd(), shape, rate);
+  if (ISNA(shape) || ISNA(rate)) return NA_REAL;
+  rx_solving_options_ind* ind = rxThreadInd();
+  return rxTapeDraw(ind, [&]() -> double { return rxgamma(ind, shape, rate); });
 }
 
 extern "C" double rigamma(int id, double shape, double rate) {
@@ -1297,7 +1417,9 @@ double rxlnorm(rx_solving_options_ind* ind, double meanlog, double sdlog){
 }
 
 extern "C" double rxlnorm(double meanlog, double sdlog){
-  return rxlnorm(rxThreadInd(), meanlog, sdlog);
+  if (ISNA(meanlog) || ISNA(sdlog)) return NA_REAL;
+  rx_solving_options_ind* ind = rxThreadInd();
+  return rxTapeDraw(ind, [&]() -> double { return rxlnorm(ind, meanlog, sdlog); });
 }
 
 extern "C" double rilnorm(int id, double meanlog, double sdlog) {
@@ -1357,8 +1479,9 @@ double rxbeta(rx_solving_options_ind* ind, double shape1, double shape2) {
 }
 
 extern "C" double rxbeta(double shape1, double shape2) {
+  if (ISNA(shape1) || ISNA(shape2)) return NA_REAL;
   rx_solving_options_ind* ind = rxThreadInd();
-  return rxbeta(ind, shape1, shape2);
+  return rxTapeDraw(ind, [&]() -> double { return rxbeta(ind, shape1, shape2); });
 }
 
 extern "C" double ribeta(int id, double shape1, double shape2) {
@@ -1407,9 +1530,10 @@ NumericVector rxbeta_(double shape1, double shape2, int n, int ncores){
 extern "C" double rxgeom(double prob){
   if (ISNA(prob)) return NA_REAL;
   rx_solving_options_ind* ind = rxThreadInd();
-  if (!ind->inLhs) return 0;
-  boost::random::geometric_distribution<int> d(prob);
-  return (double) d(_eng[rx_get_thread(op_global.cores)]);
+  return rxTapeDraw(ind, [&]() -> double {
+    boost::random::geometric_distribution<int> d(prob);
+    return (double) d(_eng[rx_get_thread(op_global.cores)]);
+  });
 }
 
 extern "C" double rigeom(int id, double prob){
@@ -1454,9 +1578,10 @@ IntegerVector rxgeom_(double prob, int n, int ncores){
 extern "C" double rxnorm(double mean, double sd){
   if (ISNA(mean) || ISNA(sd)) return NA_REAL;
   rx_solving_options_ind* ind = rxThreadInd();
-  if (!ind->inLhs) return 0.0;
-  boost::random::normal_distribution<double> d(mean, sd);
-  return d(_eng[rx_get_thread(op_global.cores)]);
+  return rxTapeDraw(ind, [&]() -> double {
+    boost::random::normal_distribution<double> d(mean, sd);
+    return d(_eng[rx_get_thread(op_global.cores)]);
+  });
 }
 
 // Raw normal draw from the current thread's threefry engine, WITHOUT the inLhs
@@ -1523,9 +1648,10 @@ NumericVector rxnorm_(double mean, double sd, int n, int ncores){
 extern "C" double rxpois(double lambda){
   if (ISNA(lambda)) return NA_REAL;
   rx_solving_options_ind* ind = rxThreadInd();
-  if (!ind->inLhs) return 0.0;
-  boost::random::poisson_distribution<int> d(lambda);
-  return (double)d(_eng[rx_get_thread(op_global.cores)]);
+  return rxTapeDraw(ind, [&]() -> double {
+    boost::random::poisson_distribution<int> d(lambda);
+    return (double)d(_eng[rx_get_thread(op_global.cores)]);
+  });
 }
 
 extern "C" double ripois(int id, double lambda){
@@ -1570,9 +1696,10 @@ IntegerVector rxpois_(double lambda, int n, int ncores){
 extern "C" double rxt_(double df){
   if (ISNA(df)) return NA_REAL;
   rx_solving_options_ind* ind = rxThreadInd();
-  if (!ind->inLhs) return 0.0;
-  boost::random::student_t_distribution<double> d(df);
-  return d(_eng[rx_get_thread(op_global.cores)]);
+  return rxTapeDraw(ind, [&]() -> double {
+    boost::random::student_t_distribution<double> d(df);
+    return d(_eng[rx_get_thread(op_global.cores)]);
+  });
 }
 
 extern "C" double rit_(int id, double df){
@@ -1627,7 +1754,9 @@ double rxunif(rx_solving_options_ind* ind, double low, double hi) {
   return d(_eng[rx_get_thread(op_global.cores)]);
 }
 extern "C" double rxunif(double low, double hi) {
-  return rxunif(rxThreadInd(), low, hi);
+  if (ISNA(low) || ISNA(hi)) return NA_REAL;
+  rx_solving_options_ind* ind = rxThreadInd();
+  return rxTapeDraw(ind, [&]() -> double { return rxunif(ind, low, hi); });
 }
 
 extern "C" double riunif(int id, double low, double hi) {
@@ -1680,9 +1809,10 @@ NumericVector rxunif_(double low, double hi, int n, int ncores){
 extern "C" double rxweibull(double shape, double scale) {
   if (ISNA(shape) || ISNA(scale)) return NA_REAL;
   rx_solving_options_ind* ind = rxThreadInd();
-  if (!ind->inLhs) return 0.0;
-  boost::random::weibull_distribution<double> d(shape, scale);
-  return d(_eng[rx_get_thread(op_global.cores)]);
+  return rxTapeDraw(ind, [&]() -> double {
+    boost::random::weibull_distribution<double> d(shape, scale);
+    return d(_eng[rx_get_thread(op_global.cores)]);
+  });
 }
 
 

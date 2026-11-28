@@ -36,6 +36,7 @@
 #include "../inst/include/rxode2random_fillVec.h"
 #include "rxomp.h"
 #include "rxode2lincmtLink.h"
+#include "rxDrawTape.h"
 #include "rxMemAvail.h"
 #include "solveWarn.h"
 #include "solveDiag.h"
@@ -2171,6 +2172,7 @@ static void rxFreeInd(rx_solving_options_ind *ind) {
   // rxode2lincmt, so they are freed there too.
   _p_linCmtFreeInd(ind);
   _p_linCmtBindFree(ind);
+  rxDrawTapeFree(ind);
 }
 
 extern "C" void gFree(){

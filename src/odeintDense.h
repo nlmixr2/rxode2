@@ -49,7 +49,9 @@ static int rxOdeintDenseSegment(DenseStepper &dense_stepper, System &sys,
         double *slot = getSolve(obs);
         dense_stepper.calc_state(t_obs, state);
         for (int j = 0; j < neqOde; j++) slot[j] = state[j];
+        rxDrawKeySet(ind, raw, RX_DRAW_LHS);
         calc_lhs(solveid, t_obs, slot, ind->lhs);
+        rxDrawKeyClear(ind);
         obs++;
         nstep = 0;
       }

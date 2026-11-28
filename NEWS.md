@@ -270,6 +270,12 @@
 
 ## Bug fixes
 
+- In-model random draws (`rxunif()`, `rxnorm()`, `rxpois()`, ...) no longer
+  evaluate to 0 while solving: a draw feeding a pushed event (`replace()`,
+  `bolus()`, `evid_()`, ...), an `mtime()` or an initial condition is now a
+  real draw, reproducible from the seed, and the output shows the same draw
+  the dynamics used (#1812).  Draws inside `d/dt()` are still 0.
+
 - The explicit Runge-Kutta discrete adjoint (`rk4s`, `dop853s` and the other
   explicit `*s` methods) gives the exact gradient for a parameter-dependent
   `alag()` when the right-hand side is nonlinear.  The lag-time term was exact
