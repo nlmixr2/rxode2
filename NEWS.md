@@ -467,6 +467,11 @@
 
 ### Solving
 
+- `rxSaveState()` and `rxSolve(serializeFile=)` no longer read past the end of
+  the event-id buffer when a model has more parameters than the translated
+  event table has columns, and a restored state now places the covariate and
+  string-`lhs` tables where the solve that saved them did (#1760).
+
 - An implicit method (`ros4`, `iem`, `ros43`, ...) in a solve set up from C,
   as `nlmixr2` estimation does, now uses the model's analytic Jacobian, as
   `rxSolve()` does; before, it read an empty Jacobian, so stiff fits ran
