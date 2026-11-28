@@ -699,6 +699,9 @@ et.default <- function(
   }
 
   # ---- Infusion/SS dose without explicit amt ----
+  if (!.addlMissing && is.null(amt) && (!.rateMissing || !.ssMissing)) {
+    .etAssertAddlSs(eval(.addlExpr, envir = envir), 0L)
+  }
   .ret <- .etHandleInfusionNoAmt(
     amt,
     .amtExpr,

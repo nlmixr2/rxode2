@@ -72,6 +72,16 @@ static inline bool etRateDurIsDose(double x) {
   return x > 0.0 || x == -1.0 || x == -2.0;
 }
 
+// as<IntegerVector>() maps a value in (-1, 0) to 0 and one below INT_MIN to
+// NA; keep it negative so the row loop rejects it like any negative 'addl'/'ss'.
+static inline void etKeepNegative(IntegerVector &out, SEXP in) {
+  if (TYPEOF(in) != REALSXP) return;
+  double *x = REAL(in);
+  for (R_xlen_t j = 0; j < out.size(); ++j) {
+    if (x[j] < 0.0 && (out[j] == 0 || out[j] == NA_INTEGER)) out[j] = -1;
+  }
+}
+
 static inline bool rxIsNumInt(RObject obj) {
   int type = obj.sexp_type();
   if (type == REALSXP || type == 13) {
@@ -2094,6 +2104,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     if (rxIsNumIntLgl(inData[ssCol])) {
       // NA by default is NA_logical
       inSs = as<IntegerVector>(inData[ssCol]);
+      etKeepNegative(inSs, inData[ssCol]);
     } else {
       stop(_("steady state column ('ss') needs to be an integer"));
     }
@@ -2177,6 +2188,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   if (addlCol != -1) {
     if (rxIsNumIntLgl(inData[addlCol])) {
       inAddl = as<IntegerVector>(inData[addlCol]);
+      etKeepNegative(inAddl, inData[addlCol]);
     } else {
       stop(_("number of additional doses ('addl') needs to be an integer"));
     }
@@ -2467,6 +2479,14 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
        (mdvNaNoDose ? 2 : inEvid[i]));
     if (obsAmtDose) obsAmtDoseRows.push_back(i + 1);
 
+    if (addlCol != -1 && !IntegerVector::is_na(inAddl[i]) && inAddl[i] < 0) {
+      stop(_("'addl' cannot be negative (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
+    }
+    // A positive 'ss' other than 1 or 2 (e.g. the 99 placeholder in
+    // nlmixr2data) stays an ordinary dose; only a negative one is rejected.
+    if (ssCol != -1 && !IntegerVector::is_na(inSs[i]) && inSs[i] < 0) {
+      stop(_("'ss' cannot be negative (id: %s, row: %d)"), CHAR(idLvl[cid-1]), i+1);
+    }
     // SS flag
     flg=1;
     if (ssCol == -1) flg=1;
