@@ -427,6 +427,23 @@ rxTest({
     expect_false("lMtt2" %in% res$iniDf$name)
   })
 
+  test_that("convertAbsForceLongerDelay detects an analytic transit first path", {
+    .ana <- function() res0 |> addTransitAnalytic()
+    .tt <- .ana() |>
+      addSecondAbsorption(type = "first", delay = "transit", transitType = "analytic") |>
+      convertAbsForceLongerDelay()
+    expect_equal(modelExtract(.tt, "Mtt2"), "Mtt2 <- Mtt + diffMtt2")
+    expect_true("diffMtt2" %in% .tt$iniDf$name)
+    expect_false("lMtt2" %in% .tt$iniDf$name)
+
+    .tl <- .ana() |>
+      addSecondAbsorption(type = "first", delay = "lag") |>
+      convertAbsForceLongerDelay()
+    expect_equal(modelExtract(.tl, "lag(depot2)"), "lag(depot2) <- Mtt + diffTlag2")
+    expect_true("diffTlag2" %in% .tl$iniDf$name)
+    expect_false("llagDepot2" %in% .tl$iniDf$name)
+  })
+
   test_that("convertAbsForceLongerDelay ties a transit second delay to the first delay", {
     # lag first, transit second
     res <- res0 |>
