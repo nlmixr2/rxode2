@@ -131,4 +131,61 @@ rxTest({
     .s <- rxSolve(f, et(seq(0, 4, by = 1)))
     expect_equal(.s$tot, exp(-0.2 * .s$time), tolerance = 1e-5)
   })
+  test_that("PDE models work with endpoints and model piping", {
+    f <- function() {
+      ini({
+        tD <- log(0.1)
+        tk <- log(0.2)
+        prop.sd <- 0.1
+        eta.D ~ 0.1
+      })
+      model({
+        D <- exp(tD + eta.D)
+        k <- exp(tk)
+        grid(x, from = 0, to = 1, n = 5)
+        d/dt(C[x]) <- D * d2x(C) - k * C[x]
+        flux(C, x = 0) <- 1
+        cp <- C[x = 1]
+        cp ~ prop(prop.sd)
+      })
+    }
+    ui <- f()
+    expect_equal(ui$state, paste0("C_", 1:5))
+    expect_equal(ui$predDf$cond, "cp")
+    expect_equal(ui$muRefTable$theta, "tD")
+    ## resize the grid
+    ui2 <- ui |> model(grid(x, from = 0, to = 1, n = 10))
+    expect_equal(ui2$state, paste0("C_", 1:10))
+    expect_equal(sum(vapply(ui2$lstExpr, .rxPdeIsGridLine, logical(1))), 1L)
+    ## replace a boundary condition and the PDE
+    ui3 <- ui |> model(flux(C, x = 0) <- 2)
+    expect_equal(ui3$lstExpr[[5]], quote(flux(C, x = 0) <- 2))
+    ui4 <- ui |> model(d/dt(C[x]) <- D * d2x(C))
+    expect_equal(ui4$lstExpr[[4]], quote(d/dt(C[x]) <- D * d2x(C)))
+    ## named grid() arguments in any order
+    ui6 <- ui |> model(grid(from = 0, to = 1, n = 3, name = x))
+    expect_equal(ui6$state, paste0("C_", 1:3))
+    ## a new grid is appended
+    ui5 <- ui |> model(grid(y, from = 0, to = 2, n = 2))
+    expect_equal(sum(vapply(ui5$lstExpr, .rxPdeIsGridLine, logical(1))), 2L)
+    .s <- rxSolve(ui, et(0:2), nStud = 1)
+    expect_true(all(is.finite(.s$cp)))
+  })
+  test_that(".rxPrune expands grids before re-printing calls", {
+    .p <- .rxPrune(quote({
+      k <- THETA[1]
+      grid(x, from = 0, to = 1, n = 2)
+      d/dt(C[x]) <- d2x(C) - k * C[x]
+      value(C, x = 0) <- 0
+      cp <- C[x = 1]
+    }))
+    expect_false(grepl("grid|value|\\[x", .p))
+    expect_true(grepl("cp<-C_2", .p, fixed = TRUE))
+    expect_true(grepl("k<-THETA[1]", .p, fixed = TRUE))
+    .p <- .rxPrune(quote({
+      grid(n = 2, from = 0, to = 1, name = x)
+      d/dt(C[x]) <- d2x(C)
+    }))
+    expect_false(grepl("grid", .p))
+  })
 })

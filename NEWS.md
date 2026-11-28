@@ -21,7 +21,9 @@
   declares a gridded state expanded into ODE states `C_1, ..., C_n`, with the
   difference operators `d2x()`/`dx()`, the boundary conditions `value()` and
   `flux()`, `integrate()` and point values `C[x = value]` (see `?rxPde`,
-  #1759).
+  #1759).  Piping a `grid()` line replaces the grid of that name, and
+  `.rxPrune()` expands the grids first, so nlmixr2 estimation of these models
+  works.
 - The model-building piping functions moved here from 'nlmixr2lib':
   absorption (`addDepot()`, `addTransit()`, `addWeibullAbs()`,
   `addZeroOrderAbs()`, `addSecondAbsorption()`, `convertTransitMtt()` and
