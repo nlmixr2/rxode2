@@ -209,7 +209,9 @@ it afterwards.
   (point values `C[x = v]` need numeric `from` and `to`).
 - The expanded state names (`C_1`, ...) must not already be used in the model.
 - PDEs on fine grids are stiff, so keep the default `"liblsoda"` or use
-  `"lsoda"` rather than a non-stiff method.
+  `"lsoda"` rather than a non-stiff method.  For large grids,
+  `method = "cvode", cvodeLinSolver = "band"` factors only the band of the
+  Jacobian that the grid stencil fills.
 
 ## Next steps
 
