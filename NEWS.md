@@ -49,10 +49,32 @@
   a lag path is tied to `Tlag1 + Tk01` when the first path has a lag,
   and a transit chain is reparameterized to `Mtt2 = Tk01 + diffMtt2`
   (or `Mtt2 = Tlag1 + Tk01 + diffMtt2`), estimating `diffMtt2`.
+- `addSecondAbsorption(delay = "transit")` gains
+  `transitType = "analytic"`: the second path's delay is the `transit()`
+  pseudo-function from `Mtt2`/`Ktr2` instead of `transitB` states.  The
+  dose fraction moves into transit()'s bioavailability argument, and a
+  split to a `transitDose()` compartment becomes a phantom dose, so the
+  analytic and ODE forms solve the same profile.  The delay converters
+  detect the analytic form as well.
 - `convertAbsForceLongerDelay()` now ties a transit-chain delay as well
   as a lag time: `Mtt2 = Mtt1 + diffMtt2` for two transit chains,
   `Mtt2 = Tlag1 + diffMtt2` or `Tlag2 = Mtt1 + diffTlag2` for the mixed
   cases.  Each chain is converted to its mean transit time first.
+- `addTransitAnalytic()` adds the other transit form: the delay is
+  evaluated with the `transit()` pseudo-function from an estimated
+  `Mtt` and `Ktr` (implied `Mtt * Ktr - 1` compartments), with doses
+  still recorded on `depot`.  It complements `addTransit()`, which
+  builds one ODE state per compartment and estimates `ktr`;
+  `removeTransitAnalytic()` undoes it.  The two forms agree at
+  `Mtt = N/ktr`, `Ktr = ktr`.  `addTransitAnalytic()` may run before or
+  after `addSecondAbsorption()`: in a split model it moves the first
+  path's fraction into `transit()`'s bioavailability, and it accepts
+  the deprecated `model =` alias like the rest of the family.
+- The model directive `transitDose(cmt)` makes `etTrans()` translate
+  bolus records on `cmt` to phantom doses: the record's amount drives
+  `transit()` but is not added to the compartment, so ordinary dosing
+  records need no `evid = 7`.  `addTransitAnalytic()` and
+  `addSecondAbsorption(transitType = "analytic")` write it.
 - `rxImpureFun()`/`rxRmImpureFun()` register user R functions, `rxFun()` C
   functions or package C functions that draw random numbers, keep state or
   have side effects.  `rxOptExpr()` never shares their calls and

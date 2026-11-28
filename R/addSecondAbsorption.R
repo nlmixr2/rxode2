@@ -7,10 +7,12 @@
 #' apportionment.  The second path can itself be zero-order
 #' (`type = "zero"`, Monolix's `Tk02` modeled duration directly on the
 #' central compartment), first-order (`type = "first"`, `ka2`, which
-#' adds `depot2`), or a first-order path behind a transit chain
-#' (`delay = "transit"`), with an optional lag.  When the first path is
-#' zero-order (`addZeroOrderAbs()`), only a first-order second path is
-#' available.
+#' adds `depot2`), or a first-order path behind a transit delay
+#' (`delay = "transit"`), with an optional lag.  The transit delay is
+#' either an explicit compartment chain (`transitType = "ode"`) or the
+#' analytic `transit()` input (`transitType = "analytic"`).  When the
+#' first path is zero-order (`addZeroOrderAbs()`), only a first-order
+#' second path is available.
 #'
 #' Only one second absorption path is supported per model; applying
 #' this twice raises an error.
@@ -23,12 +25,21 @@
 #'   path is first-order (two modeled durations cannot share the
 #'   central compartment).
 #' @param delay second-path delay: `"none"`, `"lag"` (an `alag` on the
-#'   second path), or `"transit"` (a transit chain feeding the second
+#'   second path), or `"transit"` (a transit delay before the second
 #'   path).  `"transit"` needs a first-order second path.
 #' @param n number of transit compartments when `delay = "transit"`
 #' @param depot2 name of the second depot compartment
 #' @param ka2 name of the second first-order absorption rate
 #' @param tk0 name of the zero-order duration on the second path
+#' @param mtt2 mean transit time variable of the analytic second-path
+#'   transit delay
+#' @param ktr2 transit rate variable of the analytic second-path transit
+#'   delay
+#' @param transitType how a transit delay is built: `"ode"` (the default)
+#'   adds one ODE state per transit compartment (see [addTransit()]);
+#'   `"analytic"` evaluates the delay with the `transit()` pseudo-function
+#'   from `mtt2`/`ktr2` and marks `depot2` with `transitDose()` (see
+#'   [addTransitAnalytic()]).  The two forms solve the same profile.
 #' @param f1 initial fraction of the dose entering the first path, in
 #'   (0,1)
 #' @return a model with two parallel absorption paths
@@ -76,11 +87,15 @@ addSecondAbsorption <- function(
   ka = "ka",
   ka2 = "ka2",
   tk0 = "tk0",
+  mtt2 = "Mtt2",
+  ktr2 = "Ktr2",
+  transitType = c("ode", "analytic"),
   f1 = 0.7
 ) {
   .useModelAsUi()
   type <- match.arg(type)
   delay <- match.arg(delay)
+  transitType <- match.arg(transitType)
   .ui <- assertRxUi(ui)
   .cmt <- as.character(substitute(depot2))
   depot2 <- try(force(depot2), silent = TRUE)
@@ -115,13 +130,19 @@ addSecondAbsorption <- function(
   if (.hasSplit) {
     stop("a second absorption path is already present (model has a split directive)", call. = FALSE)
   }
-  .path <- .secondAbsorptionPath(.ui, type, delay, n, central, depot, depot2, ka2, tk0)
+  .path <- .secondAbsorptionPath(.ui, type, delay, n, central, depot, depot2, ka2, tk0, transitType)
   .ui <- .path$ui
   # logit F1 split with the estimated fraction on the first path
   # (Monolix F1 convention); for a zero-order first path there is no
   # depot compartment, so the split is between central (which keeps
   # the modeled-duration input) and the second path
   .ui <- addBioavailability(.ui, .path$src, .path$secondCmt, scale = "logit", f = f1)
+  # a phantom (transitDose) first path ignores f(), so its fraction moves
+  # into transit()'s bioavailability argument
+  .ui <- .secondAbsorptionFirstTransitBio(.ui, .path$src)
+  if (isTRUE(.path$analytic)) {
+    .ui <- .secondAbsorptionAnalyticTransit(.ui, depot2, mtt2, ktr2)
+  }
   # one dose record on the dosing compartment feeds both paths at
   # translation time; splitInfusionBolus() gives the FIRST target the
   # modeled-duration infusion and the other target a bolus copy, so a
@@ -193,9 +214,10 @@ addSecondAbsorption <- function(
   invisible(NULL)
 }
 
-.secondAbsorptionPath <- function(ui, type, delay, n, central, depot, depot2, ka2, tk0) {
+.secondAbsorptionPath <- function(ui, type, delay, n, central, depot, depot2, ka2, tk0, transitType = "ode") {
   .zoFirst <- !testCompartmentExists(ui, depot)
-  if (delay == "transit") {
+  .analytic <- delay == "transit" && transitType == "analytic"
+  if (delay == "transit" && !.analytic) {
     checkmate::assertIntegerish(n, lower = 1L, len = 1L, any.missing = FALSE)
   }
   # Monolix's zero-order absorption route (Tk02) is a modeled duration
@@ -223,6 +245,9 @@ addSecondAbsorption <- function(
   .lagCmt <- if (.zeroDirect) central else depot2
   if (delay == "lag") {
     ui <- addLag(ui, .lagCmt)
+  } else if (.analytic) {
+    # the transit input is added after the F1 split, when its fraction is
+    # known (see .secondAbsorptionAnalyticTransit)
   } else if (delay == "transit") {
     # the second chain gets a letter-tagged prefix and rate (transitB1..N,
     # ktrB) so it can never collide with the first path's numbered chain
@@ -234,7 +259,8 @@ addSecondAbsorption <- function(
     ui = ui,
     src = .src,
     secondCmt = if (.zeroDirect) central else depot2,
-    splitTargets = if (.zeroDirect) paste0(central, ", ", depot) else paste0(.src, ", ", depot2)
+    splitTargets = if (.zeroDirect) paste0(central, ", ", depot) else paste0(.src, ", ", depot2),
+    analytic = .analytic
   )
 }
 
@@ -253,4 +279,101 @@ addSecondAbsorption <- function(
     .tmp$post
   )
   rxUiCompress(.ui)
+}
+
+# move f(cmt)'s fraction into the transit() input of a phantom path,
+# dropping the f() line (a phantom dose ignores it, so without this the
+# transit chain receives the full dose)
+.secondAbsorptionFirstTransitBio <- function(ui, cmt) {
+  .modelLines <- ui$lstExpr
+  .directive <- paste0("transitDose(", cmt, ")")
+  .hasDirective <- any(vapply(
+    .modelLines,
+    function(l) identical(deparse1(l), .directive),
+    logical(1),
+    USE.NAMES = FALSE
+  ))
+  if (!.hasDirective) {
+    return(ui)
+  }
+  .fPat <- sprintf("f(%s) <- ", cmt)
+  .wf <- which(vapply(
+    .modelLines,
+    function(l) grepl(.fPat, deparse1(l), fixed = TRUE),
+    logical(1),
+    USE.NAMES = FALSE
+  ))
+  if (length(.wf) != 1L) {
+    return(ui)
+  }
+  .frac <- .modelLines[[.wf[1L]]][[3L]]
+  .modelLines <- .modelLines[-.wf]
+  .w <- .whichDdt(.modelLines, cmt)
+  .modelLines[[.w]][[3L]] <- .absorptionReplaceTransitBio(.modelLines[[.w]][[3L]], .frac)
+  ui <- rxUiDecompress(ui)
+  .absorptionDropDescription(ui)
+  model(ui) <- .modelLines
+  rxUiCompress(ui)
+}
+
+# set the bioavailability argument of every transit() call in an expression
+.absorptionReplaceTransitBio <- function(expr, bioExpr) {
+  if (!is.call(expr)) {
+    return(expr)
+  }
+  if (identical(as.character(expr[[1L]]), "transit")) {
+    .args <- as.list(expr)
+    .args[[4L]] <- bioExpr
+    return(as.call(.args))
+  }
+  for (.i in seq_along(expr)[-1L]) {
+    expr[[.i]] <- .absorptionReplaceTransitBio(expr[[.i]], bioExpr)
+  }
+  expr
+}
+
+# the analytic transit input of the second path: its F1 fraction comes from
+# the split's f(depot2) line, moved into transit()'s bioavailability because
+# a phantom dose ignores f(); the depot2 ODE gets the transit term and the
+# depot2 dose record becomes a phantom dose through transitDose()
+.secondAbsorptionAnalyticTransit <- function(ui, depot2, mtt2, ktr2) {
+  assertVariableName(mtt2)
+  assertVariableName(ktr2)
+  assertVariableNew(ui, mtt2)
+  assertVariableNew(ui, paste0("l", mtt2))
+  assertVariableNew(ui, ktr2)
+  assertVariableNew(ui, paste0("l", ktr2))
+  .modelLines <- ui$lstExpr
+  .fPat <- sprintf("f(%s) <- ", depot2)
+  .wf <- which(vapply(
+    .modelLines,
+    function(l) grepl(.fPat, deparse1(l), fixed = TRUE),
+    logical(1),
+    USE.NAMES = FALSE
+  ))
+  if (length(.wf) != 1L) {
+    stop("the second absorption path has no bioavailability to drive its transit input", call. = FALSE)
+  }
+  .frac <- deparse1(.modelLines[[.wf[1L]]][[3L]])
+  .modelLines <- .modelLines[-.wf]
+  ui <- rxUiDecompress(ui)
+  .absorptionDropDescription(ui)
+  model(ui) <- .modelLines
+  ui <- rxUiCompress(ui)
+  ui <- addLogEstimates(ui, stats::setNames("Second mean transit time (Mtt2)", mtt2))
+  ui <- addLogEstimates(ui, stats::setNames("Second transit rate (Ktr2)", ktr2))
+  .modelLines <- ui$lstExpr
+  .w <- .whichDdt(.modelLines, depot2)
+  .rhs <- .modelLines[[.w]][[3L]]
+  .transit <- str2lang(paste0("transit(", mtt2, " * ", ktr2, " - 1, ", mtt2, ", ", .frac, ")"))
+  .modelLines[[.w]][[3L]] <- .absorptionAddTerm(.transit, .rhs)
+  .modelLines <- c(
+    .modelLines[seq_len(.w)],
+    list(str2lang(paste0("transitDose(", depot2, ")"))),
+    .modelLines[-seq_len(.w)]
+  )
+  ui <- rxUiDecompress(ui)
+  .absorptionDropDescription(ui)
+  model(ui) <- .modelLines
+  rxUiCompress(ui)
 }

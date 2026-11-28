@@ -219,6 +219,7 @@ static inline int parseNodePossiblySkipRecursion(nodeInfo ni, char *name, D_Pars
       handleSplitInfusionStatement(ni, name, i, nch, pn) ||
       handleSplitInfusionBolusStatement(ni, name, i, nch, pn) ||
       handleSplitBolusInfusionStatement(ni, name, i, nch, pn) ||
+      handleTransitDoseStatement(ni, name, i, nch, pn) ||
       // evid_() dose-push
       handleEvidStatement(ni, name, i, nch, pn) ||
       handleBolusStatement(ni, name, i, nch, pn) ||
@@ -371,6 +372,7 @@ void parseFree(int last) {
   R_Free(tb.splitInfusion);
   R_Free(tb.splitInfusionBolus);
   R_Free(tb.splitBolusInfusion);
+  R_Free(tb.transitDose);
   R_Free(tb.ini);
   R_Free(tb.mtime);
   R_Free(tb.iniv);
@@ -493,6 +495,8 @@ void reset(void) {
   tb.splitInfusionBolusN = 0;
   tb.splitBolusInfusion = R_Calloc(MXSYM, int);
   tb.splitBolusInfusionN = 0;
+  tb.transitDose = rxMemTag(fixed, R_Calloc(MXSYM, int));
+  tb.transitDoseN = 0;
   tb.dvid	= R_Calloc(MXDER, int);
   tb.thread     = 1; // Thread safe flag
   tb.gpu        = 1; // GPU safe flag

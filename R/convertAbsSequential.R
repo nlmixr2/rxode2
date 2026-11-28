@@ -53,7 +53,7 @@ convertAbsSequential <- function(
   # the first path's delay: Tlag1 + Tk01 when it has a lag, Tk01 otherwise
   .durVar <- .absorptionFirstDelay(central, .ui$lstExpr)
   .baseExpr <- .absorptionFirstDelayExpr(.ui$lstExpr, central, .durVar)
-  if (testCompartmentExists(.ui, paste0(transit2, "1"))) {
+  if (testCompartmentExists(.ui, paste0(transit2, "1")) || testVariableExists(.ui, mtt2)) {
     return(.absorptionSequentialTransit(.ui, transit2, ktr2, mtt2, .baseExpr))
   }
   .absorptionSequentialLag(.ui, depot2, .baseExpr)

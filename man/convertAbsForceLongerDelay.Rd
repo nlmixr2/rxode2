@@ -48,13 +48,14 @@ is estimated as an increment over the first path's delay, keeping the
 second absorption later than the first.  Each path's delay may be a
 lag time or a transit chain; a transit chain is reparameterized to
 its mean transit time (see \code{\link[=convertTransitMtt]{convertTransitMtt()}}) first.
-
+}
+\details{
 The resulting parameterization depends on the two delay types:
 \itemize{
-  \item lag and lag: \code{Tlag2 = Tlag1 + diffTlag2}
-  \item lag and transit: \code{Mtt2 = Tlag1 + diffMtt2}
-  \item transit and lag: \code{Tlag2 = Mtt1 + diffTlag2}
-  \item transit and transit: \code{Mtt2 = Mtt1 + diffMtt2}
+\item lag and lag: \code{Tlag2 = Tlag1 + diffTlag2}
+\item lag and transit: \code{Mtt2 = Tlag1 + diffMtt2}
+\item transit and lag: \code{Tlag2 = Mtt1 + diffTlag2}
+\item transit and transit: \code{Mtt2 = Mtt1 + diffMtt2}
 }
 }
 \seealso{
@@ -62,12 +63,14 @@ Other Absorption building blocks:
 \code{\link[=addDepot]{addDepot()}},
 \code{\link[=addSecondAbsorption]{addSecondAbsorption()}},
 \code{\link[=addTransit]{addTransit()}},
+\code{\link[=addTransitAnalytic]{addTransitAnalytic()}},
 \code{\link[=addWeibullAbs]{addWeibullAbs()}},
 \code{\link[=addZeroOrderAbs]{addZeroOrderAbs()}},
 \code{\link[=convertAbsSequential]{convertAbsSequential()}},
 \code{\link[=convertTransitMtt]{convertTransitMtt()}},
 \code{\link[=removeDepot]{removeDepot()}},
 \code{\link[=removeTransit]{removeTransit()}},
+\code{\link[=removeTransitAnalytic]{removeTransitAnalytic()}},
 \code{\link[=removeZeroOrderAbs]{removeZeroOrderAbs()}}
 }
 \author{

@@ -68,6 +68,13 @@ static inline IntegerVector mvIntByName(List &mv, const char *name) {
   return IntegerVector::create(0);
 }
 
+static inline bool etTransitDoseCmt(const IntegerVector &v, int cmt) {
+  for (R_xlen_t i = 0; i < v.size(); ++i) {
+    if (v[i] == cmt) return true;
+  }
+  return false;
+}
+
 static inline bool etRateDurIsDose(double x) {
   return x > 0.0 || x == -1.0 || x == -2.0;
 }
@@ -1485,6 +1492,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   IntegerVector splitInfusion = mvIntByName(mv, "splitInfusion");
   IntegerVector splitInfBol = mvIntByName(mv, "splitInfusionBolus");
   IntegerVector splitBolInf = mvIntByName(mv, "splitBolusInfusion");
+  // transitDose(cmt): bolus doses into cmt drive transit() only (phantom)
+  IntegerVector transitDoseCmt = mvIntByName(mv, "transitDose");
   // the split directive's source then targets, for the lagged-dose knots
   IntegerVector knotSplit = splitBolusN >= 2 ? splitBolus :
     splitInfusion.size() >= 2 ? splitInfusion :
@@ -2843,6 +2852,12 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         flg = 50;
         cevid=1;
       }
+      if (flg == 1 && rateI == 0 && cmt > 0 &&
+          etTransitDoseCmt(transitDoseCmt, cmt)) {
+        // a bolus in a transitDose() compartment is a phantom dose: the
+        // record's amount drives transit(), but is not added to the state
+        flg = 50;
+      }
       cevid = cmt100*100000+rateI*10000+cmt99*100+flg;
       if (rateI == 0) allInf=false;
       else allBolus=false;
@@ -3269,6 +3284,14 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     bool ssPromoteWarned = false;
     for (int j = 0; j < (int)evid.size(); ++j) {
       bool splitBolusRec = _rxShouldSplitTranslatedBolus(evid[j], cmtF[j], amt[j], splitSrc);
+      if (!splitBolusRec && amt[j] > 0.0 && cmtF[j] == splitSrc &&
+          etTransitDoseCmt(transitDoseCmt, splitSrc)) {
+        // a phantom (transitDose) source splits too: its own copy stays
+        // phantom and the other targets become ordinary boluses
+        int _w, _c, _w100, _wI, _w0;
+        getWh(evid[j], &_w, &_c, &_w100, &_wI, &_w0);
+        splitBolusRec = _wI == 0 && _w0 == EVID0_PHANTOM;
+      }
       bool splitInfRec = splitBolusRec ? false :
         _rxShouldSplitTranslatedInfusion(evid[j], cmtF[j], amt[j], splitSrc);
       bool splitThis = (splitKind == 0 && splitBolusRec) ||
@@ -3348,6 +3371,13 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           // the promoted stop is a record its dose row expands to
           doseRow2.back() = etTransPromotedDoseRow(idxInput[j], doseRow2.back());
           hasModeledRateDur = true;
+        } else if (etTransitDoseCmt(transitDoseCmt, curCmt)) {
+          // a split target that feeds transit() gets a phantom dose
+          pushRow(_rxEncodeEventCmtPhantom(evid[j], curCmt));
+        } else if (wh0J == EVID0_PHANTOM) {
+          // a phantom source keeps the phantom copy on itself; the other
+          // targets are ordinary boluses
+          pushRow(_rxEncodeEventCmtRegular(evid[j], curCmt));
         } else {
           pushRow(_rxEncodeEventCmt(evid[j], curCmt));
         }

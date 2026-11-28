@@ -34,6 +34,7 @@ statement
   | splitInfusion_statement end_statement
   | splitInfusionBolus_statement end_statement
   | splitBolusInfusion_statement end_statement
+  | transitDose_statement end_statement
   | dvid_statementI end_statement
   | break_statement end_statement
   | simfun_statement end_statement
@@ -166,6 +167,11 @@ splitBolusInfusion_statement
       identifier_r_no_output ','
       identifier_r_no_output
       (',' identifier_r_no_output)*
+      ')';
+
+transitDose_statement
+    : 'transitDose' '('
+      identifier_r_no_output
       ')';
 
 param_statement
@@ -304,7 +310,7 @@ identifier_r_no_output: identifier_r_no_output_1 | identifier_r_no_output_2 | id
 
 identifier_r_extra: 'alag' | 'f'| 'F' | 'rate' | 'dur' | 'lag' | 'past' |
   'evid_' | 'bolus' | 'infuse' | 'infuseDur' | 'splitBolus' | 'splitInfusion' |
-  'splitInfusionBolus' | 'splitBolusInfusion' | 'replace' | 'reset';
+  'splitInfusionBolus' | 'splitBolusInfusion' | 'transitDose' | 'replace' | 'reset';
 
 theta: ('THETA' | 'theta') '[' decimalintNo0 ']';
 eta: ('ETA' | 'eta') '[' decimalintNo0 ']';

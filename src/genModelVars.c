@@ -11,8 +11,8 @@ SEXP generateModelVars(void) {
   calcNextra();
 
   rxProtectGuard;
-  SEXP lst   = rxP(Rf_allocVector(VECSXP, 35));
-  SEXP names = rxP(Rf_allocVector(STRSXP, 35));
+  SEXP lst   = rxP(Rf_allocVector(VECSXP, 36));
+  SEXP names = rxP(Rf_allocVector(STRSXP, 36));
 
   SEXP sNeedSort = rxP(Rf_allocVector(INTSXP,1));
   int *iNeedSort  = INTEGER(sNeedSort);
@@ -175,6 +175,7 @@ SEXP generateModelVars(void) {
   SEXP splitInfusionSexp = rxP(Rf_allocVector(INTSXP, tb.splitInfusionN));
   SEXP splitInfusionBolusSexp = rxP(Rf_allocVector(INTSXP, tb.splitInfusionBolusN));
   SEXP splitBolusInfusionSexp = rxP(Rf_allocVector(INTSXP, tb.splitBolusInfusionN));
+  SEXP transitDoseSexp = rxP(Rf_allocVector(INTSXP, tb.transitDoseN));
   SEXP strCmpParams = rxP(Rf_allocVector(VECSXP, tb.strCmp.n));
   SEXP strCmpParamsN = rxP(Rf_allocVector(STRSXP, tb.strCmp.n));
   SEXP factorCls = rxP(Rf_allocVector(STRSXP, 1));
@@ -183,6 +184,7 @@ SEXP generateModelVars(void) {
   int *splitInfusion = INTEGER(splitInfusionSexp);
   int *splitInfusionBolus = INTEGER(splitInfusionBolusSexp);
   int *splitBolusInfusion = INTEGER(splitBolusInfusionSexp);
+  int *transitDose = INTEGER(transitDoseSexp);
   // Directives store the parse index (tb.id + 1); map it to the compartment
   // number, states then extra states as populateStateVectors() numbers them
   // (rxode2#1452).
@@ -211,6 +213,9 @@ SEXP generateModelVars(void) {
 
   for (int i = 0; i < tb.splitBolusInfusionN; ++i) {
     splitBolusInfusion[i] = ordFI[tb.splitBolusInfusion[i]-1];
+  }
+  for (int i = 0; i < tb.transitDoseN; ++i) {
+    transitDose[i] = ordFI[tb.transitDose[i]-1];
   }
 
   for (int i = 0; i < tb.strCmp.n; ++i) {
@@ -423,6 +428,9 @@ SEXP generateModelVars(void) {
 
   SET_STRING_ELT(names, 34, Rf_mkChar("splitBolusInfusion"));
   SET_VECTOR_ELT(lst,   34, splitBolusInfusionSexp);
+
+  SET_STRING_ELT(names, 35, Rf_mkChar("transitDose"));
+  SET_VECTOR_ELT(lst,   35, transitDoseSexp);
 
 
   Rf_setAttrib(tran,  R_NamesSymbol, trann);

@@ -139,6 +139,8 @@ lhs symbols?
   int splitInfusionBolusN;
   int *splitBolusInfusion; // source then target de indexes (+1)
   int splitBolusInfusionN;
+  int *transitDose; // de indexes (+1) of phantom-dose compartments
+  int transitDoseN;
   int isMexp;
   int hasDdt;
   int curDdt; // currently parsing the RHS of a d/dt() statement
@@ -340,6 +342,7 @@ typedef struct nodeInfo {
   int splitInfusion_statement;
   int splitInfusionBolus_statement;
   int splitBolusInfusion_statement;
+  int transitDose_statement;
   int param_statement;
   int interp_statement;
   int dvid_statementI;
@@ -420,6 +423,7 @@ static inline void niReset(nodeInfo *ni){
   ni->splitInfusion_statement = -1;
   ni->splitInfusionBolus_statement = -1;
   ni->splitBolusInfusion_statement = -1;
+  ni->transitDose_statement = -1;
   ni->param_statement = -1;
   ni->interp_statement = -1;
   ni->dvid_statementI = -1;
