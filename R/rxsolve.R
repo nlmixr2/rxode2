@@ -2987,7 +2987,9 @@ rxSolve.function <- function(
 #' @return the first matching column, or `NULL` when there is none
 #' @noRd
 .rxEvCol <- function(df, name) {
-  if (is.null(df)) return(NULL)
+  if (is.null(df)) {
+    return(NULL)
+  }
   .w <- which(tolower(names(df)) == name)
   if (length(.w) == 0L) NULL else df[[.w[1]]]
 }
@@ -4060,7 +4062,9 @@ rxSolve.default <- function(
     .absInf <- is.null(.evAbs) ||
       (!is.null(.absRate) && any(.absRate != 0, na.rm = TRUE)) ||
       (!is.null(.absDur) && any(.absDur > 0, na.rm = TRUE))
-    if (!.absInf) .bad <- setdiff(.bad, c("f()", "alag()"))
+    if (!.absInf) {
+      .bad <- setdiff(.bad, c("f()", "alag()"))
+    }
     if (length(.bad) > 0L) {
       stop(
         sprintf(
