@@ -552,28 +552,38 @@ static inline void rxSplineCovBuild(rx_solving_options *op, rx_solving_options_i
   }
 }
 
+// Whether any covariate uses spline/pchip interpolation
+static inline bool rxAnySplineCov(rx_solving_options *op) {
+  for (int k = 0; k < op->ncov; ++k) {
+    if (op->par_cov[k] && rxIsSplineInterp(rxSplineCovInterp(op, k))) return true;
+  }
+  return false;
+}
+
+// Subjects 0..nSub-1 with covariates, sorted by cov_ptr
+static inline void rxSplineCovSubjects(rx_solve *rx, int nSub,
+                                       std::vector<std::pair<RxSplKey, int> > *subs) {
+  for (int s = 0; s < nSub; ++s) {
+    rx_solving_options_ind *ind = &(rx->subjects[s]);
+    if (ind->cov_ptr == NULL) continue;
+    subs->push_back(std::make_pair(RxSplKey{ind->cov_ptr, 0}, s));
+  }
+  std::sort(subs->begin(), subs->end(),
+            [](const std::pair<RxSplKey, int> &a, const std::pair<RxSplKey, int> &b) {
+              return a.first < b.first;
+            });
+}
+
 // Build the knots of every spline/pchip covariate of subjects 0..nSub-1;
 // returns 0 when out of memory
 extern "C" int rxSplineCovSetup(rx_solve *rx, int nSub) {
   rxSplineCovFree();
   rx_solving_options *op = rx->op;
   if (!op->do_par_cov || rx->subjects == NULL) return 1;
-  bool any = false;
-  for (int k = 0; k < op->ncov; ++k) {
-    if (op->par_cov[k] && rxIsSplineInterp(rxSplineCovInterp(op, k))) any = true;
-  }
-  if (!any) return 1;
+  if (!rxAnySplineCov(op)) return 1;
   try {
     std::vector<std::pair<RxSplKey, int> > subs;
-    for (int s = 0; s < nSub; ++s) {
-      rx_solving_options_ind *ind = &(rx->subjects[s]);
-      if (ind->cov_ptr == NULL) continue;
-      subs.push_back(std::make_pair(RxSplKey{ind->cov_ptr, 0}, s));
-    }
-    std::sort(subs.begin(), subs.end(),
-              [](const std::pair<RxSplKey, int> &a, const std::pair<RxSplKey, int> &b) {
-                return a.first < b.first;
-              });
+    rxSplineCovSubjects(rx, nSub, &subs);
     int64_t len = 0;
     for (size_t i = 0; i < subs.size(); ++i) {
       if (!_rxSplKey.empty() && _rxSplKey.back().cov == subs[i].first.cov) continue;
