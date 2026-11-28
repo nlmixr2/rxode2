@@ -24,6 +24,7 @@
   #1759).  Piping a `grid()` line replaces the grid of that name, and
   `.rxPrune()` expands the grids first, so nlmixr2 estimation of these models
   works.
+  The new article "Partial differential equations" walks through them.
 - The model-building piping functions moved here from 'nlmixr2lib':
   absorption (`addDepot()`, `addTransit()`, `addWeibullAbs()`,
   `addZeroOrderAbs()`, `addSecondAbsorption()`, `convertTransitMtt()` and
