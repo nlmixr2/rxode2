@@ -3055,9 +3055,16 @@ rxSolve.function <- function(
     return(NULL)
   }
   .id <- if (is.data.frame(params)) params[[.w[1]]] else params[, .w[1]]
-  .id <- as.character(.id)
   .want <- rep_len(as.character(subjects), length(.id))
-  .bad <- which(is.na(.id) | .id != .want)
+  # numeric ids compare by value (1e5 is the label "100000")
+  .wantN <- if (is.numeric(.id)) suppressWarnings(as.numeric(.want)) else NA_real_
+  if (is.numeric(.id) && !anyNA(.wantN)) {
+    .bad <- which(is.na(.id) | .id != .wantN)
+    .id <- format(.id, scientific = FALSE, trim = TRUE, digits = 15)
+  } else {
+    .id <- as.character(.id)
+    .bad <- which(is.na(.id) | .id != .want)
+  }
   if (length(.bad) == 0L) {
     return(NULL)
   }
