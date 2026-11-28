@@ -129,11 +129,25 @@ static inline int _rxEncodeEventCmtRegular(int evid, int cmt) {
   return cmt100 * 100000 + whI * 10000 + cmt01 * 100 + 1;
 }
 
+/* Dose flags a split can re-target: plain, lagged and steady-state
+ * boluses (1/9/10/19/20). */
+static inline int _rxIsSplittableFlg(int wh0) {
+  return wh0 == 1 || wh0 == 9 || wh0 == 10 || wh0 == 19 || wh0 == 20;
+}
+
+/* Infusion flags a split can re-target: data infusions (RATE/DUR 1/2)
+ * and modeled rate()/dur() starts and stops (8/9 and 7/6). */
+static inline int _rxIsInfusionFlg(int whI) {
+  return whI == EVIDF_INF_RATE || whI == EVIDF_INF_DUR ||
+    whI == EVIDF_MODEL_DUR_ON || whI == EVIDF_MODEL_DUR_OFF ||
+    whI == EVIDF_MODEL_RATE_ON || whI == EVIDF_MODEL_RATE_OFF;
+}
+
 static inline int _rxShouldSplitTranslatedBolus(int evid, int cmt, double amt, int splitCmt) {
   int wh, eventCmt, wh100, whI, wh0;
   getWh(evid, &wh, &eventCmt, &wh100, &whI, &wh0);
   if (splitCmt <= 0 || cmt != splitCmt || eventCmt + 1 != splitCmt || evid < 100 || amt <= 0.0) return 0;
-  return whI == 0 && (wh0 == 1 || wh0 == 9 || wh0 == 10 || wh0 == 19 || wh0 == 20);
+  return whI == 0 && _rxIsSplittableFlg(wh0);
 }
 
 /* Re-encode a translated event to a different compartment AND infusion
@@ -157,10 +171,8 @@ static inline int _rxShouldSplitTranslatedInfusion(int evid, int cmt, double amt
   int wh, eventCmt, wh100, whI, wh0;
   getWh(evid, &wh, &eventCmt, &wh100, &whI, &wh0);
   if (splitCmt <= 0 || cmt != splitCmt || eventCmt + 1 != splitCmt || evid < 100 || amt == 0.0) return 0;
-  if (whI != EVIDF_INF_RATE && whI != EVIDF_INF_DUR &&
-      whI != EVIDF_MODEL_DUR_ON && whI != EVIDF_MODEL_DUR_OFF &&
-      whI != EVIDF_MODEL_RATE_ON && whI != EVIDF_MODEL_RATE_OFF) return 0;
-  return (wh0 == 1 || wh0 == 9 || wh0 == 10 || wh0 == 19 || wh0 == 20);
+  if (!_rxIsInfusionFlg(whI)) return 0;
+  return _rxIsSplittableFlg(wh0);
 }
 
 /* The steady-state flag carried by a dose, from its ss/ii/amt.  Shared so the
