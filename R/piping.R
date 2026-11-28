@@ -432,17 +432,14 @@
   .env$ret <- expressionList
   .env$lst <- list()
   .env$last <- NA_integer_
+  .env$pos <- integer(0)
 
   .f <- function() {
     if (!is.na(.env$last)) {
       .val <- as.call(c(list(quote(`{`)), .env$lst))
       .val <- as.call(c(str2lang("lotri::lotri"), .val))
       .val <- suppressMessages(try(eval(.val), silent = TRUE))
-      if (inherits(.val, "try-error")) {
-        for (.j in seq_along(.env$lst)) {
-          .env$ret[[.env$last + .j - 1L]] <- .env$lst[[.j]]
-        }
-      } else {
+      if (!inherits(.val, "try-error")) {
         .val <- lotri::lotriAsExpression(.val, plusNames = TRUE)
         .val <- lapply(seq_along(.val)[-1], function(i) {
           .val[[i]]
@@ -450,12 +447,18 @@
         .val <- lapply(seq_along(.val)[-1], function(i) {
           .val[[i]]
         })
-        for (.j in seq_along(.val)) {
-          .env$ret[[.env$last + .j - 1L]] <- .val[[.j]]
-        }
+      }
+      # write back only to the lines collected, so a line kept as written
+      # between them (eg `| id`, `unfix()`, an error model) is not overwritten
+      if (inherits(.val, "try-error") || length(.val) > length(.env$pos)) {
+        .val <- .env$lst
+      }
+      for (.j in seq_along(.val)) {
+        .env$ret[[.env$pos[.j]]] <- .val[[.j]]
       }
       .env$lst <- list()
       .env$last <- NA_integer_
+      .env$pos <- integer(0)
     }
   }
   for (.i in seq_along(.env$ret)) {
@@ -465,6 +468,7 @@
       is.call(.cur) && identical(.cur[[1]], quote(`~`)) && length(.cur) == 3L && length(.cur[[2]]) == 1L
     ) {
       .isLotri <- TRUE
+      .call <- ""
       # Check to see if this is an error call
       if (is.call(.cur[[3]])) {
         .rhs <- .cur[[3]]
@@ -482,17 +486,27 @@
         }
         if (.call %in% names(.errDist)) {
           .isLotri <- FALSE
+        } else if (identical(.cur[[3]][[1]], quote(`|`)) && identical(.cur[[3]][[3]], quote(id))) {
+          # the round-trip drops the default `| id`, which ini() needs to move
+          # an eta back to the subject level
+          .isLotri <- FALSE
         } else if (.call == "unfix") {
           # the lotri round-trip below has no way to represent `unfix()`, so it
           # comes back as a plain estimate and would silently leave the eta fixed
           .isLotri <- FALSE
         }
       }
+      if (!.isLotri && !(.call %in% names(.errDist))) {
+        # an eta line kept as written ends the block before it, so a later
+        # row-form covariance does not attach to the etas across it
+        .f()
+      }
       if (.isLotri) {
         if (is.na(.env$last)) {
           .env$last <- .i
         }
         .env$ret[[.i]] <- NA
+        .env$pos <- c(.env$pos, .i)
         .env$lst <- c(.env$lst, .cur)
       }
     } else {
