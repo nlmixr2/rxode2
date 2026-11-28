@@ -3145,6 +3145,8 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
               "locf",
               "nocb",
               "midpoint",
+              "spline",
+              "pchip",
               "linear",
               "splitBolus",
               "splitInfusion",

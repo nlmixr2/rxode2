@@ -57,6 +57,8 @@
   and `"pchip"` (a monotone piecewise cubic Hermite interpolant that does not
   overshoot) for smooth time-varying covariates; the boundary value is held
   outside the data, and two values give linear interpolation (#1804).
+  The model selects them per covariate with `spline(cov)` and `pchip(cov)`,
+  like `locf()`; `spline` and `pchip` stay usable as variable names.
 - `rxImpureFun()`/`rxRmImpureFun()` register user R functions, `rxFun()` C
   functions or package C functions that draw random numbers, keep state or
   have side effects.  `rxOptExpr()` never shares their calls and

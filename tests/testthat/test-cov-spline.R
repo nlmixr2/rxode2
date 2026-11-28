@@ -190,4 +190,70 @@ rxTest({
       expect_equal(.s$y, rep(c(1, 2), 3))
     }
   })
+  test_that("spline() and pchip() select the interpolation per covariate", {
+    .m <- function() {
+      model({
+        spline(cv)
+        locf(cv2)
+        pchip(cv3)
+        x <- cv
+        y <- cv2
+        z <- cv3
+      })
+    }
+    .tk <- 0:6
+    .y3 <- c(0, 0, 0, 1, 1, 1, 1)
+    .ev <- .splEv(.splTk, sin(.splTk), .splTt)
+    .ev$cv2 <- ifelse(is.na(.ev$cv), NA_real_, .ev$time)
+    .ev$cv3 <- NA_real_
+    .ev$cv3[.ev$time %in% .tk] <- .y3[match(.ev$time[.ev$time %in% .tk], .tk)]
+    .s <- rxSolve(.m, .ev, addDosing = TRUE)
+    .w <- .s$time >= 1 & .s$time <= 11
+    .f <- stats::splinefun(.splTk, sin(.splTk), method = "natural")
+    expect_equal(.s$x[.w], .f(.s$time[.w]), tolerance = 1e-12)
+    # locf: the last value at or before each time
+    .last <- vapply(
+      .s$time,
+      function(t) {
+        .k <- .splTk[.splTk <= t]
+        if (length(.k) == 0) .splTk[1] else max(.k)
+      },
+      double(1)
+    )
+    expect_equal(.s$y, .last)
+    .w <- .s$time <= 6
+    expect_true(all(.s$z[.w] >= 0 & .s$z[.w] <= 1))
+    expect_true(all(diff(.s$z[.w]) >= -1e-12))
+    # the model declaration overrides covsInterpolation
+    .s2 <- rxSolve(.m, .ev, addDosing = TRUE, covsInterpolation = "nocb")
+    expect_equal(.s2$x, .s$x)
+  })
+
+  test_that("spline() and pchip() parse, normalize and stay usable as names", {
+    .mv <- rxModelVars("spline(cv); pchip(cv2); x = cv + cv2")
+    expect_equal(as.character(.mv$interp[c("cv", "cv2")]), c("spline", "pchip"))
+    expect_match(rxNorm(.mv), "spline(cv);", fixed = TRUE)
+    expect_match(rxNorm(.mv), "pchip(cv2);", fixed = TRUE)
+    expect_error(rxModelVars("spline = 3; pchip = 4; x = spline + pchip"), NA)
+    .ui <- rxode2(function() {
+      model({
+        spline(cv)
+        x <- cv
+      })
+    })
+    expect_equal(.ui$interpLines, list(quote(spline(cv))))
+  })
+  test_that("a user function named spline or pchip still works", {
+    spline <- function(x) 2 * x
+    pchip <- function(x) 3 * x
+    suppressMessages(rxFun(spline))
+    suppressMessages(rxFun(pchip))
+    on.exit({
+      rxRmFun("spline")
+      rxRmFun("pchip")
+    })
+    .m <- rxode2("y = spline(x) + pchip(x)")
+    expect_equal(rxNorm(.m), "y=spline(x)+pchip(x);\n")
+    expect_equal(rxSolve(.m, et(0), params = c(x = 3))$y, 15)
+  })
 })

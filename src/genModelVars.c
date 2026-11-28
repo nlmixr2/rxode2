@@ -348,12 +348,14 @@ SEXP generateModelVars(void) {
   SET_STRING_ELT(clsInterp, 0, Rf_mkChar("factor"));
   Rf_classgets(interp, clsInterp);
 
-  SEXP lvlInterp = rxP(Rf_allocVector(STRSXP, 5));
+  SEXP lvlInterp = rxP(Rf_allocVector(STRSXP, 7));
   SET_STRING_ELT(lvlInterp, 0, Rf_mkChar("default"));
   SET_STRING_ELT(lvlInterp, 1, Rf_mkChar("linear"));
   SET_STRING_ELT(lvlInterp, 2, Rf_mkChar("locf"));
   SET_STRING_ELT(lvlInterp, 3, Rf_mkChar("nocb"));
   SET_STRING_ELT(lvlInterp, 4, Rf_mkChar("midpoint"));
+  SET_STRING_ELT(lvlInterp, 5, Rf_mkChar("spline"));
+  SET_STRING_ELT(lvlInterp, 6, Rf_mkChar("pchip"));
   Rf_setAttrib(interp, R_LevelsSymbol, lvlInterp);
 
   SET_VECTOR_ELT(lst, 21, interp);

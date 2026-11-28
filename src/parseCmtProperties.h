@@ -463,6 +463,14 @@ static inline int finalizeLineInterp(nodeInfo ni, char *name) {
       sAppend(&sbNrm, "midpoint%s;\n", sbt.s);
       addLine(&sbNrmL, "midpoint%s;\n", sbt.s);
       break;
+    case 5: // spline
+      sAppend(&sbNrm, "spline%s;\n", sbt.s);
+      addLine(&sbNrmL, "spline%s;\n", sbt.s);
+      break;
+    case 6: // pchip
+      sAppend(&sbNrm, "pchip%s;\n", sbt.s);
+      addLine(&sbNrmL, "pchip%s;\n", sbt.s);
+      break;
     }
     tb.interpC=0; // reset to default
     ENDLINE;

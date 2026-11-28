@@ -76,8 +76,10 @@ Special statements can be:
     interpolation for specific covariates.  These include `locf(cov1,
     cov2, ...)` for last observation carried forward, `nocb(cov1,
     cov2, ...)`  for next observation carried backward, `linear(cov1,
-    cov2, ...)` for linear interpolation and `midpoint(cov1, cov2,
-    ...)` for midpoint interpolation.
+    cov2, ...)` for linear interpolation, `midpoint(cov1, cov2,
+    ...)` for midpoint interpolation, `spline(cov1, cov2, ...)` for a
+    natural cubic spline and `pchip(cov1, cov2, ...)` for a monotone
+    cubic Hermite interpolant.
 
 An example model is shown below:
 

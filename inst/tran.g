@@ -171,7 +171,7 @@ splitBolusInfusion_statement
 param_statement
     : "params?" '(' (identifier_r | theta0 | theta | eta) (',' (identifier_r | theta0 | theta | eta) )*  ')';
 
-interp_statement: ('locf' | 'linear' | 'nocb' | 'midpoint') '(' (identifier_r | theta0 | theta | eta) (',' (identifier_r | theta0 | theta | eta) )* ')';
+interp_statement: ('locf' | 'linear' | 'nocb' | 'midpoint' | 'spline' | 'pchip') '(' (identifier_r | theta0 | theta | eta) (',' (identifier_r | theta0 | theta | eta) )* ')';
 
 printf_statement
   : printf_command '(' string (',' logical_or_expression )* ')';
@@ -291,7 +291,7 @@ ifelse : 'ifelse' '(' logical_or_expression ',' logical_or_expression ',' logica
 
 function : function_name '(' (logical_or_expression)? (',' logical_or_expression)* ')' ;
 
-function_name: identifier | 'lag';
+function_name: identifier | 'lag' | 'spline' | 'pchip';
 
 ini_const : '-'? constant;
 trans_const: identifier_r | '-'? constant;
@@ -304,7 +304,8 @@ identifier_r_no_output: identifier_r_no_output_1 | identifier_r_no_output_2 | id
 
 identifier_r_extra: 'alag' | 'f'| 'F' | 'rate' | 'dur' | 'lag' | 'past' |
   'evid_' | 'bolus' | 'infuse' | 'infuseDur' | 'splitBolus' | 'splitInfusion' |
-  'splitInfusionBolus' | 'splitBolusInfusion' | 'replace' | 'reset';
+  'splitInfusionBolus' | 'splitBolusInfusion' | 'replace' | 'reset' |
+  'spline' | 'pchip';
 
 theta: ('THETA' | 'theta') '[' decimalintNo0 ']';
 eta: ('ETA' | 'eta') '[' decimalintNo0 ']';

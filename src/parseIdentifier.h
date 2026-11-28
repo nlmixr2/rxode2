@@ -92,6 +92,10 @@ static inline void handleOperatorsOrPrintingIdentifiers(int depth, print_node_fn
                                                         nodeInfo ni, char *name, char *value) {
   if (isOperatorOrPrintingIdentifier(ni, name))
     fn(depth, name, value, client_data);
+  // spline/pchip are interpolation keywords, but stay usable as the name of a
+  // user function: print the keyword token there as the identifier it replaces
+  if (tb.fn == 2 && (!strcmp("spline", name) || !strcmp("pchip", name)))
+    fn(depth, "identifier", value, client_data);
   if (!strcmp("=", name)){
     tb.didEq=1;
     fn(depth, name, value, client_data);
