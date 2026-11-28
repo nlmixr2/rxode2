@@ -556,7 +556,7 @@ attr(rxUiGet.iniFun, "rstudio") <- quote(ini({}))
 #' @rdname rxUiGet
 rxUiGet.modelFun <- function(x, ...) {
   .x <- x[[1]]
-  bquote(model(.(as.call(c(quote(`{`), .x$lstExpr)))))
+  bquote(model(.(as.call(c(quote(`{`), .rxPdeIniGridRestore(.x$lstExpr))))))
 }
 attr(rxUiGet.modelFun, "desc") <- "normalized, quoted `model()` block"
 attr(rxUiGet.modelFun, "rstudio") <- quote(model({}))

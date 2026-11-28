@@ -215,7 +215,9 @@ model.rxModelVars <- model.rxode2
     }
     return(rxUiCompress(rxui$fun()))
   }
+  .gridN <- .rxPdeIniGridNames(rxui$lstExpr)
   .modifyModelLines(lines = modelLines, rxui = rxui, modifyIni = modifyIni, envir = envir)
+  .rxPdeIniGridDrop(rxui, .gridN)
   .v <- .getAddedOrRemovedVariablesFromNonErrorLines(rxui)
   if (length(.v$rm) > 0) {
     lapply(.v$rm, function(x) {
@@ -583,6 +585,7 @@ rxUiGet.mvFromExpression <- function(x, ...) {
   # a piped line may still hold a ui user function (eg plogis()) the parser
   # does not accept as written
   .lines <- .rxUdfUiExpandPure(.lines, .x$iniDf)
+  .lines <- .rxPdeIniGrid(.lines, .x$iniDf)
   eval(call("rxModelVars", as.call(c(list(quote(`{`)), .lines))))
 }
 attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored (possibly changed) expression"
