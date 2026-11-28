@@ -2148,8 +2148,13 @@ rxTest({
       d/dt(depot) <- -ka * depot
       d/dt(center) <- ka * depot - cl / v * center
     "
-    .ev <- data.frame(id = 1, time = c(0, 5, 6, seq(0.5, 12, 0.5)), amt = c(100, 0, 50, rep(0, 24)),
-                      evid = c(1, 2, 1, rep(0, 24)), cmt = c(1, -2, 2, rep(2, 24)))
+    .ev <- data.frame(
+      id = 1,
+      time = c(0, 5, 6, seq(0.5, 12, 0.5)),
+      amt = c(100, 0, 50, rep(0, 24)),
+      evid = c(1, 2, 1, rep(0, 24)),
+      cmt = c(1, -2, 2, rep(2, 24))
+    )
     .ev <- .ev[order(.ev$time, -.ev$evid), ]
     .p <- c(tka = 0.45, tcl = 1, tv = 3.45)
     .pars <- c("tka", "tcl")
@@ -2161,8 +2166,10 @@ rxTest({
     }
     .h <- 1e-4
     .fd <- function(q, col) {
-      .p1 <- .p; .p1[q] <- .p1[q] + .h
-      .p2 <- .p; .p2[q] <- .p2[q] - .h
+      .p1 <- .p
+      .p1[q] <- .p1[q] + .h
+      .p2 <- .p
+      .p2[q] <- .p2[q] - .h
       (.f(.p1, col) - .f(.p2, col)) / (2 * .h)
     }
     .off <- .s$time > 5 & .s$time < 6
@@ -2173,8 +2180,12 @@ rxTest({
       expect_equal(.an, .fd(.q, "center"), tolerance = 1e-6)
       for (.r in .pars) {
         .n2 <- paste0("rx__sens_center_BY_", .q, "_BY_", .r, "__")
-        if (is.null(.s[[.n2]])) .n2 <- paste0("rx__sens_center_BY_", .r, "_BY_", .q, "__")
-        if (is.null(.s[[.n2]])) next
+        if (is.null(.s[[.n2]])) {
+          .n2 <- paste0("rx__sens_center_BY_", .r, "_BY_", .q, "__")
+        }
+        if (is.null(.s[[.n2]])) {
+          next
+        }
         expect_equal(.s[[.n2]][.off], rep(0, sum(.off)))
         expect_equal(.s[[.n2]], .fd(.r, paste0("rx__sens_center_BY_", .q, "__")), tolerance = 1e-5)
       }
