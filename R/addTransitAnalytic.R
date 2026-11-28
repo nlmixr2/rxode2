@@ -26,6 +26,7 @@
 #'   that removal
 #' @param mtt mean transit time variable name
 #' @param Ktr transit rate variable name
+#' @inheritParams addTransit
 #' @return a model with analytic transit absorption
 #' @family Absorption building blocks
 #' @export
@@ -60,7 +61,8 @@ addTransitAnalytic <- function(
   transit = "transit",
   ktr = "ktr",
   mtt = "Mtt",
-  Ktr = "Ktr"
+  Ktr = "Ktr",
+  model
 ) {
   .useModelAsUi()
   .ui <- assertRxUi(ui)
@@ -83,9 +85,6 @@ addTransitAnalytic <- function(
     logical(1),
     USE.NAMES = FALSE
   ))
-  if (.hasSplit) {
-    stop("a dose-splitting model cannot take an analytic transit input", call. = FALSE)
-  }
   assertVariableNew(.ui, mtt)
   assertVariableNew(.ui, paste0("l", mtt))
   assertVariableNew(.ui, Ktr)
@@ -107,7 +106,13 @@ addTransitAnalytic <- function(
     rm("description", envir = .ui$meta)
   }
   model(.ui) <- .modelLines
-  rxUiCompress(.ui)
+  .ui <- rxUiCompress(.ui)
+  if (.hasSplit) {
+    # a split model already apportioned the dose with f(depot); move that
+    # fraction into transit()'s bioavailability (see addSecondAbsorption)
+    .ui <- .secondAbsorptionFirstTransitBio(.ui, depot)
+  }
+  .ui
 }
 
 #' Remove analytic transit absorption

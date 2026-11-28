@@ -61,7 +61,10 @@
   still recorded on `depot`.  It complements `addTransit()`, which
   builds one ODE state per compartment and estimates `ktr`;
   `removeTransitAnalytic()` undoes it.  The two forms agree at
-  `Mtt = N/ktr`, `Ktr = ktr`.
+  `Mtt = N/ktr`, `Ktr = ktr`.  `addTransitAnalytic()` may run before or
+  after `addSecondAbsorption()`: in a split model it moves the first
+  path's fraction into `transit()`'s bioavailability, and it accepts
+  the deprecated `model =` alias like the rest of the family.
 - The model directive `transitDose(cmt)` makes `etTrans()` translate
   bolus records on `cmt` to phantom doses: the record's amount drives
   `transit()` but is not added to the compartment, so ordinary dosing

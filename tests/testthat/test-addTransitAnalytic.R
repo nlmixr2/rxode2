@@ -75,6 +75,52 @@ rxTest({
     expect_equal(etTrans(eInf, res)$EVID[1], etTrans(eInf, res0)$EVID[1])
   })
 
+  test_that("addTransitAnalytic works in either pipeline order with a split", {
+    .common <- c(
+      lka = log(1.2),
+      lka2 = log(0.9),
+      lcl = log(0.1),
+      lvc = log(10),
+      logitfDepot = logit(0.6),
+      propSd = 0.5
+    )
+    e <- rxode2::et(time = 0, amt = 100, cmt = "depot") |>
+      rxode2::et(c(1, 2, 4, 8, 24, 48))
+    .secondFirst <- res0 |>
+      addSecondAbsorption(type = "first", delay = "lag", f1 = 0.6) |>
+      addTransitAnalytic()
+    .transitFirst <- res0 |>
+      addTransitAnalytic() |>
+      addSecondAbsorption(type = "first", delay = "lag", f1 = 0.6)
+    .lines <- vapply(.secondFirst$lstExpr, function(l) deparse1(l), character(1), USE.NAMES = FALSE)
+    expect_true(any(grepl("transit(Mtt * Ktr - 1, Mtt, fDepot)", .lines, fixed = TRUE)))
+    expect_false(any(grepl("^f\\(depot\\) <-", .lines)))
+    .sA <- as.data.frame(rxode2::rxSolve(
+      .secondFirst,
+      e,
+      params = c(.common, lMtt = log(5), lKtr = log(0.8))
+    ))
+    .sB <- as.data.frame(rxode2::rxSolve(
+      .transitFirst,
+      e,
+      params = c(.common, lMtt = log(5), lKtr = log(0.8))
+    ))
+    expect_equal(.sA$central, .sB$central, tolerance = 1e-6)
+  })
+
+  test_that("addTransitAnalytic accepts the deprecated model argument", {
+    expect_warning(
+      suppressMessages(byModel <- addTransitAnalytic(model = res0)),
+      regexp = "deprecated"
+    )
+    expect_true("transitDose(depot)" %in% vapply(byModel$lstExpr, deparse1, character(1), USE.NAMES = FALSE))
+    expect_warning(
+      suppressMessages(byRestored <- removeTransitAnalytic(model = byModel)),
+      regexp = "deprecated"
+    )
+    expect_equal(modelExtract(byRestored, "d/dt(depot)"), "d/dt(depot) <- -ka * depot")
+  })
+
   test_that("removeTransitAnalytic restores the depot ODE", {
     .plain <- res0
     .withTransit <- .plain |> addTransitAnalytic()

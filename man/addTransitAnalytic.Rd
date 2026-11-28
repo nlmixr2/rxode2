@@ -12,7 +12,8 @@ addTransitAnalytic(
   transit = "transit",
   ktr = "ktr",
   mtt = "Mtt",
-  Ktr = "Ktr"
+  Ktr = "Ktr",
+  model
 )
 }
 \arguments{
@@ -34,6 +35,9 @@ that removal}
 \item{mtt}{mean transit time variable name}
 
 \item{Ktr}{transit rate variable name}
+
+\item{model}{Deprecated alias for \code{ui}. Supplying \code{model}
+instead of \code{ui} still works but emits a deprecation warning.}
 }
 \value{
 a model with analytic transit absorption
