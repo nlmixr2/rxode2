@@ -251,6 +251,13 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   if (!is.null(.msg)) {
     stop(.msg, call. = FALSE)
   }
+  # and a multi-row params' id order, once, rather than in every chunk
+  if (!isFALSE(.ctl$warnIdSort)) {
+    .msg <- .rxParamsIdOrderMsg(params, .allIds)
+    if (!is.null(.msg)) {
+      warning(.msg, call. = FALSE)
+    }
+  }
   .nChunks <- ceiling(.nSub / .chunkSize)
   .chunkList <- split(.allIds, ceiling(seq_len(.nSub) / .chunkSize))
 
@@ -293,6 +300,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   .fwdCtlArgs$chunkSize <- NULL
   .fwdCtlArgs$parallel <- NULL
   .fwdCtlArgs$serializeFile <- NULL
+  .fwdCtlArgs$warnIdSort <- FALSE
 
   # Pre-draw ALL subjects' etas once using the base seed so that chunked solves
   # reproduce the same etas as a single full rxSolve(seed=baseSeed) call.

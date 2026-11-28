@@ -2,6 +2,10 @@
 
 ## New features
 
+- `rxSolve()` warns when a multi-row `params` data frame or matrix has an
+  `id` column that does not list the data's subjects in data order; rows are
+  still used by position.  `rxControl(warnIdSort = FALSE)` silences it, so the
+  documented option works again, and data with one subject is exempt (#1520).
 - `simeta(n)` and `simeps(n)` re-simulate only the `n`-th ETA/EPS inside a
   model, keeping the others; a correlated element is drawn conditional on
   the others.  The index counts the omega/sigma as given, before items with

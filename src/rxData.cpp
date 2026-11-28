@@ -5751,6 +5751,25 @@ static inline void rxSolve_parOneRowIdCheck(rxSolve_t* rxSolveDat) {
   }
 }
 
+// A multi-row parameter data frame or matrix is matched to the subjects by
+// position; warn (when warnIdSort) if its id column says otherwise.  The
+// message is .rxParamsIdOrderMsg()'s, which a chunked solve also uses.
+static inline void rxSolve_parIdOrderCheck(rxSolve_t* rxSolveDat) {
+  if (!rxSolveDat->warnIdSort || rxSolveDat->idLevels.size() <= 1) return;
+  SEXP p = rxSolveDat->par1;
+  if (!Rf_inherits(p, "data.frame") && !Rf_isMatrix(p)) return;
+  std::string m;
+  {
+    Function msgFn = getRxFn(".rxParamsIdOrderMsg");
+    RObject msg = msgFn(rxSolveDat->par1, rxSolveDat->idLevels);
+    if (Rf_isNull(msg)) return;
+    m = as<std::string>(msg);
+  }
+  // the Rcpp objects are released before warning(), which options(warn=2) can
+  // turn into an error
+  Rf_warningcall(R_NilValue, "%s", m.c_str());
+}
+
 // Normalizes parameter input
 // It will also load the parameters into the solving data structure.
 static inline void rxSolve_normalizeParms(const RObject &obj, const List &rxControl,
@@ -7738,6 +7757,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       rxSolveDat->maxItemsPerId = evT[RxTrans_maxItemsPerId];
     }
     rxSolve_parOneRowIdCheck(rxSolveDat);
+    rxSolve_parIdOrderCheck(rxSolveDat);
     rxSolveDat->par1ini = rxSolveDat->par1;
     // This will update par1 with simulated values
 #ifdef rxSolveT

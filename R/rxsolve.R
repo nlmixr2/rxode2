@@ -83,7 +83,8 @@
 #'     parameter identifiers used in the ODE specification.  A data
 #'     frame or matrix gives one row per subject (or per subject and
 #'     simulation), matched to the subjects by position in data order;
-#'     an `id` column is not used to match them.  A one-row data frame
+#'     an `id` column is not used to match them, but one out of data
+#'     order is warned about (see `warnIdSort`).  A one-row data frame
 #'     or matrix is used for every subject, unless it has an `id`
 #'     column and the data has more than one subject, which is an
 #'     error;
@@ -882,9 +883,10 @@
 #'     is the amount to increment for the observations between `from`
 #'     and `to`.
 #'
-#' @param warnIdSort Warn if the ID is not present and rxode2 assumes
-#'     the order of the parameters/iCov are the same as the order of
-#'     the parameters in the input dataset.
+#' @param warnIdSort Warn when a multi-row `params` data frame or
+#'     matrix has an `id` column that does not list the data's
+#'     subjects in data order (rows are used by position, not by
+#'     `id`).  Data with one subject is exempt.
 #'
 #' @param warnDrop Warn if column(s) were supposed to be dropped, but
 #'     were not present.
@@ -3029,6 +3031,55 @@ rxSolve.function <- function(
     .list,
     "\n",
     "give one row per subject, or drop the id column to use the row for all"
+  )
+}
+
+#' The warning for a multi-row `params` whose id column is out of data order
+#'
+#' A multi-row data frame or matrix is matched to the subjects by position, so
+#' an id column that does not list the data's subjects in data order (repeated
+#' per simulation) is ignored.  One-subject data is exempt (a population
+#' simulation from one event table).
+#'
+#' @param params the `params` given to `rxSolve()`
+#' @param subjects the data's subject labels, in data order
+#' @return the message, or `NULL` when the ids line up
+#' @noRd
+.rxParamsIdOrderMsg <- function(params, subjects) {
+  .n <- length(subjects)
+  if (!(is.data.frame(params) || is.matrix(params)) || NROW(params) <= 1L || .n <= 1L) {
+    return(NULL)
+  }
+  .w <- which(tolower(colnames(params)) == "id")
+  if (length(.w) == 0L) {
+    return(NULL)
+  }
+  .id <- if (is.data.frame(params)) params[[.w[1]]] else params[, .w[1]]
+  .want <- rep_len(as.character(subjects), length(.id))
+  # numeric ids compare by value (1e5 is the label "100000")
+  .wantN <- if (is.numeric(.id)) suppressWarnings(as.numeric(.want)) else NA_real_
+  if (is.numeric(.id) && !anyNA(.wantN)) {
+    .bad <- which(is.na(.id) | .id != .wantN)
+    .id <- format(.id, scientific = FALSE, trim = TRUE, digits = 15)
+  } else {
+    .id <- as.character(.id)
+    .bad <- which(is.na(.id) | .id != .want)
+  }
+  if (length(.bad) == 0L) {
+    return(NULL)
+  }
+  .b <- .bad[1]
+  paste0(
+    "the 'params' id column does not match the data's subjects in order; ",
+    "rows are used by position, not by id\n",
+    "row ",
+    .b,
+    " has id ",
+    .id[.b],
+    " but is used for subject ",
+    .want[.b],
+    "\n",
+    "reorder 'params' to the data's subjects, or use 'warnIdSort=FALSE' to silence this"
   )
 }
 
