@@ -304,6 +304,43 @@ without any hidden bias from extra calls:</p>
 </div>
 </div>
 <div class="section level2">
+<h2 id="resampling-one-eta-or-eps-with-simetan-simepsn">Resampling one ETA or EPS with <code>simeta(n)</code> /
+<code>simeps(n)</code><a class="anchor" aria-label="anchor" href="#resampling-one-eta-or-eps-with-simetan-simepsn"></a>
+</h2>
+<p>An integer argument re-draws only the <code>n</code>-th ETA (in omega
+order) or EPS (in sigma order); the others keep their values. When the
+matrix correlates that element with the others, the new value is drawn
+conditional on their current values, so the covariance is kept. An index
+past the size of omega/sigma is an error.</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mod_one</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/ini.html">ini</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">tv</span> <span class="op">&lt;-</span> <span class="fl">70</span></span>
+<span>    <span class="va">eta.wt</span> <span class="op">~</span> <span class="fl">0.1</span><span class="op">^</span><span class="fl">2</span></span>
+<span>    <span class="va">eta.cl</span> <span class="op">~</span> <span class="fl">0.3</span><span class="op">^</span><span class="fl">2</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/model.html">model</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="va">wt</span> <span class="op">&lt;-</span> <span class="va">tv</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta.wt</span><span class="op">)</span></span>
+<span>    <span class="va">i</span> <span class="op">&lt;-</span> <span class="fl">0</span></span>
+<span>    <span class="kw">while</span> <span class="op">(</span><span class="op">(</span><span class="va">wt</span> <span class="op">&lt;</span> <span class="fl">60</span><span class="op">)</span> <span class="op">||</span> <span class="op">(</span><span class="va">wt</span> <span class="op">&gt;</span> <span class="fl">80</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="va">i</span> <span class="op">&lt;-</span> <span class="va">i</span> <span class="op">+</span> <span class="fl">1</span></span>
+<span>      <span class="kw">if</span> <span class="op">(</span><span class="va">i</span> <span class="op">&gt;</span> <span class="fl">100</span><span class="op">)</span> <span class="kw">break</span></span>
+<span>      <span class="fu">simeta</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>              <span class="co"># resample only eta.wt; eta.cl is kept</span></span>
+<span>      <span class="va">wt</span> <span class="op">&lt;-</span> <span class="va">tv</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta.wt</span><span class="op">)</span></span>
+<span>    <span class="op">}</span></span>
+<span>    <span class="va">cl</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta.cl</span><span class="op">)</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">f4</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rxSolve.html">rxSolve</a></span><span class="op">(</span><span class="va">mod_one</span>, <span class="fu"><a href="../reference/et.html">et</a></span><span class="op">(</span><span class="fl">0</span>, id <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">100</span><span class="op">)</span>, seed <span class="op">=</span> <span class="fl">1234</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> parameter labels from comments are typically ignored in non-interactive mode</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Need to run with the source intact to parse comments</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">f4</span><span class="op">$</span><span class="va">wt</span> <span class="op">&gt;=</span> <span class="fl">60</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">f4</span><span class="op">$</span><span class="va">wt</span> <span class="op">&lt;=</span> <span class="fl">80</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="va">f4</span><span class="op">$</span><span class="va">wt</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] 60.34521 79.93623</span></span></code></pre></div>
+</div>
+<div class="section level2">
 <h2 id="differences-from-a-pure-post-hoc-truncation">Differences from a pure post-hoc truncation<a class="anchor" aria-label="anchor" href="#differences-from-a-pure-post-hoc-truncation"></a>
 </h2>
 <p>Using <code>simeta()</code> / <code>simeps()</code> inside the model
