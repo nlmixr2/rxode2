@@ -75,9 +75,9 @@ rxTest({
   })
 
   test_that(".rxSens records the pruned names", {
-    .s <- rxode2:::.rxLoadPrune(rxModelVars(rxode2(.warf)), FALSE, pkTime = TRUE)
-    rxode2:::.rxJacobian(.s, .warfE)
-    .r <- rxode2:::.rxSens(.s, .warfE, prune = TRUE)
+    .s <- .rxLoadPrune(rxModelVars(rxode2(.warf)), FALSE, pkTime = TRUE)
+    .rxJacobian(.s, .warfE)
+    .r <- .rxSens(.s, .warfE, prune = TRUE)
     expect_setequal(attr(.r, "sensZero"), .sn("depot", c("eta.cl", "eta.v")))
     expect_setequal(.s$..sensZero, attr(.r, "sensZero"))
     expect_length(.r, 7L)
