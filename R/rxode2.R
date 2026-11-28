@@ -137,7 +137,13 @@ NA_LOGICAL <- NA # nolint
 #' Each generated C function (the ODE right-hand side, the calculated
 #' variables, `f()`/`alag()`/`rate()`/`dur()`, ...) evaluates only the model
 #' statements its own outputs depend on; `options(rxode2.fullOpt = "none")`
-#' evaluates every statement in every function instead.
+#' evaluates every statement in every function instead.  The ODE right-hand
+#' side, the Jacobian and the calculated variables also cache, per thread, the
+#' statements and calls that read only parameters (and covariates), and
+#' recompute them only when one of those inputs changes.  The results are
+#' bitwise the same where the compiler does not fuse multiply-adds (FMA)
+#' across statements, and otherwise deterministic for a given build.
+#' `options(rxode2.hoistPar = FALSE)` turns this off.
 #'
 #' @includeRmd man/rmdhunks/rxode2-create-models.Rmd
 #'
@@ -2566,10 +2572,12 @@ rxCompile.rxModelVars <- function(
         .fullOptOf <- .rxFullOptOf(as.character(.trans["parsed_md5"]))
         .rxFullOptState$level <- .fullOptOf$level
         .rxFullOptState$impure <- .fullOptOf$impure
+        .rxFullOptState$hoist <- .fullOptOf$hoist
         on.exit(
           {
             .rxFullOptState$level <- NULL
             .rxFullOptState$impure <- NULL
+            .rxFullOptState$hoist <- NULL
           },
           add = TRUE
         )

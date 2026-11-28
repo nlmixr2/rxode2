@@ -2,6 +2,12 @@
 
 ## New features
 
+- Generated C code caches the parameter- and covariate-only statements and the
+  costly pure calls (`exp()`, `log()`, `pow()`, ...) of `dydt`, `calc_jac` and
+  `calc_lhs` in a per-function thread-local cache keyed bitwise on the inputs,
+  so a solve recomputes them only when a parameter or covariate value changes.
+  Results are identical where the compiler does not fuse multiply-adds across
+  statements.  `options(rxode2.hoistPar = FALSE)` turns it off.
 - `simeta(n)` and `simeps(n)` re-simulate only the `n`-th ETA/EPS inside a
   model, keeping the others; a correlated element is drawn conditional on
   the others.  The index counts the omega/sigma as given, before items with
