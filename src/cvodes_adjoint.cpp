@@ -46,7 +46,7 @@ struct cvHist {
     if (ns == 0) { for (int k = 0; k < nBase; ++k) out[k] = 0.0; return; }
     int s = 0;
     for (int si = 0; si < ns; ++si) {
-      if (t[segStart[si]] <= tq + 1e-12) s = si; else break;
+      if (t[segStart[si]] <= tq + rxAdjStepTol(t[segStart[si]], tq)) s = si; else break;
     }
     int lo = segStart[s];
     int hi = (s + 1 < ns) ? segStart[s + 1] : (int)t.size();   // [lo, hi)
@@ -198,7 +198,7 @@ static void cvB_infusForcing(cvBwdUser *u, double t, N_Vector B, N_Vector Bd) {
   int n = u->nBase, np = u->np;
   for (size_t w = 0; w < u->infus->size(); ++w) {
     const cvInfus &F = (*u->infus)[w];
-    if (t < F.tOn - 1e-12 || t > F.tOff + 1e-12) continue;
+    if (t < F.tOn - rxAdjStepTol(t, F.tOn) || t > F.tOff + rxAdjStepTol(t, F.tOff)) continue;
     double lc = NV_Ith_S(B, F.cmt);
     if (u->drateOff >= 0 && !F.fixed) {   // dR/dtheta = durMult * drate
       const double *drate = &u->lhs[u->drateOff];
