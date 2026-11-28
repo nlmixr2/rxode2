@@ -112,18 +112,37 @@ static inline int chRead(const char *s, int len, cslVec *pv,
     cslId(&_chVarNames, s, len, 0) < 0;
 }
 
-// The operator at s[k]: 0 when it writes or indexes
+// The `=` at s[k]: 1 when part of a comparison (==, <=, >=, !=)
+static inline int chEqOk(const char *s, int k, int a) {
+  if (s[k+1] == '=') return 1;
+  return k > a && strchr("=<>!", s[k-1]) != NULL;
+}
+
+// The operator at s[k] (not '\0'): 0 when it writes or indexes
 static inline int chOpOk(const char *s, int k, int a) {
   char c = s[k];
-  if (c == '=') {
-    int cmp = (s[k+1] == '=') ||
-      (k > a && (s[k-1] == '=' || s[k-1] == '<' || s[k-1] == '>' || s[k-1] == '!'));
-    return cmp;
-  }
-  if ((c == '+' && s[k+1] == '+') || (c == '-' && s[k+1] == '-')) return 0;
+  if (c == '=') return chEqOk(s, k, a);
+  if ((c == '+' || c == '-') && s[k+1] == c) return 0;
   if (c == '&') return s[k+1] == '&' || (k > a && s[k-1] == '&');
-  return !(c == ';' || c == '{' || c == '}' || c == '[' || c == ']' ||
-           c == '.');
+  return strchr(";{}[].", c) == NULL;
+}
+
+// s[0..len) is the cast `double` or `int`
+static inline int chIsCast(const char *s, int len) {
+  return (len == 6 && !strncmp(s, "double", 6)) || (len == 3 && !strncmp(s, "int", 3));
+}
+
+// The identifier s[k..j) of a scanned expression: 1 for a pure call, a cast,
+// a parameter, a hoisted variable or a constant
+static inline int chIdOk(const char *s, int k, int j, cslVec *pv,
+                         unsigned long long *hm) {
+  int len = j - k;
+  int m = j;
+  while (s[m] == ' ' || s[m] == '\t') m++;
+  if (cslIsMember(s, k)) return 0;
+  if (s[m] == '(') return chInList(_chPure, chN(_chPure), s + k, len) || chIsCast(s + k, len);
+  if (cslIsKeyword(s + k, len)) return chIsCast(s + k, len);
+  return chRead(s + k, len, pv, hm);
 }
 
 // s[a..b) reads only parameters, hoisted variables and constants and calls
@@ -145,22 +164,7 @@ static inline int chScan(const char *s, int a, int b, cslVec *pv,
       continue;
     }
     while (pkTimeIdChar(s[j])) j++;
-    int len = j - k;
-    int m = j;
-    while (s[m] == ' ' || s[m] == '\t') m++;
-    if (cslIsMember(s, k)) return 0;
-    if (s[m] == '(') {
-      if (!chInList(_chPure, chN(_chPure), s + k, len)) {
-        // a cast is fine, any other keyword or call is not
-        if (!((len == 6 && !strncmp(s + k, "double", 6)) ||
-              (len == 3 && !strncmp(s + k, "int", 3)))) return 0;
-      }
-    } else if (cslIsKeyword(s + k, len)) {
-      if (!((len == 6 && !strncmp(s + k, "double", 6)) ||
-            (len == 3 && !strncmp(s + k, "int", 3)))) return 0;
-    } else if (!chRead(s + k, len, pv, hm)) {
-      return 0;
-    }
+    if (!chIdOk(s, k, j, pv, hm)) return 0;
     k = j;
   }
   return 1;
@@ -201,7 +205,7 @@ static inline int chAddItem(int line, int def, const char *text,
                             unsigned long long mask) {
   if (_ch.n + 1 > _ch.cap) {
     int cap = _ch.cap == 0 ? 64 : 2 * _ch.cap;
-    chItem *it = (chItem*)R_alloc(cap, sizeof(chItem));
+    chItem *it = (chItem*)rxMemRalloc(fixed, cap, sizeof(chItem));
     for (int k = 0; k < _ch.n; ++k) it[k] = _ch.it[k];
     _ch.it = it;
     _ch.cap = cap;
@@ -213,7 +217,7 @@ static inline int chAddItem(int line, int def, const char *text,
 static inline void chAddOcc(int line, int start, int end, int item) {
   if (_ch.nOcc + 1 > _ch.capOcc) {
     int cap = _ch.capOcc == 0 ? 64 : 2 * _ch.capOcc;
-    chOcc *o = (chOcc*)R_alloc(cap, sizeof(chOcc));
+    chOcc *o = (chOcc*)rxMemRalloc(fixed, cap, sizeof(chOcc));
     for (int k = 0; k < _ch.nOcc; ++k) o[k] = _ch.occ[k];
     _ch.occ = o;
     _ch.capOcc = cap;
@@ -222,23 +226,38 @@ static inline void chAddOcc(int line, int start, int end, int item) {
   _ch.occ[_ch.nOcc++] = (chOcc){line, start, end, item};
 }
 
-// Line i (text s) as a hoisted line
-static inline int chLineItem(int i, const char *s) {
+// Line i is a top-level single-statement assignment of a variable written
+// once and read only after it
+static inline int chLineOk(int i) {
   if (sbPm.lType[i] != TASSIGN || !_csl.slice[i] || _csl.span[i] >= 0 ||
       _csl.out[i] != 0) return 0;
   int v = _csl.def[i];
   if (v < 0 || _chWrites[v] != 1 || _chFirstRd[v] <= i) return 0;
-  if (_pkLine != NULL && _pkLine[i]) return 0;
-  int start;
-  int len = pkTimeLhs(s, &start);
-  if (len <= 0 || cslId(&_csl.h, s + start, len, 0) != v) return 0;
-  int a = start + len;
+  return _pkLine == NULL || !_pkLine[i];
+}
+
+// The right-hand side s[*pa..*pb) of the assignment whose lhs ends at s[a],
+// without its `;`; 0 when the line does not end in one
+static inline int chRhs(const char *s, int a, int *pa, int *pb) {
   while (s[a] != '=') a++;
   a++;
   int b = (int)strlen(s);
   while (b > a && (s[b-1] == '\n' || s[b-1] == ' ' || s[b-1] == '\t')) b--;
   if (b <= a || s[b-1] != ';') return 0;
-  b--;
+  *pa = a;
+  *pb = b - 1;
+  return 1;
+}
+
+// Line i (text s) as a hoisted line
+static inline int chLineItem(int i, const char *s) {
+  if (!chLineOk(i)) return 0;
+  int v = _csl.def[i];
+  int start;
+  int len = pkTimeLhs(s, &start);
+  if (len <= 0 || cslId(&_csl.h, s + start, len, 0) != v) return 0;
+  int a, b;
+  if (!chRhs(s, start + len, &a, &b)) return 0;
   cslVec pv = {NULL, 0, 0};
   unsigned long long hm = 0;
   if (!chScan(s, a, b, &pv, &hm)) return 0;
@@ -273,7 +292,7 @@ static inline int chCallItem(int i, const char *c, int len,
     if (_ch.it[k].def < 0 && (int)strlen(_ch.it[k].text) == len &&
         !strncmp(_ch.it[k].text, c, len)) return k;
   }
-  char *t = R_alloc(len + 1, sizeof(char));
+  char *t = rxMemRalloc(fixed, len + 1, sizeof(char));
   memcpy(t, c, len);
   t[len] = '\0';
   return chAddItem(i, -1, t, mask);
@@ -327,23 +346,27 @@ static inline const char *chText(int show_ode, int i) {
   return NULL;
 }
 
+// Empty item tables for n lines and nId variables
+static inline void chAlloc(int n, int nId) {
+  _ch.n = _ch.cap = _ch.nOcc = _ch.capOcc = 0;
+  _ch.it = NULL;
+  _ch.occ = NULL;
+  _ch.occFirst = (int*)rxMemRalloc(fixed, n, sizeof(int));
+  _ch.lineItem = (int*)rxMemRalloc(fixed, n, sizeof(int));
+  _ch.text = (const char**)rxMemRalloc(fixed, n, sizeof(char*));
+  _ch.defItem = (int*)rxMemRalloc(fixed, nId > 0 ? nId : 1, sizeof(int));
+  _ch.slotOf = (int*)rxMemRalloc(fixed, nId > 0 ? nId : 1, sizeof(int));
+  _ch.slotId = (cslVec){NULL, 0, 0};
+  for (int v = 0; v < nId; ++v) _ch.defItem[v] = _ch.slotOf[v] = -1;
+}
+
 // Find the items of function show_ode (after cslForFunction())
 static inline void chForFunction(int show_ode) {
   _ch.on = 0;
   if (!_chOn || _rxgDev || !_csl.ok) return;
   if (show_ode != ode_dydt && show_ode != ode_jac && show_ode != ode_lhs) return;
   int n = _csl.n;
-  int nId = _csl.h.n;
-  _ch.n = _ch.cap = _ch.nOcc = _ch.capOcc = 0;
-  _ch.it = NULL;
-  _ch.occ = NULL;
-  _ch.occFirst = (int*)R_alloc(n, sizeof(int));
-  _ch.lineItem = (int*)R_alloc(n, sizeof(int));
-  _ch.text = (const char**)R_alloc(n, sizeof(char*));
-  _ch.defItem = (int*)R_alloc(nId > 0 ? nId : 1, sizeof(int));
-  _ch.slotOf = (int*)R_alloc(nId > 0 ? nId : 1, sizeof(int));
-  _ch.slotId = (cslVec){NULL, 0, 0};
-  for (int v = 0; v < nId; ++v) _ch.defItem[v] = _ch.slotOf[v] = -1;
+  chAlloc(n, _csl.h.n);
   for (int i = 0; i < n; ++i) {
     _ch.occFirst[i] = _ch.lineItem[i] = -1;
     _ch.text[i] = NULL;
@@ -424,7 +447,20 @@ static inline void chWriteHeader(void) {
   sAppend(&sbOut, "// key slot k: x bitwise as on this thread's last call, else mark it changed\n#define _rxHoistKey(k, x) { double _rxHx = (x); unsigned long long _rxHu; memcpy(&_rxHu, &_rxHx, sizeof(double)); if (_rxHu != _rxHk[k]) { _rxHk[k] = _rxHu; _rxHm |= 1ULL << ((k) < 63 ? (k) : 63); } }\n");
 }
 
-// Count the identifiers line i (text s) assigns: `x =`, `x op=`
+// ++ or -- at s[p]
+static inline int chIncDec(const char *s, int p) {
+  return (s[p] == '+' || s[p] == '-') && s[p+1] == s[p];
+}
+
+// The identifier s[k..j) is assigned: `x =`, `x op=`, ++x, x++, --x, x--
+static inline int chIsWrite(const char *s, int k, int j) {
+  int m = j;
+  while (s[m] == ' ' || s[m] == '\t') m++;
+  if (strchr("+-*/%&|^", s[m]) != NULL && s[m] != '\0' && s[m+1] == '=') m++;
+  return (s[m] == '=' && s[m+1] != '=') || chIncDec(s, j) || (k >= 2 && chIncDec(s, k - 2));
+}
+
+// Count the identifiers line i (text s) assigns
 static inline void chLineWrites(const char *s, int i, int *seen) {
   if (s == NULL) return;
   int k = 0;
@@ -439,14 +475,7 @@ static inline void chLineWrites(const char *s, int i, int *seen) {
       continue;
     }
     while (pkTimeIdChar(s[j])) j++;
-    int m = j;
-    while (s[m] == ' ' || s[m] == '\t') m++;
-    if (strchr("+-*/%&|^", s[m]) != NULL && s[m] != '\0' && s[m+1] == '=') m++;
-    int w = s[m] == '=' && s[m+1] != '=';
-    // ++x / x++ / x--
-    w = w || (s[j] == '+' && s[j+1] == '+') || (s[j] == '-' && s[j+1] == '-') ||
-      (k >= 2 && ((s[k-1] == '+' && s[k-2] == '+') || (s[k-1] == '-' && s[k-2] == '-')));
-    if (w && !cslIsMember(s, k)) {
+    if (chIsWrite(s, k, j) && !cslIsMember(s, k)) {
       int id = cslId(&_csl.h, s + k, j - k, 0);
       if (id >= 0 && seen[id] != i) {
         seen[id] = i;
@@ -462,21 +491,23 @@ static inline void chReset(void) {
   _ch.on = 0;
 }
 
-// Per-model setup after cslBuild(): parameters, first reads, variable names
-static inline void chBuildModel(int on) {
-  _chOn = 0;
-  _ch.on = 0;
-  if (!on || !_csl.ok) return;
-  int n = _csl.n;
-  // simeta()/simeps() rewrite parameter locals in the middle of the body
+// Line l calls simeta() or simeps()
+static inline int chSimLine(const char *l) {
+  return l != NULL && (strstr(l, "simeta") || strstr(l, "simeps"));
+}
+
+// simeta()/simeps() rewrite parameter locals in the middle of the body
+static inline int chHasSim(int n) {
   for (int i = 0; i < n; ++i) {
-    if ((sbPm.line[i] != NULL && (strstr(sbPm.line[i], "simeta") || strstr(sbPm.line[i], "simeps"))) ||
-        (sbPmDt.line[i] != NULL && (strstr(sbPmDt.line[i], "simeta") || strstr(sbPmDt.line[i], "simeps")))) return;
+    if (chSimLine(sbPm.line[i]) || chSimLine(sbPmDt.line[i])) return 1;
   }
-  int nId = _csl.h.n;
-  _chPar = cslZeros(nId);
-  _chFirstRd = (int*)R_alloc(nId > 0 ? nId : 1, sizeof(int));
-  _chName = (const char**)R_alloc(nId > 0 ? nId : 1, sizeof(char*));
+  return 0;
+}
+
+// First line reading each variable, and the C names
+static inline void chFirstReads(int n, int nId) {
+  _chFirstRd = (int*)rxMemRalloc(fixed, nId > 0 ? nId : 1, sizeof(int));
+  _chName = (const char**)rxMemRalloc(fixed, nId > 0 ? nId : 1, sizeof(char*));
   for (int v = 0; v < nId; ++v) _chFirstRd[v] = n;
   for (int h = 0; h < _csl.h.cap; ++h) {
     if (_csl.h.key[h] != NULL) _chName[_csl.h.id[h]] = _csl.h.key[h];
@@ -484,14 +515,22 @@ static inline void chBuildModel(int on) {
   for (int i = n; i--;) {
     for (int k = _csl.rdStart[i]; k < _csl.rdStart[i + 1]; ++k) _chFirstRd[_csl.rd[k]] = i;
   }
+}
+
+// Lines writing each variable
+static inline void chCountWrites(int n, int nId) {
   // writes in any line of any type (_csl.dl only has the single-statement kinds)
   _chWrites = cslZeros(nId);
-  int *seen = (int*)R_alloc(nId > 0 ? nId : 1, sizeof(int));
+  int *seen = (int*)rxMemRalloc(fixed, nId > 0 ? nId : 1, sizeof(int));
   for (int v = 0; v < nId; ++v) seen[v] = -1;
   for (int i = 0; i < n; ++i) {
     chLineWrites(sbPm.line[i], i, seen);
     chLineWrites(sbPmDt.line[i], i, seen);
   }
+}
+
+// The model variable names, and the parameters: set from _PP[] and never assigned
+static inline void chParams(void) {
   cslHashInit(&_chVarNames, 1024);
   sbuf buf;
   sNull(&buf);
@@ -500,7 +539,6 @@ static inline void chBuildModel(int on) {
     sClear(&buf);
     doDot(&buf, tb.ss.line[i]);
     cslId(&_chVarNames, buf.s, (int)strlen(buf.s), 1);
-    // set from _PP[] (printPopulateParameters) and never assigned
     if (shouldSkipPrintLhsI(print_populateParameters, 1, i)) continue;
     if (tb.lh[i] == isLHS || (tb.lh[i] == isLHSparam && tb.ini[i] == 1)) continue;
     int id = cslIdStr(&_csl.h, buf.s);
@@ -508,6 +546,20 @@ static inline void chBuildModel(int on) {
         !cslIndField(buf.s, (int)strlen(buf.s))) _chPar[id] = 1;
   }
   sFree(&buf);
+}
+
+// Per-model setup after cslBuild(): parameters, first reads, variable names
+static inline void chBuildModel(int on) {
+  _chOn = 0;
+  _ch.on = 0;
+  if (!on || !_csl.ok) return;
+  int n = _csl.n;
+  if (chHasSim(n)) return;
+  int nId = _csl.h.n;
+  _chPar = cslZeros(nId);
+  chFirstReads(n, nId);
+  chCountWrites(n, nId);
+  chParams();
   _chOn = 1;
 }
 
