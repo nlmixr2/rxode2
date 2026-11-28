@@ -360,6 +360,10 @@ rxTest({
     expect_no_warning(rxSolve(m, d, params = transform(.p, id = factor(id))))
     expect_no_warning(rxSolve(m, d, params = as.matrix(.p)))
     expect_no_warning(rxSolve(m, d, params = .p[, -1]))
+    # numeric ids compare by value
+    .d5 <- .paramsRowsData(ids = c(1e5, 2e5))
+    expect_no_warning(rxSolve(m, .d5, params = data.frame(id = c(1e5, 2e5), k = 0.5, v = 2)))
+    expect_warning(rxSolve(m, .d5, params = data.frame(id = c(2e5, 1e5), k = 0.5, v = 2)), "row 1 has id 200000")
     # repeated per simulation
     expect_no_warning(rxSolve(m, d, params = rbind(.p, .p)))
     # out of order: warned, and still used by position
