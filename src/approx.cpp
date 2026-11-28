@@ -377,9 +377,7 @@ static inline int rxStepCovSide(double t, int is_locf, int i, rx_solving_options
   // steady-state solve integrates forward from its dose record with the
   // record's own values, and a linCmt() interval reads its middle
   if (!ISNA(ind->ssTime)) return 0;
-  // an adjoint method (code >= 200) re-evaluates its stages in the backward
-  // sweep without the interval they were taken in, so it keeps the record's
-  // own value at both ends
+  // an adjoint method (code >= 200) reads its step ends with rxAdjStepCovTime()
   if (op->stiff >= 200) return 0;
   // only while record i is still ahead: once it is solved, the output walk
   // reads its covariates with the flag the last model call left
@@ -390,6 +388,28 @@ static inline int rxStepCovSide(double t, int is_locf, int i, rx_solving_options
   if (is_locf == 1 && isSameTimeOp(t, ti)) return -1;
   if (is_locf == 2 && isSameTimeOp(t, tp)) return 1;
   return 0;
+}
+
+// The step [t0, t1] an adjoint method (code >= 200) is evaluating, set by its
+// forward stepper and by its backward sweep around each step's stages (0, 0:
+// none).  At an end of the step a locf or nocb covariate is read at the step's
+// middle, the value it has inside the step, so both passes see the same value.
+static thread_local double rxAdjStepT0 = 0.0, rxAdjStepT1 = 0.0;
+extern "C" void rxAdjCovStep(double t0, double t1, double *prev) {
+  if (prev != NULL) {
+    prev[0] = rxAdjStepT0;
+    prev[1] = rxAdjStepT1;
+  }
+  rxAdjStepT0 = t0;
+  rxAdjStepT1 = t1;
+}
+static inline double rxAdjStepCovTime(double t, int is_locf, rx_solving_options_ind *ind,
+                                       rx_solving_options *op) {
+  if ((is_locf != 1 && is_locf != 2) || rxAdjStepT0 == rxAdjStepT1 || !ISNA(ind->ssTime)) return t;
+  if (isSameTimeOp(t, rxAdjStepT0) || isSameTimeOp(t, rxAdjStepT1)) {
+    return 0.5 * (rxAdjStepT0 + rxAdjStepT1);
+  }
+  return t;
 }
 
 // Covariate k of a sampled subject just before (side < 0) or just after
@@ -667,15 +687,16 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
         if (op->par_cov[k]) {
           int is_locf = op->par_cov_interp[k];
           if (is_locf == -1) is_locf = op->is_locf;
+          double tc = rxAdjStepCovTime(t, is_locf, ind, op);
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
             // Get or sample id from overall ids
             indSample = rxCovSampleInd(ind, rx, k);
             // Use the same methodology as approxfun.  Don't need to reset ME
             // because solver doesn't use the times in-between.
-            int side = rxStepCovSide(t, is_locf, idx, ind, op);
+            int side = rxStepCovSide(tc, is_locf, idx, ind, op);
             ind->par_ptr[op->par_cov[k]-1] = (side == 0) ?
-              rxApproxCovData(t, k, is_locf, op, indSample) :
-              rxApproxCovDataSide(t, k, is_locf, side, op, indSample);
+              rxApproxCovData(tc, k, is_locf, op, indSample) :
+              rxApproxCovDataSide(tc, k, is_locf, side, op, indSample);
             continue;
           } else {
             indSample = ind;
@@ -696,7 +717,7 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           }
           // integrating toward the record, a step covariate at an end of the
           // interval takes the value it has inside it
-          int side = rxStepCovSide(t, is_locf, idxSample, ind, op);
+          int side = rxStepCovSide(tc, is_locf, idxSample, ind, op);
           if (side != 0) {
             // a pushed record has no value of its own: take the nearest data
             // record on that side
@@ -708,7 +729,7 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
               // a lagged dose imputes on the data records' times (#1584), so
               // the interval's value is read on them too
               double vIn = lagData ?
-                rxApproxCovDataSide(t, k, is_locf, side, op, indSample) :
+                rxApproxCovDataSide(tc, k, is_locf, side, op, indSample) :
                 getValue(j, y, is_locf, indSample, op, 0);
               if (!isSameTimeOp(vIn, par_ptr[op->par_cov[k]-1])) ind->cacheME = 0;
               par_ptr[op->par_cov[k]-1] = vIn;
@@ -719,26 +740,26 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
           bool pushed = rxNoValueRec(y, rxTteDvs(ind), ind->ix, idxSample, ind->n_all_times_orig);
           if (!rx->addlKeepsCov && (rx->needSort & needSortAlag) &&
               (pushed || idxSample >= indSample->n_all_times ||
-               !isSameTimeOp(t, getAllTimes(indSample, indSample->ix[idxSample])) ||
-               !isSameTimeOp(t, rxRecMatchTime(indSample, idxSample)) ||
+               !isSameTimeOp(tc, getAllTimes(indSample, indSample->ix[idxSample])) ||
+               !isSameTimeOp(tc, rxRecMatchTime(indSample, idxSample)) ||
                ISNA(rxCovRec(y, indSample->ix[idxSample], indSample->n_all_times_orig)))) {
             // a lagged dose sorts at its arrival; unless addlKeepsCov carries
             // its record's covariates there, away from a record at its own
             // data time impute on the data records' times (#1584).  A record
             // with no value of its own does too: filling it along the sorted
             // records would read a lagged dose at its arrival.
-            double v = rxApproxCovData(t, k, is_locf, op, indSample);
+            double v = rxApproxCovData(tc, k, is_locf, op, indSample);
             if (!isSameTimeOp(v, par_ptr[op->par_cov[k]-1])) ind->cacheME=0;
             par_ptr[op->par_cov[k]-1] = v;
             continue;
           }
           if (!pushed && idxSample == 0 &&
-              isSameTimeOp(t, rxRecMatchTime(indSample, idxSample))) {
+              isSameTimeOp(tc, rxRecMatchTime(indSample, idxSample))) {
             // y is in record order; a lagged dose can move record 0 off sorted slot 0
             par_ptr[op->par_cov[k]-1] = rxRecRead(0, y, is_locf, indSample, op, rx->addlKeepsCov);
             ind->cacheME=0;
           } else if (!pushed && idxSample > 0 && idxSample < indSample->n_all_times &&
-                     isSameTimeOp(t, rxRecMatchTime(indSample, idxSample))) {
+                     isSameTimeOp(tc, rxRecMatchTime(indSample, idxSample))) {
             double v = rxRecRead(idxSample, y, is_locf, indSample, op, rx->addlKeepsCov);
             par_ptr[op->par_cov[k]-1] = v;
             if (!isSameTimeOp(v, rxRecRead(idxSample - 1, y, is_locf, indSample, op, rx->addlKeepsCov))) {
@@ -746,7 +767,7 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
             }
           } else {
             // Use the same methodology as approxfun.
-            par_ptr[op->par_cov[k]-1] = rxApproxCov(t, y, is_locf, op, indSample);
+            par_ptr[op->par_cov[k]-1] = rxApproxCov(tc, y, is_locf, op, indSample);
             // Don't need to reset ME because solver doesn't use the
             // times in-between.
           }
