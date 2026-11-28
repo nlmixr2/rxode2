@@ -171,6 +171,7 @@ rxSolve(
   doseAtRecord = NULL,
   addlCovAtTime = NULL,
   resetCancelsPending = TRUE,
+  addlDropPastObs = TRUE,
   ssMethod = c("anderson", "iterate"),
   gpuBackend = c("auto", "opencl", "cpu"),
   gpuDevice = NULL,
@@ -1517,8 +1518,8 @@ read the time of the first data record at or after it (NONMEM's \code{F1},
 each interval from the record that ends it, like NONMEM's \code{R1} (see
 \code{rateAtDoseTime}).  Covariate interpolation is still set by
 \code{covsInterpolation}.  It also sets the default \code{tieOrder} to \code{"data"}
-and turns on \code{addlKeepsCov}, \code{durAtDoseTime} and \code{doseAtRecord} and
-turns off \code{addlCovAtTime} unless
+and turns on \code{addlKeepsCov}, \code{durAtDoseTime} and \code{doseAtRecord}, and
+turns off \code{addlCovAtTime}, unless
 they are given.
 By default \code{FALSE}, when \code{f()}, \code{rate()} and \code{dur()} of an \code{addl} repeat
 read the actual time of the \code{addl} dose.}
@@ -1581,6 +1582,15 @@ added while solving is cancelled only when it is lagged past the reset,
 a reset added while solving cancels lagged doses but not \code{addl}
 repeats, and an event table already translated by \code{\link[=etTrans]{etTrans()}} keeps the
 \code{addl} repeats it was translated with.}
+
+\item{addlDropPastObs}{When \code{TRUE} (default) and only observations are
+returned (\code{addDosing} is \code{FALSE} or \code{NULL}), an \code{addl} series of a
+subject with observations stops after its first repeat past the
+subject's last record, as later repeats cannot change the output.  It is off with \code{resample}, and doses
+into an \code{alag()} compartment, subjects whose time moves back, models
+with model times, \code{evid_()} pushes, \code{lead()}, \code{last()} or a negative
+\code{lag()}, and an event table already translated by \code{\link[=etTrans]{etTrans()}} keep every
+repeat.}
 
 \item{ssMethod}{How an iterated steady state is found: \code{"anderson"} (the
 default) finds the fixed point of the one-cycle map with Anderson
