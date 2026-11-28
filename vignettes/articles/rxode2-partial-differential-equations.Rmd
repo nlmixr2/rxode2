@@ -225,7 +225,8 @@ it afterwards.
 
 - Only one-dimensional grids are supported; a model may have several grids and
   several states per grid.
-- `n` must be a number or a fixed `ini()` value; `from` and `to` may be parameters
+- `n` must be a number or a fixed `ini()` value, set when the model is built
+  (change it with `ini()`, not in `rxSolve()`); `from` and `to` may be parameters
   (point values `C[x = v]` need numeric `from` and `to`).
 - The expanded state names (`C_1`, ...) must not already be used in the model.
 - PDEs on fine grids are stiff, so keep the default `"liblsoda"` or use

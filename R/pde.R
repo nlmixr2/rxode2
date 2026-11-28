@@ -16,7 +16,9 @@
 #' `from + (i - 0.5)*h`.  `from` and `to` may be numbers or expressions of
 #' model parameters; `n` must be a positive integer constant or, in a model
 #' with `ini()`, the name of a fixed `ini()` value (`nx <- fix(50)`) that
-#' `ini(nx = 100)` can change.  The grid name cannot be `t` or `time`.  Supported statements and operators are:
+#' `ini(nx = 100)` can change (the size is fixed when the model is built, so
+#' passing `nx` to `rxSolve()` does not change it).  The grid name cannot be
+#' `t` or `time`.  Supported statements and operators are:
 #'
 #' - `d/dt(C[x]) = rhs` declares the gridded state `C`, expanded into states
 #'   `C_1, ..., C_n`.  Inside `rhs`, `C[x]` (or the bare `C`) is the value in

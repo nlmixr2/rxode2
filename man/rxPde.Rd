@@ -25,7 +25,9 @@ cells of width \code{h = (to - from)/n} (finite volumes) with centers
 \code{from + (i - 0.5)*h}.  \code{from} and \code{to} may be numbers or expressions of
 model parameters; \code{n} must be a positive integer constant or, in a model
 with \code{ini()}, the name of a fixed \code{ini()} value (\code{nx <- fix(50)}) that
-\code{ini(nx = 100)} can change.  The grid name cannot be \code{t} or \code{time}.  Supported statements and operators are:
+\code{ini(nx = 100)} can change (the size is fixed when the model is built, so
+passing \code{nx} to \code{rxSolve()} does not change it).  The grid name cannot be
+\code{t} or \code{time}.  Supported statements and operators are:
 \itemize{
 \item \code{d/dt(C[x]) = rhs} declares the gridded state \code{C}, expanded into states
 \verb{C_1, ..., C_n}.  Inside \code{rhs}, \code{C[x]} (or the bare \code{C}) is the value in
