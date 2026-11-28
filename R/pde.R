@@ -917,10 +917,10 @@ rxPde <- function(model) {
 
 ## TRUE when an ini() grid size of the ui no longer matches its ini() value.
 .rxPdeIniGridChanged <- function(rxui) {
-  if (!is.environment(rxui) || !is.list(rxui$lstExpr)) {
+  .lines <- if (is.environment(rxui)) get0("lstExpr", envir = rxui, inherits = FALSE)
+  if (!is.list(.lines)) {
     return(FALSE)
   }
-  .lines <- rxui$lstExpr
   for (.l in .lines) {
     if (!is.null(attr(.l, "rxPdeN")) && !identical(.rxPdeIniGridLine(.l, rxui$iniDf), .l)) {
       return(TRUE)
