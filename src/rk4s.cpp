@@ -7162,7 +7162,7 @@ static double rksStabRayRadius(const rksTableau &T, double cr, double ci) {
 static void rksStabArg(int method, const rksTableau &T, double *out) {
   static thread_local std::vector<std::vector<double> > cache;
   if (method >= 0 && method < 512) {
-    if (cache.empty()) cache.resize(512);
+    if (cache.empty()) rxMemResize(fixed, cache, 512);
     if (!cache[method].empty()) { std::memcpy(out, cache[method].data(), 91 * sizeof(double)); return; }
   }
   double r[181];                                    // a = 0, 0.5, ..., 90 deg
@@ -7175,7 +7175,7 @@ static void rksStabArg(int method, const rksTableau &T, double *out) {
     double mn = r[lo]; for (int q = lo + 1; q <= hi; ++q) if (r[q] < mn) mn = r[q];
     out[k] = 0.85 * mn;
   }
-  if (method >= 0 && method < 512) cache[method].assign(out, out + 91);
+  if (method >= 0 && method < 512) rxMemAssign(fixed, cache[method], out, out + 91);
 }
 
 static rksTableau rksGetTableau(int method) {
