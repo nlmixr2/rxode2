@@ -258,6 +258,19 @@ rxMemSummary.rxEtFile <- function(x, ...) {
       warning(.msg, call. = FALSE)
     }
   }
+  # several rows per subject are several simulations, which chunks would
+  # return chunk by chunk rather than simulation by simulation
+  if ((is.data.frame(params) || is.matrix(params)) && .nSub > 1L && NROW(params) > .nSub) {
+    stop(
+      "a chunked solve ('file='/'chunkSize=') cannot solve a 'params' with ",
+      "more rows (",
+      NROW(params),
+      ") than subjects (",
+      .nSub,
+      "); give one row per subject, or solve without chunking.",
+      call. = FALSE
+    )
+  }
   .nChunks <- ceiling(.nSub / .chunkSize)
   .chunkList <- split(.allIds, ceiling(seq_len(.nSub) / .chunkSize))
 
@@ -335,16 +348,14 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   .preDrawnSlice <- function(.first, .n) {
     as.integer(vapply(seq_len(.nStud) - 1L, function(.s) .s * .nSub + seq.int(.first, length.out = .n), double(.n)))
   }
-  # A multi-row params is one row per subject (per simulation) in data order,
-  # laid out the same way, so each chunk takes its subjects' rows from every
-  # simulation block; any other params is the chunk's as given.
+  # A params with one row per subject gives each chunk its subjects' rows; any
+  # other params is the chunk's as given.
+  .paramsPerSub <- (is.data.frame(params) || is.matrix(params)) && .nSub > 1L && NROW(params) == .nSub
   .paramsSlice <- function(.first, .n) {
-    .nr <- NROW(params)
-    if (!(is.data.frame(params) || is.matrix(params)) || .nr <= 1L || .nr %% .nSub != 0L) {
+    if (!.paramsPerSub) {
       return(params)
     }
-    .rows <- vapply(seq_len(.nr %/% .nSub) - 1L, function(.s) .s * .nSub + seq.int(.first, length.out = .n), double(.n))
-    params[as.integer(.rows), , drop = FALSE]
+    params[seq.int(.first, length.out = .n), , drop = FALSE]
   }
   # The residual draw is per OBSERVATION, so its slice is cut by the records a
   # chunk's subjects own rather than by the rows of the parameter table.

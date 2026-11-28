@@ -399,29 +399,20 @@ rxTest({
     m <- .paramsRowsModel()
     .old <- options(rxode2.oom.backend = "rds")
     on.exit(options(.old), add = TRUE)
-    .key <- function(s) {
-      .s <- as.data.frame(s)
-      if (is.null(.s$sim.id)) {
-        .s$sim.id <- 1L
-      }
-      .s$id <- as.character(.s$id)
-      .s <- .s[order(.s$sim.id, match(.s$id, unique(.s$id)), .s$time), c("sim.id", "id", "time", "cp")]
-      rownames(.s) <- NULL
-      .s
-    }
     for (.nid in 3:4) {
       d <- .paramsRowsData(ids = 10 + seq_len(.nid))
       .p <- data.frame(k = seq_len(.nid) / 10, v = 2)
-      for (.pp in list(.p, rbind(.p, transform(.p, k = k * 2)))) {
-        .want <- .key(rxSolve(m, d, params = .pp))
-        for (.cs in 1:3) {
-          expect_identical(
-            .key(rxSolve(m, d, params = .pp, file = tempfile("pr"), chunkSize = .cs)),
-            .want,
-            label = paste(.nid, nrow(.pp), .cs)
-          )
-        }
+      .want <- as.data.frame(rxSolve(m, d, params = .p))
+      for (.cs in 1:3) {
+        .s <- as.data.frame(rxSolve(m, d, params = .p, file = tempfile("pr"), chunkSize = .cs))
+        expect_identical(.s$cp, .want$cp, label = paste(.nid, .cs))
+        expect_identical(as.character(.s$id), as.character(.want$id), label = paste(.nid, .cs))
       }
+      # several simulations per subject are refused
+      expect_error(
+        rxSolve(m, d, params = rbind(.p, .p), file = tempfile("pr"), chunkSize = 2),
+        "more rows \\(\\d+\\) than subjects"
+      )
     }
   })
 })
