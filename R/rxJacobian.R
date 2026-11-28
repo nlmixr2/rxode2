@@ -270,6 +270,19 @@ rxExpandGrid <- function(x, y, type = 0L) {
   .se
 }
 
+# symmetric: keep only d2/(dp dq) with p before q (every kept line references only kept
+# states); delay models keep the full grid for their augmentation.
+.rxSensSymGrid <- function(model, grd, state, vars, vars2, symmetric) {
+  if (!isTRUE(symmetric) || !identical(vars, vars2) || length(model$..delayedStates)) {
+    return(grd)
+  }
+  .n1 <- length(state)
+  .n2 <- length(vars)
+  .i <- seq_len(nrow(grd)) - 1L
+  .keep <- (.i %/% .n1) %% .n2 <= .i %/% (.n1 * .n2)
+  grd[.keep, , drop = FALSE] # keeps each row's name in the full grid
+}
+
 ## Assumes .rxJacobian called on model c(state,vars)
 #'  Sensitivity for model
 #'
@@ -312,15 +325,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
       .grd <- rxode2::rxExpandSens3_(.state, vars, vars2, vars3)
     } else if (!missing(vars2)) {
       .grd <- rxode2::rxExpandSens2_(.state, vars, vars2)
-      ## symmetric: only d2/(dp dq) with p before q (every kept line references only kept
-      ## states); delay models keep the full grid for their augmentation
-      if (isTRUE(symmetric) && identical(vars, vars2) && !length(model$..delayedStates)) {
-        .n1 <- length(.state)
-        .n2 <- length(vars)
-        .i <- seq_len(nrow(.grd)) - 1L
-        .keep <- (.i %/% .n1) %% .n2 <= .i %/% (.n1 * .n2)
-        .grd <- .grd[.keep, , drop = FALSE] # keeps each row's name in the full grid
-      }
+      .grd <- .rxSensSymGrid(model, .grd, .state, vars, vars2, symmetric)
     } else {
       .grd <- rxode2::rxExpandSens_(.state, vars)
     }
