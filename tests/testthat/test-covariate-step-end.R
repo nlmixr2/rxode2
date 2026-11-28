@@ -370,9 +370,9 @@ rxTest({
   })
 
   test_that("an adjoint method's sensitivities stay exact across a step", {
-    # the backward sweep re-evaluates the stages without their interval, so an
-    # adjoint method keeps the record's own value at both ends; its rx__sens_*
-    # columns must match central differences of the same RK4 map
+    # the forward and the backward sweep read a step covariate at a step end
+    # with the value inside the interval; the rx__sens_* columns must match
+    # central differences of the same RK4 map
     withr::local_options(rxode2.useLinCmt = FALSE)
     .mText <- "d/dt(depot)=-ka*depot\nd/dt(center)=ka*depot-(cl*wt/v)*center"
     .cs <- c("ka", "cl", "v")
@@ -413,6 +413,37 @@ rxTest({
         }
       }
       expect_lt(.err, 1e-7, label = .interp)
+    }
+  })
+
+  test_that("an adjoint method integrates a step covariate as its base method does", {
+    # an expanded model solved with rk4 runs rk4s; at a record where the
+    # covariate steps it must give rk4's trajectory, and dop853s/rk4s are exact
+    # on the piecewise-linear cc of .stepModel
+    .mText <- "d/dt(a) <- -ka*a*(1+w)\nd/dt(b) <- ka*a - k*b"
+    .p <- c(ka = 1, k = 0.3)
+    .mbase <- rxode2(.mText)
+    .madj <- rxode2(.rxAdjointExpand(.mText, c("ka", "k"))$text)
+    .d <- data.frame(
+      id = 1,
+      time = c(0, 1, 1.5, 2, 3),
+      evid = c(1, 0, 0, 0, 0),
+      amt = c(100, 0, 0, 0, 0),
+      cmt = "a",
+      w = c(0, 0, 2, 2, 0.5)
+    )
+    for (.interp in c("locf", "nocb")) {
+      .s <- lapply(list(.mbase, .madj), function(m) {
+        as.data.frame(rxSolve(m, .d, params = .p, method = "rk4", covsInterpolation = .interp))
+      })
+      expect_equal(.s[[2]]$a, .s[[1]]$a, tolerance = 1e-12, label = .interp)
+      expect_equal(.s[[2]]$b, .s[[1]]$b, tolerance = 1e-12, label = .interp)
+    }
+    .d <- .stepData("obs")
+    for (.interp in c("locf", "nocb")) {
+      for (.method in c("dop853s", "rk4s")) {
+        expect_lt(.stepError(.stepSolve(.d, .method, .interp), .interp), 1e-13, label = paste(.interp, .method))
+      }
     }
   })
 })

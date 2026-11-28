@@ -7324,6 +7324,16 @@ static inline double rk4s_hist_cap(rx_solving_options_ind *ind, double dt, int s
   return dt;
 }
 
+// A locf/nocb covariate at an end of [t0, t0 + h] is read at its middle while
+// in scope (rxAdjStepCovTime()): the forward sets a solve interval, the
+// backward each recorded step in it, so both see the value inside the interval.
+extern "C" void rxAdjCovStep(double t0, double t1, double *prev);
+struct rxAdjCovStepScope {
+  double prev[2];
+  rxAdjCovStepScope(double t0, double h) { rxAdjCovStep(t0, t0 + h, prev); }
+  ~rxAdjCovStepScope() { rxAdjCovStep(prev[0], prev[1], NULL); }
+};
+
 // One explicit-RK step over [t, t+dt] for the tableau `T`.  dydt READS/WRITES
 // the FULL state (all `nAll` = neqOde entries), so the stage/derivative buffers
 // MUST be nAll wide; we only RECORD the first `nRec` (base) states of each stage.
@@ -7717,6 +7727,7 @@ struct rk4s_dde {
       const double *a0 = stageStart(n);
       for (int q = 0; q < eff; ++q) Ascratch[q] = 0.0;
       for (int q = 0; q < nb; ++q) Ascratch[q] = a0[q];
+      rxAdjCovStepScope _cs(r.t0[n], r.h[n]);
       calc_lhs(cSub, r.t0[n], Ascratch.data(), ind->lhs);
       for (int q = 0; q < nfx; ++q) { FXd[n*nfx+q] = ind->lhs[fxdOff+q]; TAU[n*nfx+q] = ind->lhs[tauOff+q]; }
       if (hasDtau) for (int q = 0; q < ndt; ++q) DTAU[n*ndt+q] = ind->lhs[dtauOff+q];
@@ -8349,6 +8360,7 @@ static void ros_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_o
     double *Wn = &Wf[n*nfx]; int *pn = &pivf[n*nBase];
     for (int i = 0; i < nBase; ++i) for (int j = 0; j < nBase; ++j) Wn[i*nBase+j] = (i==j?invhg:0.0) - Jn[i*nBase+j];
     luFactor(Wn, nBase, pn);
+    rxAdjCovStepScope _cs(rec.t0[n], h);
     for (int i = 0; i < s; ++i) {
       rk4s_eval_jac(cSub, rec.t0[n], &rec.a[(n*s+i)*nBase], nBase, np, fxOff, fpOff,
                     Ascratch.data(), eff, ind, &FX[(n*s+i)*nfx], &FP[(n*s+i)*nfp]);
@@ -8443,6 +8455,7 @@ static void radau_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving
   std::vector<double> Ascratch(eff, 0.0);
   for (size_t nn = 0; nn < nStep; ++nn) {
     double h = rec.h[nn];
+    rxAdjCovStepScope _cs(rec.t0[nn], h);
     for (int i = 0; i < s; ++i)
       rk4s_eval_jac(cSub, rec.t0[nn], &rec.a[(nn*s+i)*n], n, np, fxOff, fpOff, Ascratch.data(), eff, ind, &FX[(nn*s+i)*nfx], &FP[(nn*s+i)*nfp]);
     double *Mn = &Mf[nn*sn*sn];
@@ -8524,6 +8537,7 @@ static void composite_backward_fill(rx_solve *rx, rx_solving_options *op, rx_sol
     rksStepPre &P = pre[nn]; P.method = rec.method[nn]; rksTableau Tm = rksGetTableau(P.method);
     int s = Tm.s; P.s = s; P.rosen = Tm.rosenbrock; P.h = rec.h[nn]; P.aOff = rec.aOff[nn];
     P.FX.resize(s*nfx); P.FP.resize(s*nfp);
+    rxAdjCovStepScope _cs(rec.t0[nn], P.h);
     for (int i = 0; i < s; ++i) {
       rk4s_eval_jac(cSub, rec.t0[nn], &rec.a[P.aOff + (size_t)i*n], n, np, fxOff, fpOff, Ascratch.data(), eff, ind, &P.FX[i*nfx], &P.FP[i*nfp]);
       if (i == 0 && Tm.rosenbrock && jpOff >= 0) { P.Jp.assign(&ind->lhs[jpOff], &ind->lhs[jpOff]+njp); if (jyOff>=0) P.Jy.assign(&ind->lhs[jyOff], &ind->lhs[jyOff]+njy); }
@@ -8703,6 +8717,7 @@ static void rk4s_backward_fill(rx_solve *rx, rx_solving_options *op, rx_solving_
   std::vector<double> Ascratch(eff, 0.0);
   for (size_t n = 0; n < nStep; ++n) {
     double h = rec.h[n], t0 = rec.t0[n];
+    rxAdjCovStepScope _cs(t0, h);
     for (int i = 0; i < sN; ++i)
       rk4s_eval_jac(cSub, t0 + T.c[i] * h, &rec.a[(n * sN + i) * nBase], nBase, np,
                     fxOff, fpOff, Ascratch.data(), eff, ind,
@@ -9094,6 +9109,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
             if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
               preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
               if (nAll > 0) {
+                  rxAdjCovStepScope _cs(xp, ind->extraDoseNewXout - xp);
                   rks_step_interval(ind, op, c_dydt, neq, T, nAll, nRec, yp, xp, ind->extraDoseNewXout, adj ? &rec : NULL, scratch);
               }
               copyLinCmt(neq, ind, op, yp);
@@ -9128,6 +9144,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
           if (nAll > 0) {
+              rxAdjCovStepScope _cs(xp, xout - xp);
               rks_step_interval(ind, op, c_dydt, neq, T, nAll, nRec, yp, xp, xout, adj ? &rec : NULL, scratch);
           }
           copyLinCmt(neq, ind, op, yp);

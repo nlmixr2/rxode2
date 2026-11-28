@@ -498,6 +498,12 @@
 
 ### Solving
 
+- The reversible adjoint methods (`rk4s`, `dop853s`, `dop5s`, `ros4s`,
+  `radauiia5s`, ...) now read a `locf` or `nocb` covariate at the ends of an
+  interval with the value it has inside it, as the base methods do, in the
+  solve and in the backward sweep.  The step landing on a record where the
+  covariate changed used the record's own value, so `rk4s` (and `rk4` on an
+  adjoint-expanded model) differed from `rk4` by the step size times the jump.
 - `rxSaveState()` and `rxSolve(serializeFile=)` no longer read past the end of
   the event-id buffer when a model has more parameters than the translated
   event table has columns, and a restored state now places the covariate and
@@ -546,8 +552,8 @@
   stops on, including next to a lagged dose or a record pushed by `evid_()`.
   Resampled covariates (`resample = TRUE`) follow the same rule; outputs at a
   record still report the record's value, and `linear` and `midpoint`
-  interpolation and the adjoint methods (`rk4s`, `dop853s`, ...) are
-  unchanged.
+  interpolation and the `liblsodaadj`, `cvodesadj` and `abs` adjoint methods
+  are unchanged.
 - The libode-based methods (`"t54"`, `"vern76"`, `"dop54"`, the implicit
   methods and the rest of that family) now integrate with the subject's
   tolerances, so a per-subject `tolFactor` loosens them as it does for the
