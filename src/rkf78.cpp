@@ -27,7 +27,7 @@ extern "C" void ind_rkf78_0(rx_solve *rx, rx_solving_options *op, int solveid, i
   auto stepper = boost::numeric::odeint::make_controlled(
       ind->atol2[0], ind->rtol2[0], error_stepper_type());
       
-  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
+  int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
   rxode2_system sys(c_dydt, neq, ind);
   double *yp;
   

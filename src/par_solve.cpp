@@ -1357,6 +1357,27 @@ int global_jt = 2;
 int global_mf = 22;
 int global_debug = 0;
 
+// dydt of the model rxSolve_() replaced with its Jacobian model (same layout),
+// so a caller still solving with the original dydt keeps the analytic Jacobian
+static t_dydt rxJacSrcDydt = NULL;
+
+extern "C" void rxJacSrcSet(SEXP trans) {
+  rxJacSrcDydt = NULL;
+  if (TYPEOF(trans) != STRSXP || Rf_length(trans) < 4) return;
+  rxJacSrcDydt = (t_dydt) R_GetCCallable(CHAR(STRING_ELT(trans, 0)),
+                                         CHAR(STRING_ELT(trans, 3)));
+}
+
+// The analytic Jacobian of c_dydt, or NULL (a finite difference of c_dydt):
+// calc_jac belongs to the model rxSolve_() set up, so a peer solved in its
+// pool (nlmixr2est's odeSwapSolveInd) must not use it, and without df()/dy()
+// lines it is an empty stub.
+static inline t_calc_jac rxJacFor(t_dydt c_dydt) {
+  if (global_jt != 1 || calc_jac == NULL || c_dydt == NULL) return NULL;
+  if (c_dydt == dydt || c_dydt == rxJacSrcDydt) return calc_jac;
+  return NULL;
+}
+
 /* -----------------------------------------------------------------------
  * DLSODE-based solvers (method 106 = lsode/Adams, method 107 = bdf/BDF)
  *
@@ -9858,6 +9879,52 @@ extern "C" SEXP _rxode2_rxIndLinDriveTeam(SEXP nThreadsS, SEXP clearExpCacheS) {
   REAL(ret)[0] = (double) nsolve;
   REAL(ret)[1] = rxDriveTeamChecksum(rx, nsolve, &errN);
   REAL(ret)[2] = (double) errN;
+  return ret;
+}
+
+// Test hook: solve every subject of the current solve with a PEER model's
+// functions (state count `neqS`, parameters in the same order), the way
+// nlmixr2est's odeSwapSolveInd() does.  Returns time, evid and the states of
+// every row.  Nothing but the tests drives this.
+extern "C" SEXP _rxode2_rxPeerSolveTest(SEXP trans, SEXP neqS) {
+  rxProtect rx_protect;
+  rx_solve *rx = getRxSolve_();
+  int pn = Rf_asInteger(neqS);
+  if (rx == NULL || rx->subjects == NULL || rx->op == NULL ||
+      rxSolveIsSetup() == 0 || pn < 0 || pn > rx->op->neq) {
+    return R_NilValue;
+  }
+  const char *lib = CHAR(STRING_ELT(trans, 0));
+  t_dydt p_dydt = (t_dydt) R_GetCCallable(lib, CHAR(STRING_ELT(trans, 3)));
+  t_update_inis p_inis = (t_update_inis) R_GetCCallable(lib, CHAR(STRING_ELT(trans, 8)));
+  t_dydt_lsoda_dum p_lsoda = (t_dydt_lsoda_dum) R_GetCCallable(lib, CHAR(STRING_ELT(trans, 9)));
+  t_jdum_lsoda p_jdum = (t_jdum_lsoda) R_GetCCallable(lib, CHAR(STRING_ELT(trans, 10)));
+  t_dydt_liblsoda p_lls = (t_dydt_liblsoda) R_GetCCallable(lib, CHAR(STRING_ELT(trans, 13)));
+  int p_jt = (strcmp(CHAR(STRING_ELT(trans, 1)), "fulluser") == 0) ? 1 : 2;
+  int nsolve = (int)(rx->nsim * rx->nsub);
+  int nrow = 0;
+  for (int j = 0; j < nsolve; j++) nrow += rx->subjects[j].n_all_times;
+  SEXP ret = rx_protect.protect(Rf_allocVector(REALSXP, (R_xlen_t)nrow * (pn + 2)));
+  double *out = REAL(ret);
+  assignFuns();
+  int r = 0;
+  for (int j = 0; j < nsolve; j++) {
+    rx_solving_options_ind *ind = &(rx->subjects[j]);
+    ind->neqOverride = pn;
+    ind_solve(rx, (unsigned int)j, p_lls, p_lsoda, p_jdum, p_dydt, p_inis, p_jt);
+    rx_solving_options *op = rx->op;
+    for (int i = 0; i < ind->n_all_times; i++, r++) {
+      out[r] = ind->timeThread[ind->ix[i]];
+      out[nrow + r] = (double) getEvid(ind, ind->ix[i]);
+      double *yp = getSolve(i);
+      for (int k = 0; k < pn; k++) out[(R_xlen_t)(k + 2) * nrow + r] = yp[k];
+    }
+    ind->neqOverride = -1;
+  }
+  SEXP dim = rx_protect.protect(Rf_allocVector(INTSXP, 2));
+  INTEGER(dim)[0] = nrow;
+  INTEGER(dim)[1] = pn + 2;
+  Rf_setAttrib(ret, R_DimSymbol, dim);
   return ret;
 }
 

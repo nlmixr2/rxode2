@@ -5,6 +5,8 @@
 #include <boost/numeric/odeint.hpp>
 #include <vector>
 #include <cmath>
+#include <cfloat>
+#include <algorithm>
 #include <stdexcept>
 
 struct zero_copy_state {
@@ -125,18 +127,41 @@ struct rxode2_system {
     }
 };
 
+// Forward-difference Jacobian of dydt, row-major (J[r*n + c] = df_r/dy_c), for a
+// model whose analytic calc_jac is not available (see rxJacFor())
+static inline void rxFdJac(t_dydt dydt, int *neq, double t, const double *x, double *J, int n,
+                           rx_solving_options_ind *ind) {
+  if (n <= 0) return;
+  size_t nb = (size_t)(neq[0] > n ? neq[0] : n);
+  std::vector<double> y(nb, 0.0), f0(nb, 0.0), f1(nb, 0.0);
+  std::copy(x, x + n, y.begin());
+  dydt(neq, t, y.data(), f0.data());
+  for (int c = 0; c < n; c++) {
+    double yc = y[c];
+    double h = sqrt(DBL_EPSILON) * (fabs(yc) > 1.0 ? fabs(yc) : 1.0);
+    y[c] = yc + h;
+    h = y[c] - yc;
+    dydt(neq, t, y.data(), f1.data());
+    for (int r = 0; r < n; r++) J[(size_t)r * n + c] = (f1[r] - f0[r]) / h;
+    y[c] = yc;
+  }
+  if (ind->err != 0) std::fill(J, J + (size_t)n * (size_t)n, 0.0);
+}
+
 struct rxode2_system_jac_second {
   rx_solving_options_ind *ind;
   t_calc_jac calc_jac;
+  t_dydt dydt;
   int *neq;
   int neqOde;
   int nRowPd;
 
   // neqOde_in is the number of ODE states, the size of the stepper's state and
-  // Jacobian; neq_in[0] also counts linCmt() states, which those leave out
-  rxode2_system_jac_second(rx_solving_options_ind *ind_in, t_calc_jac calc_jac_in, int *neq_in,
-                           int neqOde_in) :
-    ind(ind_in), calc_jac(calc_jac_in), neq(neq_in), neqOde(neqOde_in) {
+  // Jacobian; neq_in[0] also counts linCmt() states, which those leave out.
+  // With no calc_jac the Jacobian is a finite difference of dydt.
+  rxode2_system_jac_second(rx_solving_options_ind *ind_in, t_calc_jac calc_jac_in, t_dydt dydt_in,
+                           int *neq_in, int neqOde_in) :
+    ind(ind_in), calc_jac(calc_jac_in), dydt(dydt_in), neq(neq_in), neqOde(neqOde_in) {
     nRowPd = neqOde; 
   }
 
@@ -151,6 +176,8 @@ struct rxode2_system_jac_second {
     std::fill(&jacobi.data()[0], &jacobi.data()[0] + (size_t)neqOde * (size_t)neqOde, 0.0);
     if (calc_jac != NULL) {
       calc_jac(neq, t, const_cast<double*>(&x[0]), &jacobi.data()[0], nrowpd);
+    } else if (dydt != NULL) {
+      rxFdJac(dydt, neq, t, &x[0], &jacobi.data()[0], neqOde, ind);
     }
   }
 };
@@ -158,13 +185,14 @@ struct rxode2_system_jac_second {
 struct rxode2_system_ros4_second {
   rx_solving_options_ind *ind;
   t_calc_jac calc_jac;
+  t_dydt dydt;
   int *neq;
   int neqOde;
   
-  // neqOde_in as for rxode2_system_jac_second
-  rxode2_system_ros4_second(rx_solving_options_ind *ind_in, t_calc_jac calc_jac_in, int *neq_in,
-                            int neqOde_in) :
-    ind(ind_in), calc_jac(calc_jac_in), neq(neq_in), neqOde(neqOde_in) {
+  // neqOde_in and dydt_in as for rxode2_system_jac_second
+  rxode2_system_ros4_second(rx_solving_options_ind *ind_in, t_calc_jac calc_jac_in, t_dydt dydt_in,
+                            int *neq_in, int neqOde_in) :
+    ind(ind_in), calc_jac(calc_jac_in), dydt(dydt_in), neq(neq_in), neqOde(neqOde_in) {
   }
 
   template<class StateType, class MatrixType, class DfdtType>
@@ -180,6 +208,8 @@ struct rxode2_system_ros4_second {
     std::fill(&jacobi.data()[0], &jacobi.data()[0] + (size_t)neqOde * (size_t)neqOde, 0.0);
     if (calc_jac != NULL) {
       calc_jac(neq, t, const_cast<double*>(&x[0]), &jacobi.data()[0], nrowpd);
+    } else if (dydt != NULL) {
+      rxFdJac(dydt, neq, t, &x[0], &jacobi.data()[0], neqOde, ind);
     }
     
     // Set dfdt to zero because rxode2 doesn't calculate explicit time derivatives
@@ -194,7 +224,7 @@ make_rxode2_system_ros4(rx_solving_options_ind* ind, t_dydt calc_dydt, t_calc_ja
                         int neqOde) {
     return std::make_pair(
         rxode2_system(calc_dydt, neq, ind),
-        rxode2_system_ros4_second(ind, calc_jac, neq, neqOde)
+        rxode2_system_ros4_second(ind, calc_jac, calc_dydt, neq, neqOde)
     );
 }
 
@@ -205,7 +235,7 @@ make_rxode2_system_iem(rx_solving_options_ind* ind, t_dydt calc_dydt, t_calc_jac
                        int neqOde) {
     return std::make_pair(
         rxode2_system(calc_dydt, neq, ind),
-        rxode2_system_jac_second(ind, calc_jac, neq, neqOde)
+        rxode2_system_jac_second(ind, calc_jac, calc_dydt, neq, neqOde)
     );
 }
 
