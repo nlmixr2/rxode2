@@ -448,6 +448,8 @@ SEXP _rxode2_rxErf(SEXP);
 
 void simeps(void);
 void simeta(void);
+void simepsI(int n);
+void simetaI(int n);
 
 void nullGlobals(void);
 SEXP _rxode2_codeLoaded(void);
@@ -1424,6 +1426,8 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "rxlnorm", (DL_FUNC) &rxlnorm);
   R_RegisterCCallable("rxode2", "simeps", (DL_FUNC) &simeps);
   R_RegisterCCallable("rxode2", "simeta", (DL_FUNC) &simeta);
+  R_RegisterCCallable("rxode2", "simepsI", (DL_FUNC) &simepsI);
+  R_RegisterCCallable("rxode2", "simetaI", (DL_FUNC) &simetaI);
   R_RegisterCCallable("rxode2", "getIndTolFactor", (DL_FUNC) &getIndTolFactor);
   R_RegisterCCallable("rxode2", "setIndTolFactor", (DL_FUNC) &setIndTolFactor);
   R_RegisterCCallable("rxode2", "getIndNeqOverride", (DL_FUNC) &getIndNeqOverride);

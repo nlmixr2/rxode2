@@ -62,7 +62,8 @@ selection_statement
 break_statement
     : 'break';
 
-simfun_statement : "(simeps|simeta)" '(' ')' ;
+/* An optional 1-based index re-simulates only that ETA/EPS (#1793). */
+simfun_statement : "(simeps|simeta)" '(' decimalint? ')' ;
 
 obs_statement : function ;
 
