@@ -601,6 +601,7 @@ int lsoda(struct lsoda_context_t * ctx, double *y, double *t, double tout) {
 		if (ctx->state == 1) {
 			_rxC(meth) = 1;
 			_rxC(tn) = *t;
+			_rxC(nslast) = _rxC(nst); /* restart: maxsteps counts per call, as ODEPACK */
 			_rxC(tsw) = *t;
 			if (itask == 4 || itask == 5) {
 				tcrit = opt->tcrit;
