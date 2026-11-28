@@ -22,17 +22,26 @@
   .w - 1L
 }
 
+## options(rxode2.hoistPar = TRUE) (the default): dydt(), calc_jac() and
+## calc_lhs() cache what reads only parameters (src/codegenHoist.h)
+.rxHoistPar <- function() {
+  !isFALSE(getOption("rxode2.hoistPar", TRUE))
+}
+
 ## Key folded into the parsed md5 so models compiled at different levels (or
-## with different rxImpureFun() registrations) do not share a DLL; "" at "none"
-## leaves the md5 unchanged
-.rxFullOptKey <- function(level = .rxFullOptLevel(), impure = .rxImpureEnv$names) {
-  if (level == 0L) {
-    return("")
+## with different rxImpureFun() registrations, or hoisting on/off) do not share
+## a DLL; "" at "none" without hoisting leaves the md5 unchanged
+.rxFullOptKey <- function(level = .rxFullOptLevel(), impure = .rxImpureEnv$names, hoist = .rxHoistPar()) {
+  .key <- ""
+  if (level != 0L) {
+    .key <- .rxFullOptLevels[level + 1L]
+    ## functions registered with rxImpureFun() change what is sliced
+    if (length(impure) > 0L) {
+      .key <- paste0(.key, ";impure=", paste(sort(impure), collapse = ","))
+    }
   }
-  .key <- .rxFullOptLevels[level + 1L]
-  ## functions registered with rxImpureFun() change what is sliced
-  if (length(impure) > 0L) {
-    .key <- paste0(.key, ";impure=", paste(sort(impure), collapse = ","))
+  if (hoist) {
+    .key <- paste0(.key, ";hoist")
   }
   .key
 }
@@ -62,15 +71,19 @@
   .ret
 }
 
-## Level and rxImpureFun() names whose key gave parsed md5 `md5`, as
-## list(level=, impure=); NULL when unknown
+## Level, rxImpureFun() names and hoisting whose key gave parsed md5 `md5`,
+## as list(level=, impure=, hoist=); NULL when unknown
 .rxFullOptOf <- function(md5) {
   .key <- .rxFullOptState$key[[md5]]
   if (is.null(.key)) {
     return(NULL)
   }
+  .hoist <- endsWith(.key, ";hoist")
+  if (.hoist) {
+    .key <- substr(.key, 1L, nchar(.key) - 6L)
+  }
   if (!nzchar(.key)) {
-    return(list(level = 0L, impure = character(0)))
+    return(list(level = 0L, impure = character(0), hoist = .hoist))
   }
   .parts <- strsplit(.key, ";impure=", fixed = TRUE)[[1]]
   .lvl <- match(.parts[1], .rxFullOptLevels) - 1L
@@ -78,7 +91,7 @@
     return(NULL)
   }
   .imp <- if (length(.parts) > 1L) strsplit(.parts[2], ",", fixed = TRUE)[[1]] else character(0)
-  list(level = .lvl, impure = .imp)
+  list(level = .lvl, impure = .imp, hoist = .hoist)
 }
 
 ## Calls (as spelled in the generated C) with side effects, or that read state
@@ -189,6 +202,11 @@
       .rxFullOptImpureBuiltin,
       .rng,
       .rxImpureFunNames(.rxFullOptState$impure)
-    ))
+    )),
+    hoist = if (is.null(.rxFullOptState$hoist)) {
+      .rxHoistPar()
+    } else {
+      .rxFullOptState$hoist
+    }
   )
 }

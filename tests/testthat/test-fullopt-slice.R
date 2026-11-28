@@ -1,4 +1,5 @@
 rxTest({
+  ## slicing alone: parameter-only hoisting (test-hoist-par.R) is off here
   ## generated C body of the function whose definition line matches `fun`,
   ## without the loads of the previous record's lhs (`x = _PL[...]`)
   .fullOptBody <- function(m, fun) {
@@ -13,7 +14,7 @@ rxTest({
   .fullOptBoth <- function(mod, ev, params = NULL, ..., envir = parent.frame()) {
     .ret <- list()
     for (.lvl in c("none", "slice")) {
-      withr::with_options(list(rxode2.fullOpt = .lvl), {
+      withr::with_options(list(rxode2.fullOpt = .lvl, rxode2.hoistPar = FALSE), {
         .m <- rxode2(mod, envir = envir)
         set.seed(42)
         .ret[[.lvl]] <- list(
@@ -128,14 +129,17 @@ rxTest({
     # a recompile uses the registration the md5 was made with, not the current one
     .md5 <- .r2$slice$mv$md5[["parsed_md5"]]
     rxRmImpureFun("myf")
-    expect_identical(.rxFullOptOf(.md5), list(level = 1L, impure = "myf"))
+    expect_identical(.rxFullOptOf(.md5), list(level = 1L, impure = "myf", hoist = FALSE))
     .m <- .r2$slice$m
     rxDelete(.m)
-    withr::with_options(list(rxode2.fullOpt = "slice"), {
+    withr::with_options(list(rxode2.fullOpt = "slice", rxode2.hoistPar = FALSE), {
       suppressWarnings(rxSolve(.m, .ev, params = c(tcl = 0.2)))
     })
     expect_true(any(grepl("_udf\\(", .fullOptBody(.m, "dydt"))))
-    expect_identical(.rxFullOptOf(.r$none$mv$md5[["parsed_md5"]]), list(level = 0L, impure = character(0)))
+    expect_identical(
+      .rxFullOptOf(.r$none$mv$md5[["parsed_md5"]]),
+      list(level = 0L, impure = character(0), hoist = FALSE)
+    )
   })
 
   test_that("assignments to fields of the individual are kept", {
@@ -170,10 +174,10 @@ rxTest({
     .dydtHasCp <- function(m) any(grepl("^\\s*cp\\s*=", .fullOptBody(m, "dydt")))
     for (.lvl in c("none", "slice")) {
       .other <- setdiff(c("none", "slice"), .lvl)
-      .m <- withr::with_options(list(rxode2.fullOpt = .lvl), rxode2(.mod))
+      .m <- withr::with_options(list(rxode2.fullOpt = .lvl, rxode2.hoistPar = FALSE), rxode2(.mod))
       rxDelete(.m)
       withr::with_options(
-        list(rxode2.fullOpt = .other),
+        list(rxode2.fullOpt = .other, rxode2.hoistPar = FALSE),
         rxSolve(.m, .ev, params = c(tk = 0.1))
       )
       expect_identical(.dydtHasCp(.m), .lvl == "none")

@@ -321,6 +321,8 @@ static int *_pkLine = NULL;
 static int _rxgDev = 0;
 static sbuf _rxgHdr;
 
+#include "codegenHoist.h"
+
 // Device code: opens rxg_pre()/rxg_dydt()/rxg_jac(); 1 when it did
 static int rxgDevOpen(int show_ode) {
   if (!_rxgDev) return 0;
@@ -541,6 +543,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
       int mx = maxSumProdN;
       if (SumProdLD > mx) mx = SumProdLD;
       sAppend(&sbOut,"#define __MAX_PROD__ %d\n", mx);
+      chWriteHeader();
       // the linCmt() carry states are numbered with the sensitivities
       int sensOff = tb.sensi + tb.linCmtCarryN;
       int baseSize = tb.statei-tb.nExtra+extraCmt - sensOff;
@@ -866,6 +869,8 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
          show_ode != ode_past &&
          !ode_is_es_dcode(show_ode))){
       cslForFunction(show_ode);
+      chForFunction(show_ode);
+      chWriteBlock();
       for (i = 0; i < sbPm.n; i++){
         // Event-sensitivity dLag/dF emit no model statements here (preamble
         // only); their body comes from the end switch below.
@@ -912,6 +917,9 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
         case TASSIGN:
           if (tb.isMexp || (show_ode != ode_mexp && show_ode != ode_indLinVec)){
             const char *_taLine = (show_ode == ode_dydt || show_ode == ode_mexp || show_ode == ode_indLinVec) ? sbPm.line[i] : sbPmDt.line[i];
+            // NULL: computed in the hoisted block (codegenHoist.h)
+            _taLine = chLine(i, _taLine);
+            if (_taLine == NULL) break;
             // The pre-history function _rxPast() must never evaluate a delay():
             // past() is a function of t and parameters only, and rxOptExpr can
             // hoist delay() into a common-subexpression assignment -- emitting it
@@ -936,7 +944,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
               tb.ix = sbPm.lProp[i];
               if (tb.lh[tb.ix] == isLHS || tb.lh[tb.ix] == isLHSstr ||
                   tb.lh[tb.ix] == isLHSparam){
-                appendModelLine(i, show_ode == ode_dydt ? sbPm.line[i] : sbPmDt.line[i]);
+                appendModelLine(i, chLine(i, show_ode == ode_dydt ? sbPm.line[i] : sbPmDt.line[i]));
               }
             }
           }
@@ -961,8 +969,8 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
           if (show_ode == ode_past) sAppend(&sbOut,"  %s", sbPmDt.line[i]);
           break;
         case TJAC:
-          if (show_ode == ode_lhs) sAppend(&sbOut, "  %s", sbPmDt.line[i]);
-          else if (show_ode == ode_jac)  sAppend(&sbOut, "  %s", sbPm.line[i]);
+          if (show_ode == ode_lhs) sAppend(&sbOut, "  %s", chLine(i, sbPmDt.line[i]));
+          else if (show_ode == ode_jac)  sAppend(&sbOut, "  %s", chLine(i, sbPm.line[i]));
           break;
         case TDDT:
           // d/dt()
@@ -970,7 +978,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
               show_ode != ode_rate && show_ode != ode_dur && show_ode != ode_mtime &&
               show_ode != ode_past &&
               show_ode !=10 && show_ode != ode_indLinVec){
-            sAppend(&sbOut, "  %s", show_ode == ode_dydt ? sbPm.line[i] : sbPmDt.line[i]);
+            sAppend(&sbOut, "  %s", chLine(i, show_ode == ode_dydt ? sbPm.line[i] : sbPmDt.line[i]));
           }
           break;
         case PPRN:
@@ -981,7 +989,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
           break;
         case TLOGIC:
           if (tb.isMexp || (show_ode != ode_mexp && show_ode != ode_indLinVec)){
-            appendModelLine(i, (show_ode == ode_dydt || show_ode == ode_mexp || show_ode == ode_indLinVec) ? sbPm.line[i] : sbPmDt.line[i]);
+            appendModelLine(i, chLine(i, (show_ode == ode_dydt || show_ode == ode_mexp || show_ode == ode_indLinVec) ? sbPm.line[i] : sbPmDt.line[i]));
           }
           break;
         case TMAT0:
@@ -1005,6 +1013,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
         }
       }
       _cslKeep = NULL;
+      _ch.on = 0;
       // End statements
       switch (show_ode){
       case ode_dur:

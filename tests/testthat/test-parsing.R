@@ -1373,7 +1373,12 @@ mu = 1+bad ## nonstiff; 10 moderately stiff; 1000 stiff
   test_that("pow problems", {
     expect_error(rxode2parse("pow=3+4"), NA)
 
-    rxode2parse("pow=4\nif (CMT==5){pow = 3+1+pow(4, 3)}\npow2 = pow*2", code = "rxode2parse_test_code.c")
+    # checks the generated text of the pow() call; with the parameter
+    # cache on, the constant call pow(4,3) is emitted as a cached value
+    withr::with_options(
+      list(rxode2.hoistPar = FALSE),
+      rxode2parse("pow=4\nif (CMT==5){pow = 3+1+pow(4, 3)}\npow2 = pow*2", code = "rxode2parse_test_code.c")
+    )
     expect_true(file.exists("rxode2parse_test_code.c"))
     if (file.exists("rxode2parse_test_code.c")) {
       lines <- readLines("rxode2parse_test_code.c")

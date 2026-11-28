@@ -585,7 +585,12 @@ static inline void cslForFunction(int show_ode) {
 }
 
 // Forget everything from the previous model (its R_alloc memory is gone)
+// codegenHoist.h
+static inline void chReset(void);
+static inline void chBuildModel(int on);
+
 static inline void cslReset(void) {
+  chReset();
   _cslKeep = NULL;
   _cslLevel = 0;
   _csl.ok = 0;
@@ -606,7 +611,10 @@ static inline void cslSetup(void) {
   }
   int level = Rf_asInteger(VECTOR_ELT(info, 0));
   SEXP imp = VECTOR_ELT(info, 1);
-  if (level == NA_INTEGER || level < 1 || TYPEOF(imp) != STRSXP) {
+  // parameter-only hoisting (codegenHoist.h) uses the same analysis
+  int hoist = Rf_length(info) >= 3 && Rf_asLogical(VECTOR_ELT(info, 2)) == TRUE;
+  if (level == NA_INTEGER) level = 0;
+  if ((level < 1 && !hoist) || TYPEOF(imp) != STRSXP) {
     rxUPAll();
     return;
   }
@@ -621,6 +629,7 @@ static inline void cslSetup(void) {
   rxUPAll();
   cslBuild();
   if (_csl.ok) _cslLevel = level;
+  chBuildModel(hoist);
 }
 
 #endif // __CODEGENSLICE_H__
