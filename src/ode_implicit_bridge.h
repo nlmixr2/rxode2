@@ -204,7 +204,7 @@ static void ind_implicit_0(rx_solve *rx, rx_solving_options *op, int solveid, in
     double xp = getAllTimes(ind, 0);
     ind->solvedIdx = 0;
 
-    int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
+    int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
     double *yp;
 
     for (i = 0; i < ind->n_all_times; i++) {
@@ -244,7 +244,7 @@ static void ind_implicit_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                     if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
                         preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
                         if (neqOde > 0)
-                            implicit_do_steps<OdeSolver>(ind, op, c_dydt, calc_jac, neq, yp, xp, ind->extraDoseNewXout);
+                            implicit_do_steps<OdeSolver>(ind, op, c_dydt, rxJacFor(c_dydt), neq, yp, xp, ind->extraDoseNewXout);
                         copyLinCmt(neq, ind, op, yp);
                         postSolve(neq, &istate, ind->rc, &i, yp, &err_msg, 7, true, ind, op, rx);
                         if (*(ind->rc) < 0) localBadSolve = 1;
@@ -267,7 +267,7 @@ static void ind_implicit_0(rx_solve *rx, rx_solving_options *op, int solveid, in
                 if (!localBadSolve && !isSameTime(xout, xp)) {
                     preSolve(op, ind, xp, xout, yp);
                     if (neqOde > 0)
-                        implicit_do_steps<OdeSolver>(ind, op, c_dydt, calc_jac, neq, yp, xp, xout);
+                        implicit_do_steps<OdeSolver>(ind, op, c_dydt, rxJacFor(c_dydt), neq, yp, xp, xout);
                     copyLinCmt(neq, ind, op, yp);
                     postSolve(neq, &istate, ind->rc, &i, yp, &err_msg, 7, true, ind, op, rx);
                     if (*(ind->rc) < 0) localBadSolve = 1;

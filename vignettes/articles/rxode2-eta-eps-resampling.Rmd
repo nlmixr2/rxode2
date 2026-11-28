@@ -146,6 +146,40 @@ both <- merge(f_ref, f_resamp[f_resamp$i == 0, ], by = "time")
 stopifnot(isTRUE(all.equal(both$C.x, both$C.y)))
 ```
 
+## Resampling one ETA or EPS with `simeta(n)` / `simeps(n)`
+
+An integer argument re-draws only the `n`-th ETA (in omega order) or EPS
+(in sigma order); the others keep their values.  When the matrix
+correlates that element with the others, the new value is drawn
+conditional on their current values, so the covariance is kept.  An
+index past the size of omega/sigma is an error.
+
+```{r simeta-index}
+mod_one <- function() {
+  ini({
+    tv <- 70
+    eta.wt ~ 0.1^2
+    eta.cl ~ 0.3^2
+  })
+  model({
+    wt <- tv * exp(eta.wt)
+    i <- 0
+    while ((wt < 60) || (wt > 80)) {
+      i <- i + 1
+      if (i > 100) break
+      simeta(1)              # resample only eta.wt; eta.cl is kept
+      wt <- tv * exp(eta.wt)
+    }
+    cl <- exp(eta.cl)
+  })
+}
+
+f4 <- rxSolve(mod_one, et(0, id = 1:100), seed = 1234)
+
+stopifnot(all(f4$wt >= 60), all(f4$wt <= 80))
+range(f4$wt)
+```
+
 ## Differences from a pure post-hoc truncation
 
 Using `simeta()` / `simeps()` inside the model has two advantages over

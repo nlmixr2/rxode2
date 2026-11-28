@@ -156,4 +156,5 @@
 #define Rxc_gpuDevice 151
 #define Rxc_gpuPrecision 152
 #define Rxc_gpuBatch 153
+#define Rxc__simNames 154
 #endif // __rxode2_control_H__

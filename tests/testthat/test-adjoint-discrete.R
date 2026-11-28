@@ -961,6 +961,34 @@ rxTest({
     }
   })
 
+  test_that("modeled-alag transversality is exact for a nonlinear f and F != 1 (rk4s/dop853s)", {
+    skip_on_cran()
+    # mu += dlag/dp * lambda' (f(x-) - f(x+)), x- = x+ - F*amt*e_c; Michaelis-Menten
+    # elimination of the dosed state, F = 0.55, two doses, against central differences at 1e-10
+    mTxt <- paste("d/dt(center)=-vm*center/(km+center)", "f(center)=0.55", "alag(center)=tlag", sep = "\n")
+    csL <- c("vm", "km", "tlag")
+    pL <- c(vm = 15, km = 8, tlag = 0.7)
+    evL <- et(amt = 100, cmt = "center") |> et(amt = 60, cmt = "center", time = 5) |> et(c(1, 2, 4, 6, 8, 12))
+    exL <- rxode2::.rxAdjointExpand(mTxt, csL)
+    madjL <- rxode2::rxode2(exL$text)
+    mbaseL <- rxode2::rxode2(mTxt)
+    solveL <- function(pp, meth) {
+      as.data.frame(rxode2::rxSolve(mbaseL, evL, params = pp, method = meth, atol = 1e-10, rtol = 1e-10, cores = 1))
+    }
+    for (meth in c("rk4s", "dop853s")) {
+      s <- as.data.frame(rxode2::rxSolve(madjL, evL, params = pL, method = meth, atol = 1e-10, rtol = 1e-10, cores = 1))
+      u <- solveL(pL, "dop853")
+      hh <- pL[["tlag"]] * 1e-5
+      pp <- pL
+      pm <- pL
+      pp["tlag"] <- pp["tlag"] + hh
+      pm["tlag"] <- pm["tlag"] - hh
+      fd <- (solveL(pp, "dop853")[["center"]] - solveL(pm, "dop853")[["center"]]) / (2 * hh)
+      g <- s[["rx__sens_center_BY_tlag__"]]
+      expect_lt(max(abs(g - fd) / max(abs(fd))), 1e-6)
+    }
+  })
+
   test_that("modeled-rate infusion dual: d/d(rate) sensitivity matches FD (rk4s/dop853s)", {
     skip_on_cran()
     # A modeled-rate infusion of amt into cmt c runs over [t_on, t_on+amt/R(theta)]
@@ -2821,24 +2849,48 @@ rxTest({
     # k12, k21 ~ 400, 200: the error test alone accepted steps with |R(h lam)| > 1
     # (feedback on the forward's tiny stiff mode); the frozen-step map the adjoint
     # transposes has no such feedback, so the reverse sweep blew up (1e18 .. 1e77 off)
-    .txt <- paste("d/dt(depot) = -exp(lka)*depot",
+    .txt <- paste(
+      "d/dt(depot) = -exp(lka)*depot",
       "d/dt(center) = exp(lka)*depot - exp(lvm)*center/(exp(lkm)+center) - exp(lk12)*center + exp(lk21)*periph",
-      "d/dt(periph) = exp(lk12)*center - exp(lk21)*periph", sep = "\n")
+      "d/dt(periph) = exp(lk12)*center - exp(lk21)*periph",
+      sep = "\n"
+    )
     .cs <- c("lka", "lvm", "lkm", "lk12", "lk21")
     .st <- c("depot", "center", "periph")
     .s <- rxS(rxode2(.txt))
     .rxJacobian(.s, c(.st, .cs))
     .mf <- rxode2(paste(c(.txt, .rxSens(.s, .cs)), collapse = "\n"))
-    .prm <- data.frame(lka = c(0.3685, 0.1312), lvm = c(2.3241, 1.5626), lkm = c(1.5895, 1.676),
-      lk12 = c(5.5317, 6.1362), lk21 = c(5.2825, 5.3423))
+    .prm <- data.frame(
+      lka = c(0.3685, 0.1312),
+      lvm = c(2.3241, 1.5626),
+      lkm = c(1.5895, 1.676),
+      lk12 = c(5.5317, 6.1362),
+      lk21 = c(5.2825, 5.3423)
+    )
     .ev1 <- et(amt = 100, cmt = "depot") |> et(amt = 60, cmt = "depot", time = 6) |> et(c(0.5, 1, 2, 4, 6, 8, 12, 24))
     .ev <- rbind(cbind(as.data.frame(.ev1), id = 1L), cbind(as.data.frame(.ev1), id = 2L))
     .cols <- unlist(lapply(.cs, function(q) paste0("rx__sens_", .st, "_BY_", q, "__")))
-    .tr <- as.data.frame(rxSolve(.mf, .prm, .ev, method = "liblsoda", atol = 1e-12, rtol = 1e-12,
-      returnType = "data.frame", addDosing = FALSE))
+    .tr <- as.data.frame(rxSolve(
+      .mf,
+      .prm,
+      .ev,
+      method = "liblsoda",
+      atol = 1e-12,
+      rtol = 1e-12,
+      returnType = "data.frame",
+      addDosing = FALSE
+    ))
     for (.tol in c(1e-6, 1e-10, 1e-12)) {
-      .a <- rxSolveAdjointRk4(rxode2(.txt), .ev, params = .prm, calcSens = .cs, method = "dop853s",
-        atol = .tol, rtol = .tol, addDosing = FALSE)
+      .a <- rxSolveAdjointRk4(
+        rxode2(.txt),
+        .ev,
+        params = .prm,
+        calcSens = .cs,
+        method = "dop853s",
+        atol = .tol,
+        rtol = .tol,
+        addDosing = FALSE
+      )
       expect_equal(as.matrix(.a[, .cols]), as.matrix(.tr[, .cols]), tolerance = 1e-7, ignore_attr = TRUE)
     }
   })
@@ -2848,26 +2900,55 @@ rxTest({
     # at |h lam| ~ 2.8 / 3.2 where their regions end at ~2.7 / ~2.9 in that
     # direction, and power iteration under-estimated |lam| by up to 10x on every
     # other step; the reverse sweep blew up (1e14 / 1e22 off at tol 1e-8, solve ok)
-    .txt <- paste("d/dt(depot) = -exp(lka)*depot", "d/dt(center) = exp(lka)*depot - exp(lke)*center",
+    .txt <- paste(
+      "d/dt(depot) = -exp(lka)*depot",
+      "d/dt(center) = exp(lka)*depot - exp(lke)*center",
       "d/dt(resp) = exp(lkin)*(1 - center/(exp(lec)+center)) - exp(lkout)*resp - exp(lk1)*modr",
-      "d/dt(modr) = exp(lk2)*resp - exp(lkout)*modr", sep = "\n")
+      "d/dt(modr) = exp(lk2)*resp - exp(lkout)*modr",
+      sep = "\n"
+    )
     .cs <- c("lka", "lke", "lkin", "lec", "lkout", "lk1", "lk2")
     .st <- c("depot", "center", "resp", "modr")
     .s <- rxS(rxode2(.txt))
     .rxJacobian(.s, c(.st, .cs))
     .mf <- rxode2(paste(c(.txt, .rxSens(.s, .cs)), collapse = "\n"))
-    .prm <- data.frame(lka = c(0.3, 0.1), lke = c(-1.5, -1.2), lkin = c(5, 5.5), lec = c(1, 1.5),
-      lkout = c(log(30), log(20)), lk1 = c(log(30), log(40)), lk2 = c(log(3000), log(4000)))
+    .prm <- data.frame(
+      lka = c(0.3, 0.1),
+      lke = c(-1.5, -1.2),
+      lkin = c(5, 5.5),
+      lec = c(1, 1.5),
+      lkout = c(log(30), log(20)),
+      lk1 = c(log(30), log(40)),
+      lk2 = c(log(3000), log(4000))
+    )
     .ev1 <- et(amt = 100, cmt = "depot") |> et(amt = 60, cmt = "depot", time = 6) |> et(c(0.5, 1, 2, 4, 6, 8, 12, 24))
     .ev <- rbind(cbind(as.data.frame(.ev1), id = 1L), cbind(as.data.frame(.ev1), id = 2L))
     .cols <- unlist(lapply(.cs, function(q) paste0("rx__sens_", .st, "_BY_", q, "__")))
-    .tr <- as.matrix(as.data.frame(rxSolve(.mf, .prm, .ev, method = "liblsoda", atol = 1e-12, rtol = 1e-12,
-      returnType = "data.frame", addDosing = FALSE))[, .cols])
+    .tr <- as.matrix(as.data.frame(rxSolve(
+      .mf,
+      .prm,
+      .ev,
+      method = "liblsoda",
+      atol = 1e-12,
+      rtol = 1e-12,
+      returnType = "data.frame",
+      addDosing = FALSE
+    ))[, .cols])
     .sc <- pmax(abs(.tr), 1e-3 * max(abs(.tr)))
-    for (.meth in c("dop5s", "ck54s")) for (.tol in c(1e-6, 1e-8)) {
-      .a <- rxSolveAdjointRk4(rxode2(.txt), .ev, params = .prm, calcSens = .cs, method = .meth,
-        atol = .tol, rtol = .tol, addDosing = FALSE)
-      expect_lt(max(abs(as.matrix(.a[, .cols]) - .tr) / .sc), 0.05, label = paste(.meth, .tol))
+    for (.meth in c("dop5s", "ck54s")) {
+      for (.tol in c(1e-6, 1e-8)) {
+        .a <- rxSolveAdjointRk4(
+          rxode2(.txt),
+          .ev,
+          params = .prm,
+          calcSens = .cs,
+          method = .meth,
+          atol = .tol,
+          rtol = .tol,
+          addDosing = FALSE
+        )
+        expect_lt(max(abs(as.matrix(.a[, .cols]) - .tr) / .sc), 0.05, label = paste(.meth, .tol))
+      }
     }
   })
 })
