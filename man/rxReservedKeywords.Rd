@@ -29,6 +29,7 @@ Other Model definition:
 \code{\link[=rxDelete]{rxDelete()}},
 \code{\link[=rxLastCompile]{rxLastCompile()}},
 \code{\link[=rxNorm]{rxNorm()}},
+\code{\link[=rxPde]{rxPde()}},
 \code{\link[=rxSupportedFuns]{rxSupportedFuns()}},
 \code{\link{rxSyntaxFunctions}},
 \code{\link[=rxUnloadAll]{rxUnloadAll()}},

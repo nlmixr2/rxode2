@@ -37,6 +37,10 @@ rxode2parse <- function(
   rxParseSuppressMsg()
   .udfEnvLocal(envir)
   checkmate::assertCharacter(model, len = 1, any.missing = FALSE)
+  .pde <- .rxPdeModelText(model)
+  if (!is.null(.pde)) {
+    model <- .pde
+  }
   if (file.exists(model)) {
     .isStr <- 0L
   } else {

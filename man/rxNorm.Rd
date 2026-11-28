@@ -50,6 +50,7 @@ Other Model definition:
 \code{\link[=rxCreateCache]{rxCreateCache()}},
 \code{\link[=rxDelete]{rxDelete()}},
 \code{\link[=rxLastCompile]{rxLastCompile()}},
+\code{\link[=rxPde]{rxPde()}},
 \code{\link{rxReservedKeywords}},
 \code{\link[=rxSupportedFuns]{rxSupportedFuns()}},
 \code{\link{rxSyntaxFunctions}},

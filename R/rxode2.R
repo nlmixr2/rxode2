@@ -1791,6 +1791,10 @@ rxTrans.default <- function(
   ## mode and compiled with the wrong (empty/stale) dLag/dF.  As a formal it is
   ## part of the key, so each mode gets its own entry and its own parsed_md5.
   ## rxTrans returns a list of compiled properties
+  .pde <- .rxPdeModelText(model)
+  if (!is.null(.pde)) {
+    model <- .pde
+  }
   if (file.exists(model)) {
     .isStr <- 0L
   } else {

@@ -58,6 +58,8 @@ df-refused
 symengine-translate-fixture
 # delay differential equations
 dde
+# partial differential equations (method of lines)
+pde
 # simulation and random numbers
 random
 ui-simulation
