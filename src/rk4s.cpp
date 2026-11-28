@@ -7354,8 +7354,10 @@ static inline void rks_do_steps_adaptive(rx_solving_options_ind *ind, rx_solving
     double fac = (err > 0.0) ? SAFE * pow(err, -1.0 / expo) : FACMAX;
     if (fac < FACMIN) fac = FACMIN; if (fac > FACMAX) fac = FACMAX;
     if (err <= 1.0 || fabs(dt) <= 1e-13 * span) {
-      for (int i = 0; i < s; ++i) rec->a.insert(rec->a.end(), stages + i * nAll, stages + i * nAll + nRec);
-      rec->t0.push_back(t); rec->h.push_back(dt);
+      if (rec) {
+        for (int i = 0; i < s; ++i) rec->a.insert(rec->a.end(), stages + i * nAll, stages + i * nAll + nRec);
+        rec->t0.push_back(t); rec->h.push_back(dt);
+      }
       rk4s_hist_push(ind, op, dydt, neq, nAll, t, dt, yp, yhigh);
       for (int m = 0; m < nAll; ++m) yp[m] = yhigh[m];
       t += dt; check(chk, t); if (ind->err != 0) break;
@@ -7530,6 +7532,11 @@ static inline void rks_step_interval(rx_solving_options_ind *ind, rx_solving_opt
                                      t_dydt dydt, int *neq, const rksTableau &T,
                                      int nAll, int nRec, double *yp, double xp, double xout,
                                      rk4s_rec *rec, std::vector<double> &scratch) {
+  if (rec == NULL) {   // nothing reverses this solve: step without recording
+    const rksTableau Tm = (op->stiff2 > 0 && compositeStiff(ind, op, neq[1], yp, xp, xout)) ? rksGetTableau(op->stiff2) : T;
+    rks_run_method(Tm, ind, op, dydt, neq, nAll, nRec, yp, xp, xout, NULL, scratch);
+    return;
+  }
   if (!rec->composite) { rks_run_method(T, ind, op, dydt, neq, nAll, nRec, yp, xp, xout, rec, scratch); return; }
   // AutoSwitch composite: pick non-stiff (op->stiff) or stiff (op->stiff2) for
   // this interval, run it, and tag every step it produced with its method+offsets.
@@ -8797,6 +8804,8 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
   ind->solvedIdx = 0;
 
   int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
+  // a narrowed solve (neq override) steps only its own states
+  if (eff < op->neq && op->numLin + op->numLinSens + op->numLinCarry == 0) neqOde = eff;
   // DDE history: record dense steps for this subject when the model uses delay().
   // A single warm-up RHS evaluation lets _rxDelay learn the minimum delay so the
   // step size can be capped (keeping delay() lookups inside recorded history).
@@ -8912,7 +8921,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
             if (!localBadSolve && !isSameTime(ind->extraDoseNewXout, xp)) {
               preSolve(op, ind, xp, ind->extraDoseNewXout, yp);
               if (nAll > 0) {
-                  rks_step_interval(ind, op, c_dydt, neq, T, nAll, nRec, yp, xp, ind->extraDoseNewXout, &rec, scratch);
+                  rks_step_interval(ind, op, c_dydt, neq, T, nAll, nRec, yp, xp, ind->extraDoseNewXout, adj ? &rec : NULL, scratch);
               }
               copyLinCmt(neq, ind, op, yp);
               const char* err_msg = "rk4s failed";
@@ -8937,7 +8946,7 @@ extern "C" void ind_rk4s_0(rx_solve *rx, rx_solving_options *op, int solveid, in
         if (!localBadSolve && !isSameTime(xout, xp)) {
           preSolve(op, ind, xp, xout, yp);
           if (nAll > 0) {
-              rks_step_interval(ind, op, c_dydt, neq, T, nAll, nRec, yp, xp, xout, &rec, scratch);
+              rks_step_interval(ind, op, c_dydt, neq, T, nAll, nRec, yp, xp, xout, adj ? &rec : NULL, scratch);
           }
           copyLinCmt(neq, ind, op, yp);
           const char* err_msg = "rk4s failed";

@@ -1433,3 +1433,4 @@ binomProbs_ <- function(x, probs, naRm, nIn, cont) {
 meanProbs_ <- function(x, probs, naRm, useT, pred, nIn) {
     .Call(`_rxode2_meanProbs_`, x, probs, naRm, useT, pred, nIn)
 }
+
