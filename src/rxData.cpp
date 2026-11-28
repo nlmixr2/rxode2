@@ -81,6 +81,8 @@ extern "C" void rxOptionsFree();
 extern "C" void rxOptionsIni();
 extern "C" void rxOptionsIniEnsure(int mx, int cores);
 extern "C" void rxClearFuns();
+extern "C" void rxJacSrcSet(SEXP trans);
+bool rxIsLoaded(RObject obj);
 extern "C" void rxFreeLast();
 extern "C" void rxode2_assign_fn_pointers(SEXP);
 extern "C" int getThrottle();
@@ -6923,6 +6925,8 @@ static bool rxJacSwapModel(RObject &object, rxSolve_t *rxSolveDat) {
   Function _jm = getRxFn(".rxJacSolveModelC");
   RObject _jo = _jm(object);
   if (Rf_isNull(_jo)) return false;
+  // the original dydt keeps this Jacobian (rxJacFor() in par_solve.cpp)
+  if (rxIsLoaded(object)) rxJacSrcSet(_tr);
   object = _jo;
   rxSolveDat->mv = rxModelVars(object);
   rxSolveFreeObj = object;
@@ -6939,6 +6943,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
   if (setupOnly == 0){
     rxSolveFree();
   }
+  rxJacSrcSet(R_NilValue);
   rxDropB = false;
 
   // Solve-from-file dispatch has been moved to R (rxSolve.default).

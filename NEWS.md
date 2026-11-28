@@ -476,6 +476,17 @@
   as `nlmixr2` estimation does, now uses the model's analytic Jacobian, as
   `rxSolve()` does; before, it read an empty Jacobian, so stiff fits ran
   slowly or failed to solve.
+- An implicit method solving one of `nlmixr2`'s narrower peer models in the
+  pool of a wider one now uses a finite-difference Jacobian of the peer
+  instead of the pool model's Jacobian, which belonged to a different model
+  and was written past the end of the peer's Jacobian buffer; `iem`, `ros4`
+  and `ros43` also size the peer's state by its own state count.  A model
+  without `df()/dy()` lines gets the finite difference instead of a zero
+  Jacobian (#1757).
+- The explicit methods (`rk4`, `dop5`, `t54`, `vern76`, ...) solving one of
+  `nlmixr2`'s narrower peer models in the pool of a wider one now step only
+  the peer's states; before, they stepped the pool model's state count and
+  overwrote the next output rows (#1757).
 - Growing the per-thread dose pools for a solve with more cores than they
   were sized for (`rxSolve(cores=)` above `OMP_NUM_THREADS`, for example) no
   longer leaks three of their arrays: `freeExtraDosing()` never freed

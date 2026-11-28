@@ -57,7 +57,7 @@ extern "C" void ind_rk4_0(rx_solve *rx, rx_solving_options *op, int solveid, int
   double xp = getAllTimes(ind, 0);
   ind->solvedIdx = 0;
   
-  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
+  int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
   rxode2_system sys(c_dydt, neq, ind);
   double *yp;
   
