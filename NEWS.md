@@ -31,6 +31,13 @@
   zero-order second path combined with `delay = "transit"`, or with a
   zero-order first path, now errors: neither can be expressed with one
   modeled duration per compartment.
+- A failed ODE solve now names the states involved: it reports the states
+  that are non-finite in the last accepted state or after the failed step,
+  and suggests rescaling or a per-state `atol` when the states span 8 or
+  more orders of magnitude.  The methods that check each right-hand-side
+  evaluation (eg `f45`, `dop54`, `euler`) and `dop853` also name the states
+  whose derivative was non-finite, with their values.  A successful solve
+  records nothing (#1805).
 - `rxImpureFun()`/`rxRmImpureFun()` register user R functions, `rxFun()` C
   functions or package C functions that draw random numbers, keep state or
   have side effects.  `rxOptExpr()` never shares their calls and
@@ -239,7 +246,21 @@
   than return it with `NA` rows; `rxSolve()` decides with the same code
   (nlmixr2/nlmixr2est#1356).
 
+- The explicit Runge-Kutta `"s"` methods (`dop853s`, `rk4s`, ...) record every
+  stage of every step only for the discrete adjoint.  A solve with no adjoint
+  skips the recording, which gives the same results and a shorter solve time.
+- `rxPrune()` rewrites `if`/`else` and string levels with a C walker of the
+  parsed model instead of the recursive R walker, with identical output; the
+  R walker stays as a fallback (`bench/rxPrune.R`, #1772).
+
 ## Bug fixes
+
+- The `rk4s` family of solvers now steps only the states of a narrowed solve
+  (a per-individual `neqOverride`, as nlmixr2est sets when it pools models),
+  like `liblsoda`, `lsoda` and `dop853`.  Before, the stage vectors and the
+  error norm ran over every pooled state, which cost time and averaged the
+  error over the frozen extra states, so the requested tolerance was applied
+  too loosely.  A solve with `linCmt()` states is unchanged.
 
 - The parser no longer reads a function name it had already freed.  Every
   function call copies its name into a buffer that is reallocated as it grows,
@@ -273,6 +294,19 @@
   assignment (`x <- "a"`) or a factor covariate in the output: the
   `rate`/`dur`/`ii` columns were allocated after the covariates but filled
   before `time`, so every later column was written three positions off.
+
+- `ini(eta ~ value | COND)` on an existing eta now moves it to the level
+  `COND` names (with a message), so an eta added by `model()` can become an
+  inter-occasion eta and back with `| id`.  The condition was dropped and the
+  eta kept its old level; an eta still correlated with another, or in a
+  `same()` block, is now an error (#1773).  A line kept as written between
+  other piped eta lines (`| id`, `unfix()`, an error model) is no longer
+  overwritten when those lines are combined into a block.
+
+- Piping part of a correlated block (`ini(eta.a + eta.b ~ c(...))` when
+  `eta.c` was correlated with them) no longer leaves broken covariance rows
+  that made `$omega` fail; the covariances with the rest are dropped with a
+  message.
 
 ### Delay differential equations
 - `delay()` models now solve with `method = "dop5"` and `method = "bs"`.
@@ -533,6 +567,12 @@
   `time` as the time of the dose record it repeats, as NONMEM evaluates
   `ALAG1`; by default it still reads the actual time of the `addl` dose
   (#1583).
+- `method = "cvode"` now re-initialises from the last accepted step and
+  carries on when a step fails its error or convergence test, instead of
+  failing the solve.  A stiff model carried across a dose-free stretch, such
+  as a 5-days-on / 2-days-off schedule, failed with "could not solve the
+  system" once observations no longer re-initialised CVODE.  The same holds
+  with `dense = TRUE` (#1790).
 
 ### Steady state
 - A steady state solved with `method = "indLin"` (or with a `rxToIndLin()`
@@ -1119,6 +1159,12 @@
   longer produces invalid model code for a model with more than one
   string-valued output, such as an unconditional string and one assigned
   in `if`/`else`.
+
+- An adjoint method that `rxSolve()` cannot run on a model is now named in
+  the error, with the reason, as in "method='ros4s' cannot solve a model
+  without the adjoint expansion; build it with calcSens or
+  rxode2::.rxAdjointExpand()".  The error said "method='rk4s'" whatever the
+  method, and blamed missing Jacobian lhs.
 
 - `method = "cvodesadj"` no longer fails its backward solve, returning
   wrong sensitivities, when two events fall at the same time.
