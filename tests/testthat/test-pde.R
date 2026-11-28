@@ -254,4 +254,46 @@ rxTest({
       expect_equal(.s[[paste0("rx__sens_C_3_BY_", .v, "__")]], .fd, tolerance = 1e-5)
     }
   })
+  test_that(".rxStateBandwidth follows state dependencies through assignments", {
+    .m <- rxode2("
+      grid(x, from = 0, to = 1, n = 6)
+      d/dt(C[x]) = D * d2x(C) - v * dx(C)
+    ")
+    expect_equal(.rxStateBandwidth(.m), c(1L, 1L))
+    .m <- rxode2("
+      d/dt(depot) = -ka * depot
+      d/dt(center) = ka * depot - cl / v * center
+      cp = center / v
+      d/dt(eff) = kin - kout * (1 + cp) * eff
+    ")
+    expect_equal(.rxStateBandwidth(.m), c(1L, 0L))
+    .m <- rxode2("
+      d/dt(a) = -a
+      d/dt(b) = -b
+      if (t > 1) {
+        d/dt(c) = a - c
+      } else {
+        d/dt(c) = -c
+      }
+      d/dt(a) = -a + c
+    ")
+    expect_equal(.rxStateBandwidth(.m), c(2L, 2L))
+  })
+
+  test_that("cvodeLinSolver = 'band' matches the dense solver on a gridded model", {
+    .m <- rxode2("
+      grid(x, from = 0, to = 1, n = 40)
+      d/dt(C[x]) = D * d2x(C) - v * dx(C) - k * C[x]
+      flux(C, x = 0) = kin
+      tot = integrate(C, x)
+    ")
+    .ev <- et(seq(0, 10, by = 1))
+    .p <- c(D = 0.01, v = 0.05, k = 0.1, kin = 1)
+    .d <- rxSolve(.m, .p, .ev, method = "cvode", cvodeLinSolver = "dense")
+    .b <- rxSolve(.m, .p, .ev, method = "cvode", cvodeLinSolver = "band")
+    expect_equal(.b$tot, .d$tot, tolerance = 1e-5)
+    expect_equal(.b$C_40, .d$C_40, tolerance = 1e-5)
+    ## the bandwidth is reset after the solve
+    expect_equal(.Call(`_rxode2_setCvodeBand`, -1L, -1L), c(-1L, -1L))
+  })
 })

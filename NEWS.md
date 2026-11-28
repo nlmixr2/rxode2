@@ -25,6 +25,10 @@
   `.rxPrune()` expands the grids first, so forward sensitivities and nlmixr2
   (FOCEi) estimation of these models work.
   The new article "Partial differential equations" walks through them.
+- `rxSolve(method = "cvode", cvodeLinSolver = "band")` now uses a banded
+  linear solver, with the bandwidth taken from which states each `d/dt()`
+  depends on; it was an alias of `"dense"` before.  This speeds up large
+  method-of-lines PDE grids (#1759).
 - The model-building piping functions moved here from 'nlmixr2lib':
   absorption (`addDepot()`, `addTransit()`, `addWeibullAbs()`,
   `addZeroOrderAbs()`, `addSecondAbsorption()`, `convertTransitMtt()` and

@@ -1763,8 +1763,11 @@ Available choices and when to use them:
 \item \code{"dense"} (default) -- Direct LU factorization of the full Jacobian.
 Best for small to medium systems (typically fewer than ~50 compartments).
 Requires \code{O(n^2)} storage and \code{O(n^3)} work per Newton iteration.
-\item \code{"band"} -- Currently aliases to \code{"dense"}.  Kept for compatibility
-until rxode2 can determine model bandwidth safely during solve setup.
+\item \code{"band"} -- Banded LU factorization, with the bandwidth taken from
+which states each \code{d/dt()} depends on (through the model's
+assignments).  Suited to method-of-lines PDE models (see \code{rxPde()}),
+whose Jacobian is banded; falls back to \code{"dense"} when the band is as
+wide as the system.
 \item \code{"gmres"} -- Generalized Minimal Residual iterative Krylov solver.
 Avoids explicit Jacobian formation, making it practical for large stiff
 systems (tens to hundreds of compartments) where LU factorization would

@@ -1302,8 +1302,11 @@
 #'     Best for small to medium systems (typically fewer than ~50 compartments).
 #'     Requires `O(n^2)` storage and `O(n^3)` work per Newton iteration.
 #'
-#'   * `"band"` -- Currently aliases to `"dense"`.  Kept for compatibility
-#'     until rxode2 can determine model bandwidth safely during solve setup.
+#'   * `"band"` -- Banded LU factorization, with the bandwidth taken from
+#'     which states each `d/dt()` depends on (through the model's
+#'     assignments).  Suited to method-of-lines PDE models (see `rxPde()`),
+#'     whose Jacobian is banded; falls back to `"dense"` when the band is as
+#'     wide as the system.
 #'
 #'   * `"gmres"` -- Generalized Minimal Residual iterative Krylov solver.
 #'     Avoids explicit Jacobian formation, making it practical for large stiff
@@ -4920,6 +4923,10 @@ rxSolve.default <- function(
     ## (active flag + nState/nParam) so handle_evid can inject the dosing-parameter
     ## jumps.  No-op (active=0) for fd / models without jump info.
     .rxSetEventSensDims(object)
+    .band <- .rxSetCvodeBand(object, .ctl)
+    if (!is.null(.band)) {
+      on.exit(.rxRestoreCvodeBand(.band), add = TRUE)
+    }
     if (.isSer) {
       .bundle <- if (is.null(.preloadedSerializedBundle)) {
         .rxReadStateBundle(params)

@@ -4,6 +4,9 @@
 
 #include "cvode_solver.h"
 
+extern "C" int getCvodeBandMl();
+extern "C" int getCvodeBandMu();
+
 #include <stdlib.h>
 #include <math.h>
 #include <cvode/cvode.h>
@@ -11,6 +14,8 @@
 #include <nvector/nvector_serial.h>
 #include <sunmatrix/sunmatrix_dense.h>
 #include <sunlinsol/sunlinsol_dense.h>
+#include <sunmatrix/sunmatrix_band.h>
+#include <sunlinsol/sunlinsol_band.h>
 #include <sunlinsol/sunlinsol_spgmr.h>
 #include <sunlinsol/sunlinsol_spbcgs.h>
 #include <sunlinsol/sunlinsol_sptfqmr.h>
@@ -46,6 +51,41 @@ static void cvode_ctx_free_internals(cvode_ctx_t *ctx) {
   if (ctx->y)      { N_VDestroy(ctx->y);            ctx->y      = NULL; }
   if (ctx->mem)    { CVodeFree(&ctx->mem);          ctx->mem    = NULL; }
   if (ctx->sunctx) { SUNContext_Free(&ctx->sunctx); ctx->sunctx = NULL; }
+}
+
+// Create and attach the linear solver (and matrix) for lin_type; band uses the
+// bandwidth set by rxSolve() and is dense when that is unknown or as wide as
+// the system.  Returns 0, or -1 on failure.
+static int cvode_ctx_linsol(cvode_ctx_t *ctx, int lin_type) {
+  switch (lin_type) {
+  case 3:
+    ctx->LS = SUNLinSol_SPGMR(ctx->y, SUN_PREC_NONE, 0, ctx->sunctx);
+    break;
+  case 4:
+    ctx->LS = SUNLinSol_SPBCGS(ctx->y, SUN_PREC_NONE, 0, ctx->sunctx);
+    break;
+  case 5:
+    ctx->LS = SUNLinSol_SPTFQMR(ctx->y, SUN_PREC_NONE, 0, ctx->sunctx);
+    break;
+  case 2: {
+    /* band when rxSolve() set the bandwidth, otherwise dense */
+    sunindextype ml = getCvodeBandMl(), mu = getCvodeBandMu();
+    if (ml >= 0 && mu >= 0 && ml + mu < ctx->neq - 1) {
+      ctx->A  = SUNBandMatrix(ctx->neq, mu, ml, ctx->sunctx);
+      if (!ctx->A) return -1;
+      ctx->LS = SUNLinSol_Band(ctx->y, ctx->A, ctx->sunctx);
+      break;
+    }
+  }
+    /* fall through */
+  default: /* 1: dense */
+    ctx->A  = SUNDenseMatrix(ctx->neq, ctx->neq, ctx->sunctx);
+    if (!ctx->A) return -1;
+    ctx->LS = SUNLinSol_Dense(ctx->y, ctx->A, ctx->sunctx);
+    break;
+  }
+  if (!ctx->LS) return -1;
+  return CVodeSetLinearSolver(ctx->mem, ctx->LS, ctx->A) < 0 ? -1 : 0;
 }
 
 extern "C"
@@ -99,25 +139,7 @@ cvode_ctx_t *cvode_ctx_create(int neq, double *yp, double *atol, double rtol,
   if (hmax > 0.0) CVodeSetMaxStep(ctx->mem, (sunrealtype)hmax);
   CVodeSetMaxNumSteps(ctx->mem, (long int)(mxstep > 0 ? mxstep : 5000));
 
-  switch (lin_type) {
-  case 3:
-    ctx->LS = SUNLinSol_SPGMR(ctx->y, SUN_PREC_NONE, 0, ctx->sunctx);
-    break;
-  case 4:
-    ctx->LS = SUNLinSol_SPBCGS(ctx->y, SUN_PREC_NONE, 0, ctx->sunctx);
-    break;
-  case 5:
-    ctx->LS = SUNLinSol_SPTFQMR(ctx->y, SUN_PREC_NONE, 0, ctx->sunctx);
-    break;
-  default: /* 1: dense, 2: band aliases to dense until real bandwidth is known */
-    ctx->A  = SUNDenseMatrix(ctx->neq, ctx->neq, ctx->sunctx);
-    if (!ctx->A) { cvode_ctx_free_internals(ctx); free(ctx); return NULL; }
-    ctx->LS = SUNLinSol_Dense(ctx->y, ctx->A, ctx->sunctx);
-    break;
-  }
-  if (!ctx->LS) { cvode_ctx_free_internals(ctx); free(ctx); return NULL; }
-
-  if (CVodeSetLinearSolver(ctx->mem, ctx->LS, ctx->A) < 0) {
+  if (cvode_ctx_linsol(ctx, lin_type) < 0) {
     cvode_ctx_free_internals(ctx); free(ctx); return NULL;
   }
 

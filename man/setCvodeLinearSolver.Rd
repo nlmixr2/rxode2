@@ -7,7 +7,7 @@
 setCvodeLinearSolver(type)
 }
 \arguments{
-\item{type}{Integer: 1=dense (default), 2=band (currently aliases to dense),
+\item{type}{Integer: 1=dense (default), 2=band (dense when the bandwidth is unknown),
 3=gmres, 4=bicgstab, 5=tfqmr}
 }
 \value{
