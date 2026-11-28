@@ -783,12 +783,17 @@ following table:\tabular{lll}{
    Inf \tab Infinite Value \tab  \cr
    newind \tab 1: First record of individual; 2: Subsequent record of individual \tab NEWIND \cr
    rxFlag \tab Flag for what part of the rxode2 model is being run; 1: ddt; 2: jac; 3: ini; 4: F; 5: lag; 6: rate; 7: dur; 8: mtime; 9: matrix exponential; 10: inductive linearization; 11: lhs \tab  \cr
+   rxSsAdvance \tab 1 while the solver advances to steady state (the ss dose); otherwise 0 \tab  \cr
 }
 
 
 Note that \code{rxFlag} will always output \code{11} or \code{calc_lhs} since that is
 where the final variables are calculated, though you can tweak or test
 certain parts of \code{rxode2} by using this flag.
+
+\code{rxSsAdvance} is \code{1} while the solver advances a steady-state dose and
+\code{0} otherwise, so \code{d/dt(auc) <- (1 - rxSsAdvance)*cp} keeps the
+steady-state history out of an accumulating compartment.
 }
 
 \subsection{Residual functions when using rxode2 functions}{

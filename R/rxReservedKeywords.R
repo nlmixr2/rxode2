@@ -1,6 +1,6 @@
 #' A list and description of rxode2 supported reserved keywords
 #'
-#' @format A data frame with 3 columns and 31 rows
+#' @format A data frame with 3 columns and 32 rows
 #' \describe{
 #' \item{Reserved Name}{Reserved Keyword Name}
 #' \item{Meaning}{Reserved Keyword Meaning}

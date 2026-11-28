@@ -20,6 +20,7 @@
 #include "../inst/include/rxode2parseHandleEvid.h"
 #include "../inst/include/rxode2parseGetTime.h"
 #include "../inst/include/rxode2EventTranslate.h"
+#include "../inst/include/rxMemAlloc.h"
 #include "linCmtDiffConstant.h"
 #include "linCmtSensType.h"
 
@@ -480,6 +481,49 @@ static void rxSolveErrPush(int id, int err) {
 rx_solving_options op_global;
 extern int nPastEvid_global;
 extern int ssNotConv_global;
+// The rate of change at y with rxSsAdvance (ind->doSS) set to adv
+extern t_dydt dydt;
+static inline void ssRateAt(int *neq, double t, const double *y, int adv,
+                            rx_solving_options_ind *ind,
+                            std::vector<double> &out) {
+  std::vector<double> yc(y, y + neq[0]);
+  rxMemAssign(fixed, out, neq[0], 0.0);
+  int doSS = ind->doSS;
+  ind->doSS = adv;
+  dydt(neq, t, yc.data(), out.data());
+  ind->doSS = doSS;
+}
+
+// ss=2 superposition: add the state before the dose to the added regimen's
+// steady state.  The advance starts from that state, so a state the model
+// holds with rxSsAdvance has nothing to add: one the advance left unchanged,
+// that the dose does not enter, that does not move with rxSsAdvance = 1 before
+// or after the advance and does move with rxSsAdvance = 0 at one of them.
+// Returns the amount to add to each state.
+static inline std::vector<double> ssSavedToAdd(const double *yp, const double *solveSave,
+                                               int *neq, double t,
+                                               rx_solving_options_ind *ind) {
+  std::vector<double> add(solveSave, solveSave + neq[0]);
+  bool any = false;
+  for (int j = neq[0]; j--;) {
+    if (yp[j] == solveSave[j] && j != ind->cmt) any = true;
+  }
+  if (!any) return add;
+  std::vector<double> on0, off0, on1, off1;
+  ssRateAt(neq, t, solveSave, 1, ind, on0);
+  ssRateAt(neq, t, solveSave, 0, ind, off0);
+  ssRateAt(neq, t, yp, 1, ind, on1);
+  ssRateAt(neq, t, yp, 0, ind, off1);
+  for (int j = neq[0]; j--;) {
+    if (yp[j] == solveSave[j] && j != ind->cmt &&
+        on0[j] == 0.0 && on1[j] == 0.0 &&
+        (off0[j] != 0.0 || off1[j] != 0.0)) {
+      add[j] = 0.0;
+    }
+  }
+  return add;
+}
+
 // flag an iterated steady state that used maxSS doses without converging;
 // minSS = maxSS asks for that many doses, and a failed solve (rc +/-2019) is
 // reported on its own, so neither is flagged
@@ -4653,7 +4697,8 @@ void handleSS(int *neq,
           if (isModeled) _adjSSinfModeled = -1;   // modeled full-interval ss2: not yet supported
         }
         // Add at the end
-        for (j = neq[0];j--;) yp[j]+=ind->solveSave[j];
+        std::vector<double> ssAdd = ssSavedToAdd(yp, ind->solveSave, neq, xout, ind);
+        for (j = neq[0];j--;) yp[j]+=ssAdd[j];
       }
       // Adjoint handoff: continuous / full-interval infusion reaches a CONSTANT
       // steady state (f(Y_ss)+R.e = 0), so dY_ss/dp = -J^{-1} df/dp (a linear
@@ -5094,7 +5139,8 @@ void handleSS(int *neq,
       // saved pre-ss2 state) for the adjoint superposition term.
       if (op->adjoint) { _adjSS2 = 1; _adjSS2peak.assign(yp, yp + neq[0]); }
       // Add at the end
-      for (j = neq[0];j--;) yp[j]+=ind->solveSave[j];
+      std::vector<double> ssAdd = ssSavedToAdd(yp, ind->solveSave, neq, xout, ind);
+      for (j = neq[0];j--;) yp[j]+=ssAdd[j];
     }
     if (!doSSinf && !isSsLag && !skipDosingEvent){
       // REprintf("handleEvid %d %d %d\n", doSSinf, isSsLag, skipDosingEvent);

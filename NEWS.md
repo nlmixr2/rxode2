@@ -268,6 +268,12 @@
   parsed model instead of the recursive R walker, with identical output; the
   R walker stays as a fallback (`bench/rxPrune.R`, #1772).
 
+- The model variable `rxSsAdvance` is `1` while the solver advances a
+  steady-state dose and `0` otherwise, so `d/dt(auc) <- (1 - rxSsAdvance)*cp`
+  keeps the steady-state history out of an accumulating compartment; an
+  `ss = 2` dose keeps such a compartment's value rather than adding it to
+  itself (#1797).
+
 ## Bug fixes
 
 - The explicit Runge-Kutta discrete adjoint (`rk4s`, `dop853s` and the other

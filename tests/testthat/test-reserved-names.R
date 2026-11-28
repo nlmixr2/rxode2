@@ -10,6 +10,7 @@ rxTest({
       "newind",
       "NEWIND",
       "rxFlag",
+      "rxSsAdvance",
       "amt",
       "mixnum",
       "mixest",
