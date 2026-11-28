@@ -178,6 +178,27 @@ static int cvB_fwd(sunrealtype t, N_Vector y, N_Vector yd, void *ud) {
   return 0;
 }
 
+// Infusion forcing: inside a window the RHS gains +R, so F_p[c] += dR/dtheta ->
+// d(mu_p)/dt += -dR/dtheta * lambda_c.
+static void cvB_infusForcing(cvBwdUser *u, double t, N_Vector B, N_Vector Bd) {
+  int n = u->nBase, np = u->np;
+  for (size_t w = 0; w < u->infus->size(); ++w) {
+    const cvInfus &F = (*u->infus)[w];
+    if (t < F.tOn - 1e-12 || t > F.tOff + 1e-12) continue;
+    double lc = NV_Ith_S(B, F.cmt);
+    if (u->drateOff >= 0 && !F.fixed) {   // dR/dtheta = durMult * drate
+      const double *drate = &u->lhs[u->drateOff];
+      for (int p = 0; p < np; ++p) NV_Ith_S(Bd, n + p) += -F.durMult * drate[F.cmt * np + p] * lc;
+    }
+    // a dur() or fixed-dur rate also moves with a modeled F
+    if (u->dfOff >= 0 && F.isDur && F.tOff < R_PosInf && F.tOff > F.tOn) {
+      const double *dF = &u->lhs[u->dfOff];
+      double dfm = F.fixed ? F.dfW : F.amtRaw / (F.tOff - F.tOn);
+      for (int p = 0; p < np; ++p) NV_Ith_S(Bd, n + p) += -dfm * dF[F.cmt * np + p] * lc;
+    }
+  }
+}
+
 // Backward augmented RHS: B = [lambda(nBase), mu(np)];
 //   d(lambda)/dt = -F_X^T lambda,   d(mu)/dt = -F_p^T lambda.
 static int cvB_bwd(sunrealtype t, N_Vector B, N_Vector Bd, void *ud) {
@@ -201,26 +222,7 @@ static int cvB_bwd(sunrealtype t, N_Vector B, N_Vector Bd, void *ud) {
     for (int i = 0; i < n; ++i) s += fp[i * np + p] * NV_Ith_S(B, i);
     NV_Ith_S(Bd, n + p) = -s;
   }
-  // infusion forcing: inside a window the RHS gains +R, so F_p[c] += dR/dtheta ->
-  // d(mu_p)/dt += -dR/dtheta * lambda_c.
-  if (u->infus) {
-    for (size_t w = 0; w < u->infus->size(); ++w) {
-      const cvInfus &F = (*u->infus)[w];
-      if ((double)t >= F.tOn - 1e-12 && (double)t <= F.tOff + 1e-12) {
-        double lc = NV_Ith_S(B, F.cmt);
-        if (u->drateOff >= 0 && !F.fixed) {   // dR/dtheta = durMult * drate
-          const double *drate = &u->lhs[u->drateOff];
-          for (int p = 0; p < np; ++p) NV_Ith_S(Bd, n + p) += -F.durMult * drate[F.cmt * np + p] * lc;
-        }
-        // a dur() or fixed-dur rate also moves with a modeled F
-        if (u->dfOff >= 0 && F.isDur && F.tOff < R_PosInf && F.tOff > F.tOn) {
-          const double *dF = &u->lhs[u->dfOff];
-          double dfm = F.fixed ? F.dfW : F.amtRaw / (F.tOff - F.tOn);
-          for (int p = 0; p < np; ++p) NV_Ith_S(Bd, n + p) += -dfm * dF[F.cmt * np + p] * lc;
-        }
-      }
-    }
-  }
+  if (u->infus) cvB_infusForcing(u, (double)t, B, Bd);
   return 0;
 }
 
