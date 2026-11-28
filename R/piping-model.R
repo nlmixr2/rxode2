@@ -215,7 +215,9 @@ model.rxModelVars <- model.rxode2
     }
     return(rxUiCompress(rxui$fun()))
   }
+  .gridN <- .rxPdeIniGridNames(rxui$lstExpr)
   .modifyModelLines(lines = modelLines, rxui = rxui, modifyIni = modifyIni, envir = envir)
+  .rxPdeIniGridDrop(rxui, .gridN)
   .v <- .getAddedOrRemovedVariablesFromNonErrorLines(rxui)
   if (length(.v$rm) > 0) {
     lapply(.v$rm, function(x) {

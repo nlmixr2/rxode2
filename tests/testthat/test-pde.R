@@ -328,6 +328,16 @@ rxTest({
     expect_true(any(grepl("to = 2, n = nx", deparse(.u4$fun), fixed = TRUE)))
     .s <- rxSolve(.u2, et(0:2))
     expect_equal(.s$tot, rep(1, 3), tolerance = 1e-6)
+    ## a numeric size drops the ini() value
+    .u5 <- .u2 |> model(grid(x, 0, 1, n = 3))
+    expect_equal(.u5$mv0$state, paste0("C_", 1:3))
+    expect_false("nx" %in% .u5$iniDf$name)
+    ## ini() piping keeps the model's user functions
+    .u6 <- rxUiDecompress(.copyUi(.u))
+    .u6$meta$keep <- 1
+    .iniHandleLine(quote(nx <- 5), .u6)
+    expect_equal(.u6$mv0$state, paste0("C_", 1:5))
+    expect_equal(.u6$meta$keep, 1)
     ## the size must be fixed
     f2 <- function() {
       ini({

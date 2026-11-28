@@ -936,8 +936,36 @@ rxPde <- function(model) {
     return(invisible())
   }
   .new <- rxUiDecompress(rxui$fun())
-  for (.i in ls(envir = .new, all.names = TRUE)) {
+  # the ui keeps its own user functions and name
+  for (.i in setdiff(ls(envir = .new, all.names = TRUE), c("meta", "modelName"))) {
     assign(.i, get(.i, envir = .new), envir = rxui)
+  }
+  invisible()
+}
+
+## ini() names a grid line uses as its size (tagged or still written by name).
+.rxPdeIniGridUsed <- function(lines) {
+  unlist(
+    lapply(lines, function(l) {
+      if (!.rxPdeIsGridLine(l)) {
+        return(NULL)
+      }
+      .nm <- attr(l, "rxPdeN")
+      if (!is.null(.nm)) {
+        return(.nm)
+      }
+      .n <- match.call(function(name, from, to, n) NULL, l)$n
+      if (is.name(.n)) as.character(.n) else NULL
+    }),
+    use.names = FALSE
+  )
+}
+
+## Drop the ini() grid sizes in `before` that no grid line of the ui uses any
+## more (eg after piping a grid with a numeric size).
+.rxPdeIniGridDrop <- function(rxui, before) {
+  for (.v in setdiff(before, .rxPdeIniGridUsed(rxui$lstExpr))) {
+    .removeVariableFromIniDf(.v, rxui)
   }
   invisible()
 }
