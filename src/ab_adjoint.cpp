@@ -72,12 +72,13 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   };
   size_t nCalls = abAdjCalls.size();
   std::vector<std::vector<abJump> > callEv(nCalls);
-  std::vector<std::vector<double> > callY(nCalls);   // base state after the call-start events
+  // base state after the call-start events: the call's first recorded point (0 if none)
+  std::vector<double> zeroY(nBase, 0.0);
+  std::vector<const double *> callY(nCalls);
   for (size_t c = 0; c < nCalls; ++c) {
     const abRecCall &C = abAdjCalls[c];
-    callY[c].assign(nBase, 0.0);
-    if (C.stepEnd > C.stepBegin) for (int b = 0; b < nBase; ++b) callY[c][b] = abAdjSteps[C.stepBegin].y[b];
-    callEv[c] = abEventsAt(C.t0, ind->n_all_times, c >= 1, callY[c].data());
+    callY[c] = C.stepEnd > C.stepBegin ? abAdjSteps[C.stepBegin].y.data() : zeroY.data();
+    callEv[c] = abEventsAt(C.t0, ind->n_all_times, c >= 1, callY[c]);
   }
 
   double *lhs = ind->lhs;
@@ -180,7 +181,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
         // before it: those that open the next call, or, after the last call, the
         // ones at the last record time
         if (cObs + 1 < (int)nCalls && fabs(abAdjCalls[cObs + 1].t0 - ti) < 1e-9)
-          abJumpT(callEv[cObs + 1], ti, callY[cObs + 1].data(), endCostate.data(), mu.data());
+          abJumpT(callEv[cObs + 1], ti, callY[cObs + 1], endCostate.data(), mu.data());
         else
           abJumpT(abEventsAt(ti, i, true, out), ti, out, endCostate.data(), mu.data());
         for (int c = cObs; c >= 0; --c) {
@@ -210,7 +211,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
           for (int b = 0; b < nBase; ++b) endCostate[b] = lam[b];  // costate of call c's start
           // the jumps at t0_c -> costate of the pre-event state (call c-1's end, or
           // the initial conditions for call 0)
-          abJumpT(callEv[c], call.t0, callY[c].data(), endCostate.data(), mu.data());
+          abJumpT(callEv[c], call.t0, callY[c], endCostate.data(), mu.data());
         }
         rk4sAddIni(dx0P, endCostate.data(), mu.data(), nBase, np);   // window start t0
       } else {
@@ -221,7 +222,7 @@ extern "C" void ind_ab_adj_0(rx_solve *rx, rx_solving_options *op, int solveid, 
         bool opens = false;
         for (size_t c = 0; c < nCalls && !opens; ++c)
           if (fabs(abAdjCalls[c].t0 - ti) < 1e-9) {
-            abJumpT(callEv[c], ti, callY[c].data(), endCostate.data(), mu.data()); opens = true;
+            abJumpT(callEv[c], ti, callY[c], endCostate.data(), mu.data()); opens = true;
           }
         // a reset at the last record time opens no call
         if (!opens) abJumpT(abEventsAt(ti, i, true, out), ti, out, endCostate.data(), mu.data());
