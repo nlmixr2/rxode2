@@ -270,6 +270,14 @@
 
 ## Bug fixes
 
+- Second-order event ("jump") sensitivities of infusions are now exact when
+  `f()`, `alag()`, `rate()` or `dur()` depend on the sensitivity parameters,
+  for data-rate, data-duration, modeled-rate and modeled-duration infusions.
+  Before, pairs involving a parameter in `f()`, `rate()` or `dur()` were left
+  at zero or got only part of their terms.  One switch rule now covers every
+  window start and stop.  The forward analytic FOCEi gradient
+  (`fast = TRUE`) reads these sensitivities, so it was off by up to a few
+  percent for such fits.
 - The explicit Runge-Kutta discrete adjoint (`rk4s`, `dop853s` and the other
   explicit `*s` methods) gives the exact gradient for a parameter-dependent
   `alag()` when the right-hand side is nonlinear.  The lag-time term was exact

@@ -1,6 +1,6 @@
 file,raw
 inst/include/rxode2gpu/rxg_host.h,1
-inst/include/rxode2parseHandleEvid.h,95
+inst/include/rxode2parseHandleEvid.h,69
 inst/include/rxode2parseSbuf.h,1
 inst/include/sbuf.c,15
 src/ab.cpp,4
