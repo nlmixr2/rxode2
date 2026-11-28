@@ -281,19 +281,24 @@ NumericVector rxMemoryComponents_(
 //' adjoint expansion: one slice per thread of \code{rxAdjWorkPerThread()}
 //' doubles (\code{inst/include/rxMemoryCalc.h}), the layout
 //' \code{src/rxData.cpp} carves.  Not counted: the per-period Jacobian tapes,
-//' sized by the recorded period's steps, which take the heap.
+//' sized by the recorded period's steps, which take the heap.  Also reports
+//' \code{adjointSsState}, the per-thread heap copy of the state right after a
+//' steady-state dose (\code{neq} doubles per thread).
 //'
 //' @param neq Number of ODE states (\code{op->neq}).
 //' @param nBase Number of base (non-adjoint) states (\code{op->adjNbase}).
 //' @param np Number of sensitivity parameters (\code{op->adjNp}).
 //' @param cores Number of parallel OMP threads.
 //' @param maxAllTimes Maximum events for any single subject.
-//' @return Named numeric vector with \code{adjointWork} bytes.
+//' @return Named numeric vector with \code{adjointWork} and
+//'   \code{adjointSsState} bytes.
 //' @noRd
 // [[Rcpp::export]]
 NumericVector rxMemoryAdjointComponents_(int neq, int nBase, int np, int cores, double maxAllTimes) {
   const double per = (double)rxAdjWorkPerThread(neq, nBase, np, (int)maxAllTimes);
-  return NumericVector::create(Named("adjointWork") = (double)(cores > 0 ? cores : 1) * per * sizeof(double));
+  const double nc = (double)(cores > 0 ? cores : 1);
+  return NumericVector::create(Named("adjointWork") = nc * per * sizeof(double),
+                               Named("adjointSsState") = nc * (double)neq * sizeof(double));
 }
 
 //' Report the byte sizes of a GPU method's solve allocations

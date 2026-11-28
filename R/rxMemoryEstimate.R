@@ -909,6 +909,7 @@ print.rxMemoryEstimate <- function(x, ...) {
     extraDosing = "extraDosing (per-thread evid_() push pools)",
     invCdfMemo = "invCdfMemo (per-thread inverse-CDF memo)",
     adjointWork = "adjointWork (per-thread adjoint backward-work arena)",
+    adjointSsState = "adjointSsState (per-thread adjoint steady-state snapshot)",
     gpuHostWork = "gpuHostWork (GPU round requests, per slot)",
     gpuHostState = "gpuHostState (GPU host integrator state, per slot)",
     gpuSlotWork = "gpuSlotWork (GPU per-thread workspaces)",

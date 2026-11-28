@@ -35,7 +35,7 @@ src/parseSyntaxErrors.h,1
 src/parseVars.h,12
 src/pkTime.h,7
 src/priorDensity.cpp,7
-src/rk4s.cpp,53
+src/rk4s.cpp,51
 src/rxCseIndex.h,1
 src/rxCseRun.h,13
 src/rxCseSel.h,1
