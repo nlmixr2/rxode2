@@ -20,6 +20,10 @@ extern "C" {
 #include "rxode2lincmtLink.h"
 #include "solveDiag.h"
 
+void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx);
+// rxSolve(resetCancelsPending=) (rxData.cpp)
+extern int resetCancelsPending_global;
+
 void par_rkf78(rx_solve *rx);
 // Marks the start of a u_inis() initialization pass (rxthreefry.cpp)
 extern "C" void rxEtaPreIniStart(void);
@@ -392,7 +396,6 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
     if (ncmt) ind->pendingDosesN[0] = 0;
 		return 1;
 	}
-  extern int resetCancelsPending_global;
   // rxSolve(resetCancelsPending=TRUE): NONMEM cancels prior doses at a reset
   // (rxode2#1720).  A dose whose record comes before the reset at ix position
   // `pos` (an earlier record time, or the same time and translated first) but
@@ -436,6 +439,26 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
       }
     }
   }
+  // Turn every compartment on with no running infusion rate at a reset.
+  static inline void resetInfusionRatesAndOn(rx_solving_options_ind *ind, int neq) {
+    for (unsigned int j = neq; j--;) {
+      ind->InfusionRate[j] = 0;
+      ind->on[j] = 1;
+      ind->cacheME=0;
+    }
+  }
+  // Reset dose-tracking after time reset so tad is never negative post-reset.
+  // Any dose that fires after this EVID=3 re-establishes tlast from scratch.
+  static inline void resetDoseTracking(rx_solving_options_ind *ind,
+                                       rx_solving_options *op) {
+    int _ncmt = op->neq + op->extraCmt;
+    for (int _j = _ncmt; _j--;) {
+      ind->tlastS[_j]   = NA_REAL;
+      ind->curDoseS[_j] = NA_REAL;
+    }
+    ind->tlast   = NA_REAL;
+    ind->curDose = NA_REAL;
+  }
   static inline void handleEvid3(rx_solving_options_ind *ind, rx_solving_options *op,
                                  rx_solve *rx, int *neq, double *xp, double *xout,
                                  double *yp, int *idid, t_update_inis u_inis) {
@@ -444,30 +467,23 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
     cancelPendingPriorDoses(ind, rx, op, ind->idx, neq[0]);
     // the modeled steady-state off these mark was cancelled with the rest
     if (_rxEsActive) { _esSSDurOffCmt = -1; _esSSRateOffCmt = -1; }
-    for (unsigned int j = neq[0]; j--;) {
-      ind->InfusionRate[j] = 0;
-      ind->on[j] = 1;
-      ind->cacheME=0;
-    }
+    resetInfusionRatesAndOn(ind, neq[0]);
     cancelInfusionsThatHaveStarted(ind, neq[1], *xout);
     cancelPendingDoses(ind, neq[1]);
     memcpy(yp, op->inits, neq[0]*sizeof(double));
-    u_inis(neq[1], yp); // Update initial conditions @ current time
+    // cmt(0) reads the reset record's covariates, as NONMEM re-runs $PK on
+    // it (rxode2#1587); _inis() would otherwise reload them at t = 0
+    _update_par_ptr(NA_REAL, neq[1], rx, ind->idx);
+    ind->_update_par_ptr_in = 1;
+    u_inis(neq[1], yp);
+    ind->_update_par_ptr_in = 0;
     if (rx->istateReset) *idid = 1;
     *xout -= rx->maxShift;
     *xp = *xout;
     ind->linCmtAlast = yp ;
     linCmtOriginReset(ind);
     ind->ixds++;
-    // Reset dose-tracking after time reset so tad is never negative post-reset.
-    // Any dose that fires after this EVID=3 re-establishes tlast from scratch.
-    int _ncmt = op->neq + op->extraCmt;
-    for (int _j = _ncmt; _j--;) {
-      ind->tlastS[_j]   = NA_REAL;
-      ind->curDoseS[_j] = NA_REAL;
-    }
-    ind->tlast   = NA_REAL;
-    ind->curDose = NA_REAL;
+    resetDoseTracking(ind, op);
   }
 
 #if defined(__cplusplus)
