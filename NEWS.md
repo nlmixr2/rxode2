@@ -22,8 +22,8 @@
   difference operators `d2x()`/`dx()`, the boundary conditions `value()` and
   `flux()`, `integrate()` and point values `C[x = value]` (see `?rxPde`,
   #1759).  Piping a `grid()` line replaces the grid of that name, and
-  `.rxPrune()` expands the grids first, so nlmixr2 estimation of these models
-  works.
+  `.rxPrune()` expands the grids first, so forward sensitivities and nlmixr2
+  (FOCEi) estimation of these models work.
   The new article "Partial differential equations" walks through them.
 - The model-building piping functions moved here from 'nlmixr2lib':
   absorption (`addDepot()`, `addTransit()`, `addWeibullAbs()`,

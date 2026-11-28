@@ -188,4 +188,70 @@ rxTest({
     }))
     expect_false(grepl("grid", .p))
   })
+  ## forward sensitivities: the expanded model is a plain ODE system
+  .pdeFd <- function(m, p, v, ev, what, h = 1e-5) {
+    .p <- p
+    .p[v] <- p[v] + h
+    .up <- rxSolve(m, .p, ev, atol = 1e-12, rtol = 1e-12)[[what]]
+    .p[v] <- p[v] - h
+    .dn <- rxSolve(m, .p, ev, atol = 1e-12, rtol = 1e-12)[[what]]
+    (.up - .dn) / (2 * h)
+  }
+
+  test_that("calcSens sensitivities of a gridded model match finite differences", {
+    .m <- rxode2("
+      grid(x, from = 0, to = 1, n = 6)
+      d/dt(C[x]) = D * d2x(C) - k * C[x]
+      flux(C, x = 0) = kin
+    ")
+    .ms <- rxode2(.m, calcSens = c("D", "k", "kin"))
+    .ev <- et(seq(0, 4, by = 1))
+    .p <- c(D = 0.05, k = 0.3, kin = 2)
+    .s <- rxSolve(.ms, .p, .ev, atol = 1e-12, rtol = 1e-12)
+    for (.v in names(.p)) {
+      .fd <- .pdeFd(.m, .p, .v, .ev, "C_2")
+      expect_equal(.s[[paste0("rx__sens_C_2_BY_", .v, "__")]], .fd, tolerance = 1e-5)
+    }
+  })
+
+  test_that("FOCEi-style eta sensitivities of a gridded UI model match finite differences", {
+    f <- function() {
+      ini({
+        tD <- log(0.05)
+        tk <- log(0.3)
+        eta.D ~ 0.1
+        eta.k ~ 0.1
+        add.sd <- 0.1
+      })
+      model({
+        D <- exp(tD + eta.D)
+        k <- exp(tk + eta.k)
+        grid(x, from = 0, to = 1, n = 6)
+        d/dt(C[x]) <- D * d2x(C) - k * C[x]
+        value(C, x = 0) <- 1
+        cp <- integrate(C, x)
+        cp ~ add(add.sd)
+      })
+    }
+    .ui <- rxode2(f)
+    .base <- .ui$symengineModelPrune
+    .etas <- c("eta.D", "eta.k")
+    .mod <- .rxLoadPrune(rxModelVars(.base), FALSE)
+    .st <- rxStateOde(.mod)
+    expect_equal(.st, paste0("C_", 1:6))
+    invisible(.rxJacobian(.mod, c(.st, .etas)))
+    invisible(.rxSens(.mod, .etas))
+    .ms <- rxode2(paste(c(paste0("cmt(", .st, ");"), .mod$..ddt, .mod$..jacobian, .mod$..sens),
+      collapse = "\n"
+    ))
+    .ev <- et(seq(0, 6, by = 1))
+    .p <- c(tD = log(0.05), tk = log(0.3), eta.D = 0.1, eta.k = -0.2)
+    .s <- rxSolve(.ms, .p, .ev, atol = 1e-12, rtol = 1e-12)
+    .m0 <- rxode2(paste(c(paste0("cmt(", .st, ");"), .mod$..ddt), collapse = "\n"))
+    for (.v in .etas) {
+      .fd <- .pdeFd(.m0, .p, .v, .ev, "C_3")
+      expect_gt(max(abs(.fd)), 1e-3)
+      expect_equal(.s[[paste0("rx__sens_C_3_BY_", .v, "__")]], .fd, tolerance = 1e-5)
+    }
+  })
 })
