@@ -403,6 +403,9 @@
   loop) now draws new ETAs in a model with ODEs; it used to read the same
   pre-generated row every time, so the loop could not leave it.  The first
   `simeta()` of each initialization still reads that row (#1793).
+- `sigmaUpper` is now used as the upper truncation bound for EPS draws; it
+  used to be filled from `sigmaLower`, so finite bounds truncated EPS to the
+  wrong interval (#1865).
 
 ### Documentation
 - The pipeline article no longer saves its simulation into the installed

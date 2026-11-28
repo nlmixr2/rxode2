@@ -3072,6 +3072,7 @@ List rxSimThetaOmega0(const Nullable<NumericVector> &params    = R_NilValue,
     }
     arma::vec in = as<arma::vec>(sigmaLower);
     arma::vec lowerSigmaV = fillVec(in, sigma0.n_rows);
+    in = as<arma::vec>(sigmaUpper);
     arma::vec upperSigmaV = fillVec(in, sigma0.n_rows);
     if (rx->neps > 0) {
       std::copy(&lowerSigmaV[0], &lowerSigmaV[0] + rx->neps, _globals.gsigma);
