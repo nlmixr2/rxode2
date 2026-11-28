@@ -979,6 +979,7 @@ SEXP _rxode2_rxMemoryAdjointComponents_(SEXP,SEXP,SEXP,SEXP,SEXP);
 SEXP _rxode2_rxAdjWorkStats_(void);
 SEXP _rxode2_rxRamBytes_(void);
 SEXP _rxode2_rxSolveSetCurObj_(SEXP);
+SEXP _rxode2_rxPruneC(SEXP, SEXP, SEXP);
 
 extern SEXP _rxode2_rxRegisterTestParLoaders(SEXP);
 extern SEXP _rxode2_rxRemoveTestParLoaders(void);
@@ -1054,6 +1055,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxSetIni0", (DL_FUNC) &_rxode2_rxSetIni0, 1},
     {"_rxode2_etTransEvidIsObs", (DL_FUNC) &_rxode2_etTransEvidIsObs, 1},
     {"_rxode2_rxTranslateOneEvent_", (DL_FUNC) &_rxode2_rxTranslateOneEvent_, 9},
+    {"_rxode2_rxPruneC", (DL_FUNC) &_rxode2_rxPruneC, 3},
     {"_rxode2_rxInvChol_", (DL_FUNC) &_rxode2_rxInvChol_, 2},
     {"_rxode2_parse_strncmpci",(DL_FUNC) &_rxode2_parse_strncmpci, 0},
     {"_rxode2_rxParseSetSilentErr", (DL_FUNC) &_rxode2_rxParseSetSilentErr, 1},

@@ -245,6 +245,55 @@
 }
 
 
+#' Prune a parsed model with the R walker
+#'
+#' @param expr quoted `{...}` of the normalized model
+#' @param strAssign `strAssign` list from the model variables
+#' @return Pruned model text, with a `capturedEvid` attribute when an
+#'   adaptive dosing call was captured
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPruneWalkR <- function(expr, strAssign) {
+  .env <- new.env(parent = emptyenv())
+  .env$.if <- NULL
+  .env$.def1 <- NULL
+  .env$..captureN <- 0L
+  .env$..capturedEvid <- list()
+  .ret <- .rxPrune(expr, envir = .env, strAssign = strAssign)
+  if (length(.env$..capturedEvid) > 0L) {
+    attr(.ret, "capturedEvid") <- .env$..capturedEvid
+  }
+  .ret
+}
+
+#' Parse a model for pruning
+#'
+#' @param x rxode2 model that can be accessed by rxNorm
+#' @return list with the quoted model (`expr`) and its `strAssign`
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPruneParse <- function(x) {
+  .mv <- rxModelVars(x)
+  list(
+    expr = eval(parse(text = paste0("quote({", rxNorm(x), "})"))),
+    strAssign = .mv$strAssign
+  )
+}
+
+#' Prune branches with the R walker
+#'
+#' Reference implementation of `rxPrune()`, kept for the equality test
+#' and benchmark against the C walker.
+#'
+#' @param x rxode2 model that can be accessed by rxNorm
+#' @return Pruned rxode2 model text.
+#' @noRd
+#' @author Matthew L. Fidler
+.rxPruneR <- function(x) {
+  .p <- .rxPruneParse(x)
+  .rxPruneWalkR(.p$expr, .p$strAssign)
+}
+
 #' Prune branches (ie if/else) from rxode2
 #'
 #' This prunes branches (ie if/else) from rxode2.
@@ -255,15 +304,11 @@
 #' @keywords internal
 #' @export
 rxPrune <- function(x) {
-  .env <- new.env(parent = emptyenv())
-  .mv <- rxModelVars(x)
-  .env$.if <- NULL
-  .env$.def1 <- NULL
-  .env$..captureN <- 0L
-  .env$..capturedEvid <- list()
-  .ret <- .rxPrune(eval(parse(text = paste0("quote({", rxNorm(x), "})"))), envir = .env, strAssign = .mv$strAssign)
-  if (length(.env$..capturedEvid) > 0L) {
-    attr(.ret, "capturedEvid") <- .env$..capturedEvid
+  .p <- .rxPruneParse(x)
+  .ret <- .Call(`_rxode2_rxPruneC`, .p$expr, .p$strAssign, TRUE)
+  if (is.null(.ret)) {
+    # a construct the C walker does not reproduce exactly
+    .ret <- .rxPruneWalkR(.p$expr, .p$strAssign)
   }
-  return(.ret)
+  .ret
 }
