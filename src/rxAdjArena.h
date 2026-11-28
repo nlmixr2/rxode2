@@ -72,6 +72,7 @@ static_assert(sizeof(rxAdjVec) <= RX_ADJ_VEC_HDR * sizeof(double), "RX_ADJ_VEC_H
 typedef std::vector<double, rxAdjAlloc<double, true> > rxAdjTapeVec;
 typedef std::vector<rxAdjTapeVec, rxAdjAlloc<rxAdjTapeVec, true> > rxAdjTape;  // one per stage
 typedef rxAdjTapeVec rxAdjHeapVec;  // the heap kind, for other step-scaled or thread_local buffers
+typedef std::vector<char, rxAdjAlloc<char, true> > rxAdjHeapVecC;
 
 // The only way to size an adjointWork buffer: it must be an arena vector, so a
 // heap std::vector cannot be counted as adjointWork (test-mem-alloc-tags.R

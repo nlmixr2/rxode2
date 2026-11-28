@@ -1229,6 +1229,12 @@
   for the shift of the whole infusion window; before, it was missing in
   every method.
 
+- Overlapping infusions into one compartment, and modeled infusions into
+  several compartments that end at the same time, now give the right
+  adjoint sensitivities.  Before, each infusion stop closed the most recent
+  infusion instead of its own, and overlapping infusions overwrote each
+  other's terms instead of adding them.
+
 - `method = "cvodesadj"` no longer fails its backward solve, returning
   wrong sensitivities, when two events fall at the same time.
 
