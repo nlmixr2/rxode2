@@ -3067,7 +3067,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
           stop(_("'amt' value NA for dose event; (id: %s, amt: %f, evid: %d rxode2 evid: %d, row: %d)"), CHAR(idLvl[cid-1]), camt, inEvid[i], cevid, (int)i+1);
         }
       }
-      if (rateI == 1 || rateI == 2) dur = camt/rate;
+      if (rateI == 1) {
+        dur = camt / rate;
+      } else if (rateI == 2) {
+        dur = inDur[i];
+      }
       // One pass per occurrence of the addl series (rep 0 is the record
       // itself).  What each occurrence carries, and what records it expands
       // to, comes from the shared translator in

@@ -8,6 +8,8 @@
 #define diffP3 16
 #define diffP4 32
 #define diffP5 64
+// Not a parameter: the model reads linCmtB() Hessians (which1 -20/-21)
+#define diffHess 128
 
 #define linCmtCentral 1
 #define linCmtPeripheral1 2

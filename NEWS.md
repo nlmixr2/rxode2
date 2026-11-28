@@ -43,6 +43,16 @@
   evaluation (eg `f45`, `dop54`, `euler`) and `dop853` also name the states
   whose derivative was non-finite, with their values.  A successful solve
   records nothing (#1805).
+- `convertAbsSequential()` now covers the transit-delay forms of the
+  Monolix sequential double-absorption library, not only lag times.  A
+  second path with no delay gains the sequential lag (`Tlag2 = Tk01`),
+  a lag path is tied to `Tlag1 + Tk01` when the first path has a lag,
+  and a transit chain is reparameterized to `Mtt2 = Tk01 + diffMtt2`
+  (or `Mtt2 = Tlag1 + Tk01 + diffMtt2`), estimating `diffMtt2`.
+- `convertAbsForceLongerDelay()` now ties a transit-chain delay as well
+  as a lag time: `Mtt2 = Mtt1 + diffMtt2` for two transit chains,
+  `Mtt2 = Tlag1 + diffMtt2` or `Tlag2 = Mtt1 + diffTlag2` for the mixed
+  cases.  Each chain is converted to its mean transit time first.
 - `rxImpureFun()`/`rxRmImpureFun()` register user R functions, `rxFun()` C
   functions or package C functions that draw random numbers, keep state or
   have side effects.  `rxOptExpr()` never shares their calls and
@@ -65,6 +75,20 @@
   sensitivity right-hand sides it never reads, and `f()`/`alag()`/`rate()`/
   `dur()` evaluate only their own inputs.  Results are unchanged;
   `options(rxode2.fullOpt = "none")` restores the previous code generation.
+- Second derivatives of a `linCmt()` model are now exact: differentiating a
+  first-order `linCmt()` sensitivity again gives the second-order
+  `linCmtB()` reads of 'rxode2lincmt' (`which1 = -20` amounts, `-21`
+  concentration), and the model asks the solve to keep them
+  (rxode2lincmt#17).  Before, the curvature of the linear system was
+  dropped: such a derivative was `0`, which made the exact inner Hessian of
+  an `ll()` + `linCmt()` model in 'nlmixr2est' refuse a diagonal term and
+  silently lose the linear system's part of an off-diagonal one.
+- A first derivative of a `linCmt()` model translated back into its
+  symengine environment (`rxToSE(x, envir = )`), or carried through a
+  chained `rxFromSE()` derivative, keeps the linear system: the solved
+  states (`central`, `rx__sens_central_BY_p1`, ...) are read from it rather
+  than treated as constants, and a raw sensitivity-column read is written
+  back as its state name.
 - The model language has `clamp(x, lo, hi)`, the same as
   `min(max(x, lo), hi)` (and differentiated the same way); a call with
   other than three arguments, or with literal bounds `lo > hi`, is a parse
@@ -1214,8 +1238,26 @@
 
 - `method = "cvodesadj"` now includes the bioavailability (`f()`)
   sensitivity, also for an observation at a dose time; before, it was
-  missing entirely.  `f()` together with a modeled `rate()` or `dur()` is
-  still not right in `cvodesadj` and `liblsodaadj`.
+  missing entirely.
+
+- The adjoint bioavailability (`f()`) sensitivity of an infusion is now
+  right for fixed-rate, fixed-duration and modeled `rate()`/`dur()`
+  infusions in the `rk4s` family, `liblsodaadj` and `cvodesadj`.  Before,
+  fixed infusions missed it in every method, and modeled ones in
+  `liblsodaadj` and `cvodesadj`.
+
+- The adjoint lag-time (`alag()`) sensitivity of an infusion now accounts
+  for the shift of the whole infusion window; before, it was missing in
+  every method.
+
+- Overlapping infusions into one compartment, and modeled infusions into
+  several compartments that end at the same time, now give the right
+  adjoint sensitivities.  Before, each infusion stop closed the most recent
+  infusion instead of its own, and overlapping infusions overwrote each
+  other's terms instead of adding them.
+
+- `method = "cvodesadj"` no longer fails its backward solve, returning
+  wrong sensitivities, when two events fall at the same time.
 
 - `method = "abs"` now stops with an error when sensitivities are
   requested through an `f()`, `alag()`, `rate()` or `dur()` that depends on

@@ -1345,6 +1345,41 @@
     paste0("dSwish(", x, ")")
   }
 )
+# Second derivative of a linCmtB() first-order read with respect to the
+# full-theta slot t (p1 0, v1 1, p2 2, p3 3, p4 4, p5 5, ka 2*ncmt): a raw
+# amount-Jacobian entry (which1 >= m, which2 = -2) becomes the amount Hessian
+# read which1 = -20, which2 = row*49 + slot*7 + t; a concentration-gradient
+# read (which1 = -2) becomes the concentration Hessian read which1 = -21,
+# which2 = slot*7 + t (rxode2lincmt#17).  Third order is not available.
+.rxLinCmtBd2 <- function(args, t) {
+  .nc <- as.numeric(args[4])
+  .oral0 <- as.numeric(args[5])
+  .w1 <- as.numeric(args[6])
+  .w2 <- as.numeric(args[7])
+  .m <- .nc + .oral0
+  .n <- 2 * .nc + .oral0
+  if (.w1 == -2 && .w2 >= 0) {
+    args[6] <- "-21"
+    args[7] <- paste(.w2 * 7 + t)
+  } else if (.w2 == -2 && .w1 >= .m) {
+    .j <- .w1 - .m
+    if (.j < .nc * .n) {
+      .r <- .oral0 + .j %/% .n
+      .s <- .j %% .n
+    } else if (.oral0 == 1 && .j == .nc * .n) {
+      .r <- 0 # depot row: only its ka entry is carried
+      .s <- 2 * .nc
+    } else {
+      return("0") # past the carried layout: not a state of this model
+    }
+    args[6] <- "-20"
+    args[7] <- paste(.r * 49 + .s * 7 + t)
+  } else {
+    stop("bad 'linCmtB' derivative (third order is not supported)", call. = FALSE)
+  }
+  paste0("linCmtB(", paste(args, collapse = ","), ")")
+}
+
 .linCmtBgen <- function(i) {
   # Ka isn't handled
   if (i == 9) {
@@ -1391,7 +1426,7 @@
       ## Derivative of an amount read: the raw Jacobian entry IS the
       ## sensitivity state (trans-independent) -- read it directly.
       if (as.numeric(.args6) >= .oral0 + .nc) {
-        return("0")
+        return(.rxLinCmtBd2(.args, .wn))
       }
       .row <- .rxLinCmtBrowName(as.numeric(.args6), .oral0)
       if (.row == "depot") {
@@ -1399,7 +1434,7 @@
       }
       return(paste0("rx__sens_", .row, "_BY_", .slot))
     } else {
-      stop("bad 'linCmtB' derivative", call. = FALSE)
+      return(.rxLinCmtBd2(.args, .wn))
     }
     return(paste0("linCmtB(", paste(.args, collapse = ","), ")"))
   })
@@ -1553,12 +1588,12 @@
       ## Derivative of an amount read with respect to ka: the raw Jacobian
       ## entry IS the sensitivity state (trans-independent).
       if (as.numeric(.args6) >= .oral0 + .nc) {
-        return("0")
+        return(.rxLinCmtBd2(.args, 2 * .nc))
       }
       .row <- .rxLinCmtBrowName(as.numeric(.args6), .oral0)
       return(paste0("rx__sens_", .row, "_BY_ka"))
     } else {
-      stop("bad 'linCmtB' derivative", call. = FALSE)
+      return(.rxLinCmtBd2(.args, 2 * .nc))
     }
     return(paste0("linCmtB(", paste(.args, collapse = ","), ")"))
   }
