@@ -2,6 +2,7 @@
 #undef min
 #undef max
 #include "odeinter.h"
+#include <cfloat>
 #include <vector>
 #include <cstring>
 #include "../inst/include/rxMemAlloc.h"
@@ -7451,6 +7452,8 @@ static inline void rks_do_steps_adaptive(rx_solving_options_ind *ind, rx_solving
   int expo = T.errOrder + 1, nrej = 0;
   dt = rk4s_hist_cap(ind, dt, sign);   // DDE: keep steps within delayMinT
   while ((sign > 0 && t < xout) || (sign < 0 && t > xout)) {
+    // after a rejection, dop853's minimum-step test: fail where dop853 reports "step size too small"
+    if (nrej > 0 && 0.1 * fabs(dt) <= fabs(t) * DBL_EPSILON) { if (ind->rc[0] == 0) ind->rc[0] = -2019; rxSolverFail(ind); break; }
     if ((sign > 0 && t + dt > xout) || (sign < 0 && t + dt < xout)) dt = xout - t;
     dt = rk4s_hist_cap(ind, dt, sign);
     double err;
@@ -7458,7 +7461,7 @@ static inline void rks_do_steps_adaptive(rx_solving_options_ind *ind, rx_solving
     catch (const std::exception &e) { if (ind->rc[0] == 0) ind->rc[0] = -2019; rxSolverFail(ind); break; }
     double fac = (err > 0.0) ? SAFE * pow(err, -1.0 / expo) : FACMAX;
     if (fac < FACMIN) fac = FACMIN; if (fac > FACMAX) fac = FACMAX;
-    if (err <= 1.0 || fabs(dt) <= 1e-13 * span) {
+    if (err <= 1.0) {
       if (rec) {
         for (int i = 0; i < s; ++i) rec->a.insert(rec->a.end(), stages + i * nAll, stages + i * nAll + nRec);
         rec->t0.push_back(t); rec->h.push_back(dt);

@@ -270,6 +270,11 @@
 
 ## Bug fixes
 
+- An adaptive explicit RK solve (`dop853s` and the `rk4s` family) whose step
+  keeps failing the error test down to `dop853`'s minimum step size now fails
+  that subject's solve (NA values and the usual warning), as `dop853` does,
+  instead of force-accepting the step.
+
 - The explicit Runge-Kutta discrete adjoint (`rk4s`, `dop853s` and the other
   explicit `*s` methods) gives the exact gradient for a parameter-dependent
   `alag()` when the right-hand side is nonlinear.  The lag-time term was exact
