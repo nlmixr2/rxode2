@@ -403,6 +403,7 @@ typedef double(*_rxSumType)(double *, int, double *, int, int);
 typedef double(*_udf_type)(const char *fun, int, const double *);
 
 typedef void(*_simfun)(void);
+typedef void(*_simfunI)(int);
 
 typedef double(*_rxProdType)(double*, double*, int, int);
 

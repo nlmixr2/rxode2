@@ -81,6 +81,8 @@ extern "C" void rxOptionsFree();
 extern "C" void rxOptionsIni();
 extern "C" void rxOptionsIniEnsure(int mx, int cores);
 extern "C" void rxClearFuns();
+extern "C" void rxJacSrcSet(SEXP trans);
+bool rxIsLoaded(RObject obj);
 extern "C" void rxFreeLast();
 extern "C" rx_solving_options_ind *rxIndsGlobal(int *n);
 extern "C" void rxode2_assign_fn_pointers(SEXP);
@@ -2220,6 +2222,7 @@ extern "C" void gFree(){
   _globals.govar=NULL;
   if (_globals.gevid != NULL) free(_globals.gevid);
   _globals.gevid=NULL;
+  _globals.gevid_dfN = 0;
   if (_globals.ginfPair != NULL) free(_globals.ginfPair);
   _globals.ginfPair=NULL;
   if (_globals.gpkSkip != NULL) free(_globals.gpkSkip);
@@ -4582,6 +4585,7 @@ static inline void rxSolve_datSetupHmax(const RObject &obj, const List &rxContro
       rxSolveFree();
       stop(_("can not allocate enough memory to load 'evid'"));
     }
+    _globals.gevid_dfN = (int64_t)dfN;
     std::copy(evid.begin(),evid.end(), &_globals.gevid[0]);
     _globals.gidose = _globals.gevid + evid.size();
     _globals.gcens = _globals.gidose + evid.size();
@@ -6325,6 +6329,101 @@ static inline void rxSolveSaveRxSolve(rxSolve_t* rxSolveDat){
 }
 
 RObject _curPar;
+// Whether `p` (inside `mod`) starts a `fun(<digit>` call, not the tail of a
+// longer name.
+static inline bool rxSimIsCall(const char *mod, const char *p, const char *fun,
+                               size_t len) {
+  if (strncmp(p, fun, len) || p[len] != '(') return false;
+  if (!isdigit((unsigned char)p[len + 1])) return false;
+  if (p == mod) return true;
+  unsigned char prev = (unsigned char)p[-1];
+  return !(isalnum(prev) || prev == '_' || prev == '.');
+}
+
+// Past the quoted string that starts at `p`: the closing quote, or the end.
+static inline const char *rxSimSkipQuote(const char *p) {
+  char quote = *p;
+  for (p++; *p && *p != quote; p++) {
+    if (*p == '\\' && p[1]) p++;
+  }
+  return *p ? p : p - 1;
+}
+
+// Largest n in the model's `fun(n)` statements (0 when there are none),
+// skipping quoted strings.
+static inline int rxSimMaxIndex(const char *mod, const char *fun) {
+  int ret = 0;
+  size_t len = strlen(fun);
+  for (const char *p = mod; *p; p++) {
+    if (*p == '"' || *p == '\'') {
+      p = rxSimSkipQuote(p);
+    } else if (rxSimIsCall(mod, p, fun, len)) {
+      ret = std::max(ret, atoi(p + len + 1));
+    }
+  }
+  return ret;
+}
+
+extern "C" void rxSetSimIdx(int type, const int *idx, int n);
+
+// The recorded omega (type 1) or sigma (type 0) names, or R_NilValue.
+static inline SEXP rxSimNamesFor(const List &rxControl, int type) {
+  if (Rf_length(rxControl) <= Rxc__simNames) return R_NilValue;
+  SEXP sn = rxControl[Rxc__simNames];
+  if (TYPEOF(sn) != VECSXP || Rf_length(sn) < 2) return R_NilValue;
+  SEXP nms = VECTOR_ELT(sn, 1 - type);
+  return TYPEOF(nms) == STRSXP ? nms : R_NilValue;
+}
+
+// 1-based position of each of `nms` in `sim`, 0 when absent.
+static inline std::vector<int> rxSimMatch(SEXP nms, const CharacterVector &sim) {
+  int n = Rf_length(nms);
+  std::vector<int> idx(n, 0);
+  for (int i = 0; i < n; i++) {
+    const char *cur = CHAR(STRING_ELT(nms, i));
+    for (int j = 0; j < sim.size(); j++) {
+      if (!strcmp(cur, CHAR(sim[j]))) {
+        idx[i] = j + 1;
+        break;
+      }
+    }
+  }
+  return idx;
+}
+
+// Error when the model's largest `fun(n)` is past `size` items.
+static inline void rxSimCheckRange(const char *m, const char *fun, int size,
+                                   const char *what, const char *unit) {
+  int n = rxSimMaxIndex(m, fun);
+  if (n > 0 && size > 0 && n > size) {
+    rxSolveFree();
+    stop(_("'%s(%d)' is out of range: '%s' has %d %s(s)"), fun, n, what, size, unit);
+  }
+}
+
+// Hand the solver where each simeta(n)/simeps(n) index lands: index n names
+// the n-th item of the omega/sigma as given, which may have lost items (zero
+// variance, supplied in `params`, not in the model) before simulation.  Then
+// reject an index past it (#1793).
+static inline void rxSolveCheckSimIndex(rxSolve_t* rxSolveDat, rx_solve* rx,
+                                        const List &rxControl) {
+  int size[2] = {rx->neps, rx->neta};
+  for (int type = 0; type < 2; type++) {
+    rxSetSimIdx(type, NULL, 0);
+    SEXP nms = rxSimNamesFor(rxControl, type);
+    if (Rf_isNull(nms)) continue;
+    CharacterVector sim = (type == 0) ? rxSolveDat->sigmaN : rxSolveDat->omegaN;
+    std::vector<int> idx = rxSimMatch(nms, sim);
+    rxSetSimIdx(type, idx.data(), (int)idx.size());
+    size[type] = (int)idx.size();
+  }
+  if (rx->simflg == 0) return;
+  CharacterVector mod = rxSolveDat->mv[RxMv_model];
+  const char *m = CHAR(STRING_ELT(mod, 0));
+  rxSimCheckRange(m, "simeta", size[1], "omega", "eta");
+  rxSimCheckRange(m, "simeps", size[0], "sigma", "eps");
+}
+
 static inline void rxSolve_assignGpars(rxSolve_t* rxSolveDat){
   unsigned int i;
   rx_solve* rx = getRxSolve_();
@@ -6842,6 +6941,8 @@ static bool rxJacSwapModel(RObject &object, rxSolve_t *rxSolveDat) {
   Function _jm = getRxFn(".rxJacSolveModelC");
   RObject _jo = _jm(object);
   if (Rf_isNull(_jo)) return false;
+  // the original dydt keeps this Jacobian (rxJacFor() in par_solve.cpp)
+  if (rxIsLoaded(object)) rxJacSrcSet(_tr);
   object = _jo;
   rxSolveDat->mv = rxModelVars(object);
   return true;
@@ -6857,6 +6958,7 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
   if (setupOnly == 0){
     rxSolveFree();
   }
+  rxJacSrcSet(R_NilValue);
   rxDropB = false;
 
   // Solve-from-file dispatch has been moved to R (rxSolve.default).
@@ -7970,6 +8072,8 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       }
     }
 
+    // also for a setup-only solve, whose par_solve() a caller runs later
+    rxSolveCheckSimIndex(rxSolveDat, getRxSolve_(), rxControl);
     if (setupOnly){
       return as<SEXP>(LogicalVector::create(true));
     }

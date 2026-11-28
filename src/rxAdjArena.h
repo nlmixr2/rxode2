@@ -30,9 +30,11 @@ struct rxAdjArenaState {
 };
 extern thread_local rxAdjArenaState rxAdjTls;
 
-// Tape = true: a per-period Jacobian tape, whose size the forward pass's step
-// count sets, so it cannot be sized at solve setup; it always takes the heap
-// (counted apart), leaving the slice to the buffers sized at setup.
+// Tape = true: the heap kind, counted apart -- a buffer whose size the forward
+// pass's step count sets (a per-period Jacobian tape, a per-step segment), so
+// it cannot be sized at solve setup, or one held across subjects in a
+// thread_local container (arena memory must not outlive its subject's scope).
+// It leaves the slice to the buffers sized at setup.
 template <class T, bool Tape = false>
 struct rxAdjAlloc {
   typedef T value_type;
@@ -69,6 +71,8 @@ typedef std::vector<double, rxAdjAlloc<double> > rxAdjVec;
 static_assert(sizeof(rxAdjVec) <= RX_ADJ_VEC_HDR * sizeof(double), "RX_ADJ_VEC_HDR is too small");
 typedef std::vector<double, rxAdjAlloc<double, true> > rxAdjTapeVec;
 typedef std::vector<rxAdjTapeVec, rxAdjAlloc<rxAdjTapeVec, true> > rxAdjTape;  // one per stage
+typedef rxAdjTapeVec rxAdjHeapVec;  // the heap kind, for other step-scaled or thread_local buffers
+typedef std::vector<char, rxAdjAlloc<char, true> > rxAdjHeapVecC;
 
 // The only way to size an adjointWork buffer: it must be an arena vector, so a
 // heap std::vector cannot be counted as adjointWork (test-mem-alloc-tags.R
@@ -87,7 +91,13 @@ inline void rxAdjResize_(V &v, A &&...a) {
   static_assert(rxAdjIsArena<V>::value, "an adjointWork buffer must be an arena vector (rxAdjVec)");
   v.resize(std::forward<A>(a)...);
 }
+template <class V>
+inline void rxAdjReserve_(V &v, std::size_t n) {
+  static_assert(rxAdjIsArena<V>::value, "an adjointWork buffer must be an arena vector (rxAdjVec)");
+  v.reserve(n);
+}
 #define rxAdjAssign(v, ...) rxAdjAssign_((v), __VA_ARGS__)
+#define rxAdjReserve(v, n) rxAdjReserve_((v), (n))
 #define rxAdjResize(v, ...) rxAdjResize_((v), __VA_ARGS__)
 
 // One subject's backward work: claims this thread's slice and gives it back on
