@@ -11,7 +11,7 @@ src/codegen.c,4
 src/cvode.cpp,1
 src/cvode_dense.cpp,1
 src/cvode_solver.cpp,1
-src/cvodes_adjoint.cpp,8
+src/cvodes_adjoint.cpp,5
 src/dop853.c,20
 src/etTran.cpp,9
 src/expm.cpp,6
