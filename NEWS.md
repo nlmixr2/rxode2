@@ -2,6 +2,13 @@
 
 ## New features
 
+- `.rxSens(prune = TRUE)` (default `getOption("rxode2.sensPrune", FALSE)`)
+  drops structurally zero forward-sensitivity states, e.g. the depot
+  sensitivity to an eta on clearance in an oral model: zero initial condition,
+  no direct parameter term, and depending only on other zero states.  The
+  remaining states are unchanged.  Off by default; delay models and models
+  with modeled `f()`/`alag()`/`rate()`/`dur()` are never pruned, and a pruned
+  model has no event-jump sensitivities (`evid` 5/6, compartment turn-off).
 - `simeta(n)` and `simeps(n)` re-simulate only the `n`-th ETA/EPS inside a
   model, keeping the others; a correlated element is drawn conditional on
   the others.  The index counts the omega/sigma as given, before items with
