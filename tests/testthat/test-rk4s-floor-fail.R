@@ -5,9 +5,21 @@ rxTest({
   .sol <- function(m, meth, ...) {
     .w <- character()
     .s <- withCallingHandlers(
-      rxSolve(m, data.frame(ID = 1:2, TIME = 2, EVID = 0, AMT = 0), method = meth,
-              atol = 1e-8, rtol = 1e-8, maxsteps = 100000, addDosing = FALSE, ...),
-      warning = function(w) { .w <<- c(.w, conditionMessage(w)); invokeRestart("muffleWarning") })
+      rxSolve(
+        m,
+        data.frame(ID = 1:2, TIME = 2, EVID = 0, AMT = 0),
+        method = meth,
+        atol = 1e-8,
+        rtol = 1e-8,
+        maxsteps = 100000,
+        addDosing = FALSE,
+        ...
+      ),
+      warning = function(w) {
+        .w <<- c(.w, conditionMessage(w))
+        invokeRestart("muffleWarning")
+      }
+    )
     list(x = .s$x, w = .w)
   }
   test_that("dop853s fails where dop853 reports step size too small", {
