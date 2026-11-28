@@ -4274,7 +4274,7 @@ struct ssAdvanceScope {
   std::vector<double> held;
   ssAdvanceScope(rx_solving_options_ind *i, double *y, int n, int *ist) :
     ind(i), yp(y), neq(n), istate(ist), hold(rxSsHoldMask()) {
-    if (hold != NULL) held.assign(yp, yp + neq);
+    if (hold != NULL) rxMemAssign(fixed, held, yp, yp + neq);
   }
   ~ssAdvanceScope() {
     if (hold == NULL) return;
