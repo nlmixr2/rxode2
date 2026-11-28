@@ -7,8 +7,10 @@
   sensitivity to an eta on clearance in an oral model: zero initial condition,
   no direct parameter term, and depending only on other zero states.  The
   remaining states are unchanged.  Off by default; delay models and models
-  with modeled `f()`/`alag()`/`rate()`/`dur()` are never pruned, and a pruned
-  model has no event-jump sensitivities (`evid` 5/6, compartment turn-off).
+  with modeled `f()`/`alag()`/`rate()`/`dur()` are never pruned.  A pruned
+  model has no event-jump sensitivities, so solving it with `evid` 5/6 or
+  compartment turn-off (negative `cmt`) records stops with an error naming
+  `rxode2.sensPrune` instead of returning wrong sensitivities.
 - `simeta(n)` and `simeps(n)` re-simulate only the `n`-th ETA/EPS inside a
   model, keeping the others; a correlated element is drawn conditional on
   the others.  The index counts the omega/sigma as given, before items with

@@ -89,4 +89,20 @@ rxTest({
     .m <- .build(paste0(.warf, "\n  f(depot) <- 1"), .warfE, TRUE)
     expect_length(.sens(.m), 9L)
   })
+  test_that("a pruned model refuses events that need jump sensitivities", {
+    .pr <- .build(.warf, .warfE, TRUE)
+    .full <- .build(.warf, .warfE, FALSE)
+    .e5 <- et(amt = 100, cmt = "depot") |>
+      et(time = 12, amt = 50, cmt = "center", evid = 5) |>
+      et(seq(0.25, 24, length.out = 10))
+    .eoff <- et(amt = 100, cmt = "depot") |>
+      et(time = 12, cmt = "-depot", evid = 2) |>
+      et(seq(0.25, 24, length.out = 10))
+    for (.e in list(.e5, .eoff)) {
+      expect_error(rxSolve(.pr, .warfP, .e), "rxode2.sensPrune")
+      expect_error(rxSolve(.full, .warfP, .e), NA)
+    }
+    ## ordinary dosing still solves
+    expect_error(rxSolve(.pr, .warfP, .ev), NA)
+  })
 })
