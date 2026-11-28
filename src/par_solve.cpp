@@ -494,6 +494,13 @@ extern int tieOrderData_global;
 extern rx_globals _globals;
 
 rx_solving_options_ind *inds_global = NULL;
+// Number of entries allocated in `inds_global`
+static int inds_globalN = 0;
+// The subject array and its allocated size (0 when not allocated)
+extern "C" rx_solving_options_ind *rxIndsGlobal(int *n) {
+  *n = inds_global == NULL ? 0 : inds_globalN;
+  return inds_global;
+}
 
 rx_solving_options_ind *inds_thread = NULL;
 // The individual each thread is currently solving.  `inds_thread` holds a COPY
@@ -730,11 +737,13 @@ extern "C" { size_t rxIndSize = sizeof(rx_solving_options_ind); }
 
 extern "C" void rxOptionsIniEnsure(int mx, int cores) {
   R_Free(inds_global);
+  inds_globalN = 0;
   R_Free(inds_thread);
   // Set from the same expression the allocation immediately below uses, so
   // the published stride cannot drift from the real one.
   rxIndSize = sizeof(rx_solving_options_ind);
   inds_global = R_Calloc(mx, rx_solving_options_ind);
+  inds_globalN = mx;
   inds_thread = R_Calloc(max2(1, cores), rx_solving_options_ind);
   R_Free(inds_threadCur);
   inds_threadCurN = max2(1, cores);
@@ -6426,6 +6435,7 @@ extern "C" void rxFreeLast(){
   inds_thread = NULL;
   inds_threadCur = NULL;
   inds_global=NULL;
+  inds_globalN = 0;
 }
 
 extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, int *neq, double *rwork, int lrw, int *iwork, int liw, int jt,

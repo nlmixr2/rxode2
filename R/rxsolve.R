@@ -4989,7 +4989,8 @@ rxSolve.default <- function(
     .rxAssertSerializeFileWritable(file)
     .saveCtl <- .ctl
     .saveCtl$serializeFile <- file
-    on.exit(rxUnlock(object), add = TRUE)
+    # releases the lock the setup-only solve took
+    on.exit(rxSolveFree(), add = TRUE)
     .collectWarnings(
       rxSolveSEXP(object, .saveCtl, .nms, .xtra, params, .eventsForSolve, inits, setupOnlyS = 1L)
     )
