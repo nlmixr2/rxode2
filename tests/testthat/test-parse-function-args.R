@@ -89,6 +89,8 @@ rxTest({
       logical(1)
     )
     expect_setequal(names(.ok)[.ok], .zero)
+    expect_error(rxNorm("y=tteTime();"), "syntax error")
+    expect_error(rxNorm("y=tteCount();"), "syntax error")
     expect_error(rxNorm("y=log10(a, b);"), "syntax error")
     expect_error(rxNorm("y=pow(a);"), "syntax error")
   })

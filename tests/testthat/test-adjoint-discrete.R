@@ -961,6 +961,34 @@ rxTest({
     }
   })
 
+  test_that("modeled-alag transversality is exact for a nonlinear f and F != 1 (rk4s/dop853s)", {
+    skip_on_cran()
+    # mu += dlag/dp * lambda' (f(x-) - f(x+)), x- = x+ - F*amt*e_c; Michaelis-Menten
+    # elimination of the dosed state, F = 0.55, two doses, against central differences at 1e-10
+    mTxt <- paste("d/dt(center)=-vm*center/(km+center)", "f(center)=0.55", "alag(center)=tlag", sep = "\n")
+    csL <- c("vm", "km", "tlag")
+    pL <- c(vm = 15, km = 8, tlag = 0.7)
+    evL <- et(amt = 100, cmt = "center") |> et(amt = 60, cmt = "center", time = 5) |> et(c(1, 2, 4, 6, 8, 12))
+    exL <- rxode2::.rxAdjointExpand(mTxt, csL)
+    madjL <- rxode2::rxode2(exL$text)
+    mbaseL <- rxode2::rxode2(mTxt)
+    solveL <- function(pp, meth) {
+      as.data.frame(rxode2::rxSolve(mbaseL, evL, params = pp, method = meth, atol = 1e-10, rtol = 1e-10, cores = 1))
+    }
+    for (meth in c("rk4s", "dop853s")) {
+      s <- as.data.frame(rxode2::rxSolve(madjL, evL, params = pL, method = meth, atol = 1e-10, rtol = 1e-10, cores = 1))
+      u <- solveL(pL, "dop853")
+      hh <- pL[["tlag"]] * 1e-5
+      pp <- pL
+      pm <- pL
+      pp["tlag"] <- pp["tlag"] + hh
+      pm["tlag"] <- pm["tlag"] - hh
+      fd <- (solveL(pp, "dop853")[["center"]] - solveL(pm, "dop853")[["center"]]) / (2 * hh)
+      g <- s[["rx__sens_center_BY_tlag__"]]
+      expect_lt(max(abs(g - fd) / max(abs(fd))), 1e-6)
+    }
+  })
+
   test_that("modeled-rate infusion dual: d/d(rate) sensitivity matches FD (rk4s/dop853s)", {
     skip_on_cran()
     # A modeled-rate infusion of amt into cmt c runs over [t_on, t_on+amt/R(theta)]

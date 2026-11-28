@@ -3560,3 +3560,46 @@ rxTest({
     expect_identical(.d2, .ref2)
   })
 })
+
+rxTest({
+  test_that("negative addl and ss are rejected (issue #1792)", {
+    .mod <- rxode2({
+      d / dt(depot) <- -ka * depot
+      d / dt(cen) <- ka * depot - ke * cen
+      cp <- cen / v
+    })
+    .ev <- function(addl = 0L, ss = 0L) {
+      data.frame(
+        id = 1,
+        time = c(0, 1),
+        amt = c(100, 0),
+        evid = c(1, 0),
+        cmt = c("depot", "cen"),
+        ii = 12,
+        addl = c(addl, 0L),
+        ss = c(ss, 0L)
+      )
+    }
+    expect_error(etTrans(.ev(addl = -3L), .mod), "'addl' cannot be negative \\(id: 1, row: 1\\)")
+    expect_error(etTrans(.ev(ss = -1L), .mod), "'ss' cannot be negative \\(id: 1, row: 1\\)")
+    # 99 is the missing-ss placeholder in nlmixr2data and stays a plain dose
+    for (.ss in c(0L, 1L, 2L, 99L, NA_integer_)) {
+      expect_error(etTrans(.ev(ss = .ss), .mod), NA)
+    }
+    expect_error(etTrans(.ev(addl = NA_integer_), .mod), NA)
+    # a fraction in (-1, 0) is not truncated to 0 before the check
+    expect_error(etTrans(.ev(addl = -0.5), .mod), "'addl' cannot be negative")
+    expect_error(etTrans(.ev(ss = -0.5), .mod), "'ss' cannot be negative")
+    expect_error(et(amt = 100, ii = 12, addl = -0.5), "'addl' cannot be negative")
+    expect_error(et(amt = 100, ii = 12, ss = -0.5), "'ss' cannot be negative")
+    expect_error(et(amt = 100, ii = 12, addl = -1), "'addl' cannot be negative")
+    expect_error(et(amt = 100, ii = 12, ss = -1), "'ss' cannot be negative")
+    expect_error(suppressWarnings(etTrans(.ev(addl = -2147483649), .mod)), "'addl' cannot be negative")
+    expect_error(et(amt = 100, ii = 12, addl = 2, ss = 1), NA)
+    expect_error(et(amt = 100, ii = 12, addl = " 2"), NA)
+    # constant infusion without 'amt'
+    expect_error(et(time = 0, rate = 5, ss = 1, addl = -1), "'addl' cannot be negative")
+    expect_error(et(time = 0, rate = 5, ss = -1), "'ss' cannot be negative")
+    expect_error(et(time = 0, rate = 5, ss = 1), NA)
+  })
+})

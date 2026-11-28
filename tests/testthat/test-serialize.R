@@ -457,5 +457,43 @@ rxTest({
         as.data.frame(drRef)
       )
     })
+    # gevid slab tail is sized by event-table columns, not model parameters (#1760)
+    m7 <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - (cl / v) * central
+      cp <- central / v + p1 + p2 + p3 + p4
+    })
+    m7Par <- c(ka = 1, cl = 4, v = 25, p1 = 0, p2 = 0, p3 = 0, p4 = 0)
+    m7Ev <- et(amt = 100) |> et(0:4)
+    m7Ref <- rxSolve(m7, m7Par, m7Ev)
+    m7File <- tempfile(fileext = ".rxbin")
+    rxSolve(m7, m7Par, m7Ev, serializeFile = m7File)
+
+    test_that("more parameters than event-table columns saves and replays (#1760)", {
+      expect_true(is.raw(rxSaveState_()))
+      expect_equal(
+        as.data.frame(cStateSolve(m7, .rxReadStateBundle(m7File), params = m7Par)),
+        as.data.frame(m7Ref)
+      )
+    })
+
+    covMod <- rxode2({
+      d/dt(depot) <- -ka * depot
+      d/dt(central) <- ka * depot - (cl * wt / 70 / v) * central
+      cp <- central / v + p1 + p2 + p3 + p4 + p5
+    })
+    covPar <- c(ka = 1, cl = 4, v = 25, p1 = 0, p2 = 0, p3 = 0, p4 = 0, p5 = 0)
+    covEv <- et(amt = 100) |> et(0:6) |> as.data.frame()
+    covEv$wt <- seq(50, 110, length.out = nrow(covEv))
+    covRef <- rxSolve(covMod, covPar, covEv)
+    covFile <- tempfile(fileext = ".rxbin")
+    rxSolve(covMod, covPar, covEv, serializeFile = covFile)
+
+    test_that("C-state replay keeps time-varying covariates (#1760)", {
+      expect_equal(
+        as.data.frame(cStateSolve(covMod, .rxReadStateBundle(covFile), params = covPar)),
+        as.data.frame(covRef)
+      )
+    })
   })
 })

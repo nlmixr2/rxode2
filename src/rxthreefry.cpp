@@ -17,8 +17,10 @@ using namespace arma;
 #include "../inst/include/rxode2_as.h"
 #include "threefry.h"
 #include "../inst/include/rxode2random_fillVec.h"
+#include "../inst/include/rxMemAlloc.h"
 
 #include <boost/random/normal_distribution.hpp>
+#include <boost/random/uniform_real_distribution.hpp>
 #include <boost/random/negative_binomial_distribution.hpp>
 #include <boost/random/binomial_distribution.hpp>
 #include <boost/random/cauchy_distribution.hpp>
@@ -1913,6 +1915,22 @@ void simvar(double *out, int type, int csim, rx_solve* rx) {
 //   nOmega == 1: single omega matrix -> generate all nsolve rows in one call
 //   nOmega  > 1: per-simulation omega -> generate nsub rows per simulation
 // ---------------------------------------------------------------------------
+// Each initialization pass (iniSubject() running u_inis) is a new serial on
+// its thread; only the first simeta() of a pass reads the subject's
+// pre-generated row, so a retry inside the same pass draws a fresh one.
+static thread_local unsigned int _etaPreIni = 0;
+static thread_local unsigned int _etaPreSeen = 0;
+extern "C" void rxEtaPreIniStart(void) { _etaPreIni++; }
+
+// The pre-generated row for this subject, or NULL when this pass already read
+// it (or there is no buffer).
+static inline double *etaPreRow(rx_solve *rx, rx_solving_options_ind *ind) {
+  double *pre = rxGetEtaPre();
+  if (!pre || _etaPreSeen == _etaPreIni) return NULL;
+  _etaPreSeen = _etaPreIni;
+  return pre + (ptrdiff_t)(ind->id) * rx->neta;
+}
+
 extern "C" void rxPreGenEta(rx_solve *rx, int ncores) {
   if (rx->neta <= 0 || rxIsZeroOmega()) return;
 
@@ -1968,10 +1986,9 @@ extern "C" void simeta(void) {
   rx_solving_options_ind* ind = rxThreadInd();
   if (ind != NULL && ind->isIni == 1) { // only initialize at beginning
     double *par_ptr = ind->par_ptr;
-    double *pre = rxGetEtaPre();
-    if (pre) {
+    double *row = etaPreRow(rx, ind);
+    if (row) {
       // Fast path: read pre-generated row for this subject/sim
-      double *row = pre + (ptrdiff_t)(ind->id) * rx->neta;
       for (int j = 0; j < rx->neta; j++) {
         par_ptr[rx->ovar[j]] = row[j];
       }
@@ -1984,6 +2001,163 @@ extern "C" void simeta(void) {
         par_ptr[rx->ovar[j]] = out[j];
       }
     }
+  }
+}
+
+// A uniform (0, 1) deviate from this thread's reserved simeta()/simeps()
+// engine (see simvar()).
+static inline double simUnif() {
+  boost::random::uniform_real_distribution<double> d(0.0, 1.0);
+  int thread = rx_get_thread(op_global.cores);
+  if (thread < 0 || thread >= (int)_engSim.size()) {
+    static thread_local sitmo::threefry engFallback;
+    return d(engFallback);
+  }
+  return d(_engSim[thread]);
+}
+
+// x limited to the finite ones of lo and hi
+static inline double simClamp(double x, double lo, double hi) {
+  if (R_FINITE(lo) && x < lo) x = lo;
+  if (R_FINITE(hi) && x > hi) x = hi;
+  return x;
+}
+
+// A standard normal draw truncated to (a, b), on the log scale so a far-tail
+// interval does not underflow.
+static inline double simTruncStd(double a, double b) {
+  double lpa = Rf_pnorm5(a, 0.0, 1.0, 1, 1);
+  double lpb = Rf_pnorm5(b, 0.0, 1.0, 1, 1);
+  // the interval is too narrow to resolve: take its near end
+  if (lpb <= lpa) return R_FINITE(b) ? b : a;
+  double u;
+  do {
+    u = simUnif();
+  } while (u <= 0.0 || u >= 1.0);
+  // log(pa + u * (pb - pa))
+  double lp = lpb + log(u + (1.0 - u) * exp(lpa - lpb));
+  return Rf_qnorm5(lp, 0.0, 1.0, 1, 1);
+}
+
+// A N(mu, sd^2) draw truncated to (lo, hi); `fallback` when it cannot be drawn.
+static inline double simTruncNorm(double mu, double sd, double lo, double hi,
+                                  double fallback) {
+  if (sd == 0.0 || !R_FINITE(sd)) return simClamp(mu, lo, hi);
+  // standardized bounds; an interval in the upper tail is mirrored into the
+  // lower one, where the normal CDF does not round to 1
+  double a = R_FINITE(lo) ? (lo - mu) / sd : R_NegInf;
+  double b = R_FINITE(hi) ? (hi - mu) / sd : R_PosInf;
+  bool flip = a > 0.0;
+  if (flip) {
+    double t = a;
+    a = -b;
+    b = -t;
+  }
+  double x = simTruncStd(a, b);
+  if (x < a) x = a;
+  if (x > b) x = b;
+  if (!R_FINITE(x)) return fallback;
+  return simClamp(mu + sd * (flip ? -x : x), lo, hi);
+}
+
+// Re-simulate only element `k` (0-based) of `cur` from the draw `z` of
+// N(0, sigma) (type 0 eps, 1 eta): conditional on the other elements when
+// sigma correlates k with them, so the covariance is honored; otherwise z[k].
+// Unbounded, the conditional residual comes from z; with a finite bound, z is
+// truncated jointly, so the value is drawn from the truncated conditional
+// normal instead.
+static inline double simOneCond(const double *z, const double *cur, int k,
+                                int type, int csim, rx_solve* rx) {
+  arma::mat sigma = getArmaMat(type, csim, rx);
+  int n = sigma.n_rows;
+  if (n == 1) return z[k];
+  arma::uvec o(n - 1);
+  for (int j = 0, i = 0; j < n; j++) if (j != k) o[i++] = j;
+  arma::rowvec c = sigma.row(k);
+  arma::rowvec co = c.cols(o);
+  if (arma::all(co == 0.0)) return z[k];
+  // regression weights, solved and kept on the correlation scale (wr), with
+  // the conditioning values scaled by their sd, so widely different variances
+  // neither look singular nor overflow
+  arma::mat soo = sigma.submat(o, o);
+  arma::vec d = arma::sqrt(soo.diag());
+  d.elem(arma::find(d <= 0.0)).ones();
+  arma::mat r = soo / (d * d.t());
+  arma::vec rhs = co.t() / d;
+  arma::vec wr;
+  if (!arma::solve(wr, r, rhs, arma::solve_opts::no_approx)) {
+    wr = arma::pinv(r) * rhs;
+  }
+  arma::vec lower = getLowerVec(type, rx);
+  arma::vec upper = getUpperVec(type, rx);
+  if (!anyFinite(lower) && !anyFinite(upper)) {
+    double ret = z[k];
+    for (int i = 0; i < n - 1; i++) {
+      ret += wr[i] * ((cur[o[i]] - z[o[i]]) / d[i]);
+    }
+    return ret;
+  }
+  double mu = 0.0;
+  for (int i = 0; i < n - 1; i++) mu += wr[i] * (cur[o[i]] / d[i]);
+  double sd = sigma(k, k) - arma::dot(rhs, wr);
+  sd = sd > 0.0 ? sqrt(sd) : 0.0;
+  return simTruncNorm(mu, sd, lower[k], upper[k], z[k]);
+}
+
+// Where simeta(n)/simeps(n) index n lands once omega/sigma items are dropped
+// before simulation: entry n-1 is the 1-based simulated column, 0 for a dropped
+// one.  Empty when unknown.  Set on the main thread before a solve.
+static std::vector<int> _simIdx[2];
+extern "C" void rxSetSimIdx(int type, const int *idx, int n) {
+  rxMemAssign(fixed, _simIdx[type], idx, idx + n);
+}
+
+// The 0-based simulated column for index n of type (0 eps, 1 eta), or -1.
+static inline int simIdx(int type, int n, int nsim) {
+  if (n < 1) return -1;
+  const std::vector<int>& m = _simIdx[type];
+  if (!m.empty()) {
+    if (n > (int)m.size()) return -1;
+    n = m[n - 1];
+  }
+  return (n >= 1 && n <= nsim) ? n - 1 : -1;
+}
+
+// simeps(n): re-simulate only EPS n (1-based); the others keep their values.
+extern "C" void simepsI(int n) {
+  rx_solve* rx = &rx_global;
+  rx_solving_options_ind* ind = rxThreadInd();
+  int k = simIdx(0, n, rx->neps);
+  if (ind->inLhs == 1 && k >= 0) {
+    arma::mat out(1, rx->neps);
+    int csim = std::floor(((double)ind->id)/((double)rx->nsub));
+    simvar(&out[0], 0, csim, rx);
+    int *svar = rx->svar;
+    double *par_ptr = ind->par_ptr;
+    arma::vec cur(rx->neps);
+    for (int j = 0; j < rx->neps; j++) cur[j] = par_ptr[svar[j]];
+    par_ptr[svar[k]] = simOneCond(&out[0], &cur[0], k, 0, csim, rx);
+  }
+}
+
+// simeta(n): re-simulate only ETA n (1-based); the others keep their values.
+extern "C" void simetaI(int n) {
+  rx_solve* rx = &rx_global;
+  rx_solving_options_ind* ind = rxThreadInd();
+  int k = simIdx(1, n, rx->neta);
+  if (ind != NULL && ind->isIni == 1 && k >= 0) {
+    double *par_ptr = ind->par_ptr;
+    int csim = (int)std::floor((double)(ind->id)/((double)rx->nsub));
+    arma::mat out(1, rx->neta);
+    double *row = etaPreRow(rx, ind);
+    if (row) {
+      std::copy(row, row + rx->neta, &out[0]);
+    } else {
+      simvar(&out[0], 1, csim, rx);
+    }
+    arma::vec cur(rx->neta);
+    for (int j = 0; j < rx->neta; j++) cur[j] = par_ptr[rx->ovar[j]];
+    par_ptr[rx->ovar[k]] = simOneCond(&out[0], &cur[0], k, 1, csim, rx);
   }
 }
 
