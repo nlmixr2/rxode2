@@ -1176,6 +1176,7 @@
     rm(".promoteRebuild", envir = rxui)
     .rebuildPromotedUi(rxui, fallback = TRUE)
   }
+  .rxPdeIniGridRebuild(rxui)
   invisible()
 }
 

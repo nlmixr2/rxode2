@@ -155,6 +155,26 @@ fine <- diffusion |> model(grid(x, from = 0, to = 1, n = 80))
 length(fine$state)
 ```
 
+The size can also be a fixed `ini()` value, so `ini()` refines the grid:
+
+```{r}
+sized <- function() {
+  ini({
+    tD <- log(0.1)
+    nx <- fix(20)
+  })
+  model({
+    D <- exp(tD)
+    grid(x, from = 0, to = 1, n = nx)
+    d/dt(C[x]) <- D * d2x(C)
+    C[x](0) <- sin(pi * x)
+    mid <- C[x = 0.5]
+  })
+}
+length(rxode2(sized)$state)
+length((sized |> ini(nx = 60))$state)
+```
+
 ## Gridded intermediate variables
 
 `r[x] <- expr` defines a variable in every cell (`r_1, ..., r_n`), which other
@@ -205,7 +225,7 @@ it afterwards.
 
 - Only one-dimensional grids are supported; a model may have several grids and
   several states per grid.
-- `n` must be a number in the model; `from` and `to` may be parameters
+- `n` must be a number or a fixed `ini()` value; `from` and `to` may be parameters
   (point values `C[x = v]` need numeric `from` and `to`).
 - The expanded state names (`C_1`, ...) must not already be used in the model.
 - PDEs on fine grids are stiff, so keep the default `"liblsoda"` or use

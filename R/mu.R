@@ -1474,7 +1474,10 @@
   ## declaration is expanded later (before simulation or estimation), so
   ## at this point the name legitimately appears nowhere in the model
   ## block.
-  .missingPars <- setdiff(.estName, c(.mv$params, .errEsts, .rxEtaDistVars(.iniDf)))
+  .missingPars <- setdiff(
+    .estName,
+    c(.mv$params, .errEsts, .rxEtaDistVars(.iniDf), .rxPdeIniGridNames(ui$lstExpr))
+  )
   if (length(.missingPars) > 0) {
     ui$err <-
       c(

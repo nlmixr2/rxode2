@@ -583,6 +583,7 @@ rxUiGet.mvFromExpression <- function(x, ...) {
   # a piped line may still hold a ui user function (eg plogis()) the parser
   # does not accept as written
   .lines <- .rxUdfUiExpandPure(.lines, .x$iniDf)
+  .lines <- .rxPdeIniGrid(.lines, .x$iniDf)
   eval(call("rxModelVars", as.call(c(list(quote(`{`)), .lines))))
 }
 attr(rxUiGet.mvFromExpression, "desc") <- "Calculate model variables from stored (possibly changed) expression"

@@ -14,8 +14,9 @@
 #' The grid `grid(x, from = 0, to = 1, n = 50)` splits `[from, to]` into `n`
 #' cells of width `h = (to - from)/n` (finite volumes) with centers
 #' `from + (i - 0.5)*h`.  `from` and `to` may be numbers or expressions of
-#' model parameters; `n` must be a positive integer constant.  The grid name
-#' cannot be `t` or `time`.  Supported statements and operators are:
+#' model parameters; `n` must be a positive integer constant or, in a model
+#' with `ini()`, the name of a fixed `ini()` value (`nx <- fix(50)`) that
+#' `ini(nx = 100)` can change.  The grid name cannot be `t` or `time`.  Supported statements and operators are:
 #'
 #' - `d/dt(C[x]) = rhs` declares the gridded state `C`, expanded into states
 #'   `C_1, ..., C_n`.  Inside `rhs`, `C[x]` (or the bare `C`) is the value in
@@ -132,7 +133,7 @@ rxPde <- function(model) {
   }
   .n <- .rxPdeConst(.mc$n)
   if (!is.numeric(.n) || length(.n) != 1L || is.na(.n) || .n < 1 || .n != round(.n)) {
-    stop("'n' in grid(", .name, ") must be a positive integer constant", call. = FALSE)
+    stop("'n' in grid(", .name, ") must be a positive integer constant or a fixed ini() value", call. = FALSE)
   }
   .from <- .rxPdeConst(.mc$from)
   .to <- .rxPdeConst(.mc$to)
@@ -804,4 +805,139 @@ rxPde <- function(model) {
   }
   .txt <- .rxPdeExpand(paste(vapply(.lines, deparse1, character(1)), collapse = "\n"))
   str2lang(paste0("{\n", .txt, "\n}"))
+}
+
+## Grid size `n` set by a fixed ini() constant: the model line keeps the
+## constant's name in the "rxPdeN" attribute while its `n` holds the value, so
+## every model built from the ui sees a number and `ini()` piping can update it.
+
+## The ini() value of the grid size `nm`.
+.rxPdeIniN <- function(nm, iniDf) {
+  .w <- which(iniDf$name == nm & !is.na(iniDf$ntheta))
+  if (length(.w) != 1L) {
+    return(NULL)
+  }
+  if (!isTRUE(iniDf$fix[.w])) {
+    stop("the grid size '", nm, "' must be fixed in ini(): ", nm, " <- fix(", iniDf$est[.w], ")", call. = FALSE)
+  }
+  iniDf$est[.w]
+}
+
+## A grid line with its `n` resolved from ini(), or the line unchanged.
+.rxPdeIniGridLine <- function(line, iniDf) {
+  if (!.rxPdeIsGridLine(line)) {
+    return(line)
+  }
+  .mc <- as.list(match.call(function(name, from, to, n) NULL, line))[-1]
+  .nm <- attr(line, "rxPdeN")
+  if (is.null(.nm) && is.name(.mc$n)) {
+    .nm <- as.character(.mc$n)
+  }
+  if (is.null(.nm)) {
+    return(line)
+  }
+  .n <- .rxPdeIniN(.nm, iniDf)
+  if (is.null(.n)) {
+    return(line)
+  }
+  .mc$n <- .n
+  .ret <- .rxPdeGridCall(.mc)
+  attr(.ret, "rxPdeN") <- .nm
+  .ret
+}
+
+## `grid(name, from = , to = , n = )` from matched arguments.
+.rxPdeGridCall <- function(mc) {
+  as.call(c(list(quote(grid), mc$name), mc[c("from", "to", "n")]))
+}
+
+## Resolve the ini() grid sizes of model lines (a list or a `{` call).
+.rxPdeIniGrid <- function(lines, iniDf) {
+  .block <- is.call(lines) && identical(lines[[1]], quote(`{`))
+  .lines <- if (.block) as.list(lines)[-1] else lines
+  if (!any(vapply(.lines, .rxPdeIsGridLine, logical(1)))) {
+    return(lines)
+  }
+  if (!is.data.frame(iniDf)) {
+    iniDf <- as.data.frame(iniDf)
+  }
+  .lines <- lapply(.lines, .rxPdeIniGridLine, iniDf = iniDf)
+  if (.block) {
+    return(as.call(c(list(quote(`{`)), .lines)))
+  }
+  .lines
+}
+
+## Mark the parsed grid lines of `env$lstExpr` whose size came from ini(), by
+## grid name, as in the resolved model block `x`.
+.rxPdeIniGridTag <- function(env, x) {
+  .lines <- as.list(x)[-1]
+  .grid <- vapply(
+    .lines,
+    function(l) {
+      .nm <- attr(l, "rxPdeN")
+      if (is.null(.nm)) NA_character_ else .rxPdeGridName(l)
+    },
+    character(1)
+  )
+  .w <- which(!is.na(.grid))
+  if (length(.w) == 0L) {
+    return(invisible())
+  }
+  .size <- setNames(vapply(.lines[.w], attr, character(1), which = "rxPdeN"), .grid[.w])
+  .lst <- env$lstExpr
+  for (.i in seq_along(.lst)) {
+    .g <- .rxPdeGridName(.lst[[.i]])
+    if (!is.null(.g) && .g %in% names(.size)) {
+      attr(.lst[[.i]], "rxPdeN") <- .size[[.g]]
+    }
+  }
+  env$lstExpr <- .lst
+  invisible()
+}
+
+## ini() names used as grid sizes in model lines.
+.rxPdeIniGridNames <- function(lines) {
+  unlist(lapply(lines, function(l) attr(l, "rxPdeN")), use.names = FALSE)
+}
+
+## Model lines with ini() grid sizes written by name again (for printing and
+## re-parsing the model function).
+.rxPdeIniGridRestore <- function(lines) {
+  lapply(lines, function(l) {
+    .nm <- attr(l, "rxPdeN")
+    if (is.null(.nm)) {
+      return(l)
+    }
+    .mc <- as.list(match.call(function(name, from, to, n) NULL, l))[-1]
+    .mc$n <- as.name(.nm)
+    .rxPdeGridCall(.mc)
+  })
+}
+
+## TRUE when an ini() grid size of the ui no longer matches its ini() value.
+.rxPdeIniGridChanged <- function(rxui) {
+  if (!is.environment(rxui) || !is.list(rxui$lstExpr)) {
+    return(FALSE)
+  }
+  .lines <- rxui$lstExpr
+  for (.l in .lines) {
+    if (!is.null(attr(.l, "rxPdeN")) && !identical(.rxPdeIniGridLine(.l, rxui$iniDf), .l)) {
+      return(TRUE)
+    }
+  }
+  FALSE
+}
+
+## Parse the ui again, in place, when ini() changed a grid size (the states
+## change with it).
+.rxPdeIniGridRebuild <- function(rxui) {
+  if (!.rxPdeIniGridChanged(rxui)) {
+    return(invisible())
+  }
+  .new <- rxUiDecompress(rxui$fun())
+  for (.i in ls(envir = .new, all.names = TRUE)) {
+    assign(.i, get(.i, envir = .new), envir = rxui)
+  }
+  invisible()
 }

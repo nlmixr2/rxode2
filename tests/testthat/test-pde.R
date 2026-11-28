@@ -296,4 +296,50 @@ rxTest({
     ## the bandwidth is reset after the solve
     expect_equal(.Call(`_rxode2_setCvodeBand`, -1L, -1L), c(-1L, -1L))
   })
+  test_that("grid sizes can be fixed ini() values", {
+    f <- function() {
+      ini({
+        tD <- log(0.1)
+        nx <- fix(4)
+        eta.D ~ 0.1
+        add.sd <- 0.1
+      })
+      model({
+        D <- exp(tD + eta.D)
+        grid(x, 0, 1, n = nx)
+        d/dt(C[x]) <- D * d2x(C)
+        C[x](0) <- 1
+        tot <- integrate(C, x)
+        tot ~ add(add.sd)
+      })
+    }
+    .u <- rxode2(f)
+    expect_equal(.u$mv0$state, paste0("C_", 1:4))
+    expect_true(any(grepl("n = nx", deparse(.u$fun), fixed = TRUE)))
+    ## ini() piping refines the grid
+    .u2 <- .u |> ini(nx = 6)
+    expect_equal(.u2$mv0$state, paste0("C_", 1:6))
+    expect_equal(.u2$iniDf$est[.u2$iniDf$name == "nx"], 6)
+    ## other piping keeps the ini() size
+    .u3 <- .u2 |> model(tot2 <- 2 * tot, append = TRUE)
+    expect_equal(.u3$mv0$state, paste0("C_", 1:6))
+    .u4 <- .u2 |> model(grid(x, from = 0, to = 2, n = nx))
+    expect_equal(.u4$mv0$state, paste0("C_", 1:6))
+    expect_true(any(grepl("to = 2, n = nx", deparse(.u4$fun), fixed = TRUE)))
+    .s <- rxSolve(.u2, et(0:2))
+    expect_equal(.s$tot, rep(1, 3), tolerance = 1e-6)
+    ## the size must be fixed
+    f2 <- function() {
+      ini({
+        tD <- 1
+        nx <- 4
+      })
+      model({
+        D <- tD
+        grid(x, 0, 1, n = nx)
+        d/dt(C[x]) <- D * d2x(C)
+      })
+    }
+    expect_error(rxode2(f2), "must be fixed")
+  })
 })

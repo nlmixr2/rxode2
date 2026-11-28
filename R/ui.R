@@ -546,7 +546,11 @@ model <- function(
       assign(.i, get(.i, envir = .udfFuns), envir = .meta)
     }
     .udfModelLocal(.meta)
-    .mod <- .rxMuRef(eval(bquote(.errProcessExpression(quote(.(substitute(x))), .ini))))
+    # grid sizes given by fixed ini() values are resolved before parsing
+    .x <- .rxPdeIniGrid(substitute(x), .ini)
+    .mod <- eval(bquote(.errProcessExpression(quote(.(.x)), .ini)))
+    .rxPdeIniGridTag(.mod, .x)
+    .mod <- .rxMuRef(.mod)
     if (!identical(envir, globalenv())) {
       for (.i in ls(envir, all.names = TRUE)) {
         if (.i != ".simModelBase") {

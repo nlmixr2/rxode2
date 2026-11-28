@@ -25,6 +25,9 @@
   `.rxPrune()` expands the grids first, so forward sensitivities and nlmixr2
   (FOCEi) estimation of these models work.
   The new article "Partial differential equations" walks through them.
+- A `grid()` size may be a fixed `ini()` value (`nx <- fix(50)`,
+  `grid(x, 0, 1, n = nx)`), and `ini(nx = 100)` then refines the grid
+  (#1759).
 - `rxSolve(method = "cvode", cvodeLinSolver = "band")` now uses a banded
   linear solver, with the bandwidth taken from which states each `d/dt()`
   depends on; it was an alias of `"dense"` before.  This speeds up large
