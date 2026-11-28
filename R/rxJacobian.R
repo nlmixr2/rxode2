@@ -319,6 +319,22 @@ rxExpandGrid <- function(x, y, type = 0L) {
   .zero
 }
 
+# Prune the structurally zero rows of a sensitivity grid when `prune` is TRUE
+# (see .rxSensPrune()); returns the grid, rhs and initial conditions to keep.
+.rxSensDrop <- function(model, grd, se, s0se, prune) {
+  .zero <- character(0)
+  if (isTRUE(prune) && .rxSensCanPrune(model, rxStateOde(model))) {
+    .zero <- .rxSensPrune(model, grd, s0se)
+    if (length(.zero) > 0L) {
+      .k <- !(grd$ddS2 %in% .zero)
+      se <- vapply(grd$ddtS[.k], function(x) as.character(get(x, envir = model)), character(1), USE.NAMES = FALSE)
+      grd <- grd[.k, , drop = FALSE]
+      s0se <- s0se[.k]
+    }
+  }
+  list(grd = grd, se = se, s0se = s0se, zero = .zero)
+}
+
 ## Assumes .rxJacobian called on model c(state,vars)
 #'  Sensitivity for model
 #'
@@ -386,16 +402,10 @@ rxExpandGrid <- function(x, y, type = 0L) {
       }
       rxTick()
     }
-    .zero <- character(0)
-    if (isTRUE(prune) && .rxSensCanPrune(model, .state)) {
-      .zero <- .rxSensPrune(model, .grd, .s0se)
-      if (length(.zero) > 0L) {
-        .k <- !(.grd$ddS2 %in% .zero)
-        .se <- vapply(.grd$ddtS[.k], function(x) as.character(get(x, envir = model)), character(1), USE.NAMES = FALSE)
-        .grd <- .grd[.k, , drop = FALSE]
-        .s0se <- .s0se[.k]
-      }
-    }
+    .dr <- .rxSensDrop(model, .grd, .se, .s0se, prune)
+    .grd <- .dr$grd
+    .se <- .dr$se
+    .s0se <- .dr$s0se
     .ret <- paste0(.grd$ddt, "=", .rxFromSEvec(.se))
     ## apply() named its result from the data frame's row names; keep that so
     ## downstream consumers see exactly what they saw before.
@@ -424,7 +434,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
       assign("..sens2", .ret, envir = model)
     }
     if (isTRUE(prune)) {
-      attr(.ret, "sensZero") <- .zero
+      attr(.ret, "sensZero") <- .dr$zero
     }
     rxProgressStop()
   } else {
