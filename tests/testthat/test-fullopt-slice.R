@@ -136,7 +136,10 @@ rxTest({
       suppressWarnings(rxSolve(.m, .ev, params = c(tcl = 0.2)))
     })
     expect_true(any(grepl("_udf\\(", .fullOptBody(.m, "dydt"))))
-    expect_identical(.rxFullOptOf(.r$none$mv$md5[["parsed_md5"]]), list(level = 0L, impure = character(0), hoist = FALSE))
+    expect_identical(
+      .rxFullOptOf(.r$none$mv$md5[["parsed_md5"]]),
+      list(level = 0L, impure = character(0), hoist = FALSE)
+    )
   })
 
   test_that("assignments to fields of the individual are kept", {

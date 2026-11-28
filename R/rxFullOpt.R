@@ -31,8 +31,7 @@
 ## Key folded into the parsed md5 so models compiled at different levels (or
 ## with different rxImpureFun() registrations, or hoisting on/off) do not share
 ## a DLL; "" at "none" without hoisting leaves the md5 unchanged
-.rxFullOptKey <- function(level = .rxFullOptLevel(), impure = .rxImpureEnv$names,
-                          hoist = .rxHoistPar()) {
+.rxFullOptKey <- function(level = .rxFullOptLevel(), impure = .rxImpureEnv$names, hoist = .rxHoistPar()) {
   .key <- ""
   if (level != 0L) {
     .key <- .rxFullOptLevels[level + 1L]
