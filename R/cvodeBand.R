@@ -91,7 +91,8 @@
   .key <- paste(.mv$md5, collapse = "")
   .band <- .rxCvodeBandCache[[.key]]
   if (is.null(.band)) {
-    .band <- .rxStateBandwidth(object)
+    # a model whose dependencies cannot be read solves with the dense solver
+    .band <- tryCatch(.rxStateBandwidth(object), error = function(e) c(-1L, -1L))
     assign(.key, .band, envir = .rxCvodeBandCache)
   }
   .Call(`_rxode2_setCvodeBand`, .band[1L], .band[2L])
