@@ -8,8 +8,11 @@ rxTest({
     }
     .sigma <- lotri(e.a + e.b ~ c(1, 0.5, 2))
     .f <- suppressMessages(suppressWarnings(rxSolve(
-      mod, et(1:5, id = 1:200),
-      sigma = .sigma, sigmaLower = c(-0.5, -1), sigmaUpper = c(1, 0.25),
+      mod,
+      et(1:5, id = 1:200),
+      sigma = .sigma,
+      sigmaLower = c(-0.5, -1),
+      sigmaUpper = c(1, 0.25),
       seed = 7
     )))
     expect_true(all(.f$a1 >= -0.5 & .f$a1 <= 1))
