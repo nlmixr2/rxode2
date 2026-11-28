@@ -258,6 +258,19 @@ rxMemSummary.rxEtFile <- function(x, ...) {
       warning(.msg, call. = FALSE)
     }
   }
+  # chunks are cut by subject, so a params table must be one row for all or one
+  # row per subject; more rows (simulations) would come back chunk by chunk
+  if ((is.data.frame(params) || is.matrix(params)) && .nSub > 1L && !(NROW(params) %in% c(1L, .nSub))) {
+    stop(
+      "a chunked solve ('file='/'chunkSize=') needs a 'params' with one row or ",
+      "one row per subject (",
+      .nSub,
+      "), not ",
+      NROW(params),
+      "; solve without chunking.",
+      call. = FALSE
+    )
+  }
   .nChunks <- ceiling(.nSub / .chunkSize)
   .chunkList <- split(.allIds, ceiling(seq_len(.nSub) / .chunkSize))
 
@@ -334,6 +347,15 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   # block instead would hand the later chunks another study's etas.
   .preDrawnSlice <- function(.first, .n) {
     as.integer(vapply(seq_len(.nStud) - 1L, function(.s) .s * .nSub + seq.int(.first, length.out = .n), double(.n)))
+  }
+  # A params with one row per subject gives each chunk its subjects' rows; any
+  # other params is the chunk's as given.
+  .paramsPerSub <- (is.data.frame(params) || is.matrix(params)) && .nSub > 1L && NROW(params) == .nSub
+  .paramsSlice <- function(.first, .n) {
+    if (!.paramsPerSub) {
+      return(params)
+    }
+    params[seq.int(.first, length.out = .n), , drop = FALSE]
   }
   # The residual draw is per OBSERVATION, so its slice is cut by the records a
   # chunk's subjects own rather than by the rows of the parameter table.
@@ -656,7 +678,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
       .chunkParamsList[[.i]] <- if (!is.null(.preDrawnParams)) {
         .preDrawnParams[.preDrawnSlice(.cumSub + 1L, .nThis), , drop = FALSE]
       } else {
-        params
+        .paramsSlice(.cumSub + 1L, .nThis)
       }
       if (!is.null(.preDrawnSigma)) {
         .chunkSigmaList[[.i]] <-
@@ -844,7 +866,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
         rxSetSeed(as.integer(
           (as.double(.baseSeed) + as.double(.cumSub)) %% .Machine$integer.max
         ))
-        params
+        .paramsSlice(.cumSub + 1L, .nThis)
       }
       if (!is.null(.preDrawnSigma)) {
         .rxOomSetDrawnSigma(

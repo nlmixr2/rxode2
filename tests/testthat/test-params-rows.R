@@ -398,4 +398,27 @@ rxTest({
     expect_identical(.n, 1L)
     expect_no_warning(rxSolve(m, d, params = .o, file = tempfile("pr"), chunkSize = 2, warnIdSort = FALSE))
   })
+
+  test_that("a chunked solve gives each chunk its subjects' rows of a multi-row params", {
+    m <- .paramsRowsModel()
+    .old <- options(rxode2.oom.backend = "rds")
+    on.exit(options(.old), add = TRUE)
+    for (.nid in 3:4) {
+      d <- .paramsRowsData(ids = 10 + seq_len(.nid))
+      .p <- data.frame(k = seq_len(.nid) / 10, v = 2)
+      .want <- as.data.frame(rxSolve(m, d, params = .p))
+      for (.cs in 1:3) {
+        .s <- as.data.frame(rxSolve(m, d, params = .p, file = tempfile("pr"), chunkSize = .cs))
+        expect_identical(.s$cp, .want$cp, label = paste(.nid, .cs))
+        expect_identical(as.character(.s$id), as.character(.want$id), label = paste(.nid, .cs))
+      }
+      # other row counts (several simulations per subject) are refused
+      for (.pp in list(rbind(.p, .p), .p[1:2, ])) {
+        expect_error(
+          rxSolve(m, d, params = .pp, file = tempfile("pr"), chunkSize = 2),
+          "one row per subject \\(\\d+\\), not \\d+"
+        )
+      }
+    }
+  })
 })
