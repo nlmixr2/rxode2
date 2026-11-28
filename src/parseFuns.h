@@ -511,8 +511,7 @@ static inline int handleFunctionTte(transFunctions *tf) {
   else if (!strcmp("tteTime", tf->v)) what = 2;
   else if (!strcmp("tteCount", tf->v)) what = 3;
   if (what < 0) return 0;
-  int ii = d_get_number_of_children(d_get_child(tf->pn,3))+1;
-  if (ii != 1) {
+  if (functionNodeNargs(tf->pn) != 1) {
     updateSyntaxCol();
     sPrint(&_gbuf, _("'%s' takes 1 argument"), tf->v);
     trans_syntax_error_report_fn(_gbuf.s);
