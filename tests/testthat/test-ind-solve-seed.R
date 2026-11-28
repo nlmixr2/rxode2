@@ -26,8 +26,10 @@ rxTest({
           next
         }
         # the GPU slots carry the subject id (rx->ordId[] - 1) as `s->id`
-        if (!grepl("setSeedEng1(seed0 + _id)", .l[.i], fixed = TRUE) &&
-              !grepl("setSeedEng1(seed0 + s->id)", .l[.i], fixed = TRUE)) {
+        if (
+          !grepl("setSeedEng1(seed0 + _id)", .l[.i], fixed = TRUE) &&
+            !grepl("setSeedEng1(seed0 + s->id)", .l[.i], fixed = TRUE)
+        ) {
           .badSeed <- c(.badSeed, sprintf("%s:%d: %s", basename(.f), .i, trimws(.l[.i])))
         }
       }
