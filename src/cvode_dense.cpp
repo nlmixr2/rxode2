@@ -233,12 +233,21 @@ extern "C" void ind_cvode_dense_0(rx_solve *rx, rx_solving_options *op, int solv
                 cvode_ctx_dense_reinit(cvode_ctx, yp, xp);
                 dense_initialized = true;
               }
+              bool retried = false;
               while (cvode_ctx_dense_current_time(cvode_ctx) < xout) {
                 if (cvode_ctx_dense_do_step(cvode_ctx, yp, tout_dir) < 0) {
+                  // a stiff carried run can fail its error test at high order
+                  // where a fresh start goes on: restart from the last
+                  // accepted step, once per failure (#1790)
+                  if (!retried && !ind->err && cvode_ctx_restart(cvode_ctx) >= 0) {
+                    retried = true;
+                    continue;
+                  }
                   if (ind->rc[0] == 0) ind->rc[0] = -2019;
                   rxSolverFail(ind);
                   break;
                 }
+                retried = false;
                 if (ind->err) {
                   if (ind->rc[0] == 0) ind->rc[0] = -2019;
                   break;
