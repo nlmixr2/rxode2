@@ -898,6 +898,14 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
   if (exists("t", envir = .rxToSElinCmt, inherits = FALSE)) {
     rm("t", envir = .rxToSElinCmt)
   }
+  if (!is.null(envir)) {
+    ## An environment a linCmt() model was loaded into keeps that model's
+    ## linear system, so an expression translated back into it later (a
+    ## first derivative on its way to the second) still maps the linCmt()
+    ## states (`central`, `rx__sens_central_BY_p1`, ...) to linCmtB() reads.
+    .rxSErestoreLinCmt(envir)
+    on.exit(.rxSEkeepLinCmt(envir), add = TRUE)
+  }
   .rxSEstate$promoteLinB <- promoteLinSens
   .rxSEstate$isLhs <- FALSE
   .rxSEstate$lastAssignedDdt <- ""
@@ -907,7 +915,7 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
     ## effects, no user functions, no linCmt() -- so when it accepts one the
     ## answer cannot depend on `envir`, and when it does not it returns NA and
     ## the R walker below runs exactly as before.
-    if (length(x) == 1L && .rxFromSEuseC()) {
+    if (length(x) == 1L && .rxFromSEuseC() && is.null(.rxToSElinCmt$linCmt)) {
       .c <- .rxToSEC(x)
       if (!is.na(.c)) {
         return(.c)
@@ -2445,6 +2453,113 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
 .rxToSElinCmt <- new.env(parent = emptyenv())
 .rxToSElinCmt$linCmt <- NULL
 
+# The sensitivity-state name of a raw linCmtB() read -- which1 past the
+# amounts, which2 = -2, in the carried layout (amounts, then each non-depot
+# amount's row over p1..p[2*ncmt] and ka, then the depot ka entry) -- or NULL
+# for anything else.  `x` is the call (rxode2 or symengine argument form).
+.rxLinCmtBrawName <- function(x) {
+  .nc <- .rxLinCmtBargNum(x, 5)
+  .oral0 <- .rxLinCmtBargNum(x, 6)
+  .w1 <- .rxLinCmtBargNum(x, 7)
+  .w2 <- .rxLinCmtBargNum(x, 8)
+  if (anyNA(c(.nc, .oral0, .w1, .w2)) || .w2 != -2 || .w1 < .nc + .oral0) {
+    return(NULL)
+  }
+  .n <- 2 * .nc + .oral0
+  .j <- .w1 - .nc - .oral0
+  if (.j < .nc * .n) {
+    .row <- .rxLinCmtBrowName(.oral0 + .j %/% .n, .oral0)
+    return(paste0("rx__sens_", .row, "_BY_", .rxLinCmtBslots(.nc, .oral0)[.j %% .n + 1]))
+  }
+  if (.oral0 == 1 && .j == .nc * .n) {
+    return("rx__sens_depot_BY_ka")
+  }
+  NULL
+}
+
+# argument `i` of a linCmtB() call as a number (NA when it is not one); -2
+# parses as `-`(2)
+.rxLinCmtBargNum <- function(x, i) {
+  .v <- x[[i]]
+  if (is.call(.v)) {
+    .v <- tryCatch(eval(.v, baseenv()), error = function(e) NA)
+  }
+  if (length(.v) != 1L) {
+    return(NA_real_)
+  }
+  suppressWarnings(as.numeric(.v))
+}
+
+# the sensitivity slots of a linCmt() system: p1..p[2*ncmt], then ka when oral
+.rxLinCmtBslots <- function(nc, oral0) {
+  c(c("p1", "v1", "p2", "p3", "p4", "p5")[seq_len(2 * nc)], if (oral0 == 1) "ka")
+}
+
+# The state name a raw linCmtB() sensitivity read stands for, or NULL when
+# `x` is not one (see .rxLinCmtBrawName())
+.rxLinCmtBrawRead <- function(x) {
+  if (!identical(x[[1]], quote(`linCmtB`)) || length(x) != 16L) {
+    return(NULL)
+  }
+  .rxLinCmtBrawName(x)
+}
+
+# Rewrite the solved linCmt() states in `txt` (`depot`, `central`,
+# `peripheral1`, `peripheral2`, `rx__sens_<state>_BY_<slot>`) as raw reads of
+# the linCmtB() call with arguments `args` (the call's 15 arguments, rxode2
+# syntax): amounts are which1 = index, sensitivity columns which1 = their
+# position in the carried layout (amounts, each non-depot amount's row over
+# p1..p[2*ncmt] and ka, then the depot ka entry), which2 = -2.
+.rxLinCmtBstatesToReads <- function(txt, args, fun = "linCmtB") {
+  if (!identical(fun, "linCmtB")) {
+    return(txt)
+  }
+  args <- unlist(args)
+  .nc <- as.numeric(args[4])
+  .oral0 <- as.numeric(args[5])
+  if (is.na(.nc) || is.na(.oral0)) {
+    return(txt)
+  }
+  .amt <- c(if (.oral0 == 1) "depot", "central", "peripheral1", "peripheral2")[seq_len(.nc + .oral0)]
+  .slots <- .rxLinCmtBslots(.nc, .oral0)
+  .names <- .amt
+  for (.r in .amt[.amt != "depot"]) {
+    .names <- c(.names, paste0("rx__sens_", .r, "_BY_", .slots))
+  }
+  if (.oral0 == 1) {
+    .names <- c(.names, "rx__sens_depot_BY_ka")
+  }
+  .read <- function(.k) {
+    .a <- args
+    .a[6] <- paste(.k)
+    .a[7] <- "-2"
+    paste0("linCmtB(", paste(.a, collapse = ","), ")")
+  }
+  for (.i in order(-nchar(.names))) {
+    txt <- gsub(paste0("(?<![A-Za-z0-9_.])", .names[.i], "(?![A-Za-z0-9_.])"), .read(.i - 1), txt, perl = TRUE)
+  }
+  txt
+}
+
+# Keep / restore the linCmt() context with the symengine environment it
+# belongs to (`..linCmtCtx`; hidden from ls()).
+.rxSEkeepLinCmt <- function(envir) {
+  if (!is.null(.rxToSElinCmt$linCmt) && exists("t", envir = .rxToSElinCmt, inherits = FALSE)) {
+    assign("..linCmtCtx", as.list(.rxToSElinCmt), envir = envir)
+  }
+  invisible()
+}
+
+.rxSErestoreLinCmt <- function(envir) {
+  if (exists("..linCmtCtx", envir = envir, inherits = FALSE)) {
+    .ctx <- get("..linCmtCtx", envir = envir, inherits = FALSE)
+    for (.n in names(.ctx)) {
+      assign(.n, .ctx[[.n]], envir = .rxToSElinCmt)
+    }
+  }
+  invisible()
+}
+
 
 #' This saves the linCmt information to the .rxToSElinCmt environment
 #'
@@ -2809,6 +2924,12 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
       } else {
         .rxToSElinCmt$linCmt <- "linCmtA"
       }
+      .rxSEsaveLinCmt(.ret0)
+    } else if (.curName == "linCmtB") {
+      # An expanded linCmtB() -- a derivative translated back for the next
+      # order -- carries the same linear system: register it so the states
+      # beside it map to linCmtB() reads.
+      .rxToSElinCmt$linCmt <- "linCmtB"
       .rxSEsaveLinCmt(.ret0)
     }
     if (!is.na(.nargs)) {
@@ -3273,7 +3394,9 @@ rxToSE <- function(x, envir = NULL, progress = FALSE, promoteLinSens = TRUE, par
 ## emitter (with the cache) first, then -- only for what it declines -- the
 ## .rxUnXi()/tuple-Subs rewrites and the R walker, whose answer is cached too.
 .rxFromSEtxt <- function(txt) {
-  .useC <- .rxFromSEuseC()
+  ## linCmtB() text goes to the R walker, which hands raw sensitivity-column
+  ## reads back as their state names (see .rxLinCmtBrawName)
+  .useC <- .rxFromSEuseC() && !grepl("linCmtB(", txt, fixed = TRUE)
   .why <- 0L
   if (.useC) {
     .c <- .rxFromSEC(txt)
@@ -3788,6 +3911,11 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
       } else {
         return(paste0(.fun, "(", .a, ")"))
       }
+    } else if (!is.null(.raw <- .rxLinCmtBrawRead(x))) {
+      ## A raw sensitivity-column read (which1 past the amounts, which2 = -2)
+      ## is the state rxToSE() mapped `rx__sens_<row>_BY_<slot>` to: hand the
+      ## state back, which is what the model reads at run time.
+      .raw
     } else if (identical(x[[1]], quote(`delay`))) {
       return(paste0("delay(", .rxFromSE(x[[2]]), ", ", .rxFromSE(x[[3]]), ")"))
     } else if (identical(x[[1]], quote(`rxDelayD`))) {
@@ -4159,6 +4287,10 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
           .fun <- as.character(x[[2]][[1L]])
           .args <- lapply(as.list(x[[2]])[-1], .rxFromSE)
           .vars <- lapply(x[-(1:2)], .rxFromSE)
+          ## the differentiated call itself; the chain below overwrites
+          ## .fun/.args with each step's result
+          .fun0 <- .fun
+          .args0 <- .args
           .ok <- TRUE
           .res <- NULL
           ## Differentiate an EXPRESSION (in rxode2 syntax) once more, by handing it
@@ -4194,6 +4326,14 @@ rxFromSE <- function(x, unknownDerivatives = c("forward", "central", "error"), p
             ## converts, which is what keeps the analytic outer gradient and the
             ## mixed linCmt()/ODE models working.
             .hasSolvedSens <- any(grepl("rx__sens_[^ ()*/+-]*_BY_(?!ETA)", .txt, perl = TRUE))
+            ## Differentiating a linCmtB() call: its first derivative is written
+            ## over the solved states (`central`, `rx__sens_central_BY_p1`, ...),
+            ## which carry no visible dependence on the call's arguments.  Spell
+            ## them as reads of THAT call (its own, possibly placeholder,
+            ## arguments), so the next derivative resolves through `.rxD` to the
+            ## second-order reads (rxode2lincmt#17) instead of treating them as
+            ## constants.
+            .txt <- .rxLinCmtBstatesToReads(.txt, .args0, .fun0)
             .se <- try(rxToSE(.txt), silent = TRUE)
             if (inherits(.se, "try-error")) {
               return(NULL)
@@ -4683,6 +4823,9 @@ rxS <- function(x, doConst = TRUE, promoteLinSens = FALSE, envir = parent.frame(
   .env$..laggedAssignSeen <- integer(0)
   # loads the model into .env by side effect; the returned text is not used
   .rxToSE(.expr, envir = .env)
+  # keep its linCmt() system with the environment, so expressions translated
+  # back into it later map the linCmt() states (see rxToSE())
+  .rxSEkeepLinCmt(.env)
   if (.pkTime) {
     .env$..lhs0 <- c(c(rx_time_pk = "rx_time_pk~t"), .env$..lhs0)
   }

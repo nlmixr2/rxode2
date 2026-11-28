@@ -155,6 +155,7 @@
 #define Rxc_gpuDevice 151
 #define Rxc_gpuPrecision 152
 #define Rxc_gpuBatch 153
+#define Rxc__simNames 154
 #define RxMv_params 0
 #define RxMv_lhs 1
 #define RxMv_state 2
