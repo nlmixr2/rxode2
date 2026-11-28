@@ -8,7 +8,10 @@ convertAbsSequential(
   ui,
   central = "central",
   depot = "depot",
-  depot2 = "depot2"
+  depot2 = "depot2",
+  transit2 = "transitB",
+  ktr2 = "ktrB",
+  mtt2 = "Mtt2"
 )
 }
 \arguments{
@@ -20,16 +23,32 @@ object)}
 \item{depot}{depot compartment name}
 
 \item{depot2}{name of the second depot compartment}
+
+\item{transit2}{transit-compartment prefix of the second path}
+
+\item{ktr2}{transit rate variable of the second path}
+
+\item{mtt2}{mean transit time variable of the second path}
 }
 \value{
 a model with the second delay tied to the first duration
 }
 \description{
 Reparameterizes a double-absorption model so the second path's delay
-is expressed relative to the first path's zero-order duration
-(\code{Tlag2 = Tk01}), matching Monolix's "sequential" double-absorption
-models.  Only valid when the first path absorbs zero-order; raises
-an error otherwise.
+starts after the first path's zero-order duration, matching Monolix's
+"sequential" double-absorption models.  Only valid when the first
+path absorbs zero-order; raises an error otherwise.
+
+The second delay is rewritten as one of the Monolix sequential
+parameterizations, depending on how it is expressed and whether the
+first path also has a lag time (\code{Tlag1}):
+\itemize{
+  \item lag time: \code{Tlag2 = Tk01} (or \code{Tlag2 = Tlag1 + Tk01})
+  \item no delay: a lag time is added and tied the same way
+  \item transit chain: converted to \code{Mtt2} (see
+    \code{\link[=convertTransitMtt]{convertTransitMtt()}}), then \code{Mtt2 = Tk01 + diffMtt2} (or
+    \code{Mtt2 = Tlag1 + Tk01 + diffMtt2})
+}
 }
 \seealso{
 Other Absorption building blocks:

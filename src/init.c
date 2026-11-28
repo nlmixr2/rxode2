@@ -70,6 +70,7 @@ SEXP _rxode2_eventSensGetDims(void);
 SEXP _rxode2_rxIndLinSteps(void);
 SEXP _rxode2_rxIndLinExpStats(SEXP);
 SEXP _rxode2_rxIndLinDriveTeam(SEXP, SEXP);
+SEXP _rxode2_rxPeerSolveTest(SEXP, SEXP);
 SEXP _rxode2_eventSensDeactivate(void);
 SEXP _rxode2_dop853PairsMin(SEXP nSEXP);
 SEXP _rxode2_eventSensShapeSave(void);
@@ -448,6 +449,8 @@ SEXP _rxode2_rxErf(SEXP);
 
 void simeps(void);
 void simeta(void);
+void simepsI(int n);
+void simetaI(int n);
 
 void nullGlobals(void);
 SEXP _rxode2_codeLoaded(void);
@@ -1081,6 +1084,7 @@ void R_init_rxode2(DllInfo *info){
     {"_rxode2_rxIndLinSteps", (DL_FUNC) &_rxode2_rxIndLinSteps, 0},
     {"_rxode2_rxIndLinExpStats", (DL_FUNC) &_rxode2_rxIndLinExpStats, 1},
     {"_rxode2_rxIndLinDriveTeam", (DL_FUNC) &_rxode2_rxIndLinDriveTeam, 2},
+    {"_rxode2_rxPeerSolveTest", (DL_FUNC) &_rxode2_rxPeerSolveTest, 2},
     {"_rxode2_eventSensDeactivate", (DL_FUNC) &_rxode2_eventSensDeactivate, 0},
     {"_rxode2_dop853PairsMin", (DL_FUNC) &_rxode2_dop853PairsMin, 1},
     {"_rxode2_eventSensShapeSave", (DL_FUNC) &_rxode2_eventSensShapeSave, 0},
@@ -1424,6 +1428,8 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "rxlnorm", (DL_FUNC) &rxlnorm);
   R_RegisterCCallable("rxode2", "simeps", (DL_FUNC) &simeps);
   R_RegisterCCallable("rxode2", "simeta", (DL_FUNC) &simeta);
+  R_RegisterCCallable("rxode2", "simepsI", (DL_FUNC) &simepsI);
+  R_RegisterCCallable("rxode2", "simetaI", (DL_FUNC) &simetaI);
   R_RegisterCCallable("rxode2", "getIndTolFactor", (DL_FUNC) &getIndTolFactor);
   R_RegisterCCallable("rxode2", "setIndTolFactor", (DL_FUNC) &setIndTolFactor);
   R_RegisterCCallable("rxode2", "getIndNeqOverride", (DL_FUNC) &getIndNeqOverride);

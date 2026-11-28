@@ -208,14 +208,73 @@ rxTest({
       regexp = "zero-order first path"
     )
 
-    # second path must have a lag to tie
-    resNoLag <- suppressWarnings(res0 |> addZeroOrderAbs())
-    expect_error(
-      resNoLag |>
-        addSecondAbsorption(type = "first", delay = "none") |>
-        convertAbsSequential(),
-      regexp = "no lag time"
+    # a second path with no delay gets the Monolix sequential lag
+    resNoLag <- suppressWarnings(addZeroOrderAbs(res0)) |>
+      addSecondAbsorption(type = "first", delay = "none") |>
+      convertAbsSequential()
+    expect_equal(modelExtract(resNoLag, "lag(depot2)"), "lag(depot2) <- tk0")
+    expect_false("llagDepot2" %in% resNoLag$iniDf$name)
+  })
+
+  test_that("convertAbsSequential adds the first lag to the second delay", {
+    res <- suppressWarnings(addZeroOrderAbs(res0)) |>
+      addLag(central) |>
+      addSecondAbsorption(type = "first", delay = "lag") |>
+      convertAbsSequential()
+
+    # Monolix: Tlag2 = Tlag1 + Tk01
+    expect_equal(modelExtract(res, "lag(depot2)"), "lag(depot2) <- lagCentral + tk0")
+    expect_false("llagDepot2" %in% res$iniDf$name)
+    expect_true("llagCentral" %in% res$iniDf$name)
+  })
+
+  test_that("convertAbsSequential reparameterizes a transit second delay by Mtt2", {
+    base <- function() {
+      suppressWarnings(addZeroOrderAbs(res0)) |>
+        addSecondAbsorption(type = "first", delay = "transit", n = 3)
+    }
+    res <- base() |> convertAbsSequential()
+    # Monolix: Mtt2 = Tk01 + diffMtt2, estimated as diffMtt2
+    expect_equal(modelExtract(res, "Mtt2"), "Mtt2 <- tk0 + diffMtt2")
+    expect_true("diffMtt2" %in% res$iniDf$name)
+    expect_false("lMtt2" %in% res$iniDf$name)
+    expect_false("lktrB" %in% res$iniDf$name)
+    expect_equal(modelExtract(res, "ktrB"), "ktrB <- (3 + 1)/Mtt2")
+
+    resLag <- base() |> addLag(central) |> convertAbsSequential()
+    # Monolix: Mtt2 = Tlag1 + Tk01 + diffMtt2
+    expect_equal(modelExtract(resLag, "Mtt2"), "Mtt2 <- lagCentral + tk0 + diffMtt2")
+  })
+
+  test_that("convertAbsSequential leaves the transit model unchanged at matched values", {
+    base <- function() {
+      suppressWarnings(addZeroOrderAbs(res0)) |>
+        addSecondAbsorption(type = "first", delay = "transit", n = 3)
+    }
+    .tk0 <- 4
+    .mtt2 <- 6
+    .common <- c(
+      lka2 = log(1.2),
+      lcl = log(0.1),
+      lvc = log(10),
+      logitfCentral = logit(0.7),
+      propSd = 0.5
     )
+    e <- rxode2::et(time = 0, amt = 100, cmt = "central") |>
+      rxode2::et(c(1, 4, 8, 24, 48))
+    .before <- base()
+    .sBefore <- as.data.frame(rxode2::rxSolve(
+      .before,
+      e,
+      params = c(.common, ltk0 = log(.tk0), lktrB = log((3 + 1) / .mtt2))
+    ))
+    .after <- .before |> convertAbsSequential()
+    .sAfter <- as.data.frame(rxode2::rxSolve(
+      .after,
+      e,
+      params = c(.common, ltk0 = log(.tk0), diffMtt2 = .mtt2 - .tk0)
+    ))
+    expect_equal(.sAfter$central, .sBefore$central, tolerance = 1e-6)
   })
 
   test_that("convertAbsForceLongerDelay estimates the lag increment", {
@@ -234,6 +293,69 @@ rxTest({
       res0 |> addSecondAbsorption(type = "first", delay = "none") |> convertAbsForceLongerDelay(),
       regexp = "both absorption paths"
     )
+  })
+
+  test_that("convertAbsForceLongerDelay ties a transit second delay to the first delay", {
+    # lag first, transit second
+    res <- res0 |>
+      addLag(depot) |>
+      addSecondAbsorption(type = "first", delay = "transit", n = 2) |>
+      convertAbsForceLongerDelay()
+    expect_equal(modelExtract(res, "Mtt2"), "Mtt2 <- lagDepot + diffMtt2")
+    expect_true("diffMtt2" %in% res$iniDf$name)
+    expect_false("lMtt2" %in% res$iniDf$name)
+    expect_false("lktrB" %in% res$iniDf$name)
+    expect_equal(modelExtract(res, "ktrB"), "ktrB <- (2 + 1)/Mtt2")
+
+    # transit first, transit second
+    resTT <- res0 |>
+      addTransit(3) |>
+      addSecondAbsorption(type = "first", delay = "transit", n = 2) |>
+      convertAbsForceLongerDelay()
+    expect_equal(modelExtract(resTT, "Mtt2"), "Mtt2 <- Mtt + diffMtt2")
+    expect_equal(modelExtract(resTT, "Mtt"), "Mtt <- exp(lMtt)")
+    expect_equal(modelExtract(resTT, "ktr"), "ktr <- (3 + 1)/Mtt")
+
+    # transit first, lag second
+    resTL <- res0 |>
+      addTransit(3) |>
+      addSecondAbsorption(type = "first", delay = "lag") |>
+      convertAbsForceLongerDelay()
+    expect_equal(modelExtract(resTL, "lag(depot2)"), "lag(depot2) <- Mtt + diffTlag2")
+    expect_false("llagDepot2" %in% resTL$iniDf$name)
+    expect_true("diffTlag2" %in% resTL$iniDf$name)
+  })
+
+  test_that("convertAbsForceLongerDelay keeps the transit model at matched values", {
+    .base <- function() {
+      res0 |>
+        addTransit(3) |>
+        addSecondAbsorption(type = "first", delay = "transit", n = 2)
+    }
+    .mtt <- 5
+    .mtt2 <- 9
+    .common <- c(
+      lka2 = log(1.2),
+      lcl = log(0.1),
+      lvc = log(10),
+      logitfDepot = logit(0.7),
+      propSd = 0.5
+    )
+    e <- rxode2::et(time = 0, amt = 100, cmt = "depot") |>
+      rxode2::et(c(1, 4, 8, 24, 48))
+    .before <- .base()
+    .sBefore <- as.data.frame(rxode2::rxSolve(
+      .before,
+      e,
+      params = c(.common, lka = log(1.2), lktr = log((3 + 1) / .mtt), lktrB = log((2 + 1) / .mtt2))
+    ))
+    .after <- .before |> convertAbsForceLongerDelay()
+    .sAfter <- as.data.frame(rxode2::rxSolve(
+      .after,
+      e,
+      params = c(.common, lka = log(1.2), lMtt = log(.mtt), diffMtt2 = .mtt2 - .mtt)
+    ))
+    expect_equal(.sAfter$central, .sBefore$central, tolerance = 1e-6)
   })
 
   test_that("double absorption solves like the simultaneous first-order seed", {
@@ -351,6 +473,39 @@ rxTest({
     # the increment builds on the CUSTOM first lag variable, not lagDepot
     expect_equal(modelExtract(res, "lag(depot2)"), "lag(depot2) <- tlag1 + diffTlag2")
     expect_true("diffTlag2" %in% res$iniDf$name)
+  })
+
+  test_that("convertAbsForceLongerDelay refuses a model with one absorption path", {
+    # a lone zero-order path's lag(central) is not a second delay
+    expect_error(
+      suppressWarnings(addZeroOrderAbs(res0)) |> addLag(central) |> convertAbsForceLongerDelay(),
+      regexp = "both absorption paths"
+    )
+    expect_error(
+      res0 |> addLag(depot) |> addLag(central) |> convertAbsForceLongerDelay(),
+      regexp = "both absorption paths"
+    )
+  })
+
+  test_that("convertAbsSequential drops a custom-named second lag", {
+    res <- suppressWarnings(addZeroOrderAbs(res0)) |>
+      addSecondAbsorption(type = "first", delay = "lag")
+    res <- rxRename(res, tlag2 = lagDepot2, ltlag2 = llagDepot2) |>
+      convertAbsSequential()
+    expect_equal(modelExtract(res, "lag(depot2)"), "lag(depot2) <- tk0")
+    expect_false("ltlag2" %in% res$iniDf$name)
+    expect_false(any(grepl("tlag2", vapply(res$lstExpr, deparse1, character(1)))))
+  })
+
+  test_that("convertAbsForceLongerDelay keeps a lag shared by both paths", {
+    res <- res0 |>
+      addLag(depot) |>
+      addSecondAbsorption(type = "first", delay = "lag")
+    res <- rxode2::model(res, lag(depot2) <- lagDepot)
+    res <- suppressMessages(rxode2::ini(res, -llagDepot2))
+    res <- convertAbsForceLongerDelay(res)
+    expect_equal(modelExtract(res, "lag(depot2)"), "lag(depot2) <- lagDepot + diffTlag2")
+    expect_true("llagDepot" %in% res$iniDf$name)
   })
 
   test_that("addSecondAbsorption transit on a transit first path keeps both chains", {
