@@ -2189,7 +2189,9 @@ rxTest({
             for (.p in .etas) {
               .c1 <- sprintf("rx__sens_%s_BY_%s__", .st, .p)
               .c2 <- sprintf("rx__sens_%s_BY_%s_BY_%s__", .st, .p, .q)
-              if (!(.c2 %in% names(s2))) .c2 <- sprintf("rx__sens_%s_BY_%s_BY_%s__", .st, .q, .p)
+              if (!(.c2 %in% names(s2))) {
+                .c2 <- sprintf("rx__sens_%s_BY_%s_BY_%s__", .st, .q, .p)
+              }
               fd2 <- (sp[[.c1]] - sm[[.c1]]) / (2 * h)
               expect_equal(s2[[.c2]], fd2, tolerance = 1e-6, info = paste(.info, .p))
             }
