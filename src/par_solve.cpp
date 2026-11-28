@@ -20,6 +20,7 @@
 #include "../inst/include/rxode2parseHandleEvid.h"
 #include "../inst/include/rxode2parseGetTime.h"
 #include "../inst/include/rxode2EventTranslate.h"
+#include "../inst/include/rxMemAlloc.h"
 #include "linCmtDiffConstant.h"
 #include "linCmtSensType.h"
 
@@ -495,8 +496,8 @@ static inline std::vector<double> ssSavedToAdd(const double *yp, const double *s
     if (on.empty()) {
       std::vector<double> y(solveSave, solveSave + neq[0]);
       int ssAdvance = ind->ssAdvance;
-      on.assign(neq[0], 0.0);
-      off.assign(neq[0], 0.0);
+      rxMemAssign(fixed, on, neq[0], 0.0);
+      rxMemAssign(fixed, off, neq[0], 0.0);
       ind->ssAdvance = 1;
       dydt(neq, t, y.data(), on.data());
       std::copy(solveSave, solveSave + neq[0], y.begin());

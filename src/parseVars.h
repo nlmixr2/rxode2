@@ -55,46 +55,32 @@ static inline int assertForbiddenVariables(const char *s) {
   }
   return 1;
 }
+// exact-match reserved variables: internal pointers, M_ constants, rxFlag,
+// rxSsAdvance and newind/t
+static const char *const reservedVariableNames[] = {
+  "rx__PTR__", "rx__isObs__", "tlast",
+  "M_E", "M_LOG2E", "M_LOG10E", "M_LN2", "M_LN10", "M_PI", "M_PI_2",
+  "M_PI_4", "M_1_PI", "M_2_PI", "M_2_SQRTPI", "M_SQRT2", "M_SQRT1_2",
+  "M_SQRT_3", "M_SQRT_32", "M_LOG10_2", "M_2PI", "M_SQRT_PI",
+  "M_1_SQRT_2PI", "M_SQRT_2dPI", "M_LN_SQRT_PI", "M_LN_SQRT_2PI",
+  "M_LN_SQRT_PId2",
+  "rxFlag", "rxSsAdvance",
+  "newind", "NEWIND", "t"
+};
+static inline int isReservedVariableName(const char *s) {
+  int n = (int)(sizeof(reservedVariableNames)/sizeof(reservedVariableNames[0]));
+  for (int i = 0; i < n; i++) {
+    if (!strcmp(reservedVariableNames[i], s)) return 1;
+  }
+  return 0;
+}
 static inline int isReservedVariable(const char *s) {
   return !rxstrcmpi("amt", s) ||
     !rxstrcmpi("time", s) ||
     !rxstrcmpi("mixnum", s) ||
     !rxstrcmpi("mixest", s) ||
     !rxstrcmpi("mixunif", s) ||
-    mixSelNum(s, NULL) != 0 ||
-    !strcmp("rx__PTR__", s) ||
-    !strcmp("rx__isObs__", s) ||
-    !strcmp("tlast", s) ||
-    // Ignore M_ constants
-    !strcmp("M_E", s) ||
-    !strcmp("M_LOG2E", s) ||
-    !strcmp("M_LOG10E", s) ||
-    !strcmp("M_LN2", s) ||
-    !strcmp("M_LN10", s) ||
-    !strcmp("M_PI", s) ||
-    !strcmp("M_PI_2", s) ||
-    !strcmp("M_PI_4", s) ||
-    !strcmp("M_1_PI", s) ||
-    !strcmp("M_2_PI", s) ||
-    !strcmp("M_2_SQRTPI", s) ||
-    !strcmp("M_SQRT2", s) ||
-    !strcmp("M_SQRT1_2", s) ||
-    !strcmp("M_SQRT_3", s) ||
-    !strcmp("M_SQRT_32", s) ||
-    !strcmp("M_LOG10_2", s) ||
-    !strcmp("M_2PI", s) ||
-    !strcmp("M_SQRT_PI", s) ||
-    !strcmp("M_1_SQRT_2PI", s) ||
-    !strcmp("M_SQRT_2dPI", s) ||
-    !strcmp("M_LN_SQRT_PI", s) ||
-    !strcmp("M_LN_SQRT_2PI", s) ||
-    !strcmp("M_LN_SQRT_PId2", s) ||
-    !strcmp("rxFlag", s) ||
-    !strcmp("rxSsAdvance", s) ||
-    // newind/t
-    !strcmp("newind", s) ||
-    !strcmp("NEWIND", s) ||
-    !strcmp("t", s);
+    isReservedVariableName(s);
 }
 
 
