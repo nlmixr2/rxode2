@@ -385,7 +385,9 @@ rxTest({
     withCallingHandlers(
       rxSolve(m, d, params = .o, file = tempfile("pr"), chunkSize = 2),
       warning = function(w) {
-        if (grepl("does not match the data's subjects", conditionMessage(w))) .n <<- .n + 1L
+        if (grepl("does not match the data's subjects", conditionMessage(w))) {
+          .n <<- .n + 1L
+        }
         invokeRestart("muffleWarning")
       }
     )

@@ -351,7 +351,8 @@ parameter in the ODE system; the names must correspond to the
 parameter identifiers used in the ODE specification.  A data
 frame or matrix gives one row per subject (or per subject and
 simulation), matched to the subjects by position in data order;
-an \code{id} column is not used to match them.  A one-row data frame
+an \code{id} column is not used to match them, but one out of data
+order is warned about (see \code{warnIdSort}).  A one-row data frame
 or matrix is used for every subject, unless it has an \code{id}
 column and the data has more than one subject, which is an
 error;}
@@ -1318,9 +1319,10 @@ value is 0 (or infinite).}
 \item{hmxi}{inverse of the maximum absolute value of \code{H} to are used.
 hmxi = 0.0 is allowed and corresponds to an infinite \verb{hmax1 (default).  }hmin\code{and}hmxi\verb{may be changed at any time, but will not take effect until the next change of}H\verb{is considered. This option is only considered with}method="liblsoda"`.}
 
-\item{warnIdSort}{Warn if the ID is not present and rxode2 assumes
-the order of the parameters/iCov are the same as the order of
-the parameters in the input dataset.}
+\item{warnIdSort}{Warn when a multi-row \code{params} data frame or
+matrix has an \code{id} column that does not list the data's
+subjects in data order (rows are used by position, not by
+\code{id}).  Data with one subject is exempt.}
 
 \item{warnDrop}{Warn if column(s) were supposed to be dropped, but
 were not present.}
