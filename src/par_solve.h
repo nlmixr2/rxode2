@@ -21,6 +21,8 @@ extern "C" {
 #include "solveDiag.h"
 
 void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx);
+// rxSolve(resetCancelsPending=) (rxData.cpp)
+extern int resetCancelsPending_global;
 
 void par_rkf78(rx_solve *rx);
 // Marks the start of a u_inis() initialization pass (rxthreefry.cpp)
@@ -394,7 +396,6 @@ extern "C" void cvode_solveWith1Pt(int *neq, double *yp, double *xp_ptr, double 
     if (ncmt) ind->pendingDosesN[0] = 0;
 		return 1;
 	}
-  extern int resetCancelsPending_global;
   // rxSolve(resetCancelsPending=TRUE): NONMEM cancels prior doses at a reset
   // (rxode2#1720).  A dose whose record comes before the reset at ix position
   // `pos` (an earlier record time, or the same time and translated first) but
