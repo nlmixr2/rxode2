@@ -44,7 +44,7 @@ extern "C" void ind_vern98_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   double xp = getAllTimes(ind, 0);
   ind->solvedIdx = 0;
 
-  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
+  int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
   RxVern98 *solver = NULL;
   if (neqOde > 0) {
     solver = new RxVern98(c_dydt, neq, neqOde, ind, getSolve(0), (long unsigned)op->mxstep);
