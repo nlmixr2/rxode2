@@ -4,7 +4,13 @@
 \alias{.rxSens}
 \title{Sensitivity for model}
 \usage{
-.rxSens(model, vars, vars2, vars3)
+.rxSens(
+  model,
+  vars,
+  vars2,
+  vars3,
+  prune = getOption("rxode2.sensPrune", FALSE)
+)
 }
 \arguments{
 \item{model}{symengine model environment}
@@ -12,6 +18,15 @@
 \item{vars}{Variables for single sensitivity}
 
 \item{vars2}{if present, 2 parameter sensitivity}
+
+\item{vars3}{if present, 3 parameter sensitivity}
+
+\item{prune}{drop structurally zero sensitivity states (zero initial
+condition, no direct parameter term, depending only on other zero states);
+their symbols are bound to 0 in \code{model} and their names are added to
+\code{model$..sensZero} (also the \code{"sensZero"} attribute of the result).
+Default \code{getOption("rxode2.sensPrune", FALSE)}.  Skipped for delay models
+and models with modeled alag/F/rate/dur.}
 }
 \value{
 Sensitivity

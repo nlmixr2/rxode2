@@ -4919,6 +4919,7 @@ rxSolve.default <- function(
     ## Event ("jump") sensitivities: push the model's runtime dims to the solver
     ## (active flag + nState/nParam) so handle_evid can inject the dosing-parameter
     ## jumps.  No-op (active=0) for fd / models without jump info.
+    .rxSensPruneGuard(object, .eventsForSolve)
     .rxSetEventSensDims(object)
     if (.isSer) {
       .bundle <- if (is.null(.preloadedSerializedBundle)) {

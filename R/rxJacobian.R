@@ -169,8 +169,10 @@ rxExpandGrid <- function(x, y, type = 0L) {
   # is bound under rx_SymPy_Res_* (#1359)
   .stateSe <- .rxSEres(state)
   .lines <- character(0)
+  .z <- model$..sensZero
+  .ssym <- function(k, p) if (.sn(k, p) %in% .z) symengine::S("0") else symengine::Symbol(.sn(k, p))
   .emit <- function(lhsSt, rhsSt, e) {
-    if (is.null(e)) {
+    if (is.null(e) || lhsSt %in% .z || rhsSt %in% .z) {
       return(invisible())
     }
     .txt <- rxode2::rxFromSE(e)
@@ -212,7 +214,7 @@ rxExpandGrid <- function(x, y, type = 0L) {
         for (k in seq_along(.dF_X_k)) {
           .d <- .dF_X_k[[k]]
           if (!is.null(.d)) {
-            .term <- .d * symengine::Symbol(.sn(k, p))
+            .term <- .d * .ssym(k, p)
             .acc <- if (is.null(.acc)) .term else .acc + .term
           }
         }
@@ -270,17 +272,87 @@ rxExpandGrid <- function(x, y, type = 0L) {
   .se
 }
 
+# Pruning needs every jump/delay term to be visible in the RHS: refuse delay
+# models and modeled alag/F/rate/dur (dose jumps, fixed sens layout).
+.rxSensCanPrune <- function(model, state) {
+  if (length(model$..delayedStates) > 0L) {
+    return(FALSE)
+  }
+  .dose <- paste0("rx_", rep(c("f", "lag", "rate", "dur"), each = length(state)), "_", state, "_")
+  !any(vapply(.dose, exists, logical(1), envir = model, inherits = FALSE))
+}
+
+# Structurally zero rows of a sensitivity grid: zero IC, no term left once this
+# order's sens symbols are 0, and depending only on zero rows (fixed point).
+# Binds each zero state and its d/dt symbol to 0 in model, substitutes them in
+# the kept RHS, records them in model$..sensZero and returns their names.
+.rxSensPrune <- function(model, grd, s0se) {
+  .n <- grd$ddS2
+  .s0 <- symengine::S("0")
+  .rhs <- lapply(grd$ddtS, get, envir = model, inherits = FALSE)
+  .dep <- lapply(.rhs, function(e) intersect(.rxEventSensFreeSyms(e), .n))
+  .sub <- function(e, syms) {
+    for (.d in syms) {
+      e <- symengine::subs(e, symengine::Symbol(.d), .s0)
+    }
+    e
+  }
+  .nz <- !is.na(s0se) |
+    vapply(seq_along(.rhs), function(i) paste(.sub(.rhs[[i]], .dep[[i]])) != "0", logical(1))
+  repeat {
+    .new <- !.nz & vapply(.dep, function(d) any(.nz[match(d, .n)]), logical(1))
+    if (!any(.new)) {
+      break
+    }
+    .nz <- .nz | .new
+  }
+  .zero <- .n[!.nz]
+  for (.i in which(!.nz)) {
+    assign(.n[.i], .s0, envir = model)
+    assign(grd$ddtS[.i], .s0, envir = model)
+  }
+  for (.i in which(.nz)) {
+    .z <- intersect(.dep[[.i]], .zero)
+    if (length(.z) > 0L) assign(grd$ddtS[.i], .sub(.rhs[[.i]], .z), envir = model)
+  }
+  assign("..sensZero", unique(c(model$..sensZero, .zero)), envir = model)
+  .zero
+}
+
+# Prune the structurally zero rows of a sensitivity grid when `prune` is TRUE
+# (see .rxSensPrune()); returns the grid, rhs and initial conditions to keep.
+.rxSensDrop <- function(model, grd, se, s0se, prune) {
+  .zero <- character(0)
+  if (isTRUE(prune) && .rxSensCanPrune(model, rxStateOde(model))) {
+    .zero <- .rxSensPrune(model, grd, s0se)
+    if (length(.zero) > 0L) {
+      .k <- !(grd$ddS2 %in% .zero)
+      se <- vapply(grd$ddtS[.k], function(x) as.character(get(x, envir = model)), character(1), USE.NAMES = FALSE)
+      grd <- grd[.k, , drop = FALSE]
+      s0se <- s0se[.k]
+    }
+  }
+  list(grd = grd, se = se, s0se = s0se, zero = .zero)
+}
+
 ## Assumes .rxJacobian called on model c(state,vars)
 #'  Sensitivity for model
 #'
 #' @param model symengine model environment
 #' @param vars Variables for single sensitivity
 #' @param vars2 if present, 2 parameter sensitivity
+#' @param vars3 if present, 3 parameter sensitivity
+#' @param prune drop structurally zero sensitivity states (zero initial
+#'   condition, no direct parameter term, depending only on other zero states);
+#'   their symbols are bound to 0 in `model` and their names are added to
+#'   `model$..sensZero` (also the `"sensZero"` attribute of the result).
+#'   Default `getOption("rxode2.sensPrune", FALSE)`.  Skipped for delay models
+#'   and models with modeled alag/F/rate/dur.
 #' @return Sensitivity
 #' @author Matthew L. Fidler
 #' @export
 #' @keywords internal
-.rxSens <- function(model, vars, vars2, vars3) {
+.rxSens <- function(model, vars, vars2, vars3, prune = getOption("rxode2.sensPrune", FALSE)) {
   .state <- rxStateOde(model)
   if (length(.state) > 0L) {
     if (missing(vars)) {
@@ -330,6 +402,10 @@ rxExpandGrid <- function(x, y, type = 0L) {
       }
       rxTick()
     }
+    .dr <- .rxSensDrop(model, .grd, .se, .s0se, prune)
+    .grd <- .dr$grd
+    .se <- .dr$se
+    .s0se <- .dr$s0se
     .ret <- paste0(.grd$ddt, "=", .rxFromSEvec(.se))
     ## apply() named its result from the data frame's row names; keep that so
     ## downstream consumers see exactly what they saw before.
@@ -356,6 +432,9 @@ rxExpandGrid <- function(x, y, type = 0L) {
       ## without delay() terms.
       .ret <- .rxDelaySensAugment2(model, .ret, union(vars, vars2))
       assign("..sens2", .ret, envir = model)
+    }
+    if (isTRUE(prune)) {
+      attr(.ret, "sensZero") <- .dr$zero
     }
     rxProgressStop()
   } else {

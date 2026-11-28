@@ -1411,6 +1411,47 @@
   length(rxModelVars(object)$indLin) > 0L
 }
 
+#' Refuse pruned sensitivity models for events that need jump sensitivities
+#'
+#' A model built with `.rxSens(prune = TRUE)` (`options(rxode2.sensPrune = TRUE)`)
+#' has no event-jump sensitivities, so replace/multiply events (`evid` 5/6) or a
+#' compartment turn-off (negative `cmt`) would give wrong sensitivities.
+#'
+#' @param object solve target.
+#' @param events event data (data frame or event table) or `NULL`.
+#' @return invisibly `NULL`; an error for the unsupported combination.
+#' @noRd
+.rxSensPruneGuard <- function(object, events) {
+  if (is.null(events) || !is.data.frame(events)) {
+    return(invisible(NULL))
+  }
+  .st <- tryCatch(rxModelVars(object)$state, error = function(e) NULL)
+  .sn <- grep("^rx__sens_.*_BY_.*__$", .st, value = TRUE)
+  if (length(.sn) == 0L) {
+    return(invisible(NULL))
+  }
+  .base <- .st[!(.st %in% .sn)]
+  .have <- vapply(.base, function(b) sum(startsWith(.sn, paste0("rx__sens_", b, "_BY_"))), 1L)
+  if (all(.have[.have > 0L] >= max(.have))) {
+    return(invisible(NULL))
+  }
+  .nm <- tolower(names(events))
+  .ev <- if ("evid" %in% .nm) events[[which(.nm == "evid")[1L]]] else NULL
+  .cmt <- if ("cmt" %in% .nm) events[[which(.nm == "cmt")[1L]]] else NULL
+  .bad <- any(suppressWarnings(as.integer(as.character(.ev))) %in% c(5L, 6L)) ||
+    (is.numeric(.cmt) && any(.cmt < 0, na.rm = TRUE)) ||
+    (!is.numeric(.cmt) && any(startsWith(as.character(.cmt), "-"), na.rm = TRUE))
+  if (.bad) {
+    stop(
+      "the model was built with pruned sensitivities (option 'rxode2.sensPrune' / `.rxSens(prune = TRUE)`), ",
+      "which have no event-jump sensitivities for evid 5/6 or compartment turn-off (negative cmt) records; ",
+      "rebuild the model with options(rxode2.sensPrune = FALSE)",
+      call. = FALSE
+    )
+  }
+  invisible(NULL)
+}
+
 #' Push the event-sensitivity runtime dims to the solver before a solve
 #'
 #' Reads the model's `eventSensInfo` (attached by `rxode2()` when
