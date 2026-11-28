@@ -274,6 +274,12 @@
   `ss = 2` dose keeps such a compartment's value rather than adding it to
   itself (#1797).
 
+- `rxSolve(ssCmt =)` names the compartments the steady-state advance solves,
+  or with `-` the ones it leaves out (`ssCmt = "-auc"`).  A compartment left
+  out, with its sensitivities, is not tested for convergence and keeps its
+  value from just before the steady-state dose, so an AUC compartment no
+  longer runs the advance to `maxSS` (#1797).
+
 ## Bug fixes
 
 - The explicit Runge-Kutta discrete adjoint (`rk4s`, `dop853s` and the other

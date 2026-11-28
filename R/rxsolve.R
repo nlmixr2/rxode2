@@ -53,6 +53,30 @@
   .ret
 }
 
+# ssCmt names the compartments the steady-state advance solves, or with a
+# leading "-" the ones it leaves out; the model's states are matched in
+# rxSolve_() (src/rxData.cpp)
+.rxAssertSsCmt <- function(ssCmt) {
+  if (is.null(ssCmt)) {
+    return(invisible())
+  }
+  checkmate::assertCharacter(
+    ssCmt,
+    any.missing = FALSE,
+    min.len = 1,
+    min.chars = 1,
+    .var.name = "ssCmt"
+  )
+  .neg <- startsWith(ssCmt, "-")
+  if (any(.neg) && !all(.neg)) {
+    stop(
+      "'ssCmt' names either the compartments to advance or, all starting with '-', the ones to leave out; not both", # nolint: line_length_linter.
+      call. = FALSE
+    )
+  }
+  invisible()
+}
+
 .rxAssertPositiveTol <- function(x, ..., .var.name = checkmate::vname(x)) {
   checkmate::assertNumeric(x, lower = 0, finite = TRUE, any.missing = FALSE, ..., .var.name = .var.name)
   if (any(x <= 0)) {
@@ -388,6 +412,15 @@
 #'
 #' @param ssRtol Steady state rtol convergence factor.  Can be a
 #'     vector based on each state.
+#'
+#' @param ssCmt Character vector naming the compartments the steady-state
+#'     advance solves; names starting with `-` instead name the compartments
+#'     it leaves out (eg `ssCmt = "-auc"` for an accumulating AUC).  A
+#'     compartment left out (with its sensitivities) is not tested for
+#'     convergence and keeps the value it had just before the steady-state
+#'     dose.  The other compartments still see it change during the advance;
+#'     to hold it there too, use the model variable `rxSsAdvance`.  By
+#'     default (`NULL`) every compartment is advanced.
 #'
 #' @param ssAtolSens Sensitivity absolute tolerance (atol) for
 #'     calculating if steady state has been achieved for sensitivity
@@ -1797,6 +1830,7 @@ rxSolve <- function(
   durAtDoseTime = NULL,
   doseAtRecord = NULL,
   addlCovAtTime = NULL,
+  ssCmt = NULL,
   resetCancelsPending = TRUE,
   ssMethod = c("anderson", "iterate"),
   gpuBackend = c("auto", "opencl", "cpu"),
@@ -2132,6 +2166,7 @@ rxSolve <- function(
       addlCovAtTime <- !nonmem
     }
     checkmate::assertLogical(addlCovAtTime, any.missing = FALSE, len = 1)
+    .rxAssertSsCmt(ssCmt)
     checkmate::assertLogical(resetCancelsPending, any.missing = FALSE, len = 1)
     if (checkmate::testIntegerish(ssMethod, len = 1, lower = 0, upper = 1, any.missing = FALSE)) {
       .ssMethod <- as.integer(ssMethod)
@@ -2652,7 +2687,8 @@ rxSolve <- function(
       gpuDevice = gpuDevice,
       gpuPrecision = gpuPrecision,
       gpuBatch = as.integer(gpuBatch),
-      .simNames = .simNames
+      .simNames = .simNames,
+      ssCmt = ssCmt
     )
     class(.ret) <- "rxControl"
     return(.ret)

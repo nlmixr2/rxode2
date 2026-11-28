@@ -260,6 +260,22 @@ ev <- et(amt=100, ii=24, ss=1) |>
 rxSolve(mAuc, ev) |> plot(auc)
 ```
 
+Without changing the model, `rxSolve(ssCmt=)` leaves compartments out of the
+advance: they are not tested for convergence and keep their value from just
+before the steady-state dose.  Name the compartments to advance, or the ones
+to leave out with a leading `-`:
+
+```{r}
+mAuc2 <- mAuc |>
+  model(d/dt(auc) <- central/v)
+
+rxSolve(mAuc2, ev, ssCmt="-auc") |> plot(auc)
+```
+
+Unlike `rxSsAdvance`, the other compartments still see an `ssCmt` compartment
+change during the advance, so use it for compartments that do not feed back
+into the model.
+
 # Reset Events
 
 `evid=3` (or `evid=reset`) resets all compartments to their initial

@@ -23,6 +23,7 @@
 #include <thread>
 #include <string>
 #include <vector>
+#include <unordered_set>
 #include <algorithm>  // std::stable_sort in sortIds()
 #include <numeric>    // std::iota in sortIds()
 #include <sys/stat.h>
@@ -58,6 +59,13 @@ extern "C" void ensureLsodaCtxPool(int nCores);
 extern "C" void ensureIndLinExpCache(int nCores);
 extern "C" int rxTteN(void);
 extern "C" void rxTteSsAtol(double *ssAtol, int neq);
+
+// rxSolve(ssCmt=): 1 for each state the steady-state advance leaves out; empty
+// when it advances them all.  handleSS() keeps these states at their value
+// before the dose and their ssAtol is Inf, so they never fail the
+// convergence test.
+static std::vector<int> _rxSsHold;
+
 extern "C" void rxTteDataNewSolve(void);
 extern "C" void ensureRworkPool(int nCores, int lrw, int liw);
 
@@ -1963,7 +1971,9 @@ extern "C" void atolRtolFactorC_(double factor) {
   for (int _i = op->neq; _i--;) {
     _atol2[_i]  = min2(_atol2[_i]  * factor, maxAtolRtolFactor);
     _rtol2[_i]  = min2(_rtol2[_i]  * factor, maxAtolRtolFactor);
-    _ssAtol[_i] = min2(_ssAtol[_i] * factor, maxAtolRtolFactor);
+    if (_rxSsHold.empty() || !_rxSsHold[_i]) {
+      _ssAtol[_i] = min2(_ssAtol[_i] * factor, maxAtolRtolFactor);
+    }
     _ssRtol[_i] = min2(_ssRtol[_i] * factor, maxAtolRtolFactor);
   }
 
@@ -1988,6 +1998,113 @@ extern "C" double * getAol(int n, double atol){
 
 extern "C" double * getRol(int n, double rtol) {
   return _globals.grtol2;
+}
+
+extern "C" const int *rxSsHoldMask(void) {
+  return _rxSsHold.empty() ? NULL : _rxSsHold.data();
+}
+
+static inline void rxSsHoldAtol(double *ssAtol, int neq) {
+  int n = min2(neq, (int)_rxSsHold.size());
+  for (int k = 0; k < n; ++k) {
+    if (_rxSsHold[k]) ssAtol[k] = R_PosInf;
+  }
+}
+
+// The compartment a state belongs to: its own name, or for a sensitivity
+// rx__sens_<cmt>_BY_<par>__ the state cmt (either may contain _BY_) whose
+// <par> has a sensitivity for the most states, as a sensitivity parameter has
+// one for every state; the longest such cmt on a tie
+static inline std::string rxSsHoldCmt(const std::string &cur,
+                                      const std::vector<std::string> &base,
+                                      const std::unordered_set<std::string> &all) {
+  if (cur.compare(0, 9, "rx__sens_") != 0 || cur.size() < 11 ||
+      cur.compare(cur.size() - 2, 2, "__") != 0) {
+    return cur;
+  }
+  std::string best = cur;
+  size_t bestN = 0, bestScore = 0;
+  for (const std::string &s : base) {
+    std::string pre = "rx__sens_" + s + "_BY_";
+    if (cur.size() <= pre.size() + 2 || cur.compare(0, pre.size(), pre) != 0) {
+      continue;
+    }
+    std::string par = cur.substr(pre.size(), cur.size() - pre.size() - 2);
+    size_t score = 0;
+    for (const std::string &s2 : base) {
+      score += all.count("rx__sens_" + s2 + "_BY_" + par + "__");
+    }
+    if (score > bestScore || (score == bestScore && s.size() > bestN)) {
+      best = s;
+      bestN = s.size();
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
+// Build _rxSsHold from rxControl(ssCmt=) and the model's states; returns an
+// error message, or "" when ssCmt is fine
+static std::string rxSsHoldSetup(const List &rxControl, const List &mv,
+                                 rx_solving_options *op) {
+  _rxSsHold.clear();
+  if (Rf_length(rxControl) <= Rxc_ssCmt || Rf_isNull(rxControl[Rxc_ssCmt]) ||
+      mv.size() <= RxMv_state) {
+    return "";
+  }
+  CharacterVector ssCmt = rxControl[Rxc_ssCmt];
+  CharacterVector state = mv[RxMv_state];
+  int nState = min2((int)state.size(), op->neq);
+  std::vector<std::string> base;
+  std::unordered_set<std::string> all;
+  for (int k = 0; k < nState; ++k) {
+    std::string cur = (std::string)state[k];
+    all.insert(cur);
+    if (cur.compare(0, 9, "rx__sens_") != 0) base.push_back(cur);
+  }
+  int linB = op->linOffset, linE = op->linOffset + op->numLin + op->numLinSens;
+  bool neg = ssCmt.size() > 0 && ((std::string)ssCmt[0]).compare(0, 1, "-") == 0;
+  std::vector<std::string> named;
+  for (int j = 0; j < ssCmt.size(); ++j) {
+    std::string cur = (std::string)ssCmt[j];
+    if (neg) cur = cur.substr(1);
+    if (cur.compare(0, 9, "rx__sens_") == 0) {
+      return "'ssCmt' names compartments, not sensitivities like '" + cur + "'";
+    }
+    int k = 0;
+    while (k < nState && (std::string)state[k] != cur) k++;
+    if (k == nState) {
+      return "'ssCmt' names '" + cur + "', which is not a compartment of the model";
+    }
+    if (neg && k >= linB && k < linE) {
+      return "'ssCmt' cannot leave out the linCmt() compartment '" + cur + "'";
+    }
+    named.push_back(cur);
+  }
+  std::vector<int> hold(op->neq, 0);
+  bool any = false;
+  for (int k = 0; k < nState; ++k) {
+    std::string cur = (std::string)state[k];
+    std::string cmt = rxSsHoldCmt(cur, base, all);
+    bool isNamed = std::find(named.begin(), named.end(), cmt) != named.end();
+    if (k >= linB && k < linE) {
+      // the linCmt() block is always advanced, so it has to be named
+      if (!neg && !isNamed && cur.compare(0, 4, "rx__") != 0) {
+        return "'ssCmt' has to name the linCmt() compartment '" + cur + "'";
+      }
+      continue;
+    }
+    // the positive form leaves out only the model's own compartments and
+    // their sensitivities
+    if (!neg && !isNamed && cur.compare(0, 4, "rx__") == 0 &&
+        cur.compare(0, 9, "rx__sens_") != 0) {
+      continue;
+    }
+    hold[k] = neg ? isNamed : !isNamed;
+    any = any || hold[k];
+  }
+  if (any) _rxSsHold.swap(hold);
+  return "";
 }
 
 // Set the current solve's ODE absolute/relative tolerances to exact values (all
@@ -2015,7 +2132,9 @@ extern "C" void rxSetSolveAtolRtol(double atol, double rtol) {
     double *sa = _globals.gssAtolThread + neq*t;
     double *sr = _globals.gssRtolThread + neq*t;
     for (int i = neq; i--;) { a[i]=atol; r[i]=rtol; sa[i]=atol; sr[i]=rtol; }
+    rxSsHoldAtol(sa, neq);
   }
+  rxSsHoldAtol(_globals.gssAtol, neq);
   uint32_t nall = rx->nsub*rx->nsim;
   for (uint32_t s = 0; s < nall; s++) rx->subjects[s].tolFactor = 1.0;
 }
@@ -3344,6 +3463,7 @@ LogicalVector rxSolveFree(){
     // Only the main thread should be freeing the solver.
     return LogicalVector::create(false);
   }
+  _rxSsHold.clear();
   _rxode2_udfReset();
   resetFkeep();
   if (!_globals.alloc) return true;
@@ -6851,6 +6971,18 @@ SEXP rxSolveFromRaw_(const RObject &obj, const RObject &rawObj,
       // rxRestoreState_() frees the globals, so this has to be rebuilt here
       // exactly as linCmtLagMask above is
       rxLoadAlagCmt(mvRaw, op->neq, asBool(rxControl[Rxc_ssAtDoseTime], "ssAtDoseTime"));
+      // rxSolve(ssCmt=) is set by the solve, not the saved state
+      std::string _ssCmtErr = rxSsHoldSetup(rxControl, mvRaw, op);
+      if (!_ssCmtErr.empty()) {
+        rxSolveFree();
+        stop(_ssCmtErr.c_str());
+      }
+      if (_globals.gssAtol != NULL) rxSsHoldAtol(_globals.gssAtol, op->neq);
+      if (_globals.gssAtolThread != NULL) {
+        for (int _core = 0; _core < op->cores; _core++) {
+          rxSsHoldAtol(_globals.gssAtolThread + _core * op->neq, op->neq);
+        }
+      }
     }
     seedEng((int)(op->cores));
     _p_ensureLinCmtA((int)op->cores);
@@ -8000,6 +8132,14 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
     op->ssAtol = _globals.gssAtol;
     op->ssRtol = _globals.gssRtol;
     rxTteSsAtol(_globals.gssAtol, op->neq);
+    {
+      std::string _ssCmtErr = rxSsHoldSetup(rxControl, rxSolveDat->mv, op);
+      if (!_ssCmtErr.empty()) {
+        rxSolveFree();
+        stop(_ssCmtErr.c_str());
+      }
+    }
+    rxSsHoldAtol(_globals.gssAtol, op->neq);
     rxTteDataNewSolve();
 
     // Initialize per-thread tolerance arrays from the global baseline values.
