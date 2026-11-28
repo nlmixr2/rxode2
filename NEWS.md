@@ -270,6 +270,9 @@
 
 ## Bug fixes
 
+- Recompiling a deleted model (`rxDelete()` then a solve) under a different
+  `rxode2.fullOpt` no longer swaps in the other variant's md5, which crashed the
+  solve once the model cache was warm.
 - The explicit Runge-Kutta discrete adjoint (`rk4s`, `dop853s` and the other
   explicit `*s` methods) gives the exact gradient for a parameter-dependent
   `alag()` when the right-hand side is nonlinear.  The lag-time term was exact

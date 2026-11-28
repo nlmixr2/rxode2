@@ -2558,6 +2558,9 @@ rxCompile.rxModelVars <- function(
         }
         ## a local copy: the global parser state is left as parsed
         .rxModelVarsLast <- .rxState$modelVarsLast
+        ## a re-parse above hashes with the current options (e.g. rxode2.fullOpt):
+        ## keep the md5 this model was compiled under
+        .rxModelVarsLast$md5 <- .mv$md5
         .rxModelVarsLast[[17]] <- .rxState$indLinInfo
         .model <- .rxModelVarsLast$model
         .model["indLin"] <- .rxState$meCode
