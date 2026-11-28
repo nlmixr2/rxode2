@@ -808,9 +808,16 @@ rxTest({
     if (is.symbol(l)) {
       if (is.null(num)) {
         return(TRUE)
-      } else {
-        return(FALSE)
       }
+      # A sensitivity column (raw index past the amounts) comes back as its
+      # own state name, which is what the model reads at run time
+      # (rxode2lincmt#17); it must be the name of raw index `num`.
+      .linc <- get("linc", envir = s) # rxFromSE() reads its argument unevaluated
+      .lin <- str2lang(rxFromSE(.linc))
+      .lin[[7]] <- num
+      .lin[[8]] <- -2
+      .nm <- .rxLinCmtBrawName(.lin)
+      return(!is.null(.nm) && identical(as.character(l), .nm))
     }
     if (
       is.call(l) &&
@@ -1207,7 +1214,36 @@ rxTest({
     .expr <- paste0("Derivative(", txt, ",", var, ")")
     .got <- rxFromSE(.expr)
     if (is.null(w1)) {
-      expect_equal(.got, "0")
+      # No first-order term -- but a sensitivity-column read (raw which1 past
+      # the amounts; layout: amounts, then each non-depot amount's row over
+      # p1..p[2*ncmt] and ka, then the depot ka entry) differentiates to the
+      # amount Hessian read which1 = -20, which2 = row*49 + slot*7 + t
+      # (rxode2lincmt#17); anything past the layout stays 0.
+      .w1 <- as.numeric(.args[6])
+      .m <- .ncmt + .oral0
+      .n <- 2 * .ncmt + .oral0
+      .t <- if (var == "ka") {
+        if (.oral0 == 1) 2 * .ncmt else NA
+      } else {
+        .i <- match(var, c("cl", "v", "q", "v2", "q2", "v3")) - 1
+        if (.i < 2 * .ncmt) .i else NA
+      }
+      .expect <- "0"
+      if (.args[7] == "-2" && .w1 >= .m && !is.na(.t)) {
+        .j <- .w1 - .m
+        .rs <- if (.j < .ncmt * .n) {
+          c(.oral0 + .j %/% .n, .j %% .n)
+        } else if (.oral0 == 1 && .j == .ncmt * .n) {
+          c(0, 2 * .ncmt)
+        }
+        if (!is.null(.rs)) {
+          .a <- .args
+          .a[6] <- "-20"
+          .a[7] <- paste(.rs[1] * 49 + .rs[2] * 7 + .t)
+          .expect <- paste0("linCmtB(", paste(.a, collapse = ","), ")")
+        }
+      }
+      expect_equal(.got, .expect)
       return(invisible())
     }
     .slot <- if (w2 == 2 * .ncmt) "ka" else c("p1", "v1", "p2", "p3", "p4", "p5")[w2 + 1]

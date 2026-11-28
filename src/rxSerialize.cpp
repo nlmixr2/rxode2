@@ -335,9 +335,10 @@ SEXP rxSaveState_() {
   // Allocated for the representative events only, not the expanded subject count.
   sWriteDoubleBlob(f, _globals.gall_times, 5u * nall_rep, "gall_times_slab");
 
-  // gevid slab: allocated as 3*nall_rep + dfN*2 + strLhs.size() ints.
-  uint64_t dfN = (rx->npars <= 0) ? 0 : rx->npars;
-  uint64_t gevid_n = 3u * nall_rep + dfN * 2 + (uint64_t)op->nlhs;
+  // gevid slab: 3*nall_rep + dfN*2 + nlhs ints, dfN = event-table columns
+  uint64_t dfN = (_globals.gevid_dfN <= 0) ? 0 : (uint64_t)_globals.gevid_dfN;
+  uint64_t gevid_n = (_globals.gevid == NULL) ? 0 :
+    3u * nall_rep + dfN * 2 + (uint64_t)op->nlhs;
   sWriteIntBlob(f, _globals.gevid, gevid_n, "gevid_slab");
 
   // gcov: ncov * nall_rep doubles (representative events only)
@@ -1082,18 +1083,38 @@ SEXP rxRestoreState_(SEXP rawSexp) {
     _globals.glimit = _globals.gii        + nall_rep;
   }
 
-  // gevid slab (3*nall_rep + dfN*2 + nlhs ints)
+  // gevid slab (3*nall_rep + dfN*2 + nlhs ints); dfN is recovered from its size
   {
-    uint64_t dfN = (rx->npars <= 0) ? 0 : rx->npars;
-    uint64_t expected = 3u * nall_rep + dfN * 2 + (uint64_t)op->nlhs;
-    int *buf = sReadIntBlobExpected(f, expected, "gevid_slab");
+    uint64_t n_out = 0;
+    int *buf = sReadIntBlob(f, &n_out, "gevid_slab");
+    uint64_t fixed = 3u * nall_rep + (uint64_t)(op->nlhs > 0 ? op->nlhs : 0);
+    if (n_out < fixed || ((n_out - fixed) & 1u) != 0) {
+      if (buf) free(buf);
+      (Rf_error)("rxRestoreState: gevid_slab size mismatch (file: %llu, expected: %llu + 2*ncol)",
+                 (unsigned long long)n_out, (unsigned long long)fixed);
+    }
+    uint64_t dfN = (n_out - fixed) / 2u;
+    if ((uint64_t)op->ncov > dfN) {
+      if (buf) free(buf);
+      (Rf_error)("rxRestoreState: gevid_slab holds %llu covariate slots, need %d",
+                 (unsigned long long)dfN, op->ncov);
+    }
     if (_globals.gevid != NULL) free(_globals.gevid);
     _globals.gevid  = buf;
-    _globals.gidose = _globals.gevid + nall_rep;
-    _globals.gcens  = _globals.gidose + nall_rep;
-    _globals.gpar_cov = _globals.gcens;
-    _globals.gpar_covInterp = _globals.gpar_cov + dfN;
-    _globals.glhs_str = _globals.gpar_covInterp + dfN;
+    _globals.gevid_dfN = (int64_t)dfN;
+    if (buf == NULL) {
+      _globals.gidose = _globals.gcens = _globals.gpar_cov = NULL;
+      _globals.gpar_covInterp = _globals.glhs_str = NULL;
+    } else {
+      _globals.gidose = _globals.gevid + nall_rep;
+      _globals.gcens  = _globals.gidose + nall_rep;
+      _globals.gpar_cov = _globals.gcens + nall_rep;
+      _globals.gpar_covInterp = _globals.gpar_cov + dfN;
+      _globals.glhs_str = _globals.gpar_covInterp + dfN;
+    }
+    op->par_cov = _globals.gpar_cov;
+    op->par_cov_interp = _globals.gpar_covInterp;
+    op->lhs_str = _globals.glhs_str;
   }
 
   // gcov (ncov * nall_rep doubles)

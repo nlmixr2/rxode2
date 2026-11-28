@@ -2,6 +2,11 @@
 
 ## New features
 
+- `simeta(n)` and `simeps(n)` re-simulate only the `n`-th ETA/EPS inside a
+  model, keeping the others; a correlated element is drawn conditional on
+  the others.  The index counts the omega/sigma as given, before items with
+  zero variance or supplied in `params` are dropped; an index past the given
+  omega/sigma is an error (#1793).
 - `rxOptExpr()` repeats its common-subexpression search until nothing more is
   shared.  One pass only shares the innermost repeats, so an expression that
   repeats once its own repeated parts are temporaries (`f(exp(a + b))`
@@ -38,6 +43,16 @@
   evaluation (eg `f45`, `dop54`, `euler`) and `dop853` also name the states
   whose derivative was non-finite, with their values.  A successful solve
   records nothing (#1805).
+- `convertAbsSequential()` now covers the transit-delay forms of the
+  Monolix sequential double-absorption library, not only lag times.  A
+  second path with no delay gains the sequential lag (`Tlag2 = Tk01`),
+  a lag path is tied to `Tlag1 + Tk01` when the first path has a lag,
+  and a transit chain is reparameterized to `Mtt2 = Tk01 + diffMtt2`
+  (or `Mtt2 = Tlag1 + Tk01 + diffMtt2`), estimating `diffMtt2`.
+- `convertAbsForceLongerDelay()` now ties a transit-chain delay as well
+  as a lag time: `Mtt2 = Mtt1 + diffMtt2` for two transit chains,
+  `Mtt2 = Tlag1 + diffMtt2` or `Tlag2 = Mtt1 + diffTlag2` for the mixed
+  cases.  Each chain is converted to its mean transit time first.
 - `rxImpureFun()`/`rxRmImpureFun()` register user R functions, `rxFun()` C
   functions or package C functions that draw random numbers, keep state or
   have side effects.  `rxOptExpr()` never shares their calls and
@@ -60,6 +75,20 @@
   sensitivity right-hand sides it never reads, and `f()`/`alag()`/`rate()`/
   `dur()` evaluate only their own inputs.  Results are unchanged;
   `options(rxode2.fullOpt = "none")` restores the previous code generation.
+- Second derivatives of a `linCmt()` model are now exact: differentiating a
+  first-order `linCmt()` sensitivity again gives the second-order
+  `linCmtB()` reads of 'rxode2lincmt' (`which1 = -20` amounts, `-21`
+  concentration), and the model asks the solve to keep them
+  (rxode2lincmt#17).  Before, the curvature of the linear system was
+  dropped: such a derivative was `0`, which made the exact inner Hessian of
+  an `ll()` + `linCmt()` model in 'nlmixr2est' refuse a diagonal term and
+  silently lose the linear system's part of an off-diagonal one.
+- A first derivative of a `linCmt()` model translated back into its
+  symengine environment (`rxToSE(x, envir = )`), or carried through a
+  chained `rxFromSE()` derivative, keeps the linear system: the solved
+  states (`central`, `rx__sens_central_BY_p1`, ...) are read from it rather
+  than treated as constants, and a raw sensitivity-column read is written
+  back as its state name.
 - The model language has `clamp(x, lo, hi)`, the same as
   `min(max(x, lo), hi)` (and differentiated the same way); a call with
   other than three arguments, or with literal bounds `lo > hi`, is a parse
@@ -249,6 +278,12 @@
   window start and stop.  The forward analytic FOCEi gradient
   (`fast = TRUE`) reads these sensitivities, so it was off by up to a few
   percent for such fits.
+- The explicit Runge-Kutta discrete adjoint (`rk4s`, `dop853s` and the other
+  explicit `*s` methods) gives the exact gradient for a parameter-dependent
+  `alag()` when the right-hand side is nonlinear.  The lag-time term was exact
+  only for a linear right-hand side; it is now
+  `dlag/dp * lambda' (f(x-) - f(x+))` from the model's own `f`.  The Rosenbrock,
+  Radau, composite, CVODES and LSODA adjoints keep the old approximation.
 
 - The `rk4s` family of solvers now steps only the states of a narrowed solve
   (a per-individual `neqOverride`, as nlmixr2est sets when it pools models),
@@ -323,6 +358,9 @@
   `method = "liblsoda"` alone still switches to `"dop853+ros4"` (#1599).
 
 ### Event tables
+- A negative `addl` or `ss` in event data or in `et()` is now an error (naming
+  the id and row for data); before it was silently treated as no additional
+  doses or as a non-steady-state dose (#1792).
 - With `addlKeepsCov = TRUE`, a dose's `f()` now reads the covariates of its
   own record, as its `alag()` does, also when `alag()` moves the dose past a
   covariate change.  With an `alag()` on a covariate or a state, `f()` read
@@ -381,6 +419,12 @@
   covariance used to be replaced by the priors.  A prior entry the
   `thetaMat` does not draw is named in a warning, and `usePrior = TRUE`
   still uses the priors (#1502).
+
+### Simulation
+- A `simeta()` called again while a subject is initialized (a rejection
+  loop) now draws new ETAs in a model with ODEs; it used to read the same
+  pre-generated row every time, so the loop could not leave it.  The first
+  `simeta()` of each initialization still reads that row (#1793).
 
 ### Documentation
 - The pipeline article no longer saves its simulation into the installed
@@ -462,10 +506,26 @@
 
 ### Solving
 
+- `rxSaveState()` and `rxSolve(serializeFile=)` no longer read past the end of
+  the event-id buffer when a model has more parameters than the translated
+  event table has columns, and a restored state now places the covariate and
+  string-`lhs` tables where the solve that saved them did (#1760).
+
 - An implicit method (`ros4`, `iem`, `ros43`, ...) in a solve set up from C,
   as `nlmixr2` estimation does, now uses the model's analytic Jacobian, as
   `rxSolve()` does; before, it read an empty Jacobian, so stiff fits ran
   slowly or failed to solve.
+- An implicit method solving one of `nlmixr2`'s narrower peer models in the
+  pool of a wider one now uses a finite-difference Jacobian of the peer
+  instead of the pool model's Jacobian, which belonged to a different model
+  and was written past the end of the peer's Jacobian buffer; `iem`, `ros4`
+  and `ros43` also size the peer's state by its own state count.  A model
+  without `df()/dy()` lines gets the finite difference instead of a zero
+  Jacobian (#1757).
+- The explicit methods (`rk4`, `dop5`, `t54`, `vern76`, ...) solving one of
+  `nlmixr2`'s narrower peer models in the pool of a wider one now step only
+  the peer's states; before, they stepped the pool model's state count and
+  overwrote the next output rows (#1757).
 - Growing the per-thread dose pools for a solve with more cores than they
   were sized for (`rxSolve(cores=)` above `OMP_NUM_THREADS`, for example) no
   longer leaks three of their arrays: `freeExtraDosing()` never freed
@@ -1179,8 +1239,26 @@
 
 - `method = "cvodesadj"` now includes the bioavailability (`f()`)
   sensitivity, also for an observation at a dose time; before, it was
-  missing entirely.  `f()` together with a modeled `rate()` or `dur()` is
-  still not right in `cvodesadj` and `liblsodaadj`.
+  missing entirely.
+
+- The adjoint bioavailability (`f()`) sensitivity of an infusion is now
+  right for fixed-rate, fixed-duration and modeled `rate()`/`dur()`
+  infusions in the `rk4s` family, `liblsodaadj` and `cvodesadj`.  Before,
+  fixed infusions missed it in every method, and modeled ones in
+  `liblsodaadj` and `cvodesadj`.
+
+- The adjoint lag-time (`alag()`) sensitivity of an infusion now accounts
+  for the shift of the whole infusion window; before, it was missing in
+  every method.
+
+- Overlapping infusions into one compartment, and modeled infusions into
+  several compartments that end at the same time, now give the right
+  adjoint sensitivities.  Before, each infusion stop closed the most recent
+  infusion instead of its own, and overlapping infusions overwrote each
+  other's terms instead of adding them.
+
+- `method = "cvodesadj"` no longer fails its backward solve, returning
+  wrong sensitivities, when two events fall at the same time.
 
 - `method = "abs"` now stops with an error when sensitivities are
   requested through an `f()`, `alag()`, `rate()` or `dur()` that depends on

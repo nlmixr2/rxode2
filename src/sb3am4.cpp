@@ -142,7 +142,7 @@ extern "C" void ind_sb3am4_0(rx_solve *rx, rx_solving_options *op, int solveid, 
   double xp = getAllTimes(ind, 0);
   ind->solvedIdx = 0;
 
-  int neqOde = op->neq - op->numLin - op->numLinSens - op->numLinCarry;
+  int neqOde = eff - op->numLin - op->numLinSens - op->numLinCarry;
   sb3am4_system sys(ind, c_dydt, neq);
 
   double *yp;
