@@ -1210,6 +1210,20 @@ rxMemoryAdjointComponents_ <- function(neq, nBase, np, cores, maxAllTimes) {
     .Call(`_rxode2_rxMemoryAdjointComponents_`, neq, nBase, np, cores, maxAllTimes)
 }
 
+#' Report the byte sizes of the spline/pchip covariate knot buffers
+#'
+#' The knot times, values and derivatives (doubles) and knot counts (ints)
+#' that \code{rxSplineCovSetup()} (\code{src/approx.cpp}) lays out like
+#' \code{gcov}, one block per distinct covariate pointer.
+#'
+#' @param ncov Number of time-varying covariates.
+#' @param nallTotal Total events of one simulation across subjects.
+#' @return Named numeric vector with \code{splineCov} bytes.
+#' @noRd
+rxMemorySplineCovComponents_ <- function(ncov, nallTotal) {
+    .Call(`_rxode2_rxMemorySplineCovComponents_`, ncov, nallTotal)
+}
+
 #' Report the byte sizes of a GPU method's solve allocations
 #'
 #' The GPU methods (codes 110-114) allocate per slot (\code{gpuBatch}

@@ -19,6 +19,7 @@ extern "C" void rxAdjWorkSet(double *base, int64_t per, int slots);
 using namespace Rcpp;
 
 extern "C" rx_solve *getRxSolve_(void);
+extern "C" int rxSplineCovSetup(rx_solve *rx, int nSub);
 extern "C" void rxOptionsIniEnsure(int mx, int cores);
 extern rx_globals _globals;
 
@@ -1381,5 +1382,9 @@ SEXP rxRestoreState_(SEXP rawSexp) {
   }
 
   _globals.alloc = true;
+  // the spline/pchip covariate knots are not serialized
+  if (!rxSplineCovSetup(rx, (int)rx->nsub)) {
+    (Rf_error)("rxRestoreState: out of memory for the covariate splines");
+  }
   return R_NilValue;
 }

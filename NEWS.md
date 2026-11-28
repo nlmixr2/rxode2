@@ -53,6 +53,10 @@
   as a lag time: `Mtt2 = Mtt1 + diffMtt2` for two transit chains,
   `Mtt2 = Tlag1 + diffMtt2` or `Tlag2 = Mtt1 + diffTlag2` for the mixed
   cases.  Each chain is converted to its mean transit time first.
+- `rxControl(covsInterpolation=)` gains `"spline"` (a natural cubic spline)
+  and `"pchip"` (a monotone piecewise cubic Hermite interpolant that does not
+  overshoot) for smooth time-varying covariates; the boundary value is held
+  outside the data, and two values give linear interpolation (#1804).
 - `rxImpureFun()`/`rxRmImpureFun()` register user R functions, `rxFun()` C
   functions or package C functions that draw random numbers, keep state or
   have side effects.  `rxOptExpr()` never shares their calls and

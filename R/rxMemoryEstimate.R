@@ -769,6 +769,18 @@ rxMemoryEstimate <- function(
       )
     )
   }
+  # spline/pchip covariate knot buffers (src/approx.cpp)
+  .covInterp <- if (is.null(control)) NULL else control$covsInterpolation
+  if (
+    ncov > 0L &&
+      length(.covInterp) == 1L &&
+      (.covInterp %in% c(4L, 5L) || .covInterp %in% c("spline", "pchip"))
+  ) {
+    .sizes <- c(
+      .sizes,
+      rxMemorySplineCovComponents_(as.integer(ncov), as.double(.solveNallTotal))
+    )
+  }
   .outputData <- .rxMemEstimateOutputData(
     dat = dat,
     summary = .summary,
@@ -909,6 +921,7 @@ print.rxMemoryEstimate <- function(x, ...) {
     extraDosing = "extraDosing (per-thread evid_() push pools)",
     invCdfMemo = "invCdfMemo (per-thread inverse-CDF memo)",
     adjointWork = "adjointWork (per-thread adjoint backward-work arena)",
+    splineCov = "splineCov (spline/pchip covariate knots)",
     gpuHostWork = "gpuHostWork (GPU round requests, per slot)",
     gpuHostState = "gpuHostState (GPU host integrator state, per slot)",
     gpuSlotWork = "gpuSlotWork (GPU per-thread workspaces)",

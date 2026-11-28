@@ -102,7 +102,8 @@
   )
   .gpu <- rxMemoryGpuComponents_(rep(1L, 16L), 0L, 1L, 1L)
   .adj <- rxMemoryAdjointComponents_(1L, 1L, 1L, 1L, 1)
-  setdiff(c(names(.cpu), names(.gpu), names(.adj), "fixed"), c("sizeofInd", "rxLlikSaveSize"))
+  .spl <- rxMemorySplineCovComponents_(1L, 1)
+  setdiff(c(names(.cpu), names(.gpu), names(.adj), names(.spl), "fixed"), c("sizeofInd", "rxLlikSaveSize"))
 }
 
 test_that("every allocation tag names a memory-estimate component", {
