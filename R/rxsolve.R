@@ -1294,6 +1294,16 @@
 #'   `linCmt()` models (a warning is emitted and the standard path is used
 #'   instead).
 #'
+#' @param band Jacobian band of the stiff solver.  `"auto"` (default) works
+#'   out the bandwidth from the model equations (see [rxBandwidth()]) and
+#'   uses a banded Jacobian when the model has at least 20 states and the
+#'   band is at most a quarter of them wide, as for a method-of-lines PDE;
+#'   `TRUE` uses the detected band whenever it is narrower than the system;
+#'   `FALSE` keeps the dense Jacobian; and `c(ml, mu)` gives the lower and
+#'   upper bandwidth directly.  Too narrow a band gives a wrong Jacobian, which
+#'   slows or stops convergence.  Used by `method = "lsoda"`; a user-supplied
+#'   Jacobian (`df()/dy()`) is then replaced by a banded finite difference.
+#'
 #' @param cvodeLinSolver Character; selects the linear solver used by the CVODE
 #'   integrator when `method = "cvode"`.  Ignored for all other methods.
 #'   Available choices and when to use them:
@@ -1845,6 +1855,7 @@ rxSolve <- function(
   priorOmega = NULL,
   priorOmegaEl = NULL,
   priorSigmaEl = NULL,
+  band = "auto",
   envir = parent.frame()
 ) {
   .udfEnvLocal(list(envir, parent.frame(1))) # nolint
@@ -1970,6 +1981,7 @@ rxSolve <- function(
     } else {
       checkmate::assertIntegerish(autoSwitchStiffFirst, lower = 0L, upper = 1L, len = 1, any.missing = FALSE)
     }
+    band <- .rxBandControl(band)
     if (checkmate::testIntegerish(cvodeLinSolver, len = 1, lower = 1L, upper = 5L, any.missing = FALSE)) {
       cvodeLinSolver <- as.integer(cvodeLinSolver)
     } else {
@@ -2652,7 +2664,8 @@ rxSolve <- function(
       gpuDevice = gpuDevice,
       gpuPrecision = gpuPrecision,
       gpuBatch = as.integer(gpuBatch),
-      .simNames = .simNames
+      .simNames = .simNames,
+      band = band
     )
     class(.ret) <- "rxControl"
     return(.ret)
@@ -4847,6 +4860,7 @@ rxSolve.default <- function(
     }
     .minfo(sprintf("omega/sigma items treated as zero: '%s'", paste(.ctl$.zeros, collapse = "', '")))
   }
+  .ctl$band <- .rxBandResolve(.ctl, object)
   .eventsForSolve <- if (is.rxEt(events) || inherits(events, "data.frame")) {
     .etPrepareSolveEvents(events, .ctl)
   } else {

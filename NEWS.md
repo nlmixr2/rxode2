@@ -2,6 +2,12 @@
 
 ## New features
 
+- `rxControl(band=)` gives the stiff solver a banded Jacobian.  The default
+  `"auto"` works out the bandwidth from the model equations (`rxBandwidth()`)
+  and uses it for models of at least 20 states with a narrow band, such as a
+  method-of-lines PDE, so the Jacobian costs `ml + mu + 1` derivative calls
+  and a banded factorization instead of one call per state and a dense one.
+  `method = "lsoda"` uses it (#1860).
 - `simeta(n)` and `simeps(n)` re-simulate only the `n`-th ETA/EPS inside a
   model, keeping the others; a correlated element is drawn conditional on
   the others.  The index counts the omega/sigma as given, before items with

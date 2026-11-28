@@ -1325,6 +1325,11 @@ static inline void postSolve(int *neq, int *idid, int *rc, int *i, double *yp, c
 int global_jt = 2;
 int global_mf = 22;
 int global_debug = 0;
+// Jacobian band of the model rxSolve_() set up (rxControl(band=)); -1 = dense
+extern "C" {
+  int rxBandMl = -1, rxBandMu = -1;
+}
+
 
 // dydt of the model rxSolve_() replaced with its Jacobian model (same layout),
 // so a caller still solving with the original dydt keeps the analytic Jacobian
@@ -1345,6 +1350,25 @@ static inline t_calc_jac rxJacFor(t_dydt c_dydt) {
   if (global_jt != 1 || calc_jac == NULL || c_dydt == NULL) return NULL;
   if (c_dydt == dydt || c_dydt == rxJacSrcDydt) return calc_jac;
   return NULL;
+}
+
+// Whether the band applies to an ODE system of n states solved with c_dydt:
+// only the model rxSolve_() set up, and only when narrower than the system
+static inline bool rxBandFor(t_dydt c_dydt, int n) {
+  if (rxBandMl < 0 || rxBandMu < 0 || c_dydt == NULL) return false;
+  if (c_dydt != dydt && c_dydt != rxJacSrcDydt) return false;
+  return rxBandMl < n && rxBandMu < n && rxBandMl + rxBandMu + 1 < n;
+}
+
+// DLSODA's jt for an ODE system of n states: 5 (banded finite difference) with
+// iwork(1:2) = ml, mu when the band applies, otherwise jt unchanged
+static inline int rxLsodaBandJt(int jt, int n, int *iwork) {
+  if (!rxBandFor(dydt, n)) return jt;
+  // the banded work array (22 + (10 + 2ml + mu) n) must fit the dense one
+  if (10 + 2 * rxBandMl + rxBandMu > max(16, n + 9)) return jt;
+  iwork[0] = rxBandMl;
+  iwork[1] = rxBandMu;
+  return 5;
 }
 
 /* -----------------------------------------------------------------------
@@ -2864,10 +2888,11 @@ static inline void _rxSolveOneInterval(int method, bool autoSwitchPrimary,
           int _lrw = 22 + op->neq * max(16, op->neq + 9);
           int _liw = 20 + op->neq;
           int _itol = 1, _itask = 1, _iopt = 1;
+          int _jt = rxLsodaBandJt(global_jt, neq[0], __rworkPool[0].iworkp);
           F77_CALL(dlsoda)(dydt_lsoda_dum, neq, yp, xp, &xout,
                            &_itol, &(op->RTOL), &(op->ATOL), &_itask,
                            istate, &_iopt, __rworkPool[0].rworkp,
-                           &_lrw, __rworkPool[0].iworkp, &_liw, jdum_lsoda, &global_jt);
+                           &_lrw, __rworkPool[0].iworkp, &_liw, jdum_lsoda, &_jt);
         }
         neq[0] = eff;
         copyLinCmt(neq, ind, op, yp);
@@ -6462,6 +6487,11 @@ extern "C" void ind_lsoda0(rx_solve *rx, rx_solving_options *op, int solveid, in
   iwork[6] = op->mxhnil; // MXHNIL
   iwork[7] = op->MXORDN; // MXORDN
   iwork[8] = op->MXORDS;  // MXORDS
+
+  // a banded Jacobian (rxControl(band=)): jt 5 with iwork(1:2) = ml, mu
+  if (dydt_lsoda == dydt_lsoda_dum) {
+    jt = rxLsodaBandJt(jt, eff - op->numLin - op->numLinSens - op->numLinCarry, iwork);
+  }
 
   double xp = getAllTimes(ind, 0);
   double xout;

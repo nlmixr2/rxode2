@@ -58,6 +58,7 @@ extern "C" void ensureLsodaCtxPool(int nCores);
 extern "C" void ensureIndLinExpCache(int nCores);
 extern "C" int rxTteN(void);
 extern "C" void rxTteSsAtol(double *ssAtol, int neq);
+extern "C" int rxBandMl, rxBandMu;
 extern "C" void rxTteDataNewSolve(void);
 extern "C" void ensureRworkPool(int nCores, int lrw, int liw);
 
@@ -7254,6 +7255,20 @@ SEXP rxSolve_(const RObject &obj, const List &rxControl,
       op->delayCol = _globals.gdelayCol;
     }
     op->cvodeLinSolver        = asInt(rxControl[Rxc_cvodeLinSolver], "cvodeLinSolver");
+    // rxControl(band=), resolved by rxSolve() into c(ml, mu); anything else
+    // (a control without it, "auto" not resolved) is a dense Jacobian
+    rxBandMl = rxBandMu = -1;
+    if (rxControl.size() > Rxc_band) {
+      SEXP _band = rxControl[Rxc_band];
+      if ((TYPEOF(_band) == INTSXP || TYPEOF(_band) == REALSXP) && Rf_length(_band) == 2) {
+        int _ml = TYPEOF(_band) == INTSXP ? INTEGER(_band)[0] : (int)REAL(_band)[0];
+        int _mu = TYPEOF(_band) == INTSXP ? INTEGER(_band)[1] : (int)REAL(_band)[1];
+        if (_ml >= 0 && _mu >= 0) {
+          rxBandMl = _ml;
+          rxBandMu = _mu;
+        }
+      }
+    }
     op->stiff2                = asInt(rxControl[Rxc_stiff2], "stiff2");
     if (method >= 110 && method <= 114) {
       // a GPU method without a GPU setup for this model (installed by R just
