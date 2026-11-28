@@ -348,4 +348,48 @@ rxTest({
     .want <- .paramsRowsPerId(m, d, c(k = 0.5, v = 2))
     expect_identical(as.data.frame(rxSolve(m, d, params = data.frame(id = 5, k = 0.5, v = 2)))$cp, .want)
   })
+
+  test_that("a multi-row params id column out of data order is warned about (#1520)", {
+    m <- .paramsRowsModel()
+    d <- .paramsRowsData(ids = c(11, 12, 13, 14))
+    .p <- data.frame(id = c(11, 12, 13, 14), k = c(1, 2, 3, 4) / 10, v = 2)
+    .want <- as.data.frame(rxSolve(m, d, params = .p))$cp
+    # ids in data order, as numbers, characters or a factor, give no warning
+    expect_no_warning(rxSolve(m, d, params = .p))
+    expect_no_warning(rxSolve(m, d, params = transform(.p, id = as.character(id))))
+    expect_no_warning(rxSolve(m, d, params = transform(.p, id = factor(id))))
+    expect_no_warning(rxSolve(m, d, params = as.matrix(.p)))
+    expect_no_warning(rxSolve(m, d, params = .p[, -1]))
+    # repeated per simulation
+    expect_no_warning(rxSolve(m, d, params = rbind(.p, .p)))
+    # out of order: warned, and still used by position
+    .o <- .p
+    .o$id <- c(13, 11, 14, 12)
+    expect_warning(.s <- rxSolve(m, d, params = .o), "row 1 has id 13 but is used for subject 11")
+    expect_identical(as.data.frame(.s)$cp, .want)
+    expect_warning(rxSolve(m, d, params = as.matrix(.o)), "does not match the data's subjects")
+    expect_warning(rxSolve(m, d, params = transform(.p, ID = id + 80, id = NULL)), "row 1 has id 91")
+    expect_warning(rxSolve(m, d, params = rbind(.p, .o)), "row 5 has id 13")
+    # warnIdSort = FALSE silences it
+    expect_no_warning(.s <- rxSolve(m, d, params = .o, warnIdSort = FALSE))
+    expect_identical(as.data.frame(.s)$cp, .want)
+    # one-subject data is a population simulation, and is exempt
+    expect_no_warning(rxSolve(m, .paramsRowsData(ids = 11), params = .o))
+  })
+
+  test_that("a chunked solve warns about a params id order once", {
+    m <- .paramsRowsModel()
+    d <- .paramsRowsData(ids = c(11, 12, 13, 14))
+    .o <- data.frame(id = c(13, 11, 14, 12), k = c(1, 2, 3, 4) / 10, v = 2)
+    .n <- 0L
+    withCallingHandlers(
+      rxSolve(m, d, params = .o, file = tempfile("pr"), chunkSize = 2),
+      warning = function(w) {
+        if (grepl("does not match the data's subjects", conditionMessage(w))) .n <<- .n + 1L
+        invokeRestart("muffleWarning")
+      }
+    )
+    expect_identical(.n, 1L)
+    expect_no_warning(rxSolve(m, d, params = .o, file = tempfile("pr"), chunkSize = 2, warnIdSort = FALSE))
+  })
 })
