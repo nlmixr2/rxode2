@@ -107,6 +107,25 @@ rxTest({
     expect_gt(.s$auc_BY_x[1], 100)
   })
 
+  test_that("ssCmt splits a sensitivity name by its sensitivity parameter", {
+    # rx__sens_auc_BY_x_BY_ka__ could be auc by x_BY_ka or auc_BY_x by ka
+    .mod <- rxode2(
+      {
+        d / dt(depot) <- -ka * depot
+        d / dt(central) <- ka * depot - cl / v * central
+        d / dt(auc) <- x_BY_ka * central / v
+        d / dt(auc_BY_x) <- central / v
+      },
+      calcSens = "x_BY_ka"
+    )
+    .ev <- et(amt = 100, ii = 24, ss = 1) |> et(c(0, 24))
+    .p <- c(ka = 1, cl = 1, v = 10, x_BY_ka = 1)
+    .s <- rxSolve(.mod, .ev, .p, ssCmt = "-auc", minSS = 10, maxSS = 10)
+    expect_equal(.s$auc[1], 0)
+    expect_equal(.s$rx__sens_auc_BY_x_BY_ka__[1], 0)
+    expect_gt(.s$auc_BY_x[1], 100)
+  })
+
   test_that("ss=2 of a regimen already at steady state still superposes", {
     .ev1 <- et(amt = 100, ii = 24, addl = 4, ss = 1) |> et(c(48, 60))
     .ev2 <- et(amt = 100, ii = 24, addl = 4, ss = 1) |>
