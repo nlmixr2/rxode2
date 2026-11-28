@@ -506,7 +506,8 @@
   frame or matrix gave every chunk the whole table, so chunks were solved as
   extra simulations or failed with "number of parameters ... needs to be a
   multiple of the number of subjects"; each chunk now gets its own subjects'
-  rows, and a table with several rows (simulations) per subject is refused
+  rows, and any other number of rows (such as several simulations per
+  subject) is refused
   (#1520).
 - `rxSaveState()` and `rxSolve(serializeFile=)` no longer read past the end of
   the event-id buffer when a model has more parameters than the translated

@@ -408,11 +408,13 @@ rxTest({
         expect_identical(.s$cp, .want$cp, label = paste(.nid, .cs))
         expect_identical(as.character(.s$id), as.character(.want$id), label = paste(.nid, .cs))
       }
-      # several simulations per subject are refused
-      expect_error(
-        rxSolve(m, d, params = rbind(.p, .p), file = tempfile("pr"), chunkSize = 2),
-        "more rows \\(\\d+\\) than subjects"
-      )
+      # other row counts (several simulations per subject) are refused
+      for (.pp in list(rbind(.p, .p), .p[1:2, ])) {
+        expect_error(
+          rxSolve(m, d, params = .pp, file = tempfile("pr"), chunkSize = 2),
+          "one row per subject \\(\\d+\\), not \\d+"
+        )
+      }
     }
   })
 })

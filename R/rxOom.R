@@ -258,16 +258,16 @@ rxMemSummary.rxEtFile <- function(x, ...) {
       warning(.msg, call. = FALSE)
     }
   }
-  # several rows per subject are several simulations, which chunks would
-  # return chunk by chunk rather than simulation by simulation
-  if ((is.data.frame(params) || is.matrix(params)) && .nSub > 1L && NROW(params) > .nSub) {
+  # chunks are cut by subject, so a params table must be one row for all or one
+  # row per subject; more rows (simulations) would come back chunk by chunk
+  if ((is.data.frame(params) || is.matrix(params)) && .nSub > 1L && !(NROW(params) %in% c(1L, .nSub))) {
     stop(
-      "a chunked solve ('file='/'chunkSize=') cannot solve a 'params' with ",
-      "more rows (",
-      NROW(params),
-      ") than subjects (",
+      "a chunked solve ('file='/'chunkSize=') needs a 'params' with one row or ",
+      "one row per subject (",
       .nSub,
-      "); give one row per subject, or solve without chunking.",
+      "), not ",
+      NROW(params),
+      "; solve without chunking.",
       call. = FALSE
     )
   }
