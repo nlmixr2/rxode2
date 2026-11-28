@@ -11,6 +11,8 @@
 #include <unordered_map>
 #include <climits>
 #include <set>
+#include <map>
+#include <string>
 #include <utility>
 #include "../inst/include/rxode2parse.h"
 #include "../inst/include/rxode2EventTranslate.h"
@@ -1378,6 +1380,77 @@ static IntegerVector etTransRowLinkAttr(const std::vector<int>& link,
 }
 
 List rxModelVars_(const RObject &obj); // model variables section
+// Dose records whose modeled rate()/dur() request does not match the model
+// (rxSolve(checkModeledRateDur=)), counted per compartment (state index).
+struct etTransModeledCheck {
+  std::map<int, int> notRequested; // a bolus into a cmt with rate()/dur()
+  std::map<int, int> rateMissing;  // rate=-1 without rate(cmt)
+  std::map<int, int> durMissing;   // rate=-2 without dur(cmt)
+};
+
+static inline void etTransModeledCheckAdd(etTransModeledCheck& chk,
+                                          const IntegerVector& stateProp,
+                                          int cmt, int rateI, int splitSrc) {
+  // a split directive's source routes its own copies, so it is not checked
+  if (cmt < 1 || cmt > stateProp.size() || cmt == splitSrc) return;
+  int prop = stateProp[cmt - 1];
+  bool hasRate = (prop & 8) != 0, hasDur = (prop & 16) != 0;
+  if (rateI == 9) {
+    if (!hasRate) chk.rateMissing[cmt]++;
+  } else if (rateI == 8) {
+    if (!hasDur) chk.durMissing[cmt]++;
+  } else if (rateI == 0 && (hasRate || hasDur)) {
+    chk.notRequested[cmt]++;
+  }
+}
+
+static inline std::string etTransModeledCheckList(const std::map<int, int>& m,
+                                                  const IntegerVector& stateProp,
+                                                  bool showProp) {
+  CharacterVector nm = stateProp.attr("names");
+  std::string ret;
+  for (std::map<int, int>::const_iterator it = m.begin(); it != m.end(); ++it) {
+    if (!ret.empty()) ret += ", ";
+    ret += "'" + std::string(CHAR(nm[it->first - 1])) + "'";
+    if (showProp) {
+      int prop = stateProp[it->first - 1];
+      ret += (prop & 16) != 0 ? ((prop & 8) != 0 ? " (rate()/dur()" : " (dur()") : " (rate()";
+      ret += ", " + std::to_string(it->second) + (it->second == 1 ? " dose)" : " doses)");
+    } else {
+      ret += " (" + std::to_string(it->second) + (it->second == 1 ? " dose)" : " doses)");
+    }
+  }
+  return ret;
+}
+
+// R's warning() rather than Rf_warningcall(): with options(warn=2) the error
+// then unwinds as a C++ exception, so etTrans()'s allocations are freed
+static inline void etTransModeledCheckWarn1(const std::string& w) {
+  Function warningR = Environment::base_namespace()["warning"];
+  warningR(w, Named("call.") = false);
+}
+
+static inline void etTransModeledCheckWarn(const etTransModeledCheck& chk,
+                                           const IntegerVector& stateProp) {
+  const char *off = _("use 'checkModeledRateDur=FALSE' to silence this");
+  if (!chk.notRequested.empty()) {
+    std::string w = std::string(_("bolus doses into compartments with a modeled 'rate()'/'dur()' ignore the model value: ")) +
+      etTransModeledCheckList(chk.notRequested, stateProp, true) + "; " +
+      _("give them 'rate=-1' for the modeled rate or 'rate=-2' for the modeled duration, or ") + off;
+    etTransModeledCheckWarn1(w);
+  }
+  if (!chk.rateMissing.empty()) {
+    std::string w = std::string(_("doses request a modeled rate ('rate=-1') but the model has no 'rate()' for: ")) +
+      etTransModeledCheckList(chk.rateMissing, stateProp, false) + "; " + off;
+    etTransModeledCheckWarn1(w);
+  }
+  if (!chk.durMissing.empty()) {
+    std::string w = std::string(_("doses request a modeled duration ('rate=-2') but the model has no 'dur()' for: ")) +
+      etTransModeledCheckList(chk.durMissing, stateProp, false) + "; " + off;
+    etTransModeledCheckWarn1(w);
+  }
+}
+
 //' Event translation for rxode2
 //'
 //' @param inData Data frame to translate
@@ -1424,6 +1497,11 @@ List rxModelVars_(const RObject &obj); // model variables section
 //'   dropped from that reset's time on, as NONMEM cancels prior doses at a
 //'   reset.
 //'
+//' @param checkModeledRateDur When `TRUE` (default), warn when a bolus dose
+//'   goes into a compartment with a modeled `rate()`/`dur()` (data `rate` is
+//'   not `-1`/`-2`), or a dose requests a modeled rate/duration the model
+//'   does not define.
+//'
 //' @inheritParams rxSolve
 //'
 //' @return Object for solving in rxode2
@@ -1441,7 +1519,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
              bool ssAtDoseTime=true,
              Nullable<List> iCov = R_NilValue,
              std::string tieOrder = "evid",
-             bool resetCancelsPending = true) {
+             bool resetCancelsPending = true,
+             bool checkModeledRateDur = true) {
 #ifdef rxSolveT
   clock_t _lastT0 = clock();
 #endif
@@ -1945,7 +2024,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     newInData =  convDate(newInData, tieOrder);
     return etTrans(newInData, mv, addCmt, dropUnits, allTimeVar, keepDosingOnly,
                    combineDvid, CharacterVector(0), false, true, true, iCov,
-                   tieOrder, resetCancelsPending);
+                   tieOrder, resetCancelsPending, checkModeledRateDur);
   }
   size_t resSize = inTime.size()+256;
   std::vector<int> id;
@@ -2226,6 +2305,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   int cmt = 0;
   int rateI = 0;
   bool hasModeledRateDur = false; // any RATE=-1/-2 dose (needs start/stop re-pairing after the sort)
+  etTransModeledCheck modeledChk;
   int cmt100; //= amt[i]/100;
   int cmt99;  //= amt[i]-amt100*100;
   int cevid;
@@ -2711,6 +2791,11 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     }
     if (cevid == 0 && flg == 30) {
       cevid = 2;
+    }
+    if (checkModeledRateDur && flg != 30 && flg != 40 &&
+        (evidCol == -1 ? cevid > 99 : (cevid == 1 || cevid == 4 || cevid == 7))) {
+      etTransModeledCheckAdd(modeledChk, statePropSplit, cmt, rateI,
+                             knotSplit.size() >= 2 ? knotSplit[0] : 0);
     }
     // set when the row carries a hand-encoded classic internal evid, which is
     // emitted verbatim rather than translated
@@ -3423,6 +3508,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
   REprintf("  Time5: %f\n", ((double)(clock() - _lastT0))/CLOCKS_PER_SEC);
   _lastT0 = clock();
 #endif
+  if (checkModeledRateDur) etTransModeledCheckWarn(modeledChk, statePropSplit);
   bool redoId=false;
   if (!keepDosingOnly){
     if (obsId.size() != allId.size()){

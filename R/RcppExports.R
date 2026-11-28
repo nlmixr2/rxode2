@@ -240,6 +240,11 @@ cmtSupportsOff_ <- function(cmt, mv) {
 #'   dropped from that reset's time on, as NONMEM cancels prior doses at a
 #'   reset.
 #'
+#' @param checkModeledRateDur When `TRUE` (default), warn when a bolus dose
+#'   goes into a compartment with a modeled `rate()`/`dur()` (data `rate` is
+#'   not `-1`/`-2`), or a dose requests a modeled rate/duration the model
+#'   does not define.
+#'
 #' @inheritParams rxSolve
 #'
 #' @return Object for solving in rxode2
@@ -247,8 +252,8 @@ cmtSupportsOff_ <- function(cmt, mv) {
 #' @keywords internal
 #'
 #' @export
-etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar = FALSE, keepDosingOnly = FALSE, combineDvid = NULL, keep = character(0), addlKeepsCov = FALSE, addlDropSs = TRUE, ssAtDoseTime = TRUE, iCov = NULL, tieOrder = "evid", resetCancelsPending = TRUE) {
-    .Call(`_rxode2_etTrans`, inData, obj, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid, keep, addlKeepsCov, addlDropSs, ssAtDoseTime, iCov, tieOrder, resetCancelsPending)
+etTrans <- function(inData, obj, addCmt = FALSE, dropUnits = FALSE, allTimeVar = FALSE, keepDosingOnly = FALSE, combineDvid = NULL, keep = character(0), addlKeepsCov = FALSE, addlDropSs = TRUE, ssAtDoseTime = TRUE, iCov = NULL, tieOrder = "evid", resetCancelsPending = TRUE, checkModeledRateDur = TRUE) {
+    .Call(`_rxode2_etTrans`, inData, obj, addCmt, dropUnits, allTimeVar, keepDosingOnly, combineDvid, keep, addlKeepsCov, addlDropSs, ssAtDoseTime, iCov, tieOrder, resetCancelsPending, checkModeledRateDur)
 }
 
 rxEtTransAsDataFrame_ <- function(inData1) {

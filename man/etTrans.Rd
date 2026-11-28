@@ -18,7 +18,8 @@ etTrans(
   ssAtDoseTime = TRUE,
   iCov = NULL,
   tieOrder = c("evid", "data"),
-  resetCancelsPending = TRUE
+  resetCancelsPending = TRUE,
+  checkModeledRateDur = TRUE
 )
 
 etTrans(
@@ -35,7 +36,8 @@ etTrans(
   ssAtDoseTime = TRUE,
   iCov = NULL,
   tieOrder = c("evid", "data"),
-  resetCancelsPending = TRUE
+  resetCancelsPending = TRUE,
+  checkModeledRateDur = TRUE
 )
 }
 \arguments{
@@ -86,6 +88,11 @@ of an \code{evid=4} dose, \code{addl} repeats, infusion ends) follow that row.}
 record that a later reset (\code{evid} 3 or 4) is processed after are
 dropped from that reset's time on, as NONMEM cancels prior doses at a
 reset.}
+
+\item{checkModeledRateDur}{When \code{TRUE} (default), warn when a bolus dose
+goes into a compartment with a modeled \code{rate()}/\code{dur()} (data \code{rate} is
+not \code{-1}/\code{-2}), or a dose requests a modeled rate/duration the model
+does not define.}
 }
 \value{
 Object for solving in rxode2

@@ -19,7 +19,9 @@ rxTest({
     tryCatch(
       {
         .w <- capture_warnings(
-          .o <- capture.output(.s <- rxSolve(m, d, params = .fsPar, method = method, cores = cores))
+          .o <- capture.output(
+            .s <- rxSolve(m, d, params = .fsPar, method = method, cores = cores, checkModeledRateDur = FALSE)
+          )
         )
         list(d = as.data.frame(.s), w = .w, o = .o)
       },
@@ -30,7 +32,9 @@ rxTest({
   .nfSolve <- function(m, d, params, method) {
     tryCatch(
       {
-        .w <- capture_warnings(.o <- capture.output(.s <- rxSolve(m, d, params = params, method = method)))
+        .w <- capture_warnings(
+          .o <- capture.output(.s <- rxSolve(m, d, params = params, method = method, checkModeledRateDur = FALSE))
+        )
         list(d = as.data.frame(.s), w = .w, o = .o)
       },
       error = conditionMessage

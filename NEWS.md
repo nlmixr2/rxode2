@@ -2,6 +2,12 @@
 
 ## New features
 
+- Translating event data now warns when bolus doses go into a compartment
+  with a modeled `rate()`/`dur()` (data `rate` is not `-1`/`-2`, so the
+  model value is silently ignored), and when doses request a modeled rate
+  (`-1`) or duration (`-2`) the model does not define.
+  `rxSolve(checkModeledRateDur = FALSE)` (and
+  `etTrans(checkModeledRateDur = FALSE)`) turns the check off (#1794).
 - `simeta(n)` and `simeps(n)` re-simulate only the `n`-th ETA/EPS inside a
   model, keeping the others; a correlated element is drawn conditional on
   the others.  The index counts the omega/sigma as given, before items with

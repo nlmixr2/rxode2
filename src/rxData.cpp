@@ -122,7 +122,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt,
              bool ssAtDoseTime,
              Nullable<List> iCovIn = R_NilValue,
              std::string tieOrder = "evid",
-             bool resetCancelsPending = true);
+             bool resetCancelsPending = true,
+             bool checkModeledRateDur = true);
 // rxControl(tieOrder=); a control list built before that slot existed gets
 // the historical evid order
 std::string rxControlTieOrder(const List &control) {
@@ -134,6 +135,11 @@ std::string rxControlTieOrder(const List &control) {
 bool rxControlResetCancelsPending(const List &control) {
   if (Rf_length(control) <= Rxc_resetCancelsPending) return true;
   return asBool(control[Rxc_resetCancelsPending], "resetCancelsPending");
+}
+// rxControl(checkModeledRateDur=); on unless an rxControl() says otherwise
+bool rxControlCheckModeledRateDur(const List &control) {
+  if (Rf_length(control) <= Rxc_checkModeledRateDur) return true;
+  return asBool(control[Rxc_checkModeledRateDur], "checkModeledRateDur");
 }
 // 1 when tied records keep their translated order while solving
 int tieOrderData_global = 0;
@@ -3850,7 +3856,8 @@ static inline void rxEv1UpdateRxEt(const RObject &obj, const List &rxControl,
                     rxControl[Rxc_ssAtDoseTime],
                     R_NilValue,
                     rxControlTieOrder(rxControl),
-                    rxControlResetCancelsPending(rxControl));
+                    rxControlResetCancelsPending(rxControl),
+                    rxControlCheckModeledRateDur(rxControl));
   }
   rxSolveDat->labelID=true;
   CharacterVector tmpC = ev1a.attr("class");
@@ -3871,7 +3878,8 @@ static inline void rxEv1UpdateRxEt(const RObject &obj, const List &rxControl,
                    rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
                    R_NilValue,
                    rxControlTieOrder(rxControl),
-                   rxControlResetCancelsPending(rxControl));
+                   rxControlResetCancelsPending(rxControl),
+                   false); // the doses were checked above
   }
 }
 
@@ -3985,7 +3993,8 @@ static inline void rxEv1UpdateDf(const RObject &obj, const List &rxControl,
                     rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
                     R_NilValue,
                     rxControlTieOrder(rxControl),
-                    rxControlResetCancelsPending(rxControl));
+                    rxControlResetCancelsPending(rxControl),
+                    rxControlCheckModeledRateDur(rxControl));
   }
   CharacterVector tmpCk = ev1k.attr("class");
   List tmpLk = tmpCk.attr(".rxode2.lst");
@@ -4005,7 +4014,8 @@ static inline void rxEv1UpdateDf(const RObject &obj, const List &rxControl,
                    rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
                    rxControl[Rxc_iCov],
                    rxControlTieOrder(rxControl),
-                   rxControlResetCancelsPending(rxControl));
+                   rxControlResetCancelsPending(rxControl),
+                   false); // the doses were checked above
   } else if (Rf_isNull(rxControl[Rxc_iCov])) {
     // Same arguments as ev1k; reuse it rather than translating twice
     ev1 = ev1k;
@@ -4016,7 +4026,8 @@ static inline void rxEv1UpdateDf(const RObject &obj, const List &rxControl,
                    rxControl[Rxc_addlDropSs], rxControl[Rxc_ssAtDoseTime],
                    rxControl[Rxc_iCov],
                    rxControlTieOrder(rxControl),
-                   rxControlResetCancelsPending(rxControl));
+                   rxControlResetCancelsPending(rxControl),
+                   false); // the doses were checked above
   }
   rxSolveDat->labelID=true;
   CharacterVector tmpC = ev1.attr("class");
