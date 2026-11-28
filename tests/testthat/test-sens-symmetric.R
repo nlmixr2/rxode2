@@ -9,10 +9,10 @@ rxTest({
   .ev <- et(amt = 100, cmt = "depot") |> et(seq(0.25, 48, length.out = 30))
 
   .sens2 <- function(symmetric) {
-    .s <- rxode2:::.rxLoadPrune(rxModelVars(rxode2(.mod)), FALSE, pkTime = TRUE)
-    rxode2:::.rxJacobian(.s, .et)
-    rxode2:::.rxSens(.s, .et)
-    rxode2:::.rxSens(.s, .et, .et, symmetric = symmetric)
+    .s <- .rxLoadPrune(rxModelVars(rxode2(.mod)), FALSE, pkTime = TRUE)
+    .rxJacobian(.s, .et)
+    .rxSens(.s, .et)
+    .rxSens(.s, .et, .et, symmetric = symmetric)
     .s$..sens2
   }
 
@@ -28,10 +28,10 @@ rxTest({
 
   test_that("default is the full grid", {
     expect_identical(.sens2(FALSE), {
-      .s <- rxode2:::.rxLoadPrune(rxModelVars(rxode2(.mod)), FALSE, pkTime = TRUE)
-      rxode2:::.rxJacobian(.s, .et)
-      rxode2:::.rxSens(.s, .et)
-      rxode2:::.rxSens(.s, .et, .et)
+      .s <- .rxLoadPrune(rxModelVars(rxode2(.mod)), FALSE, pkTime = TRUE)
+      .rxJacobian(.s, .et)
+      .rxSens(.s, .et)
+      .rxSens(.s, .et, .et)
       .s$..sens2
     })
   })
