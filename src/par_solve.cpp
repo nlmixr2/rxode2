@@ -29,6 +29,7 @@
 
 // dop853 is same time
 #include "rxProtect.h"
+#include "../inst/include/rxMemAlloc.h"
 #include "rxSbufFormat.h"
 
 extern "C" uint32_t getRxSeed1(int ncores);
@@ -3447,7 +3448,7 @@ static inline void lsAdjSnapshotSs(double t, const double *yp, int n) {
   // called right after an ss handleSS while liblsoda recording is active
   bool est = (_adjSSbolusIi > 0.0 || _adjSSinfKind != 0);
   if (_lsSsKind == 0 && est) _lsSsT = t;
-  if (est && t == _lsSsT) _lsSsY.assign(yp, yp + n);
+  if (est && t == _lsSsT) rxMemAssign(adjointSsState, _lsSsY, yp, yp + n);
   if (_adjSSbolusIi > 0.0) { _lsSsKind = 1; _lsSsBolusIi = _adjSSbolusIi; }
   else if (_adjSSinfKind == 1) { _lsSsKind = 1; _lsSsBolusIi = 0.0; _lsSsCmt = _adjSSinfCmt;
     _lsSsDur = _adjSSinfDur; _lsSsDur2 = _adjSSinfDur2; _lsSsRate = _adjSSinfRate; _lsSsRate2 = _adjSSinfRate2;

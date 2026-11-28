@@ -897,9 +897,10 @@ rxTest({
         2L,
         2L,
         as.double(nrow(.ev))
-      ))
+      )[["adjointWork"]])
     )
     expect_gt(as.numeric(.adj$adjointWork), 0)
+    expect_gt(as.numeric(.adj$adjointSsState), 0)
     .meta <- c("total", "sizeofInd", "rxLlikSaveSize", "ramBytes", "freeRamBytes", "effectiveSubs")
     .comps <- .adj[!names(.adj) %in% c(.meta, "gsolve_n0")]
     expect_equal(as.numeric(.adj$total), sum(vapply(.comps, as.numeric, numeric(1))))

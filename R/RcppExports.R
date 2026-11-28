@@ -1197,14 +1197,17 @@ rxMemoryComponents_ <- function(neq, stateSize, nlhs, npars, neta, neps, ncov, n
 #' adjoint expansion: one slice per thread of \code{rxAdjWorkPerThread()}
 #' doubles (\code{inst/include/rxMemoryCalc.h}), the layout
 #' \code{src/rxData.cpp} carves.  Not counted: the per-period Jacobian tapes,
-#' sized by the recorded period's steps, which take the heap.
+#' sized by the recorded period's steps, which take the heap.  Also reports
+#' \code{adjointSsState}, the per-thread heap copy of the state right after a
+#' steady-state dose (\code{neq} doubles per thread).
 #'
 #' @param neq Number of ODE states (\code{op->neq}).
 #' @param nBase Number of base (non-adjoint) states (\code{op->adjNbase}).
 #' @param np Number of sensitivity parameters (\code{op->adjNp}).
 #' @param cores Number of parallel OMP threads.
 #' @param maxAllTimes Maximum events for any single subject.
-#' @return Named numeric vector with \code{adjointWork} bytes.
+#' @return Named numeric vector with \code{adjointWork} and
+#'   \code{adjointSsState} bytes.
 #' @noRd
 rxMemoryAdjointComponents_ <- function(neq, nBase, np, cores, maxAllTimes) {
     .Call(`_rxode2_rxMemoryAdjointComponents_`, neq, nBase, np, cores, maxAllTimes)
