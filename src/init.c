@@ -367,6 +367,8 @@ void rxOptionsIni(void);
 /* void rxOptionsIniFocei(void); */
 
 void _update_par_ptr(double t, unsigned int id, rx_solve *rx, int idx);
+void _update_par_ptr_rd(double t, unsigned int id, rx_solve *rx, int idx,
+                        const unsigned char *rd, int nrd);
 double _rxPkTime(double t, unsigned int id, rx_solve *rx);
 double _rxDoseTime(double t, unsigned int id, rx_solve *rx);
 double _rxLagTime(double t, unsigned int id, rx_solve *rx);
@@ -1336,6 +1338,7 @@ void R_init_rxode2(DllInfo *info){
   R_RegisterCCallable("rxode2", "ind_solve", (DL_FUNC) &ind_solve);
   R_RegisterCCallable("rxode2", "par_solve", (DL_FUNC) &par_solve);
   R_RegisterCCallable("rxode2", "_update_par_ptr", (DL_FUNC) &_update_par_ptr);
+  R_RegisterCCallable("rxode2", "_update_par_ptr_rd", (DL_FUNC) &_update_par_ptr_rd);
   R_RegisterCCallable("rxode2", "_rxPkTime", (DL_FUNC) &_rxPkTime);
   R_RegisterCCallable("rxode2", "_rxDoseTime", (DL_FUNC) &_rxDoseTime);
   R_RegisterCCallable("rxode2", "_rxLagTime", (DL_FUNC) &_rxLagTime);

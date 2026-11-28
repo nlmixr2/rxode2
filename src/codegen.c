@@ -377,12 +377,138 @@ static int rxgDevSkipLine(int lType) {
   }
 }
 
+// The functions the integrator calls between records (dydt, its Jacobian, the
+// matrix exponential, inductive linearization) interpolate only the covariates
+// they read: rdSplice() replaces their parameter update by
+// _update_par_ptr_rd() with the parameters their emitted body names.
+static int _rdPos = -1, _rdLen = 0, _rdPopA = 0, _rdPopB = 0;
+static const char *_rdT = "__t";
+
+static inline int rdIdStart(char c) {
+  return isalpha((unsigned char)c) || c == '_';
+}
+
+static inline int rdIdChar(char c) {
+  return isalnum((unsigned char)c) || c == '_';
+}
+
+// The parameter assignments `  name = _PP[j];` in s[a..b): names into nm/nl, j into jj
+static int rdPopulated(const char *s, int a, int b, const char **nm, int *nl, int *jj, int mx) {
+  int n = 0, k = a;
+  while (k < b && n < mx) {
+    int e = k;
+    while (e < b && s[e] != '\n') e++;
+    int i = k;
+    while (i < e && s[i] == ' ') i++;
+    int i0 = i;
+    while (i < e && rdIdChar(s[i])) i++;
+    int j = -1;
+    if (i > i0 && sscanf(s + i, " = _PP[%d];", &j) == 1 && j >= 0) {
+      nm[n] = s + i0; nl[n] = i - i0; jj[n] = j; n++;
+    }
+    k = e + 1;
+  }
+  return n;
+}
+
+// 1 when s[a..b) reads parameters other than through their names
+static int rdDirect(const char *s, int a, int b) {
+  for (int k = a; k + 4 <= b; ++k) {
+    if (!strncmp(s + k, "_PP[", 4) || !strncmp(s + k, "_SYNC_sim", 9) ||
+        !strncmp(s + k, "_update_par_ptr", 15)) return 1;
+  }
+  return 0;
+}
+
+// rd[i] = 1 for the names nm[i] that occur as an identifier in s[a..b)
+static void rdMark(const char *s, int a, int b, const char **nm, const int *nl, int n, int *rd) {
+  int k = a;
+  while (k < b) {
+    if (!rdIdStart(s[k]) || (k > 0 && rdIdChar(s[k - 1]))) {
+      k++;
+      continue;
+    }
+    int e = k;
+    while (e < b && rdIdChar(s[e])) e++;
+    for (int i = 0; i < n; ++i) {
+      if (nl[i] == e - k && !strncmp(nm[i], s + k, nl[i])) rd[i] = 1;
+    }
+    k = e;
+  }
+}
+
+// The masked update for the read flags rd of parameters jj; 0 when all are read
+static int rdCall(sbuf *r, const int *rd, const int *jj, int n) {
+  int nrd = 0, all = 1;
+  for (int i = 0; i < n; ++i) {
+    if (rd[i] && jj[i] + 1 > nrd) nrd = jj[i] + 1;
+    if (!rd[i]) all = 0;
+  }
+  if (all) return 0;
+  if (nrd == 0) {
+    sAppend(r, "  _update_par_ptr_rd(%s, _cSub, _solveData, _idx, NULL, 0);\n", _rdT);
+    return 1;
+  }
+  char *f = (char *)rxMemRalloc(fixed, nrd, sizeof(char));
+  memset(f, 0, nrd);
+  for (int i = 0; i < n; ++i) if (rd[i]) f[jj[i]] = 1;
+  sAppend(r, "  static const unsigned char _rxRd[%d] = {", nrd);
+  for (int j = 0; j < nrd; ++j) sAppend(r, j ? ",%d" : "%d", (int)f[j]);
+  sAppend(r, "};\n  _update_par_ptr_rd(%s, _cSub, _solveData, _idx, _rxRd, %d);\n", _rdT, nrd);
+  return 1;
+}
+
+// Replaces the parameter update of the function just written by the masked one
+static void rdSplice(void) {
+  if (_rdPos < 0) return;
+  int pos = _rdPos, end = sbOut.o;
+  _rdPos = -1;
+  const char *s = sbOut.s;
+  if (rdDirect(s, _rdPopB, end)) return;
+  int mx = 0;
+  for (int k = _rdPopA; k < _rdPopB; ++k) if (s[k] == '\n') mx++;
+  if (mx == 0) return;
+  const char **nm = (const char **)rxMemRalloc(fixed, mx, sizeof(char *));
+  int *nl = (int *)rxMemRalloc(fixed, mx, sizeof(int));
+  int *jj = (int *)rxMemRalloc(fixed, mx, sizeof(int));
+  int *rd = (int *)rxMemRalloc(fixed, mx, sizeof(int));
+  int n = rdPopulated(s, _rdPopA, _rdPopB, nm, nl, jj, mx);
+  if (n == 0) return;
+  memset(rd, 0, n * sizeof(int));
+  rdMark(s, _rdPopB, end, nm, nl, n, rd);
+  sbuf r;
+  sNull(&r);
+  sIni(&r);
+  if (rdCall(&r, rd, jj, n)) {
+    int tl = end - pos - _rdLen;
+    char *tail = (char *)rxMemRalloc(fixed, tl + 1, sizeof(char));
+    memcpy(tail, s + pos + _rdLen, tl);
+    tail[tl] = '\0';
+    sbOut.o = pos;
+    sbOut.s[pos] = '\0';
+    sAppendN(&sbOut, r.s, r.o);
+    sAppendN(&sbOut, tail, tl);
+  }
+  sFree(&r);
+}
+
+// Marks the parameter update about to be written for rdSplice()
+static void rdBegin(int show_ode) {
+  if (show_ode == ode_dydt || show_ode == ode_jac || show_ode == ode_mexp ||
+      show_ode == ode_indLinVec) {
+    _rdPos = sbOut.o;
+    _rdT = (show_ode == ode_mexp || show_ode == ode_indLinVec) ? "_t" : "__t";
+  }
+}
+
 // The parameter update at the top of each generated function
 static void writeUpdateParPtr(int show_ode) {
+  _rdPos = -1;
   if (_rxgDev) {
     sAppend(&sbOut, "  double _rxgPP[RXG_NPAR1];\n  const double *_PP = rxg_par(_rxg, __t, _rxgPP);\n  (void)_PP;\n");
     return;
   }
+  rdBegin(show_ode);
   if (ode_is_es_dcode(show_ode)) show_ode = ode_lag;
   switch (show_ode) {
   case ode_ini:
@@ -831,8 +957,11 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
       rxgDevTbs();
       prnt_vars(print_lastLhsValue, 0,"","\n", 12);
       writeUpdateParPtr(show_ode);
+      if (_rdPos >= 0) _rdLen = sbOut.o - _rdPos;
       writePkTime(show_ode);
+      _rdPopA = sbOut.o;
       prnt_vars(print_populateParameters, 1, "", "\n",show_ode);                   /* pass system pars */
+      _rdPopB = sbOut.o;
       if (show_ode != ode_past){
         // past() history is a function of t and parameters only (no states); its
         // __zzStateVar__ is NULL, so state-var population is skipped for ode_past.
@@ -1206,6 +1335,7 @@ void codegen(int show_ode, const char *prefix, const char *libname, const char *
       sAppendN(&sbOut,  "}\n", 2);
     }
   }
+  rdSplice();
   _rxode2parse_unprotect();
 }
 

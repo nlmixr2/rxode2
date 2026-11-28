@@ -6,6 +6,7 @@
 #include "rxomp.h"
 #include <stdio.h>
 #include <stdarg.h>
+#include <climits>
 #include "../inst/include/rxode2.h"
 #include "../inst/include/rxode2parseHandleEvid.h"
 #include "../inst/include/rxode2parseGetTime.h"
@@ -527,6 +528,10 @@ extern "C" double _rxLagTime(double t, unsigned int id, rx_solve *rx) {
   return ind->all_times[c - (ind->pkSkip[c] - 2)] + ind->curShift;
 }
 
+static inline bool rxParRead(int p, const unsigned char *rd, int nrd) {
+  return p < nrd && (rd == NULL || rd[p]);
+}
+
 // getTime() decodes the evid of the record it looks up into
 // ind->wh/cmt/wh100/whI/wh0.  Looking up neighbouring records while
 // interpolating a covariate must not clobber the event being handled.
@@ -540,7 +545,10 @@ struct RxSaveWh {
   }
 };
 
-extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int idxIn) {
+// rd/nrd: only the covariates at parameter positions p < nrd with rd[p] != 0
+// (rd NULL: every p < nrd); a compiled dydt/jac passes the parameters it reads
+static void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int idxIn,
+                            const unsigned char *rd, int nrd) {
   if (rx == NULL) (Rf_errorcall)(R_NilValue, _("solve data is not loaded"));
   rx_solving_options_ind *ind, *indSample;
   ind = &(rx->subjects[id]);
@@ -605,6 +613,8 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
     idx = 0;
   }
   ind->_update_par_ptr_in = 1;
+  // a resampled covariate draws its subject at first use: keep that order
+  if (rx->sample) { rd = NULL; nrd = INT_MAX; }
   if (ISNA(t)) {
     // functional lag, rate, duration, mtime
     // Update all covariate parameters
@@ -613,7 +623,7 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
     indSample = ind;
     if (op->do_par_cov) {
       for (k = ncov; k--;) {
-        if (op->par_cov[k]) {
+        if (op->par_cov[k] && rxParRead(op->par_cov[k] - 1, rd, nrd)) {
           int is_locf = op->par_cov_interp[k];
           if (is_locf == -1) is_locf = op->is_locf;
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
@@ -664,7 +674,7 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
     int ncov = op->ncov;
     if (op->do_par_cov) {
       for (k = ncov; k--;) {
-        if (op->par_cov[k]) {
+        if (op->par_cov[k] && rxParRead(op->par_cov[k] - 1, rd, nrd)) {
           int is_locf = op->par_cov_interp[k];
           if (is_locf == -1) is_locf = op->is_locf;
           if (rx->sample && rx->par_sample[op->par_cov[k]-1] == 1) {
@@ -755,6 +765,15 @@ extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int id
     }
   }
   ind->_update_par_ptr_in = 0;
+}
+
+extern "C" void _update_par_ptr(double tt, unsigned int id, rx_solve *rx, int idxIn) {
+  _update_par_ptr(tt, id, rx, idxIn, NULL, INT_MAX);
+}
+
+extern "C" void _update_par_ptr_rd(double tt, unsigned int id, rx_solve *rx, int idxIn,
+                                   const unsigned char *rd, int nrd) {
+  _update_par_ptr(tt, id, rx, idxIn, rd, nrd);
 }
 
 /* void doSort(rx_solving_options_ind *ind); */
