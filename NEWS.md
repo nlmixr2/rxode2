@@ -246,6 +246,13 @@
 
 ## Bug fixes
 
+- The explicit Runge-Kutta discrete adjoint (`rk4s`, `dop853s` and the other
+  explicit `*s` methods) gives the exact gradient for a parameter-dependent
+  `alag()` when the right-hand side is nonlinear.  The lag-time term was exact
+  only for a linear right-hand side; it is now
+  `dlag/dp * lambda' (f(x-) - f(x+))` from the model's own `f`.  The Rosenbrock,
+  Radau, composite, CVODES and LSODA adjoints keep the old approximation.
+
 - The `rk4s` family of solvers now steps only the states of a narrowed solve
   (a per-individual `neqOverride`, as nlmixr2est sets when it pools models),
   like `liblsoda`, `lsoda` and `dop853`.  Before, the stage vectors and the
