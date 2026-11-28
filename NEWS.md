@@ -502,6 +502,11 @@
 
 ### Solving
 
+- A chunked solve (`file=`/`chunkSize=`) with a multi-row `params` data
+  frame or matrix gave every chunk the whole table, so chunks were solved as
+  extra simulations or failed with "number of parameters ... needs to be a
+  multiple of the number of subjects"; each chunk now gets its own subjects'
+  rows (#1520).
 - `rxSaveState()` and `rxSolve(serializeFile=)` no longer read past the end of
   the event-id buffer when a model has more parameters than the translated
   event table has columns, and a restored state now places the covariate and

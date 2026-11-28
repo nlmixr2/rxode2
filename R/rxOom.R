@@ -335,6 +335,17 @@ rxMemSummary.rxEtFile <- function(x, ...) {
   .preDrawnSlice <- function(.first, .n) {
     as.integer(vapply(seq_len(.nStud) - 1L, function(.s) .s * .nSub + seq.int(.first, length.out = .n), double(.n)))
   }
+  # A multi-row params is one row per subject (per simulation) in data order,
+  # laid out the same way, so each chunk takes its subjects' rows from every
+  # simulation block; any other params is the chunk's as given.
+  .paramsSlice <- function(.first, .n) {
+    .nr <- NROW(params)
+    if (!(is.data.frame(params) || is.matrix(params)) || .nr <= 1L || .nr %% .nSub != 0L) {
+      return(params)
+    }
+    .rows <- vapply(seq_len(.nr %/% .nSub) - 1L, function(.s) .s * .nSub + seq.int(.first, length.out = .n), double(.n))
+    params[as.integer(.rows), , drop = FALSE]
+  }
   # The residual draw is per OBSERVATION, so its slice is cut by the records a
   # chunk's subjects own rather than by the rows of the parameter table.
   # `.sigmaSlice()` is that cut: the drawn matrix is study major over all the
@@ -656,7 +667,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
       .chunkParamsList[[.i]] <- if (!is.null(.preDrawnParams)) {
         .preDrawnParams[.preDrawnSlice(.cumSub + 1L, .nThis), , drop = FALSE]
       } else {
-        params
+        .paramsSlice(.cumSub + 1L, .nThis)
       }
       if (!is.null(.preDrawnSigma)) {
         .chunkSigmaList[[.i]] <-
@@ -844,7 +855,7 @@ rxMemSummary.rxEtFile <- function(x, ...) {
         rxSetSeed(as.integer(
           (as.double(.baseSeed) + as.double(.cumSub)) %% .Machine$integer.max
         ))
-        params
+        .paramsSlice(.cumSub + 1L, .nThis)
       }
       if (!is.null(.preDrawnSigma)) {
         .rxOomSetDrawnSigma(

@@ -394,4 +394,34 @@ rxTest({
     expect_identical(.n, 1L)
     expect_no_warning(rxSolve(m, d, params = .o, file = tempfile("pr"), chunkSize = 2, warnIdSort = FALSE))
   })
+
+  test_that("a chunked solve gives each chunk its subjects' rows of a multi-row params", {
+    m <- .paramsRowsModel()
+    .old <- options(rxode2.oom.backend = "rds")
+    on.exit(options(.old), add = TRUE)
+    .key <- function(s) {
+      .s <- as.data.frame(s)
+      if (is.null(.s$sim.id)) {
+        .s$sim.id <- 1L
+      }
+      .s$id <- as.character(.s$id)
+      .s <- .s[order(.s$sim.id, match(.s$id, unique(.s$id)), .s$time), c("sim.id", "id", "time", "cp")]
+      rownames(.s) <- NULL
+      .s
+    }
+    for (.nid in 3:4) {
+      d <- .paramsRowsData(ids = 10 + seq_len(.nid))
+      .p <- data.frame(k = seq_len(.nid) / 10, v = 2)
+      for (.pp in list(.p, rbind(.p, transform(.p, k = k * 2)))) {
+        .want <- .key(rxSolve(m, d, params = .pp))
+        for (.cs in 1:3) {
+          expect_identical(
+            .key(rxSolve(m, d, params = .pp, file = tempfile("pr"), chunkSize = .cs)),
+            .want,
+            label = paste(.nid, nrow(.pp), .cs)
+          )
+        }
+      }
+    }
+  })
 })
