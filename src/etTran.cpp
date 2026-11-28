@@ -10,6 +10,7 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <climits>
+#include <regex>
 #include <set>
 #include <utility>
 #include "../inst/include/rxode2parse.h"
@@ -1337,6 +1338,97 @@ static inline int etTransCompanionDoseRow(int k, int i) {
   return k == 0 ? -1 : i;
 }
 
+// A row that is a dose whatever its other columns hold; evidMode 0 reads
+// 'amt' alone, 1 an 'evid' column and 2 an 'mdv' column standing in for it
+static inline bool etTransRowSurelyDose(int i, const IntegerVector &inEvid,
+                                        int evidMode, const NumericVector &inAmt,
+                                        bool hasAmt) {
+  bool hasDoseAmt = hasAmt && !ISNAN(inAmt[i]) && inAmt[i] != 0.0;
+  if (evidMode == 0) return hasDoseAmt;
+  int e = inEvid[i];
+  if (IntegerVector::is_na(e)) return false;
+  if (evidMode == 2) return e == 1 && hasDoseAmt;
+  return e == 1 || (e >= 4 && e <= 7) || e >= 100;
+}
+
+// addlDropPastObs needs a model that reads no later record: no evid_()
+// pushes (a pushed observation can fall past the data) and no lead(),
+// last() or negative lag()
+static inline bool etTransAddlDropModelOk(const List &mv) {
+  IntegerVector flags = as<IntegerVector>(mv[RxMv_flags]);
+  if (flags[RxMvFlag_evid_] != 0) return false;
+  CharacterVector model = as<CharacterVector>(mv[RxMv_model]);
+  if (model.size() == 0) return false;
+  std::string norm = as<std::string>(model[0]);
+  static const std::regex laterRecord("(^|[^A-Za-z0-9_.])((lead0?|last)\\(|lag0?\\([^,()]*,\\s*-)");
+  return !std::regex_search(norm, laterRecord);
+}
+
+// addlDropPastObs: each subject's latest input row, after which addl repeats
+// cannot change any other record.  Only subjects with a row that is neither
+// surely a dose nor a reset (an observation, evid 2 or anything unsure) get one,
+// and not a subject whose time moves back (a time reset).
+static inline std::unordered_map<int, double>
+etTransLastOutTime(const NumericVector &inTime, const IntegerVector &inId,
+                   bool hasId, const IntegerVector &inEvid, int evidMode,
+                   const NumericVector &inAmt, bool hasAmt) {
+  std::unordered_map<int, double> ret;
+  std::unordered_set<int> movesBack, hasOut;
+  int lid = NA_INTEGER;
+  double lt = NA_REAL;
+  for (int i = 0; i < inTime.size(); ++i) {
+    double t = inTime[i];
+    if (ISNAN(t)) continue;
+    int cid0 = hasId ? inId[i] : 1;
+    if (lid == cid0 && t < lt) movesBack.insert(cid0);
+    lid = cid0;
+    lt = t;
+    // a reset is not an observation
+    bool isReset = evidMode == 1 && inEvid[i] == 3;
+    if (!isReset && !etTransRowSurelyDose(i, inEvid, evidMode, inAmt, hasAmt)) {
+      hasOut.insert(cid0);
+    }
+    auto it = ret.find(cid0);
+    if (it == ret.end()) ret[cid0] = t;
+    else if (t > it->second) it->second = t;
+  }
+  for (auto it = ret.begin(); it != ret.end(); ) {
+    if (movesBack.count(it->first) || !hasOut.count(it->first)) {
+      it = ret.erase(it);
+    } else {
+      ++it;
+    }
+  }
+  return ret;
+}
+
+// The time after which an addl series stops (Inf: it does not).  A dose into
+// an alag() compartment never stops, as its lag could move a repeat earlier,
+// nor a classic infusion record, whose start and stop rows repeat apart.
+static inline double etTransAddlStop(const std::unordered_map<int, double> &lastOut,
+                                     int nOcc, int cid, bool classicEvid,
+                                     int cevid, int cmt,
+                                     const IntegerVector &curAlag,
+                                     const IntegerVector &knotSplit) {
+  if (nOcc <= 1 || lastOut.empty()) return R_PosInf;
+  auto it = lastOut.find(cid);
+  if (it == lastOut.end()) return R_PosInf;
+  int dcmt = cmt;
+  if (classicEvid) {
+    int wh, wCmt, wh100, whI, wh0;
+    getWh(cevid, &wh, &wCmt, &wh100, &whI, &wh0);
+    if (whI != 0) return R_PosInf;
+    dcmt = wCmt + 1;
+  }
+  for (int jj = 0; jj < curAlag.size(); ++jj) {
+    if (dcmt == curAlag[jj]) return R_PosInf;
+    for (int kk = 1; kk < knotSplit.size(); ++kk) {
+      if (dcmt == knotSplit[0] && knotSplit[kk] == curAlag[jj]) return R_PosInf;
+    }
+  }
+  return it->second;
+}
+
 // The dose row of a promoted infusion stop: its input row when it has one
 static inline int etTransPromotedDoseRow(int idxIn, int cur) {
   return idxIn >= 0 ? idxIn : cur;
@@ -1424,6 +1516,13 @@ List rxModelVars_(const RObject &obj); // model variables section
 //'   dropped from that reset's time on, as NONMEM cancels prior doses at a
 //'   reset.
 //'
+//' @param addlDropPastObs When `TRUE`, the `addl` repeats of a subject with
+//'   observations stop after the first one past the subject's last record,
+//'   as later ones cannot change any record before it.  Doses into
+//'   an `alag()` compartment, subjects whose time moves back and models with
+//'   model times (`mtime()`), `evid_()` pushes, `lead()`, `last()` or a
+//'   negative `lag()` keep every repeat.  Default `FALSE`.
+//'
 //' @inheritParams rxSolve
 //'
 //' @return Object for solving in rxode2
@@ -1441,7 +1540,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
              bool ssAtDoseTime=true,
              Nullable<List> iCov = R_NilValue,
              std::string tieOrder = "evid",
-             bool resetCancelsPending = true) {
+             bool resetCancelsPending = true,
+             bool addlDropPastObs = false) {
 #ifdef rxSolveT
   clock_t _lastT0 = clock();
 #endif
@@ -1945,7 +2045,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
     newInData =  convDate(newInData, tieOrder);
     return etTrans(newInData, mv, addCmt, dropUnits, allTimeVar, keepDosingOnly,
                    combineDvid, CharacterVector(0), false, true, true, iCov,
-                   tieOrder, resetCancelsPending);
+                   tieOrder, resetCancelsPending, addlDropPastObs);
   }
   size_t resSize = inTime.size()+256;
   std::vector<int> id;
@@ -2364,6 +2464,17 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
         }
       }
     }
+  }
+  // addlDropPastObs: an addl series stops after its first repeat past the
+  // subject's last input row, so the records up to it are solved as with the
+  // full series (the solver also looks one record ahead).  Model times may
+  // fall anywhere, so they turn it off.
+  std::unordered_map<int, double> addlLastOut;
+  if (addlDropPastObs && addlCol != -1 && nMtime == 0 &&
+      etTransAddlDropModelOk(mv)) {
+    int evidMode = !hasEvid ? 0 : (evidIsMDV ? 2 : 1);
+    addlLastOut = etTransLastOutTime(inTime, inId, idCol != -1, inEvid,
+                                     evidMode, inAmt, amtCol != -1);
   }
   // This section of the code:
   // - Loops over the input dataset
@@ -3100,6 +3211,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
       }
       int nOcc = _rxAddlCount(cii, caddl);
       int addlParent = (int)evid.size();
+      double addlStop = etTransAddlStop(addlLastOut, nOcc, cid, classicEvid,
+                                        cevid, cmt, curAlag, knotSplit);
       for (int rep = 0; rep < nOcc; ++rep) {
         if (rep > 0) ctime += cii;
         if (rep > 0 && !addlCap.empty() &&
@@ -3186,6 +3299,7 @@ List etTrans(List inData, const RObject &obj, bool addCmt=false,
             zeroIdSet.insert(cid);
           }
         }
+        if (ctime > addlStop) break;
       }
     }
   }

@@ -122,7 +122,8 @@ List etTrans(List inData, const RObject &obj, bool addCmt,
              bool ssAtDoseTime,
              Nullable<List> iCovIn = R_NilValue,
              std::string tieOrder = "evid",
-             bool resetCancelsPending = true);
+             bool resetCancelsPending = true,
+             bool addlDropPastObs = false);
 // rxControl(tieOrder=); a control list built before that slot existed gets
 // the historical evid order
 std::string rxControlTieOrder(const List &control) {

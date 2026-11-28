@@ -294,9 +294,11 @@ etTrans <- function(
   ssAtDoseTime = TRUE,
   iCov = NULL,
   tieOrder = c("evid", "data"),
-  resetCancelsPending = TRUE
+  resetCancelsPending = TRUE,
+  addlDropPastObs = FALSE
 ) {
   tieOrder <- match.arg(tieOrder)
+  checkmate::assertLogical(addlDropPastObs, any.missing = FALSE, len = 1)
   if (is.rxEt(inData)) {
     .env <- .rxEtEnv(inData)
     .chunks <- Filter(Negate(is.null), .env$chunks)
@@ -326,6 +328,7 @@ etTrans <- function(
     ssAtDoseTime,
     iCov,
     tieOrder,
-    resetCancelsPending
+    resetCancelsPending,
+    addlDropPastObs
   )
 }
